@@ -103,7 +103,21 @@ export interface HeroTile {
   name: string
   /** 매장명(없으면 빈 문자열). */
   merchant: string
+  /**
+   * 🗺️ 2026-10-07 (대표 "B안으로 진행") — `restaurant_address` 에서 뽑은 **시·도 + 시군구** 두 토막.
+   * 없으면 빈 문자열이고, 그때 캡션은 그 줄을 **안 그린다**(빈 자리를 남기지 않는다).
+   */
+  region: string
+  /**
+   * 종류 **원시 키**(`meal_voucher`…). 라벨로 바꾸는 일은 **여기서 하지 않는다** —
+   * 라벨 SSOT(`deal-category-icon`·`voucher-types`)가 둘 다 lucide 아이콘을 들고 있고,
+   * 이 모듈은 **워커가 import 한다**(`worker/utils/home-card-preload`). 워커 번들에 React
+   * 아이콘을 끌어들이지 않으려고 키만 싣고, 라벨 변환은 화면(`HeroDealStrip`)이 맡는다.
+   */
+  category: string
   price: number
+  /** 정가. 판매가보다 클 때만 취소선으로 그린다(같거나 작으면 보여 줄 이득이 없다). */
+  origPrice: number
   /** 0 이면 배지를 그리지 않는다. */
   discount: number
   /** 로딩 중 바탕색 — 흰 깜빡임 방지. */
@@ -122,6 +136,30 @@ export function heroTileUrl(src: string): string {
   })
 }
 
+/**
+ * 🗺️ 주소 → **시·도 + 시군구** 두 토막 (2026-10-07).
+ *
+ * 라이브 주소는 한 줄 전체다 — `"전북특별자치도 전주시 덕진구 가리내10길 10"`. 189px 타일에
+ * 그대로 넣을 수 없고, 손님이 알고 싶은 건 *어느 동네인가* 한 가지다.
+ *
+ * ⚠️ **행정 접미사를 지우는 것이 전부가 아니다**: `세종특별자치시` 는 그 다음 토막이 이미 동(洞)이라
+ * 둘째를 붙이면 `"세종 조치원읍"` 처럼 과하게 좁아진다 ⇒ 광역시급 단일 행정구역은 한 토막만 쓴다.
+ *
+ * 실측 50건 전부 `restaurant_address` 를 갖고 있지만(2026-10-07), 빈 값·한 토막짜리도
+ * **빈 문자열로** 떨어진다 — 호출부가 그때 그 줄을 안 그린다.
+ */
+export function regionFromAddress(addr: unknown): string {
+  if (typeof addr !== 'string') return ''
+  const parts = addr.trim().split(/\s+/).filter(Boolean)
+  if (!parts.length) return ''
+  const wide = parts[0].replace(/(특별자치도|특별자치시|광역시|특별시|자치도|자치시)$/, '')
+  if (!wide) return ''
+  // 세종처럼 시·군·구 층이 없는 단일 광역은 한 토막으로 끝낸다.
+  if (/^세종/.test(wide)) return wide
+  const second = parts[1] ?? ''
+  return /(시|군|구)$/.test(second) ? `${wide} ${second}` : wide
+}
+
 function toTile(raw: Record<string, unknown>): HeroTile | null {
   const src = typeof raw?.image_url === 'string' ? raw.image_url : ''
   if (!src) return null
@@ -138,7 +176,10 @@ function toTile(raw: Record<string, unknown>): HeroTile | null {
     href: `/pass/${id}`,
     name: typeof raw?.name === 'string' ? raw.name : '',
     merchant: typeof raw?.restaurant_name === 'string' ? raw.restaurant_name : '',
+    region: regionFromAddress(raw?.restaurant_address),
+    category: typeof raw?.category === 'string' ? raw.category : '',
     price,
+    origPrice: typeof raw?.original_price === 'number' ? raw.original_price : 0,
     discount,
     color: typeof raw?.dominant_color === 'string' ? raw.dominant_color : '',
   }

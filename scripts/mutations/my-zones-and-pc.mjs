@@ -91,8 +91,8 @@ export default [
   {
     name: '🏪 가게 개수를 이름과 한 span 에 도로 붙인다 (긴 이름에서 개수가 먼저 잘린다)',
     file: 'src/pages/user-profile/SellerSection.tsx',
-    find: '<span className="truncate">{store.name}</span>\n            <span className="shrink-0">· {stores.length}곳</span>',
-    replace: '<span className="truncate">{store.name} · {stores.length}곳</span>',
+    find: '<span className="truncate">{store.name}</span>\n            {stores.length >= 2 && <span className="shrink-0">· {stores.length}곳</span>}',
+    replace: '<span className="truncate">{store.name}{stores.length >= 2 && ` · ${stores.length}곳`}</span>',
     test: TEST,
     why: '이 줄이 눌리는 이유가 개수다(2곳 이상일 때만 전환 버튼) — 잘려야 하는 건 이름이지 개수가 아니다.',
   },

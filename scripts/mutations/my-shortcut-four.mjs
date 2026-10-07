@@ -35,7 +35,8 @@ export default [
   {
     name: '🧹 오늘 숫자가 매출 분석으로 안 간다 (닿는 길이 하나 줄어든다)',
     file: SECTION,
-    find: "            onClick={() => openTool('analytics')}",
+    // 🔁 2026-10-01 철거 재조준: 손수 시트 → 대시보드 화면(`openPage`). 불변식 동일.
+    find: "            onClick={() => openPage('/seller/analytics', '매출 분석')}",
     replace: '            onClick={() => {}}',
     test: TEST,
     why: '바로가기에서 뺀 대신 오늘 숫자를 입구로 삼았다 — 그 배선이 끊기면 매출 분석은 전체 도구에만 남는다.',
@@ -53,9 +54,11 @@ export default [
   },
   {
     name: '🧹 뺀 기능이 전체 도구에서도 사라진다 (진짜로 없어진다)',
-    file: SECTION,
-    find: "  '/seller/influencer-deals': 'partners',",
-    replace: '',
+    // 🔁 2026-10-01 철거 재조준: 도달 보증이 **표** → **`FULL_SCREEN_ONLY` 밖에 있는가**로 바뀌었다.
+    //   그 주소를 전체화면 전용으로 박으면 전체 도구가 시트로 못 열고, 바로가기에서도 뺐으므로 사라진다.
+    file: 'src/pages/user-profile/seller-section/tool-pages.ts',
+    find: "export const FULL_SCREEN_ONLY: Record<string, string> = {",
+    replace: "export const FULL_SCREEN_ONLY: Record<string, string> = {\n  '/seller/influencer-deals': 'x',",
     test: TEST,
     why:
       '바로가기 줄을 뺀 근거가 **"전체 도구가 같은 시트로 보낸다"** 였다. 그 표에서 빠지면 ' +

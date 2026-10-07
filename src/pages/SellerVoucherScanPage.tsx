@@ -24,7 +24,7 @@ export default function SellerVoucherScanPage() {
         <DashboardPageHeader
           icon={<Camera className="w-5 h-5" />}
           title={t('seller.scan.title', { defaultValue: '바우처 스캔' })}
-          subtitle={t('seller.scan.subtitle', { defaultValue: '손님 QR을 비추면 자동으로 사용 처리돼요 (연속 스캔 가능)' })}
+          subtitle={t('seller.scan.subtitle', { defaultValue: '손님 QR을 비추면 이용권을 확인하고, 사용 처리할지 물어봐요' })}
         />
 
         {/* 🎟️ 2026-07-02 (대표): 매장별 현지 사용 방식 선택 — 3모드 + 매장 확인코드 */}

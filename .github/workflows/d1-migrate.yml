@@ -2,15 +2,32 @@ name: D1 Migration Auto-Apply
 
 # 🛡️ 2026-05-21 Phase TD-1: D1 마이그레이션 자동화.
 #
-# 트리거: main 푸시 + migrations/ 또는 repair-schema.routes.ts 변경
-# 사전 조건: GitHub Secrets 등록 필요
-#   - CLOUDFLARE_API_TOKEN (D1 Write 권한)
-#   - CLOUDFLARE_ACCOUNT_ID
-#   - D1_DATABASE_NAME (예: ur-live)
+# 🔴 2026-10-06 (대표 "남은 것도 다 해줘") — **이 워크플로는 몇 달간 아무것도 안 하고
+#   `success` 를 찍고 있었다.** 라이브 로그 실측(run 37465121609):
 #
-# 안전:
-#   - dry-run 먼저 (SQL syntax 검증)
-#   - 실행 결과 Discord 알림 (선택)
+#     x [ERROR] Couldn't find DB with name 'ur-live'
+#     ! migrations/0289_….sql 실패 (already applied?)
+#     ! ADMIN_REPAIR_TOKEN 미설정 — repair-schema 호출 skip
+#     -> job conclusion: success
+#
+#   원인 둘. (1) `D1_DATABASE_NAME` 시크릿이 미설정이라 기본값 `ur-live` 를 찾았는데 **그런 DB 는
+#   없다**(본진은 `toss-live-commerce-db` — `wrangler.toml` 의 `DB` 바인딩). (2) 모든 실패를
+#   `|| echo "실패 (already applied?)"` 가 삼켜 **잡이 초록**이었다.
+#
+# ## 이번 수정의 원칙 — 정직하게 만들되, **프로덕션 쓰기는 켜지 않는다**
+#   · DB 이름은 **`wrangler.toml` 에서 읽는다**(시크릿 불필요 -> 이름이 다시 어긋날 수 없다).
+#   · 기본 동작은 **보고 전용**이다. 무엇이 적용될지 출력만 하고 **실행하지 않는다.**
+#   · 실제 적용은 **명시 게이트** `vars.D1_MIGRATE_APPLY == 'true'` 일 때만.
+#     주의: 켜면 **main 푸시마다 프로덕션 D1 에 마이그레이션이 실제로 적용되기 시작한다.**
+#     지금까지 한 번도 안 돌았으므로 쌓인 분(migrations/ 전체)의 영향을 먼저 볼 것.
+#   · **DB 를 못 찾는 것은 더 이상 조용히 넘기지 않는다** — 이름이 틀린 것은 "이미 적용됨" 이
+#     절대 아니므로 즉시 실패시킨다(이 사고가 숨어 있던 바로 그 자리).
+#
+# ## repair-schema 호출은 제거했다 (중복)
+#   `main.yml` 의 `Auto schema repair after deploy` 가 **배포 직후** 같은 일을 하고 **실제로 돈다**
+#   (2026-10-06 실측 — 주문 85 소급 기록을 그것이 돌렸다). 순서도 그쪽이 맞다(배포 뒤).
+#   여기 있던 스텝은 토큰 미설정으로 한 번도 실행된 적이 없고, 있다는 사실만으로 "자동으로 돈다"는
+#   **거짓 확신**을 만들었다(그 오판을 실제로 했다). 그래서 지운다.
 
 on:
   push:
@@ -45,31 +62,84 @@ jobs:
             exit 1
           fi
 
-      - name: List pending migrations
-        run: ls -la migrations/
+      - name: Resolve DB name from wrangler.toml (시크릿 불필요 — 드리프트 불가)
+        id: db
+        run: |
+          NAME=$(python3 - <<'PYEOF'
+          import re, sys
+          src = open('wrangler.toml', encoding='utf-8').read()
+          for blk in re.split(r'\n(?=\[)', src):
+              if blk.lstrip().startswith('[[d1_databases]]') and re.search(r'binding\s*=\s*"DB"', blk):
+                  m = re.search(r'database_name\s*=\s*"([^"]+)"', blk)
+                  if m:
+                      print(m.group(1)); sys.exit(0)
+          sys.exit(1)
+          PYEOF
+          )
+          if [ -z "$NAME" ]; then
+            echo "::error::wrangler.toml 에서 binding=\"DB\" 의 database_name 을 못 읽었다"
+            exit 1
+          fi
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "대상 D1: $NAME"
 
-      - name: Apply migrations (dry-run first)
+      - name: Preflight — DB 가 실제로 보이는가 (이름 오류를 조용히 넘기지 않는다)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          DB_NAME="${{ secrets.D1_DATABASE_NAME }}"
-          DB_NAME="${DB_NAME:-ur-live}"
+          DB_NAME='${{ steps.db.outputs.name }}'
+          if ! wrangler d1 info "$DB_NAME" > /tmp/d1info.txt 2>&1; then
+            echo "::error::D1 '$DB_NAME' 을 못 찾거나 권한이 없다 — 이것은 '이미 적용됨' 이 아니다."
+            sed -n '1,20p' /tmp/d1info.txt
+            exit 1
+          fi
+          echo "D1 '$DB_NAME' 접근 확인"
+
+      - name: Report pending migrations (기본 = 보고 전용, 실행 안 함)
+        run: |
+          N=$(ls -1 migrations/*.sql 2>/dev/null | wc -l | tr -d ' ')
+          {
+            echo "### D1 마이그레이션 — 보고"
+            echo ""
+            echo "대상 DB: \`${{ steps.db.outputs.name }}\`"
+            echo "마이그레이션 파일: **$N 개**"
+            echo ""
+            if [ "${{ vars.D1_MIGRATE_APPLY }}" = "true" ]; then
+              echo "적용 게이트: **ON** — 다음 스텝이 실제로 적용한다."
+            else
+              echo "적용 게이트: **OFF**(기본) — 아무것도 적용하지 않았다."
+              echo ""
+              echo "켜려면 repo Variables 에 \`D1_MIGRATE_APPLY=true\`."
+              echo "주의: 켜는 순간 main 푸시마다 **프로덕션 D1 에 실제로 적용**된다 — 쌓인 $N 개의 영향을 먼저 볼 것."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "— 파일 목록 —"
+          ls -1 migrations/*.sql 2>/dev/null || echo "(없음)"
+
+      - name: Apply migrations (게이트 ON 일 때만)
+        if: ${{ vars.D1_MIGRATE_APPLY == 'true' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          DB_NAME='${{ steps.db.outputs.name }}'
+          FAILED=0
           for f in migrations/*.sql; do
             echo "==> Applying $f"
-            wrangler d1 execute "$DB_NAME" --remote --file="$f" || echo "⚠️ $f 실패 (already applied?)"
+            if ! wrangler d1 execute "$DB_NAME" --remote --file="$f" > /tmp/out.txt 2>&1; then
+              # "이미 적용됨" 류(중복 컬럼·테이블 존재)는 **재실행 모델에서 정상**이다.
+              # 그 밖의 오류는 삼키지 않는다 — 그게 이 워크플로가 몇 달 거짓 초록이던 이유다.
+              if grep -qiE "duplicate column|already exists" /tmp/out.txt; then
+                echo "   (이미 적용됨 — skip)"
+              else
+                echo "::error::$f 적용 실패"; sed -n '1,20p' /tmp/out.txt; FAILED=$((FAILED+1))
+              fi
+            fi
           done
-
-      - name: Trigger repair-schema (idempotent)
-        env:
-          REPAIR_URL: https://urdeal.kr/api/_internal/repair-schema
-          ADMIN_TOKEN: ${{ secrets.ADMIN_REPAIR_TOKEN }}
-        run: |
-          if [ -n "$ADMIN_TOKEN" ]; then
-            echo "==> /api/_internal/repair-schema 호출"
-            curl -fsS "$REPAIR_URL" -H "Authorization: Bearer $ADMIN_TOKEN" | head -200 || echo "⚠️ repair-schema 호출 실패"
-          else
-            echo "⚠️ ADMIN_REPAIR_TOKEN 미설정 — repair-schema 호출 skip"
+          if [ "$FAILED" -ne 0 ]; then
+            echo "::error::$FAILED 개 마이그레이션이 실패했다"
+            exit 1
           fi
 
       - name: Discord notification (옵션)

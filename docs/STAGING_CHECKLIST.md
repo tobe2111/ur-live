@@ -210,6 +210,25 @@ GET /api/admin/promo-ledger/order/:orderNumber      (read-only, finance 권한)
 플랫폼 수수료 안에서 부담하되 총합이 예산을 못 넘게 아비터가 강제하는 쪽으로 갔다.
 그래서 S1 의 합격선은 `within_budget` **하나**이고, 원장 debit 은 참고 수치다.
 
+## 🧾 S-EXBOOK — 만료 환불이 주문 장부에 적힌다 (2026-10-06)
+
+게이트 없음(배포되면 바로 적용). 결재 `docs/decisions/2026-10-02-expired-refund-not-booked.md`.
+
+**왜 staging 이 필요한가**: 유닛 시험은 SSOT SQL 을 실제 sqlite 에 돌려 *"적으면 두 번째 환불액이
+0"* 까지 증명했지만, **라이브 cron 이 그 자리에서 실제로 부르는지**는 발화해 봐야 안다
+(2026-09-30 에 "조회·선점은 멀쩡한데 환불이 0건" 이던 것이 정확히 그 층의 사고였다).
+
+| # | 무엇 | 기대 |
+|---|---|---|
+| S-EXBOOK1 | 만료 이용권 1장을 만들고 `0 18 * * *`(03:00 KST) 회차를 기다린다 | `vouchers.refund_status='refunded'` + 딜/카드 환불 1회 |
+| S-EXBOOK2 | 그 주문의 `orders.refunded_amount` | **환불액과 같다**(전엔 0 이었다) |
+| S-EXBOOK3 | 어드민 주문 환불을 **그 주문에** 눌러 본다 | 더 나갈 금액이 **0** — 이중환불이 구조적으로 막힌다 |
+| S-EXBOOK4 | 이용권 **두 장**이 한 주문인 건 | 장당 누적되고 합이 `total_amount` 를 **안 넘는다** |
+| S-EXBOOK5 | 로그 | 기록 실패 시 `장부 기록 실패` 가 **크게** 남는다(조용히 지나가지 않는다) |
+
+⚠️ **반대 방향 사고도 본다**: 장부가 총액을 넘겨 적히면 상한이 거짓이 되어 **정당한 환불을 막는다.**
+S-EXBOOK4 가 그 방향이다.
+
 ## 검증 데이 권장 순서 (반나절)
 
 1. staging 배포 + `bash scripts/audit-gate.sh` GREEN 확인
@@ -221,9 +240,32 @@ GET /api/admin/promo-ledger/order/:orderNumber      (read-only, finance 권한)
 
 | 날짜 | 항목 | 결과 | 비고 |
 |---|---|---|---|
+| 2026-10-02 | **S-EVR1** — 만료 이용권 자동환불 cron (라이브, 게이트 없음) | ✅ **E4 통과** | 아래 §S-EVR1. 같은 판정에서 **새 결함 1건** 발견 → 결재 `2026-10-02-expired-refund-not-booked.md` |
+| 2026-10-06 | **S-EXBOOK1·2·4** — 만료 환불이 장부에 적힌다 | ⏸️ **판정 불가(재료 0)** | 만료 대기 이용권 **0건**(실측) — 다음 실물 만료 때 판정. 두 장 한 주문(4) 건도 없다 |
+| 2026-10-06 | **S-EXBOOK3** — 이중환불이 막히는가 | 🔴 **오늘 실패(구멍 열림)** | 주문 85 에 환불을 누르면 **1,800 이 또 나간다**(실측 `total 1800 − booked 0`). #1625 는 *앞으로*만 막는다 ⇒ 소급 기록 PR #1630 이 이걸 0 으로 닫는다 |
+| 2026-10-06 | **S-EXBOOK5** — 기록 실패가 크게 남는가 | ✅ **코드 확인** | `bookRefundOnOrder` 가 `changes=0`·예외 둘 다 `logError` 로 올린다(`.catch(()=>{})` 없음) |
 | 2026-10-01 | **판정 도구 자체의 결함** (`GET /api/admin/promo-ledger/order/:no`) | 🔴 발견·수정 | 아래 §2026-10-01 |
 | 2026-10-01 | S5 (`pickup_unclaimed_policy_enabled`) — 라이브 주문 1건 조회 | ⬜ 대상 없음 | 그 주문의 교환권 1장이 `expires_at=NULL`(무기한) — 미수령 몰수의 **대상 자체가 아니다**. 게이트 OFF·`forfeits 0` 은 "통과"가 아니라 "안 재어졌다" |
 | 2026-10-01 | S4 (`FEE_RESOLVER_ENABLED`) | ⬜ 판정 불가 | `order_fee_breakdown` **테이블이 라이브에 없다**(게이트를 한 번도 안 켜 생성 자체가 안 됨). 스키마 사고가 아니다 |
+
+### ✅ S-EVR1 — 만료 이용권 자동환불 (2026-10-02 03:20 KST 판정)
+
+게이트 없는 항목이다(배포되면 바로 돈다). 결재 `docs/decisions/archive/2026-09-30-expired-voucher-refund-stolen.md`
+가 요구한 세 줄을 **값으로** 확인했다 — 자세한 표는 그 문서의 `### ✅ E4 판정 통과` 절.
+
+| 무엇 | 값 |
+|---|---|
+| `cron_hb:expired-voucher-refund` | `18:00:34Z`(10-02 03:00:34 KST) · `ok:true` · `rw 10` |
+| 이용권 1 `UR-UR66-YDAZ` | `refund_status='refunded'` |
+| 딜 입금 | `point_transactions` id=33 · user 3 · **+1,800** |
+| 알림 | `notifications` id=1 · `type='refund'` |
+| 이중환불 | 전수 **1건**(=0건 중복) |
+
+⚠️ **하트비트 `ok:true` 는 판정이 아니다** — 이 사고가 정확히 "초록 하트비트 + 환불 0" 이었다.
+
+🔴 **같은 판정에서 나온 새 결함**: `orders.refunded_amount` 가 여전히 **0** 이라 그 주문을 또 환불할 수
+있다(1,800 → 3,600). 어드민·셀러·주문 세 자리에서 누를 수 있다. 등급 C · 코드 미변경 ·
+결재 `docs/decisions/2026-10-02-expired-refund-not-booked.md`.
 
 ### 🔴 2026-10-01 — **판정 도구가 수수료를 0원으로 읽고 있었다** (대표 *"모두 진행해줘"*)
 
@@ -544,31 +586,67 @@ the prompt 'agree'"*. Llama 3.2 비전은 계정 단위 **1회 라이선스 동�
 | **S-VC3** | payouts 집계(cron `payouts-generate` 또는 어드민 '정산 생성') | 그 가게 합계가 **판매액을 넘지 않는다**(185% 가 안 나온다) · `merchant:N` 과 `seller:N` 이 **한 payee 로 접힌다**(`canonicalPayee`) · `payee_type` 이 접두어가 아니라 `sellers.seller_type` 에서 나온다 | ⬜ |
 | **S-VC4** | **카드** 결제와 **장바구니** 결제로도 각 1건 | S-VC1 과 같은 결과 — **결제수단에 따라 갈리지 않는다**(`group-buy.routes` 딜·카드 2곳 + `cart-checkout.routes`) | ⬜ |
 | **S-VC5** | **교환권**(KT·플랫폼 상품, `seller_id` 없음) 1건 구매 | 종전 그대로 **`platform:revenue`** + 수수료 인식 — **escrow 에 안 담긴다.** 플랫폼 상품은 사용 시점 분개가 아예 없어서, 담기면 **영원히 안 빠진다** | ⬜ |
-| **S-VC6** | 🔴 **매장 소유자 변경**(`store-handover-guard`) — 이용권을 쓴 적 있는 매장을 넘긴다 | 미정산 잔액이 남아 있으면 **막힌다**. ⚠️ **2026-10-01 현재 안 막힌다** — 아래 참조 | 🔴 **결함 확인됨** |
+| **S-VC6** | 🔴 이용권을 **쓴 적 있는 매장**에서 ⓐ 소유자 변경 ⓑ 매장 탈퇴 ⓒ 셀러 출금/정산 화면 ⓓ 어드민 승인 | 넷 **모두** 그 매장의 받을 돈을 **본다**: ⓐⓑ 잔액이 남아 있으면 **막힌다** · ⓒ 사장님 화면에 금액이 뜬다(₩0 아님) · ⓓ 승인 상한이 그 금액 | ✅ **수정됨**(2026-10-01, 아래) — **실결제 재확인 필요** |
 
-### 🔴 S-VC6 — 집계 접기가 안 닿는 다섯 번째 자리 (2026-10-01 발견, **미수정**)
+### ✅ S-VC6 — 집계 접기가 안 닿던 자리들 (2026-10-01 발견 → 같은 날 수정)
 
-`src/worker/utils/store-handover-guard.ts:117` 이 미정산 잔액을 **`seller:N` 하나로만** 읽는다:
+접기(`canonicalPayeeSql`)는 **집계 SQL 셋**에만 들어갔고, **계정 하나를 묻는 헬퍼** 셋
+(`getLedgerReceivable` · `getUnsettledBalance` · `getPayablePending`)은 못 배웠다 —
+그 헬퍼들은 `WHERE credit_account = ?` 로 **정확히 일치**를 본다.
 
-```ts
-receivable = await getUnsettledBalance(DB, `seller:${sellerId}`)
-```
+구매 적립이 escrow 로 간 뒤로 **매장 돈은 전부 `merchant:N` 에만 쌓인다.** 그래서
+`seller:N` 만 묻는 **여섯 자리가 0 을 읽고 있었다**:
 
-`getUnsettledBalance` → `getLedgerReceivable` 는 계정 **문자열 정확히 일치**로 집계하고
-(`WHERE credit_account = ? OR debit_account = ?`) **접기를 하지 않는다**. `canonicalPayee` 를
-쓰는 곳은 `payouts-generate` 와 `admin-payouts` **둘뿐**이다(실측 grep).
+| 자리 | 샌 것 | 방향 |
+|---|---|---|
+| `store-handover-guard.ts:117` | 못 받은 돈을 남긴 채 **매장이 넘어간다** | 🔴 fail-**open** |
+| `seller-withdraw.routes.ts:54` | 못 받은 돈을 남긴 채 **매장이 탈퇴한다** | 🔴 fail-**open** |
+| `admin-payouts.routes.ts:143,175` | 승인 상한이 0 | 🟡 과소 |
+| `seller-settlements/payouts.ts:34` · 셀러 출금 화면 | 사장님에게 **₩0** | 🟡 과소 |
+| `admin-payouts/handover-closeout.ts:55` | 마감할 금액이 0 | 🟡 과소 |
 
-⇒ 이용권 사용 적립은 `merchant:N` 에 쌓이는데 이 가드는 `seller:N` 만 본다:
+fail-closed 로 **설계된** 가드가 fail-open 이 된다 — 돈이 *안 보여서* 0 이기 때문이다. 에러도 로그도 없다.
 
-| 매장 상태 | `seller:N` | 가드 판정 | 옳은가 |
-|---|---|---|---|
-| 이용권 사용 적립만 있음(흔한 경우) | **0** | `receivable === 0` → **통과** | ❌ **못 받은 돈을 남겨둔 채 매장이 넘어간다** |
-| 거기에 인플루언서 커미션 차감까지 | **음수** | 음수 → 막음 | ⭕ (우연히 맞다) |
+**🩸 같은 함수 안에 두 번째 결함이 있었고, 방향이 반대라 서로 가리고 있었다.**
+`getUnsettledBalance` 의 배정분 뺄셈이 `(payee_type || ':' || payee_id) = 'seller:N'` 인데
+`payoutPayeeType` 은 매장 사장님 payout 에 **`store_owner`** 를 박는다 ⇒ 그 행이 **안 빠져**
+미배정 잔액이 **과대**로 읽힌다(2026-09-08 이 고치려던 "마감해도 계속 막히는 막다른 길"이 되살아난다).
 
-이 가드는 **fail-closed 로 설계**됐는데(조회 실패도 막는다) 이 자리에서는 **fail-open** 이다 —
-돈이 안 보여서 0 으로 읽기 때문이다. **에러도 로그도 없다.**
+**수정**: SSOT `payout-account.ts` 에 접기의 **역방향**을 둔다 —
+`ledgerAccountAliases('seller:N') → ['seller:N','merchant:N']` ·
+`paidPayeeAliases('seller:N') → ['seller:N','store_owner:N']`.
+세 헬퍼가 그걸 `IN (...)` 으로 쓴다. **이름은 그대로**(리네임은 #1591 이 기각했다) —
+읽는 쪽만 두 이름을 같은 payee 로 본다.
+`agency:`·`user:`·`platform:*` 은 접을 짝이 없어 **종전과 byte-동일**이다.
 
-**처방(권장)**: `getUnsettledBalance` 에 `canonicalPayee` 와 **같은 접기**를 적용하거나,
-가드가 `merchant:N`·`seller:N` 두 계정을 합산해 읽는다.
-⚠️ **머니 경로(등급 C)라 이 파일에서는 고치지 않았다** — 단독 세션 + staging 실결제가 선행이다.
-🍀 지금은 **사용된 이용권 0장 · payouts 0건**이라 피해자가 없다. 첫 실사용 전에 닫을 것.
+**가드**: `payee-balance-folding-2026-10-01.test.ts` 17건 — D1 모양만 얇게 흉내 내고
+**`ledger.ts` 의 그 함수를 실제 sqlite 에 돌려** 금액을 센다(SQL 을 베끼면 두 벌이 갈린다).
+주입 6건 **되돌려-검증 전부 빨간불 확인**.
+🩸 그중 하나가 처음엔 통과했다 — "라벨을 덮는가" 단언이 `payoutPayeeType` 이 *지금 내는* 라벨
+하나만 봐서, 라벨 규칙을 바꾸는 주입에 늘 참이었다. 그런데 재 보니 **그 주입은 이 시험의 책임이
+아니었다**(라벨 회귀는 `voucher-credit-single-rail:74` 가 소유하고, 접기 자체는 안 깨진다).
+⇒ 단언을 *모든* 라벨을 덮는지로 강화하고, 주입은 이 파일이 소유한 결함(별칭 철자 오타)으로 재조준했다.
+🧭 **주입이 통과하면 ① 가드가 헛돈다 ② 주입이 사실 결함이 아니다 ③ 결함이지만 다른 가드의 몫이다 —
+셋을 다 의심할 것.**
+
+⚠️ **실결제 재확인**: S-VC1~5 를 돌릴 때 ⓒ 셀러 정산 화면에 금액이 **뜨는지**와
+ⓐ 잔액이 남은 매장의 손바뀜이 **막히는지**를 함께 본다. 라이브 영향은 지금 0 이다
+(사용된 이용권 0장 · payouts 0건).
+
+---
+
+## S14 — 이용권을 딜 100% 로 산다 (2026-10-07, 대표 *"오롯이 100%로 딜로 이용권을 구매할 수 있어야"*)
+
+**바뀐 것은 화면뿐이다.** 서버 경로(`/join` · `payment_method='deal'`)는 이미 라이브에 있었고 무수정이다.
+종전엔 기본값이 부분결제(딜 상한 `총액 − 100`)라 딜이 충분해도 카드 100원이 붙었고, PC 에는 전부-딜 길이 없었다.
+
+| # | 하는 일 | 맞으면 |
+|---|---|---|
+| S14-1 | 딜 잔액 ≥ 총액인 계정으로 이용권 상세 진입(폰) | 고르는 칸 기본값이 **[전부 딜로]** · 큰 버튼이 **"N딜로 결제하기"** |
+| S14-2 | 그 버튼으로 결제 | 토스 창이 **안 뜬다** · 완료 화면이 카드 결제와 **같은 티켓**으로 뜬다(실패 화면 아님) |
+| S14-3 | 원장 | 이용권 1장 발급 · 딜 잔액이 **정확히 총액만큼** 줄었다 · 카드 승인 0건 |
+| S14-4 | PC 에서 같은 상품 | 구매 박스 버튼도 "N딜로 결제하기" 로 같은 흐름 |
+| S14-5 | 딜을 **일부만** 고르기 | 종전대로 부분결제(토스 창 · 카드 최소 100원) |
+| S14-6 | 딜 잔액 < 총액 | [전부 딜로] 가 **안 뜬다** · 기본값이 종전 최대치 |
+| S14-7 | 게이트 `voucher_deal_payment_enabled` OFF | 전부-딜 길로 가지 않는다(서버 `DEAL_PAYMENT_NOT_ALLOWED` 안내) |
+| S14-8 | 딜 결제 이용권 환불 | 딜이 그대로 **되돌아온다** |

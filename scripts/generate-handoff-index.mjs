@@ -26,7 +26,15 @@ import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 
 const HANDOFF_DIR = 'docs/handoff'
-const INDEX_FILE = 'docs/CURRENT_WORK.md'
+// 🔀 2026-10-06 (대표 "남은 것도 다 해줘") — 산출물 경로를 **추적하지 않는 사이드카**로 옮겼다.
+//   왜: 종전엔 이 목차를 `docs/CURRENT_WORK.md` 안에 쓰고 pre-commit 이 **stage** 했다.
+//   그러면 handoff 파일을 만든 **모든 브랜치가 같은 생성 블록을 고치므로** 내용상 무관한데도
+//   머지마다 충돌했다(2026-07-29 하루 10번+, 2026-10-06 하루 3번). `.gitattributes` 의
+//   `merge=union` 은 **로컬 머지에만** 먹고 GitHub 서버측 머지는 그 드라이버를 안 쓴다 —
+//   2026-10-06 에 PR 셋이 그 때문에 멎었고 `Verify` 가 실패도 아니고 **부재**였다(디스패치 안 됨).
+//   ⇒ 휘발성 생성물을 추적하는 것이 원인이다. 이제 `.gitignore` 된 사이드카에 쓰고,
+//      `docs/CURRENT_WORK.md` 는 **안 바뀌는 문서**로 남는다(= 다툴 줄이 없다).
+const INDEX_FILE = 'docs/handoff/INDEX.local.md'
 const BEGIN = '<!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->'
 const END = '<!-- HANDOFF-INDEX:END -->'
 
@@ -62,24 +70,28 @@ function render(entries) {
     let curDate = null
     for (const e of entries) {
       if (e.date !== curDate) { curDate = e.date; out.push(`**${curDate || '(날짜 미상)'}**`) }
-      out.push(`- [${e.title}](handoff/${e.file})`)
+      out.push(`- [${e.title}](${e.file})`)
     }
   }
-  out.push('', `📦 그 이전 기록: [\`docs/handoff/archive/\`](handoff/archive/)`, END)
+  out.push('', `📦 그 이전 기록: [\`archive/\`](archive/)`, END)
   return out.join('\n')
 }
 
 const entries = collect()
 const block = render(entries)
 
-const cur = readFileSync(INDEX_FILE, 'utf8')
-const b = cur.indexOf(BEGIN)
-const e = cur.indexOf(END)
-if (b === -1 || e === -1) {
-  console.error(`❌ ${INDEX_FILE} 에 목차 마커가 없다. 아래 두 줄을 넣어라:\n${BEGIN}\n${END}`)
-  process.exit(1)
-}
-const next = cur.slice(0, b) + block + cur.slice(e + END.length)
+// 🔀 사이드카는 **전체가 생성물**이다(추적 안 함) — 마커 splicing 이 필요 없고,
+//   첫 실행이나 새 클론에서 파일이 없으면 그냥 만든다(종전엔 마커가 없다고 exit 1 했다).
+const HEADER = [
+  '# 📚 세션 인계 목차 (자동 생성 · 추적 안 함)',
+  '',
+  '이 파일은 `scripts/generate-handoff-index.mjs` 가 만든다. **`.gitignore` 되어 있다** —',
+  '모든 브랜치가 고치는 생성물을 추적하면 머지마다 충돌하기 때문이다(2026-10-06 근본 해소).',
+  '규칙은 `CLAUDE.md` 의 "🔄 진행 중 작업 인계" 절에 있다.',
+  '',
+].join('\n')
+const next = HEADER + block + '\n'
+const cur = existsSync(INDEX_FILE) ? readFileSync(INDEX_FILE, 'utf8') : ''
 
 if (process.argv.includes('--check')) {
   if (next !== cur) {

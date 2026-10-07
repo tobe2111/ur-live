@@ -23,6 +23,7 @@
  *   · 넷이 **옳은 넷인가** — 빈도 판단이라 사람이 본다(사용처리·주문·이용권·정산).
  */
 import { describe, it, expect } from 'vitest'
+import { canOpenInSheet } from '@/pages/user-profile/seller-section/tool-pages'
 import { readFileSync } from 'node:fs'
 import { stripComments } from '../helpers/source-text'
 
@@ -40,7 +41,9 @@ describe('🧹 마이 판매 바로가기 — 넷 + 전체 도구 (2026-09-30)',
     expect(at, '오늘 카드를 못 찾았다').toBeGreaterThan(0)
     const card = code.slice(at - 400, at + 1400)
     expect(card, '오늘 카드가 눌리지 않는다 — 매출 분석에 닿는 길이 하나 줄었다').toMatch(
-      /<button[\s\S]{0,400}openTool\('analytics'\)/,
+      // 🧹 2026-10-01 철거: `openTool('analytics')`(손수 시트) → `openPage(…)`(대시보드 화면).
+      //   불변식은 그대로다 — **오늘 숫자를 누르면 매출 분석이 열린다.**
+      /<button[\s\S]{0,400}openPage\('\/seller\/analytics'/,
     )
   })
 
@@ -49,25 +52,39 @@ describe('🧹 마이 판매 바로가기 — 넷 + 전체 도구 (2026-09-30)',
      * 2026-07-02 상세의 *"ChevronRight 로 클릭 유도하면서 onClick 없던 dead 어포던스"* 의
      * **정반대 실수** = onClick 은 있는데 아무 표시가 없는 것. 둘 다 안 된다.
      */
-    const at = code.indexOf("openTool('analytics')")
+    /**
+     * 🩸 **2026-10-01: 이 검사가 내 재조준 때문에 헛돌았고, CI 주입이 잡았다.**
+     *   철거로 입구가 `openPage('/seller/analytics', '매출 분석')` 이 되면서 그 문구가
+     *   **핸들러 안에도** 생겼다. 그래서 *화면의* 라벨을 지우는 주입에도 `toContain('매출 분석')`
+     *   이 통과했다 — 핸들러의 인자를 보고 "적혀 있다" 고 판정한 것이다.
+     * ⇒ `onClick` 줄을 **건너뛴 뒤**(닫는 `}` 다음)부터 본다. 화면에 적힌 것만 센다.
+     */
+    const at = code.indexOf("openPage('/seller/analytics'")
     expect(at, 'analytics 입구가 없다').toBeGreaterThan(0)
-    const around = code.slice(at, at + 1400)
-    expect(around, '누르면 무엇이 열리는지 화면에 적혀 있어야 한다').toContain('매출 분석')
+    const afterHandler = code.indexOf('\n', at)
+    expect(afterHandler, 'onClick 줄이 안 끝난다 — 앵커가 낡았다').toBeGreaterThan(at)
+    const around = code.slice(afterHandler, afterHandler + 1400)
+    expect(around, '누르면 무엇이 열리는지 **화면에** 적혀 있어야 한다(핸들러 인자는 화면이 아니다)')
+      .toContain('매출 분석')
   })
 
+  /**
+   * 🧹 **2026-10-01 철거로 보증의 근거가 바뀌었다 — 풀지 않고 재조준했다.**
+   *
+   * 종전 근거: 그 넷이 `COVERED_BY_SHEET` 에 있어 전체 도구가 **손수 시트로** 보냈다.
+   * 지금 근거: 손수 시트가 없어졌고, 전체 도구는 **나브 색인**을 그대로 보여 주며
+   * `FULL_SCREEN_ONLY` 에 없는 주소를 `ToolPageSheet`(대시보드 화면)로 연다.
+   * ⇒ 지키려던 것은 같다 — **줄을 지운 것이 기능을 지운 것이 되면 안 된다.**
+   */
   it('🚪 뺀 넷이 전체 도구로 전부 닿는다 (줄을 지우는 것이 기능을 지우는 것이 되면 안 된다)', () => {
-    const table = code.slice(code.indexOf('const COVERED_BY_SHEET'), code.indexOf('/** 묶음 한 줄'))
-    for (const [path, tool] of [
-      ['/seller/analytics', 'analytics'],
-      ['/seller/store', 'store'],
-      ['/seller/influencer-deals', 'partners'],
-      ['/seller/alimtalk', 'messages'],
-    ] as const) {
-      expect(table, `${path} 가 표에 없다 — 바로가기에서 뺐는데 전체 도구에도 없으면 그냥 사라진 것이다`)
-        .toContain(`'${path}': '${tool}'`)
-      // 표에 있어도 시트를 안 그리면 아무 일도 안 난다.
-      expect(code, `${tool} 시트를 안 그린다`).toContain(`tool === '${tool}'`)
+    for (const path of ['/seller/analytics', '/seller/store', '/seller/influencer-deals', '/seller/alimtalk']) {
+      expect(canOpenInSheet(path), `${path} 가 시트로 안 열린다 — 바로가기에서 뺐는데 전체 도구에서도 못 열면 그냥 사라진 것이다`)
+        .toBe(true)
     }
+    // 열 수 있다고 선언만 하고 배선이 없으면 아무 일도 안 난다.
+    expect(code, '전체 도구가 고른 화면을 시트로 안 연다')
+      .toMatch(/if \(inSheet\) \{ setPage\(\{ path, title: label \}\)[\s\S]{0,120}setTool\('page'\); return \}/)
+    expect(code, 'page 시트를 안 그린다').toContain("tool === 'page'")
   })
 
   it('📏 판 안의 누를 수 있는 줄이 다섯을 넘지 않는다 (바로가기가 아홉이면 바로가기가 아니다)', () => {

@@ -22,7 +22,7 @@ import WalletHeader from './my-vouchers/WalletHeader'
 import WalletArchive from './my-vouchers/WalletArchive'
 import VoucherTicket from './my-vouchers/VoucherTicket'
 import { EmptyVouchers } from './my-vouchers/WalletEmpty'
-import { isFailedGifticon, isGifticonVoucher } from '@/shared/voucher-wallet'
+import { isFailedGifticon, isGifticonVoucher, isUsableWalletItem } from '@/shared/voucher-wallet'
 import type { Voucher } from './my-vouchers/types'
 
 export default function MyGifticonsPage() {
@@ -41,7 +41,8 @@ export default function MyGifticonsPage() {
   //   ⇒ 자기 그룹으로 빼서 **보이되 안 세게** 한다. 판정은 `voucher-wallet` SSOT 하나로.
   const failed = items.filter(isFailedGifticon)
   const owned = items.filter(v => !isFailedGifticon(v))   // 개수·금액이 말하는 "내가 가진 것"
-  const usable = owned.filter(v => v.status === 'unused')
+  // 🎟️ 마이 상단 카운트와 **같은 술어**(2026-10-07).
+  const usable = owned.filter(isUsableWalletItem)
   const sending = owned.filter(v => v.status === 'processing')
   const used = owned.filter(v => v.status === 'used')
   const archived = owned.filter(v => v.status === 'expired' || v.status === 'refunded')

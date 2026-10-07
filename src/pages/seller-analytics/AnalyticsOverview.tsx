@@ -10,6 +10,7 @@
  */
 import { Suspense, lazy } from 'react'
 import { useTranslation } from 'react-i18next'
+import SegmentedTabs from '@/components/ui/segmented-tabs'
 import { BarChart2, Users, ChevronRight, Gift, Calendar, TrendingUp, Loader2 } from 'lucide-react'
 import { formatWon } from '@/utils/format'
 import { NoSalesInWindow } from './NoSalesYet'
@@ -59,14 +60,11 @@ export default function AnalyticsOverview(p: Props) {
   return (
     <div className="space-y-4">
       {/* 질문은 하나만 — 기간 */}
-      <div className={`flex p-1 ${CARD}`} role="group">
-        {[7, 30, 90].map(d => (
-          <button key={d} type="button" onClick={() => p.onDays(d)} aria-pressed={p.days === d}
-            className={`flex-1 rounded-lg px-4 py-2 text-[13px] font-bold transition-colors ${p.days === d ? 'bg-brand text-white' : 'text-gray-400 hover:text-gray-600'}`}>
-            {t('seller.analyticsView.daysLabel', { n: d, defaultValue: '{{n}}일' })}
-          </button>
-        ))}
-      </div>
+      <SegmentedTabs<number>
+        value={p.days}
+        onChange={p.onDays}
+        items={[7, 30, 90].map((d) => ({ id: d, label: t('seller.analyticsView.daysLabel', { n: d, defaultValue: '{{n}}일' }) }))}
+      />
 
       {/* 🔑 이 기간에 판 게 없으면 **재는 도구를 그리지 않는다** — 큰 0 과 빈 차트 대신 다음 행동 하나.
           기간 선택은 위에 그대로 남는다(안 그러면 다른 기간으로 갈 길이 없어진다). */}

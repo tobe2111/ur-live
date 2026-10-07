@@ -2378,6 +2378,11 @@
       "descriptionPlaceholder": "餐券详细描述（菜单、使用条件等）",
       "sellingPrice": "售价（韩元）",
       "originalPrice": "原价（韩元）",
+      "discountLabel": "折扣",
+      "discountMode": "折扣输入方式",
+      "discountWon": "韩元",
+      "discountNeedsList": "请先输入原价",
+      "salePriceAuto": "输入折扣后会自动填入售价，也可以直接修改。",
       "groupBuySettings": "团购设置",
       "targetPeople": "目标人数",
       "zeroMeansDirectSale": "设为0则不使用团购直接销售",
@@ -2419,13 +2424,6 @@
       "doneDesc": "向达人发送合作提案即可开始推荐销售。仅在实际售出时产生佣金。",
       "viewMyProducts": "查看我的使用券",
       "findInfluencers": "寻找达人 →",
-      "draftFound": "有已保存的草稿",
-      "draftUntitled": "（无标题）",
-      "draftDiscard": "重新填写",
-      "draftResume": "继续填写",
-      "draftRestored": "已恢复草稿",
-      "draftSaved": "草稿已保存 — 可在其他设备继续",
-      "saveDraft": "暂存",
       "previewTitle": "消费者页面预览",
       "registerStoreHint": "注册此门店后，下次将自动填入",
       "registerStore": "注册门店",
@@ -2923,7 +2921,7 @@
     },
     "scan": {
       "title": "扫描兑换券",
-      "subtitle": "对准顾客二维码即可自动核销(可连续扫描)",
+      "subtitle": "扫描顾客二维码后先确认券信息，再决定是否核销",
       "usedOk": "核销完成",
       "usedFail": "核销失败",
       "networkError": "网络错误 — 请重试",
@@ -2935,7 +2933,13 @@
       "useBtn": "核销",
       "homeCardTitle": "店主 — 在这里扫描顾客兑换券",
       "homeCardDesc": "对准二维码一键核销 · 魔法链接无需登录",
-      "homeCardBtn": "打开扫描器"
+      "homeCardBtn": "打开扫描器",
+      "notFound": "找不到该券",
+      "alreadyUsed": "该券已被使用",
+      "notUsable": "该券无法使用（已过期或已退款）",
+      "checking": "正在确认券…",
+      "confirmQ": "确定核销吗？",
+      "confirmNote": "核销后无法撤销。"
     },
     "gbSettle": {
       "title": "团购自动结算明细",
@@ -3187,7 +3191,7 @@
       "delegated": "委托",
       "info": "信息",
       "registered": "门店已注册 — 现在可以创建使用券",
-      "pendingHint": "门店正在核验中 — 批准后可注册使用券",
+      "pendingHint": "现在即可注册。核验完成后会在首页展示",
       "gateTitle": "从注册门店开始",
       "gateDesc": "UrDeal 的一切从门店开始。在 Kakao 地图找到并注册门店后，即可开启使用券销售、达人合作与结算。",
       "step1": "注册门店",
@@ -3197,7 +3201,8 @@
       "registerCta": "通过 Kakao 地图注册门店",
       "lockedNote": "完成门店注册后即可使用使用券·订单·结算·达人合作",
       "savedPropagated": "门店信息已保存 — 已应用到 {{count}} 张使用券",
-      "saved": "门店信息已保存"
+      "saved": "门店信息已保存",
+      "suspendedHint": "门店已被停用 — 无法注册使用券"
     },
     "voucherTabs": {
       "list": "使用券",
@@ -3309,6 +3314,10 @@
       "done": "已完成",
       "none": "没有符合的订单",
       "pickupAt": "预计使用 {{date}}",
+      "unused": "未使用",
+      "refunded": "取消·退款",
+      "voucherAllUsed": "已使用",
+      "voucherUnusedN": "未使用 {{count}}张",
       "confirm": "确认订单"
     },
     "edit": {

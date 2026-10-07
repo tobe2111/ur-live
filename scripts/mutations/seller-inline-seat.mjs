@@ -124,8 +124,8 @@ export default [
   {
     name: '🎟️ 계산대가 되돌릴 수 없다는 말을 안 한다',
     file: 'src/pages/StoreScanPage.tsx',
-    find: '로 처리돼요. 되돌릴 수 없습니다.',
-    replace: '로 처리돼요.',
+    find: '를 누르면 완료되고, 되돌릴 수 없습니다.',
+    replace: '를 누르면 완료돼요.',
     test: 'src/tests/unit/seller-inline-seat-2026-09-25.test.ts',
     why: '찍기 전에 경고하지 않으면 잘못 찍은 손님의 이용권을 되돌릴 방법이 없다.',
   },

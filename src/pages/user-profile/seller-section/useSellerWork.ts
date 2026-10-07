@@ -16,11 +16,12 @@
  * 거절된 주문이 화면에서 사라진 채로 남는다 — 사장님은 처리했다고 믿는다. 응답을 받고 바꾼다.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
+import api from '@/lib/api'
 import { assertSeat, currentSeatId, onSeatChange, SeatMismatchError } from '@/lib/seller-seat'
 import { parseUTCDate } from '@/utils/date'
+import { needsSellerConfirm } from '@/shared/order-stage'
 
-/** 결제는 끝났고 사장님이 아직 "확인" 을 안 누른 상태. `seller-orders/statusHelpers.nextStatusOf` 와 같은 집합. */
-export const AWAITING_CONFIRM = new Set(['PAID', 'DONE', 'PAY_COMPLETE'])
+// 🧭 "확인할 주문" 판정은 `shared/order-stage.needsSellerConfirm`(SSOT) — 이용권·교환권은 [확인] 할 일이 없다(2026-10-07).
 
 export interface WorkOrder {
   id: number
@@ -65,6 +66,8 @@ export interface SellerWorkState {
   products: WorkProduct[]
   loading: boolean
   failed: boolean
+  /** 🪑 좌석은 유효한데 **매장이 아직 승인 전**(서버 403 `SELLER_PENDING_APPROVAL`). 실패가 아니다. */
+  pendingApproval: boolean
   /** 지금 처리 중인 주문번호 · 상품 id (버튼 잠금용) */
   busyOrder: string | null
   busyProduct: number | null
@@ -78,11 +81,28 @@ export interface SellerWorkState {
  * @param enabled  사람이 펼쳤는가. 접혀 있으면 요청 0.
  * @param onSeatLost 좌석이 어긋나 요청을 보내지 않았을 때 — 화면이 안내하고 다시 불러야 한다.
  */
-export function useSellerWork(sellerId: number, enabled: boolean, onSeatLost?: () => void): SellerWorkState {
+export function useSellerWork(
+  sellerId: number,
+  enabled: boolean,
+  onSeatLost?: () => void,
+  /**
+   * ⚡ 2026-10-01 — 상품 목록은 **그게 필요한 시트가 열렸을 때만** 받는다
+   *   (대표 *"내 가게 이 부분이 가장 늦게 떠"*).
+   *   첫 화면이 `work.products` 로 쓰던 것은 `판매 중 N개` **한 줄**뿐이었는데, 그 숫자 하나
+   *   때문에 상품 목록 전체를 매번 받았다. 지금 그 숫자는 `/my-stores/summary` 가 같이 준다
+   *   (`store.active_products` — 이미 병렬로 도는 묶음에 집계를 얹어 왕복이 안 늘었다).
+   *   ⚠️ 기본값을 `true` 로 되돌리지 말 것 — 첫 화면의 요청이 다시 하나 늘어난다.
+   *   ⚠️ 2026-10-06 현재 **호출부가 이 인자를 안 넘긴다**(그 목록을 쓰던 시트가 10-01 에 철거돼
+   *      `work.products` 소비처가 0 이다). 파라미터는 남겨 둔다 — 목록이 다시 필요해지는 시트가
+   *      생기면 그때 `true` 를 넘기면 되고, 그 전까지 첫 화면은 이 요청을 안 보낸다.
+   */
+  withProducts = false,
+): SellerWorkState {
   const [orders, setOrders] = useState<WorkOrder[]>([])
   const [products, setProducts] = useState<WorkProduct[]>([])
   const [loading, setLoading] = useState(false)
   const [failed, setFailed] = useState(false)
+  const [pendingApproval, setPendingApproval] = useState(false)
   const [busyOrder, setBusyOrder] = useState<string | null>(null)
   const [busyProduct, setBusyProduct] = useState<number | null>(null)
   const alive = useRef(true)
@@ -92,16 +112,32 @@ export function useSellerWork(sellerId: number, enabled: boolean, onSeatLost?: (
     // 🪑 좌석이 안 맞으면 **부르지 않는다** — 부르면 남의 가게 숫자를 그린다.
     if (!enabled || currentSeatId() !== sellerId) { setOrders([]); setProducts([]); return }
     setLoading(true)
-    import('@/lib/api').then(async ({ default: api }) => {
+    /**
+     * ⚡ 2026-10-06 — `api` 정적 사용. 이 조회는 **좌석이 확정된 뒤**에 도는 2단이라
+     *   동적 import 의 task 지연이 1단 지연 위에 **더해진다**(실측 주문 `+893ms`).
+     *   1단(`useMyStores`)까지 함께 고치니 `+714ms`.
+     */
+    void (async () => {
+      // 🪑 2026-10-07 — 403 `SELLER_PENDING_APPROVAL` 은 **실패가 아니다**(승인 대기 매장).
+      //   그래서 거절 응답을 버리지 않고 들고 온다. 종전엔 `.catch(() => null)` 이 사유를 통째로
+      //   지워 화면이 "불러오지 못했습니다" 라고만 말했다 — 사장님이 할 일은 기다리는 것뿐인데.
+      const grab = (e: unknown) => (e as { response?: { status?: number; data?: { code?: string } } })?.response ?? null
       const [oRes, pRes] = await Promise.all([
-        api.get('/api/seller/orders?limit=50&sort=desc').catch(() => null),
-        api.get('/api/seller/products').catch(() => null),
+        api.get('/api/seller/orders?limit=50&sort=desc').catch(grab),
+        withProducts ? api.get('/api/seller/products').catch(grab) : Promise.resolve(null),
       ])
       if (!alive.current) return
-      if (!oRes?.data?.success && !pRes?.data?.success) { setFailed(true); return }
+      const isPending = (r: unknown) =>
+        (r as { status?: number; data?: { code?: string } } | null)?.data?.code === 'SELLER_PENDING_APPROVAL'
+      if (isPending(oRes) || isPending(pRes)) { setPendingApproval(true); setFailed(false); setLoading(false); return }
+      setPendingApproval(false)
+      // 🔴 상품을 안 받는 화면(첫 화면)에서는 `pRes` 가 늘 null 이다 — 그걸 실패로 세면
+      //   주문이 멀쩡히 와도 "불러오지 못했습니다" 가 뜬다. 받은 것만으로 판정한다.
+      const asked = withProducts ? [oRes, pRes] : [oRes]
+      if (asked.every((r) => !r?.data?.success)) { setFailed(true); return }
       const oList = (oRes?.data?.success ? oRes.data.data || [] : []) as Raw[]
       setOrders(oList
-        .filter((o) => AWAITING_CONFIRM.has(String(o.status)))
+        .filter((o) => needsSellerConfirm(o as { status?: string; order_kind?: string | null }))
         .map((o) => ({
           id: Number(o.id),
           orderNumber: String(o.order_number ?? ''),
@@ -111,6 +147,8 @@ export function useSellerWork(sellerId: number, enabled: boolean, onSeatLost?: (
           at: hhmmKST(o.created_at),
           status: String(o.status),
         })))
+      // 안 물어봤으면 건드리지 않는다(빈 배열로 덮으면 시트가 열린 채 목록이 사라진다).
+      if (!withProducts) { setFailed(false); return }
       const pList = (pRes?.data?.success ? pRes.data.data || [] : []) as Raw[]
       setProducts(pList
         .filter((p) => String(p.status ?? '') !== 'DELETED')
@@ -123,9 +161,9 @@ export function useSellerWork(sellerId: number, enabled: boolean, onSeatLost?: (
         }))
         .sort((a, b) => Number(b.isActive) - Number(a.isActive) || b.sold - a.sold))
       setFailed(false)
-    }).catch(() => { if (alive.current) setFailed(true) })
+    })().catch(() => { if (alive.current) setFailed(true) })
       .finally(() => { if (alive.current) setLoading(false) })
-  }, [sellerId, enabled])
+  }, [sellerId, enabled, withProducts])
 
   useEffect(() => { load() }, [load])
   // 🪑 가게가 바뀌면 지금 목록은 옛 가게 것이다 — 버리고 다시 판단한다(좌석이 안 맞으면 비운다).
@@ -145,7 +183,6 @@ export function useSellerWork(sellerId: number, enabled: boolean, onSeatLost?: (
   const confirmOrder = useCallback(async (o: WorkOrder) => guarded(async () => {
     setBusyOrder(o.orderNumber)
     try {
-      const { default: api } = await import('@/lib/api')
       const r = await api.put(`/api/seller/orders/${encodeURIComponent(o.orderNumber)}/status`, { status: 'PREPARING' })
       if (!r.data?.success) return false
       if (alive.current) setOrders((list) => list.filter((x) => x.orderNumber !== o.orderNumber))
@@ -157,7 +194,6 @@ export function useSellerWork(sellerId: number, enabled: boolean, onSeatLost?: (
     setBusyProduct(p.id)
     const next = !p.isActive
     try {
-      const { default: api } = await import('@/lib/api')
       const r = await api.put(`/api/seller/products/${p.id}`, { is_active: next, status: next ? 'ACTIVE' : 'HIDDEN' })
       if (!r.data?.success) return false
       if (alive.current) setProducts((list) => list.map((x) => (x.id === p.id ? { ...x, isActive: next } : x)))
@@ -165,5 +201,5 @@ export function useSellerWork(sellerId: number, enabled: boolean, onSeatLost?: (
     } catch { return false } finally { if (alive.current) setBusyProduct(null) }
   }), [guarded])
 
-  return { orders, products, loading, failed, busyOrder, busyProduct, confirmOrder, toggleProduct, refetch: load }
+  return { orders, products, loading, failed, pendingApproval, busyOrder, busyProduct, confirmOrder, toggleProduct, refetch: load }
 }

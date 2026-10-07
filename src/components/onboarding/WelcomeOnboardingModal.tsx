@@ -20,6 +20,7 @@ import { Baby, Cake, Check, ChevronRight, Dumbbell, PawPrint, Scissors, Shirt, S
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
+import Udal from '@/components/mascot/Udal'
 
 interface Props {
   onClose: () => void
@@ -160,9 +161,8 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
         <div className="flex-1 overflow-y-auto px-5 pt-2 pb-4">
           {step === 1 && (
             <div className="text-center">
-              <div className="mx-auto w-20 h-20 rounded-full bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center mb-4">
-                <Sparkles className="w-9 h-9 text-white" />
-              </div>
+              {/* 🦦 2026-10-07 (확정 시안 ⑧ "가입 직후 한 번만 뜨는 시트에서 수달이 인사"): 그라디언트 원 + 반짝이 아이콘 대체. */}
+              <Udal mood="hello" size={84} motion priority className="mx-auto mb-3" />
               <h2 id="welcome-title" className="text-[24px] font-extrabold text-gray-900 dark:text-white mb-2">
                 {userName ? t('welcomeOnboarding.welcomeTitle', { name: userName, defaultValue: `${userName}님, 환영해요!` }) : t('welcomeOnboarding.welcomeTitleDefault', { defaultValue: '유어딜에 오신 걸 환영해요!' })}
               </h2>

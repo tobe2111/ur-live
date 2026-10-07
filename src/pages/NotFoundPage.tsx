@@ -3,6 +3,7 @@ import { HomeIcon, GiftBoxIcon, PinIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft } from 'lucide-react'
 import SEO from '@/components/SEO'
+import Udal from '@/components/mascot/Udal'
 
 export default function NotFoundPage() {
   const { t } = useTranslation()
@@ -57,18 +58,14 @@ export default function NotFoundPage() {
 
         {/* 🛡️ 2026-05-20: PC 에서도 너무 좁지 않도록 lg:padding 추가 */}
         <div className="relative z-10 max-w-xl w-full text-center px-4 lg:px-8 animate-fade-in">
-          {/* 404 Large Gradient */}
-          <h1
-            className="font-black leading-none tracking-tight text-[140px] md:text-[200px] bg-[#6b7280] bg-clip-text text-transparent select-none"
-            aria-label="404"
-          >
-            404
-          </h1>
+          {/* 🦦 2026-10-07 유달이 — 거대한 '404' 글자 대신 길 잃은(놀란) 얼굴.
+              숫자는 작게 남긴다(무슨 일인지 아는 사람에겐 그게 가장 빠른 신호다). */}
+          <Udal mood="lost" size={128} motion priority className="mx-auto" />
+          <p className="mt-4 text-[13px] font-bold tracking-[0.2em] text-gray-400 dark:text-gray-500" aria-hidden="true">404</p>
 
-          {/* Subtitle */}
-          <h2 className="mt-2 text-[24px] font-bold text-gray-900 dark:text-white">
+          <h1 className="mt-1 text-[24px] font-bold text-gray-900 dark:text-white">
             {t('notFound.title')}
-          </h2>
+          </h1>
 
           {/* Description */}
           <p className="mt-3 text-[15px] text-gray-500 dark:text-gray-400">

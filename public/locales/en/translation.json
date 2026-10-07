@@ -2379,6 +2379,11 @@
       "descriptionPlaceholder": "Detailed voucher description (menu, terms, etc.)",
       "sellingPrice": "Selling Price (KRW)",
       "originalPrice": "Original Price (KRW)",
+      "discountLabel": "Discount",
+      "discountMode": "Discount input type",
+      "discountWon": "KRW",
+      "discountNeedsList": "Enter list price first",
+      "salePriceAuto": "Entering a discount fills in the selling price. You can still edit it.",
       "groupBuySettings": "Group Buy Settings",
       "targetPeople": "Target Participants",
       "zeroMeansDirectSale": "0 means direct sale without group buy",
@@ -2420,13 +2425,6 @@
       "doneDesc": "Send offers to influencers to start referral sales. Commission only occurs when a sale happens.",
       "viewMyProducts": "View my vouchers",
       "findInfluencers": "Find influencers →",
-      "draftFound": "You have a saved draft",
-      "draftUntitled": "(untitled)",
-      "draftDiscard": "Start over",
-      "draftResume": "Resume",
-      "draftRestored": "Draft restored",
-      "draftSaved": "Draft saved — resume on any device",
-      "saveDraft": "Save draft",
       "previewTitle": "Customer view preview",
       "registerStoreHint": "Register this store to auto-fill it next time",
       "registerStore": "Register store",
@@ -2923,7 +2921,7 @@
     },
     "scan": {
       "title": "Scan voucher",
-      "subtitle": "Point at the customer QR to redeem automatically (continuous scan)",
+      "subtitle": "Scan the customer QR to check the voucher, then confirm to redeem",
       "usedOk": "Redeemed",
       "usedFail": "Redeem failed",
       "networkError": "Network error — please retry",
@@ -2935,7 +2933,13 @@
       "useBtn": "Redeem",
       "homeCardTitle": "Store owners — scan customer vouchers here",
       "homeCardDesc": "Point at the QR to redeem in one tap · Magic link works without login",
-      "homeCardBtn": "Open voucher scanner"
+      "homeCardBtn": "Open voucher scanner",
+      "notFound": "Voucher not found",
+      "alreadyUsed": "This voucher has already been used",
+      "notUsable": "This voucher cannot be used (expired or refunded)",
+      "checking": "Checking voucher…",
+      "confirmQ": "Redeem this voucher?",
+      "confirmNote": "Redeeming cannot be undone."
     },
     "gbSettle": {
       "title": "Group-buy auto settlements",
@@ -3187,7 +3191,7 @@
       "delegated": "Delegated",
       "info": "Info",
       "registered": "Store registered — you can now create vouchers",
-      "pendingHint": "This store is under business verification — vouchers open once approved",
+      "pendingHint": "You can register vouchers now. They appear on the main page once business verification is done",
       "gateTitle": "Start by registering your store",
       "gateDesc": "Everything on UrDeal starts from a store. Find yours on Kakao Map and register it to unlock voucher sales, influencer collabs and settlements.",
       "step1": "Register store",
@@ -3197,7 +3201,8 @@
       "registerCta": "Register store via Kakao Map",
       "lockedNote": "Register your store to unlock vouchers · orders · settlement · influencer collabs",
       "savedPropagated": "Store info saved — applied to {{count}} vouchers",
-      "saved": "Store info saved"
+      "saved": "Store info saved",
+      "suspendedHint": "This store is suspended — vouchers cannot be registered"
     },
     "voucherTabs": {
       "list": "Vouchers",
@@ -3309,6 +3314,10 @@
       "done": "Done",
       "none": "No orders here",
       "pickupAt": "Use on {{date}}",
+      "unused": "Unused",
+      "refunded": "Cancelled/Refunded",
+      "voucherAllUsed": "Used",
+      "voucherUnusedN": "{{count}} unused",
       "confirm": "Confirm order"
     },
     "edit": {

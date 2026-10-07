@@ -15,159 +15,31 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readCode, stripComments } from '../helpers/source-text'
+import { canOpenInSheet } from '@/pages/user-profile/seller-section/tool-pages'
 
 const SECTION = readCode('src/pages/user-profile/SellerSection.tsx')
-const ORDERS = readCode('src/pages/user-profile/seller-section/OrdersSheet.tsx')
-const VOUCHERS = readCode('src/pages/user-profile/seller-section/VoucherSheet.tsx')
-const VEDIT = readCode('src/pages/user-profile/seller-section/VoucherEditSheet.tsx')
-const STORE = readCode('src/pages/user-profile/seller-section/StoreSheet.tsx')
+// 🧹 2026-10-01 철거: 묶음 네 시트(`OrdersSheet`·`VoucherSheet`·`VoucherEditSheet`·`StoreSheet`)
+//    는 내려갔다 — 그 일들은 대시보드 화면이 맡는다(손수 시트는 그 화면의 **폰용 사본**이었다).
 
-/** 읽어 온 소스가 실제로 내용이 있는가 — 경로가 낡아 빈 문자열이면 아래 `not.toMatch` 가 전부 헛돈다. */
-describe('0. 검사 대상이 실재한다 (0건이면 통과가 아니라 고장)', () => {
-  it('네 시트 소스가 모두 충분한 길이로 읽힌다', () => {
-    for (const [name, code] of [['orders', ORDERS], ['vouchers', VOUCHERS], ['voucherEdit', VEDIT], ['store', STORE]] as const) {
-      expect(code.length, `${name}: 소스를 못 읽었다 — 파일이 옮겨졌다면 앵커부터 고칠 것`).toBeGreaterThan(1500)
-    }
-  })
-})
-
-describe('1. 🧾 주문 묶음 — 마이 안에서 지난 주문까지', () => {
-  it('🪑 좌석이 안 맞으면 **부르지 않는다**', () => {
-    // 부르면 조용히 남의 가게 주문을 그린다(에러가 안 난다 — 이 레포가 반복해 당한 클래스).
-    expect(stripComments(ORDERS)).toMatch(/if \(currentSeatId\(\) !== sellerId\)/)
-  })
-
-  it('상태 전이를 여기서 다시 구현하지 않는다 — `work.confirmOrder` 를 쓴다', () => {
-    const code = stripComments(ORDERS)
-    expect(code, '주문 시트가 직접 쓰기를 하면 전이 규칙이 두 벌이 된다').not.toMatch(/api\.(put|patch|post|delete)\(/)
-    expect(code).toContain('work.confirmOrder(')
-  })
-
-  it('전부 한 번에 받지 않는다 — offset 으로 이어 받는다', () => {
-    const code = stripComments(ORDERS)
-    expect(code).toMatch(/offset=\$\{offset\}/)
-    expect(code, '더 보기가 없으면 옛 주문에 닿을 수 없다').toContain('더 보기')
-  })
-
-  it('환불을 여기서 실행하지 않는다 — 사유를 적어야 하고 되돌릴 수 없다', () => {
-    // 🩸 처음엔 `/refund|환불/i` 로 썼는데 상태 라벨 `REFUNDED: '환불'` 에 걸렸다(표시 문자열이다).
-    //   판정은 **엔드포인트**로 한다 — 위 '쓰기 없음' 단언과 짝이다.
-    expect(stripComments(ORDERS), '환불은 전용 시트가 맡는다').not.toMatch(/['"`][^'"`]*\/refund/)
-  })
-
-  /**
-   * 🩸 2026-09-26 — **내가 만든 결함을 잡아 둔다.** 낱개 `ToolRow` 목록을 묶음으로 바꾸며 '환불' 줄을
-   * 지웠는데, 새 자리를 안 만들어서 `RefundSheet` 가 **어디서도 열리지 않게** 됐다. tsc 도 테스트도
-   * 통과했다(분기는 남아 있고 아무도 그 상태를 세팅하지 않을 뿐이다) — 전형적인 "조용한 부재".
-   */
-  it('🔴 환불에 닿을 길이 있다 — 주문에서 열고, 닫으면 주문으로 돌아온다', () => {
-    expect(stripComments(ORDERS), '주문 시트에 문이 없으면 환불 시트는 도달 불가다').toMatch(/onClick=\{onRefund\}/)
-    const code = stripComments(SECTION)
-    expect(code, '주문 시트의 문이 환불로 배선되지 않았다').toContain("onRefund={() => setTool('refund')}")
-    const at = code.indexOf("tool === 'refund'")
-    expect(at, '환불 분기가 없다').toBeGreaterThan(0)
-    expect(code.slice(at, at + 300), '닫으면 주문 목록으로 돌아와야 한다 — 어디서 왔는지 잊지 않게')
-      .toContain("onClose={() => setTool('orders')}")
-  })
-})
-
-describe('2. 🎟️ 이용권 묶음 — 목록·중지/재개·고치기', () => {
-  it('목록을 다시 부르지 않는다 — 마이 카드와 같은 `work` 를 쓴다', () => {
-    const code = stripComments(VOUCHERS)
-    expect(code, '또 부르면 같은 화면에 두 개의 진실이 생긴다').not.toMatch(/api\./)
-    // 🩸 `work.products` 로 앵커했다가 빨간불 — 이 파일은 구조분해로 받는다. 앵커는 **출처**에 건다.
-    expect(code, '목록의 출처가 work 가 아니면 카드와 갈린다').toMatch(/\}\s*=\s*work\b/)
-    expect(code).toContain('products.filter')
-    expect(code).toMatch(/toggleProduct\(p\)/)
-  })
-
-  /**
-   * 🔁 2026-09-26 **전제가 뒤집혔다**(대표 *"이용권 등록, 숙소까지 해줘"*). 등록은 이제 마이 안에서
-   * 끝난다. 지키려던 것은 그대로다 — **이 시트가 자기 등록 폼을 갖지 않는다**. 전용 시트가
-   * 대시보드 위저드를 `embedded` 로 그대로 연다(세부: `seller-register-stays-in-my`).
-   */
-  it('등록 폼을 이 시트가 직접 만들지 않는다 — 전용 시트가 같은 페이지를 연다', () => {
-    const code = stripComments(VOUCHERS)
-    expect(code, '같은 폼이 두 벌이 되면 반드시 한쪽만 고쳐진다').toContain('<VoucherNewSheet')
-    expect(code, '등록 폼 부품을 여기서 들이면 두 벌이 갈린다').not.toMatch(/seller-meal-voucher\/|<input|<textarea/)
-    expect(code, '경로를 직접 열면 위저드가 아니라 라우팅이 된다').not.toMatch(/meal-voucher\/new/)
-  })
-
-  it('좌석에 막 앉은 순간의 빈 목록을 "없음" 으로 단정하지 않는다', () => {
-    // `openTool` 이 좌석을 발급한 직후에는 목록이 아직 안 왔다 — 그때 "없어요" 를 그리면 거짓말이다.
-    expect(stripComments(VOUCHERS)).toMatch(/products\.length === 0 && work\.loading/)
-    expect(stripComments(VOUCHERS), '실패를 0개로 그리면 안 된다').toContain('work.failed')
-  })
-
-  it('이름과 스위치가 **자리를 나눈다** — 끄려다 편집이 열리면 안 된다', () => {
-    const code = stripComments(VOUCHERS)
-    expect(code).toMatch(/onClick=\{\(\) => setEditing\(p\)\}/)
-    expect(code).toMatch(/role="switch"/)
-  })
-})
-
-describe('3. 🎟️ 이용권 고치기 — 손님이 보는 값이다', () => {
-  it('🔴 가격이 바뀌면 한 번 더 묻는다', () => {
-    const code = stripComments(VEDIT)
-    expect(code, '한 손으로 쓰는 물건이라 실수도 한 손으로 난다').toMatch(/if \(priceChanged && !confirming\) \{ setConfirming\(true\); return \}/)
-  })
-
-  it('가격을 **안 바꿨으면** 확인 단계가 없다 — 매번 물으면 확인이 무의미해진다', () => {
-    const code = stripComments(VEDIT)
-    expect(code).toMatch(/const priceChanged = priceOk && nextPrice !== basePrice/)
-    // 되돌리면 확인 단계도 취소된다 — 안 그러면 '확인' 이 옛 금액을 저장한다.
-    expect(code).toMatch(/if \(!priceChanged\) setConfirming\(false\)/)
-  })
-
-  it('🪑 보내기 직전에 좌석을 다시 확인한다 (§15-3 규칙 ②)', () => {
-    expect(stripComments(VEDIT)).toContain('assertSeat(sellerId)')
-  })
-
-  it('사진·옵션은 보내지 않는다 — 그건 전체화면 폼의 일이다', () => {
-    const code = stripComments(VEDIT)
-    for (const f of ['images', 'detail_images', 'image_url']) {
-      expect(code, `${f} 를 여기서 보내면 전체화면 폼과 두 벌이 된다`).not.toMatch(new RegExp(`body\\.${f}|${f}:`))
-    }
-  })
-})
-
-describe('4. 🏪 가게 묶음 — 계좌는 여기 없다', () => {
-  /**
-   * 🔴 서버는 계좌 필드가 **섞이기만 해도** PIN(412)과 소유자(403) 게이트를 켠다
-   * (`seller-profile.routes` 의 `bankChanged`). 상호를 고치려던 사람이 PIN 을 요구받게 된다.
-   */
-  it('계좌 필드를 보내지 않는다', () => {
-    const code = stripComments(STORE)
-    const at = code.indexOf("api.put('/api/seller/profile'")
-    expect(at, '저장 호출을 못 찾았다 — 앵커가 낡았다').toBeGreaterThan(0)
-    const call = code.slice(at, at + 400)
-    for (const f of ['bank_name', 'bank_account', 'account_holder']) {
-      expect(call, `${f} 를 보내면 서버가 PIN·소유자 게이트를 켠다`).not.toContain(f)
-    }
-  })
-
-  it('손님에게 보이는 넷만 보낸다', () => {
-    const code = stripComments(STORE)
-    const at = code.indexOf("api.put('/api/seller/profile'")
-    const call = code.slice(at, at + 400)
-    for (const f of ['business_name', 'phone', 'address', 'description']) {
-      expect(call).toContain(f)
-    }
-  })
-
-  it('🪑 좌석 가드 + 보내기 직전 확인', () => {
-    const code = stripComments(STORE)
-    expect(code).toMatch(/if \(currentSeatId\(\) !== sellerId\)/)
-    expect(code).toContain('assertSeat(sellerId)')
-  })
-
-  it('승인 상태는 마이 카드와 **같은 문장**을 쓴다', () => {
-    // 두 곳이 다르게 설명하면 더 헷갈린다 — 문장은 `STATUS_NOTE` 한 곳에서만 나온다.
-    expect(stripComments(STORE), '시트가 자기 문장을 지어내면 두 벌이 된다').not.toMatch(/승인 대기 중이에요|서류가 반려됐어요/)
-    expect(stripComments(STORE)).toContain('statusNote')
-    expect(stripComments(SECTION)).toContain('statusNote={note}')
-  })
-})
+/**
+ * 🧹 **2026-10-01 철거 — 이 파일의 묶음 1~4(시트 내부 검사 17건)를 내렸다.**
+ *
+ * 대상이 **사본**이었다. 사본을 지우면 사본용 가드도 내려간다 — 다만 *"원본에도 그 성질이 있나"*
+ * 를 먼저 확인했고, **원본이 더 약한 자리 둘**을 찾았다. 둘 다 등급 C(돈·되돌릴 수 없는 일)라
+ * 여기서 고치지 않고 결재문에 올렸다(`2026-09-28-my-stage2-sheet-teardown.md` §철거로 잃은 것).
+ *
+ * | 사본이 지키던 것 | 원본 | 판정 |
+ * |---|---|---|
+ * | 환불에 닿을 길이 있다 | `/seller/orders` 에 환불 버튼 + `confirmDialog(danger)` | ✅ 같다 |
+ * | 환불에 **사유**를 적는다 | 본문이 `{}` — 사유 칸이 없다 | 🔴 **사본이 나았다** |
+ * | 이용권 가격이 바뀌면 한 번 더 묻는다 | 상품 편집 화면에 가격-변경 확인 단계가 없다 | 🔴 **사본이 나았다** |
+ * | 목록을 전부 한 번에 받지 않는다 | 그 화면들이 원본이다(사본이 복제했던 것) | ✅ 같다 |
+ * | 좌석 가드 · 보내기 직전 `assertSeat` | 대시보드는 **좌석 토큰**(`seller_token`)으로 스코프된다 | ✅ 다른 방식, 같은 보장 |
+ * | 열린 뒤 좌석이 바뀌면 닫는다 | 대시보드 화면엔 없었다 → **`SellerSection` 으로 자리를 옮겼다** | ✅ 재배치 |
+ * | 네 시트가 공용 셸을 쓴다 | 셸은 `ToolPageSheet` 하나다 | ✅ 더 강해졌다 |
+ *
+ * ⚠️ 이 표가 이 철거의 **감사 기록**이다. 되돌리려면 revert 한 번이고, 그러면 위 가드들이 함께 돌아온다.
+ */
 
 describe('5. 🧰 배선 — 낱개 목록이 아니라 묶음이다', () => {
   /**
@@ -177,13 +49,14 @@ describe('5. 🧰 배선 — 낱개 목록이 아니라 묶음이다', () => {
    * ⚠️ 그래서 둘 중 하나만 있으면 통과다 — 하지만 **둘 다 없으면** 그 기능은 마이에서 사라진다.
    */
   it('다섯 묶음에 모두 닿을 길이 있다 (바로가기 줄 또는 전체 도구)', () => {
+    // 🧹 2026-10-01 철거: 닿는 길이 셋이 됐다 — 바로가기(`openTool` = 돈 / `openPage` = 화면)
+    //   또는 전체 도구(`canOpenInSheet`). 지키는 것은 그대로다: **셋 다 없으면 마이에서 사라진다.**
     const code = stripComments(SECTION)
-    const table = code.slice(code.indexOf('const COVERED_BY_SHEET'), code.indexOf('/** 묶음 한 줄'))
-    const viaTools = new Set([...table.matchAll(/:\s*'([a-z]+)',/g)].map((m) => m[1]))
-    expect(viaTools.size, '표가 비었다 — 이 검사가 헛돌고 있다').toBeGreaterThanOrEqual(5)
-    for (const t of ['orders', 'vouchers', 'withdraw', 'analytics', 'store']) {
-      const direct = code.includes(`openTool('${t}')`)
-      expect(direct || viaTools.has(t), `${t} 에 닿을 길이 없다 — 바로가기 줄도 전체 도구 표도 없다`).toBe(true)
+    for (const [job, path] of [['orders', '/seller/orders'], ['vouchers', '/seller/group-buy'],
+      ['withdraw', '/seller/settlements'], ['analytics', '/seller/analytics'],
+      ['store', '/seller/store']] as const) {
+      const viaRow = code.includes(`openPage('${path}'`) || code.includes(`'${path}': '`)
+      expect(viaRow || canOpenInSheet(path), `${job}(${path}) 에 닿을 길이 없다`).toBe(true)
     }
   })
 
@@ -199,21 +72,27 @@ describe('5. 🧰 배선 — 낱개 목록이 아니라 묶음이다', () => {
      * ⚠️ `enterSeat` 자체는 금지가 아니다: 시트가 **없는** 주소(41개 중 나머지)는 좌석을 받아 나가는 게 맞고
      *    `/store/scan`(손님 쪽)도 그렇다. 금지는 **시트가 있는 주소를 리터럴로 넘기는 것**뿐이다.
      */
+    // 🧹 2026-10-01 철거 재조준: 종전엔 **표에 있는 주소**가 나가지 않는지 봤다. 표가 돈 하나로
+    //   줄었으므로 이제는 **바로가기 줄이 여는 주소 전부**(`openPage` + 표)를 본다.
+    //   지키려던 것은 그대로다 — 마이가 경유지가 되지 않는다(나가는 순간 "대시보드라는 게 따로 있다" 를 배운다).
     const code = stripComments(SECTION)
-    const table = code.slice(code.indexOf('const COVERED_BY_SHEET'), code.indexOf('/** 묶음 한 줄'))
-    const covered = [...table.matchAll(/'(\/seller\/[a-z-]+)'/g)].map((m) => m[1])
-    expect(covered.length, '표가 비었다 — 이 검사가 헛돌고 있다').toBeGreaterThanOrEqual(5)
-    const leaked = covered.filter((path) => code.includes(`enterSeat('${path}')`))
-    expect(leaked, `시트가 있는데 대시보드로 나간다: ${leaked.join(' · ')}`).toEqual([])
+    const rowPaths = [...code.matchAll(/openPage\('(\/seller\/[^']+)'/g)].map((m) => m[1])
+    const tablePaths = [...code.matchAll(/'(\/seller\/[a-z-]+)':\s*'[a-z]+',/g)].map((m) => m[1])
+    const owned = [...new Set([...rowPaths, ...tablePaths])]
+    expect(owned.length, '바로가기 주소를 하나도 못 찾았다 — 이 검사가 헛돌고 있다').toBeGreaterThanOrEqual(4)
+    const leaked = owned.filter((path) => code.includes(`enterSeat('${path}')`))
+    expect(leaked, `마이가 여는 주소인데 대시보드로 나간다: ${leaked.join(' · ')}`).toEqual([])
   })
 
-  it('다섯 묶음이 모두 시트로 열린다 (줄만 있고 시트가 없으면 아무 일도 안 난다)', () => {
+  it('바로가기가 여는 것이 실제로 그려진다 (줄만 있고 시트가 없으면 아무 일도 안 난다)', () => {
     const code = stripComments(SECTION)
-    for (const [t, tag] of [['orders', '<OrdersSheet'], ['vouchers', '<VoucherSheet'], ['store', '<StoreSheet'], ['analytics', '<AnalyticsSheet'], ['withdraw', '<WithdrawSheet']] as const) {
-      const at = code.indexOf(`tool === '${t}'`)
-      expect(at, `${t} 분기가 없다`).toBeGreaterThan(0)
-      expect(code.slice(at, at + 200), `${t} 가 ${tag} 를 안 연다`).toContain(tag)
-    }
+    // 돈은 손수 시트, 나머지는 대시보드 화면 시트 — 둘 다 **렌더 분기**가 있어야 열린다.
+    const at = code.indexOf("tool === 'withdraw'")
+    expect(at, 'withdraw 분기가 없다').toBeGreaterThan(0)
+    expect(code.slice(at, at + 200), 'withdraw 가 <WithdrawSheet 를 안 연다').toContain('<WithdrawSheet')
+    const pat = code.indexOf("tool === 'page'")
+    expect(pat, 'page 분기가 없다 — 대시보드 화면이 하나도 안 열린다').toBeGreaterThan(0)
+    expect(code.slice(pat, pat + 200), 'page 가 <ToolPageSheet 를 안 연다').toContain('<ToolPageSheet')
   })
 
   it('판매 중 목록이 두 곳에 있지 않다 — `SellingList` 는 지웠다', () => {
@@ -225,9 +104,11 @@ describe('5. 🧰 배선 — 낱개 목록이 아니라 묶음이다', () => {
     expect(stripComments(SECTION)).toContain('<PendingOrders')
   })
 
-  it('네 시트 모두 공용 셸(`Sheet`)을 쓴다 — 뒤로가기·z-index·스크롤 규약이 갈리지 않게', () => {
-    for (const [name, code] of [['orders', ORDERS], ['vouchers', VOUCHERS], ['voucherEdit', VEDIT], ['store', STORE]] as const) {
-      expect(stripComments(code), `${name}: 자기 마크업을 쓰면 하단 네비 뒤로 숨거나 폰에서 잘린다`).toMatch(/from '\.\/Sheet'/)
+  it('남은 시트가 공용 셸(`Sheet`)을 쓴다 — 뒤로가기·z-index·스크롤 규약이 갈리지 않게', () => {
+    // 🧹 2026-10-01 철거: 네 시트가 내려가 셸을 쓰는 것이 **더 적어졌다**(셸 자체는 그대로).
+    for (const f of ['WithdrawSheet', 'ToolPageSheet', 'AllToolsSheet']) {
+      expect(stripComments(readCode(`src/pages/user-profile/seller-section/${f}.tsx`)),
+        `${f}: 자기 마크업을 쓰면 하단 네비 뒤로 숨거나 폰에서 잘린다`).toMatch(/from '\.\/Sheet'/)
     }
   })
 })

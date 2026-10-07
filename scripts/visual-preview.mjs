@@ -157,6 +157,11 @@ const DEAL_TITLES = [
   ['본죽 전복죽', '본죽 삼성점 · 삼성동', 12000, 8900],
   ['CU 모바일상품권 1만원', 'CU 강남역점 · 전국', 10000, 9300],
 ]
+/** 색 한 판짜리 4:3 인라인 사진 — 네트워크 0, 결정론. 띠·카드가 "사진 없음" 으로 떨어지지 않게. */
+const tilePlaceholder = (hex) =>
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="384" height="288"><rect width="384" height="288" fill="${hex}"/></svg>`)
+
 const DEALS = DEAL_TITLES.map(([name, sub, was, now], i) => ({
   id: 9000 + i,
   name,
@@ -165,7 +170,12 @@ const DEALS = DEAL_TITLES.map(([name, sub, was, now], i) => ({
   price: now,
   original_price: was,
   discount_rate: Math.round((1 - now / was) * 100),
-  image_url: '',
+  /* 🖼️ 2026-10-07: 종전엔 `''` 였다 — 그래서 **홈 히어로 띠가 하네스에서 구조적으로 안 보였다**
+     (`pickHeroStripFrom` 의 `toTile` 은 `image_url` 이 비면 null 을 돌려준다). 띠를 눈으로 보려던
+     사람은 "왜 안 뜨지" 를 코드에서 찾아야 했다. 네트워크를 타지 않는 **인라인 data URI** 를 심어
+     오프라인·결정론을 지키면서 띠가 뜨게 한다(`cfImage` 는 `data:` 를 그대로 통과시킨다 — 실측).
+     ⚠️ 색만 있는 판이라 **사진 크롭·화질은 이걸로 판정하지 말 것**(그건 라이브 실측의 일이다). */
+  image_url: tilePlaceholder(['#E8DED6', '#D9D2CB', '#E3DAD2', '#DCD5CE', '#E6DDD5', '#D7D0C9'][i]),
   images: '[]',
   dominant_color: ['#E8DED6', '#D9D2CB', '#E3DAD2', '#DCD5CE', '#E6DDD5', '#D7D0C9'][i],
   category: 'meal_voucher',
@@ -460,6 +470,8 @@ const SELLER_LISTS = (() => {
  */
 const TRACE_API = 'trace-api' in args
 const API_LOG = []
+/** 페이지를 연 시각. `--trace-api` 가 요청마다 +Nms 를 적는 기준이다(0 이면 아직 안 열림). */
+let NAV_T0 = 0
 const SLOW = Number(args.slow) || 0
 const SHIFT = 'shift' in args
 const STORE_STATUS = typeof args.stores === 'string' && /^[a-z]+$/.test(args.stores) ? args.stores : 'approved'
@@ -501,13 +513,32 @@ function serve() {
   return new Promise((resolve) => {
     const s = http.createServer((req, res) => {
       const p = new URL(req.url, 'http://x').pathname
+      /**
+       * 📦 `--trace-api` 는 **청크도 함께** 찍는다 (2026-10-01).
+       *   API 시각만 보면 "왜 늦나" 를 못 가른다 — 늦게 *출발*한 이유가 그 코드가 아직 안 와서인지
+       *   (청크 대기) 아니면 와 있는데 늦게 불러서인지(배선)가 구분되지 않는다. 그 둘은 처방이
+       *   정반대다. 청크 도착 시각이 그 사이에 찍히면 한눈에 갈린다.
+       */
+      if (TRACE_API && p.endsWith('.js') && NAV_T0) {
+        const name = p.split('/').pop().replace(/-[A-Za-z0-9_]{8}\.js$/, '.js')
+        API_LOG.push(`+${String(Date.now() - NAV_T0).padStart(5)}ms  📦 ${name}`)
+      }
       if (p.startsWith('/api/')) {
         res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' })
         // 🔀 두 겹을 **순서대로** 감는다(동시 세션 병합 2026-10-01): 안쪽이 기록, 바깥이 지연.
         //   둘 다 `res.end` 를 감싸므로 한쪽만 남기면 다른 쪽이 조용히 사라진다.
         if (TRACE_API) {
           const origEnd = res.end.bind(res)
-          res.end = (body) => { API_LOG.push(`${p} → ${String(body || '').slice(0, 110)}`); return origEnd(body) }
+          // ⏱️ 2026-10-01 — **시각을 함께 찍는다**(대표 *"내 가게 이 부분이 가장 늦게 떠"*).
+          //   무엇을 부르는지만 알면 "왜 늦나" 를 못 본다. 화면이 열린 뒤 몇 ms 에 그 요청이
+          //   나갔는지가 곧 답이다(늦게 *응답*하는 것과 늦게 *출발*하는 것은 처방이 다르다).
+          res.end = (body) => {
+            const at = NAV_T0 ? Date.now() - NAV_T0 : -1
+            // 🔎 쿼리까지 찍는다 — 같은 경로를 두 번 부를 때 **무엇이 다른지**가 곧 원인이다
+            //   (교환권이 `/api/products` 를 두 번 부르는 것을 경로만 보고는 못 가른다).
+            API_LOG.push(`+${String(at).padStart(5)}ms  ${req.url} → ${String(body || '').slice(0, 60)}`)
+            return origEnd(body)
+          }
         }
         /**
          * ⏱️ `--slow=N` 은 **모든** 스텁 응답을 늦춘다 (2026-10-01).
@@ -674,6 +705,7 @@ const consoleErrors = []
 page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(m.text().slice(0, 300)) })
 page.on('pageerror', (e) => consoleErrors.push(`[pageerror] ${String(e && e.message).slice(0, 300)}`))
 
+NAV_T0 = Date.now()
 await page.goto(`http://127.0.0.1:${PORT}${ROUTE}`, { waitUntil: 'domcontentloaded', timeout: 40000 }).catch(() => {})
 /**
  * 📐 `--shift` — 두 프레임의 같은 글자를 대조한다.
@@ -891,6 +923,17 @@ if (args['phone-audit']) {
       const t = (el.textContent || '').trim()
       if (t.length < 2) continue
       const cs = getComputedStyle(el)
+      /**
+       * 🔇 **보조기기 전용 글자(`sr-only`)는 잘려 있는 게 정상이다** (2026-10-01).
+       *   탭루윈드 `sr-only` 는 `1px` 상자 + `clip: rect(0,0,0,0)` 로 **일부러** 숨긴다.
+       *   `/user/profile` 의 `<h1 className="sr-only">마이페이지</h1>` 가 그것이고, 그 한 줄 때문에
+       *   마이가 🔴 로 떴다 — 종전 줄임표 오탐과 **같은 클래스**다(의도를 결함으로 세는 것).
+       *   ⚠️ 클래스 이름이 아니라 **계산된 모양**으로 판정한다 — 같은 기법을 손으로 쓴 자리도 잡힌다.
+       */
+      const srOnly = cs.position === 'absolute'
+        && (el.clientWidth <= 1 || el.clientHeight <= 1)
+        && cs.overflow !== 'visible'
+      if (srOnly) continue
       const signalled = cs.textOverflow === 'ellipsis' || cs.webkitLineClamp !== 'none'
       if (signalled) {
         // line-clamp 은 세로로 넘친다 — 가로(scrollWidth) 로는 안 잡힌다.
@@ -1034,6 +1077,19 @@ console.log(`   본문 앞부분: ${text}`)
 if (TRACE_API) {
   console.log(`   🔍 /api 호출 ${API_LOG.length}건:`)
   for (const l of API_LOG) console.log(`      ${l}`)
+  /**
+   * 🤖 기계가 읽는 한 줄 — `check-duplicate-fetch.mjs` 가 이것만 읽는다.
+   *   사람이 보는 위 목록과 **같은 출처**라야 둘이 안 갈린다(측정기를 두 벌 만들지 않는다).
+   *   `📦`(청크)는 빼고 `/api/*` 만 — 중복 판정의 대상은 데이터 요청이다.
+   */
+  const calls = API_LOG
+    .filter((l) => !l.includes('📦'))
+    .map((l) => {
+      const m = l.match(/^\+\s*(-?\d+)ms\s+(\S+)/)
+      return m ? { at: Number(m[1]), url: m[2] } : null
+    })
+    .filter(Boolean)
+  console.log(`FETCH_RESULT ${JSON.stringify({ route: ROUTE, calls })}`)
 }
 if (/문제가 발생|오류가 발생/.test(text)) {
   console.log('   ⚠️  오류 화면이다 — 시드가 라우트와 안 맞거나 목 응답 모양이 틀렸다.')

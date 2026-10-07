@@ -32,6 +32,7 @@ import { notifyUser } from '@/lib/notifications'
 import { getOrIssueOwnerClaimCode, formatStoreCode } from '@/worker/utils/store-codes'
 import { readBrokerTerms } from '@/worker/utils/broker-share'
 import { isSeatableStoreStatus } from '@/shared/seller-status'
+import { shippingOrderSql } from '@/shared/db/shipping-order-sql'
 import {
   listOperableStores,
   canOperateStore,
@@ -100,7 +101,7 @@ app.get('/my-stores', async (c) => {
 //   사람 기준: 앉을 수 있는 매장(active|approved) 전부의 **오늘**(KST) 매출·주문·처리 대기를 한 번에.
 //   읽기 전용 집계. 권한은 listOperableStores 가 이미 판정한 좌석 집합 안에서만 센다(좌석 토큰 발급과 같은 근거).
 //   ⚠️ 판정 규칙은 `/dashboard/stats`(seller-settlements.routes)와 **같아야** 한다 — PAID/DONE · DATE(created_at,'+9 hours').
-//   처리 대기 = 결제됐는데 아직 확인 전(useSellerHome AWAITING_CONFIRM 과 같은 집합), 최근 30일.
+//   처리 대기 = 결제됐는데 아직 확인 전인 **배송 주문**(클라 `order-stage.needsSellerConfirm` 과 같은 규칙), 최근 30일.
 app.get('/my-stores/summary', async (c) => {
   try {
     const userId = await resolveActorUserId(c)
@@ -115,7 +116,7 @@ app.get('/my-stores/summary', async (c) => {
     const ids = stores.map(s => s.seller_id)
     const marks = ids.map(() => '?').join(',')
     const todayKst = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10)
-    const [today, pending] = await Promise.all([
+    const [today, pending, active] = await Promise.all([
       c.env.DB.prepare(
         `SELECT seller_id, COUNT(*) AS n, COALESCE(SUM(total_amount), 0) AS rev
            FROM orders
@@ -123,14 +124,32 @@ app.get('/my-stores/summary', async (c) => {
           GROUP BY seller_id`
       ).bind(...ids, todayKst).all<{ seller_id: number; n: number; rev: number }>().catch(() => ({ results: [] as { seller_id: number; n: number; rev: number }[] })),
       c.env.DB.prepare(
+        // 🧭 2026-10-07: **배송 주문만** — 이용권·교환권은 [주문 확인] 할 일이 없어 영원히 여기 쌓였다
+        //   (클라 `order-stage.ts` 와 같은 규칙, SQL 짝 `shipping-order-sql.ts`).
+        `SELECT o.seller_id, COUNT(*) AS n
+           FROM orders o
+          WHERE o.seller_id IN (${marks}) AND o.status IN ('PAID','DONE','PAY_COMPLETE') AND o.created_at >= datetime('now', '-30 days')
+            AND ${shippingOrderSql('o')}
+          GROUP BY o.seller_id`
+      ).bind(...ids).all<{ seller_id: number; n: number }>().catch(() => ({ results: [] as { seller_id: number; n: number }[] })),
+      /**
+       * ⚡ 2026-10-01 — **판매 중 개수**(대표 *"내 가게 이 부분이 가장 늦게 떠"*).
+       *   마이 첫 화면의 `판매 중 N개` 한 줄을 그리려고 화면이 `/api/seller/products` 로
+       *   **상품 목록 전체**를 따로 받고 있었다. 그것도 이 응답이 와야 좌석이 정해져서
+       *   **직렬 2단**이었다(하네스 실측 `+368ms → +518ms`). 숫자 하나면 되는 일이다.
+       *   ⇒ 여기 이미 돌고 있는 병렬 묶음에 집계 하나를 얹는다 — **왕복은 안 늘어난다.**
+       *   ⚠️ 판정 기준은 셀러 대시보드 목록과 같게 `is_active = 1` + 삭제 제외.
+       */
+      c.env.DB.prepare(
         `SELECT seller_id, COUNT(*) AS n
-           FROM orders
-          WHERE seller_id IN (${marks}) AND status IN ('PAID','DONE','PAY_COMPLETE') AND created_at >= datetime('now', '-30 days')
+           FROM products
+          WHERE seller_id IN (${marks}) AND is_active = 1 AND COALESCE(status, '') != 'DELETED'
           GROUP BY seller_id`
       ).bind(...ids).all<{ seller_id: number; n: number }>().catch(() => ({ results: [] as { seller_id: number; n: number }[] })),
     ])
     const tMap = new Map((today.results || []).map(r => [Number(r.seller_id), r]))
     const pMap = new Map((pending.results || []).map(r => [Number(r.seller_id), Number(r.n) || 0]))
+    const aMap = new Map((active.results || []).map(r => [Number(r.seller_id), Number(r.n) || 0]))
     const rows = stores.map(s => {
       const t = tMap.get(s.seller_id)
       return {
@@ -143,6 +162,8 @@ app.get('/my-stores/summary', async (c) => {
         today_revenue: Number(t?.rev) || 0,
         today_orders: Number(t?.n) || 0,
         pending: pMap.get(s.seller_id) || 0,
+        // ⚡ 첫 화면의 `판매 중 N개` — 이것 때문에 상품 목록을 통째로 받던 2단 요청을 없앴다.
+        active_products: aMap.get(s.seller_id) || 0,
       }
     })
     const totals = rows.reduce((a, r) => ({ today_revenue: a.today_revenue + r.today_revenue, today_orders: a.today_orders + r.today_orders, pending: a.pending + r.pending }), { today_revenue: 0, today_orders: 0, pending: 0 })

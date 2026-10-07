@@ -41,6 +41,7 @@ import { useTranslation } from 'react-i18next'
 import { Share2 } from 'lucide-react'
 import VerifiedSeal from '@/components/VerifiedSeal'
 import UrDealLogo from '@/components/brand/UrDealLogo'
+import { EditIcon } from '@/components/icons/urdeal-icons'
 import { snsUrl } from '@/utils/sns-url'
 
 interface CuratorHeaderProps {
@@ -66,7 +67,24 @@ interface CuratorHeaderProps {
   onCopyLink: () => void
 }
 
-const btnCls = 'h-[31px] px-2 rounded-lg border border-rule-strong bg-surface text-[12px] font-semibold text-gray-600 dark:text-gray-300 inline-flex items-center gap-2 shrink-0 active:opacity-70'
+/**
+ * 🔵 2026-10-07 (대표 *"여기 관리, 공유 버튼이 촌스럽네.."* → 시안 셋 중 **안 C 확정**) — **위계**.
+ *
+ * ■ 무엇이 촌스러웠나 (390px 렌더 실측)
+ *   한 줄에 **모양 2종 · 높이 2종**이 섞여 있었다 — SNS 는 테두리 없는 36px 원,
+ *   공유·관리는 **테두리 친 31px 알약**. 게다가 둘이 같은 무게라, 주인에게 유일하게
+ *   중요한 `관리` 가 누구나 보는 `공유` 와 구분되지 않았다(c2 가 *"그 한 자리"* 라고
+ *   정해 둔 바로 그 버튼인데 눈으로는 한 자리가 아니었다).
+ *
+ * ■ 안 C
+ *   - **공유는 SNS 와 같은 모양**(`iconBtnCls` — 같은 상수를 쓴다. 따로 적으면 반드시 갈린다).
+ *   - **관리만 채운다** — 이 줄에서 유일하게 색이 있는 면. 🎫 규칙 ②(강조색 하나) 그대로이고,
+ *     주 버튼 색 규칙(`bg-brand text-white`)을 손으로 검정 적지 않고 지킨다.
+ *   ⚠️ 테두리를 뗀 것은 규칙 ①(카드 테두리 0)과 같은 방향이다 — 여기선 `shadow-lift` 도 안 준다
+ *     (떠 있는 면이 아니라 **줄 안의 버튼**이다).
+ */
+const iconBtnCls = 'w-9 h-9 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-wash active:opacity-70 transition-colors'
+const manageBtnCls = 'h-9 px-3 rounded-full bg-brand text-white text-[15px] font-bold inline-flex items-center gap-1 shrink-0 active:opacity-70'
 
 export default function CuratorHeader({ curator, canEdit, counts, accountType, onCopyLink }: CuratorHeaderProps) {
   const { t } = useTranslation()
@@ -77,17 +95,17 @@ export default function CuratorHeader({ curator, canEdit, counts, accountType, o
   const snsLinks = hasSns ? (
     <>
       {curator.youtube_url && (
-              <a href={snsUrl('youtube', curator.youtube_url)} target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="w-9 h-9 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-wash active:opacity-70 transition-colors">
+              <a href={snsUrl('youtube', curator.youtube_url)} target="_blank" rel="noopener noreferrer" aria-label="YouTube" className={iconBtnCls}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.6V8.4l6.2 3.6-6.2 3.6Z" /></svg>
           </a>
       )}
       {curator.instagram_url && (
-              <a href={snsUrl('instagram', curator.instagram_url)} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="w-9 h-9 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-wash active:opacity-70 transition-colors">
+              <a href={snsUrl('instagram', curator.instagram_url)} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className={iconBtnCls}>
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="5" /><circle cx="12" cy="12" r="3.7" /><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none" /></svg>
           </a>
       )}
       {curator.tiktok_url && (
-              <a href={snsUrl('tiktok', curator.tiktok_url)} target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="w-9 h-9 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-wash active:opacity-70 transition-colors">
+              <a href={snsUrl('tiktok', curator.tiktok_url)} target="_blank" rel="noopener noreferrer" aria-label="TikTok" className={iconBtnCls}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 3c.3 2.2 1.6 3.9 3.8 4.1v2.6c-1.3.1-2.5-.3-3.8-1v5.7c0 4.4-3.4 6.9-6.9 5.8-3.2-1-4.1-5-1.7-7.2 1-.9 2.4-1.3 3.8-1.1v2.7c-.4-.1-.8-.1-1.2 0-1.2.3-1.7 1.4-1.3 2.5.4 1.1 1.8 1.5 2.7.7.5-.4.7-1 .7-1.7V3h3.9Z" /></svg>
           </a>
       )}
@@ -139,11 +157,19 @@ export default function CuratorHeader({ curator, canEdit, counts, accountType, o
               (실측: 이름 칸이 `flex-1 truncate` 라 넘치는 대신 이름이 줄어든다 — 112px 남음). */}
           <div className="ml-3 flex items-center gap-2 shrink-0">
             {snsLinks}
-            <button type="button" onClick={onCopyLink} className={btnCls}>
-              <Share2 className="w-3.5 h-3.5" aria-hidden="true" />{t('curator.share', { defaultValue: '공유' })}
+            <button
+              type="button"
+              onClick={onCopyLink}
+              className={iconBtnCls}
+              aria-label={t('curator.share', { defaultValue: '공유' })}
+            >
+              <Share2 className="w-[18px] h-[18px]" strokeWidth={1.6} aria-hidden="true" />
             </button>
             {canEdit && (
-              <Link to="/u/me/manage" className={btnCls}>{t('curator.manage', { defaultValue: '관리' })}</Link>
+              <Link to="/u/me/manage" className={manageBtnCls}>
+                <EditIcon size={17} aria-hidden="true" />
+                {t('curator.manage', { defaultValue: '관리' })}
+              </Link>
             )}
           </div>
         </div>

@@ -18,15 +18,13 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X } from 'lucide-react'
+import { ChevronRight, X } from 'lucide-react'
 import api from '@/lib/api'
 import { useMyVouchers } from '@/hooks/queries'
 import { formatNumber } from '@/utils/format'
 import { safeDate } from '@/utils/safe-date'
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
 import { TicketCard, TicketRow, TicketOutlineButton, TicketNotes } from '@/components/ticket/TicketCard'
-import { CategoryTile, MealIcon, BeautyIcon, StayIcon, GiftIcon, LeisureIcon } from '@/components/icons/category-icons'
-import SameStoreDeals from '@/pages/my-vouchers/SameStoreDeals'
 
 type ProductLite = {
   id: number
@@ -38,6 +36,7 @@ type ProductLite = {
   current_price?: number | null
   original_price?: number | null
   current_discount_pct?: number | null
+  seller_id?: number | null
 }
 
 /** 밴드 왼쪽 문구 "2026.09.21 (월)까지". 기한 없으면 "사용 기한 없음"(2026-08-22 대표: 미설정 = 무기한). KST 규약은 utils/date SSOT. */
@@ -51,7 +50,15 @@ export function bandLeft(expiresRaw: string | null | undefined): string {
   return `${parts.year}.${parts.month}.${parts.day} (${String(parts.weekday).replace('요일', '')})까지`
 }
 
-export default function PaymentCompleteTicket({ productId, qty, amount }: { productId: number; qty: number; amount: number }) {
+export default function PaymentCompleteTicket({ productId, qty, amount, dealUsed = 0 }: {
+  productId: number; qty: number; amount: number
+  /**
+   * 🧾 2026-10-06: 이 결제에서 딜로 낸 금액. `amount` 는 **상품 총액**이고 카드 청구액이 아니다 —
+   *   둘을 섞으면 7,500원짜리 이용권이 완료 화면에선 "100원", 지갑에선 "7,500원"이 된다(대표 신고).
+   *   0 이면 줄이 아예 안 뜬다(딜을 안 쓴 사람 화면은 종전과 동일).
+   */
+  dealUsed?: number
+}) {
   const navigate = useNavigate()
   const [product, setProduct] = useState<ProductLite | null>(null)
   // 방금 발급된 이용권 — 지갑 쿼리는 confirm 직후 invalidate 됐으므로 여기서 다시 읽으면 새 행이 있다.
@@ -100,6 +107,12 @@ export default function PaymentCompleteTicket({ productId, qty, amount }: { prod
               <span className="text-[28px] font-extrabold tracking-[-0.03em] leading-none">{formatNumber(amount)}원</span>
               {original !== null && original * qty > amount && <span className="text-[13px] text-gray-400 dark:text-gray-500 line-through">{formatNumber(original * qty)}원</span>}
             </div>
+            {dealUsed > 0 && (
+              <p className="-mt-2.5 mb-4 text-[13px] text-gray-500 dark:text-gray-400 tabular-nums">
+                딜 {formatNumber(Math.min(dealUsed, amount))}
+                {amount > dealUsed && <> · 카드 {formatNumber(amount - dealUsed)}원</>}
+              </p>
+            )}
             <TicketOutlineButton onClick={() => navigate('/my-vouchers')}>이용권 확인</TicketOutlineButton>
           </div>
         </TicketCard>
@@ -112,26 +125,18 @@ export default function PaymentCompleteTicket({ productId, qty, amount }: { prod
           ]} />
         </div>
 
-        {/* 크로스셀 — 시안 "오는 열차도 찾아볼까요?" 자리. 같은 매장 다른 이용권(없으면 컴포넌트가 null). */}
-        <div className="rounded-2xl bg-surface shadow-lift px-4 pt-4 pb-4">
-          <h2 className="text-center text-[17px] font-bold pb-3 border-b border-rule">{storeName ? `${storeName} 다른 이용권도 볼까요?` : '이런 이용권도 볼까요?'}</h2>
-          <SameStoreDeals productId={productId} hideTitle />
-          <div className="text-center mt-3">
-            <button type="button" onClick={() => navigate('/')} className="inline-flex items-center gap-1 h-10 px-5 rounded-full border border-rule-strong text-[15px] font-semibold active:opacity-70">
-              <span className="text-brand-text font-bold">이용권</span> 찾아보기 <span aria-hidden="true">›</span>
-            </button>
-          </div>
-        </div>
-
-        {/* 서비스 줄 — 시안 "이용가능한 서비스". 채색 flat 아이콘 원 타일(대표 아이콘 컨셉). */}
-        <h2 className="text-[17px] font-bold mt-8 mb-4">이런 서비스도 있어요</h2>
-        <div className="grid grid-cols-5 gap-2">
-          <CategoryTile icon={<MealIcon size={30} />} label="식사" onClick={() => navigate('/?category=meal_voucher')} />
-          <CategoryTile icon={<BeautyIcon size={30} />} label="미용" onClick={() => navigate('/?category=beauty_voucher')} />
-          <CategoryTile icon={<StayIcon size={30} />} label="숙소" onClick={() => navigate('/?category=stay_voucher')} />
-          <CategoryTile icon={<GiftIcon size={30} />} label="교환권" onClick={() => navigate('/vouchers')} />
-          <CategoryTile icon={<LeisureIcon size={30} />} label={'레저\n이용권'} onClick={() => navigate('/experience')} />
-        </div>
+        {/* 🧾 2026-10-06 대표 확정 **A안(영수증 정리형)** — `docs/design/payment-complete-screen-2026-10.md`.
+            ① 종전 크로스셀 **카드**(제목 + 다른 이용권 목록 + 찾아보기 버튼)를 **한 줄 링크**로.
+            ② '이런 서비스도 있어요' 다섯 타일 줄을 **뺐다** — 방금 산 사람에게 다른 서비스를 권하는 자리가 아니다
+               (그 줄은 홈·이용권 탭이 맡는다). 완료 화면이 할 일은 "샀다"와 "어디서 보나" 둘이다. */}
+        <button
+          type="button"
+          onClick={() => navigate(product?.seller_id ? `/s/${product.seller_id}` : '/')}
+          className="w-full flex items-center justify-between gap-2 px-1 py-4 border-t border-rule text-left active:opacity-70"
+        >
+          <span className="text-[15px] font-bold">{storeName ? `${storeName} 다른 이용권 보기` : '다른 이용권 보기'}</span>
+          <ChevronRight className="w-4 h-4 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden="true" />
+        </button>
       </div>
     </div>
   )

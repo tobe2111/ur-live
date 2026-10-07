@@ -6,7 +6,8 @@
  *   `active:scale`/`transition` 은 전역 button 규칙이 이미 준다(중복 제거).
  */
 import { useState, useEffect, useRef } from 'react'
-import { Check, X, Loader2 } from 'lucide-react'
+import { X, Loader2 } from 'lucide-react'
+import Udal from '@/components/mascot/Udal'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 // 🔗 2026-07-03 매장 사용 직후(또 하나의 뜨거운 순간) 셀러 전환 넛지 재사용 — 자기완결·자기게이트
@@ -171,9 +172,11 @@ export default function VoucherRedeemModal({
 
         {phase === 'done' && (
           <div className="text-center">
-            {/* 라이브 사용완료 — 움직이는 체크 + 실시간 시계 (스크린샷 위조 방지) */}
-            <div className="w-20 h-20 mx-auto rounded-full bg-gray-900 dark:bg-white flex items-center justify-center animate-bounce-in">
-              <Check className="w-11 h-11 text-white dark:text-gray-900" strokeWidth={3} />
+            {/* 라이브 사용완료 — 움직이는 유달이 + 실시간 시계 (스크린샷 위조 방지).
+                🦦 2026-10-07: 검정 체크 원 → 웃는 유달이(둥실). 움직임이 위조 방지의 한 축이라
+                motion 을 끄지 않는다(움직임 줄이기 사용자는 CSS 가 멈추고, 그때도 시계가 남는다). */}
+            <div className="mx-auto w-fit animate-bounce-in">
+              <Udal mood="done" size={112} motion priority />
             </div>
             <p className="text-[24px] font-black text-gray-900 dark:text-white mt-4">사용 완료</p>
             <p className="text-[15px] font-bold text-gray-700 dark:text-gray-200 mt-1">{store}</p>

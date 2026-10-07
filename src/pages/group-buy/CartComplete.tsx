@@ -12,10 +12,9 @@
  * ⚠️ 낱장 티켓을 여기 늘어놓지 않는다 — 지갑이 그 일을 이미 하고, 여기서 또 그리면 두 화면이 갈린다.
  */
 import { useNavigate } from 'react-router-dom'
-import { X } from 'lucide-react'
+import { ChevronRight, X } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import { TicketCard, TicketRow, TicketOutlineButton, TicketNotes } from '@/components/ticket/TicketCard'
-import { CategoryTile, MealIcon, BeautyIcon, StayIcon, GiftIcon, LeisureIcon } from '@/components/icons/category-icons'
 
 export default function CartComplete({ qty, kinds, amount }: { qty: number; kinds: number; amount: number }) {
   const navigate = useNavigate()
@@ -50,14 +49,16 @@ export default function CartComplete({ qty, kinds, amount }: { qty: number; kind
           ]} />
         </div>
 
-        <h2 className="text-[17px] font-bold mt-8 mb-4">이런 서비스도 있어요</h2>
-        <div className="grid grid-cols-5 gap-2">
-          <CategoryTile icon={<MealIcon size={30} />} label="식사" onClick={() => navigate('/?category=meal_voucher')} />
-          <CategoryTile icon={<BeautyIcon size={30} />} label="미용" onClick={() => navigate('/?category=beauty_voucher')} />
-          <CategoryTile icon={<StayIcon size={30} />} label="숙소" onClick={() => navigate('/?category=stay_voucher')} />
-          <CategoryTile icon={<GiftIcon size={30} />} label="교환권" onClick={() => navigate('/vouchers')} />
-          <CategoryTile icon={<LeisureIcon size={30} />} label={'레저\n이용권'} onClick={() => navigate('/experience')} />
-        </div>
+        {/* 🧾 2026-10-06 결제 완료 A안(대표 확정) — 단건 티켓과 같은 처방: '이런 서비스도 있어요' 타일 줄 대신 한 줄.
+            매장이 여럿이라 "이 매장" 이 없으므로 목적지는 홈이다. */}
+        <button
+          type="button"
+          onClick={() => navigate('/')}
+          className="w-full flex items-center justify-between gap-2 px-1 py-4 border-t border-rule text-left active:opacity-70"
+        >
+          <span className="text-[15px] font-bold">다른 이용권 보기</span>
+          <ChevronRight className="w-4 h-4 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden="true" />
+        </button>
       </div>
     </div>
   )

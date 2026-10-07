@@ -2378,6 +2378,11 @@
       "descriptionPlaceholder": "食事券の詳細説明（メニュー、利用条件など）",
       "sellingPrice": "販売価格（ウォン）",
       "originalPrice": "定価（ウォン）",
+      "discountLabel": "割引",
+      "discountMode": "割引の入力方法",
+      "discountWon": "ウォン",
+      "discountNeedsList": "先に定価を入力",
+      "salePriceAuto": "割引を入れると販売価格が自動で入ります。直接修正もできます。",
       "groupBuySettings": "共同購入設定",
       "targetPeople": "目標人数",
       "zeroMeansDirectSale": "0の場合、共同購入なしで直接販売",
@@ -2419,13 +2424,6 @@
       "doneDesc": "インフルエンサーに提案を送ると紹介販売が始まります。コミッションは販売時のみ発生します。",
       "viewMyProducts": "利用券を見る",
       "findInfluencers": "インフルエンサーを探す →",
-      "draftFound": "保存された下書きがあります",
-      "draftUntitled": "（無題）",
-      "draftDiscard": "新規作成",
-      "draftResume": "続きから",
-      "draftRestored": "下書きを復元しました",
-      "draftSaved": "下書きを保存しました — 他の端末でも再開できます",
-      "saveDraft": "下書き保存",
       "previewTitle": "お客様画面プレビュー",
       "registerStoreHint": "この店舗を登録すると次回から自動で読み込まれます",
       "registerStore": "店舗登録",
@@ -2923,7 +2921,7 @@
     },
     "scan": {
       "title": "バウチャースキャン",
-      "subtitle": "お客様のQRをかざすと自動で使用処理されます(連続スキャン可)",
+      "subtitle": "お客様のQRをかざすと内容を確認し、使用処理するか確認します",
       "usedOk": "使用処理完了",
       "usedFail": "使用処理失敗",
       "networkError": "ネットワークエラー — 再試行してください",
@@ -2935,7 +2933,13 @@
       "useBtn": "使用処理",
       "homeCardTitle": "店舗オーナー様 — お客様のバウチャーはここでスキャン",
       "homeCardDesc": "QRをかざすと1タップで使用処理 · マジックリンクはログイン不要",
-      "homeCardBtn": "スキャナーを開く"
+      "homeCardBtn": "スキャナーを開く",
+      "notFound": "利用券が見つかりません",
+      "alreadyUsed": "すでに使用済みの利用券です",
+      "notUsable": "使用できない利用券です（期限切れ・返金）",
+      "checking": "利用券を確認中…",
+      "confirmQ": "使用処理しますか？",
+      "confirmNote": "使用処理は取り消せません。"
     },
     "gbSettle": {
       "title": "共同購入の自動精算履歴",
@@ -3187,7 +3191,7 @@
       "delegated": "委任",
       "info": "情報",
       "registered": "店舗を登録しました — 利用券を作成できます",
-      "pendingHint": "事業者確認中の店舗です — 承認後に利用券を登録できます",
+      "pendingHint": "今すぐ登録できます。事業者確認が完了するとメインに表示されます",
       "gateTitle": "まず店舗登録から",
       "gateDesc": "ユアディールの全機能は店舗から始まります。カカオマップで店舗を見つけて登録すると、利用券販売・コラボ・精算が開きます。",
       "step1": "店舗登録",
@@ -3197,7 +3201,8 @@
       "registerCta": "カカオマップで店舗登録",
       "lockedNote": "店舗登録を完了すると利用券・注文・精算・コラボが開きます",
       "savedPropagated": "店舗情報を保存 — 利用券{{count}}件に反映",
-      "saved": "店舗情報を保存しました"
+      "saved": "店舗情報を保存しました",
+      "suspendedHint": "停止中の店舗です — 利用券を登録できません"
     },
     "voucherTabs": {
       "list": "利用券",
@@ -3309,6 +3314,10 @@
       "done": "完了",
       "none": "該当する注文はありません",
       "pickupAt": "利用予定 {{date}}",
+      "unused": "未使用",
+      "refunded": "キャンセル・返金",
+      "voucherAllUsed": "使用済み",
+      "voucherUnusedN": "未使用 {{count}}枚",
       "confirm": "注文確認"
     },
     "edit": {

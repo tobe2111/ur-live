@@ -16,7 +16,7 @@
  *   PR 본문의 폐쇄 측정이 맡는다.
  */
 import { describe, it, expect } from 'vitest'
-import { readCode, readRaw } from '../helpers/source-text'
+import { readCode, readRaw, stripComments } from '../helpers/source-text'
 import { SELLER_TAB_GROUPS } from '@/components/seller/seller-tab-groups'
 import { NAV_GROUPS, SELLER_SEARCH_ONLY } from '@/components/seller/seller-nav'
 import { FULL_SCREEN_ONLY, canOpenInSheet } from '@/pages/user-profile/seller-section/tool-pages'
@@ -59,8 +59,10 @@ describe('② 시트는 전부 열 때 받는다', () => {
 
   it('시트가 실제로 lazy 로 선언돼 있다 (0건이면 통과가 아니라 고장)', () => {
     const lazies = [...code.matchAll(/const\s+(\w+)\s*=\s*lazy\(\(\)\s*=>\s*import\(/g)].map(m => m[1])
-    expect(lazies.length, '측정 0건 — 선언 형태가 바뀌었는데 검사가 헛돌고 있다').toBeGreaterThanOrEqual(13)
-    for (const need of ['OrdersSheet', 'WithdrawSheet', 'AllToolsSheet', 'ToolPageSheet']) {
+    // 🧹 2026-10-01 철거: 하한 13 → **6**. 손수 시트 일곱이 내려갔다(`OrdersSheet` 등).
+    //   하한의 일은 "몇 개여야 한다" 가 아니라 **매치 0으로 헛도는 것**을 막는 것이다.
+    expect(lazies.length, '측정 0건 — 선언 형태가 바뀌었는데 검사가 헛돌고 있다').toBeGreaterThanOrEqual(6)
+    for (const need of ['WithdrawSheet', 'AllToolsSheet', 'ToolPageSheet']) {
       expect(lazies, `${need} 가 lazy 가 아니다`).toContain(need)
     }
   })
@@ -259,14 +261,31 @@ describe('⑥ 판매 도구 — 한 판, 자주 쓰는 셋이 맨 위 (2026-09-2
 describe('⑦ 같은 일에 화면이 둘이 되지 않는다', () => {
   const code = readCode(SECTION)
 
-  it('손수 시트가 덮는 주소는 대시보드 화면 대신 그 시트로 간다', () => {
-    // 🩸 2026-09-26: 범용 도구 시트를 손수 시트 **위에** 얹어, 일곱 개가 문 두 개로 열렸다.
-    //   어느 문으로 들어왔느냐에 따라 "주문" 이 다른 화면으로 떴다 — 이 레포가 반복해 당한 클래스다.
-    const table = code.slice(code.indexOf('const COVERED_BY_SHEET'), code.indexOf('/** 묶음 한 줄'))
+  /**
+   * 🧹 **2026-10-01 철거로 이 검사의 모양이 바뀌었다 — 풀지 않고 재조준했다.**
+   *
+   * 종전 불변식: *"묶음 줄이 여는 일곱 주소가 전부 `COVERED_BY_SHEET` 에 있다"* —
+   * 그래야 문이 둘(묶음 줄 / 전체 도구)이어도 **도착지가 하나**였다.
+   * 그 표가 필요했던 이유는 도착지가 **두 종류**(손수 시트 ↔ 대시보드 화면)였기 때문이다.
+   *
+   * 철거 뒤에는 손수 시트가 돈 하나만 남았으므로 **도착지가 구조적으로 하나**다 — 둘 다
+   * 같은 대시보드 화면을 `ToolPageSheet` 로 연다. 그래서 검사도 "표에 다 있나" 가 아니라
+   * **"지키려던 것"**(한 일에 화면이 하나다)을 직접 본다.
+   * ⚠️ 표를 지우지 않은 이유: 돈 경로(`/seller/settlements`)가 아직 손수 시트를 쓴다.
+   */
+  it('손수 시트가 남은 일은 표가 그리로 보낸다 (돈 하나)', () => {
+    const table = code.slice(code.indexOf('const COVERED_BY_SHEET'), code.indexOf("'/seller/settlements': 'withdraw',") + 40)
     const paths = [...table.matchAll(/'(\/seller\/[^']+)':/g)].map((m) => m[1])
-    expect(paths.length, '측정 0건 — 표가 사라졌거나 형태가 바뀌었다').toBeGreaterThanOrEqual(7)
-    for (const need of ['/seller/orders', '/seller/group-buy', '/seller/settlements', '/seller/analytics']) {
-      expect(paths, `${need} 가 표에 없다 — 그 일에 화면이 둘이 된다`).toContain(need)
+    expect(paths.length, '측정 0건 — 표가 사라졌거나 형태가 바뀌었다').toBeGreaterThanOrEqual(1)
+    expect(paths, '돈 경로가 표에서 빠졌다 — 출금의 PIN 되돌아오기를 잃는다').toContain('/seller/settlements')
+  })
+
+  it('철거된 일곱은 손수 시트로 되살아나지 않는다', () => {
+    // 🔴 되돌리려면 **revert** 로 하라는 뜻이다 — 한 개씩 다시 얹으면 그때부터 또 두 벌이다.
+    for (const gone of ['OrdersSheet', 'VoucherSheet', 'AnalyticsSheet', 'StoreSheet',
+      'PartnersSheet', 'MessagesSheet', 'RefundSheet']) {
+      expect(stripComments(code), `${gone} 가 돌아왔다 — 같은 일에 화면이 다시 둘이 된다`)
+        .not.toContain(`<${gone}`)
     }
   })
 
@@ -276,18 +295,22 @@ describe('⑦ 같은 일에 화면이 둘이 되지 않는다', () => {
       .toMatch(/if \(covered\) \{ setTool\(covered\); return \}[\s\S]{0,600}?if \(inSheet\)/)
   })
 
-  it('묶음 줄이 여는 도구가 전부 표에 덮여 있다', () => {
-    // 묶음 줄에 있는데 표에 없으면, 전체 도구에서 같은 일이 다른 화면으로 열린다.
-    const table = code.slice(code.indexOf('const COVERED_BY_SHEET'), code.indexOf('/** 묶음 한 줄'))
+  it('바로가기 줄과 전체 도구가 같은 화면으로 간다', () => {
+    // 바로가기가 손수 시트를 열고 전체 도구가 대시보드 화면을 열면, 같은 "주문" 이 두 화면이 된다.
+    // ⇒ 바로가기는 **표에 있는 도구**(돈) 아니면 **대시보드 화면**(`openPage`)만 연다.
+    const bare = stripComments(code)
+    const tools = [...bare.matchAll(/openTool\('([a-z]+)'\)/g)].map((m) => m[1])
+    const pages = [...bare.matchAll(/openPage\('(\/seller\/[^']+)'/g)].map((m) => m[1])
+    expect(tools.length + pages.length, '바로가기를 하나도 못 찾았다 — 이 검사가 헛돌고 있다')
+      .toBeGreaterThanOrEqual(4)
+    const table = code.slice(code.indexOf('const COVERED_BY_SHEET'), code.indexOf("'/seller/settlements': 'withdraw',") + 40)
     const covered = new Set([...table.matchAll(/:\s*'([a-z]+)',/g)].map((m) => m[1]))
-    const rows = [...code.matchAll(/openTool\('([a-z]+)'\)/g)].map((m) => m[1])
-      .filter((t) => t !== 'tools')
-    // 🎯 2026-09-30: 하한 7 → 4. 바로가기가 넷으로 줄었고(대표 확정 ⑥) `analytics` 는
-    //    오늘 카드가 연다. 하한의 일은 "몇 개여야 한다" 가 아니라 **매치 0으로 헛도는 것**을 막는 것이다.
-    expect(rows.length, '`openTool(...)` 를 하나도 못 찾았다 — 이 검사가 헛돌고 있다').toBeGreaterThanOrEqual(4)
-    for (const t of new Set(rows)) {
-      expect(covered, `묶음 줄 '${t}' 이 표에 없다 — 전체 도구에서 다른 화면이 열린다`).toContain(t)
+    for (const t of new Set(tools)) {
+      if (t === 'tools') continue   // 전체 도구 자신은 색인이지 일이 아니다
+      expect(covered, `바로가기 '${t}' 이 표에 없다 — 전체 도구에서 다른 화면이 열린다`).toContain(t)
     }
+    expect(pages, '주문이 대시보드 화면으로 열리지 않는다').toContain('/seller/orders')
+    expect(pages, '이용권이 대시보드 화면으로 열리지 않는다').toContain('/seller/group-buy')
   })
 })
 

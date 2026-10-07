@@ -18,11 +18,10 @@ import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import VoucherDisputeBanner from '@/components/voucher/VoucherDisputeBanner'
 import { EmptyVouchers } from './my-vouchers/WalletEmpty'
 import BrandLoader from '@/components/brand/BrandLoader'
-import PostJoinShareModal from './my-vouchers/PostJoinShareModal'
 import VoucherTicket from './my-vouchers/VoucherTicket'
 import WalletRow from './my-vouchers/WalletRow'
 import QRModal from './my-vouchers/QRModal'
-import { isStoreVoucher } from '@/shared/voucher-wallet'
+import { isStoreVoucher, isUsableWalletItem } from '@/shared/voucher-wallet'
 import AddToHomeHint from '@/components/AddToHomeHint'
 import type { Voucher, ViewMode } from './my-vouchers/types'
 
@@ -71,23 +70,13 @@ export default function MyVouchersPage() {
   const [mapSelected, setMapSelected] = useState<Voucher | null>(null)
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null)
   // 🛡️ 2026-05-15: 참여 후 share prompt — GroupBuyDetailPage.handleJoin 이 localStorage 기록
-  const [justJoined, setJustJoined] = useState<{ product_id: number; name: string; image_url?: string } | null>(null)
+  // 🗑️ 2026-10-06 (대표 "참여완료 이거 뜨면 안되지 않아? 없어졌잖아"): 구매 직후 '참여 완료!' 공유 모달 제거.
+  //   두 가지로 틀려 있었다. ① **용어** — "참여"는 폐기된 개념이다(이용권은 모여서 사는 게 아니라 즉시 구매).
+  //   ② **더 나쁜 것: 보상이 없다** — 모달은 "친구 초대 시 양쪽 0.5% 보너스 딜" 을 약속했는데 라이브
+  //   `user_referral_bonus_pct` 는 2026-08-23 대표 "심플 모델" 로 **0** 이다. 없는 보상을 약속하고 있었다.
+  //   문구만 고치면 보상 없는 공유 권유만 남고, 결제 완료 화면이 이미 축하를 하므로 축하가 둘이 된다. ⇒ 삭제.
   // 🗑️ 2026-06-20 (대표 신고): '전화번호 등록' 배너 제거 — 교환권 구매 시 서버가 PHONE_REQUIRED 로
   //   번호를 강제 수집(users.phone)하므로, 교환권 보유 유저는 이미 번호가 있음 → 배너는 중복/노이즈.
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem('gb_just_joined')
-      if (raw) {
-        const data = JSON.parse(raw)
-        // 5분 이내만 표시 (오래된 건 무시)
-        if (Date.now() - (data.timestamp || 0) < 5 * 60 * 1000) {
-          setJustJoined({ product_id: data.product_id, name: data.name, image_url: data.image_url })
-        }
-        localStorage.removeItem('gb_just_joined')
-      }
-    } catch { /* silent */ }
-  }, [])
 
   // 🎨 2026-06-20 화면2 지도 — 진입 시 현재 위치 1회 요청(거리/도보 시간 계산용). 거부/실패 시 거리 미표시(graceful).
   useEffect(() => {
@@ -117,7 +106,8 @@ export default function MyVouchersPage() {
   // 🎨 2026-06-20 흑백 리디자인 화면1: 사용가능 카드 + (사용완료 / 만료·환불) 헤어라인 박스
   // 🎨 2026-06-21 (개선 #1): 만료 임박순 정렬 — API 는 created_at DESC 만 → 히어로 'D-N'과 목록 최상단 불일치.
   //   곧 사라질 이용권이 위로 오도록 만료 가까운 순(만료일 없는 건 뒤로). filter 가 새 배열이라 원본 불변.
-  const unusedItems = shownVouchers.filter(v => v.status === 'unused')
+  // 🎟️ 마이 상단 카운트와 **같은 술어**(2026-10-07) — 손으로 적으면 또 갈린다.
+  const unusedItems = shownVouchers.filter(isUsableWalletItem)
     .sort((a, b) => {
       const ta = a.expires_at ? safeTime(a.expires_at) : Number.POSITIVE_INFINITY
       const tb = b.expires_at ? safeTime(b.expires_at) : Number.POSITIVE_INFINITY
@@ -128,7 +118,7 @@ export default function MyVouchersPage() {
   // 지도에 표시 가능한 미사용 이용권 (좌표 보유) — 메모이즈(지도 재초기화 방지)
   // 🐛 2026-06-21: 지갑 스코프로 제한 — 교환권 핀이 이용권 지도에 새던 것 차단(2026-08-31 이후엔 페이지가 분리돼 구조적으로도 0).
   const mapVouchers = useMemo(
-    () => shownVouchers.filter(v => v.status === 'unused' && v.restaurant_lat && v.restaurant_lng),
+    () => shownVouchers.filter(v => isUsableWalletItem(v) && v.restaurant_lat && v.restaurant_lng),
     [shownVouchers],
   )
   const handleMarkerClick = useCallback(
@@ -360,8 +350,6 @@ export default function MyVouchersPage() {
       {/* QR Code Modal */}
       {qrVoucher && <QRModal voucher={qrVoucher} onClose={() => setQrVoucher(null)} />}
 
-      {/* 🛡️ 2026-05-15: 참여 직후 share prompt (3 AI 합의: post-purchase share boost) */}
-      {justJoined && <PostJoinShareModal data={justJoined} onClose={() => setJustJoined(null)} />}
     </WalletPageWrapper>
   )
 }

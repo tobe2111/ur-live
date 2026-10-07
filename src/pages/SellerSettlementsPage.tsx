@@ -166,7 +166,7 @@ export default function SellerSettlementsPage() {
   // 📱 2026-09-15 모바일 특화: 폰 헤더는 매장 이름이 차지하므로 새로고침은 아이콘 하나(44px 터치)만. PC 는 라벨 버튼.
   const headerRight = (
     <div className="flex gap-2">
-      <button type="button" onClick={() => loadSettlements()} aria-label={t('common.refresh')} className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 md:hidden">
+      <button type="button" onClick={() => loadSettlements()} aria-label={t('common.refresh')} className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 md:hidden">
         <RefreshCw className="h-[18px] w-[18px]" />
       </button>
       <Button onClick={() => loadSettlements()} variant="outline" size="sm" className="hidden border-gray-300 text-gray-700 hover:bg-gray-100 md:inline-flex">
@@ -212,7 +212,7 @@ export default function SellerSettlementsPage() {
             <p className="mt-0.5 text-[12px] text-gray-500">{t('seller.bankInfoMissingDesc')}</p>
             <button
               onClick={() => navigate('/seller/business-info#bank-info-section')}
-              className="ur-btn ur-btn-sm ur-btn-primary mt-3 w-full sm:w-auto"
+              className="ur-btn ur-btn-md ur-btn-primary mt-3 w-full sm:w-auto"
             >
               {t('seller.registerBankInfo')}
             </button>
@@ -224,7 +224,7 @@ export default function SellerSettlementsPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setViewMode('table')}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`flex min-h-[40px] items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 viewMode === 'table'
                   ? 'bg-brand-tint text-brand-text'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -235,7 +235,7 @@ export default function SellerSettlementsPage() {
             </button>
             <button
               onClick={() => setViewMode('calendar')}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`flex min-h-[40px] items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 viewMode === 'calendar'
                   ? 'bg-brand-tint text-brand-text'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -272,7 +272,7 @@ export default function SellerSettlementsPage() {
                 <button
                   key={period.value}
                   onClick={() => setSelectedPeriod(period.value)}
-                  className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`inline-flex min-h-[40px] shrink-0 items-center whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     selectedPeriod === period.value
                       ? 'bg-brand-tint text-brand-text'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'

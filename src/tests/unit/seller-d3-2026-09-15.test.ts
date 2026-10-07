@@ -24,7 +24,7 @@ describe('D3 토큰 — 셀러 스코프에서만, 공용 부품은 변수를 �
     const i = CSS.indexOf('.seller-light-theme {')
     const block = CSS.slice(i, CSS.indexOf('}', i))
     for (const v of ['--dash-radius: 8px', '--dash-h1: 17px', '--dash-stat: 22px', '--dash-pad-x: 16px']) expect(block, v).toContain(v)
-    expect(CSS).toMatch(/\.dash-num \{ font-family: ui-monospace/)
+    expect(CSS).toMatch(/\.dash-num \{ font-variant-numeric: tabular-nums/)
   })
   it('공용 부품 셋이 폴백 있는 변수로 그린다 — 셀러·어드민은 각자 블록에서 같은 D3 값을 선언한다', () => {
     expect(read('src/components/dashboard/DashboardCard.tsx')).toContain('rounded-[var(--dash-radius,16px)]')

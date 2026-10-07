@@ -56,3 +56,28 @@ export function isStoreVoucher(v: WalletItemLike): boolean {
 export function isFailedGifticon(v: WalletItemLike): boolean {
   return (v as VoucherWalletItem).kt_status === 'failed'
 }
+
+/**
+ * 🎟️ **지금 쓸 수 있는 발급분인가** — 지갑의 "사용 가능" 과 마이 상단 카운트의 **공통 기준**.
+ *
+ * ## 왜 생겼나 (2026-10-07 대표 신고 — *"이용권 2개라고 해서 들어갔더니 없어"*)
+ * 마이 상단은 `이용권 2`, 들어간 지갑은 `사용 가능 0장`. **둘 다 맞는 숫자인데 세는 집합이
+ * 달랐다** — 상단은 `isStoreVoucher` 로 **전부**(이미 다 쓴 것까지) 셌고, 지갑의 첫 탭은
+ * `status === 'unused'` 만 센다. 대표 화면의 `이용권 현황`이 그대로 말해 줬다:
+ * *구매완료 2 · 사용가능 0 · 사용완료 2*.
+ *
+ * 🩸 **같은 자리에서 두 번째다.** 2026-05-27 에 *"/user/profile 카운트 ↔ /my-vouchers 목록
+ * 불일치"* 사고가 나서 잠금표에 올랐고, 그때 처방은 *"같은 훅(`useMyVouchers`)을 쓰라"* 였다.
+ * 그런데 **훅이 같아도 세는 기준이 다르면 또 어긋난다** — 그게 이번이다.
+ * ⇒ 처방을 한 칸 더 내린다: **같은 훅을 쓰는 것으로 부족하고, 같은 술어를 써야 한다.**
+ *
+ * 🔑 **상단 줄의 뜻은 "지금 쓸 수 있는 것"이다** — 그 줄은 `내 딜 / 이용권 / 교환권 / 쿠폰` 이고
+ *   딜도 쿠폰도 *쓸 수 있는 양*을 센다. 이용권만 "평생 산 것" 을 세면 혼자 다른 말을 한다.
+ *
+ * ⚠️ 발송 실패한 교환권은 제외한다 — 문자조차 못 받은 것을 "쓸 수 있다" 고 셀 수 없다
+ *   (2026-09-04 대표 결정, `isFailedGifticon` 주석).
+ */
+export function isUsableWalletItem(v: WalletItemLike): boolean {
+  if (isFailedGifticon(v)) return false
+  return (v as { status?: unknown }).status === 'unused'
+}

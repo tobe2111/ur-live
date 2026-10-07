@@ -1697,6 +1697,11 @@
       "descriptionPlaceholder": "Descripción detallada del vale (menú, condiciones, etc.)",
       "sellingPrice": "Precio de venta (KRW)",
       "originalPrice": "Precio original (KRW)",
+      "discountLabel": "Descuento",
+      "discountMode": "Tipo de descuento",
+      "discountWon": "KRW",
+      "discountNeedsList": "Primero el precio de lista",
+      "salePriceAuto": "Al indicar un descuento se rellena el precio de venta. También puedes editarlo.",
       "groupBuySettings": "Configuración de compra grupal",
       "targetPeople": "Participantes objetivo",
       "zeroMeansDirectSale": "0 significa venta directa sin compra grupal",
@@ -1738,13 +1743,6 @@
       "doneDesc": "Envía propuestas a influencers para iniciar ventas por recomendación. La comisión solo se genera al vender.",
       "viewMyProducts": "Ver mis cupones",
       "findInfluencers": "Buscar influencers →",
-      "draftFound": "Tienes un borrador guardado",
-      "draftUntitled": "(sin título)",
-      "draftDiscard": "Empezar de nuevo",
-      "draftResume": "Continuar",
-      "draftRestored": "Borrador restaurado",
-      "draftSaved": "Borrador guardado — continúa desde cualquier dispositivo",
-      "saveDraft": "Guardar borrador",
       "previewTitle": "Vista previa del cliente",
       "registerStoreHint": "Registra esta tienda para autocompletarla la próxima vez",
       "registerStore": "Registrar tienda",
@@ -2242,7 +2240,7 @@
     },
     "scan": {
       "title": "Escanear vale",
-      "subtitle": "Apunta al QR del cliente para canjear automáticamente (escaneo continuo)",
+      "subtitle": "Escanea el QR del cliente para ver el bono y confirma para canjearlo",
       "usedOk": "Canjeado",
       "usedFail": "Error al canjear",
       "networkError": "Error de red — reintenta",
@@ -2254,7 +2252,13 @@
       "useBtn": "Canjear",
       "homeCardTitle": "Dueños — escanea los vales de clientes aquí",
       "homeCardDesc": "Apunta al QR y canjea en un toque · Magic link sin iniciar sesión",
-      "homeCardBtn": "Abrir escáner"
+      "homeCardBtn": "Abrir escáner",
+      "notFound": "No se encontró el bono",
+      "alreadyUsed": "Este bono ya fue usado",
+      "notUsable": "Este bono no se puede usar (vencido o reembolsado)",
+      "checking": "Verificando bono…",
+      "confirmQ": "¿Canjear este bono?",
+      "confirmNote": "El canje no se puede deshacer."
     },
     "gbSettle": {
       "title": "Liquidaciones automáticas de compra grupal",
@@ -2506,7 +2510,7 @@
       "delegated": "Delegada",
       "info": "Info",
       "registered": "Tienda registrada — ya puedes crear cupones",
-      "pendingHint": "Tienda en verificación — los cupones se abren al aprobarse",
+      "pendingHint": "Puedes registrar cupones ya. Aparecerán en la portada cuando se verifique el negocio",
       "gateTitle": "Empieza registrando tu tienda",
       "gateDesc": "Todo en UrDeal parte de una tienda. Encuéntrala en Kakao Map y regístrala para desbloquear ventas, colaboraciones y liquidaciones.",
       "step1": "Registrar tienda",
@@ -2516,7 +2520,8 @@
       "registerCta": "Registrar tienda con Kakao Map",
       "lockedNote": "Registra tu tienda para desbloquear cupones · pedidos · liquidación · colaboraciones",
       "savedPropagated": "Información guardada — aplicada a {{count}} cupones",
-      "saved": "Información de la tienda guardada"
+      "saved": "Información de la tienda guardada",
+      "suspendedHint": "Tienda suspendida — no se pueden registrar cupones"
     },
     "voucherTabs": {
       "list": "Cupones",
@@ -2628,6 +2633,10 @@
       "done": "Hecho",
       "none": "No hay pedidos aquí",
       "pickupAt": "Uso previsto {{date}}",
+      "unused": "Sin usar",
+      "refunded": "Cancelado/Reembolsado",
+      "voucherAllUsed": "Usado",
+      "voucherUnusedN": "{{count}} sin usar",
       "confirm": "Confirmar pedido"
     },
     "edit": {

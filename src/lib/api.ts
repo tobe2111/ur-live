@@ -9,6 +9,8 @@
  */
 
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { ensureCsrfToken } from './csrf-token'
+import { readCookie } from './read-cookie'
 import { type DashboardRole, isDashboardRefreshUrl, dashboardTokenKeys } from './dashboard-token';
 // 🔑 2026-09-23: 토큰 갱신은 `dashboard-refresh.ts` 한 곳 — 401 인터셉터·요청 인터셉터·
 //   `useTokenAutoRefresh` 가 **같은 inflight 락**을 공유해야 회전 토큰 경합이 안 난다.
@@ -21,11 +23,6 @@ import { refreshDashboardToken, ensureFreshDashboardToken } from './dashboard-re
 // 🛡️ 2026-05-24: CSRF 토큰 cookie 읽기 helper — double-submit pattern.
 //   csrf_token cookie 가 SameSite=Strict + non-HttpOnly 라 JS 가 읽을 수 있음.
 //   value 가 없으면 빈 문자열 반환 (호출자가 /api/csrf-token fetch 트리거).
-function readCookie(name: string): string {
-  if (typeof document === 'undefined') return '';
-  const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/[.$?*|{}()[\]\\/+^]/g, '\\$&') + '=([^;]*)'));
-  return m ? decodeURIComponent(m[1]) : '';
-}
 
 // ─── Firebase Token 캐시 (55분 TTL) ────────────────────────────────────────
 interface TokenCache {
@@ -166,6 +163,7 @@ function isPublicAPI(url: string): boolean {
 }
 
 // ─── 요청 인터셉터 ───────────────────────────────────────────────────────────
+    
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     if (!config.headers) return config;
@@ -181,22 +179,14 @@ api.interceptors.request.use(
       }
     } catch { /* silent */ }
 
-    // 🛡️ 2026-05-24: CSRF 토큰 자동 첨부 — double-submit cookie 패턴.
+// 🛡️ 2026-05-24: CSRF 토큰 자동 첨부 — double-submit cookie 패턴.
     //   서버 csrfIssue() 가 GET 응답마다 csrf_token cookie 세팅. JS 가 cookie 읽어
     //   X-CSRF-Token 헤더로 전송. PATCH/POST/DELETE 시 csrfProtection() 가 검증.
     //   Bearer 토큰 요청은 서버에서 자동 skip 되므로 헤더 첨부해도 무해.
     //   cookie 없으면 (첫 방문 / 만료) /api/csrf-token 자동 fetch 후 재시도.
     const method = (config.method || 'get').toUpperCase();
     if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) {
-      let token = readCookie('csrf_token');
-      if (!token) {
-        try {
-          const r = await fetch('/api/csrf-token', { credentials: 'include' });
-          const json = await r.json() as { token?: string };
-          if (json?.token) token = json.token;
-          else token = readCookie('csrf_token');
-        } catch { /* graceful — server 가 어차피 403 반환 시 사용자 알림 */ }
-      }
+      const token = await ensureCsrfToken();
       if (token && !config.headers['X-CSRF-Token']) {
         config.headers['X-CSRF-Token'] = token;
       }
@@ -509,9 +499,28 @@ api.interceptors.response.use(
 
         // 🛡️ 2026-04-29: alert 제거 — 카톡 인앱이 alert 차단 → throw → 흰화면.
         //   대신 로그인 페이지에서 ?error=session_expired query 감지해 toast 표시.
+        /**
+         * 🚪 **그 역할의 화면에 있을 때만** 로그인 페이지로 보낸다 (2026-10-07 대표 신고).
+         * 🩸 소비자 화면(마이·`/store/new`)도 `/api/seller/*` 를 부른다. 그 401 하나로 *셀러*
+         *   세션이 죽었다고 단정해 소비자를 셀러 로그인으로 내던졌고(세션은 멀쩡했다), 하드
+         *   내비게이션이라 호출부의 fail-soft(`.catch(() => null)`·`onSeatLost`·`enterStoreSeat`)를
+         *   **전부 선점해 무력화**했다. ⇒ 토큰 정리는 하되 **이동은 그 대시보드 안에서만**.
+         *   경위: `docs/handoff/2026-10-07-inflow-bind-gate-and-live-e4.md`.
+         */
         const loginUrl = isAgency ? '/agency/login' : isSeller ? '/seller/login' : '/admin/login';
-        console.warn(`[Auth] ${roleLabel} 인증 ${_superseded ? '다른 기기 로그인으로 종료' : '만료'} — 로그인 페이지 이동`);
-        window.location.href = `${loginUrl}?error=${_superseded ? 'session_superseded' : 'session_expired'}`;
+        const surface = isAgency ? '/agency' : isSeller ? '/seller' : '/admin';
+        let onRoleSurface = false;
+        try {
+          const p = window.location.pathname;
+          onRoleSurface = p === surface || p.startsWith(`${surface}/`);
+        } catch { onRoleSurface = false; }
+        const _why = _superseded ? '다른 기기 로그인으로 종료' : '만료';
+        if (onRoleSurface) {
+          console.warn(`[Auth] ${roleLabel} 인증 ${_why} — 로그인 페이지 이동`);
+          window.location.href = `${loginUrl}?error=${_superseded ? 'session_superseded' : 'session_expired'}`;
+        } else {
+          console.warn(`[Auth] ${roleLabel} 인증 ${_why} — 소비자 화면이라 이동하지 않음(호출부가 처리)`);
+        }
         return Promise.reject(error);
       }
 

@@ -24,12 +24,13 @@
 import { execSync } from 'node:child_process'
 
 // 2026-07-29: 인계가 세션별 파일(`docs/handoff/<날짜>-<슬러그>.md`)로 분리됐다.
-//   `docs/CURRENT_WORK.md` 는 이제 **자동 생성 목차**라 사람이 편집하지 않는다 → 그것만 검사하면
-//   앞으로는 아무도 통과하지 못한다. 둘 중 **어느 쪽이든** 손댔으면 인계를 남긴 것으로 본다.
-//   (목차는 생성기가 자동으로 stage 하므로, 새 파일을 추가하면 자연히 둘 다 바뀐다.)
+// 🔀 2026-10-06 재조준: 종전엔 `docs/CURRENT_WORK.md`(목차)를 손댄 것도 통과로 쳤다. 그 전제는
+//   *"생성기가 목차를 자동으로 stage 하므로 새 파일을 추가하면 둘 다 바뀐다"* 였는데, 그 자동 stage
+//   **자체가 머지 충돌의 원인**이라 제거했다(목차는 이제 추적 안 하는 `docs/handoff/INDEX.local.md`).
+//   ⇒ 이제 통과 조건은 **세션 파일 하나**뿐이다. 낡은 전제를 그대로 두면 "목차만 고치고 통과" 하는
+//   빈틈이 되는데, 그 목차는 이제 커밋에 들어올 수조차 없으므로 조건을 좁히는 것이 맞다.
 const HANDOFF_DIR = 'docs/handoff/'
-const HANDOFF_INDEX = 'docs/CURRENT_WORK.md'
-const isHandoff = (f) => f === HANDOFF_INDEX || f.startsWith(HANDOFF_DIR)
+const isHandoff = (f) => f.startsWith(HANDOFF_DIR)
 const HANDOFF = `${HANDOFF_DIR}<날짜>-<슬러그>.md`
 const sh = (cmd) => { try { return execSync(cmd, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() } catch { return '' } }
 
@@ -68,7 +69,7 @@ console.log(`   이 브랜치가 소스 ${source.length}개를 바꿨는데 ${HA
 console.log(`   예: ${source.slice(0, 3).join(', ')}${source.length > 3 ? ' …' : ''}`)
 console.log('')
 console.log(`   고치는 법: ${HANDOFF} 파일을 새로 만들고, 무엇을 왜 바꿨는지 + **다음 세션의 첫 액션**을 적는다.`)
-console.log('     · 목차(docs/CURRENT_WORK.md)는 손대지 마라 — pre-commit 이 자동 생성한다.')
+console.log('     · 목차는 손대지 마라 — `node scripts/generate-handoff-index.mjs` 가 추적 안 하는 사이드카로 만든다.')
 console.log('     · 완료분은 commit/PR 해시와 함께 (다음 세션이 "이미 된 것"을 또 파지 않게)')
 console.log('     · 이번에 틀렸던 판단이 있으면 그것도 (같은 오진 반복 방지 — 이게 제일 값지다)')
 console.log('     · 남은 결정/대기 항목 (대표 판단이 필요한 것)')

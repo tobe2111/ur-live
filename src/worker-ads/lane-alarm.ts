@@ -18,6 +18,7 @@ import { buildCronBeatRow } from '@/worker/utils/cron-heartbeat'
 import { withMeteredEnv, newMeter, type ReadMeter } from '@/worker/utils/d1-read-meter'
 import { lanesPaused } from './lane-pause'
 import { readBudgetState, reportReadUsage, handleBudgetRequest, budgetBlocked, laneCut, READ_BUDGET_PATH } from './read-budget'
+import { fetchAccountUsage } from './account-usage'
 import { staleGapMinutes } from './lane-cadence'
 import { summarizeLaneRun, appendRunHistory, serializeRunHistory, serializeLaneStamp, LANE_RUNS_KEY } from './lane-run-history'
 import type { LaneRunEntry } from './lane-run-history'
@@ -57,7 +58,13 @@ export class AdsLaneDurableObject extends DurableObject<Env> {
     }
     // 📉 읽기 예산 원장 — `idFromName('read-budget')` 인스턴스가 받는다(레인 인스턴스가 받아도 무해 — 저장 키가 다르다).
     //   처리는 순수 함수(`read-budget.ts`)에 있다 — 여기선 저장소만 넘긴다.
-    if (url.pathname === READ_BUDGET_PATH) return Response.json(await handleBudgetRequest(url, this.ctx.storage, this.env))
+    //   🔬 계정 전체 실측 갱신기를 **여기서 주입한다** — 유어딜 예약분을 상수 대신 실측에서 만든다
+    //   (`account-usage.ts`). 갱신은 보고(POST)에서 1시간에 한 번만 일어나고, 그 CF API 호출은
+    //   **DO 자신의** 서브리퀘스트/CPU 로 간다(부모 cron 예산 무접촉 — 유어딜이 대가를 치르지 않는다).
+    if (url.pathname === READ_BUDGET_PATH) {
+      return Response.json(await handleBudgetRequest(url, this.ctx.storage, this.env, Date.now(),
+        (at) => fetchAccountUsage(this.env, at)))
+    }
     if (url.pathname !== '/start') return new Response('Not Found', { status: 404 })
     if (!alarmEnabled(this.env)) return Response.json({ ok: true, enabled: false })
     const cur = await this.ctx.storage.getAlarm()

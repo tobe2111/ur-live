@@ -11,6 +11,7 @@
  *   바꾸면 `codes` 청크가 PC 홈 첫 페인트 폐쇄로 딸려온다(2026-07-13 에 그걸 고쳤다).
  */
 import { lazy, Suspense } from 'react'
+import Udal from '@/components/mascot/Udal'
 
 // 🟢 qrcode.react lazy — 위 머리말의 청크 규칙. 정적 import 금지.
 const QRCodeSVG = lazy(() => import('qrcode.react').then(m => ({ default: m.QRCodeSVG })))
@@ -136,6 +137,8 @@ export default function PcHomeAppBand() {
             <p className="text-[15px] text-white/70 leading-relaxed max-w-[200px]">
               카메라로 스캔하면<br />폰에서 이어서 볼 수 있어요
             </p>
+            {/* 🦦 2026-10-07 (대표 "1번만 넣어줘"): QR 을 보여 주는 유달이 — 확정 시안의 QR 포즈를 그대로. */}
+            <Udal mood="showQr" size={76} className="shrink-0 self-end" />
           </div>
         </div>
 
