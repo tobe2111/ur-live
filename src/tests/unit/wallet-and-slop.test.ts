@@ -26,13 +26,12 @@ const R = (p: string) => readFileSync(resolve(__dirname, '../../', p), 'utf-8')
 describe('이용권 지갑', () => {
   const page = R('pages/MyVouchersPage.tsx')
 
-  it('섹션 헤더가 요약 줄의 개수를 다시 말하지 않는다', () => {
-    // 요약 줄(WalletHeader stats)은 대표 승인 시안 4 — 여기가 개수의 유일한 자리다.
-    expect(page).toMatch(/heroUsable[\s\S]{0,120}unusedItems\.length/)
-    // 섹션 헤더(groupUnused)와 같은 줄/직후에 개수를 또 렌더하면 위반.
-    const at = page.indexOf("'voucher.groupUnused'")
-    expect(at, 'groupUnused 라벨을 못 찾았다').toBeGreaterThan(-1)
-    expect(page.slice(at, at + 260)).not.toMatch(/unusedItems\.length/)
+  it('같은 말을 반복하지 않는다 — 금액·장수는 머리글 한 줄, 칩 줄·요약 지표 줄은 없다 (2026-10-07 대표 확정 A안)', () => {
+    // 종전엔 '사용 가능' 이 요약 줄·탭·칩·카드 띠에 네 번 나왔다(대표 "이 페이지 자체가 못생겼어").
+    expect(page).toMatch(/<WalletHeader[\s\S]{0,600}eyebrow=/)
+    expect(page).toMatch(/countText=\{`\$\{unusedItems\.length\}/)
+    expect(page, '요약 지표 줄(stats)이 돌아왔다').not.toMatch(/heroUsable/)
+    expect(page, '칩 줄(전체 N·만료 임박)이 돌아왔다').not.toMatch(/voucher\.chipAll|voucher\.chipSoon/)
   })
 
   /**
@@ -49,15 +48,12 @@ describe('이용권 지갑', () => {
     expect(header).toMatch(/\{!hideTitle && \([\s\S]{0,200}<h1/)
   })
 
-  it('카드 안 가격이 상품명보다 크지 않다 — 이미 산 것이라 영수증 정보다', () => {
-    const lines = R('pages/my-vouchers/VoucherTicket.tsx').split('\n')
-    // ⚠️ 클래스 문자열은 `>` 앞에서 끝나므로 한 정규식으로 `>{v.product_name}` 까지 못 건넌다
-    //    (첫 판이 그래서 NaN 을 냈다). 줄을 먼저 찾고 그 줄에서 크기를 읽는다.
-    const sizeOf = (l: string) => Number(l.match(/text-\[(\d+)px\]/)![1])
-    const name = sizeOf(lines.find((l) => l.includes('{v.product_name}') && /text-\[\d+px\]/.test(l))!)
-    const price = sizeOf(lines.find((l) => /font-mono|tabular-nums/.test(l) && /text-\[\d+px\]/.test(l) && /leading-none/.test(l))!)
-    expect(name, '상품명 크기를 못 읽었다').toBeGreaterThan(0)
-    expect(price).toBeLessThanOrEqual(name)
+  it('카드는 가격을 다시 말하지 않는다 — 금액은 머리글 합계 한 번 (2026-10-07 A안)', () => {
+    const card = R('pages/my-vouchers/VoucherTicket.tsx')
+    const internal = card.slice(card.indexOf('export default function VoucherTicket'), card.indexOf('function KtAlphaVoucherCard'))
+    expect(internal.length, '이용권 카드 본문을 못 찾았다').toBeGreaterThan(500)
+    expect(internal).toMatch(/\{menu\}/)
+    expect(internal, '카드 안에 가격이 돌아왔다').not.toMatch(/applied_price|product_price/)
   })
 })
 
