@@ -42,8 +42,8 @@ describe('① 규격을 지킨다', () => {
   })
 
   it('테마와 무관하게 흰 바탕 · 검정 모듈 — 다크에서 둘레가 검정이 되면 안 된다', () => {
-    expect(QR).toMatch(/bgColor="#ffffff"/)
-    expect(QR).toMatch(/fgColor="#000000"/)
+    expect(QR).toMatch(/bgColor="white"/)
+    expect(QR).toMatch(/fgColor="black"/)
     expect(QR).toContain('light-island')  // 안쪽 `dark:` 를 통째로 끈다
     expect(QR).not.toMatch(/dark:bg-/)
   })

@@ -54,15 +54,17 @@ export default function ScannableQr({
     // 🏝️ light-island — 테마와 무관하게 늘 흰 바탕이다(위 머리말 2번). 안쪽 `dark:` 를 통째로 끈다.
     <div className={`light-island mx-auto w-fit bg-white rounded-xl p-3 ${className ?? ''}`}>
       <Suspense
-        fallback={<div style={{ width: px, height: px }} className="animate-pulse bg-gray-100 rounded" />}
+        fallback={<div style={{ width: px, height: px }} className="light-island animate-pulse bg-gray-100 rounded" />}
       >
         <QRCodeSVG
           value={value}
           size={px}
           level="M"
           marginSize={QUIET_ZONE_MODULES}
-          fgColor="#000000"
-          bgColor="#ffffff"
+          // ⚠️ 색 토큰을 쓰지 않는다 — 이 두 색은 디자인이 아니라 **QR 규격**이다(위 머리말 2번).
+          //   CSS 키워드로 적어 "테마가 정하는 색이 아니다" 를 분명히 한다.
+          fgColor="black"
+          bgColor="white"
         />
       </Suspense>
     </div>

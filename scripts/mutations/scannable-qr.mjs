@@ -44,7 +44,7 @@ export default [
   {
     name: 'QR규격 — 모듈 색을 테마 기본값에 맡긴다',
     file: QR,
-    find: '          fgColor="#000000"\n          bgColor="#ffffff"',
+    find: '          fgColor="black"\n          bgColor="white"',
     replace: '          /* (색은 기본값) */',
     test: T,
     why:
