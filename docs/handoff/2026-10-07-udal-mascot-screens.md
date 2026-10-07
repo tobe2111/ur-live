@@ -57,3 +57,9 @@
 - 안 한 것: ⑨ 정산 알림(알림톡 이미지 템플릿 심사 필요) · ⑩ 계산대 스티커(인쇄물).
 - 🩸 잊지 말 것: 원본이 ~200px 라 128px 넘게 키우면 흐려진다(404 152→128, 빈 지갑 136→120 으로 줄였다).
 - 배포 후 확인: 하드로드 로더가 v2 로 바뀌는지(`/assets/mascot/udal-loader-v2.webp` 200) · 지갑 상단 수달.
+
+## 3차 (대표 "1번 넣고 모두 머지해줘")
+- 홈 피드 빈 화면(`main-home/GroupBuyFeed.tsx` `EmptyStateWithFallback`) — 회색 원+돋보기 → `Udal mood="empty" size={96}`. PC·모바일 홈 공통.
+- 동반: lucide 뜻 아이콘 래칫 171→170(환영 시트 Sparkles)→169(SearchX). 안 내려서 CI 주입이 통과→Verify 실패했던 것(`9d64a72`).
+- `home-chunk-diet` OK_PARTS 거울에 `/src/components/mascot/`(이미 app-shell 규칙) 추가.
+- 대표가 고르지 않은 2번(피드 오류 화면)·3번(PC QR 띠)은 하지 않았다.

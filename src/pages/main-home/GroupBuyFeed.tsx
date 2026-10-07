@@ -7,7 +7,8 @@
 
 import { DEAL_GRID_GAP } from '@/shared/deal-card-grid'
 import { ClockIcon, PinIcon } from '@/components/icons/urdeal-icons'
-import { SearchX, Flame, Tag } from 'lucide-react'
+import { Flame, Tag } from 'lucide-react'
+import Udal from '@/components/mascot/Udal'
 import { DEAL_CATS } from '@/pages/pc-home/PcHomeRail'
 import { SortMenu, type SortOptionItem } from '@/components/ui/sort-menu'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
@@ -516,9 +517,8 @@ function EmptyStateWithFallback({ category, onReset }: { category: CategoryKey; 
         {/* 🏷️ 2026-08-30: 어깨 으쓱 이모지(🤷) → 선 아이콘.
             이모지 빈 화면은 "아직 안 만든 자리"처럼 읽힌다 — 실제로는 정상 상태인데도.
             같은 화면의 '내 주변 지도로 보기' 원형 처리와 같은 언어로 맞춘다. */}
-        <div className="mx-auto mb-3 w-14 h-14 rounded-full bg-gray-100 dark:bg-[#1D1F29] flex items-center justify-center">
-          <SearchX className="w-6 h-6 text-gray-400" aria-hidden="true" />
-        </div>
+        {/* 🦦 2026-10-07 (대표 "1번 넣고"): 회색 원 + 돋보기 → 빈 지갑 유달이. PC·모바일 홈이 같이 쓰는 자리. */}
+        <Udal mood="empty" size={96} className="mx-auto mb-3" />
         <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">
           {category === 'all' ? '이 지역엔 아직 진행 중인 딜이 없어요' : '이 카테고리엔 진행 중인 딜이 없어요'}
         </p>
