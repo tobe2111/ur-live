@@ -63,7 +63,9 @@ describe('이용권 QR 시트 — 내용이 길어도 위가 잘리지 않는다
     expect(s).toBeGreaterThan(-1)
     const body = SRC.slice(s)
     expect(body).toContain('voucher.product_name')
-    expect(body).toContain('<VoucherQRCode')
+    // 🩸 2026-10-07 재조준: QR 을 그리는 부품이 `VoucherQRCode`(이 파일 안) → `ScannableQr`
+    //   (공용 SSOT)로 옮겨 앵커가 사라졌다. 지키려는 것은 그대로다 — **QR 이 스크롤 영역 안**.
+    expect(body).toContain('<ScannableQr')
   })
 
   it('🔴 닫기(X)는 스크롤 영역 **밖**에 남는다 — 스크롤해도 닫을 수 있어야 한다', () => {

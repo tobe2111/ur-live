@@ -46,6 +46,16 @@ const LIGHT_ISLAND_COVERAGE: Record<string, { by: string; why: string }> = {
    */
   'src/pages/user-profile/seller-section/VoucherNewSheet.tsx': { by: '/user/profile', why: '마이 안 등록 시트 — 라이트 고정 대시보드 폼을 담는 섬' },
   /**
+   * 🎟️ 2026-10-07 — **스캔받는 QR 부품**(`ScannableQr`). QR 은 테마를 따르는 그림이 아니라
+   * **흰 바탕·검정 모듈이 규격**이다. 종전 `QRModal` 이 `dark:bg-[#11141C]` 를 줘서 다크에서
+   * QR 둘레가 검정이 됐고(모듈도 검정 → 파인더 패턴 경계가 배경에 녹는다), 그게 섬으로 묶은 이유다.
+   * ⚠️ **이 가드가 실제로 열지는 못한다** — QR 은 모달이고, 열려면 **소유한 미사용 이용권**이
+   *   필요하다(익명 방문으로는 `/my-vouchers` 가 빈 화면이다). 여기 등재는 "무엇을 그리는가" 의
+   *   기록이지 "측정됐다" 는 뜻이 아니다. 실제 판정은 기기에서 다크로 QR 을 열어 보는 것이다.
+   */
+  'src/components/voucher/ScannableQr.tsx': { by: '/my-vouchers', why: 'QR 은 테마가 아니라 규격 — 둘레가 검정이 되면 스캐너가 경계를 못 찾는다' },
+
+  /**
    * 🗺️ 2026-09-26 — **OUT_OF_SCOPE 에서 옮겨 왔다.** 그 줄은 *"소비자 화면엔 안 뜬다"* 고 적고
    * *"소비자 화면이 이 부품을 쓰게 되면 옮길 것"* 이라고 예고해 뒀는데, 오늘 그 일이 일어났다 —
    * 등록 위저드가 마이 시트 안에서 열리면서 `StoreStep` 의 이 부품이 소비자 경로에 들어왔다.

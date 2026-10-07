@@ -387,7 +387,7 @@ export default function VoucherScanner() {
 
       {/* 💬 한 건도 못 읽을 때만. 사장님이 **할 수 있는 것**만 적는다(원인 설명은 도움이 안 된다). */}
       {helpOpen && !cameraError && (
-        <div className="rounded-xl bg-surface border border-line px-3 py-2.5 text-[13px] text-gray-600 dark:text-gray-300">
+        <div className="rounded-xl bg-surface px-3 py-3 text-[13px] text-gray-600 dark:text-gray-300 shadow-lift">
           <p className="font-bold text-gray-900 dark:text-white text-[15px] mb-1">
             {t('seller.scan.helpTitle', { defaultValue: 'QR 이 안 읽히나요?' })}
           </p>

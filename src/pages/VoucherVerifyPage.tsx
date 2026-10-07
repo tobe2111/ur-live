@@ -223,7 +223,7 @@ export default function VoucherVerifyPage() {
 
             {/* 🔑 좌석이 없을 때만. 위 머리말 참조 — 권하는 한 줄이지 벽이 아니다. */}
             {!isSeller && (
-              <div className="mb-5 rounded-xl bg-surface border border-line p-4">
+              <div className="mb-5 rounded-xl bg-surface p-4 shadow-lift">
                 <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">
                   {t('voucher.verify.sellerAsk', { defaultValue: '이 매장의 사장님이신가요?' })}
                 </p>
