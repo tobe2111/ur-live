@@ -71,10 +71,14 @@ describe('좌석 판정 — 401 과 403 을 가른다 (2026-10-07)', () => {
     const code = readCode('src/features/seller/api/seller-orders.routes.ts')
     // 종전의 뭉개는 판정이 되살아나면 안 된다.
     expect(code).not.toContain('async function getActiveSellerId')
-    expect(code).toContain("gate.reason === 'not_approved'")
-    expect(code).toMatch(/SELLER_PENDING_APPROVAL[\s\S]{0,80}403/)
-    // 두 호출부 모두 게이트를 거친다.
+    // 🩸 첫 판은 `gate.reason === 'not_approved'` 를 라우트에서 찾았는데, 그 판정을 SSOT 로
+    //   옮기자 앵커가 사라져 빨간불이 났다(가드가 제 일을 한 경우다 — 지우지 않고 재조준한다).
+    //   라우트는 **위임**만 하고, 401/403 을 실제로 가르는 곳은 SSOT 다.
+    expect(code).toContain('sellerGateDenial')
     expect([...code.matchAll(/denySellerGate\(c, gate\)/g)]).toHaveLength(2)
+    const gateSrc = readCode('src/worker/utils/seller-approval-gate.ts')
+    expect(gateSrc).toMatch(/not_approved[\s\S]{0,120}status: 403/)
+    expect(gateSrc).toMatch(/status: 401/)
   })
 
   it('⑥ 401 인터셉터는 그 역할의 화면 안에서만 이동한다 (사고의 핵심)', () => {

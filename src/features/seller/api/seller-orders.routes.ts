@@ -72,33 +72,15 @@ async function getSellerIdFromToken(authorization: string | undefined, jwtSecret
  * and could otherwise keep calling these endpoints.  This helper does the JWT
  * check + a DB status check in one shot.
  */
-/**
- * 🪑 좌석 판정 — **판정 자체는 `worker/utils/seller-approval-gate` 가 한다.**
- *
- * 🩸 2026-10-07 (대표 신고 — 매장 등록 직후 `/seller/login` 으로 튕김): 종전엔 여기서 직접
- *   `status IN ('approved','active')` 를 보고 **셋을 전부 `null` 로 뭉개** 호출부가 401 밖에
- *   못 줬다. 그런데 2026-09-20 당근 모델이 **승인 대기 매장에도 좌석을 열어 주므로**(그 좌석은
- *   유효하다) 그 401 은 거짓이었고, 클라 인터셉터가 그걸 "셀러 세션 만료" 로 읽어 방금 받은
- *   좌석 토큰을 지우고 셀러 로그인 화면으로 하드 이동시켰다. 사유를 구분해 돌려주는 것이 수리다.
- */
+/** 🪑 좌석 판정 — 사유까지 구분해 돌려준다. 왜 그래야 하는지는 `seller-approval-gate` 머리말. */
 async function sellerGate(c: Context<{ Bindings: Bindings }>) {
   const { resolveApprovedSeller } = await import('../../../worker/utils/seller-approval-gate');
   return resolveApprovedSeller(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET);
 }
-
-/**
- * 좌석 판정 결과를 **표준 응답**으로. 401 은 "네가 누구인지 모르겠다" 일 때만이다.
- * 승인 전 매장은 인증 실패가 아니라 **상태**라 403 + `SELLER_PENDING_APPROVAL`.
- */
-async function denySellerGate(
-  c: Context<{ Bindings: Bindings }>,
-  gate: { reason: 'no_token' | 'no_seller' | 'not_approved' },
-) {
-  if (gate.reason === 'not_approved') {
-    const { SELLER_PENDING_APPROVAL } = await import('../../../worker/utils/seller-approval-gate');
-    return c.json(SELLER_PENDING_APPROVAL, 403);
-  }
-  return c.json({ success: false, error: '셀러 인증이 필요합니다' }, 401);
+async function denySellerGate(c: Context<{ Bindings: Bindings }>, gate: { reason: 'no_token' | 'no_seller' | 'not_approved' }) {
+  const { sellerGateDenial } = await import('../../../worker/utils/seller-approval-gate');
+  const d = sellerGateDenial(gate);
+  return c.json(d.body, d.status);
 }
 
 /** DB status 값과 프론트엔드 status 값 매핑 */
@@ -114,8 +96,7 @@ sellerOrdersRoutes.get('/orders', async (c) => {
     // ✅ BUG #33 FIX: Require approved + active seller (not just a signed JWT).
     const gate = await sellerGate(c);
     if (!gate.ok) return denySellerGate(c, gate);
-    const sellerId = gate.sellerId;
-    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
+    const sellerId = gate.sellerId;  // gate.ok 가 보장한다
 
     const db = c.env.DB;
     const status = c.req.query('status');
@@ -346,8 +327,7 @@ sellerOrdersRoutes.post('/orders/:id/refund', rateLimit({ action: 'seller_order_
   try {
     const gate = await sellerGate(c);
     if (!gate.ok) return denySellerGate(c, gate);
-    const sellerId = gate.sellerId;
-    if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+    const sellerId = gate.sellerId;  // gate.ok 가 보장한다
     const orderId = c.req.param('id');
     if (!orderId) return c.json({ success: false, error: '잘못된 주문 ID' }, 400);
     const body = await c.req.json<{ reason?: string }>().catch(() => ({} as { reason?: string }));

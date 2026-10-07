@@ -500,21 +500,12 @@ api.interceptors.response.use(
         // 🛡️ 2026-04-29: alert 제거 — 카톡 인앱이 alert 차단 → throw → 흰화면.
         //   대신 로그인 페이지에서 ?error=session_expired query 감지해 toast 표시.
         /**
-         * 🚪 **그 역할의 화면에 있을 때만** 로그인 페이지로 보낸다 (2026-10-07).
-         *
-         * 🩸 대표 신고 — 마이에서 매장을 등록하자 *"로그인이 만료되었습니다"* 가 뜨고
-         *   `/seller/login` 으로 튕겼다(실측 콘솔: `GET /api/seller/orders … 401`, 호출부는
-         *   `SellerSection`). **세션은 멀쩡했다.** 소비자 화면(마이·`/store/new`)도 `/api/seller/*`
-         *   를 부르므로, 그 401 하나로 *셀러* 세션이 죽었다고 단정하고 소비자를 셀러 로그인
-         *   화면에 내던진 것이다. 거기서 끝이 아니다 — 하드 내비게이션이라 호출부가 깔아 둔
-         *   fail-soft 가 **전부 선점당해 무력화**된다: `useSellerWork` 의 `.catch(() => null)`,
-         *   좌석 상실 안내(`onSeatLost`), 그리고 `enterStoreSeat` 가 주석으로 못 박은
-         *   *"여기서 막으면 사장님은 자기 매장을 잃은 것처럼 느낀다"* 는 그 처리까지.
-         *
-         * ⇒ 토큰 정리는 그대로 하되(죽은 토큰을 들고 있으면 401 이 반복된다), **이동은 그
-         *   대시보드 안에 있을 때만**. 밖이라면 에러를 호출부에 돌려주고 화면이 말하게 한다.
-         *
-         * ⚠️ 이 가드가 **못 막는 것**: 셀러 화면 안에서의 오탐(그건 종전과 동일하게 이동한다).
+         * 🚪 **그 역할의 화면에 있을 때만** 로그인 페이지로 보낸다 (2026-10-07 대표 신고).
+         * 🩸 소비자 화면(마이·`/store/new`)도 `/api/seller/*` 를 부른다. 그 401 하나로 *셀러*
+         *   세션이 죽었다고 단정해 소비자를 셀러 로그인으로 내던졌고(세션은 멀쩡했다), 하드
+         *   내비게이션이라 호출부의 fail-soft(`.catch(() => null)`·`onSeatLost`·`enterStoreSeat`)를
+         *   **전부 선점해 무력화**했다. ⇒ 토큰 정리는 하되 **이동은 그 대시보드 안에서만**.
+         *   경위: `docs/handoff/2026-10-07-inflow-bind-gate-and-live-e4.md`.
          */
         const loginUrl = isAgency ? '/agency/login' : isSeller ? '/seller/login' : '/admin/login';
         const surface = isAgency ? '/agency' : isSeller ? '/seller' : '/admin';

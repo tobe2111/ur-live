@@ -70,3 +70,15 @@ export const SELLER_PENDING_APPROVAL = {
   error: '매장 승인 대기 중입니다 — 승인되면 주문을 볼 수 있어요.',
   code: 'SELLER_PENDING_APPROVAL' as const,
 }
+
+/**
+ * 거절 사유 → **본문과 상태코드**. 순수 함수라 라우트는 `c.json(...)` 만 하면 된다.
+ * 🔴 401 은 `no_token`/`no_seller` 뿐이다 — 승인 전을 401 로 돌리면 클라 인터셉터가
+ *    "셀러 세션 만료" 로 읽어 소비자를 셀러 로그인으로 내던진다(2026-10-07 사고).
+ */
+export function sellerGateDenial(
+  gate: { reason: 'no_token' | 'no_seller' | 'not_approved' },
+): { body: Record<string, unknown>; status: 401 | 403 } {
+  if (gate.reason === 'not_approved') return { body: { ...SELLER_PENDING_APPROVAL }, status: 403 }
+  return { body: { success: false, error: '셀러 인증이 필요합니다' }, status: 401 }
+}

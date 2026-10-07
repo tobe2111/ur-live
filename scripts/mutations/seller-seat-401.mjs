@@ -37,9 +37,9 @@ export default [
   },
   {
     name: '좌석401 — 라우트가 사유를 안 보고 전부 401 로 답한다',
-    file: ROUTES,
-    find: "  if (gate.reason === 'not_approved') {",
-    replace: '  if (false) {',
+    file: GATE,
+    find: "  if (gate.reason === 'not_approved') return { body: { ...SELLER_PENDING_APPROVAL }, status: 403 }",
+    replace: "  if (false) return { body: { ...SELLER_PENDING_APPROVAL }, status: 403 }",
     test: T,
     why:
       '게이트가 사유를 구분해 줘도 라우트가 안 쓰면 소용이 없다. 승인 대기가 다시 401 이 되어 ' +
