@@ -81,6 +81,53 @@ node live-auth.mjs /user/profile my-seated
   아니라 함수를 실제로 호출) + 주입 `scripts/mutations/inflow-bind-gate.mjs` 5건
   **전부 빨간불 확인**.
 
+#### ✅ E4 판정 — 배포 후 라이브 (`2b61e663c`, `urdeal.kr/map`, 로그인 상태 `users.id=42`)
+배포 워크플로 넷 전부 success(`Deploy to Cloudflare Pages` · `Deploy ur-wholesale` ·
+`Deploy Worker (cron sync)` · **`Guard mutations (full)`** — 전수 주입 스윕 포함).
+
+| 조건 | `POST inflow/bind` | `GET csrf-token` |
+|---|---|---|
+| 유입 기록 없음(그 계정의 실제 상태) | **0회** (종전 1회) | **0회** (종전 1회) |
+| `ur_inflow_sent_v1` 시드(양성 대조) | **1회** | **1회** |
+
+🔑 **양성 대조가 판정의 핵심이다** — 요청이 *없다*는 것만으로는 "게이트가 일한다" 와
+"기능이 죽었다" 를 **구분할 수 없다**. 그래서 트리거 키(`ur_inflow_sent_v1='37'` +
+`ur_anon_id_v1`)를 심고 같은 하네스를 다시 돌려 **요청이 돌아오는 것**을 확인했다.
+나머지 우리 API 11건은 전부 그대로다(기능 손실 0).
+
+⚠️ 같은 추적에서 **Sentry envelope POST 5건**을 봤다 — 게이트와 무관하고, 로그인 상태의
+`/map` 에서 실제 JS 에러가 나고 있을 가능성이 있다. **미조사**(대표 판단 대기).
+
+### ✅ 상태 변경 알림 문구 — 맵 두 벌이 서로 다르게 틀려 있었다
+`ORDER_STATUS_NOTICE`(`src/shared/order-status-notice.ts`)로 **단건·일괄 한 벌**로 합쳤다.
+종전엔 두 블록이 각자 맵을 들고 있었고 그래서 **각자 다르게** 틀려 있었다:
+
+| 경로 | 종전 | 결과 |
+|---|---|---|
+| 단건 `PUT/PATCH /orders/:id/status` | `CONFIRMED` 키 보유(도달 불가) · `PREPARING` 키 없음 | 폴백이 **`주문 상태: PREPARING`**(영문 enum)을 한국 소비자에게 |
+| 일괄 `PATCH /orders/bulk-status` | `PREPARING` 키 없음 · 폴백 없음 | 셀렉트에는 뜨는 상태인데 알림 **0건**(조용히 넘어감) |
+
+- 🔴 **폴백(`|| \`주문 상태: ${s}\``)을 되살리지 말 것** — `VALID_STATUSES` 에 상태가 하나 늘면
+  그 enum 이름이 그대로 새어 나간다. 문장이 없으면 **안 보내는 것**이 맞다(일괄이 원래 그랬다).
+- `CONFIRMED` 가 도달 불가인 근거: `VALID_STATUSES`·`ORDER_TRANSITIONS` 어디에도 없어
+  `statusesThatCanReach` 가 빈 배열 → 그 전에 400 이다. 반대로 폴백에 **실제로 걸리던** 값은
+  `PREPARING`·`DONE`·`PAID` 셋이고, 화면이 보내는 것은 `PREPARING` 하나다
+  (`statusHelpers.nextStatusOf` · `BulkActionBar` 의 `<option>`).
+- 가드: `src/tests/unit/order-status-notice-2026-10-07.test.ts` 7건 + 주입
+  `scripts/mutations/order-status-notice.mjs` 5건 **전부 빨간불 확인**.
+  핵심은 ③ — **다른 파일**(`statusHelpers`·`BulkActionBar`)에서 화면이 보낼 수 있는 상태를
+  읽어 전부 문장이 있는지 대조한다. 원래 결함 둘이 **이 교차 검사로만** 드러나는 모양이었다
+  (한쪽 파일만 보면 둘 다 멀쩡해 보인다).
+- 🩸 이 시험의 첫 판이 **주석을 앵커로 잡아 헛돌았다**(`// ── 유저에게 인앱 알림 발송 ──`).
+  `readCode` 가 주석을 지우므로 빈 조각이 잡히고 그 아래 단언 셋이 통째로 무의미해진다
+  — `source-text.ts` 머리말 ②가 경고한 바로 그 함정이다. 코드 앵커로 교체.
+- 🧭 **맵을 공용 모듈로 뺀 것은 file-size 래칫이 시킨 일이다.** 처음엔 라우트 파일 안에 두고
+  긴 사유 주석을 달았는데 `1406 → 1422줄` 로 **pre-push 게이트가 막았다**(17.7초). `[SKIP_SIZE]`
+  로 넘기지 않고 꺼내니 `1401줄` 이 되면서 **설계도 더 나아졌다** — 이 레포가 래칫을 둔 이유가
+  정확히 이것이다(god 파일은 "일단 여기에 한 블록 더" 로 자란다).
+- ⚠️ **E2 까지다** — 알림이 실제로 어떻게 보이는지는 셀러 좌석이 있어야 라이브로 못 잰다
+  (주문이 있는 가게에서 [주문 확인] 을 눌러야 한다). §1 의 운영자 1탭과 같은 블로커.
+
 ---
 
 ## 3. 이번에 틀렸던 판단
@@ -97,16 +144,12 @@ node live-auth.mjs /user/profile my-seated
 
 ## 4. 남은 결정 / 대기
 
-### ① `주문 확인` 에 실제 결함 둘이 붙어 있다 (수리 미착수 — 대표 판단)
-- **ⓐ 구매자가 받는 알림이 `주문 상태: PREPARING`** 이다. `handleStatusUpdate` 의
-  `statusMessages` 에 **`PREPARING` 키가 없어** 폴백 문자열이 그대로 간다. 그리고 그 맵의
-  `'CONFIRMED': '주문이 확인되었습니다'` 는 **도달 불가**다 — `CONFIRMED` 는 `VALID_STATUSES`·
-  `ORDER_TRANSITIONS` 어디에도 없다. ⇒ **쓰려고 만든 문장이 안 쓰이고, 안 쓰려던 영문 enum 이
-  한국 소비자에게 간다.** 처방은 두 줄(키 추가 + 죽은 키 제거). 등급 A~B(소비자 문구·돈 무접촉).
-- **ⓑ 이용권 주문도 그 줄에 뜬다.** `/api/seller/orders` 는 상품 종류를 안 가르고
-  (`WHERE o.seller_id = ?`), 마이는 `AWAITING_CONFIRM`(PAID/DONE)만 필터한다. 이용권은 배송이
-  없고 매장에서 QR/PIN 으로 쓰는 것이라 '배송준비' 가 의미 없는데, 누르면 구매자 주문내역에
-  **'배송준비' 탭이 생기고**(`MyOrdersPage:93·100`) 위 알림이 간다. **설계 판단이라 대표 결정.**
+### ① `주문 확인` 에 붙어 있던 결함 둘 — **둘 다 수리됨**
+- **ⓐ 구매자가 받던 알림이 `주문 상태: PREPARING`** 이었다 → **이 PR 에서 수리**(아래 §2 참조).
+- **ⓑ 이용권 주문이 그 줄에 쌓이던 것** → **#1644 에서 수리됨**(`671daa4a0`, main). 종류별
+  단계 판정 SSOT `src/shared/order-stage.ts` 가 생겨 이용권은 `unused`/`done`,
+  교환권은 `done` 으로 가고 `needsSellerConfirm` 은 **배송 주문만** 센다.
+  ⇒ 지금 [주문 확인] → `PREPARING` 은 **배송 주문에만** 쓰이고 그게 의미상 맞다.
 
 ### ② 마이 좌석→주문 2단 합치기 — **권하지 않는다**(변경 없음)
 `useSellerWork` 는 `currentSeatId() === sellerId` 일 때만 부른다. 합치려면 주문 목록(고객 이름·

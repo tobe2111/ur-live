@@ -30,6 +30,7 @@ import { ensureSupplyVisibilitySchema } from '../../supply/api/supply-visibility
 import { ensureTables as ensureGroupBuyColumns } from '../../group-buy/api/helpers';
 import { buildSellerProductsQuery } from './seller-products-query';
 import { intParam } from '@/shared/pagination'
+import { ORDER_STATUS_NOTICE } from '@/shared/order-status-notice'
 import { normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url'
 import { mallIdForSeller } from '../../../shared/mall/resolve';
 import { applySellerPromoRate } from '../../../worker/utils/seller-promo-rate';
@@ -249,15 +250,12 @@ async function handleStatusUpdate(c: Context<{ Bindings: Bindings }>) {
           `SELECT user_id, order_number FROM orders WHERE (id = ? OR order_number = ?) AND seller_id = ? LIMIT 1`
         ).bind(orderId, orderId, sellerId).first<{ user_id: string; order_number: string }>();
         if (orderInfo?.user_id) {
-          const statusMessages: Record<string, string> = {
-            'CONFIRMED': '주문이 확인되었습니다',
-            'SHIPPING': '\u{1F4E6} 주문하신 상품이 발송되었습니다!',
-            'DELIVERED': '\u2705 배송이 완료되었습니다. 상품을 확인해주세요!',
-            'CANCELLED': '\u274C 주문이 취소되었습니다.',
-          };
-          const msg = statusMessages[dbStatus] || `주문 상태: ${dbStatus}`;
-          const { notifyUser } = await import('../../../lib/notifications');
-          await notifyUser(db, orderInfo.user_id, 'order_status', msg, `주문번호: ${orderInfo.order_number}`, '/my-orders');
+          // 🔔 문장이 있는 상태만 알린다 — 사유·금지선은 `ORDER_STATUS_NOTICE` 주석.
+          const msg = ORDER_STATUS_NOTICE[dbStatus];
+          if (msg) {
+            const { notifyUser } = await import('../../../lib/notifications');
+            await notifyUser(db, orderInfo.user_id, 'order_status', msg, `주문번호: ${orderInfo.order_number}`, '/my-orders');
+          }
         }
       } catch {} // fire and forget
     }
@@ -685,12 +683,9 @@ sellerOrdersRoutes.patch('/orders/bulk-status', async (c) => {
     // ── 유저에게 인앱 알림 일괄 발송 ──
     if (result.meta.changes) {
       try {
-        const statusMessages: Record<string, string> = {
-          'SHIPPING': '\u{1F4E6} 주문하신 상품이 발송되었습니다!',
-          'DELIVERED': '\u2705 배송이 완료되었습니다. 상품을 확인해주세요!',
-          'CANCELLED': '\u274C 주문이 취소되었습니다.',
-        };
-        const msg = statusMessages[dbStatus];
+        // 🔔 단건 경로와 **같은 맵** — 종전엔 따로 들고 있어 `PREPARING` 이 빠져 있었다
+        //   (셀렉트에는 있는데 알림은 0건). 사유는 `ORDER_STATUS_NOTICE` 주석.
+        const msg = ORDER_STATUS_NOTICE[dbStatus];
         if (msg) {
           const { notifyUser } = await import('../../../lib/notifications');
           const { results: affectedOrders } = await db.prepare(
