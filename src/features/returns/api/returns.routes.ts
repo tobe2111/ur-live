@@ -137,15 +137,14 @@ returnsRoutes.post('/request', rateLimit({ action: 'return_request', max: 10, wi
   const basisIso = isPickup
     ? (pickups.map((p) => p.date).filter(Boolean).sort()[0] ?? null)
     : (order.delivered_at || null);
-  const elig = canRequestReturn({
-    status: String(order.status || ''), isPickup, basisIso, nowMs: Date.now(),
-  });
+  // 🎟️ 2026-10-01 이용권 주문 = 발급된 `vouchers` 로 센다(실패 시 undefined → 종전 판정).
+  const vRow = await DB.prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'unused' THEN 1 ELSE 0 END) AS unused FROM vouchers WHERE order_id = ?").bind(order.id).first<{ total: number | null; unused: number | null }>().catch(() => null);
+  const voucher = Number(vRow?.total) > 0 ? { total: Number(vRow?.total), unused: Number(vRow?.unused) || 0 } : undefined;
+  const elig = canRequestReturn({ status: String(order.status || ''), isPickup, basisIso, nowMs: Date.now(), voucher });
   if (!elig.ok) return c.json({ success: false, error: elig.error }, 400);
 
   // 4. 중복 신청 확인
-  const existing = await DB.prepare(
-    "SELECT id FROM returns WHERE order_id = ? AND status NOT IN ('rejected','cancelled')"
-  ).bind(body.order_id).first();
+  const existing = await DB.prepare("SELECT id FROM returns WHERE order_id = ? AND status NOT IN ('rejected','cancelled')").bind(body.order_id).first();
 
   if (existing) {
     return c.json({ success: false, error: '이미 반품 신청이 진행 중입니다' }, 400);

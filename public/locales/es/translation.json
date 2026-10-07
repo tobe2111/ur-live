@@ -5069,7 +5069,9 @@
     "gifticonSeoDescription": "Consulta los gifticons que compraste y úsalos en tienda",
     "loadFailedGift": "No se pudieron cargar los gifticons",
     "noUnusedGift": "No hay gifticons disponibles",
-    "totalCountLabel": "Total"
+    "totalCountLabel": "Total",
+    "requestRefundShort": "Solicitar reembolso",
+    "refundRequestedShort": "Reembolso solicitado"
   },
   "sellerWaiting": {
     "title": "Aprobación de Vendedor Pendiente",

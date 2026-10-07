@@ -5069,7 +5069,9 @@
     "gifticonSeoDescription": "구매한 교환권(기프티콘)을 확인하고 매장에서 사용하세요",
     "loadFailedGift": "교환권을 불러오지 못했어요",
     "noUnusedGift": "사용 가능한 교환권이 없어요",
-    "totalCountLabel": "전체"
+    "totalCountLabel": "전체",
+    "requestRefundShort": "환불 요청",
+    "refundRequestedShort": "환불 요청 접수됨"
   },
   "sellerWaiting": {
     "title": "셀러 승인 대기",
