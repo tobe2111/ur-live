@@ -225,10 +225,12 @@ export default function MyVouchersPage() {
            하단 탭 '이용권'이 이미 어디인지 말하고, 지갑의 주인공은 금액과 카드다.
            제목은 sr-only 로만 남아 문서 구조·보조기술 접근성은 유지된다. */
         hideTitle
-        /* 🎫 2026-10-07 (대표 확정 A안 "정돈" — "이 페이지 자체가 못생겼어"): 금액·장수를 여기서 **한 번만** 말한다.
-           종전엔 '사용 가능' 이 요약·탭·칩·카드 띠에 네 번, 금액이 합계·카드에 두 번 나왔다. */
+        /* 🎫 2026-10-07 (대표 확정 A안 "정돈" — "이 페이지 자체가 못생겼어"): 금액을 여기서 **한 번만** 말한다.
+           종전엔 '사용 가능' 이 요약·탭·칩·카드 띠에 네 번, 금액이 합계·카드에 두 번 나왔다.
+           🎫 2026-10-08 (대표 "굳이 없어도 될 것 같아"): 그 A안이 남겨 둔 마지막 중복 — 금액 뒤 `· 3장` —
+           도 걷었다. 바로 아래 탭 배지('사용 가능 3')가 같은 `unusedItems.length` 를 40px 안에서 또
+           말하고 있었다. 장수는 이제 **탭 배지 한 곳**뿐이고, 머리글은 금액만 말한다. */
         eyebrow={t('voucher.walletEyebrow', { defaultValue: '쓸 수 있는 이용권' })}
-        countText={`${unusedItems.length}${t('voucher.heroCountUnit', { defaultValue: '장' })}`}
         amount={shownVouchers.length > 0 ? heroTotal : null}
         unit={heroUnit}
       />
