@@ -22,6 +22,7 @@ import { pickVerifyView } from '@/pages/VoucherVerifyPage'
 
 const SRC = readCode('src/pages/VoucherVerifyPage.tsx')
 const PUB = readCode('src/features/group-buy/api/group-buy-public.routes.ts')
+const CAN = readCode('src/features/group-buy/api/voucher-can-redeem.ts')
 const USE = readCode('src/features/group-buy/api/group-buy-voucher.routes.ts')
 
 const unused = { code: 'UR-AAAA-BBBB', status: 'unused' }
@@ -83,9 +84,10 @@ describe('서버 — can_redeem 은 실제 처리와 같은 판정이다', () =>
     const i = PUB.indexOf("router.get('/verify/:code'")
     expect(i).toBeGreaterThan(0)
     const body = PUB.slice(i, i + 3000)
-    expect(body).toMatch(/can_redeem: canRedeem/)
-    expect(body).toMatch(/await scanOrSellerAuth\(\)\(/)
-    expect(body).toMatch(/Number\(voucher\.product_seller_id\) === Number\(u\.id\)/)
+    expect(body).toMatch(/can_redeem: await voucherCanRedeem\(c, voucher\.product_seller_id\)/)
+    expect(body).toMatch(/p\.seller_id as product_seller_id/)
+    expect(CAN).toMatch(/await scanOrSellerAuth\(\)\(/)
+    expect(CAN).toMatch(/Number\(productSellerId\) === Number\(u\.id\)/)
   })
   it('🔒 실제 처리의 소유권 검사(403)는 그대로다', () => {
     expect(USE).toMatch(/Number\(voucher\.seller_id\) !== Number\(user\.id\)/)

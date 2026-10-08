@@ -34,7 +34,7 @@ import { getSupplyMeta } from '../../../worker/utils/product-supply-meta'
 import { intParam } from '@/shared/pagination'
 // 🏪 2026-09-16 (대표 — "승인이 되어야 메인에 노출"): 승인 전 매장의 이용권을 피드·지도에서 가린다.
 import { approvedSellerProductSql } from '@/shared/db/consumer-visible-product'
-import { scanOrSellerAuth } from '../../seller/api/seller-scan-devices.routes'
+import { voucherCanRedeem } from './voucher-can-redeem'
 
 // 🛡️ 2026-05-22 module-scope: gift_catalog JOIN 가능 여부 캐시.
 //   null = 미확인, true = 가능, false = table 부재 → fallback 만 사용.
@@ -1121,22 +1121,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       FROM vouchers v LEFT JOIN products p ON v.product_id = p.id
       WHERE v.code = ?
     `).bind(code).first<VoucherRow & { product_name?: string; restaurant_name?: string; product_image?: string; product_seller_id?: number | null }>()
-
     if (!voucher) return c.json({ success: false, error: '이용권을 찾을 수 없습니다' }, 404)
-
-    // 🏪 2026-10-08 (대표 시안 확정 "시안대로 해줘"): 이 화면을 연 사람이 **이 매장에서 사용 처리할 수 있는가**.
-    //   다른 매장 사장님에게 처리 버튼을 보여 줬다가 누르면 403 이 나던 것을, 처음부터 안내로 바꾸려는 신호다.
-    //   ⚠️ **표시용 판정일 뿐 권한이 아니다** — 실제 처리는 use-by-seller 가 똑같은 조건으로 다시 검사한다.
-    //   그래서 판정도 use-by-seller 와 **같은 미들웨어**(scanOrSellerAuth)로 한다 — 둘이 갈리면 화면이 거짓말을 한다.
-    //   인증이 없거나 실패하면 그냥 false(이 엔드포인트는 계속 공개다).
-    let canRedeem = false
-    if (c.req.header('Authorization') || c.req.header('X-Scan-Device-Key')) {
-      try {
-        await scanOrSellerAuth()(c as never, async () => {})
-        const u = getCurrentUser(c)
-        canRedeem = !!u && (u.type === 'admin' || (u.type === 'seller' && voucher.product_seller_id != null && Number(voucher.product_seller_id) === Number(u.id)))
-      } catch { canRedeem = false }
-    }
 
     return c.json({
       success: true,
@@ -1144,11 +1129,10 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         code: voucher.code,
         status: voucher.status,
         product_name: voucher.product_name,
-        restaurant_name: voucher.restaurant_name,
-        product_image: voucher.product_image,
+        restaurant_name: voucher.restaurant_name, product_image: voucher.product_image,
         expires_at: voucher.expires_at,
         used_at: voucher.used_at,  // 🛡️ 2026-05-16: 사용 시각 — 폴링 시 손님 화면에 표시
-        can_redeem: canRedeem,
+        can_redeem: await voucherCanRedeem(c, voucher.product_seller_id), // 🏪 2026-10-08 /v 시안 — 표시용(권한 아님)
       },
     })
   })

@@ -5,7 +5,7 @@
  * 다른 매장 사장님이 누를 수 없는 버튼을 누르고 403 을 받는다. 셋 다 에러가 안 나서 아무도 신고하지 않는다.
  */
 const SRC = 'src/pages/VoucherVerifyPage.tsx'
-const PUB = 'src/features/group-buy/api/group-buy-public.routes.ts'
+const CAN = 'src/features/group-buy/api/voucher-can-redeem.ts'
 const T = 'src/tests/unit/voucher-verify-seller-login-2026-10-07.test.ts'
 
 export default [
@@ -51,8 +51,8 @@ export default [
   },
   {
     name: 'QR인증 — 서버 판정이 매장을 안 본다',
-    file: PUB,
-    find: "(u.type === 'seller' && voucher.product_seller_id != null && Number(voucher.product_seller_id) === Number(u.id))",
+    file: CAN,
+    find: "(u.type === 'seller' && productSellerId != null && Number(productSellerId) === Number(u.id))",
     replace: "(u.type === 'seller')",
     test: T,
     why: '아무 매장 사장님에게나 처리 버튼이 뜬다. 실제 처리는 403 으로 막히니 보안 사고는 아니지만 화면이 거짓말을 한다.',
