@@ -90,4 +90,14 @@ export default [
       '"해상도도 같이 보내려고" 로 보이지만 `facingMode` 가 함께 가면 그 렌즈와 충돌하는 기기가 있다 — ' +
       '`OverconstrainedError` 로 거부되고, 기본으로 떨어져 **고른 렌즈가 무시된다**.',
   },
+  {
+    name: '렌즈선택 — 전환 버튼을 카메라 위에 늘 띄운다',
+    file: SRC,
+    find: '        {busy && (',
+    replace: "        {cameraOn && backCams.length > 1 && <button type=\"button\" onClick={() => { void switchCamera() }}>전환</button>}\n        {busy && (",
+    test: T,
+    why:
+      '평소엔 자동으로 메인 렌즈를 고르므로 늘 떠 있는 버튼은 소음이다(대표 "그런게 필요해?"). ' +
+      '7초 동안 한 건도 못 읽었을 때의 도움말 안에서만 나와야 한다.',
+  },
 ]

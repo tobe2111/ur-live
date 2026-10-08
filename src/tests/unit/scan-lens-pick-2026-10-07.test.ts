@@ -175,4 +175,16 @@ describe('🔌 배선', () => {
   it('렌즈가 둘 이상일 때만 전환 버튼을 낸다', () => {
     expect(SRC).toMatch(/cameraOn && backCams\.length > 1 &&/)
   })
+
+  // 2026-10-07 대표 "카메라 전환버튼? 그런게 필요해?" — 평소엔 자동 선택이 맞으므로 늘 떠 있는
+  // 버튼은 소음이다. 7초 동안 한 건도 못 읽었을 때 뜨는 도움말 안에만 둔다.
+  it('전환 버튼은 도움말 패널 안에만 있다 (카메라 위에 늘 떠 있지 않다)', () => {
+    const calls = [...SRC.matchAll(/void switchCamera\(\)/g)]
+    expect(calls.length).toBe(1)
+    const help = SRC.indexOf('{helpOpen && !cameraError && (')
+    expect(help).toBeGreaterThan(0)
+    const end = SRC.indexOf('\n      )}', help)
+    expect(calls[0].index!).toBeGreaterThan(help)
+    expect(calls[0].index!).toBeLessThan(end)
+  })
 })
