@@ -1,7 +1,7 @@
 # 이용권 사용 처리 화면(`/v/:code`) 시안 — 2026-10-07
 
 대표 요청(2026-10-01, 스크린샷 2장): *"이 페이지들 디자인 및 ui도 수정하고싶네?"*
-시안(아티팩트): https://claude.ai/artifact/GNZ6hWChXGG3CdAupTqv5A — **대표 확정 전**.
+시안(아티팩트): https://claude.ai/artifact/GNZ6hWChXGG3CdAupTqv5A — **대표 확정 2026-10-08("시안대로 해줘")**.
 
 ## 상황 다섯 가지
 | # | 누가 찍었나 | 시안 |
@@ -22,7 +22,13 @@
 | 용어 | 교환권/바우처/PIN/비밀번호 혼재 | 이용권 · 매장 확인코드 |
 
 ## 구현 todo (확정 후)
-- [ ] `VoucherVerifyPage.tsx` 상태 5종 재구성(TicketCard 재사용)
-- [ ] 서버 `GET /verify/:code` 에 선택 인증 → `can_redeem`(본인 매장/스캔 기기) 필드 — ⑤ 판정용. 클라 `isSellerAuthenticated()` 만으로는 매장 구분 불가
-- [ ] `use-by-seller` 응답 문구의 "✅ 메뉴 제공:" 이모지 제거
-- [ ] 보안 불변: 사용 처리 권한(본인 매장 seller · 스캔 기기 · 매장 확인코드)은 그대로
+- [x] `VoucherVerifyPage.tsx` 상태 5종 재구성(TicketCard 재사용)
+- [x] 서버 `GET /verify/:code` 에 선택 인증 → `can_redeem`(본인 매장/스캔 기기) 필드 — ⑤ 판정용. 클라 `isSellerAuthenticated()` 만으로는 매장 구분 불가
+- [x] `use-by-seller` 응답 문구의 "✅ 메뉴 제공:" 이모지 제거
+- [x] 보안 불변: 사용 처리 권한(본인 매장 seller · 스캔 기기 · 매장 확인코드)은 그대로
+
+## ✅ 구현 완료 (2026-10-08)
+- 화면: `pickVerifyView()` 순수 함수로 상황 판정(조회 전 + 다섯 상황). 처리 성공은 별도 `done` 상태(종전 ✕ 화면 결함 해소).
+- 서버: `GET /api/vouchers/verify/:code` 에 `can_redeem` — 판정은 use-by-seller 와 **같은 미들웨어**(`scanOrSellerAuth`). 표시용이며 권한은 불변.
+- 가드: `voucher-verify-seller-login-2026-10-07.test.ts`(15건) + 주입 6건(되돌려-검증 빨간불 확인).
+- 미리보기: `node scripts/visual-preview.mjs --route=/v/UR-LUBA-RCP5 --verify=redeem|used|pin|other [--auth=seller]`.

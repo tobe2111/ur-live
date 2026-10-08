@@ -1,32 +1,21 @@
 /**
- * 🧬 주입 — **QR 로 들어온 사장님에게 로그인을 권한다** (2026-10-07 대표 제안)
+ * 🧬 주입 — **QR 인증 화면** (2026-10-07 로그인 권유 · 2026-10-08 시안 다섯 상황)
  *
- * 되돌리면 사장님이 *자기가 모르는 확인코드*를 요구하는 화면에서 막힌다 — 손님 줄 앞에서,
- * 로그인하라는 말 한 줄도 없이. 에러가 안 나므로 그 자리에서 할 수 있는 게 없다.
+ * 되돌리면: 사장님이 모르는 확인코드 화면에서 막히거나(권유 없음), 성공했는데 실패처럼 보이거나(✕ 화면),
+ * 다른 매장 사장님이 누를 수 없는 버튼을 누르고 403 을 받는다. 셋 다 에러가 안 나서 아무도 신고하지 않는다.
  */
 const SRC = 'src/pages/VoucherVerifyPage.tsx'
+const CAN = 'src/features/group-buy/api/voucher-can-redeem.ts'
 const T = 'src/tests/unit/voucher-verify-seller-login-2026-10-07.test.ts'
 
 export default [
   {
-    name: 'QR로그인권유 — 안내를 없앤다 (종전 동작)',
-    file: SRC,
-    find: "                  {t('voucher.verify.sellerAsk', { defaultValue: '이 매장의 사장님이신가요?' })}",
-    replace: '                  {null}',
-    test: T,
-    why:
-      '정확히 종전 동작이다. 좌석이 없으면 `PIN 을 입력하세요` 칸만 남고, 그 PIN 은 매장 확인코드라 ' +
-      '대부분 매장이 설정을 안 해 뒀다 — 사장님이 할 수 있는 일이 없는 화면이 된다.',
-  },
-  {
     name: 'QR로그인권유 — 복귀 주소를 안 싣는다',
     file: SRC,
-    find: "                  to={loggedIn ? '/user/profile' : loginPathFromHere()}",
-    replace: '                  to={loggedIn ? \'/user/profile\' : \'/login\'}',
+    find: "<Link to={loggedIn ? '/user/profile' : loginPathFromHere()}",
+    replace: "<Link to={loggedIn ? '/user/profile' : '/login'}",
     test: T,
-    why:
-      '로그인은 성공하고 **홈으로 떨어진다**. 그 QR 은 손님 폰에 있으므로 사장님은 다시 찍어야 하고, ' +
-      '그 사이 손님은 서 있다. 2026-10-01 에 이 레포가 59곳을 전수로 고친 그 클래스다.',
+    why: '로그인은 성공하고 **홈으로 떨어진다**. 그 QR 은 손님 폰에 있어 사장님은 다시 찍어야 한다.',
   },
   {
     name: 'QR로그인권유 — 이미 로그인한 사람도 /login 으로 보낸다',
@@ -34,18 +23,38 @@ export default [
     find: '  const loggedIn = !!getUserIdSync()',
     replace: '  const loggedIn = false',
     test: T,
-    why:
-      '소비자로 로그인했지만 좌석이 없는 사장님을 `/login` 으로 보내면 **아무 일도 안 일어난다** ' +
-      '(이미 로그인돼 있다). 버튼이 고장난 것처럼 보이는, 가장 나쁜 종류의 조용한 실패다.',
+    why: '이미 로그인한 사람을 `/login` 으로 보내면 **아무 일도 안 일어난다** — 버튼이 고장난 것처럼 보인다.',
   },
   {
-    name: 'QR로그인권유 — 권유를 벽으로 만든다',
+    name: 'QR인증 — 처리 성공을 다시 "이미 사용됨" 으로 덮는다 (종전 결함)',
     file: SRC,
-    find: '  return (\n    <div className="min-h-screen bg-white dark:bg-[#11141C] flex items-center justify-center px-5">',
-    replace: '  if (!isSeller) return <Navigate to={loginPathFromHere()} replace />\n  return (\n    <div className="min-h-screen bg-white dark:bg-[#11141C] flex items-center justify-center px-5">',
+    find: '      if (res.data.success) finish()\n      else setError(res.data.error || t(\'voucher.verify.processingError\', { defaultValue: \'처리 중 오류가 발생했어요\' }))\n    } catch (err: unknown) {\n      const e = err as { response?: { data?: { error?: string } } }\n      setError(e.response?.data?.error || t(\'voucher.verify.processingError\', { defaultValue: \'처리 중 오류가 발생했어요\' }))\n    } finally {\n      setVerifying(false)\n    }\n  }\n\n  async function redeemWithStoreCode',
+    replace: '      if (res.data.success) setVoucher(v => v ? { ...v, status: \'used\' } : v)\n      else setError(res.data.error || t(\'voucher.verify.processingError\', { defaultValue: \'처리 중 오류가 발생했어요\' }))\n    } catch (err: unknown) {\n      const e = err as { response?: { data?: { error?: string } } }\n      setError(e.response?.data?.error || t(\'voucher.verify.processingError\', { defaultValue: \'처리 중 오류가 발생했어요\' }))\n    } finally {\n      setVerifying(false)\n    }\n  }\n\n  async function redeemWithStoreCode',
     test: T,
-    why:
-      '"사장님 전용 화면" 으로 보이지만 **이 주소는 손님도 연다**(자기 QR 을 자기 폰으로 찍으면 같은 ' +
-      '주소다). 벽을 세우면 손님이 자기 이용권을 못 보고, 로그인해도 볼 것이 없다.',
+    why: '정확히 종전 결함이다 — 사장님이 처리에 **성공해도** ✕ 와 "이미 사용된 이용권" 이 떠 실패처럼 보인다.',
+  },
+  {
+    name: 'QR인증 — 다른 매장 사장님에게도 처리 버튼',
+    file: SRC,
+    find: "  if (opts.isSeller) return 'other-store'",
+    replace: "  if (opts.isSeller) return 'redeem'",
+    test: T,
+    why: '종전 동작 — 좌석만 있으면 어느 매장이든 버튼이 뜨고, 누르면 403 이다.',
+  },
+  {
+    name: 'QR인증 — 조회에 좌석 토큰을 안 싣는다',
+    file: SRC,
+    find: '`/api/vouchers/verify/${parsedCode}`, isSeller',
+    replace: '`/api/vouchers/verify/${parsedCode}`, false',
+    test: T,
+    why: '토큰이 없으면 서버가 늘 can_redeem=false 를 준다 — 우리 매장 사장님도 "다른 매장" 화면을 본다.',
+  },
+  {
+    name: 'QR인증 — 서버 판정이 매장을 안 본다',
+    file: CAN,
+    find: "(u.type === 'seller' && productSellerId != null && Number(productSellerId) === Number(u.id))",
+    replace: "(u.type === 'seller')",
+    test: T,
+    why: '아무 매장 사장님에게나 처리 버튼이 뜬다. 실제 처리는 403 으로 막히니 보안 사고는 아니지만 화면이 거짓말을 한다.',
   },
 ]

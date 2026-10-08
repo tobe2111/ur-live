@@ -1,36 +1,73 @@
+/**
+ * 🎟️ 이용권 사용 처리 화면 — `/v/:code` (손님 QR 을 폰 기본 카메라로 찍으면 열린다)
+ *
+ * 2026-10-08 대표 시안 확정("시안대로 해줘") — `docs/design/voucher-verify-redesign.md`.
+ * 누가 찍었는지에 따라 상황이 다섯이고, 모양은 지갑과 같은 **티켓 카드 한 장**이다.
+ *   ① 우리 매장 사장님(can_redeem)  → "이 메뉴를 드리면 돼요" + [사용 처리]
+ *   ② 처리 직후                      → "사용 처리했어요" + 처리 시각 + [다음 손님 QR 찍기]
+ *   ③ 이미 쓴/만료/환불 이용권        → 회색 띠에 사용 일시
+ *   ④ 사장님 좌석 없음(직원·손님 폰) → "매장 확인코드" 입력 + 로그인 권유 한 줄
+ *   ⑤ 다른 매장 사장님               → "다른 매장의 이용권이에요" — 처리 버튼 없음
+ *
+ * 🩸 종전 결함: 사장님이 처리에 **성공해도** 상태를 'used' 로 바꾸는 바람에 곧장 X 아이콘 +
+ *   "이미 사용된 바우처" 가 떠서 실패처럼 보였다. ②를 별도 상태(`done`)로 둔다.
+ * 🩸 종전 결함: 좌석만 있으면 어느 매장 사장님이든 처리 버튼이 떴고 누르면 403 이었다. 서버가
+ *   `can_redeem`(use-by-seller 와 같은 미들웨어로 판정)을 알려 주므로 ⑤를 처음부터 안내한다.
+ *
+ * 🔒 권한은 하나도 안 바뀐다 — 사용 처리는 여전히 서버가 [그 매장 사장님 · 그 매장 스캔 기기 ·
+ *   매장 확인코드] 로만 허용한다. `can_redeem` 은 **어떤 화면을 보여 줄지**만 정한다.
+ *
+ * ⚠️ 로그인 벽을 세우지 않는다 — 손님도 자기 QR 을 찍으면 이 주소로 온다(2026-10-07).
+ */
 import { useState, useEffect } from 'react'
-import { TicketStubIcon, OkIcon, BadIcon } from '@/components/icons/urdeal-icons'
-import { useParams } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Loader2, QrCode } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
+import { OkIcon } from '@/components/icons/urdeal-icons'
+import { TicketCard } from '@/components/ticket/TicketCard'
+import UrDealLogo from '@/components/brand/UrDealLogo'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { getSellerToken, isSellerAuthenticated } from '@/lib/seller-auth'
-import { Link } from 'react-router-dom'
 import { loginPathFromHere } from '@/utils/login-return'
 import { getUserIdSync } from '@/utils/auth'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
-import { parseUTCDate } from '@/utils/date'
+import { parseUTCDate, formatKSTTime } from '@/utils/date'
 
-/**
- * Parse voucher code from QR scanned content.
- * QR encodes: https://urdeal.kr/v/{voucher_code}
- * Also accepts raw voucher codes.
- */
-function parseVoucherCode(input: string): string {
+/** QR 내용(https://urdeal.kr/v/{code}) 또는 코드 그대로에서 코드를 뽑는다. */
+export function parseVoucherCode(input: string): string {
   const trimmed = input.trim()
-  // Match QR URL pattern
   const urlMatch = trimmed.match(/\/v\/([A-Za-z0-9-]+)$/)
   if (urlMatch) return urlMatch[1].toUpperCase()
-  // Try full URL parse
   try {
     const url = new URL(trimmed)
     const pathMatch = url.pathname.match(/\/v\/([A-Za-z0-9-]+)$/)
     if (pathMatch) return pathMatch[1].toUpperCase()
-  } catch {
-    // Not a URL, treat as raw code
-  }
+  } catch { /* URL 아님 → 코드 그대로 */ }
   return trimmed.toUpperCase()
+}
+
+interface VerifiedVoucher {
+  code: string
+  status: string
+  product_name?: string
+  restaurant_name?: string
+  product_image?: string
+  expires_at?: string | null
+  used_at?: string | null
+  can_redeem?: boolean
+}
+
+export type VerifyView = 'lookup' | 'redeem' | 'done' | 'closed' | 'pin' | 'other-store'
+
+/** 어떤 화면을 보여 줄지 — 순수 함수(테스트가 이것을 잰다). */
+export function pickVerifyView(v: VerifiedVoucher | null, opts: { done: boolean; isSeller: boolean }): VerifyView {
+  if (opts.done) return 'done'
+  if (!v) return 'lookup'
+  if (v.status !== 'unused') return 'closed'
+  if (v.can_redeem) return 'redeem'
+  if (opts.isSeller) return 'other-store'
+  return 'pin'
 }
 
 export default function VoucherVerifyPage() {
@@ -38,231 +75,254 @@ export default function VoucherVerifyPage() {
   const { t, i18n } = useTranslation()
   const [code, setCode] = useState(urlCode || '')
   const [pin, setPin] = useState('')
-  const [voucher, setVoucher] = useState<any>(null)
+  const [voucher, setVoucher] = useState<VerifiedVoucher | null>(null)
   const [loading, setLoading] = useState(false)
   const [verifying, setVerifying] = useState(false)
-  const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [doneAt, setDoneAt] = useState<string | null>(null)
 
   const locale = i18n.language?.startsWith('ko') ? 'ko-KR' : i18n.language || 'en-US'
   const isSeller = isSellerAuthenticated()
-  /**
-   * 🔑 **일반 카메라로 찍고 들어온 사장님에게 로그인을 권한다** (2026-10-07 대표 —
-   *   *"QR 인증을 사장님이 할 때 로그인이 안되어있으면 일반 카메라로 QR 인증 시 카카오 로그인을
-   *   먼저 요청하는게 맞지 않을까?"*).
-   *
-   * 🩸 종전엔 이 화면에 **로그인 유도가 한 줄도 없었다.** 좌석이 있으면 초록 상자 + [사용 처리]가
-   *   뜨지만, 없으면 그 상자가 **그냥 안 뜨고** 대신 `PIN 을 입력하세요` 칸만 남는다. 그 PIN 은
-   *   매장 확인코드(`store_verify_pin`)인데 대부분 매장이 설정을 안 해 뒀다 — 즉 사장님은
-   *   **자기가 모르는 것을 요구하는 화면**을 보고 막히고, 로그인하라는 말도 버튼도 없다.
-   *
-   * ⚠️ **로그인 벽을 세우지 않는다.** 이 화면은 손님도 연다(자기 QR 을 자기 폰으로 찍으면 같은
-   *   주소다). 벽을 세우면 손님이 자기 이용권을 못 본다. 권하는 한 줄이면 충분하다.
-   *
-   * 두 경우를 가른다 — **없는 길로 보내지 않기 위해서**다:
-   *   · 아예 비로그인 → 카카오 로그인(복귀 주소를 싣는다 — `loginPathFromHere`)
-   *   · 로그인은 했는데 **좌석이 없다** → `/login` 으로 보내면 이미 로그인돼 있어 아무 일도
-   *     안 일어난다. 마이의 '내 가게' 로 보내 매장을 고르게 한다.
-   */
   const loggedIn = !!getUserIdSync()
+  const view = pickVerifyView(voucher, { done: !!doneAt, isSeller })
 
-  // 🛡️ 2026-05-16: URL 로 진입 시 (기본 카메라 스캔) 자동으로 voucher 조회
   useEffect(() => {
-    if (urlCode && !voucher && !loading) {
-      lookupVoucher()
-    }
+    if (urlCode && !voucher && !loading) lookupVoucher()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlCode])
 
-  // 🛡️ 2026-05-16: 사장님이 본인 매장 voucher 스캔 시 한 번에 사용 처리 (PIN 없이, seller token 검증)
-  async function useVoucherAsSeller() {
-    if (!isSeller) return
-    setVerifying(true)
-    try {
-      const res = await api.post(`/api/vouchers/${code.trim()}/use-by-seller`, {}, {
-        headers: { Authorization: `Bearer ${getSellerToken() || ''}` },
-      })
-      setResult({ success: res.data.success, message: res.data.message || res.data.error || '' })
-      if (res.data.success) setVoucher((v: any) => v ? { ...v, status: 'used' } : v)
-    } catch (err: unknown) {
-      const err_ = err as { response?: { data?: { error?: string } } }
-      setResult({ success: false, message: err_.response?.data?.error || t('voucher.verify.processingError') })
-    } finally {
-      setVerifying(false)
-    }
+  function reset() {
+    setVoucher(null); setCode(''); setPin(''); setError(null); setDoneAt(null)
   }
 
-  // 바우처 조회
   async function lookupVoucher() {
     if (!code.trim()) return
     const parsedCode = parseVoucherCode(code)
     setCode(parsedCode)
     setLoading(true)
-    setResult(null)
+    setError(null)
     try {
-      const res = await api.get(`/api/vouchers/verify/${parsedCode}`)
-      if (res.data.success) {
-        setVoucher(res.data.data)
-      } else {
-        setResult({ success: false, message: res.data.error || t('voucher.verify.notFound') })
-      }
+      // 좌석이 있으면 토큰을 실어 보낸다 → 서버가 "우리 매장인가"(can_redeem)를 알려 준다.
+      const res = await api.get(`/api/vouchers/verify/${parsedCode}`, isSeller
+        ? { headers: { Authorization: `Bearer ${getSellerToken() || ''}` } }
+        : undefined)
+      if (res.data.success) setVoucher(res.data.data)
+      else setError(res.data.error || t('voucher.verify.notFound', { defaultValue: '이용권을 찾을 수 없어요' }))
     } catch {
-      setResult({ success: false, message: t('voucher.verify.notFound') })
+      setError(t('voucher.verify.notFound', { defaultValue: '이용권을 찾을 수 없어요' }))
     } finally {
       setLoading(false)
     }
   }
 
-  // 바우처 사용 처리
-  async function useVoucher() {
-    if (!pin.trim()) return
+  function finish() {
+    setDoneAt(new Date().toISOString())
+    setError(null)
+  }
+
+  async function redeemAsSeller() {
+    if (!voucher) return
     setVerifying(true)
     try {
-      const res = await api.post(`/api/vouchers/${code.trim()}/use`, { pin: pin.trim() })
-      setResult({ success: res.data.success, message: res.data.message || res.data.error || '' })
-      if (res.data.success) setVoucher(null)
+      const res = await api.post(`/api/vouchers/${voucher.code}/use-by-seller`, {}, {
+        headers: { Authorization: `Bearer ${getSellerToken() || ''}` },
+      })
+      if (res.data.success) finish()
+      else setError(res.data.error || t('voucher.verify.processingError', { defaultValue: '처리 중 오류가 발생했어요' }))
     } catch (err: unknown) {
-      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
-      setResult({ success: false, message: err_.response?.data?.error || t('voucher.verify.processingError') })
+      const e = err as { response?: { data?: { error?: string } } }
+      setError(e.response?.data?.error || t('voucher.verify.processingError', { defaultValue: '처리 중 오류가 발생했어요' }))
     } finally {
       setVerifying(false)
     }
   }
 
-  return (
-    <div className="min-h-screen bg-white dark:bg-[#11141C] flex items-center justify-center px-5">
-      <SEO title={t('voucher.verify.seoTitle')} description={t('voucher.verify.seoDescription')} url={urlCode ? `/v/${urlCode}` : '/v'} noindex />
-      {/* 🛡️ 2026-05-20: QR 검증 — PC 에선 약간 넓혀 입력란 가독성 향상 */}
-      <div className="w-full max-w-sm lg:max-w-md">
-        {/* 로고 */}
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gray-900 dark:bg-white flex items-center justify-center" style={{ boxShadow: '0 8px 22px -8px rgba(10,10,10,0.4)' }}>
-            <TicketStubIcon className="w-8 h-8 text-white dark:text-gray-900" />
-          </div>
-          <h1 className="text-[17px] font-extrabold text-gray-900 dark:text-white">{t('voucher.verify.title')}</h1>
-          <p className="text-[15px] text-gray-500 dark:text-gray-400 mt-1">{t('voucher.verify.subtitle')}</p>
-        </div>
+  async function redeemWithStoreCode() {
+    if (!voucher || !pin.trim()) return
+    setVerifying(true)
+    try {
+      const res = await api.post(`/api/vouchers/${voucher.code}/use`, { pin: pin.trim() })
+      if (res.data.success) finish()
+      else setError(res.data.error || t('voucher.verify.processingError', { defaultValue: '처리 중 오류가 발생했어요' }))
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } }
+      setError(e.response?.data?.error || t('voucher.verify.processingError', { defaultValue: '처리 중 오류가 발생했어요' }))
+    } finally {
+      setVerifying(false)
+    }
+  }
 
-        {/* 결과 표시 */}
-        {result && (
-          <div className={`mb-5 p-4 rounded-xl flex items-start gap-3 ${result.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
-            {result.success ? <OkIcon className="w-5 h-5 text-green-600 shrink-0 mt-1" /> : <BadIcon className="w-5 h-5 text-red-600 shrink-0 mt-1" />}
-            <p className={`text-[15px] font-medium ${result.success ? 'text-green-800' : 'text-red-800'}`}>{result.message}</p>
+  const store = voucher?.restaurant_name || ''
+  const headerRight =
+    view === 'pin' && !loggedIn ? t('voucher.verify.notLoggedIn', { defaultValue: '로그인 안 됨' })
+    : view === 'other-store' ? ''
+    : store
+
+  const title =
+    view === 'redeem' ? t('voucher.verify.titleRedeem', { defaultValue: '이 메뉴를 드리면 돼요' })
+    : view === 'done' ? t('voucher.verify.titleDone', { defaultValue: '사용 처리했어요' })
+    : view === 'closed' ? (voucher?.status === 'used'
+        ? t('voucher.verify.titleUsed', { defaultValue: '이미 사용한 이용권이에요' })
+        : voucher?.status === 'refunded'
+          ? t('voucher.verify.titleRefunded', { defaultValue: '환불된 이용권이에요' })
+          : t('voucher.verify.titleExpired', { defaultValue: '기한이 지난 이용권이에요' }))
+    : view === 'pin' ? t('voucher.verify.titlePin', { defaultValue: '매장 확인코드를 넣어 주세요' })
+    : view === 'other-store' ? t('voucher.verify.titleOtherStore', { defaultValue: '다른 매장의 이용권이에요' })
+    : t('voucher.verify.titleLookup', { defaultValue: '이용권 확인' })
+
+  const usedLabel = voucher?.used_at
+    ? parseUTCDate(voucher.used_at).toLocaleString(locale, { timeZone: 'Asia/Seoul', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : ''
+  const expiresLabel = voucher?.expires_at
+    ? parseUTCDate(voucher.expires_at).toLocaleDateString(locale, { timeZone: 'Asia/Seoul' })
+    : ''
+
+  /** 티켓 카드 본문 — 상품 사진·이름·매장·코드. 상태와 무관하게 같은 모양이다. */
+  const ticketBody = voucher && (
+    <div className="p-4">
+      <div className="flex gap-3">
+        {voucher.product_image && (
+          <img
+            src={cfImage(voucher.product_image, { width: 160, quality: 82, format: 'auto' }) || voucher.product_image}
+            alt=""
+            width={64}
+            height={64}
+            className="w-16 h-16 shrink-0 rounded-xl object-cover bg-gray-100 dark:bg-[#26282F]"
+            onError={(e) => cfImageOnError(e.currentTarget, voucher.product_image)}
+          />
+        )}
+        <div className="min-w-0">
+          <p className="text-[17px] font-bold leading-snug text-gray-900 dark:text-white break-keep">{voucher.product_name}</p>
+          {store && <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{store}</p>}
+        </div>
+      </div>
+      <div className="mt-4 pt-3 border-t border-rule flex items-center justify-between text-[13px]">
+        <span className="text-gray-500 dark:text-gray-400">{t('voucher.verify.codeShort', { defaultValue: '코드' })}</span>
+        <code className="font-bold tabular-nums tracking-[0.06em] text-gray-900 dark:text-white">{voucher.code}</code>
+      </div>
+    </div>
+  )
+
+  const primaryBtn = 'w-full h-14 rounded-2xl bg-brand text-white text-[17px] font-bold disabled:opacity-40 active:scale-[0.98] transition-transform'
+  const secondaryBtn = 'w-full h-12 rounded-xl text-[15px] font-semibold text-gray-600 dark:text-gray-300'
+
+  return (
+    <div className="min-h-[100dvh] bg-[#F8F7FC] dark:bg-[#11141C] px-4 pb-10">
+      <SEO title={t('voucher.verify.seoTitle', { defaultValue: '이용권 확인' })} description={t('voucher.verify.seoDescription', { defaultValue: 'QR 코드로 이용권을 확인합니다' })} url={urlCode ? `/v/${urlCode}` : '/v'} noindex />
+      <div className="mx-auto w-full max-w-sm lg:max-w-md">
+        <header className="flex h-14 items-center justify-between">
+          <UrDealLogo size={20} />
+          {headerRight && <span className="max-w-[60%] truncate text-[13px] font-semibold text-gray-500 dark:text-gray-400">{headerRight}</span>}
+        </header>
+
+        <h1 className="mt-6 text-[24px] font-bold leading-tight tracking-[-0.01em] text-gray-900 dark:text-white break-keep">{title}</h1>
+
+        {error && (
+          <p role="alert" className="mt-3 text-[15px] font-semibold text-red-600 dark:text-red-400">{error}</p>
+        )}
+
+        {view === 'lookup' && (
+          <div className="mt-6">
+            <label htmlFor="voucher-code" className="block text-[13px] font-semibold text-gray-500 dark:text-gray-400 mb-2">{t('voucher.verify.codeLabel', { defaultValue: '이용권 코드' })}</label>
+            <input
+              id="voucher-code"
+              value={code}
+              onChange={e => setCode(e.target.value.toUpperCase())}
+              onPaste={e => { e.preventDefault(); setCode(parseVoucherCode(e.clipboardData.getData('text'))) }}
+              placeholder={t('voucher.verify.codePlaceholder', { defaultValue: 'UR-XXXX-XXXX' })}
+              className="w-full h-14 px-4 rounded-2xl bg-surface shadow-lift text-center text-[17px] font-bold tabular-nums tracking-widest text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand/40"
+              maxLength={60}
+            />
+            <p className="mt-2 text-center text-[12px] text-gray-500 dark:text-gray-400">{t('voucher.verify.qrHint', { defaultValue: 'QR 주소를 붙여 넣으면 코드만 뽑아요' })}</p>
+            <button onClick={lookupVoucher} disabled={!code.trim() || loading} className={`${primaryBtn} mt-6`}>
+              {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : t('voucher.verify.lookup', { defaultValue: '조회하기' })}
+            </button>
           </div>
         )}
 
-        {!voucher ? (
-          /* Step 1: 코드 입력 */
-          <div>
-            <label className="block text-[15px] font-medium text-gray-700 dark:text-gray-200 mb-2">{t('voucher.verify.codeLabel')}</label>
-            <input
-              value={code}
-              onChange={e => setCode(e.target.value.toUpperCase())}
-              onPaste={e => {
-                e.preventDefault()
-                const pasted = e.clipboardData.getData('text')
-                setCode(parseVoucherCode(pasted))
-              }}
-              placeholder={t('voucher.verify.codePlaceholder')}
-              className="w-full px-4 py-4 border border-gray-300 dark:border-[#3A3A3A] rounded-xl text-center text-[17px] text-gray-900 dark:text-white tabular-nums font-bold tracking-widest focus:border-gray-900 dark:focus:border-white focus:outline-none focus:ring-2 focus:ring-gray-200 dark:focus:ring-white/20"
-              maxLength={60}
-            />
-            <div className="flex items-center gap-2 mt-2 justify-center">
-              <QrCode className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
-              <p className="text-[12px] text-gray-400 dark:text-gray-500">{t('voucher.verify.qrHint')}</p>
+        {view === 'done' && (
+          <div className="mt-6">
+            <div className="rounded-2xl bg-surface shadow-lift p-6 text-center">
+              <OkIcon filled className="mx-auto w-10 h-10 text-brand-text" />
+              <p className="mt-3 text-[28px] font-bold tabular-nums text-gray-900 dark:text-white">{formatKSTTime(doneAt)}</p>
+              {voucher?.product_name && <p className="mt-2 text-[15px] font-semibold text-gray-900 dark:text-white break-keep">{voucher.product_name}</p>}
+              <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{t('voucher.verify.doneNote', { defaultValue: '손님 폰에도 ‘사용 완료’로 바뀌었어요' })}</p>
             </div>
-            <button
-              onClick={lookupVoucher}
-              disabled={!code.trim() || loading}
-              className="w-full mt-4 py-4 bg-brand text-white font-extrabold rounded-xl disabled:opacity-40 active:scale-[0.98] transition-transform"
-            >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : t('voucher.verify.lookup')}
-            </button>
+            {isSeller ? (
+              <Link to="/seller/scan" className={`${primaryBtn} mt-6 flex items-center justify-center`}>{t('voucher.verify.nextGuest', { defaultValue: '다음 손님 QR 찍기' })}</Link>
+            ) : (
+              <button onClick={reset} className={`${primaryBtn} mt-6`}>{t('voucher.verify.lookupAnother', { defaultValue: '다른 이용권 조회' })}</button>
+            )}
           </div>
-        ) : voucher.status !== 'unused' ? (
-          /* 이미 사용/만료된 바우처 */
-          <div className="text-center py-8">
-            <BadIcon className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
-            <p className="text-gray-900 dark:text-white font-bold">{voucher.status === 'used' ? t('voucher.verify.alreadyUsed') : t('voucher.verify.expired')}</p>
-            <p className="text-[15px] text-gray-500 dark:text-gray-400 mt-1">{voucher.product_name}</p>
-            <button onClick={() => { setVoucher(null); setCode(''); setResult(null) }} className="mt-4 text-[15px] text-gray-900 dark:text-white font-semibold underline underline-offset-2">{t('voucher.verify.lookupAnother')}</button>
-          </div>
-        ) : (
-          /* Step 2: 바우처 확인 + 비밀번호 입력 */
-          <div>
-            {/* 바우처 정보 카드 */}
-            <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-4 mb-5">
-              {voucher.product_image && (
-                <img src={cfImage(voucher.product_image, { width: 400, quality: 82, format: 'auto' }) || voucher.product_image} alt="" className="w-full h-32 object-cover rounded-lg mb-3" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, voucher.product_image)} />
-              )}
-              <p className="text-[15px] font-bold text-gray-900 dark:text-white">{voucher.product_name}</p>
-              {voucher.restaurant_name && (
-                <p className="text-[15px] text-gray-500 dark:text-gray-400 mt-1">{voucher.restaurant_name}</p>
-              )}
-              <div className="mt-2 bg-surface rounded-lg px-3 py-2 text-center">
-                <code className="text-[17px] tabular-nums font-bold text-gray-900 dark:text-white tracking-[0.08em]">{voucher.code}</code>
-              </div>
-              {voucher.expires_at && (
-                <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-2 text-center">{t('voucher.expiresAt')}: {parseUTCDate(voucher.expires_at).toLocaleDateString(locale, { timeZone: 'Asia/Seoul' })}{t('voucher.until')}</p>
-              )}
-            </div>
+        )}
 
-            {/* 🛡️ 2026-05-16: 사장님 로그인 시 PIN 없이 즉시 사용 처리 */}
-            {isSeller && (
-              <div className="mb-5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 rounded-xl p-4">
-                <p className="text-[12px] font-bold text-emerald-700 dark:text-emerald-300 mb-2">🏪 사장님으로 로그인됨 — PIN 없이 사용 처리 가능</p>
-                <button
-                  onClick={useVoucherAsSeller}
-                  disabled={verifying}
-                  className="w-full py-4 bg-brand text-white font-extrabold rounded-xl text-[15px] disabled:opacity-40 active:scale-[0.98] transition-transform"
-                >
-                  {verifying ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : `✅ "${voucher.product_name}" 제공 (사용 처리)`}
+        {(view === 'redeem' || view === 'closed' || view === 'pin' || view === 'other-store') && voucher && (
+          <div className="mt-6">
+            <TicketCard
+              muted={view === 'closed' || view === 'other-store'}
+              bandLeft={
+                view === 'closed' ? (voucher.status === 'used' && usedLabel ? usedLabel : t('voucher.verify.bandClosed', { defaultValue: '사용 불가' }))
+                : view === 'other-store' ? t('voucher.verify.bandOtherStore', { defaultValue: '{{store}} 전용', store: store || t('voucher.verify.thatStore', { defaultValue: '다른 매장' }) })
+                : t('voucher.verify.bandPaid', { defaultValue: '결제 완료' })
+              }
+              bandRight={
+                view === 'closed' ? (voucher.status === 'used' ? t('voucher.verify.bandUsed', { defaultValue: '사용 완료' }) : voucher.status === 'refunded' ? t('voucher.verify.bandRefunded', { defaultValue: '환불' }) : t('voucher.verify.bandExpired', { defaultValue: '만료' }))
+                : view === 'other-store' ? t('voucher.verify.bandCannot', { defaultValue: '처리 불가' })
+                : t('voucher.verify.bandUsable', { defaultValue: '사용 가능' })
+              }
+            >
+              {ticketBody}
+            </TicketCard>
+
+            {view === 'redeem' && (
+              <>
+                <p className="mt-4 px-1 text-[13px] leading-[1.55] text-gray-500 dark:text-gray-400">{t('voucher.verify.paidNote', { defaultValue: '이미 결제된 이용권이에요. 포스에서 따로 받지 마세요.' })}</p>
+                {expiresLabel && <p className="mt-1 px-1 text-[13px] text-gray-500 dark:text-gray-400">{t('voucher.verify.expiresNote', { defaultValue: '{{date}}까지 사용 가능', date: expiresLabel })}</p>}
+                <button onClick={redeemAsSeller} disabled={verifying} className={`${primaryBtn} mt-6`}>
+                  {verifying ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : t('voucher.verify.redeem', { defaultValue: '사용 처리' })}
                 </button>
-                <p className="text-[12px] text-emerald-600 mt-2 text-center">POS / T오더 결제 X — 이 메뉴는 이미 결제 완료</p>
-              </div>
+              </>
             )}
 
-            {/* 🔑 좌석이 없을 때만. 위 머리말 참조 — 권하는 한 줄이지 벽이 아니다. */}
-            {!isSeller && (
-              <div className="mb-5 rounded-xl bg-surface p-4 shadow-lift">
-                <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">
-                  {t('voucher.verify.sellerAsk', { defaultValue: '이 매장의 사장님이신가요?' })}
-                </p>
-                <p className="text-[13px] text-gray-600 dark:text-gray-300 mb-3">
+            {view === 'closed' && (
+              <>
+                <p className="mt-4 px-1 text-[13px] leading-[1.55] text-gray-500 dark:text-gray-400">{t('voucher.verify.closedNote', { defaultValue: '같은 이용권은 한 번만 쓸 수 있어요. 손님이 다른 이용권을 갖고 있는지 확인해 주세요.' })}</p>
+                <button onClick={reset} className={`${secondaryBtn} mt-4`}>{t('voucher.verify.lookupAnother', { defaultValue: '다른 이용권 조회' })}</button>
+              </>
+            )}
+
+            {view === 'other-store' && (
+              <>
+                <p className="mt-4 px-1 text-[13px] leading-[1.55] text-gray-500 dark:text-gray-400">{t('voucher.verify.otherStoreNote', { defaultValue: '이 이용권은 {{store}}에서만 사용 처리할 수 있어요.', store: store || t('voucher.verify.thatStore', { defaultValue: '다른 매장' }) })}</p>
+                <button onClick={reset} className={`${secondaryBtn} mt-4`}>{t('voucher.verify.lookupAnother', { defaultValue: '다른 이용권 조회' })}</button>
+              </>
+            )}
+
+            {view === 'pin' && (
+              <>
+                <label htmlFor="store-code" className="mt-6 block text-[13px] font-semibold text-gray-500 dark:text-gray-400 mb-2">{t('voucher.verify.storeCodeLabel', { defaultValue: '매장 확인코드' })}</label>
+                <input
+                  id="store-code"
+                  value={pin}
+                  onChange={e => setPin(e.target.value)}
+                  type="password"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  placeholder="• • • •"
+                  className="w-full h-14 px-4 rounded-2xl bg-surface shadow-lift text-center text-[17px] tracking-[0.5em] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand/40"
+                  maxLength={10}
+                />
+                <button onClick={redeemWithStoreCode} disabled={!pin.trim() || verifying} className={`${primaryBtn} mt-4`}>
+                  {verifying ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : t('voucher.verify.redeem', { defaultValue: '사용 처리' })}
+                </button>
+                {/* 🔑 로그인 권유 한 줄 — 벽이 아니다(손님도 이 화면을 연다). 로그인했는데 좌석이 없으면 '내 가게' 로. */}
+                <Link to={loggedIn ? '/user/profile' : loginPathFromHere()} className="mt-4 block text-center text-[15px] font-semibold text-brand-text">
                   {loggedIn
-                    ? t('voucher.verify.sellerPickStore', { defaultValue: '마이의 ‘내 가게’ 에서 매장을 고르면 확인코드 없이 바로 사용 처리할 수 있어요.' })
-                    : t('voucher.verify.sellerLoginHint', { defaultValue: '로그인하면 확인코드 없이 바로 사용 처리할 수 있어요.' })}
-                </p>
-                <Link
-                  to={loggedIn ? '/user/profile' : loginPathFromHere()}
-                  className="block w-full py-3 rounded-xl bg-brand text-white text-center text-[15px] font-extrabold active:scale-[0.98] transition-transform"
-                >
-                  {loggedIn
-                    ? t('voucher.verify.goMyStores', { defaultValue: '내 가게 열기' })
-                    : t('voucher.verify.goLogin', { defaultValue: '카카오로 로그인' })}
+                    ? t('voucher.verify.ownerPickStore', { defaultValue: '사장님이면 내 가게를 고르고 바로 처리' })
+                    : t('voucher.verify.ownerLogin', { defaultValue: '사장님이면 로그인하고 바로 처리' })}
                 </Link>
-              </div>
+              </>
             )}
-
-            {/* 비밀번호 입력 (사장님 PIN 또는 손님 인증) */}
-            <label className="block text-[15px] font-medium text-gray-700 dark:text-gray-200 mb-2">
-              {isSeller ? '또는 PIN 으로 사용 처리' : t('voucher.verify.enterPin')}
-            </label>
-            <input
-              value={pin}
-              onChange={e => setPin(e.target.value)}
-              type="password"
-              placeholder={t('voucher.verify.pinPlaceholder')}
-              className="w-full px-4 py-4 border border-gray-300 dark:border-[#3A3A3A] rounded-xl text-center text-[17px] text-gray-900 dark:text-white tracking-[0.5em] focus:border-gray-900 dark:focus:border-white focus:outline-none focus:ring-2 focus:ring-gray-200 dark:focus:ring-white/20"
-              maxLength={10}
-            />
-            <button
-              onClick={useVoucher}
-              disabled={!pin.trim() || verifying}
-              className="w-full mt-4 py-4 bg-brand text-white font-extrabold rounded-xl disabled:opacity-40 active:scale-[0.98] transition-transform"
-            >
-              {verifying ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : t('voucher.verify.confirm')}
-            </button>
-            <button onClick={() => { setVoucher(null); setCode(''); setPin(''); setResult(null) }} className="w-full mt-2 py-2 text-[15px] text-gray-500 dark:text-gray-400">{t('voucher.verify.cancel')}</button>
           </div>
         )}
       </div>

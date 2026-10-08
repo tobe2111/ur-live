@@ -73,8 +73,9 @@ const OPERATION = new Set([
  * 🔧 2026-10-07: 170 → **169**. 홈 피드 빈 화면의 돋보기(`SearchX`) 원을 유달이로 바꾸며 1건이 빠졌다.
  * 🔧 2026-10-07: 169 → **167**. 지갑 A안(#1654)이 칩 줄의 지도(`Map`)와 카드 띠의 QR(`QrCode`)을 걷으며 2건이 빠졌는데
  *    그 PR 에서 기준을 안 내려 main 전수 주입이 빨간불이 됐다 — 같은 규칙대로 지금 내린다.
+ * 🔧 2026-10-08: 167 → **166**. 이용권 인증 화면(`/v/:code`) 시안 구현이 입력칸 아래 `QrCode` 를 걷었다.
  */
-const MEANING_BASELINE = 167
+const MEANING_BASELINE = 166
 
 const read = (f: string) => readFileSync(f, 'utf8')
 

@@ -427,7 +427,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
 
       return c.json({
         success: true,
-        message: `✅ 메뉴 제공: ${voucher.product_name}`,
+        message: `사용 처리했어요: ${voucher.product_name}`,
         data: {
           product_name: voucher.product_name,
           restaurant_name: voucher.restaurant_name,

@@ -34,6 +34,7 @@ import { getSupplyMeta } from '../../../worker/utils/product-supply-meta'
 import { intParam } from '@/shared/pagination'
 // 🏪 2026-09-16 (대표 — "승인이 되어야 메인에 노출"): 승인 전 매장의 이용권을 피드·지도에서 가린다.
 import { approvedSellerProductSql } from '@/shared/db/consumer-visible-product'
+import { voucherCanRedeem } from './voucher-can-redeem'
 
 // 🛡️ 2026-05-22 module-scope: gift_catalog JOIN 가능 여부 캐시.
 //   null = 미확인, true = 가능, false = table 부재 → fallback 만 사용.
@@ -1116,12 +1117,11 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     }
 
     const voucher = await DB.prepare(`
-      SELECT v.*, p.name as product_name, p.restaurant_name, p.image_url as product_image
+      SELECT v.*, p.name as product_name, p.restaurant_name, p.image_url as product_image, p.seller_id as product_seller_id
       FROM vouchers v LEFT JOIN products p ON v.product_id = p.id
       WHERE v.code = ?
-    `).bind(code).first<VoucherRow & { product_name?: string; restaurant_name?: string; product_image?: string }>()
-
-    if (!voucher) return c.json({ success: false, error: '바우처를 찾을 수 없습니다' }, 404)
+    `).bind(code).first<VoucherRow & { product_name?: string; restaurant_name?: string; product_image?: string; product_seller_id?: number | null }>()
+    if (!voucher) return c.json({ success: false, error: '이용권을 찾을 수 없습니다' }, 404)
 
     return c.json({
       success: true,
@@ -1129,10 +1129,10 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         code: voucher.code,
         status: voucher.status,
         product_name: voucher.product_name,
-        restaurant_name: voucher.restaurant_name,
-        product_image: voucher.product_image,
+        restaurant_name: voucher.restaurant_name, product_image: voucher.product_image,
         expires_at: voucher.expires_at,
         used_at: voucher.used_at,  // 🛡️ 2026-05-16: 사용 시각 — 폴링 시 손님 화면에 표시
+        can_redeem: await voucherCanRedeem(c, voucher.product_seller_id), // 🏪 2026-10-08 /v 시안 — 표시용(권한 아님)
       },
     })
   })
