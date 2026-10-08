@@ -100,4 +100,43 @@ export default [
       '평소엔 자동으로 메인 렌즈를 고르므로 늘 떠 있는 버튼은 소음이다(대표 "그런게 필요해?"). ' +
       '7초 동안 한 건도 못 읽었을 때의 도움말 안에서만 나와야 한다.',
   },
+  {
+    name: '렌즈선택 — 카메라를 띄우기 전에 렌즈를 전부 열어 본다 (느린 첫 화면)',
+    file: SRC,
+    find: '      let chosen = await cachedBackCamera()',
+    replace: '      let chosen = await pickBestBackCamera()',
+    test: T,
+    why:
+      '대표 "처음 카메라 불러오는데에도 시간이 많이 걸리네?" 의 원인이었다 — 렌즈마다 0.5~1초씩 열어 보고 ' +
+      '나서야 화면이 뜬다. 먼저 띄우고, 그 렌즈가 근거리 QR 에 안 맞을 때만 고른다.',
+  },
+  {
+    name: '렌즈선택 — 맞는 렌즈가 열렸는데도 렌즈를 다시 고른다',
+    file: SRC,
+    find: '      if (!chosen && needsLensRepick(stream.getVideoTracks()[0], cams.length)) {',
+    replace: '      if (!chosen && cams.length > 1) {',
+    test: T,
+    why:
+      '렌즈가 둘 이상인 폰(거의 전부)은 매번 카메라를 껐다 렌즈를 하나씩 열고 다시 켠다 — 첫 화면이 ' +
+      '몇 초 늦고 깜빡인다. 기본 렌즈가 이미 메인이면 그대로 쓴다.',
+  },
+  {
+    name: '렌즈선택 — 능력을 안 알려 주면 무조건 다시 고른다',
+    file: CAM,
+    find: "  return Array.isArray(caps?.focusMode) && !caps!.focusMode!.includes('continuous')",
+    replace: "  return !caps?.focusMode?.includes('continuous')",
+    test: T,
+    why:
+      '초점 목록을 안 주는 브라우저(아이폰 일부)에서 근거 없이 렌즈를 전부 열어 본다 — 그 기기에서만 ' +
+      '카메라가 늘 늦게 뜬다.',
+  },
+  {
+    name: '렌즈선택 — 연속 초점 렌즈가 없을 때 고른 것을 안 기억한다',
+    file: CAM,
+    find: '  if (fallback) rememberCamera(fallback)',
+    replace: '  void fallback',
+    test: T,
+    why:
+      '기억이 안 남으면 그 기기는 계산대를 열 때마다 렌즈를 전부 다시 열어 본다 — 매번 느리다.',
+  },
 ]

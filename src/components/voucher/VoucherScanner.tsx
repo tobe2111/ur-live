@@ -22,6 +22,9 @@ import {
   applyBestCameraSettings,
   scanImageFile,
   pickBestBackCamera,
+  cachedBackCamera,
+  needsLensRepick,
+  rememberCamera,
   listBackCameras,
   nextCamera,
 } from './scan-camera'
@@ -184,8 +187,8 @@ export default function VoucherScanner() {
     try {
       const QrScanner = (await import('qr-scanner')).default
       if (!videoRef.current) return
-      // 🔭 렌즈를 고른다(기억해 둔 것이 있으면 즉시). 권한 전이면 null → 기본 facingMode.
-      const chosen = await pickBestBackCamera()
+      // ⚡ 기억해 둔 렌즈가 있으면 그것, 없으면 기본 facingMode 로 **먼저 띄운다**(렌즈를 미리 열어 보지 않는다).
+      const chosen = await cachedBackCamera()
       const scanner = new QrScanner(
         videoRef.current,
         (res: { data: string }) => {
@@ -203,10 +206,11 @@ export default function VoucherScanner() {
       )
       qrScannerRef.current = scanner
       await scanner.start()
-      // 🔭 첫 방문엔 권한 전이라 렌즈를 못 골랐다. 권한을 받은 지금, 렌즈가 둘 이상이면 다시 고른다.
+      // 🔭 기본 렌즈가 근거리 QR 에 안 맞을 때만(초광각 이름 · 연속 초점 없음) 다시 고른다.
       //   ⚠️ 먼저 스트림을 놓는다 — 기기에 따라 카메라를 **하나만** 열 수 있어 검사가 실패한다.
       let cams = await listBackCameras()
-      if (!chosen && cams.length > 1) {
+      const opened = (videoRef.current?.srcObject as MediaStream | null)?.getVideoTracks?.()[0]
+      if (!chosen && needsLensRepick(opened, cams.length)) {
         scanner.stop()
         const better = await pickBestBackCamera()
         if (better) await scanner.setCamera(better)
@@ -214,7 +218,9 @@ export default function VoucherScanner() {
         cameraIdRef.current = better
         cams = await listBackCameras()
       } else {
-        cameraIdRef.current = chosen
+        const id = chosen ?? opened?.getSettings?.().deviceId ?? null
+        if (!chosen && id && cams.length > 1) rememberCamera(id)  // 맞는 렌즈였다 — 다음엔 바로
+        cameraIdRef.current = id
       }
       setBackCams(cams)
       // 📷 qr-scanner 는 스스로 `{ facingMode }` 만 요청하고 **해상도도 초점도 안 건다**(소스 실측).
@@ -267,7 +273,7 @@ export default function VoucherScanner() {
             ? { deviceId: { exact: id }, width: SCAN_VIDEO_CONSTRAINTS.width, height: SCAN_VIDEO_CONSTRAINTS.height }
             : SCAN_VIDEO_CONSTRAINTS,
         })
-      let chosen = await pickBestBackCamera()
+      let chosen = await cachedBackCamera()
       let stream: MediaStream
       try {
         stream = await open(chosen)
@@ -275,14 +281,18 @@ export default function VoucherScanner() {
         chosen = null  // 기억해 둔 렌즈가 사라졌거나 못 연다 → 기본으로
         stream = await open(null)
       }
-      // 🔭 첫 방문엔 권한 전이라 못 골랐다 — 권한을 받은 지금, 렌즈가 둘 이상이면 다시 고른다.
+      // 🔭 기본 렌즈가 근거리 QR 에 안 맞을 때만(초광각 이름 · 연속 초점 없음) 다시 고른다.
+      //   대부분의 폰은 여기서 끝난다 — 렌즈를 하나씩 열어 보는 비용(렌즈마다 0.5~1초)을 안 치른다.
       //   ⚠️ 먼저 스트림을 놓는다(카메라를 하나만 열 수 있는 기기가 있다).
       let cams = await listBackCameras()
-      if (!chosen && cams.length > 1) {
+      if (!chosen && needsLensRepick(stream.getVideoTracks()[0], cams.length)) {
         stream.getTracks().forEach((tr) => tr.stop())
         chosen = await pickBestBackCamera()
         stream = await open(chosen)
         cams = await listBackCameras()
+      } else if (!chosen && cams.length > 1) {
+        const id = stream.getVideoTracks()[0]?.getSettings?.().deviceId
+        if (id) rememberCamera(id)  // 맞는 렌즈였다 — 다음엔 바로
       }
       cameraIdRef.current = chosen ?? stream.getVideoTracks()[0]?.getSettings?.().deviceId ?? null
       setBackCams(cams)

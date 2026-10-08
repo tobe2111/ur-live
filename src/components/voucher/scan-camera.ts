@@ -202,7 +202,37 @@ export async function pickBestBackCamera(md: MediaDevicesLike | undefined = navi
       stream?.getTracks().forEach((t) => t.stop())
     }
   }
-  return candidates[0]?.deviceId || null
+  // 연속 초점을 보고하는 렌즈가 없어도(능력을 안 알려 주는 브라우저) **고른 것을 기억한다** —
+  // 안 그러면 계산대를 열 때마다 렌즈를 전부 다시 열어 본다(그게 곧 "카메라가 늦게 뜬다" 다).
+  const fallback = candidates[0]?.deviceId || null
+  if (fallback) rememberCamera(fallback)
+  return fallback
+}
+
+/**
+ * ⚡ **빠른 길** — 기억해 둔 렌즈가 지금도 있으면 그 id. 렌즈를 **열어 보지 않는다**(목록만 본다).
+ * 2026-10-08 대표 *"처음 카메라 불러오는데에도 시간이 많이 걸리네?"* — 종전엔 카메라를 띄우기
+ * **전에** 렌즈를 하나씩 열어 봤다(렌즈마다 0.5~1초). 이제 기본 렌즈로 먼저 띄우고, 그 렌즈가
+ * 근거리 QR 에 안 맞을 때만(`needsLensRepick`) 고른다.
+ */
+export async function cachedBackCamera(md: MediaDevicesLike | undefined = navigator?.mediaDevices): Promise<string | null> {
+  const cached = readCachedCamera()
+  if (!cached) return null
+  const back = await listBackCameras(md)
+  return back.some((d) => d.deviceId === cached) ? cached : null
+}
+
+/**
+ * 지금 열린 렌즈를 바꿔야 하는가. **바꿀 근거가 있을 때만** 참이다:
+ *   ① 이름이 초광각·망원이라고 말한다 ② 초점 목록을 알려 주는데 연속 초점이 없다.
+ * 브라우저가 능력을 안 알려 주면(아이폰 일부) **기본 렌즈를 믿는다** — 근거 없이 렌즈를 다 열어
+ * 보는 비용을 매번 치르지 않는다. 렌즈가 하나뿐이면 바꿀 곳이 없다.
+ */
+export function needsLensRepick(track: MediaStreamTrack | null | undefined, backCount: number): boolean {
+  if (!track || backCount < 2) return false
+  if (isAuxLensLabel(track.label || '')) return true
+  const caps = track.getCapabilities?.() as { focusMode?: string[] } | undefined
+  return Array.isArray(caps?.focusMode) && !caps!.focusMode!.includes('continuous')
 }
 
 /** 다음 후면 렌즈(사장님이 직접 넘길 때). 고른 것은 기억한다 — 기기마다 맞는 렌즈가 다르다. */
