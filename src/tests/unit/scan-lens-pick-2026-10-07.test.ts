@@ -18,6 +18,8 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import {
   pickBestBackCamera,
+  cachedBackCamera,
+  needsLensRepick,
   listBackCameras,
   nextCamera,
   isAuxLensLabel,
@@ -136,6 +138,8 @@ describe('🔭 렌즈 선택 (2026-10-07)', () => {
       { id: 'b', label: 'camera2 1, facing back', focus: ['manual'] },
     ])
     expect(await pickBestBackCamera(md)).toBe('a')
+    // 기억해야 한다 — 안 그러면 능력을 안 알려 주는 기기에서 계산대를 열 때마다 렌즈를 전부 다시 연다.
+    expect(localStorage.getItem(SCAN_CAMERA_KEY)).toBe('a')
   })
 
   it('⑩ 직접 넘기기 — 다음 렌즈로 돌고, 고른 것을 기억한다', () => {
@@ -159,8 +163,19 @@ describe('🔌 배선', () => {
   const SRC = readCode('src/components/voucher/VoucherScanner.tsx')
 
   it('두 경로 모두 렌즈를 고른다 (한쪽만이면 그 기기에서만 고쳐진다)', () => {
-    expect([...SRC.matchAll(/await pickBestBackCamera\(\)/g)].length).toBeGreaterThanOrEqual(4)
+    expect([...SRC.matchAll(/await pickBestBackCamera\(\)/g)].length).toBeGreaterThanOrEqual(2)
+    expect([...SRC.matchAll(/await cachedBackCamera\(\)/g)].length).toBeGreaterThanOrEqual(2)
+    expect([...SRC.matchAll(/needsLensRepick\(/g)].length).toBeGreaterThanOrEqual(2)
     expect(SRC).toMatch(/preferredCamera: chosen \?\? 'environment'/)
+  })
+
+  // ⚡ 2026-10-08 대표 "처음 카메라 불러오는데에도 시간이 많이 걸리네?" — 카메라를 띄우기 **전에**
+  // 렌즈를 하나씩 열어 보던 것(렌즈마다 0.5~1초)이 원인이었다. 띄운 뒤, 필요할 때만 고른다.
+  it('카메라를 띄우기 전에 렌즈를 열어 보지 않는다 (먼저 띄우고, 필요할 때만 고른다)', () => {
+    expect(SRC).not.toMatch(/let chosen = await pickBestBackCamera\(\)/)
+    expect(SRC).not.toMatch(/const chosen = await pickBestBackCamera\(\)/)
+    expect(SRC).toMatch(/if \(!chosen && needsLensRepick\(stream\.getVideoTracks\(\)\[0\], cams\.length\)\)/)
+    expect(SRC).toMatch(/if \(!chosen && needsLensRepick\(opened, cams\.length\)\)/)
   })
 
   it('첫 방문 재선택 전에 스트림을 놓는다 (카메라를 하나만 여는 기기)', () => {
@@ -186,5 +201,38 @@ describe('🔌 배선', () => {
     const end = SRC.indexOf('\n      )}', help)
     expect(calls[0].index!).toBeGreaterThan(help)
     expect(calls[0].index!).toBeLessThan(end)
+  })
+})
+
+describe('⚡ 빠른 길 (2026-10-08 — 카메라가 늦게 뜬다)', () => {
+  const track = (label: string, focus?: string[]) =>
+    ({ label, getCapabilities: () => (focus ? { focusMode: focus } : {}) }) as unknown as MediaStreamTrack
+
+  it('기본 렌즈가 연속 초점이면 다시 고르지 않는다 (대부분의 폰)', () => {
+    expect(needsLensRepick(track('camera2 0, facing back', ['continuous', 'manual']), 3)).toBe(false)
+  })
+  it('🔴 연속 초점이 없다고 알려 주면 다시 고른다 (초광각)', () => {
+    expect(needsLensRepick(track('camera2 2, facing back', ['fixed']), 3)).toBe(true)
+  })
+  it('🔴 이름이 초광각·망원이면 다시 고른다', () => {
+    expect(needsLensRepick(track('Back Ultra Wide Camera', ['continuous']), 3)).toBe(true)
+  })
+  it('능력을 안 알려 주면 기본 렌즈를 믿는다 (근거 없이 렌즈를 다 열지 않는다)', () => {
+    expect(needsLensRepick(track('Back Camera'), 3)).toBe(false)
+  })
+  it('렌즈가 하나뿐이면 바꿀 곳이 없다', () => {
+    expect(needsLensRepick(track('camera2 2, facing back', ['fixed']), 1)).toBe(false)
+  })
+  it('기억해 둔 렌즈는 **열어 보지 않고** 돌려준다, 사라졌으면 null', async () => {
+    const { md, opened } = device([
+      { id: 'a', label: 'camera2 0, facing back', focus: ['continuous'] },
+      { id: 'b', label: 'camera2 2, facing back', focus: ['fixed'] },
+    ])
+    expect(await cachedBackCamera(md)).toBeNull()
+    localStorage.setItem(SCAN_CAMERA_KEY, 'b')
+    expect(await cachedBackCamera(md)).toBe('b')
+    localStorage.setItem(SCAN_CAMERA_KEY, 'gone')
+    expect(await cachedBackCamera(md)).toBeNull()
+    expect(opened).toEqual([])
   })
 })
