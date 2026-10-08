@@ -174,3 +174,35 @@ expect(rows(workerCard(p))).toEqual(rows(reactCard(p)))
 - `locLabel` 을 소스에서 통째로 찾았다 — 그 클래스는 **삼항으로 조립**돼 한 덩어리로
   안 나타난다. **코드가 멀쩡한데 빨간불**이 났다. ⇒ 조각 둘을 각각 대조(한쪽만 보면
   나머지 절반이 조용히 갈린다).
+
+---
+
+## ✅ ①의 E4 (배포 후 라이브, `urdeal.kr/vouchers/2192`, JS 끈 채 서버 HTML 그대로)
+
+**통과** — 첫 페인트에 **사진 + `교환권` 칩 + 제목**이 그대로 있다(`out/loadshots/fp_vouchers_2192.png`).
+`x-ssr-status: DETAIL:edge-hit`.
+
+### 🔎 그런데 짧아진 로더가 **첫 화면에 안 보인다** — 의도와 다르다(해롭진 않다)
+
+HTML 을 세어 보니 `34dvh` 1건 · `100dvh` 1건인데, 그 `100dvh` 는 **로더가 아니라**
+`VOUCHER_FS_CLASS.root` 의 `min-h-[100dvh]` 다. 즉 치환은 제대로 됐고(로더는 34dvh),
+**첫 화면 루트가 이미 100dvh 를 차지해** 로더가 y≥844 로 밀려 접힘 밖에 있다.
+
+- **해롭지 않다** — 오히려 대표가 말한 *"로딩 장면 없이"* 에 더 가깝다. 그래서 되돌리지 않았다.
+- **다만 설계 의도와 다르므로 적어 둔다**: `/pass/:id`(2026-09-15)도 같은 구조이니
+  "그 아래 짧은 로더" 라는 서술을 그대로 믿지 말 것. 실제로는 **안 보인다.**
+- **④ 홈은 다르다** — `HOME_FS_CLASS.root` 에 `min-h-[100dvh]` 를 **일부러 안 넣었다**.
+  그려진 내용이 ~770px 라 34dvh 로더가 바로 아래에서 보인다.
+
+## 🩸 squash 머지 뒤 같은 브랜치를 이어 써서 PR 이 조용히 멎었다
+
+#1664 를 **squash** 로 머지한 뒤 같은 브랜치에 ④를 쌓았더니 #1665 가
+`mergeable_state: dirty` + **`Verify` 가 아예 없음**(= CLAUDE.md 가 적어 둔 그 증상 —
+GitHub 이 머지 커밋을 못 만들면 `pull_request` 워크플로가 **디스패치되지 않는다**).
+빨간 체크가 하나도 없어서 훑어보면 통과처럼 보인다.
+
+**처방**: `git checkout -B <branch> origin/main` → `git cherry-pick <미머지 커밋>` →
+`check-github-side-merge` 통과 확인 → `--force-with-lease`. 되돌아온 뒤 `Verify` 정상 디스패치.
+
+⚠️ **다음 세션 규칙**: squash 머지된 브랜치에 **그대로 이어 붙이지 말 것.** 머지 직후
+`git checkout -B <branch> origin/main` 으로 base 를 새로 잡고 시작한다.
