@@ -206,3 +206,54 @@ GitHub 이 머지 커밋을 못 만들면 `pull_request` 워크플로가 **디�
 
 ⚠️ **다음 세션 규칙**: squash 머지된 브랜치에 **그대로 이어 붙이지 말 것.** 머지 직후
 `git checkout -B <branch> origin/main` 으로 base 를 새로 잡고 시작한다.
+
+---
+
+## 🛍️ ② `/u/:handle` — 사전조사 (2026-10-08, #1665 머지 대기 중 수행 · 미구현)
+
+**라이브 실측** (`curl -A '<iPhone UA>' https://urdeal.kr/u/jiwon1228`):
+- `x-ssr-status: CURATOR:self-fetch-hit` · 문서 **60,773B** · `#root` 는 **catch-all 유달이 로더**(`ur-first-screen` 0건).
+- `__SSR_INITIAL_CURATOR__` **2,639B** — 그릴 것이 충분하다:
+  - `curator`: `name` `bio` `profile_image` `banner_url` `headline` `accent` `youtube_url` `instagram_url` `tiktok_url` `linkshop_show_recommend`
+  - `pins` **4건**, 각 핀에 `product_name` `restaurant_name` `restaurant_address` `price` `original_price` `discount_rate` `image_url` `dominant_color` `avg_rating` `review_count` `category` `deal_only` `position`
+  - `linked_seller` = **null**(이 핸들은 핀 그리드 경로 — 인라인 `SellerPublicPage` 아님)
+
+> 🩸 **전에 제가 "이 페이지 페이로드는 한 줄뿐" 이라고 보고한 것은 틀렸다**(`CuratorHeader.tsx` 만 읽고 핀 줄을 안 봤다). 위가 실측값이다.
+
+**로더가 뜨는 이유는 데이터가 아니다** — 시드가 핸들과 맞으면 `CuratorPage` 의 `loading` 은 첫 렌더에
+이미 `false`(l.86 `useState(!data)`)라 **마운트 순간 본문을 그린다.** 보이는 1초는 전부
+[정적 로더 → 청크 다운로드·파싱 → 마운트] 구간이고, ①④와 **같은 모양**이다.
+
+### 🔴 막는 자리 — 주인 전용 `관리` 버튼이 **제목 위**가 아니라 **제목 옆**에 있다
+
+`CuratorHeader` 의 이름 줄은 `flex items-start` 로 [왼: h1+bio(`min-w-0 flex-1`)] / [오: SNS+공유+`canEdit && 관리`].
+
+- **높이는 안 변한다** — 오른쪽 묶음은 `canEdit` 와 무관하게 공유 버튼(`w-9 h-9`)이 있어 늘 36px.
+- **⚠️ 폭이 변한다** — `관리`(`h-9 px-3` + gap)가 붙으면 왼쪽 칸이 좁아지고, `h1` 이 `line-clamp-2` 라
+  **1줄 → 2줄로 되감겨 그 아래 전체가 밀린다.** 소스 주석(2026-09-30)이 이 폭 변화를 이미 기록하고 있다
+  ("주인 화면에서 왼쪽 칸이 156px").
+- `isOwner` 는 **동기**다(`localStorage.user_id` + `useAuthStore`, l.101~109) → 주인의 **첫 React 렌더에
+  이미 버튼이 있다**. 즉 서버가 버튼 없이 그리면 **주인에게만** 마운트 때 되감김이 일어난다
+  (2026-09-15 에 `/group-buy/:id` 를 히어로에서 멈추게 한 것과 **같은 클래스**).
+
+### 쓸 수 있는 길 (다음 세션이 고를 것)
+
+1. **이름 길이 보수 게이트 (추천)** — 주인 폭(가장 좁은 경우)에서도 `h1` 이 한 줄에 들어가는 길이면
+   버튼 없이 그리고, 넘치면 `''` 를 돌려 **종전 로더로 떨어진다**(①④가 이미 쓰는 실패 패턴).
+   임계값은 브라우저 하네스로 **실측해 테스트에 박는다**(17px bold · tracking −0.03em · 156px 칸).
+   `jiwon1228`("정지원" 3자)은 안전. ⚠️ 긴 이름 샵은 지금과 같다(개선 없음, 악화 없음).
+2. **`관리` 자리를 모두에게 예약** — ❌ 손님 레이아웃이 오늘보다 좁아져 **회귀**다(+대표 확정 안 C 를 건드린다).
+3. **헤더를 안 그리고 핀만** — ❌ 헤더 높이를 숫자로 예약해야 해서 2026-09-16 "마법의 숫자 금지" 를 어긴다.
+
+### 그릴 경계 (①④와 같은 규율)
+
+- ✅ 브랜드 바(`lg:hidden`, 로고는 `<UrDealLogo>` 이미 워커가 쓰는 것) · 이름 · bio · 칩 줄의 **높이** · 핀 4줄
+- ❌ `관리` 버튼 · SNS 아이콘(lucide) · `SortMenu` · 검색창(게이트는 `pins.length >= SEARCH_MIN_PINS` 로 시드 파생 가능하므로 **높이는 그릴 수 있다**) · `UShopQrCard`(PC 전용 칸)
+- 사진은 핀의 `image_url` + `dominant_color` — **`/u/` 에는 워커 preload 가 없다**(홈·상세와 달리).
+  ⇒ 같은 커밋에서 preload 를 추가하든, 추가 요청을 감수하든 **먼저 정할 것**(갈리면 사진을 두 번 받는다).
+
+### 먼저 할 무해한 한 걸음
+
+`CuratorPage.tsx` l.229 · l.251 의 `<BrandLoader fullScreen />` → `BootFirstScreenLoader`.
+오늘은 서버 첫 화면이 없어 **no-op** 이지만, 생기는 날 풀스크린 로더가 그 화면을 덮는 것을 막는다
+(2026-09-16 에 `/group-buy/:id` 에서 실제로 540ms 덮었던 그 결함).
