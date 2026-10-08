@@ -15,7 +15,7 @@ export interface WalletStat {
   mono?: boolean
 }
 
-export default function WalletHeader({ title, hideTitle = false, amount, unit, stats = [], onBack, backLabel, eyebrow, countText }: {
+export default function WalletHeader({ title, hideTitle = false, amount, unit, stats = [], onBack, backLabel, eyebrow }: {
   title: string
   /** 🎫 2026-09-03 (대표 "내 이용권 문장 삭제"): 제목을 화면에서 지운다. 페이지가 제목 없는 문서가
    *  되지 않도록 `sr-only` h1 로만 남긴다(보조기술·SEO 구조 유지). 제목이 빠지면 금액이 그 줄의
@@ -31,10 +31,10 @@ export default function WalletHeader({ title, hideTitle = false, amount, unit, s
   onBack?: () => void
   backLabel?: string
   /** 🎫 2026-10-07 (대표 확정 A안 "정돈"): 있으면 금액 위 한 줄 라벨("쓸 수 있는 이용권")로 쌓는 배치.
-   *  금액·장수를 **이 자리에서 한 번만** 말하고, 아래 탭·카드는 같은 숫자를 다시 안 말한다. */
+   *  이 자리는 **금액만** 말한다 — 장수는 바로 아래 탭 배지가 혼자 맡는다(2026-10-08 대표
+   *  "굳이 없어도 될 것 같아"). 종전엔 `88,900원 · 3장` 과 40px 아래 `사용 가능 3` 이 같은 숫자를
+   *  두 번 말했다. 여기에 장수 prop 을 되살리면 그 중복이 그대로 돌아온다. */
   eyebrow?: string
-  /** eyebrow 배치에서 금액 뒤에 붙는 장수("1장") */
-  countText?: string
 }) {
   if (eyebrow) {
     return (
@@ -44,7 +44,7 @@ export default function WalletHeader({ title, hideTitle = false, amount, unit, s
         {amount !== null && (
           <p className="mt-1 flex items-baseline gap-2 leading-none">
             <span className="text-[34px] font-extrabold tabular-nums tracking-[-0.02em] text-gray-900 dark:text-white">{formatNumber(amount)}</span>
-            <span className="text-[15px] font-bold text-gray-500 dark:text-gray-400">{unit}{countText ? ` · ${countText}` : ''}</span>
+            <span className="text-[15px] font-bold text-gray-500 dark:text-gray-400">{unit}</span>
           </p>
         )}
         <div className="mt-4" />
