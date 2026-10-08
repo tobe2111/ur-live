@@ -1,4 +1,5 @@
 import { LayoutGrid, Utensils, Scissors, BedDouble, Shapes } from 'lucide-react'
+import { DEAL_CAT_LABELS, type DealCategory } from '@/shared/deal-cats'
 
 /**
  * 🖥️ 2026-07-19 (대표 요청 — "왼쪽 카테고리보단 위에"): 좌측 세로 레일 → **상단 가로 카테고리 바**로 전환.
@@ -10,16 +11,24 @@ import { LayoutGrid, Utensils, Scissors, BedDouble, Shapes } from 'lucide-react'
  *   날짜·인원 숙소 검색(/stays)은 숙소 카테고리 활성 시 PcHomePage 가 배너 링크로 안내(명시적 이동만).
  */
 
-export type DealCategory = 'all' | 'meal_voucher' | 'beauty_voucher' | 'stay_voucher' | 'etc_voucher'
+export type { DealCategory } from '@/shared/deal-cats'
 
-/** 🏷️ 카테고리 라벨 SSOT — 레일 칩과 홈 제목이 **같은 표**를 읽는다(문구가 갈리면 반드시 어긋난다). */
-export const DEAL_CATS: { key: DealCategory; label: string; icon: typeof LayoutGrid }[] = [
-  { key: 'all',            label: '전체', icon: LayoutGrid },
-  { key: 'meal_voucher',   label: '식사', icon: Utensils },
-  { key: 'beauty_voucher', label: '미용', icon: Scissors },
-  { key: 'stay_voucher',   label: '숙소', icon: BedDouble },
-  { key: 'etc_voucher',    label: '기타', icon: Shapes },
-]
+/**
+ * 🏷️ 카테고리 라벨 SSOT — 레일 칩과 홈 제목이 **같은 표**를 읽는다(문구가 갈리면 반드시 어긋난다).
+ *
+ * ⚠️ 2026-10-08: 라벨·순서는 `@/shared/deal-cats`(순수)로 내렸고 여기서는 **아이콘만** 붙인다.
+ *   이 파일은 `lucide-react` 를 import 하므로 워커가 읽을 수 없는데(번들 gzip 게이트),
+ *   홈 첫 화면을 서버가 그릴 때 같은 라벨이 필요하다. 그 파일 머리말에 사유가 있다.
+ */
+const CAT_ICON: Record<DealCategory, typeof LayoutGrid> = {
+  all: LayoutGrid,
+  meal_voucher: Utensils,
+  beauty_voucher: Scissors,
+  stay_voucher: BedDouble,
+  etc_voucher: Shapes,
+}
+export const DEAL_CATS: { key: DealCategory; label: string; icon: typeof LayoutGrid }[] =
+  DEAL_CAT_LABELS.map(({ key, label }) => ({ key, label, icon: CAT_ICON[key] }))
 
 export default function PcHomeRail({
   category,
