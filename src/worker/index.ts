@@ -286,7 +286,7 @@ import { referralRoutes } from '../features/referral/api/referral.routes';
 //   (typeof navigator/window 가드 보유라 워커 안전). URL 이 클라 렌더값과 byte-일치해야 preload 적중.
 import { cfImage, cfSrcSet } from '../utils/cf-image';
 // 🖼️ 홈 첫 화면 카드 사진 preload — 링크 생성은 헬퍼가 한다(파일 크기 래칫 + 직접 테스트 용이).
-import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; // 한 줄: 파일크기 래칫(2685) 안
+import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; // 한 줄: 파일크기 래칫(2685) 안
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -1037,6 +1037,10 @@ app.use('*', async (c, next) => {
       //   슬롯이라도 다른 페이지라 pathname 으로 가른다. 사유·경계·폴백(''→로더): `utils/detail-ssr-body.ts`.
       const firstScreen = buildDetailFirstScreen(ssrPayload, urdealLoaderHtml, url.search);
       rb = rb.on('#root', { element(el) { el.setInnerContent(firstScreen || urdealLoaderHtml, { html: true }); } });
+    } else if (ssrSlot === 'DETAIL' && ssrPayload && url.pathname.startsWith('/vouchers/')) {
+      // 🎁 2026-10-08 [UNLOCK_LOADING] (대표 "모두 다 하자"): 같은 DETAIL 슬롯·같은 시드인데 위 pathname 에서 빠져 로더만 보였다. 사유·경계: `utils/voucher-detail-ssr-body.ts`.
+      const voucherFirst = buildVoucherDetailFirstScreen(ssrPayload, urdealLoaderHtml);
+      rb = rb.on('#root', { element(el) { el.setInnerContent(voucherFirst || urdealLoaderHtml, { html: true }); } });
     } else {
       // 🖼️ 2026-07-07 [UNLOCK_LOADING] (대표 신고 "로딩 중간에 이상한 페이지들" — 전수조사 + "홈도 이상적으로"):
       //   **catch-all 디폴트 = URDEAL 정적 로더**. prerender 된 `#root` 에는 홈(=RestaurantMapPage list) shell 이
