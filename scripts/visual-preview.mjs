@@ -593,6 +593,18 @@ function serve() {
           return res.end(JSON.stringify(storesSeed(STORES_N)))
         // 🎬 레일은 홈 어느 경로에서든 뜬다 — 플래그 없이 항상 준다.
         if (p === '/api/urshorts') return res.end(JSON.stringify({ success: true, data: SHORTS_SEED }))
+        /**
+         * 🎟️ `--verify=redeem|used|pin|other` — 이용권 인증 화면(`/v/:code`)의 상황별 응답.
+         *   `can_redeem` 은 서버가 좌석 토큰으로 판정하는 값이라 여기서 직접 정한다.
+         *   (`other` 는 `--auth=seller` 와 같이 써야 '다른 매장' 화면이 뜬다.)
+         */
+        if (typeof args.verify === 'string' && p.startsWith('/api/vouchers/verify/'))
+          return res.end(JSON.stringify({ success: true, data: {
+            code: 'UR-LUBA-RCP5', status: args.verify === 'used' ? 'used' : 'unused',
+            product_name: '버크셔 프리미엄 돈가스 1인 세트', restaurant_name: '홍대돈까스', product_image: null,
+            expires_at: '2026-12-31 14:59:59', used_at: args.verify === 'used' ? '2026-10-07 04:42:00' : null,
+            can_redeem: args.verify === 'redeem',
+          } }))
         if (args.wallet && p === '/api/vouchers/my')
           return res.end(JSON.stringify({ success: true, data: WALLET_VOUCHERS }))
         if (args.deals) {
