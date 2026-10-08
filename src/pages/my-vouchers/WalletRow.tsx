@@ -8,7 +8,10 @@
  *
  * ## 규칙
  *   - **가장 급한 한 장만** 티켓으로 펴고(=지금 쓸 것), 나머지는 이 줄로 접는다.
- *   - 줄에는 "무엇을 / 어디서 / 언제까지 / 얼마" 만. 코드·QR·환불은 눌러서 연다.
+ *   - 줄에는 "무엇을 / 어디서 / 언제까지" 만. 코드·QR·환불은 눌러서 연다.
+ *   - 오른쪽 자리는 **남은 기간(D-N)**이다 (2026-10-07 대표 *"응 남은 기간 표시로 해줘"*).
+ *     지갑 A안에서 금액은 머리글 합계 한 번만 말한다 — 줄마다 장별 가격을 또 적으면 같은 말의 반복이고,
+ *     이미 산 이용권에서 사람이 훑는 건 "얼마였나"가 아니라 "언제까지 써야 하나"다.
  *   - 임박(D-2 이하)은 `--tone-bad` 로 굵게 — 지갑에서 유일하게 급한 것이다.
  *
  * ## 표면 규칙 (docs/design/ticket-completion-reference-2026-09.md §1)
@@ -17,7 +20,6 @@
  */
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { TicketStubIcon } from '@/components/icons/urdeal-icons'
-import { formatNumber } from '@/utils/format'
 import { safeDate } from '@/utils/safe-date'
 import type { Voucher } from './types'
 
@@ -34,8 +36,6 @@ export default function WalletRow({ v, t, onOpen }: {
 }) {
   const d = daysLeftOf(v)
   const urgent = v.status === 'unused' && d !== null && d <= 2
-  const price = v.applied_price ?? v.product_price ?? null
-  const unit = v.deal_only ? t('voucher.deal', { defaultValue: '딜' }) : t('voucher.won', { defaultValue: '원' })
 
   return (
     <button
@@ -51,20 +51,14 @@ export default function WalletRow({ v, t, onOpen }: {
 
       <div className="flex-1 min-w-0">
         <div className="text-[15px] font-bold tracking-tight text-gray-900 dark:text-white truncate">{v.product_name}</div>
-        <div className="text-[12px] text-gray-500 dark:text-gray-400 truncate mt-1">
-          {v.restaurant_name || ''}
-          {d !== null && (
-            <>
-              {v.restaurant_name ? ' · ' : ''}
-              <span className={urgent ? 'font-extrabold text-tone-bad' : ''}>{d === 0 ? 'D-DAY' : `D-${d}`}</span>
-            </>
-          )}
-        </div>
+        {v.restaurant_name && (
+          <div className="text-[12px] text-gray-500 dark:text-gray-400 truncate mt-1">{v.restaurant_name}</div>
+        )}
       </div>
 
-      {price !== null && (
-        <div className="shrink-0 text-[15px] font-extrabold tabular-nums text-gray-700 dark:text-gray-200">
-          {formatNumber(price)}<span className="text-[12px] font-bold text-gray-400 dark:text-gray-500 ml-1">{unit}</span>
+      {d !== null && (
+        <div className={`shrink-0 text-[15px] tabular-nums ${urgent ? 'font-extrabold text-tone-bad' : 'font-bold text-gray-700 dark:text-gray-200'}`}>
+          {d === 0 ? 'D-DAY' : `D-${d}`}
         </div>
       )}
     </button>

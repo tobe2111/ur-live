@@ -108,11 +108,21 @@ export default [
   {
     name: '[상세B지갑E] 🔴임박 강조가 툴킷 기본 빨강으로 돌아간다',
     file: 'src/pages/my-vouchers/WalletRow.tsx',
-    find: `urgent ? 'font-extrabold text-tone-bad' : ''`,
-    replace: `urgent ? 'font-extrabold text-[#DC2626]' : ''`,
+    find: `urgent ? 'font-extrabold text-tone-bad'`,
+    replace: `urgent ? 'font-extrabold text-[#DC2626]'`,
     test: TEST,
     why:
       '값이 우연히 비슷해 눈으로는 구분이 안 되지만, 다크에서 갈린다(`--tone-bad` 는 다크에서 밝힌다). ' +
       '"AI 같다"의 정체가 정확히 이 클래스였다 — 툴킷 기본색이 화면마다 섞인 것.',
+  },
+  {
+    name: '[상세B지갑E] 🎫접힌 줄 오른쪽에 장별 가격이 되돌아온다 (2026-10-07 남은 기간으로 교체)',
+    file: 'src/pages/my-vouchers/WalletRow.tsx',
+    find: `{d === 0 ? 'D-DAY' : `,
+    replace: `{v.applied_price}{d === 0 ? 'D-DAY' : `,
+    test: TEST,
+    why:
+      '지갑 A안에서 금액은 머리글 합계 한 번만 말한다. 줄마다 가격을 다시 적으면 같은 말의 반복이고, ' +
+      '이미 산 이용권에서 훑는 건 "얼마였나"가 아니라 "언제까지 써야 하나"다(대표 확정 2026-10-07).',
   },
 ]

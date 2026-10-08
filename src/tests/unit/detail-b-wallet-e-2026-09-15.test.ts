@@ -158,6 +158,12 @@ describe('지갑 안 E — 급한 한 장만 펴고 나머지는 한 줄', () =>
     expect(row, '임박 판정이 사라졌다').toMatch(/d\s*<=\s*2/)
     expect(row, '임박 강조가 사라졌거나 툴킷 색으로 돌아갔다').toContain('text-tone-bad')
   })
+
+  it('접힌 줄 오른쪽은 남은 기간이다 — 장별 가격을 다시 말하지 않는다 (2026-10-07 대표 확정)', () => {
+    const row = readCode('src/pages/my-vouchers/WalletRow.tsx')
+    expect(row, '남은 기간(D-N) 표시가 사라졌다').toMatch(/`D-\$\{d\}`/)
+    expect(row, '줄에 장별 가격이 되돌아왔다 — 금액은 머리글 합계 한 번').not.toMatch(/applied_price|product_price|formatNumber/)
+  })
 })
 
 describe('지갑 — 툴킷 기본색·회색 테두리 상자가 없다', () => {
