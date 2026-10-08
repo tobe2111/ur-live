@@ -188,7 +188,7 @@
 | `index.html` | preload `crossOrigin` 속성 없음 (same-origin) | preload mismatch → 200-500ms 손해 |
 | `index.html` | Speculation Rules prerender 대상 (`/group-buy/*`, `/products/*`, `/live/*`) | 카드 클릭 후 prerender 효과 X |
 | `index.html` | preconnect (`firebasestorage.googleapis.com` 등) | DNS+TLS 100-200ms 손해 |
-| ~~`src/App.tsx`~~ | ~~`MainHomePage` eager `import` (lazy X)~~ → **2026-07-29 폐기**: 홈이 `HomeRoute`(PC=`PcHomePage` / 모바일=`RestaurantMapPage`, **둘 다 lazy**)로 바뀌면서 `MainHomePage` 는 참조 0인 죽은 파일이 됐다. 이 행을 그대로 따르면 **죽은 컴포넌트를 eager import 로 되살리게 된다.** 현재 홈 lazy 는 App.tsx:46 이 명시한 의도적 트레이드오프(카카오 SDK async 로드라 청크 페치가 가려짐) | (해당 없음) |
+| ~~`src/App.tsx`~~ | ~~`MainHomePage` eager `import` (lazy X)~~ → **2026-07-29 폐기**: 홈이 `HomeRoute`(PC=`PcHomePage` / 모바일=`MobileHomePage`, **둘 다 lazy**)로 바뀌면서 `MainHomePage` 는 참조 0인 죽은 파일이 됐다. 🩸 **2026-10-08 정정**: 여기 오래 *"모바일=`RestaurantMapPage`"* 라고 적혀 있었다 — **2026-08-19 대표 확정(그루폰 모바일 홈)으로 모바일 홈은 지도가 아니라 딜 피드(`pages/mobile-home/MobileHomePage`)가 됐고 지도는 `/map` 으로 남았다**(`HomeRoute.tsx` 머리말이 그 전환을 명시한다). 첫 페인트 작업을 하던 세션이 이 줄을 믿고 *"모바일 홈은 지도라 서버가 그릴 게 없다"* 고 오판할 뻔했다 — 실제로는 **사진 있는 카드 4장**이 첫 화면이고 시드(`__SSR_INITIAL_MAIN__`·`__SSR_INITIAL_SECTIONS__`)도 이미 와 있다. `check-lock-table-symbols` 는 심볼 **존재**만 보므로 이렇게 *다른 파일로 옮겨간* 경우를 못 잡는다(그 가드가 스스로 적어 둔 한계). 이 행을 그대로 따르면 **죽은 컴포넌트를 eager import 로 되살리게 된다.** 현재 홈 lazy 는 App.tsx:46 이 명시한 의도적 트레이드오프(카카오 SDK async 로드라 청크 페치가 가려짐) | (해당 없음) |
 | `src/App.tsx` | idle prefetch (BrowsePage / VouchersPage / UserProfilePage / MyVouchersPage / SellerPublicPage) | 탭 클릭 시 chunk fetch 대기 |
 | Migration `0276_products_groupbuy_perf_index` | `idx_products_groupbuy_feed` partial composite index | 풀스캔 회귀 → 상품 늘면 선형 느려짐 |
 | Migration `0080` FTS5 | `products_fts` virtual table | 검색 풀스캔 회귀 |
