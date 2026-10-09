@@ -14,8 +14,9 @@ import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
-import type { CuratorPageResponse, CuratorPin } from '@/features/curator/api/curator-api'
+import type { CuratorPageResponse } from '@/features/curator/api/curator-api'
 import { fetchCuratorPage, getCuratorCache } from '@/features/curator/curator-page-cache'
+import { curatorHomePins } from '@/shared/curator-pin-order'
 import { useAuthStore } from '@/client/stores/auth.store'
 // 🎫 2026-09-28 (대표 확정 s3 밀도형): 2열 격자 → 줄. 줄 카드는 `components/deal/DealRow` SSOT 를 쓴다.
 import PinRow from './curator-page/PinRow'
@@ -163,25 +164,11 @@ export default function CuratorPage() {
   //   ⚠️ **순서는 주인 것이다.** 자동 정렬로 `position` 을 덮지 않는다 — 드래그로 맞춰 놓은 순서가
   //     사라지면 재정렬 기능이 무의미해진다. 덩어리만 가르고 **각 덩어리 안은 원래 순서 그대로**
   //     (filter 는 순서를 보존한다).
-  const { dealPins, shopPins, voucherPins } = useMemo(() => {
-    const empty = { dealPins: [] as CuratorPin[], shopPins: [] as CuratorPin[], voucherPins: [] as CuratorPin[] }
-    if (!data?.pins) return empty
-    const isVoucher = (p: CuratorPin) => {
-      const cat = (p as { category?: string }).category || ''
-      const dealOnly = (p as { deal_only?: number }).deal_only === 1
-      return dealOnly || /voucher/i.test(cat)
-    }
-    const hasDeal = (p: CuratorPin) => Number(p.deal_pct) > 0
-    const rest = data.pins.filter(p => !hasDeal(p))
-    return {
-      dealPins: data.pins.filter(hasDeal),
-      shopPins: rest.filter(p => !isVoucher(p)),
-      voucherPins: rest.filter(p => isVoucher(p)),
-    }
-  }, [data])
-
   // 🧭 2026-06-10 (동네딜 집중 재정향): 홈 탭 = 교환권/공구 핀 우선 노출 (그룹 내 기존 순서 유지).
-  const homePins = useMemo(() => [...dealPins, ...voucherPins, ...shopPins], [dealPins, voucherPins, shopPins])
+  // 🔢 2026-10-09 — 이 덩어리 가르기를 `shared/curator-pin-order.ts` 로 **행동 불변으로** 옮겼다.
+  //   워커가 첫 화면의 줄 4개를 같은 순서·같은 번호로 그려야 하는데, 손으로 두 벌 적으면 갈리고
+  //   그러면 순번 배지가 다른 상품을 가리킨다(= SNS 의 "N번" 이 엉뚱한 곳으로 간다).
+  const homePins = useMemo(() => (data?.pins ? curatorHomePins(data.pins) : []), [data])
 
   // 🔢 순번 배지의 **주소** — 주인 순서(딜 → 교환권 → 상품) 기준 고정 인덱스.
   //   정렬·필터로 화면 순서가 바뀌어도 이 숫자는 안 움직인다. SNS 의 "3번 이용권" 이 가리키는 것이
