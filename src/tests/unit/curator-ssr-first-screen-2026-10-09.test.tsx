@@ -188,7 +188,7 @@ describe('유어샵 서버 첫 화면 — 워커 HTML ↔ 진짜 컴포넌트', 
       id: 3, handle: 'jiwon1228', name: '지원의 동네가게 연남점', bio: '소개',
       profile_image: null, youtube_url: 'y', instagram_url: 'i', tiktok_url: '',
     }
-    const mk = (canEdit: boolean) => {
+    const renderHeader = (canEdit: boolean) => {
       const { container } = render(
         <MemoryRouter>
           <CuratorHeader curator={curator as never} canEdit={canEdit} onCopyLink={() => {}} />
@@ -196,8 +196,8 @@ describe('유어샵 서버 첫 화면 — 워커 HTML ↔ 진짜 컴포넌트', 
       )
       return container
     }
-    const owner = mk(true)
-    const visitor = mk(false)
+    const owner = renderHeader(true)
+    const visitor = renderHeader(false)
     const cluster = (c: Element) => c.querySelector('.ml-3')!
     // 버튼 자리 개수가 같다(SNS 2 + 공유 + 관리 = 4)
     expect(cluster(visitor).children.length).toBe(cluster(owner).children.length)
