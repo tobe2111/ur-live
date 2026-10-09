@@ -28,6 +28,9 @@ import {
   listBackCameras,
   nextCamera,
 } from './scan-camera'
+import { extractCode } from './scan-code'  // 코드 정규화(대문자·공백 — 실사고 기록 포함)
+import { createScanSession, scanPlatform, sendScanReport, type ScanSession } from './scan-telemetry'
+import { primeScanSound, scanSignal } from './scan-feedback'
 
 /** 확인을 기다리는 스캔. `status` 는 `/verify` 가 준 값(unused·used·expired·refunded…), 조회 실패면 없다. */
 type PendingUse = { code: string; loading: boolean; productName?: string; restaurantName?: string; status?: string }
@@ -41,9 +44,6 @@ type ScanResult = {
   at: string
 }
 
-import { extractCode } from './scan-code'  // 코드 정규화(대문자·공백 — 실사고 기록 포함)
-import { createScanSession, scanPlatform, sendScanReport, type ScanSession } from './scan-telemetry'
-import { primeScanSound, scanSignal } from './scan-feedback'
 export { extractCode }
 
 export default function VoucherScanner() {
