@@ -451,4 +451,8 @@ export interface Env {
   //
   //   💰 preview 에 안 붙은 것은 결함이 아니라 이득이다: 프리뷰 배포가 추론 비용을 안 태운다.
   AI?: { run: (model: string, input: Record<string, unknown>) => Promise<unknown> };
+  // 🖼️ 2026-10-10 Cloudflare Images 바인딩 — OG 카드에 박을 사진을 서버 안에서 줄인다.
+  //   Pages 서버 안에서는 같은 존의 cdn-cgi 리사이저도, fetch 의 cf.image 도 안 걸린다(2026-06-11·10-09 실측).
+  //   대시보드에서 바인딩(이름 IMAGES)을 붙여야 생긴다 — 없으면 종전 경로(cdn-cgi → 실패 시 원본 302).
+  IMAGES?: import('../utils/og-inline-image').ImagesBindingLike;
 }

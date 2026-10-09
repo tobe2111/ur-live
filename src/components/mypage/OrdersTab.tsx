@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { BoxIcon, TruckIcon, MessageIcon, TicketStubIcon, PeopleIcon } from '@/components/icons/urdeal-icons'
 import { Link } from 'react-router-dom'
+import Udal from '@/components/mascot/Udal'
 import { ChevronRight, Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
@@ -473,9 +474,8 @@ function EmptyState({ kindFilter, searching, t }: { kindFilter: KindFilter; sear
   }
   return (
     <div className="bg-surface rounded-2xl border border-gray-100 dark:border-[#2C2F35] p-12 text-center">
-      <div className="w-20 h-20 bg-gray-50 dark:bg-[#1D1F29] rounded-full flex items-center justify-center mx-auto mb-5">
-        <BoxIcon className="h-10 w-10 text-gray-400 dark:text-gray-500" aria-hidden="true" />
-      </div>
+      {/* 🦦 2026-10-10 (대표 "다 해줘"): 상자 아이콘 → 유달이. 검색해서 0건은 갸웃(notFound), 아직 산 게 없으면 빈 지갑(empty) */}
+      <Udal mood={searching ? 'notFound' : 'empty'} size={96} className="block mx-auto mb-5" />
       <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">{title}</h2>
       <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-6">{desc}</p>
       {!searching && (

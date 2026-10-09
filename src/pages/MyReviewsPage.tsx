@@ -2,7 +2,8 @@ import { useEffect, useMemo } from 'react'
 import { StarIcon, AlertIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, MessageSquare } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
+import Udal from '@/components/mascot/Udal'
 import SEO from '@/components/SEO'
 import { requireLogin, isLoggedInSync } from '@/utils/auth'
 import { useMyOrders } from '@/hooks/queries/useMyData'
@@ -67,9 +68,8 @@ export default function MyReviewsPage() {
           </div>
         ) : orders.length === 0 ? (
           <div className="bg-surface rounded-2xl border border-gray-100 dark:border-[#2C2F35] py-16 text-center">
-            <div className="w-20 h-20 bg-gray-50 dark:bg-[#1D1F29] rounded-full flex items-center justify-center mx-auto mb-5">
-              <MessageSquare className="h-10 w-10 text-gray-400 dark:text-gray-500" strokeWidth={1.5} />
-            </div>
+            {/* 🦦 2026-10-10 (대표 "다 해줘"): 빈 리뷰 → 윙크 유달이(안내 — 리뷰 보상이 있다는 걸 알려주는 자리) */}
+            <Udal mood="tip" size={96} className="block mx-auto mb-5" />
             <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">{t('myReviews.empty')}</h2>
             <p className="text-[13px] text-gray-500 dark:text-gray-400">{t('myReviews.emptySub')}</p>
           </div>

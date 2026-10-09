@@ -188,6 +188,12 @@ Kling 3 ~82 · Veo 3.1 이미지→영상 ~90 · Kling Motion Control ~164(실�
 | `empty` | 졸림 | 이용권 0장 (`my-vouchers/WalletEmpty` — 스택 티켓 그림 대체, **대표 승인**) |
 | (로더) | 기본 | **로딩 화면** — 정적 로더·앱 로더 로고 위 (`shared/udal-loader.ts` SSOT, **대표 승인**). 대시보드 로더엔 없음 |
 | `yay` · `tip` | 신남 · 윙크 | 아직 안 씀(혜택 발견 · 안내용으로 준비) |
+| `oops` / `hello` | 케이블 / 기본 | 결제 실패(`PaymentFailPage` — 카드 거절은 oops, 사용자 취소는 hello). 2026-10-10 대표 *"다 해줘"* |
+| `yay` | 하이파이브 | 선물 받기 첫 화면(`GiftClaimPage`) |
+| `hello` | 기본 | 로그인 화면 로고 위(`LoginPage`, 64px) |
+| `tip` | 윙크 | 리뷰 0건(`MyReviewsPage` — 리뷰 보상 안내 자리) |
+| `notFound` | 갸웃 | 단골 0곳(`MyFollowsPage`) |
+| `empty` / `notFound` | 빈 지갑 / 갸웃 | 주문 0건(`mypage/OrdersTab` — 검색 0건이면 갸웃) |
 
 - 이미지: 표정 원본 8장을 **같은 캔버스(359×394)** 로 맞춰 `src/assets/mascot/udal-*.webp`(장당 ~25KB)로 변환.
   Vite 가 해시 붙여 `/assets/` 로 내보낸다(1년 캐시). 원본이 흉상이라 아래 14% 를 바탕으로 녹인다(CSS 마스크).
@@ -296,3 +302,16 @@ from behind only the triangle of the bandana shows.
 
 ④를 결제 완료 화면이 아니라 지갑에 둔 이유: 결제 완료 화면은 토스 잠금 파일이다(대표 승인 범위 = 지갑 렌더 줄).
 가드: `src/tests/unit/udal-touchpoints-2026-10-09.test.tsx` + 주입 `scripts/mutations/udal-touchpoints.mjs`.
+
+## 🗂️ 시안 — 유달이 스탬프 카드 (마이) · 2026-10-10 대표 *"다 해줘"*
+
+시안 아티팩트: https://claude.ai/artifact/1UdkCPz29NX61Nnn71F4p4 (보드 2장 — 진행 중 · 10칸 다 찼을 때)
+
+| 항목 | 시안 |
+|---|---|
+| 자리 | 마이 상단 숫자 줄 바로 아래, 흰 판 하나(유달이 도장 포즈 76px) |
+| 도장 1칸 | 이용권 1장 **사용 완료**(매장 QR 사용). 결제만 하고 안 쓰면 안 찍힌다 |
+| 10칸 | 하이파이브 유달이 시트 + "[보상 받기]" |
+| 보상 | **미정** — 딜·쿠폰을 주면 머니 경로(결재 C). 대표 확정 전 구현 금지 |
+
+구현 todo (보상 확정 후): [ ] 사용 완료 수를 세는 서버 값 [ ] 마이 카드 [ ] 다 찬 시트 [ ] 보상 지급(머니 경로 — 단독 세션 + staging)
