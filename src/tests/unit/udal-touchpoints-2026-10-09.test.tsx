@@ -84,6 +84,12 @@ describe('② 이용권 공유 카드', () => {
     expect(src).toMatch(/generatePassCardSVG\(product,\s*photoUri\)/)
     expect(src).toMatch(/inlineImage\(product\.image_url/)
   })
+
+  it('사진을 못 박으면 사진 없는 판이 아니라 사진 원본으로 보낸다 (라이브에서 상품 사진이 빠졌던 것)', () => {
+    const src = stripComments(R('worker/routes/og-image.routes.ts'))
+    expect(src).toMatch(/if \(!photoUri && photoAbs\) return c\.redirect\(photoAbs, 302\)/)
+    expect(src.indexOf('c.redirect(photoAbs')).toBeLessThan(src.indexOf('generatePassCardSVG(product, photoUri)'))
+  })
 })
 
 const V = (over: Partial<Voucher>): Voucher => ({ id: 1, code: 'c', status: 'unused', product_name: '브런치', ...over } as Voucher)
