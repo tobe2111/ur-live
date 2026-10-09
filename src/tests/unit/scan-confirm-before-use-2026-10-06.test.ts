@@ -37,7 +37,8 @@ describe('✅ 스캔 → 확인 → 사용 처리', () => {
 
   it('카메라 두 경로와 수동 입력이 모두 확인 단계로 간다', () => {
     expect((SRC.match(/requestUseRef\.current\(code\)/g) || []).length).toBe(2)
-    expect(SRC).toMatch(/void requestUse\(code\)/)
+    // 2026-10-08: 손 입력은 결과 종류('manual')를 함께 넘긴다(기록용) — 확인 단계로 가는 것은 그대로다.
+    expect(SRC).toMatch(/void requestUse\(code, 'manual'\)/)
   })
 
   it('③ 확인창이 묻고, 못 쓰는 이용권엔 버튼을 안 낸다', () => {

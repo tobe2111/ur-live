@@ -913,7 +913,7 @@ const MUTATIONS = [
   },
   {
     name: '🎟️ 손으로 친 바우처 코드가 다시 대소문자를 가린다 (폴백이 반쪽이 된다)',
-    file: 'src/components/voucher/VoucherScanner.tsx',
+    file: 'src/components/voucher/scan-code.ts', // 2026-10-08 VoucherScanner 에서 옮김(600줄 상한)
     find: "  const v = (raw || '').replace(/\\s+/g, '').toUpperCase()",
     replace: "  const v = (raw || '').trim()",
     test: 'src/tests/unit/store-scan-manual-code.test.ts',
