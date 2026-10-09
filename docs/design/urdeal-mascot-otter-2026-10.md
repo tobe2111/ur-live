@@ -188,6 +188,12 @@ Kling 3 ~82 · Veo 3.1 이미지→영상 ~90 · Kling Motion Control ~164(실�
 | `empty` | 졸림 | 이용권 0장 (`my-vouchers/WalletEmpty` — 스택 티켓 그림 대체, **대표 승인**) |
 | (로더) | 기본 | **로딩 화면** — 정적 로더·앱 로더 로고 위 (`shared/udal-loader.ts` SSOT, **대표 승인**). 대시보드 로더엔 없음 |
 | `yay` · `tip` | 신남 · 윙크 | 아직 안 씀(혜택 발견 · 안내용으로 준비) |
+| `oops` / `hello` | 케이블 / 기본 | 결제 실패(`PaymentFailPage` — 카드 거절은 oops, 사용자 취소는 hello). 2026-10-10 대표 *"다 해줘"* |
+| `yay` | 하이파이브 | 선물 받기 첫 화면(`GiftClaimPage`) |
+| `hello` | 기본 | 로그인 화면 로고 위(`LoginPage`, 64px) |
+| `tip` | 윙크 | 리뷰 0건(`MyReviewsPage` — 리뷰 보상 안내 자리) |
+| `notFound` | 갸웃 | 단골 0곳(`MyFollowsPage`) |
+| `empty` / `notFound` | 빈 지갑 / 갸웃 | 주문 0건(`mypage/OrdersTab` — 검색 0건이면 갸웃) |
 
 - 이미지: 표정 원본 8장을 **같은 캔버스(359×394)** 로 맞춰 `src/assets/mascot/udal-*.webp`(장당 ~25KB)로 변환.
   Vite 가 해시 붙여 `/assets/` 로 내보낸다(1년 캐시). 원본이 흉상이라 아래 14% 를 바탕으로 녹인다(CSS 마스크).

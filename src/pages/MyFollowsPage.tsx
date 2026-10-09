@@ -12,12 +12,13 @@
  */
 
 import { useNavigate } from 'react-router-dom'
-import { BellIcon, HeartIcon } from '@/components/icons/urdeal-icons'
+import { BellIcon } from '@/components/icons/urdeal-icons'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { ArrowLeft, BellOff, Loader2, ChevronRight } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
+import Udal from '@/components/mascot/Udal'
 import {
   useMyFollows,
   useToggleFollowNotify,
@@ -86,7 +87,8 @@ export default function MyFollowsPage() {
           </div>
         ) : follows.length === 0 ? (
           <div className="text-center py-20">
-            <HeartIcon className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+            {/* 🦦 2026-10-10 (대표 "다 해줘"): 빈 단골 → 갸웃 유달이(아직 찾는 중) */}
+            <Udal mood="notFound" size={96} className="block mx-auto mb-3" />
             <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">단골 등록한 가게가 없어요</p>
             <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">관심 있는 가게 페이지에서 단골 등록하세요</p>
             <button

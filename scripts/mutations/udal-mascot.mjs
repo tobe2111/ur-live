@@ -61,4 +61,28 @@ export default [
     test: TEST,
     why: '대시보드는 마스코트를 안 쓰는 자리다(문서).',
   },
+  {
+    name: '🦦 결제 실패와 사용자 취소의 얼굴이 뒤바뀐다',
+    file: 'src/pages/PaymentFailPage.tsx',
+    find: "const heroMood = isUserCancel ? 'hello' : 'oops'",
+    replace: "const heroMood = isUserCancel ? 'oops' : 'hello'",
+    test: TEST,
+    why: '스스로 취소한 사람에게 "고장" 얼굴을, 카드가 거절된 사람에게 "반가워" 얼굴을 보이게 된다.',
+  },
+  {
+    name: '🦦 주문 내역 빈 화면이 유달이 대신 상자 아이콘으로 되돌아간다',
+    file: 'src/components/mypage/OrdersTab.tsx',
+    find: "<Udal mood={searching ? 'notFound' : 'empty'}",
+    replace: "<Udal mood=\"empty\"",
+    test: TEST,
+    why: '검색해서 0건인 것과 아직 산 게 없는 것은 다른 상황이다 — 같은 얼굴이면 표가 무의미해진다.',
+  },
+  {
+    name: '🦦 선물 받기 화면의 유달이가 다른 얼굴로 바뀐다',
+    file: 'src/pages/GiftClaimPage.tsx',
+    find: '<Udal mood="yay"',
+    replace: '<Udal mood="oops"',
+    test: TEST,
+    why: '선물을 받는 첫 화면에 오류 얼굴이 뜬다.',
+  },
 ]

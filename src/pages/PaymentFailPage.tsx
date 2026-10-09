@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
-import { BadIcon, HomeIcon, InfoIcon } from '@/components/icons/urdeal-icons'
+import { HomeIcon } from '@/components/icons/urdeal-icons'
+import Udal from '@/components/mascot/Udal'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
@@ -86,13 +87,8 @@ export default function PaymentFailPage() {
   //   - 큰 빨간 X 는 진짜 카드 거절 / 잔액 부족 등 진짜 에러에만
   //   - 취소는 부드러운 파란 ⓘ 아이콘 + "취소했어요" + 자연스러운 재시도 CTA
   const isUserCancel = code === 'PAY_PROCESS_CANCELED'
-  const heroIconBg = isUserCancel
-    ? 'bg-blue-100 dark:bg-blue-900/30'
-    : 'bg-red-100 dark:bg-red-900/30'
-  const heroIconColor = isUserCancel
-    ? 'text-blue-600 dark:text-blue-400'
-    : 'text-red-600 dark:text-red-400'
-  const HeroIcon = isUserCancel ? InfoIcon : BadIcon
+  // 🦦 2026-10-10 (대표 "다 해줘"): 아이콘 원 → 유달이. 실패는 빠진 케이블(oops), 사용자 취소는 기본 자세(hello).
+  const heroMood = isUserCancel ? 'hello' : 'oops'
   const heroTitle = isUserCancel ? '결제를 취소하셨어요' : t('paymentFail.title')
   const heroSub = isUserCancel ? '다시 진행하시려면 아래 버튼을 눌러주세요' : t('paymentFail.subtitle')
 
@@ -103,9 +99,7 @@ export default function PaymentFailPage() {
         <div className="bg-surface rounded-2xl p-8 shadow-lg border border-[#e5e5e7] dark:border-[#2C2F35]">
           {/* hero 아이콘 + 제목 — code 별로 색/문구 분기 */}
           <div className="text-center mb-8">
-            <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full ${heroIconBg} mb-4`}>
-              <HeroIcon className={`h-12 w-12 ${heroIconColor}`} />
-            </div>
+            <Udal mood={heroMood} size={isUserCancel ? 72 : 112} priority className="block mx-auto mb-4" />
             <h1 className="text-[28px] font-bold text-[#1d1d1f] dark:text-white mb-2">{heroTitle}</h1>
             <p className="text-[#6e6e73] dark:text-gray-400">{heroSub}</p>
           </div>

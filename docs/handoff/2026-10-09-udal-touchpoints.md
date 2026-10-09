@@ -49,3 +49,20 @@
 임시 처방(이 PR): 사진을 못 박으면 카드 대신 **사진 원본으로 302** — 카드 이전과 같은 미리보기.
 진짜 해결은 서버 밖에서 줄인 사진을 받는 길(Cloudflare Images 바인딩 등)이고 **아직 미착수**.
 ⚠️ 카카오가 og:image 의 302 를 따라가는지는 대표 카톡 확인이 필요하다.
+
+
+## 2026-10-10 — 대표 *"다 해줘"* (유달이 6곳 + 공유 카드 사진 바인딩)
+
+**완료(E2 — 로컬 검증)**
+- 유달이 6곳: 결제 실패(oops/취소는 hello) · 선물 받기(yay) · 로그인(hello 64px) · 리뷰 0건(tip) · 단골 0곳(notFound) · 주문 0건(empty / 검색 0건 notFound).
+  잠금 파일 아님(`PaymentFailPage` 는 Toss 잠금표 밖 — `PaymentSuccessPage` 만 잠김). 가드 `udal-mascot-2026-10-07.test.ts` 확장 + 주입 3건 빨간불 확인.
+- 공유 카드 사진: `inlineImage` 에 **Cloudflare Images 바인딩(`env.IMAGES`) 1순위 경로** 추가. 원본을 직접 받아 바인딩으로 줄여 박는다.
+  바인딩이 없으면 종전 그대로(cdn-cgi → 실패 시 원본 302). 주입 2건 빨간불 확인.
+
+**⚠️ 바인딩은 코드만으로는 안 생긴다 — 대표가 대시보드에서 붙여야 한다**
+- Workers & Pages → ur-live → Settings → Bindings → Add → **Images** · 이름 `IMAGES` (Production).
+- ❓ **Pages 프로젝트가 Images 바인딩을 지원하는지 이 세션은 확인하지 못했다**(공식 문서는 Workers 기준으로만 설명). 목록에 Images 가 없으면 이 경로는 쓸 수 없고 현행(원본 302)이 유지된다 — 고장은 아니다.
+- 💰 비용: 무료 플랜 월 5,000 고유 변환. OG 는 상품당 1회 변환 + 응답 1시간 캐시라 규모상 한도 안.
+- 판정: 붙인 뒤 `curl -sI https://urdeal.kr/api/og/group-buy/2888?v=1` 이 **302 가 아니라 200 image/svg+xml** 이고 SVG 안에 `data:image/jpeg` 가 있으면 성공.
+
+**스탬프 카드(마이)**: 시안만 만든다 — 적립 보상이 붙으면 머니 경로(결재 C)라 구현 전에 대표 확정 필요.

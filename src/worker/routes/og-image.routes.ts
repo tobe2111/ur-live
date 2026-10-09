@@ -61,8 +61,8 @@ ogRoutes.get('/curator/:handle', async (c) => {
     //   가로로 늘린 타일이 생기지 않게.
     const tw = Math.round(tileWidth(thumbs.length))
     const [profileUri, ...tileUris] = await Promise.all([
-      inlineImage(curator.profile_image, origin, 232, 232),
-      ...thumbs.map(t => inlineImage(t, origin, tw, TILE_H)),
+      inlineImage(curator.profile_image, origin, 232, 232, fetch, c.env.IMAGES),
+      ...thumbs.map(t => inlineImage(t, origin, tw, TILE_H, fetch, c.env.IMAGES)),
     ])
 
     const svg = generateCuratorSVG(curator, profileUri, tileUris.filter((u): u is string => !!u))
@@ -104,7 +104,7 @@ ogRoutes.get('/group-buy/:id', async (c) => {
     // 🦦 2026-10-09 (대표 확정 시안 ②): 사진을 카드 **안에** 박는다 — 외부 `<image href>` 는 카톡이 안 그린다
     //   (그래서 옛 카드의 사진 자리가 비어 있었다). 못 받으면 null → 사진 없는 판으로 그린다.
     const origin = new URL(c.req.url).origin
-    const photoUri = await inlineImage(product.image_url, origin, PASS_PHOTO_W, PASS_PHOTO_H)
+    const photoUri = await inlineImage(product.image_url, origin, PASS_PHOTO_W, PASS_PHOTO_H, fetch, c.env.IMAGES)
     // 🩸 2026-10-09 라이브 실측: 서버 안에서 부른 cdn-cgi 는 리사이즈가 안 걸려 원본(656KB)이 오고,
     //   한도(160KB)를 넘어 사진이 빠진 판이 나갔다 — 이용권 링크 미리보기에서 **상품 사진이 사라졌다.**
     //   사진이 있는데 못 박았으면 카드를 그리지 않고 **사진 원본으로 보낸다**(이 카드 이전과 같은 미리보기).

@@ -12,7 +12,7 @@ export default [
   {
     name: '🛍️ 카드가 사진을 다시 바깥에서 불러온다 (라이브를 까맣게 만든 그 결함)',
     file: ROUTE,
-    find: 'inlineImage(t, origin, tw, TILE_H)',
+    find: 'inlineImage(t, origin, tw, TILE_H, fetch, c.env.IMAGES)',
     replace: 't',
     test: TEST,
     why:
@@ -22,7 +22,7 @@ export default [
   {
     name: '🛍️ 프로필 사진만 다시 외부 참조로',
     file: ROUTE,
-    find: 'inlineImage(curator.profile_image, origin, 232, 232)',
+    find: 'inlineImage(curator.profile_image, origin, 232, 232, fetch, c.env.IMAGES)',
     replace: 'curator.profile_image',
     test: TEST,
     why: '타일만 고치고 프로필을 빠뜨리면 얼굴 자리가 빈 원으로 남는다. 절반만 고친 상태가 제일 헷갈린다.',
@@ -122,5 +122,21 @@ export default [
     why:
       '카카오는 스크랩 결과를 캐시한다. 주소가 그대로면 고쳐 배포해도 옛 까만 카드가 계속 나가고, ' +
       '잘못 나간 카드는 회수할 방법이 우리에게 없다.',
+  },
+  {
+    name: '🖼️ 이용권 카드가 Images 바인딩을 안 넘긴다 (서버 안 리사이즈 경로가 죽는다)',
+    file: ROUTE,
+    find: 'PASS_PHOTO_W, PASS_PHOTO_H, fetch, c.env.IMAGES)',
+    replace: 'PASS_PHOTO_W, PASS_PHOTO_H)',
+    test: TEST,
+    why: '바인딩을 붙여도 라우트가 안 넘기면 사진은 계속 원본(656KB)으로 와서 카드에서 빠진다 — 에러 없이.',
+  },
+  {
+    name: '🖼️ 바인딩 경로가 원본 대신 cdn-cgi 를 다시 부른다',
+    file: 'src/worker/utils/og-inline-image.ts',
+    find: "const src = await fetchImpl(abs, { headers: { Accept: 'image/*' } })",
+    replace: "const src = await fetchImpl(resizedUrl(abs, origin, width, height), { headers: { Accept: 'image/*' } })",
+    test: TEST,
+    why: '서버 안에서 부른 cdn-cgi 는 줄여 주지 않는다(10-09 실측) — 바인딩 경로의 존재 이유가 사라진다.',
   },
 ]

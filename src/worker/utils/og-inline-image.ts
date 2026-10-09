@@ -36,6 +36,21 @@ export function resizedUrl(absUrl: string, origin: string, width: number, height
   return `${origin}/cdn-cgi/image/width=${width},height=${height},fit=cover,gravity=auto,quality=70,format=jpeg,onerror=redirect/${safe}`
 }
 
+/**
+ * Cloudflare Images 바인딩 중 여기서 쓰는 부분만. 실제 타입 패키지에 기대지 않는다(번들·타입 결합 0).
+ * `input(stream).transform(opts).output(opts)` → `.response()` 가 줄인 그림 응답을 준다.
+ */
+export interface ImagesBindingLike {
+  input(stream: ReadableStream<Uint8Array>): {
+    transform(o: Record<string, unknown>): {
+      output(o: { format: string; quality?: number }): Promise<{ response(): Response }>
+    }
+  }
+}
+
+/** 바인딩에 넘길 원본 상한 — 이보다 크면 받지 않는다(OG 는 스크래퍼 핫패스다). */
+export const OG_SOURCE_MAX_BYTES = 8_000_000
+
 /** 바이트 → base64. 한 번에 spread 하면 큰 이미지에서 스택이 터지므로 조각내 돈다. */
 export function bytesToBase64(bytes: Uint8Array): string {
   let bin = ''
@@ -56,9 +71,30 @@ export async function inlineImage(
   width: number,
   height: number,
   fetchImpl: typeof fetch = fetch,
+  images?: ImagesBindingLike,
 ): Promise<string | null> {
   const abs = toAbsolute(raw, origin)
   if (!abs) return null
+  // 🖼️ 2026-10-10 1순위: Images 바인딩이 있으면 원본을 받아 서버 안에서 줄인다.
+  //   (cdn-cgi 는 바깥에서는 줄여 주지만 서버 안에서 부르면 원본이 와서 한도를 넘는다 — 10-09 실측)
+  if (images) {
+    try {
+      const src = await fetchImpl(abs, { headers: { Accept: 'image/*' } })
+      const len = Number(src.headers.get('content-length') || 0)
+      if (src.ok && src.body && !(len > OG_SOURCE_MAX_BYTES)) {
+        const out = await images
+          .input(src.body)
+          .transform({ width, height, fit: 'cover', gravity: 'auto' })
+          .output({ format: 'image/jpeg', quality: 70 })
+        const buf = await out.response().arrayBuffer()
+        if (buf.byteLength && buf.byteLength <= OG_INLINE_MAX_BYTES) {
+          return `data:image/jpeg;base64,${bytesToBase64(new Uint8Array(buf))}`
+        }
+      }
+    } catch {
+      /* 바인딩 실패는 아래 종전 경로로 */
+    }
+  }
   try {
     const res = await fetchImpl(resizedUrl(abs, origin, width, height), {
       headers: { Accept: 'image/jpeg,image/*' },

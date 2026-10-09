@@ -12,6 +12,7 @@ import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { Eye, EyeOff } from 'lucide-react'
 import SEO from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
+import Udal from '@/components/mascot/Udal'
 import { addBreadcrumb, maskEmail } from '@/lib/sentry'
 import { resolveLoginReturnUrl, clearLoginReturnUrl } from '@/utils/login-return'
 import { showKakaoLoadingOverlay, removeKakaoLoadingOverlay } from '@/utils/kakao-login-overlay'
@@ -256,6 +257,8 @@ export default function LoginPage() {
 
         {/* Brand + 가치 제안 (동네딜 / 교환권) */}
         <div className="flex flex-col items-center mb-12">
+          {/* 🦦 2026-10-10 (대표 "다 해줘"): 첫 문 앞의 인사 — 기본 자세 유달이가 로고 위에서 맞는다 */}
+          <Udal mood="hello" size={64} priority motion className="block mb-4" />
           <UrDealLogo size={34} />
           <h1 className="mt-6 text-[24px] md:text-[24px] font-bold text-gray-900 dark:text-white text-center leading-snug tracking-tight">
             {t('login.heroTitle', { defaultValue: '우리 동네 맛집, 같이 사면 더 싸다' })}

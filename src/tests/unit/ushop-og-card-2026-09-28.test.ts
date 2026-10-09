@@ -129,7 +129,7 @@ describe('배선 — 모듈만 맞고 라우트가 안 부르면 라이브는 �
 
   it('라우트가 프로필과 타일을 모두 인라인해서 넘긴다', () => {
     expect(route).toMatch(/inlineImage\(\s*curator\.profile_image/)
-    expect(route).toMatch(/thumbs\.map\(t => inlineImage\(t, origin, tw, TILE_H\)\)/)
+    expect(route).toMatch(/thumbs\.map\(t => inlineImage\(t, origin, tw, TILE_H\b/)
     expect(route).toMatch(/generateCuratorSVG\(curator, profileUri,/)
   })
 
@@ -143,5 +143,47 @@ describe('배선 — 모듈만 맞고 라우트가 안 부르면 라이브는 �
 
   it('og:image 주소에 판 번호가 있다 — 없으면 카톡이 옛 까만 카드를 계속 물고 있다', () => {
     expect(worker).toMatch(/\/api\/og\/curator\/\$\{encodeURIComponent\(cur\.handle \|\| ''\)\}\?v=\d+/)
+  })
+})
+
+describe('🖼️ 2026-10-10 Images 바인딩 — 서버 안에서 사진을 줄여 박는다', () => {
+  const huge = () => new Response(new Uint8Array(OG_INLINE_MAX_BYTES * 4), { status: 200 })
+  const shrinker = (out: Uint8Array) => {
+    const calls: Array<Record<string, unknown>> = []
+    return {
+      calls,
+      input() {
+        return {
+          transform(o: Record<string, unknown>) {
+            calls.push(o)
+            return { output: async () => ({ response: () => new Response(out as unknown as BodyInit) }) }
+          },
+        }
+      },
+    }
+  }
+
+  it('바인딩이 있으면 큰 원본(라이브 656KB)도 줄여서 data URI 로', async () => {
+    const img = shrinker(new Uint8Array([9, 9]))
+    const urls: string[] = []
+    const f = async (u: string) => { urls.push(u); return huge() }
+    expect(await inlineImage('https://p.net/a.jpg', 'https://x.kr', 780, 520, f as never, img))
+      .toBe(`data:image/jpeg;base64,${Buffer.from([9, 9]).toString('base64')}`)
+    expect(urls[0], '바인딩 경로는 원본을 직접 받는다(cdn-cgi 아님)').toBe('https://p.net/a.jpg')
+    expect(img.calls[0]).toMatchObject({ width: 780, height: 520, fit: 'cover' })
+  })
+
+  it('바인딩이 실패하면 종전 cdn-cgi 경로로 떨어진다', async () => {
+    const broken = { input() { throw new Error('no binding') } }
+    const urls: string[] = []
+    const f = async (u: string) => { urls.push(u); return new Response(new Uint8Array([1]), { status: 200 }) }
+    expect(await inlineImage('https://p.net/a.jpg', 'https://x.kr', 10, 10, f as never, broken as never))
+      .toBe(`data:image/jpeg;base64,${Buffer.from([1]).toString('base64')}`)
+    expect(urls.some((u) => u.includes('/cdn-cgi/image/'))).toBe(true)
+  })
+
+  it('라우트가 두 카드(사진 세 자리) 모두 바인딩을 넘긴다', () => {
+    const src = fs.readFileSync('src/worker/routes/og-image.routes.ts', 'utf8')
+    expect((src.match(/fetch, c\.env\.IMAGES\)/g) || []).length).toBe(3)
   })
 })

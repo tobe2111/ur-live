@@ -15,6 +15,7 @@ import { GiftBoxIcon, OkIcon, BadIcon, PinIcon, MessageIcon } from '@/components
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation, Trans } from 'react-i18next'
 import BrandLoader from '@/components/brand/BrandLoader'
+import Udal from '@/components/mascot/Udal'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
@@ -123,9 +124,8 @@ export default function GiftClaimPage() {
       <div className="ur-content-narrow px-5 lg:px-8 py-10">
         {/* 헤더 */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-brand-tint mb-3">
-            <GiftBoxIcon className="w-8 h-8 text-brand-text" />
-          </div>
+          {/* 🦦 2026-10-10 (대표 "다 해줘"): 선물 상자 아이콘 → 하이파이브 유달이 — 받는 사람은 대개 처음 오는 사람이다 */}
+          <Udal mood="yay" size={104} priority motion className="block mx-auto mb-3" />
           <h1 className="text-[17px] font-bold text-gray-900 dark:text-white mb-1">
             <Trans
               i18nKey="giftClaim.fromSender"
