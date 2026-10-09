@@ -19,6 +19,8 @@ import { EmptyVouchers } from './my-vouchers/WalletEmpty'
 import BrandLoader from '@/components/brand/BrandLoader'
 import VoucherTicket from './my-vouchers/VoucherTicket'
 import WalletRow from './my-vouchers/WalletRow'
+import ExpiryNotice from './my-vouchers/ExpiryNotice'
+import FirstVoucherSheet from './my-vouchers/FirstVoucherSheet'
 import QRModal from './my-vouchers/QRModal'
 import { isStoreVoucher, isUsableWalletItem } from '@/shared/voucher-wallet'
 import AddToHomeHint from '@/components/AddToHomeHint'
@@ -262,6 +264,8 @@ export default function MyVouchersPage() {
           <>
             {/* 🏠 2026-07-12 (앱-레디): 지갑 = 최고 관여 순간 → 홈 화면 추가 컨텍스트 유도(자가 게이트) */}
             <AddToHomeHint context="wallet" />
+            {/* 🦦 2026-10-09 [UNLOCK_LOADING] 대표 확정 시안 ③: 곧 끝나는 이용권 한 줄(기준 안에 없으면 안 그린다). */}
+            <ExpiryNotice items={unusedItems} t={t} onOpen={setQrVoucher} />
             {/* 🎫 탭 — [사용 가능 N | 지난 이용권] + 오른쪽 '지도로 보기'(2026-10-07 A안). 칩 줄(전체·만료 임박·지도)은 걷었다:
                 '전체 N' 은 탭이 이미 말하고, 만료가 가까운 순서는 목록 정렬이 이미 맡는다. */}
             <div className="flex items-end gap-5 mb-4 border-b border-rule">
@@ -317,7 +321,8 @@ export default function MyVouchersPage() {
 
       {/* QR Code Modal */}
       {qrVoucher && <QRModal voucher={qrVoucher} onClose={() => setQrVoucher(null)} />}
-
+      {/* 🦦 2026-10-09 [UNLOCK_LOADING] 대표 확정 시안 ④: 첫 이용권 축하 — 지갑에 1장뿐일 때 기기당 한 번. */}
+      {!loading && !isError && <FirstVoucherSheet items={shownVouchers} t={t} />}
     </WalletPageWrapper>
   )
 }

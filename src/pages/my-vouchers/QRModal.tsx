@@ -442,6 +442,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
           code={voucher.code}
           storeName={voucher.restaurant_name}
           storeAddress={voucher.restaurant_address}
+          productId={voucher.product_id}
           onClose={() => setShowRedeem(false)}
           onRedeemed={() => { setVoucher(v => ({ ...v, status: 'used' })); invalidateVouchers() }}
         />

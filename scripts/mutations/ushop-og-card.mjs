@@ -116,7 +116,7 @@ export default [
   {
     name: '🛍️ 카드 주소의 판 번호를 뺀다',
     file: WORKER,
-    find: "/api/og/curator/${encodeURIComponent(cur.handle || '')}?v=2",
+    find: "/api/og/curator/${encodeURIComponent(cur.handle || '')}?v=3",
     replace: "/api/og/curator/${encodeURIComponent(cur.handle || '')}",
     test: TEST,
     why:
