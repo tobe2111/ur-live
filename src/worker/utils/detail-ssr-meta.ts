@@ -49,6 +49,12 @@ interface DetailData {
 }
 
 /** 절대 URL 이미지로 정규화 (http → 그대로, / 상대 → origin 접두, 그 외 → fallback). */
+/**
+ * 🔄 이용권 공유 카드 판 번호. 카카오는 스크랩 결과를 캐시하므로 주소가 그대로면 고쳐 배포해도 **옛 카드가
+ *   계속 나간다**(유어샵 카드 `?v=` 와 같은 이유). 카드 디자인(`og-pass-card.ts`)을 바꾸면 올릴 것.
+ */
+export const PASS_OG_VERSION = 1
+
 function absImage(raw: string, origin: string, id: number | string | undefined, fallback?: string): string {
   if (raw.startsWith('http')) return raw
   if (raw.startsWith('/')) return `${origin}${raw}`
@@ -117,7 +123,10 @@ export function buildDetailMeta(ssrPayload: string, origin: string, pathname: st
       ],
     }
     const jsonLd = escapeScript(JSON.stringify([product, breadcrumb]))
-    return { pageTitle, title: pageTitle, description, canonical, ogImage, ogType: 'product', noindex: false, jsonLd }
+    // 🦦 2026-10-09 (대표 확정 시안 ② · "바꾸기"): 공유 미리보기는 사진 원본이 아니라 **공유 카드**(사진 + 귀퉁이
+    //   유달이 + `urdeal.`). JSON-LD 의 image 는 위에서 사진 그대로 둔다 — 검색엔진에겐 상품 사진이 맞다.
+    const shareCard = id != null ? `${origin}/api/og/group-buy/${id}?v=${PASS_OG_VERSION}` : ogImage
+    return { pageTitle, title: pageTitle, description, canonical, ogImage: shareCard, ogType: 'product', noindex: false, jsonLd }
   } catch { return null }
 }
 

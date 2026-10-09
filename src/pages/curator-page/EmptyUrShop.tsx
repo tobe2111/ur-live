@@ -13,6 +13,7 @@
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { getUrShopIntent } from '@/utils/urshop-intent'
+import Udal from '@/components/mascot/Udal'
 
 export default function EmptyUrShop({ handle, isOwner, emptyType, curatorName, curatorId }: { handle: string; isOwner: boolean; emptyType?: 'shop' | 'voucher'; curatorName?: string; curatorId?: number }) {
   const { t } = useTranslation()
@@ -58,7 +59,7 @@ export default function EmptyUrShop({ handle, isOwner, emptyType, curatorName, c
           <span className="font-bold text-[#16181C] dark:text-white">○ {sellerFirst ? t('curator.stepRegisterStore', { defaultValue: '매장 등록' }) : t('curator.stepFirstProduct', { defaultValue: '첫 상품 추가' })}</span>
         </div>
       </div>
-      <div className="relative overflow-hidden" style={{ height: 230 }}>
+      <div className="relative overflow-hidden" style={{ height: 300 }}>
         <div
           className="grid grid-cols-2 gap-3 pointer-events-none select-none"
           style={{ filter: 'blur(3px) saturate(.9)', opacity: 0.55, WebkitMaskImage: 'linear-gradient(180deg, rgba(0,0,0,.85) 0%, rgba(0,0,0,.35) 45%, transparent 80%)', maskImage: 'linear-gradient(180deg, rgba(0,0,0,.85) 0%, rgba(0,0,0,.35) 45%, transparent 80%)' }}
@@ -78,10 +79,10 @@ export default function EmptyUrShop({ handle, isOwner, emptyType, curatorName, c
           ))}
         </div>
         <div className="absolute inset-x-0 bottom-0 flex flex-col items-center text-center px-6 pb-1">
-          <div className="w-14 h-14 rounded-2xl bg-[#6b7280] flex items-center justify-center text-white" style={{ boxShadow: '0 10px 24px -8px rgba(255,86,52,.6)' }}>
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 4h12v16l-6-4-6 4V4Z" /></svg>
-          </div>
-          <h2 className="text-[17px] font-extrabold text-gray-900 dark:text-white mt-3">{sellerFirst ? t('curator.emptyOwnerSellerTitle', { defaultValue: '매장을 등록하면 시작돼요' }) : t('curator.emptyOwnerTitle', { defaultValue: '첫 상품을 추가해 보세요' })}</h2>
+          {/* 🦦 2026-10-09 (대표 확정 시안 ⑤-b): 회색 책갈피 타일 → 빈 지갑 든 유달이.
+              옛 타일은 로즈 시절 그림자(rgba(255,86,52))가 남은 회색 면이라 무엇인지 말하지 못했다. */}
+          <Udal mood="empty" size={96} />
+          <h2 className="text-[17px] font-extrabold text-gray-900 dark:text-white mt-2">{sellerFirst ? t('curator.emptyOwnerSellerTitle', { defaultValue: '매장을 등록하면 시작돼요' }) : t('curator.emptyOwnerTitle', { defaultValue: '첫 상품을 추가해 보세요' })}</h2>
           <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-2 max-w-[270px] leading-snug">{sellerFirst ? t('curator.emptyOwnerSellerDesc', { defaultValue: '매장을 등록하면 이용권을 올릴 수 있어요. 올린 이용권이 여기 진열됩니다.' }) : t('curator.emptyOwnerDesc', { defaultValue: '마음에 든 상품·동네딜을 추가하면 이렇게 나만의 스토어가 채워져요.' })}</p>
           <Link to={browseLink} className="mt-4 w-full max-w-xs py-3 rounded-xl bg-brand text-white text-[15px] font-bold">{browseLabel}</Link>
         </div>

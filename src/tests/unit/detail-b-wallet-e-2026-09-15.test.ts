@@ -155,7 +155,9 @@ describe('지갑 안 E — 급한 한 장만 펴고 나머지는 한 줄', () =>
 
   it('임박(D-2 이하)을 체계 빨강으로 말한다', () => {
     const row = readCode('src/pages/my-vouchers/WalletRow.tsx')
-    expect(row, '임박 판정이 사라졌다').toMatch(/d\s*<=\s*2/)
+    // 🦦 2026-10-09: 기준값을 `URGENT_DAYS` 상수로 뺐다(지갑 위 만료 임박 줄과 같은 값을 쓰게) — 값은 그대로 2.
+    expect(row, '임박 판정이 사라졌다').toMatch(/d\s*<=\s*URGENT_DAYS/)
+    expect(row, '임박 기준이 2일이 아니다').toMatch(/export const URGENT_DAYS = 2\b/)
     expect(row, '임박 강조가 사라졌거나 툴킷 색으로 돌아갔다').toContain('text-tone-bad')
   })
 
