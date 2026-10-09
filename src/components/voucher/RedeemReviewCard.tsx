@@ -27,7 +27,7 @@ export default function RedeemReviewCard({ productId }: { productId: number }) {
   return (
     <div className="mt-5 text-left">
       {picked === 0 ? (
-        <div className="rounded-2xl bg-gray-50 dark:bg-[#1D1F29] px-4 py-4">
+        <div className="rounded-2xl bg-warm px-4 py-4">
           <p className="text-[17px] font-bold text-gray-900 dark:text-white">어떠셨어요?</p>
           <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">리뷰를 남기면 딜 리워드를 드려요</p>
           <div className="mt-3 flex justify-between" role="radiogroup" aria-label="별점">
@@ -47,7 +47,7 @@ export default function RedeemReviewCard({ productId }: { productId: number }) {
           </div>
         </div>
       ) : (
-        <Suspense fallback={<div className="h-40 rounded-2xl bg-gray-50 dark:bg-[#1D1F29]" />}>
+        <Suspense fallback={<div className="h-40 rounded-2xl bg-warm" />}>
           <ReviewForm productId={productId} initialOpen initialRating={picked} onSubmitted={() => setDone(true)} />
         </Suspense>
       )}

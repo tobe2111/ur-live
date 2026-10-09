@@ -60,7 +60,7 @@ export default function FirstVoucherSheet({ items, t }: {
         className="w-full max-w-[430px] rounded-t-3xl sm:rounded-3xl bg-surface px-6 pt-3 flex flex-col items-center text-center"
         style={{ paddingBottom: 'max(1.75rem, env(safe-area-inset-bottom))' }}
       >
-        <div aria-hidden="true" className="w-10 h-1 rounded-full bg-gray-200 dark:bg-[#2C2F35]" />
+        <div aria-hidden="true" className="w-10 h-1 rounded-full bg-rule-strong" />
         <div className="mt-5"><Udal mood="done" size={120} motion priority /></div>
         <h2 id="first-voucher-title" className="mt-4 text-[24px] font-extrabold tracking-[-0.02em] text-gray-900 dark:text-white">
           {t('voucher.firstTitle', { defaultValue: '첫 이용권이에요!' })}
@@ -72,11 +72,11 @@ export default function FirstVoucherSheet({ items, t }: {
           {stamps.map((s) => (
             <li key={s.label} className="flex flex-col items-center gap-2">
               {s.done ? (
-                <span className="w-14 h-14 rounded-full bg-brand flex items-center justify-center">
-                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                <span className="w-14 h-14 rounded-full bg-brand text-white flex items-center justify-center">
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
                 </span>
               ) : (
-                <span className="w-14 h-14 rounded-full border-2 border-dashed border-gray-300 dark:border-[#3A3D45]" />
+                <span className="w-14 h-14 rounded-full border-2 border-dashed border-rule-strong" />
               )}
               <span className={`text-[13px] ${s.done ? 'font-bold text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
                 {s.label}{!s.done && <span className="sr-only"> {t('voucher.firstStampTodo', { defaultValue: '아직 안 함' })}</span>}
