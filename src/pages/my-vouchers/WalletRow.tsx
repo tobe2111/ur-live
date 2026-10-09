@@ -23,6 +23,10 @@ import { TicketStubIcon } from '@/components/icons/urdeal-icons'
 import { safeDate } from '@/utils/safe-date'
 import type { Voucher } from './types'
 
+/** 🔴 '곧 끝난다' 의 기준(남은 일수 이하). 접힌 줄의 빨간 D-N 과 지갑 위 만료 임박 줄이 **같은 값**을 쓴다
+ *   — 둘이 갈리면 위에선 "곧 끝나요" 라는데 줄은 회색인 화면이 된다. */
+export const URGENT_DAYS = 2
+
 /** 남은 일수 — 기한이 없으면 null(기한 없는 이용권도 있다). */
 export function daysLeftOf(v: Voucher): number | null {
   const at = safeDate(v.expires_at)
@@ -35,7 +39,7 @@ export default function WalletRow({ v, t, onOpen }: {
   onOpen: () => void
 }) {
   const d = daysLeftOf(v)
-  const urgent = v.status === 'unused' && d !== null && d <= 2
+  const urgent = v.status === 'unused' && d !== null && d <= URGENT_DAYS
 
   return (
     <button

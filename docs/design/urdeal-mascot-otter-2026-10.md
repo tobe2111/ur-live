@@ -279,3 +279,20 @@ from behind only the triangle of the bandana shows.
 
 얼굴 그림은 `notFound`(검색·지도 0건, 갸웃)·`tip`(윙크) 두 개만 남겼다.
 
+
+## 새 자리 6곳 — 대표 확정 "좋다 모두 해줘" (2026-10-09)
+
+시안 캔버스: https://claude.ai/artifact/LvWPx68t32ZGSXPttw7VWV (대표 계정 비공개).
+기존 자리가 "비었거나 막혔을 때 달래는" 쪽이라, **해냈을 때 함께 기뻐하는** 자리를 늘렸다.
+
+| # | 자리 | 유달이 | 파일 |
+|---|---|---|---|
+| ① | 이용권 사용 직후 — 직원 확인 60초 뒤 "어떠셨어요?" 별점 → 상품 상세와 **같은** 리뷰 폼 | (기존 도장 유달이 유지) | `components/voucher/RedeemReviewCard.tsx` |
+| ② | 이용권 카톡 공유 카드 — 사진 + 좌하단 `urdeal.` + 우하단 유달이 | 서 있는 유달이(PNG 인라인) | `worker/utils/og-pass-card.ts` |
+| ③ | 지갑 합계 아래 "N일 남은 이용권이 있어요" 한 줄(기준 = 접힌 줄 빨강과 같은 `URGENT_DAYS`) | 지갑 든 유달이 | `pages/my-vouchers/ExpiryNotice.tsx` |
+| ④ | 첫 이용권 축하 시트 — 지갑에 1장뿐일 때 기기당 한 번, 도장 3칸(첫 구매·첫 사용·첫 리뷰) | 도장 유달이 | `pages/my-vouchers/FirstVoucherSheet.tsx` |
+| ⑤-a | 알림함 비었을 때 + "내 주변 이용권 보기" | 갸웃 | `pages/NotificationsPage.tsx` |
+| ⑤-b | 내 유어샵 비었을 때(주인) — 회색 책갈피 타일 대체 | 빈 지갑 | `pages/curator-page/EmptyUrShop.tsx` |
+
+④를 결제 완료 화면이 아니라 지갑에 둔 이유: 결제 완료 화면은 토스 잠금 파일이다(대표 승인 범위 = 지갑 렌더 줄).
+가드: `src/tests/unit/udal-touchpoints-2026-10-09.test.tsx` + 주입 `scripts/mutations/udal-touchpoints.mjs`.

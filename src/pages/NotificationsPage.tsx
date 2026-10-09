@@ -6,6 +6,7 @@ import api from '@/lib/api'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
+import Udal from '@/components/mascot/Udal'
 import { ChevronLeft } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { safeInternalPath } from '@/utils/safe-internal-path'
@@ -67,10 +68,15 @@ export default function NotificationsPage() {
             <p className="text-[15px] text-gray-600 dark:text-gray-400 mt-1">{t('notifications.retryLater')}</p>
           </div>
         ) : notifications.length === 0 ? (
-          <div className="text-center py-20">
-            <BellIcon className="w-12 h-12 text-gray-600 dark:text-gray-300 mx-auto mb-3" aria-hidden="true" />
-            <p className="text-gray-900 dark:text-white font-bold">{t('notifications.empty')}</p>
-            <p className="text-[15px] text-gray-600 dark:text-gray-400 mt-1">{t('notifications.emptyDesc')}</p>
+          // 🦦 2026-10-09 (대표 확정 시안 ⑤-a "모두 해줘"): 빈 알림함 = 갸웃하는 유달이 + 할 일 하나.
+          //   종 아이콘은 "알림이 없다" 만 말하고 끝났다 — 무엇을 하면 소식이 오는지와 그 입구를 준다.
+          <div className="text-center py-16 px-6">
+            <Udal mood="notFound" size={128} className="mx-auto" />
+            <p className="mt-5 text-[17px] text-gray-900 dark:text-white font-bold">{t('notifications.empty')}</p>
+            <p className="text-[15px] leading-relaxed text-gray-600 dark:text-gray-400 mt-2">{t('notifications.emptyDesc')}</p>
+            <button type="button" onClick={() => navigate('/')} className="ur-btn ur-btn-md ur-btn-secondary mt-6">
+              {t('notifications.emptyCta', { defaultValue: '내 주변 이용권 보기' })}
+            </button>
           </div>
         ) : (
           <div>

@@ -7,10 +7,15 @@ import ReviewCard, { type ReviewItem } from './ReviewCard'
 /** 리뷰 최소 글자 수 — 버튼 비활성 조건과 안내 문구가 **같은 값**을 봐야 한다(따로 두면 갈린다). */
 const MIN_REVIEW_LEN = 10
 
-function ReviewForm({ productId, onSubmitted }: { productId: string | number; onSubmitted: () => void }) {
+/**
+ * 🦦 2026-10-09 (대표 확정 시안 ① "이용권 사용 직후"): 사용 완료 화면에서도 이 폼을 그대로 쓴다.
+ *   `initialOpen` 이면 자격 조회 버튼 단계를 건너뛴다 — 그 화면은 **방금 쓴 이용권**에서만 열리므로
+ *   자격이 이미 성립한다(최종 권위는 여전히 POST). 별점은 그 화면에서 고른 값으로 시작한다.
+ */
+export function ReviewForm({ productId, onSubmitted, initialOpen = false, initialRating = 5 }: { productId: string | number; onSubmitted: () => void; initialOpen?: boolean; initialRating?: number }) {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-  const [rating, setRating] = useState(5)
+  const [open, setOpen] = useState(initialOpen)
+  const [rating, setRating] = useState(initialRating)
   const [content, setContent] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [showSharePrompt, setShowSharePrompt] = useState(false)

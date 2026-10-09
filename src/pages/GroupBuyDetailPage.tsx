@@ -56,6 +56,7 @@ import DealUseChooser, { useDealPlan, defaultDealUse, coversAll } from './group-
 import DealBottomBar from './group-buy/DealBottomBar'
 import { handleDealJoinError } from './group-buy/deal-join-error'
 import { useProductViewBeacon } from '@/hooks/useProductViewBeacon'
+import { passShareCardUrl } from '@/shared/pass-share-card'
 
 // 🛡️ 2026-05-27 (loading P1): below-fold 컴포넌트 lazy — 초기 chunk 30-50KB ↓.
 //   - Confetti: 100% 달성 시만 표시 (대부분 사용자 안 봄)
@@ -566,7 +567,7 @@ export default function GroupBuyDetailPage() {
         productId={detail.id}
         title={detail.name}
         shareDescription={`${detail.restaurant_name ? detail.restaurant_name + ' · ' : ''}${detail.group_buy_current}명 함께 구매 중 · ${displayDiscountPct > 0 ? `${displayDiscountPct}% 할인` : '공동구매 특가'}${myUserId ? ' · 친구 초대 시 양쪽 0.5% 보너스 (첫 1회)' : ''}`}
-        shareImageUrl={`https://urdeal.kr/api/og/group-buy/${productId}`}
+        shareImageUrl={passShareCardUrl(productId)}
         shareLink={shareLink}
         myUserId={myUserId}
         price={Number((detail as { deal_only?: number }).deal_only) === 1 ? undefined : detail.price}
@@ -638,7 +639,7 @@ export default function GroupBuyDetailPage() {
             <KakaoShareButton
               title={`${detail.name} 공구 참여하기`}
               description={`${detail.restaurant_name ? detail.restaurant_name + ' · ' : ''}${detail.group_buy_current}명 함께 구매 중`}
-              imageUrl={`https://urdeal.kr/api/og/group-buy/${productId}`}
+              imageUrl={passShareCardUrl(productId)}
               link={shareLink}
               buttonText="나도 참여하기"
               {...(Number((detail as { deal_only?: number }).deal_only) === 1 ? {} : {
