@@ -12,6 +12,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 // 🔗 2026-07-03 매장 사용 직후(또 하나의 뜨거운 순간) 셀러 전환 넛지 재사용 — 자기완결·자기게이트
 import SellerConversionNudge from '@/pages/payment-success/SellerConversionNudge'
+import RedeemReviewCard from './RedeemReviewCard'
 
 /**
  * 🎟️ 2026-06-20 (대표 — 사용처리 "카운터는 신뢰로 통과"): 소비자 셀프 사용처리 + 라이브 사용완료 화면.
@@ -41,12 +42,15 @@ export default function VoucherRedeemModal({
   storeAddress,
   onClose,
   onRedeemed,
+  productId,
 }: {
   code: string
   storeName?: string
   storeAddress?: string
   onClose: () => void
   onRedeemed?: () => void
+  /** 있으면 취소 시간이 끝난 뒤 "어떠셨어요?" 별점이 뜬다(셀러 쪽 사용처리는 안 넘긴다). */
+  productId?: number
 }) {
   const [phase, setPhase] = useState<'confirm' | 'loading' | 'done'>('confirm')
   const [usedAt, setUsedAt] = useState<string | null>(null)
@@ -120,7 +124,7 @@ export default function VoucherRedeemModal({
   return (
     <div className="fixed inset-0 z-[10000] bg-black/60 flex items-end sm:items-center justify-center" onClick={phase === 'confirm' ? onClose : undefined} role="presentation">
       <div
-        className="relative bg-surface rounded-t-3xl sm:rounded-3xl w-full max-w-[430px] p-6"
+        className="relative bg-surface rounded-t-3xl sm:rounded-3xl w-full max-w-[430px] max-h-[92dvh] overflow-y-auto p-6"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -190,6 +194,9 @@ export default function VoucherRedeemModal({
             ) : (
               <button onClick={onClose} className="ur-btn ur-btn-lg ur-btn-block mt-5 ur-btn-primary">완료</button>
             )}
+
+            {/* 🦦 2026-10-09 (대표 확정 시안 ①): 직원 확인(첫 60초)이 끝난 뒤에만 별점 — 그 전엔 확인 화면을 흐리지 않는다. */}
+            {cancelLeft === 0 && productId ? <RedeemReviewCard productId={productId} /> : null}
 
             {/* 🗺️ 2026-06-23 카카오맵 후기 유도(아웃링크) — 리뷰는 가져올 수 없으니 작성을 유도(가게 평판↑). */}
             <a
