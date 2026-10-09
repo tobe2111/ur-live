@@ -9535,8 +9535,8 @@ canvas {
   {
     name: '유어샵 안3 — 헤더가 방문자에게 팔로우 버튼을 준다',
     file: 'src/pages/curator-page/CuratorHeader.tsx',
-    find: "{canEdit && (",
-    replace: "{!canEdit && <button type=\"button\" className={btnCls}>팔로우</button>}\n            {canEdit && (",
+    find: "{canEdit ? (",
+    replace: "{!canEdit && <button type=\"button\" className={btnCls}>팔로우</button>}\n            {canEdit ? (",
     test: 'src/tests/unit/ushop-a3-p1.test.ts',
     why:
       '2026-09-02 대표: "그냥 방문자는 안보이면 되잖아". 시안 목업에 있던 "방문자일 때: 팔로우" 띠는 ' +

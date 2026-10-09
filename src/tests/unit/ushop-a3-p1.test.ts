@@ -65,8 +65,14 @@ describe('유어샵 안3 — 주인 띠 삭제 · 버튼 한 자리', () => {
   //   ⇒ 불변식을 "블루 면 0" → **"채운 면은 정확히 하나이고 그것이 `관리`"** 로 옮긴다.
   it('헤더의 주인 전용 자리는 [관리] 하나뿐이고, 채운 면은 그 하나뿐이다', () => {
     const src = codeOnly(read(HEADER))
-    expect(src.match(/\{canEdit && \(/g) || []).toHaveLength(1)
+    // 🩸 2026-10-09 재조준: 앵커가 `{canEdit && (` 였는데 그 줄이 **삼항**이 됐다
+    //   (방문자에게도 그 자리를 `invisible` 로 비워 둔다 — 서버가 첫 화면을 그리려면 이름 칸의
+    //   폭이 누가 보든 같아야 한다. `CuratorHeader` 의 🪑 주석). 지키려던 것은 모양이 아니라
+    //   **주인 전용 게이트가 정확히 하나**라는 것이므로 `?`·`&&` 둘 다 세어 그걸 묻는다.
+    expect(src.match(/canEdit (\?|&&)/g) || [], '주인 전용 게이트는 하나').toHaveLength(1)
     expect(src).toMatch(/<Link to="\/u\/me\/manage"/)
+    // 그 자리는 방문자에게 **보이지 않고 눌리지도 읽히지도 않는다**(자리만 차지한다).
+    expect(src, '방문자 예약은 invisible span').toMatch(/<span aria-hidden="true" className=\{`\$\{manageBtnCls\} invisible pointer-events-none`\}>/)
     // 채운 면은 `관리` 버튼 상수 한 곳에서만 나온다 — 다른 자리에 색 면이 생기면 빨간불.
     expect((src.match(/bg-brand/g) || []), '헤더의 브랜드 면').toHaveLength(1)
     expect(src, '그 한 곳은 관리 버튼 상수').toMatch(/const manageBtnCls = '[^']*bg-brand text-white/)

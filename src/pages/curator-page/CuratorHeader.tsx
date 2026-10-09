@@ -165,11 +165,37 @@ export default function CuratorHeader({ curator, canEdit, counts, accountType, o
             >
               <Share2 className="w-[18px] h-[18px]" strokeWidth={1.6} aria-hidden="true" />
             </button>
-            {canEdit && (
+            {canEdit ? (
               <Link to="/u/me/manage" className={manageBtnCls}>
                 <EditIcon size={17} aria-hidden="true" />
                 {t('curator.manage', { defaultValue: '관리' })}
               </Link>
+            ) : (
+              /*
+               * 🪑 2026-10-09 — **방문자에게도 이 자리를 비워 둔다**(보이지 않는 같은 버튼).
+               *
+               * 왜: 서버가 이 화면의 첫 화면을 그리려면(`worker/utils/curator-ssr-body.ts`) 이름 칸의
+               *   폭이 **누가 보든 같아야** 한다. 390px 실측 — 왼쪽 칸이 방문자 `222px` ↔ 주인 `140px`
+               *   (SNS 2 + 공유 + 관리)이고, 이름이 그 사이 폭이면 `line-clamp-2` 가 1줄↔2줄로 갈려
+               *   헤더 높이가 `126px ↔ 148px` 로 **22px** 어긋난다(측정값). 서버는 누가 보는지 모르므로
+               *   그 어긋남은 마운트 때 아래 전체를 밀어내는 밀림이 된다.
+               *
+               * 🔑 그리고 이것은 **확정 시안을 더 정확히 지키는 쪽**이다 — c2 는 *"주인/방문자 차이는
+               *   버튼 한 자리"* 라고 정했는데, 지금까지 실제 차이는 버튼 + **이름의 줄 수** + 헤더
+               *   높이 셋이었다. 자리를 비워 두면 차이가 진짜로 한 자리(버튼의 유무)만 남는다.
+               *
+               * 📏 오늘 라이브에서 **보이는 변화는 0** 이다: 유어샵 17곳 전부 이름이 좁은 폭(140~228px)에도
+               *   한 줄로 들어간다(최장 10자). 변화가 생기는 것은 그 창에 들어오는 이름이 생기는 날이고,
+               *   그때는 주인·방문자가 **같은 모양**을 본다.
+               *
+               * ⚠️ `<span>` 이다 — 링크·버튼이면 보이지 않는 채로 **탭 순서에 끼고** 스크린리더가 읽는다.
+               *   `invisible`(visibility:hidden)은 자리를 유지하고 `aria-hidden` 은 읽히지 않게 한다.
+               *   라벨 텍스트를 **같은 `t()`** 로 두는 이유: 폭이 번역마다 달라도 둘이 같이 달라진다.
+               */
+              <span aria-hidden="true" className={`${manageBtnCls} invisible pointer-events-none`}>
+                <EditIcon size={17} aria-hidden="true" />
+                {t('curator.manage', { defaultValue: '관리' })}
+              </span>
             )}
           </div>
         </div>

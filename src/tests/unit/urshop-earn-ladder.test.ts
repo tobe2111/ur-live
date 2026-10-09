@@ -68,27 +68,37 @@ describe('③ 딜 있는 핀이 맨 위 · 주인 순서는 안 덮는다', () =
   // 🔧 2026-09-28 재조준 (대표 확정 **s3 밀도형**): 섹션 3개(`<PinGrid pins={applyQ(dealPins)}/>` …)가
   //   **목록 하나**로 합쳐졌다. 그래서 "딜이 맨 위" 를 정하던 자리가 섹션 배치 → `homePins` 의
   //   이어붙이는 순서로 옮겨 갔다. **불변식은 그대로**(딜 → 교환권 → 상품)이므로 검사 대상만 옮긴다.
-  it('dealPins 그룹이 있고 목록에 실린다', () => {
-    expect(page).toContain('dealPins')
-    expect(page).toMatch(/const homePins = useMemo\(\(\) => \[\.\.\.dealPins,/)
-  })
-  it('딜이 다른 그룹보다 앞에 붙는다', () => {
-    const m = page.match(/const homePins = useMemo\(\(\) => \[([^\]]+)\]/)
+  // 🩸 2026-10-09 재조준: 이 가르기가 `shared/curator-pin-order.ts` 로 **행동 불변으로** 옮겨갔다
+  //   (워커가 첫 화면의 줄 4개를 같은 순서·같은 번호로 그려야 하는데 두 벌이면 순번 배지가 다른
+  //   상품을 가리킨다 — 소개비가 샌다). **불변식은 그대로**이므로 검사 대상만 그 파일로 옮긴다.
+  const order = read('src/shared/curator-pin-order.ts')
+
+  it('딜 → 교환권 → 상품 순으로 이어붙인다(SSOT 한 곳에서)', () => {
+    const m = order.match(/return \[([\s\S]*?)\]/)
     expect(m, '핀 이어붙이기를 못 찾았다 — 검사가 무의미해진다').toBeTruthy()
-    const order = m![1].split(',').map(x => x.trim().replace('...', ''))
-    expect(order[0], '딜이 맨 앞이 아니다').toBe('dealPins')
-    expect(order, '세 그룹이 전부 실린다').toEqual(['dealPins', 'voucherPins', 'shopPins'])
+    const body = m![1]
+    const iDeal = body.indexOf('pins.filter(hasDealPin)')
+    const iVoucher = body.indexOf('rest.filter(isVoucherPin)')
+    const iShop = body.indexOf('!isVoucherPin(p)')
+    expect(iDeal, '딜 그룹이 없다').toBeGreaterThan(-1)
+    expect(iVoucher, '교환권 그룹이 없다').toBeGreaterThan(-1)
+    expect(iShop, '상품 그룹이 없다').toBeGreaterThan(-1)
+    expect(iDeal, '딜이 맨 앞이 아니다').toBeLessThan(iVoucher)
+    expect(iVoucher, '교환권이 상품보다 뒤에 있다').toBeLessThan(iShop)
+  })
+
+  it('페이지와 워커가 **같은** SSOT 를 쓴다(두 벌 금지)', () => {
+    expect(page, '페이지가 SSOT 를 쓴다').toContain('curatorHomePins(data.pins)')
+    expect(read('src/worker/utils/curator-ssr-body.ts'), '워커가 같은 SSOT 를 쓴다').toContain('curatorHomePins(pins)')
     // 목록이 그 순서를 그대로 쓴다(딴 배열을 그리면 위 순서가 무의미해진다).
     expect(page).toMatch(/cat === 'all' \? homePins :/)
   })
+
   it('정렬이 아니라 filter 로 가른다 — position 을 덮지 않는다', () => {
     // 🔑 주인이 드래그로 맞춘 순서(position)가 사라지면 재정렬 기능이 무의미해진다.
     //    filter 는 원래 순서를 보존한다. sort 가 등장하면 그 계약이 깨진 것이다.
-    const i = page.indexOf('const { dealPins, shopPins, voucherPins }')
-    expect(i, '핀 그룹 계산이 사라졌다').toBeGreaterThan(-1)
-    const block = page.slice(i, page.indexOf('}, [data])', i))
-    expect(block).toContain('.filter(hasDeal)')
-    expect(codeOnly(block), '핀을 sort 로 재배열하면 주인이 정한 순서가 사라진다').not.toContain('.sort(')
+    expect(order).toContain('.filter(hasDealPin)')
+    expect(codeOnly(order), '핀을 sort 로 재배열하면 주인이 정한 순서가 사라진다').not.toContain('.sort(')
   })
 })
 

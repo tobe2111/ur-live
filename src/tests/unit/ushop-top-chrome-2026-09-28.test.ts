@@ -80,7 +80,11 @@ describe('② 공유·관리 버튼은 그대로 있다 (대표 확인 항목)',
   })
 
   it('관리 버튼이 주인에게 뜬다', () => {
-    expect(header, '관리는 canEdit 일 때').toMatch(/canEdit && \([\s\S]{0,200}\/u\/me\/manage/)
+    // 🩸 2026-10-09 재조준: 그 줄이 **삼항**이 됐다 — 방문자에게도 같은 자리를 `invisible` 로
+    //   비워 두기 때문이다(`CuratorHeader` 의 🪑: 서버가 첫 화면을 그리려면 이름 칸 폭이 누가
+    //   보든 같아야 한다). 지키려던 것은 *"관리는 주인에게만 **진짜 링크**로 뜬다"* 이므로
+    //   `?`·`&&` 둘 다 허용하고, 그 뒤가 `/u/me/manage` 링크인지를 본다.
+    expect(header, '관리는 canEdit 일 때').toMatch(/canEdit (\?|&&) \([\s\S]{0,200}\/u\/me\/manage/)
     expect(header).toContain("curator.manage")
   })
 })

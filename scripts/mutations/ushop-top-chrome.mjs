@@ -19,8 +19,10 @@ export default [
   {
     name: '상단1안 — 관리 버튼을 없앤다',
     file: 'src/pages/curator-page/CuratorHeader.tsx',
-    find: "            {canEdit && (\n              <Link to=\"/u/me/manage\"",
-    replace: "            {false && (\n              <Link to=\"/u/me/manage\"",
+    // 🩸 2026-10-09 재조준: 그 줄이 **삼항**이 됐다(방문자에게도 자리를 `invisible` 로 비워 둔다 —
+    //   `CuratorHeader` 의 🪑). 결함은 그대로 "주인이 관리 버튼을 못 본다" 이고 앵커만 옮긴다.
+    find: "            {canEdit ? (\n              <Link to=\"/u/me/manage\"",
+    replace: "            {false ? (\n              <Link to=\"/u/me/manage\"",
     test: 'src/tests/unit/ushop-top-chrome-2026-09-28.test.ts',
     why:
       '대표가 시안을 보고 **직접 짚은 항목**이다(*"편집? 관리 버튼 들어가야 해"*). ' +

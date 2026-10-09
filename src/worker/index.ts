@@ -286,7 +286,7 @@ import { referralRoutes } from '../features/referral/api/referral.routes';
 //   (typeof navigator/window 가드 보유라 워커 안전). URL 이 클라 렌더값과 byte-일치해야 preload 적중.
 import { cfImage, cfSrcSet } from '../utils/cf-image';
 // 🖼️ 홈 첫 화면 카드 사진 preload — 링크 생성은 헬퍼가 한다(파일 크기 래칫 + 직접 테스트 용이).
-import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; // 한 줄: 파일크기 래칫(2685) 안
+import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; // 한 줄: 파일크기 래칫(2685) 안
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -1048,6 +1048,15 @@ app.use('*', async (c, next) => {
       //   사유·경계·버린 길(워커 React 렌더 = 번들 gzip 게이트로 불가): `utils/home-first-screen.ts`.
       const homeFirst = buildHomeFirstScreen(ssrExtraPayload, urdealLoaderHtml);
       rb = rb.on('#root', { element(el) { el.setInnerContent(homeFirst || urdealLoaderHtml, { html: true }); } });
+    } else if (ssrSlot === 'CURATOR' && ssrPayload && /^\/u\/[A-Za-z0-9_-]{1,40}\/?$/.test(url.pathname) && isMobileUserAgent(c.req.header('user-agent'))) {
+      // 🛍️ 2026-10-09 [UNLOCK_LOADING] (대표 "모두 다 하자"): 시드에 이름·소개·핀 4개(사진 URL까지)가
+      //   이미 와 있는데 `#root` 는 로더가 덮고 있었다(실측 ~1초). 유어샵은 **공유해서 퍼지는 것**이라
+      //   그 1초가 가장 비싸다 → [브랜드 바 + 이름 줄 + 칩 줄 높이 + 진열 줄 4개]를 그리고 그 아래에만
+      //   로더를 둔다. ⚠️ 이 슬롯은 `/u/:handle/p/:id`(핀 클릭 귀속 경로)에도 걸리므로 **한 세그먼트만**
+      //   그린다. PC 는 2열 그리드 + 전역 네비라 UA 로 가른다. 사유·경계·버린 길(쿠키로 주인 판정 /
+      //   워커가 글자 폭 계산): `utils/curator-ssr-body.ts`.
+      const curatorFirst = buildCuratorFirstScreen(ssrPayload, urdealLoaderHtml);
+      rb = rb.on('#root', { element(el) { el.setInnerContent(curatorFirst || urdealLoaderHtml, { html: true }); } });
     } else {
       // 🖼️ 2026-07-07 [UNLOCK_LOADING] (대표 신고 "로딩 중간에 이상한 페이지들" — 전수조사 + "홈도 이상적으로"):
       //   **catch-all 디폴트 = URDEAL 정적 로더**. prerender 된 `#root` 에는 홈(=RestaurantMapPage list) shell 이
