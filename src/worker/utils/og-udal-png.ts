@@ -5,7 +5,7 @@
  *   (`og-inline-image.ts` 머리말의 실측). 사진은 리사이저를 거쳐 JPEG 로 인라인하지만,
  *   유달이는 **투명 배경**이 있어야 사진 위에 올라간다 — JPEG 경로를 못 탄다.
  * 원본: `src/assets/mascot/udal-pose-stand.webp`. 그림을 바꾸면 이 값을 다시 만들고
- *   `worker/utils/detail-ssr-meta.ts` 의 카드 판 번호(`PASS_OG_VERSION`)를 올릴 것.
+ *   `shared/pass-share-card.ts` 의 카드 판 번호(`PASS_OG_VERSION`)를 올릴 것.
  */
 export const UDAL_OG_PNG_W = 168
 export const UDAL_OG_PNG_H = 246

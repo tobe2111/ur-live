@@ -21,6 +21,7 @@ import { render, screen } from '@testing-library/react'
 import { generatePassCardSVG } from '@/worker/utils/og-pass-card'
 import { generateCuratorSVG } from '@/worker/utils/og-curator-card'
 import { buildDetailMeta, PASS_OG_VERSION } from '@/worker/utils/detail-ssr-meta'
+import { passShareCardUrl } from '@/shared/pass-share-card'
 import { pickExpiring } from '@/pages/my-vouchers/ExpiryNotice'
 import { URGENT_DAYS } from '@/pages/my-vouchers/WalletRow'
 import FirstVoucherSheet from '@/pages/my-vouchers/FirstVoucherSheet'
@@ -68,6 +69,14 @@ describe('② 이용권 공유 카드', () => {
     const m = buildDetailMeta(payload, 'https://urdeal.kr', '/pass/2888')
     expect(m?.ogImage).toBe(`https://urdeal.kr/api/og/group-buy/2888?v=${PASS_OG_VERSION}`)
     expect(m?.jsonLd).toContain('https://img.example.com/a.jpg')
+  })
+
+  it('상세 페이지의 카카오 공유 버튼(모바일·PC 둘 다)도 같은 판 번호의 카드 주소를 보낸다', () => {
+    const page = stripComments(R('pages/GroupBuyDetailPage.tsx'))
+    expect(page.match(/passShareCardUrl\(productId\)/g)?.length).toBe(2)
+    expect(page).not.toMatch(/[iI]mageUrl=\{`[^`]*\/api\/og\/group-buy\//)
+    expect(passShareCardUrl(7)).toBe(`https://urdeal.kr/api/og/group-buy/7?v=${PASS_OG_VERSION}`)
+    expect(passShareCardUrl(7)).toMatch(/\?v=\d+$/)
   })
 
   it('라우트가 카드를 새 생성기 + 인라인 사진으로 그린다', () => {

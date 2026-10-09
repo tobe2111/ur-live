@@ -7,6 +7,10 @@
  *   worker/index 의 HTMLRewriter `.on()` 배선은 이 결과값만 소비 — god 파일 성장 방지(file-size 래칫).
  */
 
+// 🔄 이용권 공유 카드 주소·판 번호는 `shared/pass-share-card.ts` 한 곳(화면의 공유 버튼과 같은 값).
+import { passShareCardUrl } from '@/shared/pass-share-card'
+export { PASS_OG_VERSION } from '@/shared/pass-share-card'
+
 // script 종료 태그 이스케이프 — <script type="application/ld+json"> 안전 임베드.
 function escapeScript(s: string): string {
   return s.replace(/<\/script/gi, '<\\/script')
@@ -49,11 +53,6 @@ interface DetailData {
 }
 
 /** 절대 URL 이미지로 정규화 (http → 그대로, / 상대 → origin 접두, 그 외 → fallback). */
-/**
- * 🔄 이용권 공유 카드 판 번호. 카카오는 스크랩 결과를 캐시하므로 주소가 그대로면 고쳐 배포해도 **옛 카드가
- *   계속 나간다**(유어샵 카드 `?v=` 와 같은 이유). 카드 디자인(`og-pass-card.ts`)을 바꾸면 올릴 것.
- */
-export const PASS_OG_VERSION = 1
 
 function absImage(raw: string, origin: string, id: number | string | undefined, fallback?: string): string {
   if (raw.startsWith('http')) return raw
@@ -125,7 +124,7 @@ export function buildDetailMeta(ssrPayload: string, origin: string, pathname: st
     const jsonLd = escapeScript(JSON.stringify([product, breadcrumb]))
     // 🦦 2026-10-09 (대표 확정 시안 ② · "바꾸기"): 공유 미리보기는 사진 원본이 아니라 **공유 카드**(사진 + 귀퉁이
     //   유달이 + `urdeal.`). JSON-LD 의 image 는 위에서 사진 그대로 둔다 — 검색엔진에겐 상품 사진이 맞다.
-    const shareCard = id != null ? `${origin}/api/og/group-buy/${id}?v=${PASS_OG_VERSION}` : ogImage
+    const shareCard = id != null ? passShareCardUrl(id, origin) : ogImage
     return { pageTitle, title: pageTitle, description, canonical, ogImage: shareCard, ogType: 'product', noindex: false, jsonLd }
   } catch { return null }
 }

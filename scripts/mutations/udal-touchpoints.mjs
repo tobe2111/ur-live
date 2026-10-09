@@ -7,6 +7,22 @@ const TEST = 'src/tests/unit/udal-touchpoints-2026-10-09.test.tsx'
 
 export default [
   {
+    name: '[유달이자리] 🖼️상세 공유 버튼이 판 번호 없는 카드 주소로 돌아간다',
+    file: 'src/pages/GroupBuyDetailPage.tsx',
+    find: 'imageUrl={passShareCardUrl(productId)}',
+    replace: 'imageUrl={`https://urdeal.kr/api/og/group-buy/${productId}`}',
+    test: TEST,
+    why: '카카오는 주소 단위로 카드 그림을 캐시한다 — 판 번호가 빠지면 고친 카드를 배포해도 옛 카드가 나간다.',
+  },
+  {
+    name: '[유달이자리] 🖼️판 번호가 카드 주소에서 빠진다',
+    file: 'src/shared/pass-share-card.ts',
+    find: '/api/og/group-buy/${id}?v=${PASS_OG_VERSION}',
+    replace: '/api/og/group-buy/${id}',
+    test: TEST,
+    why: '서버 og:image 와 화면 공유 버튼이 같이 판 번호를 잃는다.',
+  },
+  {
     name: '[유달이자리] 🖼️유어샵 카드 font-family 가 다시 큰따옴표로 XML 을 깨뜨린다',
     file: 'src/worker/utils/og-curator-card.ts',
     find: `font-size="52" font-family='\${OG_FONT}'`,
