@@ -75,14 +75,14 @@ export function generateCuratorSVG(curator: CuratorForOG, profileUri: string | n
       ? `<clipPath id="cprofile"><circle cx="${cx}" cy="${cy}" r="${r}"/></clipPath>
     <image href="${escapeXml(profileUri)}" x="${cx - r}" y="${cy - r}" width="${r * 2}" height="${r * 2}" clip-path="url(#cprofile)" preserveAspectRatio="xMidYMid slice"/>`
       : `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#E4EDFD"/>
-    <text x="${cx}" y="${cy + r * 0.36}" font-size="${Math.round(r * 1.05)}" font-family="${OG_FONT}" font-weight="800" fill="#1C69EF" text-anchor="middle">${initial}</text>`
+    <text x="${cx}" y="${cy + r * 0.36}" font-size="${Math.round(r * 1.05)}" font-family='${OG_FONT}' font-weight="800" fill="#1C69EF" text-anchor="middle">${initial}</text>`
 
   // 사진이 있으면 [위 신원 + 아래 타일 줄], 없으면 신원만 가운데로 키운다.
   const body = hasTiles
     ? `${avatar(146, 144, 58)}
-    <text x="248" y="134" font-size="52" font-family="${OG_FONT}" font-weight="800" fill="#16181C">${escapeXml(name)}</text>
-    <text x="248" y="182" font-size="28" font-family="${OG_FONT}" fill="#8A8F98">@${handle}</text>
-    <text x="100" y="258" font-size="27" font-family="${OG_FONT}" fill="#4B5563">${escapeXml(bio)}</text>
+    <text x="248" y="134" font-size="52" font-family='${OG_FONT}' font-weight="800" fill="#16181C">${escapeXml(name)}</text>
+    <text x="248" y="182" font-size="28" font-family='${OG_FONT}' fill="#8A8F98">@${handle}</text>
+    <text x="100" y="258" font-size="27" font-family='${OG_FONT}' fill="#4B5563">${escapeXml(bio)}</text>
     ${tiles.map((uri, i) => {
       const x = Math.round(TILE_X + i * (tileW + TILE_GAP))
       const w = Math.round(tileW)
@@ -90,9 +90,9 @@ export function generateCuratorSVG(curator: CuratorForOG, profileUri: string | n
     <clipPath id="tile${i}"><rect x="${x}" y="296" width="${w}" height="${TILE_H}" rx="18"/></clipPath>`
     }).join('\n    ')}`
     : `${avatar(600, 232, 78)}
-    <text x="600" y="368" font-size="60" font-family="${OG_FONT}" font-weight="800" fill="#16181C" text-anchor="middle">${escapeXml(name)}</text>
-    <text x="600" y="418" font-size="30" font-family="${OG_FONT}" fill="#8A8F98" text-anchor="middle">@${handle}</text>
-    <text x="600" y="480" font-size="28" font-family="${OG_FONT}" fill="#4B5563" text-anchor="middle">${escapeXml(bio)}</text>`
+    <text x="600" y="368" font-size="60" font-family='${OG_FONT}' font-weight="800" fill="#16181C" text-anchor="middle">${escapeXml(name)}</text>
+    <text x="600" y="418" font-size="30" font-family='${OG_FONT}' fill="#8A8F98" text-anchor="middle">@${handle}</text>
+    <text x="600" y="480" font-size="28" font-family='${OG_FONT}' fill="#4B5563" text-anchor="middle">${escapeXml(bio)}</text>`
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <defs><clipPath id="card"><rect x="32" y="32" width="1136" height="566" rx="28"/></clipPath></defs>
@@ -102,7 +102,7 @@ export function generateCuratorSVG(curator: CuratorForOG, profileUri: string | n
 
   ${body}
 
-  <text x="100" y="578" font-size="24" font-family="${OG_FONT}" font-weight="800" fill="#1C69EF">유어딜 유어샵</text>
-  <text x="1104" y="578" font-size="22" font-family="${OG_FONT}" fill="#9CA3AF" text-anchor="end">urdeal.kr/u/${handle}</text>
+  <text x="100" y="578" font-size="24" font-family='${OG_FONT}' font-weight="800" fill="#1C69EF">유어딜 유어샵</text>
+  <text x="1104" y="578" font-size="22" font-family='${OG_FONT}' fill="#9CA3AF" text-anchor="end">urdeal.kr/u/${handle}</text>
 </svg>`
 }
