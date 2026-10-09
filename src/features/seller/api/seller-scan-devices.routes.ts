@@ -17,6 +17,7 @@ import { getSellerIdFromToken } from '@/lib/seller-shared'
 import { requireAuth } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { safeError } from '@/worker/utils/safe-error'
+import { parseScanSession, insertScanSession } from './scan-session-store'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
 
@@ -144,5 +145,31 @@ sellerScanDevicesRoutes.post('/scan-devices/:id/revoke', rateLimit({ action: 'sc
     return c.json({ success: true })
   } catch (err) {
     return safeError(c, err, '스캔 기기 회수 중 오류가 발생했습니다', '[scan-devices]')
+  }
+})
+
+/**
+ * ── POST /scan-telemetry — 계산대 스캔 세션 한 줄 (2026-10-08, `scan-session-store.ts`) ──
+ * 스캔과 **같은 신원**만 받는다(seller JWT 또는 스캔 기기 키). 기기 키는 `verifyScanDeviceKey` 를
+ * 직접 부른다 — 위 `scanOrSellerAuth` 를 배선하지 않는다(그 미들웨어는 use-by-seller 전용).
+ * 신원은 귀속에만 쓰이고 권한을 주지 않는다. 무엇이 실패하든 클라이언트엔 204(기록이 스캔을 막으면 안 된다).
+ */
+sellerScanDevicesRoutes.post('/scan-telemetry', rateLimit({ action: 'scan_telemetry', max: 120, windowSec: 3600 }), async (c) => {
+  try {
+    let sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+    let deviceId: number | null = null
+    const key = c.req.header('X-Scan-Device-Key')
+    if (!sellerId && key) {
+      const dev = await verifyScanDeviceKey(c.env.DB, key)
+      if (dev) { sellerId = dev.sellerId; deviceId = dev.deviceId }
+    }
+    if (!sellerId) return c.body(null, 204)  // 익명 쓰기 구멍을 만들지 않는다
+    const row = parseScanSession(await c.req.json().catch(() => null))
+    if (!row) return c.body(null, 204)
+    await insertScanSession(c.env.DB, sellerId, deviceId, row)
+    return c.body(null, 204)
+  } catch (err) {
+    console.warn('[scan-telemetry] insert failed', (err as Error)?.message)
+    return c.body(null, 204)
   }
 })

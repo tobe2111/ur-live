@@ -28,6 +28,9 @@ import {
   listBackCameras,
   nextCamera,
 } from './scan-camera'
+import { extractCode } from './scan-code'  // 코드 정규화(대문자·공백 — 실사고 기록 포함)
+import { createScanSession, scanPlatform, sendScanReport, type ScanSession } from './scan-telemetry'
+import { primeScanSound, scanSignal } from './scan-feedback'
 
 /** 확인을 기다리는 스캔. `status` 는 `/verify` 가 준 값(unused·used·expired·refunded…), 조회 실패면 없다. */
 type PendingUse = { code: string; loading: boolean; productName?: string; restaurantName?: string; status?: string }
@@ -41,30 +44,7 @@ type ScanResult = {
   at: string
 }
 
-/**
- * QR 값(https://…/v/<code>)·딥링크·raw 코드에서 바우처 코드 추출.
- *
- * 🩸 2026-09-05 (대표 *"매장 계산대 페이지에서 바우처 코드 직접 입력하는게 왜 필요하지?"* 를
- *   파다 드러난 결함): **손으로 친 코드는 거의 항상 실패하고 있었다.**
- *   발급 코드는 `generateVoucherCode` 의 알파벳이 `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` 라
- *   **전부 대문자**인데(라이브 실측: 전량 대문자), 서버 조회는 `WHERE code = ?` 라
- *   SQLite 기본 BINARY 대조 — 대소문자를 가린다(실측: 소문자로 조회하면 **0건**).
- *   그런데 이 입력칸은 `autoCapitalize` 가 없어 **폰 키보드가 소문자로 시작한다.**
- *   ⇒ 유효한 바우처인데 "바우처를 찾을 수 없습니다"(404) 가 뜬다. 카메라가 안 될 때 쓰라고
- *     만든 폴백이, 정작 그 상황에서 절반은 실패하는 상태였다.
- *
- * ⚠️ 대문자 정규화는 QR 경로에도 함께 적용된다 — QR 안의 코드도 이미 대문자라 **무해**하고
- *   (idempotent), 손상된 QR 을 부분 판독했을 때도 같은 규칙이 걸린다.
- * 공백은 통째로 지운다 — 사람은 `UR ABCD EFGH` 처럼 띄어 치고, 붙여넣기엔 공백이 딸려 온다.
- */
-export function extractCode(raw: string): string | null {
-  const v = (raw || '').replace(/\s+/g, '').toUpperCase()
-  if (!v) return null
-  const m = v.match(/\/V\/([A-Z0-9_-]{4,64})/)
-  if (m) return m[1]
-  if (/^[A-Z0-9_-]{4,64}$/.test(v)) return v
-  return null
-}
+export { extractCode }
 
 export default function VoucherScanner() {
   const { t } = useTranslation()
@@ -92,6 +72,11 @@ export default function VoucherScanner() {
   const [helpOpen, setHelpOpen] = useState(false)
   const [photoBusy, setPhotoBusy] = useState(false)
   const sawAnyRef = useRef(false)
+  // 📏 이 화면 한 번 = 기록 한 줄(scan-telemetry.ts) · 🔔 결과를 화면 전체 색으로도 알린다(scan-feedback.ts — 아이폰엔 진동이 없다)
+  const sessionRef = useRef<ScanSession | null>(null)
+  const sess = () => (sessionRef.current ??= createScanSession(sendScanReport, scanPlatform(navigator.userAgent, navigator.maxTouchPoints)))
+  const [flash, setFlash] = useState<{ ok: boolean; n: number } | null>(null)
+  const signal = useCallback((ok: boolean) => { scanSignal(ok); setFlash((f) => ({ ok, n: (f?.n ?? 0) + 1 })) }, [])
 
   const hasDetector = typeof window !== 'undefined' && 'BarcodeDetector' in window
 
@@ -122,7 +107,7 @@ export default function VoucherScanner() {
         restaurantName: d.data?.restaurant_name || d.restaurant_name,
         at: new Date().toLocaleTimeString('ko-KR'),
       }, ...prev].slice(0, 20))
-      if (navigator.vibrate) navigator.vibrate(d.success ? 80 : [60, 60, 60])
+      signal(!!d.success)
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } }
       setResults((prev) => [{
@@ -131,17 +116,18 @@ export default function VoucherScanner() {
         message: e.response?.data?.error || t('seller.scan.networkError', { defaultValue: '네트워크 오류 — 다시 시도해주세요' }),
         at: new Date().toLocaleTimeString('ko-KR'),
       }, ...prev].slice(0, 20))
-      if (navigator.vibrate) navigator.vibrate([60, 60, 60])
+      signal(false)
     } finally {
       setBusy(false)
     }
-  }, [t])
+  }, [t, signal])
 
   const [pending, setPending] = useState<PendingUse | null>(null)
   const pendingRef = useRef(false)
 
   /** 스캔/입력 → 조회만 하고 확인을 묻는다. 카메라 루프는 ref 로 부르므로 이 함수가 바뀌어도 재시작하지 않는다. */
-  const requestUse = useCallback(async (code: string) => {
+  const requestUse = useCallback(async (code: string, source: 'read' | 'photo' | 'manual' = 'read') => {
+    sessionRef.current?.firstCode(source)  // 첫 코드만 기록된다(이후 호출은 무시)
     if (pendingRef.current) return // 확인창이 떠 있는 동안 카메라가 계속 읽는 것은 무시
     // 같은 코드 5초 내 재인식(카메라가 같은 QR 계속 봄) 무시 — 확인창을 닫자마자 다시 뜨는 것 방지.
     const last = lastCodeRef.current
@@ -159,13 +145,13 @@ export default function VoucherScanner() {
         pendingRef.current = false
         setPending(null)
         setResults((prev) => [{ ok: false, code, message: t('seller.scan.notFound', { defaultValue: '이용권을 찾을 수 없어요' }), at: new Date().toLocaleTimeString('ko-KR') }, ...prev].slice(0, 20))
-        if (navigator.vibrate) navigator.vibrate([60, 60, 60])
+        signal(false)
         return
       }
       // 조회가 안 돼도 막지 않는다 — 사용 처리 자체는 서버가 다시 검증한다(이중사용·타매장 CAS).
       setPending({ code, loading: false })
     }
-  }, [t])
+  }, [t, signal])
   const requestUseRef = useRef(requestUse)
   requestUseRef.current = requestUse
 
@@ -210,7 +196,9 @@ export default function VoucherScanner() {
       //   ⚠️ 먼저 스트림을 놓는다 — 기기에 따라 카메라를 **하나만** 열 수 있어 검사가 실패한다.
       let cams = await listBackCameras()
       const opened = (videoRef.current?.srcObject as MediaStream | null)?.getVideoTracks?.()[0]
+      let repicked = false
       if (!chosen && needsLensRepick(opened, cams.length)) {
+        repicked = true
         scanner.stop()
         const better = await pickBestBackCamera()
         if (better) await scanner.setCamera(better)
@@ -229,7 +217,9 @@ export default function VoucherScanner() {
       await applyBestCameraSettings(track, escalatedRef.current ? { zoom: 2 } : undefined)
       setCameraError(null)
       setCameraOn(true)
+      sess().cameraOpened('wasm', cams.length, { cached: !!chosen, repicked })
     } catch {
+      sess().cameraFailed()
       setCameraError(t('seller.scan.cameraError', { defaultValue: '카메라를 열 수 없어요. 아래에 코드를 직접 입력해주세요.' }))
       setCameraOn(false)
     }
@@ -274,18 +264,21 @@ export default function VoucherScanner() {
             : SCAN_VIDEO_CONSTRAINTS,
         })
       let chosen = await cachedBackCamera()
+      let cached = !!chosen
       let stream: MediaStream
       try {
         stream = await open(chosen)
       } catch {
-        chosen = null  // 기억해 둔 렌즈가 사라졌거나 못 연다 → 기본으로
+        chosen = null; cached = false  // 기억해 둔 렌즈가 사라졌거나 못 연다 → 기본으로
         stream = await open(null)
       }
       // 🔭 기본 렌즈가 근거리 QR 에 안 맞을 때만(초광각 이름 · 연속 초점 없음) 다시 고른다.
       //   대부분의 폰은 여기서 끝난다 — 렌즈를 하나씩 열어 보는 비용(렌즈마다 0.5~1초)을 안 치른다.
       //   ⚠️ 먼저 스트림을 놓는다(카메라를 하나만 열 수 있는 기기가 있다).
       let cams = await listBackCameras()
+      let repicked = false
       if (!chosen && needsLensRepick(stream.getVideoTracks()[0], cams.length)) {
+        repicked = true
         stream.getTracks().forEach((tr) => tr.stop())
         chosen = await pickBestBackCamera()
         stream = await open(chosen)
@@ -305,6 +298,7 @@ export default function VoucherScanner() {
       //   해상도가 아무리 높아도 못 읽는다. 지원 못 하는 기기에선 조용히 무시된다.
       await applyBestCameraSettings(stream.getVideoTracks()[0])
       setCameraOn(true)
+      sess().cameraOpened('detector', cams.length, { cached, repicked })
       const detector = new (window as unknown as {
         BarcodeDetector: new (opts: { formats: string[] }) => { detect: (s: HTMLVideoElement) => Promise<Array<{ rawValue: string }>> }
       }).BarcodeDetector({ formats: ['qr_code'] })
@@ -315,6 +309,7 @@ export default function VoucherScanner() {
       /** 네이티브 디코더를 접고 wasm 으로 넘긴다 — 스트림을 먼저 놓아야 카메라를 다시 열 수 있다. */
       const handOver = () => {
         escalatedRef.current = true  // 넘어간 뒤엔 확대까지 켠다(노트북 화면처럼 먼 QR)
+        sess().handedOver()
         scanningRef.current = false
         streamRef.current?.getTracks().forEach((tr) => tr.stop())
         streamRef.current = null
@@ -336,6 +331,7 @@ export default function VoucherScanner() {
       }
       void tick()
     } catch {
+      sess().cameraFailed()
       setCameraError(t('seller.scan.cameraError', { defaultValue: '카메라를 열 수 없어요. 아래에 코드를 직접 입력해주세요.' }))
       setCameraOn(false)
     }
@@ -362,6 +358,10 @@ export default function VoucherScanner() {
     const id = window.setTimeout(() => { if (!sawAnyRef.current) setHelpOpen(true) }, SCAN_HELP_AFTER_MS)
     return () => window.clearTimeout(id)
   }, [])
+  useEffect(() => { if (helpOpen) sessionRef.current?.helpShown() }, [helpOpen])
+
+  // 📏 화면이 닫힐 때 — 아직 못 읽었으면 '못 읽고 닫음' 이 기록된다(실패는 이때만 알 수 있다).
+  useEffect(() => { sess(); const end = () => sessionRef.current?.end(); window.addEventListener('pagehide', end); return () => { window.removeEventListener('pagehide', end); end() } }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // 🔆 2026-07-06: 계산대 화면 꺼짐/디밍 방지 — Screen Wake Lock(웹 표준, iOS 16.4+/안드).
   //   연속 스캔 중 화면이 잠기면 손님 대기가 끊김. fail-soft(미지원/거부 시 무시). QRModal 과 동일 패턴.
@@ -393,7 +393,7 @@ export default function VoucherScanner() {
     try {
       const raw = await scanImageFile(file)
       const code = raw ? extractCode(raw) : null
-      if (code) { sawAnyRef.current = true; await requestUse(code) }
+      if (code) { sawAnyRef.current = true; await requestUse(code, 'photo') }
       else setCameraError(t('seller.scan.photoNoQr', { defaultValue: '사진에서 QR 을 못 찾았어요. 더 가까이·밝게 찍어 주세요.' }))
     } finally {
       setPhotoBusy(false)
@@ -425,13 +425,15 @@ export default function VoucherScanner() {
     const code = extractCode(manualCode)
     if (!code) return
     setManualCode('')
-    void requestUse(code)
+    void requestUse(code, 'manual')
   }
 
   const latest = results[0]
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" onPointerDown={primeScanSound}>
+      {/* 🔔 결과 깜빡임 — 아이폰엔 진동이 없고 무음 모드면 소리도 없다. 이것이 늘 되는 신호다. */}
+      {flash && <div key={flash.n} aria-hidden onAnimationEnd={() => setFlash(null)} className={`fixed inset-0 z-[20000] pointer-events-none opacity-0 animate-[ur-scan-flash_700ms_ease-out_forwards] ${flash.ok ? 'bg-tone-ok' : 'bg-tone-bad'}`} />}
       {/* 카메라 뷰 */}
       <div className="relative rounded-2xl overflow-hidden bg-black aspect-[4/3]">
         {/* eslint-disable-next-line jsx-a11y/media-has-caption */}

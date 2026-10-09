@@ -150,3 +150,30 @@ sha 는 **반드시 `gh api` 로 받은 실제 값**을 쓸 것 — 이 세션�
 - 가드: `scan-lens-pick` 단언 7건 추가 + 주입 4건 — 렌즈선택 주입 13건 전부 빨간불 확인.
 - 🧭 틀린 판단: 정확도(맞는 렌즈)를 위해 **모든 사람의 첫 화면**에 비용을 매겼다. 검사는 "문제가 보일 때만" 해야 한다 — 바로 앞(3차, 전환 버튼)과 같은 실수를 한 번 더 했다.
 - ⚠️ 유어딜 페이지 로딩 신고(같은 날): 이 컨테이너에서 curl 로 재면 홈·교환권·마이·API 전부 200, 0.15~1.3초, 엔트리 청크 25개 전부 200. 브라우저 하네스는 프록시가 `ERR_TOO_MANY_RETRIES` 를 내서 판정 불가. ⇒ 서버 쪽 장애는 아니라고 판단, 대표에게 화면·URL·기기를 물었다.
+
+## 5차 — ① 스캔 기록 · ② 아이폰 결과 신호 (2026-10-08, 대표 *"1,2 모두 진행해줘"*)
+
+**① 기록** — 1~4차가 전부 신고와 추측에 기대 있었다(못 읽는 것은 에러가 아니라 로그가 없다).
+- 계산대 스캔 화면을 **한 번 열 때마다 정확히 한 줄**: 카메라가 켜지기까지(ms) · 첫 코드까지(ms) · 디코더(네이티브/wasm, 넘겼는지) · 후면 렌즈 수 · 기억한 렌즈였는지/다시 골랐는지 · 결과(`read` 카메라 / `photo` 사진 / `manual` 손 입력 / **`none` 못 읽고 닫음** / `camera_error`) · 7초 도움말이 떴는지 · 플랫폼(ios/android/other).
+- 성공은 첫 코드에서 **즉시**, 실패는 화면이 닫힐 때(pagehide·언마운트) 보낸다. 개인정보 없음(코드·상품·UA 원문 안 보냄).
+- 서버: `POST /api/seller/scan-telemetry` (`seller-scan-devices.routes.ts` 끝) → 테이블 `voucher_scan_sessions`(ensure 패턴, `scan-session-store.ts`). **스캔과 같은 신원만** — 사장님 JWT 또는 스캔 기기 키(`verifyScanDeviceKey` 직접 호출, `scanOrSellerAuth` 미배선 = scope 확장 없음). 신원 없으면 204 로 버린다(익명 쓰기 구멍 없음). 어떤 실패도 204(기록이 스캔을 막지 않는다).
+- 클라: `src/components/voucher/scan-telemetry.ts`.
+
+**② 아이폰 결과 신호** — 종전 신호는 `navigator.vibrate` 하나였는데 아이폰 사파리엔 그 함수가 없다.
+- 화면 전체 색 깜빡임(초록/빨강, 0.7초 — 무음 모드에서도 보이는 유일한 늘-되는 신호) + 짧은 합성음(성공 높은 두 음 / 실패 낮은 두 번) + 진동(안드로이드, 종전 패턴).
+- 아이폰 소리는 탭 안에서 오디오를 깨워 둬야 난다 → 스캐너를 누를 때마다(`onPointerDown`) 깨운다. [사용 처리] 탭이 결과보다 먼저 오므로 처리 결과엔 소리가 난다. 무음 스위치면 소리는 없다(깜빡임이 대신한다).
+- 깜빡임 바탕은 `opacity-0` — 애니메이션이 꺼진 환경에서도 화면을 덮은 채 남지 않는다.
+- 클라: `src/components/voucher/scan-feedback.ts`.
+
+**부수**: `VoucherScanner.tsx` 가 600줄 상한(신규 파일 래칫)에 걸려 `extractCode` 를 `scan-code.ts` 로 옮기고 재수출(테스트 import 불변). 인라인 주입 1건의 `file` 경로를 따라 옮김.
+
+**가드**: `scan-telemetry-feedback-2026-10-08.test.ts`(라우트를 실제로 태워 익명·소비자 토큰은 안 적고 사장님 토큰만 적는지까지) + 주입 12건(`scripts/mutations/scan-telemetry-feedback.mjs`) 전부 빨간불 확인. 🩸 첫 판에 주입 1건이 헛돌았다 — `sent` 가드가 `flush` 와 호출자 양쪽에 있어 하나를 지워도 초록이었다. 중복을 없애고 가드를 호출자에 남겼다.
+
+### 다음 세션의 첫 액션 (E4 판정)
+배포 뒤 대표(또는 사장님)가 계산대를 한 번 열고 QR 하나 읽으면 → 읽기 전용 D1(`DB_MAIN`) 조회:
+```sql
+SELECT platform, engine, handed_over, cam_count, lens_cached, lens_repicked, camera_ms, first_read_ms, outcome, help_shown, created_at
+FROM voucher_scan_sessions ORDER BY id DESC LIMIT 20
+```
+- 줄이 생기면 ① E4. 며칠 쌓이면 `outcome` 분포·`first_read_ms` 중앙값·`none` 비율을 플랫폼별로 보고 다음 수정을 정한다.
+- ② E4 는 **아이폰 실기기**에서 [사용 처리] → 초록 깜빡임 + 소리(무음 해제 상태) 확인.
