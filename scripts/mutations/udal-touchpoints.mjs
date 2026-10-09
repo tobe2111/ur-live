@@ -7,6 +7,14 @@ const TEST = 'src/tests/unit/udal-touchpoints-2026-10-09.test.tsx'
 
 export default [
   {
+    name: '[유달이자리] 🖼️사진을 못 박았는데 사진 빠진 카드를 그대로 낸다',
+    file: 'src/worker/routes/og-image.routes.ts',
+    find: 'if (!photoUri && photoAbs) return c.redirect(photoAbs, 302)',
+    replace: 'void photoAbs',
+    test: TEST,
+    why: '2026-10-09 라이브에서 이용권 링크 미리보기의 상품 사진이 사라졌다(서버 안 리사이즈 불가 → 원본이 한도 초과).',
+  },
+  {
     name: '[유달이자리] 🖼️상세 공유 버튼이 판 번호 없는 카드 주소로 돌아간다',
     file: 'src/pages/GroupBuyDetailPage.tsx',
     find: 'imageUrl={passShareCardUrl(productId)}',

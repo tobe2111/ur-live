@@ -12,7 +12,7 @@
 
 import { Hono } from 'hono'
 import type { Env } from '../types/env'
-import { inlineImage } from '../utils/og-inline-image'
+import { inlineImage, toAbsolute } from '../utils/og-inline-image'
 import { generateCuratorSVG, tileWidth, TILE_H, type CuratorForOG } from '../utils/og-curator-card'
 import { generatePassCardSVG, PASS_PHOTO_W, PASS_PHOTO_H } from '../utils/og-pass-card'
 
@@ -105,6 +105,12 @@ ogRoutes.get('/group-buy/:id', async (c) => {
     //   (그래서 옛 카드의 사진 자리가 비어 있었다). 못 받으면 null → 사진 없는 판으로 그린다.
     const origin = new URL(c.req.url).origin
     const photoUri = await inlineImage(product.image_url, origin, PASS_PHOTO_W, PASS_PHOTO_H)
+    // 🩸 2026-10-09 라이브 실측: 서버 안에서 부른 cdn-cgi 는 리사이즈가 안 걸려 원본(656KB)이 오고,
+    //   한도(160KB)를 넘어 사진이 빠진 판이 나갔다 — 이용권 링크 미리보기에서 **상품 사진이 사라졌다.**
+    //   사진이 있는데 못 박았으면 카드를 그리지 않고 **사진 원본으로 보낸다**(이 카드 이전과 같은 미리보기).
+    //   사진이 아예 없는 상품만 이름 판 카드를 쓴다.
+    const photoAbs = toAbsolute(product.image_url, origin)
+    if (!photoUri && photoAbs) return c.redirect(photoAbs, 302)
     const svg = generatePassCardSVG(product, photoUri)
     return new Response(svg, {
       headers: {
