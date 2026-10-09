@@ -7,6 +7,22 @@ const MOD = 'src/worker/utils/curator-ssr-body.ts'
 
 export default [
   {
+    name: '🛍️ 순서 SSOT 가 딜 핀을 맨 위로 안 올린다(소개비 붙는 것이 아래로 내려간다)',
+    file: 'src/shared/curator-pin-order.ts',
+    find: '    ...pins.filter(hasDealPin),\n    ...rest.filter(isVoucherPin),',
+    replace: '    ...rest.filter(isVoucherPin),\n    ...pins.filter(hasDealPin),',
+    test: 'src/tests/unit/urshop-earn-ladder.test.ts',
+    why: '2026-08-27 대표 확정 순서(딜 → 교환권 → 상품). 딜 있는 핀이 팔려야 소개비가 붙는다.',
+  },
+  {
+    name: '🛍️ 순서 SSOT 가 filter 대신 sort 로 재배열한다(주인이 맞춘 순서가 사라진다)',
+    file: 'src/shared/curator-pin-order.ts',
+    find: '  const rest = pins.filter((p) => !hasDealPin(p))',
+    replace: '  const rest = [...pins].sort((a, b) => Number(hasDealPin(a)) - Number(hasDealPin(b)))',
+    test: 'src/tests/unit/urshop-earn-ladder.test.ts',
+    why: '드래그로 맞춘 `position` 이 사라지면 재정렬 기능이 무의미해진다 — filter 는 순서를 보존한다.',
+  },
+  {
     name: '🛍️ 방문자의 `관리` 자리 예약이 사라진다(주인만 이름 칸이 좁아져 22px 밀림)',
     file: 'src/pages/curator-page/CuratorHeader.tsx',
     find: '              <span aria-hidden="true" className={`${manageBtnCls} invisible pointer-events-none`}>',
