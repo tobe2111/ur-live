@@ -22,6 +22,7 @@ import { ensureTables, clawbackVoucherCommission, sendRefundAlimtalk } from './h
 // 🛡️ 2026-05-21: 카테고리 라벨 동적 (이용권 hardcode 제거).
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
 import { checkStoreCodeRequired } from '../../../worker/utils/voucher-redeem-guard'
+import { resolveSellerNotifyTarget } from '../../../worker/utils/seller-notify-phone'
 import { redeemByCounterSecret } from '../../../worker/utils/counter-redeem'
 
 export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void {
@@ -222,13 +223,12 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
             try {
               const merchantId = meta.consigned_from_seller_id ?? meta.seller_id
               if (!merchantId) return
-              const sellerRow = await DB.prepare('SELECT phone, business_name FROM sellers WHERE id = ?')
-                .bind(merchantId).first<{ phone: string | null; business_name: string | null }>()
+              const sellerRow = await resolveSellerNotifyTarget(DB, merchantId) // 📱 담당자 휴대폰 우선(seller-notify-phone.ts)
               if (sellerRow?.phone) {
                 await sendSellerVoucherUsedAlimtalk(
                   c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
                   sellerRow.phone,
-                  { restaurantName: sellerRow.business_name || meta.restaurant_name || '매장', productName: meta.product_name, usedAt: new Date().toISOString() },
+                  { restaurantName: sellerRow.businessName || meta.restaurant_name || '매장', productName: meta.product_name, usedAt: new Date().toISOString() },
                 )
               }
               const { createDashboardNotification } = await import('../../notifications/api/dashboard-notifications.routes')
@@ -451,7 +451,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
         const voucher = await DB.prepare(`
           SELECT v.id, v.user_id, v.order_id, v.product_id, v.status, v.applied_price, v.created_at,
                  o.payment_method, o.payment_key,
-                 p.price AS product_price, p.name AS product_name
+                 p.price AS product_price, p.name AS product_name, p.seller_id AS seller_id
           FROM vouchers v
           LEFT JOIN orders o ON o.id = v.order_id
           LEFT JOIN products p ON p.id = v.product_id
@@ -460,7 +460,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
           id: number; user_id: string; order_id: number; product_id: number; status: string
           applied_price: number | null; created_at: string
           payment_method: string | null; payment_key: string | null
-          product_price: number; product_name: string
+          product_price: number; product_name: string; seller_id: number | null
         }>()
 
         if (!voucher) return c.json({ success: false, error: '교환권을 찾을 수 없습니다' }, 404)
@@ -564,6 +564,12 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
         c.executionCtx?.waitUntil(
           sendRefundAlimtalk(c.env as unknown as Record<string, unknown>, DB, voucher.user_id, voucher.product_name, refundAmount)
         )
+        // 🔔 2026-10-10 (전수조사): 손님이 스스로 취소하면 사장님은 몰랐다 — 판매 벨은 왔는데 취소 벨이 없어
+        //   "손님이 온다" 고 준비한 채로 남았다. 판매 벨과 같은 자리(대시보드)로 알린다.
+        if (voucher.seller_id) c.executionCtx?.waitUntil(import('../../notifications/api/dashboard-notifications.routes')
+          .then(m => m.createDashboardNotification(DB, 'seller', String(voucher.seller_id), 'voucher_cancelled',
+            '↩️ 이용권 구매 취소', `${voucher.product_name} — 손님이 사용 전에 취소했어요`, '/seller/group-buy'))
+          .catch(() => { /* fail-soft */ }))
 
         return c.json({
           success: true,

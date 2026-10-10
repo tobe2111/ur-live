@@ -541,7 +541,7 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
       data: {
         seller_id: newSellerId, status, channel: b.channel, owner_claim_code: ownerClaimCode,
         nts: { checked: ntsResult.ok, valid: ntsResult.valid },
-        message: '매장이 등록 접수되었습니다. 사업자등록증 확인 후 활성화됩니다.',
+        message: certUrl ? '매장이 접수됐어요. 사업자등록증을 확인한 뒤 승인됩니다.' : '매장이 접수됐어요. 사업자등록증을 올리면 심사가 시작됩니다 (셀러 대시보드 › 사업자 정보).',
       },
     })
   } catch (err) {

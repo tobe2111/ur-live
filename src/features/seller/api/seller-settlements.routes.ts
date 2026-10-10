@@ -22,6 +22,7 @@ import { safeError } from '@/worker/utils/safe-error';
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { listSellerSettlementInvoices, approveSettlementInvoice } from './settlement-tax-invoices'
 import { getSellerPayouts } from './seller-settlements/payouts'
+import { submitBizRegistration } from './seller-settlements/biz-reg-submit'
 import { intParam } from '@/shared/pagination'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
@@ -852,35 +853,14 @@ sellerSettlementsRoutes.post('/business-registration/submit', async (c) => {
     const sellerId = payload.seller_id;
     if (!sellerId) return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 403);
 
-    const body = await c.req.json<{ image_url?: string; business_number?: string }>().catch(() => ({} as { image_url?: string; business_number?: string }));
-    const imageUrl = String(body?.image_url || '').trim();
-    const businessNumber = String(body?.business_number || '').trim();
-
-    if (!imageUrl) return c.json({ success: false, error: '이미지 URL 이 필요합니다' }, 400);
-    // image_url 은 R2 / Cloudflare Images URL 만 허용 (XSS/SSRF 방어).
-    if (!/^https?:\/\//.test(imageUrl)) return c.json({ success: false, error: '올바른 URL 형식이 아닙니다' }, 400);
-    if (imageUrl.length > 2000) return c.json({ success: false, error: 'URL 이 너무 깁니다' }, 400);
-    // 사업자번호 형식 — 한국 표준 10자리 (선택 입력).
-    if (businessNumber && !/^\d{3}-?\d{2}-?\d{5}$|^\d{10}$/.test(businessNumber.replace(/[^\d-]/g, ''))) {
-      return c.json({ success: false, error: '사업자등록번호 형식이 올바르지 않습니다 (예: 123-45-67890)' }, 400);
-    }
-
-    // status 'pending' 으로 재설정 (재신청 케이스 — 거부된 셀러도 다시 제출 가능).
-    await db.prepare(
-      `UPDATE sellers
-          SET business_registration_image_url = ?,
-              business_registration_status = 'pending',
-              business_registration_reject_reason = NULL,
-              business_number = COALESCE(NULLIF(?, ''), business_number),
-              updated_at = datetime('now')
-        WHERE id = ?`
-    ).bind(imageUrl, businessNumber, sellerId).run();
-
-    // 어드민 알림.
+    const body = await c.req.json<{ image_url?: unknown; business_number?: unknown }>().catch(() => ({}));
+    // 🪪 2026-10-10: 검증·저장·반려 매장 재심사 복귀는 `seller-settlements/biz-reg-submit.ts`
+    const r = await submitBizRegistration(db, sellerId, body);
+    if (!r.ok) return c.json({ success: false, error: r.error }, r.status);
     createDashboardNotification(db, 'admin', null, 'business_registration_submitted',
-      '사업자등록 검증 요청', `셀러 #${sellerId}`, '/admin/sellers').catch(swallow('seller:biz-reg:submit'));
-
-    return c.json({ success: true, message: '제출되었습니다. 어드민 검증 후 알려드립니다.' });
+      r.resubmittedStore ? '반려 매장 서류 재제출' : '사업자등록 검증 요청', `셀러 #${sellerId}`,
+      r.resubmittedStore ? '/admin/seller-approval' : '/admin/business-verification').catch(swallow('seller:biz-reg:submit'));
+    return c.json({ success: true, message: r.resubmittedStore ? '다시 제출했어요. 매장 심사를 다시 진행합니다.' : '제출되었습니다. 어드민 검증 후 알려드립니다.' });
   } catch (err: unknown) {
     return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-settlements]');
   }

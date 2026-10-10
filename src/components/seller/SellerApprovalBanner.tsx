@@ -30,6 +30,8 @@ interface SurfaceResponse {
   status?: string | null
   reject_reason?: string | null
   has_business_cert?: boolean
+  cert_status?: string | null
+  cert_reject_reason?: string | null
 }
 
 export default function SellerApprovalBanner() {
@@ -55,19 +57,26 @@ export default function SellerApprovalBanner() {
   if (!s || s.status === 'approved' || s.status === 'active') return null
 
   const rejected = s.status === 'rejected'
+  // 🪪 2026-10-10: 매장은 대기인데 **등록증만** 반려된 경우 — 종전엔 "심사가 진행 중이에요" 라고 말해
+  //   사장님은 기다리고 어드민은 새 서류를 기다리는 교착이 됐다. 반려와 같은 말·같은 버튼으로 다룬다.
+  const certRejected = !rejected && s.cert_status === 'rejected'
   const needsCert = !s.has_business_cert
-  const Icon = rejected ? FileWarning : needsCert ? Upload : Clock
-  const tone = rejected ? 'text-tone-bad' : 'text-tone-warn'
+  const Icon = rejected || certRejected ? FileWarning : needsCert ? Upload : Clock
+  const tone = rejected || certRejected ? 'text-tone-bad' : 'text-tone-warn'
 
   const title = rejected
     ? '제출하신 정보를 다시 확인해주세요'
-    : needsCert
-      ? '사업자등록증 사본이 아직 없어요'
-      : '심사가 진행 중이에요'
+    : certRejected
+      ? '사업자등록증을 다시 올려주세요'
+      : needsCert
+        ? '사업자등록증 사본이 아직 없어요'
+        : '심사가 진행 중이에요'
 
   const desc = rejected
     ? (s.reject_reason || '사유를 확인하고 수정한 뒤 다시 요청해주세요.')
-    : needsCert
+    : certRejected
+      ? (s.cert_reject_reason || '등록증을 확인할 수 없었어요. 사진을 다시 올려주시면 심사를 이어갑니다.')
+      : needsCert
       ? '등록증 사본이 도착해야 심사를 시작할 수 있어요. 지금 올리면 보통 1영업일 안에 끝납니다.'
       : '승인되면 이용권이 메인에 노출되고 파트너 찾기가 열립니다. 그 전에도 이용권 등록은 지금 하실 수 있어요.'
 
@@ -83,7 +92,7 @@ export default function SellerApprovalBanner() {
         onClick={() => navigate('/seller/business-info')}
         className="ur-btn ur-btn-sm ur-btn-primary shrink-0"
       >
-        {rejected ? '다시 요청하기' : '서류 올리기'}
+        {rejected || certRejected ? '다시 요청하기' : '서류 올리기'}
       </button>
     </div>
   )

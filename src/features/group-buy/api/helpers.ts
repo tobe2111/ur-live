@@ -410,21 +410,22 @@ export async function sendSellerFirstVoucherAlimtalk(
   try {
     const cleanPhone = phone.replace(/[^0-9]/g, '')
     if (!/^01\d{8,9}$/.test(cleanPhone)) return
-    const message = `[유어딜] 🎉 첫 손님이 곧 방문합니다
+    // 🩸 2026-10-10: 문구가 옛 모델이었다 — "식권", 존재하지 않는 매장 전용 링크(`store_owner_token`),
+    //   "사용 + 7일 후 자동 송금"(실제는 정산 계좌 등록 + 정산 주기 · 값은 어드민 조정). 사실만 남긴다.
+    const message = `[유어딜] 🎉 첫 이용권이 팔렸어요
 
 ${data.restaurantName} 사장님,
-"${data.productName}" 첫 손님이 식권을 구매했어요!
+"${data.productName}" 이용권을 손님이 구매했어요.
 
-📋 사용 처리 방법
-1. 본인 폰으로 아래 링크 진입 (즐겨찾기 권장)
-   ${data.statsUrl}
-2. 손님이 QR 보여주면 [QR 스캔] 버튼 → 자동 처리
-3. 화면에 "메뉴 X 제공" 표시 후 음식 준비
-4. POS / T오더 결제 X (이미 유어딜에서 결제 완료)
+📋 손님이 오시면
+1. 손님 폰의 이용권 QR 을 셀러 대시보드 [사용 처리]로 스캔하거나
+2. 손님이 매장 확인코드를 직접 입력해 사용 처리합니다
+3. 이미 유어딜에서 결제가 끝났으니 따로 결제 받지 마세요
 
 💰 정산
-사용 + 7일 후 등록 계좌로 자동 송금됩니다.
+사용 처리된 금액이 정산 계좌로 지급됩니다. 계좌를 아직 안 올리셨다면 셀러 대시보드 → 정산에서 등록해 주세요.
 
+판매·사용 현황: ${data.statsUrl}
 문의: 유어딜 고객센터`
     await fetch('https://api.solapi.com/messages/v4/send', {
       method: 'POST',

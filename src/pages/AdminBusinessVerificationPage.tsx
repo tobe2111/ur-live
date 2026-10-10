@@ -51,7 +51,7 @@ export default function AdminBusinessVerificationPage() {
   function h() { return { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
 
   async function verify(sellerId: number) {
-    if (!(await confirmDialog('이 셀러의 사업자등록증을 승인하시겠습니까?\n승인 후 현금 정산 + 딜 환급 가능.'))) return
+    if (!(await confirmDialog('이 셀러의 사업자등록증을 승인하시겠습니까?\n승인 후 딜 환급 가능(판매 정산은 매장 승인 기준).'))) return
     try {
       const r = await api.patch(`/api/admin/sellers/${sellerId}/business-registration/verify`,
         { action: 'verify' }, { headers: h() })
@@ -98,7 +98,7 @@ export default function AdminBusinessVerificationPage() {
           <div className="space-y-4">
             <div className="bg-white border border-rule rounded-xl p-3 text-xs text-tone-warn">
               <strong>{sellers.length}건</strong> 검증 대기 — 보통 1-3 영업일 내 처리 권장.
-              승인 시 셀러는 현금 정산 + 딜 환급 가능 (세법 기준 원천징수 자동 적용 — 사업소득 3.3% / 기타소득 8.8%).
+              승인 시 셀러는 딜 환급 가능 — 판매 정산은 매장 승인 + 정산 계좌 기준이다 (세법 기준 원천징수 자동 적용 — 사업소득 3.3% / 기타소득 8.8%).
             </div>
 
             {sellers.map((s) => (

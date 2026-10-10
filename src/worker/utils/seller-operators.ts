@@ -290,3 +290,19 @@ export async function resolveStoreOwnerUserId(
   if (owner === undefined) return undefined
   return owner ? Number(owner.user_id) : null
 }
+
+/**
+ * 🛍️ 2026-10-10 (사장님·중개사 플로우 전수조사) — **"이 유저의 가게" 를 묻는 SQL 조각 하나.**
+ *
+ * 유어샵(`/u/{handle}`)은 내 가게를 `WHERE linked_user_id = ? AND status = 'approved'` 로 찾았다.
+ * `/store/new` 로 직접 등록한 사장님은 `linked_user_id` 가 비어 있으므로(위 `findOwnedApprovedSeller`
+ * 머리말) **승인돼도 내 유어샵에 내 가게가 안 떴다** — 출금·인증은 2026-09 에 넓혔는데 진열만 남았다.
+ * 같은 규칙(`owner` 좌석만 · 중개는 아님)을 쓰고, 상태는 정산 가능 상태(`approved`·`active`)와 맞춘다.
+ *
+ * 테이블 별칭은 `s`. 바인드는 **세 번** — (linked_user_id, 좌석 user_id, 정렬용 linked_user_id).
+ * 연결 계정(linked_user_id)의 가게를 먼저, 그 다음 좌석 순서로 고른다.
+ */
+export const OWNED_STORE_WHERE_SQL = `s.status IN ('approved', 'active')
+  AND ( s.linked_user_id = ?
+     OR EXISTS (SELECT 1 FROM seller_operators o WHERE o.seller_id = s.id AND o.user_id = ? AND o.role = 'owner' AND o.revoked_at IS NULL) )
+  ORDER BY CASE WHEN s.linked_user_id = ? THEN 0 ELSE 1 END, s.id`

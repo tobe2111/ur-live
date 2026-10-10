@@ -28,7 +28,7 @@ export async function notifyStoreOperatorsApproved(
     notifyUser(DB, String(o.user_id), 'store_approved',
       isReactivation ? (owner ? '🏪 내 매장 재활성화' : '🏪 운영 매장 재활성화') : (owner ? '🏪 내 매장 승인 완료' : '🏪 운영 매장 승인 완료'),
       isReactivation ? (owner ? '매장이 다시 활성화됐어요' : '위임받은 매장이 다시 활성화됐어요')
-        : (owner ? '매장이 승인됐어요. 이용권이 메인에 노출되고 정산이 시작돼요' : '위임받은 매장이 승인됐어요. 이용권이 메인에 노출되고 정산이 시작돼요'),
+        : (owner ? '매장이 승인됐어요. 이용권이 메인에 노출돼요 — 정산 계좌를 등록하면 판매 대금이 지급됩니다' : '위임받은 매장이 승인됐어요. 이용권이 메인에 노출돼요 — 사장님 정산 계좌가 등록돼야 판매 대금이 지급됩니다'),
       '/seller/stores').catch(swallow('admin-sellers:approve-operator-notify'))
   }
 }
