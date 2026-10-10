@@ -23,6 +23,7 @@ import { ensureTables, clawbackVoucherCommission, sendRefundAlimtalk } from './h
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
 import { checkStoreCodeRequired } from '../../../worker/utils/voucher-redeem-guard'
 import { resolveSellerNotifyTarget } from '../../../worker/utils/seller-notify-phone'
+import { storeGoUrl } from '../../../shared/store-deep-link'
 import { redeemByCounterSecret } from '../../../worker/utils/counter-redeem'
 
 export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void {
@@ -228,7 +229,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
                 await sendSellerVoucherUsedAlimtalk(
                   c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
                   sellerRow.phone,
-                  { restaurantName: sellerRow.businessName || meta.restaurant_name || '매장', productName: meta.product_name, usedAt: new Date().toISOString() },
+                  { restaurantName: sellerRow.businessName || meta.restaurant_name || '매장', productName: meta.product_name, usedAt: new Date().toISOString(), ordersUrl: storeGoUrl(merchantId, 'orders') },
                 )
               }
               const { createDashboardNotification } = await import('../../notifications/api/dashboard-notifications.routes')

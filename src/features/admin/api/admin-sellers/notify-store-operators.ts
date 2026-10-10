@@ -12,6 +12,7 @@ import type { D1Database } from '@cloudflare/workers-types'
 import { executeQuery } from '@/worker/utils/database'
 import { notifyUser } from '@/lib/notifications'
 import { swallow } from '@/worker/utils/swallow'
+import { storeGoPath } from '@/shared/store-deep-link'
 
 export async function notifyStoreOperatorsApproved(
   DB: D1Database,
@@ -29,6 +30,6 @@ export async function notifyStoreOperatorsApproved(
       isReactivation ? (owner ? '🏪 내 매장 재활성화' : '🏪 운영 매장 재활성화') : (owner ? '🏪 내 매장 승인 완료' : '🏪 운영 매장 승인 완료'),
       isReactivation ? (owner ? '매장이 다시 활성화됐어요' : '위임받은 매장이 다시 활성화됐어요')
         : (owner ? '매장이 승인됐어요. 이용권이 메인에 노출돼요 — 정산 계좌를 등록하면 판매 대금이 지급됩니다' : '위임받은 매장이 승인됐어요. 이용권이 메인에 노출돼요 — 사장님 정산 계좌가 등록돼야 판매 대금이 지급됩니다'),
-      '/seller/stores').catch(swallow('admin-sellers:approve-operator-notify'))
+      storeGoPath(sellerId, 'vouchers')).catch(swallow('admin-sellers:approve-operator-notify')) // 🔗 /seller/* 는 셀러 토큰이 있어야 열린다 — 좌석부터 잡는 링크로
   }
 }

@@ -13,6 +13,7 @@
  */
 import { resolveSellerNotifyTarget } from '../../../worker/utils/seller-notify-phone'
 import { sendSellerFirstVoucherAlimtalk, sendSellerVoucherSoldAlimtalk } from './helpers'
+import { storeGoUrl } from '../../../shared/store-deep-link' // 🔗 한 번 눌러 그 매장의 그 화면(카카오 로그인 → 좌석)
 
 type AlimtalkEnv = { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string }
 
@@ -31,13 +32,14 @@ export async function notifySellerVoucherSale(
       ).bind(Number(sale.sellerId)).run().catch(() => null)
       if (Number(claim?.meta?.changes ?? 0) === 1) {
         await sendSellerFirstVoucherAlimtalk(env, target.phone, {
-          restaurantName, productName: sale.productName, statsUrl: 'https://urdeal.kr/seller/group-buy',
+          restaurantName, productName: sale.productName, statsUrl: storeGoUrl(sale.sellerId, 'scan'),
         })
         return
       }
     }
     await sendSellerVoucherSoldAlimtalk(env, target.phone, {
       restaurantName, productName: sale.productName, qty: sale.qty, amount: Number(sale.amount) || 0,
+      scanUrl: storeGoUrl(sale.sellerId, 'scan'), ordersUrl: storeGoUrl(sale.sellerId, 'orders'),
     })
   } catch { /* fail-soft — 알림이 결제를 막지 않는다 */ }
 }

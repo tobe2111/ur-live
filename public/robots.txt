@@ -51,6 +51,7 @@ Disallow: /following
 Disallow: /interest-list
 Disallow: /store/scan
 Disallow: /store/new
+Disallow: /store/go
 Disallow: /community-group-buy/new
 Disallow: /stays/checkout-return
 

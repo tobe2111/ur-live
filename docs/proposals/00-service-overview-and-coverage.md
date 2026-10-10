@@ -291,9 +291,9 @@
 |---|---|---|---|
 | 도매몰 (유통스타트) | `wholesale-mall-brief.md` | 43 | 4 |
 | 오프라인 공구 / 동네딜 | `offline-groupbuy-brief.md` | 29 | 96 |
-| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 73 | 277 |
+| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 74 | 277 |
 | 유어샵 / 담기·소개 | `linkshop-brief.md` | 24 | 86 |
-| **합계** | — | **169** | **463** |
+| **합계** | — | **170** | **463** |
 
 ### 전체 커버리지 검증 (자동 — 빠진 기능 보증)
 
@@ -302,8 +302,8 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 376 | 1139 |
-| 도메인 버킷 (5개 소개서) | 169 | 463 |
+| 전체 | 377 | 1139 |
+| 도메인 버킷 (5개 소개서) | 170 | 463 |
 | 공통/인프라 (의도적 제외) | 167 | 485 |
 | **미커버 (점검 필요)** | **40** | **191** |
 
@@ -901,7 +901,7 @@
 
 #### 온라인 입점 / 라이브커머스
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (73개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (74개)
 
 - `/browse`
 - `/cart`
@@ -969,6 +969,7 @@
 - `/seller/youtube-growth/success`
 - `/seller/youtube/callback`
 - `/store/find`
+- `/store/go`
 - `/store/new`
 - `/store/scan`
 - `/store/stats/:productId`
@@ -1750,7 +1751,7 @@
 
 
 
-> 마지막 생성: 2026-10-09T16:13:49.306Z
+> 마지막 생성: 2026-10-10T16:17:30.191Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

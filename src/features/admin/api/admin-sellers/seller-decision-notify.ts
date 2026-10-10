@@ -14,6 +14,7 @@ import { executeQuery } from '@/worker/utils/database'
 import { notifyUser } from '@/lib/notifications'
 import { swallow } from '@/worker/utils/swallow'
 import { resolveSellerNotifyTarget } from '@/worker/utils/seller-notify-phone'
+import { storeGoPath } from '@/shared/store-deep-link'
 
 /** 승인·재활성 알림톡. 문안·tpl_code 는 종전과 byte-동일(카카오 템플릿 글자 일치) — 받는 번호만 고친다. */
 export async function sendSellerApprovalAlimtalk(env: unknown, DB: D1Database, sellerId: string | number, isReactivation: boolean): Promise<void> {
@@ -45,7 +46,7 @@ export async function notifyStoreOperatorsRejected(
     notifyUser(DB, String(o.user_id), 'store_rejected',
       owner ? '🏪 내 매장 심사 결과' : '🏪 운영 매장 심사 결과',
       `${owner ? '매장이' : '위임받은 매장이'} 반려됐어요.${reason ? ` 사유: ${reason}` : ''} 고쳐서 다시 제출할 수 있어요`,
-      '/seller/business-info').catch(swallow('admin-sellers:reject-operator-notify'))
+      storeGoPath(sellerId, 'docs')).catch(swallow('admin-sellers:reject-operator-notify'))
   }
 }
 
