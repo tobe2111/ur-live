@@ -126,6 +126,13 @@ describe('🦦 유달이 — 배선한 화면이 되돌아가지 않는다', () 
     expect(src).toMatch(/const heroMood = isUserCancel \? 'hello' : 'oops'/)
     expect(src).toMatch(/<Udal mood=\{heroMood\}/)
   })
+  it('⑤-4 QR 시트의 유달이가 카드 오른쪽 바깥으로 나가지 않는다(PC 시트에서 잘림·가로 스크롤)', () => {
+    const src = readCode('src/pages/my-vouchers/QRModal.tsx')
+    const tag = /<Udal mood="showQr"[^>]*>/.exec(src)?.[0] ?? ''
+    expect(tag, 'QR 유달이를 못 찾음').not.toBe('')
+    expect(tag).not.toMatch(/-right-/)
+    expect(src).toMatch(/overflow-y-auto overflow-x-hidden/)
+  })
   it('⑤-3 주문 0건은 empty, 검색 0건은 notFound', () => {
     const src = readCode('src/components/mypage/OrdersTab.tsx')
     expect(src).toMatch(/<Udal mood=\{searching \? 'notFound' : 'empty'\}/)

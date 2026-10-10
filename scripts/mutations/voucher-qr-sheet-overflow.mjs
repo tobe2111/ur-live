@@ -31,8 +31,8 @@ export default [
   {
     name: '본문 스크롤 컨테이너에서 min-h-0 을 뺀다(스크롤이 아예 안 생긴다)',
     file: 'src/pages/my-vouchers/QRModal.tsx',
-    find: 'className="flex-1 min-h-0 overflow-y-auto overscroll-contain"',
-    replace: 'className="flex-1 overflow-y-auto overscroll-contain"',
+    find: 'className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain"',
+    replace: 'className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain"',
     test: 'src/tests/unit/voucher-qr-sheet-overflow-2026-09-21.test.ts',
     why:
       'flex 자식의 기본 `min-height:auto` 는 **콘텐츠보다 작아지지 않는다.** 그래서 `overflow-y-auto` 를 ' +
