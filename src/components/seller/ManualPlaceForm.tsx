@@ -31,9 +31,9 @@ export default function ManualPlaceForm({ onDone, onCancel }: {
       </label>
       <p className="text-[12px] text-gray-500 leading-relaxed">지도에 없는 가게는 핀이 바로 뜨지 않아요. 카카오맵에 등록되면 업체 정보에서 다시 고를 수 있어요.</p>
       <div className="flex gap-2">
-        <button type="button" onClick={onCancel} className="flex-1 py-2 rounded-lg border border-gray-200 text-sm font-bold text-gray-700">지도에서 찾기</button>
+        <button type="button" onClick={onCancel} className="ur-btn ur-btn-md ur-btn-secondary flex-1">지도에서 찾기</button>
         <button type="button" disabled={!nameOk} onClick={() => onDone({ name: name.trim(), address: address.trim() })}
-          className="flex-1 py-2 rounded-lg bg-brand text-white text-sm font-bold disabled:opacity-40">이 가게로 진행</button>
+          className="ur-btn ur-btn-md ur-btn-primary flex-1 disabled:opacity-40">이 가게로 진행</button>
       </div>
     </div>
   )
