@@ -156,6 +156,23 @@ export function paidPayeeAliases(account: string): string[] {
   return m ? [account, `store_owner:${m[1]}`] : [account]
 }
 
+/**
+ * 🧾 **`payouts` 행 → 그 payee 의 canonical 원장 계정** (2026-10-10).
+ *
+ * 🩸 어드민 승인 가드·목록이 `store_owner` 를 `merchant:N` 으로 바꿔 `getLedgerReceivable` 에 넘겼다.
+ *   `ledgerAccountAliases('merchant:N')` 는 접을 짝이 없어 `merchant:N` **하나만** 보므로, 같은 가게의
+ *   `seller:N` 차감(중개사 몫·인플루언서 커미션·환불 역전)이 **빠져** 승인 상한이 과대로 읽혔다.
+ *   그리고 "이미 나간 다른 payout" 도 `payee_type` 정확히 일치라 `seller` 행을 못 봤다.
+ *   ⇒ 접힌 이름(`seller:N`)을 돌려주고, 호출부는 `paidPayeeAliases` 로 양쪽 payout 을 함께 센다.
+ */
+export function payoutRowLedgerAccount(
+  payeeType: string | null | undefined,
+  payeeId: string | number | null | undefined,
+): string | null {
+  const p = canonicalPaidPayee(payeeType, payeeId)
+  return p ? payeeKey(p) : null
+}
+
 /** `payouts` 쪽 같은 규칙. `store_owner` 를 `seller` 로 접는다. */
 export function canonicalPaidPayeeSql(typeCol: string, idCol: string): string {
   return `(CASE WHEN ${typeCol} = 'store_owner' THEN 'seller' ELSE ${typeCol} END) || ':' || ${idCol}`
@@ -178,8 +195,9 @@ function payoutCreditWhere(holdSql: string): string {
 }
 
 /** 차감 쪽. **유보가 붙지 않는다** — 환불 역전을 미루면 과다지급이다. */
-const PAYOUT_DEBIT_WHERE =
-  "WHERE debit_account LIKE 'merchant:%' OR debit_account LIKE 'seller:%' OR debit_account LIKE 'agency:%' OR debit_account LIKE 'user:%'"
+const PAYOUT_DEBIT_COND =
+  "debit_account LIKE 'merchant:%' OR debit_account LIKE 'seller:%' OR debit_account LIKE 'agency:%' OR debit_account LIKE 'user:%'"
+const PAYOUT_DEBIT_WHERE = `WHERE ${PAYOUT_DEBIT_COND}`
 
 /**
  * 💰 **지급 대기 순액 집계 SQL** — `payouts-generate` cron 이 쓰는 문장 그대로.
@@ -307,6 +325,8 @@ export function payoutPendingRowsSql(holdSql: string): string {
  *
  * ⚠️ 기간 창은 credit·debit **양쪽에 대칭으로** 건다 — 한쪽만 걸면 그 기간 밖의 차감
  *   (환불 역전·커미션)이 사라져 과다지급이 된다.
+ * 🩸 2026-10-10: 차감 쪽 LIKE 묶음을 **괄호로 감쌌다**. 종전 `A OR B OR C OR D AND 기간` 은
+ *   `D AND 기간` 으로 묶여 기간 창이 `user:` 차감에만 걸렸다(매장·에이전시는 전 기간 차감이 빠져 과소 집계).
  */
 export function payoutPeriodPendingSql(): string {
   return `
@@ -319,7 +339,7 @@ export function payoutPeriodPendingSql(): string {
     debits AS (
       SELECT ${canonicalPayeeSql('debit_account')} as account, SUM(amount) as total
         FROM ledger_entries
-       ${PAYOUT_DEBIT_WHERE}
+       WHERE (${PAYOUT_DEBIT_COND})
          AND created_at BETWEEN ? AND ?
        GROUP BY account
     ),

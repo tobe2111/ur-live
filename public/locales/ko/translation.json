@@ -3405,7 +3405,24 @@
     "voucherUntil": "{{d}}까지",
     "voucherCodeHeader": "이용권 코드",
     "copyOrderNumber": "전체 주문번호 복사",
-    "goRedeemScreen": "사용처리 화면으로"
+    "goRedeemScreen": "사용처리 화면으로",
+    "kakaoBot": {
+      "title": "카카오톡으로 매장 관리",
+      "issue": "연결 코드 받기",
+      "issueFail": "코드를 만들지 못했어요",
+      "copied": "복사했어요",
+      "copy": "복사",
+      "revokeConfirm": "이 채팅 연결을 끊을까요? 그 채팅에서는 더 이상 매장을 관리할 수 없어요.",
+      "revoked": "연결을 끊었어요",
+      "revokeFail": "연결을 끊지 못했어요",
+      "desc": "유어딜 카카오 채널에서 오늘 판매·사용 대기·정산을 보고, 이용권 사용 처리와 판매 중지를 할 수 있어요. 바꾸는 일은 채팅에서 한 번 더 확인해요.",
+      "notReady": "준비 중이에요. 곧 카카오톡에서도 매장을 관리할 수 있어요.",
+      "howTo": "유어딜 카카오 채널에 아래처럼 보내 주세요. 10분 안에 한 번만 쓸 수 있어요.",
+      "chat": "채팅",
+      "lastUsed": "마지막 사용",
+      "revoke": "연결 끊기",
+      "utterance": "연결 {{code}}"
+    }
   },
   "admin": {
     "login": {

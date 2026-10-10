@@ -21,6 +21,7 @@ import { Hono } from 'hono'
 import type { Context } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { getSellerIdFromToken } from '@/lib/seller-shared'
+import { resolveTokenActorUserId } from '@/worker/utils/store-seat-guard'
 import { safeError } from '@/worker/utils/safe-error'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { ensureSellerMetaTable, getSellerMeta, setSellerMeta } from '@/worker/utils/seller-meta'
@@ -29,7 +30,7 @@ import { BUSINESS_NUMBER_META_KEY, bnoColumnFree, normalizeBno } from '@/worker/
 import { canOperateStore, grantOperator, revokeOperator, isStoreOwner, listOperableStores } from '../../../worker/utils/seller-operators'
 import { mergeStoreProfile, loadLatestProductCopy, saveStoreProfileAndPropagate } from '@/worker/utils/store-profile'
 import { parseSessionCookie } from '@/worker/utils/session'
-import { isSeatableStoreStatus } from '@/shared/seller-status'
+import { isSeatableStoreStatus } from '@/shared/seller-status'; import { ensureStoreCode } from '@/worker/utils/redemption-settings'
 import { DEFAULT_FEE_RATES } from '@/worker/utils/fee-resolver'
 import { getEffectivePlatformFee } from '@/worker/utils/effective-platform-fee'
 import { registerVoucherDraftRoutes } from './seller-voucher-draft.routes'
@@ -67,14 +68,8 @@ async function resolveActorUserId(c: Ctx): Promise<number | null> {
     const id = Number(sess.userId)
     if (Number.isFinite(id) && id > 0) return id
   }
-  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
-  if (sellerId) {
-    const row = await c.env.DB.prepare('SELECT linked_user_id FROM sellers WHERE id = ? LIMIT 1')
-      .bind(sellerId).first<{ linked_user_id: number | null }>().catch(() => null)
-    const id = Number(row?.linked_user_id)
-    if (Number.isFinite(id) && id > 0) return id
-  }
-  return null
+  // 🔐 2026-10-10: seller-operators.routes 와 같은 규칙 — 좌석 토큰은 그 좌석의 사람(살아 있을 때만).
+  return resolveTokenActorUserId(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET)
 }
 
 // ── 후기 보너스 — 매장이 직접 정한다 (2026-08-31 대표 "매장 사장님이 부담하게끔") ──────
@@ -520,8 +515,7 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
      *   그래서 `.catch` 는 영원히 안 걸리고 `granted` 는 항상 `true` 였다. 바로 위 주석이
      *   "이게 실패하면 방금 만든 매장에 아무도 못 들어간다" 고 경고하며 세운 분기가,
      *   정작 **그 상황에서 한 번도 실행될 수 없었다**(들어갈 수 없는 매장이 조용히 생긴다).
-     *   ⇒ 반환값 `.ok` 를 읽는다. `catch` 는 시그니처가 바뀌는 날을 위한 안전판으로만 남긴다.
-     */
+     *   ⇒ 반환값 `.ok` 를 읽는다. `catch` 는 시그니처가 바뀌는 날을 위한 안전판으로만 남긴다. */
     const tryGrant = () => grantOperator(c.env.DB, newSellerId, userId, userId, role)
       .then((r) => !!r?.ok).catch(() => false)
     let granted = await tryGrant()
@@ -535,13 +529,14 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
       }, 500)
     }
 
+    await ensureStoreCode(c.env.DB, newSellerId) // 🧾 손님 셀프 사용에 맞출 확인코드 — 대시보드를 안 열어도 생긴다
     const ownerClaimCode = brokerTerms?.ok ? await finalizeBrokeredStore(c.env.DB, newSellerId, userId, brokerTerms) : null // 🔑 요율 저장 + 사장님 승계 코드(`/store/find?code=`)
     return c.json({
       success: true,
       data: {
         seller_id: newSellerId, status, channel: b.channel, owner_claim_code: ownerClaimCode,
         nts: { checked: ntsResult.ok, valid: ntsResult.valid },
-        message: '매장이 등록 접수되었습니다. 사업자등록증 확인 후 활성화됩니다.',
+        message: certUrl ? '매장이 접수됐어요. 사업자등록증을 확인한 뒤 승인됩니다.' : '매장이 접수됐어요. 사업자등록증을 올리면 심사가 시작됩니다 (셀러 대시보드 › 사업자 정보).',
       },
     })
   } catch (err) {

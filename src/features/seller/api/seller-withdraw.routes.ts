@@ -23,7 +23,7 @@ import { safeError } from '@/worker/utils/safe-error'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { setSellerMeta } from '@/worker/utils/seller-meta'
 import { getLedgerReceivable } from '@/worker/utils/ledger'
-import { startDashboardSession } from '@/worker/utils/dashboard-session'
+import { bumpStoreSeatEpoch } from '@/worker/utils/store-seat-guard'
 
 const app = new Hono<{ Bindings: Env }>()
 type Ctx = Context<{ Bindings: Env }>
@@ -105,7 +105,7 @@ app.post('/account/withdraw', rateLimit({ action: 'seller_withdraw', max: 5, win
     //   지울 수 있으면 위임이 곧 파괴 권한이 된다. 회수는 사장님이 언제든 할 수 있지만
     //   지워진 매장은 되돌릴 수 없다.
     const { resolveStoreActor, OWNER_ONLY_MESSAGE } = await import('../../../worker/utils/store-actor')
-    const actor = await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET)
+    const actor = await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET, c.env.DB)
     if (!actor.isOwner) return c.json({ success: false, error: `탈퇴는 ${OWNER_ONLY_MESSAGE}` }, 403)
 
     const body = await c.req.json<{ confirm?: boolean; reason?: string }>().catch(() => ({} as { confirm?: boolean; reason?: string }))
@@ -146,8 +146,11 @@ app.post('/account/withdraw', rateLimit({ action: 'seller_withdraw', max: 5, win
       "UPDATE seller_operators SET revoked_at = datetime('now') WHERE seller_id = ? AND revoked_at IS NULL"
     ).bind(seat).run().catch(() => { /* 테이블 부재 등 — 무시 */ })
 
-    // ④ 세션 무효화 — 이미 발급된 seller_token 이 만료 전까지 유효하므로 min_valid_iat 를 올린다.
-    await startDashboardSession(c.env.DB, 'seller', seat, Math.floor(Date.now() / 1000) + 1).catch(() => {})
+    // ④ 세션 무효화 — 이미 발급된 seller_token 이 만료 전까지 유효하므로 그 매장의 좌석을 끊는다.
+    //   🩸 2026-10-10: 여기 있던 `startDashboardSession(…'seller'…)` 는 2026-08-20 에 셀러가 단일 세션
+    //   대상에서 빠진 뒤로 **아무 일도 안 하는 호출**이었다. 매장 좌석 에포크로 바꾼다 — 정체성 없는
+    //   토큰은 에포크로, 좌석 토큰은 ③ 의 revoked_at 으로 매 요청 끊긴다(store-seat-guard).
+    await bumpStoreSeatEpoch(c.env.DB, seat, 'withdraw')
 
     return c.json({
       success: true,

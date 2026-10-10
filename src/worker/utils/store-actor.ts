@@ -26,11 +26,22 @@
  * 세션 쿠키가 없는 요청(앱 내 XHR·다른 브라우저 컨텍스트)에서 운영자가 **주인으로 오판**된다.
  * 여기서는 토큰 자신이 들고 있는 사실만 본다 — 폴백도, 추가 DB 조회도 없다.
  *
+ * ## 🔐 2026-10-10 — claim 은 "누가" 만 말하고, 역할은 **지금 DB** 가 말한다
+ * 종전엔 토큰의 `store_role` 만 봤다. 그런데 좌석 토큰은 30일이고 그 사이 회수·소유권 이전이 일어난다
+ * — 이전으로 강등된 옛 주인의 토큰이 계속 `owner` 라서 **자기 PIN 으로 정산 계좌를 갈아끼울 수 있었다.**
+ * 이제 `DB` 를 **필수**로 받아 `verifyStoreSeat`(store-seat-guard — 미들웨어와 같은 판정)로
+ * (매장, 사람)의 **현재** 역할을 본다. 판단 근거를 못 얻으면 소유자가 아니다(fail-closed) —
+ * 이 함수가 지키는 것은 돈의 목적지다.
+ *   - 정체성 있는 좌석(`seat_user_id`/`operator_user_id`): DB 역할이 정답. 회수 = 소유자 아님.
+ *   - 정체성 없는 토큰(매장 계정 로그인 · 옛 link 좌석): 매장 에포크 이후 발급분만 종전 규칙.
+ *
  * ## 이 모듈이 못 막는 것
  * - 소유자가 자기 계정을 남에게 빌려주는 것(계정 공유). 그건 권한 모델 밖이다.
- * - 이미 발급된 운영자 토큰의 즉시 무효화(회수는 다음 토큰 발급부터 적용).
+ * - 이전 주인이 매장 계정 **비밀번호**로 다시 로그인하는 것(새 토큰은 에포크 뒤다) — 계정 자격 문제.
  */
 import { verify } from 'hono/jwt'
+import type { D1Database } from '@cloudflare/workers-types'
+import { verifyStoreSeat } from './store-seat-guard'
 
 export interface StoreActor {
   /** 토큰이 가리키는 매장. 없으면 셀러 인증 실패. */
@@ -44,25 +55,34 @@ export interface StoreActor {
 export async function resolveStoreActor(
   authorization: string | undefined,
   jwtSecret: string,
+  DB: D1Database,
 ): Promise<StoreActor> {
   const none: StoreActor = { sellerId: null, operatorUserId: null, isOwner: false }
   if (!authorization || !authorization.startsWith('Bearer ')) return none
+  let p: {
+    type?: string; seller_id?: number; iat?: number; seat_user_id?: unknown
+    operator_user_id?: unknown; store_role?: unknown
+  }
   try {
-    const p = await verify(authorization.substring(7), jwtSecret, 'HS256') as {
-      type?: string; seller_id?: number; operator_user_id?: unknown; store_role?: unknown
-    }
-    if (p.type !== 'seller') return none
-    const sellerId = Number(p.seller_id) || null
-    if (!sellerId) return none
-    const opRaw = Number(p.operator_user_id)
-    const operatorUserId = Number.isFinite(opRaw) && opRaw > 0 ? opRaw : null
-    // 역할이 실려 있으면 그것이 정답. 없으면(옛 토큰) 종전 규칙으로 판정한다.
-    const role = typeof p.store_role === 'string' ? p.store_role : null
-    const isOwner = role ? role === 'owner' : operatorUserId === null
-    return { sellerId, operatorUserId, isOwner }
+    p = await verify(authorization.substring(7), jwtSecret, 'HS256') as typeof p
   } catch {
     return none
   }
+  if (p.type !== 'seller') return none
+  const sellerId = Number(p.seller_id) || null
+  if (!sellerId) return none
+  const opRaw = Number(p.operator_user_id)
+  const operatorUserId = Number.isFinite(opRaw) && opRaw > 0 ? opRaw : null
+
+  // 🔐 지금 살아 있는 좌석인가 — 미들웨어와 같은 판정(SSOT). 모르면 소유자가 아니다.
+  const seat = await verifyStoreSeat(DB, p)
+  if (seat.kind !== 'live') return { sellerId, operatorUserId, isOwner: false }
+  if (seat.role) return { sellerId, operatorUserId, isOwner: seat.role === 'owner' }
+
+  // 정체성 없는 토큰(에포크 통과) — 역할이 실려 있으면 그것, 없으면(옛 토큰) 종전 규칙.
+  const role = typeof p.store_role === 'string' ? p.store_role : null
+  const isOwner = role ? role === 'owner' : operatorUserId === null
+  return { sellerId, operatorUserId, isOwner }
 }
 
 /** 운영자에게 보여줄 사업자등록번호 — 끝 4자리만(`***-**-*1234`). */

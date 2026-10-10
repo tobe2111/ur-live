@@ -28,6 +28,8 @@ import type { D1Database } from '@cloudflare/workers-types'
 import { swallow } from './swallow'
 import { recordLedger, sellerLedgerAccount } from './ledger'
 import { getSellerMeta, setSellerMeta } from './seller-meta'
+import { canOperateStore } from './seller-operators'
+import { DEAL_PCT_MAX } from '../../features/group-buy/api/commission-rates'
 
 export const BROKER_META = {
   userId: 'broker_user_id',
@@ -62,6 +64,54 @@ export function validateBrokerTerms(input: { broker_share_pct?: unknown; influen
     return { ok: false, error: `중개사 몫과 인플루언서 상한의 합이 ${BROKER_TERMS_SUM_MAX}% 를 넘을 수 없어요` }
   }
   return { ok: true, sharePct: Math.round(share * 100) / 100, capPct: cap === null ? null : Math.round(cap * 100) / 100 }
+}
+
+/**
+ * 🎯 **인플루언서 딜 % 의 SSOT 검증** (2026-10-10 감사).
+ *
+ * 🩸 왜 생겼나: 매장 요율의 `influencer_pct_cap` 은 **협업 코드 경로에서만** 지켜졌다(`collab-codes`·코드 입력).
+ *   매장이 직접 제안하는 딜(`/deals/propose` 양방향)과 아웃리치 제안 수락은 `≤ 90` 만 봤다. 그래서
+ *   중개사가 등록 때 정한 상한(예: 5%)을 매장 화면에서 20% 로 제안하면 그대로 계약됐고, 중개사 몫(10%)이
+ *   있는 매장에선 `중개사 몫 + 인플 %` 가 90 을 넘어 **매장이 팔수록 손해**인 딜도 만들어졌다.
+ *
+ * 규칙 셋(전부 같은 함수로):
+ *   ① 0 < pct ≤ `DEAL_PCT_MAX`(90, 정산 clamp 와 같은 값) — `allowZero` 면 0 도 허용(아웃리치 무커미션 제안)
+ *   ② 매장 상한(`influencer_pct_cap`)이 있으면 pct ≤ 상한
+ *   ③ 중개사 몫이 있으면 pct + 중개사 몫 ≤ `BROKER_TERMS_SUM_MAX`(90) — 매장에 최소 10% 는 남는다
+ */
+export function influencerPctCeiling(terms: { sharePct?: number | null; influencerCapPct?: number | null }): number {
+  const share = Number(terms.sharePct) > 0 ? Number(terms.sharePct) : 0
+  const cap = Number(terms.influencerCapPct) > 0 ? Number(terms.influencerCapPct) : Infinity
+  return Math.max(0, Math.round(Math.min(DEAL_PCT_MAX, BROKER_TERMS_SUM_MAX - share, cap) * 100) / 100)
+}
+
+export function validateInfluencerDealPct(
+  raw: unknown,
+  terms: { sharePct?: number | null; influencerCapPct?: number | null },
+  opts: { allowZero?: boolean } = {},
+): { ok: true; pct: number } | { ok: false; error: string } {
+  const pct = Number(raw)
+  const belowMin = opts.allowZero ? pct < 0 : pct <= 0
+  if (!Number.isFinite(pct) || belowMin || pct > DEAL_PCT_MAX) {
+    return { ok: false, error: `커미션 % 은 0 ~ ${DEAL_PCT_MAX} 사이여야 해요` }
+  }
+  const cap = Number(terms.influencerCapPct) > 0 ? Number(terms.influencerCapPct) : null
+  if (cap != null && pct > cap) {
+    return { ok: false, error: `이 매장의 인플루언서 커미션 상한은 ${cap}% 예요 — 상한은 매장 요율에서 바꿀 수 있어요` }
+  }
+  const share = Number(terms.sharePct) > 0 ? Number(terms.sharePct) : 0
+  if (share > 0 && pct + share > BROKER_TERMS_SUM_MAX) {
+    return { ok: false, error: `이 매장은 중개사 몫이 ${share}% 라 인플루언서 커미션은 최대 ${influencerPctCeiling(terms)}% 예요` }
+  }
+  return { ok: true, pct: Math.round(pct * 100) / 100 }
+}
+
+/** 라우트용 — 매장 요율을 읽어 같은 검증을 한다. */
+export async function checkStoreInfluencerPct(
+  DB: D1Database, sellerId: number, raw: unknown, opts: { allowZero?: boolean } = {},
+): Promise<{ ok: true; pct: number } | { ok: false; error: string }> {
+  const terms = await readBrokerTerms(DB, sellerId)
+  return validateInfluencerDealPct(raw, terms, opts)
 }
 
 export async function saveBrokerTerms(
@@ -130,6 +180,12 @@ export async function creditBrokerShare(DB: D1Database, p: CreditBrokerShareInpu
     if (!Number.isFinite(p.orderId) || p.orderId <= 0) return { credited: 0, brokerUserId: null }
     const terms = await readBrokerTerms(DB, p.sellerId)
     if (!terms.brokerUserId || terms.sharePct <= 0) return { credited: 0, brokerUserId: null }
+    // 🪑 2026-10-10: **지금 그 매장 좌석이 있는** 중개사에게만 적립한다. 종전엔 `broker_user_id` 만 보고
+    //   적립해서, 사장님이 중개사 좌석을 회수(`revokeOperator` — revoked_at)한 뒤에도 매 판매마다 몫이 계속
+    //   쌓였다(매장 몫에서 나가는 돈이다). 좌석 판정은 토큰 발급과 같은 SSOT(`canOperateStore`).
+    //   ⚠️ 사장님 승계(owner claim) 때의 처리는 건드리지 않는다 — 그건 계약 조건이다.
+    const seat = await canOperateStore(DB, terms.brokerUserId, p.sellerId).catch(() => ({ ok: false }))
+    if (!seat.ok) return { credited: 0, brokerUserId: terms.brokerUserId }
     const amount = calcBrokerShareAmount(p.totalAmount, terms.sharePct)
     if (amount <= 0) return { credited: 0, brokerUserId: terms.brokerUserId }
     const brokerId = String(terms.brokerUserId)

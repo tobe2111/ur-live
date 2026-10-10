@@ -13,6 +13,7 @@ import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import VoucherScanner from '@/components/voucher/VoucherScanner'
 import ScanDeviceManager from './seller-scan/ScanDeviceManager'
+import KakaoBotLinkCard from './seller-scan/KakaoBotLinkCard'
 import { VOUCHER_USAGE_PRESETS } from '@/shared/voucher-usage-conditions'
 
 export default function SellerVoucherScanPage() {
@@ -36,6 +37,7 @@ export default function SellerVoucherScanPage() {
         {/* 스캔 코어 (공유) */}
         <VoucherScanner />
         <ScanDeviceManager />{/* 📟 2026-07-20 직원 폰/공기계용 스캔 링크 발급·회수 */}
+        <KakaoBotLinkCard />{/* 💬 2026-10-10 카카오톡 채널로 매장 관리(연결 코드) */}
       </div>
     </SellerLayout>
   )

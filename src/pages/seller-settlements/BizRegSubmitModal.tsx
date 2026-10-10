@@ -1,4 +1,4 @@
-import ImageUpload from '@/components/upload/ImageUpload'
+import BusinessCertUpload from '@/components/BusinessCertUpload' // 🪪 2026-10-10 등록증 전용 업로드(가입 폼과 같은 자리)
 
 // 🛡️ 2026-06-10: SellerSettlementsPage 분해 — 순수 이동 (동작 변화 0).
 // 🛡️ 2026-05-18: 사업자등록증 제출 모달.
@@ -25,16 +25,13 @@ export default function BizRegSubmitModal({ submitting, imageUrl, businessNumber
       >
         <h3 className="text-lg font-bold text-gray-900 mb-1">사업자등록증 등록</h3>
         <p className="text-xs text-gray-500 mb-4">
-          검증 완료 시 현금 정산 + 딜 환급이 가능합니다 (1-3 영업일 소요)
+          매장 심사와 딜 환급에 쓰입니다 (확인 1-3 영업일). 판매 대금은 매장 승인 + 정산 계좌 등록 후 지급돼요
         </p>
         <div className="space-y-3">
-          <ImageUpload
-            label="사업자등록증 이미지"
+          <BusinessCertUpload
             required
             value={imageUrl}
             onChange={(url) => onImageChange(url)}
-            tokenKey="seller_token"
-            aspectRatio="auto"
           />
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1.5">

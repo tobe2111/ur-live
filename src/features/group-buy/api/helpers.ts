@@ -410,21 +410,21 @@ export async function sendSellerFirstVoucherAlimtalk(
   try {
     const cleanPhone = phone.replace(/[^0-9]/g, '')
     if (!/^01\d{8,9}$/.test(cleanPhone)) return
-    const message = `[유어딜] 🎉 첫 손님이 곧 방문합니다
+    // 🩸 2026-10-10: 옛 문구("식권"·없는 매장 전용 링크·"7일 후 자동 송금")를 사실로 교체 — 정산은 계좌 등록 + 정산 주기.
+    const message = `[유어딜] 🎉 첫 이용권이 팔렸어요
 
 ${data.restaurantName} 사장님,
-"${data.productName}" 첫 손님이 식권을 구매했어요!
+"${data.productName}" 이용권을 손님이 구매했어요.
 
-📋 사용 처리 방법
-1. 본인 폰으로 아래 링크 진입 (즐겨찾기 권장)
-   ${data.statsUrl}
-2. 손님이 QR 보여주면 [QR 스캔] 버튼 → 자동 처리
-3. 화면에 "메뉴 X 제공" 표시 후 음식 준비
-4. POS / T오더 결제 X (이미 유어딜에서 결제 완료)
+📋 손님이 오시면
+1. 손님 폰의 이용권 QR 을 셀러 대시보드 [사용 처리]로 스캔하거나
+2. 손님이 매장 확인코드를 직접 입력해 사용 처리합니다
+3. 이미 유어딜에서 결제가 끝났으니 따로 결제 받지 마세요
 
 💰 정산
-사용 + 7일 후 등록 계좌로 자동 송금됩니다.
+사용 처리된 금액이 정산 계좌로 지급됩니다. 계좌를 아직 안 올리셨다면 셀러 대시보드 → 정산에서 등록해 주세요.
 
+손님이 오시면 사용 처리: ${data.statsUrl}
 문의: 유어딜 고객센터`
     await fetch('https://api.solapi.com/messages/v4/send', {
       method: 'POST',
@@ -445,7 +445,7 @@ ${data.restaurantName} 사장님,
 export async function sendSellerVoucherSoldAlimtalk(
   env: { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
   phone: string,
-  data: { restaurantName: string; productName: string; qty: number; amount: number }
+  data: { restaurantName: string; productName: string; qty: number; amount: number; scanUrl?: string; ordersUrl?: string } // 🔗 링크는 shared/store-deep-link
 ): Promise<void> {
   if (!env.ALIMTALK_API_KEY || !phone) return
   try {
@@ -456,8 +456,8 @@ export async function sendSellerVoucherSoldAlimtalk(
 ${data.restaurantName}
 "${data.productName}" ${data.qty}장 · ₩${Number(data.amount).toLocaleString('ko-KR')}
 
-손님이 곧 방문할 수 있어요. 판매/사용 현황:
-https://urdeal.kr/seller/group-buy
+손님이 오시면 사용 처리: ${data.scanUrl || 'https://urdeal.kr/seller/scan'}
+판매·사용 내역: ${data.ordersUrl || 'https://urdeal.kr/seller/voucher-orders'}
 
 문의: 유어딜 고객센터`
     await fetch('https://api.solapi.com/messages/v4/send', {
@@ -478,13 +478,13 @@ https://urdeal.kr/seller/group-buy
 export async function sendSellerVoucherUsedAlimtalk(
   env: { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
   phone: string,
-  data: { restaurantName: string; productName: string; usedAt?: string }
+  data: { restaurantName: string; productName: string; usedAt?: string; ordersUrl?: string }
 ): Promise<void> {
   if (!env.ALIMTALK_API_KEY || !phone) return
   try {
     const cleanPhone = phone.replace(/[^0-9]/g, '')
     if (!/^01\d{8,9}$/.test(cleanPhone)) return
-    const ts = data.usedAt ? new Date(data.usedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : ''
+    const ts = data.usedAt ? new Date(data.usedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul' }) : ''
     const message = `[유어딜] ✅ 이용권 사용 처리됨
 
 ${data.restaurantName}
@@ -492,9 +492,9 @@ ${data.restaurantName}
 사용 시각: ${ts}` : ''}
 
 손님이 매장에서 셀프 사용 처리했어요.
-정산은 사용 +7일 후 등록 계좌로 자동 진행됩니다.
+정산은 정산 주기에 맞춰 등록한 계좌로 지급됩니다.
 
-사용 내역: https://urdeal.kr/seller/group-buy
+사용 내역: ${data.ordersUrl || 'https://urdeal.kr/seller/voucher-orders'}
 
 문의: 유어딜 고객센터`
     await fetch('https://api.solapi.com/messages/v4/send', {
@@ -523,7 +523,7 @@ export async function sendBuyerVoucherUsedAlimtalk(
   try {
     const cleanPhone = phone.replace(/[^0-9]/g, '')
     if (!/^01\d{8,9}$/.test(cleanPhone)) return
-    const ts = data.usedAt ? new Date(data.usedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : ''
+    const ts = data.usedAt ? new Date(data.usedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul' }) : ''
     // 🛡️ 2026-05-21: 모든 voucher 카테고리 지원 — categoryLabel 옵션.
     const label = data.categoryLabel || '이용권'
     const message = `[유어딜] ✅ ${label} 사용 완료

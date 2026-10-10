@@ -3405,7 +3405,24 @@
     "voucherUntil": "{{d}}까지",
     "voucherCodeHeader": "이용권 코드",
     "copyOrderNumber": "전체 주문번호 복사",
-    "goRedeemScreen": "사용처리 화면으로"
+    "goRedeemScreen": "사용처리 화면으로",
+    "kakaoBot": {
+      "title": "カカオトークで店舗管理",
+      "issue": "連携コードを取得",
+      "issueFail": "コードを作成できませんでした",
+      "copied": "コピーしました",
+      "copy": "コピー",
+      "revokeConfirm": "このチャットの連携を解除しますか？そのチャットでは店舗を管理できなくなります。",
+      "revoked": "連携を解除しました",
+      "revokeFail": "連携を解除できませんでした",
+      "desc": "UrDealのカカオチャンネルで本日の販売・未使用・精算を確認し、利用券の使用処理や販売停止ができます。変更はチャットでもう一度確認します。",
+      "notReady": "準備中です。まもなくカカオトークでも店舗を管理できます。",
+      "howTo": "UrDealのカカオチャンネルに下のように送ってください。10分以内に1回だけ使えます。",
+      "chat": "チャット",
+      "lastUsed": "最終利用",
+      "revoke": "連携解除",
+      "utterance": "연결 {{code}}"
+    }
   },
   "admin": {
     "login": {

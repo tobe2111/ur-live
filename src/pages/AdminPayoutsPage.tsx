@@ -107,7 +107,11 @@ export default function AdminPayoutsPage() {
       const res = await api.patch(`/api/admin/payouts/${p.id}/approve`)
       if (res.data?.success) { toast.success('승인됨'); load() }
       else toast.error(res.data?.error || '실패')
-    } catch { toast.error('실패') }
+    } catch (e: unknown) {
+      // 409 사유(계좌 미재확인·옛 계좌·잔액 초과)를 그대로 보여 준다 — '실패' 만 띄우면 운영자가 무엇을 할지 모른다.
+      const ax = e as { response?: { data?: { error?: string } } }
+      toast.error(ax.response?.data?.error || '실패')
+    }
   }
 
   async function markSent(p: Payout) {

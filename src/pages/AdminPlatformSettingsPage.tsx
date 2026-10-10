@@ -120,6 +120,15 @@ export const OPS_POLICY_FIELDS: Array<{ key: string; label: string; hint: string
     text: true,
   },
   {
+    // 💬 2026-10-10: 카카오톡 채널 챗봇으로 매장 관리(연결·오늘 판매·사용 처리·판매 중지). 스킬 자체는
+    //   `KAKAO_SKILL_SECRET` 가 따로 켠다 — 이 값은 그 위의 **매장 관리** 명령만 연다.
+    //   ⚠️ `text: true` — 값이 'true'/'false' 문자열이라 숫자 검증 배열에 두면 저장이 거부된다.
+    key: 'kakao_bot_store_ops_enabled',
+    label: '카카오톡 매장 관리(챗봇)',
+    hint: "기본 꺼짐. 'true' 로 켜면 셀러 대시보드 [바우처 스캔] 화면에서 연결 코드를 받아 채널에서 `연결 123456` 으로 매장을 연결할 수 있다. 꺼져 있으면 연결·명령은 '준비 중' 이고 FAQ 는 그대로. 켜기 전 S-KAKAOBOT 절차",
+    text: true,
+  },
+  {
     // 🕐 2026-09-21: 같은 이유로 노출 유예도 켤 자리가 없었다(숫자라 게이트 명부엔 안 잡힌다).
     //   0·빈값이면 마커를 **아예 안 쓴다** ⇒ 오늘과 byte-동일. 상한 168(=7일)은 코드가 클램프한다.
     key: 'store_exposure_grace_hours',

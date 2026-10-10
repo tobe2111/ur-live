@@ -19,13 +19,14 @@ import { require2FA } from '../../../worker/middleware/require-2fa'
 // 🛡️ 2026-05-21 정합성: 모든 sensitive action 에 audit log 강제.
 import { auditLog } from '../../../worker/middleware/audit-log'
 import type { Env } from '../../../worker/types/env'
-import { markPayoutSent, isTransferable, type PayoutRow } from '../../../worker/utils/payout-sent'
+import { markPayoutSent, isTransferable, checkPayeeAccountCurrent, type PayoutRow } from '../../../worker/utils/payout-sent'
 import { resolvePayoutHold } from '../../../worker/utils/payout-hold'
 // 💸 2026-10-01 (결재 voucher-credit-double-rail): `merchant:N` 과 `seller:N` 은 같은 가게다.
 //   이 화면과 cron 이 **같은 조각**을 써야 한다 — 갈리면 운영자가 화면에서 본 금액과 실제 생성분이 달라진다.
-import { canonicalPayee, payoutPayeeType, payoutPendingRowsSql, payoutPeriodPendingSql } from '@/worker/utils/payout-account'
+import { canonicalPayee, payoutPendingRowsSql, payoutPeriodPendingSql, payoutRowLedgerAccount, paidPayeeAliases } from '@/worker/utils/payout-account'
 
 import { csvEscape } from '../../../worker/utils/csv-safe'
+import { resolvePayeeAccount } from '../../../worker/utils/payout-payee-account'
 import { handoverCloseout } from './admin-payouts/handover-closeout'
 
 export const adminPayoutsRoutes = new Hono<{ Bindings: Env }>()
@@ -81,26 +82,20 @@ adminPayoutsRoutes.post('/admin/payouts/generate', requireAdmin(), require2FA(),
   const pendingRows = await DB.prepare(payoutPeriodPendingSql()).bind(periodStart + ' 00:00:00', periodEnd + ' 23:59:59', periodStart + ' 00:00:00', periodEnd + ' 23:59:59', minAmount).all<{ account: string; pending_amount: number }>().catch(() => ({ results: [] as Array<{ account: string; pending_amount: number }> }))
 
   let created = 0
+  let skipped = 0
   for (const r of pendingRows.results || []) {
     // 💸 2026-10-01: 계정 해석·payee 접기·id 숫자 검사는 `canonicalPayee`(SSOT) 하나로.
     //   payee_type 은 접두어가 아니라 **셀러 역할**에서 정한다(cron 과 동일 규칙).
     const payee = canonicalPayee(r.account)
     if (!payee) continue
     const id = payee.id
-    let payeeType: string = payoutPayeeType(payee.kind)
-    // 계좌 정보 조회 (sellers / agencies)
-    let bankName: string | null = null, accountNumber: string | null = null, accountHolder: string | null = null
-    try {
-      if (payee.kind === 'seller') {
-        const row = await DB.prepare('SELECT bank_account, business_name, seller_type FROM sellers WHERE id = ?').bind(id).first<{ bank_account: string | null; business_name: string | null; seller_type: string | null }>()
-        payeeType = payoutPayeeType(payee.kind, row?.seller_type)
-        accountNumber = row?.bank_account || null
-        accountHolder = row?.business_name || null
-      } else if (payee.kind === 'agency') {
-        const row = await DB.prepare('SELECT name FROM agencies WHERE id = ?').bind(id).first<{ name: string | null }>()
-        accountHolder = row?.name || null
-      }
-    } catch { /* graceful */ }
+    // 🏦 2026-10-10: 계좌 스냅샷은 cron 과 **같은 함수**(`resolvePayeeAccount`). 종전엔 `bankName` 을
+    //   선언만 하고 채우지 않아(항상 NULL) 수동 생성분이 은행 일괄이체 CSV 에서 전부 빠졌고, 예금주에
+    //   상호를 적었다. 승인 게이트도 cron 과 같게 — 승인 전 매장에 수동으로 돈을 배정하지 않는다.
+    const acct = await resolvePayeeAccount(DB, payee).catch(() => null)
+    if (!acct || !acct.eligible) { skipped++; continue }
+    const payeeType: string = acct.payeeType
+    const bankName = acct.bankName, accountNumber = acct.accountNumber, accountHolder = acct.accountHolder
 
     try {
       await DB.prepare(
@@ -113,7 +108,7 @@ adminPayoutsRoutes.post('/admin/payouts/generate', requireAdmin(), require2FA(),
     }
   }
 
-  return c.json({ success: true, data: { created, period_start: periodStart, period_end: periodEnd } })
+  return c.json({ success: true, data: { created, skipped_unapproved: skipped, period_start: periodStart, period_end: periodEnd } })
 })
 
 adminPayoutsRoutes.get('/admin/payouts', requireAdmin(), async (c) => {
@@ -137,14 +132,16 @@ adminPayoutsRoutes.get('/admin/payouts', requireAdmin(), async (c) => {
       const { getLedgerReceivable } = await import('../../../worker/utils/ledger')
       const recvCache = new Map<string, number>()
       for (const r of pendingRows) {
-        const ledgerType = r.payee_type === 'store_owner' ? 'merchant' : String(r.payee_type)
-        const account = `${ledgerType}:${r.payee_id}`
+        // 🔗 2026-10-10: 접힌 계정(`seller:N`)으로 묻는다 — `merchant:N` 만 보면 같은 가게의 `seller:N` 차감이 빠진다.
+        const account = payoutRowLedgerAccount(String(r.payee_type), String(r.payee_id))
+        if (!account) continue
         let recv = recvCache.get(account)
         if (recv === undefined) { recv = await getLedgerReceivable(DB, account); recvCache.set(account, recv) }
+        const keys = paidPayeeAliases(account)
         const otherPaid = await DB.prepare(
           `SELECT COALESCE(SUM(amount), 0) AS t FROM payouts
-            WHERE payee_type = ? AND payee_id = ? AND status IN ('approved','sent') AND id != ?`
-        ).bind(r.payee_type, r.payee_id, r.id).first<{ t: number }>().catch(() => ({ t: 0 }))
+            WHERE (payee_type || ':' || payee_id) IN (${keys.map(() => '?').join(', ')}) AND status IN ('approved','sent') AND id != ?`
+        ).bind(...keys, r.id).first<{ t: number }>().catch(() => ({ t: 0 }))
         const available = recv - Number(otherPaid?.t ?? 0)
         r._available = Math.max(0, available)
         r._stale = Number(r.amount) > available + 1
@@ -159,10 +156,14 @@ adminPayoutsRoutes.patch('/admin/payouts/:id/approve', requireAdminRole('finance
   const id = parseInt(c.req.param('id') || '', 10)
   if (!Number.isFinite(id)) return c.json({ success: false, error: 'Invalid id' }, 400)
   const { DB } = c.env
-  const row = await DB.prepare('SELECT status, payee_type, payee_id, amount FROM payouts WHERE id = ?')
-    .bind(id).first<{ status: string; payee_type: string; payee_id: string; amount: number }>()
+  const row = await DB.prepare('SELECT status, payee_type, payee_id, amount, account_number, kind FROM payouts WHERE id = ?')
+    .bind(id).first<{ status: string; payee_type: string; payee_id: string; amount: number; account_number: string | null; kind: string | null }>()
   if (!row) return c.json({ success: false, error: 'Not found' }, 404)
   if (row.status !== 'pending') return c.json({ success: false, error: 'Not pending' }, 409)
+
+  // 🔐 2026-10-10: 계좌 변경 후 미재확인 · 생성 이후 계좌가 바뀐 건은 승인하지 않는다(송금과 같은 SSOT).
+  const acctCheck = await checkPayeeAccountCurrent(DB, row)
+  if (!acctCheck.ok) return c.json({ success: false, error: acctCheck.error, code: acctCheck.code }, 409)
 
   // 💸 2026-07-01 (정산 정합 — 대표 승인): 과다지급 방지 가드.
   //   payout.amount 는 *생성 시점* 값이라, net 집계 수정(2026-07-01) 이전에 생성된 pending 은
@@ -170,13 +171,14 @@ adminPayoutsRoutes.patch('/admin/payouts/:id/approve', requireAdminRole('finance
   //   available = getLedgerReceivable(원장 net) − 이미 approved/sent 된 다른 payout 합.
   try {
     const { getLedgerReceivable } = await import('../../../worker/utils/ledger')
-    const ledgerType = row.payee_type === 'store_owner' ? 'merchant' : row.payee_type
-    const account = `${ledgerType}:${row.payee_id}`
+    // 🔗 2026-10-10: 접힌 계정 + 양쪽 payout 키(`seller`/`store_owner`) — 위 목록과 같은 규칙.
+    const account = payoutRowLedgerAccount(row.payee_type, row.payee_id) ?? `${row.payee_type}:${row.payee_id}`
     const receivable = await getLedgerReceivable(DB, account)
+    const keys = paidPayeeAliases(account)
     const otherPaid = await DB.prepare(
       `SELECT COALESCE(SUM(amount), 0) AS total FROM payouts
-        WHERE payee_type = ? AND payee_id = ? AND status IN ('approved','sent') AND id != ?`
-    ).bind(row.payee_type, row.payee_id, id).first<{ total: number }>().catch(() => ({ total: 0 }))
+        WHERE (payee_type || ':' || payee_id) IN (${keys.map(() => '?').join(', ')}) AND status IN ('approved','sent') AND id != ?`
+    ).bind(...keys, id).first<{ total: number }>().catch(() => ({ total: 0 }))
     const available = receivable - Number(otherPaid?.total ?? 0)
     if (Number(row.amount) > available + 1) {
       return c.json({
@@ -263,13 +265,17 @@ adminPayoutsRoutes.get('/admin/payouts/transfer-csv', requireAdminRole('finance'
   const status = c.req.query('status') === 'pending' ? 'pending' : 'approved'
   const { results } = await DB.prepare(
     `SELECT id, payee_type, payee_id, amount, bank_name, account_number, account_holder,
-            period_start, period_end
+            period_start, period_end, kind
        FROM payouts WHERE status = ? ORDER BY id ASC LIMIT 1000`,
   ).bind(status).all<PayoutRow>().catch(() => ({ results: [] as PayoutRow[] }))
 
   const all = results || []
-  const rows = all.filter(isTransferable)
-  const skipped = all.length - rows.length
+  const transferable = all.filter(isTransferable)
+  // 🔐 2026-10-10: 계좌 미재확인·옛 계좌 스냅샷은 파일에 싣지 않는다 — 파일에 실리면 은행이 그대로 보낸다.
+  const rows: PayoutRow[] = []
+  for (const r of transferable) if ((await checkPayeeAccountCurrent(DB, r)).ok) rows.push(r)
+  const skipped = all.length - transferable.length
+  const blockedCount = transferable.length - rows.length
 
   // 은행 대량이체 서식 — 은행마다 열 순서가 다르므로 **사람이 읽고 매핑**할 수 있게 한글 헤더로.
   // `적요` 에 payout id 를 넣어 두면 이체 결과와 우리 장부를 나중에 맞춰 볼 수 있다.
@@ -286,6 +292,7 @@ adminPayoutsRoutes.get('/admin/payouts/transfer-csv', requireAdminRole('finance'
       'Content-Disposition': `attachment; filename="urdeal_transfer_${status}.csv"`,
       'X-Total-Count': String(all.length),
       'X-Skipped-Count': String(skipped),
+      'X-Blocked-Count': String(blockedCount),
       'Cache-Control': 'no-store',
     },
   })
@@ -341,14 +348,22 @@ adminPayoutsRoutes.patch('/admin/payouts/bulk-approve', requireAdminRole('financ
 
   const { DB } = c.env
   let approved = 0
+  const blocked: Array<{ id: number; code: string; error: string }> = []
   for (const id of ids) {
+    // 🔐 2026-10-10: 단건 승인과 같은 계좌 검사 — 일괄이라고 건너뛰면 미재확인 계좌로 나간다.
+    const pr = await DB.prepare('SELECT payee_type, payee_id, account_number, kind FROM payouts WHERE id = ?')
+      .bind(id).first<Pick<PayoutRow, 'payee_type' | 'payee_id' | 'account_number' | 'kind'>>().catch(() => null)
+    if (pr) {
+      const chk = await checkPayeeAccountCurrent(DB, pr)
+      if (!chk.ok) { blocked.push({ id, code: chk.code, error: chk.error }); continue }
+    }
     const r = await DB.prepare(
       `UPDATE payouts SET status = 'approved', approved_at = datetime('now')
         WHERE id = ? AND status = 'pending'`,
     ).bind(id).run().catch(() => null)
     if ((r?.meta?.changes ?? 0) > 0) approved += 1
   }
-  return c.json({ success: true, data: { approved, skipped: ids.length - approved } })
+  return c.json({ success: true, data: { approved, skipped: ids.length - approved - blocked.length, blocked } })
 })
 
 // 💸 2026-07-08 (머니 감사 ③): 지급후 환불 미회수 clawback 목록 — 운영자 회수/상계 액션용.

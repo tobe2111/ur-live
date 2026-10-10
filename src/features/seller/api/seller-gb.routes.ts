@@ -29,6 +29,8 @@ import { safeError } from '../../../worker/utils/safe-error'
 import { rateLimit } from '../../../worker/middleware/rate-limit'
 import { isMallSlugCandidate } from '../../../shared/mall/resolve'
 import { ensureMallApplications, pendingApplication } from '../../../worker/utils/mall-applications'
+import { SELLER_PENDING_APPROVAL } from '../../../worker/utils/seller-approval-gate'
+import { isSeatableStoreStatus } from '../../../shared/seller-status'
 
 const app = new Hono<{ Bindings: Env }>()
 const MODES: readonly GbMode[] = ['off', 'scheduled', 'live', 'ended']
@@ -36,20 +38,40 @@ const MODES: readonly GbMode[] = ['off', 'scheduled', 'live', 'ended']
 /**
  * 인증 + **활성 셀러** 확인. 정지·반려된 셀러의 토큰은 여전히 서명이 유효하므로
  * DB status 를 함께 본다(`seller-orders.routes` 의 `getActiveSellerId` 와 같은 방침).
+ *
+ * 🪑 2026-10-10 (대표 *"전수조사 … 가장 이상적으로 모두 고쳐줘"*): 종전엔 승인 전 매장에도
+ *   **401** 을 줬다. 클라 인터셉터는 셀러 화면에서 401 을 *"세션 만료"* 로 읽어 **좌석 토큰을 지우고
+ *   셀러 로그인으로 내던진다** — 승인 대기 매장이 셀러 홈(`/seller`)에 들어가는 순간 첫 화면의
+ *   '운영자 문의' 칸(`/support-contact`)이 이 401 을 받아 **로그아웃**됐다. 2026-10-07 에
+ *   `/seller/orders` 에서 고친 것과 같은 클래스이고(`seller-approval-gate.ts` 머리말), 이 파일만 빠져 있었다.
+ *   ⇒ 401 은 **"누구인지 모르겠다"** 일 때만. 토큰은 멀쩡한데 승인 전이면 **403 + `SELLER_PENDING_APPROVAL`**.
+ *   권한은 넓히지 않는다 — 몰·공구 설정은 여전히 승인 매장만(문의처 안내만 좌석이면 연다).
  */
-async function activeSellerId(DB: D1Database, auth: string | undefined, jwtSecret: string): Promise<number | null> {
-  if (!auth || !auth.startsWith('Bearer ')) return null
+type GbSeat =
+  | { ok: true; sellerId: number }
+  | { ok: false; status: 401 | 403; body: Record<string, unknown> }
+
+export async function gbSeat(
+  DB: D1Database, auth: string | undefined, jwtSecret: string,
+  opts: { allowUnapproved?: boolean } = {},
+): Promise<GbSeat> {
+  const unauth: GbSeat = { ok: false, status: 401, body: { success: false, error: 'Unauthorized' } }
+  if (!auth || !auth.startsWith('Bearer ')) return unauth
   let raw: string | number | undefined
   try {
     const payload = await verify(auth.substring(7), jwtSecret, 'HS256') as JWTPayload & { seller_id?: number | string }
     raw = payload.seller_id
-  } catch { return null }
+  } catch { return unauth }
   const id = Number(raw)
-  if (!Number.isFinite(id) || id <= 0) return null
+  if (!Number.isFinite(id) || id <= 0) return unauth
   const row = await DB.prepare(
-    "SELECT id FROM sellers WHERE id = ? AND status IN ('approved', 'active') AND is_active = 1"
-  ).bind(id).first<{ id: number }>().catch(() => null)
-  return row ? id : null
+    "SELECT status, CASE WHEN status IN ('approved', 'active') AND is_active = 1 THEN 1 ELSE 0 END AS approved FROM sellers WHERE id = ?"
+  ).bind(id).first<{ status: string | null; approved: number }>().catch(() => null)
+  if (!row) return unauth
+  if (Number(row.approved) === 1) return { ok: true, sellerId: id }
+  // 좌석에 앉을 수 있는 상태(대기·반려)면 안내성 조회는 연다. 정지·미지는 아니다.
+  if (opts.allowUnapproved && isSeatableStoreStatus(row.status)) return { ok: true, sellerId: id }
+  return { ok: false, status: 403, body: { ...SELLER_PENDING_APPROVAL } }
 }
 
 /**
@@ -77,8 +99,9 @@ async function ownedProduct(DB: D1Database, productId: number, sellerId: number)
  */
 app.get('/mall', async (c) => {
   try {
-    const sellerId = await activeSellerId(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET)
-    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401)
+    const seat = await gbSeat(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET)
+    if (!seat.ok) return c.json(seat.body, seat.status)
+    const sellerId = seat.sellerId
     const row = await c.env.DB.prepare(
       `SELECT m.slug AS slug, COALESCE(NULLIF(TRIM(m.brand_name), ''), m.name) AS name
          FROM sellers s JOIN wholesale_malls m ON m.id = s.mall_id
@@ -103,8 +126,9 @@ app.get('/mall', async (c) => {
  */
 app.post('/mall/apply', rateLimit({ action: 'seller-mall-apply', max: 5, windowSec: 3600 }), async (c) => {
   try {
-    const sellerId = await activeSellerId(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET)
-    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401)
+    const seat = await gbSeat(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET)
+    if (!seat.ok) return c.json(seat.body, seat.status)
+    const sellerId = seat.sellerId
     await ensureMallApplications(c.env.DB)
 
     const b = await c.req.json<Record<string, unknown>>().catch(() => ({} as Record<string, unknown>))
@@ -149,8 +173,8 @@ app.post('/mall/apply', rateLimit({ action: 'seller-mall-apply', max: 5, windowS
  */
 app.get('/support-contact', async (c) => {
   try {
-    const sellerId = await activeSellerId(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET)
-    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401)
+    const seat = await gbSeat(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET, { allowUnapproved: true })
+    if (!seat.ok) return c.json(seat.body, seat.status)
     const row = await c.env.DB.prepare(
       "SELECT value FROM platform_settings WHERE key = 'operator_support_contact'"
     ).first<{ value: string }>().catch(() => null)
@@ -176,8 +200,9 @@ app.get('/support-contact', async (c) => {
  */
 app.get('/:id', async (c) => {
   try {
-    const sellerId = await activeSellerId(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET)
-    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401)
+    const seat = await gbSeat(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET)
+    if (!seat.ok) return c.json(seat.body, seat.status)
+    const sellerId = seat.sellerId
     const id = intParam(c.req.param('id'), 0)
     if (!id) return c.json({ success: false, error: '잘못된 상품 ID' }, 400)
     const p = await ownedProduct(c.env.DB, id, sellerId)
@@ -197,8 +222,9 @@ app.get('/:id', async (c) => {
 // ── PUT /:id — 내 상품의 공구 설정 저장 ────────────────────────────────────────
 app.put('/:id', async (c) => {
   try {
-    const sellerId = await activeSellerId(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET)
-    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401)
+    const seat = await gbSeat(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET)
+    if (!seat.ok) return c.json(seat.body, seat.status)
+    const sellerId = seat.sellerId
     const id = intParam(c.req.param('id'), 0)
     if (!id) return c.json({ success: false, error: '잘못된 상품 ID' }, 400)
     const p = await ownedProduct(c.env.DB, id, sellerId)

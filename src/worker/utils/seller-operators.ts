@@ -20,7 +20,12 @@
  * 셀러 대시보드는 `seller_token` 의 `sub`(=seller id)로 **모든 라우트가 자동 스코프**된다.
  * 즉 다른 매장 토큰을 받는 순간 그 매장 전부가 열린다 → **토큰 발급 시점의 `canOperateStore`
  * 검사가 유일한 방어선**이다. 이 파일 밖에서 seller_token 을 새로 mint 하지 말 것.
+ *
+ * 🔐 2026-10-10: 발급만으로는 부족했다 — 좌석 토큰은 30일이라 회수·이전이 그 사이에 일어난다.
+ *   그래서 매 요청 `store-seat-guard` 가 (매장, 사람)의 **지금** 권한을 다시 본다. 이 파일의
+ *   부여·회수는 그 판정의 isolate 캐시를 즉시 비운다(다른 isolate 는 최대 15초).
  */
+import { invalidateStoreSeatCache } from './store-seat-guard'
 
 /** 매장에 대한 계정의 권한. owner = 실소유(1명), operator = 위임받아 운영. */
 export type OperatorRole = 'owner' | 'operator'
@@ -177,6 +182,7 @@ export async function grantOperator(
           SET revoked_at = NULL, role = ?, granted_by_user_id = ?, granted_at = datetime('now')
         WHERE seller_id = ? AND user_id = ?`
     ).bind(role, grantedByUserId, sellerId, userId).run()
+    invalidateStoreSeatCache(DB, sellerId)
     return { ok: true }
   } catch {
     return { ok: false, reason: 'db' }
@@ -197,6 +203,7 @@ export async function revokeOperator(
       `UPDATE seller_operators SET revoked_at = datetime('now')
         WHERE seller_id = ? AND user_id = ? AND revoked_at IS NULL`
     ).bind(sellerId, userId).run()
+    invalidateStoreSeatCache(DB, sellerId)
     return { ok: true, changed: r.meta?.changes ?? 0 }
   } catch {
     return { ok: false, changed: 0 }
@@ -290,3 +297,19 @@ export async function resolveStoreOwnerUserId(
   if (owner === undefined) return undefined
   return owner ? Number(owner.user_id) : null
 }
+
+/**
+ * 🛍️ 2026-10-10 (사장님·중개사 플로우 전수조사) — **"이 유저의 가게" 를 묻는 SQL 조각 하나.**
+ *
+ * 유어샵(`/u/{handle}`)은 내 가게를 `WHERE linked_user_id = ? AND status = 'approved'` 로 찾았다.
+ * `/store/new` 로 직접 등록한 사장님은 `linked_user_id` 가 비어 있으므로(위 `findOwnedApprovedSeller`
+ * 머리말) **승인돼도 내 유어샵에 내 가게가 안 떴다** — 출금·인증은 2026-09 에 넓혔는데 진열만 남았다.
+ * 같은 규칙(`owner` 좌석만 · 중개는 아님)을 쓰고, 상태는 정산 가능 상태(`approved`·`active`)와 맞춘다.
+ *
+ * 테이블 별칭은 `s`. 바인드는 **세 번** — (linked_user_id, 좌석 user_id, 정렬용 linked_user_id).
+ * 연결 계정(linked_user_id)의 가게를 먼저, 그 다음 좌석 순서로 고른다.
+ */
+export const OWNED_STORE_WHERE_SQL = `s.status IN ('approved', 'active')
+  AND ( s.linked_user_id = ?
+     OR EXISTS (SELECT 1 FROM seller_operators o WHERE o.seller_id = s.id AND o.user_id = ? AND o.role = 'owner' AND o.revoked_at IS NULL) )
+  ORDER BY CASE WHEN s.linked_user_id = ? THEN 0 ELSE 1 END, s.id`
