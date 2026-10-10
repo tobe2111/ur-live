@@ -302,12 +302,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 377 | 1139 |
+| 전체 | 377 | 1142 |
 | 도메인 버킷 (5개 소개서) | 170 | 463 |
 | 공통/인프라 (의도적 제외) | 167 | 485 |
-| **미커버 (점검 필요)** | **40** | **191** |
+| **미커버 (점검 필요)** | **40** | **194** |
 
-⚠️ **미커버 231건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 234건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -430,6 +430,9 @@
 - `GET /home` (`src/features/supply/api/wholesale.routes.ts`)
 - `GET /info` (`src/features/supply/api/wholesale-plus.routes.ts`)
 - `POST /items/:id/ship` (`src/features/supply/api/wholesale-supplier.routes.ts`)
+- `POST /kakao-bot/link-code` (`src/features/seller/api/seller-kakao-bot.routes.ts`)
+- `GET /kakao-bot/links` (`src/features/seller/api/seller-kakao-bot.routes.ts`)
+- `POST /kakao-bot/links/:key/revoke` (`src/features/seller/api/seller-kakao-bot.routes.ts`)
 - `GET /mall` (`src/features/supply/api/wholesale.routes.ts`)
 - `GET /market-signal` (`src/features/supply/api/wholesale.routes.ts`)
 - `GET /me` (`src/features/supply/api/supplier-dashboard.routes.ts`)
@@ -1751,7 +1754,7 @@
 
 
 
-> 마지막 생성: 2026-10-10T16:17:30.191Z
+> 마지막 생성: 2026-10-10T17:04:48.896Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

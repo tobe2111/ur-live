@@ -226,6 +226,7 @@
 - **협업 코드 (2026-09-19)**: `/i/join/:code`(인플루언서 착지 — 미리보기→로그인→자동 입력) · `/influencer/settlement`(코드 입력·매장 링크·성과·제안 수락) · `/seller/influencer-deals`(협업 코드 발급·딜 % 조정) · `/seller/operating`(매장별·인플루언서별 성과·내 중개사 몫)
 - **매장·인플루언서 (2026-08-20, seller-dashboard-v2)**: `/seller/stores`(매장 관리 — 카카오맵 등록·국세청 검증·채널(직접/중개)·삭제·위임) · `/seller/influencers`(유어애즈 DB 탐색+협업 제안 — 발송은 유어딜 대행, 연락처 무반환) · `/seller/operators`(운영자)
 - **협업·캠페인 (2026-07)**: `/seller/influencer-deals`(우대 커미션 — 조건부=콘텐츠 인증 시 발효) · `/seller/experience-campaigns`(체험 캠페인 관리 — 셀프 개설은 게이트 `experience_campaign_seller_create` 뒤, 어드민 대행 `/admin/experience-campaigns` 가 1순위)
+- 💬 **카카오톡으로 매장 관리 (2026-10-10, 게이트 `kakao_bot_store_ops_enabled`/`KAKAO_BOT_STORE_OPS_ENABLED` 기본 OFF)**: 채널 챗봇 스킬(`/api/cs/kakao-skill`, 원래 CS FAQ)에 **매장 명령**을 얹었다 — `/seller/scan` 화면에서 6자리 1회용 코드를 받아 채널에 `연결 123456` → 오늘 판매·사용 대기·정산 조회 · `사용 코드`(계산대 스캔과 **같은** `redeemVoucherForStore`) · 판매 중지/재개. 쓰기는 전부 `네` 확인, 매 명령마다 좌석(`canOperateStore`) 재확인. 알림톡 발송 없음. SSOT `worker/utils/kakao-bot-store.ts`·`kakao-bot-commands.ts`
 
 ### 중개 / 운영 / 도매
 - ~~`/agency/*`~~ 🌇 **2026-09-04 전면 삭제** — 중개사는 별도 화면이 없다. **셀러 대시보드**를 그대로 쓰고, 매장과의 관계는 `seller_operators`(owner/operator) + 매장 전환(`/seller/stores`)으로 다룬다(`store-operator-model.md` §7)

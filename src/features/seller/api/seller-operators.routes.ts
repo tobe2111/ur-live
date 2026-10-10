@@ -43,6 +43,7 @@ import {
   listStoreOperators,
   resolveStoreOwnerUserId,
 } from '../../../worker/utils/seller-operators'
+import { registerKakaoBotLinkRoutes } from './seller-kakao-bot.routes' // 💬 2026-10-10 카카오톡으로 매장 관리(연결 코드·연결 목록)
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -441,5 +442,7 @@ app.get('/operating-summary', async (c) => {
     return safeError(c, err, '운영 매장 요약을 불러오지 못했습니다', '[seller-operators]')
   }
 })
+
+registerKakaoBotLinkRoutes(app)
 
 export { app as sellerOperatorsRoutes }

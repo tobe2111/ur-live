@@ -3405,7 +3405,24 @@
     "voucherUntil": "{{d}}까지",
     "voucherCodeHeader": "이용권 코드",
     "copyOrderNumber": "전체 주문번호 복사",
-    "goRedeemScreen": "사용처리 화면으로"
+    "goRedeemScreen": "사용처리 화면으로",
+    "kakaoBot": {
+      "title": "通过KakaoTalk管理门店",
+      "issue": "获取绑定码",
+      "issueFail": "无法生成绑定码",
+      "copied": "已复制",
+      "copy": "复制",
+      "revokeConfirm": "要解除此聊天的绑定吗？该聊天将无法再管理门店。",
+      "revoked": "已解除绑定",
+      "revokeFail": "无法解除绑定",
+      "desc": "在UrDeal的KakaoTalk频道可查看今日销售、待使用券和结算，并可核销使用券、暂停销售。修改操作会在聊天中再次确认。",
+      "notReady": "即将上线。很快即可在KakaoTalk管理门店。",
+      "howTo": "请向UrDeal KakaoTalk频道发送以下内容。10分钟内仅可使用一次。",
+      "chat": "聊天",
+      "lastUsed": "最近使用",
+      "revoke": "解除绑定",
+      "utterance": "연결 {{code}}"
+    }
   },
   "admin": {
     "login": {

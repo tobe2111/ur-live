@@ -25,6 +25,7 @@ import { checkStoreCodeRequired } from '../../../worker/utils/voucher-redeem-gua
 import { resolveSellerNotifyTarget } from '../../../worker/utils/seller-notify-phone'
 import { storeGoUrl } from '../../../shared/store-deep-link'
 import { redeemByCounterSecret } from '../../../worker/utils/counter-redeem'
+import { redeemVoucherForStore } from '../../../worker/utils/voucher-seller-redeem'
 
 export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void {
   // ── POST /:code/use — voucher 사용 (PIN 검증) ──
@@ -311,84 +312,19 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
       if (!user || (user.type !== 'seller' && user.type !== 'admin')) {
         return c.json({ success: false, error: '셀러/어드민만 가능' }, 403)
       }
-      const code = c.req.param('code')
-      if (!code || !/^[A-Za-z0-9-]{4,64}$/.test(code)) {
-        return c.json({ success: false, error: '잘못된 바우처 코드' }, 400)
-      }
+      const code = c.req.param('code') || ''
       const { DB } = c.env
 
-      // 만료 차단
-      try {
-        await DB.prepare(
-          "UPDATE vouchers SET status = 'expired' WHERE code = ? AND status = 'unused' AND expires_at IS NOT NULL AND expires_at < datetime('now')"
-        ).bind(code).run()
-      } catch { /* ignore */ }
-
-      // voucher + product seller 검증
-      const voucher = await DB.prepare(
-        `SELECT v.id, v.status, v.user_id, v.product_id, v.applied_price,
-                p.seller_id, NULL AS consigned_from_seller_id, p.name AS product_name, p.restaurant_name, p.category
-         FROM vouchers v LEFT JOIN products p ON p.id = v.product_id
-         WHERE v.code = ?`
-      ).bind(code).first<{ id: number; status: string; user_id: string; product_id: number; applied_price: number | null; seller_id: number; consigned_from_seller_id: number | null; product_name: string; restaurant_name: string | null; category: string | null }>()
-      if (!voucher) return c.json({ success: false, error: '바우처를 찾을 수 없습니다' }, 404)
-      if (user.type === 'seller' && Number(voucher.seller_id) !== Number(user.id)) {
-        return c.json({ success: false, error: '본인 매장의 voucher 가 아닙니다' }, 403)
-      }
-      if (voucher.status === 'used') return c.json({ success: false, error: '이미 사용된 바우처입니다' }, 400)
-      if (voucher.status === 'expired') return c.json({ success: false, error: '만료된 바우처입니다' }, 400)
-      if (voucher.status === 'refunded') return c.json({ success: false, error: '환불된 바우처입니다' }, 400)
-
-      // atomic CAS
-      const result = await DB.prepare(
-        "UPDATE vouchers SET status = 'used', used_at = datetime('now') WHERE id = ? AND status = 'unused'"
-      ).bind(voucher.id).run()
-      if (!result.meta?.changes) return c.json({ success: false, error: '동시성 충돌 — 다시 시도해주세요' }, 409)
-
-      // 🚪 2026-07-13 (데이터 감사 2단계): 방문 통합 이벤트 — 완결고리 '방문' 노드(멱등·best-effort).
-      c.executionCtx?.waitUntil((async () => {
-        try {
-          const { recordVoucherVisit } = await import('../../../worker/utils/voucher-visit')
-          await recordVoucherVisit(DB, {
-            voucher_id: voucher.id, user_id: voucher.user_id,
-            seller_id: voucher.consigned_from_seller_id ?? voucher.seller_id,
-            product_id: voucher.product_id, amount: voucher.applied_price, path: 'seller_scan',
-          })
-        } catch { /* best-effort */ }
-      })())
-
-      // 🛡️ 2026-05-21 Phase C: 정산 ledger entries 3개 자동 기록 (멱등).
-      c.executionCtx?.waitUntil((async () => {
-        try {
-          const { recordVoucherUsedLedger, recordIntroductionCommissionShare } = await import('../../../worker/utils/ledger'); const { debitOwnerPromoForOrder } = await import('../../../worker/utils/owner-promo')
-          const merchantId = voucher.consigned_from_seller_id ?? voucher.seller_id
-          const sellerForCommission = voucher.consigned_from_seller_id ? voucher.seller_id : null
-          const amount = voucher.applied_price || 0
-          if (merchantId && amount > 0) {
-            const result = await recordVoucherUsedLedger(DB, {
-              voucher_id: voucher.id,
-              order_amount: amount,
-              merchant_id: merchantId,
-              seller_id: sellerForCommission,
-            })
-            // 🌇 2026-09-04 에이전시 완전 일몰 — 여기 있던 `recordAgencyCommissionShare`(플랫폼 수수료의
-            //    30% 를 영입 에이전시에 자동 분배)를 삭제했다. 대표 확정: **5% 는 온전히 유어딜 몫**이고
-            //    중개사는 나머지 95%(매장 몫)에서 매장과 직접 거래한다. 이 코드는 그 원칙과 정반대였고,
-            //    `sellers.introduced_by_agency_id` 가 전원 NULL 이라 실제로 지급된 적은 없다.
-            await recordIntroductionCommissionShare(DB, {
-              voucher_id: voucher.id,
-              merchant_id: merchantId,
-              platform_fee: result.platform_amount,
-            })
-            // 💸 2026-07-04 [INV-CB §3-D]: promo owner-펀딩 — 이 voucher 셀렉트엔 order_id 가 없어
-            //   voucherId 로 전달(헬퍼가 vouchers.order_id 해석). 게이트 아닐 땐 내부 no-op(현행).
-            await debitOwnerPromoForOrder(DB, {
-              voucherId: voucher.id,
-              ownerAccount: `merchant:${merchantId}`,
-            })
-          }
-        } catch (e) { if (import.meta.env?.DEV) console.warn('[voucher-used-ledger]', e) }
-      })())
+      // 🧩 2026-10-10: 검사·CAS·원장은 `redeemVoucherForStore` 가 한다 — 카카오톡 챗봇(`사용 코드`)과
+      //   **같은 함수**를 쓴다(두 벌이면 정산이 한쪽 경로에서만 빠진다). 문구·상태코드는 종전과 동일.
+      const redeemed = await redeemVoucherForStore(DB, {
+        code,
+        actorSellerId: user.type === 'seller' ? Number(user.id) : null,
+        path: 'seller_scan',
+        waitUntil: (p) => c.executionCtx?.waitUntil(p),
+      })
+      if (!redeemed.ok) return c.json({ success: false, error: redeemed.error }, redeemed.status)
+      const voucher = redeemed.voucher
 
       // attribution + 사용자 알림톡
       let attribution: { influencer_id?: string; influencer_commission?: number } = {}
