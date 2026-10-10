@@ -13,6 +13,21 @@
  */
 import { swallow } from './swallow'
 
+/**
+ * 💸 2026-10-10 [머니 룰 #2]: 이 함수가 이용권을 refunded 로 **실제로 전이시킨 그 순간에만** 커미션을 회수한다.
+ *   여기를 거치는 환불(`refundOrderFully` · 이용권 일부 환불 · 인라인 취소)은 그동안 **이용권은 무효화하면서
+ *   인플루언서 커미션·중개사 몫(attribution · 잔액 · 원장)은 그대로** 남겼다 — 환불된 주문의 몫이 성숙해 지급되거나
+ *   매장 원장에 debit 으로 남았다. 바우처 단위 회수 SSOT(`clawbackVoucherCommission`)는 비례 회수라 부분 환불에도 맞다.
+ *   CAS(changes>0) 뒤에서만 부르므로 같은 바우처를 두 번 회수하지 않는다(이미 refunded 면 위에서 건너뛴다).
+ *   fail-soft — 회수 실패가 환불을 막지 않는다.
+ */
+async function clawbackCommissionFor(DB: D1Database, voucherId: number, reason: string): Promise<void> {
+  try {
+    const { clawbackVoucherCommission } = await import('../../features/group-buy/api/voucher-clawback')
+    await clawbackVoucherCommission(DB, voucherId, reason)
+  } catch (e) { console.error('[clawback] commission clawback failed', { voucherId, e }) }
+}
+
 const _ensuredClawback = new WeakSet<object>()
 async function ensureClawbackTable(DB: D1Database) {
   if (_ensuredClawback.has(DB)) return
@@ -90,13 +105,13 @@ export async function clawbackVoucherSettlementOnRefund(
 
     if (v.status === 'unused') {
       const r = await DB.prepare("UPDATE vouchers SET status='refunded' WHERE id=? AND status='unused'").bind(v.id).run().catch(() => null)
-      if (r?.meta?.changes) out.voided++
+      if (r?.meta?.changes) { out.voided++; await clawbackCommissionFor(DB, v.id, reason) }
       continue
     }
 
     if (v.status === 'used' && v.settlement_id == null) {
       const r = await DB.prepare("UPDATE vouchers SET status='refunded' WHERE id=? AND status='used' AND settlement_id IS NULL").bind(v.id).run().catch(() => null)
-      if (r?.meta?.changes) out.voided++
+      if (r?.meta?.changes) { out.voided++; await clawbackCommissionFor(DB, v.id, reason) }
       continue
     }
 
@@ -124,7 +139,7 @@ export async function clawbackVoucherSettlementOnRefund(
           WHERE id = ?
         `).bind(newRevenue, newComm, newNet, st.id).run().catch(swallow('clawback:settlement-dec'))
         const r = await DB.prepare("UPDATE vouchers SET status='refunded', settlement_id=NULL WHERE id=? AND status='used'").bind(v.id).run().catch(() => null)
-        if (r?.meta?.changes) out.reclaimedPending++
+        if (r?.meta?.changes) { out.reclaimedPending++; await clawbackCommissionFor(DB, v.id, reason) }
       } else {
         // 이미 지급완료(또는 정산행 소실) → 실제 회수 필요. 회수의무 기록(멱등) + voucher refunded.
         await ensureClawbackTable(DB)
@@ -136,7 +151,8 @@ export async function clawbackVoucherSettlementOnRefund(
           // 운영 경고 — 이미 지급된 정산의 회수는 다음 정산 상계/수동 회수 필요.
           console.error('[clawback] settled voucher refunded — manual recovery needed', { voucherId: v.id, orderId, sellerId: v.seller_id, amount: revenue })
         }
-        await DB.prepare("UPDATE vouchers SET status='refunded' WHERE id=? AND status='used'").bind(v.id).run().catch(() => null)
+        const r2 = await DB.prepare("UPDATE vouchers SET status='refunded' WHERE id=? AND status='used'").bind(v.id).run().catch(() => null)
+        if (r2?.meta?.changes) await clawbackCommissionFor(DB, v.id, reason)
       }
     }
   }

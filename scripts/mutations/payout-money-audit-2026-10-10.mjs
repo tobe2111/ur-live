@@ -68,4 +68,28 @@ export default [
     test: 'src/tests/unit/payout-account-unverified-2026-10-10.test.ts',
     why: '단건만 막고 일괄이 통과시키면 가드가 갈린다 — 갈린 쪽이 조용히 미재확인 계좌를 승인한다.',
   },
+  {
+    name: '💸감사1010 바우처 회수가 원장(중개사 몫·인플 커미션)을 다시 안 되돌린다',
+    file: 'src/features/group-buy/api/voucher-clawback.ts',
+    find: '  await reverseAttributionLedgerShares(DB, { orderId, voucherId, reason, shares: ledgerShares }).catch(() => null)',
+    replace: '',
+    test: 'src/tests/unit/broker-share-reversal-2026-10-10.test.ts',
+    why: 'attribution 만 회수하고 seller:N debit 을 남기면 환불된 주문의 몫을 매장이 영구 부담한다.',
+  },
+  {
+    name: '💸감사1010 주문 단위 환불(미사용 장)이 커미션 회수를 다시 안 부른다',
+    file: 'src/worker/utils/voucher-settlement-clawback.ts',
+    find: "      if (r?.meta?.changes) { out.voided++; await clawbackCommissionFor(DB, v.id, reason) }\n      continue\n    }\n\n    if (v.status === 'used' && v.settlement_id == null) {",
+    replace: "      if (r?.meta?.changes) { out.voided++ }\n      continue\n    }\n\n    if (v.status === 'used' && v.settlement_id == null) {",
+    test: 'src/tests/unit/broker-share-reversal-2026-10-10.test.ts',
+    why: 'refundOrderFully·일부 환불이 이용권만 무효화하고 커미션은 성숙·지급되게 둔다.',
+  },
+  {
+    name: '💸감사1010 원장 역전이 원본 금액 상한을 잃는다 (여러 장이면 과다 역전)',
+    file: 'src/worker/utils/attribution-ledger-reversal.ts',
+    find: '        const amount = Math.min(share, Number(src.amount) - Number(done?.t ?? 0))',
+    replace: '        const amount = share',
+    test: 'src/tests/unit/broker-share-reversal-2026-10-10.test.ts',
+    why: '바우처마다 몫을 되돌리다 원본보다 많이 되돌리면 매장에 없는 돈이 생긴다.',
+  },
 ]
