@@ -553,9 +553,12 @@ publicUtilityRoutes.get('/api/promo-bar', async (c) => {
     ).all<{ key: string; value: string }>()
     const s: Record<string, string> = {}
     for (const r of results || []) s[r.key] = r.value
-    if (s.promo_bar_enabled !== 'true' || !s.promo_bar_text) return c.json(empty)
+    // ⚡ 2026-10-10 — 캐시 헤더를 **꺼져 있을 때도** 붙인다. 이 요청은 모든 페이지가 부르는데, 띠가 꺼진
+    //   평소엔 헤더 없이 돌아가서 페이지를 볼 때마다 D1 을 읽고 브라우저도 매번 다시 받았다(라이브 실측).
+    //   켤 때 반영은 최대 60초 늦어진다 — 켜진 응답과 같은 값이라 새 지연은 아니다.
     c.header('Cache-Control', 'public, max-age=60')
     c.header('CDN-Cache-Control', 'public, max-age=300')
+    if (s.promo_bar_enabled !== 'true' || !s.promo_bar_text) return c.json(empty)
     return c.json({
       success: true,
       data: {
