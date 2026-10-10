@@ -18,7 +18,7 @@ import { readFileSync } from 'node:fs'
 import { stripComments } from '../helpers/source-text'
 
 const SELLER = stripComments(readFileSync('src/pages/user-profile/SellerSection.tsx', 'utf8'))
-const ICONS = readFileSync('src/components/icons/urdeal-icons.tsx', 'utf8')
+const ICONS = readFileSync('src/components/icons/qr-scan-icon.tsx', 'utf8')
 
 /** 사용처리 버튼 한 덩어리 — `enterSeat('/store/scan')` 를 가진 `<button` 부터 그 `</button>` 까지. */
 function scanButton(): string {
@@ -60,12 +60,10 @@ describe('마이 사용처리 = QR 티켓 (안 3)', () => {
     expect(SELLER).toContain("enterSeat('/store/scan')")
   })
 
-  it('QR 아이콘은 세트 규칙(획 1.6 = base)을 쓰고 스캔 틀 모서리를 가진다', () => {
-    const i = ICONS.indexOf('export const QrScanIcon')
-    expect(i, 'QrScanIcon 이 없다').toBeGreaterThan(-1)
-    const body = ICONS.slice(i, ICONS.indexOf('\n})', i))
-    expect(body).toContain('{...base}')
-    expect(body, '획을 따로 박았다 — 세트의 정체성은 1.6 하나다').not.toMatch(/strokeWidth=/)
-    expect(body, '스캔 틀 모서리가 없다 — 코드만 그리면 "내 티켓" 으로 읽힌다').toMatch(/M3 9V5\.4/)
+  it('QR 아이콘은 세트 규칙(획 1.6)을 쓰고 스캔 틀 모서리를 가지며, 마이가 그것을 쓴다', () => {
+    expect(ICONS).toContain('export const QrScanIcon')
+    expect(ICONS, '획이 세트(1.6)와 다르다').toContain('strokeWidth={1.6}')
+    expect(ICONS, '스캔 틀 모서리가 없다 — 코드만 그리면 "내 티켓" 으로 읽힌다').toMatch(/M3 9V5\.4/)
+    expect(SELLER, '마이가 QR 아이콘을 그 파일에서 안 가져온다').toContain("from '@/components/icons/qr-scan-icon'")
   })
 })

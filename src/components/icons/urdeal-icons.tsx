@@ -437,36 +437,6 @@ export const ScanIcon = forwardRef<SVGSVGElement, IconProps>(function ScanIcon({
   )
 })
 
-/**
- * 이용권 사용처리 **티켓 꼬리**용 — 스캔 틀 안의 QR (2026-10-10 대표 확정 안 3, *"바코드 모양이 아니라
- * QR모양이어야 하잖아"*). 손님이 내미는 이용권은 QR 이라 꼬리도 QR 이다(바코드면 다른 물건으로 읽힌다).
- * ⚠️ 위 `ScanIcon` 이 "코드만 그리면 '내 티켓' 으로 읽힌다" 고 경고한 그 함정을 **틀 모서리**로 피한다 —
- * 모서리 넷이 "이걸 찍는다" 를 말한다. 32 그리드(꼬리 자리가 18px 행 아이콘보다 크다), 획 1.6 은 세트 그대로.
- */
-export const QrScanIcon = forwardRef<SVGSVGElement, IconProps>(function QrScanIcon({ size = 32, filled, ...props }, ref) {
-  return (
-    <svg ref={ref} {...base} viewBox="0 0 32 32" width={size} height={size} {...props}>
-      <path d="M3 9V5.4A2.4 2.4 0 0 1 5.4 3H9M23 3h3.6A2.4 2.4 0 0 1 29 5.4V9M29 23v3.6a2.4 2.4 0 0 1-2.4 2.4H23M9 29H5.4A2.4 2.4 0 0 1 3 26.6V23" />
-      <rect x="8.5" y="8.5" width="5.5" height="5.5" rx="1" />
-      <rect x="18" y="8.5" width="5.5" height="5.5" rx="1" />
-      <rect x="8.5" y="18" width="5.5" height="5.5" rx="1" />
-      <g fill="currentColor" stroke="none">
-        <rect x="10.4" y="10.4" width="1.7" height="1.7" rx=".4" />
-        <rect x="19.9" y="10.4" width="1.7" height="1.7" rx=".4" />
-        <rect x="10.4" y="19.9" width="1.7" height="1.7" rx=".4" />
-        <rect x="18" y="18" width="2.2" height="2.2" rx=".5" />
-        <rect x="21.3" y="21.3" width="2.2" height="2.2" rx=".5" />
-        <rect x="21.3" y="18" width="2.2" height="2.2" rx=".5" opacity=".55" />
-        <rect x="18" y="21.3" width="2.2" height="2.2" rx=".5" opacity=".55" />
-        <rect x="15.4" y="8.5" width="1.6" height="1.6" rx=".4" />
-        <rect x="15.4" y="12.4" width="1.6" height="1.6" rx=".4" />
-        <rect x="8.5" y="15.4" width="1.6" height="1.6" rx=".4" />
-        <rect x="12.4" y="15.4" width="1.6" height="1.6" rx=".4" />
-      </g>
-    </svg>
-  )
-})
-
 /** 로그아웃 — 문 + 나가는 화살표. 화살표만 그리면 '공유' 로 읽힌다(그게 lucide 의 오래된 혼동이다). */
 export const LogOutIcon = forwardRef<SVGSVGElement, IconProps>(function LogOutIcon({ size = 24, filled, ...props }, ref) {
   return (
