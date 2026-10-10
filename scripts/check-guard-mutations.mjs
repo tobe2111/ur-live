@@ -3216,8 +3216,8 @@ canvas {
   {
     name: '🏪 행위자 판별이 linked_user_id 폴백으로 되돌아간다',
     file: 'src/worker/utils/store-actor.ts',
-    find: '    const opRaw = Number(p.operator_user_id)',
-    replace: '    const opRaw = Number(p.linked_user_id)',
+    find: '  const opRaw = Number(p.operator_user_id)',
+    replace: '  const opRaw = Number(p.linked_user_id)',
     test: 'src/tests/unit/store-operator-scope.test.ts',
     why:
       '`linked_user_id` 는 *호출자*가 아니라 **매장 주인**의 id 다. 그걸로 판정하면 세션 없는 요청에서 ' +
@@ -3226,7 +3226,7 @@ canvas {
   {
     name: '🏪 사업자정보 시드 폴백만 마스킹을 빠뜨린다',
     file: 'src/features/seller/api/seller-profile/business-info.ts',
-    find: "      const a0 = await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET);",
+    find: "      const a0 = await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET, c.env.DB);",
     replace: '      const a0 = { isOwner: true };',
     test: 'src/tests/unit/store-operator-scope.test.ts',
     why:
@@ -10450,8 +10450,10 @@ canvas {
   {
     name: '🪑 직접 등록 사장님이 다시 운영자로 오판된다 (정산 계좌 못 넣음 = 돈 못 받음)',
     file: 'src/worker/utils/store-actor.ts',
-    find: '    const isOwner = role ? role === \'owner\' : operatorUserId === null',
-    replace: '    const isOwner = operatorUserId === null',
+    // 🔐 2026-10-10 재조준: 위임(grant) 출처 사장님의 소유 판정은 이제 DB 역할(seat.role)이 한다 —
+    //   claim 폴백 줄은 정체성 없는 토큰에만 닿아 이 결함을 더는 못 만든다. 결정하는 줄로 앵커를 옮긴다.
+    find: "  if (seat.role) return { sellerId, operatorUserId, isOwner: seat.role === 'owner' }",
+    replace: '  if (seat.role) return { sellerId, operatorUserId, isOwner: operatorUserId === null }',
     test: 'src/tests/unit/store-owner-judgment-2026-09-09.test.ts',
     why:
       '/store/new 는 설계상 linked_user_id 를 비워 두므로 직접 등록한 진짜 사장님도 source:grant 로 ' +

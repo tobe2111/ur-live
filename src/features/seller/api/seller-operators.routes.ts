@@ -28,6 +28,7 @@ import { parseSessionCookie } from '@/worker/utils/session'
 import { safeError } from '@/worker/utils/safe-error'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { startDashboardSession } from '@/worker/utils/dashboard-session'
+import { resolveTokenActorUserId } from '@/worker/utils/store-seat-guard'
 import { notifyUser } from '@/lib/notifications'
 import { getOrIssueOwnerClaimCode, formatStoreCode } from '@/worker/utils/store-codes'
 import { readBrokerTerms } from '@/worker/utils/broker-share'
@@ -63,14 +64,9 @@ async function resolveActorUserId(c: Ctx): Promise<number | null> {
     const id = Number(sess.userId)
     if (Number.isFinite(id) && id > 0) return id
   }
-  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
-  if (sellerId) {
-    const row = await c.env.DB.prepare('SELECT linked_user_id FROM sellers WHERE id = ? LIMIT 1')
-      .bind(sellerId).first<{ linked_user_id: number | null }>().catch(() => null)
-    const id = Number(row?.linked_user_id)
-    if (Number.isFinite(id) && id > 0) return id
-  }
-  return null
+  // 🔐 2026-10-10: 좌석 토큰이면 **그 좌석의 사람**(살아 있을 때만) — 매장 주인 id 로 되짚지 않는다.
+  //   종전엔 운영자 좌석 토큰도 주인 id 로 바뀌어, 쿠키 없이 보내면 운영자가 주인으로 둔갑했다.
+  return resolveTokenActorUserId(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET)
 }
 
 // ── GET /my-stores ────────────────────────────────────────────────────────
@@ -236,6 +232,10 @@ app.post('/stores/:sellerId/token', rateLimit({ action: 'seller_store_switch', m
      *   빼면 운영자가 들어갈 때 사장님이 튕긴다(위 주석의 사고).
      */
     if (access.role) payload.store_role = access.role
+    // 🪑 2026-10-10: 이 좌석이 **누구에게** 발급됐는지 — link 출처(소유자 본인)도 포함해 항상 싣는다.
+    //   `store-seat-guard` 가 매 요청 (매장, 이 사람)의 지금 권한을 다시 본다. 이게 없으면 회수·이전
+    //   뒤에도 토큰이 30일 동안 살아 있다. ⚠️ 시트 키(`deriveDashboardSeat`)는 이 claim 을 안 본다.
+    payload.seat_user_id = userId
 
     const token = await jwtSign(payload, c.env.JWT_SECRET)
     const seat = access.source === 'grant'

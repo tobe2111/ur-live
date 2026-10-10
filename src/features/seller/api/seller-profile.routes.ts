@@ -173,7 +173,7 @@ sellerProfileRoutes.on(['PUT', 'PATCH'], '/profile', async (c) => {
     //   계좌를 갈아끼우면 그 매장의 돈이 통째로 다른 곳으로 간다 — PIN 을 요구해도 그 PIN 은
     //   *운영자 자신의* 것이라 막지 못한다. 그래서 권한 자체로 끊는다.
     if (bankChanged) {
-      const actor = await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET);
+      const actor = await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET, c.env.DB);
       if (!actor.isOwner) {
         return c.json({ success: false, error: `정산 계좌는 ${OWNER_ONLY_MESSAGE}` }, 403);
       }

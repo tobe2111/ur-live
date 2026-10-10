@@ -38,6 +38,7 @@
 import type { D1Database } from '@cloudflare/workers-types'
 import { grantOperator, resolveStoreOwnerUserId } from './seller-operators'
 import { checkStoreHandover, STORE_HANDOVER_BLOCKED } from './store-handover-guard'
+import { bumpStoreSeatEpoch } from './store-seat-guard'
 
 export interface TransferResult {
   ok: boolean
@@ -98,6 +99,13 @@ export async function transferStoreOwnership(
     await DB.prepare(`UPDATE sellers SET linked_user_id = NULL, updated_at = datetime('now') WHERE id = ? AND linked_user_id = ?`)
       .bind(sellerId, linked).run().catch(() => { /* best-effort */ })
   }
+
+  // 🔐 2026-10-10: 이미 발급된 토큰을 끊는다. 좌석 토큰은 30일이라, 이걸 안 하면 **강등된 이전 주인의
+  //   토큰이 계속 `store_role:'owner'`** 여서 자기 PIN 으로 정산 계좌를 갈아끼울 수 있었다.
+  //   - 정체성 있는 좌석(새 토큰 · 위임 출처): 매 요청 DB 역할로 판정 → 강등은 즉시 operator.
+  //   - 정체성 없는 토큰(매장 계정 로그인 · 옛 link 좌석): 누구 것인지 모른다 → 에포크로 전부 끊는다.
+  //   새 주인은 이 뒤에 좌석을 받으므로 영향이 없다. fail-soft(이전 자체를 되돌리지 않는다).
+  await bumpStoreSeatEpoch(DB, sellerId, 'ownership_transfer')
 
   return { ok: true, previousOwnerId: prev }
 }

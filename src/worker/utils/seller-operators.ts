@@ -20,7 +20,12 @@
  * 셀러 대시보드는 `seller_token` 의 `sub`(=seller id)로 **모든 라우트가 자동 스코프**된다.
  * 즉 다른 매장 토큰을 받는 순간 그 매장 전부가 열린다 → **토큰 발급 시점의 `canOperateStore`
  * 검사가 유일한 방어선**이다. 이 파일 밖에서 seller_token 을 새로 mint 하지 말 것.
+ *
+ * 🔐 2026-10-10: 발급만으로는 부족했다 — 좌석 토큰은 30일이라 회수·이전이 그 사이에 일어난다.
+ *   그래서 매 요청 `store-seat-guard` 가 (매장, 사람)의 **지금** 권한을 다시 본다. 이 파일의
+ *   부여·회수는 그 판정의 isolate 캐시를 즉시 비운다(다른 isolate 는 최대 15초).
  */
+import { invalidateStoreSeatCache } from './store-seat-guard'
 
 /** 매장에 대한 계정의 권한. owner = 실소유(1명), operator = 위임받아 운영. */
 export type OperatorRole = 'owner' | 'operator'
@@ -177,6 +182,7 @@ export async function grantOperator(
           SET revoked_at = NULL, role = ?, granted_by_user_id = ?, granted_at = datetime('now')
         WHERE seller_id = ? AND user_id = ?`
     ).bind(role, grantedByUserId, sellerId, userId).run()
+    invalidateStoreSeatCache(DB, sellerId)
     return { ok: true }
   } catch {
     return { ok: false, reason: 'db' }
@@ -197,6 +203,7 @@ export async function revokeOperator(
       `UPDATE seller_operators SET revoked_at = datetime('now')
         WHERE seller_id = ? AND user_id = ? AND revoked_at IS NULL`
     ).bind(sellerId, userId).run()
+    invalidateStoreSeatCache(DB, sellerId)
     return { ok: true, changed: r.meta?.changes ?? 0 }
   } catch {
     return { ok: false, changed: 0 }

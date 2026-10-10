@@ -29,6 +29,7 @@ import { startDashboardSession, isDashboardSessionCurrent, deriveDashboardSeat }
 import { filterAliveRefreshRows, rotationGraceExpiryIso } from '@/worker/utils/refresh-rotation';
 import { requireSeller } from '@/worker/middleware/auth';
 import { computeWholesaleOnly } from '@/features/supply/api/wholesale-helpers';
+import { isSeatShapedToken } from '@/worker/utils/store-seat-guard';
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
@@ -489,6 +490,8 @@ sellerRoutes.post('/refresh', cors(), rateLimit({ action: 'seller_refresh', max:
       }, 401);
     }
     
+    // 🔐 2026-10-10 좌석 토큰은 refresh 불가 — refresh 행 없는 매장은 해시 대조를 건너뛰어, 회수된 운영자 좌석이 claim 빠진 매장 계정 토큰으로 갈아타는 문이었다(store-seat-guard).
+    if (isSeatShapedToken(payload)) return c.json<AuthResponse>({ success: false, error: '매장 좌석 토큰은 갱신할 수 없습니다. 매장을 다시 선택해 주세요.', code: 'INVALID_TOKEN_TYPE' }, 401);
     // seller 컬럼 존재 보장 (isolate 당 1회 메모이즈)
     await ensureSellerColumns(DB)
 

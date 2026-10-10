@@ -21,6 +21,7 @@ import { Hono } from 'hono'
 import type { Context } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { getSellerIdFromToken } from '@/lib/seller-shared'
+import { resolveTokenActorUserId } from '@/worker/utils/store-seat-guard'
 import { safeError } from '@/worker/utils/safe-error'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { ensureSellerMetaTable, getSellerMeta, setSellerMeta } from '@/worker/utils/seller-meta'
@@ -67,14 +68,8 @@ async function resolveActorUserId(c: Ctx): Promise<number | null> {
     const id = Number(sess.userId)
     if (Number.isFinite(id) && id > 0) return id
   }
-  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
-  if (sellerId) {
-    const row = await c.env.DB.prepare('SELECT linked_user_id FROM sellers WHERE id = ? LIMIT 1')
-      .bind(sellerId).first<{ linked_user_id: number | null }>().catch(() => null)
-    const id = Number(row?.linked_user_id)
-    if (Number.isFinite(id) && id > 0) return id
-  }
-  return null
+  // 🔐 2026-10-10: seller-operators.routes 와 같은 규칙 — 좌석 토큰은 그 좌석의 사람(살아 있을 때만).
+  return resolveTokenActorUserId(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET)
 }
 
 // ── 후기 보너스 — 매장이 직접 정한다 (2026-08-31 대표 "매장 사장님이 부담하게끔") ──────

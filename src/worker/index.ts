@@ -154,6 +154,7 @@ import { ALLOWED_ORIGINS, FIREBASE_RTDB_URL, FIREBASE_APP_URL } from '../shared/
 import { requireAdmin, requireAuth, requireSeller } from './middleware/auth';
 import { adminIpWhitelist, adminAuditMiddleware } from './middleware/admin-security';
 import { adminRbacMiddleware } from './middleware/admin-rbac';
+import { storeSeatGuard } from './utils/store-seat-guard';
 import { rateLimit } from './middleware/rate-limit';
 import { hashPassword } from '../lib/password';
 import { botProtection, scrapeProtection } from './middleware/bot-detection';
@@ -1454,6 +1455,8 @@ app.use('/api/admin/2fa/*', rateLimit({ action: 'admin_2fa', max: 5, windowSec: 
 //   (login/refresh 는 토큰 전이라 통과 — 미들웨어가 role 미상 시 next). admin-payouts(하이픈)도 별도 게이트.
 app.use('/api/admin/*', adminRbacMiddleware());
 app.use('/api/admin-payouts/*', adminRbacMiddleware());
+// 🪑 2026-10-10 매장 좌석 토큰(30일)이 **지금도** 살아 있는지 매 요청 본다 — 회수·소유권 이전·탈퇴 뒤 옛 토큰 차단. 셀러 라우트보다 먼저.
+app.use('/api/*', storeSeatGuard());
 app.route('/api/admin', adminAuthRoutes);
 
 // -------------------------------------------------------
