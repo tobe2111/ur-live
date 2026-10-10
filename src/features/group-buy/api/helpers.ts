@@ -410,8 +410,7 @@ export async function sendSellerFirstVoucherAlimtalk(
   try {
     const cleanPhone = phone.replace(/[^0-9]/g, '')
     if (!/^01\d{8,9}$/.test(cleanPhone)) return
-    // 🩸 2026-10-10: 문구가 옛 모델이었다 — "식권", 존재하지 않는 매장 전용 링크(`store_owner_token`),
-    //   "사용 + 7일 후 자동 송금"(실제는 정산 계좌 등록 + 정산 주기 · 값은 어드민 조정). 사실만 남긴다.
+    // 🩸 2026-10-10: 옛 문구("식권"·없는 매장 전용 링크·"7일 후 자동 송금")를 사실로 교체 — 정산은 계좌 등록 + 정산 주기.
     const message = `[유어딜] 🎉 첫 이용권이 팔렸어요
 
 ${data.restaurantName} 사장님,
