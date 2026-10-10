@@ -112,6 +112,22 @@ const STEPS = [
   { key: 'business', title: '사업자등록증을 올려주세요 (선택)', hint: '지금 없으면 건너뛰어도 등록돼요. 다만 승인 전에는 메인에 노출되지 않아요' },
 ] as const
 
+/**
+ * 📄 2026-10-10 대표 결재(2026-10-06-broker-business-cert, 안 1): 중개사가 등록할 때도 받는 서류는
+ * **매장(판매 주체) 등록증**이다. 메인 노출 심사(`approvedSellerProductSql`)가 매장 행을 보므로 서류도
+ * 그 매장 것이어야 판정이 맞는다. 종전 화면은 운영 방식과 무관하게 같은 문구라, 중개사가 자기 등록증을
+ * 올리기 쉬웠다. 중개사 본인 서류(중개사 몫 지급용)는 별건 — 여기서 약속하지 않는다.
+ */
+export const BROKERED_BUSINESS_COPY = {
+  title: '이 매장의 사업자등록증을 올려주세요 (선택)',
+  hint: '중개사님 본인 것이 아니라, 사장님께 받은 매장 등록증이에요. 지금 없으면 건너뛰어도 등록돼요',
+} as const
+
+function stepCopy(step: number, channel: string | null): { title: string; hint: string } {
+  if (STEPS[step].key === 'business' && channel === 'brokered') return BROKERED_BUSINESS_COPY
+  return STEPS[step]
+}
+
 export default function StoreRegisterModal({ initialPlace, onClose, onDone, dismissOnBackdrop = true, variant = 'overlay' }: Props) {
   const navigate = useNavigate()
   const [picked, setPicked] = useState<RegisterPlace | null>(initialPlace ?? null)
@@ -383,8 +399,8 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
             <div className="h-full bg-brand transition-[width] duration-300"
               style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} />
           </div>
-          <h2 className="mt-3 text-[17px] font-bold text-gray-900 leading-snug">{STEPS[step].title}</h2>
-          <p className="mt-1 text-[12px] text-gray-500 leading-relaxed">{STEPS[step].hint}</p>
+          <h2 className="mt-3 text-[17px] font-bold text-gray-900 leading-snug">{stepCopy(step, channel).title}</h2>
+          <p className="mt-1 text-[12px] text-gray-500 leading-relaxed">{stepCopy(step, channel).hint}</p>
         </div>
 
         {/**
@@ -519,7 +535,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
                   : <FileImage className="w-4 h-4 text-gray-400 shrink-0" />}
                 <span className="min-w-0">
                   <span className="block text-[12.5px] font-bold text-gray-900">
-                    {uploading ? '올리는 중…' : certUrl ? '사업자등록증 첨부됨' : '사업자등록증 사진 첨부'}
+                    {uploading ? '올리는 중…' : certUrl ? '사업자등록증 첨부됨' : channel === 'brokered' ? '매장 사업자등록증 사진 첨부' : '사업자등록증 사진 첨부'}
                   </span>
                   <span className="block text-[11px] text-gray-500 mt-0.5">
                     {certUrl ? '다시 누르면 교체할 수 있어요' : '내용이 잘 보이는 사진으로 · 10MB 이하 jpg·png'}
@@ -541,7 +557,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
               {/* 🏷️ 당근 원칙 ②: 선택인 것은 제목에 적는다 — 안 쓰면 못 넘어가나 고민하지 않게. */}
               <div className="pt-1">
                 <p className="text-[12px] font-bold text-gray-700 mb-1.5">
-                  사업자번호 <span className="font-normal text-gray-400">(선택 — 지금 안 적어도 등록돼요)</span>
+                  {channel === 'brokered' ? '매장 사업자번호' : '사업자번호'} <span className="font-normal text-gray-400">(선택 — 지금 안 적어도 등록돼요)</span>
                 </p>
                 {/* 🔢 2026-09-21 (대표 "000-00-00000 형태로 자동 입력되게"): 타이핑하는 대로 하이픈이 붙는다.
                     포매터는 가입 폼과 **같은 함수**(SSOT) — 두 벌이면 언젠가 갈린다. 전송은 그대로 숫자만(`replace(/-/g,'')`). */}
