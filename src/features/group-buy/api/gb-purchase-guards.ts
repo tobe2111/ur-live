@@ -282,3 +282,35 @@ export function groupBuyJoinBlockReason(product: {
   }
   return null
 }
+
+/**
+ * 🔗 **누가 소개했는가 — 출처 셋 중 하나** (2026-10-10 대표 *"고쳐줘"*, 매칭 G1).
+ *
+ * 딜 링크·유어샵·핀 리다이렉트는 소개자를 `?ref=`/`?aff=` 로 받아 `affiliate_ref`(localStorage +
+ * SameSite=Lax 쿠키)에 심는다(`utils/affiliate-track.ts`). 그런데 이용권 구매 화면은 본문 `ref` 에
+ * **다른 저장소**(`?seller=` 의 sessionStorage)만 실어 보냈고, 서버는 본문만 읽었다 ⇒ 딜 링크로
+ * 팔려도 `seller_influencer_deals` 커미션이 **안 붙었다**(에러 0 — 그래서 아무도 몰랐다).
+ *
+ * 그 값은 이미 서버에 와 있었다: `lib/api.ts` 가 모든 요청에 `X-Affiliate-Ref` 헤더를 붙이고,
+ * 쿠키도 같은 도메인이라 실려 온다(`order.routes` 가 2026-07-11 부터 쓰는 그 쿠키).
+ *
+ * 우선순위: **본문 → 헤더 → 쿠키.** 본문이 있으면 종전과 byte-동일(순수 additive).
+ * 헤더·쿠키는 클라 저장 규칙(`storeAffiliateRef`)과 같은 모양(숫자 1~12자리)만 받는다.
+ *
+ * 🔒 이걸로 돈이 새지 않는 이유: 커미션은 **그 매장과 그 소개자 사이에 활성 딜이 있을 때만**
+ *   나간다(`calcInfluencerCommissionPct` — 2026-08-30 자동분 폐지). 귀속이 넓어져도 합의 없는
+ *   지급은 0 이다. 자기 귀속 차단·존재 검증은 호출부가 그대로 한다.
+ */
+export function pickGbRefSource(
+  bodyRef: unknown,
+  headerRef: string | null | undefined,
+  cookieRef: string | null | undefined,
+): string {
+  const b = bodyRef == null ? '' : String(bodyRef).trim()
+  if (b) return b
+  for (const v of [headerRef, cookieRef]) {
+    const s = String(v ?? '').trim()
+    if (/^\d{1,12}$/.test(s)) return s
+  }
+  return ''
+}

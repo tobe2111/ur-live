@@ -17,6 +17,7 @@ import type { Hono } from 'hono'
 import { sign } from 'hono/jwt'
 import { startDashboardSession } from '@/worker/utils/dashboard-session'
 import { getSellerIdFromToken } from '@/lib/seller-shared'
+import { findOwnerSeatSellerId, ownerGrantSeat } from '@/worker/utils/seller-operators'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
 
@@ -46,6 +47,18 @@ export function mountSellerSessionRoutes(
       let seller = await db.prepare(
         'SELECT id, status, seller_type, business_name, reject_reason, business_registration_image_url FROM sellers WHERE linked_user_id = ?'
       ).bind(sessionUser.userId).first<Record<string, any>>();
+
+      // 🪑 2026-10-10 (조회 통일 ④): `/store/new` 사장님은 `linked_user_id` 가 비어 있고 주인 좌석으로만
+      //   연결된다. 이걸 안 보면 대기 화면이 직접 등록한 사장님에게 "새로 등록하세요" 를 띄운다.
+      //   아래 이메일 자동 연결(데이터를 바꾸는 폴백)보다 **먼저** 본다 — 이미 내 가게가 있으면 남의 행을 잇지 않는다.
+      if (!seller) {
+        const grantId = await findOwnerSeatSellerId(db, Number(sessionUser.userId));
+        if (grantId) {
+          seller = await db.prepare(
+            'SELECT id, status, seller_type, business_name, reject_reason, business_registration_image_url FROM sellers WHERE id = ?'
+          ).bind(grantId).first<Record<string, any>>();
+        }
+      }
 
       // 🛡️ 2026-05-07 (영구 fix): linked_user_id 없을 때 이메일 매칭으로 기존 셀러 발견 시 자동 연결.
       //   원인: 이전에 이메일/비번으로 셀러 등록한 사용자가 카카오 로그인 시 linked_user_id 가 null
@@ -140,10 +153,22 @@ export function mountSellerSessionRoutes(
 
       await ensureSellerColumns(db);
 
-      const seller = await db.prepare(`
+      let seller = await db.prepare(`
         SELECT id, username, email, name, business_name, status, commission_rate, seller_type
         FROM sellers WHERE linked_user_id = ?
       `).bind(sessionUser.userId).first<Record<string, any>>();
+      // 🪑 2026-10-10 (조회 통일 ④): linked 가 없으면 주인 좌석. 토큰·시트는 매장 전환 API 와 같은 값.
+      let ownerGrant = false;
+      if (!seller) {
+        const grantId = await findOwnerSeatSellerId(db, Number(sessionUser.userId));
+        if (grantId) {
+          seller = await db.prepare(`
+            SELECT id, username, email, name, business_name, status, commission_rate, seller_type
+            FROM sellers WHERE id = ?
+          `).bind(grantId).first<Record<string, any>>();
+          ownerGrant = !!seller;
+        }
+      }
 
       if (!seller) {
         return c.json({ success: false, error: '연결된 셀러 계정이 없습니다' }, 404);
@@ -174,13 +199,15 @@ export function mountSellerSessionRoutes(
         seller_type: (seller.seller_type as string) || 'influencer',
         iat: now,
         exp: now + (7 * 24 * 60 * 60),
+        ...(ownerGrant ? ownerGrantSeat(Number(sessionUser.userId)).claims : {}),
       };
       const accessToken = await sign(payload, jwtSecret);
       const refreshPayload = { ...payload, exp: now + (30 * 24 * 60 * 60) };
       const refreshToken = await sign(refreshPayload, jwtSecret);
 
       // 🔐 단일 세션 강제 — 가입 직후 자동 로그인도 세션 시작.
-      await startDashboardSession(c.env.DB, 'seller', seller.id, payload.iat, { userAgent: c.req.header('User-Agent'), ip: c.req.header('CF-Connecting-IP') });
+      const seat = ownerGrant ? ownerGrantSeat(Number(sessionUser.userId)).seat : { role: 'seller', id: seller.id as number };
+      await startDashboardSession(c.env.DB, seat.role, seat.id, payload.iat, { userAgent: c.req.header('User-Agent'), ip: c.req.header('CF-Connecting-IP') });
 
       return c.json({
         success: true,

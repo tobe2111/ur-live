@@ -38,8 +38,9 @@ export default [
   {
     name: '📄앞문 등록증이 다시 필수가 된다',
     file: MODAL,
-    find: '    return null\n  }\n  // 🗺️ 지도가 보이는 단계인가',
-    replace: "    return certOk ? null : '사업자등록증 사진을 첨부해주세요'\n  }\n  // 🗺️ 지도가 보이는 단계인가",
+    // 🔁 2026-10-10: 마지막 단계가 이제 **약관 동의**를 막는다(등록증은 여전히 선택) — 그 줄에 등록증 조건을 얹는 결함으로 재조준.
+    find: "    return termsAgreed ? null : '판매자 이용약관에 동의해주세요'",
+    replace: "    return termsAgreed && certOk ? null : '사업자등록증 사진을 첨부해주세요'",
     test: TEST,
     why: '다 적은 사장님을 마지막 문턱에서 되돌려 보낸다 — 가장 잃기 비싼 자리다.',
   },

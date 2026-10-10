@@ -229,6 +229,22 @@ GET /api/admin/promo-ledger/order/:orderNumber      (read-only, finance 권한)
 ⚠️ **반대 방향 사고도 본다**: 장부가 총액을 넘겨 적히면 상한이 거짓이 되어 **정당한 환불을 막는다.**
 S-EXBOOK4 가 그 방향이다.
 
+## 🔗 S-MATCH — 딜 링크로 판 이용권에 소개자 커미션이 붙는다 (2026-10-10, 대표 *"고쳐줘"*)
+
+**바뀐 것**: 이용권 구매 세 곳(`/join` 딜 · `/confirm-toss` 카드 · 장바구니 `/cart/init`)이 소개자를 본문 `ref` 가 비면
+`X-Affiliate-Ref` 헤더 → `affiliate_ref` 쿠키에서 읽는다(`pickGbRefSource`). 커미션 계산은 무수정이다 — **활성 딜이 있을 때만** 나간다.
+같은 커밋에서 이용권 사용 시 영입 셰어(수수료 20%)를 기본 꺼짐으로 했다(`influencer_intro_share_enabled`).
+
+| # | 하는 일 | 맞으면 |
+|---|---|---|
+| S-MATCH-1 | 매장 A ↔ 소개자 B 활성 딜(예 5%) 준비 · **다른 계정** C 로 B 의 딜 링크(`?ref=B`) 열기 | `localStorage.affiliate_ref = B` |
+| S-MATCH-2 | C 가 카드로 그 이용권 결제 | `influencer_attributions` 에 `influencer_id=B` · 금액 = 결제액 × 5% · pending |
+| S-MATCH-3 | C 가 딜로 결제(전부 딜) | 같은 행이 생긴다(딜 경로도 귀속) |
+| S-MATCH-4 | 활성 딜이 **없는** 매장 이용권을 `?ref=B` 로 결제 | 커미션 행 **0** (귀속만 넓어졌지 지급 조건은 그대로) |
+| S-MATCH-5 | B 본인이 자기 링크로 결제 / B 의 연결 셀러 id 를 ref 로 | 커미션 행 **0** (자기 귀속 차단) |
+| S-MATCH-6 | 그 이용권을 매장에서 사용 처리 | 원장에 `voucher:N:intro-inf` 행이 **안 생긴다**(영입 셰어 꺼짐) |
+| S-MATCH-7 | 그 결제 환불 | S-MATCH-2 의 attribution 이 회수(clawed_back)된다 |
+
 ## 검증 데이 권장 순서 (반나절)
 
 1. staging 배포 + `bash scripts/audit-gate.sh` GREEN 확인

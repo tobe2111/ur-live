@@ -291,6 +291,7 @@ interface OpsGate {
 
 const OPS_GATES: OpsGate[] = [
   { key: 'commission_budget_enabled', kind: 'setting', label: '커미션 예산 아비터 [INV-CB]', default_value: 'false', staging_ref: 'S1', turn_on_when: '영입+트리가 겹친 주문 1건을 `GET /api/admin/promo-ledger/order/:orderNumber` 로 보고 verdict.within_budget=true 면(S1 절차)' },
+  { key: 'influencer_intro_share_enabled', kind: 'setting', label: '영입 몫(이용권 사용 시 수수료 20%)', default_value: 'false', staging_ref: null, turn_on_when: '켜지 않는다(2026-10-10 대표 "몫 꺼줘"). 다시 쓰려면 대표가 영입 몫을 새로 정하고, 직접 입점 매장만 받는 조건 코드부터 넣는다' },
   { key: 'promo_funding_source', kind: 'setting', label: '프로모 owner-펀딩', default_value: 'platform', staging_ref: 'S2', turn_on_when: '이용권 구매→사용→환불에서 매장 원장 promo debit 1회가 확인되면(S2)' },
   { key: 'SHOPPING_LEDGER_ENABLED', kind: 'env', label: '쇼핑 주문 원장 크레딧', default_value: 'false', staging_ref: 'S3', turn_on_when: '쇼핑탭 재오픈이 결정되고 S3 실결제로 net 크레딧 1회가 확인되면' },
   { key: 'FEE_RESOLVER_ENABLED', kind: 'env', label: 'fee-resolver 그림자 기록', default_value: 'false', staging_ref: 'S4', turn_on_when: '그림자 기록(order_fee_breakdown) vs 현행 정산 비교가 일치하면(S4)' },

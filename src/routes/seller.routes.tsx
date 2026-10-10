@@ -11,15 +11,17 @@ const SellerPage = lazy(() => import('@/pages/SellerPage'))
 // 📱 2026-09-14: 다섯 번째 탭 '더보기' — 폰에서 사이드바를 대신한다(seller-primary-nav).
 const SellerMorePage = lazy(() => import('@/pages/SellerMorePage'))
 const SellerLoginPage = lazy(() => import('@/pages/SellerLoginPage')); const SellerRelinkPage = lazy(() => import('@/pages/SellerRelinkPage')) // 🔁 카카오 재연결
-// 🏁 2026-07-02 (대표 "B — 단일 퍼널"): 셀러 가입 단일 관문 = /seller/register/supplier.
-//   레거시 /seller/register(별도 아이디/비번 독립계정)·/seller/register/business(막다른 안내)는
-//   쿼리 보존 리다이렉트로 폐쇄 — 어디서 눌러도 같은 화면(카카오 계정 업그레이드)에 도착.
-const SellerRegisterSupplierPage = lazy(() => import('@/pages/SellerRegisterSupplierPage'))
+// 🚪 셀러 가입 관문 = `/store/new` 하나(2026-10-10). 옛 가입 주소는 전부 아래 리다이렉트로 그리 간다.
 
-/** 레거시 셀러 가입 경로 → 단일 관문 리다이렉트 (에이전시 ?agency= 등 쿼리 보존). */
+/**
+ * 레거시 셀러 가입 경로 → **유일한 가입 문 `/store/new`** (쿼리 보존 — 영입자 초대 `?prospect=&pt=`).
+ * 🚪 2026-10-10 (대표 "1,2,5번은 해주고"): 문이 둘이었다 — 옛 폼(`/seller/register/supplier`)은 대표자명·
+ *   개업일을 필수로 받고(그 값을 쓰는 자동 승인은 0회 실측) 영입 링크도 거기로 갔다. 이제 `/store/new` 하나다.
+ *   옛 폼이 하던 일(약관 동의 · 영입 귀속 · 지도에 없는 가게)은 새 문이 넘겨받았다(`store-signup-extras.ts`).
+ */
 function LegacySellerRegisterRedirect() {
   const location = useLocation()
-  return <Navigate to={{ pathname: '/seller/register/supplier', search: location.search }} replace />
+  return <Navigate to={{ pathname: '/store/new', search: location.search }} replace />
 }
 const SellerWaitingPage = lazy(() => import('@/pages/SellerWaitingPage'))
 const SellerTikTokCallbackPage = lazy(() => import('@/pages/SellerTikTokCallbackPage'))
@@ -104,11 +106,11 @@ export function SellerRoutes() {
         </PublicRoute>
       } />
       <Route path="/seller/relink" element={<ErrorBoundary><SellerRelinkPage /></ErrorBoundary>} />{/* 🔁 카카오 계정 교체 재연결(비보호) */}
-      {/* 🏁 2026-07-02 단일 퍼널: 레거시 가입 경로 전부 → /seller/register/supplier (쿼리 보존) */}
+      {/* 🚪 2026-10-10 가입 문 하나: 레거시 가입 경로 전부 → /store/new (쿼리 보존) */}
       <Route path="/seller/register" element={<LegacySellerRegisterRedirect />} />
       <Route path="/seller/signup" element={<LegacySellerRegisterRedirect />} />
       <Route path="/seller/register/business" element={<LegacySellerRegisterRedirect />} />
-      <Route path="/seller/register/supplier" element={<ErrorBoundary><SellerRegisterSupplierPage /></ErrorBoundary>} />
+      <Route path="/seller/register/supplier" element={<LegacySellerRegisterRedirect />} />
       <Route path="/seller/waiting" element={<ErrorBoundary><SellerWaitingPage /></ErrorBoundary>} />
       <Route path="/seller/tiktok-callback" element={<ErrorBoundary><SellerTikTokCallbackPage /></ErrorBoundary>} />
       <Route path="/seller/forgot-password" element={<ErrorBoundary><SellerForgotPasswordPage /></ErrorBoundary>} />

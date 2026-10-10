@@ -88,9 +88,13 @@ describe('🧹 마이 판매 바로가기 — 넷 + 전체 도구 (2026-09-30)',
   })
 
   it('📏 판 안의 누를 수 있는 줄이 다섯을 넘지 않는다 (바로가기가 아홉이면 바로가기가 아니다)', () => {
-    // 파란 사용처리 줄 1 + `ToolRow` 4. 늘어나면 첫 화면이 다시 이 목록으로 꽉 찬다.
+    // 🎟️ 2026-10-10 재조준(안 3): 판 안의 누르는 줄 = 사용처리 티켓 1 + `이용권 등록 · 관리` 1 + `ToolRow` 3.
+    //   종전 식(`ToolRow` + 1)은 등록 줄이 ToolRow 밖으로 나가자 한 칸이 비어, 다섯째 줄을 더해도 통과했다(주입이 잡았다).
+    //   ⇒ ToolRow 밖의 줄을 **고정값이 아니라 실제로 센다**.
     const rows = [...code.matchAll(/^\s*label="([^"]+)"$/gm)].map((m) => m[1])
     expect(rows.length, '도구 줄을 못 셌다 — 이 검사가 헛돌고 있다').toBeGreaterThan(0)
-    expect(rows.length + 1, `판 안의 줄: ${['이용권 사용처리', ...rows].join(' · ')}`).toBeLessThanOrEqual(5)
+    const extra = ['이용권 사용처리', '이용권 등록 · 관리'].filter((t) => code.includes(`>${t}</span>`))
+    expect(extra.length, 'ToolRow 밖의 두 줄(티켓·등록)을 못 찾았다 — 이 검사가 헛돌고 있다').toBe(2)
+    expect(rows.length + extra.length, `판 안의 줄: ${[...extra, ...rows].join(' · ')}`).toBeLessThanOrEqual(5)
   })
 })

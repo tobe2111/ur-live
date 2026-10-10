@@ -50,3 +50,45 @@
 - 마이 이용권 자리: 시안 안 1~4(추천 안 3 바코드 티켓) + 마이 전체 정리 제안 한 장 — 캔버스
   https://claude.ai/artifact/27VApxxLQkDpiVxtZPt66d
 - 로딩 2·4·5번 중 잠금 항목 착수 여부.
+
+## 🎟️ 마이 사용처리 QR 티켓 (대표 확정 안 3, 같은 날)
+- `SellerSection.tsx`: 사용처리 → 옅은 블루 티켓(홈 둘 + 점선 + `QrScanIcon` 꼬리), `이용권` 줄 → 진한 블루
+  `이용권 등록 · 관리`(주문 위). 바로가기 `ToolRow` 4 → 3. 새 아이콘 `QrScanIcon`(urdeal-icons, 32 그리드).
+- 가드 `my-scan-ticket-qr-2026-10-10.test.ts` + 주입 `scripts/mutations/my-scan-ticket-qr.mjs` 3건(빨간불 확인).
+  재조준: `my-seller-all-in-my`(바로가기 셋) · `my-type-scale`(진한 블루 면 = 등록 줄) · `my-awaiting-shell`
+  (껍데기에 등록 줄) · 주입 앵커 2건(`first-screen-fetch` · `my-icon-system`).
+- 렌더 확인(라이트·다크) + 밀림 측정 `--slow=1500` 이동 0.
+- ⚠️ 하네스는 `dist/client` 를 띄운다 — **소스 수정 후 `npx vite build` 를 먼저** 안 하면 옛 화면을 본다
+  (이번에 한 번 옛 화면을 보고 헛판정할 뻔했다).
+- E4: 배포 후 대표가 마이에서 티켓을 눌러 스캐너가 뜨는지.
+
+## 🚪 가입 흐름 1·2·5 (대표 "1,2,5번은 해주고", 같은 날)
+- ① 옛 가입 주소 넷 + 영입자 초대 링크 → `/store/new`. 새 문이 넘겨받은 일: 영입 귀속(`store-signup-extras.ts`,
+  옛 규칙 byte-동일 · `?ref=` 귀속은 안 덮음) · 지도에 없는 가게(`ManualPlaceForm`) · 초대 프리필(담당자 번호).
+  옛 폼 파일(`SellerRegisterSupplierPage.tsx`)은 시안 세트·시험이 참조해 남겼다 — **라우트에 다시 붙이지 말 것**.
+- ② `/store/new` 마지막 단계 약관 동의 + 서버 400(`TERMS_REQUIRED`) + `terms_consents`(slug `seller`).
+- ⑤ 중개 등록 완료 → `BrokerHandoffPanel`(승계 코드·링크 고정). 사장님 `/store/find` → `BrokerTermsConsent`
+  (중개사 몫·상한 표시 + 동의 필수, 서버가 같은 조건인지 재확인 → 409 `BROKER_TERMS_REQUIRED`, `terms_consents`
+  slug `broker-terms`, version `share=X;cap=Y`). 지급 게이트·승인 로직 무변경.
+- 가드 `signup-one-door-2026-10-10.test.ts` 12건 + 주입 `scripts/mutations/signup-one-door.mjs` 7건(전부 빨간불 확인).
+  재조준: `store-new-page`(등록증 "사진 1장" → 선택) · `bizcert-optional` 주입 앵커.
+- ❗ **대표 승인 대기 — 4번**: 새 문 매장을 `my-seller-status`·`switch-to-seller`·카카오 `issueLinkedRoleTokens`
+  (잠금표) 가 못 찾는다 → 알림톡 "내 매장 관리하기"·셀러 로그인에서 사장님이 이제 `/store/new` 로 다시 온다
+  (옛 폼 대신 — 중복 매장은 카카오 플레이스 409 로 막히고 "내가 등록한 매장인지 확인하기" 로 이어진다).
+- ⚠️ 셀러 가이드 시드가 아직 `/seller/register/business` + "승인 1~2일" 을 안내한다(리다이렉트로 동작은 함) — 미수정.
+- E4: 배포 후 staging/라이브에서 (a) 약관 미동의 등록 400 (b) `terms_consents` 1행 (c) 중개 등록 → 패널 → 링크 → 조건 동의 → 신청.
+
+## 2026-10-10 (밤) — 조회 통일 ④ + 셀러 가이드 (대표 "모두 고치고")
+- **④ 조회 통일**: 카카오 로그인 `issueLinkedRoleTokens`·`GET /my-seller-status`·`POST /switch-to-seller` 가
+  `linked_user_id` 다음에 **주인(owner) 좌석**(`findOwnerSeatSellerId`)을 본다. 토큰·시트는 매장 전환 API
+  grant 분기와 같은 값(`ownerGrantSeat`). operator 는 절대 안 잡힌다. 잠금 파일 → CLAUDE.md audit log 기록.
+  가드 `legacy-seller-lookup-owner-seat-2026-10-10.test.ts` + 주입 6건(전부 빨간불 확인).
+- **셀러 가이드**: '신규 셀러'를 `/store/new` 한 문 흐름으로, 재로그인 설명 갱신. `GUIDE_SEED_VERSION` 39→40.
+- ⚠️ 못 잰 것: 라이브 직접 등록 사장님 계정으로 카카오 로그인 → 셀러 토큰 수신(로그인 세션 필요).
+
+## 🔗 매칭 G1·G2 (2026-10-10 대표 *"1. 고쳐줘 2. 몫 꺼줘"*) — [E2]
+
+- **G1 딜 링크 귀속**: 딜 공유 링크(`/pass/{id}?ref=` · `/s/{seller}?ref=`)는 `affiliate_ref` 에 소개자를 심고 `lib/api.ts` 가 모든 요청에 `X-Affiliate-Ref` 를 싣는데, 이용권 구매(`/join`·`/confirm-toss`·`/cart/init`)는 본문 `ref`(=`?seller=` 저장소)만 읽어 **딜 커미션이 안 붙었다**. `pickGbRefSource`(gb-purchase-guards) — 본문→헤더→쿠키. `/confirm-toss`·장바구니 자기귀속도 `/join` 과 같은 `isSelfReferral` 로. 커미션은 활성 딜이 있을 때만이라 지급 조건 불변. **staging S-MATCH 필수**(머니 경로).
+- **G2 영입 셰어 꺼짐**: `recordIntroductionCommissionShare`(이용권 사용 시 수수료 20%) 첫 줄에 게이트 `influencer_intro_share_enabled`(명시 'true' 만 켬, 기본·조회실패 = 꺼짐). OPS_GATES 에 "켜지 않는다" 로 등록. 결제 레일 영입 2%(직접 입점 전용)는 그대로.
+- 가드 `matching-ref-and-intro-off-2026-10-10.test.ts` 11건 + 주입 `scripts/mutations/matching-ref.mjs` 7건 전부 빨간불 확인. 전체 유닛 864파일 통과(ops-gate-reachable 1건은 "켜지 않는다" 명시로 해소).
+- **남은 것(매칭 화면)**: 인플루언서→매장 딜 신청은 API(`POST /api/influencer-settlement/deals/propose`)만 있고 버튼 없음 · `/influencer/discover` 지역 필터 없음 · 매장 쪽 고르는 화면(`InfluencerPicker`)은 서버가 `region` 을 받는데 안 보냄 · 옛 `/seller/marketing` 은 사용자 id 를 손으로 치게 하는 중복 화면. 대표 판단 대기.

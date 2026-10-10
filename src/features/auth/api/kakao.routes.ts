@@ -18,6 +18,7 @@ import { startDashboardSession } from '@/worker/utils/dashboard-session';
 import { encryptAtRest } from '@/worker/utils/data-crypto';
 import type { AuthResponse, KakaoLoginResponse } from '../types';
 import { rateLimit } from '@/worker/middleware/rate-limit';
+import { findOwnerSeatSellerRow, ownerGrantSeat } from '@/worker/utils/seller-operators';
 
 /**
  * 카카오 로그인 완료 시 linked seller / agency 있으면 자동 JWT 발급.
@@ -32,19 +33,17 @@ export async function issueLinkedRoleTokens(
   userId: number
 ): Promise<{ seller_token?: string; agency_token?: string; agency_refresh_token?: string; seller?: { id: number; username?: string; status: string; business_name?: string; is_distributor?: number }; agency?: { id: number; status: string; name?: string } }> {
   const out: { seller_token?: string; agency_token?: string; agency_refresh_token?: string; seller?: any; agency?: any } = {}
-  // 🛡️ 2026-06-25 (속도 최적화): 셀러 조회와 에이전시 조회는 서로 독립인데 순차로 2왕복을
-  //   돌고 있었음(일반 유저는 둘 다 null 인데도 2왕복). 병렬(Promise.all)로 → 1왕복.
-  //   각 블록의 try/catch·세션·토큰 발급·seller.username 포함 전부 byte-identical, 실행만 동시.
+  // 🛡️ 2026-06-25 (속도): 셀러·에이전시 조회는 독립 — 병렬(Promise.all) 1왕복. 각 블록 내용은 불변, 실행만 동시.
   await Promise.all([
     (async () => {
   try {
-    // 🛡️ 2026-05-27: username 도 SELECT — KakaoCallback 이 seller_username localStorage 저장 → BottomNav 직접 /profile/{username} navigate.
-    const seller = await DB.prepare(
-      'SELECT id, username, status, business_name, email, name, seller_type, is_distributor FROM sellers WHERE linked_user_id = ?'
-    ).bind(userId).first<{ id: number; username: string; status: string; business_name: string; email: string; name: string; seller_type: string; is_distributor: number }>()
+    const SELLER_COLS = 'id, username, status, business_name, email, name, seller_type, is_distributor' // 🛡️ 2026-05-27: username — KakaoCallback 이 seller_username 저장
+    type Row = { id: number; username: string; status: string; business_name: string; email: string; name: string; seller_type: string; is_distributor: number }
+    let seller = await DB.prepare(`SELECT ${SELLER_COLS} FROM sellers WHERE linked_user_id = ?`).bind(userId).first<Row>()
+    // 🪑 2026-10-10 조회 통일 ④: linked 가 없으면 `/store/new` 의 주인(owner) 좌석. 시트·클레임은 매장 전환 API 와 같다.
+    const ownerGrant = !seller && !!(seller = await findOwnerSeatSellerRow<Row>(DB, userId, SELLER_COLS))
     if (seller) {
-      // 🛡️ 2026-05-27: 시드 default 이름 ('메인 판매자', '셀러') 면 카카오 nickname 으로 1회 sync.
-      //   idempotent — 사용자가 직접 이름 변경한 후엔 sync 안 함 (placeholder 매칭 X).
+      // 🛡️ 2026-05-27: 시드 기본 이름이면 카카오 닉네임으로 1회 sync (사용자가 바꾼 뒤엔 안 함 — 멱등).
       const DEFAULT_PLACEHOLDERS = ['메인 판매자', '셀러', '인플루언서', '매장']
       if (DEFAULT_PLACEHOLDERS.includes(seller.name)) {
         const u = await DB.prepare('SELECT name FROM users WHERE id = ?').bind(userId).first<{ name: string }>().catch(() => null)
@@ -54,8 +53,7 @@ export async function issueLinkedRoleTokens(
           seller.name = u.name.trim()
         }
       }
-      // 🛡️ 2026-06-19 (#4·#5 근본수정): is_distributor 추가 — 카카오 로그인 판매사가 localStorage.is_distributor
-      //   미설정으로 상품페이지 게스트 UI/충전 deposits 튕김(가드) 겪던 것 치유. additive(seller.username 등 불변).
+      // 🛡️ 2026-06-19: is_distributor 추가 — 판매사 localStorage 미설정으로 도매 가드에 튕기던 것 치유(additive).
       out.seller = { id: seller.id, username: seller.username, status: seller.status, business_name: seller.business_name, is_distributor: seller.is_distributor ? 1 : 0 }
       // 레거시 호환: 'approved' 도 active 와 동등하게 취급 (구 승인 데이터)
       if (seller.status === 'active' || seller.status === 'approved') {
@@ -69,10 +67,12 @@ export async function issueLinkedRoleTokens(
           is_distributor: seller.is_distributor ? 1 : 0, // 🛡️ 도매 가드(deposits/상세)용 — 토큰에도 동봉
           iat: Math.floor(Date.now() / 1000),
           exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60, // 🛡️ 2026-04-30: 7일 → 30일
+          ...(ownerGrant ? ownerGrantSeat(userId).claims : {}),
         }
         out.seller_token = await jwtSign(payload, jwtSecret)
-        // 🔐 단일 세션 강제 — 카카오 로그인 셀러도 단일 세션 시트(seller) 갱신.
-        await startDashboardSession(DB, 'seller', seller.id, payload.iat)
+        // 🔐 단일 세션 강제 — 시트(seller). 주인 좌석은 매장 전환 API 와 같은 시트(갈리면 서로 튕긴다).
+        const seat = ownerGrant ? ownerGrantSeat(userId).seat : { role: 'seller', id: seller.id }
+        await startDashboardSession(DB, seat.role, seat.id, payload.iat)
       }
     }
   } catch { /* sellers 테이블 없거나 linked_user_id 컬럼 없음 — skip */ }
