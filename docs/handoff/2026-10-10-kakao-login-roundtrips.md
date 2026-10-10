@@ -48,6 +48,20 @@ batch[ 갱신(kakao_id) ;; 조회(kakao_id) ] → 셀러 자동연결   = 2왕�
 - 🆕 신규 회원은 왕복이 **안 늘어난다**(batch 가 선행 조회 자리를 대체 → 0행 no-op + null → INSERT 경로).
 - ⚠️ 레거시 스키마면 batch 가 throw → `fastOk=false` → **종전 직렬 경로 + 폴백 계단 3단 그대로**.
 
+### 🧱 SQL 이 `KakaoAuthService.ts` 에 없다 — 신규 모듈로 추출했다
+
+batch 블록을 그 파일에 인라인으로 두니 **615줄**이 되어 600 래칫을 넘었다(로컬은 경고, **CI 는 차단**).
+주석을 깎는 쪽이 아니라 **추출**을 골랐다 — SQL 이 한 곳에 모이고 시험이 정규식 대신 **직접 import** 할 수 있다.
+
+```
+src/features/auth/services/kakao-upsert-fast.ts   신규 72줄 — fastUpsertExistingKakaoUser(db, kakaoUser, validPhone)
+src/features/auth/services/KakaoAuthService.ts    615 → 583줄 (호출부 6줄)
+```
+
+⚠️ **그 모듈의 UPDATE SET 컬럼은 `KakaoAuthService.ts` 의 직렬 폴백 UPDATE 와 같아야 한다** —
+갈리면 batch 경로와 폴백 경로가 **서로 다른 값을 쓴다**(에러 0). 시험 ②-2 가 두 파일의 UPDATE 를
+합쳐 SET 컬럼 집합을 대조하므로, 한쪽만 고치면 빨간불이다.
+
 ## 🧪 검증 — 문자열로 끝내지 않았다
 
 `src/tests/unit/kakao-login-roundtrips-2026-10-10.test.ts` **19건**
