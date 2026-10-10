@@ -100,4 +100,28 @@ export default [
     test: 'src/tests/unit/broker-share-reversal-2026-10-10.test.ts',
     why: '사장님이 중개사 좌석을 회수해도 매 판매마다 매장 몫에서 중개사 몫이 계속 나간다.',
   },
+  {
+    name: '💸감사1010 딜 % 검증이 매장 상한을 다시 안 본다',
+    file: 'src/worker/utils/broker-share.ts',
+    find: '  if (cap != null && pct > cap) {',
+    replace: '  if (false) {',
+    test: 'src/tests/unit/influencer-deal-pct-ssot-2026-10-10.test.ts',
+    why: '중개사가 등록 때 정한 인플루언서 예산 상한을 매장 화면 제안이 넘는다 — 상한이 협업 코드에서만 지켜진다.',
+  },
+  {
+    name: '💸감사1010 딜 % + 중개사 몫이 90 을 넘는다 (매장이 팔수록 손해)',
+    file: 'src/worker/utils/broker-share.ts',
+    find: '  if (share > 0 && pct + share > BROKER_TERMS_SUM_MAX) {',
+    replace: '  if (false) {',
+    test: 'src/tests/unit/influencer-deal-pct-ssot-2026-10-10.test.ts',
+    why: '상한을 안 정한 중개 매장에서 중개사 몫 30% + 인플 90% 같은 딜이 계약된다.',
+  },
+  {
+    name: '💸감사1010 아웃리치 수락이 매장 요율을 다시 안 본다',
+    file: 'src/features/marketing/api/influencer-offer-invites.routes.ts',
+    find: '    if (!pv.ok) {\n      return c.json({ success: false, code: \'OFFER_PCT_OVER_STORE_TERMS\',',
+    replace: '    if (false) {\n      return c.json({ success: false, code: \'OFFER_PCT_OVER_STORE_TERMS\',',
+    test: 'src/tests/unit/influencer-deal-pct-ssot-2026-10-10.test.ts',
+    why: '제안 뒤 매장이 상한을 낮췄는데 옛 % 로 딜이 발효된다.',
+  },
 ]

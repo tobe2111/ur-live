@@ -9006,11 +9006,11 @@ canvas {
   },
   {
     name: '🛑 딜 제안이 다시 2% 에서 막힌다(계약 자체가 성립 불가)',
-    file: 'src/features/group-buy/api/marketing.routes.ts',
-    // ⚠️ `pct > DEAL_PCT_MAX` 만으로는 propose 두 곳에 다 걸려 앵커가 유일하지 않다(소개자측으로 고정).
-    find: 'pct > DEAL_PCT_MAX) return c.json(',
-    replace: 'pct > 2) return c.json(',
-    test: 'src/tests/unit/deal-only-commission.test.ts',
+    // 🎯 2026-10-10 재앵커: 제안 양방향의 % 검증이 SSOT(`validateInfluencerDealPct`)로 옮겨갔다.
+    file: 'src/worker/utils/broker-share.ts',
+    find: '  if (!Number.isFinite(pct) || belowMin || pct > DEAL_PCT_MAX) {',
+    replace: '  if (!Number.isFinite(pct) || belowMin || pct > 2) {',
+    test: 'src/tests/unit/influencer-deal-pct-ssot-2026-10-10.test.ts',
     why:
       '정산은 딜을 90 까지 인정하는데 제안 문이 2 로 잠겨 있으면 **딜 계약이 한 건도 못 만들어진다** — ' +
       '라이브에서 실제로 그 상태였고(딜 0건) 아무도 에러로 보지 못했다. 400 이 나는 쪽은 매장이라 ' +
