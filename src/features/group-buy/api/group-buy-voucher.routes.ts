@@ -22,6 +22,7 @@ import { ensureTables, clawbackVoucherCommission, sendRefundAlimtalk } from './h
 // 🛡️ 2026-05-21: 카테고리 라벨 동적 (이용권 hardcode 제거).
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
 import { checkStoreCodeRequired } from '../../../worker/utils/voucher-redeem-guard'
+import { redeemByCounterSecret } from '../../../worker/utils/counter-redeem'
 
 export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void {
   // ── POST /:code/use — voucher 사용 (PIN 검증) ──
@@ -60,19 +61,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
       // 🔒 2026-07-02 (감사 25③): PIN 미설정 매장은 이 경로 자체를 거부 — 기존 `IS NULL OR =?` 는
       //   PIN 안 만든 매장의 이용권을 코드 소지자가 아무 값으로나 태울 수 있는 구멍(남의 이용권
       //   griefing). PIN 미설정 매장은 사장님 스캔(use-by-seller)·셀프사용(모드별) 경로 사용.
-      const result = await DB.prepare(
-        `UPDATE vouchers
-           SET status = 'used', used_at = datetime('now')
-         WHERE code = ?
-           AND status = 'unused'
-           AND (expires_at IS NULL OR expires_at > datetime('now'))
-           AND product_id IN (
-             SELECT id FROM products
-             WHERE id = vouchers.product_id
-               AND store_verify_pin IS NOT NULL
-               AND store_verify_pin = ?
-           )`
-      ).bind(code, pin).run()
+      const result = await redeemByCounterSecret(DB, code, pin) // 상품 PIN 또는 매장 확인코드 — counter-redeem.ts
 
       // 🛡️ 모든 사용 시도 로그 — 셀러가 사용 흐름 추적.
       //   PIN 정답 여부는 노출하지 않지만, 셀러 본인은 자기 가게의 PIN 오류 빈도 알 필요 있음.

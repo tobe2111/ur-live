@@ -91,3 +91,28 @@ export async function upsertRedemptionSettings(
     ON CONFLICT(seller_id) DO UPDATE SET mode = excluded.mode, store_code = excluded.store_code, updated_at = datetime('now')
   `).bind(sellerId, mode, storeCode).run().catch(swallow('redemption-settings:upsert'))
 }
+
+/**
+ * 🧾 2026-10-10 (사장님·중개사 플로우 전수조사) — **매장이 생기는 순간 확인코드를 만든다.**
+ *
+ * 그 전엔 코드가 `GET /redemption-settings`(셀러 대시보드 사용 방식 화면)를 **처음 열 때만** 생겼다.
+ * 그런데 기본 사용 방식이 `store_code` 라, 사장님이 그 화면을 한 번도 안 연 매장은
+ * **손님이 셀프 사용을 하려 해도 맞출 코드가 세상에 없었다**(실측: 13곳 중 확인코드 보유 0곳).
+ *
+ * ⚠️ 이미 있으면 **절대 덮어쓰지 않는다** — 사장님이 매장에 붙여 둔 스티커가 무효가 된다.
+ *    모드도 건드리지 않는다(사장님이 고른 값). 실패는 삼킨다 — 코드가 없다고 등록을 막을 이유는 없고,
+ *    대시보드 화면이 여전히 최초 발급 안전판이다.
+ */
+export async function ensureStoreCode(DB: D1Database, sellerId: number): Promise<void> {
+  if (!Number.isFinite(sellerId) || sellerId <= 0) return
+  try {
+    await ensureRedemptionSettingsTable(DB)
+    await DB.prepare(`
+      INSERT INTO seller_redemption_settings (seller_id, mode, store_code, updated_at)
+      VALUES (?, ?, ?, datetime('now'))
+      ON CONFLICT(seller_id) DO UPDATE SET
+        store_code = CASE WHEN COALESCE(seller_redemption_settings.store_code, '') = '' THEN excluded.store_code ELSE seller_redemption_settings.store_code END,
+        updated_at = datetime('now')
+    `).bind(sellerId, DEFAULT_REDEMPTION_MODE, generateStoreCode()).run()
+  } catch (e) { swallow('redemption-settings:ensure-code')(e) }
+}
