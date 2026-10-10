@@ -50,3 +50,14 @@
 - 마이 이용권 자리: 시안 안 1~4(추천 안 3 바코드 티켓) + 마이 전체 정리 제안 한 장 — 캔버스
   https://claude.ai/artifact/27VApxxLQkDpiVxtZPt66d
 - 로딩 2·4·5번 중 잠금 항목 착수 여부.
+
+## 🎟️ 마이 사용처리 QR 티켓 (대표 확정 안 3, 같은 날)
+- `SellerSection.tsx`: 사용처리 → 옅은 블루 티켓(홈 둘 + 점선 + `QrScanIcon` 꼬리), `이용권` 줄 → 진한 블루
+  `이용권 등록 · 관리`(주문 위). 바로가기 `ToolRow` 4 → 3. 새 아이콘 `QrScanIcon`(urdeal-icons, 32 그리드).
+- 가드 `my-scan-ticket-qr-2026-10-10.test.ts` + 주입 `scripts/mutations/my-scan-ticket-qr.mjs` 3건(빨간불 확인).
+  재조준: `my-seller-all-in-my`(바로가기 셋) · `my-type-scale`(진한 블루 면 = 등록 줄) · `my-awaiting-shell`
+  (껍데기에 등록 줄) · 주입 앵커 2건(`first-screen-fetch` · `my-icon-system`).
+- 렌더 확인(라이트·다크) + 밀림 측정 `--slow=1500` 이동 0.
+- ⚠️ 하네스는 `dist/client` 를 띄운다 — **소스 수정 후 `npx vite build` 를 먼저** 안 하면 옛 화면을 본다
+  (이번에 한 번 옛 화면을 보고 헛판정할 뻔했다).
+- E4: 배포 후 대표가 마이에서 티켓을 눌러 스캐너가 뜨는지.

@@ -26,11 +26,11 @@
  * 상태를 **직접 말한다** — 노출·정산이 왜 아직인지 화면이 설명하지 않으면 사장님은 고장으로 읽는다.
  */
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
-import { ChevronDown, ChevronRight, Loader2, Search } from 'lucide-react'
+import { ChevronDown, ChevronRight, Loader2, Plus, Search } from 'lucide-react'
 // 🎨 2026-09-28: 판매 도구 여덟 칸의 뜻 아이콘. lucide 로 남긴 넷은 전부 **조작**이다
 //    (펼치기·이동·로딩·검색) — 어느 앱에서나 같은 모양이라 직접 그릴 값이 없다.
 import {
-  OrdersIcon, TicketStubIcon, WonCoinIcon, UrShopIcon, ScanIcon,
+  OrdersIcon, WonCoinIcon, UrShopIcon, QrScanIcon,
 } from '@/components/icons/urdeal-icons'
 import { formatNumber } from '@/utils/format'
 import { currentSeatId, onSeatChange, switchSeat } from '@/lib/seller-seat'
@@ -392,42 +392,68 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           )}
         </div>
 
-        {/* 🎟️ 사용처리 — 하루에 가장 많이 누르는 버튼이라 도구들보다 위다. 화면에서 **유일한 파란 면**.
+        {/* 🎟️ 사용처리 — **티켓 모양**(2026-10-10 대표 확정 안 3 + *"바코드 모양이 아니라 QR모양이어야
+            하잖아 버튼이"*). 하루에 가장 많이 누르는 버튼이라 도구들보다 위다.
+            **왜 모양을 바꿨나**: 종전엔 사용처리와 이용권 등록이 둘 다 같은 줄 문법이라, 사장님 눈에는
+            "목록의 한 줄" 로만 보였다(대표: *"다르더라도 티가 나야하는데"*). 손님 이용권을 **찍는** 일은
+            물건을 **관리하는** 일과 성격이 다르므로 생김새부터 다르게 — 잘린 홈 둘 + 점선 + QR 꼬리 =
+            손님이 내미는 그 이용권의 모양이다. 꼬리가 바코드면 다른 물건으로 읽힌다(손님 이용권은 QR).
+            🎨 면은 **옅은 블루**(`bg-brand-tint`)다. 진한 블루는 아래 `이용권 등록 · 관리` 한 줄이 갖는다 —
+               같은 판에 진한 블루 면이 둘이면 어느 쪽도 강조가 아니다(표면 규칙 ②).
             ⚠️ **어느 가게로 소각되는지는 좌석이 정한다.** 그래서 먼저 이 가게 좌석에 앉히고 보낸다 —
             안 그러면 화면엔 A 가 떠 있는데 B 의 이용권이 소각된다(되돌릴 수 없다). */}
+        <div className="p-3 border-b border-rule">
+          <button
+            type="button"
+            disabled={entering}
+            onClick={() => enterSeat('/store/scan')}
+            className="relative w-full flex items-stretch min-h-[64px] rounded-[10px] bg-brand-tint text-gray-900 dark:text-white text-left overflow-hidden active:opacity-80 disabled:opacity-60"
+          >
+            {/* 잘린 홈 — 판과 **같은 색**(`bg-surface`)으로 뚫어야 티켓이 된다. 다른 색이면 점으로 읽힌다. */}
+            <span aria-hidden="true" className="absolute -left-[9px] top-1/2 -mt-[9px] w-[18px] h-[18px] rounded-full bg-surface" />
+            <span aria-hidden="true" className="absolute -right-[9px] top-1/2 -mt-[9px] w-[18px] h-[18px] rounded-full bg-surface" />
+            <span className="flex-1 min-w-0 flex flex-col justify-center pl-5 pr-4 py-3">
+              <span className="text-[15px] font-extrabold truncate">이용권 사용처리</span>
+              <span className="mt-1 text-[12px] text-gray-500 dark:text-gray-400 truncate">손님 QR을 찍어요</span>
+            </span>
+            <span aria-hidden="true" className="border-l-2 border-dashed border-brand/35" />
+            <span className="shrink-0 flex items-center justify-center w-[72px] text-brand-text">
+              {entering
+                ? <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
+                : <QrScanIcon size={32} aria-hidden="true" />}
+            </span>
+          </button>
+        </div>
+
+        {/* 🔵 이용권 등록 · 관리 — 이 판의 **유일한 진한 블루 면**(안 3). 종전엔 `주문` 아래 평범한 줄이었다.
+            찍는 일(위 티켓)과 파는 물건을 만드는 일을 **둘 다 눈에 띄게, 그러나 다르게** 둔 것이 안 3 이다.
+            오른쪽 값: 판매 중이면 개수, 0 이면 `아직 0개`, **모르면 안 그린다**(0 으로 위장 금지). */}
         <button
           type="button"
           disabled={entering}
-          onClick={() => enterSeat('/store/scan')}
+          onClick={() => openPage('/seller/group-buy', '이용권')}
           className="w-full flex items-center gap-3 px-4 min-h-[52px] py-2 bg-brand text-white text-left active:opacity-90 disabled:opacity-60"
         >
-          <ScanIcon className="w-[18px] h-[18px] shrink-0" aria-hidden="true" />
-          <span className="flex-1 min-w-0 text-[15px] font-extrabold truncate">이용권 사용처리</span>
-          <span className="shrink-0 text-[13px] text-white/75">손님 QR</span>
+          <Plus className="w-[18px] h-[18px] shrink-0" aria-hidden="true" />
+          <span className="flex-1 min-w-0 text-[15px] font-extrabold truncate">이용권 등록 · 관리</span>
+          {store?.active_products != null && (
+            <span className="shrink-0 text-[13px] text-white/75 tabular-nums">
+              {store.active_products > 0 ? `판매 중 ${formatNumber(store.active_products)}개` : '아직 0개'}
+            </span>
+          )}
           {entering
             ? <Loader2 className="w-4 h-4 shrink-0 animate-spin" aria-hidden="true" />
             : <ChevronRight className="w-4 h-4 shrink-0 text-white/70" aria-hidden="true" />}
         </button>
 
-        {/* 🧰 도구 여덟 줄 — 2026-09-26 의 **매일 셋 / 가끔 넷** 그룹 라벨을 걷었다.
-            그 나눔의 근거는 *하루에 몇 번 여는가* 였는데, 48px 행이면 여덟 줄이 384px 에 다 들어와
-            **한눈에 보이는 목록을 다시 쪼갤 이유가 없다**(라벨 둘이 먹던 48px 도 돌려받는다).
-            순서는 그대로다 — 자주 쓰는 셋이 여전히 맨 위라 옛 근육기억이 안 깨진다. */}
+        {/* 🧰 남은 바로가기 셋 — 주문 · 정산 · 전체 도구. `이용권` 은 위 진한 블루 줄이 됐다(안 3).
+            순서의 근거는 그대로 *하루에 몇 번 여는가* 다. */}
         <ToolRow
           icon={<OrdersIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
           label="주문"
           hint={work.orders.length > 0 ? `확인 대기 ${formatNumber(work.orders.length)}건` : '지난 주문 · 환불'}
           busy={entering}
           onClick={() => openPage('/seller/orders', '주문')}
-        />
-        <ToolRow
-          icon={<TicketStubIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
-          label="이용권"
-          hint={(store?.active_products ?? 0) > 0
-            ? `판매 중 ${formatNumber(store?.active_products ?? 0)}개`
-            : '등록 · 가격 · 수량'}
-          busy={entering}
-          onClick={() => openPage('/seller/group-buy', '이용권')}
         />
         <ToolRow
           icon={<WonCoinIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
