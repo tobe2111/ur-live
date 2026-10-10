@@ -3,10 +3,20 @@
 서비스: 🎟️ 유어딜(소비자). 머니 경로 접촉 없음.
 
 ## 다음 세션의 첫 액션
-1. 이 PR 이 배포됐으면 라이브에서 홈(`/`)을 4배 CPU 스로틀로 열고, 로드 후 5초 동안
+1. ~~(E4 통과 — 아래 표)~~ 이 PR 이 배포됐으면 라이브에서 홈(`/`)을 4배 CPU 스로틀로 열고, 로드 후 5초 동안
    `Layout` 횟수와 메인 스레드 작업 시간을 잰다. 종전 **레이아웃 300회/5초 · 작업 10.4초(4x)**.
    기대: 레이아웃 거의 0 · 작업 2초 안팎(`/vouchers` 수준 1.9초).
 2. `/api/promo-bar` 응답에 `Cache-Control: public, max-age=60` 이 붙는지 curl.
+
+## ✅ E4 판정 (2026-10-10 14:51 KST, 라이브 · iPhone 13 · 4x 스로틀 · 로드 후 3초 대기 → 5초 측정)
+배포: `bc1ab1a6` Deploy to Cloudflare Pages **success**. 라이브 CSS `index-BYgqkqAt.css` 에
+`@keyframes fcfs-spark{0%,to{opacity:1}50%{opacity:.6}}` 확인. `/api/promo-bar` → `cache-control: public, max-age=60`.
+| 경로 | 배지 수 | 레이아웃/5초 | 메인 스레드 작업 |
+|---|---|---|---|
+| / (1회차) | 96 | 11 | 1,171ms |
+| / (2회차) | 96 | **0** | **500ms** |
+| /map | 70 | 20 | 1,135ms |
+종전 홈 **300회 · 10.4초**. 측정 스크립트는 CDP `Performance.getMetrics` 의 LayoutCount/TaskDuration 차이.
 
 ## 라이브 실측 요약 (iPhone 13 중앙값, 프록시 경유라 TTFB·API 는 부풀려짐)
 | 경로 | FCP | LCP | 4x 마운트 |
