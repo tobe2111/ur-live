@@ -29,6 +29,7 @@ import type {
 // 🔗 2026-07-03 [UNLOCK_LOADING] 유어샵 핸들 즉시 발급 SSOT — worker util 상대경로 import.
 //   (worker 컨텍스트 실행이라 @/ alias 금지 — CLAUDE.md '배포 관련 절대 하지 말 것')
 import { generateUniqueHandle } from '../../../worker/utils/handle-generator';
+import { fastUpsertExistingKakaoUser } from './kakao-upsert-fast';
 
 export class KakaoAuthService {
   private readonly KAKAO_AUTH_URL = 'https://kauth.kakao.com';
@@ -292,7 +293,26 @@ export class KakaoAuthService {
       // 🛡️ 2026-05-06: profile_image 컬럼이 production 에 없을 수 있어 fallback 추가.
       //   첫 시도 → 컬럼 없으면 catch → 핵심 컬럼만 SELECT.
       let existingUser: User | null = null;
-      try {
+      // 🚀 2026-10-10 (대표 "남은 비효율 둘 해결해줘") — 기존 회원 로그인의 D1 왕복 3 → 1.
+      //   종전엔 [조회(kakao_id) → 갱신(id) → 재조회(id)] 를 **차례로** 날렸다. 라이브 7일 실측에서
+      //   이 구간(ms_db)이 평균 423ms·최대 765ms 로, 콜백 서버시간 1,224ms 중 카카오 토큰교환(662ms)
+      //   다음으로 큰 덩어리였다. 셋이 직렬이던 이유는 갱신이 앞 조회의 `id` 에 묶여 있었기 때문이다.
+      //   ⇒ 갱신을 `WHERE kakao_id = ?` 로 걸면 그 의존이 사라져 **한 batch** 에 담을 수 있고,
+      //      batch 안에서 갱신 다음 조회가 돌므로 **갱신된 행**을 그대로 돌려받아 재조회도 없어진다.
+      //   🔒 정확히 한 행만 맞는다: `idx_users_kakao_id_unique`(partial UNIQUE) 실재 + 라이브 중복 0 실측.
+      //   🆕 신규 회원은 갱신이 0행 no-op 이고 조회가 null → 아래 INSERT 경로로 떨어진다(왕복 수 종전과 동일).
+      //   ⚠️ 레거시 스키마(last_login_at·profile_image·email_verified 부재)면 batch 전체가 throw 하므로
+      //      `fastOk=false` 로 두고 **종전 직렬 경로를 그대로** 탄다 — 폴백 계단(최소 UPDATE → updated_at)
+      //      까지 전부 보존이라 무회귀다.
+      // 🚀 2026-10-10: 기존 회원이면 [갱신+조회]를 **한 왕복**으로 — SQL·근거는 모듈 머리말에.
+      //   실패(레거시 스키마)면 ok:false → 아래 종전 직렬 경로 + 폴백 계단 3단을 그대로 탄다.
+      const fast = await fastUpsertExistingKakaoUser(this.db, kakaoUser, normalizeKakaoPhone(kakaoUser.phoneNumber));
+      const fastOk = fast.ok;
+      const fastRow = fast.row;
+      // `existingUser` 는 아래에서 `.id` 와 참/거짓만 쓴다. 갱신은 행을 만들거나 지우지 않으므로
+      // "갱신 후 조회" 의 참/거짓은 "갱신 전 조회" 와 같다 — 판정 동치.
+      if (fastOk) existingUser = fastRow;
+      if (!fastOk) try {
         existingUser = await this.db.prepare(`
           SELECT id, kakao_id, name, email, profile_image, created_at
           FROM users
@@ -322,7 +342,8 @@ export class KakaoAuthService {
         //   기존 phone 이 있으면 덮어쓰지 않음 (사용자가 직접 수정한 값 보존).
         //   COALESCE(?, phone) 패턴 — kakao phone NULL 이면 기존 phone 유지.
         const validPhone = normalizeKakaoPhone(kakaoUser.phoneNumber)
-        try {
+        // 🚀 2026-10-10: batch fast path 가 이 갱신을 **이미** 했다(위). 폴백으로 내려온 경우만 실행.
+        if (!fastOk) try {
           // 🛡️ 2026-06-11 (사용자 신고 — 유어샵 프로필 이미지가 "영구적이지 않음"): 매 로그인마다
           //   카카오 프로필로 무조건 덮어써서 큐레이터 인라인 편집(/me/profile)으로 올린 커스텀
           //   이미지(r2 업로드 '/api/media/...' 등)가 다음 로그인 때 증발했음.
@@ -485,8 +506,11 @@ export class KakaoAuthService {
 
       // 사용자 정보 다시 조회하여 반환.
       // 🛡️ 2026-05-06: profile_image 컬럼 production 에 없을 수도 있어 fallback 추가.
-      let user: User | null = null;
-      try {
+      // 🚀 2026-10-10: batch 가 **갱신 후** 행을 이미 돌려줬으면(기존 회원) 재조회를 생략한다.
+      //   신규 회원 경로는 fastRow 가 null 이라 종전처럼 아래에서 조회한다 — INSERT·handle·email_verified
+      //   갱신이 그 사이에 돌기 때문에 그 경로는 반드시 재조회해야 한다(생략하면 갓 만든 행을 못 본다).
+      let user: User | null = (fastOk && fastRow) ? fastRow : null;
+      if (!user) try {
         user = await this.db.prepare(`
           SELECT id, kakao_id, name, email, profile_image, created_at
           FROM users

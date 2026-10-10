@@ -82,6 +82,7 @@ import { isKeyboardOpen, isEditableElementFocused } from '@/lib/keyboard-viewpor
 import { swallow } from '@/shared/utils/swallow'
 import { installImageProtection } from '@/lib/image-protect'
 import { captureBootFirstScreen } from '@/lib/boot-first-screen'
+import { hasSessionPersistProbe, clearSessionPersistProbe } from '@/shared/session-persist-probe'
 import { processAuthCallbackParams } from '@/utils/auth-callback-bootstrap'
 
 declare global {
@@ -313,7 +314,27 @@ async function bootApp() {
   try {
     const w = window as unknown as { __urEstablishTicket?: string }
     const ticket = w.__urEstablishTicket
-    if (ticket) {
+    // 🚀 2026-10-10 (대표 "남은 비효율 둘 해결해줘") — 302 쿠키가 남은 브라우저는 렌더를 안 기다린다.
+    //   아래 교환은 iOS/WebKit 이 cross-site 302 의 쿠키를 유실하는 것을 고치려고 **첫 렌더 앞에서**
+    //   기다리게 만든 것이다(2026-06-20). 그런데 크롬·안드로이드는 그 쿠키를 잘 받는다 —
+    //   라이브 7일 실측에서 establish 성공 6건이 **전부 비-iOS**(android/desktop chrome)였고,
+    //   그 기다림(실측 왕복 0.7~1.0s)은 전부 이미 가진 세션을 또 받는 데 쓰였다.
+    //   세션 쿠키는 HttpOnly 라 앱이 못 보므로, 콜백이 같은 응답에 심은 **표식**으로 판정한다.
+    //   표식이 있으면 = 그 응답의 쿠키가 살아남았으면 → 기다리지 않고 그리고, 교환은 배경에서 돈다
+    //   (진단 행 `establish_ok` 과 first-party 재발급은 그대로 남는다).
+    //   ⚠️ 배경 실행에는 재시도·reload 를 **배선하지 않는다** — 쿠키가 이미 있는데 reload 하면
+    //      그게 곧 회귀다(아래 차단 경로의 reload 는 '쿠키가 없다' 가 전제다).
+    //   🔒 iOS 는 이 표식도 함께 유실되므로 아래 차단 경로를 그대로 탄다 — 처방 무접촉.
+    if (ticket && hasSessionPersistProbe(document.cookie)) {
+      try { document.cookie = clearSessionPersistProbe() } catch { /* */ }
+      try { delete w.__urEstablishTicket } catch { /* */ }
+      void fetch('/api/auth/session/establish', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticket }),
+      }).catch(() => { /* 쿠키는 이미 있다 — 실패해도 로그인 상태에 영향 없음 */ })
+    } else if (ticket) {
       const ctrl = new AbortController()
       const timer = setTimeout(() => ctrl.abort(), 4000)
       let established = false
