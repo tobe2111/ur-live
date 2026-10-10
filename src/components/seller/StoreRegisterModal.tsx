@@ -26,8 +26,7 @@
  *   `enterStoreSeat` 가 성공하면 **원래 내 매장**이었던 것이고, 실패하면 내 것이 아니다.
  *   서버는 한 줄도 안 건드리고, 새로 뚫리는 권한도 0이다.
  *
- * ⚠️ 실패 문구는 **누구 것인지 단정하지 않는다.** 내 매장이어도 승인 대기(pending)면 좌석 토큰이
- *   403 이라 여기로 온다 — "남이 등록했다"고 말하면 그 사장님에게 거짓말이 된다.
+ * ⚠️ 실패 문구는 **누구 것인지 단정하지 않는다**(내 매장이어도 좌석 토큰이 403 일 수 있다).
  *
  * ## 종전 계약(무접촉)
  *   - `initialPlace` 프리필: 주면 ①을 건너뛰고 ②부터 시작한다(이용권 위저드가 쓰는 다리).
@@ -115,6 +114,22 @@ const STEPS = [
   { key: 'channel', title: '이 매장, 누가 운영하나요?', hint: '사장님인지 대행사인지에 따라 정산 방식이 달라져요' },
   { key: 'business', title: '사업자등록증을 올려주세요 (선택)', hint: '지금 없으면 건너뛰어도 등록돼요. 다만 승인 전에는 메인에 노출되지 않아요' },
 ] as const
+
+/**
+ * 📄 2026-10-10 대표 결재(2026-10-06-broker-business-cert, 안 1): 중개사가 등록할 때도 받는 서류는
+ * **매장(판매 주체) 등록증**이다. 메인 노출 심사(`approvedSellerProductSql`)가 매장 행을 보므로 서류도
+ * 그 매장 것이어야 판정이 맞는다. 종전 화면은 운영 방식과 무관하게 같은 문구라, 중개사가 자기 등록증을
+ * 올리기 쉬웠다. 중개사 본인 서류(중개사 몫 지급용)는 별건 — 여기서 약속하지 않는다.
+ */
+export const BROKERED_BUSINESS_COPY = {
+  title: '이 매장의 사업자등록증을 올려주세요 (선택)',
+  hint: '중개사님 본인 것이 아니라, 사장님께 받은 매장 등록증이에요. 지금 없으면 건너뛰어도 등록돼요',
+} as const
+
+function stepCopy(step: number, channel: string | null): { title: string; hint: string } {
+  if (STEPS[step].key === 'business' && channel === 'brokered') return BROKERED_BUSINESS_COPY
+  return STEPS[step]
+}
 
 export default function StoreRegisterModal({ initialPlace, onClose, onDone, dismissOnBackdrop = true, variant = 'overlay', initialManagerPhone }: Props) {
   const navigate = useNavigate()
@@ -269,37 +284,23 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
     try { return !!localStorage.getItem('seller_token') } catch { return false }
   })()
 
-  // 🩸 2026-09-07 병합에서 **다른 세션의 가드가 내 버그를 잡았다.** 이 안내 화면은 위 폼과 별개의
-  //   모달 마크업이라, 같은 날 고쳐진 두 가지가 여기엔 안 들어와 있었다 — `light-island` 없이
-  //   `bg-white` 라 다크에서 흰 판 위 흰 글자가 되고, 배경 클릭이 `dismissOnBackdrop` 을 안 거쳐
-  //   곧장 닫혔다. 한 파일 안에 같은 성질의 표면이 둘이면 **하나만 고치고 끝났다고 믿기 쉽다.**
+  // 🩸 2026-09-07: 이 안내 화면도 위 폼과 같은 `light-island`·`dismissOnBackdrop` 을 쓴다(한쪽만 고쳐졌던 적이 있다).
   /**
    * 🖥️ 껍데기 두 줄. 안쪽(헤더·바디·푸터)은 두 자리에서 **완전히 같다**.
    *
-   * page 에서 바깥 틀이 `fixed inset-0 bg-black/40` 이 아니게 되는 것은 장식이 아니라 **방어**다 —
-   * 2026-09-07 대표 신고 *"흰 섹션 바깥쪽을 클릭하니까 페이지가 꺼져"* 가 그 오버레이 때문이었고,
-   * 그때는 `dismissOnBackdrop={false}` 로 막았다. 이제 그 자리에 **배경 자체가 없어** 구조적으로 못 닫힌다
-   * (오버레이 경로의 `dismissOnBackdrop` 은 그대로 살아 있다 — 대시보드는 뒤에 돌아갈 화면이 보이므로 맞다).
+   * page 에 배경 오버레이가 없는 것은 **방어**다 — 2026-09-07 *"흰 섹션 바깥쪽을 클릭하니까 페이지가 꺼져"*
+   * 가 그 오버레이 때문이었다. 이제 구조적으로 못 닫힌다(오버레이 경로의 `dismissOnBackdrop` 은 그대로).
    *
    * 📏 높이는 **스스로 바운드한다**(`max-h`), 부모 높이에 기대지 않는다. 바운드가 있어야 지도 단계의
    * `KakaoMapPicker fill`(`flex-1 min-h-0` 사슬)이 높이를 얻는다 — 없으면 지도가 0px 로 접힌다.
-   * 🩸 처음엔 page 를 `h-full` 로 두고 페이지가 `h-[100dvh]` 로 높이를 주게 했는데, **렌더해 보니 카드
-   *   아래 24px 이 하단 네비(고정, 57px) 밑으로 들어가 잘렸다** — `main` 이 이미 `padding-bottom:56px` 로
-   *   그 자리를 예약하고 있어서 거기에 뷰포트 높이를 또 얹은 셈이었다. 부모의 여백을 모르는 채
-   *   뷰포트 높이를 잡으면 이 클래스의 사고가 난다(CLAUDE.md 모바일 뷰포트 룰). ⇒ 자기 바운드로.
+   * 🩸 `h-full`+페이지 `h-[100dvh]` 는 하단 네비 여백(`main` padding 56px) 위에 뷰포트 높이를 또 얹어 24px 이 잘렸다.
    */
   const asPage = variant === 'page'
   const shellCls = asPage
     ? 'w-full'
     : 'fixed inset-0 z-[10500] flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4'
   const shellClick = asPage ? undefined : (dismissOnBackdrop ? onClose : undefined)
-  /**
-   * 🩸 2026-09-23 CI 가 잡은 것 — page 패널을 처음엔 `rounded-2xl` 로 썼는데, 이 파일은
-   *   `src/components/seller/**` 라 **셀러 D3 래칫**(`seller-d3-2026-09-15.test.ts` "옛 패턴 0")의
-   *   대상이다. 그 래칫은 `rounded-2xl` 과 `bg-white rounded-xl shadow` 를 금지한다.
-   *   ⇒ overlay 가지가 이미 쓰던 **같은 토큰**(`--dash-radius`, 셀러/어드민 8px · 그 밖 16px)으로 통일.
-   *   같은 부품이 두 반경을 갖고 있던 것 자체가 드리프트였다.
-   */
+  // 🩸 2026-09-23: 반경은 셀러 D3 래칫(`rounded-2xl` 금지) 때문에 overlay 와 같은 `--dash-radius` 토큰.
   const panelCls = asPage
     ? 'light-island w-full bg-white rounded-[var(--dash-radius,16px)] shadow-lift flex flex-col min-h-0 max-h-[78dvh] lg:max-h-[82dvh]'
     : 'light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)] max-h-[92dvh] flex flex-col'
@@ -388,8 +389,8 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
             <div className="h-full bg-brand transition-[width] duration-300"
               style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} />
           </div>
-          <h2 className="mt-3 text-[17px] font-bold text-gray-900 leading-snug">{STEPS[step].title}</h2>
-          <p className="mt-1 text-[12px] text-gray-500 leading-relaxed">{STEPS[step].hint}</p>
+          <h2 className="mt-3 text-[17px] font-bold text-gray-900 leading-snug">{stepCopy(step, channel).title}</h2>
+          <p className="mt-1 text-[12px] text-gray-500 leading-relaxed">{stepCopy(step, channel).hint}</p>
         </div>
 
         {/**
@@ -530,7 +531,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
                   : <FileImage className="w-4 h-4 text-gray-400 shrink-0" />}
                 <span className="min-w-0">
                   <span className="block text-[12.5px] font-bold text-gray-900">
-                    {uploading ? '올리는 중…' : certUrl ? '사업자등록증 첨부됨' : '사업자등록증 사진 첨부'}
+                    {uploading ? '올리는 중…' : certUrl ? '사업자등록증 첨부됨' : channel === 'brokered' ? '매장 사업자등록증 사진 첨부' : '사업자등록증 사진 첨부'}
                   </span>
                   <span className="block text-[11px] text-gray-500 mt-0.5">
                     {certUrl ? '다시 누르면 교체할 수 있어요' : '내용이 잘 보이는 사진으로 · 10MB 이하 jpg·png'}
@@ -552,7 +553,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
               {/* 🏷️ 당근 원칙 ②: 선택인 것은 제목에 적는다 — 안 쓰면 못 넘어가나 고민하지 않게. */}
               <div className="pt-1">
                 <p className="text-[12px] font-bold text-gray-700 mb-1.5">
-                  사업자번호 <span className="font-normal text-gray-400">(선택 — 지금 안 적어도 등록돼요)</span>
+                  {channel === 'brokered' ? '매장 사업자번호' : '사업자번호'} <span className="font-normal text-gray-400">(선택 — 지금 안 적어도 등록돼요)</span>
                 </p>
                 {/* 🔢 2026-09-21 (대표 "000-00-00000 형태로 자동 입력되게"): 타이핑하는 대로 하이픈이 붙는다.
                     포매터는 가입 폼과 **같은 함수**(SSOT) — 두 벌이면 언젠가 갈린다. 전송은 그대로 숫자만(`replace(/-/g,'')`). */}
