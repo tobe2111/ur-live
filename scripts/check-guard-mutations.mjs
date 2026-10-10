@@ -10484,8 +10484,9 @@ canvas {
   {
     name: '🔒 마감 행에 "누구 것이었는지" 를 안 박는다',
     file: 'src/features/admin/api/admin-payouts/handover-closeout.ts',
-    find: "         VALUES ('seller', ?, ?, ?, ?, 'pending', ?, ?, ?, 'handover_closeout', ?)`,",
-    replace: "         VALUES ('seller', ?, ?, ?, ?, 'pending', ?, ?, ?, NULL, NULL)`,",
+    // 🏦 2026-10-10 재앵커: bank_name 칸이 끝에 붙었다(은행 일괄이체 파일에 실리게).
+    find: "         VALUES ('seller', ?, ?, ?, ?, 'pending', ?, ?, ?, 'handover_closeout', ?, ?)`,",
+    replace: "         VALUES ('seller', ?, ?, ?, ?, 'pending', ?, ?, ?, NULL, NULL, ?)`,",
     test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
     why:
       'kind·payee_user_id 가 없으면 취소 게이트가 이 행을 알아보지 못한다. 게이트 코드가 멀쩡해도 ' +
@@ -10546,8 +10547,9 @@ canvas {
     file: 'src/features/admin/api/admin-payouts/handover-closeout.ts',
     // 🪑 2026-09-09 재앵커: payee_user_id 를 `seller.linked_user_id` → `resolveStoreOwnerUserId` 로
     //   바꾸면서 이 줄이 달라졌다(그 칸은 /store/new 매장에서 항상 비어 있다). 계좌 스냅샷만 잰다.
-    find: "      ).bind(String(sellerId), amount, today, today, seller.bank_account, seller.business_name || null, memo, ownerUserId ?? null).run()",
-    replace: "      ).bind(String(sellerId), amount, today, today, null, seller.business_name || null, memo, ownerUserId ?? null).run()",
+    // 🏦 2026-10-10 재앵커: 은행명·예금주(`holder`)도 스냅샷하게 되며 이 줄이 달라졌다. 계좌번호 스냅샷만 잰다.
+    find: "      ).bind(String(sellerId), amount, today, today, seller.bank_account, holder, memo, ownerUserId ?? null, seller.bank_name || null).run()",
+    replace: "      ).bind(String(sellerId), amount, today, today, null, holder, memo, ownerUserId ?? null, seller.bank_name || null).run()",
     test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
     why:
       'payout 행이 계좌를 안 들고 있으면, 송금 시점에 sellers.bank_account 를 다시 읽게 되고 ' +

@@ -14,11 +14,12 @@
  */
 import type { Env } from '../types/env'
 import { logInfo, logError } from '../utils/logger'
-import { isPayoutEligibleSellerStatus } from '../../shared/seller-status'
 import { resolvePayoutHold } from '../utils/payout-hold'
 // 💸 2026-10-01 (결재 voucher-credit-double-rail): `merchant:N` 과 `seller:N` 은 **같은 가게**다.
 //   계정 문자열로 GROUP BY 하면 한 가게에 payout 이 두 개 생긴다(실측 185% 과다지급) — 집계에서 접는다.
-import { canonicalPayee, payoutCreditsSql, payoutPaidSql, payoutPayeeType } from '../utils/payout-account'
+import { canonicalPayee, payoutCreditsSql, payoutPaidSql } from '../utils/payout-account'
+// 🏦 2026-10-10: 계좌 스냅샷(은행·번호·예금주)은 SSOT 하나로 — 수동 생성·손바뀜 마감과 같은 함수.
+import { resolvePayeeAccount } from '../utils/payout-payee-account'
 
 // 🔎 2026-07-28: 반환값 추가 — safeCron 이 하트비트에 '무엇을 했나'로 기록한다(#826).
 //   0건이 '이번 주 정산할 게 없었다' 인지 '조용히 실패했다' 인지 구분하려면 실행 사실만으론 부족하다.
@@ -79,32 +80,19 @@ export async function handlePayoutsGenerate(env: Env): Promise<{ created: number
       //   `merchant:`→store_owner / `seller:`→seller 로 갈려 **같은 가게가 두 payee** 가 됐다(이번 결함).
       //   접은 뒤엔 접두어가 사라지므로, 매장인지 여부는 `sellers.seller_type` 이 말한다
       //   (`weekly-metrics-summary` 의 이중레일 경보가 `payee_type='store_owner'` 를 보므로 이 라벨은 살려야 한다).
-      let payeeType: string = payoutPayeeType(payee.kind)
-
-      // 계좌 정보 조회
-      let accountNumber: string | null = null, accountHolder: string | null = null
-      try {
-        if (payee.kind === 'seller') {
-          const row = await DB.prepare('SELECT bank_account, business_name, status, seller_type FROM sellers WHERE id = ?').bind(id).first<{ bank_account: string | null; business_name: string | null; status: string | null; seller_type: string | null }>()
-          payeeType = payoutPayeeType(payee.kind, row?.seller_type)
-          // 🔒 2026-09-20 (승인 게이트 — 좌석을 대기·반려 매장에도 열면서 그 짝): 돈은 **사람이 등록증을
-          //   보고 승인한 매장**에만 나간다(`isPayoutEligibleSellerStatus`). 원장 credit 은 그대로 쌓이고
-          //   승인되는 순간 다음 run 이 전기간 외상을 잡는다(이 cron 이 전기간 누적을 보므로 잃는 돈 0).
-          //   ⚠️ 이 줄이 없으면 승인 전 매장이 직링크로 팔고 스스로 사용 처리해 payout 이 생긴다 — 09-16
-          //   사기 방어(등록증 확인)를 좌석 개방이 우회하게 된다.
-          if (!isPayoutEligibleSellerStatus(row?.status)) { logInfo(`[payouts-cron] skip unapproved seller ${id} (${row?.status ?? 'null'})`); continue }
-          accountNumber = row?.bank_account || null
-          accountHolder = row?.business_name || null
-        } else if (payee.kind === 'user') {
-          // 사업자 유저 영입 commission 현금 정산 (비사업자는 userdeal:N → 여기 안 옴).
-          const row = await DB.prepare('SELECT bank_account, account_holder, business_name FROM users WHERE id = ?').bind(id).first<{ bank_account: string | null; account_holder: string | null; business_name: string | null }>()
-          accountNumber = row?.bank_account || null
-          accountHolder = row?.account_holder || row?.business_name || null
-        } else {
-          const row = await DB.prepare('SELECT name FROM agencies WHERE id = ?').bind(id).first<{ name: string | null }>()
-          accountHolder = row?.name || null
-        }
-      } catch { /* graceful */ }
+      // 🏦 2026-10-10: 계좌 조회는 `resolvePayeeAccount` 하나로 — 종전엔 `bank_name` 을 안 읽어(항상 NULL)
+      //   cron payout 이 전부 은행 일괄이체 CSV 에서 빠졌고, 예금주에 상호(business_name)를 적었다.
+      //   payee_type 은 계좌 접두어가 아니라 셀러 역할에서 정한다(`payoutPayeeType`, 그 함수 안에서).
+      // 🔒 2026-09-20 (승인 게이트): 돈은 **사람이 등록증을 보고 승인한 매장**에만 나간다
+      //   (`isPayoutEligibleSellerStatus` — `eligible`). 원장 credit 은 그대로 쌓이고 승인되는 순간
+      //   다음 run 이 전기간 외상을 잡는다. ⚠️ 이 줄이 없으면 승인 전 매장이 직링크로 팔고 스스로
+      //   사용 처리해 payout 이 생긴다.
+      // ⚠️ 계좌 미재확인(`accountVerified=false`)이어도 **생성은 한다** — 받을 돈은 실재한다.
+      //   송금 직전(`checkPayeeAccountCurrent`)이 막는다.
+      const acct = await resolvePayeeAccount(DB, payee).catch(() => null)
+      if (!acct) continue
+      if (!acct.eligible) { logInfo(`[payouts-cron] skip unapproved seller ${id} (${acct.sellerStatus ?? 'null'})`); continue }
+      const payeeType: string = acct.payeeType
 
       // 🛡️ 2026-06-11 멱등: 같은 (payee, period) payout 이 이미 있으면 재생성 skip (재실행/이중실행 방어).
       const dup = await DB.prepare(
@@ -115,9 +103,9 @@ export async function handlePayoutsGenerate(env: Env): Promise<{ created: number
       try {
         // INSERT OR IGNORE + payouts UNIQUE index (repair-schema) → 동시 재실행에도 중복 0.
         const ins = await DB.prepare(
-          `INSERT OR IGNORE INTO payouts (payee_type, payee_id, amount, period_start, period_end, status, account_number, account_holder)
-           VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)`,
-        ).bind(payeeType, id, pending, periodStart, periodEnd, accountNumber, accountHolder).run()
+          `INSERT OR IGNORE INTO payouts (payee_type, payee_id, amount, period_start, period_end, status, bank_name, account_number, account_holder)
+           VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?)`,
+        ).bind(payeeType, id, pending, periodStart, periodEnd, acct.bankName, acct.accountNumber, acct.accountHolder).run()
         if ((ins.meta?.changes ?? 0) > 0) created++
       } catch (e) {
         logError('[payouts-cron] insert failed', { account: c.credit_account, error: (e as Error).message })

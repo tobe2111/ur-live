@@ -195,8 +195,9 @@ function payoutCreditWhere(holdSql: string): string {
 }
 
 /** 차감 쪽. **유보가 붙지 않는다** — 환불 역전을 미루면 과다지급이다. */
-const PAYOUT_DEBIT_WHERE =
-  "WHERE debit_account LIKE 'merchant:%' OR debit_account LIKE 'seller:%' OR debit_account LIKE 'agency:%' OR debit_account LIKE 'user:%'"
+const PAYOUT_DEBIT_COND =
+  "debit_account LIKE 'merchant:%' OR debit_account LIKE 'seller:%' OR debit_account LIKE 'agency:%' OR debit_account LIKE 'user:%'"
+const PAYOUT_DEBIT_WHERE = `WHERE ${PAYOUT_DEBIT_COND}`
 
 /**
  * 💰 **지급 대기 순액 집계 SQL** — `payouts-generate` cron 이 쓰는 문장 그대로.
@@ -324,6 +325,8 @@ export function payoutPendingRowsSql(holdSql: string): string {
  *
  * ⚠️ 기간 창은 credit·debit **양쪽에 대칭으로** 건다 — 한쪽만 걸면 그 기간 밖의 차감
  *   (환불 역전·커미션)이 사라져 과다지급이 된다.
+ * 🩸 2026-10-10: 차감 쪽 LIKE 묶음을 **괄호로 감쌌다**. 종전 `A OR B OR C OR D AND 기간` 은
+ *   `D AND 기간` 으로 묶여 기간 창이 `user:` 차감에만 걸렸다(매장·에이전시는 전 기간 차감이 빠져 과소 집계).
  */
 export function payoutPeriodPendingSql(): string {
   return `
@@ -336,7 +339,7 @@ export function payoutPeriodPendingSql(): string {
     debits AS (
       SELECT ${canonicalPayeeSql('debit_account')} as account, SUM(amount) as total
         FROM ledger_entries
-       ${PAYOUT_DEBIT_WHERE}
+       WHERE (${PAYOUT_DEBIT_COND})
          AND created_at BETWEEN ? AND ?
        GROUP BY account
     ),

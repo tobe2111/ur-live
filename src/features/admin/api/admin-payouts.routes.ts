@@ -23,9 +23,10 @@ import { markPayoutSent, isTransferable, type PayoutRow } from '../../../worker/
 import { resolvePayoutHold } from '../../../worker/utils/payout-hold'
 // 💸 2026-10-01 (결재 voucher-credit-double-rail): `merchant:N` 과 `seller:N` 은 같은 가게다.
 //   이 화면과 cron 이 **같은 조각**을 써야 한다 — 갈리면 운영자가 화면에서 본 금액과 실제 생성분이 달라진다.
-import { canonicalPayee, payoutPayeeType, payoutPendingRowsSql, payoutPeriodPendingSql, payoutRowLedgerAccount, paidPayeeAliases } from '@/worker/utils/payout-account'
+import { canonicalPayee, payoutPendingRowsSql, payoutPeriodPendingSql, payoutRowLedgerAccount, paidPayeeAliases } from '@/worker/utils/payout-account'
 
 import { csvEscape } from '../../../worker/utils/csv-safe'
+import { resolvePayeeAccount } from '../../../worker/utils/payout-payee-account'
 import { handoverCloseout } from './admin-payouts/handover-closeout'
 
 export const adminPayoutsRoutes = new Hono<{ Bindings: Env }>()
@@ -81,26 +82,20 @@ adminPayoutsRoutes.post('/admin/payouts/generate', requireAdmin(), require2FA(),
   const pendingRows = await DB.prepare(payoutPeriodPendingSql()).bind(periodStart + ' 00:00:00', periodEnd + ' 23:59:59', periodStart + ' 00:00:00', periodEnd + ' 23:59:59', minAmount).all<{ account: string; pending_amount: number }>().catch(() => ({ results: [] as Array<{ account: string; pending_amount: number }> }))
 
   let created = 0
+  let skipped = 0
   for (const r of pendingRows.results || []) {
     // 💸 2026-10-01: 계정 해석·payee 접기·id 숫자 검사는 `canonicalPayee`(SSOT) 하나로.
     //   payee_type 은 접두어가 아니라 **셀러 역할**에서 정한다(cron 과 동일 규칙).
     const payee = canonicalPayee(r.account)
     if (!payee) continue
     const id = payee.id
-    let payeeType: string = payoutPayeeType(payee.kind)
-    // 계좌 정보 조회 (sellers / agencies)
-    let bankName: string | null = null, accountNumber: string | null = null, accountHolder: string | null = null
-    try {
-      if (payee.kind === 'seller') {
-        const row = await DB.prepare('SELECT bank_account, business_name, seller_type FROM sellers WHERE id = ?').bind(id).first<{ bank_account: string | null; business_name: string | null; seller_type: string | null }>()
-        payeeType = payoutPayeeType(payee.kind, row?.seller_type)
-        accountNumber = row?.bank_account || null
-        accountHolder = row?.business_name || null
-      } else if (payee.kind === 'agency') {
-        const row = await DB.prepare('SELECT name FROM agencies WHERE id = ?').bind(id).first<{ name: string | null }>()
-        accountHolder = row?.name || null
-      }
-    } catch { /* graceful */ }
+    // 🏦 2026-10-10: 계좌 스냅샷은 cron 과 **같은 함수**(`resolvePayeeAccount`). 종전엔 `bankName` 을
+    //   선언만 하고 채우지 않아(항상 NULL) 수동 생성분이 은행 일괄이체 CSV 에서 전부 빠졌고, 예금주에
+    //   상호를 적었다. 승인 게이트도 cron 과 같게 — 승인 전 매장에 수동으로 돈을 배정하지 않는다.
+    const acct = await resolvePayeeAccount(DB, payee).catch(() => null)
+    if (!acct || !acct.eligible) { skipped++; continue }
+    const payeeType: string = acct.payeeType
+    const bankName = acct.bankName, accountNumber = acct.accountNumber, accountHolder = acct.accountHolder
 
     try {
       await DB.prepare(
@@ -113,7 +108,7 @@ adminPayoutsRoutes.post('/admin/payouts/generate', requireAdmin(), require2FA(),
     }
   }
 
-  return c.json({ success: true, data: { created, period_start: periodStart, period_end: periodEnd } })
+  return c.json({ success: true, data: { created, skipped_unapproved: skipped, period_start: periodStart, period_end: periodEnd } })
 })
 
 adminPayoutsRoutes.get('/admin/payouts', requireAdmin(), async (c) => {
