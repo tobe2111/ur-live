@@ -35,8 +35,8 @@ export default [
   {
     name: '🪑옛경로 카카오 로그인이 주인 좌석을 안 본다',
     file: KAKAO,
-    find: '    if (!seller) {\n      const grantId = await findOwnerSeatSellerId(DB, userId)',
-    replace: '    if (false as boolean) {\n      const grantId = await findOwnerSeatSellerId(DB, userId)',
+    find: '    const ownerGrant = !seller && !!(seller = await findOwnerSeatSellerRow<Row>(DB, userId, SELLER_COLS))',
+    replace: '    const ownerGrant = false as boolean',
     test: TEST,
     why: '직접 등록한 사장님이 카카오로 로그인해도 셀러 토큰이 안 나와 대시보드에서 튕긴다(고치기 전 상태).',
   },

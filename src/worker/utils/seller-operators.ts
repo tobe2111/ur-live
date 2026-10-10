@@ -293,6 +293,13 @@ export async function findOwnerSeatSellerId(DB: D1Database, userId: number): Pro
   return Number.isFinite(id) && id > 0 ? id : null
 }
 
+/** 위 함수로 찾은 매장의 행 — 호출부가 고른 컬럼으로. 없으면 `null`. */
+export async function findOwnerSeatSellerRow<T>(DB: D1Database, userId: number, cols: string): Promise<T | null> {
+  const id = await findOwnerSeatSellerId(DB, userId)
+  if (!id) return null
+  return await DB.prepare(`SELECT ${cols} FROM sellers WHERE id = ?`).bind(id).first<T>().catch(() => null)
+}
+
 /**
  * 🪑 위 함수로 찾은 좌석(주인이지만 `linked_user_id` 가 아닌 경우)에 토큰을 줄 때의 **시트·클레임** —
  * `POST /stores/:id/token` 의 `access.source === 'grant'` 분기와 **같은 값**이다. 두 벌이면 같은 사장님이

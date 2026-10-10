@@ -98,12 +98,13 @@ describe('🔌 배선 — 옛 경로 셋이 linked 다음에 주인 좌석을 �
   it('카카오 로그인 issueLinkedRoleTokens: linked 조회 → 없으면 주인 좌석 → 같은 시트', () => {
     const fn = kakao.slice(kakao.indexOf('export async function issueLinkedRoleTokens'), kakao.indexOf('agencies WHERE linked_user_id'))
     const linked = fn.indexOf('FROM sellers WHERE linked_user_id = ?')
-    const grant = fn.indexOf('findOwnerSeatSellerId(DB, userId)')
+    const grant = fn.indexOf('findOwnerSeatSellerRow<Row>(DB, userId, SELLER_COLS)')
     expect(linked).toBeGreaterThan(-1)
     expect(grant).toBeGreaterThan(linked)
-    expect(fn).toMatch(/if \(!seller\) \{\s*const grantId = await findOwnerSeatSellerId\(DB, userId\)/)
+    expect(fn).toMatch(/const ownerGrant = !seller && !!\(seller = await findOwnerSeatSellerRow<Row>\(DB, userId, SELLER_COLS\)\)/)
     expect(fn).toMatch(/ownerGrant \? ownerGrantSeat\(userId\)\.claims/)
-    expect(fn).toMatch(/if \(ownerGrant\) \{ const g = ownerGrantSeat\(userId\)\.seat; await startDashboardSession\(DB, g\.role, g\.id/)
+    expect(fn).toMatch(/const seat = ownerGrant \? ownerGrantSeat\(userId\)\.seat : \{ role: 'seller', id: seller\.id \}/)
+    expect(fn).toMatch(/startDashboardSession\(DB, seat\.role, seat\.id, payload\.iat\)/)
   })
 
   it('my-seller-status: 주인 좌석을 이메일 자동 연결보다 먼저 본다', () => {
