@@ -27,7 +27,7 @@ export default function BrokerTermsConsent({ terms, agreed, onChange }: {
         둘 다 이 매장 매출에서 나가요. 주인이 된 뒤에는 매장 관리에서 바꿀 수 있어요.
       </p>
       <label className="mt-3 flex items-start gap-2 cursor-pointer">
-        <input type="checkbox" checked={agreed} onChange={(e) => onChange(e.target.checked)} className="mt-0.5 w-4 h-4 shrink-0 accent-brand" />
+        <input type="checkbox" checked={agreed} onChange={(e) => onChange(e.target.checked)} className="mt-1 w-4 h-4 shrink-0 accent-brand" />
         <span className="text-[13px] font-semibold text-gray-900">위 조건을 확인했고 동의합니다 (필수)</span>
       </label>
     </div>
