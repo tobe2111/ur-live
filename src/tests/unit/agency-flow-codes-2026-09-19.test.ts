@@ -203,6 +203,8 @@ describe('④ 중개사 몫 — 요율 검증·적립·멱등·게이트', () =>
   it('게이트 OFF(행 부재) 면 아무것도 안 쓴다 — 종전과 byte-동일', async () => {
     const { DB, db } = fresh()
     await saveBrokerTerms(DB, 1, { brokerUserId: 100, sharePct: 10, capPct: null })
+    // 🪑 좌석은 있다 — 그래야 0 의 이유가 **게이트 하나**다(좌석이 없으면 좌석 검사가 먼저 막아 이 시험이 게이트를 못 본다).
+    await grantOperator(DB, 1, 100, 100, 'operator')
     const r = await creditBrokerShare(DB, { sellerId: 1, orderId: 501, orderNumber: 'GB-1', productId: 7, totalAmount: 10000, refundWindowDays: 7 })
     expect(r.credited).toBe(0)
     expect(db.prepare('SELECT COUNT(*) n FROM influencer_attributions').get()).toEqual({ n: 0 })
