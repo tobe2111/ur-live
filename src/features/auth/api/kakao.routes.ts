@@ -10,6 +10,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { sign as jwtSign, verify as jwtVerify } from 'hono/jwt';
 import { KakaoAuthService } from '../services/KakaoAuthService';
+import { sessionPersistProbeCookie } from '../../../shared/session-persist-probe';
 // 🛡️ 2026-05-01: FirebaseAuthService import 제거 — KR Kakao 흐름은 Firebase 0.
 import { createSessionCookie, clearSessionCookie } from '@/worker/utils/session';
 import { recordKakaoLoginDiag } from '@/worker/utils/kakao-login-diag';
@@ -674,6 +675,12 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
           c.env.JWT_SECRET,
         );
         c.header('Set-Cookie', sessionCookie, { append: true });
+        // 🔑 2026-10-10: "이 302 의 쿠키가 살아남았는가" 표식 — 세션 쿠키는 HttpOnly 라 착지한 앱이
+        //   그 존재를 못 봐서, 쿠키가 멀쩡히 들어온 크롬·안드로이드도 첫 렌더 앞에서 establish 왕복을
+        //   기다려 왔다(라이브 7일: establish 성공 6건 전부 비-iOS = 그 기다림 전부가 낭비).
+        //   🔒 인증 신호가 **아니다**(서버는 안 읽는다) · iOS 는 함께 유실되므로 종전 경로 그대로.
+        //   왜·무엇을 지키는지는 SSOT 머리말: shared/session-persist-probe.ts
+        c.header('Set-Cookie', sessionPersistProbeCookie(), { append: true });
       } catch (e) {
         if (import.meta.env.DEV) console.error('[Kakao Sync] Session cookie creation failed:', e);
         // 🛡️ 2026-06-01 하드닝: 원시 에러를 redirect URL 에 노출 금지 — 정적 코드만.
