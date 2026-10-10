@@ -30,6 +30,7 @@ import {
   HERO_STRIP_MIN_PER_LOOP,
   HERO_STRIP_SKIP,
   HERO_STRIP_SPEED_PX_PER_SEC,
+  HERO_STRIP_WARM_TIMEOUT_MS,
   HERO_TILE_REQUEST_HEIGHT,
   HERO_TILE_REQUEST_WIDTH,
   HERO_TILE_QUALITY,
@@ -58,6 +59,71 @@ const rows = (n: number, from = 1) =>
 
 const draw = (tiles: HeroTile[]) =>
   render(<MemoryRouter><HeroDealStrip tiles={tiles} /></MemoryRouter>).container
+
+/**
+ * 🧊 **아직 한가해지지 않은** 상태 — `requestIdleCallback` 도 타이머도 안 돈다.
+ * jsdom 에는 `requestIdleCallback` 이 없어 컴포넌트가 타이머로 떨어지는데, 테스트는 그 타이머를
+ * 돌리지 않으므로 첫 페인트 상태 그대로 남는다.
+ */
+const drawCold = draw
+
+/**
+ * 🔥 **한가해진 뒤** — `requestIdleCallback` 을 즉시 실행으로 바꿔 끼우고(effect 안에서 동기 호출되어
+ * `render()` 의 act 안에서 끝난다) `new Image()` 가 실제로 받으러 간 URL 을 모은다.
+ * `connection.saveData` 도 여기서 흉내 낸다.
+ */
+function drawWarm(tiles: HeroTile[], opts: { saveData?: boolean } = {}) {
+  const w = window as unknown as Record<string, unknown>
+  const prevRic = w.requestIdleCallback
+  const prevCic = w.cancelIdleCallback
+  const prevConn = Object.getOwnPropertyDescriptor(navigator, 'connection')
+  const warmed: string[] = []
+  /* 🔎 **`new Image()` 만** 센다 — markup 의 `<img src>` 도 React 가 프로퍼티로 쓰므로
+     `HTMLImageElement.prototype.src` 를 감시하면 둘이 섞여 시험이 통째로 헛돈다(실제로 그랬다). */
+  const g = globalThis as unknown as Record<string, unknown>
+  const RealImage = g.Image as typeof Image
+  /**
+   * 🔎 **`new Image()` 가 받으러 간 URL 만** 센다.
+   * 🩸 두 번 헛돌고 나온 방법이다: ① `HTMLImageElement.prototype.src` 만 감시했더니 markup 의
+   *   `<img src>` 까지 섞여(React 가 프로퍼티로 쓴다) 시험이 통째로 무의미해졌다 ② 그래서 `Image`
+   *   를 **subclass** 로 바꿨더니 0건 — jsdom 의 `Image` 는 생성자가 `document.createElement('img')`
+   *   를 **반환**해서 서브클래스 프로토타입이 안 붙는다. ⇒ 생성자가 만든 것에 **표식**을 달고,
+   *   프로토타입 setter 는 그 표식이 있을 때만 센다.
+   */
+  const MARK = '__urWarmProbe'
+  const realSrc = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src')!
+  Object.defineProperty(HTMLImageElement.prototype, 'src', {
+    configurable: true,
+    get(this: HTMLImageElement) { return realSrc.get!.call(this) as string },
+    set(this: HTMLImageElement, v: string) {
+      if ((this as unknown as Record<string, unknown>)[MARK]) warmed.push(v)
+      realSrc.set!.call(this, v)
+    },
+  })
+  g.Image = function () {
+    const el = new RealImage()
+    ;(el as unknown as Record<string, unknown>)[MARK] = true
+    return el
+  }
+  w.Image = g.Image
+  w.requestIdleCallback = (cb: () => void) => { cb(); return 1 }
+  w.cancelIdleCallback = () => {}
+  Object.defineProperty(navigator, 'connection', {
+    value: { saveData: !!opts.saveData }, configurable: true,
+  })
+  try {
+    const container = draw(tiles)
+    return { container, warmed }
+  } finally {
+    Object.defineProperty(HTMLImageElement.prototype, 'src', realSrc)
+    g.Image = RealImage
+    w.Image = RealImage
+    if (prevRic === undefined) delete w.requestIdleCallback; else w.requestIdleCallback = prevRic
+    if (prevCic === undefined) delete w.cancelIdleCallback; else w.cancelIdleCallback = prevCic
+    if (prevConn) Object.defineProperty(navigator, 'connection', prevConn)
+    else Reflect.deleteProperty(navigator, 'connection')
+  }
+}
 
 describe('① 띠에 태울 딜 고르기', () => {
   it('🔴 아래 매대 첫 줄과 **겹치지 않는다** (같은 딜이 40px 간격으로 두 번 나오면 매대가 좁아 보인다)', () => {
@@ -140,12 +206,84 @@ describe('③ 트래픽 — 타일은 전용 작은 크롭이다', () => {
     expect(HERO_TILE_REQUEST_WIDTH / HERO_TILE_REQUEST_HEIGHT).toBeCloseTo(4 / 3, 2)
   })
 
-  it('🔴 앞 몇 장만 먼저 받고 나머지는 미룬다 · 둘째 벌은 전부 미룬다(같은 URL = 캐시 적중)', () => {
+  /**
+   * 🔴 2026-10-10 — 이 자리의 시험을 **지우지 않고 재조준했다.**
+   *
+   * 종전 단언은 *"앞 N장만 eager, 나머지는 영원히 lazy"* 였다. 그 lazy 가 바로 대표가 신고한
+   * **"메인에서 이용권 사진이 안 나온다"** 의 원인이다 — 마퀴는 모든 타일을 데려오는데 `lazy` 는
+   * *화면에 들어온 뒤에야* 받으므로 그 타일은 반드시 대표색 사각형으로 먼저 보인다
+   * (브라우저 실측 800kbps/500ms: 140프레임 중 118프레임에 빈 타일, **동시 최대 4장**).
+   *
+   * 그 시험이 **지키려던 것은 그대로다**: 첫 페인트 바이트를 늘리지 않는다. 그래서 불변식을
+   * 두 쪽으로 나눈다 — ⓐ 첫 페인트에는 종전과 똑같이 앞 N장만 · ⓑ 한가해지면 **하나도 안 남는다**.
+   */
+  it('🔴 첫 페인트에는 앞 몇 장만 먼저 받는다 (유휴 전 임계 경로는 종전과 byte-동일)', () => {
     const tiles = pickHeroStripFrom(rows(20))
-    const imgs = [...draw(tiles).querySelectorAll('img')]
+    const imgs = [...drawCold(tiles).querySelectorAll('img')]
     expect(imgs.length).toBe(tiles.length * 2)
     expect(imgs.filter(i => i.getAttribute('loading') === 'eager').length).toBe(HERO_STRIP_EAGER)
     expect(imgs.slice(tiles.length).every(i => i.getAttribute('loading') === 'lazy')).toBe(true)
+  })
+
+  it('🔴 한가해지면 **나머지 타일을 미리 받아 둔다** — 화면에 들어온 뒤 받으면 반드시 빈 칸이 먼저 보인다', () => {
+    const tiles = pickHeroStripFrom(rows(20))
+    const { container, warmed } = drawWarm(tiles)
+    const shown = [...container.querySelectorAll('img')].map(i => i.getAttribute('src') || '')
+    const lazyUrls = new Set(
+      [...container.querySelectorAll('img')]
+        .filter(i => i.getAttribute('loading') === 'lazy')
+        .map(i => i.getAttribute('src') || ''),
+    )
+    const eagerUrls = new Set(
+      [...container.querySelectorAll('img')]
+        .filter(i => i.getAttribute('loading') === 'eager')
+        .map(i => i.getAttribute('src') || ''),
+    )
+    expect(shown.length).toBe(tiles.length * 2)
+    expect(lazyUrls.size).toBeGreaterThan(0)
+    /* 미룬 타일의 URL 은 **하나도 빠짐없이** 화면에 들어오기 전에 받아져 있다 —
+       앞 N장이 이미 받은 URL(둘째 벌이 재사용)이거나, 유휴 워밍이 받아 둔 URL 이거나. */
+    for (const u of lazyUrls) expect(warmed.includes(u) || eagerUrls.has(u)).toBe(true)
+    // 그리고 워밍이 **실제로 일을 한다** — 0건이면 통과가 아니라 고장이다.
+    expect(warmed.length).toBe(tiles.length - HERO_STRIP_EAGER)
+  })
+
+  it('🔴 먼저 받은 앞 N장은 **다시 안 받는다** (유휴 워밍이 중복 요청을 만들면 안 된다)', () => {
+    const tiles = pickHeroStripFrom(rows(20))
+    const { container, warmed } = drawWarm(tiles)
+    const eagerUrls = [...container.querySelectorAll('img')]
+      .filter(i => i.getAttribute('loading') === 'eager')
+      .map(i => i.getAttribute('src') || '')
+    expect(eagerUrls.length).toBe(HERO_STRIP_EAGER)
+    for (const u of eagerUrls) expect(warmed).not.toContain(u)
+    // 둘째 벌은 같은 URL 이라 중복으로 받지 않는다.
+    expect(new Set(warmed).size).toBe(warmed.length)
+  })
+
+  it('🔴 데이터 절약 모드면 **안 받는다** (cf-image 가 이미 존중하는 신호와 같은 판단)', () => {
+    const tiles = pickHeroStripFrom(rows(20))
+    const { warmed } = drawWarm(tiles, { saveData: true })
+    expect(warmed).toEqual([])
+  })
+
+  it('🔴 유휴 예약은 **0ms 가 아니다** (첫 페인트와 경쟁하면 LCP 를 밀어낸다)', () => {
+    expect(HERO_STRIP_WARM_TIMEOUT_MS).toBeGreaterThanOrEqual(500)
+    const code = stripComments(src(STRIP_TSX))
+    // 상수를 베껴 적으면 두 벌이 갈린다 — 소스가 그 상수를 실제로 쓰는지 본다.
+    expect(code).toMatch(/requestIdleCallback\([\s\S]{0,120}HERO_STRIP_WARM_TIMEOUT_MS/)
+  })
+
+  /**
+   * 🩸 **크로미움 실측으로 뒤집힌 가정** — 이 줄이 그 교훈을 지킨다.
+   *
+   * 처음 처방은 `loading` 을 lazy→eager 로 접는 것이었는데, 실제로 재 보니 크로미움은
+   * **보류된 lazy 로드를 다시 시작하지 않는다**(프로퍼티·`setAttribute`·`removeAttribute`·
+   * 같은 값 `src` 재대입 넷 다 요청 0건). 그 길로 되돌아가면 markup 만 바뀌고 증상은 그대로다.
+   */
+  it('🔴 워밍을 **속성 뒤집기로 하지 않는다** (크로미움은 보류된 lazy 로드를 재개하지 않는다)', () => {
+    const code = stripComments(src(STRIP_TSX))
+    expect(code).not.toMatch(/loading=\{[^}]*warm/)
+    expect(code).toMatch(/new Image\(\)/)
   })
 })
 
