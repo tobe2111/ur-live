@@ -36,7 +36,7 @@ export default function StoreGoPage() {
   if (!failed) return <BrandLoader fullScreen />
 
   return (
-    <div className="min-h-[100dvh] bg-white dark:bg-[#11141C] flex items-center justify-center px-6">
+    <div className="min-h-[100dvh] bg-warm flex items-center justify-center px-6">
       <SEO title="매장 열기 - 유어딜" description="사장님 매장 바로가기" url="/store/go" />
       <div className="w-full max-w-sm text-center">
         <p className="text-[17px] font-bold text-gray-900 dark:text-white">이 매장을 열 수 없어요</p>
