@@ -23,7 +23,7 @@ import { markPayoutSent, isTransferable, type PayoutRow } from '../../../worker/
 import { resolvePayoutHold } from '../../../worker/utils/payout-hold'
 // 💸 2026-10-01 (결재 voucher-credit-double-rail): `merchant:N` 과 `seller:N` 은 같은 가게다.
 //   이 화면과 cron 이 **같은 조각**을 써야 한다 — 갈리면 운영자가 화면에서 본 금액과 실제 생성분이 달라진다.
-import { canonicalPayee, payoutPayeeType, payoutPendingRowsSql, payoutPeriodPendingSql } from '@/worker/utils/payout-account'
+import { canonicalPayee, payoutPayeeType, payoutPendingRowsSql, payoutPeriodPendingSql, payoutRowLedgerAccount, paidPayeeAliases } from '@/worker/utils/payout-account'
 
 import { csvEscape } from '../../../worker/utils/csv-safe'
 import { handoverCloseout } from './admin-payouts/handover-closeout'
@@ -137,14 +137,16 @@ adminPayoutsRoutes.get('/admin/payouts', requireAdmin(), async (c) => {
       const { getLedgerReceivable } = await import('../../../worker/utils/ledger')
       const recvCache = new Map<string, number>()
       for (const r of pendingRows) {
-        const ledgerType = r.payee_type === 'store_owner' ? 'merchant' : String(r.payee_type)
-        const account = `${ledgerType}:${r.payee_id}`
+        // 🔗 2026-10-10: 접힌 계정(`seller:N`)으로 묻는다 — `merchant:N` 만 보면 같은 가게의 `seller:N` 차감이 빠진다.
+        const account = payoutRowLedgerAccount(String(r.payee_type), String(r.payee_id))
+        if (!account) continue
         let recv = recvCache.get(account)
         if (recv === undefined) { recv = await getLedgerReceivable(DB, account); recvCache.set(account, recv) }
+        const keys = paidPayeeAliases(account)
         const otherPaid = await DB.prepare(
           `SELECT COALESCE(SUM(amount), 0) AS t FROM payouts
-            WHERE payee_type = ? AND payee_id = ? AND status IN ('approved','sent') AND id != ?`
-        ).bind(r.payee_type, r.payee_id, r.id).first<{ t: number }>().catch(() => ({ t: 0 }))
+            WHERE (payee_type || ':' || payee_id) IN (${keys.map(() => '?').join(', ')}) AND status IN ('approved','sent') AND id != ?`
+        ).bind(...keys, r.id).first<{ t: number }>().catch(() => ({ t: 0 }))
         const available = recv - Number(otherPaid?.t ?? 0)
         r._available = Math.max(0, available)
         r._stale = Number(r.amount) > available + 1
@@ -170,13 +172,14 @@ adminPayoutsRoutes.patch('/admin/payouts/:id/approve', requireAdminRole('finance
   //   available = getLedgerReceivable(원장 net) − 이미 approved/sent 된 다른 payout 합.
   try {
     const { getLedgerReceivable } = await import('../../../worker/utils/ledger')
-    const ledgerType = row.payee_type === 'store_owner' ? 'merchant' : row.payee_type
-    const account = `${ledgerType}:${row.payee_id}`
+    // 🔗 2026-10-10: 접힌 계정 + 양쪽 payout 키(`seller`/`store_owner`) — 위 목록과 같은 규칙.
+    const account = payoutRowLedgerAccount(row.payee_type, row.payee_id) ?? `${row.payee_type}:${row.payee_id}`
     const receivable = await getLedgerReceivable(DB, account)
+    const keys = paidPayeeAliases(account)
     const otherPaid = await DB.prepare(
       `SELECT COALESCE(SUM(amount), 0) AS total FROM payouts
-        WHERE payee_type = ? AND payee_id = ? AND status IN ('approved','sent') AND id != ?`
-    ).bind(row.payee_type, row.payee_id, id).first<{ total: number }>().catch(() => ({ total: 0 }))
+        WHERE (payee_type || ':' || payee_id) IN (${keys.map(() => '?').join(', ')}) AND status IN ('approved','sent') AND id != ?`
+    ).bind(...keys, id).first<{ total: number }>().catch(() => ({ total: 0 }))
     const available = receivable - Number(otherPaid?.total ?? 0)
     if (Number(row.amount) > available + 1) {
       return c.json({

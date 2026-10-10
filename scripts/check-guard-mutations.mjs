@@ -10358,7 +10358,8 @@ canvas {
   {
     name: '👥 운영자가 다시 합류 전 정산까지 본다',
     file: 'src/features/seller/api/seller-settlements/payouts.ts',
-    find: '          AND (? IS NULL OR created_at >= ?)',
+    // 🔗 2026-10-10 재앵커: payout 조회가 `loadSellerPayoutRows()` 로 추출됐다(store_owner 행도 보게).
+    find: '        AND (? IS NULL OR created_at >= ?)',
     replace: '',
     test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
     why:
