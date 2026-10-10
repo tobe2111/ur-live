@@ -92,4 +92,12 @@ export default [
     test: 'src/tests/unit/broker-share-reversal-2026-10-10.test.ts',
     why: '바우처마다 몫을 되돌리다 원본보다 많이 되돌리면 매장에 없는 돈이 생긴다.',
   },
+  {
+    name: '💸감사1010 좌석을 회수당한 중개사가 다시 몫을 받는다',
+    file: 'src/worker/utils/broker-share.ts',
+    find: '    if (!seat.ok) return { credited: 0, brokerUserId: terms.brokerUserId }',
+    replace: '',
+    test: 'src/tests/unit/broker-share-reversal-2026-10-10.test.ts',
+    why: '사장님이 중개사 좌석을 회수해도 매 판매마다 매장 몫에서 중개사 몫이 계속 나간다.',
+  },
 ]

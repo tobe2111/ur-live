@@ -28,6 +28,7 @@ import type { D1Database } from '@cloudflare/workers-types'
 import { swallow } from './swallow'
 import { recordLedger, sellerLedgerAccount } from './ledger'
 import { getSellerMeta, setSellerMeta } from './seller-meta'
+import { canOperateStore } from './seller-operators'
 
 export const BROKER_META = {
   userId: 'broker_user_id',
@@ -130,6 +131,12 @@ export async function creditBrokerShare(DB: D1Database, p: CreditBrokerShareInpu
     if (!Number.isFinite(p.orderId) || p.orderId <= 0) return { credited: 0, brokerUserId: null }
     const terms = await readBrokerTerms(DB, p.sellerId)
     if (!terms.brokerUserId || terms.sharePct <= 0) return { credited: 0, brokerUserId: null }
+    // 🪑 2026-10-10: **지금 그 매장 좌석이 있는** 중개사에게만 적립한다. 종전엔 `broker_user_id` 만 보고
+    //   적립해서, 사장님이 중개사 좌석을 회수(`revokeOperator` — revoked_at)한 뒤에도 매 판매마다 몫이 계속
+    //   쌓였다(매장 몫에서 나가는 돈이다). 좌석 판정은 토큰 발급과 같은 SSOT(`canOperateStore`).
+    //   ⚠️ 사장님 승계(owner claim) 때의 처리는 건드리지 않는다 — 그건 계약 조건이다.
+    const seat = await canOperateStore(DB, terms.brokerUserId, p.sellerId).catch(() => ({ ok: false }))
+    if (!seat.ok) return { credited: 0, brokerUserId: terms.brokerUserId }
     const amount = calcBrokerShareAmount(p.totalAmount, terms.sharePct)
     if (amount <= 0) return { credited: 0, brokerUserId: terms.brokerUserId }
     const brokerId = String(terms.brokerUserId)

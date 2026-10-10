@@ -148,6 +148,30 @@ describe('② 바우처 단위 경로(셀프 취소·만료 cron)도 같은 SSOT
   })
 })
 
+describe('④ 좌석을 회수당한 중개사는 더 적립받지 못한다', () => {
+  it('좌석이 없으면 0 · 회수(revoked_at)되면 0 · 다시 부여되면 적립', async () => {
+    const { db, DB } = fresh()
+    await saveBrokerTerms(DB, 1, { brokerUserId: 100, sharePct: 10, capPct: null })
+    const p = { sellerId: 1, orderId: 501, orderNumber: 'GB-1', productId: 7, totalAmount: 10000, refundWindowDays: 7 }
+    expect((await creditBrokerShare(DB, p)).credited).toBe(0)
+    await grantOperator(DB, 1, 100, 100, 'operator')
+    const { revokeOperator } = await import('@/worker/utils/seller-operators')
+    await revokeOperator(DB, 1, 100)
+    expect((await creditBrokerShare(DB, p)).credited).toBe(0)
+    expect(db.prepare(`SELECT COUNT(*) n FROM influencer_attributions`).get()).toEqual({ n: 0 })
+    expect(db.prepare(`SELECT COUNT(*) n FROM ledger_entries`).get()).toEqual({ n: 0 })
+    await grantOperator(DB, 1, 100, 100, 'operator')
+    expect((await creditBrokerShare(DB, p)).credited).toBe(1000)
+  })
+  it('배선 — 적립 전에 좌석을 묻는다', () => {
+    const s = stripComments(readFileSync('src/worker/utils/broker-share.ts', 'utf8'))
+    const seat = s.indexOf('await canOperateStore(DB, terms.brokerUserId, p.sellerId)')
+    expect(seat).toBeGreaterThan(0)
+    expect(s.indexOf('INSERT OR IGNORE INTO influencer_attributions')).toBeGreaterThan(seat)
+    expect(s.slice(seat, seat + 200)).toMatch(/if \(!seat\.ok\) return \{ credited: 0/)
+  })
+})
+
 describe('③ 배선', () => {
   const src = (p: string) => stripComments(readFileSync(p, 'utf8'))
   it('바우처 회수 SSOT 가 원장 역전을 부른다', () => {

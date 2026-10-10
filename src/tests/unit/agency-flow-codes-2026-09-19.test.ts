@@ -24,6 +24,7 @@ import { redeemInfluencerCode, resolveCodeCommissionPct } from '@/worker/utils/i
 import {
   validateBrokerTerms, calcBrokerShareAmount, creditBrokerShare, saveBrokerTerms, readBrokerTerms,
 } from '@/worker/utils/broker-share'
+import { grantOperator } from '@/worker/utils/seller-operators'
 
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as typeof import('node:sqlite')
 type Db = InstanceType<typeof DatabaseSync>
@@ -211,6 +212,8 @@ describe('④ 중개사 몫 — 요율 검증·적립·멱등·게이트', () =>
     db.prepare(`INSERT INTO platform_settings (key, value) VALUES ('broker_share_enabled', 'true')`).run()
     await saveBrokerTerms(DB, 1, { brokerUserId: 100, sharePct: 10, capPct: 5 })
     expect(await readBrokerTerms(DB, 1)).toEqual({ brokerUserId: 100, sharePct: 10, influencerCapPct: 5 })
+    // 🪑 2026-10-10: 적립은 지금 그 매장 좌석이 있는 중개사에게만 — 중개 등록이 주는 operator 좌석을 재현한다.
+    await grantOperator(DB, 1, 100, 100, 'operator')
     const p = { sellerId: 1, orderId: 501, orderNumber: 'GB-1', productId: 7, totalAmount: 10000, refundWindowDays: 7 }
     const first = await creditBrokerShare(DB, p)
     expect(first).toEqual({ credited: 1000, brokerUserId: 100 })
