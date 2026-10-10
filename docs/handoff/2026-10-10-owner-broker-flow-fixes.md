@@ -55,3 +55,16 @@
 
 **2번 · 카카오 채널 챗봇으로 조회·간단 조작** — 워크트리 에이전트가 별도로 만드는 중
 (`docs/handoff/2026-10-10-kakao-bot-store-ops.md` 로 남긴다). 켜는 것은 대표 액션(카카오비즈니스 오픈빌더).
+
+## 합류 (2026-10-11 02:30 KST) — 워크트리 에이전트 3건을 이 브랜치로 체리픽
+
+- 보안(좌석 회수) `b07516c7c` · 카카오 챗봇 `7cebc35e6` · 정산 6건 `68efb0a0f`..`ef0b699b2`
+  (상세: `2026-10-10-kakao-bot-store-ops.md` · `2026-10-10-money-audit-payout-fixes.md`)
+- 합칠 때 고친 것: 챗봇 대시보드 API 가 `resolveStoreActor` 를 옛 시그니처(DB 없음)로 부르고 있었다(보안 커밋이 DB 필수로 바꿈)
+  → tsc 에러. 그리고 챗봇 연결 후보에 **좌석 토큰의 사람**(`resolveTokenActorUserId`)을 추가 — `/store/new` 사장님은
+  `linked_user_id` 가 비어 있어 연결 코드를 못 받을 뻔했다.
+- 💰 정산 6건은 **머니 경로(결재 C)** — 게이트·설정 변경 0, 코드만. E4 는 staging 실결제(그 인계 문서 첫 액션).
+
+### 대표 판단 대기 (추가)
+- 챗봇 경로의 사용 처리 때 **손님에게 "사용됨" 알림톡을 보낼지** — 계산대 스캔은 보내는데 챗봇은 안 보낸다(부정사용 신호 약화).
+- 챗봇 켜기: 카카오비즈니스 오픈빌더 생성·스킬 연결 → env `KAKAO_SKILL_SECRET` → staging S-KAKAOBOT → `kakao_bot_store_ops_enabled=true`.
