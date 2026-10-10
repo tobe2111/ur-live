@@ -18,6 +18,7 @@ import { startDashboardSession } from '@/worker/utils/dashboard-session';
 import { encryptAtRest } from '@/worker/utils/data-crypto';
 import type { AuthResponse, KakaoLoginResponse } from '../types';
 import { rateLimit } from '@/worker/middleware/rate-limit';
+import { findOwnerSeatSellerId, ownerGrantSeat } from '@/worker/utils/seller-operators';
 
 /**
  * 카카오 로그인 완료 시 linked seller / agency 있으면 자동 JWT 발급.
@@ -39,9 +40,22 @@ export async function issueLinkedRoleTokens(
     (async () => {
   try {
     // 🛡️ 2026-05-27: username 도 SELECT — KakaoCallback 이 seller_username localStorage 저장 → BottomNav 직접 /profile/{username} navigate.
-    const seller = await DB.prepare(
+    let seller = await DB.prepare(
       'SELECT id, username, status, business_name, email, name, seller_type, is_distributor FROM sellers WHERE linked_user_id = ?'
     ).bind(userId).first<{ id: number; username: string; status: string; business_name: string; email: string; name: string; seller_type: string; is_distributor: number }>()
+    // 🪑 2026-10-10 (조회 통일 ④ — 대표 *"모두 고치고"*): `/store/new` 사장님은 `linked_user_id` 가 비어 있고
+    //   `seller_operators(role='owner')` 로 주인이다. 위 조회만 보면 로그인해도 셀러 토큰이 안 나왔다.
+    //   linked 가 없을 때만 주인 좌석을 보고, 그 토큰은 매장 전환 API 와 **같은 시트·클레임**을 쓴다.
+    let ownerGrant = false
+    if (!seller) {
+      const grantId = await findOwnerSeatSellerId(DB, userId)
+      if (grantId) {
+        seller = await DB.prepare(
+          'SELECT id, username, status, business_name, email, name, seller_type, is_distributor FROM sellers WHERE id = ?'
+        ).bind(grantId).first<{ id: number; username: string; status: string; business_name: string; email: string; name: string; seller_type: string; is_distributor: number }>()
+        ownerGrant = !!seller
+      }
+    }
     if (seller) {
       // 🛡️ 2026-05-27: 시드 default 이름 ('메인 판매자', '셀러') 면 카카오 nickname 으로 1회 sync.
       //   idempotent — 사용자가 직접 이름 변경한 후엔 sync 안 함 (placeholder 매칭 X).
@@ -69,10 +83,13 @@ export async function issueLinkedRoleTokens(
           is_distributor: seller.is_distributor ? 1 : 0, // 🛡️ 도매 가드(deposits/상세)용 — 토큰에도 동봉
           iat: Math.floor(Date.now() / 1000),
           exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60, // 🛡️ 2026-04-30: 7일 → 30일
+          ...(ownerGrant ? ownerGrantSeat(userId).claims : {}),
         }
         out.seller_token = await jwtSign(payload, jwtSecret)
         // 🔐 단일 세션 강제 — 카카오 로그인 셀러도 단일 세션 시트(seller) 갱신.
-        await startDashboardSession(DB, 'seller', seller.id, payload.iat)
+        //   주인 좌석(grant)은 매장 전환 API 와 같은 시트('seller_operator', userId) — 갈리면 서로 튕긴다.
+        if (ownerGrant) { const g = ownerGrantSeat(userId).seat; await startDashboardSession(DB, g.role, g.id, payload.iat) }
+        else await startDashboardSession(DB, 'seller', seller.id, payload.iat)
       }
     }
   } catch { /* sellers 테이블 없거나 linked_user_id 컬럼 없음 — skip */ }

@@ -266,6 +266,46 @@ export async function findOwnedApprovedSeller(
 }
 
 /**
+ * 🪑 `linked_user_id` 로 못 찾았을 때 — 이 유저가 **주인(owner)** 좌석을 가진 매장 id.
+ *
+ * ## 왜 필요한가 (2026-10-10 대표 *"모두 고치고"* — 조회 통일 ④)
+ * `/store/new` 는 설계상 `linked_user_id` 를 비우고 `seller_operators(role='owner')` 로 소유권을 준다.
+ * 그런데 옛 단일 좌석 경로 셋 — `GET /my-seller-status` · `POST /switch-to-seller` · 카카오 로그인의
+ * `issueLinkedRoleTokens` — 은 `WHERE linked_user_id = ?` 하나만 봐서, **직접 등록한 사장님을
+ * "셀러 아님"으로** 봤다(대기 화면이 "새로 등록하세요"를 띄우고, 로그인해도 셀러 토큰이 안 나온다).
+ *
+ * ## 규칙
+ * - 호출부가 먼저 `linked_user_id` 를 본다(그쪽이 이기는 것은 `listOperableStores` 와 같다).
+ * - 여기서는 **`role='owner'` 만**이다 — operator(중개)는 볼 수 있는 매장을 넓힐 뿐이고, 옛 경로가
+ *   "내 셀러 계정"을 묻는 자리에 남의 가게를 내밀면 안 된다(`findOwnedApprovedSeller` 와 같은 이유).
+ * - 여럿이면 가장 먼저 받은 좌석. 매장 선택은 마이의 좌석 목록(`listOperableStores`)이 한다.
+ * - 조회 실패는 `null` — 종전 동작("없음")으로 되돌아간다.
+ */
+export async function findOwnerSeatSellerId(DB: D1Database, userId: number): Promise<number | null> {
+  if (!Number.isFinite(userId) || userId <= 0) return null
+  const row = await DB.prepare(
+    `SELECT o.seller_id FROM seller_operators o
+       JOIN sellers s ON s.id = o.seller_id
+      WHERE o.user_id = ? AND o.role = 'owner' AND o.revoked_at IS NULL
+      ORDER BY o.granted_at, o.seller_id LIMIT 1`,
+  ).bind(userId).first<{ seller_id: number }>().catch(() => null)
+  const id = Number(row?.seller_id)
+  return Number.isFinite(id) && id > 0 ? id : null
+}
+
+/**
+ * 🪑 위 함수로 찾은 좌석(주인이지만 `linked_user_id` 가 아닌 경우)에 토큰을 줄 때의 **시트·클레임** —
+ * `POST /stores/:id/token` 의 `access.source === 'grant'` 분기와 **같은 값**이다. 두 벌이면 같은 사장님이
+ * 들어오는 길에 따라 다른 시트를 받아, 한쪽으로 들어가는 순간 다른 쪽이 튕긴다(단일 세션).
+ */
+export function ownerGrantSeat(userId: number): {
+  claims: { operator_user_id: number; store_role: 'owner' }
+  seat: { role: 'seller_operator'; id: number }
+} {
+  return { claims: { operator_user_id: userId, store_role: 'owner' }, seat: { role: 'seller_operator', id: userId } }
+}
+
+/**
  * 🪑 이 매장의 **주인 user id** — `store-handover-guard.resolveCurrentOwner` 와 **같은 규칙**이다.
  * (한쪽만 고치면 "손바뀜은 막는데 출금은 남이 한다" 같은 어긋남이 생긴다 —
  *  `store-owner-signal.test.ts` 가 두 자리를 함께 고정한다.)

@@ -77,3 +77,11 @@
   (옛 폼 대신 — 중복 매장은 카카오 플레이스 409 로 막히고 "내가 등록한 매장인지 확인하기" 로 이어진다).
 - ⚠️ 셀러 가이드 시드가 아직 `/seller/register/business` + "승인 1~2일" 을 안내한다(리다이렉트로 동작은 함) — 미수정.
 - E4: 배포 후 staging/라이브에서 (a) 약관 미동의 등록 400 (b) `terms_consents` 1행 (c) 중개 등록 → 패널 → 링크 → 조건 동의 → 신청.
+
+## 2026-10-10 (밤) — 조회 통일 ④ + 셀러 가이드 (대표 "모두 고치고")
+- **④ 조회 통일**: 카카오 로그인 `issueLinkedRoleTokens`·`GET /my-seller-status`·`POST /switch-to-seller` 가
+  `linked_user_id` 다음에 **주인(owner) 좌석**(`findOwnerSeatSellerId`)을 본다. 토큰·시트는 매장 전환 API
+  grant 분기와 같은 값(`ownerGrantSeat`). operator 는 절대 안 잡힌다. 잠금 파일 → CLAUDE.md audit log 기록.
+  가드 `legacy-seller-lookup-owner-seat-2026-10-10.test.ts` + 주입 6건(전부 빨간불 확인).
+- **셀러 가이드**: '신규 셀러'를 `/store/new` 한 문 흐름으로, 재로그인 설명 갱신. `GUIDE_SEED_VERSION` 39→40.
+- ⚠️ 못 잰 것: 라이브 직접 등록 사장님 계정으로 카카오 로그인 → 셀러 토큰 수신(로그인 세션 필요).
