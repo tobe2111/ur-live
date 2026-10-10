@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { cfImageOnError } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
@@ -10,6 +10,7 @@ import {
   HERO_TILE_W,
   HERO_STRIP_EAGER,
   HERO_STRIP_PRELOAD,
+  HERO_STRIP_WARM_TIMEOUT_MS,
   type HeroTile,
 } from '@/shared/home-hero-strip'
 
@@ -64,9 +65,23 @@ function Tile({ tile, eager, priority, clone }: { tile: HeroTile; eager: boolean
         alt=""
         width={HERO_TILE_W}
         height={HERO_TILE_H}
-        /* 🚦 앞 5장만 먼저 — 밴드에 처음부터 보이는 건 최대 4.5장이다. 나머지는 한 바퀴 도는
-           동안 필요해지므로 lazy 로 미룬다(트래픽 근거는 SSOT 머리말). 둘째 벌은 전부 lazy 이고
-           같은 URL 이라 캐시 적중 — 추가 다운로드 0. */
+        /**
+         * 🚦 앞 5장만 **먼저** — 밴드에 처음부터 보이는 건 최대 4.5장이다(트래픽 근거는 SSOT 머리말).
+         *
+         * 🔴 2026-10-10 (대표 *"지금 메인에서 이용권 사진 안나오는 문제 해결해줘. 영구적으로"*):
+         *   나머지를 `lazy` 로 둔 것이 **사진이 안 나오는 바로 그 원인**이었다. 이 띠는 마퀴라
+         *   한 바퀴(약 34초) 안에 **모든 타일이 반드시 화면에 온다** — 그런데 `lazy` 는 *화면에
+         *   들어온 뒤에야* 받기 시작하므로, 그 타일은 받는 동안 **대표색 사각형으로 먼저 보인다.**
+         *   브라우저 실측(1440×900, 캐시 끔):
+         *   ```
+         *     빠른 회선        140프레임 중   9 (6%)  빈 타일 최대 1장
+         *     800kbps/500ms   140프레임 중 118 (84%) 빈 타일 최대 **4장** ← 대표 화면 그대로
+         *   ```
+         *   ⇒ **markup 은 그대로 두고**, 부모가 첫 페인트 뒤 한가할 때 나머지 URL 을 캐시에
+         *     미리 넣는다(아래 `warmUrls` 주석 — 속성을 eager 로 바꾸는 길은 실측에서 막혔다).
+         *     바이트는 그대로다 — 어차피 34초 안에 받는 것을 *언제* 받느냐만 바뀐다.
+         *     둘째 벌은 같은 URL 이라 캐시 적중(추가 다운로드 0).
+         */
         loading={eager ? 'eager' : 'lazy'}
         fetchPriority={priority ? 'high' : 'low'}
         decoding="async"
@@ -118,6 +133,64 @@ function Tile({ tile, eager, priority, clone }: { tile: HeroTile; eager: boolean
 
 export default function HeroDealStrip({ tiles }: { tiles: HeroTile[] }) {
   const loop = useMemo(() => buildHeroStripLoop(tiles), [tiles])
+
+  /**
+   * 🔥 **한가해지면 나머지 타일을 미리 받아 둔다** (2026-10-10 — 대표 *"메인에서 이용권 사진
+   * 안나오는 문제 해결해줘. 영구적으로"*).
+   *
+   * 마퀴는 사용자가 스크롤하지 않아도 모든 타일을 화면으로 데려온다. 그래서 `loading="lazy"` 는
+   * 여기서 *"필요할 때 받는다"* 가 아니라 **"이미 늦었을 때 받는다"** 가 된다 — 타일은 받는 동안
+   * 반드시 대표색 사각형으로 먼저 보인다. 브라우저 실측(1440×900 · 캐시 끔 · 35초=140프레임):
+   * ```
+   *   빠른 회선         빈 타일이 보이는 프레임   9 (6%)   동시 최대 1장
+   *   2 Mbps/120ms                            9 (6%)   동시 최대 1장
+   *   800 kbps/500ms                        118 (84%)  동시 최대 **4장**  ← 대표 신고 화면
+   * ```
+   *
+   * 🩸 **처음엔 `loading` 을 lazy→eager 로 접으려 했는데 실측에서 뒤집혔다.** 크로미움은 속성이
+   *   바뀌어도 **보류된 lazy 로드를 시작하지 않는다**(`loading` 프로퍼티·`setAttribute`·
+   *   `removeAttribute`·같은 값 `src` 재대입 — **넷 다 요청 0건**). 명세의 "lazy load resumption"
+   *   을 믿고 그냥 갔으면 markup 만 바뀌고 증상은 그대로였을 것이다.
+   * ⇒ 대신 **바이트를 캐시에 미리 넣는다**(`new Image()`). 같은 URL 이라 타일이 화면에 들어올 때는
+   *   캐시 적중이다. 실측(800kbps/500ms, 같은 URL): **화면 진입 → 그려지기 980ms → 59ms**,
+   *   네트워크 요청은 **1회 그대로**(워밍분을 재사용한다).
+   *
+   * ⚠️ 첫 페인트는 **한 글자도 안 바뀐다** — markup 은 종전 그대로이고, 워밍은 `requestIdleCallback`
+   *   뒤에 시작한다. 총 바이트도 그대로다(어차피 한 바퀴 안에 받는 것을 *언제* 받느냐만 바뀐다).
+   * ⚠️ **데이터 절약 모드면 안 한다** — `cf-image` 가 이미 존중하는 신호와 같은 판단이다.
+   */
+  const warmUrls = useMemo(() => {
+    const rest = loop ? loop.strip.slice(HERO_STRIP_EAGER) : []
+    return [...new Set(rest.map((t) => heroTileUrl(t.src) || t.src).filter(Boolean))]
+  }, [loop])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || warmUrls.length === 0) return
+    const conn = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection
+    if (conn?.saveData) return
+    let cancelled = false
+    const run = () => {
+      if (cancelled) return
+      for (const u of warmUrls) {
+        const img = new Image()
+        // 디코딩까지 서두르지 않는다 — 바이트만 캐시에 들어오면 된다.
+        img.decoding = 'async'
+        img.fetchPriority = 'low'
+        img.src = u
+      }
+    }
+    const w = window as Window & {
+      requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number
+      cancelIdleCallback?: (h: number) => void
+    }
+    if (w.requestIdleCallback) {
+      const h = w.requestIdleCallback(run, { timeout: HERO_STRIP_WARM_TIMEOUT_MS })
+      return () => { cancelled = true; w.cancelIdleCallback?.(h) }
+    }
+    const t = window.setTimeout(run, HERO_STRIP_WARM_TIMEOUT_MS)
+    return () => { cancelled = true; window.clearTimeout(t) }
+  }, [warmUrls])
+
   if (!loop) return null
   const { strip, loopPx, durationSec } = loop
 
