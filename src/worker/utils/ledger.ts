@@ -240,8 +240,8 @@ export async function recordVoucherUsedLedger(
  * 중개사는 나머지 95%에서 매장이랑 거래를 하는거지." 유어딜 몫에서 커미션이 나가면 안 된다.
  * 라이브 실측상 `introduced_by_agency_id` 는 전원 NULL 이라 실제로 지급된 적은 없다.
  *
- * ⚠️ 짝인 `recordIntroductionCommissionShare`(사람 영입)는 **그대로 산다** — 그건 별개 축이고
- *    2026-08-31 대표 확정으로 직접 입점 매장 전용이다.
+ * ⚠️ 짝인 `recordIntroductionCommissionShare`(사람 영입)도 **2026-10-10 대표 "몫 꺼줘" 로 기본 꺼짐**이다
+ *    (게이트 `influencer_intro_share_enabled`). 영입 보상은 결제 레일 2%(직접 입점 전용)만 남는다.
  */
 export async function creditUserCommission(
   DB: D1Database,
@@ -328,6 +328,15 @@ export async function recordIntroductionCommissionShare(
     platform_fee: number
   },
 ): Promise<{ influencer_id: number | null; amount: number }> {
+  // 🛑 2026-10-10 대표 *"몫 꺼줘"* — **기본 꺼짐.** 이 셰어는 유어딜 수수료(`platform_fee`)에서
+  //   떼어 영입자에게 준다. 그런데 직접 입점인지 보지 않고 모든 매장의 이용권 사용마다 돌았다
+  //   (2026-08-31 확정 "영입은 직접 입점에만"과 어긋남 — 그 확정은 결제 레일 2%에만 반영됐다).
+  //   켜려면 `platform_settings.influencer_intro_share_enabled = 'true'` 를 **명시**로 넣는다.
+  //   조회 실패도 꺼짐이다 — 모르는데 주는 쪽이 안 주는 쪽보다 비싸다.
+  const introOn = await DB.prepare(
+    "SELECT value FROM platform_settings WHERE key = 'influencer_intro_share_enabled'",
+  ).first<{ value: string }>().catch(() => null)
+  if (introOn?.value !== 'true') return { influencer_id: null, amount: 0 }
   await ensureLedgerTable(DB)
   const ref = `voucher:${params.voucher_id}:intro-inf`
   const existing = await DB.prepare(

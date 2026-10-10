@@ -85,3 +85,10 @@
   가드 `legacy-seller-lookup-owner-seat-2026-10-10.test.ts` + 주입 6건(전부 빨간불 확인).
 - **셀러 가이드**: '신규 셀러'를 `/store/new` 한 문 흐름으로, 재로그인 설명 갱신. `GUIDE_SEED_VERSION` 39→40.
 - ⚠️ 못 잰 것: 라이브 직접 등록 사장님 계정으로 카카오 로그인 → 셀러 토큰 수신(로그인 세션 필요).
+
+## 🔗 매칭 G1·G2 (2026-10-10 대표 *"1. 고쳐줘 2. 몫 꺼줘"*) — [E2]
+
+- **G1 딜 링크 귀속**: 딜 공유 링크(`/pass/{id}?ref=` · `/s/{seller}?ref=`)는 `affiliate_ref` 에 소개자를 심고 `lib/api.ts` 가 모든 요청에 `X-Affiliate-Ref` 를 싣는데, 이용권 구매(`/join`·`/confirm-toss`·`/cart/init`)는 본문 `ref`(=`?seller=` 저장소)만 읽어 **딜 커미션이 안 붙었다**. `pickGbRefSource`(gb-purchase-guards) — 본문→헤더→쿠키. `/confirm-toss`·장바구니 자기귀속도 `/join` 과 같은 `isSelfReferral` 로. 커미션은 활성 딜이 있을 때만이라 지급 조건 불변. **staging S-MATCH 필수**(머니 경로).
+- **G2 영입 셰어 꺼짐**: `recordIntroductionCommissionShare`(이용권 사용 시 수수료 20%) 첫 줄에 게이트 `influencer_intro_share_enabled`(명시 'true' 만 켬, 기본·조회실패 = 꺼짐). OPS_GATES 에 "켜지 않는다" 로 등록. 결제 레일 영입 2%(직접 입점 전용)는 그대로.
+- 가드 `matching-ref-and-intro-off-2026-10-10.test.ts` 11건 + 주입 `scripts/mutations/matching-ref.mjs` 7건 전부 빨간불 확인. 전체 유닛 864파일 통과(ops-gate-reachable 1건은 "켜지 않는다" 명시로 해소).
+- **남은 것(매칭 화면)**: 인플루언서→매장 딜 신청은 API(`POST /api/influencer-settlement/deals/propose`)만 있고 버튼 없음 · `/influencer/discover` 지역 필터 없음 · 매장 쪽 고르는 화면(`InfluencerPicker`)은 서버가 `region` 을 받는데 안 보냄 · 옛 `/seller/marketing` 은 사용자 id 를 손으로 치게 하는 중복 화면. 대표 판단 대기.

@@ -21,7 +21,7 @@
  * `platform_settings.voucher_cart_enabled = 'true'` 라야 열린다. 머니 경로라 **staging 실결제 전에는
  * 켜지 않는다**(CLAUDE.md). 꺼져 있으면 이 레일은 존재하지 않는 것과 같고, 단일 구매는 무영향이다.
  */
-import { Hono } from 'hono'
+import { Hono } from 'hono'; import { getCookie } from 'hono/cookie'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { recordLedger } from '@/worker/utils/ledger'
@@ -30,7 +30,7 @@ import { resolveUserIdString } from '@/worker/utils/resolve-user-id'
 import { getCommissionRates } from './commission-rates'
 import { getSellerCommissionRate, generateUniqueVoucherCode, applyGroupBuyReferral } from './helpers'
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
-import { resolveGbOrderNumber, guardAwaitingDeposit } from './gb-purchase-guards'
+import { resolveGbOrderNumber, guardAwaitingDeposit, pickGbRefSource, isSelfReferral } from './gb-purchase-guards'
 import { resolvePartialDealPlan, derivePartialDeal, spendPartialDeal, recordOrderDealUsed, restorePartialDeal } from './partial-deal'
 import { normalizeCartLines, priceCartLines, cartOrderName, type PricedLine } from './cart-lines'
 import { saveCartIntent, loadCartIntent, markCartIntentConsumed } from './cart-intent'
@@ -54,7 +54,7 @@ const GATE_OFF = { success: false, error: '장바구니 결제는 아직 준비 
 /** 소개(ref) 정규화 — 단일 경로와 같은 형식 검증. 본인 귀속은 `applyGroupBuyReferral` 이 거른다. */
 async function normalizeRef(DB: D1Database, raw: unknown, userId: string): Promise<string> {
   const s = raw ? String(raw).trim() : ''
-  if (!s || !/^[a-zA-Z0-9_\-:]{1,64}$/.test(s) || s === userId) return ''
+  if (!s || !/^[a-zA-Z0-9_\-:]{1,64}$/.test(s) || await isSelfReferral(DB, s, userId)) return '' // 🔗 단건 /join 과 같은 자기귀속 판정
   const exists = await DB.prepare(
     'SELECT 1 FROM sellers WHERE id = ? UNION ALL SELECT 1 FROM users WHERE id = ? LIMIT 1',
   ).bind(s, s).first().catch(() => null)
@@ -109,7 +109,7 @@ cartCheckoutRoutes.post('/cart/init', rateLimit({ action: 'gb_cart_init', max: 1
       clientKey: tossKey,
       flow,
       items: priced.lines.map(l => ({ productId: l.productId, qty: l.qty, unitPrice: l.unitPrice, subtotal: l.subtotal, name: l.name })),
-      ref: await normalizeRef(DB, body.ref, userId) || null,
+      ref: await normalizeRef(DB, pickGbRefSource(body.ref, c.req.header('X-Affiliate-Ref'), getCookie(c, 'affiliate_ref')), userId) || null, // 🔗 딜 링크 귀속 — 단건과 같은 출처
     },
   })
 })
