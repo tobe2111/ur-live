@@ -212,7 +212,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
         </button>
         {/* 🩹 본문만 스크롤한다 — 닫기(X)·그래버는 패널에 고정되어 스크롤 밖에 남는다.
             `flex-1 min-h-0` 없이 `overflow-y-auto` 만 주면 flex 자식이 안 줄어들어 스크롤이 안 생긴다(레포 룰). */}
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain">
           <p className="text-center text-[17px] font-extrabold tracking-tight text-gray-900 dark:text-white mb-1">{voucher.product_name}</p>
           {voucher.restaurant_name && (
             <p className="flex items-center justify-center gap-1 text-center text-[12px] text-gray-500 dark:text-gray-400 mb-4">
@@ -243,7 +243,10 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
                   "유어딜 이용권"인 걸 바로 안다. **QR 밖** 오른쪽 아래 모서리에 걸쳐 두어 스캔을 가리지 않는다.
                   사용 완료·만료면 빠진다(그때는 도장이 그 자리의 주인공이다). */}
               {!isUsed && !isExpired && (
-                <Udal mood="showQr" size={52} className="absolute -right-11 -bottom-3" />
+                // 🩸 2026-10-10 (대표 신고 "잘리고 있네"): 종전 `-right-11` 은 카드 **오른쪽 바깥**으로 44px 나갔는데,
+                //   카드가 시트 폭을 꽉 채우는 화면(PC 320px 시트)에선 그 자리가 스크롤 상자 밖이라 유달이가 잘리고
+                //   가로 스크롤바까지 생겼다. ⇒ 카드 **아래** 오른쪽 모서리에 걸친다(가로로는 카드 안 · QR 은 안 가림).
+                <Udal mood="showQr" size={44} className="absolute right-0 top-full -mt-3" />
               )}
               {/* 🛡️ 2026-05-16 → 2026-07-06 (대표 "QR 위에 사용 완료 도장처럼 박기"): 사용/만료 시
                   고무도장 스타일 오버레이 — 비스듬히 박힌 이중 테두리 스탬프 + QR grayscale(위 div) 로

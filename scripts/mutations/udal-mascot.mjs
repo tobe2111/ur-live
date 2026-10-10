@@ -85,4 +85,12 @@ export default [
     test: TEST,
     why: '선물을 받는 첫 화면에 오류 얼굴이 뜬다.',
   },
+  {
+    name: '🦦 QR 시트 유달이가 다시 카드 오른쪽 바깥으로 나간다',
+    file: 'src/pages/my-vouchers/QRModal.tsx',
+    find: 'className="absolute right-0 top-full -mt-3"',
+    replace: 'className="absolute -right-11 -bottom-3"',
+    test: TEST,
+    why: '카드가 시트 폭을 꽉 채우는 PC 시트에서 유달이가 잘리고 가로 스크롤바가 생긴다(2026-10-10 대표 신고).',
+  },
 ]
