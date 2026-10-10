@@ -46,6 +46,8 @@ import { readStoreReferrer, clearStoreReferrer } from '@/utils/store-referrer'
 import { enterStoreSeat } from '@/utils/enter-store'
 import { toast } from '@/hooks/useToast'
 import { Loader2, MapPin, CheckCircle2, XCircle, BadgeCheck, FileImage, ArrowLeft, X } from 'lucide-react'
+import ManualPlaceForm from './ManualPlaceForm'
+import { TERMS_CURRENT_VERSION } from '@/pages/terms/terms-types'
 
 export interface RegisterPlace {
   id?: string
@@ -80,7 +82,9 @@ interface Props {
    * 호출부가 "등록됐어요" 라고 말하면 거짓말이 되므로 문구를 가를 수 있게 알려 준다.
    * (인자를 안 읽는 기존 호출부는 그대로 동작한다.)
    */
-  onDone: (sellerId?: number, opts?: { existing?: boolean }) => void
+  onDone: (sellerId?: number, opts?: { existing?: boolean; ownerClaimCode?: string | null }) => void
+  /** 📋 영입자 초대(`?prospect=`)가 준비해 둔 담당자 번호 — 빈 칸일 때만 채운다(2026-10-10). */
+  initialManagerPhone?: string
   /**
    * 배경(어두운 여백)을 눌렀을 때 닫을지. 기본 `true` — 대시보드에서 목록 위에 겹쳐 뜰 때는
    * 바깥 클릭으로 닫히는 게 맞다(뒤에 돌아갈 화면이 보인다).
@@ -112,7 +116,7 @@ const STEPS = [
   { key: 'business', title: '사업자등록증을 올려주세요 (선택)', hint: '지금 없으면 건너뛰어도 등록돼요. 다만 승인 전에는 메인에 노출되지 않아요' },
 ] as const
 
-export default function StoreRegisterModal({ initialPlace, onClose, onDone, dismissOnBackdrop = true, variant = 'overlay' }: Props) {
+export default function StoreRegisterModal({ initialPlace, onClose, onDone, dismissOnBackdrop = true, variant = 'overlay', initialManagerPhone }: Props) {
   const navigate = useNavigate()
   const [picked, setPicked] = useState<RegisterPlace | null>(initialPlace ?? null)
   const [showMap, setShowMap] = useState(!initialPlace)
@@ -121,11 +125,12 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
   //   둘 다 매장 몫(95%) 안에서 나가고, 케이스별 조정은 딜에서 한다. 비우면 0 / 상한 없음.
   const [brokerShare, setBrokerShare] = useState('')
   const [infCap, setInfCap] = useState('')
-  const [managerPhone, setManagerPhone] = useState('')
+  const [managerPhone, setManagerPhone] = useState(initialManagerPhone || '')
+  const [manual, setManual] = useState(false) // ✍️ 지도에 없는 가게 — 직접 적기(`ManualPlaceForm`)
+  // 📜 2026-10-10 (대표 "1,2,5번은 해주고"): 판매자 이용약관 동의 — 옛 가입 문엔 있고 이 문엔 없던 법적 공백.
+  const [termsAgreed, setTermsAgreed] = useState(false)
   const [bno, setBno] = useState('')
-  // 📄 2026-08-26 (대표 "당근마켓 플로우 정도로 하자"): 대표자명·개업일 **타이핑을 없앴다**.
-  //   사장님이 외워서 적을 값이 아니고(개업일은 검색으로도 나온다) 위조도 쉽다. 당근처럼
-  //   **등록증 사진**을 받고 사람이 심사한다(시안 05). 그 사진이 심사의 근거다.
+  // 📄 2026-08-26 (대표 "당근마켓 플로우"): 대표자명·개업일 타이핑 대신 **등록증 사진**을 받고 사람이 심사한다.
   const [certUrl, setCertUrl] = useState('')
   const [uploading, setUploading] = useState(false)
   const [nts, setNts] = useState<{ valid: boolean | null; message?: string } | null>(null)
@@ -174,7 +179,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
    * 회색 버튼만 두고 이유를 안 적으면 사장님은 무엇을 고쳐야 할지 모른다.
    */
   function blockReason(i: number): string | null {
-    if (i === 0) return picked ? null : '지도에서 매장을 선택해주세요'
+    if (i === 0) return picked ? null : manual ? '가게 이름을 적고 "이 가게로 진행" 을 눌러주세요' : '지도에서 매장을 선택해주세요'
     if (i === 1) {
       if (!managerPhone) return '휴대폰 번호를 입력해주세요'
       return managerOk ? null : '휴대폰 번호(01x)로 입력해주세요'
@@ -190,11 +195,8 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
       }
       return null
     }
-    // 📄 2026-09-21 (대표 "너 말대로 하자"): 등록증은 **선택**이다 — 여기서 막지 않는다.
-    //   막을 이유가 사라진 게 아니라 **막을 자리가 뒤로 옮겨졌다**: 승인 전에는 어차피 메인에
-    //   노출되지 않고(`approvedSellerProductSql`), 서류는 어드민이 승인할 때 본다.
-    //   마지막 단계에서 사진이 없다고 되돌려 보내면, 다 적은 사람을 그 자리에서 잃는다.
-    return null
+    // 📄 등록증은 **선택**(2026-09-21) — 막는 자리는 승인으로 옮겨졌다. 막는 것은 **약관 동의** 하나다.
+    return termsAgreed ? null : '판매자 이용약관에 동의해주세요'
   }
   // 🗺️ 지도가 보이는 단계인가 — 바디 스크롤을 끌지 정한다(위 주석)
   const mapStep = step === 0 && (!picked || showMap)
@@ -218,6 +220,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
         manager_phone: digitsOnly(managerPhone),
         business_number: bno.replace(/-/g, '') || undefined,
         business_cert_url: certUrl,
+        terms_agreed_version: TERMS_CURRENT_VERSION, // 📜 서버가 같은 규칙으로 다시 검사하고 기록한다
         // 🤝 2026-08-27: 소개자 초대 링크(`/store/new?ref=`)로 들어왔으면 그 사람에게 귀속된다.
         //   ⚠️ sessionStorage 를 거치는 이유 — 로그인이 필요한 페이지라 카카오를 다녀오면
         //   쿼리스트링이 날아간다. 그 사이 ref 를 잃으면 소개자가 보상을 못 받는다.
@@ -226,9 +229,11 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
       if (!r.data?.success) throw new Error(r.data?.error)
       clearStoreReferrer()
       toast.success(r.data.data?.message || '매장이 등록되었습니다')
-      // 🔑 사장님 승계 코드 — 매장 목록에도 뜨지만, 지금 이 자리에서 한 번 보여 준다(대행사가 곧 사장님께 보낼 값).
-      if (r.data.data?.owner_claim_code) toast.success(`사장님께 드릴 코드: ${r.data.data.owner_claim_code} (매장 관리에서 다시 볼 수 있어요)`)
-      onDone(Number(r.data.data?.seller_id) || undefined)
+      // 🔑 사장님 승계 코드 — 토스트 한 번으로 흘려보내면 대행사가 놓친다(2026-10-10). 페이지(`/store/new`)는
+      //   완료 화면에 **고정**으로 띄우고, 겹쳐 뜬 모달(대시보드)은 매장 목록이 그 코드를 늘 보여 주므로 토스트로 족하다.
+      const code: string | null = r.data.data?.owner_claim_code || null
+      if (code && !asPage) toast.success(`사장님께 드릴 코드: ${code} (매장 관리에서 다시 볼 수 있어요)`)
+      onDone(Number(r.data.data?.seller_id) || undefined, { ownerClaimCode: code })
     } catch (e: any) {
       // 🕳️ 이미 등록된 매장 — 종전엔 여기서 alert 하나 띄우고 끝(막다른 길)이었다.
       if (e?.response?.status === 409 && e?.response?.data?.code === 'STORE_EXISTS') {
@@ -400,7 +405,10 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
           */}
         <div className={`flex-1 min-h-0 px-4 pb-4 pt-1 ${mapStep ? 'flex flex-col overflow-hidden' : 'overflow-y-auto'}`}>
           {/* ① 카카오맵 지도 검색 — 선택하면 이름/주소/전화/좌표/플레이스 링크 자동입력 */}
-          {step === 0 && (
+          {step === 0 && manual && (
+            <ManualPlaceForm onCancel={() => setManual(false)} onDone={(p) => { setPicked(p); setManual(false); setShowMap(false) }} />
+          )}
+          {step === 0 && !manual && (
             picked && !showMap ? (
               <div className="p-3 rounded-lg bg-gray-50 border border-gray-200 flex items-start justify-between">
                 <div className="min-w-0">
@@ -421,6 +429,9 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
                   } : null}
                   onSelect={(p) => { setPicked(toRegisterPlace(p)); setShowMap(false) }}
                 />
+                <button type="button" onClick={() => setManual(true)} className="shrink-0 mt-2 text-[12px] text-gray-500 underline self-center">
+                  지도에 없는 가게예요 — 직접 적기
+                </button>
               </div>
             )
           )}
@@ -563,6 +574,15 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
         </div>
 
         <div className="p-4 border-t border-gray-100 shrink-0">
+          {last && (
+            <label className="flex items-start gap-2 mb-3 cursor-pointer">
+              <input type="checkbox" checked={termsAgreed} onChange={(e) => setTermsAgreed(e.target.checked)} className="mt-0.5 w-4 h-4 shrink-0 accent-brand" />
+              <span className="text-[13px] text-gray-700 leading-snug">
+                <b className="text-gray-900">유어딜 판매자 이용약관</b>에 동의합니다 (필수){' '}
+                <a href="/terms/seller" target="_blank" rel="noopener noreferrer" className="text-gray-500 underline">약관 보기</a>
+              </span>
+            </label>
+          )}
           <button
             onClick={() => (last ? void submit() : setStep(step + 1))}
             disabled={!!blocked || submitting}

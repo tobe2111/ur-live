@@ -61,3 +61,19 @@
 - ⚠️ 하네스는 `dist/client` 를 띄운다 — **소스 수정 후 `npx vite build` 를 먼저** 안 하면 옛 화면을 본다
   (이번에 한 번 옛 화면을 보고 헛판정할 뻔했다).
 - E4: 배포 후 대표가 마이에서 티켓을 눌러 스캐너가 뜨는지.
+
+## 🚪 가입 흐름 1·2·5 (대표 "1,2,5번은 해주고", 같은 날)
+- ① 옛 가입 주소 넷 + 영입자 초대 링크 → `/store/new`. 새 문이 넘겨받은 일: 영입 귀속(`store-signup-extras.ts`,
+  옛 규칙 byte-동일 · `?ref=` 귀속은 안 덮음) · 지도에 없는 가게(`ManualPlaceForm`) · 초대 프리필(담당자 번호).
+  옛 폼 파일(`SellerRegisterSupplierPage.tsx`)은 시안 세트·시험이 참조해 남겼다 — **라우트에 다시 붙이지 말 것**.
+- ② `/store/new` 마지막 단계 약관 동의 + 서버 400(`TERMS_REQUIRED`) + `terms_consents`(slug `seller`).
+- ⑤ 중개 등록 완료 → `BrokerHandoffPanel`(승계 코드·링크 고정). 사장님 `/store/find` → `BrokerTermsConsent`
+  (중개사 몫·상한 표시 + 동의 필수, 서버가 같은 조건인지 재확인 → 409 `BROKER_TERMS_REQUIRED`, `terms_consents`
+  slug `broker-terms`, version `share=X;cap=Y`). 지급 게이트·승인 로직 무변경.
+- 가드 `signup-one-door-2026-10-10.test.ts` 12건 + 주입 `scripts/mutations/signup-one-door.mjs` 7건(전부 빨간불 확인).
+  재조준: `store-new-page`(등록증 "사진 1장" → 선택) · `bizcert-optional` 주입 앵커.
+- ❗ **대표 승인 대기 — 4번**: 새 문 매장을 `my-seller-status`·`switch-to-seller`·카카오 `issueLinkedRoleTokens`
+  (잠금표) 가 못 찾는다 → 알림톡 "내 매장 관리하기"·셀러 로그인에서 사장님이 이제 `/store/new` 로 다시 온다
+  (옛 폼 대신 — 중복 매장은 카카오 플레이스 409 로 막히고 "내가 등록한 매장인지 확인하기" 로 이어진다).
+- ⚠️ 셀러 가이드 시드가 아직 `/seller/register/business` + "승인 1~2일" 을 안내한다(리다이렉트로 동작은 함) — 미수정.
+- E4: 배포 후 staging/라이브에서 (a) 약관 미동의 등록 400 (b) `terms_consents` 1행 (c) 중개 등록 → 패널 → 링크 → 조건 동의 → 신청.

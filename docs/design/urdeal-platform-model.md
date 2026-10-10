@@ -96,10 +96,10 @@
 >
 > | # | 단계 | 코드 실체 |
 > |---|---|---|
-> | 0 | 중개사가 셀러 대시보드 가입 | 셀러 계정 (별도 실체 없음) |
-> | 1 | 중개사가 매장 등록 + **중개사 몫 % · 인플루언서 상한 %** → **사장님 승계 코드** 자동 생성 | `POST /api/seller/stores` → `seller-broker-terms.routes` `finalizeBrokeredStore` · `store_codes(kind='owner_claim')` · `seller_meta.broker_*` |
+> | 0 | 중개사가 `/store/new` 에서 "중개·대행사에요" 선택 (별도 가입 화면 없음 — 소비자 계정 + 판매자 약관 동의) | 셀러 계정 (별도 실체 없음) |
+> | 1 | 중개사가 매장 등록 + **중개사 몫 % · 인플루언서 상한 %** → **사장님 승계 코드** 자동 생성 → 완료 화면에 **승계 링크 고정**(2026-10-10) | `POST /api/seller/stores` → `seller-broker-terms.routes` `finalizeBrokeredStore` · `store_codes(kind='owner_claim')` · `seller_meta.broker_*` · `BrokerHandoffPanel` |
 > | 2 | 어드민 매장 승인 (승인 전 등록은 되나 메인 미노출 — 09-16) | `sellers.status` · `approvedSellerProductSql` |
-> | 3·4 | 사장님이 가입하며 코드 입력 → 소유권 신청(등록증 확인·어드민 승인 그대로) → owner | `/store/find?code=` → `GET /store-claims/lookup-by-code` → `submitStoreClaim` → `store-ownership-transfer` |
+> | 3·4 | 사장님이 링크로 와서 **대행사 조건 확인·동의**(2026-10-10, 서버 재확인·`terms_consents` slug `broker-terms` 기록) → 소유권 신청(등록증 확인·어드민 승인 그대로) → owner | `/store/find?code=` → `GET /store-claims/lookup-by-code` → `submitStoreClaim` → `store-ownership-transfer` |
 > | 5 | 중개사(운영자)가 이용권 등록 | 매장 전환 토큰 · 운영자 게이트(`store-actor.ts`) |
 > | 6·7 | 중개사·매장이 **협업 코드**(기본 %·승인 필요·상한 사용 수) 발급 → 인플루언서가 링크(`/i/join/:code`) 또는 마이페이지에 입력 → 딜 활성 | `store_codes(kind='influencer')` · `marketing/collab-codes.ts` · `influencer-code-redeem.ts` → `seller_influencer_deals(proposed_by='code')` |
 > | 8 | 마이페이지에 **매장 링크**(`/s/{id}?ref=`, 7일 귀속) + 대표 이용권 링크 · 복사·공유 | `/api/influencer-settlement/my-stores` · `SellerPublicPage` ref 캡처 |
@@ -505,6 +505,7 @@ pre-commit + `verify.yml` + `audit-gate.sh` 가 결정론으로 강제(수동 �
 ---
 
 ## ✅ 구현 로그
+- 2026-10-10 **가입 문 하나**(대표 "1,2,5번은 해주고") — 옛 가입 주소 넷(`/seller/register` · `/signup` · `/register/business` · `/register/supplier`)과 영입자 초대 링크가 전부 `/store/new` 로. 새 문이 옛 문의 일 셋을 넘겨받음: 판매자 이용약관 동의(서버 400 + `terms_consents`) · 영입자 사전등록 귀속(`matchProspectOnSignup`, 옛 규칙 그대로) · 지도에 없는 가게 직접 적기. 중개: 승계 링크 고정 표시 + 사장님 조건 동의(돈 이동 0). 가드 `signup-one-door-2026-10-10` + 주입 7건. ⚠️ 남은 구멍: 새 문으로 만든 매장을 `my-seller-status`·`switch-to-seller`·카카오 `issueLinkedRoleTokens` 가 `linked_user_id` 만 봐서 못 찾는다(잠금 파일 포함 — 대표 승인 대기).
 - 2026-07-02 문서 신설 (마스터 SSOT) + Part II 시스템 상세(인증·결제·정산·주문·알림·크론·어드민·캐싱·보안·가드·장애) 확장. 개별 단계 완료 시 commit hash 기록.
 - 2026-09-19 대행사 확정 플로우(§2-1 🔑) — 매장 코드·협업 코드·딜 % 조정·인플루언서 수락·중개사 몫 직접 송금(게이트 OFF). PR #1499 → main `e3e182c`. **[E4] 라이브 판정 통과(2026-09-20 03:18 KST 배포분)** — 새 엔드포인트 6종 비인증 401 · 코드 미리보기 `NOT_FOUND` 정상 · `store_codes` 테이블 생성 · 게이트 `broker_share_enabled` 기본값(OFF) 노출 · 어드민 ⑩ 스위치 표시 · `/i/join/:code` 오류 화면 · `/store/find?code=` 로그인 왕복에 코드 보존 · `/s/:id?ref=` 7일 캡처. ⚠️ 셀러→인플루언서 코드 생애주기(발급→입력→수락)는 카카오 계정 3개가 필요해 대표 실사용 판정 대기(E5).
 - 2026-09-20 승인 대기 병목 해소 — 매장 좌석은 대기·반려도 앉고(정지만 제외) 정산(`payouts-generate`)은 승인 매장만(SSOT `shared/seller-status.ts`, 두 집합이 다른 것이 설계). 노출은 종전대로 승인 매장만. 어드민 승인이 위임 운영자에게도 통보. STAGING P15. 다음 단계 = S-OCR(등록증 OCR 자동 승인, 게이트 OFF). PR #1501 → main `a54e3e6`. **[E3] 배포됨(2026-09-20 22:55 KST 안팎)** — 라이브 `/api/version` 갱신 + 서빙 번들에 매장코드 보존 규칙 확인. **[E4] `?code=` 왕복 라이브 판정 통과** — 배포된 워커의 `/api/auth/kakao/start` 가 서명 state 에 싣는 리다이렉트를 디코딩해 대조: `?code=AB3K9QXP&auto=1` 보존 · `AB3K-9QXP` 보존 · `&evil=1` 제거 · `<script>`·`auto=2` 제거 · `?ref=777` 종전대로 보존. **[E5] 3계정 실사용 통과(같은 날, 이메일 API 계정 A/B/C · 테스트 매장 15~17)** — 대기 매장 좌석 200 · 협업 코드 `created_by`=유저 id · 사장님 코드 승계 · 인플루언서 즉시 활성 · 어드민 승인 → 운영자 알림. 정산 skip 은 매출 0 이라 P15 로 남는다. 그 과정에서 이메일 가입 500(PR #1503·#1504)과 등록증 가시성 갭(PR #1505)을 발견·수정.

@@ -36,6 +36,7 @@ import { registerVoucherDraftRoutes } from './seller-voucher-draft.routes'
 import { pickStoreChannel, registerStoreChannelRoutes } from './seller-store-channel.routes'
 import { registerStoreClaimRoutes } from './seller-store-claims.routes'; import { registerStoreReportRoutes } from './seller-store-reports.routes'
 import { registerBrokerTermsRoutes, prepareBrokerTerms, finalizeBrokeredStore } from './seller-broker-terms.routes' // 💸🔑 2026-09-19 요율·승계 코드
+import { storeTermsError, afterStoreCreated } from './store-signup-extras' // 📜🤝 2026-10-10 약관 동의 + 영입 귀속(유일한 가입 문)
 
 const app = new Hono<{ Bindings: Env }>()
 type Ctx = Context<{ Bindings: Env }>
@@ -341,6 +342,7 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
       /** 🤝 2026-08-27: 소개자 초대 링크(`/store/new?ref=`)로 들어온 경우의 소개자 user id. */
       referrer_user_id?: string
       broker_share_pct?: unknown; influencer_pct_cap?: unknown // 💸 2026-09-19 중개 매장 두 요율(결재 2026-09-16)
+      terms_agreed_version?: string // 📜 2026-10-10 판매자 이용약관 동의(옛 가입 문과 같은 검증)
     }>().catch(() => ({} as any))
 
     const name = String(b.name || '').trim()
@@ -350,6 +352,8 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
     }
     const brokerTerms = prepareBrokerTerms(b) // 💸 중개 매장 두 요율 — 행이 생기기 **전에** 검증(반쪽 등록 방지)
     if (brokerTerms && !brokerTerms.ok) return c.json({ success: false, error: brokerTerms.error }, 400)
+    const termsErr = storeTermsError(b.terms_agreed_version) // 📜 동의 없이는 행을 만들지 않는다(옛 문과 같은 규칙)
+    if (termsErr) return c.json({ success: false, code: 'TERMS_REQUIRED', error: termsErr }, 400)
     // 담당자 전화번호는 **필수** — 매장 뒤의 사람에게 닿는 유일한 경로다(승인 검토·사용 문의·정산 확인).
     // 선택으로 두면 아무도 안 넣고, 정작 필요한 순간엔 카카오맵에서 긁어 온 대표번호밖에 안 남는다.
     const managerPhone = normalizeManagerPhone(b.manager_phone)
@@ -481,10 +485,8 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
     /**
      * 🩸 2026-09-02 (전수조사) — **행이 만들어진 뒤의 실패는 앞의 실패와 성격이 다르다.**
      *
-     * 여기 아래 두 단계(`setSellerMeta` · `grantOperator`)는 아무 가드가 없어서, 하나라도 던지면
-     * 바깥 catch 가 잡아 **"매장 등록 중 오류가 발생했습니다"** 를 낸다. 그런데 `sellers` 행은
-     * **이미 만들어져 있다.** 사용자는 실패로 알고 다시 누르고 → **같은 가게가 두 번 등록**된다.
-     * (①의 UNIQUE 버그를 고치고 나면 재시도가 실제로 성공해 버리므로, 이 갭이 그때부터 진짜 문제다.)
+     * 아래 두 단계(`setSellerMeta` · `grantOperator`)가 던지면 바깥 catch 가 "매장 등록 중 오류" 를 내는데
+     * `sellers` 행은 **이미 있다** → 사용자가 다시 눌러 **같은 가게가 두 번 등록**된다.
      *
      * 둘의 무게가 다르므로 다르게 다룬다:
      *   • 메타(채널·좌표·플레이스) — **없어도 매장은 매장이다.** 나중에 프로필 수정으로 채워진다.
@@ -515,12 +517,9 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
     // 등록자 권한 — 직접=owner / 중개=operator(사장님 자리는 비워 둔다: owner 승계 3단계)
     const role = b.channel === 'direct' ? 'owner' : 'operator'
     /**
-     * 🩸 2026-09-16: 이 판정이 **실패할 수 없는 코드**였다 — `.then(() => true)`.
-     *   `grantOperator` 는 예외를 **스스로 삼키고** `{ ok: false, reason }` 로 **resolve** 한다.
-     *   그래서 `.catch` 는 영원히 안 걸리고 `granted` 는 항상 `true` 였다. 바로 위 주석이
-     *   "이게 실패하면 방금 만든 매장에 아무도 못 들어간다" 고 경고하며 세운 분기가,
-     *   정작 **그 상황에서 한 번도 실행될 수 없었다**(들어갈 수 없는 매장이 조용히 생긴다).
-     *   ⇒ 반환값 `.ok` 를 읽는다. `catch` 는 시그니처가 바뀌는 날을 위한 안전판으로만 남긴다.
+     * 🩸 2026-09-16: 이 판정이 **실패할 수 없는 코드**였다 — `grantOperator` 는 예외를 스스로 삼키고
+     *   `{ ok:false }` 로 resolve 하므로 `.then(() => true)` 는 늘 true 였다(들어갈 수 없는 매장이 조용히
+     *   생긴다). ⇒ 반환값 `.ok` 를 읽는다. `catch` 는 시그니처가 바뀌는 날의 안전판일 뿐이다.
      */
     const tryGrant = () => grantOperator(c.env.DB, newSellerId, userId, userId, role)
       .then((r) => !!r?.ok).catch(() => false)
@@ -536,6 +535,7 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
     }
 
     const ownerClaimCode = brokerTerms?.ok ? await finalizeBrokeredStore(c.env.DB, newSellerId, userId, brokerTerms) : null // 🔑 요율 저장 + 사장님 승계 코드(`/store/find?code=`)
+    await afterStoreCreated(c.env.DB, { sellerId: newSellerId, userId, termsVersion: String(b.terms_agreed_version), managerPhone, ip: c.req.header('CF-Connecting-IP') || null })
     return c.json({
       success: true,
       data: {
