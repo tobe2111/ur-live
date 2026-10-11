@@ -701,7 +701,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
         if (userRow?.phone) {
           c.executionCtx.waitUntil(
             sendBuyerVoucherIssuedAlimtalk(
-              c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
+              c.env,
               userRow.phone,
               { productName: product.name, restaurantName: (product as { restaurant_name?: string }).restaurant_name, qty, expiresAt: lastExpiresAt, categoryLabel: getVoucherShortLabel(product.category) },
             )
@@ -1270,7 +1270,7 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
           const userRow = await DB.prepare("SELECT phone FROM users WHERE id = ?").bind(userId).first<{ phone: string | null }>()
           if (userRow?.phone) {
             await sendBuyerVoucherIssuedAlimtalk(
-              c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
+              c.env,
               userRow.phone,
               { productName: product.name, restaurantName: (product as { restaurant_name?: string }).restaurant_name, qty, expiresAt, categoryLabel: getVoucherShortLabel(product.category) },
             )

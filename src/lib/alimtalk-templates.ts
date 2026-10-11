@@ -88,6 +88,10 @@ export const ALL_USED_ALIMTALK_TEMPLATES: readonly string[] = [
   // 📣 2026-07-21 크리에이터 잔존 장치 — 추천 링크 판매 시 실시간 적립 알림톡. 콘솔 등록·심사 대기
   //   (게이트 뒤: AFFILIATE_SALE_ALIMTALK_ENABLED). 문안: docs/kakao-alimtalk-templates.md.
   'affiliate_sale_credited',
+  // 📨 2026-10-11 이용권 알림 7종을 솔라피 → 알리고로 옮기며 코드를 붙였다(`lib/text-notice.ts`).
+  //   카카오 검수 전엔 문자로 나가고, 승인되면 어드민 `alimtalk_approved_templates` 에 적어 알림톡으로 넘긴다.
+  //   문안: docs/kakao-alimtalk-templates.md §이용권 알림(2026-10-11).
+  'voucher_issued', 'seller_first_voucher', 'seller_voucher_sold', 'seller_voucher_used', 'store_owner_stats_link',
   // 셀러 자체 Aligo 계정으로 나가는 브랜드메시지(alimtalk-auto.ts) — 플랫폼 발신 프로필 아님.
   //   각 셀러가 자기 채널에 등록. 플랫폼 콘솔 심사 대상 아님(참고용).
   'order_confirm', 'shipping_start', 'delivery_completed', 'low_stock_alert',

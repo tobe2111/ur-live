@@ -328,13 +328,13 @@ adminStoreOwnerRoutes.post('/store-owner-notices/send',
             : 'platform_settings.store_owner_notice_enabled 가 true 가 아닙니다.',
         }, 409)
       }
-      if (!env.ALIGO_API_KEY || !env.ALIGO_USER_ID || !env.ALIGO_SENDER_KEY || !env.ALIGO_SENDER_PHONE) {
+      if (!env.ALIGO_API_KEY || !env.ALIGO_USER_ID || !env.ALIGO_SENDER_KEY || !(env.ALIGO_SENDER_PHONE || env.ALIGO_SENDER)) {
         return c.json({ success: false, code: 'ALIGO_NOT_CONFIGURED', error: '알림톡 발송 설정이 비어 있습니다' }, 409)
       }
       const { sendAlimtalk } = await import('../../alimtalk/aligo')
       const r = await m.sendQueuedOwnerNotices(env.DB, {
         apikey: env.ALIGO_API_KEY, userid: env.ALIGO_USER_ID, senderkey: env.ALIGO_SENDER_KEY,
-        sender: env.ALIGO_SENDER_PHONE, tplCode: tpl, send: sendAlimtalk,
+        sender: (env.ALIGO_SENDER_PHONE || env.ALIGO_SENDER)!, tplCode: tpl, send: sendAlimtalk,
       }, { limit: intParam(c.req.query('limit'), 20) })
       return c.json({ success: true, data: r })
     } catch (err) {

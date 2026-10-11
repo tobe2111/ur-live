@@ -585,7 +585,7 @@ adminProductsRoutes.patch('/sample-requests/:id', cors(), async (c) => {
       return c.json({ success: false, error: '이미 처리된 신청입니다' }, 409);
     }
 
-    if (reqInfo?.seller_phone && c.env.ALIGO_API_KEY && c.env.ALIGO_USER_ID && c.env.ALIGO_SENDER_PHONE) {
+    if (reqInfo?.seller_phone && c.env.ALIGO_API_KEY && c.env.ALIGO_USER_ID && (c.env.ALIGO_SENDER_PHONE || c.env.ALIGO_SENDER)) {
       const { subject, message } = buildSampleApprovalMessage({
         sellerName: reqInfo.seller_name,
         productName: reqInfo.product_name,
@@ -597,7 +597,7 @@ adminProductsRoutes.patch('/sample-requests/:id', cors(), async (c) => {
         userid: c.env.ALIGO_USER_ID,
         senderkey: c.env.ALIGO_SENDER_KEY ?? '',
         tpl_code: c.env.ALIGO_TPL_SAMPLE_APPROVED ?? 'TBD',
-        sender: c.env.ALIGO_SENDER_PHONE,
+        sender: (c.env.ALIGO_SENDER_PHONE || c.env.ALIGO_SENDER)!,
         receiver_1: reqInfo.seller_phone.replace(/-/g, ''),
         recvname_1: reqInfo.seller_name,
         subject_1: subject,
