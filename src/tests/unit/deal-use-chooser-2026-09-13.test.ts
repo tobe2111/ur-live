@@ -114,19 +114,20 @@ describe('🔌 배선 — 고른 값이 서버까지 가는가', () => {
     expect(plan).toMatch(/requireAuth\(\)/)
   })
 
-  it('🔴 모바일 — 고르는 자리가 구매 버튼 **위**에 있다', () => {
-    // 아래에 두면 "누르고 나서 고르라"는 순서가 된다. 그리고 이 바는 fixed bottom-0 이라
-    // 아래로 자란 만큼이 모든 방문자의 화면을 영구히 먹는다.
-    // ⚠️ 페이지 전체에서 indexOf 하면 **PC 박스**가 먼저 잡혀 헛돈다(첫 판이 실제로 그랬다).
-    //    모바일 고정 바 구간만 잘라서 그 안의 순서를 본다(이제 그 바는 `DealBottomBar` 다).
-    const barAt = bottomBar.indexOf('fixed bottom-0 inset-x-0')
-    expect(barAt).toBeGreaterThan(-1)
-    const bar = bottomBar.slice(barAt)
-    const chooserAt = bar.indexOf('<DealUseChooser plan=')
-    const ctaAt = bar.indexOf('disabled={(!isJoinable && !isPrelaunch) || joining}')
+  it('🔴 모바일 — 고르는 자리가 결제 버튼 **위**에 있다', () => {
+    // 아래에 두면 "누르고 나서 고르라"는 순서가 된다.
+    // 🔁 2026-10-11 (대표 확정 "D안"): 바는 [가격][구매하기] 만 갖고, 수량·딜 사용·결제는 **구매 창**에서
+    //   고른다. 그래서 순서를 보는 구간이 바 → 창으로 옮겨갔다(불변식은 같다: 고르는 칸이 결제 버튼 위).
+    const sheetAt = bottomBar.indexOf('aria-label="구매 옵션"')
+    expect(sheetAt, '구매 창 앵커가 낡았다').toBeGreaterThan(-1)
+    const sheet = bottomBar.slice(sheetAt)
+    const chooserAt = sheet.indexOf('<DealUseChooser plan=')
+    const ctaAt = sheet.indexOf('onClick={() => onJoin()}')
     expect(chooserAt).toBeGreaterThan(-1)
     expect(ctaAt).toBeGreaterThan(-1)
     expect(chooserAt).toBeLessThan(ctaAt)
+    // 바 자체에는 고르는 칸이 없다(두 곳에 두면 어느 쪽이 진짜인지 흐려진다).
+    expect(bottomBar.slice(0, sheetAt)).not.toContain('<DealUseChooser plan=')
   })
 
   it('🔴 PC(lg+)도 고를 수 있다 — 우측 구매 박스가 같은 슬롯을 받는다', () => {

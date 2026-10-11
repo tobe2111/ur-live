@@ -53,9 +53,10 @@ export default [
     name: '🪙선택 고르는 자리가 구매 버튼 아래로 내려간다',
     // 🧺 2026-09-15: 모바일 바가 `DealBottomBar` 로 이사했다 — 성질은 그대로라 자리만 재조준.
     file: 'src/pages/group-buy/DealBottomBar.tsx',
-    find: `      <DealUseChooser plan={dealPlan} value={dealUse ?? defaultDealUse(dealPlan)} onChange={setDealUse} />
-      <button`,
-    replace: `      <button`,
+    // 🔁 2026-10-11 (D안): 고르는 칸이 바 → **구매 창**으로 옮겨갔다. 창에서 칸이 결제 버튼 앞에서 빠진다.
+    find: `          <div className="mt-3"><DealUseChooser plan={dealPlan} value={dealUse ?? defaultDealUse(dealPlan)} onChange={setDealUse} /></div>
+          <div className="mt-4 flex items-baseline`,
+    replace: `          <div className="mt-4 flex items-baseline`,
     test: 'src/tests/unit/deal-use-chooser-2026-09-13.test.ts',
     why:
       '모바일 결제 바에서 고르는 자리가 누르는 버튼 **아래**로 가면 순서가 거꾸로다. ' +

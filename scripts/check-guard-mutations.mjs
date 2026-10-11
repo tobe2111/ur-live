@@ -2369,8 +2369,8 @@ const MUTATIONS = [
     // 🔄 2026-09-15: 제목이 옮겨졌다. '딜 안내'(하드코딩 3줄) 블록이 사라지고 그 자리에
     //   실제 스펙표 `UsageGuide`(제목 '이용 안내')가 올라왔다 — 앵커를 그 파일로 옮긴다.
     file: 'src/pages/group-buy/UsageGuide.tsx',
-    find: ">이용 안내</div>",
-    replace: ">무엇을 기대하세요?</div>",
+    find: ">이용 안내</h2>",
+    replace: ">무엇을 기대하세요?</h2>",
     test: 'src/tests/unit/detail-page-plainness.test.ts',
     why:
       'What to expect 를 그대로 옮긴 제목이었다. 한국 커머스에선 아무도 그렇게 안 쓰고, ' +

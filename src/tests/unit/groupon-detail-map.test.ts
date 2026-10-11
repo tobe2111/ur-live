@@ -29,27 +29,17 @@ describe('이용권 상세 — 제목이 사진 위로 (대표 확정 1안)', ()
   })
 
   it('제목·가격이 PC 에서 두 벌로 나오지 않는다 (모바일 블록은 lg:hidden)', () => {
-    const s = code(DETAIL)
-    // 🩸 2026-08-31: 예전엔 `padding: '20px 18px 0'` 처럼 **패딩 값**에 앵커해 있었다. 그래서 대표가
-    //    "제목·가격 배치가 컴팩트하지 않다"고 해서 여백을 줄이자 **디자인 변경만으로 빨간불**이 났다.
-    //    지키려는 것은 여백이 아니라 "모바일 블록이 PC 에서 안 그려진다"이므로, 그 불변식만 본다.
-    //    ⇒ 제목(h1)과 가격(unitPrice)을 감싼 블록이 각각 lg:hidden 을 달고 있는지.
-    const anchors = [
-      { name: '제목', at: s.indexOf('>{detail.name}</h1>') },
-      // ⚠️ 닫는 태그까지 붙여야 유일하다 — 없이 쓰면 위쪽 **SEO 설명 문자열**의 같은 표현에 먼저 걸려
-      //    엉뚱한 자리를 검사하게 된다(이 레포에서 반복해 밟은 "첫 일치" 함정).
-      // 🔄 2026-09-15 (대표 확정 "안 B"): 가격이 세로 위계가 되며 `<span>` → `<div>` 로 바뀌었다.
-      //    앵커가 낡아 `-1` 이 됐고 전체 유닛에서 이 한 건만 빨간불이 났다 — 태그를 따라간다.
-      { name: '가격', at: s.indexOf('{formatNumber(unitPrice)}원</div>') },
-    ]
-    for (const a of anchors) {
-      expect(a.at, `${a.name} 블록을 못 찾았다 — 앵커가 낡았다`).toBeGreaterThan(0)
-      // ⚠️ "바로 앞 div" 로 보면 안 된다 — h1 은 안쪽 div 에 또 싸여 있어서 그 방법은 정상 코드도 빨갛게 만든다
-      //    (실제로 그렇게 짰다가 걸렸다). 앵커 직전 구간에 lg:hidden 이 있는지로 본다.
-      const win = s.slice(Math.max(0, a.at - 1500), a.at)
-      expect(win.includes('lg:hidden'), `${a.name} 블록이 lg:hidden 이 아니다 — PC 에서 두 벌로 나온다`).toBe(true)
-      expect(win.includes('hidden lg:block'), `${a.name} 앞에 PC 전용 블록이 끼어들었다`).toBe(false)
-    }
+    // 🔁 2026-10-11 (대표 확정 "D안"): 모바일 제목·가격이 머리 카드(`PassHeadCard`)로 옮겨갔다.
+    //   불변식은 그대로 — **모바일 블록은 PC 에서 안 그려진다**. 그 카드의 루트가 lg:hidden 을 단다.
+    const card = code('src/pages/group-buy/PassHeadCard.tsx')
+    expect(card).toContain('className={PASS_HEAD.card}')
+    expect(card).toContain('>{name}</h1>')
+    expect(card).toContain('{formatNumber(unitPrice)}원</span>')
+    const cls = /card:\s*'([^']+)'/.exec(code('src/shared/pass-head.ts'))
+    expect(cls, 'PASS_HEAD.card 를 못 찾았다').toBeTruthy()
+    expect(cls![1].split(/\s+/), '머리 카드가 lg:hidden 이 아니다 — PC 에서 제목·가격이 두 벌로 나온다').toContain('lg:hidden')
+    // 상세 페이지가 머리 카드 말고 자기 h1 을 또 그리지 않는다.
+    expect(code(DETAIL)).not.toMatch(/<h1 style=/)
   })
 
   it('제목 헤더는 PC 전용이다 (모바일은 사진이 먼저)', () => {
@@ -65,7 +55,8 @@ describe('이용권 상세 — 제목이 사진 위로 (대표 확정 1안)', ()
   it('구매 패널이 최종가를 스스로 말한다 — 할인율 pill + 정가 취소선', () => {
     const s = code('src/pages/group-buy/DealPurchaseBox.tsx')
     // PC 본문에서 가격 블록을 뺐으므로 여기가 유일한 가격 자리다.
-    expect(s).toMatch(/discountPct > 0[\s\S]{0,400}-\{discountPct\}%/)
+    // 🔁 2026-10-11 (D안 — PC 포함): 빨간 pill(`-28%`) → 머리 카드와 같은 빨간 글자(`28%`). 할인율을 말한다는 불변식은 그대로.
+    expect(s).toMatch(/discountPct > 0[\s\S]{0,200}var\(--sale\)[\s\S]{0,40}\{discountPct\}%/)
     expect(s).toMatch(/unitSaving > 0[\s\S]{0,300}<s[\s\S]{0,200}formatNumber\(refPrice\)/)
   })
 })

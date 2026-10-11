@@ -75,33 +75,36 @@ describe('상세 안 B — 같은 할인을 세 번 말하지 않는다', () => 
    *   그 문자열은 **카카오 공유 문구**에 먼저 나온다. 그래서 가격 블록이 아니라 공유 텍스트를
    *   검사하고 있었다(헬퍼가 경고한 "앵커를 안 잡으면 남의 코드를 검사한다"). 블록부터 앵커한다.
    */
+  // 🔁 2026-10-11 (대표 확정 "D안"): 모바일 가격이 머리 카드(`PassHeadCard`)로 옮겨가 **한 줄**
+  //   [할인율 · 판매가 · 정가 취소선] 이 됐다. 지키려던 것은 그대로 — **살 금액이 가장 크다** ·
+  //   할인율은 `--sale` · 정가는 취소선.
   const priceBlock = () => {
-    const src = readCode(GB)
-    const at = src.indexOf("style={{ padding: '12px 18px 16px' }}")
-    expect(at, '모바일 가격 블록 앵커가 낡았다').toBeGreaterThan(0)
-    const end = src.indexOf('결제 즉시 교환권 발급', at)
-    expect(end, '가격 블록 끝 앵커가 낡았다').toBeGreaterThan(at)
-    return src.slice(at, end)
+    const src = readCode('src/pages/group-buy/PassHeadCard.tsx')
+    const at = src.indexOf('formatNumber(unitPrice)')
+    expect(at, '머리 카드 가격 앵커가 낡았다').toBeGreaterThan(0)
+    const start = src.lastIndexOf('<div className="mt-4 flex items-baseline', at)
+    expect(start, '가격 줄 시작 앵커가 낡았다').toBeGreaterThan(0)
+    return src.slice(start, src.indexOf('</div>', at))
+  }
+  const sizeOf = (block: string, needle: string) => {
+    const line = block.split('\n').find((l) => l.includes(needle))
+    expect(line, needle + ' 를 가격 줄에서 못 찾았다').toBeTruthy()
+    return Number(/text-\[(\d+)px\]/.exec(line!)![1])
   }
 
-  it('가격이 세로 위계다 — 정가·할인율이 먼저, 판매가가 더 크다', () => {
+  it('판매가가 가장 크다 — 할인율·정가보다', () => {
     const block = priceBlock()
-    expect(block.indexOf('formatNumber(refPrice)'), '정가가 판매가 뒤로 갔다 — 한 줄 배치로 되돌아갔다')
-      .toBeLessThan(block.indexOf('formatNumber(unitPrice)'))
-    const sizeNear = (needle: string) => {
-      const i = block.indexOf(needle)
-      expect(i, needle + ' 를 가격 블록에서 못 찾았다').toBeGreaterThan(-1)
-      const hits = [...block.slice(0, i).matchAll(/fontSize:\s*([\d.]+)/g)].map((m) => Number(m[1]))
-      return hits[hits.length - 1]
-    }
-    expect(sizeNear('formatNumber(unitPrice)'), '판매가가 정가보다 크지 않다')
-      .toBeGreaterThan(sizeNear('formatNumber(refPrice)'))
+    expect(sizeOf(block, 'formatNumber(unitPrice)'), '판매가가 정가보다 크지 않다')
+      .toBeGreaterThan(sizeOf(block, 'formatNumber(refPrice)'))
+    expect(sizeOf(block, 'formatNumber(unitPrice)'), '판매가가 할인율보다 크지 않다')
+      .toBeGreaterThan(sizeOf(block, '{discountPct}%'))
+    expect(block.split('\n').find((l) => l.includes('formatNumber(refPrice)'))!, '정가에 취소선이 없다').toContain('line-through')
   })
 
   it('할인율이 --sale 이다 (상세만 쓰던 --gbd-danger 로 되돌아가지 않았다)', () => {
     const block = priceBlock()
-    const line = block.split('\n').find((l) => l.includes('{displayDiscountPct}%'))
-    expect(line, '가격 블록에서 할인율 렌더 줄을 못 찾았다 — 셀렉터가 낡았다').toBeTruthy()
+    const line = block.split('\n').find((l) => l.includes('{discountPct}%'))
+    expect(line, '가격 줄에서 할인율 렌더 줄을 못 찾았다 — 셀렉터가 낡았다').toBeTruthy()
     expect(line!, line!.trim().slice(0, 90)).toContain('var(--sale)')
     expect(line!, '상세 전용 빨강이 되살아났다').not.toContain('--gbd-danger')
   })

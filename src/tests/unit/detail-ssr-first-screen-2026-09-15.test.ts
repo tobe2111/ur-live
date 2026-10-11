@@ -19,7 +19,8 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readCode } from '../helpers/source-text'
-import { buildDetailFirstScreen, DETAIL_CRUMB_CLASS, DETAIL_TITLE_STYLES, DETAIL_ONNURI_CLASS } from '@/worker/utils/detail-ssr-body'
+import { buildDetailFirstScreen, DETAIL_CRUMB_CLASS, DETAIL_ONNURI_CLASS } from '@/worker/utils/detail-ssr-body'
+import { PASS_HEAD, PASS_PAGE_BG } from '@/shared/pass-head'
 import { DETAIL_HERO_MOBILE_WIDTH, detailHeroMobileUrl } from '@/shared/detail-hero-image'
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
 
@@ -70,6 +71,11 @@ describe('② 빵부스러기 — 클래스와 라벨이 컴포넌트와 같다'
     expect(DETAIL_CRUMB_CLASS).toBe(rendered)
   })
 
+  it('🔴 모바일에선 안 보인다 — 컴포넌트와 워커 둘 다 `hidden lg:block` 으로 감싼다 (2026-10-11 D안)', () => {
+    expect(readCode('src/pages/GroupBuyDetailPage.tsx')).toContain('<div className="hidden lg:block"><DetailBreadcrumb')
+    expect(buildDetailFirstScreen(seed(), LOADER)).toContain('<div class="hidden lg:block"><nav')
+  })
+
   it('라벨은 명칭 SSOT 에서 온다 — "식사권" 같은 옛 어휘가 되살아나지 않게', () => {
     const html = buildDetailFirstScreen(seed(), LOADER)
     expect(html).toContain(getVoucherShortLabel('meal_voucher'))
@@ -94,31 +100,25 @@ describe('③ 제목 — 컴포넌트와 같은 값으로 그린다', () => {
     expect(html).toContain('행복돈가스')
   })
 
-  it('🔴 h1 스타일이 페이지의 모바일 h1 과 **한 값도 안 다르다** (갈리면 마운트 때 제목이 튀다)', () => {
-    // 페이지는 React inline style 객체다 → 숫자는 px, `lineHeight` 는 단위없음으로 직렬된다.
-    const m = page.match(/<h1 style=\{\{([^}]+)\}\}/)
-    expect(m, '페이지의 h1 inline style 을 못 찾았다 — 이 시험이 낡았다').toBeTruthy()
-    const expected = m![1]
-      .split(',')
-      .map(kv => kv.trim())
-      .filter(Boolean)
-      .map(kv => {
-        const i = kv.indexOf(':')
-        const key = kv.slice(0, i).trim().replace(/[A-Z]/g, c => '-' + c.toLowerCase())
-        let val = kv.slice(i + 1).trim().replace(/^['"]|['"]$/g, '')
-        // 단위없음으로 직렬되는 속성 밖의 순수 숫자는 React 가 px 를 붙인다.
-        if (/^-?\d+(\.\d+)?$/.test(val) && !['line-height', 'font-weight', 'opacity', 'z-index', 'flex'].includes(key)) val += 'px'
-        return `${key}:${val}`
-      })
-      .join(';')
-    expect(DETAIL_TITLE_STYLES.h1).toBe(expected)
+  // 🔁 2026-10-11 (D안): 제목은 inline style 두 벌 → **같은 클래스 상수**(`PASS_HEAD`)를 둘 다 import.
+  //   손으로 옮긴 값을 대조하던 시험을, 같은 상수를 실제로 쓰는지 보는 시험으로 바꿨다.
+  const head = readCode('src/pages/group-buy/PassHeadCard.tsx')
+
+  it('🔴 머리 카드·매장명·제목 클래스가 컴포넌트와 **같은 상수**다 (갈리면 마운트 때 제목이 튀다)', () => {
+    for (const k of ['card', 'merchant', 'h1', 'prelaunch', 'onnuri'] as const) {
+      expect(head, `PassHeadCard 가 PASS_HEAD.${k} 를 안 쓴다`).toContain(`PASS_HEAD.${k}`)
+    }
+    const html = buildDetailFirstScreen(seed(), LOADER)
+    expect(html).toContain(`<div class="${PASS_HEAD.card}">`)
+    expect(html).toContain(`<div class="${PASS_HEAD.merchant}">`)
+    expect(html).toContain(`<h1 class="${PASS_HEAD.h1}">`)
+    expect(DETAIL_ONNURI_CLASS).toBe(PASS_HEAD.onnuri)
   })
 
-  it('🔴 매장명·온누리·오픈예정 뱃지의 토큰이 페이지에 그대로 있다', () => {
-    expect(page).toContain(DETAIL_ONNURI_CLASS)
-    expect(page).toContain('오픈 예정 · 사전 응모 받는 중')
-    expect(page).toContain("padding: '14px 18px 0'")   // 제목 블록 wrap
-    expect(DETAIL_TITLE_STYLES.wrap).toBe('padding:14px 18px 0')
+  it('🔴 페이지가 모바일 제목을 머리 카드로만 그린다 (h1 이 두 벌이면 서버와 어긋난다)', () => {
+    expect(page).toContain('<PassHeadCard ')
+    expect(page).not.toMatch(/<h1 style=\{\{/)
+    expect(head).toContain('오픈 예정 · 사전 응모 받는 중')
   })
 
   it('온누리·오픈예정은 시드가 말할 때만 그린다 (기본은 없음)', () => {
@@ -131,10 +131,10 @@ describe('③ 제목 — 컴포넌트와 같은 값으로 그린다', () => {
   })
 
   it('매장명이 없으면 그 줄을 안 그린다 — 컴포넌트와 같은 조건', () => {
-    expect(page).toContain('{detail.restaurant_name && (')
+    expect(readCode('src/pages/group-buy/PassHeadCard.tsx')).toContain('{merchant && (')
     const html = buildDetailFirstScreen(seed({ restaurant_name: null }), LOADER)
     expect(html).toContain('<h1 ')
-    expect(html).not.toContain(DETAIL_TITLE_STYLES.merchant)
+    expect(html).not.toContain(PASS_HEAD.merchant)
   })
 })
 
@@ -143,7 +143,7 @@ describe('③-2 제목 위에 per-user 블록이 남아 있으면 안 된다', (
 
   it('🔴 `ShareRewardBanner` 는 제목 **아래**에 있다 (위에 있으면 딜 보유자에게만 제목이 밀린다)', () => {
     const banner = page.indexOf('<ShareRewardBanner')
-    const h1 = page.indexOf('<h1 style=')
+    const h1 = page.indexOf('<PassHeadCard ')
     expect(banner).toBeGreaterThan(0)
     expect(h1).toBeGreaterThan(0)
     expect(banner).toBeGreaterThan(h1)
@@ -168,15 +168,13 @@ describe('③-2 제목 위에 per-user 블록이 남아 있으면 안 된다', (
 describe('③-3 감싸는 노드가 페이지와 같은 표면을 들고 다닌다', () => {
   it('🔴 `class="gbd"` — 없으면 `--gbd-*` 가 안 풀려 제목이 기본색이 된다', () => {
     const html = buildDetailFirstScreen(seed(), LOADER)
-    expect(html).toContain('id="ur-first-screen" class="gbd"')
-    expect(html).toContain('background:var(--gbd-card)')
+    expect(html).toContain(`id="ur-first-screen" class="gbd ${PASS_PAGE_BG}"`)
     expect(html).toContain('color:var(--gbd-ink)')
   })
 
-  it('페이지 루트가 쓰는 값과 같다', () => {
+  it('페이지 루트가 쓰는 값과 같다 — 바탕은 같은 상수(`PASS_PAGE_BG`)', () => {
     const page = readCode('src/pages/GroupBuyDetailPage.tsx')
-    expect(page).toContain('className="gbd"')
-    expect(page).toContain("background: 'var(--gbd-card)'")
+    expect(page).toContain('className={`gbd ${PASS_PAGE_BG}`}')
     expect(page).toContain("color: 'var(--gbd-ink)'")
   })
 
