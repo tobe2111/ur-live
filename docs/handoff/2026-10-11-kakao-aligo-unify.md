@@ -89,3 +89,9 @@
 - 알림톡 끄는 목록 SSOT `ALIMTALK_OFF_TEMPLATES`(`lib/alimtalk-templates.ts`) — voucher_used · seller_voucher_used ·
   appointment_user_confirmed · appointment_reminder_seller · store_owner_stats_link. `sendTextNotice` 가 첫 줄에서 거른다(기록도 안 남김).
   ⇒ 이용권 1장 팔리고 쓰이면 알림톡 2통(발급 + 판매).
+
+## 등록 목록을 10개로 줄임 (2026-10-11 19:30 KST, 대표 "10개 기준으로 만들어줄래?")
+- `docs/alimtalk-register-list.md` 를 **지금 등록 10개 / 나중 9개**로 재구성(본문 변경 없음 — 순서·묶음만).
+- 나중 9개 근거(라이브 D1 실측): 예약 `appointment_bookings` 0건 · 체험단 `fcfs_applications` 7건 전부 데모 ·
+  `commission_withdrawals` 0건 · `affiliate_earnings` 0건 · 정지 해제/서류 확인은 드묾.
+- 코드 수정 없음 — 등록 안 한 템플릿은 `sendTextNotice` 가 `pending:` 기록 후 건너뛴다(비용 0).
