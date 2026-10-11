@@ -12,7 +12,6 @@ import { ArrowLeft, QrCode } from 'lucide-react'
 import { useMyVouchers } from '@/hooks/queries'
 import { WalletPageWrapper } from '@/components/wallet/WalletAtoms'
 import WalletHeader from './my-vouchers/WalletHeader'
-import { walletTokens } from '@/components/wallet/walletTokens'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import VoucherDisputeBanner from '@/components/voucher/VoucherDisputeBanner'
 import { EmptyVouchers } from './my-vouchers/WalletEmpty'
@@ -95,7 +94,6 @@ export default function MyVouchersPage() {
 
   // 🛡️ 2026-04-30: CLAUDE.md 규칙 — /my-vouchers 는 화이트 테마 (쇼핑/결제 플로우)
   const theme = 'light' as const
-  const tk = walletTokens[theme]
 
   // 상태별 그룹핑 (만료/환불 그룹 접기 상태는 WalletArchive 안으로 — 2026-08-31 추출)
   // 🎟️ 2026-06-18 (대표 신고 — 이용권 탭에 교환권 섞임): source 분리 → 세그먼트 탭.
@@ -145,10 +143,11 @@ export default function MyVouchersPage() {
     return (
       <WalletPageWrapper theme={theme}>
         <SEO title={t('voucher.seoTitle')} description={t('voucher.seoDescription')} url="/my-vouchers" noindex />
-        <div className="sticky top-0 md:top-14 z-30 flex items-center gap-2 px-3 pt-3 pb-2"
-          style={{ background: tk.chrome, borderBottom: `0.5px solid ${tk.separator}` }}>
+        {/* 🗺️ 2026-10-11 대표 신고: 머리줄이 지갑 토큰(라이트 고정 흰 바탕)인데 제목은 사이트 테마(dark:text-white)를 따라
+            다크 모드에서 **흰 바탕에 흰 글자**로 사라졌다 → 머리줄도 사이트 테마 표면(bg-surface)으로. */}
+        <div className="sticky top-0 md:top-14 z-30 flex items-center gap-2 px-3 pt-3 pb-2 bg-surface border-b border-rule">
           <button onClick={() => { setViewMode('list'); setMapSelected(null) }}
-            className="w-9 h-9 flex items-center justify-center rounded-full" style={{ background: tk.fillSoft, color: tk.label }}
+            className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white"
             aria-label={t('common.back', { defaultValue: '뒤로가기' })}>
             <ArrowLeft className="w-5 h-5" />
           </button>

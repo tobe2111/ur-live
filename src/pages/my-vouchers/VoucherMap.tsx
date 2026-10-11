@@ -136,7 +136,10 @@ export default function VoucherMap<T extends VoucherMapItem>({
   }
 
   return (
-    <div className="relative rounded-xl overflow-hidden shadow-lift" style={{ height: 400 }}>
+    // 🗺️ 2026-10-11 대표 신고(지도로 보기 화면이 깨짐): ① 높이를 부모에 맞춘다 — 400 고정이라 460 칸 아래 60px 가
+    //   비었고 그 자리에 깔린 이용권 카드가 지도 밑으로 들어가 반쯤 가려졌다. ② `isolation` 으로 카카오 지도 내부의
+    //   z-index 를 이 상자 안에 가둔다 — 안 가두면 위에 올린 카드보다 지도 타일이 앞에 그려진다.
+    <div className="relative rounded-xl overflow-hidden shadow-lift" style={{ height: '100%', minHeight: 400, isolation: 'isolate' }}>
       <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
       {/* 🎨 현위치 재중심 버튼 (시안 우상단) */}
       {userLocation && (
