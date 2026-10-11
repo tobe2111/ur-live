@@ -38,7 +38,7 @@ import { isKorea } from '@/shared/config/region'
 // TD-006: route group files
 import { SellerRoutes } from './routes/seller.routes'
 import { AdminRoutes } from './routes/admin.routes'
-import { SupplierRoutes } from './routes/supplier.routes'
+import { SupplierRoutes } from './routes/supplier.routes'; import { AgencyConsoleRoutes } from './routes/agency-console.routes'
 
 // ❌ REMOVED: Duplicate Sentry initialization (already done in main.tsx)
 
@@ -565,7 +565,7 @@ function AppContent() {
   // 🛡️ 2026-05-24 (regression fix): /pay/widget 누락 → BottomNav 가 결제 버튼 가림.
   //   결제 위젯 마운트하는 모든 경로는 반드시 여기 등록. 신규 추가 시 tests/unit/toss-fullscreen-routes.test.ts
   //   가 자동 검증 (App.tsx 의 fullScreenPrefixes 와 TossPaymentWidget 마운트 라우트 일치 확인).
-  const fullScreenPrefixes = ['/cart', '/checkout', '/payment', '/pay', '/points', '/seller', '/admin', '/login', '/register', '/auth', '/embed', '/introduce', '/blog', '/about', '/partners', '/creators', '/my-orders', '/store/scan', '/videos', '/design', '/mall-admin']
+  const fullScreenPrefixes = ['/cart', '/checkout', '/payment', '/pay', '/points', '/seller', '/admin', '/login', '/register', '/auth', '/embed', '/introduce', '/blog', '/about', '/partners', '/creators', '/my-orders', '/store/scan', '/videos', '/design', '/mall-admin', '/agency']
   const fullScreen = fullScreenPrefixes.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
   // 🏭 유통스타트 B2B(도매몰/제조사)는 소비자 BottomNav/TopNav 미표시 — 별도 도메인·업태.
   //   isWholesaleSurface = SSOT (`/wholesale*`·`/supplier*`). 같은 헬퍼를 BottomNav·DesktopTopNav
@@ -805,11 +805,9 @@ function AppContent() {
             {/* Admin 페이지들 (공개 + 보호) — src/routes/admin.routes.tsx */}
             {AdminRoutes()}
 
-            {/* 🌇 2026-09-04 에이전시 완전 일몰(대표 확정) — `/agency/**` 16라우트 · `/a/:slug`(공개
-                프로필) · `/agency-partner`(가입 랜딩) · `/terms/agency` · 어드민 에이전시 2화면을
-                **전부 삭제**했다. 라이브 근거: 에이전시에 붙은 매장 0 · 위임 0 · 지급 이력 0.
-                중개는 이제 에이전시가 아니라 **셀러 대시보드 계정 + `seller_operators`** 가 맡는다.
-                docs/design/store-operator-model.md */}
+            {/* 🏢 2026-10-11 새 에이전시 콘솔(이메일 전용 계정·직원) — 2026-09-04 에 일몰된 옛 에이전시
+                (대시보드·커미션·카카오 로그인)와 다른 것이다. src/routes/agency-console.routes.tsx */}
+            {AgencyConsoleRoutes()}
 
             {/* Supplier(도매 공급자) 페이지들 — src/routes/supplier.routes.tsx (도매몰 INC-6) */}
             {SupplierRoutes()}

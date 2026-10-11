@@ -88,6 +88,7 @@
 | **인플루언서** | 판매승인 셀러 `seller_type='influencer'` | 팔로워에 **추천** | 매장과 맺은 **딜 %**(매장 부담) | 🛑 추천 자동분 2%·매장영입 2%·이용권 사용 시 영입 셰어 20% **전부 폐지**(2026-08-30 · 09-16 · 10-10). 소개 수익은 매장이 정한 딜 % 하나뿐 |
 | **매장 업주** | 사업자 유저 `seller_type='store_owner'` | **본인 상품/이용권** 판매 | 판매액·현금 정산 | 판매 플랫폼 수수료 **채널별**(2026-08-20 대표 최종): **직접 10% / 중개사 경유 5%**(`seller_meta.store_channel`, 미지정=5% 폴백) · **1P 0%**(유어딜 직판). 표시·정산 SSOT=`fee-resolver.ts`(authoritative 전환은 게이트) |
 | **중개사(대행)** | **셀러 대시보드 계정** + `seller_operators`(operator) — 별도 실체 없음 | 매장 등록·이용권 등록·**코드로** 사장님·인플루언서 매칭(= 쇼핑 벤더의 오프라인판) | 운영 매장 요약(`/seller/operating` — 매장별·인플루언서별) | 🔑 **2026-09-19 대표 확정 플로우**(아래 §2-1-a): 매장 등록 때 **중개사 몫 % · 인플루언서 상한 %** 를 정하고, **사장님 승계 코드**와 **협업 코드**가 두 매칭을 맡는다. 💸 중개사 몫은 결재 `2026-09-16-broker-payout-model.md` 안 1 — **유어딜이 매장 몫에서 떼어 직접 송금**(`broker-share.ts`, 게이트 `broker_share_enabled` **기본 OFF** = 종전 09-04 규칙 "매장과 장부 밖 직접 거래"). 유어딜 수수료 5% 는 불변. 🛑 영입 1%·24개월 폐지(08-31), `agencies` 실체 삭제(09-04) |
+| **에이전시** 🆕 2026-10-11 (1단계) | **별도 계정** `agency_accounts` + 직원 `agency_staff`(관리자/직원) — **이메일로만** 가입·로그인, 카카오 아님 | 여러 매장을 맡아 운영하는 대행사(대표 *"에이전시가 대행사잖아. 에이전시로 통일하자"*). 직원을 초대해 함께 쓴다 | `/agency` 콘솔 | 1단계(지금) = 계정·로그인·직원만. 매장 연결·운영(2단계)·중개사 매장 이전과 몫 규칙 1~3(3단계, 머니 — staging 실결제)은 아직. 결정 `docs/decisions/2026-10-11-agency-model-email-only.md`. ⚠️ 2026-09-04 에 일몰된 옛 에이전시(`agencies`·대시보드·커미션)와 **다른 것** — 옛 것은 여전히 죽어 있다(`agency-sunset-final.test.ts`) |
 | **유어딜 운영** | 플랫폼(`admin`) | 4부류가 다 거래하게 + 정합·신뢰 | 총 GMV × take rate | 판매 5% + 후원 **15%** (충전 마진은 2026-07-18 충전 종료로 소멸) |
 
 > 🔑 **2026-09-19 대표 확정 — 대행사(중개사) 플로우 (직접 운영 매장도 같은 코드 레일)**
@@ -230,6 +231,7 @@
 
 ### 중개 / 운영 / 도매
 - ~~`/agency/*`~~ 🌇 **2026-09-04 전면 삭제** — 중개사는 별도 화면이 없다. **셀러 대시보드**를 그대로 쓰고, 매장과의 관계는 `seller_operators`(owner/operator) + 매장 전환(`/seller/stores`)으로 다룬다(`store-operator-model.md` §7)
+- 🏢 **`/agency` 2026-10-11 새 콘솔** — `/agency/login`(안 A: 손님 `/login` 맨 아래 "에이전시이신가요? · 에이전시 로그인" 한 줄로 진입) · `/agency/signup`(사업자/개인 · 인증 메일) · `/agency/verify` · `/agency/invite`(직원 합류) · `/agency/reset` · `/agency`(에이전시 정보·직원). API `/api/agency-console/*`. 라우트 SSOT `src/routes/agency-console.routes.tsx`
 - `/admin/*`(운영 콘솔) · `/wholesale/*`·`/supplier/*`(도매)
 - 어드민 신규: `/admin/district-coupons`(상권 쿠폰 — 캠페인·매장 PIN 일괄·영수증 검수·정산 CSV)
 
@@ -422,7 +424,7 @@
 |---|---|---|---|
 | 소비자(유저) | `user_id`·`user_type`·`session_login`·`active_role` | `ur_session`(카카오) | 세션쿠키 + `/session/establish` 재발급 |
 | 사업자 유저(셀러) | `seller_token`(JWT 30일)·`seller_refresh_token`·`seller_id`·`seller_username` | `ud_seller_token` | `useTokenAutoRefresh('seller')` |
-| 에이전시 | `agency_token`·`agency_refresh_token` | `ud_agency_token` | 동일 |
+| 에이전시 (2026-10-11 새 콘솔) | `agency_console_token` + `agency_console_profile`(유지 끄면 sessionStorage) | — (Bearer 전용) | 7일 · **별도 서명 열쇠**(`JWT_SECRET` 파생 — 공용 `requireAuth` 가 직원 토큰을 사용자로 오해하지 못하게) · 매 요청 직원·에이전시 상태 + `tokens_valid_after` 대조. ⚠️ 옛 `agency_token`/`ud_agency_token` 은 2026-09-04 일몰 잔재(카카오 콜백 잠금 파일에 남음) |
 | 어드민 | `admin_token`·`admin_refresh_token` | — | 동일 |
 | 도매(공급자) | `ud_supplier_token` | 쿠키 | — |
 
@@ -511,3 +513,5 @@ pre-commit + `verify.yml` + `audit-gate.sh` 가 결정론으로 강제(수동 �
 - 2026-07-02 문서 신설 (마스터 SSOT) + Part II 시스템 상세(인증·결제·정산·주문·알림·크론·어드민·캐싱·보안·가드·장애) 확장. 개별 단계 완료 시 commit hash 기록.
 - 2026-09-19 대행사 확정 플로우(§2-1 🔑) — 매장 코드·협업 코드·딜 % 조정·인플루언서 수락·중개사 몫 직접 송금(게이트 OFF). PR #1499 → main `e3e182c`. **[E4] 라이브 판정 통과(2026-09-20 03:18 KST 배포분)** — 새 엔드포인트 6종 비인증 401 · 코드 미리보기 `NOT_FOUND` 정상 · `store_codes` 테이블 생성 · 게이트 `broker_share_enabled` 기본값(OFF) 노출 · 어드민 ⑩ 스위치 표시 · `/i/join/:code` 오류 화면 · `/store/find?code=` 로그인 왕복에 코드 보존 · `/s/:id?ref=` 7일 캡처. ⚠️ 셀러→인플루언서 코드 생애주기(발급→입력→수락)는 카카오 계정 3개가 필요해 대표 실사용 판정 대기(E5).
 - 2026-09-20 승인 대기 병목 해소 — 매장 좌석은 대기·반려도 앉고(정지만 제외) 정산(`payouts-generate`)은 승인 매장만(SSOT `shared/seller-status.ts`, 두 집합이 다른 것이 설계). 노출은 종전대로 승인 매장만. 어드민 승인이 위임 운영자에게도 통보. STAGING P15. 다음 단계 = S-OCR(등록증 OCR 자동 승인, 게이트 OFF). PR #1501 → main `a54e3e6`. **[E3] 배포됨(2026-09-20 22:55 KST 안팎)** — 라이브 `/api/version` 갱신 + 서빙 번들에 매장코드 보존 규칙 확인. **[E4] `?code=` 왕복 라이브 판정 통과** — 배포된 워커의 `/api/auth/kakao/start` 가 서명 state 에 싣는 리다이렉트를 디코딩해 대조: `?code=AB3K9QXP&auto=1` 보존 · `AB3K-9QXP` 보존 · `&evil=1` 제거 · `<script>`·`auto=2` 제거 · `?ref=777` 종전대로 보존. **[E5] 3계정 실사용 통과(같은 날, 이메일 API 계정 A/B/C · 테스트 매장 15~17)** — 대기 매장 좌석 200 · 협업 코드 `created_by`=유저 id · 사장님 코드 승계 · 인플루언서 즉시 활성 · 어드민 승인 → 운영자 알림. 정산 skip 은 매출 0 이라 P15 로 남는다. 그 과정에서 이메일 가입 500(PR #1503·#1504)과 등록증 가시성 갭(PR #1505)을 발견·수정.
+
+- 2026-10-11 에이전시 1단계(PR-A) — 이메일 전용 계정(`agency_accounts`/`agency_staff`/`agency_tokens`) · 가입 인증 메일 · 로그인(타이밍 방어·잠금) · 비밀번호 재설정 · 직원 초대/합류/내보내기 · `/agency` 콘솔 · 손님 로그인 입구 한 줄(안 A) · 손님 이메일 칸의 에이전시 계정 안내 · 일몰 시험 재고정. PR 번호·배포는 PR 생성 후 기입. [E2]

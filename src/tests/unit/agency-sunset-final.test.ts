@@ -17,6 +17,13 @@
  * 중개사는 **에이전시가 아니라 셀러 대시보드 계정**이고, 보상은 유어딜 5% 안이 아니라
  * **나머지 95%(매장 몫)에서 매장과 직접 거래**해 받는다 — 유어딜 장부에 등장하지 않는다.
  *
+ * ## 🏢 2026-10-11 — 새 에이전시가 생겼다 (대표 확정, 이 시험을 "다시 고정")
+ *   대표: *"에이전시가 대행사잖아. 에이전시로 통일하자."* — 에이전시 = **여러 매장을 맡아 운영하는 대행사**.
+ *   계정은 이메일로만, 직원을 초대해 함께 쓴다. 결정: `docs/decisions/2026-10-11-agency-model-email-only.md`.
+ *   옛 것(대시보드·커미션·카카오 로그인·`agencies` 테이블)은 **여전히 죽어 있어야 한다** — 아래 시험은 그대로다.
+ *   새 것은 이름부터 다르다: `features/agency-console` · `pages/agency-console` · `routes/agency-console.routes.tsx`
+ *   · `/api/agency-console` · 테이블 `agency_accounts`/`agency_staff`. 맨 아래 describe 가 **"새 것은 이 목록뿐"** 을 고정한다.
+ *
  * ## 이 테스트가 못 막는 것
  * - 이름만 바꿔 같은 개념을 다시 만드는 것(예: `partner_agencies`). 문자열 가드의 한계다.
  * - DB 에 남은 `agencies` 4행. 읽는 코드가 없으니 무해하지만, 행 자체는 남아 있다.
@@ -57,7 +64,9 @@ describe('에이전시 — 배선이 되살아나지 않는다', () => {
   it('워커가 /api/agency 를 마운트하지 않는다', () => {
     // ⚠️ 문자열 'agency' 전체 금지가 아니다 — 로그아웃 쿠키 정리(`ur_agency_session` 삭제)는
     //    **남아야 한다**(옛 세션을 실제로 죽이는 코드). 마운트 형태로만 본다.
-    expect(WORKER).not.toMatch(/app\.route\(\s*'\/api\/agency/)
+    // 2026-10-11: `/api/agency-console` 은 새 에이전시다 — 옛 `/api/agency` · `/api/agency/…` 만 막는다.
+    expect(WORKER).not.toMatch(/app\.route\(\s*'\/api\/agency(?:'|\/)/)
+    expect(WORKER).not.toMatch(/app\.route\(\s*'\/api\/agencies/)
     expect(WORKER).not.toMatch(/adminApp\.route\(\s*'\/agenc/)
   })
 
@@ -154,5 +163,42 @@ describe('일몰이 삼키면 안 되는 것들', () => {
   it('중개의 새 실체 — seller_operators 라우트가 살아 있다', () => {
     expect(existsSync('src/features/seller/api/seller-operators.routes.ts')).toBe(true)
     expect(WORKER).toMatch(/app\.route\('\/api\/seller', sellerOperatorsRoutes\)/)
+  })
+})
+
+describe('🏢 새 에이전시(2026-10-11)는 이 목록뿐', () => {
+  const ROUTES = codeOnly(readFileSync('src/routes/agency-console.routes.tsx', 'utf-8'))
+  const ALLOWED = ['/agency', '/agency/login', '/agency/signup', '/agency/verify', '/agency/invite', '/agency/reset']
+
+  it('앱이 콘솔 라우트 모듈 하나로만 /agency 를 그린다', () => {
+    expect(APP).toMatch(/\{AgencyConsoleRoutes\(\)\}/)
+    const paths = [...ROUTES.matchAll(/path="([^"]+)"/g)].map((m) => m[1])
+    expect(paths.length, '라우트를 하나도 못 읽었다 — 형식이 바뀌었으면 이 시험도 고칠 것').toBeGreaterThan(0)
+    expect([...paths].sort()).toEqual([...ALLOWED].sort())
+  })
+
+  it('그 라우트는 pages/agency-console 화면만 띄운다 (옛 Agency* 페이지 부활 금지)', () => {
+    const imports = [...ROUTES.matchAll(/import\('([^']+)'\)/g)].map((m) => m[1])
+    expect(imports.length).toBe(ALLOWED.length)
+    for (const i of imports) expect(i, i).toMatch(/^@\/pages\/agency-console\//)
+  })
+
+  it('워커는 /api/agency-console 에 새 라우트 둘만 붙인다', () => {
+    const mounts = [...WORKER.matchAll(/app\.route\(\s*'\/api\/agency-console'\s*,\s*(\w+)\s*\)/g)].map((m) => m[1])
+    expect(mounts.sort()).toEqual(['agencyConsoleRoutes', 'agencyStaffRoutes'])
+  })
+
+  it('새 콘솔은 옛 agencies 테이블을 읽지도 쓰지도 않는다', () => {
+    for (const f of ['agency-auth.routes.ts', 'agency-staff.routes.ts', 'agency-session.ts', 'agency-schema.ts']) {
+      const src = codeOnly(readFileSync(`src/features/agency-console/api/${f}`, 'utf-8'))
+      expect(src, f).not.toMatch(/\b(FROM|JOIN|INTO|UPDATE)\s+agencies\b/)
+    }
+  })
+
+  it('새 콘솔 화면은 옛 토큰 자리(agency_token)를 쓰지 않는다', () => {
+    // 옛 카카오 콜백 잔재가 아직 `agency_token` 을 만진다 — 같은 자리를 쓰면 서로를 지운다.
+    const api = codeOnly(readFileSync('src/pages/agency-console/agency-api.ts', 'utf-8'))
+    expect(api).toContain("'agency_console_token'")
+    expect(api).not.toMatch(/['"]agency_token['"]/)
   })
 })

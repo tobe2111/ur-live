@@ -54,6 +54,10 @@ Disallow: /store/new
 Disallow: /store/go
 Disallow: /community-group-buy/new
 Disallow: /stays/checkout-return
+# 🏢 2026-10-11 에이전시 콘솔(이메일 전용 계정) — 로그인·가입·초대 화면은 색인 대상이 아니다.
+#   `$` 앵커 + `/agency/` 로 나눈 이유: `/agency` prefix 하나면 `/agency-partner` 같은 형제 경로까지 삼킨다.
+Disallow: /agency$
+Disallow: /agency/
 
 # ✅ 위 prefix 안에 있지만 **공개 색인 대상**인 예외(둘 다 `<SEO>` 보유 + 인증 게이트 없음).
 #   robots 는 더 긴(구체적인) 규칙이 이기므로 아래 Allow 가 위 Disallow 를 덮는다.

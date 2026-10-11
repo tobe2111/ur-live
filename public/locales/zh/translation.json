@@ -6116,7 +6116,9 @@
     "termsLink": "服务条款",
     "termsAnd": "和",
     "privacyLink": "隐私政策",
-    "termsNoticeEnd": ""
+    "termsNoticeEnd": "",
+    "agencyQuestion": "您是代理机构吗？",
+    "agencyLogin": "代理机构登录"
   },
   "guide": {
     "sectionTitlePlaceholder": "章节标题",

@@ -6169,7 +6169,9 @@
     "termsLink": "Terms of Service",
     "termsAnd": "and",
     "privacyLink": "Privacy Policy",
-    "termsNoticeEnd": ""
+    "termsNoticeEnd": "",
+    "agencyQuestion": "Are you an agency?",
+    "agencyLogin": "Agency login"
   },
   "guide": {
     "sectionTitlePlaceholder": "Section title",

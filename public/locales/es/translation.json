@@ -6116,7 +6116,9 @@
     "termsLink": "Términos de Servicio",
     "termsAnd": "y la",
     "privacyLink": "Política de Privacidad",
-    "termsNoticeEnd": ""
+    "termsNoticeEnd": "",
+    "agencyQuestion": "¿Eres una agencia?",
+    "agencyLogin": "Acceso para agencias"
   },
   "guide": {
     "sectionTitlePlaceholder": "Título de sección",
