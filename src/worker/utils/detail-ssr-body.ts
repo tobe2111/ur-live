@@ -160,8 +160,15 @@ export function buildDetailFirstScreen(ssrPayload: string, loaderHtml: string, s
     const hero =
       '<div class="relative lg:hidden">' +
         '<div class="scrollbar-hide" style="display:flex;overflow-x:auto;aspect-ratio:3/2;scroll-snap-type:x mandatory">' +
-          `<div role="img" aria-label="${escAttr(d.name)}" style="flex:0 0 100%;scroll-snap-align:center;background-color:#1D1F29;` +
-            `background-image:url(&quot;${escAttr(heroUrl)}&quot;);background-size:cover;background-position:center"></div>` +
+          // 🔎 2026-10-11 (대표 "허가 — 진행"): 배경이 아니라 **진짜 <img>**. 구글 이미지는 CSS 배경을
+          //   못 보므로, 종전엔 이 사진이 목록 페이지(제목이 일반적인)에만 귀속되고 정작 제목이
+          //   이용권 명칭인 이 상세 페이지엔 못 붙었다. React(`DetailGallery` 모바일 슬라이드)와
+          //   **같은 구조·같은 URL** 이라야 마운트 때 안 밀린다 — 가드가 둘을 대조한다.
+          `<div style="position:relative;flex:0 0 100%;scroll-snap-align:center;background-color:#1D1F29;` +
+            `background-image:url(&quot;${escAttr(heroUrl)}&quot;);background-size:cover;background-position:center">` +
+            `<img src="${escAttr(heroUrl)}" alt="${escAttr(d.name)}" loading="eager" fetchpriority="high" decoding="async"` +
+            ` style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">` +
+          '</div>' +
         '</div>' +
         HERO_SCRIMS +
       '</div>'
