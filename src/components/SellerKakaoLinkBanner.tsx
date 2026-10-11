@@ -15,6 +15,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { isAgencySeatToken } from '@/shared/agency-seat-token'
 import { X, MessageCircle } from 'lucide-react'
 
 const DISMISS_KEY = 'seller_kakao_link_banner_dismissed_v1'
@@ -31,6 +32,8 @@ export default function SellerKakaoLinkBanner() {
     if (localStorage.getItem(DISMISS_KEY) === '1') return
     // 2) 카카오 세션(user_id) 보유 = 카카오 로그인 셀러 → 대상 아님
     if (localStorage.getItem('user_id')) return
+    // 🏢 에이전시 직원 좌석 — 매장 계정을 직원의 카카오와 묶으라고 권하면 안 된다(사장님 매장이다).
+    if (isAgencySeatToken(localStorage.getItem('seller_token'))) return
     // 3) 세션 캐시 — 페이지 이동마다 재조회 방지(SellerLayout remount)
     const cached = sessionStorage.getItem(SESSION_KEY)
     if (cached === 'hide') return

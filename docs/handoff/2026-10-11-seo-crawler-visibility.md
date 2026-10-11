@@ -1,0 +1,139 @@
+# 2026-10-11 — 크롤러가 우리 본문을 보게 (네이버 본문 · 브랜드 이름 · 이용권 매장 엔티티)
+
+대표 지시: *"머지해줘. **네이버도 해주고.** 그리고 SEO, GEO 모두 가장 이상적인 형태인지 알아봐줄래? 우리 서비스로
+트래픽이 몰려야해"* → *"언제나 최상단에 노출이 될 수 있게끔 세계최고의 SEO, GEO를 자랑하게 만들어줘"* →
+*"특히 이용권 페이지들은 더욱"* → (구글 SERP 스크린샷 2장) *"저렇게 야놀자처럼 나타나는거 코드로 개선할 수 있어?"*
+
+> ⚠️ 제가 대표에게 먼저 분명히 말한 것: **"언제나 최상단"은 어떤 SEO 로도 보장할 수 없습니다**(경쟁·도메인 나이·
+> 콘텐츠 양이 정합니다). 보장할 수 있는 것은 **우리 쪽 결함을 0 으로 만드는 것**이고, 이 세션이 한 일이 그것입니다.
+
+## 다음 세션의 첫 액션 — 배포 뒤 1분이면 재는 것
+
+```bash
+UA_YETI='Mozilla/5.0 (compatible; Yeti/1.1; +http://naver.me/spd)'
+for p in / /u/jiwon1228 /pass/2915 /vouchers/2192; do
+  n=$(curl -sS -A "$UA_YETI" "https://urdeal.kr$p" \
+      | sed -e 's/<script[^>]*>.*<\/script>//g' -e 's/<[^>]*>/ /g' \
+      | tr -s ' \n' ' ' | wc -c)
+  echo "$p  본문 ${n}자"
+done
+```
+**판정**: 네 경로 전부 **수백 자 이상**이면 통과(배포 전 실측은 `/` 6자 · `/u/:handle` 6자 · `/pass/:id` 49자 ·
+`/vouchers/:id` 37자였다). 그리고 홈에서 `grep -o '"@type":"WebSite"[^}]*name":"[^"]*"'` 가 **유어딜**을 돌려줘야 한다.
+
+⚠️ **그 뒤 E4 는 우리가 못 잰다** — 색인은 수일~수주 걸리고 판정 화면(**서치콘솔 · 네이버 서치어드바이저**)은
+**대표만** 볼 수 있다. 위 curl 은 *"우리가 줄 것을 주고 있는가"* 까지만 판정한다.
+
+## 완료분 (이 브랜치, PR 미머지)
+
+| | 무엇 | 왜 |
+|---|---|---|
+| ① | `shared/seo/crawler-ua.ts` 신규 — `shouldRenderMobileFirstScreen` = **폰 ∪ 검색 크롤러** | 서버 첫 화면이 `isMobileUserAgent` 뒤에 있었고 **Yeti UA 엔 `Mobi\|Android\|iPhone` 이 하나도 없다** |
+| ② | `worker/utils/crawler-noscript.ts` 신규 — `<noscript>` 본문 요약 | 첫 화면은 [사진·제목]까지만 그린다(의도) → 크롤러에겐 "내용 없는 페이지" |
+| ③ | 🩸 **되돌림** — `index.html` 에 **이미 있었다**(아래 "틀렸던 판단" ①) | 대신 `alternateName` 의 도메인 별칭(`"유어딜 urdeal.kr"`)을 뺐다 |
+| ④ | `detail-ssr-meta.ts` — 매장을 **독립 `LocalBusiness` 엔티티**로 + `offers.availableAtOrFrom` | `address`·`geo` 가 `Product` 안이라 **구글이 버린다** → 로컬 신호가 한 번도 전달된 적 없음 |
+| ⑤ | `aggregateRating` 을 리뷰 있을 때만 | 0건에 `ratingValue: 0` 은 구글 정책 위반 + 0점짜리로 읽힌다 |
+
+가드 `src/tests/unit/seo-crawler-visibility-2026-10-11.test.ts` 20건 + 주입 15건(`scripts/mutations/seo-crawler-visibility.mjs`)
+**되돌려-검증 전부 빨간불 확인**. tsc 0 · 관련 가드 5파일 122건 pass.
+
+## 이번에 틀렸던 판단 (이게 제일 값지다)
+
+1. 🔴 **"홈 JSON-LD 가 0건이라 사이트 이름이 도메인으로 떨어졌다" — 틀렸다.** `index.html:489` 에
+   `Organization`+`WebSite` `@graph` 가 **이미** 있고 `name` 이 `유어딜` 이고 **`@id` 까지 똑같았다**
+   (`https://urdeal.kr/#organization` · `#website`). `og:site_name`·`<title>` 도 이미 `유어딜` 이다.
+   제가 본 것은 `consumer-surfaces.ts` 에 `jsonLd` 필드가 없다는 것뿐이었고, **거기서 "홈에 JSON-LD 가
+   없다" 로 건너뛰었다.** 그래서 만든 모듈은 같은 `@id` 의 노드를 **두 벌** 내보내는 중복이었다
+   (`inLanguage` 가 `ko` ↔ `ko-KR` 로 어긋나기까지 했다). 머지 전에 라이브를 재서 되돌렸다.
+   ⇒ **"코드에 없다" 는 "라이브에 없다" 가 아니다.** 정적 `index.html` 은 소스 검색에서 잘 안 걸린다.
+2. 🔴 **그 수정에서 또 하나 깨뜨렸다 — 주석을 JSON 안에 넣었다.** JSON 에 주석은 못 들어가므로 그
+   JSON-LD 가 통째로 무효가 되는데, **제 확인 스크립트가 주석을 먼저 지우고 파싱해서 "OK" 가 떴다.**
+   브라우저도 구글도 주석을 지워 주지 않는다. ⇒ **검사기가 입력을 정규화하면 그 결함을 영원히 못 본다.**
+   가드를 *원문 그대로 파싱* 으로 고쳐서 잡았다(주입으로 빨간불 확인).
+3. **"GEO = 0" 이라고 보고하려 했다.** 대표가 보내 준 스크린샷에 **구글 AI 개요가 유어딜을 정확히 설명하고 있었다.**
+   AI 개요는 **Googlebot 색인**으로 만들어지므로 GPTBot 차단과 무관하다. 막힌 것은 ChatGPT·Claude·Perplexity 쪽뿐이다.
+   ⇒ *"AI 크롤러가 막혔다"* 에서 *"AI 검색 전부가 안 된다"* 로 번역하면 틀린다.
+5. **주입을 주석에 심어 헛돌았다.** `/** Yeti… */` 로 결함을 심었는데 `readCode` 가 주석을 걷어내 단언이 못 봤다
+   (이 레포가 반복해 밟은 자리). **판정 대상은 코드다** — 술어의 정규식 자체에 심어야 빨간불이 난다.
+6. **핀 구조를 중첩으로 가정했다.** `pins[].product.name` 으로 썼는데 SSOT(`CuratorSeedPin`)는 **평평하다**
+   (`pins[].product_name`). 중첩으로 읽으면 전부 `undefined` 가 되는데 **에러가 안 나고 `<noscript>` 가 조용히 빈다.**
+   시드 모양은 기억이 아니라 타입에서 가져올 것.
+7. **`isScraperUA` 가 미배선이라고 단정했다** — grep 에 테스트만 잡혀서였다. 실제로는 `scrapeProtection` 안에서 쓰이고
+   그 미들웨어는 마운트돼 있다(단 `/api/products`·`/api/group-buy/*` 세 접두어에만).
+
+## 🔎 전수 실측 — "또 개선할 부분" (2026-10-11, 라이브)
+
+소비자 표면 10개 전수: **전부 200 · canonical 1개 · og:image 있음 · 깨진 URL 0.** 위생은 좋다.
+문제는 **구조화 데이터와 색인 요청의 커버리지**다.
+
+| 발견 | 실측 | 성격 |
+|---|---|---|
+| ✅ **유어샵 색인 누락 — 이 PR 에서 고쳤다** | 내용 있는 유어샵 **4곳 중 3곳 누락**(sitemap `/u/` **1개**) → 4곳 전부 제출 | **구조적** — `sitemap.routes.ts` 쿼리가 `FROM sellers` 로 시작했다. 유어샵은 **모든 유저**가 갖는데(명칭 SSOT) 사업자가 아니면 `sellers` 행이 없어 **들어갈 수가 없었다**. `FROM users` 쿼리를 **추가**(핀 ≥ 1, 중복 Set 으로 제외) |
+| 🟡 유어샵에 페이지 고유 구조화 데이터 **0** | `/u/jiwon1228` = `Organization`+`WebSite`(브랜드 블록)뿐 | 공유로 퍼지는 표면인데 구글이 *이 페이지가 무엇인지* 모른다. `ProfilePage`+`ItemList`(진열 이용권) 후보 |
+| 🟡 목록 표면 구조화 데이터 **0** | `/vouchers`·`/browse`·`/map`·`/stays` 전부 브랜드 블록뿐 | sitemap priority 0.9 로 제출되는데 `ItemList`·`BreadcrumbList` 없음 |
+| 🟢 `llms.txt` **404** | — | AI 검색이 보는 관례 파일 |
+| ✅ 교환권 상세 `noindex` | `/vouchers/2192` → `noindex, follow` · sitemap `/vouchers/` 상세 **0건** | 2026-07-07 결정대로 **정상**(우회 없음) |
+| ✅ sitemap 451 URL | `/pass/` 360 · `/blog/` 21 · 죽은 URL 0 | 정상 |
+
+**sitemap 유어샵 쿼리의 실측 근거**(D1, 읽기 전용):
+```
+핸들 보유 유저(유어샵 주소 있음)        17
+핀(담기) 보유 유저                       4
+  그중 sellers 행 없음 = 구조적 누락     3   ← 색인 요청 불가
+현재 sitemap 제출(셀러 경유)             3   (handle 있는 건 1 → /u/ 1개)
+```
+
+### ✅ 그 누락을 이 브랜치에서 고쳤다 (추가 커밋)
+
+`sitemap.routes.ts` 에 **`FROM users` 쿼리를 추가**했다(기존 셀러 쿼리는 한 글자도 안 건드렸다):
+
+```sql
+SELECT u.handle FROM users u
+ WHERE u.handle IS NOT NULL AND TRIM(u.handle) <> ''
+   AND EXISTS (SELECT 1 FROM product_pins pp WHERE pp.user_id = u.id)
+ ORDER BY u.id DESC LIMIT 200
+```
+
+- **콘텐츠 기준은 기존 블록과 같다** — 핀 1개 이상. 이름 패턴으로 거르지 않는다(2026-07-29 의 그 이유).
+- 🔑 **그 기준이 워커 첫 화면 빌더와 짝이다**: `buildCuratorFirstScreen` 은 `pins.length === 0` 이면
+  `''` 를 돌려주므로 핀 0 을 제출하면 크롤러가 받는 것은 로더뿐이다(= soft-404). 핀 ≥ 1 만 내보내면
+  **제출한 URL 은 전부 본문이 있다.** 가드가 양쪽을 같이 본다.
+- **중복은 `Set` 으로 막는다** — 승인 셀러가 연결된 유어샵은 앞 블록이 이미 `/u/{handle}` 을 냈다.
+  같은 `<loc>` 이 두 번이면 sitemap 자체가 무효 취급될 수 있어, 고치려던 것이 더 큰 결함이 된다.
+- **몰 스코프를 걸지 않는다** — `users` 에 `mall_id` 가 없고(유저는 몰에 속하지 않는다), 제출하는 것은
+  상품 URL 이 아니라 **유어딜 본진 표면**인 `/u/{handle}` 이다.
+
+**실측 검증(라이브 D1, 읽기 전용)**: 새 쿼리 → `['user40','user31','jongmun','jiwon1228']`,
+중복 제외 후 **신규 3건**(`user31`·`jongmun`·`jiwon1228`).
+
+가드: `sitemap-urshop-users-2026-10-11.test.ts` **10건** — SQL 문자열을 **소스에서 뽑아 `node:sqlite` 에
+넣고 실제로 돌린다**(베껴 쓰면 두 벌이 갈린다). ① 기존 쿼리만으론 `user40` 하나뿐임을 **회귀 앵커로 고정**
+② 핀 ≥ 1 만 집는가 · 핀을 다 떼면 0건인가(늘 통과하는 쿼리가 아님) ③ 중복 Set 의 기록·확인이 **쌍인가**
+④ 첫 화면 빌더와 기준이 같은가. 주입 **6건 되돌려-검증 전부 빨간불 확인**.
+
+🩸 그 시험의 첫 판이 **거리 앵커**(`[\s\S]{0,200}`)를 써서 빨간불이 났다 — 사이에 주석 한 줄만 들어가도
+깨지는 모양이고, 2026-10-08 에 이미 값을 치른 자리다 ⇒ **블록을 잘라** 각 루프 안을 보도록 고쳤다.
+
+**⚠️ E4 는 배포 후**: `curl -sS https://urdeal.kr/sitemap.xml | grep -c '<loc>https://urdeal.kr/u/'`
+→ **4**(배포 전 1). 색인 자체는 서치콘솔에서 대표만 보실 수 있다.
+
+## 남은 결정 / 대기 (대표 판단)
+
+- **🔴 AI 크롤러 정책** — GPTBot·ClaudeBot 이 **Cloudflare 엣지에서 403**(우리 코드 아님: `server: cloudflare`,
+  25바이트 응답, 워커 헤더 0). 2026-08-22 대표 *"크롤링도 마찬가지"* 의 결과이고, **학습 크롤러와 검색·인용 크롤러가
+  구분되지 않은 채** 함께 막혀 있다. 되돌리면 ChatGPT·Perplexity 가 유어딜을 인용할 수 있다. **대시보드는 대표 소관**이고
+  세션은 플랫폼 쓰기를 하지 않는다 ⇒ 결재함 항목.
+- **다국어** — `hreflang` **0건** · 서버 HTML `<html lang="ko">` 고정 · `og:locale` `ko_KR` 하나 · 언어별 URL 없음.
+  클라 i18n 6개 언어는 **JS 뒤에 바뀌므로 색인되지 않는다.** 인바운드 관광 수요를 노리려면 `/en/pass/:id` 식 URL 체계가
+  필요하고 라우팅·사이트맵·캐시키·SSR 시드까지 닿는 **큰 변경**이다. 한국어 색인이 먼저 서야 한다는 것이 제 의견.
+- **사이트링크(야놀자의 6줄)** — **신청 수단이 없다.** 구글 자동 선정이고 `SearchAction` 검색창 사이트링크는 2024-11
+  지원 종료. 코드로 되는 둘(파비콘 #1704 · 사이트 이름 이번 PR)은 끝냈다. 앱 설치 카드는 앱이 있어야 한다.
+- **남은 점검** — 유어샵 페이지 고유 구조화 데이터(`ProfilePage`+`ItemList`) · 목록 표면 `BreadcrumbList`
+  (`/vouchers`·`/map`·`/stays`·`/browse` 전부 0건) · `llms.txt`(현재 404).
+
+## 못 한 것 · 범위 밖
+
+- **PC(lg+) 첫 화면은 그대로다** — 크롤러는 모바일 HTML 을 받는 것이 정상(Dynamic Serving)이고, PC 사용자 응답은
+  byte-동일이다.
+- `<noscript>` 는 **첫 화면이 안 그리는 것만** 담는다. 안내 문구를 지어내 넣지 말 것(클로킹이 된다 — 그 규율이
+  `crawler-noscript.ts` 머리말에 있다).

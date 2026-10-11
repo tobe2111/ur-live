@@ -26,12 +26,12 @@ const AdminFcfsPage = lazy(() => import('@/pages/AdminFcfsPage'))
 const AdminExperienceCampaignsPage = lazy(() => import('@/pages/AdminExperienceCampaignsPage'))
 const AdminVoucherDisputesPage = lazy(() => import('@/pages/AdminVoucherDisputesPage'))
 const AdminDongnedealImportPage = lazy(() => import('@/pages/AdminDongnedealImportPage'))
+const AdminAgencyAccountsPage = lazy(() => import('@/pages/admin/AdminAgencyAccountsPage')) // 🏢 2026-10-11 새 에이전시 계정(옛 agencies 아님)
 const AdminLoginHistoryPage = lazy(() => import('@/pages/AdminLoginHistoryPage'))
-// 🏦 2026-07-02 (어드민 도매 IA 통합): 예치금/출금 페이지는 라우트가 직접 렌더하지 않음 —
-//   예치금 = AdminDistributorGradesPage('판매사 관리')의 '예치금' 탭, 출금 = AdminSuppliersPage('제조사 관리')의 '출금 처리' 탭에서 embedded 로 사용(딥링크 경로는 아래에서 컨테이너 페이지로 매핑 → 탭으로 열림).
-// 🏭 2026-06-09 Wave 2: 도매 메인 배너 관리 + 제안/신고 처리 큐.
+// 🧨 2026-10-11 도매몰 철거: AdminWholesaleActivityPage · AdminWholesaleOrdersPage ·
+//   AdminWholesaleProposalsPage · AdminWholesaleProductsPage · 예치금/출금 탭 컨테이너 전부 삭제.
+//   ⚠️ 같은 머지에서 main 이 더한 `AdminAgencyAccountsPage`(새 에이전시 계정)는 **도매가 아니다** — 남긴다.
 const AdminPartnershipPage = lazy(() => import('@/pages/AdminPartnershipPage'))
-// 🏭 Wave 2 (2026-06-09): 도매 프리미엄 전용관 상품 토글.
 // 🏬 Phase 1-b (2026-06-09): 멀티-몰 테넌시 — 도매 몰 관리.
 const AdminWholesaleMallsPage = lazy(() => import('@/pages/admin/AdminWholesaleMallsPage'))
 // 🏬 Phase 2 (2026-06-09): 크로스-몰 도매 통합 현황 (운영자 랜딩).
@@ -350,6 +350,13 @@ export function AdminRoutes() {
       <Route path="/admin/voucher-disputes" element={
         <ProtectedRoute requireAdmin>
           <AdminVoucherDisputesPage />
+        </ProtectedRoute>
+      } />
+      {/* 🏢 2026-10-11 (머지) 새 에이전시 계정 — 도매가 아니라 유어딜 중개사 콘솔이다. 철거 대상 아님.
+          ⚠️ 한 줄에 여러 <Route> 를 두지 말 것 — 블록 끝 탐지가 무너져 옆 라우트가 함께 삭제된다(오늘 실제로 겪었다). */}
+      <Route path="/admin/agencies" element={
+        <ProtectedRoute requireAdmin>
+          <AdminAgencyAccountsPage />
         </ProtectedRoute>
       } />
       {/* 🗂️ 2026-06-17: 판매사 등급 페이지 탭 분리 — 같은 컴포넌트가 경로로 탭 결정(딥링크). */}

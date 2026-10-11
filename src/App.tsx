@@ -82,7 +82,7 @@ const LinkshopPinPicker = lazy(() => import('./pages/curator-page/LinkshopPinPic
 const HostingPage = lazy(() => import('./pages/HostingPage'))
 const HostingNewPage = lazy(() => import('./pages/HostingNewPage'))
 const StoreClaimPage = lazy(() => import('./pages/StoreClaimPage')) // 🏪 매장 등록 단일 목적지(/store/new)
-const StoreOwnerClaimPage = lazy(() => import('./pages/StoreOwnerClaimPage')) // 🙋 내 가게 찾기 — 소유권 신청(/store/find)
+const StoreOwnerClaimPage = lazy(() => import('./pages/StoreOwnerClaimPage')); const StoreAgencyInvitePage = lazy(() => import('./pages/StoreAgencyInvitePage')) // 🙋 내 가게 찾기 — 소유권 신청(/store/find) · 🔗 에이전시 매장 초대 링크(/store/agency/:token)
 const StoreGoPage = lazy(() => import('./pages/StoreGoPage')) // 🔗 2026-10-10 사장님 문자 링크 → 카카오 로그인 → 그 매장 좌석 → 목적 화면(shared/store-deep-link)
 const HostInvitePage = lazy(() => import('./pages/HostInvitePage'))
 // 🛡️ 2026-05-25 (Phase 2 잔여): 반품 회수 송장 추적 UI
@@ -139,7 +139,7 @@ const InfluencerDashboardPage = lazy(() => import('./pages/InfluencerDashboardPa
 const InfluencerLandingPage = lazy(() => import('./pages/InfluencerLandingPage')); const InfluencerOfferAcceptPage = lazy(() => import('./pages/InfluencerOfferAcceptPage')); const InfluencerJoinPage = lazy(() => import('./pages/InfluencerJoinPage')) // 🔑 2026-09-19 협업 코드 착지
 const InterestListPage = lazy(() => import('./pages/InterestListPage'))
 const CouponClaimPage = lazy(() => import('./pages/CouponClaimPage'))
-const GiftClaimPage = lazy(() => import('./pages/GiftClaimPage'))
+const GiftClaimPage = lazy(() => import('./pages/GiftClaimPage')); const VoucherGiftReceivePage = lazy(() => import('./pages/VoucherGiftReceivePage')) // 🎁 2026-10-11 이용권 선물 받기
 
 // User 페이지들
 const AddressManagementPage = lazy(() => import('./pages/AddressManagementPage'))
@@ -587,6 +587,7 @@ function AppContent() {
             <Route path="/v/:code" element={<VoucherVerifyPage />} />
             {/* 🛡️ 2026-04-28: 선물 받기 페이지 (인증 불필요) */}
             <Route path="/gift/claim/:token" element={<GiftClaimPage />} />
+            <Route path="/gift/v/:token" element={<VoucherGiftReceivePage />} />
             <Route path="/store/stats/:productId" element={<StoreStatsPage />} />
             <Route path="/browse" element={<BrowsePage />} />
             <Route path="/vouchers" element={<VouchersPage />} />
@@ -769,7 +770,7 @@ function AppContent() {
                 한 줄 표기는 file-size 래칫 때문 — 동작은 블록 표기와 동일하다. */}
             <Route path="/store/scan" element={<ProtectedRoute requireUser><StoreScanPage /></ProtectedRoute>} />
             <Route path="/store/new" element={<ProtectedRoute requireUser><ErrorBoundary><StoreClaimPage /></ErrorBoundary></ProtectedRoute>} />
-            <Route path="/store/find" element={<ProtectedRoute requireUser><ErrorBoundary><StoreOwnerClaimPage /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/store/find" element={<ProtectedRoute requireUser><ErrorBoundary><StoreOwnerClaimPage /></ErrorBoundary></ProtectedRoute>} /><Route path="/store/agency/:token" element={<ProtectedRoute requireUser><ErrorBoundary><StoreAgencyInvitePage /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/store/go" element={<ProtectedRoute requireUser><ErrorBoundary><StoreGoPage /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/influencer/settlement" element={
               <ProtectedRoute requireUser>

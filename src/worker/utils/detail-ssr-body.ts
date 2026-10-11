@@ -65,6 +65,7 @@ import {
 } from '../../shared/detail-hero-image'
 import { getVoucherShortLabel, normalizeCategory } from '../../shared/constants/voucher-categories'
 import { PASS_HEAD, PASS_PAGE_BG } from '../../shared/pass-head'
+import { buildDetailNoscript } from './crawler-noscript'
 
 function escAttr(s: string): string {
   return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -137,6 +138,19 @@ interface DetailSeed {
   restaurant_name?: string | null
   onnuri_merchant?: boolean
   prelaunch?: boolean | number
+  // 📰 아래는 **`<noscript>` 본문 요약 전용**(2026-10-11) — 첫 화면은 이 값들을 그리지 않는다.
+  //   그릴 수 없는 이유는 위 "❌ 주소·가격은 여전히 안 그린다" 에 적혀 있고 그 판단은 그대로다.
+  //   크롤러는 거리를 모르는 것이 문제가 아니라 **본문이 49자인 것**이 문제라, 사람에게 안 보이는
+  //   자리(`<noscript>`)에만 담는다. 규율·근거: `utils/crawler-noscript.ts`.
+  description?: string | null
+  long_description?: string | null
+  price?: number | null
+  original_price?: number | null
+  discount_rate?: number | null
+  restaurant_address?: string | null
+  restaurant_phone?: string | null
+  voucher_expiry?: string | null
+  voucher_terms?: string | null
 }
 
 /**
@@ -160,8 +174,15 @@ export function buildDetailFirstScreen(ssrPayload: string, loaderHtml: string, s
     const hero =
       '<div class="relative lg:hidden">' +
         '<div class="scrollbar-hide" style="display:flex;overflow-x:auto;aspect-ratio:3/2;scroll-snap-type:x mandatory">' +
-          `<div role="img" aria-label="${escAttr(d.name)}" style="flex:0 0 100%;scroll-snap-align:center;background-color:#1D1F29;` +
-            `background-image:url(&quot;${escAttr(heroUrl)}&quot;);background-size:cover;background-position:center"></div>` +
+          // 🔎 2026-10-11 (대표 "허가 — 진행"): 배경이 아니라 **진짜 <img>**. 구글 이미지는 CSS 배경을
+          //   못 보므로, 종전엔 이 사진이 목록 페이지(제목이 일반적인)에만 귀속되고 정작 제목이
+          //   이용권 명칭인 이 상세 페이지엔 못 붙었다. React(`DetailGallery` 모바일 슬라이드)와
+          //   **같은 구조·같은 URL** 이라야 마운트 때 안 밀린다 — 가드가 둘을 대조한다.
+          `<div style="position:relative;flex:0 0 100%;scroll-snap-align:center;background-color:#1D1F29;` +
+            `background-image:url(&quot;${escAttr(heroUrl)}&quot;);background-size:cover;background-position:center">` +
+            `<img src="${escAttr(heroUrl)}" alt="${escAttr(d.name)}" loading="eager" fetchpriority="high" decoding="async"` +
+            ` style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">` +
+          '</div>' +
         '</div>' +
         HERO_SCRIMS +
       '</div>'
@@ -179,9 +200,12 @@ export function buildDetailFirstScreen(ssrPayload: string, loaderHtml: string, s
     // 🎨 `class="gbd"` + 배경은 페이지 루트(`GroupBuyDetailPage` 의 `<div className="gbd" …>`)와 같다.
     //   이게 없으면 (a) `--gbd-*` 가 안 풀려 제목이 기본색이 되고 (b) 바탕이 `--bg`(#F8F7FC) 라
     //   마운트 때 `--surface`(#FFFFFF) 로 **바뀐다**. 노드 자체가 들고 다니는 값이라 폴백 안에서도 유지된다.
+    // 📰 2026-10-11 (대표 "네이버도 해주고"): JS 를 안 돌리는 크롤러에게만 보이는 본문 요약.
+    //   사람에게는 렌더되지 않고(JS 가 돌면 `<noscript>` 는 무시된다) 마운트 때 함께 사라진다
+    //   → 밀림 0 · 추가 요청 0(시드에 이미 온 값만 쓴다). 규율: 지어낸 문구 금지 · 제목 반복 금지.
     return (
       `<div id="ur-first-screen" class="gbd ${PASS_PAGE_BG}" style="color:var(--gbd-ink)">` +
-        `${crumbHtml(d.category)}${hero}${title}` +
+        `${crumbHtml(d.category)}${hero}${title}${buildDetailNoscript(d)}` +
       '</div>' + shortLoader
     )
   } catch {

@@ -20,6 +20,7 @@
  * - 배너(`HomeBannerStrip`)는 시드에 없다 — 어드민이 자리를 고르면 카드가 그만큼 내려간다.
  */
 import { describe, it, expect } from 'vitest'
+import { shouldRenderMobileFirstScreen } from '@/shared/seo/crawler-ua'
 import fs from 'node:fs'
 import path from 'node:path'
 import { render } from '@testing-library/react'
@@ -307,10 +308,27 @@ describe('⑤ 크롬·섹션 머리글 — 페이지 소스에서 파싱해 대�
 describe('⑥ 배선 — 워커가 이 모듈을 홈에서만 쓴다', () => {
   const worker = code('src/worker/index.ts')
 
-  it('🔴 MAIN 슬롯 + 홈 + 모바일 UA 일 때만 그린다', () => {
+  it('🔴 MAIN 슬롯 + 홈 + (폰이거나 색인 크롤러)일 때만 그린다', () => {
+    // 🔀 2026-10-11 재조준: 불변식은 그대로 — **PC 브라우저에는 모바일 첫 화면을 그리지 않는다**
+    //   (PC 는 2열 레일이라 반쪽만 그리면 마운트 때 가로로 줄어든다). 바뀐 것은 *그려 주는 쪽*에
+    //   색인 크롤러가 더해진 것뿐이다: 네이버 Yeti 의 UA 에는 `Mobi|Android|iPhone` 이 하나도 없어
+    //   홈을 **6자짜리 빈 페이지**로 보고 있었다(라이브 실측).
     expect(worker).toContain(
-      "ssrSlot === 'MAIN' && ssrExtraPayload && isMainPage && isMobileUserAgent(c.req.header('user-agent'))",
+      "ssrSlot === 'MAIN' && ssrExtraPayload && isMainPage && shouldRenderMobileFirstScreen(c.req.header('user-agent'))",
     )
+  })
+
+  it('🔴 그 조건이 실제로 가르는 것 — 문자열이 아니라 동작으로 잰다', () => {
+    // 그린다: 폰 · 네이버 · 구글(스마트폰/데스크톱 둘 다) · AI 검색
+    expect(shouldRenderMobileFirstScreen('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)')).toBe(true)
+    expect(shouldRenderMobileFirstScreen('Mozilla/5.0 (compatible; Yeti/1.1; +http://naver.me/spd)')).toBe(true)
+    expect(shouldRenderMobileFirstScreen('Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)')).toBe(true)
+    expect(shouldRenderMobileFirstScreen('Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)')).toBe(true)
+    // 안 그린다: PC 브라우저 — 이 한 줄이 이 가드의 존재 이유다
+    expect(shouldRenderMobileFirstScreen('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0.0.0 Safari/537.36')).toBe(false)
+    expect(shouldRenderMobileFirstScreen('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Safari/605.1.15')).toBe(false)
+    expect(shouldRenderMobileFirstScreen('')).toBe(false)
+    expect(shouldRenderMobileFirstScreen(null)).toBe(false)
   })
 
   it('🔴 실패하면 종전 로더로 되돌아간다', () => {

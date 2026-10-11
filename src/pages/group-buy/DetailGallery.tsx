@@ -140,12 +140,10 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
   const probes = useMemo(() => {
     const list: Array<{ src: string; url: string }> = []
     if (!main) return list
-    // 📱 모바일은 **슬라이드가 실제로 그리는 URL**(3:2 크롭) 한 장만 감시한다. 이전엔 PC 폭(1200)과
-    //    썸네일(600×2)을 폰에서도 받아 — 화면에 없는 사진 ~400KB 가 첫 사진과 대역폭을 나눴다.
-    if (!isDesktop) {
-      list.push({ src: main, url: heroUrl(main, DETAIL_HERO_MOBILE_WIDTH) })
-      return list
-    }
+    // 📱 모바일은 숨은 프로브가 **필요 없다** — 2026-10-11 부터 슬라이드를 진짜 <img> 로 그리므로
+    //    그 <img> 자신의 onError 가 죽은 사진을 잡는다(그 전엔 CSS 배경이라 오류 이벤트가 없어서
+    //    같은 URL 의 1×1 숨은 <img> 를 따로 얹어야 했다). PC 는 아직 배경이라 프로브가 그대로 필요하다.
+    if (!isDesktop) return list
     list.push({ src: main, url: pcHeroUrl(main) })
     for (const t of images.slice(1, 1 + PC_THUMBS)) list.push({ src: t, url: pcThumbUrl(t) })
     return list
@@ -176,11 +174,30 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
             const near = Math.abs(i - active) <= 1
             const hi = src && near ? heroUrl(src, DETAIL_HERO_MOBILE_WIDTH) : ''
             return (
-              <div key={i} role="img" aria-label={alt} className="flex items-center justify-center text-[60px]"
-                style={{ flex: '0 0 100%', scrollSnapAlign: 'center',
+              <div key={i} className="flex items-center justify-center text-[60px]"
+                /* ⚠️ position 은 **인라인**이다 — 절대배치 <img> 의 포함 블록은 구조 요건이라
+                   유틸 클래스(`relative`)가 번들에 있느냐에 맡기지 않는다. 서버 첫 화면도 같은 자리. */
+                style={{ position: 'relative', flex: '0 0 100%', scrollSnapAlign: 'center',
                   backgroundColor: '#1D1F29',
+                  /* 🔥 두 겹 배경은 **밑깔개로 남긴다** — 카드에서 이미 받은 저해상이 클릭 즉시 그려지고,
+                     그 위에 아래 <img> 가 도착하면 덮는다(종전과 같은 체감, 추가 요청 0). */
                   backgroundImage: hi ? layered(hi, src) : undefined,
                   backgroundSize: 'cover', backgroundPosition: 'center' }}>
+                {/* 🔎 2026-10-11 (대표 "허가 — 진행"): 배경이 아니라 **진짜 <img>** 로 그린다.
+                    구글 이미지는 CSS 배경을 못 본다 — 그래서 이 사진이 *목록 페이지*(제목이 일반적인)
+                    에만 귀속되고, 정작 제목이 이용권 명칭인 이 상세 페이지엔 붙지 못했다.
+                    ⚠️ URL 은 위 배경 윗겹과 **같은 함수·같은 값**이라 요청이 재사용된다(추가 트래픽 0). */}
+                {hi && (
+                  <img
+                    src={hi}
+                    alt={alt}
+                    loading="eager"
+                    fetchPriority={i === 0 ? 'high' : 'auto'}
+                    decoding="async"
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={() => setDead((prev) => (prev.has(src) ? prev : new Set(prev).add(src)))}
+                  />
+                )}
                 {!src && fallback}
               </div>
             )

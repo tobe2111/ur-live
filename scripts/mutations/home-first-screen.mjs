@@ -14,8 +14,10 @@ export default [
   {
     name: '🏠 홈 서버 첫 화면 — 워커 분기가 안 탄다',
     file: WORKER,
-    find: "ssrSlot === 'MAIN' && ssrExtraPayload && isMainPage && isMobileUserAgent(c.req.header('user-agent'))",
-    replace: "ssrSlot === 'MAIN' && ssrExtraPayload && false && isMobileUserAgent(c.req.header('user-agent'))",
+    // 🔀 2026-10-11 재조준: 게이트가 `isMobileUserAgent` → `shouldRenderMobileFirstScreen`(폰 ∪ 검색
+    //   크롤러)로 바뀌었다. 불변식은 그대로 — **이 분기가 실제로 탄다**.
+    find: "ssrSlot === 'MAIN' && ssrExtraPayload && isMainPage && shouldRenderMobileFirstScreen(c.req.header('user-agent'))",
+    replace: "ssrSlot === 'MAIN' && ssrExtraPayload && false && shouldRenderMobileFirstScreen(c.req.header('user-agent'))",
     test: T,
     why:
       '분기가 안 타면 catch-all 유달이 로더로 떨어진다 = 이 수리 이전 상태. 화면은 멀쩡하고 ' +

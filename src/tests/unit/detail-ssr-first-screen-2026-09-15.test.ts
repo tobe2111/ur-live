@@ -20,6 +20,7 @@
 import { describe, it, expect } from 'vitest'
 import { readCode } from '../helpers/source-text'
 import { buildDetailFirstScreen, DETAIL_CRUMB_CLASS, DETAIL_ONNURI_CLASS } from '@/worker/utils/detail-ssr-body'
+import { buildDetailNoscript } from '../../worker/utils/crawler-noscript'
 import { PASS_HEAD, PASS_PAGE_BG } from '@/shared/pass-head'
 import { DETAIL_HERO_MOBILE_WIDTH, detailHeroMobileUrl } from '@/shared/detail-hero-image'
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
@@ -185,10 +186,25 @@ describe('③-3 감싸는 노드가 페이지와 같은 표면을 들고 다닌�
     expect(html).toContain('min-height:34dvh')
   })
 
-  it('🔴 주소·가격은 여전히 안 그린다 — 주소 줄의 `· N km` 는 per-user 라 되감길 수 있다', () => {
+  it('🔴 주소·가격은 여전히 **보이는 화면**에 안 그린다 — 주소 줄의 `· N km` 는 per-user 라 되감길 수 있다', () => {
     const html = buildDetailFirstScreen(seed(), LOADER)
-    expect(html).not.toContain('16,500')
-    expect(html).not.toContain('결제 즉시 교환권 발급')
+    // 🔀 2026-10-11 재조준: 지키려던 것(**마운트 때 되감길 줄을 서버가 그리지 않는다**)은 그대로다.
+    //   같은 날 붙은 `<noscript>` 본문 요약은 JS 가 돌면 렌더되지 않아 밀림을 만들 수 없으므로
+    //   판정 대상에서 뺀다. 떼는 방법은 정규식이 아니라 **빌더 출력 그대로**(갈릴 수 없다).
+    const ns = buildDetailNoscript(JSON.parse(seed()).data)
+    const visible = ns ? html.replace(ns, '') : html
+    expect(visible, 'noscript 가 안 떼졌다 — 빌더와 갈렸다').not.toContain('<noscript')
+    expect(visible).not.toContain('16,500')
+    expect(visible).not.toContain('결제 즉시 교환권 발급')
+  })
+
+  it('🔴 크롤러용 요약은 `<noscript>` 안에만 있다 — 사람 화면에는 한 글자도 안 샌다', () => {
+    const html = buildDetailFirstScreen(seed(), LOADER)
+    const i = html.indexOf('<noscript>')
+    expect(i, '요약이 아예 없다 — 네이버가 본문을 49자로 보던 수리가 사라졌다').toBeGreaterThan(-1)
+    const inner = html.slice(i + 10, html.indexOf('</noscript>'))
+    expect(inner, '가격이 요약에 없다').toContain('16,500')
+    expect(inner, '요약에 사진·높이를 넣지 말 것').not.toMatch(/<img|style=|height/)
   })
 })
 

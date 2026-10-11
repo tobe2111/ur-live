@@ -105,7 +105,9 @@ export default [
   {
     name: '🛍️ PC 에도 그린다(2열 그리드 + 전역 네비를 서버가 모른다)',
     file: 'src/worker/index.ts',
-    find: "&& isMobileUserAgent(c.req.header('user-agent'))) {\n      // 🛍️ 2026-10-09",
+    // 🔀 2026-10-11 재조준: 게이트 이름이 `shouldRenderMobileFirstScreen`(폰 ∪ 검색 크롤러)로 바뀌었다.
+    //   불변식은 그대로 — **PC 브라우저엔 그리지 않는다**(크롤러는 모바일 HTML 을 받는 것이 정상이다).
+    find: "&& shouldRenderMobileFirstScreen(c.req.header('user-agent'))) {\n      // 🛍️ 2026-10-09",
     replace: ") {\n      // 🛍️ 2026-10-09",
     test: TEST,
     why: 'PC 는 `.ur-ushop-pc` 2열 + DesktopTopNav 라 서버가 반쪽만 그리면 가로·세로가 같이 움직인다.',

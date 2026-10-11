@@ -88,7 +88,7 @@ import { adminRoutes as adminAuthRoutes } from '../features/auth/api/admin.route
 import { kakaoRoutes } from '../features/auth/api/kakao.routes';
 import { sellerRoutes as sellerAuthRoutes } from '../features/auth/api/seller.routes';
 import { sellerOperatorsRoutes } from '../features/seller/api/seller-operators.routes'; // 🏪 매장 운영 주체(store-operator-model.md 2단계)
-import { agencyConsoleRoutes } from '../features/agency-console/api/agency-auth.routes'; import { agencyStaffRoutes } from '../features/agency-console/api/agency-staff.routes'; // 🏢 에이전시 계정(이메일 전용 · 2026-10-11 결정)
+import { agencyConsoleRoutes } from '../features/agency-console/api/agency-auth.routes'; import { agencyStaffRoutes } from '../features/agency-console/api/agency-staff.routes'; import { agencyStoresRoutes } from '../features/agency-console/api/agency-stores.routes'; import { storeAgencyInviteRoutes } from '../features/seller/api/store-agency-invite.routes'; // 🏢 에이전시 계정(이메일 전용 · 2026-10-11 결정)
 import { influencerProfileRoutes } from '../features/marketing/api/influencer-profile.routes'; import { sellerStoresRoutes } from '../features/seller/api/seller-stores.routes'; import { sellerWithdrawRoutes } from '../features/seller/api/seller-withdraw.routes'; import { sellerInfluencersRoutes } from '../features/seller/api/seller-influencers.routes'; import { influencerOfferInvitesRoutes } from '../features/marketing/api/influencer-offer-invites.routes'; import { adminInfluencerOutreachRoutes } from '../features/admin/api/admin-influencer-outreach.routes'; // 🏪📣 seller-dashboard-v2 (+제안 수락 다리·어드민 발송 큐)
 // import { googleRoutes } from '../features/auth/api/google.routes';  // 🔒 2026-07-28 마운트 해제(#806)
 import { bannerRoutes } from '../features/banners/api/banners.routes';
@@ -220,7 +220,7 @@ import { kakaoSocialRoutes } from '../features/kakao-social/api/kakao-social.rou
 import { affiliateRoutes } from '../features/affiliate/api/affiliate.routes';
 import { adminToolsRoutes } from '../features/admin/api/admin-tools.routes';
 import { adminMetricsRoutes } from '../features/admin/api/admin-metrics.routes';
-import { adminSystemMonitoringRoutes } from '../features/admin/api/admin-system-monitoring.routes';
+import { adminSystemMonitoringRoutes } from '../features/admin/api/admin-system-monitoring.routes'; import { agencyAdminRoutes } from '../features/agency-console/api/agency-admin.routes';
 import { blogRoutes as adminBlogRoutes } from '../features/blog/api/blog.routes';
 // 🥗 2026-07-15 워커 다이어트(대표 승인): 소셜 자동화(게이트 OFF·미사용)의 정적 import 를 제거해
 //   메인 워커 번들에서 그래프 분리 → Cloudflare Free 1MB 압축한도 회복(배포 언블록). 재도입 시 아래 mount 와
@@ -288,7 +288,7 @@ import { referralRoutes } from '../features/referral/api/referral.routes';
 //   (typeof navigator/window 가드 보유라 워커 안전). URL 이 클라 렌더값과 byte-일치해야 preload 적중.
 import { cfImage, cfSrcSet } from '../utils/cf-image';
 // 🖼️ 홈 첫 화면 카드 사진 preload — 링크 생성은 헬퍼가 한다(파일 크기 래칫 + 직접 테스트 용이).
-import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; // 한 줄: 파일크기 래칫(2685) 안
+import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; // 한 줄: 파일크기 래칫 안
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -1043,14 +1043,14 @@ app.use('*', async (c, next) => {
       // 🎁 2026-10-08 [UNLOCK_LOADING] (대표 "모두 다 하자"): 같은 DETAIL 슬롯·같은 시드인데 위 pathname 에서 빠져 로더만 보였다. 사유·경계: `utils/voucher-detail-ssr-body.ts`.
       const voucherFirst = buildVoucherDetailFirstScreen(ssrPayload, urdealLoaderHtml);
       rb = rb.on('#root', { element(el) { el.setInnerContent(voucherFirst || urdealLoaderHtml, { html: true }); } });
-    } else if (ssrSlot === 'MAIN' && ssrExtraPayload && isMainPage && isMobileUserAgent(c.req.header('user-agent'))) {
+    } else if (ssrSlot === 'MAIN' && ssrExtraPayload && isMainPage && shouldRenderMobileFirstScreen(c.req.header('user-agent'))) {
       // 🏠 2026-10-08 [UNLOCK_LOADING] (대표 "처음에 유어딜 페이지 들어올 때 만큼은 로딩 장면 없이"): 시드(SECTIONS)에
       //   사진 URL까지 와 있고 워커가 그 넷을 preload 로 이미 당기는데 `#root` 는 로더가 덮고 있었다 → 크롬(높이만) +
       //   첫 섹션 카드 4장을 그리고 그 아래에만 로더를 둔다. PC 는 다른 레이아웃이라 UA 로 가른다.
       //   사유·경계·버린 길(워커 React 렌더 = 번들 gzip 게이트로 불가): `utils/home-first-screen.ts`.
       const homeFirst = buildHomeFirstScreen(ssrExtraPayload, urdealLoaderHtml);
       rb = rb.on('#root', { element(el) { el.setInnerContent(homeFirst || urdealLoaderHtml, { html: true }); } });
-    } else if (ssrSlot === 'CURATOR' && ssrPayload && /^\/u\/[A-Za-z0-9_-]{1,40}\/?$/.test(url.pathname) && isMobileUserAgent(c.req.header('user-agent'))) {
+    } else if (ssrSlot === 'CURATOR' && ssrPayload && /^\/u\/[A-Za-z0-9_-]{1,40}\/?$/.test(url.pathname) && shouldRenderMobileFirstScreen(c.req.header('user-agent'))) {
       // 🛍️ 2026-10-09 [UNLOCK_LOADING] (대표 "모두 다 하자"): 시드에 이름·소개·핀 4개(사진 URL까지)가
       //   이미 와 있는데 `#root` 는 로더가 덮고 있었다(실측 ~1초). 유어샵은 **공유해서 퍼지는 것**이라
       //   그 1초가 가장 비싸다 → [브랜드 바 + 이름 줄 + 칩 줄 높이 + 진열 줄 4개]를 그리고 그 아래에만
@@ -1470,7 +1470,7 @@ app.route('/api/admin', adminAuthRoutes);
 app.use('/api/seller/login', rateLimit({ action: 'seller_login', max: 10, windowSec: 300 }));
 app.route('/api/seller', sellerAuthRoutes);
 app.route('/api/seller', sellerOperatorsRoutes); // 🏪 my-stores · 매장 전환 · 운영자 관리
-app.route('/api/agency-console', agencyConsoleRoutes); app.route('/api/agency-console', agencyStaffRoutes); // 🏢 에이전시 가입·로그인·직원(별도 서명 열쇠 — requireAuth 로는 안 통한다)
+app.route('/api/agency-console', agencyConsoleRoutes); app.route('/api/agency-console', agencyStaffRoutes); app.route('/api/agency-console', agencyStoresRoutes); app.use('/api/store-agency-invite/accept', csrfProtection()); app.route('/api/store-agency-invite', storeAgencyInviteRoutes); // 🏢 에이전시 가입·로그인·직원(별도 서명 열쇠 — requireAuth 로는 안 통한다)
 app.route('/api/seller/instagram-dm', instagramAutoDmSellerRoutes); app.route('/api/seller/urshorts', sellerUrshortsRoutes); // 💬 매장 인스타 자동 DM(좌석 토큰) · 🎬 자기 이용권에 쇼츠 붙이기(소유권 검사)
 app.route('/api/influencer-profile', influencerProfileRoutes); app.route('/api/seller', sellerStoresRoutes); app.route('/api/seller', sellerWithdrawRoutes); app.route('/api/seller/influencers', sellerInfluencersRoutes); app.route('/api/influencer-offers', influencerOfferInvitesRoutes); app.route('/api/admin/influencer-outreach', adminInfluencerOutreachRoutes); // 매장관리/인플탐색·제안/수락다리/어드민 발송큐
 
@@ -1775,7 +1775,7 @@ adminApp.route('/tools', adminToolsRoutes);
 adminApp.route('/metrics', adminMetricsRoutes);
 adminApp.route('/business-metrics', platformMetricsRoutes); // 비즈니스 지표(GMV·순수익률·반복구매·여신미수)
 // 🛡️ 2026-05-07: Cron / 알림톡 실패 모니터링 (admin 가시성)
-adminApp.route('/', adminSystemMonitoringRoutes);
+adminApp.route('/', adminSystemMonitoringRoutes); adminApp.route('/', agencyAdminRoutes); // 🏢 /agency-accounts — 새 에이전시 계정 목록·정지(옛 agencies 아님)
 adminApp.route('/', adminManagementRoutes);
 // 🛡️ 2026-04-22 배치 138 (TD-006 부분): admin-coupons 분리 — admin-management.routes.ts 줄임
 adminApp.route('/', adminCouponsRoutes);
