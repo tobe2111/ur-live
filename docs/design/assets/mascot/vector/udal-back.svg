@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 364 519" width="364" height="519">
+  <title>유달이 뒷모습 (벡터 정본 v1)</title>
+  <defs>
+    <radialGradient id="fur" cx="45%" cy="30%" r="75%">
+      <stop offset="0" stop-color="#B98A67"/>
+      <stop offset="0.6" stop-color="#9D7256"/>
+      <stop offset="1" stop-color="#7E5A43"/>
+    </radialGradient>
+    <radialGradient id="cream" cx="50%" cy="35%" r="70%">
+      <stop offset="0" stop-color="#F3E6D6"/>
+      <stop offset="1" stop-color="#DCC6AE"/>
+    </radialGradient>
+    <radialGradient id="eye" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#120B08"/>
+      <stop offset="0.62" stop-color="#22140E"/>
+      <stop offset="1" stop-color="#7A4528"/>
+    </radialGradient>
+    <radialGradient id="blush" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#EBA594" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#EBA594" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="band" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2F7BF2"/>
+      <stop offset="1" stop-color="#1550C0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 발 -->
+  <ellipse cx="117" cy="486" rx="40" ry="22" fill="#8C6449"/>
+  <ellipse cx="247" cy="486" rx="40" ry="22" fill="#8C6449"/>
+
+  <!-- 팔 (몸 뒤로 살짝) -->
+  <path d="M84 284 C58 300 40 338 38 370 C36 394 62 400 72 386 C80 366 88 340 102 316 Z" fill="url(#fur)" stroke="#7A5640" stroke-width="1.5"/>
+  <path d="M280 284 C306 300 324 338 326 370 C328 394 302 400 292 386 C284 366 276 340 262 316 Z" fill="url(#fur)" stroke="#7A5640" stroke-width="1.5"/>
+
+  <!-- 몸통 (등) -->
+  <path d="M118 236 C76 254 52 320 52 396 C52 468 108 494 182 494 C256 494 312 468 312 396 C312 320 288 254 246 236 Z" fill="url(#fur)"/>
+
+  <!-- 꼬리 (등 아래에서 밑으로, 끝이 가늘다) -->
+  <path d="M182 370 C214 370 230 404 226 440 C222 474 202 500 182 504 C162 500 142 474 138 440 C134 404 150 370 182 370 Z" fill="#AD8061" stroke="#7A5640" stroke-width="1.2"/>
+
+  <!-- 수염 끝 (머리 뒤로 살짝 보인다) -->
+  <g stroke="#FFFFFF" stroke-width="1.6" stroke-linecap="round" fill="none">
+    <path d="M40 186 C30 185 20 185 10 187"/>
+    <path d="M42 198 C32 200 22 204 12 210"/>
+    <path d="M324 186 C334 185 344 185 354 187"/>
+    <path d="M322 198 C332 200 342 204 352 210"/>
+  </g>
+
+  <!-- 귀 -->
+  <circle cx="42" cy="110" r="25" fill="#8C6449"/>
+  <circle cx="322" cy="110" r="25" fill="#8C6449"/>
+
+  <!-- 뒤통수 (털만) -->
+  <path d="M182 18 C246 18 306 54 324 118 C344 196 300 264 182 268 C64 264 20 196 40 118 C58 54 118 18 182 18 Z" fill="url(#fur)"/>
+
+  <!-- 반다나 뒤: 목 띠 + 아래로 처진 삼각 -->
+  <path d="M94 262 C138 276 226 276 270 262 C272 276 266 288 252 292 C210 300 154 300 112 292 C98 288 92 276 94 262 Z" fill="url(#band)"/>
+  <path d="M132 290 C164 300 200 300 232 290 C216 310 198 326 182 334 C166 326 148 310 132 290 Z" fill="url(#band)"/>
+</svg>

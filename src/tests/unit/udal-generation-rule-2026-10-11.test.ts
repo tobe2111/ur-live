@@ -42,6 +42,10 @@ describe('유달이 생성 철칙', () => {
       expect(svg).toContain('#9D7256')
     }
     expect(readFileSync('docs/design/assets/mascot/vector/udal-front.svg', 'utf8')).toContain('#1C69EF')
+    // 옆·뒤도 정면과 같은 캔버스 — 세 장을 나란히 놓으면 크기가 맞아야 한다(턴어라운드)
+    for (const f of ['udal-front.svg', 'udal-side.svg', 'udal-back.svg']) {
+      expect(readFileSync(`docs/design/assets/mascot/vector/${f}`, 'utf8')).toContain('viewBox="0 0 364 519"')
+    }
   })
 
   it('CLAUDE.md 가 모든 세션에 철칙을 가리킨다', () => {
