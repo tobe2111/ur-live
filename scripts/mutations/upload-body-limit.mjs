@@ -72,8 +72,11 @@ export default [
   {
     name: '📤 허용목록에 사유 없이 새 자리를 숨긴다',
     file: TEST,
-    find: "  'src/pages/supplier-dashboard/MultiImageUpload.tsx':\n    '도매 제조사 상품 사진",
-    replace: "  'src/pages/user-profile/profile-edit/ProfileEditSheet.tsx': 'x',\n  'src/pages/supplier-dashboard/MultiImageUpload.tsx':\n    '도매 제조사 상품 사진",
+    // 🔁 2026-10-11 재조준: 종전 앵커는 허용목록의 **사유 문구**였는데, 대표 정정(도매몰은 안 하는
+    //   서비스)으로 그 문구를 고치자 앵커가 낡았다(pre-push 게이트가 잡았다). 문구는 또 바뀐다 ⇒
+    //   안 바뀌는 **선언 줄**에 걸어 사유 없는 항목을 맨 앞에 끼워 넣는다.
+    find: 'const ALLOW: Record<string, string> = {',
+    replace: "const ALLOW: Record<string, string> = {\n  'src/pages/user-profile/profile-edit/ProfileEditSheet.tsx': 'x',",
     test: TEST,
     why: '래칫의 탈출구는 허용목록이다 — 사유 없는 면제가 들어오면 가드가 지키는 척만 한다.',
   },
