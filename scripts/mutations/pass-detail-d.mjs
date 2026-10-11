@@ -33,4 +33,12 @@ export default [
     test: TEST,
     why: '대표 "PC도 해야하는거 아니야?" — PC 만 옛 평면으로 남으면 같은 상품이 두 화면에서 다른 서비스처럼 보인다.',
   },
+  {
+    name: '🎟️D 스캔 예외가 2단계에서 떨어져 나간다',
+    file: 'src/pages/group-buy/RedeemHowTo.tsx',
+    find: "{n === '2' && (",
+    replace: "{n === '9' && (",
+    test: TEST,
+    why: '예외가 어느 순간의 일인지가 자리로 읽혀야 한다(대표 확정 시안 1) — 떨어지면 손님이 스캔 실패 때 무엇을 할지 못 찾는다.',
+  },
 ]

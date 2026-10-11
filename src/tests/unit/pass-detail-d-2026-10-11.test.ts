@@ -71,14 +71,15 @@ describe('③ 결제는 구매 창 안에서만', () => {
   })
 })
 
-describe('④ 이용 안내 — 늘 펼친 STEP 타일 3장', () => {
-  it('타일 3장 + 스캔이 안 될 때의 길 한 줄', () => {
+describe('④ 이용 안내 — 세로 타임라인 (대표 시안 6종 중 "1번", 2026-10-11)', () => {
+  it('세 단계 + 예외는 2단계(스캔) 바로 아래 갈래', () => {
     expect((HOWTO.match(/\{ n: '\d'/g) || []).length).toBe(3)
-    expect(HOWTO).toContain('grid grid-cols-3')
-    expect(HOWTO).toContain('{REDEEM_FALLBACK}')
+    expect(HOWTO, '예외 갈래가 2단계에 안 붙어 있다').toMatch(/n === '2' && \([\s\S]{0,300}스캔이 안 되면\?[\s\S]{0,80}\{REDEEM_FALLBACK\}/)
   })
-  it('접기가 되살아나지 않는다', () => {
-    expect(USAGE).not.toContain('useState')
-    expect(USAGE).toContain('<RedeemHowTo />')
+  it('단계는 접지 않는다 — 접히는 건 유의사항뿐', () => {
+    const line = USAGE.split('\n').find((l) => l.includes('<RedeemHowTo />'))
+    expect(line, '단계가 안 그려진다').toBeTruthy()
+    expect(line!, '단계가 조건부가 됐다 — 눌러야 보이는 절차는 매장 앞에서 안 열린다').not.toContain('&&')
+    expect(USAGE).toMatch(/<details[\s\S]{0,400}유의사항/)
   })
 })
