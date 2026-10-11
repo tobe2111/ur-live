@@ -15,7 +15,7 @@ export default function BrokeredViaAgencyNote() {
       <p className="mt-1 text-[12px] leading-relaxed text-gray-600">
         이미 유어딜에 있는 매장이면 에이전시에서 만든 초대 링크를 사장님께 보내 [맡기기]를 받으면 돼요.
       </p>
-      <Link to={AGENCY_SIGNUP_PATH} className="mt-3 inline-flex h-9 items-center rounded-lg bg-brand px-3 text-[13px] font-semibold text-white">
+      <Link to={AGENCY_SIGNUP_PATH} className="mt-3 ur-btn ur-btn-sm ur-btn-primary">
         에이전시로 가입하기
       </Link>
     </div>
