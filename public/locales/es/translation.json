@@ -5555,8 +5555,8 @@
     "updateNow": "Actualizar ahora",
     "photoChange": "Cambiar foto",
     "photoUploading": "Subiendo…",
-    "photoHint": "JPG/PNG, máx. 5MB",
-    "photoTooBig": "Elige un archivo de menos de 5MB",
+    "photoHint": "Las fotos se reducen automáticamente",
+    "photoTooBig": "Esa foto es demasiado grande. Elige otra",
     "photoUpdated": "Foto de perfil actualizada",
     "photoFailed": "No se pudo cambiar la foto"
   },
