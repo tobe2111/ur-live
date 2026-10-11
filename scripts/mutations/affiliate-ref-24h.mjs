@@ -9,14 +9,14 @@ export default [
   {
     name: '🔗24h 엔트리가 정책 파일을 끌어온다',
     file: STORE,
-    find: "import { REFERRAL_TTL_HOURS } from '@/shared/utils/referral-ttl'",
-    replace: "import { CURATOR_DEFAULTS } from '@/shared/constants/policy'\nconst REFERRAL_TTL_HOURS = CURATOR_DEFAULTS.REF_COOKIE_TTL_HOURS",
+    find: 'export const REFERRAL_TTL_HOURS = 24',
+    replace: "import { CURATOR_DEFAULTS } from '@/shared/constants/policy'\nexport const REFERRAL_TTL_HOURS = CURATOR_DEFAULTS.REF_COOKIE_TTL_HOURS",
     test: TEST,
     why: 'lib/api.ts(엔트리)가 이 파일을 import 한다 — policy.ts 를 거치면 app-constants 청크가 첫 페인트에 실린다(2026-10-11 Verify 가 잡았다).',
   },
   {
     name: '🔗24h 유효기간이 7일로 돌아간다',
-    file: 'src/shared/utils/referral-ttl.ts',
+    file: STORE,
     find: 'export const REFERRAL_TTL_HOURS = 24',
     replace: 'export const REFERRAL_TTL_HOURS = 168',
     test: TEST,

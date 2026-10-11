@@ -18,8 +18,6 @@
  * ────────────────────────────────────────────────────────────────
  */
 
-import { REFERRAL_TTL_HOURS } from '../utils/referral-ttl'
-
 // ── ① 환불 / 만료 / 분쟁 / 출금 ────────────────────────────────
 
 export const REFUND_POLICY = {
@@ -198,7 +196,9 @@ export const CURATOR_DEFAULTS = {
   /** 핀 stats 기본 조회 기간 (일) */
   STATS_DEFAULT_RANGE_DAYS: 7,
   /** 소개 링크 유효기간(시간) — `utils/affiliate-ref-store.ts` 가 이 값 하나를 쓴다. 2026-10-11 대표 "24시간으로 해줘. 7일말고". */
-  REF_COOKIE_TTL_HOURS: REFERRAL_TTL_HOURS,
+  // ⚠️ `utils/affiliate-ref-store.ts` 의 REFERRAL_TTL_HOURS 와 같은 값이어야 한다(시험이 대조). import 하지 않는
+  //    이유: 엔트리가 이 파일을 끌면 app-constants 청크가 첫 페인트에 실린다(2026-10-11).
+  REF_COOKIE_TTL_HOURS: 24,
 } as const
 
 // ── ③ 원천징수율 + 세무 임계값 ──────────────────────────────────

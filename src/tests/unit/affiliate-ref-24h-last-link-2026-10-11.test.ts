@@ -13,11 +13,10 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { readFileSync } from 'fs'
 import {
-  readAffiliateRef, writeAffiliateRef, pruneExpiredAffiliateRef, AFFILIATE_REF_TTL_MS,
+  readAffiliateRef, writeAffiliateRef, pruneExpiredAffiliateRef, AFFILIATE_REF_TTL_MS, REFERRAL_TTL_HOURS,
 } from '@/utils/affiliate-ref-store'
 import { getPurchaseRef } from '@/lib/seller-tracking'
 import { stripComments } from '../helpers/source-text'
-import { REFERRAL_TTL_HOURS } from '@/shared/utils/referral-ttl'
 import { CURATOR_DEFAULTS } from '@/shared/constants/policy'
 
 const H = 60 * 60 * 1000
@@ -111,8 +110,9 @@ describe('🔌 읽는 곳이 전부 같은 판정을 쓴다 (두 벌 금지)', (
     // 통째로 첫 페인트에 실린다(check-critical-chunks 가 2026-10-11 에 잡았다).
     const src = readFileSync('src/utils/affiliate-ref-store.ts', 'utf8')
     const imports = src.split('\n').filter((l) => /^import\s/.test(l))
-    expect(imports.join('\n')).not.toMatch(/constants\/policy/)
-    expect(imports.join('\n')).toMatch(/shared\/utils\/referral-ttl/)
+    // 엔트리(app-utils)가 읽는 파일이라 다른 청크를 import 하면 첫 페인트가 늘거나(policy) 청크 순환으로
+    // 부팅 TDZ 크래시가 난다(shared/utils — 2026-10-11 실측, 모든 화면 빈칸). import 0개를 고정한다.
+    expect(imports, '이 파일은 아무것도 import 하지 않는다').toEqual([])
     expect(CURATOR_DEFAULTS.REF_COOKIE_TTL_HOURS).toBe(REFERRAL_TTL_HOURS)
     expect(REFERRAL_TTL_HOURS).toBe(24)
   })
