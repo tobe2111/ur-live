@@ -59,8 +59,10 @@ export default [
     //   지금 지킬 것은 그 줄이 **다시 별도 카드로 떨어져 나가지 않는 것**이다.
     name: '🏷️ 딜 잔액이 다시 별도 카드로 떨어져 나간다',
     file: 'src/pages/user-profile/MyStats.tsx',
-    find: '      <div className="flex items-start divide-x divide-rule py-1">',
-    replace: '      <div className="rounded-2xl bg-surface shadow-lift p-5">',
+    // 🔁 2026-10-11 재조준(안 5): 띠 모드가 생겨 그 줄이 템플릿 리터럴이 됐다(`py-1` 이 조건부).
+    //   불변식은 그대로 — **딜 잔액이 다시 별도 카드로 떨어져 나가지 않는다.**
+    find: '    <div className={`flex items-start divide-x divide-rule${inline ? \'\' : \' py-1\'}`}>',
+    replace: '    <div className={`rounded-2xl bg-surface shadow-lift p-5${inline ? \'\' : \'\'}`}>',
     test: TEST,
     why: '위아래가 전부 라벨 달린 그룹이라, 라벨이 빠지면 이 줄만 어디에도 안 속한 채 뜬다(대표가 지적한 그 바).',
   },

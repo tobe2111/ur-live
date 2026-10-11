@@ -60,16 +60,19 @@ export default [
     why: '이름만 맞고 실물이 없으면 런타임에 빈 자리가 된다(번들러가 조용히 undefined 를 준다).',
   },
   {
+    // 🔁 2026-10-11 재조준(안 5): PC 프로필 줄이 `AccountPcPane`(좁은 칸의 흰 판) →
+    //   `AccountPcBand`(전폭 머리 띠)로 이사했다. 불변식은 그대로 — **모바일만 고치면 안 된다.**
     name: '👤 PC 헤더만 회색 프로필 편집 알약으로 되돌아간다',
-    file: 'src/pages/user-profile/AccountPcPane.tsx',
-    find: "          aria-label={t('userProfile.editProfile', { defaultValue: '프로필 편집' })}\n",
+    file: 'src/pages/user-profile/AccountPcBand.tsx',
+    find: "        aria-label={t('userProfile.editProfile', { defaultValue: '프로필 편집' })}\n",
     replace: "",
     test: TEST,
     why: '모바일만 고치고 PC 를 빠뜨리면 같은 뜻의 줄이 기기마다 다르게 생긴다 — 09-28 에 실제로 그랬다.',
   },
   {
+    // 🔁 2026-10-11 재조준(안 5): 같은 이사 — 파일만 따라간다.
     name: '👤 PC 이메일만 다른 크기로 새어 나간다',
-    file: 'src/pages/user-profile/AccountPcPane.tsx',
+    file: 'src/pages/user-profile/AccountPcBand.tsx',
     find: '<span className="block text-[13px] text-gray-500 dark:text-gray-400 truncate mt-1">{localStorage.getItem(\'user_email\')',
     replace: '<span className="block text-[12px] text-gray-500 dark:text-gray-400 truncate mt-1">{localStorage.getItem(\'user_email\')',
     test: TEST,

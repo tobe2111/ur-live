@@ -21,8 +21,10 @@ export default [
   {
     name: '마이 숫자 — 칸 여백이 px-4 로 되돌아간다',
     file: 'src/pages/user-profile/MyStats.tsx',
-    find: 'flex-1 min-w-0 px-3 first:pl-4 last:pr-4 active:opacity-70',
-    replace: 'flex-1 min-w-0 px-4 first:pl-4 active:opacity-70',
+    // 🔁 2026-10-11 재조준(안 5): 띠 모드가 생기며 이 값이 삼항(`const box = compact ? … : …`)
+    //   안으로 들어갔다 — `active:opacity-70` 은 바깥 템플릿으로 빠졌다. 불변식은 그대로.
+    find: "'flex-1 min-w-0 px-3 first:pl-4 last:pr-4'",
+    replace: "'flex-1 min-w-0 px-4 first:pl-4'",
     test: 'src/tests/unit/my-stats-titles-2026-09-30.test.ts',
     why: '여백을 되돌리면 칸 안쪽이 103 → 97px 로 줄어 단위를 뺐어도 6자리(`99,999`)부터 다시 잘린다. "보기 좋게 넓히자" 는 다음 세션의 자연스러운 충동이라 명시적으로 막는다.',
   },

@@ -44,17 +44,29 @@ import { TOPUP_DISABLED } from '@/shared/feature-flags'
 /** 💸 충전은 2026-07-18 에 종료됐다 — 딜의 "자세히" 는 내역이다. */
 const DEAL_PATH = TOPUP_DISABLED ? '/my-deal-history' : '/points/charge'
 
-function Cell({ label, to, value, className = '' }: {
+function Cell({ label, to, value, className = '', compact = false, foot }: {
   label: string
   to: string
   /** 칸을 특정 폭에서만 보이게 할 때(교환권은 폰에서 넷째 칸이 되면 숫자가 잘린다). */
   className?: string
   /** `undefined` = 아직 모름(안 그린다) · `null` = 조회 실패(`—`) · 숫자 = 값 */
   value: number | null | undefined
+  /**
+   * 🎗️ 2026-10-11 **안 5 띠 모드** — 칸이 폭을 나눠 갖지 않고 **내용만큼만** 차지하고 오른쪽에 붙는다.
+   * ⚠️ `flex-1` 과 `flex-none` 을 한 문자열에 같이 쓰지 않는다 — 어느 쪽이 이기는지는 클래스 순서가
+   *    아니라 **생성된 CSS 순서**가 정하므로 조용히 뒤집힌다. 그래서 둘 중 하나만 고른다.
+   */
+  compact?: boolean
+  /** 띠 모드에서 값 아래 한 줄(환급 가능 등). 폰 줄에서는 안 쓴다 — 거기선 줄 밖 `<p>` 가 맡는다. */
+  foot?: string
 }) {
+  // 📏 폰 줄의 값은 2026-09-30 에 390px 실측으로 확정된 것이다 — **문자열 그대로 유지**(가드가 고정).
+  const box = compact
+    ? 'shrink-0 px-5 first:pl-0 last:pr-0 text-right'
+    : 'flex-1 min-w-0 px-3 first:pl-4 last:pr-4'
   return (
-    <Link to={to} className={`flex-1 min-w-0 px-3 first:pl-4 last:pr-4 active:opacity-70 ${className}`}>
-      <span className="flex items-center gap-1 text-[13px] font-semibold text-gray-500 dark:text-gray-400">
+    <Link to={to} className={`${box} active:opacity-70 ${className}`}>
+      <span className={`flex items-center gap-1 text-[13px] font-semibold text-gray-500 dark:text-gray-400${compact ? ' justify-end' : ''}`}>
         <span className="truncate">{label}</span>
         <ChevronRight className="w-3 h-3 shrink-0" aria-hidden="true" />
       </span>
@@ -70,11 +82,23 @@ function Cell({ label, to, value, className = '' }: {
           </span>
         )}
       </span>
+      {foot && <span className="block mt-1 text-[12px] font-medium text-gray-500 dark:text-gray-400 truncate">{foot}</span>}
     </Link>
   )
 }
 
-export default function MyStats({ voucher, gifticon, coupon }: { voucher?: number | null; gifticon?: number | null; coupon?: number | null }) {
+export default function MyStats({ voucher, gifticon, coupon, inline = false }: {
+  voucher?: number | null
+  gifticon?: number | null
+  coupon?: number | null
+  /**
+   * 🎗️ 2026-10-11 **안 5**: PC 머리 띠 안에 **그대로 끼워 넣는 모드**(`AccountPcBand`).
+   * 칸이 오른쪽에 붙고, 바깥 `ur-content-medium` 래퍼와 줄 밖 안내문을 쓰지 않는다
+   * (한 줄 띠 안에서 그 `<p>` 가 두 번째 줄을 만들면 띠가 아니게 된다 — 값 아래 `foot` 가 대신한다).
+   * ⚠️ **폰 출력은 한 글자도 안 바뀐다** — `inline` 이 거짓일 때의 경로가 종전과 byte-동일이다.
+   */
+  inline?: boolean
+}) {
   /** `undefined` 아직 · `null` 실패 · 숫자 값 */
   const [balance, setBalance] = useState<number | null | undefined>(undefined)
   const [freeBalance, setFreeBalance] = useState(0)
@@ -102,21 +126,36 @@ export default function MyStats({ voucher, gifticon, coupon }: { voucher?: numbe
     return () => window.removeEventListener('pointsBalanceChanged', handler)
   }, [])
 
+  const refundable = balance != null && freeBalance > 0
+
+  const cells = (
+    /* ➖ 칸 사이 세로 구분선 — `divide-x` 가 첫 칸 앞에는 안 긋는다(코레일톡과 같은 모양). */
+    <div className={`flex items-start divide-x divide-rule${inline ? '' : ' py-1'}`}>
+      <Cell
+        compact={inline}
+        label="내 딜"
+        to={DEAL_PATH}
+        value={balance}
+        /* 띠에서는 줄 밖 `<p>` 를 못 쓴다 — 같은 사실을 값 아래 한 줄로 말한다. */
+        foot={inline && refundable ? `환급 가능 ${formatNumber(Math.max(0, balance! - freeBalance))}` : undefined}
+      />
+      <Cell compact={inline} label="이용권" to="/my-vouchers" value={voucher} />
+      {/* 📱 교환권은 **폰에서 넷째 칸이 되면 칸이 너무 좁다**(390px ÷ 4 = 97px, 안쪽 여백 빼면 73px).
+          폰에서는 아래 `내가 산 것` 목록의 '내 교환권' 줄이 같은 숫자를 들고 있으므로 잃는 게 없다. */}
+      <Cell compact={inline} className="hidden lg:block" label="교환권" to="/my-gifticons" value={gifticon} />
+      <Cell compact={inline} label="쿠폰" to="/my-coupons" value={coupon} />
+    </div>
+  )
+
+  if (inline) return cells
+
   return (
     <div className="ur-content-medium lg:px-4">
-      {/* ➖ 칸 사이 세로 구분선 — `divide-x` 가 첫 칸 앞에는 안 긋는다(코레일톡과 같은 모양). */}
-      <div className="flex items-start divide-x divide-rule py-1">
-        <Cell label="내 딜" to={DEAL_PATH} value={balance} />
-        <Cell label="이용권" to="/my-vouchers" value={voucher} />
-        {/* 📱 교환권은 **폰에서 넷째 칸이 되면 칸이 너무 좁다**(390px ÷ 4 = 97px, 안쪽 여백 빼면 73px).
-            폰에서는 아래 `내가 산 것` 목록의 '내 교환권' 줄이 같은 숫자를 들고 있으므로 잃는 게 없다. */}
-        <Cell className="hidden lg:block" label="교환권" to="/my-gifticons" value={gifticon} />
-        <Cell label="쿠폰" to="/my-coupons" value={coupon} />
-      </div>
+      {cells}
       {/* 💸 무상(리워드) 딜은 사용은 자유지만 **현금 환급 제외**(약관)라, 0 이 아니면 한 줄로 알린다. */}
-      {balance != null && freeBalance > 0 && (
+      {refundable && (
         <p className="px-4 pt-2 text-[12px] text-gray-500 dark:text-gray-400">
-          무상 리워드 {formatNumber(freeBalance)}딜 포함 · 환급 가능 {formatNumber(Math.max(0, balance - freeBalance))}딜
+          무상 리워드 {formatNumber(freeBalance)}딜 포함 · 환급 가능 {formatNumber(Math.max(0, balance! - freeBalance))}딜
         </p>
       )}
     </div>

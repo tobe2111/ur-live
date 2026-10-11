@@ -119,7 +119,14 @@ describe('마이 — 아이콘 체계', () => {
  */
 describe('마이 — 헤더 문법은 모바일·PC 가 같다', () => {
   const MOBILE = 'src/pages/UserProfilePage.tsx'
-  const PC = 'src/pages/user-profile/AccountPcPane.tsx'
+  /**
+   * 🔁 **2026-10-11 재조준(안 5) — PC 헤더가 파일을 옮겼다.**
+   *   대표 확정 안 5 로 PC 프로필 줄이 `AccountPcPane`(좁은 오른쪽 칸의 흰 판 카드) →
+   *   `AccountPcBand`(전폭 머리 띠)로 이사했다. **불변식은 한 글자도 안 바뀐다** —
+   *   *"둘 다 알약이 아니라 눌리는 줄인가"* · *"모바일과 PC 가 같은 문법인가"*. 앵커만 따라간다.
+   *   ⚠️ 지우지 않는다: 이사한 자리에서 같은 것을 계속 지켜야 09-28 에 갈렸던 그 상태로 안 돌아간다.
+   */
+  const PC = 'src/pages/user-profile/AccountPcBand.tsx'
 
   /**
    * 🔁 **2026-10-11 재조준 — 대표 지시로 "라벨 0" 전제가 바뀌었다.**

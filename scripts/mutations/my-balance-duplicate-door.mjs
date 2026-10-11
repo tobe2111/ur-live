@@ -16,9 +16,10 @@ export default [
     name: '🪙마이잔액 딜 칸이 상단 줄에서 통째로 사라진다',
     file: MY,
     // 🔁 2026-09-30 재조준 — 값에서 단위(`unit="딜"`)를 뺐다(390px 에서 숫자가 잘리던 원인).
-    //   불변식은 그대로다: **딜 칸이 이 줄에 있어야 한다.**
-    find: '        <Cell label="내 딜" to={DEAL_PATH} value={balance} />\n',
-    replace: '',
+    //   🔁 2026-10-11 재조준(안 5) — 그 칸이 띠 모드 prop(`compact`·`foot`)을 받으며 여러 줄이 됐다.
+    //      불변식은 두 번 다 그대로다: **딜 칸이 이 줄에 있어야 한다.**
+    find: '        label="내 딜"\n        to={DEAL_PATH}\n        value={balance}\n',
+    replace: '        label="내 딜"\n        to={DEAL_PATH}\n        value={undefined}\n',
     test: TEST,
     why: '딜은 이 화면에서 가장 중요한 숫자다 — 칸이 빠져도 나머지 둘이 멀쩡히 서서 아무도 신고하지 않는다.',
   },
@@ -35,7 +36,9 @@ export default [
   {
     name: '🪙마이잔액 무상 리워드 안내를 뺀다',
     file: MY,
-    find: '      {balance != null && freeBalance > 0 && (',
+    // 🔁 2026-10-11 재조준(안 5): 같은 조건이 `refundable` 로 이름이 생겼다(띠 모드가 값 아래
+    //   한 줄로 같은 사실을 말해야 해서 두 곳이 쓴다). 지키는 것은 그대로 — **안내가 사라지지 않는다.**
+    find: '      {refundable && (',
     replace: '      {false && (',
     test: TEST,
     why: '무상 딜은 현금 환급 제외다(약관) — 안 알리면 사장님이 환급되는 줄 안다.',

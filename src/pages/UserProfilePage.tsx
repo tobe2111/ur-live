@@ -15,6 +15,7 @@ import { useNotificationSheet } from '@/components/notifications/useNotification
 import { LogOutIcon, ScanIcon } from '@/components/icons/urdeal-icons'
 import { ListRow, rowIcon } from './user-profile/list-grammar'
 import MyStats from './user-profile/MyStats'
+import AccountPcBand from './user-profile/AccountPcBand'
 import RoleCtaGrid from './user-profile/RoleCtaGrid'
 import ShoppingGroup from './user-profile/ShoppingGroup'
 import OrderStatusBar from './user-profile/OrderStatusBar'
@@ -139,6 +140,38 @@ export default function UserProfilePage() {
     }
   }
 
+  /**
+   * 🎗️ 2026-10-11 **안 5** — PC 에서 두 열로 쪼개는가. 설정 구역의 자리를 이 값이 정한다.
+   * ⚠️ `isPc` 만으로는 안 된다 — 좌석이 0 곳이면 `ur-account-cols` 가 평범한 블록이라
+   *   왼쪽·오른쪽이 그냥 세로로 이어지고, 설정이 본문보다 **먼저** 그려진다.
+   */
+  const pcSplit = isPc && sellerSeats.stores.length > 0
+
+  /**
+   * ⚙️ 설정 구역은 **한 벌만 만든다.** 안 5 에서 이 블록은 PC(두 열)면 왼쪽 아래, 아니면
+   * 종전 자리(오른쪽/본문 흐름)에 선다 — 자리는 둘인데 **정의는 하나**다.
+   * 🩸 복붙하면 반드시 갈린다. 이 레포가 같은 클래스로 두 번 당했다(09-28 헤더 문법 · 09-30 구역 제목).
+   */
+  const settingsBlock = (
+    <SettingsGroup>
+      <NotificationToggleSection />
+      {/* 🧱 가로 패딩 없음 — 줄이 자기 `px-4` 를 갖는다(2026-09-30 안 C 정합). */}
+      <ThemeToggleSection className="ur-content-medium lg:px-4" />
+      {/* 🌐 2026-08-11: 번역이 반쯤 빈 상태(언어당 [TODO] 289개)에서 전환을 열어 두면
+          어중간한 화면이 된다. 한국 전용 서비스라 문을 닫는다 — 플래그 false 로 즉시 복원. */}
+      {!CONSUMER_LANGUAGE_SWITCH_HIDDEN && <LanguageSection className="ur-content-medium px-4 lg:px-8 pt-3" />}
+      {/* 🧹 2026-09-02 (대표 "앱 정보는 맨 밑에 넣어줘"): 버전 표기는 **찾을 수 있으면 되는 정보**라
+          설정 그룹을 열어야 보이는 자리가 아니라 페이지 맨 아래(약관·FAQ 옆)로 내렸다. */}
+      {/* 🚪 2026-09-30 — 로그아웃이 **설정 · 계정 안**으로 들어왔다 (대표 *"맨 하단도 좀 정리해야
+          할 것 같아"*). 종전엔 페이지 맨 아래 흰 판 버튼이었는데, ⓐ 로그아웃은 설정이지 독립 구역이
+          아니고 ⓑ 안 C 에서 **흰 판은 "파는 쪽" 표시자**라 손님 구역에 판이 하나 떠 있으면 그 표시가
+          무의미해진다(표면 규칙 ⑦). ⇒ 다른 줄과 같은 평면 줄로. */}
+      <div className="mt-4">
+        <ListRow icon={rowIcon(LogOutIcon)} label={t('userProfile.logout')} onClick={handleLogout} />
+      </div>
+    </SettingsGroup>
+  )
+
   // 🛡️ 2026-04-30 v4 Wallet 디자인 시안 매칭 — InsetGroup 형태로 정돈, 모든 기능 보존
   return (
     /* 🎨 2026-08-30 (대표 — "마이는 UX/UI 전반이 문제"): 표면을 뒤집었다.
@@ -219,15 +252,24 @@ export default function UserProfilePage() {
           걷어내니 본문이 888 → 1200px 을 쓴다(216 내비 + 32 gap 회수). 목적지는 하나도 안 잃었다 —
           넷은 오른쪽 열이 **숫자와 함께** 갖고 있고, 배송지·주문 내역은 `내가 산 것` 목록에 있다.
           모바일(<lg)에서는 `ur-account-pc` 가 아무 일도 하지 않아 **지금 흐름 그대로**다. */}
-      <div className="hidden lg:block max-w-[1200px] mx-auto px-8 pt-1 pb-3">
+      <div className="ur-account-pc">
+        {/* 📖 안 5 — 판매가 없으면 한 칸이고, 그때만 읽을 수 있는 폭(820px)으로 좁힌다.
+            ⚠️ 조건식은 아래 두 열 래퍼와 **글자 그대로 같아야 한다** — 갈리면 한쪽은 좁고 한쪽은
+               넓어져 띠·목록·푸터의 왼쪽 끝이 어긋난다(시험이 그 동일성을 대조한다). */}
+        <div className={sellerSeats.stores.length > 0 ? 'ur-account-pane min-w-0' : 'ur-account-pane ur-account-pane--single min-w-0'}>
+      {/* 🧭 2026-10-11 **안 5** — 빵부스러기가 **칸 안으로** 들어왔다.
+          종전엔 `.ur-account-pc` 바깥에서 자기 1200px 를 따로 잡았는데, 비셀러 화면에서 칸이
+          820px 로 좁아지자 빵부스러기만 홀로 왼쪽 끝에 남았다(렌더로 확인 — 본문보다 350px 왼쪽).
+          칸 안에 두면 넓든 좁든 **띠·목록과 같은 왼쪽 끝**에 선다.
+          🧱 `px-4` — 평면 줄(`ListRow`)·머리 띠와 같은 값이다(그 셋이 한 선 위에 서야 한다). */}
+      <div className="hidden lg:block px-4 pt-1 pb-3">
         <p className="text-[12px] text-gray-400 dark:text-gray-500">
           <Link to="/" className="hover:underline">홈</Link>
           <span className="mx-2">/</span>
           <span className="text-gray-600 dark:text-gray-300 font-semibold">내 계정</span>
         </p>
       </div>
-      <div className="ur-account-pc">
-        <div className="ur-account-pane min-w-0">
+
 
       {/* 🖥️ 2026-09-02 PC: 우측 칸 상단 = 내용(프로필 카드 · 숫자 넷 · 주문/리뷰어 · 곧 쓸 이용권 · 타일).
           모바일: 종전 흐름(딜 잔액 카드 → 주문 현황 → 리뷰어 → 이용 내역 목록) 그대로. */}
@@ -248,7 +290,24 @@ export default function UserProfilePage() {
           말하려고 우측 칸의 절반을 쓰고 있었다. 코레일톡이 같은 일을 구분선 한 줄로 하는 것을
           보고 대표가 이 형태를 골랐다.
           ⚠️ 2열 래퍼 **밖**이다 — 숫자는 판매/손님 어느 쪽 것도 아니라 두 칸 위에 걸쳐야 한다. */}
-      <MyStats voucher={counts.voucher} gifticon={counts.gifticon} coupon={counts.coupon} />
+      {/* 🎗️ 2026-10-11 **안 5**(대표 *"안 5로 진행하자"*) — PC 는 이 자리가 **머리 한 줄 띠**다:
+          [아바타 · 이름 · 프로필 편집] … [숫자 셋/넷] [알림]. 종전엔 프로필이 좁은 오른쪽 칸 안
+          **흰 판 카드**로 따로 있어 머리 정보가 두 군데로 흩어졌고, 그 판이 손님 칸에 떠 있어
+          안 C 의 *"판은 파는 쪽에만"* 도 깨고 있었다.
+          🔢 숫자는 **같은 부품**(`MyStats`)이다 — 띠 모드로 끼울 뿐이라 폰과 값이 갈릴 수 없다.
+             ⚠️ 두 호출부가 **같은 세 prop** 을 넘겨야 한다(시험이 대조한다). */}
+      {isPc ? (
+        <AccountPcBand
+          counts={counts}
+          userName={userName}
+          profileImage={profileImage}
+          onEditProfile={() => setEditOpen(true)}
+          onBell={bell.open}
+          sellerSeats={sellerSeats}
+        />
+      ) : (
+        <MyStats voucher={counts.voucher} gifticon={counts.gifticon} coupon={counts.coupon} />
+      )}
 
       <div className={sellerSeats.stores.length > 0 ? 'ur-account-cols ur-account-cols--split' : 'ur-account-cols'}>
       <div className="ur-account-col min-w-0">
@@ -256,6 +315,14 @@ export default function UserProfilePage() {
       {/* 🖥️ 판매는 **넓은 쪽**(1.25)에 산다 — 시안 `PcFull1` 과 같은 자리다.
           목록 행이 [이름 + 설명 + ›] 이라 좁히면 설명이 먼저 잘린다. */}
       {isPc ? <SellerSection state={sellerSeats} /> : null}
+
+      {/* ⚙️ 2026-10-11 **안 5** — 설정이 **넓은 왼쪽 칸 아래**로 내려왔다.
+          안 5 에서 오른쪽은 손님 쪽(곧 쓸 이용권 · 내가 산 것)만 남는데, 설정까지 거기 두면
+          오른쪽만 길어지고 왼쪽 아래가 통째로 빈다(판매 구역은 한 판에서 끝난다).
+          ⚠️ **두 열로 안 쪼갤 때는 여기 두면 안 된다** — 그때 `ur-account-cols` 는 평범한 블록이라
+             설정이 본문보다 **먼저** 그려진다. 그래서 `pcSplit` 일 때만 이쪽, 아니면 오른쪽이다.
+          ⚠️ 블록을 **복붙하지 않는다**(`settingsBlock` 한 벌을 자리만 바꿔 건다) — 두 벌이면 갈린다. */}
+      {pcSplit ? settingsBlock : null}
 
       </div>{/* /왼쪽 열 — 판매 */}
       <div className="ur-account-col ur-account-col--narrow min-w-0">
@@ -269,7 +336,7 @@ export default function UserProfilePage() {
             대기인가* 하나다. 프로필·숫자 넷·티켓·타일은 그대로 그 아래에 있다(하나도 안 지웠다 —
             시안이 그것들을 빠뜨렸던 게 09-28 에 "PC가 심플하다" 로 드러난 실수다).
             ⚠️ 모바일은 이 분기를 안 타고 아래 `<>` 쪽이 그대로다(종전과 동일 순서). */}
-        <AccountPcPane counts={counts} userName={userName} profileImage={profileImage} onEditProfile={() => setEditOpen(true)} sellerSeats={sellerSeats} />
+        <AccountPcPane />
       </>
       ) : (
       <>
@@ -325,10 +392,17 @@ export default function UserProfilePage() {
           되살릴 때: 레벨 전용 혜택이 실제로 생긴 뒤에 — 지금 라이브 활성 이용권 중 레벨을 요구하는
           것이 0개라, 이 카드는 없는 혜택을 향해 진행바를 채우고 있었다. */}
 
-      {/* v4 쇼핑 InsetGroup — '내가 산 것'(이용권·자산 / 관심 / 주문·배송). 2026-09-28 이름 E. */}
-      <ShoppingGroup counts={counts} />
       </>
       )}
+
+      {/* 🛍️ v4 쇼핑 InsetGroup — '내가 산 것'(이용권·자산 / 관심 / 주문·배송). 2026-09-28 이름 E.
+          🎗️ 2026-10-11 **안 5** — 분기 **밖으로 끌어올렸다. 이제 PC 도 폰과 같은 이 목록을 쓴다.**
+          종전 PC 는 `AccountPcPane` 안에 **손으로 적은 타일 셋**(숙소·단골·찜)을 따로 갖고 있었다.
+          둘이 나빴다: ① 타일은 `shadow-lift` **판**이라 안 C 의 *"판은 파는 쪽에만"* 을 깼다
+          ② 셋뿐이라 **쿠폰함·주문 내역·배송지·내 리뷰는 PC 에서 갈 길이 아예 없었다**
+             (상단 숫자 줄이 쿠폰을 들고 있을 뿐 나머지 셋은 고아였다).
+          같은 부품을 쓰면 그 둘이 **구조적으로** 사라진다 — 목록이 하나니까 갈릴 수가 없다. */}
+      <ShoppingGroup counts={counts} />
 
       {/* 🗑️ 2026-09-30 — **수익 · 추천 구역을 마이에서 뺐다** (대표 *"수익 추천은 지금은 아예
           마이에서 안보여도 될 것 같아"*).
@@ -353,23 +427,7 @@ export default function UserProfilePage() {
 
       {/* 🧹 2026-06-19 (대표 신고 — 마이 번잡): 흩어진 설정(알림/테마/언어/앱정보)을 접이식 '설정' 그룹으로 합침.
            기능/데이터 로직 불변 — 표시만 1탭 뒤로. 탈퇴는 파괴적 동작이라 그룹 밖 최하단 유지. */}
-      <SettingsGroup>
-        <NotificationToggleSection />
-        {/* 🧱 가로 패딩 없음 — 줄이 자기 `px-4` 를 갖는다(2026-09-30 안 C 정합). */}
-        <ThemeToggleSection className="ur-content-medium lg:px-4" />
-        {/* 🌐 2026-08-11: 번역이 반쯤 빈 상태(언어당 [TODO] 289개)에서 전환을 열어 두면
-            어중간한 화면이 된다. 한국 전용 서비스라 문을 닫는다 — 플래그 false 로 즉시 복원. */}
-        {!CONSUMER_LANGUAGE_SWITCH_HIDDEN && <LanguageSection className="ur-content-medium px-4 lg:px-8 pt-3" />}
-        {/* 🧹 2026-09-02 (대표 "앱 정보는 맨 밑에 넣어줘"): 버전 표기는 **찾을 수 있으면 되는 정보**라
-            설정 그룹을 열어야 보이는 자리가 아니라 페이지 맨 아래(약관·FAQ 옆)로 내렸다. */}
-        {/* 🚪 2026-09-30 — 로그아웃이 **설정 · 계정 안**으로 들어왔다 (대표 *"맨 하단도 좀 정리해야
-            할 것 같아"*). 종전엔 페이지 맨 아래 흰 판 버튼이었는데, ⓐ 로그아웃은 설정이지 독립 구역이
-            아니고 ⓑ 안 C 에서 **흰 판은 "파는 쪽" 표시자**라 손님 구역에 판이 하나 떠 있으면 그 표시가
-            무의미해진다(표면 규칙 ⑦). ⇒ 다른 줄과 같은 평면 줄로. */}
-        <div className="mt-4">
-          <ListRow icon={rowIcon(LogOutIcon)} label={t('userProfile.logout')} onClick={handleLogout} />
-        </div>
-      </SettingsGroup>
+      {pcSplit ? null : settingsBlock}
 
       {/* 🗑️ 2026-09-30 — **'셀러 대시보드로 전환' 버튼을 없앴다** (대표 *"셀러 대시보드로 전환도
           이젠 필요없잖아"*). 맞다. 2026-09-25 §14("하는 것도 마이에서") 이후 **매일 쓰는 판매 도구는

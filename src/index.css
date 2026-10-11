@@ -1839,9 +1839,32 @@ html.dark .gbd, [data-theme="dark"] .gbd {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     align-items: start;
+    /* 🔴 2026-10-11 (대표 *"PC버전에서 보는 마이페이지 형태가 너무 옹졸해"*) — **`width: 100%` 가 빠져 있었다.**
+       이 블록의 부모(`UserProfilePage` 루트)는 `flex flex-col` 이다. 세로 flex 컨테이너에서
+       가로축은 **교차축**이고, 교차축의 `auto` 마진(= `margin: 0 auto`)은 `align-self: stretch` 를
+       **무력화한다**(CSS Flexbox §8.1). 그러면 이 박스는 내용 폭(fit-content)으로 줄고,
+       `max-width: 1200px` 은 영영 걸리지 않는다 — 1440px 화면에서 **실측 644px**,
+       즉 양옆 800px 가 통째로 빈 채였다. 그게 대표가 본 '옹졸함'의 실체다.
+       ⚠️ 이 레포는 **같은 함정을 이미 한 번 밟고 고쳤다** — `.ur-content-*` 의 2026-05-03 주석이
+          토씨까지 같은 설명을 달고 `width: 100%` 를 명시한다. 이 블록만 그 짝을 빠뜨렸다.
+       ⚠️ 그래서 `align-self: stretch` 로는 **안 고쳐진다**(auto 마진이 이긴다). 폭을 명시해야 한다. */
+    width: 100%;
     max-width: 1200px;
     margin: 0 auto;
     padding: 0 2rem;
+  }
+  /* 📖 2026-10-11 **안 5** — 판매가 없으면 **한 칸이고, 그 칸은 읽을 수 있는 폭까지만** 넓힌다.
+     폭 수리(`width: 100%`)로 본문이 1136px 를 쓰게 되자 비셀러 화면에서 부작용이 드러났다:
+     두 열로 쪼갤 게 없으니 평면 목록 한 줄이 **1136px** 가 되고, `내 이용권` 과 `0 ›` 사이가
+     1,000px 넘게 벌어진다 — 눈이 그 거리를 건너야 해서 오히려 읽기 나빠진다(렌더로 확인).
+     설정형 목록을 쓰는 제품들(Notion·Linear·GitHub 설정)이 전부 700~900 대에서 멈추는 이유다.
+     ⚠️ 띠·목록·푸터가 **같이** 좁아져야 왼쪽 끝이 맞는다 — 그래서 `ur-account-cols` 가 아니라
+        **칸(pane) 전체**에 건다.
+     ⚠️ 셀러(두 열)에는 안 건다 — 거기선 1136 이 649/463 으로 갈려 이미 읽을 수 있는 폭이다. */
+  .ur-account-pane--single {
+    max-width: 820px;
+    margin-left: auto;
+    margin-right: auto;
   }
   .ur-account-pane .ur-content-medium {
     max-width: none;
@@ -1861,9 +1884,15 @@ html.dark .gbd, [data-theme="dark"] .gbd {
      긴 매장 이름 한 줄이 열 비율을 통째로 무너뜨린다. (모바일에선 이 규칙이 없어도 무해하다.) */
   .ur-account-col { min-width: 0; }
 
+  /* 📐 2026-10-11 **안 5** (대표 *"안 5로 진행하자"*): 1.25fr : 1fr → **7fr : 5fr**.
+     확정 시안의 비율이고 종전(55.6:44.4)과 거의 같다 — 바뀌는 건 3%p 뿐이다.
+     ⚠️ 그래도 **균등으로 만들지 말 것**: 왼쪽은 판매 목록이라 [이름 + 설명 + ›] 세 조각이
+        한 줄에 들어가야 하고, 좁히면 설명이 먼저 잘린다(2026-09-28 에 실측한 이유 그대로).
+     📏 폭 수리(`width: 100%`) 뒤 실제 값: 안쪽 1136 − gap 24 = 1112 → 왼 649 / 오 463.
+        오른쪽이 폰 폭(430)보다 넓어야 손님 목록이 폰보다 좁아지지 않는다 — 463 이 그 조건이다. */
   .ur-account-cols--split {
     display: grid;
-    grid-template-columns: 1.25fr 1fr;
+    grid-template-columns: 7fr 5fr;
     gap: 24px;
     align-items: start;
   }
