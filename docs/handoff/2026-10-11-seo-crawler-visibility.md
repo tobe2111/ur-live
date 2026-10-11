@@ -30,7 +30,7 @@ done
 |---|---|---|
 | ① | `shared/seo/crawler-ua.ts` 신규 — `shouldRenderMobileFirstScreen` = **폰 ∪ 검색 크롤러** | 서버 첫 화면이 `isMobileUserAgent` 뒤에 있었고 **Yeti UA 엔 `Mobi\|Android\|iPhone` 이 하나도 없다** |
 | ② | `worker/utils/crawler-noscript.ts` 신규 — `<noscript>` 본문 요약 | 첫 화면은 [사진·제목]까지만 그린다(의도) → 크롤러에겐 "내용 없는 페이지" |
-| ③ | `shared/seo/brand-jsonld.ts` 신규 — 홈 `Organization`+`WebSite` | 구글이 사이트 이름을 **`urdeal.kr`**(도메인)로 쓰고 있었다 |
+| ③ | 🩸 **되돌림** — `index.html` 에 **이미 있었다**(아래 "틀렸던 판단" ①) | 대신 `alternateName` 의 도메인 별칭(`"유어딜 urdeal.kr"`)을 뺐다 |
 | ④ | `detail-ssr-meta.ts` — 매장을 **독립 `LocalBusiness` 엔티티**로 + `offers.availableAtOrFrom` | `address`·`geo` 가 `Product` 안이라 **구글이 버린다** → 로컬 신호가 한 번도 전달된 적 없음 |
 | ⑤ | `aggregateRating` 을 리뷰 있을 때만 | 0건에 `ratingValue: 0` 은 구글 정책 위반 + 0점짜리로 읽힌다 |
 
@@ -39,16 +39,49 @@ done
 
 ## 이번에 틀렸던 판단 (이게 제일 값지다)
 
-1. **"GEO = 0" 이라고 보고하려 했다.** 대표가 보내 준 스크린샷에 **구글 AI 개요가 유어딜을 정확히 설명하고 있었다.**
+1. 🔴 **"홈 JSON-LD 가 0건이라 사이트 이름이 도메인으로 떨어졌다" — 틀렸다.** `index.html:489` 에
+   `Organization`+`WebSite` `@graph` 가 **이미** 있고 `name` 이 `유어딜` 이고 **`@id` 까지 똑같았다**
+   (`https://urdeal.kr/#organization` · `#website`). `og:site_name`·`<title>` 도 이미 `유어딜` 이다.
+   제가 본 것은 `consumer-surfaces.ts` 에 `jsonLd` 필드가 없다는 것뿐이었고, **거기서 "홈에 JSON-LD 가
+   없다" 로 건너뛰었다.** 그래서 만든 모듈은 같은 `@id` 의 노드를 **두 벌** 내보내는 중복이었다
+   (`inLanguage` 가 `ko` ↔ `ko-KR` 로 어긋나기까지 했다). 머지 전에 라이브를 재서 되돌렸다.
+   ⇒ **"코드에 없다" 는 "라이브에 없다" 가 아니다.** 정적 `index.html` 은 소스 검색에서 잘 안 걸린다.
+2. 🔴 **그 수정에서 또 하나 깨뜨렸다 — 주석을 JSON 안에 넣었다.** JSON 에 주석은 못 들어가므로 그
+   JSON-LD 가 통째로 무효가 되는데, **제 확인 스크립트가 주석을 먼저 지우고 파싱해서 "OK" 가 떴다.**
+   브라우저도 구글도 주석을 지워 주지 않는다. ⇒ **검사기가 입력을 정규화하면 그 결함을 영원히 못 본다.**
+   가드를 *원문 그대로 파싱* 으로 고쳐서 잡았다(주입으로 빨간불 확인).
+3. **"GEO = 0" 이라고 보고하려 했다.** 대표가 보내 준 스크린샷에 **구글 AI 개요가 유어딜을 정확히 설명하고 있었다.**
    AI 개요는 **Googlebot 색인**으로 만들어지므로 GPTBot 차단과 무관하다. 막힌 것은 ChatGPT·Claude·Perplexity 쪽뿐이다.
    ⇒ *"AI 크롤러가 막혔다"* 에서 *"AI 검색 전부가 안 된다"* 로 번역하면 틀린다.
-2. **주입을 주석에 심어 헛돌았다.** `/** Yeti… */` 로 결함을 심었는데 `readCode` 가 주석을 걷어내 단언이 못 봤다
+5. **주입을 주석에 심어 헛돌았다.** `/** Yeti… */` 로 결함을 심었는데 `readCode` 가 주석을 걷어내 단언이 못 봤다
    (이 레포가 반복해 밟은 자리). **판정 대상은 코드다** — 술어의 정규식 자체에 심어야 빨간불이 난다.
-3. **핀 구조를 중첩으로 가정했다.** `pins[].product.name` 으로 썼는데 SSOT(`CuratorSeedPin`)는 **평평하다**
+6. **핀 구조를 중첩으로 가정했다.** `pins[].product.name` 으로 썼는데 SSOT(`CuratorSeedPin`)는 **평평하다**
    (`pins[].product_name`). 중첩으로 읽으면 전부 `undefined` 가 되는데 **에러가 안 나고 `<noscript>` 가 조용히 빈다.**
    시드 모양은 기억이 아니라 타입에서 가져올 것.
-4. **`isScraperUA` 가 미배선이라고 단정했다** — grep 에 테스트만 잡혀서였다. 실제로는 `scrapeProtection` 안에서 쓰이고
+7. **`isScraperUA` 가 미배선이라고 단정했다** — grep 에 테스트만 잡혀서였다. 실제로는 `scrapeProtection` 안에서 쓰이고
    그 미들웨어는 마운트돼 있다(단 `/api/products`·`/api/group-buy/*` 세 접두어에만).
+
+## 🔎 전수 실측 — "또 개선할 부분" (2026-10-11, 라이브)
+
+소비자 표면 10개 전수: **전부 200 · canonical 1개 · og:image 있음 · 깨진 URL 0.** 위생은 좋다.
+문제는 **구조화 데이터와 색인 요청의 커버리지**다.
+
+| 발견 | 실측 | 성격 |
+|---|---|---|
+| 🔴 **유어샵이 색인 요청에서 75% 빠진다** | 내용 있는 유어샵 **4곳 중 3곳 누락**(sitemap `/u/` **1개**) | **구조적** — `sitemap.routes.ts:179` 쿼리가 `FROM sellers` 로 시작한다. 유어샵은 **모든 유저**가 갖는데(명칭 SSOT) 사업자가 아니면 `sellers` 행이 없어 **들어갈 수가 없다**. 지금 규모는 작지만(핀 보유 유저 4명) 유저가 늘면 비례해 샌다 |
+| 🟡 유어샵에 페이지 고유 구조화 데이터 **0** | `/u/jiwon1228` = `Organization`+`WebSite`(브랜드 블록)뿐 | 공유로 퍼지는 표면인데 구글이 *이 페이지가 무엇인지* 모른다. `ProfilePage`+`ItemList`(진열 이용권) 후보 |
+| 🟡 목록 표면 구조화 데이터 **0** | `/vouchers`·`/browse`·`/map`·`/stays` 전부 브랜드 블록뿐 | sitemap priority 0.9 로 제출되는데 `ItemList`·`BreadcrumbList` 없음 |
+| 🟢 `llms.txt` **404** | — | AI 검색이 보는 관례 파일 |
+| ✅ 교환권 상세 `noindex` | `/vouchers/2192` → `noindex, follow` · sitemap `/vouchers/` 상세 **0건** | 2026-07-07 결정대로 **정상**(우회 없음) |
+| ✅ sitemap 451 URL | `/pass/` 360 · `/blog/` 21 · 죽은 URL 0 | 정상 |
+
+**sitemap 유어샵 쿼리의 실측 근거**(D1, 읽기 전용):
+```
+핸들 보유 유저(유어샵 주소 있음)        17
+핀(담기) 보유 유저                       4
+  그중 sellers 행 없음 = 구조적 누락     3   ← 색인 요청 불가
+현재 sitemap 제출(셀러 경유)             3   (handle 있는 건 1 → /u/ 1개)
+```
 
 ## 남은 결정 / 대기 (대표 판단)
 

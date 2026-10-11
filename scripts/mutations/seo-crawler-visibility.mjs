@@ -75,20 +75,32 @@ export default [
     why: '`pins[]` 는 평평하다 — 중첩으로 읽으면 전부 undefined 가 되는데 **에러가 안 난다**(처음 실제로 그랬다).',
   },
   {
-    name: '🔎 브랜드 JSON-LD 가 홈 밖에도 실린다(중복 엔티티)',
-    file: 'src/shared/seo/consumer-surfaces.ts',
-    find: "    ...(path === '/' ? { jsonLd: buildBrandJsonLd(origin, entry.description) } : {}),",
-    replace: '    jsonLd: buildBrandJsonLd(origin, entry.description),',
+    // 🔀 2026-10-11 재조준: 이 주입은 원래 제가 새로 만든 `brand-jsonld.ts` 를 겨냥했는데, 라이브를
+    //   재 보니 `index.html` 에 같은 `@id` 의 블록이 **이미** 있어 그 모듈 자체를 되돌렸다.
+    //   불변식은 그대로 — *"사이트 이름 신호가 홈에 실제로 실린다"*. 출처만 옮겼다.
+    name: '🔎 홈 `WebSite` 노드가 사라진다(구글이 도메인을 사이트 이름으로 쓴다)',
+    file: 'index.html',
+    find: '"@type": "WebSite",',
+    replace: '"@type": "WebPage",',
     test: TEST,
-    why: '구글은 사이트 이름을 **홈페이지의** WebSite 에서만 읽는다 — 다른 페이지엔 Product 가 맞다.',
+    why: '사이트 이름의 1순위 소스다 — 없으면 구글이 `urdeal.kr` 로 떨어진다(실제로 그랬다).',
   },
   {
-    name: '🔎 브랜드 JSON-LD 가 `</script>` 를 그대로 흘린다',
-    file: 'src/shared/seo/brand-jsonld.ts',
-    find: "  return s.replace(/</g, '\\\\u003c').replace(/>/g, '\\\\u003e').replace(/&/g, '\\\\u0026')",
-    replace: '  return s',
+    name: '🔎 설명 주석이 JSON 블록 **안**으로 들어간다(JSON-LD 가 통째로 무효)',
+    file: 'index.html',
+    // 앵커 유일성: `"name": "유어딜",` 는 Organization·WebSite 둘에 있어 @id 줄까지 포함한다.
+    find: '"@id": "https://urdeal.kr/#organization",\n          "name": "유어딜",',
+    replace: '"@id": "https://urdeal.kr/#organization", <!-- 설명 -->\n          "name": "유어딜",',
     test: TEST,
-    why: '홈 메타 설명이 스크립트 블록을 끊으면 그 자리에서 임의 스크립트가 실행된다.',
+    why: 'JSON 에 주석은 못 들어간다 — 에러도 경고도 없이 조용히 무효가 된다. 2026-10-11 에 제가 실제로 그렇게 깨뜨렸다.',
+  },
+  {
+    name: '🔎 `alternateName` 에 도메인을 품은 이름이 되살아난다',
+    file: 'index.html',
+    find: '"alternateName": ["urdeal", "UrDeal"],',
+    replace: '"alternateName": ["urdeal", "UrDeal", "유어딜 urdeal.kr"],',
+    test: TEST,
+    why: '구글 가이드가 꼽는 실패 원인 — 도메인을 품은 별칭이 사이트 이름 후보를 도메인 쪽으로 가리킨다.',
   },
   {
     name: '🔎 매장 주소·좌표가 다시 `Product` 안으로 들어간다(구글이 버리는 자리)',

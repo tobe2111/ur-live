@@ -21,10 +21,10 @@
  * - 리치 결과로 **표시**될지도 못 잰다(구글이 고른다). 스키마가 유효한지까지다.
  */
 import { describe, it, expect } from 'vitest'
+import { existsSync } from 'node:fs'
 import { readCode } from '../helpers/source-text'
 import { isSearchCrawlerUA, shouldRenderMobileFirstScreen } from '@/shared/seo/crawler-ua'
 import { buildDetailNoscript, buildCuratorNoscript } from '../../worker/utils/crawler-noscript'
-import { buildBrandJsonLd, BRAND_NAME } from '@/shared/seo/brand-jsonld'
 import { resolveConsumerSurfaceSeo } from '@/shared/seo/consumer-surfaces'
 import { buildDetailMeta } from '../../worker/utils/detail-ssr-meta'
 
@@ -154,37 +154,79 @@ describe('② `<noscript>` 본문 — 네이버가 49자로 보던 것', () => {
   })
 })
 
-describe('③ 브랜드 — 구글이 사이트 이름을 `urdeal.kr` 로 쓰던 것', () => {
-  it('홈에 `WebSite.name` 이 브랜드로 실린다 — 이 값이 검색 헤더의 사이트 이름이다', () => {
-    const m = resolveConsumerSurfaceSeo('/', '', ORIGIN)
-    expect(m, '홈이 표에서 빠졌다').toBeTruthy()
-    expect(m!.jsonLd, '홈 JSON-LD 가 비었다 — 사이트 이름이 도메인으로 떨어진다').toBeTruthy()
-    const parsed = JSON.parse(m!.jsonLd!.replace(/\\u003c/g, '<').replace(/\\u003e/g, '>').replace(/\\u0026/g, '&'))
-    const site = parsed.find((x: { '@type': string }) => x['@type'] === 'WebSite')
-    const org = parsed.find((x: { '@type': string }) => x['@type'] === 'Organization')
-    expect(site?.name).toBe(BRAND_NAME)
-    expect(org?.name).toBe(BRAND_NAME)
-    expect(org?.logo?.url).toBe(`${ORIGIN}/icon-512.png`)
-    expect(site?.publisher?.['@id']).toBe(org?.['@id'])
+describe('③ 브랜드 — 사이트 이름 신호는 `index.html` 정적 블록 한 곳뿐이다', () => {
+  // 🩸 2026-10-11, 값을 치르고 배운 것: 제가 *"홈 JSON-LD 가 0건이라 사이트 이름이 도메인으로
+  //    떨어졌다"* 고 진단하고 `shared/seo/brand-jsonld.ts` 를 새로 만들었다. **라이브를 재 보니
+  //    틀렸다** — `index.html` 에 `Organization`+`WebSite` 가 이미 있고 `name` 이 `유어딜` 이고
+  //    `@id` 까지 똑같았다(`https://urdeal.kr/#organization` · `#website`). 즉 제 코드는 같은
+  //    `@id` 의 노드를 **두 벌** 내보내는 중복이었다(머지 전에 되돌렸다).
+  //    ⇒ 이 describe 는 그 신규 모듈을 검사하던 것에서 **진짜 출처를 지키는 쪽**으로 재조준했다.
+  //       그 블록은 `<head>` 에 정적으로 박혀 있어서 그때까지 어떤 가드도 보지 않았다.
+  const html = readCode('index.html')
+
+  function homeGraph(): Array<Record<string, unknown>> {
+    const m = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)
+    expect(m, 'index.html 의 JSON-LD 블록이 사라졌다 — 사이트 이름 신호의 유일한 출처다').toBeTruthy()
+    // 🩸 **주석을 지우고 파싱하지 말 것.** 2026-10-11 에 제가 설명 주석을 JSON 블록 *안*에 넣어
+    //    그 JSON-LD 를 통째로 무효로 만들었는데, 확인 스크립트가 주석을 먼저 지우고 파싱해서
+    //    "OK" 가 떴다. 브라우저도 구글도 주석을 지워 주지 않는다 — **원문 그대로** 파싱해야
+    //    그 결함이 보인다(에러도 경고도 없이 조용히 무효가 되는 클래스다).
+    expect(m![1], 'JSON 블록 안에 주석이 있다 — 그 JSON-LD 는 통째로 무효다').not.toContain('<!--')
+    const parsed = JSON.parse(m![1]) as { '@graph'?: Array<Record<string, unknown>> }
+    const g = parsed['@graph']
+    expect(Array.isArray(g), '@graph 가 아니다 — 구조가 바뀌었으면 이 가드를 함께 고칠 것').toBe(true)
+    return g!
+  }
+
+  it('홈 `WebSite.name` 이 브랜드다 — 구글이 사이트 이름의 1순위로 읽는 값', () => {
+    const g = homeGraph()
+    const site = g.find((n) => n['@type'] === 'WebSite')
+    const org = g.find((n) => n['@type'] === 'Organization')
+    expect(site, 'WebSite 노드가 없으면 구글은 도메인을 쓴다').toBeTruthy()
+    expect(site!.name).toBe('유어딜')
+    expect(org!.name).toBe('유어딜')
+    // 둘이 이어져 있어야 한 조직의 사이트로 읽힌다.
+    expect((site!.publisher as { '@id': string })['@id']).toBe(org!['@id'])
   })
 
-  it('🔴 홈 **밖**에는 브랜드를 싣지 않는다 — 중복 엔티티만 늘어난다', () => {
-    for (const p of ['/vouchers', '/browse', '/stays']) {
-      const m = resolveConsumerSurfaceSeo(p, '', ORIGIN)
-      expect(m, `${p} 가 표에서 빠졌다`).toBeTruthy()
-      expect(m!.jsonLd, `${p} 에 브랜드가 실렸다`).toBeFalsy()
+  it('🔴 `alternateName` 에 도메인을 품은 이름을 넣지 않는다', () => {
+    // 구글 공식 가이드가 꼽는 실패 원인에 *"지나치게 일반적인 이름"* 과 *"화면의 브랜드와 안 맞는
+    // 이름"* 이 있다. `"유어딜 urdeal.kr"` 같은 값은 사이트 이름 후보로 도메인 쪽을 가리킨다.
+    const g = homeGraph()
+    for (const n of g) {
+      const alt = n.alternateName
+      const list = Array.isArray(alt) ? alt : alt ? [alt] : []
+      for (const a of list) {
+        expect(String(a), `alternateName 에 도메인이 들어갔다: ${String(a)}`).not.toMatch(/urdeal\.kr|\.com|\.co\.kr/)
+      }
     }
   })
 
-  it('🔴 없는 SNS 계정을 지어내지 않는다', () => {
-    const src = readCode('src/shared/seo/brand-jsonld.ts')
-    expect(src, 'sameAs 를 넣으려면 실제 운영 계정이 있어야 한다').not.toMatch(/sameAs:\s*\[/)
+  it('🔴 같은 `@id` 를 코드에서 또 만들지 않는다 — 두 벌은 반드시 갈린다', () => {
+    // 제가 2026-10-11 에 정확히 이 중복을 만들었다. 서버가 붙이는 메타 경로 어디에도
+    // `#organization`·`#website` 노드를 조립하는 코드가 없어야 한다.
+    for (const f of [
+      'src/shared/seo/consumer-surfaces.ts',
+      'src/worker/utils/surface-ssr-meta.ts',
+      'src/worker/utils/detail-ssr-meta.ts',
+    ]) {
+      const src = readCode(f)
+      expect(src.length, `${f} 를 못 읽었다 — 이 단언이 통째로 헛돈다`).toBeGreaterThan(500)
+      expect(src, `${f} 가 #organization 노드를 또 만든다`).not.toMatch(/'@id':\s*`?\$?\{?origin\}?\/#organization/)
+      expect(src, `${f} 가 #website 노드를 또 만든다`).not.toMatch(/'@type':\s*'WebSite'/)
+    }
+    // 그 신규 모듈은 되돌렸다 — 되살아나면 중복이 돌아온다.
+    expect(existsSync('src/shared/seo/brand-jsonld.ts'),
+      'brand-jsonld.ts 가 되살아났다 — index.html 과 같은 @id 를 두 벌 내보낸다').toBe(false)
   })
 
-  it('🔴 `</script>` 가 JSON-LD 블록을 끊지 못한다', () => {
-    const ld = buildBrandJsonLd(ORIGIN, 'a </script><script>alert(1)</script> b')
-    expect(ld).not.toContain('</script>')
-    expect(ld).not.toContain('<')
+  it('🔴 없는 SNS 계정을 지어내지 않는다', () => {
+    // 404 나는 `sameAs` 는 구글이 확인하러 가서 신뢰 신호를 **깎는다**. 레포의
+    // `youtube.com/@urdeal` 은 어드민 입력창의 플레이스홀더다(실제 계정 아님).
+    const g = homeGraph()
+    for (const n of g) {
+      expect(n.sameAs, 'sameAs 를 넣으려면 실제 운영 계정이 있어야 한다').toBeUndefined()
+    }
   })
 })
 
