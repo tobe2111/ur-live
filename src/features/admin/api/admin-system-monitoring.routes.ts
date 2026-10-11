@@ -276,7 +276,10 @@ adminSystemMonitoringRoutes.post('/alimtalk-test-send', async (c) => {
     const me = c.get('user' as never) as { id?: string | number } | undefined
     const admin = await DB.prepare('SELECT role FROM admins WHERE id = ?').bind(me?.id ?? null).first<{ role: string }>()
     if (admin?.role !== 'super_admin') return c.json({ success: false, error: 'super_admin 권한이 필요합니다' }, 403)
-    const body = await c.req.json<{ user_id?: unknown }>().catch(() => ({} as { user_id?: unknown }))
+    const body = await c.req.json<{ user_id?: unknown; tpl?: unknown }>().catch(() => ({} as { user_id?: unknown; tpl?: unknown }))
+    // 📵 카톡만 쓴다(대표 2026-10-11) — 시험도 알림톡으로. 템플릿 코드를 주면 그 템플릿으로(승인 확인용),
+    //   없으면 미등록 코드로 보내 **알리고가 무엇에서 막는지**(IP·발신프로필·템플릿)를 응답 원문으로 가린다.
+    const tpl = /^[A-Za-z0-9_]{1,40}$/.test(String(body.tpl ?? '')) ? String(body.tpl) : 'admin_test_send'
     const userId = Number(body.user_id)
     if (!Number.isInteger(userId) || userId <= 0) return c.json({ success: false, error: 'user_id 가 필요합니다' }, 400)
     const user = await DB.prepare('SELECT phone FROM users WHERE id = ?').bind(userId).first<{ phone: string | null }>()
@@ -284,7 +287,7 @@ adminSystemMonitoringRoutes.post('/alimtalk-test-send', async (c) => {
     const { sendTextNotice } = await import('../../../lib/text-notice')
     const at = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul' })
     const r = await sendTextNotice(c.env, user.phone, {
-      tpl: 'admin_test_send', title: '유어딜 알림 시험',
+      tpl, title: '유어딜 알림 시험', forceAlimtalk: true,
       text: `[유어딜] 알림 발송 시험입니다 (${at}). 이 문자가 보이면 사장님·손님 알림이 정상으로 나갑니다.`,
     })
     const tail = String(user.phone ?? '').replace(/[^0-9]/g, '').slice(-4)

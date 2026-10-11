@@ -35,7 +35,7 @@ function installFetch() {
   }))
 }
 
-function fakeDb(approved = '') {
+function fakeDb(approved = '', sms = false) {
   const writes: { sql: string; args: unknown[] }[] = []
   return {
     writes,
@@ -43,7 +43,11 @@ function fakeDb(approved = '') {
       let args: unknown[] = []
       const stmt = {
         bind(...a: unknown[]) { args = a; return stmt },
-        async first() { return sql.includes('platform_settings') ? (approved ? { value: approved } : null) : null },
+        async first() {
+          if (!sql.includes('platform_settings')) return null
+          if (args[0] === 'notice_sms_enabled') return sms ? { value: 'true' } : null
+          return approved ? { value: approved } : null
+        },
         async run() { writes.push({ sql, args }); return { meta: { changes: 1 } } },
       }
       return stmt
@@ -107,22 +111,35 @@ describe('문자 발송', () => {
   })
 })
 
-describe('sendTextNotice — 승인 전엔 문자, 승인 후엔 알림톡(+문자 대체)', () => {
-  it('승인 목록에 없으면 문자로 보낸다', async () => {
+describe('sendTextNotice — 카톡만(대표 2026-10-11): 승인된 템플릿만 알림톡, 문자는 기본 OFF', () => {
+  it('승인 전 템플릿은 보내지 않는다(문자로 새지 않는다) — 놓친 것은 기록', async () => {
     const DB = fakeDb('')
     const r = await sendTextNotice({ ...ENV, DB }, '010-3333-4444', { tpl: 'seller_voucher_sold', title: '이용권 판매', text: '판매' })
-    expect(r).toEqual({ ok: true, via: 'sms' })
-    expect(calls.map((c) => c.url)).toEqual([ALIGO_SMS_URL])
-    expect(DB.writes.some((w) => w.sql.includes('alimtalk_dispatch_log') && w.args[1] === 'sms:seller_voucher_sold')).toBe(true)
+    expect(r).toEqual({ ok: false, skipped: 'template_not_approved' })
+    expect(calls).toHaveLength(0)
+    const miss = DB.writes.find((w) => w.sql.includes('INSERT INTO alimtalk_failures'))!
+    expect(miss.args[1]).toBe('pending:seller_voucher_sold')
   })
-  it('승인 목록에 있으면 알림톡 + 실패 시 문자 대체(failover=Y)', async () => {
+  it('승인된 템플릿은 알림톡 — 문자 대체(failover)를 걸지 않는다', async () => {
     const DB = fakeDb('voucher_used, seller_voucher_sold')
     const r = await sendTextNotice({ ...ENV, DB }, '01033334444', { tpl: 'seller_voucher_sold', title: '이용권 판매', text: '판매' })
     expect(r).toEqual({ ok: true, via: 'alimtalk' })
     const send = calls.find((c) => c.url.endsWith('/alimtalk/send/'))!
     expect(send.body.get('tpl_code')).toBe('seller_voucher_sold')
-    expect(send.body.get('failover')).toBe('Y')
-    expect(send.body.get('fmessage_1')).toBe('판매')
+    expect(send.body.get('failover')).toBeNull()
+    expect(calls.some((c) => c.url === ALIGO_SMS_URL)).toBe(false)
+  })
+  it('어드민이 문자를 켜면(notice_sms_enabled) 그때만 문자·대체 발송', async () => {
+    const DB = fakeDb('seller_voucher_sold', true)
+    await sendTextNotice({ ...ENV, DB }, '01033334444', { tpl: 'seller_voucher_sold', title: '이용권 판매', text: '판매' })
+    expect(calls.find((c) => c.url.endsWith('/alimtalk/send/'))!.body.get('failover')).toBe('Y')
+    _resetApprovedTemplatesCache()
+    const r = await sendTextNotice({ ...ENV, DB: fakeDb('', true) }, '01033334444', { tpl: 'voucher_issued', title: 't', text: 'x' })
+    expect(r).toEqual({ ok: true, via: 'sms' })
+  })
+  it('시험 발송(forceAlimtalk)은 승인 목록과 무관하게 알림톡으로 — 알리고가 어디서 막는지 보려고', async () => {
+    const r = await sendTextNotice({ ...ENV, DB: fakeDb('') }, '01033334444', { tpl: 'admin_test_send', title: 't', text: 'x', forceAlimtalk: true })
+    expect(r).toEqual({ ok: true, via: 'alimtalk' })
   })
   it('키가 없거나 휴대폰이 아니면 건너뛴다', async () => {
     expect(await sendTextNotice({}, '01033334444', { tpl: 't', title: 't', text: 'x' })).toEqual({ ok: false, skipped: 'no_credentials' })
@@ -131,7 +148,7 @@ describe('sendTextNotice — 승인 전엔 문자, 승인 후엔 알림톡(+문�
   })
   it('실패는 기록하되 재시도 큐에 태우지 않는다(max_retries 0)', async () => {
     smsReply = { result_code: '-101', message: '발신번호 미등록' }
-    const DB = fakeDb('')
+    const DB = fakeDb('', true)
     const r = await sendTextNotice({ ...ENV, DB }, '01033334444', { tpl: 'voucher_issued', title: 't', text: 'x' })
     expect(r.ok).toBe(false)
     const fail = DB.writes.find((w) => w.sql.includes('INSERT INTO alimtalk_failures'))!
@@ -145,10 +162,10 @@ describe('sendTextNotice — 승인 전엔 문자, 승인 후엔 알림톡(+문�
 })
 
 describe('사장님 판매 알림이 실제로 알리고에 닿는다', () => {
-  it('sendSellerVoucherSoldAlimtalk → 알리고 문자(솔라피 키 없이도)', async () => {
-    await sendSellerVoucherSoldAlimtalk({ ...ENV, DB: fakeDb('') }, '01033334444', { restaurantName: '가게', productName: '돈가스', qty: 1, amount: 9000 })
-    expect(calls.map((c) => c.url)).toEqual([ALIGO_SMS_URL])
-    expect(calls[0].body.get('msg')).toContain('돈가스')
+  it('sendSellerVoucherSoldAlimtalk → 알리고 알림톡(솔라피 키 없이도, 템플릿 승인 시)', async () => {
+    await sendSellerVoucherSoldAlimtalk({ ...ENV, DB: fakeDb('seller_voucher_sold') }, '01033334444', { restaurantName: '가게', productName: '돈가스', qty: 1, amount: 9000 })
+    const send = calls.find((c) => c.url.endsWith('/alimtalk/send/'))!
+    expect(send.body.get('message_1')).toContain('돈가스')
   })
 })
 
