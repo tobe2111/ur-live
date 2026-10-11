@@ -16,7 +16,7 @@ import Udal from '@/components/mascot/Udal'
 import { addBreadcrumb, maskEmail } from '@/lib/sentry'
 import { resolveLoginReturnUrl, clearLoginReturnUrl } from '@/utils/login-return'
 import { showKakaoLoadingOverlay, removeKakaoLoadingOverlay } from '@/utils/kakao-login-overlay'
-import { canUseTalkLogin, prepareTalkLogin, startTalkLogin } from '@/lib/kakao-talk-login'
+import { canUseTalkLogin, prepareTalkLogin, scheduleTalkLoginPrepare, startTalkLogin } from '@/lib/kakao-talk-login'
 import { hasConsumerSession } from '@/utils/auth'
 
 // Kakao SDK 타입 선언
@@ -130,11 +130,12 @@ export default function LoginPage() {
     }
   }, [searchParams])
 
-  // 📱 2026-10-11 카톡 간편로그인 — 안드로이드는 화면이 뜰 때 SDK·state 를 미리 받아 둔다(앱 실행은 탭 안에서만 허용).
-  //   '다른 계정으로'(switch)는 웹 로그인 창이 맞으므로 준비하지 않는다. 근거: lib/kakao-talk-login.ts
+  // 📱 2026-10-11 카톡 간편로그인 — 폰은 화면이 뜰 때 SDK·state 를 미리 받아 둔다(앱 실행은 탭 안에서만 허용).
+  //   아이폰은 첫 화면을 그린 뒤 받는다. '다른 계정으로'(switch)는 웹 로그인 창이 맞으므로 준비하지 않는다.
+  //   근거: lib/kakao-talk-login.ts
   useEffect(() => {
     if (wantsSwitch || !canUseTalkLogin()) return
-    void prepareTalkLogin(resolveLoginReturnUrl(searchParams.get('returnUrl')))
+    return scheduleTalkLoginPrepare(resolveLoginReturnUrl(searchParams.get('returnUrl')))
   }, [wantsSwitch, searchParams])
 
   // ✅ Kakao 로그인 핸들러

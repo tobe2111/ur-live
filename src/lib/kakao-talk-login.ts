@@ -15,26 +15,38 @@
  *   클릭 뒤에 SDK 를 받고 서버를 기다리면 그 순간이 지나 버린다. 그래서 로그인 화면이 뜰 때 미리
  *   준비하고, 클릭 때 준비가 안 됐으면 **종전 웹 이동**으로 간다(로그인이 막히는 일은 없다).
  *
- * 📵 안드로이드 일반 브라우저만: 아이폰 사파리는 2026-05-04 에 SDK 를 화면과 함께 받다가 멈춘 사고가
- *   있어 종전 방식을 유지한다. 다른 앱 안의 브라우저(카톡·인스타 등)는 앱 실행이 막히거나 이미 카카오에
- *   로그인돼 있어 종전 방식이 낫다.
+ * 📱 안드로이드·아이폰 일반 브라우저: 다른 앱 안의 브라우저(카톡·인스타 등)는 앱 실행이 막히거나 이미
+ *   카카오에 로그인돼 있어 종전 방식이 낫다.
+ * 🍎 아이폰은 2026-05-04 에 SDK 를 **화면과 함께** 받다가 사파리가 멈춘 사고가 있었다(대표 *"아이폰도
+ *   일단은 해줘"* 로 켜면서) — 그래서 아이폰은 첫 화면이 다 그려진 뒤(IOS_PREPARE_DELAY_MS)에 받는다.
+ *   클릭이 그보다 빠르면 준비 전이라 종전 웹 이동으로 간다(막히지 않는다).
  */
 import { ensureKakaoSdk } from './kakao-sdk'
-import { detectInAppBrowser, isAndroid } from './in-app-browser'
+import { detectInAppBrowser, isAndroid, isIOS } from './in-app-browser'
 
 interface TalkLoginTicket { state: string; redirectUri: string; scope: string }
 
 let ready: TalkLoginTicket | null = null
 let preparing: Promise<void> | null = null
 
-/** 카톡 간편로그인을 시도할 환경인가 — 안드로이드 · 다른 앱 안 브라우저 아님 · SDK 키 있음. */
+/** 아이폰은 첫 화면을 다 그린 뒤 SDK 를 받는다(2026-05-04 사파리 멈춤 사고). */
+export const IOS_PREPARE_DELAY_MS = 1500
+
+/** 카톡 간편로그인을 시도할 환경인가 — 폰(안드로이드·아이폰) · 다른 앱 안 브라우저 아님 · SDK 키 있음. */
 export function canUseTalkLogin(): boolean {
   try {
     if (!import.meta.env.VITE_KAKAO_JAVASCRIPT_KEY) return false
-    return isAndroid() && detectInAppBrowser() === null
+    return (isAndroid() || isIOS()) && detectInAppBrowser() === null
   } catch {
     return false
   }
+}
+
+/** 로그인 화면이 쓰는 입구 — 아이폰은 늦춰서, 안드로이드는 바로 준비한다. 반환값은 정리 함수. */
+export function scheduleTalkLoginPrepare(redirect: string): () => void {
+  if (!isIOS()) { void prepareTalkLogin(redirect); return () => {} }
+  const id = window.setTimeout(() => { void prepareTalkLogin(redirect) }, IOS_PREPARE_DELAY_MS)
+  return () => window.clearTimeout(id)
 }
 
 /** 로그인 화면이 뜰 때 한 번 — SDK 와 서버 state 를 미리 받아 둔다. 실패는 조용히(종전 방식이 남는다). */

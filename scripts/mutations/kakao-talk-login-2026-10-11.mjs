@@ -44,11 +44,19 @@ export default [
     why: '카톡 앱은 지금 로그인된 계정으로만 들어간다 — 계정을 바꾸려는 사람을 같은 계정에 가둔다.',
   },
   {
-    name: '카톡로그인 — 아이폰에도 SDK 를 미리 받는다',
+    name: '카톡로그인 — 다른 앱 안 브라우저에서도 카톡 앱을 연다',
     file: 'src/lib/kakao-talk-login.ts',
-    find: 'return isAndroid() && detectInAppBrowser() === null',
-    replace: 'return detectInAppBrowser() === null',
+    find: 'return (isAndroid() || isIOS()) && detectInAppBrowser() === null',
+    replace: 'return (isAndroid() || isIOS())',
     test: T,
-    why: '2026-05-04 아이폰 사파리가 SDK 를 화면과 함께 받다 멈춘 사고 — 이번 범위는 안드로이드뿐이다.',
+    why: '카톡·인스타 등 앱 안 브라우저는 앱 실행이 막히거나 이미 카카오에 로그인돼 있다 — 종전 방식이 낫다.',
+  },
+  {
+    name: '카톡로그인 — 아이폰도 첫 화면과 함께 SDK 를 받는다',
+    file: 'src/lib/kakao-talk-login.ts',
+    find: '  if (!isIOS()) { void prepareTalkLogin(redirect); return () => {} }\n',
+    replace: '  if (true) { void prepareTalkLogin(redirect); return () => {} }\n',
+    test: T,
+    why: '2026-05-04 아이폰 사파리가 SDK 를 화면과 함께 받다 멈춘 사고 — 아이폰은 늦춰 받는다.',
   },
 ]

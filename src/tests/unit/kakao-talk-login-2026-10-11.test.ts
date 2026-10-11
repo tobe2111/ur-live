@@ -8,7 +8,7 @@
  *    서버가 티켓을 거절하면 다시 던지지 않는다.
  *
  * ⚠️ 못 보는 것: 실제 폰에서 카톡 앱이 열리고 돌아오는지(브라우저·카톡 버전마다 다르다) — 배포 뒤
- *   안드로이드에서 직접 눌러 봐야 한다. 아이폰은 이번 범위 밖(종전 웹 이동 유지).
+ *   안드로이드·아이폰에서 직접 눌러 봐야 한다. 아이폰 사파리가 SDK 를 받다 멈추는지도(2026-05-04 사고 클래스).
  */
 import { describe, it, expect } from 'vitest'
 import { readCode, sliceFrom } from '../helpers/source-text'
@@ -72,7 +72,7 @@ describe('① 카톡 간편로그인', () => {
     expect(talk).toBeGreaterThan(0)
     expect(h.slice(talk - 40, talk)).toMatch(/!wantsSwitch && $/) // '다른 계정으로'는 웹 로그인 창
     expect(h.indexOf("window.location.href = `/auth/kakao/start?")).toBeGreaterThan(talk) // 폴백은 그 뒤
-    expect(page).toMatch(/if \(wantsSwitch \|\| !canUseTalkLogin\(\)\) return\s*\n\s*void prepareTalkLogin\(/)
+    expect(page).toMatch(/if \(wantsSwitch \|\| !canUseTalkLogin\(\)\) return\s*\n\s*return scheduleTalkLoginPrepare\(/)
   })
   it('SDK 호출은 카톡 실행을 요청하고 state 를 1회용으로 쓴다', () => {
     const lib = readCode('src/lib/kakao-talk-login.ts')
@@ -80,8 +80,15 @@ describe('① 카톡 간편로그인', () => {
     expect(lib).toMatch(/state: t\.state/)
     expect(lib).toMatch(/ready = null \/\/ state 는 1회용|ready = null/)
   })
-  it('안드로이드 일반 브라우저만 — 아이폰·다른 앱 안 브라우저는 종전 방식', () => {
+  it('폰 일반 브라우저만 — 다른 앱 안 브라우저(카톡·인스타 등)는 종전 방식', () => {
     const lib = readCode('src/lib/kakao-talk-login.ts')
-    expect(lib).toMatch(/return isAndroid\(\) && detectInAppBrowser\(\) === null/)
+    expect(lib).toMatch(/return \(isAndroid\(\) \|\| isIOS\(\)\) && detectInAppBrowser\(\) === null/)
+  })
+  it('아이폰은 첫 화면을 그린 뒤 SDK 를 받는다(2026-05-04 사파리 멈춤 사고) — 안드로이드는 바로', () => {
+    const lib = readCode('src/lib/kakao-talk-login.ts')
+    const fn = sliceFrom(lib, 'export function scheduleTalkLoginPrepare', '\n}\n', 600)
+    expect(fn).toMatch(/if \(!isIOS\(\)\) \{ void prepareTalkLogin\(redirect\)/)
+    expect(fn).toMatch(/window\.setTimeout\(\(\) => \{ void prepareTalkLogin\(redirect\) \}, IOS_PREPARE_DELAY_MS\)/)
+    expect(lib).toMatch(/export const IOS_PREPARE_DELAY_MS = 1500/)
   })
 })
