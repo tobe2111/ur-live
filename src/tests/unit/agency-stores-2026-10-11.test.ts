@@ -34,6 +34,7 @@ import { registerAgencyLinkRoutes } from '@/features/seller/api/seller-agency-li
 import { isAgencySeatToken } from '@/components/seller/AgencySeatBar'
 import { storeAgencyInviteRoutes } from '@/features/seller/api/store-agency-invite.routes'
 import { createSessionCookie } from '@/worker/utils/session'
+import { agencyActivityLabel } from '@/shared/agency-activity-label'
 
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as typeof import('node:sqlite')
 type Db = InstanceType<typeof DatabaseSync>
@@ -389,5 +390,76 @@ describe('⑤ 매장 초대 링크 — 에이전시가 보내고 사장님이 [�
     const src = stripComments(readFileSync('src/features/seller/api/store-agency-invite.routes.ts', 'utf-8'))
     expect(src).toMatch(/parseSessionCookie\(c\.req\.header\('Cookie'\), c\.env\.JWT_SECRET, \['user'\]\)/)
     expect(src).not.toMatch(/resolveTokenActorUserId|Authorization/)
+  })
+})
+
+describe('⑥ 사장님이 보는 "에이전시가 한 일" — 성공한 변경만 기록', () => {
+  function mutApp(DB: D1Database) {
+    const app = new Hono<{ Bindings: { DB: D1Database; JWT_SECRET: string } }>()
+    app.use('/api/*', storeSeatGuard())
+    app.post('/api/seller/products', (c) => c.json({ ok: true }))
+    app.patch('/api/seller/meal-voucher/3', (c) => c.json({ ok: true }))
+    app.post('/api/seller/orders/9/confirm', (c) => c.json({ ok: false }, 400))
+    app.get('/api/seller/products', (c) => c.json({ ok: true }))
+    return (method: string, path: string, token: string) =>
+      app.request(path, { method, headers: { Authorization: `Bearer ${token}` } }, { DB, JWT_SECRET: SECRET })
+  }
+  const rows = (db: Db) => db.prepare('SELECT seller_id, agency_id, staff_id, method, label FROM agency_store_activity ORDER BY id').all()
+
+  it('에이전시 좌석의 성공한 POST/PATCH 만 남는다 — 조회(GET)·실패(4xx)는 안 남는다', async () => {
+    const { db, DB, seat } = await linkedSeat()
+    const call = mutApp(DB)
+    await call('POST', '/api/seller/products', seat)
+    await call('PATCH', '/api/seller/meal-voucher/3', seat)
+    await call('POST', '/api/seller/orders/9/confirm', seat)
+    await call('GET', '/api/seller/products', seat)
+    expect(rows(db)).toEqual([
+      { seller_id: 7, agency_id: 1, staff_id: 6, method: 'POST', label: '상품 등록·처리' },
+      { seller_id: 7, agency_id: 1, staff_id: 6, method: 'PATCH', label: '이용권 수정' },
+    ])
+  })
+
+  it('사장님 본인·사람 운영자의 변경은 이 기록에 안 들어간다', async () => {
+    const { db, DB } = await linkedSeat()
+    const now = Math.floor(Date.now() / 1000) - 5
+    const ownerTok = await jwtSign({ type: 'seller', seller_id: 7, sub: '7', seat_user_id: 100, store_role: 'owner', iat: now, exp: now + 3600 }, SECRET)
+    await mutApp(DB)('POST', '/api/seller/products', ownerTok)
+    expect(rows(db)).toEqual([])
+  })
+
+  it('사장님은 운영자 관리에서 누가·무엇을 했는지 읽는다(끊은 뒤에도 남는다)', async () => {
+    const { DB, seat, owner } = await linkedSeat()
+    await mutApp(DB)('POST', '/api/seller/products', seat)
+    await owner('POST', '/agency-link/end')
+    const r = await (await owner('GET', '/agency-link/activity')).json() as { data: Array<{ label: string; agencyName: string; staff: string }> }
+    expect(r.data).toHaveLength(1)
+    expect(r.data[0]).toMatchObject({ label: '상품 등록·처리', agencyName: '바른대행', staff: 'staff' })
+  })
+
+  it('경로를 사람이 읽는 말로 — 모르는 경로는 "매장 정보"', () => {
+    expect(agencyActivityLabel('DELETE', '/api/seller/products/4')).toBe('상품 삭제')
+    expect(agencyActivityLabel('PUT', '/api/seller/group-buy/8')).toBe('이용권 수정')
+    expect(agencyActivityLabel('POST', '/api/seller/whatever')).toBe('매장 정보 등록·처리')
+  })
+})
+
+describe('⑦ 어드민 — 에이전시 목록·정지(정지 버튼이 없던 빈칸)', () => {
+  const code = (p: string) => stripComments(readFileSync(p, 'utf-8'))
+  it('adminApp(관리자 인증·감사 로그) 아래에 붙는다 — 옛 /agenc 마운트 형태가 아니다', () => {
+    const w = code('src/worker/index.ts')
+    expect(w).toMatch(/adminApp\.route\('\/', agencyAdminRoutes\)/)
+  })
+  it('정지·해제는 super/ops 만 · 정지는 상태 CAS + 좌석 캐시 즉시 비움', () => {
+    const s = code('src/features/agency-console/api/agency-admin.routes.ts')
+    expect(s).toMatch(/'\/agency-accounts\/:id\/suspend', requireAdminRole\('super', 'ops'\)/)
+    expect(s).toMatch(/'\/agency-accounts\/:id\/unsuspend', requireAdminRole\('super', 'ops'\)/)
+    expect(s).toMatch(/WHERE id = \? AND status = \?/)
+    const suspend = s.slice(s.indexOf("'/agency-accounts/:id/suspend'"), s.indexOf("'/agency-accounts/:id/unsuspend'"))
+    expect(suspend).toMatch(/invalidateStoreSeatCache\(c\.env\.DB\)/)
+  })
+  it('화면은 /admin/agencies · 메뉴에서 닿는다 · 옛 agencies 테이블을 읽지 않는다', () => {
+    expect(code('src/routes/admin.routes.tsx')).toMatch(/path="\/admin\/agencies"/)
+    expect(code('src/components/admin/admin-nav-config.ts')).toMatch(/path: '\/admin\/agencies'/)
+    expect(code('src/features/agency-console/api/agency-admin.routes.ts')).not.toMatch(/\b(FROM|JOIN)\s+agencies\b/)
   })
 })

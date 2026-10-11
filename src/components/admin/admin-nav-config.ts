@@ -269,6 +269,8 @@ export const NAV_GROUPS: NavGroup[] = [
       // 🪑 2026-09-09 3단계: 중개자가 대신 올린 매장의 주인 자리를 사장님에게 넘기는 유일한 창구.
       //   이 화면이 없으면 `/store/new` 매장은 주인이 영원히 없다(정산 계좌를 넣을 사람도 없다).
       { path: '/admin/store-owner',     label: '매장 소유자',   icon: Store },
+      // 🏢 2026-10-11 매장을 맡아 운영하는 대행사(이메일 계정) — 목록·정지. 옛 '에이전시'(2026-09-04 일몰)와 다르다.
+      { path: '/admin/agencies',        label: '에이전시',      icon: Building2 },
       { path: '/admin/prospects',       label: '영업 추적',     icon: UserCheck },
     ],
   },

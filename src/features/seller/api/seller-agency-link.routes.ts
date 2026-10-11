@@ -5,6 +5,7 @@
  *   GET  /agency-link       — 이 매장의 맡김 상태(요청 중 · 운영 중 · 없음)
  *   POST /agency-link       — 에이전시 관리자 이메일로 맡김 요청 { email }
  *   POST /agency-link/end   — 요청 취소 · 운영 끊기(조건 없이, 언제든)
+ *   GET  /agency-link/activity — 에이전시가 이 매장에서 한 일 최근 50건
  *
  * 대표 결정(규칙 3): *"정해 둔 기간보단 그냥 매장 사장님이 중개사를 끊을 수 있어야"* → 기간 없음.
  *   끊으면 그 에이전시 직원 전원의 매장 좌석이 **다음 요청부터** 막힌다(`store-seat-guard`).
@@ -97,6 +98,32 @@ export function registerAgencyLinkRoutes(app: Hono<{ Bindings: Env }>, requireOw
       return c.json({ success: true, message: `${agency.name} 에이전시에 요청했어요. 수락하면 알려 드릴게요.`, data: { agencyName: agency.name } })
     } catch (err) {
       return safeError(c, err, '요청 중 오류가 발생했어요', '[seller-agency-link]')
+    }
+  })
+
+  // 📝 에이전시가 이 매장에서 한 일 — 최근 50건(누가·언제·무엇). 끊은 뒤에도 기록은 남는다(분쟁 근거).
+  app.get('/agency-link/activity', async (c) => {
+    try {
+      const g = await requireOwner(c)
+      if (g instanceof Response) return g
+      await ensureAgencyConsoleTables(c.env.DB)
+      const { results } = await c.env.DB.prepare(
+        `SELECT x.id, x.label, x.created_at, a.name AS agency_name, s.name AS staff_name, s.email AS staff_email
+           FROM agency_store_activity x
+           JOIN agency_accounts a ON a.id = x.agency_id
+           LEFT JOIN agency_staff s ON s.id = x.staff_id
+          WHERE x.seller_id = ?
+          ORDER BY x.id DESC LIMIT 50`,
+      ).bind(g.sellerId).all<{ id: number; label: string; created_at: string; agency_name: string; staff_name: string | null; staff_email: string | null }>()
+      return c.json({
+        success: true,
+        data: (results || []).map((r) => ({
+          id: r.id, label: r.label, at: r.created_at, agencyName: r.agency_name,
+          staff: r.staff_name || (r.staff_email ? r.staff_email.split('@')[0] : '직원'),
+        })),
+      })
+    } catch (err) {
+      return safeError(c, err, '활동 기록을 불러오지 못했어요', '[seller-agency-link]')
     }
   })
 

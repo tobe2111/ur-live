@@ -10,9 +10,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import api from '@/lib/api'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
-import { formatKSTDate } from '@/utils/date'
+import { formatKSTDate, formatKSTShort as formatKSTDateTime } from '@/utils/date'
 
 interface LinkState { status: 'pending' | 'active'; agencyName: string; requestedAt: string; acceptedAt: string | null }
+interface Activity { id: number; label: string; at: string; agencyName: string; staff: string }
 
 export default function AgencyLinkCard() {
   const [link, setLink] = useState<LinkState | null | undefined>(undefined)
@@ -20,6 +21,7 @@ export default function AgencyLinkCard() {
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
   const [formError, setFormError] = useState('')
+  const [activity, setActivity] = useState<Activity[]>([])
 
   const load = useCallback(async () => {
     setLoadError('')
@@ -27,6 +29,8 @@ export default function AgencyLinkCard() {
       const r = await api.get('/api/seller/agency-link')
       if (!r.data?.success) throw new Error(r.data?.error)
       setLink(r.data.data ?? null)
+      // 기록은 덤 — 못 불러와도 카드는 그린다.
+      api.get('/api/seller/agency-link/activity').then((a) => setActivity(a.data?.data || [])).catch(() => setActivity([]))
     } catch (e: any) {
       setLoadError(e?.response?.data?.error || '에이전시 상태를 불러오지 못했어요')
     }
@@ -98,7 +102,23 @@ export default function AgencyLinkCard() {
             {link.status === 'active' ? '끊기' : '요청 취소'}
           </button>
         </div>
-      ) : (
+      ) : null}
+
+      {activity.length > 0 && (
+        <div className="mt-5">
+          <p className="text-[13px] font-semibold text-gray-500">에이전시가 한 일</p>
+          <ul className="mt-2 divide-y divide-gray-100">
+            {activity.slice(0, 10).map((a) => (
+              <li key={a.id} className="flex items-center gap-3 py-2 text-[13px]">
+                <span className="min-w-0 flex-1 truncate text-gray-900">{a.label}</span>
+                <span className="shrink-0 text-gray-500">{a.agencyName} · {a.staff} · {formatKSTDateTime(a.at)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {link === null && !loadError && (
         <form onSubmit={request} className="mt-4">
           <div className="flex gap-2">
             <input

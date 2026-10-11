@@ -89,6 +89,19 @@ export async function ensureAgencyConsoleTables(DB: D1Database): Promise<void> {
     )`),
     DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_agency_store_invites_token ON agency_store_invites(token)'),
     DB.prepare('CREATE INDEX IF NOT EXISTS idx_agency_store_invites_agency ON agency_store_invites(agency_id, revoked_at)'),
+    // 📝 에이전시 직원이 맡은 매장에서 바꾼 것 — 사장님이 운영자 관리에서 읽는다(누가·언제·무엇).
+    //   요청 본문은 남기지 않는다(개인정보·용량). 경로와 사람이 읽는 한 줄 이름만.
+    DB.prepare(`CREATE TABLE IF NOT EXISTS agency_store_activity (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      seller_id INTEGER NOT NULL,
+      agency_id INTEGER NOT NULL,
+      staff_id INTEGER NOT NULL,
+      method TEXT NOT NULL,
+      path TEXT NOT NULL,
+      label TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`),
+    DB.prepare('CREATE INDEX IF NOT EXISTS idx_agency_store_activity_store ON agency_store_activity(seller_id, id)'),
   ])
   _ensured.add(DB)
 }

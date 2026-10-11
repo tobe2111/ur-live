@@ -302,12 +302,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 384 | 1149 |
+| 전체 | 385 | 1150 |
 | 도메인 버킷 (5개 소개서) | 171 | 463 |
-| 공통/인프라 (의도적 제외) | 167 | 487 |
-| **미커버 (점검 필요)** | **46** | **199** |
+| 공통/인프라 (의도적 제외) | 168 | 487 |
+| **미커버 (점검 필요)** | **46** | **200** |
 
-⚠️ **미커버 245건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 246건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -373,6 +373,7 @@
 - `PATCH /admin/claims/:id` (`src/features/supply/api/wholesale-claims.routes.ts`)
 - `GET /agency-link` (`src/features/seller/api/seller-agency-link.routes.ts`)
 - `POST /agency-link` (`src/features/seller/api/seller-agency-link.routes.ts`)
+- `GET /agency-link/activity` (`src/features/seller/api/seller-agency-link.routes.ts`)
 - `POST /agency-link/end` (`src/features/seller/api/seller-agency-link.routes.ts`)
 - `GET /analytics` (`src/features/supply/api/supplier-analytics.routes.ts`)
 - `POST /api/acquisition/claim` (`src/worker/routes/acquisition.routes.ts`)
@@ -1766,7 +1767,7 @@
 
 
 
-> 마지막 생성: 2026-10-11T13:02:19.874Z
+> 마지막 생성: 2026-10-11T13:25:52.592Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

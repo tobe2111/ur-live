@@ -220,7 +220,7 @@ import { kakaoSocialRoutes } from '../features/kakao-social/api/kakao-social.rou
 import { affiliateRoutes } from '../features/affiliate/api/affiliate.routes';
 import { adminToolsRoutes } from '../features/admin/api/admin-tools.routes';
 import { adminMetricsRoutes } from '../features/admin/api/admin-metrics.routes';
-import { adminSystemMonitoringRoutes } from '../features/admin/api/admin-system-monitoring.routes';
+import { adminSystemMonitoringRoutes } from '../features/admin/api/admin-system-monitoring.routes'; import { agencyAdminRoutes } from '../features/agency-console/api/agency-admin.routes';
 import { blogRoutes as adminBlogRoutes } from '../features/blog/api/blog.routes';
 // 🥗 2026-07-15 워커 다이어트(대표 승인): 소셜 자동화(게이트 OFF·미사용)의 정적 import 를 제거해
 //   메인 워커 번들에서 그래프 분리 → Cloudflare Free 1MB 압축한도 회복(배포 언블록). 재도입 시 아래 mount 와
@@ -1774,7 +1774,7 @@ adminApp.route('/tools', adminToolsRoutes);
 adminApp.route('/metrics', adminMetricsRoutes);
 adminApp.route('/business-metrics', platformMetricsRoutes); // 비즈니스 지표(GMV·순수익률·반복구매·여신미수)
 // 🛡️ 2026-05-07: Cron / 알림톡 실패 모니터링 (admin 가시성)
-adminApp.route('/', adminSystemMonitoringRoutes);
+adminApp.route('/', adminSystemMonitoringRoutes); adminApp.route('/', agencyAdminRoutes); // 🏢 /agency-accounts — 새 에이전시 계정 목록·정지(옛 agencies 아님)
 adminApp.route('/', adminManagementRoutes);
 // 🛡️ 2026-04-22 배치 138 (TD-006 부분): admin-coupons 분리 — admin-management.routes.ts 줄임
 adminApp.route('/', adminCouponsRoutes);

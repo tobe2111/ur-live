@@ -30,6 +30,7 @@ const AdminDistributorGradesPage = lazy(() => import('@/pages/AdminDistributorGr
 const AdminWholesaleImportPage = lazy(() => import('@/pages/AdminWholesaleImportPage'))
 const AdminDongnedealImportPage = lazy(() => import('@/pages/AdminDongnedealImportPage'))
 const AdminWholesaleActivityPage = lazy(() => import('@/pages/admin/AdminWholesaleActivityPage'))
+const AdminAgencyAccountsPage = lazy(() => import('@/pages/admin/AdminAgencyAccountsPage')) // 🏢 2026-10-11 새 에이전시 계정(옛 agencies 아님)
 const AdminLoginHistoryPage = lazy(() => import('@/pages/AdminLoginHistoryPage'))
 const AdminWholesaleOrdersPage = lazy(() => import('@/pages/AdminWholesaleOrdersPage'))
 // 🏦 2026-07-02 (어드민 도매 IA 통합): 예치금/출금 페이지는 라우트가 직접 렌더하지 않음 —
@@ -346,6 +347,11 @@ export function AdminRoutes() {
       <Route path="/admin/voucher-disputes" element={
         <ProtectedRoute requireAdmin>
           <AdminVoucherDisputesPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/agencies" element={
+        <ProtectedRoute requireAdmin>
+          <AdminAgencyAccountsPage />
         </ProtectedRoute>
       } />
       <Route path="/admin/suppliers" element={

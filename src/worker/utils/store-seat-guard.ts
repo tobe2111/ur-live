@@ -48,6 +48,8 @@ import type { D1Database } from '@cloudflare/workers-types'
 import type { Context, Next } from 'hono'
 import { verify } from 'hono/jwt'
 import type { OperatorRole } from './seller-operators'
+import { ensureAgencyConsoleTables } from '../../features/agency-console/api/agency-schema'
+import { agencyActivityLabel, AGENCY_ACTIVITY_METHODS } from '../../shared/agency-activity-label'
 
 export const STORE_SEAT_REVOKED = 'STORE_SEAT_REVOKED'
 
@@ -369,6 +371,35 @@ export function storeSeatGuard() {
     try { p = await verify(token, env.JWT_SECRET, 'HS256') as SeatClaims } catch { return next() } // 무효 토큰은 라우트가 거절한다
     const v = await verifyStoreSeat(env.DB, p)
     if (v.kind === 'revoked') return c.json(storeSeatRevokedResponse(), 401)
+    // 📝 에이전시 좌석의 **성공한 변경**은 기록한다 — 사장님이 "에이전시가 내 매장에서 무엇을 했는지" 본다.
+    //   응답 뒤(waitUntil)에 쓰므로 요청을 늦추지 않고, 기록 실패가 요청을 실패시키지 않는다.
+    if (v.kind === 'live' && v.agency && AGENCY_ACTIVITY_METHODS.has(c.req.method)) {
+      await next()
+      if (c.res.status < 400) {
+        const job = recordAgencyActivity(env.DB, {
+          sellerId: v.sellerId, agencyId: Number(p.agency_id), staffId: Number(p.agency_staff_id),
+          method: c.req.method, path: c.req.path,
+        })
+        try { c.executionCtx.waitUntil(job) } catch { await job }
+      }
+      return
+    }
     return next() // live · unknown(fail-open) · not-seat
+  }
+}
+
+/** 에이전시 활동 한 줄 — fail-soft(기록이 안 돼도 사장님 매장 운영은 계속된다). */
+export async function recordAgencyActivity(
+  DB: D1Database,
+  a: { sellerId: number; agencyId: number; staffId: number; method: string; path: string },
+): Promise<void> {
+  if (!posInt(a.sellerId) || !posInt(a.agencyId) || !posInt(a.staffId)) return
+  try {
+    await ensureAgencyConsoleTables(DB)
+    await DB.prepare(
+      'INSERT INTO agency_store_activity (seller_id, agency_id, staff_id, method, path, label) VALUES (?, ?, ?, ?, ?, ?)',
+    ).bind(a.sellerId, a.agencyId, a.staffId, a.method, a.path.slice(0, 200), agencyActivityLabel(a.method, a.path)).run()
+  } catch (e) {
+    try { console.error('[agency-activity] record failed (fail-soft):', String(e)) } catch { /* noop */ }
   }
 }

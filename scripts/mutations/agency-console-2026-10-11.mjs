@@ -207,4 +207,20 @@ export default [
     test: STORES,
     why: '쿠키 세션으로 도는 변경이라, 다른 사이트가 사장님 몰래 매장을 넘기게 만드는 요청을 막을 장치가 필요하다.',
   },
+  {
+    name: '📝 에이전시 활동 기록이 실패한 요청까지 남긴다',
+    file: 'src/worker/utils/store-seat-guard.ts',
+    find: '      if (c.res.status < 400) {',
+    replace: '      if (true) {',
+    test: STORES,
+    why: '거절된 요청을 "상품 등록" 으로 보여 주면 사장님은 일어나지 않은 일을 믿는다.',
+  },
+  {
+    name: '🏢 어드민이 정지해도 열린 매장 좌석이 15초 넘게 산다(같은 isolate 캐시)',
+    file: 'src/features/agency-console/api/agency-admin.routes.ts',
+    find: '    // 직원들이 열어 둔 매장 좌석을 지금 끊는다(같은 isolate 즉시 · 다른 isolate 는 15초 안에).\n    invalidateStoreSeatCache(c.env.DB)\n',
+    replace: '',
+    test: STORES,
+    why: '정지는 "지금 막는다" 는 약속이다.',
+  },
 ]
