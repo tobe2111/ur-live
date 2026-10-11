@@ -178,6 +178,15 @@ export default defineConfig({
           // 공유 타입/상수: 런타임 코드 없이 타입 + 상수 → 별도 캐싱
           if (id.includes('/src/shared/constants/') || id.includes('/src/shared/types/')) return 'app-constants'
           // 레이아웃 컴포넌트: BottomNav, DesktopTopNav, DesktopLiveSidebar 등
+          // 🔔 2026-10-11 — 알림 **패널 몸통과 벨 배선 훅**도 여기다. 둘은 `components/main/`
+          //   (=이 청크)에서 **정적으로** 닿는다(`DesktopTopNav`→드롭다운→패널, `HomeTopHeader`→훅).
+          //   규칙이 없으면 catch-all `app-components` 로 떨어지고, 그 순간 엔트리→app-layout→
+          //   app-components 정적 엣지가 생겨 radix-ui·app-features·app-kakao-sdk 까지 줄줄이
+          //   첫 페인트로 들어온다(`check-critical-chunks` 가 **새 청크 9개**로 잡았다).
+          //   ⚠️ `NotificationSheet`(시트 셸)는 **여기 넣지 않는다** — 벨을 누른 뒤에야 필요하고,
+          //     `useNotificationSheet` 이 `lazy()` 로 경계를 긋는다. 넣으면 첫 페인트 바이트가 된다.
+          if (id.includes('/src/components/notifications/NotificationPanel') ||
+              id.includes('/src/components/notifications/useNotificationSheet')) return 'app-layout'
           if (id.includes('/src/components/main/')) return 'app-layout'
           // 인증 컴포넌트 — 🩺 2026-09-16: **`RouteGuards` 만** 여기다.
           //   이전엔 `auth/` 폴더를 통째로 묶었는데, 그 봉투는 `RouteGuards`(셀 폐쇄) 때문에

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Search, X, Navigation, SlidersHorizontal } from 'lucide-react'
 import { storage } from '@/shared/utils/storage'
 import UrDealLogo from '@/components/brand/UrDealLogo'
-import { useNotificationSheet } from '@/components/notifications/NotificationSheet'
+import { useNotificationSheet } from '@/components/notifications/useNotificationSheet'
 import { type MapVoucherType, MAP_VOUCHER_DEFS } from './voucher-types'
 
 interface Props {

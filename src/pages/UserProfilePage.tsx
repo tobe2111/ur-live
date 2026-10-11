@@ -9,7 +9,7 @@ import { logoutAll } from '@/features/auth/login-flow.service'
 import { getUserProfileImage } from '@/utils/auth'
 import { RewardAdCard } from '@/components/my-page/reward-ad-card'
 import { ChevronRight } from 'lucide-react'
-import { useNotificationSheet } from '@/components/notifications/NotificationSheet'
+import { useNotificationSheet } from '@/components/notifications/useNotificationSheet'
 // 🎨 2026-09-28: 남은 lucide 는 `ChevronRight`(프로필 편집 화살표) 하나뿐 — 조작이라 그대로 둔다.
 //    2026-09-30 수익·추천 구역이 빠지며 `ReceiptIcon`·`UrShopIcon` 소비처는 사라졌다.
 import { LogOutIcon, ScanIcon } from '@/components/icons/urdeal-icons'

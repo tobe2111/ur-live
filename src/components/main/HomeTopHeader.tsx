@@ -15,7 +15,7 @@ import { Search, ChevronDown, LocateFixed } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { useUnreadCount } from '@/hooks/queries'
-import { useNotificationSheet } from '@/components/notifications/NotificationSheet'
+import { useNotificationSheet } from '@/components/notifications/useNotificationSheet'
 
 const REGION_KEY = 'ur_home_region'
 

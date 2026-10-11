@@ -71,6 +71,34 @@
 `defaultValue` 를 이긴다**(CLAUDE.md 가 경고한 그 함정). 코드만 고쳤으면 행은 "프로필 편집",
 시트 제목은 "프로필 수정" 이 된 채 **에러 0** 이었을 것이다. ko 를 고치고 새 키 6개를 6개 언어에 넣었다.
 
+## 🩸 pre-push 게이트가 이 PR 을 한 번 막았다 — **새 폴더는 catch-all 로 떨어진다**
+
+첫 판은 `check-critical-chunks` 에 걸려 푸시가 거부됐다: **첫 페인트에 새 청크 9개 진입**
+(`app-components` · `radix-ui` · `app-kakao-sdk` · `app-features` · `app-ui-utils` ·
+`app-utils-deferred` · `app-misc` · `app-constants` · `lucide`).
+
+매니페스트로 추적한 원인:
+```
+엔트리(App.tsx) → components/main/ConsumerTopChrome → DesktopTopNav → NotificationDropdown
+                                      ↑ 전부 app-layout(첫 페인트 청크)
+                → (신규) components/notifications/*  ← 규칙이 없어 catch-all `app-components`
+```
+`app-components` 가 첫 페인트로 들어오는 순간 그 봉투의 radix-ui·카카오 SDK·features 가 **줄줄이**
+따라온다. CLAUDE.md 가 2026-08-27·09-02 에 두 번 기록한 그 패턴이다(*"새 import 하나가 catch-all 로
+떨어지면 빨강"*).
+
+**수리 두 조각**:
+1. **시트는 벨을 누른 뒤에야 필요하다** → `useNotificationSheet.tsx` 가 `lazy()` 로 경계를 긋는다.
+   그 파일이 정적으로 쥐는 것은 React 뿐이다.
+2. **패널 몸통과 훅만** `vite.config` 에서 `app-layout` 으로 보낸다(둘은 어차피 app-layout 에서
+   정적으로 닿는다). **시트 셸은 일부러 제외** — 넣으면 다시 첫 페인트 바이트가 된다.
+
+재측정: `critical-chunks 17개 — 기준과 동일(신규 진입 0)` · `surface-role-leak 0` · 번들 예산 통과.
+
+🧭 **다음에 `src/components/` 아래 새 폴더를 만들 때**: 그 모듈을 **첫 페인트 청크
+(`app-shell`·`app-layout`)에서 정적으로 쓰는가**를 먼저 보라. 쓴다면 vite 규칙을 같은 커밋에 넣고,
+안 써도 되는 것이면 `lazy()` 로 내릴 것.
+
 ## 가드
 
 `src/tests/unit/notification-sheet-and-profile-2026-10-11.test.tsx` 18건 + 주입 13건(전부 빨간불 확인).

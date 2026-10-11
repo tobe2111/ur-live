@@ -18,7 +18,7 @@
  * ⚠️ `max-h-[80dvh]` 는 `vh` 가 아니라 `dvh` 다 — 모바일 주소창 때문에 `vh` 는 실제 보이는 영역보다
  *   커서 바닥이 잘린다(CLAUDE.md 모바일 뷰포트 룰).
  */
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { Z } from '@/constants/z-index'
 import { NotificationPanelBody, NotificationPanelFooter, NotificationPanelHeader } from './NotificationPanel'
 
@@ -49,24 +49,4 @@ export default function NotificationSheet({ onClose }: { onClose: () => void }) 
       </div>
     </>
   )
-}
-
-/**
- * 벨 하나를 시트에 잇는 **최소 배선** — 벨이 다섯 군데(마이·홈·지도 ×2·홈 헤더)라
- * 각자 `useState` 를 적으면 다섯 벌이 되고, 한 곳만 고치면 그 화면만 페이지로 남는다.
- *
- * ```tsx
- * const bell = useNotificationSheet()
- * <button onClick={bell.open} …/>
- * {bell.sheet}
- * ```
- */
-export function useNotificationSheet() {
-  const [open, setOpen] = useState(false)
-  return {
-    open: () => setOpen(true),
-    close: () => setOpen(false),
-    isOpen: open,
-    sheet: open ? <NotificationSheet onClose={() => setOpen(false)} /> : null,
-  }
 }
