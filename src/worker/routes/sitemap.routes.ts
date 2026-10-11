@@ -184,8 +184,43 @@ ${wholesaleUrls.map(u => `  <url>\n    <loc>${WHOLESALE_BASE}${u.loc}</loc>\n   
           ORDER BY s.id DESC LIMIT 200`
       ).all<{ id: number; username: string; handle: string | null }>()
         .catch(() => ({ results: [] as Array<{ id: number; username: string; handle: string | null }> }));
+      // 🛍️ 2026-10-11: 아래 '유저 유어샵' 블록이 **같은 URL 을 다시 적지 않게** 내보낸 것을 기억한다.
+      const emittedShopLocs = new Set<string>();
       for (const s of sellers.results || []) {
         const loc = s.handle ? `/u/${s.handle}` : `/s/${s.username || s.id}`;
+        emittedShopLocs.add(loc);
+        urls.push({ loc, priority: 0.7, changefreq: 'weekly' });
+      }
+
+      // 🛍️ 2026-10-11 (대표 "또 개선할 부분은?" — 라이브 실측): **사업자 아닌 유저의 유어샵이 통째로 빠져 있었다.**
+      //   위 쿼리는 `FROM sellers` 로 시작한다 — 그런데 명칭 SSOT 가 *"유저 = 회원가입한 누구나.
+      //   **유어샵(`/u/{handle}`) 자동 생성**"* 이라고 정의하므로, 셀러에서 출발하는 쿼리는 **구조적으로**
+      //   사업자 아닌 유어샵에 닿을 수 없다(셀러 행이 아예 없다). 에러가 날 자리도 아니라 아무도 모른다.
+      //   실측(D1): 핀 있는 유어샵 **4곳**(`jiwon1228` 6핀 · `jongmun` 2핀 · `user31` · `user40`) 중
+      //   sitemap 이 `/u/` 로 내보낸 것은 **`user40` 하나**였다 — 그 하나만 승인 셀러가 연결돼 있어서다.
+      //   즉 **3곳이 색인 요청에서 빠졌고**, 그중엔 핀이 가장 많은(6개) 유어샵이 들어 있었다.
+      //   유어샵은 **공유해서 퍼지는 것**이라(2026-10-09 가 서버 첫 화면까지 그려 둔 표면) 색인 누락의
+      //   대가가 가장 큰 자리다.
+      //   ⚠️ 콘텐츠 기준은 위 블록과 **같다** — 핀 1개 이상. 사업자가 아니면 `products.seller_id` 로 매달린
+      //      상품이 없으므로 핀이 유일한 콘텐츠다. 이름 패턴으로 거르지 않는 이유도 같다(위 ⚠️).
+      //   🔑 그리고 이 기준은 **워커 첫 화면 빌더와 짝이다** — `buildCuratorFirstScreen` 은
+      //      `pins.length === 0` 이면 `''` 를 돌려주므로, 핀 0 인 유어샵을 제출하면 크롤러가 받는 것은
+      //      로더뿐이다(= soft-404). 핀 ≥ 1 만 내보내면 **제출한 URL 은 전부 본문이 있다.**
+      //   ⚠️ 몰 스코프(`mainScopeFor`)를 걸지 않는다 — `users` 에는 `mall_id` 가 없고(유저는 몰에 속하지
+      //      않는다), 우리가 제출하는 것은 상품 URL 이 아니라 **유어딜 본진 표면**인 `/u/{handle}` 이다.
+      //   `product_pins` 는 lazy CREATE 라 실패해도 뒤 블록이 죽지 않게 catch(위 블록과 동일).
+      const shopUsers = await DB.prepare(
+        `SELECT u.handle AS handle
+           FROM users u
+          WHERE u.handle IS NOT NULL AND TRIM(u.handle) <> ''
+            AND EXISTS (SELECT 1 FROM product_pins pp WHERE pp.user_id = u.id)
+          ORDER BY u.id DESC LIMIT 200`
+      ).all<{ handle: string }>()
+        .catch(() => ({ results: [] as Array<{ handle: string }> }));
+      for (const u of shopUsers.results || []) {
+        const loc = `/u/${u.handle}`;
+        if (emittedShopLocs.has(loc)) continue; // 승인 셀러가 연결된 유어샵은 위에서 이미 내보냈다
+        emittedShopLocs.add(loc);
         urls.push({ loc, priority: 0.7, changefreq: 'weekly' });
       }
 

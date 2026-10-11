@@ -65,6 +65,8 @@ export interface Env {
 
   // ---- Kakao ----
   KAKAO_REST_API_KEY?: string;
+  /** 📅 이용권 만료일 톡캘린더 버튼 게이트 — 카카오 콘솔 톡캘린더 권한·동의항목 설정 후 'true'. */
+  KAKAO_TALK_CALENDAR_ENABLED?: string;
 
   // ---- Cafe24 ----
   CAFE24_CLIENT_ID?: string;

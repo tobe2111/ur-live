@@ -202,6 +202,7 @@
 - **발견**: `/`(동네딜 지도) · `/vouchers`(이용권+쇼핑) · `/group-buy`(동네딜) · `/browse`(쇼핑,숨김) · `/search` · `/blog` · **`/local/:code`(상권관 — B2G 상권 패키지 지역 랜딩, 2026-07-04)**
 - **상세/구매**: `/vouchers/:id` · `/pass/:id`(2026-09-16 정본 — 옛 `/group-buy/:id` 는 영구 301) · `/products/:id` · `/stays/:id` · `/checkout` · `/points/charge`
 - **유어샵**: `/u/:handle`(단일화 — **손님 화면 하나뿐**, 주인이 봐도 같다) · **`/u/me/manage`(관리 — 이름·소개·주소·SNS·흐르는 문구·핀 순서, 2026-09-28 대표 확정 e3 로 손님 화면에서 분리)** · `/u/me`(본인) · `/u/me/add`(핀 추가) · `/u/me/earnings` · `/profile/:username`·`/s/:id`(셀러 공개)
+- **🎁 이용권 선물(넘기기, 2026-10-11 대표 결정)**: 지갑 이용권 → 카카오 공유로 링크 → 친구가 `/gift/v/:token` 에서 받으면 **이용권 주인이 친구로** 바뀜(`vouchers.gift_from_user_id` 에 보낸 사람). 받기 전엔 회수 가능. 표 `voucher_gifts`, API `/api/group-buy/gifts/*`. 📅 만료일 톡캘린더 알림: 지갑 QR 화면, 게이트 `KAKAO_TALK_CALENDAR_ENABLED`.
 - **마이**: `/user/profile` · `/my-vouchers`(이용권 지갑) · **`/my-gifticons`(교환권 보관함 — 2026-08-31 분리: 교환권은 `/vouchers` 에서 사고 여기서 확인, 이용권은 `/my-vouchers`)** · `/my-orders` · `/my-deal-history` · `/my-commissions` · `/notifications` · `/account/settings`
 - **성장**: `/referral` · `/g/:invite_code` · `/influencer/*`(랭킹·정산·발굴) · **`/experience`(체험 캠페인 응모, 2026-07-12)**
 - **성장**: `/referral` · `/g/:invite_code` · `/influencer/*`(랭킹·정산·발굴)
@@ -468,6 +469,7 @@
 ## 16. 주문·환불·반품 라이프사이클
 - **주문 status(대문자)**: `PENDING → PAID → DONE`(디지털/이용권) 또는 `PREPARING → SHIPPING → DELIVERED`(배송). 종결: `CANCELLED`/`REFUNDED`/`FAILED`. `payment_status`는 소문자.
 - **환불**: `refundOrderFully`(전액)·`returns.routes`(부분 비례) — 캡처된 주문은 status 플립 금지, 반드시 환불경유(딜/커미션/재고/쿠폰 대칭 역전).
+- **🎁 선물 받은 이용권(2026-10-11 대표 결정 "받은 뒤엔 환불 막기")**: `gift_from_user_id` 가 찍힌 이용권(또는 그것이 든 주문)은 셀프 취소·주문 취소·환불 요청이 막힌다(`worker/utils/voucher-gift.ts`). 셀러·어드민 환불과 **만료 자동 환불(보낸 사람 결제수단)은 그대로**.
 - **반품**: `returns` 도메인. 숙소는 reserve-before-charge + `releaseStays()` 되돌림.
 
 ## 17. 알림 시스템

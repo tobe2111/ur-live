@@ -32,6 +32,7 @@ import { reverseOrderAncillaryOnRefund } from '../utils/order-refund';
 import { tryVoucherPartialRefund } from '../utils/voucher-partial-refund'
 import { notifyOrderCancelled } from '../utils/order-cancel-notify'
 import { safeError } from '../utils/safe-error';
+import { orderHasGiftedVoucher, GIFTED_REFUND_BLOCKED } from '../utils/voucher-gift';
 import { createDashboardNotification } from '../../features/notifications/api/dashboard-notifications.routes';
 // AuthVariables compatible with auth.ts AuthUser
 type AuthVariables = { user: AuthUser };
@@ -1019,6 +1020,8 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
     // PAID / DONE 상태: 실제 결제가 이루어졌으므로 Toss Cancel API 호출
     const paymentMadeStatuses = ['PAID', 'DONE'];
     if (paymentMadeStatuses.includes(order.status)) {
+      // 🎁 2026-10-11 대표 결정 "받은 뒤엔 환불 막기": 선물로 넘긴 이용권이 든 주문은 셀프로 못 무른다(어드민은 통과).
+      if (c.get('user').type !== 'admin' && await orderHasGiftedVoucher(c.env.DB, orderId)) return c.json({ success: false, error: GIFTED_REFUND_BLOCKED, code: 'GIFTED' }, 400);
       // 🎟️ 2026-09-28 이용권은 **장 단위**로만 무른다 — 판정·계산·실행은 voucher-partial-refund.ts
       const vPartial = await tryVoucherPartialRefund(c, order, body.cancel_qty, reason)
       if (vPartial) return vPartial

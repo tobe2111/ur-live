@@ -166,7 +166,7 @@ const InfluencerDashboardPage = lazy(() => import('./pages/InfluencerDashboardPa
 const InfluencerLandingPage = lazy(() => import('./pages/InfluencerLandingPage')); const InfluencerOfferAcceptPage = lazy(() => import('./pages/InfluencerOfferAcceptPage')); const InfluencerJoinPage = lazy(() => import('./pages/InfluencerJoinPage')) // 🔑 2026-09-19 협업 코드 착지
 const InterestListPage = lazy(() => import('./pages/InterestListPage'))
 const CouponClaimPage = lazy(() => import('./pages/CouponClaimPage'))
-const GiftClaimPage = lazy(() => import('./pages/GiftClaimPage'))
+const GiftClaimPage = lazy(() => import('./pages/GiftClaimPage')); const VoucherGiftReceivePage = lazy(() => import('./pages/VoucherGiftReceivePage')) // 🎁 2026-10-11 이용권 선물 받기
 
 // User 페이지들
 const AddressManagementPage = lazy(() => import('./pages/AddressManagementPage'))
@@ -698,6 +698,7 @@ function AppContent() {
             <Route path="/v/:code" element={<VoucherVerifyPage />} />
             {/* 🛡️ 2026-04-28: 선물 받기 페이지 (인증 불필요) */}
             <Route path="/gift/claim/:token" element={<GiftClaimPage />} />
+            <Route path="/gift/v/:token" element={<VoucherGiftReceivePage />} />
             <Route path="/store/stats/:productId" element={<StoreStatsPage />} />
             <Route path="/browse" element={<BrowsePage />} />
             <Route path="/vouchers" element={<VouchersPage />} />

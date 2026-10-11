@@ -159,3 +159,31 @@
 - 머리줄 지갑 흰 토큰 + 제목 `dark:text-white` → 다크에서 제목 소멸 → `bg-surface`.
 - '가게 보기'는 라이브(Pixel 7 비로그인)에서 눌러 보니 `/profile/store_muxlddtf74b` 로 **이동은 됐다**. 문제는 눌림 영역 19px — 44px 로.
   ⚠️ 대표 폰에서 여전히 안 되면 로그인 상태(본인 가게 등) 경로를 다시 볼 것 — 비로그인으로만 재현했다.
+
+## 2026-10-11 밤 — 카카오 1·2·4번 (대표 *"1,2,4 해줄래? 3,5번은 안해도 될 것 같은데"*)
+
+**1번 길찾기 — 이미 있었다(내 오보 정정).** "카카오내비 0건" 이라고 보고했는데, 길찾기 자체는 이용권 상세(`StoreLocation`)와
+지갑 QR 화면(`QRModal` 2곳)에 **카카오맵 경로 링크로 이미 있다**(거기서 내비 앱 전환 가능). 0건이던 건 카카오내비 앱 직접 호출뿐이다.
+내비 미설치 폰을 설치 화면으로 보내는 단점이 커서 중복 버튼을 만들지 않았다.
+
+**2번 톡캘린더 만료 알림** — 지갑 QR 화면 유효기간 줄에 [톡캘린더에 알림 넣기].
+- 서버 `POST /api/kakao-social/calendar/voucher` · 가용성 `GET …/calendar/voucher/available`. 게이트 **`KAKAO_TALK_CALENDAR_ENABLED='true'`(기본 OFF — 꺼져 있으면 버튼이 아예 안 보인다)**.
+- 일정 = 만료일(KST) 10:00 · 30분 · 알림 3일 전·하루 전(지난 것은 뺀다) · 매장 위치. 순수 함수 `features/kakao-social/voucher-calendar.ts`.
+- 권한 미동의면 할 일을 sessionStorage 에 적고 `/auth/kakao/consent/start?scope=talk_calendar` → 돌아온 `KakaoConsentCallbackPage` 가 이어서 실행.
+- 🐛 함께 고친 것: ① 동의 콜백이 `state` 를 통째로 경로로 써서 **늘 홈으로 튕겼다**(state 는 `uuid:base64(경로)`) ② 옛 `/calendar/add` 가 암호화 키를 안 넘겨 **암호문을 토큰으로 보내고 갱신 실패로 사용자 카카오 토큰을 지우는** 경로였다.
+- ⚠️ 대표 할 일: 카카오 콘솔에서 **톡캘린더 권한 신청 + 동의항목 `talk_calendar`** → Pages env `KAKAO_TALK_CALENDAR_ENABLED=true`. 라이브에서 동의 시작 주소는 로그인 화면까지 정상(redirect URI 는 등록돼 있는 것으로 보인다), 동의항목 설정 여부는 로그인 뒤에야 판정된다.
+- 가드 `talk-calendar-voucher-2026-10-11.test.ts` 13 + 주입 5(전부 빨간불).
+
+**4번 이용권 선물(넘기기)** — 대표 결정(`AskUserQuestion`): **"내 이용권 넘기기"** + **"받은 뒤엔 환불 막기"**.
+- 지갑 QR [선물하기] → 링크 만들기 → [카카오톡으로 보내기](카카오 공유창 = 친구 고르기, 별도 권한 심사 없음) → 친구 `/gift/v/:token` [선물 받기] → 주인 변경.
+- 표 `voucher_gifts`(인라인 ensure, D1 당 1회) · API `/api/group-buy/gifts/*` · 기존 `vouchers.gift_from_user_id`(라이브 컬럼 존재 확인, 0건) 사용.
+- 받기 = ① 선물 CAS ② 주인 CAS(보낸 사람·unused·미만료일 때만), ②가 실패하면 선물 닫음. 코드(QR)는 받기 전 응답에 없다.
+- 🔴 머니: 받은 뒤 셀프 환불 3곳 차단(이용권 셀프 취소 CAS · 주문 취소(어드민 통과) · 환불 요청). **만료 자동 환불은 그대로**(`orders.user_id`=보낸 사람 결제수단으로 간다 — 손대면 만료 환불 규정에 닿는다).
+- 가드 `voucher-gift-2026-10-11.test.ts` 12(**실제 node:sqlite 로 라우트를 돌린다**) + 주입 8(전부 빨간불). staging `S-GIFT-1~6`.
+- 🧭 틀렸던 판단: 2026-06-12 에 "선물 불필요" 로 걷은 기록이 있다 — 이번엔 대표가 다시 요청했고, 그때 걷은 이유(주인이 안 바뀜)를 이번 설계가 직접 해결한다.
+
+## 남은 것 (대표)
+1. 폰 실기기: 카카오 로그인(안드로이드·아이폰) · #1707 지도 보기 · 선물 보내고 받기 1회.
+2. 알리고: 템플릿 등록·검수 → 승인 코드 `alimtalk_approved_templates` · 발송 서버 IP 칸 비우기 · 포인트 충전.
+3. 카카오 콘솔: 채널 추가(plusfriends) 설정 → `KAKAO_CHANNEL_ADD_ENABLED` · 톡캘린더 권한 → `KAKAO_TALK_CALENDAR_ENABLED`.
+4. 판단: 상담 채널명 "유어팀" 을 유어딜로 둘지 · 알리고 키 plain_text → 시크릿.

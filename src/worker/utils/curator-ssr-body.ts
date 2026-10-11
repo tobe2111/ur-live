@@ -57,6 +57,7 @@ import { cfImage } from '../../utils/cf-image'
 import { priceDisplay } from '../../shared/price-display'
 import { formatNumber } from '../../utils/format'
 import { curatorHomePins } from '../../shared/curator-pin-order'
+import { buildCuratorNoscript } from './crawler-noscript'
 
 function escAttr(s: string): string {
   return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -272,6 +273,9 @@ export function buildCuratorFirstScreen(ssrPayload: string, loaderHtml: string):
             `<div class="${CURATOR_FS_CLASS.rows}">${rows}</div>` +
           '</div>' +
         '</div>' +
+        // 📰 2026-10-11: 첫 화면은 진열 **줄 4개**만 그린다 — 유어샵은 공유로 퍼지는 표면이라
+        //   담긴 것이 무엇인지 크롤러가 알아야 그 가게 이름으로 검색될 때 잡힌다. 사람에겐 안 보인다.
+        buildCuratorNoscript(d) +
       '</div>' + shortLoader
     )
   } catch {
