@@ -194,7 +194,7 @@ export const CURATOR_DEFAULTS = {
   BIO_MAX_LEN: 160,
   /** 핀 stats 기본 조회 기간 (일) */
   STATS_DEFAULT_RANGE_DAYS: 7,
-  /** ref 쿠키 TTL (시간) — 기존 affiliate_ref 24h 와 동일. */
+  /** 소개 링크 유효기간(시간) — `utils/affiliate-ref-store.ts` 가 이 값 하나를 쓴다. 2026-10-11 대표 "24시간으로 해줘. 7일말고". */
   REF_COOKIE_TTL_HOURS: 24,
 } as const
 

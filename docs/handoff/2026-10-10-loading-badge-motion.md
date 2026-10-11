@@ -98,3 +98,9 @@
 - 폐지 시점 라이브 D1: `voucher:%:intro-inf` 원장 **0행** · 영입자 지정 매장 **0곳** · store_intro 적립 **0건** → 잃는 사람 없음.
 - 🩸 **틀린 판단(정정)**: 전날 대표에게 *"결제 때 붙는 영입 2%(직접 입점만)는 그대로"* 라고 보고했다. **사실이 아니었다** — 그 2% 는 2026-09-04·09-16 에 이미 폐지(호출부 없음)였고, `actor-benefit-map.md`·`urdeal-platform-model.md` 가 낡아 "살아 있다"고 적혀 있었다. 문서만 보고 단정했다. 두 문서 같이 정정.
 - 가드 재조준: `check-commission-budget` R3(dedup 마커 ≥1 → 사용시점 셰어 0개) · `store-handover-money` · `voucher-intro-stamp` · 인라인 주입 3건 삭제(지킬 코드가 사라짐) → `matching-ref.mjs` 주입 2건으로 대체(빨간불 확인).
+
+### 🔗 소개 링크 24시간 · 마지막 링크 우선 (2026-10-11 대표 *"유효기간 24시간으로 해줘. 7일말고. 그리고 마지막 링크를 우선으로 해줘."*)
+- 신규 SSOT `src/utils/affiliate-ref-store.ts` — 저장(`writeAffiliateRef`, 덮어쓰기)·판정(`readAffiliateRef`, 들어온 시각 `affiliate_ref_at` 부터 24h)·정리(`pruneExpiredAffiliateRef`, 쿠키까지). 기간은 `CURATOR_DEFAULTS.REF_COOKIE_TTL_HOURS`(24). 옛 7일 저장분은 `만료−7일` 로 역산해 24h 로 재판정.
+- 읽는 곳 4곳 전부 SSOT 경유: `lib/api.ts`(X-Affiliate-Ref — 요청 직전 prune) · `useBeforePayment` · `affiliate-track`(담기 판정·적립) · `seller-tracking.getTrackedSellerId`(결제 본문 ref = `?seller=` 와 `?ref=` 중 **나중에 연 것**). 잠긴 상세 화면은 무수정(호출 이름 유지).
+- 가드 `affiliate-ref-24h-last-link-2026-10-11.test.ts` 11건 + 주입 5건 빨간불 확인. staging S-MATCH-8·9 추가.
+- ⚠️ 2026-07-12 에 블로그 롱테일 때문에 24h→7d 로 늘렸던 결정을 대표가 되돌렸다(블로그 유입 귀속이 줄 수 있음 — 대표 결정).

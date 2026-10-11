@@ -13,6 +13,7 @@
  *   - URL 에 ?seller= 있으면 우선 (재진입 시 새 셀러로 갱신)
  *   - 자기 자신 셀러 토큰이면 저장 안 함 (셀러가 자기 링크로 가짜 attribution 방지)
  */
+import { readAffiliateRef } from '@/utils/affiliate-ref-store'
 const KEY = 'ur_tracking_seller_v1'
 const TTL_MS = 24 * 60 * 60 * 1000 // 24h
 
@@ -47,21 +48,38 @@ export function captureTrackingFromUrl(): void {
   } catch { /* graceful */ }
 }
 
-export function getTrackedSellerId(): string | null {
-  if (typeof window === 'undefined') return null
+/** `?seller=` 로 들어온 값(탭 세션 · 24시간). 만료면 지운다. */
+function readSessionSeller(now: number): { id: string; at: number } | null {
   try {
     const raw = sessionStorage.getItem(KEY)
     if (!raw) return null
     const data = JSON.parse(raw) as TrackingData
     if (!data?.seller_id) return null
-    if (Date.now() - data.saved_at > TTL_MS) {
+    if (now - data.saved_at > TTL_MS) {
       sessionStorage.removeItem(KEY)
       return null
     }
-    return data.seller_id
+    return { id: data.seller_id, at: data.saved_at }
   } catch {
     return null
   }
+}
+
+/**
+ * 결제 요청 본문의 `ref` — **마지막에 연 소개 링크** (2026-10-11 대표 *"마지막 링크를 우선으로 해줘"*).
+ *
+ * 소개 링크는 두 가지 모양으로 들어온다: 매장 공유 `?seller=`(여기 sessionStorage) · 딜·유어샵·핀 `?ref=`/`?aff=`
+ * (`affiliate-ref-store`). 종전엔 이 함수가 앞의 것만 돌려줬고 서버는 본문을 헤더보다 먼저 읽어서, 옛 매장 링크를
+ * 먼저 열었다가 딜 링크로 사도 **먼저 연 쪽**이 이겼다. 이제 둘의 들어온 시각을 비교해 **나중 것**을 낸다.
+ * 이름은 호출부 3곳(상세 화면 — 잠긴 파일 포함)을 안 건드리려고 그대로 둔다.
+ */
+export function getTrackedSellerId(): string | null {
+  if (typeof window === 'undefined') return null
+  const now = Date.now()
+  const seller = readSessionSeller(now)
+  const aff = readAffiliateRef(now)
+  if (seller && aff) return aff.at >= seller.at ? aff.ref : seller.id
+  return seller?.id ?? aff?.ref ?? null
 }
 
 export function clearTrackedSeller(): void {

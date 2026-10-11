@@ -244,6 +244,8 @@ S-EXBOOK4 가 그 방향이다.
 | S-MATCH-5 | B 본인이 자기 링크로 결제 / B 의 연결 셀러 id 를 ref 로 | 커미션 행 **0** (자기 귀속 차단) |
 | S-MATCH-6 | 그 이용권을 매장에서 사용 처리 | 사용 처리 정상 · 원장에 `voucher:N:intro-inf` 행이 **안 생긴다**(영입 셰어 삭제) |
 | S-MATCH-7 | 그 결제 환불 | S-MATCH-2 의 attribution 이 회수(clawed_back)된다 |
+| S-MATCH-8 | (2026-10-11 24시간·마지막 링크) B 링크로 들어온 뒤 C 의 딜 링크로 다시 들어와 결제 | attribution 이 **C** 에게 간다 |
+| S-MATCH-9 | 링크로 들어오고 24시간 지나 결제(`affiliate_ref_at` 을 25시간 전으로 바꿔 재현) | 커미션 행 **0** · 요청 헤더에 `X-Affiliate-Ref` 없음 · `affiliate_ref` 쿠키 지워짐 |
 
 ## 검증 데이 권장 순서 (반나절)
 

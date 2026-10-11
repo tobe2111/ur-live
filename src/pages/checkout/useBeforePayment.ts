@@ -5,6 +5,7 @@
  * CheckoutPage 메인 파일 크기를 줄임. 상태 접근은 클로저로 유지.
  */
 import { useRef } from 'react'
+import { readAffiliateRef } from '@/utils/affiliate-ref-store'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { addBreadcrumb } from '@/lib/sentry'
@@ -124,9 +125,8 @@ export function useBeforePayment(opts: UseBeforePaymentOptions) {
             shipping_fee: groupShippingFee,
             idempotency_key: `${orderId}_${group.seller_id}`,
             referrer_id: (() => {
-              const ref = localStorage.getItem('affiliate_ref')
-              const expires = localStorage.getItem('affiliate_ref_expires')
-              if (ref && expires && Date.now() < Number(expires)) return ref
+              const ref = readAffiliateRef()?.ref // 24시간 · affiliate-ref-store SSOT
+              if (ref) return ref
               const cookie = document.cookie.match(/affiliate_ref=([^;]+)/)
               return cookie?.[1] || undefined
             })(),

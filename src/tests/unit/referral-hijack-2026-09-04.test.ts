@@ -55,8 +55,9 @@ describe('② 판정 함수 — 화면만 가리고 귀속은 안 건드린다',
 
   it('만료된 ref 는 남의 추천으로 안 본다', () => {
     const fn = src.slice(src.indexOf('export function arrivedViaSomeoneElsesRef'))
-    expect(fn.slice(0, 700), '유효기간 검사가 없으면 7일 지난 방문자도 영구히 담기를 못 한다')
-      .toMatch(/EXP_KEY|expires/)
+    // 2026-10-11: 유효기간 판정은 `affiliate-ref-store.readAffiliateRef` 한 곳으로 모였다(24시간).
+    expect(fn.slice(0, 700), '유효기간 검사가 없으면 24시간 지난 방문자도 영구히 담기를 못 한다')
+      .toMatch(/readAffiliateRef\(\)/)
   })
 
   it('본인 ref 는 남의 추천이 아니다', () => {
