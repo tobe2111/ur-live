@@ -6,14 +6,16 @@
  * ⚠️ 못 막는 것: 실제로 그 문구로 생성했는지, 결과가 같은 캐릭터인지 — 그건 검수 도구와 대표 판정이다.
  */
 import { describe, it, expect } from 'vitest'
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync, existsSync, readdirSync } from 'node:fs'
 
 const DOC = readFileSync('docs/design/urdeal-mascot-otter-2026-10.md', 'utf8')
 const QA = 'scripts/mascot/udal-qa.py'
 
 describe('유달이 생성 철칙', () => {
-  it('철칙 다섯 줄이 문서에 있다', () => {
+  it('철칙 여섯 줄 + 예외 없음이 문서에 있다', () => {
     expect(DOC).toContain('🔒 유달이 생성 철칙')
+    expect(DOC, '2026-10-11 대표 "무조건 다 철칙대로" — 예외 조항이 지워지면 안 된다').toContain('⛔ **예외 없음**')
+    for (const n of [1, 2, 3, 4, 5, 6]) expect(DOC).toMatch(new RegExp(`^${n}\\. \\*\\*`, 'm'))
     expect(DOC).toMatch(/gpt-image-2\.5/)
     expect(DOC).toMatch(/한 장 시트/)
     expect(DOC).toMatch(/udal-qa\.py/)
@@ -59,7 +61,20 @@ describe('유달이 생성 철칙', () => {
     expect(qa, '톤 판정(색상·채도·크림)이 빠지면 평균 RGB 만 보고 통과시킨다 — v6 가 그랬다').toMatch(/def tone\(/)
   })
 
+  it('서비스에 들어간 유달이 그림은 전부 화면 반영 장부에 있다', () => {
+    // 표에 없는 그림 = 철칙 검수 없이 들어온 그림. 새 그림은 같은 커밋에서 장부에 출처·검수 결과를 적는다.
+    const ledger = DOC.split('## 📒 화면 반영 장부')[1]?.split('\n## ')[0] ?? ''
+    expect(ledger, '장부 절이 사라졌다').not.toBe('')
+    const files = ['src/assets/mascot', 'public/assets/mascot']
+      .filter(existsSync)
+      .flatMap((d) => readdirSync(d).filter((f) => /\.(webp|png|jpe?g|svg|gif|avif)$/i.test(f)))
+    expect(files.length, '그림 0장이면 검사가 헛돈다').toBeGreaterThan(5)
+    for (const f of files) expect(ledger, `${f} 가 장부에 없다 — 철칙 검수 결과를 장부에 적을 것`).toContain(`\`${f}\``)
+  })
+
   it('CLAUDE.md 가 모든 세션에 철칙을 가리킨다', () => {
-    expect(readFileSync('CLAUDE.md', 'utf8')).toContain('유달이(마스코트) 생성 철칙')
+    const md = readFileSync('CLAUDE.md', 'utf8')
+    expect(md).toContain('유달이(마스코트) 생성 철칙')
+    expect(md).toContain('예외 없음')
   })
 })
