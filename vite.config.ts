@@ -128,7 +128,9 @@ export default defineConfig({
             return !icon || LUCIDE_SHELL_ICONS.has(icon[1]) ? 'lucide-shell' : 'lucide'
           }
           // Sentry
-          if (id.includes('@sentry')) return 'sentry'
+          // 📦 2026-10-11: `src/lib/sentry-sdk.ts`(쓰는 함수만 다시 내보내는 진입점)도 같은 청크 — 다른 청크로 새면
+          //   그 청크가 Sentry 를 정적으로 끌고 와 첫 페인트에 실릴 수 있다.
+          if (id.includes('@sentry') || id.includes('/src/lib/sentry-sdk')) return 'sentry'
           // Embla carousel
           if (id.includes('embla-carousel')) return 'embla'
           // 🛡️ 2026-04-27 추가 분할 — index entry 크기 줄이기

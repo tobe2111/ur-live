@@ -5,10 +5,10 @@
 //   initSentry 만 main.tsx 에서 이미 lazy 처리됨 (line 131).
 import { isNoiseEvent, type SentryLikeEvent } from './sentry-noise'
 
-type SentryModule = typeof import('@sentry/react')
+type SentryModule = typeof import('./sentry-sdk')
 let _sentryPromise: Promise<SentryModule> | null = null
 function loadSentry(): Promise<SentryModule> {
-  if (!_sentryPromise) _sentryPromise = import('@sentry/react')
+  if (!_sentryPromise) _sentryPromise = import('./sentry-sdk')
   return _sentryPromise
 }
 
