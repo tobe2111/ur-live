@@ -64,9 +64,94 @@ curl -sS -A "$UA_YETI" https://urdeal.kr/ | grep -c '#organization'   # 0 → 1 
 
 가드: 같은 테스트 파일 `③-2` **5건** + 주입 **5건 되돌려-검증 전부 빨간불 확인**.
 
+### ✅ E4 판정 통과 (배포 후 라이브 — 머지 `482239ee8`, PR #1714)
+
+UA 를 바꿔 같은 경로를 받아 파싱해 재니:
+
+| | Yeti | Googlebot | DaumOA | iPhone |
+|---|---|---|---|---|
+| `#organization` | **1** (이전 0) | **1** (0) | **1** (0) | 1 |
+| `ld+json` 블록 | 1 | 1 | 1 | 1 |
+
+- **Yeti 의 JSON 이 iPhone·Googlebot 과 deep-equal** — 사람과 크롤러가 같은 브랜드 설명을 받는다.
+  `WebSite.name = 유어딜` · `Organization.alternateName = [urdeal, UrDeal]`(도메인 품은 별칭 없음).
+- 🧷 **매달린 참조 0건** — 크롤러가 받는 `/blog`·`/pass/:id`·`/u/:handle`·`/vouchers`·`/map` 전부
+  정의되지 않은 `@id` 없음(이전엔 `/blog` 가 없는 `#organization`·`#website` 를 가리켰다).
+
+🩸 **이 측정에서 두 번 헛짚었다 — 다음 세션이 같은 함정에 빠지지 말 것**:
+1. iPhone 에서 `grep -c '#organization'` 이 **2** 라 중복으로 보였다. 실제로는 하나가 노드 정의,
+   하나가 `publisher: {"@id": …}` **참조**였다(`"@type":"Organization"` 도 2인데 둘째는
+   `parentOrganization`). **grep 개수는 노드 수가 아니다** — 파싱해서 셀 것.
+2. `<script type="application/ld+json">` 정규식이 **0개**를 냈다. 서빙 태그엔 CSP `nonce` 가 붙는다
+   (`<script type="application/ld+json" nonce="…">`) → `[^>]*` 없이는 못 잡는다. 여기서도 **0 은
+   결함과 측정 실패를 구분하지 못한다.**
+
 ⚠️ **사이트 이름이 실제로 `유어딜` 로 바뀌는 것은 보장되지 않는다** — 구글 공식 문서가 *"확신이 낮으면
 도메인을 쓸 수 있다"* 고 명시한다. 우리가 한 것은 그 신호를 **처음으로 배달한 것**까지다. 남은 요인은
 코드 밖이다(화면 로고가 `urdeal` 영문 워드마크 · 도메인 이전이 3개월 전).
+
+
+## ④ 목록·유어샵 표면의 구조화 데이터 (후속 PR)
+
+**실측이 먼저였다** — Yeti UA 로 받아 **파싱해서** 세니:
+
+| 경로 | 받은 노드 |
+|---|---|
+| `/pass/2919` (상세) | `Product` · `Offer` · `FoodEstablishment` · `BreadcrumbList` ✅ |
+| `/vouchers` · `/map` · `/stays` · `/browse` · `/u/:handle` | `Organization` · `WebSite` **뿐** ❌ |
+
+🔎 **원인은 빠뜨린 인자 하나**였다: `applySurfaceMeta` 는 `jsonLd` 자리를 **이미** 갖고 있고
+블로그 목록이 그 자리를 쓴다. 소비자 목록 표면만 아무도 넘기지 않았다.
+
+신규 `src/worker/utils/surface-list-jsonld.ts`(순수) + 배선 2줄:
+- 목록/정적 → `BreadcrumbList` + `CollectionPage`(항목 있으면) / `WebPage`
+- 유어샵 → `BreadcrumbList` + `ProfilePage`(`mainEntity: Person`) + `ItemList`
+
+**두 규율** (둘 다 "에러가 안 나는" 종류다):
+1. **추가 요청 0** — 항목은 그 표면이 이미 받아 둔 SSR 시드에서만. 시드가 없는 표면
+   (`/map`·`/stays`)은 빵부스러기만. 구조화 데이터를 위해 self-fetch 를 만들지 않는다.
+2. **noindex 를 가리키지 않는다** — 항목을 내는 표면은 **허용목록 한 줄**(`/`·`/browse`)이고
+   `/vouchers`(교환권 목록)는 거기 없다. 다른 목록에서도 `deal_only=1` 항목만 뺀다.
+
+**SSOT 둘을 그대로 쓴다**: 항목 URL `canonicalDetailPath` · 유어샵 순서 `curatorHomePins`.
+빵부스러기 체인은 **경로 접두를 되짚어** 만든다(`/terms/seller` → 유어딜 › 이용약관 › 판매자 약관) —
+라벨은 `CONSUMER_SURFACE_SEO.crumb`, **noindex 표면엔 일부러 비워 둔다**(가드가 양방향 고정).
+
+🔬 **라이브 시드로 렌더해서 눈으로 봤고, 그게 결함 둘을 잡았다**:
+1. 유어샵 핀 사진이 `/api/media/...` **상대 경로**로 나갔다 — 구조화 데이터 `image` 는 절대 URL
+   이어야 하고, 상대 경로면 구글이 그 필드를 **버리면서 에러를 안 낸다**.
+2. 항목 20개면 JSON 이 **10.3KB** 였다. 이 JSON 은 **사람이 받는 응답에도 실리므로**
+   (크롤러에게만 주는 것은 구글 가이드 위반) 상한을 10 으로 → **5.4KB**.
+
+🩸 **주입 러너가 같은 자리를 두 번 잡았다 — 두 번째가 더 값지다**:
+1. *"`/vouchers` 가 ItemList 를 낸다"* 주입이 **통과**했다 — 픽스처의 시드를 전부 `deal_only=1` 로
+   둬서 **항목이 어차피 걸러졌기** 때문이다. 규칙을 통째로 없애도 초록이었다.
+   ⇒ **"걸러지는 데이터로 걸러짐을 시험하면 아무것도 시험하지 않는다."**
+2. 픽스처를 고치고 규칙을 *슬롯 허용목록 + 경로 차단목록* **두 겹**으로 만들었더니 **또** 통과했다 —
+   한 겹을 없애도 다른 겹이 같은 결과를 내므로 **어느 쪽도 출력으로 판정할 수 없다.**
+   ⇒ **중복 잠금은 각 잠금을 시험 불가능하게 만든다.** 규칙을 경로 허용목록 **한 줄**로 모았다
+   (슬롯 겹은 애초에 지키는 게 없었다 — 모양이 다른 시드는 `listItem` 이 행마다 걸러 자연히 0건).
+   그리고 시험이 *같은 시드를 허용 경로(`/`)에 주면 항목이 **생긴다***를 함께 단언한다.
+
+가드: `surface-list-jsonld-2026-10-11.test.ts` **33건** + 주입 **17건 되돌려-검증 전부 빨간불 확인**.
+
+⚠️ **E4(다음 세션 첫 액션)** — 배포 후 UA 별 실측:
+```bash
+UA='Mozilla/5.0 (compatible; Yeti/1.1; +http://naver.me/spd)'
+for p in / /vouchers /u/jiwon1228 /map; do
+  echo "== $p"; curl -sS -A "$UA" "https://urdeal.kr$p" \
+  | grep -o '<script[^>]*application/ld+json[^>]*>[^<]*' | python3 -c "
+import sys,re,json
+for l in sys.stdin:
+    b=re.sub(r'^<script[^>]*>','',l.rstrip())
+    try: d=json.loads(b)
+    except Exception: continue
+    print(' ', [n.get('@type') for n in (d.get('@graph') or [d])])"
+done
+```
+판정: `/vouchers`·`/map` 에 `BreadcrumbList` 가 생겼는지 · `/`·`/u/:handle` 에 `ItemList` 가
+생겼는지 · 항목 URL 이 전부 `/pass/`·`/stays/`·`/products/` 이고 **`/vouchers/` 가 0건**인지.
+⚠️ 정규식에 `[^>]*` 를 빼면 CSP `nonce` 때문에 **블록 0개**로 읽힌다(③-2 에서 겪었다).
 
 ## 이번에 틀렸던 판단 (이게 제일 값지다)
 

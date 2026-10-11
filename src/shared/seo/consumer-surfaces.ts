@@ -33,6 +33,14 @@ export interface ConsumerSurfaceSeo {
    * `/search`·`/gb-market` 이 클라에선 noindex 인데 **서빙 HTML 은 `index, follow`** 였다.
    */
   noindex?: boolean
+  /**
+   * 🍞 빵부스러기(`BreadcrumbList`) 한 단계의 **짧은** 라벨. 마케팅 제목(`title`)은 길어서
+   * 빵부스러기에 그대로 쓸 수 없다(`기프티콘 교환권 - 카페·편의점·치킨 할인` → `교환권`).
+   * 체인은 경로 접두를 되짚어 만들므로(`/terms/seller` → 유어딜 › 이용약관 › 판매자 약관)
+   * 상위 경로가 이 표에 있으면 저절로 단계가 된다 — 손으로 체인을 적지 말 것.
+   * 없으면 그 표면은 빵부스러기를 안 낸다(noindex 표면은 일부러 비워 둔다).
+   */
+  crumb?: string
 }
 
 /** 표시용 사이트명 — `SEO.tsx` 의 SITE_NAME 과 같은 값(접미사는 렌더 쪽에서 1회만 붙인다). */
@@ -51,17 +59,20 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
       '우리 동네 맛집·카페·뷰티·숙소 이용권을 할인가로 사서 매장에서 바로 쓰세요. 기프티콘 교환권은 결제 즉시 발송, 내 주변 동네딜은 지도에서 한눈에. 가입하면 내 유어샵도 함께 열립니다.',
   },
   '/vouchers': {
+    crumb: '교환권',
     title: '기프티콘 교환권 - 카페·편의점·치킨 할인',
     description:
       '스타벅스·메가MGC커피·GS25·투썸 등 인기 브랜드 기프티콘을 할인가로. 결제하면 바로 발송되고 유효기간 안에 매장에서 쓰면 됩니다.',
     canonicalParams: ['category', 'brand'],
   },
   '/browse': {
+    crumb: '쇼핑',
     title: '쇼핑 - 유어딜 상품 모아보기',
     description: '유어딜 사업자 유저가 직접 파는 상품을 한눈에. 카테고리·가격으로 골라 담고 바로 결제하세요.',
     canonicalParams: ['category'],
   },
   '/map': {
+    crumb: '동네딜 지도',
     title: '내 주변 동네딜 지도 - 걸어갈 수 있는 할인',
     description: '지금 있는 자리에서 가까운 순으로 동네 이용권을 봅니다. 맛집·카페·뷰티·숙소를 지도에서 고르고 할인가로 사서 그 매장에서 바로 쓰세요.',
   },
@@ -70,18 +81,22 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
   //   ⚠️ 그 페이지들은 이제 이 표를 읽는다 — 문구를 고칠 때 여기만 고치면 서버·클라가 함께 바뀐다.
   //   (두 벌로 두면 반드시 갈라진다. 그게 이 파일이 존재하는 이유다.)
   '/about': {
+    crumb: '서비스 소개',
     title: '서비스 소개 - 유어딜은 이렇게 작동합니다',
     description: '매장은 손님이 온 다음에만 비용을 냅니다. 손님은 동네 이용권을 할인가로 사고, 마음에 든 딜은 내 유어샵에 담아 소개하면 몫이 쌓입니다. 매장·소개·구매 셋이 함께 이득인 구조.',
   },
   '/creators': {
+    crumb: '소개 파트너',
     title: '동네 딜 소개하고 수익 받기',
     description: '링크 하나로 우리 동네 맛집을 소개하고 팔릴 때마다 몫을 받으세요. 가입 → 유어샵에 담기 → 링크 공유, 3단계면 시작입니다.',
   },
   '/creators/apply': {
+    crumb: '신청',
     title: '유어딜 소개 파트너 신청',
     description: '동네 맛집·카페·뷰티·숙소 이용권을 소개해 주실 분을 찾습니다. 팔로워 수보다 동네를 아는 것이 중요해요.',
   },
   '/partners': {
+    crumb: '매장 입점',
     title: '매장 입점 안내 - 손님이 온 다음에만 비용',
     description: '광고는 클릭에 돈이 나가지만 유어딜은 손님이 매장에 온 뒤에만 수수료 5%가 붙습니다. 카카오맵에서 우리 가게를 찾아 등록하면 바로 이용권을 올릴 수 있어요.',
   },
@@ -92,30 +107,37 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
   //   i18n 을 쓰는 페이지는 `t(key, { defaultValue: CONSUMER_SURFACE_SEO[...].title })` 형태로
   //   **ko 기본값만** 여기서 읽는다 — 다국어는 유지되고 ko 문구는 한 곳에서 온다.
   '/stays': {
+    crumb: '숙소 이용권',
     title: '숙소 이용권 - 펜션·호텔·풀빌라 할인',
     description: '펜션·호텔·풀빌라 숙박 이용권을 할인가로. 원하는 날짜를 골라 예약하고 현장에서 바로 사용하세요.',
   },
   '/experience': {
+    crumb: '무료 체험단',
     title: '무료 체험단 응모 - 우리 동네 매장',
     description: '응모는 무료, 당첨은 공정 추첨. 우리 동네 맛집·카페·뷰티 매장 체험권을 받아보세요.',
   },
   '/new-openings': {
+    crumb: '신규 오픈',
     title: '우리 동네 새로 생긴 가게 - 이번 달 신규 오픈',
     description: '이번 달 우리 동네에 새로 문을 연 가게를 공공 인허가 데이터로 먼저 확인하세요. 오픈 기념 이용권이 올라오면 바로 보입니다.',
   },
   '/influencer': {
+    crumb: '소개로 수익',
     title: '동네 딜 소개로 수익 만들기',
     description: '매장을 직접 섭외하지 않아도 됩니다. 마음에 든 이용권을 내 유어샵에 담아 링크로 소개하면, 그 링크로 팔릴 때마다 몫이 쌓입니다.',
   },
   '/influencer/rankings': {
+    crumb: '소개 랭킹',
     title: '이 달의 소개 랭킹',
     description: '지역별로 이번 달 소개 성과가 높은 유어샵을 봅니다. 어떤 딜이 실제로 팔리는지 참고하세요.',
   },
   '/introduce': {
+    crumb: '유어딜 소개',
     title: '유어딜 소개 - 우리 동네 이용권 공동구매',
     description: '우리 동네 맛집·카페·뷰티·숙소 이용권을 할인가로 사서 매장에서 바로 쓰는 서비스. 기프티콘 교환권은 결제 즉시 발송됩니다.',
   },
   '/join': {
+    crumb: '시작하기',
     title: '유어딜 시작하기',
     description: '내 가게를 등록해 이용권을 팔거나, 로그인해서 동네 딜을 사고 소개해 보세요. 둘 다 해도 됩니다.',
   },
@@ -126,22 +148,27 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
   //   여기 title 은 그 문서 제목과 **같은 값**을 서버가 낼 수 있게 둔 것이다 — 문서 제목을 바꾸면
   //   여기도 바꿔야 한다(형제 `/terms/seller` 등은 문서별로 달라 표에 넣지 않았다).
   '/terms': {
+    crumb: '이용약관',
     title: '유어딜 이용약관',
     description: '유어딜 서비스를 이용하는 모든 회원에게 적용되는 이용약관 정본 — 회원 가입과 탈퇴, 딜 포인트, 결제와 환불, 회사와 회원의 책임.',
   },
   '/privacy': {
+    crumb: '개인정보처리방침',
     title: '개인정보처리방침',
     description: '유어딜 개인정보처리방침입니다.',
   },
   '/refund': {
+    crumb: '환불정책',
     title: '환불정책',
     description: '유어딜 환불 및 반품 정책을 안내합니다.',
   },
   '/faq': {
+    crumb: '자주 묻는 질문',
     title: '자주 묻는 질문 - 이용권 사용·환불',
     description: '이용권은 어떻게 쓰는지, 유효기간이 지나면 어떻게 되는지, 환불은 언제 되는지 — 가장 많이 묻는 것부터 답합니다.',
   },
   '/gdpr': {
+    crumb: 'Privacy Policy',
     title: 'Privacy Policy (GDPR) - YourDeal',
     description: 'YourDeal privacy policy and GDPR compliance information.',
   },
@@ -166,18 +193,22 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
   //   (`terms/seller-terms-content.ts` v1.0, 대표 확정)과 같아야 하고, 시행 중인 계약 문서의
   //   제목을 SEO 편의로 바꾸면 정본과 검색결과가 갈린다. 정본을 개정할 때 함께 바꿀 것.
   '/terms/seller': {
+    crumb: '판매자 약관',
     title: '판매자 이용약관',
     description: '유어딜에서 상품·이용권을 판매하는 사업자 유저에게 적용되는 약관 — 입점, 정산과 수수료, 금지 행위, 책임 범위.',
   },
   '/terms/influencer': {
+    crumb: '소개 활동 약관',
     title: '소개 활동 약관',
     description: '유어샵 링크로 이용권을 소개하는 유저에게 적용되는 약관 — 커미션 정책, 정산과 원천징수, 금지 행위.',
   },
   '/terms/group-buy': {
+    crumb: '공동구매 약관',
     title: '공동구매 약관',
     description: '유어딜 이용권 구매자에게 적용되는 약관 — 결제와 발급, 매장에서의 사용, 유효기간과 환불.',
   },
   '/area-report': {
+    crumb: '상권 리포트',
     title: '우리 동네 상권 리포트 - 개업·폐업 현황',
     description: '공공 인허가 데이터로 보는 우리 동네 업종별 영업 현황과 최근 개업·폐업 흐름. 창업 자리를 고를 때 참고하세요.',
   },
@@ -282,12 +313,17 @@ export interface ResolvedSurfaceSeo {
   noindex?: boolean
   /**
    * 🔴 **브랜드 JSON-LD(`Organization`+`WebSite`)를 여기서 만들지 말 것.**
-   * `index.html` 의 정적 블록(2026-07-20 도메인 이전 때 넣은 `@graph`)이 **이미** 그 일을 하고,
-   * `@id` 도 `https://urdeal.kr/#organization` · `#website` 로 **같다** — 여기서 또 만들면 같은
-   * `@id` 의 노드가 두 벌 나가고, 두 벌은 반드시 갈린다(`inLanguage` 가 `ko` ↔ `ko-KR` 로 어긋나는
-   * 식). 2026-10-11 에 제가 *"홈 JSON-LD 가 0건"* 으로 오진해 실제로 그 중복을 만들었고,
-   * 라이브를 재 보고서야 알았다(머지 전에 되돌렸다).
-   * 가드: `seo-crawler-visibility-2026-10-11.test.ts` ③.
+   * 이 함수의 결과는 **사람이 받는 셸(`index.html`)** 에 rewrite 되고, 그 문서엔 2026-07-20 도메인
+   * 이전 때 넣은 정적 `@graph` 가 **이미** 있다(`@id` 도 `#organization`·`#website` 로 같다).
+   * 여기서 또 만들면 같은 `@id` 의 노드가 **한 문서에 두 벌** 나가고, 두 벌은 반드시 갈린다
+   * (`inLanguage` 가 `ko` ↔ `ko-KR` 로 어긋나는 식).
+   *
+   * ⚠️ **"그래서 브랜드 노드는 필요 없다" 가 아니다** — 2026-10-11 에 제가 그렇게 오판했다.
+   * **크롤러는 이 문서를 받지 않는다**(봇 UA 는 `app.get('*')` 의 최소 HTML). 그래서 브랜드 노드는
+   * `shared/seo/brand-jsonld.ts` 로 데이터화해 **봇 셸 쪽에만** 꽂았고(머지 `482239ee8`,
+   * E4 실측 Yeti `#organization` 0 → 1), 두 셸은 **상호배타**라 중복이 구조적으로 불가능하다.
+   * 이 함수는 사람 셸 경로라 여전히 금지다 — 넣으면 그 문서에서 중복이 된다.
+   * 가드: `seo-crawler-visibility-2026-10-11.test.ts` ③ · ③-2.
    */
 }
 
