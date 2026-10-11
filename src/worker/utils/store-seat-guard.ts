@@ -59,6 +59,9 @@ export interface SeatClaims {
   seat_user_id?: unknown
   operator_user_id?: unknown
   store_role?: unknown
+  /** 🏢 에이전시 좌석 — 에이전시 직원(agency_staff.id)이 맡은 매장에 들어온 토큰. 소비자 users 가 아니다. */
+  agency_staff_id?: unknown
+  agency_id?: unknown
 }
 
 const posInt = (v: unknown): number | null => {
@@ -73,7 +76,12 @@ export function seatUserIdOf(p: SeatClaims): number | null {
 
 /** 좌석 토큰 모양인가 — refresh 토큰으로 쓰면 안 되는 토큰을 가른다. */
 export function isSeatShapedToken(p: SeatClaims): boolean {
-  return p.seat_user_id != null || p.operator_user_id != null || p.store_role != null
+  return p.seat_user_id != null || p.operator_user_id != null || p.store_role != null || p.agency_staff_id != null
+}
+
+/** 에이전시 좌석인가 — 이 토큰은 **절대** 사람(users.id)으로도, 매장 주인으로도 되짚지 않는다. */
+export function isAgencySeat(p: SeatClaims): boolean {
+  return p.agency_staff_id != null
 }
 
 // ── 좌석 에포크 테이블 ─────────────────────────────────────────────────────
@@ -98,6 +106,7 @@ const CACHE_TTL_MS = 15_000
 type Entry<T> = { v: T; exp: number }
 const _seatCache = new WeakMap<object, Map<string, Entry<OperatorRole | null>>>()
 const _epochCache = new WeakMap<object, Map<number, Entry<number>>>()
+const _agencyCache = new WeakMap<object, Map<string, Entry<boolean>>>()
 
 function bucket<K, T>(store: WeakMap<object, Map<K, Entry<T>>>, DB: object): Map<K, Entry<T>> {
   let m = store.get(DB)
@@ -110,6 +119,8 @@ function bucket<K, T>(store: WeakMap<object, Map<K, Entry<T>>>, DB: object): Map
 export function invalidateStoreSeatCache(DB: D1Database, sellerId?: number): void {
   const seats = _seatCache.get(DB as unknown as object)
   const epochs = _epochCache.get(DB as unknown as object)
+  // 에이전시 좌석은 (매장·직원·에이전시) 세 축이 다 걸려 있어 통째로 비운다 — 회수는 드물고 다시 채우면 된다.
+  _agencyCache.get(DB as unknown as object)?.clear()
   if (sellerId == null) { seats?.clear(); epochs?.clear(); return }
   epochs?.delete(sellerId)
   if (seats) for (const k of [...seats.keys()]) if (k.startsWith(`${sellerId}:`)) seats.delete(k)
@@ -171,6 +182,37 @@ export async function liveSeatRole(
   }
 }
 
+/**
+ * 🏢 에이전시 좌석이 **지금** 살아 있는가 — 세 가지가 다 참이어야 한다:
+ *   ① 매장이 그 에이전시에 맡긴 기록이 active ② 직원이 active 이고 토큰이 비밀번호 변경·내보내기 뒤 발급분
+ *   ③ 에이전시가 active. 사장님이 끊거나·에이전시가 내려놓거나·직원을 내보내면 다음 요청부터 401.
+ * 판단 근거를 못 얻음(D1 오류·테이블 없음) = undefined.
+ */
+export async function liveAgencySeat(
+  DB: D1Database, sellerId: number, staffId: number, agencyId: number, iat: number | null,
+): Promise<boolean | undefined> {
+  const iatSec = iat ?? 0
+  const key = `${sellerId}:${staffId}:${agencyId}:${iatSec}`
+  const cache = bucket(_agencyCache, DB as unknown as object)
+  const hit = cache.get(key)
+  if (hit && hit.exp > Date.now()) return hit.v
+  try {
+    const row = await DB.prepare(
+      `SELECT 1 AS ok
+         FROM agency_store_links l
+         JOIN agency_staff s    ON s.id = ? AND s.agency_id = l.agency_id AND s.status = 'active' AND s.tokens_valid_after <= ?
+         JOIN agency_accounts a ON a.id = l.agency_id AND a.status = 'active'
+        WHERE l.seller_id = ? AND l.agency_id = ? AND l.status = 'active'
+        LIMIT 1`,
+    ).bind(staffId, iatSec, sellerId, agencyId).first<{ ok: number }>()
+    const v = !!row?.ok
+    cache.set(key, { v, exp: Date.now() + CACHE_TTL_MS })
+    return v
+  } catch {
+    return undefined
+  }
+}
+
 /** 매장의 좌석 에포크(초). 행 없음 = 0. 판단 근거를 못 얻음 = undefined. */
 export async function storeSeatEpoch(DB: D1Database, sellerId: number): Promise<number | undefined> {
   const cache = bucket(_epochCache, DB as unknown as object)
@@ -192,7 +234,7 @@ export type SeatVerdict =
   /** 좌석 토큰이 아니다(셀러 타입 아님·매장 id 없음) — 이 모듈은 관여하지 않는다. */
   | { kind: 'not-seat' }
   /** 살아 있다. `role` = DB 가 말하는 지금 역할(정체성 있는 좌석만), 모르면 null. */
-  | { kind: 'live'; sellerId: number; userId: number | null; role: OperatorRole | null }
+  | { kind: 'live'; sellerId: number; userId: number | null; role: OperatorRole | null; agency?: true }
   /** 끊겼다 — 회수됐거나, 에포크 이전에 발급된 정체성 없는 토큰. */
   | { kind: 'revoked'; sellerId: number; reason: 'seat_revoked' | 'epoch' }
   /** 판단 근거를 못 얻었다(D1 오류). 호출부가 실패 방향을 정한다. */
@@ -203,6 +245,18 @@ export async function verifyStoreSeat(DB: D1Database, p: SeatClaims): Promise<Se
   if (p.type !== 'seller') return { kind: 'not-seat' }
   const sellerId = posInt(p.seller_id) ?? posInt(p.sub)
   if (!sellerId) return { kind: 'not-seat' }
+
+  // 🏢 에이전시 좌석 — 사람 좌석·매장 계정 어느 쪽 규칙으로도 판정하지 않는다(따로 산다).
+  //   역할은 언제나 'operator' — 에이전시는 정산 계좌·사업자정보·운영자 관리에 닿지 않는다.
+  if (isAgencySeat(p)) {
+    const staffId = posInt(p.agency_staff_id)
+    const agencyId = posInt(p.agency_id)
+    if (!staffId || !agencyId) return { kind: 'revoked', sellerId, reason: 'seat_revoked' }
+    const ok = await liveAgencySeat(DB, sellerId, staffId, agencyId, typeof p.iat === 'number' ? p.iat : null)
+    if (ok === undefined) return { kind: 'unknown', sellerId, userId: null }
+    if (!ok) return { kind: 'revoked', sellerId, reason: 'seat_revoked' }
+    return { kind: 'live', sellerId, userId: null, role: 'operator', agency: true }
+  }
 
   const userId = seatUserIdOf(p)
   if (userId) {
@@ -237,10 +291,28 @@ export async function resolveTokenActorUserId(
   try { p = await verify(authorization.substring(7), jwtSecret, 'HS256') as SeatClaims } catch { return null }
   const v = await verifyStoreSeat(DB, p)
   if (v.kind !== 'live') return null
+  // 🏢 에이전시 좌석은 소비자 사람이 아니다 — 아래 폴백(매장 주인 id)으로 가면 직원이 **주인으로 둔갑**한다.
+  if (v.agency) return null
   if (v.userId) return v.userId
   const row = await DB.prepare('SELECT linked_user_id FROM sellers WHERE id = ? LIMIT 1')
     .bind(v.sellerId).first<{ linked_user_id: number | null }>().catch(() => null)
   return posInt(row?.linked_user_id)
+}
+
+/**
+ * 🏢 Bearer 가 **지금 살아 있는 에이전시 좌석**이면 그 매장 id, 아니면 null.
+ * `/my-stores` 처럼 미들웨어가 건너뛰는 경로가 에이전시 직원에게 "맡은 그 매장 하나" 를 돌려줄 때 쓴다
+ * (사람 기준 목록은 에이전시 직원에게 비어 있고, 401 은 셀러 화면에서 로그아웃을 부른다).
+ */
+export async function liveAgencySeatStoreId(
+  DB: D1Database, authorization: string | undefined, jwtSecret: string,
+): Promise<number | null> {
+  if (!authorization || !authorization.startsWith('Bearer ')) return null
+  let p: SeatClaims
+  try { p = await verify(authorization.substring(7), jwtSecret, 'HS256') as SeatClaims } catch { return null }
+  if (!isAgencySeat(p)) return null
+  const v = await verifyStoreSeat(DB, p)
+  return v.kind === 'live' && v.agency ? v.sellerId : null
 }
 
 /**

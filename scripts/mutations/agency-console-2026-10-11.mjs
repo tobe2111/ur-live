@@ -4,6 +4,7 @@
  */
 const TEST = 'src/tests/unit/agency-console-2026-10-11.test.ts'
 const SUNSET = 'src/tests/unit/agency-sunset-final.test.ts'
+const STORES = 'src/tests/unit/agency-stores-2026-10-11.test.ts'
 
 export default [
   {
@@ -93,5 +94,77 @@ export default [
     replace: 'if (e?.DB) {',
     test: TEST,
     why: '같은 이메일의 소비자가 메일 알림을 껐으면 인증·초대 메일이 영영 안 간다.',
+  },
+  {
+    name: '🏢 에이전시 좌석이 매장 주인 id 로 되짚힌다',
+    file: 'src/worker/utils/store-seat-guard.ts',
+    find: '  if (v.agency) return null\n',
+    replace: '',
+    test: STORES,
+    why: '사람이 없는 좌석이 linked_user_id 폴백으로 가면 직원이 주인이 된다 — 운영자 관리·매장 전환을 주인으로 한다.',
+  },
+  {
+    name: '🏢 소유자 판정이 에이전시 claim 을 안 본다',
+    file: 'src/worker/utils/store-actor.ts',
+    find: '  if (p.agency_staff_id != null) return { sellerId, operatorUserId: null, isOwner: false, isAgency: true }\n',
+    replace: '',
+    test: STORES,
+    why: 'D1 이 흔들리는 순간 판정 결과에 기대면 폴백으로 새고, 사람을 요구하는 기능(카카오 연결)이 직원을 못 알아본다.',
+  },
+  {
+    name: '🏢 내보낸 직원(상태)의 매장 좌석이 산다',
+    file: 'src/worker/utils/store-seat-guard.ts',
+    find: "AND s.agency_id = l.agency_id AND s.status = 'active' AND",
+    replace: 'AND s.agency_id = l.agency_id AND',
+    test: STORES,
+    why: '내보내기는 status 와 경계값을 둘 다 바꾸지만, 한쪽이 빠진 경로가 생기면 다른 쪽 하나로 서야 한다.',
+  },
+  {
+    name: '🏢 정지된 에이전시의 매장 좌석이 산다',
+    file: 'src/worker/utils/store-seat-guard.ts',
+    find: "JOIN agency_accounts a ON a.id = l.agency_id AND a.status = 'active'",
+    replace: 'JOIN agency_accounts a ON a.id = l.agency_id',
+    test: STORES,
+    why: '어드민이 에이전시를 정지해도 직원들이 매장을 계속 연다.',
+  },
+  {
+    name: '🏢 사장님이 끊어도 에이전시 좌석이 산다',
+    file: 'src/worker/utils/store-seat-guard.ts',
+    find: "WHERE l.seller_id = ? AND l.agency_id = ? AND l.status = 'active'",
+    replace: 'WHERE l.seller_id = ? AND l.agency_id = ?',
+    test: STORES,
+    why: '대표 규칙 3 — 사장님이 끊으면 다음 판매부터 멈춰야 하는데 좌석이 7일 산다.',
+  },
+  {
+    name: '🏢 직원도 맡김 요청을 수락한다',
+    file: 'src/features/agency-console/api/agency-stores.routes.ts',
+    find: "agencyStoresRoutes.post('/stores/:linkId/accept', cors(), requireAgencyStaff({ adminOnly: true }),",
+    replace: "agencyStoresRoutes.post('/stores/:linkId/accept', cors(), requireAgencyStaff(),",
+    test: STORES,
+    why: '관리자 = 조건 관리 / 직원 = 매장 운영만(대표). 어떤 매장을 맡을지는 관리자가 정한다.',
+  },
+  {
+    name: '🏢 /switch-to-user 가 운영자·에이전시에게 사장님 세션을 준다',
+    file: 'src/features/seller/api/seller-registration/session-routes.ts',
+    find: 'if (!actorUserId || Number(actorUserId) !== Number(seller.linked_user_id)) {',
+    replace: 'if (false) {',
+    test: STORES,
+    why: '매장 토큰만 보고 주인의 소비자 세션을 발급하면 위임받은 사람이 이 호출 하나로 사장님 계정이 된다.',
+  },
+  {
+    name: '🏢 카카오 봇 연결이 에이전시 좌석을 사장님으로 받는다',
+    file: 'src/features/seller/api/seller-kakao-bot.routes.ts',
+    find: '  if (actor.isAgency) return null\n',
+    replace: '',
+    test: STORES,
+    why: 'linked_user_id 후보로 새서 직원이 사장님 이름으로 카카오를 매장에 묶는다.',
+  },
+  {
+    name: '🏢 에이전시 좌석 진입이 남의 셀러 refresh 토큰을 남긴다',
+    file: 'src/pages/agency-console/agency-api.ts',
+    find: "for (const k of ['seller_refresh_token', 'seller_username', 'seller_email']) localStorage.removeItem(k)",
+    replace: "for (const k of ['seller_username', 'seller_email']) localStorage.removeItem(k)",
+    test: STORES,
+    why: '에이전시 좌석이 401 일 때 공용 인터셉터가 그 refresh 로 다른 사람의 매장 좌석을 받아 온다.',
   },
 ]

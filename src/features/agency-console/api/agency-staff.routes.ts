@@ -15,6 +15,7 @@ import { buildSystemEmailHtml, sendSystemEmail } from '@/lib/system-email'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { safeError } from '@/worker/utils/safe-error'
 import { swallow } from '@/worker/utils/swallow'
+import { invalidateStoreSeatCache } from '@/worker/utils/store-seat-guard'
 import { ensureAgencyConsoleTables, AGENCY_NAME_MAX, STAFF_NAME_MAX, type StaffRole } from './agency-schema'
 import { requireAgencyStaff, issueAgencyStaffToken, type AgencyStaffContext } from './agency-session'
 import { AGENCY_MAIL_DOWN, agencyMailReady, consumeLinkToken, frontendBase, issueLinkToken, normalizeBusinessNumber, normalizeEmail } from './agency-auth.routes'
@@ -135,6 +136,8 @@ agencyStaffRoutes.post('/staff/:id/remove', cors(), requireAgencyStaff({ adminOn
     ).bind(nowSec, id, me.agencyId).run()
     if ((r.meta?.changes ?? 0) === 0) return c.json({ success: false, error: '내보낼 수 없는 직원이에요.' }, 404)
     await c.env.DB.prepare("DELETE FROM agency_tokens WHERE staff_id = ? AND used_at IS NULL").bind(id).run().catch(swallow('agency-console:remove-tokens'))
+    // 이 직원이 열어 둔 매장 좌석도 지금 끊는다(같은 isolate 즉시 · 다른 isolate 는 15초 안에).
+    invalidateStoreSeatCache(c.env.DB)
     return c.json({ success: true, message: '내보냈어요. 이 직원은 지금부터 들어올 수 없어요.' })
   } catch (err) {
     return safeError(c, err, '처리 중 오류가 발생했어요', '[agency-console:remove]')

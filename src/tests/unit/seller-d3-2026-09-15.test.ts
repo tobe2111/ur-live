@@ -70,7 +70,11 @@ describe('B2 — 전 매장 합계 + 매장별', () => {
     expect(body).toMatch(/status IN \('PAID','DONE'\) AND DATE\(created_at, '\+9 hours'\) = \?/)
     expect(body).toMatch(/current_seller_id/)
     // 사람 기준 — 좌석 토큰이 아니라 resolveActorUserId 로 판정한다.
-    expect(body).toMatch(/const userId = await resolveActorUserId\(c\)/)
+    //   🏢 2026-10-11: 그 판정이 `resolveStoreScope` 로 모였다(에이전시 좌석은 맡은 매장 하나). 사람 경로는 그대로다.
+    expect(body).toMatch(/const scope = await resolveStoreScope\(c\)/)
+    const scopeFn = src.slice(src.indexOf('async function resolveStoreScope'), src.indexOf("app.get('/my-stores'"))
+    expect(scopeFn).toMatch(/const userId = await resolveActorUserId\(c\)/)
+    expect(scopeFn).toMatch(/listOperableStores\(c\.env\.DB, userId\)/)
   })
   it('홈은 요약이 2곳 이상일 때만 합계로 전환하고, 행을 누르면 같은 switchStore 로 좌석을 바꾼다', () => {
     const src = stripComments(TICKET)

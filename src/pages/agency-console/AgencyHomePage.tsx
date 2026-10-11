@@ -7,14 +7,14 @@ import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/useToast'
 import { AgencyStaffPanel, type StaffRow } from './AgencyStaffPanel'
 import { AgencyInfoPanel } from './AgencyInfoPanel'
+import { AgencyStoresPanel } from './AgencyStoresPanel'
 import {
   agencyRequest, clearAgencySession, readAgencyProfile, readAgencyToken,
   type AgencyInfo, type AgencyStaffInfo,
 } from './agency-api'
 
 /**
- * 🏢 에이전시 콘솔 첫 화면(1단계) — 에이전시 정보 + 직원.
- * 매장 연결·운영은 다음 단계(PR-B)에서 이 화면에 붙는다. 지금은 비어 있음을 정직하게 말한다.
+ * 🏢 에이전시 콘솔 첫 화면 — 맡은 매장(2단계) + 직원 + 에이전시 정보.
  */
 export default function AgencyHomePage() {
   const navigate = useNavigate()
@@ -41,6 +41,7 @@ export default function AgencyHomePage() {
   }, [])
 
   useEffect(() => { if (token) load() }, [token, load])
+  const onExpired = useCallback(() => setExpired(true), [])
 
   useEffect(() => {
     if (params.get('welcome') === '1') {
@@ -83,16 +84,7 @@ export default function AgencyHomePage() {
               <h1 className="mt-1 text-[24px] font-bold tracking-[-0.01em] text-gray-900">{me.agency.name}</h1>
             </section>
 
-            <section className="mt-8">
-              <h2 className="text-[17px] font-semibold text-gray-500">맡은 매장</h2>
-              <div className="mt-3 rounded-2xl bg-white p-6 shadow-lift">
-                <p className="text-[15px] font-semibold text-gray-900">아직 맡은 매장이 없어요</p>
-                <p className="mt-2 text-[13px] leading-relaxed text-gray-500">
-                  매장 사장님이 이 에이전시에 운영을 맡기면 여기에 뜨고, 직원들이 그 매장의 이용권을 관리할 수 있어요.
-                  매장 연결은 곧 열려요.
-                </p>
-              </div>
-            </section>
+            <AgencyStoresPanel onExpired={onExpired} />
 
             {loadError && <div className="mt-6"><ErrorBox message={loadError} onRetry={load} /></div>}
 

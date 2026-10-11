@@ -29,6 +29,8 @@ type Ctx = Context<{ Bindings: Env }>
 async function resolveBotSeat(c: Ctx): Promise<{ sellerId: number; userId: number } | null> {
   const actor = await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET, c.env.DB)
   if (!actor.sellerId) return null
+  // 🏢 에이전시 좌석엔 소비자 사람이 없다 — 아래 linked_user_id 후보로 가면 직원이 사장님 이름으로 카카오를 연결한다.
+  if (actor.isAgency) return null
   const candidates: number[] = []
   if (actor.operatorUserId) candidates.push(actor.operatorUserId)
   // 🪑 좌석 토큰이 가리키는 사람(주인 좌석 포함 — `/store/new` 사장님은 linked_user_id 가 비어 있다). 살아 있는 좌석일 때만.

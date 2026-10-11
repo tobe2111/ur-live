@@ -18,6 +18,7 @@ import { sign } from 'hono/jwt'
 import { startDashboardSession } from '@/worker/utils/dashboard-session'
 import { getSellerIdFromToken } from '@/lib/seller-shared'
 import { findOwnerSeatSellerId, ownerGrantSeat } from '@/worker/utils/seller-operators'
+import { resolveTokenActorUserId } from '@/worker/utils/store-seat-guard'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
 
@@ -255,6 +256,13 @@ export function mountSellerSessionRoutes(
 
       if (!seller?.linked_user_id) {
         return c.json({ success: false, error: '연결된 유저 계정이 없습니다' }, 404);
+      }
+      // 🔐 2026-10-11: 이 토큰을 든 **사람**이 그 유저 본인일 때만 — 종전엔 매장 토큰만 보고 주인의 소비자
+      //   세션을 발급해, 위임받은 운영자(중개사)·에이전시 직원이 이 한 번의 호출로 **사장님 계정이 됐다.**
+      //   좌석 정체성 SSOT 가 가리키는 사람(운영자면 운영자, 에이전시면 없음)과 linked_user_id 가 같아야 한다.
+      const actorUserId = await resolveTokenActorUserId(db, c.req.header('Authorization'), jwtSecret);
+      if (!actorUserId || Number(actorUserId) !== Number(seller.linked_user_id)) {
+        return c.json({ success: false, error: '이 매장 주인 계정으로만 전환할 수 있습니다' }, 403);
       }
 
       const user = await db.prepare(

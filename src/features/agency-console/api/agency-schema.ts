@@ -55,6 +55,25 @@ export async function ensureAgencyConsoleTables(DB: D1Database): Promise<void> {
     )`),
     DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_agency_tokens_hash ON agency_tokens(token_hash)'),
     DB.prepare('CREATE INDEX IF NOT EXISTS idx_agency_tokens_staff ON agency_tokens(staff_id, kind)'),
+    // 🏪 2단계 — 매장이 에이전시에 운영을 맡긴 기록. 사람(직원)이 아니라 **에이전시**에 붙는다.
+    //   행은 지우지 않는다(누가 언제 맡기고 끊었는지가 분쟁 증거) — status 로만 닫는다.
+    DB.prepare(`CREATE TABLE IF NOT EXISTS agency_store_links (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      agency_id INTEGER NOT NULL,
+      seller_id INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      requested_by_user_id INTEGER,
+      decided_by_staff_id INTEGER,
+      ended_by TEXT,
+      ended_by_id INTEGER,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      accepted_at TEXT,
+      ended_at TEXT,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`),
+    // 한 매장은 한 번에 한 에이전시에만 맡긴다(요청 중 포함) — 몫·책임이 둘로 갈리지 않게.
+    DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_agency_store_links_open ON agency_store_links(seller_id) WHERE status IN ('pending','active')"),
+    DB.prepare('CREATE INDEX IF NOT EXISTS idx_agency_store_links_agency ON agency_store_links(agency_id, status)'),
   ])
   _ensured.add(DB)
 }
@@ -67,6 +86,8 @@ export type StaffStatus = 'pending' | 'invited' | 'active' | 'removed'
 /** admin = 정산·직원·조건 관리 · staff = 매장 운영만 */
 export type StaffRole = 'admin' | 'staff'
 export type AgencyTokenKind = 'verify' | 'invite' | 'reset'
+/** pending = 사장님이 맡김 요청 · active = 에이전시가 수락 · declined = 에이전시가 거절 · ended = 누군가 끊음 */
+export type AgencyStoreLinkStatus = 'pending' | 'active' | 'declined' | 'ended'
 
 /** 토큰 유효 시간 — 인증 메일 24시간 · 초대 7일 · 비밀번호 재설정 1시간 */
 export const AGENCY_TOKEN_TTL_HOURS: Record<AgencyTokenKind, number> = { verify: 24, invite: 24 * 7, reset: 1 }
