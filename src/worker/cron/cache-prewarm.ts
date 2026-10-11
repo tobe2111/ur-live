@@ -43,7 +43,10 @@ interface PrewarmEnv {
  */
 const HOT_PATHS: readonly string[] = [
   '/api/home/bundle',
-  '/api/home/categories',
+  // 🔁 2026-10-11 [UNLOCK_LOADING]: `/api/home/categories` → 홈 피드 기본 요청으로 교체. 화면이 그 주소를
+  //   **한 번도** 부르지 않는다(호출자 0 — 워커 라우트만 남았다). 홈 피드(GroupBuyFeed)는 기본 정렬이 인기순이라
+  //   첫 요청이 정확히 아래 주소다(`status=active&category=all&sort=popular`) — 그게 예열 밖이었다.
+  '/api/group-buy/products?status=active&category=all&sort=popular',
   '/api/products?limit=20',
   // 🚫 2026-07-29: `/api/streams` 3종 제거 — **라이브 실측 404**(라이브커머스 영구중단
   //   `LIVE_COMMERCE_SUSPENDED`로 라우트 자체가 없다). 예열은 실패해도 조용히 넘어가므로
@@ -77,10 +80,13 @@ const HOT_PATHS: readonly string[] = [
   //   소비자 오리진에서도 도매를 서빙하게 되면 그때 다시 추가할 것.
   // 🛡️ 2026-05-27 (loading P1): 메인 카테고리 칩 4개 prewarm — 칩 클릭 시 cold D1 회피.
   //   카테고리 정의: GroupBuyFeed.tsx CATEGORIES (meal/stay/beauty/etc).
-  '/api/group-buy/products?status=active&category=meal_voucher',
-  '/api/group-buy/products?status=active&category=stay_voucher',
-  '/api/group-buy/products?status=active&category=beauty_voucher',
-  '/api/group-buy/products?status=active&category=etc_voucher',
+  // 🔁 2026-10-11 [UNLOCK_LOADING]: 칩 4종 예열은 **유지**하되 주소를 화면이 실제로 부르는 것으로 바꿨다.
+  //   2026-09-03 부터 GroupBuyFeed 가 정렬을 서버로 넘겨(`&sort=popular` — 기본 정렬) 칩을 누르면
+  //   이 주소로 간다. 정렬 없는 옛 주소는 아무도 안 불러서 예열이 늘 헛돌았다(캐시 키가 곧 주소다).
+  '/api/group-buy/products?status=active&category=meal_voucher&sort=popular',
+  '/api/group-buy/products?status=active&category=stay_voucher&sort=popular',
+  '/api/group-buy/products?status=active&category=beauty_voucher&sort=popular',
+  '/api/group-buy/products?status=active&category=etc_voucher&sort=popular',
   // VouchersPage / BrowsePage SSR inject 대응 — first-paint warm 유지.
   '/api/products?page=1&limit=20&deal_only=1&sort=price_low',
   '/api/products?page=1&limit=20&exclude_deal_only=1',
