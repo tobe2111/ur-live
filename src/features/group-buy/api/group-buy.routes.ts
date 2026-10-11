@@ -1039,8 +1039,10 @@ import { registerSellerEndpoints } from './group-buy-seller.routes'
 import { registerPublicEndpoints } from './group-buy-public.routes'
 import { registerVoucherEndpoints } from './group-buy-voucher.routes'
 import { registerDealPlanEndpoint } from './deal-plan.routes'
+import { voucherGiftRoutes } from './voucher-gift.routes'
 
 groupBuyRoutes.route('/admin', groupBuyAdminRoutes)        // /admin/list, /admin/analytics, /admin/force-refund
+groupBuyRoutes.route('/gifts', voucherGiftRoutes)          // 🎁 2026-10-11 이용권 선물(넘기기)
 registerSellerEndpoints(groupBuyRoutes)                    // /refund/:productId, /seller-voucher-stats, /voucher-logs
 registerPublicEndpoints(groupBuyRoutes)                    // /products, /products/:id, /live-ticker, /participants, /commission-rate, /my, /verify/:code
 registerVoucherEndpoints(groupBuyRoutes)                   // /:code/use, /voucher/:code/partial-refund, /store-stats/:productId

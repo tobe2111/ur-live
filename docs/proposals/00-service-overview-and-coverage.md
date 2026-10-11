@@ -302,12 +302,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 385 | 1147 |
+| 전체 | 386 | 1151 |
 | 도메인 버킷 (5개 소개서) | 171 | 463 |
-| 공통/인프라 (의도적 제외) | 168 | 478 |
-| **미커버 (점검 필요)** | **46** | **206** |
+| 공통/인프라 (의도적 제외) | 169 | 478 |
+| **미커버 (점검 필요)** | **46** | **210** |
 
-⚠️ **미커버 252건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 256건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -367,6 +367,9 @@
 - `POST /:id/reject` (`src/features/supply/api/wholesale-deposit.routes.ts`)
 - `POST /:id/respond` (`src/features/seller/api/seller-transfer-respond.routes.ts`)
 - `POST /:productId/toggle` (`src/features/supply/api/wholesale-board.routes.ts`)
+- `GET /:token` (`src/features/group-buy/api/voucher-gift.routes.ts`)
+- `POST /:token/accept` (`src/features/group-buy/api/voucher-gift.routes.ts`)
+- `POST /:token/cancel` (`src/features/group-buy/api/voucher-gift.routes.ts`)
 - `POST /adjust` (`src/features/supply/api/wholesale-deposit.routes.ts`)
 - `GET /admin-diag` (`src/worker/routes/killer-sw.routes.ts`)
 - `GET /admin/claims` (`src/features/supply/api/wholesale-claims.routes.ts`)
@@ -421,6 +424,7 @@
 - `POST /api/voucher-dispute/report` (`src/features/group-buy/api/voucher-dispute.routes.ts`)
 - `POST /become` (`src/features/supply/api/supplier-auth.routes.ts`)
 - `POST /become-distributor` (`src/features/supply/api/wholesale.routes.ts`)
+- `GET /by-voucher/:code` (`src/features/group-buy/api/voucher-gift.routes.ts`)
 - `POST /cart/confirm-toss` (`src/features/group-buy/api/cart-checkout.routes.ts`)
 - `POST /cart/init` (`src/features/group-buy/api/cart-checkout.routes.ts`)
 - `GET /catalog` (`src/features/supply/api/wholesale.routes.ts`)
@@ -1773,7 +1777,7 @@
 
 
 
-> 마지막 생성: 2026-10-11T15:03:54.531Z
+> 마지막 생성: 2026-10-11T16:36:26.207Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

@@ -1,7 +1,7 @@
 // 🧱 2026-06-29 TD: MyVouchersPage god 파일 분해 — 이용권 사용(QR/PIN) 모달(verbatim 추출). 동작 불변.
 //   QRCodeSVG(lazy)·VoucherQRCode 는 모듈 내부 전용, QRModal 만 페이지가 사용.
 import { useState, useEffect } from 'react'
-import { OkIcon, PinIcon, BadIcon } from '@/components/icons/urdeal-icons'
+import { OkIcon, PinIcon, BadIcon, GiftBoxIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -17,6 +17,8 @@ import type { Voucher } from './types'
 import ReviewBonusButton from './ReviewBonusButton'
 import Udal from '@/components/mascot/Udal'
 import SameStoreDeals from './SameStoreDeals'
+import TalkCalendarButton from './TalkCalendarButton'
+import GiftVoucherSheet from './GiftVoucherSheet'
 
 // 🛡️ 2026-05-16: 외부 QR API (api.qrserver.com) 의존 제거 → qrcode.react 로컬 SVG.
 // 🛡️ 2026-06-01 (loading): qrcode.react 는 QR 모달 열 때만 필요 → lazy (페이지 chunk -10KB).
@@ -31,6 +33,9 @@ import SameStoreDeals from './SameStoreDeals'
 
 // 🛡️ 2026-05-16: 카카오맵 후기 보너스 제출 버튼 (used voucher 에 노출)
 //   URL 또는 스크린샷 둘 중 하나 제출 → 백엔드가 OCR / 어드민 검증
+
+// 하단 버튼 줄 칸 수 — [공유] + 선물하기? + 취소·환불? (클래스는 리터럴로 둬야 tailwind 가 만든다)
+const ACTION_COLS = ['grid-cols-1', 'grid-cols-2', 'grid-cols-3'] as const
 
 export default function QRModal({ voucher: initialVoucher, onClose }: { voucher: Voucher; onClose: () => void }) {
   const { t } = useTranslation()
@@ -53,7 +58,11 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
   // 🛡️ 2026-06-26 (소비자 감사): safeDate — D1 'YYYY-MM-DD HH:MM:SS' 를 사파리가 Invalid Date 로 파싱하면
   //   NaN < window 가 false → 미사용 7일내인데도 환불 버튼이 사라지던 것(기능 차단). safeDate 가 파싱 보정.
   const createdMs = safeDate(voucher.created_at)?.getTime() ?? NaN
-  const canSelfCancel = voucher.status === 'unused' && Number.isFinite(createdMs) &&
+  // 🎁 2026-10-11 대표 결정 "받은 뒤엔 환불 막기": 선물로 받은 이용권은 셀프 취소·환불이 없다(서버도 막는다).
+  const gifted = !!voucher.gift_from_user_id
+  const canGift = voucher.status === 'unused' && voucher.source !== 'kt_alpha' && !gifted
+  const [showGift, setShowGift] = useState(false)
+  const canSelfCancel = !gifted && voucher.status === 'unused' && Number.isFinite(createdMs) &&
     (Date.now() - createdMs) < 7 * 86400000
   async function handleSelfCancel() {
     if (cancelling) return
@@ -79,7 +88,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
   // ↩️ 2026-10-01 (대표 "환불요청 버튼만 어디 따로"): 카드에 있던 '사용 전이라면 환불 요청' 을 이 화면으로.
   //   7일 안이면 위의 즉시 취소(돈이 바로 돌아간다), 그 뒤엔 **접수만** 한다 — 승인·환불 실행은 운영자(머니 경로 밖).
   const [refundRequested, setRefundRequested] = useState(false)
-  const canRequestRefund = voucher.status === 'unused' && !canSelfCancel && !!voucher.order_id
+  const canRequestRefund = !gifted && voucher.status === 'unused' && !canSelfCancel && !!voucher.order_id
   async function handleRefundRequest() {
     if (cancelling || refundRequested || !voucher.order_id) return
     const reason = window.prompt(t('voucher.refundReasonPrompt', { defaultValue: '환불 요청 사유를 입력해주세요 (예: 방문 계획 취소)' }))
@@ -346,6 +355,8 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
                   <div className="flex items-center gap-2">
                     <span className="text-[12px] font-bold text-gray-900 dark:text-white">유효기간</span>
                     <span className="text-[12px] font-semibold text-gray-600 dark:text-gray-300">{expiresLabel}</span>
+                    {/* 📅 2026-10-11 만료일 톡캘린더 알림 — 게이트 꺼져 있으면 아무것도 안 그린다 */}
+                    {voucher.status === 'unused' && voucher.source !== 'kt_alpha' && <span className="ml-auto"><TalkCalendarButton code={voucher.code} /></span>}
                   </div>
                 )}
 
@@ -405,11 +416,17 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
               >
                 {t('voucher.useNow', { defaultValue: '현장에서 사용하기' })}
               </button>
-              <div className={`mt-2 grid gap-2 ${canSelfCancel || canRequestRefund ? 'grid-cols-2' : 'grid-cols-1'}`}>
+              <div className={`mt-2 grid gap-2 ${ACTION_COLS[(canGift ? 1 : 0) + (canSelfCancel || canRequestRefund ? 1 : 0)]}`}>
                 <button onClick={shareVoucher}
                   className="py-3 rounded-xl border border-rule-strong text-gray-900 dark:text-white text-[13px] font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform">
                   <Share2 className="w-4 h-4" /> {t('voucher.share')}
                 </button>
+                {canGift && (
+                  <button onClick={() => setShowGift(true)}
+                    className="py-3 rounded-xl border border-rule-strong text-gray-900 dark:text-white text-[13px] font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform">
+                    <GiftBoxIcon size={16} /> 선물하기
+                  </button>
+                )}
                 {canSelfCancel && (
                   <button onClick={handleSelfCancel} disabled={cancelling}
                     className="py-3 rounded-xl border border-rule-strong text-gray-500 dark:text-gray-400 text-[13px] font-bold disabled:opacity-50 active:scale-[0.98] transition-transform">
@@ -423,6 +440,9 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
                   </button>
                 )}
               </div>
+              {gifted && (
+                <p className="text-[12px] text-gray-500 dark:text-gray-400 text-center mt-2">선물 받은 이용권이에요 · 취소·환불은 고객센터로 문의해 주세요</p>
+              )}
               {canSelfCancel && (
                 <p className="text-[12px] text-gray-400 dark:text-gray-500 text-center mt-2">
                   {t('voucher.refundWindowNote', { defaultValue: '미사용 · 결제 후 7일 이내에만 환불할 수 있어요' })}
@@ -440,6 +460,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
           )}
         </div>
       </div>
+      {showGift && <GiftVoucherSheet voucher={voucher} onClose={() => setShowGift(false)} />}
       {showRedeem && (
         <VoucherRedeemModal
           code={voucher.code}

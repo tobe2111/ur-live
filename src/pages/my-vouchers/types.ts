@@ -26,6 +26,8 @@ export interface Voucher {
   kt_pin?: string | null  // 🔢 #4: PIN 모드 발급분의 쿠폰 PIN/바코드 (인앱 표시용)
   order_id?: number
   product_id?: number  // 🛡️ /api/vouchers/my 가 v.product_id 반환 — 재구매 딥링크용
+  /** 🎁 2026-10-11 선물로 받은 이용권이면 보낸 사람 id — 셀프 취소·환불 버튼을 숨긴다(서버도 막는다). */
+  gift_from_user_id?: string | null
   applied_discount_pct?: number  // 🛡️ 할인율(%) — '아낀 돈' 계산용 (product_price 미반환이므로 이걸로)
 }
 

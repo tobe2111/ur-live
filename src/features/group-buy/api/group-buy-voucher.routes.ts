@@ -26,6 +26,7 @@ import { resolveSellerNotifyTarget } from '../../../worker/utils/seller-notify-p
 import { storeGoUrl } from '../../../shared/store-deep-link'
 import { redeemByCounterSecret } from '../../../worker/utils/counter-redeem'
 import { redeemVoucherForStore } from '../../../worker/utils/voucher-seller-redeem'
+import { GIFTED_REFUND_BLOCKED } from '../../../worker/utils/voucher-gift'
 
 export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void {
   // ── POST /:code/use — voucher 사용 (PIN 검증) ──
@@ -382,6 +383,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
       try {
         const voucher = await DB.prepare(`
           SELECT v.id, v.user_id, v.order_id, v.product_id, v.status, v.applied_price, v.created_at,
+                 v.gift_from_user_id,
                  o.payment_method, o.payment_key,
                  p.price AS product_price, p.name AS product_name, p.seller_id AS seller_id
           FROM vouchers v
@@ -390,7 +392,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
           WHERE v.code = ?
         `).bind(code).first<{
           id: number; user_id: string; order_id: number; product_id: number; status: string
-          applied_price: number | null; created_at: string
+          applied_price: number | null; created_at: string; gift_from_user_id: string | null
           payment_method: string | null; payment_key: string | null
           product_price: number; product_name: string; seller_id: number | null
         }>()
@@ -406,9 +408,15 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
           return c.json({ success: false, error: `이미 ${label}된 교환권입니다`, code: 'NOT_CANCELLABLE' }, 400)
         }
 
+        // 🎁 2026-10-11 대표 결정 "받은 뒤엔 환불 막기": 선물로 넘어온 이용권은 셀프로 못 무른다(결제는 보낸 사람 카드).
+        if (voucher.gift_from_user_id) {
+          return c.json({ success: false, error: GIFTED_REFUND_BLOCKED, code: 'GIFTED' }, 400)
+        }
+
         // 🛡️ 청약철회 7일 — created_at 기준. CAS 에 created_at 가드 동시 적용 (race + window 동시 방어).
+        //   🎁 gift_from_user_id IS NULL — 조회와 CAS 사이에 선물이 받아져도 무르지 않는다.
         const casRes = await DB.prepare(
-          "UPDATE vouchers SET status = 'refunded' WHERE id = ? AND status = 'unused' AND created_at > datetime('now', '-7 days')"
+          "UPDATE vouchers SET status = 'refunded' WHERE id = ? AND status = 'unused' AND created_at > datetime('now', '-7 days') AND gift_from_user_id IS NULL"
         ).bind(voucher.id).run()
         if ((casRes.meta?.changes ?? 0) === 0) {
           return c.json({ success: false, error: '구매 후 7일이 지나 취소할 수 없습니다. 사용처에 직접 문의해주세요', code: 'WINDOW_EXPIRED' }, 400)

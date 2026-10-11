@@ -2,6 +2,19 @@ import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { safeInternalPath } from '@/utils/safe-internal-path'
+import { toast } from '@/hooks/useToast'
+import { runPendingKakaoAction, PENDING_KAKAO_ACTION_KEY } from './my-vouchers/TalkCalendarButton'
+
+/**
+ * 🔙 2026-10-11: state 는 `uuid:base64(돌아갈 경로)`(kakao.routes consent/start). 종전엔 state 를 통째로
+ *   `safeInternalPath` 에 넣어 늘 '/' 로 떨어졌다 — 동의하고 나면 홈으로 튕겼다.
+ */
+export function consentReturnPath(state: string | null): string {
+  if (!state) return '/'
+  const i = state.indexOf(':')
+  if (i < 0) return '/'
+  try { return safeInternalPath(atob(state.slice(i + 1)), '/') } catch { return '/' }
+}
 
 /**
  * 카카오 추가 동의 전용 콜백 (talk_calendar 등)
@@ -19,10 +32,11 @@ export default function KakaoConsentCallbackPage() {
 
     if (error || !code) {
       setStatus('error')
+      try { sessionStorage.removeItem(PENDING_KAKAO_ACTION_KEY) } catch { /* 동의 거절 — 남긴 할 일 버림 */ }
       setTimeout(() => {
         if (window.opener) window.close()
         // 🛡️ 2026-04-29: safeInternalPath — /auth/*·/login 자기참조 차단
-        else navigate(safeInternalPath(state, '/'), { replace: true })
+        else navigate(consentReturnPath(state), { replace: true })
       }, 1000)
       return
     }
@@ -34,6 +48,9 @@ export default function KakaoConsentCallbackPage() {
           redirect_uri: `${window.location.origin}/auth/kakao/consent/callback`,
         })
         setStatus('done')
+        // 📅 동의하러 가기 전에 남겨 둔 할 일(예: 이용권 만료일 톡캘린더)을 이어서 실행
+        const note = await runPendingKakaoAction()
+        if (note) toast.show(note, note.startsWith('톡캘린더에 만료일을 넣었어요') ? 'success' : 'error')
       } catch {
         setStatus('error')
       }
@@ -50,7 +67,7 @@ export default function KakaoConsentCallbackPage() {
           window.close()
         } else {
           // 🛡️ 2026-04-29: safeInternalPath — /auth/*·/login 자기참조 차단
-          navigate(safeInternalPath(state, '/'), { replace: true })
+          navigate(consentReturnPath(state), { replace: true })
         }
       }, 500)
     }

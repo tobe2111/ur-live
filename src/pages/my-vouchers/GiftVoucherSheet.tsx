@@ -1,0 +1,152 @@
+/**
+ * 🎁 이용권 선물 시트 (2026-10-11 대표 "1,2,4 해줄래" 중 4번 · 결정 "내 이용권 넘기기" + "받은 뒤엔 환불 막기")
+ *
+ * 두 단계다: ① 선물 링크 만들기(서버) ② 카카오톡으로 보내기(카카오 공유창 = 친구 고르기).
+ * 한 번에 하지 않는 이유: 공유창은 **누른 순간**에 열어야 폰 브라우저가 막지 않는다 — 서버 왕복을
+ * 기다린 뒤 열면 일부 브라우저가 "사용자가 누르지 않은 이동" 으로 보고 막는다.
+ * 친구 고르기는 카카오 공유창이 한다(별도 '친구 목록' 권한·심사 불필요).
+ */
+import { useEffect, useState } from 'react'
+import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
+import { GiftBoxIcon } from '@/components/icons/urdeal-icons'
+import { X } from 'lucide-react'
+import type { Voucher } from './types'
+
+type Pending = { token: string; url: string }
+
+function sendKakao(v: Voucher, url: string): boolean {
+  const K = (window as unknown as { Kakao?: { isInitialized?: () => boolean; Share?: { sendDefault: (o: unknown) => void } } }).Kakao
+  if (!K?.Share || (K.isInitialized && !K.isInitialized())) return false
+  const link = { mobileWebUrl: url, webUrl: url }
+  K.Share.sendDefault({
+    objectType: 'feed',
+    content: {
+      title: '이용권 선물이 도착했어요',
+      description: [v.product_name, v.restaurant_name].filter(Boolean).join(', '),
+      imageUrl: v.product_image && /^https:\/\//.test(v.product_image) ? v.product_image : 'https://urdeal.kr/icons/og-default.png',
+      link,
+    },
+    buttons: [{ title: '선물 받기', link }],
+  })
+  return true
+}
+
+export default function GiftVoucherSheet({ voucher, onClose }: { voucher: Voucher; onClose: () => void }) {
+  useEscapeKey(onClose)
+  const [loading, setLoading] = useState(true)
+  const [pending, setPending] = useState<Pending | null>(null)
+  const [message, setMessage] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    let alive = true
+    import('@/lib/kakao-sdk').then((m) => m.ensureKakaoSdk()).catch(() => { /* 복사로 대체 */ })
+    api.get(`/api/group-buy/gifts/by-voucher/${encodeURIComponent(voucher.code)}`)
+      .then((r) => { if (alive) setPending(r.data?.data ?? null) })
+      .catch(() => { /* 없으면 새로 만든다 */ })
+      .finally(() => { if (alive) setLoading(false) })
+    return () => { alive = false }
+  }, [voucher.code])
+
+  const create = async () => {
+    if (busy) return
+    setBusy(true)
+    try {
+      const r = await api.post('/api/group-buy/gifts', { code: voucher.code, message: message.trim() || undefined })
+      setPending(r.data?.data ?? null)
+    } catch (e) {
+      toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '선물 링크를 만들지 못했어요')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const copy = async (url: string) => {
+    try { await navigator.clipboard.writeText(url); toast.success('선물 링크를 복사했어요') } catch { toast.error('복사하지 못했어요') }
+  }
+
+  const share = (url: string) => {
+    if (!sendKakao(voucher, url)) void copy(url)
+  }
+
+  const revoke = async (token: string) => {
+    if (busy) return
+    setBusy(true)
+    try {
+      await api.post(`/api/group-buy/gifts/${encodeURIComponent(token)}/cancel`)
+      setPending(null)
+      toast.success('선물을 회수했어요. 이용권은 그대로 내 지갑에 있어요')
+    } catch (e) {
+      toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '회수하지 못했어요')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[10700] flex items-end sm:items-center justify-center bg-black/60" onClick={onClose} role="presentation">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="이용권 선물하기"
+        onClick={(e) => e.stopPropagation()}
+        className="w-full sm:max-w-[420px] bg-surface rounded-t-2xl sm:rounded-2xl px-5 pt-5 pb-[calc(20px+env(safe-area-inset-bottom))]"
+      >
+        <div className="flex items-center justify-between">
+          <h2 className="text-[17px] font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <GiftBoxIcon size={20} /> 이용권 선물하기
+          </h2>
+          <button type="button" onClick={onClose} aria-label="닫기" className="w-11 h-11 -mr-3 flex items-center justify-center text-gray-500 dark:text-gray-400">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{voucher.product_name}{voucher.restaurant_name ? ` · ${voucher.restaurant_name}` : ''}</p>
+
+        <ul className="mt-4 space-y-1">
+          {[
+            '친구가 받으면 이 이용권은 친구 지갑으로 옮겨가요',
+            '받기 전에는 언제든 회수할 수 있어요',
+            '받은 뒤에는 보낸 사람도 받은 사람도 직접 취소·환불할 수 없어요',
+          ].map((s) => (
+            <li key={s} className="flex gap-2 text-[13px] text-gray-600 dark:text-gray-300 leading-snug"><span aria-hidden>·</span><span>{s}</span></li>
+          ))}
+        </ul>
+
+        {loading ? (
+          <div className="mt-5 h-[52px] rounded-2xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
+        ) : pending ? (
+          <>
+            <p className="mt-5 text-[13px] font-semibold text-gray-900 dark:text-white">선물 링크가 준비됐어요. 친구에게 보내 주세요</p>
+            <button type="button" onClick={() => share(pending.url)}
+              className="mt-3 w-full py-4 rounded-2xl bg-brand text-white text-[15px] font-bold active:scale-[0.98] transition-transform">
+              카카오톡으로 보내기
+            </button>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => copy(pending.url)}
+                className="py-3 rounded-xl border border-rule-strong text-gray-900 dark:text-white text-[13px] font-bold">
+                링크 복사
+              </button>
+              <button type="button" onClick={() => revoke(pending.token)} disabled={busy}
+                className="py-3 rounded-xl border border-rule-strong text-gray-500 dark:text-gray-400 text-[13px] font-bold disabled:opacity-50">
+                선물 회수하기
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <label className="mt-5 block text-[13px] font-semibold text-gray-900 dark:text-white" htmlFor="gift-msg">함께 보낼 말 (선택)</label>
+            <textarea id="gift-msg" value={message} onChange={(e) => setMessage(e.target.value.slice(0, 100))} rows={2}
+              placeholder="맛있게 먹어!"
+              className="mt-2 w-full rounded-xl border border-rule-strong bg-surface px-3 py-2 text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 resize-none" />
+            <button type="button" onClick={create} disabled={busy}
+              className="mt-3 w-full py-4 rounded-2xl bg-brand text-white text-[15px] font-bold disabled:opacity-50 active:scale-[0.98] transition-transform">
+              {busy ? '만드는 중…' : '선물 링크 만들기'}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
