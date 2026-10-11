@@ -211,8 +211,8 @@ export default function VoucherDetailPage() {
     if (!ok) return
     setExchanging(true)
     try {
-      const { getTrackedSellerId } = await import('@/lib/seller-tracking')
-      const ref = getTrackedSellerId() || undefined
+      const { getPurchaseRef } = await import('@/lib/seller-tracking')
+      const ref = getPurchaseRef() || undefined
       // 🛡️ 2026-05-23: idempotency_key — 중복 클릭 / 네트워크 retry 시 중복 차감 영구 차단.
       //   server 가 같은 key 발견하면 기존 voucher 반환 (no double charge).
       const idempotency_key = `voucher_${product.id}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`

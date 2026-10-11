@@ -84,8 +84,8 @@ export default function SellerWaitingPage() {
           }
         }
       } else {
-        // 신청 이력 없음 → 단일 가입 관문으로 (레거시 막다른 /register/business 아님)
-        navigate('/seller/register/supplier', { replace: true })
+        // 신청 이력 없음 → 유일한 가입 문(`/store/new`, 2026-10-10 — 옛 폼은 리다이렉트로 내렸다)
+        navigate('/store/new', { replace: true })
         return
       }
     } catch (err: unknown) {

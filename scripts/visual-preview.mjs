@@ -55,6 +55,7 @@ const args = Object.fromEntries(
   }),
 )
 const ROUTE = typeof args.route === 'string' ? args.route : '/u/jiwon1228'
+const STUBS = typeof args['stub-file'] === 'string' ? JSON.parse(fs.readFileSync(args['stub-file'], 'utf8')) : null
 /**
  * 🔢 `--pins=N` — 진열대 개수를 바꿔 **경계 동작**을 눈으로 본다.
  *   2026-08-31 에 유어샵 검색창을 `핀 12개 이상일 때만` 으로 바꿨는데, 라이브에는 12개짜리
@@ -531,6 +532,12 @@ function serve() {
       }
       if (p.startsWith('/api/')) {
         res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' })
+        /**
+         * 📄 `--stub-file=경로.json` — `{ "/api/경로": 응답 }` 를 **경로 그대로** 돌려준다(2026-10-10).
+         *   화면 하나를 찍으려고 이 파일에 분기를 계속 얹지 않게(가입 완료·승계 코드·중개 조건이 그 경우였다).
+         *   메서드는 가리지 않는다 — 찍으려는 것은 화면이지 서버 동작이 아니다.
+         */
+        if (STUBS && Object.prototype.hasOwnProperty.call(STUBS, p)) return res.end(JSON.stringify(STUBS[p]))
         // 🔀 두 겹을 **순서대로** 감는다(동시 세션 병합 2026-10-01): 안쪽이 기록, 바깥이 지연.
         //   둘 다 `res.end` 를 감싸므로 한쪽만 남기면 다른 쪽이 조용히 사라진다.
         if (TRACE_API) {
@@ -810,6 +817,17 @@ await page.waitForTimeout(4000)
 if (typeof args.click === 'string' && args.click) {
   for (const label of args.click.split('>>').map((x) => x.trim()).filter(Boolean)) {
     try {
+      /**
+       * ⌨️ 2026-10-10 — `@자리표시자=값` 은 **누르지 않고 적는다**(가입 4단계를 끝까지 찍으려면 번호·이름을
+       *   쳐야 한다). 자리표시자로 찾는다 — 사람이 보는 그 칸이다. 예: `--click="@010-0000-0000=01012345678>>다음"`
+       */
+      if (label.startsWith('@') && label.includes('=')) {
+        const [ph, ...rest] = label.slice(1).split('=')
+        await page.getByPlaceholder(ph, { exact: false }).last().fill(rest.join('='), { timeout: 8000 })
+        await page.waitForTimeout(400)
+        console.log(`   ⌨️ "${ph}" ← "${rest.join('=')}"`)
+        continue
+      }
       const clickable = page.locator('button, a, [role="button"]').filter({ hasText: label })
       const target = (await clickable.count()) > 0 ? clickable.last() : page.getByText(label, { exact: false }).last()
       // 🔎 **무엇을 눌렀는지 말한다.** 엉뚱한 것을 눌러도 클릭은 성공하므로 경고가 안 뜬다 —

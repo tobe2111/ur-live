@@ -30,6 +30,7 @@ import {
 } from '@/worker/utils/store-ownership-claims'
 import { resolveStoreOwnerUserId } from '@/worker/utils/seller-operators'
 import { findStoreCode, judgeStoreCode, STORE_CODE_REASON_MESSAGE, consumeStoreCode } from '@/worker/utils/store-codes'
+import { brokerTermsView, sameBrokerTerms, recordBrokerTermsConsent } from '@/worker/utils/broker-terms-consent' // 🤝 2026-10-10 사장님 조건 동의
 
 type Ctx = Context<{ Bindings: Env }>
 
@@ -67,6 +68,7 @@ export function registerStoreClaimRoutes(
             // 누가 주인인지는 알려주지 않는다 — 있는지 없는지, 그리고 그게 나인지만.
             has_owner: owner !== undefined && owner !== null,
             is_mine: owner !== undefined && owner !== null && Number(owner) === Number(userId),
+            broker_terms: await brokerTermsView(c.env.DB, r.id), // 🤝 중개 매장이면 사장님이 볼 조건
           })
         }
         return c.json({ success: true, data: { stores } })
@@ -85,7 +87,19 @@ export function registerStoreClaimRoutes(
         const b = await c.req.json<{
           seller_id?: unknown; business_number?: unknown; business_cert_url?: unknown
           contact_phone?: unknown; note?: unknown
+          broker_terms_agreed?: unknown; broker_terms_seen?: unknown // 🤝 2026-10-10 사장님이 본 조건 + 동의
         }>().catch(() => ({} as Record<string, unknown>))
+
+        /**
+         * 🤝 2026-10-10 (대표 "1,2,5번은 해주고"): 중개 매장이면 **지금 조건에 동의해야** 신청이 된다.
+         * 대행사가 혼자 정한 요율이 승계 뒤에도 남으므로, 사장님이 모르고 넘겨받지 않게 한다.
+         * 화면이 본 조건이 지금과 다르면(그 사이 대행사가 바꿈) 새 조건을 돌려주고 다시 묻는다.
+         */
+        const terms = await brokerTermsView(c.env.DB, Number(b.seller_id))
+        if (terms && (b.broker_terms_agreed !== true || !sameBrokerTerms(terms, b.broker_terms_seen))) {
+          return c.json({ success: false, code: 'BROKER_TERMS_REQUIRED', broker_terms: terms,
+            error: '대행사가 정한 정산 조건을 확인하고 동의해주세요' }, 409)
+        }
 
         const certUrl = String(b.business_cert_url || '').trim()
         if (!BIZ_CERT_PATH.test(certUrl)) {
@@ -103,6 +117,7 @@ export function registerStoreClaimRoutes(
           return c.json({ success: false, code: r.code, error: r.error },
             r.code === 'STORE_NOT_FOUND' ? 404 : r.code === 'DUPLICATE' || r.code === 'ALREADY_OWNER' ? 409 : 400)
         }
+        if (terms) await recordBrokerTermsConsent(c.env.DB, { sellerId: Number(b.seller_id), userId, terms, ip: c.req.header('CF-Connecting-IP') || null })
         return c.json({
           success: true,
           data: {
@@ -141,6 +156,7 @@ export function registerStoreClaimRoutes(
         return c.json({ success: true, data: { store: {
           seller_id: s.id, business_name: s.business_name, name: s.name, address: s.address, status: s.status,
           has_owner: owner != null, is_mine: owner != null && Number(owner) === Number(userId),
+          broker_terms: await brokerTermsView(c.env.DB, s.id), // 🤝 승계 코드로 온 사장님에게 대행사 조건을 보여 준다
         } } })
       } catch (err) {
         return safeError(c, err, '코드 조회 중 오류가 발생했습니다', '[store-claims]')

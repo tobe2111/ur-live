@@ -258,8 +258,8 @@ export default function ProductDetailPage() {
     if (!product || dealBuying) return
     setDealBuying(true)
     try {
-      const { getTrackedSellerId } = await import('@/lib/seller-tracking')
-      const ref = getTrackedSellerId() || undefined
+      const { getPurchaseRef } = await import('@/lib/seller-tracking')
+      const ref = getPurchaseRef() || undefined
       const res = await api.post(`/api/group-buy/join/${product.id}`, { quantity, payment_method: 'deal', ref })
       if (res.data?.success) {
         setDealConfirm(null)

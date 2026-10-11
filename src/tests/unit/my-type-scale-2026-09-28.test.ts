@@ -87,8 +87,11 @@ describe('마이 — 강조색 면은 하나 (표면 규칙 ②)', () => {
   it('🎨 오늘 카드가 파란 밴드를 도로 쓰지 않는다 — 바로 아래 파란 사용처리 면과 둘이 된다', () => {
     const seller = read('src/pages/user-profile/SellerSection.tsx')
     expect(seller, '오늘 카드가 TicketCard(파란 밴드)로 돌아갔다').not.toContain('<TicketCard')
-    // 사용처리 = 이 화면의 **유일한** 브랜드 면. 사라지면 강조가 아예 없어진다.
-    expect(seller).toMatch(/bg-brand text-white[\s\S]{0,400}이용권 사용처리/)
+    // 🎟️ 2026-10-10(안 3): 진한 브랜드 면은 이제 `이용권 등록 · 관리` 가 갖고, 사용처리는
+    //   옅은 블루 **티켓**(`bg-brand-tint`)이다. 지키는 것은 그대로 *"진한 블루 면은 하나"* 다.
+    expect(seller).toMatch(/bg-brand text-white[\s\S]{0,400}이용권 등록 · 관리/)
+    expect((seller.match(/\bbg-brand text-white\b/g) ?? []).length, '진한 블루 면이 둘 이상이다').toBe(1)
+    expect(seller, '사용처리가 티켓(옅은 블루)이 아니다').toMatch(/bg-brand-tint[\s\S]{0,1200}이용권 사용처리/)
   })
 
   /**

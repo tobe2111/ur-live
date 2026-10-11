@@ -19,8 +19,8 @@ export default [
   {
     name: '🎨 판매 도구가 lucide 로 돌아간다 (정산 = Wallet)',
     file: 'src/pages/user-profile/SellerSection.tsx',
-    find: "import { ChevronDown, ChevronRight, Loader2, Search } from 'lucide-react'",
-    replace: "import { ChevronDown, ChevronRight, Loader2, Search, Wallet } from 'lucide-react'",
+    find: "import { ChevronDown, ChevronRight, Loader2, Plus, Search } from 'lucide-react'",
+    replace: "import { ChevronDown, ChevronRight, Loader2, Plus, Search, Wallet } from 'lucide-react'",
     test: TEST,
     why: '판매 쪽만 남의 세트로 돌아가면 손님 쪽과 한 화면에서 갈린다(그게 원래 상태였다).',
   },

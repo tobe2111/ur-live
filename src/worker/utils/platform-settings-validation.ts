@@ -185,7 +185,7 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   seller_referral_bonus_pct: pct,      // seller-registration.routes.ts
   platform_fee_pct: pct,               // ledger.ts:132 (v/100)
   seller_commission_pct: pct,          // ledger.ts:132 (v/100)
-  influencer_intro_share_pct: pct,     // ledger.ts:402 (동일)
+  influencer_intro_share_pct: pct,     // 🛑 2026-10-10 폐지 — 읽는 곳 0(ledger.ts 묘비). 옛 저장 payload 호환용으로만 남김
 
   // ── 금액/딜/개수 (0 이상) ──
   invite_reward_amount: nonNegNum,                    // invite-reward.ts:69

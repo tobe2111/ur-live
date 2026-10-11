@@ -8,7 +8,7 @@
  *
  * 판정은 하나뿐이다: **이미 셀러인가.**
  *   - 셀러  → `/seller` (자기 대시보드로 직행 — 이 사람에게 입점 안내는 소음이다)
- *   - 아니면 → `/partners` (입점 안내 랜딩. 거기 CTA 가 `/seller/register/supplier` 로 이어진다)
+ *   - 아니면 → `/partners` (입점 안내 랜딩. 거기 CTA 가 `/store/new` 로 이어진다)
  *
  * ⚠️ 같은 판단을 호출부마다 손으로 쓰면 반드시 갈린다(이 레포가 반복해 겪은 클래스 —
  *   `linkshopPath` 가 BottomNav 와 useLinkshopPath 에서 갈렸던 2026-06-19 사고). 그래서 함수 하나로 둔다.

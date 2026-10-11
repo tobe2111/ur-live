@@ -9,6 +9,7 @@
  */
 
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { readAffiliateRef, pruneExpiredAffiliateRef } from '@/utils/affiliate-ref-store';
 import { ensureCsrfToken } from './csrf-token'
 import { readCookie } from './read-cookie'
 import { type DashboardRole, isDashboardRefreshUrl, dashboardTokenKeys } from './dashboard-token';
@@ -170,13 +171,12 @@ api.interceptors.request.use(
     const url = config.url || '';
 
     // 🛡️ 2026-05-15: Affiliate referral 자동 첨부 (모든 요청, 공개 API 포함)
-    //   localStorage 'affiliate_ref' 24h TTL — ProductDetailPage 가 ?ref= 진입 시 저장.
+    //   🔗 2026-10-11 유효기간 24시간 · 형식은 `utils/affiliate-ref-store` SSOT. 지난 값은 쿠키까지 정리한다 —
+    //   서버가 쿠키를 폴백으로 읽으므로 7일짜리 옛 쿠키가 살아 있으면 24시간이 지켜지지 않는다.
     try {
-      const refRaw = localStorage.getItem('affiliate_ref');
-      const expires = parseInt(localStorage.getItem('affiliate_ref_expires') || '0', 10);
-      if (refRaw && /^\d+$/.test(refRaw) && expires > Date.now()) {
-        config.headers['X-Affiliate-Ref'] = refRaw;
-      }
+      pruneExpiredAffiliateRef();
+      const refRaw = readAffiliateRef()?.ref;
+      if (refRaw) config.headers['X-Affiliate-Ref'] = refRaw;
     } catch { /* silent */ }
 
 // 🛡️ 2026-05-24: CSRF 토큰 자동 첨부 — double-submit cookie 패턴.

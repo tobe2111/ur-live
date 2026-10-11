@@ -10420,26 +10420,6 @@ canvas {
       '2026-09-03 에 "인기순"이 인기순이 아니었던 그 클래스.',
   },
   {
-    name: '🤝 이용권 커미션이 다시 소급된다 (오늘의 영입자가 과거 판매분을 가져감)',
-    file: 'src/worker/utils/ledger.ts',
-    find: '  const payeeId = stamped ? Number(stamp!.iid) : (seller?.introduced_by_influencer_id ?? null)',
-    replace: '  const payeeId = seller?.introduced_by_influencer_id ?? null',
-    test: 'src/tests/unit/voucher-intro-stamp-2026-09-09.test.ts',
-    why:
-      '사용 시점에 매장의 현재 영입자를 읽으면, 영입자가 바뀐 뒤 과거에 팔린 이용권의 커미션까지 ' +
-      '새 사람에게 간다. 대표 원칙("귀속되는 시점부터 계산")과 정반대이고 에러가 안 난다.',
-  },
-  {
-    name: '🤝 지급 대상이 도장을 무시하고 매장에서 다시 나온다',
-    file: 'src/worker/utils/ledger.ts',
-    find: '  const influencerUserId = payeeId',
-    replace: '  const influencerUserId = seller?.introduced_by_influencer_id ?? null',
-    test: 'src/tests/unit/voucher-intro-stamp-2026-09-09.test.ts',
-    why:
-      '판정은 도장으로 해 놓고 지급만 매장에서 꺼내면 **판정과 돈이 갈린다** — 가장 조용한 종류의 ' +
-      '오지급이다(로그도 화면도 정상이고 받는 사람만 다르다).',
-  },
-  {
     name: '🤝 이용권에 도장을 안 찍는다 (판정할 근거가 사라짐)',
     file: 'src/features/group-buy/api/experience-campaign.routes.ts',
     find: '    const introStamp = await resolveVoucherIntroStamp(DB, campaign.seller_id)',
@@ -10574,16 +10554,6 @@ canvas {
     why:
       'isStoreIntroExpired 는 referral_bonus_until 이 있으면 **그것만 보고** introduced_at 을 무시한다. ' +
       '안 지우면 새 영입자는 첫 주문부터 만료 처리될 수 있고, 아무 에러도 안 난다.',
-  },
-  {
-    name: '⏳ 이용권 사용 레일이 다시 무기한 커미션이 된다',
-    file: 'src/worker/utils/ledger.ts',
-    find: '  if (!stamped && isStoreIntroExpired(seller, introMonths)) {',
-    replace: '  if (!stamped && seller?.referral_bonus_until && new Date(seller.referral_bonus_until) < new Date()) {',
-    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
-    why:
-      'referral_bonus_until 은 백필로만 채워져 대부분 NULL 이고, NULL 이면 종전 규칙은 **무기한**이었다. ' +
-      '결제 레일은 1년으로 끊는데 사용 레일만 영구라, 같은 영입 관계의 기간이 레일마다 달랐다.',
   },
 ]
 

@@ -49,6 +49,7 @@ describe('① 기다리는 동안 같은 줄들이 자리를 잡는다', () => {
     const { findByText } = render(<SellerSectionLazy state={loadingState} />)
     // 이 넷이 구역 높이의 대부분이다 — 하나라도 빠지면 도착 순간 그만큼 손님 줄이 밀린다.
     expect(await findByText('이용권 사용처리')).toBeTruthy()
+    expect(await findByText('이용권 등록 · 관리')).toBeTruthy()
     expect(await findByText('주문')).toBeTruthy()
     expect(await findByText('정산')).toBeTruthy()
     expect(await findByText('전체 도구')).toBeTruthy()

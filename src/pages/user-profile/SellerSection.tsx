@@ -26,12 +26,13 @@
  * 상태를 **직접 말한다** — 노출·정산이 왜 아직인지 화면이 설명하지 않으면 사장님은 고장으로 읽는다.
  */
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
-import { ChevronDown, ChevronRight, Loader2, Search } from 'lucide-react'
+import { ChevronDown, ChevronRight, Loader2, Plus, Search } from 'lucide-react'
 // 🎨 2026-09-28: 판매 도구 여덟 칸의 뜻 아이콘. lucide 로 남긴 넷은 전부 **조작**이다
 //    (펼치기·이동·로딩·검색) — 어느 앱에서나 같은 모양이라 직접 그릴 값이 없다.
 import {
-  OrdersIcon, TicketStubIcon, WonCoinIcon, UrShopIcon, ScanIcon,
+  OrdersIcon, WonCoinIcon, UrShopIcon,
 } from '@/components/icons/urdeal-icons'
+import { QrScanIcon } from '@/components/icons/qr-scan-icon' // 32 그리드라 24 그리드 세트와 파일을 나눴다
 import { formatNumber } from '@/utils/format'
 import { currentSeatId, onSeatChange, switchSeat } from '@/lib/seller-seat'
 import { clearMyReturn, withMyReturn } from '@/lib/seller-return'
@@ -392,27 +393,53 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           )}
         </div>
 
-        {/* 🎟️ 사용처리 — 하루에 가장 많이 누르는 버튼이라 도구들보다 위다. 화면에서 **유일한 파란 면**.
-            ⚠️ **어느 가게로 소각되는지는 좌석이 정한다.** 그래서 먼저 이 가게 좌석에 앉히고 보낸다 —
-            안 그러면 화면엔 A 가 떠 있는데 B 의 이용권이 소각된다(되돌릴 수 없다). */}
+        {/* 🎟️ 사용처리 = **QR 티켓**(2026-10-10 대표 확정 안 3 — *"바코드 모양이 아니라 QR모양이어야"*).
+            등록 줄과 같은 줄 문법이면 "다르더라도 티가 나야" 하는 둘이 안 갈린다 ⇒ 생김새부터 다르게
+            (홈 둘 + 점선 + QR 꼬리 = 손님이 내미는 그 이용권). 면은 옅은 블루 — 진한 블루는 등록 줄 하나다.
+            ⚠️ **어느 가게로 소각되는지는 좌석이 정한다** — 먼저 이 가게 좌석에 앉히고 보낸다(되돌릴 수 없다). */}
+        <div className="p-3 border-b border-rule">
+          <button
+            type="button"
+            disabled={entering}
+            onClick={() => enterSeat('/store/scan')}
+            className="relative w-full flex items-stretch min-h-[64px] rounded-[10px] bg-brand-tint text-gray-900 dark:text-white text-left overflow-hidden active:opacity-80 disabled:opacity-60"
+          >
+            {/* 홈은 판과 **같은 색**(`bg-surface`)으로 뚫는다 — 다른 색이면 점 두 개로 읽힌다. */}
+            <span aria-hidden="true" className="absolute -left-[9px] top-1/2 -mt-[9px] w-[18px] h-[18px] rounded-full bg-surface" />
+            <span aria-hidden="true" className="absolute -right-[9px] top-1/2 -mt-[9px] w-[18px] h-[18px] rounded-full bg-surface" />
+            <span className="flex-1 min-w-0 flex flex-col justify-center pl-5 pr-4 py-3">
+              <span className="text-[15px] font-extrabold truncate">이용권 사용처리</span>
+              <span className="mt-1 text-[12px] text-gray-500 dark:text-gray-400 truncate">손님 QR을 찍어요</span>
+            </span>
+            <span aria-hidden="true" className="border-l-2 border-dashed border-brand/35" />
+            <span className="shrink-0 flex items-center justify-center w-[72px] text-brand-text">
+              {entering
+                ? <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
+                : <QrScanIcon size={32} aria-hidden="true" />}
+            </span>
+          </button>
+        </div>
+
+        {/* 🔵 이용권 등록 · 관리 — 판의 **유일한 진한 블루 면**(안 3). 오른쪽 값은 모르면 안 그린다. */}
         <button
           type="button"
           disabled={entering}
-          onClick={() => enterSeat('/store/scan')}
+          onClick={() => openPage('/seller/group-buy', '이용권')}
           className="w-full flex items-center gap-3 px-4 min-h-[52px] py-2 bg-brand text-white text-left active:opacity-90 disabled:opacity-60"
         >
-          <ScanIcon className="w-[18px] h-[18px] shrink-0" aria-hidden="true" />
-          <span className="flex-1 min-w-0 text-[15px] font-extrabold truncate">이용권 사용처리</span>
-          <span className="shrink-0 text-[13px] text-white/75">손님 QR</span>
+          <Plus className="w-[18px] h-[18px] shrink-0" aria-hidden="true" />
+          <span className="flex-1 min-w-0 text-[15px] font-extrabold truncate">이용권 등록 · 관리</span>
+          {store?.active_products != null && (
+            <span className="shrink-0 text-[13px] text-white/75 tabular-nums">
+              {store.active_products > 0 ? `판매 중 ${formatNumber(store.active_products)}개` : '아직 0개'}
+            </span>
+          )}
           {entering
             ? <Loader2 className="w-4 h-4 shrink-0 animate-spin" aria-hidden="true" />
             : <ChevronRight className="w-4 h-4 shrink-0 text-white/70" aria-hidden="true" />}
         </button>
 
-        {/* 🧰 도구 여덟 줄 — 2026-09-26 의 **매일 셋 / 가끔 넷** 그룹 라벨을 걷었다.
-            그 나눔의 근거는 *하루에 몇 번 여는가* 였는데, 48px 행이면 여덟 줄이 384px 에 다 들어와
-            **한눈에 보이는 목록을 다시 쪼갤 이유가 없다**(라벨 둘이 먹던 48px 도 돌려받는다).
-            순서는 그대로다 — 자주 쓰는 셋이 여전히 맨 위라 옛 근육기억이 안 깨진다. */}
+        {/* 🧰 바로가기 셋(주문 · 정산 · 전체 도구) — `이용권` 은 위 진한 블루 줄이 됐다(안 3). */}
         <ToolRow
           icon={<OrdersIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
           label="주문"
@@ -421,37 +448,18 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           onClick={() => openPage('/seller/orders', '주문')}
         />
         <ToolRow
-          icon={<TicketStubIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
-          label="이용권"
-          hint={(store?.active_products ?? 0) > 0
-            ? `판매 중 ${formatNumber(store?.active_products ?? 0)}개`
-            : '등록 · 가격 · 수량'}
-          busy={entering}
-          onClick={() => openPage('/seller/group-buy', '이용권')}
-        />
-        <ToolRow
           icon={<WonCoinIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
           label="정산"
           hint="쌓인 돈 받기"
           busy={entering}
           onClick={() => openTool('withdraw')}
         />
-        {/* 🧹 2026-09-30 — **바로가기 넷 + 전체 도구.** 여기 있던 `매출 분석 · 가게 · 소개 파트너 ·
-            브랜드메시지` 를 뺐다. 지운 게 아니라 **바로 아래 `전체 도구` 가 같은 시트로 보낸다**
-            (`전체 도구` 가 그 주소를 전부 찾아 준다 — 한 번의 탭이 두 번이 될 뿐이다.
-            ⚠️ 2026-09-30 엔 이 자리에 *"`COVERED_BY_SHEET` 가 네 주소를 전부 덮는다"* 고 적혀 있었다.
-            10-01 철거로 그 표가 돈 하나만 남았으므로 **그 문장은 더 이상 사실이 아니다** — 지금은
-            손수 시트가 아니라 대시보드 화면이 시트 안에서 열린다).
-            매출 분석은 아예 사라지지도 않았다: 위 오늘 숫자가 그 입구가 됐다.
-            **왜**: 바로가기가 아홉이면 바로가기가 아니다. 2026-09-26 이 그룹 라벨을 걷을 때의 근거는
-            *"48px 행이면 여덟 줄이 384px 에 다 들어온다"* 였는데, 그건 이 목록만 떼어 본 계산이다.
-            위(헤더 84 + 스탯 76 + 제목 44 + 오늘 카드 100)와 아래(탭 76)를 같이 재면
-            **폰 한 화면(844px)이 `전체 도구` 에서 정확히 끝난다** — 손님 줄은 0, "내가 산 것" 제목조차
-            안 보였다(실측 `--width=430 --height=844 --stores=1`).
-            ⚠️ 남긴 넷의 기준은 **하루에 몇 번 여는가**다: 사용처리(손님마다) · 주문(매일) ·
-               이용권(수량·가격) · 정산(주 1회). 뺀 넷은 전부 가끔이거나 한 번 정하면 끝인 것들이다. */}
-        {/* 🩸 예시를 **문자열로 적어 두는 것을 그만뒀다** — 메뉴가 바뀔 때마다 어긋났고(쿠폰·숙소를
-            내렸을 때 두 번), 개수를 세려면 나브 색인을 정적으로 읽어야 하는데 그 순간 청크가 딸려 온다. */}
+        {/* 🧹 2026-09-30 — 바로가기를 줄였다(⑥). 뺀 `매출 분석 · 가게 · 소개 파트너 · 브랜드메시지` 는
+            지운 게 아니라 바로 아래 `전체 도구` 가 같은 시트로 연다(한 번의 탭이 두 번이 될 뿐이다).
+            매출 분석은 위 오늘 숫자가 입구다. **왜**: 목록만 떼어 재면 다 들어오는 것 같지만, 위(헤더 ·
+            스탯 · 제목 · 오늘 카드)와 아래(탭)를 같이 재면 여덟 줄이면 폰 한 화면이 `전체 도구` 에서 끝나
+            손님 줄이 0이었다(실측). 남기는 기준은 **하루에 몇 번 여는가**다. 예시는 문자열로 적지 않는다
+            (메뉴가 바뀔 때마다 어긋났다 — 쿠폰·숙소를 내렸을 때 두 번). */}
         <ToolRow
           icon={<Search className="w-[18px] h-[18px]" aria-hidden="true" />}
           label="전체 도구"

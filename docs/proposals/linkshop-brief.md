@@ -950,7 +950,7 @@
 - `GET /api/seller/donations/summary`
 
 
-> 마지막 생성: 2026-09-28T01:01:54.167Z
+> 마지막 생성: 2026-10-11T09:39:32.226Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

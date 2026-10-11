@@ -113,12 +113,12 @@ export async function redeemVoucherForStore(
   // 🛡️ 2026-05-21 Phase C: 정산 ledger entries 3개 자동 기록 (멱등).
   opts.waitUntil((async () => {
     try {
-      const { recordVoucherUsedLedger, recordIntroductionCommissionShare } = await import('./ledger'); const { debitOwnerPromoForOrder } = await import('./owner-promo')
+      const { recordVoucherUsedLedger } = await import('./ledger'); const { debitOwnerPromoForOrder } = await import('./owner-promo')
       const merchantId = voucher.consigned_from_seller_id ?? voucher.seller_id
       const sellerForCommission = voucher.consigned_from_seller_id ? voucher.seller_id : null
       const amount = voucher.applied_price || 0
       if (merchantId && amount > 0) {
-        const result = await recordVoucherUsedLedger(DB, {
+        await recordVoucherUsedLedger(DB, {
           voucher_id: voucher.id,
           order_amount: amount,
           merchant_id: merchantId,
@@ -128,11 +128,7 @@ export async function redeemVoucherForStore(
         //    30% 를 영입 에이전시에 자동 분배)를 삭제했다. 대표 확정: **5% 는 온전히 유어딜 몫**이고
         //    중개사는 나머지 95%(매장 몫)에서 매장과 직접 거래한다. 이 코드는 그 원칙과 정반대였고,
         //    `sellers.introduced_by_agency_id` 가 전원 NULL 이라 실제로 지급된 적은 없다.
-        await recordIntroductionCommissionShare(DB, {
-          voucher_id: voucher.id,
-          merchant_id: merchantId,
-          platform_fee: result.platform_amount,
-        })
+        //    🛑 2026-10-10 대표 *"마저 폐지해줘. 모두 다"* — 짝이던 영입 셰어(수수료 20%)도 삭제. 사유는 ledger.ts 묘비.
         // 💸 2026-07-04 [INV-CB §3-D]: promo owner-펀딩 — 이 voucher 셀렉트엔 order_id 가 없어
         //   voucherId 로 전달(헬퍼가 vouchers.order_id 해석). 게이트 아닐 땐 내부 no-op(현행).
         await debitOwnerPromoForOrder(DB, {
