@@ -7,10 +7,18 @@ const STORE = 'src/utils/affiliate-ref-store.ts'
 
 export default [
   {
+    name: '🔗24h 엔트리가 정책 파일을 끌어온다',
+    file: STORE,
+    find: "import { REFERRAL_TTL_HOURS } from '@/shared/utils/referral-ttl'",
+    replace: "import { CURATOR_DEFAULTS } from '@/shared/constants/policy'\nconst REFERRAL_TTL_HOURS = CURATOR_DEFAULTS.REF_COOKIE_TTL_HOURS",
+    test: TEST,
+    why: 'lib/api.ts(엔트리)가 이 파일을 import 한다 — policy.ts 를 거치면 app-constants 청크가 첫 페인트에 실린다(2026-10-11 Verify 가 잡았다).',
+  },
+  {
     name: '🔗24h 유효기간이 7일로 돌아간다',
-    file: 'src/shared/constants/policy.ts',
-    find: '  REF_COOKIE_TTL_HOURS: 24,',
-    replace: '  REF_COOKIE_TTL_HOURS: 168,',
+    file: 'src/shared/utils/referral-ttl.ts',
+    find: 'export const REFERRAL_TTL_HOURS = 24',
+    replace: 'export const REFERRAL_TTL_HOURS = 168',
     test: TEST,
     why: '대표가 24시간으로 정한 소개 기간이 조용히 7일로 늘어난다 — 매장이 7일 전 클릭에 커미션을 낸다.',
   },

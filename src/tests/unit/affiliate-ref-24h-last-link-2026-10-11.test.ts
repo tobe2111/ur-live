@@ -17,6 +17,8 @@ import {
 } from '@/utils/affiliate-ref-store'
 import { getPurchaseRef } from '@/lib/seller-tracking'
 import { stripComments } from '../helpers/source-text'
+import { REFERRAL_TTL_HOURS } from '@/shared/utils/referral-ttl'
+import { CURATOR_DEFAULTS } from '@/shared/constants/policy'
 
 const H = 60 * 60 * 1000
 beforeEach(() => {
@@ -103,5 +105,15 @@ describe('🔌 읽는 곳이 전부 같은 판정을 쓴다 (두 벌 금지)', (
     const t = S('src/utils/affiliate-track.ts')
     expect(t).not.toMatch(/affiliate_ref_expires|7 \* 24 \* 60 \* 60/)
     expect(t).toMatch(/writeAffiliateRef\(ref\)/)
+  })
+  it('엔트리 경로는 정책 파일을 끌어오지 않는다 · 정책 파일은 같은 값을 다시 내보낸다', () => {
+    // lib/api.ts(엔트리)가 이 파일을 import 한다. policy.ts 를 거치면 app-constants 청크가
+    // 통째로 첫 페인트에 실린다(check-critical-chunks 가 2026-10-11 에 잡았다).
+    const src = readFileSync('src/utils/affiliate-ref-store.ts', 'utf8')
+    const imports = src.split('\n').filter((l) => /^import\s/.test(l))
+    expect(imports.join('\n')).not.toMatch(/constants\/policy/)
+    expect(imports.join('\n')).toMatch(/shared\/utils\/referral-ttl/)
+    expect(CURATOR_DEFAULTS.REF_COOKIE_TTL_HOURS).toBe(REFERRAL_TTL_HOURS)
+    expect(REFERRAL_TTL_HOURS).toBe(24)
   })
 })

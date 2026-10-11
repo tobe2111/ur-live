@@ -11,19 +11,19 @@
  *   여기서 api 를 끌어오면 순환이 된다.
  *
  * ## 규칙
- * - **유효기간 24시간**(`REF_COOKIE_TTL_HOURS`). 링크로 들어온 **시각**(`affiliate_ref_at`)부터 센다.
+ * - **유효기간 24시간**(`REFERRAL_TTL_HOURS` — `shared/utils/referral-ttl.ts`). 링크로 들어온 **시각**(`affiliate_ref_at`)부터 센다.
  * - **마지막 링크가 이긴다** — 새 링크로 들어오면 덮어쓴다(`writeAffiliateRef`).
  * - 2026-10-11 이전에 7일로 저장된 값은 `_at` 이 없다 → `만료시각 − 7일` 을 들어온 시각으로 보고
  *   **24시간 규칙으로 다시 판정**한다(옛 값이 7일을 그대로 누리지 않게).
  */
-import { CURATOR_DEFAULTS } from '@/shared/constants/policy'
+import { REFERRAL_TTL_HOURS } from '@/shared/utils/referral-ttl'
 
 export const AFFILIATE_REF_KEY = 'affiliate_ref'
 export const AFFILIATE_REF_EXP_KEY = 'affiliate_ref_expires'
 export const AFFILIATE_REF_AT_KEY = 'affiliate_ref_at'
 
 /** 소개 유효기간(ms) — 24시간. */
-export const AFFILIATE_REF_TTL_MS = CURATOR_DEFAULTS.REF_COOKIE_TTL_HOURS * 60 * 60 * 1000
+export const AFFILIATE_REF_TTL_MS = REFERRAL_TTL_HOURS * 60 * 60 * 1000
 const LEGACY_TTL_MS = 7 * 24 * 60 * 60 * 1000 // 2026-10-11 이전 저장분 역산용
 
 export interface AffiliateRefEntry { ref: string; at: number }
