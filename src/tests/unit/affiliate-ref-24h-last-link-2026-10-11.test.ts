@@ -15,7 +15,7 @@ import { readFileSync } from 'fs'
 import {
   readAffiliateRef, writeAffiliateRef, pruneExpiredAffiliateRef, AFFILIATE_REF_TTL_MS,
 } from '@/utils/affiliate-ref-store'
-import { getTrackedSellerId } from '@/lib/seller-tracking'
+import { getPurchaseRef } from '@/lib/seller-tracking'
 import { stripComments } from '../helpers/source-text'
 
 const H = 60 * 60 * 1000
@@ -68,18 +68,18 @@ describe('🔁 마지막 링크 우선', () => {
   it('🔴 ?seller= 를 먼저 열고 딜 링크로 들어왔으면 딜 링크가 이긴다', () => {
     sessionStorage.setItem('ur_tracking_seller_v1', JSON.stringify({ seller_id: '9', saved_at: Date.now() - H }))
     writeAffiliateRef('22')
-    expect(getTrackedSellerId()).toBe('22')
+    expect(getPurchaseRef()).toBe('22')
   })
   it('딜 링크를 먼저 열고 ?seller= 로 들어왔으면 ?seller= 가 이긴다', () => {
     writeAffiliateRef('22', Date.now() - H)
     sessionStorage.setItem('ur_tracking_seller_v1', JSON.stringify({ seller_id: '9', saved_at: Date.now() }))
-    expect(getTrackedSellerId()).toBe('9')
+    expect(getPurchaseRef()).toBe('9')
   })
   it('하나만 있으면 그것 · 둘 다 지났으면 null', () => {
     writeAffiliateRef('22')
-    expect(getTrackedSellerId()).toBe('22')
+    expect(getPurchaseRef()).toBe('22')
     localStorage.clear()
-    expect(getTrackedSellerId()).toBeNull()
+    expect(getPurchaseRef()).toBeNull()
   })
 })
 
@@ -89,6 +89,14 @@ describe('🔌 읽는 곳이 전부 같은 판정을 쓴다 (두 벌 금지)', (
     const s = S('src/lib/api.ts')
     expect(s).toMatch(/pruneExpiredAffiliateRef\(\);\s*const refRaw = readAffiliateRef\(\)\?\.ref;/)
     expect(s).not.toMatch(/affiliate_ref_expires/)
+  })
+  it('이용권·교환권·쇼핑 상세 세 화면이 결제 ref 를 같은 함수에서 받는다', () => {
+    for (const f of ['src/pages/GroupBuyDetailPage.tsx', 'src/pages/VoucherDetailPage.tsx', 'src/pages/ProductDetailPage.tsx']) {
+      const s = S(f)
+      expect(s, f).toMatch(/getPurchaseRef/)
+      expect(s, `${f}: 매장 링크만 보던 옛 이름이 남아 있다`).not.toMatch(/getTrackedSellerId/)
+    }
+    expect(S('src/pages/GroupBuyDetailPage.tsx').match(/getPurchaseRef/g)?.length, '딜 결제·카드 결제 두 경로').toBeGreaterThanOrEqual(2)
   })
   it('체크아웃 · 담기 판정 · 적립 · 저장', () => {
     expect(S('src/pages/checkout/useBeforePayment.ts')).not.toMatch(/affiliate_ref_expires/)

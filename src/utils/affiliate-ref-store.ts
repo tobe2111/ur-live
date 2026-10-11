@@ -4,7 +4,7 @@
  *
  * ## 왜 따로 떼었나
  * 이 값은 네 군데가 읽는다 — 모든 요청에 `X-Affiliate-Ref` 를 붙이는 `lib/api.ts`(서버가 결제 때 읽는 그 헤더),
- * 쇼핑 체크아웃(`useBeforePayment`), 이용권 구매 화면(`seller-tracking.getTrackedSellerId`), 담기 가로채기 판정
+ * 쇼핑 체크아웃(`useBeforePayment`), 이용권 구매 화면(`seller-tracking.getPurchaseRef`), 담기 가로채기 판정
  * (`affiliate-track.arrivedViaSomeoneElsesRef`). 예전엔 각자 `affiliate_ref_expires` 를 직접 읽어서, 기간을 바꾸면
  * 한 곳만 바뀌고 나머지가 옛 기간으로 남는 구조였다. 여기 하나만 고치면 전부 따라온다.
  * ⚠️ 이 파일은 **아무것도 import 하지 않는다**(정책 상수 하나 빼고) — `lib/api.ts` 가 import 하므로

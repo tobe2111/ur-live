@@ -46,4 +46,12 @@ export default [
     test: TEST,
     why: '요청 헤더 경로만 정리가 빠지면 옛 쿠키가 서버 폴백으로 살아남는다.',
   },
+  {
+    name: '🔗마지막링크 이용권 카드결제가 옛 함수로 돌아간다',
+    file: 'src/pages/GroupBuyDetailPage.tsx',
+    find: "      const { getPurchaseRef: getRef } = await import('@/lib/seller-tracking')",
+    replace: "      const { getTrackedSellerId: getRef } = await import('@/lib/seller-tracking')",
+    test: TEST,
+    why: '카드 결제 경로만 옛 이름(=없는 함수)을 부르면 소개자가 빠진 채 결제된다.',
+  },
 ]

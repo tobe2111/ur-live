@@ -395,8 +395,8 @@ export default function GroupBuyDetailPage() {
         // 🛡️ 2026-06-11 (플로우 감사 갭#3/#3b): 서버가 이미 지원하는 안전장치 2개를 드디어 전송 —
         //   idempotency_key(이중탭/재시도 중복발급·이중차감 영구 차단, VoucherDetailPage:115 동일 패턴)
         //   + ref(?ref= 배너가 약속하는 양쪽 0.5% 보너스의 실제 지급 경로 — 미전송이면 무적립이었음).
-        const { getTrackedSellerId } = await import('@/lib/seller-tracking')
-        const ref = getTrackedSellerId() || undefined
+        const { getPurchaseRef } = await import('@/lib/seller-tracking') // 🔗 마지막에 연 소개 링크(24시간)
+        const ref = getPurchaseRef() || undefined
         const idempotency_key = `gb_${productId}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
         const res = await api.post(`/api/group-buy/join/${productId}`, {
           quantity, payment_method: 'deal', ref, idempotency_key,
@@ -424,7 +424,7 @@ export default function GroupBuyDetailPage() {
     reportFunnel('click', productId)
     try {
       // 🛡️ 2026-06-11 (갭#3b): 토스 경로도 ref 전송 — init 응답 metadata 에 실려 confirm 까지 전파.
-      const { getTrackedSellerId: getRef } = await import('@/lib/seller-tracking')
+      const { getPurchaseRef: getRef } = await import('@/lib/seller-tracking') // 🔗 마지막에 연 소개 링크(24시간)
       const initRes = await api.post(`/api/group-buy/join/${productId}`, {
         quantity, payment_method: 'toss', ref: getRef() || undefined,
         // 🪙 안 고르면 아예 안 보낸다 → 서버가 종전대로 '최대한'. 값은 서버가 잔액·카드최소액으로 클램프한다.

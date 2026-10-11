@@ -4,7 +4,7 @@
  * 사용:
  *   1. 셀러가 /browse?seller=123 또는 /group-buy/45?seller=123 링크 공유
  *   2. 유저가 진입 시 captureTrackingFromUrl() 호출 → sessionStorage 저장
- *   3. 결제 endpoint 호출 시 getTrackedSellerId() 로 ref_seller_id 첨부
+ *   3. 결제 endpoint 호출 시 getPurchaseRef() 로 ref 첨부(?seller= 와 ?ref= 중 나중 것)
  *   4. 백엔드가 referral_commissions INSERT (이미 인프라)
  *
  * 영구성:
@@ -71,9 +71,9 @@ function readSessionSeller(now: number): { id: string; at: number } | null {
  * 소개 링크는 두 가지 모양으로 들어온다: 매장 공유 `?seller=`(여기 sessionStorage) · 딜·유어샵·핀 `?ref=`/`?aff=`
  * (`affiliate-ref-store`). 종전엔 이 함수가 앞의 것만 돌려줬고 서버는 본문을 헤더보다 먼저 읽어서, 옛 매장 링크를
  * 먼저 열었다가 딜 링크로 사도 **먼저 연 쪽**이 이겼다. 이제 둘의 들어온 시각을 비교해 **나중 것**을 낸다.
- * 이름은 호출부 3곳(상세 화면 — 잠긴 파일 포함)을 안 건드리려고 그대로 둔다.
+ * (종전 이름 `getTrackedSellerId` — 매장 공유 링크만 돌려주던 시절 이름이라 2026-10-11 바꿨다. 호출부 3곳 함께.)
  */
-export function getTrackedSellerId(): string | null {
+export function getPurchaseRef(): string | null {
   if (typeof window === 'undefined') return null
   const now = Date.now()
   const seller = readSessionSeller(now)
