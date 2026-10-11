@@ -240,8 +240,7 @@ export async function recordVoucherUsedLedger(
  * 중개사는 나머지 95%에서 매장이랑 거래를 하는거지." 유어딜 몫에서 커미션이 나가면 안 된다.
  * 라이브 실측상 `introduced_by_agency_id` 는 전원 NULL 이라 실제로 지급된 적은 없다.
  *
- * ⚠️ 짝인 `recordIntroductionCommissionShare`(사람 영입)도 **2026-10-10 대표 "몫 꺼줘" 로 기본 꺼짐**이다
- *    (게이트 `influencer_intro_share_enabled`). 영입 보상은 결제 레일 2%(직접 입점 전용)만 남는다.
+ * ⚠️ 짝인 `recordIntroductionCommissionShare`(사람 영입)도 2026-10-10 대표 "마저 폐지해줘" 로 삭제했다(아래 묘비).
  */
 export async function creditUserCommission(
   DB: D1Database,
@@ -310,149 +309,20 @@ export async function creditUserCommission(
 }
 
 /**
- * 🛡️ 2026-05-21 Phase D-6: 인플루언서 입점 유치 영구 commission.
+ * 🛑 2026-10-10 대표 *"2번은 마저 폐지해줘. 모두 다"* — 여기 있던 `recordIntroductionCommissionShare` 를 삭제했다.
  *
- * 흐름:
- *   1. 인플루언서가 본인 추천 코드로 매장 사장님 가입 유도
- *   2. sellers.introduced_by_influencer_id 영구 lock-in
- *   3. 해당 매장 voucher 사용 시마다 자동 분배 (platform_fee 의 일정 %)
- *   4. 다른 인플루언서가 후속 홍보로 판매해도 본 commission 은 별개 영구 수령
+ * 무엇이었나: 이용권 *사용* 시점에 유어딜 수수료(`platform_fee`)의 20%(`influencer_intro_share_pct`)를
+ * 그 매장을 데려온 사람(`introduced_by_influencer_id`, 판 시점 도장 우선)에게 원장 분개로 넘기던 레거시.
  *
- * 멱등: voucher_id + 'introducing_influencer' 1회만 entry.
+ * 왜 지웠나: 영입 보상은 이미 결제 레일 2% 가 2026-09-04·09-16 에 폐지됐다("매장 데려온 사람 2%는 이제
+ * 아예 없는거야"). 이 셰어만 **직접 입점 여부도 보지 않고** 살아 있었다 — 같은 행위에 대한 보상이 레일 하나에만
+ * 남은 상태였다. 폐지 시점 라이브 실측: 원장 `voucher:%:intro-inf` **0행** · 영입자 지정 매장 **0곳** →
+ * 잃는 사람이 없다.
+ *
+ * ⚠️ 안 지운 것(의도): `introduced_by_influencer_id`·이용권 도장(`voucher-intro-stamp.ts`)은 "누가 데려왔나"의
+ *   사실 기록이다. `ledger-commission-policy.ts` 의 `intro-inf` 역전은 과거 데이터 안전망이라 둔다(0행이라 no-op).
+ * ⚠️ 되살리려면 함수를 새로 만들어야 한다 — 설정값(`influencer_intro_share_pct`)만 바꿔서는 안 살아난다.
  */
-export async function recordIntroductionCommissionShare(
-  DB: D1Database,
-  params: {
-    voucher_id: number | string
-    merchant_id: number | string
-    platform_fee: number
-  },
-): Promise<{ influencer_id: number | null; amount: number }> {
-  // 🛑 2026-10-10 대표 *"몫 꺼줘"* — **기본 꺼짐.** 이 셰어는 유어딜 수수료(`platform_fee`)에서
-  //   떼어 영입자에게 준다. 그런데 직접 입점인지 보지 않고 모든 매장의 이용권 사용마다 돌았다
-  //   (2026-08-31 확정 "영입은 직접 입점에만"과 어긋남 — 그 확정은 결제 레일 2%에만 반영됐다).
-  //   켜려면 `platform_settings.influencer_intro_share_enabled = 'true'` 를 **명시**로 넣는다.
-  //   조회 실패도 꺼짐이다 — 모르는데 주는 쪽이 안 주는 쪽보다 비싸다.
-  const introOn = await DB.prepare(
-    "SELECT value FROM platform_settings WHERE key = 'influencer_intro_share_enabled'",
-  ).first<{ value: string }>().catch(() => null)
-  if (introOn?.value !== 'true') return { influencer_id: null, amount: 0 }
-  await ensureLedgerTable(DB)
-  const ref = `voucher:${params.voucher_id}:intro-inf`
-  const existing = await DB.prepare(
-    `SELECT id FROM ledger_entries WHERE reference_id = ? LIMIT 1`,
-  ).bind(ref).first().catch(() => null)
-  if (existing) return { influencer_id: null, amount: 0 }
-
-  /**
-   * 🤝 2026-09-09: **판 시점의 도장을 먼저 읽는다**(대표 *"귀속되는 시점부터 계산"*).
-   *
-   * 아래 매장 조회는 이제 **옛 이용권 전용 폴백**이다. 도장(`intro_stamped_at`)이 찍혀 있으면
-   * 그 이용권은 팔릴 때 이미 판정된 것이므로 매장의 *현재* 영입자를 보지 않는다 — 그래야
-   * 영입자가 바뀌어도 과거 판매분이 소급되지 않는다.
-   *
-   * ⚠️ 도장이 NULL 인 것과 도장이 **없는** 것은 다르다: 전자는 "팔 때 받을 사람이 없었다"(0원),
-   *   후자는 "이 변경 이전에 팔렸다"(폴백). `intro_stamped_at` 이 그 둘을 가른다.
-   */
-  const stamp = await DB.prepare(
-    'SELECT introduced_by_influencer_id AS iid, intro_stamped_at FROM vouchers WHERE id = ? LIMIT 1',
-  ).bind(params.voucher_id).first<{ iid: number | null; intro_stamped_at: string | null }>().catch(() => null)
-  const stamped = !!stamp?.intro_stamped_at
-  if (stamped && !stamp?.iid) return { influencer_id: null, amount: 0 }
-
-  // 매장의 입점 유치 인플루언서 조회 (도장이 없는 옛 이용권 폴백)
-  // 🛡️ 2026-05-27 (사용자 결정): 매장별 commission 기간 체크 (referral_bonus_until).
-  const seller = await DB.prepare(
-    'SELECT introduced_by_influencer_id, introduced_at, referral_bonus_until FROM sellers WHERE id = ?',
-  ).bind(params.merchant_id).first<{ introduced_by_influencer_id: number | null; introduced_at: string | null; referral_bonus_until: string | null }>().catch(() => null)
-  // 도장이 있으면 그 사람이 받는다 — 매장의 현재 영입자가 누구든 상관없다.
-  const payeeId = stamped ? Number(stamp!.iid) : (seller?.introduced_by_influencer_id ?? null)
-  if (!payeeId) return { influencer_id: null, amount: 0 }
-  /**
-   * ⏳ 2026-09-07: 만료 판정을 **결제 레일과 같은 SSOT**(`isStoreIntroExpired`)로 통일.
-   *
-   * 🕳️ 종전엔 `referral_bonus_until` 하나만 봤고 **NULL 이면 무기한**이었다. 그런데 결제 레일
-   *   (`influencer-store-intro-commission.ts`)은 NULL 이면 `introduced_at + N개월`(기본 1년)로
-   *   끊는다. 같은 영입 관계인데 **레일마다 기간이 달랐고**, 이쪽은 사실상 영구였다.
-   *   `referral_bonus_until` 은 백필로만 채워지는 컬럼이라 대부분의 매장에서 NULL 이다.
-   *
-   * ⚠️ 이 레일은 **이용권 사용 시점**에 매장의 *현재* 영입자를 읽는다 — 즉 과거에 팔린 이용권의
-   *   커미션이 오늘의 영입자에게 간다(소급). 그 자체를 없애려면 구매 시점의 영입자를 이용권에
-   *   스탬프해야 하는데 그건 스키마 변경 + 백필이라 별건이다
-   *   (`docs/decisions/2026-09-07-store-handover-money-cut.md`). 여기서 하는 것은 그 소급을
-   *   **기간으로 가두는 것**이다 — 영입 후 N개월이 지나면 어느 쪽이든 0 이 된다.
-   */
-  const { isStoreIntroExpired } = await import('./influencer-store-intro-commission')
-  const monthsRow = await DB.prepare(
-    "SELECT value FROM platform_settings WHERE key = 'influencer_store_intro_months'",
-  ).first<{ value: string }>().catch(() => null)
-  const { COMMISSION_DEFAULTS: CD } = await import('../../shared/constants/policy')
-  const introMonths = Number(monthsRow?.value) > 0
-    ? Number(monthsRow?.value)
-    : CD.INFLUENCER_STORE_INTRO_MONTHS
-  // 도장이 찍힌 이용권은 **판 시점에 이미 판정**했다 — 여기서 오늘 기준으로 다시 자르면
-  // 그때 정당하게 얻은 보상이 나중에 사라진다(그게 소급의 반대 방향 사고다).
-  if (!stamped && isStoreIntroExpired(seller, introMonths)) {
-    return { influencer_id: null, amount: 0 }
-  }
-
-  // 💸 2026-07-04 [INV-CB-DEDUP] (F2 이중 커미션 수정): 같은 구매에 결제확정 시 영입 커미션
-  //   (influencer_attributions source='store_intro', 아비터 캡 대상)이 이미 적립됐으면 이 사용시점
-  //   셰어(platform_fee 20%)는 skip — 같은 크리에이터에 같은 주문 이중 적립(GMV 2.5%) 차단.
-  // 🛡️ 2026-07-12 (§0-2 본인구매 가드 — 대표 [UNLOCK]): 이용권 구매자==영입 인플이면 skip —
-  //   영입자가 자기 영입 매장 이용권을 사서 쓰면 platform_fee 20% 를 스스로 수령하던 자가 루프 차단
-  //   (store-intro-commission.ts 의 결제시점 가드와 짝 — 이 함수는 사용시점 레일).
-  try {
-    const v = await DB.prepare('SELECT order_id, user_id FROM vouchers WHERE id = ?')
-      .bind(params.voucher_id).first<{ order_id: number | null; user_id: string | number | null }>().catch(() => null)
-    if (v?.user_id != null && String(v.user_id) === String(payeeId)) {
-      return { influencer_id: payeeId, amount: 0 }
-    }
-    if (v?.order_id) {
-      const dup = await DB.prepare(
-        `SELECT id FROM influencer_attributions
-          WHERE order_id = ? AND influencer_id = ? AND source = 'store_intro'
-            AND COALESCE(status, 'pending') NOT IN ('clawed_back', 'cancelled') LIMIT 1`,
-      ).bind(v.order_id, String(payeeId)).first().catch(() => null)
-      if (dup) return { influencer_id: payeeId, amount: 0 }
-    }
-  } catch { /* dedup 조회 실패 → 기존 동작(지급) — 멱등 ref 가 재실행 이중은 막음 */ }
-
-  // 분배 비율 (platform_settings.influencer_intro_share_pct, default 20%)
-  let sharePct = 0.20
-  try {
-    const row = await DB.prepare(
-      "SELECT value FROM platform_settings WHERE key = 'influencer_intro_share_pct'",
-    ).first<{ value: string }>()
-    const v = parseFloat(row?.value || '20')
-    if (v > 0 && v < 1) sharePct = v
-    else if (v >= 1 && v <= 100) sharePct = v / 100
-  } catch { /* default */ }
-
-  const amount = Math.floor(params.platform_fee * sharePct)
-  if (amount <= 0) return { influencer_id: payeeId, amount: 0 }
-
-  // 🤝 받는 사람은 **도장 우선**이다 — 여기가 seller 를 다시 읽으면 도장이 무의미해진다.
-  const influencerUserId = payeeId
-
-  // 🛡️ 2026-05-28: introduced_by_influencer_id 는 users.id (sellers.id 아님!).
-  //   현금/딜 분기는 통합 SSOT creditUserCommission 으로 위임. event_type 은
-  //   기존 audit/조회 쿼리 호환 위해 'introduction_commission' 유지.
-  await creditUserCommission(DB, {
-    userId: influencerUserId,
-    amount,
-    referenceId: ref,
-    eventType: 'introduction_commission',
-    kind: 'introducing_influencer',
-    dealTxType: 'intro_commission',
-    description: `영입 매장 공구 커미션 (voucher ${params.voucher_id})`,
-    meta: { voucher_id: params.voucher_id, share_pct: sharePct },
-    // 💸 [INV-#44] flip ON 이면 이 20% 도 매장 promo 재원에서 — 5% 무접촉.
-    ownerAccount: `merchant:${params.merchant_id}`,
-  })
-
-  return { influencer_id: influencerUserId, amount }
-}
 
 /**
  * 환불 시 reverse entries (멱등 보장).

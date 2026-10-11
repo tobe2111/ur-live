@@ -92,3 +92,9 @@
 - **G2 영입 셰어 꺼짐**: `recordIntroductionCommissionShare`(이용권 사용 시 수수료 20%) 첫 줄에 게이트 `influencer_intro_share_enabled`(명시 'true' 만 켬, 기본·조회실패 = 꺼짐). OPS_GATES 에 "켜지 않는다" 로 등록. 결제 레일 영입 2%(직접 입점 전용)는 그대로.
 - 가드 `matching-ref-and-intro-off-2026-10-10.test.ts` 11건 + 주입 `scripts/mutations/matching-ref.mjs` 7건 전부 빨간불 확인. 전체 유닛 864파일 통과(ops-gate-reachable 1건은 "켜지 않는다" 명시로 해소).
 - **남은 것(매칭 화면)**: 인플루언서→매장 딜 신청은 API(`POST /api/influencer-settlement/deals/propose`)만 있고 버튼 없음 · `/influencer/discover` 지역 필터 없음 · 매장 쪽 고르는 화면(`InfluencerPicker`)은 서버가 `region` 을 받는데 안 보냄 · 옛 `/seller/marketing` 은 사용자 id 를 손으로 치게 하는 중복 화면. 대표 판단 대기.
+
+### 🛑 G2 후속 — 영입 몫 완전 폐지 (2026-10-11 대표 *"2번은 마저 폐지해줘. 모두 다"*)
+- 전날 게이트로 끈 `recordIntroductionCommissionShare`(이용권 사용 시 수수료 20%)를 **함수·호출 2곳·어드민 % 입력·하루짜리 게이트까지 삭제**. ledger.ts 에 묘비 주석. 역전(`intro-inf` reversal)과 `introduced_by_*`·이용권 도장은 사실 기록/안전망으로 유지.
+- 폐지 시점 라이브 D1: `voucher:%:intro-inf` 원장 **0행** · 영입자 지정 매장 **0곳** · store_intro 적립 **0건** → 잃는 사람 없음.
+- 🩸 **틀린 판단(정정)**: 전날 대표에게 *"결제 때 붙는 영입 2%(직접 입점만)는 그대로"* 라고 보고했다. **사실이 아니었다** — 그 2% 는 2026-09-04·09-16 에 이미 폐지(호출부 없음)였고, `actor-benefit-map.md`·`urdeal-platform-model.md` 가 낡아 "살아 있다"고 적혀 있었다. 문서만 보고 단정했다. 두 문서 같이 정정.
+- 가드 재조준: `check-commission-budget` R3(dedup 마커 ≥1 → 사용시점 셰어 0개) · `store-handover-money` · `voucher-intro-stamp` · 인라인 주입 3건 삭제(지킬 코드가 사라짐) → `matching-ref.mjs` 주입 2건으로 대체(빨간불 확인).

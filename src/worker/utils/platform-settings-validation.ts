@@ -104,7 +104,6 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   operator_support_contact: optionalText(200),
   // ── boolean 스위치 (read-site === 'true') ──
   commission_budget_enabled: boolStr,          // order-commissions.ts:252
-  influencer_intro_share_enabled: boolStr,     // ledger.ts recordIntroductionCommissionShare — 2026-10-10 대표 "몫 꺼줘"(기본 OFF)
   // 💸 2026-09-19 중개사 몫 직접 송금(결재 2026-09-16 안 1) — read-site: broker-share.ts creditBrokerShare.
   //   기본 OFF = 중개사는 장부 밖(2026-09-04 규칙). 켜기 전 STAGING S-BROKER 실결제.
   broker_share_enabled: boolStr,
@@ -185,7 +184,7 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   seller_referral_bonus_pct: pct,      // seller-registration.routes.ts
   platform_fee_pct: pct,               // ledger.ts:132 (v/100)
   seller_commission_pct: pct,          // ledger.ts:132 (v/100)
-  influencer_intro_share_pct: pct,     // ledger.ts:402 (동일)
+  influencer_intro_share_pct: pct,     // 🛑 2026-10-10 폐지 — 읽는 곳 0(ledger.ts 묘비). 옛 저장 payload 호환용으로만 남김
 
   // ── 금액/딜/개수 (0 이상) ──
   invite_reward_amount: nonNegNum,                    // invite-reward.ts:69

@@ -6,22 +6,19 @@
  * `X-Affiliate-Ref` 헤더로 싣는다. 그런데 이용권 구매(`/join`·`/confirm-toss`·장바구니)는 **본문 `ref`** 만
  * 읽었고, 화면은 본문에 다른 저장소(`?seller=`)만 넣었다 ⇒ 딜 커미션이 안 붙었다.
  *
- * ## G2 — 무엇을 껐나
+ * ## G2 — 무엇을 없앴나 (대표 *"몫 꺼줘"* → 다음 날 *"마저 폐지해줘. 모두 다"*)
  * `recordIntroductionCommissionShare` 는 이용권 사용마다 유어딜 수수료의 20% 를 영입자에게 줬고
- * 직접 입점 여부를 보지 않았다. 이제 `influencer_intro_share_enabled = 'true'` 일 때만 돈다.
+ * 직접 입점 여부를 보지 않았다. 처음엔 게이트로 껐다가, 대표 지시로 **함수·호출·어드민 입력을 통째로
+ * 삭제**했다(결제 레일 영입 2% 는 2026-09 에 이미 폐지). 폐지 시점 라이브: 원장 0행 · 영입 매장 0곳.
  *
  * ## ⚠️ 이 시험이 못 막는 것
  * - 실제 HTTP 요청에 헤더·쿠키가 실리는지(브라우저) — staging 실결제로 본다(STAGING_CHECKLIST S-MATCH).
  * - 커미션 금액 계산 자체(그건 `calcInfluencerCommissionPct` 시험의 몫).
  */
 import { describe, it, expect } from 'vitest'
-import { createRequire } from 'module'
 import { readFileSync } from 'fs'
 import { pickGbRefSource } from '@/features/group-buy/api/gb-purchase-guards'
-import { recordIntroductionCommissionShare } from '@/worker/utils/ledger'
 import { stripComments } from '../helpers/source-text'
-
-const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as typeof import('node:sqlite')
 
 describe('🔗 pickGbRefSource — 본문 → 헤더 → 쿠키', () => {
   it('본문이 있으면 본문 그대로 (종전과 byte-동일)', () => {
@@ -62,52 +59,24 @@ describe('🔌 배선 — 이용권 구매 세 곳이 같은 출처·같은 자�
   })
 })
 
-function db(intro: string | null) {
-  const d = new DatabaseSync(':memory:')
-  d.exec(`CREATE TABLE platform_settings (key TEXT PRIMARY KEY, value TEXT)`)
-  if (intro !== null) d.prepare(`INSERT INTO platform_settings VALUES ('influencer_intro_share_enabled', ?)`).run(intro)
-  let touched = 0
-  const D1 = {
-    prepare(sql: string) {
-      let b: unknown[] = []
-      const self = {
-        bind: (...a: unknown[]) => { b = a; return self },
-        first: async () => {
-          if (!/influencer_intro_share_enabled/.test(sql)) touched++
-          try { return d.prepare(sql).get(...(b as never[])) ?? null } catch { return null }
-        },
-        all: async () => ({ results: [] }), run: async () => { touched++; return { meta: { changes: 0 } } },
-      }
-      return self
-    },
-    exec: async () => { touched++ },
-    batch: async () => { touched++; return [] },
-  } as unknown as D1Database
-  return { D1, touched: () => touched }
-}
-
-describe('🛑 recordIntroductionCommissionShare — 기본 꺼짐', () => {
-  const P = { voucher_id: 1, merchant_id: 2, platform_fee: 10_000 }
-  it('설정이 없으면 0 이고 원장·매장 조회를 하나도 안 한다', async () => {
-    const { D1, touched } = db(null)
-    expect(await recordIntroductionCommissionShare(D1, P)).toEqual({ influencer_id: null, amount: 0 })
-    expect(touched()).toBe(0)
+describe('🛑 영입 셰어 — 폐지 (함수·호출·어드민 입력 0)', () => {
+  const ledger = stripComments(readFileSync('src/worker/utils/ledger.ts', 'utf8'))
+  const use = stripComments(readFileSync('src/features/group-buy/api/group-buy-voucher.routes.ts', 'utf8'))
+  it('ledger.ts 에 함수가 없다', () => {
+    expect(ledger).not.toMatch(/export async function recordIntroductionCommissionShare/)
   })
-  it("'false'·오타값도 꺼짐 — 명시 'true' 만 켠다", async () => {
-    for (const v of ['false', 'TRUE', '1', '']) {
-      const { D1, touched } = db(v)
-      expect(await recordIntroductionCommissionShare(D1, P)).toEqual({ influencer_id: null, amount: 0 })
-      expect(touched()).toBe(0)
-    }
+  it('이용권 사용 처리 두 경로가 부르지 않는다', () => {
+    expect(use).not.toMatch(/recordIntroductionCommissionShare/)
   })
-  it("'true' 면 종전 경로로 들어간다(게이트 다음 줄을 읽는다)", async () => {
-    const { D1, touched } = db('true')
-    await recordIntroductionCommissionShare(D1, P).catch(() => null)
-    expect(touched()).toBeGreaterThan(0)
+  it('어드민에서 % 를 다시 넣을 길이 없다 (화면·API 둘 다)', () => {
+    const page = stripComments(readFileSync('src/pages/AdminPayoutsPage.tsx', 'utf8'))
+    const api = stripComments(readFileSync('src/features/admin/api/admin-payouts.routes.ts', 'utf8'))
+    expect(page).not.toMatch(/influencer_intro_share_pct/)
+    expect(api).not.toMatch(/\['influencer_intro_share_pct'/)
   })
-  it('운영 명부와 설정 검증에 등록돼 있다 (켜는 조건이 화면에 보인다)', () => {
+  it('하루 쓰고 버린 게이트가 남아 "켜면 돈다" 는 오해를 만들지 않는다', () => {
     const ops = readFileSync('src/features/admin/api/admin-system-monitoring.routes.ts', 'utf8')
-    expect(ops).toMatch(/key: 'influencer_intro_share_enabled', kind: 'setting'[^\n]*default_value: 'false'/)
-    expect(readFileSync('src/worker/utils/platform-settings-validation.ts', 'utf8')).toMatch(/influencer_intro_share_enabled: boolStr/)
+    expect(ops).not.toMatch(/influencer_intro_share_enabled/)
+    expect(readFileSync('src/worker/utils/platform-settings-validation.ts', 'utf8')).not.toMatch(/influencer_intro_share_enabled/)
   })
 })

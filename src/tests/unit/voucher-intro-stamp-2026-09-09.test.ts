@@ -92,7 +92,7 @@ describe('🤝 판 시점 도장 (실제 함수 · 실제 DB)', () => {
 })
 
 describe('🤝 도장이 수령자를 결정한다 (영입자가 바뀌어도 소급 안 됨)', () => {
-  /** 사용 레일(`recordIntroductionCommissionShare`)의 수령자 판정 그대로. */
+  /** 폐지된 사용 레일(`recordIntroductionCommissionShare`, 2026-10-10)의 수령자 판정 — 도장 규칙 자체의 시험으로 남긴다. */
   const payee = (db: Db, voucherId: number, sellerId: number) => {
     const stamp = db.prepare('SELECT introduced_by_influencer_id AS iid, intro_stamped_at FROM vouchers WHERE id = ?')
       .get(voucherId) as { iid: number | null; intro_stamped_at: string | null } | undefined
@@ -138,7 +138,7 @@ describe('🤝 도장이 수령자를 결정한다 (영입자가 바뀌어도 �
  * 위 시험들은 **순수 판정**을 본다. 도장을 실제로 찍고 읽는 자리는 HTTP·D1 층이라 여기서 못 돈다
  * — 그 배선은 소스로 못 박는다(빠지면 판정 코드가 멀쩡해도 입력이 비어 조용히 폴백된다).
  */
-describe('🔌 배선 — 찍는 쪽 3곳 · 읽는 쪽 1곳', () => {
+describe('🔌 배선 — 찍는 쪽 3곳 · 돈을 내는 쪽 0곳', () => {
     /**
    * 🔴 주석 제거는 **레포 SSOT** 를 쓴다. 직접 쓴 정규식은 문자열/정규식 리터럴 안의 `/*` 를
    *   블록주석 시작으로 보고 **파일 가운데를 통째로 삼킨다** — 이번에 실제로 밟았다
@@ -166,18 +166,11 @@ describe('🔌 배선 — 찍는 쪽 3곳 · 읽는 쪽 1곳', () => {
       .toMatch(/introStamp\.introducerId, introStamp\.stampedAt/)
   })
 
-  it('사용 레일이 도장을 먼저 읽는다', () => {
-    const l = read(LEDGER)
-    expect(l, `${LEDGER}: 도장을 안 읽으면 오늘의 영입자에게 과거 판매분이 간다`)
-      .toMatch(/intro_stamped_at FROM vouchers/)
-    expect(l, '"영입자 없음"과 "옛 이용권"을 가르는 표시가 판정에 쓰여야 한다')
-      .toMatch(/const stamped = !!stamp\?\.intro_stamped_at/)
-  })
-
-  it('수령자가 도장 우선이다 (돈이 실제로 그 사람에게 간다)', () => {
-    const l = read(LEDGER)
-    expect(l, `${LEDGER}: 도장을 읽고도 지급을 seller 에서 다시 꺼내면 도장이 무의미하다`)
-      .toMatch(/const influencerUserId = payeeId/)
-    expect(l).toMatch(/const payeeId = stamped \? Number\(stamp!\.iid\)/)
+  it('도장은 사실 기록으로만 남는다 — 그걸 읽어 돈을 내던 사용 레일은 폐지됐다(2026-10-10)', () => {
+    // 종전엔 여기서 "사용 레일이 도장을 먼저 읽는다 · 수령자가 도장 우선" 을 지켰다. 그 레일
+    // (`recordIntroductionCommissionShare`)이 대표 *"마저 폐지해줘. 모두 다"* 로 사라졌다.
+    // 위 판정 시험들은 남는다 — 도장 자체("판 시점에 누가 데려왔나")는 기록으로 계속 쓰인다.
+    expect(read(LEDGER)).not.toMatch(/export async function recordIntroductionCommissionShare/)
+    expect(read('src/features/group-buy/api/group-buy-voucher.routes.ts')).not.toMatch(/recordIntroductionCommissionShare/)
   })
 })
