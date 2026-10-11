@@ -37,3 +37,25 @@ N1 얼굴 위 + urdeal. 아래 · N2 urdeal. 위 + 아래서 빼꼼 · N3 작은
 ![QR](assets/app-icon-2026-10/qr-board.jpg)
 
 6-A 얼굴 더 + QR · 6-B 유달이 크게 + 티켓 아래로 · 6-C 윙크 + QR · 6-D 신난 얼굴 + QR. 생성 스크립트 `assets/app-icon-2026-10/make-qr-icons.py`(QR 은 장식용 패턴 — 실제 코드 아님).
+
+## 시작화면 시안 (2026-10-11 대표 *"시작화면 디자인이야 지금. 너무 별로야"*)
+![시작화면](assets/app-icon-2026-10/splash-board.jpg)
+
+지금 시작화면 = 홈 화면 웹앱(PWA)이 **manifest 바탕색(#F8F7FC) + 아이콘** 두 가지로 자동 생성한 화면이다. 그래서 바꿀 수 있는 손잡이는 둘뿐이다(글자·애니메이션 불가).
+안 1 네이비 전면(바탕 #1B2340 + 6-B maskable — 테두리가 사라져 유달이와 티켓만 뜬다) · 안 2 아이콘만 6-B · 안 3 네이비 + 유달이 + urdeal.(스토어 앱 네이티브 시작화면 전용).
+- [x] **안 1 확정** (2026-10-11 대표 *"안1로 해줘"*) — manifest `background_color` `#1B2340` + 6-B maskable. `theme_color` 는 `#F8F7FC` 유지(앱 화면 상단 바 색 — 시작화면과 무관). 스토어 앱 시작화면도 같은 네이비로 맞췄다(`capacitor.config.ts` + `android/app/src/main/res/drawable*/splash.png`).
+
+## ✅ 6-B 적용 (2026-10-11 대표 *"6-B가 가장 좋고"* → *"일단 2번으로 만들어봐"* — 확정 유달이 그림만 사용)
+![실제 크기](assets/app-icon-2026-10/apply-board.jpg)
+
+| 자리 | 파일 | 비고 |
+|---|---|---|
+| iPhone 홈 화면 | `public/apple-touch-icon.png`(180) · `app-icon-192.png` | 6-B 그대로 |
+| 안드로이드 홈 화면(manifest any) | `public/app-icon-192.png` · `app-icon-512.png` | |
+| 안드로이드 원형·물방울 마스크(manifest maskable) | `public/app-icon-maskable-*.png` | 그림을 82%로 줄여 안전영역(지름 80%) 안에 |
+| 카카오 채널 프로필 | `assets/app-icon-2026-10/kakao-channel-profile-640.png` | **대표가 카카오 비즈니스에서 직접 업로드** |
+
+**안 바꾼 것(의도)**: 파비콘(`favicon*` · `favicon.svg` "ur") · `icon-192/512.png`(브라우저 탭 · 구글 검색 로고 JSON-LD · 푸시 알림 · 바로가기). 앱 아이콘은 새 파일명 `app-icon-*` 로 분리했다 — 같은 파일을 덮으면 검색 로고와 탭 아이콘까지 유달이로 바뀐다.
+manifest 에서 `favicon.svg` 를 뺐다 — 크롬은 확대 가능한 SVG 를 우선 골라 홈 화면에 "ur" 이 깔릴 수 있다(테스트로 고정).
+
+⚠️ **작은 크기 한계(실측 보드)**: 60px 홈 화면에서 `urdeal.` 는 읽히지만 QR 은 점무늬로 뭉개지고, 40px(카카오 채팅 목록)에선 글자도 안 읽힌다. 이미 설치된 PWA 는 브라우저가 다시 검사할 때(수일) 바뀐다.
