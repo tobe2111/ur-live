@@ -12,7 +12,7 @@
  *   · 바깥 그림 참조 0 — 사진·유달이 모두 data URI(카카오는 SVG 속 외부 그림을 안 가져온다).
  *   · 사진을 못 받아도 멀쩡해야 한다 — 그때는 옅은 브랜드 바탕에 유달이와 이름을 크게 그린다.
  */
-import { UDAL_OG_PNG, UDAL_OG_PNG_W, UDAL_OG_PNG_H } from './og-udal-png'
+import { UDAL_OG_PNG_W, UDAL_OG_PNG_H } from './og-udal-png'
 
 export const PASS_CARD_W = 1200
 export const PASS_CARD_H = 630
@@ -36,13 +36,13 @@ export interface PassForOG {
   restaurant_name: string | null
 }
 
-export function generatePassCardSVG(p: PassForOG, photoUri: string | null): string {
+export function generatePassCardSVG(p: PassForOG, photoUri: string | null, udalUri: string | null = null): string {
   const udalW = 212
   const udalH = Math.round(udalW * UDAL_OG_PNG_H / UDAL_OG_PNG_W)
   // 귀퉁이에서 고개를 내민다 — 발끝은 카드 아래로 조금 잘린다.
   const udalX = PASS_CARD_W - udalW - 40
   const udalY = PASS_CARD_H - udalH + 40
-  const udal = `<image href="${UDAL_OG_PNG}" x="${udalX}" y="${udalY}" width="${udalW}" height="${udalH}"/>`
+  const udal = udalUri ? `<image href="${udalUri}" x="${udalX}" y="${udalY}" width="${udalW}" height="${udalH}"/>` : ''
 
   // 좌하단 `urdeal.` 알약 — 로고와 같은 장치(소문자 + 브랜드 블루 점).
   const pill = `<g>

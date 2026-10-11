@@ -37,6 +37,7 @@ function parsesAsXml(svg: string): boolean {
 }
 
 const PHOTO = 'data:image/jpeg;base64,AAAA'
+const UDAL = 'data:image/png;base64,iVBORw0KGgo='
 
 describe('② 이용권 공유 카드', () => {
   it('사진이 있든 없든 올바른 XML 이다 (기존 유어샵 카드가 이걸로 깨져 있었다)', () => {
@@ -52,7 +53,7 @@ describe('② 이용권 공유 카드', () => {
   })
 
   it('바깥 그림 참조가 0 이다 — 사진·유달이 모두 data URI', () => {
-    const svg = generatePassCardSVG({ name: 'x', restaurant_name: null }, PHOTO)
+    const svg = generatePassCardSVG({ name: 'x', restaurant_name: null }, PHOTO, UDAL)
     const hrefs = [...svg.matchAll(/href="([^"]*)"/g)].map((m) => m[1])
     expect(hrefs.length).toBe(2)
     for (const h of hrefs) expect(h.startsWith('data:image/')).toBe(true)
@@ -79,16 +80,46 @@ describe('② 이용권 공유 카드', () => {
     expect(passShareCardUrl(7)).toMatch(/\?v=\d+$/)
   })
 
+  it('유달이를 못 읽으면 유달이 없이도 올바른 카드를 그린다', () => {
+    const svg = generatePassCardSVG({ name: 'x', restaurant_name: null }, PHOTO, null)
+    expect(parsesAsXml(svg)).toBe(true)
+    expect(svg.split('<image').length - 1).toBe(1) // 사진 한 장만
+  })
+
+  it('📦 유달이 그림은 워커 번들에 박지 않는다 — 정적 파일을 ASSETS 에서 읽는다(무료 1MB 압축 한도)', () => {
+    const mod = R('worker/utils/og-udal-png.ts')
+    expect(mod).not.toMatch(/base64,iVBOR/)
+    const png = readFileSync(resolve(process.cwd(), 'public/static/og/udal-share-168.png'))
+    expect([...png.subarray(0, 4)]).toEqual([0x89, 0x50, 0x4e, 0x47])
+    expect(mod).toMatch(/UDAL_OG_PNG_PATH = '\/static\/og\/udal-share-168\.png'/)
+    const route = stripComments(R('worker/routes/og-image.routes.ts'))
+    expect(route).toMatch(/loadUdalOgPng\(c\.env\.ASSETS, origin\)/)
+    expect(route).toMatch(/generatePassCardSVG\(product, photoUri, udalUri\)/)
+  })
+
+  it('loadUdalOgPng — PNG 가 아니면(SPA 폴백 HTML) 쓰지 않고, 읽은 PNG 는 data URI 로 돌려준다', async () => {
+    const { loadUdalOgPng } = await import('@/worker/utils/og-udal-png')
+    const html = { fetch: async () => new Response('<!doctype html>' + 'x'.repeat(200)) }
+    expect(await loadUdalOgPng(html, 'https://urdeal.kr')).toBeNull()
+    expect(await loadUdalOgPng(undefined, 'https://urdeal.kr')).toBeNull()
+    const png = readFileSync(resolve(process.cwd(), 'public/static/og/udal-share-168.png'))
+    let asked = ''
+    const ok = { fetch: async (r: Request) => { asked = r.url; return new Response(png) } }
+    const uri = await loadUdalOgPng(ok, 'https://urdeal.kr')
+    expect(asked).toBe('https://urdeal.kr/static/og/udal-share-168.png')
+    expect(uri?.startsWith('data:image/png;base64,iVBOR')).toBe(true)
+  })
+
   it('라우트가 카드를 새 생성기 + 인라인 사진으로 그린다', () => {
     const src = stripComments(R('worker/routes/og-image.routes.ts'))
-    expect(src).toMatch(/generatePassCardSVG\(product,\s*photoUri\)/)
+    expect(src).toMatch(/generatePassCardSVG\(product,\s*photoUri,\s*udalUri\)/)
     expect(src).toMatch(/inlineImage\(product\.image_url/)
   })
 
   it('사진을 못 박으면 사진 없는 판이 아니라 사진 원본으로 보낸다 (라이브에서 상품 사진이 빠졌던 것)', () => {
     const src = stripComments(R('worker/routes/og-image.routes.ts'))
     expect(src).toMatch(/if \(!photoUri && photoAbs\) return c\.redirect\(photoAbs, 302\)/)
-    expect(src.indexOf('c.redirect(photoAbs')).toBeLessThan(src.indexOf('generatePassCardSVG(product, photoUri)'))
+    expect(src.indexOf('c.redirect(photoAbs')).toBeLessThan(src.indexOf('generatePassCardSVG(product, photoUri'))
   })
 })
 

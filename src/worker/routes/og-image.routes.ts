@@ -15,6 +15,7 @@ import type { Env } from '../types/env'
 import { inlineImage, toAbsolute } from '../utils/og-inline-image'
 import { generateCuratorSVG, tileWidth, TILE_H, type CuratorForOG } from '../utils/og-curator-card'
 import { generatePassCardSVG, PASS_PHOTO_W, PASS_PHOTO_H } from '../utils/og-pass-card'
+import { loadUdalOgPng } from '../utils/og-udal-png'
 
 const ogRoutes = new Hono<{ Bindings: Env }>()
 
@@ -113,7 +114,8 @@ ogRoutes.get('/group-buy/:id', async (c) => {
     //   사진이 아예 없는 상품만 이름 판 카드를 쓴다.
     const photoAbs = toAbsolute(product.image_url, origin)
     if (!photoUri && photoAbs) return c.redirect(photoAbs, 302)
-    const svg = generatePassCardSVG(product, photoUri)
+    const udalUri = await loadUdalOgPng(c.env.ASSETS, origin) // 📦 정적 파일에서(워커 다이어트 2026-10-11)
+    const svg = generatePassCardSVG(product, photoUri, udalUri)
     return new Response(svg, {
       headers: {
         'Content-Type': 'image/svg+xml; charset=utf-8',

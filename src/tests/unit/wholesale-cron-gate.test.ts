@@ -60,4 +60,15 @@ describe('도매 번들 cron no-op 게이트 — 이중성숙 차단', () => {
     expect(scheduled).toContain('wholesale-cron-gate')
     expect(/async function wholesaleCronNoop[\s\S]{0,200}console\.error/.test(scheduled)).toBe(true)
   })
+
+  // 📦 2026-10-11 [cron-split] Pages 산출물은 cron 을 부르지 않는다 → 크론 그래프 DCE(gzip ~56KB).
+  //   cron 은 `wrangler deploy` 워커가 wrangler.toml 로 따로 번들한다 — 그쪽은 **반드시 실제 핸들러**.
+  it('Pages 빌드만 no-op — 미정의·false 는 실제 핸들러(cron 워커가 조용히 죽지 않게)', () => {
+    expect(line).toContain("typeof __PAGES_BUNDLE__ !== 'undefined' && __PAGES_BUNDLE__ === true")
+    const build = readFileSync(resolve(process.cwd(), 'scripts/build-worker.js'), 'utf8')
+    expect(build).toMatch(/'__PAGES_BUNDLE__': 'true'/)
+    const toml = readFileSync(resolve(process.cwd(), 'wrangler.toml'), 'utf8')
+    expect(toml).toMatch(/^__PAGES_BUNDLE__ = "false"$/m) // cron 워커 = 실제 핸들러
+    expect(toml).not.toMatch(/^__PAGES_BUNDLE__ = "true"/m)
+  })
 })
