@@ -68,7 +68,7 @@ done
 
 | 발견 | 실측 | 성격 |
 |---|---|---|
-| 🔴 **유어샵이 색인 요청에서 75% 빠진다** | 내용 있는 유어샵 **4곳 중 3곳 누락**(sitemap `/u/` **1개**) | **구조적** — `sitemap.routes.ts:179` 쿼리가 `FROM sellers` 로 시작한다. 유어샵은 **모든 유저**가 갖는데(명칭 SSOT) 사업자가 아니면 `sellers` 행이 없어 **들어갈 수가 없다**. 지금 규모는 작지만(핀 보유 유저 4명) 유저가 늘면 비례해 샌다 |
+| ✅ **유어샵 색인 누락 — 이 PR 에서 고쳤다** | 내용 있는 유어샵 **4곳 중 3곳 누락**(sitemap `/u/` **1개**) → 4곳 전부 제출 | **구조적** — `sitemap.routes.ts` 쿼리가 `FROM sellers` 로 시작했다. 유어샵은 **모든 유저**가 갖는데(명칭 SSOT) 사업자가 아니면 `sellers` 행이 없어 **들어갈 수가 없었다**. `FROM users` 쿼리를 **추가**(핀 ≥ 1, 중복 Set 으로 제외) |
 | 🟡 유어샵에 페이지 고유 구조화 데이터 **0** | `/u/jiwon1228` = `Organization`+`WebSite`(브랜드 블록)뿐 | 공유로 퍼지는 표면인데 구글이 *이 페이지가 무엇인지* 모른다. `ProfilePage`+`ItemList`(진열 이용권) 후보 |
 | 🟡 목록 표면 구조화 데이터 **0** | `/vouchers`·`/browse`·`/map`·`/stays` 전부 브랜드 블록뿐 | sitemap priority 0.9 로 제출되는데 `ItemList`·`BreadcrumbList` 없음 |
 | 🟢 `llms.txt` **404** | — | AI 검색이 보는 관례 파일 |
@@ -83,6 +83,40 @@ done
 현재 sitemap 제출(셀러 경유)             3   (handle 있는 건 1 → /u/ 1개)
 ```
 
+### ✅ 그 누락을 이 브랜치에서 고쳤다 (추가 커밋)
+
+`sitemap.routes.ts` 에 **`FROM users` 쿼리를 추가**했다(기존 셀러 쿼리는 한 글자도 안 건드렸다):
+
+```sql
+SELECT u.handle FROM users u
+ WHERE u.handle IS NOT NULL AND TRIM(u.handle) <> ''
+   AND EXISTS (SELECT 1 FROM product_pins pp WHERE pp.user_id = u.id)
+ ORDER BY u.id DESC LIMIT 200
+```
+
+- **콘텐츠 기준은 기존 블록과 같다** — 핀 1개 이상. 이름 패턴으로 거르지 않는다(2026-07-29 의 그 이유).
+- 🔑 **그 기준이 워커 첫 화면 빌더와 짝이다**: `buildCuratorFirstScreen` 은 `pins.length === 0` 이면
+  `''` 를 돌려주므로 핀 0 을 제출하면 크롤러가 받는 것은 로더뿐이다(= soft-404). 핀 ≥ 1 만 내보내면
+  **제출한 URL 은 전부 본문이 있다.** 가드가 양쪽을 같이 본다.
+- **중복은 `Set` 으로 막는다** — 승인 셀러가 연결된 유어샵은 앞 블록이 이미 `/u/{handle}` 을 냈다.
+  같은 `<loc>` 이 두 번이면 sitemap 자체가 무효 취급될 수 있어, 고치려던 것이 더 큰 결함이 된다.
+- **몰 스코프를 걸지 않는다** — `users` 에 `mall_id` 가 없고(유저는 몰에 속하지 않는다), 제출하는 것은
+  상품 URL 이 아니라 **유어딜 본진 표면**인 `/u/{handle}` 이다.
+
+**실측 검증(라이브 D1, 읽기 전용)**: 새 쿼리 → `['user40','user31','jongmun','jiwon1228']`,
+중복 제외 후 **신규 3건**(`user31`·`jongmun`·`jiwon1228`).
+
+가드: `sitemap-urshop-users-2026-10-11.test.ts` **10건** — SQL 문자열을 **소스에서 뽑아 `node:sqlite` 에
+넣고 실제로 돌린다**(베껴 쓰면 두 벌이 갈린다). ① 기존 쿼리만으론 `user40` 하나뿐임을 **회귀 앵커로 고정**
+② 핀 ≥ 1 만 집는가 · 핀을 다 떼면 0건인가(늘 통과하는 쿼리가 아님) ③ 중복 Set 의 기록·확인이 **쌍인가**
+④ 첫 화면 빌더와 기준이 같은가. 주입 **6건 되돌려-검증 전부 빨간불 확인**.
+
+🩸 그 시험의 첫 판이 **거리 앵커**(`[\s\S]{0,200}`)를 써서 빨간불이 났다 — 사이에 주석 한 줄만 들어가도
+깨지는 모양이고, 2026-10-08 에 이미 값을 치른 자리다 ⇒ **블록을 잘라** 각 루프 안을 보도록 고쳤다.
+
+**⚠️ E4 는 배포 후**: `curl -sS https://urdeal.kr/sitemap.xml | grep -c '<loc>https://urdeal.kr/u/'`
+→ **4**(배포 전 1). 색인 자체는 서치콘솔에서 대표만 보실 수 있다.
+
 ## 남은 결정 / 대기 (대표 판단)
 
 - **🔴 AI 크롤러 정책** — GPTBot·ClaudeBot 이 **Cloudflare 엣지에서 403**(우리 코드 아님: `server: cloudflare`,
@@ -94,7 +128,8 @@ done
   필요하고 라우팅·사이트맵·캐시키·SSR 시드까지 닿는 **큰 변경**이다. 한국어 색인이 먼저 서야 한다는 것이 제 의견.
 - **사이트링크(야놀자의 6줄)** — **신청 수단이 없다.** 구글 자동 선정이고 `SearchAction` 검색창 사이트링크는 2024-11
   지원 종료. 코드로 되는 둘(파비콘 #1704 · 사이트 이름 이번 PR)은 끝냈다. 앱 설치 카드는 앱이 있어야 한다.
-- **남은 점검** — 목록 표면 `BreadcrumbList` · `llms.txt`(현재 404) · sitemap/canonical 커버리지 전수.
+- **남은 점검** — 유어샵 페이지 고유 구조화 데이터(`ProfilePage`+`ItemList`) · 목록 표면 `BreadcrumbList`
+  (`/vouchers`·`/map`·`/stays`·`/browse` 전부 0건) · `llms.txt`(현재 404).
 
 ## 못 한 것 · 범위 밖
 
