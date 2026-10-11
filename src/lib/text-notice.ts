@@ -6,10 +6,11 @@
  *    (`ALIMTALK_API_KEY`)가 라이브에 없어 **조용히 건너뛰었다**. 그래서 한 통도 안 나갔다.
  *  - 시스템 알림톡(`system-alimtalk.ts`)은 알리고로 가지만 주소가 틀려 **성공 기록 0건**이었다.
  *
- * 규칙 하나:
+ * 규칙 (2026-10-11 대표 "문자는 안 쓸거고 카톡만" 반영):
  *  - 그 알림의 템플릿이 카카오 검수를 통과했으면(어드민 `alimtalk_approved_templates` 에 코드가 있으면)
- *    **알림톡**으로 보내고, 알림톡이 실패하면 알리고가 **같은 내용을 문자로** 대신 보낸다.
- *  - 아니면 **문자**(90바이트 이하 단문, 넘으면 장문)로 보낸다.
+ *    **알림톡**으로 보낸다. 실패 시 문자 대체는 하지 않는다.
+ *  - 아직 승인 전이면 **보내지 않는다**(앱 알림만) — `alimtalk_failures` 에 `pending:<코드>` 로 남긴다.
+ *  - 문자는 어드민 `notice_sms_enabled='true'` 일 때만(기본 OFF).
  *  ⇒ 템플릿이 하나씩 승인될 때마다 어드민에서 코드를 적어 넣기만 하면 **배포 없이** 알림톡으로 넘어간다.
  *
  * 성공·실패는 둘 다 남긴다 — "안 나갔는데 아무도 모른다" 가 이 파일이 생긴 이유다.
@@ -49,9 +50,29 @@ async function approvedTemplates(db: D1Database | undefined): Promise<Set<string
   }
 }
 
+/**
+ * 📵 2026-10-11 대표 "문자는 안 쓸거고 카톡만 쓸건데" — 문자(단문·장문·알림톡 실패 시 대체)는 기본 OFF.
+ * 어드민 `notice_sms_enabled` 를 'true' 로 바꿀 때만 문자를 쓴다(그때도 비용은 알리고 포인트에서 나간다).
+ */
+export const SMS_ENABLED_SETTING = 'notice_sms_enabled'
+let _smsCache: { at: number; on: boolean } | null = null
+async function smsAllowedSetting(db: D1Database | undefined): Promise<boolean> {
+  if (!db) return false
+  if (_smsCache && Date.now() - _smsCache.at < APPROVED_TTL_MS) return _smsCache.on
+  try {
+    const row = await db.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(SMS_ENABLED_SETTING).first<{ value: string }>()
+    const on = String(row?.value ?? '').trim() === 'true'
+    _smsCache = { at: Date.now(), on }
+    return on
+  } catch {
+    return false
+  }
+}
+
 /** 테스트용 — 캐시 비우기. */
 export function _resetApprovedTemplatesCache(): void {
   _approvedCache = null
+  _smsCache = null
 }
 
 export function normalizeMobile(phone: unknown): string | null {
@@ -61,7 +82,7 @@ export function normalizeMobile(phone: unknown): string | null {
 
 export type TextNoticeResult =
   | { ok: true; via: 'alimtalk' | 'sms' }
-  | { ok: false; skipped: 'no_credentials' | 'invalid_phone' }
+  | { ok: false; skipped: 'no_credentials' | 'invalid_phone' | 'template_not_approved' }
   | { ok: false; via: 'alimtalk' | 'sms'; error: string }
 
 /**
@@ -71,7 +92,7 @@ export type TextNoticeResult =
 export async function sendTextNotice(
   env: unknown,
   phone: unknown,
-  n: { tpl: string; title: string; text: string },
+  n: { tpl: string; title: string; text: string; forceAlimtalk?: boolean },
 ): Promise<TextNoticeResult> {
   const e = (env ?? {}) as Record<string, unknown>
   const apiKey = String(e.ALIGO_API_KEY ?? '')
@@ -89,7 +110,8 @@ export async function sendTextNotice(
     DISCORD_WEBHOOK_URL: e.DISCORD_WEBHOOK_URL as string | undefined,
   }
   const senderKey = String(e.ALIGO_SENDER_KEY ?? '')
-  const useAlimtalk = !!senderKey && (await approvedTemplates(db)).has(n.tpl)
+  const useAlimtalk = !!senderKey && (n.forceAlimtalk || (await approvedTemplates(db)).has(n.tpl))
+  const smsAllowed = await smsAllowedSetting(db)
 
   let via: 'alimtalk' | 'sms'
   let result: { success: boolean; error?: string }
@@ -101,11 +123,16 @@ export async function sendTextNotice(
       to,
       message: n.text,
       sender: await resolveAligoSender(aligoEnv),
-      failoverText: { title: n.title, text: n.text },
+      // 📵 2026-10-11 대표 "문자는 안 쓸거고 카톡만" — 알림톡 실패 시 문자 대체도 기본 OFF.
+      ...(smsAllowed ? { failoverText: { title: n.title, text: n.text } } : {}),
     })
-  } else {
+  } else if (smsAllowed) {
     via = 'sms'
     result = await sendAligoSms(aligoEnv, { to, text: n.text, title: n.title })
+  } else {
+    // 승인 전 템플릿 + 문자 꺼짐 → 보내지 않는다(앱 알림은 호출부가 따로 보낸다). 무엇을 놓쳤는지는 남긴다.
+    await recordOutcome(db, to, `pending:${n.tpl}`, n.text, { success: false, error: 'template_not_approved' }).catch(() => {})
+    return { ok: false, skipped: 'template_not_approved' }
   }
 
   await recordOutcome(db, to, `${via}:${n.tpl}`, n.text, result).catch(() => {})

@@ -22,7 +22,7 @@ import type { ReactNode } from 'react'
 import StoreReportLink from './StoreReportLink'
 
 export default function StoreLocation({
-  name, address, phone, lat, lng, map, sellerId, productId,
+  name, address, phone, lat, lng, map, sellerId, productId, onProfile,
 }: {
   name?: string | null
   address?: string | null
@@ -39,6 +39,8 @@ export default function StoreLocation({
    */
   sellerId?: number | null
   productId?: number | null
+  /** 🏪 2026-10-11 (D안): 셀러 카드를 모바일에서 걷으면서 '가게 보기' 입구를 매장 카드 머리로 옮겼다. */
+  onProfile?: () => void
 }) {
   const directionsHref = `https://map.kakao.com/link/${
     lat && lng
@@ -58,8 +60,18 @@ export default function StoreLocation({
   } as const
 
   return (
-    <div id="gb-sec-location" style={{ padding: '22px 18px', scrollMarginTop: 116 }}>
-      <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em', marginBottom: 13 }}>매장 위치</div>
+    <div id="gb-sec-location" style={{ padding: '24px 18px', scrollMarginTop: 116 }}>
+      {/* 🏪 2026-10-11 (D안): 제목을 '매장 위치' → **가게 이름**으로. 모바일에서 셀러 카드를 걷었으니
+          가게로 가는 입구('가게 보기')가 여기 머리에 붙는다. 이름이 없으면 종전 제목. */}
+      <div className="flex items-center justify-between gap-3" style={{ marginBottom: 12 }}>
+        <h2 className="m-0 text-[17px] font-bold tracking-[-.01em] truncate" style={{ color: 'var(--gbd-ink)' }}>{name || '매장 위치'}</h2>
+        {onProfile && (
+          <button type="button" onClick={onProfile} className="shrink-0 inline-flex items-center gap-1 text-[13px] font-semibold bg-transparent border-0 p-0 cursor-pointer" style={{ color: 'var(--gbd-sub)' }}>
+            가게 보기
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+          </button>
+        )}
+      </div>
       {/* 🪟 안 3(경계 없음) — 상자를 없앤다. 지도는 둥근 사진 한 장, 주소는 그 아래 본문 한 줄.
           섹션 구획은 위아래 여백이 이미 하고 있어서 테두리는 같은 일을 두 번 했다. */}
       <div style={{ borderRadius: 14, overflow: 'hidden' }}>

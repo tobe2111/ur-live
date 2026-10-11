@@ -41,8 +41,9 @@ export default [
     //   되감기면 가격이 밀린다). 그 새 경계를 지키는 주입으로 교체한다.
     name: '🖼️ 서버가 가격까지 그린다 (주소 줄이 되감기면 그 가격이 밀린다)',
     file: BODY,
-    find: "`<h1 style=\"${DETAIL_TITLE_STYLES.h1}\">${escText(d.name || '')}</h1>` +",
-    replace: "`<h1 style=\"${DETAIL_TITLE_STYLES.h1}\">${escText(d.name || '')}</h1><div>16,500원</div>` +",
+    // 🔁 2026-10-11 (D안): 제목이 inline style → `PASS_HEAD.h1` 클래스로. 불변식(가격은 안 그린다)은 그대로.
+    find: "`<h1 class=\"${PASS_HEAD.h1}\">${escText(d.name || '')}</h1>` +",
+    replace: "`<h1 class=\"${PASS_HEAD.h1}\">${escText(d.name || '')}</h1><div>16,500원</div>` +",
     test: TEST,
     why: '제목 아래 주소 줄에 내 위치 기준 거리가 문장 안으로 들어간다 — 서버가 모르는 값이라 마운트 때 한 줄이 두 줄로 되감길 수 있고, 그러면 바로 아래 가격이 밀린다.',
   },
@@ -68,8 +69,8 @@ export default [
   {
     name: '🧷 서버 래퍼 id 가 클라 상수와 갈린다 (폴백이 조용히 아무 일도 안 한다)',
     file: BODY,
-    find: '`<div id="ur-first-screen" class="gbd"',
-    replace: '`<div id="ur-first-screen-v2" class="gbd"',
+    find: '`<div id="ur-first-screen" class="gbd ${PASS_PAGE_BG}"',
+    replace: '`<div id="ur-first-screen-v2" class="gbd ${PASS_PAGE_BG}"',
     test: BOOT_TEST,
     why: '두 리터럴이 갈리면 에러 없이 노드를 못 찾아 종전 풀스크린 로더로 돌아간다 — 실패가 아니라 조용한 부재.',
   },
@@ -119,8 +120,9 @@ export default [
   {
     name: '\u{1F3F7} h1 \uc2a4\ud0c0\uc77c\uc774 \ud398\uc774\uc9c0\uc640 \uac08\ub9b0\ub2e4 (\ub9c8\uc6b4\ud2b8 \ub54c \uc81c\ubaa9\uc774 \ud284\ub2e4)',
     file: BODY,
-    find: "h1: 'margin:4px 0 0;font-size:21px",
-    replace: "h1: 'margin:4px 0 0;font-size:20px",
+    // 🔁 2026-10-11 (D안): 두 벌 대조 → 같은 상수 import. 워커가 상수 대신 손으로 쓴 클래스로 돌아가면 갈린다.
+    find: "`<h1 class=\"${PASS_HEAD.h1}\">${escText(d.name || '')}</h1>` +",
+    replace: "`<h1 class=\"m-0 mt-1 text-[20px] font-bold\">${escText(d.name || '')}</h1>` +",
     test: TEST,
     why: '\uc11c\ubc84\uc640 React \uac00 \uac19\uc740 \uc81c\ubaa9\uc744 \ub2e4\ub978 \ud06c\uae30\ub85c \uadf8\ub9ac\uba74 \uadf8 \uc790\ub9ac\uac00 \ub9c8\uc6b4\ud2b8 \uc21c\uac04 \ubc14\ub01c\ub2e4 \u2014 \ub300\ud45c\uac00 \uae08\uc9c0\ud55c "\ub85c\ub529 \ud654\uba74 2~3\uac1c" \uc758 \ubaa8\uc591.',
   },
@@ -135,7 +137,7 @@ export default [
   {
     name: '\u{1F3F7} \uac10\uc2f8\ub294 \ub178\ub4dc\uc5d0\uc11c `.gbd` \uac00 \ube60\uc9c4\ub2e4 (\uc81c\ubaa9 \uc0c9\u00b7\ubc14\ud0d5\uc774 \ub9c8\uc6b4\ud2b8 \ub54c \ubc14\ub010\ub2e4)',
     file: BODY,
-    find: '`<div id="ur-first-screen" class="gbd" style="background:var(--gbd-card);color:var(--gbd-ink)">`',
+    find: '`<div id="ur-first-screen" class="gbd ${PASS_PAGE_BG}" style="color:var(--gbd-ink)">`',
     replace: '`<div id="ur-first-screen">`',
     test: TEST,
     why: '`--gbd-*` \ub294 `.gbd` \uc548\uc5d0\uc11c\ub9cc \ud480\ub9b0\ub2e4. \ud074\ub798\uc2a4\uac00 \uc5c6\uc73c\uba74 \uc81c\ubaa9\uc774 \uae30\ubcf8\uc0c9\uc774 \ub418\uace0 \ubc14\ud0d5\ub3c4 --bg \u2192 --surface \ub85c \ubc14\ub01c\ub2e4.',
@@ -143,8 +145,9 @@ export default [
   {
     name: '\u{1F3F7} \uacf5\uc720 \ubcf4\uc0c1 \ubc30\ub108\uac00 \ub2e4\uc2dc \uc81c\ubaa9 \uc704\ub85c \uc62c\ub77c\uac04\ub2e4 (\ub51c \ubcf4\uc720\uc790\ub9cc \uc81c\ubaa9\uc774 \ubc00\ub9b0\ub2e4)',
     file: PAGE,
-    find: '        {/* \ud0c0\uc774\ud2c0 \u2014 \u{1F4F1} \ubaa8\ubc14\uc77c \uc804\uc6a9.',
-    replace: '        <div className="px-[18px]"><ShareRewardBanner sellerId={detail.seller_id as number | null} productId={detail.id} /></div>\n        {/* \ud0c0\uc774\ud2c0 \u2014 \u{1F4F1} \ubaa8\ubc14\uc77c \uc804\uc6a9.',
+    // 🔁 2026-10-11 (D안): 제목 블록이 `PassHeadCard` 로 옮겨갔다 — 그 앞에 배너를 심는다.
+    find: '        <PassHeadCard merchant=',
+    replace: '        <div className="px-[18px]"><ShareRewardBanner sellerId={detail.seller_id as number | null} productId={detail.id} /></div>\n        <PassHeadCard merchant=',
     test: TEST,
     why: '\uc774 \ubc30\ub108\ub294 \uc11c\ubc84 \uc870\ud68c\uac00 \ub05d\ub098\uc57c \ub728\ub294\ub370 \uc81c\ubaa9 \uc704\uc5d0 \uc788\uc73c\uba74 \ub51c \uac00\uc9c4 \uc0ac\ub78c\uc5d0\uac8c\ub9cc \ub4a4\ub2a6\uac8c \uc81c\ubaa9\uc774 \uc544\ub798\ub85c \ubc00\ub9b0\ub2e4 \u2014 \uc11c\ubc84 \ub80c\ub354 \uc774\uc804\ubd80\ud130 \uc788\ub358 \ubc00\ub9bc\uc774\ub2e4.',
   },

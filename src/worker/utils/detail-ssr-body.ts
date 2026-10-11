@@ -64,6 +64,7 @@ import {
   detailHeroMobileUrl,
 } from '../../shared/detail-hero-image'
 import { getVoucherShortLabel, normalizeCategory } from '../../shared/constants/voucher-categories'
+import { PASS_HEAD, PASS_PAGE_BG } from '../../shared/pass-head'
 
 function escAttr(s: string): string {
   return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -83,7 +84,9 @@ function crumbHtml(category: string | null | undefined): string {
   const cat = normalizeCategory(category)
   if (!cat) return '' // 크럼이 하나면 경로가 아니다 — 컴포넌트도 안 그린다(`shown.length < 2`).
   const label = escText(getVoucherShortLabel(cat))
+  // 🎟️ 2026-10-11 (D안): 모바일은 빵부스러기를 안 그린다 — 컴포넌트도 `hidden lg:block` 으로 감쌌다.
   return (
+    '<div class="hidden lg:block">' +
     `<nav aria-label="현재 위치" class="${DETAIL_CRUMB_CLASS}">` +
       '<span class="flex items-center gap-1.5 shrink-0">' +
         '<a href="/" class="text-gray-600 dark:text-gray-300 underline underline-offset-[3px] decoration-gray-300 dark:decoration-gray-600">홈</a>' +
@@ -92,7 +95,8 @@ function crumbHtml(category: string | null | undefined): string {
         '<span aria-hidden="true" class="text-gray-300 dark:text-gray-600">/</span>' +
         `<a href="/?category=${escAttr(cat)}" class="text-gray-600 dark:text-gray-300 underline underline-offset-[3px] decoration-gray-300 dark:decoration-gray-600">${label}</a>` +
       '</span>' +
-    '</nav>'
+    '</nav>' +
+    '</div>'
   )
 }
 
@@ -102,29 +106,12 @@ const HERO_SCRIMS =
   '<div style="position:absolute;inset:auto 0 0 0;height:120px;pointer-events:none;background:linear-gradient(0deg,rgba(0,0,0,.32),transparent)"></div>'
 
 /**
- * 🏷️ 제목 블록 — `GroupBuyDetailPage` 모바일 타이틀(`lg:hidden`)과 **같은 값**.
- *
- * React 의 inline style 객체를 그대로 CSS 문자열로 옮겨 놓았다(숫자는 px, `line-height` 는 단위없음).
- * 갈리면 마운트 때 제목이 튀다 → `detail-ssr-first-screen` 테스트가 컴포넌트 소스와 대조한다.
- *
- * ⚠️ `--gbd-*` 는 `.gbd` 안에서만 풀린다(`index.css`). 그래서 감싼는 노드가 직접 `.gbd` 를 달고
- *   페이지 루트와 같은 배경·글자색을 갖는다 — 클래스를 밖에 두면 폴백에 다시 붙일 때 떨어져나가
- *   색이 전부 기본값으로 돌아간다(`lib/boot-first-screen.ts` 가 이 노드를 들고 다닌다).
+ * 🏷️ 머리 카드의 위쪽(가게 · 제목) — `PassHeadCard` 와 **같은 클래스 문자열**(`PASS_HEAD`, 2026-10-11 D안).
+ * 종전엔 React inline style 을 손으로 옮겨 두 벌을 시험으로 대조했다. 이제는 같은 상수를 import 해서
+ * 갈릴 수가 없다. 카드의 나머지(거리 · 가격)는 마운트 뒤 h1 **아래**에 채워진다 — 위는 안 움직인다.
  */
-export const DETAIL_TITLE_STYLES = {
-  wrap: 'padding:14px 18px 0',
-  merchant: 'font-size:13px;font-weight:700;color:var(--gbd-ink2);letter-spacing:.01em',
-  prelaunch:
-    'display:inline-flex;align-items:center;gap:4px;margin-top:8px;padding:4px 10px;border-radius:999px;' +
-    'background:var(--gbd-ink);color:var(--gbd-card);font-size:11px;font-weight:800',
-  h1: 'margin:4px 0 0;font-size:21px;line-height:1.3;font-weight:800;letter-spacing:-.03em;color:var(--gbd-ink)',
-} as const
-
-/** 온누리 뱃지 — 카드보다 짧지만 한 줄을 두 줄로 밀 수 있어 모양까지 같아야 한다. */
-export const DETAIL_ONNURI_CLASS =
-  // 🔗 2026-09-30: 컴포넌트가 정본 스케일로 옮겨졌다(`ml-1.5`→`ml-2` · `px-1.5`→`px-2` · `10px`→`12px`).
-  //    **워커가 손으로 그리는 첫 화면과 컴포넌트가 갈리면 마운트 때 제목이 밀린다** — 가드가 그걸 잡았다.
-  'ml-2 px-2 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[12px] font-bold align-middle'
+/** 온누리 뱃지 — `PASS_HEAD.onnuri` 재수출(호환). */
+export const DETAIL_ONNURI_CLASS = PASS_HEAD.onnuri
 
 function titleHtml(d: DetailSeed): string {
   const merchant = (d.restaurant_name || '').trim()
@@ -132,10 +119,10 @@ function titleHtml(d: DetailSeed): string {
     ? `<span class="${DETAIL_ONNURI_CLASS}">온누리 사용 가능</span>`
     : ''
   return (
-    `<div class="lg:hidden" style="${DETAIL_TITLE_STYLES.wrap}">` +
-      (merchant ? `<div style="${DETAIL_TITLE_STYLES.merchant}">${escText(merchant)}${onnuri}</div>` : '') +
-      (d.prelaunch ? `<span style="${DETAIL_TITLE_STYLES.prelaunch}">오픈 예정 · 사전 응모 받는 중</span>` : '') +
-      `<h1 style="${DETAIL_TITLE_STYLES.h1}">${escText(d.name || '')}</h1>` +
+    `<div class="${PASS_HEAD.card}">` +
+      (merchant ? `<div class="${PASS_HEAD.merchant}">${escText(merchant)}${onnuri}</div>` : '') +
+      (d.prelaunch ? `<span class="${PASS_HEAD.prelaunch}">오픈 예정 · 사전 응모 받는 중</span>` : '') +
+      `<h1 class="${PASS_HEAD.h1}">${escText(d.name || '')}</h1>` +
     '</div>'
   )
 }
@@ -193,7 +180,7 @@ export function buildDetailFirstScreen(ssrPayload: string, loaderHtml: string, s
     //   이게 없으면 (a) `--gbd-*` 가 안 풀려 제목이 기본색이 되고 (b) 바탕이 `--bg`(#F8F7FC) 라
     //   마운트 때 `--surface`(#FFFFFF) 로 **바뀐다**. 노드 자체가 들고 다니는 값이라 폴백 안에서도 유지된다.
     return (
-      `<div id="ur-first-screen" class="gbd" style="background:var(--gbd-card);color:var(--gbd-ink)">` +
+      `<div id="ur-first-screen" class="gbd ${PASS_PAGE_BG}" style="color:var(--gbd-ink)">` +
         `${crumbHtml(d.category)}${hero}${title}` +
       '</div>' + shortLoader
     )
