@@ -64,7 +64,7 @@ export default function DealPurchaseBox({
   return (
     <div style={{ borderRadius: 18, padding: 18, background: 'var(--gbd-card)', boxShadow: 'var(--lift)' }}>
       {/* 💰 2026-10-11 (대표 확정 D안 — PC 포함): 모바일 머리 카드(`PassHeadCard`)와 **같은 위계**.
-          [할인율(빨강 글자) · 판매가 · 정가 취소선] 한 줄 + "1장당 N원 아껴요". 걷어낸 것: 빨간 pill ·
+          [할인율(빨강 글자)·판매가·정가 취소선] 한 줄 + "1장당 N원 아껴요". 걷어낸 것: 빨간 pill ·
           "결제 즉시 교환권 발급"(용어 오류) · 이름·가격을 한 번 더 말하던 '구매 옵션' 상자. */}
       <div className="flex items-baseline flex-wrap gap-x-2">
         {discountPct > 0 && <span className="text-[24px] font-bold tracking-[-.02em]" style={{ color: 'var(--sale)' }}>{discountPct}%</span>}
@@ -113,7 +113,7 @@ export default function DealPurchaseBox({
       {/* 🔒 안심 한 줄 — 모바일 구매 창과 같은 문구(2026-10-11 D안). 세 줄 배지는 "결제 즉시 교환권 발급"(용어 오류)을 담고 있었다. */}
       <div className="mt-3 flex items-center justify-center gap-1 text-[12px]" style={{ color: 'var(--gbd-sub)' }}>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
-        토스로 3초 안전결제 · 미사용 시 100% 자동환불
+        토스로 3초 안전결제, 미사용 시 100% 자동환불
       </div>
       {isPrelaunch && (
         <div className="mt-2 text-[12px] text-center" style={{ color: 'var(--gbd-sub)' }}>오픈 협의 중 매장 · 응모는 무료, 오픈 시 알림을 드려요</div>
