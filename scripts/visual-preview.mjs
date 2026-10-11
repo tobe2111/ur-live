@@ -810,8 +810,17 @@ await page.waitForTimeout(4000)
 if (typeof args.click === 'string' && args.click) {
   for (const label of args.click.split('>>').map((x) => x.trim()).filter(Boolean)) {
     try {
+      /**
+       * 🩸 2026-10-11 — **글자 없는 버튼을 못 눌렀다.** 알림 벨은 아이콘뿐이라 보이는 글자가 0이고
+       *   `hasText` 가 하나도 못 맞혀 글자 폴백으로 떨어졌다. 그러면 `알림` 이 **"푸시 알림" 토글**에
+       *   맞아 엉뚱한 것을 누르고, 위 주석이 말한 그 침묵(클릭은 성공하니 경고가 없다)이 또 난다.
+       * ⇒ **접근성 이름 정확 일치**를 맨 앞에 둔다(`aria-label="알림"` 은 맞고 "푸시 알림" 은 안 맞는다).
+       */
+      const byName = page.getByRole('button', { name: label, exact: true })
       const clickable = page.locator('button, a, [role="button"]').filter({ hasText: label })
-      const target = (await clickable.count()) > 0 ? clickable.last() : page.getByText(label, { exact: false }).last()
+      const target = (await byName.count()) > 0 ? byName.last()
+        : (await clickable.count()) > 0 ? clickable.last()
+        : page.getByText(label, { exact: false }).last()
       // 🔎 **무엇을 눌렀는지 말한다.** 엉뚱한 것을 눌러도 클릭은 성공하므로 경고가 안 뜬다 —
       //    그 침묵이 2026-09-28 에 한 시간을 먹었다. 누른 것을 찍으면 그 자리에서 보인다.
       const shape = await target.evaluate((el) => `${el.tagName.toLowerCase()} "${(el.innerText || '').replace(/\s+/g, ' ').slice(0, 30)}"`).catch(() => '?')
