@@ -16,3 +16,10 @@ Figma `generate_image`(gemini-3.1-flash-image), 프롬프트는 `../../../urdeal
 | shopping-walk | 쇼핑백(이용권) 들고 걷기 | 홈 · 마케팅 | https://www.figma.com/api/mcp/asset/b6d249b4-c876-4b7c-9795-fbc22fe5955d.png |
 
 ⚠️ 스펙 편차: peek-card·float-hug 는 머리가 기준보다 둥글고 크다. qr-phone 은 손 모양이 단순하다.
+
+## ❌ 폐기 (2026-10-11 대표 *"이전에 만든거랑 완전 달라, 느낌이 완전 달라"*)
+
+위 6장은 확정 유달이(`../otter-pose-stand.png`)와 **다른 캐릭터**다 — 털이 주황빛, 흰 수염·크림 눈썹 무늬 없음, 얼굴형 다름.
+원인: 글 설명만으로 생성(text-to-image). 글을 더 자세히 써서 2장 재시도했지만(`364b6c43…`, `0fb9f10b…`) 털이 회보라·펠트 질감으로 갔다.
+⇒ **같은 캐릭터를 다른 포즈로 그리려면 원본 그림을 참고 이미지로 넣는 모델이 필요하다**(Figma Weave Nano Banana 등).
+이 팀의 Weave 는 무료 2회를 이미 써서 막혀 있다(유료 플랜 필요). 그 전까지 새 포즈는 만들지 말 것 — 쓰면 캐릭터가 갈린다.
