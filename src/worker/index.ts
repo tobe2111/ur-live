@@ -201,6 +201,7 @@ import { campaignApplyRoutes } from '../features/marketing/api/campaign-apply.ro
 import { adminCampaignApplicationsRoutes } from '../features/admin/api/admin-campaign-applications.routes'; import { mallAdminRoutes } from '../features/mall/api/mall-admin.routes'; // 🏬 몰 운영자 콘솔(공구 서비스) — 한 줄: 파일크기 래칫(2638) 안
 // ⏳ [TEMP-TEST] 도매 워커 배포 전 라이브 검증용 임시 마운트(아래 app.route 참조) — ur-wholesale 배포 시 제거.
 import { buyerPoolRoutes as buyerPoolTestRoutes } from '../features/supply/api/buyer-pool.routes';
+import { makerPoolRoutes } from '../features/supply/api/maker-pool.routes'; // 🧨 2026-10-11 도매 철거 — 종전엔 mount-wholesale(도매 번들)에만 있어 소비자 배포에선 죽은 링크였다. 읽는 것은 유어애즈 `ad_company_leads`(worker-ads 가 계속 수집)라 여기로 옮긴다.
 import { buyerIngestRoutes } from '../features/supply/api/buyer-ingest.routes';
 import { payoutCenterRoutes } from '../features/admin/api/admin-payout-center.routes';
 import { proxyRoutes } from './routes/proxy.routes';
@@ -1687,6 +1688,7 @@ app.route('/api/admin/gov-notices', govNoticesRoutes); // 📢 공고 스캐너 
 //   수집을 검증할 수 있게 소비자 워커에 임시 마운트. admin 전용(requireAdmin)+격리 테이블+게이트라 유어딜 데이터
 //   무접촉. ur-wholesale 배포 시 이 3줄(import+mount) 제거 예정.
 app.route('/api/admin/buyer-pool', buyerPoolTestRoutes);
+app.route('/api/admin/maker-pool', makerPoolRoutes); // 🏭 제조사·판매사 후보 풀(격리 테이블 `supply_maker_leads` + 유어애즈 리드 읽기)
 // 📦 2026-10-11 대표 "유통 스타트는 다 필요없어": 제조사·판매사 후보 풀(유통스타트 밴드)의 [TEMP-TEST] 소비자 마운트 제거 —
 //   유통스타트 워커(mount-wholesale.ts)에만 남는다. 바이어 풀(위·아래)은 도매와 무관한 별개 사업이라 그대로 둔다.
 // 🔖 바이어 풀 북마클릿 인제스트 — requireAdmin 밖(크로스오리진, 토큰 인증+CORS). buyKorea 등에서 원클릭 전송.
@@ -1837,13 +1839,11 @@ adminApp.route('/restaurant-settlement', restaurantSettlementRoutes);
 // Naver Ad Scraper·legacy /api/scraper/d1/* 제거됨 (2026-04-22) — 법적 리스크(PIPA/정보통신망법) + adminApp 미들웨어 우회.
 // scraped_advertisers 테이블은 데이터 보존용으로 남김(직접 SQL 조회 가능).
 
-// 🏭 [wholesale-split 2026-07-16] 도매 라우트는 WHOLESALE_BUNDLE=1 빌드에서만 포함.
-//   __INCLUDE_WHOLESALE__=false(소비자) → esbuild DCE 로 mount-wholesale + 도매 그래프 전체 제외(워커 gzip ~200KB↓).
-//   ⚠️ adminApp 도매 마운트가 app.route('/api/admin', adminApp) 전에 등록돼야 해 TLA(await)로 여기서 호출.
-if (__INCLUDE_WHOLESALE__) {
-  const { mountWholesale } = await import('./mount-wholesale');
-  mountWholesale(app, adminApp);
-}
+// 🧨 [도매몰 철거 2026-10-11 대표 "도매몰 잔해들은 아예 다 삭제해줘"] 도매(B2B) 라우트 마운트 제거.
+//   종전: `if (__INCLUDE_WHOLESALE__) { mountWholesale(app, adminApp) }` — `WHOLESALE_BUNDLE=1` 빌드에서만
+//   포함됐으므로 **소비자 배포는 이 블록을 원래 안 탔다**(DCE). 즉 이 삭제로 urdeal.kr 동작은 변하지 않는다.
+//   잔류: 정산 엔진(supply-settlement 등 4파일 — 소비자 주문확정·환불·cron 이 직접 부른다) · buyer/maker 풀 ·
+//   몰 인프라(아래 `wholesale-malls`). 계획·경계: docs/design/wholesale-teardown-plan.md §1~§3.
 /**
  * 🏬 **몰 관리 CRUD 는 도매 게이트 밖이다** 〔2026-08-03 — 대표 실측 404〕
  *

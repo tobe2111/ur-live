@@ -289,11 +289,11 @@
 
 | 도메인 | 소개서 파일 | 페이지 | API 엔드포인트 |
 |---|---|---|---|
-| 도매몰 (유통스타트) | `wholesale-mall-brief.md` | 43 | 4 |
+| 도매몰 (유통스타트) | `wholesale-mall-brief.md` | 2 | 4 |
 | 오프라인 공구 / 동네딜 | `offline-groupbuy-brief.md` | 29 | 96 |
 | 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 74 | 277 |
 | 유어샵 / 담기·소개 | `linkshop-brief.md` | 24 | 86 |
-| **합계** | — | **170** | **463** |
+| **합계** | — | **129** | **463** |
 
 ### 전체 커버리지 검증 (자동 — 빠진 기능 보증)
 
@@ -302,12 +302,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 383 | 1141 |
-| 도메인 버킷 (5개 소개서) | 170 | 463 |
-| 공통/인프라 (의도적 제외) | 167 | 478 |
-| **미커버 (점검 필요)** | **46** | **200** |
+| 전체 | 322 | 1017 |
+| 도메인 버킷 (5개 소개서) | 129 | 463 |
+| 공통/인프라 (의도적 제외) | 147 | 486 |
+| **미커버 (점검 필요)** | **46** | **68** |
 
-⚠️ **미커버 246건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 114건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -358,20 +358,12 @@
 - `/videos`
 
 **미커버 API 엔드포인트**
-- `DELETE /:id` (`src/features/supply/api/wholesale-board.routes.ts`)
-- `PATCH /:id` (`src/features/supply/api/maker-pool.routes.ts`)
 - `POST /:id{[0-9]+}/view` (`src/features/products/api/product-view.routes.ts`)
 - `PATCH /:id/amount` (`src/features/returns/api/return-amount.routes.ts`)
 - `POST /:id/approve` (`src/worker/routes/mall-applications-admin.routes.ts`)
-- `POST /:id/confirm` (`src/features/supply/api/wholesale-deposit.routes.ts`)
-- `POST /:id/reject` (`src/features/supply/api/wholesale-deposit.routes.ts`)
+- `POST /:id/reject` (`src/worker/routes/mall-applications-admin.routes.ts`)
 - `POST /:id/respond` (`src/features/seller/api/seller-transfer-respond.routes.ts`)
-- `POST /:productId/toggle` (`src/features/supply/api/wholesale-board.routes.ts`)
-- `POST /adjust` (`src/features/supply/api/wholesale-deposit.routes.ts`)
 - `GET /admin-diag` (`src/worker/routes/killer-sw.routes.ts`)
-- `GET /admin/claims` (`src/features/supply/api/wholesale-claims.routes.ts`)
-- `PATCH /admin/claims/:id` (`src/features/supply/api/wholesale-claims.routes.ts`)
-- `GET /analytics` (`src/features/supply/api/supplier-analytics.routes.ts`)
 - `POST /api/acquisition/claim` (`src/worker/routes/acquisition.routes.ts`)
 - `POST /api/acquisition/inflow` (`src/worker/routes/acquisition.routes.ts`)
 - `POST /api/acquisition/inflow/bind` (`src/worker/routes/acquisition.routes.ts`)
@@ -413,151 +405,27 @@
 - `GET /api/voucher-dispute/against-me` (`src/features/group-buy/api/voucher-dispute.routes.ts`)
 - `GET /api/voucher-dispute/mine` (`src/features/group-buy/api/voucher-dispute.routes.ts`)
 - `POST /api/voucher-dispute/report` (`src/features/group-buy/api/voucher-dispute.routes.ts`)
-- `POST /become` (`src/features/supply/api/supplier-auth.routes.ts`)
-- `POST /become-distributor` (`src/features/supply/api/wholesale.routes.ts`)
 - `POST /cart/confirm-toss` (`src/features/group-buy/api/cart-checkout.routes.ts`)
 - `POST /cart/init` (`src/features/group-buy/api/cart-checkout.routes.ts`)
-- `GET /catalog` (`src/features/supply/api/wholesale.routes.ts`)
-- `GET /catalog-export` (`src/features/supply/api/wholesale-documents.routes.ts`)
-- `GET /catalog/:id{[0-9]+}` (`src/features/supply/api/wholesale.routes.ts`)
-- `GET /catalog/export` (`src/features/supply/api/wholesale-documents.routes.ts`)
-- `GET /categories` (`src/features/supply/api/naver-commerce.routes.ts`)
-- `GET /channel-thresholds` (`src/features/supply/api/supplier-dashboard.routes.ts`)
-- `GET /claims` (`src/features/supply/api/wholesale-claims.routes.ts`)
-- `POST /claims` (`src/features/supply/api/wholesale-claims.routes.ts`)
-- `POST /collect` (`src/features/supply/api/maker-pool.routes.ts`)
-- `DELETE /connect` (`src/features/supply/api/coupang-commerce.routes.ts`)
-- `POST /connect` (`src/features/supply/api/coupang-commerce.routes.ts`)
 - `GET /deal-plan/:productId` (`src/features/group-buy/api/deal-plan.routes.ts`)
-- `GET /demand-signal` (`src/features/supply/api/supplier-dashboard.routes.ts`)
-- `GET /documents` (`src/features/supply/api/wholesale-documents.routes.ts`)
-- `GET /documents/:id/html` (`src/features/supply/api/wholesale-documents.routes.ts`)
-- `POST /enrich` (`src/features/supply/api/maker-pool.routes.ts`)
-- `GET /export` (`src/features/supply/api/maker-pool.routes.ts`)
-- `POST /export` (`src/features/supply/api/coupang-commerce.routes.ts`)
 - `POST /fee-context/channel` (`src/features/seller/api/seller-store-channel.routes.ts`)
-- `GET /home` (`src/features/supply/api/wholesale.routes.ts`)
-- `POST /import-resellers` (`src/features/supply/api/maker-pool.routes.ts`)
-- `GET /info` (`src/features/supply/api/wholesale-plus.routes.ts`)
-- `POST /items/:id/ship` (`src/features/supply/api/wholesale-supplier.routes.ts`)
 - `POST /kakao-bot/link-code` (`src/features/seller/api/seller-kakao-bot.routes.ts`)
 - `GET /kakao-bot/links` (`src/features/seller/api/seller-kakao-bot.routes.ts`)
 - `POST /kakao-bot/links/:key/revoke` (`src/features/seller/api/seller-kakao-bot.routes.ts`)
-- `GET /mall` (`src/features/supply/api/wholesale.routes.ts`)
-- `GET /market-signal` (`src/features/supply/api/wholesale.routes.ts`)
-- `GET /me` (`src/features/supply/api/supplier-dashboard.routes.ts`)
 - `GET /me/prefs/:key` (`src/features/auth/api/admin-prefs.routes.ts`)
 - `PUT /me/prefs/:key` (`src/features/auth/api/admin-prefs.routes.ts`)
-- `GET /meta` (`src/features/supply/api/maker-pool.routes.ts`)
-- `GET /naver-price-check` (`src/features/supply/api/supplier-dashboard.routes.ts`)
-- `GET /notifications` (`src/features/supply/api/supplier-dashboard.routes.ts`)
-- `POST /notifications/read-all` (`src/features/supply/api/supplier-dashboard.routes.ts`)
-- `GET /oem-requests` (`src/features/supply/api/wholesale.routes.ts`)
-- `POST /oem-requests` (`src/features/supply/api/wholesale.routes.ts`)
-- `GET /order-template` (`src/features/supply/api/wholesale-documents.routes.ts`)
-- `GET /orders` (`src/features/supply/api/supplier-dashboard.routes.ts`)
-- `POST /orders` (`src/features/supply/api/wholesale.routes.ts`)
-- `GET /orders/:id` (`src/features/supply/api/wholesale.routes.ts`)
-- `POST /orders/:id/accept` (`src/features/supply/api/wholesale-supplier.routes.ts`)
-- `POST /orders/:id/cancel` (`src/features/supply/api/wholesale.routes.ts`)
-- `POST /orders/:id/confirm` (`src/features/supply/api/wholesale.routes.ts`)
-- `GET /orders/:id/notes` (`src/features/supply/api/wholesale-notifications.routes.ts`)
-- `POST /orders/:id/notes` (`src/features/supply/api/wholesale-notifications.routes.ts`)
-- `POST /orders/:id/refund` (`src/features/supply/api/wholesale-supplier.routes.ts`)
-- `POST /orders/:id/reject` (`src/features/supply/api/wholesale-supplier.routes.ts`)
-- `POST /orders/:id/ship-all` (`src/features/supply/api/wholesale-supplier.routes.ts`)
-- `PUT /orders/:orderId/shipping` (`src/features/supply/api/supplier-dashboard.routes.ts`)
-- `POST /orders/bulk-preview` (`src/features/supply/api/wholesale.routes.ts`)
-- `POST /orders/confirm` (`src/features/supply/api/wholesale.routes.ts`)
-- `GET /orders/export` (`src/features/supply/api/wholesale-supplier.routes.ts`)
-- `GET /price-reference` (`src/features/supply/api/wholesale-price-reference.routes.ts`)
-- `GET /products` (`src/features/supply/api/supplier-dashboard.routes.ts`)
-- `POST /products` (`src/features/supply/api/supplier-dashboard.routes.ts`)
-- `PATCH /products/:id` (`src/features/supply/api/supplier-dashboard.routes.ts`)
-- `GET /products/:id/channel-access` (`src/features/supply/api/supplier-dashboard.routes.ts`)
-- `POST /products/:id/channel-access` (`src/features/supply/api/supplier-dashboard.routes.ts`)
-- `DELETE /products/:id/channel-access/:accessId` (`src/features/supply/api/supplier-dashboard.routes.ts`)
-- `POST /products/:id/price-change-request` (`src/features/supply/api/supplier-dashboard.routes.ts`)
-- `POST /products/bulk` (`src/features/supply/api/supplier-dashboard.routes.ts`)
-- `POST /products/bulk-price-change` (`src/features/supply/api/supplier-analytics.routes.ts`)
-- `GET /products/bulk-template` (`src/features/supply/api/supplier-dashboard.routes.ts`)
-- `GET /products/bulk-template.xlsx` (`src/features/supply/api/supplier-dashboard.routes.ts`)
-- `POST /products/stock-import` (`src/features/supply/api/supplier-analytics.routes.ts`)
-- `GET /proposals` (`src/features/supply/api/wholesale-documents.routes.ts`)
-- `GET /quotes` (`src/features/supply/api/wholesale-quotes.routes.ts`)
-- `POST /quotes` (`src/features/supply/api/wholesale-quotes.routes.ts`)
-- `POST /quotes/:id/accept` (`src/features/supply/api/wholesale-quotes.routes.ts`)
-- `POST /quotes/:id/reject` (`src/features/supply/api/wholesale-quotes.routes.ts`)
-- `PATCH /quotes/:id/respond` (`src/features/supply/api/wholesale-quotes.routes.ts`)
-- `GET /recent-items` (`src/features/supply/api/wholesale.routes.ts`)
 - `GET /recover` (`src/worker/routes/killer-sw.routes.ts`)
-- `POST /refresh` (`src/features/supply/api/supplier-auth.routes.ts`)
-- `POST /register` (`src/features/supply/api/supplier-auth.routes.ts`)
-- `POST /restock/subscribe` (`src/features/supply/api/wholesale-notifications.routes.ts`)
-- `DELETE /restock/subscribe/:productId` (`src/features/supply/api/wholesale-notifications.routes.ts`)
-- `GET /restock/subscriptions` (`src/features/supply/api/wholesale-notifications.routes.ts`)
-- `GET /sample-requests` (`src/features/supply/api/supply.routes.ts`)
-- `POST /sample-requests` (`src/features/supply/api/supply.routes.ts`)
-- `GET /settlement-account` (`src/features/supply/api/supplier-dashboard.routes.ts`)
-- `PATCH /settlement-account` (`src/features/supply/api/supplier-dashboard.routes.ts`)
-- `GET /settlements` (`src/features/supply/api/supplier-dashboard.routes.ts`)
-- `GET /settlements/export` (`src/features/supply/api/supplier-dashboard.routes.ts`)
-- `GET /ship-addresses` (`src/features/supply/api/wholesale-ship-address.routes.ts`)
-- `POST /ship-addresses` (`src/features/supply/api/wholesale-ship-address.routes.ts`)
-- `DELETE /ship-addresses/:id` (`src/features/supply/api/wholesale-ship-address.routes.ts`)
-- `GET /shipping-places` (`src/features/supply/api/coupang-commerce.routes.ts`)
-- `GET /shipping-policy` (`src/features/supply/api/supplier-dashboard.routes.ts`)
-- `PATCH /shipping-policy` (`src/features/supply/api/supplier-dashboard.routes.ts`)
-- `GET /signup-meta` (`src/features/supply/api/supplier-dashboard.routes.ts`)
-- `PATCH /signup-meta` (`src/features/supply/api/supplier-dashboard.routes.ts`)
-- `GET /statement` (`src/features/supply/api/wholesale-documents.routes.ts`)
-- `GET /stats` (`src/features/supply/api/maker-pool.routes.ts`)
-- `GET /status` (`src/features/supply/api/coupang-commerce.routes.ts`)
 - `POST /store-claims` (`src/features/seller/api/seller-store-claims.routes.ts`)
 - `GET /store-claims/lookup-by-code` (`src/features/seller/api/seller-store-claims.routes.ts`)
 - `GET /store-claims/mine` (`src/features/seller/api/seller-store-claims.routes.ts`)
 - `POST /store-reports` (`src/features/seller/api/seller-store-reports.routes.ts`)
 - `GET /store-reports/reasons` (`src/features/seller/api/seller-store-reports.routes.ts`)
-- `POST /store/coupang/connect` (`src/features/supply/api/supplier-dashboard.routes.ts`)
-- `POST /store/import` (`src/features/supply/api/supplier-dashboard.routes.ts`)
-- `POST /store/naver/connect` (`src/features/supply/api/supplier-dashboard.routes.ts`)
-- `GET /store/products` (`src/features/supply/api/supplier-dashboard.routes.ts`)
-- `GET /store/status` (`src/features/supply/api/supplier-dashboard.routes.ts`)
 - `GET /stores/:id/broker-terms` (`src/features/seller/api/seller-broker-terms.routes.ts`)
 - `POST /stores/:id/broker-terms` (`src/features/seller/api/seller-broker-terms.routes.ts`)
 - `GET /stores/lookup-by-business` (`src/features/seller/api/seller-store-claims.routes.ts`)
-- `GET /sub-accounts` (`src/features/supply/api/wholesale.routes.ts`)
-- `POST /sub-accounts` (`src/features/supply/api/wholesale.routes.ts`)
-- `DELETE /sub-accounts/:id` (`src/features/supply/api/wholesale.routes.ts`)
-- `PATCH /sub-accounts/:id` (`src/features/supply/api/wholesale.routes.ts`)
-- `POST /sub-login` (`src/features/supply/api/wholesale.routes.ts`)
-- `POST /subscribe` (`src/features/supply/api/wholesale-plus.routes.ts`)
-- `GET /suppliers` (`src/features/admin/api/admin-suppliers.routes.ts`)
-- `PATCH /suppliers/:id` (`src/features/admin/api/admin-suppliers.routes.ts`)
-- `POST /suppliers/:id/license-verify` (`src/features/admin/api/admin-suppliers.routes.ts`)
-- `POST /suppliers/:id/payout` (`src/features/admin/api/admin-suppliers.routes.ts`)
-- `GET /suppliers/:id/payouts` (`src/features/admin/api/admin-suppliers.routes.ts`)
-- `GET /tax-invoices` (`src/features/supply/api/supplier-dashboard.routes.ts`)
-- `GET /tax/aging` (`src/features/supply/api/wholesale-tax.routes.ts`)
-- `GET /tax/purchase-invoices` (`src/features/supply/api/wholesale-tax.routes.ts`)
-- `POST /tax/purchase-invoices/issue` (`src/features/supply/api/wholesale-tax.routes.ts`)
-- `GET /threads` (`src/features/supply/api/wholesale-chat.routes.ts`)
-- `POST /threads` (`src/features/supply/api/wholesale-chat.routes.ts`)
-- `GET /threads/:id/messages` (`src/features/supply/api/wholesale-chat.routes.ts`)
-- `POST /threads/:id/messages` (`src/features/supply/api/wholesale-chat.routes.ts`)
-- `POST /threads/by-product` (`src/features/supply/api/wholesale-chat.routes.ts`)
-- `POST /tracking/bulk` (`src/features/supply/api/wholesale-supplier.routes.ts`)
-- `GET /unread` (`src/features/supply/api/wholesale-chat.routes.ts`)
 - `DELETE /voucher-draft` (`src/features/seller/api/seller-voucher-draft.routes.ts`)
 - `GET /voucher-draft` (`src/features/seller/api/seller-voucher-draft.routes.ts`)
 - `PUT /voucher-draft` (`src/features/seller/api/seller-voucher-draft.routes.ts`)
-- `GET /wholesale-tax-invoices` (`src/features/supply/api/wholesale-tax.routes.ts`)
-- `POST /wholesale-tax-invoices/:id/reissue` (`src/features/supply/api/wholesale-tax.routes.ts`)
-- `GET /wholesale-withdrawals` (`src/features/supply/api/supplier-withdrawal.routes.ts`)
-- `POST /wholesale-withdrawals/:id/approve` (`src/features/supply/api/supplier-withdrawal.routes.ts`)
-- `POST /wholesale-withdrawals/:id/reject` (`src/features/supply/api/supplier-withdrawal.routes.ts`)
-- `GET /withdrawals` (`src/features/supply/api/supplier-withdrawal.routes.ts`)
-- `POST /withdrawals/request` (`src/features/supply/api/supplier-withdrawal.routes.ts`)
 
 ### 핵심 수치 (자동 추출 — 전체)
 
@@ -640,51 +508,10 @@
 
 #### 도매몰 (유통스타트)
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (43개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (2개)
 
-- `/admin/distributor-grades`
-- `/admin/suppliers`
-- `/admin/wholesale-guide`
-- `/admin/wholesale-orders`
 - `/seller/register/supplier`
 - `/seller/supply`
-- `/supplier`
-- `/supplier/chat`
-- `/supplier/login`
-- `/supplier/register`
-- `/supplier/wholesale-orders`
-- `/wholesale`
-- `/wholesale/best`
-- `/wholesale/board`
-- `/wholesale/brands`
-- `/wholesale/cart`
-- `/wholesale/channels`
-- `/wholesale/chat`
-- `/wholesale/checkout`
-- `/wholesale/dashboard`
-- `/wholesale/deposits`
-- `/wholesale/documents`
-- `/wholesale/intro`
-- `/wholesale/join`
-- `/wholesale/login`
-- `/wholesale/margin`
-- `/wholesale/naver`
-- `/wholesale/new`
-- `/wholesale/oem`
-- `/wholesale/orders`
-- `/wholesale/premium`
-- `/wholesale/privacy`
-- `/wholesale/product/:id`
-- `/wholesale/proposals`
-- `/wholesale/quotes`
-- `/wholesale/staff`
-- `/wholesale/staff-login`
-- `/wholesale/start`
-- `/wholesale/statement`
-- `/wholesale/success`
-- `/wholesale/support`
-- `/wholesale/terms`
-- `/wholesale/wishlist`
 
 ### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (4개)
 
@@ -1766,7 +1593,7 @@
 
 
 
-> 마지막 생성: 2026-10-11T14:30:59.289Z
+> 마지막 생성: 2026-10-11T17:00:30.689Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

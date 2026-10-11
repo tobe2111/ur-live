@@ -20,14 +20,9 @@ export default [
     test: TONE,
     why: 'rose 는 MONO 중화로 회색이 된다 — 취소가 구매완료와 구별되지 않는다(2026-09-29 실측).',
   },
-  {
-    name: '🚦 제조사 정산 세 상태가 다시 같은 회색이 된다 (돈 상태)',
-    file: 'src/pages/supplier-dashboard/OverviewTab.tsx',
-    find: "'정산 대기' }), value: b.pending_amount, cls: 'text-tone-warn' }",
-    replace: "'정산 대기' }), value: b.pending_amount, cls: 'text-amber-600' }",
-    test: TONE,
-    why: '정산 대기·출금 가능·지급 완료가 한 화면에 나란히 뜬다 — 셋이 같은 회색이면 돈 상태를 못 읽는다.',
-  },
+  // 🧨 2026-10-11 도매몰 철거: '제조사 정산 세 상태' 주입 제거 — 주체(`supplier-dashboard/OverviewTab.tsx`)가
+  //   함께 삭제됐다. 같은 가드(status-tone)의 나머지 주입 9건이 소비자·셀러 표면에서 그 불변식을 계속 지킨다
+  //   (돈 상태를 같은 회색으로 칠하지 않는다). 가드를 초록으로 만들려고 지운 것이 아니다.
   {
     // 🩸 2026-09-29: 처음엔 가드 파일의 `violations(i18n) !== 1` 줄을 `… && false` 로 바꿨는데
     //   **그 주입은 헛돌았다** — 시험이 그 파일을 *문자열*로 읽었고 문자열은 그대로 남았다.

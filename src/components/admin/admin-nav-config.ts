@@ -109,6 +109,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/influencer-pool',  label: '인플루언서 풀', icon: Megaphone },
       { path: '/admin/campaign-applications', label: '캠페인 신청자', icon: Megaphone }, // 캠페인 모집(/campaign/:code) 접수분 — 코드 필터+CSV
       { path: '/admin/buyer-pool',       label: '해외 바이어 풀', icon: Megaphone }, // 도매 RBAC 스코프 밖 → 여기(전-어드민)
+      { path: '/admin/maker-pool',       label: '제조사·판매사 후보 풀', icon: Layers }, // 🧨 2026-10-11 도매 철거로 이 밴드로 이사 — 읽는 것은 유어애즈 `ad_company_leads`(worker-ads 가 계속 수집)
       { path: '/admin/partner-pool',     label: '파트너 풀', icon: Megaphone }, // B2B 파트너(업체) 수집 — 매장 입점 영업
       { path: '/admin/store-prospects',  label: '매장 후보', icon: Megaphone }, // 인허가 발굴 — 유어딜 입점 대상 매장(store_prospects)
       { path: '/admin/gov-notices',      label: '공고 스캐너', icon: Megaphone }, // 나라장터+기업마당 공고(gov_notices)
@@ -116,60 +117,6 @@ export const NAV_GROUPS: NavGroup[] = [
       //   `AdminInfluencerOutreachPage` 는 실존하는데 nav 어디에도 없어 URL 직접 입력으로만 열렸다.
       //   발송은 대표가 직접 한다(유어애즈 방향) — 그러려면 화면에 닿을 수 있어야 한다.
       { path: '/admin/influencer-outreach', label: '제휴 제안 발송', icon: Send },
-    ],
-  },
-  {
-    // 🏭 도매몰 (유통스타트 B2B) — 운영: 카탈로그·주문·회원·설정
-    title: '🏭 도매몰 · 운영',
-    section: 'wholesale',
-    domain: 'wholesale',
-    items: [
-      { path: '/admin/wholesale-overview', label: '도매 통합 현황', icon: LayoutDashboard },
-      // 🏭 2026-06-29 (대표 — 판매사 승인 통합): '판매사 승인' 별도 항목 제거 → '판매사 관리'(아래) 의 '승인' 탭으로 통합.
-      // 🗂️ 2026-07-02 (IA 통합): '제조사 출금'(/admin/wholesale-withdrawals)은 이 페이지의 '출금 처리' 탭으로
-      //   통합 — also 로 딥링크/RBAC 허용 + 활성 표시.
-      { path: '/admin/suppliers',          label: '제조사 관리', icon: Store, also: ['/admin/wholesale-withdrawals'] },
-      // 🧭 2026-08-16 (고아 라우트 등재): `/admin/maker-pool` 은 nav 어디에도 없어 **URL 직접 입력으로만**
-      //   도달 가능했다. 페이지 헤더가 *"도매몰(유통스타트) 전용 — 유어애즈 파트너 풀과 격리된 테이블"*
-      //   이라고 스스로 선언한다 ⇒ 이웃한 buyer/partner-pool(유어애즈)이 아니라 **도매 밴드**가 맞다.
-      //   ⚠️ 위치로 추측했으면 유어애즈로 잘못 넣었을 자리다.
-      { path: '/admin/maker-pool',         label: '제조사·판매사 후보 풀', icon: Layers },
-      // 🗂️ 2026-06-26 (대표 요청): 4개 탭이 한 페이지(AdminDistributorGradesPage)라 nav 1개 통합.
-      //   딥링크 라우트(/admin/distributor-credit 등)는 그대로 — 페이지 탭이 사용.
-      // 🗂️ 2026-07-02 (대표 요청): 판매사 관리를 제조사 관리 바로 아래로 이동(회원 관리 짝 배치).
-      // 🗂️ 2026-07-02 (IA 통합): '도매 예치금'(/admin/wholesale-deposits)도 '예치금' 탭으로 통합 — also 에 추가.
-      { path: '/admin/distributor-grades', label: '판매사 관리', icon: Layers, also: ['/admin/distributor-approval', '/admin/distributor-credit', '/admin/distributor-tax', '/admin/distributor-supply', '/admin/wholesale-deposits'] },
-      { path: '/admin/wholesale-import',   label: '상품 일괄 등록', icon: Upload },
-      { path: '/admin/wholesale-products', label: '도매 프리미엄관', icon: Crown },
-      { path: '/admin/wholesale-orders',   label: '도매 주문',     icon: ShoppingBag },
-      { path: '/admin/wholesale-quotes',   label: '도매 견적',     icon: ClipboardList },
-      { path: '/admin/wholesale-activity', label: '처리 이력 (누가 처리?)', icon: History },
-    ],
-  },
-  {
-    // 🏭 도매몰 — 정산/머니
-    title: '💰 도매몰 · 정산',
-    section: 'wholesale',
-    domain: 'wholesale',
-    items: [
-      // 🗂️ 2026-07-02 (IA 통합): '도매 예치금'은 '판매사 관리'의 '예치금' 탭, '제조사 출금'은 '제조사 관리'의
-      //   '출금 처리' 탭으로 이동 — 중복 nav 항목 제거(딥링크 라우트는 각 컨테이너 페이지의 탭으로 열림).
-      { path: '/admin/wholesale-tax',      label: '도매 세무/정산', icon: Wallet },
-      // 🗂️ 2026-06-17: '도매 무결성'(진단 전용)은 상단 nav에서 강등 — '통합 현황' 카드 링크로 접근(/admin/wholesale-integrity 라우트 유지).
-    ],
-  },
-  {
-    // 🏭 도매몰 — CS / 콘텐츠
-    title: '🛟 도매몰 · CS·콘텐츠',
-    section: 'wholesale',
-    domain: 'wholesale',
-    items: [
-      { path: '/admin/wholesale-claims',   label: '도매 클레임',   icon: AlertTriangle },
-      { path: '/admin/wholesale-proposals', label: '도매 제안/신고', icon: MessageSquare },
-      { path: '/admin/partnership',        label: '광고·제휴 문의', icon: Mail },
-      { path: '/admin/wholesale-board',    label: '도매 게시판',   icon: Megaphone },
-      { path: '/admin/wholesale-banners',  label: '도매 배너',     icon: Image },
-      { path: '/admin/wholesale-guide',    label: '도매몰 운영 가이드', icon: BookOpen },
     ],
   },
   {

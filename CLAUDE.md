@@ -33,7 +33,25 @@
 행위자·베네핏의 "지금 살아 있는 값"은 `docs/design/actor-benefit-map.md` 한 장(코드·`platform_settings` 실측이 진실).
 가드: `src/tests/unit/ai-team-operating-model.test.ts` + 주입 매니페스트 2건.
 
-## 🧱 서비스 철저 분리 — 도매몰(B2B) ↔ 유어딜 공구(소비자) ↔ **공구 서비스(운영자 SaaS)** (2026-06-26 대표 명령 · 2026-08-03 3번째 축 추가)
+## 🧱 서비스 철저 분리 — 유어딜 공구(소비자) ↔ **공구 서비스(운영자 SaaS)** ↔ 유어애즈 (2026-06-26 대표 명령 · 2026-10-11 도매몰 철거)
+
+> 🧨 **2026-10-11 — 도매몰(유통스타트)은 코드에서 철거됐다.** 대표 *"도매몰 잔해들은 아예 다 삭제해줘"*.
+> 169파일 삭제(라우트 마운트 · 화면 전부 · 어드민 도매 밴드 3개 · `features/supply` 의 도매 라우트 50).
+> **아래 표의 '도매몰' 열은 역사 기록이다** — 새 작업에 도매 축은 없다. 상세·경계: `docs/design/wholesale-teardown-plan.md`,
+> 실행 기록: `docs/design/urdeal-platform-model.md` §1.
+>
+> 🔴 **그래도 `features/supply/` 를 통째로 지우지 말 것** — 디렉터리 이름이 `supply` 라서 도매 전용으로 보이지만
+> **소비자 결제·환불·cron 이 그 안의 정산 엔진을 직접 부른다**(`supply-settlement`·`supply-visibility`·
+> `wholesale-deposit-core`·`supplier-withdrawal-core`). 거기에 **유어애즈가 쓰는 maker 풀**과 **공구 서비스의
+> 몰 인프라**(`wholesale-malls*` — 이름만 wholesale 이다)도 같이 산다. 가드가 양방향을 고정한다:
+> `src/tests/unit/wholesale-teardown-2026-10-11.test.ts`(21건 + 주입 8).
+>
+> 🩸 **이름으로 분류하지 말 것** — 2026-10-11 철거 때 `SellerRegisterSupplierPage.tsx` 를 "Supplier" 라는
+> 이름만 보고 지웠는데, 그건 **유어딜 사업자 유저 가입** 화면이었다(옛 라우트 `/seller/register/supplier`).
+> 주입 앵커 검사가 잡아 복원했다. 반대 방향도 같다 — `wholesale-malls.ts` 는 이름이 도매인데 **공구 서비스**다.
+>
+> ⚠️ **코드 밖에 남은 것**(대표 판단 대기): `role='wholesale'` 어드민 계정 **4개**(철거 후 빈 콘솔) ·
+> `utongstart.com` 도메인(두 Pages 프로젝트 어디에도 미연결 — 실측) · `ur-wholesale` Pages 프로젝트 · DB 테이블(회계 증빙으로 **존치**).
 
 > 🆕 **2026-08-03 — 축이 셋이 됐다.** 이 절은 오래 "두 서비스"였는데, 그 사이 **공구 서비스**
 > (매장 업주가 자기 몰을 열고 픽업 공구를 파는 운영자 SaaS)가 **도매몰 코드를 용도 변경해**
