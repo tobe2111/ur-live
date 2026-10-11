@@ -55,6 +55,11 @@ async function buildWorker() {
         '__INCLUDE_WHOLESALE__': INCLUDE_WHOLESALE ? 'true' : 'false',
         // 🥗 [docs-split] OpenAPI/Swagger 문서 트리셰이킹 스위치 (docs.routes.ts 의 __INCLUDE_DOCS__).
         '__INCLUDE_DOCS__': INCLUDE_DOCS ? 'true' : 'false',
+        // 📦 2026-10-11 [cron-split] 이 산출물(_worker.js)은 **Pages** 에만 올라간다 — Pages 는 cron 을 부르지 않는다
+        //   (cron 은 `wrangler deploy` 로 올리는 별도 워커가 wrangler.toml 로 직접 번들한다). 그래서 scheduled 를
+        //   no-op 으로 묶어 크론 전용 코드 그래프를 통째로 DCE — 워커 gzip 약 56KB↓(무료 1MB 압축 게이트 여유).
+        //   극성: index.ts 는 `=== true` 일 때만 no-op, 미정의는 실제 핸들러(cron 워커가 조용히 죽지 않게).
+        '__PAGES_BUNDLE__': 'true',
       },
       logLevel: 'info',
       metafile: true,

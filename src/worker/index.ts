@@ -325,7 +325,7 @@ function privateNoCache() {
 
 // 🏭 [wholesale-split 2026-07-16] 빌드타임 상수 — esbuild `define` 로 치환됨.
 //   build-worker.js: 기본 false(소비자 ur-live) → 도매 그래프 DCE 제외. WHOLESALE_BUNDLE=1 → true(도매 ur-wholesale).
-declare const __INCLUDE_WHOLESALE__: boolean;
+declare const __INCLUDE_WHOLESALE__: boolean; declare const __PAGES_BUNDLE__: boolean; // 📦 2026-10-11 Pages 빌드만 true(크론 그래프 DCE) — build-worker.js
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -2668,5 +2668,5 @@ export default {
     // @ts-expect-error — Hono app.fetch 시그니처로 위임 (env/ctx passthrough).
     return app.fetch(request, fenv, ctx);
   },
-  scheduled: __INCLUDE_WHOLESALE__ === true ? wholesaleCronNoop : handleCronScheduled, // 극성 주의: `=== true` 만 no-op(느슨하게 바꾸면 소비자 cron 사망). 배경: scheduled.ts
+  scheduled: (__INCLUDE_WHOLESALE__ === true || (typeof __PAGES_BUNDLE__ !== 'undefined' && __PAGES_BUNDLE__ === true)) ? wholesaleCronNoop : handleCronScheduled, // 극성 주의: `=== true` 만 no-op(느슨하면 소비자 cron 사망). Pages 는 cron 을 안 부른다 → 크론 그래프 ~56KB(gzip) DCE. 배경: scheduled.ts
 };

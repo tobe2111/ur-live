@@ -27,4 +27,20 @@ export default [
     test: T,
     why: '공유 카드에서 유달이가 사라진다(대표 확정 시안 ②).',
   },
+  {
+    name: '워커다이어트 — cron 워커에도 Pages no-op 플래그를 켠다(소비자 크론이 조용히 죽는다)',
+    file: 'wrangler.toml',
+    find: '__PAGES_BUNDLE__ = "false"',
+    replace: '__PAGES_BUNDLE__ = "true"',
+    test: 'src/tests/unit/wholesale-cron-gate.test.ts',
+    why: 'cron 워커가 no-op 핸들러로 배포돼 모든 예약 작업(정산 성숙·알림·정리)이 에러 없이 멈춘다.',
+  },
+  {
+    name: '워커다이어트 — 미정의 플래그를 no-op 으로(느슨한 극성)',
+    file: 'src/worker/index.ts',
+    find: "(typeof __PAGES_BUNDLE__ !== 'undefined' && __PAGES_BUNDLE__ === true)",
+    replace: "(typeof __PAGES_BUNDLE__ === 'undefined' || __PAGES_BUNDLE__ === true)",
+    test: 'src/tests/unit/wholesale-cron-gate.test.ts',
+    why: 'define 이 빠진 빌드에서 실제 핸들러 대신 no-op 이 걸린다.',
+  },
 ]

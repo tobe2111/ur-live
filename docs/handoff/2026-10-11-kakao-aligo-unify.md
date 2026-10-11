@@ -130,3 +130,17 @@
   `repair-schema/column-repairs.ts` 71KB). 측정 스크립트는 esbuild `metafile` 로 `bytesInOutput` 정렬하면 된다.
 - 가드: `udal-touchpoints-2026-10-09.test.tsx` +3건 · 주입 `scripts/mutations/worker-diet-og-udal-2026-10-11.mjs` 3건 빨간불 확인.
 - ⚠️ **E4 미확인**: 배포 후 `curl https://urdeal.kr/api/og/group-buy/2888 | grep -c 'data:image/png'` 가 1 이면 유달이가 카드에 들어간 것.
+
+### 📦 (2) 크론 그래프를 Pages 번들에서 제거 — 같은 PR #1702 (대표 "2번" = 다이어트 선택)
+- 발견: `_worker.js`(Pages)에 `scheduled: handleCronScheduled` 가 묶여 **크론 전용 코드 전체**가 실려 있었다. Pages 는 cron 을
+  부르지 않는다 — cron 은 `worker-deploy.yml`(`wrangler deploy`, wrangler.toml)로 올리는 **별도 워커**가 돌린다.
+- 처방: 빌드 상수 `__PAGES_BUNDLE__` — `build-worker.js` 만 `'true'`, wrangler.toml `[define]` 은 `"false"`.
+  index.ts 는 `typeof … !== 'undefined' && === true` 일 때만 no-op(미정의 = 실제 핸들러 — 소비자 크론이 조용히 죽지 않게).
+- 실측: Pages gzip 1,018,879 → **960,511B**(−58KB, 게이트까지 약 71KB 여유). cron 워커는 `wrangler deploy --dry-run`
+  산출물로 확인 — no-op 마커 0, `cron_hb:` 10곳, 크기 1,442,618 → 1,442,685(사실상 불변).
+- 🔎 **같은 측정이 보여 준 사실**: cron 워커는 gzip **1.44MB** 인데 매 배포 성공한다 → 계정 한도는 1MB 가 아니다.
+  대표 확인(2026-10-11 "지금 $5짜리 요금제 쓰고는 있어") = Workers Paid(압축 10MB). `main.yml` 의 1MB 게이트는 실제보다
+  10배 엄격하다 — 올릴지는 대표 판단 대기(올리면 이 다이어트 압박이 사라진다).
+- 다음 다이어트 후보(대표 판단 필요): index.ts 의 `[TEMP-TEST]` 도매 마운트 3개(`/api/admin/buyer-pool`·`maker-pool`·
+  `/api/buyer-ingest`, gzip ~25KB) — 주석상 "ur-wholesale 배포 시 제거 예정"이고 mount-wholesale.ts 에 정규 마운트가 이미 있다.
+  빼면 urdeal.kr 어드민의 해당 화면이 안 되고 utongstart.com 쪽으로 가야 한다.
