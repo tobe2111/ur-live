@@ -91,7 +91,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   const { t } = useTranslation()
   const params = useParams<{ sellerId: string }>()
   // 🔗 2026-09-19 (대표 확정 플로우 8번): 인플루언서의 **매장 링크**(`/s/{id}?ref=`)가 여기로 온다. 상세(`/pass/:id`)와
-  //   같은 7일 귀속을 심어, 이 매장의 어느 이용권을 사든 그 사람에게 간다. 본인 ref 는 `storeAffiliateRef` 가 거른다.
+  //   같은 24시간 귀속(2026-10-11, 마지막 링크 우선)을 심어, 이 매장의 어느 이용권을 사든 그 사람에게 간다. 본인 ref 는 `storeAffiliateRef` 가 거른다.
   const [publicSearch] = useSearchParams()
   useEffect(() => { storeAffiliateRef(publicSearch.get('aff') || publicSearch.get('ref')) }, [publicSearch])
   const rawParam = sellerIdOverride ?? params.sellerId

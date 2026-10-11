@@ -1168,8 +1168,8 @@ async function notifyCommissionWithdrawal(
     const maskedAccount = accountNumber.length >= 4 ? `****${accountNumber.slice(-4)}` : accountNumber
     const amountStr = amount.toLocaleString('ko-KR')
     const message = status === 'approved'
-      ? `[유어딜] 추천 commission ${amountStr}원이 ${bankName} ${maskedAccount} 계좌로 송금되었습니다. 입금 확인 후 영수증 확인 부탁드립니다.`
-      : `[유어딜] 추천 commission 출금 신청 ${amountStr}원이 거절되었습니다.\n사유: ${rejectionReason || '관리자 검토'}\n잔액은 원상 복원되어 다시 신청 가능합니다.`
+      ? `[유어딜] 추천 커미션 ${amountStr}원이 ${bankName} ${maskedAccount} 계좌로 송금되었습니다. 입금 확인 후 영수증 확인 부탁드립니다.`
+      : `[유어딜] 추천 커미션 출금 신청 ${amountStr}원이 거절되었습니다.\n사유: ${rejectionReason || '관리자 검토'}\n잔액은 원상 복원되어 다시 신청 가능합니다.`
     const templateCode = status === 'approved' ? 'commission_withdrawal_approved' : 'commission_withdrawal_rejected'
 
     const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk')

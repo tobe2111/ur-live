@@ -132,18 +132,17 @@ for (const file of files) {
   }
 }
 
-// ── R3: F2 이중 커미션 dedup 회귀 방지 ───────────────────────────────────────
-//   ledger.ts 의 사용시점 셰어는 결제확정 시 GMV 커미션과의 주문 단위 dedup([INV-CB-DEDUP] 마커
-//   블록)을 반드시 보유해야 함. 제거되면 같은 주문에 두 시스템이 이중 적립 — 2026-07-04 F2 실감사 확정.
-//   🌇 2026-09-04: 셰어가 **둘 → 하나**로 줄었다(`recordAgencyCommissionShare` 삭제 — 에이전시 일몰).
-//      그래서 기대 마커도 2 → 1 이다. 남은 하나는 `recordIntroductionCommissionShare`(사람 영입).
+// ── R3: 사용시점 셰어는 0개다 ────────────────────────────────────────────────
+//   종전 R3 는 사용시점 셰어의 확정-커미션 dedup([INV-CB-DEDUP] 마커)을 지켰다(2026-07-04 F2).
+//   🌇 2026-09-04 에이전시 셰어 삭제로 둘 → 하나, 🛑 2026-10-10 대표 *"마저 폐지해줘. 모두 다"* 로
+//   남은 하나(`recordIntroductionCommissionShare`)도 삭제 → **0**. 지킬 것은 "다시 생기지 않는다" 다 —
+//   되살아나면 dedup·만료·본인구매 가드를 처음부터 다시 세워야 하는데, 함수만 돌아오면 그게 조용히 빠진다.
 try {
   const ledgerSrc = readFileSync('src/worker/utils/ledger.ts', 'utf8')
-  const dedupCount = (ledgerSrc.match(/\[INV-CB-DEDUP\]/g) || []).length
-  if (dedupCount < 1) {
-    violations.push(
-      `   - [R3] src/worker/utils/ledger.ts — [INV-CB-DEDUP] 마커 ${dedupCount}개(<1) — 사용시점 셰어의 확정-커미션 dedup 이 제거됨(이중 적립 회귀)`,
-    )
+  for (const fn of ['recordIntroductionCommissionShare', 'recordAgencyCommissionShare']) {
+    if (new RegExp(`export\\s+async\\s+function\\s+${fn}\\b`).test(ledgerSrc)) {
+      violations.push(`   - [R3] src/worker/utils/ledger.ts — 폐지된 사용시점 셰어 \`${fn}\` 가 되살아났다(대표 결정 2026-09-04·10-10)`)
+    }
   }
 } catch {
   violations.push('   - [R3] src/worker/utils/ledger.ts 읽기 실패')

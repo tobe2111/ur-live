@@ -142,11 +142,11 @@ describe('⏳ ④ 영입자 시점 처리', () => {
     expect(r).toMatch(/newId != null\s*\n?\s*\? `, introduced_at/)
   })
 
-  it('이용권 사용 레일이 결제 레일과 같은 만료 규칙을 쓴다', () => {
-    // 종전엔 referral_bonus_until 만 봤고 NULL 이면 **무기한**이었다 — 같은 영입 관계인데
-    // 레일마다 기간이 달랐다.
+  it('이용권 사용 레일(영입 셰어)은 폐지됐다 — 되살아나면 만료 규칙부터 다시 세워야 한다', () => {
+    // 2026-09-07 엔 이 자리가 "사용 레일도 결제 레일과 같은 만료 규칙" 을 지켰다. 2026-10-10 대표
+    // *"마저 폐지해줘. 모두 다"* 로 레일 자체가 사라져, 지킬 것이 "다시 생기지 않는다" 로 바뀌었다.
     const l = strip(read(LEDGER))
-    expect(l, `${LEDGER}: 사용 레일이 다시 무기한이 된다`).toMatch(/isStoreIntroExpired\(seller, introMonths\)/)
+    expect(l, `${LEDGER}: 영입 셰어 함수가 되살아났다`).not.toMatch(/export async function recordIntroductionCommissionShare/)
   })
 })
 

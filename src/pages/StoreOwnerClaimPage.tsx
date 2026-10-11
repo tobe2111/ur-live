@@ -25,9 +25,12 @@ import { isLoggedInSync } from '@/utils/auth'
 import { formatKSTDate } from '@/utils/date'
 import { ChevronLeft, Search } from 'lucide-react'
 
+import BrokerTermsConsent, { type BrokerTerms } from './store-claim/BrokerTermsConsent'
+
 interface FoundStore {
   seller_id: number; business_name: string | null; name: string | null
   address: string | null; status: string | null; has_owner: boolean; is_mine: boolean
+  broker_terms?: BrokerTerms | null // 🤝 중개 매장이면 대행사가 정한 조건(2026-10-10)
 }
 interface MyClaim {
   id: number; seller_id: number; status: string; decision_reason: string | null
@@ -74,6 +77,9 @@ export default function StoreOwnerClaimPage() {
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [mine, setMine] = useState<MyClaim[]>([])
+  // 🤝 중개 조건 — 조회로 알거나(코드·번호), 매장이 미리 정해진 경로면 신청 때 서버가 돌려준다(409).
+  const [serverTerms, setServerTerms] = useState<BrokerTerms | null>(null)
+  const [termsAgreed, setTermsAgreed] = useState(false)
 
   useEffect(() => {
     // 🔑 `?code=` 를 잃지 않는다 — 로그인 왕복 뒤에도 코드가 남아 있어야 자동으로 찾는다.
@@ -134,6 +140,7 @@ export default function StoreOwnerClaimPage() {
   async function submit() {
     if (!picked) { toast.error('신청할 매장을 선택해주세요'); return }
     if (!certUrl) { toast.error('사업자등록증 사본을 첨부해주세요'); return }
+    if (brokerTerms && !termsAgreed) { toast.error('정산 조건을 확인하고 동의해주세요'); return }
     setBusy(true)
     try {
       const res = await api.post('/api/seller/store-claims', {
@@ -142,6 +149,7 @@ export default function StoreOwnerClaimPage() {
         business_cert_url: certUrl,
         contact_phone: phone || undefined,
         note: note || undefined,
+        ...(brokerTerms ? { broker_terms_agreed: termsAgreed, broker_terms_seen: brokerTerms } : {}),
       })
       if (res.data?.success) {
         toast.success('신청이 접수됐어요 — 확인 후 알려드릴게요')
@@ -149,12 +157,17 @@ export default function StoreOwnerClaimPage() {
         await loadMine()
       } else toast.error(res.data?.error || '신청에 실패했어요')
     } catch (e: unknown) {
-      const ax = e as { response?: { data?: { error?: string } } }
+      const ax = e as { response?: { data?: { error?: string; code?: string; broker_terms?: BrokerTerms } } }
+      // 🤝 조건을 아직 못 봤거나 그 사이 바뀌었다 — 새 조건을 보여 주고 다시 동의를 받는다.
+      if (ax.response?.data?.code === 'BROKER_TERMS_REQUIRED' && ax.response.data.broker_terms) {
+        setServerTerms(ax.response.data.broker_terms); setTermsAgreed(false)
+      }
       toast.error(ax.response?.data?.error || '신청에 실패했어요')
     } finally { setBusy(false) }
   }
 
   const pickedStore = stores?.find((s) => s.seller_id === picked) || null
+  const brokerTerms: BrokerTerms | null = serverTerms || pickedStore?.broker_terms || null
 
   return (
     /* 🕳️ `force-light-theme` — 전역 `.dark input`(특이도 0,5,1)이 `text-gray-900`(0,1,0)을 이겨
@@ -293,10 +306,12 @@ export default function StoreOwnerClaimPage() {
               <p className="text-[15px] font-semibold text-gray-900">
                 {pickedStore?.business_name || pickedStore?.name || `매장 #${picked}`}
               </p>
-              <button onClick={() => { setPicked(null); setCertUrl('') }} className="text-[12px] text-gray-500">
+              <button onClick={() => { setPicked(null); setCertUrl(''); setServerTerms(null); setTermsAgreed(false) }} className="text-[12px] text-gray-500">
                 다시 찾기
               </button>
             </div>
+
+            {brokerTerms && <BrokerTermsConsent terms={brokerTerms} agreed={termsAgreed} onChange={setTermsAgreed} />}
 
             <BusinessCertUpload value={certUrl} onChange={setCertUrl} required />
 
@@ -313,7 +328,7 @@ export default function StoreOwnerClaimPage() {
                 className="w-full border border-gray-200 rounded-xl px-3 py-2 text-[15px] text-gray-900" />
             </div>
 
-            <button onClick={() => void submit()} disabled={busy || !certUrl}
+            <button onClick={() => void submit()} disabled={busy || !certUrl || (!!brokerTerms && !termsAgreed)}
               className="w-full py-3 rounded-xl bg-brand hover:bg-brand-dark text-white text-[15px] font-bold disabled:opacity-40 transition">
               {busy ? '접수 중…' : '소유권 신청하기'}
             </button>

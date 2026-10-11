@@ -19,6 +19,7 @@
  */
 
 // ── ① 환불 / 만료 / 분쟁 / 출금 ────────────────────────────────
+
 export const REFUND_POLICY = {
   /** 예약 (appointment) 노쇼 자동 알림 — 시작 시간 후 N분 */
   APPOINTMENT_NOSHOW_ALERT_MIN: 30,
@@ -194,7 +195,9 @@ export const CURATOR_DEFAULTS = {
   BIO_MAX_LEN: 160,
   /** 핀 stats 기본 조회 기간 (일) */
   STATS_DEFAULT_RANGE_DAYS: 7,
-  /** ref 쿠키 TTL (시간) — 기존 affiliate_ref 24h 와 동일. */
+  /** 소개 링크 유효기간(시간) — `utils/affiliate-ref-store.ts` 가 이 값 하나를 쓴다. 2026-10-11 대표 "24시간으로 해줘. 7일말고". */
+  // ⚠️ `utils/affiliate-ref-store.ts` 의 REFERRAL_TTL_HOURS 와 같은 값이어야 한다(시험이 대조). import 하지 않는
+  //    이유: 엔트리가 이 파일을 끌면 app-constants 청크가 첫 페인트에 실린다(2026-10-11).
   REF_COOKIE_TTL_HOURS: 24,
 } as const
 

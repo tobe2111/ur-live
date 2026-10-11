@@ -152,7 +152,8 @@ prospectsRoutes.post('/:id/invite-link', requireAuth(), async (c) => {
   const pt = await prospectToken(c.env.JWT_SECRET, id)
   // 🌇 에이전시 초대 코드(`?agency=`) 동봉 삭제 — 받아 줄 가입 폼 입력칸도 함께 없어졌다.
   const qs = new URLSearchParams({ prospect: String(id), pt })
-  return c.json({ success: true, path: `/seller/register/supplier?${qs.toString()}` })
+  // 🚪 2026-10-10: 가입 문은 `/store/new` 하나다 — 귀속은 그 문이 담당자 번호로 옛 문과 똑같이 한다.
+  return c.json({ success: true, path: `/store/new?${qs.toString()}` })
 })
 
 // GET /prefill/:id?pt= — 가입 관문 프리필(공개 — 토큰 소지 = 링크 수신 사장님).

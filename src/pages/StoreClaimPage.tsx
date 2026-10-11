@@ -34,7 +34,9 @@
  * 레이아웃: 폰은 [설명 → 등록 카드] 한 줄, PC(lg+)는 [좌 설명 / 우 등록 카드] 2단.
  * 설계·대안 A/C 와 기각 사유: `docs/design/store-new-onboarding-2026-09.md`.
  */
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import api from '@/lib/api'
+import BrokerHandoffPanel from './store-claim/BrokerHandoffPanel'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { MY_PATH } from '@/lib/seller-return'
 import { X } from 'lucide-react'
@@ -64,7 +66,7 @@ const BENEFITS = [
  */
 const FACTS = [
   { value: '0원', label: '등록 비용' },
-  { value: '사진 1장', label: '사업자등록증' },
+  { value: '선택', label: '사업자등록증' },
   { value: '4단계', label: '지금 시작하면 끝' },
 ] as const
 
@@ -77,9 +79,26 @@ export default function StoreClaimPage() {
   useEffect(() => { captureStoreReferrer(params.get('ref')) }, [params])
 
   // 등록은 로그인이 필요하다. 401 을 만나게 두지 말고 로그인으로 보내되 돌아올 곳을 지정한다.
+  // 🔁 2026-10-10: 쿼리까지 싣는다 — 영입자 초대(`?prospect=&pt=`)가 로그인 왕복에서 사라지면 준비해 둔 정보를 잃는다.
   useEffect(() => {
-    if (!isLoggedInSync()) navigate(`/login?returnUrl=${encodeURIComponent('/store/new')}`, { replace: true })
+    if (!isLoggedInSync()) navigate(`/login?returnUrl=${encodeURIComponent(`/store/new${window.location.search || ''}`)}`, { replace: true })
   }, [navigate])
+
+  /**
+   * 📋 2026-10-10 (대표 "1,2,5번은 해주고" — 가입 문 하나): 영입자 초대 링크가 옛 가입 폼 대신 **여기로** 온다.
+   * 준비해 둔 가게 이름·담당자 번호를 보여 주고 번호를 채운다. 귀속은 서버가 그 번호로 옛 문과 똑같이 한다
+   * (`store-signup-extras.ts`). 조회가 실패해도 등록은 막지 않는다.
+   */
+  const [prospect, setProspect] = useState<{ store_name: string | null; contact_phone: string | null } | null>(null)
+  useEffect(() => {
+    const id = params.get('prospect'); const pt = params.get('pt')
+    if (!id || !pt || !isLoggedInSync()) return
+    api.get(`/api/prospects/prefill/${encodeURIComponent(id)}?pt=${encodeURIComponent(pt)}`)
+      .then((r) => { if (r.data?.success && !r.data.data?.converted) setProspect(r.data.data) })
+      .catch(() => { /* 프리필 실패 — 빈 칸으로 시작 */ })
+  }, [params])
+  // 🔑 중개 등록 완료 — 승계 코드를 **고정**으로 보여 준다(종전엔 토스트 한 번이라 대행사가 놓쳤다).
+  const [handoff, setHandoff] = useState<string | null>(null)
 
   /**
    * ✕ 로 나갈 곳. `navigate(-1)` 하나로는 부족하다 — 이 페이지는 푸터·소개 페이지·카톡으로 받은
@@ -156,6 +175,12 @@ export default function StoreClaimPage() {
 
           {/* 오른쪽(PC) · 아래(폰) — 등록 카드 그대로 */}
           <div className="mt-4 lg:mt-0 lg:self-start">
+            {prospect?.store_name && !handoff && (
+              <p className="mb-3 rounded-[var(--dash-radius,16px)] bg-brand-tint px-4 py-3 text-[13px] leading-relaxed text-gray-700">
+                <b className="text-gray-900">{prospect.store_name}</b> — 영입 담당자가 미리 준비한 매장이에요. 지도에서 이 가게를 찾아 진행해 주세요.
+              </p>
+            )}
+            {handoff ? <BrokerHandoffPanel code={handoff} onDone={() => navigate(MY_PATH, { replace: true })} /> : (
             <StoreRegisterModal
               /**
                * 🖥️ `variant="page"` — 검은 오버레이 없이 이 칸의 본문으로 렌더한다(2026-09-23 안 B).
@@ -167,6 +192,7 @@ export default function StoreClaimPage() {
               variant="page"
               dismissOnBackdrop={false}
               onClose={goBack}
+              initialManagerPhone={prospect?.contact_phone || undefined}
               onDone={async (sellerId, opts) => {
                 // `existing` = 새로 만든 게 아니라 **원래 갖고 있던 매장**으로 들어간 경우(중복 409 분기).
                 //   그때 "등록됐어요" 라고 말하면 사장님에게 거짓말이고, 좌석도 이미 잡혀 있다.
@@ -174,13 +200,15 @@ export default function StoreClaimPage() {
                   await enterStoreSeat(sellerId)
                   toast.success('매장이 등록됐어요 — 이제 이용권을 올릴 수 있어요')
                 }
+                if (opts?.ownerClaimCode) { setHandoff(opts.ownerClaimCode); return } // 중개 — 코드를 먼저 손에 쥐여 준다
                 // 🏠 2026-09-26: 방금 얻은 가게를 **마이의 내 가게**에서 본다(대시보드 학습 없이).
                 navigate(MY_PATH, { replace: true })
               }}
             />
+            )}
             {/* 폰에서는 위 FACTS 줄 대신 이 한 줄이 같은 말을 한다(세 숫자를 다 펴면 카드가 밀린다). */}
             <p className="lg:hidden mt-2 text-center text-[12px] text-gray-400">
-              등록 0원, 사업자등록증 사진 1장이면 됩니다.
+              등록 0원, 사업자등록증은 나중에 올려도 됩니다.
             </p>
           </div>
         </div>

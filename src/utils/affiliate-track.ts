@@ -6,30 +6,24 @@
  */
 import api from '@/lib/api'
 import { getAnonId } from '@/utils/anon-id'
+import { readAffiliateRef, writeAffiliateRef } from '@/utils/affiliate-ref-store'
 
-const KEY = 'affiliate_ref'
-const EXP_KEY = 'affiliate_ref_expires'
 // 📡 유입 클릭 이벤트 클라 dedup — 같은 ref 재발사 억제(서버도 INSERT OR IGNORE 로 이중 방어).
 const INFLOW_SENT_KEY = 'ur_inflow_sent_v1'
 // 🧹 2026-10-07 유입 귀속 dedup — **묶은 ref** 를 적어 둔다(같은 유입을 매 진입마다 다시 보내지 않게).
 //   값이 `INFLOW_SENT_KEY` 와 같을 때만 '이미 묶었다' 로 본다 — 영구 플래그면 두 번째 유입이 영영 안 묶인다.
 const INFLOW_BOUND_KEY = 'ur_inflow_bound_v1'
-// 🧭 2026-07-12 (WP-C — 블로거 영입 트랙): 어트리뷰션 윈도우 24h→7d. 네이버 블로그는 롱테일
-//   유입(글 발행 뒤 며칠~몇 주 후 클릭·구매)이라 24h 로는 인플 귀속이 유실됨. ProductDetailPage
-//   와 동일 상수(4곳 동기). 비-머니(귀속 타이밍만) — 서버 /track 검증·중복차단 불변.
-const REF_TTL_MS = 7 * 24 * 60 * 60 * 1000
-const REF_TTL_SEC = 7 * 24 * 60 * 60
+// ⏳ 유효기간·저장 형식은 `affiliate-ref-store.ts` 가 SSOT 다(2026-10-11 대표 "24시간 · 마지막 링크 우선").
+//   🩸 2026-07-12 에 블로그 롱테일 때문에 24h→7d 로 늘렸던 것을 대표가 24h 로 되돌렸다.
 
-/** ?aff=/?ref= 값 저장 (7d) — ProductDetailPage 와 동일 포맷. */
+/** ?aff=/?ref= 값 저장 (24시간, 마지막 링크 우선) — 형식은 affiliate-ref-store SSOT. */
 export function storeAffiliateRef(ref: string | null | undefined): void {
   if (!ref || !/^\d{1,12}$/.test(ref)) return
   try {
     // 본인 추천 자기적립 방지 — 내 user_id 면 저장 안 함
     const myId = localStorage.getItem('user_id')
     if (myId && myId === ref) return
-    localStorage.setItem(KEY, ref)
-    localStorage.setItem(EXP_KEY, String(Date.now() + REF_TTL_MS))
-    document.cookie = `affiliate_ref=${ref}; path=/; max-age=${REF_TTL_SEC}; SameSite=Lax`
+    writeAffiliateRef(ref) // 마지막 링크 우선 — 덮어쓴다
     // 📡 2026-07-13 (데이터 감사 2단계): 유입 클릭 이벤트 서버 발사 — 완결고리 '유입' 노드.
     //   전환 안 해도 인플루언서→방문자 유입이 서버에 보존(구매 전 유실 0). 같은 ref 는 1회만(dedup).
     fireInflowClick(ref)
@@ -66,14 +60,12 @@ function campaignFromUrl(): string | undefined {
  * ⚠️ 이 함수는 **화면을 가릴 때만** 쓴다. 저장된 ref(구매 귀속)는 건드리지 않는다 —
  *   B 가 사면 그 매출은 여전히 A 에게 귀속돼야 한다(그게 A 가 공유한 이유다).
  *
- * 유효기간(7일)이 지난 값은 '남의 추천'으로 안 본다 — 저장 로직과 같은 창을 쓴다.
+ * 유효기간(24시간)이 지난 값은 '남의 추천'으로 안 본다 — 저장 로직과 같은 창을 쓴다.
  */
 export function arrivedViaSomeoneElsesRef(): boolean {
   try {
-    const ref = localStorage.getItem(KEY)
+    const ref = readAffiliateRef()?.ref // 지난 값(expires 24시간)은 null — 읽기만 한다
     if (!ref) return false
-    const exp = parseInt(localStorage.getItem(EXP_KEY) || '0', 10)
-    if (!Number.isFinite(exp) || Date.now() > exp) return false
     // 본인 ref 는 애초에 저장되지 않지만(storeAffiliateRef), 로그인 전환 등으로 남을 수 있어 한 번 더 본다.
     return localStorage.getItem('user_id') !== ref
   } catch {
@@ -149,9 +141,8 @@ export function bindInflowClicksIfLoggedIn(loggedIn: boolean): void {
 export function fireAffiliateTrack(orderId: number | null | undefined, productId: number, productName?: string): void {
   try {
     if (!orderId || !Number.isFinite(orderId)) return
-    const ref = localStorage.getItem(KEY)
-    const exp = Number(localStorage.getItem(EXP_KEY) || 0)
-    if (!ref || !exp || Date.now() > exp) return
+    const ref = readAffiliateRef()?.ref // 24시간 지난 값은 null
+    if (!ref) return
     const myId = localStorage.getItem('user_id')
     if (myId && myId === ref) return
     void api.post('/api/affiliate/track', {

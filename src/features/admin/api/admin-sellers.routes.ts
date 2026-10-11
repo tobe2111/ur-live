@@ -721,7 +721,7 @@ adminSellersRoutes.post('/sellers/:id/notify-magic-link', cors(), async (c) => {
     }
     const statsUrl = `https://urdeal.kr/store/stats/${product.id}?t=${token}`;
     await sendStoreOwnerAlimtalk(c.env, product.restaurant_phone, {
-      restaurantName: product.restaurant_name || '사장님',
+      restaurantName: product.restaurant_name || '매장',
       productName: product.name,
       statsUrl,
       categoryLabel: getVoucherShortLabel(product.category),
