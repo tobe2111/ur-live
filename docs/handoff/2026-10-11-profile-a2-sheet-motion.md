@@ -100,3 +100,50 @@ PC 에 slide-up 이 걸리면 다이얼로그가 **오른쪽 아래로 튄다**(
    죽는다(이번에 `udal-mascot-2026-10-07` 가 그렇게 빨개졌다 — 코드 문제가 아니다).
    고치려면 존재하는 파일만 거르면 되지만, `src/tests/helpers/` 를 건드리면 주입 검증이
    **전수(82분)** 로 떨어지므로 다른 작업과 묶어서 할 것.
+
+## 7) 🩸 배포 판정에서 값을 치르고 배운 것 (2026-10-11 밤)
+
+**머지는 됐는데 라이브에 2시간 20분 동안 안 올라갔다.** 원인은 이 PR 이 아니라 **워커 번들 크기
+게이트**였다 — `#1695`(에이전시 1단계)가 압축 1,027,172B → **1,033,049B** 로 키워 `main.yml` 의
+`WORKER_GZ -lt 1032000` 을 넘겼고, 그 뒤 머지 **6건이 전부 배포 실패**했다(내 것 포함). 이 PR 자신이
+워커에 더한 양은 **0B** 다(순수 클라이언트 변경).
+
+🔑 **다음 세션이 같은 15분을 버리지 않게 — 라이브 반영이 안 됐으면 `열린 PR 을 먼저 봐라.`**
+나는 그걸 안 하고 처음부터 다시 진단했다. 실제로는 **다른 세션이 이미 `#1702`(워커 다이어트 +
+게이트 7MB)를 올려 둔 상태**였고, 대표가 *"다른 세션에서 문제 해결했을텐데?"* 라고 바로잡아 줬다.
+```
+gh/curl: /repos/tobe2111/ur-live/pulls?state=open&sort=updated   ← 진단 **전에** 이것부터
+```
+
+🔴 **그리고 워크플로 주석을 사실로 믿지 마라.** `main.yml` 이 *"Free 1MB · 이것이 마지막 상향 ·
+Paid 전환은 대표 결정"* 이라고 적어 둬서 나는 **이미 끝난 결정을 대표에게 다시 물었다**. 실제로는
+계정이 이미 **Workers Paid($5)** 였고(압축 실한도 10MB), 그 주석이 두 달 낡아 있었던 것이다.
+같은 주석이 지목한 다이어트 후보(*"가이드/블로그 시드 산문 외부화"*)도 **2026-08-19 에 이미
+정적 자산으로 빠져** 번들에 **0KB** 였다(실측). ⇒ 플랜·한도 같은 *환경 사실*은 주석이 아니라
+실측으로 확인하고, 못 재면 **"금지돼 있다"가 아니라 "못 쟀다"** 고 말할 것.
+
+📏 **그 과정에서 실측한 것(다음에 또 쓸 값)**
+- **단일 파일 워커 번들에서 동적 `import()` 는 아무것도 안 줄인다** — esbuild 가 `outfile` 하나로
+  인라인한다. `demo-review-generator` 정적 import 3곳을 전부 끊어 봤더니 **28B** 줄었다.
+  실제로 통하는 것은 `seed-assets.ts` 식 **정적 자산 외부화**(`env.ASSETS.fetch`)뿐이다.
+- 번들 상위(입력 바이트): `admin-products.routes` 85KB · `repair-schema/column-repairs` 69KB ·
+  `demo-review-generator` 55KB · `zod` 49KB · `repair-schema/aux-tables` 49KB.
+  분석기: `node out/analyze-worker.cjs`(스크래치 — `out/` 은 추적 안 함).
+- ⚠️ **커밋별 번들 비교는 `git checkout` 뒤 반드시 다시 빌드할 것.** 내 첫 측정이 *브랜치 작업트리*
+  기준이라 `#1695` 의 증가분을 못 보고 "내 커밋도 1,027KB" 로 오판할 뻔했다.
+
+## 8) ✅ E3 판정 결과 (배포 후 실측, 2026-10-11 밤)
+
+| 확인 | 결과 |
+|---|---|
+| 라이브 CSS | `index-D20kLe88` → **`index-Dc1wQc5Q`** |
+| `.ur-sheet-veil` | `animation:ur-overlay-in .18s` (150923) |
+| `.ur-sheet-in` | `animation:ur-slide-up .24s cubic-bezier(.22,1,.36,1)` (150981) |
+| PC(1024px+) | `.ur-sheet-in{...ur-overlay-in}` (151077) |
+| 동작 줄이기 | `.ur-sheet-in,.ur-sheet-veil{animation:none}` (**151172 — 맨 뒤**) |
+| 시트 청크 API | `ProfileEditSheet-CScAZnLb.js` → 이름·소개·주소·사진 `/api/curator/me/profile` · 전화만 `/api/auth/profile` |
+| 비로그인 유어샵 | `/u/jiwon1228` 200 · `og:title` `정지원 유어샵 - 유어딜` · `x-ssr-status: CURATOR:edge-hit` |
+
+⚠️ **E4 는 여전히 미판정이다**(위 6-1). 다만 ⓑ는 **로그인 없이 판정할 수 있다** —
+이름을 바꾼 뒤 `curl https://urdeal.kr/u/jiwon1228 | grep 'og:title'` 이 바로 새 이름이면
+purge 가 도는 것이다(지금 값 `정지원`). 시크릿창을 열 필요가 없다.
