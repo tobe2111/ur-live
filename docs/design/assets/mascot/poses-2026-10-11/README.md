@@ -64,3 +64,9 @@ v4 원본(2026-10-18 만료): https://www.figma.com/api/mcp/asset/8cb52951-3242-
 ## v5 — 얼굴 좁게 · 짧은 털 · 감은 눈 대칭 (대표 *"한번 더 보정해서 만들어주고, 앞으로는 만들 때 이것을 철칙으로"*)
 원본(2026-10-18 만료): https://www.figma.com/api/mcp/asset/5f7db1af-08fa-472c-b6dd-d37ef6de3c1a.png · 미리보기 `sheet-v5-gpt.thumb.jpg`.
 검수: `python3 scripts/mascot/udal-qa.py <원본>` → 수치 판정 + 얼굴 대조판. 원본 첨부 후 판정.
+
+## v6 — 다음 포즈 6종 (대표 *"다음 포즈 3D시안으로 만들어줘"*, 생성 철칙 ①~③ 그대로)
+gpt-image-2.5 + 설정서·세부 실측·보정 블록을 문서에서 **그대로 추출**(손으로 옮겨 적지 않음) + 한 장 시트.
+포즈: ① 손 흔들기(인사·로그인) ② 선물 상자(선물 받기) ③ 돋보기(검색·빈 결과) ④ 지도 핀 가리키기(지도) ⑤ 쿠션 위에서 잠(밤·빈 화면) ⑥ 폰 들고 엄지(리뷰·완료).
+원본(1536×1024, 2026-10-18 만료): https://www.figma.com/api/mcp/asset/1cb06e82-d18b-438a-bbf8-7e711c128238.png · 미리보기 `sheet-v6-gpt.thumb.jpg`.
+검수: 원본 첨부 후 `python3 scripts/mascot/udal-qa.py <원본> --grid 3x2 --front 1` + 얼굴 대조판(철칙 ④).
