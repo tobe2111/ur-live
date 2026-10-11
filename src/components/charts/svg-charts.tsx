@@ -158,7 +158,7 @@ export function SvgLineChart<T extends object>({ data, xKey, series, height, yFo
       onTouchStart={(e) => pick(e.touches[0].clientX, e.currentTarget.getBoundingClientRect().left)}
       onMouseLeave={() => setHover(null)}>
       {width > 0 && (
-        <svg width={width} height={height - legendH} role="img" aria-label={series.map((s) => s.label).join(' · ')}>
+        <svg width={width} height={height - legendH} role="img" aria-label={series.map((s) => s.label).join(', ')}>
           <Axes f={f} ticks={ticks} top={top} yFormat={yFormat} every={labelEvery(n, f.innerW, Math.max(0, ...data.map((d) => (xFormat ? xFormat(str(d, xKey)) : str(d, xKey)).length)))}
             labels={data.map((d, i) => ({ x: xAt(i), text: xFormat ? xFormat(str(d, xKey)) : str(d, xKey) }))} />
           {series.map((s) => (

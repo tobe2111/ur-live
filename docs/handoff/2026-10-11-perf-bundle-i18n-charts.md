@@ -7,7 +7,7 @@
 1. 이 묶음의 draft PR(지정 브랜치 `claude/influencer-proposal-03yqmh`) CI 상태 확인 — #1698(에이전시 2단계, 머지 `a53e4f7b9`) 위에 새로 올렸다.
 2. 배포 뒤 E4: 콜드 상세 `Server-Timing` 에 `kv;` 없음 · `curl -sI https://urdeal.kr/map` → `X-SSR-Status: MAP:*` ·
    손님 화면이 `locale-ko-*` 만 받고 `locale-ko-dash-*` 는 안 받는지(브라우저 네트워크) · 어드민 매출 분석 차트가 그려지는지.
-3. 셀러 대시보드 제거 로드맵 `docs/design/seller-dashboard-removal-2026-10-11.md` 1단계(18개 화면 판정)부터.
+3. 셀러 대시보드 제거 로드맵 `docs/design/seller-dashboard-removal-2026-10-11.md` 2단계(에이전시 콘솔에서 매장 판매 화면을 시트로)부터 — 1단계 분류는 끝났고 "18개 미커버" 는 탭 형제를 빠뜨린 오집계였다(9개는 이미 마이 색인에 있다).
 
 ## 완료분 (실측)
 | 항목 | 효과 |
