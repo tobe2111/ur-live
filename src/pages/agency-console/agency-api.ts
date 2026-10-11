@@ -72,7 +72,7 @@ export function safeAgencyReturn(raw: string | null | undefined): string {
 
 export async function agencyRequest<T = Record<string, unknown>>(
   path: string,
-  init: { method?: 'GET' | 'POST' | 'PATCH'; body?: unknown; auth?: boolean } = {},
+  init: { method?: 'GET' | 'POST' | 'PATCH' | 'PUT'; body?: unknown; auth?: boolean } = {},
 ): Promise<AgencyResult<T>> {
   const headers: Record<string, string> = { Accept: 'application/json' }
   if (init.body !== undefined) headers['Content-Type'] = 'application/json'

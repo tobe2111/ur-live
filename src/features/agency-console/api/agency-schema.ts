@@ -102,10 +102,23 @@ export async function ensureAgencyConsoleTables(DB: D1Database): Promise<void> {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`),
     DB.prepare('CREATE INDEX IF NOT EXISTS idx_agency_store_activity_store ON agency_store_activity(seller_id, id)'),
+    // 👥 직원별 매장 배정 — 직원의 `store_scope` 가 'assigned' 일 때만 읽는다(관리자는 언제나 전체).
+    //   맡김이 끊겨도 행은 남지만 좌석은 맡김(active)을 함께 보므로 열리지 않는다.
+    DB.prepare(`CREATE TABLE IF NOT EXISTS agency_staff_stores (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      agency_id INTEGER NOT NULL,
+      staff_id INTEGER NOT NULL,
+      seller_id INTEGER NOT NULL,
+      created_by_staff_id INTEGER,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`),
+    DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_agency_staff_stores_pair ON agency_staff_stores(staff_id, seller_id)'),
   ])
   // 🏛️ 사업자 진위확인 결과(국세청 상태 문자열 · 'unverified'). 이미 만들어진 테이블에 붙이는 열이라 ALTER 로 —
   //   batch 안에 두면 '이미 있음' 오류가 위 생성문까지 되돌린다. 실패(=이미 있음)는 조용히 넘어간다.
   try { await DB.prepare('ALTER TABLE agency_accounts ADD COLUMN business_status TEXT').run() } catch { /* 이미 있음 */ }
+  // 👥 직원의 매장 범위 — NULL·'all' = 맡은 매장 전부(종전 동작) · 'assigned' = 배정한 매장만.
+  try { await DB.prepare('ALTER TABLE agency_staff ADD COLUMN store_scope TEXT').run() } catch { /* 이미 있음 */ }
   _ensured.add(DB)
 }
 
@@ -116,6 +129,19 @@ export type AgencyStatus = 'pending' | 'active' | 'suspended'
 export type StaffStatus = 'pending' | 'invited' | 'active' | 'removed'
 /** admin = 정산·직원·조건 관리 · staff = 매장 운영만 */
 export type StaffRole = 'admin' | 'staff'
+/** 직원이 들어갈 수 있는 매장 — all = 맡은 매장 전부 · assigned = 관리자가 배정한 매장만. 관리자는 언제나 all. */
+export type StaffStoreScope = 'all' | 'assigned'
+
+/**
+ * 🔑 직원이 그 매장에 들어갈 수 있는가 — SQL 조건 SSOT. 좌석 발급·매 요청 판정·목록이 **같은 문장**을 쓴다
+ *   (두 벌이면 목록엔 안 보이는데 좌석은 열리는 날이 온다).
+ *   `s` = agency_staff 별칭, `sellerExpr` = 매장 id 식.
+ */
+export function staffStoreAccessSql(s: string, sellerExpr: string): string {
+  return `(${s}.role = 'admin' OR COALESCE(${s}.store_scope, 'all') <> 'assigned' OR EXISTS (
+    SELECT 1 FROM agency_staff_stores x WHERE x.staff_id = ${s}.id AND x.seller_id = ${sellerExpr}))`
+}
+
 export type AgencyTokenKind = 'verify' | 'invite' | 'reset'
 /** pending = 사장님이 맡김 요청 · active = 에이전시가 수락 · declined = 에이전시가 거절 · ended = 누군가 끊음 */
 export type AgencyStoreLinkStatus = 'pending' | 'active' | 'declined' | 'ended'

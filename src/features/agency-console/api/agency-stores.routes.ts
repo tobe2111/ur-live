@@ -25,10 +25,11 @@ import { isSeatableStoreStatus } from '@/shared/seller-status'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { safeError } from '@/worker/utils/safe-error'
 import { invalidateStoreSeatCache } from '@/worker/utils/store-seat-guard'
-import { ensureAgencyConsoleTables, AGENCY_STORE_INVITE_DAYS } from './agency-schema'
+import { ensureAgencyConsoleTables, AGENCY_STORE_INVITE_DAYS, staffStoreAccessSql } from './agency-schema'
 import { requireAgencyStaff, newLinkToken, type AgencyStaffContext } from './agency-session'
 import { frontendBase } from './agency-auth.routes'
 import { registerAgencyStoreRegisterRoute } from './agency-store-register'
+import { registerStaffStoreRoutes } from './agency-staff-stores'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string; FRONTEND_URL?: string }
 type Vars = { agencyStaff: AgencyStaffContext }
@@ -53,11 +54,13 @@ agencyStoresRoutes.get('/stores', requireAgencyStaff(), async (c) => {
       `SELECT l.id, l.seller_id, l.status, l.created_at, l.accepted_at,
               s.business_name, s.name AS seller_name, s.username, s.status AS store_status
          FROM agency_store_links l
+         JOIN agency_staff me ON me.id = ? AND me.agency_id = l.agency_id
          LEFT JOIN sellers s ON s.id = l.seller_id
         WHERE l.agency_id = ? AND l.status IN ('pending','active')
+          AND ${staffStoreAccessSql('me', 'l.seller_id')}
         ORDER BY CASE l.status WHEN 'pending' THEN 0 ELSE 1 END, l.id DESC
         LIMIT 200`,
-    ).bind(me.agencyId).all<{
+    ).bind(me.staffId, me.agencyId).all<{
       id: number; seller_id: number; status: string; created_at: string; accepted_at: string | null
       business_name: string | null; seller_name: string | null; username: string | null; store_status: string | null
     }>()
@@ -171,6 +174,11 @@ agencyStoresRoutes.post('/stores/:sellerId/seat', cors(), requireAgencyStaff(),
         "SELECT id FROM agency_store_links WHERE seller_id = ? AND agency_id = ? AND status = 'active' LIMIT 1",
       ).bind(sellerId, me.agencyId).first<{ id: number }>()
       if (!link) return c.json({ success: false, error: '우리 에이전시가 맡은 매장이 아니에요.' }, 403)
+      // 👥 직원 배정 — 매 요청 판정(`liveAgencySeat`)과 같은 문장이다. 여기서 막아야 들어가자마자 401 로 튕기지 않는다.
+      const allowed = await DB.prepare(
+        `SELECT 1 AS ok FROM agency_staff s WHERE s.id = ? AND s.agency_id = ? AND ${staffStoreAccessSql('s', '?')} LIMIT 1`,
+      ).bind(me.staffId, me.agencyId, sellerId).first<{ ok: number }>()
+      if (!allowed) return c.json({ success: false, code: 'STORE_NOT_ASSIGNED', error: '관리자가 이 매장을 배정하지 않았어요.' }, 403)
       const seller = await DB.prepare(
         'SELECT id, email, name, status, seller_type, is_distributor, business_name, username FROM sellers WHERE id = ? LIMIT 1',
       ).bind(sellerId).first<{
@@ -270,3 +278,5 @@ agencyStoresRoutes.post('/store-invite/revoke', cors(), requireAgencyStaff({ adm
 
 // 🏢 매장 대신 등록(2026-10-11 대표 "모두 다 하자") — POST /stores/register. 본문은 형제 파일.
 registerAgencyStoreRegisterRoute(agencyStoresRoutes)
+// 👥 직원별 매장 배정 — GET/PUT /staff/:id/stores. 본문은 형제 파일.
+registerStaffStoreRoutes(agencyStoresRoutes)

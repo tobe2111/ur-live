@@ -5,6 +5,7 @@
 const TEST = 'src/tests/unit/agency-console-2026-10-11.test.ts'
 const SUNSET = 'src/tests/unit/agency-sunset-final.test.ts'
 const STORES = 'src/tests/unit/agency-stores-2026-10-11.test.ts'
+const STAFF_STORES = 'src/tests/unit/agency-staff-stores-2026-10-11.test.ts'
 const REGISTER = 'src/tests/unit/agency-store-register-2026-10-11.test.ts'
 
 export default [
@@ -279,5 +280,61 @@ export default [
     replace: "          registered_by_agency_staff_id: String(me.staffId),\n          broker_share_pct: '10',\n",
     test: REGISTER,
     why: '에이전시 몫은 3단계 머니 경로(staging 실결제 뒤)다 — 등록 길이 몰래 요율을 깔면 게이트를 켜는 순간 돈이 나간다.',
+  },
+  {
+    name: '👥 배정에서 뺀 직원이 열어 둔 매장 화면을 계속 쓴다 (매 요청 판정에서 배정 조건 제거)',
+    file: 'src/worker/utils/store-seat-guard.ts',
+    find: "          AND ${staffStoreAccessSql('s', 'l.seller_id')}\n",
+    replace: "",
+    test: STAFF_STORES,
+    why: '좌석 발급만 막으면 이미 들어가 있던 직원은 7일 동안 그 매장을 계속 운영한다 — 배정에서 빼는 의미가 없다.',
+  },
+  {
+    name: '👥 배정 안 된 매장도 좌석이 열린다 (발급 검사 제거)',
+    file: 'src/features/agency-console/api/agency-stores.routes.ts',
+    find: "      if (!allowed) return c.json({ success: false, code: 'STORE_NOT_ASSIGNED'",
+    replace: "      if (false && !allowed) return c.json({ success: false, code: 'STORE_NOT_ASSIGNED'",
+    test: STAFF_STORES,
+    why: '토큰을 받자마자 다음 요청이 401 로 튕긴다 — 직원은 왜 나가지는지 모른다.',
+  },
+  {
+    name: '👥 목록이 배정을 안 따른다 (안 배정된 매장이 [운영하기] 로 보인다)',
+    file: 'src/features/agency-console/api/agency-stores.routes.ts',
+    find: "          AND ${staffStoreAccessSql('me', 'l.seller_id')}\n",
+    replace: "",
+    test: STAFF_STORES,
+    why: '목록과 좌석이 갈리면 누를 수 있는데 안 들어가지는 버튼이 생긴다.',
+  },
+  {
+    name: '👥 관리자도 배정에 가려진다 (조건이 role 을 안 본다)',
+    file: 'src/features/agency-console/api/agency-schema.ts',
+    find: "return `(${s}.role = 'admin' OR COALESCE",
+    replace: "return `(COALESCE",
+    test: STAFF_STORES,
+    why: '관리자는 정산·직원·수락을 하는 사람이다 — 매장이 가려지면 일이 멈춘다.',
+  },
+  {
+    name: '🔐👥 남의 매장 id 를 배정할 수 있다 (운영 중 검사 제거)',
+    file: 'src/features/agency-console/api/agency-staff-stores.ts',
+    find: "        if (parsed.sellerIds.some((id) => !ok.has(id))) {",
+    replace: "        if (false && parsed.sellerIds.some((id) => !ok.has(id))) {",
+    test: STAFF_STORES,
+    why: '맡지 않은 매장을 미리 배정해 두면, 나중에 그 매장이 맡겨지는 순간 의도와 다르게 열린다.',
+  },
+  {
+    name: '👥 직원이 자기 배정을 바꾼다 (관리자 전용 해제)',
+    file: 'src/features/agency-console/api/agency-staff-stores.ts',
+    find: "  app.put('/staff/:id/stores', cors(), requireAgencyStaff({ adminOnly: true }),",
+    replace: "  app.put('/staff/:id/stores', cors(), requireAgencyStaff(),",
+    test: STAFF_STORES,
+    why: '가려진 직원이 스스로 전부로 풀면 배정이 아무것도 막지 못한다.',
+  },
+  {
+    name: '👥 배정을 바꿔도 좌석 캐시를 안 비운다',
+    file: 'src/features/agency-console/api/agency-staff-stores.ts',
+    find: "      invalidateStoreSeatCache(DB)\n",
+    replace: "",
+    test: STAFF_STORES,
+    why: '같은 isolate 에서 15초 동안 옛 판정이 산다 — 빼자마자 막힌다는 약속이 거짓이 된다.',
   },
 ]

@@ -3,6 +3,7 @@ import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/useToast'
 import { inputCls } from './AgencyAuthShell'
 import { agencyRequest } from './agency-api'
+import { AgencyStaffStoresEditor } from './AgencyStaffStoresEditor'
 
 export interface StaffRow {
   id: number
@@ -13,6 +14,8 @@ export interface StaffRow {
   status: 'active' | 'invited' | string
   lastLoginAt: string | null
   isMe: boolean
+  storeScope?: 'all' | 'assigned'
+  assignedCount?: number
 }
 
 /** 직원 목록 + (관리자만) 초대·재발송·내보내기. */
@@ -25,6 +28,7 @@ export function AgencyStaffPanel({ staff, canManage, onChanged }: {
   const [role, setRole] = useState<'staff' | 'admin'>('staff')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [editing, setEditing] = useState<number | null>(null)
 
   async function invite(e: React.FormEvent) {
     e.preventDefault()
@@ -68,7 +72,8 @@ export function AgencyStaffPanel({ staff, canManage, onChanged }: {
         ) : (
           <ul className="divide-y divide-rule">
             {staff.map((s) => (
-              <li key={s.id} className="flex min-h-[56px] items-center gap-3 px-6 py-3">
+              <li key={s.id}>
+              <div className="flex min-h-[56px] items-center gap-3 px-6 py-3">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[15px] font-semibold text-gray-900">
                     {s.name || s.email}
@@ -77,8 +82,15 @@ export function AgencyStaffPanel({ staff, canManage, onChanged }: {
                   <p className="truncate text-[13px] text-gray-500">
                     {s.name ? `${s.email} · ` : ''}{s.role === 'admin' ? (s.isOwner ? '대표 관리자' : '관리자') : '직원'}
                     {s.status === 'invited' && <span className="text-brand-text"> · 초대 대기</span>}
+                    {s.role === 'staff' && <span> · {s.storeScope === 'assigned' ? `매장 ${s.assignedCount ?? 0}곳` : '매장 전부'}</span>}
                   </p>
                 </div>
+                {canManage && s.role === 'staff' && (
+                  <button type="button" onClick={() => setEditing(editing === s.id ? null : s.id)} aria-expanded={editing === s.id}
+                    className="h-9 shrink-0 rounded-full px-3 text-[13px] font-semibold text-brand-text hover:bg-[#F8F7FC]">
+                    매장 배정
+                  </button>
+                )}
                 {canManage && s.status === 'invited' && (
                   <button type="button" onClick={() => resend(s)} className="h-9 shrink-0 rounded-full px-3 text-[13px] font-semibold text-brand-text hover:bg-[#F8F7FC]">
                     다시 보내기
@@ -89,6 +101,11 @@ export function AgencyStaffPanel({ staff, canManage, onChanged }: {
                     내보내기
                   </button>
                 )}
+              </div>
+              {editing === s.id && (
+                <AgencyStaffStoresEditor staffId={s.id} who={s.name || s.email}
+                  onClose={() => setEditing(null)} onSaved={onChanged} />
+              )}
               </li>
             ))}
           </ul>
@@ -112,7 +129,7 @@ export function AgencyStaffPanel({ staff, canManage, onChanged }: {
             </button>
           </div>
           {error && <p role="alert" className="mt-3 text-[13px] text-tone-bad">{error}</p>}
-          <p className="mt-3 text-[12px] text-gray-500">관리자는 정산·직원 관리까지, 직원은 매장 운영만 할 수 있어요.</p>
+          <p className="mt-3 text-[12px] text-gray-500">관리자는 정산·직원 관리까지, 직원은 매장 운영만 할 수 있어요. 직원이 들어갈 매장은 [매장 배정]에서 고를 수 있어요.</p>
         </form>
       ) : (
         <p className="mt-3 text-[13px] text-gray-500">직원 초대와 내보내기는 관리자만 할 수 있어요.</p>

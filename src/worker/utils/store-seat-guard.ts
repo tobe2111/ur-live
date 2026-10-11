@@ -48,7 +48,7 @@ import type { D1Database } from '@cloudflare/workers-types'
 import type { Context, Next } from 'hono'
 import { verify } from 'hono/jwt'
 import type { OperatorRole } from './seller-operators'
-import { ensureAgencyConsoleTables } from '../../features/agency-console/api/agency-schema'
+import { ensureAgencyConsoleTables, staffStoreAccessSql } from '../../features/agency-console/api/agency-schema'
 import { agencyActivityLabel, AGENCY_ACTIVITY_METHODS } from '../../shared/agency-activity-label'
 
 export const STORE_SEAT_REVOKED = 'STORE_SEAT_REVOKED'
@@ -187,7 +187,8 @@ export async function liveSeatRole(
 /**
  * 🏢 에이전시 좌석이 **지금** 살아 있는가 — 세 가지가 다 참이어야 한다:
  *   ① 매장이 그 에이전시에 맡긴 기록이 active ② 직원이 active 이고 토큰이 비밀번호 변경·내보내기 뒤 발급분
- *   ③ 에이전시가 active. 사장님이 끊거나·에이전시가 내려놓거나·직원을 내보내면 다음 요청부터 401.
+ *   ③ 에이전시가 active ④ 그 직원이 이 매장에 배정돼 있다(범위 'assigned' 인 직원만 — 관리자는 언제나 전체).
+ *   사장님이 끊거나·에이전시가 내려놓거나·직원을 내보내거나·배정에서 빼면 다음 요청부터 401.
  * 판단 근거를 못 얻음(D1 오류·테이블 없음) = undefined.
  */
 export async function liveAgencySeat(
@@ -205,6 +206,7 @@ export async function liveAgencySeat(
          JOIN agency_staff s    ON s.id = ? AND s.agency_id = l.agency_id AND s.status = 'active' AND s.tokens_valid_after <= ?
          JOIN agency_accounts a ON a.id = l.agency_id AND a.status = 'active'
         WHERE l.seller_id = ? AND l.agency_id = ? AND l.status = 'active'
+          AND ${staffStoreAccessSql('s', 'l.seller_id')}
         LIMIT 1`,
     ).bind(staffId, iatSec, sellerId, agencyId).first<{ ok: number }>()
     const v = !!row?.ok
