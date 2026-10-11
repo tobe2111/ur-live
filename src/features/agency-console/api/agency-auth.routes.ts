@@ -91,8 +91,23 @@ async function mail(env: Bindings, to: string, subject: string, title: string, b
   await sendSystemEmail(env, to, {
     subject,
     html: buildSystemEmailHtml({ title, greeting: '안녕하세요.', body, actionLabel, actionUrl }),
-  }).catch(swallow('agency-console:mail'))
+  }, { ignorePreference: true }).catch(swallow('agency-console:mail'))
 }
+
+/**
+ * 메일을 실제로 보낼 수 있는가. 에이전시 가입·초대·비밀번호 찾기는 **메일 링크가 유일한 문**이라,
+ * 발송 설정이 없으면 "메일 보냈어요" 라고 답하는 순간 거짓말이 된다(메일은 조용히 건너뛰어진다).
+ * 보낸 사람 주소(RESEND_FROM)가 없으면 Resend 기본 발신(onboarding@resend.dev)으로 가는데,
+ * 그 주소는 Resend 계정 주인에게만 배달된다 — 그래서 둘 다 있어야 준비됨으로 본다.
+ */
+export function agencyMailReady(env: { RESEND_API_KEY?: string; RESEND_FROM?: string }): boolean {
+  return !!env.RESEND_API_KEY && !!env.RESEND_FROM
+}
+export const AGENCY_MAIL_DOWN = {
+  success: false,
+  code: 'MAIL_NOT_CONFIGURED',
+  error: '지금은 메일을 보낼 수 없어서 진행할 수 없어요. 잠시 뒤 다시 시도해 주세요.',
+} as const
 
 async function loginPayload(env: Bindings, staffId: number) {
   const s = await env.DB.prepare(
@@ -131,6 +146,8 @@ agencyConsoleRoutes.post('/signup', cors(), rateLimit({ action: 'agency_signup',
     }
     const pw = validatePasswordComplexity(password)
     if (!pw.ok) return c.json({ success: false, error: pw.error }, 400)
+
+    if (!agencyMailReady(c.env)) return c.json(AGENCY_MAIL_DOWN, 503)
 
     const { DB } = c.env
     await ensureAgencyConsoleTables(DB)
@@ -258,6 +275,8 @@ agencyConsoleRoutes.post('/forgot-password', cors(), rateLimit({ action: 'agency
     const { email: raw } = await c.req.json<{ email?: string }>().catch(() => ({ email: '' }))
     const email = normalizeEmail(raw)
     if (!EMAIL_RE.test(email)) return c.json({ success: false, error: '이메일 형식을 확인해 주세요.' }, 400)
+    // 메일이 안 나가면 모두에게 같은 답 — 이메일이 있는지는 여전히 안 드러난다.
+    if (!agencyMailReady(c.env)) return c.json(AGENCY_MAIL_DOWN, 503)
     const { DB } = c.env
     await ensureAgencyConsoleTables(DB)
     const s = await DB.prepare("SELECT id FROM agency_staff WHERE LOWER(email) = ? AND status = 'active' LIMIT 1").bind(email).first<{ id: number }>()

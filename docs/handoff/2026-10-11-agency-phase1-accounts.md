@@ -27,3 +27,18 @@
 ## 남은 결정/대기
 - `docs/decisions/2026-10-11-broker-share-switch-off.md` (open) — 대표가 어드민에서 `broker_share_enabled` 를 끌지.
 - 2단계 착수 시점.
+
+## 🔴 2026-10-11 후속 — 라이브에 메일 발송 설정이 없다 (실측)
+
+- CF Pages `ur-live` production env 를 읽기 API 로 조회: **`RESEND_API_KEY` 없음 · `RESEND_FROM` 없음**
+  (`FRONTEND_URL` 은 있음). `/api/version` 의 `secrets.RESEND_API_KEY` 도 `false`.
+- 그 상태에서 공용 `sendSystemEmail` 은 **조용히 건너뛴다**(skipped) — 에이전시 가입은 "메일을 보냈어요" 를
+  띄우는데 인증 메일이 영영 안 와 **들어올 방법이 없다**(가입·초대·비밀번호 찾기의 유일한 문이 메일 링크).
+- 처방(이 PR): `agencyMailReady(env)` = 키와 보낸 사람 주소가 **둘 다** 있어야 준비됨. 아니면 가입·비번찾기·
+  초대·다시보내기 네 자리가 **503 `MAIL_NOT_CONFIGURED`** 로 멈추고 화면에 그 문장을 띄운다(가입은 계정 행을
+  만들기 전에 멈춘다). 그리고 에이전시 계정 메일은 `ignorePreference` 로 소비자 알림 수신 끔에 안 막힌다.
+- **대표 작업 필요**: Cloudflare → Workers & Pages → ur-live → Settings → Variables and Secrets 에
+  `RESEND_API_KEY`(Resend 키) · `RESEND_FROM`(예: `유어딜 <no-reply@urdeal.kr>` — Resend 에서 urdeal.kr 도메인
+  인증 필요) 등록. 이 둘이 생기기 전까지 에이전시 가입은 "지금은 메일을 보낼 수 없어요" 로 멈춘다.
+- ⚠️ 같은 원인으로 **사이트 전체의 시스템 메일**(주문·알림 메일 등)도 지금 안 나가고 있을 가능성이 높다 — 이번
+  범위 밖이라 손대지 않았다. 다음 세션이 `sendSystemEmail` 호출처(7곳)와 `email_failures` 를 확인할 것.

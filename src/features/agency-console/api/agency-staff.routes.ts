@@ -17,7 +17,7 @@ import { safeError } from '@/worker/utils/safe-error'
 import { swallow } from '@/worker/utils/swallow'
 import { ensureAgencyConsoleTables, AGENCY_NAME_MAX, STAFF_NAME_MAX, type StaffRole } from './agency-schema'
 import { requireAgencyStaff, issueAgencyStaffToken, type AgencyStaffContext } from './agency-session'
-import { consumeLinkToken, frontendBase, issueLinkToken, normalizeBusinessNumber, normalizeEmail } from './agency-auth.routes'
+import { AGENCY_MAIL_DOWN, agencyMailReady, consumeLinkToken, frontendBase, issueLinkToken, normalizeBusinessNumber, normalizeEmail } from './agency-auth.routes'
 
 type Bindings = {
   DB: D1Database; JWT_SECRET: string
@@ -60,7 +60,7 @@ async function sendInviteMail(env: Bindings, email: string, agencyName: string, 
       actionLabel: '합류하기',
       actionUrl: `${frontendBase(env)}/agency/invite?token=${raw}`,
     }),
-  }).catch(swallow('agency-console:invite-mail'))
+  }, { ignorePreference: true }).catch(swallow('agency-console:invite-mail'))
 }
 
 // ── 직원 초대 (관리자) ───────────────────────────────────────────────────────
@@ -72,6 +72,7 @@ agencyStaffRoutes.post('/staff/invite', cors(), requireAgencyStaff({ adminOnly: 
       const email = normalizeEmail(body.email)
       const role: StaffRole = body.role === 'admin' ? 'admin' : 'staff'
       if (!EMAIL_RE.test(email) || email.length > 254) return c.json({ success: false, error: '이메일 형식을 확인해 주세요.' }, 400)
+      if (!agencyMailReady(c.env)) return c.json(AGENCY_MAIL_DOWN, 503)
       const { DB } = c.env
       await ensureAgencyConsoleTables(DB)
       const found = await DB.prepare('SELECT id, agency_id, status FROM agency_staff WHERE LOWER(email) = ? LIMIT 1')
@@ -109,6 +110,7 @@ agencyStaffRoutes.post('/staff/:id/resend', cors(), requireAgencyStaff({ adminOn
     const me = c.get('agencyStaff')
     const id = Number(c.req.param('id'))
     if (!Number.isInteger(id) || id <= 0) return c.json({ success: false, error: '잘못된 요청이에요.' }, 400)
+    if (!agencyMailReady(c.env)) return c.json(AGENCY_MAIL_DOWN, 503)
     const s = await c.env.DB.prepare("SELECT id, email FROM agency_staff WHERE id = ? AND agency_id = ? AND status = 'invited' LIMIT 1")
       .bind(id, me.agencyId).first<{ id: number; email: string }>()
     if (!s) return c.json({ success: false, error: '초대 중인 직원이 아니에요.' }, 404)

@@ -70,4 +70,28 @@ export default [
     test: SUNSET,
     why: '재고정한 정규식이 -console 만 허용하고 옛 경로는 계속 막는지 확인한다.',
   },
+  {
+    name: '🏢 메일 발송 설정이 없어도 가입이 "메일 보냈어요" 라고 답한다',
+    file: 'src/features/agency-console/api/agency-auth.routes.ts',
+    find: "    if (!agencyMailReady(c.env)) return c.json(AGENCY_MAIL_DOWN, 503)\n\n    const { DB } = c.env",
+    replace: "    const { DB } = c.env",
+    test: TEST,
+    why: '2026-10-11 라이브에 RESEND_API_KEY·RESEND_FROM 이 없다 — 메일이 조용히 건너뛰어지고 가입이 막다른 길이 된다.',
+  },
+  {
+    name: '🏢 메일 준비 판정이 보낸 사람 주소를 안 본다',
+    file: 'src/features/agency-console/api/agency-auth.routes.ts',
+    find: 'return !!env.RESEND_API_KEY && !!env.RESEND_FROM',
+    replace: 'return !!env.RESEND_API_KEY',
+    test: TEST,
+    why: '보낸 사람 주소가 없으면 Resend 기본 발신으로 가고, 그 주소는 계정 주인에게만 배달된다.',
+  },
+  {
+    name: '🏢 에이전시 인증 메일이 알림 수신 끔에 막힌다',
+    file: 'src/lib/system-email.ts',
+    find: 'if (e?.DB && !opts.ignorePreference) {',
+    replace: 'if (e?.DB) {',
+    test: TEST,
+    why: '같은 이메일의 소비자가 메일 알림을 껐으면 인증·초대 메일이 영영 안 간다.',
+  },
 ]
