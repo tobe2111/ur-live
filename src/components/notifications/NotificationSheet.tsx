@@ -31,12 +31,12 @@ export default function NotificationSheet({ onClose }: { onClose: () => void }) 
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/40" style={{ zIndex: Z.SHEET_BACKDROP }} onClick={onClose} aria-hidden="true" />
+      <div className="fixed inset-0 bg-black/40 ur-sheet-veil" style={{ zIndex: Z.SHEET_BACKDROP }} onClick={onClose} aria-hidden="true" />
       <div
         role="dialog"
         aria-modal="true"
         aria-label="알림"
-        className="fixed inset-x-0 bottom-0 max-h-[80dvh] flex flex-col rounded-t-2xl bg-surface"
+        className="fixed inset-x-0 bottom-0 max-h-[80dvh] flex flex-col rounded-t-2xl bg-surface ur-sheet-in"
         style={{ zIndex: Z.SHEET_BODY }}
       >
         <NotificationPanelHeader onClose={onClose} />

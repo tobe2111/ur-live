@@ -4,7 +4,8 @@
  * 각 주입은 대표가 신고한 상태(알림이 페이지로 떠남 · 프로필이 이름·전화번호뿐)로 한 걸음씩 되돌린다.
  */
 const T = 'src/tests/unit/notification-sheet-and-profile-2026-10-11.test.tsx'
-const EDIT = 'src/pages/user-profile/AccountControlsSection.tsx'
+/* ✏️ 2026-10-11 재조준 — 프로필 편집이 모달에서 A-2 시트로 옮겨갔다. 결함은 그대로, 앵커만 옮긴다. */
+const EDIT = 'src/pages/user-profile/profile-edit/ProfileEditSheet.tsx'
 export default [
   {
     name: '🔔 마이의 벨이 다시 알림 페이지로 떠난다',
@@ -74,8 +75,8 @@ export default [
   {
     name: '✏️ 사진 변경이 사라진다 (다시 이름·전화번호뿐)',
     file: EDIT,
-    find: '                <input type="file" accept="image/*" className="hidden" disabled={uploading}',
-    replace: '                <input type="text" className="hidden" disabled={uploading}',
+    find: '<input type="file" accept="image/*" className="hidden" disabled={uploading}',
+    replace: '<input type="text" className="hidden" disabled={uploading}',
     test: T,
     why: '대표가 "기껏해야" 라고 한 그 상태로 되돌아간다.',
   },
@@ -90,15 +91,15 @@ export default [
   {
     name: '✏️ 사진 저장을 [저장] 버튼에 묶는다 (전화번호 검증에 막힌다)',
     file: EDIT,
-    find: '    if (file.size > 5 * 1024 * 1024) { toast.error(t(\'accountSettings.photoTooBig\', { defaultValue: \'5MB 이하만 올릴 수 있어요\' })); return }',
-    replace: "    if (!form.phone) { toast.error(t('accountSettings.phoneRequired')); return }",
+    find: '    if (file.size > 5 * 1024 * 1024) {',
+    replace: "    if (!me?.phone) { toast.error(t('accountSettings.phoneRequired')); return }\n    if (file.size > 5 * 1024 * 1024) {",
     test: T,
     why: '사진만 바꾸려는 사람이 전화번호 때문에 못 바꾼다.',
   },
   {
     name: '✏️ 업로드 실패를 **안 되돌린다**',
     file: EDIT,
-    find: '      setForm(f => ({ ...f, image: prev }))',
+    find: '      setImage(prev)',
     replace: '      /* 되돌리지 않음 */',
     test: T,
     why: '실패했는데 새 사진이 떠 있는 것으로 남는다.',
@@ -106,7 +107,7 @@ export default [
   {
     name: '✏️ 전화번호 형식 검증이 사라진다',
     file: EDIT,
-    find: "    if (!/^01[016789]-?\\d{3,4}-?\\d{4}$/.test(phone)) {",
+    find: "    if (!/^01[016789]-?\\d{3,4}-?\\d{4}$/.test(v)) {",
     replace: '    if (false) {',
     test: T,
     why: '교환권 MMS 가 그 번호로 간다 — "010" 한 글자로 통과하면 산 물건이 도착할 곳이 없다(2026-09-02 대표 지시).',

@@ -123,15 +123,19 @@ describe('④ 앱 정보는 페이지 맨 밑', () => {
 })
 
 describe('⑤ 프로필 수정 — 전화번호 필수', () => {
-  const SRC = read('src/pages/user-profile/AccountControlsSection.tsx')
-
   /**
-   * 교환권은 **MMS 로 그 번호에 발송**되고 이용권 안내도 알림톡으로 간다.
-   * 결제 순간의 `PHONE_REQUIRED` 는 계산대 앞에서야 알게 되는 벽이라, 프로필에서 미리 받는다.
+   * 🩸 **재조준 2026-10-11** — 프로필 편집이 `AccountControlsSection`(모달)에서 A-2 시트
+   * (`profile-edit/ProfileEditSheet.tsx`)로 옮겨갔다. 불변식 넷은 그대로이고 앵커만 옮긴다.
+   * ⚠️ 하나는 **모양이 바뀌었다**: 종전엔 라벨 뒤에 빨간 `*` 를 달았는데, 줄 목록에는 라벨 뒤에
+   *   별을 붙일 자리가 없다 ⇒ 같은 일(없다는 사실을 미리 또렷이 알림)을 **빈 값을 빨갛게 적는 것**
+   *   으로 한다(`EditRow` 의 `required`). 지키려는 것은 `*` 라는 글자가 아니라 그 경고다.
    */
+  const SRC = read('src/pages/user-profile/profile-edit/ProfileEditSheet.tsx')
+  const ROW = read('src/pages/user-profile/profile-edit/EditRow.tsx')
+
   it('빈 값을 막는다', () => {
     expect(SRC).toContain('accountSettings.phoneRequired')
-    expect(SRC).toMatch(/if \(!phone\) \{ toast\.error/)
+    expect(SRC).toMatch(/if \(!v\) \{ toast\.error\(t\('accountSettings\.phoneRequired'/)
   })
 
   it('형식까지 본다 — 빈칸만 막으면 "010" 한 글자로도 통과한다', () => {
@@ -139,9 +143,12 @@ describe('⑤ 프로필 수정 — 전화번호 필수', () => {
     expect(SRC).toMatch(/\^01\[016789\]/)
   })
 
-  it('라벨에 필수 표시(*)가 있다', () => {
+  it('없으면 **빨갛게** 말한다 (종전 라벨의 빨간 `*` 자리)', () => {
+    // 전화번호 줄이 required 로 표시돼 있고, EditRow 가 그때 빨간 글자를 쓴다 — 둘이 쌍이다.
     const i = SRC.indexOf('accountSettings.editPhone')
-    expect(SRC.slice(i, i + 200)).toContain('text-red-500')
+    expect(i, '전화번호 줄을 못 찾았다').toBeGreaterThan(-1)
+    expect(SRC.slice(i, i + 300)).toMatch(/\brequired\b/)
+    expect(ROW, 'required 인데 색이 회색이면 아무 경고도 아니다').toMatch(/required \?[^:]*text-red-500/)
   })
 
   it('6개 언어에 문구가 있다', () => {

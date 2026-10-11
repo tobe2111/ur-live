@@ -6,20 +6,19 @@
  *   - 앱 버전 + 캐시 초기화
  *   - 계정 탈퇴 링크
  *
- *   ProfileEditModal 은 외부에서 isOpen + onClose 제어 (UserProfilePage 의 "설정" 버튼이 트리거).
+ * 🧹 2026-10-11 — `ProfileEditModal`(이름·전화번호·사진)은 여기서 **제거**됐다. 대표 확정 A-2 로
+ *   사람에 관한 설정이 `user-profile/profile-edit/ProfileEditSheet.tsx` **한 곳**으로 모였다.
+ *   ⚠️ 되살리지 말 것 — 두 곳이 되면 그게 A-2 를 하게 만든 실제 결함(이름이 두 곳)이다.
+ *   그리고 옛 모달은 이름을 `PATCH /api/auth/profile` 로 보내 **공개 유어샵 캐시를 purge 하지
+ *   않았다**(남들에겐 한동안 옛 이름). 새 시트는 `curator/me/profile` 로 보낸다.
  */
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Loader2, X } from 'lucide-react'
-import { cfImage, cfImageOnError } from '@/utils/cf-image'
-import { getUserProfileImage } from '@/utils/auth'
 import { BellIcon, MailIcon } from '@/components/icons/urdeal-icons'
 import api from '@/lib/api'
 import { ROW_SHELL_CLS, ROW_LABEL_CLS } from './list-grammar'
 import { toast } from '@/hooks/useToast'
-import { useEscapeKey } from '@/hooks/useEscapeKey'
-import { formatPhone } from '@/utils/format-phone'
 
 // 🏭 2026-06-05 (사용자 요청): 버전 = v1.0.<커밋수> — 배포마다 숫자가 올라감(vite define __APP_VERSION__).
 //   빌드 줄은 디버깅용 날짜+해시(__BUILD_VERSION__) 유지.
@@ -242,165 +241,5 @@ export function DeleteAccountLink() {
     >
       {t('accountSettings.deleteAccount', { defaultValue: '회원 탈퇴' })}
     </Link>
-  )
-}
-
-// ─── 프로필 편집 모달 ──────────────────────────────
-export function ProfileEditModal({ isOpen, onClose, initial, onSaved }: {
-  isOpen: boolean
-  onClose: () => void
-  initial: { name: string; phone: string }
-  onSaved: (updated: { name: string; phone: string }) => void
-}) {
-  const { t } = useTranslation()
-  useEscapeKey(() => { if (isOpen) onClose() })
-  const [form, setForm] = useState<{ name: string; phone: string; image: string }>({ ...initial, image: getUserProfileImage() || '' })
-  const [loading, setLoading] = useState(false)
-  const [uploading, setUploading] = useState(false)
-
-  useEffect(() => { if (isOpen) setForm({ ...initial, image: getUserProfileImage() || '' }) }, [isOpen, initial])
-
-  if (!isOpen) return null
-
-  /**
-   * 📸 사진은 **고르는 즉시 저장**한다(이름·전화번호의 [저장] 과 분리).
-   * 섞으면 "사진만 바꾸려는 사람"이 전화번호 검증(필수)에 막혀 사진을 못 바꾼다 — 실제로 그렇게 된다.
-   * 헤더가 읽는 곳은 `localStorage.user_profile_image` 라 서버 저장과 **같이** 갱신한다
-   * (한쪽만 바꾸면 저장은 됐는데 화면은 옛 사진이다).
-   */
-  async function uploadPhoto(file: File) {
-    if (file.size > 5 * 1024 * 1024) { toast.error(t('accountSettings.photoTooBig', { defaultValue: '5MB 이하만 올릴 수 있어요' })); return }
-    setUploading(true)
-    const prev = form.image
-    try {
-      const fd = new FormData()
-      fd.append('file', file)
-      const up = await api.post('/api/upload/image', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
-      const url: string | undefined = up.data?.data?.url
-      if (!up.data?.success || !url) throw new Error(up.data?.error || '')
-      const saved = await api.patch('/api/curator/me/profile', { profile_image: url })
-      if (!saved.data?.success) throw new Error(saved.data?.error || '')
-      setForm(f => ({ ...f, image: url }))
-      try { localStorage.setItem('user_profile_image', url) } catch { /* quota */ }
-      toast.success(t('accountSettings.photoUpdated', { defaultValue: '프로필 사진이 바뀌었습니다' }))
-    } catch (err) {
-      setForm(f => ({ ...f, image: prev }))
-      const e = err as { response?: { data?: { error?: string } } }
-      toast.error(e?.response?.data?.error || t('accountSettings.photoFailed', { defaultValue: '사진을 바꾸지 못했어요' }))
-    } finally { setUploading(false) }
-  }
-
-  async function save() {
-    if (!form.name.trim()) { toast.error(t('accountSettings.nameRequired', { defaultValue: '이름을 입력해주세요' })); return }
-    /**
-     * 📞 2026-09-02 (대표 "프로필 수정에서 전화번호 입력은 필수로 둬줘")
-     *
-     * 이 서비스에서 전화번호는 선택 정보가 아니다 — 교환권은 **MMS 로 그 번호에 발송**되고
-     * 이용권 사용·주문 안내도 알림톡으로 간다. 번호가 없으면 산 물건이 도착할 곳이 없다.
-     * (교환권 결제 경로는 서버가 이미 `PHONE_REQUIRED` 로 막지만, 그건 **결제 순간**이라
-     *  사용자는 계산대 앞에서야 알게 된다. 프로필에서 미리 받아 그 벽을 없앤다.)
-     *
-     * ⚠️ 형식까지 본다 — 빈칸만 막으면 "010" 한 글자로도 통과해 같은 문제가 남는다.
-     *   `formatPhone` 이 하이픈을 넣으므로 하이픈 포함 010-0000-0000 형태를 받는다.
-     */
-    const phone = form.phone.trim()
-    if (!phone) { toast.error(t('accountSettings.phoneRequired', { defaultValue: '전화번호를 입력해주세요 — 교환권·알림톡이 이 번호로 갑니다' })); return }
-    if (!/^01[016789]-?\d{3,4}-?\d{4}$/.test(phone)) {
-      toast.error(t('accountSettings.phoneInvalid', { defaultValue: '전화번호 형식을 확인해주세요 (010-0000-0000)' })); return
-    }
-    setLoading(true)
-    try {
-      const res = await api.patch('/api/auth/profile', { name: form.name.trim(), phone: form.phone.trim() })
-      if (res.data.success) {
-        localStorage.setItem('user_name', form.name.trim())
-        onSaved({ name: form.name.trim(), phone: form.phone.trim() })
-        onClose()
-        toast.success(t('accountSettings.profileUpdated', { defaultValue: '프로필이 업데이트되었습니다' }))
-      }
-    } catch (e: unknown) {
-      // 🛡️ 2026-05-24 React #31 fix: server 가 { error: { code, message } } 객체 반환 시
-      //   string 으로 안전 추출 (이전: object 그대로 toast → React render 폭주).
-      const ax = e as { response?: { data?: { error?: string | { code?: string; message?: string } } } }
-      const errRaw = ax.response?.data?.error
-      const errMsg = typeof errRaw === 'string' ? errRaw
-        : (errRaw && typeof errRaw === 'object' && typeof errRaw.message === 'string') ? errRaw.message
-        : t('accountSettings.updateFailed', { defaultValue: '업데이트 실패' })
-      toast.error(errMsg)
-    } finally { setLoading(false) }
-  }
-
-  return (
-    <div className="fixed inset-0 z-[10100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose} role="presentation">
-      <div className="bg-surface rounded-2xl w-full max-w-md p-6 shadow-2xl mb-16 sm:mb-0" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-[17px] font-bold text-gray-900 dark:text-white">{t('accountSettings.editProfile', { defaultValue: '프로필 편집' })}</h3>
-          <button onClick={onClose} aria-label="닫기"><X className="w-5 h-5 text-gray-500 dark:text-gray-400" /></button>
-        </div>
-        <div className="space-y-4">
-          {/* 🖼️ 2026-10-11 (대표 *"기껏해야 이름이랑 전화번호 변경이네? … 뭔가 지금 이상적이지 않아"*)
-              **프로필 사진**. 마이 헤더에 내 얼굴이 크게 떠 있는데 바꿀 곳이 어디에도 없었다 —
-              카카오가 준 사진 그대로 박혀 있었다(그게 "기껏해야" 의 실체다).
-              🔒 새 인프라는 0이다: 업로드는 이미 쓰는 `/api/upload/image`(쿠키 인증 — `ReviewBonusButton`
-                 과 같은 길), 저장은 `PATCH /api/curator/me/profile` 이고 **둘 다 `users` 한 테이블**이다.
-              🧷 다시 로그인해도 안 덮인다 — `KakaoAuthService` 의 upsert 가 사진을 덮는 조건이
-                 *"비었거나 kakaocdn/kakao.com URL 일 때"* 라서, 올린 사진은 그 조건 밖이다. */}
-          <div className="flex items-center gap-4">
-            <img
-              src={form.image ? cfImage(form.image, { width: 160 }) : `https://ui-avatars.com/api/?name=${encodeURIComponent(form.name || ' ')}&background=111827&color=ffffff&size=160`}
-              alt=""
-              className="w-20 h-20 rounded-full object-cover shrink-0 bg-gray-100 dark:bg-white/[0.06]"
-              onError={(e) => cfImageOnError(e.currentTarget, form.image)}
-            />
-            <div className="min-w-0">
-              <label className="inline-flex items-center gap-2 px-3 h-9 rounded-full bg-gray-100 dark:bg-white/[0.06] text-[13px] font-semibold text-gray-700 dark:text-gray-200 cursor-pointer active:opacity-70">
-                {uploading && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
-                {uploading
-                  ? t('accountSettings.photoUploading', { defaultValue: '올리는 중…' })
-                  : t('accountSettings.photoChange', { defaultValue: '사진 변경' })}
-                <input type="file" accept="image/*" className="hidden" disabled={uploading}
-                  onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void uploadPhoto(f) }} />
-              </label>
-              <p className="mt-2 text-[12px] text-gray-500 dark:text-gray-400">
-                {localStorage.getItem('user_email') || t('accountSettings.photoHint', { defaultValue: 'JPG·PNG, 5MB 이하' })}
-              </p>
-            </div>
-          </div>
-          <div>
-            <label htmlFor="account-name" className="block text-[15px] font-medium text-gray-700 dark:text-gray-200 mb-2">
-              {t('accountSettings.editName', { defaultValue: '이름' })} <span className="text-red-500" aria-hidden="true">*</span>
-            </label>
-            <input
-              id="account-name" required value={form.name}
-              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              className="w-full px-4 py-3 bg-surface border border-gray-300 dark:border-[#2C2F35] rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent outline-none"
-              placeholder={t('accountSettings.editNamePlaceholder', { defaultValue: '홍길동' })}
-            />
-          </div>
-          <div>
-            <label htmlFor="account-phone" className="block text-[15px] font-medium text-gray-700 dark:text-gray-200 mb-2">
-              {t('accountSettings.editPhone', { defaultValue: '전화번호' })} <span className="text-red-500" aria-hidden="true">*</span>
-            </label>
-            <input
-              id="account-phone" type="tel" required inputMode="numeric" value={form.phone}
-              onChange={e => setForm(f => ({ ...f, phone: formatPhone(e.target.value) }))}
-              maxLength={13}
-              className="w-full px-4 py-3 bg-surface border border-gray-300 dark:border-[#2C2F35] rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent outline-none"
-              placeholder="010-0000-0000"
-            />
-            <p className="mt-1 text-[12px] text-gray-500 dark:text-gray-400">
-              기프티쇼 교환권 MMS 발송 / 알림톡 발송 용도. 회원 탈퇴 시까지 보유.
-            </p>
-          </div>
-        </div>
-        <div className="flex gap-3 mt-6">
-          <button onClick={onClose} className="flex-1 py-3 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-[#2C2F35] transition-colors">
-            {t('accountSettings.editCancel', { defaultValue: '취소' })}
-          </button>
-          <button onClick={save} disabled={loading} className="flex-1 py-3 bg-brand text-white font-medium rounded-xl hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors disabled:opacity-50">
-            {loading ? t('accountSettings.saving', { defaultValue: '저장 중...' }) : t('accountSettings.save', { defaultValue: '저장' })}
-          </button>
-        </div>
-      </div>
-    </div>
   )
 }

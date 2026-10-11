@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { stripComments as codeOnly } from '../helpers/source-text'
 
 /**
@@ -18,7 +18,9 @@ const APP = 'src/App.tsx'
 const PAGE = 'src/pages/CuratorPage.tsx'
 const HEADER = 'src/pages/curator-page/CuratorHeader.tsx'
 const MANAGE = 'src/pages/UShopManagePage.tsx'
-const CARDS = 'src/pages/ushop-manage/ShopInfoCards.tsx'
+/** 🔀 2026-10-11 (대표 확정 **A-2**) — 이름·소개·주소·SNS 편집이 여기로 옮겨왔다. */
+const EDIT = 'src/pages/user-profile/profile-edit/ProfileEditSheet.tsx'
+const GONE_CARDS = 'src/pages/ushop-manage/ShopInfoCards.tsx'
 
 /** 관리 화면이 맡기로 한 다섯 덩어리 — 유어샵에서 사라지고 여기서 나타나야 한다. */
 const MOVED = ['OwnerEarningsStrip', 'PinManageList', 'EarnLadder', 'SellOwnProductsCTA'] as const
@@ -37,10 +39,16 @@ describe('e3 — 관리 화면 분리', () => {
       expect(manage, `${name} 이 관리 화면에 없다`).toContain(name)
       expect(page, `${name} 이 아직 유어샵에 남아 있다`).not.toContain(name)
     }
-    // 이름·소개·주소·SNS 편집도 헤더가 아니라 관리 화면이 맡는다.
-    expect(manage).toContain('ShopInfoCards')
-    expect(codeOnly(read(HEADER))).not.toContain('/api/curator/me/profile')
-    expect(codeOnly(read(CARDS))).toContain('/api/curator/me/profile')
+    /* 🔀 2026-10-11 재조준 (대표 확정 **A-2** — *"A-2로 하되"*): 이름·소개·주소·SNS 편집이
+       관리 화면에서 **마이 › 프로필 편집**으로 옮겨갔다.
+       지키려던 것은 *"관리 화면이 맡는다"* 가 아니라 **"손님 화면이 편집을 맡지 않는다"** 였고
+       그건 그대로다 — 자리만 옮겼다. 그래서 가드를 지우지 않고 자리만 따라간다.
+       ➕ **한 벌**이라는 조건을 새로 못 박는다: 두 곳에 두면 한쪽에서 바꾸고 다른 쪽을 보면
+          옛 값이 보이는 날이 온다. 그게 A-2 를 하게 만든 실제 결함이다(이름이 두 곳이었다). */
+    expect(codeOnly(read(HEADER)), '손님 헤더가 프로필을 고친다').not.toContain('/api/curator/me/profile')
+    expect(codeOnly(read(PAGE)), '손님 화면이 프로필을 고친다').not.toContain('/api/curator/me/profile')
+    expect(codeOnly(read(EDIT)), '프로필 편집이 그 저장을 안 맡는다').toContain('/api/curator/me/profile')
+    expect(existsSync(GONE_CARDS), 'ShopInfoCards 부활 — 편집이 두 곳이 된다').toBe(false)
   })
 
   it('유어샵 카드에 삭제 pill 도 "+ 추가" 점선 카드도 없다', () => {
@@ -71,14 +79,14 @@ describe('e3 — 관리 화면 분리', () => {
 
   it('관리 화면은 소유권을 seller_token 으로 판정하지 않는다', () => {
     // 🔴 유어샵 소유권 = 로그인 소비자 유저(check-linkshop-ownership). 토큰을 보면 그 규칙이 깨진다.
-    for (const f of [MANAGE, CARDS, HEADER]) {
+    for (const f of [MANAGE, EDIT, HEADER]) {
       expect(codeOnly(read(f)), f).not.toContain('seller_token')
     }
   })
 
   it('검사 대상이 실제로 존재한다(0건이면 통과가 아니라 고장)', () => {
     expect(MOVED.length).toBeGreaterThanOrEqual(4)
-    for (const f of [APP, PAGE, HEADER, MANAGE, CARDS]) {
+    for (const f of [APP, PAGE, HEADER, MANAGE, EDIT]) {
       expect(read(f).length, f).toBeGreaterThan(400)
     }
   })

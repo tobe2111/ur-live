@@ -1342,8 +1342,9 @@ const MUTATIONS = [
   },
   {
     name: '🧹 전화번호 필수 검사가 사라진다 (교환권이 갈 곳이 없어진다)',
-    file: 'src/pages/user-profile/AccountControlsSection.tsx',
-    find: "    if (!phone) { toast.error(t('accountSettings.phoneRequired'",
+    /* ✏️ 2026-10-11 재조준 — 프로필 편집이 모달에서 A-2 시트로 옮겨갔다(결함 동일, 앵커만 이동). */
+    file: 'src/pages/user-profile/profile-edit/ProfileEditSheet.tsx',
+    find: "    if (!v) { toast.error(t('accountSettings.phoneRequired'",
     replace: "    if (false) { toast.error(t('accountSettings.phoneRequired'",
     test: 'src/tests/unit/mypage-cleanup-2026-09-02.test.ts',
     why: '\uad50\ud658\uad8c\uc740 MMS \ub85c \uadf8 \ubc88\ud638\uc5d0 \ubc1c\uc1a1\ub41c\ub2e4 \u2014 \ubc88\ud638\uac00 \uc5c6\uc73c\uba74 \uc0b0 \ubb3c\uac74\uc774 \ub3c4\ucc29\ud560 \uacf3\uc774 \uc5c6\ub2e4.',

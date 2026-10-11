@@ -19,7 +19,6 @@ import { curatorApi, type CuratorPageResponse, type CuratorPin } from '@/feature
 import { fetchCuratorPage, getCuratorCache } from '@/features/curator/curator-page-cache'
 import OwnerEarningsStrip from './curator-page/OwnerEarningsStrip'
 import PinManageList from './curator-page/PinManageList'
-import ShopInfoCards from './ushop-manage/ShopInfoCards'
 
 const EarnLadder = lazy(() => import('./curator-page/EarnLadder'))
 const SellOwnProductsCTA = lazy(() => import('./curator-page/SellOwnProductsCTA'))
@@ -71,8 +70,6 @@ export default function UShopManagePage() {
 
   const { curator, pins } = data
   const dealCount = pins.filter(p => Number(p.deal_pct) > 0).length
-  const onCuratorUpdate = (next: Partial<typeof curator>) =>
-    setData(prev => prev ? { ...prev, curator: { ...prev.curator, ...next } } : prev)
   const onPinDeleted = (id: number) =>
     setData(prev => prev ? { ...prev, pins: prev.pins.filter(p => p.id !== id) } : prev)
   const onReorder = (next: CuratorPin[]) =>
@@ -90,8 +87,18 @@ export default function UShopManagePage() {
       <div className={secCls}>{t('ushop.manageEarnings', { defaultValue: '적립' })}</div>
       <div className="px-4"><OwnerEarningsStrip /></div>
 
+      {/* 👤 2026-10-11 대표 확정 **A-2** — 여기 있던 네 줄(이름·한 줄 소개·유어샵 주소·SNS)은
+          **마이 › 프로필 편집**으로 옮겼다. 이름이 두 곳(프로필 편집·여기)에 있어서, 한쪽에서
+          바꾸고 다른 쪽을 보면 옛 이름이 보이는 날이 오는 구조였다(에러 0).
+          ⇒ 유어샵 관리는 이제 **진열대**만 맡는다: 적립 · 이용권(핀) 추가·순서·삭제 · 수익.
+          ⚠️ 되돌린다면 git 이력에서 `ushop-manage/ShopInfoCards` 를 되살려 걸면 된다 — 다만 그때
+             프로필 편집에서 같은 줄들을 빼야 한다(둘 다 두면 그게 원래 문제다). 가드가 그 조건을
+             고정한다: `ushop-e3-manage-2026-09-28` 의 "편집은 정확히 한 벌". */}
       <div className={secCls}>{t('ushop.manageMyShop', { defaultValue: '내 샵' })}</div>
-      <ShopInfoCards curator={curator} onCuratorUpdate={onCuratorUpdate} />
+      <Link to="/user/profile" className={rowCls}>
+        <span className={keyCls}>{t('ushop.manageProfile', { defaultValue: '이름, 소개, 주소, SNS' })}</span>
+        <span className={valCls}>{t('ushop.manageProfileHint', { defaultValue: '프로필 편집에서' })}</span>{chev}
+      </Link>
 
       <div className={secCls}>{t('ushop.manageVouchers', { defaultValue: '이용권' })} {pins.length}</div>
       {reorder ? (
