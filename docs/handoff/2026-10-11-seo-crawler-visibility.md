@@ -279,3 +279,84 @@ SELECT u.handle FROM users u
   byte-동일이다.
 - `<noscript>` 는 **첫 화면이 안 그리는 것만** 담는다. 안내 문구를 지어내 넣지 말 것(클로킹이 된다 — 그 규율이
   `crawler-noscript.ts` 머리말에 있다).
+
+---
+
+## ⑤ GEO — AI 검색·인용 크롤러는 페이지 허용 / API 차단 (PR 대기)
+
+대표 *"SEO, GEO 모두 가장 이상적인 형태인지"* · *"세계최고의 SEO, GEO를 자랑하게 만들어줘"* ·
+*"우리 서비스로 트래픽이 몰려야해"*.
+
+### 🔎 실측이 바꾼 진단 — 이전 판("학습과 검색이 구분 안 된 채 함께 막혀 있다")은 **반만 맞았다**
+
+`urdeal.kr/` HTML 을 UA 만 바꿔 받아 봤다(2026-10-11):
+
+| UA | HTTP | 성격 |
+|---|---|---|
+| GPTBot · ClaudeBot | **403** | 학습 |
+| OAI-SearchBot · ChatGPT-User | **200** | 검색·인용 |
+| Claude-SearchBot · PerplexityBot | **200** | 검색·인용 |
+| Googlebot | 200 | 색인 |
+
+⇒ **엣지(Cloudflare)는 이미 둘을 정확히 가르고 있었다.** 구분이 없던 쪽은 **우리 `public/robots.txt`**
+하나였다 — 거기서 `OAI-SearchBot`·`ChatGPT-User`·`PerplexityBot`·`Perplexity-User` 가 학습 봇과
+같은 `Disallow: /` 그룹에 들어 있었다.
+
+🔑 **그래서 이것은 정책 선택이 아니라 내부 불일치였다.** 그리고 어긋난 방향이 가장 나쁜 쪽이다 —
+검색·인용 크롤러는 robots 를 **지키는** 봇이라, 결과는 *"ChatGPT·Perplexity 답변에 우리를 링크로
+인용해 줄 수 있는 크롤러에게만 오지 마라고 말하기"* 였다. 엣지는 통과시키는데 우리가 돌려보냈다.
+그 블록의 주석 자신이 *"둘은 다른 봇이다"* 라고 적어 두고도 한 덩어리로 묶여 있었다(2026-08-22
+당시엔 사업자들이 봇을 안 쪼갰다 — 그 뒤 쪼갰고 우리 파일만 그대로였다).
+
+### 수정 — 목록에서 **빼기만** 했다 (전용 그룹을 안 만든 이유)
+
+- `public/robots.txt`: 다섯(위 넷 + `Claude-SearchBot`)을 차단 목록에서 제거 → `User-agent: *`
+  그룹(= 공개 허용 + 비공개 Disallow)으로 떨어진다.
+- 🔴 **`Allow: /` 전용 그룹을 만들면 안 된다**: robots.txt 그룹은 **합쳐지지 않고 가장 구체적인 하나만**
+  적용된다. 제 이름 그룹이 생기는 순간 그 봇은 `*` 의 `/admin`·`/seller/login` … Disallow **71개를
+  통째로 무시**한다. 비공개 목록을 두 벌로 베끼는 것도 답이 아니다(반드시 갈린다). 그래서 "빼서
+  폴백" 이 정답이고, 가드가 *전용 그룹이 생기지 않았는지* + *`*` 그룹이 실제로 비공개를 막는지* 를 함께 본다.
+- `src/worker/middleware/bot-detection.ts`: 다섯을 `SCRAPER_UA_PATTERNS` 에 **그대로 남긴다**
+  (+ 빠져 있던 `Claude-SearchBot` 추가) → `/api/products`·`/api/group-buy/*` 등 공개 JSON 은 계속 403.
+
+### 🔀 비대칭이 의도다 (이게 이 변경의 핵심이고, 가장 되돌려지기 쉬운 지점)
+
+**robots 는 페이지를 허용 / 헤더는 API 를 차단.** 검색 크롤러가 필요한 것은 서버가 그려 주는
+**HTML**(①~④ 가 만든 첫 화면 + `<noscript>` 요약 + JSON-LD)이라 **GEO 손실이 0** 이고, 가격표를
+벌크로 긁는 경로는 닫힌 채 남는다. ⚠️ 한쪽만 보면 "목록이 어긋났다" 며 맞추고 싶어진다 —
+어느 방향으로 맞춰도 손해다(robots 에 다시 넣으면 유입이 끊기고, 헤더에서 빼면 API 가 열린다).
+가드가 **양방향으로** 고정한다.
+
+🔒 **SSR 은 영향 없다**: self-fetch 는 자기 UA(`ur-live-ssr-prefetch/1.0`, `ssr-payload.ts:98`)를
+쓰므로 이 403 에 걸리지 않는다(기존 가드가 이미 그걸 고정하고 있었다).
+📌 **`Google-Extended` 는 차단 유지** — 그것은 Gemini *학습* 거부이고 구글 AI 개요(AI Overviews)는
+`Googlebot` 색인을 쓴다. 즉 막아도 AI 개요 노출은 안 깎인다(흔한 오해).
+
+### 가드
+
+`content-protection.test.ts` 에 describe 1개(5건) 추가 — 기존 4건은 **풀지 않았다**(차단 목록이
+줄기만 해서 그대로 통과한다). 주입 `scripts/mutations/geo-ai-search.mjs` **6건 되돌려-검증 전부
+빨간불 확인**(robots 재차단 2 · 헤더 제거 2 · 학습 해제 1 · `*` 그룹 Disallow 제거 1).
+검증: 유닛 18건 pass · `check-robots-private-routes` 386라우트 통과 · pre-push 게이트 가드 103개.
+
+⚠️ **이 가드가 못 보는 것**: 그 봇들이 실제로 크롤하는지 · ChatGPT·Perplexity 답변에 인용되는지
+(둘 다 외부 판정, 수일~수주) · **Cloudflare 엣지의 AI 봇 차단 설정**(대시보드이고 레포가 못 본다 —
+세션은 읽기 전용, 대표만 바꾼다. GPTBot·ClaudeBot 403 은 거기서 온다).
+
+### E4 (배포 후, 한 줄)
+
+```bash
+curl -sS --max-time 15 https://urdeal.kr/robots.txt | grep -cE '^User-agent: (OAI-SearchBot|ChatGPT-User|PerplexityBot|Perplexity-User|Claude-SearchBot)$'
+# → 4 → **0** 이어야 한다 (배포 전 4건: Claude-SearchBot 은 원래 없었다)
+curl -sS --max-time 15 https://urdeal.kr/robots.txt | grep -cE '^User-agent: (GPTBot|ClaudeBot|CCBot|Google-Extended|Bytespider)$'
+# → **5 유지** (학습 쪽은 그대로 막혀야 한다)
+curl -sS -o /dev/null -w '%{http_code}\n' -A 'Mozilla/5.0 (compatible; OAI-SearchBot/1.0; +https://openai.com/searchbot)' https://urdeal.kr/api/products
+# → **403** (페이지는 열고 API 는 닫은 그 비대칭이 살아 있는지)
+```
+⚠️ **"이 PR 이 ChatGPT 답변에 우리를 띄웠다" 고 보고하지 말 것** — 우리가 한 것은 *돌려보내지
+않기*까지다. 인용 여부는 그들이 정하고 수일~수주 걸린다.
+
+### 📌 남은 것 (대표 판단 대기)
+
+- **다국어(hreflang 0건)** — 언어별 URL 은 큰 변경. 내 의견: 한국어 색인이 먼저.
+- **`llms.txt` 404** — 비표준이고 어느 엔진도 공식 지원을 announce 하지 않았다. 값 불확실.

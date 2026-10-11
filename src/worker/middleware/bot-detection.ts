@@ -137,6 +137,16 @@ export function botProtection() {
 //    미리보기가 통째로 죽는다(그게 이 서비스의 유입이다).
 // ⚠️ 내부 self-fetch UA(`ur-live-ssr-prefetch/1.0`·`ur-live-cache-prewarm/1.0`)와 겹치는
 //    패턴을 넣지 말 것 — SSR 0-RTT 와 예열이 조용히 멎는다.
+//
+// 🔀 2026-10-11 — robots.txt 와 **일부러 어긋난다**(대표 *"세계최고의 SEO, GEO"*).
+//    `public/robots.txt` 는 AI **검색·인용** 크롤러 다섯(OAI-SearchBot·ChatGPT-User·
+//    Perplexity-User·PerplexityBot·Claude-SearchBot)에게 **페이지 크롤을 허용**한다 —
+//    그들이 ChatGPT·Perplexity 답변에 우리를 링크로 인용해 주는 유입 경로이고, 라이브
+//    실측에서 우리 엣지도 이미 통과시키고 있었다(GPTBot·ClaudeBot 만 403).
+//    하지만 이 목록에는 **그 다섯이 그대로 남는다** = 공개 JSON API 수확은 계속 403.
+//    검색 크롤러가 필요한 것은 서버가 그려 주는 HTML 이라 GEO 손실 0, 가격표 벌크 수확은 차단.
+//    ⇒ **이 비대칭은 의도다.** "robots 와 목록을 맞춘다" 며 이 다섯을 빼지 말 것
+//      (`content-protection.test.ts` 가 양방향으로 고정한다).
 const SCRAPER_UA_PATTERNS = [
   // AI 학습·검색 데이터 수집
   /GPTBot/i,
@@ -145,6 +155,8 @@ const SCRAPER_UA_PATTERNS = [
   /ClaudeBot/i,
   /anthropic-ai/i,
   /Claude-Web/i,
+  // 🔀 2026-10-11 추가 — 위 비대칭의 다섯째. 페이지는 robots 로 허용, API 는 여기서 차단.
+  /Claude-SearchBot/i,
   /CCBot/i,
   /Google-Extended/i,
   /PerplexityBot/i,
