@@ -236,6 +236,20 @@ Long thick tapering otter tail. Bright cobalt-blue (#1C69EF) bandana neckerchief
 from behind only the triangle of the bandana shows.
 ```
 
+### 세부 실측 (2026-10-11 — 확정 턴어라운드 정면을 3배 확대해 셈)
+대표 *"양쪽으로 넓적해진 것 같고, 수염도 갯수 다르네. 이런 디테일까지 제대로 확인해서"* — 포즈 시트 v2 가 아래 항목에서 어긋났다.
+위 설정서 문구 **뒤에 이 블록을 덧붙여** 쓴다(설정서 본문은 그대로).
+```
+Exact details: head (without ears) is about as wide as it is tall, a tall rounded dome, not wide or squashed.
+Exactly THREE thin long white whiskers on each side (six total), growing from the cream cheeks just outside the pink blush, fanning slightly downward.
+Eyebrows: two cream-white elongated rounded bean-shaped arches, slightly tilted, sitting well above the eyes.
+Eyes: very large, dark brown iris with a black pupil, a thin ring of white sclera visible around the iris, one big and one small white highlight on the upper side.
+Nose: rounded salmon-pink nose, wider than tall, with a short vertical line down to a small closed w-shaped smile.
+Cream mask covers the lower half of the face starting just below the eyes.
+Ears: small, rounded, at eye level on the sides, darker inside, not sticking far out.
+Paws and feet: plain rounded fur, no paw pads.
+```
+
 턴어라운드 생성 이력 (원본은 위 ⭐ 기준 원본으로 레포에 저장 완료):
 - **확정**(gpt-image-2.5): https://www.figma.com/api/mcp/asset/380c367b-a43a-4ac6-acd7-e2f4818fbc74.png
 - 폐기(gemini, 머리가 작아 다른 캐릭터처럼 보임): https://www.figma.com/api/mcp/asset/7d988555-9ad7-4cf9-9d45-07aed7f08157.png
