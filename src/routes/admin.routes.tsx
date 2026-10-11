@@ -33,15 +33,13 @@ const AdminWholesaleActivityPage = lazy(() => import('@/pages/admin/AdminWholesa
 const AdminAgencyAccountsPage = lazy(() => import('@/pages/admin/AdminAgencyAccountsPage')) // 🏢 2026-10-11 새 에이전시 계정(옛 agencies 아님)
 const AdminLoginHistoryPage = lazy(() => import('@/pages/AdminLoginHistoryPage'))
 const AdminWholesaleOrdersPage = lazy(() => import('@/pages/AdminWholesaleOrdersPage'))
-// 🏦 2026-07-02 (어드민 도매 IA 통합): 예치금/출금 페이지는 라우트가 직접 렌더하지 않음 —
-//   예치금 = AdminDistributorGradesPage('판매사 관리')의 '예치금' 탭, 출금 = AdminSuppliersPage('제조사 관리')의 '출금 처리' 탭에서 embedded 로 사용(딥링크 경로는 아래에서 컨테이너 페이지로 매핑 → 탭으로 열림).
+// 🏦 2026-07-02 (어드민 도매 IA 통합): 예치금/출금 페이지는 라우트가 직접 렌더하지 않음 — 예치금 = AdminDistributorGradesPage('판매사 관리')의 '예치금' 탭, 출금 = AdminSuppliersPage('제조사 관리')의 '출금 처리' 탭에서 embedded 로 사용(딥링크 경로는 아래에서 컨테이너 페이지로 매핑 → 탭으로 열림).
 // 🏭 2026-06-09 Wave 2: 도매 메인 배너 관리 + 제안/신고 처리 큐.
 const AdminWholesaleBannersPage = lazy(() => import('@/pages/AdminWholesaleBannersPage'))
 const AdminWholesaleBoardPage = lazy(() => import('@/pages/AdminWholesaleBoardPage'))
 const AdminPartnershipPage = lazy(() => import('@/pages/AdminPartnershipPage'))
 const AdminWholesaleProposalsPage = lazy(() => import('@/pages/AdminWholesaleProposalsPage'))
-// 🏭 Wave 2 (2026-06-09): 도매 프리미엄 전용관 상품 토글.
-const AdminWholesaleProductsPage = lazy(() => import('@/pages/admin/AdminWholesaleProductsPage'))
+const AdminWholesaleProductsPage = lazy(() => import('@/pages/admin/AdminWholesaleProductsPage')) // 🏭 Wave 2 (2026-06-09): 도매 프리미엄 전용관 상품 토글.
 // 🏬 Phase 1-b (2026-06-09): 멀티-몰 테넌시 — 도매 몰 관리.
 const AdminWholesaleMallsPage = lazy(() => import('@/pages/admin/AdminWholesaleMallsPage'))
 // 🏬 Phase 2 (2026-06-09): 크로스-몰 도매 통합 현황 (운영자 랜딩).
@@ -349,11 +347,7 @@ export function AdminRoutes() {
           <AdminVoucherDisputesPage />
         </ProtectedRoute>
       } />
-      <Route path="/admin/agencies" element={
-        <ProtectedRoute requireAdmin>
-          <AdminAgencyAccountsPage />
-        </ProtectedRoute>
-      } />
+      <Route path="/admin/agencies" element={<ProtectedRoute requireAdmin><AdminAgencyAccountsPage /></ProtectedRoute>} />
       <Route path="/admin/suppliers" element={
         <ProtectedRoute requireAdmin>
           <AdminSuppliersPage />
