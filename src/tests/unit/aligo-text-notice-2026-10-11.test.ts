@@ -185,7 +185,8 @@ describe('로그인 동의 항목 — 채널 추가', () => {
 
 describe('어드민 발송 시험 엔드포인트', () => {
   const src = readFileSync('src/features/admin/api/admin-system-monitoring.routes.ts', 'utf8')
-  const block = src.slice(src.indexOf("post('/alimtalk-test-send'"), src.indexOf('// ── 🚦 2026-07-05'))
+  // 끝 경계는 바로 다음 엔드포인트(IP 측정 — 그쪽은 일부러 fetch 를 쓴다)
+  const block = src.slice(src.indexOf("post('/alimtalk-test-send'"), src.indexOf("get('/alimtalk-egress-ip'"))
   it('super_admin 만 보낸다', () => {
     expect(block).toMatch(/admin\?\.role !== 'super_admin'\) return c\.json\(\{[^}]*\}, 403\)/)
   })
