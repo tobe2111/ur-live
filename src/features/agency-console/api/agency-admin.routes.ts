@@ -21,7 +21,7 @@ agencyAdminRoutes.get('/agency-accounts', async (c) => {
     const DB = c.env.DB
     await ensureAgencyConsoleTables(DB)
     const { results } = await DB.prepare(
-      `SELECT a.id, a.name, a.kind, a.business_number, a.status, a.created_at,
+      `SELECT a.id, a.name, a.kind, a.business_number, a.business_status, a.status, a.created_at,
               (SELECT email FROM agency_staff s WHERE s.agency_id = a.id AND s.is_owner = 1 LIMIT 1) AS owner_email,
               (SELECT COUNT(*) FROM agency_staff s WHERE s.agency_id = a.id AND s.status = 'active') AS staff_count,
               (SELECT COUNT(*) FROM agency_store_links l WHERE l.agency_id = a.id AND l.status = 'active') AS store_count,
@@ -30,7 +30,7 @@ agencyAdminRoutes.get('/agency-accounts', async (c) => {
         ORDER BY CASE a.status WHEN 'active' THEN 0 WHEN 'suspended' THEN 1 ELSE 2 END, a.id DESC
         LIMIT 500`,
     ).all<{
-      id: number; name: string; kind: string; business_number: string | null; status: string; created_at: string
+      id: number; name: string; kind: string; business_number: string | null; business_status: string | null; status: string; created_at: string
       owner_email: string | null; staff_count: number; store_count: number; pending_count: number
     }>()
     return c.json({ success: true, data: results || [] })

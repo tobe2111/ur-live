@@ -74,8 +74,8 @@ export default [
   {
     name: '🏢 메일 발송 설정이 없어도 가입이 "메일 보냈어요" 라고 답한다',
     file: 'src/features/agency-console/api/agency-auth.routes.ts',
-    find: "    if (!agencyMailReady(c.env)) return c.json(AGENCY_MAIL_DOWN, 503)\n\n    const { DB } = c.env",
-    replace: "    const { DB } = c.env",
+    find: "    if (!agencyMailReady(c.env)) return c.json(AGENCY_MAIL_DOWN, 503)\n\n    // 🏛️ 사업자면",
+    replace: "    // 🏛️ 사업자면",
     test: TEST,
     why: '2026-10-11 라이브에 RESEND_API_KEY·RESEND_FROM 이 없다 — 메일이 조용히 건너뛰어지고 가입이 막다른 길이 된다.',
   },
@@ -222,5 +222,21 @@ export default [
     replace: '',
     test: STORES,
     why: '정지는 "지금 막는다" 는 약속이다.',
+  },
+  {
+    name: '🏛️ 국세청에 없는 사업자번호로도 에이전시가 만들어진다',
+    file: 'src/features/agency-console/api/agency-auth.routes.ts',
+    find: "if (!row.b_stt) return { status: 'unregistered', reject:",
+    replace: "if (!row.b_stt) return { status: 'unregistered', ok:",
+    test: TEST,
+    why: '남의 회사 이름·지어낸 번호로 에이전시를 만들어 사장님께 링크를 보낼 수 있다.',
+  },
+  {
+    name: '🏛️ 가입이 진위확인 결과를 무시한다',
+    file: 'src/features/agency-console/api/agency-auth.routes.ts',
+    find: "      if (v.reject) return c.json({ success: false, code: 'BUSINESS_INVALID', error: v.reject }, 400)\n",
+    replace: '',
+    test: TEST,
+    why: '판정은 하고 거절을 안 하면 아무것도 막지 않는다.',
   },
 ]

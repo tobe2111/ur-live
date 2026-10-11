@@ -103,6 +103,9 @@ export async function ensureAgencyConsoleTables(DB: D1Database): Promise<void> {
     )`),
     DB.prepare('CREATE INDEX IF NOT EXISTS idx_agency_store_activity_store ON agency_store_activity(seller_id, id)'),
   ])
+  // 🏛️ 사업자 진위확인 결과(국세청 상태 문자열 · 'unverified'). 이미 만들어진 테이블에 붙이는 열이라 ALTER 로 —
+  //   batch 안에 두면 '이미 있음' 오류가 위 생성문까지 되돌린다. 실패(=이미 있음)는 조용히 넘어간다.
+  try { await DB.prepare('ALTER TABLE agency_accounts ADD COLUMN business_status TEXT').run() } catch { /* 이미 있음 */ }
   _ensured.add(DB)
 }
 

@@ -15,7 +15,7 @@ import { toast } from '@/hooks/useToast'
 import { formatKSTDate } from '@/utils/date'
 
 interface AgencyRow {
-  id: number; name: string; kind: string; business_number: string | null; status: string; created_at: string
+  id: number; name: string; kind: string; business_number: string | null; business_status: string | null; status: string; created_at: string
   owner_email: string | null; staff_count: number; store_count: number; pending_count: number
 }
 interface StoreRow {
@@ -109,7 +109,7 @@ export default function AdminAgencyAccountsPage() {
                         </span>
                       </p>
                       <p className="truncate text-[13px] text-gray-500">
-                        {r.kind === 'individual' ? '개인' : `사업자 ${r.business_number || '-'}`} · {r.owner_email || '-'} · 직원 {r.staff_count} · 매장 {r.store_count}
+                        {r.kind === 'individual' ? '개인' : `사업자 ${r.business_number || '-'} (${!r.business_status || r.business_status === 'unverified' ? '국세청 확인 안 됨' : r.business_status})`} · {r.owner_email || '-'} · 직원 {r.staff_count} · 매장 {r.store_count}
                         {r.pending_count > 0 ? ` (요청 ${r.pending_count})` : ''} · {formatKSTDate(r.created_at)} 가입
                       </p>
                     </button>
