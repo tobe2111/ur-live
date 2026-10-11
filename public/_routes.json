@@ -1,7 +1,9 @@
 {
   "version": 1,
   "description": "All routes go through Worker except static assets. ⚠️ 2026-06-11: 확장자 글롭(/*.jpg 등)은 Pages 에서 슬래시를 포함해 매칭되어 /api/media/**.jpg 가 워커에 도달하지 못하고 SPA HTML 폴백 → 업로드 이미지 전부 깨짐(프로필 아바타 사고). 루트 정적 파일은 명시 목록으로만 제외할 것 — 확장자 와일드카드 금지. ⚠️ 2026-07-20: /assets/* 를 exclude 에서 제거 — urdeal.kr(신규 존)에서 exclude 경로가 정적 404(→SPA HTML→청크 MIME 에러, #598 과 동일 클래스)라, 워커가 env.ASSETS 로 직접 서빙(index.ts app.get('/assets/*'), 미들웨어 앞 등록). 되돌리려면 이 줄을 exclude 에 복원.",
-  "include": ["/*"],
+  "include": [
+    "/*"
+  ],
   "exclude": [
     "/locales/*",
     "/static/*",
@@ -22,6 +24,18 @@
     "/app-icon-512.png",
     "/app-icon-maskable-192.png",
     "/app-icon-maskable-512.png",
+    "/ios-splash-1320x2868.png",
+    "/ios-splash-1206x2622.png",
+    "/ios-splash-1290x2796.png",
+    "/ios-splash-1179x2556.png",
+    "/ios-splash-1284x2778.png",
+    "/ios-splash-1170x2532.png",
+    "/ios-splash-1125x2436.png",
+    "/ios-splash-1242x2688.png",
+    "/ios-splash-828x1792.png",
+    "/ios-splash-1242x2208.png",
+    "/ios-splash-750x1334.png",
+    "/ios-splash-640x1136.png",
     "/favicon.ico",
     "/favicon-144.png",
     "/favicon-96.png",
