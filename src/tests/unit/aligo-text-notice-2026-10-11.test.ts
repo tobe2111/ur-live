@@ -182,3 +182,19 @@ describe('로그인 동의 항목 — 채널 추가', () => {
     expect(src).not.toMatch(/searchParams\.set\('scope', 'openid/)
   })
 })
+
+describe('어드민 발송 시험 엔드포인트', () => {
+  const src = readFileSync('src/features/admin/api/admin-system-monitoring.routes.ts', 'utf8')
+  const block = src.slice(src.indexOf("post('/alimtalk-test-send'"), src.indexOf('// ── 🚦 2026-07-05'))
+  it('super_admin 만 보낸다', () => {
+    expect(block).toMatch(/admin\?\.role !== 'super_admin'\) return c\.json\(\{[^}]*\}, 403\)/)
+  })
+  it('실제 발송 경로(sendTextNotice)를 그대로 탄다 — 시험용 우회 경로가 아니다', () => {
+    expect(block).toContain('sendTextNotice(c.env, user.phone')
+    expect(block).not.toMatch(/sendAligoSms|api\.solapi|fetch\(/)
+  })
+  it('가입된 유저 번호로만 보낸다(임의 번호 입력 없음)', () => {
+    expect(block).toContain("SELECT phone FROM users WHERE id = ?")
+    expect(block).not.toMatch(/body\.phone|body\.to\b/)
+  })
+})

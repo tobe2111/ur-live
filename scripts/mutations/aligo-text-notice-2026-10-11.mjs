@@ -78,4 +78,12 @@ export default [
     test: T,
     why: '콘솔에 plusfriends 동의항목이 없으면 카카오가 로그인 자체를 거부한다(KOE205).',
   },
+  {
+    name: '알림 — 발송 시험을 super_admin 아니어도 보낸다',
+    file: 'src/features/admin/api/admin-system-monitoring.routes.ts',
+    find: "    if (admin?.role !== 'super_admin') return c.json({ success: false, error: 'super_admin 권한이 필요합니다' }, 403)\n",
+    replace: '',
+    test: T,
+    why: '조회 권한(viewer·cs) 어드민이 아무 유저에게나 문자를 보낼 수 있게 된다.',
+  },
 ]
