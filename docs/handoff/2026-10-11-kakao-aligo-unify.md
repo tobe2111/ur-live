@@ -144,3 +144,12 @@
 - 다음 다이어트 후보(대표 판단 필요): index.ts 의 `[TEMP-TEST]` 도매 마운트 3개(`/api/admin/buyer-pool`·`maker-pool`·
   `/api/buyer-ingest`, gzip ~25KB) — 주석상 "ur-wholesale 배포 시 제거 예정"이고 mount-wholesale.ts 에 정규 마운트가 이미 있다.
   빼면 urdeal.kr 어드민의 해당 화면이 안 되고 utongstart.com 쪽으로 가야 한다.
+
+### 📦 (3) 게이트 7MB + 유통스타트 잔재 — 같은 PR #1702 (대표 "일단 7mb로 올릴까? 유통 스타트는 다 필요없어")
+- `main.yml` 워커 압축 게이트 1,032,000B → **7,340,032B(7MB)**. 비압축 안전망 10MB → 32MB(안 바꾸면 압축 ~2.5MB 에서 먼저 막힌다).
+- 소비자 워커에서 **제조사·판매사 후보 풀**(`/api/admin/maker-pool`, 유통스타트 밴드) [TEMP-TEST] 마운트 제거 — mount-wholesale.ts 에만 남는다.
+- 🩸 **틀릴 뻔한 것**: 처음엔 "바이어 풀·북마클릿 인제스트도 유통스타트"라고 대표에게 보고했는데, `supply-teardown-safety.test.ts` 가
+  잡았다 — **해외 수출 바이어 풀은 도매와 무관한 별개 사업**(어드민 내비 밴드도 `ads`)이고 일부러 소비자 번들에 마운트돼 있다.
+  그래서 바이어 풀·인제스트는 그대로 두고 maker-pool 만 뺐다. 폴더가 `features/supply` 라고 다 도매가 아니다.
+- 남은 `wholesale-malls*` 는 이름만 도매고 **공구 서비스(운영자 몰)** 다 — 건드리지 말 것.
+- 최종 Pages gzip: **954,229B** (막혔을 때 1,033,800B).
