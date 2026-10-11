@@ -33,6 +33,17 @@ describe('유달이 생성 철칙', () => {
     expect(existsSync(ref!), `${ref} 없음 — 검수가 무엇과 비교하는지 사라진다`).toBe(true)
   })
 
+  it('굿즈 벡터 정본: 한쪽 수염 3가닥 · 브랜드 블루 반다나 · 확정 털색', () => {
+    // 2026-10-11 대표 결정 2번 — 굿즈는 생성 그림이 아니라 이 SVG 를 쓴다.
+    for (const f of ['udal-front.svg', 'udal-face.svg']) {
+      const svg = readFileSync(`docs/design/assets/mascot/vector/${f}`, 'utf8')
+      const whiskers = svg.match(/<!-- 수염 한쪽 3가닥 -->\s*<g[^>]*>([\s\S]*?)<\/g>/)?.[1] ?? ''
+      expect((whiskers.match(/<path /g) ?? []).length, `${f} 수염은 양쪽 합쳐 6가닥`).toBe(6)
+      expect(svg).toContain('#9D7256')
+    }
+    expect(readFileSync('docs/design/assets/mascot/vector/udal-front.svg', 'utf8')).toContain('#1C69EF')
+  })
+
   it('CLAUDE.md 가 모든 세션에 철칙을 가리킨다', () => {
     expect(readFileSync('CLAUDE.md', 'utf8')).toContain('유달이(마스코트) 생성 철칙')
   })
