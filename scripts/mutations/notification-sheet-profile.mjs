@@ -49,8 +49,9 @@ export default [
   {
     name: '🔔 시트 높이를 `vh` 로 적는다 (모바일에서 바닥이 잘린다)',
     file: 'src/components/notifications/NotificationSheet.tsx',
-    find: 'max-h-[80dvh]',
-    replace: 'max-h-[80vh]',
+    // 🧷 주석에도 같은 문자열이 있어 **앵커가 둘** 이었다(전수 검사가 잡았다) → 실제 className 으로.
+    find: 'bottom-0 max-h-[80dvh] flex flex-col',
+    replace: 'bottom-0 max-h-[80vh] flex flex-col',
     test: T,
     why: '모바일 100vh 는 주소창을 포함해 실제 보이는 영역보다 크다(CLAUDE.md 룰 #8).',
   },
