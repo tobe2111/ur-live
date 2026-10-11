@@ -15,3 +15,10 @@
 - ✅ iOS 도 했다(대표 *"아이폰 시작화면도 해줘"*): 웹앱 `apple-touch-startup-image` 12종(`public/ios-splash-*.png`, 생성 `scripts/app-icon/make-ios-splash.py`) + 스토어 앱 `Splash.imageset` 네이비. 가드가 선언·파일·**픽셀 크기**·exclude 를 대조(크기 1px 만 달라도 iOS 는 흰 화면 — 되돌려-검증 빨간불 확인).
 - iOS E4: 배포 후 `curl -sI https://urdeal.kr/ios-splash-1170x2532.png` 200 → 아이폰 사파리에서 홈 화면에 **새로** 추가하고 열어 남색 시작화면 확인(이미 추가한 웹앱은 지우고 다시 추가). 스토어 앱은 다음 iOS 빌드부터 반영.
 - ⚠️ 안 덮는 기기: 목록 밖 아이폰·아이패드·가로 화면은 종전처럼 흰 화면(iOS 기본). 새 아이폰이 나오면 스크립트 `DEVICES` 에 한 줄 추가.
+
+## 파비콘(구글 검색 결과·브라우저 탭) — 남색 + 유달이 얼굴
+- 대표 *"구글 검색 시 뜨는 유어딜 로고도 바꿔지나?"* → *"남색 바탕에 유달이로도 해주고"*. 앱 아이콘·시작화면만으로는 구글 로고가 안 바뀐다(구글은 rel=icon 파비콘을 쓴다).
+- `scripts/app-icon/make-favicon.py` → `favicon.ico`·`favicon-16/32/48/96/144.png`·`favicon.svg`·`icon-192/512.png`. 확정 얼굴 `otter-face-happy.png` 재사용(새로 그린 유달이 아님). `icon-512` 는 JSON-LD 로고·푸시 알림 아이콘도 겸한다.
+- 가드: 선언된 PNG 파비콘 전부의 바탕 = 남색(옛 파비콘 하나를 되돌리면 빨간불 확인).
+- E4: 배포 후 `curl -sI https://urdeal.kr/favicon-48.png` → 새 파일(크기 3,271B) · 구글 검색 결과 반영은 구글 재수집 뒤(며칠~몇 주). 서치콘솔에서 홈 URL 재색인 요청하면 빨라질 수 있다.
+- 안 바꾼 것: `favicon-biz-32.png`·`icon-biz-*`(사업자 표면)·`favicon-utong.svg`(도매몰) — 다른 서비스 아이콘.
