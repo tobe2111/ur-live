@@ -22,6 +22,8 @@ from PIL import Image, ImageDraw
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 REF = os.path.join(ROOT, 'docs/design/assets/mascot/otter-turnaround-master.png')
 REF_FUR = (0x9D, 0x72, 0x56)
+# 색(톤) 기준 = 서비스에 나가 있는 유달이(2026-10-11 대표 "이거 기준으로 해야해"). 얼굴 폭 기준은 위 REF(정면).
+TONE_REF = os.path.join(ROOT, 'src/assets/mascot/udal-curious.webp')
 FUR_TOL = 14
 
 
@@ -34,6 +36,22 @@ def fur(img):
     if not sel:
         return None
     return tuple(sum(c[i] for c in sel) // len(sel) for i in range(3))
+
+
+def tone(img):
+    """털의 색상·채도 중앙값과 크림 중앙값. 평균 RGB(fur)만으로는 v6 의 채도 +0.05 · 주황 쪽 색상 · 복숭아빛 크림을
+    못 잡았다(대표 *"원래랑 색상도 똑같은 거 맞아?"* — 평균은 ±14 안이라 통과였다). 사람 눈은 채도·온도를 먼저 본다."""
+    fh, fs, cr = [], [], []
+    for p in (img.get_flattened_data() if hasattr(img, 'get_flattened_data') else img.getdata()):
+        h, s, v = colorsys.rgb_to_hsv(p[0] / 255, p[1] / 255, p[2] / 255)
+        if 0.04 < h < 0.12 and 0.3 < s < 0.65 and 0.35 < v < 0.75:
+            fh.append(h); fs.append(s)
+        elif 0.05 < h < 0.14 and 0.1 < s < 0.3 and v > 0.8:
+            cr.append(p[:3])
+    if not fh or not cr:
+        return None
+    med = lambda a: sorted(a)[len(a) // 2]
+    return med(fh), med(fs), tuple(med([c[i] for c in cr]) for i in range(3))
 
 
 def head_box(img):
@@ -85,6 +103,9 @@ def main():
     ref_ratio = rb[2] / (rb[1] - rb[0])
     print(f'확정본  털 #{"%02X%02X%02X" % fur(ref)}  볼폭/머리높이 {ref_ratio:.2f}')
 
+    tr = Image.open(TONE_REF).convert('RGBA'); tb = Image.new('RGBA', tr.size, (230, 230, 230, 255)); tb.alpha_composite(tr)
+    rt = tone(tb.convert('RGB'))
+    print(f'색 기준(udal-curious)  털 색상 {rt[0]:.3f} 채도 {rt[1]:.2f} · 크림 #{"%02X%02X%02X" % rt[2]}')
     ok = True
     faces = [ref.crop((0, rb[0], ref.width, int(rb[1] + (rb[1] - rb[0]) * 0.35)))]
     for i, c in enumerate(cells, 1):
@@ -92,6 +113,12 @@ def main():
         fur_ok = f is not None and all(abs(f[j] - REF_FUR[j]) <= FUR_TOL for j in range(3))
         line = f'칸 {i}  털 #{"%02X%02X%02X" % f if f else "??????"} {"✅" if fur_ok else "❌"}'
         ok &= fur_ok
+        t = tone(c)
+        if t:
+            # 허용폭: 색상 ±0.004(약 1.4°) · 채도 ±0.03 · 크림 채널 ±10 — v6 원본(0.071·0.49·R+9/B−7)이 걸리고 보정본이 통과하는 값
+            t_ok = abs(t[0] - rt[0]) <= 0.004 and abs(t[1] - rt[1]) <= 0.03 and all(abs(t[2][j] - rt[2][j]) <= 10 for j in range(3))
+            line += f'  톤 {t[0]:.3f}/{t[1]:.2f} 크림 #{"%02X%02X%02X" % t[2]} {"✅" if t_ok else "❌ (색 다름 → udal-color-match.py)"}'
+            ok &= t_ok
         hb = head_box(c)
         if hb:
             faces.append(c.crop((0, hb[0], c.width, min(c.height, int(hb[1] + (hb[1] - hb[0]) * 0.35)))))

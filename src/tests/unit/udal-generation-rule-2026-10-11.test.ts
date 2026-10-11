@@ -48,6 +48,17 @@ describe('유달이 생성 철칙', () => {
     }
   })
 
+  it('색 철칙: 기준 그림·보정 도구·톤 판정이 같은 기준을 본다', () => {
+    // 2026-10-11 대표 "색상도 철칙으로 지켜져야 해" — 색 기준은 서비스 유달이(udal-curious).
+    const TONE = 'src/assets/mascot/udal-curious.webp'
+    expect(existsSync(TONE)).toBe(true)
+    expect(DOC).toContain('udal-color-match.py')
+    expect(readFileSync('scripts/mascot/udal-color-match.py', 'utf8')).toContain(TONE)
+    const qa = readFileSync(QA, 'utf8')
+    expect(qa).toContain(TONE)
+    expect(qa, '톤 판정(색상·채도·크림)이 빠지면 평균 RGB 만 보고 통과시킨다 — v6 가 그랬다').toMatch(/def tone\(/)
+  })
+
   it('CLAUDE.md 가 모든 세션에 철칙을 가리킨다', () => {
     expect(readFileSync('CLAUDE.md', 'utf8')).toContain('유달이(마스코트) 생성 철칙')
   })
