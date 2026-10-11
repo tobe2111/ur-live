@@ -141,8 +141,9 @@ describe('③ 복구 — 새 서버 경로를 만들지 않는다', () => {
 
   it('🔒 서버 PUT 이 그 전이를 받아 준다 (소유권 조회가 삭제분을 배제하지 않는다)', () => {
     expect(PUT).toMatch(/ALLOWED_STATUS = new Set\(\['ACTIVE'/)
-    expect(PUT).toContain('SELECT id FROM products WHERE id = ? AND seller_id = ?')
-    expect(PUT, '소유권 조회가 DELETED 를 빼면 복구가 404 가 된다').not.toMatch(/SELECT id FROM products WHERE id = \? AND seller_id = \?[^`]*DELETED/)
+    // 2026-10-11 이용권 최소가가 저장된 카테고리를 같이 읽는다(`SELECT id, category`) — 불변식은 그대로: 소유권 조회가 DELETED 를 빼지 않는다.
+    expect(PUT).toMatch(/SELECT id(?:, category)? FROM products WHERE id = \? AND seller_id = \?/)
+    expect(PUT, '소유권 조회가 DELETED 를 빼면 복구가 404 가 된다').not.toMatch(/SELECT id(?:, category)? FROM products WHERE id = \? AND seller_id = \?[^`]*DELETED/)
   })
 
   it('삭제된 행은 **복구만** 보여 준다 — 판매 스위치·삭제·편집은 의미가 없다', () => {

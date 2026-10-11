@@ -2384,6 +2384,7 @@
       "discountWon": "ウォン",
       "discountNeedsList": "先に定価を入力",
       "salePriceAuto": "割引を入れると販売価格が自動で入ります。直接修正もできます。",
+      "minPrice": "販売価格は{{min}}ウォン以上です。",
       "groupBuySettings": "共同購入設定",
       "targetPeople": "目標人数",
       "zeroMeansDirectSale": "0の場合、共同購入なしで直接販売",

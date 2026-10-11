@@ -2385,6 +2385,7 @@
       "discountWon": "KRW",
       "discountNeedsList": "Enter list price first",
       "salePriceAuto": "Entering a discount fills in the selling price. You can still edit it.",
+      "minPrice": "The selling price must be at least ₩{{min}}.",
       "groupBuySettings": "Group Buy Settings",
       "targetPeople": "Target Participants",
       "zeroMeansDirectSale": "0 means direct sale without group buy",

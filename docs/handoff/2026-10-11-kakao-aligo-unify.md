@@ -95,3 +95,12 @@
 - 나중 9개 근거(라이브 D1 실측): 예약 `appointment_bookings` 0건 · 체험단 `fcfs_applications` 7건 전부 데모 ·
   `commission_withdrawals` 0건 · `affiliate_earnings` 0건 · 정지 해제/서류 확인은 드묾.
 - 코드 수정 없음 — 등록 안 한 템플릿은 `sendTextNotice` 가 `pending:` 기록 후 건너뛴다(비용 0).
+
+## 이용권 최소 판매가 1,000원 (2026-10-11 20:00 KST, 대표 "최소가격을 정하는게 좋겠네")
+- SSOT `VOUCHER_MIN_PRICE`/`voucherMinPriceError` (`src/shared/constants/voucher-categories.ts`).
+- 막는 자리 4곳: 셀러 등록 POST · 셀러 수정 PUT(저장된 카테고리를 `SELECT id, category` 로 읽음) · 영입자 대행 등록
+  (`curator.routes /me/proxy-product`) · 등록 화면(단계 이동 + 제출, 판매가 아래 안내 한 줄).
+- 대상 아님: 어드민 생성(데모·교환권), 이미 등록된 1,000원 미만(라이브 실측: 비활성 시험 상품 id 2918, 585원 1건뿐).
+- 가드 `voucher-min-price-2026-10-11.test.ts` + 주입 5건 빨간불 확인. `voucher-restore` 테스트·주입 앵커는
+  조회문 변경(`SELECT id, category`)에 맞춰 재조준(불변식 그대로).
+- 근거: 판매 1건 알림톡 2통(약 16원) vs 중개 매장 남는 몫 2.25% → 1,000원 미만이면 손해 가능.
