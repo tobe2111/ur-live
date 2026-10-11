@@ -294,6 +294,30 @@ adminSystemMonitoringRoutes.post('/alimtalk-test-send', async (c) => {
   }
 })
 
+/**
+ * 🌐 2026-10-11 발송 서버 IP 측정 — 알리고가 `인증오류입니다.-IP (-101)` 로 거부했다. 알리고는
+ * "발송 서버 IP" 에 등록된 주소에서 온 요청만 받는데, 워커(Cloudflare)는 나가는 IP 가 고정이 아니다.
+ * 무엇을 등록해야 하는지 **재서** 정한다 — Cloudflare 밖의 IP 반향 서비스를 여러 번 불러 본 IP 를 모은다.
+ */
+adminSystemMonitoringRoutes.get('/alimtalk-egress-ip', async (c) => {
+  const { DB } = c.env
+  try {
+    const me = c.get('user' as never) as { id?: string | number } | undefined
+    const admin = await DB.prepare('SELECT role FROM admins WHERE id = ?').bind(me?.id ?? null).first<{ role: string }>()
+    if (admin?.role !== 'super_admin') return c.json({ success: false, error: 'super_admin 권한이 필요합니다' }, 403)
+    const urls = ['https://checkip.amazonaws.com/', 'https://ifconfig.me/ip', 'https://checkip.amazonaws.com/', 'https://ifconfig.me/ip', 'https://checkip.amazonaws.com/']
+    const seen = await Promise.all(urls.map(async (u) => {
+      try {
+        const r = await fetch(u, { signal: AbortSignal.timeout(5000), headers: { 'User-Agent': 'curl/8' } })
+        return (await r.text()).trim().slice(0, 64)
+      } catch (e) { return `error: ${(e as Error).message.slice(0, 40)}` }
+    }))
+    return c.json({ success: true, ips: [...new Set(seen)], samples: seen.length })
+  } catch (err) {
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
+  }
+})
+
 // ── 🚦 2026-07-05: 운영 게이트 플래그 현황판 + cron heartbeat ──────────────
 //   배경(1인 운영 관측 보강): 검증 대기 게이트(커미션 예산/쇼핑 원장/fee-resolver 등)가
 //   env·platform_settings 에 흩어져 있어 "뭐가 켜져 있고 뭐가 staging 미검증인지" 볼 곳이 없었음.
