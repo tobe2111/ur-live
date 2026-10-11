@@ -116,3 +116,17 @@
   android 'ok' 행. 아이폰 간편로그인은 그 뒤 별건(SDK 클릭 시 로드는 탭 안 실행 조건 때문에 불가 — 미리 받기 필요, 멈춤 재현 확인부터).
 - 🍎 (22:10 KST, 대표 "아이폰도 일단은 해줘") 아이폰 일반 브라우저도 켬 — 05-04 멈춤 사고 때문에 로그인 화면이 그려진 뒤
   1.5초에 SDK 준비(`IOS_PREPARE_DELAY_MS`). 그보다 빠른 클릭은 종전 웹 이동. E4 확인에 "아이폰 로그인 화면이 멈추지 않는가" 추가.
+
+## 📦 배포 막힘 수리 — 워커 압축 1MB 게이트 (2026-10-11 23:00 KST)
+
+- **증상**: #1697(최소가)·#1699(카톡 로그인) 머지 후 `main.yml` "Verify build output" 실패 — `_worker.js` gzip 1008KB ≥ 게이트 1,032,000B.
+  마지막 성공 배포는 ee516d438(21:17 KST). 그 뒤 #1695(에이전시 1단계)·#1697·#1699 **전부 라이브 미반영**이었다.
+- **측정**(로컬 esbuild 메타파일, 같은 설정): ee516d438 = 1,026,725B → 지금 main = 1,033,800B(+7KB, 대부분 에이전시 라우트).
+- **처방**: 공유 카드 유달이 PNG(base64 18KB, 압축 안 됨)를 코드에서 빼서 `public/static/og/udal-share-168.png` 로 옮기고
+  `loadUdalOgPng(c.env.ASSETS, origin)` 이 카드 그릴 때 읽어 data URI 로(isolate 메모, 실패하면 유달이 없는 카드). 카드 모양 byte-동일.
+  결과 1,018,879B(−14.9KB, 게이트까지 약 13KB 여유).
+- ⚠️ **여유가 13KB 뿐이다.** #1698(에이전시 2단계)이 머지되면 다시 좁아진다. 근본은 CLAUDE.md/main.yml 이 적어 둔 대로
+  (a) Workers Paid 전환 또는 (b) 큰 상주 텍스트 외부화(다음 후보: `demo-review-generator.ts` 55KB · `korea-regions.ts` 26KB ·
+  `repair-schema/column-repairs.ts` 71KB). 측정 스크립트는 esbuild `metafile` 로 `bytesInOutput` 정렬하면 된다.
+- 가드: `udal-touchpoints-2026-10-09.test.tsx` +3건 · 주입 `scripts/mutations/worker-diet-og-udal-2026-10-11.mjs` 3건 빨간불 확인.
+- ⚠️ **E4 미확인**: 배포 후 `curl https://urdeal.kr/api/og/group-buy/2888 | grep -c 'data:image/png'` 가 1 이면 유달이가 카드에 들어간 것.
