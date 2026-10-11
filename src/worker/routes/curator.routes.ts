@@ -26,7 +26,7 @@ import {
   isValidHandleFormat,
 } from '../utils/handle-generator'
 import { CURATOR_DEFAULTS, WITHDRAWAL_DEFAULTS, TAX_POLICY, COMMISSION_DEFAULTS } from '../../shared/constants/policy'
-import { isVoucherCategory } from '../../shared/constants/voucher-categories'
+import { isVoucherCategory, voucherMinPriceError } from '../../shared/constants/voucher-categories'
 import { getPolicy } from '../utils/dynamic-policy'
 import { intParam } from '@/shared/pagination'; import { loadLinkedSellerProducts } from '../utils/linkshop-seller-products' // 한 줄: 래칫 1397
 import { consumerVisibleProductSql } from '../../shared/db/consumer-visible-product'
@@ -1352,6 +1352,8 @@ curatorRoutes.post('/me/proxy-product', requireAuth(), async (c) => {
     if (!Number.isFinite(merchantId) || merchantId <= 0) return c.json({ success: false, error: '매장 id 필요' }, 400)
     if (!name || name.length > 200) return c.json({ success: false, error: '상품명(1~200자) 필요' }, 400)
     if (!Number.isFinite(price) || price < 0) return c.json({ success: false, error: '가격 오류' }, 400)
+    const minErr = voucherMinPriceError(String(body.category || ''), price) // 💸 대행 등록도 이용권 최소가
+    if (minErr) return c.json({ success: false, error: minErr }, 400)
 
     // IDOR: 호출자가 이 매장의 영입자여야 대행 가능.
     const seller = await c.env.DB.prepare(

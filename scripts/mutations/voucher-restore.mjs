@@ -108,8 +108,8 @@ export default [
     name: '🕳️ PUT 소유권 조회가 삭제분을 배제한다 (복구가 404 가 된다)',
     file: SERVER,
     // ⚠️ 같은 문장이 파일에 세 번 있다(PUT·알림톡·PIN). 앞의 주석 줄까지 넣어 PUT 것으로 고유화한다.
-    find: '    // 소유권 확인\n    const existing = await db.prepare(\n      `SELECT id FROM products WHERE id = ? AND seller_id = ?`',
-    replace: "    // 소유권 확인\n    const existing = await db.prepare(\n      `SELECT id FROM products WHERE id = ? AND seller_id = ? AND COALESCE(status,'ACTIVE') != 'DELETED'`",
+    find: '    // 소유권 확인\n    const existing = await db.prepare(\n      `SELECT id, category FROM products WHERE id = ? AND seller_id = ?`',
+    replace: "    // 소유권 확인\n    const existing = await db.prepare(\n      `SELECT id, category FROM products WHERE id = ? AND seller_id = ? AND COALESCE(status,'ACTIVE') != 'DELETED'`",
     test: TEST,
     why:
       '복구가 새 서버 경로 없이 성립하는 이유가 바로 이 조회에 DELETED 조건이 없다는 것이다. ' +

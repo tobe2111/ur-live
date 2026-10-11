@@ -22,7 +22,7 @@ import { enrichSellerOrderRows } from '../../../worker/utils/order-list-enrich';
 import { rateLimit } from '../../../worker/middleware/rate-limit';
 import { buildShippingMessage, buildCancellationMessage } from '../../alimtalk/aligo';
 import { swallow } from '@/worker/utils/swallow';
-import { VOUCHER_CATEGORY_SET, canonicalCategory, isVoucherCategory } from '@/shared/constants/voucher-categories';
+import { VOUCHER_CATEGORY_SET, canonicalCategory, isVoucherCategory, voucherMinPriceError } from '@/shared/constants/voucher-categories';
 import { writeDigitalProductFields, writeVoucherProductFields, writeProductText } from './product-field-writers';
 
 import { invalidateGroupBuyProductsCache } from '../../group-buy/api/cache-keys';
@@ -780,9 +780,8 @@ sellerOrdersRoutes.post('/products', async (c) => {
     if (description !== undefined && description !== null && (typeof description !== 'string' || description.length > 10000)) {
       return c.json({ success: false, error: '상품 설명은 10000자 이내여야 합니다.' }, 400);
     }
-    if (!Number.isFinite(price) || price < 0 || price > 100_000_000) {
-      return c.json({ success: false, error: '가격은 0 ~ 1억 범위여야 합니다.' }, 400);
-    }
+    const priceErr = !Number.isFinite(price) || price < 0 || price > 100_000_000 ? '가격은 0 ~ 1억 범위여야 합니다.' : voucherMinPriceError(category, price);
+    if (priceErr) return c.json({ success: false, error: priceErr }, 400); // 💸 이용권 최소가 SSOT(voucher-categories)
     if (stock !== undefined && stock !== null && (!Number.isFinite(stock) || stock < 0 || stock > 1_000_000)) {
       return c.json({ success: false, error: '재고는 0 ~ 100만 범위여야 합니다.' }, 400);
     }
@@ -1042,8 +1041,8 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
 
     // 소유권 확인
     const existing = await db.prepare(
-      `SELECT id FROM products WHERE id = ? AND seller_id = ?`
-    ).bind(productId, sellerId).first();
+      `SELECT id, category FROM products WHERE id = ? AND seller_id = ?`
+    ).bind(productId, sellerId).first<{ id: number; category: string | null }>();
     if (!existing) return c.json({ success: false, error: 'Product not found or forbidden' }, 404);
 
     // 🛡️ 2026-04-29 보안 audit CRITICAL: 입력 검증 — 음수/NaN/Infinity/거대값/잘못된 status 차단.
@@ -1053,9 +1052,8 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
     if (body.description !== undefined && (typeof body.description !== 'string' || body.description.length > 10000)) {
       return c.json({ success: false, error: '상품 설명은 10000자 이내여야 합니다.' }, 400);
     }
-    if (body.price !== undefined && (!Number.isFinite(body.price) || body.price < 0 || body.price > 100_000_000)) {
-      return c.json({ success: false, error: '가격은 0 ~ 1억 범위여야 합니다.' }, 400);
-    }
+    const priceErr = body.price === undefined ? null : !Number.isFinite(body.price) || body.price < 0 || body.price > 100_000_000 ? '가격은 0 ~ 1억 범위여야 합니다.' : voucherMinPriceError(canonicalCategory(body.category) ?? existing.category, body.price);
+    if (priceErr) return c.json({ success: false, error: priceErr }, 400); // 💸 이용권 최소가 — 수정으로 우회 못 하게
     if (body.original_price !== undefined && body.original_price !== null && (!Number.isFinite(body.original_price) || body.original_price < 0 || body.original_price > 100_000_000)) {
       return c.json({ success: false, error: '정가는 0 ~ 1억 범위여야 합니다.' }, 400);
     }

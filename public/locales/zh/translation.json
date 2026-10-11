@@ -2384,6 +2384,7 @@
       "discountWon": "韩元",
       "discountNeedsList": "请先输入原价",
       "salePriceAuto": "输入折扣后会自动填入售价，也可以直接修改。",
+      "minPrice": "售价须不低于{{min}}韩元。",
       "groupBuySettings": "团购设置",
       "targetPeople": "目标人数",
       "zeroMeansDirectSale": "设为0则不使用团购直接销售",
