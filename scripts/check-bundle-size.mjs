@@ -417,7 +417,7 @@ if (totalSize / 1024 / 1024 > BUDGET.totalRawMB) {
   //   상위 3개(sentry·charts·firebase)만 3.5MB(40%)이고 **전부 lazy 청크**다 —
   //   사용자는 이 8.75MB 를 다운로드하지 않는다. 즉 이 값은 **UX 지표가 아니라 성장 지표**이고,
   //   실제 사용자 체감은 `critical path`(이 파일의 다른 예산), 실제 플랫폼 한도는
-  //   `_worker.js` gzip 1MB(main.yml) 과 `dist/client` 50MB(실측 36MB) 가 각각 따로 지킨다.
+  //   `_worker.js` gzip 7MB(main.yml, 2026-10-11 Paid 확인 후 상향) 과 `dist/client` 50MB(실측 36MB) 가 각각 따로 지킨다.
   //   ⇒ 올릴지 줄일지 정하기 전에 **아래 목록이 정말 lazy 인지**부터 볼 것(크리티컬이면 진짜 문제다).
   const topRaw = jsFiles.slice(0, 5);
   const criticalNames = new Set(criticalFiles.map(f => f.name));

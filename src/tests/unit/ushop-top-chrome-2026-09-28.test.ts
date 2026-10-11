@@ -33,7 +33,10 @@ import { readFileSync } from 'node:fs'
 import { stripComments } from '../helpers/source-text'
 
 const HEADER = 'src/pages/curator-page/CuratorHeader.tsx'
-const MANAGE = 'src/pages/ushop-manage/ShopInfoCards.tsx'
+/* 🔀 2026-10-11 재조준 (대표 확정 **A-2**): 주인 편집 자리가 `ShopInfoCards` → 프로필 편집 시트로
+   옮겨갔다. 이 블록이 지키는 것은 *"마퀴(흐르는 문구) 편집이 되살아나지 않는다"* 이고,
+   그 검사는 **편집이 사는 파일**을 따라가야 한다(옛 파일을 보면 영원히 통과한다 — 지금은 없으니까). */
+const MANAGE = 'src/pages/user-profile/profile-edit/ProfileEditSheet.tsx'
 const CHIPS = 'src/pages/curator-page/PinCategoryChips.tsx'
 const PAGE = 'src/pages/CuratorPage.tsx'
 

@@ -44,6 +44,7 @@ N1 얼굴 위 + urdeal. 아래 · N2 urdeal. 위 + 아래서 빼꼼 · N3 작은
 지금 시작화면 = 홈 화면 웹앱(PWA)이 **manifest 바탕색(#F8F7FC) + 아이콘** 두 가지로 자동 생성한 화면이다. 그래서 바꿀 수 있는 손잡이는 둘뿐이다(글자·애니메이션 불가).
 안 1 네이비 전면(바탕 #1B2340 + 6-B maskable — 테두리가 사라져 유달이와 티켓만 뜬다) · 안 2 아이콘만 6-B · 안 3 네이비 + 유달이 + urdeal.(스토어 앱 네이티브 시작화면 전용).
 - [x] **안 1 확정** (2026-10-11 대표 *"안1로 해줘"*) — manifest `background_color` `#1B2340` + 6-B maskable. `theme_color` 는 `#F8F7FC` 유지(앱 화면 상단 바 색 — 시작화면과 무관). 스토어 앱 시작화면도 같은 네이비로 맞췄다(`capacitor.config.ts` + `android/app/src/main/res/drawable*/splash.png`).
+- [x] **아이폰** (2026-10-11 대표 *"아이폰 시작화면도 해줘"*) — 홈 화면 웹앱은 manifest 를 안 보고 `apple-touch-startup-image`(기기 픽셀과 **정확히 같은 크기**만 씀)를 본다 → `public/ios-splash-{W}x{H}.png` 12종 + `index.html` 선언 + `_routes.json` exclude. 스토어 앱은 `ios/App/App/Assets.xcassets/Splash.imageset` 2732² 3장을 네이비로 재생성. 아이콘 = 짧은 변의 42%(안드로이드와 같은 비율). 생성 `scripts/app-icon/make-ios-splash.py`.
 
 ## ✅ 6-B 적용 (2026-10-11 대표 *"6-B가 가장 좋고"* → *"일단 2번으로 만들어봐"* — 확정 유달이 그림만 사용)
 ![실제 크기](assets/app-icon-2026-10/apply-board.jpg)

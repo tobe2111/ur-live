@@ -201,7 +201,6 @@ import { campaignApplyRoutes } from '../features/marketing/api/campaign-apply.ro
 import { adminCampaignApplicationsRoutes } from '../features/admin/api/admin-campaign-applications.routes'; import { mallAdminRoutes } from '../features/mall/api/mall-admin.routes'; // 🏬 몰 운영자 콘솔(공구 서비스) — 한 줄: 파일크기 래칫(2638) 안
 // ⏳ [TEMP-TEST] 도매 워커 배포 전 라이브 검증용 임시 마운트(아래 app.route 참조) — ur-wholesale 배포 시 제거.
 import { buyerPoolRoutes as buyerPoolTestRoutes } from '../features/supply/api/buyer-pool.routes';
-import { makerPoolRoutes as makerPoolTestRoutes } from '../features/supply/api/maker-pool.routes';
 import { buyerIngestRoutes } from '../features/supply/api/buyer-ingest.routes';
 import { payoutCenterRoutes } from '../features/admin/api/admin-payout-center.routes';
 import { proxyRoutes } from './routes/proxy.routes';
@@ -325,7 +324,7 @@ function privateNoCache() {
 
 // 🏭 [wholesale-split 2026-07-16] 빌드타임 상수 — esbuild `define` 로 치환됨.
 //   build-worker.js: 기본 false(소비자 ur-live) → 도매 그래프 DCE 제외. WHOLESALE_BUNDLE=1 → true(도매 ur-wholesale).
-declare const __INCLUDE_WHOLESALE__: boolean;
+declare const __INCLUDE_WHOLESALE__: boolean; declare const __PAGES_BUNDLE__: boolean; // 📦 2026-10-11 Pages 빌드만 true(크론 그래프 DCE) — build-worker.js
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -1688,8 +1687,8 @@ app.route('/api/admin/gov-notices', govNoticesRoutes); // 📢 공고 스캐너 
 //   수집을 검증할 수 있게 소비자 워커에 임시 마운트. admin 전용(requireAdmin)+격리 테이블+게이트라 유어딜 데이터
 //   무접촉. ur-wholesale 배포 시 이 3줄(import+mount) 제거 예정.
 app.route('/api/admin/buyer-pool', buyerPoolTestRoutes);
-// ⏳ [TEMP-TEST 2026-07-28] 제조사·판매사 후보 풀 — 도매 워커 배포 전까지 라이브 어드민에서 검증(admin 전용·격리 테이블).
-app.route('/api/admin/maker-pool', makerPoolTestRoutes);
+// 📦 2026-10-11 대표 "유통 스타트는 다 필요없어": 제조사·판매사 후보 풀(유통스타트 밴드)의 [TEMP-TEST] 소비자 마운트 제거 —
+//   유통스타트 워커(mount-wholesale.ts)에만 남는다. 바이어 풀(위·아래)은 도매와 무관한 별개 사업이라 그대로 둔다.
 // 🔖 바이어 풀 북마클릿 인제스트 — requireAdmin 밖(크로스오리진, 토큰 인증+CORS). buyKorea 등에서 원클릭 전송.
 app.route('/api/buyer-ingest', buyerIngestRoutes);
 // app.route('/api/seller/castings', sellerCastingRoutes);
@@ -2668,5 +2667,5 @@ export default {
     // @ts-expect-error — Hono app.fetch 시그니처로 위임 (env/ctx passthrough).
     return app.fetch(request, fenv, ctx);
   },
-  scheduled: __INCLUDE_WHOLESALE__ === true ? wholesaleCronNoop : handleCronScheduled, // 극성 주의: `=== true` 만 no-op(느슨하게 바꾸면 소비자 cron 사망). 배경: scheduled.ts
+  scheduled: (__INCLUDE_WHOLESALE__ === true || (typeof __PAGES_BUNDLE__ !== 'undefined' && __PAGES_BUNDLE__ === true)) ? wholesaleCronNoop : handleCronScheduled, // 극성 주의: `=== true` 만 no-op(느슨하면 소비자 cron 사망). Pages 는 cron 을 안 부른다 → 크론 그래프 ~56KB(gzip) DCE. 배경: scheduled.ts
 };

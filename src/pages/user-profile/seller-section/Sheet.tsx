@@ -92,7 +92,7 @@ export default function Sheet({ title, onClose, onBack, children, footer, tall =
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/45" style={{ zIndex: Z.SHEET_BACKDROP }} onClick={onClose} aria-hidden="true" />
+      <div className="fixed inset-0 bg-black/45 ur-sheet-veil" style={{ zIndex: Z.SHEET_BACKDROP }} onClick={onClose} aria-hidden="true" />
       <div
         role="dialog"
         aria-modal="true"
@@ -100,6 +100,11 @@ export default function Sheet({ title, onClose, onBack, children, footer, tall =
         className={
           'fixed inset-x-0 bottom-0 flex flex-col rounded-t-2xl bg-surface'
           + (tall ? ' top-6 h-auto' : ' max-h-[85dvh]')
+          /* 🎬 2026-10-11 — 등장은 `.ur-sheet-in` 한 클래스가 소유한다(폰=올라옴 / lg+=투명도만 /
+             동작 줄이기=정지). 🔴 여기에 `animate-slide-up` 을 직접 쓰면 아래 `lg:-translate-*`
+             가운데 정렬을 덮어 **PC 다이얼로그가 튄다**(실측 410,200 → 640,400). 근거·실측은
+             `src/index.css` 의 `.ur-sheet-in` 머리말에 있다. */
+          + ' ur-sheet-in'
           // 🖥️ lg+ : 가운데 다이얼로그(위 머리말). 폰 값들을 여기서 되돌린다.
           + ' lg:inset-x-auto lg:left-1/2 lg:top-1/2 lg:bottom-auto lg:h-auto'
           + ' lg:-translate-x-1/2 lg:-translate-y-1/2 lg:w-[min(900px,92vw)]'

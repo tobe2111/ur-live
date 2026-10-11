@@ -69,12 +69,13 @@ describe('도매 철거 안전망 — 도매가 아닌 별개 사업은 함께 �
     })
   }
 
-  it('소비자 번들이 buyer-pool·maker-pool 어드민을 계속 마운트한다', () => {
-    // worker/index.ts 가 도매 마운트와 별개로 이 둘을 직접 건다(도매 워커 미배포 대응).
-    //   도매 마운트를 걷어낼 때 같이 지우면 어드민 화면이 죽는다.
+  it('소비자 번들이 buyer-pool 어드민을 계속 마운트한다(별개 사업) — maker-pool 은 유통스타트 워커에만', () => {
+    // worker/index.ts 가 도매 마운트와 별개로 바이어 풀을 직접 건다. 도매를 걷어낼 때 같이 지우면 어드민 화면이 죽는다.
+    // 📦 2026-10-11 대표 "유통 스타트는 다 필요없어": 제조사·판매사 후보 풀(유통스타트 밴드)은 소비자 마운트를 걷었다.
     const idx = read('src/worker/index.ts')
     expect(idx.includes("'/api/admin/buyer-pool'")).toBe(true)
-    expect(idx.includes("'/api/admin/maker-pool'")).toBe(true)
+    expect(idx.includes("'/api/admin/maker-pool'")).toBe(false)
+    expect(read('src/worker/mount-wholesale.ts').includes("'/api/admin/maker-pool'")).toBe(true)
   })
 
   it('바이어 자동수집 cron 이 살아 있다', () => {

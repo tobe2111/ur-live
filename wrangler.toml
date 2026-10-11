@@ -26,6 +26,8 @@ compatibility_flags = ["nodejs_compat"]
 [define]
 __INCLUDE_WHOLESALE__ = "false"
 __INCLUDE_DOCS__ = "false"
+# 📦 2026-10-11 cron 워커는 실제 크론 핸들러가 필요하다 — Pages 빌드(build-worker.js)만 true 로 no-op.
+__PAGES_BUNDLE__ = "false"
 
 # Build command: Cloudflare Workers CI가 빌드 전 프론트엔드를 생성하도록
 [build]

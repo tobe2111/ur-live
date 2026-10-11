@@ -10,7 +10,7 @@ const ROW = 'src/components/deal/DealRow.tsx'
 const PIN = 'src/pages/curator-page/PinRow.tsx'
 const CONSOLE = 'src/pages/CuratorEarningsPage.tsx'
 const HEADER = 'src/pages/curator-page/CuratorHeader.tsx'
-const MANAGE = 'src/pages/ushop-manage/ShopInfoCards.tsx'
+const MANAGE = 'src/pages/user-profile/profile-edit/ProfileEditSheet.tsx'  // 🔀 2026-10-11 A-2 로 이사
 
 export default [
   {
@@ -126,8 +126,8 @@ export default [
   {
     name: '유어샵 — 표시는 없는데 편집 칸만 되살린다 (조용한 부재)',
     file: MANAGE,
-    find: "type Field = 'name' | 'bio' | 'handle' | 'sns' | null",
-    replace: "type Field = 'name' | 'bio' | 'handle' | 'sns' | null\nconst _revived = '흐르는 문구'",
+    find: "type Field = 'name' | 'bio' | 'phone' | 'handle' | 'sns' | null",
+    replace: "type Field = 'name' | 'bio' | 'phone' | 'handle' | 'sns' | null\nconst _revived = '흐르는 문구'",
     test: T_TOP,
     why:
       '표시 자리를 지우고 편집만 남기면 주인이 **아무도 못 보는 값**을 계속 입력한다. 에러도 안 나고 ' +

@@ -302,12 +302,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 385 | 1150 |
+| 전체 | 385 | 1147 |
 | 도메인 버킷 (5개 소개서) | 171 | 463 |
-| 공통/인프라 (의도적 제외) | 168 | 487 |
-| **미커버 (점검 필요)** | **46** | **200** |
+| 공통/인프라 (의도적 제외) | 168 | 478 |
+| **미커버 (점검 필요)** | **46** | **206** |
 
-⚠️ **미커버 246건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 252건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -359,7 +359,7 @@
 
 **미커버 API 엔드포인트**
 - `DELETE /:id` (`src/features/supply/api/wholesale-board.routes.ts`)
-- `PATCH /:id` (`src/features/supply/api/wholesale-board.routes.ts`)
+- `PATCH /:id` (`src/features/supply/api/maker-pool.routes.ts`)
 - `POST /:id{[0-9]+}/view` (`src/features/products/api/product-view.routes.ts`)
 - `PATCH /:id/amount` (`src/features/returns/api/return-amount.routes.ts`)
 - `POST /:id/approve` (`src/worker/routes/mall-applications-admin.routes.ts`)
@@ -431,15 +431,19 @@
 - `GET /channel-thresholds` (`src/features/supply/api/supplier-dashboard.routes.ts`)
 - `GET /claims` (`src/features/supply/api/wholesale-claims.routes.ts`)
 - `POST /claims` (`src/features/supply/api/wholesale-claims.routes.ts`)
+- `POST /collect` (`src/features/supply/api/maker-pool.routes.ts`)
 - `DELETE /connect` (`src/features/supply/api/coupang-commerce.routes.ts`)
 - `POST /connect` (`src/features/supply/api/coupang-commerce.routes.ts`)
 - `GET /deal-plan/:productId` (`src/features/group-buy/api/deal-plan.routes.ts`)
 - `GET /demand-signal` (`src/features/supply/api/supplier-dashboard.routes.ts`)
 - `GET /documents` (`src/features/supply/api/wholesale-documents.routes.ts`)
 - `GET /documents/:id/html` (`src/features/supply/api/wholesale-documents.routes.ts`)
+- `POST /enrich` (`src/features/supply/api/maker-pool.routes.ts`)
+- `GET /export` (`src/features/supply/api/maker-pool.routes.ts`)
 - `POST /export` (`src/features/supply/api/coupang-commerce.routes.ts`)
 - `POST /fee-context/channel` (`src/features/seller/api/seller-store-channel.routes.ts`)
 - `GET /home` (`src/features/supply/api/wholesale.routes.ts`)
+- `POST /import-resellers` (`src/features/supply/api/maker-pool.routes.ts`)
 - `GET /info` (`src/features/supply/api/wholesale-plus.routes.ts`)
 - `POST /items/:id/ship` (`src/features/supply/api/wholesale-supplier.routes.ts`)
 - `POST /kakao-bot/link-code` (`src/features/seller/api/seller-kakao-bot.routes.ts`)
@@ -450,6 +454,7 @@
 - `GET /me` (`src/features/supply/api/supplier-dashboard.routes.ts`)
 - `GET /me/prefs/:key` (`src/features/auth/api/admin-prefs.routes.ts`)
 - `PUT /me/prefs/:key` (`src/features/auth/api/admin-prefs.routes.ts`)
+- `GET /meta` (`src/features/supply/api/maker-pool.routes.ts`)
 - `GET /naver-price-check` (`src/features/supply/api/supplier-dashboard.routes.ts`)
 - `GET /notifications` (`src/features/supply/api/supplier-dashboard.routes.ts`)
 - `POST /notifications/read-all` (`src/features/supply/api/supplier-dashboard.routes.ts`)
@@ -512,6 +517,7 @@
 - `GET /signup-meta` (`src/features/supply/api/supplier-dashboard.routes.ts`)
 - `PATCH /signup-meta` (`src/features/supply/api/supplier-dashboard.routes.ts`)
 - `GET /statement` (`src/features/supply/api/wholesale-documents.routes.ts`)
+- `GET /stats` (`src/features/supply/api/maker-pool.routes.ts`)
 - `GET /status` (`src/features/supply/api/coupang-commerce.routes.ts`)
 - `POST /store-claims` (`src/features/seller/api/seller-store-claims.routes.ts`)
 - `GET /store-claims/lookup-by-code` (`src/features/seller/api/seller-store-claims.routes.ts`)
@@ -1767,7 +1773,7 @@
 
 
 
-> 마지막 생성: 2026-10-11T13:25:52.592Z
+> 마지막 생성: 2026-10-11T15:03:54.531Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->
