@@ -10,6 +10,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { priceFromDiscount, discountFromPrices, type DiscountMode } from './discount-input'
+import { VOUCHER_MIN_PRICE } from '@/shared/constants/voucher-categories'
 
 interface Props {
   price: number
@@ -95,14 +96,14 @@ export default function DiscountPriceFields({ price, originalPrice, update }: Pr
           value={price || ''}
           onChange={e => update('price', Number(e.target.value))}
           placeholder="25000"
+          min={VOUCHER_MIN_PRICE}
           className={INPUT}
           required
         />
-        {hasList && (
-          <p className="mt-1 text-xs text-gray-500">
-            {t('seller.mealVoucher.salePriceAuto', { defaultValue: '할인을 넣으면 판매가가 자동으로 채워져요. 직접 고쳐도 돼요.' })}
-          </p>
-        )}
+        <p className="mt-1 text-xs text-gray-500">
+          {hasList && `${t('seller.mealVoucher.salePriceAuto', { defaultValue: '할인을 넣으면 판매가가 자동으로 채워져요. 직접 고쳐도 돼요.' })} `}
+          {t('seller.mealVoucher.minPrice', { defaultValue: '판매가는 {{min}}원 이상이에요.', min: VOUCHER_MIN_PRICE.toLocaleString('ko-KR') })}
+        </p>
       </div>
     </div>
   )
