@@ -13,6 +13,8 @@ import { requireAuth, requireAdmin, getCurrentUser } from '@/worker/middleware/a
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import type { Env } from '@/worker/types/env';
 import { getKakaoToken, getKakaoTokenSimple, callKakaoApi } from '@/lib/kakao-token';
+import { resolveUserIdString } from '@/worker/utils/resolve-user-id';
+import { buildVoucherExpiryEvent, isKakaoConsentError } from '../voucher-calendar';
 
 const kakaoSocialRoutes = new Hono<{ Bindings: Env }>();
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
@@ -106,7 +108,8 @@ kakaoSocialRoutes.post('/calendar/add', requireAuth(), async (c) => {
 
   const result = await callKakaoApi(DB, user.id, c.env.KAKAO_REST_API_KEY || '',
     'https://kapi.kakao.com/v2/api/calendar/create/event',
-    { body: `event=${encodeURIComponent(JSON.stringify(event))}` }
+    { body: `event=${encodeURIComponent(JSON.stringify(event))}` },
+    c.env.DATA_ENCRYPTION_KEY, // 🛡️ 2026-10-11: 빠져 있었다 — 암호화된 토큰을 그대로 보내고 갱신 실패로 토큰을 지웠다
   );
 
   if (result.needsReauth) {
@@ -120,6 +123,69 @@ kakaoSocialRoutes.post('/calendar/add', requireAuth(), async (c) => {
   }
   return c.json({ success: false, error: result.data?.msg || '캘린더 등록 실패' }, 400);
 });
+
+// ── 📅 이용권 만료일 → 카카오톡 캘린더 (2026-10-11 대표 "1,2,4 해줄래" 중 2번) ──
+// 게이트 `KAKAO_TALK_CALENDAR_ENABLED='true'`(기본 OFF). 카카오 콘솔에서 톡캘린더 권한·동의항목을 켜기 전에
+// 버튼을 보이면 동의 화면이 KOE205 로 거절된다 — 그래서 화면은 이 값을 먼저 묻고 버튼을 그린다.
+kakaoSocialRoutes.get('/calendar/voucher/available', (c) => {
+  return c.json({ success: true, data: { enabled: c.env.KAKAO_TALK_CALENDAR_ENABLED === 'true' } });
+});
+
+kakaoSocialRoutes.post(
+  '/calendar/voucher',
+  rateLimit({ action: 'kakao_tcal_voucher', max: 20, windowSec: 600 }),
+  requireAuth(),
+  async (c) => {
+    if (c.env.KAKAO_TALK_CALENDAR_ENABLED !== 'true') {
+      return c.json({ success: false, error: '아직 준비 중인 기능이에요', code: 'FEATURE_OFF' }, 503);
+    }
+    const user = getCurrentUser(c);
+    if (!user) return c.json({ success: false, error: '로그인 필요' }, 401);
+    const { DB } = c.env;
+
+    let body: { code?: unknown };
+    try { body = await c.req.json(); } catch { return c.json({ success: false, error: 'JSON 형식 오류' }, 400); }
+    const code = typeof body?.code === 'string' ? body.code.trim() : '';
+    if (!code || code.length > 64) return c.json({ success: false, error: '잘못된 이용권입니다' }, 400);
+
+    // 🛡️ 소유권 — 내 이용권만(IDOR). /vouchers/my 와 같은 dual-key 정규화.
+    const uidNorm = await resolveUserIdString(DB, user.id, user.isDbId);
+    const uidRaw = String(user.id);
+    const v = await DB.prepare(`
+      SELECT v.status, v.expires_at, p.name AS product_name, p.restaurant_name,
+             p.restaurant_address, p.restaurant_lat, p.restaurant_lng
+      FROM vouchers v LEFT JOIN products p ON v.product_id = p.id
+      WHERE v.code = ? AND v.user_id IN (?, ?)
+    `).bind(code, uidNorm, uidRaw).first<{
+      status: string; expires_at: string | null; product_name: string | null; restaurant_name: string | null;
+      restaurant_address: string | null; restaurant_lat: number | null; restaurant_lng: number | null;
+    }>();
+    if (!v) return c.json({ success: false, error: '이용권을 찾을 수 없어요' }, 404);
+    if (v.status !== 'unused') return c.json({ success: false, error: '사용 가능한 이용권만 넣을 수 있어요' }, 400);
+
+    const event = buildVoucherExpiryEvent({
+      productName: v.product_name, storeName: v.restaurant_name, address: v.restaurant_address,
+      lat: v.restaurant_lat, lng: v.restaurant_lng, expiresAt: v.expires_at,
+    }, Date.now());
+    if (!event) return c.json({ success: false, error: '만료일이 없거나 이미 지났어요' }, 400);
+
+    // ⚠️ kek(DATA_ENCRYPTION_KEY)를 꼭 넘긴다 — 빠지면 암호화된 토큰을 그대로 보내 실패하고,
+    //   이어지는 갱신 실패가 그 사용자의 카카오 토큰을 지운다(kakao-token.ts).
+    const result = await callKakaoApi(DB, uidNorm, c.env.KAKAO_REST_API_KEY || '',
+      'https://kapi.kakao.com/v2/api/calendar/create/event',
+      { body: `event=${encodeURIComponent(JSON.stringify(event))}` },
+      c.env.DATA_ENCRYPTION_KEY,
+    );
+    // 토큰이 없거나(needsReauth) 권한 미동의면 → 화면이 동의 화면으로 보낸다. 401 을 쓰지 않는다(전역 로그아웃 처리를 탄다).
+    if (result.needsReauth || isKakaoConsentError(result.data)) {
+      return c.json({ success: false, error: '카카오톡 캘린더 동의가 필요해요', code: 'KAKAO_SCOPE_REQUIRED', required_scope: 'talk_calendar' }, 403);
+    }
+    if (result.data?.event_id) {
+      return c.json({ success: true, data: { event_id: result.data.event_id } });
+    }
+    return c.json({ success: false, error: result.data?.msg || '캘린더 등록에 실패했어요' }, 502);
+  },
+);
 
 // ── GET /calendar/ics/:streamId — Google/Apple Calendar용 .ics 파일 (글로벌) ──
 kakaoSocialRoutes.get('/calendar/ics/:streamId', async (c) => {
