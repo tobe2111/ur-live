@@ -698,7 +698,8 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
       // 🛡️ 2026-05-16: 사용자 phone 으로 voucher 발급 알림톡 (fire-and-forget)
       try {
         const userRow = await DB.prepare("SELECT phone FROM users WHERE id = ?").bind(userId).first<{ phone: string | null }>()
-        if (userRow?.phone) {
+        // 🎟️ 교환권(deal_only)은 이 문구("매장에서 QR · 내 이용권")가 틀리다 — 교환권은 보관함으로 간다(인앱 알림이 맡는다).
+        if (userRow?.phone && Number((product as { deal_only?: number | null }).deal_only) !== 1) {
           c.executionCtx.waitUntil(
             sendBuyerVoucherIssuedAlimtalk(
               c.env,

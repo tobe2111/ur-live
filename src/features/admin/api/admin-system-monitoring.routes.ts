@@ -288,7 +288,7 @@ adminSystemMonitoringRoutes.post('/alimtalk-test-send', async (c) => {
     const at = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul' })
     const r = await sendTextNotice(c.env, user.phone, {
       tpl, title: '유어딜 알림 시험', forceAlimtalk: true,
-      text: `[유어딜] 알림 발송 시험입니다 (${at}). 이 문자가 보이면 사장님·손님 알림이 정상으로 나갑니다.`,
+      text: `[유어딜] 알림 발송 시험입니다 (${at}). 이 메시지가 보이면 사장님·손님 알림이 정상으로 나갑니다.`,
     })
     const tail = String(user.phone ?? '').replace(/[^0-9]/g, '').slice(-4)
     return c.json({ success: r.ok, result: r, phone_tail: tail || null })

@@ -7,7 +7,7 @@
  *  - 시스템 알림톡(`system-alimtalk.ts`)은 알리고로 가지만 주소가 틀려 **성공 기록 0건**이었다.
  *
  * 규칙 (2026-10-11 대표 "문자는 안 쓸거고 카톡만" 반영):
- *  - 그 알림의 템플릿이 카카오 검수를 통과했으면(어드민 `alimtalk_approved_templates` 에 코드가 있으면)
+ *  - 그 알림의 템플릿이 카카오 검수를 통과했으면(어드민 `alimtalk_approved_templates` 에 `이름=알리고코드` 가 있으면)
  *    **알림톡**으로 보낸다. 실패 시 문자 대체는 하지 않는다.
  *  - 아직 승인 전이면 **보내지 않는다**(앱 알림만) — `alimtalk_failures` 에 `pending:<코드>` 로 남긴다.
  *  - 문자는 어드민 `notice_sms_enabled='true'` 일 때만(기본 OFF).
@@ -18,35 +18,49 @@
  */
 import type { D1Database } from '@cloudflare/workers-types'
 import { sendAlimtalk, sendAligoSms, resolveAligoSender } from './aligo'
+import { isAlimtalkOff } from './alimtalk-templates'
 
 /** 어드민에서 카카오 검수를 통과한 템플릿 코드를 쉼표로 적는 자리. */
 export const APPROVED_TEMPLATES_SETTING = 'alimtalk_approved_templates'
 
-export function parseApprovedTemplates(raw: unknown): Set<string> {
-  return new Set(
-    String(raw ?? '')
-      .split(/[\s,]+/)
-      .map((s) => s.trim())
-      .filter(Boolean),
-  )
+/**
+ * 🔑 2026-10-11 — 알리고는 템플릿을 등록하면 **자기 코드**(예: `UA_1234`)를 붙인다. 우리 이름
+ * (`voucher_issued`)을 그대로 tpl_code 로 보내면 승인된 템플릿도 "없는 템플릿"으로 거절된다.
+ * ⇒ 설정에 `우리이름=알리고코드` 로 적는다(쉼표·줄바꿈 구분). `=` 없이 이름만 적으면 그 이름이 곧 코드다(종전 형식).
+ */
+export function parseTemplateCodeMap(raw: unknown): Map<string, string> {
+  const map = new Map<string, string>()
+  for (const tok of String(raw ?? '').replace(/\s*=\s*/g, '=').split(/[\s,]+/)) {
+    const t = tok.trim()
+    if (!t) continue
+    const eq = t.indexOf('=')
+    const name = (eq >= 0 ? t.slice(0, eq) : t).trim()
+    const code = (eq >= 0 ? t.slice(eq + 1) : t).trim()
+    if (name && code) map.set(name, code)
+  }
+  return map
 }
 
-let _approvedCache: { at: number; set: Set<string> } | null = null
+export function parseApprovedTemplates(raw: unknown): Set<string> {
+  return new Set(parseTemplateCodeMap(raw).keys())
+}
+
+let _approvedCache: { at: number; map: Map<string, string> } | null = null
 const APPROVED_TTL_MS = 60_000
 
-async function approvedTemplates(db: D1Database | undefined): Promise<Set<string>> {
-  if (!db) return new Set()
-  if (_approvedCache && Date.now() - _approvedCache.at < APPROVED_TTL_MS) return _approvedCache.set
+async function approvedTemplates(db: D1Database | undefined): Promise<Map<string, string>> {
+  if (!db) return new Map()
+  if (_approvedCache && Date.now() - _approvedCache.at < APPROVED_TTL_MS) return _approvedCache.map
   try {
     const row = await db
       .prepare('SELECT value FROM platform_settings WHERE key = ?')
       .bind(APPROVED_TEMPLATES_SETTING)
       .first<{ value: string }>()
-    const set = parseApprovedTemplates(row?.value)
-    _approvedCache = { at: Date.now(), set }
-    return set
+    const map = parseTemplateCodeMap(row?.value)
+    _approvedCache = { at: Date.now(), map }
+    return map
   } catch {
-    return new Set()
+    return new Map()
   }
 }
 
@@ -82,7 +96,7 @@ export function normalizeMobile(phone: unknown): string | null {
 
 export type TextNoticeResult =
   | { ok: true; via: 'alimtalk' | 'sms' }
-  | { ok: false; skipped: 'no_credentials' | 'invalid_phone' | 'template_not_approved' }
+  | { ok: false; skipped: 'no_credentials' | 'invalid_phone' | 'template_not_approved' | 'turned_off' }
   | { ok: false; via: 'alimtalk' | 'sms'; error: string }
 
 /**
@@ -94,6 +108,8 @@ export async function sendTextNotice(
   phone: unknown,
   n: { tpl: string; title: string; text: string; forceAlimtalk?: boolean },
 ): Promise<TextNoticeResult> {
+  // 🔕 대표가 끈 알림(alimtalk-templates.ts ALIMTALK_OFF_TEMPLATES) — 앱 알림만. 놓친 것으로 기록하지도 않는다(의도한 일이다).
+  if (!n.forceAlimtalk && isAlimtalkOff(n.tpl)) return { ok: false, skipped: 'turned_off' }
   const e = (env ?? {}) as Record<string, unknown>
   const apiKey = String(e.ALIGO_API_KEY ?? '')
   const userId = String(e.ALIGO_USER_ID ?? '')
@@ -110,7 +126,8 @@ export async function sendTextNotice(
     DISCORD_WEBHOOK_URL: e.DISCORD_WEBHOOK_URL as string | undefined,
   }
   const senderKey = String(e.ALIGO_SENDER_KEY ?? '')
-  const useAlimtalk = !!senderKey && (n.forceAlimtalk || (await approvedTemplates(db)).has(n.tpl))
+  const approved = await approvedTemplates(db)
+  const useAlimtalk = !!senderKey && (n.forceAlimtalk || approved.has(n.tpl))
   const smsAllowed = await smsAllowedSetting(db)
 
   let via: 'alimtalk' | 'sms'
@@ -119,7 +136,7 @@ export async function sendTextNotice(
     via = 'alimtalk'
     result = await sendAlimtalk(aligoEnv, {
       senderKey,
-      templateCode: n.tpl,
+      templateCode: approved.get(n.tpl) || n.tpl, // 알리고가 붙인 코드(없으면 우리 이름 그대로)
       to,
       message: n.text,
       sender: await resolveAligoSender(aligoEnv),

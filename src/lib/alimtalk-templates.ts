@@ -99,6 +99,31 @@ export const ALL_USED_ALIMTALK_TEMPLATES: readonly string[] = [
   'test',
 ] as const
 
+/**
+ * 🔕 2026-10-11 대표 "알림톡 안 보내도 되는 것들은 좀 줄여야겠어" — 알림톡(돈 드는 채널)을 **보내지 않는** 코드.
+ * 앱 알림·대시보드 벨은 그대로 나간다(공짜). 카카오에 등록하지 않으며, 등록돼도 이 목록이 이긴다.
+ *  - voucher_used               손님이 매장에 서 있다 — 방금 일어난 일을 다시 알릴 필요 없음
+ *  - seller_voucher_used        사장님 대시보드 벨로 충분
+ *  - appointment_user_confirmed 손님이 예약 화면에서 방금 확인했다
+ *  - appointment_reminder_seller 새 예약 때 이미 알림톡을 받았다
+ *  - store_owner_stats_link     옛 '매장 전용 링크' — 첫 판매 안내(seller_first_voucher)가 같은 일을 한다
+ * 다시 켜려면 이 목록에서 지우기만 하면 된다.
+ */
+export const ALIMTALK_OFF_TEMPLATES: readonly string[] = [
+  'voucher_used',
+  'seller_voucher_used',
+  'appointment_user_confirmed',
+  'appointment_reminder_seller',
+  'store_owner_stats_link',
+] as const
+
+const _offSet = new Set(ALIMTALK_OFF_TEMPLATES)
+
+/** 대표가 알림톡을 끈 코드인가(앱 알림만 나간다). */
+export function isAlimtalkOff(code: string): boolean {
+  return _offSet.has(code)
+}
+
 const _registeredSet = new Set(DOCUMENTED_REGISTERED_ALIMTALK_TEMPLATES)
 
 /** 저장소에 등록됨으로 문서화된 코드인가. (Aligo 콘솔 실제 등록은 별개 — 진단 주석 전용) */
