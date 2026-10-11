@@ -11,6 +11,7 @@
  *  ④ 배선 — 딜·카드·장바구니 셋이 같은 함수 · 없는 컬럼(store_owner_token) 조회가 돌아오지 않는다
  * ⚠️ 못 보는 것: 실제 카카오/솔라피 발송 결과(외부) · 템플릿 글자 일치.
  */
+import { _resetApprovedTemplatesCache } from '@/lib/text-notice'
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { pickNotifyPhone, toMobile, resolveSellerNotifyTarget } from '@/worker/utils/seller-notify-phone'
@@ -39,6 +40,8 @@ beforeEach(() => {
     CREATE TABLE sellers (id INTEGER PRIMARY KEY, name TEXT, business_name TEXT, phone TEXT, first_voucher_notified INTEGER DEFAULT 0,
       business_registration_image_url TEXT, business_registration_status TEXT, business_registration_verified_at TEXT);
     CREATE TABLE seller_meta (seller_id INTEGER, key TEXT, value TEXT);
+    CREATE TABLE platform_settings (key TEXT PRIMARY KEY, value TEXT);
+    INSERT INTO platform_settings VALUES ('alimtalk_approved_templates', 'seller_first_voucher,seller_voucher_sold');
     INSERT INTO sellers (id, name, business_name, phone) VALUES
       (1, '김', '전주식당', '063-123-4567'), (2, '이', '부산집', '010-2222-3333'), (3, '박', '서울가게', '02-555-6666');
     INSERT INTO seller_meta VALUES (1, 'manager_phone', '010-1111-2222'), (3, 'manager_phone', '031-777-8888');
@@ -66,20 +69,22 @@ describe('① 번호 고르기', () => {
 })
 
 describe('② 판매 알림 — 첫 판매 한 번(CAS) · 그 뒤 건별', () => {
-  // 📨 2026-10-11: 발송이 솔라피 → 알리고 문자(승인 템플릿 없음)로 바뀌었다 — 본문은 form(receiver·msg).
-  const fetchMock = vi.fn(async () => new Response('{"result_code":"1","message":"success"}'))
-  beforeEach(() => { fetchMock.mockClear(); vi.stubGlobal('fetch', fetchMock) })
+  // 📨 2026-10-11: 발송이 솔라피 → 알리고 **알림톡**(대표 "카톡만") — 승인된 템플릿만 나간다. 본문은 form(receiver_1·message_1).
+  const fetchMock = vi.fn(async () => new Response('{"code":0,"message":"ok","token":"t"}'))
+  beforeEach(() => { fetchMock.mockClear(); vi.stubGlobal('fetch', fetchMock); _resetApprovedTemplatesCache() })
   afterEach(() => vi.unstubAllGlobals())
-  const env = { ALIGO_API_KEY: 'k', ALIGO_USER_ID: 'u', ALIGO_SENDER: '01099998888' }
-  const bodies = () => fetchMock.mock.calls.map(c => {
-    const f = new URLSearchParams(String((c as unknown as [string, { body: string }])[1].body))
-    return { to: f.get('receiver'), text: f.get('msg') }
-  })
+  const env = () => ({ ALIGO_API_KEY: 'k', ALIGO_USER_ID: 'u', ALIGO_SENDER_KEY: 'sk', ALIGO_SENDER: '01099998888', DB })
+  const bodies = () => fetchMock.mock.calls
+    .filter(c => String((c as unknown as [string])[0]).endsWith('/alimtalk/send/'))
+    .map(c => {
+      const f = new URLSearchParams(String((c as unknown as [string, { body: string }])[1].body))
+      return { to: f.get('receiver_1'), text: f.get('message_1') }
+    })
 
   it('첫 판매 → 온보딩 안내 1통, 다음 판매 → 건별 판매 1통(같은 휴대폰)', async () => {
     const { notifySellerVoucherSale } = await import('@/features/group-buy/api/seller-sale-notify')
-    await notifySellerVoucherSale(env, DB, { sellerId: 1, productName: '정식', qty: 1, amount: 9000 })
-    await notifySellerVoucherSale(env, DB, { sellerId: 1, productName: '정식', qty: 2, amount: 18000 })
+    await notifySellerVoucherSale(env(), DB, { sellerId: 1, productName: '정식', qty: 1, amount: 9000 })
+    await notifySellerVoucherSale(env(), DB, { sellerId: 1, productName: '정식', qty: 2, amount: 18000 })
     const m = bodies()
     expect(m).toHaveLength(2)
     expect(m[0].to).toBe('01011112222')
@@ -89,12 +94,12 @@ describe('② 판매 알림 — 첫 판매 한 번(CAS) · 그 뒤 건별', () =
   })
   it('동시 두 건이어도 첫 판매 안내는 한 통', async () => {
     const { notifySellerVoucherSale } = await import('@/features/group-buy/api/seller-sale-notify')
-    await Promise.all([1, 2].map(() => notifySellerVoucherSale(env, DB, { sellerId: 1, productName: '정식', qty: 1, amount: 9000 })))
+    await Promise.all([1, 2].map(() => notifySellerVoucherSale(env(), DB, { sellerId: 1, productName: '정식', qty: 1, amount: 9000 })))
     expect(bodies().filter(m => String(m.text).includes('첫 이용권'))).toHaveLength(1)
   })
   it('휴대폰이 없으면 보내지 않고 첫 판매 표시도 안 남긴다', async () => {
     const { notifySellerVoucherSale } = await import('@/features/group-buy/api/seller-sale-notify')
-    await notifySellerVoucherSale(env, DB, { sellerId: 3, productName: 'x', qty: 1, amount: 1 })
+    await notifySellerVoucherSale(env(), DB, { sellerId: 3, productName: 'x', qty: 1, amount: 1 })
     expect(fetchMock).not.toHaveBeenCalled()
     expect((raw.prepare('SELECT first_voucher_notified f FROM sellers WHERE id=3').get() as { f: number }).f).toBe(0)
   })

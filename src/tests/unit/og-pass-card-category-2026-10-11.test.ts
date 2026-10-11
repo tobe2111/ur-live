@@ -21,3 +21,16 @@ describe('이용권 공유 카드', () => {
     expect(block).toMatch(/if \(!photoUri && photoAbs\) return c\.redirect\(photoAbs, 302\)/)
   })
 })
+
+describe('발송 서버 IP 측정 엔드포인트', () => {
+  const s = readFileSync('src/features/admin/api/admin-system-monitoring.routes.ts', 'utf8')
+  const b = s.slice(s.indexOf("get('/alimtalk-egress-ip'"), s.indexOf('// ── 🚦 2026-07-05'))
+  it('super_admin 만 — 읽기 전용 측정', () => {
+    expect(b).toMatch(/admin\?\.role !== 'super_admin'\) return c\.json\(\{[^}]*\}, 403\)/)
+    expect(b).not.toMatch(/INSERT|UPDATE|DELETE/)
+  })
+  it('Cloudflare 밖의 반향 서비스로 잰다(Cloudflare 안쪽 주소를 재면 의미가 없다)', () => {
+    expect(b).toContain('checkip.amazonaws.com')
+    expect(b).not.toContain('cdn-cgi/trace')
+  })
+})
