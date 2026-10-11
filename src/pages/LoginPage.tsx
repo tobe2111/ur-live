@@ -16,6 +16,7 @@ import Udal from '@/components/mascot/Udal'
 import { addBreadcrumb, maskEmail } from '@/lib/sentry'
 import { resolveLoginReturnUrl, clearLoginReturnUrl } from '@/utils/login-return'
 import { showKakaoLoadingOverlay, removeKakaoLoadingOverlay } from '@/utils/kakao-login-overlay'
+import { canUseTalkLogin, prepareTalkLogin, startTalkLogin } from '@/lib/kakao-talk-login'
 import { hasConsumerSession } from '@/utils/auth'
 
 // Kakao SDK 타입 선언
@@ -129,6 +130,13 @@ export default function LoginPage() {
     }
   }, [searchParams])
 
+  // 📱 2026-10-11 카톡 간편로그인 — 안드로이드는 화면이 뜰 때 SDK·state 를 미리 받아 둔다(앱 실행은 탭 안에서만 허용).
+  //   '다른 계정으로'(switch)는 웹 로그인 창이 맞으므로 준비하지 않는다. 근거: lib/kakao-talk-login.ts
+  useEffect(() => {
+    if (wantsSwitch || !canUseTalkLogin()) return
+    void prepareTalkLogin(resolveLoginReturnUrl(searchParams.get('returnUrl')))
+  }, [wantsSwitch, searchParams])
+
   // ✅ Kakao 로그인 핸들러
   // 🛡️ 2026-05-04 (iOS Safari fix): SDK ready gate + state update 제거 →
   //   navigation 즉시 실행. 이전: setLoading/setError → React re-render → iOS Safari 가
@@ -150,6 +158,13 @@ export default function LoginPage() {
       const params = new URLSearchParams({ redirect: currentReturnUrl })
       if (wantsSwitch) {
         params.set('force_account', '1')
+      }
+      // 📱 준비가 끝났으면 카톡 앱으로 — 안 끝났으면 아래 종전 웹 이동. 카톡에서 돌아오면(취소 포함) 다시 누를 수 있게.
+      if (!wantsSwitch && startTalkLogin()) {
+        const reset = () => { if (document.visibilityState === 'visible') { kakaoNavRef.current = false; document.removeEventListener('visibilitychange', reset); void prepareTalkLogin(currentReturnUrl) } }
+        document.addEventListener('visibilitychange', reset)
+        window.setTimeout(() => { kakaoNavRef.current = false }, 4000)
+        return
       }
       showKakaoLoadingOverlay() // 공용 SSOT — 순수 DOM, iOS freeze 없음
       window.location.href = `/auth/kakao/start?${params.toString()}`
