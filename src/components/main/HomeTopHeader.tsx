@@ -3,7 +3,7 @@
  *   1행: [원형 UR 로고] · [검색 pill "우선입장을 검색해 보세요!"] · [기록] · [알림 벨(미읽음 점)]
  *   2행: [📍 내 동네 ⌄] ······ [⊕ 현재 위치로]
  *
- * - 검색 pill 탭 → /search (입력은 검색 페이지에서). 벨 → /notifications, 기록 → /browse.
+ * - 검색 pill 탭 → /search (입력은 검색 페이지에서). 벨 → **올라오는 알림 시트**(2026-10-11, 종전 /notifications 이동), 기록 → /browse.
  * - 위치: localStorage `ur_home_region`(name,guCode) 라벨 + GPS(`/api/region/resolve`) → /group-buy?gucode=…
  *   (GroupBuyListPage 의 GPS 로직과 동일 SSOT 엔드포인트 재사용.)
  * - 테마: 라이트/다크 모두 지원(홈은 테마 토글 대상).
@@ -15,6 +15,7 @@ import { Search, ChevronDown, LocateFixed } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { useUnreadCount } from '@/hooks/queries'
+import { useNotificationSheet } from '@/components/notifications/useNotificationSheet'
 
 const REGION_KEY = 'ur_home_region'
 
@@ -29,6 +30,8 @@ function readRegion(): { name: string; guCode: string } | null {
 
 export default function HomeTopHeader() {
   const navigate = useNavigate()
+  // 🔔 벨 → 올라오는 시트(페이지 이동 X). 배선은 `NotificationSheet` 머리말.
+  const bell = useNotificationSheet()
   const { data: unreadCount = 0 } = useUnreadCount()
   const [region, setRegion] = useState<{ name: string; guCode: string } | null>(() => readRegion())
   const [detecting, setDetecting] = useState(false)
@@ -95,7 +98,7 @@ export default function HomeTopHeader() {
             <ClockIcon className="w-[22px] h-[22px]" />
           </button>
           <button
-            onClick={() => navigate('/notifications')}
+            onClick={bell.open}
             aria-label={unreadCount > 0 ? `알림 ${unreadCount}개` : '알림'}
             className="shrink-0 p-2 relative text-gray-700 dark:text-gray-200"
           >
@@ -125,6 +128,7 @@ export default function HomeTopHeader() {
           </button>
         </div>
       </div>
+      {bell.sheet}
     </div>
   )
 }

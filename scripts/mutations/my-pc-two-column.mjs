@@ -20,7 +20,8 @@ export default [
     name: '🖥️PC2열 균등으로 쪼갠다',
     file: CSS,
     // ⚠️ 앵커는 #3 과 **겹치면 안 된다** — 같은 문자열을 두 주입이 쓰면 러너가 복원을 오인한다(실제로 겪었다).
-    find: 'grid-template-columns: 1.25fr 1fr;',
+    // 🔁 2026-10-11 재조준(안 5): 1.25fr 1fr → 7fr 5fr. 불변식은 그대로 — **균등이 아니다.**
+    find: 'grid-template-columns: 7fr 5fr;',
     replace: 'grid-template-columns: 1fr 1fr;',
     test: TEST,
     why: '균등이면 한 칸이 폰(430)보다 좁아진다 — 09-28 에 "2열 안 함" 으로 결론 냈던 그 계산이 균등 전제였다.',

@@ -5551,7 +5551,13 @@
     "checking": "Vérification…",
     "isLatest": "Vous avez la dernière version",
     "updateAvailable": "Une nouvelle version est disponible",
-    "updateNow": "Mettre à jour"
+    "updateNow": "Mettre à jour",
+    "photoChange": "Changer la photo",
+    "photoUploading": "Envoi…",
+    "photoHint": "JPG/PNG, 5 Mo max",
+    "photoTooBig": "Choisissez un fichier de moins de 5 Mo",
+    "photoUpdated": "Photo de profil mise à jour",
+    "photoFailed": "Impossible de changer la photo"
   },
   "productDetail": {
     "retry": "Réessayer",

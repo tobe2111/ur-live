@@ -67,8 +67,16 @@ describe('ⓑ 딜 잔액 — 맨 위 숫자 한 줄 (안 C)', () => {
      * 🧭 이 앵커는 안 C 에서 `TeamPointsCard` → `MyStats` 로 옮기며 내가 약하게 만든 것이다 —
      *    앵커를 옮길 때 "무엇을 지키려 했는가" 를 같이 옮겨야 한다.
      */
+    /**
+     * 🔁 **2026-10-11 재조준(안 5)** — 그 조건에 이름이 생겼다(`refundable`). PC 머리 띠가 같은
+     *   사실을 값 아래 한 줄로 말해야 해서 **두 자리가 같은 조건**을 쓰기 때문이다.
+     *   불변식은 그대로 — *무상 딜이 있으면 화면에 뜬다*. 그래서 **정의와 사용 둘 다** 본다:
+     *   정의만 보면 쓰는 데가 없어도 통과하고, 사용만 보면 조건이 상수로 바뀌어도 통과한다.
+     */
+    expect(MY, '환급 조건의 정의가 사라졌다')
+      .toMatch(/const refundable = balance != null && freeBalance > 0/)
     expect(MY, '무상 리워드 안내가 죽은 가지로 남았다 (조건이 꺼졌다)')
-      .toMatch(/balance != null && freeBalance > 0 &&/)
+      .toMatch(/\{refundable && \(/)
     expect(SHARED).toContain('note')
   })
 

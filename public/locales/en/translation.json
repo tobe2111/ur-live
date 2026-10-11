@@ -5551,7 +5551,13 @@
     "checking": "Checking…",
     "isLatest": "You're on the latest version",
     "updateAvailable": "A new version is out",
-    "updateNow": "Update now"
+    "updateNow": "Update now",
+    "photoChange": "Change photo",
+    "photoUploading": "Uploading…",
+    "photoHint": "JPG/PNG, up to 5MB",
+    "photoTooBig": "Please choose a file under 5MB",
+    "photoUpdated": "Profile photo updated",
+    "photoFailed": "Couldn't change the photo"
   },
   "productDetail": {
     "retry": "Retry",

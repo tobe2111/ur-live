@@ -56,7 +56,16 @@ describe('이름 E — 제목이 붙은 구역이 파는 쪽', () => {
    */
   it('🔵 판은 파는 쪽에만 있다 (표시자가 띠 → 판으로 옮겨갔다)', () => {
     expect(SELLER, '판매 구역에 판이 없다 — 표시자가 사라졌다').toContain('<div className={LIST_PLATE_CLS}>')
-    for (const f of ['ShoppingGroup', 'EarningsGroup', 'SettingsGroup', 'RoleCtaGrid']) {
+    /**
+     * 🔁 **2026-10-11 안 5 — 목록이 둘 늘었다(강화).** 확정 시안의 이름 자체가
+     *   *"판은 파는 쪽에만"* 이라, PC 의 두 손님 부품도 같은 규칙 아래 들어온다:
+     *     · `AccountPcPane` — 프로필 흰 판 카드와 `shadow-lift` 타일 셋이 **실제로 있었다**
+     *       (손님 칸에 판이 둘 떠 있어 09-29 규칙을 깨고 있었다).
+     *     · `AccountPcBand` — 새로 생긴 머리 띠. 카드가 아니라 **띠**다(hairline 하나).
+     *   ⚠️ 티켓 카드(`TicketCard`)는 이 규칙의 대상이 아니다 — 그건 목록 판이 아니라
+     *      지갑·결제 완료와 같은 **티켓 은유**(표면 규칙 ④)이고 자기 부품이 모양을 갖는다.
+     */
+    for (const f of ['ShoppingGroup', 'EarningsGroup', 'SettingsGroup', 'RoleCtaGrid', 'AccountPcPane', 'AccountPcBand']) {
       const src = readCode(`src/pages/user-profile/${f}.tsx`)
       expect(src, `${f} 에 판이 생겼다 — 파는 쪽 표시가 무의미해진다`).not.toMatch(/shadow-lift/)
     }

@@ -5,6 +5,7 @@ import { Search } from 'lucide-react'
 import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import SellOnUrdealRow from './SellOnUrdealRow'
+import { useNotificationSheet } from '@/components/notifications/useNotificationSheet'
 import GroupBuyFeed from '@/pages/main-home/GroupBuyFeed'
 import { useHomeQuerySync } from '@/pages/main-home/useHomeQuerySync'
 import HomeSections from '@/components/home/HomeSections'
@@ -36,6 +37,8 @@ import { HOME_SHOWCASE_ENABLED } from '@/shared/feature-flags'
  */
 export default function MobileHomePage() {
   const navigate = useNavigate()
+  // 🔔 벨 → 올라오는 시트(페이지 이동 X). 배선은 `NotificationSheet` 머리말.
+  const bell = useNotificationSheet()
   const [region, setRegion] = useState<HomeRegion>(() => (readCachedLoc() ? {} : readHomeRegion()))
   /**
    * 🧭 2026-09-05 (대표 "주말에 떠나는 숙소 섹션 아래의 일반 이용권들은 기본 디폴트가 현재 위치에서
@@ -108,7 +111,7 @@ export default function MobileHomePage() {
           <Link to="/" aria-label="홈" className="shrink-0 flex items-center"><UrDealLogo size={17} /></Link>
           <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
             <button onClick={() => navigate('/search')} aria-label="검색" className="p-2 shrink-0"><Search className="h-[21px] w-[21px]" strokeWidth={1.5} /></button>
-            <button onClick={() => navigate('/notifications')} aria-label="알림" className="p-2 shrink-0"><BellIcon className="h-[21px] w-[21px]" /></button>
+            <button onClick={bell.open} aria-label="알림" className="p-2 shrink-0"><BellIcon className="h-[21px] w-[21px]" /></button>
             <button onClick={() => navigate('/cart')} aria-label="장바구니" className="p-2 shrink-0"><BagIcon className="h-[21px] w-[21px]" /></button>
           </div>
         </div>
@@ -217,6 +220,7 @@ export default function MobileHomePage() {
             8/26 에 지도 모달에서 뺀 것과 같은 물건이 되지 않으려면 위로 올리면 안 된다.
             사유·노출 규칙은 `./SellOnUrdealRow` 머리주석. */}
       <SellOnUrdealRow />
+      {bell.sheet}
     </div>
   )
 }

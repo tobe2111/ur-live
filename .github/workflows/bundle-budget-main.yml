@@ -1,0 +1,57 @@
+name: Bundle budget (main)
+
+# 💰 **번들 예산을 머지된 조합에서도 잰다** (2026-10-11 — 대표 *"이젠 이런 문제가 없도록 해줘"*).
+#
+# ## 무엇이 반복됐나 (이 레포에서 최소 세 번)
+# `check:bundle:budget` 은 `verify.yml`(= `pull_request`) 에만 있었다. 그래서 **main 에서는
+# 한 번도 안 돈다.** PR 각자는 통과한 값을 들고 들어오는데, 머지되면 그 증가분이 **합쳐진다** —
+# 합이 선을 넘어도 **다음 PR 이 열릴 때까지 아무 신호가 없다.**
+#
+#   · 2026-10-09 — 두 PR(유달이 6곳 #1669 · 계산대 스캔 #1668)이 **각자 7.56** 을 잡았다.
+#     합치면 7.55710 이라 헤드룸이 규칙(`실측 + 3 KB`)에 못 미쳐 머지 때 7.57 로 올렸다.
+#   · 2026-10-11 — **또** 두 PR(이용권 상세 D안 · 알림 시트+안 5 #1690)이 **각자 7.57** 을 잡았다.
+#     이번엔 머지 전에 못 봤다: `origin/main`(9d61a4eb)을 그대로 빌드하니 **7.57047 > 7.57**,
+#     즉 **main 이 이미 빨간불인 채로 돌고 있었다.** 그 사실은 다음 PR 의 Verify 가 빨개지고 나서야
+#     드러났고(#1690), 덤으로 두 PR 이 같은 줄을 고쳐 **머지 충돌**까지 났다.
+#
+# ⇒ 예산 초과를 **그 PR 의 잘못으로 떠넘기지 않으려면** main 에서도 재야 한다. 이 워크플로가 그것이다.
+#   `guard-mutations-full.yml` 과 같은 철학 — *"머지된 조합을 바로 재검"*.
+#
+# ## 🔴 배포를 막지 않는다
+# 일부러 **별도 워크플로**다. `main.yml`(배포) 안에 넣으면 예산 초과가 **배포를 세운다** —
+# 예산은 체감 성능의 **후행 지표**이지 장애가 아니므로 그건 과잉이다. 여기서는 main 이 **빨갛게
+# 보이는 것**이 목적이고, 그 신호 하나면 다음 세션이 "내 델타 vs 선재 초과" 를 구분할 수 있다.
+#
+# ## 고치는 법 (이 워크플로가 빨갛다면)
+#   1. **값부터 올리지 말 것.** 먼저 재라 — 무엇이 늘었는지 모르면 올려도 또 넘는다.
+#   2. 로그의 `Total raw JS` 실측을 읽고, `scripts/check-bundle-size.mjs` 의 규칙대로
+#      `실측 + 3 KB` 이상인 **가장 작은 두 자리 값**으로 올린다. 그리고 **왜 늘었는지 한 줄**을 남긴다.
+#   3. lazy 청크만 늘었다면 사용자 체감은 그대로다 — critical path 예산이 그쪽을 따로 지킨다.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: bundle-budget-main
+  cancel-in-progress: true
+
+jobs:
+  budget:
+    runs-on: ubuntu-latest
+    name: 번들 예산 (머지된 조합)
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      # ⚠️ `build:client` 만으로는 부족하다 — 예산은 `dist/client` 전체를 세고,
+      #    워커 빌드가 라우트 청크 지도를 만들어 critical path 구성이 거기서 정해진다.
+      - name: Build
+        run: npm run build
+      - name: Bundle size budget
+        run: npm run check:bundle:budget
