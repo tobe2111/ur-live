@@ -404,6 +404,7 @@ kakaoRoutes.get('/start', rateLimit({ action: 'kakao_start', max: 30, windowSec:
   //   openid scope → id_token 동봉 → getUserInfo 왕복 생략(콘솔 OIDC ON 후 플래그 ON). 규칙: services/kakao-login-scope.ts
   const loginScope = kakaoLoginScope(c.env); // 📢 KAKAO_CHANNEL_ADD_ENABLED 면 plusfriends(채널 추가) 포함
   if (loginScope) authUrl.searchParams.set('scope', loginScope);
+  if (c.req.query('mode') === 'sdk') return c.json({ success: true, data: { state, redirectUri, scope: loginScope || '' } }); // 📱 2026-10-11 카톡 간편로그인 — 같은 state·쿠키, 이동만 JS SDK 가(lib/kakao-talk-login)
   // 🛡️ 2026-05-01 (REVISED v2): prompt=login 강제 OFF — 일상 사용자 UX 우선.
   //   대신 토스트 + 전환 버튼으로 잘못된 로그인 즉시 인지 가능.
   //   force_account=1 query 일 때만 prompt=login 활성 (마이페이지 '다른 계정으로 로그인' 버튼).
