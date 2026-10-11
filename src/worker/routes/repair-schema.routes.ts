@@ -25,6 +25,7 @@ import { ADMIN_REPAIRS } from './repair-schema/admin-tables';
 import { INDEX_REPAIRS } from './repair-schema/index-repairs';
 // 보조 테이블 정의도 데이터라 분리했다(2026-09-07) — 이 파일은 실행 로직만 갖는다는 위 원칙 그대로.
 import { AUX_TABLE_REPAIRS } from './repair-schema/aux-tables';
+import { KAKAO_BOT_REPAIRS } from './repair-schema/kakao-bot-tables'; // 💬 2026-10-10 카카오톡 매장 관리
 
 const repairSchemaRoutes = new Hono<{ Bindings: Env }>();
 
@@ -97,6 +98,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
   const tables: Array<{ name: string; sql: string }> = [
     ...AUX_TABLE_REPAIRS,
     ...ADMIN_REPAIRS,
+    ...KAKAO_BOT_REPAIRS,
     ...INDEX_REPAIRS, // 📉 읽기 증폭 인덱스 — 근거(실측 행 수)는 그 모듈에
   ];
   const tableResults: Array<{ name: string; status: 'ok' | 'error'; error?: string }> = [];

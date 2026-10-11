@@ -53,8 +53,10 @@ describe('🔴 티켓 화면이 아니다 (대표 확정 ⓑ 금지)', () => {
 describe('노출 위치·보호', () => {
   it('셀러 인증 뒤에 있다 — 공개되면 스팸 표적이 된다', () => {
     const block = sliceFrom(api, "get('/support-contact'", '})', 900)
-    expect(block).toContain('activeSellerId')
-    expect(block).toMatch(/401/)
+    // 🪑 2026-10-10: 좌석(대기·반려 포함)만 있으면 열린다 — 승인 전 매장이 셀러 홈에서 로그아웃되던 것.
+    //   인증 자체는 그대로 요구한다(토큰 없으면 gbSeat 가 401).
+    expect(block).toContain('gbSeat(')
+    expect(block).toContain('allowUnapproved: true')
   })
 
   it('셀러 대시보드에서 실제로 렌더된다 — 컴포넌트만 있고 안 붙으면 없는 것과 같다', () => {

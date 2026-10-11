@@ -131,6 +131,7 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   //   (그 가드는 `키 === 'true'` 형태만 본다). 즉 이 키는 기계가 못 보는 자리에 있었다 —
   //   'True'/'1' 이 저장되면 켠 줄 알지만 실제로는 꺼진 채 돈다. 그 형태를 가드가 보게 하는 건 별건.
   payout_requires_voucher_use: boolStr,        // cron/influencer-payout.ts (성숙 게이트)
+  kakao_bot_store_ops_enabled: boolStr,        // 💬 2026-10-10 카카오톡 매장 관리 — utils/kakao-bot-store.ts isStoreOpsEnabled
   // 🩸 2026-09-16: 아래 셋은 **손잡이(OPS_GATES)는 있는데 값은 아무도 안 보고 있었다.**
   //   그중 voucher_cart_enabled 는 그때 **라이브에서 켜져 있었다** — 어드민에서 다시 저장할 때
   //   'True' 가 되면 read-site 의 === 'true' 가 거짓이라 **켠 줄 알지만 꺼진 채** 돈다.

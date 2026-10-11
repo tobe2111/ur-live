@@ -15,6 +15,8 @@
  *   운영자가 이체한 뒤 그 사실을 적는 것이다. 그래서 `transaction_id`(은행 거래번호)가 필수다.
  */
 import type { D1Database } from '@cloudflare/workers-types'
+import { canonicalPaidPayee } from './payout-account'
+import { resolvePayeeAccount } from './payout-payee-account'
 
 export interface PayoutRow {
   id: number
@@ -27,10 +29,13 @@ export interface PayoutRow {
   account_holder?: string | null
   period_start: string | null
   period_end: string | null
+  /** 'handover_closeout' 이면 손바뀜 마감 — 옛 주인 계좌 스냅샷이 의도다. */
+  kind?: string | null
 }
 
 export type SentFailCode =
   | 'NOT_FOUND' | 'ALREADY_PROCESSED' | 'PAYOUT_NO_ACCOUNT' | 'PAYOUT_ALREADY_SENT_PERIOD'
+  | AccountCheckCode
 
 export interface SentResult {
   id: number
@@ -66,6 +71,10 @@ export async function markPayoutSent(
     }
   }
 
+  // ①-b 계좌 변경 후 미재확인 · 생성 이후 계좌가 바뀐 스냅샷 → 그 계좌로 보내면 안 된다(아래 함수 머리말).
+  const acct = await checkPayeeAccountCurrent(DB, row)
+  if (!acct.ok) return { id, ok: false, code: acct.code, error: acct.error }
+
   // ② 같은 수령자·같은 기간이 이미 송금됐으면 중복이다(생성 UNIQUE 를 우회한 재생성 대비).
   if (row.period_start && row.period_end) {
     const dup = await DB.prepare(
@@ -99,4 +108,49 @@ export async function markPayoutSent(
  */
 export function isTransferable(row: Pick<PayoutRow, 'bank_name' | 'account_number' | 'account_holder'>): boolean {
   return !!(row.bank_name && row.account_number && row.account_holder)
+}
+
+export type AccountCheckCode = 'PAYOUT_ACCOUNT_UNVERIFIED' | 'PAYOUT_ACCOUNT_STALE'
+
+const digits = (v: unknown) => String(v ?? '').replace(/\D/g, '')
+
+/**
+ * 🔐 **지금 이 payout 의 계좌로 돈을 보내도 되는가** (2026-10-10 감사 — 승인·송금·이체파일 공용).
+ *
+ * 셀러가 정산 계좌를 바꾸면 `seller-profile.routes` 가 `sellers.is_verified=0` 으로 내리고, 어드민이
+ * `POST /sellers/:id/verify-account` 로 육안 대조 후 1 로 되돌린다. 그 게이트를 **출금 신청**만 읽고
+ * 주간 정산(payouts)의 승인·송금은 안 읽었다 ⇒ 세션·메일을 탈취해 계좌를 바꾸면 다음 주 정산이
+ * 그 계좌로 그대로 나간다(계좌 변경 알림이 가도 막는 장치가 없었다).
+ *
+ * 두 가지를 막는다 — 둘 다 **셀러(매장) payee 만**:
+ *   - `PAYOUT_ACCOUNT_UNVERIFIED` — 지금 계좌가 재확인 전이다.
+ *   - `PAYOUT_ACCOUNT_STALE` — payout 이 만들어진 **뒤** 계좌가 바뀌었다. 행에 박힌 번호는 옛 계좌다.
+ *     🩸 이게 없으면: 탈취자가 계좌를 바꾼 직후 cron 이 그 계좌를 스냅샷 → 사장님이 원래 계좌로 되돌림 →
+ *     어드민이 (되돌린) 계좌를 재확인 → 그런데 행에는 **탈취자 계좌**가 박혀 있다. 재확인이 통과시킨다.
+ *     처리: 이 건을 취소하면 다음 생성(주간 cron·수동 생성)이 지금 계좌로 다시 만든다(외상은 원장에 그대로).
+ *
+ * ⚠️ 손바뀜 마감(`kind='handover_closeout'`)은 제외 — **옛 주인 계좌로 보내는 것이 그 행의 목적**이다.
+ * ⚠️ 막기만 한다. 생성은 막지 않는다 — 받을 돈은 실재한다(`payouts-generate`).
+ */
+export async function checkPayeeAccountCurrent(
+  DB: D1Database,
+  row: Pick<PayoutRow, 'payee_type' | 'payee_id' | 'account_number' | 'kind'>,
+): Promise<{ ok: true } | { ok: false; code: AccountCheckCode; error: string }> {
+  if (row.kind === 'handover_closeout') return { ok: true }
+  const payee = canonicalPaidPayee(row.payee_type, row.payee_id)
+  if (!payee || payee.kind !== 'seller') return { ok: true }
+  const acct = await resolvePayeeAccount(DB, payee)
+  if (!acct.accountVerified) {
+    return {
+      ok: false, code: 'PAYOUT_ACCOUNT_UNVERIFIED',
+      error: '셀러가 정산 계좌를 바꾼 뒤 아직 관리자 재확인 전입니다. 셀러 관리에서 계좌를 대조·재검증한 뒤 진행하세요',
+    }
+  }
+  if (acct.accountNumber && row.account_number && digits(acct.accountNumber) !== digits(row.account_number)) {
+    return {
+      ok: false, code: 'PAYOUT_ACCOUNT_STALE',
+      error: '이 정산을 만든 뒤 셀러 계좌가 바뀌었습니다(행에는 옛 계좌가 있습니다). 이 건을 취소하면 다음 생성 때 지금 계좌로 다시 만들어집니다',
+    }
+  }
+  return { ok: true }
 }

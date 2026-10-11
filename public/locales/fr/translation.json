@@ -2723,7 +2723,24 @@
     "voucherUntil": "{{d}}까지",
     "voucherCodeHeader": "이용권 코드",
     "copyOrderNumber": "전체 주문번호 복사",
-    "goRedeemScreen": "사용처리 화면으로"
+    "goRedeemScreen": "사용처리 화면으로",
+    "kakaoBot": {
+      "title": "Gérer votre boutique sur KakaoTalk",
+      "issue": "Obtenir un code",
+      "issueFail": "Impossible de créer le code",
+      "copied": "Copié",
+      "copy": "Copier",
+      "revokeConfirm": "Déconnecter ce chat ? Il ne pourra plus gérer votre boutique.",
+      "revoked": "Déconnecté",
+      "revokeFail": "Impossible de déconnecter",
+      "desc": "Sur la chaîne KakaoTalk d'UrDeal, consultez les ventes du jour, les pass non utilisés et les paiements, validez des pass et suspendez les ventes. Les changements sont confirmés dans le chat.",
+      "notReady": "Bientôt disponible. Vous pourrez gérer votre boutique sur KakaoTalk.",
+      "howTo": "Envoyez le message ci-dessous à la chaîne KakaoTalk d'UrDeal. Valable une fois, sous 10 minutes.",
+      "chat": "Chat",
+      "lastUsed": "Dernière utilisation",
+      "revoke": "Déconnecter",
+      "utterance": "연결 {{code}}"
+    }
   },
   "admin": {
     "login": {

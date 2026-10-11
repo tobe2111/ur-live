@@ -13,7 +13,7 @@ import { findActiveDealPct } from '@/worker/utils/influencer-deal'
 import { ensureInfluencerProfileTable, parseChannels, maxFollowers, parseJsonList } from '@/worker/utils/influencer-profile'
 import { intParam } from '@/shared/pagination'
 import { registerDiscoveryRoutes } from './marketing/discovery'
-import { DEAL_PCT_MAX } from './commission-rates'
+import { checkStoreInfluencerPct } from '@/worker/utils/broker-share' // 🎯 2026-10-10: 딜 % 검증 SSOT(90 · 매장 상한 · 중개사 몫 합)
 import { registerAdminPayoutRoutes } from './marketing/payouts'
 import { registerCollabCodeRoutes } from './marketing/collab-codes'
 
@@ -345,9 +345,8 @@ sellerApp.post('/deals/propose', async (c) => {
   //
   //   딜은 매장 지갑에서 나가는 매장의 자기 결정이다. 90 은 정책이 아니라 입력 검증선
   //   (100% 를 넘겨 매장이 역마진 나는 값 차단) — 정산 쪽 clamp 와 같은 값이다.
-  if (!Number.isFinite(pct) || pct <= 0 || pct > DEAL_PCT_MAX) {
-    return c.json({ success: false, error: `commission % 은 0 ~ ${DEAL_PCT_MAX} 범위` }, 400)
-  }
+  const pv = await checkStoreInfluencerPct(c.env.DB, sellerId, body.commission_pct)
+  if (!pv.ok) return c.json({ success: false, error: pv.error }, 400)
   // 🎬 WP-B: 콘텐츠 인증 조건. 1 이면 인플 링크제출→매장 승인 시 발효(status='active'). proof_status
   //   'pending' 으로 시작해 propose 만으로는 발효 안 됨(기존 무조건부 흐름과 격리).
   const requiresProof = body.requires_content_proof === true || body.requires_content_proof === 1 || body.requires_content_proof === '1' ? 1 : 0
@@ -459,7 +458,7 @@ influencerApp.post('/deals/propose', async (c) => {
   const pct = Number(body.commission_pct)
   if (!Number.isFinite(sellerId) || sellerId <= 0) return c.json({ success: false, error: 'invalid seller_id' }, 400)
   // 🛑 2026-08-30: 매장측 propose 와 같은 검증선(위 주석 참조). 캡이 아니라 입력 검증이다.
-  if (!Number.isFinite(pct) || pct <= 0 || pct > DEAL_PCT_MAX) return c.json({ success: false, error: `0 ~ ${DEAL_PCT_MAX}` }, 400)
+  const pv = await checkStoreInfluencerPct(c.env.DB, sellerId, body.commission_pct); if (!pv.ok) return c.json({ success: false, error: pv.error }, 400)
   // 🛡️ 전수조사 HIGH fix: 매장의 *조건부* 제안(requires_content_proof=1)을 인플 재-propose 가
   //   덮어쓰지 못하게 DO UPDATE 에 WHERE 가드 — 이전엔 proposed_by 만 'influencer' 로 뒤집혀
   //   /respond(무조건부 수락 경로)로 콘텐츠 인증 없이 발효되는 백도어가 있었음.

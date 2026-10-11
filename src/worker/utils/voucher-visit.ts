@@ -38,7 +38,7 @@ export interface VoucherVisitInput {
   seller_id: number | null | undefined
   product_id?: number | null
   amount?: number | null
-  path: 'pin' | 'seller_scan' | 'self'
+  path: 'pin' | 'seller_scan' | 'self' | 'kakao_bot' // 💬 2026-10-10 카카오톡 채널 챗봇 사용 처리
 }
 
 /**

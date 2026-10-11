@@ -105,7 +105,9 @@ describe('배선 — 셀러 정산 API', () => {
 
   it('SSOT 의 여집합 조각을 쓴다', () => {
     expect(src).toContain('resolvePayoutHold')
-    expect(src).toContain('${hold.heldSql}')
+    // 🔗 2026-10-10 재조준: 합계가 `loadSellerHeld()` 로 추출됐다 — 조각은 SSOT 값 그대로 인자로 넘어간다.
+    expect(src).toMatch(/loadSellerHeld\(c\.env\.DB, sellerId, hold\.heldSql\)/)
+    expect(src).toContain('${heldSql}')
   })
 
   it('🔴 부등호를 손으로 쓰지 않는다 — 유보일을 바꾼 날 한쪽만 따라가는 길을 안 만든다', () => {

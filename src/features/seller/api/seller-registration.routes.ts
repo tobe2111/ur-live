@@ -25,6 +25,7 @@ import { startDashboardSession } from '@/worker/utils/dashboard-session'
 import { getSellerIdFromToken, type SellerJWTPayload } from '@/lib/seller-shared'
 import { copyCuratorProfileToSeller, stampSignupStoreChannel, stampSignupStorePlace } from './seller-signup-meta'
 import { BIZ_CERT_PATH } from '../../../worker/utils/store-ownership-claims'
+import { ensureStoreCode } from '../../../worker/utils/redemption-settings'
 // 🔁 2026-09-16 (파일 분해): 상태 조회·세션 전환 3개는 별 파일로. 경로·순서 불변.
 import { mountSellerSessionRoutes } from './seller-registration/session-routes'
 
@@ -300,7 +301,7 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
     }
 
     // 7. 셀러 가입 신청 → 어드민 대시보드 알림 + 신청자 알림톡
-    createDashboardNotification(db, 'admin', null, 'seller_registered', '새 셀러 가입', `${name}`, '/admin/sellers').catch(swallow('seller:api:seller-management'));
+    createDashboardNotification(db, 'admin', null, 'seller_registered', '새 셀러 가입', `${name}`, '/admin/seller-approval').catch(swallow('seller:api:seller-management'));
 
     // 🛡️ 2026-04-28: 신청자에게 카카오 알림톡 (Aligo 환경변수 + 템플릿 등록 시 자동 동작)
     if (phone) {
@@ -516,6 +517,18 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
       ip: c.req.header('CF-Connecting-IP') || null,
     }).catch(() => null);
     await copyCuratorProfileToSeller(db, newSellerId, curatorProfile);
+
+    // 🪪 2026-10-10 (전수조사): 가입 폼이 사업자등록증을 **올리게 해 놓고 서버가 버리고 있었다** —
+    //   `/register` 는 저장하는데 이 문만 `business_cert_url` 을 읽지 않아, 사진을 올린 사장님이
+    //   어드민 승인 화면에서 "서류 없음" 으로 보였다(본인은 냈다고 알고 있다). 같은 경로 검증으로 저장.
+    const fromUserCert = String((body as { business_cert_url?: unknown }).business_cert_url || '').trim()
+    if (newSellerId && BIZ_CERT_PATH.test(fromUserCert)) {
+      await db.prepare(
+        `UPDATE sellers SET business_registration_image_url = ?, business_registration_status = 'pending'
+          WHERE id = ? AND COALESCE(business_registration_image_url, '') = ''`,
+      ).bind(fromUserCert, Number(newSellerId)).run().catch(swallow('seller:register-from-user:cert'));
+    }
+    await ensureStoreCode(db, Number(newSellerId)); // 🧾 손님 셀프 사용 확인코드 — 매장이 생기는 순간
 
     // 🏪 2026-09-04 (대표 "가입할 때 선택을 하잖아 — 그때 정해지면 되는거 아니야?"):
     //   매장 채널을 **가입 시점에 확정**한다. 이 폼엔 `/store/new` 의 "누가 운영하나요?" 질문이

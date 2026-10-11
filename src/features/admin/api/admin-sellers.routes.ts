@@ -26,6 +26,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit';
 import { intParam } from '@/shared/pagination'
 import { reassignIntroducer } from './admin-sellers/reassign-introducer'
 import { registerSellerPurgeRoute } from './admin-sellers/purge-seller'  // 🗑️ 매장 완전 삭제
+import { resolveSellerNotifyTarget } from '@/worker/utils/seller-notify-phone' // 📱 사장님 알림 번호 SSOT
 
 export const adminSellersRoutes = new Hono<{ Bindings: Env }>();
 
@@ -316,7 +317,7 @@ adminSellersRoutes.post('/sellers/:id/verify-account', cors(), async (c) => {
 });
 
 // 🛡️ 2026-05-18: 사업자등록증 (migration 0257) 검증 — 셀러가 제출한 이미지 확인 후 verified/rejected.
-//   verified → 현금 정산 + 딜 환급 가능
+//   verified → 딜 환급 가능 (판매 정산은 sellers.status 승인 + 계좌 — 이 상태를 안 본다. 2026-10-10 실측)
 //   rejected → 사유 안내, 셀러 재제출 가능
 adminSellersRoutes.patch('/sellers/:id/business-registration/verify', cors(), async (c) => {
   try {
@@ -370,7 +371,7 @@ adminSellersRoutes.patch('/sellers/:id/business-registration/verify', cors(), as
         after: { status: 'verified' },
       });
       createDashboardNotification(DB, 'seller', String(sellerId), 'business_reg_verified',
-        '사업자등록 검증 완료', '현금 정산 + 딜 환급이 가능합니다',
+        '사업자등록 검증 완료', '사업자등록증 확인이 끝났어요',
         '/seller/settlements').catch(() => { /* noop */ });
 
       // 🛡️ 2026-05-18: 카카오 알림톡 발송 (ALIGO 설정된 경우).
@@ -487,25 +488,8 @@ adminSellersRoutes.patch('/sellers/:id/approve', cors(), async (c) => {
       await import('./admin-sellers/notify-store-operators').then(m => m.notifyStoreOperatorsApproved(DB, sellerId, linkedUserId, isReactivation)).catch(swallow('admin-sellers:approve-operator-notify'));
     } catch { /* best-effort */ }
 
-    // 🛡️ 2026-04-28: 셀러에게 카카오 알림톡
-    try {
-      const sellerInfo = await executeQuery<{ name: string; phone: string | null }>(DB,
-        'SELECT name, phone FROM sellers WHERE id = ?', [sellerId]
-      );
-      const phone = sellerInfo[0]?.phone;
-      const sellerName = sellerInfo[0]?.name || '';
-      if (phone) {
-        const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk');
-        // 🔔 2026-07-01: 카카오 알림톡은 1코드=1고정본문 → 신규승인/재활성을 별도 tpl_code 로 분리
-        //   (seller_approved / seller_reactivated). 각 본문이 승인 템플릿과 글자 일치해야 발송됨.
-        sendSystemAlimtalk(c.env, phone,
-          isReactivation ? 'seller_reactivated' : 'seller_approved',
-          isReactivation
-            ? `[유어딜] ${sellerName}님,\n계정이 다시 활성화되었어요.\n판매를 이어가실 수 있습니다.`
-            : `[유어딜] ${sellerName}님,\n셀러 가입이 승인되었어요!\n지금 바로 판매를 시작해보세요.`
-        ).catch(swallow('admin-sellers:approve-alimtalk'));
-      }
-    } catch { /* ignore */ }
+    // ✅ 승인 = 등록증 확인(사본이 있고 대기일 때만) · 📱 알림톡은 담당자 휴대폰 우선 — `admin-sellers/seller-decision-notify.ts`
+    await import('./admin-sellers/seller-decision-notify').then(async m => { await m.markCertVerifiedOnApproval(DB, sellerId); await m.sendSellerApprovalAlimtalk(c.env, DB, sellerId, isReactivation) }).catch(swallow('admin-sellers:approve-tail'));
 
     return c.json({ success: true, data: { id: sellerId, status: 'approved' } });
   } catch (err) {
@@ -632,6 +616,7 @@ adminSellersRoutes.patch('/sellers/:id/reject', cors(), async (c) => {
           reason ? `아쉽지만 반려되었어요. 사유: ${reason}` : '아쉽지만 반려되었어요. 자세한 내용을 확인해주세요',
           '/seller/waiting').catch(swallow('admin-sellers:reject-user-notify'));
       }
+      await import('./admin-sellers/seller-decision-notify').then(m => m.notifyStoreOperatorsRejected(DB, sellerId, linkedUserId, reason)).catch(swallow('admin-sellers:reject-operator-notify')); // 🤝 중개사·승계 사장님에게도 사유와 함께
     } catch { /* best-effort */ }
 
     return c.json({ success: true, data: { id: sellerId, status: 'rejected', reason } });
@@ -792,10 +777,9 @@ async function sendBusinessRegistrationAlimtalk(
     'SELECT name, business_name, business_number, phone FROM sellers WHERE id = ?'
   ).bind(sellerId).first<{ name: string; business_name: string | null; business_number: string | null; phone: string | null }>()
     .catch(() => null)
-  if (!seller?.phone) return
-
-  const phone = seller.phone.replace(/\D/g, '')
-  if (!/^01\d{8,9}$/.test(phone)) return
+  // 📱 2026-10-10: 매장 대표번호(유선)가 아니라 담당자 휴대폰 우선 — `seller-notify-phone.ts`
+  const phone = seller ? (await resolveSellerNotifyTarget(env.DB as unknown as globalThis.D1Database, sellerId))?.phone : null
+  if (!seller || !phone) return
 
   const message = action === 'verify'
     ? `[유어딜] 사업자등록증 검증 완료\n\n회원님의 사업자등록증이 승인되었습니다.\n\n· 상호: ${seller.business_name || seller.name}\n· 사업자번호: ${seller.business_number || '-'}\n\n이제 현금 정산 + 딜 환급이 가능합니다.`

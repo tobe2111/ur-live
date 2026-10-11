@@ -19,6 +19,7 @@ import type { Env } from '@/worker/types/env'
 import { swallow } from '@/worker/utils/swallow'
 import { mainScopeFor } from '@/worker/utils/consumer-scope'
 import { parseAdminMallScope } from '@/worker/utils/admin-mall-scope'
+import { clawbackVoucherCommission } from './helpers'
 
 const groupBuyAdminRoutes = new Hono<{ Bindings: Env }>()
 
@@ -212,23 +213,11 @@ groupBuyAdminRoutes.post('/seller-closure/:sellerId', requireAdmin(), require2FA
         await reverseVisitRewardOnRefund(DB, orderRow?.order_number).catch(() => {})
       } catch (e) { console.error('[seller-closure refund]', e) }
     }
-    // 인플 clawback
-    try {
-      const { results: attrs } = await DB.prepare(
-        `SELECT id, influencer_id, commission_amount, status FROM influencer_attributions
-         WHERE voucher_id = ? AND status IN ('pending', 'available') AND paid_at IS NULL`
-      ).bind(v.id).all<{ id: number; influencer_id: string; commission_amount: number; status: string }>()
-      for (const a of (attrs || [])) {
-        await DB.prepare("UPDATE influencer_attributions SET status = 'clawed_back', clawback_reason = 'seller_closure' WHERE id = ?").bind(a.id).run()
-        if (a.status === 'pending') {
-          await DB.prepare("UPDATE influencer_balances SET pending_amount = MAX(0, pending_amount - ?), updated_at = datetime('now') WHERE influencer_id = ?")
-            .bind(a.commission_amount, a.influencer_id).run()
-        } else if (a.status === 'available') {
-          await DB.prepare("UPDATE influencer_balances SET available_amount = MAX(0, available_amount - ?), updated_at = datetime('now') WHERE influencer_id = ?")
-            .bind(a.commission_amount, a.influencer_id).run()
-        }
-      }
-    } catch (e) { if (import.meta.env?.DEV) console.warn('[seller-closure clawback]', e) }
+    // 💸 2026-10-10: 인플 clawback 을 바우처 단위 SSOT 로 — 종전 인라인은 `voucher_id = ?` 로 찾았는데
+    //   attribution.voucher_id 는 항상 NULL 이라(2026-05-31 확인) **아무것도 회수하지 못했다**. SSOT 는
+    //   order_id 비례 회수 + 원장 역전(중개사 몫·인플루언서 커미션) + 에이전시·어필리에이트까지 한 번에 한다.
+    try { await clawbackVoucherCommission(DB, v.id, 'seller_closure') }
+    catch (e) { if (import.meta.env?.DEV) console.warn('[seller-closure clawback]', e) }
     refundCount++
     refundTotal += amount
   }
@@ -343,26 +332,9 @@ groupBuyAdminRoutes.post('/force-refund/:productId', rateLimit({ action: 'group_
       if (v.user_id) refundedUsers.add(v.user_id)
       refundCount++
 
-      // 🛡️ 2026-05-16: 인플 commission clawback (강제 환불 시)
-      try {
-        const { results: attrs } = await DB.prepare(
-          `SELECT id, influencer_id, commission_amount, status
-           FROM influencer_attributions
-           WHERE voucher_id = ? AND status IN ('pending', 'available') AND paid_at IS NULL`
-        ).bind(v.id).all<{ id: number; influencer_id: string; commission_amount: number; status: string }>()
-        for (const a of (attrs || [])) {
-          await DB.prepare(
-            "UPDATE influencer_attributions SET status = 'clawed_back', clawback_reason = 'admin_force_refund' WHERE id = ?"
-          ).bind(a.id).run()
-          if (a.status === 'pending') {
-            await DB.prepare("UPDATE influencer_balances SET pending_amount = MAX(0, pending_amount - ?), updated_at = datetime('now') WHERE influencer_id = ?")
-              .bind(a.commission_amount, a.influencer_id).run()
-          } else if (a.status === 'available') {
-            await DB.prepare("UPDATE influencer_balances SET available_amount = MAX(0, available_amount - ?), updated_at = datetime('now') WHERE influencer_id = ?")
-              .bind(a.commission_amount, a.influencer_id).run()
-          }
-        }
-      } catch (e) { if (import.meta.env?.DEV) console.warn('[force-refund clawback]', e) }
+      // 💸 2026-10-10: 인플 clawback 을 바우처 단위 SSOT 로(위 폐업 환불과 같은 이유 — 종전 인라인은 voucher_id 매칭 0건).
+      try { await clawbackVoucherCommission(DB, v.id, 'admin_force_refund') }
+      catch (e) { if (import.meta.env?.DEV) console.warn('[force-refund clawback]', e) }
     }
 
     await DB.prepare("UPDATE products SET group_buy_status = 'cancelled', updated_at = CURRENT_TIMESTAMP WHERE id = ?")

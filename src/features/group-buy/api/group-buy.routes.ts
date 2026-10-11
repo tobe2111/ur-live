@@ -31,9 +31,8 @@ import {
   getSellerCommissionRate,
   applyGroupBuyReferral,
   sendBuyerVoucherIssuedAlimtalk,
-  sendSellerFirstVoucherAlimtalk,
-  sendSellerVoucherSoldAlimtalk,
 } from './helpers'
+import { notifySellerVoucherSale } from './seller-sale-notify' // 📣 판매 알림톡 SSOT(딜·카드·장바구니)
 // 🛡️ 2026-05-21: 모든 voucher 카테고리에서 동작하려면 이용권 hardcode 제거 — getVoucherShortLabel 사용.
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
 // 🎟️ 2026-08-12 (소비자 공구 결제 결함 3건): 자기참여 판정·주문번호·가상계좌 가드 → gb-purchase-guards.ts
@@ -710,39 +709,9 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
         }
       } catch { /* graceful */ }
 
-    // 🏁 2026-06-11 (참여하기 느림 수술): 사장님 첫 바우처 안내(inline ALTER+SELECT+UPDATE+알림톡) — 응답 후 실행(waitUntil).
-    //   블록 내용/순서/에러처리 불변 — 실행 시점만 이동. ctx 없으면(테스트) 기존처럼 동기 실행.
+    // 📣 사장님 판매 알림톡 — 카드·장바구니 경로와 같은 함수(`seller-sale-notify.ts`). 응답 후 실행.
     {
-      const _bg = async () => {
-      // 🛡️ 2026-05-16: 매장 사장님에게 첫 voucher 안내 알림톡 (sellers.first_voucher_notified=0 일 때만)
-      try {
-        try { await DB.prepare("ALTER TABLE sellers ADD COLUMN first_voucher_notified INTEGER DEFAULT 0").run() } catch {}
-        const seller = await DB.prepare(
-          "SELECT phone, business_name, COALESCE(first_voucher_notified, 0) AS notified, store_owner_token FROM sellers WHERE id = ?"
-        ).bind(product.seller_id).first<{ phone: string | null; business_name: string; notified: number; store_owner_token: string | null }>()
-        if (seller && Number(seller.notified) === 0 && seller.phone) {
-          const token = seller.store_owner_token || ''
-          const statsUrl = `https://urdeal.kr/store/stats/${productId}${token ? `?t=${token}` : ''}`
-          c.executionCtx.waitUntil(
-            sendSellerFirstVoucherAlimtalk(
-              c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
-              seller.phone,
-              { restaurantName: seller.business_name, productName: product.name, statsUrl },
-            )
-          )
-          await DB.prepare("UPDATE sellers SET first_voucher_notified = 1 WHERE id = ?").bind(product.seller_id).run()
-        } else if (seller?.phone) {
-          // 📣 2026-07-05 (운영 감사 Q4): 2번째 판매부터 건별 판매 알림톡 — 기존엔 첫 1회 뒤로는
-          //   대시보드 벨뿐이라 대시보드를 안 보는 사장님이 판매를 몰랐음. 같은 블록에서 분기해
-          //   첫 판매(온보딩 상세)와 이중발송 불가(레이스 0).
-          await sendSellerVoucherSoldAlimtalk(
-            c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
-            seller.phone,
-            { restaurantName: seller.business_name, productName: product.name, qty, amount: Number(totalAmount) || 0 },
-          )
-        }
-      } catch { /* graceful */ }
-      }
+      const _bg = () => notifySellerVoucherSale(c.env, DB, { sellerId: product.seller_id, productName: product.name, qty, amount: Number(totalAmount) || 0 })
       let _deferred = false
       try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(_bg()); _deferred = true } } catch { /* no ctx */ }
       if (!_deferred) await _bg()
@@ -1265,6 +1234,7 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
         try {
           const { createDashboardNotification } = await import('../../notifications/api/dashboard-notifications.routes')
           if (product.seller_id) {
+            await notifySellerVoucherSale(c.env, DB, { sellerId: product.seller_id, productName: product.name, qty, amount: Number(expectedAmount) || 0 })
             await createDashboardNotification(
               DB, 'seller', String(product.seller_id), 'voucher_sold',
               '🎟️ 이용권 판매(카드)', `${product.name} ×${qty} — ₩${Number(expectedAmount).toLocaleString('ko-KR')}`,

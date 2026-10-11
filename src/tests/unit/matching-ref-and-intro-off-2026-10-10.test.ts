@@ -65,8 +65,9 @@ describe('🛑 영입 셰어 — 폐지 (함수·호출·어드민 입력 0)', (
   it('ledger.ts 에 함수가 없다', () => {
     expect(ledger).not.toMatch(/export async function recordIntroductionCommissionShare/)
   })
-  it('이용권 사용 처리 두 경로가 부르지 않는다', () => {
+  it('이용권 사용 처리 경로(셀러 스캔·카톡 챗봇 공용 포함)가 부르지 않는다', () => {
     expect(use).not.toMatch(/recordIntroductionCommissionShare/)
+    expect(stripComments(readFileSync('src/worker/utils/voucher-seller-redeem.ts', 'utf8'))).not.toMatch(/recordIntroductionCommissionShare/)
   })
   it('어드민에서 % 를 다시 넣을 길이 없다 (화면·API 둘 다)', () => {
     const page = stripComments(readFileSync('src/pages/AdminPayoutsPage.tsx', 'utf8'))

@@ -31,7 +31,7 @@ import { getPolicy } from '../utils/dynamic-policy'
 import { intParam } from '@/shared/pagination'; import { loadLinkedSellerProducts } from '../utils/linkshop-seller-products' // 한 줄: 래칫 1397
 import { consumerVisibleProductSql } from '../../shared/db/consumer-visible-product'
 import { isAffiliateProgramEnabled, gateAffiliateRows } from '../utils/affiliate-program'
-import { findOwnedApprovedSeller } from '../utils/seller-operators'
+import { findOwnedApprovedSeller, OWNED_STORE_WHERE_SQL } from '../utils/seller-operators'
 
 const curatorRoutes = new Hono<{ Bindings: Env }>()
 
@@ -215,14 +215,12 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
       return c.json({ success: false, error: '큐레이터를 찾을 수 없습니다' }, 404)
     }
 
-    // 🛡️ 2026-05-25 (C 옵션): linked seller + pins — 둘 다 user.id 에만 의존 → 병렬(Promise.all).
-    //   🏭 2026-06-04 (perf 전수조사): 기존 순차 2 round-trip → 1 round-trip 으로 단축.
+    // 🛡️ 2026-05-25 linked seller + pins 병렬 1 RTT · 🛍️ 2026-10-10 내 가게 = 연결 계정 **또는 주인 좌석**(`OWNED_STORE_WHERE_SQL`)
     const userId = user.id
     const [linkedSeller, pinsResult] = await Promise.all([
-      DB.prepare(
-        `SELECT id, username, name, status FROM sellers
-         WHERE linked_user_id = ? AND status = 'approved' LIMIT 1`,
-      ).bind(userId).first<{ id: number; username: string; name: string; status: string }>().catch(() => null),
+      DB.prepare(`SELECT s.id, s.username, s.name, s.status FROM sellers s WHERE ${OWNED_STORE_WHERE_SQL} LIMIT 1`).bind(userId, userId, userId)
+        .first<{ id: number; username: string; name: string; status: string }>()
+        .catch(() => DB.prepare("SELECT id, username, name, status FROM sellers WHERE linked_user_id = ? AND status = 'approved' LIMIT 1").bind(userId).first<{ id: number; username: string; name: string; status: string }>().catch(() => null)),
       DB.prepare(
         `SELECT pp.id, pp.product_id, pp.position, pp.note, pp.click_count,
                 p.name AS product_name, p.image_url, p.thumbnail, p.price, p.original_price, p.discount_rate,
@@ -827,9 +825,8 @@ curatorRoutes.get('/me/dashboard', requireAuth(), async (c) => {
     const [meRow0, linkedSeller0, earnings30, pending30, clicks30, purchases30, topPinsR, dailyR, recentR] = await Promise.all([
       DB.prepare('SELECT handle, name FROM users WHERE id = ? LIMIT 1')
         .bind(userId).first<{ handle: string | null; name: string | null }>().catch(() => null),
-      DB.prepare(
-        `SELECT id, username FROM sellers WHERE linked_user_id = ? AND status = 'approved' LIMIT 1`,
-      ).bind(userId).first<{ id: number; username: string }>().catch(() => null),
+      DB.prepare(`SELECT s.id, s.username FROM sellers s WHERE ${OWNED_STORE_WHERE_SQL} LIMIT 1`).bind(userId, userId, userId).first<{ id: number; username: string }>() // 🛍️ 위와 같은 규칙
+        .catch(() => DB.prepare("SELECT id, username FROM sellers WHERE linked_user_id = ? AND status = 'approved' LIMIT 1").bind(userId).first<{ id: number; username: string }>().catch(() => null)),
       // 확정(granted/legacy) 적립만 — holding(미성숙)은 pending_earnings 로 분리 표시.
       DB.prepare(
         `SELECT COALESCE(SUM(commission), 0) AS total FROM affiliate_earnings

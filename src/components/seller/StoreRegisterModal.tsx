@@ -23,10 +23,10 @@
  *   진짜 승계(`owner_verified`)는 아직 설계만 있고 코드가 없다(`store-operator-model.md` §5).
  *   대신 **이미 갖고 있는 권한 검사를 그대로 시험지로 쓴다** — 좌석 토큰(`/stores/:id/token`)은
  *   `canOperateStore` 를 통과해야만 발급된다(그 파일이 "유일한 방어선"이라고 못 박은 곳). 그러니
- *   `enterStoreSeat` 가 성공하면 **원래 내 매장**이었던 것이고, 실패하면 내 것이 아니다.
- *   서버는 한 줄도 안 건드리고, 새로 뚫리는 권한도 0이다.
+ *   `enterStoreSeat` 가 성공하면 **원래 내 매장**이었던 것이다(서버 무수정 · 새 권한 0).
  *
- * ⚠️ 실패 문구는 **누구 것인지 단정하지 않는다**(내 매장이어도 좌석 토큰이 403 일 수 있다).
+ * ⚠️ 실패 문구는 **누구 것인지 단정하지 않는다** — 대기·반려도 좌석에 앉지만(`isSeatableStoreStatus`) 정지·회수로
+ *   실패할 수 있다. "남이 등록했다"고 하면 거짓말이 된다(10-10 정정: 옛 "pending 이면 403" 은 틀렸다).
  *
  * ## 종전 계약(무접촉)
  *   - `initialPlace` 프리필: 주면 ①을 건너뛰고 ②부터 시작한다(이용권 위저드가 쓰는 다리).
@@ -546,7 +546,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
               {!certOk && !uploading && (
                 <p className="text-[11px] text-gray-500 leading-relaxed">
                   지금 건너뛰어도 매장은 등록돼요. 다만 <span className="font-bold text-gray-700">승인 전까지는 메인에 노출되지 않고</span>,
-                  등록증이 없으면 확인에 더 오래 걸려요. 나중에 <span className="font-bold text-gray-700">업체 정보</span>에서 올릴 수 있어요.
+                  등록증이 없으면 확인에 더 오래 걸려요. 나중에 <span className="font-bold text-gray-700">셀러 대시보드 › 사업자 정보</span>에서 올릴 수 있어요.
                 </p>
               )}
 

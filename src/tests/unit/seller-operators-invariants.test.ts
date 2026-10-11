@@ -47,8 +47,10 @@ describe('🔐 매장 전환 — 토큰 발급이 유일한 방어선', () => {
     const at = routes.indexOf('async function resolveActorUserId')
     const body = routes.slice(at, at + 900)
     expect(body).toMatch(/parseSessionCookie/)
-    expect(body).toMatch(/getSellerIdFromToken/)
-    expect(body).toMatch(/linked_user_id/)
+    // 🔐 2026-10-10 재조준: 토큰 폴백은 좌석 정체성 SSOT(`resolveTokenActorUserId`)로 — 종전엔 좌석 토큰도
+    //   매장 linked_user_id(=주인)로 되짚어 쿠키 없는 운영자가 주인으로 둔갑했다. 매장 계정 토큰의
+    //   linked_user_id 폴백은 그 헬퍼 안에 그대로 있다(store-seat-revocation 시험이 행동으로 본다).
+    expect(body).toMatch(/resolveTokenActorUserId\(c\.env\.DB, c\.req\.header\('Authorization'\), c\.env\.JWT_SECRET\)/)
   })
 
   it('정지된 매장은 토큰을 받지 못한다 — 판정은 SSOT(isSeatableStoreStatus) 하나다', () => {

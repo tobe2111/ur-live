@@ -17,6 +17,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import { safeError } from '@/worker/utils/safe-error'
 import { adsLeadsDb } from '@/shared/ads/leads-db'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
+import { checkStoreInfluencerPct } from '@/worker/utils/broker-share'
 
 type OfferVars = { user?: { id: string | number; email?: string } }
 const app = new Hono<{ Bindings: Env; Variables: OfferVars }>()
@@ -173,6 +174,14 @@ app.post('/:token/accept', requireAuth(), rateLimit({ action: 'offer_accept', ma
       return c.json({ success: true, data: acceptPayload(inv.product_id, userId) })
     }
     if (inv.status !== 'pending') return c.json({ success: false, error: '이미 사용된 제안 링크입니다' }, 409)
+
+    // 🎯 2026-10-10: 제안 % 를 **지금의** 매장 요율로 다시 검증한다(상한·중개사 몫 합) — 제안 뒤 요율이 바뀌었을 수 있다.
+    //   CAS 전에 본다: 막히면 토큰은 그대로 pending 이라 매장이 고쳐 다시 보낼 수 있다.
+    const pv = await checkStoreInfluencerPct(db, Number(inv.seller_id), inv.commission_pct, { allowZero: true })
+    if (!pv.ok) {
+      return c.json({ success: false, code: 'OFFER_PCT_OVER_STORE_TERMS',
+        error: `매장 조건이 바뀌어 이 제안을 그대로 수락할 수 없어요 (${pv.error}). 매장에 다시 요청해주세요` }, 409)
+    }
 
     // 💸 머니 룰 #1 CAS: pending → accepted 선점 후에만 딜 생성 (동시 수락/재사용 차단)
     const cas = await db.prepare(

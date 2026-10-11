@@ -22,8 +22,9 @@ export default [
   {
     name: '🕙 셀러 API 가 SSOT 대신 cutoff 를 손으로 짓는다',
     file: API,
-    find: '              ${hold.heldSql}',
-    replace: "              AND created_at > datetime('now', '-14 days')",
+    // 🔗 2026-10-10 재앵커: 유보 합계가 `loadSellerHeld()` 로 추출됐다(merchant:N 도 보게). 조각은 인자로 들어간다.
+    find: '        ${heldSql}`',
+    replace: "        AND created_at > datetime('now', '-14 days')`",
     test: TEST,
     why: '부등호를 손으로 쓰면 payout_hold_days 를 바꾼 날 cron 만 따라가고 화면은 14 에 멈춘다. 사장님이 보는 "유보 중"과 실제 집계가 갈리는데 에러가 안 난다.',
   },
@@ -38,8 +39,8 @@ export default [
   {
     name: '🕙 held 클램프가 빠져 "그중 N" 이 미지급보다 커진다',
     file: API,
-    find: 'Math.min(payable, Math.max(0, Math.round(Number(heldRow?.held) || 0)))',
-    replace: 'Math.max(0, Math.round(Number(heldRow?.held) || 0))',
+    find: 'Math.min(payable, Math.max(0, Math.round(heldTotal)))',
+    replace: 'Math.max(0, Math.round(heldTotal))',
     test: TEST,
     why: '유보 이전에 지급된 건이 있으면 원장 기준 held 가 미지급을 넘는다. 화면이 "미지급 1만원 · 그중 3만원 유보 중" 이라고 말하게 된다.',
   },
