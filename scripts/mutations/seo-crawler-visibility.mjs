@@ -6,6 +6,8 @@ const TEST = 'src/tests/unit/seo-crawler-visibility-2026-10-11.test.ts'
 const UA = 'src/shared/seo/crawler-ua.ts'
 const NS = 'src/worker/utils/crawler-noscript.ts'
 const META = 'src/worker/utils/detail-ssr-meta.ts'
+const BRAND = 'src/shared/seo/brand-jsonld.ts'
+const WORKER = 'src/worker/index.ts'
 
 export default [
   {
@@ -141,5 +143,47 @@ export default [
     replace: '    const hasPlace = true',
     test: TEST,
     why: '주소도 좌표도 없는 매장 엔티티는 아무것도 말하지 않으면서 스키마만 어지럽힌다.',
+  },
+  {
+    name: '🔎 봇 셸에서 브랜드 JSON-LD 가 빠진다(크롤러가 사이트 이름을 다시 못 받는다)',
+    file: WORKER,
+    find: '${brandJsonLdScript()}</head>',
+    replace: '</head>',
+    test: TEST,
+    why: '이 수리의 본체다 — 봇 UA 는 index.html 을 안 받으므로 여기서 빠지면 `WebSite.name` 이 어떤 크롤러에도 안 간다.',
+  },
+  {
+    name: '🔎 브랜드 노드가 `index.html` 과 갈린다(사람과 크롤러가 다른 이름을 본다)',
+    file: BRAND,
+    find: "      name: '유어딜',\n      alternateName: ['urdeal', 'UrDeal'],",
+    replace: "      name: '유어딜 할인',\n      alternateName: ['urdeal', 'UrDeal'],",
+    test: TEST,
+    why: '두 벌이 갈려도 **에러가 안 난다** — deep-equal 대조가 유일한 방어다.',
+  },
+  {
+    name: '🔎 브랜드 JSON-LD 를 HTML escape 한다(JSON-LD 가 통째로 무효)',
+    file: BRAND,
+    find: '  const json = JSON.stringify(data).replace(',
+    replace: "  const json = JSON.stringify(data).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(",
+    test: TEST,
+    why: '값은 전부 상수라 escape 할 이유가 없고, 섞이면 파서가 그 블록을 버린다(에러도 경고도 없다).',
+  },
+  {
+    name: '🔎 사람 셸 쪽 메타 빌더에도 브랜드 노드를 넣는다(같은 @id 두 벌)',
+    file: 'src/worker/utils/surface-ssr-meta.ts',
+    find: 'export function applySurfaceMeta<T extends RewriterLike<T>>(',
+    replace: "import { brandJsonLdScript } from '../../shared/seo/brand-jsonld'\nexport function applySurfaceMeta<T extends RewriterLike<T>>(",
+    test: TEST,
+    why: '제가 2026-10-11 에 두려워한 바로 그 중복이다 — index.html 이 이미 그 문서에 한 벌 넣는다.',
+  },
+  {
+    name: '🔎 브랜드 설명에 폐기 명칭 "링크샵" 이 돌아온다',
+    file: BRAND,
+    find: '누구나 만드는 유어샵을 제공합니다',
+    replace: '누구나 만드는 링크샵을 제공합니다',
+    // 🔑 이 불변식의 주인은 명칭 가드다(src 전수 N1). 이 파일 쪽 시험은 긍정("유어샵이 있다")만 본다 —
+    //    부정 리터럴을 적으면 그 명칭 가드가 그 시험 파일 자신을 잡는다(실제로 그랬다).
+    test: 'src/tests/unit/urshop-naming.test.ts',
+    why: '검색 AI 가 읽는 우리 자기소개다 — `index.html` 은 명칭 치환 당시 검사 경로 밖이라 옛 이름으로 남아 있었다.',
   },
 ]

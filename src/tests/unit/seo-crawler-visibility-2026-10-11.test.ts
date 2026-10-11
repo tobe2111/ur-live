@@ -9,7 +9,11 @@
  *    하나도 없다. Googlebot 은 스마트폰 크롤러라 **우연히** 보고 있었다(363자/242자).
  *
  * **② 사이트 이름이 브랜드다** — 구글이 `urdeal.kr`(도메인)로 쓰고 있었다. 사이트 이름의 1순위
- *    소스는 **홈페이지의 `WebSite` JSON-LD `name`** 인데 홈 JSON-LD 가 0건이었다.
+ *    소스는 **홈페이지의 `WebSite` JSON-LD `name`** 이다. 🩸 이 항목에서 제가 **두 번** 틀렸다:
+ *    처음 *"홈 JSON-LD 가 0건"* → 그 뒤 *"`index.html` 에 이미 있으니 내 코드는 중복"* → 마지막에
+ *    **UA 별 라이브 실측**으로 결판났다 — `index.html` 에 있는 건 사실이지만 **크롤러는 그 문서를
+ *    받지 않는다**(봇 UA 는 `app.get('*')` 의 손으로 쓴 최소 HTML). 즉 `WebSite.name = 유어딜` 은
+ *    어떤 검색 크롤러도 한 번도 받은 적이 없었다. ⇒ **파일에 있다 ≠ 크롤러가 받는다.**
  *
  * **③ 매장이 검색엔진에 전달된다** — `address`·`geo` 가 `Product` 안에 있었다. 그 둘은 Product 의
  *    표준 속성이 **아니라서** 구글이 버린다. 즉 "전주 덕진구의 돈가스집" 이라는 사실이 한 번도
@@ -215,9 +219,12 @@ describe('③ 브랜드 — 사이트 이름 신호는 `index.html` 정적 블�
       expect(src, `${f} 가 #organization 노드를 또 만든다`).not.toMatch(/'@id':\s*`?\$?\{?origin\}?\/#organization/)
       expect(src, `${f} 가 #website 노드를 또 만든다`).not.toMatch(/'@type':\s*'WebSite'/)
     }
-    // 그 신규 모듈은 되돌렸다 — 되살아나면 중복이 돌아온다.
+    // 🔀 2026-10-11 재조준: 종전엔 `brand-jsonld.ts` 의 **부재**를 단언했다. 지키려던 불변식은
+    //    *"같은 `@id` 가 한 문서에 두 벌 들어가지 않는다"* 이고 그건 그대로다 — 다만 그 모듈이
+    //    꽂히는 곳이 **봇 셸**(`index.html` 과 상호배타)이라 중복이 구조적으로 불가능하다.
+    //    ⇒ 부재 대신 **"사람 셸 쪽 경로에는 안 들어간다"** 를 단언한다(위 세 파일 검사가 그것).
     expect(existsSync('src/shared/seo/brand-jsonld.ts'),
-      'brand-jsonld.ts 가 되살아났다 — index.html 과 같은 @id 를 두 벌 내보낸다').toBe(false)
+      '브랜드 모듈이 사라졌다 — 크롤러가 브랜드 노드를 다시 못 받는다').toBe(true)
   })
 
   it('🔴 없는 SNS 계정을 지어내지 않는다', () => {
@@ -315,5 +322,94 @@ describe('④ 이용권 상세 — 매장이 검색엔진에 전달된다 (대�
     // 그래도 Product·BreadcrumbList 는 남아야 한다 — 매장이 없다고 상품까지 사라지면 안 된다.
     expect(arr.some((x: { '@type': string }) => x['@type'] === 'Product')).toBe(true)
     expect(arr.some((x: { '@type': string }) => x['@type'] === 'BreadcrumbList')).toBe(true)
+  })
+})
+
+describe('③-2 크롤러 셸 — 브랜드 노드를 **봇이 받는 문서**에 둔다', () => {
+  // 🔎 라이브 실측(2026-10-11, 같은 경로를 UA 만 바꿔 받아 봤다):
+  //
+  //    UA            서빙 셸                        `#organization`
+  //    iPhone·PC     index.html(정적 @graph 포함)    있음
+  //    Yeti·Googlebot·DaumOA   app.get('*') 최소 HTML        **0**
+  //
+  // 🧷 게다가 **사이트 전체가 없는 노드를 가리키고 있었다**: 크롤러가 받는 `/blog` 의 JSON-LD 는
+  //    `publisher: {'@id': '.../#organization'}` · `isPartOf: {'@id': '.../#website'}` 로
+  //    **정의되지 않은 `@id`** 를 참조한다. 봇 셸에 두 노드를 놓으면 그 참조가 이어진다.
+  const workerSrc = readCode('src/worker/index.ts')
+
+  /** 봇 셸 템플릿(`const html = ` 템플릿 리터럴)만 잘라낸다 — 거리 앵커(`[\s\S]{0,N}`)는 쓰지 않는다. */
+  function botShell(): string {
+    const i = workerSrc.indexOf('const html = `<!DOCTYPE html>')
+    expect(i, '봇 셸 템플릿을 못 찾았다 — 이 시험의 앵커가 낡았다').toBeGreaterThan(-1)
+    const end = workerSrc.indexOf('</html>`', i)
+    expect(end).toBeGreaterThan(i)
+    return workerSrc.slice(i, end)
+  }
+
+  it('봇 셸 `<head>` 에 브랜드 JSON-LD 가 꽂혀 있다', () => {
+    const shell = botShell()
+    const at = shell.indexOf('${brandJsonLdScript()}')
+    expect(at, '봇 셸에 브랜드 JSON-LD 가 없다 — 크롤러는 사이트 이름 신호를 못 받는다').toBeGreaterThan(-1)
+    // `<head>` 안이어야 한다(body 로 내려가면 구글은 읽지만 우리 의도와 갈린다).
+    expect(at, '브랜드 JSON-LD 가 </head> 밖으로 나갔다').toBeLessThan(shell.indexOf('</head>'))
+    expect(workerSrc, '모듈을 import 하지 않았다').toContain("from '../shared/seo/brand-jsonld'")
+  })
+
+  it('🔴 `index.html` 의 `@graph` 와 **값이 같다** — 두 벌이 갈리면 사람과 크롤러가 다른 브랜드를 본다', async () => {
+    const { BRAND_JSONLD } = await import('@/shared/seo/brand-jsonld')
+    const m = readCode('index.html').match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)
+    expect(m, 'index.html 의 JSON-LD 블록이 사라졌다').toBeTruthy()
+    // 원문 그대로 파싱한다(주석을 지우고 파싱하면 "JSON 안 주석" 결함이 안 보인다 — 위 ③ 주석 참조).
+    expect(JSON.parse(JSON.stringify(BRAND_JSONLD))).toEqual(JSON.parse(m![1]))
+  })
+
+  it('🔴 내보내는 문자열이 **유효한 JSON** 이고 `</script>` 로 탈출하지 않는다', async () => {
+    const { brandJsonLdScript, jsonLdScriptTag } = await import('@/shared/seo/brand-jsonld')
+    const tag = brandJsonLdScript()
+    expect(tag.startsWith('<script type="application/ld+json">')).toBe(true)
+    const body = tag.slice('<script type="application/ld+json">'.length, -'</script>'.length)
+
+    // 🩸 **지금 데이터엔 `&`·`<` 가 한 글자도 없다** — 그래서 완성본만 보면 escape 를 끼워 넣어도
+    //    결과가 같아 "escape 금지" 를 판정할 수 없다(주입 러너가 실제로 그걸 잡았다).
+    //    ⇒ 탈출 처리를 **탐침 값으로 직접 재서** 동작을 고정한다.
+    const probe = jsonLdScriptTag({ amp: 'a&b', lt: '1<2', close: 'x</script>y' })
+    expect(probe, 'HTML escape 가 섞였다 — JSON-LD 가 통째로 무효가 된다').toContain('a&b')
+    expect(probe, '`<` 를 escape 하면 안 된다').toContain('1<2')
+    expect(probe.slice(0, -'</script>'.length), '닫는 태그를 탈출시키지 않았다').not.toContain('</script')
+    expect(body, '닫는 태그를 탈출시키지 않았다').not.toContain('</script')
+    const parsed = JSON.parse(body) as { '@graph': Array<Record<string, unknown>> }
+    const site = parsed['@graph'].find((n) => n['@type'] === 'WebSite')
+    const org = parsed['@graph'].find((n) => n['@type'] === 'Organization')
+    expect(site!.name, '크롤러가 받을 사이트 이름').toBe('유어딜')
+    expect((site!.publisher as { '@id': string })['@id']).toBe(org!['@id'])
+  })
+
+  it('🔴 사람이 받는 셸에는 또 넣지 않는다 — 같은 `@id` 두 벌 금지', () => {
+    // 봇 셸과 `index.html` 은 상호배타이므로 각 문서에 정확히 한 벌이다. `index.html` 쪽
+    // 서빙 경로(HTMLRewriter 체인)나 메타 빌더가 이 모듈을 쓰면 그 문서에 두 벌이 된다.
+    expect(readCode('index.html'), 'index.html 이 모듈을 또 끌어온다').not.toContain('brand-jsonld')
+    for (const f of [
+      'src/worker/utils/surface-ssr-meta.ts',
+      'src/worker/utils/detail-ssr-meta.ts',
+      'src/shared/seo/consumer-surfaces.ts',
+    ]) {
+      const src = readCode(f)
+      expect(src.length, `${f} 를 못 읽었다 — 이 단언이 통째로 헛돈다`).toBeGreaterThan(500)
+      expect(src, `${f} 가 브랜드 모듈을 또 쓴다 — 사람 셸에 두 벌이 된다`).not.toContain('brand-jsonld')
+    }
+    // 봇 셸 안에서도 정확히 한 번.
+    expect(botShell().split('${brandJsonLdScript()}').length - 1, '봇 셸에 두 번 들어갔다').toBe(1)
+  })
+
+  it('🔴 브랜드 설명이 현행 명칭(유어샵)을 쓴다', async () => {
+    // 2026-08-26 대표 확정으로 그 기능의 사용자-가시 이름은 "유어샵" 이다. 이 설명은 **검색 AI 가
+    // 읽는 우리 자기소개**인데 `check-legacy-domain` 류 가드의 검사 경로(`src/pages`·locales) 밖이라
+    // 2026-10-11 까지 옛 이름으로 남아 있었다.
+    // 🔑 **옛 이름의 부재는 여기서 단언하지 않는다** — 그 불변식의 주인은 `urshop-naming.test.ts`(N1,
+    //    src 전수)이고, 이 파일에 그 리터럴을 적으면 **그 가드가 이 파일을 잡는다**(실제로 잡혔다).
+    //    두 가드가 같은 말을 하면 하나는 반드시 낡는다 — 긍정만 보고 부정은 주인에게 맡긴다.
+    const { BRAND_JSONLD } = await import('@/shared/seo/brand-jsonld')
+    const org = BRAND_JSONLD['@graph'].find((n) => n['@type'] === 'Organization') as { description: string }
+    expect(org.description).toContain('유어샵')
   })
 })
