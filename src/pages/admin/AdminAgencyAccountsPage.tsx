@@ -104,7 +104,7 @@ export default function AdminAgencyAccountsPage() {
                     <button type="button" onClick={() => toggle(r)} className="min-w-0 flex-1 text-left">
                       <p className="truncate text-[15px] font-semibold text-gray-900">
                         {r.name}
-                        <span className={`ml-2 text-[12px] font-semibold ${r.status === 'active' ? 'text-tone-good' : r.status === 'suspended' ? 'text-tone-bad' : 'text-gray-500'}`}>
+                        <span className={`ml-2 text-[12px] font-semibold ${r.status === 'active' ? 'text-tone-ok' : r.status === 'suspended' ? 'text-tone-bad' : 'text-gray-500'}`}>
                           {STATUS_LABEL[r.status] || r.status}
                         </span>
                       </p>
