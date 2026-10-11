@@ -40,6 +40,21 @@ export function isVoucherCategory(category: string | undefined | null): boolean 
   return VOUCHER_CATEGORY_SET.has(category) || category in LEGACY_CATEGORY_MAP
 }
 
+/**
+ * 💸 이용권 최소 판매가 (2026-10-11 대표 *"1000원 이상으로만 이용권 가격을 올릴 수 있게 … 최소가격을 정하는게 좋겠네"*)
+ *
+ * 이용권 1장이 팔리면 알림톡이 2통(손님 발급 + 사장님 판매, 약 16원) 나가고, 중개 매장의 남는 몫은
+ * 판매가의 약 2.25%(수수료 5% − 결제대행 2.75%)다 ⇒ 1,000원 아래로는 팔수록 손해가 날 수 있다.
+ * 교환권(딜 결제, `deal_only=1`)은 셀러가 만들지 않으므로 대상이 아니다.
+ */
+export const VOUCHER_MIN_PRICE = 1000
+
+/** 이용권 카테고리인데 최소가 미만이면 안내 문구, 아니면 null. 서버·화면이 같이 쓴다. */
+export function voucherMinPriceError(category: string | undefined | null, price: number): string | null {
+  if (!isVoucherCategory(category) || price >= VOUCHER_MIN_PRICE) return null
+  return `이용권 판매가는 ${VOUCHER_MIN_PRICE.toLocaleString('ko-KR')}원 이상이어야 합니다.`
+}
+
 /** 레거시 카테고리를 새 카테고리로 정규화. */
 export function normalizeCategory(category: string | undefined | null): VoucherCategory | null {
   if (!category) return null

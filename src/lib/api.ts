@@ -679,9 +679,11 @@ api.interceptors.response.use(
         if (!localStorage.getItem('seller_token')) window.location.href = '/seller/login';
       } else if (currentPath.startsWith('/admin')) {
         if (!localStorage.getItem('admin_token')) window.location.href = '/admin/login';
-      } else if (currentPath.startsWith('/agency')) {
-        if (!localStorage.getItem('agency_token')) window.location.href = '/agency/login';
       }
+      // 🏢 2026-10-11: `/agency*` 는 새 에이전시 콘솔이다 — 자기 토큰(`agency_console_token`)과 자기 요청
+      //   도구(`pages/agency-console/agency-api.ts`)로 인증을 따로 처리한다. 예전엔 여기서 옛 `agency_token`
+      //   이 없으면 `/agency/login` 으로 하드 이동했는데, 그러면 가입·초대 합류 화면에 있는 사람이 **무관한
+      //   소비자 401 하나로 로그인 화면에 던져진다**(초대 링크의 토큰도 같이 날아간다). 이동하지 않는다.
       // 일반 사용자: redirect 하지 않음 — 401 reject 만
       return Promise.reject(error);
     }

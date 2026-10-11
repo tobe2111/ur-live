@@ -16,6 +16,7 @@
  */
 
 import { useAuthStore } from '@/client/stores/auth.store'
+import { isStaleLoginLanding } from './stale-login-landing'
 
 const PROCESSED_FLAG = '__urAuthCallbackProcessed'
 
@@ -38,8 +39,19 @@ export function processAuthCallbackParams(): void {
   //   이 로드만 grace 부여(다음 로드/실제 API 401 에서 자연 정리).
   let didFreshLogin = false
 
+  // 🕰️ 2026-10-11: 방문 기록·자동완성·탭 복원으로 **옛 착지 주소가 다시 열린 것**이면 로그인으로 취급하지
+  //   않는다(이전 사용자 wipe·남의 이름 표시·죽은 티켓 교환을 전부 건너뛴다). 주소만 지운다.
+  //   판정·근거: stale-login-landing.ts. 애매하면(티켓 없음) 아래 정상 경로 그대로.
+  const loginLanding = urlParams.get('login') === 'success' && !!urlParams.get('userId')
+  if (loginLanding && isStaleLoginLanding(window.location.hash, Date.now() / 1000)) {
+    try {
+      for (const k of ['login', 'userId', 'userEmail', 'profileImage', 'userName', 'new', 'restorable', 'originalName']) urlParams.delete(k)
+      const clean = urlParams.toString()
+      window.history.replaceState({}, '', clean ? `${window.location.pathname}?${clean}` : window.location.pathname)
+    } catch { /* ignore */ }
+  } else
   // ── 카카오 로그인 성공 ──
-  if (urlParams.get('login') === 'success' && urlParams.get('userId')) {
+  if (loginLanding) {
     didFreshLogin = true
     // 🛡️ 2026-05-01: 새 사용자 로그인 시 이전 사용자 데이터 wipe — cross-user leak 차단.
     //   사용자 신고: "다른 사람 폰에서 내 계정 로그인했는데 그 사람 이름으로 됨".

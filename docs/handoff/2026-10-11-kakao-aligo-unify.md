@@ -95,3 +95,24 @@
 - 나중 9개 근거(라이브 D1 실측): 예약 `appointment_bookings` 0건 · 체험단 `fcfs_applications` 7건 전부 데모 ·
   `commission_withdrawals` 0건 · `affiliate_earnings` 0건 · 정지 해제/서류 확인은 드묾.
 - 코드 수정 없음 — 등록 안 한 템플릿은 `sendTextNotice` 가 `pending:` 기록 후 건너뛴다(비용 0).
+
+## 이용권 최소 판매가 1,000원 (2026-10-11 20:00 KST, 대표 "최소가격을 정하는게 좋겠네")
+- SSOT `VOUCHER_MIN_PRICE`/`voucherMinPriceError` (`src/shared/constants/voucher-categories.ts`).
+- 막는 자리 4곳: 셀러 등록 POST · 셀러 수정 PUT(저장된 카테고리를 `SELECT id, category` 로 읽음) · 영입자 대행 등록
+  (`curator.routes /me/proxy-product`) · 등록 화면(단계 이동 + 제출, 판매가 아래 안내 한 줄).
+- 대상 아님: 어드민 생성(데모·교환권), 이미 등록된 1,000원 미만(라이브 실측: 비활성 시험 상품 id 2918, 585원 1건뿐).
+- 가드 `voucher-min-price-2026-10-11.test.ts` + 주입 5건 빨간불 확인. `voucher-restore` 테스트·주입 앵커는
+  조회문 변경(`SELECT id, category`)에 맞춰 재조준(불변식 그대로).
+- 근거: 판매 1건 알림톡 2통(약 16원) vs 중개 매장 남는 몫 2.25% → 1,000원 미만이면 손해 가능.
+
+## 카톡 간편로그인 + 옛 로그인 착지 주소 (2026-10-11 22:00 KST, 대표 "모두 가장 이상적으로 고치자")
+- 신고: 다른 서비스(꼬기다)는 카톡 앱으로 바로 동의 화면, 유어딜은 카카오 아이디·비밀번호 창.
+  원인 = 서버가 웹 authorize 로만 이동(JS SDK 미사용). 카카오 문서: `Kakao.Auth.authorize` 가 카톡 앱 간편로그인 실행.
+- 구현: 서버 `/auth/kakao/start?mode=sdk`(같은 state·쿠키, JSON) · `lib/kakao-talk-login.ts`(안드로이드 일반 브라우저만,
+  로그인 화면에서 미리 준비 → 클릭 안에서 동기 authorize, 미준비면 종전 웹 이동) · `LoginPage` 배선('다른 계정으로'는 제외).
+- 아이폰 실패 기록 3건(10-10 10:25 KST): 그 시각 카카오 콜백 0건 → 옛 착지 주소 재방문. iOS 카카오 로그인은 6/20 이후 **0건**이라
+  iOS 실제 로그인 상태는 미검증. 수정: `stale-login-landing.ts`(exp+600초) + main.tsx 400/401 재시도 중단.
+- 다음 액션(E4): 배포 뒤 대표 안드로이드에서 로그인 → 카톡 앱 열림·복귀·로그인 확인 + `/api/_internal/kakao-login-diag` 에
+  android 'ok' 행. 아이폰 간편로그인은 그 뒤 별건(SDK 클릭 시 로드는 탭 안 실행 조건 때문에 불가 — 미리 받기 필요, 멈춤 재현 확인부터).
+- 🍎 (22:10 KST, 대표 "아이폰도 일단은 해줘") 아이폰 일반 브라우저도 켬 — 05-04 멈춤 사고 때문에 로그인 화면이 그려진 뒤
+  1.5초에 SDK 준비(`IOS_PREPARE_DELAY_MS`). 그보다 빠른 클릭은 종전 웹 이동. E4 확인에 "아이폰 로그인 화면이 멈추지 않는가" 추가.

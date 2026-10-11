@@ -302,12 +302,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 377 | 1144 |
+| 전체 | 383 | 1144 |
 | 도메인 버킷 (5개 소개서) | 170 | 463 |
 | 공통/인프라 (의도적 제외) | 167 | 487 |
-| **미커버 (점검 필요)** | **40** | **194** |
+| **미커버 (점검 필요)** | **46** | **194** |
 
-⚠️ **미커버 234건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 240건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -323,6 +323,12 @@
 - `/ads/signup`
 - `/ads/terms`
 - `/ads/unlock`
+- `/agency`
+- `/agency/invite`
+- `/agency/login`
+- `/agency/reset`
+- `/agency/signup`
+- `/agency/verify`
 - `/area-report`
 - `/area-report/:region`
 - `/campaign/:code`
@@ -1754,7 +1760,7 @@
 
 
 
-> 마지막 생성: 2026-10-11T08:58:58.480Z
+> 마지막 생성: 2026-10-11T10:46:18.260Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

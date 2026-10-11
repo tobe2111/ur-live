@@ -1702,6 +1702,7 @@
       "discountWon": "KRW",
       "discountNeedsList": "Primero el precio de lista",
       "salePriceAuto": "Al indicar un descuento se rellena el precio de venta. También puedes editarlo.",
+      "minPrice": "El precio de venta debe ser de al menos ₩{{min}}.",
       "groupBuySettings": "Configuración de compra grupal",
       "targetPeople": "Participantes objetivo",
       "zeroMeansDirectSale": "0 significa venta directa sin compra grupal",
@@ -6122,7 +6123,9 @@
     "termsLink": "Términos de Servicio",
     "termsAnd": "y la",
     "privacyLink": "Política de Privacidad",
-    "termsNoticeEnd": ""
+    "termsNoticeEnd": "",
+    "agencyQuestion": "¿Eres una agencia?",
+    "agencyLogin": "Acceso para agencias"
   },
   "guide": {
     "sectionTitlePlaceholder": "Título de sección",

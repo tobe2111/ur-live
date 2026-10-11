@@ -20,11 +20,11 @@ import { resolve, dirname, join } from 'path'
 import { fileURLToPath } from 'url'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+// 🗺️ 2026-10-11: 손으로 적은 목록이었다 — `routes/agency-console.routes.tsx` 를 새로 만들자 그 라우트가
+//   전부 "없는 라우트"로 보였다(반대 방향이면 조용히 빠져 링크 검사가 헛돈다). 디렉터리에서 파생한다.
 const ROUTE_FILES = [
   'src/App.tsx',
-  'src/routes/admin.routes.tsx',
-  'src/routes/seller.routes.tsx',
-  'src/routes/supplier.routes.tsx',
+  ...readdirSync(resolve(ROOT, 'src/routes')).filter((f) => f.endsWith('.routes.tsx')).sort().map((f) => `src/routes/${f}`),
 ]
 // react-router 가 아니라 워커(서버)가 처리하는 prefix — 풀페이지 네비라 라우트 매칭 대상 아님.
 const SERVER_PREFIXES = ['/api/', '/auth/', '/oauth/', '/sync/', '/cdn-cgi/', '/__', '/.well-known/']

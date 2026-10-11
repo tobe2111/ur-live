@@ -338,6 +338,8 @@ async function bootApp() {
       const ctrl = new AbortController()
       const timer = setTimeout(() => ctrl.abort(), 4000)
       let established = false
+      // 🕰️ 2026-10-11: 서버가 티켓 자체를 거절(400/401 — 만료·위조)하면 다시 던져도 같다. 재시도는 일시 실패에만.
+      let rejected = false
       try {
         const res = await fetch('/api/auth/session/establish', {
           method: 'POST',
@@ -347,6 +349,7 @@ async function bootApp() {
           signal: ctrl.signal,
         })
         established = res.ok
+        rejected = res.status === 400 || res.status === 401
       } catch { /* establish 실패해도 앱은 뜸 — 302-set 쿠키(Chrome) 또는 아래 재시도 */ }
       clearTimeout(timer)
       if (established) {
@@ -380,7 +383,8 @@ async function bootApp() {
             }
           }).catch(() => { clearTimeout(rt) })
         }
-        try { setTimeout(retryEstablishOnce, 1500) } catch { /* */ }
+        if (rejected) { try { delete w.__urEstablishTicket } catch { /* */ } }
+        else { try { setTimeout(retryEstablishOnce, 1500) } catch { /* */ } }
       }
     }
   } catch { /* establish 단계 실패 무시 — 렌더 진행 */ }

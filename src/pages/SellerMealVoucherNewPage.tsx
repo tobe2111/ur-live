@@ -28,6 +28,7 @@ import api from '@/lib/api'
 import { applyPinMove, type PinLocation } from '@/shared/pin-move'
 import { toast } from '@/hooks/useToast'
 import { kstInputToUTC } from '@/utils/date'
+import { voucherMinPriceError } from '@/shared/constants/voucher-categories'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import { SELLER_PROMO_FIELD_ENABLED } from '@/shared/feature-flags'
 import SellerLayout from '@/components/SellerLayout'
@@ -216,6 +217,8 @@ export default function SellerMealVoucherNewPage({ embedded = false, onClose, on
       toast.error(t('seller.mealVoucher.requiredFields'))
       return false
     }
+    const minErr = s === 1 ? voucherMinPriceError(form.category, form.price) : null // 💸 서버와 같은 SSOT
+    if (minErr) { toast.error(minErr); return false }
     return true
   }
 
@@ -225,6 +228,8 @@ export default function SellerMealVoucherNewPage({ embedded = false, onClose, on
       toast.error(t('seller.mealVoucher.requiredFields'))
       return
     }
+    const minErr = voucherMinPriceError(form.category, form.price)
+    if (minErr) { toast.error(minErr); return }
     setSubmitting(true)
     try {
       const payload = {
