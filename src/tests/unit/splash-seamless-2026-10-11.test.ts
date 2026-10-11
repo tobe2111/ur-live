@@ -45,5 +45,32 @@ describe('시작화면 안 1 — 바탕과 아이콘이 이어진다', () => {
   it('스토어 앱 시작화면도 같은 네이비', () => {
     expect(readFileSync('capacitor.config.ts', 'utf8')).toMatch(/SplashScreen:\s*\{[\s\S]*?backgroundColor:\s*'#1B2340'/)
     expect(firstPixel('android/app/src/main/res/drawable/splash.png')).toBe('#1B2340')
+    expect(firstPixel('ios/App/App/Assets.xcassets/Splash.imageset/splash-2732x2732.png')).toBe('#1B2340')
+  })
+})
+
+/**
+ * 🍎 아이폰 홈 화면 웹앱은 manifest 를 안 본다 — `apple-touch-startup-image` 가
+ * **기기 픽셀과 정확히 같은 크기**일 때만 쓰고, 1px 만 달라도 흰 화면을 띄운다(에러 0).
+ * 그래서 선언 · 파일 · 실제 크기 · 서빙(_routes exclude) 넷을 한꺼번에 대조한다.
+ */
+describe('아이폰 웹앱 시작화면 — 선언·파일·크기·서빙', () => {
+  const INDEX = readFileSync('index.html', 'utf8')
+  const ROUTES = JSON.parse(readFileSync('public/_routes.json', 'utf8')) as { exclude: string[] }
+  const links = [...INDEX.matchAll(/<link rel="apple-touch-startup-image" media="([^"]+)" href="([^"]+)"/g)]
+    .map(m => ({ media: m[1], href: m[2] }))
+
+  it('기기별 이미지를 선언한다 (0개면 통과가 아니라 실패)', () => {
+    expect(links.length).toBeGreaterThanOrEqual(10)
+  })
+
+  it.each(links.map(l => [l.href, l.media]))('%s — 크기가 media 의 CSS 크기 × DPR 과 같고 바탕이 네이비', (href, media) => {
+    const w = Number(/device-width: (\d+)px/.exec(media)?.[1])
+    const h = Number(/device-height: (\d+)px/.exec(media)?.[1])
+    const d = Number(/device-pixel-ratio: (\d+)/.exec(media)?.[1])
+    const b = readFileSync(`public${href}`)
+    expect([b.readUInt32BE(16), b.readUInt32BE(20)], `${href} 의 픽셀 크기`).toEqual([w * d, h * d])
+    expect(firstPixel(`public${href}`)).toBe(manifest.background_color)
+    expect(ROUTES.exclude, `${href} 가 exclude 에 없으면 워커가 SPA 셸을 돌려준다`).toContain(href)
   })
 })

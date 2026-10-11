@@ -12,4 +12,6 @@
 
 ## 남은 것
 - 카카오 채널 프로필(`kakao-channel-profile-640.png`)은 대표가 카카오 비즈니스에서 직접 업로드.
-- iOS 는 웹앱 시작화면이 이 설정을 안 쓴다(apple-touch-startup-image 없음) — 필요하면 별건.
+- ✅ iOS 도 했다(대표 *"아이폰 시작화면도 해줘"*): 웹앱 `apple-touch-startup-image` 12종(`public/ios-splash-*.png`, 생성 `scripts/app-icon/make-ios-splash.py`) + 스토어 앱 `Splash.imageset` 네이비. 가드가 선언·파일·**픽셀 크기**·exclude 를 대조(크기 1px 만 달라도 iOS 는 흰 화면 — 되돌려-검증 빨간불 확인).
+- iOS E4: 배포 후 `curl -sI https://urdeal.kr/ios-splash-1170x2532.png` 200 → 아이폰 사파리에서 홈 화면에 **새로** 추가하고 열어 남색 시작화면 확인(이미 추가한 웹앱은 지우고 다시 추가). 스토어 앱은 다음 iOS 빌드부터 반영.
+- ⚠️ 안 덮는 기기: 목록 밖 아이폰·아이패드·가로 화면은 종전처럼 흰 화면(iOS 기본). 새 아이폰이 나오면 스크립트 `DEVICES` 에 한 줄 추가.
