@@ -5,6 +5,8 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import fs from 'fs';
 import { execSync } from 'child_process';
+// 🌐 2026-10-11: 번역 파일을 손님용(core)/대시보드용(dash)으로 나누는 빌드 플러그인 — src/i18n.ts 가 `?i18n-core|dash` 로 부른다.
+import { i18nSplitPlugin } from './scripts/i18n-split.mjs';
 
 // 빌드마다 유니크한 버전 — 정형화된 타임스탬프 (YYYYMMDD.HHmm, UTC). SW 캐시 키 + 빌드 표시 겸용.
 //   🏁 2026-06-13 (사용자 요청 "빌드 정보 숫자 정형화"): base36 난수 → 사람이 읽는 날짜.시각 형식.
@@ -60,6 +62,7 @@ export default defineConfig({
   plugins: [
     react(),
     swVersionPlugin(),
+    i18nSplitPlugin(__dirname),
     // 🚨 2026-04-27 (긴급 롤백): vite-plugin-pwa 비활성화.
     //   원인: navigateFallback 이 카카오 OAuth redirect 도 가로채 ERR_FAILED 발생.
     //   복구: 모든 SW 사용자측 unregister + 새 sw.js 생성 안 함.
@@ -141,6 +144,8 @@ export default defineConfig({
           //   이전: locales-*.js 949KB (6개 언어 통합) → 약 150-180KB × 6.
           {
             const localeMatch = id.match(/\/locales\/(ko|en|ja|zh|es|fr)\/translation\.json/)
+            // 🌐 2026-10-11: 대시보드용 절반은 따로 — 손님은 이 청크를 안 받는다(규칙 추가만).
+            if (localeMatch && id.includes('?i18n-dash')) return `locale-${localeMatch[1]}-dash`
             if (localeMatch) return `locale-${localeMatch[1]}`
           }
           // Radix UI components (대부분 셀러/어드민 페이지에서만 사용)

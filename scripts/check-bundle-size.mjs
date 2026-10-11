@@ -125,8 +125,13 @@ if (indexHtmlPath) {
  */
 const LOCALE_RE = /^locale-(?:ko|en|ja|zh|es|fr)-/;
 const localeFiles = jsFiles.filter(f => LOCALE_RE.test(f.name));
-const biggestLocale = localeFiles.reduce((a, f) => (!a || f.size > a.size ? f : a), null);
-const countedFiles = jsFiles.filter(f => !LOCALE_RE.test(f.name) || f === biggestLocale);
+// 🌐 2026-10-11: 언어 파일이 손님용(`locale-ko-*`)과 대시보드용(`locale-ko-dash-*`) 두 쪽으로 나뉘었다.
+//   대시보드 사용자는 **둘 다** 받으므로 쪽마다 가장 큰 것 하나씩 센다(하나만 세면 최악의 사용자를 과소 측정한다).
+const DASH_LOCALE_RE = /^locale-(?:ko|en|ja|zh|es|fr)-dash-/;
+const biggestOf = (list) => list.reduce((a, f) => (!a || f.size > a.size ? f : a), null);
+const biggestLocale = biggestOf(localeFiles.filter(f => !DASH_LOCALE_RE.test(f.name)));
+const biggestDashLocale = biggestOf(localeFiles.filter(f => DASH_LOCALE_RE.test(f.name)));
+const countedFiles = jsFiles.filter(f => !LOCALE_RE.test(f.name) || f === biggestLocale || f === biggestDashLocale);
 
 const totalSize = countedFiles.reduce((s, f) => s + f.size, 0);
 const totalGzip = countedFiles.reduce((s, f) => s + f.gzip, 0);
