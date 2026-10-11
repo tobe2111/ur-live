@@ -219,6 +219,20 @@ Kling 3 ~82 · Veo 3.1 이미지→영상 ~90 · Kling Motion Control ~164(실�
 - 남은 흠: 하이파이브의 금화·반짝이는 배경으로 판정돼 빠졌다(오히려 깔끔). 도장 종이 오른쪽 위 가장자리가 조금 뜯겨 보인다.
 - 원본이 AI 생성물이라 최종 상표·인쇄용은 3D 아티스트 재제작본으로 교체한다.
 
+## 🔒 유달이 생성 철칙 (2026-10-11 대표 *"앞으로는 만들 때 이것을 철칙으로 여겨서 문제가 없도록 해줘"*)
+
+같은 날 이 철칙을 어겨 **다른 캐릭터**를 두 번 만들었다(v1 주황빛 다른 얼굴 · v2 넓적한 얼굴·수염 개수·젤리 발). 아래 여섯을 **전부** 지킨다.
+
+1. **모델은 `gpt-image-2.5`(Figma `generate_image` 의 `gpt-image-2.5-sunburst`)만.** `gemini` 는 쓰지 않는다 — 확정 때 이미 "머리가 작아 다른 캐릭터"로 폐기된 모델이다.
+2. **문구는 아래 설정서 본문 + 세부 실측 블록을 한 글자도 바꾸지 않고 그대로** 넣고, 그 뒤에 포즈만 덧붙인다. 요약하거나 다시 쓰지 않는다(`plush fur` 한 단어로 털이 바뀌었다). 보정이 필요하면 **이 문서의 블록을 고치고** 그 블록을 쓴다.
+3. **여러 포즈는 한 장 시트(격자)로 한 번에** 그린다. 한 장씩 따로 그리면 장마다 얼굴이 갈린다.
+4. **원본 해상도로 검수한다.** 256px 미리보기로 판정하지 않는다(이 환경은 figma.com 다운로드가 막혀 원본을 대표가 첨부해야 한다). `python3 scripts/mascot/udal-qa.py <원본>` 으로 털색·얼굴 폭을 숫자로 재고, 대조판에서 **한쪽 수염 3가닥 · 콩 모양 아치 눈썹 · 흰자 고리 · 다문 w 입 · 젤리 없는 발**을 센다.
+6. **색은 서비스에 나가 있는 유달이(`src/assets/mascot/udal-curious.webp`)에 맞춘다.** (2026-10-11 대표 *"이거 기준으로 해야해"* · *"색상도 철칙으로 지켜져야 해"*) 같은 모델·같은 문구로도 회차마다 색이 흔들린다(v6: 털이 노란 쪽 · 크림이 밝은 복숭아빛). 생성 직후 `python3 scripts/mascot/udal-color-match.py <원본> <보정본>` 으로 털·크림의 색상·채도·밝기를 기준에 맞추고(모양은 한 화소도 안 바뀐다 · 파랑·분홍·눈은 손대지 않는다), `udal-qa.py` 의 **톤 판정**(색상 ±0.004 · 채도 ±0.03 · 크림 채널 ±10)까지 통과해야 쓴다. ⚠️ 기준 그림이 둘이다 — **색 = udal-curious**, **얼굴 폭 = 턴어라운드 정면**.
+5. **통과한 칸만 쓴다.** 하나라도 어긋난 칸은 화면에 넣지 않고, 어긋난 이유를 문구 블록에 반영해 다시 뽑는다. 모든 시도는 `assets/mascot/poses-*/README.md` 에 대조표와 함께 남긴다.
+
+> 🔁 **모델을 바꿔도 되는가** (2026-10-11 대표 *"더 좋은 모델로 갈아타도 괜찮은데 적재적소로"*): 지금 도구는 **글만 받는다**(참고 그림 입력이 없다). 그래서 캐릭터의 정체성은 프롬프트에만 있고, 모델을 바꾸면 모양이 바뀐다. 갈아탈 가치가 있는 조건은 "더 좋은 모델"이 아니라 **참고 그림(확정 턴어라운드)을 입력으로 받는 모델**이다. 그런 도구가 생기면 ①을 "참고 그림 필수"로 바꾸고, 새 모델은 반드시 같은 시트로 v4 와 나란히 검수해 통과한 뒤에만 쓴다.
+> 용도별 정리: **화면용 포즈·표정** = 이 철칙 · **빠른 시안** = 아무 모델이나 쓰되 화면에 넣지 않음 · **굿즈 인쇄** = 생성 그림을 쓰지 않고 **벡터 정본 `assets/mascot/vector/`** 를 쓴다(2026-10-11 대표 결정 2번 — 세션이 직접 옮겨 그린 플랫 SVG, 색·인쇄 주의는 그 폴더 README).
+
 ## 캐릭터 설정서 (AI 영상·추가 생성용 고정 문구)
 
 대표: *"측면 정면 뒷모습 다 필요하거든? AI로 얘 영상도 만들거야. 최대한 정확하게."*
@@ -234,6 +248,27 @@ Two soft cream-white eyebrow marks. Very large round glossy brown eyes with two 
 Small rounded pink nose, small gentle smile, soft pink cheek blush, thin white whiskers.
 Long thick tapering otter tail. Bright cobalt-blue (#1C69EF) bandana neckerchief knotted at the front;
 from behind only the triangle of the bandana shows.
+```
+
+### 세부 실측 (2026-10-11 — 확정 턴어라운드 정면을 3배 확대해 셈)
+대표 *"양쪽으로 넓적해진 것 같고, 수염도 갯수 다르네. 이런 디테일까지 제대로 확인해서"* — 포즈 시트 v2 가 아래 항목에서 어긋났다.
+위 설정서 문구 **뒤에 이 블록을 덧붙여** 쓴다(설정서 본문은 그대로).
+```
+Exact details: head (without ears) is about as wide as it is tall, a tall rounded dome, not wide or squashed.
+Exactly THREE thin long white whiskers on each side (six total), growing from the cream cheeks just outside the pink blush, fanning slightly downward.
+Eyebrows: two cream-white elongated rounded bean-shaped arches, slightly tilted, sitting well above the eyes.
+Eyes: very large, dark brown iris with a black pupil, a thin ring of white sclera visible around the iris, one big and one small white highlight on the upper side.
+Nose: rounded salmon-pink nose, wider than tall, with a short vertical line down to a small closed w-shaped smile.
+Cream mask covers the lower half of the face starting just below the eyes.
+Ears: small, rounded, at eye level on the sides, darker inside, not sticking far out.
+Paws and feet: plain rounded fur, no paw pads.
+```
+
+보정 블록 (2026-10-11 v4 대조 결과 — 세부 실측 뒤에 이어 붙인다):
+```
+Correction details: the face is NARROW, slightly taller than wide — the width across the cheeks is about 95% of the head height; cheeks are soft but NOT puffy or bulging sideways; the lower face tapers gently toward the chin like an egg.
+Fur is SHORT, smooth and velvety (short-pile plush), not long or shaggy.
+When eyes are closed, BOTH closed eyes are identical upward-curving arcs (like ^ ^), perfectly symmetric.
 ```
 
 턴어라운드 생성 이력 (원본은 위 ⭐ 기준 원본으로 레포에 저장 완료):
