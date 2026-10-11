@@ -36,7 +36,13 @@ const PANEL = 'src/components/notifications/NotificationPanel.tsx'
 const DROPDOWN = 'src/components/main/NotificationDropdown.tsx'
 const PAGE = 'src/pages/NotificationsPage.tsx'
 const MY = 'src/pages/UserProfilePage.tsx'
-const EDIT = 'src/pages/user-profile/AccountControlsSection.tsx'
+/**
+ * ✏️ 2026-10-11 **재조준** — 프로필 편집이 `AccountControlsSection`(모달)에서 A-2 시트로 옮겨갔다.
+ *   불변식은 하나도 안 바뀐다(사진 즉시 저장 · 실패 되돌림 · 전화번호 필수·형식 · 라벨=제목).
+ *   앵커만 옮긴다 — 지우면 그 다섯이 소리 없이 사라진다.
+ */
+const EDIT = 'src/pages/user-profile/profile-edit/ProfileEditSheet.tsx'
+const GONE_MODAL = 'src/pages/user-profile/AccountControlsSection.tsx'
 
 vi.mock('@/hooks/queries/useNotifications', () => ({
   useNotifications: () => ({
@@ -173,7 +179,20 @@ describe('④ 프로필 — 무엇이 열리는지 말한다', () => {
   })
 
   it('🔴 행의 라벨과 시트 제목이 **같은 말**이다', () => {
-    expect(code(EDIT)).toMatch(/accountSettings\.editProfile[\s\S]{0,80}프로필 편집/)
+    /* 🩸 재조준(2026-10-11): 종전엔 모달 소스에서 `accountSettings.editProfile` 과 그 뒤 80자 안의
+       '프로필 편집' 을 찾았다. 시트는 그 자리를 한국어 리터럴로 쓰므로(소비자 화면 관용구 —
+       i18n 강제는 셀러 대시보드 범위다) 같은 모양이 성립하지 않는다. 지키려던 것은 *어떤 키를
+       쓰는가* 가 아니라 **행을 눌러 열린 것의 제목이 행에 적힌 말과 같은가** 다 ⇒ ko locale 값과
+       시트가 실제로 그리는 제목을 대조한다. */
+    const ko = JSON.parse(src('public/locales/ko/translation.json'))
+    const c = code(EDIT)
+    /* 🔑 **같은 키**를 쓰는지 본다 — 같은 한국어를 두 곳에 손으로 적으면 한쪽만 고치는 날이 온다
+       (그리고 locale 값이 `defaultValue` 를 이기므로 리터럴 대조는 화면을 보장하지 못한다). */
+    const title = c.match(/<h3[^>]*>\{([^}]*editProfile[^}]*)/)
+    expect(title, '시트 제목이 행 라벨과 같은 키를 쓰지 않는다').toBeTruthy()
+    expect(c, 'aria-label 도 같은 키여야 한다').toMatch(/aria-label=\{t\('userProfile\.editProfile'/)
+    expect(code(MY), '행 라벨이 다른 키를 쓴다').toContain("userProfile.editProfile")
+    expect(ko.userProfile.editProfile).toBe('프로필 편집')
   })
 
   /**
@@ -184,6 +203,12 @@ describe('④ 프로필 — 무엇이 열리는지 말한다', () => {
     const ko = JSON.parse(src('public/locales/ko/translation.json'))
     expect(ko.accountSettings.editProfile).toBe('프로필 편집')
     expect(ko.userProfile.editProfile).toBe('프로필 편집')
+  })
+
+  it('🔴 편집하는 자리가 **하나**다 — 옛 모달이 되살아나지 않는다', () => {
+    const c = code(GONE_MODAL)
+    expect(c, '옛 ProfileEditModal 이 되살아났다 — 이름이 두 곳이 된다').not.toContain('ProfileEditModal')
+    expect(code(MY), '마이가 아직 옛 모달을 렌더한다').not.toContain('<ProfileEditModal')
   })
 
   it('🔴 "기껏해야 이름이랑 전화번호" 를 실제로 해소한다 — **사진**을 바꿀 수 있다', () => {
@@ -198,21 +223,25 @@ describe('④ 프로필 — 무엇이 열리는지 말한다', () => {
 
   it('🔴 사진은 **고르는 즉시** 저장한다 — 전화번호 필수 검증에 막히면 안 된다', () => {
     const c = code(EDIT)
-    const up = c.slice(c.indexOf('async function uploadPhoto'), c.indexOf('async function save'))
-    expect(up.length).toBeGreaterThan(200)
-    expect(up).not.toContain('phoneRequired')
-    expect(up).not.toContain('phoneInvalid')
+    const up = c.slice(c.indexOf('async function uploadPhoto'), c.indexOf('async function patch'))
+    expect(up.length, '업로드 블록을 못 잘랐다 — 함수 이름이 바뀌었다').toBeGreaterThan(200)
+    /* 🩸 재조준 직후 **헛돌았다**: '전화번호' 리터럴만 찾았는데, 주입이 i18n 키
+       (`accountSettings.phoneRequired`)로 게이트를 심으니 통과했다(주입 러너가 잡았다).
+       ⇒ 지키려는 것은 *그 한국어가 없는가* 가 아니라 **업로드가 전화번호를 전혀 모르는가** 다. */
+    expect(up, '사진 업로드가 전화번호에 묶였다').not.toMatch(/phone/i)
+    expect(up).not.toContain('전화번호')
+    expect(up).not.toMatch(/01\[016789\]/)
   })
 
   it('🔴 올리다 실패하면 **되돌린다** (사진이 바뀐 것처럼 남으면 안 된다)', () => {
     const c = code(EDIT)
-    expect(c).toMatch(/const prev = form\.image/)
-    expect(c).toMatch(/setForm\(f => \(\{ \.\.\.f, image: prev \}\)\)/)
+    expect(c).toMatch(/const prev = image/)
+    expect(c).toMatch(/setImage\(prev\)/)
   })
 
   it('🔴 전화번호 필수·형식 검증은 **그대로**다 (교환권 MMS 가 그 번호로 간다)', () => {
     const c = code(EDIT)
-    expect(c).toContain('phoneRequired')
+    expect(c).toContain('전화번호를 입력해주세요')
     expect(c).toMatch(/\^01\[016789\]/)
   })
 })

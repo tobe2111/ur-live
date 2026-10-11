@@ -99,10 +99,11 @@ export default [
   },
   {
     name: '상단1안 — 표시 자리 없이 편집 상태만 되살린다 (headlineVal)',
-    file: 'src/pages/ushop-manage/ShopInfoCards.tsx',
-    find: '  const [handleVal, setHandleVal] = useState(curator.handle)',
+    // 🔀 2026-10-11 재조준 (A-2): 주인 편집 자리가 프로필 편집 시트로 옮겨갔다.
+    file: 'src/pages/user-profile/profile-edit/ProfileEditSheet.tsx',
+    find: "  const [handleMsg, setHandleMsg] = useState('')",
     replace:
-      '  const [handleVal, setHandleVal] = useState(curator.handle)\n' +
+      "  const [handleMsg, setHandleMsg] = useState('')\n" +
       "  const [headlineVal, setHeadlineVal] = useState('')",
     test: 'src/tests/unit/ushop-top-chrome-2026-09-28.test.ts',
     why:

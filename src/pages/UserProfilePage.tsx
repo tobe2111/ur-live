@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, lazy, Suspense } from 'react'
 import { useNavigate, useSearchParams, Navigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
@@ -32,13 +32,13 @@ import {
   NotificationToggleSection,
   AppVersionSection,
   DeleteAccountLink,
-  ProfileEditModal,
 } from './user-profile/AccountControlsSection'
 import api from '@/lib/api'
 import BrandLoader from '@/components/brand/BrandLoader'
 import AccountPcPane from './user-profile/AccountPcPane'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { loginPathFromHere } from '@/utils/login-return'
+const ProfileEditSheet = lazy(() => import('./user-profile/profile-edit/ProfileEditSheet'))
 
 /**
  * 🛡️ 2026-05-01: TD-018 분할 — sub-component 들을 ./user-profile/ 디렉토리로 이동.
@@ -68,15 +68,9 @@ export default function UserProfilePage() {
   // 🛡️ 2026-05-24: 프로필 편집 모달 — /account/settings 에서 흡수.
   const [editOpen, setEditOpen] = useState(false)
   const bell = useNotificationSheet()  // 🔔 벨 → 올라오는 시트. 배선은 `NotificationSheet` 머리말.
-  const [profileForm, setProfileForm] = useState({ name: '', phone: '' })
-  useEffect(() => {
-    // 모달 열릴 때 최신 phone 가져오기 (initial 으로 전달).
-    if (!editOpen) return
-    api.get('/api/auth/me').then(r => {
-      const phone = r.data?.data?.phone || ''
-      setProfileForm({ name: userName, phone })
-    }).catch(() => setProfileForm({ name: userName, phone: '' }))
-  }, [editOpen, userName])
+  /* 🧹 2026-10-11 — 여기 있던 `profileForm` + `/api/auth/me` 조회를 **시트 안으로** 옮겼다.
+     A-2 시트는 전화번호 말고도 소개·주소·SNS 를 읽어야 해서 조회가 한 곳에 모여야 하고,
+     부모에 남겨 두면 같은 것을 두 곳에서 읽게 된다(이 레포가 반복해 당한 클래스). */
 
   useEffect(() => { document.title = t('userProfile.docTitle') }, [t])
 
@@ -491,15 +485,18 @@ export default function UserProfilePage() {
       {/* 🛡️ 2026-05-24: 프로필 편집 모달 (/account/settings 에서 흡수). */}
       {bell.sheet}
 
-      <ProfileEditModal
-        isOpen={editOpen}
-        onClose={() => setEditOpen(false)}
-        initial={profileForm}
-        onSaved={({ name }) => {
-          setUserName(name)
-          localStorage.setItem('user_name', name)
-        }}
-      />
+      {/* 👤 2026-10-11 대표 확정 A-2 — 사람에 관한 것(사진·이름·소개·전화번호·내 주소·SNS)을
+          **한 곳**으로. 종전 `ProfileEditModal`(이름·전화번호만)을 대체한다.
+          ⏳ `lazy` 인 이유: 열지 않는 사람이 대다수인데 마이 첫 페인트에 얹을 이유가 없다. */}
+      {editOpen && (
+        <Suspense fallback={null}>
+          <ProfileEditSheet
+            onClose={() => setEditOpen(false)}
+            initialName={userName}
+            onNameChange={setUserName}
+          />
+        </Suspense>
+      )}
     </div>
   )
 }

@@ -75,7 +75,7 @@ export default function StoreSwitchSheet({ currentSellerId, onClose }: {
   return (
     <>
       <div
-        className="fixed inset-0 bg-black/45"
+        className="fixed inset-0 bg-black/45 ur-sheet-veil"
         style={{ zIndex: Z.SHEET_BACKDROP }}
         onClick={onClose}
         aria-hidden="true"
@@ -84,7 +84,7 @@ export default function StoreSwitchSheet({ currentSellerId, onClose }: {
         role="dialog"
         aria-modal="true"
         aria-label="가게 전환"
-        className="fixed inset-x-0 bottom-0 max-h-[80dvh] flex flex-col rounded-t-2xl bg-surface"
+        className="fixed inset-x-0 bottom-0 max-h-[80dvh] flex flex-col rounded-t-2xl bg-surface ur-sheet-in"
         style={{ zIndex: Z.SHEET_BODY }}
       >
         <div className="flex items-center justify-between px-4 h-14 border-b border-rule shrink-0">
