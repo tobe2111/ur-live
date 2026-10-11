@@ -328,3 +328,14 @@ export const CONSUMER_LANGUAGE_SWITCH_HIDDEN = true
  *       숙소 줄도 함께 감춘다(두 표면이 갈리지 않게 **같은 플래그 하나**를 본다).
  */
 export const SELLER_DORMANT_HIDDEN = true
+
+/**
+ * PERSONAL_BROKER_SIGNUP_DISABLED — 개인 카카오 계정이 `/store/new` 에서 **남의 매장을 '중개'로 새로 등록**하는 길을 닫는다
+ *   (2026-10-11 대표 *"모두 다 하자"* — 결재 `docs/decisions/2026-10-11-agency-ideal-open-questions.md` 안 1).
+ *   대신 등록·운영은 **에이전시 계정(이메일)** 하나로 모은다 — 에이전시 콘솔 `/agency` 의 [매장 대신 등록].
+ *   true: 등록 모달의 '중개·대행사에요' 를 고르면 에이전시 안내로 바뀌고, 서버 `POST /api/seller/stores` 가
+ *         `channel:'brokered'` 를 410(`BROKERED_VIA_AGENCY`)으로 거절한다.
+ *   보존: 이미 등록된 중개 매장과 그 운영자·요율·승계 코드는 **그대로**(이전은 3단계 — 머니 경로).
+ *         false 로 바꾸면 즉시 다시 열린다(가역).
+ */
+export const PERSONAL_BROKER_SIGNUP_DISABLED = true

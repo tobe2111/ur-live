@@ -183,13 +183,16 @@ describe('🏢 새 에이전시(2026-10-11)는 이 목록뿐', () => {
     for (const i of imports) expect(i, i).toMatch(/^@\/pages\/agency-console\//)
   })
 
-  it('워커는 /api/agency-console 에 새 라우트 둘만 붙인다', () => {
+  it('워커는 /api/agency-console 에 새 라우트 셋만 붙인다 (2단계: 맡은 매장)', () => {
     const mounts = [...WORKER.matchAll(/app\.route\(\s*'\/api\/agency-console'\s*,\s*(\w+)\s*\)/g)].map((m) => m[1])
-    expect(mounts.sort()).toEqual(['agencyConsoleRoutes', 'agencyStaffRoutes'])
+    expect(mounts.sort()).toEqual(['agencyConsoleRoutes', 'agencyStaffRoutes', 'agencyStoresRoutes'])
   })
 
   it('새 콘솔은 옛 agencies 테이블을 읽지도 쓰지도 않는다', () => {
-    for (const f of ['agency-auth.routes.ts', 'agency-staff.routes.ts', 'agency-session.ts', 'agency-schema.ts']) {
+    // 손으로 적은 목록이면 새 파일이 조용히 빠진다 — 폴더 전체를 본다.
+    const files = readdirSync('src/features/agency-console/api').filter((f) => f.endsWith('.ts'))
+    expect(files.length).toBeGreaterThanOrEqual(5)
+    for (const f of files) {
       const src = codeOnly(readFileSync(`src/features/agency-console/api/${f}`, 'utf-8'))
       expect(src, f).not.toMatch(/\b(FROM|JOIN|INTO|UPDATE)\s+agencies\b/)
     }

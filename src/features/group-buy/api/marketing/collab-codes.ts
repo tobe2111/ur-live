@@ -50,6 +50,8 @@ function getUserId(c: { get: (k: string) => unknown }): string {
 async function resolveIssuerUserId(c: { get: (k: string) => unknown; env: Env }, sellerId: number): Promise<number> {
   const u = c.get('user') as AuthUser
   if (u.operator_user_id) return u.operator_user_id
+  // 🏢 에이전시 좌석 — 만든 사람은 소비자가 아니다. 주인 id 로 적으면 사장님이 만든 것으로 둔갑한다.
+  if (u.agency_staff_id) return sellerId
   const row = await c.env.DB.prepare('SELECT linked_user_id FROM sellers WHERE id = ? LIMIT 1')
     .bind(sellerId).first<{ linked_user_id: number | null }>().catch(() => null)
   const linked = Number(row?.linked_user_id)

@@ -14,12 +14,12 @@
  * - 메일이 실제로 도착하는지(Resend 등 외부) — 라이브에서만 판정된다.
  * - 화면이 보기 좋은지 — 그려서 봐야 한다.
  */
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { sign, verify } from 'hono/jwt'
 import { stripComments } from '../helpers/source-text'
 import { agencySigningKey, issueAgencyStaffToken, readAgencyClaims } from '@/features/agency-console/api/agency-session'
-import { agencyMailReady, normalizeBusinessNumber, normalizeEmail } from '@/features/agency-console/api/agency-auth.routes'
+import { agencyMailReady, checkAgencyBusiness, normalizeBusinessNumber, normalizeEmail } from '@/features/agency-console/api/agency-auth.routes'
 import { safeAgencyReturn } from '@/pages/agency-console/agency-api'
 
 const SECRET = 'test-secret-0123456789'
@@ -154,5 +154,35 @@ describe('⑥ 메일이 안 나가면 "보냈어요" 라고 답하지 않는다'
     expect(STAFF).toMatch(/\{ ignorePreference: true \}\)\.catch\(swallow\('agency-console:invite-mail'\)\)/)
     const lib = code('src/lib/system-email.ts')
     expect(lib).toMatch(/if \(e\?\.DB && !opts\.ignorePreference\)/)
+  })
+})
+
+describe('⑦ 사업자 진위확인 — 미등록·폐업 번호로는 에이전시를 못 만든다', () => {
+  afterEach(() => { vi.unstubAllGlobals() })
+  const nts = (row: Record<string, unknown> | null) =>
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ data: row ? [row] : [] }), { status: 200 })))
+
+  it('계속사업자 = 통과 · 상태를 남긴다', async () => {
+    nts({ b_no: '1234567890', b_stt: '계속사업자' })
+    expect(await checkAgencyBusiness({ PUBLIC_DATA_SERVICE_KEY: 'k' }, '1234567890')).toEqual({ status: '계속사업자' })
+  })
+  it('국세청에 없는 번호(b_stt 빈 값) = 거절', async () => {
+    nts({ b_no: '1234567890', b_stt: '' })
+    const v = await checkAgencyBusiness({ PUBLIC_DATA_SERVICE_KEY: 'k' }, '1234567890')
+    expect(v.reject).toMatch(/등록되지 않은/)
+  })
+  it('폐업자 = 거절', async () => {
+    nts({ b_no: '1234567890', b_stt: '폐업자' })
+    expect((await checkAgencyBusiness({ PUBLIC_DATA_SERVICE_KEY: 'k' }, '1234567890')).reject).toMatch(/폐업/)
+  })
+  it('키가 없거나 국세청이 답을 못 주면 막지 않고 unverified (어드민 화면에 보인다)', async () => {
+    expect(await checkAgencyBusiness({}, '1234567890')).toEqual({ status: 'unverified' })
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('err', { status: 500 })))
+    expect(await checkAgencyBusiness({ NTS_API_KEY: 'k' }, '1234567890')).toEqual({ status: 'unverified' })
+  })
+  it('가입은 계정 행을 만들기 전에 진위확인을 한다', () => {
+    expect(AUTH.indexOf('checkAgencyBusiness(c.env, businessNumber)')).toBeGreaterThan(0)
+    expect(AUTH.indexOf('checkAgencyBusiness(c.env, businessNumber)')).toBeLessThan(AUTH.indexOf('INSERT INTO agency_accounts'))
+    expect(AUTH).toMatch(/if \(v\.reject\) return c\.json\(\{ success: false, code: 'BUSINESS_INVALID'/)
   })
 })

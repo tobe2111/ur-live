@@ -12,6 +12,7 @@ import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { UserPlus, Trash2, ShieldCheck, Loader2, AlertCircle } from 'lucide-react'
 import { formatKSTDate } from '@/utils/date'
+import AgencyLinkCard from './seller-operators/AgencyLinkCard'
 
 interface OperatorRow {
   user_id: number
@@ -114,6 +115,9 @@ export default function SellerOperatorsPage() {
             </button>
           </form>
         </div>
+
+        {/* 🏢 2026-10-11 사람 대신 에이전시(대행사)에 맡기기 — 언제든 끊는다. */}
+        <AgencyLinkCard />
 
         {error && (
           <div className="rounded-xl bg-white border border-rule p-4 flex items-start gap-2">

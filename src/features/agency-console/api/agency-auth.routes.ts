@@ -17,6 +17,7 @@ import { buildSystemEmailHtml, sendSystemEmail } from '@/lib/system-email'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { checkLockout, recordFailure, clearFailures } from '@/worker/utils/account-lockout'
 import { safeError } from '@/worker/utils/safe-error'
+import { ntsCheckStatus } from '@/worker/utils/nts-business-verify'
 import { swallow } from '@/worker/utils/swallow'
 import {
   ensureAgencyConsoleTables, AGENCY_TOKEN_TTL_HOURS, AGENCY_NAME_MAX,
@@ -27,6 +28,7 @@ import { issueAgencyStaffToken, requireAgencyStaff, newLinkToken, type AgencySta
 type Bindings = {
   DB: D1Database; JWT_SECRET: string
   RESEND_API_KEY?: string; RESEND_FROM?: string; FRONTEND_URL?: string
+  PUBLIC_DATA_SERVICE_KEY?: string; NTS_API_KEY?: string
 }
 type Vars = { agencyStaff: AgencyStaffContext }
 
@@ -103,6 +105,23 @@ async function mail(env: Bindings, to: string, subject: string, title: string, b
 export function agencyMailReady(env: { RESEND_API_KEY?: string; RESEND_FROM?: string }): boolean {
   return !!env.RESEND_API_KEY && !!env.RESEND_FROM
 }
+/**
+ * 🏛️ 에이전시 사업자번호 — 국세청 상태조회. 답이 오면 그대로 따르고, 답이 없으면(키 없음·장애) 'unverified'.
+ *   b_stt 가 비어 오면 국세청에 없는 번호다(`/stores/verify-business` 와 같은 해석).
+ */
+export async function checkAgencyBusiness(
+  env: { PUBLIC_DATA_SERVICE_KEY?: string; NTS_API_KEY?: string },
+  businessNumber: string,
+): Promise<{ status: string; reject?: string }> {
+  const key = env.PUBLIC_DATA_SERVICE_KEY || env.NTS_API_KEY
+  const rows = await ntsCheckStatus(key, [businessNumber]).catch(() => [])
+  const row = rows.find((r) => r.b_no === businessNumber) ?? rows[0]
+  if (!row) return { status: 'unverified' }
+  if (!row.b_stt) return { status: 'unregistered', reject: '국세청에 등록되지 않은 사업자등록번호예요. 번호를 다시 확인해 주세요.' }
+  if (row.b_stt.includes('폐업')) return { status: row.b_stt, reject: '폐업한 사업자등록번호로는 에이전시를 만들 수 없어요.' }
+  return { status: row.b_stt }
+}
+
 export const AGENCY_MAIL_DOWN = {
   success: false,
   code: 'MAIL_NOT_CONFIGURED',
@@ -149,6 +168,15 @@ agencyConsoleRoutes.post('/signup', cors(), rateLimit({ action: 'agency_signup',
 
     if (!agencyMailReady(c.env)) return c.json(AGENCY_MAIL_DOWN, 503)
 
+    // 🏛️ 사업자면 국세청 상태를 본다 — 미등록·폐업 번호로는 에이전시를 못 만든다(남의 회사 이름으로 영업하는 것 차단).
+    //   국세청이 답을 못 주면(키 없음·장애) 막지 않고 'unverified' 로 남긴다 → 어드민 에이전시 화면에 보인다.
+    let businessStatus: string | null = null
+    if (kind === 'business' && businessNumber) {
+      const v = await checkAgencyBusiness(c.env, businessNumber)
+      if (v.reject) return c.json({ success: false, code: 'BUSINESS_INVALID', error: v.reject }, 400)
+      businessStatus = v.status
+    }
+
     const { DB } = c.env
     await ensureAgencyConsoleTables(DB)
     const existing = await DB.prepare(
@@ -169,16 +197,16 @@ agencyConsoleRoutes.post('/signup', cors(), rateLimit({ action: 'agency_signup',
     if (existing) {
       // 인증 전 가입을 다시 하는 경우 — 같은 행을 최신 입력으로 덮는다(인증 메일을 다시 보낸다).
       await DB.batch([
-        DB.prepare("UPDATE agency_accounts SET name = ?, kind = ?, business_number = ?, updated_at = datetime('now') WHERE id = ? AND status = 'pending'")
-          .bind(name, kind, businessNumber, existing.agency_id),
+        DB.prepare("UPDATE agency_accounts SET name = ?, kind = ?, business_number = ?, business_status = ?, updated_at = datetime('now') WHERE id = ? AND status = 'pending'")
+          .bind(name, kind, businessNumber, businessStatus, existing.agency_id),
         DB.prepare("UPDATE agency_staff SET password_hash = ?, updated_at = datetime('now') WHERE id = ? AND status = 'pending'")
           .bind(hash, existing.id),
       ])
       staffId = existing.id
     } else {
       const acc = await DB.prepare(
-        "INSERT INTO agency_accounts (name, kind, business_number, status) VALUES (?, ?, ?, 'pending')",
-      ).bind(name, kind, businessNumber).run()
+        "INSERT INTO agency_accounts (name, kind, business_number, business_status, status) VALUES (?, ?, ?, ?, 'pending')",
+      ).bind(name, kind, businessNumber, businessStatus).run()
       const agencyId = Number(acc.meta?.last_row_id)
       const ins = await DB.prepare(
         "INSERT OR IGNORE INTO agency_staff (agency_id, email, password_hash, role, is_owner, status) VALUES (?, ?, ?, 'admin', 1, 'pending')",

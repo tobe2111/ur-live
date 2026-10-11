@@ -72,7 +72,7 @@ export function safeAgencyReturn(raw: string | null | undefined): string {
 
 export async function agencyRequest<T = Record<string, unknown>>(
   path: string,
-  init: { method?: 'GET' | 'POST' | 'PATCH'; body?: unknown; auth?: boolean } = {},
+  init: { method?: 'GET' | 'POST' | 'PATCH' | 'PUT'; body?: unknown; auth?: boolean } = {},
 ): Promise<AgencyResult<T>> {
   const headers: Record<string, string> = { Accept: 'application/json' }
   if (init.body !== undefined) headers['Content-Type'] = 'application/json'
@@ -96,4 +96,33 @@ export async function agencyRequest<T = Record<string, unknown>>(
   } catch {
     return { ok: false, status: 0, data: { success: false, error: '인터넷 연결을 확인해 주세요.' } as AgencyResult<T>['data'] }
   }
+}
+
+// ── 🏢 2단계 — 맡은 매장에 들어가기 ─────────────────────────────────────────
+/** 셀러 화면이 "에이전시로 운영 중" 띠를 그릴 때 읽는 이름 — 키 SSOT 는 띠 쪽. */
+import { AGENCY_SEAT_NAME_KEY } from '@/shared/agency-seat-token'
+
+/**
+ * 맡은 매장의 셀러 화면 좌석을 받아 심는다. 셀러 화면은 `seller_token` 하나로 매장을 고르므로 그 자리를 쓴다.
+ * ⚠️ 이 브라우저에 남아 있던 **다른 사람의 셀러 refresh 토큰을 먼저 지운다** — 남겨 두면 에이전시 좌석이 401 일 때
+ *   공용 인터셉터가 그 refresh 로 **그 사람의 매장 좌석**을 받아 온다.
+ */
+export async function enterAgencyStore(sellerId: number, storeName: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const r = await agencyRequest<{ data: { seller_token: string; seller: { id: number; username: string | null; is_distributor: number }; agency_name: string } }>(
+    `/stores/${sellerId}/seat`, { method: 'POST' },
+  )
+  if (!r.ok || !r.data.data?.seller_token) return { ok: false, error: r.data.error || '매장에 들어가지 못했어요.' }
+  const d = r.data.data
+  try {
+    for (const k of ['seller_refresh_token', 'seller_username', 'seller_email']) localStorage.removeItem(k)
+    localStorage.setItem('seller_token', d.seller_token)
+    localStorage.setItem('seller_id', String(d.seller.id))
+    if (d.seller.username) localStorage.setItem('seller_username', d.seller.username)
+    localStorage.setItem('seller_name', storeName)
+    localStorage.setItem('is_distributor', String(d.seller.is_distributor ?? 0))
+    localStorage.setItem(AGENCY_SEAT_NAME_KEY, d.agency_name)
+  } catch {
+    return { ok: false, error: '브라우저 저장공간을 쓸 수 없어요.' }
+  }
+  return { ok: true }
 }

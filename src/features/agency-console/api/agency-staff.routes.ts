@@ -15,6 +15,7 @@ import { buildSystemEmailHtml, sendSystemEmail } from '@/lib/system-email'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { safeError } from '@/worker/utils/safe-error'
 import { swallow } from '@/worker/utils/swallow'
+import { invalidateStoreSeatCache } from '@/worker/utils/store-seat-guard'
 import { ensureAgencyConsoleTables, AGENCY_NAME_MAX, STAFF_NAME_MAX, type StaffRole } from './agency-schema'
 import { requireAgencyStaff, issueAgencyStaffToken, type AgencyStaffContext } from './agency-session'
 import { AGENCY_MAIL_DOWN, agencyMailReady, consumeLinkToken, frontendBase, issueLinkToken, normalizeBusinessNumber, normalizeEmail } from './agency-auth.routes'
@@ -33,18 +34,24 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 agencyStaffRoutes.get('/staff', requireAgencyStaff(), async (c) => {
   const me = c.get('agencyStaff')
   const { results } = await c.env.DB.prepare(
-    `SELECT id, email, name, role, is_owner, status, last_login_at, created_at
-       FROM agency_staff WHERE agency_id = ? AND status IN ('active','invited')
-      ORDER BY is_owner DESC, role = 'admin' DESC, id ASC`,
+    `SELECT st.id, st.email, st.name, st.role, st.is_owner, st.status, st.last_login_at, st.created_at, st.store_scope,
+            (SELECT COUNT(*) FROM agency_staff_stores x
+               JOIN agency_store_links l ON l.seller_id = x.seller_id AND l.agency_id = x.agency_id AND l.status = 'active'
+              WHERE x.staff_id = st.id) AS assigned_count
+       FROM agency_staff st WHERE st.agency_id = ? AND st.status IN ('active','invited')
+      ORDER BY st.is_owner DESC, st.role = 'admin' DESC, st.id ASC`,
   ).bind(me.agencyId).all<{
     id: number; email: string; name: string | null; role: string; is_owner: number
-    status: string; last_login_at: string | null; created_at: string
+    status: string; last_login_at: string | null; created_at: string; store_scope: string | null; assigned_count: number
   }>()
   return c.json({
     success: true,
     staff: (results || []).map((r) => ({
       id: r.id, email: r.email, name: r.name, role: r.role === 'admin' ? 'admin' : 'staff',
       isOwner: r.is_owner === 1, status: r.status, lastLoginAt: r.last_login_at, isMe: r.id === me.staffId,
+      // 👥 관리자는 언제나 전체 — 배정은 직원에게만 걸린다(`agency-staff-stores.ts`).
+      storeScope: r.role !== 'admin' && r.store_scope === 'assigned' ? 'assigned' : 'all',
+      assignedCount: Number(r.assigned_count) || 0,
     })),
     canManage: me.role === 'admin',
   })
@@ -135,6 +142,8 @@ agencyStaffRoutes.post('/staff/:id/remove', cors(), requireAgencyStaff({ adminOn
     ).bind(nowSec, id, me.agencyId).run()
     if ((r.meta?.changes ?? 0) === 0) return c.json({ success: false, error: '내보낼 수 없는 직원이에요.' }, 404)
     await c.env.DB.prepare("DELETE FROM agency_tokens WHERE staff_id = ? AND used_at IS NULL").bind(id).run().catch(swallow('agency-console:remove-tokens'))
+    // 이 직원이 열어 둔 매장 좌석도 지금 끊는다(같은 isolate 즉시 · 다른 isolate 는 15초 안에).
+    invalidateStoreSeatCache(c.env.DB)
     return c.json({ success: true, message: '내보냈어요. 이 직원은 지금부터 들어올 수 없어요.' })
   } catch (err) {
     return safeError(c, err, '처리 중 오류가 발생했어요', '[agency-console:remove]')

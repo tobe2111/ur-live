@@ -28,7 +28,7 @@ import { parseSessionCookie } from '@/worker/utils/session'
 import { safeError } from '@/worker/utils/safe-error'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { startDashboardSession } from '@/worker/utils/dashboard-session'
-import { resolveTokenActorUserId } from '@/worker/utils/store-seat-guard'
+import { resolveTokenActorUserId, liveAgencySeatStoreId } from '@/worker/utils/store-seat-guard'
 import { notifyUser } from '@/lib/notifications'
 import { getOrIssueOwnerClaimCode, formatStoreCode } from '@/worker/utils/store-codes'
 import { readBrokerTerms } from '@/worker/utils/broker-share'
@@ -43,6 +43,7 @@ import {
   listStoreOperators,
   resolveStoreOwnerUserId,
 } from '../../../worker/utils/seller-operators'
+import { registerAgencyLinkRoutes } from './seller-agency-link.routes' // 🏢 2026-10-11 에이전시에 맡기기·끊기
 import { registerKakaoBotLinkRoutes } from './seller-kakao-bot.routes' // 💬 2026-10-10 카카오톡으로 매장 관리(연결 코드·연결 목록)
 
 const app = new Hono<{ Bindings: Env }>()
@@ -70,19 +71,38 @@ async function resolveActorUserId(c: Ctx): Promise<number | null> {
   return resolveTokenActorUserId(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET)
 }
 
+/**
+ * 🏢 2026-10-11 — 앉을 수 있는 매장 목록의 **주체**. 소비자 사람이면 그 사람의 목록, 에이전시 직원 좌석이면
+ *   **맡은 그 매장 하나**(operator). 에이전시 직원은 소비자 사람이 없어서 사람 기준 목록이 비고, 401 을 내면
+ *   셀러 화면의 공용 인터셉터가 로그아웃시킨다 — 그래서 여기서 좌석 하나로 답한다.
+ */
+async function resolveStoreScope(c: Ctx): Promise<{ userId: number | null; stores: Awaited<ReturnType<typeof listOperableStores>> } | null> {
+  const agencyStore = await liveAgencySeatStoreId(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET).catch(() => null)
+  if (agencyStore) {
+    const r = await c.env.DB.prepare(
+      'SELECT id AS seller_id, business_name, name, status, username, address FROM sellers WHERE id = ? LIMIT 1',
+    ).bind(agencyStore).first<{ seller_id: number; business_name: string | null; name: string | null; status: string | null; username: string | null; address: string | null }>()
+    return { userId: null, stores: r ? [{ ...r, role: 'operator' as const, source: 'grant' as const }] : [] }
+  }
+  const userId = await resolveActorUserId(c)
+  if (!userId) return null
+  return { userId, stores: await listOperableStores(c.env.DB, userId) }
+}
+
 // ── GET /my-stores ────────────────────────────────────────────────────────
 app.get('/my-stores', async (c) => {
   try {
-    const userId = await resolveActorUserId(c)
-    if (!userId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
-    const stores = await listOperableStores(c.env.DB, userId)
+    const scope = await resolveStoreScope(c)
+    if (!scope) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+    const { userId, stores } = scope
     /**
      * 🔑 2026-09-19 (대표 확정 플로우 3번): 내가 **운영자**로만 앉아 있고 아직 주인이 없는 매장은
      *   사장님 승계 코드를 함께 준다 — 목록 화면이 "이 코드를 사장님께 주세요" 를 그린다.
      *   주인이 생기면 코드는 안 내려간다(그때부턴 줄 사람이 없다). fail-soft: 코드가 안 나와도 목록은 온다.
      */
     const enriched = await Promise.all(stores.map(async (s) => {
-      if (s.role !== 'operator') return { ...s, has_owner: true, owner_claim_code: null as string | null }
+      // 에이전시 좌석(userId 없음)엔 승계 코드를 내지 않는다 — 코드는 매장을 데려온 사람의 몫이다.
+      if (s.role !== 'operator' || userId == null) return { ...s, has_owner: true, owner_claim_code: null as string | null }
       const ownerId = await resolveStoreOwnerUserId(c.env.DB, s.seller_id).catch(() => undefined)
       if (ownerId != null) return { ...s, has_owner: true, owner_claim_code: null as string | null }
       const code = await getOrIssueOwnerClaimCode(c.env.DB, s.seller_id, userId).catch(() => null)
@@ -101,9 +121,9 @@ app.get('/my-stores', async (c) => {
 //   처리 대기 = 결제됐는데 아직 확인 전인 **배송 주문**(클라 `order-stage.needsSellerConfirm` 과 같은 규칙), 최근 30일.
 app.get('/my-stores/summary', async (c) => {
   try {
-    const userId = await resolveActorUserId(c)
-    if (!userId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
-    const stores = (await listOperableStores(c.env.DB, userId))
+    const scope = await resolveStoreScope(c)
+    if (!scope) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+    const stores = scope.stores
       .filter(s => isSeatableStoreStatus(s.status))
       .slice(0, 20)
     const currentSellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
@@ -444,5 +464,6 @@ app.get('/operating-summary', async (c) => {
 })
 
 registerKakaoBotLinkRoutes(app)
+registerAgencyLinkRoutes(app, requireOwnerOfCurrentStore)
 
 export { app as sellerOperatorsRoutes }
