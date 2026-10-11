@@ -208,7 +208,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
           if (meta.phone) {
             c.executionCtx.waitUntil(
               sendBuyerVoucherUsedAlimtalk(
-                c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
+                c.env,
                 meta.phone,
                 { restaurantName: meta.restaurant_name || '매장', productName: meta.product_name, usedAt: new Date().toISOString(), categoryLabel: getVoucherShortLabel(meta.category) },
               )
@@ -223,7 +223,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
               const sellerRow = await resolveSellerNotifyTarget(DB, merchantId) // 📱 담당자 휴대폰 우선(seller-notify-phone.ts)
               if (sellerRow?.phone) {
                 await sendSellerVoucherUsedAlimtalk(
-                  c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
+                  c.env,
                   sellerRow.phone,
                   { restaurantName: sellerRow.businessName || meta.restaurant_name || '매장', productName: meta.product_name, usedAt: new Date().toISOString(), ordersUrl: storeGoUrl(merchantId, 'orders') },
                 )
@@ -338,7 +338,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
         if (userPhone?.phone) {
           c.executionCtx.waitUntil(
             sendBuyerVoucherUsedAlimtalk(
-              c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
+              c.env,
               userPhone.phone,
               { restaurantName: voucher.restaurant_name || '매장', productName: voucher.product_name, usedAt: new Date().toISOString(), categoryLabel: getVoucherShortLabel(voucher.category) },
             )

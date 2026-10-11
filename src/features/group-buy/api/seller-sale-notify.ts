@@ -15,10 +15,9 @@ import { resolveSellerNotifyTarget } from '../../../worker/utils/seller-notify-p
 import { sendSellerFirstVoucherAlimtalk, sendSellerVoucherSoldAlimtalk } from './helpers'
 import { storeGoUrl } from '../../../shared/store-deep-link' // 🔗 한 번 눌러 그 매장의 그 화면(카카오 로그인 → 좌석)
 
-type AlimtalkEnv = { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string }
 
 export async function notifySellerVoucherSale(
-  env: AlimtalkEnv,
+  env: unknown, // 📨 알리고(sendTextNotice) — 워커 env 그대로
   DB: D1Database,
   sale: { sellerId: unknown; productName: string; qty: number; amount: number },
 ): Promise<void> {
