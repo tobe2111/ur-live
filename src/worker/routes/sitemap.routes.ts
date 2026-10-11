@@ -16,6 +16,9 @@ import { mainScopeFor } from '../utils/consumer-scope';
 import { computeRegionStats } from '../../features/group-buy/api/regions.routes';
 import { regionPath } from '../../shared/constants/region-slugs';
 import { REGION_PAGES_ENABLED } from '../../shared/feature-flags';
+// 🔒 2026-10-11 실측: sitemap 이 **사업자등록증 PNG** 를 구글 이미지에 색인 요청하고 있었다(/pass/2916).
+//   `products.image_url` 을 그대로 실어 보낸 탓. 서류 업로드는 어느 것도 검색엔진에 넘기지 않는다.
+import { isIndexableImageUrl } from '../../shared/seo/indexable-image';
 
 const sitemapRoutes = new Hono<{ Bindings: Env }>();
 
@@ -134,7 +137,8 @@ ${wholesaleUrls.map(u => `  <url>\n    <loc>${WHOLESALE_BASE}${u.loc}</loc>\n   
           loc: `/pass/${g.id}`,
           priority: 0.9,
           changefreq: 'hourly',
-          image: g.image_url || `${origin}/api/og/group-buy/${g.id}`,
+          // 🔒 비공개 서류(사업자등록증 등)가 커버로 들어온 상품은 OG 카드로 대체 — 색인은 못 되돌린다.
+          image: (isIndexableImageUrl(g.image_url) && g.image_url) || `${origin}/api/og/group-buy/${g.id}`,
           lastmod: g.updated_at,
         });
       }
@@ -239,7 +243,10 @@ ${wholesaleUrls.map(u => `  <url>\n    <loc>${WHOLESALE_BASE}${u.loc}</loc>\n   
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
 ${urls.map(u => {
-    const imgLoc = u.image ? (u.image.startsWith('http') ? u.image : origin + u.image) : '';
+    // 🔒 초크포인트 — 출처가 무엇이든 여기를 지나야 `<image:loc>` 가 된다.
+    //   위 공구 분기에도 같은 판정이 있지만 **그건 대체(OG 카드)용**이고 이 줄이 마지막 방어다.
+    const rawImg = u.image ? (u.image.startsWith('http') ? u.image : origin + u.image) : '';
+    const imgLoc = isIndexableImageUrl(rawImg) ? rawImg : '';
     const imageBlock = imgLoc ? `\n    <image:image><image:loc>${xmlEscape(imgLoc)}</image:loc></image:image>` : '';
     const lastmodBlock = u.lastmod ? `\n    <lastmod>${xmlEscape(u.lastmod.replace(' ', 'T'))}Z</lastmod>` : '';
     return `  <url>\n    <loc>${xmlEscape(origin + u.loc)}</loc>${lastmodBlock}\n    <changefreq>${u.changefreq}</changefreq>\n    <priority>${u.priority}</priority>${imageBlock}\n  </url>`;
