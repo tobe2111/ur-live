@@ -5,6 +5,7 @@
 const TEST = 'src/tests/unit/agency-console-2026-10-11.test.ts'
 const SUNSET = 'src/tests/unit/agency-sunset-final.test.ts'
 const STORES = 'src/tests/unit/agency-stores-2026-10-11.test.ts'
+const REGISTER = 'src/tests/unit/agency-store-register-2026-10-11.test.ts'
 
 export default [
   {
@@ -238,5 +239,45 @@ export default [
     replace: '',
     test: TEST,
     why: '판정은 하고 거절을 안 하면 아무것도 막지 않는다.',
+  },
+  {
+    name: '🏢 개인 중개 등록 문이 다시 열린다 (서버 410 제거)',
+    file: 'src/features/seller/api/seller-stores.routes.ts',
+    find: "if (b.channel === 'brokered' && PERSONAL_BROKER_SIGNUP_DISABLED) return",
+    replace: "if (false && PERSONAL_BROKER_SIGNUP_DISABLED) return",
+    test: REGISTER,
+    why: '화면만 닫고 서버를 열어 두면 요청 하나로 개인 계정이 중개 매장을 만든다 — 돈이 쌓이는 곳이 다시 둘이 된다.',
+  },
+  {
+    name: '🏢 모달이 닫힌 중개 길에서도 요율 입력을 띄운다',
+    file: 'src/components/seller/StoreRegisterModal.tsx',
+    find: "{channel === 'brokered' && !PERSONAL_BROKER_SIGNUP_DISABLED && (",
+    replace: "{channel === 'brokered' && (",
+    test: REGISTER,
+    why: '닫힌 길에 요율 칸이 뜨면 사람이 다 채우고 나서야 410 을 만난다.',
+  },
+  {
+    name: '🏢 직원(관리자 아님)이 매장을 대신 등록한다',
+    file: 'src/features/agency-console/api/agency-store-register.ts',
+    find: "app.post('/stores/register', cors(), requireAgencyStaff({ adminOnly: true }),",
+    replace: "app.post('/stores/register', cors(), requireAgencyStaff(),",
+    test: REGISTER,
+    why: '매장을 새로 만드는 일은 에이전시 대표 책임이다 — 수락·초대 링크와 같은 등급이어야 한다.',
+  },
+  {
+    name: '🏢 대신 등록한 매장의 맡김이 대기로 남는다',
+    file: 'src/features/agency-console/api/agency-store-register.ts',
+    find: "VALUES (?, ?, 'active', ?, datetime('now'))",
+    replace: "VALUES (?, ?, 'pending', ?, datetime('now'))",
+    test: REGISTER,
+    why: '등록한 에이전시가 그 매장에 못 들어간다(seller_operators 행이 없어 다른 길도 없다).',
+  },
+  {
+    name: '🏢💰 대신 등록이 에이전시 몫 요율을 적는다',
+    file: 'src/features/agency-console/api/agency-store-register.ts',
+    find: "          registered_by_agency_staff_id: String(me.staffId),\n",
+    replace: "          registered_by_agency_staff_id: String(me.staffId),\n          broker_share_pct: '10',\n",
+    test: REGISTER,
+    why: '에이전시 몫은 3단계 머니 경로(staging 실결제 뒤)다 — 등록 길이 몰래 요율을 깔면 게이트를 켜는 순간 돈이 나간다.',
   },
 ]

@@ -4,6 +4,7 @@ import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/useToast'
 import { agencyRequest, enterAgencyStore } from './agency-api'
 import { AgencyInviteLinkCard } from './AgencyInviteLinkCard'
+import { AgencyRegisterStoreCard } from './AgencyRegisterStoreCard'
 
 interface StoreRow {
   linkId: number
@@ -85,6 +86,7 @@ export function AgencyStoresPanel({ onExpired }: { onExpired: () => void }) {
           <p className="mt-2 text-[13px] leading-relaxed text-gray-500">
             아래 <b className="font-semibold text-gray-700">매장 초대 링크</b>를 사장님께 보내거나, 사장님이 셀러 화면의
             {' '}<b className="font-semibold text-gray-700">운영자 관리 → 에이전시에 맡기기</b>에 관리자 이메일을 넣으면 여기에 떠요.
+            아직 유어딜에 없는 매장이면 <b className="font-semibold text-gray-700">매장 대신 등록</b>으로 먼저 올리세요.
           </p>
         </div>
       ) : (
@@ -130,6 +132,7 @@ export function AgencyStoresPanel({ onExpired }: { onExpired: () => void }) {
         </div>
       )}
       {canManage && rows !== null && !error && <AgencyInviteLinkCard />}
+      {canManage && rows !== null && !error && <AgencyRegisterStoreCard onRegistered={load} />}
     </section>
   )
 }

@@ -55,3 +55,20 @@
 - 시험 +7(총 31) · 주입 +5(전부 빨간불 확인).
 - 전체 그림: `docs/design/agency-ideal-shape-2026-10-11.md` · 판단 대기: `docs/decisions/2026-10-11-agency-ideal-open-questions.md`(개인 중개 길을 에이전시로 일원화할지).
 - **다음 권하는 작업(머니 무관)**: 어드민 에이전시 목록·정지(지금 정지 버튼이 없다) → 사장님용 "에이전시 활동 기록" → 사업자 진위확인.
+
+## 🏢 추가 — 대표 *"모두 다 하자"* (같은 PR #1698)
+결정 기록: `docs/decisions/2026-10-11-agency-ideal-open-questions.md` → approved(안 1, 대표 말 그대로).
+1. **어드민 `/admin/agencies`** — 목록(대표 이메일·직원·맡은 매장·국세청 상태) + 정지/해제(super·ops, 상태 CAS + 좌석 캐시 즉시 비움). API `/api/admin/agency-accounts*`(adminApp 아래 — 관리자 인증·감사 로그 승계).
+2. **사장님용 "에이전시가 한 일"** — `storeSeatGuard` 가 에이전시 좌석의 **성공한** POST/PUT/PATCH/DELETE 만 `agency_store_activity` 에 남긴다(waitUntil, fail-soft). 운영자 관리 화면 `AgencyLinkCard` 아래에 누가·언제·무엇.
+3. **국세청 진위확인** — 사업자 에이전시 가입 시 상태조회: 미등록·폐업 → 400, 응답 없음 → `unverified` 로 가입은 받는다(`agency_accounts.business_status`).
+4. **개인 '중개' 등록 닫음** — `feature-flags.ts` `PERSONAL_BROKER_SIGNUP_DISABLED=true`. 서버 `POST /api/seller/stores` channel=brokered → 410 `BROKERED_VIA_AGENCY`(요율 검증·행 생성보다 앞). 모달은 '중개·대행사에요' 를 고르면 에이전시 가입 안내(`BrokeredViaAgencyNote`). 문구 SSOT `shared/agency-copy.ts`. 기존 중개 매장 4곳은 그대로.
+5. **에이전시 [매장 대신 등록]** — `POST /api/agency-console/stores/register`(관리자): 매장 `pending` + 맡김 **바로 active** + 손님 확인코드 + 사장님 승계 코드(`/store/find?code=`) + 판매자 약관 동의(`user_id = agency_staff:<id>`). `store_channel='brokered'`(미지정 폴백과 같은 요율). **에이전시 몫 요율·영입 귀속은 안 적는다**(시험이 고정).
+6. 셀러 가이드 시드 갱신 + `GUIDE_SEED_VERSION` 40 → 41.
+
+### 이번에 일부러 안 한 것
+- "중개사" 라벨 25곳 — 대부분 **기존 개인 중개사의 돈(중개사 몫)** 을 가리킨다. 그 돈이 아직 개인 잔액에 쌓이므로 지금 "에이전시"로 바꾸면 돈 가는 곳을 틀리게 말한다 → 3단계(4곳 이전)와 같은 커밋에서.
+- 대신 등록 화면에 카카오맵 검색 없음(이름·주소를 적는다) — 같은 가게 중복은 `kakao_place_id` 가 있을 때만 막는다. 어드민 승인 단계에서 사람이 본다.
+
+### 검증
+- `agency-store-register-2026-10-11.test.ts` 13건(실제 라우트·SQLite) · 관련 39파일 564건 통과 · 주입 5건 전부 빨간불 확인.
+- ⚠️ E4 는 배포 + 메일 키 설정 뒤: 테스트 에이전시로 [매장 대신 등록] → 사장님 링크 → `/store/find` 로 소유권 신청 → 어드민 승인 → 사장님 운영자 관리에 에이전시가 보이는지.

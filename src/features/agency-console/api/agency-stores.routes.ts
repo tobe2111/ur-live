@@ -28,6 +28,7 @@ import { invalidateStoreSeatCache } from '@/worker/utils/store-seat-guard'
 import { ensureAgencyConsoleTables, AGENCY_STORE_INVITE_DAYS } from './agency-schema'
 import { requireAgencyStaff, newLinkToken, type AgencyStaffContext } from './agency-session'
 import { frontendBase } from './agency-auth.routes'
+import { registerAgencyStoreRegisterRoute } from './agency-store-register'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string; FRONTEND_URL?: string }
 type Vars = { agencyStaff: AgencyStaffContext }
@@ -266,3 +267,6 @@ agencyStoresRoutes.post('/store-invite/revoke', cors(), requireAgencyStaff({ adm
     return safeError(c, err, '처리 중 오류가 발생했어요', '[agency-console:store-invite]')
   }
 })
+
+// 🏢 매장 대신 등록(2026-10-11 대표 "모두 다 하자") — POST /stores/register. 본문은 형제 파일.
+registerAgencyStoreRegisterRoute(agencyStoresRoutes)

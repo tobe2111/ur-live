@@ -38,6 +38,7 @@ import { pickStoreChannel, registerStoreChannelRoutes } from './seller-store-cha
 import { registerStoreClaimRoutes } from './seller-store-claims.routes'; import { registerStoreReportRoutes } from './seller-store-reports.routes'
 import { registerBrokerTermsRoutes, prepareBrokerTerms, finalizeBrokeredStore } from './seller-broker-terms.routes' // 💸🔑 2026-09-19 요율·승계 코드
 import { storeTermsError, afterStoreCreated } from './store-signup-extras' // 📜🤝 2026-10-10 약관 동의 + 영입 귀속(유일한 가입 문)
+import { PERSONAL_BROKER_SIGNUP_DISABLED } from '@/shared/feature-flags'; import { BROKERED_VIA_AGENCY_MSG } from '@/shared/agency-copy'
 
 const app = new Hono<{ Bindings: Env }>()
 type Ctx = Context<{ Bindings: Env }>
@@ -345,6 +346,7 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
     if (!isChannel(b.channel)) {
       return c.json({ success: false, error: '등록 유형을 선택해주세요 — 직접(내 가게) 또는 중개(관리 대행)' }, 400)
     }
+    if (b.channel === 'brokered' && PERSONAL_BROKER_SIGNUP_DISABLED) return c.json({ success: false, code: 'BROKERED_VIA_AGENCY', error: BROKERED_VIA_AGENCY_MSG }, 410) // 🏢 2026-10-11 대신 등록은 에이전시 계정으로(feature-flags)
     const brokerTerms = prepareBrokerTerms(b) // 💸 중개 매장 두 요율 — 행이 생기기 **전에** 검증(반쪽 등록 방지)
     if (brokerTerms && !brokerTerms.ok) return c.json({ success: false, error: brokerTerms.error }, 400)
     const termsErr = storeTermsError(b.terms_agreed_version) // 📜 동의 없이는 행을 만들지 않는다(옛 문과 같은 규칙)
