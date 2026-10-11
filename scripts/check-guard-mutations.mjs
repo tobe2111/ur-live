@@ -2162,8 +2162,9 @@ const MUTATIONS = [
     //   같은 파일에 남아 있는 줄로 옮긴다.
     //   🔁 같은 날 두 번째: 그 줄의 `py-3` 도 사라졌다(딜 잔액에 그룹 라벨이 붙으면서 바깥 여백을
     //      라벨이 가져갔다). 파일 안에서 **가장 안 흔들리는 줄**(부품 호출)로 다시 옮긴다.
-    find: '      <div className="flex items-start divide-x divide-rule py-1">',
-    replace: '      <div className="bg-gradient-to-r from-gray-800 to-gray-800" />\n      <div className="flex items-start divide-x divide-rule py-1">',
+    //   🔁 2026-10-11 네 번째(안 5): 띠 모드가 생겨 그 줄이 템플릿 리터럴이 됐다. 같은 자리로 옮긴다.
+    find: '    <div className={`flex items-start divide-x divide-rule',
+    replace: '    <div className="bg-gradient-to-r from-gray-800 to-gray-800" />\n    <div className={`flex items-start divide-x divide-rule',
     test: 'src/tests/unit/button-system.test.ts',
     why:
       'from/to 가 같은 색이면 브라우저는 그라디언트를 계산하는데 화면엔 단색이 나온다. ' +

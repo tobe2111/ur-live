@@ -78,6 +78,10 @@ const ALLOW = {
   //   박힌다. 사진 위 매장·가격은 카드의 정체가 아니라 **맥락**이고, 값 포맷은 같은 `formatNumber`
   //   와 시스템 --sale 값을 쓴다(드리프트 방지는 그쪽에서 이미 걸린다).
   'src/components/home/UrShortsRail.tsx': '유어쇼츠 9:16 영상 썸네일 — 딜 카드가 아니다(재생 화면으로 간다)',
+  // 👤 2026-10-11: 마이의 **설정·프로필 편집** 묶음이다. 신호 넷이 다 켜진 건 우연이다 —
+  //   `cfImage(`=프로필 **아바타**(사진 변경), `원`=알림/결제 안내 문구, `.map(`=설정 줄 목록,
+  //   `<Link>`=탈퇴·약관. 딜도 상품도 이 파일엔 없다(`image_url` 0건).
+  'src/pages/user-profile/AccountControlsSection.tsx': '마이 설정·프로필 편집 — 딜 카드가 아니다(아바타 사진 + 설정 줄)',
 }
 
 const walk = (d, out = []) => {

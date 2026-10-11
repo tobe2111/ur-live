@@ -119,16 +119,36 @@ describe('마이 — 아이콘 체계', () => {
  */
 describe('마이 — 헤더 문법은 모바일·PC 가 같다', () => {
   const MOBILE = 'src/pages/UserProfilePage.tsx'
-  const PC = 'src/pages/user-profile/AccountPcPane.tsx'
+  /**
+   * 🔁 **2026-10-11 재조준(안 5) — PC 헤더가 파일을 옮겼다.**
+   *   대표 확정 안 5 로 PC 프로필 줄이 `AccountPcPane`(좁은 오른쪽 칸의 흰 판 카드) →
+   *   `AccountPcBand`(전폭 머리 띠)로 이사했다. **불변식은 한 글자도 안 바뀐다** —
+   *   *"둘 다 알약이 아니라 눌리는 줄인가"* · *"모바일과 PC 가 같은 문법인가"*. 앵커만 따라간다.
+   *   ⚠️ 지우지 않는다: 이사한 자리에서 같은 것을 계속 지켜야 09-28 에 갈렸던 그 상태로 안 돌아간다.
+   */
+  const PC = 'src/pages/user-profile/AccountPcBand.tsx'
 
-  it('👤 어느 쪽도 `프로필 편집` 을 **글자 버튼**으로 두지 않는다 (줄 전체가 눌린다)', () => {
+  /**
+   * 🔁 **2026-10-11 재조준 — 대표 지시로 "라벨 0" 전제가 바뀌었다.**
+   *
+   * 종전 단언은 *"화면에 라벨을 그리면 알약이 된 것"* 이었다. 그런데 대표가 마이 스크린샷을 보내며
+   * *"오른쪽 버튼은 눌렀을 때 기껏해야 이름이랑 전화번호 변경이네? **프로필 편집이라고 바꾸던지**"*
+   * 라고 했다 — 맨 `>` 는 무엇이 열리는지 말하지 않는다는 지적이다.
+   *
+   * 🔑 **이 시험이 지키려던 것은 라벨의 유무가 아니다**(머리말이 스스로 적어 둔 대로):
+   *   *"둘 다 알약이 아니라 **눌리는 줄**인가"* · *"모바일과 PC 가 같은 문법인가"*. 그 둘은 그대로다 —
+   *   라벨은 **같은 버튼 안의 글자**이고, 09-28 에 없앤 것은 이름·이메일 **아래 셋째 줄**의
+   *   회색 알약(별도 `<button>`)이었다. 그래서 단언을 그 셋으로 옮긴다:
+   *     ① 라벨은 **있다**(모바일·PC 둘 다 — 한쪽만 있으면 그게 09-28 에 갈렸던 그 상태다)
+   *     ② 라벨은 `<span>` 이다(별도 `<button>`/`<Link>` 알약이 아니다)
+   *     ③ 줄 전체가 눌린다 — 편집 진입 버튼이 `aria-label` 을 그대로 갖는다
+   */
+  it('👤 `프로필 편집` 라벨이 **모바일·PC 둘 다** 있고, 알약이 아니라 눌리는 줄 안의 글자다', () => {
     for (const f of [MOBILE, PC]) {
       const src = read(f)
-      // 편집 진입은 `aria-label` 로만 이름을 갖는다 — 화면에 라벨을 그리면 알약/링크가 된 것이다.
-      expect(
-        src.match(/>\s*\{t\('userProfile\.editProfile'/g) ?? [],
-        `${f.split('/').pop()}: '프로필 편집' 이 눈에 보이는 라벨로 돌아왔다`,
-      ).toEqual([])
+      const labels = src.match(/<(\w+)[^>]*>\{t\('userProfile\.editProfile'/g) ?? []
+      expect(labels.length, `${f.split('/').pop()}: 화면에 보이는 '프로필 편집' 라벨이 없다`).toBe(1)
+      expect(labels[0], `${f.split('/').pop()}: 라벨이 별도 알약(button/Link)이다`).toMatch(/^<span/)
       expect(src, `${f.split('/').pop()}: 편집 진입의 aria-label 이 없다`).toMatch(/aria-label=\{t\('userProfile\.editProfile'/)
     }
   })

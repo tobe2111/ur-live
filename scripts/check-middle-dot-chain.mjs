@@ -43,9 +43,31 @@ export function scanTsx(files) {
   const hits = []
   for (const f of files) {
     const rel = path.relative(ROOT, f)
+    /**
+     * 🩸 **2026-10-11: 이 검사가 주석을 오탐하고 있었다(멀쩡한 커밋이 막혔다).**
+     *
+     * 종전엔 줄의 **첫 글자**만 보고 주석을 걸렀다(`//` · `*` · `/*` · `{/*`). 그런데 이 레포는
+     * 긴 한국어 블록 주석을 쓰고, 그 **이어지는 줄은 `*` 로 시작하지 않는다**:
+     *
+     *     {/* 🎗️ 안 5 — PC 는 이 자리가 머리 한 줄 띠다:
+     *         [아바타 · 이름 · 프로필 편집] … [숫자 셋/넷] [알림].   ← 첫 글자가 `[` 라 **본문으로 셌다**
+     *
+     * 그래서 *설명을 쓰는 것만으로* 대외 문구 래칫이 올라가 푸시가 막혔다. 문구 규칙은 사람이 읽는
+     * 화면 글자에 대한 것이지 주석에 대한 것이 아니다 — 가드가 틀렸던 것이라 가드를 고친다.
+     * (CLAUDE.md 의 *"텍스트 가드가 자기 주석 제거기를 만든다"* 클래스. 여기선 블록 **상태**만 추적하면
+     *  되므로 범용 제거기를 또 만들지 않는다.)
+     *
+     * ⚠️ 블록의 **시작 판정은 종전과 똑같다**(줄이 `/*`·`{/*` 로 시작할 때만). 즉 새로 눈머는 자리가
+     *    없다 — 그 줄들은 **이미 오늘도 건너뛰던** 줄이고, 바뀐 건 *그 뒤를 언제까지 건너뛰나* 뿐이다.
+     *    문자열 안의 `/*` 로 블록이 잘못 열리는 일도 없다(줄 **시작**만 본다).
+     */
+    let inBlock = false
     fs.readFileSync(f, 'utf-8').split('\n').forEach((ln, i) => {
       const t = ln.trim()
-      if (t.startsWith('//') || t.startsWith('*') || t.startsWith('{/*') || t.startsWith('/*')) return
+      const closes = ln.includes('*/')
+      if (inBlock) { if (closes) inBlock = false; return }
+      if (t.startsWith('{/*') || t.startsWith('/*')) { if (!closes) inBlock = true; return }
+      if (t.startsWith('//') || t.startsWith('*')) return
       if (ln.includes('middle-dot-ok')) return
       if (CHAIN.test(ln) || JOIN.test(ln)) hits.push(`${rel}:${i + 1}`)
     })
@@ -73,6 +95,11 @@ function selfTest() {
     if (!scanTsx([w('Bad.tsx', '<p>즉시 발급 · 전 지점 사용 · 결제 즉시 사용</p>\n')]).length) fail.push('띄어 쓴 사슬을 못 잡는다')
     if (!scanTsx([w('BadJoin.tsx', "{[a, b, c].join(' · ')}\n")]).length) fail.push("join(' · ') 을 못 잡는다")
     if (scanTsx([w('Ok.tsx', '<p>맛집·카페·뷰티 이용권</p><span>{addr} · {dist}</span>\n')]).length) fail.push('붙여 쓴 점 / 점 하나를 오탐한다')
+    // 🩸 2026-10-11: 블록 주석의 **이어지는 줄**(첫 글자가 `*` 가 아니다)을 본문으로 세던 오탐.
+    const cmt = '{/* 설명\n          [아바타 · 이름 · 프로필 편집] 이라고 적는다\n          끝 */}\n'
+    if (scanTsx([w('Cmt.tsx', cmt)]).length) fail.push('블록 주석 이어지는 줄을 본문으로 센다(오탐)')
+    // 그리고 주석이 끝난 **뒤**의 진짜 문구는 여전히 잡아야 한다 — 안 그러면 이 수정이 눈가리개가 된다.
+    if (!scanTsx([w('CmtThen.tsx', cmt + '<p>즉시 발급 · 전 지점 · 결제 즉시</p>\n')]).length) fail.push('주석 뒤 본문을 놓친다(눈이 멀었다)')
     const lj = w('ko.json', JSON.stringify({ my: { a: '추천 적립 · 유어샵 수익 · 친구 초대' }, seller: { b: 'x · y · z' } }))
     const lh = scanLocale(lj)
     if (lh.length !== 1 || !lh[0].endsWith('my.a')) fail.push('로케일 소비자 키만 잡아야 한다')

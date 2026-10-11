@@ -42,7 +42,15 @@ describe('PC 마이 — 두 열', () => {
     const at = CSS.indexOf('.ur-account-cols--split')
     expect(at).toBeGreaterThan(0)
     const block = CSS.slice(at, at + 260)
-    expect(block).toContain('1.25fr 1fr')
+    /**
+     * 🔁 **2026-10-11 재조준(안 5)** — 비율이 `1.25fr 1fr` → `7fr 5fr` 로 바뀌었다(확정 시안).
+     *   값을 앵커로 쓰면 비율을 손볼 때마다 이 검사가 **코드가 멀쩡한데 빨간불**을 낸다.
+     *   지키려던 것은 값이 아니라 **비대칭**이므로 거기로 옮긴다.
+     */
+    const m = block.match(/grid-template-columns:\s*([\d.]+)fr\s+([\d.]+)fr/)
+    expect(m, '두 열 비율을 못 찾았다 — 이 검사가 헛돌고 있다').not.toBeNull()
+    expect(Number(m![1]), '균등(또는 오른쪽이 더 넓다) — 왼쪽 판매 목록의 설명이 먼저 잘린다')
+      .toBeGreaterThan(Number(m![2]))
     // 짧은 열이 긴 열 높이로 늘어나면 카드가 붕 뜬다.
     expect(block).toContain('align-items: start')
   })

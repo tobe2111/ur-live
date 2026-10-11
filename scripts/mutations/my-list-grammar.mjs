@@ -83,8 +83,10 @@ export default [
   {
     name: '🧭 PC 좌측 내비가 살아난다 (같은 목적지가 두 번)',
     file: 'src/pages/UserProfilePage.tsx',
-    find: '      <div className="ur-account-pc">\n        <div className="ur-account-pane min-w-0">',
-    replace: '      <div className="ur-account-pc">\n        <AccountSideNav />\n        <div className="ur-account-pane min-w-0">',
+    // 🔁 2026-10-11 재조준(안 5): 칸 className 이 삼항이 됐다(비셀러면 820px 로 좁힌다).
+    //   불변식은 그대로 — **좌측 내비가 칸 앞에 되살아나면 안 된다.**
+    find: '      <div className="ur-account-pc">\n',
+    replace: '      <div className="ur-account-pc">\n        <AccountSideNav />\n',
     test: PC,
     why: '09-02 에 고친 "같은 항목을 두 번" 이 되살아나는 경로다(내비 7항목 중 넷이 우측 열과 중복이었다).\n'
       + '🩸 첫 판은 이 자리를 **주석**(`{/* AccountSideNav */}`)으로 심었는데 가드가 통과했다 — 그 시험은\n'
@@ -94,12 +96,14 @@ export default [
       + '   그 절반은 시험의 `existsSync` 가 본다. 그리고 **다른 이름의** 같은 내비는 둘 다 못 잡는다.',
   },
   {
-    name: '🧭 PC 우측 칸에 같은 목적지가 두 번 생긴다',
+    name: '🧭 PC 우측 칸이 두 번째 목록을 손으로 만든다',
     file: 'src/pages/user-profile/AccountPcPane.tsx',
     // 🔁 2026-09-28 재조준: 아이콘이 lucide `Heart` → 유어딜 `HeartIcon` 으로 바뀌어 앵커만 옮겼다.
-    //    불변식("같은 목적지가 두 번 나오지 않는다")은 그대로다.
-    find: "    { Icon: HeartIcon, label: t('shopping.wishlist', { defaultValue: '찜한 상품' }), path: '/wishlist', count: counts.wish ?? undefined },",
-    replace: "    { Icon: HeartIcon, label: t('shopping.wishlist', { defaultValue: '찜한 상품' }), path: '/wishlist', count: counts.wish ?? undefined },\n    { Icon: HeartIcon, label: '이용권 또', path: '/my-vouchers' },",
+    // 🔁 2026-10-11 재조준(안 5): 그 타일 목록 **자체를 없앴다** — PC 도 폰과 **같은 `ShoppingGroup`**
+    //    을 쓴다. 그래서 "같은 목적지가 두 번" 은 구조적으로 불가능해졌고, 이제 지킬 것은 한 단계
+    //    위다: **두 번째 목록을 다시 손으로 만들지 않는 것**(만드는 순간 중복도 고아도 되살아난다).
+    find: '  const { data: vouchers } = useMyVouchers()',
+    replace: "  const tiles = [{ label: '찜한 상품', path: '/wishlist' }]\n  void tiles\n  const { data: vouchers } = useMyVouchers()",
     test: PC,
     why: '한 화면에 같은 곳으로 가는 문이 둘이면 사람이 "둘이 다른 것" 이라고 읽는다 — 좌측 내비를 걷어낸 이유가 그것이다.',
   },

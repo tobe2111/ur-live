@@ -5496,7 +5496,7 @@
   "accountSettings": {
     "title": "설정",
     "myProfile": "내 프로필",
-    "editProfile": "프로필 수정",
+    "editProfile": "프로필 편집",
     "menu": {
       "addresses": "배송지 관리",
       "language": "언어 설정",
@@ -5551,7 +5551,13 @@
     "checking": "확인 중…",
     "isLatest": "최신 버전이에요",
     "updateAvailable": "새 버전이 나왔어요",
-    "updateNow": "지금 업데이트"
+    "updateNow": "지금 업데이트",
+    "photoChange": "사진 변경",
+    "photoUploading": "올리는 중…",
+    "photoHint": "JPG·PNG, 5MB 이하",
+    "photoTooBig": "5MB 이하만 올릴 수 있어요",
+    "photoUpdated": "프로필 사진이 바뀌었습니다",
+    "photoFailed": "사진을 바꾸지 못했어요"
   },
   "productDetail": {
     "retry": "다시 시도",

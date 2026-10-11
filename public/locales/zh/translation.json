@@ -5551,7 +5551,13 @@
     "checking": "检查中…",
     "isLatest": "已是最新版本",
     "updateAvailable": "有新版本",
-    "updateNow": "立即更新"
+    "updateNow": "立即更新",
+    "photoChange": "更换照片",
+    "photoUploading": "上传中…",
+    "photoHint": "JPG/PNG，5MB 以内",
+    "photoTooBig": "请选择 5MB 以内的文件",
+    "photoUpdated": "头像已更新",
+    "photoFailed": "无法更换照片"
   },
   "productDetail": {
     "retry": "重试",

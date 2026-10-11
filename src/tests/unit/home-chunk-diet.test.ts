@@ -36,6 +36,9 @@ const OK_PARTS = [
   '/src/shared/deal-card-grid', // 딜 카드 격자 간격 SSOT → app-shared (2026-09-03)
   '/src/shared/price-display',  // 가격·할인율 표시 규칙 SSOT → app-shared (2026-09-08)
   '/src/shared/urshorts',       // 유어쇼츠 SSOT(카드 크기·뷰어 주소) → app-shared (2026-09-09)
+  // 🔔 2026-10-11: 알림 벨 배선 훅 → **app-layout**(vite 규칙 명시, catch-all 아님). 이 파일이 정적으로
+  //   쥐는 것은 React 뿐이고 시트 본체는 `lazy()` 경계 뒤다 — 홈 폐쇄에 청크를 더하지 않는다.
+  '/src/components/notifications/useNotificationSheet',
   '/src/components/icons/', '/src/client/', '/src/i18n', '/src/pages/main-home/GroupBuyFeed', '/src/pages/mobile-home/',
   '/src/routes/', '/src/shared/feature-flags', '/src/components/brand/', '/src/components/mascot/', // app-shell 규칙(엔트리 셸)에 이미 있는 것
 ]

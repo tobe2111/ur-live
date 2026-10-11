@@ -5551,7 +5551,13 @@
     "checking": "確認中…",
     "isLatest": "最新バージョンです",
     "updateAvailable": "新しいバージョンがあります",
-    "updateNow": "今すぐ更新"
+    "updateNow": "今すぐ更新",
+    "photoChange": "写真を変更",
+    "photoUploading": "アップロード中…",
+    "photoHint": "JPG・PNG、5MB以下",
+    "photoTooBig": "5MB以下のファイルを選んでください",
+    "photoUpdated": "プロフィール写真を変更しました",
+    "photoFailed": "写真を変更できませんでした"
   },
   "productDetail": {
     "retry": "もう一度試す",

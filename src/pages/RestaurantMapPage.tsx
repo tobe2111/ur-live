@@ -11,9 +11,7 @@ import UrDealLogo from '@/components/brand/UrDealLogo'
 import { isKorea } from '@/shared/config/region'
 import { storage } from '@/shared/utils/storage'
 
-// 🛡️ 2026-05-02: TD-018 추가 분할 — types/utils 추출(HeroCarousel 은 2026-09-08 제거).
-// 🛡️ 2026-05-05: TD-006 추가 분할 — RestaurantList / SelectedPeekCard / SelectedDetailCard 추출.
-// 🛡️ 2026-05-06: TD-006 추가 분할 — SheetFilterBar 추출. (MapSearchHeader 는 2026-07-20 MapTopBar 로 대체·삭제.)
+// 🛡️ TD-018/TD-006 분할 이력 — types·utils(05-02) · RestaurantList/SelectedPeek/SelectedDetail(05-05) · SheetFilterBar(05-06) 추출. HeroCarousel 은 2026-09-08, MapSearchHeader 는 2026-07-20 MapTopBar 로 대체·삭제.
 import FilterSheet, { type PriceRange } from './restaurant-map/FilterSheet'
 import SuggestionModal from './restaurant-map/SuggestionModal'
 import RestaurantList from './restaurant-map/RestaurantList'; import SiteFooter from '@/components/main/SiteFooter'
@@ -22,7 +20,7 @@ import { useGeocodeMissing } from './restaurant-map/useGeocodeMissing'
 import { useNearMeAuto } from './restaurant-map/useNearMeAuto'
 import { effectiveSort } from './restaurant-map/effective-sort'
 import SelectedDealCard from './restaurant-map/SelectedDealCard'
-import MapTopBar from './restaurant-map/MapTopBar'
+import MapTopBar from './restaurant-map/MapTopBar'; import { useNotificationSheet } from '@/components/notifications/useNotificationSheet'
 import SheetFilterBar from './restaurant-map/SheetFilterBar'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Screen } from '@/components/ui/screen'
@@ -50,6 +48,7 @@ export type { KakaoPlace }
 export default function RestaurantMapPage({ home = false, mode = 'map' }: { home?: boolean; mode?: 'map' | 'list' } = {}) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const bell = useNotificationSheet()  // 🔔 벨 → 올라오는 시트. 배선은 `NotificationSheet` 머리말.
   const [selected, setSelected] = useState<Restaurant | null>(null)
   const [region, setRegion] = useState('')
   // 🛍️ 2026-06-20 (대표 — 세부 지역): KOREA_REGIONS 계층 — 시/도(region) + 세부 지역그룹(district, 해운대/경성대…).
@@ -645,7 +644,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
                 <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
               </button>
               <button onClick={() => navigate('/search')} aria-label="검색" className="p-2 shrink-0"><Search className="h-5 w-5" strokeWidth={1.5} /></button>
-              <button onClick={() => navigate('/notifications')} aria-label="알림" className="p-2 shrink-0"><BellIcon className="h-5 w-5" /></button>
+              <button onClick={bell.open} aria-label="알림" className="p-2 shrink-0"><BellIcon className="h-5 w-5" /></button>
               <button onClick={() => navigate('/cart')} aria-label="장바구니" className="p-2 shrink-0"><BagIcon className="h-5 w-5" /></button>
             </div>
           </div>
@@ -932,6 +931,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
           onRetry={requestNearMe}
         />
       )}
+      {bell.sheet}
     </Screen>
   )
 }
