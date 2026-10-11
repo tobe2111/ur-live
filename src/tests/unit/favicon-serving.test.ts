@@ -68,3 +68,31 @@ describe('루트 아이콘 — 선언·파일·서빙 3자 동기화', () => {
     expect(sizes.some(s => s % 48 === 0), `선언된 크기: ${sizes.join(',')} — 48 배수가 없다`).toBe(true)
   })
 })
+
+/**
+ * 📱 2026-10-11 (대표 확정 앱 아이콘 6-B) — 홈 화면 아이콘은 index.html 이 아니라 **manifest** 가 정한다.
+ * 위 3자 동기화는 index.html 선언만 보므로 manifest 의 아이콘이 빠지거나 워커로 새도 초록이었다.
+ * 그리고 manifest 에 `favicon.svg`(purpose any, sizes any)가 남아 있으면 크롬이 확대 가능한 SVG 를
+ * 우선 골라 홈 화면에 새 앱 아이콘 대신 "ur" 파비콘이 깔린다 — 그래서 SVG 를 빼고 그것도 고정한다.
+ * ⚠️ 못 막는 것: 이미 설치된 PWA 의 아이콘 갱신 시점(브라우저 재검사 주기) · 그림이 예쁜지.
+ */
+describe('manifest 아이콘 — 파일·서빙 동기화', () => {
+  const MANIFEST = JSON.parse(readFileSync('public/manifest.webmanifest', 'utf8')) as {
+    icons: { src: string; purpose?: string }[]
+  }
+
+  it('manifest 가 any·maskable 아이콘을 둘 다 선언한다', () => {
+    const purposes = new Set(MANIFEST.icons.map(i => i.purpose ?? 'any'))
+    expect(purposes.has('any')).toBe(true)
+    expect(purposes.has('maskable')).toBe(true)
+  })
+
+  it.each(MANIFEST.icons.map(i => [i.src]))('%s — 파일이 있고 exclude 에 등재돼 있다', (src) => {
+    expect(existsSync(`public${src}`), `public${src} 없음`).toBe(true)
+    expect(ROUTES.exclude, `${src} 가 exclude 에 없다 → 워커로 가서 SPA 셸이 나간다`).toContain(src)
+  })
+
+  it('홈 화면 아이콘 후보에 파비콘 SVG 를 섞지 않는다 (크롬이 SVG 를 우선 골라 앱 아이콘이 가려진다)', () => {
+    expect(MANIFEST.icons.some(i => i.src.endsWith('.svg'))).toBe(false)
+  })
+})
