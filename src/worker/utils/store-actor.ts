@@ -50,6 +50,8 @@ export interface StoreActor {
   operatorUserId: number | null
   /** 소유자(또는 매장 자기 계정)인가 — 민감 정보 게이트의 기준. */
   isOwner: boolean
+  /** 🏢 에이전시 직원 좌석인가 — 소비자 사람이 없다. 사람을 요구하는 기능(카카오 연결 등)은 거절한다. */
+  isAgency?: boolean
 }
 
 export async function resolveStoreActor(
@@ -61,7 +63,7 @@ export async function resolveStoreActor(
   if (!authorization || !authorization.startsWith('Bearer ')) return none
   let p: {
     type?: string; seller_id?: number; iat?: number; seat_user_id?: unknown
-    operator_user_id?: unknown; store_role?: unknown
+    operator_user_id?: unknown; store_role?: unknown; agency_staff_id?: unknown
   }
   try {
     p = await verify(authorization.substring(7), jwtSecret, 'HS256') as typeof p
@@ -74,6 +76,9 @@ export async function resolveStoreActor(
   const opRaw = Number(p.operator_user_id)
   const operatorUserId = Number.isFinite(opRaw) && opRaw > 0 ? opRaw : null
 
+  // 🏢 에이전시 좌석은 **claim 만으로** 판정한다 — 살아 있든·끊겼든·D1 이 흔들리든 소유자가 아니고 사람도 없다.
+  //   (판정 결과에 기대면 D1 오류 순간에 아래 폴백으로 새어 나간다.)
+  if (p.agency_staff_id != null) return { sellerId, operatorUserId: null, isOwner: false, isAgency: true }
   // 🔐 지금 살아 있는 좌석인가 — 미들웨어와 같은 판정(SSOT). 모르면 소유자가 아니다.
   const seat = await verifyStoreSeat(DB, p)
   if (seat.kind !== 'live') return { sellerId, operatorUserId, isOwner: false }

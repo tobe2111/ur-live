@@ -205,6 +205,8 @@ export default defineConfig({
           //   (실측: 홈 modulepreload 에 app-seller-components 가 올라 있었다).
           //   ⚠️ 이 줄을 지우면 그 65KB 가 곧바로 돌아온다. 가드: check-critical-chunks.
           if (id.includes('/src/shared/seller-roles')) return 'app-shared'
+          // 🏢 2026-10-11: 에이전시 좌석 판정 — 공용 부품(SellerKakaoLinkBanner)이 쓴다. 셀러 청크에 두면 소비자 화면으로 샌다.
+          if (id.includes('/src/shared/agency-seat-token')) return 'app-shared'
           // 🪟 2026-09-26: 마이 시트 임베드 신호(순수 React context, ~1KB)도 **공유**다 —
           //   `SellerLayout`(셀러 봉투)과 마이 시트가 **같은 모듈**을 봐야 한다. 셀러 봉투에 두면
           //   마이가 그걸 읽는 순간 83.8KB 를 통째로 끌고 온다(위 `seller-roles` 와 정확히 같은 함정).

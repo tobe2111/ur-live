@@ -5,6 +5,7 @@
  *   보존(잠금 로딩 최적화) — 이동만, 로직 byte-불변.
  */
 import { memo, useState } from 'react'
+import { cardImageAlt } from '@/utils/deal-title'
 import { GiftBoxIcon, HomeIcon, BagIcon, StoreIcon, TicketStubIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import { BookOpen, Clapperboard, Coffee, Croissant, Drumstick, Fuel, Gamepad2, HardDrive, IceCreamCone, Music, Pizza, Plug, RadioTower, Sandwich, Shirt, Smartphone, Soup, Sparkle, Utensils, Wrench, type LucideIcon } from 'lucide-react'
@@ -68,7 +69,8 @@ export const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: Vouc
             src={cfImage(p.image_url, { width: 300, format: 'auto' }) || p.image_url}
             srcSet={cfSrcSet(p.image_url, 300) || undefined}
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 300px"
-            alt={p.name}
+            /* 🔎 2026-10-11 SEO: 사진에 붙는 유일한 이름 — 브랜드를 함께 싣는다. */
+            alt={cardImageAlt(p.name, p.brand_name)}
             width={300}
             height={300}
             loading={aboveFold ? 'eager' : 'lazy'}
@@ -156,7 +158,8 @@ export const VoucherRow = memo(function VoucherRow({ p, aboveFold }: { p: Vouche
           src={cfImage(p.image_url, { width: 240, format: 'auto' }) || p.image_url}
           srcSet={cfSrcSet(p.image_url, 240) || undefined}
           sizes="120px"
-          alt={p.name}
+          /* 🔎 2026-10-11 SEO: 위 카드와 같은 규칙. */
+          alt={cardImageAlt(p.name, p.brand_name)}
           width={240}
           height={240}
           loading={aboveFold ? 'eager' : 'lazy'}

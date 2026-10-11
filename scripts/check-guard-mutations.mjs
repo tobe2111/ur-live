@@ -1473,7 +1473,7 @@ const MUTATIONS = [
   {
     name: '🧵 상세 감시 <img> 의 isDesktop 게이트를 없애 폰이 PC 폭(1200)·썸네일(600×2)을 도로 받는다',
     file: 'src/pages/group-buy/DetailGallery.tsx',
-    find: "    if (!isDesktop) {\n      list.push({ src: main, url: heroUrl(main, DETAIL_HERO_MOBILE_WIDTH) })\n      return list\n    }\n",
+    find: '    if (!isDesktop) return list\n',
     replace: '',
     test: 'src/tests/unit/detail-image-continuity.test.ts',
     why: '2026-09-02 라이브 워터폴: 폰에서 화면에 없는 1200 폭 179KB 가 첫 사진과 대역폭을 나눴다.',

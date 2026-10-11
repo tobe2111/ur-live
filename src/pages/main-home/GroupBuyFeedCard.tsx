@@ -15,7 +15,7 @@ import { extractDominantColor, reportDominantColor } from '@/utils/dominant-colo
 import { usePrefetchGroupBuyProduct } from '@/hooks/queries'
 import { canonicalDetailPath } from '@/shared/product-flow'
 import FcfsBadge from '@/features/group-buy/FcfsBadge'
-import { stripStorePrefix } from '@/utils/deal-title'
+import { stripStorePrefix, cardImageAlt } from '@/utils/deal-title'
 import StarRating from '@/components/deal/StarRating'
 import { dealCategoryMeta } from '@/shared/deal-category-icon'
 import type { FcfsInfo } from '@/features/group-buy/useFcfs'
@@ -237,7 +237,9 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
       <DealCardMedia
         cover={p.image_url}
         images={p.images}
-        alt={p.name || cat.label}
+        /* 🔎 2026-10-11 SEO: 사진에 붙는 유일한 이름이라 **매장명을 함께** 싣는다
+           (종전 `p.name` 은 "주말 1박 숙박권" 처럼 호텔 수십 곳이 공유하는 문자열이었다). */
+        alt={cardImageAlt(p.name, p.restaurant_name, cat.label)}
         eager={aboveFold}
         /* 🐘 2026-08-27 (대표 신고 — "메인 로딩 너무 느려, 가까운 동네 딜 특히"): 여기가 `pc ? 400 : 300`
            이었다. `pc` 는 **카드 룩**(그라데이션·글자색) 플래그인데 이미지 해상도까지 겸하고 있었고,

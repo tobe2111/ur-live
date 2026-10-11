@@ -38,11 +38,18 @@ const CARD = code(read('src/components/deal/DealCardMedia.tsx'))
 const WORKER = read('src/worker/index.ts')
 
 describe('① 히어로 URL 은 한 함수에서 나온다', () => {
-  it('모바일 슬라이드와 감시 <img> 가 같은 heroUrl(=SSOT) 을 같은 폭으로 부른다', () => {
+  it('모바일 히어로 URL 은 SSOT 한 함수에서만 나온다', () => {
+    // 🔀 2026-10-11 재조준: 종전엔 **두 곳**(슬라이드 배경 + 숨은 감시 <img>)이 같은 호출이어야
+    //    한다고 셌다. 이제 슬라이드를 진짜 <img> 로 그리므로 **그리는 곳과 감시하는 곳이 한 자리**다
+    //    — 드리프트가 규약이 아니라 구조로 불가능해졌다(그래서 하한이 2 → 1 이 됐다. 느슨해진 게
+    //    아니라 셀 자리가 하나로 합쳐진 것이다). 지키는 것은 그대로: **폭을 손으로 적지 않는다**.
     expect(GALLERY).toMatch(/const heroUrl = detailHeroMobileUrl/)
     const calls = GALLERY.match(/heroUrl\((?:src|main), DETAIL_HERO_MOBILE_WIDTH\)/g) || []
-    expect(calls.length, '슬라이드·감시 두 곳이 같은 호출이어야 한다').toBeGreaterThanOrEqual(2)
+    expect(calls.length, '모바일 히어로를 SSOT 로 안 만든다').toBeGreaterThanOrEqual(1)
     expect(GALLERY, '옛 숫자 리터럴 폭이 남아 있다 — SSOT 와 갈린다').not.toMatch(/heroUrl\(\w+, \d+\)/)
+    // 그리는 <img> 와 배경 윗겹이 **같은 변수**여야 한 번만 받는다.
+    expect(GALLERY).toMatch(/src=\{hi\}/)
+    expect(GALLERY).toMatch(/backgroundImage:\s*hi\s*\?\s*layered\(hi,\s*src\)/)
   })
 
   it('워커 preload(폰) === 슬라이드 URL, 그리고 3:2 크롭이 실려 있다', () => {
@@ -66,14 +73,17 @@ describe('① 히어로 URL 은 한 함수에서 나온다', () => {
 })
 
 describe('② 폰은 화면에 없는 PC 폭을 받지 않는다', () => {
-  it('감시 <img> 목록이 isDesktop 으로 갈리고, 모바일 분기는 히어로 한 장뿐이다', () => {
+  it('감시 <img> 목록이 isDesktop 으로 갈려 폰에서는 PC 폭이 하나도 안 들어간다', () => {
+    // 🔀 2026-10-11 재조준: 모바일 감시 분기가 **사라졌다** — 슬라이드가 진짜 <img> 라 자기
+    //    onError 로 스스로 감시한다. 지키는 것은 그대로: **폰이 1200·600×2 를 받지 않는다.**
     const at = GALLERY.indexOf('const probes = useMemo(')
     expect(at).toBeGreaterThan(0)
     const body = GALLERY.slice(at, GALLERY.indexOf('}, [', at))
-    expect(body, 'isDesktop 게이트가 없다 — 폰이 1200·600×2 를 받는다').toMatch(/if \(!isDesktop\) \{/)
-    const mobile = body.slice(body.indexOf('if (!isDesktop) {'), body.indexOf('return list', body.indexOf('if (!isDesktop) {')))
-    expect(mobile).toMatch(/heroUrl\(main, DETAIL_HERO_MOBILE_WIDTH\)/)
-    expect(mobile).not.toMatch(/DETAIL_HERO_DESKTOP_WIDTH|DETAIL_THUMB_WIDTH/)
+    expect(body, 'isDesktop 게이트가 없다 — 폰이 1200·600×2 를 받는다').toMatch(/if \(!isDesktop\)/)
+    // 게이트 **앞**에서는 어떤 PC 폭도 목록에 못 들어간다(그 뒤는 PC 전용이라 들어가도 된다).
+    const beforeGate = body.slice(0, body.indexOf('if (!isDesktop)'))
+    expect(beforeGate).not.toMatch(/DETAIL_HERO_DESKTOP_WIDTH|DETAIL_THUMB_WIDTH|pcHeroUrl|pcThumbUrl/)
+    expect(body, '모바일에서 즉시 반환하지 않으면 아래 PC 폭까지 흘러간다').toMatch(/if \(!isDesktop\) return list/)
     expect(GALLERY).toMatch(/useMediaQuery\(DETAIL_DESKTOP_QUERY\)/)
   })
 })

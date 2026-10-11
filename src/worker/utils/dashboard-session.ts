@@ -42,9 +42,15 @@ export const SINGLE_SESSION_ROLES: ReadonlySet<string> = new Set([
  */
 export function deriveDashboardSeat(p: {
   type?: unknown; sub?: unknown; userId?: unknown;
-  sub_account_id?: unknown; member_id?: unknown; operator_user_id?: unknown;
+  sub_account_id?: unknown; member_id?: unknown; operator_user_id?: unknown; agency_staff_id?: unknown;
 }): { role: string; id: number } | null {
   const toId = (v: unknown): number => Number(typeof v === 'string' ? v : v as number)
+  // 🏢 2026-10-11 에이전시 좌석 — 직원(agency_staff.id) 시트. ('seller', 매장) 시트를 쓰면 직원이 들어올 때
+  //   그 매장 사장님 세션과 같은 키를 다투게 된다. 강제 대상 목록엔 없다(직원이 여러 창에서 매장을 오간다).
+  if (p.agency_staff_id != null) {
+    const id = toId(p.agency_staff_id)
+    return Number.isFinite(id) && id > 0 ? { role: 'seller_agency', id } : null
+  }
   // 🏪 2026-08-19 매장 운영자(store-operator-model.md 2단계) — **소유자와 시트를 나눈다.**
   //   안 나누면 운영자가 매장 B 로 전환하는 순간 시트가 ('seller', B) 라 **그 매장 사장님이
   //   튕긴다**(SESSION_SUPERSEDED). 운영자는 자기 계정(user id) 시트를 쓰므로 서로 안 밀어낸다.

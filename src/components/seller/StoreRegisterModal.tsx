@@ -45,7 +45,7 @@ import { readStoreReferrer, clearStoreReferrer } from '@/utils/store-referrer'
 import { enterStoreSeat } from '@/utils/enter-store'
 import { toast } from '@/hooks/useToast'
 import { Loader2, MapPin, CheckCircle2, XCircle, BadgeCheck, FileImage, ArrowLeft, X } from 'lucide-react'
-import ManualPlaceForm from './ManualPlaceForm'
+import ManualPlaceForm from './ManualPlaceForm'; import BrokeredViaAgencyNote, { PERSONAL_BROKER_SIGNUP_DISABLED, BROKERED_VIA_AGENCY_MSG } from './BrokeredViaAgencyNote' // 🏢 2026-10-11
 import { TERMS_CURRENT_VERSION } from '@/pages/terms/terms-types'
 
 export interface RegisterPlace {
@@ -201,6 +201,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
     }
     if (i === 2) {
       if (!channel) return '둘 중 하나를 골라주세요'
+      if (channel === 'brokered' && PERSONAL_BROKER_SIGNUP_DISABLED) return BROKERED_VIA_AGENCY_MSG // 🏢 2026-10-11 대신 등록은 에이전시 계정으로
       if (channel === 'brokered') {
         const share = brokerShare === '' ? 0 : Number(brokerShare)
         const cap = infCap === '' ? null : Number(infCap)
@@ -462,17 +463,16 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
             <div className="grid grid-cols-2 gap-2">
               <button onClick={() => setChannel('direct')}
                 className={`p-3 rounded-xl border text-left transition ${channel === 'direct' ? 'border-brand bg-[#EAF1FE]' : 'border-gray-200 hover:bg-gray-50'}`}>
-                <p className="text-sm font-bold text-gray-900">내 가게에요</p>
-                <p className="text-[11px] text-gray-500 mt-0.5">제가 사장이고, 직접 운영해요</p>
+                <p className="text-sm font-bold text-gray-900">내 가게에요</p><p className="text-[11px] text-gray-500 mt-0.5">제가 사장이고, 직접 운영해요</p>
               </button>
               <button onClick={() => setChannel('brokered')}
                 className={`p-3 rounded-xl border text-left transition ${channel === 'brokered' ? 'border-brand bg-[#EAF1FE]' : 'border-gray-200 hover:bg-gray-50'}`}>
-                <p className="text-sm font-bold text-gray-900">중개·대행사에요</p>
-                <p className="text-[11px] text-gray-500 mt-0.5">사장님을 대신해 등록·관리해요</p>
+                <p className="text-sm font-bold text-gray-900">중개·대행사에요</p><p className="text-[11px] text-gray-500 mt-0.5">{PERSONAL_BROKER_SIGNUP_DISABLED ? '에이전시 계정으로 등록해요' : '사장님을 대신해 등록·관리해요'}</p>
               </button>
             </div>
             {/* 💸 중개 매장의 두 요율 — 매장 몫 안에서 나간다. 인플루언서 % 는 여기 상한 안에서 케이스별로 정한다. */}
-            {channel === 'brokered' && (
+            {channel === 'brokered' && PERSONAL_BROKER_SIGNUP_DISABLED && <BrokeredViaAgencyNote />}
+            {channel === 'brokered' && !PERSONAL_BROKER_SIGNUP_DISABLED && (
               <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 space-y-2">
                 <p className="text-[12px] font-bold text-gray-900">정산 조건 <span className="font-normal text-gray-500">(나중에 매장 관리에서 바꿀 수 있어요)</span></p>
                 <div className="grid grid-cols-2 gap-2">
