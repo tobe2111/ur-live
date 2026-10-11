@@ -263,7 +263,9 @@ export default defineConfig({
           //   (실측: `/browse` 표면 preload 에 app-seller-components 가 올라 있었다).
           //   ⇒ 소비자 공용 청크로. 셀러 페이지는 app-shared 를 어차피 받는다.
           if (id.includes('/src/lib/seller-tracking')) return 'app-shared'
-          if (id.includes('/src/lib/kakao-sdk')) return 'app-kakao-sdk'
+          // 📱 2026-10-11 카톡 간편로그인 준비 모듈은 SDK 와 같은 봉투로 — app-utils 에 두면 그 정적 import 가
+          //   app-kakao-sdk 를 첫 페인트로 끌고 온다(check-critical-chunks 가 잡았다). 로그인 화면만 쓴다.
+          if (id.includes('/src/lib/kakao-sdk') || id.includes('/src/lib/kakao-talk-login')) return 'app-kakao-sdk'
           // 🖼️ 2026-07-01 [UNLOCK_LOADING] (링크샵 로딩 딥다이브): toss-preload 는 모듈 평가 즉시
           //   Toss SDK CDN 다운로드 + client-key fetch 를 시작하는 사이드이펙트 모듈인데, /src/lib/
           //   catch-all 로 app-utils(전 페이지 공유)에 묶여 **모든 페이지**(링크샵 포함)가 결제 SDK 를
