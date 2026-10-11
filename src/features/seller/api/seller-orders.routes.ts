@@ -40,7 +40,7 @@ type Bindings = {
   ALIGO_API_KEY?: string;
   ALIGO_USER_ID?: string;
   ALIGO_SENDER_KEY?: string;
-  ALIGO_SENDER_PHONE?: string;
+  ALIGO_SENDER_PHONE?: string; ALIGO_SENDER?: string; // 라이브 이름은 ALIGO_SENDER
   ALIGO_TPL_SHIPPING_START?: string;
   ALIGO_TPL_ORDER_CANCEL?: string;
   // 🛡️ 2026-05-20: cacheInvalidate / 세션 조회용 KV 들 (전역 wrangler.toml 바인딩).
@@ -298,7 +298,7 @@ async function handleStatusUpdate(c: Context<{ Bindings: Bindings }>) {
           aligoApiKey: c.env.ALIGO_API_KEY,
           aligoUserId: c.env.ALIGO_USER_ID,
           aligoSenderKey: c.env.ALIGO_SENDER_KEY ?? '',
-          senderPhone: c.env.ALIGO_SENDER_PHONE,
+          senderPhone: c.env.ALIGO_SENDER_PHONE || c.env.ALIGO_SENDER,
           sellerId: order.seller_id,
           receiver: order.shipping_phone,
           receiverName: order.shipping_name ?? '고객',
@@ -457,7 +457,7 @@ sellerOrdersRoutes.put('/orders/:id/tracking', async (c) => {
           aligoApiKey: c.env.ALIGO_API_KEY,
           aligoUserId: c.env.ALIGO_USER_ID,
           aligoSenderKey: c.env.ALIGO_SENDER_KEY ?? '',
-          senderPhone: c.env.ALIGO_SENDER_PHONE,
+          senderPhone: c.env.ALIGO_SENDER_PHONE || c.env.ALIGO_SENDER,
           sellerId: order.seller_id,
           receiver: order.shipping_phone,
           receiverName: order.shipping_name ?? '고객',
@@ -928,7 +928,7 @@ sellerOrdersRoutes.post('/products', async (c) => {
           c.executionCtx.waitUntil(
             (async () => {
               const { getVoucherShortLabel } = await import('../../../shared/constants/voucher-categories');
-              return sendStoreOwnerAlimtalk(c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string }, phone, {
+              return sendStoreOwnerAlimtalk(c.env, phone, {
                 restaurantName, productName: name, statsUrl,
                 categoryLabel: getVoucherShortLabel(body.category as string),
               });
@@ -1323,7 +1323,7 @@ sellerOrdersRoutes.post('/products/:id/resend-store-link', async (c) => {
 
     const statsUrl = `https://urdeal.kr/store/stats/${productId}?t=${token}`;
     const { getVoucherShortLabel } = await import('../../../shared/constants/voucher-categories');
-    await sendStoreOwnerAlimtalk(c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string }, product.restaurant_phone, {
+    await sendStoreOwnerAlimtalk(c.env, product.restaurant_phone, {
       restaurantName: product.restaurant_name || '사장님',
       productName: product.name,
       statsUrl,

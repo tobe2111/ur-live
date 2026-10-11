@@ -265,6 +265,35 @@ adminSystemMonitoringRoutes.post('/alimtalk-failures/:id/retry', async (c) => {
   }
 })
 
+/**
+ * 📨 2026-10-11 알림 발송 시험 — 대표 "응 보내봐". 실제 발송 경로(`sendTextNotice`)를 그대로 타서
+ * 알리고가 받아 주는지 **오늘** 판정한다(실제 판매를 기다리지 않게). 결과에 알리고 오류 원문을 싣는다 —
+ * 발신번호 미등록·IP 제한·잔액 부족을 그 자리에서 가린다. super_admin 만, 가입된 유저 번호로만 보낸다.
+ */
+adminSystemMonitoringRoutes.post('/alimtalk-test-send', async (c) => {
+  const { DB } = c.env
+  try {
+    const me = c.get('user' as never) as { id?: string | number } | undefined
+    const admin = await DB.prepare('SELECT role FROM admins WHERE id = ?').bind(me?.id ?? null).first<{ role: string }>()
+    if (admin?.role !== 'super_admin') return c.json({ success: false, error: 'super_admin 권한이 필요합니다' }, 403)
+    const body = await c.req.json<{ user_id?: unknown }>().catch(() => ({} as { user_id?: unknown }))
+    const userId = Number(body.user_id)
+    if (!Number.isInteger(userId) || userId <= 0) return c.json({ success: false, error: 'user_id 가 필요합니다' }, 400)
+    const user = await DB.prepare('SELECT phone FROM users WHERE id = ?').bind(userId).first<{ phone: string | null }>()
+    if (!user) return c.json({ success: false, error: '유저를 찾을 수 없습니다' }, 404)
+    const { sendTextNotice } = await import('../../../lib/text-notice')
+    const at = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul' })
+    const r = await sendTextNotice(c.env, user.phone, {
+      tpl: 'admin_test_send', title: '유어딜 알림 시험',
+      text: `[유어딜] 알림 발송 시험입니다 (${at}). 이 문자가 보이면 사장님·손님 알림이 정상으로 나갑니다.`,
+    })
+    const tail = String(user.phone ?? '').replace(/[^0-9]/g, '').slice(-4)
+    return c.json({ success: r.ok, result: r, phone_tail: tail || null })
+  } catch (err) {
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
+  }
+})
+
 // ── 🚦 2026-07-05: 운영 게이트 플래그 현황판 + cron heartbeat ──────────────
 //   배경(1인 운영 관측 보강): 검증 대기 게이트(커미션 예산/쇼핑 원장/fee-resolver 등)가
 //   env·platform_settings 에 흩어져 있어 "뭐가 켜져 있고 뭐가 staging 미검증인지" 볼 곳이 없었음.

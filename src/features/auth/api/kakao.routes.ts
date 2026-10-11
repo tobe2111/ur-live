@@ -18,6 +18,7 @@ import { startDashboardSession } from '@/worker/utils/dashboard-session';
 import { encryptAtRest } from '@/worker/utils/data-crypto';
 import type { AuthResponse, KakaoLoginResponse } from '../types';
 import { rateLimit } from '@/worker/middleware/rate-limit';
+import { kakaoLoginScope } from '../services/kakao-login-scope';
 
 /**
  * 카카오 로그인 완료 시 linked seller / agency 있으면 자동 JWT 발급.
@@ -163,6 +164,7 @@ type Bindings = {
   // 🛡️ 2026-06-20 (OIDC): '1' 이면 openid scope 요청 + id_token fast path 사용.
   //   콘솔 OpenID Connect 활성화와 짝. 미설정 시 기존 getUserInfo 경로(동작 동일).
   KAKAO_OIDC_ENABLED?: string;
+  KAKAO_CHANNEL_ADD_ENABLED?: string;
   // 🛡️ 2026-05-01: FIREBASE_* env vars 제거 — KR Kakao 흐름에서 미사용.
 };
 
@@ -399,12 +401,9 @@ kakaoRoutes.get('/start', rateLimit({ action: 'kakao_start', max: 30, windowSec:
   authUrl.searchParams.set('response_type', 'code');
   authUrl.searchParams.set('state', state);
   // 🛡️ 2026-06-20 (OIDC 속도 최적화 — env 플래그 게이트): KAKAO_OIDC_ENABLED 켜진 경우에만
-  //   openid scope 요청 → 토큰 응답에 id_token 동봉 → 콜백이 getUserInfo 왕복 1회 생략.
-  //   profile/email 도 명시 요청해 getUserInfo 폴백도 동의 유지(콘솔 OIDC 미활성 시 카카오가
-  //   openid 거부하므로 반드시 콘솔 ON 후 플래그 ON). 미설정이면 기존 동작 100% 동일(scope 미전송).
-  if (c.env.KAKAO_OIDC_ENABLED) {
-    authUrl.searchParams.set('scope', 'openid,account_email,profile_nickname,profile_image');
-  }
+  //   openid scope → id_token 동봉 → getUserInfo 왕복 생략(콘솔 OIDC ON 후 플래그 ON). 규칙: services/kakao-login-scope.ts
+  const loginScope = kakaoLoginScope(c.env); // 📢 KAKAO_CHANNEL_ADD_ENABLED 면 plusfriends(채널 추가) 포함
+  if (loginScope) authUrl.searchParams.set('scope', loginScope);
   // 🛡️ 2026-05-01 (REVISED v2): prompt=login 강제 OFF — 일상 사용자 UX 우선.
   //   대신 토스트 + 전환 버튼으로 잘못된 로그인 즉시 인지 가능.
   //   force_account=1 query 일 때만 prompt=login 활성 (마이페이지 '다른 계정으로 로그인' 버튼).

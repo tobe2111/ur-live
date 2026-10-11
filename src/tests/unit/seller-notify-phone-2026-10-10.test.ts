@@ -66,11 +66,15 @@ describe('① 번호 고르기', () => {
 })
 
 describe('② 판매 알림 — 첫 판매 한 번(CAS) · 그 뒤 건별', () => {
-  const fetchMock = vi.fn(async () => new Response('{}'))
+  // 📨 2026-10-11: 발송이 솔라피 → 알리고 문자(승인 템플릿 없음)로 바뀌었다 — 본문은 form(receiver·msg).
+  const fetchMock = vi.fn(async () => new Response('{"result_code":"1","message":"success"}'))
   beforeEach(() => { fetchMock.mockClear(); vi.stubGlobal('fetch', fetchMock) })
   afterEach(() => vi.unstubAllGlobals())
-  const env = { ALIMTALK_API_KEY: 'k', ALIMTALK_SENDER_KEY: 's' }
-  const bodies = () => fetchMock.mock.calls.map(c => JSON.parse(String((c as unknown as [string, { body: string }])[1].body)).message)
+  const env = { ALIGO_API_KEY: 'k', ALIGO_USER_ID: 'u', ALIGO_SENDER: '01099998888' }
+  const bodies = () => fetchMock.mock.calls.map(c => {
+    const f = new URLSearchParams(String((c as unknown as [string, { body: string }])[1].body))
+    return { to: f.get('receiver'), text: f.get('msg') }
+  })
 
   it('첫 판매 → 온보딩 안내 1통, 다음 판매 → 건별 판매 1통(같은 휴대폰)', async () => {
     const { notifySellerVoucherSale } = await import('@/features/group-buy/api/seller-sale-notify')

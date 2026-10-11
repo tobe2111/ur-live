@@ -115,16 +115,14 @@ export async function sendSystemAlimtalk(
   }
 
   try {
-    const { sendAlimtalk } = await import('./aligo');
-    const result = await sendAlimtalk(
-      { ALIGO_API_KEY: apiKey, ALIGO_USER_ID: userId },
-      {
-        senderKey,
-        templateCode,
-        to: cleaned,
-        message,
-      }
-    );
+    // 🔧 2026-10-11: 실제 발송은 `text-notice` 한 곳 — 템플릿이 카카오 검수를 통과했으면 알림톡
+    //   (실패 시 문자로 대체), 아니면 문자. 종전엔 틀린 주소로 알림톡만 시도해 **성공 0건**이었다.
+    //   실패 기록도 그쪽이 남긴다(재시도 큐는 알림톡 템플릿으로 다시 보내므로 여기서 태우지 않는다).
+    const { sendTextNotice } = await import('./text-notice');
+    const sent = await sendTextNotice(e, cleaned, { tpl: templateCode, title: '유어딜 알림', text: message });
+    const result: { success: boolean; error?: string } = sent.ok
+      ? { success: true }
+      : { success: false, error: 'error' in sent ? sent.error : sent.skipped };
 
     // 🛡️ 2026-05-12: 성공 시 dispatch_log + 일일 budget 카운트 (dedup/rate-limit/cost cap).
     if (result.success && db) {
@@ -132,7 +130,7 @@ export async function sendSystemAlimtalk(
         const phoneHash = await hashShort(cleaned);
         const messageHash = await hashShort(message);
         await db.prepare(`
-          INSERT INTO alimtalk_dispatch_log (phone_hash, template_code, message_hash)
+          INSERT OR IGNORE INTO alimtalk_dispatch_log (phone_hash, template_code, message_hash)
           VALUES (?, ?, ?)
         `).bind(phoneHash, templateCode, messageHash).run();
         const today = new Date().toISOString().slice(0, 10);
@@ -141,31 +139,6 @@ export async function sendSystemAlimtalk(
           ON CONFLICT(day) DO UPDATE SET sent_count = sent_count + 1, updated_at = CURRENT_TIMESTAMP
         `).bind(today).run();
       } catch { /* 카운트 실패해도 발송 결과 반환 */ }
-    }
-
-    // 🛡️ 2026-05-07: 발송 실패 시 retry queue 에 영구 기록 — cron 이 재시도.
-    //   원인: silent fail 시 critical 알림 (정산/주문/선물) 사용자에게 영원히 안 감.
-    //   처리: alimtalk_failures 테이블 INSERT → retry-alimtalk cron 이 5분 주기로 retry (최대 3회).
-    if (!result.success) {
-      if (db) {
-        try {
-          await db.prepare(`
-            CREATE TABLE IF NOT EXISTS alimtalk_failures (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              phone TEXT NOT NULL, template_code TEXT NOT NULL, message TEXT NOT NULL,
-              error TEXT, retry_count INTEGER DEFAULT 0, max_retries INTEGER DEFAULT 3,
-              next_retry_at DATETIME DEFAULT (datetime('now', '+5 minutes')),
-              resolved INTEGER DEFAULT 0,
-              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-          `).run();
-          await db.prepare(`
-            INSERT INTO alimtalk_failures (phone, template_code, message, error)
-            VALUES (?, ?, ?, ?)
-          `).bind(cleaned, templateCode, message.slice(0, 1000), result.error?.slice(0, 500) || 'unknown').run();
-        } catch { /* 큐 INSERT 실패해도 원본 결과 반환 */ }
-      }
     }
 
     return result;
