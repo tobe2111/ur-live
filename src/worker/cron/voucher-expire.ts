@@ -88,8 +88,10 @@ export async function runMealVoucherExpireCron(env: Env): Promise<{ d30: number;
         '/my-vouchers',
       ).run().catch(() => { /* table/컬럼 없으면 silent */ })
 
-      // 2. 카카오 알림톡 — 등록 본문과 글자까지 같아야 한다(docs/alimtalk-register-list.md).
-      if (r.user_phone) {
+      // 2. 카카오 알림톡 — **30일 전 한 번만**(2026-10-11 대표 "30일 전만 하지뭐" — 7·3·1일 전은 앱 알림만).
+      //    30일 전은 공정위 신유형 상품권 표준약관의 '유효기간 도래 30일 전 통지' 자리라 남긴다.
+      //    등록 본문과 글자까지 같아야 한다(docs/alimtalk-register-list.md).
+      if (r.user_phone && daysLeft === 30) {
         const message =
           `[유어딜] 이용권 유효기간 안내\n\n` +
           `${productName}${where} 이용권이 ${daysLeft}일 후 만료됩니다.\n\n` +

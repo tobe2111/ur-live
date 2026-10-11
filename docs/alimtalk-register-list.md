@@ -26,27 +26,25 @@
 | 1 | `voucher_issued` | 손님 | 이용권 결제 직후 |
 | 2 | `seller_voucher_sold` | 사장님 | 이용권이 팔릴 때(두 번째 판매부터) |
 | 3 | `seller_first_voucher` | 사장님 | 첫 이용권이 팔렸을 때(1회) |
-| 4 | `voucher_used` | 손님 | 매장에서 사용 처리됐을 때 |
-| 5 | `seller_voucher_used` | 사장님 | 손님이 셀프로 사용 처리했을 때 |
-| 6 | `voucher_refunded` | 손님 | 환불 완료 |
-| 7 | `voucher_expire_soon` | 손님 | 만료 30·7·3·1일 전 |
-| 8 | `seller_approved` | 사장님 | 매장 승인 |
-| 9 | `seller_reactivated` | 사장님 | 계정 재활성화 |
-| 10 | `business_registration_verified` | 사장님 | 사업자등록증 승인 |
-| 11 | `business_registration_rejected` | 사장님 | 사업자등록증 반려 |
-| 12 | `seller_bank_changed` | 사장님 | 정산 계좌 변경(보안 알림) |
-| 13 | `payout_completed` | 사장님·에이전시·유저 | 정산 송금 완료 |
-| 14 | `commission_withdrawal_approved` | 추천 수익 받는 사람 | 커미션 출금 승인 |
-| 15 | `commission_withdrawal_rejected` | 추천 수익 받는 사람 | 커미션 출금 거절 |
-| 16 | `fcfs_selected` | 손님 | 체험단 선정 |
-| 17 | `fcfs_replacement` | 손님 | 체험단 예비 순번 승계 |
-| 18 | `appointment_user_confirmed` | 손님 | 예약 확정 |
-| 19 | `appointment_reminder_user` | 손님 | 예약 전날 |
-| 20 | `appointment_seller_new` | 사장님 | 새 예약 |
-| 21 | `appointment_reminder_seller` | 사장님 | 예약 전날 |
-| 22 | `appointment_noshow_alert` | 사장님 | 노쇼 의심 |
-| 23 | `store_owner_stats_link` | 사장님 | 매장 전용 현황 링크 안내 |
+| 4 | `voucher_refunded` | 손님 | 환불 완료 |
+| 5 | `voucher_expire_soon` | 손님 | 만료 **30일 전 한 번** |
+| 6 | `seller_approved` | 사장님 | 매장 승인 |
+| 7 | `seller_reactivated` | 사장님 | 계정 재활성화 |
+| 8 | `business_registration_verified` | 사장님 | 사업자등록증 승인 |
+| 9 | `business_registration_rejected` | 사장님 | 사업자등록증 반려 |
+| 10 | `seller_bank_changed` | 사장님 | 정산 계좌 변경(보안 알림) |
+| 11 | `payout_completed` | 사장님·에이전시·유저 | 정산 송금 완료 |
+| 12 | `commission_withdrawal_approved` | 추천 수익 받는 사람 | 커미션 출금 승인 |
+| 13 | `commission_withdrawal_rejected` | 추천 수익 받는 사람 | 커미션 출금 거절 |
+| 14 | `fcfs_selected` | 손님 | 체험단 선정(기한 내 결제해야 함) |
+| 15 | `fcfs_replacement` | 손님 | 체험단 예비 순번 승계 |
+| 16 | `appointment_reminder_user` | 손님 | 예약 전날 |
+| 17 | `appointment_seller_new` | 사장님 | 새 예약 |
+| 18 | `appointment_noshow_alert` | 사장님 | 노쇼 의심 |
 | (시험) | `admin_test_send` | 대표 | 어드민 시험 발송 |
+
+> 🔕 **2026-10-11 대표 결정으로 알림톡을 보내지 않는 5개**는 맨 아래 "알림톡을 보내지 않는 것" 표에 있다(앱 알림만 나간다).
+> 이용권 1장이 팔리고 쓰이면 알림톡은 **2통**(손님 발급 + 사장님 판매)만 나간다. 안 쓰고 묵히면 30일 전 안내 1통이 더 붙는다.
 
 카테고리는 손님 알림 = **주문/예약**, 사장님 가입·승인 = **회원**, 정산·송금 = **거래**, 예약 = **주문/예약** 으로 고르면 된다.
 메시지 유형은 전부 **기본형**.
@@ -72,31 +70,14 @@ https://urdeal.kr/my-vouchers
 - `#{이용권종류}` 예: 이용권 · `#{유효기간}` 예: `2026. 12. 31.까지` 또는 `제한 없음`
 - 교환권(기프티콘, 딜 결제)에는 보내지 않는다(기프티콘은 바코드로 쓴다 — 코드가 거른다).
 
-### 4. `voucher_used` — 이용권 사용 완료
-```
-[유어딜] ✅ #{이용권종류} 사용 완료
-
-#{매장명}
-"#{상품명}"
-사용 시각: #{사용시각}
-
-이용해 주셔서 감사합니다.
-
-후기 남기기:
-https://urdeal.kr/my-vouchers
-
-문의: 유어딜 고객센터
-```
-- `#{사용시각}` 예: `오후 07:30` (값이 없으면 `-`)
-
-### 6. `voucher_refunded` — 환불 완료
+### 4. `voucher_refunded` — 환불 완료
 ```
 [유어딜] 환불 완료 — #{상품명}
 #{금액}원이 환불 처리되었습니다.
 (딜 결제건은 즉시 잔액 반영, 카드 결제건은 영업일 기준 3~5일 소요)
 ```
 
-### 7. `voucher_expire_soon` — 이용권 유효기간 안내
+### 5. `voucher_expire_soon` — 이용권 유효기간 안내 (30일 전 한 번만)
 ```
 [유어딜] 이용권 유효기간 안내
 
@@ -109,7 +90,7 @@ https://urdeal.kr/my-vouchers
 ```
 - `#{이용권명}` = 상품명(매장이 있으면 `상품명 · 매장명`) · `#{만료일}` 예: `2026-12-31`
 
-### 16. `fcfs_selected` — 체험단 선정
+### 14. `fcfs_selected` — 체험단 선정
 ```
 [유어딜] #{딜이름} 체험단에 선정되셨습니다! 🎉
 
@@ -119,7 +100,7 @@ https://urdeal.kr/my-vouchers
 ```
 - `#{결제경로}` 예: `/group-buy/123` (도메인 뒤에 바로 붙는다 — 사이에 공백 없음)
 
-### 17. `fcfs_replacement` — 체험단 예비 순번 승계
+### 15. `fcfs_replacement` — 체험단 예비 순번 승계
 ```
 [유어딜] #{딜이름} 체험단 참여 기회가 회원님께 넘어왔어요!
 
@@ -128,14 +109,7 @@ https://urdeal.kr/my-vouchers
 확정하기: https://urdeal.kr#{결제경로}
 ```
 
-### 18. `appointment_user_confirmed` — 예약 확정
-```
-[유어딜] 예약 확정 — #{상품명}
-일시: #{예약일} #{시작시각}~#{종료시각}
-예약 확인 / 변경: https://urdeal.kr/my-appointments
-```
-
-### 19. `appointment_reminder_user` — 내일 예약 알림
+### 16. `appointment_reminder_user` — 내일 예약 알림
 ```
 [유어딜] 내일 예약 알림 — #{상품명}
 📅 #{예약일} #{시작시각}~#{종료시각}
@@ -181,37 +155,21 @@ https://urdeal.kr/my-vouchers
 문의: 유어딜 고객센터
 ```
 
-### 5. `seller_voucher_used` — 이용권 사용 처리됨
-```
-[유어딜] ✅ 이용권 사용 처리됨
-
-#{매장명}
-"#{상품명}"
-사용 시각: #{사용시각}
-
-손님이 매장에서 셀프 사용 처리했어요.
-정산은 정산 주기에 맞춰 등록한 계좌로 지급됩니다.
-
-사용 내역: https://urdeal.kr/store/go?s=#{매장번호}&to=orders
-
-문의: 유어딜 고객센터
-```
-
-### 8. `seller_approved` — 매장 승인
+### 6. `seller_approved` — 매장 승인
 ```
 [유어딜] #{이름}님,
 셀러 가입이 승인되었어요!
 지금 바로 판매를 시작해보세요.
 ```
 
-### 9. `seller_reactivated` — 계정 재활성화
+### 7. `seller_reactivated` — 계정 재활성화
 ```
 [유어딜] #{이름}님,
 계정이 다시 활성화되었어요.
 판매를 이어가실 수 있습니다.
 ```
 
-### 10. `business_registration_verified` — 사업자등록증 승인
+### 8. `business_registration_verified` — 사업자등록증 승인
 ```
 [유어딜] 사업자등록증 검증 완료
 
@@ -223,7 +181,7 @@ https://urdeal.kr/my-vouchers
 이제 현금 정산 + 딜 환급이 가능합니다.
 ```
 
-### 11. `business_registration_rejected` — 사업자등록증 반려
+### 9. `business_registration_rejected` — 사업자등록증 반려
 ```
 [유어딜] 사업자등록증 반려
 
@@ -232,28 +190,21 @@ https://urdeal.kr/my-vouchers
 다시 제출해주세요. 검증 완료 후 현금 정산이 가능합니다.
 ```
 
-### 12. `seller_bank_changed` — 정산 계좌 변경
+### 10. `seller_bank_changed` — 정산 계좌 변경
 ```
 [유어딜] #{이름}님, 정산 계좌 정보가 방금 변경되었습니다.
 본인이 변경하지 않았다면 즉시 비밀번호를 변경하고 고객센터에 문의해주세요.
 (보안: 관리자 재확인 전까지 출금이 일시 제한됩니다)
 ```
 
-### 20. `appointment_seller_new` — 새 예약
+### 17. `appointment_seller_new` — 새 예약
 ```
 [유어딜] 신규 예약 — #{상품명}
 #{예약일} #{시작시각}~#{종료시각}
 고객: #{고객명} #{고객전화}
 ```
 
-### 21. `appointment_reminder_seller` — 내일 예약
-```
-[유어딜] 내일 예약 — #{상품명}
-📅 #{예약일} #{시작시각}~#{종료시각}
-고객: #{고객명} #{고객전화}
-```
-
-### 22. `appointment_noshow_alert` — 노쇼 의심
+### 18. `appointment_noshow_alert` — 노쇼 의심
 ```
 [유어딜] 노쇼 의심 — #{상품명}
 📅 #{예약일} #{시작시각}~#{종료시각}
@@ -263,27 +214,11 @@ https://urdeal.kr/my-vouchers
 방문 완료했으면: → 완료 처리
 ```
 
-### 23. `store_owner_stats_link` — 매장 전용 현황 링크
-```
-[유어딜] #{이용권종류} 통계 페이지 안내
-
-안녕하세요, #{매장명} 사장님!
-"#{상품명}" #{이용권종류}이 등록되었습니다.
-
-📊 실시간 발급/사용 현황 확인:
-https://urdeal.kr/store/stats/#{상품번호}?t=#{접속키}
-
-✅ 이 링크는 사장님 전용 영구 링크입니다.
-즐겨찾기에 추가하시면 편하게 확인할 수 있어요.
-
-문의가 있으시면 언제든 연락주세요.
-```
-
 ---
 
 ## 정산·수익 알림
 
-### 13. `payout_completed` — 정산 송금 완료
+### 11. `payout_completed` — 정산 송금 완료
 ```
 [유어딜] 정산 송금 완료
 #{이름} 님 #{금액}원이 #{은행} #{계좌} 계좌로 입금되었습니다.
@@ -291,12 +226,12 @@ TX: #{거래번호}
 ```
 - `#{계좌}` 는 뒤 4자리만(`****1234`)
 
-### 14. `commission_withdrawal_approved` — 추천 커미션 출금 승인
+### 12. `commission_withdrawal_approved` — 추천 커미션 출금 승인
 ```
 [유어딜] 추천 커미션 #{금액}원이 #{은행} #{계좌} 계좌로 송금되었습니다. 입금 확인 후 영수증 확인 부탁드립니다.
 ```
 
-### 15. `commission_withdrawal_rejected` — 추천 커미션 출금 거절
+### 13. `commission_withdrawal_rejected` — 추천 커미션 출금 거절
 ```
 [유어딜] 추천 커미션 출금 신청 #{금액}원이 거절되었습니다.
 사유: #{사유}
@@ -314,6 +249,22 @@ TX: #{거래번호}
 - 이것을 먼저 승인받아 두면, 다른 템플릿을 기다리지 않고 "알림톡이 실제로 폰에 오는지"를 바로 확인할 수 있다.
 
 ---
+
+## 알림톡을 보내지 않는 것 (2026-10-11 대표 "알림톡 안 보내도 되는 것들은 좀 줄여야겠어")
+
+코드 `src/lib/alimtalk-templates.ts` 의 `ALIMTALK_OFF_TEMPLATES` 가 정본이다. **앱 알림·대시보드 벨은 그대로 나가고**, 알림톡만 안 나간다.
+다시 켜려면 그 목록에서 지우고 카카오에 등록하면 된다.
+
+| 우리 이름 | 왜 안 보내나 |
+|---|---|
+| `voucher_used` | 손님이 매장에 서 있다 — 방금 일어난 일을 다시 알릴 필요 없음 |
+| `seller_voucher_used` | 사장님 대시보드 벨로 충분 |
+| `appointment_user_confirmed` | 손님이 예약 화면에서 방금 확인했다 |
+| `appointment_reminder_seller` | 새 예약 때 이미 알림톡을 받았다 |
+| `store_owner_stats_link` | 옛 '매장 전용 링크' — 첫 판매 안내가 같은 일을 한다 |
+
+만료 안내(`voucher_expire_soon`)는 **30일 전 한 번만** 알림톡으로 보낸다. 7·3·1일 전은 앱 알림만 간다.
+만료일이 없는 이용권(무기한)은 안내 자체가 없다.
 
 ## 지금 등록하지 않는 것 (이유)
 

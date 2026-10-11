@@ -18,6 +18,7 @@
  */
 import type { D1Database } from '@cloudflare/workers-types'
 import { sendAlimtalk, sendAligoSms, resolveAligoSender } from './aligo'
+import { isAlimtalkOff } from './alimtalk-templates'
 
 /** 어드민에서 카카오 검수를 통과한 템플릿 코드를 쉼표로 적는 자리. */
 export const APPROVED_TEMPLATES_SETTING = 'alimtalk_approved_templates'
@@ -95,7 +96,7 @@ export function normalizeMobile(phone: unknown): string | null {
 
 export type TextNoticeResult =
   | { ok: true; via: 'alimtalk' | 'sms' }
-  | { ok: false; skipped: 'no_credentials' | 'invalid_phone' | 'template_not_approved' }
+  | { ok: false; skipped: 'no_credentials' | 'invalid_phone' | 'template_not_approved' | 'turned_off' }
   | { ok: false; via: 'alimtalk' | 'sms'; error: string }
 
 /**
@@ -107,6 +108,8 @@ export async function sendTextNotice(
   phone: unknown,
   n: { tpl: string; title: string; text: string; forceAlimtalk?: boolean },
 ): Promise<TextNoticeResult> {
+  // 🔕 대표가 끈 알림(alimtalk-templates.ts ALIMTALK_OFF_TEMPLATES) — 앱 알림만. 놓친 것으로 기록하지도 않는다(의도한 일이다).
+  if (!n.forceAlimtalk && isAlimtalkOff(n.tpl)) return { ok: false, skipped: 'turned_off' }
   const e = (env ?? {}) as Record<string, unknown>
   const apiKey = String(e.ALIGO_API_KEY ?? '')
   const userId = String(e.ALIGO_USER_ID ?? '')

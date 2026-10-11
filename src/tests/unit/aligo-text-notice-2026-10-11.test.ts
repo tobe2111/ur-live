@@ -166,6 +166,13 @@ describe('sendTextNotice — 카톡만(대표 2026-10-11): 승인된 템플릿�
     expect(r.ok).toBe(true)
     expect(calls.find((c) => c.url.endsWith('/alimtalk/send/'))!.body.get('tpl_code')).toBe('UA_1234')
   })
+  it('대표가 끈 알림(ALIMTALK_OFF_TEMPLATES)은 승인돼 있어도 안 나가고, 놓친 것으로 기록하지도 않는다', async () => {
+    const DB = fakeDb('voucher_used=UA_5678', true)
+    const r = await sendTextNotice({ ...ENV, DB }, '01033334444', { tpl: 'voucher_used', title: 't', text: 'x' })
+    expect(r).toEqual({ ok: false, skipped: 'turned_off' })
+    expect(calls).toHaveLength(0)
+    expect(DB.writes).toHaveLength(0)
+  })
 })
 
 describe('사장님 판매 알림이 실제로 알리고에 닿는다', () => {

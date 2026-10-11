@@ -64,6 +64,15 @@ describe('고정 문구', () => {
   })
 })
 
+describe('만료 안내 알림톡은 30일 전 한 번만 (2026-10-11 대표 "30일 전만 하지뭐")', () => {
+  it('발송 조건이 daysLeft === 30 이다(7·3·1일 전은 앱 알림만)', () => {
+    expect(read('src/worker/cron/voucher-expire.ts')).toMatch(/if \(r\.user_phone && daysLeft === 30\) \{/)
+  })
+  it('만료일이 없는 이용권은 대상이 아니다', () => {
+    expect(read('src/worker/cron/voucher-expire.ts')).toMatch(/v\.expires_at IS NOT NULL/)
+  })
+})
+
 describe('교환권(딜 결제)은 이용권 발급 알림을 보내지 않는다', () => {
   it('/join 의 voucher_issued 발송이 deal_only 를 거른다', () => {
     expect(read('src/features/group-buy/api/group-buy.routes.ts'))

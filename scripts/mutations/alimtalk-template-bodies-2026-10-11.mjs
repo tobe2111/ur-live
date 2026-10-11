@@ -36,4 +36,20 @@ export default [
     test: 'src/tests/unit/aligo-text-notice-2026-10-11.test.ts',
     why: '알리고는 등록 시 자기 코드(UA_1234)를 붙인다 — 우리 이름으로 보내면 승인된 템플릿도 없는 템플릿으로 거절된다.',
   },
+  {
+    name: '알림톡 — 만료 안내를 7·3·1일 전에도 알림톡으로 보낸다',
+    file: 'src/worker/cron/voucher-expire.ts',
+    find: 'if (r.user_phone && daysLeft === 30) {',
+    replace: 'if (r.user_phone) {',
+    test: T,
+    why: '대표 확정 "30일 전만" — 나머지 셋은 돈이 드는데 앱 알림이 같은 일을 한다.',
+  },
+  {
+    name: '알림톡 — 대표가 끈 알림도 발송 경로로 들어간다',
+    file: 'src/lib/text-notice.ts',
+    find: "  if (!n.forceAlimtalk && isAlimtalkOff(n.tpl)) return { ok: false, skipped: 'turned_off' }\n",
+    replace: '',
+    test: 'src/tests/unit/aligo-text-notice-2026-10-11.test.ts',
+    why: '끈 알림이 등록돼 있으면 그대로 돈이 나간다.',
+  },
 ]

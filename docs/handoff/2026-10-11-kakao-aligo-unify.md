@@ -80,3 +80,12 @@
   `voucher-expire` cron 도 `sendTextNotice` 경유(직접 호출하면 승인·코드맵 규칙을 우회한다).
 - 다음 첫 액션: 대표가 알리고 IP 를 넓게 등록(아래) + 포인트 충전 → `POST /api/admin/alimtalk-test-send {"user_id":3}` 재시험.
   -99/-101 이 사라지고 템플릿 오류가 나면 IP 통과. 템플릿 승인 후 알리고 코드를 받아 `alimtalk_approved_templates` 에 `이름=코드` 로 적는다(대표 지시 시 세션이 PUT `/api/admin/tools/settings`).
+
+## 알림톡 줄이기 (대표 결정 2026-10-11)
+- 대표: *"한도는 안낮춰도 될 것 같고, 만료 안내는 … 30일 전만 하지뭐 … 알림톡 안보내도 되는 것들은 좀 줄여야겠어."*
+- 하루 한도(`ALIMTALK_DAILY_CAP` 기본 5만)는 **그대로**. ⚠️ 그 한도는 `sendSystemAlimtalk` 경로에만 걸리고 `sendTextNotice` 를 직접 부르는
+  이용권 알림(판매·발급·만료)은 우회한다 — 대표에게 보고했고 낮추지 말라고 해서 손대지 않았다(폭주 방지 장치로서의 구멍은 남아 있다).
+- 만료 안내 알림톡 = **30일 전만**(`voucher-expire.ts` `daysLeft === 30`). 7·3·1일 전은 앱 알림만. 만료일 없는 이용권은 원래 대상 아님.
+- 알림톡 끄는 목록 SSOT `ALIMTALK_OFF_TEMPLATES`(`lib/alimtalk-templates.ts`) — voucher_used · seller_voucher_used ·
+  appointment_user_confirmed · appointment_reminder_seller · store_owner_stats_link. `sendTextNotice` 가 첫 줄에서 거른다(기록도 안 남김).
+  ⇒ 이용권 1장 팔리고 쓰이면 알림톡 2통(발급 + 판매).
