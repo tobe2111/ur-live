@@ -88,7 +88,10 @@ describe('③ 죽어 있던 에러 UI 가 살아난다', () => {
     for (const [f, anchor] of [
       ['src/pages/AddressManagementPage.tsx', 'if (isError)'],
       ['src/pages/InterestListPage.tsx', ') : isError ? ('],
-      ['src/components/main/NotificationDropdown.tsx', ') : isError ? ('],
+      /* 🔁 2026-10-11 재조준 — 알림 목록 몸통이 **공유 패널**로 옮겨갔다(PC 드롭다운·모바일 시트가
+         같은 것을 그린다). 지키려던 것("못 불러옴"과 "없음"을 나눠 말한다)은 그대로 살아 있고
+         자리만 바뀌었다. 셸(드롭다운)에는 더 이상 분기가 없는 게 맞다. */
+      ['src/components/notifications/NotificationPanel.tsx', 'if (isError)'],
     ] as const) {
       expect(readCode(f), `${f}: 에러 분기가 사라졌다`).toContain(anchor)
     }
