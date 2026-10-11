@@ -34,6 +34,9 @@ import GiftVoucherSheet from './GiftVoucherSheet'
 // 🛡️ 2026-05-16: 카카오맵 후기 보너스 제출 버튼 (used voucher 에 노출)
 //   URL 또는 스크린샷 둘 중 하나 제출 → 백엔드가 OCR / 어드민 검증
 
+// 하단 버튼 줄 칸 수 — [공유] + 선물하기? + 취소·환불? (클래스는 리터럴로 둬야 tailwind 가 만든다)
+const ACTION_COLS = ['grid-cols-1', 'grid-cols-2', 'grid-cols-3'] as const
+
 export default function QRModal({ voucher: initialVoucher, onClose }: { voucher: Voucher; onClose: () => void }) {
   const { t } = useTranslation()
   useEscapeKey(onClose)
@@ -413,7 +416,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
               >
                 {t('voucher.useNow', { defaultValue: '현장에서 사용하기' })}
               </button>
-              <div className={`mt-2 grid gap-2 ${['', 'grid-cols-1', 'grid-cols-2', 'grid-cols-3'][1 + (canGift ? 1 : 0) + (canSelfCancel || canRequestRefund ? 1 : 0)]}`}>
+              <div className={`mt-2 grid gap-2 ${ACTION_COLS[(canGift ? 1 : 0) + (canSelfCancel || canRequestRefund ? 1 : 0)]}`}>
                 <button onClick={shareVoucher}
                   className="py-3 rounded-xl border border-rule-strong text-gray-900 dark:text-white text-[13px] font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform">
                   <Share2 className="w-4 h-4" /> {t('voucher.share')}
