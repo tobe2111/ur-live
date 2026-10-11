@@ -22,6 +22,7 @@
  * - 사진이 실제로 한 번만 내려오는지는 브라우저 네트워크 로그가 판정한다(여기선 URL 동치까지).
  */
 import { describe, it, expect } from 'vitest'
+import { shouldRenderMobileFirstScreen } from '@/shared/seo/crawler-ua'
 import fs from 'node:fs'
 import path from 'node:path'
 import { render } from '@testing-library/react'
@@ -312,8 +313,16 @@ describe('유어샵 서버 첫 화면 — 워커 HTML ↔ 진짜 컴포넌트', 
     const cond = m![0]
     // `/u/:handle/p/:id`(핀 귀속 경로)는 같은 슬롯이라 반드시 제외된다
     expect(cond).toContain('^\\/u\\/[A-Za-z0-9_-]{1,40}\\/?$')
-    expect(cond).toContain('isMobileUserAgent')
+    // 🔀 2026-10-11 재조준: 불변식(**PC 에는 안 그린다**) 그대로, 그려 주는 쪽에 색인 크롤러가
+    //   더해졌다 — Yeti 는 유어샵을 6자로 보고 있었다. 동작 판정은 바로 아래 시험이 한다.
+    expect(cond).toContain('shouldRenderMobileFirstScreen')
     expect(w).toContain('curatorFirst || urdealLoaderHtml')
+  })
+
+  it('⑥-2 그 조건을 **동작으로** 잰다 — PC 는 안 그리고 색인 크롤러는 그린다', () => {
+    expect(shouldRenderMobileFirstScreen('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)')).toBe(true)
+    expect(shouldRenderMobileFirstScreen('Mozilla/5.0 (compatible; Yeti/1.1; +http://naver.me/spd)')).toBe(true)
+    expect(shouldRenderMobileFirstScreen('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0.0.0 Safari/537.36')).toBe(false)
   })
 
   it('⑥-1 순서 SSOT 를 페이지와 워커가 **같이** 쓴다(두 벌 금지)', () => {

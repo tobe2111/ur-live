@@ -50,6 +50,25 @@ interface DetailData {
   category?: string
   group_buy_status?: string
   group_buy_deadline?: string
+  // 🏪 2026-10-11 (대표 "특히 이용권 페이지들은 더욱") — 로컬 엔티티용. 전부 시드에 이미 온다.
+  restaurant_phone?: string
+  avg_rating?: number
+  review_count?: number
+}
+
+/**
+ * 🏪 이용권 카테고리 → `LocalBusiness` 하위 타입.
+ *
+ * 구체적인 타입일수록 구글이 업종을 정확히 이해한다(`FoodEstablishment` 는 음식점 리치 결과의
+ * 전제이기도 하다). 모르면 상위 타입으로 — **틀린 업종을 선언하는 것보다 덜 구체적인 쪽이 낫다.**
+ */
+function localBusinessType(category: string | undefined): string {
+  switch (String(category || '')) {
+    case 'meal_voucher': return 'FoodEstablishment'
+    case 'beauty_voucher': return 'HealthAndBeautyBusiness'
+    case 'stay_voucher': return 'LodgingBusiness'
+    default: return 'LocalBusiness'
+  }
 }
 
 /** 절대 URL 이미지로 정규화 (http → 그대로, / 상대 → origin 접두, 그 외 → fallback). */
@@ -106,11 +125,33 @@ export function buildDetailMeta(ssrPayload: string, origin: string, pathname: st
         availability: available ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
         ...(d.seller_name ? { seller: { '@type': 'Organization', name: String(d.seller_name) } } : {}),
       },
-      ...(d.restaurant_lat && d.restaurant_lng ? {
-        ...(d.restaurant_address ? { address: { '@type': 'PostalAddress', streetAddress: String(d.restaurant_address), addressCountry: 'KR' } } : {}),
-        geo: { '@type': 'GeoCoordinates', latitude: d.restaurant_lat, longitude: d.restaurant_lng },
-      } : {}),
     }
+    // ⭐ 리뷰가 실제로 있을 때만. 0건에 `ratingValue: 0` 을 선언하면 **평점 0점짜리 상품**이라고
+    //   말하는 셈이고, 구글은 리뷰 없는 aggregateRating 을 정책 위반으로 본다.
+    const rc = Number(d.review_count) || 0
+    const rv = Number(d.avg_rating) || 0
+    if (rc > 0 && rv > 0) {
+      product.aggregateRating = { '@type': 'AggregateRating', ratingValue: Math.round(rv * 10) / 10, reviewCount: rc }
+    }
+
+    // 🏪 2026-10-11 (대표 "특히 이용권 페이지들은 더욱"): **매장을 독립 엔티티로 분리한다.**
+    //   종전에는 `address`·`geo` 가 `Product` 안에 들어 있었는데 — 그 둘은 schema.org 의 Product
+    //   표준 속성이 **아니라서** 구글이 그냥 버린다(에러가 안 나서 몇 달간 몰랐다). 즉 우리 이용권이
+    //   "전주 덕진구 가리내10길의 돈가스집" 이라는 사실이 **검색엔진에 한 번도 전달된 적이 없다.**
+    //   로컬 검색(`전주 돈가스 할인`·동네 질의)이 이 서비스의 본류인데 그 신호가 통째로 비어 있었다.
+    //   ⇒ `LocalBusiness` 하위 타입으로 빼고 Offer 가 `availableAtOrFrom` 으로 가리킨다.
+    const bizType = localBusinessType(d.category)
+    const hasPlace = !!(store && (d.restaurant_address || (d.restaurant_lat && d.restaurant_lng)))
+    const placeId = `${canonical}#place`
+    const place = hasPlace ? {
+      '@context': 'https://schema.org', '@type': bizType, '@id': placeId,
+      name: store,
+      ...(d.restaurant_address ? { address: { '@type': 'PostalAddress', streetAddress: String(d.restaurant_address), addressCountry: 'KR' } } : {}),
+      ...(d.restaurant_lat && d.restaurant_lng ? { geo: { '@type': 'GeoCoordinates', latitude: d.restaurant_lat, longitude: d.restaurant_lng } } : {}),
+      ...(d.restaurant_phone ? { telephone: String(d.restaurant_phone) } : {}),
+      ...(d.image_url ? { image: [ogImage] } : {}),
+    } : null
+    if (place) (product.offers as Record<string, unknown>).availableAtOrFrom = { '@id': placeId }
     const breadcrumb = {
       '@context': 'https://schema.org', '@type': 'BreadcrumbList',
       itemListElement: [
@@ -121,7 +162,7 @@ export function buildDetailMeta(ssrPayload: string, origin: string, pathname: st
         { '@type': 'ListItem', position: 3, name, item: canonical },
       ],
     }
-    const jsonLd = escapeScript(JSON.stringify([product, breadcrumb]))
+    const jsonLd = escapeScript(JSON.stringify(place ? [product, place, breadcrumb] : [product, breadcrumb]))
     // 🦦 2026-10-09 (대표 확정 시안 ② · "바꾸기"): 공유 미리보기는 사진 원본이 아니라 **공유 카드**(사진 + 귀퉁이
     //   유달이 + `urdeal.`). JSON-LD 의 image 는 위에서 사진 그대로 둔다 — 검색엔진에겐 상품 사진이 맞다.
     const shareCard = id != null ? passShareCardUrl(id, origin) : ogImage

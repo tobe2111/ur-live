@@ -21,6 +21,8 @@
  * `resolveConsumerSurfaceSeo` 로 갈아끼우면 된다(문구가 두 벌이 되지 않게 반드시 함께).
  */
 
+import { buildBrandJsonLd } from './brand-jsonld'
+
 export interface ConsumerSurfaceSeo {
   /** og/twitter title (사이트명 접미사 **없이**) — `<SEO title>` 에 그대로 넣는 값 */
   title: string
@@ -280,6 +282,12 @@ export interface ResolvedSurfaceSeo {
   canonical: string
   /** true 면 서버에서도 robots noindex */
   noindex?: boolean
+  /**
+   * 이스케이프 완료된 JSON-LD(`applySurfaceMeta` 가 `<script type="application/ld+json">` 로 넣는다).
+   * 🏷️ 2026-10-11: **홈에만** 브랜드(`Organization`+`WebSite`)를 싣는다 — 구글이 사이트 이름을
+   * 그 `WebSite.name` 에서 읽는데 홈 JSON-LD 가 0건이라 `urdeal.kr`(도메인)로 떨어지고 있었다.
+   */
+  jsonLd?: string
 }
 
 /**
@@ -322,5 +330,8 @@ export function resolveConsumerSurfaceSeo(
     description,
     canonical: buildCanonical(origin, path, search, entry.canonicalParams),
     ...(entry.noindex ? { noindex: true } : {}),
+    // 🏷️ 브랜드 JSON-LD 는 **홈에만**(구글은 사이트 이름을 홈페이지의 `WebSite` 에서만 읽는다).
+    //   설명은 위 표의 홈 문구를 그대로 넘겨 조직 설명과 메타가 갈릴 수 없게 한다.
+    ...(path === '/' ? { jsonLd: buildBrandJsonLd(origin, entry.description) } : {}),
   }
 }
