@@ -24,7 +24,7 @@ function sendKakao(v: Voucher, url: string): boolean {
     objectType: 'feed',
     content: {
       title: '이용권 선물이 도착했어요',
-      description: [v.product_name, v.restaurant_name].filter(Boolean).join(' · '),
+      description: [v.product_name, v.restaurant_name].filter(Boolean).join(', '),
       imageUrl: v.product_image && /^https:\/\//.test(v.product_image) ? v.product_image : 'https://urdeal.kr/icons/og-default.png',
       link,
     },
