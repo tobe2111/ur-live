@@ -93,6 +93,10 @@ export default function AccountPcPane({ counts, userName, profileImage, onEditPr
             <span className="block text-[17px] font-extrabold text-gray-900 dark:text-white truncate tracking-[-0.01em]">{userName}</span>
             <span className="block text-[13px] text-gray-500 dark:text-gray-400 truncate mt-1">{localStorage.getItem('user_email') || ''}</span>
           </span>
+          {/* ✏️ 2026-10-11 (대표 — 마이 스크린샷): 맨 `>` 는 무엇이 열리는지 말하지 않는다.
+              ⚠️ **모바일과 같은 자리·같은 모양이어야 한다** — 09-28 에 모바일만 고치고 여기를
+                 빠뜨려 헤더가 두 벌로 갈렸던 그 클래스다(`my-icon-system` 시험이 그걸 지킨다). */}
+          <span className="shrink-0 text-[12px] font-semibold text-gray-500 dark:text-gray-400">{t('userProfile.editProfile', { defaultValue: '프로필 편집' })}</span>
           <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
         </button>
         <SellerSwitchInline seats={sellerSeats} />
