@@ -287,7 +287,7 @@ import { referralRoutes } from '../features/referral/api/referral.routes';
 //   (typeof navigator/window 가드 보유라 워커 안전). URL 이 클라 렌더값과 byte-일치해야 preload 적중.
 import { cfImage, cfSrcSet } from '../utils/cf-image';
 // 🖼️ 홈 첫 화면 카드 사진 preload — 링크 생성은 헬퍼가 한다(파일 크기 래칫 + 직접 테스트 용이).
-import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; // 한 줄: 파일크기 래칫 안
+import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; import { brandJsonLdScript } from '../shared/seo/brand-jsonld'; // 한 줄: 파일크기 래칫 안
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -2476,7 +2476,7 @@ app.get('*', async (c) => {
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
 
-  // 메타 태그가 포함된 최소 HTML 반환
+  // 메타 + 브랜드 JSON-LD 가 포함된 최소 HTML 반환(브랜드 노드는 `index.html` 쪽과 상호배타 — brand-jsonld.ts 머리말)
   const html = `<!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -2498,7 +2498,7 @@ app.get('*', async (c) => {
 <meta name="twitter:image" content="${esc(og.image)}" />
 <meta name="robots" content="index, follow" />
 <meta name="naver-site-verification" content="7be066f6c7f451d994e3a5482aa76f87e96c3c2f" />
-</head>
+${brandJsonLdScript()}</head>
 <body>
 <div id="root"></div>
 <!-- 🛡️ 2026-04-28: window.location.href 제거. 이전 코드: 같은 URL redirect →
