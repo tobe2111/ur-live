@@ -80,6 +80,10 @@ describe('① 카톡 간편로그인', () => {
     expect(lib).toMatch(/state: t\.state/)
     expect(lib).toMatch(/ready = null \/\/ state 는 1회용|ready = null/)
   })
+  it('준비 모듈은 SDK 봉투로 — 공용 청크에 두면 SDK 가 첫 페인트에 실린다(critical-chunks)', () => {
+    const vite = readCode('vite.config.ts')
+    expect(vite).toMatch(/id\.includes\('\/src\/lib\/kakao-talk-login'\)\) return 'app-kakao-sdk'/)
+  })
   it('폰 일반 브라우저만 — 다른 앱 안 브라우저(카톡·인스타 등)는 종전 방식', () => {
     const lib = readCode('src/lib/kakao-talk-login.ts')
     expect(lib).toMatch(/return \(isAndroid\(\) \|\| isIOS\(\)\) && detectInAppBrowser\(\) === null/)
