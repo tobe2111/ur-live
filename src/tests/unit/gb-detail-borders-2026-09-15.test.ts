@@ -72,9 +72,10 @@ describe('남긴 것 — 구분선 7곳 (과잉교정 차단)', () => {
   it('메뉴 행 구분선 2곳', () => {
     expect((MENU.match(/1px solid var\(--gbd-line2\)/g) || []).length).toBe(2)
   })
-  it('이용 안내 행 구분선 4개소 (표 행 2 + 접기 트리거 위·아래)', () => {
+  it('이용 안내 구분선 1개소 (STEP 타일과 유의사항 사이) — 2026-10-11 D안', () => {
+    // 🔁 표 2행 + 접기 트리거가 사라졌다(타일이 같은 말을 한다). 남은 선은 유의사항 위 한 줄.
     // ⚠️ `grep -c` 는 **줄** 수라 한 줄에 둘 있는 경우를 놓친다(첫 판에 2로 썼다가 틀렸다).
-    expect((USAGE.match(/1px solid var\(--gbd-line2\)/g) || []).length).toBe(4)
+    expect((USAGE.match(/1px solid var\(--gbd-line2\)/g) || []).length).toBe(1)
   })
   it('PC 구매 박스 안 구분선', () => {
     expect(BOX).toMatch(/borderTop: '1px solid var\(--gbd-line2\)'/)
@@ -95,7 +96,9 @@ describe('바꾼 것 — outline 컨트롤은 전용 토큰을 쓴다', () => {
     // 🔀 2026-09-24: '셀러 방문' 이 `SellerCard.tsx` 로 옮겨졌다(대표 문서 ① — 가게 소개란 신설로
     //   상세가 파일크기 래칫에 걸려 카드를 추출). **불변식은 넷 다 같은 토큰**이므로 가드를 풀지 않고
     //   옮겨간 자리를 합쳐서 센다 — 한쪽이 토큰을 잃으면 합이 줄어 여전히 빨간불이다.
-    const strong = ((DETAIL + SELLER_CARD).match(/1px solid var\(--rule-strong\)/g) || []).length
+    // 🔁 2026-10-11 (D안): 수량 −/+ 가 구매 창(`DealBottomBar`)으로 옮겨갔다 — 그 자리를 합쳐 센다.
+    const BAR_SRC = stripComments(readFileSync('src/pages/group-buy/DealBottomBar.tsx', 'utf-8'))
+    const strong = ((DETAIL + SELLER_CARD + BAR_SRC).match(/1px solid var\(--rule-strong\)/g) || []).length
     expect(strong, '상세의 outline 컨트롤(수량 −/+ · 셀러 방문)이 토큰을 잃었다').toBe(3)
     expect((SELLER_CARD.match(/1px solid var\(--rule-strong\)/g) || []).length, '셀러 방문 버튼이 토큰을 잃었다').toBe(1)
     expect((STORE.match(/1px solid var\(--rule-strong\)/g) || []).length, '매장 위치 버튼이 토큰을 잃었다').toBe(1)

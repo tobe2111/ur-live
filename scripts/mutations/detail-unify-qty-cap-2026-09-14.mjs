@@ -17,8 +17,9 @@ export default [
   {
     name: '[상세0914] 🎟️ 이용 안내에 매장명(사용처) 행이 되살아난다',
     file: USAGE,
-    find: "    { k: '사용 방법', v: 'QR 제시 · 확인코드' },",
-    replace: "    { k: '사용처', v: '전 지점' },\n    { k: '사용 방법', v: 'QR 제시 · 확인코드' },",
+    // 🔁 2026-10-11 (D안): 표 행이 사라졌다 — 같은 결함을 타일 위 한 줄로 심는다.
+    find: '      <div className="mt-4"><RedeemHowTo /></div>',
+    replace: '      <p>사용처: 전 지점</p>\n      <div className="mt-4"><RedeemHowTo /></div>',
     test: TEST,
     why: '매장명이 제목 위·셀러 카드·위치 카드에서 이미 세 번 나온다. 네 번째는 정보가 아니라 소음이다.',
   },
@@ -34,17 +35,20 @@ export default [
   },
   {
     name: '[상세0914] 🎟️ 수량이 본문 카드에서 다시 하단 바로 내려간다',
-    file: GB,
-    find: '                label="수량"',
+    // 🔁 2026-10-11 (D안): 수량 행이 구매 창(`DealBottomBar`)으로 옮겨갔다.
+    file: 'src/pages/group-buy/DealBottomBar.tsx',
+    find: '              label="수량"',
     replace: '                label="장수"',
     test: TEST,
     why: '숙소 인원 행과 같은 부품·같은 라벨 규약이어야 두 상세가 한 앱으로 읽힌다.',
   },
   {
-    name: '[상세0914] 🎟️ 이용 안내 3단계가 다시 항상 펼쳐진다',
+    // 🔁 2026-10-11 (대표 확정 D안 — "C안의 이용안내 형태"): 불변식이 **뒤집혔다** — 이제 늘 펼친 타일이 정답이고
+    //   다시 **접히는** 것이 결함이다. 같은 자리를 반대 방향으로 지킨다.
+    name: '[상세0914] 🎟️ 이용 안내 3단계가 다시 접힌다 (눌러야 보이는 절차)',
     file: USAGE,
-    find: '  const [howToOpen, setHowToOpen] = useState(false)',
-    replace: '  const [howToOpen, setHowToOpen] = useState(true)',
+    find: '      <div className="mt-4"><RedeemHowTo /></div>',
+    replace: '      <button aria-expanded={false}>매장에서 사용하는 방법</button>{false && <RedeemHowTo />}',
     test: TEST,
     why: '늘 펼쳐 두면 그 아래 유의사항·리뷰가 화면 밖으로 밀린다(안 B 가 고친 자리).',
   },

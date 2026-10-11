@@ -19,46 +19,41 @@
  * ⚠️ 상세 API 는 상품별 모드를 안 내려준다(`group-buy-public.routes` 는 사용 시점에만 조회).
  *   그래서 **모드와 무관하게 참인 순서**로만 쓴다 — 없는 것을 아는 척하지 않는다.
  *   모드를 내려주게 되면 그때 분기하면 된다.
+ *
+ * ## 2026-10-11 — 세로 목록 → **STEP 타일 3장** (대표 확정 "D안 + C안의 이용안내 형태, 디자인 고도화")
+ * 접힌 세로 목록은 눌러야 보였고, 펼치면 글이 길었다. 손님이 매장 앞에서 보는 건 **세 동작**뿐이라
+ * 타일 3장(아이콘 · STEP · 한 줄)으로 늘 펼쳐 두고, 예외(스캔이 안 될 때)는 타일 아래 한 줄로 뺐다.
+ * 순서·사실은 그대로다: 1순위는 언제나 QR, 확인코드는 스캔이 안 될 때의 길.
  */
 
-const STEPS: readonly { n: string; t: string; d: string }[] = [
-  { n: '1', t: '매장에 가서 이용권을 엽니다', d: '마이 → 내 이용권에서 해당 이용권을 여세요. 미리 열어 두면 계산이 빨라요.' },
-  { n: '2', t: '직원에게 QR 을 보여 주세요', d: '직원이 스캔하면 바로 사용 처리됩니다. 대부분 여기서 끝나요.' },
-  { n: '3', t: '스캔이 안 되면 매장 확인코드를 물어보세요', d: '직원에게 4~6자리 확인코드를 받아 화면에 입력하면 사용됩니다.' },
+import type { ComponentType } from 'react'
+import { TicketStubIcon, ScanIcon, OkIcon, InfoIcon } from '@/components/icons/urdeal-icons'
+
+type IconC = ComponentType<{ className?: string }>
+const STEPS: readonly { n: string; t: string; Icon: IconC }[] = [
+  { n: '1', t: '내 이용권에서 QR 열기', Icon: TicketStubIcon },
+  { n: '2', t: '직원에게 QR 보여주기', Icon: ScanIcon },
+  { n: '3', t: '스캔하면 바로 사용 완료', Icon: OkIcon },
 ]
 
-export default function RedeemHowTo({ hideTitle = false }: { hideTitle?: boolean } = {}) {
+/** 스캔이 안 될 때의 길 — 매장 확인코드(4~6자리, `self-redeem-gate`)와 일치. */
+export const REDEEM_FALLBACK = '스캔이 안 되면 직원에게 4~6자리 확인코드를 받아 입력하세요. 확인코드는 매장에서만 알려 드려요.'
+
+export default function RedeemHowTo() {
   return (
-    <div style={{ marginTop: hideTitle ? 12 : 18 }}>
-      {/* 🔽 2026-09-14: 접기 안에서 쓸 때는 제목을 숨긴다 — 트리거가 같은 문구를 이미 말한다
-          (`UsageGuide.tsx`). 기본값은 종전 그대로라 다른 호출부는 byte-동일하게 렌더된다. */}
-      {!hideTitle && (
-        <div style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--gbd-ink)', marginBottom: 10 }}>
-          매장에서 사용하는 방법
-        </div>
-      )}
-      <ol style={{ display: 'flex', flexDirection: 'column', gap: 12, margin: 0, padding: 0, listStyle: 'none' }}>
-        {STEPS.map((s) => (
-          <li key={s.n} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-            <span
-              aria-hidden
-              style={{
-                flexShrink: 0, width: 20, height: 20, borderRadius: 999, background: 'var(--gbd-ink)',
-                color: '#fff', fontSize: 11, fontWeight: 800, display: 'flex', alignItems: 'center',
-                justifyContent: 'center', marginTop: 1,
-              }}
-            >
-              {s.n}
-            </span>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gbd-ink)', lineHeight: 1.45 }}>{s.t}</div>
-              <div style={{ fontSize: 12.5, color: 'var(--gbd-sub)', lineHeight: 1.5, marginTop: 2 }}>{s.d}</div>
-            </div>
+    <div>
+      <ol className="grid grid-cols-3 gap-2 m-0 p-0 list-none">
+        {STEPS.map(({ n, t, Icon }) => (
+          <li key={n} className="rounded-[14px] px-3 pt-3 pb-4" style={{ background: 'var(--gbd-chip)' }}>
+            <Icon className="w-6 h-6 text-brand-text" />
+            <div className="mt-3 text-[12px] font-bold text-brand-text">STEP {n}</div>
+            <div className="mt-1 text-[13px] font-semibold leading-[1.4]" style={{ color: 'var(--gbd-ink)' }}>{t}</div>
           </li>
         ))}
       </ol>
-      <p style={{ fontSize: 12, color: 'var(--gbd-sub)', lineHeight: 1.5, marginTop: 12 }}>
-        ※ 확인코드는 <b>매장에서만</b> 알려 드려요 — 집에서 미리 사용 처리할 수 없습니다.
+      <p className="mt-3 flex gap-2 items-start text-[13px] leading-[1.5]" style={{ color: 'var(--gbd-sub)' }}>
+        <InfoIcon className="w-4 h-4 shrink-0 mt-1" />
+        <span>{REDEEM_FALLBACK}</span>
       </p>
     </div>
   )

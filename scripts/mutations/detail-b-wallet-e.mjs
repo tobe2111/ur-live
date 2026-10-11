@@ -44,9 +44,10 @@ export default [
   },
   {
     name: '[상세B지갑E] 🏷️상세 할인율이 다시 전용 빨강으로 갈린다',
-    file: GB,
-    find: `color: 'var(--sale)', letterSpacing: '-.02em' }}>{displayDiscountPct}%`,
-    replace: `color: 'var(--gbd-danger)', letterSpacing: '-.02em' }}>{displayDiscountPct}%`,
+    // 🔁 2026-10-11 (D안): 모바일 가격이 머리 카드(`PassHeadCard`)로 옮겨갔다.
+    file: 'src/pages/group-buy/PassHeadCard.tsx',
+    find: `style={{ color: 'var(--sale)' }}>{discountPct}%`,
+    replace: `style={{ color: 'var(--gbd-danger)' }}>{discountPct}%`,
     test: TEST,
     why:
       '2026-09-07 대표가 할인율 색을 `--sale` 로 확정했는데 상세만 빠져 있었다. ' +
@@ -56,10 +57,10 @@ export default [
     name: '[상세B지갑E] 🩶섹션 사이 회색 띠가 되살아난다',
     file: GB,
     // ⚠️ 하이라인은 네 곳이라 **뒤따르는 코드**로 유일하게 만든다(주석은 검사기가 먼저 걷어낸다).
-    find: `            <div aria-hidden style={{ height: 1, margin: '0 18px', background: 'var(--gbd-line)' }} />
-            <StoreLocation`,
+    find: `            <div aria-hidden className="hidden lg:block" style={{ height: 1, margin: '0 18px', background: 'var(--gbd-line)' }} />
+            <div className={PASS_CARD}><StoreLocation`,
     replace: `            <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
-            <StoreLocation`,
+            <div className={PASS_CARD}><StoreLocation`,
     test: TEST,
     why:
       '표면 규칙은 "표면 두 톤"인데 띠 자체가 세 번째 톤이라 층이 계속 끊겼다. ' +

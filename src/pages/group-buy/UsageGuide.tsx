@@ -13,9 +13,15 @@
  *
  * ⚠️ **접기이지 삭제가 아니다.** 2026-09-04 에 대표가 *"사용방법을 더 자세히"* 해서 만든 블록이고
  * (QR 이 안 될 때 확인코드를 물어보는 길), 지우면 매장에서 막힌 손님이 갈 곳이 없어진다.
+ *
+ * ## 2026-10-11 — 접기 폐지 · STEP 타일 · 빈 값은 안 말한다 (대표 "D안 + C안 이용안내 형태, 고도화")
+ *   ① 3단계를 **늘 펼친다**(타일 3장이라 짧다 — 접을 이유였던 길이가 사라졌다).
+ *   ② `사용기한` 은 값이 있을 때만 한 줄로 말한다. 종전 폴백 *"발급 후 사용 기간 적용"* 은
+ *      아무 정보도 없는 문장이었다(대표 지적 "부연설명이 많다").
+ *   ③ `사용 방법: QR 제시 · 확인코드` 행 삭제 — 바로 위 타일이 같은 말을 한다.
  */
-import { useState } from 'react'
 import { safeDate } from '@/utils/safe-date'
+import { ClockIcon } from '@/components/icons/urdeal-icons'
 import RedeemHowTo from './RedeemHowTo'
 
 const DEFAULT_TERMS = [
@@ -26,50 +32,32 @@ const DEFAULT_TERMS = [
 export default function UsageGuide({
   voucherExpiry, voucherTerms,
 }: { voucherExpiry?: string | null; voucherTerms?: string | null }) {
-  const [howToOpen, setHowToOpen] = useState(false)
-
-  const rows = [
-    { k: '사용기한', v: voucherExpiry ? `${safeDate(voucherExpiry)?.toLocaleDateString('ko-KR') ?? ''} 까지` : '발급 후 사용 기간 적용' },
-    { k: '사용 방법', v: 'QR 제시 · 확인코드' },
-  ]
+  const expiry = voucherExpiry ? safeDate(voucherExpiry)?.toLocaleDateString('ko-KR') : null
   const terms = voucherTerms
     ? voucherTerms.split('\n').map(s => s.trim()).filter(Boolean)
     : DEFAULT_TERMS
 
   return (
-    <div style={{ padding: '22px 18px' }}>
-      <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>이용 안내</div>
-      <div style={{ marginTop: 15 }}>
-        {rows.map((row, i, arr) => (
-          <div key={row.k} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 0', borderTop: '1px solid var(--gbd-line2)', borderBottom: i === arr.length - 1 ? '1px solid var(--gbd-line2)' : 'none' }}>
-            <span style={{ fontSize: 13.5, color: 'var(--gbd-sub)', whiteSpace: 'nowrap' }}>{row.k}</span>
-            <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gbd-ink)' }}>{row.v}</span>
-          </div>
-        ))}
-      </div>
+    <div style={{ padding: '24px 18px' }}>
+      <h2 className="m-0 text-[17px] font-bold tracking-[-.01em]" style={{ color: 'var(--gbd-ink)' }}>이용 안내</h2>
+      {expiry && (
+        <p className="mt-2 flex items-center gap-1 text-[13px]" style={{ color: 'var(--gbd-sub)' }}>
+          <ClockIcon className="w-4 h-4" />
+          <span><b className="font-semibold" style={{ color: 'var(--gbd-ink)' }}>{expiry}</b>까지 사용</span>
+        </p>
+      )}
+      <div className="mt-4"><RedeemHowTo /></div>
 
-      {/* 접기 트리거 — 펼침 상태를 꺾쇠 회전으로 말한다(글자로 '펼치기/접기' 를 바꾸지 않는다). */}
-      <button
-        type="button"
-        onClick={() => setHowToOpen(v => !v)}
-        aria-expanded={howToOpen}
-        style={{ marginTop: 18, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '11px 0', background: 'transparent', border: 'none', borderTop: '1px solid var(--gbd-line2)', borderBottom: '1px solid var(--gbd-line2)', cursor: 'pointer' }}
-      >
-        <span style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--gbd-ink)' }}>매장에서 사용하는 방법</span>
-        <span
-          aria-hidden="true"
-          style={{ flex: '0 0 auto', width: 8, height: 8, marginTop: howToOpen ? 3 : -3, borderRight: '1.7px solid var(--gbd-sub)', borderBottom: '1.7px solid var(--gbd-sub)', transform: howToOpen ? 'rotate(-135deg)' : 'rotate(45deg)', transition: 'transform .18s ease' }}
-        />
-      </button>
-      {howToOpen && <RedeemHowTo hideTitle />}
-
-      <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {terms.map((line, i) => (
-          <div key={i} style={{ display: 'flex', gap: 9, alignItems: 'flex-start' }}>
-            <span style={{ flex: '0 0 auto', width: 4, height: 4, borderRadius: '50%', background: 'var(--gbd-sub2)', marginTop: 8 }} />
-            <span style={{ fontSize: 13, color: 'var(--gbd-sub)', lineHeight: 1.5 }}>{line}</span>
-          </div>
-        ))}
+      <div className="mt-5 pt-4" style={{ borderTop: '1px solid var(--gbd-line2)' }}>
+        <div className="text-[13px] font-semibold" style={{ color: 'var(--gbd-ink)' }}>유의사항</div>
+        <ul className="mt-2 m-0 p-0 list-none flex flex-col gap-1">
+          {terms.map((line, i) => (
+            <li key={i} className="flex gap-2 items-start text-[13px] leading-[1.5]" style={{ color: 'var(--gbd-sub)' }}>
+              <span aria-hidden className="shrink-0 w-1 h-1 rounded-full mt-2" style={{ background: 'var(--gbd-sub2)' }} />
+              <span>{line}</span>
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   )

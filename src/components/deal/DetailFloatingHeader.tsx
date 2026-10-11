@@ -33,10 +33,12 @@ type Props = {
   /** 히어로(사진) 높이를 재서 그만큼 지나면 solid 로 바꾼다. 없으면 스크롤 60px 기준. */
   heroRef?: React.RefObject<HTMLDivElement | null>
   onBack: () => void
+  /** 🎟️ 2026-10-11 (이용권 상세 D안): 빵부스러기 없이 사진이 맨 위부터 깔린다 — 투명 헤더의 로고를 흰 글자로(사진 위 스크림). */
+  overPhoto?: boolean
 }
 
 export default function DetailFloatingHeader({
-  productId, title, shareDescription, shareImageUrl, shareLink, myUserId, price, discountPct, heroRef, onBack,
+  productId, title, shareDescription, shareImageUrl, shareLink, myUserId, price, discountPct, heroRef, onBack, overPhoto = false,
 }: Props) {
   // 📜 스크롤 상태를 **여기서** 갖는다. 예전엔 페이지가 각자 갖고 prop 으로 내려 줬는데, 그러다 보니
   //    숙소 상세는 이 컴포넌트를 아예 안 쓰고 뒤로가기 버튼만 따로 두게 됐다(대표 "왜 계속 다르게 하는거지?").
@@ -94,7 +96,7 @@ export default function DetailFloatingHeader({
             aria-label="유어딜 홈"
             className={`shrink-0 transition-opacity duration-200 ${headerSolid ? 'opacity-0 pointer-events-none absolute' : 'opacity-100'}`}
           >
-            <UrDealLogo size={19} />
+            <UrDealLogo size={19} forceDark={overPhoto && !headerSolid} />
           </Link>
           {/* 스크롤 시 fade-in 되는 가운데 제목 */}
           <h2
