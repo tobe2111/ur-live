@@ -9,16 +9,16 @@
 import type { ReactNode } from 'react'
 import { BellIcon } from '@/components/icons/urdeal-icons'
 import { FieldCard, FieldRow } from '@/components/ticket/FieldCard'
-import { ShieldCheck, Zap, Lock } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 
 interface Props {
-  name: string
+  /** 2026-10-11 D안: '구매 옵션' 상자를 걷어 더는 안 쓴다(호출부 호환을 위해 남김). */
+  name?: string
   discountPct: number
   unitPrice: number
   refPrice: number
   unitSaving: number
-  totalSaving: number
+  totalSaving?: number
   total: number
   quantity: number
   setQuantity: (updater: (q: number) => number) => void
@@ -39,7 +39,7 @@ interface Props {
 }
 
 export default function DealPurchaseBox({
-  name, discountPct, unitPrice, refPrice, unitSaving, totalSaving, total,
+  discountPct, unitPrice, refPrice, unitSaving, total,
   quantity, setQuantity, maxQty, maxPerPerson,
   buyable, isJoinable, isPrelaunch, isDemo, joining, onBuy, onPrelaunchApply, dealSlot, allDeal = false,
 }: Props) {
@@ -63,53 +63,30 @@ export default function DealPurchaseBox({
   //   `0 6px 24px rgba(0,0,0,.06)` 은 테마를 모른다(그래서 토큰으로 바꿨다).
   return (
     <div style={{ borderRadius: 18, padding: 18, background: 'var(--gbd-card)', boxShadow: 'var(--lift)' }}>
-      {/* 💰 가격 헤드라인 (2026-08-19 — 대표 확정 상세 1안). PC 본문에서 가격 블록을 뺐으므로
-          **최종가는 여기 하나뿐**이다. 할인율 pill → 판매가 → 정가 취소선 순서(그루폰과 동일:
-          "얼마 깎였나 → 얼마인가 → 원래 얼마였나"). 정가가 없거나 같으면 취소선을 그리지 않는다 —
-          안 깎인 상품에 취소선을 붙이면 그건 거짓 표시다. */}
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, flexWrap: 'wrap', marginBottom: 4 }}>
-        {discountPct > 0 && (
-          <span style={{ background: 'var(--gbd-danger)', color: '#fff', fontSize: 15, fontWeight: 900, borderRadius: 7, padding: '3px 9px', letterSpacing: '-.02em' }}>-{discountPct}%</span>
-        )}
-        <span style={{ fontSize: 28, fontWeight: 900, color: 'var(--gbd-ink)', letterSpacing: '-.035em' }}>{formatNumber(unitPrice)}원</span>
-        {unitSaving > 0 && (
-          <s style={{ fontSize: 15, color: 'var(--gbd-sub2)', fontWeight: 600 }}>{formatNumber(refPrice)}원</s>
-        )}
+      {/* 💰 2026-10-11 (대표 확정 D안 — PC 포함): 모바일 머리 카드(`PassHeadCard`)와 **같은 위계**.
+          [할인율(빨강 글자)·판매가·정가 취소선] 한 줄 + "1장당 N원 아껴요". 걷어낸 것: 빨간 pill ·
+          "결제 즉시 교환권 발급"(용어 오류) · 이름·가격을 한 번 더 말하던 '구매 옵션' 상자. */}
+      <div className="flex items-baseline flex-wrap gap-x-2">
+        {discountPct > 0 && <span className="text-[24px] font-bold tracking-[-.02em]" style={{ color: 'var(--sale)' }}>{discountPct}%</span>}
+        <span className="text-[28px] font-extrabold tracking-[-.03em]" style={{ color: 'var(--gbd-ink)' }}>{formatNumber(unitPrice)}원</span>
+        {unitSaving > 0 && <s className="text-[13px]" style={{ color: 'var(--gbd-sub2)' }}>{formatNumber(refPrice)}원</s>}
       </div>
       {unitSaving > 0 && (
-        <div style={{ fontSize: 12.5, color: 'var(--gbd-ink2)', fontWeight: 600, marginBottom: 14 }}>
-          1매당 <b style={{ fontWeight: 800, color: 'var(--gbd-ink)' }}>{formatNumber(unitSaving)}원</b> 저렴 · 결제 즉시 교환권 발급
+        <div className="mt-3 rounded-xl px-3 py-2 text-[13px]" style={{ background: 'var(--gbd-accent-soft)', color: 'var(--gbd-ink2)' }}>
+          1장당 <b className="font-bold text-brand-text">{formatNumber(unitSaving)}원</b> 아껴요
         </div>
       )}
-
-      {/* 옵션(단일가) 카드 — 그루폰 옵션 패널의 유어딜 버전(즉시판매 단일가 모델) */}
-      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gbd-sub)', marginBottom: 10 }}>구매 옵션</div>
-      <div style={{ border: '1.5px solid var(--gbd-accent)', borderRadius: 12, padding: '12px 14px', background: 'var(--gbd-accent-soft, transparent)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
-          <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--gbd-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{name}</span>
-          <span style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
-            {unitSaving > 0 && <s style={{ fontSize: 12, color: 'var(--gbd-sub2)', fontWeight: 600, marginRight: 5 }}>{formatNumber(refPrice)}</s>}
-            <b style={{ fontSize: 18, fontWeight: 900, color: 'var(--gbd-ink)' }}>{formatNumber(unitPrice)}원</b>
-          </span>
-        </div>
-        {(discountPct > 0 || unitSaving > 0) && (
-          <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--gbd-ink2)', marginTop: 4 }}>
-            {discountPct > 0 && <>{discountPct}% 할인</>}
-            {unitSaving > 0 && <> · 1매당 {formatNumber(unitSaving)}원 저렴</>}
-          </div>
-        )}
-      </div>
 
       {/* 🎫 2026-09-14 대표 확정 *"두 상세가 같은 부품을 쓰도록 해줘"* — 수량 행이 **숙소 상세의 인원 행과
           같은 부품**(`components/ticket/FieldCard`)이 됐다. 종전엔 여기만 1px 테두리 상자였다(티켓 체계
           규칙 ①은 카드 테두리 0). 라벨·값 위계도 그쪽과 같아진다.
           ⚠️ 스테퍼 **동작·state·aria 는 그대로** — 하단 바와 같은 state 를 공유한다(결제 무관, 마크업만). */}
-      <div style={{ margin: '12px 0' }}>
+      <div style={{ margin: '16px 0 12px' }}>
         <FieldCard>
           <FieldRow
             label="수량"
             hint={maxPerPerson && maxPerPerson > 0 ? `1인당 최대 ${maxPerPerson}개` : undefined}
-            value={`${quantity}개`}
+            value={`${quantity}장`}
             right={
               <span style={{ display: 'flex', alignItems: 'center', gap: 2 }} role="group" aria-label="수량 조절">
                 <button onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={!buyable || quantity <= 1} aria-label="수량 감소" style={{ width: 30, height: 30, border: 'none', background: 'transparent', color: 'var(--gbd-ink)', fontSize: 18, cursor: 'pointer', opacity: (!buyable || quantity <= 1) ? .35 : 1 }}>−</button>
@@ -120,12 +97,6 @@ export default function DealPurchaseBox({
           />
         </FieldCard>
       </div>
-
-      {isJoinable && totalSaving > 0 && (
-        <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-danger)', textAlign: 'center', marginBottom: 8 }}>
-          {quantity > 1 ? `총 ${formatNumber(totalSaving)}원 할인 중` : `${formatNumber(unitSaving)}원 할인 중`}
-        </div>
-      )}
 
       {dealSlot}
 
@@ -139,25 +110,14 @@ export default function DealPurchaseBox({
         {joining ? '처리 중…' : isPrelaunch ? <><BellIcon size={16} aria-hidden="true" />오픈 예정 — 사전 응모하기</> : !isJoinable ? (isDemo ? '응모 불가' : '구매 불가') : <>{allDeal ? `${formatNumber(total)}딜로 결제하기` : `${formatNumber(total)}원 ${ctaLabel}`}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
       </button>
 
-      {/* 안심 배지 — 그루폰 trust rows */}
-      <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--gbd-line2)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {/* 🎨 2026-09-03 (대표 지적 — "이런 부분에서의 아이콘도 문제 아닐까"): 이모지 셋 → 선 아이콘.
-            여기는 **돈을 내기 직전 화면의 안심 문구**인데, 이모지는 OS 마다 다른 그림이 뜨고
-            (애플 컬러 / 노토 / Segoe) 같은 화면의 lucide 선 아이콘과 언어가 갈렸다. */}
-        {([
-          [ShieldCheck, '미사용 시 100% 자동환불'],
-          [Zap, '결제 즉시 교환권(QR) 발급'],
-          [Lock, '토스페이먼츠 3초 안전결제'],
-        ] as const).map(([Icon, tr]) => (
-          <div key={tr} style={{ fontSize: 12.5, color: 'var(--gbd-sub)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 7 }}>
-            <Icon size={14} strokeWidth={1.8} aria-hidden="true" style={{ flexShrink: 0 }} />
-            {tr}
-          </div>
-        ))}
-        {isPrelaunch && (
-          <div style={{ fontSize: 11.5, color: 'var(--gbd-sub)' }}>오픈 협의 중 매장 · 응모는 무료, 오픈 시 알림을 드려요</div>
-        )}
+      {/* 🔒 안심 한 줄 — 모바일 구매 창과 같은 문구(2026-10-11 D안). 세 줄 배지는 "결제 즉시 교환권 발급"(용어 오류)을 담고 있었다. */}
+      <div className="mt-3 flex items-center justify-center gap-1 text-[12px]" style={{ color: 'var(--gbd-sub)' }}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
+        토스로 3초 안전결제, 미사용 시 100% 자동환불
       </div>
+      {isPrelaunch && (
+        <div className="mt-2 text-[12px] text-center" style={{ color: 'var(--gbd-sub)' }}>오픈 협의 중 매장 · 응모는 무료, 오픈 시 알림을 드려요</div>
+      )}
     </div>
   )
 }

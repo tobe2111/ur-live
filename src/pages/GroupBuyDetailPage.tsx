@@ -1,12 +1,13 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
-import { PinIcon, ClockIcon, OkIcon, AlertIcon } from '@/components/icons/urdeal-icons'
+import { ClockIcon, OkIcon, AlertIcon } from '@/components/icons/urdeal-icons'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import DetailGallery from './group-buy/DetailGallery'
 import { detailGalleryImages } from '@/shared/detail-hero-image'
 import UsageGuide from './group-buy/UsageGuide'
 import SellerCard from './group-buy/SellerCard'
 import StoreIntro, { hasStoreIntro } from './group-buy/StoreIntro'
-import { FieldCard, FieldRow } from '@/components/ticket/FieldCard'
+import PassHeadCard from './group-buy/PassHeadCard'
+import { PASS_CARD, PASS_PAGE_BG } from '@/shared/pass-head'
 import { DEFAULT_QTY_CAP } from '@/shared/purchase-cap-default'
 import DetailTitleHeader from './group-buy/DetailTitleHeader'
 import DetailBreadcrumb, { voucherCrumbs } from '@/components/deal/DetailBreadcrumb'
@@ -204,6 +205,8 @@ export default function GroupBuyDetailPage() {
   const shareLink = myUserId
     ? `/pass/${productId}?ref=${myUserId}`
     : `/pass/${productId}`
+  // 🏪 가게(유어샵)로 — PC 셀러 카드 '프로필' 과 모바일 매장 카드 '가게 보기' 가 같은 길을 쓴다.
+  const goStore = () => { if (detail?.seller_handle) { navigate(`/u/${detail.seller_handle}`); return } const t = detail?.seller_username || detail?.seller_id; if (t) navigate(`/profile/${t}`) }
 
   useEffect(() => {
     if (!Number.isFinite(productId) || productId <= 0) {
@@ -505,7 +508,7 @@ export default function GroupBuyDetailPage() {
   }
 
   return (
-    <div className="gbd" style={{ background: 'var(--gbd-card)', color: 'var(--gbd-ink)', minHeight: '100dvh' }}>
+    <div className={`gbd ${PASS_PAGE_BG}`} style={{ color: 'var(--gbd-ink)', minHeight: '100dvh' }}>{/* 🎟️ 10-11 D안: 모바일 회색 바탕 위 흰 카드 */}
       {/* 🛡️ 2026-05-15: SEO 풀 적용 — JSON-LD Product/Offer schema + 동적 OG image */}
       <SEO
         title={`${detail.name} 공동구매 - ${detail.restaurant_name || '유어딜'}`}
@@ -574,6 +577,7 @@ export default function GroupBuyDetailPage() {
         discountPct={displayDiscountPct}
         heroRef={heroRef}
         onBack={() => navigate(-1)}
+        overPhoto
       />
 
       {/* 🖥️ 2026-07-19 (대표 승인 — 그루폰식 상세): lg+ = [좌 넓은 콘텐츠(갤러리+본문)] + [우 360px sticky 구매박스].
@@ -581,7 +585,8 @@ export default function GroupBuyDetailPage() {
           하단 고정 구매바 그대로(불변). */}
       {/* 🏷️ 2026-08-19 (대표 확정 — 상세 1안 "그루폰 정석"): PC 는 제목·별점·주소가 사진 **위**. 모바일은 그대로. */}
       {/* 🧭 2026-08-30 (대표 — 그루폰식 카테고리바): 사진 **위** 한 줄. 이 페이지는 헤더가 뜬다 → overlayHeader */}
-      <DetailBreadcrumb items={voucherCrumbs(detail.category)} overlayHeader />
+      {/* 🎟️ 10-11 D안: 모바일은 사진이 맨 위부터 — 빵부스러기는 PC 만(대표 "부연설명이 많다"). */}
+      <div className="hidden lg:block"><DetailBreadcrumb items={voucherCrumbs(detail.category)} overlayHeader /></div>
       <DetailTitleHeader name={detail.name} storeName={detail.restaurant_name} address={detail.restaurant_address}
         phone={detail.restaurant_phone} rating={detail.avg_rating} reviewCount={detail.review_count}
         onnuri={(detail as { onnuri_merchant?: boolean }).onnuri_merchant} />
@@ -615,7 +620,7 @@ export default function GroupBuyDetailPage() {
 
       <main id="gb-main" role="main">
         {/* 🖥️ 2026-07-19 그루폰식 섹션 탭 — PC 전용(클릭 → 해당 섹션 스크롤). 모바일은 세로 스택이라 불필요. */}
-        <nav className="hidden lg:flex items-center gap-1 border-b mt-4" style={{ borderColor: 'var(--gbd-line2)' }} aria-label="상세 섹션">
+        <nav className="hidden lg:flex items-center gap-1 mt-4 mb-4 px-2 py-1 rounded-2xl bg-[var(--gbd-card)] shadow-lift" aria-label="상세 섹션">
           {[
             // 🩸 2026-09-25: 이 탭이 **무조건** 떠서, 설명·소개가 빈 상품에선 눌러도 안 가는 탭이 됐다
             //   (섹션은 내용이 없으면 스스로 사라진다). 이웃 탭들과 같은 모양으로 조건을 붙이고,
@@ -663,79 +668,15 @@ export default function GroupBuyDetailPage() {
           </div>
         )}
 
-        {/* 타이틀 — 📱 모바일 전용. PC 는 위 `DetailTitleHeader`(둘 다 그리면 제목이 두 번 나온다). */}
-        <div className="lg:hidden" style={{ padding: '14px 18px 0' }}>
-          {/* 🎨 색: 2026-08-31 에 나와 main(#1251)이 **각자 같은 판단**을 했다 — 로즈였던 이 줄을
-              둘 다 `--gbd-ink2` 로 내렸다. main 쪽은 거기에 중복 라벨("· 정식 등록 매장")까지
-              걷어냈으므로 그쪽을 그대로 취한다(상위집합). */}
-          {detail.restaurant_name && (
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gbd-ink2)', letterSpacing: '.01em' }}>
-              {detail.restaurant_name}
-              {/* 🏪 2026-07-05 온누리 가맹 뱃지 (B2G — "온누리 사용 가능 표시" 약속) */}
-              {(detail as { onnuri_merchant?: boolean }).onnuri_merchant && (
-                <span className="ml-2 px-2 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[12px] font-bold align-middle">온누리 사용 가능</span>
-              )}
-            </div>
-          )}
-          {isPrelaunch && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 8, padding: '4px 10px', borderRadius: 999, background: 'var(--gbd-ink)', color: 'var(--gbd-card)', fontSize: 11, fontWeight: 800 }}>오픈 예정 · 사전 응모 받는 중</span>
-          )}
-          <h1 style={{ margin: '4px 0 0', fontSize: 21, lineHeight: 1.3, fontWeight: 800, letterSpacing: '-.03em', color: 'var(--gbd-ink)' }}>{detail.name}</h1>
-          {detail.restaurant_address && (
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginTop: 8 }}>
-              <PinIcon style={{ width: 17, height: 17, marginTop: 2, flex: '0 0 auto', color: 'var(--gbd-sub)' }} />
-              <div style={{ fontSize: 13.5, color: 'var(--gbd-sub)', lineHeight: 1.5 }}>
-                {detail.restaurant_address || ''}
-                {distKm != null && <> · <b style={{ fontWeight: 700, color: 'var(--gbd-ink2)' }}>{distKm}km</b></>}
-                {detail.group_buy_current > 0 && <> · <b style={{ fontWeight: 700, color: 'var(--gbd-ink2)' }}>{formatNumber(detail.group_buy_current)}명 구매</b></>}
-              </div>
-            </div>
-          )}
-        </div>
+        {/* 🎟️ 2026-10-11 (대표 확정 "D안"): 모바일 제목·가격·수량 → 사진 위로 겹치는 머리 카드 하나.
+            주소·"결제 즉시 교환권 발급"·수량 카드를 걷었다(수량은 구매 창으로 — `DealBottomBar`).
+            서버가 먼저 그리는 첫 화면(`detail-ssr-body.ts`)과 같은 클래스(`PASS_HEAD`)를 쓴다. */}
+        <PassHeadCard merchant={detail.restaurant_name} onnuri={(detail as { onnuri_merchant?: boolean }).onnuri_merchant}
+          isPrelaunch={isPrelaunch} name={detail.name} distKm={distKm} buyers={Number(detail.group_buy_current) || 0}
+          unitPrice={unitPrice} refPrice={refPrice} discountPct={displayDiscountPct} unitSaving={unitSaving} />
 
-        {/* 가격 — 📱 모바일 전용. PC 는 우측 구매 패널 헤드라인이 담당(두 곳에 두면 최종가가 흐려진다). */}
-        <div className="lg:hidden" style={{ padding: '12px 18px 16px' }}>
-          {/* 💰 2026-09-15 (대표 확정 "안 B") — 가격 위계를 **세로**로. 종전엔 한 줄에 셋을 늘어놓아
-              `34% 16,500원 25,000원` 이 같은 무게로 읽혔다. 살 금액이 가장 커야 한다:
-              [정가 취소선 · 할인율] 작은 줄 위, [판매가] 큰 줄 아래.
-              🏷️ 할인율 색은 `--sale`(2026-09-07 대표 "할인율도 빨강으로 유지" SSOT). 여기만 상세 전용
-              빨강(`--gbd-danger` — 빨간 *면* 위 흰 글자용이라 기준이 다르다)을 쓰고 있어
-              **같은 상품이 목록과 상세에서 다른 빨강**이었다. */}
-          {unitSaving > 0 && (
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 7 }}>
-              <span style={{ fontSize: 14, color: 'var(--gbd-sub2)', textDecoration: 'line-through', letterSpacing: '-.01em' }}>{formatNumber(refPrice)}원</span>
-              {displayDiscountPct > 0 && <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--sale)', letterSpacing: '-.02em' }}>{displayDiscountPct}%</span>}
-            </div>
-          )}
-          <div style={{ marginTop: 3, fontSize: 30, fontWeight: 900, color: 'var(--gbd-ink)', letterSpacing: '-.035em', lineHeight: 1.06 }}>{formatNumber(unitPrice)}원</div>
-          {/* 🔀 양쪽을 합친다: main(#1251)의 여백 정리(marginTop 6) + 내 탈-로즈(`--gbd-ink`).
-              한쪽만 고르면 여백이나 색 중 하나를 잃는다. */}
-          <div style={{ marginTop: 6, fontSize: 13, color: 'var(--gbd-ink2)', fontWeight: 500 }}>결제 즉시 교환권 발급</div>
-        </div>
-
-        {/* 🎁 딜 보유자에게만(없으면 null·`empty:hidden`). 📍 2026-09-16 제목 **위**에서 여기로 — 서버 조회 뒤에 떠서 딜 보유자만 제목·가격이 밀렸다(`detail-ssr-body.ts` 참조). */}
+        {/* 🎁 딜 보유자에게만(없으면 null·`empty:hidden`). 머리 카드 **아래**라 위가 안 밀린다(`detail-ssr-body.ts` 참조). */}
         <div className="px-[18px] pb-4 empty:hidden"><ShareRewardBanner sellerId={detail.seller_id as number | null} productId={detail.id} /></div>
-        {/* 🎫 살 조건 — 수량. **숙소 '인원' 행과 같은 부품**(`FieldRow`)이다(대표 "두 상세가 같은 부품을 쓰도록").
-            📱 모바일 전용: PC 는 우측 `DealPurchaseBox` 가 담당(두 곳에 두면 어느 쪽이 진짜인지 흐려진다).
-            종전엔 하단 바 안에 32px 스테퍼로 끼어 있어 살 조건이 화면 맨 아래에만 있었다. */}
-        {isJoinable && (
-          <div className="lg:hidden" style={{ padding: '0 18px 16px' }}>
-            <FieldCard>
-              <FieldRow
-                label="수량"
-                value={`${quantity}장`}
-                hint={detail.max_per_person && detail.max_per_person > 0 ? `1인당 최대 ${detail.max_per_person}개` : undefined}
-                right={(
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 2 }} role="group" aria-label="수량 조절">
-                    <button type="button" onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={!buyable || quantity <= 1} aria-label="수량 감소" style={{ width: 34, height: 34, borderRadius: 9, border: '1px solid var(--rule-strong)', background: 'transparent', color: 'var(--gbd-ink)', fontSize: 18, cursor: 'pointer', opacity: (!isJoinable || quantity <= 1) ? .4 : 1 }}>−</button>
-                    <span style={{ minWidth: 32, textAlign: 'center', fontSize: 15, fontWeight: 800, color: 'var(--gbd-ink)' }} aria-live="polite" aria-label={`현재 ${quantity}장`}>{quantity}</span>
-                    <button type="button" onClick={() => setQuantity(q => Math.min(maxQty, q + 1))} disabled={!buyable || quantity >= maxQty} aria-label="수량 증가" style={{ width: 34, height: 34, borderRadius: 9, border: '1px solid var(--rule-strong)', background: 'transparent', color: 'var(--gbd-ink)', fontSize: 18, cursor: 'pointer', opacity: (!isJoinable || quantity >= maxQty) ? .4 : 1 }}>+</button>
-                  </span>
-                )}
-              />
-            </FieldCard>
-          </div>
-        )}
 
         {/* 🗓️ 2026-09-04 (대표 "마감 개념은 없어"): 'D-N 마감' 배너 제거 — 마감이 아무것도 안 막는데
             남겨 두면 없는 마감을 소비자에게 알리는 거짓말이 된다. 구매 후 사용 기간은 별개 축이다. */}
@@ -743,23 +684,17 @@ export default function GroupBuyDetailPage() {
         {/* 🎯 추첨 응모 — 이 상품이 추첨 대상일 때만(결제 없음). 아니면 렌더 0. */}
         <div id="fcfs-apply-block"><FcfsApplyBlock productId={Number(id)} /></div>
 
-        {/* 🩶 2026-09-15 (대표 확정 "안 B"): 섹션 사이 8px 회색 띠 4개 → **하이라인 구분선**.
-            띠는 층을 계속 끊어 화면을 조각냈다(실측 한 화면에 3개). 표면 규칙은 "표면 두 톤"이라
-            띠 자체가 세 번째 톤이었다. 구분선은 같은 일을 하면서 면을 나누지 않는다. */}
-        <div aria-hidden style={{ height: 1, margin: '0 18px', background: 'var(--gbd-line)' }} />
-
-        {/* 🧑‍🍳 셀러 카드 — 2026-09-24 `SellerCard` 로 추출(마크업 불변). 같은 커밋에서 아래 `StoreIntro`
-            를 붙이는데 이 파일이 래칫 906/906 이라 여유가 0이었다. 추출 사유는 그 파일 머리말 참조. */}
-        <SellerCard d={detail} onProfile={() => { if (detail.seller_handle) { navigate(`/u/${detail.seller_handle}`); return } const t = detail.seller_username || detail.seller_id; if (t) navigate(`/profile/${t}`) }} />
+        {/* 🃏 2026-10-11 (대표 확정 D안 — PC 포함): 섹션 구분은 하이라인이 아니라 **카드**(`PASS_CARD`).
+            셀러 카드는 모바일에선 걷고(가게 입구는 매장 카드 '가게 보기') PC 에선 카드로 남긴다 — SNS 링크가 여기만 있다. */}
+        <div className={`hidden lg:block ${PASS_CARD}`}><SellerCard d={detail} onProfile={goStore} /></div>
 
         {/* 🏪 상품 구성 + 가게 소개 — 2026-09-24 대표 문서 ①("소개란이 따로 있었으면 좋겠다").
             `description` 이 `UsageGuide` 꼬리에 붙어 있던 것을 여기로 옮기고, 서버가 이미 보내면서
             아무도 안 그리던 `long_description`·`seller_bio` 를 함께 그린다. 값 없으면 스스로 사라진다. */}
-        <StoreIntro description={detail.description} productName={detail.name} longDescription={(detail as { long_description?: string | null }).long_description}
+        <div className={`${PASS_CARD} empty:hidden`}><StoreIntro description={detail.description} productName={detail.name} longDescription={(detail as { long_description?: string | null }).long_description}
           sellerBio={(detail as { seller_bio?: string | null }).seller_bio} sellerAvatar={detail.seller_avatar}
-          sellerName={detail.seller_name} storeName={detail.restaurant_name} />
+          sellerName={detail.seller_name} storeName={detail.restaurant_name} /></div>
 
-        <div aria-hidden style={{ height: 1, margin: '0 18px', background: 'var(--gbd-line)' }} />
 
         {/* 🔴 2026-09-01 (디자인 방향 PR A): 3열 균등 신뢰 스트립(안전결제/정식판매/환불보장) 삭제 —
             CTA 위 한 줄("토스로 3초 안전결제 · 미사용 시 100% 자동환불")이 같은 말을 이미 한다. */}
@@ -774,19 +709,18 @@ export default function GroupBuyDetailPage() {
             `UsageGuide`(사용기한·사용 방법 + 접히는 3단계 + 유의사항)를 **여기로 올린다**. 값이 실제로
             있는 것만 말하고, 없으면 그 행이 스스로 폴백한다. 아래에 있던 같은 블록은 제거했다(중복).
             ⚠️ 상단 탭 `gb-sec-info`(라벨 '이용권 정보')가 이 앵커로 스크롤한다 — id 는 유지해야 한다. */}
-        <div id="gb-sec-info" style={{ scrollMarginTop: 116 }}>
+        <div id="gb-sec-info" className={PASS_CARD} style={{ scrollMarginTop: 116 }}>
           <UsageGuide voucherExpiry={detail.voucher_expiry} voucherTerms={detail.voucher_terms} />
         </div>
 
         {/* 대표 메뉴 — 백엔드 menu 데이터 있을 때만 (data-gate; docs/design/group-buy-detail.md). 추출: DealMenuList */}
-        <DealMenuList menuItems={((detail as { menu?: DealMenuItem[] }).menu) || []} />
+        <div className={`${PASS_CARD} empty:hidden`}><DealMenuList menuItems={((detail as { menu?: DealMenuItem[] }).menu) || []} /></div>
 
         {/* 매장 위치 — 추출: StoreLocation(테두리 제거 + 전화 버튼 신설). 지도는 **잠금 lazy** 라
             여기서 감싸 넘긴다(그 lazy 경계를 옮기면 로딩 최적화 잠금 계약이 흔들린다). */}
         {(detail.restaurant_address || (detail.restaurant_lat && detail.restaurant_lng)) && (
           <>
-            <div aria-hidden style={{ height: 1, margin: '0 18px', background: 'var(--gbd-line)' }} />
-            <StoreLocation
+            <div className={PASS_CARD}><StoreLocation onProfile={goStore}
               name={detail.restaurant_name} address={detail.restaurant_address} phone={detail.restaurant_phone}
               lat={detail.restaurant_lat} lng={detail.restaurant_lng} sellerId={detail.seller_id} productId={detail.id}
               map={(
@@ -796,7 +730,7 @@ export default function GroupBuyDetailPage() {
                   </Suspense>
                 </DeferUntilVisible>
               )}
-            />
+            /></div>
           </>
         )}
 
@@ -813,8 +747,7 @@ export default function GroupBuyDetailPage() {
         )}
 
         {/* 후기·평점 — 신뢰 레버 (디자이너 후속 제안). 기존 ProductReviews 재사용(lazy, 빈 상태/작성 폼 내장). */}
-        <div aria-hidden style={{ height: 1, margin: '0 18px', background: 'var(--gbd-line)' }} />
-        <div id="gb-sec-reviews" style={{ padding: '22px 18px', scrollMarginTop: 116 }}>
+        <div id="gb-sec-reviews" className={PASS_CARD} style={{ padding: '24px 18px', scrollMarginTop: 116 }}>
           <DeferUntilVisible minHeight={80}>
             <Suspense fallback={<div style={{ height: 80, background: 'var(--gbd-chip)', borderRadius: 12 }} />}>
               <ProductReviews productId={productId} limit={5} />
@@ -841,7 +774,7 @@ export default function GroupBuyDetailPage() {
         {/* 🗑️ 2026-07-07 폴드-아래 게이트 센티넬: 이 지점이 뷰포트 600px 안에 들어오면 다른 공구 fetch. */}
         <div ref={otherDealsSentinelRef} aria-hidden style={{ height: 1 }} />
         {/* 이 셀러의 다른 공구 — 가로 스크롤. 추출: OtherDealsRow(fetch/IO 게이팅은 여기 소유 — 불변) */}
-        <OtherDealsRow deals={otherDeals} sellerHandle={detail.seller_handle} sellerUsername={detail.seller_username} />
+        <div className={`${PASS_CARD} empty:hidden`}><OtherDealsRow deals={otherDeals} sellerHandle={detail.seller_handle} sellerUsername={detail.seller_username} /></div>
 
         <div className="lg:hidden" style={{ height: 112 }} />
       </main>
@@ -878,7 +811,8 @@ export default function GroupBuyDetailPage() {
           붙어 있어 장바구니 '담기' 한 줄을 넣을 자리가 없었다. 규칙의 처방은 깎기가 아니라 분리다. */}
       <DealBottomBar
         isJoinable={isJoinable} isPrelaunch={isPrelaunch} isDemoDeal={isDemoDeal} buyable={buyable} joining={joining}
-        quantity={quantity} total={total}
+        quantity={quantity} total={total} setQuantity={setQuantity} maxQty={maxQty} maxPerPerson={detail.max_per_person}
+        unitPrice={unitPrice} refPrice={refPrice} discountPct={displayDiscountPct}
         minReviewLevel={detail?.min_review_level}
         dealPlan={!isPrelaunch && isJoinable ? dealPlan : null} dealUse={dealUse} setDealUse={setDealUse}
         canPayWithDeal={canPayWithDeal} dealBalance={dealBalance}

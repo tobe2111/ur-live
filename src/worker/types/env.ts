@@ -78,6 +78,7 @@ export interface Env {
   ALIMTALK_SENDER_KEY?: string;
   ALIGO_SENDER_KEY?: string;
   ALIGO_SENDER_PHONE?: string;           // 발신번호 (예: 07080420000)
+  ALIGO_SENDER?: string;                 // 발신번호 — 라이브에 실제로 설정된 이름(2026-10-11 실측). 읽을 땐 `_PHONE ?? ALIGO_SENDER`
   ALIMTALK_SMS_FAILOVER?: string;        // 'true' 일 때만 알림톡 실패 시 SMS 대체발송(failover) 활성 (기본 OFF — 활성 전 Aligo 콘솔 SMS 발신번호 등록 필요)
   ALIGO_TPL_ORDER_CONFIRM?: string;      // 주문완료 템플릿 코드
   ALIGO_TPL_SHIPPING_START?: string;     // 배송시작 템플릿 코드

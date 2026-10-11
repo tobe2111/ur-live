@@ -6,7 +6,7 @@
  */
 
 import type { D1Database } from '@cloudflare/workers-types'
-import { swallow } from '../../../worker/utils/swallow'
+import { sendTextNotice } from '../../../lib/text-notice' // 📨 알림은 알리고 하나로(알림톡 승인 전엔 문자)
 import { existingColumns, columnNameOf } from '../../../worker/utils/ensure-columns'
 import { recordLedger } from '../../../worker/utils/ledger'
 import { calcInfluencerCommissionPct, type CommissionRates } from './commission-rates'
@@ -311,14 +311,14 @@ export function generateStoreOwnerToken(): string {
 
 /**
  * 사장님께 Magic Link 알림톡 발송 (best-effort).
- * ALIMTALK_API_KEY / ALIMTALK_SENDER_KEY 미설정 시 silent skip.
+ * 알리고(`sendTextNotice`) — 키 미설정 시 silent skip.
  */
 export async function sendStoreOwnerAlimtalk(
-  env: { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
+  env: unknown,
   phone: string,
   data: { restaurantName: string; productName: string; statsUrl: string; categoryLabel?: string }
 ): Promise<void> {
-  if (!env.ALIMTALK_API_KEY || !phone) return // 미설정 시 silently skip
+  if (!phone) return
   try {
     // 정규화: 010-xxxx-xxxx → 01012345678
     const cleanPhone = phone.replace(/[^0-9]/g, '')
@@ -339,23 +339,7 @@ ${data.statsUrl}
 
 문의가 있으시면 언제든 연락주세요.`
 
-    // Solapi-style 호출 (실제 provider 마다 다름 — 환경변수로 baseURL 받으면 더 유연)
-    await fetch('https://api.solapi.com/messages/v4/send', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${env.ALIMTALK_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        message: {
-          to: cleanPhone,
-          from: env.ALIMTALK_SENDER_KEY || '15441234',
-          text: message,
-          type: 'LMS', // 알림톡 템플릿 미등록 시 LMS fallback
-        },
-      }),
-      signal: AbortSignal.timeout(10000),
-    }).catch(() => { /* silently fail — 운영 영향 없게 */ })
+    await sendTextNotice(env, cleanPhone, { tpl: 'store_owner_stats_link', title: '이용권 현황 안내', text: message })
   } catch { /* graceful */ }
 }
 
@@ -364,11 +348,11 @@ ${data.statsUrl}
  *   링크: https://urdeal.kr/my-vouchers (QR 코드 화면 진입)
  */
 export async function sendBuyerVoucherIssuedAlimtalk(
-  env: { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
+  env: unknown,
   phone: string,
   data: { productName: string; restaurantName?: string; qty: number; expiresAt: string | null; categoryLabel?: string }
 ): Promise<void> {
-  if (!env.ALIMTALK_API_KEY || !phone) return
+  if (!phone) return
   try {
     const cleanPhone = phone.replace(/[^0-9]/g, '')
     if (!/^01\d{8,9}$/.test(cleanPhone)) return
@@ -386,14 +370,7 @@ https://urdeal.kr/my-vouchers
 ⏰ 유효기간: ${expDate}
 
 문의: 유어딜 고객센터`
-    await fetch('https://api.solapi.com/messages/v4/send', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${env.ALIMTALK_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: { to: cleanPhone, from: env.ALIMTALK_SENDER_KEY || '15441234', text: message, type: 'LMS' },
-      }),
-      signal: AbortSignal.timeout(10000),
-    }).catch(swallow("helpers:alimtalk:voucher-issued"))
+    await sendTextNotice(env, cleanPhone, { tpl: 'voucher_issued', title: '이용권 발급 완료', text: message })
   } catch { /* graceful */ }
 }
 
@@ -402,11 +379,11 @@ https://urdeal.kr/my-vouchers
  *   sellers.first_voucher_notified flag 로 dedup.
  */
 export async function sendSellerFirstVoucherAlimtalk(
-  env: { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
+  env: unknown,
   phone: string,
   data: { restaurantName: string; productName: string; statsUrl: string }
 ): Promise<void> {
-  if (!env.ALIMTALK_API_KEY || !phone) return
+  if (!phone) return
   try {
     const cleanPhone = phone.replace(/[^0-9]/g, '')
     if (!/^01\d{8,9}$/.test(cleanPhone)) return
@@ -426,14 +403,7 @@ ${data.restaurantName} 사장님,
 
 손님이 오시면 사용 처리: ${data.statsUrl}
 문의: 유어딜 고객센터`
-    await fetch('https://api.solapi.com/messages/v4/send', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${env.ALIMTALK_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: { to: cleanPhone, from: env.ALIMTALK_SENDER_KEY || '15441234', text: message, type: 'LMS' },
-      }),
-      signal: AbortSignal.timeout(10000),
-    }).catch(swallow("helpers:alimtalk:seller-first-voucher"))
+    await sendTextNotice(env, cleanPhone, { tpl: 'seller_first_voucher', title: '첫 이용권 판매', text: message })
   } catch { /* graceful */ }
 }
 
@@ -443,11 +413,11 @@ ${data.restaurantName} 사장님,
  *   호출측(group-buy.routes)이 first_voucher_notified 로 분기해 첫 판매 이중발송 없음.
  */
 export async function sendSellerVoucherSoldAlimtalk(
-  env: { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
+  env: unknown,
   phone: string,
   data: { restaurantName: string; productName: string; qty: number; amount: number; scanUrl?: string; ordersUrl?: string } // 🔗 링크는 shared/store-deep-link
 ): Promise<void> {
-  if (!env.ALIMTALK_API_KEY || !phone) return
+  if (!phone) return
   try {
     const cleanPhone = phone.replace(/[^0-9]/g, '')
     if (!/^01\d{8,9}$/.test(cleanPhone)) return
@@ -460,14 +430,7 @@ ${data.restaurantName}
 판매·사용 내역: ${data.ordersUrl || 'https://urdeal.kr/seller/voucher-orders'}
 
 문의: 유어딜 고객센터`
-    await fetch('https://api.solapi.com/messages/v4/send', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${env.ALIMTALK_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: { to: cleanPhone, from: env.ALIMTALK_SENDER_KEY || '15441234', text: message, type: 'LMS' },
-      }),
-      signal: AbortSignal.timeout(10000),
-    }).catch(swallow('helpers:alimtalk:seller-voucher-sold'))
+    await sendTextNotice(env, cleanPhone, { tpl: 'seller_voucher_sold', title: '이용권 판매', text: message })
   } catch { /* graceful */ }
 }
 
@@ -476,11 +439,11 @@ ${data.restaurantName}
  *   사장님이 직접 스캔(use-by-seller)한 경우는 본인이 실행자라 발송하지 않음(호출측 책임).
  */
 export async function sendSellerVoucherUsedAlimtalk(
-  env: { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
+  env: unknown,
   phone: string,
   data: { restaurantName: string; productName: string; usedAt?: string; ordersUrl?: string }
 ): Promise<void> {
-  if (!env.ALIMTALK_API_KEY || !phone) return
+  if (!phone) return
   try {
     const cleanPhone = phone.replace(/[^0-9]/g, '')
     if (!/^01\d{8,9}$/.test(cleanPhone)) return
@@ -497,25 +460,17 @@ ${data.restaurantName}
 사용 내역: ${data.ordersUrl || 'https://urdeal.kr/seller/voucher-orders'}
 
 문의: 유어딜 고객센터`
-    await fetch('https://api.solapi.com/messages/v4/send', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${env.ALIMTALK_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: { to: cleanPhone, from: env.ALIMTALK_SENDER_KEY || '15441234', text: message, type: 'LMS' },
-      }),
-      signal: AbortSignal.timeout(10000),
-    }).catch(swallow('helpers:alimtalk:seller-voucher-used'))
+    await sendTextNotice(env, cleanPhone, { tpl: 'seller_voucher_used', title: '이용권 사용 처리', text: message })
   } catch { /* graceful */ }
 }
 
 /**
  * 🛡️ 2026-05-16: voucher 사용 완료 알림톡 (매장이 QR 스캔 직후).
- * 🔔 2026-07-05: Aligo 카카오 알림톡(tpl_code 'voucher_used', sendSystemAlimtalk — dedup·캡·재시도 큐)
- *   경로 추가. 기존 solapi LMS 는 레거시 폴백으로 유지(ALIMTALK_API_KEY 설정 환경만 동작).
- *   ⚠️ 'voucher_used' 는 Aligo 콘솔 등록·승인 필요 — message 를 승인 템플릿 본문과 일치시켜 유지.
+ * 📨 2026-10-11: 알리고 하나로(`sendTextNotice`) — 'voucher_used' 가 카카오 검수를 통과해 어드민 승인 목록에
+ *   오르면 알림톡, 그 전엔 문자. ⚠️ 알림톡 전환 시 message 를 승인 템플릿 본문과 일치시켜 유지.
  */
 export async function sendBuyerVoucherUsedAlimtalk(
-  env: { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
+  env: unknown,
   phone: string,
   data: { restaurantName: string; productName: string; usedAt?: string; categoryLabel?: string }
 ): Promise<void> {
@@ -538,21 +493,7 @@ ${ts ? '사용 시각: ' + ts : ''}
 https://urdeal.kr/my-vouchers
 
 문의: 유어딜 고객센터`
-    // ① Aligo 카카오 알림톡 (시스템 SSOT — ALIGO_* 미설정 시 내부 silent skip)
-    try {
-      const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk')
-      await sendSystemAlimtalk(env, cleanPhone, 'voucher_used', message)
-    } catch { /* fail-soft — 아래 레거시 경로가 백업 */ }
-    // ② 레거시 solapi LMS 폴백 (해당 키 설정 환경만)
-    if (!env.ALIMTALK_API_KEY) return
-    await fetch('https://api.solapi.com/messages/v4/send', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${env.ALIMTALK_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: { to: cleanPhone, from: env.ALIMTALK_SENDER_KEY || '15441234', text: message, type: 'LMS' },
-      }),
-      signal: AbortSignal.timeout(10000),
-    }).catch(swallow("helpers:alimtalk:voucher-used"))
+    await sendTextNotice(env, cleanPhone, { tpl: 'voucher_used', title: '이용권 사용 완료', text: message })
   } catch { /* graceful */ }
 }
 

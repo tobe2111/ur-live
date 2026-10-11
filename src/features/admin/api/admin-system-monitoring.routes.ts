@@ -265,6 +265,62 @@ adminSystemMonitoringRoutes.post('/alimtalk-failures/:id/retry', async (c) => {
   }
 })
 
+/**
+ * 📨 2026-10-11 알림 발송 시험 — 대표 "응 보내봐". 실제 발송 경로(`sendTextNotice`)를 그대로 타서
+ * 알리고가 받아 주는지 **오늘** 판정한다(실제 판매를 기다리지 않게). 결과에 알리고 오류 원문을 싣는다 —
+ * 발신번호 미등록·IP 제한·잔액 부족을 그 자리에서 가린다. super_admin 만, 가입된 유저 번호로만 보낸다.
+ */
+adminSystemMonitoringRoutes.post('/alimtalk-test-send', async (c) => {
+  const { DB } = c.env
+  try {
+    const me = c.get('user' as never) as { id?: string | number } | undefined
+    const admin = await DB.prepare('SELECT role FROM admins WHERE id = ?').bind(me?.id ?? null).first<{ role: string }>()
+    if (admin?.role !== 'super_admin') return c.json({ success: false, error: 'super_admin 권한이 필요합니다' }, 403)
+    const body = await c.req.json<{ user_id?: unknown; tpl?: unknown }>().catch(() => ({} as { user_id?: unknown; tpl?: unknown }))
+    // 📵 카톡만 쓴다(대표 2026-10-11) — 시험도 알림톡으로. 템플릿 코드를 주면 그 템플릿으로(승인 확인용),
+    //   없으면 미등록 코드로 보내 **알리고가 무엇에서 막는지**(IP·발신프로필·템플릿)를 응답 원문으로 가린다.
+    const tpl = /^[A-Za-z0-9_]{1,40}$/.test(String(body.tpl ?? '')) ? String(body.tpl) : 'admin_test_send'
+    const userId = Number(body.user_id)
+    if (!Number.isInteger(userId) || userId <= 0) return c.json({ success: false, error: 'user_id 가 필요합니다' }, 400)
+    const user = await DB.prepare('SELECT phone FROM users WHERE id = ?').bind(userId).first<{ phone: string | null }>()
+    if (!user) return c.json({ success: false, error: '유저를 찾을 수 없습니다' }, 404)
+    const { sendTextNotice } = await import('../../../lib/text-notice')
+    const at = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul' })
+    const r = await sendTextNotice(c.env, user.phone, {
+      tpl, title: '유어딜 알림 시험', forceAlimtalk: true,
+      text: `[유어딜] 알림 발송 시험입니다 (${at}). 이 문자가 보이면 사장님·손님 알림이 정상으로 나갑니다.`,
+    })
+    const tail = String(user.phone ?? '').replace(/[^0-9]/g, '').slice(-4)
+    return c.json({ success: r.ok, result: r, phone_tail: tail || null })
+  } catch (err) {
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
+  }
+})
+
+/**
+ * 🌐 2026-10-11 발송 서버 IP 측정 — 알리고가 `인증오류입니다.-IP (-101)` 로 거부했다. 알리고는
+ * "발송 서버 IP" 에 등록된 주소에서 온 요청만 받는데, 워커(Cloudflare)는 나가는 IP 가 고정이 아니다.
+ * 무엇을 등록해야 하는지 **재서** 정한다 — Cloudflare 밖의 IP 반향 서비스를 여러 번 불러 본 IP 를 모은다.
+ */
+adminSystemMonitoringRoutes.get('/alimtalk-egress-ip', async (c) => {
+  const { DB } = c.env
+  try {
+    const me = c.get('user' as never) as { id?: string | number } | undefined
+    const admin = await DB.prepare('SELECT role FROM admins WHERE id = ?').bind(me?.id ?? null).first<{ role: string }>()
+    if (admin?.role !== 'super_admin') return c.json({ success: false, error: 'super_admin 권한이 필요합니다' }, 403)
+    const urls = ['https://checkip.amazonaws.com/', 'https://ifconfig.me/ip', 'https://checkip.amazonaws.com/', 'https://ifconfig.me/ip', 'https://checkip.amazonaws.com/']
+    const seen = await Promise.all(urls.map(async (u) => {
+      try {
+        const r = await fetch(u, { signal: AbortSignal.timeout(5000), headers: { 'User-Agent': 'curl/8' } })
+        return (await r.text()).trim().slice(0, 64)
+      } catch (e) { return `error: ${(e as Error).message.slice(0, 40)}` }
+    }))
+    return c.json({ success: true, ips: [...new Set(seen)], samples: seen.length })
+  } catch (err) {
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
+  }
+})
+
 // ── 🚦 2026-07-05: 운영 게이트 플래그 현황판 + cron heartbeat ──────────────
 //   배경(1인 운영 관측 보강): 검증 대기 게이트(커미션 예산/쇼핑 원장/fee-resolver 등)가
 //   env·platform_settings 에 흩어져 있어 "뭐가 켜져 있고 뭐가 staging 미검증인지" 볼 곳이 없었음.

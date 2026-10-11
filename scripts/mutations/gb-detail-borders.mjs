@@ -57,8 +57,9 @@ export default [
   {
     name: '[테두리·과잉교정] 이용 안내 행 구분선까지 걷어낸다',
     file: USAGE,
-    find: "borderTop: '1px solid var(--gbd-line2)', borderBottom: i === arr.length - 1 ? '1px solid var(--gbd-line2)' : 'none'",
-    replace: "borderTop: 'none', borderBottom: 'none'",
+    // 🔁 2026-10-11 (D안): 표 행이 사라지고 남은 선은 유의사항 위 한 줄.
+    find: "style={{ borderTop: '1px solid var(--gbd-line2)' }}",
+    replace: "style={{}}",
     test: TEST,
     why: '규칙 ①이 금지하는 건 **카드 테두리**다 — 카드 안 구분선은 `--rule` 이 존재하는 이유다.',
   },

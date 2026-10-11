@@ -37,6 +37,8 @@ describe('안 B — 공구 상세', () => {
   it('① 매장명 4회차였던 이용 안내의 `사용처` 행이 없다', () => {
     expect(code(GB)).not.toContain("k: '사용처'")
     expect(code(USAGE)).not.toContain("k: '사용처'")
+    // 🔁 2026-10-11 (D안): 표 행이 사라져 위 형태로는 못 돌아온다 — 어떤 모양으로든 '사용처' 가 안 나온다.
+    expect(code(USAGE)).not.toContain('사용처')
   })
 
   it('② 설명이 제목과 같은 문자열이면 안 그린다 (상품명 3회 → 1회)', () => {
@@ -54,23 +56,24 @@ describe('안 B — 공구 상세', () => {
     expect(code(GB)).not.toContain('저렴')
   })
 
-  it('④ 수량이 본문 카드에 있다 — 숙소 인원 행과 **같은 부품**(FieldRow)', () => {
-    const s = code(GB)
+  // 🔁 2026-10-11 (대표 확정 "D안"): 수량은 본문 카드 → **구매 창**(`DealBottomBar`). 같은 부품(FieldRow)은 그대로.
+  const BAR_SRC = 'src/pages/group-buy/DealBottomBar.tsx'
+  it('④ 수량이 구매 창에 있다 — 숙소 인원 행과 **같은 부품**(FieldRow)', () => {
+    const s = code(BAR_SRC)
     expect(s).toContain("from '@/components/ticket/FieldCard'")
     expect(s).toMatch(/<FieldRow[\s\S]{0,200}label="수량"/)
   })
 
-  it('④-b 하단 바에는 수량 스테퍼가 남아 있지 않다(두 곳에 두면 어느 쪽이 진짜인지 흐려진다)', () => {
-    const s = code(GB)
-    // 스테퍼의 표식은 aria-label — 본문 카드 안 것 하나뿐이어야 한다
-    expect(s.match(/aria-label="수량 조절"/g) || []).toHaveLength(1)
+  it('④-b 수량 스테퍼는 한 곳뿐이다(두 곳에 두면 어느 쪽이 진짜인지 흐려진다)', () => {
+    expect(code(GB).match(/aria-label="수량 조절"/g) || [], '본문에 스테퍼가 되살아났다').toHaveLength(0)
+    expect(code(BAR_SRC).match(/aria-label="수량 조절"/g) || []).toHaveLength(1)
   })
 
-  it('⑤ 이용 안내 3단계가 접힌다 — 기본 닫힘 + 펼치는 트리거', () => {
+  it('⑤ 이용 안내 3단계가 **늘 펼쳐진** 타일이다 — 접기 폐지(2026-10-11 D안)', () => {
     const s = code(USAGE)
-    expect(s).toContain('useState(false)')
-    expect(s).toMatch(/aria-expanded=\{howToOpen\}/)
-    expect(s).toContain('<RedeemHowTo hideTitle />')
+    expect(s).toContain('<RedeemHowTo />')
+    expect(s, '접기가 되살아났다 — 눌러야 보이는 절차는 매장 앞에서 안 열린다').not.toMatch(/aria-expanded/)
+    expect(s, '뜻 없는 폴백이 되살아났다').not.toContain('발급 후 사용 기간 적용')
   })
 
   it('⑥ 리뷰 0건이면 상단 탭에서 리뷰를 뺀다 — 다만 **섹션은 남긴다**', () => {

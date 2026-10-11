@@ -90,8 +90,10 @@ ogRoutes.get('/group-buy/:id', async (c) => {
     const product = await DB.prepare(`
       SELECT id, name, image_url, restaurant_name
       FROM products
-      WHERE id = ? AND category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
+      WHERE id = ?
     `).bind(id).first<ProductForOG>()
+    // 🔗 2026-10-11 라이브 실측: 카테고리를 옛 목록으로 걸러서 그 밖의 이용권(예: 2917 'lifestyle')은
+    //   카톡 미리보기 사진이 404 로 비었다. 이용권 페이지가 있는 상품이면 카드를 그린다 — 이름·사진은 이미 공개 정보다.
 
     if (!product) {
       // fallback: 빈 placeholder SVG

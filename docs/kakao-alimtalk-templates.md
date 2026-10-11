@@ -12,6 +12,26 @@
 > **콘솔에 그대로(줄바꿈·기호·이모지 포함) 복사**하세요. 임의로 문구를 바꾸면 코드가 보내는
 > 메시지와 어긋나 거부됩니다(문구를 바꾸려면 코드도 같이 바꿔야 함 — 담당자에게 요청).
 
+## 📨 2026-10-11 발송 규칙이 바뀌었다 — **먼저 읽을 것**
+
+라이브 실측 결과, 이 문서 기준의 알림톡은 **한 통도 안 나가고 있었다**(성공 기록 0건):
+- 시스템 알림톡 클라이언트(`lib/aligo.ts`)가 틀린 주소(`smartsms.aligo.in/admin/api`)로 보내 **HTML 을 받았다**
+  (실패 원문 `Unexpected token '<'`). 발신번호(`sender`)도 싣지 않았다.
+- 이용권 알림 7종(판매·첫 판매·사용·발급 등)은 **솔라피**로 가게 돼 있었는데 그 키가 없어 조용히 건너뛰었다.
+- 발신번호 env 이름이 라이브는 `ALIGO_SENDER`, 코드는 `ALIGO_SENDER_PHONE` 이었다.
+
+**지금 규칙(`src/lib/text-notice.ts` 한 곳) — 2026-10-11 대표 "문자는 안 쓸거고 카톡만"**:
+1. 템플릿 코드가 어드민 설정 **`alimtalk_approved_templates`**(쉼표 구분)에 있으면 → **알림톡만**(문자 대체 없음).
+2. 없으면 → **보내지 않는다**(앱 알림만). `alimtalk_failures` 에 `pending:<코드>` 로 놓친 것을 남긴다.
+3. 문자는 어드민 `notice_sms_enabled='true'` 일 때만(기본 OFF).
+3. 템플릿이 카카오 검수를 통과할 때마다 그 코드를 설정에 **추가만** 하면 배포 없이 알림톡으로 넘어간다.
+   ⚠️ 추가하기 전에 콘솔에 등록된 본문이 코드가 보내는 본문과 **글자까지 같은지** 확인할 것.
+
+발신번호는 알리고 콘솔에 **등록·인증된 번호**여야 한다(아니면 문자가 거부된다).
+성공은 `alimtalk_dispatch_log`(코드 앞에 `sms:`·`alimtalk:`), 실패는 `alimtalk_failures` 에 남는다.
+
+---
+
 ## 🔑 환경변수 (Cloudflare → ur-live → Variables and Secrets)
 
 알림톡은 아래 **3종이 모두** 있어야 발송됩니다(하나라도 없으면 `sendSystemAlimtalk`가 조용히 skip).
@@ -461,6 +481,32 @@ https://utongstart.com/wholesale/login
 
 ---
 
+### 이용권 알림 (2026-10-11 — 솔라피에서 옮겨옴, 지금은 문자로 나감)
+
+승인되면 `alimtalk_approved_templates` 에 코드를 추가. 본문은 `group-buy/api/helpers.ts` 가 정본이다 —
+등록 전에 그 파일의 문구와 대조할 것(아래는 변수만 `#{}` 로 바꾼 것).
+
+#### `seller_voucher_sold` — 이용권 판매 (사장님에게, 두 번째 판매부터)
+```
+[유어딜] 🎟️ 이용권 판매
+
+#{restaurant_name}
+"#{product_name}" #{qty}장 · ₩#{amount}
+
+손님이 오시면 사용 처리: #{scan_url}
+판매·사용 내역: #{orders_url}
+
+문의: 유어딜 고객센터
+```
+링크 두 줄은 심사에서 **버튼(웹링크)** 으로 바꾸길 권장(버튼 이름 "사용 처리하기" · "판매 내역").
+
+#### `seller_first_voucher` — 첫 이용권 판매 (사장님에게, 1회)
+#### `seller_voucher_used` — 손님 셀프 사용 처리 (사장님에게)
+#### `voucher_issued` — 이용권 발급 완료 (구매자에게)
+#### `store_owner_stats_link` — 이용권 현황 링크 안내 (레거시 사장님 링크)
+위 네 개는 `helpers.ts` 의 `sendSellerFirstVoucherAlimtalk` · `sendSellerVoucherUsedAlimtalk` ·
+`sendBuyerVoucherIssuedAlimtalk` · `sendStoreOwnerAlimtalk` 본문을 그대로 등록한다.
+
 ## ℹ️ 참고: 콘솔 심사 대상이 **아닌** 것
 
 - **셀러 자체 계정 발송** (`order_confirm`, `shipping_start`, `delivery_completed`, `low_stock_alert`):
@@ -471,7 +517,7 @@ https://utongstart.com/wholesale/login
 ## ⚠️ 요청하신 "이용권 구매완료·사용" 배선 현황
 
 - **이용권 사용(매장 사용처리 시)** — ✅ **배선됨** = 위 `voucher_used`. 콘솔 등록만 하면 됩니다.
-- **이용권/공구 구매완료(구매자에게)** — ❌ **배선 없음**. 구매자 대상 "구매완료" 알림톡 트리거는 아직
+- **이용권/공구 구매완료(구매자에게)** — ✅ 2026-10-11 기준 `voucher_issued` 로 배선됨(지금은 문자). ~~❌ **배선 없음**.~~ 구매자 대상 "구매완료" 알림톡 트리거는 아직
   없습니다(구매자는 인앱+웹푸시로만 통보되고, `new_order`는 셀러에게 감). 원하시면 신규 배선 필요
   (문안 확정 + 코드) — 말씀 주시면 설계·구현.
 
@@ -508,5 +554,5 @@ https://utongstart.com/wholesale/login
    (`seller_approved`+`seller_reactivated`, `business_registration_verified`+`business_registration_rejected`).
    각 코드에 위 본문 그대로 등록하면 됩니다.
 3. **서비스 분리** — 유통스타트(도매) 4종은 유어딜 채널이 아닌 **유통스타트 채널**에.
-4. **ALIGO 3종 env** — API키·userid·발신프로필키 모두 세팅(위 확인 방법). ⚠️ 현재 **발신프로필키
-   (`ALIGO_SENDER_KEY`) 미설정** — 콘솔 발신프로필 등록 후 발급되는 senderkey 를 env 에 넣어야 발송됨.
+4. **ALIGO 3종 env** — API키·userid·발신프로필키 모두 세팅(위 확인 방법). 2026-10-11 실측: 3종 + 발신번호(`ALIGO_SENDER`)
+   모두 라이브에 **설정돼 있다**.
