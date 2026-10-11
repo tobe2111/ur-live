@@ -64,9 +64,94 @@ curl -sS -A "$UA_YETI" https://urdeal.kr/ | grep -c '#organization'   # 0 → 1 
 
 가드: 같은 테스트 파일 `③-2` **5건** + 주입 **5건 되돌려-검증 전부 빨간불 확인**.
 
+### ✅ E4 판정 통과 (배포 후 라이브 — 머지 `482239ee8`, PR #1714)
+
+UA 를 바꿔 같은 경로를 받아 파싱해 재니:
+
+| | Yeti | Googlebot | DaumOA | iPhone |
+|---|---|---|---|---|
+| `#organization` | **1** (이전 0) | **1** (0) | **1** (0) | 1 |
+| `ld+json` 블록 | 1 | 1 | 1 | 1 |
+
+- **Yeti 의 JSON 이 iPhone·Googlebot 과 deep-equal** — 사람과 크롤러가 같은 브랜드 설명을 받는다.
+  `WebSite.name = 유어딜` · `Organization.alternateName = [urdeal, UrDeal]`(도메인 품은 별칭 없음).
+- 🧷 **매달린 참조 0건** — 크롤러가 받는 `/blog`·`/pass/:id`·`/u/:handle`·`/vouchers`·`/map` 전부
+  정의되지 않은 `@id` 없음(이전엔 `/blog` 가 없는 `#organization`·`#website` 를 가리켰다).
+
+🩸 **이 측정에서 두 번 헛짚었다 — 다음 세션이 같은 함정에 빠지지 말 것**:
+1. iPhone 에서 `grep -c '#organization'` 이 **2** 라 중복으로 보였다. 실제로는 하나가 노드 정의,
+   하나가 `publisher: {"@id": …}` **참조**였다(`"@type":"Organization"` 도 2인데 둘째는
+   `parentOrganization`). **grep 개수는 노드 수가 아니다** — 파싱해서 셀 것.
+2. `<script type="application/ld+json">` 정규식이 **0개**를 냈다. 서빙 태그엔 CSP `nonce` 가 붙는다
+   (`<script type="application/ld+json" nonce="…">`) → `[^>]*` 없이는 못 잡는다. 여기서도 **0 은
+   결함과 측정 실패를 구분하지 못한다.**
+
 ⚠️ **사이트 이름이 실제로 `유어딜` 로 바뀌는 것은 보장되지 않는다** — 구글 공식 문서가 *"확신이 낮으면
 도메인을 쓸 수 있다"* 고 명시한다. 우리가 한 것은 그 신호를 **처음으로 배달한 것**까지다. 남은 요인은
 코드 밖이다(화면 로고가 `urdeal` 영문 워드마크 · 도메인 이전이 3개월 전).
+
+
+## ④ 목록·유어샵 표면의 구조화 데이터 (후속 PR)
+
+**실측이 먼저였다** — Yeti UA 로 받아 **파싱해서** 세니:
+
+| 경로 | 받은 노드 |
+|---|---|
+| `/pass/2919` (상세) | `Product` · `Offer` · `FoodEstablishment` · `BreadcrumbList` ✅ |
+| `/vouchers` · `/map` · `/stays` · `/browse` · `/u/:handle` | `Organization` · `WebSite` **뿐** ❌ |
+
+🔎 **원인은 빠뜨린 인자 하나**였다: `applySurfaceMeta` 는 `jsonLd` 자리를 **이미** 갖고 있고
+블로그 목록이 그 자리를 쓴다. 소비자 목록 표면만 아무도 넘기지 않았다.
+
+신규 `src/worker/utils/surface-list-jsonld.ts`(순수) + 배선 2줄:
+- 목록/정적 → `BreadcrumbList` + `CollectionPage`(항목 있으면) / `WebPage`
+- 유어샵 → `BreadcrumbList` + `ProfilePage`(`mainEntity: Person`) + `ItemList`
+
+**두 규율** (둘 다 "에러가 안 나는" 종류다):
+1. **추가 요청 0** — 항목은 그 표면이 이미 받아 둔 SSR 시드에서만. 시드가 없는 표면
+   (`/map`·`/stays`)은 빵부스러기만. 구조화 데이터를 위해 self-fetch 를 만들지 않는다.
+2. **noindex 를 가리키지 않는다** — 항목을 내는 표면은 **허용목록 한 줄**(`/`·`/browse`)이고
+   `/vouchers`(교환권 목록)는 거기 없다. 다른 목록에서도 `deal_only=1` 항목만 뺀다.
+
+**SSOT 둘을 그대로 쓴다**: 항목 URL `canonicalDetailPath` · 유어샵 순서 `curatorHomePins`.
+빵부스러기 체인은 **경로 접두를 되짚어** 만든다(`/terms/seller` → 유어딜 › 이용약관 › 판매자 약관) —
+라벨은 `CONSUMER_SURFACE_SEO.crumb`, **noindex 표면엔 일부러 비워 둔다**(가드가 양방향 고정).
+
+🔬 **라이브 시드로 렌더해서 눈으로 봤고, 그게 결함 둘을 잡았다**:
+1. 유어샵 핀 사진이 `/api/media/...` **상대 경로**로 나갔다 — 구조화 데이터 `image` 는 절대 URL
+   이어야 하고, 상대 경로면 구글이 그 필드를 **버리면서 에러를 안 낸다**.
+2. 항목 20개면 JSON 이 **10.3KB** 였다. 이 JSON 은 **사람이 받는 응답에도 실리므로**
+   (크롤러에게만 주는 것은 구글 가이드 위반) 상한을 10 으로 → **5.4KB**.
+
+🩸 **주입 러너가 같은 자리를 두 번 잡았다 — 두 번째가 더 값지다**:
+1. *"`/vouchers` 가 ItemList 를 낸다"* 주입이 **통과**했다 — 픽스처의 시드를 전부 `deal_only=1` 로
+   둬서 **항목이 어차피 걸러졌기** 때문이다. 규칙을 통째로 없애도 초록이었다.
+   ⇒ **"걸러지는 데이터로 걸러짐을 시험하면 아무것도 시험하지 않는다."**
+2. 픽스처를 고치고 규칙을 *슬롯 허용목록 + 경로 차단목록* **두 겹**으로 만들었더니 **또** 통과했다 —
+   한 겹을 없애도 다른 겹이 같은 결과를 내므로 **어느 쪽도 출력으로 판정할 수 없다.**
+   ⇒ **중복 잠금은 각 잠금을 시험 불가능하게 만든다.** 규칙을 경로 허용목록 **한 줄**로 모았다
+   (슬롯 겹은 애초에 지키는 게 없었다 — 모양이 다른 시드는 `listItem` 이 행마다 걸러 자연히 0건).
+   그리고 시험이 *같은 시드를 허용 경로(`/`)에 주면 항목이 **생긴다***를 함께 단언한다.
+
+가드: `surface-list-jsonld-2026-10-11.test.ts` **33건** + 주입 **17건 되돌려-검증 전부 빨간불 확인**.
+
+⚠️ **E4(다음 세션 첫 액션)** — 배포 후 UA 별 실측:
+```bash
+UA='Mozilla/5.0 (compatible; Yeti/1.1; +http://naver.me/spd)'
+for p in / /vouchers /u/jiwon1228 /map; do
+  echo "== $p"; curl -sS -A "$UA" "https://urdeal.kr$p" \
+  | grep -o '<script[^>]*application/ld+json[^>]*>[^<]*' | python3 -c "
+import sys,re,json
+for l in sys.stdin:
+    b=re.sub(r'^<script[^>]*>','',l.rstrip())
+    try: d=json.loads(b)
+    except Exception: continue
+    print(' ', [n.get('@type') for n in (d.get('@graph') or [d])])"
+done
+```
+판정: `/vouchers`·`/map` 에 `BreadcrumbList` 가 생겼는지 · `/`·`/u/:handle` 에 `ItemList` 가
+생겼는지 · 항목 URL 이 전부 `/pass/`·`/stays/`·`/products/` 이고 **`/vouchers/` 가 0건**인지.
+⚠️ 정규식에 `[^>]*` 를 빼면 CSP `nonce` 때문에 **블록 0개**로 읽힌다(③-2 에서 겪었다).
 
 ## 이번에 틀렸던 판단 (이게 제일 값지다)
 
@@ -194,3 +279,148 @@ SELECT u.handle FROM users u
   byte-동일이다.
 - `<noscript>` 는 **첫 화면이 안 그리는 것만** 담는다. 안내 문구를 지어내 넣지 말 것(클로킹이 된다 — 그 규율이
   `crawler-noscript.ts` 머리말에 있다).
+
+---
+
+## ⑤ GEO — AI 검색·인용 크롤러는 페이지 허용 / API 차단 (PR 대기)
+
+대표 *"SEO, GEO 모두 가장 이상적인 형태인지"* · *"세계최고의 SEO, GEO를 자랑하게 만들어줘"* ·
+*"우리 서비스로 트래픽이 몰려야해"*.
+
+### 🔎 실측이 바꾼 진단 — 이전 판("학습과 검색이 구분 안 된 채 함께 막혀 있다")은 **반만 맞았다**
+
+`urdeal.kr/` HTML 을 UA 만 바꿔 받아 봤다(2026-10-11):
+
+| UA | HTTP | 성격 |
+|---|---|---|
+| GPTBot · ClaudeBot | **403** | 학습 |
+| OAI-SearchBot · ChatGPT-User | **200** | 검색·인용 |
+| Claude-SearchBot · PerplexityBot | **200** | 검색·인용 |
+| Googlebot | 200 | 색인 |
+
+⇒ **엣지(Cloudflare)는 이미 둘을 정확히 가르고 있었다.** 구분이 없던 쪽은 **우리 `public/robots.txt`**
+하나였다 — 거기서 `OAI-SearchBot`·`ChatGPT-User`·`PerplexityBot`·`Perplexity-User` 가 학습 봇과
+같은 `Disallow: /` 그룹에 들어 있었다.
+
+🔑 **그래서 이것은 정책 선택이 아니라 내부 불일치였다.** 그리고 어긋난 방향이 가장 나쁜 쪽이다 —
+검색·인용 크롤러는 robots 를 **지키는** 봇이라, 결과는 *"ChatGPT·Perplexity 답변에 우리를 링크로
+인용해 줄 수 있는 크롤러에게만 오지 마라고 말하기"* 였다. 엣지는 통과시키는데 우리가 돌려보냈다.
+그 블록의 주석 자신이 *"둘은 다른 봇이다"* 라고 적어 두고도 한 덩어리로 묶여 있었다(2026-08-22
+당시엔 사업자들이 봇을 안 쪼갰다 — 그 뒤 쪼갰고 우리 파일만 그대로였다).
+
+### 수정 — 목록에서 **빼기만** 했다 (전용 그룹을 안 만든 이유)
+
+- `public/robots.txt`: 다섯(위 넷 + `Claude-SearchBot`)을 차단 목록에서 제거 → `User-agent: *`
+  그룹(= 공개 허용 + 비공개 Disallow)으로 떨어진다.
+- 🔴 **`Allow: /` 전용 그룹을 만들면 안 된다**: robots.txt 그룹은 **합쳐지지 않고 가장 구체적인 하나만**
+  적용된다. 제 이름 그룹이 생기는 순간 그 봇은 `*` 의 `/admin`·`/seller/login` … Disallow **71개를
+  통째로 무시**한다. 비공개 목록을 두 벌로 베끼는 것도 답이 아니다(반드시 갈린다). 그래서 "빼서
+  폴백" 이 정답이고, 가드가 *전용 그룹이 생기지 않았는지* + *`*` 그룹이 실제로 비공개를 막는지* 를 함께 본다.
+- `src/worker/middleware/bot-detection.ts`: 다섯을 `SCRAPER_UA_PATTERNS` 에 **그대로 남긴다**
+  (+ 빠져 있던 `Claude-SearchBot` 추가) → `/api/products`·`/api/group-buy/*` 등 공개 JSON 은 계속 403.
+
+### 🔀 비대칭이 의도다 (이게 이 변경의 핵심이고, 가장 되돌려지기 쉬운 지점)
+
+**robots 는 페이지를 허용 / 헤더는 API 를 차단.** 검색 크롤러가 필요한 것은 서버가 그려 주는
+**HTML**(①~④ 가 만든 첫 화면 + `<noscript>` 요약 + JSON-LD)이라 **GEO 손실이 0** 이고, 가격표를
+벌크로 긁는 경로는 닫힌 채 남는다. ⚠️ 한쪽만 보면 "목록이 어긋났다" 며 맞추고 싶어진다 —
+어느 방향으로 맞춰도 손해다(robots 에 다시 넣으면 유입이 끊기고, 헤더에서 빼면 API 가 열린다).
+가드가 **양방향으로** 고정한다.
+
+🔒 **SSR 은 영향 없다**: self-fetch 는 자기 UA(`ur-live-ssr-prefetch/1.0`, `ssr-payload.ts:98`)를
+쓰므로 이 403 에 걸리지 않는다(기존 가드가 이미 그걸 고정하고 있었다).
+📌 **`Google-Extended` 는 차단 유지** — 그것은 Gemini *학습* 거부이고 구글 AI 개요(AI Overviews)는
+`Googlebot` 색인을 쓴다. 즉 막아도 AI 개요 노출은 안 깎인다(흔한 오해).
+
+### 가드
+
+`content-protection.test.ts` 에 describe 1개(5건) 추가 — 기존 4건은 **풀지 않았다**(차단 목록이
+줄기만 해서 그대로 통과한다). 주입 `scripts/mutations/geo-ai-search.mjs` **6건 되돌려-검증 전부
+빨간불 확인**(robots 재차단 2 · 헤더 제거 2 · 학습 해제 1 · `*` 그룹 Disallow 제거 1).
+검증: 유닛 18건 pass · `check-robots-private-routes` 386라우트 통과 · pre-push 게이트 가드 103개.
+
+⚠️ **이 가드가 못 보는 것**: 그 봇들이 실제로 크롤하는지 · ChatGPT·Perplexity 답변에 인용되는지
+(둘 다 외부 판정, 수일~수주) · **Cloudflare 엣지의 AI 봇 차단 설정**(대시보드이고 레포가 못 본다 —
+세션은 읽기 전용, 대표만 바꾼다. GPTBot·ClaudeBot 403 은 거기서 온다).
+
+### E4 (배포 후, 한 줄)
+
+```bash
+curl -sS --max-time 15 https://urdeal.kr/robots.txt | grep -cE '^User-agent: (OAI-SearchBot|ChatGPT-User|PerplexityBot|Perplexity-User|Claude-SearchBot)$'
+# → 4 → **0** 이어야 한다 (배포 전 4건: Claude-SearchBot 은 원래 없었다)
+curl -sS --max-time 15 https://urdeal.kr/robots.txt | grep -cE '^User-agent: (GPTBot|ClaudeBot|CCBot|Google-Extended|Bytespider)$'
+# → **5 유지** (학습 쪽은 그대로 막혀야 한다)
+curl -sS -o /dev/null -w '%{http_code}\n' -A 'Mozilla/5.0 (compatible; OAI-SearchBot/1.0; +https://openai.com/searchbot)' https://urdeal.kr/api/products
+# → **403** (페이지는 열고 API 는 닫은 그 비대칭이 살아 있는지)
+```
+⚠️ **"이 PR 이 ChatGPT 답변에 우리를 띄웠다" 고 보고하지 말 것** — 우리가 한 것은 *돌려보내지
+않기*까지다. 인용 여부는 그들이 정하고 수일~수주 걸린다.
+
+### 📌 남은 것 (대표 판단 대기)
+
+- **다국어(hreflang 0건)** — 언어별 URL 은 큰 변경. 내 의견: 한국어 색인이 먼저.
+- **`llms.txt` 404** — 비표준이고 어느 엔진도 공식 지원을 announce 하지 않았다. 값 불확실.
+
+---
+
+## ✅ E4 판정 — ④ #1715 · ⑤ #1716 둘 다 통과 (배포 `1e6881238`)
+
+둘이 한 배포에 실렸다(#1715 의 `cc67a296c` 배포는 #1716 푸시에 밀려 취소됐고, `1e6881238` 이 둘을 모두 포함).
+
+### ④ 목록·유어샵 구조화 데이터 (머지 `cc67a296c`)
+
+Yeti UA 로 받아 **파싱해서** 셌다:
+
+| 경로 | BreadcrumbList | ItemList | 항목 | 접두 |
+|---|---|---|---|---|
+| `/` | — (루트라 의도) | 1 | **10** | `/pass` 10 |
+| `/browse` | `유어딜 › 쇼핑` | 1 | 1 | `/products` 1 |
+| `/u/jiwon1228` | `유어딜 › 정지원임` | 1 | 4 | `/pass` 3 · `/stays` 1 |
+| `/vouchers` | `유어딜 › 교환권` | 0 | 0 | — (의도) |
+| `/map` | `유어딜 › 동네딜 지도` | 0 | 0 | — |
+| `/stays` | `유어딜 › 숙소 이용권` | 0 | 0 | — |
+| `/terms/seller` | `유어딜 › 이용약관 › 판매자 약관` | 0 | 0 | — |
+| `/pass/2919` | `홈 › 동네딜 › 달빛한스푼 닭도리탕` | 0 | 0 | (상세 종전대로) |
+
+그리고: `/u/jiwon1228` 에 **`ProfilePage` + `Person`** 실재 · **`position` 이 전 표면에서 1..N 연속** ·
+**항목 URL 중 `/vouchers/` 0건** · **상대 URL·상대 이미지 0건** · **매달린 `@id` 0건**(`/blog`·`/pass/:id`
+포함 7경로 — #1714 가 해소한 성질이 새 노드에서도 유지된다).
+
+🩸 **이 판정의 첫 측정이 `/` 와 `/browse` 를 "항목 0건" 으로 읽어 결함으로 오진할 뻔했다.**
+내 측정기가 `@graph` **top-level 만** 훑었는데 `ItemList` 는 `CollectionPage.mainEntity` **안**에
+중첩돼 있다(유어샵만 top-level 이라 그쪽만 보였다). 라이브 시드를 따로 받아 보니 `deal_only=0`
+짜리가 **50건** 멀쩡히 있었고, 그제서야 측정기를 의심했다.
+⇒ **같은 세션에서 세 번째다**: ① `grep -c` 개수 ≠ 노드 수(`publisher` 참조를 중복으로 오독)
+② 서빙 태그의 CSP `nonce` 때문에 정규식이 블록 **0개**로 읽음 ③ 이번 중첩.
+**구조화 데이터 판정은 재귀로 훑어서 할 것.** 재사용 가능한 측정기를 스크래치패드에 두었다
+(`e4b.py` — `walk()` 가 `mainEntity` 등 중첩까지 전부 모은다).
+
+### ⑤ AI 검색·인용 크롤러 분리 (머지 `1e6881238`)
+
+```
+robots.txt  검색·인용 5종(OAI-SearchBot·ChatGPT-User·PerplexityBot·Perplexity-User·Claude-SearchBot)   4 → 0 ✅
+robots.txt  학습 5종(GPTBot·ClaudeBot·CCBot·Google-Extended·Bytespider)                                 5 유지 ✅
+
+라이브 비대칭 실측            HTML   API(/api/products)
+  OAI-SearchBot                200        403    ← 페이지 허용 / API 차단
+  PerplexityBot                200        403
+  Claude-SearchBot             200        403
+  Googlebot                    200        200    ← 한 번도 안 막힌다
+```
+
+의도한 비대칭이 라이브에서 그대로 성립한다.
+
+### 📌 다음 세션의 첫 액션
+
+**없다 — 이 라인은 열린 작업이 없다.** 대표 판단 대기 두 건만 남아 있고, 먼저 시작하지 말 것:
+
+1. **다국어(hreflang 0건)** — 언어별 URL 은 큰 변경. 내 의견: 한국어 색인이 먼저.
+2. **`llms.txt` 404** — 비표준이고 어느 엔진도 공식 지원을 announce 하지 않았다. 값 불확실.
+
+### ⚠️ 이번에 틀렸던 판단 (같은 오진 반복 방지)
+
+- **브랜드 신호를 두 번, 서로 반대 방향으로 오진했다**(③·③-2 참조). 결판은 **UA 별 라이브 실측**이
+  냈다 — **파일에 있다 ≠ 크롤러가 받는다.** 두 셸(봇 최소 HTML / `index.html`)은 상호배타다.
+- **"0" 을 세 번 결함으로 읽었다**(위 ④ 참조). **0 이 나오면 먼저 측정기를 의심할 것.**
+- **중복 잠금은 각 잠금을 시험 불가능하게 만든다** — 주입 러너가 그걸 잡았다(④ 규칙을 두 겹으로
+  짰더니 한 겹을 없애도 다른 겹이 같은 결과를 냈다). 규칙은 한 줄로 모을 것.

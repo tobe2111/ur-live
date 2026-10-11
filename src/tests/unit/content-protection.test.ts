@@ -158,3 +158,96 @@ describe('사진 저장 억제 — JS 와 CSS 는 한 쌍이다', () => {
     expect(s).not.toContain("'copy'")
   })
 })
+
+/**
+ * 🔀 2026-10-11 — AI **검색·인용** 크롤러는 페이지를 허용, **API 는 계속 차단**.
+ *
+ * 대표 *"세계최고의 SEO, GEO를 자랑하게 만들어줘"* · *"우리 서비스로 트래픽이 몰려야해"*.
+ *
+ * 라이브 실측(`urdeal.kr/` HTML)이 결판냈다 — **엣지는 이미 둘을 가르는데 robots.txt 만 안 갈랐다**:
+ *   GPTBot 403 · ClaudeBot 403                                  ← 학습
+ *   OAI-SearchBot 200 · ChatGPT-User 200 · PerplexityBot 200     ← 검색·인용
+ *   Claude-SearchBot 200 · Googlebot 200
+ * 그 상태에서 robots.txt 는 검색·인용 쪽에게도 `Disallow: /` 를 주고 있었다. 그들은 robots 를
+ * **지키는** 봇이라, 결과는 "우리를 링크로 인용해 줄 수 있는 크롤러만 돌려보내기" 였다.
+ *
+ * 이 테스트가 고정하는 것은 **비대칭 그 자체**다(한쪽만 보면 둘 다 "고치고" 싶어진다):
+ *   · robots.txt    → 다섯이 차단 목록에 **없어야** 한다 (페이지 크롤 허용)
+ *   · 헤더 차단 목록 → 다섯이 **있어야** 한다 (공개 JSON 수확은 403 유지)
+ *
+ * **못 막는 것**: 실제로 그 봇들이 우리 페이지를 크롤하는지 · ChatGPT·Perplexity 답변에
+ * 인용되는지(둘 다 외부 판정이고 수일~수주 걸린다) · Cloudflare 엣지의 AI 봇 차단 설정
+ * (대시보드이고 레포가 못 본다 — 대표만 바꾼다).
+ */
+describe('GEO — AI 검색·인용 크롤러는 페이지 허용 / API 차단 (비대칭이 의도다)', () => {
+  /** 사업자가 "학습" 과 분리해 운영하는, 링크로 인용해 주는 크롤러들. */
+  const AI_SEARCH = [
+    'OAI-SearchBot',
+    'ChatGPT-User',
+    'PerplexityBot',
+    'Perplexity-User',
+    'Claude-SearchBot',
+  ]
+  /** 학습·벌크 데이터셋 쪽. 이쪽은 양쪽에서 계속 막는다. */
+  const AI_TRAINING = ['GPTBot', 'ClaudeBot', 'anthropic-ai', 'Claude-Web', 'CCBot', 'Bytespider']
+
+  it('robots.txt 차단 목록에 AI 검색·인용 다섯이 없다', () => {
+    const s = read(ROBOTS)
+    for (const ua of AI_SEARCH) {
+      expect(s, `robots 가 ${ua} 를 막고 있다 — 유입을 스스로 끊는다`).not.toMatch(
+        new RegExp(`^User-agent: ${ua}$`, 'm'),
+      )
+    }
+  })
+
+  it('학습 크롤러는 robots.txt 에서 계속 차단된다 (분리가 전면 해제로 번지지 않았는지)', () => {
+    const s = read(ROBOTS)
+    for (const ua of AI_TRAINING) {
+      expect(s, `robots 에 ${ua} 차단이 사라졌다`).toMatch(new RegExp(`^User-agent: ${ua}$`, 'm'))
+    }
+  })
+
+  it('AI 검색·인용 다섯은 헤더 수확 목록에 남아 있다 (공개 JSON 벌크 수확 차단 유지)', () => {
+    const bot = code(read(BOT))
+    const block = bot.slice(bot.indexOf('const SCRAPER_UA_PATTERNS'))
+    for (const ua of AI_SEARCH) {
+      expect(block, `${ua} 가 수확 목록에서 빠졌다 — 가격표 API 가 열린다`).toContain(`/${ua}/i`)
+    }
+  })
+
+  it('동작으로도 확인 — 다섯은 API 수확 봇으로 판정되고, 검색엔진은 아니다', async () => {
+    const { isScraperUA } = await import('../../worker/middleware/bot-detection')
+    for (const ua of AI_SEARCH) {
+      expect(isScraperUA(`Mozilla/5.0 (compatible; ${ua}/1.0; +https://example.com/bot)`), ua).toBe(
+        true,
+      )
+    }
+    // 색인·공유 미리보기는 절대 막히지 않는다(이 서비스의 유입).
+    for (const ua of [
+      'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+      'Mozilla/5.0 (compatible; Yeti/1.1; +http://naver.me/spd)',
+      'ur-live-ssr-prefetch/1.0',
+    ]) {
+      expect(isScraperUA(ua), ua).toBe(false)
+    }
+  })
+
+  it('다섯에게 전용 User-agent 그룹을 만들지 않았다 (그룹은 합쳐지지 않아 비공개 Disallow 가 통째로 무시된다)', () => {
+    const s = read(ROBOTS)
+    // robots.txt 그룹은 **가장 구체적인 하나만** 적용된다. 제 이름 그룹이 생기면 그 봇은
+    // `User-agent: *` 의 `/admin`·`/seller/login` … Disallow 를 전부 무시한다. 목록을 두 벌로
+    // 베끼는 것도 답이 아니다(반드시 갈린다) — 그래서 "그냥 빼서 `*` 로 떨어뜨린다" 가 정답이다.
+    for (const ua of AI_SEARCH) {
+      expect(s, `${ua} 전용 그룹이 생겼다`).not.toContain(`User-agent: ${ua}`)
+    }
+    // `*` 그룹이 비공개 경로를 실제로 막고 있어야 그 폴백이 안전하다.
+    const star = s.slice(s.indexOf('User-agent: *'))
+    const starGroup = star.split('\n\n')[0]
+    expect(starGroup).toMatch(/^Allow: \/$/m)
+    for (const priv of ['/admin', '/seller/login']) {
+      expect(starGroup, `* 그룹이 ${priv} 를 안 막는다`).toMatch(
+        new RegExp(`^Disallow: ${priv.replace('/', '\\/')}$`, 'm'),
+      )
+    }
+  })
+})

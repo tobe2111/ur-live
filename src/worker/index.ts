@@ -172,7 +172,7 @@ import { buildDetailMeta, buildStayDetailMeta, buildProductMeta } from './utils/
 // 🔎 2026-07-29 정적 소비자 표면 메타 SSOT(워커·클라 공용). ⚠️ 워커 값 import 는 alias 금지 — 상대경로.
 import { resolveConsumerSurfaceSeo } from '../shared/seo/consumer-surfaces';
 import { resolveConsumerAlias } from '../shared/seo/consumer-redirects';
-import { applySurfaceMeta, buildSellerSurfaceMeta, shouldNoindexMissingEntity, resolveRegionSeo } from './utils/surface-ssr-meta';
+import { applySurfaceMeta, buildSellerSurfaceMeta, shouldNoindexMissingEntity, resolveRegionSeo } from './utils/surface-ssr-meta'; import { buildSurfaceListJsonLd, buildCuratorJsonLd } from './utils/surface-list-jsonld';
 import { fetchSsrPayload, applySsrDiagHeaders, type SsrTarget } from './utils/ssr-payload'; import { MAP_SEED_PATH } from '../shared/map-feed-seed';
 // 🛡️ 2026-05-20: 에이전시 = 가게 입점 영업 모델 (Phase 2).
 // 🛡️ 2026-05-18: 숙소 공구 에이전시 모니터링 — PR 1 Foundation.
@@ -715,8 +715,7 @@ app.use('*', async (c, next) => {
       : /^\/products\/\d+(?:[/?#]|$)/.test(url.pathname) ? 'product'
       : /^\/(u|profile|s)(\/|$)/.test(url.pathname) ? 'linkshop'
       : url.pathname === '/vouchers' ? 'vouchers'
-      : url.pathname === '/browse' ? 'browse'
-      : url.pathname === '/map' ? 'map'
+      : url.pathname === '/browse' ? 'browse' : url.pathname === '/map' ? 'map'
       : url.pathname === '/urshorts' ? 'urshorts'
       : null;
     const routeChunks = chunkSurface ? ROUTE_CHUNK_MAP[chunkSurface] : undefined;
@@ -925,6 +924,7 @@ app.use('*', async (c, next) => {
           rb = applySurfaceMeta(rb, {
             pageTitle: cTitle, title: cTitle, description: cDesc,
             canonical: canon, ogType: 'profile', ogImage: ogCard,
+            jsonLd: buildCuratorJsonLd(ssrPayload, origin2, { title: cTitle, description: cDesc, canonical: canon }, cur),
           });
         }
       } catch { /* 파싱 실패 시 기본 메타 유지 */ }
@@ -1000,7 +1000,7 @@ app.use('*', async (c, next) => {
     //   SSR inject·0-RTT·`caches.default`·#root 로더·edgeCache 전부 불변 — head rewrite 만 추가.
     if (!isWholesaleSurface && !needsRootBlank) {
       const sm = resolveConsumerSurfaceSeo(url.pathname, url.search, origin2) ?? resolveRegionSeo(url.pathname, origin2);
-      if (sm) rb = applySurfaceMeta(rb, sm);
+      if (sm) rb = applySurfaceMeta(rb, { ...sm, jsonLd: buildSurfaceListJsonLd(url.pathname, url.search, origin2, sm, ssrPayload) });
     }
     // 🪦 2026-07-29 (소비자 SEO 실측): **사라진 상세 페이지가 `200 + index,follow` 로 나가고 있었다.**
     //   `/group-buy/99999999`(당시 주소) → HTTP 200 · 제네릭 홈 메타 · robots `index, follow`. 워커 자신의 SSR

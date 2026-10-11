@@ -64,8 +64,8 @@ export default [
   {
     name: '[지도시드] 지도 청크가 병렬 preload 를 못 받는다',
     file: WORKER,
-    find: "      : url.pathname === '/map' ? 'map'\n",
-    replace: '',
+    find: " : url.pathname === '/map' ? 'map'\n",
+    replace: '\n',
     test: TEST,
     why: '지도 페이지 청크가 엔트리 실행 뒤에야 발견돼 직렬로 내려온다.',
   },
