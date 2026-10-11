@@ -9,6 +9,7 @@ import { logoutAll } from '@/features/auth/login-flow.service'
 import { getUserProfileImage } from '@/utils/auth'
 import { RewardAdCard } from '@/components/my-page/reward-ad-card'
 import { ChevronRight } from 'lucide-react'
+import { useNotificationSheet } from '@/components/notifications/NotificationSheet'
 // 🎨 2026-09-28: 남은 lucide 는 `ChevronRight`(프로필 편집 화살표) 하나뿐 — 조작이라 그대로 둔다.
 //    2026-09-30 수익·추천 구역이 빠지며 `ReceiptIcon`·`UrShopIcon` 소비처는 사라졌다.
 import { LogOutIcon, ScanIcon } from '@/components/icons/urdeal-icons'
@@ -65,6 +66,7 @@ export default function UserProfilePage() {
   const hasProcessedToken = useRef(false)
   // 🛡️ 2026-05-24: 프로필 편집 모달 — /account/settings 에서 흡수.
   const [editOpen, setEditOpen] = useState(false)
+  const bell = useNotificationSheet()  // 🔔 벨 → 올라오는 시트. 배선은 `NotificationSheet` 머리말.
   const [profileForm, setProfileForm] = useState({ name: '', phone: '' })
   useEffect(() => {
     // 모달 열릴 때 최신 phone 가져오기 (initial 으로 전달).
@@ -186,12 +188,20 @@ export default function UserProfilePage() {
               </span>
               <span className="block text-[13px] text-gray-500 dark:text-white/50 mt-1 truncate">{localStorage.getItem('user_email') || ''}</span>
             </span>
+            {/* ✏️ 2026-10-11 (대표 *"오른쪽 버튼은 눌렀을 때 기껏해야 이름이랑 전화번호 변경이네?
+                프로필 편집이라고 바꾸던지"*): 맨 `>` 는 **무엇이 열리는지 말하지 않는다.**
+                ⚠️ 09-28 에 없앤 회색 알약을 되살리는 게 아니다 — 그건 이름·이메일 **아래 셋째 줄**이라
+                   헤더를 세 층으로 만들었다. 이건 같은 줄 오른쪽 끝의 12px 글자라 줄이 안 는다. */}
+            <span className="shrink-0 text-[12px] font-semibold text-gray-500 dark:text-gray-400">{t('userProfile.editProfile', { defaultValue: '프로필 편집' })}</span>
             <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
           </button>
           <SellerSwitchInline seats={sellerSeats} />
-          {/* 알림 버튼 — 프로필 우측 (설정 톱니는 '프로필 편집' 알약과 중복이라 제거, 설정은 하단 '설정' 그룹) */}
+          {/* 알림 버튼 — 프로필 우측 (설정 톱니는 '프로필 편집' 알약과 중복이라 제거, 설정은 하단 '설정' 그룹)
+              🔔 2026-10-11 (대표 *"알림 페이지가 별도로 나오는게 아니라 위에서 올라오는 형태로"*):
+                 `/notifications` 이동 → **올라오는 시트**. PC 는 2026-07-18 부터 이미 그 자리에서 열렸고
+                 모바일만 페이지로 떠나고 있었다(보던 목록의 스크롤·필터가 날아간다). */}
           <div className="flex items-center gap-1 flex-shrink-0 self-start pt-1">
-            <button onClick={() => navigate('/notifications')} aria-label={t('userProfile.ariaNotifications')} className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-gray-100 dark:bg-white/[0.06] hover:bg-gray-200 dark:hover:bg-white/[0.12] transition-colors">
+            <button onClick={bell.open} aria-label={t('userProfile.ariaNotifications')} className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-gray-100 dark:bg-white/[0.06] hover:bg-gray-200 dark:hover:bg-white/[0.12] transition-colors">
               <svg className="w-4 h-4 text-gray-700 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 00-5-5.917V4a1 1 0 10-2 0v1.083A6 6 0 006 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
             </button>
           </div>
@@ -421,6 +431,8 @@ export default function UserProfilePage() {
       </div>{/* /ur-account-pc */}
 
       {/* 🛡️ 2026-05-24: 프로필 편집 모달 (/account/settings 에서 흡수). */}
+      {bell.sheet}
+
       <ProfileEditModal
         isOpen={editOpen}
         onClose={() => setEditOpen(false)}
