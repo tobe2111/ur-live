@@ -28,6 +28,7 @@ import { recordKakaoLoginDiag } from '../utils/kakao-login-diag';
 import { checkLockout, recordFailure, clearFailures } from '../utils/account-lockout';
 import { withCircuitBreaker } from '../utils/circuit-breaker';
 import { decryptAtRest } from '../utils/data-crypto';
+import { AGENCY_ACCOUNT_HINT, isAgencyStaffEmail } from '../../features/agency-console/api/agency-hint';
 
 const authRouter = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -150,14 +151,8 @@ authRouter.post('/login', rateLimit({ action: 'login', max: 10, windowSec: 300 }
     }>('SELECT id, email, name, password_hash FROM users WHERE email = ?', [email]);
 
     if (!user) {
-      // 🏢 2026-10-11 (대표 확정 안 A): 손님 로그인에 에이전시 이메일을 넣은 사람을 에이전시 로그인으로 보낸다.
-      //   에이전시 계정은 손님 계정과 다른 계정이라 여기선 절대 로그인되지 않는다. 테이블이 아직 없으면 조용히 넘어간다.
-      const agencyHit = await c.env.DB.prepare(
-        "SELECT 1 AS hit FROM agency_staff WHERE LOWER(email) = LOWER(?) AND status IN ('active','pending') LIMIT 1",
-      ).bind(email).first<{ hit: number }>().catch(() => null);
-      if (agencyHit) {
-        return c.json({ success: false, code: 'AGENCY_ACCOUNT', error: '에이전시 계정이에요. 아래 에이전시 로그인으로 들어와 주세요.' }, 401);
-      }
+      // 🏢 2026-10-11 (안 A): 에이전시 이메일이면 에이전시 로그인으로 안내 — features/agency-console/api/agency-hint.ts
+      if (await isAgencyStaffEmail(c.env.DB, email)) return c.json(AGENCY_ACCOUNT_HINT, 401);
       return c.json({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다' }, 401);
     }
 

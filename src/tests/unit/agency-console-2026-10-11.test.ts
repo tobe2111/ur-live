@@ -118,8 +118,10 @@ describe('⑤ 손님 로그인과의 경계 (안 A)', () => {
 
   it('손님 이메일 로그인에 에이전시 이메일을 넣으면 안내한다', () => {
     const auth = code('src/worker/routes/auth.routes.ts')
-    expect(auth).toMatch(/FROM agency_staff WHERE LOWER\(email\) = LOWER\(\?\)/)
-    expect(auth).toMatch(/code: 'AGENCY_ACCOUNT'/)
+    expect(auth).toMatch(/if \(await isAgencyStaffEmail\(c\.env\.DB, email\)\) return c\.json\(AGENCY_ACCOUNT_HINT, 401\)/)
+    const hint = code('src/features/agency-console/api/agency-hint.ts')
+    expect(hint).toMatch(/FROM agency_staff WHERE LOWER\(email\) = LOWER\(\?\)/)
+    expect(hint).toMatch(/code: 'AGENCY_ACCOUNT'/)
   })
 
   it('공용 axios 가 /agency 화면에서 소비자 401 로 로그인에 던지지 않는다 (가입·합류 화면 보호)', () => {
