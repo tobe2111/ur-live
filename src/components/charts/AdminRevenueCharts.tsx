@@ -1,24 +1,9 @@
 /**
- * Admin Revenue Analytics Charts (Lazy Loaded)
- *
- * Recharts를 동적으로 로드하여 초기 번들에서 377KB를 절감합니다.
+ * 어드민 매출 분석 차트 3종 — 2026-10-11 recharts → 직접 그린 SVG(`svg-charts.tsx`).
+ * 이름·props 는 종전과 같다(`AdminRevenueAnalyticsPage` 무수정). 대시보드라 라이트 고정.
  */
-
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
-} from 'recharts'
 import { formatNumber } from '@/utils/format'
+import { SvgBarChart, SvgLineChart, SvgPieChart } from './svg-charts'
 
 interface RevenueDataPoint {
   date: string
@@ -38,63 +23,41 @@ function fmt(n: number | null | undefined): string {
 
 export function RevenueBarChart({ chartData }: { chartData: RevenueDataPoint[] }) {
   return (
-    <ResponsiveContainer width="100%" height={320}>
-      <BarChart data={chartData}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-        <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#6B7280' }} />
-        <YAxis tick={{ fontSize: 11, fill: '#6B7280' }} tickFormatter={(v) => `${(v / 10000).toFixed(0)}만`} />
-        <Tooltip
-          contentStyle={{ borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 12 }}
-          formatter={(value) => [`${fmt(Number(value ?? 0))}원`, '매출']}
-        />
-        <Bar dataKey="revenue" fill="#374151" radius={[4, 4, 0, 0]} />
-      </BarChart>
-    </ResponsiveContainer>
+    <SvgBarChart
+      data={chartData}
+      xKey="date"
+      series={{ key: 'revenue', color: '#374151', label: '매출' }}
+      height={320}
+      yFormat={(v) => `${(v / 10000).toFixed(0)}만`}
+      tip={(d) => (<><p className="text-gray-500">{d.date}</p><p className="font-semibold text-gray-900">매출 {fmt(d.revenue)}원</p></>)}
+    />
   )
 }
 
 export function OrderCountLineChart({ chartData }: { chartData: RevenueDataPoint[] }) {
   return (
-    <ResponsiveContainer width="100%" height={280}>
-      <LineChart data={chartData}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-        <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#6B7280' }} />
-        <YAxis tick={{ fontSize: 11, fill: '#6B7280' }} />
-        <Tooltip
-          contentStyle={{ borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 12 }}
-          formatter={(value) => [`${fmt(Number(value ?? 0))}건`, '주문']}
-        />
-        <Line type="monotone" dataKey="order_count" stroke="#4b5563" strokeWidth={2} dot={{ r: 3 }} />
-      </LineChart>
-    </ResponsiveContainer>
+    <SvgLineChart
+      data={chartData}
+      xKey="date"
+      series={[{ key: 'order_count', color: '#4b5563', width: 2, label: '주문' }]}
+      height={280}
+      dots
+      yFormat={(v) => fmt(v)}
+      tip={(d) => (<><p className="text-gray-500">{d.date}</p><p className="font-semibold text-gray-900">주문 {fmt(d.order_count)}건</p></>)}
+    />
   )
 }
 
 export function CategoryPieChart({ categories, colors }: { categories: CategoryData[]; colors: string[] }) {
   return (
-    <ResponsiveContainer width="100%" height={250}>
-      <PieChart>
-        <Pie
-          data={categories}
-          dataKey="revenue"
-          nameKey="category"
-          cx="50%"
-          cy="50%"
-          outerRadius={90}
-          label={(props: { category?: string; percent?: number }) => `${props.category} ${((props.percent ?? 0) * 100).toFixed(0)}%`}
-          labelLine={{ stroke: '#9CA3AF' }}
-          fontSize={11}
-        >
-          {categories.map((_, i) => (
-            <Cell key={i} fill={colors[i % colors.length]} />
-          ))}
-        </Pie>
-        <Tooltip
-          contentStyle={{ borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 12 }}
-          formatter={(value) => [`${fmt(Number(value ?? 0))}원`]}
-        />
-      </PieChart>
-    </ResponsiveContainer>
+    <SvgPieChart
+      data={categories}
+      valueKey="revenue"
+      nameKey="category"
+      colors={colors}
+      height={250}
+      tip={(d) => (<><p className="text-gray-500">{d.category}</p><p className="font-semibold text-gray-900">{fmt(d.revenue)}원</p></>)}
+    />
   )
 }
 
