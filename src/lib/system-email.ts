@@ -14,6 +14,8 @@ export async function sendSystemEmail(
   env: unknown,
   to: string,
   content: NotificationContent,
+  /** 계정 보안 메일(인증·초대·비밀번호)은 알림 수신 끔과 무관하게 보낸다 — 끄면 가입·복구가 막힌다. */
+  opts: { ignorePreference?: boolean } = {},
 ): Promise<{ success: boolean; skipped?: boolean; error?: string }> {
   const e = env as { RESEND_API_KEY?: string; RESEND_FROM?: string; DB?: D1Database };
   const apiKey = e?.RESEND_API_KEY;
@@ -26,7 +28,7 @@ export async function sendSystemEmail(
 
   // 🛡️ 2026-06-12 (감사 1단계 — 알림 토글 실동작화): 수신자가 유어딜 유저이고
   //   email_enabled=0 이면 발송 skip. 컬럼 없거나 유저 매칭 안 되면 fail-open (발송 진행).
-  if (e?.DB) {
+  if (e?.DB && !opts.ignorePreference) {
     try {
       const pref = await e.DB.prepare(
         'SELECT COALESCE(email_enabled, 1) AS enabled FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1'

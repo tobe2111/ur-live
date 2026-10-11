@@ -28,6 +28,7 @@ import { recordKakaoLoginDiag } from '../utils/kakao-login-diag';
 import { checkLockout, recordFailure, clearFailures } from '../utils/account-lockout';
 import { withCircuitBreaker } from '../utils/circuit-breaker';
 import { decryptAtRest } from '../utils/data-crypto';
+import { AGENCY_ACCOUNT_HINT, isAgencyStaffEmail } from '../../features/agency-console/api/agency-hint';
 
 const authRouter = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -150,6 +151,8 @@ authRouter.post('/login', rateLimit({ action: 'login', max: 10, windowSec: 300 }
     }>('SELECT id, email, name, password_hash FROM users WHERE email = ?', [email]);
 
     if (!user) {
+      // 🏢 2026-10-11 (안 A): 에이전시 이메일이면 에이전시 로그인으로 안내 — features/agency-console/api/agency-hint.ts
+      if (await isAgencyStaffEmail(c.env.DB, email)) return c.json(AGENCY_ACCOUNT_HINT, 401);
       return c.json({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다' }, 401);
     }
 

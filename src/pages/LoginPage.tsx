@@ -496,6 +496,15 @@ export default function LoginPage() {
             </button>
           </div>
         )}
+
+        {/* 🏢 2026-10-11 대표 확정 안 A — 손님 로그인은 그대로 두고 맨 아래에 에이전시 입구 한 줄.
+            에이전시 계정은 이메일로만 가입·로그인하는 다른 계정이다(docs/decisions/2026-10-11-agency-model-email-only.md). */}
+        <div className="mt-10 pt-5 border-t border-gray-100 dark:border-[#2C2F35] flex items-center justify-center gap-2 text-[13px]">
+          <span className="text-gray-500 dark:text-gray-400">{t('login.agencyQuestion', { defaultValue: '에이전시이신가요?' })}</span>
+          <Link to="/agency/login" className="font-semibold text-brand-text hover:underline underline-offset-4">
+            {t('login.agencyLogin', { defaultValue: '에이전시 로그인' })}
+          </Link>
+        </div>
       </div>
     </div>
   )

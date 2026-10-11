@@ -6122,7 +6122,9 @@
     "termsLink": "利用規約",
     "termsAnd": "および",
     "privacyLink": "プライバシーポリシー",
-    "termsNoticeEnd": "に同意したものとみなされます"
+    "termsNoticeEnd": "に同意したものとみなされます",
+    "agencyQuestion": "エージェンシーの方ですか？",
+    "agencyLogin": "エージェンシーログイン"
   },
   "guide": {
     "sectionTitlePlaceholder": "セクションタイトル",

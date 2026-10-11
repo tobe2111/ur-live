@@ -6369,7 +6369,9 @@
     "termsLink": "이용약관",
     "termsAnd": "및",
     "privacyLink": "개인정보처리방침",
-    "termsNoticeEnd": "에 동의하는 것으로 봅니다"
+    "termsNoticeEnd": "에 동의하는 것으로 봅니다",
+    "agencyQuestion": "에이전시이신가요?",
+    "agencyLogin": "에이전시 로그인"
   },
   "guide": {
     "sectionTitlePlaceholder": "섹션 제목",

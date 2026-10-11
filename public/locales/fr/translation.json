@@ -6122,7 +6122,9 @@
     "termsLink": "Conditions d'utilisation",
     "termsAnd": "et la",
     "privacyLink": "Politique de confidentialité",
-    "termsNoticeEnd": ""
+    "termsNoticeEnd": "",
+    "agencyQuestion": "Vous êtes une agence ?",
+    "agencyLogin": "Connexion agence"
   },
   "guide": {
     "sectionTitlePlaceholder": "Titre de section",
