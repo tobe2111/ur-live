@@ -47,8 +47,7 @@ const KNOWN: Record<string, string> = {
     '컬럼은 현재 라이브에 존재(같은 클래스, 잠복)',
   'src/features/bulk-upload/api/bulk-upload.routes.ts':
     '🔴 라이브에 없음 — 잠재 500: products.category_main, products.category_sub, products.option_type, products.option_values',
-  'src/features/group-buy/api/group-buy.routes.ts':
-    '컬럼은 현재 라이브에 존재(같은 클래스, 잠복)',
+  // group-buy.routes.ts — 2026-10-10 첫 판매 안내를 `seller-sale-notify.ts` 로 옮기며 인라인 ALTER(first_voucher_notified) 제거
   'src/features/group-buy/api/marketing.routes.ts':
     '컬럼은 현재 라이브에 존재(같은 클래스, 잠복)',
   'src/features/inventory/api/inventory.routes.ts':

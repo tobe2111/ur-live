@@ -80,9 +80,11 @@ const buildPayload = (access: { role?: string; source?: string }, userId: number
  *   그래서 진짜 JWT 를 서명해 태운다.
  */
 const SECRET = 'test-secret-store-owner-judgment'
-const judge = async (p: Record<string, unknown>) => {
+// 🔐 2026-10-10: resolveStoreActor 는 이제 DB 로 (매장, 사람)의 **지금** 역할을 본다(store-seat-guard).
+//   그래서 판정에 쓰인 같은 DB 를 넘긴다 — 빈 DB 면 위임 좌석은 '회수됨' 이다(그게 맞다).
+const judge = async (p: Record<string, unknown>, db: Db = fresh()) => {
   const token = await jwtSign({ ...p, exp: Math.floor(Date.now() / 1000) + 600 }, SECRET)
-  return resolveStoreActor(`Bearer ${token}`, SECRET)
+  return resolveStoreActor(`Bearer ${token}`, SECRET, d1(db))
 }
 
 describe('🪑 직접 등록 사장님 = 소유자 (역할이 토큰을 건너 살아남는다)', () => {
@@ -103,7 +105,7 @@ describe('🪑 직접 등록 사장님 = 소유자 (역할이 토큰을 건너 �
     db.prepare(`INSERT INTO seller_operators (seller_id, user_id, role) VALUES (7, 100, 'owner')`).run()
 
     const access = await canOperateStore(d1(db), 100, 7)
-    const actor = await judge(buildPayload(access, 100))
+    const actor = await judge(buildPayload(access, 100), db)
     expect(actor.isOwner, '자기 매장인데 운영자로 오판되면 정산 계좌를 못 넣는다(=돈을 못 받는다)').toBe(true)
   })
 
@@ -114,7 +116,7 @@ describe('🪑 직접 등록 사장님 = 소유자 (역할이 토큰을 건너 �
 
     const access = await canOperateStore(d1(db), 200, 7)
     expect(access.role).toBe('operator')
-    const actor = await judge(buildPayload(access, 200))
+    const actor = await judge(buildPayload(access, 200), db)
     expect(actor.isOwner, '운영자가 소유자가 되면 남의 매장 계좌를 갈아끼울 수 있다').toBe(false)
     expect(actor.operatorUserId, '시트 분리용 claim 은 그대로 있어야 한다(사장님이 튕기지 않게)').toBe(200)
   })
@@ -124,7 +126,7 @@ describe('🪑 직접 등록 사장님 = 소유자 (역할이 토큰을 건너 �
     db.prepare(`INSERT INTO sellers VALUES (7, 100, '옛 방식')`).run()
     const access = await canOperateStore(d1(db), 100, 7)
     expect(access.source).toBe('link')
-    const actor = await judge(buildPayload(access, 100))
+    const actor = await judge(buildPayload(access, 100), db)
     expect(actor.isOwner).toBe(true)
     expect(actor.operatorUserId, 'link 경로는 시트를 안 가른다').toBeNull()
   })

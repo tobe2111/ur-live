@@ -1209,7 +1209,7 @@ internalAdminToolsRoutes.get('/api/admin/intro-commission-audit', requireAdmin()
       grandTotal += r.total_amount || 0
       const u = await DB.prepare('SELECT handle, name, business_status FROM users WHERE id = ?').bind(r.user_id).first<{ handle: string | null; name: string | null; business_status: string | null }>().catch(() => null)
       const wrongPayout = await DB.prepare(
-        `SELECT COALESCE(SUM(amount),0) AS amt FROM payouts WHERE payee_type='seller' AND payee_id = ? AND status IN ('approved','sent')`
+        `SELECT COALESCE(SUM(amount),0) AS amt FROM payouts WHERE payee_type IN ('seller','store_owner') AND payee_id = ? AND status IN ('approved','sent')` /* 🔗 2026-10-10: 매장 payout 은 store_owner 로 찍힌다 */
       ).bind(r.user_id).first<{ amt: number }>().catch(() => ({ amt: 0 }))
       enriched.push({
         user_id: r.user_id,

@@ -23,13 +23,12 @@ import type { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import type { AuthUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
-import { DEAL_PCT_MAX } from '../commission-rates'
 import {
   issueStoreCode, listStoreCodes, revokeStoreCode, findStoreCode, judgeStoreCode,
   formatStoreCode, STORE_CODE_REASON_MESSAGE,
 } from '@/worker/utils/store-codes'
 import { redeemInfluencerCode, resolveCodeCommissionPct } from '@/worker/utils/influencer-code-redeem'
-import { readBrokerTerms } from '@/worker/utils/broker-share'
+import { readBrokerTerms, validateInfluencerDealPct, influencerPctCeiling } from '@/worker/utils/broker-share'
 import { notifyUser, notifySeller } from '@/lib/notifications'
 
 type MarketingVars = {
@@ -57,12 +56,9 @@ async function resolveIssuerUserId(c: { get: (k: string) => unknown; env: Env },
   return Number.isFinite(linked) && linked > 0 ? linked : sellerId
 }
 
-/** 코드·딜의 % 를 매장 상한 안으로 검증한다. 순수 판정은 `resolveCodeCommissionPct` 와 같은 규칙. */
-function checkPct(raw: unknown, capPct: number | null): { ok: true; pct: number } | { ok: false; error: string } {
-  const pct = Number(raw)
-  if (!Number.isFinite(pct) || pct <= 0 || pct > DEAL_PCT_MAX) return { ok: false, error: `커미션 % 은 0 ~ ${DEAL_PCT_MAX} 사이여야 해요` }
-  if (capPct != null && pct > capPct) return { ok: false, error: `이 매장의 인플루언서 커미션 상한은 ${capPct}% 예요 — 상한은 매장 요율에서 바꿀 수 있어요` }
-  return { ok: true, pct: resolveCodeCommissionPct(pct, capPct) }
+/** 코드·딜의 % 를 매장 요율 안으로 검증한다 — 🎯 2026-10-10: 판정은 SSOT(`validateInfluencerDealPct`) 하나. */
+function checkPct(raw: unknown, terms: { sharePct: number; influencerCapPct: number | null }) {
+  return validateInfluencerDealPct(raw, terms)
 }
 
 export function registerCollabCodeRoutes(sellerApp: MarketingApp, influencerApp: MarketingApp, discoverApp: MarketingApp): void {
@@ -81,7 +77,7 @@ export function registerCollabCodeRoutes(sellerApp: MarketingApp, influencerApp:
     const b = await c.req.json<{ commission_pct?: unknown; requires_approval?: unknown; label?: unknown; max_uses?: unknown; expires_at?: unknown }>()
       .catch(() => ({} as Record<string, unknown>))
     const terms = await readBrokerTerms(c.env.DB, sellerId)
-    const v = checkPct(b.commission_pct, terms.influencerCapPct)
+    const v = checkPct(b.commission_pct, terms)
     if (!v.ok) return c.json({ success: false, error: v.error }, 400)
     const label = b.label == null ? null : String(b.label).trim().slice(0, 40) || null
     const maxUsesRaw = b.max_uses == null || b.max_uses === '' ? null : Number(b.max_uses)
@@ -117,7 +113,7 @@ export function registerCollabCodeRoutes(sellerApp: MarketingApp, influencerApp:
     if (!Number.isFinite(dealId) || dealId <= 0) return c.json({ success: false, error: 'invalid id' }, 400)
     const b = await c.req.json<{ commission_pct?: unknown; ends_at?: unknown }>().catch(() => ({} as Record<string, unknown>))
     const terms = await readBrokerTerms(c.env.DB, sellerId)
-    const v = checkPct(b.commission_pct, terms.influencerCapPct)
+    const v = checkPct(b.commission_pct, terms)
     if (!v.ok) return c.json({ success: false, error: v.error }, 400)
     let endsAt: string | null | undefined
     if (b.ends_at === null || b.ends_at === '') endsAt = null
@@ -193,7 +189,7 @@ export function registerCollabCodeRoutes(sellerApp: MarketingApp, influencerApp:
     return c.json({ success: true, data: {
       code: formatStoreCode(judged.row.code),
       seller_id: s.id, seller_name: s.business_name || s.name, address: s.address,
-      commission_pct: resolveCodeCommissionPct(judged.row.commission_pct, terms.influencerCapPct),
+      commission_pct: Math.min(resolveCodeCommissionPct(judged.row.commission_pct, terms.influencerCapPct), influencerPctCeiling(terms)),
       requires_approval: !!judged.row.requires_approval,
       label: judged.row.label,
     } })

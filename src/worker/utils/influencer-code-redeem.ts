@@ -22,7 +22,7 @@
 import type { D1Database } from '@cloudflare/workers-types'
 import { findStoreCode, judgeStoreCode, consumeStoreCode, STORE_CODE_REASON_MESSAGE, type StoreCodeRow } from './store-codes'
 import { canOperateStore } from './seller-operators'
-import { getSellerMeta } from './seller-meta'
+import { readBrokerTerms, influencerPctCeiling } from './broker-share'
 
 export interface RedeemResult {
   ok: boolean
@@ -75,8 +75,9 @@ export async function redeemInfluencerCode(
   if (blocked) return { ok: false, code: 'BLOCKED', error: '이 매장과는 협업할 수 없어요' }
 
   // ④ 상한
-  const meta = (await getSellerMeta(DB, [c.seller_id])).get(c.seller_id) || {}
-  const pct = resolveCodeCommissionPct(c.commission_pct, meta.influencer_pct_cap ? Number(meta.influencer_pct_cap) : null)
+  // 🎯 2026-10-10: 상한만이 아니라 중개사 몫 합(≤90)도 — SSOT `influencerPctCeiling`.
+  const terms = await readBrokerTerms(DB, c.seller_id)
+  const pct = Math.min(resolveCodeCommissionPct(c.commission_pct, terms.influencerCapPct), influencerPctCeiling(terms))
   if (pct <= 0) return { ok: false, code: 'NO_PCT', error: '이 코드에는 커미션이 설정돼 있지 않아요. 매장에 문의해주세요' }
 
   const sellerName = seller.business_name || seller.name

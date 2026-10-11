@@ -81,8 +81,9 @@ export default [
   {
     name: '💸 cron 이 payee_type 판정을 다시 스스로 한다 (두 경로가 갈린다)',
     file: CRON,
-    find: 'payeeType = payoutPayeeType(payee.kind, row?.seller_type)',
-    replace: "payeeType = 'store_owner'",
+    // 🏦 2026-10-10 재앵커: payee_type 은 계좌 스냅샷 SSOT(`resolvePayeeAccount`)가 돌려준다.
+    find: 'const payeeType: string = acct.payeeType',
+    replace: "const payeeType: string = 'store_owner'",
     test: TEST,
     why: 'SSOT 에 위임하지 않으면 cron 과 어드민 수동 생성이 서로 다른 라벨을 쓴다 — 같은 가게에 payout 행이 둘 생긴다.',
   },

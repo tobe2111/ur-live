@@ -58,7 +58,7 @@ sellerProfileRoutes.get('/business-info', async (c) => {
       const seeded = await buildBusinessInfoSeed(db, sellerId);
       if (!seeded) return c.json({ success: false, error: 'Not found' }, 404);
       // ⚠️ 이 분기도 같은 마스킹을 타야 한다 — 안 그러면 "행이 없을 때만" 원본이 샌다.
-      const a0 = await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET);
+      const a0 = await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET, c.env.DB);
       if (!a0.isOwner) {
         const b = seeded as unknown as Record<string, unknown>;
         b.business_number = maskBusinessNumber(b.business_number);
@@ -89,7 +89,7 @@ sellerProfileRoutes.get('/business-info', async (c) => {
 
     // 🏪 2026-09-04: 운영자(중개사)에게는 가려서 준다 — 등록번호 끝 4자리·대표자명 첫 글자만,
     //   주소/연락처는 통째로 감춘다. 사장님 본인은 그대로 본다.
-    const actor = await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET);
+    const actor = await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET, c.env.DB);
     if (!actor.isOwner) {
       const b = businessInfo as Record<string, unknown>;
       b.business_number = maskBusinessNumber(b.business_number);
@@ -118,7 +118,7 @@ sellerProfileRoutes.on(['POST', 'PUT', 'PATCH'], '/business-info', async (c) => 
 
     // 🏪 2026-09-04 (대표 확정): 사업자 정보는 **소유자만** 등록·수정한다. 이 값이 세금계산서와
     //   정산 대상자를 정하므로, 대신 운영하는 사람이 바꿀 수 있으면 명의가 조용히 바뀐다.
-    const actorW = await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET);
+    const actorW = await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET, c.env.DB);
     if (!actorW.isOwner) return c.json({ success: false, error: `사업자 정보는 ${OWNER_ONLY_MESSAGE}` }, 403);
 
     const body = await c.req.json<{
@@ -336,7 +336,7 @@ sellerProfileRoutes.post('/food-permit', async (c) => {
     if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
     // 🏪 사업자 정보와 같은 레일 — 명의를 증명하는 서류는 소유자만 올린다.
-    const actor = await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET);
+    const actor = await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET, c.env.DB);
     if (!actor.isOwner) return c.json({ success: false, error: `영업신고증은 ${OWNER_ONLY_MESSAGE}` }, 403);
 
     const body = await c.req.json<{ url?: string }>().catch(() => ({} as { url?: string }));

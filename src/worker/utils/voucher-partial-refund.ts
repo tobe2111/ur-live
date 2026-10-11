@@ -18,6 +18,9 @@
  *  부르면 손님이 **가지고 있는 장의 커미션까지** 회수된다(과다 역전 — 남의 돈을 뺏는 쪽 오류).
  *  그래서 부르지 않는다. 결과적으로 무른 장의 커미션(매출의 2% 안팎)이 남는다 —
  *  **적게 회수하는 쪽**의 오류이고, 플랫폼이 감수한다. 비례 역전은 별건이다(핸드오프에 기록).
+ *  🔄 2026-10-10: **인플루언서 추천·중개사 몫·어필리에이트**는 이제 회수된다 — `clawbackVoucherSettlementOnRefund`
+ *  가 무른 장마다 바우처 단위 SSOT(`clawbackVoucherCommission`, 장수 비례)를 부른다. 위 문단이 남는 것은
+ *  주문 단위 헬퍼뿐인 **영입자(store_intro)** 커미션이다.
  */
 import type { Context } from 'hono'
 import type { Env } from '../types/env'

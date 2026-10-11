@@ -32,6 +32,7 @@ import { getSellerCommissionRate, generateUniqueVoucherCode, applyGroupBuyReferr
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
 import { resolveGbOrderNumber, guardAwaitingDeposit } from './gb-purchase-guards'
 import { resolvePartialDealPlan, derivePartialDeal, spendPartialDeal, recordOrderDealUsed, restorePartialDeal } from './partial-deal'
+import { notifySellerVoucherSale } from './seller-sale-notify'
 import { normalizeCartLines, priceCartLines, cartOrderName, type PricedLine } from './cart-lines'
 import { saveCartIntent, loadCartIntent, markCartIntentConsumed } from './cart-intent'
 import type { Env } from '@/worker/types/env'
@@ -300,6 +301,7 @@ cartCheckoutRoutes.post('/cart/confirm-toss', rateLimit({ action: 'gb_cart_confi
         const { createDashboardNotification } = await import('../../notifications/api/dashboard-notifications.routes')
         for (const sid of sellerIds) {
           const mine = priced.lines.filter(l => l.sellerId === sid)
+          await notifySellerVoucherSale(c.env, DB, { sellerId: sid, productName: mine.map(l => l.name).join(', '), qty: mine.reduce((s, l) => s + l.qty, 0), amount: mine.reduce((s, l) => s + l.subtotal, 0) })
           await createDashboardNotification(
             DB, 'seller', String(sid), 'voucher_sold', '🎟️ 이용권 판매(카드)',
             `${mine.map(l => `${l.name} ×${l.qty}`).join(', ')} — ₩${mine.reduce((s, l) => s + l.subtotal, 0).toLocaleString('ko-KR')}`,

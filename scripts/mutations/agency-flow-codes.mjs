@@ -92,10 +92,19 @@ export default [
   {
     name: '🥕승인게이트 좌석을 열어 놓고 정산 게이트가 빠진다 (승인 전 매장에 돈이 나간다)',
     file: 'src/worker/cron/payouts-generate.ts',
-    find: "          if (!isPayoutEligibleSellerStatus(row?.status)) { logInfo(`[payouts-cron] skip unapproved seller ${id} (${row?.status ?? 'null'})`); continue }",
-    replace: '          void row',
+    // 🏦 2026-10-10 재앵커: 계좌·승인 조회가 `resolvePayeeAccount` SSOT 로 옮겨갔다 — 게이트는 그 결과의 `eligible`.
+    find: "      if (!acct.eligible) { logInfo(`[payouts-cron] skip unapproved seller ${id} (${acct.sellerStatus ?? 'null'})`); continue }",
+    replace: '      void acct.eligible',
     test: 'src/tests/unit/approval-gate-2026-09-20.test.ts',
     why: '좌석 개방(대기·반려 매장도 앉는다)의 짝이 이 한 줄이다 — 빠지면 09-16 사기 방어(등록증 + 어드민 승인)가 통째로 우회된다.',
+  },
+  {
+    name: '🥕승인게이트 계좌 SSOT 가 승인 상태를 안 본다 (cron·수동 생성이 함께 샌다)',
+    file: 'src/worker/utils/payout-payee-account.ts',
+    find: '      eligible: isPayoutEligibleSellerStatus(row.status),',
+    replace: '      eligible: true,',
+    test: 'src/tests/unit/payout-payee-account-2026-10-10.test.ts',
+    why: '승인 게이트가 이제 이 함수 한 곳에 있다 — 여기가 무너지면 cron 과 어드민 수동 생성이 동시에 승인 전 매장에 돈을 배정한다.',
   },
   {
     name: '🥕승인게이트 정산 집합이 좌석 집합과 같아진다 (대기 매장도 payout)',

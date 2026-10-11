@@ -53,7 +53,12 @@ describe('① 제안 문이 정산과 같은 값을 쓴다', () => {
 
   it('propose 양방향이 DEAL_PCT_MAX 로 검증한다', () => {
     // 제안이 2 로 막히면 계약 자체가 성립 못 해 정산 쪽 90 이 죽은 코드가 된다.
-    expect(src.match(/pct > DEAL_PCT_MAX/g) || []).toHaveLength(2)
+    // 🎯 2026-10-10 재조준: 검증이 SSOT(`checkStoreInfluencerPct` → `validateInfluencerDealPct`)로 옮겨갔다
+    //   (매장 상한·중개사 몫 합까지 같이 보게). **불변식은 그대로** — 양방향이 같은 검증선 90 을 쓴다.
+    expect(src.match(/await checkStoreInfluencerPct\(/g) || []).toHaveLength(2)
+    const ssot = codeOnly(readFileSync('src/worker/utils/broker-share.ts', 'utf-8'))
+    expect(ssot).toMatch(/pct > DEAL_PCT_MAX\)/)
+    expect(ssot).toMatch(/import \{ DEAL_PCT_MAX \} from '\.\.\/\.\.\/features\/group-buy\/api\/commission-rates'/)
   })
 
   it('propose 가 max_influencer_commission_pct 를 다시 읽지 않는다', () => {

@@ -26,8 +26,9 @@
  *   `enterStoreSeat` 가 성공하면 **원래 내 매장**이었던 것이고, 실패하면 내 것이 아니다.
  *   서버는 한 줄도 안 건드리고, 새로 뚫리는 권한도 0이다.
  *
- * ⚠️ 실패 문구는 **누구 것인지 단정하지 않는다.** 내 매장이어도 승인 대기(pending)면 좌석 토큰이
- *   403 이라 여기로 온다 — "남이 등록했다"고 말하면 그 사장님에게 거짓말이 된다.
+ * ⚠️ 실패 문구는 **누구 것인지 단정하지 않는다.** 2026-09-20 부터 승인 대기·반려 매장도 좌석에
+ *   앉을 수 있지만(`isSeatableStoreStatus`), 정지·좌석 회수 등으로 실패할 수 있다 — "남이 등록했다"고
+ *   말하면 그 사장님에게 거짓말이 된다. (2026-10-10 정정: 여기 "pending 이면 403" 이라고 적혀 있었다)
  *
  * ## 종전 계약(무접촉)
  *   - `initialPlace` 프리필: 주면 ①을 건너뛰고 ②부터 시작한다(이용권 위저드가 쓰는 다리).
@@ -550,7 +551,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
               {!certOk && !uploading && (
                 <p className="text-[11px] text-gray-500 leading-relaxed">
                   지금 건너뛰어도 매장은 등록돼요. 다만 <span className="font-bold text-gray-700">승인 전까지는 메인에 노출되지 않고</span>,
-                  등록증이 없으면 확인에 더 오래 걸려요. 나중에 <span className="font-bold text-gray-700">업체 정보</span>에서 올릴 수 있어요.
+                  등록증이 없으면 확인에 더 오래 걸려요. 나중에 <span className="font-bold text-gray-700">셀러 대시보드 › 사업자 정보</span>에서 올릴 수 있어요.
                 </p>
               )}
 

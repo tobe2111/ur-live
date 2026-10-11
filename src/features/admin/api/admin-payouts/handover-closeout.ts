@@ -31,6 +31,7 @@
 import type { Context } from 'hono'
 import type { Env } from '../../../../worker/types/env'
 import { safeError } from '@/worker/utils/safe-error'
+import { pickAccountHolder } from '../../../../worker/utils/payout-payee-account'
 
 export async function handoverCloseout(c: Context<{ Bindings: Env }>): Promise<Response> {
     try {
@@ -47,8 +48,8 @@ export async function handoverCloseout(c: Context<{ Bindings: Env }>): Promise<R
       }
 
       const seller = await DB.prepare(
-        'SELECT id, linked_user_id, bank_account, business_name FROM sellers WHERE id = ? LIMIT 1',
-      ).bind(sellerId).first<{ id: number; linked_user_id: number | null; bank_account: string | null; business_name: string | null }>()
+        'SELECT id, linked_user_id, bank_name, bank_account, account_holder, business_name FROM sellers WHERE id = ? LIMIT 1',
+      ).bind(sellerId).first<{ id: number; linked_user_id: number | null; bank_name: string | null; bank_account: string | null; account_holder: string | null; business_name: string | null }>()
       if (!seller) return c.json({ success: false, error: '매장을 찾을 수 없습니다.' }, 404)
 
       const { getUnsettledBalance } = await import('../../../../worker/utils/ledger')
@@ -86,14 +87,17 @@ export async function handoverCloseout(c: Context<{ Bindings: Env }>): Promise<R
         }, 409)
       }
 
+      // 🏦 2026-10-10: 은행명·예금주도 스냅샷한다 — 종전엔 bank_name 이 NULL 이라 이 마감이 은행 일괄이체
+      //   CSV 에서 빠졌고, 예금주에 상호를 적었다. 예금주 규칙은 cron 과 같은 SSOT(`pickAccountHolder`).
+      const holder = pickAccountHolder(seller.account_holder, seller.business_name)
       const today = new Date().toISOString().slice(0, 10)
       const memo = `손바뀜 정산 마감 (소유자 변경 전) · 사유: ${reason}`
       // UNIQUE(payee_type, payee_id, period_start, period_end) — 같은 날 두 번이면 두 번째는 무시된다.
       //   첫 마감이 잔액을 배정했으므로 두 번째는 어차피 amount 0 으로 걸러진다(이중 배정 0).
       const ins = await DB.prepare(
-        `INSERT OR IGNORE INTO payouts (payee_type, payee_id, amount, period_start, period_end, status, account_number, account_holder, admin_memo, kind, payee_user_id)
-         VALUES ('seller', ?, ?, ?, ?, 'pending', ?, ?, ?, 'handover_closeout', ?)`,
-      ).bind(String(sellerId), amount, today, today, seller.bank_account, seller.business_name || null, memo, ownerUserId ?? null).run()
+        `INSERT OR IGNORE INTO payouts (payee_type, payee_id, amount, period_start, period_end, status, account_number, account_holder, admin_memo, kind, payee_user_id, bank_name)
+         VALUES ('seller', ?, ?, ?, ?, 'pending', ?, ?, ?, 'handover_closeout', ?, ?)`,
+      ).bind(String(sellerId), amount, today, today, seller.bank_account, holder, memo, ownerUserId ?? null, seller.bank_name || null).run()
 
       if (!(ins.meta?.changes ?? 0)) {
         return c.json({ success: false, code: 'ALREADY_CLOSED_TODAY', error: '오늘 이미 이 매장의 마감 정산이 만들어져 있습니다.' }, 409)
@@ -105,7 +109,7 @@ export async function handoverCloseout(c: Context<{ Bindings: Env }>): Promise<R
           closed: true,
           amount,
           payee_user_id: ownerUserId ?? null,
-          account_holder: seller.business_name,
+          account_holder: holder,
           note: '이전 소유자 계좌로 배정했습니다. 승인·송금은 정산 화면에서 진행하세요. 이제 소유자를 변경할 수 있습니다.',
         },
       })

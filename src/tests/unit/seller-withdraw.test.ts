@@ -58,7 +58,10 @@ describe('W2~W5 실행 경로 계약', () => {
   })
 
   it('W5 세션 무효화 + 위임 회수', () => {
-    expect(post, '토큰이 살아 있으면 탈퇴 후에도 대시보드에 들어온다').toContain('startDashboardSession')
+    // 🩸 2026-10-10 재조준: 종전엔 `startDashboardSession` 존재를 봤는데 그 호출은 셀러가 단일 세션
+    //   대상에서 빠진 뒤로 no-op 이었다(이 단언이 통과하는 동안 토큰은 살아 있었다). 이제 매장 좌석 에포크.
+    expect(post, '토큰이 살아 있으면 탈퇴 후에도 대시보드에 들어온다').toMatch(/await bumpStoreSeatEpoch\(c\.env\.DB, seat,/)
+    expect(post, '셀러 시트 경계 올리기는 no-op 이다 — 그걸로 무효화했다고 믿지 말 것').not.toMatch(/startDashboardSession\(c\.env\.DB, 'seller'/)
     expect(post, '운영자 권한이 남으면 정지된 매장에 계속 들어온다').toContain('seller_operators SET revoked_at')
   })
 

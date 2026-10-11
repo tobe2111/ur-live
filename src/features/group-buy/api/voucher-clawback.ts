@@ -4,6 +4,8 @@
  */
 import type { D1Database } from '@cloudflare/workers-types'
 import { adjustUserPoints } from '../../../worker/utils/point-ledger'
+// 💸 2026-10-10: attribution 회수와 같은 금액을 원장(seller:N → influencer:X)에서도 되돌린다(머니 룰 #2).
+import { reverseAttributionLedgerShares, type AttributionShareToReverse } from '../../../worker/utils/attribution-ledger-reversal'
 
 /**
  * 🛡️ 2026-05-30: 인플루언서 커미션 clawback — voucher 환불/취소 시 미지급 커미션 회수.
@@ -36,13 +38,13 @@ export async function clawbackVoucherCommission(
   // attribution 조회: order_id 우선(신규), 레거시 voucher_id fallback.
   const attrRows = orderId
     ? await DB.prepare(
-        `SELECT id, influencer_id, commission_amount, status FROM influencer_attributions
+        `SELECT id, influencer_id, commission_amount, status, source FROM influencer_attributions
          WHERE order_id = ? AND order_id != 0 AND status IN ('pending', 'available') AND paid_at IS NULL`
-      ).bind(orderId).all<{ id: number; influencer_id: string; commission_amount: number; status: string }>()
+      ).bind(orderId).all<{ id: number; influencer_id: string; commission_amount: number; status: string; source: string | null }>()
     : await DB.prepare(
-        `SELECT id, influencer_id, commission_amount, status FROM influencer_attributions
+        `SELECT id, influencer_id, commission_amount, status, source FROM influencer_attributions
          WHERE voucher_id = ? AND status IN ('pending', 'available') AND paid_at IS NULL`
-      ).bind(voucherId).all<{ id: number; influencer_id: string; commission_amount: number; status: string }>()
+      ).bind(voucherId).all<{ id: number; influencer_id: string; commission_amount: number; status: string; source: string | null }>()
   const attrs = attrRows.results || []
   if (attrs.length === 0) return 0
 
@@ -59,6 +61,7 @@ export async function clawbackVoucherCommission(
   // 🛡️ 2026-06-11 [UNLOCK] (사용자 승인): 행당 2 write 루프 → 단일 DB.batch (원자 + 왕복 1회).
   //   각 write 는 사전 조회값으로만 계산(read-after-write 없음) — 의미 동일, 부분실패만 제거.
   const clawStmts: D1PreparedStatement[] = []
+  const ledgerShares: AttributionShareToReverse[] = []
   for (const a of attrs) {
     // 이 바우처 몫 = 남은 커미션 / 남은(미회수) 바우처 수. qty=1 이면 전액.
     const share = orderId
@@ -72,6 +75,7 @@ export async function clawbackVoucherCommission(
       clawStmts.push(DB.prepare("UPDATE influencer_balances SET available_amount = MAX(0, available_amount - ?), updated_at = datetime('now') WHERE influencer_id = ?")
         .bind(share, a.influencer_id))
     }
+    ledgerShares.push({ attributionId: a.id, influencerId: a.influencer_id, source: a.source ?? null, share })
     // attribution(권위 출처) 갱신: 전액 회수면 clawed_back, 부분이면 commission_amount 차감(나머지 바우처 몫 유지).
     const remaining = a.commission_amount - share
     if (remaining <= 0) {
@@ -84,6 +88,9 @@ export async function clawbackVoucherCommission(
     clawed++
   }
   if (clawStmts.length > 0) await DB.batch(clawStmts)
+  // 💸 2026-10-10 [머니 룰 #2]: 회수한 몫만큼 원장도 되돌린다 — 안 되돌리면 `seller:N` debit 이 남아
+  //   환불된 주문의 중개사 몫·인플루언서 커미션을 **매장이 영구 부담**한다(정산 집계가 seller:N 을 매장으로 접는다).
+  await reverseAttributionLedgerShares(DB, { orderId, voucherId, reason, shares: ledgerShares }).catch(() => null)
 
   // 🛡️ 2026-05-31: 에이전시 입점 sales_commission(구매 시 order 단위 적립) 도 동일 비례 회수.
   //   payout 은 agency_store_intro_commissions 를 status 별 SUM(commission_amount) 로 집계하므로

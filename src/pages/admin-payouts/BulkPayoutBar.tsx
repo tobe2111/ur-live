@@ -42,6 +42,9 @@ export default function BulkPayoutBar({
       if (!r.data?.success) throw new Error(r.data?.error)
       const d = r.data.data
       toast.success(`${formatNumber(d.approved)}건 승인${d.skipped ? ` · ${d.skipped}건은 이미 처리됨` : ''}`)
+      // 계좌 미재확인·옛 계좌 스냅샷은 승인하지 않았다 — 왜 빠졌는지 알려야 운영자가 셀러 계좌를 확인한다.
+      const blocked = (d.blocked || []) as Array<{ id: number; error: string }>
+      if (blocked.length > 0) toast.error(`${blocked.length}건은 승인하지 않았습니다\n${blocked.slice(0, 3).map((b) => `#${b.id} ${b.error}`).join('\n')}`)
       onDone(); onClear()
     } catch (e) {
       toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '승인하지 못했습니다')
@@ -53,6 +56,7 @@ export default function BulkPayoutBar({
     try {
       const r = await api.get('/api/admin/payouts/transfer-csv', { params: { status }, responseType: 'blob' })
       const skipped = Number(r.headers?.['x-skipped-count'] ?? 0)
+      const blocked = Number(r.headers?.['x-blocked-count'] ?? 0)
       const url = URL.createObjectURL(new Blob([r.data], { type: 'text/csv;charset=utf-8' }))
       const a = document.createElement('a')
       a.href = url
@@ -61,7 +65,8 @@ export default function BulkPayoutBar({
       URL.revokeObjectURL(url)
       // 계좌가 빠진 건은 은행이 그 행을 거부한다 — 조용히 빼면 그 수령자만 영영 못 받는다.
       if (skipped > 0) toast.error(`계좌 정보가 없어 ${formatNumber(skipped)}건이 파일에서 빠졌습니다 — 계좌 등록을 확인하세요`)
-      else toast.success('이체 파일을 내려받았습니다')
+      if (blocked > 0) toast.error(`계좌 변경 후 재확인 전이거나 옛 계좌로 만들어진 ${formatNumber(blocked)}건이 파일에서 빠졌습니다 — 셀러 계좌 재검증 후 다시 받으세요`)
+      if (skipped === 0 && blocked === 0) toast.success('이체 파일을 내려받았습니다')
     } catch {
       toast.error('파일을 만들지 못했습니다')
     } finally { setBusy(null) }

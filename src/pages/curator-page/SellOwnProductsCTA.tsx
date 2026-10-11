@@ -104,7 +104,7 @@ export default function SellOwnProductsCTA() {
       <section className="mb-6 bg-gray-50 dark:bg-[#1D1F29] border border-line rounded-xl p-4">
         <p className="text-[15px] font-bold text-gray-900 dark:text-white"><StoreIcon className="w-4 h-4 inline-block align-[-3px] mr-1 text-gray-400" aria-hidden="true" />매장 등록 심사 중</p>
         <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">
-          등록증을 확인하는 중이에요. 승인되면 내 유어샵에서 판매·현금 정산이 열립니다.
+          사업자등록증 사본이 도착해야 심사가 끝나요. 아직 안 올렸다면 셀러 대시보드 › 사업자 정보에서 올려 주세요. 승인되면 이용권이 메인에 노출됩니다.
         </p>
       </section>
     )
@@ -115,7 +115,7 @@ export default function SellOwnProductsCTA() {
     return (
       <section className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
         <p className="text-[15px] font-bold text-red-800 dark:text-red-200"><ReceiptIcon className="w-4 h-4 inline-block align-[-3px] mr-1" aria-hidden="true" />사업자 등록 신청 {st === 'rejected' ? '반려됨' : '정지됨'}</p>
-        <p className="text-[12px] text-red-700 dark:text-red-300 mt-1">자세한 내용은 고객센터로 문의해주세요.</p>
+        <p className="text-[12px] text-red-700 dark:text-red-300 mt-1">{st === 'rejected' ? '사유를 확인하고 셀러 대시보드 › 사업자 정보에서 서류를 다시 제출하면 심사가 다시 진행돼요.' : '자세한 내용은 고객센터로 문의해주세요.'}</p>
       </section>
     )
   }

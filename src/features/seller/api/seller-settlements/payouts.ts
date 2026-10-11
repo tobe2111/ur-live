@@ -16,6 +16,10 @@ import type { Context } from 'hono'
 import type { D1Database } from '@cloudflare/workers-types'
 import type { SellerJWTPayload } from '@/lib/seller-shared'
 import { safeError } from '@/worker/utils/safe-error'
+// 🔗 2026-10-10: 같은 가게의 `merchant:N`(사용 시점 매장 몫)과 `seller:N`, `store_owner`/`seller` payout 은
+//   **한 payee** 다(`payout-account.ts` SSOT). 이 화면만 그 접기를 못 배워서 매장 사장님에게 지급 이력이 **0건**,
+//   유보액이 **0원**으로 보였다(돈은 `merchant:N` 에 쌓이고 cron 은 `store_owner` 로 payout 을 만든다).
+import { ledgerAccountAliases, paidPayeeAliases } from '@/worker/utils/payout-account'
 
 // 호출부(seller-settlements.routes.ts)의 Hono 제네릭과 같은 모양이어야 한다.
 type Bindings = { DB: D1Database; JWT_SECRET: string }
@@ -41,14 +45,7 @@ export async function getSellerPayouts(c: Context<{ Bindings: Bindings }>): Prom
     //     여집합(`heldSql`)을 쓴다(유보일을 바꾼 날 한쪽만 따라가는 것을 구조적으로 막는다).
     const { resolvePayoutHold } = await import('../../../../worker/utils/payout-hold');
     const hold = await resolvePayoutHold(c.env.DB);
-    const heldRow = hold.enabled
-      ? await c.env.DB.prepare(
-          `SELECT COALESCE(SUM(amount - COALESCE(fee_amount, 0)), 0) AS held
-             FROM ledger_entries
-            WHERE credit_account = ?
-              ${hold.heldSql}`
-        ).bind(`seller:${sellerId}`).first<{ held: number }>().catch(() => null)
-      : null;
+    const heldTotal = hold.enabled ? await loadSellerHeld(c.env.DB, sellerId, hold.heldSql) : 0;
 
     // 👥 2026-09-07 (대표 *"귀속되는 시점부터 계산"*): 운영자는 합류(`granted_at`) 이후만 본다.
     //   소유자는 종전 그대로 전 기간. 사유·한계는 settlement-scope.ts 헤더에 있다.
@@ -56,16 +53,7 @@ export async function getSellerPayouts(c: Context<{ Bindings: Bindings }>): Prom
     const { scope, since, displaySince } = await resolveSettlementScope(c.env.DB, sellerId, authorization, c.env.JWT_SECRET);
 
     // 실제 지급 기록 (payouts) — 이 셀러 건만. 운영자는 합류 이후만.
-    const rows = await c.env.DB.prepare(
-      `SELECT id, amount, period_start, period_end, status,
-              account_number, account_holder, admin_memo,
-              created_at, approved_at, sent_at
-         FROM payouts
-        WHERE payee_type = 'seller' AND payee_id = ?
-          AND (? IS NULL OR created_at >= ?)
-        ORDER BY created_at DESC LIMIT 50`
-    ).bind(String(sellerId), since, since).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }));
-    const list = rows.results || [];
+    const list = await loadSellerPayoutRows(c.env.DB, sellerId, since);
 
     // 상태별 합계 — 지급 예정(pending+approved) vs 지급 완료(sent).
     const sum = (st: string[]) => list
@@ -77,7 +65,7 @@ export async function getSellerPayouts(c: Context<{ Bindings: Bindings }>): Prom
     const payable = Math.max(0, Number(receivable) - scheduledTotal - sentTotal);
     // 미지급 중 **아직 안 익은 몫**. payable 을 넘지 않게 자른다 — 유보가 생기기 전에 지급된 건이
     // 있으면 원장 기준 held 가 미지급보다 클 수 있고, 그러면 "그중 N" 이 말이 안 된다.
-    const held = Math.min(payable, Math.max(0, Math.round(Number(heldRow?.held) || 0)));
+    const held = Math.min(payable, Math.max(0, Math.round(heldTotal)));
 
     return c.json({
       success: true,
@@ -96,4 +84,43 @@ export async function getSellerPayouts(c: Context<{ Bindings: Bindings }>): Prom
   } catch (err) {
     return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-settlements]');
   }
+}
+
+/**
+ * 이 가게(셀러 id)의 payout 행 — `seller` 와 `store_owner` **둘 다**. cron 은 매장 사장님 몫을
+ * `payoutPayeeType` 으로 `store_owner` 에 박으므로, `payee_type = 'seller'` 만 보면 매장 정산이 통째로 안 보인다.
+ */
+export async function loadSellerPayoutRows(
+  DB: D1Database, sellerId: number | string, since: string | null,
+): Promise<Record<string, unknown>[]> {
+  const keys = paidPayeeAliases(`seller:${sellerId}`)
+  const ph = keys.map(() => '?').join(', ')
+  const rows = await DB.prepare(
+    `SELECT id, payee_type, amount, period_start, period_end, status,
+            account_number, account_holder, admin_memo,
+            created_at, approved_at, sent_at
+       FROM payouts
+      WHERE (payee_type || ':' || payee_id) IN (${ph})
+        AND (? IS NULL OR created_at >= ?)
+      ORDER BY created_at DESC LIMIT 50`
+  ).bind(...keys, since, since).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }))
+  return rows.results || []
+}
+
+/**
+ * 유보 기간이 안 지난 적립 합계 — `merchant:N`(사용 시점 매장 몫)과 `seller:N` 을 함께 본다.
+ * `heldSql` 은 `payout-hold.ts` 가 cron 과 같은 cutoff 로 만든 여집합 조각이다.
+ */
+export async function loadSellerHeld(
+  DB: D1Database, sellerId: number | string, heldSql: string,
+): Promise<number> {
+  const accounts = ledgerAccountAliases(`seller:${sellerId}`)
+  const ph = accounts.map(() => '?').join(', ')
+  const row = await DB.prepare(
+    `SELECT COALESCE(SUM(amount - COALESCE(fee_amount, 0)), 0) AS held
+       FROM ledger_entries
+      WHERE credit_account IN (${ph})
+        ${heldSql}`
+  ).bind(...accounts).first<{ held: number }>().catch(() => null)
+  return Number(row?.held) || 0
 }

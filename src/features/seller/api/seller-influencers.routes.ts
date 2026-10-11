@@ -27,6 +27,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import { intParam } from '@/shared/pagination'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 import { ensureOfferInvitesTable, generateOfferToken } from '@/features/marketing/api/influencer-offer-invites.routes'
+import { checkStoreInfluencerPct } from '@/worker/utils/broker-share'
 import { enqueueOutreachEmails } from '@/features/marketing/api/outreach-email'
 import {
   resolveAdsDbAccess, checkAdsDbQuota, recordAdsDbRows, type AdsDbAccess,
@@ -201,9 +202,9 @@ app.post('/outreach', rateLimit({ action: 'influencer_outreach', max: 10, window
     if (ids.length === 0) return c.json({ success: false, error: '제안할 인플루언서를 선택해주세요 (최대 50명)' }, 400)
 
     const pct = Number(b.commission_pct)
-    if (!Number.isFinite(pct) || pct < 0 || pct > 90) {
-      return c.json({ success: false, error: '판매 커미션은 0~90% 사이로 입력해주세요' }, 400)
-    }
+    // 🎯 2026-10-10: 딜 % 검증 SSOT — 0~90 + 매장 상한 + 중개사 몫 합(수락 때도 같은 함수로 다시 본다).
+    const pv = await checkStoreInfluencerPct(db, Number(sellerId), b.commission_pct, { allowZero: true })
+    if (!pv.ok) return c.json({ success: false, error: pv.error }, 400)
     const support = b.product_support === 'paid' ? 'paid' : 'free'
     const channels = Array.isArray(b.channels)
       ? (b.channels.filter((x: unknown): x is OutreachChannel => OUTREACH_CHANNELS.includes(x as OutreachChannel)))

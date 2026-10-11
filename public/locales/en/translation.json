@@ -3405,7 +3405,24 @@
     "voucherUntil": "Until {{d}}",
     "voucherCodeHeader": "Voucher code",
     "copyOrderNumber": "Copy full order number",
-    "goRedeemScreen": "Go to redemption screen"
+    "goRedeemScreen": "Go to redemption screen",
+    "kakaoBot": {
+      "title": "Manage your store on KakaoTalk",
+      "issue": "Get link code",
+      "issueFail": "Could not create a code",
+      "copied": "Copied",
+      "copy": "Copy",
+      "revokeConfirm": "Disconnect this chat? It will no longer be able to manage your store.",
+      "revoked": "Disconnected",
+      "revokeFail": "Could not disconnect",
+      "desc": "On the UrDeal KakaoTalk channel you can check today's sales, unused passes and payouts, redeem passes and pause sales. Changes are confirmed in the chat first.",
+      "notReady": "Coming soon. You will be able to manage your store on KakaoTalk.",
+      "howTo": "Send the message below to the UrDeal KakaoTalk channel. It works once, within 10 minutes.",
+      "chat": "Chat",
+      "lastUsed": "Last used",
+      "revoke": "Disconnect",
+      "utterance": "연결 {{code}}"
+    }
   },
   "admin": {
     "login": {

@@ -3216,8 +3216,8 @@ canvas {
   {
     name: '🏪 행위자 판별이 linked_user_id 폴백으로 되돌아간다',
     file: 'src/worker/utils/store-actor.ts',
-    find: '    const opRaw = Number(p.operator_user_id)',
-    replace: '    const opRaw = Number(p.linked_user_id)',
+    find: '  const opRaw = Number(p.operator_user_id)',
+    replace: '  const opRaw = Number(p.linked_user_id)',
     test: 'src/tests/unit/store-operator-scope.test.ts',
     why:
       '`linked_user_id` 는 *호출자*가 아니라 **매장 주인**의 id 다. 그걸로 판정하면 세션 없는 요청에서 ' +
@@ -3226,7 +3226,7 @@ canvas {
   {
     name: '🏪 사업자정보 시드 폴백만 마스킹을 빠뜨린다',
     file: 'src/features/seller/api/seller-profile/business-info.ts',
-    find: "      const a0 = await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET);",
+    find: "      const a0 = await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET, c.env.DB);",
     replace: '      const a0 = { isOwner: true };',
     test: 'src/tests/unit/store-operator-scope.test.ts',
     why:
@@ -9006,11 +9006,11 @@ canvas {
   },
   {
     name: '🛑 딜 제안이 다시 2% 에서 막힌다(계약 자체가 성립 불가)',
-    file: 'src/features/group-buy/api/marketing.routes.ts',
-    // ⚠️ `pct > DEAL_PCT_MAX` 만으로는 propose 두 곳에 다 걸려 앵커가 유일하지 않다(소개자측으로 고정).
-    find: 'pct > DEAL_PCT_MAX) return c.json(',
-    replace: 'pct > 2) return c.json(',
-    test: 'src/tests/unit/deal-only-commission.test.ts',
+    // 🎯 2026-10-10 재앵커: 제안 양방향의 % 검증이 SSOT(`validateInfluencerDealPct`)로 옮겨갔다.
+    file: 'src/worker/utils/broker-share.ts',
+    find: '  if (!Number.isFinite(pct) || belowMin || pct > DEAL_PCT_MAX) {',
+    replace: '  if (!Number.isFinite(pct) || belowMin || pct > 2) {',
+    test: 'src/tests/unit/influencer-deal-pct-ssot-2026-10-10.test.ts',
     why:
       '정산은 딜을 90 까지 인정하는데 제안 문이 2 로 잠겨 있으면 **딜 계약이 한 건도 못 만들어진다** — ' +
       '라이브에서 실제로 그 상태였고(딜 0건) 아무도 에러로 보지 못했다. 400 이 나는 쪽은 매장이라 ' +
@@ -10358,7 +10358,8 @@ canvas {
   {
     name: '👥 운영자가 다시 합류 전 정산까지 본다',
     file: 'src/features/seller/api/seller-settlements/payouts.ts',
-    find: '          AND (? IS NULL OR created_at >= ?)',
+    // 🔗 2026-10-10 재앵커: payout 조회가 `loadSellerPayoutRows()` 로 추출됐다(store_owner 행도 보게).
+    find: '        AND (? IS NULL OR created_at >= ?)',
     replace: '',
     test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
     why:
@@ -10450,8 +10451,10 @@ canvas {
   {
     name: '🪑 직접 등록 사장님이 다시 운영자로 오판된다 (정산 계좌 못 넣음 = 돈 못 받음)',
     file: 'src/worker/utils/store-actor.ts',
-    find: '    const isOwner = role ? role === \'owner\' : operatorUserId === null',
-    replace: '    const isOwner = operatorUserId === null',
+    // 🔐 2026-10-10 재조준: 위임(grant) 출처 사장님의 소유 판정은 이제 DB 역할(seat.role)이 한다 —
+    //   claim 폴백 줄은 정체성 없는 토큰에만 닿아 이 결함을 더는 못 만든다. 결정하는 줄로 앵커를 옮긴다.
+    find: "  if (seat.role) return { sellerId, operatorUserId, isOwner: seat.role === 'owner' }",
+    replace: '  if (seat.role) return { sellerId, operatorUserId, isOwner: operatorUserId === null }',
     test: 'src/tests/unit/store-owner-judgment-2026-09-09.test.ts',
     why:
       '/store/new 는 설계상 linked_user_id 를 비워 두므로 직접 등록한 진짜 사장님도 source:grant 로 ' +
@@ -10481,8 +10484,9 @@ canvas {
   {
     name: '🔒 마감 행에 "누구 것이었는지" 를 안 박는다',
     file: 'src/features/admin/api/admin-payouts/handover-closeout.ts',
-    find: "         VALUES ('seller', ?, ?, ?, ?, 'pending', ?, ?, ?, 'handover_closeout', ?)`,",
-    replace: "         VALUES ('seller', ?, ?, ?, ?, 'pending', ?, ?, ?, NULL, NULL)`,",
+    // 🏦 2026-10-10 재앵커: bank_name 칸이 끝에 붙었다(은행 일괄이체 파일에 실리게).
+    find: "         VALUES ('seller', ?, ?, ?, ?, 'pending', ?, ?, ?, 'handover_closeout', ?, ?)`,",
+    replace: "         VALUES ('seller', ?, ?, ?, ?, 'pending', ?, ?, ?, NULL, NULL, ?)`,",
     test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
     why:
       'kind·payee_user_id 가 없으면 취소 게이트가 이 행을 알아보지 못한다. 게이트 코드가 멀쩡해도 ' +
@@ -10543,8 +10547,9 @@ canvas {
     file: 'src/features/admin/api/admin-payouts/handover-closeout.ts',
     // 🪑 2026-09-09 재앵커: payee_user_id 를 `seller.linked_user_id` → `resolveStoreOwnerUserId` 로
     //   바꾸면서 이 줄이 달라졌다(그 칸은 /store/new 매장에서 항상 비어 있다). 계좌 스냅샷만 잰다.
-    find: "      ).bind(String(sellerId), amount, today, today, seller.bank_account, seller.business_name || null, memo, ownerUserId ?? null).run()",
-    replace: "      ).bind(String(sellerId), amount, today, today, null, seller.business_name || null, memo, ownerUserId ?? null).run()",
+    // 🏦 2026-10-10 재앵커: 은행명·예금주(`holder`)도 스냅샷하게 되며 이 줄이 달라졌다. 계좌번호 스냅샷만 잰다.
+    find: "      ).bind(String(sellerId), amount, today, today, seller.bank_account, holder, memo, ownerUserId ?? null, seller.bank_name || null).run()",
+    replace: "      ).bind(String(sellerId), amount, today, today, null, holder, memo, ownerUserId ?? null, seller.bank_name || null).run()",
     test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
     why:
       'payout 행이 계좌를 안 들고 있으면, 송금 시점에 sellers.bank_account 를 다시 읽게 되고 ' +

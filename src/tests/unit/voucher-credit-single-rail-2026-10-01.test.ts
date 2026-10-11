@@ -260,9 +260,13 @@ describe('배선 — 세 구매 자리와 집계 셋이 같은 SSOT 를 쓴다',
     // 🩸 처음엔 "접두어 삼항이 없는가" 만 봤는데, **다른 모양의 하드코딩**
     //    (`payee.kind === 'seller' ? 'store_owner' : …`)을 주입해도 통과했다 — 주입 러너가 잡았다.
     //    ⇒ 판정을 순수 함수로 빼고 **그 함수의 동작**을 아래 '순수 규칙' 에서 직접 잰다.
+    // 🎯 2026-10-10 재조준: 두 경로가 계좌 스냅샷 SSOT(`resolvePayeeAccount`)를 쓰게 되며 payee_type 도
+    //   그 함수가 `payoutPayeeType` 으로 정해 돌려준다. **불변식은 그대로** — 각자 하드코딩하지 않는다.
+    const MOD = stripComments(readCode('src/worker/utils/payout-payee-account.ts'))
+    expect((MOD.match(/payoutPayeeType\(/g) ?? []).length, '계좌 SSOT 가 payee_type 을 스스로 정하고 있다').toBeGreaterThanOrEqual(2)
     for (const [name, src] of [['cron', CRON], ['admin', ADMIN]] as const) {
-      expect((src.match(/payoutPayeeType\(/g) ?? []).length,
-        `${name}: payee_type 을 스스로 정하고 있다 — SSOT 에 위임해야 두 경로가 안 갈린다`).toBeGreaterThanOrEqual(2)
+      expect(src, `${name}: payee_type 을 스스로 정하고 있다 — SSOT 에 위임해야 두 경로가 안 갈린다`)
+        .toMatch(/const payeeType: string = acct\.payeeType/)
       expect(src, `${name}: 접두어로 payee_type 을 정하면 같은 가게가 두 payee 가 된다`)
         .not.toMatch(/'store_owner' : /)
     }

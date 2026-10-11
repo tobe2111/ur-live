@@ -29,6 +29,7 @@ import { startDashboardSession, isDashboardSessionCurrent, deriveDashboardSeat }
 import { filterAliveRefreshRows, rotationGraceExpiryIso } from '@/worker/utils/refresh-rotation';
 import { requireSeller } from '@/worker/middleware/auth';
 import { computeWholesaleOnly } from '@/features/supply/api/wholesale-helpers';
+import { isSeatShapedToken } from '@/worker/utils/store-seat-guard';
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
@@ -411,17 +412,17 @@ sellerRoutes.get('/surface', requireSeller(), async (c) => {
     const wholesaleOnly = await computeWholesaleOnly(c.env.DB, sellerId).catch(() => false)
     // 🥕 2026-09-16 (대표 — *"반려는 되더라도 쓸 수는 있게"*): 대시보드가 대기·반려 상태에서도 열리므로
     //   **화면이 그 상태를 말해야 한다**. 이 응답이 `SellerApprovalBanner` 의 유일한 근거다.
-    //   ⚠️ 토큰의 `status` 를 쓰지 않는다 — 7일짜리 스냅샷이라 승인된 뒤에도 배너가 안 사라진다.
-    //   ⚠️ 등록증 **URL 은 안 내보낸다**. 도착 여부(boolean)만 있으면 배너가 할 말을 정할 수 있다.
+    //   ⚠️ 토큰의 `status` 를 쓰지 않는다(7일 스냅샷) · 등록증 **URL 은 안 내보낸다**(도착 여부·심사 결과만).
     const row = await c.env.DB.prepare(
-      'SELECT status, reject_reason, business_registration_image_url FROM sellers WHERE id = ? LIMIT 1',
-    ).bind(sellerId).first<{ status: string; reject_reason: string | null; business_registration_image_url: string | null }>()
+      'SELECT status, reject_reason, business_registration_image_url, business_registration_status, business_registration_reject_reason FROM sellers WHERE id = ? LIMIT 1',
+    ).bind(sellerId).first<{ status: string; reject_reason: string | null; business_registration_image_url: string | null; business_registration_status: string | null; business_registration_reject_reason: string | null }>()
       .catch(() => null)
     return c.json({
       success: true,
       wholesale_only: wholesaleOnly,
       status: row?.status ?? null,
       reject_reason: row?.reject_reason ?? null,
+      cert_status: row?.business_registration_status ?? null, cert_reject_reason: row?.business_registration_reject_reason ?? null, // 🪪 2026-10-10 등록증만 반려된 경우를 배너가 구분한다
       has_business_cert: !!(await import('../../../worker/utils/seller-cert-url').then(m => m.resolveSellerCertUrl(c.env.DB, sellerId, row?.business_registration_image_url)).catch(() => row?.business_registration_image_url || null)),
     })
   } catch {
@@ -489,6 +490,8 @@ sellerRoutes.post('/refresh', cors(), rateLimit({ action: 'seller_refresh', max:
       }, 401);
     }
     
+    // 🔐 2026-10-10 좌석 토큰은 refresh 불가 — refresh 행 없는 매장은 해시 대조를 건너뛰어, 회수된 운영자 좌석이 claim 빠진 매장 계정 토큰으로 갈아타는 문이었다(store-seat-guard).
+    if (isSeatShapedToken(payload)) return c.json<AuthResponse>({ success: false, error: '매장 좌석 토큰은 갱신할 수 없습니다. 매장을 다시 선택해 주세요.', code: 'INVALID_TOKEN_TYPE' }, 401);
     // seller 컬럼 존재 보장 (isolate 당 1회 메모이즈)
     await ensureSellerColumns(DB)
 

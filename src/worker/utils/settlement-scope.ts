@@ -42,7 +42,7 @@ export async function resolveSettlementScope(
   jwtSecret: string,
 ): Promise<SettlementScope> {
   const { resolveStoreActor } = await import('./store-actor')
-  const actor = await resolveStoreActor(authorization, jwtSecret)
+  const actor = await resolveStoreActor(authorization, jwtSecret, DB)
   if (actor.isOwner || !actor.operatorUserId) {
     return { scope: 'owner', since: null, displaySince: null }
   }

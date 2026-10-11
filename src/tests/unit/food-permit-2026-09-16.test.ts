@@ -94,14 +94,16 @@ describe('④ 사진 크기 — 거절이 아니라 압축', () => {
     // 가입 폼은 09-15 에 고쳤는데 대시보드는 `if (file.size > 5MB) 거절` 이 그대로 남아 있었다
     expect(PAGE).toContain('compressForDocument')
     expect(PAGE).not.toMatch(/if \(file\.size > 5 \* 1024 \* 1024\)/)
-    expect(PAGE).toMatch(/fd\.append\('image', prepared\)/)
+    // 🪪 2026-10-10: 등록증 전용 자리(`/api/upload/business-cert`, 필드 `file`)로 옮겼다 — 압축된 파일을 올리는가가 불변식
+    expect(PAGE).toMatch(/fd\.append\('file', prepared\)/)
   })
 
   it('클라 상한이 그 엔드포인트의 서버 상한을 넘지 않는다', () => {
-    // `/api/seller/upload-image` 는 MAX_UPLOAD_BYTES = 5MB. 클라가 10MB 를 허용하면
-    // 압축 뒤에도 큰 파일이 "올렸는데 실패" 로 끝난다.
-    const serverSrc = read('src/features/seller/api/seller-account.routes.ts')
-    const m = serverSrc.match(/const MAX_UPLOAD_BYTES = (\d+) \* 1024 \* 1024/)
+    // 클라가 서버보다 크게 허용하면 압축 뒤에도 큰 파일이 "올렸는데 실패" 로 끝난다.
+    // 🪪 2026-10-10: 대시보드도 등록증 전용 자리(`/api/upload/business-cert`)로 — 그 서버 상한과 대조한다.
+    expect(PAGE).toMatch(/api\.post\('\/api\/upload\/business-cert'/)
+    const serverSrc = read('src/features/upload/api/upload.routes.ts')
+    const m = serverSrc.match(/const MAX_SIZE = (\d+) \* 1024 \* 1024/)
     expect(m).toBeTruthy()
     const serverMb = Number(m![1])
     const clientMatch = PAGE.match(/prepared\.size > (\d+) \* 1024 \* 1024/)

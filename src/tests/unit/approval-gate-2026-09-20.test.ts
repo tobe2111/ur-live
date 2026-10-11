@@ -67,19 +67,20 @@ describe('② 좌석 — 세 곳(토큰·가산·화면)이 같은 함수를 쓴
 
 describe('③ 정산 게이트 — 좌석 개방의 짝', () => {
   it('payouts-generate 가 셀러 status 를 읽고, 계좌를 쓰기 전에 SSOT 로 skip 한다', () => {
-    // 🎯 2026-10-01 재조준: 분기 조건이 `payeeType === 'store_owner' || …` → `payee.kind === 'seller'`
-    //   로 바뀌었다 — `merchant:N` 과 `seller:N` 을 한 payee 로 접으면서 접두어가 사라졌기 때문이다
-    //   (결재 voucher-credit-double-rail). **불변식은 그대로**: 셀러 행을 읽고, 계좌를 쓰기 전에
-    //   승인 상태로 skip 한다. ⇒ 앵커를 그 분기의 **셀러 조회 SELECT** 로 옮긴다(조건문 모양에 안 묶인다).
-    const at = PAYOUT.indexOf('FROM sellers WHERE id = ?')
+    // 🎯 2026-10-10 재조준: 셀러 조회·승인 판정이 계좌 스냅샷 SSOT(`payout-payee-account.ts`)로 옮겨갔다
+    //   (cron 과 어드민 수동 생성이 같은 함수를 쓰게 — 종전엔 수동 생성이 승인 게이트도 bank_name 도 없었다).
+    //   **불변식은 그대로**: 계좌를 쓰기(INSERT) 전에 승인 상태로 skip 한다.
+    const at = PAYOUT.indexOf('await resolvePayeeAccount(DB, payee)')
     expect(at, '셀러 행을 읽지 않으면 승인 게이트도 계좌도 없다').toBeGreaterThan(0)
-    const body = PAYOUT.slice(at - 300, at + 900)
-    expect(body).toMatch(/SELECT bank_account, business_name, status(?:, seller_type)? FROM sellers/)
-    const gate = body.indexOf('isPayoutEligibleSellerStatus(row?.status)')
-    const use = body.indexOf('accountNumber = row?.bank_account')
+    const body = PAYOUT.slice(at, at + 1500)
+    const gate = body.indexOf('if (!acct.eligible)')
+    const use = body.indexOf('INSERT OR IGNORE INTO payouts')
     expect(gate).toBeGreaterThan(0)
     expect(use).toBeGreaterThan(gate)
     expect(body.slice(gate, gate + 160)).toMatch(/continue/)
+    const MOD = read('src/worker/utils/payout-payee-account.ts')
+    expect(MOD).toMatch(/FROM sellers WHERE id = \?/)
+    expect(MOD).toMatch(/eligible: isPayoutEligibleSellerStatus\(row\.status\)/)
   })
 })
 

@@ -110,6 +110,7 @@ const HostingPage = lazy(() => import('./pages/HostingPage'))
 const HostingNewPage = lazy(() => import('./pages/HostingNewPage'))
 const StoreClaimPage = lazy(() => import('./pages/StoreClaimPage')) // 🏪 매장 등록 단일 목적지(/store/new)
 const StoreOwnerClaimPage = lazy(() => import('./pages/StoreOwnerClaimPage')) // 🙋 내 가게 찾기 — 소유권 신청(/store/find)
+const StoreGoPage = lazy(() => import('./pages/StoreGoPage')) // 🔗 2026-10-10 사장님 문자 링크 → 카카오 로그인 → 그 매장 좌석 → 목적 화면(shared/store-deep-link)
 const HostInvitePage = lazy(() => import('./pages/HostInvitePage'))
 // 🛡️ 2026-05-25 (Phase 2 잔여): 반품 회수 송장 추적 UI
 const MyReturnsPage = lazy(() => import('./pages/MyReturnsPage'))
@@ -884,6 +885,7 @@ function AppContent() {
             <Route path="/store/scan" element={<ProtectedRoute requireUser><StoreScanPage /></ProtectedRoute>} />
             <Route path="/store/new" element={<ProtectedRoute requireUser><ErrorBoundary><StoreClaimPage /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/store/find" element={<ProtectedRoute requireUser><ErrorBoundary><StoreOwnerClaimPage /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/store/go" element={<ProtectedRoute requireUser><ErrorBoundary><StoreGoPage /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/influencer/settlement" element={
               <ProtectedRoute requireUser>
                 <InfluencerSettlementPage />
