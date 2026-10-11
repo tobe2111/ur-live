@@ -1324,7 +1324,7 @@ sellerOrdersRoutes.post('/products/:id/resend-store-link', async (c) => {
     const statsUrl = `https://urdeal.kr/store/stats/${productId}?t=${token}`;
     const { getVoucherShortLabel } = await import('../../../shared/constants/voucher-categories');
     await sendStoreOwnerAlimtalk(c.env, product.restaurant_phone, {
-      restaurantName: product.restaurant_name || '사장님',
+      restaurantName: product.restaurant_name || '매장',
       productName: product.name,
       statsUrl,
       categoryLabel: getVoucherShortLabel(product.category as string),

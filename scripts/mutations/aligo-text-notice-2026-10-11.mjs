@@ -41,8 +41,8 @@ export default [
   {
     name: '알림 — 승인 안 된 템플릿도 알림톡으로 보낸다',
     file: 'src/lib/text-notice.ts',
-    find: '  const useAlimtalk = !!senderKey && (n.forceAlimtalk || (await approvedTemplates(db)).has(n.tpl))',
-    replace: '  const useAlimtalk = !!senderKey',
+    find: '  const useAlimtalk = !!senderKey && (n.forceAlimtalk || approved.has(n.tpl))',
+    replace: '  const useAlimtalk = !!senderKey || approved.size < 0',
     test: T,
     why: '카카오 검수 전 템플릿은 알리고가 거부한다 — 문자 대체도 안 걸린다(요청 단계 거부).',
   },

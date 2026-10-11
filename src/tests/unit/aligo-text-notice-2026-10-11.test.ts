@@ -13,7 +13,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { execSync } from 'node:child_process'
 import { aligoOk, sendAlimtalk, sendAligoSms, smsByteLength, ALIGO_KAKAO_BASE, ALIGO_SMS_URL } from '@/lib/aligo'
-import { sendTextNotice, parseApprovedTemplates, _resetApprovedTemplatesCache } from '@/lib/text-notice'
+import { sendTextNotice, parseApprovedTemplates, parseTemplateCodeMap, _resetApprovedTemplatesCache } from '@/lib/text-notice'
 import { kakaoLoginScope } from '@/features/auth/services/kakao-login-scope'
 import { sendSellerVoucherSoldAlimtalk } from '@/features/group-buy/api/helpers'
 
@@ -158,6 +158,13 @@ describe('sendTextNotice — 카톡만(대표 2026-10-11): 승인된 템플릿�
   it('승인 목록 파싱 — 쉼표·공백·줄바꿈', () => {
     expect([...parseApprovedTemplates(' a, b\nc ,, ')]).toEqual(['a', 'b', 'c'])
     expect(parseApprovedTemplates(null).size).toBe(0)
+  })
+  it('알리고가 붙인 코드 — `우리이름=알리고코드` 로 적으면 그 코드로 보낸다', async () => {
+    expect([...parseTemplateCodeMap('voucher_issued = UA_1234, voucher_used=UA_5678\nseller_voucher_sold')])
+      .toEqual([['voucher_issued', 'UA_1234'], ['voucher_used', 'UA_5678'], ['seller_voucher_sold', 'seller_voucher_sold']])
+    const r = await sendTextNotice({ ...ENV, DB: fakeDb('voucher_issued=UA_1234') }, '01033334444', { tpl: 'voucher_issued', title: 't', text: 'x' })
+    expect(r.ok).toBe(true)
+    expect(calls.find((c) => c.url.endsWith('/alimtalk/send/'))!.body.get('tpl_code')).toBe('UA_1234')
   })
 })
 

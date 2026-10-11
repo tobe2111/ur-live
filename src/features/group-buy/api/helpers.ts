@@ -328,8 +328,8 @@ export async function sendStoreOwnerAlimtalk(
     const label = data.categoryLabel || '이용권'
     const message = `[유어딜] ${label} 통계 페이지 안내
 
-안녕하세요, ${data.restaurantName} 사장님!
-"${data.productName}" ${label} 공동구매가 등록되었습니다.
+안녕하세요, ${data.restaurantName || '매장'} 사장님!
+"${data.productName}" ${label}이 등록되었습니다.
 
 📊 실시간 발급/사용 현황 확인:
 ${data.statsUrl}
@@ -361,7 +361,7 @@ export async function sendBuyerVoucherIssuedAlimtalk(
     const label = data.categoryLabel || '이용권'
     const message = `[유어딜] ${label} 발급 완료
 
-${data.restaurantName ? data.restaurantName + ' · ' : ''}${data.productName}
+${data.restaurantName || '유어딜'} · ${data.productName}
 ${data.qty}장 발급되었습니다.
 
 📱 매장에서 QR 코드 보여주세요:
@@ -451,8 +451,8 @@ export async function sendSellerVoucherUsedAlimtalk(
     const message = `[유어딜] ✅ 이용권 사용 처리됨
 
 ${data.restaurantName}
-"${data.productName}"${ts ? `
-사용 시각: ${ts}` : ''}
+"${data.productName}"
+사용 시각: ${ts || '-'}
 
 손님이 매장에서 셀프 사용 처리했어요.
 정산은 정산 주기에 맞춰 등록한 계좌로 지급됩니다.
@@ -485,11 +485,11 @@ export async function sendBuyerVoucherUsedAlimtalk(
 
 ${data.restaurantName}
 "${data.productName}"
-${ts ? '사용 시각: ' + ts : ''}
+사용 시각: ${ts || '-'}
 
-맛있게 드세요! 🍱
+이용해 주셔서 감사합니다.
 
-후기 작성하면 보너스 딜 지급:
+후기 남기기:
 https://urdeal.kr/my-vouchers
 
 문의: 유어딜 고객센터`
