@@ -15,7 +15,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
-import { isAgencySeatToken } from '@/components/seller/AgencySeatBar'
+import { isAgencySeatToken } from '@/shared/agency-seat-token'
 import { X, MessageCircle } from 'lucide-react'
 
 const DISMISS_KEY = 'seller_kakao_link_banner_dismissed_v1'

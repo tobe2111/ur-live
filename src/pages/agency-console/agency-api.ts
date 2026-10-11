@@ -100,7 +100,7 @@ export async function agencyRequest<T = Record<string, unknown>>(
 
 // ── 🏢 2단계 — 맡은 매장에 들어가기 ─────────────────────────────────────────
 /** 셀러 화면이 "에이전시로 운영 중" 띠를 그릴 때 읽는 이름 — 키 SSOT 는 띠 쪽. */
-import { AGENCY_SEAT_NAME_KEY } from '@/components/seller/AgencySeatBar'
+import { AGENCY_SEAT_NAME_KEY } from '@/shared/agency-seat-token'
 
 /**
  * 맡은 매장의 셀러 화면 좌석을 받아 심는다. 셀러 화면은 `seller_token` 하나로 매장을 고르므로 그 자리를 쓴다.

@@ -12,18 +12,9 @@ import { useEffect, useState } from 'react'
 import { ChevronLeft } from 'lucide-react'
 import { clearAuthData } from '@/utils/auth'
 
-export const AGENCY_SEAT_NAME_KEY = 'agency_seat_name'
-
-/** 지금 셀러 좌석이 에이전시 직원 좌석인가 — 토큰 payload 의 claim 으로만 본다. */
-export function isAgencySeatToken(token: string | null): boolean {
-  if (!token) return false
-  const part = token.split('.')[1]
-  if (!part) return false
-  try {
-    const json = JSON.parse(atob(part.replace(/-/g, '+').replace(/_/g, '/'))) as { agency_staff_id?: unknown }
-    return json.agency_staff_id != null
-  } catch { return false }
-}
+// 판정·키는 `shared/agency-seat-token.ts` 에 있다 — 공용 부품이 이 파일을 import 하면 셀러 청크가 소비자 화면으로 샌다.
+import { AGENCY_SEAT_NAME_KEY, isAgencySeatToken } from '@/shared/agency-seat-token'
+export { AGENCY_SEAT_NAME_KEY, isAgencySeatToken }
 
 export default function AgencySeatBar() {
   const [agencyName, setAgencyName] = useState<string | null>(null)
