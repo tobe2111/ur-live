@@ -40,6 +40,7 @@
  */
 import { cfImage, cfSrcSet } from '../../utils/cf-image'
 import { getVoucherShortLabel } from '../../shared/constants/voucher-categories'
+import { buildDetailNoscript } from './crawler-noscript'
 
 function escAttr(s: string): string {
   return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -75,6 +76,16 @@ interface VoucherSeed {
   image_url?: string | null
   category?: string | null
   deal_only?: number | null
+  // 📰 `<noscript>` 본문 요약 전용(2026-10-11) — 첫 화면은 가격 아래를 안 그린다(잔액·교환 후
+  //   잔액이 로그인 상태에 따라 갈려서다). 크롤러에게는 그 값이 필요하므로 사람에게 안 보이는
+  //   자리에만 담는다. 규율: `utils/crawler-noscript.ts`.
+  description?: string | null
+  long_description?: string | null
+  price?: number | null
+  original_price?: number | null
+  discount_rate?: number | null
+  voucher_expiry?: string | null
+  voucher_terms?: string | null
 }
 
 /**
@@ -121,6 +132,7 @@ export function buildVoucherDetailFirstScreen(ssrPayload: string, loaderHtml: st
       `<div id="ur-first-screen" class="${VOUCHER_FS_CLASS.root}">` +
         `<div class="${VOUCHER_FS_CLASS.barOuter}"><div class="${VOUCHER_FS_CLASS.barInner}"></div></div>` +
         `<div class="${VOUCHER_FS_CLASS.shell}">${photo}${info}</div>` +
+        buildDetailNoscript(d) +
       '</div>' + shortLoader
     )
   } catch {

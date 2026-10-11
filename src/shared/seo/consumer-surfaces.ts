@@ -280,6 +280,15 @@ export interface ResolvedSurfaceSeo {
   canonical: string
   /** true 면 서버에서도 robots noindex */
   noindex?: boolean
+  /**
+   * 🔴 **브랜드 JSON-LD(`Organization`+`WebSite`)를 여기서 만들지 말 것.**
+   * `index.html` 의 정적 블록(2026-07-20 도메인 이전 때 넣은 `@graph`)이 **이미** 그 일을 하고,
+   * `@id` 도 `https://urdeal.kr/#organization` · `#website` 로 **같다** — 여기서 또 만들면 같은
+   * `@id` 의 노드가 두 벌 나가고, 두 벌은 반드시 갈린다(`inLanguage` 가 `ko` ↔ `ko-KR` 로 어긋나는
+   * 식). 2026-10-11 에 제가 *"홈 JSON-LD 가 0건"* 으로 오진해 실제로 그 중복을 만들었고,
+   * 라이브를 재 보고서야 알았다(머지 전에 되돌렸다).
+   * 가드: `seo-crawler-visibility-2026-10-11.test.ts` ③.
+   */
 }
 
 /**

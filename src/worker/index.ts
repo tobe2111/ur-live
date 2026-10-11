@@ -287,7 +287,7 @@ import { referralRoutes } from '../features/referral/api/referral.routes';
 //   (typeof navigator/window 가드 보유라 워커 안전). URL 이 클라 렌더값과 byte-일치해야 preload 적중.
 import { cfImage, cfSrcSet } from '../utils/cf-image';
 // 🖼️ 홈 첫 화면 카드 사진 preload — 링크 생성은 헬퍼가 한다(파일 크기 래칫 + 직접 테스트 용이).
-import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; // 한 줄: 파일크기 래칫(2685) 안
+import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; // 한 줄: 파일크기 래칫 안
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -1042,14 +1042,14 @@ app.use('*', async (c, next) => {
       // 🎁 2026-10-08 [UNLOCK_LOADING] (대표 "모두 다 하자"): 같은 DETAIL 슬롯·같은 시드인데 위 pathname 에서 빠져 로더만 보였다. 사유·경계: `utils/voucher-detail-ssr-body.ts`.
       const voucherFirst = buildVoucherDetailFirstScreen(ssrPayload, urdealLoaderHtml);
       rb = rb.on('#root', { element(el) { el.setInnerContent(voucherFirst || urdealLoaderHtml, { html: true }); } });
-    } else if (ssrSlot === 'MAIN' && ssrExtraPayload && isMainPage && isMobileUserAgent(c.req.header('user-agent'))) {
+    } else if (ssrSlot === 'MAIN' && ssrExtraPayload && isMainPage && shouldRenderMobileFirstScreen(c.req.header('user-agent'))) {
       // 🏠 2026-10-08 [UNLOCK_LOADING] (대표 "처음에 유어딜 페이지 들어올 때 만큼은 로딩 장면 없이"): 시드(SECTIONS)에
       //   사진 URL까지 와 있고 워커가 그 넷을 preload 로 이미 당기는데 `#root` 는 로더가 덮고 있었다 → 크롬(높이만) +
       //   첫 섹션 카드 4장을 그리고 그 아래에만 로더를 둔다. PC 는 다른 레이아웃이라 UA 로 가른다.
       //   사유·경계·버린 길(워커 React 렌더 = 번들 gzip 게이트로 불가): `utils/home-first-screen.ts`.
       const homeFirst = buildHomeFirstScreen(ssrExtraPayload, urdealLoaderHtml);
       rb = rb.on('#root', { element(el) { el.setInnerContent(homeFirst || urdealLoaderHtml, { html: true }); } });
-    } else if (ssrSlot === 'CURATOR' && ssrPayload && /^\/u\/[A-Za-z0-9_-]{1,40}\/?$/.test(url.pathname) && isMobileUserAgent(c.req.header('user-agent'))) {
+    } else if (ssrSlot === 'CURATOR' && ssrPayload && /^\/u\/[A-Za-z0-9_-]{1,40}\/?$/.test(url.pathname) && shouldRenderMobileFirstScreen(c.req.header('user-agent'))) {
       // 🛍️ 2026-10-09 [UNLOCK_LOADING] (대표 "모두 다 하자"): 시드에 이름·소개·핀 4개(사진 URL까지)가
       //   이미 와 있는데 `#root` 는 로더가 덮고 있었다(실측 ~1초). 유어샵은 **공유해서 퍼지는 것**이라
       //   그 1초가 가장 비싸다 → [브랜드 바 + 이름 줄 + 칩 줄 높이 + 진열 줄 4개]를 그리고 그 아래에만

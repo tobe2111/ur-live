@@ -486,6 +486,12 @@
          프리렌더 정적 삽입 — JS 렌더 없이 모든 크롤러/AI 봇에 전달. 사실만 기재(푸터 법적 고지와 동일 SSOT).
          ⚠️ 도메인 이전(2026-07-20) 직후라 AI 개요 반영은 수주 소요 — 오프사이트 신호(공식 SNS sameAs·
          뉴스 보도·비즈니스 프로필)는 별도 대표 액션(사이트 밖). 공식 프로필 확정 시 sameAs 배열 추가할 것. -->
+    <!-- 🔴 2026-10-11: `alternateName` 에서 `"유어딜 urdeal.kr"` 를 뺐다. 구글 공식 가이드가 사이트 이름이
+         안 잡히는 원인으로 *지나치게 일반적인 이름* 과 *화면 브랜드와 안 맞는 이름* 을 꼽는데, 도메인을 품은
+         별칭은 사이트 이름 후보를 `urdeal.kr` 쪽으로 가리킨다(라이브가 실제로 그렇게 뜨고 있었다).
+         `urdeal`·`UrDeal` 은 화면 로고(소문자 워드마크)와 같은 표기라 남긴다.
+         ⚠️ **주석을 아래 JSON 블록 안에 쓰지 말 것** — JSON 에 주석은 못 들어가고, 넣으면 그 JSON-LD 가
+            통째로 무효가 된다(에러도 경고도 없다). 2026-10-11 에 제가 실제로 그렇게 깨뜨렸다. -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -494,7 +500,7 @@
           "@type": "Organization",
           "@id": "https://urdeal.kr/#organization",
           "name": "유어딜",
-          "alternateName": ["urdeal", "UrDeal", "유어딜 urdeal.kr"],
+          "alternateName": ["urdeal", "UrDeal"],
           "url": "https://urdeal.kr/",
           "logo": "https://urdeal.kr/icon-512.png",
           "description": "유어딜(urdeal.kr)은 우리 동네 매장 이용권을 할인가로 구매해 매장에서 QR로 바로 사용하는 로컬 커머스 플랫폼입니다. 식사·뷰티·숙소 이용권, 기프티콘 교환권, 내 주변 동네딜 지도, 누구나 만드는 링크샵을 제공합니다.",

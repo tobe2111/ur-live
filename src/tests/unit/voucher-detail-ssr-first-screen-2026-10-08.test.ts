@@ -17,6 +17,7 @@ import {
   VOUCHER_PHOTO_SIZES,
 } from '@/worker/utils/voucher-detail-ssr-body'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
+import { buildDetailNoscript } from '../../worker/utils/crawler-noscript'
 
 const LOADER = '<div style="min-height:100dvh;display:flex">urdeal</div>'
 const SEED = JSON.stringify({
@@ -58,14 +59,33 @@ describe('교환권 상세 — 서버가 그리는 첫 화면', () => {
     expect(html).toContain(`sizes="${VOUCHER_PHOTO_SIZES}"`)
   })
 
-  it('③ 경계 — 제목(h1)까지만. 가격·잔액은 서버가 그리지 않는다', () => {
+  it('③ 경계 — **보이는** 영역은 제목(h1)까지만. 가격·잔액은 서버가 그리지 않는다', () => {
     const html = buildVoucherDetailFirstScreen(SEED, LOADER)
     expect(html).toContain('<h1')
     expect(html).toContain('치즈롤 존스 페이버릿(L)')
-    // 로그인 여부로 달라지는 것들 — 서버가 그리면 마운트 때 바뀐다.
-    expect(html, '가격을 그렸다').not.toContain('41,760')
-    expect(html, '정가를 그렸다').not.toContain('46,400')
-    expect(html, '딜 잔액 문구를 그렸다').not.toMatch(/잔액|보유/)
+
+    // 🔀 2026-10-11 재조준: 불변식은 그대로 — *"마운트 때 밀릴 것을 서버가 그리지 않는다"*. 다만
+    //   판정 대상이 **보이는 영역**으로 좁혀졌다. 같은 날 `<noscript>` 본문 요약이 붙었는데
+    //   (네이버가 본문을 49자로 보던 것), 그건 JS 가 돌면 **렌더 자체가 안 되므로 밀림을 만들 수
+    //   없다.** 종전 앵커는 HTML 전체에서 숫자를 찾아 그 둘을 구분하지 못했다.
+    //   ⚠️ 정규식으로 `<noscript>` 를 떼지 않는다 — **빌더 출력을 그대로 뺀다**(같은 함수라 갈릴 수 없다).
+    const ns = buildDetailNoscript(JSON.parse(SEED).data)
+    expect(ns, '요약이 비었다 — 아래 단언이 통째로 헛돈다').toContain('41,760')
+    const visible = html.replace(ns, '')
+    expect(visible, '보이는 영역에 noscript 가 남았다 — 빌더 출력과 갈렸다').not.toContain('<noscript')
+
+    expect(visible, '가격을 그렸다').not.toContain('41,760')
+    expect(visible, '정가를 그렸다').not.toContain('46,400')
+    expect(visible, '딜 잔액 문구를 그렸다').not.toMatch(/잔액|보유/)
+  })
+
+  it('③-2 `<noscript>` 는 보이는 화면 **밖**이라 밀림을 만들 수 없다', () => {
+    const html = buildVoucherDetailFirstScreen(SEED, LOADER)
+    expect((html.match(/<noscript>/g) || []).length).toBe(1)
+    expect((html.match(/<\/noscript>/g) || []).length).toBe(1)
+    const inner = html.slice(html.indexOf('<noscript>') + 10, html.indexOf('</noscript>'))
+    expect(inner, '요약 안에 사진을 넣으면 JS 꺼진 사용자에게 추가 요청이 난다').not.toContain('<img')
+    expect(inner, '요약 안에 높이를 박지 말 것').not.toMatch(/style=|height/)
   })
 
   it('④ 분류 칩 라벨 규칙이 페이지와 같다', () => {
