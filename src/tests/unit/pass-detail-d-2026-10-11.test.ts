@@ -33,7 +33,7 @@ describe('① 부연설명이 돌아오지 않는다', () => {
     expect(USAGE, '유효기간은 값이 있을 때만 말한다').toMatch(/\{expiry && \(/)
   })
   it('모바일 셀러 카드는 걷었다 — 가게로 가는 입구는 매장 카드 머리에 있다', () => {
-    expect(PAGE).toContain('<div className="hidden lg:block"><SellerCard')
+    expect(PAGE).toContain('<div className={`hidden lg:block ${PASS_CARD}`}><SellerCard')
     expect(PAGE).toMatch(/<StoreLocation onProfile=\{goStore\}/)
     expect(readCode('src/pages/group-buy/StoreLocation.tsx')).toContain('가게 보기')
   })
@@ -43,9 +43,11 @@ describe('② 모바일 섹션은 같은 카드 상수를 쓴다', () => {
   it('정보·소개·메뉴·매장·리뷰·다른 이용권 — 6곳', () => {
     expect((PAGE.match(/PASS_CARD/g) || []).length - 1, 'import 1줄을 뺀 사용처').toBeGreaterThanOrEqual(6)
   })
-  it('PC 에선 카드가 풀린다 — 종전 평면 레이아웃(그루폰식 2열)을 건드리지 않는다', () => {
+  it('PC 도 같은 카드다 (대표 "PC도 해야하는거 아니야?") — 좌측 열 폭에 맞춰 바깥 여백만 푼다', () => {
     const cls = /PASS_CARD = '([^']+)'/.exec(readCode('src/shared/pass-head.ts'))![1].split(/\s+/)
-    for (const t of ['lg:mx-0', 'lg:mb-0', 'lg:rounded-none', 'lg:shadow-none']) expect(cls).toContain(t)
+    expect(cls).toContain('lg:mx-0')
+    for (const t of ['lg:rounded-none', 'lg:shadow-none']) expect(cls, `PC 에서 카드가 다시 풀렸다(${t})`).not.toContain(t)
+    expect(readCode('src/shared/pass-head.ts'), 'PC 바탕이 다시 흰색이 됐다 — 흰 카드가 안 보인다').not.toContain('lg:bg-[var(--gbd-card)]')
   })
 })
 

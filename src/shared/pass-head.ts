@@ -10,7 +10,7 @@
  *
  * ⚠️ 이 파일은 워커 번들에도 들어간다 — React·아이콘을 import 하지 말 것(문자열만).
  */
-export const PASS_PAGE_BG = 'bg-[var(--gbd-bg)] lg:bg-[var(--gbd-card)]'
+export const PASS_PAGE_BG = 'bg-[var(--gbd-bg)]'
 
 export const PASS_HEAD = {
   /** 사진 아래 가장자리 28px 를 덮고 올라온다. 사진의 아래 스크림이 그 밑에 깔린다. */
@@ -22,5 +22,5 @@ export const PASS_HEAD = {
   h1: 'm-0 mt-1 text-[24px] leading-[1.3] font-bold tracking-[-.02em] text-[var(--gbd-ink)]',
 } as const
 
-/** 섹션 카드 — 모바일은 회색 바탕 위 흰 판, PC 는 종전처럼 평면. */
-export const PASS_CARD = 'mx-3 mb-3 rounded-2xl bg-[var(--gbd-card)] shadow-lift overflow-hidden lg:mx-0 lg:mb-0 lg:rounded-none lg:shadow-none lg:overflow-visible'
+/** 섹션 카드 — 회색 바탕 위 흰 판. 2026-10-11 PC 도 같은 카드(대표 "PC도 해야하는거 아니야?"). */
+export const PASS_CARD = 'mx-3 mb-3 rounded-2xl bg-[var(--gbd-card)] shadow-lift overflow-hidden lg:mx-0 lg:mb-4'

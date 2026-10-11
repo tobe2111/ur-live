@@ -20,9 +20,17 @@ export default [
   {
     name: '🎟️D 모바일 셀러 카드가 다시 뜬다',
     file: 'src/pages/GroupBuyDetailPage.tsx',
-    find: '<div className="hidden lg:block"><SellerCard',
+    find: '<div className={`hidden lg:block ${PASS_CARD}`}><SellerCard',
     replace: '<div><SellerCard',
     test: TEST,
     why: '매장 이름이 다시 네 번 나온다 — 가게로 가는 입구는 매장 카드 머리가 맡는다.',
+  },
+  {
+    name: '🎟️D PC 에서 카드가 다시 평면으로 풀린다',
+    file: 'src/shared/pass-head.ts',
+    find: "overflow-hidden lg:mx-0 lg:mb-4'",
+    replace: "overflow-hidden lg:mx-0 lg:mb-4 lg:rounded-none lg:shadow-none'",
+    test: TEST,
+    why: '대표 "PC도 해야하는거 아니야?" — PC 만 옛 평면으로 남으면 같은 상품이 두 화면에서 다른 서비스처럼 보인다.',
   },
 ]

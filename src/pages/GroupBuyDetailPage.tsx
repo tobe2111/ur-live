@@ -620,7 +620,7 @@ export default function GroupBuyDetailPage() {
 
       <main id="gb-main" role="main">
         {/* 🖥️ 2026-07-19 그루폰식 섹션 탭 — PC 전용(클릭 → 해당 섹션 스크롤). 모바일은 세로 스택이라 불필요. */}
-        <nav className="hidden lg:flex items-center gap-1 border-b mt-4" style={{ borderColor: 'var(--gbd-line2)' }} aria-label="상세 섹션">
+        <nav className="hidden lg:flex items-center gap-1 mt-4 mb-4 px-2 py-1 rounded-2xl bg-[var(--gbd-card)] shadow-lift" aria-label="상세 섹션">
           {[
             // 🩸 2026-09-25: 이 탭이 **무조건** 떠서, 설명·소개가 빈 상품에선 눌러도 안 가는 탭이 됐다
             //   (섹션은 내용이 없으면 스스로 사라진다). 이웃 탭들과 같은 모양으로 조건을 붙이고,
@@ -684,14 +684,9 @@ export default function GroupBuyDetailPage() {
         {/* 🎯 추첨 응모 — 이 상품이 추첨 대상일 때만(결제 없음). 아니면 렌더 0. */}
         <div id="fcfs-apply-block"><FcfsApplyBlock productId={Number(id)} /></div>
 
-        {/* 🩶 2026-09-15 (대표 확정 "안 B"): 섹션 사이 8px 회색 띠 4개 → **하이라인 구분선**.
-            띠는 층을 계속 끊어 화면을 조각냈다(실측 한 화면에 3개). 표면 규칙은 "표면 두 톤"이라
-            띠 자체가 세 번째 톤이었다. 구분선은 같은 일을 하면서 면을 나누지 않는다. */}
-        <div aria-hidden className="hidden lg:block" style={{ height: 1, margin: '0 18px', background: 'var(--gbd-line)' }} />
-
-        {/* 🧑‍🍳 셀러 카드 — 📱 10-11 D안: 모바일은 걷고 '가게 보기' 입구를 매장 카드 머리로(`StoreLocation`). — 2026-09-24 `SellerCard` 로 추출(마크업 불변). 같은 커밋에서 아래 `StoreIntro`
-            를 붙이는데 이 파일이 래칫 906/906 이라 여유가 0이었다. 추출 사유는 그 파일 머리말 참조. */}
-        <div className="hidden lg:block"><SellerCard d={detail} onProfile={goStore} /></div>
+        {/* 🃏 2026-10-11 (대표 확정 D안 — PC 포함): 섹션 구분은 하이라인이 아니라 **카드**(`PASS_CARD`).
+            셀러 카드는 모바일에선 걷고(가게 입구는 매장 카드 '가게 보기') PC 에선 카드로 남긴다 — SNS 링크가 여기만 있다. */}
+        <div className={`hidden lg:block ${PASS_CARD}`}><SellerCard d={detail} onProfile={goStore} /></div>
 
         {/* 🏪 상품 구성 + 가게 소개 — 2026-09-24 대표 문서 ①("소개란이 따로 있었으면 좋겠다").
             `description` 이 `UsageGuide` 꼬리에 붙어 있던 것을 여기로 옮기고, 서버가 이미 보내면서
@@ -700,7 +695,6 @@ export default function GroupBuyDetailPage() {
           sellerBio={(detail as { seller_bio?: string | null }).seller_bio} sellerAvatar={detail.seller_avatar}
           sellerName={detail.seller_name} storeName={detail.restaurant_name} /></div>
 
-        <div aria-hidden className="hidden lg:block" style={{ height: 1, margin: '0 18px', background: 'var(--gbd-line)' }} />
 
         {/* 🔴 2026-09-01 (디자인 방향 PR A): 3열 균등 신뢰 스트립(안전결제/정식판매/환불보장) 삭제 —
             CTA 위 한 줄("토스로 3초 안전결제 · 미사용 시 100% 자동환불")이 같은 말을 이미 한다. */}
@@ -726,7 +720,6 @@ export default function GroupBuyDetailPage() {
             여기서 감싸 넘긴다(그 lazy 경계를 옮기면 로딩 최적화 잠금 계약이 흔들린다). */}
         {(detail.restaurant_address || (detail.restaurant_lat && detail.restaurant_lng)) && (
           <>
-            <div aria-hidden className="hidden lg:block" style={{ height: 1, margin: '0 18px', background: 'var(--gbd-line)' }} />
             <div className={PASS_CARD}><StoreLocation onProfile={goStore}
               name={detail.restaurant_name} address={detail.restaurant_address} phone={detail.restaurant_phone}
               lat={detail.restaurant_lat} lng={detail.restaurant_lng} sellerId={detail.seller_id} productId={detail.id}
@@ -754,7 +747,6 @@ export default function GroupBuyDetailPage() {
         )}
 
         {/* 후기·평점 — 신뢰 레버 (디자이너 후속 제안). 기존 ProductReviews 재사용(lazy, 빈 상태/작성 폼 내장). */}
-        <div aria-hidden className="hidden lg:block" style={{ height: 1, margin: '0 18px', background: 'var(--gbd-line)' }} />
         <div id="gb-sec-reviews" className={PASS_CARD} style={{ padding: '24px 18px', scrollMarginTop: 116 }}>
           <DeferUntilVisible minHeight={80}>
             <Suspense fallback={<div style={{ height: 80, background: 'var(--gbd-chip)', borderRadius: 12 }} />}>

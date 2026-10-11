@@ -55,7 +55,8 @@ describe('이용권 상세 — 제목이 사진 위로 (대표 확정 1안)', ()
   it('구매 패널이 최종가를 스스로 말한다 — 할인율 pill + 정가 취소선', () => {
     const s = code('src/pages/group-buy/DealPurchaseBox.tsx')
     // PC 본문에서 가격 블록을 뺐으므로 여기가 유일한 가격 자리다.
-    expect(s).toMatch(/discountPct > 0[\s\S]{0,400}-\{discountPct\}%/)
+    // 🔁 2026-10-11 (D안 — PC 포함): 빨간 pill(`-28%`) → 머리 카드와 같은 빨간 글자(`28%`). 할인율을 말한다는 불변식은 그대로.
+    expect(s).toMatch(/discountPct > 0[\s\S]{0,200}var\(--sale\)[\s\S]{0,40}\{discountPct\}%/)
     expect(s).toMatch(/unitSaving > 0[\s\S]{0,300}<s[\s\S]{0,200}formatNumber\(refPrice\)/)
   })
 })

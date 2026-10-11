@@ -57,8 +57,8 @@ export default [
     name: '[상세B지갑E] 🩶섹션 사이 회색 띠가 되살아난다',
     file: GB,
     // ⚠️ 하이라인은 네 곳이라 **뒤따르는 코드**로 유일하게 만든다(주석은 검사기가 먼저 걷어낸다).
-    find: `            <div aria-hidden className="hidden lg:block" style={{ height: 1, margin: '0 18px', background: 'var(--gbd-line)' }} />
-            <div className={PASS_CARD}><StoreLocation`,
+    // 🔁 2026-10-11 (D안 PC 포함): 하이라인이 사라지고 카드가 구분한다 — 카드 앞에 띠를 심는다.
+    find: `            <div className={PASS_CARD}><StoreLocation`,
     replace: `            <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
             <div className={PASS_CARD}><StoreLocation`,
     test: TEST,

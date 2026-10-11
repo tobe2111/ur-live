@@ -77,8 +77,10 @@ describe('남긴 것 — 구분선 7곳 (과잉교정 차단)', () => {
     // ⚠️ `grep -c` 는 **줄** 수라 한 줄에 둘 있는 경우를 놓친다(첫 판에 2로 썼다가 틀렸다).
     expect((USAGE.match(/1px solid var\(--gbd-line2\)/g) || []).length).toBe(1)
   })
-  it('PC 구매 박스 안 구분선', () => {
-    expect(BOX).toMatch(/borderTop: '1px solid var\(--gbd-line2\)'/)
+  it('PC 구매 박스 — 안심 문구가 한 줄로 줄어 구분선이 필요 없어졌다 (2026-10-11 D안)', () => {
+    // 🔁 종전엔 세 줄 배지 위에 구분선이 있었다. 배지가 한 줄이 되며 선도 걷었다 — 되살아나면 경계가 둘이 된다.
+    expect(BOX).not.toMatch(/borderTop: '1px solid var\(--gbd-line2\)'/)
+    expect(BOX).toContain('토스로 3초 안전결제 · 미사용 시 100% 자동환불')
   })
   it('매장 전화는 밑줄 링크가 아니라 outline 버튼이다 (2026-09-15 안 B)', () => {
     // 🔀 종전엔 제목 밑 주소 줄에 밑줄 링크로 끼어 있었다. 라이브 2888 실측에서 `063-251-6785` 가
