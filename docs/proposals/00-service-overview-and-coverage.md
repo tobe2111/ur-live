@@ -616,7 +616,7 @@
 | 후원 수수료 (default) | 15% | `src/features/donations/api/donations.routes.ts:donation_commission_rate fallback` |
 | 후원 1일 한도 (인당) | 50,000,000원 | `src/features/donations/api/donations.routes.ts:DAILY_CAP` |
 | 큐레이터당 최대 핀 개수 | 200개 | `src/shared/constants/policy.ts:CURATOR_DEFAULTS.PIN_MAX_PER_USER` |
-| 추천 ref 쿠키 TTL | [추출실패—수동확인] | `src/shared/constants/policy.ts:CURATOR_DEFAULTS.REF_COOKIE_TTL_HOURS` |
+| 추천 ref 쿠키 TTL | 24시간 | `src/shared/constants/policy.ts:CURATOR_DEFAULTS.REF_COOKIE_TTL_HOURS` |
 | 큐레이터→셀러 승급 권유 임계 (누적 정산) | 500,000원 | `src/shared/constants/policy.ts:WITHDRAWAL_DEFAULTS.SELLER_UPGRADE_THRESHOLD` |
 | 최소 출금 금액 | 10,000원 | `src/shared/constants/policy.ts:WITHDRAWAL_DEFAULTS.MIN_AMOUNT` |
 | 최소 commission 출금 | 10,000원 | `src/shared/constants/policy.ts:REFUND_POLICY.COMMISSION_MIN_WITHDRAWAL` |
@@ -1754,7 +1754,7 @@
 
 
 
-> 마지막 생성: 2026-10-11T08:57:12.747Z
+> 마지막 생성: 2026-10-11T09:39:32.230Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->
