@@ -11,8 +11,10 @@
  */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
-const AXIS = '#6B7280'
-const GRID = '#E5E7EB'
+const AXIS = 'var(--ink-soft)'
+const GRID = 'var(--line)'
+/** 점·조각 테두리 — 바탕과 같은 색. 토큰을 쓰므로 마이 시트(다크)에서도 맞는다(라이트 대시보드는 스코프가 토큰을 다시 고정한다). */
+const SURFACE = 'var(--surface)'
 const PAD = { top: 12, right: 12, bottom: 28, left: 48 }
 
 /** 행에서 값 하나 — 숫자가 아니면 0. */
@@ -68,10 +70,10 @@ function Axes({ f, ticks, top, yFormat, labels, every }: {
 }) {
   const yOf = (v: number) => PAD.top + f.innerH - (v / top) * f.innerH
   return (
-    <g fontSize={11} fill={AXIS}>
+    <g fontSize={11} style={{ fill: AXIS }}>
       {ticks.map((t) => (
         <g key={t}>
-          <line x1={PAD.left} x2={PAD.left + f.innerW} y1={yOf(t)} y2={yOf(t)} stroke={GRID} strokeDasharray="3 3" />
+          <line x1={PAD.left} x2={PAD.left + f.innerW} y1={yOf(t)} y2={yOf(t)} style={{ stroke: GRID }} strokeDasharray="3 3" />
           <text x={PAD.left - 6} y={yOf(t)} textAnchor="end" dominantBaseline="middle">{yFormat(t)}</text>
         </g>
       ))}
@@ -163,10 +165,10 @@ export function SvgLineChart<T extends object>({ data, xKey, series, height, yFo
             <g key={s.key}>
               <polyline fill="none" stroke={s.color} strokeWidth={s.width ?? 2} strokeLinejoin="round" strokeLinecap="round"
                 points={data.map((d, i) => `${xAt(i)},${yOf(num(d, s.key))}`).join(' ')} />
-              {dots && data.map((d, i) => <circle key={i} cx={xAt(i)} cy={yOf(num(d, s.key))} r={3} fill="#fff" stroke={s.color} strokeWidth={2} />)}
+              {dots && data.map((d, i) => <circle key={i} cx={xAt(i)} cy={yOf(num(d, s.key))} r={3} stroke={s.color} strokeWidth={2} style={{ fill: SURFACE }} />)}
             </g>
           ))}
-          {hover !== null && <line x1={xAt(hover)} x2={xAt(hover)} y1={PAD.top} y2={PAD.top + f.innerH} stroke={GRID} />}
+          {hover !== null && <line x1={xAt(hover)} x2={xAt(hover)} y1={PAD.top} y2={PAD.top + f.innerH} style={{ stroke: GRID }} />}
         </svg>
       )}
       {legend && (
@@ -219,9 +221,9 @@ export function SvgPieChart<T extends object>({ data, valueKey, nameKey, colors,
             const pct = Math.round((s.v / total) * 100)
             return (
               <g key={s.i} onMouseEnter={() => setHover(s.i)} onTouchStart={() => setHover(s.i)}>
-                <path d={d} fill={s.color} stroke="#fff" strokeWidth={1} opacity={hover === null || hover === s.i ? 1 : 0.6} />
+                <path d={d} fill={s.color} strokeWidth={1} style={{ stroke: SURFACE }} opacity={hover === null || hover === s.i ? 1 : 0.6} />
                 {pct >= 3 && (
-                  <text x={lx} y={ly} fontSize={11} fill={AXIS} textAnchor={Math.sin(mid) >= 0 ? 'start' : 'end'} dominantBaseline="middle">
+                  <text x={lx} y={ly} fontSize={11} style={{ fill: AXIS }} textAnchor={Math.sin(mid) >= 0 ? 'start' : 'end'} dominantBaseline="middle">
                     {s.name} {pct}%
                   </text>
                 )}
