@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/useToast'
 import { agencyRequest, enterAgencyStore } from './agency-api'
+import { AgencyInviteLinkCard } from './AgencyInviteLinkCard'
 
 interface StoreRow {
   linkId: number
@@ -82,8 +83,8 @@ export function AgencyStoresPanel({ onExpired }: { onExpired: () => void }) {
         <div className="mt-3 rounded-2xl bg-white p-6 shadow-lift">
           <p className="text-[15px] font-semibold text-gray-900">아직 맡은 매장이 없어요</p>
           <p className="mt-2 text-[13px] leading-relaxed text-gray-500">
-            매장 사장님이 셀러 화면의 <b className="font-semibold text-gray-700">운영자 관리 → 에이전시에 맡기기</b>에
-            {' '}관리자 이메일을 넣으면 여기에 요청이 떠요.
+            아래 <b className="font-semibold text-gray-700">매장 초대 링크</b>를 사장님께 보내거나, 사장님이 셀러 화면의
+            {' '}<b className="font-semibold text-gray-700">운영자 관리 → 에이전시에 맡기기</b>에 관리자 이메일을 넣으면 여기에 떠요.
           </p>
         </div>
       ) : (
@@ -128,6 +129,7 @@ export function AgencyStoresPanel({ onExpired }: { onExpired: () => void }) {
           </ul>
         </div>
       )}
+      {canManage && rows !== null && !error && <AgencyInviteLinkCard />}
     </section>
   )
 }

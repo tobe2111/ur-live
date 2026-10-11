@@ -32,6 +32,8 @@ import { issueAgencyStaffToken } from '@/features/agency-console/api/agency-sess
 import { agencyStoresRoutes } from '@/features/agency-console/api/agency-stores.routes'
 import { registerAgencyLinkRoutes } from '@/features/seller/api/seller-agency-link.routes'
 import { isAgencySeatToken } from '@/components/seller/AgencySeatBar'
+import { storeAgencyInviteRoutes } from '@/features/seller/api/store-agency-invite.routes'
+import { createSessionCookie } from '@/worker/utils/session'
 
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as typeof import('node:sqlite')
 type Db = InstanceType<typeof DatabaseSync>
@@ -297,5 +299,95 @@ describe('④ 사장님으로 둔갑하는 폴백 자리 — 배선', () => {
 
   it('한 매장 한 에이전시 — 부분 UNIQUE 인덱스', () => {
     expect(code('src/features/agency-console/api/agency-schema.ts')).toMatch(/idx_agency_store_links_open ON agency_store_links\(seller_id\) WHERE status IN \('pending','active'\)/)
+  })
+})
+
+describe('⑤ 매장 초대 링크 — 에이전시가 보내고 사장님이 [맡기기] 한 번 (대표 "링크 방식도 넣어줘")', () => {
+  function inviteApp(DB: D1Database) {
+    const app = new Hono<{ Bindings: { DB: D1Database; JWT_SECRET: string } }>()
+    app.route('/api/store-agency-invite', storeAgencyInviteRoutes)
+    return {
+      lookup: (t: string) => app.request(`/api/store-agency-invite/${t}`, {}, { DB, JWT_SECRET: SECRET }),
+      accept: (body: unknown, cookie?: string) => app.request('/api/store-agency-invite/accept', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', ...(cookie ? { Cookie: cookie } : {}) }, body: JSON.stringify(body),
+      }, { DB, JWT_SECRET: SECRET }),
+    }
+  }
+  const cookieOf = async (userId: number) => (await createSessionCookie(userId, '사장님', 'o@x.kr', null, SECRET)).split(';')[0]
+  const tokenOf = (url: string) => url.split('/store/agency/')[1]
+
+  async function withInvite() {
+    const env = await fresh()
+    const agency = agencyApp(env.DB)
+    const r = await agency('POST', '/store-invite', await staffToken(5, 1))
+    expect(r.status).toBe(200)
+    const { invite } = await r.json() as { invite: { url: string } }
+    return { ...env, agency, inv: inviteApp(env.DB), token: tokenOf(invite.url) }
+  }
+
+  it('관리자만 링크를 만든다 · 링크는 /store/agency/<64자> 형태', async () => {
+    const { DB } = await fresh()
+    const agency = agencyApp(DB)
+    expect((await agency('POST', '/store-invite', await staffToken(6, 1))).status, '직원').toBe(403)
+    const { token } = await withInvite()
+    expect(token).toMatch(/^[0-9a-f]{64}$/)
+  })
+
+  it('링크를 열면 어느 에이전시인지 보인다 · 모르는 링크는 404', async () => {
+    const { inv, token } = await withInvite()
+    expect(await (await inv.lookup(token)).json()).toMatchObject({ success: true, agencyName: '바른대행' })
+    expect((await inv.lookup('f'.repeat(64))).status).toBe(404)
+    expect((await inv.lookup('nope')).status).toBe(404)
+  })
+
+  it('로그인 안 했으면 401 · 남의 매장(주인 아님)은 403 · 주인이면 바로 운영 중(active)', async () => {
+    const { db, DB, inv, agency, token } = await withInvite()
+    expect((await inv.accept({ token, seller_id: 7 })).status).toBe(401)
+    expect((await inv.accept({ token, seller_id: 7 }, await cookieOf(11))).status, '매장 8 주인이 매장 7 을 맡김').toBe(403)
+    const ok = await inv.accept({ token, seller_id: 7 }, await cookieOf(100))
+    expect(ok.status).toBe(200)
+    const row = db.prepare('SELECT status, decided_by_staff_id FROM agency_store_links WHERE seller_id = 7').get() as { status: string; decided_by_staff_id: number }
+    expect(row).toEqual({ status: 'active', decided_by_staff_id: 5 })
+    // 수락 단계 없이 직원이 바로 들어간다
+    expect((await agency('POST', '/stores/7/seat', await staffToken(6, 1))).status).toBe(200)
+    void DB
+  })
+
+  it('새로 만들면 옛 링크는 그 순간 죽는다 · 끊기도 마찬가지', async () => {
+    const { agency, inv, token } = await withInvite()
+    const r2 = await (await agency('POST', '/store-invite', await staffToken(5, 1))).json() as { invite: { url: string } }
+    expect((await inv.lookup(token)).status).toBe(404)
+    const t2 = tokenOf(r2.invite.url)
+    expect((await inv.lookup(t2)).status).toBe(200)
+    expect((await agency('POST', '/store-invite/revoke', await staffToken(5, 1))).status).toBe(200)
+    expect((await inv.lookup(t2)).status).toBe(404)
+  })
+
+  it('이미 다른 에이전시에 맡긴 매장은 409 · 같은 에이전시 요청이 대기 중이면 수락으로 올린다', async () => {
+    const { db, DB, inv, token } = await withInvite()
+    await ownerApp(DB)('POST', '/agency-link', { email: 'other@ag.kr' })
+    expect((await inv.accept({ token, seller_id: 7 }, await cookieOf(100))).status).toBe(409)
+    db.exec("UPDATE agency_store_links SET status = 'ended' WHERE seller_id = 7")
+    await ownerApp(DB)('POST', '/agency-link', { email: 'boss@ag.kr' })
+    expect((await inv.accept({ token, seller_id: 7 }, await cookieOf(100))).status).toBe(200)
+    const open = db.prepare("SELECT status FROM agency_store_links WHERE seller_id = 7 AND status IN ('pending','active')").all() as Array<{ status: string }>
+    expect(open).toEqual([{ status: 'active' }])
+  })
+
+  it('정지된 에이전시의 링크는 죽는다', async () => {
+    const { db, inv, token } = await withInvite()
+    db.exec("UPDATE agency_accounts SET status = 'suspended' WHERE id = 1")
+    expect((await inv.lookup(token)).status).toBe(404)
+  })
+
+  it('배선: CSRF 가 라우트보다 먼저 · 소유 판정은 소비자 세션 쿠키 하나(좌석 토큰 폴백 없음)', () => {
+    const w = readFileSync('src/worker/index.ts', 'utf-8')
+    const use = w.indexOf("app.use('/api/store-agency-invite/accept', csrfProtection())")
+    const route = w.indexOf("app.route('/api/store-agency-invite', storeAgencyInviteRoutes)")
+    expect(use).toBeGreaterThan(0)
+    expect(use).toBeLessThan(route)
+    const src = stripComments(readFileSync('src/features/seller/api/store-agency-invite.routes.ts', 'utf-8'))
+    expect(src).toMatch(/parseSessionCookie\(c\.req\.header\('Cookie'\), c\.env\.JWT_SECRET, \['user'\]\)/)
+    expect(src).not.toMatch(/resolveTokenActorUserId|Authorization/)
   })
 })

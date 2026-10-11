@@ -25,10 +25,11 @@ import { isSeatableStoreStatus } from '@/shared/seller-status'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { safeError } from '@/worker/utils/safe-error'
 import { invalidateStoreSeatCache } from '@/worker/utils/store-seat-guard'
-import { ensureAgencyConsoleTables } from './agency-schema'
-import { requireAgencyStaff, type AgencyStaffContext } from './agency-session'
+import { ensureAgencyConsoleTables, AGENCY_STORE_INVITE_DAYS } from './agency-schema'
+import { requireAgencyStaff, newLinkToken, type AgencyStaffContext } from './agency-session'
+import { frontendBase } from './agency-auth.routes'
 
-type Bindings = { DB: D1Database; JWT_SECRET: string }
+type Bindings = { DB: D1Database; JWT_SECRET: string; FRONTEND_URL?: string }
 type Vars = { agencyStaff: AgencyStaffContext }
 type Ctx = Context<{ Bindings: Bindings; Variables: Vars }>
 
@@ -208,3 +209,60 @@ agencyStoresRoutes.post('/stores/:sellerId/seat', cors(), requireAgencyStaff(),
       return safeError(c, err, '매장에 들어가지 못했어요', '[agency-console:seat]')
     }
   })
+
+// ── 🔗 매장 초대 링크 (관리자) — 에이전시가 사장님께 카톡으로 보내는 링크 ─────────────────
+//   링크를 만든 것 자체가 에이전시의 수락이다 → 사장님이 [맡기기] 를 누르면 요청 단계 없이 바로 운영 시작.
+//   에이전시당 살아 있는 링크는 하나 — 새로 만들면 옛 링크는 그 순간 끊긴다(잘못 퍼진 링크를 거둘 방법).
+export function storeInviteUrl(env: { FRONTEND_URL?: string }, token: string): string {
+  return `${frontendBase(env)}/store/agency/${token}`
+}
+
+agencyStoresRoutes.get('/store-invite', requireAgencyStaff({ adminOnly: true }), async (c) => {
+  try {
+    const me = c.get('agencyStaff')
+    await ensureAgencyConsoleTables(c.env.DB)
+    const row = await c.env.DB.prepare(
+      `SELECT token, expires_at, use_count FROM agency_store_invites
+        WHERE agency_id = ? AND revoked_at IS NULL AND expires_at > datetime('now')
+        ORDER BY id DESC LIMIT 1`,
+    ).bind(me.agencyId).first<{ token: string; expires_at: string; use_count: number }>()
+    return c.json({
+      success: true,
+      invite: row ? { url: storeInviteUrl(c.env, row.token), expiresAt: row.expires_at, useCount: row.use_count } : null,
+    })
+  } catch (err) {
+    return safeError(c, err, '초대 링크를 불러오지 못했어요', '[agency-console:store-invite]')
+  }
+})
+
+agencyStoresRoutes.post('/store-invite', cors(), requireAgencyStaff({ adminOnly: true }),
+  rateLimit({ action: 'agency_store_invite', max: 20, windowSec: 3600 }), async (c) => {
+    try {
+      const me = c.get('agencyStaff')
+      const DB = c.env.DB
+      await ensureAgencyConsoleTables(DB)
+      const token = newLinkToken()
+      await DB.batch([
+        DB.prepare("UPDATE agency_store_invites SET revoked_at = datetime('now') WHERE agency_id = ? AND revoked_at IS NULL").bind(me.agencyId),
+        DB.prepare(
+          `INSERT INTO agency_store_invites (agency_id, token, created_by_staff_id, expires_at)
+           VALUES (?, ?, ?, datetime('now', '+${AGENCY_STORE_INVITE_DAYS} days'))`,
+        ).bind(me.agencyId, token, me.staffId),
+      ])
+      return c.json({ success: true, invite: { url: storeInviteUrl(c.env, token), useCount: 0 }, message: '새 초대 링크를 만들었어요. 예전 링크는 이제 쓸 수 없어요.' })
+    } catch (err) {
+      return safeError(c, err, '초대 링크를 만들지 못했어요', '[agency-console:store-invite]')
+    }
+  })
+
+agencyStoresRoutes.post('/store-invite/revoke', cors(), requireAgencyStaff({ adminOnly: true }), async (c) => {
+  try {
+    const me = c.get('agencyStaff')
+    await ensureAgencyConsoleTables(c.env.DB)
+    await c.env.DB.prepare("UPDATE agency_store_invites SET revoked_at = datetime('now') WHERE agency_id = ? AND revoked_at IS NULL")
+      .bind(me.agencyId).run()
+    return c.json({ success: true, message: '초대 링크를 끊었어요.' })
+  } catch (err) {
+    return safeError(c, err, '처리 중 오류가 발생했어요', '[agency-console:store-invite]')
+  }
+})

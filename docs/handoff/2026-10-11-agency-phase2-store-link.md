@@ -44,3 +44,14 @@
 ## 이번에 틀렸던 판단
 - 처음엔 에이전시 좌석 판정을 `verifyStoreSeat` 결과(`live`)에 기대려 했다. 그러면 D1 이 흔들리는 순간 `unknown` → 아래 폴백으로 샌다.
   ⇒ 소유자 판정·카카오 봇은 **claim 만으로** 거절한다.
+
+## 🔗 추가 — 매장 초대 링크 (대표 *"응 링크 방식도 넣어줘. 그리고 가장 전체적으로 이상적인 형태를 찾아봐줘"*)
+- 테이블 `agency_store_invites`(토큰 원문 저장 — 들고 있는 사람에게 권한을 주지 않아서 관리자가 언제든 다시 복사하게). 에이전시당 살아 있는 링크 하나 · 30일.
+- 에이전시 `GET/POST /api/agency-console/store-invite` · `POST /store-invite/revoke`(관리자).
+- 사장님 `/store/agency/:token`(로그인 필수 라우트) → `GET /api/store-agency-invite/:token` · `POST /api/store-agency-invite/accept`.
+  경로를 `/api/seller/*` 밖에 둔 이유: 공용 axios 가 seller_token 을 붙이면 회수된 토큰이 전역 가드 401 → 셀러 로그아웃을 부른다.
+  소유 판정 = 소비자 세션 쿠키 하나 · CSRF(`csrfProtection`)를 라우트보다 먼저 건다.
+- 링크 수락 = 바로 active(링크를 만든 것이 에이전시의 수락). 같은 에이전시 대기 요청이 있으면 수락으로 올린다. 다른 에이전시면 409.
+- 시험 +7(총 31) · 주입 +5(전부 빨간불 확인).
+- 전체 그림: `docs/design/agency-ideal-shape-2026-10-11.md` · 판단 대기: `docs/decisions/2026-10-11-agency-ideal-open-questions.md`(개인 중개 길을 에이전시로 일원화할지).
+- **다음 권하는 작업(머니 무관)**: 어드민 에이전시 목록·정지(지금 정지 버튼이 없다) → 사장님용 "에이전시 활동 기록" → 사업자 진위확인.
