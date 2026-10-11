@@ -37,6 +37,8 @@ const ROUTES = {
   linkshop: ['src/pages/CuratorPage.tsx', 'src/pages/SellerPublicPage.tsx'],
   vouchers: ['src/pages/VouchersPage.tsx'],
   browse: ['src/pages/BrowsePage.tsx'],
+  // 🗺️ 2026-10-11 지도 — 피드 홈의 배너·하단 탭 목적지이고 공유 링크로도 들어온다(하드로드 진입점).
+  map: ['src/pages/RestaurantMapPage.tsx'],
   // 🎬 2026-09-21 유어쇼츠 전체 보기 — 홈 레일의 「전체 보기」·상단 네비가 여기로 온다(하드로드 진입점).
   urshorts: ['src/pages/UrShortsBrowsePage.tsx'],
 }

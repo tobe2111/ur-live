@@ -31,6 +31,7 @@ import { useSheetDrag, SHEET_BASE_TOP, SHEET_SNAP_TRANSLATE, SHEET_SNAP_TRANSITI
 import { distanceKm } from './restaurant-map/utils'
 import type { Restaurant, KakaoPlace, SortBy } from './restaurant-map/types'
 import { useFeedWindow } from './restaurant-map/useFeedWindow'
+import { MAP_SEED_SORT } from '@/shared/map-feed-seed'
 import { pickViewportList } from './restaurant-map/viewport-list'
 import { groupByCoord } from './restaurant-map/coord-groups'
 import { matchAddress, findRegionByKey, findDistrictGroup } from '@/shared/constants/korea-regions'
@@ -79,7 +80,8 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   // 🩸 2026-09-03 (하네스 실측): 위치가 캐시된 사용자는 마운트 직후 `useNearMeAuto` 가 '가까운 순'으로
   //   자동 전환하는데, 정렬이 서버 캐시키에 들어간 지금은 그 전환이 **두 번째 요청**을 만든다.
   //   어차피 갈 자리면 처음부터 거기서 시작한다(칩이 깜빡이던 것도 함께 사라진다).
-  const [sortBy, setSortBy] = useState<SortBy>(() => (userLoc ? 'distance' : 'discount'))
+  //   🗺️ 2026-10-11: 위치 없는 기본값은 `MAP_SEED_SORT` — 워커가 그 정렬로 첫 화면 시드를 싣는다(바꾸면 시드가 안 맞는다).
+  const [sortBy, setSortBy] = useState<SortBy>(() => (userLoc ? 'distance' : MAP_SEED_SORT))
   // 🛍️ 2026-06-20 (필터 팝업 A안): 거리반경(km, 0=전체) + 가격대.
   const [radiusKm, setRadiusKm] = useState<number>(0)
   const [priceRange, setPriceRange] = useState<PriceRange>('all')

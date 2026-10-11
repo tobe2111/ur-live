@@ -54,7 +54,10 @@ const HOT_PATHS: readonly string[] = [
   //   edgeCache(120) 를 붙였으니 여기서 미리 데워 두면 **첫 사용자도** 캐시 히트로 받는다
   //   (안 데우면 콜드 콜로의 첫 방문자가 그 0.6~1.2초를 그대로 맞는다).
   '/api/sections',
-  '/api/group-buy/products',
+  // 🗺️ 2026-10-11: 무파라미터 `/api/group-buy/products` 를 지도 첫 화면 시드로 맞바꿨다 — 화면은 그 경로를
+  //   **한 번도** 그대로 요청하지 않는다(axios 가 늘 `?category=…` 를 붙인다). 예산(50) 안에서 1:1 교체.
+  //   ⚠️ `shared/map-feed-seed.ts` MAP_SEED_PATH 와 byte-일치(시험이 대조).
+  '/api/group-buy/products?category=all&sort=discount',
   // 🛡️ 2026-05-27 (loading P0): SSR inject key 와 정확히 일치 (path+query).
   //   이 key 를 cron 이 warm 하지 않으면 readKvCacheForSSR miss → 첫 사용자 skeleton.
   '/api/group-buy/products?status=active&category=all',
@@ -116,7 +119,10 @@ const HOT_PATHS: readonly string[] = [
 //   💰 비용 가드(무료 1K writes/day, CLAUDE.md KV 잠금 철학): **쓰기는 cron 전용 + 15분 표본화** —
 //   4키 × (5분 cron 중 매시 0/15/30/45분 창만) 96회/day = 384 writes/day < 1K. 읽기는 콜드-콜로
 //   edge-miss 시에만(무료 100K/day 대비 미미). CACHE_KV 미바인딩이면 전부 skip = 현행 100% 동일.
-const SSR_KV_PATHS: readonly string[] = [
+// 🔑 2026-10-11 [UNLOCK_LOADING]: export — `ssr-payload.ts` 가 **이 목록에 있는 키만** KV 를 읽는다.
+//   종전엔 모든 슬롯이 KV 를 읽었는데 여기 없는 키(상세·유어샵·셀러…)는 **아무도 쓰지 않으므로 늘 miss** 였다
+//   (라이브 실측 `DETAIL:self-fetch-hit` 에 `kv;dur=95~104ms` — 순수 대기). 쓰는 쪽과 읽는 쪽이 같은 목록을 본다.
+export const SSR_KV_PATHS: readonly string[] = [
   '/api/group-buy/products?status=active&category=all',            // MAIN(홈)
   '/api/products?page=1&limit=20&deal_only=1&sort=price_low',      // VOUCHERS
   '/api/products?page=1&limit=20&exclude_deal_only=1',             // BROWSE
@@ -129,6 +135,8 @@ const SSR_KV_PATHS: readonly string[] = [
   //   (피드는 세 계층이 다 있어 멀쩡했다 — 같은 화면에서 한쪽만 늦는 이유가 정확히 이것.)
   //   ⚠️ 경로는 워커의 `ssrExtra.path`(`/api/sections`)와 **byte-일치**해야 한다 — 캐시 키가 곧 경로다.
   '/api/sections',                                                 // SECTIONS(홈 편성 섹션)
+  // 🗺️ 2026-10-11 지도 첫 화면(MAP 슬롯) — MAP_SEED_PATH 와 byte-일치. 6키 × 96창 = 576 writes/day < 1K.
+  '/api/group-buy/products?category=all&sort=discount',            // MAP(지도)
 ];
 const SSR_KV_TTL_S = 1800; // 15분 표본화 × TTL 30분 — 항상 커버(최대 stale ~30분, edge 900s 와 동급)
 
