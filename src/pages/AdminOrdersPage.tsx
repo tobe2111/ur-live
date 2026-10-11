@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import i18next from 'i18next'
 import { useTranslation } from 'react-i18next'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
@@ -13,7 +13,7 @@ import { getNoShippingKind } from '@/shared/product-flow'; import { ORDER_KIND_M
 import {
   Package, Truck, CheckCircle2, XCircle, Loader2, Eye,
   Calendar, User, Search, Filter, Download, ChevronLeft,
-  ChevronRight, RefreshCw, Clock, DollarSign, Ticket, Store, ExternalLink
+  ChevronRight, RefreshCw, Clock, DollarSign, Ticket
 } from 'lucide-react'
 
 // 🗂️ 주문 종류. ⚠️ B2B 는 wholesale_orders. 🧾 2026-09-21: 이 함수가 **이용권을 "교환권"이라 불렀다**. 판정 SSOT: `order-kind.ts`.
@@ -422,13 +422,13 @@ export default function AdminOrdersPage() {
         </div>
       )}
 
-      {/* 🗂️ 2026-06-17: 도매몰(B2B) 주문은 별도 테이블/페이지 안내 + 체크박스 일괄 상태변경 바 */}
+      {/* 🧨 2026-10-11 도매몰 철거: 왼쪽에 있던 '도매몰(B2B) 주문 보기' 링크만 제거(그 화면이 사라졌다).
+          ⚠️ 감싸는 div 는 **남긴다** — 아래 일괄 상태변경 바의 레이아웃 컨테이너다(처음에 링크와 함께
+          지웠더니 `</div>` 가 고아가 돼 JSX 가 깨졌다. pre-commit tsc 가 잡았다).
+          `ml-auto` 도 함께 빼는데, 왼쪽 링크가 없어진 지금은 바를 오른쪽 끝으로 밀 이유가 없다. */}
       <div className="flex flex-wrap items-center gap-2 mb-3">
-        <Link to="/admin/wholesale-orders" className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition-colors">
-          <Store className="w-3.5 h-3.5" /> 도매몰(B2B) 주문 보기 <ExternalLink className="w-3 h-3" />
-        </Link>
         {selectedNumbers.size > 0 && (
-          <div className="flex flex-wrap items-center gap-2 ml-auto">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs text-gray-600 font-medium">{selectedNumbers.size}건 선택됨</span>
             <button type="button" onClick={() => setSelectedNumbers(new Set())} className="text-xs text-gray-500 hover:text-gray-700 underline underline-offset-2">선택 해제</button>
             <span className="text-xs text-gray-400">일괄 변경:</span>

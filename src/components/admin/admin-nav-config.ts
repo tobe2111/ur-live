@@ -109,6 +109,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/influencer-pool',  label: '인플루언서 풀', icon: Megaphone },
       { path: '/admin/campaign-applications', label: '캠페인 신청자', icon: Megaphone }, // 캠페인 모집(/campaign/:code) 접수분 — 코드 필터+CSV
       { path: '/admin/buyer-pool',       label: '해외 바이어 풀', icon: Megaphone }, // 도매 RBAC 스코프 밖 → 여기(전-어드민)
+      { path: '/admin/partnership',      label: '광고·제휴 문의', icon: Mail }, // 🧨 2026-10-11 도매 밴드와 함께 사라질 뻔한 **도매 아닌** 접수함(광고/제휴 공개 문의) — 유어애즈 밴드가 제자리다
       { path: '/admin/maker-pool',       label: '제조사·판매사 후보 풀', icon: Layers }, // 🧨 2026-10-11 도매 철거로 이 밴드로 이사 — 읽는 것은 유어애즈 `ad_company_leads`(worker-ads 가 계속 수집)
       { path: '/admin/partner-pool',     label: '파트너 풀', icon: Megaphone }, // B2B 파트너(업체) 수집 — 매장 입점 영업
       { path: '/admin/store-prospects',  label: '매장 후보', icon: Megaphone }, // 인허가 발굴 — 유어딜 입점 대상 매장(store_prospects)
@@ -389,4 +390,5 @@ export const ALWAYS_ALLOWED_ADMIN_PATHS = ['/admin/set-pin', '/admin/2fa']
 // 🆕 2026-06-24: '도매 통합 현황'의 승인 큐 카드가 가리키는 비-도매-nav 경로 — 도매 파트너도 도달 허용.
 // 🗂️ 2026-07-02 (1페이지화): 예치금/출금 nav 항목이 판매사·제조사 관리의 탭으로 흡수되며 딥링크
 //   경로가 nav 주항목에서 사라짐 → wholesale role 도달성 명시 허용(탭으로 열림).
-export const WHOLESALE_EXTRA_ALLOWED_PATHS = ['/admin/products', '/admin/wholesale-integrity', '/admin/wholesale-deposits', '/admin/wholesale-withdrawals']
+// 🧨 2026-10-11 도매몰 철거: 이 목록의 도매 딥링크 3개가 사라졌다(`/admin/products` 만 남는다).
+export const WHOLESALE_EXTRA_ALLOWED_PATHS = ['/admin/products']

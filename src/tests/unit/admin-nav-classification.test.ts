@@ -72,8 +72,11 @@ describe('R1 — 밴드는 선언이다 (폴백으로 정해지지 않는다)', 
     expect(navSectionOf(renamed)).toBe(NAV_GROUPS[0].section)
   })
 
-  it('🔴 서비스 넷이 각자 밴드를 갖는다 — 유어애즈 포함', () => {
-    for (const key of ['urdeal', 'mall', 'ads', 'wholesale'] as const) {
+  it('🔴 서비스 셋이 각자 밴드를 갖는다 — 유어애즈 포함', () => {
+    // 🔁 2026-10-11 재조준(도매몰 철거): 종전엔 `'wholesale'` 까지 **넷**을 요구했다. 도매 밴드가
+    //   사라졌으므로 그 요구는 이제 "없는 서비스의 서랍을 만들라" 가 된다. 지키려던 것은 그대로다 —
+    //   **살아 있는 서비스는 각자 밴드를 갖고, 폴백으로 정해지지 않는다.**
+    for (const key of ['urdeal', 'mall', 'ads'] as const) {
       expect(NAV_SECTIONS.some((s) => s.key === key), `밴드 '${key}' 미정의`).toBe(true)
       // 🔎 `navSectionOf` 경유 — `AdminLayout` 이 부르는 그 함수다(데이터만 맞고 함수가 틀리면 화면은 여전히 어긋난다).
       expect(NAV_GROUPS.some((g) => navSectionOf(g) === key), `밴드 '${key}' 에 그룹이 하나도 없다`).toBe(true)
@@ -149,12 +152,14 @@ describe('R4 — 단일 서비스 화면이 공통 서랍에 눌러앉지 않는
     }
   })
 
-  it('🔴 제조사 후보 풀은 도매 밴드다 — 유어애즈 풀과 같은 서랍에 두지 않는다', () => {
-    // 페이지 헤더가 *"도매몰(유통스타트) 전용 — 유어애즈 파트너 풀과 격리된 테이블"* 이라고 선언한다.
-    // 이름·위치가 buyer/partner-pool 과 닮아 유어애즈로 오분류하기 딱 좋은 자리다.
-    expect(bandOf('/admin/maker-pool')).toBe('wholesale')
-    expect(bandOf('/admin/partner-pool')).toBe('ads')
-    expect(bandOf('/admin/buyer-pool')).toBe('ads')
+  it('🔴 리드 풀 셋은 모두 유어애즈 밴드다 (도매 밴드가 사라졌다)', () => {
+    // 🔁 2026-10-11 재조준(도매몰 철거): 종전엔 *"제조사 후보 풀은 **도매** 밴드"* 였다 — 그 밴드가
+    //   사라졌고, 이 풀이 실제로 읽는 것은 **유어애즈의 `ad_company_leads`**(worker-ads 가 수집)다.
+    //   ⚠️ 테이블은 여전히 격리돼 있다(`supply_maker_leads`) — 밴드가 같아졌다고 데이터가 섞이는 게
+    //   아니다. 그 격리는 `supply-teardown-safety` 와 서버 RBAC 가 지킨다.
+    for (const p of ['/admin/maker-pool', '/admin/partner-pool', '/admin/buyer-pool']) {
+      expect(bandOf(p), p).toBe('ads')
+    }
   })
 
   it('🔴 공통 데스크에 남긴 단일 서비스 항목은 **라벨에 서비스를 밝힌다**', () => {

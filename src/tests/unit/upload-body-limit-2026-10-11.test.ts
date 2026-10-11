@@ -79,9 +79,9 @@ const ALLOW: Record<string, string> = {
   // 📄 등록증·영업신고증 — `compressForDocument`(2MB 목표)를 쓰지만 그 목표가 천장(1MB)보다 크다.
   //    해상도를 깎으면 어드민이 사업자번호를 못 읽으므로 서버 천장을 올려야 풀린다(결재 대기).
   //    ⇒ 압축은 거치므로 ② 자체는 통과한다. 여기 적는 것은 '압축 없음' 이 아니라 '천장 초과 가능' 이다.
-  'src/pages/supplier-dashboard/MultiImageUpload.tsx':
-    '🏭 도매몰(유통스타트) 화면 — **안 하는 서비스**다(platform-model: "공구 서비스로 전환 중"). GIF 보존 목적의 '
-    + '의도적 무압축이고 천장을 넘으면 413 이지만, 그 서비스를 하지 않으므로 결재 근거가 아니다(2026-10-11 대표 정정)',
+  // 🧨 2026-10-11 (같은 날 오후) 도매몰 철거로 `supplier-dashboard/MultiImageUpload.tsx` 가 **삭제됐다**
+  //   ⇒ 더 이상 업로드 호출부가 아니라 허용목록에서 뺀다. 이 아래 "허용목록은 실재하는 파일만 담는다"
+  //   단언이 바로 그걸 잡았다(낡은 면제가 조용히 남는 것을 막는 장치가 제 일을 했다).
   'src/pages/admin/banners/BannerMediaUpload.tsx':
     '홈 히어로 **영상**(/api/upload/banner-video) — 브라우저에서 영상을 압축할 수단이 없다. 어드민 전용. '
     + '결재 대기: docs/decisions/2026-10-11-upload-body-limit.md',

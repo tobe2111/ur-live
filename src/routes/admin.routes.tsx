@@ -150,6 +150,25 @@ export function AdminRoutes() {
           <AdminRegionDensityPage />
         </ProtectedRoute>
       } />
+      {/* 🩸 2026-10-11 복원 — 도매몰 철거 때 **함께 지워졌던** 세 라우트다(도매와 무관).
+          원인: 한 줄에 라우트 셋이 몰려 있어(`} /><Route .../><Route .../>`) 블록 종료 탐지가
+          그 줄을 못 알아보고 다음 `} />`(도매 가이드)까지 통째로 먹었다. `admin-nav-classification`
+          R3 가 "라우트 없는 nav 경로" 로 잡았다. ⚠️ 한 줄에 여러 Route 를 몰아 쓰지 말 것. */}
+      <Route path="/admin/platform-model" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminPlatformModelPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/proposals" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminProposalsPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/decisions" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminDecisionsPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
       <Route path="/admin/district-report" element={
         <ProtectedRoute requireAdmin>
           <AdminDistrictReportPage />

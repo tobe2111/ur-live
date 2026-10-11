@@ -235,7 +235,11 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
     return !allowed.some((p) => location.pathname === p || location.pathname.startsWith(p + '/'))
   })()
   useEffect(() => {
-    if (willBounceWholesale) navigate('/admin/wholesale-overview', { replace: true })
+    // 🧨 2026-10-11 도매몰 철거: 종전 목적지 `/admin/wholesale-overview` 가 **사라졌다.**
+    //   그대로 두면 없는 경로로 튕기고 거기서 또 튕겨 **무한루프**가 된다(이 블록 머리말이 경고한 바로 그것).
+    //   도매 도메인이 없어진 지금 `role='wholesale'`(라이브 4개 계정)이 볼 화면은 없다 ⇒ 로그인으로 보낸다
+    //   (AdminLayout 밖이라 재바운스가 구조적으로 불가능하다). ⚠️ 그 계정들의 비활성화는 대표 판단.
+    if (willBounceWholesale) navigate('/admin/login', { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminRole, location.pathname])
 

@@ -69,13 +69,14 @@ describe('도매 철거 안전망 — 도매가 아닌 별개 사업은 함께 �
     })
   }
 
-  it('소비자 번들이 buyer-pool 어드민을 계속 마운트한다(별개 사업) — maker-pool 은 유통스타트 워커에만', () => {
-    // worker/index.ts 가 도매 마운트와 별개로 바이어 풀을 직접 건다. 도매를 걷어낼 때 같이 지우면 어드민 화면이 죽는다.
-    // 📦 2026-10-11 대표 "유통 스타트는 다 필요없어": 제조사·판매사 후보 풀(유통스타트 밴드)은 소비자 마운트를 걷었다.
+  it('소비자 번들이 buyer-pool · maker-pool 어드민을 **둘 다** 마운트한다 (별개 사업)', () => {
+    // 🔁 2026-10-11 재조준(도매몰 철거): 종전엔 *"maker-pool 은 유통스타트 워커에만"* 이었다.
+    //   그 워커(`mount-wholesale.ts`)가 **삭제됐으므로** 그대로 두면 maker-pool 이 **어디에도** 마운트되지
+    //   않는다 — 그런데 `worker-ads` 가 `ad_company_leads` 를 계속 수집한다 ⇒ 수집은 돌고 볼 화면이 없다.
+    //   지키려던 것(별개 사업이 도매와 함께 죽지 않는다)은 그대로이고, 사는 곳만 소비자 번들로 옮겼다.
     const idx = read('src/worker/index.ts')
     expect(idx.includes("'/api/admin/buyer-pool'")).toBe(true)
-    expect(idx.includes("'/api/admin/maker-pool'")).toBe(false)
-    expect(read('src/worker/mount-wholesale.ts').includes("'/api/admin/maker-pool'")).toBe(true)
+    expect(idx.includes("'/api/admin/maker-pool'")).toBe(true)
   })
 
   it('바이어 자동수집 cron 이 살아 있다', () => {
@@ -104,8 +105,13 @@ describe('도매 철거 — 소비자 표면에 도매 유입 진입점이 없�
     })
   }
 
-  it('그래도 라우트 자체는 살아 있다 — 잔액 회수 경로', () => {
-    // 지우는 건 삭제 PR(머니 게이트 통과 후). 지금 지우면 돌려줄 길이 먼저 사라진다.
-    expect(read('src/routes/supplier.routes.tsx')).toContain('/supplier/login')
+  it('🧨 철거 완료 — 도매 라우트 모듈이 사라졌다 (머니 게이트 통과 후)', () => {
+    // 🔁 2026-10-11 재조준: 종전 단언은 *"그래도 라우트 자체는 살아 있다 — 잔액 회수 경로"* 였다.
+    //   그 조건("삭제는 머니 게이트 통과 후")이 **충족됐다**: 예치금 172,800원의 주인(`sellers.id 5·13`)이
+    //   존재하지 않고, 충전요청 2건은 전부 confirmed, 미지급 정산 1건은 테스트 주문과 같은 시각이다
+    //   (2026-06-29) ⇒ 남의 돈이 아니라 테스트 잔재. 대표 지시로 삭제했다.
+    //   ⚠️ **테이블은 그대로 있다**(계획 §3 — 회계 증빙). 돌려줄 돈이 생기면 데이터는 D1 에 남아 있다.
+    expect(existsSync('src/routes/supplier.routes.tsx')).toBe(false)
+    expect(existsSync('src/worker/mount-wholesale.ts')).toBe(false)
   })
 })

@@ -28,13 +28,15 @@ const EXCLUSIVE = {
   ads: ['ads'],
 }
 // 대시보드군: 파일 prefix + 그 화면이 *호출하면 안 되는* 역할들(=교차역할 403).
-//   wholesale storefront 의 사용자 = type='seller'(판매사) → /api/seller 동일토큰이라 forbid 에서 seller 제외.
 const GROUPS = [
-  { name: '제조사(supplier)',  match: (p) => p.startsWith('src/pages/supplier-dashboard/') || p === 'src/pages/SupplierDashboardPage.tsx' || /^src\/pages\/Supplier[A-Z].*\.tsx$/.test(p), forbid: ['admin', 'agency', 'seller', 'ads'] },
   // 🌇 2026-09-04 에이전시 완전 일몰 — 그룹 자체를 삭제했다(`src/pages/agency-page/`·`Agency*.tsx` 전부 제거).
   //    ⚠️ 다른 그룹의 `forbid` 에 남은 'agency' 는 **그대로 둔다** — "에이전시 API 를 부르지 마라"는
   //       금지이지 그 화면의 존재를 전제하지 않는다. 되살아나면 그때 잡힌다.
-  { name: '판매사 storefront', match: (p) => p.startsWith('src/pages/wholesale/') || p.startsWith('src/pages/wholesale-catalog/') || p.startsWith('src/components/wholesale/') || /^src\/pages\/Wholesale[A-Z].*\.tsx$/.test(p), forbid: ['admin', 'supplier', 'agency'] },
+  // 🧨 2026-10-11 도매몰 철거 — '제조사(supplier)'·'판매사 storefront' 두 그룹을 **삭제했다**
+  //    (화면이 전부 사라졌다: `supplier-dashboard/`·`pages/wholesale*`·`components/wholesale/`).
+  //    ⚠️ 2026-09-04 에이전시 일몰과 **같은 처방**: 다른 그룹의 `forbid` 에 남은 'supplier' 는
+  //       **그대로 둔다** — "제조사 API 를 부르지 마라" 는 금지이지 그 화면의 존재를 전제하지 않는다.
+  //       되살아나면 그때 잡힌다. (그리고 `/api/supplier` 라우트도 함께 사라졌으므로 부르면 404 다.)
   // 어드민: 소비자/도매 어드민 페이지. supplier/agency 전용은 못 부름(admin 토큰). seller 는 일부 공용성 있어 제외(오탐 방지).
   { name: '어드민(admin)',     match: (p) => (/^src\/pages\/Admin[A-Z].*\.tsx$/.test(p) || p.startsWith('src/pages/admin/')) && !p.includes('AdminProductsPage'), forbid: ['supplier', 'agency', 'ads'] },
   // 🆕 유어애즈(marketing) 대시보드: 자기 /api/ads 만. 도매(supplier)·어드민·에이전시 전용 API 는 토큰이 달라
@@ -95,7 +97,7 @@ for (const f of files) {
   }
 }
 console.log(`🔀 대시보드 교차-역할 API 검사`)
-console.log(`   스캔 ${files.length} 파일 · 그룹 ${GROUPS.length}개(제조사/판매사/어드민/유어애즈)`)
+console.log(`   스캔 ${files.length} 파일 · 그룹 ${GROUPS.length}개(어드민/유어애즈 — 도매 2그룹은 2026-10-11 철거)`)
 if (violations.length === 0) {
   console.log(`✅ 위반 0 — 어떤 대시보드도 다른 역할 전용 API 를 호출하지 않음(교차역할 403 없음).`)
   process.exit(0)

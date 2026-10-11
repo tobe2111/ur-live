@@ -39,6 +39,10 @@ const REPAIR_OK = [/repair-schema/, /internal-admin-tools/, /migrations?\//]
  * 고치면 이 목록에서 빼라. 새로 추가하는 것은 금지다.
  */
 const KNOWN: Record<string, string> = {
+  // 🧨 2026-10-11 도매몰 철거 — 런타임 ALTER 6건이 **파일과 함께** 사라졌다(라우트 삭제).
+  //   그중 셋은 `🔴 라이브에 없음` 잠재 500 이었다: wholesale-helpers 외 `sellers.nts_status`(wholesale.routes)
+  //   · `sellers.plus_until`(wholesale-plus). 고쳐서 없어진 게 아니라 **그 경로가 없어져서** 사라진 것이다.
+  //   남은 `supply-visibility.ts`·`wholesale-helpers.ts` 는 소비자 주문확정·환불·cron 이 부르는 정산 엔진이라 유지한다.
   'src/features/admin/api/admin-kt-alpha/products.ts':
     '컬럼은 현재 라이브에 존재(같은 클래스, 잠복)',
   'src/features/admin/api/admin-tools.routes.ts':
@@ -58,21 +62,9 @@ const KNOWN: Record<string, string> = {
     '컬럼은 현재 라이브에 존재(같은 클래스, 잠복)',
   'src/features/seller/api/seller-registration.routes.ts':
     '컬럼은 현재 라이브에 존재(같은 클래스, 잠복)',
-  'src/features/supply/api/distributor-admin/helpers.ts':
-    '컬럼은 현재 라이브에 존재(같은 클래스, 잠복)',
-  'src/features/supply/api/distributor-admin/seed-demo.ts':
-    '컬럼은 현재 라이브에 존재(같은 클래스, 잠복)',
-  'src/features/supply/api/supplier-dashboard.routes.ts':
-    '컬럼은 현재 라이브에 존재(같은 클래스, 잠복)',
   'src/features/supply/api/supply-visibility.ts':
     '컬럼은 현재 라이브에 존재(같은 클래스, 잠복)',
   'src/features/supply/api/wholesale-helpers.ts':
-    '🔴 라이브에 없음 — 잠재 500: sellers.nts_status',
-  'src/features/supply/api/wholesale-main.routes.ts':
-    '컬럼은 현재 라이브에 존재(같은 클래스, 잠복)',
-  'src/features/supply/api/wholesale-plus.routes.ts':
-    '🔴 라이브에 없음 — 잠재 500: sellers.plus_until',
-  'src/features/supply/api/wholesale.routes.ts':
     '🔴 라이브에 없음 — 잠재 500: sellers.nts_status',
   'src/worker/cron/seller-daily-report.ts':
     '컬럼은 현재 라이브에 존재(같은 클래스, 잠복)',
