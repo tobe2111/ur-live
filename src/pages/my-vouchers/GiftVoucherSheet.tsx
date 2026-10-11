@@ -92,7 +92,7 @@ export default function GiftVoucherSheet({ voucher, onClose }: { voucher: Vouche
         aria-modal="true"
         aria-label="이용권 선물하기"
         onClick={(e) => e.stopPropagation()}
-        className="w-full sm:max-w-[420px] bg-surface rounded-t-3xl sm:rounded-3xl px-5 pt-5 pb-[calc(20px+env(safe-area-inset-bottom))]"
+        className="w-full sm:max-w-[420px] bg-surface rounded-t-2xl sm:rounded-2xl px-5 pt-5 pb-[calc(20px+env(safe-area-inset-bottom))]"
       >
         <div className="flex items-center justify-between">
           <h2 className="text-[17px] font-bold text-gray-900 dark:text-white flex items-center gap-2">

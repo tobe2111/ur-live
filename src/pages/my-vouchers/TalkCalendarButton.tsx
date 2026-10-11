@@ -13,7 +13,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 
-export const PENDING_KAKAO_ACTION_KEY = 'ur_pending_kakao_action'
+export const PENDING_KAKAO_ACTION_KEY = 'ur_kakao_consent_next'
 const DONE_PREFIX = 'ur_tcal_'
 const WALLET_PATH = '/my-vouchers'
 
