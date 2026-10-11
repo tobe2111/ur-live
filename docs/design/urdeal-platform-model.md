@@ -211,6 +211,7 @@
   **기존 404 동작 불변**. 슬러그는 실제 라우트에서 뽑은 예약어(`shared/mall/slug.ts`)와 겹칠 수 없다(양방향 가드)
 
 ### 사업자 유저(셀러 대시보드, 라이트 고정)
+- 🚪 **2026-10-11 — 카카오로 들어온 사장님은 판매 도구를 마이(`/user/profile`)에서 쓴다.** `/seller` 첫 화면으로 오면 마이로 보낸다(같은 화면들을 마이 시트가 그대로 연다). **대시보드에 남는 사람은 에이전시 직원 좌석(이메일 로그인 — 마이 없음)과 마이가 없는 옛 셀러 계정뿐**이다. 하위 화면(`/seller/products` 등) 깊은 링크는 그대로 살아 있다. 판정 `SellerPage.tsx` `shouldSendOwnerToMy`.
 - `/seller`(홈) · `/seller/products/new` · `/seller/meal-voucher/new` · `/seller/orders` · `/seller/business-info`(사업자정보·통신판매업) · `/seller/guide`
 - ⚡ **2026-08-01 운영자 몰 동선**: `/seller/products/quick`(**3분 등록** — 사진·가격·마감만, 모바일 한 손) ·
   `/seller/returns`(**반품 큐** — 승인·거절만, **환불=돈은 어드민**) · 셀러 홈의 **문의처 블록**
