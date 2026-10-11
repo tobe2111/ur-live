@@ -219,6 +219,16 @@ Kling 3 ~82 · Veo 3.1 이미지→영상 ~90 · Kling Motion Control ~164(실�
 - 남은 흠: 하이파이브의 금화·반짝이는 배경으로 판정돼 빠졌다(오히려 깔끔). 도장 종이 오른쪽 위 가장자리가 조금 뜯겨 보인다.
 - 원본이 AI 생성물이라 최종 상표·인쇄용은 3D 아티스트 재제작본으로 교체한다.
 
+## 🔒 유달이 생성 철칙 (2026-10-11 대표 *"앞으로는 만들 때 이것을 철칙으로 여겨서 문제가 없도록 해줘"*)
+
+같은 날 이 철칙을 어겨 **다른 캐릭터**를 두 번 만들었다(v1 주황빛 다른 얼굴 · v2 넓적한 얼굴·수염 개수·젤리 발). 아래 다섯을 **전부** 지킨다.
+
+1. **모델은 `gpt-image-2.5`(Figma `generate_image` 의 `gpt-image-2.5-sunburst`)만.** `gemini` 는 쓰지 않는다 — 확정 때 이미 "머리가 작아 다른 캐릭터"로 폐기된 모델이다.
+2. **문구는 아래 설정서 본문 + 세부 실측 블록을 한 글자도 바꾸지 않고 그대로** 넣고, 그 뒤에 포즈만 덧붙인다. 요약하거나 다시 쓰지 않는다(`plush fur` 한 단어로 털이 바뀌었다). 보정이 필요하면 **이 문서의 블록을 고치고** 그 블록을 쓴다.
+3. **여러 포즈는 한 장 시트(격자)로 한 번에** 그린다. 한 장씩 따로 그리면 장마다 얼굴이 갈린다.
+4. **원본 해상도로 검수한다.** 256px 미리보기로 판정하지 않는다(이 환경은 figma.com 다운로드가 막혀 원본을 대표가 첨부해야 한다). `python3 scripts/mascot/udal-qa.py <원본>` 으로 털색·얼굴 폭을 숫자로 재고, 대조판에서 **한쪽 수염 3가닥 · 콩 모양 아치 눈썹 · 흰자 고리 · 다문 w 입 · 젤리 없는 발**을 센다.
+5. **통과한 칸만 쓴다.** 하나라도 어긋난 칸은 화면에 넣지 않고, 어긋난 이유를 문구 블록에 반영해 다시 뽑는다. 모든 시도는 `assets/mascot/poses-*/README.md` 에 대조표와 함께 남긴다.
+
 ## 캐릭터 설정서 (AI 영상·추가 생성용 고정 문구)
 
 대표: *"측면 정면 뒷모습 다 필요하거든? AI로 얘 영상도 만들거야. 최대한 정확하게."*
@@ -248,6 +258,13 @@ Nose: rounded salmon-pink nose, wider than tall, with a short vertical line down
 Cream mask covers the lower half of the face starting just below the eyes.
 Ears: small, rounded, at eye level on the sides, darker inside, not sticking far out.
 Paws and feet: plain rounded fur, no paw pads.
+```
+
+보정 블록 (2026-10-11 v4 대조 결과 — 세부 실측 뒤에 이어 붙인다):
+```
+Correction details: the face is NARROW, slightly taller than wide — the width across the cheeks is about 95% of the head height; cheeks are soft but NOT puffy or bulging sideways; the lower face tapers gently toward the chin like an egg.
+Fur is SHORT, smooth and velvety (short-pile plush), not long or shaggy.
+When eyes are closed, BOTH closed eyes are identical upward-curving arcs (like ^ ^), perfectly symmetric.
 ```
 
 턴어라운드 생성 이력 (원본은 위 ⭐ 기준 원본으로 레포에 저장 완료):
