@@ -22,3 +22,8 @@
 ![바탕색](assets/app-icon-2026-10/bg-board.jpg)
 
 1 딥 네이비 #1B2340 · 2 먹색 #16181C · 3 크림 #F4EDE3 · 4 연하늘 #DCEAFF · 5 민트 #D3EFE4 · 6 피치 #FFE1CF · 7 딥 틸 #1F5C63 · 8 하늘 그라데이션 #5B9BFF→#2F6BEA
+
+## 딥 네이비 확정 + 워드마크 동반 시안 (대표 *"딥 네이비로 해야지. 그리고 앱 로고는 urdeal 로고도 보여줘야 하지 않을까? 같이 나온 형태로"*)
+![네이비](assets/app-icon-2026-10/navy-board.jpg)
+
+N1 얼굴 위 + urdeal. 아래 · N2 urdeal. 위 + 아래서 빼꼼 · N3 작은 urdeal. 위 + 얼굴 크게. 바탕 #1B2340, 점 #4D8DF5(다크 브랜드 글자색).
