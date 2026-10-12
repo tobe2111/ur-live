@@ -50,7 +50,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
       // 🔢 2026-10-12: 코드가 6자리 숫자가 되어 **같은 매장 확인코드로** 틀린 시도를 센다(voucher-code-guard).
       //   IP 당 분 5회(위 미들웨어)는 IP 를 바꾸면 우회된다 — 이건 매장 단위로 막는다.
       const codeGuard = await import('../../../worker/utils/voucher-code-guard')
-      const guardSalt = c.env.JWT_SECRET || 'urdeal'
+      const guardSalt = c.env.JWT_SECRET || ''
       if (await codeGuard.useSecretLocked(DB, pin, guardSalt)) {
         return c.json({ success: false, error: '틀린 시도가 많아 잠시 막았습니다. 잠시 후 다시 시도해주세요.' }, 429)
       }
