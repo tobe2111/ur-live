@@ -226,3 +226,21 @@
 ### 남은 것
 - `/api/seller/surface` 는 클라 소비자가 0 이 됐다(서버 엔드포인트만 남음 — 해는 없다, 정리는 별건).
 - `bottomNav.*` 시트 문구 키들이 로케일에 남아 있다(쓰는 곳 0).
+
+### #1738 머지 + E4 (2026-10-12 KST)
+- PR #1738 머지 `e9e52145` — 셀러 보호 라우트가 로그인으로 보낼 때 검색어도 싣는다(`state.from` 두 줄, 대표 "허가 — 그 두 줄만").
+- E4 ✅ 비로그인 아이폰: `/seller/orders?status=PAID` → `/login?returnUrl=/user/profile?tool=/seller/orders?status=PAID` ·
+  `/seller/products?tab=active` 도 같은 모양. ⚠️ 못 잰 것: 실제 사장님 계정으로 로그인한 뒤 시트가 그 필터로 열리는지(실계정 필요).
+
+### 정리 PR — 아무도 안 부르는 화면·문구 (대표 "응 진행해")
+- 지운 파일(전부 import 0 — 실측): `SellerRegisterSupplierPage`(옛 가입 폼) · 그 부품 `seller-register/{StoreSection,AddressPickerField,PickedStoreCard,ReviewSheet}` ·
+  `components/terms/TermsConsentBox` · `SellerConsignmentPage` · `SellerYoutubeGrowthPage` · `SellerYoutubeGrowthSuccessPage`.
+  라우트는 그대로(`/seller/register/supplier` → `/store/new`, consignment·youtube-growth → 리다이렉트). API·결제 경로 무접촉.
+- 로케일 6개 언어에서 쓰는 곳 0 인 키 136개 삭제(지운 화면 전용 99 + 대시보드 삭제로 남은 37). 동적 키(`t(\`seller.${…}\`)`)는 재고 안전 확인.
+- 셀러 가이드 '재구매율 높이기' 의 없는 주소 `/seller/customers` → 마이 오늘 매출 → 매출 분석 → 고객 분석. `GUIDE_SEED_VERSION` 46 → 47.
+- 시험은 지킬 코드를 따라 줄였다: 화면 단언은 빼고 서버·`RegisterFields`·업로드 부품 단언은 남김. 주입 25건 삭제(대상 파일 소멸) · 존재를 단언하던 2건 재조준.
+
+### 남은 것(별건)
+- `POST /api/seller/register-from-user` — 클라 호출 0(옛 가입 폼이 유일한 소비자였다). 서버 라우트 정리는 별건.
+- `BusinessCertUpload` 의 `onRead`(등록증 사진 자동 채움) — 넘기는 곳 0. 서버 OCR 은 opt-in 이라 비용 0.
+- `RegisterFields` 의 `validateSignup`·`filledRequired`·`formatPhone` — 시험만 쓴다(`formatBusinessNumber` 는 매장 등록 모달이 쓴다).

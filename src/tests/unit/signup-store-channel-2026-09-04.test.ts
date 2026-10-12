@@ -30,7 +30,6 @@ import { readFileSync } from 'node:fs'
 import { channelFromSelfSignup } from '@/features/seller/api/seller-signup-meta'
 
 const FUNNEL = 'src/features/seller/api/seller-registration.routes.ts'
-const PAGE = 'src/pages/SellerRegisterSupplierPage.tsx'
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 describe('① 본인 가입 문의 채널', () => {
@@ -67,9 +66,5 @@ describe('③ 매장 등록 모달은 채널을 계속 강제한다', () => {
 describe('④ 에이전시 초대 코드는 되살아나지 않는다', () => {
   it('가입 라우트가 agency_intro_code 를 읽지 않는다', () => {
     expect(strip(readFileSync(FUNNEL, 'utf8'))).not.toMatch(/agency_intro_code/)
-  })
-
-  it('가입 화면에 에이전시 코드 입력칸이 없다', () => {
-    expect(strip(readFileSync(PAGE, 'utf8'))).not.toMatch(/agency_intro_code/)
   })
 })

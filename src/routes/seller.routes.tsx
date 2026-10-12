@@ -170,8 +170,9 @@ export function SellerRoutes() {
         *   어드민 모니터링·운영 가이드 두 절은 **그대로 둔다** — 살릴지 없앨지는 대표 판단이고
         *   (`docs/decisions/2026-09-28-dead-seller-screens.md`) 위탁 정산은 머니 경로다.
         *   `checkout.ts` 는 이미 테이블 부재를 `catch` 로 허용하므로 **오늘 결제엔 영향이 없다**(실측).
-        * ⚠️ 되살리려면 이 줄을 `<SellerConsignmentPage />` 로 되돌리면 된다. 다만 그때
-        *   **테이블부터 만들어야 한다** — 안 만들면 지금과 똑같이 일곱 개가 죽는다.
+        * ⚠️ 화면 파일(`SellerConsignmentPage`)은 2026-10-12 지웠다(셀러 대시보드 틀과 함께) —
+        *   되살리려면 그 커밋을 revert 한다. 다만 그때 **테이블부터 만들어야 한다** — 안 만들면
+        *   지금과 똑같이 일곱 개가 죽는다.
         */}
       <Route path="/seller/consignment" element={<Navigate to="/seller" replace />} />
       <Route path="/seller/products" element={
