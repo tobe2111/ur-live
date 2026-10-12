@@ -156,3 +156,46 @@ describe('⑥ 깊은 링크도 전용 길로', () => {
     expect(code('src/pages/VoucherVerifyPage.tsx')).toContain('to="/store/scan"')
   })
 })
+
+// ── 버튼도 곧장 (2026-10-12 3차 — 대표 *"거치는 단계 없애줘"*) ─────────────────────────────────────
+//   하단 ➕ '이용권 등록' · 유어샵 '마이 내 가게' 가 `/seller/*` 로 갔다가 대시보드 껍데기가 다시 보내던 한 단계를 없앤다.
+//   판정은 대시보드 껍데기와 **같은 함수**(`sellerEntryRedirect`) — 두 벌이면 버튼과 깊은 링크가 갈린다.
+import { sellerEntryPath, sellerEntryRedirect } from '@/lib/seller-deep-link'
+
+const seat = (claims: Record<string, unknown>) => `x.${btoa(JSON.stringify(claims))}.y`
+
+describe('⑦ 버튼이 최종 도착지로 곧장 간다', () => {
+  afterEach(() => { localStorage.clear(); sessionStorage.clear() })
+  it('카카오 사장님 — 등록은 마이 시트로, 대시보드 홈은 마이로', () => {
+    localStorage.setItem('user_id', '3'); localStorage.setItem('seller_token', seat({ seller_id: 1 }))
+    expect(sellerEntryPath('/seller/meal-voucher/new')).toBe('/user/profile?tool=%2Fseller%2Fmeal-voucher%2Fnew')
+    expect(sellerEntryPath('/seller')).toBe('/user/profile')
+    expect(sellerEntryPath('/seller/scan?x=1')).toBe('/store/scan?x=1')
+  })
+  it('에이전시 직원(콘솔 로그인 있음) — 콘솔로', () => {
+    localStorage.setItem('seller_token', seat({ agency_staff_id: 7 })); localStorage.setItem('agency_console_token', 't')
+    expect(sellerEntryPath('/seller')).toBe('/agency')
+    expect(sellerEntryPath('/seller/meal-voucher/new')).toBe('/agency?tool=%2Fseller%2Fmeal-voucher%2Fnew')
+  })
+  it('옛 셀러(마이 없음) · dash=1 — 원래 주소 그대로(대시보드가 답)', () => {
+    localStorage.setItem('seller_token', seat({ seller_id: 1 }))
+    expect(sellerEntryPath('/seller/meal-voucher/new')).toBe('/seller/meal-voucher/new')
+    localStorage.setItem('user_id', '3')
+    expect(sellerEntryPath('/seller/orders?dash=1')).toBe('/seller/orders?dash=1')
+  })
+  it('대시보드 껍데기가 같은 함수로 판정한다 (두 벌 금지)', () => {
+    const LAYOUT = code('src/components/SellerLayout.tsx')
+    expect(LAYOUT).toContain('const toMyOrConsole = sellerEntryRedirect(location.pathname, location.search)')
+    expect(LAYOUT).not.toMatch(/myRedirectFor|consoleRedirectFor/)
+    expect(typeof sellerEntryRedirect).toBe('function')
+  })
+  it('하단 ➕ 두 버튼 · 유어샵 버튼이 sellerEntryPath 를 거친다', () => {
+    const NAV = code('src/components/main/BottomNav.tsx')
+    expect(NAV).toContain("navigate(sellerEntryPath('/seller/meal-voucher/new'))")
+    expect(NAV).toContain("const sellerHome = sellerEntryPath('/seller')")
+    expect(NAV).toContain('navigate(sellerHome)')
+    expect(NAV).not.toMatch(/navigate\('\/seller(\/meal-voucher\/new)?'\)/)
+    const CTA = code('src/pages/curator-page/SellOwnProductsCTA.tsx')
+    expect(CTA).toContain('navigate(sellerEntryPath(path))')
+  })
+})
