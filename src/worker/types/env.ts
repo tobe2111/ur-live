@@ -74,22 +74,15 @@ export interface Env {
   CAFE24_MALL_ID?: string;
   CAFE24_WEBHOOK_SECRET?: string;
 
-  // ---- Aligo (알림톡) ----
-  ALIGO_API_KEY?: string;
-  ALIGO_USER_ID?: string;
-  ALIMTALK_SENDER_KEY?: string;
-  ALIGO_SENDER_KEY?: string;
-  ALIGO_SENDER_PHONE?: string;           // 발신번호 (예: 07080420000)
-  ALIGO_SENDER?: string;                 // 발신번호 — 라이브에 실제로 설정된 이름(2026-10-11 실측). 읽을 땐 `_PHONE ?? ALIGO_SENDER`
-  ALIMTALK_SMS_FAILOVER?: string;        // 'true' 일 때만 알림톡 실패 시 SMS 대체발송(failover) 활성 (기본 OFF — 활성 전 Aligo 콘솔 SMS 발신번호 등록 필요)
-  ALIGO_TPL_ORDER_CONFIRM?: string;      // 주문완료 템플릿 코드
-  ALIGO_TPL_SHIPPING_START?: string;     // 배송시작 템플릿 코드
-  ALIGO_TPL_ORDER_CANCEL?: string;       // 주문취소 템플릿 코드
-  ALIGO_TPL_SAMPLE_APPROVED?: string;    // 샘플 신청 승인 템플릿 코드
-  ALIGO_TPL_STORE_NOTICE?: string;       // 📩 사장님 "매장이 등록되었습니다" 템플릿 코드 (검수 전엔 미설정 = 발송 0)
-  ALIGO_BUSINESS_REGISTRATION_VERIFIED?: string; // 사업자등록 승인 알림톡 tpl_code(콘솔 자동부여 시 override)
-  ALIGO_BUSINESS_REGISTRATION_REJECTED?: string; // 사업자등록 반려 알림톡 tpl_code(콘솔 자동부여 시 override)
-  ADS_ALERT_ALIMTALK_TPL?: string;       // 🎯 유어애즈 광고 알림 알림톡 템플릿 코드(미설정 시 이메일만)
+  // ---- 네이버 클라우드 SENS (알림톡, 2026-10-12 — 고정 IP 불필요. 넷 다 있어야 보낸다. 알리고는 제거됨) ----
+  NCP_ACCESS_KEY?: string;
+  NCP_SECRET_KEY?: string;               // 시크릿으로 저장
+  NCP_SENS_ALIMTALK_SERVICE_ID?: string; // SENS 프로젝트(Biz Message)의 서비스 ID
+  NCP_KAKAO_CHANNEL_ID?: string;         // 카카오톡 채널 검색용 ID (예: @유어딜)
+  NCP_MAIL_SENDER?: string;              // ✉️ SENS 메일 발신 주소(예: no-reply@urdeal.kr) — 있으면 거래성 메일이 SENS 로(없으면 Resend)
+  NCP_MAIL_SENDER_NAME?: string;         // SENS 메일 발신자 이름(기본 '유어딜')
+
+  ADS_ALERT_ALIMTALK_TPL?: string;       // 🎯 유어애즈 광고 알림 알림톡 템플릿 코드(미설정 시 이메일만 · SENS 발송)
 
   // ---- YouTube ----
   YOUTUBE_CLIENT_ID?: string;
@@ -384,7 +377,7 @@ export interface Env {
 
   // ---- 상권 쿠폰 알림톡 마스터 스위치 (2026-07-13) ----
   //   'true' 면 쿠폰 지급/반려/만료임박 시 알림톡(dispatchNotification) 시도. 기본 OFF — 인앱 알림만(현행 동일).
-  //   활성 절차: ① Aligo 콘솔에 district_coupon_issued/rejected/expiring 템플릿 등록·승인
+  //   활성 절차: ① SENS 콘솔에 district_coupon_issued/rejected/expiring 템플릿 등록·승인(+어드민 승인 목록)
   //             ② 어드민 채널설정(notification_channel_settings)에서 해당 type alimtalk 켜기
   //             ③ env DISTRICT_ALIMTALK_ENABLED=true. (③ OFF 면 ①②와 무관하게 알림톡 미발송.)
   DISTRICT_ALIMTALK_ENABLED?: string;
@@ -398,10 +391,6 @@ export interface Env {
   OPS_DIGEST_ALIMTALK_ENABLED?: string;
   /** 카카오 오픈빌더 스킬(CS FAQ 봇) 공유 시크릿 — 미설정 = 봇 endpoint 404(비활성). */
   KAKAO_SKILL_SECRET?: string;
-  /** Aligo 콘솔이 tpl_code 를 자동부여한 경우 override (기본: 문서 코드 그대로). */
-  ALIGO_DROP_D1_REMINDER?: string;
-  ALIGO_EXPERIENCE_POST_REMINDER?: string;
-  ALIGO_OPS_DAILY_DIGEST?: string;
 
   // ---- 전자세금계산서 (Bill36524 / Popbill / 바로빌) ----
   // 🏭 2026-06-09 Wave 3c: 도매 세금계산서 자동발행 stub(admin-tax.routes.issueTaxInvoice).

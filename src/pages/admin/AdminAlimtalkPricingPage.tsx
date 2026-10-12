@@ -215,11 +215,11 @@ export default function AdminAlimtalkPricingPage() {
           subtitle="알림톡 발송 현황 · 수익 · 패키지 가격"
           icon={<MessageSquare className="h-5 w-5" />}
         />
-      {/* 💰 2026-08-10 원가 설정 — 마진 계산의 기준값. 알리고 요금제가 바뀌면 배포 없이 여기서 고친다. */}
+      {/* 💰 2026-08-10 원가 설정 — 마진 계산의 기준값. 발송사(네이버 클라우드 SENS) 요금이 바뀌면 배포 없이 여기서 고친다. */}
       <div className="bg-white rounded-xl p-4 border border-rule flex flex-wrap items-center gap-3">
         <div className="min-w-0">
           <p className="text-sm font-bold text-gray-900">알림톡 원가 (건당)</p>
-          <p className="text-xs text-gray-400">현재 {unitCost}원 — 우리가 알리고에 내는 돈. 판매가(패키지)와 별개로 보관합니다.</p>
+          <p className="text-xs text-gray-400">현재 {unitCost}원 — 우리가 발송사(네이버 클라우드 SENS)에 내는 돈. 판매가(패키지)와 별개로 보관합니다.</p>
         </div>
         <div className="ml-auto flex items-center gap-2">
           <input

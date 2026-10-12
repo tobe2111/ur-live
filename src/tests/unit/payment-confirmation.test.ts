@@ -54,7 +54,7 @@ vi.mock('@/worker/utils/logger', () => ({
   logWarn: vi.fn(),
 }));
 vi.mock('@/features/alimtalk/send', () => ({ sendSellerAlimtalk: vi.fn(() => Promise.resolve()) }));
-vi.mock('@/features/alimtalk/aligo', () => ({ buildOrderConfirmMessage: vi.fn(() => ({ subject: '', message: '' })) }));
+vi.mock('@/features/alimtalk/messages', () => ({ buildOrderConfirmMessage: vi.fn(() => ({ subject: '', message: '' })) }));
 vi.mock('@/worker/utils/swallow', () => ({ swallow: () => () => {} }));
 
 // ── withCircuitBreaker: indirection via a mutable ref so tests can override ──

@@ -29,7 +29,7 @@ import { dispatchNotification } from '@/lib/notification-dispatcher'
 import { intParam } from '@/shared/pagination'
 
 // 🧾 상권 쿠폰 알림톡 게이트 env 최소 형태(전체 Env 미의존).
-export type DistrictAlimtalkEnv = { DB: D1Database; DISTRICT_ALIMTALK_ENABLED?: string; ALIGO_API_KEY?: string; ALIGO_USER_ID?: string; ALIGO_SENDER_KEY?: string; ALIMTALK_SENDER_KEY?: string; ALIGO_SENDER_PHONE?: string }
+export type DistrictAlimtalkEnv = { DB: D1Database; DISTRICT_ALIMTALK_ENABLED?: string; NCP_ACCESS_KEY?: string; NCP_SECRET_KEY?: string; NCP_SENS_ALIMTALK_SERVICE_ID?: string; NCP_KAKAO_CHANNEL_ID?: string }
 export type DistrictNotifyKind = 'issued' | 'rejected' | 'expiring'
 
 export type DistrictEnv = { DB: D1Database; MEDIA_BUCKET?: R2Bucket }

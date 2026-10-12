@@ -20,7 +20,7 @@ const CHANNEL_LABELS: Record<string, string> = {
   webpush: '웹푸시(VAPID)',
   nativepush: '네이티브푸시(FCM)',
   email: '이메일(Resend)',
-  alimtalk: '알림톡(Aligo)',
+  alimtalk: '알림톡(네이버 클라우드 SENS)',
 }
 
 function readChannels(env: Env): Record<string, boolean> {
@@ -28,7 +28,7 @@ function readChannels(env: Env): Record<string, boolean> {
     webpush: !!(env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY && env.VAPID_SUBJECT),
     nativepush: !!(env.FIREBASE_PROJECT_ID && env.FIREBASE_PRIVATE_KEY && env.FIREBASE_CLIENT_EMAIL),
     email: !!env.RESEND_API_KEY,
-    alimtalk: !!(env.ALIGO_API_KEY && env.ALIGO_USER_ID),
+    alimtalk: !!(env.NCP_ACCESS_KEY && env.NCP_SECRET_KEY && env.NCP_SENS_ALIMTALK_SERVICE_ID && env.NCP_KAKAO_CHANNEL_ID),
   }
 }
 

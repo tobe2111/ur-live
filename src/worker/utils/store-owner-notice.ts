@@ -11,7 +11,8 @@
  * ## 🔴 지금은 **아무것도 발송하지 않는다** (의도)
  * 새 카카오 알림톡 템플릿은 **외부 검수**를 거쳐야 하고, 그건 대표가 채널 관리자에서 한다.
  * 그래서 이 파일은 **줄을 세우는 데까지만** 한다:
- *   - 템플릿 코드(`ALIGO_TPL_STORE_NOTICE`)가 없으면 → 줄만 서고 끝.
+ *   - 템플릿(`store_listed`)이 어드민 승인 목록(`alimtalk_approved_templates`)에 없으면 → 줄만 서고 끝.
+ *     (2026-10-12 발송처 = 네이버 클라우드 SENS. 종전 env `ALIGO_TPL_STORE_NOTICE` 는 알리고와 함께 걷어냈다.)
  *   - 게이트(`platform_settings.store_owner_notice_enabled`)가 `true` 가 아니면 → 역시 끝.
  *   ⇒ **둘 다 갖춰질 때만** 발송된다. 발송은 등급 C(발행/발송)라 대표가 켠다.
  *
@@ -24,6 +25,7 @@
  */
 import type { D1Database } from '@cloudflare/workers-types'
 import { isMobileKr, normalizeKrPhone } from '../../shared/store-phone'
+import type { SensButton } from '../../lib/ncp-sens'
 
 export const OWNER_NOTICE_KIND = 'store_listed'
 export type OwnerNoticeStatus = 'queued' | 'sent' | 'failed'
@@ -105,15 +107,13 @@ export function ownerNoticeMessage(storeName: string): string {
 
 /**
  * 알림톡 버튼 — 카카오 템플릿에도 **같은 두 개를** 등록해야 한다(본문처럼 버튼도 템플릿의 일부다).
- * 순서가 의미다: 대부분의 수신자에게 필요한 것이 먼저다.
+ * 순서가 의미다: 대부분의 수신자에게 필요한 것이 먼저다. (SENS 형식: linkMobile/linkPc)
  */
-export function ownerNoticeButtonsJson(): string {
-  return JSON.stringify({
-    button: [
-      { name: '내 매장 관리하기', type: 'WL', url_mobile: OWNER_NOTICE_DASHBOARD_URL, url_pc: OWNER_NOTICE_DASHBOARD_URL },
-      { name: '내가 등록한 게 아니에요', type: 'WL', url_mobile: OWNER_NOTICE_CLAIM_URL, url_pc: OWNER_NOTICE_CLAIM_URL },
-    ],
-  })
+export function ownerNoticeButtons(): SensButton[] {
+  return [
+    { type: 'WL', name: '내 매장 관리하기', linkMobile: OWNER_NOTICE_DASHBOARD_URL, linkPc: OWNER_NOTICE_DASHBOARD_URL },
+    { type: 'WL', name: '내가 등록한 게 아니에요', linkMobile: OWNER_NOTICE_CLAIM_URL, linkPc: OWNER_NOTICE_CLAIM_URL },
+  ]
 }
 
 /**
@@ -166,15 +166,9 @@ export async function ownerNoticeSendEnabled(
 }
 
 export interface OwnerNoticeSendDeps {
-  apikey: string
-  userid: string
-  senderkey: string
-  sender: string
+  /** 승인된 템플릿 코드(`approvedTemplateCode(DB, OWNER_NOTICE_KIND)`). */
   tplCode: string
-  send: (p: {
-    apikey: string; userid: string; senderkey: string; tpl_code: string; sender: string
-    receiver_1: string; recvname_1: string; subject_1: string; message_1: string; button_1: string
-  }) => Promise<{ success: boolean; message: string }>
+  send: (p: { templateCode: string; to: string; content: string; buttons: SensButton[] }) => Promise<{ success: boolean; error?: string }>
 }
 
 /**
@@ -210,14 +204,11 @@ export async function sendQueuedOwnerNotices(
     let err = ''
     try {
       const r = await deps.send({
-        apikey: deps.apikey, userid: deps.userid, senderkey: deps.senderkey,
-        tpl_code: deps.tplCode, sender: deps.sender,
-        receiver_1: row.phone, recvname_1: store?.business_name || '사장님',
-        subject_1: '매장 등록 안내', message_1: message,
-        button_1: ownerNoticeButtonsJson(),
+        templateCode: deps.tplCode, to: row.phone, content: message,
+        buttons: ownerNoticeButtons(),
       })
       ok = r.success
-      err = r.success ? '' : String(r.message || '발송 실패')
+      err = r.success ? '' : String(r.error || '발송 실패')
     } catch (e) {
       ok = false
       err = e instanceof Error ? e.message.slice(0, 200) : '발송 오류'

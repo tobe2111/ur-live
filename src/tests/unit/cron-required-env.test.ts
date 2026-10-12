@@ -46,6 +46,8 @@ describe('cron 요구 env 명부', () => {
   })
 
   it('명부가 지목한 작업 파일이 실제로 그 키를 읽는다', () => {
+    const sensSrc = readFileSync(resolve(CRON_DIR, '../../lib/ncp-sens.ts'), 'utf-8')
+    const SENS_GATE = sensSrc.slice(sensSrc.indexOf('export function sensConfigured'), sensSrc.indexOf('export function sensAlimtalkUri'))
     const wrong: string[] = []
     for (const [cron, reqs] of Object.entries(CRON_REQUIRED_ENV)) {
       for (const r of reqs) {
@@ -57,7 +59,14 @@ describe('cron 요구 env 명부', () => {
           }
           // 캐스팅(`(env as { X?: string }).X`)·구조분해 등 읽는 형태가 여러 가지라
           // 키 이름 자체의 등장으로 본다. 좁게 잡으면 실제 참조를 놓친다.
-          if (!readFileSync(path, 'utf-8').includes(r.key)) {
+          // 📨 2026-10-12: 알림톡 키(NCP_*)는 작업 파일이 직접 읽지 않고 **공용 게이트** `sensConfigured`
+          //   (lib/ncp-sens.ts)를 거친다 — 두 벌로 적으면 갈린다. 그래서 그 게이트를 부르고(직접 또는
+          //   sendSystemAlimtalk 경유), 게이트가 실제로 그 키를 보는지로 판정한다.
+          const src = readFileSync(path, 'utf-8')
+          const viaSensGate = r.key.startsWith('NCP_')
+            && /sensConfigured\(|sendSystemAlimtalk\(/.test(src)
+            && SENS_GATE.includes(`e.${r.key}`)
+          if (!src.includes(r.key) && !viaSensGate) {
             wrong.push(`${cron} → ${job}.ts 가 ${r.key} 를 안 읽는다`)
           }
         }
@@ -150,23 +159,23 @@ describe('빠진 키가 없을 때도 판정을 남긴다', () => {
 /**
  * 🫥 2026-08-02 — **공백 낀 바인딩 이름**. 이 클래스는 화면으로 못 찾는다.
  *
- * 실측: Workers 에 `' ALIGO_USER_ID'` 로 등록돼 런타임에선 undefined 였고, 3종 AND 가드가
+ * 실측: Workers 에 `' ALIGO_USER_ID'`(당시 알림톡 키)로 등록돼 런타임에선 undefined 였고, AND 가드가
  * 조용히 거짓이 되어 **알림톡 0건이 정상처럼** 보였다. "없다"와 "이름이 틀렸다"는 조치가
  * 다르다(등록하라 ↔ 공백을 지워라). 판정이 그 차이를 말해 줘야 한다.
  */
 describe('공백 낀 이름 지목', () => {
   it('비슷한 이름이 있으면 그것을 지목한다', () => {
-    const env = { TOSS_SECRET_KEY: 'x', ' ALIGO_USER_ID': 'x', ALIGO_API_KEY: 'x', ALIGO_SENDER_KEY: 'x', CACHE_KV: {} }
+    const env = { TOSS_SECRET_KEY: 'x', ' NCP_SECRET_KEY': 'x', NCP_ACCESS_KEY: 'x', NCP_SENS_ALIMTALK_SERVICE_ID: 'x', NCP_KAKAO_CHANNEL_ID: 'x', CACHE_KV: {} }
     const out = envBeatFor('*/5 * * * *', env)
-    expect(out).toContain('ALIGO_USER_ID')
-    expect(out, '공백 낀 실제 이름을 따옴표로 보여야 한다').toContain("' ALIGO_USER_ID'")
+    expect(out).toContain('NCP_SECRET_KEY')
+    expect(out, '공백 낀 실제 이름을 따옴표로 보여야 한다').toContain("' NCP_SECRET_KEY'")
     expect(out).toContain('재등록')
   })
 
   it('그냥 없을 때는 평소 형식(작업 목록)을 쓴다', () => {
-    const env = { TOSS_SECRET_KEY: 'x', ALIGO_API_KEY: 'x', ALIGO_SENDER_KEY: 'x', CACHE_KV: {} }
+    const env = { TOSS_SECRET_KEY: 'x', NCP_ACCESS_KEY: 'x', NCP_SENS_ALIMTALK_SERVICE_ID: 'x', NCP_KAKAO_CHANNEL_ID: 'x', CACHE_KV: {} }
     const out = envBeatFor('*/5 * * * *', env) || ''
-    expect(out).toContain('ALIGO_USER_ID')
+    expect(out).toContain('NCP_SECRET_KEY')
     expect(out).toContain('retry-alimtalk')
     expect(out).not.toContain('이름공백')
   })

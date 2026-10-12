@@ -180,7 +180,7 @@ export const SELLER_ALIMTALK_LOGS = [
   {
     id: 911, receiver: '010-0000-0000', template_code: 'UR_SHIPPING',
     message: '[유어딜] 배송이 시작되었습니다.', order_id: 10233, success: 0,
-    error_msg: '수신 거부된 번호입니다 (ALIGO-401: 수신자 수신거부 상태)',
+    error_msg: '수신 거부된 번호입니다 (A031: 수신자 수신거부 상태)',
     created_at: '2026-09-30 01:02:03',
   },
 ]

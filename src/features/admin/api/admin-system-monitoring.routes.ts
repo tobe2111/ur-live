@@ -143,7 +143,7 @@ adminSystemMonitoringRoutes.get('/alimtalk-failures', async (c) => {
     `).first<{ abandoned: number; pending: number; succeeded: number }>().catch(() => null)
 
     // 🔔 2026-07-01: 진단 — 미해결 실패를 template_code 별로 그룹핑 + 저장소 등록 여부 주석.
-    //   registered:false 가 반복 실패하면 = Aligo 콘솔에 미등록/불일치 템플릿(운영자가 등록해야 함).
+    //   registered:false 가 반복 실패하면 = SENS 콘솔에 미등록/불일치 템플릿(운영자가 등록해야 함).
     //   (SMS 폴백이 없어 그동안 해당 알림톡은 전달 0 — 인앱/푸시로만 도달.)
     let byTemplate: Array<{ template_code: string; unresolved: number; abandoned: number; registered: boolean; last_error: string | null }> = []
     try {
@@ -267,8 +267,9 @@ adminSystemMonitoringRoutes.post('/alimtalk-failures/:id/retry', async (c) => {
 
 /**
  * 📨 2026-10-11 알림 발송 시험 — 대표 "응 보내봐". 실제 발송 경로(`sendTextNotice`)를 그대로 타서
- * 알리고가 받아 주는지 **오늘** 판정한다(실제 판매를 기다리지 않게). 결과에 알리고 오류 원문을 싣는다 —
- * 발신번호 미등록·IP 제한·잔액 부족을 그 자리에서 가린다. super_admin 만, 가입된 유저 번호로만 보낸다.
+ * 네이버 클라우드 SENS 가 받아 주는지 **오늘** 판정한다(실제 판매를 기다리지 않게). 결과에 SENS 오류 원문을 싣는다 —
+ * 서명(키)·채널 연결·템플릿 미검수·잔액 부족을 그 자리에서 가린다. super_admin 만, 가입된 유저 번호로만 보낸다.
+ * (2026-10-12 발송처 알리고 → SENS)
  */
 adminSystemMonitoringRoutes.post('/alimtalk-test-send', async (c) => {
   const { DB } = c.env
@@ -278,7 +279,7 @@ adminSystemMonitoringRoutes.post('/alimtalk-test-send', async (c) => {
     if (admin?.role !== 'super_admin') return c.json({ success: false, error: 'super_admin 권한이 필요합니다' }, 403)
     const body = await c.req.json<{ user_id?: unknown; tpl?: unknown }>().catch(() => ({} as { user_id?: unknown; tpl?: unknown }))
     // 📵 카톡만 쓴다(대표 2026-10-11) — 시험도 알림톡으로. 템플릿 코드를 주면 그 템플릿으로(승인 확인용),
-    //   없으면 미등록 코드로 보내 **알리고가 무엇에서 막는지**(IP·발신프로필·템플릿)를 응답 원문으로 가린다.
+    //   없으면 `admin_test_send` 로 보낸다 — SENS 에 그 이름으로 템플릿을 먼저 등록해 두면 시험이 끝까지 간다.
     const tpl = /^[A-Za-z0-9_]{1,40}$/.test(String(body.tpl ?? '')) ? String(body.tpl) : 'admin_test_send'
     const userId = Number(body.user_id)
     if (!Number.isInteger(userId) || userId <= 0) return c.json({ success: false, error: 'user_id 가 필요합니다' }, 400)
@@ -292,30 +293,6 @@ adminSystemMonitoringRoutes.post('/alimtalk-test-send', async (c) => {
     })
     const tail = String(user.phone ?? '').replace(/[^0-9]/g, '').slice(-4)
     return c.json({ success: r.ok, result: r, phone_tail: tail || null })
-  } catch (err) {
-    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
-  }
-})
-
-/**
- * 🌐 2026-10-11 발송 서버 IP 측정 — 알리고가 `인증오류입니다.-IP (-101)` 로 거부했다. 알리고는
- * "발송 서버 IP" 에 등록된 주소에서 온 요청만 받는데, 워커(Cloudflare)는 나가는 IP 가 고정이 아니다.
- * 무엇을 등록해야 하는지 **재서** 정한다 — Cloudflare 밖의 IP 반향 서비스를 여러 번 불러 본 IP 를 모은다.
- */
-adminSystemMonitoringRoutes.get('/alimtalk-egress-ip', async (c) => {
-  const { DB } = c.env
-  try {
-    const me = c.get('user' as never) as { id?: string | number } | undefined
-    const admin = await DB.prepare('SELECT role FROM admins WHERE id = ?').bind(me?.id ?? null).first<{ role: string }>()
-    if (admin?.role !== 'super_admin') return c.json({ success: false, error: 'super_admin 권한이 필요합니다' }, 403)
-    const urls = ['https://checkip.amazonaws.com/', 'https://ifconfig.me/ip', 'https://checkip.amazonaws.com/', 'https://ifconfig.me/ip', 'https://checkip.amazonaws.com/']
-    const seen = await Promise.all(urls.map(async (u) => {
-      try {
-        const r = await fetch(u, { signal: AbortSignal.timeout(5000), headers: { 'User-Agent': 'curl/8' } })
-        return (await r.text()).trim().slice(0, 64)
-      } catch (e) { return `error: ${(e as Error).message.slice(0, 40)}` }
-    }))
-    return c.json({ success: true, ips: [...new Set(seen)], samples: seen.length })
   } catch (err) {
     return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }
@@ -357,9 +334,9 @@ const OPS_GATES: OpsGate[] = [
   { key: 'ocr_auto_verify_enabled', kind: 'setting', label: '서류 OCR 자동 승인', default_value: 'false', staging_ref: 'S-OCR', turn_on_when: '실사진으로 추출 정확도를 재고(어드민 OCR 버튼의 fill·addressCheck), 오탐 0 을 확인한 뒤 대표 판단으로' },
   // 📩 2026-09-21 (대표 승인 "010 으로, 되면 보내주는걸로"): 사장님에게 "당신 가게가 유어딜에
   //   올라갔습니다" 를 보낸다. 줄은 승인 순간 자동으로 서지만 **발송은 사람이 누른다**(등급 C).
-  //   ⚠️ 이 게이트만으로는 안 나간다 — `ALIGO_TPL_STORE_NOTICE`(카카오 검수 통과한 템플릿 코드)가
+  //   ⚠️ 이 게이트만으로는 안 나간다 — 템플릿 `store_listed` 가 어드민 승인 목록(alimtalk_approved_templates)에
   //   함께 있어야 한다. 둘 중 하나라도 없으면 어드민 버튼이 비활성이고 이유가 화면에 뜬다.
-  { key: 'store_owner_notice_enabled', kind: 'setting', label: '사장님 매장 등록 통보(알림톡)', default_value: 'false', staging_ref: 'S-OWNERNOTICE', turn_on_when: '카카오 템플릿 검수가 끝나 ALIGO_TPL_STORE_NOTICE 가 등록되고, 어드민에서 1건만 먼저 보내 실제 수신이 확인되면' },
+  { key: 'store_owner_notice_enabled', kind: 'setting', label: '사장님 매장 등록 통보(알림톡)', default_value: 'false', staging_ref: 'S-OWNERNOTICE', turn_on_when: '카카오 템플릿(store_listed) 검수가 끝나 어드민 승인 목록에 적히고, 어드민에서 1건만 먼저 보내 실제 수신이 확인되면' },
   // 💸 2026-08-25 (누락 발견): **플랫폼 take 율 자체를 정하는 게이트인데 이 명부에 없었다.**
   //   `channelPlatformRate` 가 이 값으로 직판 10% / 중개 5% 를 가른다(OFF 면 종전 `commission_rate`).
   //   CLAUDE.md 는 게이트 플래그를 여기 등록하라고 규정하는데 이것만 빠져 있어, 운영 화면에서

@@ -4,20 +4,18 @@
  * 매일 KST 18:00 ('0 9 * * *' 슬롯) 실행:
  *   선착순/오픈예정(fcfs) 응모 마감(`product_supply_meta.fcfs_deadline`)이 **내일(KST)** 인 상품의
  *   응모자(`fcfs_applications` status IN ('applied','selected'))에게
- *   앱 내 알림 + 카카오 알림톡(Aligo 설정 시) "내일 마감·추첨" 예고 발송.
+ *   앱 내 알림 + 카카오 알림톡(SENS 설정 시) "내일 마감·추첨" 예고 발송.
  *
  * 🔒 게이트: env `OPS_SEQUENCES_ENABLED === 'true'` 일 때만 동작 — 기본 OFF(머지 = 라이브 무접촉).
  * 데모 상품(slug 'demo-%' — 2026-08-03 숙박/유어샵 데모 포함하도록 확장)·비활성 상품 제외. 멱등: notifications type `drop_d1_{productId}`
- * per-user 2일 dedup. 알림톡 실패는 alimtalk_failures 적재 → retry-alimtalk cron 재시도.
+ * per-user 2일 dedup. 알림톡 실패는 sendTextNotice 가 alimtalk_failures 에 기록(2026-10-12 SENS).
  * 머니/정산 경로 무접촉 — notifications INSERT + 알림톡 발송만.
  */
+import { sendTextNotice } from '../../lib/text-notice'
+import { sensConfigured } from '../../lib/ncp-sens'
 type Env = {
   DB: D1Database
   OPS_SEQUENCES_ENABLED?: string
-  ALIGO_API_KEY?: string
-  ALIGO_USER_ID?: string
-  ALIGO_SENDER_KEY?: string
-  ALIGO_DROP_D1_REMINDER?: string
 }
 
 type Row = {
@@ -54,12 +52,8 @@ export async function runDropD1Reminder(env: Env): Promise<{ notified: number; a
   `
   const rows = await DB.prepare(sql).bind(`${kstTomorrow}%`).all<Row>().catch(() => ({ results: [] as Row[] }))
 
-  const alimtalkConfigured = !!(env.ALIGO_API_KEY && env.ALIGO_USER_ID && env.ALIGO_SENDER_KEY)
-  let sendAlimtalk: ((api: { ALIGO_API_KEY: string; ALIGO_USER_ID: string }, params: { senderKey: string; templateCode: string; to: string; message: string }) => Promise<{ success: boolean; error?: string }>) | null = null
-  if (alimtalkConfigured) {
-    const mod = await import('../../lib/aligo').catch(() => null)
-    sendAlimtalk = mod?.sendAlimtalk || null
-  }
+  // 📨 2026-10-12 알림톡 = 네이버 클라우드 SENS(키 넷이 없으면 앱 알림만). 실패 기록은 sendTextNotice 가 남긴다.
+  const alimtalkConfigured = sensConfigured(env as unknown as Record<string, unknown>)
 
   for (const r of (rows.results || [])) {
     const notifType = `drop_d1_${r.product_id}`
@@ -85,28 +79,18 @@ export async function runDropD1Reminder(env: Env): Promise<{ notified: number; a
       ).run().catch(() => { /* table/컬럼 없으면 silent */ })
       out.notified++
 
-      if (alimtalkConfigured && sendAlimtalk && r.user_phone) {
+      if (alimtalkConfigured && r.user_phone) {
         const phone = r.user_phone.replace(/\D/g, '')
         if (/^01\d{8,9}$/.test(phone)) {
-          const templateCode = env.ALIGO_DROP_D1_REMINDER || 'drop_d1_reminder'
+          const templateCode = 'drop_d1_reminder'
           const message =
             `[유어딜] 드랍 마감 전날 안내\n\n` +
             `응모하신 ${productName}${where} 이(가) 내일 마감됩니다.\n\n` +
             `· 마감일: ${deadlineDay}\n\n` +
             `마감 후 추첨 결과를 알려드릴게요.`
-          const result = await sendAlimtalk(
-            { ALIGO_API_KEY: env.ALIGO_API_KEY!, ALIGO_USER_ID: env.ALIGO_USER_ID! },
-            { senderKey: env.ALIGO_SENDER_KEY!, templateCode, to: phone, message },
-          ).catch((e: Error) => ({ success: false, error: e.message }))
-          if (result.success) out.alimtalk_sent++
-          else {
-            out.alimtalk_failed++
-            await DB.prepare(
-              `INSERT INTO alimtalk_failures (template_code, phone, message, error, retry_count, max_retries, next_retry_at, created_at)
-               VALUES (?, ?, ?, ?, 0, 3, datetime('now', '+5 minutes'), datetime('now'))`
-            ).bind(templateCode, phone, message.slice(0, 1000), (result.error || 'unknown').slice(0, 500))
-              .run().catch(() => { /* noop */ })
-          }
+          const sent = await sendTextNotice(env, phone, { tpl: templateCode, title: '유어딜 알림', text: message })
+          if (sent.ok) out.alimtalk_sent++
+          else if ('error' in sent) out.alimtalk_failed++
         }
       }
     } catch { /* per-row fail-soft */ }
