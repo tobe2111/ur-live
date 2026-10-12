@@ -259,7 +259,10 @@ node scripts/check-consumer-product-supply-isolation.mjs || true
 # 🧹 2026-10-12: 도매 자동재로그인·로그인 SPA 이동 가드 2건을 여기서 제거했다.
 #   2026-10-11 도매몰 철거로 그 스크립트가 **삭제됐는데 이 훅은 계속 불렀고**, `|| true` 라
 #   매 커밋마다 `MODULE_NOT_FOUND` 스택을 찍고 조용히 넘어갔다(= 지키는 것 없이 겁만 주는 줄).
-#   verify.yml 에도 없다 — 즉 되살릴 가드가 아니라 **지워진 가드의 호출 잔재**다.
+#   같은 원인으로 `check-login-gate-by-price.mjs` 호출도 함께 뺐다(도매 전용 가드였다).
+#   셋 다 verify.yml 에 없다 — 즉 되살릴 가드가 아니라 **지워진 가드의 호출 잔재**다.
+#   ⚠️ 그래서 CI 는 이걸 영원히 못 본다. 훅이 부르는 스크립트의 실재는 `check-guard-registry` 가
+#      아니라 **커밋할 때 터지는 스택**만 알려 줬고, `|| true` 가 그것도 삼켰다.
 
 # 🛡️ 2026-06-18: group_buy_status 로 상품 종류(교환권/공구 vs 쇼핑) 판별·라우팅 금지 (warn-only).
 #   group_buy_status 는 모든 상품 DEFAULT 'active' → 종류 판별에 쓰면 쇼핑 상품이 교환권으로 오분류
@@ -334,11 +337,6 @@ bash scripts/check-blog-fact-sync.sh || true
 #   없이 렌더하면 fetch 실패가 빈화면/₩0 으로 위장됨. 신규 추가 차단.
 echo "==> Pre-commit: 쿼리 isError 소비 가드 (warn-only)..."
 node scripts/check-query-iserror.mjs || true
-
-# 🛡️ 2026-06-27: 가격기반 로그인 유도 가드 (warn-only) — 도매 surface 가 가격(*_price) null/0 을
-#   로그인 신호로 오용해 로그인 유도하면 "로그인했는데 '로그인하세요'" 재발. 신규 추가 차단.
-echo "==> Pre-commit: 가격기반 로그인 유도 가드 (warn-only)..."
-node scripts/check-login-gate-by-price.mjs || true
 
 # 🛡️ 2026-06-27: 도매주문 상태 무결성 가드 (warn-only) — wholesale_orders.status 정의 밖 값 차단.
 echo "==> Pre-commit: 도매주문 상태 무결성 가드 (warn-only)..."
