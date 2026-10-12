@@ -35,7 +35,6 @@ const CARD = 'src/components/dashboard/DashboardCard.tsx'
 const REFERRAL = 'src/pages/seller-settlements/ReferralEarningsCard.tsx'
 const STORE = 'src/pages/SellerStoreInfoPage.tsx'
 const SETTLE = 'src/pages/SellerSettlementsPage.tsx'
-const BALANCE = 'src/pages/seller-settlements/DealBalanceCard.tsx'
 const BIZREG = 'src/pages/seller-settlements/BizRegStatusBanner.tsx'
 const PANEL = 'src/pages/seller-settlements/RestaurantSettlementsSection.tsx'
 const ROUTE = 'src/features/settlement/api/restaurant-settlement.routes.ts'
@@ -44,12 +43,8 @@ describe('② 전폭 주 버튼 — 자리별로 ur-btn-md(40px)', () => {
   it('정산 계좌 등록 CTA', () => {
     expect(code(SETTLE)).toContain('ur-btn ur-btn-md ur-btn-primary mt-3 w-full sm:w-auto')
   })
-  it('딜 잔액 카드의 환급·교환권 두 버튼', () => {
-    const s = code(BALANCE)
-    expect(s).toContain('ur-btn ur-btn-md ur-btn-secondary flex-1 sm:flex-none')
-    expect(s).toContain('ur-btn ur-btn-md ur-btn-primary flex-1 sm:flex-none')
-    expect(s, 'ur-btn-sm(32px) 가 남아 있다').not.toContain('ur-btn-sm')
-  })
+  // 🧹 2026-10-12 '딜 잔액 카드의 환급·교환권 두 버튼' 삭제 — 그 카드(`seller-settlements/DealBalanceCard`)가
+  //   한 번도 적립되지 않는 잔액을 읽고 있어 화면에서 걷어냈다(셀러 돈 = 주간 자동 정산 하나).
   it('사업자등록증 배너(반려/정상 두 분기 모두)', () => {
     const s = code(BIZREG)
     expect(s).toContain('ur-btn ur-btn-md ur-btn-danger')

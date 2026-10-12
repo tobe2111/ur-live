@@ -112,12 +112,34 @@ pointsRoutes.get('/balance', requireAuth(), async (c) => {
 
   const balance = row?.balance ?? 0;
   const freeBalance = Math.max(0, Math.min(row?.free_balance ?? 0, balance));
+  // 💸 2026-10-12 충전 잔액 환급(약관 제12조): 화면이 말하는 "환급 가능" 은 **실제로 신청할 수 있는 금액**
+  //   이어야 한다. 유상 잔액(withdrawable)에는 충전 말고 다른 것도 섞일 수 있어 그대로 보여 주면
+  //   신청했다가 거절되는 숫자가 된다 ⇒ 한도 SSOT(`deal-refund.ts`)로 계산. 유상 잔액이 있는 사람만
+  //   계산한다(대부분 0 이라 이 핫패스에 질의가 안 붙는다). 계산이 깨지면 필드를 **안 싣는다**(0 아님).
+  //   전액을 신청하면 유상 잔액이 0 이 되어 위 계산을 건너뛰는데, 그 사람도 "처리 중" 을 봐야 한다 ⇒
+  //   처리 중 신청은 따로 한 줄로 확인한다(부분 UNIQUE 인덱스라 0~1행 조회. 표가 아직 없으면 조용히 없음).
+  let refundable: number | undefined
+  let refundPending: number | undefined
+  if (balance - freeBalance > 0) {
+    const { getDealRefundState } = await import('../../../worker/utils/deal-refund');
+    const st = await getDealRefundState(DB, userId);
+    if (st.ok) {
+      refundable = st.state.refundable;
+      if (st.state.pending) refundPending = Number(st.state.pending.amount);
+    }
+  } else {
+    const p = await DB.prepare("SELECT amount FROM deal_refund_requests WHERE user_id = ? AND status = 'requested'")
+      .bind(userId).first<{ amount: number }>().catch(() => null);
+    if (p) refundPending = Number(p.amount);
+  }
   return c.json({
     success: true,
     data: {
       balance,
       free_balance: freeBalance,
       withdrawable: Math.max(0, balance - freeBalance),
+      ...(refundable !== undefined ? { refundable } : {}),
+      ...(refundPending !== undefined ? { refund_pending: refundPending } : {}),
       total_charged: row?.total_charged ?? 0,
       total_donated: row?.total_donated ?? 0,
     },
@@ -1121,88 +1143,56 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 🛡️ 2026-05-19: 일반 user 의 딜 → 현금 출금 (추천 수익 환급용).
+// 💸 2026-10-12 충전 잔액 환급 — 약관 제12조 (대표 *"응 모두 해주고 가장 이상적으로 UI까지 짜줘"*)
 //
-// 최소 10,000딜 / 8.8% 원천징수 (기타소득 — 사업자 미등록 기본)
-// 어드민이 주 1회 일괄 송금 처리 (`/admin/user-withdrawals` 페이지).
+// 한도·머니 룰·소개 수익 출금과 따로인 이유는 전부 `worker/utils/deal-refund.ts` 머리말에 있다.
+// 여기는 얇은 문이다. 화면: 마이 › "환급 가능 N딜 · 환급 신청" → `RefundSheet`.
+// 처리: 어드민 지급 센터 › 딜 환급 탭(입금 완료 / 반려 — 반려하면 딜이 되돌아간다).
 // ─────────────────────────────────────────────────────────────────────────────
-pointsRoutes.post('/withdraw',
-  rateLimit({ action: 'user_deal_withdraw', max: 5, windowSec: 3600 }),
+pointsRoutes.get('/refund', requireAuth(), async (c) => {
+  const user = getCurrentUser(c)
+  if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const { getDealRefundState } = await import('../../../worker/utils/deal-refund')
+  const st = await getDealRefundState(c.env.DB, String(user.id))
+  // 🛡️ 조회가 깨지면 0 으로 위장하지 않는다 — 화면은 "불러오지 못했다" 를 말한다.
+  if (!st.ok) return c.json({ success: false, error: '환급 정보를 불러오지 못했어요' }, 503)
+  return c.json({ success: true, data: st.state })
+})
+
+pointsRoutes.post('/refund',
+  rateLimit({ action: 'deal_refund_request', max: 5, windowSec: 3600 }),
   requireAuth(),
   async (c) => {
     const user = getCurrentUser(c)
-    if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
-
-    // 🛡️ 2026-05-20: `T | {}` union 회피 — 명시적 타입 단언.
-    type WithdrawBody = {
-      amount?: number
-      bank_name?: string
-      bank_account?: string
-      account_holder?: string
+    if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+    const body = await c.req.json<Record<string, unknown>>().catch(() => ({} as Record<string, unknown>))
+    const { normalizeRefundInput, requestDealRefund } = await import('../../../worker/utils/deal-refund')
+    const parsed = normalizeRefundInput(body)
+    if (!parsed.ok) return c.json({ success: false, code: 'INVALID', error: parsed.error }, 400)
+    const r = await requestDealRefund(c.env.DB, String(user.id), parsed.input)
+    if (!r.ok) {
+      const status = r.code === 'ERROR' ? 500 : r.code === 'PENDING' ? 409 : 400
+      return c.json({ success: false, code: r.code, error: r.error, refundable: r.refundable }, status)
     }
-    const body = await c.req.json<WithdrawBody>().catch(() => ({} as WithdrawBody))
-
-    const amount = Number(body.amount)
-    if (!Number.isFinite(amount) || amount < 10000 || amount > 10_000_000) {
-      return c.json({ success: false, error: '출금 금액은 10,000~10,000,000딜 사이' }, 400)
-    }
-    const bankName = (body.bank_name || '').trim()
-    const bankAccount = (body.bank_account || '').trim().replace(/[^0-9-]/g, '')
-    const holder = (body.account_holder || '').trim()
-    if (!bankName || bankName.length > 30) return c.json({ success: false, error: '은행명 1~30자' }, 400)
-    if (!bankAccount || bankAccount.length < 5 || bankAccount.length > 30) return c.json({ success: false, error: '계좌번호 5~30자' }, 400)
-    if (!holder || holder.length > 30) return c.json({ success: false, error: '예금주명 1~30자' }, 400)
-
-    const { DB } = c.env
-    const userId = String(user.id)
-
-    // 잔액 확인 + 차감 (atomic — UPDATE WHERE 유상잔액 >= amount).
-    // 💸 2026-07-05 버킷 (약관 강제): 현금 출금은 유상(balance - free_balance) 한도로만 —
-    //   무상(리워드) 딜의 현금 인출 차단. free_balance 는 무변경 (출금은 유상에서만 나감).
-    await ensureDealBuckets(DB)
-    const decResult = await DB.prepare(
-      `UPDATE user_points SET balance = balance - ?, updated_at = datetime('now')
-       WHERE user_id = ? AND ${PAID_BALANCE_SQL} >= ?`
-    ).bind(amount, userId, amount).run().catch(() => null)
-    if (!decResult || (decResult.meta?.changes ?? 0) === 0) {
-      return c.json({ success: false, error: '출금 가능한 유상 딜이 부족합니다 (무상 리워드 딜은 환급 대상이 아닙니다)' }, 400)
-    }
-
-    // 🛡️ 2026-05-21 정책 중앙화: 딜 환급 = 기타소득 (이벤트성) — WITHHOLDING_RATES.other_income.
-    const { WITHHOLDING_RATES } = await import('../../../worker/utils/tax-withholding')
-    const tax = Math.floor(amount * WITHHOLDING_RATES.other_income)
-    const net = amount - tax
-
-    try {
-      // 🛡️ 2026-07-01 (어드민 라이브 감사 — 머니 대칭): 위에서 딜을 즉시 차감(balance - amount)했으므로
-      //   deal_deducted=1 로 기록해야 지급센터 반려 시 딜이 복원됨(admin-payout-center reject 는 =1 만 복원).
-      //   누락 시 반려된 출금의 딜이 영구 미복원 = 유저 손실. curator.routes 경로와 동일 대칭.
-      //   컬럼 보장(멱등, repair-schema 에도 등록됨).
-      await DB.prepare('ALTER TABLE user_withdrawals ADD COLUMN deal_deducted INTEGER DEFAULT 0').run().catch(() => {})
-      const result = await DB.prepare(`
-        INSERT INTO user_withdrawals
-          (user_id, amount, withholding_tax, net_amount, bank_name, bank_account, account_holder, deal_deducted)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 1)
-      `).bind(userId, amount, tax, net, bankName, bankAccount, holder).run()
-
-      return c.json({
-        success: true,
-        data: {
-          withdrawal_id: result.meta?.last_row_id,
-          amount, withholding_tax: tax, net_amount: net,
-          status: 'requested',
-          eta: '영업일 기준 3-5일 내 입금',
-        },
-      })
-    } catch (err) {
-      // INSERT 실패 시 차감된 잔액 복구.
-      await DB.prepare(
-        `UPDATE user_points SET balance = balance + ? WHERE user_id = ?`
-      ).bind(amount, userId).run().catch(() => null)
-      return c.json({ success: false, error: '출금 요청 저장 실패 — 잔액 자동 복구됨. 잠시 후 다시 시도해주세요.' }, 500)
-    }
-  }
+    // 어드민 벨 — 수동 이체 큐에 한 건 생겼다(지급 센터가 처리). fail-soft.
+    createDashboardNotification(
+      c.env.DB, 'admin', null, 'deal_refund_requested',
+      '딜 환급 신청', `${r.amount.toLocaleString('ko-KR')}딜 충전 잔액 환급 신청이 들어왔습니다`,
+      '/admin/payout-center',
+    ).catch(() => {})
+    return c.json({ success: true, data: { id: r.id, amount: r.amount, eta: '영업일 기준 3~5일 안에 입금돼요' } })
+  },
 )
+
+// 🚪 2026-10-12 옛 문 — 화면에서 부르는 곳이 0 이었고(실측), 충전한 돈을 돌려주면서 8.8% 를 떼고
+//   (소득이 아닌데) 최소 10,000딜이라 라이브 유일한 환급 대상(4,700딜)이 신청조차 못 했다.
+//   **열어 두면 위 한도·장부 규칙을 우회하는 두 번째 문**이 된다 ⇒ 410 으로 닫고 새 문을 가리킨다.
+pointsRoutes.post('/withdraw', requireAuth(), (c) => c.json({
+  success: false,
+  code: 'GONE',
+  error: '이 방법은 더 이상 쓰지 않아요. 마이 › 환급 신청을 이용해 주세요',
+  replacement: '/api/points/refund',
+}, 410))
 
 // GET — 내 출금 내역
 pointsRoutes.get('/withdrawals', requireAuth(), async (c) => {

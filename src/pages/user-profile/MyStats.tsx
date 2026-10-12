@@ -33,13 +33,16 @@
  * - 재시도 버튼이 없다. 실패하면 `—` 이고, 셀을 누르면 딜 내역 화면으로 간다(거기서 다시 읽는다).
  *   버튼을 세 칸짜리 줄 안에 넣으면 그 칸만 높이가 달라져 줄이 무너진다.
  */
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
 import api from '@/lib/api'
 import { formatNumber } from '@/utils/format'
 import { getUserIdSync } from '@/utils/auth'
 import { TOPUP_DISABLED } from '@/shared/feature-flags'
+
+/** 💸 충전 잔액 환급 — 누를 때만 받는다(첫 화면 번들 밖). */
+const RefundSheet = lazy(() => import('./RefundSheet'))
 
 /** 💸 충전은 2026-07-18 에 종료됐다 — 딜의 "자세히" 는 내역이다. */
 const DEAL_PATH = TOPUP_DISABLED ? '/my-deal-history' : '/points/charge'
@@ -102,6 +105,15 @@ export default function MyStats({ voucher, gifticon, coupon, inline = false }: {
   /** `undefined` 아직 · `null` 실패 · 숫자 값 */
   const [balance, setBalance] = useState<number | null | undefined>(undefined)
   const [freeBalance, setFreeBalance] = useState(0)
+  /**
+   * 💸 2026-10-12 실제로 **신청할 수 있는** 환급액(서버 한도 SSOT — `deal-refund.ts`).
+   *   종전엔 `balance − free` 를 "환급 가능" 이라고 말했는데, 그 유상 잔액엔 충전 말고 다른 것도
+   *   섞일 수 있어 신청하면 거절되는 숫자였다. 서버가 안 주면(구버전·조회 실패) 0 — 버튼을 안 띄운다.
+   */
+  const [refundable, setRefundable] = useState(0)
+  /** 처리 중인 환급 신청 금액 — 전액 신청 뒤에도 "처리 중" 으로 다시 열 수 있게(서버가 준 값). */
+  const [refundPending, setRefundPending] = useState(0)
+  const [refundOpen, setRefundOpen] = useState(false)
 
   useEffect(() => {
     if (!getUserIdSync()) { setBalance(null); return }
@@ -114,6 +126,8 @@ export default function MyStats({ voucher, gifticon, coupon, inline = false }: {
           if (r.data.success) {
             setBalance(Number(r.data.data.balance ?? 0))
             setFreeBalance(Math.max(0, Number(r.data.data.free_balance ?? 0)))
+            setRefundable(Math.max(0, Math.floor(Number(r.data.data.refundable ?? 0)) || 0))
+            setRefundPending(Math.max(0, Math.floor(Number(r.data.data.refund_pending ?? 0)) || 0))
           } else setBalance(null)
         })
         // 🛡️ 실패는 `null` — `0` 으로 떨어뜨리면 화면이 거짓말을 한다.
@@ -126,7 +140,22 @@ export default function MyStats({ voucher, gifticon, coupon, inline = false }: {
     return () => window.removeEventListener('pointsBalanceChanged', handler)
   }, [])
 
-  const refundable = balance != null && freeBalance > 0
+  /** 잔액 아래 한 줄을 그릴 이유가 있는가 — 무상 딜이 섞였거나, 돌려받을 딜이 있다. */
+  const showNote = balance != null && (freeBalance > 0 || refundable > 0 || refundPending > 0)
+  const refundButton = refundable > 0 || refundPending > 0 ? (
+    <button
+      type="button"
+      onClick={() => setRefundOpen(true)}
+      className="shrink-0 h-8 px-3 rounded-full border border-rule-strong text-[12px] font-bold text-gray-900 dark:text-white active:opacity-70"
+    >
+      {refundable > 0 ? '환급 신청' : '환급 처리 중'}
+    </button>
+  ) : null
+  const refundSheet = refundOpen ? (
+    <Suspense fallback={null}>
+      <RefundSheet onClose={() => setRefundOpen(false)} />
+    </Suspense>
+  ) : null
 
   const cells = (
     /* ➖ 칸 사이 세로 구분선 — `divide-x` 가 첫 칸 앞에는 안 긋는다(코레일톡과 같은 모양). */
@@ -137,7 +166,7 @@ export default function MyStats({ voucher, gifticon, coupon, inline = false }: {
         to={DEAL_PATH}
         value={balance}
         /* 띠에서는 줄 밖 `<p>` 를 못 쓴다 — 같은 사실을 값 아래 한 줄로 말한다. */
-        foot={inline && refundable ? `환급 가능 ${formatNumber(Math.max(0, balance! - freeBalance))}` : undefined}
+        foot={inline && refundable > 0 ? `환급 가능 ${formatNumber(refundable)}` : undefined}
       />
       <Cell compact={inline} label="이용권" to="/my-vouchers" value={voucher} />
       {/* 📱 교환권은 **폰에서 넷째 칸이 되면 칸이 너무 좁다**(390px ÷ 4 = 97px, 안쪽 여백 빼면 73px).
@@ -147,17 +176,35 @@ export default function MyStats({ voucher, gifticon, coupon, inline = false }: {
     </div>
   )
 
-  if (inline) return cells
+  /* 🖥️ 띠 모드: 칸은 링크라 그 안에 버튼을 못 넣는다(중첩 상호작용) — 칸 **옆**에 둔다. */
+  if (inline) return (
+    <div className="flex items-center gap-4">
+      {cells}
+      {refundButton}
+      {refundSheet}
+    </div>
+  )
 
   return (
     <div className="ur-content-medium lg:px-4">
       {cells}
-      {/* 💸 무상(리워드) 딜은 사용은 자유지만 **현금 환급 제외**(약관)라, 0 이 아니면 한 줄로 알린다. */}
-      {refundable && (
-        <p className="px-4 pt-2 text-[12px] text-gray-500 dark:text-gray-400">
-          무상 리워드 {formatNumber(freeBalance)}딜 포함 · 환급 가능 {formatNumber(Math.max(0, balance! - freeBalance))}딜
-        </p>
+      {/* 💸 무상(리워드) 딜은 사용은 자유지만 **현금 환급 제외**(약관)라, 0 이 아니면 한 줄로 알린다.
+          돌려받을 딜이 있으면 그 줄 끝에서 바로 신청한다(2026-10-12 — 종전엔 숫자만 있고 누를 곳이 없었다). */}
+      {showNote && (
+        <div className="flex items-center gap-3 px-4 pt-2">
+          <p className="flex-1 min-w-0 text-[12px] text-gray-500 dark:text-gray-400">
+            {refundPending > 0 && refundable <= 0
+              ? <>환급 {formatNumber(refundPending)}원 입금을 준비하고 있어요</>
+              : freeBalance > 0 && refundable > 0
+              ? <>무상 리워드 {formatNumber(freeBalance)}딜 포함 · 환급 가능 {formatNumber(refundable)}딜</>
+              : refundable > 0
+                ? <>현금으로 돌려받을 수 있는 딜이 {formatNumber(refundable)}딜 있어요</>
+                : <>무상 리워드 {formatNumber(freeBalance)}딜 포함 (리워드 딜은 환급 대상이 아니에요)</>}
+          </p>
+          {refundButton}
+        </div>
       )}
+      {refundSheet}
     </div>
   )
 }

@@ -12,7 +12,6 @@ import { logInfo, logError } from '../utils/logger'
 
 import type { Env } from '../types/env';
 import { sendDiscordAlert } from '../utils/discord-alert';
-import { adjustUserPoints } from '../utils/point-ledger';
 import { reportCronFailure } from '../utils/cron-reporter';
 import { clawbackVoucherCommission } from '../../features/group-buy/api/helpers';
 import { weeklySettlementCutoffUtc } from '../utils/settlement-schedule';
@@ -462,13 +461,19 @@ export async function handleExpiredVoucherRefunds(env: Env) {
       //   기존엔 balance 만 올리고 장부 0건 → '딜 이용내역' 과 잔액 불일치. 금액/조건 불변.
       if (voucher.payment_method === 'deal_points' && voucher.user_id && refundAmount > 0) {
         try {
-          await adjustUserPoints(DB, {
+          // 💸 2026-10-12: `adjustUserPoints` 는 **유상 버킷**으로만 되돌린다 — 무상(리워드) 딜로 산
+          //   이용권이 만료되면 그 딜이 **현금 환급 가능한 딜**로 되살아났다(무상→유상 세탁).
+          //   `refundDealPoints` 가 원장의 `free_delta` 를 역산해 원래 버킷으로 돌려준다.
+          //   원장 키는 결제 때 쓴 주문번호(`group-buy /join` 의 order_id = orderNumber)다.
+          const { refundDealPoints } = await import('../utils/point-buckets');
+          const r = await refundDealPoints(DB, {
             userId: String(voucher.user_id),
-            delta: refundAmount,
+            amount: refundAmount,
+            ref: [voucher.order_number != null ? String(voucher.order_number) : null, voucher.order_id != null ? String(voucher.order_id) : null],
             type: 'refund',
             description: `바우처 만료 환불 (${voucher.product_name})`,
-            orderId: voucher.order_id != null ? String(voucher.order_id) : null,
           });
+          if (!r.ok) throw new Error('deal refund failed');
         } catch (e) {
           if (env.ENVIRONMENT !== 'production') console.warn('[auto-settlement user_points]', e);
         }

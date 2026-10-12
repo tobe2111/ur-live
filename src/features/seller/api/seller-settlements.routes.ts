@@ -663,118 +663,21 @@ sellerSettlementsRoutes.get('/voucher-orders', async (c) => {
   }
 })
 
-sellerSettlementsRoutes.post('/deal-withdraw', rateLimit({ action: 'seller_deal_withdraw', max: 5, windowSec: 3600 }), async (c) => {
-  const authorization = c.req.header('Authorization');
-  if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증 필요' }, 401);
-  try {
-    const token = authorization.substring(7);
-    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
-    const sellerId = payload.seller_id;
-    if (!sellerId) return c.json({ success: false, error: '셀러 권한 필요' }, 403);
-
-    // 사업자 검증 필수.
-    const seller = await c.env.DB.prepare(
-      'SELECT business_registration_status FROM sellers WHERE id = ?'
-    ).bind(sellerId).first<{ business_registration_status: string | null }>().catch(() => null);
-    const bizVerified = seller?.business_registration_status === 'verified' || seller?.business_registration_status === 'exempt';
-    if (!bizVerified) {
-      return c.json({
-        success: false,
-        error: '사업자등록증 검증 후 환급 가능합니다',
-        code: 'BUSINESS_REGISTRATION_REQUIRED',
-      }, 412);
-    }
-
-    // PIN 인증 (settlement/request 와 동일 패턴).
-    const { isPinVerified } = await import('./seller-pin.routes');
-    const pinOk = await isPinVerified(c.req.header('Cookie'), sellerId, c.env.JWT_SECRET);
-    if (!pinOk) {
-      return c.json({ success: false, error: 'PIN 인증 필요', code: 'PIN_REQUIRED' }, 412);
-    }
-
-    const body = await c.req.json<{ amount?: number; bank_name?: string; account_number?: string; account_holder?: string }>().catch(() => ({} as { amount?: number; bank_name?: string; account_number?: string; account_holder?: string }));
-    const amount = Math.floor(Number(body?.amount) || 0);
-    if (!amount || amount < 10_000) {
-      return c.json({ success: false, error: '최소 환급 금액은 10,000 딜입니다' }, 400);
-    }
-
-    // 🛡️ 2026-06-11: 계좌 재인증 게이트 (위 현금 정산과 동일 — 계좌변경 보호 의도 복원).
-    const verRow = await c.env.DB.prepare(
-      'SELECT COALESCE(is_verified, 1) AS is_verified FROM sellers WHERE id = ?'
-    ).bind(sellerId).first<{ is_verified: number }>().catch(() => null);
-    if (verRow && Number(verRow.is_verified) === 0) {
-      return c.json({ success: false, error: '계좌 정보가 최근 변경되어 관리자 재확인이 필요합니다', code: 'ACCOUNT_REVERIFICATION_REQUIRED' }, 412);
-    }
-
-    // 잔액 확인.
-    const balance = await c.env.DB.prepare(
-      'SELECT redeemable_deal_amount FROM seller_deal_balances WHERE seller_id = ?'
-    ).bind(sellerId).first<{ redeemable_deal_amount: number }>().catch(() => null);
-    const available = balance?.redeemable_deal_amount || 0;
-    if (amount > available) {
-      return c.json({ success: false, error: `환급 가능 잔액 부족 (보유: ${available.toLocaleString()})` }, 400);
-    }
-
-    // 잔액 차감 + 거래 이력.
-    // 🛡️ 2026-06-11 (전 플로우 감사 🔴): 사전 SELECT 후 무가드 UPDATE 는 동시 더블클릭 시
-    //   음수 잔액 + 이중 신청 가능 — 머니 룰 #1(CAS) 위반이었음. 잔액 가드 + changes 검사로 원자화.
-    const deduct = await c.env.DB.prepare(
-      `UPDATE seller_deal_balances
-          SET redeemable_deal_amount = redeemable_deal_amount - ?,
-              updated_at = datetime('now')
-        WHERE seller_id = ? AND redeemable_deal_amount >= ?`
-    ).bind(amount, sellerId, amount).run();
-    if (!deduct.meta?.changes) {
-      return c.json({ success: false, error: '환급 가능 잔액 부족 (동시 요청 충돌)' }, 409);
-    }
-
-    const txResult = await c.env.DB.prepare(
-      `INSERT INTO seller_deal_transactions (seller_id, amount, bucket, type, memo, created_at)
-       VALUES (?, ?, 'redeemable', 'cash_withdraw', ?, datetime('now'))`
-    ).bind(
-      sellerId, -amount,
-      `환급 신청 ${amount.toLocaleString()}원 → ${body?.bank_name || ''} ${body?.account_number || ''}`,
-    ).run().catch(() => null);
-
-    // 원천징수 + 지급조서.
-    const { withholdAndLog } = await import('../../../worker/utils/tax-withholding');
-    const wh = await withholdAndLog(c.env as { DB: D1Database }, {
-      sellerId,
-      grossAmount: amount,
-      sourceType: 'deal_redeem',
-      sourceId: txResult ? String(txResult.meta.last_row_id) : undefined,
-    });
-
-    // settlements 테이블에도 row 생성 (어드민이 송금 처리).
-    const now = new Date();
-    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const periodStart = prevMonth.toISOString().slice(0, 10);
-    const periodEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10);
-
-    await c.env.DB.prepare(`
-      INSERT INTO settlements (seller_id, amount, period_start, period_end, bank_name, account_number, account_holder, status, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'))
-    `).bind(
-      sellerId, wh.net_amount, periodStart, periodEnd,
-      body?.bank_name || null, body?.account_number || null, body?.account_holder || null,
-    ).run().catch(() => null);
-
-    return c.json({
-      success: true,
-      data: {
-        gross_amount: wh.gross_amount,
-        withholding_amount: wh.withholding_amount,
-        net_amount: wh.net_amount,
-        ytd_gross_amount: wh.ytd_gross_amount,
-        reportable: wh.reportable,
-        message: wh.reportable
-          ? `${wh.net_amount.toLocaleString()}원 입금 예정 (원천징수 ${wh.withholding_amount.toLocaleString()}원 차감) — 연 누계 300만 초과: 종합소득세 합산 신고 의무`
-          : `${wh.net_amount.toLocaleString()}원 입금 예정 (원천징수 ${wh.withholding_amount.toLocaleString()}원 차감)`,
-      },
-    });
-  } catch (err) {
-    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-settlements]');
-  }
+// 🚪 2026-10-12 셀러 딜 환급 닫음 (대표 *"응 모두 해주고 가장 이상적으로"*).
+//   이 문이 읽는 `seller_deal_balances.redeemable_deal_amount` 는 **코드 어디에서도 적립되지 않는다**
+//   (유일한 `+` 쓰기는 교환권 발송 실패 롤백 — 2026-10-12 전수 grep). 그래서 늘 "잔액 부족" 이었고,
+//   마이의 "정산 · 쌓인 돈 받기" 가 이 0 을 보여 주고 있었다. 게다가 차감 뒤 기록 INSERT 두 개가
+//   에러를 삼켜 **잔액만 빠지고 지급 행이 없는** 길이 열려 있었고, 지급 센터엔 반려 경로도 없었다.
+//   셀러 돈의 진짜 길은 **주간 자동 정산**(원장 `seller:N` → `payouts` → 어드민 송금)이다 —
+//   2026-07-01 대표 승인 *"자동 정산 하나로 통일"* 이 이미 정한 것이고, 이 문은 그때 남은 조각이다.
+//   화면: 마이 › 정산 → `PayoutSheet`(읽기 전용, `/api/seller/payouts`).
+sellerSettlementsRoutes.post('/deal-withdraw', async (c) => {
+  if (!c.req.header('Authorization')?.startsWith('Bearer ')) return c.json({ success: false, error: '인증 필요' }, 401);
+  return c.json({
+    success: false,
+    code: 'GONE',
+    error: '정산은 매주 자동으로 등록하신 계좌로 들어가요. 따로 신청하지 않아도 돼요',
+  }, 410);
 });
 
 // 🛡️ 2026-05-18: 셀러 본인 원천징수 현황 (마이페이지 — 연 누계 300만 임계 인지).

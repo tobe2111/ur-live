@@ -20,7 +20,6 @@ import {
 // 🛡️ 2026-06-10: 대형 페이지 분해 — 표현부를 ./seller-settlements/* 로 추출 (동작 변화 0, 순수 이동).
 import type { Settlement, SettlementStats } from './seller-settlements/types'
 import RevenueCalendar from './seller-settlements/RevenueCalendar'
-import DealBalanceCard from './seller-settlements/DealBalanceCard'
 import AutoPayoutSection from './seller-settlements/AutoPayoutSection'
 import BizRegStatusBanner from './seller-settlements/BizRegStatusBanner'
 import BizRegSubmitModal from './seller-settlements/BizRegSubmitModal'
@@ -198,8 +197,9 @@ export default function SellerSettlementsPage() {
             고장난 '정산 신청' 통계카드(settlements 테이블, 대부분 빈값) 대체. */}
         <AutoPayoutSection />
 
-        {/* 🛡️ 2026-05-18: 딜 잔액 + 환급 + 원천징수 현황 (비사업자 교환권/원천징수) */}
-        <DealBalanceCard />
+        {/* 🧹 2026-10-12 딜 잔액·환급 카드 제거 — 읽던 `seller_deal_balances` 가 한 번도 적립되지 않아
+            늘 0원이었고(전수 grep), 환급 신청 서버(`/deal-withdraw`)도 410 으로 닫았다. 셀러 돈은 위
+            `AutoPayoutSection`(주간 자동 정산) 하나다 — 2026-07-01 "자동 정산 하나로 통일" 의 마지막 조각. */}
 
         {/* 🧾 2026-09-15 C안: 소개 수익(유저 커미션)을 매장 정산 옆에 — 사업자 유저의 돈 두 종류를 한 화면에. 세션 없으면 자기가 안 그린다. */}
         <ReferralEarningsCard />

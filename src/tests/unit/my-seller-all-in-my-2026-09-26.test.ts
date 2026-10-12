@@ -62,7 +62,8 @@ describe('② 시트는 전부 열 때 받는다', () => {
     // 🧹 2026-10-01 철거: 하한 13 → **6**. 손수 시트 일곱이 내려갔다(`OrdersSheet` 등).
     //   하한의 일은 "몇 개여야 한다" 가 아니라 **매치 0으로 헛도는 것**을 막는 것이다.
     expect(lazies.length, '측정 0건 — 선언 형태가 바뀌었는데 검사가 헛돌고 있다').toBeGreaterThanOrEqual(6)
-    for (const need of ['WithdrawSheet', 'AllToolsSheet', 'ToolPageSheet']) {
+    // 💰 2026-10-12: 돈 시트가 `WithdrawSheet`(출금 신청) → `PayoutSheet`(주간 자동 정산, 읽기 전용)로 바뀌었다.
+    for (const need of ['PayoutSheet', 'AllToolsSheet', 'ToolPageSheet']) {
       expect(lazies, `${need} 가 lazy 가 아니다`).toContain(need)
     }
   })
@@ -281,10 +282,10 @@ describe('⑦ 같은 일에 화면이 둘이 되지 않는다', () => {
    * ⚠️ 표를 지우지 않은 이유: 돈 경로(`/seller/settlements`)가 아직 손수 시트를 쓴다.
    */
   it('손수 시트가 남은 일은 표가 그리로 보낸다 (돈 하나)', () => {
-    const table = code.slice(code.indexOf('const COVERED_BY_SHEET'), code.indexOf("'/seller/settlements': 'withdraw',") + 40)
+    const table = code.slice(code.indexOf('const COVERED_BY_SHEET'), code.indexOf("'/seller/settlements': 'payout',") + 40)
     const paths = [...table.matchAll(/'(\/seller\/[^']+)':/g)].map((m) => m[1])
     expect(paths.length, '측정 0건 — 표가 사라졌거나 형태가 바뀌었다').toBeGreaterThanOrEqual(1)
-    expect(paths, '돈 경로가 표에서 빠졌다 — 출금의 PIN 되돌아오기를 잃는다').toContain('/seller/settlements')
+    expect(paths, '돈 경로가 표에서 빠졌다 — 정산(주간 자동)을 전체 도구에서 열면 다른 화면이 뜬다').toContain('/seller/settlements')
   })
 
   it('철거된 일곱은 손수 시트로 되살아나지 않는다', () => {
@@ -310,7 +311,7 @@ describe('⑦ 같은 일에 화면이 둘이 되지 않는다', () => {
     const pages = [...bare.matchAll(/openPage\('(\/seller\/[^']+)'/g)].map((m) => m[1])
     expect(tools.length + pages.length, '바로가기를 하나도 못 찾았다 — 이 검사가 헛돌고 있다')
       .toBeGreaterThanOrEqual(4)
-    const table = code.slice(code.indexOf('const COVERED_BY_SHEET'), code.indexOf("'/seller/settlements': 'withdraw',") + 40)
+    const table = code.slice(code.indexOf('const COVERED_BY_SHEET'), code.indexOf("'/seller/settlements': 'payout',") + 40)
     const covered = new Set([...table.matchAll(/:\s*'([a-z]+)',/g)].map((m) => m[1]))
     for (const t of new Set(tools)) {
       if (t === 'tools') continue   // 전체 도구 자신은 색인이지 일이 아니다

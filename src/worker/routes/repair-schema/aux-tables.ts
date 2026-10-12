@@ -344,6 +344,22 @@ export const AUX_TABLE_REPAIRS: Array<{ name: string; sql: string }> = [
       admin_memo TEXT
     )` },
     { name: 'idx_user_withdrawals_user_status', sql: `CREATE INDEX IF NOT EXISTS idx_user_withdrawals_user_status ON user_withdrawals(user_id, status, requested_at DESC)` },
+    // 💸 2026-10-12 딜 충전 잔액 환급(약관 제12조) — `user_withdrawals` 와 따로 둔다(그 표는 amount>=10000
+    //   CHECK 가 있어 작은 환급을 못 담고, 소득 출금과 섞이면 원천징수 규칙이 샌다). SSOT worker/utils/deal-refund.ts.
+    { name: 'deal_refund_requests', sql: `CREATE TABLE IF NOT EXISTS deal_refund_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL,
+      amount INTEGER NOT NULL CHECK (amount > 0),
+      bank_name TEXT NOT NULL,
+      bank_account TEXT NOT NULL,
+      account_holder TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'requested' CHECK (status IN ('requested','paid','rejected')),
+      rejection_reason TEXT,
+      admin_memo TEXT,
+      requested_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      processed_at DATETIME
+    )` },
+    { name: 'idx_deal_refund_one_open', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_deal_refund_one_open ON deal_refund_requests(user_id) WHERE status = 'requested'` },
     // 🏦 2026-06-12 지급 센터 (P1 사용자 결정) — 입금완료 기록 + 큐레이터 딜 차감 마커 + 에이전시 지급 이력.
     // 🤝 2026-09-08 손바뀜 마감 — 이 행이 마감인지(kind) + 만들 때 주인이 누구였는지(payee_user_id).
     //   취소로 돈이 되살아나 **새 주인**에게 가는 것을 막는 게이트가 이 둘을 읽는다.
