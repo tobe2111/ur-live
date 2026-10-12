@@ -96,13 +96,37 @@ figma.com 다운로드가 막혀 원본을 못 넣는다. **원본 URL 은 2026-
 
 | 지역 | 장면 · 색 | 카피(가안) | 링크 | 그림 |
 |---|---|---|---|---|
-| 서울 | 남산타워·한옥·벚꽃 떠 있는 섬 · 보라 노을 | 서울에서 바로 쓰는 / 동네 이용권 | `/region/서울` | ✅ `region-seoul-thumb` · https://www.figma.com/api/mcp/asset/0d2968c3-6fee-49bf-a9fd-00e9ab230cc5.png |
-| 부산 | 광안대교·해변 파라솔·갈매기·어묵 · 청록 바다 | 바다 보고 한 끼, / 부산 동네딜 | `/region/부산` | ⏳ Figma AI 크레딧 소진 |
+| 서울 | 롯데월드타워·남산타워·한강 다리 · 보라→주황 노을 | 서울에서 바로 쓰는 / 동네 이용권 | `/region/서울` | ❌ 1차 폐기(지어낸 장면) — 레퍼런스 기준 재생성 대기 |
+| 부산 | 광안대교(실제 모양)·마린시티 · 분홍 노을 | 바다 보고 한 끼, / 부산 동네딜 | `/region/부산` | ⏳ Figma AI 크레딧 소진 |
 | 강원 | 소나무 산·등대·강릉 커피 · 숲 초록 | 강릉 커피 한 잔도 / 이용권으로 | `/region/강원` | ⏳ |
 | 제주 | 돌하르방·한라산·돌담·귤 · 귤빛 | 제주 여행, / 동네 가격으로 | `/region/제주` | ⏳ |
 | 경주 | 첨성대·고분·정자·단풍 · 가을 금빛 | 천년 고도 경주의 / 오늘 혜택 | `/region/경북` | ⏳ |
 
-프롬프트 골격(같은 세계관 유지 — 다섯 다 이 틀): *Wide 2:1 premium 3D render … Soft glossy clay-plastic miniature diorama …
+
+### 🔁 지역 그림 기준 — "지어내지 말 것" (2026-10-12 대표)
+
+대표: ***"지역적으로 현실적으로 비슷해야해. 이상하게 지어내면 안돼. 첫번째 사진은 서울, 두번째 사진은 부산."***
+(레퍼런스 사진 2장 — 세션에 파일로 안 남아 설명으로 기록한다)
+
+- **서울 레퍼런스**: 노을(보라→주황) 속 야경. 화면 중앙에 **롯데월드타워**(가늘게 솟은 첨탑형 초고층, 꼭대기 격자 조명),
+  그 뒤 **남산 위 N서울타워**, 사이로 **한강과 다리들**(조명 띠), 앞은 빽빽한 아파트·빌딩 불빛, 뒤로 산 능선.
+- **부산 레퍼런스**: 분홍 노을 바다. **광안대교** — 주탑 두 개(문 모양 사각 아치)·**복층 트러스 상판**·현수 케이블,
+  오른쪽에 **마린시티/해운대 초고층 타워들**, 바다 위 작은 유람선.
+
+⇒ 규칙: **실제 랜드마크의 실제 모양·실제 배치**를 그린다. 떠 있는 섬·한옥+타워 조합 같은 **상징 짜깁기 금지.**
+3D 질감(클레이/미니어처)은 유지하되 *모양과 위치 관계*는 사진처럼. 도시마다 사진을 받아 그 구도를 따른다.
+❌ 1차 서울 그림(`home-banner-region-seoul-thumb.jpg` — 떠 있는 섬에 타워·한옥·벚꽃)은 **폐기** — 지어낸 장면이다.
+
+프롬프트 v2(크레딧 회복 후 생성):
+- 서울: *3D clay-render miniature of the real Seoul skyline at dusk, faithful to reality: Lotte World Tower (slender tapering
+  supertall with lattice crown) on the right half, Namsan hill with N Seoul Tower behind it, the Han River with lit bridges
+  crossing, dense apartment blocks with warm window lights, mountain ridge silhouette; violet-to-orange sunset sky; left half calm sky.*
+- 부산: *3D clay-render miniature of the real Gwangan Bridge, Busan, faithful to reality: two rectangular arch-shaped main towers,
+  double-deck steel truss roadway, suspension cables, Marine City supertall towers on the right shore, calm sea with a small tour
+  boat; pink sunset sky; bridge spans the right half, left half calm sky and sea.*
+- 강원·제주·경주: 대표에게 레퍼런스 사진을 받아 같은 방식으로.
+
+프롬프트 골격(1차 — 폐기, 기록용)(같은 세계관 유지 — 다섯 다 이 틀): *Wide 2:1 premium 3D render … Soft glossy clay-plastic miniature diorama …
 a cute miniature <지역> diorama on a small round floating island: <랜드마크들> … and a tiny 3D coupon ticket floating with a sparkle.
 Color world: <색> … the diorama sits in the RIGHT HALF … ENTIRE LEFT HALF is empty … No text, no letters, no signs, no logos.*
 (모델 `gpt-image-2.5-sunburst`, 1536×768 요청 → 1536×864 수신 → 2:1 로 위아래 크롭.)
