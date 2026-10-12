@@ -198,9 +198,11 @@
 - tsc 0 · 전체 유닛 943파일 12,183건 중 실패 3 → 원인 수리 후 재실행 통과(아이콘 목록 1 · 앵커 1).
 - 주입 14건 전부 빨간불 · 낡은 앵커 48건 정리(지운 화면의 주입은 삭제, 살아 있는 불변식은 새 매니페스트로 재조준).
 
+### 머지
+- PR #1735 머지 `90290546a`(2026-10-12 20:29 KST, 대표 "초록뜨면 머지해" → 자동 머지). Notion 로그 기록함.
+
 ### 다음 세션의 첫 액션
-1. PR CI 확인 → 대표 머지 지시가 있으면 머지.
-2. 배포 뒤 E4: ⓐ `urdeal.kr/seller` → 비로그인이면 카카오 로그인 → 마이 ⓑ `/seller/orders?status=PAID` → 마이 시트(필터 유지)
+1. 배포 뒤 E4: ⓐ `urdeal.kr/seller` → 비로그인이면 카카오 로그인 → 마이 ⓑ `/seller/orders?status=PAID` → 마이 시트(필터 유지)
    ⓒ `/seller/login` → `/login?returnUrl=%2Fuser%2Fprofile` ⓓ 하단 탭 5개 그대로.
 
 ### 이번에 틀렸던 판단
@@ -208,6 +210,18 @@
   (`src/pages/...` 경로 문자열 안의 `pages` 에 걸렸다). 되돌려 손으로 다시 했다. ⇒ 이름 매칭으로 시험을 지울 때는 **경로 문자 경계**와
   **블록 지역 변수**를 빼고, diff 를 꼭 읽을 것.
 - 가이드 시드를 고치며 템플릿 문자열 끝 백틱을 두 번 잘랐다(tsc 가 잡았다).
+- **지운 화면의 시험을 정리하면서 주입이 지키던 단언까지 함께 지웠다** → CI 에서 주입 5건이 "살아남음"(헛도는 가드)으로 떴다.
+  주입은 남았는데 그걸 잡던 단언이 사라진 것. ⇒ 시험을 지울 때는 `scripts/mutations/*` 에서 그 파일을 가리키는 주입을
+  먼저 찾아, 불변식이 살아 있으면 단언을 **옮기고**, 화면과 함께 죽었으면 주입도 지울 것. 아이콘 래칫 165 → 158 도 그때 조였다.
+- 로컬 주입 실행을 멈추려고 `pkill -f check-guard-mutations` 를 썼더니 **내 셸 자신**이 그 문자열에 걸려 죽었다(exit 144).
+  ⇒ `pgrep` 으로 pid 를 보고 `kill <pid>`, 그다음 `git checkout -- src/ scripts/ .gitignore public/` 로 주입분 복원.
+
+### E4 (배포 뒤 라이브, 2026-10-12 20:5x KST · 비로그인 아이폰)
+- `/seller` · `/seller/dashboard` · `/seller/login` → `/login?returnUrl=/user/profile` ✅
+- `/seller/orders?status=PAID` → `/login?returnUrl=/user/profile?tool=/seller/orders` — **`?status=PAID` 가 빠진다.**
+  원인: `RouteGuards.tsx` 의 셀러 보호 라우트가 `/seller/login` 으로 보낼 때 `state.from` 에 `location.pathname` 만 싣는다(검색어 없음).
+  로그인돼 있고 좌석이 살아 있으면 `SellerLayout` 이 쿼리를 그대로 잇는다 — 비로그인·좌석 만료 때만 필터가 빠진다(시트는 주문으로 열린다).
+  → 대표 승인("허가 — 그 두 줄만") 받아 같은 PR(#1738)에서 수리 + 시험 + 주입. 배포 뒤 같은 주소로 다시 재면 `tool=/seller/orders?status=PAID` 여야 한다.
 
 ### 남은 것
 - `/api/seller/surface` 는 클라 소비자가 0 이 됐다(서버 엔드포인트만 남음 — 해는 없다, 정리는 별건).

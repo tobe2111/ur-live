@@ -164,12 +164,12 @@ export function ProtectedRoute({
       //   연결 셀러 토큰 재발급을 1회 시도(연결 셀러가 아니면 기존과 동일하게 로그인으로).
       if (isUserLoggedIn()) {
         return (
-          <RoleTokenSelfHeal role="seller" fallback={<Navigate to="/seller/login" state={{ from: location.pathname }} replace />}>
+          <RoleTokenSelfHeal role="seller" fallback={<Navigate to="/seller/login" state={{ from: location.pathname + location.search }} replace />}>
             {children}
           </RoleTokenSelfHeal>
         )
       }
-      return <Navigate to="/seller/login" state={{ from: location.pathname }} replace />
+      return <Navigate to="/seller/login" state={{ from: location.pathname + location.search }} replace />
     }
     return <>{children}</>
   }

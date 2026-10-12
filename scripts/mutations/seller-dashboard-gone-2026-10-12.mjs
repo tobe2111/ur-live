@@ -13,6 +13,14 @@ const ROUTES = 'src/routes/seller.routes.tsx'
 
 export default [
   {
+    name: '[대시보드삭제] 로그아웃 깊은 링크가 필터를 잃는다 (보호 라우트가 경로만 싣는다)',
+    file: 'src/components/auth/RouteGuards.tsx',
+    find: '      return <Navigate to="/seller/login" state={{ from: location.pathname + location.search }} replace />',
+    replace: '      return <Navigate to="/seller/login" state={{ from: location.pathname }} replace />',
+    test: GONE,
+    why: '2026-10-12 라이브 실측 — /seller/orders?status=PAID 로 온 비로그인 사장님이 로그인 뒤 필터 없는 주문 시트를 받았다. 에러가 안 난다.',
+  },
+  {
     name: '[대시보드삭제] 틀이 주소창으로 온 사람을 안 보낸다 (틀 없는 화면이 덩그러니 뜬다)',
     file: LAYOUT,
     find: '    if (to) return <Navigate to={to} replace />\n',
@@ -95,7 +103,7 @@ export default [
   {
     name: '[대시보드삭제] /seller/login 이 돌아올 곳을 버린다 (로그인 뒤 홈으로 떨어진다)',
     file: ROUTES,
-    find: "  const back = (from && sellerEntryRedirect(from, '')) || MY_PATH",
+    find: "  const back = (from && sellerEntryRedirect(q < 0 ? from : from.slice(0, q), q < 0 ? '' : from.slice(q))) || MY_PATH",
     replace: '  const back = MY_PATH',
     test: GONE,
     why: '보호 라우트가 넘긴 원래 화면을 잃으면 사장님이 같은 링크를 다시 찾아야 한다.',
