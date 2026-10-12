@@ -204,7 +204,6 @@ try {
   await sellerCtx.route('**/api/seller/**', (route) => {
     const u = route.request().url()
     let body = { success: true, data: [] }
-    if (u.includes('/surface')) body = { success: true, wholesale_only: false }
     if (u.includes('/returns')) body = { success: true, data: [] }
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) })
   })

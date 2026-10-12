@@ -239,16 +239,5 @@ describe('④ 승인 전엔 파트너 찾기 메뉴를 감춘다', () => {
     expect(writers).toEqual(['src/pages/user-profile/seller-section/store-status-note.ts'])
   })
 
-  it('surface 응답이 배너가 쓸 셋을 내려준다 — 등록증 URL 은 빼고', () => {
-    const s = src('src/features/auth/api/seller.routes.ts')
-    const fn = s.slice(s.indexOf("sellerRoutes.get('/surface'"))
-    const body = fn.slice(0, fn.indexOf('sellerRoutes.post('))
-    expect(body).toContain('reject_reason')
-    expect(body).toMatch(/has_business_cert:\s*!!/)
-    // ⚠️ 판정 범위를 **응답 객체**로 좁힌다. 파일 전체로 재면 `.first<{ … }>()` 의 타입
-    //    주석에도 같은 이름이 있어 **늘 빨간불**이 된다(첫 판이 실제로 그랬다).
-    const resp = body.slice(body.lastIndexOf('return c.json({'), body.indexOf('} catch'))
-    expect(resp, '남의 등록증 주소를 응답에 실으면 안 된다 — 도착 여부(boolean)면 충분하다')
-      .not.toMatch(/^\s*business_registration_image_url\s*:/m)
-  })
+  // 🪦 2026-10-12: `GET /api/seller/surface` 와 그걸 읽던 승인 배너를 지웠다(대시보드 틀 삭제) — 시험도 뺐다.
 })

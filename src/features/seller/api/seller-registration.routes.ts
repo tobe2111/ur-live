@@ -1,13 +1,15 @@
 /**
- * 🛡️ 2026-04-28 TD-006 (split): Seller Registration & Switch (5 endpoints)
+ * 🛡️ 2026-04-28 TD-006 (split): Seller Registration & Switch (4 endpoints)
  *
  * 원본 위치: seller-management.routes.ts (178-617). cohesive auth/registration 블록.
  *
  * - POST /register             — 이메일·비번 셀러 가입
- * - POST /register-from-user   — 카카오 유저 → 셀러 변환 (임시 비번)
  * - GET  /my-seller-status     — 현재 사용자가 셀러인지 + 정보
  * - POST /switch-to-seller     — 동일 user 가 셀러 컨텍스트로 전환
  * - POST /switch-to-user       — 셀러 → 일반 유저로 전환
+ *
+ * 🪦 2026-10-12: POST /register-from-user 삭제 — 그 문을 부르던 가입 화면(/seller/register/supplier)이
+ *   같은 날 지워졌고 가입 문은 /store/new 하나다. 되살리려면 git revert.
  *
  * 마운트: app.route('/api/seller', sellerRegistrationRoutes) — 다른 /api/seller
  *   라우터 (kakao-link, alimtalk-mgmt, management) 와 path 겹침 0.
@@ -23,9 +25,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import { swallow } from '@/worker/utils/swallow'
 import { startDashboardSession } from '@/worker/utils/dashboard-session'
 import { getSellerIdFromToken, type SellerJWTPayload } from '@/lib/seller-shared'
-import { copyCuratorProfileToSeller, stampSignupStoreChannel, stampSignupStorePlace } from './seller-signup-meta'
 import { BIZ_CERT_PATH } from '../../../worker/utils/store-ownership-claims'
-import { ensureStoreCode } from '../../../worker/utils/redemption-settings'
 // 🔁 2026-09-16 (파일 분해): 상태 조회·세션 전환 3개는 별 파일로. 경로·순서 불변.
 import { mountSellerSessionRoutes } from './seller-registration/session-routes'
 
@@ -332,235 +332,6 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
       success: false,
       error: message
     }, 500);
-  }
-});
-
-/**
- * POST /api/seller/register-from-user
- * 카카오 유저가 셀러 전환 신청 (같은 계정으로)
- * - 세션 쿠키로 인증된 유저만 가능
- * - linked_user_id로 users 테이블과 연결
- */
-sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller_register_from_user', max: 5, windowSec: 3600 }), async (c) => {
-  try {
-    const db = c.env.DB;
-    const jwtSecret = c.env.JWT_SECRET;
-
-    // 🛡️ 카카오 user 세션 전용 — seller/agency 세션으로 잘못 전환 방지
-    const { parseSessionCookie } = await import('../../../worker/utils/session');
-    const cookieHeader = c.req.header('Cookie');
-    const sessionUser = await parseSessionCookie(cookieHeader, jwtSecret, ['user']);
-    if (!sessionUser) {
-      return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
-    }
-
-    const userId = sessionUser.userId;
-
-    await ensureSellerColumns(db);
-
-    // 이미 연결된 셀러 계정이 있는지 확인
-    const existing = await db.prepare('SELECT id, status FROM sellers WHERE linked_user_id = ?').bind(userId).first<Record<string, any>>();
-    if (existing) {
-      return c.json({
-        success: false,
-        error: existing.status === 'pending' ? '이미 셀러 전환 신청 중입니다. 관리자 승인을 기다려주세요.' : '이미 셀러 계정이 존재합니다.',
-        seller_id: existing.id,
-        status: existing.status,
-      }, 409);
-    }
-
-    const body = await c.req.json<{
-      business_name: string;
-      business_number: string;
-      phone: string;
-      seller_type: 'influencer' | 'store_owner' | 'both';
-      youtube_email?: string;
-      description?: string;
-      // 🛡️ 2026-05-21 Phase D-6: 인플루언서 입점 유치 — 사장님 가입 시 인플루언서 추천코드 입력.
-      //   🌇 2026-09-05 에이전시 일몰 — `agency_intro_code` 삭제(발급 주체·대시보드가 없어졌다).
-      influencer_intro_code?: string;
-      // 📜 2026-07-05: 판매자 이용약관 v1.0 동의 (가입 화면 필수 체크)
-      terms_agreed_version?: string;
-      // 🏪 2026-09-21 (대표 확정 "안 B: 가게부터") — 가입 화면이 카카오맵에서 고른 가게를
-      //   **통째로** 보낸다. 종전엔 주소가 `description` 안 `[주소: …]` 텍스트로만 왔고
-      //   좌표·place_id 는 아예 오지 않아, 가입 문으로 들어온 매장이 지도에 안 떴다.
-      //   전부 **선택**이다 — 지도에 없는 가게(신규 개업·무점포)는 종전처럼 손으로 적는다.
-      address?: string;
-      store_category?: string;
-      store_phone?: string;
-      kakao_place_id?: string;
-      kakao_place_url?: string;
-      kakao_category?: string;
-      lat?: string;
-      lng?: string;
-    }>();
-
-    const { business_name, business_number, phone, seller_type, youtube_email, description, influencer_intro_code } = body;
-
-    if (!business_name || !business_number || !phone) {
-      return c.json({ success: false, error: '사업자명, 사업자번호, 연락처는 필수입니다' }, 400);
-    }
-
-    // 📜 2026-07-05 판매자 이용약관 v1.0: 동의 없이는 판매 신청 불가 (동의 기록은 INSERT 후).
-    const { isValidTermsVersion, recordTermsConsent } = await import('../../../worker/utils/terms-consent');
-    if (!isValidTermsVersion(body.terms_agreed_version)) {
-      return c.json({ success: false, error: '판매자 이용약관 동의가 필요합니다. 화면을 새로고침한 뒤 다시 시도해주세요.' }, 400);
-    }
-
-    const businessNumberRegex = /^\d{3}-\d{2}-\d{5}$/;
-    if (!businessNumberRegex.test(business_number)) {
-      return c.json({ success: false, error: '사업자번호 형식이 올바르지 않습니다 (XXX-XX-XXXXX)' }, 400);
-    }
-
-    const validSellerTypes = ['influencer', 'store_owner', 'both'] as const;
-    const resolvedSellerType = seller_type && validSellerTypes.includes(seller_type) ? seller_type : 'influencer';
-
-    // 유저 정보 가져오기
-    const user = await db.prepare('SELECT name, email FROM users WHERE id = ?').bind(userId).first<Record<string, any>>();
-    const userName = user?.name || sessionUser.name || '셀러';
-    const userEmail = user?.email || sessionUser.email || '';
-    // 🏁 2026-06-17 (#2 정체성 연속성): 유저가 사업자 유저가 돼도 /u/{handle} 유어샵 정체성(배너/소개/
-    //   사진/SNS)이 유지되도록, 큐레이터 프로필을 신규 셀러로 1회 복사할 준비. 컬럼 없는 env 대비 별도 try.
-    let curatorProfile: Record<string, any> | null = null;
-    try {
-      curatorProfile = await db.prepare(
-        'SELECT profile_image, bio, banner_url, instagram_url, youtube_url FROM users WHERE id = ?'
-      ).bind(userId).first<Record<string, any>>();
-    } catch { /* 프로필 컬럼 없는 env — 복사 생략 */ }
-
-    // 유저명 기반 username 생성 (중복 방지)
-    let username = `user_${userId}`;
-    const existingUsername = await db.prepare('SELECT id FROM sellers WHERE username = ?').bind(username).first();
-    if (existingUsername) {
-      username = `user_${userId}_${Date.now()}`;
-    }
-
-    // 이메일 중복 확인 — 이미 다른 셀러가 같은 이메일이면 suffix 추가
-    let sellerEmail = userEmail;
-    const existingEmail = await db.prepare('SELECT id FROM sellers WHERE email = ?').bind(sellerEmail).first();
-    if (existingEmail) {
-      sellerEmail = `seller_${userId}@ur-team.com`;
-    }
-
-    // 임시 비밀번호 생성 (유저는 카카오 로그인으로 셀러 전환하므로 직접 사용하지 않음)
-    const { hashPassword } = await import('../../../lib/password');
-    const tempPassword = crypto.getRandomValues(new Uint8Array(16));
-    const tempPasswordStr = Array.from(tempPassword).map(b => b.toString(16).padStart(2, '0')).join('');
-    const passwordHash = await hashPassword(tempPasswordStr);
-
-    // 🌇 2026-09-05 에이전시 일몰 — 이 문의 추천코드는 **영입자 코드 하나뿐**이다.
-    //   옛 코드는 `agency_intro_code` 로 `agencies` 를 조회해 `introduced_by_agency_id` 를 채우고
-    //   "한 가게 = 1개 lock-in" 이라며 둘 중 하나만 고르게 했는데, 에이전시 쪽 발급 주체(대시보드·
-    //   초대 링크)가 전부 삭제돼 **고를 수 있는 코드가 하나로 줄었다** → 상호배제 자체가 사라진다.
-    const hasInfluencerCode = !!(influencer_intro_code && influencer_intro_code.trim())
-
-    // 🛡️ Phase D-6: 인플루언서 입점 유치 코드 매칭 (영구 commission lock-in).
-    let introducedInfluencerId: number | null = null;
-    if (resolvedSellerType === 'store_owner' && hasInfluencerCode) {
-      const code = influencer_intro_code!.trim().toUpperCase().slice(0, 12);
-      // 🛡️ 2026-05-27 (신모델 audit): sellers.status SSOT 는 'approved' (대부분 코드).
-      //   기존: 'active' 만 매칭 → 대부분 셀러 approved → 매칭 0 → 인플루언서 영입 보너스 누락.
-      //   레거시 호환: 둘 다 검사 (lib/api.ts kakao refresh 패턴과 일관).
-      const infRow = await db.prepare(
-        `SELECT id FROM sellers WHERE UPPER(intro_code) = ? AND seller_type IN ('influencer','both') AND status IN ('active','approved') LIMIT 1`
-      ).bind(code).first<{ id: number }>().catch(() => null);
-      if (infRow?.id) introducedInfluencerId = infRow.id;
-    }
-
-    // 본인 추천 코드 자동 생성 (인플루언서/both 만)
-    const ownIntroCode = (resolvedSellerType === 'influencer' || resolvedSellerType === 'both')
-      ? `INF-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
-      : null;
-
-    let result;
-    try {
-      result = await db.prepare(`
-        INSERT INTO sellers (
-          username, email, password_hash, name, business_name, business_number,
-          phone, description, youtube_email, seller_type, linked_user_id,
-          introduced_by_influencer_id, introduced_at,
-          influencer_intro_code, intro_code,
-          status, commission_rate, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ${DEFAULT_COMMISSION_RATE}, datetime('now'), datetime('now'))
-      `).bind(
-        username, sellerEmail, passwordHash, userName, business_name, business_number,
-        phone, description || null, youtube_email || null, resolvedSellerType, userId,
-        introducedInfluencerId,
-        introducedInfluencerId ? new Date().toISOString() : null,
-        introducedInfluencerId ? (influencer_intro_code || '').trim().toUpperCase().slice(0, 12) : null,
-        ownIntroCode
-      ).run();
-    } catch (insertErr: any) {
-      if (insertErr?.message?.includes('UNIQUE') || insertErr?.message?.includes('unique')) {
-        return c.json({ success: false, error: '이미 셀러 전환 신청 중입니다' }, 409);
-      }
-      throw insertErr;
-    }
-
-    // 🌇 2026-09-05 에이전시 일몰 — 입점 통보를 받던 `/agency/introduced-stores` 대시보드가 없어졌다.
-
-    if (!result.success) {
-      throw new Error('Failed to create seller account');
-    }
-
-    // 🏁 2026-06-17 (#2 정체성 연속성): 큐레이터 프로필 → 신규 셀러 1회 복사(빈 값 skip). best-effort —
-    //   컬럼 없는 env / 실패해도 가입은 성공. 승인되면 /u/{handle} 가 빈 셀러프로필 대신 큐레이터 브랜딩 유지.
-    const newSellerId = result?.meta?.last_row_id;
-
-    // 📜 판매자 이용약관 동의 기록 (fail-soft — 검증은 상단에서 이미 통과)
-    recordTermsConsent(db, {
-      subjectType: 'seller',
-      subjectId: newSellerId ?? null,
-      userId,
-      slug: 'seller',
-      version: body.terms_agreed_version as string,
-      ip: c.req.header('CF-Connecting-IP') || null,
-    }).catch(() => null);
-    await copyCuratorProfileToSeller(db, newSellerId, curatorProfile);
-
-    // 🪪 2026-10-10 (전수조사): 가입 폼이 사업자등록증을 **올리게 해 놓고 서버가 버리고 있었다** —
-    //   `/register` 는 저장하는데 이 문만 `business_cert_url` 을 읽지 않아, 사진을 올린 사장님이
-    //   어드민 승인 화면에서 "서류 없음" 으로 보였다(본인은 냈다고 알고 있다). 같은 경로 검증으로 저장.
-    const fromUserCert = String((body as { business_cert_url?: unknown }).business_cert_url || '').trim()
-    if (newSellerId && BIZ_CERT_PATH.test(fromUserCert)) {
-      await db.prepare(
-        `UPDATE sellers SET business_registration_image_url = ?, business_registration_status = 'pending'
-          WHERE id = ? AND COALESCE(business_registration_image_url, '') = ''`,
-      ).bind(fromUserCert, Number(newSellerId)).run().catch(swallow('seller:register-from-user:cert'));
-    }
-    await ensureStoreCode(db, Number(newSellerId)); // 🧾 손님 셀프 사용 확인코드 — 매장이 생기는 순간
-
-    // 🏪 2026-09-04 (대표 "가입할 때 선택을 하잖아 — 그때 정해지면 되는거 아니야?"):
-    //   매장 채널을 **가입 시점에 확정**한다. 이 폼엔 `/store/new` 의 "누가 운영하나요?" 질문이
-    //   없어 그동안 미지정으로 남았고, 미지정은 중개(5%)로 떨어져 **직접 입점 사장님이 영원히 5%**
-    //   였다. 🌇 2026-09-05 에이전시 일몰 후 이 문은 **언제나 직접**이다 — 카카오 user 세션 전용이라
-    //   로그인한 본인이 자기 가게를 올리는 자리다(중개 매장은 `/store/new` 에서 채널을 골라 만든다).
-    await stampSignupStoreChannel(db, newSellerId);
-
-    // 🏪 2026-09-21 (안 B): 고른 가게의 주소·좌표·업종·place_id 를 **매장 등록 문과 같은 키**로.
-    //   fail-soft — 메타가 없어도 매장은 매장이다(프로필 수정에서 채울 수 있다).
-    await stampSignupStorePlace(db, newSellerId, {
-      address: body.address,
-      store_phone: body.store_phone,
-      store_category: body.store_category,
-      kakao_place_id: body.kakao_place_id,
-      kakao_place_url: body.kakao_place_url,
-      kakao_category: body.kakao_category,
-      lat: body.lat,
-      lng: body.lng,
-    });
-
-    const { createDashboardNotification: notify } = await import('../../notifications/api/dashboard-notifications.routes');
-    // 🛡️ 2026-06-12 (감사 1단계): deep-link 교정 — /admin/sellers 는 클라 라우트에 없음 → 승인 페이지로.
-    notify(db, 'admin', null, 'seller_registered', '유저→셀러 전환 신청', `${userName} (유저 #${userId})`, '/admin/seller-approval').catch(swallow('seller:api:seller-management'));
-
-    return c.json({
-      success: true,
-      message: '셀러 전환 신청이 완료되었습니다. 관리자 승인 후 이용 가능합니다.',
-    }, 201);
-  } catch (error) {
-    console.error('Seller register-from-user error:', error);
-    return c.json({ success: false, error: '셀러 전환 신청 중 오류가 발생했습니다' }, 500);
   }
 });
 
