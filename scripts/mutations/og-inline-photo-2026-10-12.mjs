@@ -13,7 +13,10 @@ export default [
   {
     name: '🖼️OG cf.image 를 떼어 다시 /cdn-cgi 만 쓴다 (워커 안에서는 안 먹는다)',
     file: F,
-    find: "      cf: { image: { width, height, fit: 'cover', gravity: 'auto', quality: 70, format: 'jpeg' } },\n",
+    // 🔁 2026-10-12 재조준: `fit`/`gravity` 가 `cfFit(fitOpts)` 로 빠졌다(유달이를 `contain` 으로
+    //   받으려고 — 같은 날 유어샵 카드 작업). 지키려던 결함은 그대로 — cf.image 줄을 떼면
+    //   워커 안에서 원본이 와서 상한에 걸리고 사진이 0장으로 돌아간다.
+    find: "      cf: { image: { width, height, ...cfFit(fitOpts), quality: 70, format: 'jpeg' } },\n",
     replace: '',
     test: T,
     why: '`/cdn-cgi/image/…` 는 들어오는 요청에 대한 엣지 기능이라 워커 서브리퀘스트는 그 파이프라인을 안 탄다. 떼면 원본이 와서 상한에 걸리고 사진이 0장으로 돌아간다.',
