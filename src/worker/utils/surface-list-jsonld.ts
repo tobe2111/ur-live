@@ -31,6 +31,9 @@
 import { canonicalDetailPath } from '../../shared/product-flow'
 import { curatorHomePins } from '../../shared/curator-pin-order'
 import { CONSUMER_SURFACE_SEO, CONSUMER_SITE_NAME } from '../../shared/seo/consumer-surfaces'
+import { CONCEPT_FAQ } from '../../shared/seo/concept-content'
+import { addressInRegion, parseRegionPath, type RegionRef } from '../../shared/constants/region-slugs'
+import { REGION_PATH_RE } from '../../shared/seo/region-seed'
 
 /**
  * 목록 항목 상한. ItemList 는 **요약**이고 전량 덤프가 아니다(구글 캐러셀도 3~10개를 쓴다).
@@ -166,6 +169,25 @@ function breadcrumbNode(trail: Array<{ name: string; url: string }>): Record<str
 }
 
 /**
+ * 경로에서 지역을 읽는다. `/region/서울/중구` → `{ sido: '서울', sigungu: '중구' }`.
+ *
+ * ⚠️ 워커가 받는 `pathname` 은 한글이 **퍼센트 인코딩**돼 올 수 있어 세그먼트를 디코딩한다
+ *    (`decodeURIComponent` 는 깨진 입력에 throw 하므로 감싼다 — 지역 페이지 하나 때문에
+ *    전 표면의 JSON-LD 가 날아가면 안 된다).
+ * ⚠️ 실재하지 않는 지역명은 `parseRegionPath` 가 `null` 을 돌려준다 → 항목 0 → 빵부스러기만.
+ *    지어낸 세그먼트(도어웨이)에 ItemList 를 달아 주지 않는다.
+ */
+function regionRefOf(path: string): RegionRef | null {
+  if (!REGION_PATH_RE.test(path)) return null
+  const seg = path.replace(/\/+$/, '').split('/')
+  try {
+    return parseRegionPath(decodeURIComponent(seg[2] || ''), seg[3] ? decodeURIComponent(seg[3]) : undefined)
+  } catch {
+    return null
+  }
+}
+
+/**
  * 정적/목록 표면의 JSON-LD. 만들 게 없으면 `''`(호출부는 미주입 — fail-soft).
  *
  * @param ssrPayload 그 표면이 **이미 받아 둔** SSR 시드(없으면 빵부스러기만). 추가 요청 0 — 머리말 규율 1.
@@ -194,9 +216,19 @@ export function buildSurfaceListJsonLd(
   //      (`DETAIL`·`BLOG`·`SECTIONS`)는 `listItem` 이 행마다 걸러서 **자연히 0건**이 된다.
   //      ⇒ 규칙을 **한 줄**로 모았다. `/vouchers`(교환권 목록)가 여기 없는 이유는 그 상세
   //      (`/vouchers/:id`)가 2026-07-07 결정으로 noindex 라서다(머리말 규율 2).
+  //   🗺️ 2026-10-12 추가: **지역 착지 페이지**(`/region/서울`·`/region/서울/중구`). 그 44개가
+  //      "동네 맛집 할인권" 질의의 착지점인데 라이브에서 항목 **0건**이었다. 항목은 홈과 **같은
+  //      시드**(MAIN — 같은 캐시 키라 추가 요청 0)에서 뽑고, 지역 필터는 화면과 **같은 SSOT**
+  //      (`addressInRegion`)로 건다. 손으로 주소를 파싱하면 화면과 갈려 다른 가게가 섞인다.
+  const regionRef = regionRefOf(path)
   const ITEM_PATHS = new Set(['/', '/browse'])
-  const items = ITEM_PATHS.has(path)
+  const items = ITEM_PATHS.has(path) || regionRef
     ? seedItems(ssrPayload)
+        .filter(p => !regionRef || addressInRegion(
+          (p as { restaurant_address?: string | null; business_address?: string | null }).restaurant_address
+          || (p as { business_address?: string | null }).business_address,
+          regionRef,
+        ))
         .slice(0, SURFACE_LIST_MAX * 2)
         .map((p, i) => listItem(p, i + 1, origin))
         .filter((x): x is Record<string, unknown> => x !== null)
@@ -204,6 +236,27 @@ export function buildSurfaceListJsonLd(
         // 교환권을 걸러내 position 에 구멍이 생기므로 다시 매긴다(1..N 연속이어야 한다).
         .map((x, i) => ({ ...x, position: i + 1 }))
     : []
+
+  // 🧭 2026-10-12 (대표 *"AI 검색에서도 노출이 될 수 있게"*): `/faq` 에 **`FAQPage`** 를 더한다.
+  //   **왜 이 자리인가**: 답변 14개는 `shared/seo/concept-content.ts` 에 이미 있고 화면이 그걸
+  //   그린다. 그런데 `FAQPage.tsx` 가 만드는 JSON-LD 는 **react-helmet 경유**라, JS 를 안 돌리는
+  //   크롤러는 라이브에서 **0건**을 받았다(2026-10-12 Googlebot 실측). 언어모델이 그대로 인용할
+  //   수 있는 형태는 Q&A 인데 그게 서버 HTML 에 없었다.
+  //   🔑 **화면과 같은 배열을 쓴다** — 손으로 베끼면 내용-스키마 불일치가 되고 구글은 그걸 정책
+  //      위반으로 본다. 둘이 갈릴 수 없게 SSOT 한 곳에서만 읽는다.
+  //   ⚠️ 허용목록 **한 줄**이다(`/faq` 하나). 다른 표면에 FAQPage 를 내면 그 페이지에 없는 Q&A 를
+  //      선언하는 셈이라 역효과다.
+  if (path === '/faq') {
+    nodes.push({
+      '@type': 'FAQPage',
+      '@id': `${meta.canonical}#faq`,
+      mainEntity: CONCEPT_FAQ.map(f => ({
+        '@type': 'Question',
+        name: f.question,
+        acceptedAnswer: { '@type': 'Answer', text: f.answer },
+      })),
+    })
+  }
 
   nodes.push({
     '@type': items.length ? 'CollectionPage' : 'WebPage',
