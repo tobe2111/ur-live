@@ -12,6 +12,11 @@ import { ensureKakaoMaps } from '@/lib/kakao-sdk'
 import { attachKakaoTouchShim } from '@/lib/kakao-touch-shim'
 import { parseUTCDate } from '@/utils/date'
 
+/** 지도 아래쪽을 덮는 이용권 카드 줄 높이(카드 76 + 바닥 여백 12 + 숨 12) — 처음 맞춤(setBounds)의 아래 여백과 같은 값. */
+export const FOCUS_BOTTOM_COVER = 100
+/** 카카오 기본 핀 그림 높이(35)의 절반 — 핀은 아래 끝이 좌표라 그림이 위로 솟는다. */
+export const PIN_HALF_HEIGHT = 17
+
 interface VoucherMapItem {
   id: number | string
   product_name: string
@@ -104,7 +109,7 @@ export default function VoucherMap<T extends VoucherMapItem>({
       if (fittedKeyRef.current !== idsKey) {
         fittedKeyRef.current = idsKey
         if (userLocation) bounds.extend(new w.kakao.maps.LatLng(userLocation.lat, userLocation.lng))
-        if (pts.length > 1 || userLocation) map.setBounds(bounds, 56, 40, 100, 40)
+        if (pts.length > 1 || userLocation) map.setBounds(bounds, 56, 40, FOCUS_BOTTOM_COVER, 40)
       }
     }).catch((err) => {
       if (import.meta.env.DEV) console.error('[VoucherMap]', err)
@@ -112,12 +117,42 @@ export default function VoucherMap<T extends VoucherMapItem>({
     return () => { cancelled = true }
   }, [vouchers, onMarkerClick, userLocation])
 
-  // 🎨 2026-06-21 (개선 #1): 하단 캐러셀에서 카드 탭 시 해당 매장으로 부드럽게 이동 (재초기화 X).
+  // 📐 2026-10-12 (대표 *"이용권 클릭하면 지도의 핀? 매장 위치가 지도 정중앙에 있지 않아"*):
+  //   지도 칸이 화면 높이(dvh)를 따라가므로 주소창이 접히고 펴질 때마다 칸 크기가 바뀐다. 카카오 지도는
+  //   칸 크기가 바뀐 걸 스스로 모르고 **옛 크기 기준으로** 가운데를 잡는다 → `relayout()` 을 불러 알린다.
+  //   보던 가운데는 그대로 둔다(크기만 바뀌었지 사람이 옮긴 게 아니다).
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => {
+      const map = mapRef.current
+      if (!map) return
+      const c = map.getCenter()
+      map.relayout()
+      map.setCenter(c)
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  // 🎨 2026-06-21 (개선 #1): 하단 캐러셀에서 카드 탭 시 해당 매장으로 이동 (재초기화 X).
+  // 📐 2026-10-12: 핀을 **보이는 칸의 한가운데**에 — 지도 아래쪽은 이용권 카드 줄이 덮고 있어서(처음 맞춤의
+  //   아래 여백 100 과 같은 값) 기하학적 가운데에 두면 핀이 아래로 치우쳐 보였다. 그리고 핀은 끝(뾰족한 아래)이
+  //   좌표라 그림은 그 위로 솟는다 → 그림 높이의 절반만큼 내려 핀 **몸통**이 가운데 오게 한다.
   useEffect(() => {
     const w = window as any
-    if (!focus || !mapRef.current || !w.kakao?.maps) return
-    mapRef.current.setCenter(new w.kakao.maps.LatLng(focus.lat, focus.lng))
-    mapRef.current.setLevel(4)
+    const map = mapRef.current
+    if (!focus || !map || !w.kakao?.maps) return
+    map.relayout()
+    map.setLevel(4)
+    const target = new w.kakao.maps.LatLng(focus.lat, focus.lng)
+    // 홈 지도(`useKakaoMap.panToProduct`)와 같은 방식 — 세계 좌표로 옮겨 계산(지도 칸 위치와 무관).
+    try {
+      const proj = map.getProjection()
+      const p = proj.pointFromCoords(target)
+      const dy = FOCUS_BOTTOM_COVER / 2 - PIN_HALF_HEIGHT
+      map.panTo(proj.coordsFromPoint(new w.kakao.maps.Point(p.x, p.y + dy)))
+    } catch { map.setCenter(target) /* 투영 실패 — 좌표 그대로 가운데(종전 동작) */ }
   }, [focus?.lat, focus?.lng])
 
   function recenter() {

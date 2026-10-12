@@ -153,6 +153,23 @@ describe('⑤ 지갑 지도는 화면을 채운다', () => {
   })
 })
 
+describe('⑤-2 이용권을 누르면 핀이 보이는 칸 한가운데', () => {
+  const map = stripComments(readFileSync('src/pages/my-vouchers/VoucherMap.tsx', 'utf8'))
+  it('카드 줄이 덮는 만큼 위로 — 핀 몸통 기준', async () => {
+    const { FOCUS_BOTTOM_COVER, PIN_HALF_HEIGHT } = await import('@/pages/my-vouchers/VoucherMap')
+    expect(FOCUS_BOTTOM_COVER / 2 - PIN_HALF_HEIGHT).toBeGreaterThan(0)   // 지도 가운데를 핀보다 아래로 → 핀이 위로
+    expect(map).toMatch(/const dy = FOCUS_BOTTOM_COVER \/ 2 - PIN_HALF_HEIGHT/)
+    expect(map).toMatch(/proj\.coordsFromPoint\(new w\.kakao\.maps\.Point\(p\.x, p\.y \+ dy\)\)/)
+    expect(map).toMatch(/map\.setBounds\(bounds, 56, 40, FOCUS_BOTTOM_COVER, 40\)/)   // 처음 맞춤과 같은 값
+  })
+  it('지도 칸 크기가 바뀌면 카카오에 알린다(dvh — 주소창 접힘)', () => {
+    expect(map).toMatch(/new ResizeObserver\(\(\) => \{[\s\S]{0,200}map\.relayout\(\)/)
+    const focusFx = map.slice(map.indexOf('if (!focus || !map'))
+    expect(focusFx.indexOf('map.relayout()')).toBeGreaterThan(0)
+    expect(focusFx.indexOf('map.relayout()')).toBeLessThan(focusFx.indexOf('getProjection()'))
+  })
+})
+
 describe('⑥ 같은 사진은 한 장', () => {
   it('이관 키는 내용 해시 — 같은 바이트면 같은 키', async () => {
     const a = new TextEncoder().encode('같은 사진 바이트').buffer

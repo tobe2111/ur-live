@@ -67,4 +67,20 @@ export default [
     test: T,
     why: '이미 생긴 중복 51건이 그대로 남는다.',
   },
+  {
+    name: '지갑지도 핀 — 카드 줄 보정 없이 기하학적 가운데',
+    file: 'src/pages/my-vouchers/VoucherMap.tsx',
+    find: 'const dy = FOCUS_BOTTOM_COVER / 2 - PIN_HALF_HEIGHT',
+    replace: 'const dy = 0',
+    test: T,
+    why: '핀이 이용권 카드 줄 쪽(아래)으로 치우쳐 보인다(대표 "정중앙에 있지 않아").',
+  },
+  {
+    name: '지갑지도 핀 — 칸 크기 변화를 카카오에 안 알린다',
+    file: 'src/pages/my-vouchers/VoucherMap.tsx',
+    find: '      const c = map.getCenter()\n      map.relayout()\n',
+    replace: '      const c = map.getCenter()\n',
+    test: T,
+    why: '주소창이 접혀 칸이 커지면 카카오가 옛 크기로 가운데를 잡아 핀이 어긋난다.',
+  },
 ]
