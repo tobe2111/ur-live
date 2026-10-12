@@ -101,4 +101,20 @@ export default [
     test: LANG,
     why: '같은 URL 을 영어판이라고 선언하는 것이다 — 구글이 보는 것은 한국어 본문이다.',
   },
+  {
+    name: '🧭 본문을 다시 한 줄로 줄인다 — thin 으로 되돌아간다',
+    file: 'src/shared/seo/surface-copy.ts',
+    find: "      '고르고, 함께 사고, 매장에서 쓰기.',",
+    replace: '',
+    test: 'src/tests/unit/thin-surface-copy-2026-10-12.test.ts',
+    why: '2026-10-12 2차에서 `/introduce` 를 66 → 205자로 늘렸다. 길이 하한이 없으면 다음 정리 PR 이 조용히 되돌린다 — 화면은 안 깨지고 라이브를 재 본 사람만 안다.',
+  },
+  {
+    name: '🧭 화면에 없는 말을 크롤러에게 준다 (클로킹)',
+    file: 'src/shared/seo/surface-copy.ts',
+    find: "      '지도와 유어샵, 유어쇼츠에서 동네 이용권을 봅니다',",
+    replace: "      '업계 1위 유어딜, 전국 10만 매장이 함께합니다',",
+    test: 'src/tests/unit/thin-surface-copy-2026-10-12.test.ts',
+    why: '크롤러에게만 주는 문구는 구글 가이드 위반이고, 사실도 아니다 — 모든 줄이 그 페이지 소스에 실재해야 한다.',
+  },
 ]

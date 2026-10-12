@@ -7,31 +7,20 @@
  * 🪦 2026-10-12 축소: 옛 가입 폼(`SellerRegisterSupplierPage`)과 `StoreSection` 을 지웠다 — 가입 문은
  *   2026-10-10 부터 `/store/new` 하나이고 그 파일들은 import 하는 곳이 0 이었다. ③④⑤⑥ 은 지킬 화면이
  *   사라져 함께 뺐다. 남은 것은 **아직 쓰이는 입력 부품**(`RegisterFields`)의 ①②와 칩 계약이다.
+ * 🪦 2026-10-12 2차: ① 검증 함수(`validateSignup`·`filledRequired`·`formatPhone`)도 지웠다 — 시험만 부르고
+ *   있었다. 사업자번호 하이픈(`formatBusinessNumber`)은 `StoreRegisterModal` 이 쓰므로 남는다.
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { stripComments } from '../helpers/source-text'
-import { validateSignup, filledRequired, formatBusinessNumber, formatPhone, type SignupForm } from '@/pages/seller-register/RegisterFields'
+import { formatBusinessNumber } from '@/pages/seller-register/RegisterFields'
 
 const FIELDS = stripComments(readFileSync('src/pages/seller-register/RegisterFields.tsx', 'utf8'))
-const ok: SignupForm = { business_name: '홍대돈까스', business_number: '123-45-67890', representative_name: '홍길동', business_start_date: '2020-01-02', phone: '010-1234-5678', store_category: '', address: '', description: '' }
 
-describe('검증 — 칸별 메시지', () => {
-  it('정상 입력은 오류 0', () => { expect(validateSignup(ok)).toEqual({}) })
-  it('필수 5칸이 비면 5칸 전부 메시지를 낸다 (첫 칸만이 아니라)', () => {
-    const e = validateSignup({ ...ok, business_name: '', business_number: '', representative_name: '', business_start_date: '', phone: '' })
-    expect(Object.keys(e).sort()).toEqual(['business_name', 'business_number', 'business_start_date', 'phone', 'representative_name'])
-  })
-  it('사업자번호 형식 · 휴대폰 형식 · 미래 개업일을 잡는다', () => {
-    expect(validateSignup({ ...ok, business_number: '123-45-678' }).business_number).toMatch(/10자리/)
-    expect(validateSignup({ ...ok, phone: '02-123-4567' }).phone).toMatch(/휴대폰/)
-    expect(validateSignup({ ...ok, business_start_date: '2999-01-01' }).business_start_date).toMatch(/오늘 이후/)
-  })
-  it('자동 하이픈', () => {
+describe('사업자번호 자동 하이픈', () => {
+  it('10자리를 000-00-00000 으로', () => {
     expect(formatBusinessNumber('1234567890')).toBe('123-45-67890')
-    expect(formatPhone('01012345678')).toBe('010-1234-5678')
-    expect(filledRequired(ok)).toBe(5)
-    expect(filledRequired({ ...ok, phone: '' })).toBe(4)
+    expect(formatBusinessNumber('123-45')).toBe('123-45')
   })
 })
 

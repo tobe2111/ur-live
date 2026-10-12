@@ -56,6 +56,37 @@ describe('① 🔴 SSOT 의 모든 줄이 그 페이지 소스에 실재한다 (
     }
   })
 
+  // 📏 2026-10-12 (대표 "응 모두 해줘"): 길이 **하한**. 처음엔 표면마다 2~3줄(66~126자)이라
+  //   "없음" 은 면했지만 여전히 thin 이었다 — `/introduce` 는 **66자**였다. 그 화면에 실제로 있는
+  //   문장만 골라 늘렸고(클로킹 가드가 그걸 강제한다) 그 성과가 되돌아가지 못하게 바닥을 박는다.
+  //   🔴 **하한을 낮추는 쪽이 회귀다** — 이 숫자를 내리는 PR 은 그 자체로 의심 대상이다.
+  it('표면마다 본문 길이 래칫 (줄이 조용히 빠지지 못하게)', () => {
+    // 🩸 첫 판은 **전역 하한 110자** 하나였고, 주입이 그게 헛돈다는 걸 잡았다 — 205자인
+    //   `/introduce` 에서 한 줄(19자)을 지워도 186자라 통과했다. 하한은 *thin* 은 막지만
+    //   *줄이 빠지는 것* 은 못 막는다. ⇒ 표면별 래칫(현재 값을 10자 단위로 내림).
+    // 🔴 이 숫자를 **내리는 PR 은 그 자체가 회귀다**. 문구를 고쳐 짧아졌으면 왜 짧아져도 되는지
+    //   커밋에 적고 함께 내릴 것. 늘리는 건 자유다.
+    const FLOOR: Record<string, number> = {
+    '/area-report': 140,
+    '/creators': 230,
+    '/creators/apply': 150,
+    '/experience': 120,
+    '/influencer': 230,
+    '/introduce': 200,
+    '/join': 120,
+    '/new-openings': 150,
+    '/partners': 230,
+    '/region': 110,
+    }
+    const below = entries
+      .map(([path, copy]) => [path, copy.lines.join(' ').length, FLOOR[path] ?? 110] as const)
+      .filter(([, n, floor]) => n < floor)
+    expect(below, `본문이 짧아졌다: ${below.map(([p, n, f]) => `${p}=${n}자(바닥 ${f})`).join(' · ')}`).toEqual([])
+    // 래칫 표가 표면 전부를 덮는가 — 새 표면이 바닥 없이 들어오는 것을 막는다.
+    const uncovered = entries.map(([p]) => p).filter(p => !(p in FLOOR))
+    expect(uncovered, `래칫 표에 바닥이 없는 표면: ${uncovered.join(' · ')}`).toEqual([])
+  })
+
   it('수치(요율)를 적지 않는다 — 어드민 조정 대상이라 적으면 낡는다', () => {
     for (const [path, copy] of entries) {
       for (const line of copy.lines) expect(line, path).not.toMatch(/\d\s*%/)

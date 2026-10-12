@@ -42,6 +42,8 @@ interface ElementLike {
   setInnerContent(content: string, options?: { html: boolean }): unknown
   setAttribute(name: string, value: string): unknown
   append(content: string, options: { html: boolean }): unknown
+  /** 🔗 `applyCanonical` 이 기존 canonical 태그를 걷어내는 데 쓴다(중복 차단). */
+  remove(): unknown
 }
 interface HandlerLike {
   element(el: ElementLike): void
@@ -76,14 +78,45 @@ export function applySurfaceMeta<T extends RewriterLike<T>>(rb: T, meta: Surface
   if (meta.noindex) {
     out = out.on('meta[name="robots"]', { element(el) { el.setAttribute('content', 'noindex, follow') } })
   }
-  const href = escapeAttr(meta.canonical)
   const ld = meta.jsonLd
-  return out.on('head', {
-    element(el) {
-      el.append(`<link rel="canonical" href="${href}">`, { html: true })
-      if (ld) el.append(`<script type="application/ld+json">${ld}</script>`, { html: true })
-    },
-  })
+  let withCanon = applyCanonical(out, meta.canonical)
+  if (ld) {
+    withCanon = withCanon.on('head', {
+      element(el) { el.append(`<script type="application/ld+json">${ld}</script>`, { html: true }) },
+    })
+  }
+  return withCanon
+}
+
+/**
+ * 🔗 canonical 을 **정확히 하나** 만든다 (2026-10-12 — 대표 "응 모두 해줘").
+ *
+ * ## 왜 필요했나 (라이브 실측, Googlebot UA)
+ * 서빙 문서의 canonical 이 **전 표면에서 2개**였다 — 홈·`/blog`·`/vouchers`·`/browse`·`/u/:handle` 전부.
+ * 검색봇은 `app.get('*')` 의 **봇 셸**을 받는데 그 템플릿이 자기 canonical(`${origin}${pathname}`)을
+ * 이미 갖고 있고, 메타 빌더들은 `<head>` 에 하나를 **더 붙이기만** 했다(`el.append`).
+ *
+ * 🩸 지금까지는 **두 값이 같아서 무해**했다. 그런데 `/pass/:id`(숙소)가 정본을 `/stays/:id` 로 옮긴
+ * 순간 `/pass/2887` 이 `[/pass/2887, /stays/2887]` 을 함께 내보냈다 — **모순되는 canonical 을 받으면
+ * 구글은 둘 다 무시하고 자기가 고른다.** 즉 정본 단일화가 **전달되지 않았다**(에러 0 · 배포 성공).
+ *
+ * ## 왜 append 를 그냥 교체로 바꾸면 안 되나
+ * 두 셸의 조건이 **다르다**: 봇 셸엔 canonical 이 **있고** `index.html` 엔 **없다**. 그래서
+ *   - 교체만 하면 → 사람이 받는 문서에 canonical 이 **안 생긴다**(실측상 `index.html` 에 그 태그가 없다)
+ *   - 붙이기만 하면 → 봇이 받는 문서에 **2개**가 된다 (지금의 결함)
+ * ⇒ **지우고 하나를 붙인다.** 두 경로에서 모두 정확히 1개가 되고, `onEndTag` 같은 조건부 장치가 필요 없다.
+ *
+ * 🔴 **`setAttribute` 로 제자리 교체하는 자리도 이 함수로 모은다** — 몰 분기(`worker/index.ts`)가 그
+ * 방식이었는데, 그건 "태그가 이미 있다" 는 전제이고 **사람 경로에선 그 전제가 거짓**이라 몰 페이지는
+ * canonical 을 아예 못 받고 있었다(같은 결함의 반대 얼굴).
+ */
+export function applyCanonical<T extends RewriterLike<T>>(rb: T, canonical: string): T {
+  const href = escapeAttr(canonical)
+  return rb
+    .on('link[rel="canonical"]', { element(el) { el.remove() } })
+    .on('head', {
+      element(el) { el.append(`<link rel="canonical" href="${href}">`, { html: true }) },
+    })
 }
 
 interface SellerPublicPayload {
@@ -130,7 +163,7 @@ export function buildSellerSurfaceMeta(
  * 🪦 개별 엔티티를 렌더하는 SSR 슬롯 — 이들만 "대상이 없으면 noindex" 대상이다.
  *   목록 슬롯(MAIN/VOUCHERS/BROWSE/BLOG)은 API 가 404 여도 페이지 자체는 유효하므로 제외.
  */
-const ENTITY_SLOTS = new Set(['DETAIL', 'PRODUCT', 'STAYDETAIL', 'SELLER', 'CURATOR', 'BLOGPOST'])
+const ENTITY_SLOTS = new Set(['DETAIL', 'PRODUCT', 'STAYDETAIL', 'SELLER', 'CURATOR', 'BLOGPOST', 'MALL'])
 
 /**
  * 사라진 상세 페이지를 색인에서 빼야 하는가.
