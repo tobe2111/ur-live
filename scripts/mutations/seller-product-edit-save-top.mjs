@@ -25,8 +25,10 @@ export default [
   {
     name: '🔤 로고 폰트가 다시 optional 로 (첫 로드에서 Poppins 를 통째로 건너뛴다)',
     file: 'index.html',
-    find: 'text=urdeal&display=swap"',
-    replace: 'text=urdeal&display=optional"',
+    // 🔀 2026-10-12 재조준: 그 외부 stylesheet 를 우리 오리진 인라인 @font-face 로 옮겼다(렌더 블로킹 382ms).
+    //   결함은 그대로다(swap → optional). 앵커만 URL 쿼리 → @font-face 선언으로 옮긴다.
+    find: '        font-display: swap;\n        src: url(\'/static/fonts/poppins-800-urdeal-v24.woff2\')',
+    replace: '        font-display: optional;\n        src: url(\'/static/fonts/poppins-800-urdeal-v24.woff2\')',
     test: 'src/tests/unit/seller-product-edit-save-top-2026-09-21.test.ts',
     why:
       '2026-09-21 에 실제로 한 번 이 방향으로 갔다가 되돌렸다 — 근거였던 "swap 은 글자를 투명하게 둔다"가 ' +
