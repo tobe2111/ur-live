@@ -9,7 +9,10 @@
  */
 
 // 프로덕션 존(이미지 리사이징 활성). **same-origin(/api/media)** 리사이즈에만 사용 — 외부 URL 은 404 라 불가.
-const RESIZE_BASE = 'https://urdeal.kr'
+export const RESIZE_BASE = 'https://urdeal.kr'
+/** 저장본 재축소 — 이 옵션·기준을 바꾸면 `gallery-etag-dedupe` 의 "같은 사진의 축소본" 판정도 같이 바뀐다(같은 상수를 쓴다). */
+export const REHOST_SHRINK_OPTS = 'width=1600,quality=82,fit=scale-down'
+export const REHOST_SHRINK_OVER = 600 * 1024
 
 /** 내용 해시(sha256 앞 32자리 hex) — 같은 바이트면 같은 R2 키. */
 export async function contentHash(buf: ArrayBuffer): Promise<string> {
@@ -59,13 +62,13 @@ export async function rehostImageToR2(
     // 🖼️ 2026-07-22 (대표 "모두 이상적으로"): 저장본이 크면(카카오/다음 원본 8~10MB) **same-origin** 리사이저로
     //   재축소 후 덮어쓰기 — 외부 URL 리사이즈는 404 였지만 **`/api/media`(우리 도메인)는 리사이저 작동**.
     //   → R2 저장까지 ~300KB 로 경량(용량 ~10× 절감). 완전 fail-soft(재축소 실패 시 원본 저장본 유지).
-    if (buf.byteLength > 600 * 1024) {
+    if (buf.byteLength > REHOST_SHRINK_OVER) {
       try {
         const rctrl = new AbortController()
         const rtimer = setTimeout(() => rctrl.abort(), 12000)
         let rres: Response
         try {
-          rres = await fetch(`${RESIZE_BASE}/cdn-cgi/image/width=1600,quality=82,fit=scale-down/${RESIZE_BASE}/api/media/${key}`, { signal: rctrl.signal })
+          rres = await fetch(`${RESIZE_BASE}/cdn-cgi/image/${REHOST_SHRINK_OPTS}/${RESIZE_BASE}/api/media/${key}`, { signal: rctrl.signal })
         } finally { clearTimeout(rtimer) }
         if (rres.ok) {
           const rct = (rres.headers.get('content-type') || '').toLowerCase().split(';')[0].trim()

@@ -205,6 +205,40 @@ describe('⑥ 같은 사진은 한 장', () => {
     expect(dedupeGalleryBySig('/api/media/c', ['/api/media/c', '/api/media/d'], sigOf)).toBeNull()
   })
 
+  it('원본과 그 재축소본도 같은 사진으로 접는다(v2 — 바이트가 다른 19건)', () => {
+    // 실측 모양: 커버 = 원본(자기 서명 + "재축소하면 나올" 서명), 첫 칸 = 이관이 재축소한 사본(자기 서명만)
+    const sig: Record<string, string[]> = {
+      '/api/media/raw': ['9730011:aaa', '438734:bbb'],
+      '/api/media/shrunk': ['438734:bbb'],
+      '/api/media/other': ['1000:ccc'],
+    }
+    const sigOf = (u: string) => sig[u] ?? null
+    expect(dedupeGalleryBySig('/api/media/raw', ['/api/media/raw', '/api/media/shrunk', '/api/media/other'], sigOf))
+      .toEqual(['/api/media/raw', '/api/media/other'])
+    // 첫 칸이 재축소본이면 커버 주소로 맞춘다
+    expect(dedupeGalleryBySig('/api/media/raw', ['/api/media/shrunk', '/api/media/other'], sigOf))
+      .toEqual(['/api/media/raw', '/api/media/other'])
+    // 다른 사진의 재축소본은 안 겹친다
+    expect(dedupeGalleryBySig('/api/media/other', ['/api/media/other', '/api/media/shrunk'], sigOf)).toBeNull()
+  })
+
+  it('재축소 서명은 이관과 같은 옵션·기준으로 만들고, v1 표시를 다시 본다', () => {
+    const d = stripComments(readFileSync('src/worker/cron/gallery-etag-dedupe.ts', 'utf8'))
+    const r = stripComments(readFileSync('src/worker/utils/rehost-image.ts', 'utf8'))
+    // 옵션을 손으로 다시 적으면 이관이 바뀌는 날 두 서명이 갈려 조용히 안 접힌다
+    expect(d).toMatch(/cdn-cgi\/image\/\$\{REHOST_SHRINK_OPTS\}/)
+    expect(d).not.toMatch(/width=1600/)
+    expect(r).toMatch(/cdn-cgi\/image\/\$\{REHOST_SHRINK_OPTS\}/)
+    expect(d).toMatch(/obj\.size > REHOST_SHRINK_OVER/)
+    // 만든 서명이 그 주소의 서명 목록에 실제로 들어간다(만들고 버리면 19건이 그대로 남는다)
+    expect(d).toMatch(/const alt = await shrunkSig\(key\)\s*\n\s*if \(alt\) own\.push\(alt\)/)
+    expect(d).toMatch(/sigs\.set\(key, own\)/)
+    expect(r).toMatch(/byteLength > REHOST_SHRINK_OVER/)
+    expect(d).toMatch(/GALLERY_ETAG_DEDUPE_KEY = 'gallery_etag_dedupe_v2'/)
+    // 예산을 넘기면 멈춘다(이 크론은 뒤에서 이관도 한다 — 무료 50/인보케이션)
+    expect(d).toMatch(/if \(spent >= budget\) break/)
+  })
+
   it('정리 패스가 이관 크론에 배선돼 있다(버킷 확인 뒤)', () => {
     const s = stripComments(readFileSync('src/worker/cron/demo-image-rehost.ts', 'utf8'))
     const gate = s.indexOf("skipped: 'NO_MEDIA_BUCKET'")
