@@ -30,6 +30,7 @@ import { filterAliveRefreshRows, rotationGraceExpiryIso } from '@/worker/utils/r
 import { requireSeller } from '@/worker/middleware/auth';
 import { computeWholesaleOnly } from '@/features/supply/api/wholesale-helpers';
 import { isSeatShapedToken } from '@/worker/utils/store-seat-guard';
+import { transactionalMailReady } from '@/lib/ncp-sens-mail';
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
@@ -710,14 +711,14 @@ sellerRoutes.post('/forgot-password', cors(), rateLimit({ action: 'seller_forgot
       // 🛡️ token URL-encode (URL 특수문자 방어) + baseUrl 검증
       const resetUrl = `${baseUrl.replace(/\/+$/, '')}/seller/reset-password?token=${encodeURIComponent(token)}`;
 
-      if (RESEND_API_KEY) {
+      if (transactionalMailReady(c.env)) { // 📮 Resend 또는 SENS 메일(2026-10-12)
         await sendEmail(
           {
             to: seller.email,
             subject: '[유어딜] 셀러 비밀번호 재설정 안내',
             html: getPasswordResetEmailHTML(resetUrl),
           },
-          RESEND_API_KEY,
+          RESEND_API_KEY || '',
           RESEND_FROM
         ).catch((e) => console.error('[Seller ForgotPassword] Email send failed:', e));
       } else {
