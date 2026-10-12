@@ -19,6 +19,25 @@ export default [
     why: '이 수리의 본체다 — Yeti 가 빠지면 네이버가 본문 6자짜리 페이지를 보던 상태로 돌아간다.',
   },
   {
+    name: '🔎 그록·Meta·Mistral·You 가 다시 첫 화면을 못 받는다',
+    why: '종전 상태가 정확히 이것이었다 — 라이브 실측에서 `xAI-Bot` 홈 본문이 **34자**(형제는 '
+       + '395자)였고 대표가 이름을 댄 넷 중 하나가 그록이다. 그 여섯은 **이미 HTML 200 을 받으므로** '
+       + '막혀서 못 본 게 아니라 우리가 그릴 수 있는데 안 그려 주고 있었다.',
+    file: 'src/shared/seo/crawler-ua.ts',
+    find: '  /xAI-Bot/i,',
+    replace: '  // /xAI-Bot/i,',
+    test: 'src/tests/unit/seo-crawler-visibility-2026-10-11.test.ts',
+  },
+  {
+    name: '🔎 Meta 검색봇을 학습봇과 한 줄로 삼킨다',
+    why: '`Meta-ExternalAgent`(학습 · robots 로 막아 둔 쪽)와 `meta-webindexer`(검색)는 **다른 봇**이다. '
+       + '`/Meta/i` 처럼 넓게 잡으면 막아 둔 쪽에 본문을 그려 주게 된다.',
+    file: 'src/shared/seo/crawler-ua.ts',
+    find: '  /meta-webindexer/i,',
+    replace: '  /Meta/i,',
+    test: 'src/tests/unit/seo-crawler-visibility-2026-10-11.test.ts',
+  },
+  {
     name: '🔎 크롤러 판정이 사람 브라우저까지 true 를 낸다(PC 에 모바일 첫 화면이 깔린다)',
     file: UA,
     find: '  for (const p of SEARCH_CRAWLER_UA_PATTERNS) if (p.test(s)) return true\n  return false',

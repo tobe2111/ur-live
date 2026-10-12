@@ -166,6 +166,11 @@ const SCRAPER_UA_PATTERNS = [
   //   `MistralAI-Index`·`YouBot` 은 `OAI-SearchBot` 과 같은 AI 답변용 색인이다.
   //   위 비대칭 원칙 그대로: **HTML 은 그대로 200**(이 미들웨어는 `/api/*` 만 가린다) ·
   //   JSON 벌크 수확만 403 ⇒ GEO 손실 0.
+  // 🩸 2026-10-12 정정(라이브 실측) — 이 403 은 **엣지 캐시가 식은 URL 에서만** 작동한다.
+  //   `/api/group-buy/products?status=active` 는 `CDN-Cache-Control` 로 캐시되고 `Vary` 에 UA 가
+  //   없어, 한 번 채워지면 워커가 안 돌고 이 미들웨어가 통째로 건너뛰어진다(실측: 그 URL 은 전 UA
+  //   200 · 같은 경로에 쿼리 하나만 달라도 403). 고치는 쪽이 더 나쁘다(`Vary: User-Agent` 는 캐시를
+  //   UA 수만큼 쪼개고, 캐시를 끄면 잠긴 SSR 0-RTT 가 깨진다) ⇒ **의도된 방벽으로 믿지 말 것.**
   /MistralAI-User/i,
   /MistralAI-Index/i,
   /YouBot/i,

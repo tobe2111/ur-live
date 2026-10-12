@@ -840,3 +840,74 @@ curl -sS -A "$UA" https://urdeal.kr/browse | grep -o '<h1>[^<]*</h1>'   # 기대
 ```
 ⚠️ `/region/*` 의 h1 은 **요약(KV)이 있어야** 본문이 생긴다 — ①이 비면 먼저 `X-SSR-Status` 와
 cron `:15` 하트비트를 볼 것(후속 ⑨와 같은 전제).
+
+---
+
+## 🤖 후속 ⑪ — 그록·Meta·Mistral·You 가 홈·유어샵을 **빈 페이지**로 받고 있었다
+
+**[E2]** 라이브 실측(같은 URL 을 **UA 만 바꿔** 받아 `#root` 안쪽 글자를 셌다):
+
+      UA                  /        /u/jiwon1228   /pass/2919   /vouchers
+      Googlebot         395자       419자           139자        268자
+      Yeti              395자       419자           139자        268자
+      OAI-SearchBot     395자       419자           139자        268자
+      Claude-SearchBot  395자       419자           139자        268자
+      PerplexityBot     395자       419자           139자        268자
+      bingbot           395자       419자           139자        268자
+      iPhone            395자       419자           139자        268자
+      xAI-Bot            34자        20자           139자        268자   ← 그록
+
+🔑 **UA 로 가르는 두 분기만 갈렸다** — `/pass/:id`·`/vouchers` 는 경로로 판정하는 `<noscript>` 라
+전 UA 동일하고, 홈(MAIN)·유어샵(CURATOR)의 첫 화면만 `shouldRenderMobileFirstScreen(ua)` 뒤에 있다.
+그 목록에 ChatGPT·Claude·Perplexity 는 있는데 **그록·Meta·Mistral·You 가 없었다.**
+대표가 이름을 댄 넷 중 하나가 그록이다(*"그록, 클로드 등 AI 모든 AI 서비스에서 검색 시 나오게"*).
+
+🔒 **막혀서 못 본 게 아니다** — 그 여섯 다 **HTML 200 을 받는다**(실측). 우리가 그릴 수 있는데
+안 그려 주고 있었다. **수정은 목록에 여섯 줄 추가뿐**(`xAI-Bot`·`Grokbot`·`meta-webindexer`·
+`MistralAI-Index`·`MistralAI-User`·`YouBot`). 클로킹이 아니다 — 크롤러가 받는 것은 **폰 사용자가
+받는 것과 같은 HTML**(같은 함수·같은 시드)이고, 그 파일 머리말이 그 선을 이미 적어 뒀다.
+
+🔴 **`Meta-ExternalAgent`(학습 · robots 로 막아 둔 쪽)와 `meta-webindexer`(검색)는 다른 봇이다** —
+`/Meta/i` 로 넓게 잡으면 막아 둔 쪽에 본문을 그려 준다. 주입이 그 방향을 고정한다.
+
+🩸 **내가 쓴 단언 하나가 거짓 요구였다** — 금지 목록에 `Applebot-Extended` 를 넣었는데 시험이
+빨간불을 냈고, **코드가 아니라 내 단언이 틀렸다**: 애플은 그 토큰을 **robots.txt 로만** 쓴다(UA 는
+늘 `Applebot`)라 ① 실재하지 않는 UA 이고 ② `/Applebot/i` 를 좁혀 가르면 **애플 검색 색인이 통째로
+막힌다**(`bot-detection.ts` 가 같은 금지를 같은 이유로 적어 뒀다). 그 이유를 시험 안에 남겼다.
+
+**가드**: `seo-crawler-visibility-2026-10-11` 에 2건 추가(인용 봇 **12종 전수** + 학습 토큰 반대
+방향) · 주입 2건 **되돌려-검증 빨간불 확인**. 기존 23건은 풀지 않았다(목록이 늘기만 했다).
+
+### ⚠️ E4 (배포 후)
+
+```bash
+for ua in "xAI-Bot/1.0" "Grokbot/1.0" "meta-webindexer/1.0" "MistralAI-Index/1.0" "YouBot/1.0"; do
+  n=$(curl -sS -A "Mozilla/5.0 (compatible; $ua)" https://urdeal.kr/ \
+      | sed -e 's/<script[^>]*>.*<\/script>//g' -e 's/<[^>]*>/ /g' | tr -s ' ' | wc -c)
+  echo "$ua home=$n"       # 기대: 34자 → 395자 안팎
+done
+# 🔴 반대 방향 — PC 브라우저는 **여전히** 로더(첫 화면이 깔리면 안 된다)
+curl -sS -A 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0.0.0 Safari/537.36' \
+  https://urdeal.kr/ | grep -c 'ur-first-screen'    # 기대: 0
+```
+
+---
+
+## 🩸 후속 ⑫ — 정정: *"공개 JSON 벌크 수확은 닫혀 있다"* 는 **뜨거운 URL 에서 사실이 아니다**
+
+**[E2 · 코드 변경 0 · 기록 정정]** 오늘 두 번(10-11 · 10-12) *"HTML 은 200 이고 JSON 벌크 수확만
+403 이라 GEO 손실 0"* 을 근거로 결정했는데, 그 전제를 재 보니 **반만 맞았다**:
+
+      /api/group-buy/products?status=active   OAI-SearchBot 200 · AhrefsBot 200 · 브라우저 200   (age: 64)
+      같은 경로 + 쿼리 하나(&zz=…)             OAI-SearchBot **403**
+      /api/products · /api/vouchers            전부 403
+
+원인은 목록 누락이 아니라 **엣지 캐시**다. 그 응답은 `CDN-Cache-Control: max-age=360` + `Vary: Origin`
+뿐이라 **UA 를 캐시 키로 안 쓴다** ⇒ 아무나(또는 cron 예열이) 한 번 채우면 그 뒤로는 **워커가 안 돌고**
+`scrapeProtection` 이 통째로 건너뛰어진다. 즉 **보호가 식은 URL 에서만 작동하고 가장 값진 URL
+(전체 활성 딜 목록 = `MAIN_SEED_PATH` 와 같은 키)에서 열려 있다** — 유용한 쪽의 반대다.
+
+🔴 **그래도 고치지 않았다 — 처방이 병보다 나쁘다**: `Vary: User-Agent` 는 캐시를 UA 수만큼 쪼개고,
+엣지 캐시를 끄는 것은 **잠긴 SSR 0-RTT 설계**를 깬다(둘 다 잠금표 항목). ⇒ 이 발견의 산출물은
+**기록 정정**이다: `CLAUDE.md` 의 그 방어선 행과 `bot-detection.ts` 머리말에 실측을 적었다.
+⚠️ **다음 세션은 이 보호를 *의도된 방벽*으로 믿지 말 것** — 그 과장을 전제로 삼으면 또 오판한다.
