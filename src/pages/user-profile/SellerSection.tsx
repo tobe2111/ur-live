@@ -40,6 +40,7 @@ import { toast } from '@/hooks/useToast'
 import type { MyStoresState } from './useMyStores'
 import { writeReservedHeight } from './seller-reserve'
 import { useSellerWork } from './seller-section/useSellerWork'
+import { useToolDeepLink } from './seller-section/useToolDeepLink' // 🚪 대시보드 깊은 링크 → 시트(2026-10-12)
 import PendingOrders from './seller-section/PendingOrders'
 // 🧾 2026-09-28: 묶음 라벨·줄은 손님 쪽 목록과 **같은 부품**이다(`list-grammar`).
 //   종전엔 이 파일 안에 `GroupLabel`/`ToolRow` 가 따로 있었고, 손님 쪽은 또 다른 문법이라
@@ -260,6 +261,8 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
     setPageFrom(from)
     setTool('page')
   }
+
+  useToolDeepLink({ ready: !loading && store != null, seated, open: (p) => { void openPage(p, '') } })
 
   // 좌석 0곳(= 셀러가 아님) · 실패 → 아무것도 그리지 않는다.
   //   실패를 0 으로 그리면 "오늘 매출 0원" 이라는 거짓말이 된다(머니 표면 룰).
