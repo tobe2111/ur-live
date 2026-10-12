@@ -121,11 +121,8 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   // 🎯 2026-07-02 (대표 "첫 페인트에 응모 버튼 늦게 등장"): 목록 응답에 서버 enrich 된 r.fcfs 를
   //   첫 페인트 시드로 즉시 사용 — 별도 /api/fcfs/active 도착 전에도 응모 버튼·배지가 함께 그려짐.
   //   fetch 결과가 오면 그 값(신선 카운트) 우선.
-  // 🎯 2026-07-04 (대표 "데모 이용권 노출은 항상 후순위"): '상위노출' boost 는 서버가 지정한
-  //   대상만. 나머지는 base 순서(서버가 이미 데모-후순위 정렬) 그대로 뒤에 남음.
-  // 🙈 2026-10-12 (대표 "데모인 것을 티내지마"): 종전 필드명이 `demo` 라서 **응답만 봐도 어느 것이
-  //   데모인지 알 수 있었다**. 서버가 하는 일 그대로 `boost`(상위노출 대상인가)로 바꿨다 —
-  //   SSOT `shared/constants/demo-products.ts toPublicProductRows`. 기본은 대상이라 `false` 만 온다.
+  // 🎯 2026-07-04 (대표 "데모 항상 후순위"): boost 는 서버가 지정한 대상만 — 나머지는 base 순서
+  //   (서버가 데모-후순위 정렬) 그대로 뒤에. 🙈 2026-10-12 `demo` → `boost`(SSOT demo-products.ts).
   const [liveFcfsMap, setLiveFcfsMap] = useState<Map<number, { spots: number; appliedDisplay: number; boost?: boolean; prelaunch?: boolean }>>(new Map())
   useEffect(() => {
     api.get('/api/fcfs/active')

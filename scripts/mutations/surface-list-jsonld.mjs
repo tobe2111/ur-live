@@ -23,8 +23,10 @@ export default [
     //    교훈: **중복 잠금은 각 잠금을 출력으로 판정할 수 없게 만든다.**
     name: '🧾 `/vouchers` 가 항목 허용목록에 들어간다(교환권 상세는 noindex 인데)',
     file: B,
-    find: "  const ITEM_PATHS = new Set(['/', '/browse'])",
-    replace: "  const ITEM_PATHS = new Set(['/', '/browse', '/vouchers'])",
+    // 🏨 2026-10-12 재조준: 허용목록에 `/stays` 가 들어갔다(그 상세는 색인 대상이다).
+    //   결함은 그대로 — 교환권을 더해 noindex 상세를 목록 항목으로 제출한다.
+    find: "  const ITEM_PATHS = new Set(['/', '/browse', '/stays'])",
+    replace: "  const ITEM_PATHS = new Set(['/', '/browse', '/stays', '/vouchers'])",
     test: TEST,
     why: '교환권 상세는 2026-07-07 결정으로 noindex 다. 목록이 그 URL 들을 항목으로 내밀면 안 된다.',
   },

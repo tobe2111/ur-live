@@ -89,8 +89,10 @@ export default [
   {
     name: '🧭 지역 ItemList 가 전국 항목을 그 지역이라고 낸다',
     file: LISTLD,
-    find: '        .filter(p => !regionRef || addressInRegion(',
-    replace: '        .filter(p => true || !regionRef || addressInRegion(',
+    // 🧾 2026-10-12 재조준: 그 필터가 `keepItem`(표면별 술어 추가) 안으로 옮겨갔다.
+    //   결함은 그대로 — **지역 필터를 늘 통과시킨다**. 앵커만 새 자리로.
+    find: '      return addressInRegion(',
+    replace: '      return true || addressInRegion(',
     test: TEST,
     why: 'ItemList 는 "이 목록의 항목" 선언이다 — 다른 지역을 담으면 구조화 데이터가 페이지와 어긋난다.',
   },

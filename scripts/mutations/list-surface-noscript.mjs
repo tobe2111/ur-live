@@ -68,14 +68,6 @@ export default [
     why: '식당 상세 URL 이 "숙소 목록의 항목" 으로 구글에 제출된다 — 에러 0.',
   },
   {
-    name: '🧾 교환권 목록이 ItemList 를 내기 시작한다',
-    file: LD,
-    find: "  const ITEM_PATHS = new Set(['/', '/browse', '/stays'])",
-    replace: "  const ITEM_PATHS = new Set(['/', '/browse', '/stays', '/vouchers'])",
-    test: TEST,
-    why: '교환권 상세는 2026-07-07 결정으로 noindex 다 — 색인 말라고 한 URL 을 목록 항목으로 제출하면 서로 반대되는 신호다.',
-  },
-  {
     name: '🧾 /stays 시드 배선이 사라진다',
     file: WORKER,
     find: "(REGION_PATH_RE.test(url.pathname) || url.pathname === '/stays')",

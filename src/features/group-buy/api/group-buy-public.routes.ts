@@ -410,10 +410,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     // 🔢 2026-09-03 [UNLOCK_LOADING]: 전체 개수 — 클라가 전량을 안 받고도 "N곳" 을 정확히 말한다.
     //   필터 없는 피드에서만(조합 5종·900s 캐시) · fail-soft null · 기존 필드/캐시키/헤더 전부 불변.
     const total = (!hasRegion && !hasQ && !hasBbox) ? await getActiveFeedTotal(c.env, DB, status, categories) : null
-    // 🙈 2026-10-12 [UNLOCK_LOADING] (대표 "데모인 것을 티내지마"): 직렬화 직전 한 자리에서
-    //   `slug`(= `demo-deal-NNN`)·`fcfs.demo` 를 지운다. 라이브 쿼리와 materialized 경로가
-    //   **이 한 줄을 함께** 지나므로 두 벌이 갈릴 수 없다. SQL·정렬·캐시키·헤더 전부 불변.
-    return c.json({ success: true, data: toPublicProductRows(withOnnuri), ...(total != null ? { total } : {}) })
+    return c.json({ success: true, data: toPublicProductRows(withOnnuri), ...(total != null ? { total } : {}) })  // 🙈 2026-10-12 데모 식별자 제거(사유·불변식: demo-products.ts) · 한 줄: 래칫 1139
   })
 
   // ── GET /products/map-clusters — 🌍 2026-07-08 (대표 "수천개 대비 가장 이상적으로" — 레이어 3) ──
