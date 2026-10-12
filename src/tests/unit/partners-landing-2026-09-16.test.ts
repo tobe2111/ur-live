@@ -30,6 +30,10 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { stripComments } from '../helpers/source-text'
 import { PARTNER_FACTS, FEE_DIRECT_RATE } from '../../shared/partners-facts'
+import { CONSUMER_SURFACE_SEO } from '../../shared/seo/consumer-surfaces'
+
+/** 검색 결과·AI 요약이 읽는 한 줄 — 사장님이 클릭 **전에** 보는 숫자다. */
+const SURFACE_DESC = CONSUMER_SURFACE_SEO['/partners'].description
 
 const R = (p: string) => fs.readFileSync(path.join(process.cwd(), p), 'utf8')
 
@@ -123,6 +127,32 @@ describe('R2 — 숫자가 대표 승인 덱(deck-common.mjs FACTS)과 같다', 
       // "수수료 10%" 같은 하드코딩. 표기가 갈리는 길을 막는다.
       expect(visible(f), f).not.toMatch(/수수료\s*\d+%/)
     }
+  })
+
+  /**
+   * 🔴 **검색 스니펫·AI 요약도 같은 숫자여야 한다** (2026-10-12 라이브 실측).
+   *
+   * R2 는 그간 *화면*만 봤다. 그런데 사장님이 **먼저 보는 것은 검색 결과의 한 줄**이고,
+   * 그 줄은 `CONSUMER_SURFACE_SEO['/partners'].description` 이다 — 거기에 `수수료 5%` 가
+   * 하드코딩돼 있었다. 같은 페이지 본문은 `PARTNER_FACTS.feeDirect`(10%)를 말하고 있었으므로
+   * **스니펫에서 5% 를 보고 클릭해 10% 를 보는** 상태였다. 그리고 그 문구는 `llms.txt` 에
+   * 그대로 실려 **AI 엔진도 5% 를 인용**한다(라이브 실측으로 확인).
+   * ⇒ 이 파일 머리말의 R2 가 말하는 "두 값이 다르면 둘 다 신뢰를 잃는다" 의 메타 판이다.
+   *
+   * ⚠️ 숫자 비교로는 못 잡는다 — 하드코딩 값이 마침 같으면 늘 참이다. **소스를 본다.**
+   */
+  it('검색 스니펫(메타 description)도 SSOT 에서 읽는다 — llms.txt 가 이 문구를 쓴다', () => {
+    const src = stripComments(R('src/shared/seo/consumer-surfaces.ts'))
+    const i = src.indexOf("'/partners': {")
+    expect(i, '/partners 항목을 못 찾았다 — 이 검사가 헛돈다').toBeGreaterThan(-1)
+    const entry = src.slice(i, i + 900)
+    expect(entry, '메타 description 이 수수료율을 손으로 적는다 — 화면·덱과 갈린다')
+      .not.toMatch(/수수료\s*\d+%/)
+    expect(entry, '수수료를 SSOT(PARTNER_FACTS)에서 읽지 않는다').toContain('PARTNER_FACTS.feeDirect')
+    // 실제 값도 함께 본다(파생이 끊기지 않았는지 — 위 소스 검사와 짝이다).
+    expect(SURFACE_DESC, '스니펫이 직접 채널 요율을 말하지 않는다').toContain(PARTNER_FACTS.feeDirect)
+    expect(SURFACE_DESC, '중개 요율도 같은 문장에 — 한쪽만 말하면 또 갈린다').toContain(PARTNER_FACTS.feeBrokered)
+    expect(SURFACE_DESC.length, '스니펫이 잘릴 길이다').toBeLessThanOrEqual(160)
   })
 })
 

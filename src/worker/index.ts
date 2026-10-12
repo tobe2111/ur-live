@@ -288,7 +288,7 @@ import { referralRoutes } from '../features/referral/api/referral.routes';
 //   (typeof navigator/window 가드 보유라 워커 안전). URL 이 클라 렌더값과 byte-일치해야 preload 적중.
 import { cfImage, cfSrcSet } from '../utils/cf-image';
 // 🖼️ 홈 첫 화면 카드 사진 preload — 링크 생성은 헬퍼가 한다(파일 크기 래칫 + 직접 테스트 용이).
-import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; import { brandJsonLdScript } from '../shared/seo/brand-jsonld'; import { buildStaticSurfaceNoscript, stayNoscriptFromPayload } from './utils/crawler-noscript'; import { buildStayDetailFirstScreen } from './utils/stay-detail-ssr-body'; import { MAIN_SEED_PATH, REGION_PATH_RE } from '../shared/seo/region-seed'; import { isKnownAppPath } from '../shared/seo/known-routes'; import { REGION_DIGEST_KV_KEY, regionDigestApplies, regionThinByDigest } from '../shared/seo/region-digest'; import { ushopOgImage } from '../shared/ushop-share-card'; // 한 줄: 파일크기 래칫 안
+import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; import { brandJsonLdScript } from '../shared/seo/brand-jsonld'; import { buildStaticSurfaceNoscript, stayNoscriptFromPayload } from './utils/crawler-noscript'; import { buildStayDetailFirstScreen } from './utils/stay-detail-ssr-body'; import { MAIN_SEED_PATH, REGION_PATH_RE } from '../shared/seo/region-seed'; import { isKnownAppPath } from '../shared/seo/known-routes'; import { REGION_DIGEST_KV_KEY, regionDigestApplies, regionThinByDigest } from '../shared/seo/region-digest'; import { ushopOgImage } from '../shared/ushop-share-card'; import { OG_CARD_W, OG_CARD_H } from '../shared/og-share-image'; // 한 줄: 파일크기 래칫 안
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -2489,7 +2489,7 @@ app.get('*', async (c) => {
 <meta property="og:type" content="website" />
 <meta property="og:title" content="${esc(og.title)}" />
 <meta property="og:description" content="${esc(og.desc)}" />
-<meta property="og:image" content="${esc(og.image)}" />
+<meta property="og:image" content="${esc(og.image)}" /><meta property="og:image:width" content="${OG_CARD_W}" /><meta property="og:image:height" content="${OG_CARD_H}" />
 <meta property="og:url" content="${esc(canonical)}" />
 <meta property="og:site_name" content="유어딜" />
 <meta property="og:locale" content="ko_KR" />

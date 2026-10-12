@@ -16,6 +16,7 @@
  * > 잘못된 몰 정보를 뿌리는 것보다 **밋밋한 기본 카드**가 낫다. 전자는 회수가 안 되고 후자는 그냥 심심할 뿐이다.
  */
 import { getGbSessions } from './gb-session-store'
+import { productShareImage } from '@/shared/og-share-image'
 import { resolveGbPricing } from '../../shared/gb-session'
 import { parseMallProductPath } from '../../shared/mall/resolve'
 
@@ -65,12 +66,15 @@ function deadlineLabel(iso: string): string | null {
   return `${kst.getUTCMonth() + 1}월 ${kst.getUTCDate()}일`
 }
 
+// 🖼️ 2026-10-12: 폴백을 `og-image.svg` → **`og-image.png`**(라스터). 다른 전 표면(`index.html`·
+//   상세·목록)이 쓰는 그 파일이고 실측 1200×630 이라 `og:image:width/height` 선언과 맞는다.
+//   SVG 를 og:image 로 쓰는 것은 렌더러마다 갈린다(트위터는 문서상 미지원).
 function absImage(raw: string | undefined, origin: string): string {
   const s = String(raw || '').trim()
-  if (!s) return `${origin}/og-image.svg`
+  if (!s) return `${origin}/og-image.png`
   if (s.startsWith('http')) return s
   if (s.startsWith('/')) return `${origin}${s}`
-  return `${origin}/og-image.svg`
+  return `${origin}/og-image.png`
 }
 
 /**
@@ -213,7 +217,7 @@ export function buildMallMeta(i: MallMetaInput): MallMeta | null {
     title: `${mallName} · ${name}`,
     description: parts.length ? parts.join(' · ') : `${mallName}의 공동구매`,
     canonical: `${origin}${pathname}`,
-    ogImage: absImage(product.image_url, origin),
+    ogImage: productShareImage(absImage(product.image_url, origin), origin), // 🖼️ 1200×630 카드(원본 그대로면 비율이 안 맞아 small card 로 떨어진다)
     ogType: 'product',
   }
 }

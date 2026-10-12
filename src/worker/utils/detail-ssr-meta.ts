@@ -11,6 +11,7 @@
 import { passShareCardUrl } from '@/shared/pass-share-card'
 // 🏨 정본 상세 주소 SSOT — 숙소 이용권은 `/stays/:id` 다(두 벌로 적으면 갈린다).
 import { canonicalDetailPath } from '../../shared/product-flow'
+import { productShareImage } from '@/shared/og-share-image'
 import { propertyTypeLabel } from '../../shared/stay-property-type'
 export { PASS_OG_VERSION } from '@/shared/pass-share-card'
 
@@ -107,14 +108,16 @@ export function buildDetailMeta(ssrPayload: string, origin: string, pathname: st
     //   폴백은 종전과 같은 `pathname`(판정 불가 시 자기 자신).
     const canonicalPath = canonicalDetailPath({ id: id ?? '', deal_only: d.deal_only, category: d.category })
     const canonical = `${origin}${canonicalPath && canonicalPath.startsWith('/') ? canonicalPath : pathname}`
-    const ogImage = absImage(String(d.image_url || ''), origin, id)
+    // 🖼️ 2026-10-12: `photo`=원본(JSON-LD `Product.image` — 구글 상품 사진은 고해상이 낫다) ↔
+    //   `ogImage`=1200×630 카드(소셜). **두 축이다** — 섞으면 한쪽이 손해다(`og-share-image.ts` 머리말).
+    const photo = absImage(String(d.image_url || ''), origin, id)
     const isVoucher = pathname.startsWith('/vouchers/') // 교환권 — 클라 noindex 와 대칭
 
     if (isVoucher) {
       const title = `${name} 교환권 - 유어딜`
       const description = (String(d.description || '').replace(/\s+/g, ' ').trim().slice(0, 150))
         || `${name} — 기프티콘 교환권을 유어딜에서 할인가로 구매하고 바로 사용하세요.`
-      return { pageTitle: title, title, description, canonical, ogImage, ogType: 'product', noindex: true, jsonLd: '' }
+      return { pageTitle: title, title, description, canonical, ogImage: productShareImage(photo, origin), ogType: 'product', noindex: true, jsonLd: '' }
     }
 
     // 이용권/동네딜 (group-buy) — 인덱싱 + 풀 메타 + JSON-LD
@@ -129,7 +132,7 @@ export function buildDetailMeta(ssrPayload: string, origin: string, pathname: st
       '@context': 'https://schema.org', '@type': 'Product',
       name,
       description: (String(d.description || '') || `${store} ${name} 공동구매`).replace(/\s+/g, ' ').trim().slice(0, 300),
-      ...(d.image_url ? { image: [ogImage] } : {}),
+      ...(d.image_url ? { image: [photo] } : {}),
       ...(store ? { brand: { '@type': 'Brand', name: store } } : {}),
       offers: {
         '@type': 'Offer', url: canonical, priceCurrency: 'KRW', price,
@@ -160,7 +163,7 @@ export function buildDetailMeta(ssrPayload: string, origin: string, pathname: st
       ...(d.restaurant_address ? { address: { '@type': 'PostalAddress', streetAddress: String(d.restaurant_address), addressCountry: 'KR' } } : {}),
       ...(d.restaurant_lat && d.restaurant_lng ? { geo: { '@type': 'GeoCoordinates', latitude: d.restaurant_lat, longitude: d.restaurant_lng } } : {}),
       ...(d.restaurant_phone ? { telephone: String(d.restaurant_phone) } : {}),
-      ...(d.image_url ? { image: [ogImage] } : {}),
+      ...(d.image_url ? { image: [photo] } : {}),
     } : null
     if (place) (product.offers as Record<string, unknown>).availableAtOrFrom = { '@id': placeId }
     const breadcrumb = {
@@ -176,7 +179,7 @@ export function buildDetailMeta(ssrPayload: string, origin: string, pathname: st
     const jsonLd = escapeScript(JSON.stringify(place ? [product, place, breadcrumb] : [product, breadcrumb]))
     // 🦦 2026-10-09 (대표 확정 시안 ② · "바꾸기"): 공유 미리보기는 사진 원본이 아니라 **공유 카드**(사진 + 귀퉁이
     //   유달이 + `urdeal.`). JSON-LD 의 image 는 위에서 사진 그대로 둔다 — 검색엔진에겐 상품 사진이 맞다.
-    const shareCard = id != null ? passShareCardUrl(id, origin) : ogImage
+    const shareCard = id != null ? passShareCardUrl(id, origin) : productShareImage(photo, origin)
     return { pageTitle, title: pageTitle, description, canonical, ogImage: shareCard, ogType: 'product', noindex: false, jsonLd }
   } catch { return null }
 }
@@ -222,7 +225,8 @@ export function buildStayDetailMeta(ssrPayload: string, origin: string, pathname
     const fromPrice = roomPrices.length ? Math.min(...roomPrices) : 0
     const toPrice = roomPrices.length ? Math.max(...roomPrices) : 0
     const canonical = `${origin}/stays/${id}`
-    const ogImage = absImage(String(p.image_url || ''), origin, id)
+    const photo = absImage(String(p.image_url || ''), origin, id) // JSON-LD 용 원본
+    const ogImage = productShareImage(photo, origin) // 🖼️ 소셜 카드 — 실측 원본 1397×748·518KB 였다
     const pageTitle = `${stayName}${region ? ` (${region})` : ''} - 유어딜`
     const priceStr = fromPrice > 0 ? `1박 ${fromPrice.toLocaleString('ko-KR')}원~ ` : ''
     const rating = Number(p.avg_rating) || 0
@@ -243,7 +247,7 @@ export function buildStayDetailMeta(ssrPayload: string, origin: string, pathname
       '@type': 'LodgingBusiness', '@id': placeId,
       name: stayName,
       ...(baseDesc ? { description: baseDesc.slice(0, 300) } : {}),
-      ...(p.image_url ? { image: [ogImage] } : {}),
+      ...(p.image_url ? { image: [photo] } : {}),
       ...(p.address ? { address: { '@type': 'PostalAddress', streetAddress: String(p.address), addressRegion: p.region_sido || undefined, addressCountry: 'KR' } } : {}),
       ...(p.latitude && p.longitude ? { geo: { '@type': 'GeoCoordinates', latitude: p.latitude, longitude: p.longitude } } : {}),
       ...(p.star_rating ? { starRating: { '@type': 'Rating', ratingValue: p.star_rating } } : {}),
@@ -259,7 +263,7 @@ export function buildStayDetailMeta(ssrPayload: string, origin: string, pathname
       '@type': 'Product',
       name: String(p.name || stayName).trim(),
       ...(baseDesc ? { description: baseDesc.slice(0, 300) } : {}),
-      ...(p.image_url ? { image: [ogImage] } : {}),
+      ...(p.image_url ? { image: [photo] } : {}),
       brand: { '@type': 'Brand', name: stayName },
       offers: {
         '@type': 'AggregateOffer', url: canonical, priceCurrency: 'KRW',
@@ -320,7 +324,8 @@ export function buildProductMeta(ssrPayload: string, origin: string, pathname: s
       ? null
       : canonicalDetailPath({ id: id ?? '', deal_only: d.deal_only, category: d.category })
     const canonical = `${origin}${canonicalPath && canonicalPath.startsWith('/') ? canonicalPath : pathname}`
-    const ogImage = absImage(String(d.image_url || ''), origin, id, `${origin}/og-image.png`)
+    const photo = absImage(String(d.image_url || ''), origin, id, `${origin}/og-image.png`) // JSON-LD 용 원본
+    const ogImage = productShareImage(photo, origin) // 🖼️ 소셜 카드 — 실측 남의 CDN 500×500·258KB 였다
     const priceStr = price.toLocaleString('ko-KR')
 
     const pageTitle = `${name} - 유어딜`
@@ -332,7 +337,7 @@ export function buildProductMeta(ssrPayload: string, origin: string, pathname: s
       '@context': 'https://schema.org', '@type': 'Product',
       name,
       description: (String(d.description || '') || `${name} — 유어딜`).replace(/\s+/g, ' ').trim().slice(0, 300),
-      ...(d.image_url ? { image: [ogImage] } : {}),
+      ...(d.image_url ? { image: [photo] } : {}),
       ...(brand ? { brand: { '@type': 'Brand', name: brand } } : {}),
       // 💰 KRW 상품만 offer 가격 노출(딜 상품은 통화 스키마 부적합 → 가격 생략).
       ...(!isDeal && price > 0 ? {

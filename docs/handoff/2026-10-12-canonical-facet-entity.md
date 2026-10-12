@@ -114,3 +114,58 @@ for p in / /vouchers /browse /map /stays /blog /faq /pass/2919 /stays/2887 /u/ji
 ### 🔴 기술로 안 되는 것
 활성 50건 중 **실매장이 2곳**(48이 데모)이다. SEO 의 천장은 여기다 — 위 수리들은 *실물이 늘어나는
 순간 바로 색인되게* 준비해 두는 몫까지다.
+
+---
+
+## 🖼️ 추가분 — 공유 카드 치수 (#28·#29) · /partners 수수료 메타 (#30)
+
+같은 PR(#1751)에 이어 붙였다. 위 정본 작업과 **독립**이고 롤백도 따로 된다.
+
+### 무엇을 고쳤나
+
+| | 종전(라이브 실측) | 지금 |
+|---|---|---|
+| `/stays/:id` og:image | 원본 **1397×748 · 530,546B** | cdn-cgi `fit=pad` **1200×630 · 197,972B** |
+| `/vouchers/:id`·`/products/:id` | 남의 CDN 원본 **500×500 · 258,475B** | **1200×630 · 54,819B** |
+| `/{몰}/p/:id` | 원본 + 폴백 **SVG** | 1200×630 + 폴백 **`og-image.png`**(라스터) |
+| 봇 셸 `og:image:width/height` | **0건**(6표면 전부) | SSOT 상수로 선언 |
+| `/partners` 메타·llms.txt 수수료 | **5%**(화면은 10%) | `PARTNER_FACTS.feeDirect` 경유 |
+| `/pass/:id` · `/u/:handle` | 1200×630 | **불변**(건드리지 않았다) |
+
+🔴 **JSON-LD `Product.image` 는 원본을 유지했다** — 소셜 카드와 구글 상품 사진은 다른 축이다
+(빌더가 `photo` ↔ `ogImage` 를 따로 들고 간다). 주입 하나가 "일관성" 으로 한 축에 몰는 방향을 막는다.
+
+### E4 — 배포 후 할 것
+
+```bash
+UA='KakaoTalk-Scrap/1.0'
+# ① 숙소·교환권 카드 주소
+curl -s -A "$UA" https://urdeal.kr/stays/2887   | grep -o 'og:image[^>]*'   # fit=pad 1200x630 이어야
+curl -s -A "$UA" https://urdeal.kr/vouchers/2192 | grep -o 'og:image[^>]*'
+# ② 치수 선언 — 종전 0건
+for p in / /pass/2919 /stays/2887 /u/jiwon1228 /vouchers; do
+  echo -n "$p "; curl -s -A "$UA" "https://urdeal.kr$p" | grep -c 'og:image:width'; done
+# ③ 🔬 그림을 **파싱해서** 잰다 — 헤더만 보면 contain 회귀(630×630)와 구분이 안 된다
+#    (JPEG SOF 파싱: 이 PR 의 측정 스크립트 참고)
+# ④ /pass/:id 는 대표 확정 카드 주소 **불변**이어야
+curl -s -A "$UA" https://urdeal.kr/pass/2919 | grep -o 'og:image" content="[^"]*"'   # /api/og/group-buy/2919?v=1
+# ⑤ 수수료 — 스니펫과 llms.txt 가 10%
+curl -s -A "$UA" https://urdeal.kr/partners | grep -o 'name="description" content="[^"]*"'
+curl -s https://urdeal.kr/llms.txt | grep -o '수수료 [0-9]*%'
+```
+
+⚠️ **못 잴 것 = 실제 카톡방 카드.** 사진이 잘리지 않고 large card 로 뜨는지는 **대표만** 판정한다.
+그리고 카카오는 **주소 단위로 캐시**하므로 전에 공유해 본 링크는 옛 카드가 나올 수 있다 —
+**아직 공유 안 한 숙소·교환권 링크**로 볼 것.
+
+### 이번에 틀렸던 것 (같은 함정 반복 금지)
+
+1. **픽스처 모양을 지어 썼다** — 숙소는 `{ data: { product, rooms } }` 다. 평평하게 쓰니 빌더가
+   `null` 을 돌려줘 시험이 **아무것도 판정하지 못했다**.
+2. **숫자 비교가 헛돌았다** — `expect(SHARE_CARD_W).toBe(OG_CARD_W)` 는 하드코딩 값이 마침 같으면
+   늘 참이다. 지키려는 것은 "같은 값" 이 아니라 **파생**이므로 소스를 봐야 한다.
+3. **스프레드가 내 주입을 덮었다** — 객체 리터럴에서 앞에 키를 더해도 뒤 스프레드가 이긴다.
+   앵커를 **스프레드 자체**로 옮겨야 행동이 바뀐다(두 번 틀렸다).
+4. **`/api/media/` 치환을 상대 모양만 봤다** — 호출부가 먼저 origin 을 붙이므로 전부 놓쳤다.
+   빌더를 **실제로 돌려** 출력을 보고서야 드러났다(같은 바이트에 1.9배 차이).
+5. **`--only` 는 이름 부분일치다** — 파일명으로는 안 걸린다(0건 + 안내 출력).
