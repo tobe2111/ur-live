@@ -231,7 +231,11 @@ describe('⑥ 🔴 반대 방향 — 요약이 주입(React initialData)으로 �
   })
 
   it('요약이 없으면 MAIN 시드로 떨어진다 (fail-soft)', () => {
-    expect(worker).toMatch(/const crawlerPayload = \(digestP && await digestP\) \|\| ssrPayload;/)
+    // 🔀 2026-10-12 재조준: #21(thin 지역 noindex)이 요약 **원본**을 따로 들고 있어야 해서 한 줄이
+    //   둘로 갈렸다(`digestRaw` → `crawlerPayload`). 지키는 불변식은 그대로 — **요약이 없으면
+    //   `ssrPayload` 로 떨어진다**(여기서 null 로 떨어지면 크롤러 본문·ItemList 가 통째로 사라진다).
+    expect(worker).toMatch(/const digestRaw = digestP \? await digestP : null;/)
+    expect(worker).toMatch(/const crawlerPayload = digestRaw \|\| ssrPayload;/)
   })
 })
 

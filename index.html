@@ -461,14 +461,6 @@
       /* 다크 모드 진입 직전 깜빡임 방지 */
       html.dark body{background:#11141C;color:#fff}
 
-      /* 🛡️ 2026-04-28: 인앱 브라우저 안내 (default 표시).
-         JS 차단·CSP 차단·document.write 차단 환경에서도 정상 표시. */
-      #ud-inapp-block { display: none; min-height: 100vh; background: linear-gradient(180deg,#fafafa 0%,#f0f0f5 100%); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; color: #1d1d1f; -webkit-text-size-adjust: 100%; }
-      #ud-inapp-block.show { display: block; }
-      #ud-inapp-block .wrap { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; box-sizing: border-box; }
-      #ud-inapp-block .ulogo { font-size: 32px; font-weight: 800; letter-spacing: -0.04em; margin-bottom: 8px; background: linear-gradient(135deg, #ff6b6b, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-      #ud-inapp-block .tagline { font-size: 11px; color: #8e8e93; margin-bottom: 24px; letter-spacing: 0.05em; font-weight: 500; }
-
       /* 🎨 2026-06-29 (대표 — 로딩 브랜드 통일): 부팅 스플래시를 UR·DEAL 워드마크 로더로
          (React 라우트 전환 BrandLoader 와 동일 룩). '유어딜' 한글 로더 → UR·DEAL 로 통일. */
       #ur-pre-react .urw { position: relative; display: inline-flex; align-items: center; font-weight: 900; font-style: italic; font-size: 30px; line-height: 1; letter-spacing: -0.055em; font-family: 'Pretendard Variable', -apple-system, BlinkMacSystemFont, system-ui, sans-serif; animation: ur-boot-breathe 1.5s ease-in-out infinite; }
@@ -479,25 +471,16 @@
       @keyframes ur-boot-breathe { 0%,100% { opacity: 0.5; transform: scale(0.97); } 50% { opacity: 1; transform: scale(1); } }
       @keyframes ur-boot-sweep { 0% { transform: translateX(-120%); } 100% { transform: translateX(320%); } }
       @media (prefers-reduced-motion: reduce) { #ur-pre-react .urw, #ur-pre-react .urb { animation: none; } }
-      #ud-inapp-block .icon { font-size: 56px; margin-bottom: 18px; }
-      #ud-inapp-block .blk-title { font-size: 18px; font-weight: 700; margin: 0 0 12px; line-height: 1.4; }
-      #ud-inapp-block p.desc { font-size: 14px; color: #6e6e73; line-height: 1.6; margin: 0 0 24px; max-width: 340px; }
-      #ud-inapp-block a.open-btn { display: inline-block; padding: 14px 28px; background: #FEE500; color: #3C1E1E; border-radius: 28px; font-weight: 800; text-decoration: none; font-size: 15px; margin: 4px 0 12px; box-shadow: 0 4px 12px rgba(254,229,0,0.35); }
-      #ud-inapp-block .url-box { background: #fff; border: 1px solid #e5e5ea; border-radius: 12px; padding: 12px; margin: 12px 0 8px; width: 100%; max-width: 340px; word-break: break-all; font-size: 11px; box-sizing: border-box; }
-      #ud-inapp-block button.copy { padding: 10px 20px; background: #007aff; color: #fff; border: 0; border-radius: 18px; font-size: 13px; font-weight: 600; cursor: pointer; }
-      #ud-inapp-block .steps { margin-top: 24px; padding: 16px; background: #fff; border-radius: 12px; max-width: 340px; width: 100%; text-align: left; box-sizing: border-box; border: 1px solid #e5e5ea; font-size: 12px; color: #6e6e73; line-height: 1.7; }
-      #ud-inapp-block .steps b { color: #1d1d1f; }
-      #ud-inapp-block kbd { background: #f2f2f7; border: 1px solid #d2d2d7; border-radius: 4px; padding: 1px 6px; font-family: inherit; font-size: 11px; font-weight: 600; }
     </style>
 
     <!-- CSP nonce placeholder — Worker HTMLRewriter가 content 값을 요청별 nonce로 교체 -->
     <meta name="csp-nonce" content="" />
-    <meta name="description" content="할인가로 사서 매장에서 바로 쓰는 이용권, 기프티콘 교환권, 내 주변 동네딜, 무료 체험단 응모, 나만의 링크샵까지. 유어딜에서 돈버는 쇼핑." />
-    <meta name="keywords" content="이용권,교환권,기프티콘,동네딜,공동구매,맛집,뷰티,숙소,할인,쿠폰,체험단,리뷰,링크샵,로컬딜,유어딜" />
+    <meta name="description" content="할인가로 사서 매장에서 바로 쓰는 이용권, 기프티콘 교환권, 내 주변 동네딜, 무료 체험단 응모, 나만의 유어샵까지. 유어딜에서 돈버는 쇼핑." />
+    <meta name="keywords" content="이용권,교환권,기프티콘,동네딜,공동구매,맛집,뷰티,숙소,할인,쿠폰,체험단,리뷰,유어샵,로컬딜,유어딜" />
     <meta name="author" content="리스터코퍼레이션" />
     <meta name="robots" content="index, follow" />
     <meta property="og:title" content="유어딜 - 돈버는 쇼핑, 이용권·교환권·동네딜" />
-    <meta property="og:description" content="할인가로 사서 매장에서 바로 쓰는 이용권, 기프티콘 교환권, 내 주변 동네딜, 무료 체험단 응모, 나만의 링크샵까지. 유어딜에서 돈버는 쇼핑." />
+    <meta property="og:description" content="할인가로 사서 매장에서 바로 쓰는 이용권, 기프티콘 교환권, 내 주변 동네딜, 무료 체험단 응모, 나만의 유어샵까지. 유어딜에서 돈버는 쇼핑." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://urdeal.kr" />
     <meta property="og:site_name" content="유어딜" />
@@ -551,7 +534,7 @@
     <meta property="og:locale" content="ko_KR" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="유어딜 - 돈버는 쇼핑, 이용권·교환권·동네딜" />
-    <meta name="twitter:description" content="할인가로 사서 매장에서 바로 쓰는 이용권, 기프티콘 교환권, 내 주변 동네딜, 무료 체험단 응모, 나만의 링크샵까지. 유어딜에서 돈버는 쇼핑." />
+    <meta name="twitter:description" content="할인가로 사서 매장에서 바로 쓰는 이용권, 기프티콘 교환권, 내 주변 동네딜, 무료 체험단 응모, 나만의 유어샵까지. 유어딜에서 돈버는 쇼핑." />
     <!-- 🔎 네이버 사이트 소유확인 SSOT (서치어드바이저 urdeal.kr 등록분). **반드시 이 정적 HTML 에만** 둘 것 —
          SEO.tsx(react-helmet=JS 렌더)에 두면 Yeti(네이버 크롤러)가 못 본다. 실측(2026-07): 7/20 JS 토큰만
          있을 땐 수집 0 → 7/22 이 정적 토큰 배포 당일 수집 2·색인 1 발생. 토큰 교체 시 여기만 수정. -->
@@ -641,36 +624,14 @@
   <body><script>document.body.style.backgroundColor=window.__urInitialBg||'#ffffff';</script>
 
     <!--
-      🛡️ 2026-04-28: 인앱 브라우저 안내 (static HTML).
-      JS 작동: 카톡 detect 시 .show 클래스 토글 → 표시 + 자동 redirect 시도.
-      JS 차단/CSP 차단: .show 안 붙어 안 보이지만 fallback 표시 보장 위해
-        UA 매칭 시 server-side 처리 권장 (후속).
-      현재: JS 가 ALL 환경에서 실행돼야 정상 동작 — 가장 확실한 흰화면 회피.
+      🗑️ 2026-10-12: 인앱 브라우저 풀스크린 안내(#ud-inapp-block) 제거 — 2026-07-25 대표 지시
+        "카톡도 그냥 열리게" 로 자동 이동을 끊은 뒤 `.show` 를 붙이는 코드가 사라져 **죽은 마크업**이었다.
+        그런데 `display:none` 이어도 바이트로는 남아, AI 검색봇(OAI-SearchBot·Claude-SearchBot 등 —
+        BOT_UA_REGEX 밖이라 봇 셸이 아닌 이 문서를 받는다)에겐 **모든 페이지의 첫 본문 219자**가
+        "인앱 브라우저에서는 일부 기능이 제한돼요" 였다(라이브 실측). 인앱에서 정말 막히는 기능은
+        기능 단위 게이트(IosTopupGate/InAppFeatureBlockedModal)가 그 시점에만 안내한다 — 그 경로는 그대로.
+        ⚠️ 아래 UA 감지 스크립트는 남겨 둔다(일반 브라우저 8초 슬로우 힌트가 그걸 쓴다).
     -->
-    <div id="ud-inapp-block" role="alert" aria-live="polite">
-      <div class="wrap">
-        <div class="ulogo">유어딜</div>
-        <div class="tagline">urdeal.kr</div>
-        <div class="icon">🌐</div>
-        <!-- 🔎 2026-07-29 (소비자 SEO 실측): h1 → p. 이 블록은 `display:none` 이라 사람에겐 안 보이는데,
-             서빙 HTML 에서 **문서 전체의 첫 h1**이었다. `/`·`/vouchers` 는 다른 h1 이 없어서 JS 를 안 돌리는
-             크롤러(네이버 Yeti)에겐 그 페이지의 대표 제목이 "인앱 브라우저에서는…" 이었다.
-             role="alert" 인 컨테이너라 제목 시맨틱이 필요 없다 — 스타일(.blk-title)은 동일. -->
-        <p id="ud-title" class="blk-title">인앱 브라우저에서는<br/>일부 기능이 제한돼요</p>
-        <p class="desc">최적의 환경을 위해<br/><b>외부 브라우저(Chrome / Safari)</b> 에서 열어주세요.</p>
-        <a id="ud-open-btn" href="#" class="open-btn">📲 외부 브라우저 열기</a>
-        <div class="url-box" id="ud-url"></div>
-        <button class="copy" id="ud-copy-btn" type="button">URL 복사</button>
-        <div class="steps">
-          <b>자동 이동이 안 되는 경우</b>
-          <ol style="margin:8px 0 0;padding-left:20px;">
-            <li>우측 상단 메뉴 (<kbd>⋮</kbd> / <kbd>⋯</kbd>) 클릭</li>
-            <li><b>"다른 브라우저로 열기"</b> 또는 <b>"Safari 로 열기"</b> 선택</li>
-            <li>안 되면 위 <b>URL 복사</b> 버튼 → Chrome/Safari 직접 열어 붙여넣기</li>
-          </ol>
-        </div>
-      </div>
-    </div>
 
     <div id="root" role="application" aria-label="유어딜 라이브 커머스">
       <div id="ur-pre-react" style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;"><script>(function(){var e=document.currentScript&&document.currentScript.parentElement;if(e){e.style.background=window.__urInitialBg||'#ffffff';e.style.color=window.__urInitialFg||'#1d1d1f';}})();</script>

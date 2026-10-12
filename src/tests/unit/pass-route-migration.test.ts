@@ -140,8 +140,14 @@ describe('R5 — 인프라가 새 주소를 안다', () => {
   })
 
   it('🔴 sitemap 이 **정본**을 제출한다 — 301 을 제출하면 색인 신호가 한 홉 낭비된다', () => {
+    // 🔀 2026-10-12 재조준: `loc` 이 `/pass/${id}` 하드코딩 → `canonicalDetailPath` SSOT 경유로
+    //   바뀌었다(#18 — 숙소만 `/stays/:id` 라 하드코딩은 sitemap↔ItemList 를 갈라 놓았다).
+    //   지키는 불변식은 그대로 — **옛 주소(`/group-buy/`)를 제출하지 않는다**. 앵커를 문자열에서
+    //   **동작**으로 옮긴다(이용권 상세의 정본이 `/pass/:id` 인지 SSOT 에 직접 물어본다).
+    //   ⚠️ "SSOT 를 경유하는가" 는 `stay-canonical-thin-region-2026-10-12` ⑤가 본다 — 여기서
+    //   같이 보면 중복 잠금이 되어 어느 쪽도 출력으로 판정할 수 없다(2026-10-11 에 값을 치렀다).
+    expect(canonicalDetailPath({ id: 2919, deal_only: 0, category: 'meal_voucher' })).toBe('/pass/2919')
     const sm = src('src/worker/routes/sitemap.routes.ts')
-    expect(/loc: `\/pass\/\$\{g\.id\}`/.test(sm)).toBe(true)
     expect(/loc: `\/group-buy\/\$\{/.test(sm), 'sitemap 에 옛 주소가 남아 있다').toBe(false)
   })
 
