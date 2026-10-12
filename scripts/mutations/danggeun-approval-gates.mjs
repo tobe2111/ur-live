@@ -85,12 +85,4 @@ export default [
     test: TEST,
     why: '옛 로그인 세션엔 키가 없다 — 없다고 숨기면 승인된 매장의 메뉴가 사라진다.',
   },
-  {
-    name: 'danggeun: 배너가 등록증 URL 까지 내려받게 한다',
-    file: 'src/features/auth/api/seller.routes.ts',
-    find: "      has_business_cert: !!(await import('../../../worker/utils/seller-cert-url').then(m => m.resolveSellerCertUrl(c.env.DB, sellerId, row?.business_registration_image_url)).catch(() => row?.business_registration_image_url || null)),",
-    replace: '      business_registration_image_url: row?.business_registration_image_url ?? null,',
-    test: TEST,
-    why: '도착 여부만 있으면 되는데 주소를 실어 보내면 남의 서류 링크가 응답에 남는다.',
-  },
 ]

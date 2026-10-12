@@ -89,8 +89,8 @@ export function ProxyProductModal({ merchant, onClose }: { merchant: { id: numbe
  *   등록"이 2군데였고, 현금 출금 게이트(curator.routes:861)가 이미 '연결 승인 매장'을 요구해
  *   BusinessSection-only 등록은 현금정산이 안 되는 오해유발 UI였음 → BusinessSection 은퇴, 본 카드로 통합.
  *   유저 → [사업자 등록 1번 = 판매 승인] → 사업자 유저 (판매 + 추천수익 현금정산 동시).
- *   기존 검증된 매장 등록(/seller/register/supplier → register-from-user store_owner) + 어드민 승인
- *   재활용. 승인되면 /u/{handle} 가 셀러 상점 + 추천 핀(CuratorPinsSection) 통합 페이지가 됨.
+ *   매장 등록(지금은 `/store/new` 하나 — 옛 `/seller/register/supplier → register-from-user` 는 2026-10-12 삭제)
+ *   + 어드민 승인 재활용. 승인되면 /u/{handle} 가 셀러 상점 + 추천 핀(CuratorPinsSection) 통합 페이지가 됨.
  */
 
 export function WithdrawModal({ info, onClose, onSuccess }: { info: WithdrawalInfo; onClose: () => void; onSuccess: () => void }) {
