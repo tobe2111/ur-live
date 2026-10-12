@@ -172,7 +172,7 @@ import { buildDetailMeta, buildStayDetailMeta, buildProductMeta } from './utils/
 // 🔎 2026-07-29 정적 소비자 표면 메타 SSOT(워커·클라 공용). ⚠️ 워커 값 import 는 alias 금지 — 상대경로.
 import { resolveConsumerSurfaceSeo } from '../shared/seo/consumer-surfaces';
 import { resolveConsumerAlias } from '../shared/seo/consumer-redirects';
-import { applySurfaceMeta, buildSellerSurfaceMeta, shouldNoindexMissingEntity, resolveRegionSeo } from './utils/surface-ssr-meta'; import { buildSurfaceListJsonLd, buildCuratorJsonLd } from './utils/surface-list-jsonld';
+import { applySurfaceMeta, buildSellerSurfaceMeta, shouldNoindexMissingEntity, isRetiredSurface, resolveRegionSeo } from './utils/surface-ssr-meta'; import { buildSurfaceListJsonLd, buildCuratorJsonLd } from './utils/surface-list-jsonld';
 import { fetchSsrPayload, applySsrDiagHeaders, type SsrTarget } from './utils/ssr-payload'; import { MAP_SEED_PATH } from '../shared/map-feed-seed';
 // 🛡️ 2026-05-20: 에이전시 = 가게 입점 영업 모델 (Phase 2).
 // 🛡️ 2026-05-18: 숙소 공구 에이전시 모니터링 — PR 1 Foundation.
@@ -597,11 +597,12 @@ app.use('*', async (c, next) => {
     //   `<Navigate to="/" replace/>`(홈으로 즉시 리다이렉트)이고 유일 소비자 GroupBuyListPage 는 미라우팅.
     //   콜드 시 최대 1.5s self-fetch 로 리다이렉트 응답만 느리게 만들던 순수 낭비였음. (라우트가 부활하면
     //   이 분기 + GroupBuyListPage 의 __SSR_INITIAL_GROUPBUY__ 소비를 함께 복원할 것.)
-    } else if (url.pathname === '/wholesale' && !url.search) {
-      // 🏭 2026-06-10 [LOADING_ADDITIVE] (사용자 신고 — 도매몰 상품 느림): guest 카탈로그 SSR inject.
-      //   HTML→JS→fetch 3-RTT 워터폴 제거 — 카드가 첫 페인트에 즉시. 비로그인(공유 응답)만 consume
-      //   (로그인 등급가는 클라가 fetch — 등급 캐시로 빠름). prewarm 키와 동일 path.
-      ssrTarget = { slot: 'WHOLESALE', path: '/api/wholesale/catalog' };
+    // 🧨 2026-10-12 [UNLOCK_LOADING] WHOLESALE 슬롯 **제거**(대표 *"SEO 측면에서 … 모두 해줘"*).
+    //   2026-06-10 에 넣은 `/wholesale` → `/api/wholesale/catalog` self-fetch 는 2026-10-11 철거(#1710)로
+    //   그 API 가 사라진 뒤 **매 요청 404 를 받고 있었다**(라이브 실측 `X-SSR-Status: WHOLESALE:self-fetch-404`).
+    //   그런데 이 슬롯만 타임아웃이 3000ms(가장 긴 값)라, 죽은 경로를 크롤할 때마다 그만큼 기다렸다가 404 를
+    //   받고 셸을 내려보냈다. 슬롯을 지우면 self-fetch·타임아웃·그 뒤 soft-404 가 한꺼번에 사라진다.
+    //   (도매가 되살아나면 이 분기 + `timeoutFor` 의 WHOLESALE 3000ms + prewarm 키를 함께 복원할 것.)
     } else if (url.pathname === '/blog' && !url.search) {
       // 📝 2026-07-01 블로그 목록 SSR — BlogListPage 가 __SSR_INITIAL_BLOG__ 를 0-RTT consume(마운트 후
       //   cold fetch 워터폴 제거) + 아래 head rewrite 에서 Blog/ItemList 구조화데이터 주입(검색 리치결과).
@@ -686,12 +687,12 @@ app.use('*', async (c, next) => {
     c.res.headers.append('Link', '<https://cdn.jsdelivr.net>; rel=preconnect; crossorigin, <https://t1.kakaocdn.net>; rel=preconnect; crossorigin, <https://img1.kakaocdn.net>; rel=preconnect; crossorigin');
 
     const ssrSlot = ssrTarget?.slot ?? 'MAIN';
-    // 🏭 2026-06-05 (사용자 신고 — 도매몰 진입 시 소비자 홈 화면이 잠깐 깜빡임):
-    //   prerender 된 index.html 의 #root 에는 소비자 홈 shell(다크 테마·라이브/동네딜 nav 등)이 구워져 있어
-    //   /wholesale·/supplier 를 hard-load 하면 React 가 도매 페이지로 라우팅하기 전 그 소비자 shell 이 첫 paint 에
-    //   잠깐 보임(다른 업태·다른 테마라 이질적). 해당 surface 에서만 #root 를 도매 라이트 배경 placeholder 로 비워
-    //   깜빡임 제거. createRoot(비-hydrate)라 안전. 소비자 페이지의 0-RTT shell·SSR inject 는 불변(additive).
-    const isWholesaleSurface = /^\/(wholesale|supplier)(\/|$)/.test(url.pathname);
+    // 🧨 2026-10-12 [UNLOCK_LOADING] 철거된 표면(`/wholesale`·`/supplier`)은 **410 Gone**.
+    //   종전 `isWholesaleSurface` 는 "도매는 자체 라이트 테마라 소비자 홈 shell 깜빡임을 막는다"(2026-06-05)
+    //   용도였는데, 가릴 도매 페이지가 더는 없다(#1710). 판정은 `isRetiredSurface`(SSOT — 왜 410 이고 왜
+    //   301·robots 차단이 아닌지 그 함수 주석에 적혀 있다)로 옮기고, `#root` 는 소비자 catch-all 로더에
+    //   맡긴다(410 이어도 본문은 셸이라 브라우저가 `NotFoundPage` 를 정상 렌더한다).
+    const retiredSurface = isRetiredSurface(url.pathname);
     // 🏁 2026-06-13 [LOADING_ADDITIVE] (사용자 신고 — "대부분 페이지 로딩 중 / 홈이 잠깐 등장"):
     //   대시보드(seller/admin/agency) hard-load 시에도 prerender 된 #root 의 소비자 홈 shell(다크·라이브 nav)이
     //   첫 paint 에 잠깐 보임 → 도매 surface 와 동일하게 #root 를 라이트 placeholder 로 비워 깜빡임 제거.
@@ -699,7 +700,7 @@ app.use('*', async (c, next) => {
     const isDashboardSurface = /^\/(seller|admin|agency)(\/|$)/.test(url.pathname);
     // 🆕 2026-06-26 3번째 서비스(통합 마케팅, /ads) — 도매몰처럼 자체 라이트 surface. 소비자 홈 shell 깜빡임 차단(additive).
     const isMarketingSurface = /^\/(ads)(\/|$)/.test(url.pathname);
-    const needsRootBlank = isWholesaleSurface || isDashboardSurface || isMarketingSurface;
+    const needsRootBlank = isDashboardSurface || isMarketingSurface;
     // 🗑️ 2026-07-10 [UNLOCK_LOADING] (로딩 전수조사): isLinkshopSurface(06-21)·isDetailSurface(06-22) 데드
     //   변수 제거 — 2026-07-07 catch-all `else` 가 두 표면을 포함한 모든 잔여 HTML 라우트에 URDEAL 정적 로더를
     //   주입하면서 대체됐는데(#root 분기에서 미참조), 정의와 낡은 주석("#root 비움")만 남아 오독을 유발했음.
@@ -776,28 +777,13 @@ app.use('*', async (c, next) => {
           }
         },
       });
-    if (isWholesaleSurface) {
-      // 🏭 2026-06-08 도매 surface 서버측 OG/canonical 주입 — JS 안 도는 소셜 스크래퍼(카톡/페북/슬랙)·일부 봇은
-      //   react-helmet(클라 렌더)을 못 보고 index.html 의 소비자 기본 메타만 봄. utongstart 정식 도메인 육성을 위해
-      //   도매 surface 응답의 head 메타를 도매 브랜드값으로 rewrite + utongstart canonical append.
-      //   (Googlebot 은 JS 렌더해 react-helmet 의 페이지별 정밀 메타를 봄 — 본 주입은 비-JS 크롤러용 fallback.)
-      const wsTitle = '유통스타트 도매몰 — 제조사 직거래 B2B 도매사이트';
-      const wsDesc = '검증 제조사 상품을 판매사 등급별 도매 공급가로. 무재고 위탁판매·OEM·사입까지, 도매가 거래 B2B 플랫폼.';
-      const wsCanonical = `https://utongstart.com${url.pathname}`;
-      rb = rb
-        .on('title', { element(el) { el.setInnerContent(wsTitle); } })
-        .on('meta[name="description"]', { element(el) { el.setAttribute('content', wsDesc); } })
-        .on('meta[property="og:title"]', { element(el) { el.setAttribute('content', wsTitle); } })
-        .on('meta[property="og:description"]', { element(el) { el.setAttribute('content', wsDesc); } })
-        .on('meta[property="og:url"]', { element(el) { el.setAttribute('content', wsCanonical); } })
-        .on('meta[property="og:site_name"]', { element(el) { el.setAttribute('content', '유통스타트'); } })
-        .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', wsTitle); } })
-        .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', wsDesc); } })
-        // 🏭 도매 surface 파비콘(브라우저 탭) = 유통스타트 마크(유어딜 UR 아님). 링크 href 를 도매 파비콘으로 rewrite.
-        .on('link[rel="icon"]', { element(el) { el.setAttribute('href', '/favicon-utong.svg'); el.setAttribute('type', 'image/svg+xml'); } })
-        .on('link[rel="apple-touch-icon"]', { element(el) { el.setAttribute('href', '/favicon-utong.svg'); } })
-        .on('head', { element(el) { el.append(`<link rel="canonical" href="${wsCanonical}">`, { html: true }); } });
-    }
+    // 🧨 2026-10-12 [UNLOCK_LOADING] 도매 surface 메타 주입 **제거**(대표 *"SEO 측면에서 … 모두 해줘"*).
+    //   2026-06-08 에 넣은 그 블록은 `<title>유통스타트 도매몰 …`·도매 설명·`utongstart.com` canonical·
+    //   도매 파비콘을 rewrite 했다. 2026-10-11 철거(#1710) 뒤에는 그게 **없는 서비스를 광고하는 자리**다.
+    //   ⚠️ canonical 이 특히 나빴다 — `utongstart.com` 은 Cloudflare 실측으로 **어느 Pages 프로젝트에도
+    //      연결돼 있지 않다**(`ur-live → urdeal.kr` · `ur-wholesale → *.pages.dev` 뿐). 아무것도 서빙하지
+    //      않는 도메인을 "이 페이지의 정본" 으로 선언하고 있었고, `index.html` 의 canonical 과 **둘이 갈려**
+    //      구글이 충돌하면 둘 다 버린다. 이제 `isRetiredSurface` 가 410 을 주므로 메타를 꾸밀 이유가 없다.
     if (isMarketingSurface) {
       // 🆕 2026-07-01 유어애즈(/ads) surface 서버측 OG/canonical 주입 — 도매 surface 와 동일 패턴.
       //   비-JS 크롤러/소셜 스크래퍼(카톡/페북/슬랙)는 react-helmet(<SEO>)을 못 봐 index.html 의
@@ -999,7 +985,7 @@ app.use('*', async (c, next) => {
     //   `/area-report/:region` 은 그 표의 **동적 항목** — 지역명이 경로에 있어 조회 없이 메타가 나오고,
     //   지어낸 세그먼트(도어웨이)는 리졸버가 noindex 로 표시해 준다.
     //   SSR inject·0-RTT·`caches.default`·#root 로더·edgeCache 전부 불변 — head rewrite 만 추가.
-    if (!isWholesaleSurface && !needsRootBlank) {
+    if (!needsRootBlank) {
       const sm = resolveConsumerSurfaceSeo(url.pathname, url.search, origin2) ?? resolveRegionSeo(url.pathname, origin2);
       if (sm) rb = applySurfaceMeta(rb, { ...sm, jsonLd: buildSurfaceListJsonLd(url.pathname, url.search, origin2, sm, ssrPayload) });
     }
@@ -1011,7 +997,7 @@ app.use('*', async (c, next) => {
     //   ⚠️ HTTP 상태는 200 그대로 둔다 — SPA 셸/청크 로딩·클라 라우팅에 영향을 주지 않기 위해서다.
     //   색인만 막는다. (진짜 404 상태 전환은 별개 결정 — handoff 참조.)
     const entityGone = shouldNoindexMissingEntity(ssrSlot, ssrStatus);
-    if (entityGone) {
+    if (entityGone || retiredSurface) {
       rb = rb.on('meta[name="robots"]', { element(el) { el.setAttribute('content', 'noindex, follow'); } });
     }
     if (ssrSlot === 'SELLER' && ssrPayload) {
@@ -1081,8 +1067,15 @@ app.use('*', async (c, next) => {
     //   "없는 상품" 화면을 정상 렌더한다(HTTP 상태는 렌더를 막지 않는다).
     //   ⚠️ 판정 근거는 **우리 API 의 404** 뿐이다 — 타임아웃/5xx 는 제외(shouldNoindexMissingEntity).
     //   ⚠️ 정적 자산은 이 경로를 타지 않는다(text/html 청크포인트 안) → 청크 404 자가복구와 무관.
-    c.res = entityGone
-      ? new Response(rewritten.body, { status: 404, statusText: 'Not Found', headers: rewritten.headers })
+    // 🧨 2026-10-12 철거된 표면은 **410 Gone** — 엔티티 404 와 의미가 다르다(`isRetiredSurface` 주석 참조).
+    //   상품은 다시 올라올 수 있어 404("지금 없다")지만 도매몰은 돌아오지 않는다 → 410("영구히 사라졌다").
+    const goneStatus = retiredSurface ? 410 : (entityGone ? 404 : 0);
+    c.res = goneStatus
+      ? new Response(rewritten.body, {
+          status: goneStatus,
+          statusText: goneStatus === 410 ? 'Gone' : 'Not Found',
+          headers: rewritten.headers,
+        })
       : new Response(rewritten.body, rewritten);
     // 🛡️ 2026-06-25 [UNLOCK_LOADING] (대표 승인 "가장 이상적으로 모두"): SPA HTML 셸은 항상 재검증.
     //   옛 HTML(옛 청크 해시)이 브라우저/bfcache 에 잔존 → 새 배포 후 그 청크 404 → 흰화면/안넘어감을
@@ -1154,12 +1147,14 @@ app.use('*', async (c, next) => {
 // 🎯 [urads-split Phase D] /l/{code} 단축링크 로컬 폴백 제거 — 위 프록시가 ur-ads 로 위임(컷오버 검증됨).
 // app.route('/', shortLinkRedirectRoutes);
 
-// 🏭 2026-06-08 호스트 인지 robots.txt — utongstart.com 은 도매 Sitemap 으로 (도매 정식 도메인 육성).
-//   SSOT 는 public/robots.txt(ASSETS). utongstart 호스트일 때만 Sitemap 라인을 도매 도메인으로 치환.
-//   urdeal.kr 등 다른 호스트는 원본 그대로(회귀 0).
+// 🤖 robots.txt — SSOT 는 `public/robots.txt`(ASSETS). 워커가 직접 서빙하는 이유는 2026-07-29 에
+//   Cloudflare Managed robots.txt 가 우리 파일을 통째로 대체해 규칙 50줄과 `Sitemap:` 이 서빙되지
+//   않고 있었던 사고 때문이다(가드는 초록인데 크롤러는 다른 파일을 봤다 — `check-live-contracts` 가
+//   지금은 본문까지 대조한다).
+// 🧨 2026-10-12: utongstart 호스트일 때 `Sitemap:` 을 도매 도메인으로 치환하던 분기 **제거**
+//   (2026-06-08 "도매 정식 도메인 육성"). 그 도메인은 어느 Pages 프로젝트에도 연결돼 있지 않아
+//   요청이 도달하지 않고, 도매몰 자체가 철거됐다(#1710) → 죽은 분기였다.
 app.get('/robots.txt', async (c) => {
-  const host = new URL(c.req.url).hostname.toLowerCase();
-  const isWholesaleHost = host === 'utongstart.com' || host === 'www.utongstart.com';
   let body = '';
   try {
     const assetUrl = new URL('/robots.txt', c.req.url);
@@ -1167,9 +1162,6 @@ app.get('/robots.txt', async (c) => {
     if (res && res.ok) body = await res.text();
   } catch { /* ASSETS 미바인딩 — 아래 fallback */ }
   if (!body) body = 'User-agent: *\nAllow: /\nSitemap: https://urdeal.kr/sitemap.xml\n';
-  if (isWholesaleHost) {
-    body = body.replace(/Sitemap:\s*https?:\/\/\S+/i, 'Sitemap: https://utongstart.com/sitemap.xml');
-  }
   return c.text(body, 200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=3600' });
 });
 

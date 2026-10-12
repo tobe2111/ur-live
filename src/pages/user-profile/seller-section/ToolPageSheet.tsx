@@ -45,6 +45,22 @@ import { SellerEmbedProvider } from '@/shared/seller-embed'
 import { SellerRoutes } from '@/routes/seller.routes'
 import Sheet from './Sheet'
 import { ensureDashStrings } from '@/i18n'
+import { useSellerNavModel } from '@/components/seller-layout/useSellerNavModel'
+
+/**
+ * 🚪 머리 이름을 못 받았을 때(대시보드 깊은 링크로 열린 경우 — 2026-10-12) 나브 색인에서 찾는다.
+ *   정확히 같은 주소 → 가장 긴 접두(`/seller/products/12/edit` → 상품) → '판매 도구'.
+ *   ⚠️ 이름을 여기서 새로 짓지 않는다 — 색인이 정본이다(메뉴 이름과 시트 이름이 갈리지 않게).
+ */
+export function titleForPath(items: { path: string; label: string }[], path: string): string {
+  const base = path.split(/[?#]/)[0]
+  const exact = items.find((it) => it.path === base)
+  if (exact) return exact.label
+  const prefix = items
+    .filter((it) => base.startsWith(`${it.path}/`))
+    .sort((a, b) => b.path.length - a.path.length)[0]
+  return prefix ? prefix.label : '판매 도구'
+}
 
 /**
  * 🔌 **바깥 라우터와의 줄을 끊는다** — 이게 없으면 시트는 열리는 순간 터진다 (2026-09-28).
@@ -130,9 +146,11 @@ export default function ToolPageSheet({ path, title, onClose, onLeave }: {
   // 🌐 2026-10-11: 시트 안은 대시보드 화면이다 — 대시보드용 문구 절반을 받는다(손님 주소라 부팅 때 안 받았다).
   useEffect(() => { void ensureDashStrings() }, [])
   const back = useCallback(() => { backRef.current?.() }, [])
+  const { commandItems } = useSellerNavModel()
+  const shownTitle = title || titleForPath(commandItems, path)
 
   return (
-    <Sheet title={title} onClose={onClose} onBack={deeper ? back : undefined} tall>
+    <Sheet title={shownTitle} onClose={onClose} onBack={deeper ? back : undefined} tall>
       {/* 🏝️ 안쪽은 라이트 고정 — 대시보드 화면을 그대로 쓰기 때문이다(위 머리말). */}
       <div className="light-island ur-embed-sheet bg-white min-h-full">
         {/* 🪟 껍데기(사이드바·상단바·하단 탭)를 벗기는 신호. 페이지는 이걸 몰라도 된다. */}

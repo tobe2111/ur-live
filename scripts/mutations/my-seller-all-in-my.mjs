@@ -118,8 +118,9 @@ export default [
   {
     name: '↩️ 한 단계 들어가면 되돌아올 길이 없어진다',
     file: SHEET,
-    find: '    <Sheet title={title} onClose={onClose} onBack={deeper ? back : undefined} tall>',
-    replace: '    <Sheet title={title} onClose={onClose} tall>',
+    // 🚚 2026-10-12: 머리 이름이 `shownTitle`(색인 폴백)이 됐다 — 결함(되돌아오기 손잡이 제거)은 그대로.
+    find: '    <Sheet title={shownTitle} onClose={onClose} onBack={deeper ? back : undefined} tall>',
+    replace: '    <Sheet title={shownTitle} onClose={onClose} tall>',
     test: TEST,
     why:
       '목록 → 수정 으로 들어간 뒤 되돌아올 길이 X(시트 통째로 닫기)뿐이면, 고치다 만 사람이 ' +

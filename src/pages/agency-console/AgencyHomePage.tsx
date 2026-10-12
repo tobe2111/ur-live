@@ -7,14 +7,17 @@ import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/useToast'
 import { AgencyStaffPanel, type StaffRow } from './AgencyStaffPanel'
 import { AgencyInfoPanel } from './AgencyInfoPanel'
-import { AgencyStoresPanel } from './AgencyStoresPanel'
+import { AgencyStoresPanel, FlatRow } from './AgencyStoresPanel'
+import Sheet from '@/pages/user-profile/seller-section/Sheet'
 import {
   agencyRequest, clearAgencySession, readAgencyProfile, readAgencyToken,
   type AgencyInfo, type AgencyStaffInfo,
 } from './agency-api'
 
 /**
- * 🏢 에이전시 콘솔 첫 화면 — 맡은 매장(2단계) + 직원 + 에이전시 정보.
+ * 🏢 에이전시 콘솔 첫 화면 — 대표 확정 **안 A**(2026-10-12 · *"A안으로 해줘. 이건 PC버전도 중요해"*).
+ *   고른 매장의 판이 주인공이고, 직원 · 에이전시 정보는 '에이전시' 구역의 줄이 시트로 연다.
+ *   PC 는 두 칸(왼쪽 매장 목록 + 에이전시 줄 / 오른쪽 판) — 폭은 1040px 까지 넓힌다.
  */
 export default function AgencyHomePage() {
   const navigate = useNavigate()
@@ -26,6 +29,7 @@ export default function AgencyHomePage() {
   const [canManage, setCanManage] = useState(cached?.staff.role === 'admin')
   const [loadError, setLoadError] = useState('')
   const [expired, setExpired] = useState(false)
+  const [sheet, setSheet] = useState<'staff' | 'info' | null>(null)
 
   const load = useCallback(async () => {
     setLoadError('')
@@ -63,7 +67,7 @@ export default function AgencyHomePage() {
     <div className="force-light-theme agency-light-theme min-h-[100dvh] bg-[#F8F7FC] text-gray-900">
       <SEO title="에이전시 콘솔 - 유어딜" description="유어딜 에이전시 콘솔" url="/agency" noindex />
       <header className="sticky top-0 z-10 bg-[#F8F7FC]/95 backdrop-blur">
-        <div className="mx-auto flex h-14 w-full max-w-[720px] items-center justify-between px-4">
+        <div className="mx-auto flex h-14 w-full max-w-[720px] lg:max-w-[1040px] items-center justify-between px-4 lg:px-6">
           <div className="flex items-baseline gap-2">
             <UrDealLogo size={20} forceLight />
             <span className="text-[13px] font-semibold text-gray-600">에이전시</span>
@@ -74,7 +78,7 @@ export default function AgencyHomePage() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-[720px] px-4 pb-16">
+      <main className="mx-auto w-full max-w-[720px] lg:max-w-[1040px] px-4 lg:px-6 pb-16">
         {!me ? (
           loadError ? <ErrorBox message={loadError} onRetry={load} /> : <BrandLoader forceLight />
         ) : (
@@ -84,12 +88,33 @@ export default function AgencyHomePage() {
               <h1 className="mt-1 text-[24px] font-bold tracking-[-0.01em] text-gray-900">{me.agency.name}</h1>
             </section>
 
-            <AgencyStoresPanel onExpired={onExpired} />
-
             {loadError && <div className="mt-6"><ErrorBox message={loadError} onRetry={load} /></div>}
 
-            <AgencyStaffPanel staff={staff} canManage={canManage} onChanged={load} />
-            {canManage && <AgencyInfoPanel agency={me.agency} onSaved={load} />}
+            <AgencyStoresPanel
+              onExpired={onExpired}
+              staffId={me.staff.id}
+              agencyRows={(
+                <>
+                  <FlatRow label="직원" hint={staff ? `${staff.length}명` : undefined} onClick={() => setSheet('staff')} last={!canManage} />
+                  {canManage && <FlatRow label="에이전시 정보" onClick={() => setSheet('info')} />}
+                </>
+              )}
+            />
+
+            {sheet === 'staff' && (
+              <Sheet title="직원" onClose={() => setSheet(null)}>
+                <div className="min-h-full bg-[#F8F7FC] p-4">
+                  <AgencyStaffPanel staff={staff} canManage={canManage} onChanged={load} bare />
+                </div>
+              </Sheet>
+            )}
+            {sheet === 'info' && canManage && (
+              <Sheet title="에이전시 정보" onClose={() => setSheet(null)}>
+                <div className="min-h-full bg-[#F8F7FC] p-4">
+                  <AgencyInfoPanel agency={me.agency} onSaved={load} bare />
+                </div>
+              </Sheet>
+            )}
           </>
         )}
       </main>
