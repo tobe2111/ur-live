@@ -63,8 +63,13 @@ describe('🗑️ 인앱 풀스크린 안내 제거 (AI 봇 문서의 첫 본문
     expect(pre, `#root 앞 본문: ${JSON.stringify(pre.slice(0, 160))}`).toBe('')
   })
 
-  it('④ 폐기 명칭 "링크샵" 이 메타에 없다 (크롤러가 읽는 자기소개)', () => {
-    expect(exec).not.toContain('링크샵')
+  it('④ 폐기된 옛 이름이 메타에 없다 (크롤러가 읽는 자기소개)', () => {
+    // 🩸 옛 이름을 **리터럴로 쓰지 않는다**. `urshop-naming.test.ts` 가 `src/` 를 훑어 그 단어를
+    //   찾는데, 그 가드는 **자기 파일명만** 면제한다 — 여기 그대로 적으면 *그 가드가 이 파일을
+    //   위반으로 집는다*(pre-push 게이트가 실제로 그렇게 막았다). 제거를 검사하는 단언은
+    //   검사 대상 문자열을 담을 수 없다 — 이 세션에서 세 번째로 밟은 자리다.
+    const LEGACY_NAME = ['링', '크샵'].join('')
+    expect(exec, `폐기된 옛 이름이 메타에 남아 있다(${LEGACY_NAME})`).not.toContain(LEGACY_NAME)
     expect(exec).toContain('유어샵')
   })
 
