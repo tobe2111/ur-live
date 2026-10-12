@@ -83,6 +83,20 @@ export function ensureKakaoSdk(): Promise<void> {
 export function ensureKakaoMaps(): Promise<void> {
   if (kakaoMapsPromise) return kakaoMapsPromise
 
+  // 🗺️ 2026-10-12 `/map` 하드로드는 index.html 의 인라인 스크립트가 SDK 를 **HTML 도착 직후** 출발시켜
+  //   둔다(`window.__urKakaoMaps`). 그걸 이어받는다 — 앱 부팅·지도 청크를 기다린 뒤 출발하면
+  //   sdk.js → kakao.js → 타일이 그 뒤로 줄줄이 밀려 실사용자 LCP p75 가 10초였다.
+  //   실패하면 그 스크립트가 자기 <script> 를 지우고 거절하므로 아래 정상 경로로 다시 시도한다.
+  const early = (window as unknown as { __urKakaoMaps?: Promise<void> }).__urKakaoMaps
+  if (early) {
+    delete (window as unknown as { __urKakaoMaps?: Promise<void> }).__urKakaoMaps
+    kakaoMapsPromise = early.catch(() => {
+      kakaoMapsPromise = null
+      return ensureKakaoMaps()
+    })
+    return kakaoMapsPromise
+  }
+
   kakaoMapsPromise = new Promise<void>((resolve, reject) => {
     if (!KAKAO_JS_KEY) {
       reject(new Error('VITE_KAKAO_JAVASCRIPT_KEY is not configured'))

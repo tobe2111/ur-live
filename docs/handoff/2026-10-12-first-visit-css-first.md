@@ -49,3 +49,10 @@ CDP `emulateNetworkConditions`+`setCPUThrottlingRate 4`. 헤더는 content-type/
 - **Cloudflare 존 설정(실측, 무료 플랜)**: http3 on · tls1.3 on · brotli on · **early_hints off · 0rtt off** → 대표가 켜기로 함(2026-10-12). 세션은 켜지 않는다(조회 전용 규율).
 - 기각(실측 효과 없음): locale-ko·app-utils-deferred 선행 preload · 폰트를 앱 마운트 뒤로. 조작가능 시간은 **폰 CPU**(엔트리 정적 그래프 해석)가 정한다 — 다음 레버는 부팅 JS 다이어트.
 - KV 쓰기: vitals 표본이 페이지뷰당 2건 늘어난다(표본율 0.25, 현재 하루 ~100건 → 무료 1천 한도 안).
+
+## 7. 후속 (같은 PR) — 지도(`/map`) LCP p75 10.4s 의 근본 원인
+- **원인(재생 실측)**: 가장 큰 그림 = 카카오 지도 타일. 그 앞이 전부 직렬 — 앱 부팅 → 지도 청크 → `sdk.js`(5.2s) → `kakao.js` → 타일(7.9s~). LCP 12.2s.
+- **처방**: `index.html` `<head>` 맨 앞 인라인 스크립트가 `/map` 에서만 `sdk.js` 를 0.25s 에 출발시킨다(`window.__urKakaoMaps`) → `ensureKakaoMaps` 가 이어받음. 실패하면 자기 태그를 지우고 정상 경로로.
+- **결과**: LCP 12.2 → 11.0s(3회 중간값). `kakao.js` 는 2.7s 에 끝나지만 **타일 12장 × ~58KB(2x HD) ≈ 700KB** 가 1.6Mbps 에서 5초를 먹는다 — 이게 남은 병목.
+- **남은 판단(대표)**: `kakao.maps.disableHD()` — 타일 용량 약 4분의 1(추정 −3초대)이지만 레티나에서 지도 글자가 흐려진다. 화질 교환이라 세션이 정하지 않는다.
+- 측정 주의: 재생 하네스 `replay3.mjs` 의 LCP 관찰자가 `for` 밖에서 `e` 를 읽어 **요소를 못 찍고 있었다**(고침). 6초 창은 타일이 끝나기 전에 잘려 LCP 가 **짧게** 나온다 — 지도는 `WAIT=16000` 으로 잴 것.
