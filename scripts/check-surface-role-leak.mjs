@@ -57,7 +57,9 @@ if (!fs.existsSync(MAP)) {
 let map
 try {
   const src = fs.readFileSync(MAP, 'utf8')
-  map = JSON.parse(src.slice(src.indexOf('= {') + 2).trim())
+  // 객체 리터럴만 잘라낸다 — 생성기가 그 뒤에 다른 export(ENTRY_CSS 등)를 더 낸다(2026-10-12).
+  const body = src.slice(src.indexOf('= {') + 2)
+  map = JSON.parse(body.slice(0, body.search(/^\}\s*$/m) + 1).trim())
 } catch (e) {
   console.error(`❌ surface-role-leak: route-chunk-map.ts 를 못 읽었다 — ${e.message}`)
   console.error('   생성기 출력 형식이 바뀌었다. 파서를 고칠 것(측정 실패는 통과가 아니다).')
