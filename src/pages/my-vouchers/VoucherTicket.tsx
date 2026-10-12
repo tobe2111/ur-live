@@ -76,7 +76,13 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
   const store = v.restaurant_name || ''
   const dong = (v.restaurant_address || '').split(/\s+/).find((w) => /[가-힣]+(동|읍|면|가)$/.test(w) && w.length <= 8) || ''
   const menu = store && v.product_name.startsWith(store) ? (v.product_name.slice(store.length).trim() || v.product_name) : v.product_name
-  const expiryText = v.status === 'used' && usedAt
+  // 🎁 2026-10-12 대표 "선물을 한 사람은 선물을 했다고 표시" — 받기 전(잠김)·받은 뒤(기록)를 카드에서 바로 말한다.
+  const giftedTo = v.status === 'gifted'
+    ? `${v.gift_to_name ? `${v.gift_to_name}님에게` : '친구에게'} 선물했어요${usedAt ? ` (${usedAt.toLocaleDateString(locale)})` : ''}`
+    : ''
+  const expiryText = giftedTo ? giftedTo : v.status === 'unused' && v.gift_pending
+    ? '선물 중이에요. 친구가 받기 전까지 쓸 수 없어요'
+    : v.status === 'used' && usedAt
     ? `${usedAt.toLocaleDateString(locale)} ${t('voucher.usedSuffix', { defaultValue: '사용' })}`
     : v.status !== 'unused'
       ? t(`voucher.status.${v.status}`)
@@ -117,7 +123,7 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
             onClick={(e) => { e.stopPropagation(); onShowQr() }}
             className="w-full h-12 rounded-xl bg-brand text-white text-[15px] font-extrabold active:opacity-80"
           >
-            {t('voucher.useFull', { defaultValue: '사용하기' })}
+            {v.gift_pending ? '선물 상태 보기' : t('voucher.useFull', { defaultValue: '사용하기' })}
           </button>
         </div>
       )}

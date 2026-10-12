@@ -67,6 +67,7 @@ export default function MyVouchersPage() {
   const [tab, setTab] = useState<'unused' | 'done'>('unused')
   // 🎨 2026-06-20 흑백 리디자인 화면2(지도 전용) — 인-페이지 뷰(새 라우트 X)
   const [mapSelected, setMapSelected] = useState<Voucher | null>(null)
+  const [mapFocusTick, setMapFocusTick] = useState(0) // 🗺️ 같은 카드를 다시 눌러도 핀으로 돌아가게(2026-10-12)
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null)
   // 🛡️ 2026-05-15: 참여 후 share prompt — GroupBuyDetailPage.handleJoin 이 localStorage 기록
   // 🗑️ 2026-10-06 (대표 "참여완료 이거 뜨면 안되지 않아? 없어졌잖아"): 구매 직후 '참여 완료!' 공유 모달 제거.
@@ -112,7 +113,7 @@ export default function MyVouchersPage() {
       return ta - tb
     })
   const usedItems = shownVouchers.filter(v => v.status === 'used')
-  const archivedItems = shownVouchers.filter(v => v.status === 'expired' || v.status === 'refunded')
+  const archivedItems = shownVouchers.filter(v => v.status === 'expired' || v.status === 'refunded' || v.status === 'gifted') // 🎁 2026-10-12 친구가 받은 선물 기록
   // 지도에 표시 가능한 미사용 이용권 (좌표 보유) — 메모이즈(지도 재초기화 방지)
   // 🐛 2026-06-21: 지갑 스코프로 제한 — 교환권 핀이 이용권 지도에 새던 것 차단(2026-08-31 이후엔 페이지가 분리돼 구조적으로도 0).
   const mapVouchers = useMemo(
@@ -133,6 +134,9 @@ export default function MyVouchersPage() {
   const heroUnit = t('voucher.won', { defaultValue: '원' })
 
   // 🎨 화면2 — 지도에서 보기 (전용 인-페이지 화면)
+  // 🗺️ 2026-10-12 대표 신고 스크린샷("지도를 화면 전체를 쓰던가"): 높이 460 고정이라 폰에선 아래 절반이 비었다.
+  //   머리줄(57) + 하단 탭(56 + 안전영역)을 뺀 나머지를 지도가 채운다. PC 는 위 네비(56)가 하나 더 있다.
+  const MAP_FILL = 'h-[calc(100dvh-113px-env(safe-area-inset-bottom))] lg:h-[calc(100dvh-169px)] min-h-[360px]'
   if (viewMode === 'map') {
     // 거리순 정렬 캐러셀 (위치 없으면 원본 순). 기본 강조 = 가장 가까운(없으면 첫) 이용권.
     const dist = (v: Voucher) => (userLoc && v.restaurant_lat && v.restaurant_lng)
@@ -154,13 +158,14 @@ export default function MyVouchersPage() {
           <h1 className="text-[17px] font-bold tracking-tight text-gray-900 dark:text-white">{t('voucher.mapTitle', { defaultValue: '지도에서 보기' })}</h1>
         </div>
         <div className="relative">
-          <Suspense fallback={<div className="flex items-center justify-center text-[15px] text-gray-500 dark:text-gray-400" style={{ height: 460 }}>{t('voucher.mapLoading', { defaultValue: '지도 불러오는 중...' })}</div>}>
-            <div className="[&>div]:rounded-none [&>div]:border-0" style={{ height: 460 }}>
+          <Suspense fallback={<div className={`flex items-center justify-center text-[15px] text-gray-500 dark:text-gray-400 ${MAP_FILL}`}>{t('voucher.mapLoading', { defaultValue: '지도 불러오는 중...' })}</div>}>
+            <div className={`[&>div]:rounded-none [&>div]:border-0 ${MAP_FILL}`}>
               <VoucherMap
                 vouchers={mapVouchers}
                 userLocation={userLoc}
                 onMarkerClick={handleMarkerClick}
                 focus={mapSelected && mapSelected.restaurant_lat && mapSelected.restaurant_lng ? { lat: mapSelected.restaurant_lat, lng: mapSelected.restaurant_lng } : null}
+                focusKey={mapFocusTick}
               />
             </div>
           </Suspense>
@@ -175,7 +180,7 @@ export default function MyVouchersPage() {
                     <button
                       key={v.id}
                       type="button"
-                      onClick={() => setMapSelected(v)}
+                      onClick={() => { setMapSelected(v); setMapFocusTick(t => t + 1) }}
                       className={`snap-start shrink-0 w-[80%] max-w-[300px] flex items-center gap-3 rounded-2xl bg-surface shadow-lift p-3 text-left transition-colors ${selected ? 'ring-2 ring-brand' : ''}`}
                       style={{ boxShadow: '0 8px 28px rgba(10,10,10,0.18)' }}
                     >

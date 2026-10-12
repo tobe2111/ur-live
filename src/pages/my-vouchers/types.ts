@@ -2,7 +2,7 @@
 export interface Voucher {
   id: number | string  // KT Alpha 는 'kt-{voId}' 형식
   code: string
-  status: 'unused' | 'used' | 'expired' | 'refunded' | 'processing'
+  status: 'unused' | 'used' | 'expired' | 'refunded' | 'processing' | 'gifted'  // gifted = 내가 보낸 선물을 친구가 받은 기록(코드 없음)
   product_name: string
   restaurant_name?: string
   restaurant_address?: string
@@ -28,6 +28,10 @@ export interface Voucher {
   product_id?: number  // 🛡️ /api/vouchers/my 가 v.product_id 반환 — 재구매 딥링크용
   /** 🎁 2026-10-11 선물로 받은 이용권이면 보낸 사람 id — 셀프 취소·환불 버튼을 숨긴다(서버도 막는다). */
   gift_from_user_id?: string | null
+  /** 🎁 2026-10-12 내가 보낸 선물 링크가 아직 안 받힌 상태 — 그동안은 쓸 수 없다(서버가 막는다). */
+  gift_pending?: boolean
+  /** 🎁 status='gifted' 기록의 받은 사람 이름 */
+  gift_to_name?: string | null
   applied_discount_pct?: number  // 🛡️ 할인율(%) — '아낀 돈' 계산용 (product_price 미반환이므로 이걸로)
 }
 

@@ -311,12 +311,12 @@ export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): 
   return out
 }
 
-export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: number; migrated: number; images: number; done: number; galleryFixed?: number; skipped?: string }> {
+export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: number; migrated: number; images: number; done: number; galleryFixed?: number; galleryDeduped?: number; skipped?: string }> {
   const DB = env.DB
   const bucketEnv = env as unknown as { MEDIA_BUCKET?: R2Bucket }
   // ① 재조정 — R2 버킷 유무와 무관(외부 URL 저장도 표시엔 유효, ②가 이후 영구화). fail-soft.
   const rc = await reconditionDemos(env).catch(() => ({ reconditioned: 0, skipped: 0, hiddenNoPhoto: 0, revived: 0 }))
-  const result: { reconditioned: number; migrated: number; images: number; done: number; galleryFixed?: number; skipped?: string } =
+  const result: { reconditioned: number; migrated: number; images: number; done: number; galleryFixed?: number; galleryDeduped?: number; skipped?: string } =
     { reconditioned: rc.reconditioned, migrated: 0, images: 0, done: 0 }
   // 🩹 갤러리 첫 칸 정합 — **R2 바인딩과 무관**(주소만 맞추는 DB 작업)이라 아래 조기반환보다 앞에 둔다.
   //   여기 아래에 뒀다가는 바인딩 없는 배포에서 영영 안 돈다(바로 밑 주석이 기록한 넉 달 사고와 같은 자리).
@@ -328,6 +328,10 @@ export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: 
   //   **"할 일이 없었다"와 똑같이** 찍혔다 — ok:true, 에러 0, 큐만 338건에서 안 줄어듦.
   //   ⇒ 못 한 것과 안 해도 됐던 것을 **구분해서** 남긴다. 이 한 글자가 없어서 못 봤다.
   if (!bucketEnv.MEDIA_BUCKET) return { ...result, skipped: 'NO_MEDIA_BUCKET' } // 바인딩 미등록 — 이관 불가
+  // 🖼️ 2026-10-12 같은 사진이 다른 주소로 두 장 — 내용(etag)이 같은 갤러리 칸을 접는다(`gallery-etag-dedupe.ts`).
+  const { dedupeGalleryByEtag } = await import('./gallery-etag-dedupe')
+  const dd = await dedupeGalleryByEtag({ DB, MEDIA_BUCKET: bucketEnv.MEDIA_BUCKET }).catch(() => ({ scanned: 0, fixed: 0 }))
+  if (dd.fixed) result.galleryDeduped = dd.fixed
 
   // ② 이관 + 깨진 사진 자가치유 — 외부 CDN URL → R2, 3회 시도해도 못 옮기는 URL 은 깨진 것으로 판정해 제거.
   const { results } = await DB.prepare(

@@ -57,6 +57,6 @@ describe('③ 실상품은 좁게·비파괴', () => {
   })
   it('실상품 R2 키는 uploads/rehost (데모 키와 분리)', () => {
     expect(CRON).toMatch(/isDemo \? 'uploads\/demo' : 'uploads\/rehost'/)
-    expect(code('src/worker/utils/rehost-image.ts')).toMatch(/const key = `\$\{keyPrefix\}\/\$\{yyyymm\}\/\$\{rand\}\.\$\{ext\}`/)
+    expect(code('src/worker/utils/rehost-image.ts')).toMatch(/const key = `\$\{keyPrefix\}\/h\/\$\{await contentHash\(buf\)\}\.\$\{ext\}`/)
   })
 })
