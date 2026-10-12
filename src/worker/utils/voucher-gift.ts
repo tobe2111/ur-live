@@ -89,13 +89,13 @@ export async function orderHasPendingGift(DB: D1Database, orderId: number | stri
   }
 }
 
-export const GIFT_PENDING_REFUND_BLOCKED = '친구에게 선물 중인 이용권이에요. 선물을 회수한 뒤에 환불할 수 있어요'
+export const GIFT_PENDING_REFUND_BLOCKED = '친구에게 선물 중인 이용권이에요. 선물 보내기를 취소한 뒤에 환불할 수 있어요'
 
 // ── 🔒 선물 중(받기 전) 잠금 — 2026-10-12 대표 *"선물하면 선물을 한 사람은 선물했다고 표시되고 해당 이용권은 쓸 수 없게끔"* ──
 // 링크가 살아 있는 동안(status='pending') 그 이용권은 **어떤 사용 경로로도** 소각되지 않는다.
 // 보낸 사람이 회수하면 잠금이 풀린다. 받으면 주인이 바뀌고 코드도 새로 발급된다(아래 `accept` 참조) —
 // 옛 코드를 보낸 사람이 갖고 있어도(캡처·문자·/v/ 링크) 더는 아무 데서도 안 통한다.
-export const GIFT_PENDING_USE_BLOCKED = '친구에게 선물 중인 이용권이에요. 보낸 분이 선물을 회수해야 쓸 수 있어요'
+export const GIFT_PENDING_USE_BLOCKED = '친구에게 선물 중인 이용권이에요. 보낸 분이 선물 보내기를 취소해야 쓸 수 있어요'
 
 /** 사용 CAS 에 붙이는 술어. `idExpr` 는 vouchers.id 를 가리키는 식(예: `vouchers.id`, `?`). */
 export function noPendingGiftSql(idExpr: string): string {

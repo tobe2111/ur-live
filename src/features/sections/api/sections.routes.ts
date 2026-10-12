@@ -29,6 +29,7 @@ import {
   normalizeSectionSource,
 } from '@/shared/constants/home-showcase';
 import { resolveSectionProducts, CARD_COLS } from './section-rules';
+import { capRowGalleries } from '../../group-buy/api/card-gallery';
 import { maybeSeedHomeSections } from './section-seed';
 import { mainScopeFor } from '@/worker/utils/consumer-scope';
 const sectionsRoutes = new Hono<{ Bindings: Env }>();
@@ -199,9 +200,11 @@ sectionsRoutes.get('/', edgeCache(120), async (c) => {
         return sectionList
           .map(s => ({
             ...s,
-            products: normalizeSectionSource(s.source) === 'manual'
+            // 🖼️ 2026-10-12 갤러리는 카드 SSOT(`CARD_GALLERY_MAX`)로 자른다 — 딜 피드·상품 목록은 이미 자르는데
+            //   섹션만 원본 전량을 싣고 있었다(홈 SSR 시드·엣지 캐시에 그대로 올라탄다).
+            products: capRowGalleries(normalizeSectionSource(s.source) === 'manual'
               ? (productsBySection.get(s.id as number) ?? [])
-              : (ruleProducts.get(s.id as number) ?? []),
+              : (ruleProducts.get(s.id as number) ?? [])),
           }))
           // 🚫 상품이 하나도 없는 줄은 아예 내리지 않는다 — 홈에 제목만 있고 아래가 빈
           //    섹션이 남으면 "빈손을 광고"하게 된다(대표가 배너에 정한 원칙과 같은 이유).

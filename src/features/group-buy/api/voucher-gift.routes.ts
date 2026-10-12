@@ -119,10 +119,10 @@ voucherGiftRoutes.post('/:token/cancel', requireAuth(), async (c) => {
       UPDATE voucher_gifts SET status = 'cancelled', cancelled_at = CURRENT_TIMESTAMP
       WHERE token = ? AND status = 'pending' AND sender_user_id IN (?, ?)
     `).bind(token, norm, raw).run()
-    if ((r.meta?.changes ?? 0) === 0) return c.json({ success: false, error: '이미 받았거나 회수한 선물이에요' }, 409)
+    if ((r.meta?.changes ?? 0) === 0) return c.json({ success: false, error: '이미 받았거나 취소한 선물이에요' }, 409)
     return c.json({ success: true })
   } catch (err) {
-    return safeError(c, err, '회수하지 못했어요', '[voucher-gift:cancel]')
+    return safeError(c, err, '선물 보내기를 취소하지 못했어요', '[voucher-gift:cancel]')
   }
 })
 
@@ -192,7 +192,7 @@ voucherGiftRoutes.post('/:token/accept', rateLimit({ action: 'voucher_gift_accep
       WHERE g.token = ?
     `).bind(norm, token).first<{ id: number; voucher_id: number; sender_user_id: string; status: string; product_name: string | null; recipient_name: string | null }>()
     if (!g) return c.json({ success: false, error: '없는 선물이에요' }, 404)
-    if (g.status !== 'pending') return c.json({ success: false, error: '이미 받았거나 회수된 선물이에요', code: 'NOT_PENDING' }, 409)
+    if (g.status !== 'pending') return c.json({ success: false, error: '이미 받았거나 취소된 선물이에요', code: 'NOT_PENDING' }, 409)
     if (String(g.sender_user_id) === norm || String(g.sender_user_id) === String(user.id)) {
       return c.json({ success: false, error: '내가 보낸 선물은 받을 수 없어요', code: 'SELF' }, 400)
     }
@@ -201,7 +201,7 @@ voucherGiftRoutes.post('/:token/accept', rateLimit({ action: 'voucher_gift_accep
       UPDATE voucher_gifts SET status = 'accepted', recipient_user_id = ?, accepted_at = CURRENT_TIMESTAMP
       WHERE id = ? AND status = 'pending'
     `).bind(norm, g.id).run()
-    if ((claim.meta?.changes ?? 0) === 0) return c.json({ success: false, error: '이미 받았거나 회수된 선물이에요', code: 'NOT_PENDING' }, 409)
+    if ((claim.meta?.changes ?? 0) === 0) return c.json({ success: false, error: '이미 받았거나 취소된 선물이에요', code: 'NOT_PENDING' }, 409)
 
     // 🔑 2026-10-12 대표 "선물하면 해당 이용권은 (보낸 사람이) 쓸 수 없게" — 주인만 바꾸면 **코드(=QR)는 그대로**라
     //   보낸 사람이 받기 전에 본 화면·캡처·`/v/코드` 링크로 매장에서 그대로 쓸 수 있었다(코드만으로 통하는 경로가 있다).

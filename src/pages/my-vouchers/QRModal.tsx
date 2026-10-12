@@ -423,10 +423,10 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
           {giftLocked && (
             <div className="mt-4 rounded-2xl bg-brand-tint px-4 py-4 text-center">
               <p className="text-[15px] font-bold text-gray-900 dark:text-white">친구에게 선물 중이에요</p>
-              <p className="mt-1 text-[13px] leading-relaxed text-gray-600 dark:text-gray-300">친구가 받기 전까지는 이 이용권을 쓸 수 없어요.<br />선물을 회수하면 다시 쓸 수 있어요.</p>
+              <p className="mt-1 text-[13px] leading-relaxed text-gray-600 dark:text-gray-300">친구가 받기 전까지는 이 이용권을 쓸 수 없어요.<br />선물 보내기를 취소하면 다시 쓸 수 있어요.</p>
               <button onClick={() => setShowGift(true)}
                 className="mt-3 w-full py-3 rounded-xl bg-brand text-white text-[15px] font-bold active:scale-[0.98] transition-transform">
-                선물 링크 보기, 회수하기
+                선물 링크 보기, 보내기 취소
               </button>
             </div>
           )}

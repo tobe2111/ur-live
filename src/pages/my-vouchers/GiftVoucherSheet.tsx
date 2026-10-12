@@ -84,9 +84,9 @@ export default function GiftVoucherSheet({ voucher, onClose, onPendingChange }: 
       await api.post(`/api/group-buy/gifts/${encodeURIComponent(token)}/cancel`)
       setPending(null)
       onPendingChange?.(false)
-      toast.success('선물을 회수했어요. 이용권은 그대로 내 지갑에 있어요')
+      toast.success('선물 보내기를 취소했어요. 이용권은 그대로 내 지갑에 있어요')
     } catch (e) {
-      toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '회수하지 못했어요')
+      toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '선물 보내기를 취소하지 못했어요')
     } finally {
       setBusy(false)
     }
@@ -114,7 +114,7 @@ export default function GiftVoucherSheet({ voucher, onClose, onPendingChange }: 
         <ul className="mt-4 space-y-1">
           {[
             '친구가 받으면 이 이용권은 친구 지갑으로 옮겨가요',
-            '선물 링크를 만들면 친구가 받기 전까지 이 이용권은 쓸 수 없어요(회수하면 다시 쓸 수 있어요)',
+            '선물 링크를 만들면 친구가 받기 전까지 이 이용권은 쓸 수 없어요(선물 보내기를 취소하면 다시 쓸 수 있어요)',
             '받은 뒤에는 보낸 사람도 받은 사람도 직접 취소·환불할 수 없어요',
           ].map((s) => (
             <li key={s} className="flex gap-2 text-[13px] text-gray-600 dark:text-gray-300 leading-snug"><span aria-hidden>·</span><span>{s}</span></li>
@@ -137,7 +137,7 @@ export default function GiftVoucherSheet({ voucher, onClose, onPendingChange }: 
               </button>
               <button type="button" onClick={() => revoke(pending.token)} disabled={busy}
                 className="py-3 rounded-xl border border-rule-strong text-gray-500 dark:text-gray-400 text-[13px] font-bold disabled:opacity-50">
-                선물 회수하기
+                선물 보내기 취소
               </button>
             </div>
           </>
