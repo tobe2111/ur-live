@@ -44,7 +44,7 @@ import ErrorBoundary from '@/components/ErrorBoundary'
 import { SellerEmbedProvider } from '@/shared/seller-embed'
 import { SellerRoutes } from '@/routes/seller.routes'
 import Sheet from './Sheet'
-import { STORE_SCAN_PATH } from '@/lib/seller-deep-link'
+import { HOME_LIKE, STORE_SCAN_PATH } from '@/lib/seller-deep-link'
 import { ensureDashStrings } from '@/i18n'
 import { useSellerNavModel } from '@/components/seller-layout/useSellerNavModel'
 
@@ -122,6 +122,16 @@ function InnerBridge({ onDepth, backRef }: {
 }
 
 /**
+ * 🧭 안쪽 화면이 옛 대시보드 홈·더보기(`/seller` · `/seller/dashboard` · `/seller/more`)로 가려 했다 — 그 화면은
+ * 지웠다(2026-10-12 대표 *"대시보드는 완전히 지워줘"*). 그 자리의 답은 이 시트를 연 곳(마이 판매 구역 · 콘솔 매장 판)이므로
+ * **시트를 닫는다**. 저장 후 `navigate('/seller')` 하는 화면이 여럿이라(예: 등록·연동 콜백) 그 동작이 그대로 "끝" 이 된다.
+ */
+function CloseOnHome({ onClose }: { onClose: () => void }) {
+  useEffect(() => { onClose() }, [onClose])
+  return null
+}
+
+/**
  * 셀러 밖 주소를 안쪽에서 열려고 했다 — 시트를 닫고 바깥 라우터로 넘긴다.
  * `to` 가 있으면 그 주소로 — 이용권 화면의 '사용처리' 탭(`/seller/scan`)이 시트 안에 카메라를 띄우지 않고
  * 마이·콘솔과 **같은 계산대**(`/store/scan`)로 가게 한다(2026-10-12). 좌석은 시트를 열 때 이미 맞췄다.
@@ -176,6 +186,9 @@ export default function ToolPageSheet({ path, title, onClose, onLeave }: {
                 <Routes>
                   {/* 🧾 같은 경로가 둘이면 먼저 선언한 쪽이 이긴다 — 셀러 라우트 표보다 **앞**에 둔다. */}
                   <Route path="/seller/scan" element={<Escape onLeave={onLeave} to={STORE_SCAN_PATH} />} />
+                  {[...HOME_LIKE].map((p) => (
+                    <Route key={p} path={p} element={<CloseOnHome onClose={onClose} />} />
+                  ))}
                   {SellerRoutes()}
                   <Route path="*" element={<Escape onLeave={onLeave} />} />
                 </Routes>

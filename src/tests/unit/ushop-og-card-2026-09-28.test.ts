@@ -141,8 +141,26 @@ describe('배선 — 모듈만 맞고 라우트가 안 부르면 라이브는 �
     expect(tileWidth(0)).toBe(0)
   })
 
-  it('og:image 주소에 판 번호가 있다 — 없으면 카톡이 옛 까만 카드를 계속 물고 있다', () => {
-    expect(worker).toMatch(/\/api\/og\/curator\/\$\{encodeURIComponent\(cur\.handle \|\| ''\)\}\?v=\d+/)
+  /**
+   * 🔁 2026-10-12 **두 번** 재조준했다(지우지 않았다).
+   *   ① 주소 조립이 워커 인라인 → `shared/ushop-share-card.ts`(워커·화면 공용 SSOT)로 옮겨갔다.
+   *   ② 대표 *"그냥 사각형 전체를 사진 및 이미지로 가득채워줘"* 로 og:image 가 **합성 카드에서
+   *      사진 한 장**으로 바뀌면서 `?v=` 레버가 사라졌다 — 그런데 **불변식은 더 강해졌다**:
+   *      이제 주소가 *모양 그 자체*(크기·fit·원본)로 조립되므로 모양을 바꾸면 주소가 **저절로**
+   *      바뀐다. 손으로 번호를 올릴 필요가 없고, 올릴 자리도 없다.
+   *   ⇒ 지키는 것: *"고쳐도 카톡이 옛 카드를 물고 있는 상태"* 를 만들지 않는다. 주소가 모양과
+   *      **무관한 고정 경로**로 되돌아가면(합성 카드가 그랬다 — 그래서 `?v=` 가 **필수**였다) 빨간불.
+   */
+  it('og:image 주소가 그림의 모양에서 파생된다 — 고정 경로면 고쳐도 옛 카드가 계속 나간다', () => {
+    const ssot = stripComments(fs.readFileSync('src/shared/ushop-share-card.ts', 'utf8'))
+    expect(ssot, '크기가 주소에 없으면 모양을 바꿔도 주소가 안 바뀐다').toMatch(/width=\$\{SHARE_CARD_W\}/)
+    expect(ssot).toMatch(/height=\$\{SHARE_CARD_H\}/)
+    expect(ssot, 'fit 이 주소에 없으면 cover↔pad 를 바꿔도 같은 캐시를 맞는다').toMatch(/fit=(cover|pad)/)
+    // 합성 카드로 되돌아가면 주소가 모양과 무관해져 판 번호를 손으로 관리해야 한다.
+    expect(ssot, '/api/og/curator 는 주소가 모양과 무관하다 — 공유 그림으로 쓰지 않는다')
+      .not.toContain('/api/og/curator')
+    // 워커가 그 함수를 안 거치면 위 성질이 라이브에 닿지 않는다.
+    expect(worker).toMatch(/ushopOgImage\(ssrPayload,\s*origin2,/)
   })
 })
 

@@ -28,7 +28,6 @@ import { QrScanIcon } from '@/components/icons/qr-scan-icon'
 import { formatNumber } from '@/utils/format'
 import { toast } from '@/hooks/useToast'
 import { LIST_PLATE_CLS, ListRow as ToolRow } from '@/pages/user-profile/list-grammar'
-import { dashboardFallback } from '@/lib/seller-deep-link'
 import { STORE_SCAN_PATH, ownPathFor } from '@/lib/seller-deep-link'
 import { enterAgencyStore, isMyAgencySeat } from './agency-api'
 import type { StoreRow } from './agency-stores-model'
@@ -95,12 +94,10 @@ export default function AgencyStorePlate({ store, staffId, initialPath }: {
     setTool('page')
   }
 
-  async function goFull(path: string) {
+  /** 🧾 계산대(대시보드 밖 전체화면)로 — 좌석을 맞춘 뒤. 뒤로가기가 콘솔로 돌아온다. */
+  async function goScan() {
     if (!(await ensureSeat())) return
-    // 🧾 계산대는 대시보드 밖 화면이라 `dash=1` 이 필요 없다(껍데기를 안 탄다). 뒤로가기가 콘솔로 돌아온다.
-    if (path === STORE_SCAN_PATH) { window.location.assign(path); return }
-    // 🔁 `dash=1` — 껍데기가 이 직원을 다시 콘솔로 돌려보내지 않게(일부러 연 전체화면이다).
-    window.location.assign(dashboardFallback(path))
+    window.location.assign(AGENCY_SCAN_PATH)
   }
 
   return (
@@ -137,7 +134,7 @@ export default function AgencyStorePlate({ store, staffId, initialPath }: {
             <button
               type="button"
               disabled={busy}
-              onClick={() => goFull(AGENCY_SCAN_PATH)}
+              onClick={() => goScan()}
               className="relative w-full flex items-stretch min-h-[64px] rounded-[10px] bg-brand-tint text-gray-900 text-left overflow-hidden active:opacity-80 disabled:opacity-60"
             >
               <span aria-hidden="true" className="absolute -left-[9px] top-1/2 -mt-[9px] w-[18px] h-[18px] rounded-full bg-surface" />
@@ -205,10 +202,11 @@ export default function AgencyStorePlate({ store, staffId, initialPath }: {
             onClose={() => setTool(null)}
             onPick={(path, label, inSheet, own) => {
               // 🚪 계산대·등록은 대시보드 틀이 아니라 전용 길로(`tool-pages.ts` `OWN_PATH` — 마이와 같은 판정).
-              if (own === 'scan') { setTool(null); void goFull(STORE_SCAN_PATH); return }
+              if (own === 'scan') { setTool(null); void goScan(); return }
               if (own === 'voucherNew') { setPageFrom('tools'); setTool('voucherNew'); return }
               if (inSheet) { setPage({ path, title: label }); setPageFrom('tools'); setTool('page'); return }
-              setTool(null); void goFull(path)
+              // 🧭 2026-10-12 대시보드 삭제 — 시트로 못 여는 화면은 위 두 전용 길뿐이라 여기 오지 않는다. 종전엔 남은 것을
+              //   대시보드 전체화면으로 보냈다(마이 `enterSeat(path)` · 콘솔 `goFull` + `dash=1`). 갈 대시보드가 없다.
             }}
           />
         )}

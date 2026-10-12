@@ -31,7 +31,7 @@ describe('0. 검사 대상이 실재한다', () => {
     // ⚠️ `readCode` 는 주석을 지운 **코드 길이**다. `VoucherNewSheet` 는 설명이 길고 코드가 짧은
     //   것이 정상이다(자기 폼이 없다는 뜻) — 그래서 바가 낮다. 0 이면 경로가 낡은 것이다.
     // 🧹 2026-10-01 철거: `stays` 사본이 내려가 대상에서 빠졌다(원본은 묶음 3 이 본다).
-    for (const [n, c, min] of [['wizard', WIZARD, 8000], ['layout', LAYOUT, 4000], ['newSheet', NEWSHEET, 400]] as const) {
+    for (const [n, c, min] of [['wizard', WIZARD, 8000], ['layout', LAYOUT, 600], ['newSheet', NEWSHEET, 400]] as const) {
       expect(c.length, `${n}: 소스를 못 읽었다 — 앵커부터 고칠 것`).toBeGreaterThan(min)
     }
   })
@@ -68,19 +68,15 @@ describe('2. 🪟 껍데기만 벗는다 — 폼 계약은 불변', () => {
   it('`bare` 조기 반환이 **모든 훅 뒤**에 있다', () => {
     // 🔁 2026-09-26 재조준: 마이 시트 컨텍스트가 붙어 `bare || embedded` 가 됐다.
     //   지키는 불변식은 그대로다 — 조기 반환이 **모든 훅 뒤**여야 조건부 훅이 안 된다.
+    // 🧭 2026-10-12 — 단독 틀을 지웠다. 조기 반환은 *"시트 밖이면 보낸다"* 하나이고, 역시 모든 훅 뒤다.
     const code = stripComments(LAYOUT)
-    const at = code.indexOf('if (bare || embedded) {')
+    const at = code.indexOf('if (!bare && !embedded) {')
     expect(at, 'bare 분기가 없다').toBeGreaterThan(0)
     // 훅이 그 뒤에 있으면 조건부 훅이 되어 React 가 깨진다.
     const after = code.slice(at)
     for (const hook of ['useState(', 'useEffect(', 'useTokenAutoRefresh(', 'useSellerNavModel(']) {
       expect(after, `${hook} 이 조기 반환 뒤에 있다 — 조건부 훅이다`).not.toContain(hook)
     }
-  })
-
-  it('도매 전용 리다이렉트보다 **먼저** 반환한다', () => {
-    const code = stripComments(LAYOUT)
-    expect(code.indexOf('if (bare || embedded) {')).toBeLessThan(code.indexOf('if (wholesaleOnly) return null'))
   })
 
   it('🔴 제출 계약이 `embedded` 에 안 닿는다', () => {

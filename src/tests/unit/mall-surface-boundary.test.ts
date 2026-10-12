@@ -494,7 +494,7 @@ describe('운영자가 자기 가게를 안다', () => {
   })
 
   it('문의처 클라 경로가 라우터 마운트(`/api/seller/gb`)와 맞는다', () => {
-    const c = read2('src/components/seller/SellerSupportContact.tsx')
+    const c = read2('src/pages/user-profile/seller-section/SellerSupportContact.tsx')
     expect(/\/api\/seller\/gb\/support-contact/.test(c)).toBe(true)
     expect(/get\('\/api\/seller\/support-contact'\)/.test(c)).toBe(false)  // 옛 경로 재유입 금지
   })

@@ -227,7 +227,8 @@
   (1-세그먼트를 전부 매치하므로 뒤에 두는 라우트는 조용히 죽는다). 몰이 아니면 `NotFoundPage` 를 렌더 —
   **기존 404 동작 불변**. 슬러그는 실제 라우트에서 뽑은 예약어(`shared/mall/slug.ts`)와 겹칠 수 없다(양방향 가드)
 
-### 사업자 유저(셀러 대시보드, 라이트 고정)
+### 사업자 유저(판매 화면 — 마이 '내 가게' · 에이전시 콘솔의 시트, 라이트 고정)
+- 🗑️ **2026-10-12 — 셀러 대시보드를 지웠다**(대표 *"대시보드는 완전히 지워줘"*). 화면 파일(아래 `/seller/*`)은 남고 **마이(사장님)·에이전시 콘솔(직원)이 시트로** 연다(`ToolPageSheet` 가 실제 라우트 표를 렌더). 지운 것: 단독 틀(머리줄·전체 메뉴·⌘K·상담 버튼·승인 배너·귀환 띠·좌석 띠) · 홈 `/seller` · 더보기 `/seller/more` · 셀러 이메일 로그인·비밀번호 찾기/재설정 · `?dash=1` 되돌림 · 하단 ➕ 죽은 시트. 주소창의 `/seller/*`(알림톡·메일·북마크)는 `sellerEntryRedirect`(`src/lib/seller-deep-link.ts`) 한 곳이 **에이전시 직원 → `/agency?tool=` · 그 밖 → `/user/profile?tool=`** 로 보낸다(OAuth 복귀 `/seller/youtube/callback` 만 그 자리에서 틀 없이). `/seller/login` 은 카카오 `/login`(직원은 `/agency/login`) 별칭. 아래 '대시보드' 표기는 작성 당시 기록이다.
 - 🚪 **2026-10-11 — 카카오로 들어온 사장님은 판매 도구를 마이(`/user/profile`)에서 쓴다.** `/seller` 첫 화면으로 오면 마이로 보낸다(같은 화면들을 마이 시트가 그대로 연다). **대시보드에 남는 사람은 에이전시 직원 좌석(이메일 로그인 — 마이 없음)과 마이가 없는 옛 셀러 계정뿐**이다. 하위 화면(`/seller/products` 등) 깊은 링크는 그대로 살아 있다. 판정 `SellerPage.tsx` `shouldSendOwnerToMy`.
 - `/seller`(홈) · `/seller/products/new` · `/seller/meal-voucher/new` · `/seller/orders` · `/seller/business-info`(사업자정보·통신판매업) · `/seller/guide`
 - ⚡ **2026-08-01 운영자 몰 동선**: `/seller/products/quick`(**3분 등록** — 사진·가격·마감만, 모바일 한 손) ·
@@ -528,6 +529,7 @@ pre-commit + `verify.yml` + `audit-gate.sh` 가 결정론으로 강제(수동 �
 ---
 
 ## ✅ 구현 로그
+- 2026-10-12 🗑️ **셀러 대시보드 삭제** — 단독 틀·홈·더보기·셀러 로그인 화면·`dash=1` 되돌림·하단 ➕ 죽은 시트 제거. `/seller/*` 는 마이(사장님)·콘솔(직원) 시트로만 열린다. 운영자 문의처는 '전체 도구' 시트 맨 아래로, 심사 상태 기록·등록증 반려 안내는 마이 판매 구역으로 이전. 가드 `seller-dashboard-gone-2026-10-12` + 주입 14. [E2]
 - 2026-10-11 **에이전시 직원별 매장 배정**(대표 "계속 해줘") — 관리자가 직원마다 '맡은 매장 전부 / 고른 매장만'. 좌석 발급·매 요청 판정·목록이 같은 조건(`staffStoreAccessSql`)이라 배정에서 빼면 열어 둔 화면도 다음 요청부터 401. 기본 전부(종전 동작). 돈 이동 0. 가드 `agency-staff-stores-2026-10-11` + 주입 7건.
 - 2026-10-11 **대신 맡는 길을 에이전시로 일원화**(대표 "모두 다 하자", 결재 `2026-10-11-agency-ideal-open-questions` 안 1) — 어드민 에이전시 목록·정지 · 사장님용 에이전시 활동 기록 · 에이전시 가입 국세청 진위확인 · 개인 '중개' 등록 닫음(410) · 에이전시 [매장 대신 등록]. 돈 이동 0. PR #1698. 가드 `agency-store-register-2026-10-11` + 주입 5건.
 - 2026-10-10 **가입 문 하나**(대표 "1,2,5번은 해주고") — 옛 가입 주소 넷(`/seller/register` · `/signup` · `/register/business` · `/register/supplier`)과 영입자 초대 링크가 전부 `/store/new` 로. 새 문이 옛 문의 일 셋을 넘겨받음: 판매자 이용약관 동의(서버 400 + `terms_consents`) · 영입자 사전등록 귀속(`matchProspectOnSignup`, 옛 규칙 그대로) · 지도에 없는 가게 직접 적기. 중개: 승계 링크 고정 표시 + 사장님 조건 동의(돈 이동 0). 가드 `signup-one-door-2026-10-10` + 주입 7건. ⚠️ 남은 구멍: 새 문으로 만든 매장을 `my-seller-status`·`switch-to-seller`·카카오 `issueLinkedRoleTokens` 가 `linked_user_id` 만 봐서 못 찾는다(잠금 파일 포함 — 대표 승인 대기).

@@ -116,7 +116,9 @@ describe('③ 그림이 아닌 응답을 그림이라고 박지 않는다', () =
 describe('④ 시도 순서 — 바인딩 → cf.image → cdn-cgi', () => {
   it('cf.image 가 cdn-cgi URL 조립보다 먼저 온다', () => {
     const iCf = CODE.indexOf('cf: { image:')
-    const iUrl = CODE.indexOf('resizedUrl(abs, origin, width, height)')
+    // 🔁 2026-10-12 재조준: 인자가 하나 늘었다(`fitOpts` — 유달이를 `contain` 으로 받으려고).
+    //   지키려던 불변식은 그대로 — **cdn-cgi 폴백이 cf.image 다음에 남아 있다**.
+    const iUrl = CODE.indexOf('resizedUrl(abs, origin, width, height')
     expect(iCf, 'cf.image 시도가 사라졌다').toBeGreaterThan(-1)
     expect(iUrl, 'cdn-cgi 폴백이 사라졌다 — 안전판을 지우지 말 것').toBeGreaterThan(-1)
     expect(iCf, '순서가 뒤집혔다 — 안 먹는 경로를 먼저 태우게 된다').toBeLessThan(iUrl)

@@ -5,7 +5,7 @@ import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import Sheet from '@/pages/user-profile/seller-section/Sheet'
 import { currentSeatId } from '@/lib/seller-seat'
-import { dashboardFallback, readToolParam } from '@/lib/seller-deep-link'
+import { readToolParam } from '@/lib/seller-deep-link'
 import { notifTarget } from '@/lib/notif-target'
 import { agencyRequest, enterAgencyStore, isMyAgencySeat } from './agency-api'
 import AgencyNotificationsSheet, { type AgencyNotification } from './AgencyNotificationsSheet'
@@ -52,9 +52,10 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows }: {
   const [busyId, setBusyId] = useState<number | null>(null)
   /**
    * 🚪 깊은 링크(`/agency?tool=/seller/orders`) — 대시보드 껍데기가 에이전시 직원을 이리로 보낸다
-   *   (`consoleRedirectFor`). 좌석 토큰이 가리키는 매장을 고르고 그 화면을 시트로 연다.
+   *   (`sellerEntryRedirect`). 좌석 토큰이 가리키는 매장을 고르고 그 화면을 시트로 연다.
    *   ⚠️ **좌석을 새로 받지 않는다** — 이 직원의 그 매장 좌석이 이미 있을 때만 연다. 아니면(다른 직원 좌석 ·
-   *   내려놓은 매장 · 목록 실패) 대시보드로 되돌린다(`dash=1` — 다시 오지 않는다). 그 화면은 종전처럼 열린다.
+   *   내려놓은 매장 · 목록 실패) 주소에서 지우고 **매장을 고르라고 말한다**. 2026-10-12 까지는 대시보드로
+   *   되돌렸는데(`dash=1`) 대시보드는 지웠다 — 매장 판에서 그 화면을 다시 열면 된다.
    */
   const [deepPath] = useState(() => readToolParam(window.location.search))
   const [openPath, setOpenPath] = useState<string | null>(null)
@@ -104,12 +105,15 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows }: {
     deepDone.current = true
     const seat = currentSeatId()
     const target = error ? undefined : active.find((r) => r.sellerId === seat)
-    if (!target || !isMyAgencySeat(target.sellerId, staffId)) { window.location.replace(dashboardFallback(deepPath)); return }
-    pick(target.sellerId)
     try {
       const q = new URLSearchParams(window.location.search); q.delete('tool')
       window.history.replaceState(window.history.state, '', q.toString() ? `${window.location.pathname}?${q}` : window.location.pathname)
     } catch { /* 무해 — 새로고침이 시트를 한 번 더 열 뿐 */ }
+    if (!target || !isMyAgencySeat(target.sellerId, staffId)) {
+      toast.error('알림 속 화면을 열 매장에 들어가 있지 않아요. 아래에서 매장을 골라 다시 열어 주세요.')
+      return
+    }
+    pick(target.sellerId)
     setOpenPath(deepPath)
   }, [deepPath, rows, error, active, staffId, pick])
 

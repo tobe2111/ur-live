@@ -288,7 +288,7 @@ import { referralRoutes } from '../features/referral/api/referral.routes';
 //   (typeof navigator/window 가드 보유라 워커 안전). URL 이 클라 렌더값과 byte-일치해야 preload 적중.
 import { cfImage, cfSrcSet } from '../utils/cf-image';
 // 🖼️ 홈 첫 화면 카드 사진 preload — 링크 생성은 헬퍼가 한다(파일 크기 래칫 + 직접 테스트 용이).
-import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; import { brandJsonLdScript } from '../shared/seo/brand-jsonld'; import { buildStaticSurfaceNoscript } from './utils/crawler-noscript'; import { MAIN_SEED_PATH, REGION_PATH_RE } from '../shared/seo/region-seed'; import { REGION_DIGEST_KV_KEY, regionDigestApplies } from '../shared/seo/region-digest'; import { applyCssFirstBoot, cssFirstApplies, routePreloadRel } from './utils/css-first-boot'; // 한 줄: 파일크기 래칫 안
+import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; import { brandJsonLdScript } from '../shared/seo/brand-jsonld'; import { buildStaticSurfaceNoscript } from './utils/crawler-noscript'; import { MAIN_SEED_PATH, REGION_PATH_RE } from '../shared/seo/region-seed'; import { REGION_DIGEST_KV_KEY, regionDigestApplies } from '../shared/seo/region-digest'; import { ushopOgImage } from '../shared/ushop-share-card'; import { applyCssFirstBoot, cssFirstApplies, routePreloadRel } from './utils/css-first-boot'; // 한 줄: 파일크기 래칫 안
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -908,10 +908,10 @@ app.use('*', async (c, next) => {
           const cTitle = `${cName} 유어샵 - 유어딜`;
           const cDesc = String(cur.bio || '').slice(0, 200) || `${cName}님의 추천 — 교환권·이용권 모음`;
           const canon = `${origin2}/u/${cur.handle || ''}`;
-          // 🖼️ 2026-07-01 (전수조사 후속 A): og:image 는 전용 OG 카드(1200×630 SVG, 이름·핸들·프로필 합성)를
-          //   사용 — 정사각 raw 프로필보다 소셜(카톡/트위터/FB) 카드 비율에 맞음(블로그 `/blog/og/:slug` 와 동일 방식).
-          //   프로필 유무와 무관하게 카드가 렌더되므로 무조건 설정. `/api/og/curator/:handle` = og-image.routes.ts.
-          const ogCard = `${origin2}/api/og/curator/${encodeURIComponent(cur.handle || '')}?v=3` // `?v` = 카카오 스크랩 캐시 무효화(og-curator-card.ts 머리말). v3 2026-10-09: font-family 따옴표가 XML 을 깨뜨리던 카드;
+          // 🖼️ 2026-10-12 [UNLOCK_LOADING] (대표 *"유어샵 공유 카드 다른 방법 없니?"* → *"그냥 사각형 전체를 사진 및 이미지로 가득채워줘"*):
+          //   og:image = **1200×630 을 가득 채운 사진 한 장**(프로필 → 없으면 유달이 `fit=pad`). 틀도 글자도 없다 —
+          //   글자는 카톡·슬랙이 제목·설명으로 쓰므로 그림에 또 넣는 것이 대표가 신고한 **중복**이었다. 합성 카드(`/api/og/curator`)는 라우트만 남겨 둔다. 규칙 SSOT: shared/ushop-share-card.ts(화면 SDK 카드와 **같은 함수**)
+          const ogCard = ushopOgImage(ssrPayload, origin2, cur.handle || '');
           // 🔁 2026-07-29: 동일한 `.on()` 체인이 표면마다 복붙돼 있던 것을 `applySurfaceMeta` 로 통일
           //   (셀렉터·순서·값 전부 동일 — 출력 불변). canonical 은 이제 속성 이스케이프를 거친다.
           rb = applySurfaceMeta(rb, {

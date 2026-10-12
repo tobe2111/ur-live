@@ -85,3 +85,30 @@
 **대표 진행 상황(KST 17시대)**: NCP 키 4종 + 메일 2종을 Pages·Worker 두 곳에 입력(이름 실측 확인 — 전부 secret, 발신자 이름만 plain).
 SENS(통합 콘솔) Mail → Domain Management 에서 urdeal.kr 등록 → 인증 토큰 TXT 받음. 다음: Cloudflare DNS 에 인증 TXT + SPF + DKIM.
 ⚠️ 이 세션의 CF 토큰은 **DNS 읽기 권한이 없다**(10000 Authentication error) — 기존 SPF 유무는 대표 화면 캡처로만 판정.
+
+---
+
+## 5차 — 메일 도메인 인증 완료 · #1733 머지 · 시험 메일 API
+
+- urdeal.kr 메일 도메인: 소유 TXT · SPF(`v=spf1 include:email.ncloud.com ~all`, 기존 SPF 없음 — 대표 DNS 목록 캡처로 확인) ·
+  DKIM(`ncpcompubkr._domainkey`) · DMARC(`_dmarc` = `v=DMARC1; p=none`) 전부 대표가 Cloudflare 에 등록 → NCP 인증 통과(대표 확인).
+  ⚠️ 이 환경은 TXT 조회가 **전 경로 차단**(시스템 리졸버는 A 레코드만 답함 · DoH·조회 사이트 CONNECT 403 · WebFetch 도 DNS 실패) —
+  판정은 대표 브라우저(dns.google/resolve) 와 NCP 콘솔 인증 버튼으로만 했다.
+- #1733 머지 `bd19dcdef` (대표 "머지해줘").
+- 알리고 env(Pages 4·Worker 3)는 **남겨 둬도 무해** — 코드가 읽는 곳 0(main grep 실측, 테스트의 '없어야 한다' 단언뿐). 대표 판단으로 유지.
+- 신규 `POST /api/admin/mail-test-send {"user_id":N}` — 거래성 메일 경로(`sendSystemEmail`)를 그대로 타는 시험. super_admin 만,
+  유저 등록 이메일로만(본문 주소 무시), 수신 끔 무시. 응답에 SENS 결과 원문 + 가린 주소.
+  🔍 **이게 판정해 줄 것**: `services/email.ts` 는 SENS 키를 `import('cloudflare:workers')` 의 env 로 읽는다 —
+  Pages 런타임에서 이게 비면 `API key not configured` 로 실패한다. 첫 시험 응답이 그 여부를 바로 보여 준다.
+
+## 6차 — #1734 머지·배포 · 시험 메일 실측 (2026-10-12 저녁)
+
+- #1734 머지 `905bdf2c5` · 배포 성공(Pages 는 뒤 커밋 a9f2e6da3 배포에 포함).
+- 라이브 시험 `POST /api/admin/mail-test-send {"user_id":3}` 결과:
+  `{"success":false,"result":{"error":"[SENS mail 500] Member[3735840]'s default project is not exist"}}`
+- **판정**: 키·서명·Pages env 읽기는 정상(인증 실패면 401 이다). 네이버 클라우드 쪽에서
+  **Cloud Outbound Mailer 의 기본 프로젝트가 없다**는 응답이다 → 코드 문제 아님, 콘솔 설정 대기.
+  - 대표 할 일: 콘솔 → Cloud Outbound Mailer → 프로젝트가 있는지 확인, 없으면 생성(기본 프로젝트로).
+    이미 있으면 그 프로젝트가 API 키를 만든 계정(Member 3735840)과 같은 계정인지 확인.
+- **다음 세션 첫 액션**: 대표가 "프로젝트 만들었다" 하면 같은 호출을 다시 → `success:true` 면 받은편지함/스팸함 확인 요청.
+- `cloudflare:workers` env 우려는 해소(키가 SENS 까지 도달했다).

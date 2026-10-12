@@ -88,10 +88,21 @@ describe('④ 배선', () => {
     expect(read('src/pages/SellerBusinessInfoPage.tsx')).toMatch(/api\.post\('\/api\/upload\/business-cert', fd/)
     expect(read('src/pages/seller-settlements/BizRegSubmitModal.tsx')).toMatch(/<BusinessCertUpload\b/)
   })
-  it('배너가 등록증만 반려된 경우를 "심사 중" 으로 말하지 않는다', () => {
-    const b = read('src/components/seller/SellerApprovalBanner.tsx')
-    expect(b).toMatch(/const certRejected = !rejected && s\.cert_status === 'rejected'/)
-    expect(read('src/features/auth/api/seller.routes.ts')).toMatch(/cert_status: row\?\.business_registration_status \?\? null/)
+  it('등록증만 반려된 경우를 "심사 중" 으로 말하지 않는다 (2026-10-12 — 대시보드 배너 → 마이 판매 구역)', () => {
+    const my = read('src/pages/user-profile/SellerSection.tsx')
+    expect(read('src/pages/user-profile/seller-section/store-status-note.ts')).toMatch(/if \(status === 'pending' && certStatus === 'rejected'\) return CERT_REJECTED_NOTE/)
+    expect(my).toContain('const note = storeStatusNote(store?.status, store?.cert_status)')
+    // 마이가 읽는 요약 API 가 등록증 상태를 싣는다 — 별도 쿼리(목록 쿼리에 섞으면 옛 스키마에서 목록이 빈다).
+    const sum = read('src/features/seller/api/seller-operators.routes.ts')
+    expect(sum).toMatch(/SELECT id AS seller_id, business_registration_status AS cert FROM sellers/)
+    expect(sum).toContain('cert_status: cMap.get(s.seller_id) ?? null')
+  })
+  it('안내문 판정이 맞다 — 대기+등록증 반려만 반려 문장, 승인된 매장엔 안 띄운다', async () => {
+    const { storeStatusNote } = await import('@/pages/user-profile/seller-section/store-status-note')
+    expect(storeStatusNote('pending', 'rejected')).toMatch(/등록증이 반려/)
+    expect(storeStatusNote('pending', 'pending')).toMatch(/승인 대기/)
+    expect(storeStatusNote('approved', 'rejected')).toBeUndefined()
+    expect(storeStatusNote('rejected', 'rejected')).toMatch(/서류가 반려/)
   })
   it('어드민 알림 링크가 실재하는 화면을 가리킨다', () => {
     expect(read('src/features/seller/api/seller-settlements.routes.ts')).not.toMatch(/'\/admin\/sellers'\)/)

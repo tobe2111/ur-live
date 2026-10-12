@@ -5,12 +5,36 @@
 import { lazy } from 'react'
 import { Route, Navigate, useLocation } from 'react-router-dom'
 import ErrorBoundary from '@/components/ErrorBoundary'
-import { ProtectedRoute, PublicRoute } from '@/components/auth/RouteGuards'
+import { ProtectedRoute } from '@/components/auth/RouteGuards'
+import { isAgencyWorker, sellerEntryRedirect } from '@/lib/seller-deep-link'
+import { MY_PATH } from '@/lib/seller-return'
 
-const SellerPage = lazy(() => import('@/pages/SellerPage'))
-// 📱 2026-09-14: 다섯 번째 탭 '더보기' — 폰에서 사이드바를 대신한다(seller-primary-nav).
-const SellerMorePage = lazy(() => import('@/pages/SellerMorePage'))
-const SellerLoginPage = lazy(() => import('@/pages/SellerLoginPage')); const SellerRelinkPage = lazy(() => import('@/pages/SellerRelinkPage')) // 🔁 카카오 재연결
+const SellerRelinkPage = lazy(() => import('@/pages/SellerRelinkPage')) // 🔁 카카오 재연결
+
+/**
+ * 🧭 **옛 대시보드 홈·더보기 주소** (`/seller` · `/seller/dashboard` · `/seller/more`) — 화면은 지웠다(2026-10-12
+ *   대표 *"대시보드는 완전히 지워줘"*). 주소창으로 오면 마이(사장님)·콘솔(직원) 첫 화면으로 보낸다.
+ *   ⚠️ 시트 안에서는 여기 오지 않는다 — `ToolPageSheet` 가 이 셋을 **먼저** 잡아 시트를 닫는다(같은 경로는 먼저 선언한 쪽이 이긴다).
+ */
+function SellerHomeGone() {
+  const location = useLocation()
+  return <Navigate to={sellerEntryRedirect(location.pathname, location.search) ?? MY_PATH} replace />
+}
+
+/**
+ * 🔑 **셀러 이메일 로그인 화면도 지웠다** (2026-10-12). 사장님은 카카오로 들어와 마이에서, 에이전시 직원은 콘솔에서 일한다.
+ *   주소(`/seller/login` · 비밀번호 찾기·재설정)는 별칭으로 남긴다 — 401 처리·좌석 만료·멀티탭 동기화가 이 주소로 보낸다.
+ *   보호 라우트가 넘긴 `state.from`(원래 열려던 셀러 화면)은 로그인 뒤 돌아올 곳으로 잇는다.
+ */
+function SellerLoginGone() {
+  const location = useLocation()
+  if (isAgencyWorker()) return <Navigate to="/agency/login?returnUrl=%2Fagency" replace />
+  const from = (location.state as { from?: string } | null)?.from
+  // `from` 은 경로 + 검색어다(보호 라우트가 함께 싣는다) — 나눠서 넘겨야 `?status=PAID` 같은 필터가 시트까지 간다.
+  const q = from ? from.indexOf('?') : -1
+  const back = (from && sellerEntryRedirect(q < 0 ? from : from.slice(0, q), q < 0 ? '' : from.slice(q))) || MY_PATH
+  return <Navigate to={`/login?returnUrl=${encodeURIComponent(back)}`} replace />
+}
 // 🚪 셀러 가입 관문 = `/store/new` 하나(2026-10-10). 옛 가입 주소는 전부 아래 리다이렉트로 그리 간다.
 
 /**
@@ -25,8 +49,6 @@ function LegacySellerRegisterRedirect() {
 }
 const SellerWaitingPage = lazy(() => import('@/pages/SellerWaitingPage'))
 const SellerTikTokCallbackPage = lazy(() => import('@/pages/SellerTikTokCallbackPage'))
-const SellerForgotPasswordPage = lazy(() => import('@/pages/SellerForgotPasswordPage'))
-const SellerResetPasswordPage = lazy(() => import('@/pages/SellerResetPasswordPage'))
 const SellerBusinessInfoPage = lazy(() => import('@/pages/SellerBusinessInfoPage'))
 const SellerTierPage = lazy(() => import('@/pages/SellerTierPage'))
 const SellerOrdersPage = lazy(() => import('@/pages/SellerOrdersPage'))
@@ -100,11 +122,7 @@ export function SellerRoutes() {
   return (
     <>
       {/* Public seller pages */}
-      <Route path="/seller/login" element={
-        <PublicRoute forSeller>
-          <SellerLoginPage />
-        </PublicRoute>
-      } />
+      <Route path="/seller/login" element={<SellerLoginGone />} />
       <Route path="/seller/relink" element={<ErrorBoundary><SellerRelinkPage /></ErrorBoundary>} />{/* 🔁 카카오 계정 교체 재연결(비보호) */}
       {/* 🚪 2026-10-10 가입 문 하나: 레거시 가입 경로 전부 → /store/new (쿼리 보존) */}
       <Route path="/seller/register" element={<LegacySellerRegisterRedirect />} />
@@ -113,23 +131,15 @@ export function SellerRoutes() {
       <Route path="/seller/register/supplier" element={<LegacySellerRegisterRedirect />} />
       <Route path="/seller/waiting" element={<ErrorBoundary><SellerWaitingPage /></ErrorBoundary>} />
       <Route path="/seller/tiktok-callback" element={<ErrorBoundary><SellerTikTokCallbackPage /></ErrorBoundary>} />
-      <Route path="/seller/forgot-password" element={<ErrorBoundary><SellerForgotPasswordPage /></ErrorBoundary>} />
-      <Route path="/seller/reset-password" element={<ErrorBoundary><SellerResetPasswordPage /></ErrorBoundary>} />
+      <Route path="/seller/forgot-password" element={<SellerLoginGone />} />
+      <Route path="/seller/reset-password" element={<SellerLoginGone />} />
       <Route path="/s/:sellerId" element={<SellerPublicPage />} />
       <Route path="/profile/:sellerId" element={<SellerPublicPage />} />
 
       {/* Protected seller pages */}
-      <Route path="/seller" element={
-        <ProtectedRoute requireSeller>
-          <SellerPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/seller/dashboard" element={<Navigate to="/seller" replace />} />
-      <Route path="/seller/more" element={
-        <ProtectedRoute requireSeller>
-          <SellerMorePage />
-        </ProtectedRoute>
-      } />
+      <Route path="/seller" element={<SellerHomeGone />} />
+      <Route path="/seller/dashboard" element={<SellerHomeGone />} />
+      <Route path="/seller/more" element={<SellerHomeGone />} />
       <Route path="/seller/tier" element={
         <ProtectedRoute requireSeller>
           <SellerTierPage />
