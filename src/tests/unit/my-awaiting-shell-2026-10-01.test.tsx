@@ -48,7 +48,15 @@ describe('① 기다리는 동안 같은 줄들이 자리를 잡는다', () => {
     localStorage.setItem('seller_token', 'preview')
     const { findByText } = render(<SellerSectionLazy state={loadingState} />)
     // 이 넷이 구역 높이의 대부분이다 — 하나라도 빠지면 도착 순간 그만큼 손님 줄이 밀린다.
-    expect(await findByText('이용권 사용처리')).toBeTruthy()
+    /**
+     * 🩸 2026-10-12 — **깜빡이던 시험을 결정론으로.** 이 컴포넌트는 `React.lazy` 라 첫 단언이
+     *   동적 import 가 풀릴 때까지 기다리는데, `findByText` 기본 대기는 **1초**다. vitest 가
+     *   여러 파일을 병렬로 돌리는 중엔 그 1초를 넘겨 **같은 코드가 3번 중 2번 빨간불**이었다
+     *   (origin/main 에서도 동일 재현 — 내 변경 때문이 아니다).
+     *   ⚠️ 불변식은 한 글자도 안 바꿨다 — **기다리는 예산만** 늘린다. 줄이 사라지면 여전히 빨간불이다.
+     *   (뒤 네 줄은 그때 이미 마운트돼 있어 기본값으로 충분하다.)
+     */
+    expect(await findByText('이용권 사용처리', {}, { timeout: 8000 })).toBeTruthy()
     expect(await findByText('이용권 등록 · 관리')).toBeTruthy()
     expect(await findByText('주문')).toBeTruthy()
     expect(await findByText('정산')).toBeTruthy()

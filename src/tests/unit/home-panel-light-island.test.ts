@@ -34,12 +34,32 @@ describe('darkMode variant 가 light-island 를 예외로 둔다', () => {
 })
 
 describe('홈 패널 3곳이 전부 섬이다', () => {
-  it('ur-home-panel 은 항상 light-island 와 같이 쓴다', () => {
+  /**
+   * 🔁 2026-10-12 **불변식이 뒤집혔다** (대표 확정) — *"다크모드에선 흰배경 … 그걸 한번 없앤 상태에서의
+   *   시안을 봐볼까?"* → 시안 확인 후 **"변경하니 좋긴 한데"**. 홈 패널은 이제 **테마를 따른다**.
+   *   이것은 2026-09-02 확정 "안 A"(*"다크에서도 패널은 흰색"*)를 **대체한다.**
+   *
+   *   ⚠️ `light-island` 자체는 그대로 쓴다(지도 오버레이·시트 등) — 위 두 시험이 그걸 지킨다.
+   *     여기서 뒤집힌 것은 **홈 패널에 그걸 붙이느냐**뿐이다. 붙이면 `--surface` 가 `#FFFFFF` 로
+   *     되박히고 안쪽 `dark:` 가 전부 꺼져 **다크에서 흰 판이 돌아온다**(그게 되돌림의 증상이다).
+   */
+  it('ur-home-panel 은 light-island 를 붙이지 않는다 (테마를 따른다)', () => {
     for (const f of ['src/components/home/HomeSections.tsx', 'src/pages/pc-home/PcHomePage.tsx']) {
       const s = code(read(f))
       const all = s.match(/className="ur-home-panel[^"]*"/g) || []
-      expect(all.length, `${f}: 패널이 없다`).toBeGreaterThan(0)
-      for (const m of all) expect(m, `${f}: ${m}`).toMatch(/light-island/)
+      expect(all.length, `${f}: 패널이 없다 — 이 검사가 헛돈다`).toBeGreaterThan(0)
+      for (const m of all) {
+        expect(
+          m,
+          `${f}: ${m}\n   홈 패널에 light-island 가 돌아왔다 — 다크에서 흰 판이 된다(2026-10-12 대표 확정 뒤집힘).`,
+        ).not.toMatch(/light-island/)
+      }
     }
+  })
+
+  it('패널 배경은 토큰이다 — .dark 선택자로 테마를 가르지 않는다', () => {
+    const css = read('src/index.css')
+    expect(css, '.ur-home-panel 이 토큰 대신 하드코딩 색을 쓴다 — 테마가 안 따라간다')
+      .toMatch(/\.ur-home-panel\s*\{[\s\S]{0,900}?background:\s*var\(--surface\)/)
   })
 })
