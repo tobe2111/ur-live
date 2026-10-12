@@ -58,6 +58,28 @@ const LUCIDE_SHELL_ICONS = new Set([
   'scissors', 'search', 'shapes', 'smartphone', 'sparkles', 'user', 'user-plus', 'utensils', 'x', 'zap',
 ])
 
+/**
+ * 🏠 **홈 첫 화면이 셸 밖에서 쓰는 lucide 아이콘** (2026-10-12 실측).
+ *
+ * 왜 세 번째 봉투가 필요한가: 2026-09-16 에 셸을 떼어 냈지만 **나머지가 여전히 한 봉투**다.
+ * 빌드 산출물을 뜯어 세 보니 그 봉투에 **214개**가 들어 있는데, 홈 정적 폐쇄가 실제로
+ * import 하는 것은 **11개**다(아래 목록 — `app-home`·`GroupBuyFeed`·`PcHomePage`).
+ * 즉 홈이 아이콘 11개 때문에 **54.2KB raw(17.0KB br)** 를 통째로 받고 있었다.
+ * 어느 페이지든 비-셸 아이콘을 **하나라도** 쓰면 214개가 전부 딸려 오는 구조다.
+ *
+ * ⚠️ **별칭이 아니라 구현 파일 이름을 적는다** — 분할은 모듈 id(`icons/<name>.js`)로 판정한다.
+ *   `Loader2` 는 별칭이고 구현은 `loader-circle` 이다(2026-09-16 에 이 함정을 실제로 밟았다:
+ *   별칭만 적으면 **빌드는 성공하고 총량만 안 준다**).
+ * 🔒 이 목록은 손으로 관리하지 않는다 — `lucide-shell-icons.test.ts` 가 소스에서 홈 폐쇄를
+ *   다시 계산해 대조한다(홈에 새 아이콘을 쓰고 여기 안 적으면 조용히 큰 봉투가 돌아온다).
+ */
+const LUCIDE_HOME_ICONS = new Set([
+  'chevron-left', 'dumbbell', 'flame', 'gift', 'locate-fixed',
+  // ⚠️ `Loader2` 는 **별칭**이고 구현은 `loader-circle` 이다 — 둘 다 적는다(2026-09-16 함정).
+  'loader-2', 'loader-circle',
+  'party-popper', 'paw-print', 'play', 'tag', 'ticket',
+])
+
 export default defineConfig({
   plugins: [
     react(),
@@ -128,7 +150,9 @@ export default defineConfig({
             const icon = id.replace(/\\/g, '/').match(/\/icons\/([a-z0-9-]+)\.js$/)
             // 아이콘이 아닌 코어(Icon/createLucideIcon/defaultAttributes/utils/배럴)는 셀 쪽에.
             //   배럴은 트리쉐이킹 후 0바이트라 의존을 만들지 않는다(실측 확인).
-            return !icon || LUCIDE_SHELL_ICONS.has(icon[1]) ? 'lucide-shell' : 'lucide'
+            if (!icon || LUCIDE_SHELL_ICONS.has(icon[1])) return 'lucide-shell'
+            // 🏠 2026-10-12: 홈이 쓰는 11개만 따로 — 214개 봉투를 첫 화면에서 뗀다(위 주석 참조).
+            return LUCIDE_HOME_ICONS.has(icon[1]) ? 'lucide-home' : 'lucide'
           }
           // Sentry
           // 📦 2026-10-11: `src/lib/sentry-sdk.ts`(쓰는 함수만 다시 내보내는 진입점)도 같은 청크 — 다른 청크로 새면

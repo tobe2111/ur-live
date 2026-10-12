@@ -22,17 +22,23 @@ import { BANNER_SLOT_SPECS } from '@/shared/constants/home-showcase'
  * 안 읽히는 사고를 막으려고 어두운 오버레이를 항상 깐다 — 어떤 사진이 올라올지 모른다.
  */
 
-/** 스트립 항목 사이 간격(px). 위 `gap-2` 와 **같은 값이어야** 점 계산이 맞는다. */
-const STRIP_GAP_PX = 8
+/**
+ * 스트립 항목 사이 간격(px). 스크롤러의 `gap-7` 과 **같은 값이어야** 몇 번째 장인지 계산이 맞는다.
+ *
+ * 🩸 **거터의 두 배(14×2=28)여야 한다** — `gap-3`(12) 이면 다음 장이 오른쪽 거터 안으로 **2px 삐져나온다**
+ *    (실측: 카드 14..376 · 다음 장 388 시작 · 화면 390). 간격이 거터 두 벌이면 다음 장이 정확히 화면 밖
+ *    (404)에서 시작해 **한 장씩 꽉**(대표 확정 ③)이 글자 그대로 성립한다.
+ */
+const STRIP_GAP_PX = 28
 
 function bannerHref(b: HomeBanner): string {
   return b.link_url ? safeInternalPath(b.link_url, '') : ''
 }
 
-function Wrap({ href, className, children }: { href: string; className: string; children: React.ReactNode }) {
+function Wrap({ href, className, style, children }: { href: string; className: string; style?: React.CSSProperties; children: React.ReactNode }) {
   return href
-    ? <Link to={href} className={className}>{children}</Link>
-    : <div className={className}>{children}</div>
+    ? <Link to={href} className={className} style={style}>{children}</Link>
+    : <div className={className} style={style}>{children}</div>
 }
 
 export default function HomeBannerStrip({ variant }: { variant: Extract<BannerSlot, 'strip' | 'inline' | 'wide'> }) {
@@ -108,25 +114,47 @@ export default function HomeBannerStrip({ variant }: { variant: Extract<BannerSl
 
 
 /**
- * 🎫 상단 띠 — 옆으로 넘기는 스트립 (2026-09-05 대표 확정 "안 3").
+ * 🎫 상단 배너 — 거터 안에서 한 장씩 넘기는 2:1 캐러셀 (2026-10-12 대표 확정).
  *
- * ## 왜 JS 캐러셀이 아닌가
+ * ## 2026-10-12 — 96px 띠 → 2:1 배너 (대표 지시 셋을 한 번에)
+ * 대표가 NOL·리뷰노트 화면을 보내며 *"이정도 배너 퀄리티는 되어야 하지 않나?"* → 시안 다섯(틀) →
+ * *"디자인은 E 정도가 좋은데 … 밑에 지금 인기 이용권이랑 되게 따로 노는 느낌"* → 리듬 맞춘 시안 넷 →
+ * *"배너가 너무 화면에 가득 찼다 여백은 좀 있어야지"* + *"좌우로 넘기는 거 자연스럽고 부드럽게"*.
+ *
+ * 세 가지가 바뀌었다(종전 2026-09-05 "안 3" 을 **대체**한다):
+ *   ① **96px 띠 → 2:1** — NOL/리뷰노트 체급. 글자 세 줄(제목 2줄 + 부제 + 버튼)이 들어가는 최소 높이다.
+ *   ② **전폭 → 거터 14px** — "따로 논다"의 원인이 크기가 아니라 **리듬**이었다(라이브 실측:
+ *      `지금 인기 이용권` 패널은 모서리 14px·안쪽 거터 14px 인데 배너만 전폭·모서리 16px 였다).
+ *      ⚠️ 이 14 는 임의값이 아니라 `.ur-home-panel` 의 모바일 값과 같아야 한다 — 어긋나면 다시 따로 논다.
+ *   ③ **74% + 다음 장 살짝 보이기 → 한 장씩 꽉** — 대표가 "가득 찼다"고 한 뒤라 요소를 더하지 않는다.
+ *      (리뷰노트도 미리보기 없이 한 장씩이다.)
+ *
+ * ## 장수 표시 = 배너 **안**의 숫자 알약 (2026-10-12 대표 확정 "2로 가자")
+ * 대표가 `1 / 4` 알약 화면을 보내며 *"숫자가 이렇게 들어가는거야 형태는"* → 시안 셋(숫자+점 / 숫자만 /
+ * 진행 바) 중 **숫자만**. 종전 아래쪽 점 줄을 **대체한다** — 점을 되살리지 말 것.
+ *   - 배너 **밖**에 줄을 하나 더 두면 세로를 10px 더 먹고, 그게 "따로 논다"를 만든 바로 그 종류의 층이다.
+ *   - 🔑 **누를 수 있게 유지한다** — 점이 갖고 있던 조작(탭으로 다음 장)을 잃지 않는다. 숫자만 두고
+ *     조작을 빼면 손가락 스와이프를 모르는 사람에게 둘째 장이 **영원히 안 보인다**.
+ *   - 자리는 오른쪽 아래(`right-[26px]` = 거터 14 + 안쪽 12). 왼쪽 아래는 `자세히 보기` 버튼 자리다.
+ *
+ * ## 왜 JS 캐러셀이 아닌가 (2026-09-05 판단 — 그대로 유효)
  * 네이티브 가로 스크롤 + CSS `scroll-snap` 이면 **라이브러리 0**으로 손가락 감각이 그대로 나온다.
  * 관성·고무줄·접근성(키보드 스크롤)까지 브라우저가 이미 갖고 있는 것을 다시 만들 이유가 없다.
- * 자동 재생은 **하지 않는다** — 첫 화면에서 저절로 움직이는 것은 읽는 사람을 방해하고,
- * 그 순간 무엇을 보고 있었는지 사용자가 통제할 수 없게 된다.
+ * "부드럽게"를 위해 더한 것은 셋뿐이다:
+ *   - `scroll-smooth` — **점을 눌렀을 때** 미끄러지듯 간다(손가락 스와이프는 원래 네이티브라 안 거친다).
+ *   - `overscroll-x-contain` — 끝에서 더 밀어도 **페이지가 따라 움직이거나 브라우저 뒤로가기가 걸리지 않는다.**
+ *   - `scroll-px-3.5` — 거터가 있는 스크롤러는 스냅 기준점도 그만큼 밀어 줘야 카드가 거터에 딱 선다.
  *
- * ## 한 장일 때는 스트립이 아니다
- * 한 장을 74% 폭으로 두면 오른쪽에 아무것도 없는 빈 자리가 생기고, 점 하나짜리 인디케이터가
- * 덩그러니 남는다(시안에서 이 점을 안 3 의 약점으로 적었다). ⇒ **한 장이면 꽉 채우고 점을 안 그린다.**
- * 두 장부터 74% + 다음 장 살짝 보이기 + 점.
+ * ## 자동 재생은 여전히 **하지 않는다**
+ * 첫 화면에서 저절로 움직이는 것은 읽는 사람을 방해한다. 대표 지시 *"자연스럽고 부드럽게"* 는
+ * **넘기는 느낌**에 대한 것이지 저절로 넘어가라는 말이 아니었다 — 필요하면 그때 따로 정할 일이다.
  */
 function StripRail({ banners }: { banners: HomeBanner[] }) {
   const railRef = useRef<HTMLDivElement>(null)
   const [active, setActive] = useState(0)
   const many = banners.length > 1
 
-  /** 점은 스크롤 위치에서 파생한다 — 상태를 따로 들고 있으면 손가락과 어긋난다. */
+  /** 숫자는 스크롤 위치에서 파생한다 — 상태를 따로 들고 있으면 손가락과 어긋난다. */
   const onScroll = () => {
     const el = railRef.current
     const first = el?.firstElementChild as HTMLElement | null
@@ -136,49 +164,77 @@ function StripRail({ banners }: { banners: HomeBanner[] }) {
     setActive(Math.max(0, Math.min(banners.length - 1, i)))
   }
 
+  /** 숫자를 누르면 다음 장으로 **미끄러지듯** 간다(`scroll-smooth`). 손가락 스와이프는 네이티브라 안 거친다. */
+  const goTo = (i: number) => {
+    const el = railRef.current
+    const first = el?.firstElementChild as HTMLElement | null
+    if (!el || !first) return
+    el.scrollTo({ left: i * (first.offsetWidth + STRIP_GAP_PX), behavior: 'smooth' })
+  }
+
   return (
     <div className="pb-4">
-      <div
-        ref={railRef}
-        onScroll={many ? onScroll : undefined}
-        className={`flex gap-2 ${many ? 'overflow-x-auto snap-x snap-mandatory scrollbar-hide' : ''}`}
-      >
-        {banners.map((b) => {
-          const href = bannerHref(b)
-          const bg = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS.strip.requestWidth, quality: 76 }) : ''
-          return (
-            <Wrap
-              key={b.id}
-              href={href}
-              className={`relative ${many ? 'snap-start shrink-0 basis-[74%]' : 'flex-1'} overflow-hidden rounded-xl isolate h-24 flex flex-col justify-center px-4 py-3 bg-brand transition-transform active:scale-[.995]`}
-            >
-              {bg && (
-                <img
-                  src={bg} alt="" aria-hidden="true" loading="lazy"
-                  className="absolute inset-0 -z-10 w-full h-full object-cover"
-                  onError={(e) => cfImageOnError(e.currentTarget, b.image_url)}
-                />
-              )}
-              {/* 어떤 사진이 올라올지 모른다 — 글자가 안 읽히는 사고를 막으려고 항상 덮는다. */}
-              <div className="absolute inset-0 -z-10 bg-gradient-to-r from-black/60 to-black/30" aria-hidden="true" />
-              {b.description && (
-                <small className="block text-[12px] font-bold text-white/80 truncate">{b.description}</small>
-              )}
-              <strong className="block mt-1 text-[15px] font-extrabold leading-snug tracking-tight text-white line-clamp-2">{b.title}</strong>
-            </Wrap>
-          )
-        })}
-      </div>
-      {many && (
-        <div className="flex justify-center gap-1 pt-2" aria-hidden="true">
-          {banners.map((b, i) => (
-            <span
-              key={b.id}
-              className={`h-[5px] rounded-full transition-all ${i === active ? 'w-3 bg-gray-900 dark:bg-white' : 'w-[5px] bg-gray-300 dark:bg-white/25'}`}
-            />
-          ))}
+      {/* 숫자 알약이 배너 **안**에 떠야 하므로 레일을 포함 블록으로 삼는다(스크롤러 자신에 주면 함께 스크롤된다). */}
+      <div className="relative">
+        <div
+          ref={railRef}
+          onScroll={many ? onScroll : undefined}
+          className={`flex gap-7 px-[14px] ${many ? 'overflow-x-auto snap-x snap-mandatory scroll-px-[14px] scroll-smooth overscroll-x-contain scrollbar-hide' : ''}`}
+        >
+          {banners.map((b) => {
+            const href = bannerHref(b)
+            const bg = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS.strip.requestWidth, quality: 76 }) : ''
+            return (
+              <Wrap
+                key={b.id}
+                href={href}
+                /* 📐 거터(14) 안에서 **한 장이 꽉**. 두 장부터도 폭은 같고 스냅으로 한 장씩 넘어간다.
+                   모서리 14px 는 `.ur-home-panel`(모바일) 과 같은 값이다 — 어긋나면 다시 따로 논다.
+                   🩸 `w-[calc(100%-1.75rem)]` 로 쓰면 **거터가 두 번 빠진다** — 스크롤러가 이미 `px-3.5` 를
+                      갖고 있어 `100%` 가 362(=390−28) 다. 실측 334 가 나왔고 다음 장이 42px 삐져나왔다.
+                      `w-full` 이 맞다(= 362 × 181, 2:1). */
+                /* shape-lock-ok — 14px 는 임의값이 아니라 `.ur-home-panel`(모바일) 의 radius 와 **같은 값**이다.
+                 체계(12/16)로 바꾸면 아래 패널과 어긋나 다시 "따로 논다"(가드가 CSS 에서 읽어 대조한다). */
+              className={`relative ${many ? 'snap-start shrink-0 w-full' : 'flex-1'} overflow-hidden rounded-[14px] isolate aspect-[2/1] flex flex-col justify-center px-5 py-4 transition-transform active:scale-[.995]`} /* shape-lock-ok (위 사유) */
+                /* 🎨 사진이 없으면 **브랜드 면**(대표 확정 "E"). 있으면 아래 img + 스크림이 덮는다. */
+                style={bg ? undefined : { background: 'var(--brand-grad)' }}
+              >
+                {bg && (
+                  <img
+                    src={bg} alt="" aria-hidden="true" loading="lazy"
+                    className="absolute inset-0 -z-10 w-full h-full object-cover"
+                    onError={(e) => cfImageOnError(e.currentTarget, b.image_url)}
+                  />
+                )}
+                {/* 어떤 사진이 올라올지 모른다 — 글자가 안 읽히는 사고를 막으려고 항상 덮는다. */}
+                {bg && <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/75 via-black/35 to-transparent" aria-hidden="true" />}
+                <strong className="block text-[24px] font-extrabold leading-[1.18] tracking-[-.03em] text-white line-clamp-2">{b.title}</strong>
+                {b.description && (
+                  <span className="block mt-1 text-[13px] text-white/85 line-clamp-1">{b.description}</span>
+                )}
+                {href && (
+                  /* light-fixed — 이 알약은 **브랜드 면 또는 사진 + 어두운 스크림** 위에만 선다(페이지 배경에
+                   닿지 않는다). 그래서 흰 알약 + 블루 글자가 라이트·다크에서 같은 그림이고, `dark:` 를 주면
+                   오히려 어두운 면 위에 어두운 알약이 생긴다. */
+                <span className="inline-flex self-start mt-3 px-4 py-2 rounded-lg bg-white text-[13px] font-bold text-brand-text"> {/* light-fixed */}
+                    자세히 보기
+                  </span>
+                )}
+              </Wrap>
+            )
+          })}
         </div>
+      {many && (
+        <button
+          type="button"
+          onClick={() => goTo((active + 1) % banners.length)}
+          aria-label={`다음 배너 (${active + 1} / ${banners.length})`}
+          className="absolute right-[26px] bottom-3 px-2 py-1 rounded-full text-[12px] font-semibold tabular-nums text-white bg-black/30 backdrop-blur-[6px]"
+        >
+          {active + 1} / {banners.length}
+        </button>
       )}
+      </div>
     </div>
   )
 }

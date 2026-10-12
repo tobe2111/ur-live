@@ -173,10 +173,27 @@ describe('🖼️ 2026-10-10 Images 바인딩 — 서버 안에서 사진을 줄
     expect(img.calls[0]).toMatchObject({ width: 780, height: 520, fit: 'cover' })
   })
 
-  it('바인딩이 실패하면 종전 cdn-cgi 경로로 떨어진다', async () => {
+  // 🔁 2026-10-12 재조준: 폴백이 **두 단**이 됐다(바인딩 → `cf.image` → `/cdn-cgi/image/`).
+  //   종전 단언은 *"바인딩이 실패하면 cdn-cgi 주소가 보인다"* 였는데, 이제 앞 단(`cf.image`)이
+  //   먼저 받아 주면 그 주소까지 안 간다 — 지키려던 것(**바인딩이 죽어도 사진은 나온다**)은
+  //   그대로이므로 앵커만 옮기고, cdn-cgi 도달은 *앞 단도 실패했을 때*로 따로 고정한다.
+  it('바인딩이 실패해도 사진은 나온다 (뒤 경로가 받는다)', async () => {
     const broken = { input() { throw new Error('no binding') } }
     const urls: string[] = []
     const f = async (u: string) => { urls.push(u); return new Response(new Uint8Array([1]), { status: 200 }) }
+    expect(await inlineImage('https://p.net/a.jpg', 'https://x.kr', 10, 10, f as never, broken as never))
+      .toBe(`data:image/jpeg;base64,${Buffer.from([1]).toString('base64')}`)
+    expect(urls.length, '요청이 하나도 안 나갔다 — 이 검사가 헛돈다').toBeGreaterThan(0)
+  })
+
+  it('바인딩도 cf.image 도 죽으면 그때 cdn-cgi 로 간다 (마지막 안전판)', async () => {
+    const broken = { input() { throw new Error('no binding') } }
+    const urls: string[] = []
+    const f = async (u: string) => {
+      urls.push(u)
+      if (!u.includes('/cdn-cgi/image/')) throw new Error('cf.image unsupported')
+      return new Response(new Uint8Array([1]), { status: 200 })
+    }
     expect(await inlineImage('https://p.net/a.jpg', 'https://x.kr', 10, 10, f as never, broken as never))
       .toBe(`data:image/jpeg;base64,${Buffer.from([1]).toString('base64')}`)
     expect(urls.some((u) => u.includes('/cdn-cgi/image/'))).toBe(true)

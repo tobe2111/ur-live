@@ -44,8 +44,11 @@ function resolveSpec(spec: string, from: string): string | null {
   return null
 }
 
-/** `src/main.tsx` 에서 **정적** import 만 따라간 폐쇄. 동적 import 는 다른 청크라 일부러 제외한다. */
-function staticClosure(): string[] {
+/**
+ * 진입점에서 **정적** import 만 따라간 폐쇄. 동적 import 는 다른 청크라 일부러 제외한다.
+ * 기본값은 셸(`src/main.tsx`) — 2026-10-12 에 홈 폐쇄도 재려고 인자를 받게 넓혔다.
+ */
+function staticClosure(entries: string[] = ['src/main.tsx']): string[] {
   const seen = new Set<string>()
   const walk = (f: string) => {
     if (seen.has(f)) return
@@ -59,7 +62,7 @@ function staticClosure(): string[] {
       if (r) walk(r)
     }
   }
-  walk(path.join(ROOT, 'src/main.tsx'))
+  for (const e of entries) walk(path.join(ROOT, e))
   return [...seen]
 }
 
@@ -78,9 +81,9 @@ function withAliases(icon: string, out = new Set<string>(), depth = 0): Set<stri
   return out
 }
 
-function shellIconFiles(): Set<string> {
+function iconFilesIn(files: string[]): Set<string> {
   const out = new Set<string>()
-  for (const f of staticClosure()) {
+  for (const f of files) {
     const t = fs.readFileSync(f, 'utf8')
     for (const m of t.matchAll(/import\s*(?:type\s*)?\{([^}]*)\}\s*from\s*['"]lucide-react['"]/g)) {
       for (const raw of m[1].split(',')) {
@@ -92,13 +95,23 @@ function shellIconFiles(): Set<string> {
   }
   return out
 }
+const shellIconFiles = () => iconFilesIn(staticClosure())
 
-function listedIcons(): string[] {
+/** 🏠 홈 첫 화면 진입점 둘(모바일·PC). `HomeRoute` 가 둘을 lazy 로 가르므로 **둘 다** 센다. */
+const HOME_ENTRIES = ['src/pages/mobile-home/MobileHomePage.tsx', 'src/pages/pc-home/PcHomePage.tsx']
+/** 홈이 쓰는 아이콘 중 **셸 밖** 것 — 이게 곧 `lucide-home` 봉투에 들어가야 할 목록이다. */
+function homeOnlyIconFiles(): Set<string> {
+  const shell = shellIconFiles()
+  return new Set([...iconFilesIn(staticClosure(HOME_ENTRIES))].filter((i) => !shell.has(i)))
+}
+
+function listedIn(name: 'LUCIDE_SHELL_ICONS' | 'LUCIDE_HOME_ICONS'): string[] {
   const cfg = readCode('vite.config.ts')
-  const m = cfg.match(/const LUCIDE_SHELL_ICONS = new Set\(\[([\s\S]*?)\]\)/)
-  expect(m, 'vite.config.ts 의 LUCIDE_SHELL_ICONS 를 못 찾았다 — 이 시험이 낡았다').toBeTruthy()
+  const m = cfg.match(new RegExp(`const ${name} = new Set\\(\\[([\\s\\S]*?)\\]\\)`))
+  expect(m, `vite.config.ts 의 ${name} 을 못 찾았다 — 이 시험이 낡았다`).toBeTruthy()
   return [...m![1].matchAll(/'([a-z0-9-]+)'/g)].map((x) => x[1])
 }
+const listedIcons = () => listedIn('LUCIDE_SHELL_ICONS')
 
 describe('① 목록이 소스와 일치한다', () => {
   it('🔴 셸이 쓰는 아이콘이 **전부** vite 목록에 있다 (빠지면 조용히 큰 봉투가 첫 페인트로 돌아온다)', () => {
@@ -132,8 +145,11 @@ describe('① 목록이 소스와 일치한다', () => {
 describe('② 규칙이 실제로 배선돼 있다', () => {
   const cfg = readCode('vite.config.ts')
 
-  it('🔴 아이콘 파일명으로 두 봉투를 가른다', () => {
-    expect(cfg).toContain("LUCIDE_SHELL_ICONS.has(icon[1]) ? 'lucide-shell' : 'lucide'")
+  // 🔁 2026-10-12 재조준: 봉투가 **셋**이 됐다(`lucide-shell` · `lucide-home` · `lucide`).
+  //   지키려던 것은 그대로 — *아이콘 파일명으로 가른다* · *코어는 셸 쪽에 남는다*.
+  it('🔴 아이콘 파일명으로 세 봉투를 가른다', () => {
+    expect(cfg).toContain("if (!icon || LUCIDE_SHELL_ICONS.has(icon[1])) return 'lucide-shell'")
+    expect(cfg).toContain("return LUCIDE_HOME_ICONS.has(icon[1]) ? 'lucide-home' : 'lucide'")
   })
 
   it('아이콘이 아닌 코어(Icon/createLucideIcon/배럴)는 셸 쪽에 남는다', () => {
@@ -154,5 +170,55 @@ describe('② 규칙이 실제로 배선돼 있다', () => {
     //    17개 덜 쓴다(줄어든 것이 성과라 이 하한은 그 성과를 따라 내려간다). 이 하한의 일은
     //    "몇 개여야 한다"가 아니라 **폐쇄 계산이 통째로 비면 초록이 뜨는 것**을 막는 것이다.
     expect(shellIconFiles().size).toBeGreaterThan(15)
+  })
+})
+
+/**
+ * 🏠 **세 번째 봉투 — 홈이 11개 때문에 214개를 받고 있었다** 〔2026-10-12〕
+ *
+ * 대표: *"각 페이지마다도 로딩속도 개선이 필요해 … 빠른게 좋은거지"*.
+ *
+ * ## 실측 (빌드 산출물을 뜯어서)
+ * 2026-09-16 이 셸을 떼어 냈지만 **나머지는 여전히 한 봉투**였다. 그 봉투(`lucide` 54.2KB raw)에
+ * 아이콘이 **214개** 들어 있는데, 홈 정적 폐쇄가 실제로 import 하는 것은 **11개**다
+ * (`app-home`·`GroupBuyFeed`·`PcHomePage` 의 import 문을 번들에서 역추적해 셌다).
+ * ⇒ 홈 폐쇄 **698.0 → 647.5 KB raw(−50.5KB)**, 청크 수 21 불변(`lucide-home` 3.4KB 가 대신 들어온다).
+ *
+ * ## 이 시험이 지키는 것
+ * 홈 파일에 새 아이콘을 쓰고 목록에 안 적으면 **조용히** 214개 봉투가 첫 페인트로 돌아온다
+ * (빌드는 성공하고 총량만 는다 — 에러가 안 나는 부류).
+ *
+ * ## 못 하는 것
+ * 실제 청크 배치는 빌드가 정한다. 총량 회귀는 `check-critical-chunks`·`check-bundle-size` 가 본다.
+ */
+describe('③ 홈 봉투(lucide-home)가 소스와 일치한다', () => {
+  it('🔴 홈이 쓰는 비-셸 아이콘이 **전부** LUCIDE_HOME_ICONS 에 있다', () => {
+    const listed = new Set(listedIn('LUCIDE_HOME_ICONS'))
+    const missing = [...homeOnlyIconFiles()].filter((i) => !listed.has(i)).sort()
+    expect(missing, `vite.config.ts 의 LUCIDE_HOME_ICONS 에 추가할 것: ${JSON.stringify(missing)}`).toEqual([])
+  })
+
+  it('목록에 홈이 안 쓰는 아이콘이 없다 (있으면 홈이 그만큼 더 받는다)', () => {
+    const need = homeOnlyIconFiles()
+    const extra = listedIn('LUCIDE_HOME_ICONS').filter((i) => !need.has(i)).sort()
+    expect(extra, `홈이 더는 안 쓴다 — 목록에서 뺄 것: ${JSON.stringify(extra)}`).toEqual([])
+  })
+
+  it('🔴 별칭 체인이 닫혀 있다 (Loader2 → loader-circle — 2026-09-16 에 실제로 밟은 함정)', () => {
+    const listed = new Set(listedIn('LUCIDE_HOME_ICONS'))
+    const chains = [...listed].filter((i) => withAliases(i).size > 1)
+    expect(chains.length, '별칭을 가진 아이콘이 홈 목록에 하나도 없다 — 이 검사가 헛돌고 있다').toBeGreaterThan(0)
+    for (const i of chains) for (const real of withAliases(i)) expect(listed.has(real), `${i} → ${real}`).toBe(true)
+  })
+
+  it('셸 목록과 겹치지 않는다 (겹치면 어느 봉투인지 규칙이 말해 주지 않는다)', () => {
+    const shell = new Set(listedIn('LUCIDE_SHELL_ICONS'))
+    const dup = listedIn('LUCIDE_HOME_ICONS').filter((i) => shell.has(i))
+    expect(dup, `두 목록에 동시에 있다: ${JSON.stringify(dup)}`).toEqual([])
+  })
+
+  it('폐쇄 계산이 비어 있지 않다 (0개면 통과가 아니라 시험이 고장난 것)', () => {
+    expect(staticClosure(HOME_ENTRIES).length, '홈 폐쇄가 비었다').toBeGreaterThan(60)
+    expect(homeOnlyIconFiles().size, '홈 전용 아이콘이 0개로 읽힌다').toBeGreaterThan(3)
   })
 })

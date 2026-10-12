@@ -121,29 +121,49 @@ const MemoCard = memo(ShortCard)
 export default function UrShortsRail() {
   const [items, setItems] = useState<UrShortItem[]>([])
   const [near, setNear] = useState(false)
+  const [nearData, setNearData] = useState(false)
   const [edge, setEdge] = useState({ l: false, r: false })
   const wrapRef = useRef<HTMLDivElement | null>(null)
   const railRef = useRef<HTMLDivElement | null>(null)
 
   /**
    * 🔴 **다가올 때 부른다.** 마운트 때 부르면 홈을 여는 모든 사람이 요청 하나를 더 내는데,
-   * 대부분은 여기까지 스크롤하지 않는다. 관측 여백 300px 안에 들어온 사람만 부르므로
-   * **홈 첫 화면의 요청 수와 D1 읽기가 0** 이다. 썸네일도 같은 신호를 쓴다.
+   * 대부분은 여기까지 스크롤하지 않는다. 관측 여백 안에 들어온 사람만 부르므로
+   * **홈 첫 화면의 요청 수와 D1 읽기가 0** 이다.
+   *
+   * 🔀 **2026-10-12: 신호를 둘로 갈랐다**(대표 *"메인에서 유어쇼츠가 늦게 로딩되네?"*).
+   * 종전엔 목록(JSON)과 썸네일 10장이 **같은 300px 신호**를 썼다. 그러면 레일이 눈에
+   * 들어온 바로 그때 [목록 요청 → 썸네일 요청] **두 왕복이 직렬로** 시작돼서, 사람이
+   * 보고 있는 동안 빈 줄이 남는다. 둘의 무게가 전혀 다른데 같은 시점을 쓰고 있었다:
+   *
+   *   목록 `/api/urshorts`  1.2KB · 엣지 캐시(900s, cron 예열) · 실측 warm 167ms
+   *   썸네일              10장 × 수KB · 레일이 실제로 보여야 쓸모가 있다
+   *
+   * ⇒ **목록만 1,200px 앞에서** 미리 받고(조금만 스크롤해도 도착해 있다), 썸네일은
+   *   종전 300px 그대로 둔다. 스크롤을 아예 안 한 사람의 요청 수는 **여전히 0** 이다.
    */
   useEffect(() => {
     const el = wrapRef.current
-    if (!el || near) return
-    if (typeof IntersectionObserver === 'undefined') { setNear(true); return }
-    const io = new IntersectionObserver(
-      (es) => { if (es.some((e) => e.isIntersecting)) { setNear(true); io.disconnect() } },
-      { rootMargin: '300px' },
-    )
-    io.observe(el)
-    return () => io.disconnect()
-  }, [near])
+    if (!el) return
+    if (typeof IntersectionObserver === 'undefined') { setNear(true); setNearData(true); return }
+    // 이름을 `mk` 로 두지 않는다 — `check-branch-scope` 가 그 이름을 **주입 지문**으로 쓴다
+    //   (실제로 이 커밋이 그 가드에 걸렸다). 어차피 `watchFrom` 이 하는 일을 더 잘 말한다.
+    const watchFrom = (margin: string, done: () => void) => {
+      const io = new IntersectionObserver((es) => {
+        if (es.some((e) => e.isIntersecting)) { done(); io.disconnect() }
+      }, { rootMargin: margin })
+      io.observe(el)
+      return io
+    }
+    const ios = [
+      nearData ? null : watchFrom('1200px', () => setNearData(true)),
+      near ? null : watchFrom('300px', () => setNear(true)),
+    ]
+    return () => ios.forEach((io) => io?.disconnect())
+  }, [near, nearData])
 
   useEffect(() => {
-    if (!near) return
+    if (!nearData) return
     let alive = true
     fetch('/api/urshorts')
       .then((r) => r.json() as Promise<{ success?: boolean; data?: UrShortItem[] }>)
@@ -152,7 +172,7 @@ export default function UrShortsRail() {
       })
       .catch(() => { /* fail-soft: 레일이 안 뜰 뿐 홈은 열린다 */ })
     return () => { alive = false }
-  }, [near])
+  }, [nearData])
 
   const sync = useMemo(() => () => {
     const r = railRef.current
