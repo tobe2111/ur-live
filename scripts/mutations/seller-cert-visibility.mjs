@@ -32,14 +32,6 @@ export default [
     why: '폴백 함수가 이름만 폴백이고 실제로는 컬럼만 돌려주면 세 읽기 자리가 전부 조용히 옛 동작으로 돌아간다.',
   },
   {
-    name: '🧾등록증가시성 셀러 배너 근거가 컬럼만 본다 (등록증 냈는데 "사본이 아직 없어요")',
-    file: 'src/features/auth/api/seller.routes.ts',
-    find: "      has_business_cert: !!(await import('../../../worker/utils/seller-cert-url').then(m => m.resolveSellerCertUrl(c.env.DB, sellerId, row?.business_registration_image_url)).catch(() => row?.business_registration_image_url || null)),",
-    replace: '      has_business_cert: !!row?.business_registration_image_url,',
-    test: TEST,
-    why: 'E5 브라우저 실측: 등록증을 첨부해 등록한 매장인데 대시보드 상단이 "서류 올리기" 를 요구했다.',
-  },
-  {
     name: '🧾등록증가시성 라이선스 동의가 요청 본문의 임의 모델로 간다',
     file: 'src/features/admin/api/admin-seller-ocr.routes.ts',
     find: "    const res = await c.env.AI.run(OCR_MODEL, { prompt: 'agree' })",

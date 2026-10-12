@@ -22,30 +22,21 @@
  * ③ `brokered` 의 유일한 출처인 `StoreRegisterModal` 의 **필수 선택 강제**가 살아 있다
  * ④ 가입 퍼널에 **에이전시 초대 코드가 되살아나지 않는다**(요금을 가르던 유령 스위치)
  *
+ * 🪦 **2026-10-12 축소** — 본인 가입 문(`POST /register-from-user`)과 그 채널 도장(`seller-signup-meta`)을
+ *   지웠다. 그 문을 부르던 가입 화면이 같은 날 사라져 호출이 0이었다. 그래서 ①과 ②의 "도장을 찍는다" 는
+ *   지킬 대상이 없어 뺐고, **매장이 생기는 문은 `/store/new` 하나**다 — ③이 그 문의 필수 선택을 계속 지킨다.
+ *
  * ⚠️ **못 막는 것**: 실제 정산이 10% 로 잡히는지는 결제가 있어야 안다(머니 경로 — staging 실결제).
  *   여기서 고정하는 건 "가입이 채널을 남기는가" 와 "그 값을 무엇으로 정하는가" 뿐이다.
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { channelFromSelfSignup } from '@/features/seller/api/seller-signup-meta'
 
 const FUNNEL = 'src/features/seller/api/seller-registration.routes.ts'
-const PAGE = 'src/pages/SellerRegisterSupplierPage.tsx'
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
-describe('① 본인 가입 문의 채널', () => {
-  it('언제나 직접 입점 — 이 문으로는 중개 매장이 오지 않는다', () => {
-    expect(channelFromSelfSignup()).toBe('direct')
-  })
-})
-
-describe('② 가입 폼이 채널을 실제로 찍는다', () => {
+describe('② 남은 가입 라우트가 중개를 추측하지 않는다', () => {
   const src = strip(readFileSync(FUNNEL, 'utf8'))
-
-  it('stampSignupStoreChannel 을 부른다', () => {
-    expect(src, `${FUNNEL}: 호출이 사라지면 신규 매장이 조용히 미지정(=5%)으로 돌아간다`)
-      .toMatch(/stampSignupStoreChannel\s*\(/)
-  })
 
   it('이 문에서 brokered 를 찍지 않는다', () => {
     // 문자열 'brokered' 가 이 퍼널에 등장하면, 누군가 다시 "어떤 가입은 중개" 를 만든 것이다.
@@ -67,9 +58,5 @@ describe('③ 매장 등록 모달은 채널을 계속 강제한다', () => {
 describe('④ 에이전시 초대 코드는 되살아나지 않는다', () => {
   it('가입 라우트가 agency_intro_code 를 읽지 않는다', () => {
     expect(strip(readFileSync(FUNNEL, 'utf8'))).not.toMatch(/agency_intro_code/)
-  })
-
-  it('가입 화면에 에이전시 코드 입력칸이 없다', () => {
-    expect(strip(readFileSync(PAGE, 'utf8'))).not.toMatch(/agency_intro_code/)
   })
 })

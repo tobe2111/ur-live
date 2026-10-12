@@ -18,7 +18,6 @@ const STORES = read('src/features/seller/api/seller-stores.routes.ts')
 const OCR = read('src/features/admin/api/admin-seller-ocr.routes.ts')
 const ADMIN = read('src/features/admin/api/admin-sellers.routes.ts')
 const FALLBACK = read('src/features/admin/api/admin-sellers/cert-fallback.ts')
-const SURFACE = read('src/features/auth/api/seller.routes.ts')
 const SESSION = read('src/features/seller/api/seller-registration/session-routes.ts')
 
 describe('① 매장 등록이 등록증 URL 을 컬럼에도 적는다', () => {
@@ -69,9 +68,8 @@ describe('③ 읽는 쪽 셋이 폴백을 탄다', () => {
     expect(FALLBACK).toMatch(/resolveSellerCertUrls\(DB, rows\)/)
     expect(FALLBACK).toMatch(/resolveSellerCertUrl\(DB, Number\(sellerId\)/)
   })
-  it('셀러 배너 근거(has_business_cert) 두 곳도 폴백을 탄다 — 아니면 등록증을 냈는데 "사본이 아직 없어요" 가 뜬다', () => {
-    expect(SURFACE).toMatch(/has_business_cert: !!\(await import\('\.\.\/\.\.\/\.\.\/worker\/utils\/seller-cert-url'\)/)
-    expect(SURFACE).not.toMatch(/has_business_cert: !!row\?\.business_registration_image_url/)
+  // 🪦 2026-10-12: 두 곳 중 `GET /api/seller/surface` 는 지웠다(그걸 읽던 대시보드 배너와 함께). 남은 한 곳.
+  it('셀러 배너 근거(has_business_cert)도 폴백을 탄다 — 아니면 등록증을 냈는데 "사본이 아직 없어요" 가 뜬다', () => {
     expect(SESSION).toMatch(/has_business_cert: !!\(await import\('\.\.\/\.\.\/\.\.\/\.\.\/worker\/utils\/seller-cert-url'\)/)
     expect(SESSION).not.toMatch(/has_business_cert: !!seller\.business_registration_image_url/)
   })
