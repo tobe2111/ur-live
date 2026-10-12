@@ -1,12 +1,14 @@
-# 알림톡 템플릿 등록 목록 (2026-10-11 — 등록용 정본)
+# 알림톡 템플릿 등록 목록 (2026-10-12 — 네이버 클라우드 SENS 등록용 정본)
 
 > 🟢 **2026-10-12 — 등록처가 알리고 → 네이버 클라우드 SENS 로 바뀌었다** (대표 *"이걸로 가자"*, 알림톡 7.5원).
 > 알리고·비즈고는 서버 고정 IP 등록이 필수인데 유어딜 서버(Cloudflare)는 나가는 IP 가 매번 달라 막힌다(라이브 -99/-101).
 > SENS 는 API 키 서명 인증이고 허용 IP 는 선택이다. 코드: `src/lib/ncp-sens.ts` — **알리고 코드는 전부 지웠다**(발송처는 SENS 하나).
-> **SENS 에서는 템플릿 코드를 등록할 때 직접 정한다 → 아래 "우리 이름"을 그대로 템플릿 코드로 입력한다.**
-> 그러면 승인 후 어드민 `alimtalk_approved_templates` 에 이름만 적으면 된다(`voucher_issued, seller_voucher_sold` 처럼).
+> **SENS 템플릿 코드는 영문·숫자만 된다**(밑줄 `_` 불가 — 2026-10-12 대표 실측, 콘솔 안내 *"영문, 숫자만 입력 가능합니다"*).
+> 그래서 **우리 이름에서 밑줄을 뺀 소문자**를 템플릿 코드로 쓴다(`voucher_issued` → `voucherissued`). 각 템플릿 제목 옆에 적어 두었다.
+> 승인 후 어드민 `alimtalk_approved_templates` 에 `우리이름=코드` 로 적는다(예: `admin_test_send=admintest, voucher_issued=voucherissued`).
 >
-> 🗂️ **이름만 정해 둔 것(지금 등록 안 함 — 그 기능이 쓰이기 시작하면)**: 종전 env 코드(`ALIGO_TPL_*`·`TBD`)를 이름으로 고정했다 —
+> 🗂️ **이름만 정해 둔 것(지금 등록 안 함 — 그 기능이 쓰이기 시작하면)**: 종전 env 코드(`ALIGO_TPL_*`·`TBD`)를 이름으로 고정했다.
+> 등록할 때 코드는 같은 규칙(밑줄을 뺀 소문자, 예 `order_confirm` → `orderconfirm`)으로 짓는다 —
 > `order_confirm`·`shipping_start`·`order_cancel`(쇼핑 주문 — 쇼핑 탭 숨김) · `sample_approved`(도매 샘플) ·
 > `store_listed`(사장님 매장 등록 통보 — **이것만 버튼 2개**: "내 매장 관리하기"·"내가 등록한 게 아니에요", 웹링크 `https://urdeal.kr/seller/waiting`·`https://urdeal.kr/store/find`) ·
 > `gift_received`·`gift_refunded`(선물) · `stay_d1`·`stay_dday`·`stay_voucher_expire_soon`(숙소).
@@ -22,10 +24,10 @@
    바뀔 수 있는 자리는 `#{...}` 변수뿐이다. 코드는 그 자리에 실제 값을 넣어 보낸다.
 2. **버튼 없이 등록한다.** 지금 코드는 버튼을 보내지 않는다. 버튼을 붙여 등록하면 "템플릿 불일치"로 거절된다.
    링크는 본문 안의 주소로 충분하다(카카오톡이 눌리는 링크로 보여 준다).
-3. **템플릿 코드 = 우리 이름.** SENS 는 등록할 때 코드를 직접 적는다 — 아래 "우리 이름"을 그대로 넣는다.
-   승인되면 어드민 설정 `alimtalk_approved_templates` 에 이름을 적어야 알림톡이 나간다
-   (예: `admin_test_send, voucher_issued, seller_voucher_sold`). **적기 전까지는 아무것도 안 나간다**(문자도 안 나간다).
-   코드를 이름과 다르게 지었으면 `우리이름=등록코드` 로 적는다. 대표님이 승인 소식을 주시면 세션이 대신 적는다.
+3. **템플릿 코드는 영문·숫자만.** 각 템플릿 제목 옆의 "코드"(우리 이름에서 밑줄을 뺀 소문자)를 그대로 입력한다.
+   승인되면 어드민 설정 `alimtalk_approved_templates` 에 `우리이름=코드` 로 적어야 알림톡이 나간다
+   (예: `admin_test_send=admintest, voucher_issued=voucherissued`). **적기 전까지는 아무것도 안 나간다**(문자도 안 나간다).
+   코드를 표와 다르게 지었으면 그 코드를 적으면 된다. 대표님이 승인 소식을 주시면 세션이 대신 적는다.
 
 > 🔎 코드 쪽 정본: 손님·사장님 이용권 알림 `src/features/group-buy/api/helpers.ts`, 발송 규칙 `src/lib/text-notice.ts`.
 > 본문을 고칠 일이 생기면 **코드와 이 문서를 같은 커밋에서** 고치고, 카카오에도 다시 심사를 넣어야 한다.
@@ -35,13 +37,7 @@
 
 ## ✅ 지금 등록할 10개 (이 순서대로)
 
-> 🔤 **2026-10-12 정정 — SENS 템플릿 코드는 영문·숫자만 된다**(대표 실측: 콘솔이 *"영문, 숫자만 입력 가능합니다"*).
-> 그래서 우리 이름(`_` 포함)을 코드로 그대로 쓸 수 없다. 아래 표의 **SENS 템플릿 코드**로 등록하고,
-> 승인되면 `alimtalk_approved_templates` 에 `우리이름=코드` 로 적는다. 코드 수정은 필요 없다(`parseTemplateCodeMap` 이 이미 지원).
-> 예: `admin_test_send=admintest, voucher_issued=voucherissued`
-> 아래 "규칙 3" 의 *"코드 = 우리 이름"* 은 이 정정으로 대체된다. 나중에 등록할 9개도 같은 방식(밑줄을 뺀 소문자)으로 짓는다.
-
-| 순서 | 우리 이름 | **SENS 템플릿 코드** | 받는 사람 | 언제 | 카테고리 |
+| 순서 | 우리 이름 | **템플릿 코드(콘솔 입력)** | 받는 사람 | 언제 | 카테고리 |
 |---|---|---|---|---|---|
 | 1 | `admin_test_send` | `admintest` | 대표 | 어드민 시험 발송 | 거래 |
 | 2 | `voucher_issued` | `voucherissued` | 손님 | 이용권 결제 직후 | 주문/예약 |
@@ -59,12 +55,12 @@
 
 ---
 
-### 1. `admin_test_send` — 어드민 시험 발송
+### 1. `admin_test_send` · 코드 `admintest` — 어드민 시험 발송
 ```
 [유어딜] 알림 발송 시험입니다 (#{시각}). 이 메시지가 보이면 사장님·손님 알림이 정상으로 나갑니다.
 ```
 
-### 2. `voucher_issued` — 이용권 발급 완료
+### 2. `voucher_issued` · 코드 `voucherissued` — 이용권 발급 완료
 ```
 [유어딜] #{이용권종류} 발급 완료
 
@@ -81,7 +77,7 @@ https://urdeal.kr/my-vouchers
 - `#{이용권종류}` 예: 이용권 · `#{유효기간}` 예: `2026. 12. 31.까지` 또는 `제한 없음`
 - 교환권(기프티콘, 딜 결제)에는 보내지 않는다(기프티콘은 바코드로 쓴다 — 코드가 거른다).
 
-### 3. `seller_first_voucher` — 첫 이용권 판매
+### 3. `seller_first_voucher` · 코드 `sellerfirstvoucher` — 첫 이용권 판매
 ```
 [유어딜] 🎉 첫 이용권이 팔렸어요
 
@@ -100,7 +96,7 @@ https://urdeal.kr/my-vouchers
 문의: 유어딜 고객센터
 ```
 
-### 4. `seller_voucher_sold` — 이용권 판매
+### 4. `seller_voucher_sold` · 코드 `sellervouchersold` — 이용권 판매
 ```
 [유어딜] 🎟️ 이용권 판매
 
@@ -114,14 +110,14 @@ https://urdeal.kr/my-vouchers
 ```
 - 링크를 누르면 카카오 로그인 → 그 매장 화면으로 바로 간다. 링크에 비밀은 없다(매장 번호뿐).
 
-### 5. `voucher_refunded` — 환불 완료
+### 5. `voucher_refunded` · 코드 `voucherrefunded` — 환불 완료
 ```
 [유어딜] 환불 완료 — #{상품명}
 #{금액}원이 환불 처리되었습니다.
 (딜 결제건은 즉시 잔액 반영, 카드 결제건은 영업일 기준 3~5일 소요)
 ```
 
-### 6. `voucher_expire_soon` — 이용권 유효기간 안내 (30일 전 한 번만)
+### 6. `voucher_expire_soon` · 코드 `voucherexpiresoon` — 이용권 유효기간 안내 (30일 전 한 번만)
 ```
 [유어딜] 이용권 유효기간 안내
 
@@ -134,14 +130,14 @@ https://urdeal.kr/my-vouchers
 ```
 - `#{이용권명}` = 상품명(매장이 있으면 `상품명 · 매장명`) · `#{만료일}` 예: `2026-12-31`
 
-### 7. `seller_approved` — 매장 승인
+### 7. `seller_approved` · 코드 `sellerapproved` — 매장 승인
 ```
 [유어딜] #{이름}님,
 셀러 가입이 승인되었어요!
 지금 바로 판매를 시작해보세요.
 ```
 
-### 8. `business_registration_rejected` — 사업자등록증 반려
+### 8. `business_registration_rejected` · 코드 `bizregrejected` — 사업자등록증 반려
 ```
 [유어딜] 사업자등록증 반려
 
@@ -150,14 +146,14 @@ https://urdeal.kr/my-vouchers
 다시 제출해주세요. 검증 완료 후 현금 정산이 가능합니다.
 ```
 
-### 9. `seller_bank_changed` — 정산 계좌 변경
+### 9. `seller_bank_changed` · 코드 `sellerbankchanged` — 정산 계좌 변경
 ```
 [유어딜] #{이름}님, 정산 계좌 정보가 방금 변경되었습니다.
 본인이 변경하지 않았다면 즉시 비밀번호를 변경하고 고객센터에 문의해주세요.
 (보안: 관리자 재확인 전까지 출금이 일시 제한됩니다)
 ```
 
-### 10. `payout_completed` — 정산 송금 완료
+### 10. `payout_completed` · 코드 `payoutcompleted` — 정산 송금 완료
 ```
 [유어딜] 정산 송금 완료
 #{이름} 님 #{금액}원이 #{은행} #{계좌} 계좌로 입금되었습니다.
@@ -171,22 +167,22 @@ TX: #{거래번호}
 
 2026-10-11 라이브 데이터로 확인한 상태다. 지금 등록해도 나갈 일이 거의 없고, 등록하지 않으면 코드가 조용히 건너뛴다.
 
-| 우리 이름 | 지금 등록 안 하는 이유 |
-|---|---|
-| `appointment_reminder_user` | 예약 기능 — 지금까지 예약 0건 |
-| `appointment_seller_new` | 예약 기능 — 지금까지 예약 0건 |
-| `appointment_noshow_alert` | 예약 기능 — 지금까지 예약 0건 |
-| `fcfs_selected` | 체험단 — 신청 7건 전부 데모 상품 |
-| `fcfs_replacement` | 체험단 — 신청 7건 전부 데모 상품 |
-| `commission_withdrawal_approved` | 추천 커미션 — 출금 신청 0건, 적립 0건 |
-| `commission_withdrawal_rejected` | 추천 커미션 — 출금 신청 0건, 적립 0건 |
-| `seller_reactivated` | 정지 해제 — 드물다, 앱 알림으로 충분 |
-| `business_registration_verified` | 서류 확인 — 드물고 판매 승인 알림이 같은 소식을 전한다 |
+| 우리 이름 | 템플릿 코드(등록할 때) | 지금 등록 안 하는 이유 |
+|---|---|---|
+| `appointment_reminder_user` | `apptreminderuser` | 예약 기능 — 지금까지 예약 0건 |
+| `appointment_seller_new` | `apptsellernew` | 예약 기능 — 지금까지 예약 0건 |
+| `appointment_noshow_alert` | `apptnoshowalert` | 예약 기능 — 지금까지 예약 0건 |
+| `fcfs_selected` | `fcfsselected` | 체험단 — 신청 7건 전부 데모 상품 |
+| `fcfs_replacement` | `fcfsreplacement` | 체험단 — 신청 7건 전부 데모 상품 |
+| `commission_withdrawal_approved` | `commwithdrawok` | 추천 커미션 — 출금 신청 0건, 적립 0건 |
+| `commission_withdrawal_rejected` | `commwithdrawno` | 추천 커미션 — 출금 신청 0건, 적립 0건 |
+| `seller_reactivated` | `sellerreactivated` | 정지 해제 — 드물다, 앱 알림으로 충분 |
+| `business_registration_verified` | `bizregverified` | 서류 확인 — 드물고 판매 승인 알림이 같은 소식을 전한다 |
 
 <details>
 <summary>9개 본문 보기 (나중에 등록할 때 복사)</summary>
 
-### 11. `appointment_reminder_user` — 내일 예약 알림
+### 11. `appointment_reminder_user` · 코드 `apptreminderuser` — 내일 예약 알림
 ```
 [유어딜] 내일 예약 알림 — #{상품명}
 📅 #{예약일} #{시작시각}~#{종료시각}
@@ -195,14 +191,14 @@ TX: #{거래번호}
 ```
 - `#{매장주소}` 가 없으면 `-`
 
-### 12. `appointment_seller_new` — 새 예약
+### 12. `appointment_seller_new` · 코드 `apptsellernew` — 새 예약
 ```
 [유어딜] 신규 예약 — #{상품명}
 #{예약일} #{시작시각}~#{종료시각}
 고객: #{고객명} #{고객전화}
 ```
 
-### 13. `appointment_noshow_alert` — 노쇼 의심
+### 13. `appointment_noshow_alert` · 코드 `apptnoshowalert` — 노쇼 의심
 ```
 [유어딜] 노쇼 의심 — #{상품명}
 📅 #{예약일} #{시작시각}~#{종료시각}
@@ -212,7 +208,7 @@ TX: #{거래번호}
 방문 완료했으면: → 완료 처리
 ```
 
-### 14. `fcfs_selected` — 체험단 선정
+### 14. `fcfs_selected` · 코드 `fcfsselected` — 체험단 선정
 ```
 [유어딜] #{딜이름} 체험단에 선정되셨습니다! 🎉
 
@@ -222,7 +218,7 @@ TX: #{거래번호}
 ```
 - `#{결제경로}` 예: `/group-buy/123` (도메인 뒤에 바로 붙는다 — 사이에 공백 없음)
 
-### 15. `fcfs_replacement` — 체험단 예비 순번 승계
+### 15. `fcfs_replacement` · 코드 `fcfsreplacement` — 체험단 예비 순번 승계
 ```
 [유어딜] #{딜이름} 체험단 참여 기회가 회원님께 넘어왔어요!
 
@@ -231,26 +227,26 @@ TX: #{거래번호}
 확정하기: https://urdeal.kr#{결제경로}
 ```
 
-### 16. `commission_withdrawal_approved` — 추천 커미션 출금 승인
+### 16. `commission_withdrawal_approved` · 코드 `commwithdrawok` — 추천 커미션 출금 승인
 ```
 [유어딜] 추천 커미션 #{금액}원이 #{은행} #{계좌} 계좌로 송금되었습니다. 입금 확인 후 영수증 확인 부탁드립니다.
 ```
 
-### 17. `commission_withdrawal_rejected` — 추천 커미션 출금 거절
+### 17. `commission_withdrawal_rejected` · 코드 `commwithdrawno` — 추천 커미션 출금 거절
 ```
 [유어딜] 추천 커미션 출금 신청 #{금액}원이 거절되었습니다.
 사유: #{사유}
 잔액은 원상 복원되어 다시 신청 가능합니다.
 ```
 
-### 18. `seller_reactivated` — 계정 재활성화
+### 18. `seller_reactivated` · 코드 `sellerreactivated` — 계정 재활성화
 ```
 [유어딜] #{이름}님,
 계정이 다시 활성화되었어요.
 판매를 이어가실 수 있습니다.
 ```
 
-### 19. `business_registration_verified` — 사업자등록증 승인
+### 19. `business_registration_verified` · 코드 `bizregverified` — 사업자등록증 승인
 ```
 [유어딜] 사업자등록증 검증 완료
 
@@ -288,7 +284,7 @@ TX: #{거래번호}
 |---|---|
 | `auction_won` · `auction_promoted` | 경매 기능이 꺼져 있거나 한 코드에 본문이 둘이다 |
 | `district_coupon_*` | 상권 쿠폰은 게이트 OFF |
-| `sample_approved` | 도매(유통스타트) — 유어딜 채널이 아니다. 코드도 미확정(`TBD`) |
+| `sample_approved` | 도매(유통스타트) — 유어딜 채널이 아니다 |
 | `supplier_*` · `distributor_*` | 도매(유통스타트) — **유통스타트 채널**에 따로 등록한다 |
 | `ops_daily_digest` | 운영자용 — 본문이 날마다 다른 구조라 템플릿으로 못 묶는다 |
 | `experience_post_reminder` · `drop_d1_reminder` | 게이트 OFF |
