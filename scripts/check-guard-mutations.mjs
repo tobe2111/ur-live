@@ -473,9 +473,11 @@ const MUTATIONS = [
       '폰에서 목록이 길어질수록 조용히 느려지다 멈춘다 — 에러는 끝까지 안 난다.',
   },
   {
+    // 🔁 2026-10-12 재조준: 신호가 둘로 갈렸다(목록 1,200px `nearData` · 썸네일 300px `near`).
+    //   결함은 그대로 — 목록 fetch 를 스크롤 게이트 밖으로 꺼낸다.
     name: '🎬 홈 레일이 마운트하자마자 데이터를 부른다',
     file: 'src/components/home/UrShortsRail.tsx',
-    find: '    if (!near) return\n    let alive = true',
+    find: '    if (!nearData) return\n    let alive = true',
     replace: '    let alive = true',
     test: 'src/tests/unit/urshorts-core.test.ts',
     why:

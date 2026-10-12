@@ -2168,13 +2168,7 @@ app.route('/api/guides', guideRoutes);
 
 // 🗑️ 2026-07-07 (라이브커머스 제거 2/N): /api/live·/api/chat(라이브 SSE+채팅) 마운트 제거.
 
-// ── 사이드 배너 (공개 API, 인증 불필요) ──
-// 🐌 2026-10-12 (대표 *"각 페이지마다도 로딩속도 개선이 필요해"* — 라이브 실측): 이 주소가
-//   **캐시 헤더를 하나도 안 갖고** 있어서 소비자 페이지를 열 때마다 콜드 D1 을 탔다(실측 **388ms**,
-//   `/urshorts`·홈·상세 어디서나). 게다가 핸들러가 요청마다 `CREATE TABLE IF NOT EXISTS` 를 돌려
-//   왕복이 2회다(per-request DDL — CLAUDE.md 가 금지하는 그 패턴). `edgeCache(600)` 을 붙이면
-//   DDL·SELECT 가 **콜로당 10분에 한 번**으로 줄고 나머지는 엣지가 답한다.
-//   ⚠️ 배너를 바꾸면 최대 10분 늦게 반영된다 — 어드민 편성 주기(수동, 드물다)를 생각하면 수용 가능.
+// ── 사이드 배너 (공개 API, 인증 불필요) · 🐌 2026-10-12 `edgeCache(600)` 추가 — 캐시 헤더가 **하나도 없어** 소비자 페이지마다 콜드 D1(실측 388ms) + 요청마다 `CREATE TABLE IF NOT EXISTS`(per-request DDL)로 왕복 2회였다. 이제 콜로당 10분에 한 번. ⚠️ 배너 편성이 최대 10분 늦게 반영된다(수동·드문 작업이라 수용). 상세: docs/handoff/2026-10-12-main-loading-fonts.md ⑥. 📏 한 줄로 쓴 이유는 이 파일 래칫(2672)이 꽉 차 있어서다 ──
 app.get('/api/side-banners', edgeCache(600), async (c) => {
   const env = c.env as Env;
   try {
