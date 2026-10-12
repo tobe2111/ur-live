@@ -169,3 +169,66 @@ curl -s https://urdeal.kr/llms.txt | grep -o '수수료 [0-9]*%'
 4. **`/api/media/` 치환을 상대 모양만 봤다** — 호출부가 먼저 origin 을 붙이므로 전부 놓쳤다.
    빌더를 **실제로 돌려** 출력을 보고서야 드러났다(같은 바이트에 1.9배 차이).
 5. **`--only` 는 이름 부분일치다** — 파일명으로는 안 걸린다(0건 + 안내 출력).
+
+---
+
+## 🖼️ 후속 ② — og:image 가 SVG 인 자리 둘 (`f118e8c24`)
+
+`/blog/:slug` 의 og:image 가 `/blog/og/:slug`(**`image/svg+xml` · 853B**)이고, `/{몰슬러그}` 는
+로고 없으면 `og-image.svg` 였다. 근본 원인은 **낡은 전제** — `blog-seo.routes.ts` 머리말이
+*"사이트 기본 OG 가 이미 SVG 라 동일 호환"* 이라 적어 뒀는데 기본 OG 는 그 사이
+`og-image.png`(1200×630 라스터 44,972B)로 바뀌었다. 전제가 사라졌는데 결론만 남았다.
+
+🩸 **그때 내가 근거를 과장했다(정정됨)**: *"카카오·페북·트위터가 SVG 를 안 읽어 23편이 전부
+**빈 카드**"* 라고 썼는데, **카카오는 틀렸다** — 2026-10-09 audit log 가 *"카드는 떴고 그 안의
+외부 `<image href>` 만 비었다"* 는 **우리 실측**을 적어 뒀다. 정확히는 ① 트위터·페북·슬랙은
+그림이 **안 뜨고** ② 카카오는 뜨지만 그 배너가 **제목을 그림에 또 그려** `og:title` 과 중복이었다.
+같은 세션이 `/pass/:id` 결재 파일엔 카카오 지원을 정확히 적고 여기엔 과장을 적었다.
+**근거를 과장하면 다음 세션이 그 과장을 전제로 삼는다** — 코드 주석·CLAUDE.md·시험 메시지를
+모두 정정했고, 가드 ④ 가 과장의 재발을 막는다(주입 없음 — 대상이 주석이라 러너가 거부한다).
+
+## 🗓️ 후속 ③ — 블로그 날짜가 거짓말을 하고 있었다 (비잠금)
+
+```
+/api/blog/public  21편의 published_at
+  2026-09-24 09:51:07 · 09-21 09:51:07 · 09-18 09:51:08 … 07-26 09:51:10
+  시:분:초가 네 값뿐(09:51:07~10) · 인접 간격 전부 3일
+/blog/what-is-urdeal JSON-LD
+  "datePublished":"2026-09-24T09:51:07.000Z"
+  "dateModified" :"2026-09-24T09:51:07.000Z"      ← 항상 같다
+sitemap  loc 453 · lastmod 359   ← 상품은 내고 **블로그 22건은 빠져 있었다**
+```
+
+그 값은 발행일이 아니라 **"마지막 재시드 한 순간 − 3i일"** 이었다. 재시드 UPDATE 가
+`published_at=datetime('now', -3i days)` 를 **매 `BLOG_SEED_VERSION` bump 마다 다시 썼다**
+⇒ 구글이 보는 발행일이 배포마다 앞으로 점프하고 오래된 글이 나이를 못 쌓는다.
+
+**수정 셋** — ① 재시드는 발행일을 다시 쓰지 않는다(INSERT 에서만 분산) ② `dateModified` ←
+`updated_at`(수정이 발행보다 **앞서면** 안 쓴다) ③ sitemap 블로그에 `lastmod` ← `updated_at`.
+⚠️ **잃는 것**: 목록이 `ORDER BY published_at DESC` 라 **시드 배열 순서를 바꿔도 기존 글 순서는
+안 따라온다**(어드민에서 발행일을 고쳐야 한다).
+
+가드 `blog-dates-honest-2026-10-12.test.ts` 11건 + 주입 7건 빨간불.
+🩸 첫 판이 헛돌았다 — `indexOf('UPDATE blog_posts')` 가 **레거시 `is_seed=1` 문장**을 집어
+날짜가 없는 문장을 검사했다(늘 통과) ⇒ 지문을 `seed_version=?` 로.
+
+### 다음 세션의 첫 액션 (E4)
+
+```bash
+UA='Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
+# ① 블로그 카드 — .svg 0건
+curl -s -A "$UA" https://urdeal.kr/blog/what-is-urdeal | grep -o 'og:image" content="[^"]*"'
+curl -s -o /dev/null -w '%{http_code}\n' https://urdeal.kr/blog/og/what-is-urdeal   # 살려 둔 것 → 200
+# ② 두 날짜가 갈리는지(다음 bump 뒤) + 발행일이 **안 움직이는지**
+curl -s -A "$UA" https://urdeal.kr/blog/what-is-urdeal | grep -o '"date[A-Za-z]*":"[^"]*"'
+# ③ sitemap lastmod 359 → 381
+S=$(curl -s -A "$UA" https://urdeal.kr/sitemap.xml); echo "loc=$(grep -c '<loc>' <<<"$S") lastmod=$(grep -c '<lastmod>' <<<"$S")"
+```
+
+### 전수에서 **결함이 아니라고** 판정한 것 (다시 파지 말 것)
+
+- `twitter:card` — 7표면 전부 `summary_large_image` · `og:type`·`og:site_name` 전 표면 정상
+- **중복 메타 0** — `og:*`·`description` 이 표면마다 1개씩(canonical 과 달리 `setAttribute` 교체다)
+- `<html lang="ko">` 8표면 전부
+- sitemap 커버리지 453건 — `/join`(149자 thin)만 미제출이고 **그게 맞다**
+- RSS 는 `/blog` 에서만 발견 가능(글 상세엔 link 없음) — 가치 대비 미미, 안 했다

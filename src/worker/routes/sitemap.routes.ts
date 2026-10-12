@@ -260,11 +260,16 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
       }
 
       // 블로그 글
+      // 🗓️ 2026-10-12: `updated_at` 을 함께 받아 **`lastmod`** 로 낸다 — 종전엔 블로그 22건이
+      //   453개 중 `lastmod` 없는 94건에 속해, 시드 재동기화로 본문이 바뀌어도 "다시 읽어라"는
+      //   신호가 0 이었다(상품 359건은 이미 `g.updated_at` 으로 내고 있었다 — 블로그만 빠졌다).
+      //   🔑 같은 커밋에서 `published_at` 재작성을 멈춘 것과 **짝**이다: 발행일이 배포마다
+      //   흔들리던 동안에는 어느 날짜도 신뢰할 수 없어 `lastmod` 를 붙여도 거짓이 됐다.
       const blogs = await DB.prepare(
-        `SELECT slug FROM blog_posts WHERE is_published = 1 ORDER BY id DESC LIMIT 100`
-      ).all<{ slug: string }>().catch(() => ({ results: [] as { slug: string }[] }));
+        `SELECT slug, updated_at FROM blog_posts WHERE is_published = 1 ORDER BY id DESC LIMIT 100`
+      ).all<{ slug: string; updated_at?: string }>().catch(() => ({ results: [] as { slug: string; updated_at?: string }[] }));
       for (const b of blogs.results || []) {
-        if (b.slug) urls.push({ loc: `/blog/${b.slug}`, priority: 0.5, changefreq: 'monthly' });
+        if (b.slug) urls.push({ loc: `/blog/${b.slug}`, priority: 0.5, changefreq: 'monthly', lastmod: b.updated_at });
       }
     } catch {
       // DB 쿼리 실패해도 정적 URL 은 응답

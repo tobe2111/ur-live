@@ -69,15 +69,28 @@ export interface BlogPostMeta {
 /** 블로그 상세(/blog/:slug) 서버 메타 — payload 없거나 파싱 실패 시 null(기본 메타 유지). */
 export function buildBlogPostMeta(ssrPayload: string, origin: string): BlogPostMeta | null {
   try {
-    const post = (JSON.parse(ssrPayload) as { data?: { title?: string; summary?: string; slug?: string; author?: string; published_at?: string; thumbnail_url?: string | null } })?.data
+    const post = (JSON.parse(ssrPayload) as { data?: { title?: string; summary?: string; slug?: string; author?: string; published_at?: string; updated_at?: string; thumbnail_url?: string | null } })?.data
     if (!post || !post.title) return null
     const title = stripBold(String(post.title))
     const description = stripBold(String(post.summary || '')).slice(0, 200)
     const canonical = `${origin}/blog/${post.slug || ''}`
     const pub = post.published_at ? new Date(post.published_at).toISOString() : undefined
+    // 🗓️ 2026-10-12: `dateModified` 를 **`updated_at`** 에서 받는다. 종전엔 둘 다 `published_at`
+    //   이라 *"고쳤다"* 는 신호가 구조적으로 존재할 수 없었고(라이브 실측 두 값이 동일),
+    //   게다가 그 `published_at` 자신이 재시드 때마다 다시 쓰이고 있었다(같은 커밋에서 동결).
+    //   ⚠️ `updated_at` 이 `published_at` 보다 **앞서면** 쓰지 않는다 — 수정이 발행보다 먼저일
+    //   수는 없고, 그런 값을 내면 구글이 둘 다 신뢰하지 않는다(모순 신호).
+    const upRaw = post.updated_at ? new Date(post.updated_at).toISOString() : undefined
+    const mod = upRaw && pub && upRaw >= pub ? upRaw : pub
     // 🖼️ 2026-10-12: 종전엔 `/blog/og/:slug`(글별 배너)를 가리켰는데 그게 **SVG** 다 —
-    //   실측 `content-type: image/svg+xml` · 853B. **카카오·페북·트위터 스크래퍼는 SVG 를
-    //   안 읽는다** ⇒ 발행 글 23편이 전부 **빈 카드**로 공유됐다(에러 0 — 공유해 본 사람만 안다).
+    //   실측 `content-type: image/svg+xml` · 853B.
+    //   🩸 **정정(같은 날, 더 정확한 쪽)**: 처음 여기에 *"카카오·페북·트위터가 SVG 를 안 읽어 23편이
+    //     전부 **빈 카드**"* 라고 적었는데 **카카오는 과장이다** — 2026-10-09 audit log 가
+    //     *"카드는 떴고 그 안의 외부 `<image href>` 만 비었다"* 고 적어 둔 **우리 실측**이 있다.
+    //     정확히는 ① **트위터·페북·슬랙**: 문서상 JPG·PNG·WEBP·GIF 만이라 그림이 **안 뜬다**
+    //     ② **카카오**: 뜨지만 그 배너가 제목을 **그림에 또 그려** `og:title` 과 중복이었다
+    //     (2026-10-12 대표가 유어샵에서 바로잡은 그 *"카드 안에 또 카드"*). 둘 다 고쳐야 할
+    //     이유지만 **빈 카드는 아니었다** — 근거를 과장하면 다음 세션이 그 과장을 전제로 삼는다.
     //   🩸 그 라우트 머리말이 근거로 적어 둔 *"사이트 기본 OG 가 이미 SVG(og-image.svg)라 동일 호환"*
     //     은 **낡은 전제**다 — 기본 OG 는 지금 `og-image.png`(실측 1200×630 라스터 44,972B)다.
     //   🔒 **라우트는 지우지 않는다** — 이전에 스크랩된 카드가 그 주소를 물고 있다(유어샵 합성
@@ -104,7 +117,7 @@ export function buildBlogPostMeta(ssrPayload: string, origin: string): BlogPostM
       publisher: { '@id': `${origin}/#organization` },
       isPartOf: { '@id': `${origin}/#website` },
       mainEntityOfPage: canonical, url: canonical,
-      ...(pub ? { datePublished: pub, dateModified: pub } : {}),
+      ...(pub ? { datePublished: pub, dateModified: mod || pub } : {}),
     }
     // 🍞 빵부스러기를 더하려면 노드가 둘이 되므로 `@graph` 로 감싼다(소비자는 재귀로 훑는다).
     //   `@context` 는 바깥에 한 번만 — 안쪽 노드에 남겨 두면 중복 선언이 된다.
