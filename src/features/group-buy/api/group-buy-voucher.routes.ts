@@ -47,10 +47,21 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
         return c.json({ success: false, error: '비밀번호를 입력해주세요' }, 400)
       }
 
+      // 🔢 2026-10-12: 코드가 6자리 숫자가 되어 **같은 매장 확인코드로** 틀린 시도를 센다(voucher-code-guard).
+      //   IP 당 분 5회(위 미들웨어)는 IP 를 바꾸면 우회된다 — 이건 매장 단위로 막는다.
+      const codeGuard = await import('../../../worker/utils/voucher-code-guard')
+      const guardSalt = c.env.JWT_SECRET || 'urdeal'
+      if (await codeGuard.useSecretLocked(DB, pin, guardSalt)) {
+        return c.json({ success: false, error: '틀린 시도가 많아 잠시 막았습니다. 잠시 후 다시 시도해주세요.' }, 429)
+      }
+
       // 🎟️ 2026-07-03 [부정사용 방어] 무인증 소각 갭 — 상품 PIN 이 없으면 제출 pin 이 무시돼
       //   코드만 알면 누구나 소각됐다. 판정은 voucher-redeem-guard 로 분리(SSOT + 파일크기 룰).
       const guard = await checkStoreCodeRequired(DB, code, pin)
-      if (guard) return c.json({ success: false, ...guard }, 403)
+      if (guard) {
+        await codeGuard.recordUseFail(DB, pin, guardSalt) // 다른 매장의 번호를 맞힌 것도 '틀린 시도' 다
+        return c.json({ success: false, ...guard }, 403)
+      }
       // 🎁 2026-10-12 선물 중(받기 전) 잠금 — 친절한 문구용. 실제 문은 counter-redeem 의 CAS 술어다.
       if (await voucherHasPendingGift(DB, { code })) return c.json({ success: false, code: 'GIFT_PENDING', error: GIFT_PENDING_USE_BLOCKED }, 409)
 
@@ -122,6 +133,9 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
         if (import.meta.env?.DEV) console.warn('[voucher use log]', e)
       }
 
+      if (!success && (failReason === 'not_found' || failReason === 'pin_mismatch')) {
+        await codeGuard.recordUseFail(DB, pin, guardSalt)
+      }
       if (!success) {
         if (failReason === 'not_found') return c.json({ success: false, error: '바우처를 찾을 수 없습니다' }, 404)
         if (failReason === 'already_used') return c.json({ success: false, error: '이미 사용된 바우처입니다' }, 400)

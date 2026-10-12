@@ -1115,13 +1115,20 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     if (!code || typeof code !== 'string' || code.length < 4 || code.length > 64 || !/^[A-Za-z0-9-]+$/.test(code)) {
       return c.json({ success: false, error: '잘못된 바우처 코드입니다' }, 400)
     }
+    // 🔢 2026-10-12: 코드가 6자리 숫자(100만 가지)가 되어 '없는 번호' 조회만 세서 막는다(voucher-code-guard).
+    //   요청 수를 세면 안 된다 — 손님 QR 화면이 5초마다 이 주소로 '사용 완료' 를 확인한다.
+    const { lookupLocked, recordLookupMiss } = await import('../../../worker/utils/voucher-code-guard')
+    if (await lookupLocked(c, DB)) return c.json({ success: false, error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' }, 429)
 
     const voucher = await DB.prepare(`
       SELECT v.*, p.name as product_name, p.restaurant_name, p.image_url as product_image, p.seller_id as product_seller_id
       FROM vouchers v LEFT JOIN products p ON v.product_id = p.id
       WHERE v.code = ?
     `).bind(code).first<VoucherRow & { product_name?: string; restaurant_name?: string; product_image?: string; product_seller_id?: number | null }>()
-    if (!voucher) return c.json({ success: false, error: '이용권을 찾을 수 없습니다' }, 404)
+    if (!voucher) {
+      await recordLookupMiss(c, DB)
+      return c.json({ success: false, error: '이용권을 찾을 수 없습니다' }, 404)
+    }
 
     return c.json({
       success: true,

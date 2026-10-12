@@ -302,7 +302,7 @@ export default function StoreStatsPage() {
               value={voucherCode}
               onChange={e => setVoucherCode(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleUseVoucher() }}
-              placeholder="예: UR-AB12-XY34"
+              placeholder="예: 123456"
               className="flex-1 border border-gray-300 dark:border-[#2C2F35] rounded-xl px-3 py-3 text-[15px] tabular-nums text-center tracking-wider bg-surface text-gray-900 dark:text-white"
               autoCapitalize="characters"
               autoCorrect="off"

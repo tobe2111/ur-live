@@ -3,7 +3,7 @@
  * calcTierDiscount + generateVoucherCode + generateStoreOwnerToken 검증.
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { calcTierDiscount, generateVoucherCode, generateStoreOwnerToken } from '@/features/group-buy/api/helpers'
 
 describe('calcTierDiscount', () => {
@@ -61,24 +61,20 @@ describe('calcTierDiscount', () => {
   })
 })
 
-describe('generateVoucherCode', () => {
-  it('UR- 로 시작, 12자 (UR-XXXX-XXXX = 3+4+1+4)', () => {
-    const code = generateVoucherCode()
-    expect(code).toMatch(/^UR-[A-Z2-9]{4}-[A-Z2-9]{4}$/)
-    expect(code.length).toBe(12)
+describe('generateVoucherCode — 6자리 숫자 (2026-10-12)', () => {
+  it('6자리 숫자 문자열(앞 0 포함)', () => {
+    for (let i = 0; i < 500; i++) expect(generateVoucherCode()).toMatch(/^\d{6}$/)
   })
 
-  it('100회 호출 unique 율 100%', () => {
-    const codes = new Set<string>()
-    for (let i = 0; i < 100; i++) codes.add(generateVoucherCode())
-    expect(codes.size).toBe(100)
-  })
-
-  it('I/L/O/0/1 같은 헷갈리는 문자 제외', () => {
-    for (let i = 0; i < 50; i++) {
-      const code = generateVoucherCode()
-      expect(code).not.toMatch(/[IO01]/)
-    }
+  it('치우침 없이 뽑는다 — 2^32 나머지 구간을 버린다', () => {
+    const vals = new Uint32Array([0xffffffff, 1234])
+    let i = 0
+    const spy = vi.spyOn(crypto, 'getRandomValues').mockImplementation(((a: Uint32Array) => { a[0] = vals[i++]; return a }) as never)
+    try {
+      // 첫 값(0xffffffff)은 치우침 구간이라 버리고 두 번째 값을 쓴다
+      expect(generateVoucherCode()).toBe('001234')
+      expect(i).toBe(2)
+    } finally { spy.mockRestore() }
   })
 })
 

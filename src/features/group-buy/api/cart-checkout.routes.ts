@@ -28,7 +28,7 @@ import { recordLedger } from '@/worker/utils/ledger'
 import { purchaseCreditFields } from '@/worker/utils/payout-account' // 💸 2026-10-01 구매 적립 escrow 경유(이중적립 제거)
 import { resolveUserIdString } from '@/worker/utils/resolve-user-id'
 import { getCommissionRates } from './commission-rates'
-import { getSellerCommissionRate, generateUniqueVoucherCode, applyGroupBuyReferral } from './helpers'
+import { getSellerCommissionRate, generateUniqueVoucherCodes, applyGroupBuyReferral } from './helpers'
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
 import { resolveGbOrderNumber, guardAwaitingDeposit, pickGbRefSource, isSelfReferral } from './gb-purchase-guards'
 import { resolvePartialDealPlan, derivePartialDeal, spendPartialDeal, recordOrderDealUsed, restorePartialDeal } from './partial-deal'
@@ -242,7 +242,7 @@ cartCheckoutRoutes.post('/cart/confirm-toss', rateLimit({ action: 'gb_cart_confi
       `).bind(newOrderId, l.productId, l.name, l.unitPrice, l.unitPrice, l.qty, l.subtotal))
       // 🤝 판 시점의 영입자를 도장 찍는다 — 매장마다 다르므로 줄마다 조회한다.
       const stamp = await resolveVoucherIntroStamp(DB, l.sellerId)
-      const codes = await Promise.all(Array.from({ length: l.qty }, () => generateUniqueVoucherCode(DB)))
+      const codes = await generateUniqueVoucherCodes(DB, l.qty)
       for (const code of codes) {
         stmts.push(DB.prepare(`
           INSERT INTO vouchers (order_id, product_id, user_id, code, expires_at, applied_discount_pct, applied_price, introduced_by_influencer_id, intro_stamped_at)
