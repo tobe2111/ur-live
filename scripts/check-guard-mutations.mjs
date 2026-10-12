@@ -864,17 +864,28 @@ const MUTATIONS = [
       '위치를 한 번도 못 받는다. 저장이 조용히 0건이 되고 화면은 그대로라 아무도 모른다.',
   },
   {
-    name: '🎫 상단 띠가 저절로 넘어간다 (자동 재생 — 첫 화면에서 읽기를 방해한다)',
+    // 🔁 2026-10-12 재조준: 대표 확정으로 자동 넘김이 **의도**가 됐다(*"자동으로 넘어가게 해줘"*).
+    //   옛 결함("저절로 넘어간다")은 이제 정답이라, 지키려던 것 — 읽는 사람을 방해하지 않는다 — 을
+    //   안전장치 쪽에서 깨뜨린다: 멈춤·동작 줄이기·화면 밖을 무시하고 계속 돈다.
+    name: '🎠 상단 배너 자동 넘김이 멈춤·동작 줄이기·화면 밖을 무시한다',
     file: 'src/components/home/HomeBannerStrip.tsx',
-    find: '  const many = banners.length > 1',
-    replace: '  const many = banners.length > 1\n  setTimeout(() => railRef.current?.scrollBy({ left: 999 }), 4000)',
+    find: '    if (!many || paused || reduceMotion || !onScreen) return',
+    replace: '    if (!many) return',
     test: 'src/tests/unit/home-top-banner-and-near-default.test.ts',
     why:
-      '캐러셀에 자동 재생을 얹고 싶은 유혹은 늘 생긴다. 그런데 첫 화면에서 저절로 움직이면 ' +
-      '읽던 사람이 방해받고, 무엇을 보고 있었는지 통제할 수 없게 된다.',
+      '자동 넘김은 대표 확정이지만, 멈춤 버튼을 눌렀는데 계속 넘어가거나 동작 줄이기를 켠 사람에게 ' +
+      '움직이는 첫 화면을 강요하면 "읽던 사람이 방해받는다"는 옛 우려가 그대로 돌아온다.',
   },
   {
-    name: '🎫 한 장짜리 상단 띠에 점 하나가 덩그러니 남는다',
+    name: '🎠 상단 배너가 손가락이 닿아도 계속 넘어간다',
+    file: 'src/components/home/HomeBannerStrip.tsx',
+    find: '        onPointerDown={many ? hold : undefined}',
+    replace: '        data-x="1"',
+    test: 'src/tests/unit/home-top-banner-and-near-default.test.ts',
+    why: '사람이 고르고 있는 장을 타이머가 빼앗아 간다 — 자동 캐러셀이 미움받는 가장 흔한 이유다.',
+  },
+  {
+    name: '🎫 한 장짜리 상단 배너에 조작부(멈춤·1/1)가 덩그러니 남는다',
     file: 'src/components/home/HomeBannerStrip.tsx',
     find: '  const many = banners.length > 1',
     replace: '  const many = true',

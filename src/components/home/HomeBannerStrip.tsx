@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { safeInternalPath } from '@/utils/safe-internal-path'
@@ -108,77 +108,174 @@ export default function HomeBannerStrip({ variant }: { variant: Extract<BannerSl
 
 
 /**
- * 🎫 상단 띠 — 옆으로 넘기는 스트립 (2026-09-05 대표 확정 "안 3").
+ * 🎠 상단 배너 — 2:1 3D 카드 캐러셀 (2026-10-12 대표 확정 — 시안 `docs/design/home-banner-3d.md`).
  *
- * ## 왜 JS 캐러셀이 아닌가
- * 네이티브 가로 스크롤 + CSS `scroll-snap` 이면 **라이브러리 0**으로 손가락 감각이 그대로 나온다.
- * 관성·고무줄·접근성(키보드 스크롤)까지 브라우저가 이미 갖고 있는 것을 다시 만들 이유가 없다.
- * 자동 재생은 **하지 않는다** — 첫 화면에서 저절로 움직이는 것은 읽는 사람을 방해하고,
- * 그 순간 무엇을 보고 있었는지 사용자가 통제할 수 없게 된다.
+ * 대표: *"메인 페이지에 있는 배너 디자인을 이 세션에서 계속 맡을거야. 퀄리티가 상당해야해"* →
+ * NOL 레퍼런스 *"이렇게 3d 디자인이 좋겠어"* → ***"2:1(362×181) 배너 크기야"*** → ***"자동으로 넘어가게 해줘"***.
  *
- * ## 한 장일 때는 스트립이 아니다
- * 한 장을 74% 폭으로 두면 오른쪽에 아무것도 없는 빈 자리가 생기고, 점 하나짜리 인디케이터가
- * 덩그러니 남는다(시안에서 이 점을 안 3 의 약점으로 적었다). ⇒ **한 장이면 꽉 채우고 점을 안 그린다.**
- * 두 장부터 74% + 다음 장 살짝 보이기 + 점.
+ * ## 무엇이 바뀌었나 (2026-09-05 "안 3" 96px 띠를 대체)
+ * - **틀이 2:1 카드다.** 폰은 좌우 16px(헤더 로고·탭과 같은 선) 안 꽉 찬 한 장(390 폰 358 × 179 · 394 폰 362 × 181),
+ *   PC 는 같은 2:1 카드
+ *   **세 장이 나란히**(가로 전체 2:1 이면 700px 가 넘어 첫 화면을 통째로 먹는다).
+ * - **저절로 넘어간다**(대표 확정). 종전 "자동 재생 금지"는 이 결정으로 폐기됐다. 대신 아래 넷을
+ *   지킨다 — 하나라도 빠지면 *읽던 사람이 방해받는다*는 옛 우려가 그대로 돌아온다:
+ *   ① 멈춤 버튼(누르면 다시 안 움직인다) ② 손가락이 닿으면 그 자리에서 멈춘다(놓고 한참 뒤 재개)
+ *   ③ 화면 밖이거나 탭이 숨겨지면 안 넘긴다 ④ 기기의 '동작 줄이기'가 켜져 있으면 아예 안 넘긴다.
+ * - 점 대신 **`n / N` 알약**. 글자는 그림에 굽지 않고 코드로 얹는다(선명 · 어드민 수정 · 스크린리더).
+ *
+ * ## 왜 JS 캐러셀 라이브러리가 아닌가
+ * 네이티브 가로 스크롤 + CSS `scroll-snap` 이면 손가락 감각(관성·고무줄·키보드)을 브라우저가 이미 준다.
+ * 자동 넘김도 그 스크롤을 `scrollTo` 로 미는 것뿐이라 손가락과 같은 길을 탄다.
+ * 현재 장(`active`)은 **스크롤 위치에서 파생**한다 — 상태를 따로 들고 있으면 손가락과 어긋난다.
  */
+const AUTO_ADVANCE_MS = 4500
+/** 손가락을 뗀 뒤 다시 움직이기까지(ms). 바로 움직이면 방금 고른 장을 빼앗는다. */
+const RESUME_AFTER_TOUCH_MS = 8000
+
+function prefersReducedMotion(): boolean {
+  if (typeof window === 'undefined' || !window.matchMedia) return false
+  try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches } catch { return false }
+}
+
 function StripRail({ banners }: { banners: HomeBanner[] }) {
+  const rootRef = useRef<HTMLDivElement>(null)
   const railRef = useRef<HTMLDivElement>(null)
   const [active, setActive] = useState(0)
+  const [paused, setPaused] = useState(false)
+  const [heldUntil, setHeldUntil] = useState(0)
+  const [onScreen, setOnScreen] = useState(true)
+  const [reduceMotion] = useState(prefersReducedMotion)
   const many = banners.length > 1
+  const n = banners.length
 
-  /** 점은 스크롤 위치에서 파생한다 — 상태를 따로 들고 있으면 손가락과 어긋난다. */
-  const onScroll = () => {
-    const el = railRef.current
-    const first = el?.firstElementChild as HTMLElement | null
-    if (!el || !first) return
-    const step = first.offsetWidth + STRIP_GAP_PX
-    const i = Math.round(el.scrollLeft / step)
-    setActive(Math.max(0, Math.min(banners.length - 1, i)))
+  /** 한 칸 폭(카드 + 간격). PC 에서 세 장이 보여도 한 번에 한 장씩 민다. */
+  const stepPx = () => {
+    const first = railRef.current?.firstElementChild as HTMLElement | null
+    return first ? first.offsetWidth + STRIP_GAP_PX : 0
   }
 
+  const onScroll = () => {
+    const el = railRef.current
+    const step = stepPx()
+    if (!el || !step) return
+    const i = Math.round(el.scrollLeft / step)
+    setActive(Math.max(0, Math.min(n - 1, i)))
+  }
+
+  // ③ 화면 밖이면 안 넘긴다 — 아래로 내려 읽는 사람 머리 위에서 혼자 돌 이유가 없다.
+  useEffect(() => {
+    const el = rootRef.current
+    if (!many || !el || typeof IntersectionObserver === 'undefined') return
+    const io = new IntersectionObserver(([e]) => setOnScreen(e.isIntersecting && e.intersectionRatio >= 0.5), { threshold: [0, 0.5, 1] })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [many])
+
+  // 자동 넘김 — 장이 바뀔 때마다(손으로 넘겨도) 타이머를 새로 건다.
+  useEffect(() => {
+    if (!many || paused || reduceMotion || !onScreen) return
+    const wait = Math.max(AUTO_ADVANCE_MS, heldUntil - Date.now())
+    const t = window.setTimeout(() => {
+      const el = railRef.current
+      const step = stepPx()
+      if (!el || !step || document.visibilityState !== 'visible') return
+      // 끝까지 갔으면(PC 는 마지막 장들이 한 화면에 같이 보인다) 처음으로 돌아간다.
+      const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 4
+      el.scrollTo({ left: atEnd ? 0 : (active + 1) * step, behavior: 'smooth' })
+    }, wait)
+    return () => window.clearTimeout(t)
+  }, [many, paused, reduceMotion, onScreen, active, heldUntil])
+
+  // ② 손가락이 닿으면 멈춘다.
+  const hold = () => setHeldUntil(Date.now() + RESUME_AFTER_TOUCH_MS)
+
+  const cardBasis =
+    n >= 3 ? 'basis-full lg:basis-[calc((100%-16px)/3)]'
+    : n === 2 ? 'basis-full lg:basis-[calc((100%-8px)/2)]'
+    : 'basis-full lg:basis-1/2'
+
   return (
-    <div className="pb-4">
+    <div ref={rootRef} className="px-4 lg:px-0 pb-4" aria-roledescription="carousel" aria-label="이벤트 배너">
       <div
         ref={railRef}
         onScroll={many ? onScroll : undefined}
+        onPointerDown={many ? hold : undefined}
+        onWheel={many ? hold : undefined}
         className={`flex gap-2 ${many ? 'overflow-x-auto snap-x snap-mandatory scrollbar-hide' : ''}`}
       >
-        {banners.map((b) => {
+        {banners.map((b, i) => {
           const href = bannerHref(b)
-          const bg = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS.strip.requestWidth, quality: 76 }) : ''
+          const bg = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS.strip.requestWidth, quality: 80 }) : ''
           return (
             <Wrap
               key={b.id}
               href={href}
-              className={`relative ${many ? 'snap-start shrink-0 basis-[74%]' : 'flex-1'} overflow-hidden rounded-xl isolate h-24 flex flex-col justify-center px-4 py-3 bg-brand transition-transform active:scale-[.995]`}
+              className={`relative ${many ? 'snap-start shrink-0' : ''} ${cardBasis} aspect-[2/1] overflow-hidden rounded-xl lg:rounded-2xl isolate bg-brand`}
             >
               {bg && (
                 <img
-                  src={bg} alt="" aria-hidden="true" loading="lazy"
+                  src={bg} alt="" aria-hidden="true"
+                  /* 첫 장은 첫 화면에 그대로 보이는 그림이라 미루지 않는다. 나머지는 넘길 때 받는다. */
+                  loading={i === 0 ? 'eager' : 'lazy'}
+                  fetchPriority={i === 0 ? 'high' : 'auto'}
+                  decoding="async"
                   className="absolute inset-0 -z-10 w-full h-full object-cover"
                   onError={(e) => cfImageOnError(e.currentTarget, b.image_url)}
                 />
               )}
-              {/* 어떤 사진이 올라올지 모른다 — 글자가 안 읽히는 사고를 막으려고 항상 덮는다. */}
-              <div className="absolute inset-0 -z-10 bg-gradient-to-r from-black/60 to-black/30" aria-hidden="true" />
-              {b.description && (
-                <small className="block text-[12px] font-bold text-white/80 truncate">{b.description}</small>
-              )}
-              <strong className="block mt-1 text-[15px] font-extrabold leading-snug tracking-tight text-white line-clamp-2">{b.title}</strong>
+              {/* 어떤 사진이 올라올지 모른다 — 글자 쪽(왼쪽)만 눌러 둔다. 3D 그림이 있는 오른쪽은 그대로. */}
+              <div className="absolute inset-0 -z-10 bg-gradient-to-r from-black/35 via-black/10 to-transparent" aria-hidden="true" />
+              <div className="absolute left-5 bottom-4 max-w-[58%] text-white">
+                <strong className="block text-[24px] font-bold leading-[1.25] tracking-[-0.02em] line-clamp-2 [text-wrap:balance]">{b.title}</strong>
+                {b.description && (
+                  <span className="block mt-2 text-[13px] font-medium text-white/85 truncate">{b.description}</span>
+                )}
+              </div>
             </Wrap>
           )
         })}
       </div>
       {many && (
-        <div className="flex justify-center gap-1 pt-2" aria-hidden="true">
-          {banners.map((b, i) => (
-            <span
-              key={b.id}
-              className={`h-[5px] rounded-full transition-all ${i === active ? 'w-3 bg-gray-900 dark:bg-white' : 'w-[5px] bg-gray-300 dark:bg-white/25'}`}
-            />
-          ))}
+        <div className="relative">
+          {/* 카드 오른쪽 아래에 얹는다(NOL 레퍼런스). 레일 밖에 두어야 스크롤과 같이 밀려가지 않는다. */}
+          <div className="absolute right-3 -top-[36px] lg:hidden flex items-center gap-2">
+            <StripControls active={active} n={n} paused={paused || reduceMotion} canPlay={!reduceMotion} onToggle={() => setPaused(p => !p)} />
+          </div>
+          <div className="hidden lg:flex justify-end pt-2">
+            <StripControls active={active} n={n} paused={paused || reduceMotion} canPlay={!reduceMotion} onToggle={() => setPaused(p => !p)} tone="field" />
+          </div>
         </div>
       )}
     </div>
+  )
+}
+
+function StripControls({ active, n, paused, canPlay, onToggle, tone = 'card' }: {
+  active: number; n: number; paused: boolean; canPlay: boolean; onToggle: () => void; tone?: 'card' | 'field'
+}) {
+  const pill = tone === 'card'
+    ? 'bg-black/30 text-white backdrop-blur-md'
+    /* PC 는 카드 아래 홈 색면(--home-field, 테마 무관 잉크) 위에 놓인다 — 흰 반투명이 맞다. */
+    : 'bg-white/10 text-white hover:bg-white/15'
+  return (
+    <>
+      {canPlay && (
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label={paused ? '배너 자동 넘김 다시 시작' : '배너 자동 넘김 멈춤'}
+          className={`h-6 w-6 grid place-items-center rounded-full ${pill}`}
+        >
+          {paused ? (
+            <svg width="9" height="10" viewBox="0 0 9 10" aria-hidden="true"><path d="M1 1l7 4-7 4z" fill="currentColor" /></svg>
+          ) : (
+            <svg width="8" height="10" viewBox="0 0 8 10" aria-hidden="true"><path d="M1 1v8M7 1v8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+          )}
+        </button>
+      )}
+      <span className={`h-6 px-3 rounded-full grid place-items-center text-[12px] font-semibold tabular-nums ${pill}`}>
+        {active + 1} / {n}
+      </span>
+    </>
   )
 }

@@ -65,10 +65,13 @@ describe('① 상단 띠 배너 자리(strip)', () => {
 })
 
 /**
- * 🎫 대표 확정이 **안 2(가로 카드) → 안 3(스와이프 스트립)** 으로 바뀌었다.
- *    안 2 로 되돌아가는 것을 막는 게 아니라, 안 3 이 실제로 **스와이프 스트립인지**를 고정한다.
+ * 🎠 2026-10-12 대표 확정 — 상단 배너 = **2:1 3D 카드 캐러셀, 저절로 넘어간다**
+ *    (*"2:1(362×181) 배너 크기야"* · *"자동으로 넘어가게 해줘"*). 2026-09-05 "안 3"(96px · 자동 재생 금지)을 대체한다.
+ *
+ * 🔁 재조준: 옛 "저절로 넘어가지 않는다" 단언은 대표 결정으로 뒤집혔다. 그 단언이 지키려던 것
+ *    — *읽던 사람이 방해받지 않는다* — 은 그대로 살아 있고, 이제 **자동 넘김의 안전장치 넷**이 그 일을 한다.
  */
-describe('① 상단 띠 = 옆으로 넘기는 스트립 (안 3)', () => {
+describe('① 상단 배너 = 2:1 카드 캐러셀 (2026-10-12)', () => {
   const SRC = read('src/components/home/HomeBannerStrip.tsx')
   const RAIL = SRC.slice(SRC.indexOf('function StripRail('))
 
@@ -76,51 +79,78 @@ describe('① 상단 띠 = 옆으로 넘기는 스트립 (안 3)', () => {
     expect(RAIL).toMatch(/overflow-x-auto/)
     expect(RAIL).toMatch(/snap-x snap-mandatory/)
     expect(RAIL).toMatch(/snap-start/)
-    // 스크롤바 숨김은 이름이 셋(`scrollbar-hide`/`no-scrollbar`/`noscroll`)으로 갈렸던 자리다.
-    //   `index.css` 가 정의를 한 벌로 합치며 표기를 `scrollbar-hide` 로 고정했다.
-    //   ⚠️ 그 주석은 `scroll-consistency` 라는 가드를 인용하는데 **그런 스크립트는 없다**(실측).
-    //     그러니 이 규약을 실제로 지키는 것은 지금 이 줄뿐이다.
+    // 스크롤바 숨김 표기는 `scrollbar-hide` 하나로 고정(`index.css` 정의가 한 벌).
     expect(RAIL).toMatch(/scrollbar-hide/)
     expect(RAIL).not.toMatch(/no-scrollbar|noscroll/)
   })
 
-  it('다음 장이 살짝 보인다 — 넘길 수 있다는 신호', () => {
-    expect(RAIL).toMatch(/basis-\[74%\]/)
+  it('카드는 2:1 이다 (대표 확정 362 × 181)', () => {
+    expect(RAIL).toMatch(/aspect-\[2\/1\]/)
   })
 
-  it('저절로 넘어가지 않는다 (자동 재생 금지 — 첫 화면에서 읽기를 방해한다)', () => {
-    expect(RAIL).not.toMatch(/setInterval|setTimeout/)
+  it('PC 는 한 장이 가로 전체를 먹지 않는다 — 2:1 세 장 나란히', () => {
+    expect(RAIL).toMatch(/lg:basis-\[calc\(\(100%-16px\)\/3\)\]/)
   })
 
-  it('한 장이면 꽉 채우고 점을 안 그린다 (점 하나짜리 인디케이터 금지)', () => {
+  describe('저절로 넘어가되, 읽는 사람을 방해하지 않는다', () => {
+    it('타이머로 스크롤을 민다 — 손가락과 같은 길(scrollTo)', () => {
+      expect(RAIL).toMatch(/setTimeout\(/)
+      expect(RAIL).toMatch(/\.scrollTo\(/)
+    })
+    it('① 멈춤 버튼이 있고, 멈추면 안 넘어간다', () => {
+      expect(RAIL).toMatch(/aria-label=\{paused \?/)
+      expect(RAIL).toMatch(/if \(!many \|\| paused \|\| reduceMotion \|\| !onScreen\) return/)
+    })
+    it('② 손가락이 닿으면 멈추고 한참 뒤 재개한다', () => {
+      expect(RAIL).toMatch(/onPointerDown=\{many \? hold : undefined\}/)
+      expect(RAIL).toMatch(/heldUntil - Date\.now\(\)/)
+    })
+    it('③ 화면 밖·숨긴 탭에서는 안 넘긴다', () => {
+      expect(RAIL).toMatch(/IntersectionObserver/)
+      expect(RAIL).toMatch(/document\.visibilityState !== 'visible'/)
+    })
+    it('④ 기기의 동작 줄이기 설정이면 안 넘긴다', () => {
+      expect(SRC).toMatch(/prefers-reduced-motion: reduce/)
+    })
+    it('끝까지 가면 처음으로 돌아간다', () => {
+      expect(RAIL).toMatch(/atEnd \? 0 :/)
+    })
+  })
+
+  it('한 장이면 꽉 채우고 조작부(멈춤·n/N)를 안 그린다', () => {
     expect(RAIL).toMatch(/const many = banners\.length > 1/)
-    // 점 블록과 74% 폭이 모두 `many` 게이트 뒤에 있어야 한다.
     expect(RAIL).toMatch(/\{many && \(/)
-    expect(RAIL).toMatch(/many \? 'snap-start shrink-0 basis-\[74%\]' : 'flex-1'/)
+    expect(RAIL).toMatch(/\$\{many \? 'snap-start shrink-0' : ''\}/)
   })
 
-  it('점은 스크롤 위치에서 파생한다 — 따로 든 상태는 손가락과 어긋난다', () => {
+  it('현재 장은 스크롤 위치에서 파생한다 — 따로 든 상태는 손가락과 어긋난다', () => {
     expect(RAIL).toMatch(/onScroll/)
     expect(RAIL).toMatch(/scrollLeft/)
   })
 
-  it('점 계산이 쓰는 간격 상수가 실제 gap 과 같다', () => {
+  it('한 칸 계산이 쓰는 간격 상수가 실제 gap 과 같다', () => {
     const gap = SRC.match(/const STRIP_GAP_PX = (\d+)/)
     expect(gap, 'STRIP_GAP_PX 상수를 못 찾았다').toBeTruthy()
-    // Tailwind gap-N = N * 4px. 렌더의 gap 클래스에서 실제 값을 읽어 대조한다.
     const cls = RAIL.match(/className=\{`flex gap-(\d+) /)
-    expect(cls, '스트립 컨테이너의 gap 클래스를 못 찾았다').toBeTruthy()
+    expect(cls, '레일 컨테이너의 gap 클래스를 못 찾았다').toBeTruthy()
     expect(Number(gap![1])).toBe(Number(cls![1]) * 4)
   })
 
-  it('사진 위 글자 — 어두운 오버레이가 항상 덮인다', () => {
+  it('글자는 그림이 아니라 코드다 — 정본 스케일 24 / 13', () => {
+    expect(RAIL).toMatch(/text-\[24px\] font-bold/)
+    expect(RAIL).toMatch(/text-\[13px\] font-medium/)
+  })
+
+  it('사진 위 글자 — 글자 쪽에 어두운 그라디언트가 항상 덮인다', () => {
     expect(RAIL).toMatch(/bg-gradient-to-r from-black\//)
   })
 
-  it('규격 안내가 안 3(배경 전면 사진)을 말한다 — 안 2 의 정사각 안내가 남으면 안 된다', () => {
-    expect(BANNER_SLOT_SPECS.strip.recommendedWidth).toBeGreaterThan(BANNER_SLOT_SPECS.strip.recommendedHeight)
-    expect(BANNER_SLOT_SPECS.strip.renderedNote).toMatch(/넘긴다/)
-    expect(BANNER_SLOT_SPECS.strip.notes.join(' ')).toMatch(/그라디언트/)
+  it('규격 안내가 2:1 · 자동 넘김을 말한다', () => {
+    const s = BANNER_SLOT_SPECS.strip
+    expect(s.recommendedWidth).toBe(s.recommendedHeight * 2)
+    expect(s.renderedNote).toMatch(/2:1/)
+    expect(s.renderedNote).toMatch(/넘어간다/)
+    expect(s.notes.join(' ')).toMatch(/그라디언트/)
   })
 })
 

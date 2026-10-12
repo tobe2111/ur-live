@@ -81,12 +81,40 @@ figma.com 다운로드가 막혀 원본을 못 넣는다. **원본 URL 은 2026-
 
 비교: `assets/home-banner-3d-font-compare.jpg`
 
+## v3 — 유달이 확정 · 자동 넘김 · 지역 주제 (2026-10-12)
+
+- 대표 *"유달이 디자인 저거 아니야"* → *"유달이 사진 줄게"*(v6 색 보정 비교판). ⇒ **v6 를 원본 해상도로 검수**해
+  칸 1·2·3·6 통과, 4(입 벌림)·5(판정 불가) 불합격. 근거: `assets/mascot/poses-2026-10-11/README.md` 맨 아래.
+  누끼 `v6-cut-{1,2,3,6}.png`. 512px 칸이라 배너(카드 높이 179 × 3배 ≈ 540px)에 충분하다.
+- 대표 ***"자동으로 넘어가게 해줘"*** → 구현(4.5초). 안전장치: 멈춤 버튼 · 손가락 닿으면 8초 멈춤 · 화면 밖/숨긴 탭 정지 ·
+  동작 줄이기면 아예 안 넘김. 브라우저 실측: 기본 `1→2→3` · 동작 줄이기 `1→1` · 멈춤 `1→1` · 터치 후 `1→1→3`.
+- 폰 카드는 **좌우 16px**(헤더 로고·탭과 같은 선): 390 폰 358 × 179 · 394 폰 362 × 181 — 비율은 늘 2:1.
+- PC 는 2:1 카드 **세 장 나란히**(한 장이 가로 전체면 700px 가 넘는다). 렌더: `assets/home-banner-3d-render-{mobile,pc}.jpg`.
+- 대표 ***"이벤트는 따로 없는 상황이니, 배너 내용은 부산, 서울 같이 지역별 주제로"*** → 지역 다섯.
+  라이브 지역별 딜 수(`/api/regions`, 2026-10-12): 서울 171 · 경기 49 · 부산 31 · 강원 26 · 전남 24 · 충남 16 · 경북(경주) 9 · 제주 8.
+  **많고 + 3D 랜드마크로 바로 알아보는** 곳: 서울 · 부산 · 강원(강릉) · 제주 · 경주. 링크 = `/region/<시도>`(기존 지역 랜딩).
+
+| 지역 | 장면 · 색 | 카피(가안) | 링크 | 그림 |
+|---|---|---|---|---|
+| 서울 | 남산타워·한옥·벚꽃 떠 있는 섬 · 보라 노을 | 서울에서 바로 쓰는 / 동네 이용권 | `/region/서울` | ✅ `region-seoul-thumb` · https://www.figma.com/api/mcp/asset/0d2968c3-6fee-49bf-a9fd-00e9ab230cc5.png |
+| 부산 | 광안대교·해변 파라솔·갈매기·어묵 · 청록 바다 | 바다 보고 한 끼, / 부산 동네딜 | `/region/부산` | ⏳ Figma AI 크레딧 소진 |
+| 강원 | 소나무 산·등대·강릉 커피 · 숲 초록 | 강릉 커피 한 잔도 / 이용권으로 | `/region/강원` | ⏳ |
+| 제주 | 돌하르방·한라산·돌담·귤 · 귤빛 | 제주 여행, / 동네 가격으로 | `/region/제주` | ⏳ |
+| 경주 | 첨성대·고분·정자·단풍 · 가을 금빛 | 천년 고도 경주의 / 오늘 혜택 | `/region/경북` | ⏳ |
+
+프롬프트 골격(같은 세계관 유지 — 다섯 다 이 틀): *Wide 2:1 premium 3D render … Soft glossy clay-plastic miniature diorama …
+a cute miniature <지역> diorama on a small round floating island: <랜드마크들> … and a tiny 3D coupon ticket floating with a sparkle.
+Color world: <색> … the diorama sits in the RIGHT HALF … ENTIRE LEFT HALF is empty … No text, no letters, no signs, no logos.*
+(모델 `gpt-image-2.5-sunburst`, 1536×768 요청 → 1536×864 수신 → 2:1 로 위아래 크롭.)
+
 ## 구현 todo (대표 결정 후)
 
 - [x] 틀 크기: **2:1 · 362×181** (대표 확정)
-- [ ] 결정: 자동 재생 여부
-- [ ] `HomeBannerStrip` strip 렌더를 3D 카드로 (3:2, 22px 라운드, 아래쪽 스크림, `n / N +`)
-- [ ] 자동 재생이면: `prefers-reduced-motion` 존중 · 손가락 닿으면 멈춤 · 화면 밖이면 멈춤 · 일시정지 버튼
-- [ ] 어드민 규격(`BANNER_SLOT_SPECS.strip`) 안내 갱신 — 1536×1024, 좌하단 비우기
-- [ ] 카드 첫 장은 LCP 후보 — eager + fetchPriority, 나머지 lazy
+- [x] 자동 넘김 (대표 확정) — 구현 완료(이 브랜치)
+- [x] `HomeBannerStrip` strip 렌더를 2:1 3D 카드로 (12/16 라운드, 왼쪽 스크림, 멈춤 + `n / N`)
+- [x] 자동 넘김 안전장치 넷 (가드 테스트 + 주입 3건)
+- [x] 어드민 규격 안내 갱신 — 1600×800(2:1), 왼쪽 비우기, 글자 굽지 않기
+- [ ] 지역 4장(부산·강원·제주·경주) 생성 — Figma AI 크레딧 회복 후
+- [ ] 대표가 원본 저장 → `/admin/banners` 에 자리 '상단 배너' 로 등록(발행은 대표)
+- [x] 첫 장 eager + fetchPriority high, 나머지 lazy
 - [ ] 홈 SSR 첫 화면(`home-first-screen.ts`)이 배너 높이를 모른다 → 배너 켜는 날 카드가 밀린다(2026-10-08 기록) — 같이 해결
