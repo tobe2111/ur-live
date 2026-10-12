@@ -101,6 +101,13 @@ describe('② 옛 주소는 별칭이다', () => {
     ))
   })
 
+  it('로그아웃 상태의 깊은 링크는 필터까지 들고 돌아온다 (2026-10-12 라이브에서 ?status=PAID 가 빠졌다)', async () => {
+    const r = mountAt('/seller/orders?status=PAID')
+    await waitFor(() => expect(r.getByTestId('where').textContent).toBe(
+      `/login?returnUrl=${encodeURIComponent(`/user/profile?tool=${encodeURIComponent('/seller/orders?status=PAID')}`)}`,
+    ))
+  })
+
   it('/seller/forgot-password · reset-password 도 같은 별칭', async () => {
     for (const p of ['/seller/forgot-password', '/seller/reset-password']) {
       const r = mountAt(p)
