@@ -1,5 +1,5 @@
 {
-  "total": 2111,
+  "total": 2112,
   "files": {
     "src/pages/AboutPage.tsx": 25,
     "src/pages/AboutServicePage.tsx": 1,
@@ -276,6 +276,7 @@
     "src/features/supply/api/distributor-admin/seed-demo.ts": 10,
     "src/features/supply/api/tax-documents.ts": 14,
     "src/shared/mall/branding.ts": 4,
-    "src/shared/stores/useTheme.ts": 2
+    "src/shared/stores/useTheme.ts": 2,
+    "src/shared/ushop-share-card.ts": 1
   }
 }

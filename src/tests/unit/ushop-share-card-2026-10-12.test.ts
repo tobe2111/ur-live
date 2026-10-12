@@ -5,35 +5,43 @@
  * → 그 결과를 보고 ***"차라리 유어샵 프로필 유저 프로필 사진이 뜨면 좋을 것 같은데?
  *   없으면 유달이 사진이 뜨고?"***
  *
- * ## 🔄 설계가 한 번 바뀌었고, 이 가드가 그 결정을 지킨다
- * 첫 판은 *"쓸 수 있는 첫 핀의 사진"* 을 카드 얼굴로 썼다. 그 설계는 결함 셋을 **각각 막아야** 했다:
- * 비활성 핀(10개 중 4개) · `deal_only` 의 '원' 표기(`600딜`→"600원") · 거짓 `discount_rate`(90 vs 11).
- * 대표 지시로 얼굴이 **프로필 → 유달이**가 되면서 **셋 다 생기지 않는다** — 남의 물건을 가게 간판으로
- * 세우지 않기 때문이다. 그래서 이 파일의 단언 18개가 교체됐고, 그 자리에 **되돌아오지 않게 하는**
- * 단언이 들어왔다(①).
+ * → 그걸 본 대표가 한 번 더 바로잡았다: ***"아니 이게 아니야, 그냥 사각형 전체를 사진 및 이미지로
+ *   가득채워줘 이해했을까?"***
+ *
+ * ## 🔄 설계가 **두 번** 바뀌었고, 이 가드가 마지막 결정을 지킨다
+ * 1판 — *"쓸 수 있는 첫 핀의 사진"* 을 얼굴로. 결함 셋을 **각각 막아야** 했다: 비활성 핀(10개 중 4개) ·
+ *   `deal_only` 의 '원' 표기(`600딜`→"600원") · 거짓 `discount_rate`(90 vs 실제 11).
+ * 2판 — 대표 지시로 **합성 카드**(흰 판 + 프로필 원 + 이름 + 소개 + 핀 타일). 결함 셋은 사라졌지만
+ *   **카드 안에 또 카드**였다 — 카톡이 제목·설명을 자기 영역에 붙이는데 그림에도 같은 글자가 있었다
+ *   (대표가 처음 신고한 **중복** 그대로).
+ * 3판(지금) — **1200×630 을 가득 채운 사진 한 장.** 틀도 글자도 없다. 글자는 카톡이 붙인다.
  *
  * ## 이 가드가 지키는 것
  *   ① 🔴 **핀을 카드 얼굴로 쓰지 않는다** — 카드가 특정 핀의 사진·가격·할인율을 말하지 않는다.
- *      (되돌리면 위 결함 셋이 한꺼번에 돌아온다.)
- *   ② **얼굴은 합성 카드가 정한다**(프로필 → 유달이). og:image 와 SDK 카드가 **같은 그림**을 쓴다.
- *   ③ 🖼️ **프로필 *파일* 을 og:image 로 쓰지 않는다** — 정사각에 가까워 1200×630 으로 자르면
- *      얼굴이 잘린다. 합성 카드는 그걸 원형으로 담는다.
- *   ④ **합성 카드의 얼굴 우선순위** — 프로필 → 유달이 → (둘 다 못 받으면) 이니셜. 카드는 늘 나온다.
- *   ⑤ **`?v` 가 올라간다** — 카카오는 주소 단위로 카드를 캐시해서, 안 올리면 옛 카드가 계속 나간다.
+ *      (되돌리면 1판의 결함 셋이 한꺼번에 돌아온다.)
+ *   ② 🖼️ **그림 = `/cdn-cgi/image` 로 받은 1200×630 사진 한 장.** 합성 카드 주소를 공유 그림으로
+ *      쓰지 않는다(2판 회귀 차단) · 그림 주소에 제목·설명 글자가 들어가지 않는다.
+ *   ③ **프로필 → 없으면 유달이.** 프로필은 `fit=cover,gravity=auto`, 유달이는 `fit=pad` + 브랜드 블루.
+ *      🔴 유달이에 `cover`(머리가 잘린다)·`contain`(584×630 이 온다) 금지 — 둘 다 실측이다.
+ *      🔴 배경 색은 **퍼센트 인코딩**해야 한다 — 생 `#` 은 fragment 로 잘리고 `1C69EF` 는 err=9401(실측).
+ *   ④ **합성 카드 라우트(`/api/og/curator/:handle`)는 살아 있다** — 이전에 스크랩된 카드가 그 주소를
+ *      물고 있다. 그 안의 얼굴 우선순위(프로필 → 유달이 → 이니셜)도 그대로 지킨다.
+ *   ⑤ **유달이 그림이 `public/` 에 실재한다** — 404 면 카드 자리가 통째로 빈다.
  *   ⑥ **`sendDefault` 는 `lib/kakao-share.ts` 한 곳에서만** 부른다(사본 넷을 모았다).
  *   ⑦ **배선** — 유어샵 공유가 네이티브 시트보다 **먼저** 카카오를 시도한다 · 워커가 `ushopOgImage` 를
- *      쓴다 · 선물 시트는 **동기** · SDK 로더는 **상대 경로 동적 import**.
+ *      쓴다 · 화면 `<SEO image>` 도 **같은 함수**를 쓴다 · 선물 시트는 **동기** · SDK 로더는 동적 import.
  *
  * ## 이 가드가 **못 하는 것**
  *   - 카드가 **예쁜가** — 그리는 주체는 카카오다. 실제 카톡방에서 봐야 한다(E4).
- *   - 합성 카드 안에서 유달이가 **잘려 보이는지** — 그건 그려 봐야 안다(렌더로 확인했다).
+ *   - 사진이 **잘 잘렸는지** — `gravity=auto` 가 피사체를 찾는 것은 리사이저의 몫이고, 그 결과는
+ *     그려 봐야 안다(대표 프로필·유달이 둘 다 눈으로 확인했다).
  *   - 카카오가 템플릿·필드를 바꾸는 것(외부 계약) · SDK 가 실제로 로드·init 되는지(브라우저 밖).
  */
 import { describe, it, expect } from 'vitest'
 import { readCode, stripComments } from '../helpers/source-text'
 import {
-  buildUShopShareCard, isShareImagePin, pinPhoto, ushopOgImage, ushopOgCardUrl,
-  USHOP_OG_CARD_V, SHARE_CARD_W, SHARE_CARD_H, type UShopSharePin,
+  buildUShopShareCard, isShareImagePin, pinPhoto, ushopOgImage, ushopShareImage,
+  SHARE_CARD_W, SHARE_CARD_H, SHARE_MASCOT_BG, SHARE_MASCOT_SRC, type UShopSharePin,
 } from '@/shared/ushop-share-card'
 import { KAKAO_SHARE_FALLBACK_IMAGE, buildCommerce, commercePayload, feedPayload, ushopCardPayload } from '@/lib/kakao-share'
 import fs from 'node:fs'
@@ -104,55 +112,148 @@ describe('① 🔴 핀을 카드 얼굴로 쓰지 않는다 (되돌리면 결함
   })
 })
 
-describe('②③ 얼굴은 합성 카드가 정한다 — 프로필 *파일* 이 아니다', () => {
-  it('og:image 와 SDK 카드가 **같은 그림**을 쓴다', () => {
-    const og = ushopOgImage(JSON.stringify({ pins: LIVE_PINS }), ORIGIN, 'jiwon1228')
-    expect(card(LIVE_PINS).imageUrl, '두 경로가 갈리면 받는 사람마다 다른 카드를 본다').toBe(og)
-    expect(og).toBe(ushopOgCardUrl('jiwon1228', ORIGIN))
+describe('② 🖼️ 그림 = 1200×630 을 가득 채운 사진 한 장', () => {
+  const PROF = 'https://media.ur-team.com/u/3/avatar.jpg'
+
+  it('og:image 와 SDK 카드가 **같은 함수**로 같은 그림을 만든다', () => {
+    const og = ushopOgImage(JSON.stringify({ curator: { profile_image: PROF }, pins: LIVE_PINS }), ORIGIN, 'jiwon1228')
+    expect(card(LIVE_PINS, { profileImage: PROF }).imageUrl,
+      '두 경로가 갈리면 받는 사람이 어디서 받느냐에 따라 다른 카드를 본다').toBe(og)
   })
 
-  it('시드 내용과 무관하게 합성 카드다 — 얼굴을 두 곳에서 정하지 않는다', () => {
-    const a = ushopOgImage(JSON.stringify({ pins: LIVE_PINS }), ORIGIN, 'jiwon1228')
-    const b = ushopOgImage('{bad json', ORIGIN, 'jiwon1228')
-    const c = ushopOgImage(JSON.stringify({}), ORIGIN, 'jiwon1228')
-    expect(new Set([a, b, c]).size, '시드를 다시 들여다보면 얼굴이 두 곳에서 정해진다').toBe(1)
-  })
-
-  it('프로필 사진 URL 을 카드 그림으로 직접 쓰지 않는다 (1200×630 으로 자르면 얼굴이 잘린다)', () => {
-    const c = card(LIVE_PINS, { bio: null })
-    expect(c.imageUrl).not.toContain('/cdn-cgi/image/')
-    expect(c.imageUrl).toContain('/api/og/curator/')
+  it('`/cdn-cgi/image` 로 1200×630 을 요청한다 — 원본을 그대로 넘기지 않는다', () => {
+    const u = card(LIVE_PINS, { profileImage: PROF }).imageUrl
+    expect(u).toContain(`${ORIGIN}/cdn-cgi/image/`)
+    expect(u).toContain(`width=${SHARE_CARD_W}`)
+    expect(u).toContain(`height=${SHARE_CARD_H}`)
+    // 🔴 굽는 것은 **남의 렌더러**다 — AVIF/WebP 를 못 읽을 수 있어 jpeg 고정.
+    expect(u, 'format=auto 면 카톡·슬랙 중 하나가 그 자리를 비운다').toContain('format=jpeg')
+    expect(u).toContain('onerror=redirect')
     expect(SHARE_CARD_W / SHARE_CARD_H, '소셜 카드 1.91:1').toBeGreaterThan(1.8)
   })
 
-  it('핸들이 없으면 폴백 그림 — 합성 카드 주소를 못 만든다', () => {
-    expect(card(LIVE_PINS, { handle: '' }).imageUrl).toBe(FB)
-    expect(card(LIVE_PINS, { handle: '   ' }).imageUrl).toBe(FB)
+  it('🔴 합성 카드 주소를 공유 그림으로 쓰지 않는다 (2판 회귀 차단)', () => {
+    for (const c of [card(LIVE_PINS, { profileImage: PROF }), card(LIVE_PINS), card(null)]) {
+      expect(c.imageUrl, '카드 안에 또 카드가 들어가면 글자가 중복된다').not.toContain('/api/og/curator')
+    }
+    const src = stripComments(readCode('src/shared/ushop-share-card.ts'))
+    for (const dead of ['ushopOgCardUrl', 'USHOP_OG_CARD_V', '/api/og/curator']) {
+      expect(src, `${dead} 가 되살아났다 — 공유 그림이 합성 카드로 되돌아간다`).not.toContain(dead)
+    }
   })
 
-  it('핸들은 URL 로 탈출된다 — 한글·공백 핸들이 주소를 깨지 않는다', () => {
-    const u = ushopOgCardUrl('정지원 샵', ORIGIN)
-    expect(u).toContain(encodeURIComponent('정지원 샵'))
-    expect(u.startsWith('https://')).toBe(true)
+  it('🔴 그림 주소에 제목·설명 글자가 들어가지 않는다', () => {
+    const c = card(LIVE_PINS, { profileImage: PROF, name: '정지원', bio: '전국의 맛집을 소개합니다.' })
+    expect(c.imageUrl).not.toContain('정지원')
+    expect(c.imageUrl).not.toContain(encodeURIComponent('정지원'))
+    expect(c.imageUrl).not.toContain('맛집')
+    expect(c.title, '글자는 **카톡이** 제목으로 붙인다').toBe('정지원의 유어샵')
   })
 
   it('착지는 유어샵 — 카드가 가게를 보여주고 버튼도 가게로 간다', () => {
-    const c = card(LIVE_PINS)
+    const c = card(LIVE_PINS, { profileImage: PROF })
     expect(c.link).toBe(`${ORIGIN}/u/jiwon1228`)
     expect(c.buttons.length, '스크래퍼 경로엔 버튼이 아예 없었다').toBeGreaterThan(0)
     for (const b of c.buttons) expect(b.link).toBe(c.link)
-    expect(c.title).toBe('정지원의 유어샵')
   })
 
   it('이름이 없으면 핸들로 — 빈 제목을 내보내지 않는다', () => {
     expect(card(LIVE_PINS, { name: null }).title).toBe('@jiwon1228의 유어샵')
     expect(card(LIVE_PINS, { name: '   ' }).title).toBe('@jiwon1228의 유어샵')
   })
+
+  it('핸들이 없어도 **그림은 나온다** — 유달이는 핸들과 무관하다', () => {
+    // 🔁 2판에서는 핸들이 없으면 합성 카드 주소를 못 만들어 폴백 그림이었다. 3판은 그림이 가게
+    //   이름과 무관하므로 그 폴백이 필요 없다(폴백은 origin 이 비는 비정상 경로에만 남는다).
+    const c = card(LIVE_PINS, { handle: '' })
+    expect(c.imageUrl).toContain('/cdn-cgi/image/')
+    expect(c.imageUrl).not.toBe(FB)
+  })
 })
 
-describe('④ 합성 카드의 얼굴 — 프로필 → 유달이 → 이니셜', () => {
+describe('③ 프로필 → 없으면 유달이', () => {
+  const PROF = 'https://media.ur-team.com/u/3/avatar.jpg'
+
+  it('프로필이 있으면 그 사진을 `cover,gravity=auto` 로 꽉 채운다', () => {
+    const u = card(LIVE_PINS, { profileImage: PROF }).imageUrl
+    expect(u).toContain('fit=cover')
+    expect(u, '피사체 찾기를 리사이저에 맡긴다 — 가운데 자르면 얼굴이 잘린다').toContain('gravity=auto')
+    expect(u.endsWith(PROF), '원본이 경로 끝에 그대로 박힌다').toBe(true)
+    expect(u).not.toContain(SHARE_MASCOT_SRC)
+  })
+
+  it('프로필이 없으면 유달이 — `fit=pad` + 딥 네이비', () => {
+    for (const prof of [undefined, null, '', '   ']) {
+      const u = card(LIVE_PINS, { profileImage: prof }).imageUrl
+      expect(u, `프로필=${JSON.stringify(prof)} 일 때 유달이가 안 나왔다`).toContain(SHARE_MASCOT_SRC)
+      // 🔴 `cover` 면 전신 포즈라 **머리가 잘린다**. `contain` 은 패딩을 안 해서 1200×630 을 달라
+      //   해도 **584×630** 이 온다(둘 다 2026-10-12 라이브 실측). `pad` 만 정확한 크기를 만든다.
+      expect(u).toContain('fit=pad')
+      expect(u).not.toContain('fit=cover')
+      expect(u).not.toContain('fit=contain')
+    }
+  })
+
+  it('🔴 배경 색은 퍼센트 인코딩된다 — 생 `#` 은 fragment 로 잘리고 `1C69EF` 는 err=9401(실측)', () => {
+    const u = card(LIVE_PINS).imageUrl
+    expect(u).toContain(`background=${encodeURIComponent(SHARE_MASCOT_BG)}`)
+    expect(u, '생 # 이면 리사이저가 옵션을 못 읽는다').not.toContain(`background=${SHARE_MASCOT_BG}`)
+    // jpeg 는 투명을 못 담으므로 배경을 안 주면 유달이 뒤가 검정이 된다.
+    // 🎨 2026-10-12 대표 *"유달이 때는 배경색 딥 네이비"* — 종전 브랜드 블루(`#1C69EF`)에서 바뀌었다.
+    //   유달이가 든 이용권도 파랑이라 밝은 파랑 위에서는 피사체와 바탕이 경쟁했다.
+    expect(SHARE_MASCOT_BG, '딥 네이비(대표 확정)').toBe('#0F1A33')
+    expect(SHARE_MASCOT_BG, '브랜드 블루로 되돌아갔다').not.toBe('#1C69EF')
+  })
+
+  it('상대 경로 프로필은 절대 URL 로 — 스크래퍼는 상대 경로를 조용히 버린다', () => {
+    const u = card(LIVE_PINS, { profileImage: '/u/3/avatar.jpg' }).imageUrl
+    expect(u.endsWith(`${ORIGIN}/u/3/avatar.jpg`)).toBe(true)
+  })
+
+  /**
+   * 🔬 `/api/media/<key>` 는 **워커를 거치지 말고** R2 공개 도메인으로 보낸다.
+   *   2026-10-12 실측(같은 사진·같은 옵션·결과 둘 다 18,760B / 1200×630): 워커 경유 `n=1203ms` ↔
+   *   R2 직접 `n=343ms`. 스크래퍼는 느리면 **기다려 주지 않고 포기**한다.
+   *   라이브 프로필 8건 중 1건이 이 모양이다(옛 업로드 — 지금은 절대 URL 로 저장된다).
+   */
+  it('`/api/media/` 프로필은 R2 공개 도메인으로 — 워커를 다시 부르지 않는다', () => {
+    const u = card(LIVE_PINS, { profileImage: '/api/media/uploads/user/24/x.png' }).imageUrl
+    expect(u.endsWith('https://media.ur-team.com/uploads/user/24/x.png')).toBe(true)
+    expect(u, '워커 경유면 리사이저 원본 fetch 가 3.5배 느려진다').not.toContain(`${ORIGIN}/api/media/`)
+  })
+
+  it('https 가 아닌 프로필은 **버린다**(유달이로) — 혼합 콘텐츠·내부 주소 차단', () => {
+    for (const bad of ['http://evil/a.jpg', 'data:image/png;base64,AAA', 'blob:http://x/1', 'javascript:alert(1)']) {
+      const u = card(LIVE_PINS, { profileImage: bad }).imageUrl
+      expect(u, `${bad} 가 그림 주소에 박혔다`).toContain(SHARE_MASCOT_SRC)
+      expect(u).not.toContain(bad)
+    }
+  })
+
+  it('`%` 를 한 번 더 감싼다 — 2026-08-11 한글 파일명 404 클래스', () => {
+    const u = card(LIVE_PINS, { profileImage: 'https://x/%B8%DE%B4%BA.jpg' }).imageUrl
+    expect(u).toContain('%25B8%25DE%25B4%25BA.jpg')
+  })
+
+  it('시드에서 프로필 **하나만** 읽는다 — 파싱 실패·프로필 없음은 유달이', () => {
+    const withProf = ushopOgImage(JSON.stringify({ curator: { profile_image: PROF } }), ORIGIN, 'h')
+    expect(withProf).toContain(PROF)
+    for (const seed of ['{bad json', '{}', JSON.stringify({ curator: {} }), JSON.stringify({ pins: LIVE_PINS })]) {
+      expect(ushopOgImage(seed, ORIGIN, 'h'), `시드=${seed} 에서 유달이로 안 떨어졌다`).toContain(SHARE_MASCOT_SRC)
+    }
+    // 🔬 CURATOR 시드는 `{ success, curator, pins }` 다 — `data` 중첩이 아니다(라이브 실측).
+    expect(ushopOgImage(JSON.stringify({ data: { curator: { profile_image: PROF } } }), ORIGIN, 'h'))
+      .toContain(SHARE_MASCOT_SRC)
+  })
+})
+
+describe('④ 합성 카드 라우트는 살아 있다 — 얼굴 우선순위(프로필 → 유달이 → 이니셜)', () => {
   const cardSrc = stripComments(readCode('src/worker/utils/og-curator-card.ts'))
   const routeSrc = stripComments(readCode('src/worker/routes/og-image.routes.ts'))
+
+  it('라우트가 마운트돼 있다 — 이전에 스크랩된 카드가 그 주소를 물고 있다', () => {
+    expect(stripComments(readCode('src/worker/index.ts'))).toContain('/api/og')
+  })
 
   it('프로필이 없으면 유달이를 쓴다 (종전은 파란 원 + 이름 첫 글자였다)', () => {
     expect(cardSrc, '유달이 자리가 없다').toContain('udalUri')
@@ -160,21 +261,13 @@ describe('④ 합성 카드의 얼굴 — 프로필 → 유달이 → 이니셜'
     expect(routeSrc, '라우트가 유달이를 안 받아 오면 카드가 못 그린다').toContain('OG_UDAL_SRC')
   })
 
-  it('유달이 그림은 **해시 없는 안정 경로** — 워커는 번들 해시를 모른다', () => {
-    const src = readCode('src/worker/utils/og-curator-card.ts')
-    const m = src.match(/OG_UDAL_SRC = '([^']+)'/)
-    expect(m, 'OG_UDAL_SRC 가 없다').toBeTruthy()
-    expect(fs.existsSync(`public${m![1]}`), `public${m![1]} 가 없다 — 404 면 얼굴이 빈다`).toBe(true)
-    expect(m![1], '번들 자산(src/assets)은 파일명에 해시가 붙어 워커가 주소를 모른다').not.toContain('/src/')
-  })
-
-  it('🔴 유달이는 `contain` + 원 색 배경으로 받는다 — jpeg 는 투명을 못 담는다', () => {
-    // `cover` 면 몸이 잘리고, 배경을 안 주면 원 안에 검정 상자가 생긴다(2026-10-12 실측).
+  it('🔴 합성 카드 안의 유달이는 `contain` + 원 색 배경 — 여기선 원 안에 들어가야 한다', () => {
+    // ⚠️ 공유 그림(③)의 `pad` 와 **다르다**: 저쪽은 1200×630 을 채우는 일이고 이쪽은 232px 원
+    //   안에 담는 일이다. 같은 값으로 통일하지 말 것.
     expect(routeSrc).toMatch(/fit: 'contain'/)
     expect(routeSrc).toContain('OG_AVATAR_TINT')
     const tint = readCode('src/worker/utils/og-curator-card.ts').match(/OG_AVATAR_TINT = '(#[0-9A-Fa-f]{6})'/)
     expect(tint, '원 색 상수가 없다').toBeTruthy()
-    // 원과 여백이 같은 색이어야 이음매가 안 보인다 — 색을 두 벌로 적지 않는다.
     expect(cardSrc, '원 색을 상수가 아니라 손으로 적으면 유달이 여백과 어긋난다').toMatch(/fill="\$\{OG_AVATAR_TINT\}"/)
   })
 
@@ -188,10 +281,18 @@ describe('④ 합성 카드의 얼굴 — 프로필 → 유달이 → 이니셜'
   })
 })
 
-describe('⑤ 판 번호 — 안 올리면 옛 카드가 계속 나간다', () => {
-  it('v4 보다 크다 — 얼굴이 바뀌었으니 카카오가 다시 긁어야 한다', () => {
-    expect(USHOP_OG_CARD_V).toBeGreaterThan(4)
-    expect(ushopOgCardUrl('abc', ORIGIN)).toContain(`?v=${USHOP_OG_CARD_V}`)
+describe('⑤ 유달이 그림이 `public/` 에 실재한다', () => {
+  it('해시 없는 안정 경로이고 파일이 있다 — 워커는 번들 해시를 모른다', () => {
+    expect(SHARE_MASCOT_SRC, '번들 자산(src/assets)은 파일명에 해시가 붙어 워커가 주소를 모른다')
+      .not.toContain('/src/')
+    expect(fs.existsSync(`public${SHARE_MASCOT_SRC}`),
+      `public${SHARE_MASCOT_SRC} 가 없다 — 404 면 카드 자리가 통째로 빈다`).toBe(true)
+  })
+
+  it('합성 카드의 유달이도 실재한다(같은 자산을 쓰고 있다)', () => {
+    const m = readCode('src/worker/utils/og-curator-card.ts').match(/OG_UDAL_SRC = '([^']+)'/)
+    expect(m, 'OG_UDAL_SRC 가 없다').toBeTruthy()
+    expect(fs.existsSync(`public${m![1]}`), `public${m![1]} 가 없다`).toBe(true)
   })
 })
 
@@ -286,6 +387,21 @@ describe('⑦ 배선', () => {
   it('카드 내용을 화면이 지어내지 않는다 — SSOT 함수를 쓴다', () => {
     expect(page).toContain('buildUShopShareCard(')
     expect(page, "objectType 을 화면이 직접 쓰면 사본이 네 번째가 된다").not.toContain("objectType")
+  })
+
+  /**
+   * 🖼️ 화면의 `<SEO image>`(react-helmet)와 워커가 주입하는 og:image 는 **다른 층**이다 —
+   *   JS 를 돌리는 크롤러는 앞을 보고 안 돌리는 크롤러는 뒤를 본다. 한쪽만 고치면 같은 링크가
+   *   받는 쪽에 따라 다른 그림을 낸다(에러는 0이다). 그래서 **같은 함수**를 쓰게 고정한다.
+   */
+  it('화면 `<SEO image>` 도 같은 함수를 쓴다 — 합성 카드 주소를 직접 적지 않는다', () => {
+    expect(page).toMatch(/image=\{ushopShareImage\(/)
+    expect(page, '손으로 적은 합성 카드 주소가 남아 있으면 크롤러별로 그림이 갈린다')
+      .not.toContain('/api/og/curator/')
+  })
+
+  it('유어샵 공유가 프로필 사진을 넘긴다 — 안 넘기면 모두가 유달이를 받는다', () => {
+    expect(page).toMatch(/profileImage:\s*data\?\.curator\?\.profile_image/)
   })
 
   it('복사 폴백은 남아 있다 — 한국 밖·PC 는 카카오가 없다', () => {

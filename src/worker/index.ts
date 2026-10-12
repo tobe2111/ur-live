@@ -906,9 +906,9 @@ app.use('*', async (c, next) => {
           const cTitle = `${cName} 유어샵 - 유어딜`;
           const cDesc = String(cur.bio || '').slice(0, 200) || `${cName}님의 추천 — 교환권·이용권 모음`;
           const canon = `${origin2}/u/${cur.handle || ''}`;
-          // 🖼️ 2026-10-12 [UNLOCK_LOADING] (대표 *"유어샵 공유 카드 다른 방법 없니?"* → *"가장 이상적으로"*):
-          //   og:image = **글자 없는 실사진**(쓸 수 있는 첫 핀을 1200×630 crop). 글자는 카톡·슬랙이 제목·설명으로
-          //   쓰므로 그림에 또 넣으면 그게 대표가 신고한 **중복**이다. 없으면 종전 합성 카드(`?v=4` — #1725 가 카드 안 사진을 고쳤는데 주소가 그대로여서 옛 카드가 나가고 있었다). 규칙 SSOT: shared/ushop-share-card.ts
+          // 🖼️ 2026-10-12 [UNLOCK_LOADING] (대표 *"유어샵 공유 카드 다른 방법 없니?"* → *"그냥 사각형 전체를 사진 및 이미지로 가득채워줘"*):
+          //   og:image = **1200×630 을 가득 채운 사진 한 장**(프로필 → 없으면 유달이 `fit=pad`). 틀도 글자도 없다 —
+          //   글자는 카톡·슬랙이 제목·설명으로 쓰므로 그림에 또 넣는 것이 대표가 신고한 **중복**이었다. 합성 카드(`/api/og/curator`)는 라우트만 남겨 둔다. 규칙 SSOT: shared/ushop-share-card.ts(화면 SDK 카드와 **같은 함수**)
           const ogCard = ushopOgImage(ssrPayload, origin2, cur.handle || '');
           // 🔁 2026-07-29: 동일한 `.on()` 체인이 표면마다 복붙돼 있던 것을 `applySurfaceMeta` 로 통일
           //   (셀렉터·순서·값 전부 동일 — 출력 불변). canonical 은 이제 속성 이스케이프를 거친다.
