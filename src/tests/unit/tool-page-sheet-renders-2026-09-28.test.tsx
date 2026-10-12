@@ -123,3 +123,22 @@ describe('ToolPageSheet — 사용처리 탭은 계산대로 나간다', () => {
     expect(onLeave).not.toHaveBeenCalled()
   })
 })
+
+// 🎟️ 2026-10-12 — 이용권 화면 안의 '새 이용권 등록'·'같은 내용으로 재발행'(`/seller/meal-voucher/new[?copyFrom=]`)은
+//   시트 **안에서** 같은 등록 위저드를 껍데기 없이 연다(대시보드 틀 0). 등록이 끝나면 위저드가 `/seller/group-buy`
+//   로 이동해 시트 안 목록이 다시 마운트된다 — 그래서 시트를 닫고 VoucherNewSheet 로 갈아탈 이유가 없다.
+//   이걸 "대시보드 화면이 뜬다" 로 오진한 적이 있어 렌더로 고정한다.
+describe('ToolPageSheet — 시트 안 이용권 등록은 같은 위저드를 껍데기 없이', () => {
+  it('재발행 주소를 열어도 나가지 않고, 대시보드 틀 없이 위저드 단계가 보인다', async () => {
+    const onLeave = vi.fn()
+    render(
+      <MemoryRouter>
+        <ToolPageSheet path="/seller/meal-voucher/new?copyFrom=3" title="이용권" onClose={() => {}} onLeave={onLeave} />
+      </MemoryRouter>,
+    )
+    await vi.waitFor(() => expect(document.body.textContent).toContain('1. 매장'), { timeout: 5000 })
+    expect(onLeave).not.toHaveBeenCalled()
+    expect(document.querySelector('aside')).toBeNull()
+    expect(document.querySelector('.ur-embed-page')).not.toBeNull()
+  })
+})

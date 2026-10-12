@@ -63,7 +63,7 @@ export default [
   {
     name: '[깊은링크] 껍데기가 마이로 안 보낸다 (옛 대시보드가 그대로 뜬다)',
     file: LAYOUT,
-    find: '  if (toMy) return <Navigate to={toMy} replace />',
+    find: '  if (toMyOrConsole) return <Navigate to={toMyOrConsole} replace />',
     replace: '',
     test: TEST,
     why: '깊은 링크가 대시보드로 가는 주된 길이다 — 이 줄이 없으면 3단계가 통째로 없던 일이 된다.',

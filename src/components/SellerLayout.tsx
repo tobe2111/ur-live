@@ -18,7 +18,7 @@ import SellerGroupTabs from './seller/SellerGroupTabs'
 import { useSellerNavModel } from './seller-layout/useSellerNavModel'
 import CommandPalette from '@/components/dashboard/CommandPalette'
 import { useSellerEmbedded } from '@/shared/seller-embed'
-import { consoleRedirectFor, myRedirectFor, shouldSendAgencyToConsole, shouldSendOwnerToMy } from '@/lib/seller-deep-link'
+import { sellerEntryRedirect } from '@/lib/seller-deep-link'
 
 /** 🧭 전체 메뉴(더보기) 주소 — 사이드바·하단 탭이 하던 일을 이 한 화면이 맡는다(2026-10-12 4단계). */
 export const SELLER_MENU_PATH = '/seller/more'
@@ -160,11 +160,10 @@ export default function SellerLayout({ title, children, headerRight, bare = fals
   // 🚪 2026-10-12 셀러 대시보드 제거 3단계 — 카카오 사장님은 깊은 링크(알림톡·메일)로 와도 **마이에서** 연다.
   //   주소를 그대로 `?tool=` 에 실어 보내고, 마이 판매 구역이 같은 화면을 시트로 연다(`@/lib/seller-deep-link`).
   //   ⚠️ 시트 안(`embedded`)은 위에서 이미 반환했다 — 여기는 단독 대시보드일 때만 온다.
-  const toMy = shouldSendOwnerToMy(false) ? myRedirectFor(location.pathname, location.search) : null
-  if (toMy) return <Navigate to={toMy} replace />
   // 🏢 2026-10-12 — 에이전시 직원은 마이 대신 **에이전시 콘솔**로(콘솔이 그 매장 판에서 같은 시트를 연다).
-  const toConsole = !toMy && shouldSendAgencyToConsole(false) ? consoleRedirectFor(location.pathname, location.search) : null
-  if (toConsole) return <Navigate to={toConsole} replace />
+  //   판정은 `sellerEntryRedirect` 한 곳 — 하단 ➕ · 유어샵 버튼이 누르는 순간 같은 함수로 곧장 간다.
+  const toMyOrConsole = sellerEntryRedirect(location.pathname, location.search)
+  if (toMyOrConsole) return <Navigate to={toMyOrConsole} replace />
 
   // 🏭 도매 전용(순수 판매사) → /wholesale 리다이렉트 중에는 렌더 X. is_distributor 직접 비교 금지(겸업 lock-out).
   if (wholesaleOnly) return null

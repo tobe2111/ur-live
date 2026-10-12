@@ -164,10 +164,10 @@ describe('⑥ 배선', () => {
   it('껍데기가 시트 안 반환 **뒤에** 판정해서 보낸다(시트 안에서 튕기면 마이가 사라진다)', () => {
     const src = stripComments(readFileSync('src/components/SellerLayout.tsx', 'utf-8'))
     const embedReturn = src.indexOf('if (bare || embedded) {')
-    const redirect = src.indexOf('const toMy = shouldSendOwnerToMy(false) ? myRedirectFor(location.pathname, location.search) : null')
+    const redirect = src.indexOf('const toMyOrConsole = sellerEntryRedirect(location.pathname, location.search)')
     expect(embedReturn).toBeGreaterThan(0)
     expect(redirect).toBeGreaterThan(embedReturn)
-    expect(src).toContain('if (toMy) return <Navigate to={toMy} replace />')
+    expect(src).toContain('if (toMyOrConsole) return <Navigate to={toMyOrConsole} replace />')
   })
 
   it('마이 판매 구역이 깊은 링크를 받는다', () => {

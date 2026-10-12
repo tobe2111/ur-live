@@ -4920,6 +4920,8 @@
     "mealVoucherDesc": "맛집 이용권을 공구 상품으로 올리기",
     "sellerDashboard": "셀러 대시보드",
     "sellerDashboardDesc": "상품 관리, 주문, 매출 확인",
+    "myStoreHome": "마이 '내 가게'",
+    "myStoreHomeDesc": "주문·정산·이용권을 마이에서 관리",
     "agencyDashboard": "에이전시 대시보드",
     "agencyDashboardDesc": "소속 셀러 관리",
     "agencyDashboardDesc2": "소속 셀러 관리, 계약, 정산",

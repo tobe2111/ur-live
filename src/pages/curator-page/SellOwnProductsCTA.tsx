@@ -13,6 +13,7 @@ import { type LucideIcon } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from '@/hooks/useToast'
 import VerifiedSeal from '@/components/VerifiedSeal'
+import { sellerEntryPath } from '@/lib/seller-deep-link'
 
 export default function SellOwnProductsCTA() {
   const navigate = useNavigate()
@@ -55,7 +56,8 @@ export default function SellOwnProductsCTA() {
           localStorage.setItem('seller_email', seller.email)
           localStorage.setItem('seller_username', seller.username)
           localStorage.setItem('seller_type', seller.seller_type)
-          navigate(path)
+          // 🚪 2026-10-12 — 대시보드 주소를 한 번 거치지 않고 도착지(마이 시트·콘솔)로 곧장. 옛 셀러는 그대로 대시보드.
+          navigate(sellerEntryPath(path))
         } else {
           toast.error('셀러 전환에 실패했습니다')
         }
