@@ -25,6 +25,8 @@ import DetailFloatingHeader from '@/components/deal/DetailFloatingHeader'
 import StayDateGuestPicker, { type DayPrice } from './stay-detail/StayDateGuestPicker'
 import { amenityMeta } from './stay-detail/amenity-meta'
 import { stayAddressLine, stayRegionLabel } from '@/shared/stay-address'
+// 🏨 첫 화면의 치수 클래스는 워커(`stay-detail-ssr-body`)와 **같은 상수**를 쓴다 — 두 벌이면 갈린다.
+import { STAY_HEAD, STAY_PAGE_ROOT, STAY_GRID } from '@/shared/stay-head'
 import StayBookingPanel, { cancellationLabel } from './stay-detail/StayBookingPanel'
 import BrandLoader from '@/components/brand/BrandLoader'
 
@@ -330,10 +332,10 @@ export default function StayDetailPage() {
   )
 
   return (
-    <div className="min-h-[100dvh] bg-warm text-gray-900 dark:text-white pb-32 lg:pb-16">
+    <div className={STAY_PAGE_ROOT}>
       <SEO title={`${stay.restaurant_name || stay.name} - 유어딜`} description={stay.description} url={`/stays/${stay.id}`} />
 
-      <div className="lg:max-w-[1200px] lg:mx-auto lg:px-8 lg:pt-5">
+      <div className={STAY_HEAD.shell}>
       {/* 🏷️ 2026-08-19 (대표 — "숙소 이용권은 이용권 상세페이지가 함께 개선이 안됐네.
           앞으로는 이런 개선은 다른 카테고리와 함께 개선이 되어야 해"):
           제목·별점·주소를 사진 **위**로 올리고(이용권 상세와 동일), 갤러리도 **같은 컴포넌트**를 쓴다.
@@ -355,12 +357,12 @@ export default function StayDetailPage() {
       />
 
 
-      <div className="px-4 py-5 lg:px-0 lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-8 lg:items-start">
+      <div className={STAY_GRID}>
         <div className="min-w-0">
         {/* 🖼️ 갤러리는 **좌측 컬럼 안** — 그리드 밖 풀폭이면 폭 1140px 이라 사진만 640px 로 커진다. */}
         {/* 📱 음수 마진 = 부모 `px-4 py-5` 를 모바일에서만 빠져나가기(공구 상세와 같은 풀블리드).
             `lg:` 되돌림까지가 한 쌍 — 경위는 `stay-detail-gallery-bleed.test.ts`. */}
-        <div ref={heroRef} className="relative -mx-4 -mt-5 lg:mx-0 lg:mt-0 bg-gray-100 dark:bg-[#1D1F29] lg:rounded-2xl lg:overflow-hidden lg:border lg:border-gray-100 dark:lg:border-[#2C2F35]">
+        <div ref={heroRef} className={STAY_HEAD.heroWrap}>
           <DetailGallery
             images={galleryImages}
             alt={stay.restaurant_name || stay.name}
@@ -370,15 +372,15 @@ export default function StayDetailPage() {
 
         {/* Title + meta — 📱 모바일 전용. PC 는 위 `DetailTitleHeader`(둘 다 그리면 제목이 두 번).
             📏 `mt-5` = 사진↔배지 간격(경위는 stay-detail-gallery-bleed.test.ts — 없으면 2px 로 붙는다). */}
-        <div className="mt-5 mb-5 lg:mt-0 lg:hidden">
-          <div className="flex items-center gap-2 text-[12px] text-gray-500 dark:text-gray-400 mb-1">
+        <div className={STAY_HEAD.titleBlock}>
+          <div className={STAY_HEAD.metaRow}>
             {/* 🧭 2026-08-30: 유형 배지('호텔')를 뺐다 — 바로 위 빵부스러기의 마지막 칸이 같은 말이다. */}
             {/* ⭐ 등급을 별 아이콘 N개로 그렸었다. 브랜드 팔레트에서 amber 는 무채색으로
                 리매핑돼 회색 별이 됐고(등급인지 비활성인지 안 읽힌다), 바로 아래 리뷰 평점의
                 별과 두 벌이 돼 눈이 헷갈렸다. 등급은 글자가 정확하다. */}
             {stay.star_rating ? <span>{stay.star_rating}성급</span> : null}
           </div>
-          <h1 className="text-[17px] lg:text-[24px] font-extrabold">{stay.restaurant_name || stay.name}</h1>
+          <h1 className={STAY_HEAD.h1}>{stay.restaurant_name || stay.name}</h1>
           <div className="flex items-center gap-2 mt-1 text-[12px] text-gray-500 dark:text-gray-400">
             <PinIcon className="w-3 h-3" />
             {/* 📍 2026-09-14: "경북 경주시 · 경북 경주시 손곡3길 37-14" 로 찍히던 자리.

@@ -11,6 +11,7 @@
 import { passShareCardUrl } from '@/shared/pass-share-card'
 // 🏨 정본 상세 주소 SSOT — 숙소 이용권은 `/stays/:id` 다(두 벌로 적으면 갈린다).
 import { canonicalDetailPath } from '../../shared/product-flow'
+import { propertyTypeLabel } from '../../shared/stay-property-type'
 export { PASS_OG_VERSION } from '@/shared/pass-share-card'
 
 // script 종료 태그 이스케이프 — <script type="application/ld+json"> 안전 임베드.
@@ -197,9 +198,9 @@ interface StayData {
   latitude?: number
   longitude?: number
 }
-const STAY_TYPE_LABEL: Record<string, string> = {
-  pension: '펜션', hotel: '호텔', guesthouse: '게스트하우스', resort: '리조트', glamping: '글램핑',
-}
+// 🔀 2026-10-12: 5종짜리 사본이 여기 있었다 — guesthouse 를 '게스트하우스' 로 불러 **화면(스테이)과
+//   13건이 갈려 있었고**, motel·villa·camping 은 표에 없어 전부 '숙소' 로 뭉개졌다. 표는 SSOT 하나.
+
 
 /**
  * 🏨 2026-07-20 (대표 — 숙소 상세 SSR/OG): /stays/:id 서버 메타/JSON-LD. 응답 형태가 DETAIL 과 달라
@@ -215,7 +216,7 @@ export function buildStayDetailMeta(ssrPayload: string, origin: string, pathname
     const id = idm ? idm[1] : (p.id ?? '')
     const stayName = String(p.restaurant_name || p.name).trim()
     const region = [p.region_sido, p.region_sigungu].filter(Boolean).join(' ').trim()
-    const typeLabel = p.property_type ? (STAY_TYPE_LABEL[p.property_type] || '숙소') : '숙소'
+    const typeLabel = p.property_type ? propertyTypeLabel(p.property_type) : '숙소'
     const rooms = parsed?.data?.rooms || []
     const roomPrices = rooms.map(r => Number(r.base_price_weekday) || 0).filter(v => v > 0)
     const fromPrice = roomPrices.length ? Math.min(...roomPrices) : 0

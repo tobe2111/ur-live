@@ -70,14 +70,13 @@ export function InfoBlock({ label, children }: { label: string; children: React.
  *   어휘는 시드의 `STAY_TYPES.label`(admin-stays.routes)과 맞춘다.
  *   상세 본문(배지)과 빵부스러기(`stayCrumbs`)가 **같은 라벨**을 써야 해서 여기(공용)에 둔다.
  */
-const PROPERTY_TYPE_LABELS: Record<string, string> = {
-  hotel: '호텔', pension: '펜션', guesthouse: '스테이', resort: '리조트',
-  glamping: '글램핑', motel: '모텔', villa: '풀빌라', camping: '캠핑',
-}
-export function propertyTypeLabel(t?: string | null): string {
-  const key = String(t || '').trim().toLowerCase()
-  return PROPERTY_TYPE_LABELS[key] || (t || '숙소')
-}
+/**
+ * 🔀 2026-10-12: 표를 `@/shared/stay-property-type` 로 **옮겼다**(재수출만 남긴다).
+ *   워커도 같은 라벨을 써야 하는데(서버 메타·JSON-LD·첫 화면) 이 파일은 React 를 import 하므로
+ *   워커가 읽을 수 없었고, 그래서 워커에 5종짜리 사본이 따로 자라 **guesthouse 13건이
+ *   "게스트하우스"(서버) ↔ "스테이"(화면)** 로 갈려 있었다. 호출부는 그대로 여기서 import 해도 된다.
+ */
+export { propertyTypeLabel } from '@/shared/stay-property-type'
 
 /**
  * ⭐ 리뷰 (2026-09-14 안 B) — 공구 상세가 쓰는 `ProductReviews` 를 그대로 붙인다. 새로 만들지 않는다.

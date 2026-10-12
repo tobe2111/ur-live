@@ -288,7 +288,7 @@ import { referralRoutes } from '../features/referral/api/referral.routes';
 //   (typeof navigator/window 가드 보유라 워커 안전). URL 이 클라 렌더값과 byte-일치해야 preload 적중.
 import { cfImage, cfSrcSet } from '../utils/cf-image';
 // 🖼️ 홈 첫 화면 카드 사진 preload — 링크 생성은 헬퍼가 한다(파일 크기 래칫 + 직접 테스트 용이).
-import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; import { brandJsonLdScript } from '../shared/seo/brand-jsonld'; import { buildStaticSurfaceNoscript, stayNoscriptFromPayload } from './utils/crawler-noscript'; import { MAIN_SEED_PATH, REGION_PATH_RE } from '../shared/seo/region-seed'; import { isKnownAppPath } from '../shared/seo/known-routes'; import { REGION_DIGEST_KV_KEY, regionDigestApplies, regionThinByDigest } from '../shared/seo/region-digest'; import { ushopOgImage } from '../shared/ushop-share-card'; // 한 줄: 파일크기 래칫 안
+import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; import { brandJsonLdScript } from '../shared/seo/brand-jsonld'; import { buildStaticSurfaceNoscript, stayNoscriptFromPayload } from './utils/crawler-noscript'; import { buildStayDetailFirstScreen } from './utils/stay-detail-ssr-body'; import { MAIN_SEED_PATH, REGION_PATH_RE } from '../shared/seo/region-seed'; import { isKnownAppPath } from '../shared/seo/known-routes'; import { REGION_DIGEST_KV_KEY, regionDigestApplies, regionThinByDigest } from '../shared/seo/region-digest'; import { ushopOgImage } from '../shared/ushop-share-card'; // 한 줄: 파일크기 래칫 안
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -1050,10 +1050,10 @@ app.use('*', async (c, next) => {
       const curatorFirst = buildCuratorFirstScreen(ssrPayload, urdealLoaderHtml);
       rb = rb.on('#root', { element(el) { el.setInnerContent(curatorFirst || urdealLoaderHtml, { html: true }); } });
     } else if (ssrSlot === 'STAYDETAIL' && ssrPayload) {
-      // 🏨 2026-10-12 [UNLOCK_LOADING] 정본(`/stays/:id`)인데 크롤러 본문이 **6자**(로더뿐) — 같은 상품의 `/pass/:id` 는 188자다. 첫 화면 대신 `<noscript>` 를 로더 앞에 덧붙인다(사람 화면 byte-동일·밀림 0 — JS 가 돌면 렌더조차 안 된다).
-      //   첫 화면은 히어로 래퍼를 픽셀로 맞춰야 해 별건. 사유: `crawler-noscript.ts`.
-      const stayNs = stayNoscriptFromPayload(ssrPayload);
-      rb = rb.on('#root', { element(el) { el.setInnerContent(stayNs + urdealLoaderHtml, { html: true }); } });
+      // 🏨 2026-10-12 [UNLOCK_LOADING] 정본(`/stays/:id`)인데 사본(`/pass/:id`)만 서버 첫 화면이 있었다 — 정본이 더 늦게 떴다. [빵부스러기 + 히어로 + 성급 + 제목]까지 그리고 그 아래에만 로더를 둔다(모바일만 — PC 는 그리드 밖 제목 헤더 때문에 반쪽만 그리면 밀린다).
+      //   🔴 폴백(사진 없음·파싱 실패)은 `<noscript>` + 로더 — 그 경로는 숙소명을 **빼지 않는다**(첫 화면이 없으니 본문이 비어 버린다). 사유·경계: `utils/stay-detail-ssr-body.ts`.
+      const stayFirst = buildStayDetailFirstScreen(ssrPayload, urdealLoaderHtml);
+      rb = rb.on('#root', { element(el) { el.setInnerContent(stayFirst || (stayNoscriptFromPayload(ssrPayload) + urdealLoaderHtml), { html: true }); } });
     } else {
       // 🖼️ 2026-07-07 [UNLOCK_LOADING] (대표 신고 "로딩 중간에 이상한 페이지들" — 전수조사 + "홈도 이상적으로"):
       //   **catch-all 디폴트 = URDEAL 정적 로더**. prerender 된 `#root` 에는 홈(=RestaurantMapPage list) shell 이

@@ -81,24 +81,46 @@ function escText(s: string): string {
 export const DETAIL_CRUMB_CLASS =
   'flex items-center gap-2 overflow-x-auto whitespace-nowrap text-[13px] leading-none scrollbar-hide px-4 pb-2 lg:px-8 lg:pt-4 lg:pb-1 lg:max-w-[1200px] lg:mx-auto pt-[64px]'
 
+/**
+ * 🍞 `DetailBreadcrumb` 의 내부 클래스 — **컴포넌트와 글자까지 같아야 한다**(가드가 대조한다).
+ *
+ * 🩸 2026-10-12: 종전 이 자리의 항목 span 이 `gap-1.5` 였다. 컴포넌트는 `gap-2` 다 — 즉 PC 상세의
+ *   빵부스러기 칸 간격이 마운트 때 6px → 8px 로 **벌어지고 있었다**(에러 0 · 화면도 안 깨진다).
+ *   항목 수만큼 가로로 밀리므로 눈에 잘 안 띈다. 호버 클래스도 빠져 있던 것을 함께 맞췄다.
+ */
+export const DETAIL_CRUMB_ITEM_CLASS = 'flex items-center gap-2 shrink-0'
+export const DETAIL_CRUMB_SEP_CLASS = 'text-gray-300 dark:text-gray-600'
+export const DETAIL_CRUMB_LINK_CLASS =
+  'text-gray-600 dark:text-gray-300 underline underline-offset-[3px] decoration-gray-300 dark:decoration-gray-600 hover:text-gray-900 dark:hover:text-white hover:decoration-current'
+export const DETAIL_CRUMB_CURRENT_CLASS = 'text-gray-500 dark:text-gray-400'
+
+/**
+ * 빵부스러기 `<nav>` HTML. 항목이 **2개 미만이면 `''`** — 컴포넌트도 안 그린다(`shown.length < 2`).
+ * `to` 가 없는 마지막 칸은 링크가 아니라 `aria-current="page"` 인 span 이다(컴포넌트와 같다).
+ */
+export function crumbNavHtml(items: Array<{ label: string; to?: string }>): string {
+  const shown = items.filter(c => c.label)
+  if (shown.length < 2) return ''
+  const inner = shown.map((c, i) => (
+    `<span class="${DETAIL_CRUMB_ITEM_CLASS}">` +
+      (i > 0 ? `<span aria-hidden="true" class="${DETAIL_CRUMB_SEP_CLASS}">/</span>` : '') +
+      (c.to
+        ? `<a href="${escAttr(c.to)}" class="${DETAIL_CRUMB_LINK_CLASS}">${escText(c.label)}</a>`
+        : `<span aria-current="page" class="${DETAIL_CRUMB_CURRENT_CLASS}">${escText(c.label)}</span>`) +
+    '</span>'
+  )).join('')
+  return `<nav aria-label="현재 위치" class="${DETAIL_CRUMB_CLASS}">${inner}</nav>`
+}
+
 function crumbHtml(category: string | null | undefined): string {
   const cat = normalizeCategory(category)
   if (!cat) return '' // 크럼이 하나면 경로가 아니다 — 컴포넌트도 안 그린다(`shown.length < 2`).
-  const label = escText(getVoucherShortLabel(cat))
+  const nav = crumbNavHtml([
+    { label: '홈', to: '/' },
+    { label: getVoucherShortLabel(cat), to: `/?category=${cat}` },
+  ])
   // 🎟️ 2026-10-11 (D안): 모바일은 빵부스러기를 안 그린다 — 컴포넌트도 `hidden lg:block` 으로 감쌌다.
-  return (
-    '<div class="hidden lg:block">' +
-    `<nav aria-label="현재 위치" class="${DETAIL_CRUMB_CLASS}">` +
-      '<span class="flex items-center gap-1.5 shrink-0">' +
-        '<a href="/" class="text-gray-600 dark:text-gray-300 underline underline-offset-[3px] decoration-gray-300 dark:decoration-gray-600">홈</a>' +
-      '</span>' +
-      '<span class="flex items-center gap-1.5 shrink-0">' +
-        '<span aria-hidden="true" class="text-gray-300 dark:text-gray-600">/</span>' +
-        `<a href="/?category=${escAttr(cat)}" class="text-gray-600 dark:text-gray-300 underline underline-offset-[3px] decoration-gray-300 dark:decoration-gray-600">${label}</a>` +
-      '</span>' +
-    '</nav>' +
-    '</div>'
-  )
+  return nav ? `<div class="hidden lg:block">${nav}</div>` : ''
 }
 
 /** 사진 위 그라디언트 — `DetailGallery` 의 `badges` 와 같은 값(없으면 사진 가장자리 톤이 달라진다). */

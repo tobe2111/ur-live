@@ -3369,9 +3369,11 @@ canvas {
   },
   {
     name: '숙소 상세 사진만 여백이 생긴다(다른 상세는 풀블리드)',
-    file: 'src/pages/StayDetailPage.tsx',
-    find: 'relative -mx-4 -mt-5 lg:mx-0 lg:mt-0 bg-gray-100',
-    replace: 'relative bg-gray-100',
+    // 🔀 2026-10-12 재조준: 치수 클래스가 `shared/stay-head.ts`(SSOT)로 옮겨갔다 — 화면과 워커
+    //    첫 화면이 같은 상수를 쓴다. 불변식은 그대로이고 앵커만 그 상수로 옮긴다.
+    file: 'src/shared/stay-head.ts',
+    find: "  heroWrap: 'relative -mx-4 -mt-5 lg:mx-0 lg:mt-0 bg-gray-100",
+    replace: "  heroWrap: 'relative bg-gray-100",
     test: 'src/tests/unit/stay-detail-gallery-bleed.test.ts',
     why:
       '2026-08-30 대표 신고. 숙소는 갤러리를 본문과 같은 `px-4 py-5` 래퍼 **안**에 둬서, 같은 ' +
