@@ -473,3 +473,88 @@ curl -sS https://urdeal.kr/sitemap.xml | grep -c '<loc>'   # 453 → 451 안팎,
 셀러 프로필만 담고 상품은 `SellerPublicPage` 가 따로 받는다. 처방은 curator 응답이
 `linked_seller_products` 를 동봉하는 것과 같은 방식으로 **페이로드에 상품을 더하는 것**이고,
 그건 API·KV 캐시(300s)를 건드리므로 별건으로 잡을 것. ❌ 이름만 넣은 noscript 로 때우지 말 것.
+
+---
+
+## 🎟️ 후속 ⑦ — sitemap 의 **모든 경로 모양**을 전수로 재서 facet 3건을 찾았다
+
+후속 ⑥(유어샵·쇼핑 상세)을 고친 뒤, 같은 질문을 **sitemap 전체**에 던졌다 — *"제출한 URL 중
+크롤러 본문이 비는 게 또 있나?"* Googlebot UA 로 453건을 31개 경로 모양으로 묶어 샘플링해
+본문 글자수를 셌고, **8자(로더 워드마크뿐)** 가 다섯 나왔다:
+
+```
+/u/:handle ×4        8자   ← 후속 ⑥ 수정분(배포 전)
+/s/:handle ×2        8자   ← 아래 '남은 것'(별건)
+/products/2917       8자   ← 후속 ⑥ 수정분(배포 전)
+/vouchers?category=  8자 ×3  ← 🆕 이번에 고친 것
+/privacy · /refund   8자   ← 🆕 찾았으나 **안 고쳤다**(아래 이유)
+```
+
+비교: `/pass/:id` 98~143자 · `/stays/:id` 176~178 · `/region/*` 386~464 ·
+`/blog/:slug` 1,007~1,035 · `/terms` 327 · `/faq` 1,490.
+
+### 무엇이 원인이었나 — 워커 조건 한 줄
+
+VOUCHERS 슬롯 조건이 `url.pathname === '/vouchers' && !url.search` 다. 2026-05-27 에
+*"쿼리 없는 기본 페이지"* 용으로 쓴 조건이고 그 자체로는 맞다. 그런데 2026-07-29 에
+facet 3건을 sitemap 에 넣을 때 **그 짝을 아무도 안 봤다** — 제출은 했는데 쿼리가 붙는 순간
+시드를 아예 안 받으니 본문이 빈다. `<title>`·description·canonical 은 카테고리별로 멀쩡하고
+`index, follow` 라 **재 본 사람만 안다.**
+
+### 재료는 이미 있었고, 고아 예열 키 하나를 되살렸다
+
+`/api/products` 는 `category=` 를 서버에서 필터해 20건을 준다(세 카테고리 전부 실측 20건).
+그리고 **`커피/음료` 키는 `cache-prewarm.ts` HOT_PATHS 에 이미 있다** — 2026-06-04
+*"홈 = 교환권"* 이던 시절 들어갔고 홈이 딜 피드로 바뀐 뒤 **요청하는 곳이 0** 인 고아였다
+(소스 전수 확인: `deal_only=1&sort=price_low` 를 요청하는 곳은 워커 VOUCHERS 슬롯 하나이고
+거기엔 category 가 없었다). 이제 그 키가 다시 쓰인다 ⇒ **HOT_PATHS 추가·제거 0.**
+
+### 눈으로 본 결과
+
+```
+편의점      237자  a태그 0   교환권 GS25 — 퍼페티)츄파춥스300 판매가 300원 CU — 농심)…
+커피/음료   262자  a태그 0   교환권 컴포즈커피 — 아메리카노(Hot)(TAKE-OUT) 판매가 1,500원 …
+베이커리    221자  a태그 0   교환권 파리바게뜨 교환권 1천원 판매가 1,000원 …
+```
+
+a태그 0 은 **의도**다 — 교환권 상세는 2026-07-07 결정으로 noindex 이므로 항목 링크를 달지
+않는다(후속 ④ 내부 링크 처방과 같은 규율).
+
+### 🩸 이번에 내가 틀린 것 둘 (둘 다 가드가 잡았다)
+
+1. **주석 제거기를 새로 썼다.** 순진한 `/\/\*[\s\S]*?\*\//g` 가 문자열 안의 `/*` 를 주석
+   시작으로 읽어 워커 소스를 대부분 먹었고, 소스 단언 셋이 **전부 거짓 빨간불**이 났다.
+   이 레포가 **네 번** 밟아 `check-comment-stripper` 를 만든 그 자리인데 **다섯 번째를
+   내가 밟았다** → SSOT `tests/helpers/source-text.ts` 의 `readCode`/`readRaw` 로 교체.
+2. **픽스처를 스크래치패드 파일에 뒀다.** 없으면 `return` 하도록 썼는데 CI 에는 그 파일이
+   없으니 그 검사 셋이 **조용히 건너뛰어진다**(= 헛도는 가드). 라이브 응답 모양에서 만든
+   **인라인 탐침**으로 교체했다.
+
+### ⏭️ 안 고친 것 — `/privacy`·`/refund` (판단을 적어 둔다)
+
+`/terms` 는 본문이 `src/pages/terms/consumer-terms-content.ts` 라는 **데이터 SSOT** 로 있어
+327자가 나온다. `/privacy`·`/refund` 는 **25KB·20KB JSX 안에만** 있다. 데이터로 빼면 본문이
+생기지만 그건 별건이고, 특히 **`/refund` 는 내용 자체가 결재 대기**다(남의 서비스 환불약관 —
+결재 #25 / `docs/decisions/`). **틀린 약관을 SSOT 로 추출하는 쪽이 더 나쁘다** ⇒ 결재가
+내려온 뒤에 그 글을 고치면서 함께 데이터로 빼는 것이 맞다.
+
+### ✅ 다음 세션의 첫 액션 — E4 (배포 후, **양방향**)
+
+```bash
+UA='Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
+body(){ curl -sS -A "$UA" "$1" | sed 's/<[^>]*>/ /g' | tr -s ' \n' ' ' | sed 's/^ //' ; }
+# ① 채워졌나 — 세 facet 전부 (기대 ~220~260자, 종전 8자)
+for c in %ED%8E%B8%EC%9D%98%EC%A0%90 %EC%BB%A4%ED%94%BC%2F%EC%9D%8C%EB%A3%8C %EB%B2%A0%EC%9D%B4%EC%BB%A4%EB%A6%AC%2F%EB%8F%84%EB%84%9B; do
+  echo -n "$c  "; body "https://urdeal.kr/vouchers?category=$c" | wc -c; done
+# ② 🔴 반대 방향 — 임의 값엔 **여전히** 본문이 없고 /vouchers 로 통합돼야 한다
+body 'https://urdeal.kr/vouchers?category=테스트123' | wc -c          # 기대: 짧게(8자대)
+curl -sS -A "$UA" 'https://urdeal.kr/vouchers?category=테스트123' | grep -o 'rel="canonical"[^>]*'
+# ③ 맨 경로 회귀 0 — 240자 + 시드 주입 실재
+body 'https://urdeal.kr/vouchers' | wc -c
+curl -sS -A "$UA" https://urdeal.kr/vouchers | grep -c '__SSR_INITIAL_VOUCHERS__'   # 기대 1
+# ④ facet 에는 시드를 **안** 싣는다(사람 응답 낭비 0)
+curl -sS -A "$UA" 'https://urdeal.kr/vouchers?category=%ED%8E%B8%EC%9D%98%EC%A0%90' | grep -c '__SSR_INITIAL_VOUCHERS__'  # 기대 0
+```
+
+⚠️ ②·③·④ 를 함께 보지 않으면 판정이 안 된다 — ①만 보면 *"허용목록이 통째로 열린 것"* 과
+*"설계대로 세 건만 받은 것"* 을 구분할 수 없다.

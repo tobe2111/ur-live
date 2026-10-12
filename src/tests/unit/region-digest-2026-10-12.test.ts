@@ -215,10 +215,17 @@ describe('⑤ 경로 판정 — 지역·숙소만', () => {
 })
 
 describe('⑥ 🔴 반대 방향 — 요약이 주입(React initialData)으로 새지 않는다', () => {
-  it('`ssrPayload` 는 **SSR 응답에서 딱 한 번** 대입된다 — 요약이 그 변수로 흘러들 수 없다', () => {
+  it('`ssrPayload` 에 **값을 담는 대입은 딱 한 번** — 요약이 그 변수로 흘러들 수 없다', () => {
+    // 🔀 2026-10-12 재조준: facet 시드를 **주입에서 빼는** 한 줄(`ssrPayload = null`)이 생겨
+    //   대입이 둘이 됐다. 지키는 불변식은 그대로 — *값*을 담는 대입은 여전히 하나이고 그것은
+    //   `r.payload` 다. `null` 은 구조적으로 아무것도 샐 수 없으므로(주입을 **지우는** 방향)
+    //   예외로 두고, 그 대신 **요약·크롤러 변수를 담는 대입이 0** 임을 따로 못 박는다
+    //   (= `ssrPayload = digestRaw` / `= crawlerPayload` 는 여전히 빨간불).
     const writes = [...worker.matchAll(/\bssrPayload\s*=(?!=)([^\n;]*)/g)].map(m => m[1].trim())
-    expect(writes.length).toBe(1)
-    expect(writes[0]).toMatch(/^r\w*\.payload$/)
+    const valued = writes.filter(w => w !== 'null')
+    expect(valued.length).toBe(1)
+    expect(valued[0]).toMatch(/^r\w*\.payload$/)
+    for (const w of writes) expect(w).not.toMatch(/digest|crawler/i)
   })
 
   it('`__SSR_INITIAL_*` 주입은 `ssrPayload` 를 쓴다', () => {
