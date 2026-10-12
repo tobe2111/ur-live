@@ -546,7 +546,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
               {!certOk && !uploading && (
                 <p className="text-[11px] text-gray-500 leading-relaxed">
                   지금 건너뛰어도 매장은 등록돼요. 다만 <span className="font-bold text-gray-700">승인 전까지는 메인에 노출되지 않고</span>,
-                  등록증이 없으면 확인에 더 오래 걸려요. 나중에 <span className="font-bold text-gray-700">셀러 대시보드 › 사업자 정보</span>에서 올릴 수 있어요.
+                  등록증이 없으면 확인에 더 오래 걸려요. 나중에 <span className="font-bold text-gray-700">마이 '내 가게' › 전체 도구 › 사업자 정보</span>에서 올릴 수 있어요.
                 </p>
               )}
 

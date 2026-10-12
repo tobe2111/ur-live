@@ -249,7 +249,7 @@ export default function VoucherVerifyPage() {
               <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{t('voucher.verify.doneNote', { defaultValue: '손님 폰에도 ‘사용 완료’로 바뀌었어요' })}</p>
             </div>
             {isSeller ? (
-              <Link to="/seller/scan" className={`${primaryBtn} mt-6 flex items-center justify-center`}>{t('voucher.verify.nextGuest', { defaultValue: '다음 손님 QR 찍기' })}</Link>
+              <Link to="/store/scan" className={`${primaryBtn} mt-6 flex items-center justify-center`}>{t('voucher.verify.nextGuest', { defaultValue: '다음 손님 QR 찍기' })}</Link>
             ) : (
               <button onClick={reset} className={`${primaryBtn} mt-6`}>{t('voucher.verify.lookupAnother', { defaultValue: '다른 이용권 조회' })}</button>
             )}

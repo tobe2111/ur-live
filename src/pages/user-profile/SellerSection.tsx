@@ -264,7 +264,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
     setTool('page')
   }
 
-  useToolDeepLink({ ready: !loading && store != null, seated, open: (p) => { void openPage(p, '') } })
+  useToolDeepLink({ ready: !loading && store != null, seated, open: (p, own) => { if (own === 'voucherNew') { setPageFrom(null); setTool('voucherNew'); return } void openPage(p, '') } })
 
   // 좌석 0곳(= 셀러가 아님) · 실패 → 아무것도 그리지 않는다.
   //   실패를 0 으로 그리면 "오늘 매출 0원" 이라는 거짓말이 된다(머니 표면 룰).
@@ -562,13 +562,13 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
             // 🚪 계산대·등록은 대시보드가 아니라 **마이의 전용 길**로(`tool-pages.ts` `OWN_PATH`, 2026-10-12). 판정은 시트가
             //   넘긴다 — 여기서 `tool-pages` 를 읽으면 정적 의존이 되어 시트 청크가 마이에 붙는다. 나머지는 시트 안에서 열린다.
             if (own === 'scan') { setTool(null); enterSeat('/store/scan'); return }
-            if (own === 'voucherNew') { setTool('voucherNew'); return }
+            if (own === 'voucherNew') { setPageFrom('tools'); setTool('voucherNew'); return }
             if (inSheet) { setPage({ path, title: label }); setPageFrom('tools'); setTool('page'); return }
             setTool(null); enterSeat(path)
           }}
         />
       )}
-      {tool === 'voucherNew' && <VoucherNewSheet onClose={() => setTool('tools')} onCreated={() => { state.refetch(); setPage({ path: '/seller/group-buy', title: '이용권' }); setPageFrom(null); setTool('page') }} />}
+      {tool === 'voucherNew' && <VoucherNewSheet onClose={() => { const back = pageFrom; setPageFrom(null); setTool(back) }} onCreated={() => { state.refetch(); setPage({ path: '/seller/group-buy', title: '이용권' }); setPageFrom(null); setTool('page') }} />}
       {/* ↩️ 닫으면 **전체 도구로** 돌아온다 — 도구를 하나 보고 다음 도구를 보는 흐름이 끊기지 않게. */}
       {tool === 'page' && page && (
         <ToolPageSheet

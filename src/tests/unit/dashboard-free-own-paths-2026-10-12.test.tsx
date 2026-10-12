@@ -87,7 +87,7 @@ describe('② 전체 도구가 전용 길을 넘긴다 (실제로 눌러 본다)
 describe('③ 마이 — 큰 버튼과 같은 길', () => {
   it('scan → /store/scan, voucherNew → 등록 시트', () => {
     expect(SELLER).toContain("if (own === 'scan') { setTool(null); enterSeat('/store/scan'); return }")
-    expect(SELLER).toContain("if (own === 'voucherNew') { setTool('voucherNew'); return }")
+    expect(SELLER).toContain("if (own === 'voucherNew') { setPageFrom('tools'); setTool('voucherNew'); return }")
     expect(SELLER).toMatch(/tool === 'voucherNew' && <VoucherNewSheet /)
   })
   it('전용 길 판정이 마지막 대시보드 폴백(enterSeat(path))보다 먼저다', () => {
@@ -107,7 +107,7 @@ describe('④ 에이전시 콘솔 — 마이와 같은 계산대 · 같은 등�
     expect(PLATE).toContain('if (path === STORE_SCAN_PATH) { window.location.assign(path); return }')
   })
   it('voucherNew → 등록 시트', () => {
-    expect(PLATE).toContain("if (own === 'voucherNew') { setTool('voucherNew'); return }")
+    expect(PLATE).toContain("if (own === 'voucherNew') { setPageFrom('tools'); setTool('voucherNew'); return }")
     expect(PLATE).toContain('<VoucherNewSheet')
   })
 })
@@ -124,5 +124,35 @@ describe('⑤ /store/scan — 소비자 로그인을 요구하지 않고, 화면
     expect(SCAN).toContain("localStorage.getItem('scan_device_key')")
     expect(SCAN).toMatch(/if \(!allowed\) navigate\(MY_PATH/)
     expect(SCAN).toContain('if (!allowed) return null')
+  })
+})
+
+// ── 깊은 링크 (2026-10-12 2차 — 대표 *"이제 모두 가장 이상적인 형태야?"* 를 재 보니 남아 있던 문) ──────────
+//   알림톡 '사용처리'(`/store/go?to=scan`) · 주문 상세 '사용처리 화면으로' · 하단 ➕ '이용권 등록' · 유어샵 '이용권 등록' 이
+//   전부 대시보드 주소로 가서 `STAY_ON_DASHBOARD` 에 걸려 얇은 틀에 떨어졌다.
+import { STAY_ON_DASHBOARD, myRedirectFor, consoleRedirectFor } from '@/lib/seller-deep-link'
+import { STORE_GO_TARGETS } from '@/shared/store-deep-link'
+
+describe('⑥ 깊은 링크도 전용 길로', () => {
+  it('대시보드에 남는 주소는 OAuth 복귀 하나뿐', () => {
+    expect([...STAY_ON_DASHBOARD]).toEqual(['/seller/youtube/callback'])
+  })
+  it('계산대 → /store/scan (쿼리 유지), 사장님·에이전시 모두', () => {
+    expect(myRedirectFor('/seller/scan', '?x=1')).toBe('/store/scan?x=1')
+    expect(consoleRedirectFor('/seller/scan', '')).toBe('/store/scan')
+  })
+  it('등록 → ?tool= (받는 쪽이 등록 시트로 연다)', () => {
+    expect(myRedirectFor('/seller/meal-voucher/new', '')).toBe('/user/profile?tool=%2Fseller%2Fmeal-voucher%2Fnew')
+    expect(ownPathFor('/seller/meal-voucher/new?copyFrom=3')).toBe('voucherNew')
+  })
+  it('마이·콘솔이 ?tool= 의 등록을 VoucherNewSheet 로 받는다', () => {
+    expect(SELLER).toContain("open: (p, own) => { if (own === 'voucherNew') { setPageFrom(null); setTool('voucherNew'); return } void openPage(p, '') }")
+    expect(PLATE).toContain("initialOwn === 'voucherNew' ? 'voucherNew'")
+    expect(code('src/pages/user-profile/seller-section/useToolDeepLink.ts')).toContain('open(path, ownPathFor(path))')
+  })
+  it('사장님 문자 · 주문 상세 · 사용 처리 완료 화면의 계산대 링크가 /store/scan', () => {
+    expect(STORE_GO_TARGETS.scan).toBe('/store/scan')
+    expect(code('src/pages/seller-orders/OrderDetailModal.tsx')).toContain('href="/store/scan"')
+    expect(code('src/pages/VoucherVerifyPage.tsx')).toContain('to="/store/scan"')
   })
 })

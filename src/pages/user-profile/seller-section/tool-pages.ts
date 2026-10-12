@@ -39,28 +39,8 @@ export function canOpenInSheet(path: string): boolean {
 
 /**
  * 🚪 **위 둘이 실제로 가는 곳** (2026-10-12, 대표 *"이제 셀러 대시보드, 에이전시 대시보드로 굳이 안가서 해도 돼?"*)
- *
- * 위 표는 "시트로 **안** 연다" 만 말했고, 그럼 어디로 가는지는 호출부가 정했다 — 그런데 호출부 둘(마이 ·
- * 에이전시 콘솔)이 **둘 다 대시보드 주소(`/seller/scan` · `/seller/meal-voucher/new`)로 보내고 있었다.**
- * 이유에 *"마이엔 이미 전용 길이 있다"* 고 적어 놓고 정작 그 길로 안 보낸 것이다(`VoucherNewSheet` 는
- * 2026-09-26 에 만들어 놓고 **아무도 렌더하지 않았다**). 그래서 전체 도구에서 이 둘을 고르면
- * 사장님도 에이전시 직원도 얇아진 대시보드 틀로 떨어졌다.
- *
- * ⇒ 판정을 **여기 한 곳**에 둔다. 시트(`AllToolsSheet`)가 읽어 `onPick` 으로 넘기고, 호출부는 받은 값대로만 연다
- *   (호출부가 이 파일을 정적 import 하면 시트 청크가 마이에 붙는다 — 위 `AllToolsSheet` 머리말의 함정).
- *   - `scan`       → `/store/scan`(매장 계산대 — 대시보드 밖 전체화면, 좌석 토큰으로 매장을 고른다)
- *   - `voucherNew` → `VoucherNewSheet`(같은 등록 위저드를 시트 안에서)
+ * 위 표는 "시트로 **안** 연다" 만 말한다. 어디로 가는지는 `OWN_PATH` 가 정한다 — 마이·에이전시 콘솔·깊은 링크가
+ * **같은 표**를 읽도록 판정 파일(`@/lib/seller-deep-link`)에 두고 여기서는 재수출만 한다. 종전엔 호출부 둘이
+ * 대시보드 주소로 보냈고, *"마이엔 전용 길이 있다"* 고 적힌 `VoucherNewSheet` 는 아무도 렌더하지 않았다.
  */
-export type OwnPath = 'scan' | 'voucherNew'
-
-export const OWN_PATH: Record<string, OwnPath> = {
-  '/seller/scan': 'scan',
-  '/seller/meal-voucher/new': 'voucherNew',
-}
-
-/** 계산대 — 마이와 에이전시 콘솔이 **같은 화면**으로 간다(대시보드 `/seller/scan` 아님). */
-export const STORE_SCAN_PATH = '/store/scan'
-
-export function ownPathFor(path: string): OwnPath | null {
-  return Object.prototype.hasOwnProperty.call(OWN_PATH, path) ? OWN_PATH[path] : null
-}
+export { OWN_PATH, STORE_SCAN_PATH, ownPathFor, type OwnPath } from '@/lib/seller-deep-link'

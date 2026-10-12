@@ -115,3 +115,17 @@
   `/seller/*` 를 직접 연 깊은 링크 중 전용 화면(`STAY_ON_DASHBOARD`: 스캔·등록·유튜브 OAuth 복귀) · `?dash=1`.
 - ⚠️ 못 잰 것(E4): 실기기 카메라 · 에이전시 계정으로 `/store/scan` 진입 → 처리 매장이 맞게 잡히는지 · 스캔 기기 링크 비로그인 진입.
 - 다음 세션 첫 액션: 이 PR CI 확인 → 대표 지시 시 머지 → 스캔 기기 링크를 비로그인 브라우저로 열어 계산대가 뜨는지(E4).
+
+### ➕ 2차 — 깊은 링크도 (대표 *"이제 모두 가장 이상적인 형태야?"* → 재 보니 아니었다)
+- 🩸 **틀린 판단**: 1차에서 *"이제 다 된다"* 고 답할 뻔했다. 전체 도구만 고쳤고 **바깥에서 들어오는 문**을 안 셌다.
+  `seller-deep-link.ts` `STAY_ON_DASHBOARD` 가 `/seller/scan`·`/seller/meal-voucher/new` 를 *"마이에 전용 길이 있다"* 는 이유로
+  대시보드에 **남기고** 있었다 → 알림톡 '사용처리'(`/store/go?to=scan`) · 주문 상세 '사용처리 화면으로' · 사용 처리 완료의
+  '다음 손님 QR 찍기' · 하단 ➕ '이용권 등록' · 유어샵 '이용권 등록' 이 전부 얇은 대시보드 틀로 떨어졌다.
+- 수리: `OWN_PATH`·`STORE_SCAN_PATH`·`ownPathFor` 를 `@/lib/seller-deep-link` 로 옮기고(`tool-pages` 는 재수출) `STAY_ON_DASHBOARD` 는
+  OAuth 복귀 하나만. 깊은 링크 `/seller/scan` → `/store/scan`(쿼리 유지, 사장님·에이전시 모두), `/seller/meal-voucher/new` → `?tool=` →
+  마이(`useToolDeepLink` 가 `own` 을 넘김)·콘솔(`initialOwn`)이 `VoucherNewSheet` 로. 직접 링크 셋(`STORE_GO_TARGETS.scan` ·
+  `OrderDetailModal` · `VoucherVerifyPage`)을 `/store/scan` 으로. 유어샵 CTA·매장 등록 모달의 "셀러 대시보드 ›" 문구 → 마이 '내 가게'.
+- 가드: 같은 시험 +5건(⑥) · 주입 `[전용길]` 10건 · `[깊은링크]` 9건 전부 빨간불 · 재조준 3건(`seller-deep-link-to-my` · `agency-deep-link` ·
+  `store-deep-link`). 관련 94파일 1,476건 통과 · tsc 0.
+- 🩸 tsc 가 잡은 것: 문구 치환이 JS 문자열 안의 작은따옴표를 깨뜨렸다(`'…마이 '내 가게'…'`) — 그 컴포넌트를 렌더하는 시험이 없어 vitest 는 초록이었다.
+- 남는 대시보드: 마이 없는 옛 계정 · 콘솔 로그인 없는 좌석 · `?dash=1` · 유튜브 OAuth 복귀. (BottomNav ➕ 는 잠금 파일이라 주소는 그대로 두고 깊은 링크가 받는다.)

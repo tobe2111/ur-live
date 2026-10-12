@@ -3,7 +3,7 @@ const T = 'src/tests/unit/dashboard-free-own-paths-2026-10-12.test.tsx'
 export default [
   {
     name: '[전용길] 등록 주소를 OWN_PATH 에서 뺀다',
-    file: 'src/pages/user-profile/seller-section/tool-pages.ts',
+    file: 'src/lib/seller-deep-link.ts',
     find: "  '/seller/meal-voucher/new': 'voucherNew',\n",
     replace: '',
     test: T,
@@ -48,5 +48,37 @@ export default [
     replace: '',
     test: T,
     why: '라우트 가드를 걷었으니 화면 가드가 유일한 문이다 — 지우면 좌석·기기 키 없는 방문자에게 계산대가 그려진다.',
+  },
+  {
+    name: '[전용길] 깊은 링크 — 계산대를 다시 대시보드에 남긴다',
+    file: 'src/lib/seller-deep-link.ts',
+    find: "export const STAY_ON_DASHBOARD = new Set(['/seller/youtube/callback'])",
+    replace: "export const STAY_ON_DASHBOARD = new Set(['/seller/scan', '/seller/youtube/callback'])",
+    test: T,
+    why: '알림톡 \'사용처리\' 링크(/store/go → /seller/scan)와 주문 상세 링크가 얇은 대시보드 틀로 떨어진다.',
+  },
+  {
+    name: '[전용길] 깊은 링크 — 계산대를 시트(?tool=)로 보낸다',
+    file: 'src/lib/seller-deep-link.ts',
+    find: "  if (ownPathFor(pathname) === 'scan') return STORE_SCAN_PATH + q\n",
+    replace: '',
+    test: T,
+    why: '카메라 화면을 시트로 열게 된다 — 계산대는 대시보드 밖 전체화면이 설계다.',
+  },
+  {
+    name: '[전용길] 마이 깊은 링크 — 등록을 대시보드 화면 시트로',
+    file: 'src/pages/user-profile/SellerSection.tsx',
+    find: "open: (p, own) => { if (own === 'voucherNew') { setPageFrom(null); setTool('voucherNew'); return } void openPage(p, '') }",
+    replace: "open: (p) => { void openPage(p, '') }",
+    test: T,
+    why: '하단 ➕·유어샵에서 \'이용권 등록\' 을 누르면 전용 등록 시트 대신 대시보드 화면 시트가 열린다(같은 일에 화면이 둘).',
+  },
+  {
+    name: '[전용길] 사장님 문자의 사용처리 링크를 대시보드로',
+    file: 'src/shared/store-deep-link.ts',
+    find: "  scan: '/store/scan', ",
+    replace: "  scan: '/seller/scan', ",
+    test: T,
+    why: '알림톡을 누른 사장님이 매장 계산대 대신 대시보드 스캔 화면으로 간다.',
   },
 ]

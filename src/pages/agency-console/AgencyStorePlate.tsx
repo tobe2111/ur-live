@@ -29,7 +29,7 @@ import { formatNumber } from '@/utils/format'
 import { toast } from '@/hooks/useToast'
 import { LIST_PLATE_CLS, ListRow as ToolRow } from '@/pages/user-profile/list-grammar'
 import { dashboardFallback } from '@/lib/seller-deep-link'
-import { STORE_SCAN_PATH } from '@/pages/user-profile/seller-section/tool-pages'
+import { STORE_SCAN_PATH, ownPathFor } from '@/lib/seller-deep-link'
 import { enterAgencyStore, isMyAgencySeat } from './agency-api'
 import type { StoreRow } from './agency-stores-model'
 
@@ -67,8 +67,10 @@ export default function AgencyStorePlate({ store, staffId, initialPath }: {
   initialPath?: string
 }) {
   const [entering, setEntering] = useState(false)
-  const [tool, setTool] = useState<'tools' | 'page' | 'voucherNew' | null>(initialPath ? 'page' : null)
-  const [page, setPage] = useState<{ path: string; title: string } | null>(initialPath ? { path: initialPath, title: '' } : null)
+  // 🚪 깊은 링크가 이용권 등록이면 대시보드 화면 대신 **등록 시트**로 연다(마이와 같은 판정 — `OWN_PATH`).
+  const initialOwn = initialPath ? ownPathFor(initialPath) : null
+  const [tool, setTool] = useState<'tools' | 'page' | 'voucherNew' | null>(initialOwn === 'voucherNew' ? 'voucherNew' : initialPath ? 'page' : null)
+  const [page, setPage] = useState<{ path: string; title: string } | null>(initialPath && !initialOwn ? { path: initialPath, title: '' } : null)
   /** 전체 도구에서 연 화면은 닫으면 그 목록으로 돌아간다(마이와 같은 흐름). */
   const [pageFrom, setPageFrom] = useState<'tools' | null>(null)
   const today = store.today
@@ -204,7 +206,7 @@ export default function AgencyStorePlate({ store, staffId, initialPath }: {
             onPick={(path, label, inSheet, own) => {
               // 🚪 계산대·등록은 대시보드 틀이 아니라 전용 길로(`tool-pages.ts` `OWN_PATH` — 마이와 같은 판정).
               if (own === 'scan') { setTool(null); void goFull(STORE_SCAN_PATH); return }
-              if (own === 'voucherNew') { setTool('voucherNew'); return }
+              if (own === 'voucherNew') { setPageFrom('tools'); setTool('voucherNew'); return }
               if (inSheet) { setPage({ path, title: label }); setPageFrom('tools'); setTool('page'); return }
               setTool(null); void goFull(path)
             }}
@@ -212,7 +214,7 @@ export default function AgencyStorePlate({ store, staffId, initialPath }: {
         )}
         {tool === 'voucherNew' && (
           /* 등록 완료 화면의 '내 이용권 보기' 가 부른다 — 대시보드 대신 같은 이용권 목록을 시트로. */
-          <VoucherNewSheet onClose={() => setTool('tools')} onCreated={() => { setPage({ path: '/seller/group-buy', title: '이용권' }); setPageFrom(null); setTool('page') }} />
+          <VoucherNewSheet onClose={() => { const back = pageFrom; setPageFrom(null); setTool(back) }} onCreated={() => { setPage({ path: '/seller/group-buy', title: '이용권' }); setPageFrom(null); setTool('page') }} />
         )}
         {tool === 'page' && page && (
           <ToolPageSheet

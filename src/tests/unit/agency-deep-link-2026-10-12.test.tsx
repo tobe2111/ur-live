@@ -48,9 +48,12 @@ describe('① 어디로 보내나', () => {
   it('홈류는 콘솔 첫 화면', () => {
     for (const p of ['/seller', '/seller/dashboard', '/seller/more']) expect(consoleRedirectFor(p, '')).toBe('/agency')
   })
-  it('🔴 dash=1 · 전용 길(사용처리 카메라 · 이용권 새로 만들기 · OAuth)은 그대로', () => {
+  // 🚪 2026-10-12 재조준 — 계산대·등록은 대시보드에 남기지 않고 전용 길로(마이와 같은 판정). OAuth 복귀만 남는다.
+  it('🔴 dash=1 · OAuth 복귀는 그대로, 계산대는 /store/scan, 등록은 콘솔 ?tool=', () => {
     expect(consoleRedirectFor('/seller/orders', '?dash=1')).toBeNull()
-    for (const p of ['/seller/scan', '/seller/meal-voucher/new', '/seller/youtube/callback']) expect(consoleRedirectFor(p, '')).toBeNull()
+    expect(consoleRedirectFor('/seller/youtube/callback', '')).toBeNull()
+    expect(consoleRedirectFor('/seller/scan', '')).toBe('/store/scan')
+    expect(toolOf(consoleRedirectFor('/seller/meal-voucher/new', ''))).toBe('/seller/meal-voucher/new')
   })
   it.each(['/seller/orders', '/seller/products/3/edit?x=1'])('되돌린 주소는 다시 안 보낸다(왕복 0): %s', (p) => {
     const back = dashboardFallback(p)
