@@ -2168,8 +2168,8 @@ app.route('/api/guides', guideRoutes);
 
 // 🗑️ 2026-07-07 (라이브커머스 제거 2/N): /api/live·/api/chat(라이브 SSE+채팅) 마운트 제거.
 
-// ── 사이드 배너 (공개 API, 인증 불필요) ──
-app.get('/api/side-banners', async (c) => {
+// ── 사이드 배너 (공개 API, 인증 불필요) · 🐌 2026-10-12 `edgeCache(600)` 추가 — 캐시 헤더가 **하나도 없어** 소비자 페이지마다 콜드 D1(실측 388ms) + 요청마다 `CREATE TABLE IF NOT EXISTS`(per-request DDL)로 왕복 2회였다. 이제 콜로당 10분에 한 번. ⚠️ 배너 편성이 최대 10분 늦게 반영된다(수동·드문 작업이라 수용). 상세: docs/handoff/2026-10-12-main-loading-fonts.md ⑥. 📏 한 줄로 쓴 이유는 이 파일 래칫(2672)이 꽉 차 있어서다 ──
+app.get('/api/side-banners', edgeCache(600), async (c) => {
   const env = c.env as Env;
   try {
     // Auto-create table if not exists
@@ -2224,7 +2224,7 @@ app.get('/api/image/resize', async (c) => {
   // 🛡️ 2026-05-27 (사용자 지적): naver image search / 카카오 daumcdn 호스트 추가.
   //   셀러 등록 시 naver 이미지 선택 → 다양한 외부 호스트 image_url 저장 → 변환 없으면 큰 트래픽.
   const ALLOWED_HOSTS = [
-    'firebasestorage.googleapis.com', 'img.youtube.com', 'k.kakaocdn.net', 'images.unsplash.com',
+    'firebasestorage.googleapis.com', 'img.youtube.com', 'i.ytimg.com', 'k.kakaocdn.net', 'images.unsplash.com',
     'urdeal.kr', 'ur-live.pages.dev',
     'pstatic.net',  // search.pstatic / shop-phinf / blogfiles / postfiles / phinf / mblogthumb-phinf 등
     'daumcdn.net',  // t1.daumcdn / i1.daumcdn / cf.daumcdn 등

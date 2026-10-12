@@ -61,6 +61,7 @@ const SUPPORTED_HOSTS = new Set([
 const EXTERNAL_PROXY_HOSTS = new Set([
   'firebasestorage.googleapis.com',
   'img.youtube.com',
+  'i.ytimg.com',   // 유튜브가 같은 썸네일을 이 호스트로도 준다 — 한쪽만 등재하면 다른 쪽이 원본으로 샌다
   'k.kakaocdn.net',
   'images.unsplash.com',
   // 🛡️ 2026-05-27 (사용자 지적): 네이버 image search 결과는 다양한 외부 호스트.
@@ -297,7 +298,16 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
       //   ⚠️ 2026-06-11 에 kakaocdn 이 cdn-cgi 직결로 깨진 적이 있는데, 그때는 `onerror=redirect`
       //   안전판이 없었다(2026-07-02 도입). 지금은 리사이저가 실패하면 원본으로 302 → 현행과 동일 →
       //   최악의 경우 다운사이드 0. 핫링크 차단 호스트는 위 HOTLINK_BLOCKED_HOSTS 가 먼저 걸러 낸다.
-      const CDN_CGI_VERIFIED = ['kt.com', 'media.ur-team.com', 'pstatic.net', 'imgnews.naver.net', 'yt3.googleusercontent.com', 'picsum.photos', 'phinf.naver.net', 'giftishow.com', 'kakaocdn.net', 'daumcdn.net', 'cloudfront.net']  // giftishow 2026-07-13 재실측 복원 · kakao/daum 2026-08-19 · cloudfront 2026-09-02 실측 승격(DO-spaces 는 403 이라 승격 철회)(전부 onerror=redirect 안전판)
+      // 🎬 2026-10-12 [UNLOCK_LOADING] (대표 "메인에서 유어쇼츠가 늦게 로딩되네?" — 라이브 실측):
+      //   유어쇼츠 썸네일이 `/api/image/resize` **워커 프록시**로 가고 있었다. 그 경로는 리사이즈를
+      //   못 한다(2026-06-11 실측) → 125×222 카드에 `hqdefault.jpg` **원본 30,801B** × 10장.
+      //   승격 근거는 이 파일이 요구하는 실측 그대로다(w=250):
+      //     img.youtube.com  `cf-resized: internal=ok`  30,801B → **7,361B** (4.2×)
+      //     i.ytimg.com      `cf-resized: internal=ok`  동일 7,361B   · mqdefault 변형 6,950B
+      //   ⚠️ 2026-09-02 주석이 바로잡은 대로 **`onerror=redirect` 는 이 존에서 폴백이 안 돈다**
+      //     (막는 호스트는 403·err=9408). 그래서 "안전판이 있으니 괜찮다" 가 아니라 **실측했으니** 승격한다.
+      //     유튜브가 앞으로 CF 를 막으면 이 두 줄을 빼야 한다(그때 썸네일이 깨진다 — 느려지는 게 아니다).
+      const CDN_CGI_VERIFIED = ['kt.com', 'media.ur-team.com', 'pstatic.net', 'imgnews.naver.net', 'yt3.googleusercontent.com', 'picsum.photos', 'phinf.naver.net', 'giftishow.com', 'kakaocdn.net', 'daumcdn.net', 'cloudfront.net', 'img.youtube.com', 'i.ytimg.com']  // giftishow 2026-07-13 재실측 복원 · kakao/daum 2026-08-19 · cloudfront 2026-09-02 실측 승격(DO-spaces 는 403 이라 승격 철회)(전부 onerror=redirect 안전판)
       if (CDN_CGI_VERIFIED.some(h => host === h || host.endsWith('.' + h))) {
         return `/cdn-cgi/image/width=${w},quality=${q},format=auto,onerror=redirect${cropFrag(opts)}/${cdnCgiSafe(src)}`
       }

@@ -66,11 +66,15 @@ describe('② 보내면 안 되는 길', () => {
     expect(myRedirectFor('/seller/group-buy', '')).toBeNull()
   })
 
-  it('전용 길이 있는 화면은 남는다 — 시트의 FULL_SCREEN_ONLY 와 같아야 한다', () => {
+  // 🚪 2026-10-12 재조준 — 종전엔 *"전용 길이 있는 화면은 대시보드에 남는다"* 였다. 그 결과 알림톡 '사용처리' 링크·
+  //   하단 ➕ '이용권 등록' 이 얇은 대시보드 틀로 떨어졌다. 이제 **전용 길로 보낸다** — 대시보드에 남는 일이 없다.
+  it('시트로 못 여는 화면은 대시보드에 남지 않고 전용 길로 간다 (계산대 → /store/scan, 등록 → ?tool=)', () => {
     for (const p of Object.keys(FULL_SCREEN_ONLY)) {
-      expect(STAY_ON_DASHBOARD.has(p)).toBe(true)
-      expect(myRedirectFor(p, '')).toBeNull()
+      expect(STAY_ON_DASHBOARD.has(p), `${p} 가 대시보드에 남는다`).toBe(false)
+      expect(myRedirectFor(p, '')).not.toBeNull()
     }
+    expect(myRedirectFor('/seller/scan', '')).toBe('/store/scan')
+    expect(myRedirectFor('/seller/meal-voucher/new', '')).toBe('/user/profile?tool=%2Fseller%2Fmeal-voucher%2Fnew')
   })
 
   it('외부 OAuth 복귀 주소는 남는다(code·state 를 그 화면이 직접 읽는다)', () => {
@@ -115,7 +119,7 @@ describe('⑤ 마이가 시트를 여는 규칙', () => {
   it('좌석이 맞으면 시트를 연다', () => {
     const open = vi.fn()
     renderHook(() => useToolDeepLink({ ready: true, seated: true, open }))
-    expect(open).toHaveBeenCalledWith('/seller/orders')
+    expect(open).toHaveBeenCalledWith('/seller/orders', null) // 2번째 = 전용 길(OWN_PATH) — 주문은 없음
     expect(replace).not.toHaveBeenCalled()
     // 한 번만 쓴다 — 새로고침·뒤로가기가 시트를 또 열지 않게 주소에서 지운다.
     expect(replaceState.mock.calls[0]?.[2]).toBe('/user/profile')

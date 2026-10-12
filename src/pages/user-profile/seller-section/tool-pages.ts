@@ -36,3 +36,11 @@ export const FULL_SCREEN_ONLY: Record<string, string> = {
 export function canOpenInSheet(path: string): boolean {
   return !Object.prototype.hasOwnProperty.call(FULL_SCREEN_ONLY, path)
 }
+
+/**
+ * 🚪 **위 둘이 실제로 가는 곳** (2026-10-12, 대표 *"이제 셀러 대시보드, 에이전시 대시보드로 굳이 안가서 해도 돼?"*)
+ * 위 표는 "시트로 **안** 연다" 만 말한다. 어디로 가는지는 `OWN_PATH` 가 정한다 — 마이·에이전시 콘솔·깊은 링크가
+ * **같은 표**를 읽도록 판정 파일(`@/lib/seller-deep-link`)에 두고 여기서는 재수출만 한다. 종전엔 호출부 둘이
+ * 대시보드 주소로 보냈고, *"마이엔 전용 길이 있다"* 고 적힌 `VoucherNewSheet` 는 아무도 렌더하지 않았다.
+ */
+export { OWN_PATH, STORE_SCAN_PATH, ownPathFor, type OwnPath } from '@/lib/seller-deep-link'

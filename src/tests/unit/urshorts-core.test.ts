@@ -122,15 +122,26 @@ describe('② 허락받은 영상만 홈에 나간다', () => {
 describe('③ 홈 첫 화면이 비용을 안 문다', () => {
   const RAIL = code('src/components/home/UrShortsRail.tsx')
 
+  // 🔁 2026-10-12 재조준: 신호가 **둘**로 갈렸다(목록 1,200px · 썸네일 300px).
+  //   지키려던 것은 그대로 — *마운트에서 안 부른다* · *썸네일은 레일이 가까울 때만*.
+  //   앵커만 옮기고, 새로 생긴 불변식(목록이 썸네일보다 **먼저** 와야 한다)을 더한다.
   it('데이터를 다가올 때만 부른다 — 마운트 fetch 는 홈 전체에 요청을 하나 더 얹는다', () => {
-    // fetch 가 `near` 게이트 뒤에 있어야 한다.
-    const eff = RAIL.slice(RAIL.indexOf('if (!near) return'), RAIL.indexOf('const sync'))
-    expect(eff).toContain("fetch('/api/urshorts')")
+    const eff = RAIL.slice(RAIL.indexOf('if (!nearData) return'), RAIL.indexOf('const sync'))
+    expect(eff, 'fetch 가 스크롤 게이트 밖으로 나왔다 — 홈 첫 화면 요청이 하나 는다').toContain("fetch('/api/urshorts')")
   })
 
-  it('썸네일도 같은 신호를 쓴다', () => {
+  it('썸네일은 더 가까운 신호를 쓴다 (레일이 안 보이면 10장을 안 받는다)', () => {
     expect(RAIL).toMatch(/load=\{near\}/)
     expect(RAIL).toMatch(/IntersectionObserver/)
+  })
+
+  it('목록이 썸네일보다 먼저 온다 — 둘이 같은 시점이면 직렬 두 왕복이 된다', () => {
+    const margins = [...RAIL.matchAll(/watchFrom\('(\d+)px',\s*\(\) => set(NearData|Near)\(true\)\)/g)]
+      .map((m) => ({ px: Number(m[1]), who: m[2] }))
+    expect(margins.length, '관측 여백을 한 건도 못 읽었다 — 이 검사가 헛돈다').toBe(2)
+    const data = margins.find((x) => x.who === 'NearData')!
+    const img = margins.find((x) => x.who === 'Near')!
+    expect(data.px, '목록 여백이 썸네일보다 좁다 — 갈라 놓은 의미가 없다').toBeGreaterThan(img.px)
   })
 
   it('영상이 없으면 섹션을 안 그린다 (빈 줄을 남기지 않는다)', () => {

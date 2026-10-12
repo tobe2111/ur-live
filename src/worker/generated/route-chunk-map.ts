@@ -3,52 +3,52 @@
 export const ROUTE_CHUNK_MAP: Record<string, { js: string[]; css: string[] }> = {
   "home": {
     "js": [
-      "/assets/PcHomePage-lbSo8e2J.js",
-      "/assets/MobileHomePage-DpsPZHNU.js",
-      "/assets/app-home-BLolu0BY.js",
-      "/assets/app-constants-j_3wgvTR.js",
+      "/assets/PcHomePage-CVathzwA.js",
+      "/assets/MobileHomePage-sSDJunqc.js",
+      "/assets/app-home-XhMnEOru.js",
+      "/assets/app-constants-9RxAwa5k.js",
       "/assets/lucide-DmjZpwkU.js",
-      "/assets/GroupBuyFeed-BzdcnCls.js",
+      "/assets/GroupBuyFeed-DOJX3iLa.js",
       "/assets/useHomeQuerySync-Dq44KdAH.js"
     ],
     "css": []
   },
   "gbDetail": {
     "js": [
-      "/assets/GroupBuyDetailPage-BPr5cfXe.js",
-      "/assets/DeferUntilVisible-CPENJEuX.js",
-      "/assets/app-misc-D2WTIE4j.js",
+      "/assets/GroupBuyDetailPage-sVaI_UoK.js",
+      "/assets/DeferUntilVisible-ChHQXL-V.js",
+      "/assets/app-misc-DaPxHSTT.js",
       "/assets/lucide-DmjZpwkU.js",
-      "/assets/app-home-BLolu0BY.js",
-      "/assets/app-constants-j_3wgvTR.js",
+      "/assets/app-home-XhMnEOru.js",
+      "/assets/app-constants-9RxAwa5k.js",
       "/assets/seed-detail-wgQTwj3-.js",
-      "/assets/app-components-Cdswgye8.js",
-      "/assets/app-utils-deferred-BRLeapBo.js",
+      "/assets/app-components-DPmNzp1D.js",
+      "/assets/app-utils-deferred-DH4IIyu6.js",
       "/assets/radix-ui-7il725KW.js"
     ],
     "css": []
   },
   "voucherDetail": {
     "js": [
-      "/assets/VoucherDetailPage-BgHyrqA_.js",
+      "/assets/VoucherDetailPage-BSOMrWoF.js",
       "/assets/seed-detail-wgQTwj3-.js",
-      "/assets/app-home-BLolu0BY.js",
-      "/assets/app-constants-j_3wgvTR.js",
+      "/assets/app-home-XhMnEOru.js",
+      "/assets/app-constants-9RxAwa5k.js",
       "/assets/lucide-DmjZpwkU.js",
-      "/assets/app-utils-deferred-BRLeapBo.js"
+      "/assets/app-utils-deferred-DH4IIyu6.js"
     ],
     "css": []
   },
   "product": {
     "js": [
-      "/assets/ProductDetailPage-BzIww49Q.js",
-      "/assets/app-home-BLolu0BY.js",
-      "/assets/app-constants-j_3wgvTR.js",
+      "/assets/ProductDetailPage-DQTar_h-.js",
+      "/assets/app-home-XhMnEOru.js",
+      "/assets/app-constants-9RxAwa5k.js",
       "/assets/lucide-DmjZpwkU.js",
-      "/assets/app-utils-deferred-BRLeapBo.js",
-      "/assets/app-product-components-D3akujh2.js",
+      "/assets/app-utils-deferred-DH4IIyu6.js",
+      "/assets/app-product-components-D01UqLza.js",
       "/assets/embla-XVrp4Y8g.js",
-      "/assets/app-components-Cdswgye8.js",
+      "/assets/app-components-DPmNzp1D.js",
       "/assets/radix-ui-7il725KW.js",
       "/assets/app-ui-utils-msoul5Oj.js"
     ],
@@ -56,14 +56,14 @@ export const ROUTE_CHUNK_MAP: Record<string, { js: string[]; css: string[] }> = 
   },
   "linkshop": {
     "js": [
-      "/assets/CuratorPage-CTdLBmeF.js",
-      "/assets/SellerPublicPage-D7bqBkRk.js",
-      "/assets/app-home-BLolu0BY.js",
-      "/assets/app-constants-j_3wgvTR.js",
+      "/assets/CuratorPage-B_OOHV2t.js",
+      "/assets/SellerPublicPage-BC8_Cf7K.js",
+      "/assets/app-home-XhMnEOru.js",
+      "/assets/app-constants-9RxAwa5k.js",
       "/assets/lucide-DmjZpwkU.js",
-      "/assets/app-features-mq8GD3B3.js",
-      "/assets/app-components-Cdswgye8.js",
-      "/assets/app-utils-deferred-BRLeapBo.js",
+      "/assets/app-features--6d4IniB.js",
+      "/assets/app-components-DPmNzp1D.js",
+      "/assets/app-utils-deferred-DH4IIyu6.js",
       "/assets/radix-ui-7il725KW.js",
       "/assets/app-ui-utils-msoul5Oj.js"
     ],
@@ -71,50 +71,50 @@ export const ROUTE_CHUNK_MAP: Record<string, { js: string[]; css: string[] }> = 
   },
   "vouchers": {
     "js": [
-      "/assets/VouchersPage-DXft18AP.js",
+      "/assets/VouchersPage-ifQDRx5y.js",
       "/assets/lucide-DmjZpwkU.js",
-      "/assets/app-home-BLolu0BY.js",
-      "/assets/app-constants-j_3wgvTR.js",
-      "/assets/app-components-Cdswgye8.js",
-      "/assets/app-utils-deferred-BRLeapBo.js",
+      "/assets/app-home-XhMnEOru.js",
+      "/assets/app-constants-9RxAwa5k.js",
+      "/assets/app-components-DPmNzp1D.js",
+      "/assets/app-utils-deferred-DH4IIyu6.js",
       "/assets/radix-ui-7il725KW.js",
       "/assets/app-ui-utils-msoul5Oj.js",
-      "/assets/app-features-mq8GD3B3.js",
-      "/assets/app-misc-D2WTIE4j.js"
+      "/assets/app-features--6d4IniB.js",
+      "/assets/app-misc-DaPxHSTT.js"
     ],
     "css": []
   },
   "browse": {
     "js": [
-      "/assets/BrowsePage-u4BiwpRV.js",
-      "/assets/app-home-BLolu0BY.js",
-      "/assets/app-constants-j_3wgvTR.js",
+      "/assets/BrowsePage-DMprFCbV.js",
+      "/assets/app-home-XhMnEOru.js",
+      "/assets/app-constants-9RxAwa5k.js",
       "/assets/lucide-DmjZpwkU.js",
-      "/assets/app-utils-deferred-BRLeapBo.js",
-      "/assets/BrowseProductCard-Ch1Kz2e9.js"
+      "/assets/app-utils-deferred-DH4IIyu6.js",
+      "/assets/BrowseProductCard-C5huoQKv.js"
     ],
     "css": []
   },
   "map": {
     "js": [
-      "/assets/RestaurantMapPage-CmgxH7SI.js",
-      "/assets/app-home-BLolu0BY.js",
-      "/assets/app-constants-j_3wgvTR.js",
+      "/assets/RestaurantMapPage-BCN7jAH_.js",
+      "/assets/app-home-XhMnEOru.js",
+      "/assets/app-constants-9RxAwa5k.js",
       "/assets/lucide-DmjZpwkU.js",
-      "/assets/app-components-Cdswgye8.js",
-      "/assets/app-utils-deferred-BRLeapBo.js",
+      "/assets/app-components-DPmNzp1D.js",
+      "/assets/app-utils-deferred-DH4IIyu6.js",
       "/assets/radix-ui-7il725KW.js",
       "/assets/app-ui-utils-msoul5Oj.js",
-      "/assets/app-features-mq8GD3B3.js",
-      "/assets/app-misc-D2WTIE4j.js"
+      "/assets/app-features--6d4IniB.js",
+      "/assets/app-misc-DaPxHSTT.js"
     ],
     "css": []
   },
   "urshorts": {
     "js": [
-      "/assets/UrShortsBrowsePage-B6yqqjIF.js",
-      "/assets/app-home-BLolu0BY.js",
-      "/assets/app-constants-j_3wgvTR.js",
+      "/assets/UrShortsBrowsePage-4pzU2b9Z.js",
+      "/assets/app-home-XhMnEOru.js",
+      "/assets/app-constants-9RxAwa5k.js",
       "/assets/lucide-DmjZpwkU.js"
     ],
     "css": []

@@ -29,11 +29,13 @@ import { formatNumber } from '@/utils/format'
 import { toast } from '@/hooks/useToast'
 import { LIST_PLATE_CLS, ListRow as ToolRow } from '@/pages/user-profile/list-grammar'
 import { dashboardFallback } from '@/lib/seller-deep-link'
+import { STORE_SCAN_PATH, ownPathFor } from '@/lib/seller-deep-link'
 import { enterAgencyStore, isMyAgencySeat } from './agency-api'
 import type { StoreRow } from './agency-stores-model'
 
 const ToolPageSheet = lazy(() => import('@/pages/user-profile/seller-section/ToolPageSheet'))
 const AllToolsSheet = lazy(() => import('@/pages/user-profile/seller-section/AllToolsSheet'))
+const VoucherNewSheet = lazy(() => import('@/pages/user-profile/seller-section/VoucherNewSheet'))
 
 /** 매장 상태를 판이 **직접 말한다** — 왜 노출·정산이 아직인지 화면이 안 말하면 고장으로 읽힌다. */
 export const AGENCY_STATUS_NOTE: Record<string, string> = {
@@ -42,8 +44,13 @@ export const AGENCY_STATUS_NOTE: Record<string, string> = {
   suspended: '이용이 정지된 매장이에요. 지금은 도구를 열 수 없어요.',
 }
 
-/** 사용처리는 카메라 화면이라 시트가 아니라 전체화면이다(`tool-pages.ts` `FULL_SCREEN_ONLY`). */
-export const AGENCY_SCAN_PATH = '/seller/scan'
+/**
+ * 사용처리는 카메라 화면이라 시트가 아니라 전체화면이다(`tool-pages.ts` `FULL_SCREEN_ONLY`).
+ * 🚪 2026-10-12 — 마이와 **같은 계산대**(`/store/scan`)로 간다. 종전엔 `/store/scan` 라우트가 소비자 로그인
+ *   (`requireUser`)을 요구해서 소비자 계정이 없는 에이전시 직원은 대시보드 `/seller/scan` 으로 보내야 했다.
+ *   그 화면은 원래 좌석 토큰(또는 스캔 기기 키)만 보고 서버가 그 토큰으로 매장을 고르므로, 라우트 쪽 요구를 걷었다.
+ */
+export const AGENCY_SCAN_PATH = STORE_SCAN_PATH
 
 function todayLabelKST(): string {
   return new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', month: 'long', day: 'numeric', weekday: 'short' })
@@ -60,8 +67,10 @@ export default function AgencyStorePlate({ store, staffId, initialPath }: {
   initialPath?: string
 }) {
   const [entering, setEntering] = useState(false)
-  const [tool, setTool] = useState<'tools' | 'page' | null>(initialPath ? 'page' : null)
-  const [page, setPage] = useState<{ path: string; title: string } | null>(initialPath ? { path: initialPath, title: '' } : null)
+  // 🚪 깊은 링크가 이용권 등록이면 대시보드 화면 대신 **등록 시트**로 연다(마이와 같은 판정 — `OWN_PATH`).
+  const initialOwn = initialPath ? ownPathFor(initialPath) : null
+  const [tool, setTool] = useState<'tools' | 'page' | 'voucherNew' | null>(initialOwn === 'voucherNew' ? 'voucherNew' : initialPath ? 'page' : null)
+  const [page, setPage] = useState<{ path: string; title: string } | null>(initialPath && !initialOwn ? { path: initialPath, title: '' } : null)
   /** 전체 도구에서 연 화면은 닫으면 그 목록으로 돌아간다(마이와 같은 흐름). */
   const [pageFrom, setPageFrom] = useState<'tools' | null>(null)
   const today = store.today
@@ -88,6 +97,8 @@ export default function AgencyStorePlate({ store, staffId, initialPath }: {
 
   async function goFull(path: string) {
     if (!(await ensureSeat())) return
+    // 🧾 계산대는 대시보드 밖 화면이라 `dash=1` 이 필요 없다(껍데기를 안 탄다). 뒤로가기가 콘솔로 돌아온다.
+    if (path === STORE_SCAN_PATH) { window.location.assign(path); return }
     // 🔁 `dash=1` — 껍데기가 이 직원을 다시 콘솔로 돌려보내지 않게(일부러 연 전체화면이다).
     window.location.assign(dashboardFallback(path))
   }
@@ -192,11 +203,18 @@ export default function AgencyStorePlate({ store, staffId, initialPath }: {
           <AllToolsSheet
             storeName={store.name}
             onClose={() => setTool(null)}
-            onPick={(path, label, inSheet) => {
+            onPick={(path, label, inSheet, own) => {
+              // 🚪 계산대·등록은 대시보드 틀이 아니라 전용 길로(`tool-pages.ts` `OWN_PATH` — 마이와 같은 판정).
+              if (own === 'scan') { setTool(null); void goFull(STORE_SCAN_PATH); return }
+              if (own === 'voucherNew') { setPageFrom('tools'); setTool('voucherNew'); return }
               if (inSheet) { setPage({ path, title: label }); setPageFrom('tools'); setTool('page'); return }
               setTool(null); void goFull(path)
             }}
           />
+        )}
+        {tool === 'voucherNew' && (
+          /* 등록 완료 화면의 '내 이용권 보기' 가 부른다 — 대시보드 대신 같은 이용권 목록을 시트로. */
+          <VoucherNewSheet onClose={() => { const back = pageFrom; setPageFrom(null); setTool(back) }} onCreated={() => { setPage({ path: '/seller/group-buy', title: '이용권' }); setPageFrom(null); setTool('page') }} />
         )}
         {tool === 'page' && page && (
           <ToolPageSheet

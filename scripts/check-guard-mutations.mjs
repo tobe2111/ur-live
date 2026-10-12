@@ -473,9 +473,11 @@ const MUTATIONS = [
       '폰에서 목록이 길어질수록 조용히 느려지다 멈춘다 — 에러는 끝까지 안 난다.',
   },
   {
+    // 🔁 2026-10-12 재조준: 신호가 둘로 갈렸다(목록 1,200px `nearData` · 썸네일 300px `near`).
+    //   결함은 그대로 — 목록 fetch 를 스크롤 게이트 밖으로 꺼낸다.
     name: '🎬 홈 레일이 마운트하자마자 데이터를 부른다',
     file: 'src/components/home/UrShortsRail.tsx',
-    find: '    if (!near) return\n    let alive = true',
+    find: '    if (!nearData) return\n    let alive = true',
     replace: '    let alive = true',
     test: 'src/tests/unit/urshorts-core.test.ts',
     why:
@@ -1419,8 +1421,11 @@ const MUTATIONS = [
   {
     name: '🔎 실측 승격 호스트가 cdn-cgi 검증 목록에서 빠져 원본 직행으로 되돌아간다',
     file: 'src/utils/cf-image.ts',
-    find: ", 'cloudfront.net']",
-    replace: ']',
+    // 🔁 2026-10-12 재조준: 앵커가 배열 **끝**(`]`)에 붙어 있어서, 2026-10-12 에 유튜브 썸네일 호스트
+    //   둘을 뒤에 붙이자 낡았다(`check-stale-mutation-anchors` 가 잡았다). 지키려던 것은 그대로다 —
+    //   **실측 승격 호스트가 목록에서 빠지면 원본 직행으로 되돌아간다**. 끝에 기대지 않게 고쳤다.
+    find: ", 'cloudfront.net'",
+    replace: '',
     test: 'src/tests/unit/qa-image-host-coverage.test.ts',
     why: '2026-09-02 라이브 홈 실측: 목록에 없는 호스트 5장이 리사이저를 안 거치고 원본으로 내려왔다.',
   },
@@ -9787,12 +9792,15 @@ canvas {
     why: '2026-09-02 대표 확정 안A. 예외가 사라지면 패널 안 dark: 유틸이 다시 켜져 흰 패널 위에 흰 글자가 뜬다.',
   },
   {
-    name: '홈 패널 라이트 섬 — 패널 한 곳에서 light-island 가 빠진다',
+    // 🔁 2026-10-12 **뒤집어 재조준** — 대표 확정으로 홈 패널이 테마를 따르게 됐다(09-02 "안 A" 대체).
+    //   종전 결함("섬이 빠진다")이 이제 **정답**이라 그대로 두면 이 주입은 아무것도 검증하지 않는다.
+    //   결함 방향만 반대로 돌린다: 섬이 **돌아오면** 다크에서 흰 판이 되살아난다.
+    name: '홈 패널 — light-island 가 돌아와 다크에서 흰 판이 된다',
     file: 'src/pages/pc-home/PcHomePage.tsx',
-    find: 'className="ur-home-panel light-island"',
-    replace: 'className="ur-home-panel"',
+    find: 'className="ur-home-panel"',
+    replace: 'className="ur-home-panel light-island"',
     test: 'src/tests/unit/home-panel-light-island.test.ts',
-    why: '섬 클래스가 빠진 패널은 다크에서 흰 배경 + 다크 글자색이 섞여 안 보인다.',
+    why: '섬을 붙이면 --surface 가 #FFFFFF 로 되박히고 안쪽 dark: 가 전부 꺼진다 = 되돌림의 증상 그 자체.',
   },
   {
     name: '🎫 이용권 리뷰가 다시 "구매만 하면" 쓸 수 있게 된다',
