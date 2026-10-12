@@ -1,48 +1,117 @@
-import { useCallback, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/useToast'
-import { agencyRequest, enterAgencyStore } from './agency-api'
+import { formatNumber } from '@/utils/format'
+import Sheet from '@/pages/user-profile/seller-section/Sheet'
+import { currentSeatId } from '@/lib/seller-seat'
+import { dashboardFallback, readToolParam } from '@/lib/seller-deep-link'
+import { notifTarget } from '@/lib/notif-target'
+import { agencyRequest, enterAgencyStore, isMyAgencySeat } from './agency-api'
+import AgencyNotificationsSheet, { type AgencyNotification } from './AgencyNotificationsSheet'
+import { useAgencyStores, type StoreRow } from './agency-stores-model'
+import AgencyStorePlate from './AgencyStorePlate'
 import { AgencyInviteLinkCard } from './AgencyInviteLinkCard'
 import { AgencyRegisterStoreCard } from './AgencyRegisterStoreCard'
 
-interface StoreRow {
-  linkId: number
-  sellerId: number
-  status: 'pending' | 'active'
-  name: string
-  storeStatus: string | null
-  requestedAt: string
-  acceptedAt: string | null
-}
-
+/**
+ * 🏢 에이전시 콘솔 본문 — 대표 확정 **안 A** (2026-10-12 · *"A안으로 해줘. 이건 PC버전도 중요해"*)
+ *
+ * - **폰**: [맡은 매장 · 매장 고르기 칩] → 그 매장의 판 → [에이전시] 줄(맡김 요청 · 직원 · 매장 초대).
+ * - **PC**: 왼쪽 칸 = 맡은 매장 목록 + 에이전시 줄, 오른쪽 칸 = 고른 매장의 판(넓게).
+ *   같은 DOM 을 순서(`order-*`)만 바꿔 쓴다 — 두 벌로 그리면 한쪽만 고쳐지는 날이 온다.
+ *
+ * 종전엔 매장마다 [운영하기] 를 눌러 **셀러 대시보드로** 들어갔다. 이제 판의 도구가 그 화면을
+ * 시트로 바로 연다(`AgencyStorePlate`). 대시보드 껍데기를 지우기 위한 단계다.
+ */
 const STORE_STATUS_HINT: Record<string, string> = {
   pending: '유어딜 승인 대기',
   rejected: '유어딜 승인 반려',
   suspended: '이용 정지',
 }
 
-/**
- * 🏢 맡은 매장(2단계) — 사장님이 맡긴 요청 · 운영 중인 매장.
- *   관리자: 요청 수락·거절, 운영 내려놓기. 모든 직원: [운영하기] 로 그 매장의 셀러 화면에 들어간다.
- */
-export function AgencyStoresPanel({ onExpired }: { onExpired: () => void }) {
-  const navigate = useNavigate()
-  const [rows, setRows] = useState<StoreRow[] | null>(null)
-  const [canManage, setCanManage] = useState(false)
-  const [error, setError] = useState('')
+/** 목록 한 줄의 오른쪽 짧은 값 — 할 일(확인 대기)이 먼저, 그다음 상태, 그다음 오늘 매출. */
+export function storeRowHint(r: StoreRow): { text: string; urgent: boolean } {
+  if (r.today && r.today.pending > 0) return { text: `확인 대기 ${formatNumber(r.today.pending)}`, urgent: true }
+  if (r.storeStatus && STORE_STATUS_HINT[r.storeStatus]) return { text: STORE_STATUS_HINT[r.storeStatus], urgent: false }
+  if (r.today) return { text: `오늘 ${formatNumber(r.today.todayRevenue)}원`, urgent: false }
+  return { text: '', urgent: false }
+}
+
+type AgencySheet = 'picker' | 'requests' | 'invite' | 'notifs' | null
+
+export function AgencyStoresPanel({ onExpired, staffId, agencyRows }: {
+  onExpired: () => void
+  /** 좌석이 '내 것' 인지 판정하는 직원 id(`isMyAgencySeat`). */
+  staffId: number
+  /** 에이전시 구역의 나머지 줄(직원 · 에이전시 정보) — 시트는 그 줄의 주인(페이지)이 연다. */
+  agencyRows?: ReactNode
+}) {
+  const { rows, pending, active, picked, pick, canManage, error, load } = useAgencyStores(onExpired)
+  const [sheet, setSheet] = useState<AgencySheet>(null)
   const [busyId, setBusyId] = useState<number | null>(null)
-
-  const load = useCallback(async () => {
-    setError('')
-    const r = await agencyRequest<{ stores: StoreRow[]; canManage: boolean }>('/stores')
-    if (r.status === 401) { onExpired(); return }
-    if (!r.ok) { setError(r.data.error || '맡은 매장을 불러오지 못했어요.'); return }
-    setRows(r.data.stores)
-    setCanManage(!!r.data.canManage)
-  }, [onExpired])
-
-  useEffect(() => { load() }, [load])
+  /**
+   * 🚪 깊은 링크(`/agency?tool=/seller/orders`) — 대시보드 껍데기가 에이전시 직원을 이리로 보낸다
+   *   (`consoleRedirectFor`). 좌석 토큰이 가리키는 매장을 고르고 그 화면을 시트로 연다.
+   *   ⚠️ **좌석을 새로 받지 않는다** — 이 직원의 그 매장 좌석이 이미 있을 때만 연다. 아니면(다른 직원 좌석 ·
+   *   내려놓은 매장 · 목록 실패) 대시보드로 되돌린다(`dash=1` — 다시 오지 않는다). 그 화면은 종전처럼 열린다.
+   */
+  const [deepPath] = useState(() => readToolParam(window.location.search))
+  const [openPath, setOpenPath] = useState<string | null>(null)
+  /** 같은 화면을 다시 열 때도 판이 새로 서게(판의 열린 시트는 마운트 때 정해진다). */
+  const [openNonce, setOpenNonce] = useState(0)
+  /** 🔔 판매 알림 — 대시보드 껍데기의 종이 하던 일(2026-10-12). 콘솔을 열 때 한 번 받는다. */
+  const [notifs, setNotifs] = useState<AgencyNotification[] | null>(null)
+  const [notifUnread, setNotifUnread] = useState(0)
+  useEffect(() => {
+    void agencyRequest<{ data: { items: AgencyNotification[]; unread: number } }>('/notifications?limit=30').then((r) => {
+      if (!r.ok) { setNotifs([]); return }
+      setNotifs(r.data.data?.items ?? [])
+      setNotifUnread(Number(r.data.data?.unread) || 0)
+    })
+  }, [])
+  async function readNotifs(ids: number[] | 'all') {
+    const r = await agencyRequest('/notifications/read', { method: 'POST', body: ids === 'all' ? { all: true } : { ids } })
+    if (!r.ok) return
+    setNotifs((prev) => prev?.map((n) => (ids === 'all' || ids.includes(n.id) ? { ...n, isRead: true } : n)) ?? prev)
+    setNotifUnread((u) => (ids === 'all' ? 0 : Math.max(0, u - ids.length)))
+  }
+  /**
+   * 알림을 누르면 그 매장을 고르고 화면을 시트로 연다. **좌석은 이 클릭에서만** 받는다(사람의 행동) —
+   *   이미 이 직원의 그 매장 좌석이면 다시 받지 않는다.
+   */
+  async function openNotif(n: AgencyNotification) {
+    if (!n.isRead) void readNotifs([n.id])
+    const t = notifTarget(n.link)
+    if (!t) return
+    if (t.kind === 'go') { window.location.assign(t.path); return }
+    const store = active.find((r) => r.sellerId === n.sellerId)
+    if (!store) { toast.error('지금 맡고 있지 않은 매장 알림이에요.'); return }
+    if (!isMyAgencySeat(store.sellerId, staffId)) {
+      const r = await enterAgencyStore(store.sellerId, store.name)
+      if (!r.ok) { toast.error(r.error); return }
+    }
+    setSheet(null)
+    pick(store.sellerId)
+    setOpenPath(t.path)
+    setOpenNonce((x) => x + 1)
+  }
+  /** 한 번만 쓴다 — 다른 매장을 골랐다 돌아와도 시트가 다시 열리지 않게. */
+  const deepDone = useRef(false)
+  useEffect(() => {
+    if (!deepPath || deepDone.current) return
+    if (!error && rows === null) return
+    deepDone.current = true
+    const seat = currentSeatId()
+    const target = error ? undefined : active.find((r) => r.sellerId === seat)
+    if (!target || !isMyAgencySeat(target.sellerId, staffId)) { window.location.replace(dashboardFallback(deepPath)); return }
+    pick(target.sellerId)
+    try {
+      const q = new URLSearchParams(window.location.search); q.delete('tool')
+      window.history.replaceState(window.history.state, '', q.toString() ? `${window.location.pathname}?${q}` : window.location.pathname)
+    } catch { /* 무해 — 새로고침이 시트를 한 번 더 열 뿐 */ }
+    setOpenPath(deepPath)
+  }, [deepPath, rows, error, active, staffId, pick])
 
   async function act(row: StoreRow, path: 'accept' | 'decline' | 'release') {
     if (path !== 'accept') {
@@ -59,80 +128,215 @@ export function AgencyStoresPanel({ onExpired }: { onExpired: () => void }) {
     load()
   }
 
-  async function operate(row: StoreRow) {
-    setBusyId(row.linkId)
-    const r = await enterAgencyStore(row.sellerId, row.name)
-    setBusyId(null)
-    if (!r.ok) { toast.error(r.error); return }
-    navigate('/seller')
-  }
-
-  const pending = rows?.filter((r) => r.status === 'pending') ?? []
-  const active = rows?.filter((r) => r.status === 'active') ?? []
-
   return (
-    <section className="mt-8">
-      <h2 className="text-[17px] font-semibold text-gray-500">맡은 매장</h2>
-      {error ? (
-        <div className="mt-3 rounded-2xl bg-white p-6 shadow-lift">
-          <p className="text-[15px] text-gray-700">{error}</p>
-          <button type="button" onClick={load} className="mt-4 h-10 rounded-xl bg-brand px-4 text-[15px] font-semibold text-white">다시 시도</button>
-        </div>
-      ) : rows === null ? (
-        <div className="mt-3 rounded-2xl bg-white p-6 shadow-lift"><p className="text-[13px] text-gray-500">불러오는 중…</p></div>
-      ) : rows.length === 0 ? (
-        <div className="mt-3 rounded-2xl bg-white p-6 shadow-lift">
-          <p className="text-[15px] font-semibold text-gray-900">아직 맡은 매장이 없어요</p>
-          <p className="mt-2 text-[13px] leading-relaxed text-gray-500">
-            아래 <b className="font-semibold text-gray-700">매장 초대 링크</b>를 사장님께 보내거나, 사장님이 셀러 화면의
-            {' '}<b className="font-semibold text-gray-700">운영자 관리 → 에이전시에 맡기기</b>에 관리자 이메일을 넣으면 여기에 떠요.
-            아직 유어딜에 없는 매장이면 <b className="font-semibold text-gray-700">매장 대신 등록</b>으로 먼저 올리세요.
-          </p>
-        </div>
-      ) : (
-        <div className="mt-3 rounded-2xl bg-white shadow-lift">
-          <ul className="divide-y divide-rule">
-            {pending.map((r) => (
-              <li key={r.linkId} className="flex min-h-[64px] flex-wrap items-center gap-3 px-6 py-3">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[15px] font-semibold text-gray-900">{r.name}</p>
-                  <p className="text-[13px] text-brand-text">맡김 요청 · 수락하면 운영을 시작해요</p>
-                </div>
-                {canManage ? (
-                  <div className="flex gap-2">
-                    <button type="button" disabled={busyId === r.linkId} onClick={() => act(r, 'decline')}
-                      className="h-9 rounded-full px-3 text-[13px] font-semibold text-gray-600 hover:bg-gray-100 disabled:opacity-50">거절</button>
-                    <button type="button" disabled={busyId === r.linkId} onClick={() => act(r, 'accept')}
-                      className="h-9 rounded-full bg-brand px-4 text-[13px] font-semibold text-white disabled:opacity-50">수락</button>
-                  </div>
-                ) : (
-                  <span className="text-[12px] text-gray-500">관리자가 수락하면 열려요</span>
-                )}
-              </li>
-            ))}
-            {active.map((r) => (
-              <li key={r.linkId} className="flex min-h-[64px] flex-wrap items-center gap-3 px-6 py-3">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[15px] font-semibold text-gray-900">{r.name}</p>
-                  <p className="text-[13px] text-gray-500">
-                    운영 중{r.storeStatus && STORE_STATUS_HINT[r.storeStatus] ? ` · ${STORE_STATUS_HINT[r.storeStatus]}` : ''}
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  {canManage && (
-                    <button type="button" disabled={busyId === r.linkId} onClick={() => act(r, 'release')}
-                      className="h-9 rounded-full px-3 text-[13px] font-semibold text-gray-500 hover:bg-gray-100 disabled:opacity-50">내려놓기</button>
+    <div className="mt-8 flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-6">
+      {/* ── 왼쪽(PC) / 아래(폰) ─────────────────────────────── */}
+      <div className="order-2 lg:order-1 lg:w-[300px] lg:shrink-0">
+        <nav aria-label="맡은 매장" className="hidden lg:block mb-8">
+          <h2 className="text-[17px] font-semibold text-gray-500">
+            맡은 매장{active.length > 0 && ` · ${active.length}곳`}
+          </h2>
+          <div className="mt-3 flex flex-col gap-1">
+            {active.map((r) => {
+              const hint = storeRowHint(r)
+              const on = picked?.sellerId === r.sellerId
+              return (
+                <button
+                  key={r.linkId}
+                  type="button"
+                  aria-current={on || undefined}
+                  onClick={() => { setOpenPath(null); pick(r.sellerId) }}
+                  className={`flex min-h-[56px] flex-col items-start justify-center gap-1 rounded-xl px-4 py-2 text-left ${
+                    on ? 'bg-white shadow-lift' : 'hover:bg-white/60'
+                  }`}
+                >
+                  <span className={`w-full truncate text-[15px] ${on ? 'font-bold text-gray-900' : 'font-semibold text-gray-700'}`}>{r.name}</span>
+                  {hint.text && (
+                    <span className={`text-[12px] ${hint.urgent ? 'font-semibold text-brand-text' : 'text-gray-400'}`}>{hint.text}</span>
                   )}
-                  <button type="button" disabled={busyId === r.linkId || r.storeStatus === 'suspended'} onClick={() => operate(r)}
-                    className="h-9 rounded-full bg-brand px-4 text-[13px] font-semibold text-white disabled:opacity-50">운영하기</button>
-                </div>
-              </li>
-            ))}
-          </ul>
+                </button>
+              )
+            })}
+            {rows !== null && active.length === 0 && <p className="px-4 text-[13px] text-gray-400">아직 없어요</p>}
+          </div>
+        </nav>
+
+        <h2 className="text-[17px] font-semibold text-gray-500">에이전시</h2>
+        <div className="mt-1">
+          <FlatRow
+            label="판매 알림"
+            hint={notifUnread > 0 ? `새 알림 ${notifUnread}` : notifs && notifs.length > 0 ? '모두 읽음' : '없음'}
+            urgent={notifUnread > 0}
+            onClick={() => setSheet('notifs')}
+          />
+          <FlatRow
+            label="맡김 요청"
+            hint={pending.length > 0 ? `새 요청 ${pending.length}` : '없음'}
+            urgent={pending.length > 0}
+            onClick={() => setSheet('requests')}
+          />
+          {agencyRows}
+          {canManage && <FlatRow label="매장 초대 · 대신 등록" onClick={() => setSheet('invite')} last />}
         </div>
+      </div>
+
+      {/* ── 오른쪽(PC) / 위(폰) — 고른 매장의 판 ──────────────────── */}
+      <section aria-label={picked ? `${picked.name} 판매` : '맡은 매장'} className="order-1 lg:order-2 min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          {/* 🖥️ PC 는 매장 이름이 제목이다(왼쪽 목록이 고르기를 맡는다). 폰은 '맡은 매장' + 고르기 칩. */}
+          <h2 className="hidden lg:block min-w-0 truncate text-[17px] font-semibold text-gray-500">{picked?.name ?? '맡은 매장'}</h2>
+          <h2 className="lg:hidden text-[17px] font-semibold text-gray-500">맡은 매장</h2>
+          <div className="flex-1" />
+          {active.length > 0 && picked && (
+            <button
+              type="button"
+              onClick={() => setSheet('picker')}
+              className="lg:hidden inline-flex max-w-[60%] items-center gap-1 py-2 text-[12px] font-semibold text-gray-500 active:opacity-70"
+            >
+              <span className="truncate">{picked.name}</span>
+              {active.length >= 2 && <span className="shrink-0">· {active.length}곳</span>}
+              <ChevronDown className="h-3 w-3 shrink-0" aria-hidden="true" />
+            </button>
+          )}
+        </div>
+
+        <div className="mt-3">
+          {error ? (
+            <div className="rounded-2xl bg-white p-6 shadow-lift">
+              <p className="text-[15px] text-gray-700">{error}</p>
+              <button type="button" onClick={load} className="mt-4 h-10 rounded-xl bg-brand px-4 text-[15px] font-semibold text-white">다시 시도</button>
+            </div>
+          ) : rows === null ? (
+            <div className="rounded-2xl bg-white p-6 shadow-lift"><p className="text-[13px] text-gray-500">불러오는 중…</p></div>
+          ) : picked ? (
+            // 🔑 매장이 바뀌면 판을 새로 세운다 — 열려 있던 시트·좌석 대기 상태가 다음 매장으로 새지 않게.
+            <AgencyStorePlate
+              key={`${picked.sellerId}:${openPath ?? ''}:${openNonce}`}
+              store={picked}
+              staffId={staffId}
+              initialPath={openPath && picked.sellerId === currentSeatId() ? openPath : undefined}
+            />
+          ) : (
+            <div className="rounded-2xl bg-white p-6 shadow-lift">
+              <p className="text-[15px] font-semibold text-gray-900">아직 운영 중인 매장이 없어요</p>
+              <p className="mt-2 text-[13px] leading-relaxed text-gray-500">
+                {canManage
+                  ? <>아래 <b className="font-semibold text-gray-700">매장 초대 · 대신 등록</b>에서 사장님께 초대 링크를 보내거나, 아직 유어딜에 없는 매장을 먼저 올리세요. 사장님이 셀러 화면의 <b className="font-semibold text-gray-700">운영자 관리 → 에이전시에 맡기기</b>에 관리자 이메일을 넣어도 여기에 떠요.</>
+                  : '관리자가 매장을 맡거나 배정하면 여기에 떠요.'}
+              </p>
+              {pending.length > 0 && (
+                <button type="button" onClick={() => setSheet('requests')} className="mt-4 h-10 rounded-xl bg-brand px-4 text-[15px] font-semibold text-white">
+                  맡김 요청 {pending.length}건 보기
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {canManage && picked && (
+          <button
+            type="button"
+            disabled={busyId === picked.linkId}
+            onClick={() => act(picked, 'release')}
+            className="mt-3 px-1 text-[13px] font-semibold text-gray-400 hover:text-gray-600 disabled:opacity-50"
+          >
+            이 매장 운영 내려놓기
+          </button>
+        )}
+      </section>
+
+      {sheet === 'picker' && (
+        <Sheet title="맡은 매장" onClose={() => setSheet(null)}>
+          <ul className="divide-y divide-rule">
+            {active.map((r) => {
+              const hint = storeRowHint(r)
+              const on = picked?.sellerId === r.sellerId
+              return (
+                <li key={r.linkId}>
+                  <button
+                    type="button"
+                    onClick={() => { setOpenPath(null); pick(r.sellerId); setSheet(null) }}
+                    className="flex min-h-[56px] w-full items-center gap-3 px-4 text-left active:bg-gray-50"
+                  >
+                    <span className={`min-w-0 flex-1 truncate text-[15px] ${on ? 'font-bold text-gray-900' : 'font-semibold text-gray-700'}`}>{r.name}</span>
+                    {hint.text && <span className={`shrink-0 text-[13px] ${hint.urgent ? 'font-semibold text-brand-text' : 'text-gray-400'}`}>{hint.text}</span>}
+                    {on && <span className="shrink-0 text-[13px] font-semibold text-brand-text">보는 중</span>}
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </Sheet>
       )}
-      {canManage && rows !== null && !error && <AgencyInviteLinkCard />}
-      {canManage && rows !== null && !error && <AgencyRegisterStoreCard onRegistered={load} />}
-    </section>
+
+      {sheet === 'notifs' && (
+        <AgencyNotificationsSheet
+          items={notifs}
+          unread={notifUnread}
+          onPick={(n) => { void openNotif(n) }}
+          onReadAll={() => { void readNotifs('all') }}
+          onClose={() => setSheet(null)}
+        />
+      )}
+
+      {sheet === 'requests' && (
+        <Sheet title="맡김 요청" onClose={() => setSheet(null)}>
+          {pending.length === 0 ? (
+            <p className="px-4 py-8 text-center text-[13px] text-gray-500">기다리는 요청이 없어요.</p>
+          ) : (
+            <ul className="divide-y divide-rule">
+              {pending.map((r) => (
+                <li key={r.linkId} className="flex min-h-[64px] flex-wrap items-center gap-3 px-4 py-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[15px] font-semibold text-gray-900">{r.name}</p>
+                    <p className="text-[13px] text-brand-text">수락하면 운영을 시작해요</p>
+                  </div>
+                  {canManage ? (
+                    <div className="flex gap-2">
+                      <button type="button" disabled={busyId === r.linkId} onClick={() => act(r, 'decline')}
+                        className="h-9 rounded-full px-3 text-[13px] font-semibold text-gray-600 hover:bg-gray-100 disabled:opacity-50">거절</button>
+                      <button type="button" disabled={busyId === r.linkId} onClick={() => act(r, 'accept')}
+                        className="h-9 rounded-full bg-brand px-4 text-[13px] font-semibold text-white disabled:opacity-50">수락</button>
+                    </div>
+                  ) : (
+                    <span className="text-[12px] text-gray-500">관리자가 수락하면 열려요</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Sheet>
+      )}
+
+      {sheet === 'invite' && canManage && (
+        <Sheet title="매장 초대 · 대신 등록" onClose={() => setSheet(null)}>
+          <div className="min-h-full bg-[#F8F7FC] p-4 [&>*:first-child]:mt-0">
+            <AgencyInviteLinkCard />
+            <AgencyRegisterStoreCard onRegistered={load} />
+          </div>
+        </Sheet>
+      )}
+    </div>
+  )
+}
+
+/** 에이전시 구역의 한 줄 — 판 밖의 평면 줄(안 A 시안). 오른쪽 값이 할 일이면 블루. */
+export function FlatRow({ label, hint, urgent = false, onClick, last = false }: {
+  label: string
+  hint?: string
+  urgent?: boolean
+  onClick: () => void
+  last?: boolean
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex min-h-[48px] w-full items-center gap-3 text-left active:opacity-70 ${last ? '' : 'border-b border-rule'}`}
+    >
+      <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-gray-900">{label}</span>
+      {hint && <span className={`shrink-0 text-[13px] ${urgent ? 'font-semibold text-brand-text' : 'text-gray-400'}`}>{hint}</span>}
+      <ChevronRight className="h-4 w-4 shrink-0 text-gray-400" aria-hidden="true" />
+    </button>
   )
 }

@@ -4,7 +4,7 @@ import { Field, inputCls } from './AgencyAuthShell'
 import { agencyRequest, type AgencyInfo } from './agency-api'
 
 /** 에이전시 정보(관리자만) — 이름·사업자등록번호. */
-export function AgencyInfoPanel({ agency, onSaved }: { agency: AgencyInfo; onSaved: () => void }) {
+export function AgencyInfoPanel({ agency, onSaved, bare = false }: { agency: AgencyInfo; onSaved: () => void; bare?: boolean }) {
   const [name, setName] = useState(agency.name)
   const [bizNo, setBizNo] = useState(agency.businessNumber || '')
   const [busy, setBusy] = useState(false)
@@ -26,9 +26,9 @@ export function AgencyInfoPanel({ agency, onSaved }: { agency: AgencyInfo; onSav
   }
 
   return (
-    <section className="mt-8">
-      <h2 className="text-[17px] font-semibold text-gray-500">에이전시 정보</h2>
-      <form onSubmit={save} className="mt-3 flex flex-col gap-4 rounded-2xl bg-white p-6 shadow-lift">
+    <section className={bare ? '' : 'mt-8'}>
+      {!bare && <h2 className="text-[17px] font-semibold text-gray-500">에이전시 정보</h2>}
+      <form onSubmit={save} className={`${bare ? '' : 'mt-3 '}flex flex-col gap-4 rounded-2xl bg-white p-6 shadow-lift`}>
         <Field label="에이전시 이름">
           <input required maxLength={60} value={name} onChange={(e) => setName(e.target.value)} disabled={busy} className={inputCls} />
         </Field>

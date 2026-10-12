@@ -45,6 +45,7 @@ import {
 } from '../../../worker/utils/seller-operators'
 import { registerAgencyLinkRoutes } from './seller-agency-link.routes' // 🏢 2026-10-11 에이전시에 맡기기·끊기
 import { registerKakaoBotLinkRoutes } from './seller-kakao-bot.routes' // 💬 2026-10-10 카카오톡으로 매장 관리(연결 코드·연결 목록)
+import { registerStoreNotificationRoutes } from './seller-store-notifications' // 🔔 2026-10-12 내 매장들의 판매 알림(마이·콘솔)
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -464,6 +465,7 @@ app.get('/operating-summary', async (c) => {
 })
 
 registerKakaoBotLinkRoutes(app)
+registerStoreNotificationRoutes(app, resolveStoreScope)
 registerAgencyLinkRoutes(app, requireOwnerOfCurrentStore)
 
 export { app as sellerOperatorsRoutes }

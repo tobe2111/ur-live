@@ -40,7 +40,9 @@ import { toast } from '@/hooks/useToast'
 import type { MyStoresState } from './useMyStores'
 import { writeReservedHeight } from './seller-reserve'
 import { useSellerWork } from './seller-section/useSellerWork'
+import { useToolDeepLink } from './seller-section/useToolDeepLink' // 🚪 대시보드 깊은 링크 → 시트(2026-10-12)
 import PendingOrders from './seller-section/PendingOrders'
+import StoreNotifButton from './seller-section/StoreNotifications'
 // 🧾 2026-09-28: 묶음 라벨·줄은 손님 쪽 목록과 **같은 부품**이다(`list-grammar`).
 //   종전엔 이 파일 안에 `GroupLabel`/`ToolRow` 가 따로 있었고, 손님 쪽은 또 다른 문법이라
 //   같은 화면에 목록 문법이 두 벌이었다 — 대표 *"허술해"*(09-28)의 실체 중 하나.
@@ -261,6 +263,8 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
     setTool('page')
   }
 
+  useToolDeepLink({ ready: !loading && store != null, seated, open: (p) => { void openPage(p, '') } })
+
   // 좌석 0곳(= 셀러가 아님) · 실패 → 아무것도 그리지 않는다.
   //   실패를 0 으로 그리면 "오늘 매출 0원" 이라는 거짓말이 된다(머니 표면 룰).
   if (failed) return null
@@ -314,10 +318,11 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
              카드 **안쪽**을 세로로 관통한다(2026-09-28 에 하네스로 실측해 고친 결함이다). */}
       {/* 섹션 머리 — 오른쪽이 곧 가게 전환(2곳 이상일 때만 누를 수 있다) */}
       <div className="flex items-center gap-2 mb-2 px-4">
-        {/* ⚠️ 크기·무게·색은 `SECTION_TITLE_CLS` 한 곳에서 온다 — 여기에 손으로 적으면
-            2026-09-30 오전처럼 이 제목만 옛 값으로 남는다(시험이 대조한다). */}
+        {/* ⚠️ 크기·무게·색은 `SECTION_TITLE_CLS` 한 곳(손으로 적으면 이 제목만 옛 값으로 남는다 — 시험이 대조). */}
         <h2 className={`leading-tight ${SECTION_TITLE_CLS}`}>내 가게</h2>
         <div className="flex-1" />
+        {/* 🔔 2026-10-12 판매 알림 — 종전엔 대시보드 껍데기의 종에서만 보였다(사장님을 마이로 보내며 사라진 받은편지함). */}
+        {!awaiting && <StoreNotifButton currentSellerId={store.seller_id} onOpenPage={(p) => { void openPage(p, '') }} />}
         {/* ➕ 2026-10-06: 1곳이어도 누를 수 있다 — 시트 맨 아래 [+ 매장 추가] 가 마이의 유일한 매장 추가 문이다. */}
         {!awaiting && stores.length >= 1 ? (
           <button
@@ -325,10 +330,8 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
             onClick={() => setSheetOpen(true)}
             className="inline-flex items-center gap-1 max-w-[60%] text-[12px] font-semibold text-gray-500 dark:text-gray-400 active:opacity-70"
           >
-            {/* 🩸 2026-09-28 (하네스 실측) — 이름과 개수를 **다른 span** 으로 나눈다.
-                한 span 에 `{이름} · N곳` 으로 붙여 놓으면 긴 가게 이름에서 말줄임이 **개수부터** 먹는다
-                (`합정 살롱드합정 헤어&메이크업 본점 · …`). 그런데 이 줄이 눌리는 이유가 바로 그 개수다 —
-                2곳 이상일 때만 전환 버튼이 되니까. 잘려야 하는 건 이름이지 개수가 아니다. */}
+            {/* 🩸 2026-09-28 (하네스 실측) — 이름과 개수를 **다른 span** 으로: 한 span 이면 긴 가게 이름에서 말줄임이
+                **개수부터** 먹는다. 이 줄이 눌리는 이유가 그 개수다 — 잘려야 하는 건 이름이지 개수가 아니다. */}
             <span className="truncate">{store.name}</span>
             {stores.length >= 2 && <span className="shrink-0">· {stores.length}곳</span>}
             <ChevronDown className="w-3 h-3 shrink-0" aria-hidden="true" />
