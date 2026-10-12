@@ -168,3 +168,56 @@ Poppins 를 자가호스팅했으니 **아무도 안 쓴다.** 그런데 **잠�
 `i18n` · `axios` · `app-routes` 청크(CLAUDE.md 잠금표 주석의 그 항목들) — 이번 범위 밖.
 **`PcHomePage` 와 `MobileHomePage` 가 둘 다 modulepreload 된다**(각 4.7·2.2KB). 폰이 PC 홈 청크를,
 PC 가 폰 홈 청크를 함께 받는다. 작지만 `route-chunk-map` 이 둘을 같은 표면으로 보는 탓이다.
+
+---
+
+## 7. 같은 세션에서 추가로 처리한 것 (2026-10-12 후반)
+
+### ① 이용권 상세 **C안** (대표 확정, 커밋 `c73bcee7`)
+대표 *"왜 사진을 가리고 있고, 더 투박해졌지?"* → 시안 A·B·C → **"C가 낫네 차라리"**.
+`PASS_HEAD.card` 에서 `-mt-7`(겹침 28px)·판(`bg`·`shadow-lift`·`rounded-2xl`) 제거 + `아껴요` 상자 제거.
+워커 SSR 이 같은 문자열을 import 하므로 서버 첫 화면도 자동으로 따라간다.
+가드 +2 / 주입 +3(빨간불 확인).
+
+### ② 🔴 "밍밍하다" 의 진짜 원인 — **디자인이 아니라 콘텐츠가 0이다** (실측)
+대표 *"아무튼 뭔가 너무 밍밍해, 상세페이지가"*. 라이브 `/pass/2915` 전수:
+```
+문서 높이 1,793px (2.1 화면)      본문 글자수 422자 (대부분 UI 문구)
+description      = 제목과 똑같은 글자
+long_description = null      ← 상세 설명 0
+voucher_terms    = null      ← 유의사항 0 (DEFAULT_TERMS 2줄 폴백만)
+detail_images    = []        ← 상세 사진 0장
+images           = 1장 (히어로와 동일)
+```
+**이 상품만이 아니다** — 샘플 6/6 전부 `long_description`·`voucher_terms`·`detail_images` 가 비었고,
+활성 이용권 **50건 중 43건이 사진 1장 이하**. `seller_id` 가 붙은 실매장 상품은 **2건**뿐.
+⇒ **어떤 디자인도 이 데이터로는 두 화면을 못 채운다.** 근본 처방은 상품 등록에서 설명·사진·유의사항을
+받는 것이고 그건 운영/기획 결정이다(대표 판단 대기).
+
+🩸 **이 과정에서 결함을 하나 잘못 신고할 뻔했다**: 본문 덤프에 "유의사항" 뒤가 비어 있어 *빈 섹션*이라고
+판단했는데, `<details>` 가 접혀 있어 `innerText` 가 summary 만 준 것이었고 `DEFAULT_TERMS` 폴백도 있다.
+**접힌 요소는 텍스트 덤프에 안 나온다 — 덤프의 공백을 결함으로 읽지 말 것.**
+
+### ③ 🟡 딜 결제가 느린 이유 (측정만 · **고치지 않았다** — 머니 경로)
+대표 *"이용권 결제하는데 시간이 왜이리 많이 걸리지? 특히 딜로만 결제를 하는건데도"*.
+`POST /api/group-buy/join/:id` 정적 분석:
+```
+동기 await 107개 / waitUntil 안 5개
+행복 경로(딜 전용)만 세어도 D1 을 차례로 ~20번 왕복한다
+```
+- ✅ **무죄로 확인된 것**: `ensureTables`(waitUntil) · `ensureOrdersForeignKeysSane`(WeakSet 메모이즈) ·
+  `ensureDealBuckets`(메모이즈) · KT-Alpha 발송·알림톡(둘 다 waitUntil). 외부 HTTP 는 이미 다 미뤘다.
+- 🔴 **남은 것은 "한 번에 큰 것" 이 아니라 직렬 왕복 누적**이다. 묶을 수 있어 보이는 자리:
+  `getSupplyMeta`·`checkPerPersonLimit`·`checkFcfsPurchasable`(서로 독립 읽기 → `Promise.all`) ·
+  `isVoucherDealPaymentAllowed`+`isSelfOwnedGroupBuy`(product 뒤 병렬) ·
+  `blocked`+`sellerRow`(병렬) · `UPDATE commission`+`recordLedger`(batch) ·
+  `creditBrokerShare`(멱등이면 waitUntil 후보).
+- ⚠️ **결제 경로 = 머니 경로 = 등급 C.** 단독 세션 + staging 실결제 없이는 손대지 않는다. 그래서 이 세션은
+  **재기만 했다.** 다음 세션은 먼저 `Server-Timing` 을 이 엔드포인트에 붙여 **추정이 아니라 실측**으로
+  어느 왕복이 비싼지 보고 들어갈 것(정적 카운트는 "몇 번" 만 말하고 "몇 ms" 는 말하지 않는다).
+
+### ④ 📱 앱 설치 유도 오버레이 — **지금은 안 함** (대표 "다음에")
+대표가 리뷰노트 시안을 보내며 *"다음에 앱 개발이 된다면 … 지금은 아니긴 한데 다음에 말이야."*
+기록만 했다 → `docs/design/app-ready-audit-2026-07.md` 맨 아래 + 시안
+`docs/design/assets/reviewnote-app-interstitial-ref.jpg`. **전제: 스토어 앱이 실제로 있어야 한다.**
+그리고 이미 설치 유도가 둘 있다(`PWAInstallPrompt`·`AddToHomeHint`) — 만들기 전에 대체인지 추가인지 정할 것.
