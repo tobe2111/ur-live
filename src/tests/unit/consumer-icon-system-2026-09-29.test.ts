@@ -79,8 +79,10 @@ const OPERATION = new Set([
  *    빨간불이 됐다**(head c6eab439, run 38001434136). 여유가 정확히 1칸이라 주입의 +1 이 `166 ≤ 166` 으로
  *    통과했다 — 같은 규칙대로 지금 내린다.
  *    🧭 이 자리에서 **다섯 번째**다. 유달이로 lucide 를 걷는 PR 은 기준 내리기를 같은 커밋에 넣을 것.
+ * 🔧 2026-10-12: 165 → **158**. 셀러 대시보드 삭제(틀·홈·더보기·➕ 시트)가 lucide 뜻 아이콘 7건을 함께 걷었다.
+ *    여유를 남겨 두면 주입의 +1 이 통과한다(PR CI 의 주입 검증이 잡았다) — 같은 커밋에서 내린다.
  */
-const MEANING_BASELINE = 165
+const MEANING_BASELINE = 158
 
 const read = (f: string) => readFileSync(f, 'utf8')
 

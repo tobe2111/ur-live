@@ -79,6 +79,26 @@ describe('R2 라이트 래퍼가 브랜드 틴트를 되박는다 (다크 모드
   })
 })
 
+describe('R3 CTA 로 뽑아낸 항목도 전체 도구 색인에서 사라지지 않는다', () => {
+  /**
+   * 🔑 '이용권 등록'을 CTA 로 뽑아내면서 **그리는 목록만** 걸렀다.
+   *   `orderedNavGroups`(색인의 원본)에서까지 빼면 그 화면은 목록에도 검색에도 없어진다 —
+   *   이 레포가 반복해 겪은 "페이지는 있는데 닿을 수 없다"의 재발이다.
+   *   🧱 2026-10-12 대시보드 삭제: ⌘K·전체 메뉴(`/seller/more`)는 지웠지만 **색인은 살아 있다** —
+   *   마이·콘솔의 전체 도구 시트(`AllToolsSheet`)와 시트 라우터(`ToolPageSheet`)가 `commandItems` 를 쓴다.
+   */
+  const src = strip(read('src/components/seller-layout/useSellerNavModel.ts'))
+  it('CTA 는 renderedNavGroups 로만 걸러진다 (orderedNavGroups 원본은 무손상)', () => {
+    expect(src).toMatch(/const renderedNavGroups = orderedNavGroups/)
+    // 검색 색인(commandItems)은 거르지 않은 원본을 쓴다.
+    expect(src).toMatch(/\.\.\.orderedNavGroups\.flatMap\(\(g\) => g\.items\.map/)
+    expect(src).toMatch(/const ctaItem = orderedNavGroups\.flatMap/)
+  })
+  it('전체 도구 시트가 그 색인을 쓴다 (색인을 읽는 곳이 사라지면 이 불변식도 헛돈다)', () => {
+    expect(strip(read('src/pages/user-profile/seller-section/AllToolsSheet.tsx'))).toMatch(/const \{ commandItems \} = useSellerNavModel\(\)/)
+  })
+})
+
 describe('R5 정산 금액을 건수로 말하지 않는다', () => {
   /** 🐛 ₩412,000 이 "정산 가능 412000건" 으로 찍히던 자리. 돈을 세는 단위로 말하면 안 된다. */
   it.each(['ko', 'en', 'ja', 'zh', 'es', 'fr'])('%s 로케일에 그 키가 있다', (lng) => {

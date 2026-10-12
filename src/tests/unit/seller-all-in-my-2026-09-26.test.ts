@@ -54,10 +54,11 @@ describe('② 나갔다가 돌아온다', () => {
     expect(code, '표시가 없으면 일이 끝나는 화면에서 마이로 오는 길이 없다')
       .toMatch(/location\.assign\(withMyReturn\(/)
   })
-
-
-
-
+  it('마이에 도착하면 흔적을 지운다', () => {
+    // 🧱 2026-10-12 대시보드 삭제로 귀환 띠(BackToMyBar)는 사라졌지만 흔적은 매장 계산대(StoreScanPage)가 아직 읽는다.
+    expect(stripComments(SECTION), '안 지우면 다음 계산대 방문에도 "마이로" 가 남는다')
+      .toMatch(/useEffect\(\(\) => \{ clearMyReturn\(\) \}, \[\]\)/)
+  })
   it('탭 수명이다 — localStorage 에 적지 않는다', () => {
     expect(stripComments(RETURN), '어제 들어간 흔적이 오늘 띠로 뜨면 안 된다')
       .not.toContain('localStorage')

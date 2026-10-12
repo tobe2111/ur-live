@@ -51,6 +51,11 @@ describe('셀러 공용 chrome 의 탭 타깃은 40px 눈금에 닿는다', () =
     expect(block, '`pointer-events: none` 이면 닿지 않는다').not.toMatch(/pointer-events\s*:\s*none/)
   })
 
+  it('알림 벨은 박스가 40px 다 (어드민·에이전시 머리줄이 쓴다)', () => {
+    // 🧱 2026-10-12 셀러 머리줄은 지웠지만 벨은 남은 대시보드 머리줄에서 그대로 쓰인다.
+    expect(readCode(BELL), '알림 벨이 40px 박스가 아니다').toMatch(/relative flex h-10 w-10 items-center justify-center/)
+    expect(readCode(BELL), '벨을 반쪽 간격 패딩으로 키웠다 — 4px 격자를 쓸 것').not.toMatch(/relative p-2\.5 /)
+  })
 
   it('측정 도구가 넓힌 히트 영역을 **보고 또 검증한다** (다음 세션이 박스를 또 키우지 않게)', () => {
     /**
