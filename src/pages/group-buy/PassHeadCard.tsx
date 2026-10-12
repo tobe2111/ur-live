@@ -1,5 +1,9 @@
 /**
- * 🎟️ 이용권 상세 머리 카드 — 사진 위로 겹쳐 올라오는 [가게 · 제목 · 가격] (2026-10-11 대표 확정 "D안")
+ * 🎟️ 이용권 상세 머리 — 사진 **아래** 평면으로 놓인 [가게 · 제목 · 가격] (2026-10-12 대표 확정 "C안")
+ *
+ * 🔁 2026-10-12: 종전 D안은 사진 위로 **28px 겹쳐 올라오는 판**이었다. 대표 *"왜 사진을 가리고 있고,
+ *   더 투박해졌지?"* → 시안 A(현재)·B(안 가림)·C(판까지 없앤 평면) 중 **C**. 판·겹침·틴트 상자를 걷었다.
+ *   치수와 근거는 `shared/pass-head.ts` 의 `PASS_HEAD.card` 주석에 있다.
  *
  * 대표: *"더 세련되고 심플해져야 해. 지금은 부연설명도 많고 그래."* → 시안 C·D·E 중 **D(카드형)**.
  *
@@ -50,11 +54,8 @@ export default function PassHeadCard({
         <span className="text-[28px] font-extrabold tracking-[-.03em] text-[var(--gbd-ink)]">{formatNumber(unitPrice)}원</span>
         {unitSaving > 0 && <span className="text-[13px] line-through text-[var(--gbd-sub2)]">{formatNumber(refPrice)}원</span>}
       </div>
-      {unitSaving > 0 && (
-        <div className="mt-3 rounded-xl px-3 py-2 text-[13px] text-[var(--gbd-ink2)]" style={{ background: 'var(--gbd-accent-soft)' }}>
-          1장당 <b className="font-bold text-brand-text">{formatNumber(unitSaving)}원</b> 아껴요
-        </div>
-      )}
+      {/* 🔁 2026-10-12 C안: `1장당 N원 아껴요` 틴트 상자 제거 — 판 안의 또 다른 상자였고(🎫 규칙 ①·⑥),
+          바로 윗줄의 `48%` 와 정가 취소선이 **이미 같은 말을 한다**(그 화면에서 가격이 여섯 번 나왔다). */}
     </div>
   )
 }
