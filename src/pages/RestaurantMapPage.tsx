@@ -121,15 +121,18 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   // 🎯 2026-07-02 (대표 "첫 페인트에 응모 버튼 늦게 등장"): 목록 응답에 서버 enrich 된 r.fcfs 를
   //   첫 페인트 시드로 즉시 사용 — 별도 /api/fcfs/active 도착 전에도 응모 버튼·배지가 함께 그려짐.
   //   fetch 결과가 오면 그 값(신선 카운트) 우선.
-  // 🎯 2026-07-04 (대표 "데모 이용권 노출은 항상 후순위"): demo 플래그 동반 — '상위노출' boost 는
-  //   실(non-demo) 선착순만. 데모는 base 순서(서버가 이미 데모-후순위 정렬) 그대로 뒤에 남음.
-  const [liveFcfsMap, setLiveFcfsMap] = useState<Map<number, { spots: number; appliedDisplay: number; demo?: boolean; prelaunch?: boolean }>>(new Map())
+  // 🎯 2026-07-04 (대표 "데모 이용권 노출은 항상 후순위"): '상위노출' boost 는 서버가 지정한
+  //   대상만. 나머지는 base 순서(서버가 이미 데모-후순위 정렬) 그대로 뒤에 남음.
+  // 🙈 2026-10-12 (대표 "데모인 것을 티내지마"): 종전 필드명이 `demo` 라서 **응답만 봐도 어느 것이
+  //   데모인지 알 수 있었다**. 서버가 하는 일 그대로 `boost`(상위노출 대상인가)로 바꿨다 —
+  //   SSOT `shared/constants/demo-products.ts toPublicProductRows`. 기본은 대상이라 `false` 만 온다.
+  const [liveFcfsMap, setLiveFcfsMap] = useState<Map<number, { spots: number; appliedDisplay: number; boost?: boolean; prelaunch?: boolean }>>(new Map())
   useEffect(() => {
     api.get('/api/fcfs/active')
       .then(r => {
-        const m = new Map<number, { spots: number; appliedDisplay: number; demo?: boolean; prelaunch?: boolean }>()
+        const m = new Map<number, { spots: number; appliedDisplay: number; boost?: boolean; prelaunch?: boolean }>()
         for (const p of (r.data?.data || [])) {
-          if (p?.fcfs?.enabled) m.set(p.id, { spots: p.fcfs.spots || 0, appliedDisplay: p.fcfs.appliedDisplay || 0, demo: !!(p.is_demo || p.fcfs.demo), prelaunch: !!p.fcfs.prelaunch })
+          if (p?.fcfs?.enabled) m.set(p.id, { spots: p.fcfs.spots || 0, appliedDisplay: p.fcfs.appliedDisplay || 0, boost: p.fcfs.boost !== false, prelaunch: !!p.fcfs.prelaunch })
         }
         setLiveFcfsMap(m)
       })
@@ -137,8 +140,8 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   }, [])
   const fcfsMap = useMemo(() => {
     const m = new Map(liveFcfsMap)
-    for (const r of restaurants as Array<{ id: number; fcfs?: { enabled?: boolean; spots?: number; appliedDisplay?: number; demo?: boolean; prelaunch?: boolean } }>) {
-      if (!m.has(r.id) && r.fcfs?.enabled) m.set(r.id, { spots: r.fcfs.spots || 0, appliedDisplay: r.fcfs.appliedDisplay || 0, demo: !!r.fcfs.demo, prelaunch: !!r.fcfs.prelaunch })
+    for (const r of restaurants as Array<{ id: number; fcfs?: { enabled?: boolean; spots?: number; appliedDisplay?: number; boost?: boolean; prelaunch?: boolean } }>) {
+      if (!m.has(r.id) && r.fcfs?.enabled) m.set(r.id, { spots: r.fcfs.spots || 0, appliedDisplay: r.fcfs.appliedDisplay || 0, boost: r.fcfs.boost !== false, prelaunch: !!r.fcfs.prelaunch })
     }
     return m
   }, [liveFcfsMap, restaurants])
@@ -307,11 +310,11 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   }, [enrichedRestaurants, region, district, search, sortBy, radiusKm, priceRange, matchesFilter, showFavoritesOnly, favorites, searchDealIds])
 
   // 🎯 2026-06-20 선착순 상위노출 — 선착순 상품을 리스트 최상단으로(나머지 순서 보존).
-  // 🎯 2026-07-04 (대표 "데모 항상 후순위"): boost 는 실(non-demo) 선착순만 — 데모는 끌어올리지 않음.
+  // 🎯 2026-07-04 (대표 "데모 항상 후순위"): boost 는 서버가 대상으로 표시한 선착순만.
   const displayList = useMemo(() => {
     if (fcfsMap.size === 0) return filtered
-    const boost = (id: number) => { const f = fcfsMap.get(id); return f && !f.demo ? 1 : 0 }
-    return [...filtered].sort((a, b) => boost(b.id) - boost(a.id))
+    const boostRank = (id: number) => { const f = fcfsMap.get(id); return f && f.boost !== false ? 1 : 0 }
+    return [...filtered].sort((a, b) => boostRank(b.id) - boostRank(a.id))
   }, [filtered, fcfsMap])
 
   // 🗺️ 보이는 지도 영역의 딜을 리스트 위로(숨기지 않음) — 근거·함정은 viewport-list.ts.

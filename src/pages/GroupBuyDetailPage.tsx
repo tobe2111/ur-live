@@ -45,7 +45,6 @@ import { readCache } from '@/hooks/queries/localCache'
 import { pickSeedDetail } from './group-buy/seed-detail'
 import FcfsApplyBlock from '@/features/group-buy/FcfsApplyBlock'
 // 🖥️ 2026-07-19 (대표 승인 — 그루폰식 상세): PC 우측 sticky 구매 박스 + 섹션 추출(파일크기 래칫).
-import { isDemoSlug } from '@/shared/constants/demo-products'
 import DealPurchaseBox from './group-buy/DealPurchaseBox'
 import DealMenuList, { type DealMenuItem } from './group-buy/DealMenuList'
 import StoreLocation from './group-buy/StoreLocation'
@@ -347,8 +346,8 @@ export default function GroupBuyDetailPage() {
   const isJoinable = detail?.group_buy_status === 'active' || detail?.group_buy_status === 'achieved'
   // 🏷️ 2026-07-05 (대표 "옵션으로 선택"): 오픈 예정형은 구매 불가 — 사전 응모(FcfsApplyBlock)로 유도.
   const isPrelaunch = !!detail?.prelaunch
-  // 🎭 2026-08-08 데모=추첨이라 '구매하기'가 거짓 — 판정은 SSOT(isDemoSlug) 하나만. 사유: 동명 테스트 파일.
-  const isDemoDeal = isDemoSlug((detail as { slug?: string | null } | null)?.slug ?? null)
+  // 🎭 2026-10-12 (대표 "데모인 것을 티내지마"): 데모 판정 제거 — 라벨이 통일됐고, 이 화면이
+  //   데모 여부를 몰라야 응답에서 `slug`(= `demo-deal-NNN`, 유일한 데모 식별자)도 뺄 수 있다.
   const buyable = isJoinable && !isPrelaunch
 
   // 🎨 2026-06-16 리디자인: 스와이프 갤러리 이미지 — image_url + images/detail_images/image_urls(JSON) 병합·중복제거.
@@ -797,7 +796,6 @@ export default function GroupBuyDetailPage() {
           buyable={buyable}
           isJoinable={isJoinable}
           isPrelaunch={isPrelaunch}
-          isDemo={isDemoDeal}
           joining={joining}
           onBuy={() => handleJoin()}
           onPrelaunchApply={() => document.getElementById('fcfs-apply-block')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
@@ -810,7 +808,7 @@ export default function GroupBuyDetailPage() {
       {/* 🧺 2026-09-15: 하단 결제 바를 `DealBottomBar` 로 분리했다(로직 불변) — 이 파일이 동결선에
           붙어 있어 장바구니 '담기' 한 줄을 넣을 자리가 없었다. 규칙의 처방은 깎기가 아니라 분리다. */}
       <DealBottomBar
-        isJoinable={isJoinable} isPrelaunch={isPrelaunch} isDemoDeal={isDemoDeal} buyable={buyable} joining={joining}
+        isJoinable={isJoinable} isPrelaunch={isPrelaunch} buyable={buyable} joining={joining}
         quantity={quantity} total={total} setQuantity={setQuantity} maxQty={maxQty} maxPerPerson={detail.max_per_person}
         unitPrice={unitPrice} refPrice={refPrice} discountPct={displayDiscountPct}
         minReviewLevel={detail?.min_review_level}

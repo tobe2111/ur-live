@@ -20,10 +20,12 @@ export const PRODUCT_DETAIL_FIELDS = [
   // ⚠️ shipping_fee/base_shipping_fee 는 orders/sellers 컬럼 — products 에 존재하지 않음.
   //   2026-06-10 사고 정리 때 잘못 포함 → 모든 상세 쿼리가 'no such column' 1차 실패하던 진짜 원인.
   //   (검증: scripts/check-product-detail-fields-repairable.mjs 가 CI 에서 차단)
-  // 🎭 2026-08-08 (대표 "데모 상품들만 응모하기로"): 데모 판정(`isDemoSlug`)이 slug 로만 성립하는데
-  //   상세 응답에 slug 가 없어 클라 분기가 **항상 false** 였다(라이브 실측: /products/2791 → slug null).
-  //   목록(buildCols)은 2026-07-04 에 이미 넣었고 상세만 빠져 있었다 — 같은 판정이 화면마다 갈리던 것.
-  'slug',
+  // 🙈 2026-10-12 (대표 "데모인 것을 티내지마"): `'slug'` 를 **뺐다**. 2026-08-08 에 넣은 이유가
+  //   *"클라 데모 라벨 분기가 slug 없이는 늘 false"* 였는데, 그 분기 자체를 제거했으므로(데모만
+  //   `결제하기`·`응모 불가` 를 쓰던 것 → 실상품 문구로 통일) 상세 응답이 slug 를 실을 이유가 없다.
+  //   실측: 데모 상세 `/pass/2914` 서버 HTML 에 `demo-deal-307` 이 그대로 박혀 있었다.
+  //   🔒 서버측 데모 판정(정렬·추첨 차단)은 DB 의 slug 를 직접 읽으므로 영향 0 — 응답만 조용해진다.
+  //   📏 보너스: `sellers` 와 달리 products 는 아직 여유가 있지만 D1 결과셋 한도(100)에서 1칸 벌었다.
   'created_at', 'updated_at',
 ] as const
 

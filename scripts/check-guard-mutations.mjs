@@ -1206,8 +1206,10 @@ const MUTATIONS = [
   {
     name: '🔢 "N곳" 이 다시 로드된 수를 센다 — 338곳을 50곳이라 말한다',
     file: 'src/features/group-buy/api/group-buy-public.routes.ts',
-    find: 'data: withOnnuri, ...(total != null ? { total } : {})',
-    replace: 'data: withOnnuri',
+    // 🙈 2026-10-12 재조준: 응답 배열이 `toPublicProductRows(...)` 로 감싸졌다(데모 식별자 제거).
+    //   결함은 그대로 — **total 을 응답에서 떼어낸다**. 앵커만 새 모양으로 옮겼다.
+    find: 'data: toPublicProductRows(withOnnuri), ...(total != null ? { total } : {})',
+    replace: 'data: toPublicProductRows(withOnnuri)',
     test: 'src/tests/unit/map-feed-demand-loading.test.ts',
     why: '전량을 안 받으므로 개수는 서버만 안다. 응답에서 빠지면 화면이 로드된 수로 폴백해 거짓말을 한다.',
   },
