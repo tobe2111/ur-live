@@ -353,6 +353,8 @@ export default defineConfig({
           // 기능 모듈 API — seller/admin/agency/auth 기능 코드 (대시보드에서만 사용)
           if (id.includes('/src/features/')) return 'app-features'
           // 라우트 그룹 정의 파일 — seller/admin/agency 라우트 (큰 Route 트리)
+          // ⚡ 2026-10-12 어드민 라우트 표는 App 이 `/admin/*` 에서 lazy 로 받는다 — 같은 봉투면 소비자 첫 방문이 받는다.
+          if (id.includes('/src/routes/admin.routes')) return 'app-routes-admin'
           if (id.includes('/src/routes/')) return 'app-routes'
           // 기타 공유 컴포넌트 — 하위 디렉터리 별 분리
           // 🛡️ 2026-05-24 (loading P0): 셀러/스트리밍 컴포넌트 분리 → app-components -248KB.

@@ -37,8 +37,8 @@ import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { isKorea } from '@/shared/config/region'
 // TD-006: route group files
 import { SellerRoutes } from './routes/seller.routes'
-import { AdminRoutes } from './routes/admin.routes'
 import { AgencyConsoleRoutes } from './routes/agency-console.routes'
+const AdminRouteTree = lazy(() => import('./routes/admin.routes')) // ⚡ 2026-10-12 어드민 표는 어드민 경로에서만 받는다(admin.routes 머리말)
 
 // ❌ REMOVED: Duplicate Sentry initialization (already done in main.tsx)
 
@@ -705,7 +705,7 @@ function AppContent() {
             {SellerRoutes()}
 
             {/* Admin 페이지들 (공개 + 보호) — src/routes/admin.routes.tsx */}
-            {AdminRoutes()}
+            <Route path="/admin/*" element={<AdminRouteTree />} />
 
             {/* 🏢 2026-10-11 새 에이전시 콘솔(이메일 전용 계정·직원) — 2026-09-04 에 일몰된 옛 에이전시
                 (대시보드·커미션·카카오 로그인)와 다른 것이다. src/routes/agency-console.routes.tsx */}
