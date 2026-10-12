@@ -6,6 +6,7 @@ import {
 } from '@/shared/og-share-image'
 import { SHARE_CARD_W, SHARE_CARD_H } from '@/shared/ushop-share-card'
 import { buildDetailMeta, buildStayDetailMeta, buildProductMeta } from '@/worker/utils/detail-ssr-meta'
+import { buildBlogPostMeta } from '@/features/blog/api/blog-ssr-meta'
 
 const read = (p: string) => fs.readFileSync(p, 'utf8')
 const code = (p: string) => stripComments(read(p))
@@ -189,5 +190,86 @@ describe('🖼️ 공유 카드 — 1200×630 한 장 + 봇 셸 치수 선언', 
     const h = read('index.html')
     expect(h).toContain(`<meta property="og:image:width" content="${OG_CARD_W}" />`)
     expect(h).toContain(`<meta property="og:image:height" content="${OG_CARD_H}" />`)
+  })
+})
+
+/**
+ * ─── ④ **SVG 를 og:image 로 주지 않는다** (2026-10-12 후속 — 전수 쓸기에서 둘 더 나왔다)
+ *
+ * 카카오·페이스북·트위터 스크래퍼는 **SVG 를 안 읽는다.** 그런데 이 레포엔 og:image 가 SVG 인
+ * 자리가 셋 더 있었다(실측):
+ *
+ *     /blog/:slug   og:image = /blog/og/:slug  →  `content-type: image/svg+xml` · 853B
+ *                   ⇒ 발행 글 **23편**이 전부 빈 카드로 공유됐다
+ *     /{몰슬러그}    로고 없으면 `og-image.svg`  ⇒ 그 몰 입구도 빈 카드
+ *     SEO.tsx       `WHOLESALE_DEFAULT_IMAGE`  ⇒ 도매 철거(2026-10-11)로 **소비처 0** — 무접촉
+ *
+ * 🩸 **근본 원인은 낡은 전제였다.** `blog-seo.routes.ts` 머리말이 SVG 배너의 근거로
+ *   *"사이트 기본 OG 가 이미 SVG(og-image.svg)라 SVG 배너는 동일 호환"* 이라 적어 뒀는데,
+ *   그 사이 기본 OG 가 **`og-image.png`(실측 1200×630 라스터 44,972B)** 로 바뀌었다.
+ *   전제가 사라졌는데 결론만 남아 있었고, 에러가 없어 아무도 몰랐다.
+ *
+ * ⚠️ 이 시험이 **못** 보는 것: 카카오가 실제로 어떤 카드를 그리는지(대표만 판정) ·
+ *   `/blog/og/:slug` 라우트 자체(**살려 둔다** — 이전에 스크랩된 카드가 그 주소를 물고 있다).
+ */
+describe('④ og:image 는 라스터다 — 스크래퍼가 SVG 를 안 읽는다', () => {
+  const origin = 'https://urdeal.kr'
+  const post = (extra: Record<string, unknown> = {}) => JSON.stringify({
+    data: { title: '유어딜이란?', summary: '동네 할인권', slug: 'what-is-urdeal', author: '유어딜', published_at: '2026-07-01 00:00:00', ...extra },
+  })
+
+  it('④-1 블로그 글이 SVG 배너를 가리키지 않는다', () => {
+    const m = buildBlogPostMeta(post(), origin)!
+    expect(m.ogImage, 'SVG 배너로 되돌아갔다 — 카톡 카드가 빈다').not.toContain('/blog/og/')
+    expect(m.ogImage).not.toContain('.svg')
+    expect(m.ogImage, '라스터 폴백이 아니다').toContain('/og-image.png')
+  })
+
+  it('④-2 썸네일이 있으면 1200×630 카드 — 없으면 기본 라스터', () => {
+    const withThumb = buildBlogPostMeta(post({ thumbnail_url: 'https://cdn/x.jpg' }), origin)!
+    expect(withThumb.ogImage).toContain('/cdn-cgi/image/')
+    expect(withThumb.ogImage).toContain(`width=${OG_CARD_W}`)
+    expect(withThumb.ogImage).toContain(`height=${OG_CARD_H}`)
+    expect(withThumb.ogImage).toContain('https://cdn/x.jpg')
+    // 썸네일이 비면 카드를 만들지 않는다(감쌀 원본이 없다).
+    expect(buildBlogPostMeta(post({ thumbnail_url: '' }), origin)!.ogImage).toContain('/og-image.png')
+  })
+
+  it('④-3 JSON-LD `image` 는 **절대 URL 원본** — 상대 경로면 구글이 버린다', () => {
+    // 🩸 첫 판이 `/api/media/...` 를 그대로 흘렸다. 2026-10-11 유어샵 핀에서 값을 치른 그 자리이고,
+    //    **빌더를 돌려 눈으로 보고서야** 잡았다(소스 문자열 검사로는 안 보인다).
+    const art = (payload: string) => {
+      const g = JSON.parse(buildBlogPostMeta(payload, origin)!.jsonLd.replace(/<\\\//g, '</'))
+      return (g['@graph'] as Array<Record<string, unknown>>).find((n) => n['@type'] === 'BlogPosting')!
+    }
+    expect(art(post({ thumbnail_url: '/api/media/u/1/a.webp' })).image, '상대 경로가 샜다').toBe('https://media.ur-team.com/u/1/a.webp')
+    expect(art(post({ thumbnail_url: 'https://cdn/x.jpg' })).image, 'JSON-LD 에 카드를 넣었다 — 구글 글 사진은 원본이다').toBe('https://cdn/x.jpg')
+  })
+
+  it('④-4 사진이 없으면 JSON-LD `image` 를 **아예 안 낸다**', () => {
+    // 브랜드 기본 카드를 "이 글의 사진" 이라고 말하는 것은 지어내기다
+    // (이 레포가 `aggregateRating`·`Offer` 에서 지키는 것과 같은 규율).
+    const g = JSON.parse(buildBlogPostMeta(post(), origin)!.jsonLd.replace(/<\\\//g, '</'))
+    const a = (g['@graph'] as Array<Record<string, unknown>>).find((n) => n['@type'] === 'BlogPosting')!
+    expect('image' in a, '사진이 없는데 image 를 냈다').toBe(false)
+  })
+
+  it('④-5 몰 입구(MALL 슬롯)도 라스터 — 로고는 pad 카드로', () => {
+    const w = code('src/worker/index.ts')
+    const line = w.split('\n').find((l) => l.includes('const mImg'))
+    expect(line, 'MALL 슬롯 og:image 배선이 사라졌다').toBeTruthy()
+    expect(line!, 'SVG 폴백으로 되돌아갔다').not.toContain('og-image.svg')
+    expect(line!).toContain('og-image.png')
+    expect(line!, '로고를 원본 그대로 — 1.91:1 이 아니라 잘리거나 작은 카드가 된다').toContain('ogCardUrl(')
+    expect(line!, '로고를 cover 로 자르면 글자가 날아간다').toContain("fit: 'pad'")
+  })
+
+  it('④-6 낡은 전제를 되살리지 않는다 — 사이트 기본 OG 는 라스터다', () => {
+    // 이 단언이 깨지는 날이 오면, 그때는 `/blog/og/:slug` 의 SVG 근거가 **되살아난 것**이 아니라
+    // 기본 OG 가 퇴행한 것이다 — 그쪽을 고칠 것.
+    const h = read('index.html')
+    const og = /property="og:image" content="([^"]+)"/.exec(h)?.[1] || ''
+    expect(og, '기본 OG 가 SVG 로 돌아갔다').not.toContain('.svg')
+    expect(fs.existsSync('public/og-image.png')).toBe(true)
   })
 })

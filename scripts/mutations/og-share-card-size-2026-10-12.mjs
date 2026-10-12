@@ -12,6 +12,7 @@
 const SSOT = 'src/shared/og-share-image.ts'
 const DETAIL = 'src/worker/utils/detail-ssr-meta.ts'
 const MALL = 'src/worker/utils/mall-ssr-meta.ts'
+const BLOG = 'src/features/blog/api/blog-ssr-meta.ts'
 const WORKER = 'src/worker/index.ts'
 const USHOP = 'src/shared/ushop-share-card.ts'
 const TEST = 'src/tests/unit/og-share-card-size-2026-10-12.test.ts'
@@ -154,6 +155,65 @@ export default [
     //    ⇒ 단언을 소스 수준으로 옮겼다. 이 주입은 그 교훈의 영구 기록이다.
     find: 'export const SHARE_CARD_W = OG_CARD_W',
     replace: 'export const SHARE_CARD_W = 1200',
+    test: TEST,
+  },
+  // ─── ④ SVG 를 og:image 로 주지 않는다 (2026-10-12 후속) ───
+  {
+    name: '📰 블로그 og:image 를 SVG 배너로 되돌린다 — 글 23편이 빈 카드',
+    why: '`/blog/og/:slug` 는 실측 `image/svg+xml` 853B 다. 카카오·페북·트위터는 SVG 를 안 읽어 '
+       + '카드가 통째로 빈다. 그 라우트 머리말의 근거(*"기본 OG 도 SVG"*)는 낡은 전제다.',
+    file: BLOG,
+    find: "const ogImage = photo ? productShareImage(photo, origin) : `${origin}/og-image.png`",
+    replace: "const ogImage = `${origin}/blog/og/${encodeURIComponent(post.slug || '')}`",
+    test: TEST,
+  },
+  {
+    name: '📰 블로그 JSON-LD `image` 를 카드 주소로 — 구글 글 사진이 깎인다',
+    why: '두 축을 섞는 쪽. `og:image` 는 1.91:1 카드, JSON-LD `image` 는 원본이다.',
+    file: BLOG,
+    find: "...(photo ? { image: photo } : {})",
+    replace: "...(photo ? { image: ogImage } : {})",
+    test: TEST,
+  },
+  {
+    name: '📰 블로그 JSON-LD 사진의 절대화를 뺀다 — 구글이 그 필드를 조용히 버린다',
+    why: '2026-10-11 유어샵 핀에서 값을 치른 자리. 상대 경로면 구글이 버리면서 **에러를 안 낸다**.',
+    file: BLOG,
+    find: 'const photo = ogAbsHttps(post.thumbnail_url, origin)',
+    replace: "const photo = post.thumbnail_url ? String(post.thumbnail_url) : ''",
+    test: TEST,
+  },
+  {
+    name: '📰 사진이 없을 때도 JSON-LD `image` 를 낸다 — 브랜드 카드를 "이 글의 사진"이라 말한다',
+    why: '지어내기. 이 레포가 `aggregateRating`·`Offer` 에서 지키는 규율과 같은 클래스다.',
+    file: BLOG,
+    find: "...(photo ? { image: photo } : {})",
+    replace: 'image: photo || `${origin}/og-image.png`',
+    test: TEST,
+  },
+  {
+    name: '🏪 몰 입구(MALL 슬롯) 폴백을 SVG 로 되돌린다',
+    why: '로고 없는 몰의 입구가 빈 카드로 공유된다. `mall-ssr-meta` 의 상품 폴백과 **다른 자리**라 '
+       + '한쪽만 고치면 반쪽이 남는다(실제로 그랬다).',
+    file: WORKER,
+    find: '|| `${origin2}/og-image.png`;',
+    replace: '|| `${origin2}/og-image.svg`;',
+    test: TEST,
+  },
+  {
+    name: '🏪 몰 로고를 카드로 감싸지 않는다 — 로고는 1.91:1 이 아니다',
+    why: '정사각·세로 로고를 그대로 보내면 잘리거나 small card 로 떨어진다.',
+    file: WORKER,
+    find: "const mImg = ogCardUrl(",
+    replace: "const mImg = ((x) => x)(",
+    test: TEST,
+  },
+  {
+    name: '🏪 몰 로고를 `cover` 로 자른다 — 로고 글자가 날아간다',
+    why: 'pad 는 전체를 보존하고 cover 는 자른다. 로고에서 자르기는 글자 손실이다.',
+    file: WORKER,
+    find: "origin2, { fit: 'pad' })",
+    replace: "origin2, { fit: 'cover' })",
     test: TEST,
   },
 ]

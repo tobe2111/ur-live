@@ -5,6 +5,7 @@
  *   ⚠️ 동작 불변: 기존 인라인 로직과 byte-동일한 출력(JSON-LD/canonical/OG). 순수 함수만.
  */
 import { CONSUMER_SITE_NAME } from '../../../shared/seo/consumer-surfaces'
+import { productShareImage, ogAbsHttps } from '../../../shared/og-share-image'
 
 /** 블로그 빵부스러기 라벨 — 표의 다른 `crumb` 들과 같은 감각(짧게). */
 const BLOG_CRUMB = '블로그'
@@ -68,13 +69,30 @@ export interface BlogPostMeta {
 /** 블로그 상세(/blog/:slug) 서버 메타 — payload 없거나 파싱 실패 시 null(기본 메타 유지). */
 export function buildBlogPostMeta(ssrPayload: string, origin: string): BlogPostMeta | null {
   try {
-    const post = (JSON.parse(ssrPayload) as { data?: { title?: string; summary?: string; slug?: string; author?: string; published_at?: string } })?.data
+    const post = (JSON.parse(ssrPayload) as { data?: { title?: string; summary?: string; slug?: string; author?: string; published_at?: string; thumbnail_url?: string | null } })?.data
     if (!post || !post.title) return null
     const title = stripBold(String(post.title))
     const description = stripBold(String(post.summary || '')).slice(0, 200)
     const canonical = `${origin}/blog/${post.slug || ''}`
     const pub = post.published_at ? new Date(post.published_at).toISOString() : undefined
-    const ogImage = `${origin}/blog/og/${encodeURIComponent(post.slug || '')}`
+    // 🖼️ 2026-10-12: 종전엔 `/blog/og/:slug`(글별 배너)를 가리켰는데 그게 **SVG** 다 —
+    //   실측 `content-type: image/svg+xml` · 853B. **카카오·페북·트위터 스크래퍼는 SVG 를
+    //   안 읽는다** ⇒ 발행 글 23편이 전부 **빈 카드**로 공유됐다(에러 0 — 공유해 본 사람만 안다).
+    //   🩸 그 라우트 머리말이 근거로 적어 둔 *"사이트 기본 OG 가 이미 SVG(og-image.svg)라 동일 호환"*
+    //     은 **낡은 전제**다 — 기본 OG 는 지금 `og-image.png`(실측 1200×630 라스터 44,972B)다.
+    //   🔒 **라우트는 지우지 않는다** — 이전에 스크랩된 카드가 그 주소를 물고 있다(유어샵 합성
+    //     카드와 같은 판단). 바뀐 것은 *새로 나가는 og:image 가 무엇을 가리키는가* 하나다.
+    //   📌 썸네일은 **아직 전 글이 비어 있다**(라이브 실측 `thumbnail_url: null`) — 그래서 오늘은
+    //     전부 기본 카드로 떨어지고, 글에 사진이 붙는 날 저절로 1200×630 카드가 된다.
+    //   📐 그리고 **두 축을 섞지 않는다**(`og-share-image.ts` 머리말): JSON-LD `image` 는
+    //     구글이 쓰는 **글 사진**이라 원본이 낫고, `og:image` 는 1.91:1 **카드**다.
+    //     종전엔 둘이 같은 SVG 였다 — 그래서 구글 쪽도 SVG 를 받고 있었다(글 리치결과 미지원).
+    //   🩸 그리고 JSON-LD 쪽은 **절대 URL 이어야 한다** — 상대 경로면 구글이 그 필드를 **버리면서
+    //     에러를 안 낸다**(2026-10-11 에 유어샵 핀 사진으로 값을 치른 그 자리다). `ogAbsHttps` 가
+    //     절대화 + R2 공개 도메인 치환까지 한 번에 한다. 첫 판에서 실제로 `/api/media/...` 가
+    //     그대로 샜고, **빌더를 돌려 눈으로 보고서야** 잡았다(문자열 검사로는 안 보인다).
+    const photo = ogAbsHttps(post.thumbnail_url, origin)
+    const ogImage = photo ? productShareImage(photo, origin) : `${origin}/og-image.png`
     // 🧠 2026-07-27 GEO (대표 — "구글 AI 개요에 우리 서비스가"): publisher/isPartOf 를 index.html 의
     //   사이트 전역 Organization·WebSite 노드(@id)에 **참조로 연결** — 기존엔 이름만 같은 분리 노드라
     //   검색 AI 가 "이 글의 발행자 = 유어딜(urdeal.kr) 서비스"로 묶지 못했다. @id 로 그래프가 이어지면
@@ -95,7 +113,9 @@ export function buildBlogPostMeta(ssrPayload: string, origin: string): BlogPostM
     const jsonLd = escapeScript(JSON.stringify({
       '@context': 'https://schema.org',
       '@graph': [
-        { ...articleNode, image: ogImage, breadcrumb: { '@id': crumb['@id'] } },
+        // 🔴 사진이 없으면 `image` 를 **아예 안 낸다** — 브랜드 기본 카드를 "이 글의 사진"
+        //   이라고 말하는 것은 지어내기다(이 레포가 `aggregateRating`·`Offer` 에서 지키는 규율).
+        { ...articleNode, ...(photo ? { image: photo } : {}), breadcrumb: { '@id': crumb['@id'] } },
         crumb,
       ],
     }))
