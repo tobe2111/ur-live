@@ -28,6 +28,27 @@ export interface ConsumerSurfaceSeo {
   /** canonical 에 보존할 쿼리 파라미터. 나머지(utm 등)는 버려 중복 URL 을 막는다. */
   canonicalParams?: readonly string[]
   /**
+   * 허용 파라미터의 **허용 값**. 키가 여기 있으면 그 목록에 든 값만 canonical·제목에 쓰고,
+   * 모르는 값은 **파라미터를 떼서** 맨 경로를 정본으로 삼는다(= 무한 thin URL 차단).
+   * 키가 여기 없으면 그 파라미터는 애초에 `canonicalParams` 에 두지 않는다 — 검증할 수 없는
+   * 축(예: DB 에서 오는 브랜드 82종)을 보존하면 그게 곧 무한 URL 이다.
+   */
+  canonicalParamValues?: Readonly<Record<string, readonly string[]>>
+  /**
+   * 🔀 **제목·설명 접두에 쓸 파라미터** — `canonicalParams` 와 **다른 축**이다.
+   *
+   * 2026-10-12 에 이 둘이 한 필드로 묶여 있던 것이 진짜 설계 결함이었다. canonical 보존은
+   * *"이 URL 을 색인해 달라"* 이고 제목 접두는 *"이 화면이 무엇인지"* 인데, 묶여 있으니
+   * 무한 thin URL 을 막으려고 축을 떼면 **살아 있는 딥링크의 제목까지** 같이 죽었다
+   * (브랜드 칩이 만드는 `?brand=` 는 실제 사용자 링크다 — `VouchersPage` 가 그 값으로 필터한다).
+   *
+   * 🔑 그래서 비대칭이 **의도**다: `category` 는 canonical 에 남으므로(= 색인된다) 허용 값
+   * 검증이 **load-bearing** 이고, `brand` 는 canonical 이 `/vouchers` 로 통합하므로 제목이
+   * 틀려도 **색인되지 않는다**. 남는 노출은 *일부러 만든* 공유 링크 하나뿐이고 그건 종전과 같다.
+   * 생략하면 `canonicalParams` 를 쓴다(다른 표면의 종전 동작 보존).
+   */
+  titleParams?: readonly string[]
+  /**
    * 서버에서도 `robots: noindex, follow` 를 낸다.
    * 클라 `<SEO noindex>` 는 JS 렌더 후라 비-JS 크롤러(네이버 Yeti)에겐 무효였다 — 실측으로
    * `/search`·`/gb-market` 이 클라에선 noindex 인데 **서빙 HTML 은 `index, follow`** 였다.
@@ -52,6 +73,28 @@ export const CONSUMER_SITE_NAME = '유어딜'
  * `/` 는 의도적으로 title/description 을 index.html 기본값과 **동일하게** 둔다 —
  * 홈은 원래 그 문구가 맞고, 여기서 필요한 건 canonical 뿐이다.
  */
+/**
+ * 🎁 교환권 필터의 **실재하는 카테고리** — canonical·제목 접두가 이 집합만 신뢰한다.
+ *
+ * **왜 필요한가**(2026-10-12 라이브 실측, 대표 *"다 개선하고"*): `?category=` 값이 검증 없이
+ * canonical 과 `<title>`·`og:title` 에 그대로 실려, 임의 문자열이 **자기 자신을 정본으로 선언하는
+ * 무한 thin URL** 을 만들고 있었다 — `?category=테스트123` 이 `<title>테스트123 기프티콘 교환권…</title>`
+ * 과 `canonical=…?category=테스트123` 로 나갔다(본문 43자). #1746 이 최상위 경로에서 닫은 그 클래스가
+ * 쿼리 축에 그대로 남아 있었고, `&brand=` 와 조합하면 곱셈으로 늘어난다.
+ *
+ * 🔢 **값은 라이브 D1 실측**(`/api/vouchers/categories`, 2026-10-12 — 20종 2,252건).
+ * ⚠️ 이 목록은 DB 에서 오는 값을 손으로 적어 둔 것이라 **갈릴 수 있다. 그래도 양방향 모두 안전하다**:
+ *   - DB 에 새 카테고리가 생기고 여기 없으면 → 그 URL 은 `/vouchers` 로 통합된다(색인 손실은 thin 한 장).
+ *   - 여기 있는데 DB 에서 사라지면 → 종전과 같다(자기 canonical · 빈 목록).
+ *   즉 *잘못 막아서 멀쩡한 페이지가 색인에서 빠지는* 방향이 없다(지역 임계값과 다른 점).
+ * 🔁 재측정: `curl -sS https://urdeal.kr/api/vouchers/categories | jq -r '.[].category'`
+ */
+export const VOUCHER_FILTER_CATEGORIES: readonly string[] = [
+  '커피/음료', '치킨', '편의점', '피자', '버거', '베이커리/도넛', '아이스크림', '외식',
+  '기타상품권', '생활/가전/디지털', '백화점상품권', '올레', '마트', '도서', '주유상품권',
+  '용역서비스', '영화', '3사 통합데이터 상품', '음악', '마트상품권',
+]
+
 export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> = {
   '/': {
     title: '유어딜 - 우리 동네 맛집·카페·뷰티 이용권 할인',
@@ -63,13 +106,26 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
     title: '기프티콘 교환권 - 카페·편의점·치킨 할인',
     description:
       '스타벅스·메가MGC커피·GS25·투썸 등 인기 브랜드 기프티콘을 할인가로. 결제하면 바로 발송되고 유효기간 안에 매장에서 쓰면 됩니다.',
-    canonicalParams: ['category', 'brand'],
+    // 🔗 2026-10-12: canonical 에서 `'brand'` 를 **뺐다**. 브랜드는 DB 에서 오는 82종이라 검증할
+    //   목록이 없고 sitemap 도 한 건도 제출하지 않는다 — 보존하면 `?brand=<아무거나>` 가 전부
+    //   자기 canonical 을 받는 무한 thin URL 이 된다(실측 48자). 이제 `/vouchers` 로 통합된다.
+    //   🔴 **제목에서는 빼지 않는다** — 브랜드 칩이 만드는 `?brand=` 는 살아 있는 딥링크이고,
+    //      2026-09-02 이전 세션이 *"브랜드가 카테고리보다 우선"* 을 일부러 잠가 뒀다
+    //      (`consumer-surface-seo.test.ts`). canonical 이 통합하므로 색인 피해가 없다.
+    canonicalParams: ['category'],
+    canonicalParamValues: { category: VOUCHER_FILTER_CATEGORIES },
+    titleParams: ['brand', 'category'],
   },
   '/browse': {
     crumb: '쇼핑',
     title: '쇼핑 - 유어딜 상품 모아보기',
     description: '유어딜 사업자 유저가 직접 파는 상품을 한눈에. 카테고리·가격으로 골라 담고 바로 결제하세요.',
-    canonicalParams: ['category'],
+    // 🔗 2026-10-12: `canonicalParams` 를 **없앴다**. 쇼핑탭은 숨김(`SHOPPING_TAB_HIDDEN`)이고
+    //   sitemap 은 `/browse` 를 맨 경로 1건만 제출한다. 그런데 `?category=<아무거나>` 가 자기
+    //   canonical 을 받고 있었다(실측 35자 · `general` 은 2026-07-02 에 소비자 카탈로그에서 뺀 값인데
+    //   31자로 색인 가능했다). 전부 `/browse` 로 통합한다.
+    //   제목 분화는 종전대로 둔다(같은 이유 — canonical 이 통합하므로 색인 피해가 없다).
+    titleParams: ['category'],
   },
   '/map': {
     crumb: '동네딜 지도',
@@ -279,14 +335,34 @@ export function escapeAttr(s: string): string {
     .replace(/>/g, '&gt;')
 }
 
-/** canonical URL 생성 — 허용 파라미터만 보존(정렬해 순서 흔들림 제거), 나머지는 제거. */
+/**
+ * 경로 정규화 — 같은 내용이 여러 URL 로 색인되지 않게 **정본 경로 모양**을 하나로 만든다.
+ *
+ * 🔗 2026-10-12 실측: `/vouchers/`·`/./vouchers`·`/vouchers?` 는 이미 `/vouchers` 로 모였는데
+ *   **`//vouchers` 만** `canonical=…//vouchers` 로 자기 자신을 선언했다(끝 슬래시는 떼는데 앞
+ *   이중 슬래시는 안 뗐다). 흔히 링크되는 모양은 아니지만, 정본이 하나여야 하는 자리다.
+ */
+function normalizeCanonicalPath(pathname: string): string {
+  const collapsed = pathname.replace(/\/{2,}/g, '/')
+  return collapsed !== '/' && collapsed.endsWith('/') ? collapsed.slice(0, -1) : collapsed
+}
+
+/**
+ * canonical URL 생성 — 허용 파라미터의 **허용 값만** 보존(정렬해 순서 흔들림 제거), 나머지는 제거.
+ *
+ * 🔴 **값을 검증하는 것이 이 함수의 요점이다.** 2026-10-12 실측에서 허용 *키*만 보고 값은 비어
+ *   있지 않으면 그대로 실어, `?category=테스트123` 이 자기 자신을 정본이라 선언했다(본문 43자).
+ *   `allowValues` 에 그 키가 있으면 목록에 든 값만 남기고, 모르는 값은 **파라미터를 떼서** 맨
+ *   경로를 정본으로 삼는다 — 즉 쓰레기 URL 이 `/vouchers` 로 통합된다.
+ */
 export function buildCanonical(
   origin: string,
   pathname: string,
   search: string,
-  allow: readonly string[] | undefined
+  allow: readonly string[] | undefined,
+  allowValues?: Readonly<Record<string, readonly string[]>>
 ): string {
-  const path = pathname !== '/' && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname
+  const path = normalizeCanonicalPath(pathname)
   if (!allow || allow.length === 0) return `${origin}${path}`
   let params: URLSearchParams
   try {
@@ -297,7 +373,10 @@ export function buildCanonical(
   const kept: string[] = []
   for (const key of [...allow].sort()) {
     const v = params.get(key)
-    if (v) kept.push(`${encodeURIComponent(key)}=${encodeURIComponent(v)}`)
+    if (!v) continue
+    const ok = allowValues?.[key]
+    if (ok && !ok.includes(v.trim())) continue // 모르는 값 → 파라미터를 떼고 맨 경로로 통합
+    kept.push(`${encodeURIComponent(key)}=${encodeURIComponent(v)}`)
   }
   return kept.length ? `${origin}${path}?${kept.join('&')}` : `${origin}${path}`
 }
@@ -339,18 +418,31 @@ export function resolveConsumerSurfaceSeo(
   origin: string,
   siteName: string = CONSUMER_SITE_NAME
 ): ResolvedSurfaceSeo | null {
-  const path = pathname !== '/' && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname
+  // 🔗 2026-10-12: 정규화를 **조회 시점에** 건다. canonical 쪽만 고쳤을 때 `//vouchers` 는 표에
+  //   그 키가 없어 `entry` 가 undefined → 메타가 통째로 null 이 됐다(= 그 URL 만 제네릭 셸을 받는다).
+  //   끝 슬래시·중복 슬래시를 먼저 접어야 `/vouchers` 항목을 찾고 canonical 도 `/vouchers` 가 된다.
+  const path = normalizeCanonicalPath(pathname)
   const entry = CONSUMER_SURFACE_SEO[path]
   // 표에 없으면 동적 표면 빌더에 넘긴다(경로에서 값을 뽑을 수 있는 것만 — 조회는 하지 않는다).
   if (!entry) return resolveAreaReportSeo(path, origin, siteName)
 
   let title = entry.title
   let description = entry.description
-  if (entry.canonicalParams?.length) {
+  const titleKeys = entry.titleParams ?? entry.canonicalParams
+  if (titleKeys?.length) {
     let params: URLSearchParams | null = null
     try { params = new URLSearchParams(search || '') } catch { params = null }
-    const brand = params?.get('brand')?.trim()
-    const category = params?.get('category')?.trim()
+    // 🔴 **제목 접두도 canonical 과 같은 집합을 믿는다.** 2026-10-12 실측에서 검증이 없어
+    //   `?category=테스트123` 이 `<title>테스트123 기프티콘 교환권…</title>` 과 같은 `og:title` 로
+    //   나갔다 — 없는 카테고리의 **페이지 정체성을 지어내고** 그게 공유 카드에도 실린다.
+    //   ⚠️ 두 자리가 갈리면 제목은 `치킨` 인데 canonical 은 떼는 모순이 생긴다. 한 집합만 쓴다.
+    const allowed = (key: 'brand' | 'category', v: string | undefined): string | undefined => {
+      if (!v || !titleKeys?.includes(key)) return undefined
+      const ok = entry.canonicalParamValues?.[key]
+      return !ok || ok.includes(v) ? v : undefined
+    }
+    const brand = allowed('brand', params?.get('brand')?.trim())
+    const category = allowed('category', params?.get('category')?.trim())
     if (brand) {
       title = `${brand} ${entry.title}`
       description = `${brand} ${entry.description}`
@@ -365,7 +457,7 @@ export function resolveConsumerSurfaceSeo(
     pageTitle,
     title: pageTitle,
     description,
-    canonical: buildCanonical(origin, path, search, entry.canonicalParams),
+    canonical: buildCanonical(origin, path, search, entry.canonicalParams, entry.canonicalParamValues),
     ...(entry.noindex ? { noindex: true } : {}),
   }
 }

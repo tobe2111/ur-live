@@ -22,6 +22,18 @@ import { REGION_PAGES_ENABLED } from '../../shared/feature-flags';
 import { isIndexableImageUrl } from '../../shared/seo/indexable-image';
 // 🏨 정본 상세 주소 SSOT — 숙소 이용권은 `/stays/:id`(상세 canonical 과 같은 함수).
 import { canonicalDetailPath } from '../../shared/product-flow';
+// 🎁 교환권 필터 카테고리 SSOT — canonical 이 믿는 집합과 **같은 목록**을 읽는다.
+import { VOUCHER_FILTER_CATEGORIES } from '../../shared/seo/consumer-surfaces';
+
+/**
+ * 🎁 sitemap 이 **제출하는** 교환권 카테고리 — 재고가 많은 상위 3종.
+ * 🔴 값은 `VOUCHER_FILTER_CATEGORIES`(canonical·제목 접두가 믿는 집합)에서 **골라 온다**. 손으로
+ *   적으면 둘이 갈리고, 갈리면 *제출한 URL 의 정본이 다른 곳을 가리키는* 모순이 조용히 생긴다
+ *   (2026-10-12 오전에 `/pass`↔`/stays` 로 그 대가를 치렀다). SSOT 에서 사라진 값은 `filter` 가
+ *   떨어뜨려 제출되지 않는다 = 빈 목록을 색인 요청하지 않는다(2026-07-29 영문 슬러그 6건 사고).
+ */
+const SITEMAP_VOUCHER_CATEGORIES: readonly string[] = ['편의점', '커피/음료', '베이커리/도넛']
+  .filter((c) => VOUCHER_FILTER_CATEGORIES.includes(c))
 
 interface GroupBuyRow { id: number; category: string | null; deal_only: number | null; image_url: string | null; updated_at: string }
 
@@ -70,9 +82,15 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
     //   mobile)를 제출하고 있었다 → 어느 상품과도 매칭되지 않아 **빈 목록 6개를 색인 요청**한 셈이다.
     //   아래는 라이브 실측(`/api/products?deal_only=1`) 상위 카테고리만 남긴 것 — 재고가 실제로 있는 값.
     //   ⚠️ 값을 바꿀 때는 반드시 라이브 분포를 다시 확인할 것(카테고리는 공급사 데이터라 바뀐다).
-    { loc: `/vouchers?category=${encodeURIComponent('편의점')}`, priority: 0.75, changefreq: 'weekly' },
-    { loc: `/vouchers?category=${encodeURIComponent('커피/음료')}`, priority: 0.7, changefreq: 'weekly' },
-    { loc: `/vouchers?category=${encodeURIComponent('베이커리/도넛')}`, priority: 0.65, changefreq: 'weekly' },
+    //   🔗 2026-10-12: 값을 **`VOUCHER_FILTER_CATEGORIES`(SSOT)에서 골라 온다.** 종전엔 여기 손으로 적힌
+    //      3개와 canonical 이 믿는 값이 따로였고, canonical 쪽은 **아무 값이나** 통과시켜
+    //      `?category=테스트123` 이 자기 자신을 정본이라 선언했다(본문 43자). 이제 제출분이 허용분의
+    //      **부분집합임을 구조로 보장**한다 — SSOT 에서 사라진 값은 아래 `filter` 가 떨어뜨린다.
+    ...SITEMAP_VOUCHER_CATEGORIES.map((c, i) => ({
+      loc: `/vouchers?category=${encodeURIComponent(c)}`,
+      priority: [0.75, 0.7, 0.65][i] ?? 0.6,
+      changefreq: 'weekly',
+    })),
     { loc: '/map', priority: 0.7, changefreq: 'daily' },
     // 🔎 2026-08-26 (대표 "SEO 도 우리 서비스에 맞게") — **메타는 있는데 사이트맵에 없던 8개 표면.**
     //   `CONSUMER_SURFACE_SEO` 에 title/description 을 갖추고, 인증 게이트도 없고, robots 도 안 막는데

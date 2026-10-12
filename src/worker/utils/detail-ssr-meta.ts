@@ -304,7 +304,22 @@ export function buildProductMeta(ssrPayload: string, origin: string, pathname: s
     const isDeal = Number(d.deal_only) === 1
     const unit = isDeal ? '딜' : '원'
     const rate = original > price && price > 0 ? Math.round((1 - price / original) * 100) : 0
-    const canonical = `${origin}${pathname}`
+    // 🔗 2026-10-12 (대표 "다 개선하고"): canonical 을 **SSOT 가 말하는 정본 주소**로. 실측에서
+    //   같은 상품이 `/pass/2919`·`/products/2919` 로, `/stays/2887`·`/products/2887` 로 각각
+    //   **자기 자신**을 정본이라 선언하고 있었다(둘 다 `index, follow`). 서로를 가리키지도 않으니
+    //   구글은 둘 다 무시하고 자기가 고른다 — 2026-10-12 오전 `/pass`↔`/stays` 수리의 세 번째 얼굴이다.
+    //   규모: sitemap 의 `/pass` 310 + `/stays` 50 = 360건이 `/products/:id` 로도 색인 가능했다.
+    //   ⚠️ noindex 를 **같이 붙이지 않는다**(canonical 통합 + noindex 는 서로 반대 신호).
+    //      교환권의 `noindex: isDeal` 은 그대로 — 그건 "이 상품은 색인 대상이 아니다" 로 축이 다르다.
+    //   폴백은 종전과 같은 `pathname`(판정 불가 시 자기 자신).
+    //   🔴 **교환권(`deal_only=1`)은 self-canonical 을 유지한다.** 그쪽은 `noindex: isDeal` 이 붙는데,
+    //      거기에 cross-canonical 을 겹치면 *"이 페이지를 버리고 X 로 합쳐라"* 와 *"색인하지 마라"* 가
+    //      서로 반대 신호가 된다(오전 audit log 가 경고한 그 자리). 색인 안 하는 URL 은 합칠 것도 없다.
+    //      ⇒ 바뀌는 것은 **색인 대상인 이용권·숙소 360건**뿐이고 교환권 2,260건은 byte-동일이다.
+    const canonicalPath = isDeal
+      ? null
+      : canonicalDetailPath({ id: id ?? '', deal_only: d.deal_only, category: d.category })
+    const canonical = `${origin}${canonicalPath && canonicalPath.startsWith('/') ? canonicalPath : pathname}`
     const ogImage = absImage(String(d.image_url || ''), origin, id, `${origin}/og-image.png`)
     const priceStr = price.toLocaleString('ko-KR')
 

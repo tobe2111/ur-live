@@ -47,8 +47,15 @@ export default [
   {
     name: '숙소 정본 — `/pass/:id` canonical 을 자기 자신으로 환원 (두 URL 색인 경쟁)',
     file: M,
-    find: '    const canonical = `${origin}${canonicalPath && canonicalPath.startsWith(\'/\') ? canonicalPath : pathname}`',
-    replace: '    const canonical = `${origin}${pathname}`',
+    // 🔀 2026-10-12 재조준: `buildProductMeta` 도 같은 SSOT 를 쓰게 되면서 이 줄이 **두 곳**에
+    //    맞게 됐다(그러면 러너가 어느 쪽을 고쳤는지 모른다). 결함은 한 글자도 안 바꾸고 앞줄을
+    //    더해 `buildDetailMeta` 쪽으로 고유화한다 — `buildProductMeta` 는 삼항이라 모양이 다르다.
+    find:
+      "    const canonicalPath = canonicalDetailPath({ id: id ?? '', deal_only: d.deal_only, category: d.category })\n" +
+      '    const canonical = `${origin}${canonicalPath && canonicalPath.startsWith(\'/\') ? canonicalPath : pathname}`',
+    replace:
+      "    const canonicalPath = canonicalDetailPath({ id: id ?? '', deal_only: d.deal_only, category: d.category })\n" +
+      '    const canonical = `${origin}${pathname}`',
     test: T,
     why:
       '정확히 종전 상태다 — 같은 `products.id` 가 `/pass/2887` 과 `/stays/2887` **둘 다** 자기를 ' +
