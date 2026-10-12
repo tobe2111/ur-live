@@ -2507,7 +2507,9 @@
       "ordersCustomers": "Orders & Customers",
       "curator": "My UrShop",
       "vouchers": "Vouchers",
-      "growth": "Growth"
+      "growth": "Growth",
+      "menu": "All menu",
+      "home": "Seller home"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}.{{month}} Revenue Calendar",
@@ -2574,7 +2576,8 @@
       "partners": "Partners",
       "notifyGuide": "Alerts & guide",
       "operatingSummary": "Operating summary",
-      "storeInfo": "Store info"
+      "storeInfo": "Store info",
+      "plusFriendGuide": "Add KakaoTalk channel"
     },
     "bundlesSubtitle": "Bundle multiple products for set-discount sales",
     "bundleCreate": "Create Bundle",

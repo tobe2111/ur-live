@@ -1831,7 +1831,9 @@
       "ordersCustomers": "Pedidos y clientes",
       "curator": "Mi UrShop",
       "vouchers": "Cupones",
-      "growth": "Crecimiento"
+      "growth": "Crecimiento",
+      "menu": "Menú completo",
+      "home": "Inicio de ventas"
     },
     "nav": {
       "products": "Productos",
@@ -1882,7 +1884,8 @@
       "partners": "Socios",
       "notifyGuide": "Avisos y guía",
       "operatingSummary": "Resumen de operación",
-      "storeInfo": "Info de tienda"
+      "storeInfo": "Info de tienda",
+      "plusFriendGuide": "Añadir canal de KakaoTalk"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",

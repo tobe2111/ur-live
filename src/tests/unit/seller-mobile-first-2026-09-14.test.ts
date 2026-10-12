@@ -5,31 +5,37 @@
  * ⚠️ 못 막는 것: 간격·크기·"보기 좋은가". 그건 렌더해서 봤다(폰 430 · PC 1440 · 신규/운영/매장없음 세 인격).
  */
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { stripComments } from '../helpers/source-text'
 import { SELLER_PRIMARY_NAV, activePrimaryKey, isCoveredByPrimary } from '@/components/seller/seller-primary-nav'
 
 const read = (p: string) => stripComments(readFileSync(p, 'utf8'))
 
-describe('T1 다섯 대분류 SSOT — 폰 하단 탭과 PC 사이드바가 같은 목록을 쓴다', () => {
+describe('T1 다섯 대분류 SSOT — 전체 메뉴 화면이 같은 목록을 쓴다', () => {
+  // 🧱 2026-10-12 셀러 대시보드 제거 4단계: 하단 탭(폰)·사이드바(PC)를 걷어내고 메뉴는 `/seller/more` 한 화면이 맡는다.
   it('다섯이고 순서가 홈·주문·이용권·정산·더보기다', () => {
     expect(SELLER_PRIMARY_NAV.map(t => t.key)).toEqual(['home', 'orders', 'vouchers', 'settlements', 'more'])
   })
-  it('🔒 하단 탭은 목록을 손으로 적지 않고 모델에서 받는다', () => {
-    const tabs = read('src/components/seller-layout/SellerBottomTabs.tsx')
-    expect(tabs).toMatch(/const \{ primary \} = useSellerNavModel\(\)/)
-    expect(tabs).not.toMatch(/'\/seller\/orders'/)
+  it('🔒 전체 메뉴는 대분류를 손으로 적지 않고 모델에서 받는다', () => {
+    const more = read('src/pages/SellerMorePage.tsx')
+    expect(more).toMatch(/const \{ primary, moreGroups, ctaItem \} = useSellerNavModel\(\)/)
+    expect(more).toMatch(/mainTabs\.map\(/)
+    expect(more).not.toMatch(/'\/seller\/orders'/)
   })
   it('🔒 홈은 더보기에 다시 뜨지 않는다 (폰 실측: "대시보드" 줄이 중복됐다)', () => {
     expect(isCoveredByPrimary('/seller')).toBe(true)
     expect(activePrimaryKey('/seller/orders/123')).toBe('orders')
   })
-  it('🔒 레이아웃 본문 끝이 탭 바 높이만큼 비어 있다 — 없으면 마지막 줄이 탭에 가린다', () => {
+  it('🔒 틀에는 하단 탭도 서랍도 없고, 머리줄의 전체 메뉴가 그 화면으로 간다', () => {
     const layout = read('src/components/SellerLayout.tsx')
-    expect(layout).toMatch(/paddingBottom: `calc\(\$\{SELLER_TABBAR_H\}px \+ env\(safe-area-inset-bottom\)/)
-    expect(layout).toMatch(/<SellerBottomTabs pendingOrders=\{pendingOrders\} \/>/)
-    // 햄버거·서랍은 없다 — 폰 메뉴는 하단 탭 + 더보기가 전부다.
+    expect(layout).not.toMatch(/SellerBottomTabs|SELLER_TABBAR_H/)
+    expect(existsSync('src/components/seller-layout/SellerBottomTabs.tsx'), '삭제한 하단 탭이 되살아났다').toBe(false)
+    expect(layout).toMatch(/export const SELLER_MENU_PATH = '\/seller\/more'/)
+    expect(layout).toMatch(/<Link\s+to=\{SELLER_MENU_PATH\}/)
+    // 햄버거·서랍은 없다.
     expect(layout).not.toMatch(/sidebarOpen/)
+    // 본문 끝은 safe-area 만큼 비운다(홈 인디케이터에 마지막 줄이 붙지 않게).
+    expect(layout).toMatch(/paddingBottom: 'calc\(env\(safe-area-inset-bottom\) \+ 20px\)'/)
   })
   it('🔒 /seller/more 라우트가 실재한다 (다섯 번째 탭의 착지점)', () => {
     expect(readFileSync('src/routes/seller.routes.tsx', 'utf8')).toContain('path="/seller/more"')

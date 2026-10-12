@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react'
 import { Link, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Globe, Home, LogOut, MessageCircle, Search, Settings } from 'lucide-react'
-import { logoutSeller } from '@/lib/seller-auth'
+import { MessageCircle, Search } from 'lucide-react'
 import api from '@/lib/api'
-import { getRoleShortLabel } from '@/shared/seller-roles'
 import { useTokenAutoRefresh } from '@/hooks/useTokenAutoRefresh'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import BrandLoader from '@/components/brand/BrandLoader'
+import { GridIcon } from '@/components/icons/urdeal-icons'
 import { applyBizFavicon, restoreDefaultFavicon } from '@/lib/biz-favicon'
 import DashboardNotificationBell from './DashboardNotificationBell'
 import StoreSwitcher from '@/components/seller/StoreSwitcher'
@@ -16,16 +15,19 @@ import SellerApprovalBanner from '@/components/seller/SellerApprovalBanner'
 import BackToMyBar from '@/components/seller/BackToMyBar'
 import AgencySeatBar from '@/components/seller/AgencySeatBar'
 import SellerGroupTabs from './seller/SellerGroupTabs'
-import SellerBottomTabs, { SELLER_TABBAR_H } from './seller-layout/SellerBottomTabs'
 import { useSellerNavModel } from './seller-layout/useSellerNavModel'
 import CommandPalette from '@/components/dashboard/CommandPalette'
 import { useSellerEmbedded } from '@/shared/seller-embed'
 import { consoleRedirectFor, myRedirectFor, shouldSendAgencyToConsole, shouldSendOwnerToMy } from '@/lib/seller-deep-link'
 
+/** 🧭 전체 메뉴(더보기) 주소 — 사이드바·하단 탭이 하던 일을 이 한 화면이 맡는다(2026-10-12 4단계). */
+export const SELLER_MENU_PATH = '/seller/more'
+
 interface SellerLayoutProps {
   title: string
   children: React.ReactNode
   headerRight?: React.ReactNode
+  /** @deprecated 2026-10-12 — 하단 탭·사이드바 배지가 사라졌다. 호출부 호환으로만 남는다(주문 수는 주문 화면이 말한다). */
   pendingOrders?: number
   /**
    * 🪟 **껍데기 없이 본문만** (2026-09-26, 설계 §21) — 마이 안 시트가 대시보드 페이지를
@@ -42,29 +44,26 @@ interface SellerLayoutProps {
   bare?: boolean
 }
 
-/** 사이드바 한 줄 — 다섯 대분류와 더보기 항목이 **같은 그림**이어야 한다(활성 = 연파랑 알약). */
-const ROW = 'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12.5px] transition-colors'
-const ROW_ON = 'font-bold text-gray-900 ur-seller-nav-active'
-const ROW_OFF = 'font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900'
-
 /**
- * 🧭 **셀러 대시보드 껍데기** (2026-09-14 대표 승인 — 모바일 우선 재설계 "그대로 모두 진행").
- *   시안: `docs/design/seller-dashboard-mobile-first-2026-09.md`.
+ * 🧭 **셀러 대시보드 껍데기 — 얇은 틀** (2026-10-12 셀러 대시보드 제거 4단계, 대표 *"셀러 대시보드를 없애는 것을 목표로"*).
  *
- *   - 폰: 상단바 + 본문 + **하단 탭 5개**(홈·주문·이용권·정산·더보기). 햄버거·서랍 메뉴는 없앴다 —
- *     14개 메뉴가 서랍 뒤에 숨는 구조가 "헷갈린다"의 절반이었고, 남은 메뉴는 `/seller/more` 가 받는다.
- *   - PC(md+): 흰 사이드바(Rinda 시안, `dashboard-rinda-2026-09.md`)가 **같은 다섯을 세로로** 그리고,
- *     헤어라인 아래에 더보기 항목을 펼친다. 폰과 PC 가 같은 순서·같은 부품.
- *   목록 계산은 전부 `useSellerNavModel`(SSOT) — 여기서는 그리기만 한다.
+ *   카카오 사장님은 마이에서, 에이전시 직원은 콘솔에서 일한다(3단계 리다이렉트). 이 틀에 남는 사람은
+ *   **마이가 없는 옛 계정 · 콘솔 로그인이 없는 좌석 · 시트로 못 여는 화면(`?dash=1`)** 뿐이다.
+ *   그래서 종전의 사이드바(PC)·하단 탭 다섯(폰)을 걷어내고 **머리줄 하나**만 남긴다:
+ *     [매장(전환 겸용) · 제목]  ……  [매장 드롭다운(PC) · 검색 · 알림 · 전체 메뉴]
+ *   메뉴 전체는 `/seller/more` 한 화면이 받는다(다섯 대분류 + 이용권 등록 + 나머지 + 계정) —
+ *   목록 계산은 그대로 `useSellerNavModel`(SSOT)이라 마이의 '전체 도구'와 갈리지 않는다.
+ *
+ *   ⚠️ 숨김 화면(쿠폰·공급·숙소·리뷰 검수·체험단)은 지우지 않는다 — 대표 결정 "남겨 두기".
+ *   ⚠️ 남기는 배선: 깊은 링크 리다이렉트 · 토큰 자동 갱신 · 도매 전용 바운스 · 귀환 띠 · 좌석 띠 · 승인 배너.
  */
-export default function SellerLayout({ title, children, headerRight, pendingOrders = 0, bare = false }: SellerLayoutProps) {
+export default function SellerLayout({ title, children, headerRight, bare = false }: SellerLayoutProps) {
   // 🪟 마이 시트 안인가. **페이지가 아니라 여기가 읽는다** — 41개 화면에 prop 을 뚫으면
   //   반드시 몇 개를 빠뜨리고, 빠진 화면은 시트 안에 사이드바를 통째로 그린다.
   const embedded = useSellerEmbedded()
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
-  const [langOpen, setLangOpen] = useState(false)
 
   // 🛡️ 2026-04-30: 만료 5분 전 자동 refresh + 탭 복귀 시 검증
   useTokenAutoRefresh('seller')
@@ -121,7 +120,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
   }, [navigate])
 
   const sellerName = localStorage.getItem('seller_name') || 'Seller'
-  const { sellerType, primary, moreGroups, ctaItem, commandItems, isActive } = useSellerNavModel()
+  const { commandItems } = useSellerNavModel()
 
   // 🏭 라이브 중단 시: 다른 컴포넌트가 store 로 인식하도록 동기화(모드 토글 UI 는 2026-09-14 에 제거 — 라이브 영구 중단 뒤
   //   가능한 모드가 'store' 하나뿐이라 토글이 그려질 조건이 없었다).
@@ -140,117 +139,6 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
-
-  // 🏳️ 2026-08-31: 국기 이모지 없이 각 언어를 그 언어 자신의 이름으로.
-  const languages = [{ code: 'ko', label: '한국어', short: 'KO' }, { code: 'en', label: 'English', short: 'EN' }, { code: 'ja', label: '日本語', short: 'JA' }, { code: 'zh', label: '中文', short: 'ZH' }, { code: 'es', label: 'Español', short: 'ES' }, { code: 'fr', label: 'Français', short: 'FR' }]
-  const currentLang = languages.find(l => l.code === i18n.language) || languages[0]
-  function changeLang(code: string) {
-    i18n.changeLanguage(code)
-    if (typeof document !== 'undefined') document.documentElement.lang = code
-    localStorage.setItem('i18nextLng', code)
-    setLangOpen(false)
-  }
-
-  // 🛡️ 2026-05-21 Phase D-5: getRoleShortLabel helper 사용 (직접 비교 금지).
-  const sellerTypeLabel = getRoleShortLabel(sellerType)
-
-  // 🔗 2026-07-02: 유어샵은 /u/{handle} 로 통일 — 소비자 핸들 있으면 직행, 셀러-only 만 /profile 폴백.
-  const handle = localStorage.getItem('user_handle')
-  const goodHandle = !!handle && handle.length >= 3 && !['user', 'me', 'admin', 'seller', 'api', 'host', 'new'].includes(handle.toLowerCase())
-  const sellerSlug = localStorage.getItem('seller_username') || localStorage.getItem('seller_id')
-  const publicTarget = goodHandle ? `/u/${handle}` : (sellerSlug ? `/profile/${sellerSlug}` : null)
-
-  // 🛡️ 사이드바를 JSX 변수로 — 함수 컴포넌트로 두면 부모 re-render 마다 remount 된다.
-  const sidebar = (
-    // 🧭 2026-09-14 (Rinda 시안): 어두운 면 → **흰 면 + 헤어라인**. 🧮 2026-09-15 D3: 224px · 글자 12.5px(밀도).
-    <aside className="w-[224px] flex-shrink-0 flex flex-col h-full bg-white border-r border-rule">
-      <div className="px-4 pt-5 pb-3">
-        <div className="flex items-center gap-2.5">
-          <UrDealLogo size={15} />
-          <span className="font-bold uppercase text-[9px] tracking-[0.08em] text-gray-400">SELLER STUDIO</span>
-        </div>
-      </div>
-
-      {/* 🏪 워크스페이스 카드 — "내가 무슨 자격으로 로그인해 있나". */}
-      <div className="px-4 pb-3">
-        <div className="rounded-lg border border-rule px-3 py-2">
-          <p className="text-[10px] font-semibold text-gray-400">{t('seller.layout.workspace', { defaultValue: '내 계정' })}</p>
-          <div className="mt-0.5 flex items-center gap-2">
-            <p className="min-w-0 flex-1 truncate text-[12.5px] font-bold text-gray-900">{sellerName}</p>
-            <span className="shrink-0 rounded-md bg-brand-tint px-1.5 py-0.5 text-[10px] font-bold text-brand-text">{sellerTypeLabel}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* 🔎 페이지 검색 — 메뉴에 없는 화면까지 이름으로 바로 간다(⌘K / Ctrl+K). */}
-      <button
-        type="button"
-        onClick={() => setPaletteOpen(true)}
-        className="mx-4 mb-2 flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-left transition-colors hover:bg-gray-100"
-      >
-        <Search size={13} className="flex-shrink-0 text-gray-400" />
-        <span className="flex-1 text-[12px] text-gray-400">{t('seller.pageSearch', { defaultValue: '페이지 검색' })}</span>
-        <kbd className="rounded bg-white px-1 py-0.5 text-[9px] font-bold text-gray-400 border border-rule">⌘K</kbd>
-      </button>
-
-      {/* 🎟️ 주 행동 — '이용권 등록'은 여기 한 자리에서만 파란 버튼으로 그린다(메뉴·타일·매장 카드에 흩어졌던 것). */}
-      {ctaItem && (
-        <Link
-          to={ctaItem.path}
-          className="mx-4 mb-3 flex items-center justify-center gap-1.5 rounded-lg bg-brand px-3 py-2 text-[12.5px] font-bold text-white transition-colors hover:bg-brand-dark"
-        >
-          <ctaItem.icon size={16} strokeWidth={2.4} />
-          {t(ctaItem.labelKey)}
-        </Link>
-      )}
-
-      <nav className="flex-1 min-h-0 overflow-y-auto scrollbar-hide pb-2">
-        {/* ── 다섯 대분류 중 넷(더보기는 PC 에선 아래 목록 자체다) ── */}
-        <div className="px-2">
-          {primary.filter((p) => p.key !== 'more').map(({ key, path, label, icon: Icon, active }) => (
-            <Link key={key} to={path} className={`${ROW} ${active ? ROW_ON : ROW_OFF}`}>
-              <Icon size={17} filled={active} className={`flex-shrink-0 ${active ? 'text-brand-text' : 'text-gray-400'}`} />
-              <span className="flex-1 truncate">{label}</span>
-              {key === 'orders' && pendingOrders > 0 && (
-                <span className="rounded-full bg-brand px-1.5 text-[10px] font-extrabold text-white">{pendingOrders}</span>
-              )}
-            </Link>
-          ))}
-        </div>
-        {/* ── 더보기 — 다섯이 덮지 않는 나머지. 그룹 라벨 없이 헤어라인으로만 묶는다(Rinda 는 라벨이 0개다). ── */}
-        {moreGroups.map((group, gi) => (
-          <div key={gi} className="mt-2 border-t border-rule px-2 pt-2">
-            {group.items.map(({ path, labelKey, icon: Icon, ...rest }) => {
-              const active = isActive(path, (rest as { exact?: boolean }).exact, (rest as { also?: string[] }).also)
-              return (
-                <Link key={path} to={path} className={`${ROW} ${active ? ROW_ON : ROW_OFF}`}>
-                  <Icon size={16} strokeWidth={2} className={`flex-shrink-0 ${active ? 'text-brand-text' : 'text-gray-400'}`} />
-                  <span className="flex-1 truncate">{t(labelKey)}</span>
-                </Link>
-              )
-            })}
-          </div>
-        ))}
-      </nav>
-
-      <div className="border-t border-rule px-2 py-2">
-        <Link to="/seller/profile?tab=business" state={{ preserveScroll: true }} className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12px] font-medium text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900">
-          <Settings size={14} strokeWidth={2} className="text-gray-400" />
-          {t('seller.settings')}
-        </Link>
-        {publicTarget && (
-          <Link to={publicTarget} state={{ preserveScroll: true }} className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12px] font-medium text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900">
-            <Globe size={14} strokeWidth={2} className="text-gray-400" />
-            {t('seller.viewPublicProfile', { defaultValue: '공개 프로필 보기' })}
-          </Link>
-        )}
-        <button onClick={() => logoutSeller(navigate)} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12px] font-medium text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900">
-          <LogOut size={14} strokeWidth={2} className="text-gray-400" />
-          {t('common.logout')}
-        </button>
-      </div>
-    </aside>
-  )
 
   // 🪟 마이 안 시트 — 본문만 돌려준다. **모든 훅 뒤**라 토큰 자동 갱신 등은 그대로 돈다.
   //   ⚠️ 도매 전용 리다이렉트보다 **먼저** 반환한다: 시트 안에서 튕기면 마이가 통째로 사라진다.
@@ -289,94 +177,65 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
   }
 
   return (
-    <div className="seller-light-theme flex h-[100dvh] overflow-hidden bg-warm text-gray-900">
-      {/* 🛡️ 2026-05-14: 태블릿+ (md=768px) 부터 사이드바 — 폰은 하단 탭이 같은 다섯을 맡는다. */}
-      <div className="hidden md:flex">{sidebar}</div>
-
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* 🏷️ 2026-09-15 A2 "매장이 제목" + 🧮 D3 (대표 확정). 폰: 헤더 제목 자리 = 매장(전환 겸용), 페이지 제목은 아래 한 줄.
-            PC: 브레드크럼 `매장 / 제목` — 페이지 제목(h1)은 본문의 DashboardPageHeader 가 17px 로 그린다. */}
-        <header className="flex h-14 md:h-12 flex-shrink-0 items-center justify-between border-b border-rule bg-white px-3 md:px-6">
-          <div className="flex min-w-0 items-center gap-2 md:hidden">
-            <StoreSwitcher variant="title" />
-          </div>
-          <div className="hidden min-w-0 items-center gap-1.5 text-[13px] md:flex">
+    <div className="seller-light-theme flex h-[100dvh] flex-col overflow-hidden bg-warm text-gray-900">
+      {/* 🏷️ 머리줄 하나 — 2026-09-15 A2 "매장이 제목"은 그대로: 폰은 제목 자리 = 매장(전환 겸용), 페이지 제목은 본문 첫 줄.
+          PC 는 로고 + 브레드크럼 `매장 / 제목`. 사이드바·하단 탭이 하던 이동은 오른쪽 '전체 메뉴' 하나가 맡는다. */}
+      <header className="flex h-14 flex-shrink-0 items-center justify-between gap-2 border-b border-rule bg-white px-3 md:px-6">
+        <div className="flex min-w-0 items-center gap-2 md:hidden">
+          <StoreSwitcher variant="title" />
+        </div>
+        <div className="hidden min-w-0 items-center gap-3 md:flex">
+          <Link to="/seller" aria-label={t('seller.layout.home', { defaultValue: '판매 관리 처음으로' })} className="shrink-0">
+            <UrDealLogo size={15} />
+          </Link>
+          <div className="flex min-w-0 items-center gap-1.5 text-[13px]">
             <span className="truncate font-semibold text-gray-500">{sellerName}</span>
             <span className="text-gray-300">/</span>
             <h1 className="truncate text-[13px] font-bold text-gray-900">{title}</h1>
           </div>
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            {/* 🏪 2026-08-19 매장 전환 — PC 는 우측 드롭다운(2곳 이상일 때만), 폰은 위 제목형이 맡는다. */}
-            <div className="hidden md:block"><StoreSwitcher /></div>
-            {/* 👆 2026-10-01: 32 → 40(`ur-btn-md` 눈금). 헤더는 `h-14`(56px) 고정이라 **높이가 안 변한다**. */}
-            <button type="button" onClick={() => setPaletteOpen(true)} aria-label={t('seller.pageSearch', { defaultValue: '페이지 검색' })} className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 md:hidden">
-              <Search size={18} />
-            </button>
-            {/* 🏠 2026-07-16 (대표): 셀러 대시보드에서 유어딜 소비자 홈(/)으로. */}
-            <Link
-              to="/"
-              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-rule hover:bg-gray-50 transition-colors text-gray-600 text-xs font-semibold"
-              aria-label={t('seller.goMainService', { defaultValue: '유어딜 메인 서비스로 이동' })}
-            >
-              <Home className="w-4 h-4" />
-              <span className="hidden sm:inline">{t('seller.mainService', { defaultValue: '유어딜 홈' })}</span>
-            </Link>
-            <div className="relative hidden md:block">
-              <button onClick={() => setLangOpen(!langOpen)} className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-500">
-                <Globe className="w-4 h-4" />
-                <span className="text-xs font-medium hidden sm:inline">{currentLang.label}</span>
-                <span className="text-xs font-semibold sm:hidden">{currentLang.short}</span>
-              </button>
-              {langOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setLangOpen(false)} />
-                  <div className="absolute right-0 mt-1 w-36 bg-white rounded-lg shadow-lg border border-rule z-50 py-1">
-                    {languages.map(lang => (
-                      <button
-                        key={lang.code}
-                        onClick={() => changeLang(lang.code)}
-                        className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 transition-colors flex items-center gap-2 ${i18n.language === lang.code ? 'font-semibold text-brand-text bg-brand-tint' : 'text-gray-700'}`}
-                      >
-                        <span className="text-[11px] font-semibold text-gray-400 w-5 shrink-0">{lang.short}</span>
-                        {lang.label}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-            <DashboardNotificationBell tokenKey="seller_token" />
-            {headerRight}
-          </div>
-        </header>
+        </div>
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+          {/* 🏪 2026-08-19 매장 전환 — PC 는 우측 드롭다운(2곳 이상일 때만), 폰은 위 제목형이 맡는다. */}
+          <div className="hidden md:block"><StoreSwitcher /></div>
+          {/* 🔎 페이지 검색(⌘K) — 메뉴에 없는 화면까지 이름으로. 👆 2026-10-01: `ur-btn-md` 눈금 40px. */}
+          <button type="button" onClick={() => setPaletteOpen(true)} aria-label={t('seller.pageSearch', { defaultValue: '페이지 검색' })} className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100">
+            <Search size={18} />
+          </button>
+          <DashboardNotificationBell tokenKey="seller_token" />
+          {headerRight}
+          <Link
+            to={SELLER_MENU_PATH}
+            aria-label={t('seller.layout.menu', { defaultValue: '전체 메뉴' })}
+            className="flex h-10 items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-semibold text-gray-700 hover:bg-gray-100"
+          >
+            <GridIcon size={18} />
+            <span className="hidden md:inline">{t('seller.layout.menu', { defaultValue: '전체 메뉴' })}</span>
+          </Link>
+        </div>
+      </header>
 
-        {/* 📱 폰: 하단 탭 높이만큼 본문 끝을 비운다(고정 탭이 마지막 줄을 가리지 않게). PC 는 탭이 없다. */}
-        <main
-          className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-5 md:!pb-5"
-          style={{ paddingBottom: `calc(${SELLER_TABBAR_H}px + env(safe-area-inset-bottom) + 12px)` }}
-        >
-          {/* 📱 A2: 폰의 페이지 제목 줄 — 헤더는 매장이 차지했으므로 제목은 여기 한 번만(공용 DashboardPageHeader 의 h1 은 폰에서 숨긴다). */}
-          <div className="dash-phone-title flex items-center justify-between gap-2 px-1 md:hidden">
-            <h2 className="truncate text-[17px] font-extrabold tracking-tight text-gray-900">{title}</h2>
-          </div>
-          {/* ↩️ 2026-09-26 (대표 *"모두 마이에서 하도록"*): 마이에서 들어온 동안만 뜨는 귀환 띠.
-              페이지마다 붙이면 안 붙인 페이지가 생기고, 하필 거기서 일이 끝나면 길을 잃는다. */}
-          <BackToMyBar />
-          <AgencySeatBar />
-          {/* 🥕 2026-09-16: 대기·반려도 대시보드를 쓰므로 화면이 상태를 말한다(승인이면 아무것도 안 그린다). */}
-          <SellerApprovalBanner />
-          {/* 🔗 카카오 미연동 이메일 셀러 → 연동 권유 (dismissible, 1회 status 조회) */}
-          <SellerKakaoLinkBanner />
-          {/* 🧭 2026-09-03: 묶음 안의 탭 줄 — 레이아웃 한 곳에서 그린다(페이지마다 붙이면 안 붙인 페이지가 생긴다). */}
-          <SellerGroupTabs />
-          {children}
-        </main>
-      </div>
+      <main
+        className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-5"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 20px)' }}
+      >
+        {/* 📱 A2: 폰의 페이지 제목 줄 — 헤더는 매장이 차지했으므로 제목은 여기 한 번만(공용 DashboardPageHeader 의 h1 은 폰에서 숨긴다). */}
+        <div className="dash-phone-title flex items-center justify-between gap-2 px-1 md:hidden">
+          <h2 className="truncate text-[17px] font-extrabold tracking-tight text-gray-900">{title}</h2>
+        </div>
+        {/* ↩️ 2026-09-26 (대표 *"모두 마이에서 하도록"*): 마이에서 들어온 동안만 뜨는 귀환 띠.
+            페이지마다 붙이면 안 붙인 페이지가 생기고, 하필 거기서 일이 끝나면 길을 잃는다. */}
+        <BackToMyBar />
+        <AgencySeatBar />
+        {/* 🥕 2026-09-16: 대기·반려도 대시보드를 쓰므로 화면이 상태를 말한다(승인이면 아무것도 안 그린다). */}
+        <SellerApprovalBanner />
+        {/* 🔗 카카오 미연동 이메일 셀러 → 연동 권유 (dismissible, 1회 status 조회) */}
+        <SellerKakaoLinkBanner />
+        {/* 🧭 2026-09-03: 묶음 안의 탭 줄 — 레이아웃 한 곳에서 그린다(페이지마다 붙이면 안 붙인 페이지가 생긴다). */}
+        <SellerGroupTabs />
+        {children}
+      </main>
 
-      <SellerBottomTabs pendingOrders={pendingOrders} />
-
-      {/* 카카오 채널 상담 — 폰에선 하단 탭 위로 올린다.
-          ⚠️ 위치는 `index.css` 의 `.seller-chat-fab` 이 정한다(Tailwind `bottom-24` 아님). 페이지가
+      {/* 카카오 채널 상담 — 위치는 `index.css` 의 `.seller-chat-fab` 이 정한다(Tailwind `bottom-24` 아님). 페이지가
           자기 하단 고정 바(`SellerBottomBar`)를 그리면 그만큼 비켜야 하는데, 그건 이 컴포넌트가 알 수
           없어서 **바가 body 에 켜 주는 신호**로 CSS 가 처리한다. 2026-09-15 대표 신고 "버튼들이 겹친다". */}
       <a
@@ -388,7 +247,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
         <MessageCircle className="w-4 h-4" />
       </a>
 
-      {/* 🔎 페이지 검색 — 사이드바 항목 + 메뉴에 없는 화면까지(어드민과 같은 컴포넌트). */}
+      {/* 🔎 페이지 검색 — 전체 메뉴 + 메뉴에 없는 화면까지(어드민과 같은 컴포넌트). */}
       <CommandPalette items={commandItems} open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </div>
   )

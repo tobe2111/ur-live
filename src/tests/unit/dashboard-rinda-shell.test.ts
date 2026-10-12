@@ -26,8 +26,8 @@ describe('R1 대시보드 사이드바는 흰 면이다 (검은 사이드바로 
   const FILES = [
     'src/components/SellerLayout.tsx',
     'src/components/AdminLayout.tsx',
-    // 📱 2026-09-14 (모바일 우선 재설계): 심플 nav 는 삭제됐고 하단 탭이 그 자리를 맡는다.
-    'src/components/seller-layout/SellerBottomTabs.tsx',
+    // 🧱 2026-10-12 (셀러 대시보드 제거 4단계): 하단 탭(SellerBottomTabs)은 삭제됐다 — 메뉴는 `/seller/more`.
+    'src/pages/SellerMorePage.tsx',
   ]
   it.each(FILES)('%s 에 어두운 사이드바 토큰이 없다', (f) => {
     const src = strip(read(f))
@@ -37,9 +37,11 @@ describe('R1 대시보드 사이드바는 흰 면이다 (검은 사이드바로 
     expect(src).not.toMatch(/bg-white\/\[?0?\.?\d/)
   })
 
-  it('셀러 사이드바가 흰 면 + 헤어라인을 실제로 쓴다 (0건이면 통과가 아니라 실패)', () => {
+  it('셀러 틀 머리줄이 흰 면 + 헤어라인을 실제로 쓴다 (0건이면 통과가 아니라 실패)', () => {
+    // 🧱 2026-10-12 4단계: 사이드바가 사라지고 머리줄 하나가 남았다 — 같은 규칙(흰 면 + 헤어라인)을 그 줄에 건다.
     const src = strip(read('src/components/SellerLayout.tsx'))
-    expect(src).toMatch(/<aside className="[^"]*\bbg-white\b[^"]*\bborder-r\b/)
+    expect(src).toMatch(/<header className="[^"]*\bborder-b\b[^"]*\bborder-rule\b[^"]*\bbg-white\b/)
+    expect(src, '사이드바가 되살아났다 — 4단계에서 걷어낸 틀이다').not.toMatch(/<aside\b/)
   })
 })
 
@@ -85,7 +87,8 @@ describe('R2 라이트 래퍼가 브랜드 틴트를 되박는다 (다크 모드
   })
 
   it('활성 메뉴 알약이 그 토큰을 쓴다', () => {
-    expect(css).toMatch(/\.ur-seller-nav-active[\s\S]{0,160}background:\s*var\(--brand-tint\)/)
+    // 🧱 2026-10-12: 셀러 사이드바가 사라져 어드민 알약이 이 규칙의 대표다(셀러 클래스는 뺐다).
+    expect(css).toMatch(/\.ur-admin-nav-active[\s\S]{0,160}background:\s*var\(--brand-tint\)/)
   })
 })
 
@@ -101,14 +104,15 @@ describe('R3 사이드바 CTA 로 옮겨도 검색 색인에서 사라지지 않
     expect(src).toMatch(/const renderedNavGroups = orderedNavGroups/)
     // 그리는 쪽은 걸러진 목록(moreGroups = renderedNavGroups)만 받는다.
     expect(src).toMatch(/moreGroups: renderedNavGroups/)
-    expect(strip(read('src/components/SellerLayout.tsx'))).toMatch(/moreGroups\.map/)
+    // 🧱 2026-10-12 4단계: 그리는 쪽이 사이드바 → 전체 메뉴 화면(`/seller/more`)으로 옮겨갔다.
+    expect(strip(read('src/pages/SellerMorePage.tsx'))).toMatch(/moreGroups\.map/)
     // 검색 색인(commandItems)은 여전히 거르지 않은 원본을 쓴다.
     expect(src).toMatch(/\.\.\.orderedNavGroups\.flatMap\(\(g\) => g\.items\.map/)
   })
   it('그 역할에 항목이 없으면 CTA 도 안 뜬다 (역할별 노출 규칙 승계)', () => {
     expect(src).toMatch(/const ctaItem = orderedNavGroups\.flatMap/)
-    // 그리는 쪽(레이아웃)은 모델이 준 ctaItem 이 있을 때만 파란 버튼을 그린다.
-    expect(strip(read('src/components/SellerLayout.tsx'))).toMatch(/\{ctaItem && \(/)
+    // 그리는 쪽(전체 메뉴 화면)은 모델이 준 ctaItem 이 있을 때만 파란 버튼을 그린다.
+    expect(strip(read('src/pages/SellerMorePage.tsx'))).toMatch(/\{ctaItem && \(/)
   })
 })
 

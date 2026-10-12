@@ -2537,7 +2537,9 @@
       "groupbuy": "오프라인 공구·숙소",
       "ordersCustomers": "주문·고객",
       "vouchers": "이용권",
-      "growth": "성장"
+      "growth": "성장",
+      "menu": "전체 메뉴",
+      "home": "판매 관리 처음으로"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -2604,7 +2606,8 @@
       "partners": "파트너",
       "notifyGuide": "알림·가이드",
       "operatingSummary": "운영 요약",
-      "storeInfo": "업체 정보"
+      "storeInfo": "업체 정보",
+      "plusFriendGuide": "알림톡 채널 추가"
     },
     "guide": {
       "title": "셀러 운영 가이드",

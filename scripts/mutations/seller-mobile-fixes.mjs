@@ -64,8 +64,8 @@ export default [
   {
     name: '📱 CSS 숫자가 바 높이 상수와 갈린다 (다시 겹친다)',
     file: 'src/index.css',
-    find: '  body.seller-has-bottom-bar .seller-chat-fab { bottom: calc(60px + env(safe-area-inset-bottom) + 64px + 12px); }',
-    replace: '  body.seller-has-bottom-bar .seller-chat-fab { bottom: calc(60px + env(safe-area-inset-bottom) + 40px + 12px); }',
+    find: '  body.seller-has-bottom-bar .seller-chat-fab { bottom: calc(env(safe-area-inset-bottom) + 64px + 12px); }',
+    replace: '  body.seller-has-bottom-bar .seller-chat-fab { bottom: calc(env(safe-area-inset-bottom) + 40px + 12px); }',
     test: TEST,
     why: '이 레포가 반복해 당한 "두 곳에 같은 숫자" — 한쪽만 바뀌면 에러 없이 조용히 겹친다.',
   },
