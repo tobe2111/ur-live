@@ -321,10 +321,16 @@
             픽셀을 세어 보니 swap·optional **둘 다 1,626px(38.3%)로 동일**했다. swap 의 블록 구간은
             "extremely small"(Chrome 실측 ~0)이라 폴백이 **즉시** 그려진다 — 그게 swap 의 존재 이유다.
             ⇒ 폰트는 대표가 본 증상의 원인이 아니다. swap 을 유지하는 편이 낫다: optional 은 폰트가
-            제때 안 오면 **그 로드에서는 아예 안 쓴다**(첫 방문자가 로더에서 Poppins 를 거의 못 본다). -->
+            제때 안 오면 **그 로드에서는 아예 안 쓴다**(첫 방문자가 로더에서 Poppins 를 거의 못 본다).
+         🔤 2026-10-12 [UNLOCK_LOADING] (대표 승인 "둘 다 자가호스팅"): 이 렌더 블로킹 스타일시트 링크를 뺐다.
+            CSS 가 **0.2KB 인데 렌더를 막고 382ms** 걸렸다(아이폰13 에뮬, preconnect 이미 있는 상태).
+            같은 로드의 우리 `index-*.css`(37KB)는 92ms 였다 — 바이트가 아니라 **외부 오리진**이 비용이다.
+            그 CSS 가 하는 일은 폰트 선언 하나뿐이라 아래 인라인 스타일 블록으로 옮기고 woff2(**876바이트**)를
+            `/static/fonts/` 에 뒀다. unicode-range 는 원본 그대로(u·r·d·e·a·l 6글자)라 그 글자가 없는 화면은
+            폰트를 아예 안 받는다. ⚠️ 두 preconnect 는 **잠금표가 제거를 금지**해서 남겼다(이제 안 쓰인다 —
+            떼는 건 대표 판단 사항). -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@800&text=urdeal&display=swap" rel="stylesheet" />
     <!-- 🦦 2026-10-07 [UNLOCK_LOADING] (대표 허가 "로딩 화면"): 첫 페인트 로더의 유달이(10KB). 정적 로더가 바로 그리므로
          여기서 미리 받는다 — 안 그러면 로고만 먼저 뜨고 유달이가 늦게 튀어나온다. 같은 출처라 crossorigin 없음.
          ⚠️ 경로는 shared/udal-loader.ts 의 UDAL_LOADER_SRC 와 같아야 한다(가드가 대조). -->
@@ -406,28 +412,44 @@
 
     <!-- 🛡️ 2026-04-30: Pretendard Variable stylesheet 직접 로드.
          이전 preload + onload="..." swap 패턴은 CSP 'strict-dynamic' 환경에서
-         inline event handler 차단되어 폰트 적용 실패 → 디자인 망가짐.
-         CDN 폰트라 critical render path 약간 늦지만 (~50ms) 안전성 우선. -->
+         inline event handler 차단되어 폰트 적용 실패 → 디자인 망가짐. -->
     <!-- 🛡️ 2026-05-27 v5 [UNLOCK_LOADING]: single 2MB woff2 → dynamic-subset (사용자 글자만).
          single 2MB: Lighthouse 13.8s LCP — 다운로드가 다른 fetch 차단.
-         dynamic-subset: 사용 글자만 200-300KB. 단 11 chunks 시리얼 wait.
-         font-display: optional → swap 없음 → LCP 영향 0. -->
+         dynamic-subset: 사용 글자만 200-300KB.
+         🔤 2026-10-12 [UNLOCK_LOADING] (대표 승인 "둘 다 자가호스팅"): href 를 jsdelivr → **우리 오리진** 사본으로.
+            🩸 바로 위 2026-04-30 주석이 이 비용을 **"~50ms"** 라고 적어 뒀는데 라이브 실측은 **384ms** 였다
+               (8배. 2026-04-30 이후 아무도 다시 안 쟀다). 같은 로드의 우리 `index-*.css` 는 37KB 에 92ms —
+               비용은 바이트가 아니라 외부 오리진의 왕복이다. A/B(각 4회 중위값): HTML→FCP **677 → 337ms**,
+               편차 **264 → 42ms**. 느려진 게 아니라 **남의 CDN 사정에 매 접속이 걸려 있던 것**이다.
+            🔒 woff2 는 **일부러 jsdelivr 에 남긴다** — 폰트 파일은 렌더를 안 막고(`swap`), 위 preconnect 가
+               이미 있고, 1년 immutable 로 캐시된다. 사본 CSS 의 `src` 는 전부 jsdelivr **절대주소**다
+               (원본은 상대경로라 우리 오리진에 그대로 두면 404 — 가드가 상대경로 0을 고정한다).
+            ⚠️ 파일명에 버전이 박혀 있다. 올릴 때 사본과 이 href 를 **같이** 올릴 것(갱신 절차는 그 파일 머리말). -->
     <link
       rel="stylesheet"
-      crossorigin
-      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+      href="/static/fonts/pretendard-dynamic-subset-v1.3.9.css"
     />
 
     <!-- 🛡️ 2026-05-15 (Lighthouse): 핵심 CSS inline. -->
     <style>
-      /* font-display optional + size-adjust override (dynamic-subset CSS 의 swap 을 optional 로 강제). */
+      /* 🔤 2026-10-12: 여기 있던 `@font-face { font-family:'Pretendard Variable'; font-display:optional; … }` 를 지웠다.
+         **그 규칙은 한 번도 적용된 적이 없다** — `@font-face` 는 `src` 가 없으면 무효라 브라우저가 통째로 버린다.
+         라이브 실측: `[...document.fonts]` 의 Pretendard face 들의 `display` 가 **전부 `swap`**(optional 0건).
+         ⇒ 주석이 약속한 "swap 없음 → LCP 영향 0" 도, 함께 적혀 있던 `ascent/descent-override`(폰트 교체 때
+         줄 높이가 튀는 걸 막으려던 것)도 **전부 죽어 있었다.** 지워도 렌더는 1px도 안 바뀐다(이미 no-op).
+         ⚠️ 되살리려면 `src` 를 가진 유효한 규칙으로 써야 하고, 그러면 **줄 높이가 실제로 바뀌어** 앱 전체
+            레이아웃이 움직인다 — 별건으로 측정하고 들어갈 일이다(지금 고치는 것은 "거짓 주석"이다). */
+
+      /* 🔤 2026-10-12 [UNLOCK_LOADING]: 워드마크(urdeal.) Poppins 800 — 종전엔 fonts.googleapis.com 의
+         0.2KB CSS 를 **렌더 블로킹**으로 받아 382ms 를 썼다. 그 CSS 가 하던 일이 이 규칙 하나다.
+         unicode-range 는 Google 응답 원본 그대로(u·r·d·e·a·l) — 그 글자가 없는 화면은 폰트를 안 받는다. */
       @font-face {
-        font-family: 'Pretendard Variable';
-        font-display: optional;
-        size-adjust: 100%;
-        ascent-override: 92%;
-        descent-override: 23%;
-        line-gap-override: 0%;
+        font-family: 'Poppins';
+        font-style: normal;
+        font-weight: 800;
+        font-display: swap;
+        src: url('/static/fonts/poppins-800-urdeal-v24.woff2') format('woff2');
+        unicode-range: U+61, U+64-65, U+6c, U+72, U+75;
       }
 
       /* Critical reset + layout (Tailwind preflight subset) */

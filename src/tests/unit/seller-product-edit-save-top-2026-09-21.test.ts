@@ -68,15 +68,23 @@ describe('💾 이용권 편집 — 저장 버튼이 위에 있다', () => {
  *
  * ## 이 테스트가 못 막는 것
  * "로더에 글자가 실제로 보이는가" 는 **브라우저 프레임 캡처**로만 판정된다(여긴 문자열 검사다).
+ *
+ * 🔀 2026-10-12: Poppins 를 **우리 오리진 인라인 `@font-face`** 로 옮겼다(그 외부 stylesheet 가
+ *   0.2KB 인데 렌더를 382ms 막고 있었다 — `self-hosted-fonts-2026-10-12.test.ts`). 위 측정과 결론은
+ *   그대로이고 **앵커만** `…&display=swap` URL → `@font-face` 의 `font-display` 로 옮겼다.
  */
 describe('🔤 로고 폰트 — swap 고정 (optional 로 되돌아가지 않는다)', () => {
   const HTML = readFileSync('index.html', 'utf8')
 
-  it('Poppins 링크가 display=swap 으로 온다', () => {
-    const link = HTML.match(/https:\/\/fonts\.googleapis\.com\/css2\?family=Poppins[^"]*/)?.[0] ?? ''
-    expect(link, 'Poppins 링크를 못 찾았다 — 이 검사가 헛돌고 있다').not.toBe('')
-    expect(link).toContain('display=swap')
-    expect(link, 'optional 은 첫 로드에서 폰트를 통째로 건너뛴다 — 위 측정 참조').not.toContain('display=optional')
+  it('Poppins 가 font-display: swap 으로 온다', () => {
+    // 🔀 2026-10-12 재조준: 종전엔 `fonts.googleapis.com/css2?…display=swap` **URL** 을 앵커로 썼는데,
+    //   그 외부 stylesheet 를 **우리 오리진 인라인 @font-face 로 옮겼다**(렌더 블로킹 382ms 제거 —
+    //   `self-hosted-fonts-2026-10-12.test.ts`). 지키려는 것은 그대로다: **swap 이지 optional 이 아니다.**
+    //   앵커만 "그 URL 의 쿼리" → "Poppins @font-face 의 선언" 으로 옮긴다.
+    const face = (HTML.match(/@font-face\s*\{[^}]*\}/g) || []).find((b) => /['\"]Poppins['\"]/.test(b)) ?? ''
+    expect(face, 'Poppins @font-face 를 못 찾았다 — 이 검사가 헛돌고 있다').not.toBe('')
+    expect(face).toMatch(/font-display:\s*swap/)
+    expect(face, 'optional 은 첫 로드에서 폰트를 통째로 건너뛴다 — 위 측정 참조').not.toMatch(/font-display:\s*optional/)
   })
 
   it('되돌린 이유가 파일에 남아 있다 (다음 세션이 같은 오진을 반복하지 않게)', () => {
