@@ -21,6 +21,7 @@ import ShoppingGroup from './user-profile/ShoppingGroup'
 import OrderStatusBar from './user-profile/OrderStatusBar'
 import SellerSwitchInline from './user-profile/SellerSwitchInline'
 import SellerSection from './user-profile/SellerSectionLazy'
+import { useToolDeepLinkFallback } from './user-profile/seller-section/useToolDeepLink'
 import SettingsGroup from './user-profile/SettingsGroup'
 import { useMyCounts } from './user-profile/useMyCounts'
 import { useMyStores } from './user-profile/useMyStores'
@@ -54,6 +55,8 @@ export default function UserProfilePage() {
   // 🪑 2026-09-25 (설계 §14 단계 1): 좌석(내 가게)은 **이 페이지가 한 번만** 묻고 둘에게 나눠 준다 —
   //   이름 옆 칩과 "내 가게" 섹션이 각자 물으면 같은 화면이 서로 다른 답을 말하는 날이 온다.
   const sellerSeats = useMyStores()
+  // 🚪 대시보드 깊은 링크(`?tool=`)인데 판매 구역이 못 뜨면 대시보드로 되돌린다(2026-10-12 — `useToolDeepLink` 머리말).
+  useToolDeepLinkFallback({ loading: sellerSeats.loading, failed: sellerSeats.failed, storeCount: sellerSeats.stores.length })
   // 🖥️ 2026-09-02 (대표 — "PC 모드 답지 않은 페이지"): lg+ 는 우측 칸 상단을 `AccountPcPane`(내용)으로,
   //   모바일은 종전 세로 흐름 그대로. 동기 초기화 훅이라 첫 렌더부터 정확(모바일↔PC 플래시 없음).
   const isPc = useMediaQuery('(min-width: 1024px)')
