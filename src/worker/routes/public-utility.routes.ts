@@ -110,14 +110,15 @@ publicUtilityRoutes.get('/api/version', async (c) => {
     TOSS_SECRET_KEY: !!env.TOSS_SECRET_KEY,
     // 🔔 2026-07-01: 알림 채널 설정 가시성 — 각 채널은 키 미설정 시 조용히 no-op 하므로
     //   어느 채널이 죽었는지 표준 진단에서 한눈에 보이게 한다(값은 미노출, 존재여부 boolean).
-    //   웹푸시(VAPID 3종)·네이티브푸시(FCM)·이메일(Resend)·알림톡(Aligo).
+    //   웹푸시(VAPID 3종)·네이티브푸시(FCM)·이메일(Resend)·알림톡(네이버 클라우드 SENS 4종 — 2026-10-12).
     VAPID_PUBLIC_KEY: !!env.VAPID_PUBLIC_KEY,
     VAPID_PRIVATE_KEY: !!env.VAPID_PRIVATE_KEY,
     VAPID_SUBJECT: !!env.VAPID_SUBJECT,
     RESEND_API_KEY: !!env.RESEND_API_KEY,
-    ALIGO_API_KEY: !!env.ALIGO_API_KEY,
-    ALIGO_USER_ID: !!env.ALIGO_USER_ID,
-    ALIGO_SENDER_KEY: !!env.ALIGO_SENDER_KEY,
+    NCP_ACCESS_KEY: !!env.NCP_ACCESS_KEY,
+    NCP_SECRET_KEY: !!env.NCP_SECRET_KEY,
+    NCP_SENS_ALIMTALK_SERVICE_ID: !!env.NCP_SENS_ALIMTALK_SERVICE_ID,
+    NCP_KAKAO_CHANNEL_ID: !!env.NCP_KAKAO_CHANNEL_ID,
     DB: !!env.DB,
   }
   try {

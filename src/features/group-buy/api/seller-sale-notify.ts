@@ -13,11 +13,10 @@
  */
 import { resolveSellerNotifyTarget } from '../../../worker/utils/seller-notify-phone'
 import { sendSellerFirstVoucherAlimtalk, sendSellerVoucherSoldAlimtalk } from './helpers'
-import { storeGoUrl } from '../../../shared/store-deep-link' // 🔗 한 번 눌러 그 매장의 그 화면(카카오 로그인 → 좌석)
-
+// 🔘 링크는 알림톡 버튼으로 간다(lib/alimtalk-buttons — 카카오 로그인 → 그 매장 좌석 → 그 화면). 여기선 매장 번호만 넘긴다.
 
 export async function notifySellerVoucherSale(
-  env: unknown, // 📨 알리고(sendTextNotice) — 워커 env 그대로
+  env: unknown, // 📨 알림톡(sendTextNotice → SENS) — 워커 env 그대로
   DB: D1Database,
   sale: { sellerId: unknown; productName: string; qty: number; amount: number },
 ): Promise<void> {
@@ -31,14 +30,14 @@ export async function notifySellerVoucherSale(
       ).bind(Number(sale.sellerId)).run().catch(() => null)
       if (Number(claim?.meta?.changes ?? 0) === 1) {
         await sendSellerFirstVoucherAlimtalk(env, target.phone, {
-          restaurantName, productName: sale.productName, statsUrl: storeGoUrl(sale.sellerId, 'scan'),
+          restaurantName, productName: sale.productName, sellerId: sale.sellerId,
         })
         return
       }
     }
     await sendSellerVoucherSoldAlimtalk(env, target.phone, {
       restaurantName, productName: sale.productName, qty: sale.qty, amount: Number(sale.amount) || 0,
-      scanUrl: storeGoUrl(sale.sellerId, 'scan'), ordersUrl: storeGoUrl(sale.sellerId, 'orders'),
+      sellerId: sale.sellerId,
     })
   } catch { /* fail-soft — 알림이 결제를 막지 않는다 */ }
 }

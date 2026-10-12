@@ -10,6 +10,7 @@ import type { Env } from '@/worker/types/env'
 import { loadSearchAdConnection } from './searchad-connection'
 import { budgetPacing, accountStats } from './searchad-client'
 import { getAdsAccount } from './ads-account'
+import { sendSensAlimtalk, sensConfigured, type SensEnv } from '@/lib/ncp-sens'
 
 const _schemaDone = new WeakSet<object>()
 export async function ensureAlertsSchema(DB: D1Database): Promise<void> {
@@ -127,25 +128,19 @@ export async function computeAlerts(env: Env, accountId: number, settings: Alert
 }
 
 /** 카카오 알림톡 발송(설정 시에만) — 이메일과 병행. 승인 템플릿(ADS_ALERT_ALIMTALK_TPL) 필요.
- *   미설정(키/발신키/템플릿/전화번호 중 하나라도 없음)이면 no-op → 이메일 전용(회귀 0). best-effort. */
+ *   📨 2026-10-12 — 발송처 = 네이버 클라우드 SENS(알리고 제거). 이 워커(ur-ads)에도 NCP_* 4종이 있어야 나간다.
+ *   미설정(키/템플릿/전화번호 중 하나라도 없음)이면 no-op → 이메일 전용(회귀 0). best-effort.
+ *   템플릿은 **버튼 없이** 등록한다(종전 알리고 버튼 '대시보드 열기'는 본문 안내로 대체). */
 async function sendAlertAlimtalk(env: Env, phone: string | null, items: AlertItem[]): Promise<void> {
-  const senderKey = env.ALIGO_SENDER_KEY || env.ALIMTALK_SENDER_KEY
   const tpl = env.ADS_ALERT_ALIMTALK_TPL
-  if (!phone || !env.ALIGO_API_KEY || !env.ALIGO_USER_ID || !senderKey || !tpl) return
+  const e = env as unknown as Record<string, unknown>
+  if (!phone || !tpl || !sensConfigured(e)) return
   const to = phone.replace(/[^0-9]/g, '')
   if (to.length < 9) return
   const head = items[0]
   const message = `[유어애즈] 광고 알림 ${items.length}건\n\n${head.title}\n${head.detail}${items.length > 1 ? `\n외 ${items.length - 1}건` : ''}\n\n대시보드에서 확인하세요.`
   try {
-    const mod = await import('../../../lib/aligo').catch(() => null)
-    if (!mod?.sendAlimtalk) return
-    await mod.sendAlimtalk(
-      { ALIGO_API_KEY: env.ALIGO_API_KEY, ALIGO_USER_ID: env.ALIGO_USER_ID },
-      {
-        senderKey, templateCode: tpl, to, message,
-        buttons: [{ type: 'WL', name: '대시보드 열기', url_mobile: 'https://urdeal.kr/ads/dashboard', url_pc: 'https://urdeal.kr/ads/dashboard' }],
-      },
-    )
+    await sendSensAlimtalk(e as SensEnv, { templateCode: tpl, to, content: message })
   } catch { /* 발송 실패는 이메일로 이미 도달(멱등 기록됨) — graceful */ }
 }
 

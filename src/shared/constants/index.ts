@@ -112,7 +112,6 @@ export const FIREBASE_APP_URL = 'https://urteam-live-commerce-5b284.firebaseapp.
 // 외부 API Base URLs
 // ============================================================
 export const TOSS_PAYMENT_CONFIRM_URL = `${TOSS_PAYMENT_URL}/payments/confirm`;
-export const ALIGO_API_BASE = 'https://kakaoapi.aligo.in/akv10';
 export const YOUTUBE_API_BASE = 'https://www.googleapis.com/youtube/v3';
 export const YOUTUBE_OAUTH_BASE = 'https://oauth2.googleapis.com';
 export const TRACKER_GRAPHQL_URL = 'https://apis.tracker.delivery/graphql';

@@ -733,24 +733,16 @@ export async function handleScheduled(env: Env, tiers: CleanupTiers = ALL_TIERS)
             // 🛡️ 2026-04-28: sender 에게 환불 알림 (best-effort).
             //   gift 의 sender_user_id 의 phone 을 조회해 알림톡 발송.
             try {
-              const aligoKey = (env as { ALIGO_API_KEY?: string }).ALIGO_API_KEY;
-              const aligoUser = (env as { ALIGO_USER_ID?: string }).ALIGO_USER_ID;
-              if (aligoKey && aligoUser) {
-                const giftDetail = giftDetailMap.get(g.id);
-                // 🛡️ 2026-04-28: 플랫폼 senderKey 필요. 미설정이면 발송 skip.
-                const aligoSender = (env as { ALIGO_SENDER_KEY?: string }).ALIGO_SENDER_KEY;
-                if (giftDetail?.phone && aligoSender) {
-                  const { sendAlimtalk } = await import('../../lib/aligo');
-                  await sendAlimtalk(
-                    { ALIGO_API_KEY: aligoKey, ALIGO_USER_ID: aligoUser },
-                    {
-                      senderKey: aligoSender,
-                      templateCode: 'gift_refunded',
-                      to: giftDetail.phone,
-                      message: `[유어딜] 보내신 선물 (${Number(giftDetail.amount ?? 0).toLocaleString('ko-KR')}원) 이 30일 미수령으로 자동 환불됐어요.`,
-                    }
-                  );
-                }
+              // 📨 2026-10-12 — 네이버 클라우드 SENS(공용 sendSystemAlimtalk). 키가 없으면 조용히 건너뛴다.
+              const giftDetail = giftDetailMap.get(g.id);
+              if (giftDetail?.phone) {
+                const { sendSystemAlimtalk } = await import('../../lib/system-alimtalk');
+                await sendSystemAlimtalk(
+                  env,
+                  giftDetail.phone,
+                  'gift_refunded',
+                  `[유어딜] 보내신 선물 (${Number(giftDetail.amount ?? 0).toLocaleString('ko-KR')}원) 이 30일 미수령으로 자동 환불됐어요.`,
+                );
               }
             } catch { /* alimtalk 실패는 무시 */ }
           } else {

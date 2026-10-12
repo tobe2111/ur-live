@@ -354,7 +354,7 @@ adminApp.post('/:productId/select', async (c) => {
 
     // 🔔 2026-07-05 알림톡: 체험단 선정/승계 안내 — 앱을 안 여는 초기 유저 도달 채널 (waitUntil·fail-soft,
     //   sendSystemAlimtalk 이 dedup(phone+template 1h)·일일 캡·실패 재시도 큐 담당).
-    //   ⚠️ tpl_code fcfs_selected/fcfs_replacement 는 Aligo 콘솔 등록·승인 필요 — 아래 message 는 승인
+    //   ⚠️ tpl_code fcfs_selected/fcfs_replacement 는 SENS 콘솔 등록·승인(+어드민 승인 목록) 필요 — 아래 message 는 승인
     //   템플릿 본문과 일치시켜 유지할 것 ("추첨" 대신 "선정" 표기, alimtalk-templates.ts 레지스트리 등재).
     {
       const _alimBg = async () => {

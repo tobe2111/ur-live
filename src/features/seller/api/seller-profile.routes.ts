@@ -291,9 +291,10 @@ sellerProfileRoutes.on(['PUT', 'PATCH'], '/profile', async (c) => {
         if (/^01\d{8,9}$/.test(phone)) {
           const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk');
           await sendSystemAlimtalk(c.env, phone, 'seller_bank_changed',
-            `[유어딜] ${sRow?.name || '셀러'}님, 정산 계좌 정보가 방금 변경되었습니다.\n본인이 변경하지 않았다면 즉시 비밀번호를 변경하고 고객센터에 문의해주세요.\n(보안: 관리자 재확인 전까지 출금이 일시 제한됩니다)`);
+            `[유어딜] ${sRow?.name || '셀러'}님, 정산 계좌 정보가 방금 변경되었습니다.\n본인이 변경하지 않았다면 즉시 비밀번호를 변경하고 고객센터에 문의해주세요.\n(보안: 관리자 재확인 전까지 출금이 일시 제한됩니다)`,
+            { sellerId }); // 🔘 [정산 계좌 확인] 버튼(lib/alimtalk-buttons)
         }
-      } catch { /* fail-soft — ALIGO env 미설정/발송 실패 무시 */ }
+      } catch { /* fail-soft — 알림톡(SENS) env 미설정/발송 실패 무시 */ }
     }
 
     // 배송비 — 후보 컬럼 순서대로 시도, 첫 성공 시 중단(컬럼 없음/한도면 다음 후보).

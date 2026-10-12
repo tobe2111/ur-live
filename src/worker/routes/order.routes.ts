@@ -600,15 +600,8 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
       }
     }
 
-    // 자동 알림톡 발송 (주문 확인) - 비동기로 처리, 실패해도 주문 생성에 영향 없음
-    if (c.env.ALIGO_API_KEY && c.env.ALIGO_USER_ID) {
-      import('../../lib/alimtalk-auto').then(({ sendOrderConfirmation }) => {
-        sendOrderConfirmation(
-          { DB: c.env.DB, ALIGO_API_KEY: c.env.ALIGO_API_KEY!, ALIGO_USER_ID: c.env.ALIGO_USER_ID!, ALIMTALK_SENDER_KEY: c.env.ALIMTALK_SENDER_KEY },
-          typeof order.id === 'number' ? order.id : parseInt(String(order.id), 10)
-        ).catch((err: Error) => console.error('[Alimtalk] Order confirmation failed:', err.message));
-      }).catch(() => { /* alimtalk not critical */ });
-    }
+    // 📨 2026-10-12: 여기 있던 '셀러 자체 채널 주문확인 알림톡'(lib/alimtalk-auto — 알리고 전용, 셀러 계정 0곳)은
+    //   알리고와 함께 걷어냈다. 손님 주문완료 알림은 결제 확정 시 유어딜 채널로 나간다(payment.routes /confirm).
 
     // 제휴 마케팅 수수료 추적 (ref 파라미터)
     // 🧭 2026-07-11 (감사 §R2 어트리뷰션 생존성): body 에 ref 가 없을 때만 `affiliate_ref` 쿠키를

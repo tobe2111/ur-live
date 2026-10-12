@@ -18,7 +18,8 @@ import type { Env } from '@/worker/types/env';
 import { executeQuery, executeRun } from '@/worker/utils/database';
 import { writeAuditLog } from '@/worker/middleware/admin-security';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
-import { sendAlimtalk, buildSampleApprovalMessage } from '../../alimtalk/aligo';
+import { buildSampleApprovalMessage } from '../../alimtalk/messages';
+import { sendSystemAlimtalk } from '@/lib/system-alimtalk';
 import { ensureSupplyVisibilitySchema, recordSupplyPriceChange } from '../../supply/api/supply-visibility';
 import { getSupplyMeta, setSupplyMeta } from '@/worker/utils/product-supply-meta';
 import { loadPlatformCommissionPct } from '../../supply/api/wholesale-settlement';
@@ -585,24 +586,16 @@ adminProductsRoutes.patch('/sample-requests/:id', cors(), async (c) => {
       return c.json({ success: false, error: '이미 처리된 신청입니다' }, 409);
     }
 
-    if (reqInfo?.seller_phone && c.env.ALIGO_API_KEY && c.env.ALIGO_USER_ID && (c.env.ALIGO_SENDER_PHONE || c.env.ALIGO_SENDER)) {
-      const { subject, message } = buildSampleApprovalMessage({
+    // 📨 2026-10-12 — 네이버 클라우드 SENS(공용 sendSystemAlimtalk). 키·승인 템플릿 없으면 조용히 건너뛴다.
+    if (reqInfo?.seller_phone) {
+      const { message } = buildSampleApprovalMessage({
         sellerName: reqInfo.seller_name,
         productName: reqInfo.product_name,
         approved: body.action === 'approve',
         adminMemo: body.admin_memo,
       });
-      sendAlimtalk({
-        apikey: c.env.ALIGO_API_KEY,
-        userid: c.env.ALIGO_USER_ID,
-        senderkey: c.env.ALIGO_SENDER_KEY ?? '',
-        tpl_code: c.env.ALIGO_TPL_SAMPLE_APPROVED ?? 'TBD',
-        sender: (c.env.ALIGO_SENDER_PHONE || c.env.ALIGO_SENDER)!,
-        receiver_1: reqInfo.seller_phone.replace(/-/g, ''),
-        recvname_1: reqInfo.seller_name,
-        subject_1: subject,
-        message_1: message,
-      }).catch(e => { if (import.meta.env.DEV) console.warn('[Alimtalk] 샘플 승인 알림 실패:', e) });
+      sendSystemAlimtalk(c.env, reqInfo.seller_phone, 'sample_approved', message)
+        .catch(e => { if (import.meta.env.DEV) console.warn('[Alimtalk] 샘플 승인 알림 실패:', e) });
     }
 
     if (reqInfo?.seller_id) {

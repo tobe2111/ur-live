@@ -1,32 +1,37 @@
 /**
- * 📨 알림 한 통을 **알리고 하나로** 보낸다 (2026-10-11 대표 "알리고로만 하는건데? 솔라피는 뭐야?")
+ * 📨 알림 한 통을 **네이버 클라우드 SENS 알림톡 하나로** 보낸다 (2026-10-12 대표 "이걸로 가자" · "알리고 잔해들 빼고")
+ *
+ * 🔁 2026-10-12: 발송처가 알리고 → SENS 로 바뀌었고 알리고 코드는 전부 걷어냈다. 알리고는 보내는 서버의
+ *    고정 IP 등록이 필수인데 Cloudflare 는 나가는 IP 가 매번 달라(라이브 -99/-101) 한 통도 못 보냈다.
+ *    아래 2026-10-11 기록은 그 전 상태의 역사다.
+ *
+ * (2026-10-11 대표 "알리고로만 하는건데? 솔라피는 뭐야?")
  *
  * 그 전 상태(라이브 실측):
  *  - 사장님·손님 이용권 알림 7종이 **솔라피**(쓰지 않는 다른 문자 회사)로 가게 돼 있었고, 그 키
  *    (`ALIMTALK_API_KEY`)가 라이브에 없어 **조용히 건너뛰었다**. 그래서 한 통도 안 나갔다.
  *  - 시스템 알림톡(`system-alimtalk.ts`)은 알리고로 가지만 주소가 틀려 **성공 기록 0건**이었다.
  *
- * 규칙 (2026-10-11 대표 "문자는 안 쓸거고 카톡만" 반영):
- *  - 그 알림의 템플릿이 카카오 검수를 통과했으면(어드민 `alimtalk_approved_templates` 에 `이름=알리고코드` 가 있으면)
- *    **알림톡**으로 보낸다. 실패 시 문자 대체는 하지 않는다.
+ * 규칙 (대표 "문자는 안 쓸거고 카톡만" 2026-10-11):
+ *  - 그 알림의 템플릿이 카카오 검수를 통과했으면(어드민 `alimtalk_approved_templates` 에 이름이 있으면)
+ *    **알림톡**으로 보낸다. 문자(SMS)는 보내지 않는다(대체 발송 포함).
  *  - 아직 승인 전이면 **보내지 않는다**(앱 알림만) — `alimtalk_failures` 에 `pending:<코드>` 로 남긴다.
- *  - 문자는 어드민 `notice_sms_enabled='true'` 일 때만(기본 OFF).
- *  ⇒ 템플릿이 하나씩 승인될 때마다 어드민에서 코드를 적어 넣기만 하면 **배포 없이** 알림톡으로 넘어간다.
+ *  ⇒ 템플릿이 하나씩 승인될 때마다 어드민에서 이름을 적어 넣기만 하면 **배포 없이** 알림톡으로 넘어간다.
  *
  * 성공·실패는 둘 다 남긴다 — "안 나갔는데 아무도 모른다" 가 이 파일이 생긴 이유다.
  *  - 성공: `alimtalk_dispatch_log`(번호는 해시만) · 실패: `alimtalk_failures`(재시도 0회로 기록만)
  */
 import type { D1Database } from '@cloudflare/workers-types'
-import { sendAlimtalk, sendAligoSms, resolveAligoSender } from './aligo'
+import { sendSensAlimtalk, sensConfigured, type SensEnv } from './ncp-sens'
 import { isAlimtalkOff } from './alimtalk-templates'
+import { alimtalkButtons } from './alimtalk-buttons'
 
 /** 어드민에서 카카오 검수를 통과한 템플릿 코드를 쉼표로 적는 자리. */
 export const APPROVED_TEMPLATES_SETTING = 'alimtalk_approved_templates'
 
 /**
- * 🔑 2026-10-11 — 알리고는 템플릿을 등록하면 **자기 코드**(예: `UA_1234`)를 붙인다. 우리 이름
- * (`voucher_issued`)을 그대로 tpl_code 로 보내면 승인된 템플릿도 "없는 템플릿"으로 거절된다.
- * ⇒ 설정에 `우리이름=알리고코드` 로 적는다(쉼표·줄바꿈 구분). `=` 없이 이름만 적으면 그 이름이 곧 코드다(종전 형식).
+ * 🔑 설정 형식: 이름만 적으면 그 이름이 곧 템플릿 코드다(SENS 는 등록 때 코드를 우리가 정한다 — 이름을 그대로 쓴다).
+ * 등록 코드를 이름과 다르게 지었으면 `우리이름=등록코드` 로 적는다(쉼표·줄바꿈 구분).
  */
 export function parseTemplateCodeMap(raw: unknown): Map<string, string> {
   const map = new Map<string, string>()
@@ -65,28 +70,16 @@ async function approvedTemplates(db: D1Database | undefined): Promise<Map<string
 }
 
 /**
- * 📵 2026-10-11 대표 "문자는 안 쓸거고 카톡만 쓸건데" — 문자(단문·장문·알림톡 실패 시 대체)는 기본 OFF.
- * 어드민 `notice_sms_enabled` 를 'true' 로 바꿀 때만 문자를 쓴다(그때도 비용은 알리고 포인트에서 나간다).
+ * 그 이름의 템플릿이 승인돼 있으면 **보낼 코드**를, 아니면 undefined.
+ * (`sendTextNotice` 를 안 거치고 직접 보내는 곳 — 버튼이 있는 사장님 통보 등 — 이 같은 승인 목록을 쓰게.)
  */
-export const SMS_ENABLED_SETTING = 'notice_sms_enabled'
-let _smsCache: { at: number; on: boolean } | null = null
-async function smsAllowedSetting(db: D1Database | undefined): Promise<boolean> {
-  if (!db) return false
-  if (_smsCache && Date.now() - _smsCache.at < APPROVED_TTL_MS) return _smsCache.on
-  try {
-    const row = await db.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(SMS_ENABLED_SETTING).first<{ value: string }>()
-    const on = String(row?.value ?? '').trim() === 'true'
-    _smsCache = { at: Date.now(), on }
-    return on
-  } catch {
-    return false
-  }
+export async function approvedTemplateCode(db: D1Database | undefined, name: string): Promise<string | undefined> {
+  return (await approvedTemplates(db)).get(name)
 }
 
 /** 테스트용 — 캐시 비우기. */
 export function _resetApprovedTemplatesCache(): void {
   _approvedCache = null
-  _smsCache = null
 }
 
 export function normalizeMobile(phone: unknown): string | null {
@@ -95,65 +88,51 @@ export function normalizeMobile(phone: unknown): string | null {
 }
 
 export type TextNoticeResult =
-  | { ok: true; via: 'alimtalk' | 'sms' }
+  | { ok: true; via: 'alimtalk' }
   | { ok: false; skipped: 'no_credentials' | 'invalid_phone' | 'template_not_approved' | 'turned_off' }
-  | { ok: false; via: 'alimtalk' | 'sms'; error: string }
+  | { ok: false; via: 'alimtalk'; error: string }
 
 /**
  * @param tpl  알림 종류 코드 — 알림톡 템플릿 코드와 같은 문자열(승인되면 그대로 알림톡 tpl_code 가 된다)
- * @param title 장문 문자 제목(22자 안쪽)
+ * @param title 알림 제목(앱 알림·기록용 — 알림톡 본문에는 안 들어간다)
  */
 export async function sendTextNotice(
   env: unknown,
   phone: unknown,
-  n: { tpl: string; title: string; text: string; forceAlimtalk?: boolean },
+  n: {
+    tpl: string; title: string; text: string; forceAlimtalk?: boolean
+    /** 🔘 사장님 버튼의 매장 번호(`alimtalk-buttons.ts`). 버튼 자체는 템플릿 이름으로 표에서 꺼낸다. */
+    sellerId?: unknown
+  },
 ): Promise<TextNoticeResult> {
   // 🔕 대표가 끈 알림(alimtalk-templates.ts ALIMTALK_OFF_TEMPLATES) — 앱 알림만. 놓친 것으로 기록하지도 않는다(의도한 일이다).
   if (!n.forceAlimtalk && isAlimtalkOff(n.tpl)) return { ok: false, skipped: 'turned_off' }
   const e = (env ?? {}) as Record<string, unknown>
-  const apiKey = String(e.ALIGO_API_KEY ?? '')
-  const userId = String(e.ALIGO_USER_ID ?? '')
-  if (!apiKey || !userId) return { ok: false, skipped: 'no_credentials' }
+  // 🟢 2026-10-12 — 네이버 클라우드 SENS 키 넷(NCP_*)이 있어야 보낸다. 없으면 앱 알림만(호출부가 따로 보낸다).
+  if (!sensConfigured(e)) return { ok: false, skipped: 'no_credentials' }
   const to = normalizeMobile(phone)
   if (!to) return { ok: false, skipped: 'invalid_phone' }
 
   const db = e.DB as D1Database | undefined
-  const aligoEnv = {
-    ALIGO_API_KEY: apiKey,
-    ALIGO_USER_ID: userId,
-    ALIGO_SENDER_PHONE: e.ALIGO_SENDER_PHONE as string | undefined,
-    ALIGO_SENDER: e.ALIGO_SENDER as string | undefined,
-    DISCORD_WEBHOOK_URL: e.DISCORD_WEBHOOK_URL as string | undefined,
-  }
-  const senderKey = String(e.ALIGO_SENDER_KEY ?? '')
   const approved = await approvedTemplates(db)
-  const useAlimtalk = !!senderKey && (n.forceAlimtalk || approved.has(n.tpl))
-  const smsAllowed = await smsAllowedSetting(db)
-
-  let via: 'alimtalk' | 'sms'
-  let result: { success: boolean; error?: string }
-  if (useAlimtalk) {
-    via = 'alimtalk'
-    result = await sendAlimtalk(aligoEnv, {
-      senderKey,
-      templateCode: approved.get(n.tpl) || n.tpl, // 알리고가 붙인 코드(없으면 우리 이름 그대로)
-      to,
-      message: n.text,
-      sender: await resolveAligoSender(aligoEnv),
-      // 📵 2026-10-11 대표 "문자는 안 쓸거고 카톡만" — 알림톡 실패 시 문자 대체도 기본 OFF.
-      ...(smsAllowed ? { failoverText: { title: n.title, text: n.text } } : {}),
-    })
-  } else if (smsAllowed) {
-    via = 'sms'
-    result = await sendAligoSms(aligoEnv, { to, text: n.text, title: n.title })
-  } else {
-    // 승인 전 템플릿 + 문자 꺼짐 → 보내지 않는다(앱 알림은 호출부가 따로 보낸다). 무엇을 놓쳤는지는 남긴다.
+  if (!n.forceAlimtalk && !approved.has(n.tpl)) {
+    // 승인 전 템플릿 → 보내지 않는다(검수 전 템플릿은 SENS 가 거절한다). 무엇을 놓쳤는지는 남긴다.
     await recordOutcome(db, to, `pending:${n.tpl}`, n.text, { success: false, error: 'template_not_approved' }).catch(() => {})
     return { ok: false, skipped: 'template_not_approved' }
   }
-
-  await recordOutcome(db, to, `${via}:${n.tpl}`, n.text, result).catch(() => {})
-  return result.success ? { ok: true, via } : { ok: false, via, error: result.error || 'unknown' }
+  // 🔘 버튼 — 템플릿에 등록한 버튼과 같아야 카카오가 받는다(`alimtalk-buttons.ts` 한 표). 매장 버튼인데 매장 번호가
+  //   없으면 보내도 거절되므로 보내지 않고 남긴다(호출부 결함을 숨기지 않는다).
+  const buttons = alimtalkButtons(n.tpl, { sellerId: n.sellerId })
+  if (buttons === null) {
+    await recordOutcome(db, to, `alimtalk:${n.tpl}`, n.text, { success: false, error: 'missing_store_id_for_buttons' }).catch(() => {})
+    return { ok: false, via: 'alimtalk', error: 'missing_store_id_for_buttons' }
+  }
+  // SENS 는 템플릿 코드를 등록할 때 우리가 정한다 — 설정에 `이름=코드` 로 적힌 코드(영문·숫자만 된다).
+  const result = await sendSensAlimtalk(e as SensEnv, {
+    templateCode: approved.get(n.tpl) || n.tpl, to, content: n.text, ...(buttons.length ? { buttons } : {}),
+  })
+  await recordOutcome(db, to, `alimtalk:${n.tpl}`, n.text, result).catch(() => {})
+  return result.success ? { ok: true, via: 'alimtalk' } : { ok: false, via: 'alimtalk', error: result.error || 'unknown' }
 }
 
 async function hashShort(input: string): Promise<string> {

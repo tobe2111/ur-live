@@ -60,7 +60,7 @@ const SEVERITY_BADGE: Record<string, string> = {
 const CHANNEL_ROWS: Array<{ label: string; keys: string[] }> = [
   { label: '웹푸시', keys: ['VAPID_PUBLIC_KEY', 'VAPID_PRIVATE_KEY', 'VAPID_SUBJECT'] },
   { label: '이메일', keys: ['RESEND_API_KEY'] },
-  { label: '알림톡', keys: ['ALIGO_API_KEY', 'ALIGO_USER_ID', 'ALIGO_SENDER_KEY'] },
+  { label: '알림톡', keys: ['NCP_ACCESS_KEY', 'NCP_SECRET_KEY', 'NCP_SENS_ALIMTALK_SERVICE_ID', 'NCP_KAKAO_CHANNEL_ID'] },
   { label: '네이티브푸시', keys: ['FIREBASE_PROJECT_ID', 'FIREBASE_PRIVATE_KEY', 'FIREBASE_CLIENT_EMAIL'] },
 ]
 
@@ -324,12 +324,12 @@ export default function AdminSystemMonitoringPage() {
           </DashboardCard>
         )}
 
-        {/* 🔔 진단: template_code 별 미해결 실패 — registered:false 반복 = Aligo 미등록 템플릿(등록 필요) */}
+        {/* 🔔 진단: template_code 별 미해결 실패 — registered:false 반복 = SENS 미등록 템플릿(등록 필요) */}
         {tab === 'alimtalk' && alimtalkByTemplate.length > 0 && (
           <DashboardCard className="!p-3">
             <p className="text-xs font-semibold text-gray-700 mb-2">템플릿별 진단 (미해결 기준)</p>
             <p className="text-[11px] text-gray-500 mb-2 leading-snug">
-              <b>미등록</b> 템플릿이 반복 실패하면 Aligo 콘솔에 해당 <code>tpl_code</code>로 템플릿을 등록·승인해야 합니다.
+              <b>미등록</b> 템플릿이 반복 실패하면 네이버 클라우드 SENS 콘솔에 해당 <code>tpl_code</code>로 템플릿을 등록·승인해야 합니다.
               (알림톡엔 SMS 폴백이 없어 그동안 해당 알림은 전달되지 않고 인앱/푸시로만 도달합니다.)
             </p>
             <div className="space-y-1">
