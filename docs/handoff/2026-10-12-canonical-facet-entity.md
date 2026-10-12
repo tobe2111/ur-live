@@ -965,3 +965,63 @@ curl -sS -A 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome
 엔티티 조정 신호이고, 값은 시드에 이미 있어 **추가 요청 0**이다(지어내지 않는다).
 ⚠️ 붙이기 전에 볼 것: ① 그 URL 이 살아 있는지(죽은 `sameAs` 는 역효과) ② `/stays/:id`·
 `/vouchers/:id` 의 시드에도 있는지 ③ `restaurant_lat`·`lng` 는 이미 `geo` 로 나가고 있다.
+
+---
+
+## ⑬ 매장 엔티티에 `sameAs` — 그 1순위 후보를 바로 했다 (위 🎯 가 이것으로 해소)
+
+**바로 위 "다음 세션의 1순위 후보" 를 이 세션에서 했다.** 세 전제를 전부 실측으로 확인하고 붙였다.
+
+### 실측 — 전제 셋에 대한 답
+
+| 확인할 것 | 결과 |
+|---|---|
+| ① URL 이 살아 있는가 | `place.map.kakao.com/10256701` **200** · `/26322749` **200** · 지어낸 id **400** |
+| ② 다른 상세 종류에도 있는가 | **숙소에도 있다**(`/api/group-buy/stays/2887` → `.../1688516364`). 교환권은 없다(`deal_only`, 매장 자체가 없고 그 상세는 noindex) |
+| ③ `geo` 는 이미 나가는가 | 그렇다 — `restaurant_lat`·`lng` → `GeoCoordinates`. 숙소는 `latitude`·`longitude` 로 **컬럼명이 다르다** |
+
+**커버리지는 표본 10/10 보다 좋았다 — 활성 50건 전수에서 50/50 이 모양 검증을 통과**했고 네 카테고리
+전부다(`meal_voucher 38 · stay_voucher 5 · etc_voucher 5 · beauty_voucher 2`). 활성 50건은 **주소·매장명도
+50/50** 이라 **오늘 매장 노드가 생기는 모든 페이지가 이 신호를 받는다.**
+
+🩸 **그 전수 측정에서 하마터면 "필드가 없다" 고 오판할 뻔했다** — `list(d['data'])[:40]` 로 키를 찍었는데
+`kakao_place_url` 은 **49개 중 48번째**라 슬라이스에 가렸다. 빌더를 돌린 출력이 이미 `sameAs` 를 내고
+있었는데도 키 목록만 보고 의심했다. ⇒ **존재를 확인할 때 목록을 자르지 말 것.**
+
+### 한 것
+
+`placeSameAs(raw)`(신규 · `detail-ssr-meta.ts` export) 하나를 두 매장 노드가 쓴다 —
+`FoodEstablishment`(`/pass/:id`) · `LodgingBusiness`(`/stays/:id`).
+
+- **모양이 맞을 때만 낸다**: `https:` + host `place.map.kakao.com` + 숫자 id. **정규형으로** 돌려준다
+  (끝 슬래시·쿼리·해시 제거) — `sameAs` 는 동일성 주장이라 같은 장소가 여러 모양으로 나가면 약해진다.
+- **🔴 이 값으로 매장 노드를 만들지 않는다** — `hasPlace` 게이트(매장명 + 주소|좌표) **불변**. 주소·좌표가
+  없어 노드가 없던 페이지는 **종전과 byte-동일**이다(주입이 그 방향을 고정).
+- **Product 에는 안 붙인다** — `sameAs` 는 *사업체*의 정체성이다. 문서당 정확히 **1개**(가드가 센다).
+- **값의 출처는 셀러가 카카오 장소 검색에서 고른 것**(`StoreRegisterModal` 이 카카오가 준 `place_url` 을
+  그대로 저장) — 자유 입력이 아니라 출처가 강하다. 다만 어드민 입력 경로도 있어 모양 검증은 유지.
+
+🔬 **빌더를 돌려 눈으로 봤다**(라이브 시드 두 개 + 적대적 입력 14종):
+`/pass/2919` → `FoodEstablishment#place` 에 `sameAs=["…/10256701"]` · `/stays/2887` →
+`LodgingBusiness#place` 에 `sameAs=["…/1688516364"]` · 둘 다 문서당 `sameAs` **1개** ·
+`http`·`abc`·`place.map.kakao.com.evil.com`·빈값·`null`·숫자 **전부 null**.
+
+### 안 한 것 / 측정으로 범위에서 뺀 것
+
+- **`/products/:id`(순수 쇼핑)** — 매장 노드 자체가 없다(실측: `Product`+`BreadcrumbList` 뿐).
+  배송 상품엔 사업체 엔티티가 없으니 맞다.
+- **유어샵 `Person` 의 `sameAs`** — 후보로 보고 재 봤는데 **소스가 없다**: `/api/curator/jiwon1228` 의
+  `curator` 에 SNS 키가 **0개**이고 라이브 `Person` 노드도 `identifier·image·name·url` 뿐이다.
+  (SNS 필드 `seller_instagram`·`youtube`·`tiktok`·`facebook` 은 **사업자 시드**에 있다 — 사업자 유어샵
+  (`linked_seller` → `SellerPublicPage`) 쪽은 **미측정**이라 별건 후보로 남긴다.)
+- **살아 있는지 확인** — 요청마다 외부를 두드리면 서브리퀘스트 예산(무료 50, 실측 ~49)을 먹는다.
+  이 함수가 보장하는 것은 *모양*이고 *실재가 아니다*.
+
+가드: `src/tests/unit/place-sameas-2026-10-12.test.ts` **22건** + 주입
+`scripts/mutations/place-sameas-2026-10-12.mjs` **10건 되돌려-검증 전부 빨간불 확인**(절반이 반대 방향 —
+노드를 새로 만드는 것 · Product 에 얹는 것 · 호스트를 손으로 적는 것 · 시드 타입에서 필드를 빼는 것).
+
+⚠️ **E4 는 배포 후 라이브 UA 실측**: `curl -A '<Googlebot UA>' https://urdeal.kr/pass/2919` 의 JSON-LD 를
+**재귀로** 훑어 `FoodEstablishment.sameAs` 가 **0 → 1** 인지 · `/stays/2887` 도 같은지 ·
+**`Product` 에는 없는지**(반대 방향) · 문서당 `sameAs` 가 **1개**인지. 📌 `@graph` 중첩 때문에
+top-level 만 훑으면 놓친다(2026-10-11 에 같은 함정을 밟았다).

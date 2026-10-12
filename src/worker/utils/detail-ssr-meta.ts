@@ -59,6 +59,38 @@ interface DetailData {
   restaurant_phone?: string
   avg_rating?: number
   review_count?: number
+  // 🔗 2026-10-12 — 카카오 장소 프로필(`sameAs`). 시드에 이미 온다(실측 14/14).
+  kakao_place_url?: string
+}
+
+/**
+ * 🔗 그 매장의 **카카오 장소 프로필**(`sameAs`) — 같은 실체를 가리키는 외부 주소.
+ *
+ * 🔑 **왜 로컬에 값진가**: `sameAs` 는 "이 가게가 저기 그 가게다" 를 말하는 유일한 표준 속성이고,
+ *    국내 로컬 질의에서 그 권위는 카카오맵이다. 실측(2026-10-12 · Googlebot UA 로 받아 **재귀로**
+ *    훑었다) `/pass/:id`·`/stays/:id`·`/products/:id` 전 표면 `sameAs` **0** 인데 `kakao_place_url` 은
+ *    딜 **14/14** · 숙소에도 있었다 — **가진 신호를 안 쓰고 있었다.**
+ *
+ * 🔒 **모양이 맞을 때만 낸다** — 죽은 `sameAs` 는 신뢰 신호를 **깎는다**(이 레포가 브랜드 `sameAs` 를
+ *    *실제 계정이 없다*는 이유로 일부러 비워 둔 것과 같은 판단). 값의 출처는 셀러가 카카오 장소 검색
+ *    결과에서 **고른 것**이지만(`StoreRegisterModal` 이 카카오가 준 `place_url` 을 그대로 저장) 어드민
+ *    입력 경로도 있어, host + 숫자 id 를 확인하고 **정규형으로** 돌려준다(끝 슬래시·쿼리·해시 제거).
+ *
+ * ⚠️ **살아 있는지는 확인하지 않는다** — 요청마다 외부를 두드리면 서브리퀘스트 예산(무료 50/인보케이션,
+ *    실측 ~49)을 먹는다. 이 함수가 보장하는 것은 *모양*이고 *실재가 아니다*(실측: 진짜 id 200 ·
+ *    지어낸 id **400** — 즉 숫자라고 살아 있는 건 아니다).
+ * 🔴 **이 값으로 매장 노드를 새로 만들지 않는다** — 주소·좌표가 없어 노드가 없던 페이지는 종전과
+ *    byte-동일이다(`hasPlace` 게이트 불변 — 주입이 그 방향을 고정).
+ */
+export function placeSameAs(raw: unknown): string | null {
+  const s = String(raw || '').trim()
+  if (!s) return null
+  try {
+    const u = new URL(s)
+    if (u.protocol !== 'https:' || u.hostname !== 'place.map.kakao.com') return null
+    const m = /^\/(\d{1,20})$/.exec(u.pathname.replace(/\/+$/, '') || '/')
+    return m ? `https://place.map.kakao.com/${m[1]}` : null
+  } catch { return null }
 }
 
 /**
@@ -158,9 +190,11 @@ export function buildDetailMeta(ssrPayload: string, origin: string, pathname: st
     const bizType = localBusinessType(d.category)
     const hasPlace = !!(store && (d.restaurant_address || (d.restaurant_lat && d.restaurant_lng)))
     const placeId = `${canonical}#place`
+    const sameAs = placeSameAs(d.kakao_place_url)
     const place = hasPlace ? {
       '@context': 'https://schema.org', '@type': bizType, '@id': placeId,
       name: store,
+      ...(sameAs ? { sameAs: [sameAs] } : {}),
       ...(d.restaurant_address ? { address: { '@type': 'PostalAddress', streetAddress: String(d.restaurant_address), addressCountry: 'KR' } } : {}),
       ...(d.restaurant_lat && d.restaurant_lng ? { geo: { '@type': 'GeoCoordinates', latitude: d.restaurant_lat, longitude: d.restaurant_lng } } : {}),
       ...(d.restaurant_phone ? { telephone: String(d.restaurant_phone) } : {}),
@@ -201,6 +235,7 @@ interface StayData {
   review_count?: number
   latitude?: number
   longitude?: number
+  kakao_place_url?: string
 }
 // 🔀 2026-10-12: 5종짜리 사본이 여기 있었다 — guesthouse 를 '게스트하우스' 로 불러 **화면(스테이)과
 //   13건이 갈려 있었고**, motel·villa·camping 은 표에 없어 전부 '숙소' 로 뭉개졌다. 표는 SSOT 하나.
@@ -244,9 +279,11 @@ export function buildStayDetailMeta(ssrPayload: string, origin: string, pathname
     //   정본으로 지목하기 전에 그걸 먼저 준다. 아래 `@graph` 로 노드를 모으고(종전엔 `@context` 를 노드마다
     //   얹은 배열) 매장을 `@id` 로 분리해 Offer 가 가리킨다 — `/pass/:id` 와 **같은 모양**.
     const placeId = `${canonical}#place`
+    const staySameAs = placeSameAs(p.kakao_place_url)
     const lodging: Record<string, unknown> = {
       '@type': 'LodgingBusiness', '@id': placeId,
       name: stayName,
+      ...(staySameAs ? { sameAs: [staySameAs] } : {}),
       ...(baseDesc ? { description: baseDesc.slice(0, 300) } : {}),
       ...(p.image_url ? { image: [photo] } : {}),
       ...(p.address ? { address: { '@type': 'PostalAddress', streetAddress: String(p.address), addressRegion: p.region_sido || undefined, addressCountry: 'KR' } } : {}),
