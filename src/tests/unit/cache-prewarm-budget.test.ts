@@ -39,10 +39,13 @@ describe('예열 cron 이 서브리퀘스트 예산 안에 있다', () => {
   it('한 회차 계획 요청 수가 무료 상한(50)을 넘지 않는다', () => {
     const hot = items('HOT_PATHS').length
     const kvKeys = items('SSR_KV_PATHS').length      // KV put — 이것도 서브리퀘스트다
-    const ws = items('WS_PREWARM_PATHS').length
+    // 🧨 2026-10-12: 도매(utongstart) 예열 4건이 **빠졌다**(도매몰 철거 #1710) → 이 항은 0 이다.
+    //   종전엔 `items('WS_PREWARM_PATHS').length` 였고, 그 배열이 사라져 이 시험이 던지며 빨간불이 났다.
+    //   항을 지우는 쪽이 맞다 — 그 블록이 되살아나는 것은 `retired-surface-410-2026-10-12.test.ts` 가
+    //   막는다(예산 계산과 철거 판정을 둘 다 여기서 잠그면 어느 쪽도 출력으로 판정할 수 없어진다).
     const normalizeD1 = 3                             // supply-visibility UPDATE 2 + pragma 1
     const dynamicD1 = 3                               // 셀러/큐레이터/상품 조회
-    const total = normalizeD1 + hot + kvKeys + ws + dynamicD1 + DYNAMIC_PREWARM_BUDGET
+    const total = normalizeD1 + hot + kvKeys + dynamicD1 + DYNAMIC_PREWARM_BUDGET
     expect(total, `계획 ${total}건 — 상한 50 을 넘으면 뒤쪽이 조용히 실패한다`).toBeLessThanOrEqual(50)
   })
 

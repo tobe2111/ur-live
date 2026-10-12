@@ -47,7 +47,6 @@ import { readFileSync, existsSync } from 'node:fs'
 // ⚠️ 이 컨테이너의 에이전트 프록시는 urdeal.kr 을 막는다(CONNECT 403) — 로컬에서 돌려볼 땐
 //    `BASE_URL=https://live.ur-team.com` 을 주면 된다(같은 워커라 결과가 사실상 같다).
 const BASE = (process.env.BASE_URL || 'https://urdeal.kr').replace(/\/$/, '')
-const WHOLESALE_BASE = (process.env.WHOLESALE_BASE_URL || 'https://utongstart.com').replace(/\/$/, '')
 const JSON_OUT = process.argv.includes('--json')
 const UA = 'Mozilla/5.0 (compatible; ur-live-contract-check/1.0; +https://urdeal.kr)'
 const TIMEOUT_MS = 20_000
@@ -86,22 +85,21 @@ for (const [re, end, label] of [
 }
 
 // ── ③ 색인 요청(sitemap) ────────────────────────────────────────────────────
-//   도매 sitemap 은 utongstart 호스트에서만 발행되고 loc 도 그 도메인이다 → 오리진을 따로 준다.
 //   동적 loc(`/group-buy/${id}` 등)은 런타임 값이라 제외하되, `encodeURIComponent('한글')` 처럼
 //   **정적으로 확정되는 템플릿**은 풀어서 검사한다 — 이번에 죽어 있던 카테고리 URL 6종이 그 형태였다.
+//   🧨 2026-10-12: 여기 있던 도매(utongstart) 오리진 분기 **제거** — 도매몰 철거(#1710)로 그
+//     sitemap 브랜치 자체가 사라졌다. `between()` 이 못 찾으면 `''` 를 돌려주므로 남겨 둬도
+//     조용히 통과했지만, 그러면 다음 세션이 "도매 sitemap 이 있다" 고 읽는다(낡은 지도).
 {
   const src = sourceOf('src/worker/routes/sitemap.routes.ts')
-  const wholesaleBlock = between(src, /const wholesaleUrls[^=]*=\s*\[/, '\n    ]')
   const resolve = (raw) => {
     const s = raw.replace(/\$\{encodeURIComponent\('([^']*)'\)\}/g, (_, v) => encodeURIComponent(v))
     return s.includes('${') ? null : s
   }
   for (const m of src.matchAll(/loc:\s*(?:`([^`]+)`|'([^']+)')/g)) {
-    m[1] = m[1] ?? m[2]
-    const path = resolve(m[1])
+    const path = resolve(m[1] ?? m[2])
     if (!path) continue
-    const inWholesale = wholesaleBlock.includes(m[0])
-    push(path, 'sitemap.xml', inWholesale ? WHOLESALE_BASE : BASE)
+    push(path, 'sitemap.xml')
   }
 }
 
