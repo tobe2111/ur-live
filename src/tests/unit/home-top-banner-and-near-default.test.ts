@@ -65,13 +65,10 @@ describe('① 상단 띠 배너 자리(strip)', () => {
 })
 
 /**
- * 🎠 2026-10-12 대표 확정 — 상단 배너 = **2:1 3D 카드 캐러셀, 저절로 넘어간다**
- *    (*"2:1(362×181) 배너 크기야"* · *"자동으로 넘어가게 해줘"*). 2026-09-05 "안 3"(96px · 자동 재생 금지)을 대체한다.
- *
- * 🔁 재조준: 옛 "저절로 넘어가지 않는다" 단언은 대표 결정으로 뒤집혔다. 그 단언이 지키려던 것
- *    — *읽던 사람이 방해받지 않는다* — 은 그대로 살아 있고, 이제 **자동 넘김의 안전장치 넷**이 그 일을 한다.
+ * 🎫 대표 확정이 **안 2(가로 카드) → 안 3(스와이프 스트립)** 으로 바뀌었다.
+ *    안 2 로 되돌아가는 것을 막는 게 아니라, 안 3 이 실제로 **스와이프 스트립인지**를 고정한다.
  */
-describe('① 상단 배너 = 2:1 카드 캐러셀 (2026-10-12)', () => {
+describe('① 상단 띠 = 옆으로 넘기는 스트립 (안 3)', () => {
   const SRC = read('src/components/home/HomeBannerStrip.tsx')
   const RAIL = SRC.slice(SRC.indexOf('function StripRail('))
 
@@ -79,81 +76,157 @@ describe('① 상단 배너 = 2:1 카드 캐러셀 (2026-10-12)', () => {
     expect(RAIL).toMatch(/overflow-x-auto/)
     expect(RAIL).toMatch(/snap-x snap-mandatory/)
     expect(RAIL).toMatch(/snap-start/)
-    // 스크롤바 숨김 표기는 `scrollbar-hide` 하나로 고정(`index.css` 정의가 한 벌).
+    // 스크롤바 숨김은 이름이 셋(`scrollbar-hide`/`no-scrollbar`/`noscroll`)으로 갈렸던 자리다.
+    //   `index.css` 가 정의를 한 벌로 합치며 표기를 `scrollbar-hide` 로 고정했다.
+    //   ⚠️ 그 주석은 `scroll-consistency` 라는 가드를 인용하는데 **그런 스크립트는 없다**(실측).
+    //     그러니 이 규약을 실제로 지키는 것은 지금 이 줄뿐이다.
     expect(RAIL).toMatch(/scrollbar-hide/)
     expect(RAIL).not.toMatch(/no-scrollbar|noscroll/)
   })
 
-  it('카드는 2:1 이다 (대표 확정 362 × 181)', () => {
-    expect(RAIL).toMatch(/aspect-\[2\/1\]/)
+  /**
+   * 🔁 2026-10-12 **두 번** 재조준했다. 불변식은 한 번도 안 바뀌었다 —
+   *   **넘길 수 있다는 신호가 화면에 있고, 손가락을 모르는 사람도 누를 수 있어야 한다.**
+   *   앵커만 따라 옮겼다: `peek`(74% 미리보기) → **점 줄** → **배너 안 숫자 알약**
+   *   (대표 확정 *"2로 가자"* — `1 / 4` 형태, 점 줄을 대체).
+   *
+   *   ⚠️ 숫자만 두고 조작을 빼지 말 것 — 그러면 스와이프를 모르는 사람에게 둘째 장이
+   *     **영원히 안 보인다.** 그래서 `<button>` + `goTo` 배선까지 함께 못 박는다.
+   *   ⚠️ 그리고 **배너 안**이어야 한다 — 밖에 줄을 하나 더 두면 세로를 더 먹고, 그게
+   *     "따로 논다"를 만든 바로 그 종류의 층이다(아래 리듬 검사와 같은 이유).
+   */
+  it('넘길 수 있다는 신호가 있다 — 두 장 이상이면 숫자가 뜨고 누를 수 있다', () => {
+    expect(RAIL, '장수 표시가 사라졌다 — 두 장 이상인데 넘길 수 있다는 표시가 아무것도 없다').toMatch(/\{many && \(/)
+    expect(codeOnly(RAIL), '숫자 알약이 사라졌다 — `N / 전체` 표기가 없다')
+      .toMatch(/\{active \+ 1\} \/ \{banners\.length\}/)
+    expect(codeOnly(RAIL), '숫자가 버튼이 아니다 — 누를 수 없으면 "부드럽게 넘김"(대표 지시)이 손가락 전용이 된다')
+      .toMatch(/<button[\s\S]{0,400}?onClick=\{\(\) => goTo\(\(active \+ 1\) % banners\.length\)\}/)
+    expect(codeOnly(RAIL), '숫자가 배너 밖으로 나갔다 — 줄을 하나 더 먹으면 다시 따로 논다')
+      .toMatch(/className="absolute [^"]*right-/)
+    expect(codeOnly(RAIL), '포함 블록(relative)이 없어졌다 — 알약이 레일과 함께 스크롤돼 흘러간다')
+      .toContain('<div className="relative">')
   })
 
-  it('PC 는 한 장이 가로 전체를 먹지 않는다 — 2:1 세 장 나란히', () => {
-    expect(RAIL).toMatch(/lg:basis-\[calc\(\(100%-16px\)\/3\)\]/)
+  /**
+   * 🎫 2026-10-12 신설 — **"따로 논다"를 막는 불변식.** 대표 지적 *"밑에 지금 인기 이용권 부분이랑
+   *   되게 따로 노는 느낌"* 의 원인은 크기가 아니라 **리듬**이었다(라이브 실측: 패널은 거터 14 ·
+   *   모서리 14 인데 배너만 전폭 · 모서리 16).
+   *
+   *   ⚠️ 그래서 14 를 손으로 적지 않는다 — `.ur-home-panel` 의 **모바일 값에서 읽어** 대조한다.
+   *     숫자를 두 벌 두면 패널을 고친 날 배너만 남아 다시 따로 논다(이 레포가 반복해 당한 클래스).
+   */
+  it('배너 거터·모서리가 아래 패널과 같다 (어긋나면 다시 따로 논다)', () => {
+    const css = read('src/index.css')
+    const mobile = css.match(/max-width:\s*1023px\)\s*\{\s*\.ur-home-panel\s*\{([^}]*)\}/)
+    expect(mobile, '`.ur-home-panel` 의 모바일 블록을 못 찾았다 — 이 검사가 헛돈다').toBeTruthy()
+    const pad = Number((mobile![1].match(/padding:\s*(\d+)px/) || [])[1])
+    const radius = Number((mobile![1].match(/border-radius:\s*(\d+)px/) || [])[1])
+    expect(pad, '패널 거터를 못 읽었다').toBeGreaterThan(0)
+    expect(radius, '패널 모서리를 못 읽었다').toBeGreaterThan(0)
+
+    /**
+     * 패널 값이 바뀌면 이 줄이 빨간불이 되어 배너도 같이 옮기라고 말한다.
+     * ⚠️ `px-3.5`(반쪽 토큰) 가 아니라 **정확한 px** 로 쓴다 — 4px 격자 가드가 반쪽 간격을 막는데,
+     *   이 14 는 리듬이 아니라 **패널에서 온 값**이라 격자에 맞출 수 없다(패널 자신이 14다).
+     */
+    const twGutter = `px-[${pad}px]`
+    /**
+     * 🩸 **스크롤러 클래스만 떼어 본다.** 두 번 틀렸다:
+     *   ① `toContain('px-3.5')` → `scroll-px-3.5` 안의 **부분일치**로 통과
+     *   ② 경계(`(?<![\w-])`)를 줘도 → 카드 안 `자세히 보기` **버튼의 `px-3.5`** 에 걸려 통과
+     *   RAIL 전체를 보는 한 어딘가의 같은 글자에 늘 걸린다 ⇒ 범위를 그 한 줄로 좁힌다.
+     */
+    const scroller = (codeOnly(RAIL).match(/className=\{`flex gap-\d+([^`$]*)/) || [])[1]
+    expect(scroller, '스트립 스크롤러의 className 을 못 찾았다 — 이 검사가 헛돈다').toBeTruthy()
+    expect(scroller, `배너 좌우 거터가 패널(${pad}px)과 달라졌다 — 전폭으로 돌아가면 다시 따로 논다`)
+      .toContain(twGutter)
+
+    const scrollerAll = (codeOnly(RAIL).match(/className=\{`flex gap-\d+[\s\S]{0,160}?`\}/) || [])[0] || ''
+    expect(scrollerAll, '스냅 기준점에 거터가 안 들어갔다 — 카드가 거터에 안 맞고 어정쩡하게 선다')
+      .toContain(`scroll-${twGutter}`)
+    expect(codeOnly(RAIL), `배너 모서리가 패널(${radius}px)과 다르다`).toContain(`rounded-[${radius}px]`)
   })
 
-  describe('저절로 넘어가되, 읽는 사람을 방해하지 않는다', () => {
-    it('타이머로 스크롤을 민다 — 손가락과 같은 길(scrollTo)', () => {
-      expect(RAIL).toMatch(/setTimeout\(/)
-      expect(RAIL).toMatch(/\.scrollTo\(/)
-    })
-    it('① 멈춤 버튼이 있고, 멈추면 안 넘어간다', () => {
-      expect(RAIL).toMatch(/aria-label=\{paused \?/)
-      expect(RAIL).toMatch(/if \(!many \|\| paused \|\| reduceMotion \|\| !onScreen\) return/)
-    })
-    it('② 손가락이 닿으면 멈추고 한참 뒤 재개한다', () => {
-      expect(RAIL).toMatch(/onPointerDown=\{many \? hold : undefined\}/)
-      expect(RAIL).toMatch(/heldUntil - Date\.now\(\)/)
-    })
-    it('③ 화면 밖·숨긴 탭에서는 안 넘긴다', () => {
-      expect(RAIL).toMatch(/IntersectionObserver/)
-      expect(RAIL).toMatch(/document\.visibilityState !== 'visible'/)
-    })
-    it('④ 기기의 동작 줄이기 설정이면 안 넘긴다', () => {
-      expect(SRC).toMatch(/prefers-reduced-motion: reduce/)
-    })
-    it('끝까지 가면 처음으로 돌아간다', () => {
-      expect(RAIL).toMatch(/atEnd \? 0 :/)
-    })
+  it('끝에서 더 밀어도 페이지가 끌리거나 뒤로가기가 걸리지 않는다', () => {
+    const scrollerAll = (codeOnly(RAIL).match(/className=\{`flex gap-\d+[\s\S]{0,160}?`\}/) || [])[0] || ''
+    expect(scrollerAll, '스트립 스크롤러의 className 을 못 찾았다 — 이 검사가 헛돈다').not.toBe('')
+    expect(scrollerAll, 'overscroll-x-contain 이 빠졌다 — 가로 스크롤 끝에서 브라우저 뒤로가기가 발동한다')
+      .toContain('overscroll-x-contain')
   })
 
-  it('한 장이면 꽉 채우고 조작부(멈춤·n/N)를 안 그린다', () => {
+  /**
+   * 🔁 2026-10-12 대표 *"자동으로 넘어가게 해줘"* — 종전 "자동 재생 금지" 단언을 **대체**한다.
+   *   지키려던 것(읽는 사람을 방해하지 않는다)은 네 개의 멈춤 조건으로 옮겨갔다.
+   */
+  it('저절로 넘어간다 — 타이머가 다음 장으로 스크롤하고, 끝이면 처음으로', () => {
+    const code = codeOnly(RAIL)
+    expect(SRC).toMatch(/const AUTO_ADVANCE_MS = \d+/)
+    expect(code).toMatch(/window\.setTimeout\(/)
+    expect(code).toMatch(/goTo\(active \+ 1 >= banners\.length \? 0 : active \+ 1\)/)
+  })
+
+  it('읽는 사람을 방해하지 않는다 — 멈춤·동작 줄이기·화면 밖·숨은 탭에서는 안 넘긴다', () => {
+    const code = codeOnly(RAIL)
+    expect(code, '멈춤·동작 줄이기·화면 밖 게이트가 빠졌다').toMatch(/if \(!many \|\| paused \|\| reduceMotion \|\| !onScreen\) return/)
+    expect(code, '숨은 탭에서도 넘긴다').toMatch(/document\.visibilityState !== 'visible'/)
+    expect(code, '화면 밖 판정이 없다').toMatch(/IntersectionObserver/)
+    expect(SRC, '동작 줄이기 설정을 안 본다').toMatch(/prefers-reduced-motion: reduce/)
+    expect(code, '멈춤 버튼이 없다 (WCAG 2.2.2)').toMatch(/배너 자동 넘김 멈춤/)
+  })
+
+  it('손가락이 닿으면 잠시 멈춘다 — 방금 고른 장을 빼앗지 않는다', () => {
+    const code = codeOnly(RAIL)
+    expect(code).toMatch(/onPointerDown=\{many \? hold : undefined\}/)
+    expect(code).toMatch(/Math\.max\(AUTO_ADVANCE_MS, heldUntil - Date\.now\(\)\)/)
+  })
+
+  it('한 장이면 꽉 채우고 숫자를 안 그린다 (`1 / 1` 금지)', () => {
     expect(RAIL).toMatch(/const many = banners\.length > 1/)
+    // 숫자 알약과 폭 분기가 모두 `many` 게이트 뒤에 있어야 한다.
     expect(RAIL).toMatch(/\{many && \(/)
-    // 카드가 `StripCard` 로 분리됐다 — 레일이 `many` 를 넘기고 카드가 그 값으로 스냅을 정한다.
-    expect(RAIL).toMatch(/snap=\{many\}/)
-    expect(RAIL).toMatch(/\$\{snap \? 'snap-start shrink-0' : ''\}/)
+    // 🔁 2026-10-12: 앵커 `basis-[74%]`(미리보기) → `w-full`(거터 안 한 장 꽉). 게이트 구조는 그대로.
+    //   🩸 `w-[calc(100%-1.75rem)]` 로 쓰면 스크롤러의 `px-3.5` 와 **거터가 두 번 빠진다**(실측 334px,
+    //      다음 장이 42px 삐져나왔다). 그래서 이 단언은 `w-full` 을 못 박는다.
+    expect(RAIL).toMatch(/many \? 'snap-start shrink-0 w-full' : 'flex-1'/)
+    // 🩸 주석 제거본으로 본다 — 바로 위 설명 주석이 `w-[calc(100%-…)]` 를 **예시로 인용**하고 있어서
+    //   원문을 그대로 보면 이 단언이 코드가 멀쩡해도 빨간불이 난다(2026-10-12 실제로 그랬다).
+    expect(codeOnly(RAIL), '거터가 두 번 빠지는 폭 계산이 돌아왔다 — 스크롤러가 이미 px-3.5 를 갖고 있다').not.toMatch(/w-\[calc\(100%-/)
   })
 
-  it('현재 장은 스크롤 위치에서 파생한다 — 따로 든 상태는 손가락과 어긋난다', () => {
+  it('숫자는 스크롤 위치에서 파생한다 — 따로 든 상태는 손가락과 어긋난다', () => {
     expect(RAIL).toMatch(/onScroll/)
     expect(RAIL).toMatch(/scrollLeft/)
   })
 
-  it('한 칸 계산이 쓰는 간격 상수가 실제 gap 과 같다', () => {
+  it('장수 계산이 쓰는 간격 상수가 실제 gap 과 같다', () => {
     const gap = SRC.match(/const STRIP_GAP_PX = (\d+)/)
     expect(gap, 'STRIP_GAP_PX 상수를 못 찾았다').toBeTruthy()
+    // Tailwind gap-N = N * 4px. 렌더의 gap 클래스에서 실제 값을 읽어 대조한다.
     const cls = RAIL.match(/className=\{`flex gap-(\d+) /)
-    expect(cls, '레일 컨테이너의 gap 클래스를 못 찾았다').toBeTruthy()
+    expect(cls, '스트립 컨테이너의 gap 클래스를 못 찾았다').toBeTruthy()
     expect(Number(gap![1])).toBe(Number(cls![1]) * 4)
   })
 
-  it('글자는 그림이 아니라 코드다 — 정본 스케일 24 / 13', () => {
-    expect(RAIL).toMatch(/text-\[24px\] font-bold/)
-    expect(RAIL).toMatch(/text-\[13px\] font-medium/)
+  /**
+   * 🔁 2026-10-12 재조준 — 방향이 `to-r`(좌→우) → `to-t`(아래→위)로 바뀌었다(글자가 카드 **아래**로
+   *   내려왔다). 그리고 브랜드 면(사진 없음)일 때는 덮을 것이 없으므로 `{bg && ...}` 로 묶였다.
+   *   지키려던 것은 그대로다: **사진이 있으면 반드시 덮는다** — 어떤 사진이 올라올지 모르기 때문이다.
+   *   그래서 방향을 고정하는 대신 **사진과 오버레이의 렌더 조건이 같은지**를 본다(그쪽이 더 강하다).
+   */
+  it('사진 위 글자 — 사진이 있으면 어두운 오버레이가 반드시 같이 덮인다', () => {
+    expect(RAIL, '어두운 오버레이가 사라졌다 — 밝은 사진 위에서 흰 글자가 안 읽힌다').toMatch(/from-black\//)
+    const imgCond = (RAIL.match(/\{bg && /g) || []).length
+    expect(
+      imgCond,
+      '사진과 오버레이가 **같은 조건**(`{bg && …}`)으로 렌더되지 않는다 — 한쪽만 뜨면 글자가 안 읽히거나\n' +
+        '   브랜드 면 위에 쓸데없는 검은 막이 깔린다.',
+    ).toBeGreaterThanOrEqual(2)
   })
 
-  it('그림 위에 그라디언트 덮개를 깔지 않는다 — 글자에만 옅은 그림자 (2026-10-12 대표 "그라데이션 촌스럽다")', () => {
-    expect(RAIL).not.toMatch(/bg-gradient-to-/)
-    expect(RAIL).toMatch(/\[text-shadow:/)
-  })
-
-  it('규격 안내가 2:1 · 자동 넘김을 말한다', () => {
-    const s = BANNER_SLOT_SPECS.strip
-    expect(s.recommendedWidth).toBe(s.recommendedHeight * 2)
-    expect(s.renderedNote).toMatch(/2:1/)
-    expect(s.renderedNote).toMatch(/넘어간다/)
-    expect(s.notes.join(' ')).toMatch(/단색/)
+  it('규격 안내가 안 3(배경 전면 사진)을 말한다 — 안 2 의 정사각 안내가 남으면 안 된다', () => {
+    expect(BANNER_SLOT_SPECS.strip.recommendedWidth).toBeGreaterThan(BANNER_SLOT_SPECS.strip.recommendedHeight)
+    expect(BANNER_SLOT_SPECS.strip.renderedNote).toMatch(/넘긴다/)
+    expect(BANNER_SLOT_SPECS.strip.notes.join(' ')).toMatch(/그라디언트/)
   })
 })
 

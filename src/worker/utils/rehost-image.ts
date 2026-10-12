@@ -9,7 +9,18 @@
  */
 
 // 프로덕션 존(이미지 리사이징 활성). **same-origin(/api/media)** 리사이즈에만 사용 — 외부 URL 은 404 라 불가.
-const RESIZE_BASE = 'https://urdeal.kr'
+export const RESIZE_BASE = 'https://urdeal.kr'
+/** 저장본 재축소 — 이 옵션·기준을 바꾸면 `gallery-etag-dedupe` 의 "같은 사진의 축소본" 판정도 같이 바뀐다(같은 상수를 쓴다). */
+export const REHOST_SHRINK_OPTS = 'width=1600,quality=82,fit=scale-down'
+export const REHOST_SHRINK_OVER = 600 * 1024
+
+/** 내용 해시(sha256 앞 32자리 hex) — 같은 바이트면 같은 R2 키. */
+export async function contentHash(buf: ArrayBuffer): Promise<string> {
+  const d = new Uint8Array(await crypto.subtle.digest('SHA-256', buf))
+  let hex = ''
+  for (let i = 0; i < 16; i++) hex += d[i].toString(16).padStart(2, '0')
+  return hex
+}
 
 export async function rehostImageToR2(
   env: { MEDIA_BUCKET?: R2Bucket },
@@ -38,9 +49,12 @@ export async function rehostImageToR2(
     const buf = await res.arrayBuffer()
     if (buf.byteLength < 500 || buf.byteLength > 11 * 1024 * 1024) return null // 아이콘/깨짐 or 과대(11MB 초과만 제외)
     const ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : ct.includes('gif') ? 'gif' : 'jpg'
-    const yyyymm = new Date().toISOString().slice(0, 7)
-    const rand = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.round(Math.random() * 1e9)}`
-    const key = `${keyPrefix}/${yyyymm}/${rand}.${ext}`
+    // 🖼️ 2026-10-12 (대표 "이용권 썸네일에서 아직도 사진이 중복으로 2개 있는 경우가 많아"):
+    //   키를 **내용 해시**로 만든다. 종전 키는 무작위(UUID)라 같은 사진을 두 번 이관하면 URL 이 둘이 되고,
+    //   문자열로 겹침을 거르는 화면은 그 둘을 다른 사진으로 봤다(실측: 데모 이용권 51개가 사진 1·2번이 같은 바이트).
+    //   같은 내용 = 같은 키 = 같은 URL 이면 기존 중복 제거가 그대로 먹는다. 이미 있으면 다시 저장·축소하지 않는다.
+    const key = `${keyPrefix}/h/${await contentHash(buf)}.${ext}`
+    try { if (await env.MEDIA_BUCKET.head(key)) return `/api/media/${key}` } catch { /* head 실패 = 그냥 저장 */ }
     await env.MEDIA_BUCKET.put(key, buf, {
       httpMetadata: { contentType: ct, cacheControl: 'public, max-age=31536000, immutable' },
       customMetadata: { source, at: new Date().toISOString() },
@@ -48,13 +62,13 @@ export async function rehostImageToR2(
     // 🖼️ 2026-07-22 (대표 "모두 이상적으로"): 저장본이 크면(카카오/다음 원본 8~10MB) **same-origin** 리사이저로
     //   재축소 후 덮어쓰기 — 외부 URL 리사이즈는 404 였지만 **`/api/media`(우리 도메인)는 리사이저 작동**.
     //   → R2 저장까지 ~300KB 로 경량(용량 ~10× 절감). 완전 fail-soft(재축소 실패 시 원본 저장본 유지).
-    if (buf.byteLength > 600 * 1024) {
+    if (buf.byteLength > REHOST_SHRINK_OVER) {
       try {
         const rctrl = new AbortController()
         const rtimer = setTimeout(() => rctrl.abort(), 12000)
         let rres: Response
         try {
-          rres = await fetch(`${RESIZE_BASE}/cdn-cgi/image/width=1600,quality=82,fit=scale-down/${RESIZE_BASE}/api/media/${key}`, { signal: rctrl.signal })
+          rres = await fetch(`${RESIZE_BASE}/cdn-cgi/image/${REHOST_SHRINK_OPTS}/${RESIZE_BASE}/api/media/${key}`, { signal: rctrl.signal })
         } finally { clearTimeout(rtimer) }
         if (rres.ok) {
           const rct = (rres.headers.get('content-type') || '').toLowerCase().split(';')[0].trim()

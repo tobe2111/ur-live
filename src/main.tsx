@@ -167,13 +167,32 @@ if (typeof window !== 'undefined') {
   const initSentryDeferred = () => {
     import('./lib/sentry').then(m => m.initSentry()).catch(swallow('main:sentry-init'))
   }
+  /**
+   * 🩸 2026-10-12 (대표 *"각 페이지마다도 로딩속도 개선이 필요해"* — 라이브 실측):
+   *   **`requestIdleCallback` 은 "콘텐츠가 뜬 뒤" 가 아니다.** 메인스레드가 **잠깐이라도 한가하면**
+   *   부른다 — 그런데 부팅 중엔 네트워크를 기다리느라 한가한 구간이 계속 생긴다. 그래서 이 블록이
+   *   "FCP/LCP 후 5초" 를 의도했는데도 실제로는 **페이지가 자기 데이터를 요청하기도 전에** 떴다:
+   *
+   *     /vouchers 라이브 실측 — 센트리 envelope POST **1,004ms** · 화면 본문 도착 **1,151ms**
+   *
+   *   비용은 작지 않다(로컬 4× CPU 스로틀 실측, 센트리 유무 비교):
+   *     longtask 합계  /vouchers 1,741ms → 389ms · /urshorts 1,569ms → 440ms
+   *   ⇒ **일(총량)을 줄이는 게 아니라, 사람이 기다리는 창 밖으로 옮긴다.** `load` 뒤 + idle.
+   *
+   *   🔒 **에러 보고에 구멍이 나지 않는다** — 이 파일 맨 위 `installErrorTelemetry()` 가
+   *     `window.onerror`·`unhandledrejection` 을 **센트리와 무관하게** 처음부터 잡아
+   *     `/api/_errors/log` 로 보낸다. 센트리는 그 위에 그룹핑·스택을 얹는 층이다.
+   *   ⚠️ 백스톱이 반드시 있어야 한다 — `load` 가 영영 안 오는 화면(장기 연결·숨은 탭)에서
+   *     센트리가 **통째로 안 켜지는** 것이 이 변경의 유일한 실패 모드다.
+   */
   const ric = (window as Window & { requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => void }).requestIdleCallback
-  if (ric) {
-    // 🛡️ 2026-05-27 v2 (Lighthouse TBT 910ms): idle timeout 3s → 5s.
-    //   Sentry chunk (140KB) 가 FCP/LCP 후 5초 이후 fetch → 첫 paint 영향 더 감소.
-    ric(initSentryDeferred, { timeout: 5000 })
-  } else {
-    setTimeout(initSentryDeferred, 5000)
+  let sentryStarted = false
+  const startSentry = () => { if (sentryStarted) return; sentryStarted = true; initSentryDeferred() }
+  const afterPaint = () => { if (ric) ric(startSentry, { timeout: 4000 }); else setTimeout(startSentry, 2000) }
+  if (document.readyState === 'complete') afterPaint()
+  else {
+    window.addEventListener('load', afterPaint, { once: true })
+    setTimeout(startSentry, 12000)  // 백스톱: load 가 안 와도 켜진다
   }
 }
 

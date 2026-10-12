@@ -47,8 +47,8 @@ export default [
     name: '👆 셀러 헤더가 고정 높이를 잃는다 (40px 버튼의 전제 붕괴)',
     why: '헤더 버튼을 박스째 키워도 됐던 이유는 헤더가 h-14(56px) 고정이기 때문이다. 그 전제가 바뀌면 처방도 바뀌어야 한다.',
     file: 'src/components/SellerLayout.tsx',
-    find: '<header className="flex h-14 md:h-12 flex-shrink-0',
-    replace: '<header className="flex h-11 md:h-12 flex-shrink-0',
+    find: '<header className="flex h-14 flex-shrink-0',
+    replace: '<header className="flex h-11 flex-shrink-0',
     test: TEST,
   },
   {

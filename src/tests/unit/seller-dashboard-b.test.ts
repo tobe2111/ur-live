@@ -20,6 +20,7 @@ const read = (f: string) => codeOnly(readFileSync(f, 'utf-8'))
 const CSS = readFileSync('src/index.css', 'utf-8')
 const LAYOUT = read('src/components/SellerLayout.tsx')
 const BANNER = read('src/components/SellerKakaoLinkBanner.tsx')
+const MORE = read('src/pages/SellerMorePage.tsx')
 const STORES = read('src/pages/seller-page/MyStoresPanel.tsx')
 // 📱 2026-09-14 오후(홈 M2): 할 일 카드는 `seller-page/TodoRows.tsx` 로 옮겨 갔다 — 홈 본문 + 그 행을 함께 본다.
 const PAGE = read('src/pages/SellerPage.tsx') + read('src/pages/seller-page/TodoRows.tsx')
@@ -32,10 +33,10 @@ describe('셀러 대시보드 B안', () => {
     const i = CSS.indexOf('.seller-light-theme {')
     expect(CSS.slice(i, i + 600)).toMatch(/--lift: 0 2px 10px/)
   })
-  it('사이드바: 활성 = 연파랑 알약(9-14 승계), 로그아웃은 빨강이 아니다, 상담 FAB 은 카카오 노랑이 아니다', () => {
-    // 🧭 9-14: 잉크 면 위 흰 글자 → 흰 면 위 잉크 글자 + `.ur-seller-nav-active`(= var(--brand-tint)) 알약.
-    expect(LAYOUT).toContain("'font-bold text-gray-900 ur-seller-nav-active'")
-    expect(LAYOUT).not.toMatch(/text-white border-brand ur-seller-nav-active/)
+  it('틀: 사이드바 없음(4단계), 로그아웃은 빨강이 아니다, 상담 FAB 은 카카오 노랑이 아니다', () => {
+    // 🧱 2026-10-12 셀러 대시보드 제거 4단계: 사이드바·활성 알약이 사라지고 메뉴는 `/seller/more` 한 화면이다.
+    expect(LAYOUT).not.toContain('ur-seller-nav-active')
+    expect(MORE).not.toMatch(/text-red-400|text-red-500/)
     expect(LAYOUT).not.toMatch(/text-red-400 hover:text-red-300/)
     expect(LAYOUT).not.toContain('#FEE500')
     expect(LAYOUT).toMatch(/rounded-full bg-brand hover:bg-\[#1557C8\] text-white/)

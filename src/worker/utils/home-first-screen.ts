@@ -90,7 +90,7 @@ export const HOME_FS_CLASS = {
   catBase: 'shrink-0 pb-2 text-[15px] transition-colors border-b-2',
   catOn: 'font-black text-gray-900 dark:text-white border-brand',
   catOff: 'font-semibold text-gray-400 dark:text-gray-500 border-transparent',
-  panel: 'ur-home-panel light-island',
+  panel: 'ur-home-panel',
   secHead: 'flex items-end justify-between gap-4 mb-3',
   secTitle: 'text-[17px] font-black tracking-tight text-gray-900 dark:text-white',
   secSub: 'mt-1 text-[12px] text-gray-500 dark:text-gray-400',

@@ -14,7 +14,6 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { stripComments } from '../helpers/source-text'
-import { SELLER_TABBAR_H } from '../../components/seller-layout/SellerBottomTabs'
 import { SELLER_BOTTOM_BAR_H } from '../../components/seller-layout/SellerBottomBar'
 
 const read = (p: string) => stripComments(readFileSync(p, 'utf8'))
@@ -82,10 +81,13 @@ describe('④ 상담 FAB 과 하단 고정 바가 같은 띠를 쓰지 않는다
   })
   it('🔢 CSS 숫자가 TS 상수와 같다 — 한쪽만 바뀌면 다시 겹친다', () => {
     const block = CSS.slice(CSS.indexOf('.seller-chat-fab'))
-    const lifted = block.match(/body\.seller-has-bottom-bar \.seller-chat-fab \{ bottom: calc\((\d+)px \+ env\(safe-area-inset-bottom\) \+ (\d+)px/)
+    // 🧱 2026-10-12 4단계: 하단 탭(60px)이 사라져 FAB·바 모두 바닥(safe-area)에서 잰다 — 남은 숫자는 바 높이 하나다.
+    const lifted = block.match(/body\.seller-has-bottom-bar \.seller-chat-fab \{ bottom: calc\(env\(safe-area-inset-bottom\) \+ (\d+)px/)
     expect(lifted).toBeTruthy()
-    expect(Number(lifted![1])).toBe(SELLER_TABBAR_H)
-    expect(Number(lifted![2])).toBe(SELLER_BOTTOM_BAR_H)
+    expect(Number(lifted![1])).toBe(SELLER_BOTTOM_BAR_H)
+    // 없어진 탭 높이가 CSS·바에 남으면 바와 FAB 이 탭 자리만큼 허공에 뜬다(마이 시트 안에서 실제로 떠 있었다).
+    expect(block.slice(0, 600)).not.toMatch(/calc\(60px/)
+    expect(BAR).toMatch(/bottom: 'env\(safe-area-inset-bottom\)'/)
   })
   it('바 스페이서가 바 높이와 같은 상수를 쓴다 (마지막 행이 안 가린다)', () => {
     expect(BAR).toMatch(/height: SELLER_BOTTOM_BAR_H/)

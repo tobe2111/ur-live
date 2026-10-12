@@ -27,7 +27,7 @@ import { swallow } from '@/worker/utils/swallow';
 import { intParam } from '@/shared/pagination'
 import { parsePickup, isEmptyPickup, canRequestReturn } from '../../../shared/pickup';
 import { getSupplyMeta } from '../../../worker/utils/product-supply-meta';
-import { orderHasGiftedVoucher, GIFTED_REFUND_BLOCKED } from '../../../worker/utils/voucher-gift'; // 🎁 2026-10-11 "받은 뒤엔 환불 막기"(대표 결정) — 선물로 넘긴 이용권 주문은 환불 요청 불가
+import { orderHasGiftedVoucher, GIFTED_REFUND_BLOCKED, orderHasPendingGift, GIFT_PENDING_REFUND_BLOCKED } from '../../../worker/utils/voucher-gift'; // 🎁 2026-10-11 "받은 뒤엔 환불 막기"(대표 결정) — 선물로 넘긴 이용권 주문은 환불 요청 불가
 const returnsRoutes = new Hono<{ Bindings: Env }>();
 
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
@@ -141,7 +141,7 @@ returnsRoutes.post('/request', rateLimit({ action: 'return_request', max: 10, wi
   const voucher = Number(vRow?.total) > 0 ? { total: Number(vRow?.total), unused: Number(vRow?.unused) || 0 } : undefined;
   const elig = canRequestReturn({ status: String(order.status || ''), isPickup, basisIso, nowMs: Date.now(), voucher });
   if (!elig.ok) return c.json({ success: false, error: elig.error }, 400);
-  if (voucher && await orderHasGiftedVoucher(DB, order.id)) return c.json({ success: false, error: GIFTED_REFUND_BLOCKED, code: 'GIFTED' }, 400);
+  if (voucher && await orderHasGiftedVoucher(DB, order.id)) return c.json({ success: false, error: GIFTED_REFUND_BLOCKED, code: 'GIFTED' }, 400); if (voucher && await orderHasPendingGift(DB, order.id)) return c.json({ success: false, error: GIFT_PENDING_REFUND_BLOCKED, code: 'GIFT_PENDING' }, 409); // 🎁 2026-10-12 선물 중이면 먼저 회수
 
   // 4. 중복 신청 확인
   const existing = await DB.prepare("SELECT id FROM returns WHERE order_id = ? AND status NOT IN ('rejected','cancelled')").bind(body.order_id).first();

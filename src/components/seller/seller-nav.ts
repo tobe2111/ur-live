@@ -168,4 +168,7 @@ export const SELLER_SEARCH_ONLY: { path: string; labelKey: string; fallback: str
   { path: '/seller/marketing', labelKey: 'seller.nav.marketing', fallback: '마케팅', icon: Megaphone, group: '주문·고객' },
   { path: '/seller/instagram-dm', labelKey: 'seller.nav.instagramDm', fallback: '인스타 자동 DM', icon: Megaphone, group: '주문·고객' },
   { path: '/seller/ad-slots', labelKey: 'seller.nav.adSlots', fallback: '광고 슬롯', icon: Rocket, group: '주문·고객' },
+  // 🪦→🔎 2026-10-12: 유일한 링크가 `SellerOnboardingChecklist` 였는데 그 컴포넌트를 렌더하는 곳이 0 이었다
+  //   (대시보드 제거 1단계 실측). 화면은 살아 있고 알림톡 수신에 필요하므로 검색·전체 도구로 닿게 둔다.
+  { path: '/seller/plus-friend-guide', labelKey: 'seller.nav.plusFriendGuide', fallback: '알림톡 채널 추가', icon: Bell, group: '설정' },
 ]

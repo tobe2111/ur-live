@@ -59,7 +59,12 @@ const CHECKS = [
     //   라우트가 홈 shell 로 새어 재발 → 아래 must(catch-all else + 로더) + mustNot(게이트된 로더)로 고정.
     must: [
       /const\s+urdealLoaderHtml\s*=/,   // 로더 마크업 SSOT const
-      /}\s*else\s*\{[\s\S]*?setInnerContent\(urdealLoaderHtml/, // catch-all else 가 로더 주입(홈 포함 전 라우트)
+      // 🧭 2026-10-12 재조준: `setInnerContent(staticNs + urdealLoaderHtml)` 도 통과시킨다.
+      //   지키려던 불변식(**catch-all `else` 가 정적 로더를 주입한다**)은 그대로다 — 바뀐 것은
+      //   그 앞에 `<noscript>` 요약이 **덧붙은** 것뿐이고(사람 화면은 byte-동일), 로더를
+      //   **대체하는** 쪽은 `geo-concept-surfaces-2026-10-12.test.ts` 가 따로 막는다.
+      //   ⚠️ 느슨해진 게 아니다: `urdealLoaderHtml` 이 그 자리에 **반드시** 있어야 한다.
+      /}\s*else\s*\{[\s\S]*?setInnerContent\((?:[A-Za-z_$][\w$]*\s*\+\s*)?urdealLoaderHtml/, // catch-all else 가 로더 주입(홈 포함 전 라우트)
       /ur-loader-breathe/,                 // 주입 HTML 에 로더 존재
     ],
     mustNot: [

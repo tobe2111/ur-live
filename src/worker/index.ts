@@ -288,7 +288,7 @@ import { referralRoutes } from '../features/referral/api/referral.routes';
 //   (typeof navigator/window 가드 보유라 워커 안전). URL 이 클라 렌더값과 byte-일치해야 preload 적중.
 import { cfImage, cfSrcSet } from '../utils/cf-image';
 // 🖼️ 홈 첫 화면 카드 사진 preload — 링크 생성은 헬퍼가 한다(파일 크기 래칫 + 직접 테스트 용이).
-import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; import { brandJsonLdScript } from '../shared/seo/brand-jsonld'; // 한 줄: 파일크기 래칫 안
+import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; import { brandJsonLdScript } from '../shared/seo/brand-jsonld'; import { buildStaticSurfaceNoscript } from './utils/crawler-noscript'; import { MAIN_SEED_PATH, REGION_PATH_RE } from '../shared/seo/region-seed'; // 한 줄: 파일크기 래칫 안
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -575,7 +575,7 @@ app.use('*', async (c, next) => {
       //   동네딜(group-buy active) 데이터로 전환. GroupBuyFeed(category='all')가 __SSR_INITIAL_MAIN__ 를
       //   consume → 0-RTT. 이 path 는 cache-prewarm HOT_PATHS 의 '/api/group-buy/products?status=active&category=all'
       //   와 1:1 일치(이미 prewarm 됨). 교환권은 홈에서 강등 → /vouchers(자체 __SSR_INITIAL_VOUCHERS__).
-      ssrTarget = { slot: 'MAIN', path: '/api/group-buy/products?status=active&category=all' };
+      ssrTarget = { slot: 'MAIN', path: MAIN_SEED_PATH }; // 🗺️ 2026-10-12: 리터럴 → 상수(값 불변). 지역 페이지가 같은 키를 써야 예열을 맞는다 — shared/seo/region-seed.ts
       // 🏠 2026-08-22 (대표 "인기 이용권이 먼저 안 뜨고 가까운 동네딜이 먼저 보여"): 홈 화면은
       //   피드(MAIN)와 섹션(SECTIONS, '지금 인기 이용권'·'주말에 떠나는 숙소')을 **함께** 그린다.
       //   그런데 시드는 피드에만 있어서 섹션만 브라우저가 따로 받아 왔다(실측 0.6~1.2s).
@@ -592,6 +592,10 @@ app.use('*', async (c, next) => {
       ssrTarget = { slot: 'BROWSE', path: '/api/products?page=1&limit=20&exclude_deal_only=1' };
     } else if (url.pathname === '/map' && !url.search) { // 🗺️ 2026-10-11 지도 첫 화면 시드 — 홈 시드(무정렬)를 못 써 한 왕복 더 기다렸다
       ssrTarget = { slot: 'MAP', path: MAP_SEED_PATH }; // 경로 SSOT shared/map-feed-seed.ts — 화면 요청과 byte-일치
+    } else if (!url.search && REGION_PATH_RE.test(url.pathname)) {
+      // 🗺️ 2026-10-12 지역 착지 페이지 시드(크롤러 본문 **26자**였다) — 홈과 **같은 캐시 키**라 cron
+      //   예열 적중(새 self-fetch 키 0) · 지역 필터는 `addressInRegion` SSOT. 사유: `shared/seo/region-seed.ts`.
+      ssrTarget = { slot: 'MAIN', path: MAIN_SEED_PATH };
     // 🥗 2026-07-15 워커 다이어트: /live SSR 슬롯(`/api/streams?status=live&limit=20`) 제거 — 라이브커머스 영구중단(죽은 self-fetch).
     // 🗑️ 2026-07-10 [UNLOCK_LOADING] (로딩 전수조사): GROUPBUY 슬롯 제거 — `/group-buy` 는 App.tsx 에서
     //   `<Navigate to="/" replace/>`(홈으로 즉시 리다이렉트)이고 유일 소비자 GroupBuyListPage 는 미라우팅.
@@ -1056,8 +1060,12 @@ app.use('*', async (c, next) => {
       //   → 홈 포함 **모든 HTML 라우트를 동일 로더**로 통일([로더 → 완성] 2단). 홈 shell 은 App.tsx:46 이
       //   명시하듯 __SSR_INITIAL_MAIN__ 을 홈이 소비 안 해 순수 낭비였으므로 손실 0. `__SSR_INITIAL_*` 데이터는
       //   <head> 주입(line 677)이라 #root 교체와 무관(0-RTT 불변). needsRootBlank/isBlogSurface 는 위에서 선처리.
+      // 🧭 2026-10-12 `/faq`·`/about`·`/region/*` 크롤러 본문이 **33·30·26자**였다 → `<noscript>`
+      //   요약을 **로더 앞에 덧붙인다**(대체 아님 — 사람 화면 byte-동일·밀림 0, JS 가 돌면 렌더조차
+      //   안 된다). 문구 SSOT·규율: `utils/crawler-noscript.ts` + `shared/seo/concept-content.ts`.
+      const staticNs = buildStaticSurfaceNoscript(url.pathname, ssrPayload);
       rb = rb.on('#root', {
-        element(el) { el.setInnerContent(urdealLoaderHtml, { html: true }); },
+        element(el) { el.setInnerContent(staticNs + urdealLoaderHtml, { html: true }); },
       });
     }
     const rewritten = rb.transform(c.res);
@@ -2160,8 +2168,8 @@ app.route('/api/guides', guideRoutes);
 
 // 🗑️ 2026-07-07 (라이브커머스 제거 2/N): /api/live·/api/chat(라이브 SSE+채팅) 마운트 제거.
 
-// ── 사이드 배너 (공개 API, 인증 불필요) ──
-app.get('/api/side-banners', async (c) => {
+// ── 사이드 배너 (공개 API, 인증 불필요) · 🐌 2026-10-12 `edgeCache(600)` 추가 — 캐시 헤더가 **하나도 없어** 소비자 페이지마다 콜드 D1(실측 388ms) + 요청마다 `CREATE TABLE IF NOT EXISTS`(per-request DDL)로 왕복 2회였다. 이제 콜로당 10분에 한 번. ⚠️ 배너 편성이 최대 10분 늦게 반영된다(수동·드문 작업이라 수용). 상세: docs/handoff/2026-10-12-main-loading-fonts.md ⑥. 📏 한 줄로 쓴 이유는 이 파일 래칫(2672)이 꽉 차 있어서다 ──
+app.get('/api/side-banners', edgeCache(600), async (c) => {
   const env = c.env as Env;
   try {
     // Auto-create table if not exists
@@ -2216,7 +2224,7 @@ app.get('/api/image/resize', async (c) => {
   // 🛡️ 2026-05-27 (사용자 지적): naver image search / 카카오 daumcdn 호스트 추가.
   //   셀러 등록 시 naver 이미지 선택 → 다양한 외부 호스트 image_url 저장 → 변환 없으면 큰 트래픽.
   const ALLOWED_HOSTS = [
-    'firebasestorage.googleapis.com', 'img.youtube.com', 'k.kakaocdn.net', 'images.unsplash.com',
+    'firebasestorage.googleapis.com', 'img.youtube.com', 'i.ytimg.com', 'k.kakaocdn.net', 'images.unsplash.com',
     'urdeal.kr', 'ur-live.pages.dev',
     'pstatic.net',  // search.pstatic / shop-phinf / blogfiles / postfiles / phinf / mblogthumb-phinf 등
     'daumcdn.net',  // t1.daumcdn / i1.daumcdn / cf.daumcdn 등

@@ -1831,7 +1831,9 @@
       "ordersCustomers": "Commandes & clients",
       "curator": "Ma UrShop",
       "vouchers": "Bons",
-      "growth": "Croissance"
+      "growth": "Croissance",
+      "menu": "Menu complet",
+      "home": "Accueil vendeur"
     },
     "nav": {
       "products": "Produits",
@@ -1882,7 +1884,8 @@
       "partners": "Partenaires",
       "notifyGuide": "Alertes et guide",
       "operatingSummary": "Résumé d'exploitation",
-      "storeInfo": "Infos boutique"
+      "storeInfo": "Infos boutique",
+      "plusFriendGuide": "Ajouter la chaîne KakaoTalk"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -5693,7 +5696,15 @@
     "q9": "Qu'est-ce que UrDeal ?",
     "a9": "UrDeal (urdeal.kr) est une plateforme de commerce local : achetez des bons de commerces de quartier à prix réduit et utilisez-les en magasin avec un QR code. Bons repas, beauté et hébergement, coupons d'échange (gifticon), carte des offres à proximité et votre propre UrShop.",
     "q10": "Comment utiliser un bon ?",
-    "a10": "Les bons achetés apparaissent dans Ma page > Mes bons ; présentez le QR ou le PIN en magasin. Les coupons d'échange sont émis immédiatement après le paiement."
+    "a10": "Les bons achetés apparaissent dans Ma page > Mes bons ; présentez le QR ou le PIN en magasin. Les coupons d'échange sont émis immédiatement après le paiement.",
+    "q11": "Où trouver des bons de réduction pour les restaurants près de moi ?",
+    "a11": "La carte des offres de quartier (urdeal.kr/map) affiche les pass restauration, beauté et hébergement les plus proches de votre position. Pour parcourir par zone, utilisez les pages de région (ex. urdeal.kr/region/서울). Vous pouvez filtrer par restauration, beauté, hébergement ou autres.",
+    "q12": "Existe-t-il des pass d'hébergement pour les voyages ?",
+    "a12": "Oui. Les pass d'hébergement s'achètent à l'avance à prix réduit sur UrDeal et s'utilisent sur place avec un QR code. Voyez-les sur urdeal.kr/stays et combinez les pass restauration et activités de la même destination depuis les pages de région pour organiser une journée à prix réduit.",
+    "q13": "Quelle est la différence entre un pass et un bon d'échange ?",
+    "a13": "Un pass s'utilise dans un établissement (restaurant, salon, hébergement) : vous payez par carte et le présentez sur place via QR code ou code PIN. Un bon d'échange est un gifticon de marque pour cafés, supérettes ou rôtisseries : vous l'achetez avec des Deal rechargés et il est émis dès le paiement.",
+    "q14": "Puis-je recommander à des amis un pass qui me plaît ?",
+    "a14": "Oui. Toute personne inscrite obtient sa propre UrShop (urdeal.kr/u/votre-identifiant). Ajoutez un pass qui vous plaît à votre UrShop et partagez le lien ; lorsqu'un achat a lieu via ce lien, une part revient à celui qui l'a recommandé."
   },
   "introduce": {
     "navStart": "Commencer",

@@ -96,6 +96,15 @@ const HOT_PATHS: readonly string[] = [
   // 🛡️ 2026-05-27: VouchersPage 카테고리 칩 — 2번째 endpoint warm 유지.
   '/api/vouchers/categories',
   '/api/group-buy/live-ticker',
+  // 🎬 2026-10-12 (대표 "메인에서 유어쇼츠가 늦게 로딩되네?"): 홈 레일이 쓰는 주소.
+  //   `edgeCache(300)` 은 이미 있는데 예열 밖이라 **콜드 콜로에서 478ms** 가 나왔다(같은 날 실측 —
+  //   따뜻하면 99ms). 레일은 React 마운트 뒤에야 부르므로 그 지연이 통째로 사람이 기다리는 시간이다.
+  //   💰 예산: HOT 22→23 + 동적 12 + D1 3 + KV 4 ≈ 42 < 50(도매 4칸이 10-12 에 비어 자리가 있다).
+  '/api/urshorts',
+  // 🧩 2026-10-12 (같은 실측): 소비자 **모든 페이지**가 여는 크롬 2종. 페이지마다 콜드로 맞으면
+  //   `/api/side-banners` 388ms · `/api/consumer-settings` 368ms 가 그대로 대기 시간이 된다.
+  '/api/side-banners',
+  '/api/consumer-settings',
   // 🚫 2026-08-23: 여기 있던 `/api/sections` 중복 제거 — 위(56행)에 이미 있다. 같은 URL 을
   //   두 번 fetch 하면 예열 결과는 같고 **서브리퀘스트만 한 칸 더** 쓴다. 이 cron 은 상한(50)에
   //   붙어 있어서 그 한 칸이 곧 뒤쪽 경로의 예열 실패다.

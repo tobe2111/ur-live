@@ -50,7 +50,8 @@ describe('A2 — 매장이 헤더 제목', () => {
     expect(src).toMatch(/<StoreSwitcher variant="title" \/>/)
     expect(src).toMatch(/<span className="text-gray-300">\/<\/span>\s*<h1 className="truncate text-\[13px\] font-bold text-gray-900">\{title\}<\/h1>/)
     expect(src).toContain('dash-phone-title')
-    expect(src).toContain('w-[224px]')
+    // 🧱 2026-10-12 4단계: 224px 사이드바는 걷어냈다 — 되살아나면 틀이 다시 두꺼워진 것이다.
+    expect(src).not.toContain('w-[224px]')
   })
   it('제목형은 매장 1곳이어도 그린다(이름이 곧 제목) — 드롭다운은 2곳 미만이면 없다', () => {
     const src = stripComments(SWITCHER)

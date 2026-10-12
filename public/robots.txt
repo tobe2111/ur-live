@@ -113,8 +113,27 @@ Disallow: /supplier
 #      서버가 그려 주는 **HTML**(첫 화면 + `<noscript>` 요약 + JSON-LD)이라 GEO 손실이 0 이고,
 #      가격표를 벌크로 긁는 경로는 닫힌 채로 남는다. SSR self-fetch 는 자기 UA
 #      (`ur-live-ssr-prefetch/1.0`)를 쓰므로 이 403 에 걸리지 않는다.
-#   📌 `Google-Extended` 는 **차단 유지** — 그것은 Gemini *학습* 거부이고, 구글 AI 개요
-#      (AI Overviews)는 `Googlebot` 색인을 쓴다. 즉 막아도 AI 개요 노출은 안 깎인다.
+#   🩸 2026-10-12 — `Google-Extended` 를 **차단 목록에서 뺐다**(대표 지시 *"그록, 클로드 등 AI 모든
+#      AI 서비스에서 검색 시 나오게 해줘"* → 트레이드오프 설명 후 승인 **"열기"**).
+#      ⚠️ **바로 위 줄에 제가 적어 둔 메모가 틀렸다**: *"그것은 Gemini 학습 거부일 뿐이라 막아도
+#      노출이 안 깎인다"* 는 **반만 맞다**. 구글 AI 개요(AI Overviews)가 `Googlebot` 색인을 쓰는
+#      것은 사실이다. 그런데 이 토큰은 **학습과 그라운딩을 한 덩어리로** 묶는다 — 그라운딩 =
+#      *제미나이가 답할 때 검색 색인에서 근거를 끌어오는 것* = **인용**. 구글의 Grounding with
+#      Google Search 문서가 이 토큰을 거부한 페이지는 그라운딩에 쓰지 않는다고 명시한다.
+#      즉 막아 두는 동안 **제미나이는 우리를 근거로 쓸 수 없었다.** 우리가 꺼 둔 것이다.
+#      ⚠️ 대가는 피할 수 없다 — OpenAI·Anthropic 은 검색봇과 학습봇이 **따로**라 "인용은 받고
+#      학습은 거부" 가 되지만(그래서 위 다섯을 뺐다), 구글은 토큰이 하나라 열면 **학습에도 쓰인다.**
+#      그 교환을 대표가 승인했다. 되돌리기는 `User-agent: Google-Extended` 한 줄 복구.
+#      📌 `Applebot-Extended` 는 **차단 유지** — 애플 쪽은 그 토큰이 *학습 전용*이고 검색 색인은
+#         `Applebot`(허용, 라이브 200)이 따로 한다. 즉 구글과 달리 막아도 노출 손실이 0 이다.
+#         **두 토큰을 같은 것으로 묶어 보지 말 것** — 그 혼동이 위 오기의 출처다.
+#      ⚠️ 이 판단의 근거는 **구글 원문이 아니다**: 이 레포를 도는 세션 환경의 프록시가 구글 도메인
+#         (`developers.google.com`·`support.google.com`·`ai.google.dev`)을 전부 막아(실측 000)
+#         원문을 읽을 수 없었고, 그 문서를 인용한 2차 자료에 의존했다. 대표가 서치콘솔 쪽에서
+#         확인할 수 있으면 그게 1차다.
+#      🔎 `SCRAPER_UA_PATTERNS` 의 `/Google-Extended/i` 는 **그대로 남겼다** — 이건 UA 가 아니라
+#         robots 전용 토큰이라 그 이름으로 오는 요청이 애초에 없다(죽은 가지라 무해하고, robots↔헤더
+#         대칭 검사는 "robots 가 막으면 헤더도 막아라" 한 방향이라 걸리지도 않는다).
 #   ⚠️ robots.txt 는 **부탁**이라 지키지 않는 쪽이 실제 문제다. 그래서 짝으로 헤더 차단이 있다:
 #      `src/worker/middleware/bot-detection.ts` SCRAPER_UA_PATTERNS / scrapeProtection().
 #      차단 목록을 **늘릴** 땐 양쪽 같이. **줄일** 때는 위 2026-10-11 처럼 한쪽만일 수 있다
@@ -126,7 +145,6 @@ User-agent: ClaudeBot
 User-agent: anthropic-ai
 User-agent: Claude-Web
 User-agent: CCBot
-User-agent: Google-Extended
 User-agent: Bytespider
 User-agent: Amazonbot
 User-agent: Applebot-Extended

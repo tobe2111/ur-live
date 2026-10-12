@@ -34,7 +34,7 @@ import { getSupplyMeta } from '../../../worker/utils/product-supply-meta'
 import { intParam } from '@/shared/pagination'
 // 🏪 2026-09-16 (대표 — "승인이 되어야 메인에 노출"): 승인 전 매장의 이용권을 피드·지도에서 가린다.
 import { approvedSellerProductSql } from '@/shared/db/consumer-visible-product'
-import { voucherCanRedeem } from './voucher-can-redeem'
+import { voucherCanRedeem } from './voucher-can-redeem'; import { withGiftState, voucherHasPendingGift, noPendingGiftSql, GIFT_PENDING_USE_BLOCKED } from '../../../worker/utils/voucher-gift' // 🎁 선물 중·보낸 선물 표시
 
 // 🛡️ 2026-05-22 module-scope: gift_catalog JOIN 가능 여부 캐시.
 //   null = 미확인, true = 가능, false = table 부재 → fallback 만 사용.
@@ -890,7 +890,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       return bt - at
     })
 
-    return c.json({ success: true, data: merged })
+    return c.json({ success: true, data: await withGiftState(DB, merged, uidBinds) }) // 🎁 2026-10-12 선물 중 잠금·보낸 선물 기록
   })
 
   // 🛡️ self-redeem rate limit 키 SSOT — 미들웨어 keyFn + 성공 시 리셋(DELETE)이 같은 키를 써야 함.
@@ -939,11 +939,11 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         const { checkSelfRedeemGate } = await import('../../../worker/utils/self-redeem-gate')
         const gate = await checkSelfRedeemGate(DB, pre.seller_id, String(body.store_code || ''))
         if (!gate.ok) return c.json({ success: false, code: gate.code, error: gate.error }, gate.status)
+        if (await voucherHasPendingGift(DB, { id: pre.id })) return c.json({ success: false, code: 'GIFT_PENDING', error: GIFT_PENDING_USE_BLOCKED }, 409) // 🎁 선물 중 잠금
       }
-
       // 🛡️ 머니룰: claim-before-credit — 미사용+본인 일 때만 원자적 used 선점.
       const res = await DB.prepare(
-        "UPDATE vouchers SET status='used', used_at=datetime('now') WHERE code=? AND user_id=? AND status='unused'"
+        `UPDATE vouchers SET status='used', used_at=datetime('now') WHERE code=? AND user_id=? AND status='unused' AND ${noPendingGiftSql('vouchers.id')}`
       ).bind(code, user.id).run()
       const claimed = (res.meta?.changes || 0) === 1
 

@@ -16,7 +16,7 @@
  * - 에이전시 직원 좌석 — 이메일 로그인이라 마이가 없다(2단계에서 에이전시 콘솔로 옮긴다).
  * - 마이가 없는 옛 셀러 계정(카카오 소비자 계정 없음).
  * - 마이에서 일부러 전체화면으로 보낸 경우(`?from=my` · 세션 표시) — 큰 폼은 시트가 아니라 전체화면이 설계다.
- * - 전체화면 전용 화면(`FULL_SCREEN_ONLY`)과 외부 OAuth 복귀 주소.
+ * - 외부 OAuth 복귀 주소. (계산대·이용권 등록은 대시보드가 아니라 전용 길로 보낸다 — `OWN_PATH`)
  * - `?dash=1` — 마이가 그 화면을 못 열 때(좌석이 안 맞음 · 가게 목록 실패) 되돌려 보내는 표시. **무한 왕복 방지.**
  *
  * ⚠️ 이 파일은 **판정만** 한다. 토큰을 발급하거나 좌석을 바꾸지 않는다.
@@ -36,11 +36,35 @@ export const DASH_PARAM = 'dash'
 const HOME_LIKE = new Set(['/seller', '/seller/dashboard', '/seller/more'])
 
 /**
- * 대시보드에 그대로 둔다 — 시트로 열면 안 되는 주소.
- * - `/seller/scan` · `/seller/meal-voucher/new`: 마이에 **전용 길**이 이미 있다(`tool-pages.ts` `FULL_SCREEN_ONLY` 와 같은 둘).
- * - `/seller/youtube/callback`: 외부 OAuth 복귀 — 쿼리(code·state)를 그 화면이 직접 읽어야 한다.
+ * 대시보드에 그대로 둔다 — 외부 OAuth 복귀 주소 하나. 쿼리(code·state)를 그 화면이 직접 읽어야 한다.
+ * 🚪 2026-10-12 — 여기 있던 `/seller/scan` · `/seller/meal-voucher/new` 는 뺐다. *"마이에 전용 길이 있다"* 는 이유로
+ *   대시보드에 **남겨 뒀는데**, 그 결과 알림톡 '사용처리' 링크·하단 ➕ '이용권 등록'·유어샵 '이용권 등록' 이 전부
+ *   얇은 대시보드 틀로 떨어졌다. 전용 길이 있으면 **그리로 보내는 게** 맞다(아래 `OWN_PATH`).
  */
-export const STAY_ON_DASHBOARD = new Set(['/seller/scan', '/seller/meal-voucher/new', '/seller/youtube/callback'])
+export const STAY_ON_DASHBOARD = new Set(['/seller/youtube/callback'])
+
+/**
+ * 🚪 대시보드 대신 갈 **전용 길** — 마이 · 에이전시 콘솔 · 깊은 링크가 같은 표를 읽는다(2026-10-12).
+ *   - `scan`       → `/store/scan`(매장 계산대 — 대시보드 밖 전체화면, 좌석 토큰으로 매장을 고른다)
+ *   - `voucherNew` → `?tool=` 로 보내고, 받는 쪽(마이·콘솔)이 `VoucherNewSheet` 로 연다
+ * ⚠️ 이 파일에 두는 이유: 마이가 이미 정적으로 import 하는 작은 판정 파일이다. 시트 지도(`tool-pages.ts`)를
+ *   마이가 정적으로 읽으면 시트 청크가 붙으므로, 그 파일은 여기서 **재수출**만 한다.
+ */
+export type OwnPath = 'scan' | 'voucherNew'
+
+export const OWN_PATH: Record<string, OwnPath> = {
+  '/seller/scan': 'scan',
+  '/seller/meal-voucher/new': 'voucherNew',
+}
+
+/** 계산대 — 마이·에이전시 콘솔·깊은 링크가 **같은 화면**으로 간다(대시보드 `/seller/scan` 아님). */
+export const STORE_SCAN_PATH = '/store/scan'
+
+/** 경로(쿼리 포함 가능)의 전용 길. 없으면 `null`. */
+export function ownPathFor(path: string): OwnPath | null {
+  const base = path.split('?')[0]
+  return Object.prototype.hasOwnProperty.call(OWN_PATH, base) ? OWN_PATH[base] : null
+}
 
 /** 카카오로 들어온 사장님인가(= 마이가 있고, 에이전시 좌석이 아니다). 시트 안이면 언제나 false. */
 export function shouldSendOwnerToMy(embedded: boolean): boolean {
@@ -69,7 +93,10 @@ export function myRedirectFor(pathname: string, search: string): string | null {
 function toolRedirect(base: string, pathname: string, search: string): string | null {
   if (STAY_ON_DASHBOARD.has(pathname)) return null
   if (HOME_LIKE.has(pathname)) return base
-  const target = pathname + (search && search !== '?' ? (search.startsWith('?') ? search : `?${search}`) : '')
+  const q = search && search !== '?' ? (search.startsWith('?') ? search : `?${search}`) : ''
+  // 🧾 계산대는 시트가 아니라 대시보드 밖 전체화면으로 — 마이·콘솔이 같은 화면이다(쿼리는 그대로).
+  if (ownPathFor(pathname) === 'scan') return STORE_SCAN_PATH + q
+  const target = pathname + q
   return `${base}?${TOOL_PARAM}=${encodeURIComponent(target)}`
 }
 

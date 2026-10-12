@@ -20,4 +20,8 @@ describe('배너 글자색 자동 판정', () => {
     expect(src).toMatch(/onLoad=\{\(e\) => \{ const L = measureTitleLuminance\(e\.currentTarget\); if \(L != null\) setInk\(inkForLuminance\(L\)\) \}\}/)
     expect(src).toMatch(/dark \? 'text-gray-900 dark:text-gray-900'/)
   })
+  it('밝은 그림이면 검은 덮개를 깔지 않는다 (대표 "그라데이션 촌스럽다")', () => {
+    const src = readFileSync('src/components/home/HomeBannerStrip.tsx', 'utf-8')
+    expect(src).toMatch(/\{bg && !dark && <div className="absolute inset-0 -z-10 bg-gradient-to-t/)
+  })
 })

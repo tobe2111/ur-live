@@ -13,12 +13,13 @@ export default [
       '빌드는 경고만 내고 성공하므로 이 규칙이 사라져도 아무도 모른다.',
   },
   {
-    name: '📱 하단 탭이 목록을 손으로 적는다 (모델과 갈린다)',
-    file: 'src/components/seller-layout/SellerBottomTabs.tsx',
-    find: "const { primary } = useSellerNavModel()",
-    replace: "const primary = [{ key: 'orders', path: '/seller/orders', label: '주문', icon: ReceiptIcon, active: false }] as any; void useSellerNavModel",
+    // 🧱 2026-10-12 4단계: 하단 탭이 사라지고 대분류를 그리는 곳은 전체 메뉴 화면 하나다 — 재조준.
+    name: '📱 전체 메뉴가 대분류를 손으로 적는다 (모델과 갈린다)',
+    file: 'src/pages/SellerMorePage.tsx',
+    find: "  const { primary, moreGroups, ctaItem } = useSellerNavModel()",
+    replace: "  const primary = [{ key: 'orders', path: '/seller/orders', label: '주문', icon: Home, active: false }] as any\n  const { moreGroups, ctaItem } = useSellerNavModel()",
     test: 'src/tests/unit/seller-mobile-first-2026-09-14.test.ts',
-    why: '두 벌이면 반드시 갈린다 — 사이드바에 있는 탭이 폰엔 없거나 그 반대가 되고, 에러는 안 난다.',
+    why: '두 벌이면 반드시 갈린다 — 마이 전체 도구·검색에 있는 화면이 메뉴엔 없거나 그 반대가 되고, 에러는 안 난다.',
   },
   {
     name: '📱 홈이 다시 더보기에 중복된다 (isCoveredByPrimary 가 홈을 안 덮음)',

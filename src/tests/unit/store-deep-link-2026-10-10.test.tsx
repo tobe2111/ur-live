@@ -30,8 +30,10 @@ describe('① 링크 규칙', () => {
     expect(parseStoreGo('?s=-1&to=docs').sellerId).toBeNull()
     expect(storeGoUrl('x', 'home')).toBe('https://urdeal.kr/store/go?to=home')
   })
-  it('목적지는 전부 셀러 화면이다(외부·소비자 화면으로 새지 않는다)', () => {
-    for (const p of Object.values(STORE_GO_TARGETS)) expect(p).toMatch(/^\/seller(\/|$)/)
+  // 2026-10-12 — 사용처리는 대시보드 밖 매장 계산대(`/store/scan`)다. 셀러 화면 또는 그 계산대만 허용.
+  it('목적지는 전부 셀러 화면 또는 매장 계산대다(외부·소비자 화면으로 새지 않는다)', () => {
+    for (const p of Object.values(STORE_GO_TARGETS)) expect(p).toMatch(/^\/(seller(\/|$)|store\/scan$)/)
+    expect(STORE_GO_TARGETS.scan).toBe('/store/scan')
   })
 })
 
@@ -43,7 +45,7 @@ describe('② 화면', () => {
       <MemoryRouter initialEntries={[`/store/go${q}`]}>
         <Routes>
           <Route path="/store/go" element={<StoreGoPage />} />
-          <Route path="/seller/scan" element={<div>SCAN</div>} />
+          <Route path="/store/scan" element={<div>SCAN</div>} />
           <Route path="/user/profile" element={<div>MY</div>} />
         </Routes>
       </MemoryRouter>,
