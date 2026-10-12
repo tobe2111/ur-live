@@ -1,14 +1,16 @@
 # 대외 제안서
 
-원본 파일은 여기가 아니라 **`public/static/proposals/`** 에 있습니다.
+소개서의 집은 **여기(`docs/business/proposals/`)** 입니다 — 생성기 `*.build.mjs` + `.pptx` + `.pdf`.
+어드민 **`/admin/proposals`** 가 그 PDF 다섯을 그대로 띄우고 내려받게 합니다
+(배포 때 `scripts/build-prepare.mjs` 가 `dist/client/static/proposals/` 로 **복사만** 합니다 —
+`public/` 에 사본을 두지 않는 이유는 아래 "어드민은 어떻게 이 PDF 를 띄우나" 참조).
 
 | 문서 | 파일 | 어드민 |
 |---|---|---|
-| 인플루언서 제휴 제안 (16:9, 9장) | `public/static/proposals/influencer-proposal.html` | `/admin/proposals` |
-| 대행사 제휴 제안 (16:9, 30장 v8 — **09-19 확정 플로우**: 매장 코드·두 요율·코드 링크 매칭·귀사 몫 유어딜 직접 송금. PART 구분 장 4·직접 vs 경유 표·플라이휠·페르소나·목표별 설계·인출선·절차 3열, PowerPoint, 매장 모집 실행서) | `docs/business/proposals/urdeal-agency-proposal.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-agency-proposal.build.mjs`) | 없음. 파일로 전달 |
-| 매장 사장님 소개 (16:9, 15장 v7 — 대표 최종 구성안 9장 + 손님 흐름 + 페르소나·목표별 설계·쌓이는 자산·절차 3열, PowerPoint. 상세판 17장은 `urdeal-store-owner-deck-detail.*`) | `docs/business/proposals/urdeal-store-owner-deck.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-store-owner-deck.build.mjs`, 공통 모듈 `deck-common.mjs`) | 없음. 파일로 전달 |
-| 상인회 서비스 소개 + 입점 요청 (16:9, 20장 v1 — **2026-10-06 대표 지시**. 상인회 설명회 자리용. 공동 사업(전단·축제·쿠폰)과의 비교 · 세 가지 길(직접 10% / 유어딜 대행 10% / 상인회 중개 5%) · 상인회 몫의 구조와 상한 · 마지막 장이 **입점 요청 3가지**) | `docs/business/proposals/urdeal-merchant-association-deck.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-merchant-association-deck.build.mjs`, 공통 모듈 `deck-common.mjs`) | 없음. 파일로 전달 |
-| 인플루언서 제휴 소개 (16:9, 20장 v4 — **중개사 계정 · 유어딜 5% 흐름 + 09-19 확정 플로우**(코드 링크 한 탭 매칭·매장 단위 링크·매장 코드), 영입 2% 제거, 정산은 "이용권 사용 후", 유어쇼츠·이용권 지갑·QR 화면, SNS 로고, https 하이퍼링크. PART 구분 장 3·플라이휠·페르소나·인출선·절차 3열, PowerPoint) | `docs/business/proposals/urdeal-influencer-deck.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-influencer-deck.build.mjs`, 공통 모듈 `deck-common.mjs`). 기존 9장 HTML(`public/static/proposals/influencer-proposal.html`)을 대체한다. **⚠️ 어드민 `/admin/proposals` 는 아직 그 9장 구판을 띄운다** — 거기서 열어 보내면 옛 내용이 나간다 | 없음. 파일로 전달 (어드민 `/admin/proposals` 의 HTML 은 구판) |
+| 대행사 제휴 제안 (16:9, 30장 v8 — **09-19 확정 플로우**: 매장 코드·두 요율·코드 링크 매칭·귀사 몫 유어딜 직접 송금. PART 구분 장 4·직접 vs 경유 표·플라이휠·페르소나·목표별 설계·인출선·절차 3열, PowerPoint, 매장 모집 실행서) | `urdeal-agency-proposal.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-agency-proposal.build.mjs`) | `/admin/proposals` |
+| 매장 사장님 소개 (16:9, 15장 v7 — 대표 최종 구성안 9장 + 손님 흐름 + 페르소나·목표별 설계·쌓이는 자산·절차 3열, PowerPoint. 상세판 17장은 `urdeal-store-owner-deck-detail.*`) | `urdeal-store-owner-deck.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-store-owner-deck.build.mjs`, 공통 모듈 `deck-common.mjs`) | `/admin/proposals` (상세판 포함) |
+| 상인회 서비스 소개 + 입점 요청 (16:9, 20장 v1 — **2026-10-06 대표 지시**. 상인회 설명회 자리용. 공동 사업(전단·축제·쿠폰)과의 비교 · 세 가지 길(직접 10% / 유어딜 대행 10% / 상인회 중개 5%) · 상인회 몫의 구조와 상한 · 마지막 장이 **입점 요청 3가지**) | `urdeal-merchant-association-deck.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-merchant-association-deck.build.mjs`, 공통 모듈 `deck-common.mjs`) | `/admin/proposals` |
+| 인플루언서 제휴 소개 (16:9, 20장 v4 — **중개사 계정 · 유어딜 5% 흐름 + 09-19 확정 플로우**(코드 링크 한 탭 매칭·매장 단위 링크·매장 코드), 영입 2% 제거, 정산은 "이용권 사용 후", 유어쇼츠·이용권 지갑·QR 화면, SNS 로고, https 하이퍼링크. PART 구분 장 3·플라이휠·페르소나·인출선·절차 3열, PowerPoint) | `urdeal-influencer-deck.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-influencer-deck.build.mjs`, 공통 모듈 `deck-common.mjs`). **2026-10-12: 어드민이 띄우던 9장 HTML 구판(`public/static/proposals/influencer-proposal.html`)을 삭제하고 이 덱으로 교체했다** — 구판은 폐지된 영입 2% 를 계속 팔고 있었다 | `/admin/proposals` |
 | 소개서 3종 기획서 | `docs/business/proposals/three-decks-plan-2026-09.md` | 없음 |
 
 ## 숫자는 FACTS 한 곳에서만 (2026-10-12)
@@ -33,19 +35,38 @@
 **승인 매장 수.** 10-12 실측 10곳 중 2곳이 명시적 테스트 계정이고 중복 등록과 장소명도 섞여 있어,
 "그 10곳이 어디냐" 는 질문에 답이 궁색합니다. 방어할 수 있는 숫자(`realStores`)만 씁니다.
 
-## 왜 docs/ 가 아니라 public/static/ 인가
+## 어드민은 어떻게 이 PDF 를 띄우나 (2026-10-12)
 
-처음에는 `docs/business/proposals/` 에 두고 어드민이 `?raw` 로 가져왔습니다
-(`AdminPlatformModelPage` 가 SSOT 문서에 쓰는 패턴). 그런데 제안서에 **라이브 화면 캡처를
-base64 로 심자** 그 문자열이 그대로 JS 청크가 되어 `AdminProposalsPage` 청크가 **254KB** 로
-불었고, `check-bundle-size --budget`(총 raw JS 8.6MB)이 CI 를 세웠습니다.
+어드민 `/admin/proposals` 는 **PDF 파일 그대로**를 iframe 으로 띄우고 내려받게 합니다.
+브라우저 기본 PDF 뷰어가 확대·페이지 이동·인쇄를 전부 갖고 있어 우리가 배율을 계산하지 않습니다.
 
-정적 자산으로 두면 번들에 1바이트도 안 들어가고, 배포마다 자동 최신인 성질은 그대로입니다.
+```
+docs/business/proposals/*.pdf        ← 유일한 원본 (여기만 있습니다)
+   ├─ 배포: scripts/build-prepare.mjs → dist/client/static/proposals/*.pdf
+   └─ dev : vite.config.ts  proposalPdfDevPlugin → 같은 주소를 원본으로 이어 줌
+어드민 화면: /static/proposals/<이름>.pdf   ← 배포·dev 주소가 같습니다
+```
+
+🔴 **`public/` 에 PDF 사본을 만들지 마세요.** 사본이 생기면 덱을 다시 뽑을 때 한쪽만 갱신되고,
+**어드민이 옛 소개서를 조용히 서빙합니다** — 에러도 빌드 실패도 없습니다. 2026-10-12 에 실제로
+그 일이 드러났습니다: 어드민이 2026-08-30 에 만든 **9장 HTML 구판**을 띄우고 있었고, 그 구판은
+**2026-09-16 에 폐지된 영입 커미션 2%**("내가 데려온 매장은 1년간 매출의 2%")를 그대로 팔고 있었습니다.
+거기서 열어 보내면 **없는 커미션을 약속하는 문서**가 나갑니다.
 
 ⚠️ **경로는 `/static/` 아래여야 합니다.** `public/_routes.json` 이 그 접두사만 워커에서
 제외하고 있어 Pages 가 파일을 직접 서빙합니다. 다른 경로로 옮기면 워커가 SPA 셸을 돌려주고
-미리보기가 빈 화면이 됩니다. 이 세 가지는 `src/tests/unit/admin-proposals-asset.test.ts` 가
-강제합니다(되돌려-검증 완료).
+미리보기가 빈 화면이 됩니다.
+
+⚠️ **`?raw` import 로 되돌리지 마세요.** 처음에는 docs/ 원본을 `?raw` 로 가져왔는데, 소개서에
+**라이브 화면 캡처를 base64 로 심자** 그 문자열이 그대로 JS 청크가 되어 `AdminProposalsPage` 청크가
+**254KB** 로 불었고 `check-bundle-size --budget`(총 raw JS 8.6MB)이 CI 를 세웠습니다.
+
+🔓 `/static/` 아래라 **로그인 없이도 주소를 알면 받을 수 있습니다.** 소개서는 애초에 파트너에게
+건네는 문서이고 PDF 자체가 공개 저장소에 커밋돼 있어 추가 노출은 없습니다. 검색 노출은
+`public/robots.txt` 의 `Disallow: /static/proposals/` 가 막습니다.
+
+위 다섯 가지는 `src/tests/unit/admin-proposals-asset.test.ts` 가 강제합니다(되돌려-검증 완료) —
+사본 금지 · `/static/` 접두 · 원본 실재 · **장수 표기와 실제 PDF 페이지 수 일치** · 구판 HTML 부활 금지.
 
 ## 화면 캡처를 다시 찍으려면
 

@@ -69,3 +69,66 @@
 
 🔑 **덱 FACTS 를 고칠 때는 `partners-facts.ts` 도 같은 커밋에서 고친다.** 지난주(10-06)에도
 같은 가드가 같은 자리를 잡았다 — 두 번 다 설계대로 동작했다. (그 파일 주석에 못을 박아 뒀다.)
+
+---
+
+## 8. 어드민 `/admin/proposals` 가 9장 구판을 띄우던 것 (대표 "고쳐줘")
+
+§7 에서 "범위 밖이라 README 에 경고만 적었다" 고 남긴 항목. 대표 지시로 고쳤다.
+
+**무엇이 문제였나**: 그 화면은 2026-08-30 에 만든 `public/static/proposals/influencer-proposal.html`
+**9장**을 띄우고 있었다. 그 뒤 소개서가 생성기(`*.build.mjs` → `.pptx`/`.pdf`)로 옮겨가 인플루언서판은
+**20장 v4** 가 됐는데, 구판은 거기서 갈라진 채 남아 **2026-09-16 에 폐지된 영입 커미션 2%** 를
+그대로 팔고 있었다(본문 실측: *"내가 데려온 매장은 1년 동안 수익이 된다 … 매출의 2% 가 적립됩니다"*,
+*"경로 B … 직접 입점한 매장 2%"*). 어드민에서 열어 PDF 로 뽑아 보내면 **없는 커미션을 약속하는
+문서**가 나간다. 에러도 빌드 실패도 없어서 재 본 사람만 안다.
+
+**고친 것**
+- 어드민이 **지금 쓰는 소개서 PDF 다섯**을 띄운다(매장 사장님 15 · 상세판 17 · 상인회 20 ·
+  인플루언서 20 · 대행사 30). 종전엔 인플루언서 하나뿐이었다.
+- 구판 HTML **삭제**(`git rm`). 남겨 두면 다음 세션이 "되살리면 되지" 로 읽는다.
+- 화면에서 인쇄 기계장치(1280px 시트 `transform: scale()` + `contentDocument` 높이 읽기 +
+  `contentWindow.print()`)를 걷었다. PDF 는 브라우저 기본 뷰어가 확대·페이지 이동·인쇄를 다 갖고
+  있고, 생성기가 이미 16:9 PDF 를 뽑아 둔다 ⇒ 2026-09-07 의 *인쇄하면 캡처가 빈 상자* 사고 클래스도
+  같이 사라졌다(인쇄 경로 자체가 없다).
+
+**🔴 `public/` 에 PDF 사본을 만들지 않았다 — 이게 이 수리의 핵심이다.**
+사본을 두면 덱을 다시 뽑을 때 한쪽만 갱신돼 **어드민이 또 옛 소개서를 조용히 서빙**한다(이번에
+고친 것과 **같은 클래스**다). 그래서 원본은 `docs/business/proposals/` 한 곳에만 두고,
+- 배포: `scripts/build-prepare.mjs` 가 `dist/client/static/proposals/` 로 **복사만**
+- dev: `vite.config.ts` 의 `proposalPdfDevPlugin`(`apply: 'serve'`)이 **같은 주소**를 원본으로 이어 줌
+
+dev 를 왜 이어 주나 — dev 에서 빈 화면을 보면 다음 세션이 "고치려고" `public/` 사본을 만든다.
+그 footgun 을 없애는 쪽이 12줄보다 싸다.
+
+**실측으로 확인한 것**(약속이 아니라 재 봤다)
+```
+build-prepare   → dist/client/static/proposals/ 에 PDF 5개 (바이트 수 원본과 동일)
+dev 서버        → /static/proposals/urdeal-influencer-deck.pdf  200 · application/pdf · 1,423,837B
+                  (원본과 cmp 결과 identical)
+경로 이탈 시도  → ..%2f..%2f..%2fpackage.json.pdf  → text/html(SPA 폴백) = 차단
+없는 파일       → SPA 폴백 (서버 에러 아님)
+tsc             → 0
+```
+
+**가드**: `src/tests/unit/admin-proposals-asset.test.ts` **26건**(R1 `?raw` · R2 원본 실재 ·
+R3 `/static/` 접두 · **R4 `public/` 사본 금지 + 배포·dev 배선** · **R5 장수 표기 = 실제 PDF 페이지 수** ·
+R6 구판 HTML 부활 금지) + 주입 `scripts/mutations/admin-proposals-pdf-2026-10-12.mjs` **6건
+되돌려-검증 전부 빨간불 확인**.
+
+🩸 **그 과정에서 내 단언 하나가 헛돌 것이었다**: dev 배선을 `includes('proposalPdfDevPlugin()')` 로
+봤는데 **함수 정의부**(`function proposalPdfDevPlugin() {`)에 같은 글자가 있어서, 등록 줄을 주석
+처리해도 통과한다. ⇒ plugins 배열의 **호출 줄**(`/^\s*proposalPdfDevPlugin\(\),/m`)을 앵커했다.
+그리고 판정은 전부 `readCode`(주석 제거본)로 한다 — 이 파일들의 머리말이 지금 구판 HTML 과
+`?raw` 를 **인용**하고 있어서 원문을 검사하면 거짓 빨간불이 난다(이 레포가 여러 번 밟은 자리).
+
+**⚠️ 이 가드가 못 보는 것**: PDF 내용이 최신인지(= 덱을 다시 뽑았는지 — 그건 `deck-common.mjs` 의
+FACTS 와 생성기 재실행이 맡는다) · iframe 이 실제로 렌더되는지(배포 후 눈으로).
+
+**⚠️ E4 는 배포 후**: `/admin/proposals` 에서 탭 다섯이 각각 PDF 로 뜨는지 ·
+`curl -I https://urdeal.kr/static/proposals/urdeal-influencer-deck.pdf` 가 **200 · application/pdf** 인지 ·
+구판 주소 `/static/proposals/influencer-proposal.html` 가 **더는 PDF 내용을 주지 않는지**.
+
+**🔓 공개 노출**: `/static/` 아래라 로그인 없이도 주소를 알면 받을 수 있다(종전 HTML 도 그랬다).
+소개서는 파트너에게 건네는 문서이고 PDF 자체가 **공개 저장소에 커밋**돼 있어 추가 노출은 없다.
+검색 노출은 `public/robots.txt` 의 `Disallow: /static/proposals/`(이미 있었다)가 막는다.
