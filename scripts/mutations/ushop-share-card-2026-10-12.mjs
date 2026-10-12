@@ -4,6 +4,12 @@
  *
  * 가드: src/tests/unit/ushop-share-card-2026-10-12.test.ts
  *
+ * 🔄 **2026-10-12 설계가 한 번 바뀌었다** — 대표 *"차라리 유어샵 프로필 유저 프로필 사진이 뜨면
+ * 좋을 것 같은데? 없으면 유달이 사진이 뜨고?"*. 첫 판은 *"쓸 수 있는 첫 핀"* 을 얼굴로 썼고,
+ * 그래서 비활성 핀·`deal_only` '원' 표기·거짓 할인율을 **각각 막는** 주입 다섯이 있었다.
+ * 얼굴이 프로필/유달이가 되면서 그 결함들은 **생길 자리가 없어졌고**, 주입도 함께 옮겼다 —
+ * 이제 막는 것은 *"핀을 다시 간판으로 세우는 것"* 하나다(아래 🔙).
+ *
  * 이 주입들이 지키는 것은 **디자인이 아니라 경로**다. 유어샵 카드가 투박했던 원인은 SVG 가 아니라
  * `navigator.share({url})` → 카톡 **스크래퍼**가 카드를 자기가 조립하는 것이었다(우리 글자 + 카톡
  * 텍스트 블록 **중복** · **버튼 없음**). 아래를 되돌리면 그 화면으로 돌아가고 **에러는 안 난다.**
@@ -30,7 +36,6 @@ export default [
     file: PAGE,
     // 🩸 첫 판은 `if (typeof nav.share === 'function' || true)` 였는데 **가드가 통과했고 그게 맞았다** —
     //   그 변경은 네이티브를 *무조건* 시도하게 만들 뿐 **여전히 카카오 다음**이라, 순서를 안 뒤집는다.
-    //   순서를 깨려면 네이티브 시도를 카카오 **위**에 끼워야 한다.
     find: '      if (await shareViaKakao(ushopCardPayload(card))) return',
     replace:
       '      if (typeof (navigator as { share?: unknown }).share === \'function\') {\n' +
@@ -44,84 +49,80 @@ export default [
       '"이미 했다" 고 읽는다(대표가 신고한 중복 카드가 그대로 나간다).',
   },
   {
-    name: '🛍️ 비활성 핀을 카드 얼굴로 쓴다',
+    name: '🔙 카드 얼굴을 다시 핀 사진으로 (결함 셋이 한꺼번에 돌아온다)',
     file: CARD,
-    find: 'return isShareImagePin(p) && Number(p?.deal_only) !== 1 && Number(p?.price) > 0',
-    replace: 'return Number(p?.price) > 0',
+    find: '    imageUrl: h ? ushopOgCardUrl(h, origin) : fallbackImage,',
+    replace: "    imageUrl: (Array.isArray(pins) && pins.find(isShareImagePin) ? pinPhoto(pins.find(isShareImagePin)) : '') || fallbackImage,",
     test: TEST,
     why:
-      '라이브 실측: 핀 10개 중 4개가 `is_active=0` 이고 **대표 계정의 첫 핀이 그중 하나**였다 ' +
-      '("프리미엄 백팩" — 지금 팔지 않는다). 되돌리면 카드가 못 사는 물건을 간판으로 내건다.',
+      '대표가 되돌린 바로 그 설계다. 핀을 간판으로 세우면 **셋이 한꺼번에** 돌아온다 — ' +
+      '비활성 핀(라이브 10개 중 4개, 대표 계정 1번 핀이 "프리미엄 백팩") · `deal_only` 의 ' +
+      '`600딜`→"600원" 거짓 가격 · 선언 `discount_rate=90` vs 실제 11%. 그리고 핀 순서가 바뀌면 ' +
+      '간판도 바뀐다.',
   },
   {
-    name: '🛍️ 딜 결제 상품을 커머스 카드에 올린다 (`600딜` → "600원")',
+    name: '🔙 og:image 만 핀 사진으로 되돌린다 (두 경로가 갈린다)',
     file: CARD,
-    find: 'Number(p?.deal_only) !== 1 && ',
-    replace: '',
+    find: 'export function ushopOgImage(_ssrPayload: string, origin: string, handle: string): string {\n  return ushopOgCardUrl(handle, origin)',
+    replace:
+      'export function ushopOgImage(_ssrPayload: string, origin: string, handle: string): string {\n' +
+      "  try { const pins = (JSON.parse(_ssrPayload) as { pins?: UShopSharePin[] })?.pins; const p = pins?.find(isShareImagePin); if (p) return pinPhoto(p) } catch { /* */ }\n" +
+      '  return ushopOgCardUrl(handle, origin)',
     test: TEST,
     why:
-      '카카오 `commerce` 템플릿은 **원 표기 전용**이다. `deal_only=1`(딜 결제) 상품을 올리면 ' +
-      '`600딜` 이 **"600원"** 으로 뜬다 — 거짓 가격이고 그대로 카톡방에 박제된다. 그림으로는 써도 된다.',
+      '한쪽만 되돌리는 게 더 고약하다 — 카톡 SDK 로 받은 사람과 주소를 복사해 받은 사람이 ' +
+      '**다른 카드**를 본다. 에러는 0 이고 둘을 나란히 놓고 봐야만 안다.',
   },
   {
-    name: '🛍️ 버튼이 유어샵 입구로만 간다 (미끼가 된다)',
-    file: CARD,
-    find: '`${shopLink}/p/${face.product_id}`',
-    replace: 'shopLink',
+    name: '🦦 프로필이 없을 때 유달이 대신 다시 이니셜',
+    file: 'src/worker/utils/og-curator-card.ts',
+    find: '    const face = profileUri || udalUri',
+    replace: '    const face = profileUri',
     test: TEST,
     why:
-      '카드가 그 물건을 보여 줬으면 눌렀을 때 **그 물건**에 닿아야 한다. 입구로 보내면 사진·가격이 ' +
-      '미끼가 되고, 게다가 `/p/:id` 는 **소개비 귀속 경로**라 클릭 기록까지 잃는다.',
+      '라이브 유어샵 17곳 중 **9곳이 프로필 없음**이라 되돌리면 절반이 다시 **파란 원 + 이름 ' +
+      '첫 글자**로 공유된다(브랜드가 하나도 안 보인다). 카드는 멀쩡히 나오므로 에러가 없다.',
   },
   {
-    name: '🛍️ 할인율을 선언값 그대로 믿는다',
-    file: CARD,
-    find: 'const rate = Math.round((1 - price / orig) * 100)',
-    replace: 'const rate = Math.round(Number(face.discount_rate) || 0)',
+    name: '🦦 유달이를 `cover` 로 받는다 (몸이 잘린다)',
+    file: 'src/worker/routes/og-image.routes.ts',
+    find: "{ fit: 'contain', background: OG_AVATAR_TINT }",
+    replace: 'undefined',
     test: TEST,
     why:
-      '라이브에 `discount_rate=90` 인데 정가·판매가로는 11% 인 핀이 있다. 선언값을 쓰면 카드가 ' +
-      '"90% 할인" 이라고 **거짓말**을 하고 그게 공유로 퍼진다.',
+      '`cover` 는 칸을 꽉 채우려고 **넘치는 부분을 자른다** — 유달이는 전신 포즈라 몸이 잘려 ' +
+      '원 안에 몸통만 남는다. 그리고 `contain` 이어도 배경을 안 주면 **jpeg 가 투명을 못 담아** ' +
+      '원 안에 검정 상자가 생긴다(2026-10-12 실측: contain+배경 6,971B 로 이음매 없음).',
   },
   {
-    name: '🛍️ og:image 를 다시 글자 박힌 합성 카드로',
-    file: CARD,
-    find: 'if (photo) return shareCardPhoto(photo, origin) || ushopOgCardUrl(handle, origin)',
-    replace: 'void photo',
+    name: '🦦 유달이를 번들 자산 경로로 (워커는 해시를 모른다)',
+    file: 'src/worker/utils/og-curator-card.ts',
+    find: "export const OG_UDAL_SRC = '/assets/mascot/udal-loader-v2.webp'",
+    replace: "export const OG_UDAL_SRC = '/src/assets/mascot/udal-curious.webp'",
     test: TEST,
     why:
-      '글자는 카톡·슬랙이 **제목·설명으로 이미** 쓴다. 그림에 또 넣으면 그게 대표가 신고한 **중복**이다. ' +
-      '실사진이 있으면 실사진을 준다(없을 때만 합성 카드).',
+      '번들 마스코트는 파일명에 **빌드 해시**가 붙어 워커가 주소를 모른다 — 404 가 나고 얼굴이 ' +
+      '빈다. 해시 없는 `public/assets/mascot/` 만 워커가 가리킬 수 있다.',
   },
   {
-    name: '🛍️ 공유 사진을 원본 그대로 넘긴다',
-    file: CARD,
-    find: 'return `${origin}/cdn-cgi/image/${opts}/${inner}`',
-    replace: 'return abs',
+    name: '🦦 프로필이 있어도 유달이를 받아 온다 (쓸모없는 subrequest)',
+    file: 'src/worker/routes/og-image.routes.ts',
+    find: '      hasProfile\n        ? Promise.resolve(null)\n        : inlineImage(OG_UDAL_SRC',
+    replace: '      inlineImage(OG_UDAL_SRC',
     test: TEST,
     why:
-      '원본은 비율이 제각각이라 1200×630 자리에서 피사체가 잘리고(세로 사진이 라이브의 37%), ' +
-      '**실측 3,152,465B** 짜리는 스크래퍼가 포기해 카드가 아예 안 뜬다(cdn-cgi 경유 196,260B).',
+      '서브리퀘스트는 무료 50/인보케이션이고 이 라우트는 타일까지 최대 5장을 받는다. 쓰지도 ' +
+      '않을 그림을 매번 받으면 예산이 줄고, 그 손해는 **에러 없이** 다른 요청의 실패로 나타난다.',
   },
   {
-    name: '🛍️ 공유 사진을 `cfImage` 에 맡긴다 (절반이 3MB 원본으로 나간다)',
+    name: '🔢 카드 그림을 바꾸고 판 번호를 안 올린다',
     file: CARD,
-    find: 'const opts = `width=${SHARE_CARD_W},height=${SHARE_CARD_H},fit=cover,gravity=auto,quality=85,format=jpeg,onerror=redirect`',
-    replace: "const opts = `width=${SHARE_CARD_W},quality=85,format=auto`",
+    find: 'export const USHOP_OG_CARD_V = 5',
+    replace: 'export const USHOP_OG_CARD_V = 4',
     test: TEST,
     why:
-      '크롭 인자(`height`·`fit`·`gravity`)가 빠지면 비율이 안 맞고, `format=auto` 는 Accept 를 보고 ' +
-      'AVIF/WebP 를 준다 — 이 그림을 굽는 건 우리 화면이 아니라 **남의 렌더러**다.',
-  },
-  {
-    name: '🛍️ 상대 경로를 그대로 og:image 로 (구글·카톡이 조용히 버린다)',
-    file: CARD,
-    find: 'const abs = src.startsWith(\'/\') ? `${origin}${src}` : src',
-    replace: 'const abs = src',
-    test: TEST,
-    why:
-      '`/cdn-cgi/image/...` 는 상대 경로다. og:image 는 **절대 URL** 이어야 하고, 상대면 그 필드를 ' +
-      '버리면서 **에러를 안 낸다**(2026-10-11 에 유어샵 ItemList 에서 같은 자리를 밟았다).',
+      '카카오는 **주소 단위**로 스크랩 결과를 캐시한다. 번호가 그대로면 얼굴을 프로필/유달이로 ' +
+      '바꿔 배포해도 **옛 카드가 계속 나가고**, 잘못 나간 카드는 회수할 방법이 우리에게 없다.',
   },
   {
     name: '🛍️ 전송을 다시 사본으로 — `sendDefault` 가 두 곳이 된다',

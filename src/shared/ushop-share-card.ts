@@ -11,24 +11,32 @@
  * **우리가 카드를 지정**하고 `imageUrl` 에 **실제 상품 사진**을 넣기 때문이다.
  * ⇒ 고칠 것은 카드 그림이 아니라 **공유하는 길**이었다. 이 파일은 그 길에 실을 내용을 정한다.
  *
- * ## 규칙 (라이브 실측이 정한 것 — 2026-10-12 `product_pins` 전수)
- * ```
- * 핸들 17곳 · 핀 있는 곳 4곳 (1개 2곳 · 2개 1곳 · 6개 1곳)
- * 핀 10개 중 is_active=0 이 4개 ← 1번 핀을 그냥 쓰면 대표 계정 카드 얼굴이
- *                                "프리미엄 백팩"(판매 안 하는 쇼핑 데모)이 된다
- * deal_only=1 핀 0건          ← 오늘은 없지만 담을 수 있다(아래 🔴)
- * ```
- *   1. **얼굴은 "1번 핀" 이 아니라 "쓸 수 있는 첫 핀"** — `is_active=1` · 사진 있음.
- *      순서는 `curatorHomePins`(진열 순서 SSOT)를 그대로 쓴다. 그 순서가 이미
- *      *딜 있는 핀 → 교환권/이용권 → 그 외* 라서, 얼굴이 자연히 이용권 쪽으로 간다.
- *      ⚠️ 카드엔 **순번을 쓰지 않는다** — 2번을 보여줘도 SNS 의 *"N번 이용권"* 주소 규약과 안 부딪친다.
- *   2. 🔴 **딜 결제(`deal_only=1`)는 커머스 카드에 절대 올리지 않는다** — 카카오 커머스는 **'원' 표기
- *      전용**이라 `600딜` 이 카드에 **"600원"** 으로 뜬다(거짓 가격). 그림으로는 써도 된다(가격이 안 뜬다).
- *   3. **착지가 카드와 맞아야 한다** — 닭도리탕을 보여주고 버튼이 가게 목록으로 가면 미끼다.
- *      커머스 카드는 버튼 2개를 지원하므로 `[이용권 보기]`(→ `/u/:handle/p/:id` **귀속 경로** —
- *      그 경로가 클릭을 기록하고 소개비를 붙인다) + `[유어샵 전체]`.
- *   4. **쓸 핀이 없으면(오늘 14곳) 가게 카드로 떨어진다** — 커머스와 가게 카드는 양자택일이 아니라
- *      **폴백 관계**다. 폴백에서도 SDK 경로라 중복 텍스트가 없고 버튼이 있다.
+ * ## 🔄 2026-10-12 대표 재지시로 **얼굴이 바뀌었다**
+ * 처음 판은 *"쓸 수 있는 첫 핀의 사진"* 을 카드 얼굴로 썼다. 그걸 본 대표:
+ * *"차라리 유어샵 프로필 유저 프로필 사진이 뜨면 좋을 것 같은데? 없으면 유달이 사진이 뜨고?"*
+ *
+ * **그게 맞다. 그리고 제가 애써 막던 결함 셋을 아예 없앤다**:
+ *   ① 핀 10개 중 **4개가 `is_active=0`** 이라 "쓸 수 있는 첫 핀" 규칙이 필요했다
+ *      (안 그러면 대표 계정 얼굴이 "프리미엄 백팩" — 지금 안 파는 쇼핑 데모가 된다)
+ *   ② `deal_only=1` 을 커머스 카드에 올리면 `600딜` 이 **"600원"** 으로 뜬다(거짓 가격)
+ *   ③ 라이브에 `discount_rate=90` 인데 실제 11% 인 핀이 있어 **선언값을 못 믿는다**
+ * 셋 다 *"가게 카드에 남의 물건을 간판으로 세운 탓"* 이었다. 그리고 더 근본적으로 —
+ * **핀 순서가 바뀌면 간판도 바뀌었다**(`curatorHomePins` 는 딜 보유 여부로 정렬한다).
+ * 유어샵은 *정지원의 가게*이고, 그 얼굴은 **정지원**이어야 안 흔들린다.
+ *
+ * ## 규칙
+ *   1. **얼굴 = 프로필 사진 → 유달이**. 라이브 실측 `프로필 있음 8 / 없음 9`(17곳)이라
+ *      절반에 유달이가 뜬다 — 종전은 그 절반이 **파란 원 + 이름 첫 글자**였다(브랜드 0).
+ *   2. 🖼️ **그 그림은 프로필 *파일* 이 아니라 합성 카드(`/api/og/curator/:handle`)다.**
+ *      프로필은 정사각에 가까워 1200×630 으로 자르면 **얼굴이 잘린다**. 합성 카드는 이미
+ *      1200×630 조판에 프로필을 **원형**으로 담고 이름·소개·핀 타일까지 보여준다.
+ *      (#1725 가 그 카드 **안** 사진이 실제로 박히게 고쳐 둔 것이 여기서 값을 한다.)
+ *   3. **스크래퍼 경로와 SDK 경로가 같은 그림을 쓴다** — 보는 사람이 어디서 받든 같은 카드다.
+ *      SDK 경로에만 **버튼**이 붙는다(스크래퍼는 버튼을 못 만든다).
+ *   4. 🔴 **커머스 카드(물건 + 가격)는 유어샵 공유의 일이 아니다.** 유어샵 링크는 *가게*를
+ *      공유하는 것이고 특정 물건이 아니다. 물건을 공유하는 길은 **상품 페이지의
+ *      `KakaoShareButton`** 이고 그쪽은 종전대로 커머스 카드를 쓴다(`lib/kakao-share.ts` 의
+ *      `commercePayload` 는 그 호출부가 계속 쓰므로 죽은 코드가 아니다).
  *
  * ## 이 파일이 못 하는 것
  * 카드를 **그리는** 것은 카카오다 — 우리는 무엇을 넘길지만 정한다. 그래서 "예쁜가" 는
@@ -37,7 +45,6 @@
  * ⚠️ **워커가 import 한다**(`worker/index.ts` 의 og:image 한 줄) — React·lucide·i18n 을 끌어오지 말 것.
  *    `cf-image`·`curator-pin-order` 는 이미 워커가 쓰는 순수 모듈이라 안전하다.
  */
-import { curatorHomePins, isVoucherPin } from './curator-pin-order'
 
 /** 공유 카드가 보는 핀 필드만. `CuratorPin` 의 부분집합이라 그대로 넘겨도 된다. */
 export interface UShopSharePin {
@@ -69,180 +76,74 @@ export function isShareImagePin(p: UShopSharePin): boolean {
   return Number(p?.is_active) === 1 && !!pinPhoto(p)
 }
 
-/**
- * **커머스 카드의 얼굴**로 쓸 수 있는 핀인가 — 그림 조건 + 원화 결제 + 가격이 있다.
- * 🔴 `deal_only === 1` 은 여기서 막는다(위 규칙 2).
- */
-export function isShareFacePin(p: UShopSharePin): boolean {
-  return isShareImagePin(p) && Number(p?.deal_only) !== 1 && Number(p?.price) > 0
-}
-
-/** 진열 순서(`curatorHomePins`)에서 조건을 만족하는 첫 핀. 없으면 null. */
-function pickBy(pins: readonly UShopSharePin[] | null | undefined, ok: (p: UShopSharePin) => boolean): UShopSharePin | null {
-  if (!Array.isArray(pins) || pins.length === 0) return null
-  return curatorHomePins(pins).find(ok) || null
-}
-
-/** 커머스 카드의 얼굴(없으면 null). */
-export function pickShareFacePin(pins: readonly UShopSharePin[] | null | undefined): UShopSharePin | null {
-  return pickBy(pins, isShareFacePin)
-}
-
-/** 카드 그림으로 쓸 핀(없으면 null) — 얼굴이 없을 때도 사진은 쓸 수 있다. */
-export function pickShareImagePin(pins: readonly UShopSharePin[] | null | undefined): UShopSharePin | null {
-  return pickBy(pins, isShareImagePin)
-}
-
 /** 카카오 공유 카드 그림 크기 — 소셜 카드 비율(1.91:1). */
 export const SHARE_CARD_W = 1200
 export const SHARE_CARD_H = 630
 
 /**
- * 사진 한 장을 공유 카드 비율로 자른 **절대** URL. 피사체는 `gravity=auto` 가 찾는다.
+ * 🖼️ 공유 카드 그림 — **스크래퍼 경로와 SDK 경로가 같은 것을 쓴다.**
  *
- * ## 🔴 왜 `cfImage()` 를 쓰지 않는가 (2026-10-12 실측 — 처음엔 썼고, 재 보니 틀렸다)
- * `cfImage` 는 **화면용**이라 일부러 보수적이다: 검증 안 된 호스트는 워커 프록시
- * (`/api/image/resize`)나 원본으로 보낸다. 그 파일 주석이 이유를 적어 뒤 — 화면에서 리사이즈가
- * 실패하면 감시 `<img>` 가 그 사진을 **죽은 것으로 보고 목록에서 빼** 사용자에겐 사진이 사라진다.
+ * 합성 카드가 얼굴(프로필 → 유달이)·이름·소개·핀 타일을 1200×630 으로 조판한다. 여기서
+ * 핀 사진을 직접 고르지 않는 이유는 위 머리말 ①~④ 에 있다(핀을 간판으로 세우면 비활성·
+ * 거짓가격·순서변동이 따라온다).
  *
- * 그런데 **공유 카드에선 그 보수성이 더 나쁘다.** 라이브 핀 사진 호스트를 세 보니
- * `images.unsplash.com` 5 · 상대경로 3 · `media.ur-team.com` 1 · `i.ibb.co` 1 — 즉 **절반**이
- * 프록시로 가는 호스트다. 그 경로를 실제로 두드려 봤다:
- *
- *     cdn-cgi 직접   200 · `cf-resized: internal=ok` · **196,260B**
- *     워커 프록시     200 · **3,152,465B** ← 리사이즈 **0** (2026-06-11 실측 그대로)
- *
- * 3MB 는 스크래퍼가 **포기하는** 크기다 — 그러면 카드에 사진이 아예 안 뜬다. 반대로 cdn-cgi 가
- * 못 가져오면 `onerror=redirect` 가 원본으로 302 하고, 그조차 실패해도 결과는 "사진 없는 카드"
- * = 오늘의 최악과 같다. ⇒ **여기선 손해가 한쪽으로만 크다.** 화면의 규율은 화면에 그대로 둔다.
- *
- * `format=jpeg` 고정: `format=auto` 는 Accept 를 보고 AVIF/WebP 를 주는데, 이 그림을 굽는 것은
- * 우리 화면이 아니라 **남의 렌더러**다(`og-inline-image.ts` 가 같은 이유로 jpeg 를 쓴다).
+ * `?v` = 카카오 스크랩 캐시 무효화(`og-curator-card.ts` 머리말). **카드 그림을 바꿀 때마다 올린다.**
+ * 🔢 **v5 (2026-10-12)**: 얼굴이 프로필 → 유달이로 바뀌었다(v4 는 핀 사진을 og:image 로 내보냈다).
  */
-export function shareCardPhoto(photo: string, origin: string): string {
-  const src = String(photo || '').trim()
-  // 인라인 데이터는 공유할 주소가 없다.
-  if (!src || src.startsWith('data:') || src.startsWith('blob:')) return ''
-  const abs = src.startsWith('/') ? `${origin}${src}` : src
-  if (!/^https:\/\//i.test(abs)) return ''
-  // `%` 는 한 번 더 감싼다 — 경로에 박히는 원본 URL 이 이미 퍼센트 인코딩이면 리사이저가 풀어
-  // 다른 주소를 가져간다(2026-08-11 에 한글 파일명 네이버 사진 134개가 그래서 404 였다).
-  const inner = abs.replace(/%/g, '%25')
-  const opts = `width=${SHARE_CARD_W},height=${SHARE_CARD_H},fit=cover,gravity=auto,quality=85,format=jpeg,onerror=redirect`
-  return `${origin}/cdn-cgi/image/${opts}/${inner}`
-}
-
-/**
- * 합성 SVG 카드 주소 — **쓸 사진이 한 장도 없을 때만** 쓴다(이름·아바타가 들어가므로
- * 브랜드 기본 그림보다는 낫다). `?v` = 카카오 스크랩 캐시 무효화(`og-curator-card.ts` 머리말).
- *
- * 🔢 **v4 (2026-10-12)**: 직전 배포(#1725)가 카드 안 사진을 실제로 박히게 고쳤는데(`cf.image`)
- *    주소가 그대로여서 카카오가 **옛 까만 카드**를 계속 내보내고 있었다. 번호를 올려야 전달된다.
- */
-export const USHOP_OG_CARD_V = 4
+export const USHOP_OG_CARD_V = 5
 export function ushopOgCardUrl(handle: string, origin: string): string {
   return `${origin}/api/og/curator/${encodeURIComponent(handle || '')}?v=${USHOP_OG_CARD_V}`
 }
 
 /**
- * 🖼️ 스크래퍼 경로(주소 복사·문자·슬랙·DM)의 `og:image`.
- * 사진이 있으면 **글자 없는 실사진**을 준다 — 글자는 카톡·슬랙이 제목·설명으로 쓰므로
- * 그림에 또 넣으면 그게 대표가 신고한 **중복**이다. 사진이 없으면 합성 카드로 떨어진다.
+ * 스크래퍼 경로의 `og:image`. 시드를 안 보고 합성 카드로 고정한다 — 그 카드가 얼굴을 정한다.
  *
- * `ssrPayload` 는 CURATOR SSR 시드(JSON 문자열). 파싱 실패·핀 없음은 조용히 합성 카드.
+ * ⚠️ 인자(`ssrPayload`)는 **의도적으로 안 쓴다**. 워커 호출부를 그대로 두기 위한 것이고,
+ *    여기서 시드를 다시 들여다보면 "얼굴을 두 곳에서 정하는" 상태로 되돌아간다.
  */
-export function ushopOgImage(ssrPayload: string, origin: string, handle: string): string {
-  try {
-    const pins = (JSON.parse(ssrPayload) as { pins?: UShopSharePin[] })?.pins
-    const photo = pinPhoto(pickShareImagePin(pins))
-    if (photo) return shareCardPhoto(photo, origin) || ushopOgCardUrl(handle, origin)
-  } catch { /* 시드 파싱 실패 — 합성 카드 */ }
+export function ushopOgImage(_ssrPayload: string, origin: string, handle: string): string {
   return ushopOgCardUrl(handle, origin)
 }
 
-/** 카카오 공유에 넘길 카드. `kind` 가 템플릿을 고른다. */
-export type UShopShareCard =
-  | {
-      kind: 'commerce'
-      /** 커머스 카드는 제목 자리에 **상품 이름**이 온다(가게 이름은 설명이 아니라 버튼·착지가 말한다). */
-      title: string
-      imageUrl: string
-      link: string
-      commerce: { regularPrice: number; discountPrice?: number; discountRate?: number }
-      buttons: Array<{ title: string; link: string }>
-    }
-  | {
-      kind: 'feed'
-      title: string
-      description: string
-      imageUrl: string
-      link: string
-      buttons: Array<{ title: string; link: string }>
-    }
+/**
+ * 🛍️ 유어샵 카드 — **한 가지 모양**이다(가게 카드).
+ *
+ * 처음 판엔 `kind: 'commerce' | 'feed'` 두 가지가 있었다. 대표 재지시로 커머스가 빠졌고
+ * (머리말 규칙 4 — 물건+가격은 **상품 페이지**의 일이다) 그래서 판정할 것이 없어졌다.
+ * ⚠️ `kind` 를 되살리지 말 것: 유어샵 링크는 *가게*를 가리키는데 카드가 특정 물건을 말하면
+ *    착지가 어긋나고, 그 물건을 고르는 순간 비활성·거짓가격·순서변동이 전부 따라온다.
+ */
+export interface UShopShareCard {
+  title: string
+  description: string
+  imageUrl: string
+  link: string
+  buttons: Array<{ title: string; link: string }>
+}
 
 export interface UShopShareInput {
   handle: string
   name?: string | null
   bio?: string | null
-  profileImage?: string | null
   pins?: readonly UShopSharePin[] | null
-  /** `https://urdeal.kr` 같은 오리진(끝에 `/` 없이). */
   origin: string
-  /** 사진이 하나도 없을 때 쓰는 기본 그림(절대 URL). */
+  /** 합성 카드를 못 만들 때의 최후 그림(`lib/kakao-share.ts` 의 공용 값). */
   fallbackImage: string
 }
 
-/**
- * 유어샵 공유 카드 하나를 만든다 — **커머스(얼굴 있음) 또는 가게 카드(폴백)**.
- * 순수 함수다: 네트워크·DOM·전역을 보지 않으므로 시험이 값으로 판정한다.
- */
 export function buildUShopShareCard(input: UShopShareInput): UShopShareCard {
   const { handle, pins, origin, fallbackImage } = input
-  const shopLink = `${origin}/u/${encodeURIComponent(handle || '')}`
-  const name = String(input.name || '').trim() || `@${handle}`
-  const face = pickShareFacePin(pins)
-
-  if (face) {
-    const price = Math.round(Number(face.price) || 0)
-    const orig = Math.round(Number(face.original_price) || 0)
-    const commerce: { regularPrice: number; discountPrice?: number; discountRate?: number } = {
-      regularPrice: orig > price ? orig : price,
-    }
-    if (orig > price) {
-      commerce.discountPrice = price
-      // 할인율은 선언값을 믿지 않고 **정가·판매가로 계산**한다 — 둘이 어긋나면 카드가 거짓을 말한다.
-      const rate = Math.round((1 - price / orig) * 100)
-      if (rate > 0) commerce.discountRate = rate
-    }
-    return {
-      kind: 'commerce',
-      title: String(face.product_name || name).slice(0, 100),
-      imageUrl: shareCardPhoto(pinPhoto(face), origin) || fallbackImage,
-      link: shopLink,
-      commerce,
-      // 🔗 규칙 3 — 첫 버튼은 **카드가 보여준 그 상품**으로(귀속 경로), 둘째가 가게 전체.
-      buttons: [
-        { title: isVoucherPin(face) ? '이용권 보기' : '상품 보기', link: `${shopLink}/p/${face.product_id}` },
-        { title: '유어샵 전체', link: shopLink },
-      ],
-    }
-  }
-
-  // 🏪 폴백 — 얼굴이 없다(활성 핀 0 또는 가격 없음). 가게 카드로 보낸다.
-  const imgPin = pickShareImagePin(pins)
-  const profile = String(input.profileImage || '').trim()
-  const imageUrl =
-    shareCardPhoto(pinPhoto(imgPin), origin) ||
-    (profile ? shareCardPhoto(profile, origin) : '') ||
-    fallbackImage
+  const h = String(handle || '').trim()
+  const shopLink = `${origin}/u/${encodeURIComponent(h)}`
+  const name = String(input.name || '').trim() || `@${h}`
   const bio = String(input.bio || '').trim()
+  // 핀 수는 **설명 한 줄**에만 쓴다 — 어느 핀인지는 고르지 않는다(그게 이 수정의 요지다).
   const count = Array.isArray(pins) ? pins.filter(isShareImagePin).length : 0
   return {
-    kind: 'feed',
     title: `${name}의 유어샵`,
-    // 설명은 소개글이 있으면 그걸, 없으면 **센 것만** 말한다(없는 것을 지어내지 않는다).
     description: bio || (count > 0 ? `이용권 ${count}개를 모아 뒀어요` : '유어딜에서 모은 이용권'),
-    imageUrl,
+    // 얼굴(프로필 → 유달이)은 합성 카드가 정한다. 핸들이 없으면 그 주소를 만들 수 없다.
+    imageUrl: h ? ushopOgCardUrl(h, origin) : fallbackImage,
     link: shopLink,
     buttons: [{ title: '유어샵 열기', link: shopLink }],
   }

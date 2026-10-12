@@ -132,12 +132,17 @@ export function feedPayload(o: {
 
 /**
  * 🛍️ 유어샵 카드(`buildUShopShareCard` 결과) → 카카오 payload.
- * 템플릿 선택은 **카드가 이미 정했다**(`kind`) — 여기서 다시 판정하지 않는다.
+ *
+ * 🔄 2026-10-12 대표 재지시로 **커머스 분기가 빠졌다** — 유어샵 링크는 *가게*를 가리키고
+ *    특정 물건이 아니다(그 SSOT 머리말 규칙 4). 물건+가격 카드는 **상품 페이지의
+ *    `KakaoShareButton`** 이 계속 쓰므로 아래 `commercePayload` 는 죽은 코드가 아니다.
  */
 export function ushopCardPayload(card: UShopShareCard): Record<string, unknown> {
-  const buttons = card.buttons.map((b) => ({ title: b.title, url: b.link }))
-  if (card.kind === 'commerce') {
-    return commercePayload({ title: card.title, imageUrl: card.imageUrl, url: card.link, commerce: card.commerce, buttons })
-  }
-  return feedPayload({ title: card.title, description: card.description, imageUrl: card.imageUrl, url: card.link, buttons })
+  return feedPayload({
+    title: card.title,
+    description: card.description,
+    imageUrl: card.imageUrl,
+    url: card.link,
+    buttons: card.buttons.map((b) => ({ title: b.title, url: b.link })),
+  })
 }

@@ -1,31 +1,39 @@
 /**
  * 🛍️ 유어샵 공유 카드 — 가드 (2026-10-12)
  *
- * 대표 *"유어샵 링크 공유했는데 이렇게 보이면 너무 투박하잖아. 방법 제안해봐"* → *"가장 이상적으로 진행해줘"*.
+ * 대표 *"유어샵 링크 공유했는데 이렇게 보이면 너무 투박하잖아"* → *"가장 이상적으로 진행해줘"*
+ * → 그 결과를 보고 ***"차라리 유어샵 프로필 유저 프로필 사진이 뜨면 좋을 것 같은데?
+ *   없으면 유달이 사진이 뜨고?"***
+ *
+ * ## 🔄 설계가 한 번 바뀌었고, 이 가드가 그 결정을 지킨다
+ * 첫 판은 *"쓸 수 있는 첫 핀의 사진"* 을 카드 얼굴로 썼다. 그 설계는 결함 셋을 **각각 막아야** 했다:
+ * 비활성 핀(10개 중 4개) · `deal_only` 의 '원' 표기(`600딜`→"600원") · 거짓 `discount_rate`(90 vs 11).
+ * 대표 지시로 얼굴이 **프로필 → 유달이**가 되면서 **셋 다 생기지 않는다** — 남의 물건을 가게 간판으로
+ * 세우지 않기 때문이다. 그래서 이 파일의 단언 18개가 교체됐고, 그 자리에 **되돌아오지 않게 하는**
+ * 단언이 들어왔다(①).
  *
  * ## 이 가드가 지키는 것
- *   ① **얼굴은 비활성 핀을 쓰지 않는다** — 라이브 실측(2026-10-12 `product_pins`)에서 핀 10개 중
- *      4개가 `is_active=0` 이고, **대표 계정의 1번 핀이 그중 하나**였다("프리미엄 백팩" — 판매도
- *      안 하는 쇼핑 데모). "1번 핀을 쓴다" 로 짜면 그게 공유 카드의 얼굴이 된다.
- *   ② 🔴 **딜 결제(`deal_only=1`)는 커머스 카드에 안 올린다** — 카카오 커머스는 '원' 표기 전용이라
- *      `600딜` 이 **"600원"** 으로 뜬다(거짓 가격). 그림으로는 쓴다(가격이 안 붙는다).
- *   ③ **착지가 카드와 맞는다** — 첫 버튼이 카드가 보여준 그 상품의 **귀속 경로**(`/u/:h/p/:id`).
- *   ④ **할인율은 정가·판매가로 계산**한다 — 선언된 `discount_rate` 가 어긋나도 카드가 거짓을 말하지 않는다.
- *   ⑤ **og:image 는 글자 없는 실사진** — 글자는 카톡·슬랙이 제목·설명으로 쓰므로 중복을 안 만든다.
- *   ⑥ **`sendDefault` 는 `lib/kakao-share.ts` 한 곳에서만** 부른다(사본 셋 방지).
- *   ⑦ **배선** — 유어샵 공유가 네이티브 시트보다 **먼저** 카카오를 시도한다 · 워커가 `ushopOgImage` 를 쓴다.
+ *   ① 🔴 **핀을 카드 얼굴로 쓰지 않는다** — 카드가 특정 핀의 사진·가격·할인율을 말하지 않는다.
+ *      (되돌리면 위 결함 셋이 한꺼번에 돌아온다.)
+ *   ② **얼굴은 합성 카드가 정한다**(프로필 → 유달이). og:image 와 SDK 카드가 **같은 그림**을 쓴다.
+ *   ③ 🖼️ **프로필 *파일* 을 og:image 로 쓰지 않는다** — 정사각에 가까워 1200×630 으로 자르면
+ *      얼굴이 잘린다. 합성 카드는 그걸 원형으로 담는다.
+ *   ④ **합성 카드의 얼굴 우선순위** — 프로필 → 유달이 → (둘 다 못 받으면) 이니셜. 카드는 늘 나온다.
+ *   ⑤ **`?v` 가 올라간다** — 카카오는 주소 단위로 카드를 캐시해서, 안 올리면 옛 카드가 계속 나간다.
+ *   ⑥ **`sendDefault` 는 `lib/kakao-share.ts` 한 곳에서만** 부른다(사본 넷을 모았다).
+ *   ⑦ **배선** — 유어샵 공유가 네이티브 시트보다 **먼저** 카카오를 시도한다 · 워커가 `ushopOgImage` 를
+ *      쓴다 · 선물 시트는 **동기** · SDK 로더는 **상대 경로 동적 import**.
  *
  * ## 이 가드가 **못 하는 것**
  *   - 카드가 **예쁜가** — 그리는 주체는 카카오다. 실제 카톡방에서 봐야 한다(E4).
- *   - 카카오가 템플릿·필드를 바꾸는 것(외부 계약).
- *   - SDK 가 실제로 로드·init 되는지(브라우저 밖).
+ *   - 합성 카드 안에서 유달이가 **잘려 보이는지** — 그건 그려 봐야 안다(렌더로 확인했다).
+ *   - 카카오가 템플릿·필드를 바꾸는 것(외부 계약) · SDK 가 실제로 로드·init 되는지(브라우저 밖).
  */
 import { describe, it, expect } from 'vitest'
 import { readCode, stripComments } from '../helpers/source-text'
 import {
-  buildUShopShareCard, isShareFacePin, isShareImagePin, pickShareFacePin, pickShareImagePin,
-  pinPhoto, shareCardPhoto, ushopOgImage, ushopOgCardUrl, USHOP_OG_CARD_V,
-  SHARE_CARD_W, SHARE_CARD_H, type UShopSharePin,
+  buildUShopShareCard, isShareImagePin, pinPhoto, ushopOgImage, ushopOgCardUrl,
+  USHOP_OG_CARD_V, SHARE_CARD_W, SHARE_CARD_H, type UShopSharePin,
 } from '@/shared/ushop-share-card'
 import { KAKAO_SHARE_FALLBACK_IMAGE, buildCommerce, commercePayload, feedPayload, ushopCardPayload } from '@/lib/kakao-share'
 import fs from 'node:fs'
@@ -36,7 +44,9 @@ const FB = KAKAO_SHARE_FALLBACK_IMAGE
 /**
  * 🔬 라이브 실측을 그대로 옮긴 픽스처 — **대표 계정(`users.id=3`)의 핀 6개**.
  * 순서·`is_active`·가격은 2026-10-12 D1 조회값이다(상품명만 줄였다).
- * ⚠️ 1번·2번이 비활성이라는 게 이 픽스처의 요점이다 — 바꾸면 ①이 헛돈다.
+ * ⚠️ 1번·2번이 **비활성**이고 1번이 "프리미엄 백팩"(판매 안 하는 쇼핑 데모)이라는 게 요점이다.
+ *    첫 판은 이 픽스처로 *"1번 핀을 쓰면 안 된다"* 를 지켰는데, 지금은 **어느 핀도 안 쓴다** —
+ *    그래서 카드 어디에도 이 상품명·가격·할인율이 **나타나지 않아야** 한다(①).
  */
 const LIVE_PINS: UShopSharePin[] = [
   { product_id: 3, product_name: '프리미엄 백팩', image_url: 'https://img/bag.jpg', price: 79000, original_price: 99000, is_active: 0, category: 'general' },
@@ -51,175 +61,137 @@ function card(pins: UShopSharePin[] | null, extra: Partial<Parameters<typeof bui
   return buildUShopShareCard({ handle: 'jiwon1228', name: '정지원', pins, origin: ORIGIN, fallbackImage: FB, ...extra })
 }
 
-describe('① 얼굴은 비활성 핀을 쓰지 않는다 (라이브 실측 모양)', () => {
-  it('픽스처가 실측 모양을 유지한다 — 1번 핀이 비활성이어야 ①이 판정된다', () => {
-    expect(LIVE_PINS.length, '핀 수가 줄면 이 검사가 헛돈다').toBeGreaterThanOrEqual(6)
-    expect(LIVE_PINS[0].is_active, '1번 핀이 활성이면 "1번을 쓴다" 와 구분이 안 된다').toBe(0)
-    expect(LIVE_PINS.filter((p) => Number(p.is_active) === 1).length).toBeGreaterThan(0)
-  })
-
-  it('고른 얼굴은 활성이고, **1번 핀이 아니다**', () => {
-    const face = pickShareFacePin(LIVE_PINS)
-    expect(face, '쓸 수 있는 핀이 있는데 null 이면 결함').not.toBeNull()
-    expect(Number(face!.is_active)).toBe(1)
-    expect(face!.product_id, '1번 핀(비활성)을 그대로 쓰면 안 된다').not.toBe(LIVE_PINS[0].product_id)
-  })
-
-  it('비활성·사진없음은 얼굴 후보가 아니다', () => {
-    expect(isShareFacePin(LIVE_PINS[0])).toBe(false)
-    expect(isShareImagePin(LIVE_PINS[0])).toBe(false)
-    expect(isShareFacePin({ product_id: 1, image_url: null, price: 1000, is_active: 1 })).toBe(false)
-    expect(isShareFacePin({ product_id: 1, image_url: 'https://img/a.jpg', price: 0, is_active: 1 })).toBe(false)
-  })
-
-  it('활성 핀이 하나도 없으면 커머스가 아니라 가게 카드로 떨어진다 (라이브 user 31)', () => {
-    const only = [{ product_id: 2, product_name: '스마트 워치', image_url: 'https://img/w.jpg', price: 159000, original_price: 219000, is_active: 0 }]
-    expect(pickShareFacePin(only)).toBeNull()
-    expect(card(only).kind).toBe('feed')
-  })
-})
-
-describe('② 딜 결제(교환권)는 커머스 카드에 올리지 않는다', () => {
-  const dealPin: UShopSharePin = { product_id: 7, product_name: 'CU 쥬시쿨', image_url: 'https://img/juice.jpg', price: 600, deal_only: 1, is_active: 1, category: 'etc_voucher' }
-
-  it('얼굴 후보에서 빠진다 — 600딜이 "600원" 으로 뜨는 것을 막는다', () => {
-    expect(isShareFacePin(dealPin)).toBe(false)
-    expect(pickShareFacePin([dealPin])).toBeNull()
-    const c = card([dealPin])
-    expect(c.kind).toBe('feed')
-    expect(JSON.stringify(c), '카드 어디에도 가격 숫자가 실리지 않는다').not.toContain('600')
-  })
-
-  it('그림으로는 쓴다 — 가격이 안 붙으므로 함정이 없다', () => {
-    expect(isShareImagePin(dealPin)).toBe(true)
-    expect(pickShareImagePin([dealPin])?.product_id).toBe(7)
-    expect(card([dealPin]).imageUrl).toContain('juice.jpg')
-  })
-
-  it('딜 핀이 섞여 있어도 얼굴은 원화 핀이 된다', () => {
-    const mixed = [dealPin, ...LIVE_PINS]
-    const face = pickShareFacePin(mixed)
-    expect(Number(face!.deal_only) === 1).toBe(false)
-    expect(Number(face!.price)).toBeGreaterThan(0)
-  })
-})
-
-describe('③ 착지가 카드와 맞는다 (귀속 경로)', () => {
-  it('첫 버튼이 카드가 보여준 그 상품의 `/u/:h/p/:id` — 소개비가 붙는 경로', () => {
+describe('① 🔴 핀을 카드 얼굴로 쓰지 않는다 (되돌리면 결함 셋이 한꺼번에 돌아온다)', () => {
+  it('카드에 어느 핀의 이름·사진·가격·할인율도 나타나지 않는다', () => {
     const c = card(LIVE_PINS)
-    expect(c.kind).toBe('commerce')
-    const face = pickShareFacePin(LIVE_PINS)!
-    expect(c.buttons.length, '버튼 둘(상품 · 가게 전체)').toBe(2)
-    expect(c.buttons[0].link).toBe(`${ORIGIN}/u/jiwon1228/p/${face.product_id}`)
-    expect(c.buttons[1].link).toBe(`${ORIGIN}/u/jiwon1228`)
-  })
-
-  it('이용권이면 라벨이 "이용권", 쇼핑이면 "상품"', () => {
-    const voucher = card(LIVE_PINS)
-    expect(voucher.buttons[0].title).toContain('이용권')
-    const shop = card([{ product_id: 6, product_name: 'Canvas Tote Bag', image_url: 'https://img/t.jpg', price: 45000, original_price: 70000, is_active: 1, category: 'general' }])
-    expect(shop.buttons[0].title).toContain('상품')
-  })
-
-  it('가게 카드(폴백)도 버튼이 있다 — 스크래퍼 경로엔 버튼이 아예 없었다', () => {
-    const c = card([])
-    expect(c.kind).toBe('feed')
-    expect(c.buttons.length).toBeGreaterThanOrEqual(1)
-    expect(c.buttons[0].link).toBe(`${ORIGIN}/u/jiwon1228`)
-  })
-})
-
-describe('④ 할인율은 정가·판매가로 계산한다', () => {
-  it('선언된 discount_rate 가 거짓이어도 카드는 계산값을 쓴다', () => {
-    const c = card([{ product_id: 9, product_name: '닭도리탕', image_url: 'https://img/d.jpg', price: 31000, original_price: 35000, discount_rate: 90, is_active: 1, category: 'meal_voucher' }])
-    expect(c.kind).toBe('commerce')
-    if (c.kind !== 'commerce') return
-    expect(c.commerce.regularPrice).toBe(35000)
-    expect(c.commerce.discountPrice).toBe(31000)
-    expect(c.commerce.discountRate, '선언값 90 을 믿으면 거짓 배지가 나간다').toBe(11)
-  })
-
-  it('정가가 없으면 할인 필드를 만들지 않는다 (라이브 user 40)', () => {
-    const c = card([{ product_id: 2917, product_name: '프리미엄 무선아이폰', image_url: 'https://img/p.jpg', price: 10000, original_price: null, is_active: 1, category: 'general' }])
-    expect(c.kind).toBe('commerce')
-    if (c.kind !== 'commerce') return
-    expect(c.commerce.regularPrice).toBe(10000)
-    expect(c.commerce.discountPrice).toBeUndefined()
-    expect(c.commerce.discountRate).toBeUndefined()
-  })
-})
-
-describe('⑤ 그림 — 글자 없는 실사진, 1200×630', () => {
-  /**
-   * 🩸 이 검사의 첫 판은 `cfImage()` 를 쓰는 구현을 검사했고, **라이브 호스트 분포를 재 보니
-   *   그 구현이 틀렸다.** 핀 사진 호스트는 `images.unsplash.com` 5 · 상대경로 3 ·
-   *   `media.ur-team.com` 1 · `i.ibb.co` 1 — 절반이 `cfImage` 의 보수적 분기(워커 프록시)로 간다.
-   *   그 경로를 두드려 보니 **3,152,465B**(리사이즈 0) ↔ cdn-cgi 직접 **196,260B**.
-   *   ⇒ **호스트와 무관하게** 크롭 인자가 붙는지를 본다(그게 그 수리의 요지다).
-   */
-  it('호스트와 무관하게 공유 카드 비율로 자른다 (피사체는 gravity=auto)', () => {
-    for (const src of [
-      'https://img.youtube.com/vi/x/hq.jpg',   // CDN_CGI_VERIFIED
-      'https://images.unsplash.com/photo-1',   // 프록시로 가던 호스트 — 라이브 최다
-      'https://i.ibb.co/a/b.jpg',              // 〃
-      'https://처음보는호스트.example/a.jpg',   // 미지 호스트
-    ]) {
-      const u = shareCardPhoto(src, ORIGIN)
-      expect(u, src).toContain(`width=${SHARE_CARD_W}`)
-      expect(u, src).toContain(`height=${SHARE_CARD_H}`)
-      expect(u, src).toContain('fit=cover')
-      expect(u, src).toContain('gravity=auto')
-      // 남의 렌더러가 굽는 그림이다 — AVIF/WebP 로 주면 안 보일 수 있다.
-      expect(u, src).toContain('format=jpeg')
-      expect(u, src).not.toContain('/api/image/resize')
-      expect(u.startsWith(`${ORIGIN}/cdn-cgi/image/`), src).toBe(true)
+    const blob = JSON.stringify(c)
+    for (const p of LIVE_PINS) {
+      expect(blob, `핀 이름이 샜다: ${p.product_name}`).not.toContain(String(p.product_name))
+      expect(blob, `핀 사진이 샜다: ${p.image_url}`).not.toContain(String(p.image_url).replace(/^https?:\/\//, ''))
+      expect(blob, `핀 가격이 샜다: ${p.price}`).not.toContain(String(p.price))
     }
+    // 비활성 1번 핀("프리미엄 백팩")은 특히 — 첫 판이 막아야 했던 바로 그 자리다.
+    expect(blob).not.toContain('프리미엄 백팩')
+  })
+
+  it('카드에 가격·할인 필드 자체가 없다 — `600딜`이 "600원"이 될 자리가 사라졌다', () => {
+    const c = card(LIVE_PINS) as unknown as Record<string, unknown>
+    for (const k of ['commerce', 'kind', 'regularPrice', 'discountPrice', 'discountRate']) {
+      expect(c[k], `${k} 가 되살아났다 — 커머스 카드는 상품 페이지의 일이다`).toBeUndefined()
+    }
+    const payload = ushopCardPayload(card(LIVE_PINS)) as { objectType: string; commerce?: unknown }
+    expect(payload.objectType, '유어샵 카드는 feed 다').toBe('feed')
+    expect(payload.commerce).toBeUndefined()
+  })
+
+  it('핀 선정 함수가 SSOT 에 되살아나지 않는다', () => {
+    const src = stripComments(readCode('src/shared/ushop-share-card.ts'))
+    for (const dead of ['pickShareFacePin', 'isShareFacePin', 'shareCardPhoto', 'curatorHomePins']) {
+      expect(src, `${dead} 가 되살아났다 — 핀을 간판으로 세우는 설계로 되돌아간다`).not.toContain(dead)
+    }
+  })
+
+  it('핀은 **개수**에만 쓰인다 — 설명 한 줄', () => {
+    // 🔬 6개가 아니라 **4개**다 — 비활성 핀 2개는 진열대에 없으니 세지 않는다
+    //   (제가 처음에 6 으로 적었고 시험이 바로잡았다. 세는 기준은 `isShareImagePin` 하나다).
+    expect(card(LIVE_PINS, { bio: null }).description).toBe('이용권 4개를 모아 뒀어요')
+    expect(card([], { bio: null }).description).toBe('유어딜에서 모은 이용권')
+    // 사진 없는 핀은 안 센다(카드 타일에 못 올라간다).
+    const noPhoto = [{ product_id: 1, image_url: null, is_active: 1 }]
+    expect(card(noPhoto, { bio: null }).description).toBe('유어딜에서 모은 이용권')
+    // 소개가 있으면 그게 이긴다(사람이 쓴 말이 우선).
+    expect(card(LIVE_PINS, { bio: '전국의 맛집을 소개합니다.' }).description).toBe('전국의 맛집을 소개합니다.')
+  })
+})
+
+describe('②③ 얼굴은 합성 카드가 정한다 — 프로필 *파일* 이 아니다', () => {
+  it('og:image 와 SDK 카드가 **같은 그림**을 쓴다', () => {
+    const og = ushopOgImage(JSON.stringify({ pins: LIVE_PINS }), ORIGIN, 'jiwon1228')
+    expect(card(LIVE_PINS).imageUrl, '두 경로가 갈리면 받는 사람마다 다른 카드를 본다').toBe(og)
+    expect(og).toBe(ushopOgCardUrl('jiwon1228', ORIGIN))
+  })
+
+  it('시드 내용과 무관하게 합성 카드다 — 얼굴을 두 곳에서 정하지 않는다', () => {
+    const a = ushopOgImage(JSON.stringify({ pins: LIVE_PINS }), ORIGIN, 'jiwon1228')
+    const b = ushopOgImage('{bad json', ORIGIN, 'jiwon1228')
+    const c = ushopOgImage(JSON.stringify({}), ORIGIN, 'jiwon1228')
+    expect(new Set([a, b, c]).size, '시드를 다시 들여다보면 얼굴이 두 곳에서 정해진다').toBe(1)
+  })
+
+  it('프로필 사진 URL 을 카드 그림으로 직접 쓰지 않는다 (1200×630 으로 자르면 얼굴이 잘린다)', () => {
+    const c = card(LIVE_PINS, { bio: null })
+    expect(c.imageUrl).not.toContain('/cdn-cgi/image/')
+    expect(c.imageUrl).toContain('/api/og/curator/')
     expect(SHARE_CARD_W / SHARE_CARD_H, '소셜 카드 1.91:1').toBeGreaterThan(1.8)
   })
 
-  it('상대 경로 사진도 절대 URL 로 나간다 — 스크래퍼는 상대 경로를 못 받는다', () => {
-    const u = shareCardPhoto('/api/media/abc.jpg', ORIGIN)
+  it('핸들이 없으면 폴백 그림 — 합성 카드 주소를 못 만든다', () => {
+    expect(card(LIVE_PINS, { handle: '' }).imageUrl).toBe(FB)
+    expect(card(LIVE_PINS, { handle: '   ' }).imageUrl).toBe(FB)
+  })
+
+  it('핸들은 URL 로 탈출된다 — 한글·공백 핸들이 주소를 깨지 않는다', () => {
+    const u = ushopOgCardUrl('정지원 샵', ORIGIN)
+    expect(u).toContain(encodeURIComponent('정지원 샵'))
     expect(u.startsWith('https://')).toBe(true)
-    expect(u).toContain(`${ORIGIN}/api/media/abc.jpg`)
   })
 
-  it('퍼센트 인코딩된 원본은 한 번 더 감싼다 (한글 파일명 네이버 사진 404 클래스)', () => {
-    const u = shareCardPhoto('https://pstatic.net/%B8%DE%B4%BA.jpg', ORIGIN)
-    expect(u).toContain('%25B8%25DE%25B4%25BA.jpg')
+  it('착지는 유어샵 — 카드가 가게를 보여주고 버튼도 가게로 간다', () => {
+    const c = card(LIVE_PINS)
+    expect(c.link).toBe(`${ORIGIN}/u/jiwon1228`)
+    expect(c.buttons.length, '스크래퍼 경로엔 버튼이 아예 없었다').toBeGreaterThan(0)
+    for (const b of c.buttons) expect(b.link).toBe(c.link)
+    expect(c.title).toBe('정지원의 유어샵')
   })
 
-  it('공유할 주소가 없는 것은 빈 문자열 — 폴백이 받는다', () => {
-    for (const bad of ['', '   ', 'data:image/png;base64,AAAA', 'blob:http://x/y', 'ftp://x/y.jpg', 'javascript:alert(1)']) {
-      expect(shareCardPhoto(bad, ORIGIN), bad).toBe('')
-    }
+  it('이름이 없으면 핸들로 — 빈 제목을 내보내지 않는다', () => {
+    expect(card(LIVE_PINS, { name: null }).title).toBe('@jiwon1228의 유어샵')
+    expect(card(LIVE_PINS, { name: '   ' }).title).toBe('@jiwon1228의 유어샵')
+  })
+})
+
+describe('④ 합성 카드의 얼굴 — 프로필 → 유달이 → 이니셜', () => {
+  const cardSrc = stripComments(readCode('src/worker/utils/og-curator-card.ts'))
+  const routeSrc = stripComments(readCode('src/worker/routes/og-image.routes.ts'))
+
+  it('프로필이 없으면 유달이를 쓴다 (종전은 파란 원 + 이름 첫 글자였다)', () => {
+    expect(cardSrc, '유달이 자리가 없다').toContain('udalUri')
+    expect(cardSrc).toMatch(/const face = profileUri \|\| udalUri/)
+    expect(routeSrc, '라우트가 유달이를 안 받아 오면 카드가 못 그린다').toContain('OG_UDAL_SRC')
   })
 
-  it('og:image — 사진이 있으면 합성 카드가 아니라 사진', () => {
-    const got = ushopOgImage(JSON.stringify({ pins: LIVE_PINS }), ORIGIN, 'jiwon1228')
-    expect(got).not.toContain('/api/og/curator/')
-    expect(got).toContain(`width=${SHARE_CARD_W}`)
+  it('유달이 그림은 **해시 없는 안정 경로** — 워커는 번들 해시를 모른다', () => {
+    const src = readCode('src/worker/utils/og-curator-card.ts')
+    const m = src.match(/OG_UDAL_SRC = '([^']+)'/)
+    expect(m, 'OG_UDAL_SRC 가 없다').toBeTruthy()
+    expect(fs.existsSync(`public${m![1]}`), `public${m![1]} 가 없다 — 404 면 얼굴이 빈다`).toBe(true)
+    expect(m![1], '번들 자산(src/assets)은 파일명에 해시가 붙어 워커가 주소를 모른다').not.toContain('/src/')
   })
 
-  it('og:image — 쓸 사진이 없으면 합성 카드로 떨어지고 판 번호가 붙는다', () => {
-    const noPhoto = JSON.stringify({ pins: [{ product_id: 1, image_url: null, is_active: 1 }] })
-    expect(ushopOgImage(noPhoto, ORIGIN, 'abc')).toBe(ushopOgCardUrl('abc', ORIGIN))
-    expect(ushopOgImage('{bad json', ORIGIN, 'abc')).toBe(ushopOgCardUrl('abc', ORIGIN))
-    expect(ushopOgImage(JSON.stringify({}), ORIGIN, 'abc')).toContain(`?v=${USHOP_OG_CARD_V}`)
+  it('🔴 유달이는 `contain` + 원 색 배경으로 받는다 — jpeg 는 투명을 못 담는다', () => {
+    // `cover` 면 몸이 잘리고, 배경을 안 주면 원 안에 검정 상자가 생긴다(2026-10-12 실측).
+    expect(routeSrc).toMatch(/fit: 'contain'/)
+    expect(routeSrc).toContain('OG_AVATAR_TINT')
+    const tint = readCode('src/worker/utils/og-curator-card.ts').match(/OG_AVATAR_TINT = '(#[0-9A-Fa-f]{6})'/)
+    expect(tint, '원 색 상수가 없다').toBeTruthy()
+    // 원과 여백이 같은 색이어야 이음매가 안 보인다 — 색을 두 벌로 적지 않는다.
+    expect(cardSrc, '원 색을 상수가 아니라 손으로 적으면 유달이 여백과 어긋난다').toMatch(/fill="\$\{OG_AVATAR_TINT\}"/)
   })
 
-  it('판 번호는 3 보다 크다 — #1725 가 고친 카드를 카카오가 다시 긁어야 한다', () => {
-    expect(USHOP_OG_CARD_V).toBeGreaterThan(3)
+  it('프로필이 있으면 유달이를 **받지도 않는다** (쓸모없는 subrequest 0)', () => {
+    expect(routeSrc).toMatch(/hasProfile[\s\S]{0,120}Promise\.resolve\(null\)/)
   })
 
-  it('핀 사진이 없으면 프로필 사진, 그것도 없으면 기본 그림', () => {
-    expect(card([], { profileImage: 'https://img/me.jpg' }).imageUrl).toContain('me.jpg')
-    expect(card([]).imageUrl).toBe(FB)
+  it('둘 다 못 받아도 카드는 나온다 — 이니셜 폴백', () => {
+    expect(cardSrc).toMatch(/if \(!face\)/)
+    expect(cardSrc).toContain('initial')
   })
+})
 
-  it('사진 주소가 http(s)·절대경로가 아니면 안 쓴다', () => {
-    expect(pinPhoto({ product_id: 1, image_url: 'javascript:alert(1)' })).toBe('')
-    expect(pinPhoto({ product_id: 1, image_url: 'r2://bucket/a.jpg' })).toBe('')
-    expect(pinPhoto({ product_id: 1, thumbnail: '/api/media/a.jpg' })).toBe('/api/media/a.jpg')
+describe('⑤ 판 번호 — 안 올리면 옛 카드가 계속 나간다', () => {
+  it('v4 보다 크다 — 얼굴이 바뀌었으니 카카오가 다시 긁어야 한다', () => {
+    expect(USHOP_OG_CARD_V).toBeGreaterThan(4)
+    expect(ushopOgCardUrl('abc', ORIGIN)).toContain(`?v=${USHOP_OG_CARD_V}`)
   })
 })
 
@@ -264,13 +236,18 @@ describe('⑥ `sendDefault` 는 한 곳에서만 부른다', () => {
     expect(fs.readFileSync('index.html', 'utf8')).toContain(KAKAO_SHARE_FALLBACK_IMAGE)
   })
 
-  it('payload 모양 — 템플릿은 카드가 정하고 여기서 다시 판정하지 않는다', () => {
-    const commerce = ushopCardPayload(card(LIVE_PINS)) as { objectType: string; commerce?: unknown; content: { description?: string } }
-    expect(commerce.objectType).toBe('commerce')
-    expect(commerce.commerce).toBeTruthy()
-    expect(commerce.content.description, '커머스 카드엔 설명 자리가 없다').toBeUndefined()
-    const feed = ushopCardPayload(card([])) as { objectType: string }
-    expect(feed.objectType).toBe('feed')
+  /**
+   * 🔄 첫 판은 *"핀이 있으면 commerce, 없으면 feed"* 를 단언했다. 대표 재지시로 유어샵은
+   *   **feed 하나**가 됐다(①). `commercePayload` 자체는 **상품 페이지**(`KakaoShareButton`)가
+   *   계속 쓰므로 죽은 코드가 아니고, 그래서 아래 `buildCommerce` 규칙 시험은 그대로 둔다.
+   */
+  it('payload 모양 — 유어샵은 핀 유무와 무관하게 feed 하나다', () => {
+    for (const pins of [LIVE_PINS, [], null]) {
+      const p = ushopCardPayload(card(pins)) as { objectType: string; commerce?: unknown; content: { description?: string } }
+      expect(p.objectType).toBe('feed')
+      expect(p.commerce, '커머스가 되살아나면 가격 거짓말이 돌아온다').toBeUndefined()
+      expect(p.content.description, 'feed 는 설명 줄을 쓴다').toBeTruthy()
+    }
   })
 
   it('옮겨 온 `buildCommerce` 가 종전 규칙 그대로다', () => {

@@ -332,6 +332,7 @@ When eyes are closed, BOTH closed eyes are identical upward-curving arcs (like ^
 | 시안 | 그림(mood) | 화면 |
 |---|---|---|
 | ① 로딩 | 이용권 들고 달리기 · 통통 0.7초 | 정적 로더 + `BrandLoader` (`udal-loader-v2`) |
+| ⑧ 유어샵 공유 카드 얼굴 | 〃 (`udal-loader-v2`) | `og-curator-card` 아바타 원 — **프로필 사진이 없을 때만**(2026-10-12 대표 *"없으면 유달이 사진이 뜨고?"*). 라이브 17곳 중 9곳이 그 경우라 종전엔 파란 원 + 이름 첫 글자였다. ⚠️ `contain` + 원 색(`#E4EDFD`) 배경으로 받는다 — `cover` 면 몸이 잘리고 배경을 안 주면 jpeg 가 투명을 못 담아 검정 상자가 생긴다(실측 6,971B) |
 | ② 이용권 사용(직원에게 보여주기) | QR 내미는 수달 `showQr` | `my-vouchers/QRModal` QR 카드 **밖** 오른쪽 아래 모서리(52px) |
 | ③ 사용 완료 | 도장 + 엄지 `done` | `VoucherRedeemModal` |
 | ④ 결제 완료 | 이용권 더미 위 지갑 `paid` | `PaymentSuccessPage` |

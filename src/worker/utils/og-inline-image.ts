@@ -29,11 +29,43 @@ export function toAbsolute(raw: string | null | undefined, origin: string): stri
   return ''
 }
 
+/**
+ * 🖼️ 담는 방식 — 기본은 `cover`(사진을 칸에 꽉 채우고 넘치는 건 자른다).
+ *
+ * `contain` 은 **그림 전체를 보여야 할 때**만 쓴다(2026-10-12 유달이). 그때는 `background` 가
+ * **필수**다 — 남는 여백이 투명으로 남는데 **jpeg 는 투명을 못 담아** 검정/흰 상자가 된다.
+ * 실측: 유달이를 `cover` 로 받으면 몸이 잘리고, `contain` + `background=#E4EDFD`(원 색)면
+ * 6,971B 에 여백이 원 색과 같아 원 안에서 이음매가 안 보인다.
+ */
+export interface InlineFitOptions {
+  fit?: 'cover' | 'contain'
+  /** `contain` 일 때 여백 색(`#RRGGBB`). jpeg 는 투명을 못 담으므로 contain 이면 반드시 준다. */
+  background?: string
+}
+
+function fitFrag(o?: InlineFitOptions): string {
+  if (o?.fit !== 'contain') return 'fit=cover,gravity=auto'
+  const bg = /^#[0-9a-fA-F]{6}$/.test(o.background || '') ? o.background! : '#FFFFFF'
+  return `fit=contain,background=${encodeURIComponent(bg)}`
+}
+
+/** Images 바인딩용 — 같은 뜻을 그 API 의 이름으로. */
+function imagesFit(o?: InlineFitOptions): Record<string, unknown> {
+  return o?.fit === 'contain'
+    ? { fit: 'contain', background: /^#[0-9a-fA-F]{6}$/.test(o.background || '') ? o.background : '#FFFFFF' }
+    : { fit: 'cover', gravity: 'auto' }
+}
+
+/** `cf.image` 용 — 〃. */
+function cfFit(o?: InlineFitOptions): Record<string, unknown> {
+  return imagesFit(o)
+}
+
 /** cdn-cgi 리사이저 주소 — 호출부가 원하는 화면 크기를 주면 그 크기로 받는다. */
-export function resizedUrl(absUrl: string, origin: string, width: number, height: number): string {
+export function resizedUrl(absUrl: string, origin: string, width: number, height: number, opts?: InlineFitOptions): string {
   // 원본 URL 에 `%` 가 있으면 경로에서 한 번 더 디코딩돼 404 가 난다(2026-08-11 실측·수리와 같은 함정).
   const safe = absUrl.includes('%') ? absUrl.replace(/%/g, '%25') : absUrl
-  return `${origin}/cdn-cgi/image/width=${width},height=${height},fit=cover,gravity=auto,quality=70,format=jpeg,onerror=redirect/${safe}`
+  return `${origin}/cdn-cgi/image/width=${width},height=${height},${fitFrag(opts)},quality=70,format=jpeg,onerror=redirect/${safe}`
 }
 
 /**
@@ -117,6 +149,8 @@ export async function inlineImage(
   height: number,
   fetchImpl: typeof fetch = fetch,
   images?: ImagesBindingLike,
+  /** 🖼️ 2026-10-12 추가 — 생략하면 종전과 **byte-동일**(`cover`). 위 `InlineFitOptions` 참조. */
+  fitOpts?: InlineFitOptions,
 ): Promise<string | null> {
   const abs = toAbsolute(raw, origin)
   if (!abs) return null
@@ -131,7 +165,7 @@ export async function inlineImage(
       if (srcRes.ok && srcRes.body && !(len > OG_SOURCE_MAX_BYTES)) {
         const out = await images
           .input(srcRes.body)
-          .transform({ width, height, fit: 'cover', gravity: 'auto' })
+          .transform({ width, height, ...imagesFit(fitOpts) })
           .output({ format: 'image/jpeg', quality: 70 })
         const buf = await out.response().arrayBuffer()
         if (buf.byteLength && buf.byteLength <= OG_INLINE_MAX_BYTES) {
@@ -147,7 +181,7 @@ export async function inlineImage(
   try {
     const res = await fetchImpl(src, {
       headers: { Accept: 'image/jpeg,image/*' },
-      cf: { image: { width, height, fit: 'cover', gravity: 'auto', quality: 70, format: 'jpeg' } },
+      cf: { image: { width, height, ...cfFit(fitOpts), quality: 70, format: 'jpeg' } },
     } as RequestInit)
     if (res.ok && looksLikeImage(res)) {
       const buf = await res.arrayBuffer()
@@ -159,7 +193,7 @@ export async function inlineImage(
     /* cf.image 미지원·실패는 아래 종전 경로로 */
   }
   try {
-    const res = await fetchImpl(resizedUrl(abs, origin, width, height), {
+    const res = await fetchImpl(resizedUrl(abs, origin, width, height, fitOpts), {
       headers: { Accept: 'image/jpeg,image/*' },
     })
     if (!res.ok || !looksLikeImage(res)) return null

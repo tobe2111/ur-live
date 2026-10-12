@@ -211,7 +211,6 @@ export default function CuratorPage() {
         handle: String(handle || ''),
         name: data?.curator?.name,
         bio: data?.curator?.bio,
-        profileImage: data?.curator?.profile_image,
         pins: data?.pins,
         origin,
         fallbackImage: KAKAO_SHARE_FALLBACK_IMAGE,
