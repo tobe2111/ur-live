@@ -38,3 +38,19 @@
 
 ## 남은 결정
 - 없음(대표 확정안 그대로 구현).
+
+## ➕ 3단계 에이전시 몫 — 깊은 링크 → 콘솔 시트 (같은 날, #1718 머지 뒤 새 PR)
+대표 *"초록 뜨면 머지하고 남은거 계속 해줘"*. #1718 은 auto-merge(squash) 걸어 둠.
+- `src/lib/seller-deep-link.ts`: `shouldSendAgencyToConsole`(에이전시 좌석 **+** 콘솔 토큰 살아 있음) · `consoleRedirectFor`
+  (홈류 → `/agency`, 하위 → `/agency?tool=`, `dash=1`·전용 길 그대로). 마이 판정과 `toolRedirect` 를 공유.
+- `SellerLayout`: 사장님 판정 **뒤에** `toConsole`.
+- 콘솔 `AgencyStoresPanel`: `?tool=` → 좌석 토큰의 매장을 고르고 `AgencyStorePlate initialPath` 로 시트를 연 채 마운트.
+  이 직원의 그 매장 좌석이 아니면 `location.replace(dashboardFallback)`. 한 번만 쓴다(`deepDone`).
+- 판의 전체화면(`goFull`)은 `dashboardFallback(path)` — 껍데기가 다시 콘솔로 튕기지 않게.
+- 검증: 신규 시험 `agency-deep-link-2026-10-12` + 주입 6건, 앞 단계 7건과 합쳐 13건 전부 빨간불 확인.
+- ⚠️ 콘솔 토큰 키를 lib 가 문자열로 따로 들고 있다(페이지 import 금지) — 시험이 `AGENCY_TOKEN_KEY` 와 대조.
+
+## 4단계(껍데기 삭제) 전에 남은 것
+- 대시보드 껍데기를 아직 쓰는 길: `/seller/scan`(카메라) · `/seller/meal-voucher/new` · `/seller/youtube/callback` ·
+  `?dash=1` 되돌림 · `?from=my` 전체화면 · 마이 없는 옛 셀러 계정 · 콘솔 로그인 없는 에이전시 좌석.
+  이 길들이 **사이드바 없는 최소 껍데기**로 충분한지부터 재고, 그다음 사이드바·상단바·하단 탭을 지우고 번들을 잰다.

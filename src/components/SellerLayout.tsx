@@ -20,7 +20,7 @@ import SellerBottomTabs, { SELLER_TABBAR_H } from './seller-layout/SellerBottomT
 import { useSellerNavModel } from './seller-layout/useSellerNavModel'
 import CommandPalette from '@/components/dashboard/CommandPalette'
 import { useSellerEmbedded } from '@/shared/seller-embed'
-import { myRedirectFor, shouldSendOwnerToMy } from '@/lib/seller-deep-link'
+import { consoleRedirectFor, myRedirectFor, shouldSendAgencyToConsole, shouldSendOwnerToMy } from '@/lib/seller-deep-link'
 
 interface SellerLayoutProps {
   title: string
@@ -274,6 +274,9 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
   //   ⚠️ 시트 안(`embedded`)은 위에서 이미 반환했다 — 여기는 단독 대시보드일 때만 온다.
   const toMy = shouldSendOwnerToMy(false) ? myRedirectFor(location.pathname, location.search) : null
   if (toMy) return <Navigate to={toMy} replace />
+  // 🏢 2026-10-12 — 에이전시 직원은 마이 대신 **에이전시 콘솔**로(콘솔이 그 매장 판에서 같은 시트를 연다).
+  const toConsole = !toMy && shouldSendAgencyToConsole(false) ? consoleRedirectFor(location.pathname, location.search) : null
+  if (toConsole) return <Navigate to={toConsole} replace />
 
   // 🏭 도매 전용(순수 판매사) → /wholesale 리다이렉트 중에는 렌더 X. is_distributor 직접 비교 금지(겸업 lock-out).
   if (wholesaleOnly) return null

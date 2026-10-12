@@ -1,10 +1,12 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import Sheet from '@/pages/user-profile/seller-section/Sheet'
-import { agencyRequest } from './agency-api'
+import { currentSeatId } from '@/lib/seller-seat'
+import { dashboardFallback, readToolParam } from '@/lib/seller-deep-link'
+import { agencyRequest, isMyAgencySeat } from './agency-api'
 import { useAgencyStores, type StoreRow } from './agency-stores-model'
 import AgencyStorePlate from './AgencyStorePlate'
 import { AgencyInviteLinkCard } from './AgencyInviteLinkCard'
@@ -46,6 +48,30 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows }: {
   const { rows, pending, active, picked, pick, canManage, error, load } = useAgencyStores(onExpired)
   const [sheet, setSheet] = useState<AgencySheet>(null)
   const [busyId, setBusyId] = useState<number | null>(null)
+  /**
+   * 🚪 깊은 링크(`/agency?tool=/seller/orders`) — 대시보드 껍데기가 에이전시 직원을 이리로 보낸다
+   *   (`consoleRedirectFor`). 좌석 토큰이 가리키는 매장을 고르고 그 화면을 시트로 연다.
+   *   ⚠️ **좌석을 새로 받지 않는다** — 이 직원의 그 매장 좌석이 이미 있을 때만 연다. 아니면(다른 직원 좌석 ·
+   *   내려놓은 매장 · 목록 실패) 대시보드로 되돌린다(`dash=1` — 다시 오지 않는다). 그 화면은 종전처럼 열린다.
+   */
+  const [deepPath] = useState(() => readToolParam(window.location.search))
+  const [openPath, setOpenPath] = useState<string | null>(null)
+  /** 한 번만 쓴다 — 다른 매장을 골랐다 돌아와도 시트가 다시 열리지 않게. */
+  const deepDone = useRef(false)
+  useEffect(() => {
+    if (!deepPath || deepDone.current) return
+    if (!error && rows === null) return
+    deepDone.current = true
+    const seat = currentSeatId()
+    const target = error ? undefined : active.find((r) => r.sellerId === seat)
+    if (!target || !isMyAgencySeat(target.sellerId, staffId)) { window.location.replace(dashboardFallback(deepPath)); return }
+    pick(target.sellerId)
+    try {
+      const q = new URLSearchParams(window.location.search); q.delete('tool')
+      window.history.replaceState(window.history.state, '', q.toString() ? `${window.location.pathname}?${q}` : window.location.pathname)
+    } catch { /* 무해 — 새로고침이 시트를 한 번 더 열 뿐 */ }
+    setOpenPath(deepPath)
+  }, [deepPath, rows, error, active, staffId, pick])
 
   async function act(row: StoreRow, path: 'accept' | 'decline' | 'release') {
     if (path !== 'accept') {
@@ -79,7 +105,7 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows }: {
                   key={r.linkId}
                   type="button"
                   aria-current={on || undefined}
-                  onClick={() => pick(r.sellerId)}
+                  onClick={() => { setOpenPath(null); pick(r.sellerId) }}
                   className={`flex min-h-[56px] flex-col items-start justify-center gap-1 rounded-xl px-4 py-2 text-left ${
                     on ? 'bg-white shadow-lift' : 'hover:bg-white/60'
                   }`}
@@ -138,7 +164,12 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows }: {
             <div className="rounded-2xl bg-white p-6 shadow-lift"><p className="text-[13px] text-gray-500">불러오는 중…</p></div>
           ) : picked ? (
             // 🔑 매장이 바뀌면 판을 새로 세운다 — 열려 있던 시트·좌석 대기 상태가 다음 매장으로 새지 않게.
-            <AgencyStorePlate key={picked.sellerId} store={picked} staffId={staffId} />
+            <AgencyStorePlate
+              key={`${picked.sellerId}:${openPath ?? ''}`}
+              store={picked}
+              staffId={staffId}
+              initialPath={openPath && picked.sellerId === currentSeatId() ? openPath : undefined}
+            />
           ) : (
             <div className="rounded-2xl bg-white p-6 shadow-lift">
               <p className="text-[15px] font-semibold text-gray-900">아직 운영 중인 매장이 없어요</p>
@@ -178,7 +209,7 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows }: {
                 <li key={r.linkId}>
                   <button
                     type="button"
-                    onClick={() => { pick(r.sellerId); setSheet(null) }}
+                    onClick={() => { setOpenPath(null); pick(r.sellerId); setSheet(null) }}
                     className="flex min-h-[56px] w-full items-center gap-3 px-4 text-left active:bg-gray-50"
                   >
                     <span className={`min-w-0 flex-1 truncate text-[15px] ${on ? 'font-bold text-gray-900' : 'font-semibold text-gray-700'}`}>{r.name}</span>

@@ -28,6 +28,7 @@ import { QrScanIcon } from '@/components/icons/qr-scan-icon'
 import { formatNumber } from '@/utils/format'
 import { toast } from '@/hooks/useToast'
 import { LIST_PLATE_CLS, ListRow as ToolRow } from '@/pages/user-profile/list-grammar'
+import { dashboardFallback } from '@/lib/seller-deep-link'
 import { enterAgencyStore, isMyAgencySeat } from './agency-api'
 import type { StoreRow } from './agency-stores-model'
 
@@ -48,10 +49,19 @@ function todayLabelKST(): string {
   return new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', month: 'long', day: 'numeric', weekday: 'short' })
 }
 
-export default function AgencyStorePlate({ store, staffId }: { store: StoreRow; staffId: number }) {
+export default function AgencyStorePlate({ store, staffId, initialPath }: {
+  store: StoreRow
+  staffId: number
+  /**
+   * 🚪 깊은 링크(`/agency?tool=`)로 온 화면 — 처음부터 시트로 열어 둔다. **좌석 판정은 호출부(패널)가 이미 했다**
+   *   (이 직원의 이 매장 좌석일 때만 넘긴다). 그래서 여기서는 발급하지 않고 effect 도 없다.
+   *   머리 이름은 비워 둔다 — 시트가 나브 색인에서 찾는다(`titleForPath`).
+   */
+  initialPath?: string
+}) {
   const [entering, setEntering] = useState(false)
-  const [tool, setTool] = useState<'tools' | 'page' | null>(null)
-  const [page, setPage] = useState<{ path: string; title: string } | null>(null)
+  const [tool, setTool] = useState<'tools' | 'page' | null>(initialPath ? 'page' : null)
+  const [page, setPage] = useState<{ path: string; title: string } | null>(initialPath ? { path: initialPath, title: '' } : null)
   /** 전체 도구에서 연 화면은 닫으면 그 목록으로 돌아간다(마이와 같은 흐름). */
   const [pageFrom, setPageFrom] = useState<'tools' | null>(null)
   const today = store.today
@@ -78,7 +88,8 @@ export default function AgencyStorePlate({ store, staffId }: { store: StoreRow; 
 
   async function goFull(path: string) {
     if (!(await ensureSeat())) return
-    window.location.assign(path)
+    // 🔁 `dash=1` — 껍데기가 이 직원을 다시 콘솔로 돌려보내지 않게(일부러 연 전체화면이다).
+    window.location.assign(dashboardFallback(path))
   }
 
   return (

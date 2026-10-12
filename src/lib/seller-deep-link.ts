@@ -62,10 +62,43 @@ export function myRedirectFor(pathname: string, search: string): string | null {
   const q = new URLSearchParams(search)
   if (q.get(DASH_PARAM) === '1') return null
   if (q.get(FROM_MY_PARAM) === FROM_MY_VALUE || shouldOfferMyReturn()) return null
+  return toolRedirect(MY_PATH, pathname, search)
+}
+
+/** 홈류는 그 화면 첫 화면으로, 나머지는 `?tool=` 로. 전용 길이 있는 화면은 보내지 않는다. 두 판정(마이·콘솔)이 같이 쓴다. */
+function toolRedirect(base: string, pathname: string, search: string): string | null {
   if (STAY_ON_DASHBOARD.has(pathname)) return null
-  if (HOME_LIKE.has(pathname)) return MY_PATH
+  if (HOME_LIKE.has(pathname)) return base
   const target = pathname + (search && search !== '?' ? (search.startsWith('?') ? search : `?${search}`) : '')
-  return `${MY_PATH}?${TOOL_PARAM}=${encodeURIComponent(target)}`
+  return `${base}?${TOOL_PARAM}=${encodeURIComponent(target)}`
+}
+
+// ── 🏢 에이전시 직원 (2026-10-12, 3단계 에이전시 몫) ────────────────────────────────
+/**
+ * 에이전시 직원은 마이가 없다(이메일 로그인). 그들의 작업 화면은 **에이전시 콘솔**이고, 콘솔이 고른 매장의 판에서
+ * 같은 시트(`ToolPageSheet`)를 연다(2단계 안 A). 그래서 알림·메일의 `/seller/*` 깊은 링크로 온 직원은 콘솔로 보낸다.
+ */
+export const AGENCY_CONSOLE_PATH = '/agency'
+/** ⚠️ 짝: `src/pages/agency-console/agency-api.ts` `AGENCY_TOKEN_KEY` — 시험이 대조한다(이 파일은 페이지를 import 하지 않는다). */
+export const AGENCY_CONSOLE_TOKEN_KEY = 'agency_console_token'
+
+/**
+ * 에이전시 좌석이고 **콘솔 로그인이 이 브라우저에 살아 있을 때만** 보낸다. 콘솔 토큰이 없으면 콘솔이 로그인 화면을 띄우고,
+ * 로그인 뒤엔 `?tool=` 을 잃는다 — 그때는 그 화면이 종전처럼 대시보드에서 열리는 편이 낫다.
+ */
+export function shouldSendAgencyToConsole(embedded: boolean): boolean {
+  if (embedded) return false
+  try {
+    if (!isAgencySeatToken(localStorage.getItem('seller_token'))) return false
+    return !!(localStorage.getItem(AGENCY_CONSOLE_TOKEN_KEY) || sessionStorage.getItem(AGENCY_CONSOLE_TOKEN_KEY))
+  } catch { return false }
+}
+
+/** 이 대시보드 주소로 온 에이전시 직원을 어디로 보낼까. 보내지 않으면 `null`. `dash=1` 은 콘솔이 못 열어 되돌린 표시. */
+export function consoleRedirectFor(pathname: string, search: string): string | null {
+  if (!pathname.startsWith('/seller')) return null
+  if (new URLSearchParams(search).get(DASH_PARAM) === '1') return null
+  return toolRedirect(AGENCY_CONSOLE_PATH, pathname, search)
 }
 
 /**
