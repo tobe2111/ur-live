@@ -8,8 +8,10 @@ export default [
   {
     name: '🗺️ 지역 요약을 주입(React initialData)에까지 쓴다 — 깎은 행이 카드를 깨뜨린다',
     file: 'src/worker/index.ts',
-    find: "const crawlerPayload = (digestP && await digestP) || ssrPayload;",
-    replace: "const crawlerPayload = (digestP && await digestP) || ssrPayload; ssrPayload = crawlerPayload;",
+    // 🔀 2026-10-12 재조준: #21(thin 지역 noindex)이 요약 **원본**을 따로 들고 있어야 해서
+    //   `digestRaw` 변수가 생겼다. 불변식(요약이 주입으로 새지 않는다)은 한 글자도 안 바뀌었다.
+    find: "const crawlerPayload = digestRaw || ssrPayload;",
+    replace: "const crawlerPayload = digestRaw || ssrPayload; ssrPayload = crawlerPayload;",
     test: TEST,
     why: '요약 행은 필드를 깎았다. 주입으로 새면 홈·지역 카드가 깨지는데 빌드도 화면 테스트도 안 깨진다 — ⑥이 그 방향을 본다.',
   },

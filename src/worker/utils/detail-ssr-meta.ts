@@ -9,6 +9,8 @@
 
 // 🔄 이용권 공유 카드 주소·판 번호는 `shared/pass-share-card.ts` 한 곳(화면의 공유 버튼과 같은 값).
 import { passShareCardUrl } from '@/shared/pass-share-card'
+// 🏨 정본 상세 주소 SSOT — 숙소 이용권은 `/stays/:id` 다(두 벌로 적으면 갈린다).
+import { canonicalDetailPath } from '../../shared/product-flow'
 export { PASS_OG_VERSION } from '@/shared/pass-share-card'
 
 // script 종료 태그 이스케이프 — <script type="application/ld+json"> 안전 임베드.
@@ -95,7 +97,15 @@ export function buildDetailMeta(ssrPayload: string, origin: string, pathname: st
     const store = String(d.restaurant_name || '').trim()
     const price = Number(d.price) || 0
     const discount = Number(d.current_discount_pct) || 0
-    const canonical = `${origin}${pathname}`
+    // 🏨 2026-10-12 [UNLOCK_LOADING] (대표 "둘 다 잠금 해제하고 가장 이상적으로"): canonical 을 **SSOT 가
+    //   말하는 정본 주소**로. 실측에서 숙소 이용권 49건이 `/pass/:id` 와 `/stays/:id` 두 URL 로 각각
+    //   자기 canonical 을 선언해 **같은 상품이 색인에서 경쟁**했고, sitemap(`/pass/`)과 `/stays` ItemList
+    //   (`/stays/`)가 서로 다른 URL 을 가리키고 있었다. 정본은 `canonicalDetailPath` 하나로 정한다 —
+    //   그 함수가 `stay_voucher` → `/stays/:id`, 그 밖의 이용권 → `/pass/:id`, 교환권 → `/vouchers/:id` 다.
+    //   ⚠️ noindex 를 **같이 붙이지 않는다** — canonical 로 통합하는 URL 에 noindex 는 서로 반대 신호다.
+    //   폴백은 종전과 같은 `pathname`(판정 불가 시 자기 자신).
+    const canonicalPath = canonicalDetailPath({ id: id ?? '', deal_only: d.deal_only, category: d.category })
+    const canonical = `${origin}${canonicalPath && canonicalPath.startsWith('/') ? canonicalPath : pathname}`
     const ogImage = absImage(String(d.image_url || ''), origin, id)
     const isVoucher = pathname.startsWith('/vouchers/') // 교환권 — 클라 noindex 와 대칭
 
@@ -207,10 +217,9 @@ export function buildStayDetailMeta(ssrPayload: string, origin: string, pathname
     const region = [p.region_sido, p.region_sigungu].filter(Boolean).join(' ').trim()
     const typeLabel = p.property_type ? (STAY_TYPE_LABEL[p.property_type] || '숙소') : '숙소'
     const rooms = parsed?.data?.rooms || []
-    const fromPrice = rooms.reduce((min, r) => {
-      const v = Number(r.base_price_weekday) || 0
-      return v > 0 && (min === 0 || v < min) ? v : min
-    }, 0)
+    const roomPrices = rooms.map(r => Number(r.base_price_weekday) || 0).filter(v => v > 0)
+    const fromPrice = roomPrices.length ? Math.min(...roomPrices) : 0
+    const toPrice = roomPrices.length ? Math.max(...roomPrices) : 0
     const canonical = `${origin}/stays/${id}`
     const ogImage = absImage(String(p.image_url || ''), origin, id)
     const pageTitle = `${stayName}${region ? ` (${region})` : ''} - 유어딜`
@@ -221,8 +230,16 @@ export function buildStayDetailMeta(ssrPayload: string, origin: string, pathname
     const description = (`${ratingStr}${region ? region + ' ' : ''}${typeLabel} · ${priceStr}${baseDesc}`
       || `${stayName} — 유어딜에서 숙소 이용권을 할인가로 예약하세요.`).trim().slice(0, 200)
 
+    // 🏨 2026-10-12 [UNLOCK_LOADING] (대표 "둘 다 잠금 해제하고 가장 이상적으로"): **이 URL 이 정본이다.**
+    //   실측으로 `/pass/:id`(숙소 이용권)와 `/stays/:id` 가 **같은 상품 id**를 각각 자기 canonical 로
+    //   `index, follow` 하고 있었다(제목도 상품명↔매장명으로 달랐다) — 같은 엔티티의 두 색인 URL.
+    //   SSOT(`canonicalDetailPath`)가 `stay_voucher` → `/stays/:id` 라 정본은 이쪽인데, 그때 이 페이지는
+    //   **`Product`·`Offer` 가 없었다**(`LodgingBusiness`+빵부스러기뿐) — 즉 "살 수 있는 것" 신호가 0.
+    //   정본으로 지목하기 전에 그걸 먼저 준다. 아래 `@graph` 로 노드를 모으고(종전엔 `@context` 를 노드마다
+    //   얹은 배열) 매장을 `@id` 로 분리해 Offer 가 가리킨다 — `/pass/:id` 와 **같은 모양**.
+    const placeId = `${canonical}#place`
     const lodging: Record<string, unknown> = {
-      '@context': 'https://schema.org', '@type': 'LodgingBusiness',
+      '@type': 'LodgingBusiness', '@id': placeId,
       name: stayName,
       ...(baseDesc ? { description: baseDesc.slice(0, 300) } : {}),
       ...(p.image_url ? { image: [ogImage] } : {}),
@@ -233,15 +250,36 @@ export function buildStayDetailMeta(ssrPayload: string, origin: string, pathname
       ...(fromPrice > 0 ? { priceRange: `₩${fromPrice.toLocaleString('ko-KR')}~` } : {}),
       url: canonical,
     }
+    // 🛒 살 수 있는 것 = 이 숙소의 1박 숙박권. 값은 **객실 가격에서만** 온다(이 페이로드엔 `price` 가
+    //   없다 — 숙소 API 는 매장 지향 컬럼을 고른다). 하나의 정가를 지어내지 않고 `AggregateOffer`
+    //   (`lowPrice`~`highPrice`)로 **"1박 N원~"** 을 그대로 말한다. 화면이 객실 목록으로 보여 주는 것과
+    //   같은 범위라 내용-스키마 불일치가 없다. 객실 가격이 없으면 **Offer 를 아예 안 만든다**(지어내기 금지).
+    const product: Record<string, unknown> | null = fromPrice > 0 ? {
+      '@type': 'Product',
+      name: String(p.name || stayName).trim(),
+      ...(baseDesc ? { description: baseDesc.slice(0, 300) } : {}),
+      ...(p.image_url ? { image: [ogImage] } : {}),
+      brand: { '@type': 'Brand', name: stayName },
+      offers: {
+        '@type': 'AggregateOffer', url: canonical, priceCurrency: 'KRW',
+        lowPrice: fromPrice, ...(toPrice > fromPrice ? { highPrice: toPrice } : {}),
+        offerCount: roomPrices.length,
+        availability: 'https://schema.org/InStock',
+        availableAtOrFrom: { '@id': placeId },
+      },
+    } : null
     const breadcrumb = {
-      '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+      '@type': 'BreadcrumbList', '@id': `${canonical}#breadcrumb`,
       itemListElement: [
         { '@type': 'ListItem', position: 1, name: '홈', item: `${origin}/` },
         { '@type': 'ListItem', position: 2, name: '숙소', item: `${origin}/stays` },
         { '@type': 'ListItem', position: 3, name: stayName, item: canonical },
       ],
     }
-    const jsonLd = escapeScript(JSON.stringify([lodging, breadcrumb]))
+    const jsonLd = escapeScript(JSON.stringify({
+      '@context': 'https://schema.org',
+      '@graph': product ? [product, lodging, breadcrumb] : [lodging, breadcrumb],
+    }))
     return { pageTitle, title: pageTitle, description, canonical, ogImage, ogType: 'product', noindex: false, jsonLd }
   } catch { return null }
 }

@@ -39,7 +39,13 @@
  *    (`parseRegionFromAddress`)로 한다. 손으로 주소를 파싱하면 화면과 갈려 다른 동네 가게가 섞인다.
  */
 
-import { parseRegionFromAddress } from '../constants/region-slugs'
+import {
+  parseRegionFromAddress,
+  parseRegionPath,
+  addressInRegion,
+  REGION_INDEX_MIN_DEALS,
+  type RegionRef,
+} from '../constants/region-slugs'
 import { REGION_PATH_RE } from './region-seed'
 
 /** 요약이 사는 KV 키. cron(쓰기)과 워커(읽기)가 **같은 상수**를 본다. */
@@ -151,4 +157,51 @@ export function buildRegionDigest(rows: readonly DigestRow[]): string {
     if (!keep.has(key)) keep.set(key, prune(row))
   }
   return JSON.stringify({ success: true, data: [...keep.values()] })
+}
+
+/**
+ * 🪧 2026-10-12 — 요약으로 판정하는 **thin 지역**(`noindex` 를 붙여야 하는가).
+ *
+ * ## 왜 필요한가 (라이브 실측)
+ * `resolveRegionSeo` 는 **DB 를 안 본다**(그 함수 주석이 스스로 적어 둔 한계) → `REGION_INDEX_MIN_DEALS`
+ * 게이트가 **클라이언트 렌더에만** 붙는다. 그래서 `/region/인천`·`세종`·`울산` 과 `/region/서울/없는구`
+ * 같은 URL 이 **HTTP 200 + `index, follow` + 본문 26자**로 나갔다. `SIGUNGU_RE` 가 *한글+시|군|구* 면
+ * 통과시키니 **지어낸 구 이름도 색인 가능**하고, 사실상 무한 thin URL 이다.
+ * 종전 방어("thin 지역으로 가는 링크를 아예 만들지 않는다")는 **발견**은 막지만 외부 링크·주소 추측은 못 막는다.
+ *
+ * ## 왜 조회 없이 되는가
+ * cron 이 올려 둔 요약(`REGION_DIGEST_KV_KEY`)을 워커가 지역 경로에서 **이미 읽는다** ⇒ DB 조회 0.
+ * 세는 방법은 화면·`ItemList` 와 **같은 SSOT**(`addressInRegion`)다 — 손으로 주소를 파싱하면 갈린다.
+ *
+ * ## 🔴 요약이 없으면 **절대** noindex 하지 않는다
+ * 데이터 부재는 thin 이 아니다. KV miss·cron 전·파싱 실패·빈 요약은 전부 `false` 로 떨어진다.
+ * 이 방향이 뒤집히면 **배포 직후 지역 44개가 통째로 색인에서 빠지고**, 색인은 돌아오는 데 수주 걸린다.
+ *
+ * ⚠️ 호출부는 `crawlerPayload`(= 요약 **또는** MAIN 시드)가 아니라 **요약 원본**을 넘겨야 한다 —
+ *    둘은 봉투 모양이 같아서(`{success,data:[]}`) 여기서 구분할 수 없고, MAIN 시드(1페이지 50건)를
+ *    넘기면 그 분포대로 **멀쩡한 지역이 thin 으로 판정된다**(경기 49건인데 시드엔 0건이었다).
+ * ⚠️ 묶음 상한(`REGION_DIGEST_PER_BUCKET` 10)은 거짓 thin 을 만들 수 없다 — 상한에 걸릴 만큼 많으면
+ *    이미 10 ≥ 3 이다.
+ */
+export function regionThinByDigest(pathname: string, digestJson: string | null | undefined): boolean {
+  if (!digestJson) return false
+  if (!REGION_PATH_RE.test(pathname)) return false
+  const seg = pathname.replace(/\/+$/, '').split('/')
+  let ref: RegionRef | null = null
+  try {
+    ref = parseRegionPath(decodeURIComponent(seg[2] || ''), seg[3] ? decodeURIComponent(seg[3]) : undefined)
+  } catch {
+    return false
+  }
+  // 허브(`/region`)와 모르는 시/도는 각자 다른 규칙이 본다(리졸버가 이미 noindex 를 준다).
+  if (!ref) return false
+  const rows = digestRowsOf(digestJson)
+  // 요약이 비었다 = cron 이 아직 못 돌았다(= 부재). 역시 noindex 하지 않는다.
+  if (!rows.length) return false
+  let n = 0
+  for (const r of rows) {
+    if (Number(r?.deal_only) === 1) continue
+    if (addressInRegion(r?.restaurant_address || r?.business_address, ref)) n++
+  }
+  return n < REGION_INDEX_MIN_DEALS
 }

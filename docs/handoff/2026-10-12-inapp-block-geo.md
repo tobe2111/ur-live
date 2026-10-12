@@ -106,59 +106,62 @@ PerplexityBot     API=403 HTML=200     Googlebot          API=200 HTML=200
 제거기를 쓰니 한 파일의 `/*` 가 다른 파일의 `*/` 와 짝지어 **206,871 → 54,215자(74% 증발)**,
 찾아야 할 호출이 그 안에 있어 **죽은 호출을 못 보고 초록**이 떴다 ⇒ 줄 주석만 걷는다.
 
-## 7. 남은 둘
+## 7. #18 + #21 완료 (2026-10-12 · 대표 *"둘 다 잠금 해제하고 가장 이상적으로 개선"*)
 
-| # | 무엇 | 함정 |
+**둘 다 `worker/index.ts`(잠금) 을 지난다** → `[UNLOCK_LOADING]` + CLAUDE.md 로딩 audit log 기재 완료.
+워커 diff 는 **변수 분리 2줄 + 메타 삼항 1줄 + STAYDETAIL 분기 2줄** 뿐이고 래칫 **2672 유지**(`--rebaseline` 안 썼다).
+
+| | #18 숙소 정본 단일화 | #21 thin 지역 noindex |
 |---|---|---|
-| **#18** | 숙소 **49건**이 `/pass/:id` 와 `/stays/:id` 두 URL 로 색인 경쟁 | **둘을 같은 커밋에서** — (a) 상세 canonical (b) `sitemap.routes.ts:114` 의 하드코딩 `loc`. SSOT 는 `canonicalDetailPath` |
-| **#21** | 딜 3건 미만 지역 페이지가 `index, follow` + 본문 26자 | 요약(`ssr:region-digest`)이 이미 KV 에 있고 워커가 읽는다 ⇒ 조회 0 으로 게이트 가능. ⚠️ **요약이 없을 때는 절대 noindex 하지 않는다** |
+| 결함 | 같은 `products.id` 가 `/pass/2887`·`/stays/2887` **둘 다 200·canonical 자기자신·index,follow** | `/region/인천`·`세종`·`울산`·`서울/없는구` 가 **200 + index,follow + 본문 26자** |
+| 수정 | `/stays/:id` 에 `Product`+`AggregateOffer`+크롤러 본문 → **그 다음에** canonical 을 거기로 + sitemap 도 같은 SSOT | 요약(`ssr:region-digest`)으로 그 지역 항목을 세어 임계값 미만이면 noindex (**DB 조회 0**) |
+| 실측(전→후) | noscript **6 → 146자** · Offer **0 → AggregateOffer(149,000~209,000 · 2건)** | 서울/종로구 false · 경기/파주시 true · 인천 true · 요약 없음 false |
 
----
+**🔴 다음 세션이 절대 뒤집지 말아야 하는 방향 둘** (주입이 각각 잠그고 있다):
+1. **요약이 없으면 noindex 하지 않는다**(`!digestJson` · `!rows.length` 두 문 모두). 부재 ≠ thin —
+   뒤집으면 배포 직후 색인 대상 **44개가 통째로** 빠지고 색인은 돌아오는 데 **수주** 걸린다.
+2. **워커는 `digestRaw`(요약 원본)를 넘긴다.** `crawlerPayload` 는 봉투 모양이 같아(`{success,data:[]}`)
+   받는 쪽이 구분할 수 없고, KV miss 면 MAIN 시드(서울 44 편중)가 흘러들어 **멀쩡한 지역이 noindex** 가 된다.
 
-## 8. 🩸 #18 — 내 애초 수리 방향이 라이브 실측으로 **뒤집혔다**
+**가드**: `stay-canonical-thin-region-2026-10-12.test.ts` 14건 + 주입 `scripts/mutations/stay-canonical-thin-region-2026-10-12.mjs` **14건 전부 빨간불 확인**.
+**기존 주입 둘 재조준**(지우지 않았다 — 불변식 그대로, 앵커만): `pass-route-migration`(sitemap 옛 주소) · `region-digest-2026-10-12`(요약이 주입으로 샌다).
 
-애초 제안(§1·§4): `/pass/:id` canonical → `/stays/:id` + sitemap 도 `/stays/:id`.
-근거는 SSOT `canonicalDetailPath`(`stay_voucher` → `/stays/:id`)였다. **그대로 하면 안 된다.**
+### E4 (배포 후 — 이게 판정이다)
 
-**실측(Googlebot UA · 2026-10-12 · 상품 2887 = 그랑블루글램핑 평일 1박)**
+```bash
+UA='Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
+# ① 정본이 채워졌는지 (종전 본문 6자 · Offer 0)
+curl -sS -A "$UA" https://urdeal.kr/stays/2887 | grep -o 'AggregateOffer\|"@type":"Product"' | sort | uniq -c
+# ② /pass(숙소) 가 /stays 를 정본으로 지목하는지
+curl -sS -A "$UA" https://urdeal.kr/pass/2887 | grep -o 'rel="canonical" href="[^"]*"'
+# ③ sitemap 이 같은 SSOT 를 지나는지 — /stays/ 0 → 49건 · /pass/ 359 → 310 안팎
+curl -sS https://urdeal.kr/sitemap.xml | grep -c '/stays/'
+curl -sS https://urdeal.kr/sitemap.xml | grep -c '/pass/'
+# ④ thin 지역은 noindex · 멀쩡한 지역은 index (⚠️ 이 방향이 깨지면 조용히 색인이 빠진다)
+for r in 인천 세종 울산 서울 경기; do
+  printf '%s %s\n' "$r" "$(curl -sS -A "$UA" "https://urdeal.kr/region/$r" | grep -o 'name="robots" content="[^"]*"' | head -1)"; done
+```
 
-| | `/pass/2887` | `/stays/2887` |
-|---|---|---|
-| HTTP | 200 | 200 |
-| canonical | 자기 자신 | 자기 자신 |
-| robots | `index, follow` | `index, follow` |
-| `<title>` | 상품명(평일 1박 숙박권…) | 매장명(그랑블루글램핑&펜션…) |
-| **서버 본문** | **188자**(가게·상품·판매가 209,000·정가 272,000·23%·주소·전화) | **6자**(`urdeal` — 로더뿐) |
-| **JSON-LD** | `Product`+`Offer`+`LodgingBusiness`+Breadcrumb | `LodgingBusiness`+Breadcrumb (**Product·Offer 없음**) |
-| sitemap | **제출됨**(`/pass/` 359건) | **미제출**(`/stays/` 0건) |
+⚠️ **④는 cron(`:15`)이 1회 이상 돈 뒤에 재야 한다** — 요약이 KV 에 없으면 설계대로 **전부 index** 로 나온다
+(그게 정상이다. "안 걸렸다"로 오판하지 말 것).
 
-id 공간이 같다 — `StayDetailPage` 가 param 을 **`productId`** 로 받는다(`:113`).
-⇒ **같은 엔티티 · 두 색인 URL · 각각 자기 canonical · 제목도 다름.** 중복은 사실이다.
+## 8. 안 한 것 — `/stays/:id` 서버 첫 화면
 
-🔴 **그런데 `/stays/:id` 로 canonical 을 옮기면 리치 페이지에서 빈 페이지로 옮기는 것이다.**
-내 애초 제안은 SSOT 만 보고 **각 URL 이 실제로 무엇을 내는지 안 재고** 쓴 것이다.
+`/pass/:id` 처럼 사진·제목을 서버가 그리는 것. `StayDetailPage` 의 히어로 래퍼가 구조가 다르다
+(`-mx-4 -mt-5` 전폭 · `bg-gray-100` · `lg:rounded-2xl` · 별도 `DetailTitleHeader` · 조건부 성급 줄 ·
+`?ref=` 배너) → **박스를 재야** 한다(2026-10-08 교환권 상세에서 쓴 방법: 라이브 시드로 워커 HTML 과
+React 를 각각 렌더해 박스를 대조). 본문은 `<noscript>` 가 밀림 0 으로 이미 배달하므로 급하지 않다.
 
-### 갈림길 — 대표 판단 필요
+## 9. 🩸 이번에 틀렸던 판단 — #18 방향이 실측으로 뒤집혔다
 
-- **A. `/stays/:id` 에 서버 첫 화면 + `Product`/`Offer` 를 준다** (옳은 종착지)
-  `/pass/:id` 가 2026-09-15/16 에 받은 것과 **같은 처방**이고, 이 레포가 네 번 반복해 고친
-  *"데이터는 와 있는데 로더가 덮는다"* 클래스다(`readStaySeed(productId)` 가 이미 시드를 읽는다
-  = 데이터는 도착해 있다). ⚠️ `worker/index.ts`(**잠금 파일** → 승인 필요) + 파일 래칫이
-  **2672 로 꽉 차 있다**(주석 압축 필요 — `--rebaseline` 금지).
-- **B. 숙소 카드의 목적지를 `/pass/:id` 로 바꾼다** → `canonicalDetailPath` 수정.
-  ⚠️ **제품 결정**이다: 예약 달력·객실 선택이 있는 `/stays/:id` 로 가던 사람이 일반 패스 화면으로 간다.
+제가 올린 처방은 *"`/pass` → canonical `/stays`"* 였다. **반만 맞았다.**
 
-### 어느 쪽이든 **같은 커밋에서** 맞춰야 하는 셋
-1. 상세 canonical(`detail-ssr-meta.ts`)
-2. `sitemap.routes.ts:114` 의 하드코딩 `loc: /pass/${g.id}` → `canonicalDetailPath` 경유
-3. `/stays` ItemList·`/region` 항목(이미 `canonicalDetailPath` 를 쓴다)
+      /pass/2887   본문 188자 · Product + Offer + LodgingBusiness   ← 리치
+      /stays/2887  본문   6자 · LodgingBusiness 만 (Offer 0)        ← 빈 페이지
 
-**지금은 sitemap(`/pass/`) 과 ItemList(`/stays/`) 가 서로 다른 URL 을 가리킨다** — 그 자체가 모순 신호다.
+그대로 했으면 **리치 페이지에서 빈 페이지로 정본을 옮기는** 셈이었다. 원인은 분명하다 —
+**SSOT(`canonicalDetailPath`)만 읽고 각 URL 이 실제로 무엇을 내는지 안 쟀다.**
+⇒ 정본으로 지목하기 **전에** 그 페이지를 먼저 채웠다. 이 순서가 이 변경의 요점이다.
 
-## 9. #21 도 `worker/index.ts`(잠금) 이 필요하다
-
-`resolveRegionSeo` 는 DB 를 안 보고, noindex 게이트는 클라 렌더에만 있다. 요약(`ssr:region-digest`)이
-**이미 KV 에 있고 워커가 지역 경로에서 그 키를 읽으므로** DB 조회 0 으로 *버킷 항목 <3 → noindex* 가 된다.
-⚠️ **요약이 없을 때(KV miss·cron 전)는 절대 noindex 하지 않는다** — 데이터 부재는 thin 이 아니다.
-⚠️ 그 수정 자리가 `worker/index.ts` 라 **대표 승인 + `[UNLOCK_LOADING]` + audit log** 가 필요하고,
-파일 래칫이 2672 로 꽉 차 있다.
+**교훈**: "어느 쪽이 정본인가" 는 SSOT 가 답하지만 **"지금 어느 쪽이 더 많이 말하는가" 는 실측만 답한다.**
+canonical 을 옮기는 작업은 두 URL 의 **본문 글자수와 구조화 데이터를 먼저 세고** 시작할 것.

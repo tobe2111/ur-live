@@ -124,6 +124,90 @@ export function buildDetailNoscript(d: NoscriptDetailSeed | null | undefined): s
   ]))
 }
 
+export interface NoscriptStaySeed {
+  product?: {
+    name?: string | null
+    restaurant_name?: string | null
+    description?: string | null
+    description_full?: string | null
+    region_sido?: string | null
+    region_sigungu?: string | null
+    address?: string | null
+    star_rating?: number | null
+    avg_rating?: number | null
+    review_count?: number | null
+  } | null
+  rooms?: Array<{ name?: string | null; base_price_weekday?: number | null } | null> | null
+}
+
+/**
+ * 🏨 2026-10-12 — 숙소 상세(`/stays/:id`)의 본문.
+ *
+ * ## 왜 필요한가 (라이브 실측 · Googlebot UA)
+ * 이 URL 이 **정본**(`canonicalDetailPath`)인데 크롤러가 받는 본문이 **6자**(`urdeal` — 로더뿐)였다.
+ * 같은 상품의 `/pass/:id` 는 **188자**(가게·상품·판매가·정가·할인·주소·전화)였다 — 정본이 더 빈
+ * 상태였던 것이고, 그 상태로 canonical 을 이쪽으로 모으면 리치 페이지에서 빈 페이지로 옮기는 셈이다.
+ *
+ * ## 왜 `<noscript>` 인가
+ * 이 표면은 서버 첫 화면이 없다(별건 — 아래 ⚠️). `<noscript>` 는 **JS 가 돌면 렌더조차 안 되므로**
+ * 사람 화면이 byte-동일하고 **밀림이 0** 이다. 첫 화면을 흉내 내려면 `StayDetailPage` 의 히어로 래퍼
+ * (`-mx-4 -mt-5` 풀블리드 · `DetailTitleHeader` · 등급 줄 유무)를 픽셀로 맞춰야 하는데, 그건 박스를
+ * 재면서 따로 할 일이다(`/pass/:id` 는 그렇게 두 세션이 걸렸다).
+ *
+ * ⚠️ 규율 ②("첫 화면이 그린 것은 다시 쓰지 않는다")가 여기엔 **적용되지 않는다** — 그릴 첫 화면이
+ *    없어서 이름부터 아무것도 전달되지 않았다. 그래서 숙소명까지 담는다.
+ * ⚠️ 값은 **시드에 있는 것만**. `price` 는 이 페이로드에 없고(숙소 API 는 매장 지향 컬럼을 고른다)
+ *    객실 가격에서만 범위를 만든다 — 하나의 정가를 지어내지 않는다(규율 ①).
+ */
+export function buildStayNoscript(seed: NoscriptStaySeed | null | undefined): string {
+  const p = seed?.product
+  if (!p) return ''
+  const stay = String(p.restaurant_name || p.name || '').trim()
+  if (!stay) return ''
+  const region = [p.region_sido, p.region_sigungu].filter(Boolean).map(String).join(' ').trim()
+  const prices = (seed?.rooms || [])
+    .map((r) => Number(r?.base_price_weekday) || 0)
+    .filter((v) => v > 0)
+  const low = prices.length ? Math.min(...prices) : 0
+  const high = prices.length ? Math.max(...prices) : 0
+  const priceLine = low > 0
+    ? (high > low ? `1박 ${won(low)}원~${won(high)}원` : `1박 ${won(low)}원`)
+    : ''
+  const addr = String(p.address || '').trim()
+  const rating = Number(p.avg_rating) || 0
+  const reviews = Number(p.review_count) || 0
+  const desc = String(p.description_full || p.description || '').replace(/\s+/g, ' ').trim()
+  // 객실은 **이름 + 평일가**만. 화면 객실 목록이 그대로 보여 주는 값이다.
+  const roomLines = (seed?.rooms || [])
+    .map((r) => {
+      const n = String(r?.name || '').trim()
+      const v = Number(r?.base_price_weekday) || 0
+      return n && v > 0 ? `${esc(n)} 1박 ${won(v)}원` : (n ? esc(n) : '')
+    })
+    .filter(Boolean)
+    .slice(0, 8)
+
+  return wrap(lines([
+    `${esc(stay)}${region ? ` · ${esc(region)}` : ''}`,
+    priceLine && esc(priceLine),
+    p.star_rating ? `${Number(p.star_rating)}성급` : '',
+    rating > 0 && reviews > 0 ? `평점 ${rating.toFixed(1)} (${reviews}개 리뷰)` : '',
+    addr && `주소 ${esc(addr)}`,
+    desc && desc !== stay ? esc(desc) : '',
+    ...roomLines,
+  ]))
+}
+
+/** 워커 편의 — SSR 페이로드(`{data:{product,rooms}}`)에서 바로. 파싱 실패는 `''`(fail-soft). */
+export function stayNoscriptFromPayload(ssrPayload: string | null | undefined): string {
+  if (!ssrPayload) return ''
+  try {
+    return buildStayNoscript((JSON.parse(ssrPayload) as { data?: NoscriptStaySeed })?.data ?? null)
+  } catch {
+    return ''
+  }
+}
+
 /**
  * ⚠️ 핀은 **평평하다** — `pins[].product_name` 이고 `pins[].product.name` 이 아니다
  * (SSOT 는 `utils/curator-ssr-body.ts` 의 `CuratorSeedPin`). 처음 이 파일을 쓸 때 중첩으로
