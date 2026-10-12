@@ -172,7 +172,7 @@ import { buildDetailMeta, buildStayDetailMeta, buildProductMeta } from './utils/
 // 🔎 2026-07-29 정적 소비자 표면 메타 SSOT(워커·클라 공용). ⚠️ 워커 값 import 는 alias 금지 — 상대경로.
 import { resolveConsumerSurfaceSeo } from '../shared/seo/consumer-surfaces';
 import { resolveConsumerAlias } from '../shared/seo/consumer-redirects';
-import { applySurfaceMeta, buildSellerSurfaceMeta, shouldNoindexMissingEntity, isRetiredSurface, resolveRegionSeo } from './utils/surface-ssr-meta'; import { buildSurfaceListJsonLd, buildCuratorJsonLd } from './utils/surface-list-jsonld';
+import { applySurfaceMeta, applyCanonical, buildSellerSurfaceMeta, shouldNoindexMissingEntity, isRetiredSurface, resolveRegionSeo } from './utils/surface-ssr-meta'; import { buildSurfaceListJsonLd, buildCuratorJsonLd } from './utils/surface-list-jsonld';
 import { fetchSsrPayload, applySsrDiagHeaders, type SsrTarget } from './utils/ssr-payload'; import { MAP_SEED_PATH } from '../shared/map-feed-seed';
 // 🛡️ 2026-05-20: 에이전시 = 가게 입점 영업 모델 (Phase 2).
 // 🛡️ 2026-05-18: 숙소 공구 에이전시 모니터링 — PR 1 Foundation.
@@ -805,8 +805,8 @@ app.use('*', async (c, next) => {
         .on('meta[property="og:image"]', { element(el) { el.setAttribute('content', adOgImg); } })
         .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', adTitle); } })
         .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', adDesc); } })
-        .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', adOgImg); } })
-        .on('head', { element(el) { el.append(`<link rel="canonical" href="${adCanonical}">`, { html: true }); } });
+        .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', adOgImg); } });
+      rb = applyCanonical(rb, adCanonical); // 🔗 2026-10-12: append 하면 봇 셸의 것과 2개가 된다
     }
     // 📝 2026-07-01 블로그 서버측 메타/구조화데이터 주입 — JS 안 도는 크롤러(네이버/카카오/소셜)용.
     //   Googlebot 은 react-helmet(<SEO>)을 렌더해 보지만, 네이버·소셜 스크래퍼는 정적 HTML 메타만 봄.
@@ -827,10 +827,10 @@ app.use('*', async (c, next) => {
           .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', m.description); } })
           .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', m.ogImage); } })
           .on('head', { element(el) {
-            el.append(`<link rel="canonical" href="${m.canonical}">`, { html: true });
             el.append(`<link rel="alternate" type="application/rss+xml" title="유어딜 블로그 RSS" href="${origin2}/blog/rss">`, { html: true });
             el.append(`<script type="application/ld+json">${m.jsonLd}</script>`, { html: true });
           } });
+        rb = applyCanonical(rb, m.canonical);
       }
     } else if (url.pathname === '/blog') {
       const bt = '유어딜 블로그 — 이용권·교환권·동네딜·유어샵 가이드';
@@ -847,10 +847,10 @@ app.use('*', async (c, next) => {
         .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', bt); } })
         .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', bd); } })
         .on('head', { element(el) {
-          el.append(`<link rel="canonical" href="${canon}">`, { html: true });
           el.append(`<link rel="alternate" type="application/rss+xml" title="유어딜 블로그 RSS" href="${origin2}/blog/rss">`, { html: true });
           if (listJsonLd) el.append(`<script type="application/ld+json">${listJsonLd}</script>`, { html: true });
         } });
+      rb = applyCanonical(rb, canon);
     }
     // 🔗 2026-07-01 [UNLOCK_LOADING] (대표 승인 — 유어샵 전수조사): /u/:handle 유어샵 서버측 OG/canonical 주입.
     //   그간 CURATOR 슬롯은 __SSR_INITIAL_CURATOR__ 데이터만 주입하고 메타는 index.html 소비자 기본값(제네릭 홈)을
@@ -883,8 +883,8 @@ app.use('*', async (c, next) => {
             .on('meta[property="og:image"]', { element(el) { el.setAttribute('content', mImg); } })
             .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', mTitle); } })
             .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', mDesc); } })
-            .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', mImg); } })
-            .on('link[rel="canonical"]', { element(el) { el.setAttribute('href', mCanon); } });
+            .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', mImg); } });
+          rb = applyCanonical(rb, mCanon); // 🔗 종전 setAttribute 는 사람 경로(태그 부재)에서 canonical 0
           // 📣 2026-08-09 과업① — 몰별 네이버 웹마스터 소유확인 메타(사이트 전역 메타는 보존, **추가**만).
           //   영숫자만 저장되므로(어드민 검증) 속성 주입 안전. 경로 몰에선 참고용, 커스텀 도메인 연결 시 유효.
           const mNaver = String(m.naver_verification || '').trim();

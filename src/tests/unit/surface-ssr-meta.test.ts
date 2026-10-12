@@ -17,6 +17,7 @@ function fakeRewriter() {
   const attrs: Array<{ selector: string; name: string; value: string }> = []
   const appended: string[] = []
   const selectors: string[] = []
+  const removed: string[] = []
   const rb = {
     on(selector: string, handlers: { element(el: unknown): void }) {
       selectors.push(selector)
@@ -24,11 +25,12 @@ function fakeRewriter() {
         setInnerContent: (c: string) => title.push(c),
         setAttribute: (name: string, value: string) => attrs.push({ selector, name, value }),
         append: (c: string) => appended.push(c),
+        remove: () => removed.push(selector),
       })
       return rb
     },
   }
-  return { rb, title, attrs, appended, selectors }
+  return { rb, title, attrs, appended, selectors, removed }
 }
 
 const META = {
