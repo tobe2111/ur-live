@@ -100,3 +100,15 @@ SENS(통합 콘솔) Mail → Domain Management 에서 urdeal.kr 등록 → 인�
   유저 등록 이메일로만(본문 주소 무시), 수신 끔 무시. 응답에 SENS 결과 원문 + 가린 주소.
   🔍 **이게 판정해 줄 것**: `services/email.ts` 는 SENS 키를 `import('cloudflare:workers')` 의 env 로 읽는다 —
   Pages 런타임에서 이게 비면 `API key not configured` 로 실패한다. 첫 시험 응답이 그 여부를 바로 보여 준다.
+
+## 6차 — #1734 머지·배포 · 시험 메일 실측 (2026-10-12 저녁)
+
+- #1734 머지 `905bdf2c5` · 배포 성공(Pages 는 뒤 커밋 a9f2e6da3 배포에 포함).
+- 라이브 시험 `POST /api/admin/mail-test-send {"user_id":3}` 결과:
+  `{"success":false,"result":{"error":"[SENS mail 500] Member[3735840]'s default project is not exist"}}`
+- **판정**: 키·서명·Pages env 읽기는 정상(인증 실패면 401 이다). 네이버 클라우드 쪽에서
+  **Cloud Outbound Mailer 의 기본 프로젝트가 없다**는 응답이다 → 코드 문제 아님, 콘솔 설정 대기.
+  - 대표 할 일: 콘솔 → Cloud Outbound Mailer → 프로젝트가 있는지 확인, 없으면 생성(기본 프로젝트로).
+    이미 있으면 그 프로젝트가 API 키를 만든 계정(Member 3735840)과 같은 계정인지 확인.
+- **다음 세션 첫 액션**: 대표가 "프로젝트 만들었다" 하면 같은 호출을 다시 → `success:true` 면 받은편지함/스팸함 확인 요청.
+- `cloudflare:workers` env 우려는 해소(키가 SENS 까지 도달했다).
