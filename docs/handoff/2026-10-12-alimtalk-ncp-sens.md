@@ -112,3 +112,16 @@ SENS(통합 콘솔) Mail → Domain Management 에서 urdeal.kr 등록 → 인�
     이미 있으면 그 프로젝트가 API 키를 만든 계정(Member 3735840)과 같은 계정인지 확인.
 - **다음 세션 첫 액션**: 대표가 "프로젝트 만들었다" 하면 같은 호출을 다시 → `success:true` 면 받은편지함/스팸함 확인 요청.
 - `cloudflare:workers` env 우려는 해소(키가 SENS 까지 도달했다).
+
+## 7차 — 메일 오류의 진짜 원인(정정) · #1737 머지 (2026-10-12 밤)
+- #1737 머지 `01eb5ae16` (대표 "머지하고").
+- 🩸 **6차 판정 정정**: "콘솔에서 Cloud Outbound Mailer 프로젝트를 만들면 된다" 고 대표에게 안내했는데 **틀렸을 가능성이 크다.**
+  네이버 클라우드가 **2026-09-17 에 Cloud Outbound Mailer 를 SENS 로 통합**했다(SENS 릴리스 노트 — 웹검색으로 확인, 원문 페이지는 이 환경 프록시가 막음).
+  - 새 메일 API: `POST https://sens.apigw.ntruss.com/mail/v2/services/{serviceId}/requests` (서비스 ID 필요 — 알림톡과 같은 구조).
+  - 옛 API(`mail.apigw.ntruss.com/api/v1/mails` — 지금 우리 코드)는 **통합 때 자동 생성된 `mail-UUID` 프로젝트**에 묶인다. 통합 뒤에 시작한
+    계정(대표 — 도메인을 SENS 통합 콘솔에서 등록했다)엔 그 프로젝트가 없다 ⇒ 오류 77301 "Default project does not exist" 와 맞는다.
+  ⇒ **처방은 콘솔이 아니라 코드다**: `src/lib/ncp-sens-mail.ts` 를 새 v2 경로로 옮기고 env `NCP_SENS_MAIL_SERVICE_ID` 를 읽는다.
+- ⚠️ **못 확인한 것**: v2 요청 본문의 정확한 필드(옛 createMailRequest 와 같은지). ncloud-docs 가 CONNECT 403 이라 원문을 못 읽었다.
+  대표에게 콘솔/문서의 "메일 발송 요청" 예시를 요청함. 받기 전엔 코드를 쓰지 말 것(추측 fix 금지).
+- **다음 세션 첫 액션**: 대표가 메일 서비스 ID 를 Cloudflare 에 넣고 API 예시를 주면 → v2 로 교체 PR → 배포 →
+  `POST /api/admin/mail-test-send {"user_id":3}` 재시험.
