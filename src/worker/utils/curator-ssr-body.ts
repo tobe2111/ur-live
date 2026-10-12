@@ -183,7 +183,7 @@ function rowHtml(pin: CuratorSeedPin, handle: string, order: number): string {
       `<span class="${CURATOR_FS_CLASS.rowLeading}">${order}</span>` +
       `<div class="${CURATOR_FS_CLASS.rowThumb}"${thumbStyle}>` +
         (src
-          ? `<img src="${escAttr(src)}" alt="" width="${CURATOR_THUMB_WIDTH}" height="${CURATOR_THUMB_WIDTH}"` +
+          ? `<img src="${escAttr(src)}" alt="${escAttr(pin.product_name || '')}" width="${CURATOR_THUMB_WIDTH}" height="${CURATOR_THUMB_WIDTH}"` +
             ` loading="lazy" decoding="async" class="${CURATOR_FS_CLASS.rowThumbImg}">`
           : '') +
       '</div>' +
