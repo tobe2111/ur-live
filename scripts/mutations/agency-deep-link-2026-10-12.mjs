@@ -59,4 +59,12 @@ export default [
     test: TEST,
     why: '다른 매장을 골랐다 돌아오거나 목록이 다시 불리면 닫은 시트가 또 열린다.',
   },
+  {
+    name: '[에이전시링크] 시트 안에서도 콘솔로 보낸다 (콘솔 시트가 바깥으로 튕긴다)',
+    file: LIB,
+    find: "  if (embedded) return false\n  try {\n    if (!isAgencySeatToken(localStorage.getItem('seller_token'))) return false\n",
+    replace: "  try {\n    if (!isAgencySeatToken(localStorage.getItem('seller_token'))) return false\n",
+    test: TEST,
+    why: '콘솔의 시트 안 대시보드 화면이 다시 콘솔로 이동하면 시트가 사라지고 같은 화면을 끝없이 다시 연다.',
+  },
 ]

@@ -14,8 +14,8 @@ export default [
   {
     name: '[대시보드→마이] 마이 시트 안에서도 보낸다',
     file: FILE,
-    find: '  if (embedded) return false\n',
-    replace: '',
+    find: "  if (embedded) return false\n  try {\n    if (!localStorage.getItem('user_id')) return false\n",
+    replace: "  try {\n    if (!localStorage.getItem('user_id')) return false\n",
     test: TEST,
     why: '시트 안 대시보드가 바깥으로 튕겨 시트가 닫힌다.',
   },
