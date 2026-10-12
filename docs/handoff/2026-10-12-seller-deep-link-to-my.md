@@ -22,5 +22,8 @@
   `window.location` + `history.replaceState` 로 바꿨다.
 - 시험 셋업이 `window.location` 을 평범한 객체로 바꿔 둔다(`tests/setup.ts:141`) — `history.replaceState` 가 location 을 안 바꾼다.
 
+- 판정 함수를 `SellerPage` 에서 옮기고 시트 머리 이름을 `shownTitle` 로 바꾸면서 **다른 가드의 주입 앵커 셋이 낡았다** —
+  내 테스트·내 주입만 돌리고 `check-stale-mutation-anchors` 를 안 돌려서 푸시 게이트가 잡을 때까지 몰랐다. 재조준(결함 그대로, 자리만).
+
 ## 대기
 - 진입점 없는 둘(위탁 `consignment` · `plus-friend-guide`)은 3단계를 막지 않는다 — 둘 다 그대로 둔다(결재 `2026-09-28-dead-seller-screens.md`).
