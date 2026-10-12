@@ -375,6 +375,17 @@ function AppContent() {
   useMultiTabSync()
 
   const location = useLocation()
+  // 🚦 2026-10-12 (대표 "처음 접속하는 디바이스 유저는 너무 느려"): 아래 넷은 **조건이 맞을 때만** 마운트한다.
+  //   넷 다 lazy 지만 청크가 `app-components`(151KB)+`lucide`(51KB)에 들어 있어, 마운트만 해도 첫 방문자가
+  //   **보지도 않는 화면**을 위해 그 봉투를 통째로 받았다(느린 4G 재생 실측 — 엔트리 실행 직후 2차 다운로드).
+  //   판정은 각 컴포넌트가 스스로 하던 것과 **같은 조건**이다(안에서도 그대로 다시 본다 — 여기는 문지기일 뿐).
+  const qs = location.search
+  const shellNeed = {
+    onboarding: qs.includes('new=1'),                       // OnboardingTrigger: ?new=1 일 때만 모달
+    restore: qs.includes('restorable=1'),                   // RestoreAccountModal: ?restorable=1 일 때만
+    push: (() => { try { return !!(localStorage.getItem('user_id') || localStorage.getItem('seller_id') || localStorage.getItem('admin_id') || localStorage.getItem('agency_id')) } catch { return false } })(),
+    sideBanner: typeof window !== 'undefined' && !!window.matchMedia?.('(min-width: 1024px)').matches, // `hidden lg:flex` — 폰에선 안 보인다
+  }
   // 🧭 2026-06-10 페이지 전환 페이드 — 첫 로드(LCP)는 제외, 라우트 이동부터 적용.
   // 🚑 2026-07-10 [UNLOCK_LOADING]: 기준을 location.key → pathname 변경 여부로. key 기준이면 쿼리-전용
   //   내비(setSearchParams — 정렬/카테고리 칩)가 첫 내비일 때 클래스가 처음 붙으며 전체 페이드가 재생됨
@@ -550,15 +561,15 @@ function AppContent() {
               배너/팝업/강제이동 없이 렌더, 기능별 제한(카메라 등)만 InAppFeatureBlockedModal 이 사용 시점 안내.
               복원: `import InAppBrowserBanner from './components/InAppBrowserBanner'` 후 여기 렌더. */}
           {/* 🗑️ 2026-06-17 (사용자 요청): 앱 설치 팝업(PWAInstallPrompt) 제거 */}
-          <Suspense fallback={null}><OnboardingTrigger /></Suspense>
-          <Suspense fallback={null}><RestoreAccountModal /></Suspense>
+          {shellNeed.onboarding && <Suspense fallback={null}><OnboardingTrigger /></Suspense>}
+          {shellNeed.restore && <Suspense fallback={null}><RestoreAccountModal /></Suspense>}
           {/* 📜 2026-07-05 (대표 "들어오자마자 나오면 안 되지 — 자연스럽게"): 약관 동의 차단 모달(TermsConsentGate)
               제거. 소비자 동의 = LoginPage 간주 고지(제5조) + 가입 시점 1회 서버 기록(kakao.routes isNewUser →
               terms_agreements). 개정 재동의가 필요해지면 /api/terms/status 로 비차단 배너를 붙이는 것이 후속안. */}
           <OfflineBanner />
           <ConfirmHost />
           <ScrollToTop />
-          <Suspense fallback={null}><PushNotificationSetup /></Suspense>
+          {shellNeed.push && <Suspense fallback={null}><PushNotificationSetup /></Suspense>}
           {/* 🛡️ 2026-06-04 (사용자 신고 — 영구 수정): 모바일 BottomNav(fixed h-14 lg:hidden)가
               콘텐츠 하단을 가림. BottomNav 표시 페이지에만 하단 여백(높이+safe-area) 예약.
               hideBottomNav 페이지(결제/풀스크린/대시보드 등)는 여백 0 — 자체 레이아웃 보존. */}
@@ -930,7 +941,7 @@ function AppContent() {
           </div>
           {!hideBottomNav && <BottomNav />}
           {!fullScreen && !mallSurface /* 🏬 몰 표면엔 유어딜 배너 금지(본진 입구) */
-            && !isFullBleedPcPath(location.pathname) /* 🖥️ PC 풀너비(홈·카탈로그)는 자체 레이아웃 */ && <Suspense fallback={null}><SideBanner /></Suspense>}
+            && !isFullBleedPcPath(location.pathname) /* 🖥️ PC 풀너비(홈·카탈로그)는 자체 레이아웃 */ && shellNeed.sideBanner && <Suspense fallback={null}><SideBanner /></Suspense>}
           {/* 🛡️ 2026-05-24 (사용자 명령): 우하단 카카오 FAB 잠시 숨김 (featureFlags.kakaoFab=false).
               복원: src/shared/config/feature-flags.ts 의 kakaoFab 을 true 로. 대신 /user/profile 페이지에 별도 배치. */}
           {!fullScreen && featureFlags.kakaoFab && <KakaoConsultButton />}
