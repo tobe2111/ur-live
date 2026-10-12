@@ -27,12 +27,14 @@ interface VoucherMapItem {
 }
 
 export default function VoucherMap<T extends VoucherMapItem>({
-  vouchers, onMarkerClick, userLocation, focus,
+  vouchers, onMarkerClick, userLocation, focus, focusKey = 0,
 }: {
   vouchers: T[]
   onMarkerClick: (v: T) => void
   userLocation?: { lat: number; lng: number } | null
   focus?: { lat: number; lng: number } | null
+  /** 카드를 누를 때마다 바뀌는 값 — 같은 이용권을 다시 눌러도(지도를 손으로 옮긴 뒤) 핀으로 돌아가게 한다. */
+  focusKey?: number
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<any>(null)
@@ -153,7 +155,7 @@ export default function VoucherMap<T extends VoucherMapItem>({
       const dy = FOCUS_BOTTOM_COVER / 2 - PIN_HALF_HEIGHT
       map.panTo(proj.coordsFromPoint(new w.kakao.maps.Point(p.x, p.y + dy)))
     } catch { map.setCenter(target) /* 투영 실패 — 좌표 그대로 가운데(종전 동작) */ }
-  }, [focus?.lat, focus?.lng])
+  }, [focus?.lat, focus?.lng, focusKey])
 
   function recenter() {
     const w = window as any

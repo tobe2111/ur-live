@@ -26,7 +26,7 @@ import { resolveSellerNotifyTarget } from '../../../worker/utils/seller-notify-p
 import { storeGoUrl } from '../../../shared/store-deep-link'
 import { redeemByCounterSecret } from '../../../worker/utils/counter-redeem'
 import { redeemVoucherForStore } from '../../../worker/utils/voucher-seller-redeem'
-import { GIFTED_REFUND_BLOCKED, GIFT_PENDING_USE_BLOCKED, noPendingGiftSql, voucherHasPendingGift } from '../../../worker/utils/voucher-gift'
+import { GIFTED_REFUND_BLOCKED, GIFT_PENDING_REFUND_BLOCKED, GIFT_PENDING_USE_BLOCKED, noPendingGiftSql, voucherHasPendingGift } from '../../../worker/utils/voucher-gift'
 
 export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void {
   // ── POST /:code/use — voucher 사용 (PIN 검증) ──
@@ -414,11 +414,13 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
         if (voucher.gift_from_user_id) {
           return c.json({ success: false, error: GIFTED_REFUND_BLOCKED, code: 'GIFTED' }, 400)
         }
+        // 🎁 2026-10-12 선물 링크가 살아 있으면 먼저 회수해야 무를 수 있다(친구 쪽 선물이 갑자기 사라지지 않게).
+        if (await voucherHasPendingGift(DB, { id: voucher.id })) return c.json({ success: false, error: GIFT_PENDING_REFUND_BLOCKED, code: 'GIFT_PENDING' }, 409)
 
         // 🛡️ 청약철회 7일 — created_at 기준. CAS 에 created_at 가드 동시 적용 (race + window 동시 방어).
         //   🎁 gift_from_user_id IS NULL — 조회와 CAS 사이에 선물이 받아져도 무르지 않는다.
         const casRes = await DB.prepare(
-          "UPDATE vouchers SET status = 'refunded' WHERE id = ? AND status = 'unused' AND created_at > datetime('now', '-7 days') AND gift_from_user_id IS NULL"
+          `UPDATE vouchers SET status = 'refunded' WHERE id = ? AND status = 'unused' AND created_at > datetime('now', '-7 days') AND gift_from_user_id IS NULL AND ${noPendingGiftSql('vouchers.id')}`
         ).bind(voucher.id).run()
         if ((casRes.meta?.changes ?? 0) === 0) {
           return c.json({ success: false, error: '구매 후 7일이 지나 취소할 수 없습니다. 사용처에 직접 문의해주세요', code: 'WINDOW_EXPIRED' }, 400)

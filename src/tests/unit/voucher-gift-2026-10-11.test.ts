@@ -14,7 +14,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { readFileSync } from 'node:fs'
 import * as jwt from '@tsndr/cloudflare-worker-jwt'
 import { voucherGiftRoutes } from '@/features/group-buy/api/voucher-gift.routes'
-import { orderHasGiftedVoucher, newGiftToken, GIFT_TOKEN_RE } from '@/worker/utils/voucher-gift'
+import { orderHasGiftedVoucher, newGiftToken, GIFT_TOKEN_RE, noPendingGiftSql, ensureVoucherGiftTable } from '@/worker/utils/voucher-gift'
 import { stripComments } from '../helpers/source-text'
 
 const { DatabaseSync } = await import(/* @vite-ignore */ ('node:' + 'sqlite')) as { DatabaseSync: new (p: string) => { prepare: (sql: string) => { run: (...a: never[]) => { changes: number | bigint; lastInsertRowid: number | bigint }; get: (...a: never[]) => unknown; all: (...a: never[]) => unknown[] } } }
@@ -136,8 +136,11 @@ describe('④ 받은 뒤 환불 경로가 막힌다', () => {
 
   it('이용권 셀프 취소 CAS 가 받은 이용권을 건드리지 않는다(소스의 문장을 그대로 실행)', async () => {
     const src = readFileSync('src/features/group-buy/api/group-buy-voucher.routes.ts', 'utf8')
-    const m = src.match(/"(UPDATE vouchers SET status = 'refunded' WHERE id = \? AND status = 'unused' AND created_at > datetime\('now', '-7 days'\)[^"]*)"/)
+    const m = src.match(/`(UPDATE vouchers SET status = 'refunded' WHERE id = \? AND status = 'unused' AND created_at > datetime\('now', '-7 days'\)[^`]*)`/)
     expect(m).not.toBeNull()
+    // 2026-10-12: 선물 중 술어가 템플릿으로 들어갔다 — 같은 SSOT 로 펼쳐 실행한다
+    m![1] = m![1].replace("${noPendingGiftSql('vouchers.id')}", noPendingGiftSql('vouchers.id'))
+    await ensureVoucherGiftTable(DB)
     await DB.prepare("UPDATE vouchers SET gift_from_user_id = '1', user_id = '2' WHERE id = 100").run()
     const r = await DB.prepare(m![1]).bind(100).run()
     expect(r.meta.changes).toBe(0)

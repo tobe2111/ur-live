@@ -485,7 +485,7 @@
 ## 16. 주문·환불·반품 라이프사이클
 - **주문 status(대문자)**: `PENDING → PAID → DONE`(디지털/이용권) 또는 `PREPARING → SHIPPING → DELIVERED`(배송). 종결: `CANCELLED`/`REFUNDED`/`FAILED`. `payment_status`는 소문자.
 - **환불**: `refundOrderFully`(전액)·`returns.routes`(부분 비례) — 캡처된 주문은 status 플립 금지, 반드시 환불경유(딜/커미션/재고/쿠폰 대칭 역전).
-- **🎁 선물 받은 이용권(2026-10-11 대표 결정 "받은 뒤엔 환불 막기")**: `gift_from_user_id` 가 찍힌 이용권(또는 그것이 든 주문)은 셀프 취소·주문 취소·환불 요청이 막힌다(`worker/utils/voucher-gift.ts`). 셀러·어드민 환불과 **만료 자동 환불(보낸 사람 결제수단)은 그대로**.
+- **🎁 선물 받은 이용권(2026-10-11 대표 결정 "받은 뒤엔 환불 막기")**: `gift_from_user_id` 가 찍힌 이용권(또는 그것이 든 주문)은 셀프 취소·주문 취소·환불 요청이 막힌다(`worker/utils/voucher-gift.ts`). 셀러·어드민 환불과 **만료 자동 환불(보낸 사람 결제수단)은 그대로**. 2026-10-12: 선물 링크가 **살아 있는 동안**엔 보낸 사람의 같은 세 경로도 막힌다(먼저 회수 — 친구 쪽 선물이 갑자기 사라지지 않게, `orderHasPendingGift`).
 - **반품**: `returns` 도메인. 숙소는 reserve-before-charge + `releaseStays()` 되돌림.
 
 ## 17. 알림 시스템

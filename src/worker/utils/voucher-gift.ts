@@ -72,6 +72,25 @@ export async function orderHasGiftedVoucher(DB: D1Database, orderId: number | st
 
 export const GIFTED_REFUND_BLOCKED = '선물로 주고받은 이용권은 직접 취소·환불할 수 없어요. 고객센터로 문의해 주세요'
 
+/**
+ * 🎁 2026-10-12 대표 *"둘 다 해줘"*(선물 링크가 살아 있는 동안 보낸 사람의 셀프 환불 차단).
+ * 링크를 보낸 뒤 환불하면 돈은 안 새지만 친구 쪽에서 받으려던 선물이 "받을 수 없는 선물" 로 사라진다.
+ * ⇒ 먼저 회수하게 한다. 조회가 실패하면 막는다(위 `orderHasGiftedVoucher` 와 같은 쪽 — 환불을 *막는* 판정이라 안전하다).
+ */
+export async function orderHasPendingGift(DB: D1Database, orderId: number | string): Promise<boolean> {
+  try {
+    await ensureVoucherGiftTable(DB)
+    const row = await DB.prepare(
+      "SELECT 1 AS x FROM voucher_gifts g JOIN vouchers v ON v.id = g.voucher_id WHERE v.order_id = ? AND g.status = 'pending' LIMIT 1",
+    ).bind(orderId).first<{ x: number }>()
+    return !!row
+  } catch {
+    return true
+  }
+}
+
+export const GIFT_PENDING_REFUND_BLOCKED = '친구에게 선물 중인 이용권이에요. 선물을 회수한 뒤에 환불할 수 있어요'
+
 // ── 🔒 선물 중(받기 전) 잠금 — 2026-10-12 대표 *"선물하면 선물을 한 사람은 선물했다고 표시되고 해당 이용권은 쓸 수 없게끔"* ──
 // 링크가 살아 있는 동안(status='pending') 그 이용권은 **어떤 사용 경로로도** 소각되지 않는다.
 // 보낸 사람이 회수하면 잠금이 풀린다. 받으면 주인이 바뀌고 코드도 새로 발급된다(아래 `accept` 참조) —

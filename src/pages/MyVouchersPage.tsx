@@ -67,6 +67,7 @@ export default function MyVouchersPage() {
   const [tab, setTab] = useState<'unused' | 'done'>('unused')
   // 🎨 2026-06-20 흑백 리디자인 화면2(지도 전용) — 인-페이지 뷰(새 라우트 X)
   const [mapSelected, setMapSelected] = useState<Voucher | null>(null)
+  const [mapFocusTick, setMapFocusTick] = useState(0) // 🗺️ 같은 카드를 다시 눌러도 핀으로 돌아가게(2026-10-12)
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null)
   // 🛡️ 2026-05-15: 참여 후 share prompt — GroupBuyDetailPage.handleJoin 이 localStorage 기록
   // 🗑️ 2026-10-06 (대표 "참여완료 이거 뜨면 안되지 않아? 없어졌잖아"): 구매 직후 '참여 완료!' 공유 모달 제거.
@@ -164,6 +165,7 @@ export default function MyVouchersPage() {
                 userLocation={userLoc}
                 onMarkerClick={handleMarkerClick}
                 focus={mapSelected && mapSelected.restaurant_lat && mapSelected.restaurant_lng ? { lat: mapSelected.restaurant_lat, lng: mapSelected.restaurant_lng } : null}
+                focusKey={mapFocusTick}
               />
             </div>
           </Suspense>
@@ -178,7 +180,7 @@ export default function MyVouchersPage() {
                     <button
                       key={v.id}
                       type="button"
-                      onClick={() => setMapSelected(v)}
+                      onClick={() => { setMapSelected(v); setMapFocusTick(t => t + 1) }}
                       className={`snap-start shrink-0 w-[80%] max-w-[300px] flex items-center gap-3 rounded-2xl bg-surface shadow-lift p-3 text-left transition-colors ${selected ? 'ring-2 ring-brand' : ''}`}
                       style={{ boxShadow: '0 8px 28px rgba(10,10,10,0.18)' }}
                     >
