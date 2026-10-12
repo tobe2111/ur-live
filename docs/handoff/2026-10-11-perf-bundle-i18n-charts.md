@@ -31,3 +31,13 @@
 
 ## 남은 결정
 - 없음(대시보드 제거는 대표 지시로 진행 중).
+
+## ✅ 머지·배포 · E4 (2026-10-12)
+- PR #1713 머지 `20cf8a3a2` · Deploy to Cloudflare Pages / worker / ads / wholesale 전부 success.
+- 라이브 실측(iPhone UA):
+  - `/map` → `X-SSR-Status: MAP:kv-hit` · `__SSR_INITIAL_MAP__` 실재 — 지도 시드 동작.
+  - `/pass/2919` → `DETAIL:self-fetch-hit`, `Server-Timing: edge;dur=8, self;dur=366` — **`kv;` 항목 없음** = 상세는 KV 를 안 기다린다(의도).
+  - `/map` 의 `kv;dur=112` 는 정상 — 지도 시드 키는 cron 이 쓰는 목록(`SSR_KV_PATHS`)에 있다.
+- ⚠️ **못 잰 것**: "손님 화면이 `locale-ko-dash` 를 내려받지 않는다". 홈 청크에 `locale-ko-dash-*.js` 이름은 들어 있지만
+  이는 동적 import 표라 정상이고, 실제 요청 여부는 브라우저로 봐야 한다 — 이 환경의 헤드리스가 프록시에서
+  `ERR_TOO_MANY_RETRIES` 로 막혀 판정 못 했다. 다음 세션: 일반 브라우저 개발자도구 Network 에서 `/` 진입 시 `locale-ko-dash` 0건 확인.
