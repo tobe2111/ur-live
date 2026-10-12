@@ -7,8 +7,6 @@
 const TEST = 'src/tests/unit/seller-signup-ocr-2026-09-16.test.ts'
 const UPLOAD = 'src/features/upload/api/upload.routes.ts'
 const CERT = 'src/components/BusinessCertUpload.tsx'
-const PAGE = 'src/pages/SellerRegisterSupplierPage.tsx'
-const SHEET = 'src/pages/seller-register/ReviewSheet.tsx'
 
 export default [
   {
@@ -50,45 +48,5 @@ export default [
     replace: "      fd.append('ocr', '1')",
     test: TEST,
     why: 'onRead 를 안 준 호출부(도매·제조)까지 추론을 태운다.',
-  },
-  {
-    name: '가입OCR — 사장님이 친 값을 모델이 덮어쓴다',
-    file: PAGE,
-    find: "        if (!v || String(next[k]).trim()) return",
-    replace: '        if (!v) return',
-    test: TEST,
-    why: '모델이 잘못 읽는 순간 사장님이 고쳐 놓은 값을 되돌린다 — 그리고 아무도 모른다.',
-  },
-  {
-    name: '가입OCR — 손대도 사진 딱지가 안 떨어진다',
-    file: PAGE,
-    find: "      const next = new Set(prev); next.delete(k); return next",
-    replace: '      return prev',
-    test: TEST,
-    why: '사장님이 직접 고친 칸에도 계속 "사진에서 읽었어요" 가 붙는다 — 확인 요청이 무의미해진다.',
-  },
-  {
-    name: '가입OCR — 확인 시트를 건너뛰고 바로 제출',
-    file: PAGE,
-    find: "          <button onClick={review} disabled={loading}",
-    replace: '          <button onClick={submit} disabled={loading}',
-    test: TEST,
-    why: '시안 ④ 가 사라진다 — OCR 이 잘못 읽은 값을 확인 없이 보낸다.',
-  },
-  {
-    name: '가입OCR — 확인 시트가 검사보다 먼저 열린다',
-    file: PAGE,
-    find: "    setReviewOpen(true)\n  }\n\n  async function submit() {",
-    replace: "  }\n\n  async function submit() {\n    setReviewOpen(true)",
-    test: TEST,
-    why: '필수칸·약관 검사를 통과하지 않은 채 시트가 열린다.',
-  },
-  {
-    name: '가입OCR — 시트가 표준 z 스케일을 벗어난다',
-    file: SHEET,
-    find: 'style={{ zIndex: Z.SHEET_BODY }}',
-    replace: 'style={{ zIndex: 100 }}',
-    test: TEST,
-    why: '하단 네비(z-9999)가 시트를 덮는다 — 이 레포가 여러 번 당한 클래스.',
   },
 ]

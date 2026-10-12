@@ -50,6 +50,11 @@
 > 이름만 보고 지웠는데, 그건 **유어딜 사업자 유저 가입** 화면이었다(옛 라우트 `/seller/register/supplier`).
 > 주입 앵커 검사가 잡아 복원했다. 반대 방향도 같다 — `wholesale-malls.ts` 는 이름이 도매인데 **공구 서비스**다.
 >
+> 🪦 **2026-10-12 — 그 파일은 이번엔 *쓰임으로* 지웠다.** 가입 문이 2026-10-10 부터 `/store/new` 하나라
+> `SellerRegisterSupplierPage` 와 그 부품(가게 카드·주소 검색·확인 시트·약관 상자)은 **import 하는 곳이 0** 이었다.
+> 옛 링크 `/seller/register/supplier` 는 라우트(`LegacySellerRegisterRedirect`)로 계속 살아 있고, 시험이 그 라우트를 지킨다.
+> ⇒ 판단 기준은 이름도 "단위 시험이 참조한다"도 아니다 — **실제로 import·라우팅되는가**다(시험은 지킬 코드를 따라 줄인다).
+>
 > ⚠️ **코드 밖에 남은 것**(대표 판단 대기): `role='wholesale'` 어드민 계정 **4개**(철거 후 빈 콘솔) ·
 > `utongstart.com` 도메인(두 Pages 프로젝트 어디에도 미연결 — 실측) · `ur-wholesale` Pages 프로젝트 · DB 테이블(회계 증빙으로 **존치**).
 

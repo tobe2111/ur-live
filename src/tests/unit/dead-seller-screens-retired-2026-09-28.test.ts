@@ -55,7 +55,7 @@ describe('① 은퇴한 주소가 404 가 되지 않는다', () => {
   })
 })
 
-describe('② 문은 닫혔다 — 파일은 남기되 아무도 못 들어간다', () => {
+describe('② 문은 닫혔다 — 아무도 못 들어간다', () => {
   /**
    * 🔧 2026-09-28 재조준: 처음엔 **파일 삭제**를 단언했는데, 같은 날 다른 세션이 main 에서
    *   `consignment` 를 먼저 은퇴시키며 **파일을 남겼다**(주석에 *"되살리려면 이 줄을
@@ -74,10 +74,15 @@ describe('② 문은 닫혔다 — 파일은 남기되 아무도 못 들어간�
     expect(routes).not.toMatch(/const SellerYoutubeGrowth\w* = lazy/)
   })
 
-  it('파일 자체는 남아 있다 (되살리기 한 줄)', () => {
-    // 지우면 위 주석이 약속한 복구 경로가 거짓이 된다.
-    expect(existsSync('src/pages/SellerConsignmentPage.tsx')).toBe(true)
-    expect(existsSync('src/pages/SellerYoutubeGrowthPage.tsx')).toBe(true)
+  it('화면 파일도 지웠다 — 되살리기는 커밋 revert (2026-10-12)', () => {
+    // 🪦 2026-10-12 재조준: 처음엔 "파일은 남긴다(되살리기 한 줄)" 를 단언했다. 그런데 그 한 줄이
+    //   가리키던 셀러 대시보드(`/seller` 틀)가 2026-10-12 통째로 지워져, 파일을 라우트에 다시 꽂아도
+    //   들어갈 틀이 없다 — 복구 경로가 이미 거짓이 됐다. 대표 결정도 *"3번은 모두 없애줘"* 였다.
+    //   ⇒ 화면 파일은 지우고(아무도 import 하지 않았다), 되살리기는 git revert 로 한다.
+    //   API·결제 경로는 ③ 이 그대로 지킨다(머니 경로라 제거는 별도 결재).
+    expect(existsSync('src/pages/SellerConsignmentPage.tsx')).toBe(false)
+    expect(existsSync('src/pages/SellerYoutubeGrowthPage.tsx')).toBe(false)
+    expect(existsSync('src/pages/SellerYoutubeGrowthSuccessPage.tsx')).toBe(false)
   })
 })
 

@@ -14,6 +14,10 @@
  * ## ⚠️ 이 시험이 못 막는 것
  * - 모델이 **잘못 읽는 것**. 정확도는 여기서 못 잰다(그래서 ⑤·⑥ 이 있다 — 사람이 확인한다).
  * - 실제 브라우저 동작. jsdom 은 파일 업로드·`ai.run` 을 돌리지 않는다 ⇒ 소스 계약으로 고정한다.
+ *
+ * 🪦 2026-10-12 축소: 옛 가입 폼(`SellerRegisterSupplierPage`)과 확인 시트(`ReviewSheet`)를 지웠다 —
+ *   가입 문은 2026-10-10 부터 `/store/new` 하나이고 둘 다 import 하는 곳이 0 이었다. 불변식 5·6 은
+ *   지킬 화면이 사라져 함께 뺐다. 서버(1~4)와 업로드 부품의 opt-in 계약은 그대로 남는다.
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
@@ -21,8 +25,6 @@ import { stripComments } from '../helpers/source-text'
 
 const UPLOAD = stripComments(readFileSync('src/features/upload/api/upload.routes.ts', 'utf-8'))
 const CERT = stripComments(readFileSync('src/components/BusinessCertUpload.tsx', 'utf-8'))
-const PAGE = stripComments(readFileSync('src/pages/SellerRegisterSupplierPage.tsx', 'utf-8'))
-const SHEET = stripComments(readFileSync('src/pages/seller-register/ReviewSheet.tsx', 'utf-8'))
 const SHARED = readFileSync('src/shared/ocr-prefill.ts', 'utf-8')
 
 /** `business-cert` 핸들러 본문만 — 다른 라우트의 코드가 섞여 통과하는 일이 없게 앵커로 자른다. */
@@ -83,70 +85,5 @@ describe('가입 앞문 등록증 읽기 — 서버', () => {
 describe('가입 앞문 등록증 읽기 — 화면', () => {
   it('⑧ 업로드 부품은 onRead 를 받을 때만 ocr=1 을 붙인다', () => {
     expect(CERT).toMatch(/if\s*\(onRead\)\s*fd\.append\('ocr',\s*'1'\)/)
-  })
-
-  it('⑨ 가입 화면이 그 콜백을 실제로 배선했다', () => {
-    expect(PAGE).toContain('onRead={applyOcr}')
-  })
-
-  it('⑩ 빈 칸에만 채운다 — 사장님이 친 값을 덮지 않는다', () => {
-    const i = PAGE.indexOf('function applyOcr')
-    expect(i).toBeGreaterThan(0)
-    const body = PAGE.slice(i, PAGE.indexOf('function review', i))
-    // 이미 값이 있으면 그대로 돌아가는 가드
-    expect(body).toMatch(/if\s*\(!v\s*\|\|\s*String\(next\[k\]\)\.trim\(\)\)\s*return/)
-  })
-
-  it('⑪ 사진에서 채운 칸은 확인을 요청한다 — 그리고 손대면 딱지가 떨어진다', () => {
-    expect(PAGE).toContain("t('seller.signup.fromPhoto'")
-    expect(PAGE).toContain('setAutoFilled')
-    // set() 안에서 해당 키를 집합에서 뺀다
-    const i = PAGE.indexOf('const set = <K extends keyof SignupForm>')
-    expect(i).toBeGreaterThan(0)
-    expect(PAGE.slice(i, i + 700)).toContain('next.delete(k)')
-  })
-
-  it('⑫ 개업일은 YYYYMMDD → YYYY-MM-DD 로 바꿔 넣는다 (input[type=date] 가 받는 유일한 모양)', () => {
-    const i = PAGE.indexOf('function applyOcr')
-    const body = PAGE.slice(i, PAGE.indexOf('function review', i))
-    expect(body).toContain('.slice(0, 4)')
-    expect(body).toContain('.slice(4, 6)')
-    expect(body).toContain('.slice(6, 8)')
-  })
-})
-
-describe('제출 전 확인 (시안 ④)', () => {
-  it('⑬ 제출 버튼은 바로 안 보낸다 — 확인을 먼저 연다', () => {
-    expect(PAGE).toContain('onClick={review}')
-    expect(PAGE).not.toContain('onClick={submit}')
-    expect(PAGE).toContain('setReviewOpen(true)')
-    expect(PAGE).toContain('onConfirm={submit}')
-  })
-
-  it('⑭ 검사(필수칸·약관)를 건너뛰지 않는다 — 시트 열기 전에 통과해야 한다', () => {
-    const i = PAGE.indexOf('function review()')
-    expect(i).toBeGreaterThan(0)
-    const body = PAGE.slice(i, PAGE.indexOf('async function submit', i))
-    expect(body).toContain('validateSignup(form)')
-    expect(body).toContain('termsAgreed')
-    // 시트 열기는 그 두 가드보다 **뒤**여야 한다
-    expect(body.indexOf('setReviewOpen(true)')).toBeGreaterThan(body.indexOf('termsAgreed'))
-  })
-
-  it('⑮ 시트가 제출될 값을 글자로 보여 준다', () => {
-    for (const label of ['사업자번호', '대표자명', '개업일', '가게명', '연락처', '매장 주소']) {
-      expect(PAGE, `확인 시트에 ${label} 이 없다`).toContain(`label: '${label}'`)
-    }
-  })
-
-  it('⑯ 시트는 네비 위로 뜬다 — 표준 z 스케일만 쓴다', () => {
-    expect(SHEET).toContain('Z.SHEET_BODY')
-    expect(SHEET).not.toMatch(/z-\[\d+\]/)
-  })
-
-  it('⑰ 색 정보상자·이모지 0 — 티켓 규칙 ⑥', () => {
-    expect(SHEET).not.toMatch(/bg-(amber|emerald|red|blue|green|yellow)-\d{2,3}/)
-    // eslint-disable-next-line no-misleading-character-class
-    expect(SHEET).not.toMatch(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u)
   })
 })

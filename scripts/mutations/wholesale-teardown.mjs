@@ -71,4 +71,12 @@ export default [
     test: TEST,
     why: '2026-08-03 에 대표가 실측한 404 가 그대로 재발한다(화면은 있고 API 가 없다).',
   },
+  {
+    name: '🧨 철거 — 이름이 Supplier 인 옛 가입 링크를 같이 쓸어 간다',
+    file: 'src/routes/seller.routes.tsx',
+    find: '      <Route path="/seller/register/supplier" element={<LegacySellerRegisterRedirect />} />',
+    replace: '',
+    test: TEST,
+    why: '2026-10-11 철거 때 이름만 보고 유어딜 가입 화면을 지웠던 바로 그 클래스다 — 이미 공유된 옛 가입 링크가 /store/new 대신 404 가 된다.',
+  },
 ]
