@@ -91,6 +91,14 @@ export default [
     why: '라벨만 보고 데모를 판별할 수 있었다 — 홈 시드 50건 중 48건이 데모다.',
   },
   {
+    name: '🙈 결제 버튼이 다시 "응모하기" 라고 말한다',
+    file: BOX,
+    find: "  const ctaLabel = '구매하기'",
+    replace: "  const ctaLabel = '응모하기'",
+    test: 'src/tests/unit/consumer-surface-fixes-2026-08-11.test.ts',
+    why: '같은 화면의 무료 `[응모하기]` 와 섞여 결제 오인이 된다 — 2026-08-11 이 막으려 만든 불변식이고, 라벨 통일 뒤에도 그 보호는 살아 있어야 한다(앵커를 결제 동사로 재조준했다).',
+  },
+  {
     name: '🙈 하단 바에 데모 전용 불가 문구가 되살아난다',
     file: BAR,
     find: "  const verb = '구매하기'",
