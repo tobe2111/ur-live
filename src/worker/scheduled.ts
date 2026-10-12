@@ -236,7 +236,7 @@ export async function handleCronScheduled(
     //   첫 사용자 cold-start 제거. publicCache 가 edge + KV 양쪽 자동으로 채움.
     // ⏱️ 2026-09-02 읽기 다이어트 — 동적 워밍(셀러/상품/큐레이터 12개)은 30분마다, products 정규화 UPDATE 는 하루 1회.
     //   HOT_PATHS(SSR 키) 자체는 5분 그대로(잠금표 — 제거·약화 금지).
-    ctx.waitUntil(safeCron('cache-prewarm', () => handleCachePrewarm(env, { dynamic: slotOpen({ minute: 0 }) || slotOpen({ minute: 30 }), normalize: slotOpen({ minute: 35, hour: 19 }) })));
+    ctx.waitUntil(safeCron('cache-prewarm', () => handleCachePrewarm(env, { dynamic: slotOpen({ minute: 0 }) || slotOpen({ minute: 30 }), normalize: slotOpen({ minute: 35, hour: 19 }), regionDigest: slotOpen({ minute: 15 }) })));
     // 🛡️ 2026-05-27 (영업 검증 Layer 4): prospects 첫 매출 발생 시 commission 활성.
     //   단순 가입 X — 매장이 실제 매출 내야 영업 commission lock-in. 부정 방지.
     // ⏱️ 2026-09-02 읽기 다이어트 — 루프당 최대 200쿼리 + status 무인덱스 스캔 2개를 5분마다 돌렸다. "첫 매출" 은

@@ -288,7 +288,7 @@ import { referralRoutes } from '../features/referral/api/referral.routes';
 //   (typeof navigator/window 가드 보유라 워커 안전). URL 이 클라 렌더값과 byte-일치해야 preload 적중.
 import { cfImage, cfSrcSet } from '../utils/cf-image';
 // 🖼️ 홈 첫 화면 카드 사진 preload — 링크 생성은 헬퍼가 한다(파일 크기 래칫 + 직접 테스트 용이).
-import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; import { brandJsonLdScript } from '../shared/seo/brand-jsonld'; import { buildStaticSurfaceNoscript } from './utils/crawler-noscript'; import { MAIN_SEED_PATH, REGION_PATH_RE } from '../shared/seo/region-seed'; import { ushopOgImage } from '../shared/ushop-share-card'; // 한 줄: 파일크기 래칫 안
+import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; import { brandJsonLdScript } from '../shared/seo/brand-jsonld'; import { buildStaticSurfaceNoscript } from './utils/crawler-noscript'; import { MAIN_SEED_PATH, REGION_PATH_RE } from '../shared/seo/region-seed'; import { REGION_DIGEST_KV_KEY, regionDigestApplies } from '../shared/seo/region-digest'; import { ushopOgImage } from '../shared/ushop-share-card'; // 한 줄: 파일크기 래칫 안
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -576,12 +576,9 @@ app.use('*', async (c, next) => {
       //   consume → 0-RTT. 이 path 는 cache-prewarm HOT_PATHS 의 '/api/group-buy/products?status=active&category=all'
       //   와 1:1 일치(이미 prewarm 됨). 교환권은 홈에서 강등 → /vouchers(자체 __SSR_INITIAL_VOUCHERS__).
       ssrTarget = { slot: 'MAIN', path: MAIN_SEED_PATH }; // 🗺️ 2026-10-12: 리터럴 → 상수(값 불변). 지역 페이지가 같은 키를 써야 예열을 맞는다 — shared/seo/region-seed.ts
-      // 🏠 2026-08-22 (대표 "인기 이용권이 먼저 안 뜨고 가까운 동네딜이 먼저 보여"): 홈 화면은
-      //   피드(MAIN)와 섹션(SECTIONS, '지금 인기 이용권'·'주말에 떠나는 숙소')을 **함께** 그린다.
-      //   그런데 시드는 피드에만 있어서 섹션만 브라우저가 따로 받아 왔다(실측 0.6~1.2s).
-      //   같은 화면인데 한쪽만 늦게 끼어드니 "순서가 뒤바뀐 것"으로 보인다.
-      //   ⚠️ `/api/sections` 는 cache-prewarm HOT_PATHS 에 있고 `edgeCache(120)` 도 붙어 있어야
-      //      이 self-fetch 가 콜드 D1 을 안 탄다 — 셋은 한 세트다(하나 빠지면 느려진다).
+      // 🏠 2026-08-22 (대표 "인기 이용권이 먼저 안 뜨고 가까운 동네딜이 먼저 보여"): 홈은 피드(MAIN)와
+      //   섹션(SECTIONS)을 **함께** 그리는데 시드가 피드에만 있어 섹션만 브라우저가 따로 받아 왔다
+      //   (실측 0.6~1.2s). ⚠️ `/api/sections` 는 HOT_PATHS + `edgeCache(120)` 와 **한 세트**다.
       ssrExtra = { slot: 'SECTIONS', path: '/api/sections' };
     } else if (url.pathname === '/vouchers' && !url.search) {
       // 🛡️ 2026-05-27: VouchersPage first-paint inject (no query — default 페이지).
@@ -592,9 +589,8 @@ app.use('*', async (c, next) => {
       ssrTarget = { slot: 'BROWSE', path: '/api/products?page=1&limit=20&exclude_deal_only=1' };
     } else if (url.pathname === '/map' && !url.search) { // 🗺️ 2026-10-11 지도 첫 화면 시드 — 홈 시드(무정렬)를 못 써 한 왕복 더 기다렸다
       ssrTarget = { slot: 'MAP', path: MAP_SEED_PATH }; // 경로 SSOT shared/map-feed-seed.ts — 화면 요청과 byte-일치
-    } else if (!url.search && REGION_PATH_RE.test(url.pathname)) {
-      // 🗺️ 2026-10-12 지역 착지 페이지 시드(크롤러 본문 **26자**였다) — 홈과 **같은 캐시 키**라 cron
-      //   예열 적중(새 self-fetch 키 0) · 지역 필터는 `addressInRegion` SSOT. 사유: `shared/seo/region-seed.ts`.
+    } else if (!url.search && (REGION_PATH_RE.test(url.pathname) || url.pathname === '/stays')) {
+      // 🗺️ 2026-10-12 지역·숙소 시드 — 홈과 **같은 캐시 키**(예열 적중 · 새 self-fetch 키 0). 지역은 `addressInRegion`, 숙소는 `stay_voucher` 로 걸러 쓴다.
       ssrTarget = { slot: 'MAIN', path: MAIN_SEED_PATH };
     // 🥗 2026-07-15 워커 다이어트: /live SSR 슬롯(`/api/streams?status=live&limit=20`) 제거 — 라이브커머스 영구중단(죽은 self-fetch).
     // 🗑️ 2026-07-10 [UNLOCK_LOADING] (로딩 전수조사): GROUPBUY 슬롯 제거 — `/group-buy` 는 App.tsx 에서
@@ -659,6 +655,11 @@ app.use('*', async (c, next) => {
       }
     }
 
+    // 🗺️ 2026-10-12 [UNLOCK_LOADING] 지역·숙소의 **크롤러 본문·ItemList 만** cron 요약으로 만든다(색인 대상 시/도 11곳 중 **6곳이 본문 0자**였다 — 근거·버린 길 `shared/seo/region-digest.ts`).
+    //   🔴 주입(`__SSR_INITIAL_MAIN__`)은 **종전 MAIN 시드 그대로**다 — 요약 행은 필드를 깎아서 React 가 `initialData` 로 먹으면 카드가 깨진다.
+    //   읽기는 아래 SSR 획득과 **병렬**(KV 바인딩은 서브리퀘스트로 안 센다)이고, 없으면 `null` → 종전처럼 MAIN 시드로 떨어진다(fail-soft · 회귀 0).
+    const digestP = regionDigestApplies(url.pathname) && c.env.CACHE_KV
+      ? c.env.CACHE_KV.get(REGION_DIGEST_KV_KEY).catch(() => null) : null;
     let ssrPayload: string | null = null;
     const origin0 = new URL(c.req.url).origin;
     let ssrStatus = 'skip';
@@ -690,6 +691,7 @@ app.use('*', async (c, next) => {
     //   toggle off 여도 응답 헤더라 브라우저가 본문 파싱 전 preconnect 시작 → 소폭 이득, 회귀 0.
     c.res.headers.append('Link', '<https://cdn.jsdelivr.net>; rel=preconnect; crossorigin, <https://t1.kakaocdn.net>; rel=preconnect; crossorigin, <https://img1.kakaocdn.net>; rel=preconnect; crossorigin');
 
+    const crawlerPayload = (digestP && await digestP) || ssrPayload;
     const ssrSlot = ssrTarget?.slot ?? 'MAIN';
     // 🧨 2026-10-12 [UNLOCK_LOADING] 철거된 표면(`/wholesale`·`/supplier`)은 **410 Gone**.
     //   종전 `isWholesaleSurface` 는 "도매는 자체 라이트 테마라 소비자 홈 shell 깜빡임을 막는다"(2026-06-05)
@@ -991,7 +993,7 @@ app.use('*', async (c, next) => {
     //   SSR inject·0-RTT·`caches.default`·#root 로더·edgeCache 전부 불변 — head rewrite 만 추가.
     if (!needsRootBlank) {
       const sm = resolveConsumerSurfaceSeo(url.pathname, url.search, origin2) ?? resolveRegionSeo(url.pathname, origin2);
-      if (sm) rb = applySurfaceMeta(rb, { ...sm, jsonLd: buildSurfaceListJsonLd(url.pathname, url.search, origin2, sm, ssrPayload) });
+      if (sm) rb = applySurfaceMeta(rb, { ...sm, jsonLd: buildSurfaceListJsonLd(url.pathname, url.search, origin2, sm, crawlerPayload) });
     }
     // 🪦 2026-07-29 (소비자 SEO 실측): **사라진 상세 페이지가 `200 + index,follow` 로 나가고 있었다.**
     //   `/group-buy/99999999`(당시 주소) → HTTP 200 · 제네릭 홈 메타 · robots `index, follow`. 워커 자신의 SSR
@@ -1063,10 +1065,8 @@ app.use('*', async (c, next) => {
       // 🧭 2026-10-12 `/faq`·`/about`·`/region/*` 크롤러 본문이 **33·30·26자**였다 → `<noscript>`
       //   요약을 **로더 앞에 덧붙인다**(대체 아님 — 사람 화면 byte-동일·밀림 0, JS 가 돌면 렌더조차
       //   안 된다). 문구 SSOT·규율: `utils/crawler-noscript.ts` + `shared/seo/concept-content.ts`.
-      const staticNs = buildStaticSurfaceNoscript(url.pathname, ssrPayload);
-      rb = rb.on('#root', {
-        element(el) { el.setInnerContent(staticNs + urdealLoaderHtml, { html: true }); },
-      });
+      const staticNs = buildStaticSurfaceNoscript(url.pathname, crawlerPayload);
+      rb = rb.on('#root', { element(el) { el.setInnerContent(staticNs + urdealLoaderHtml, { html: true }); } });
     }
     const rewritten = rb.transform(c.res);
     // 🪦 2026-07-29 사라진 엔티티는 **HTTP 404** 로 응답한다(본문은 SPA 셸 그대로).

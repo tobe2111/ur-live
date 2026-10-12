@@ -16,6 +16,8 @@
 import type { Env } from '../types/env';
 
 import { swallow } from '../utils/swallow';
+import { sendEmail } from '../../services/email';
+import { transactionalMailReady } from '../../lib/ncp-sens-mail';
 interface SellerRow {
   id: number;
   business_name: string | null;
@@ -80,9 +82,10 @@ export async function handleSellerDailyReport(env: Env): Promise<void> {
   const DB = env.DB;
   if (!DB) return;
 
-  const resendKey = (env as Env & { RESEND_API_KEY?: string }).RESEND_API_KEY;
-  if (!resendKey) {
-    console.info('[cron:seller-daily-report] RESEND_API_KEY 미설정 — skip');
+  // 📮 2026-10-12: Resend 키 또는 SENS 메일 중 하나만 있으면 보낸다(유어딜엔 Resend 키가 없다 — 실측).
+  const resendKey = (env as Env & { RESEND_API_KEY?: string }).RESEND_API_KEY || '';
+  if (!transactionalMailReady(env)) {
+    console.info('[cron:seller-daily-report] 메일 수단(RESEND_API_KEY / SENS 메일) 미설정 — skip');
     return;
   }
 
@@ -183,22 +186,14 @@ export async function handleSellerDailyReport(env: Env): Promise<void> {
         avgRating: reviews?.avg_r ?? 0,
       });
 
-      const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${resendKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: (env as any).RESEND_FROM || 'noreply@ur-team.com',
-          to: s.email,
-          subject: `[유어딜] ${s.business_name || '셀러'} ${yesterdayDate} 일일 리포트`,
-          html,
-        }),
-        signal: AbortSignal.timeout(10_000),
-      });
+      // 공용 발송(`services/email`) — SENS 메일이 있으면 그쪽, 거절되면 Resend 키가 있을 때 한 번 더.
+      const res = await sendEmail(
+        { to: s.email, subject: `[유어딜] ${s.business_name || '셀러'} ${yesterdayDate} 일일 리포트`, html },
+        resendKey,
+        (env as Env & { RESEND_FROM?: string }).RESEND_FROM,
+      );
 
-      if (res.ok) sent++;
+      if (res.success) sent++;
       else failed++;
     } catch (err) {
       console.error(`[cron:seller-daily-report] ${s.id} failed:`, err);

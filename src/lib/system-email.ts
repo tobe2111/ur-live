@@ -1,9 +1,11 @@
 /**
  * 🛡️ 2026-04-28: 시스템 이메일 helper.
  *
- * Resend API 미설정 시 silent skip — production 영향 0.
- * 환경변수: RESEND_API_KEY, RESEND_FROM (optional)
+ * 보낼 수단(Resend 키 또는 네이버 클라우드 SENS 메일)이 없으면 silent skip.
+ * 환경변수: RESEND_API_KEY · RESEND_FROM (optional) / NCP_ACCESS_KEY · NCP_SECRET_KEY · NCP_MAIL_SENDER (SENS — 2026-10-12)
  */
+
+import { transactionalMailReady } from './ncp-sens-mail';
 
 interface NotificationContent {
   subject: string;
@@ -18,8 +20,9 @@ export async function sendSystemEmail(
   opts: { ignorePreference?: boolean } = {},
 ): Promise<{ success: boolean; skipped?: boolean; error?: string }> {
   const e = env as { RESEND_API_KEY?: string; RESEND_FROM?: string; DB?: D1Database };
-  const apiKey = e?.RESEND_API_KEY;
-  if (!apiKey) return { success: false, skipped: true };
+  const apiKey = e?.RESEND_API_KEY || '';
+  // 📮 2026-10-12: Resend 키가 없어도 SENS 메일이 설정돼 있으면 보낸다(`sendEmail` 이 SENS 를 먼저 쓴다).
+  if (!transactionalMailReady(env)) return { success: false, skipped: true };
 
   // 이메일 형식 검증
   if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {

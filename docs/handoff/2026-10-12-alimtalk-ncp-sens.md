@@ -68,3 +68,20 @@
 **대표님이 할 일**: 이미 검수 요청한 2~9번 → 검수 취소 → 본문(2·3·4·6)·버튼 수정 → 재검수 요청. 1·10번은 그대로.
 
 **⚠️ 못 잰 것**: 버튼 링크에 변수(`#{매장번호}`)를 쓴 템플릿을 카카오가 통과시키는지 · 콘솔 값이 표와 같은지 — 첫 실발송 SENS 응답만이 판정.
+
+---
+
+## 4차 (#1728 머지·배포 후) — 메일이 Resend 키만 보고 건너뛰던 것
+
+**발견(배포 후 `/api/version` 실측)**: ur-live 엔 `RESEND_API_KEY` 가 **없다**(false). 그런데 이용권 영수증(`group-buy.routes`)·
+`sendSystemEmail`(에이전시 초대·가입 등)·셀러 비밀번호 찾기·셀러 일일 리포트·채널 감시가 **발송 전에 Resend 키만 보고** 건너뛰었다
+⇒ SENS 메일(`NCP_MAIL_SENDER`)을 넣어도 한 통도 안 나갔다. **2차 handoff 의 "SENS 가 거절하면 Resend 로 한 번 더" 는 ur-live 에선
+넘겨받을 곳이 없는 말이었다**(대표에게도 그렇게 말했다 — 정정함).
+
+**수리**: `lib/ncp-sens-mail.ts` `transactionalMailReady(env)` = Resend 키 ∨ SENS 메일 — 위 다섯 자리와 `agencyMailReady` 가 이걸 본다.
+셀러 일일 리포트는 Resend 직접 fetch → 공용 `sendEmail`. `/api/version` 에 `NCP_MAIL_SENDER` 플래그 추가.
+유어애즈(marketing/·worker-ads/)는 **무접촉**(그 워커엔 NCP_MAIL_SENDER 를 안 둔다). 가드 `transactional-mail-ready-2026-10-12.test.ts` + 주입 4건 빨간불 확인.
+
+**대표 진행 상황(KST 17시대)**: NCP 키 4종 + 메일 2종을 Pages·Worker 두 곳에 입력(이름 실측 확인 — 전부 secret, 발신자 이름만 plain).
+SENS(통합 콘솔) Mail → Domain Management 에서 urdeal.kr 등록 → 인증 토큰 TXT 받음. 다음: Cloudflare DNS 에 인증 TXT + SPF + DKIM.
+⚠️ 이 세션의 CF 토큰은 **DNS 읽기 권한이 없다**(10000 Authentication error) — 기존 SPF 유무는 대표 화면 캡처로만 판정.

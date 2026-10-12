@@ -17,6 +17,7 @@
  *          POST /api/admin/fcfs/:productId/select — 선정(winners[] 또는 count 랜덤) + 알림
  */
 import { Hono } from 'hono'
+import { toPublicProductRows } from '@/shared/constants/demo-products'
 import type { Env } from '@/worker/types/env'
 import { requireAuth, requireAdmin } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
@@ -155,7 +156,9 @@ publicApp.get('/active', async (c) => {
       const real = countById.get(p.id as number) || 0
       out.push({ ...p, fcfs: { ...cfg, prelaunch: (byId.get(p.id as number)?.prelaunch === '1'), appliedDisplay: cfg.appliedSeed + real, realApplied: real } })
     }
-    return c.json({ success: true, data: out })
+    // 🙈 2026-10-12 (대표 "데모인 것을 티내지마"): `is_demo` alias 는 **정렬에만** 쓰고
+    //   응답에서는 지운다(`toPublicProductRows` — 데모 SSOT 와 같은 파일).
+    return c.json({ success: true, data: toPublicProductRows(out) })
   } catch (err) { return safeError(c, err, '선착순 목록 조회 실패', '[fcfs]') }
 })
 

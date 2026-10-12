@@ -6,6 +6,7 @@
  * 🛡️ 2026-04-27: TD-006 partial split — worker/index.ts 인라인 핸들러 제거.
  */
 import { Hono } from 'hono';
+import { buildLlmsTxt } from '../../shared/seo/llms-txt'
 import type { Env } from '@/worker/types/env';
 // 🏠 본진 몰 격리 — 운영자 SaaS 몰 상품이 유어딜 도메인으로 SEO 색인되는 것을 막는다.
 //   색인은 배포로 못 되돌린다(회수 시점의 통제권이 검색엔진에 있음) → 첫 몰 개설보다 먼저 들어가야 하는 가드.
@@ -271,3 +272,18 @@ ${urls.map(u => {
 });
 
 export { sitemapRoutes };
+
+// 🤖 2026-10-12 (대표 "나머진 다 해줘"): `/llms.txt` — AI 에이전트·검색이 읽는 사이트 요약.
+//   종전 404. 내용은 전부 SSOT(`CONCEPT_ABOUT_LINES`·`CONCEPT_FAQ`·`CONSUMER_SURFACE_SEO`)에서
+//   생성한다 — 손으로 적으면 화면·구조화 데이터와 어긋나는 네 번째 사본이 된다.
+//   `sitemapRoutes` 에 얹은 이유: `app.route('/', sitemapRoutes)` 라 `worker/index.ts` 무접촉이다.
+sitemapRoutes.get('/llms.txt', (c) => {
+  const body = buildLlmsTxt(new URL(c.req.url).origin)
+  return new Response(body, {
+    headers: {
+      'Content-Type': 'text/plain; charset=utf-8',
+      // robots.txt 와 같은 성격 — 자주 안 바뀌고 크롤러가 반복해 읽는다.
+      'Cache-Control': 'public, max-age=3600',
+    },
+  })
+})
