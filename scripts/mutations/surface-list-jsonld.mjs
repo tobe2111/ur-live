@@ -121,7 +121,7 @@ export default [
   {
     name: '🧾 목록 표면 배선이 사라진다(구조화 데이터 0건으로 회귀)',
     file: WORKER,
-    find: "      if (sm) rb = applySurfaceMeta(rb, { ...sm, jsonLd: buildSurfaceListJsonLd(url.pathname, url.search, origin2, sm, ssrPayload) });",
+    find: "      if (sm) rb = applySurfaceMeta(rb, { ...sm, jsonLd: buildSurfaceListJsonLd(url.pathname, url.search, origin2, sm, crawlerPayload) });",
     replace: "      if (sm) rb = applySurfaceMeta(rb, sm);",
     test: TEST,
     why: '빌더가 멀쩡해도 배선이 빠지면 라이브는 종전 그대로다 — 2026-10-11 에 "파일에 있다 ≠ 크롤러가 받는다" 로 값을 치렀다.',

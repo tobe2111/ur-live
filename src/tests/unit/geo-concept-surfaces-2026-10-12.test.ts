@@ -198,7 +198,10 @@ describe('④ noscript — 크롤러는 읽고, 사람 화면은 그대로다', 
   it('워커가 로더를 지우지 않고 앞에 붙인다 — 사람 화면은 byte-동일이어야 한다', () => {
     const c = code(WORKER)
     expect(c, 'noscript 가 로더를 대체하고 있다 — 로딩 화면이 사라진다').toContain('staticNs + urdealLoaderHtml')
-    expect(c).toContain('buildStaticSurfaceNoscript(url.pathname, ssrPayload)')
+    // 🔁 2026-10-12 재조준: 두 번째 인자가 `ssrPayload` → `crawlerPayload`(지역 요약 우선)로 바뀌었다.
+    //   불변식(그 자리에서 빌더를 부른다)은 그대로이므로 **변수 이름은 묶지 않는다** — 어느 시드를
+    //   넘기는지는 `region-digest-2026-10-12.test.ts` ⑥ 이 잠근다(중복 잠금 금지).
+    expect(c).toMatch(/buildStaticSurfaceNoscript\(url\.pathname, \w+Payload\)/)
   })
 })
 
