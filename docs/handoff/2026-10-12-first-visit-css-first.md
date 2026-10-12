@@ -78,3 +78,11 @@ CDP `emulateNetworkConditions`+`setCPUThrottlingRate 4`. 헤더는 content-type/
 - 처방: `ssr-payload.ts` 에 직전 사본(1시간, Cache API) 계층 — 엣지 miss 면 사본을 바로 쓰고 응답 뒤 새로고침.
 - **E4**: `curl -sI -A '<iPhone UA>' https://urdeal.kr/pass/2919` 를 3분 간격 두 번 → 두 번째 `X-SSR-Status: DETAIL:stale-hit` + `Server-Timing` 에 `self;` 없음. 실사용자 TTFB 중앙값(`/api/analytics/summary`)이 0.45s 에서 내려가는지(하루 뒤).
 - 같은 세션의 다른 수: 첫 렌더 CPU(`formatNumber` 포매터 캐시 · 비로그인 찜 하트 구독 제거), 카드 사진 2x 상한, `_headers` 폰트 캐시 수리, 첫 방문 폰트 미루기, 지도 SDK 조기 출발.
+
+## 11. 후속 — 첫 부팅 코드 다이어트 (같은 PR)
+- **Capacitor 를 웹 첫 부팅에서 뺐다**: `lib/native.ts` 가 app-utils 에 섞여 모든 페이지가 capacitor 청크를 끌어왔다. `lib/native-platform.ts`(import 없이 판정) + 규칙 `lib/native.ts → capacitor`. critical-chunks 17 → 16.
+- **어드민 라우트 표를 `/admin/*` lazy 하위 Routes 로**: app-routes 52 → 21KB, 소비자 이동마다 어드민 경로 100개 매칭 제거. 렌더 확인 `/admin/login` · 없는 어드민 경로 404.
+- **첫 렌더 CPU**: `formatNumber` 포매터 캐시, 비로그인 찜 하트 구독 제거. 재생 측정 편차 안이라 숫자는 못 말한다(동작만 고정).
+- 🩸 **측정기 교훈 2**: 재생 하네스의 "웹폰트 제거" 변형이 링크 모양과 안 맞아 **적용이 안 된 채** 이전 세션 결론("효과 없음")을 만들었다. 이제 변형은 적용 안 되면 던진다(`xforms11`).
+- 🩸 **테스트 주석 제거기 함정**: App.tsx 줄 주석에 `/admin/*` 를 쓰자 `urshorts-core` 의 주석 제거가 `/*` 를 블록 주석 시작으로 읽어 무관한 시험이 깨졌다 — 줄 주석에 `/*` 를 쓰지 말 것(제거기 결함은 별건).
+- **E4 체크(배포 후)**: ① 홈 문서 modulepreload 에 `capacitor-*` · `app-routes-admin-*` 없음 ② `/admin/login` 정상 ③ `/static/fonts/*` 캐시 헤더 ④ 상세 `stale-hit` ⑤ 새 시크릿 창 첫 방문 시스템 글꼴 → Pretendard.
