@@ -57,7 +57,9 @@ EOF
 | 머지 | 내용 |
 |---|---|
 | `8b3f6f0f3` | PR #1725 — 유어샵 합성 카드 안에 사진이 실제로 박히게(`cf.image` 바인딩 경로) |
-| *(이 PR)* | 공유를 **SDK 경로**로 + og:image 를 실사진으로 + `sendDefault` 사본 4 → 1 |
+| *(이 PR #1732)* | 공유를 **SDK 경로**로 + `sendDefault` 사본 4 → 1 |
+| `77eeef184` | 2판 — 얼굴을 합성 카드(프로필 원 + 이름 + 소개 + 타일)로 |
+| `bc7aac738` | **3판(최종)** — 그림 = 1200×630 풀블리드 사진 · 유달이 배경 **딥 네이비 `#0F1A33`** · `/api/media` → R2 |
 
 신규: `src/shared/ushop-share-card.ts`(순수 SSOT) · `src/lib/kakao-share.ts`(전송 SSOT) ·
 `src/tests/unit/ushop-share-card-2026-10-12.test.ts`(39건) ·
