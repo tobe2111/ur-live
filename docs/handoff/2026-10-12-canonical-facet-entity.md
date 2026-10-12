@@ -292,3 +292,68 @@ S=$(curl -s -A "$UA" https://urdeal.kr/sitemap.xml); echo "loc=$(grep -c '<loc>'
 ① 브랜드 suffix 가 가게명이라 검색결과에서 유어딜이 안 보인다 ② 경제는 즉시판매인데(2026-06-27
 명칭 SSOT · 2026-09-04 *"마감 개념은 없어"*) 제목이 **공동구매**라고 말한다. 이미 색인된 310건의
 제목을 바꾸는 일이라 **올리고 기다린다**.
+
+---
+
+## 🔗 후속 ⑤ — 크롤러 문서에 내부 링크가 0개였다 (`e18c032d4` 다음 커밋)
+
+같은 지시로 이번엔 **JSON-LD 가 아니라 `<a href>` 를 셌다**(Googlebot UA · 파싱). 둘은 다른 것이다:
+
+```
+표면            본문      a태그          (비교)
+/region/서울     364자      0            /pass/:id    2  ← 서버 첫 화면의 빵부스러기
+/vouchers        231자      0            /u/:handle   4  ← 첫 화면 진열
+/map             359자      0            /blog       21  ← 글 목록
+/stays           436자      0
+/browse           36자      0
+```
+
+⇒ **상세 → 허브는 이어져 있는데 허브 → 상세가 통째로 비어 있었다.** 목록이 가게·메뉴·판매가를
+*글로는* 말하면서 그 상품으로 가는 길을 하나도 안 줬다.
+
+🔑 **`ItemList` 로는 대체되지 않는다** — 그건 *"이 목록의 항목"* 이라는 설명이고, 크롤 발견과
+내부 링크 가치는 `<a href>` 가 만든다. JS 를 렌더하는 Googlebot 은 SPA 링크를 보지만
+**Yeti(네이버)·AI 검색봇은 이 문서가 전부**다(대표 *"네이버도 해주고"*).
+즉 453건이 **sitemap 으로만** 발견되고 내부 링크 가치는 0 이었다.
+
+**수정 (`src/worker/utils/crawler-noscript.ts` — 잠금 파일 아님)**
+행을 `{text, href}` 로 바꿔 `<li><a href>` 로 감싼다. 주소는 **정본 SSOT** 를 지난다
+(`canonicalDetailPath`, 순수 쇼핑 폴백은 `FLOW_CONFIG.standard_checkout.detailPath`) —
+`ItemList`·sitemap 과 **세 벌이 될 수 없다**.
+
+🔴 **교환권(`deal_only=1`)은 링크하지 않는다** — 그 상세는 2026-07-07 결정으로 noindex 이고
+2,260건에 크롤 경로를 열면 *색인 말라고 한 URL* 로 예산이 빠진다. **글은 그대로 남는다.**
+
+🩸 **빌더를 돌려 눈으로 보고서 결함 하나를 잡았다**: `canonicalDetailPath` 는 순수 쇼핑 상품에
+**`null`**(= cross-canonical 아님)을 주는데 그걸 "링크 없음" 으로 읽어 `/browse`·`/map` 의
+쇼핑 상품만 글로 남았다(실측 `id 2917`). 그 경우의 정본은 `/products/:id` 다.
+
+🩸 **그리고 내 주입 하나가 헛돌았다** — *"id 가 없어도 링크를 만든다"* 가 통과했다. 그때 주소가
+`/pass/undefined` 로 나오는데 내 단언은 `href === ''` 와 `endsWith('/')` 만 보고 있었다
+(**모양을 짐작했다**) ⇒ ① 그 행이 `<a>` 밖인지 ② 모든 href 가 `/^\/[a-z]+\/\d+$/` 인지로 교체.
+
+🕳️ **기존 주입 둘이 낡았고 둘 다 풀지 않고 재조준했다** — `geo-concept-surfaces` ·
+`list-surface-noscript` 의 *"시드 값을 탈출 없이 마크업에 넣는다"*. 불변식은 그대로이고 탈출
+경로가 **셋으로 갈렸다**(링크 안쪽 글자 · 링크 없는 분기 · **주소**). `list-surface` 쪽은 처음
+*링크 없는 분기*로 조준했더니 **그 테스트의 탐침 시드가 그 분기를 안 지나가서 헛돌았다**
+(id 가 다 있어 전부 링크가 붙는다) → 링크 안쪽 글자로 다시 조준.
+
+**가드**: `crawler-internal-links-2026-10-12.test.ts` 9건 +
+`scripts/mutations/crawler-internal-links-2026-10-12.mjs` **6건 + 재조준 2건, 전부 빨간불 확인**.
+검증: 인접 가드 8파일 161건 pass · 낡은 앵커 0(3,324건).
+
+### 다음 세션의 E4 (배포 후 1분)
+```bash
+UA='Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
+for p in /region/서울 /map /browse /stays /vouchers; do
+  printf '%-16s ' "$p"
+  curl -sS -A "$UA" "https://urdeal.kr$p" | grep -o 'href="/[a-z]*/[0-9]*"' | sort -u | tr '\n' ' '; echo
+done
+```
+기대: 앞 넷이 **0 → N**(주소가 전부 `/pass/`·`/stays/`·`/products/`) · **`/vouchers` 는 0 유지**
+(이 방향이 깨지면 noindex URL 로 크롤 예산이 빠진다).
+
+### 안 한 것 (판단과 함께)
+- **봇 셸에 전역 네비(푸터)를 안 넣었다** — 상세는 빵부스러기가 허브로 잇고 있고(`a` 2개),
+  링크가 0 인 `/faq`·`/about` 은 리프다. 넣으려면 `worker/index.ts`(잠금 파일 · 래칫 2672 포화)를
+  건드려야 해서 **얻는 것 대비 비용이 크다** — 필요해지면 별건.

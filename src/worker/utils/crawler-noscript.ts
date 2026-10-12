@@ -35,6 +35,7 @@
  * - 길이를 늘리려고 같은 값을 변형해 반복하지 않는다.
  */
 import { priceDisplay } from '../../shared/price-display'
+import { canonicalDetailPath, FLOW_CONFIG } from '../../shared/product-flow'
 import { CONCEPT_FAQ, CONCEPT_ABOUT_LINES } from '../../shared/seo/concept-content'
 import { addressInRegion, parseRegionPath, type RegionRef } from '../../shared/constants/region-slugs'
 import { REGION_PATH_RE } from '../../shared/seo/region-seed'
@@ -352,7 +353,7 @@ export function buildStaticSurfaceNoscript(pathname: string, ssrPayload?: string
   //   ⚠️ 상한 8 은 지역 페이지와 같다 — `<noscript>` 도 **사람이 받는 응답에 그대로 실린다**.
   const keep = LIST_SURFACE_KEEP[path]
   if (keep) {
-    const rows: string[] = []
+    const rows: Row[] = []
     for (const p of parseSeed(ssrPayload)) {
       if (!keep(p)) continue
       const line = rowLine(p)
@@ -362,7 +363,7 @@ export function buildStaticSurfaceNoscript(pathname: string, ssrPayload?: string
     if (!rows.length) return ''
     const label = CONSUMER_SURFACE_SEO[path]?.crumb || ''
     const head = label ? `<p>${esc(label)}</p>` : ''
-    return `<noscript>${head}<ul>${rows.map((r) => `<li>${esc(r)}</li>`).join('')}</ul></noscript>`
+    return `<noscript>${head}<ul>${rows.map(liOf).join('')}</ul></noscript>`
   }
 
   const ref = regionRefOfPath(path)
@@ -370,7 +371,7 @@ export function buildStaticSurfaceNoscript(pathname: string, ssrPayload?: string
     const rows = regionSeedRows(ssrPayload, ref).slice(0, 8)
     if (!rows.length) return ''
     const label = ref.sigungu ? `${ref.sido} ${ref.sigungu}` : ref.sido
-    return `<noscript><p>${esc(label)} 이용권</p><ul>${rows.map(r => `<li>${esc(r)}</li>`).join('')}</ul></noscript>`
+    return `<noscript><p>${esc(label)} 이용권</p><ul>${rows.map(liOf).join('')}</ul></noscript>`
   }
 
   return ''
@@ -388,6 +389,8 @@ function regionRefOfPath(path: string): RegionRef | null {
 }
 
 interface RegionSeedRow {
+  /** 🔗 링크를 만들려면 필요하다 — `ItemList`·sitemap 이 쓰는 그 id 다. */
+  id?: number | string | null
   name?: string | null
   restaurant_name?: string | null
   /** 교환권 카드의 머리 — 매장이 없는 대신 브랜드를 그린다. */
@@ -407,7 +410,46 @@ interface RegionSeedRow {
  * 머리는 `restaurant_name`(이용권·숙소) 또는 `brand_name`(교환권) — 그 카드가 화면에 그리는 것과
  * 같다. 둘 다 없으면 상품명만. 규율 ①(지어내지 않는다)대로 **시드에 있는 값만** 쓴다.
  */
-function rowLine(p: RegionSeedRow): string | null {
+interface Row { text: string; href: string | null }
+
+/**
+ * 🔗 2026-10-12 (대표 *"다 개선하고 또 개선할 것 있는지 찾아줘"*): **행의 링크.**
+ *
+ * 라이브 실측(Googlebot UA 로 서버 HTML 을 받아 `<a href>` 를 셌다) — 목록·지역 표면의
+ * 크롤러 문서에 **내부 링크가 0개**였다:
+ *
+ *     /region/서울  본문 364자 · a태그 **0**      /vouchers 231자 · 0
+ *     /map          359자 · 0                     /stays    436자 · 0 · /browse 36자 · 0
+ *     ↔ /pass/:id   a태그 2 (빵부스러기) · /u/:handle 4 (첫 화면) · /blog 21
+ *
+ * 즉 **허브 → 상세** 방향이 통째로 비어 있었다. 상세 → 허브는 빵부스러기가 이미 잇는다.
+ * JS 를 렌더하는 Googlebot 은 SPA 링크를 보지만 **Yeti(네이버)·AI 검색봇은 이 문서가 전부**다
+ * (대표 *"네이버도 해주고"*). 453건이 sitemap 으로만 발견되고 내부 링크 가치는 0 이었다.
+ *
+ * 🔑 주소는 **정본 SSOT**(`canonicalDetailPath`) 하나에서 — `ItemList`(`surface-list-jsonld.ts`)·
+ *    sitemap 과 같은 함수라 세 벌이 갈릴 수 없다(갈리면 같은 상품이 세 URL 로 제출된다).
+ * 🔴 **교환권(`deal_only=1`)은 링크하지 않는다** — 그 상세는 2026-07-07 결정으로 noindex 이고,
+ *    2,260건에 크롤 경로를 열면 *색인하지 말라고 한 URL* 로 크롤 예산이 빠진다. 글은 그대로 남는다
+ *    (`/vouchers` 목록이 읽을 거리를 잃지 않는다). `ItemList` 허용목록을 가른 것과 같은 판단이다.
+ */
+function rowHref(p: RegionSeedRow): string | null {
+  if (p?.deal_only === 1) return null
+  if (p?.id == null || p.id === '') return null
+  // 🩸 **빌더를 돌려 보고 고쳤다** — `canonicalDetailPath` 는 순수 쇼핑 상품에 `null` 을 준다
+  //   (= "cross-canonical 아님"). 그걸 "링크 없음" 으로 읽어 `/browse`·`/map` 의 쇼핑 상품이
+  //   링크를 못 받고 있었다(실측 `id 2917` 이 글만 남았다). 그 경우의 정본은 `/products/:id` 이고
+  //   주소는 `FLOW_CONFIG.standard_checkout.detailPath` 가 말한다 — 손으로 적지 않는다.
+  const path = canonicalDetailPath({ id: p.id, deal_only: p.deal_only, category: p.category })
+    || FLOW_CONFIG.standard_checkout.detailPath(p.id)
+  return path && path.startsWith('/') ? path : null
+}
+
+/** 한 행 → `<li>`. 링크가 없으면 **글만** 남긴다(빈 `<a>` 를 만들지 않는다). */
+function liOf(r: Row): string {
+  return `<li>${r.href ? `<a href="${esc(r.href)}">${esc(r.text)}</a>` : esc(r.text)}</li>`
+}
+
+function rowLine(p: RegionSeedRow): Row | null {
   const head = (p?.restaurant_name || p?.brand_name || '').trim()
   const title = (p?.name || '').trim()
   if (!head && !title) return null
@@ -416,7 +458,7 @@ function rowLine(p: RegionSeedRow): string | null {
   const parts = head && title.startsWith(head) ? [title] : [head, title]
   const d = priceDisplay({ price: p?.price, original_price: p?.original_price, discount_rate: p?.discount_rate })
   const price = d.price > 0 ? ` 판매가 ${won(d.price)}원${d.discount > 0 ? ` (${d.discount}% 할인)` : ''}` : ''
-  return `${parts.filter(Boolean).join(' — ')}${price}`
+  return { text: `${parts.filter(Boolean).join(' — ')}${price}`, href: rowHref(p) }
 }
 
 /** 시드 문자열 → 행 배열. 모양이 다른 시드(배열 / `{products}`)를 둘 다 받는다. */
@@ -432,8 +474,8 @@ function parseSeed(ssrPayload: string | null | undefined): RegionSeedRow[] {
 }
 
 /** 시드에서 그 지역 행만 골라 한 줄씩. 교환권(`deal_only`)은 매장이 없으니 제외한다. */
-function regionSeedRows(ssrPayload: string | null | undefined, ref: RegionRef): string[] {
-  const out: string[] = []
+function regionSeedRows(ssrPayload: string | null | undefined, ref: RegionRef): Row[] {
+  const out: Row[] = []
   for (const p of parseSeed(ssrPayload)) {
     if (p?.deal_only === 1) continue
     if (!addressInRegion(p?.restaurant_address || p?.business_address, ref)) continue

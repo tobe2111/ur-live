@@ -54,8 +54,11 @@ export default [
   {
     name: '🧾 요약이 시드 값을 탈출 없이 마크업에 넣는다',
     file: NS,
-    find: '    return `<noscript>${head}<ul>${rows.map((r) => `<li>${esc(r)}</li>`).join(\'\')}</ul></noscript>`',
-    replace: '    return `<noscript>${head}<ul>${rows.map((r) => `<li>${r}</li>`).join(\'\')}</ul></noscript>`',
+    // 🔗 2026-10-12 재조준 — 행 조립이 `liOf` 로 옮겨갔다. 불변식은 그대로이고, 여기선
+    //   그 시험의 탐침 시드는 **링크가 붙는 행**(id 가 있다)이므로 *링크 안쪽* 글자를 본다
+    //   — 링크 없는 분기(`: esc(r.text)}`)는 그 시드가 안 지나가서 주입이 헛돈다(확인했다).
+    find: '${esc(r.text)}</a>',
+    replace: '${r.text}</a>',
     test: TEST,
     why: '가게명·상품명은 판매자가 넣은 값이다 — 상수만 싸면 탈출 여부를 판정할 수 없어 탐침 값으로 잰다.',
   },
