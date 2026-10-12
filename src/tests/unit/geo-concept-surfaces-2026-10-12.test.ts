@@ -186,7 +186,10 @@ describe('④ noscript — 크롤러는 읽고, 사람 화면은 그대로다', 
   })
 
   it('대상 밖 경로엔 아무것도 안 낸다 (전 표면에 같은 글이 붙는 것 차단)', () => {
-    for (const p of ['/', '/vouchers', '/pass/2919', '/u/jiwon1228', '/admin', '/region']) {
+    // 🔁 2026-10-12 재조준: `/region`(인덱스)은 이제 **대상이다** — 라이브 38자였고 sitemap 제출
+    //   URL 이라 그 표면도 문장을 갖는다(`shared/seo/surface-copy.ts`). 불변식("아무 표면에나 같은
+    //   글이 붙지 않는다")은 그대로이므로 나머지 경로로 계속 잰다.
+    for (const p of ['/', '/vouchers', '/pass/2919', '/u/jiwon1228', '/admin', '/notifications']) {
       expect(buildStaticSurfaceNoscript(p, null), `${p} 에 noscript 가 붙는다`).toBe('')
     }
   })

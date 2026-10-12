@@ -1,17 +1,21 @@
 import { Helmet } from 'react-helmet-async'
-import { useTranslation } from 'react-i18next'
 import { withSiteName } from '@/shared/seo/consumer-surfaces'
 
-// v39 FIX: og:locale 동적화 — i18n 언어 코드를 BCP47로 변환
-const LOCALE_MAP: Record<string, string> = {
-  ko: 'ko_KR',
-  en: 'en_US',
-  ja: 'ja_JP',
-  zh: 'zh_CN',
-  es: 'es_ES',
-  fr: 'fr_FR',
-}
-const ALL_LOCALES = Object.values(LOCALE_MAP)
+/**
+ * 🌐 2026-10-12 — **`og:locale` 은 고정 `ko_KR` 이다.** 종전에는 i18n 언어로 바꾸고
+ * `og:locale:alternate` 를 **다섯 개**(en_US·ja_JP·zh_CN·es_ES·fr_FR) 더 얹었는데, 그 선언은
+ * *"같은 URL 이 다섯 언어로 존재한다"* 는 뜻이고 **사실이 아니었다**:
+ *
+ *   · 언어 전환은 `i18n.changeLanguage` + localStorage 라 **URL 이 바뀌지 않는다**(hreflang 0건).
+ *   · 공유 링크를 긁는 쪽(카카오·페이스북·구글)은 **서버 HTML** 을 받는데 거기엔
+ *     `ko_KR` 하나뿐이다(`worker/index.ts` 봇 셸 · `index.html`). 즉 이 값은 **서버와 어긋나기만**
+ *     하고 크롤러에게 닿지도 않았다.
+ *
+ * 🔑 신호를 **하나로** 맞춘다 — `<html lang="ko">` · `og:locale=ko_KR` · `inLanguage: 'ko'`.
+ *    다국어 노출을 하려면 먼저 **언어별 URL** 이 있어야 한다(사유·판단은
+ *    `single-language-signals-2026-10-12.test.ts` 머리말).
+ */
+const OG_LOCALE = 'ko_KR'
 
 interface SEOProps {
   title?: string
@@ -74,12 +78,6 @@ export default function SEO({
   const fullUrl = url ? `${baseUrl}${url}` : baseUrl
   const twitterSite = isWholesale ? '@utongstart' : '@urdeal_kr'
 
-  // v39 FIX: 현재 사용자 언어 기반 og:locale
-  const { i18n } = useTranslation()
-  const currentLang = (i18n.language || 'ko').split('-')[0]
-  const primaryLocale = LOCALE_MAP[currentLang] || 'ko_KR'
-  const alternateLocales = ALL_LOCALES.filter(l => l !== primaryLocale)
-
   return (
     <Helmet>
       <title>{fullTitle}</title>
@@ -97,10 +95,7 @@ export default function SEO({
       <meta property="og:image:alt" content={`${siteName} - ${resolvedDescription.slice(0, 60)}`} />
       <meta property="og:url" content={fullUrl} />
       <meta property="og:site_name" content={siteName} />
-      <meta property="og:locale" content={primaryLocale} />
-      {alternateLocales.map(loc => (
-        <meta key={loc} property="og:locale:alternate" content={loc} />
-      ))}
+      <meta property="og:locale" content={OG_LOCALE} />
 
       {/* Twitter */}
       <meta name="twitter:card" content="summary_large_image" />

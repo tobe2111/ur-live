@@ -39,6 +39,10 @@ import { CONCEPT_FAQ, CONCEPT_ABOUT_LINES } from '../../shared/seo/concept-conte
 import { addressInRegion, parseRegionPath, type RegionRef } from '../../shared/constants/region-slugs'
 import { REGION_PATH_RE } from '../../shared/seo/region-seed'
 import { CONSUMER_SURFACE_SEO } from '../../shared/seo/consumer-surfaces'
+import { surfaceCopyFor } from '../../shared/seo/surface-copy'
+import { CONSUMER_TERMS } from '../../pages/terms/consumer-terms-content'
+import { SELLER_TERMS } from '../../pages/terms/seller-terms-content'
+import type { TermsDoc } from '../../pages/terms/terms-types'
 
 function esc(s: string): string {
   return String(s)
@@ -219,6 +223,25 @@ export function buildStaticSurfaceNoscript(pathname: string, ssrPayload?: string
 
   if (path === '/about') {
     const lines = CONCEPT_ABOUT_LINES.map(l => `<p>${esc(l)}</p>`).join('')
+    return lines ? `<noscript>${lines}</noscript>` : ''
+  }
+
+  // ⚖️ 약관은 **그 문서 자체에서 파생**한다 — 제목 · 시행일 · 조항 제목. 손으로 요약을 쓰면
+  //   개정될 때 갈리고(문구 변경은 대표 확인 사항이다), 전문을 통째로 쏟으면 요약이 아니다.
+  //   라이브 실측 `/terms` **15자**였다 — sitemap 이 제출하는 URL 인데 조항 제목조차 없었다.
+  const terms: TermsDoc | null = path === '/terms' ? CONSUMER_TERMS : path === '/terms/seller' ? SELLER_TERMS : null
+  if (terms) {
+    const heads = terms.sections.map(x => x.title).filter(Boolean)
+    return `<noscript><p>${esc(terms.title)} (시행 ${esc(terms.effective)} · v${esc(terms.version)})</p><ul>`
+      + heads.map(h => `<li>${esc(h)}</li>`).join('') + '</ul></noscript>'
+  }
+
+  // 🧭 시드가 없는 정적 표면(입점·소개 파트너·체험단·새 가게·지역 인덱스 …) — 라이브 실측
+  //   **15~40자**였고 전부 sitemap 제출 URL 이다. 문구는 `shared/seo/surface-copy.ts` SSOT 이고
+  //   **그 화면에 떠 있는 문장과 같은 말**이어야 한다(가드가 페이지 소스와 대조 — 클로킹 방지).
+  const copy = surfaceCopyFor(path)
+  if (copy) {
+    const lines = copy.lines.map(l => `<p>${esc(l)}</p>`).join('')
     return lines ? `<noscript>${lines}</noscript>` : ''
   }
 
