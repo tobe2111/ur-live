@@ -67,7 +67,9 @@ export default [
   {
     name: '숙소 정본 — 크롤러 본문을 안 붙인다 (종전 6자 = 로더뿐)',
     file: W,
-    find: 'el.setInnerContent(stayNs + urdealLoaderHtml, { html: true });',
+    // 🔀 2026-10-12 후속 재조준: 같은 날 서버 첫 화면이 생겨 배선이 [첫 화면 || (`<noscript>` + 로더)]
+    //    가 됐다. 불변식은 그대로 — **로더만 남으면 본문이 6자로 되돌아간다**.
+    find: 'el.setInnerContent(stayFirst || (stayNoscriptFromPayload(ssrPayload) + urdealLoaderHtml), { html: true });',
     replace: 'el.setInnerContent(urdealLoaderHtml, { html: true });',
     test: T,
     why:
@@ -77,8 +79,10 @@ export default [
   {
     name: '숙소 정본 — 크롤러 본문이 로더를 **대체**한다 (JS 없는 사람에게 빈 화면)',
     file: W,
-    find: 'el.setInnerContent(stayNs + urdealLoaderHtml, { html: true });',
-    replace: 'el.setInnerContent(stayNs, { html: true });',
+    // 🔀 재조준: 첫 화면 쪽은 로더를 **자기 안에** 품으므로(`shortLoader`), 이 결함이 사는 자리는
+    //    이제 **폴백 경로**다 — 거기서 로더가 빠지면 하드로드 첫 프레임이 빈 화면이 된다.
+    find: 'stayNoscriptFromPayload(ssrPayload) + urdealLoaderHtml',
+    replace: 'stayNoscriptFromPayload(ssrPayload)',
     test: T,
     why:
       '로더가 사라져 하드로드 첫 프레임이 빈 화면이 된다. `<noscript>` 는 JS 가 돌면 렌더조차 안 되므로 ' +

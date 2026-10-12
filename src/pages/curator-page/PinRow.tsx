@@ -53,7 +53,10 @@ export default memo(function PinRow({ pin, handle, order, prefetch }: {
           {img && (
             <img
               src={cfImage(img, { width: 240, format: 'auto' }) || img}
-              alt=""
+              /* 🖼️ 2026-10-12: 진열 사진 4장이 전부 `alt=""` 였다(라이브 실측). sitemap 이 그 사진을
+                 `image:image` 로 제출하므로 무엇인지 말해야 한다. ⚠️ 워커 첫 화면
+                 (`curator-ssr-body.ts`)이 **같은 값**을 써야 한다 — 가드가 둘을 대조한다. */
+              alt={pin.product_name || ''}
               width={240}
               height={240}
               loading="lazy"
