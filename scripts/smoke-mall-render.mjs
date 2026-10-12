@@ -192,19 +192,31 @@ try {
   // ── 사장님 화면 B·D ────────────────────────────────────────────────────
   // 🔴 대시보드는 **라이트 한 벌**이다(의뢰서 §5.2 — 다크는 만들지 마세요). 그래서 한 모드만 본다.
   //   인증은 localStorage 토큰 스텁 + API 인터셉트로 통과시킨다(진짜 로그인을 하려는 게 아니다).
+  // 🪑 2026-10-12: 셀러 대시보드가 지워져 `/seller/*` 는 마이(`/user/profile?tool=…`)의 시트로 열린다.
+  //   시트는 **좌석이 있어야** 열리므로 좌석 토큰을 JWT 모양으로 주고(`readSeatClaims` 가 seller_id 를 읽는다)
+  //   좌석 요약에 그 매장을 싣는다(모양은 `seller-operators.routes` 의 `GET /my-stores/summary` 그대로 —
+  //   `visual-preview.mjs` 의 `seatToken`·좌석 픽스처와 같다). 없으면 시트가 닫혀 마이 첫 화면만 남는다.
+  const b64u = (o) => Buffer.from(JSON.stringify(o), 'utf8').toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+  const SEAT = `${b64u({ alg: 'none', typ: 'JWT' })}.${b64u({ seller_id: 1, seller_type: 'store_owner', name: MALL.name })}.smoke`
+  const SUMMARY = { success: true, data: {
+    stores: [{ seller_id: 1, name: MALL.name, role: 'owner', status: 'approved', today_revenue: 0, today_orders: 0, pending: 0 }],
+    totals: { today_revenue: 0, today_orders: 0, pending: 0 }, current_seller_id: 1,
+  } }
   const sellerCtx = await browser.newContext({ viewport: { width: 430, height: 1600 }, deviceScaleFactor: 2 })
-  await sellerCtx.addInitScript(() => {
+  await sellerCtx.addInitScript((seat) => {
     try {
-      localStorage.setItem('seller_token', 'smoke')
+      localStorage.setItem('seller_token', seat)
+      localStorage.setItem('seller_id', '1')
       localStorage.setItem('user_type', 'seller')
       localStorage.setItem('user_id', '1')
       localStorage.setItem('ur_theme_mode_v1', 'light')
     } catch { /* private */ }
-  })
+  }, SEAT)
   await sellerCtx.route('**/api/seller/**', (route) => {
     const u = route.request().url()
     let body = { success: true, data: [] }
     if (u.includes('/returns')) body = { success: true, data: [] }
+    if (u.includes('/my-stores/summary')) body = SUMMARY
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) })
   })
   await sellerCtx.route('**/api/returns/seller**', (route) => route.fulfill({
