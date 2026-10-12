@@ -11,9 +11,11 @@
  * 여백을 페이지마다 손으로 맞추면 반드시 어긋난다).
  *
  * ⚠️ PC(`md:`)에는 아무것도 안 그린다 — PC 는 바가 없고 FAB 은 `md:bottom-4` 로 화면 구석에 산다.
+ *
+ * 🧱 2026-10-12 (셀러 대시보드 제거 4단계): 하단 탭이 사라져 바는 **화면 바닥**(safe-area 위)에 붙는다.
+ *   종전엔 탭 높이(60px)만큼 띄웠는데, 마이 시트 안(탭이 원래 없는 곳)에서도 그 60px 이 그대로 떠 있었다.
  */
 import { useEffect, type ReactNode } from 'react'
-import { SELLER_TABBAR_H } from './SellerBottomTabs'
 
 /** 바 자체의 높이(스페이서와 FAB 비킴 계산이 같은 값을 써야 한다). */
 export const SELLER_BOTTOM_BAR_H = 64
@@ -30,7 +32,7 @@ export default function SellerBottomBar({ children }: { children: ReactNode }) {
       <div
         className="fixed inset-x-0 z-[40] px-4 pb-3 pt-2 md:hidden"
         style={{
-          bottom: `calc(${SELLER_TABBAR_H}px + env(safe-area-inset-bottom))`,
+          bottom: 'env(safe-area-inset-bottom)',
           background: 'linear-gradient(180deg, rgba(248,247,252,0), #F8F7FC 40%)',
         }}
       >

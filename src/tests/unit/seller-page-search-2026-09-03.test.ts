@@ -79,3 +79,17 @@ describe('③ 검색 전용 목록이 성립한다', () => {
     }
   })
 })
+
+describe('④ 진입점 없던 화면이 다시 닿는다 (2026-10-12 대시보드 제거 1단계)', () => {
+  // 유일한 링크가 렌더되지 않는 `SellerOnboardingChecklist` 안에만 있었다 — 화면은 있는데 아무도 못 연다.
+  it('🔒 알림톡 채널 안내가 검색·전체 도구 색인에 있다', () => {
+    expect(SELLER_SEARCH_ONLY.map((i) => i.path)).toContain('/seller/plus-friend-guide')
+  })
+
+  it('라벨이 6개 언어에 있다', () => {
+    for (const l of ['ko', 'en', 'ja', 'zh', 'es', 'fr']) {
+      const d = JSON.parse(readFileSync(`public/locales/${l}/translation.json`, 'utf8'))
+      expect(String(d.seller?.nav?.plusFriendGuide ?? '').length).toBeGreaterThan(0)
+    }
+  })
+})

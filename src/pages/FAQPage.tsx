@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
+import { CONCEPT_FAQ } from '@/shared/seo/concept-content'
 
 interface FAQ {
   id: number
@@ -20,20 +21,18 @@ export default function FAQPage() {
   const [selectedCategory, setSelectedCategory] = useState(t('faq.catAll', { defaultValue: '전체' }))
   const [expandedId, setExpandedId] = useState<number | null>(null)
 
-  const faqs: FAQ[] = [
-    { id: 1, category: t('faq.catOrder', { defaultValue: '주문/결제' }), question: t('faq.q1', { defaultValue: '주문을 취소하고 싶어요' }), answer: t('faq.a1', { defaultValue: '배송 전이라면 마이페이지 > 주문내역에서 직접 취소하실 수 있습니다. 배송이 시작된 경우 매장과 협의가 필요합니다.' }) },
-    { id: 2, category: t('faq.catOrder', { defaultValue: '주문/결제' }), question: t('faq.q2', { defaultValue: '결제가 완료되지 않았어요' }), answer: t('faq.a2', { defaultValue: '결제 오류 시 카드사 또는 결제사로 문의해주세요. 토스페이먼츠 고객센터: 1544-7772' }) },
-    { id: 3, category: t('faq.catShipping', { defaultValue: '배송' }), question: t('faq.q3', { defaultValue: '배송 기간은 얼마나 걸리나요?' }), answer: t('faq.a3', { defaultValue: '일반적으로 결제 완료 후 2-3일 이내 배송됩니다. 매장별로 차이가 있을 수 있으며, 상품 페이지에서 확인 가능합니다.' }) },
-    { id: 4, category: t('faq.catShipping', { defaultValue: '배송' }), question: t('faq.q4', { defaultValue: '배송 조회는 어떻게 하나요?' }), answer: t('faq.a4', { defaultValue: '마이페이지 > 주문내역에서 송장번호를 확인하시고 "배송 조회" 버튼을 클릭하시면 택배사 사이트로 이동합니다.' }) },
-    { id: 5, category: t('faq.catExchange', { defaultValue: '교환/환불' }), question: t('faq.q5', { defaultValue: '교환/반품은 어떻게 하나요?' }), answer: t('faq.a5', { defaultValue: '상품 수령 후 7일 이내 마이페이지 > 주문내역에서 신청하실 수 있습니다. 단순 변심의 경우 왕복 배송비가 발생합니다.' }) },
-    { id: 6, category: t('faq.catExchange', { defaultValue: '교환/환불' }), question: t('faq.q6', { defaultValue: '환불은 언제 되나요?' }), answer: t('faq.a6', { defaultValue: '상품 회수 확인 후 3-7 영업일 이내 결제 수단으로 환불됩니다. 신용카드는 카드사 정산일에 따라 다를 수 있습니다.' }) },
-    { id: 7, category: t('faq.catMember', { defaultValue: '회원' }), question: t('faq.q7', { defaultValue: '회원가입은 어떻게 하나요?' }), answer: t('faq.a7', { defaultValue: '카카오 로그인으로 간편하게 가입하실 수 있습니다. 별도의 회원가입 절차 없이 카카오 계정으로 이용 가능합니다.' }) },
-    { id: 8, category: t('faq.catMember', { defaultValue: '회원' }), question: t('faq.q8', { defaultValue: '개인정보를 수정하고 싶어요' }), answer: t('faq.a8', { defaultValue: '마이페이지에서 배송지, 연락처 등을 수정하실 수 있습니다. 카카오 계정 정보는 카카오에서 직접 수정해주세요.' }) },
-    // 🧠 2026-07-27 GEO (대표 — "구글 AI 개요에 우리 서비스가"): 영구중단된 라이브 FAQ 2건 → 서비스
-    //   정의 Q&A 로 교체. "유어딜 = 무엇" 을 사이트가 스스로 답해야 검색 AI 가 엔티티로 인용 가능.
-    { id: 9, category: t('faq.catService', { defaultValue: '서비스' }), question: t('faq.q9', { defaultValue: '유어딜은 어떤 서비스인가요?' }), answer: t('faq.a9', { defaultValue: '유어딜(urdeal.kr)은 우리 동네 매장 이용권을 할인가로 구매해 매장에서 QR로 바로 사용하는 로컬 커머스 플랫폼입니다. 식사·뷰티·숙소 이용권과 기프티콘 교환권, 내 주변 동네딜 지도, 나만의 유어샵을 제공합니다.' }) },
-    { id: 10, category: t('faq.catService', { defaultValue: '서비스' }), question: t('faq.q10', { defaultValue: '이용권은 어떻게 사용하나요?' }), answer: t('faq.a10', { defaultValue: '구매한 이용권은 마이페이지 > 내 이용권에서 확인할 수 있고, 매장에서 QR 또는 PIN을 제시하면 바로 사용됩니다. 교환권(기프티콘)은 결제 즉시 발급됩니다.' }) },
-  ]
+  /**
+   * 🧭 2026-10-12: 문구를 `shared/seo/concept-content.ts` 로 옮겼다 — **워커가 같은 배열로
+   * 서버 `FAQPage` JSON-LD 와 크롤러 본문을 만든다.** 종전엔 이 화면에만 있어서 JS 를 돌리지
+   * 않는 크롤러는 `/faq` 에서 **33자**(제목뿐)를 받았고 `FAQPage` 구조화 데이터는 0건이었다.
+   * `t(key, { defaultValue })` 는 그대로다 — 언어별 번역이 있으면 그쪽이 이긴다(한국어 기본값만 SSOT).
+   */
+  const faqs: FAQ[] = CONCEPT_FAQ.map((f, i) => ({
+    id: i + 1,
+    category: t(f.categoryKey, { defaultValue: f.category }),
+    question: t(f.key, { defaultValue: f.question }),
+    answer: t(f.key.replace(/\.q/, '.a'), { defaultValue: f.answer }),
+  }))
 
   // FAQPage 구조화 데이터 — 리스트 실데이터에서 생성(내용-스키마 불일치 구조적 0).
   const faqJsonLd = {

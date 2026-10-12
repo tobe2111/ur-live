@@ -225,9 +225,14 @@ describe('⑤ 배선 — 워커가 실제로 이걸 쓰고, 교환권과 가른�
 
   it('🔴 `#root` DETAIL 분기가 존재하고 catch-all 로더 **앞**에 있다', () => {
     const mine = worker.indexOf('buildDetailFirstScreen(ssrPayload')
-    const fallback = worker.indexOf('el.setInnerContent(urdealLoaderHtml, { html: true })')
+    // 🧭 2026-10-12 재조준: catch-all 이 `setInnerContent(staticNs + urdealLoaderHtml)` 가 됐다
+    //   (`/faq`·`/about`·`/region/*` 의 크롤러 `<noscript>` 요약이 **덧붙은** 것 — 로더는 그대로다).
+    //   지키려던 불변식(**DETAIL 분기가 catch-all 앞에 있다**)은 그대로이므로 앵커만 넓힌다.
+    //   ⚠️ 느슨해지지 않는다: `urdealLoaderHtml` 이 그 자리에 **반드시** 있어야 맞는다.
+    const m = /el\.setInnerContent\((?:[A-Za-z_$][\w$]*\s*\+\s*)?urdealLoaderHtml, \{ html: true \}\)/.exec(worker)
     expect(mine).toBeGreaterThan(0)
-    expect(fallback).toBeGreaterThan(mine)
+    expect(m, 'catch-all 로더 주입이 사라졌다').not.toBeNull()
+    expect(m!.index).toBeGreaterThan(mine)
   })
 
   it('🔴 `/vouchers/:id`(교환권)에는 안 그린다 — 같은 슬롯이지만 다른 페이지다', () => {

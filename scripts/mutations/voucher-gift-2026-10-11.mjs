@@ -31,8 +31,8 @@ export default [
   {
     name: '선물 — 셀프 취소 CAS 에서 선물 조건을 뺀다',
     file: 'src/features/group-buy/api/group-buy-voucher.routes.ts',
-    find: "AND created_at > datetime('now', '-7 days') AND gift_from_user_id IS NULL\"",
-    replace: "AND created_at > datetime('now', '-7 days')\"",
+    find: "AND created_at > datetime('now', '-7 days') AND gift_from_user_id IS NULL AND ${noPendingGiftSql('vouchers.id')}`",
+    replace: "AND created_at > datetime('now', '-7 days') AND ${noPendingGiftSql('vouchers.id')}`",
     test: T,
     why: '조회와 CAS 사이에 선물이 받아지면 받은 이용권이 환불된다(돈은 보낸 사람·이용권은 친구).',
   },
@@ -55,8 +55,8 @@ export default [
   {
     name: '선물 — 판정 조회 실패를 "없음" 으로',
     file: 'src/worker/utils/voucher-gift.ts',
-    find: '  } catch {\n    return true\n  }',
-    replace: '  } catch {\n    return false\n  }',
+    find: "gift_from_user_id IS NOT NULL LIMIT 1',\n    ).bind(orderId).first<{ x: number }>()\n    return !!row\n  } catch {\n    return true\n  }",
+    replace: "gift_from_user_id IS NOT NULL LIMIT 1',\n    ).bind(orderId).first<{ x: number }>()\n    return !!row\n  } catch {\n    return false\n  }",
     test: T,
     why: '조회가 깨진 날 받은 이용권의 주문이 셀프로 환불된다.',
   },
