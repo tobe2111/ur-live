@@ -113,6 +113,14 @@ figma.com 다운로드가 막혀 원본을 못 넣는다. **원본 URL 은 2026-
 - **부산 레퍼런스**: 분홍 노을 바다. **광안대교** — 주탑 두 개(문 모양 사각 아치)·**복층 트러스 상판**·현수 케이블,
   오른쪽에 **마린시티/해운대 초고층 타워들**, 바다 위 작은 유람선.
 
+- **대구 레퍼런스**: 이월드 **83타워**(가는 기둥 위 원형 전망대, 꼭대기 안테나)가 초록 언덕(두류공원) 위에, 아래 놀이공원 롤러코스터,
+  뒤로 빽빽한 아파트 숲과 산 능선, 흰 구름 낀 낮 하늘.
+- **광주 레퍼런스**: 두 갈래로 갈라진 높은 석조 기념탑 + 앞의 청록 청동 군상(총을 든 인물들). ⚠️ 추모·항쟁 기념물 — 할인 광고에 쓰기 전 대표 확인 필요.
+- **제주 레퍼런스**: 현무암 **돌하르방**, 에메랄드빛 얕은 바다, 검은 현무암 갯바위와 흰 모래, 수평선의 **비양도**(협재 해변 구도), 맑은 파란 하늘.
+- **대전 레퍼런스**: 엑스포과학공원 밤 — 거대한 노란 **꿈돌이** 풍선, 조명 켠 초고층 타워, 아치형 엑스포다리, 잔디밭 사람들.
+  ⚠️ 꿈돌이는 대전시 캐릭터(저작권) — 상업 배너에 쓰려면 사용 허락 필요. 허락 전엔 꿈돌이 없이 다리·타워만.
+- 레퍼런스 사진은 **레포에 넣지 않는다**(공개 레포 · 출처 사진의 재배포가 된다). 설명으로만 기록.
+
 ⇒ 규칙: **실제 랜드마크의 실제 모양·실제 배치**를 그린다. 떠 있는 섬·한옥+타워 조합 같은 **상징 짜깁기 금지.**
 3D 질감(클레이/미니어처)은 유지하되 *모양과 위치 관계*는 사진처럼. 도시마다 사진을 받아 그 구도를 따른다.
 ❌ 1차 서울 그림(`home-banner-region-seoul-thumb.jpg` — 떠 있는 섬에 타워·한옥·벚꽃)은 **폐기** — 지어낸 장면이다.
@@ -124,7 +132,7 @@ figma.com 다운로드가 막혀 원본을 못 넣는다. **원본 URL 은 2026-
 - 부산: *3D clay-render miniature of the real Gwangan Bridge, Busan, faithful to reality: two rectangular arch-shaped main towers,
   double-deck steel truss roadway, suspension cables, Marine City supertall towers on the right shore, calm sea with a small tour
   boat; pink sunset sky; bridge spans the right half, left half calm sky and sea.*
-- 강원·제주·경주: 대표에게 레퍼런스 사진을 받아 같은 방식으로.
+- 대구·제주·대전·광주: 위 레퍼런스대로(광주·대전은 ⚠️ 확인 후). 강원·경주는 사진을 받으면 같은 방식으로.
 
 프롬프트 골격(1차 — 폐기, 기록용)(같은 세계관 유지 — 다섯 다 이 틀): *Wide 2:1 premium 3D render … Soft glossy clay-plastic miniature diorama …
 a cute miniature <지역> diorama on a small round floating island: <랜드마크들> … and a tiny 3D coupon ticket floating with a sparkle.
