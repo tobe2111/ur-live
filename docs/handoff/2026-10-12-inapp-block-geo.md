@@ -115,7 +115,7 @@ PerplexityBot     API=403 HTML=200     Googlebot          API=200 HTML=200
 |---|---|---|
 | 결함 | 같은 `products.id` 가 `/pass/2887`·`/stays/2887` **둘 다 200·canonical 자기자신·index,follow** | `/region/인천`·`세종`·`울산`·`서울/없는구` 가 **200 + index,follow + 본문 26자** |
 | 수정 | `/stays/:id` 에 `Product`+`AggregateOffer`+크롤러 본문 → **그 다음에** canonical 을 거기로 + sitemap 도 같은 SSOT | 요약(`ssr:region-digest`)으로 그 지역 항목을 세어 임계값 미만이면 noindex (**DB 조회 0**) |
-| 실측(전→후) | noscript **6 → 146자** · Offer **0 → AggregateOffer(149,000~209,000 · 2건)** | 서울/종로구 false · 경기/파주시 true · 인천 true · 요약 없음 false |
+| 실측(전→후) | 로컬 시드 렌더: noscript **6 → 146자** · Offer **0 → AggregateOffer(149,000~209,000 · 2건)** | 서울/종로구 false · 경기/파주시 true · 인천 true · 요약 없음 false |
 
 **🔴 다음 세션이 절대 뒤집지 말아야 하는 방향 둘** (주입이 각각 잠그고 있다):
 1. **요약이 없으면 noindex 하지 않는다**(`!digestJson` · `!rows.length` 두 문 모두). 부재 ≠ thin —
@@ -128,9 +128,32 @@ PerplexityBot     API=403 HTML=200     Googlebot          API=200 HTML=200
 
 ### E4 (배포 후 — 이게 판정이다)
 
+**🔢 배포 전 라이브 기준값 (2026-10-12 직접 측정 — 전/후를 이것과 대조한다)**
+
+| | HTTP | canonical | noscript | AggregateOffer | Product |
+|---|---|---|---|---|---|
+| `/stays/2887` | 200 | **자기자신** | **0자** | 0 | **0** |
+| `/pass/2887` | 200 | **자기자신** | 130자 | 0 | 1 |
+
+sitemap: `<loc>` 453 · `/pass/` **359** · `/stays/` **0** (2,985줄 = 줄당 `<loc>` 1개라 `grep -c` 가 맞다 —
+**한 줄로 오면 1 이 나오므로** 포맷이 바뀌면 `grep -o '/stays/[0-9]*' | wc -l` 로 셀 것).
+
+`/region/*` (같은 UA):
+
+| 지역 | robots | noscript | ItemList | 배포+cron 뒤 기대 |
+|---|---|---|---|---|
+| 인천 · 세종 · 울산 | `index, follow` | **0자** | 0 | **`noindex`** |
+| 서울 · 경기 · 전남 | `index, follow` | 364~383자 | 1 | **`index, follow` 유지** |
+
+⇒ 판정은 **둘 다** 봐야 한다. thin 이 noindex 가 됐는지만 보고 멀쩡한 지역을 안 보면,
+요약이 안 올라간 상태(전부 index)와 **잘못 전부 noindex** 된 상태를 구분할 수 없다.
+
+⚠️ 위 표의 *"noscript 6 → 146자"* 는 **로컬 시드 렌더**값이다 — 라이브 `/stays/:id` 엔 `<noscript>` 가
+**아예 없어서 0자**다. 두 숫자는 서로 다른 것을 재므로 E4 는 **라이브 0자**와 대조한다.
+
 ```bash
 UA='Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
-# ① 정본이 채워졌는지 (종전 본문 6자 · Offer 0)
+# ① 정본이 채워졌는지 (배포 전 라이브: noscript 0자 · AggregateOffer 0 · Product 0)
 curl -sS -A "$UA" https://urdeal.kr/stays/2887 | grep -o 'AggregateOffer\|"@type":"Product"' | sort | uniq -c
 # ② /pass(숙소) 가 /stays 를 정본으로 지목하는지
 curl -sS -A "$UA" https://urdeal.kr/pass/2887 | grep -o 'rel="canonical" href="[^"]*"'
