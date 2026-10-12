@@ -191,6 +191,10 @@ export default defineConfig({
           if (id.includes('react-helmet-async')) return 'helmet'
           // Capacitor (native SDK — 웹에선 no-op이지만 main chunk에서 분리해 캐싱 개선)
           if (id.includes('@capacitor/')) return 'capacitor'
+          // 📱 2026-10-12 `lib/native.ts`(Capacitor 래퍼)는 Capacitor 와 **같은 봉투**로 — `/src/lib/` catch-all 로
+          //   app-utils 에 들어가면 app-utils 가 capacitor 청크를 정적으로 끌어와 **모든 첫 방문**이 받는다
+          //   (판정만 필요한 자리는 `lib/native-platform.ts`, 실제 기능은 앱 안에서만 동적으로).
+          if (id.includes('/src/lib/native.ts')) return 'capacitor'
           // Image compression (seller upload pages만 사용 — 지연 캐싱)
           if (id.includes('browser-image-compression')) return 'img-utils'
           // 🛡️ 2026-05-06: 소스 코드 분할 — index entry 추가 분리.

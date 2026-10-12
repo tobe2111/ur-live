@@ -9,7 +9,7 @@
  *    단, MIME/text-html 깨짐(고착 번들)은 복구 위해 즉시 리로드 유지.
  */
 
-import { Capacitor } from '@capacitor/core'
+import { isNativeShell } from '@/lib/native-platform'
 import { reloadWithCacheBust } from '@/utils/chunk-error'
 
 const CHECK_INTERVAL_MS = 5 * 60 * 1000 // 5분
@@ -95,7 +95,7 @@ export function startVersionCheck() {
   //   번들 앱은 웹 새로고침으로 갱신 불가(스토어 업데이트로만) → 서버버전≠번들버전이면
   //   "새로고침" 배너가 반복 노출 + 눌러도 같은 번들 리로드(무의미). 네이티브는 스토어 업데이트.
   //   ⚠️ 향후 server.url 을 라이브로 전환(앱이 라이브 웹 로드)하면 이 가드 제거 검토.
-  try { if (Capacitor.isNativePlatform()) return } catch { /* 웹 — 계속 */ }
+  if (isNativeShell()) return
 
   // MIME 에러 감지: 스크립트가 text/html로 로드됐으면 즉시 캐시 클리어
   // sw.js MIME 에러는 무시 (배포 시 일시적으로 발생 가능)

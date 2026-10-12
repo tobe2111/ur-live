@@ -77,7 +77,7 @@ import { logRegionInfo, isKorea } from '@/shared/config/region'
 // 🛡️ 2026-05-27 (loading P1): env-validator (zod ~52KB) dynamic import — critical path 제거.
 //   이전: eager import → validation chunk preload (52KB).
 //   변경: idle 시점 비동기 검증. production 에서 env 정상이면 사용자 영향 0.
-import { initNativeFeatures, isNative } from '@/lib/native'
+import { isNativeShell } from '@/lib/native-platform' // 📱 2026-10-12 Capacitor 는 앱 안에서만 받는다
 import { isKeyboardOpen, isEditableElementFocused } from '@/lib/keyboard-viewport'
 import { swallow } from '@/shared/utils/swallow'
 import { installImageProtection } from '@/lib/image-protect'
@@ -423,11 +423,11 @@ async function bootApp() {
   } else {
     try {
       // ✅ Capacitor 네이티브 앱 감지 → html class 추가
-      if (isNative()) {
+      if (isNativeShell()) {
         document.documentElement.classList.add('native-app')
       }
       // ✅ 네이티브 기능 초기화 (스플래시, 상태바, 푸시, 딥링크)
-      try { initNativeFeatures() } catch (e) { console.error('[main] native init failed:', e) }
+      if (isNativeShell()) import('@/lib/native').then((m) => m.initNativeFeatures()).catch((e) => console.error('[main] native init failed:', e))
 
       // 🖼️ 2026-09-16: 서버가 그린 첫 화면(`#ur-first-screen`) 노드를 **createRoot 전에** 참조로 잡는다.
       //   React 가 컨테이너를 비워도 노드는 살아 있고, Suspense 폴백이 같은 노드를 도로 붙인다
