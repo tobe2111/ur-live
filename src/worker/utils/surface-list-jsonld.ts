@@ -130,6 +130,9 @@ function listItem(p: SeedItem, position: number, origin: string): Record<string,
   return { '@type': 'ListItem', position, url, item }
 }
 
+/** 지역 허브(`/region`)의 빵부스러기 라벨 — 표의 다른 `crumb` 과 같은 길이 감각(짧게). */
+const REGION_HUB_CRUMB = '지역'
+
 /**
  * 빵부스러기 체인. 경로 조각을 접두부터 되짚어 표에 있는 것만 단계로 쌓는다
  * (`/terms/seller` → 유어딜 › 이용약관 › 판매자 약관). 손으로 체인을 적어 두면 표가 자라며 갈린다.
@@ -137,7 +140,12 @@ function listItem(p: SeedItem, position: number, origin: string): Record<string,
  * 필터(`?category=`·`?brand=`)가 붙으면 마지막 단계를 하나 더 — sitemap 이 그 URL 들을 실제로
  * 제출하므로 목록 본체와 같은 빵부스러기를 내면 그 자체가 중복 신호가 된다.
  */
-function crumbTrail(pathname: string, search: string, origin: string): Array<{ name: string; url: string }> {
+function crumbTrail(
+  pathname: string,
+  search: string,
+  origin: string,
+  regionRef?: RegionRef | null,
+): Array<{ name: string; url: string }> {
   const trail: Array<{ name: string; url: string }> = [{ name: CONSUMER_SITE_NAME, url: `${origin}/` }]
   const segs = pathname.split('/').filter(Boolean)
   let acc = ''
@@ -145,6 +153,24 @@ function crumbTrail(pathname: string, search: string, origin: string): Array<{ n
     acc += `/${s}`
     const crumb = CONSUMER_SURFACE_SEO[acc]?.crumb
     if (crumb) trail.push({ name: crumb, url: `${origin}${acc}` })
+  }
+  // 🗺️ 2026-10-12 — 지역 착지 페이지는 경로가 **동적**(`/region/서울/중구`)이라 위 표 조회가
+  //   한 단계도 못 쌓고, 라이브에서 색인 대상 44개 전부가 `BreadcrumbList` **0건**이었다
+  //   (`ItemList` 는 나오는데 빵부스러기만 없어서, 검색결과에 빵부스러기 대신 생 URL 이 뜬다).
+  //   ⚠️ 표에 44행을 넣지 않는다 — 이미 해석해 둔 `regionRef` 에서 쌓는다(두 벌이면 갈린다).
+  //   ⚠️ `/region` 은 **실재하는 허브 페이지**다(`resolveRegionSeo` 가 제 title·canonical 을 준다)
+  //      → 중간 단계로 넣어도 없는 URL 을 가리키지 않는다(유어샵의 `/u` 와 다른 점).
+  //   🔑 URL 은 `resolveRegionSeo` 의 canonical 과 **같은 조립**이어야 한다(정규화된 sido + 인코딩).
+  //      어긋나면 빵부스러기가 canonical 아닌 URL 을 가리켜 서로 다른 신호를 보낸다.
+  if (pathname === '/region' || regionRef) {
+    trail.push({ name: REGION_HUB_CRUMB, url: `${origin}/region` })
+  }
+  if (regionRef) {
+    const sidoUrl = `${origin}/region/${encodeURIComponent(regionRef.sido)}`
+    trail.push({ name: regionRef.sido, url: sidoUrl })
+    if (regionRef.sigungu) {
+      trail.push({ name: regionRef.sigungu, url: `${sidoUrl}/${encodeURIComponent(regionRef.sigungu)}` })
+    }
   }
   const entry = CONSUMER_SURFACE_SEO[pathname]
   if (entry?.canonicalParams?.length && trail.length > 1) {
@@ -159,13 +185,25 @@ function crumbTrail(pathname: string, search: string, origin: string): Array<{ n
   return trail
 }
 
-function breadcrumbNode(trail: Array<{ name: string; url: string }>): Record<string, unknown> {
+/**
+ * 🔗 `@id` 를 줘서 본문 노드(`CollectionPage`·`ProfilePage`)가 **참조**로 가리킨다.
+ *   종전엔 같은 체인을 `@graph` 와 `breadcrumb` 양쪽에 **두 벌** 실었다(실측: 전 목록 표면).
+ *   이 JSON 은 사람이 받는 응답에도 그대로 실리므로 두 벌은 바이트도 두 배다.
+ *   참조 대상은 같은 `@graph` 안에 있어 **매달린 `@id` 가 생기지 않는다**(2026-10-11 E4 기준).
+ */
+function breadcrumbNode(trail: Array<{ name: string; url: string }>, canonical: string): Record<string, unknown> {
   return {
     '@type': 'BreadcrumbList',
+    '@id': `${canonical}#breadcrumb`,
     itemListElement: trail.map((t, i) => ({
       '@type': 'ListItem', position: i + 1, name: t.name, item: t.url,
     })),
   }
+}
+
+/** 본문 노드가 쓸 참조. 체인과 **같은 `@id`** 를 가리켜야 한다(손으로 적으면 갈린다). */
+function breadcrumbRef(canonical: string): Record<string, unknown> {
+  return { '@id': `${canonical}#breadcrumb` }
 }
 
 /**
@@ -205,9 +243,11 @@ export function buildSurfaceListJsonLd(
   // 끝 슬래시를 떼어 `resolveConsumerSurfaceSeo` 와 **같은 키**로 본다 — 안 떼면 `/browse/` 가
   // 빵부스러기도 항목도 못 받는다(그 리졸버는 이미 떼고 찾는다).
   const path = pathname !== '/' && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname
-  const trail = crumbTrail(path, search, origin)
+  // 지역 해석을 **빵부스러기보다 먼저** — 체인에 지역 단계를 쌓는 데 쓴다(아래 항목 필터와 같은 값).
+  const regionRef = regionRefOf(path)
+  const trail = crumbTrail(path, search, origin, regionRef)
   // 홈은 체인이 자기 하나뿐이다 — 한 단계 빵부스러기는 정보가 0 이라 내지 않는다.
-  const nodes: Array<Record<string, unknown>> = trail.length > 1 ? [breadcrumbNode(trail)] : []
+  const nodes: Array<Record<string, unknown>> = trail.length > 1 ? [breadcrumbNode(trail, meta.canonical)] : []
 
   // 🎟️ 항목을 내는 표면은 **이 둘뿐**이다(허용목록). 나머지는 빵부스러기만 낸다.
   //   🩸 처음엔 "슬롯 허용목록 + `/vouchers` 경로 차단목록" **두 겹**으로 짰는데, 주입 러너가
@@ -220,7 +260,6 @@ export function buildSurfaceListJsonLd(
   //      "동네 맛집 할인권" 질의의 착지점인데 라이브에서 항목 **0건**이었다. 항목은 홈과 **같은
   //      시드**(MAIN — 같은 캐시 키라 추가 요청 0)에서 뽑고, 지역 필터는 화면과 **같은 SSOT**
   //      (`addressInRegion`)로 건다. 손으로 주소를 파싱하면 화면과 갈려 다른 가게가 섞인다.
-  const regionRef = regionRefOf(path)
   // 🏨 2026-10-12: `/stays` 추가 — 숙소 상세(`/stays/:id`)는 색인 대상이고(`canonicalDetailPath`)
   //   그 표면이 **항목 0건**이었다. 교환권 목록(`/vouchers`)은 여전히 **제외** — 그 상세가
   //   2026-07-07 결정으로 noindex 라, 색인하지 말라고 한 URL 을 "이 목록의 항목" 으로 제출하면
@@ -279,7 +318,7 @@ export function buildSurfaceListJsonLd(
     description: meta.description,
     inLanguage: 'ko',
     isPartOf: { '@id': `${origin}/#website` },
-    ...(trail.length > 1 ? { breadcrumb: breadcrumbNode(trail) } : {}),
+    ...(trail.length > 1 ? { breadcrumb: breadcrumbRef(meta.canonical) } : {}),
     ...(items.length
       ? { mainEntity: { '@type': 'ItemList', numberOfItems: items.length, itemListElement: items } }
       : {}),
@@ -338,7 +377,7 @@ export function buildCuratorJsonLd(
     if (curator?.handle) person.identifier = String(curator.handle)
     if (curator?.profile_image) person.image = String(curator.profile_image)
     const nodes: Array<Record<string, unknown>> = [
-      breadcrumbNode(trail),
+      breadcrumbNode(trail, meta.canonical),
       {
         '@type': 'ProfilePage',
         '@id': meta.canonical,
@@ -347,7 +386,7 @@ export function buildCuratorJsonLd(
         description: meta.description,
         inLanguage: 'ko',
         isPartOf: { '@id': `${origin}/#website` },
-        breadcrumb: breadcrumbNode(trail),
+        breadcrumb: breadcrumbRef(meta.canonical),
         mainEntity: person,
       },
     ]

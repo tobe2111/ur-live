@@ -124,9 +124,14 @@ describe('② 남긴 것이 함께 지워지지 않는다 (여기가 본문)', (
     expect(read('src/worker/index.ts')).toContain("app.route('/api/admin/wholesale-malls'")
   })
 
-  it('이름만 Supplier 인 유어딜 화면을 지우지 않았다', () => {
+  it('이름만 Supplier 인 유어딜 주소를 지우지 않았다', () => {
     // 🩸 2026-10-11 실제로 지웠다가 되살렸다: `/seller/register/supplier` 라는 **옛 라우트 이름** 때문에
-    //   도매로 분류했는데, 이 파일은 유어딜 **사업자 유저 전환**(가입) 화면이고 단위 시험들이 참조한다.
-    expect(existsSync('src/pages/SellerRegisterSupplierPage.tsx')).toBe(true)
+    //   도매로 분류했는데, 그건 유어딜 **사업자 유저 전환**(가입) 화면이었다.
+    // 🔀 2026-10-12 재조준: 그 화면 파일(`SellerRegisterSupplierPage`)은 이번엔 **이름이 아니라 쓰임으로**
+    //   지웠다 — 가입 문이 2026-10-10 부터 `/store/new` 하나라 import 하는 곳이 0 이었다.
+    //   교훈(이름으로 분류하지 말 것)이 지키려던 것은 **이미 공유된 옛 가입 링크가 살아 있는가**이고,
+    //   그건 라우트가 지킨다 — 도매 철거가 이 주소를 같이 쓸어 가면 옛 링크가 404 가 된다.
+    const routes = read('src/routes/seller.routes.tsx')
+    expect(routes).toContain('path="/seller/register/supplier" element={<LegacySellerRegisterRedirect />}')
   })
 })

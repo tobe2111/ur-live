@@ -56,4 +56,64 @@ export default [
     test: TEST,
     why: '다섯을 `*` 로 떨어뜨린 처방의 안전성이 전부 그 그룹의 Disallow 에 달려 있다.',
   },
+  // ── 🔀 2026-10-12: 형제 비대칭 셋 + 재조준한 '검색엔진 금지' 가드 ──
+  {
+    name: '🔀 MistralAI-User 가 수확 목록에서 빠진다 (형제는 403 인데 이것만 열린다)',
+    file: 'src/worker/middleware/bot-detection.ts',
+    find: '  /MistralAI-User/i,',
+    replace: '',
+    test: 'src/tests/unit/content-protection.test.ts',
+    why:
+      '라이브 실측에서 바로 이 상태였다 — `ChatGPT-User`·`Perplexity-User` 는 403 인데 ' +
+      '`MistralAI-User` 만 API 200. 같은 종류인데 목록에 없으면 가격표가 그쪽으로만 열린다.',
+  },
+  {
+    name: '🔀 YouBot 이 수확 목록에서 빠진다',
+    file: 'src/worker/middleware/bot-detection.ts',
+    find: '  /YouBot/i,',
+    replace: '',
+    test: 'src/tests/unit/content-protection.test.ts',
+    why: '`OAI-SearchBot` 과 같은 AI 답변용 색인인데 혼자 열려 있던 자리다.',
+  },
+  {
+    name: '🔀 수확 가드를 HTML 라우트에도 붙인다 (AI 검색봇이 페이지를 못 받는다)',
+    file: 'src/worker/index.ts',
+    find: "app.use('/api/sections', contentScrapeGuard);",
+    replace: "app.use('/api/sections', contentScrapeGuard);\napp.use('/pass/*', contentScrapeGuard);",
+    test: 'src/tests/unit/content-protection.test.ts',
+    why:
+      '비대칭의 전제는 "HTML 은 준다" 다. HTML 경로에 한 줄이라도 붙으면 ChatGPT·Perplexity 가 ' +
+      '페이지를 못 받아 **인용 유입이 통째로** 끊기는데, 사람 브라우저는 멀쩡해서 아무도 모른다.',
+  },
+  {
+    name: '🔀 Googlebot 을 수확 목록에 넣는다 (재조준한 가드가 여전히 잡는가)',
+    file: 'src/worker/middleware/bot-detection.ts',
+    find: '  /GPTBot/i,',
+    replace: '  /GPTBot/i,\n  /Googlebot/i,',
+    test: 'src/tests/unit/content-protection.test.ts',
+    why:
+      '그 가드를 원문 검사 → 주석 제거본으로 재조준했다(설명 주석이 거짓 빨간불을 냈다). ' +
+      '**느슨해진 게 아님**을 이 주입이 증명한다 — 실제로 넣으면 색인이 막히고 가드가 잡는다.',
+  },
+  {
+    name: '🔀 LEGIT 의 /Applebot/i 를 좁혀 Applebot-Extended 를 "살린다"',
+    file: 'src/worker/middleware/bot-detection.ts',
+    find: '  /Applebot/i,',
+    replace: '  /Applebot-Extended-only-never-matches/i,',
+    test: 'src/tests/unit/content-protection.test.ts',
+    why:
+      '수확 목록의 `Applebot-Extended` 가 도달하지 않는 것을 보고 "고치려는" 유혹. 애플은 그 토큰을 ' +
+      'robots 전용으로 쓰고 UA 는 늘 `Applebot` 이라 얻는 것은 0 이고, **애플 검색 색인(Siri·Spotlight)이 ' +
+      '통째로 막힌다.**',
+  },
+  {
+    name: '🔀 Google-Extended 가 robots 차단으로 되살아난다 (제미나이 인용이 끊긴다)',
+    file: 'public/robots.txt',
+    find: 'User-agent: Applebot-Extended',
+    replace: 'User-agent: Google-Extended\nDisallow: /\n\nUser-agent: Applebot-Extended',
+    test: 'src/tests/unit/content-protection.test.ts',
+    why:
+      '2026-10-12 대표 승인으로 **일부러 뺀** 줄이다. 구글은 그 토큰이 학습과 그라운딩을 한 덩어리로 ' +
+      '묶어서, 막는 동안 제미나이가 우리를 근거로 쓸 수 없었다. "AI 학습은 다 막자" 며 되돌리기 쉽다.',
+  },
 ]

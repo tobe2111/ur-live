@@ -56,8 +56,10 @@ export default [
   {
     name: 'sitemap 이 옛 주소를 제출한다(색인 신호가 301 한 홉에 낭비된다)',
     file: 'src/worker/routes/sitemap.routes.ts',
-    find: 'loc: `/pass/${g.id}`,',
-    replace: 'loc: `/group-buy/${g.id}`,',
+    // 🔀 2026-10-12 재조준: `loc` 이 `canonicalDetailPath` SSOT 를 지나게 바뀌었다(#18 숙소 정본
+    //   단일화). 지키는 불변식은 그대로 — **301 되는 옛 주소를 제출하지 않는다**. 앵커만 옮겼다.
+    find: 'const loc = canonicalDetailPath({ id: g.id, deal_only: g.deal_only, category: g.category });',
+    replace: 'const loc = `/group-buy/${g.id}`;',
     test: 'src/tests/unit/pass-route-migration.test.ts',
     why:
       'sitemap 은 "이 URL 을 색인해 달라" 는 선언이다. 301 되는 주소를 제출하면 크롤 예산이 한 홉씩 ' +

@@ -20,6 +20,10 @@ import { REGION_PAGES_ENABLED } from '../../shared/feature-flags';
 // 🔒 2026-10-11 실측: sitemap 이 **사업자등록증 PNG** 를 구글 이미지에 색인 요청하고 있었다(/pass/2916).
 //   `products.image_url` 을 그대로 실어 보낸 탓. 서류 업로드는 어느 것도 검색엔진에 넘기지 않는다.
 import { isIndexableImageUrl } from '../../shared/seo/indexable-image';
+// 🏨 정본 상세 주소 SSOT — 숙소 이용권은 `/stays/:id`(상세 canonical 과 같은 함수).
+import { canonicalDetailPath } from '../../shared/product-flow';
+
+interface GroupBuyRow { id: number; category: string | null; deal_only: number | null; image_url: string | null; updated_at: string }
 
 const sitemapRoutes = new Hono<{ Bindings: Env }>();
 
@@ -101,17 +105,24 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
       const sellerScope = await mainScopeFor(DB, 'sellers', 's');
 
       // 🛡️ 2026-05-15: 진행 중 공동구매 — 가장 높은 우선순위 (시간 민감)
+      // 🏨 `category`·`deal_only` 는 `canonicalDetailPath` 가 정본 주소를 정하는 데 쓴다(아래).
       const groupBuys = await DB.prepare(
-        `SELECT id, image_url, updated_at FROM products
+        `SELECT id, category, deal_only, image_url, updated_at FROM products
          WHERE category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
            AND is_active = 1
            AND group_buy_status IN ('active','achieved')
            AND NOT (COALESCE(is_supply_product,0) = 1 AND COALESCE(supply_source_id,0) = 0)${productScope}
          ORDER BY updated_at DESC LIMIT 500`
-      ).all<{ id: number; image_url: string | null; updated_at: string }>().catch(() => ({ results: [] as Array<{ id: number; image_url: string | null; updated_at: string }> }));
+      ).all<GroupBuyRow>().catch(() => ({ results: [] as GroupBuyRow[] }));
       for (const g of groupBuys.results || []) {
+        // 🏨 2026-10-12 (대표 "둘 다 잠금 해제하고 가장 이상적으로"): `loc` 을 **정본 주소 SSOT** 로.
+        //   종전엔 전 카테고리를 `/pass/${id}` 로 하드코딩해서, 숙소 이용권 49건이 sitemap 은 `/pass/`
+        //   를 제출하는데 `/stays` ItemList·`/region` 항목은 `canonicalDetailPath` 대로 `/stays/` 를
+        //   가리켰다 — **같은 상품을 두 URL 로 말하는 모순 신호**다. 둘을 같은 함수로 모은다.
+        const loc = canonicalDetailPath({ id: g.id, deal_only: g.deal_only, category: g.category });
+        if (!loc) continue; // 판정 불가(이 쿼리 범위 밖) — 지어낸 주소를 제출하지 않는다
         urls.push({
-          loc: `/pass/${g.id}`,
+          loc,
           priority: 0.9,
           changefreq: 'hourly',
           // 🔒 비공개 서류(사업자등록증 등)가 커버로 들어온 상품은 OG 카드로 대체 — 색인은 못 되돌린다.

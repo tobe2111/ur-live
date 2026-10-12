@@ -161,8 +161,22 @@ const SCRAPER_UA_PATTERNS = [
   /Google-Extended/i,
   /PerplexityBot/i,
   /Perplexity-User/i,
+  // 🔀 2026-10-12 추가 — 라이브 실측에서 **형제는 403 인데 이 셋만 API 200** 이었다.
+  //   `MistralAI-User` 는 `ChatGPT-User`·`Perplexity-User` 와 같은 사용자-트리거 수집,
+  //   `MistralAI-Index`·`YouBot` 은 `OAI-SearchBot` 과 같은 AI 답변용 색인이다.
+  //   위 비대칭 원칙 그대로: **HTML 은 그대로 200**(이 미들웨어는 `/api/*` 만 가린다) ·
+  //   JSON 벌크 수확만 403 ⇒ GEO 손실 0.
+  /MistralAI-User/i,
+  /MistralAI-Index/i,
+  /YouBot/i,
   /Bytespider/i,
   /Amazonbot/i,
+  // 🚧 2026-10-12 — 아래 두 줄은 **도달하지 않는다**(라이브 실측: `Applebot-Extended` → API 200).
+  //   `LEGIT_BOT_PATTERNS` 의 `/Applebot/i` 가 먼저 통과시키고, 애초에 애플·구글은 이 둘을
+  //   **robots.txt 토큰으로만** 쓴다 — 크롤러가 보내는 UA 는 늘 `Applebot`·`Googlebot` 이라
+  //   UA 차단은 원리상 불가능하다. 실제 학습 거부는 `public/robots.txt` 가 한다(거기 둘 다 있다).
+  //   🔴 **LEGIT 의 `/Applebot/i` 를 좁혀 이걸 '살리지' 말 것** — 애플 검색 색인(Siri·Spotlight)이
+  //      통째로 막힌다. 의도를 적어 두는 자리로만 남긴다.
   /Applebot-Extended/i,
   /cohere-ai/i,
   /Diffbot/i,
