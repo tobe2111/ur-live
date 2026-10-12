@@ -232,11 +232,11 @@ describe('④ 승인 전엔 파트너 찾기 메뉴를 감춘다', () => {
   it('상태를 쓰는 곳은 마이 판매 구역 하나뿐이다 (여러 곳에서 쓰면 반드시 한 곳이 낡는다)', () => {
     // 🧭 2026-10-12 — 대시보드 틀의 승인 배너가 쓰던 자리를 마이가 넘겨받았다. 값은 서버 요약(`/my-stores/summary`)의
     //   매장 행 status 라 토큰의 7일 스냅샷 문제가 없다.
-    const my = src('src/pages/user-profile/SellerSection.tsx')
-    expect(my).toMatch(/localStorage\.setItem\(SELLER_STATUS_KEY, store\.status\)/)
+    expect(src('src/pages/user-profile/SellerSection.tsx')).toContain('useRecordSellerStatus(store?.status)')
+    expect(src('src/pages/user-profile/seller-section/store-status-note.ts')).toMatch(/localStorage\.setItem\(SELLER_STATUS_KEY, status\)/)
     const writers = execSync("grep -rln 'localStorage.setItem(SELLER_STATUS_KEY' src --include=*.ts --include=*.tsx || true", { encoding: 'utf-8' })
       .split('\n').filter((l) => l && !l.includes('src/tests/'))
-    expect(writers).toEqual(['src/pages/user-profile/SellerSection.tsx'])
+    expect(writers).toEqual(['src/pages/user-profile/seller-section/store-status-note.ts'])
   })
 
   it('surface 응답이 배너가 쓸 셋을 내려준다 — 등록증 URL 은 빼고', () => {

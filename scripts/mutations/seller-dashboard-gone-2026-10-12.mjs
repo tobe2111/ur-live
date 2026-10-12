@@ -110,15 +110,15 @@ export default [
   },
   {
     name: '[대시보드삭제] 심사 상태를 아무도 안 적는다 (승인 전 매장에 유어애즈 문이 열려 보인다)',
-    file: 'src/pages/user-profile/SellerSection.tsx',
-    find: '    try { localStorage.setItem(SELLER_STATUS_KEY, store.status) } catch { /* quota */ }',
+    file: 'src/pages/user-profile/seller-section/store-status-note.ts',
+    find: '    try { localStorage.setItem(SELLER_STATUS_KEY, status) } catch { /* quota */ }',
     replace: '    try { /* 쓰지 않는다 */ } catch { /* quota */ }',
     test: 'src/tests/unit/danggeun-approval-gates-2026-09-16.test.ts',
     why: '대시보드 승인 배너가 하던 일을 마이가 넘겨받았다 — 빠지면 그 메뉴 게이트가 영원히 fail-open 이다.',
   },
   {
     name: '[대시보드삭제] 등록증만 반려된 매장을 "승인 대기" 라고 말한다',
-    file: 'src/pages/user-profile/SellerSection.tsx',
+    file: 'src/pages/user-profile/seller-section/store-status-note.ts',
     find: "  if (status === 'pending' && certStatus === 'rejected') return CERT_REJECTED_NOTE",
     replace: '',
     test: 'src/tests/unit/biz-reg-resubmit-2026-10-10.test.ts',
