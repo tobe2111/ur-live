@@ -81,4 +81,12 @@ export default [
     test: T,
     why: '알림톡을 누른 사장님이 매장 계산대 대신 대시보드 스캔 화면으로 간다.',
   },
+  {
+    name: '[전용길] 시트 안 사용처리 탭이 카메라를 시트에 띄운다',
+    file: 'src/pages/user-profile/seller-section/ToolPageSheet.tsx',
+    find: '                  <Route path="/seller/scan" element={<Escape onLeave={onLeave} to={STORE_SCAN_PATH} />} />\n',
+    replace: '',
+    test: 'src/tests/unit/tool-page-sheet-renders-2026-09-28.test.tsx',
+    why: '이용권 화면의 사용처리 탭을 누르면 계산대 대신 시트 안 대시보드 스캔 화면이 뜬다 — 같은 일에 화면이 둘이 된다.',
+  },
 ]

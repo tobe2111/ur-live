@@ -98,3 +98,28 @@ describe('ToolPageSheet — 터지지 않는가', () => {
     expect(src).toContain('<RouterReset>')
   })
 })
+
+// 🧾 2026-10-12 — 이용권 화면의 '사용처리' 탭(`/seller/scan`)이 시트 안에 카메라를 띄우지 않고
+//   마이·콘솔과 같은 계산대(`/store/scan`)로 나간다. **실제로 렌더해** onLeave 가 그 주소로 불리는지 본다.
+describe('ToolPageSheet — 사용처리 탭은 계산대로 나간다', () => {
+  it('/seller/scan 을 열면 onLeave("/store/scan")', async () => {
+    const onLeave = vi.fn()
+    render(
+      <MemoryRouter>
+        <ToolPageSheet path="/seller/scan" title="사용처리" onClose={() => {}} onLeave={onLeave} />
+      </MemoryRouter>,
+    )
+    await vi.waitFor(() => expect(onLeave).toHaveBeenCalled())
+    expect(onLeave).toHaveBeenCalledWith('/store/scan')
+  })
+  it('다른 화면은 나가지 않는다 (주문)', async () => {
+    const onLeave = vi.fn()
+    render(
+      <MemoryRouter>
+        <ToolPageSheet path="/seller/orders" title="주문" onClose={() => {}} onLeave={onLeave} />
+      </MemoryRouter>,
+    )
+    await new Promise((r) => setTimeout(r, 50))
+    expect(onLeave).not.toHaveBeenCalled()
+  })
+})
