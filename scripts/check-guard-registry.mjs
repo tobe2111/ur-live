@@ -23,6 +23,11 @@
  *       (audit-gate.sh / .github/workflows/*.yml / git hook / package.json).
  *       → ②처럼 "만들어만 두고 안 켠" 가드를 잡는다.
  *   R2. 가드가 **코드에서 지목한 고정 파일 경로**는 존재해야 한다(주석 안의 경로는 제외).
+ *   R3. **러너가 부르는 가드 파일은 존재해야 한다** — R1 의 반대 방향.
+ *       (2026-10-12 실측: `install-git-hooks.sh` 가 `check-wholesale-autologin-guarded.mjs`·
+ *        `check-wholesale-login-spa-navigate.mjs`·`check-login-gate-by-price.mjs` 를 부르는데
+ *        세 파일 다 2026-10-11 도매 철거로 사라졌다. `|| true` 로 감싸여 있어 **차단이 아니라
+ *        스택트레이스만** 찍히고 그 불변식은 조용히 사라졌다 — R1·R2 둘 다 못 보는 방향이다.)
  *       → ③처럼 경로가 낡아 검사가 비는 것을 잡는다.
  *
  * ## 이 가드가 못 막는 것 (과신 금지)
@@ -132,6 +137,36 @@ for (const g of guards) {
   }
 }
 
+// R3 — 러너가 부르는 가드 파일이 실재하는가 (R1 의 반대 방향)
+//   ⚠️ 주석을 걷어낸 러너 텍스트로 본다 — 주석 속 이름은 *설명*이지 호출이 아니다
+//      (그리고 이 가드가 자기 설명에 쓴 이름이 자기를 잡는 것도 막는다).
+const missingCalls = []
+{
+  // 🩸 블록 주석 제거기(`stripComments`)를 여기 쓰면 안 된다 — 러너 텍스트는 셸·YAML·JS 를
+  //   **이어 붙인 것**이라 한 파일의 `/*` 가 다른 파일의 `*/` 와 짝지어 사이를 통째로 먹는다.
+  //   실측: 206,871자 → 54,215자(**74% 증발**)이고 그 안에 찾아야 할 호출이 들어 있었다
+  //   (이 R3 의 첫 판이 실제로 그래서 **죽은 호출 3건을 못 보고 초록**이 떴다 —
+  //    `check-comment-stripper` 가 테스트에서 네 번 잡은 그 함정의 스크립트판이다).
+  //   셸·YAML 엔 블록 주석이 없으므로 **줄 주석만** 걷는다.
+  //   ⚠️ 못 보는 것: JS 블록 주석의 가운데 줄이 `*` 로 시작하지 않는 경우(드물다).
+  const runnerCode = runners
+    .split('\n')
+    .filter((l) => !/^\s*(#|\/\/|\*)/.test(l))
+    .join('\n')
+  const seen = new Set()
+  for (const m of runnerCode.matchAll(/scripts\/check-[A-Za-z0-9_.-]+\.(?:mjs|sh)/g)) {
+    const ref = m[0]
+    if (seen.has(ref)) continue
+    seen.add(ref)
+    if (!existsSync(ref)) missingCalls.push(ref)
+  }
+  // 측정 대상이 0건이면 통과가 아니라 고장이다 — 러너를 하나도 못 읽었다는 뜻이다.
+  if (seen.size === 0) {
+    console.error('❌ [guard-registry] 러너 텍스트에서 가드 호출을 하나도 못 찾았다 — runnerText() 가 깨졌다.')
+    process.exit(1)
+  }
+}
+
 // 🛡️ 자기 자신에게도 같은 규칙을 적용한다 — 스캔 대상이 0이면 통과가 아니라 고장이다.
 if (guards.length === 0) {
   console.error('❌ [guard-registry] scripts/check-*.{mjs,sh} 를 하나도 못 찾았다 — 스캔 경로가 깨졌다.')
@@ -157,9 +192,17 @@ if (danglingTargets.length) {
   console.error(`     경로만 낡으면 해당 불변식은 조용히 검사되지 않습니다.`)
 }
 
+if (missingCalls.length) {
+  bad += missingCalls.length
+  console.error(`\n❌ [guard-registry] 러너가 부르는데 **존재하지 않는** 가드 ${missingCalls.length}건:`)
+  for (const r of missingCalls) console.error(`   ${r}`)
+  console.error(`   → 폐기된 가드면 호출부(훅/워크플로/audit-gate)에서 그 줄을 지우세요.`)
+  console.error(`     \`|| true\` 로 감싸인 호출은 차단 없이 스택트레이스만 찍고, 그 불변식은 조용히 사라집니다.`)
+}
+
 if (bad) {
   console.error(`\n가드 레지스트리 ${bad}건 위반 — "가드가 있는데 안 돈다" 클래스 (2026-07-29 실측 3건에서 도출).`)
   process.exit(STRICT ? 1 : 0)
 }
 
-console.log(`✅ guard-registry: 가드 ${guards.length}개 전부 실행 경로에 등록됨 + 지목 파일 전부 존재.`)
+console.log(`✅ guard-registry: 가드 ${guards.length}개 전부 실행 경로에 등록됨 + 지목 파일 전부 존재 + 러너 호출 전부 실재.`)
