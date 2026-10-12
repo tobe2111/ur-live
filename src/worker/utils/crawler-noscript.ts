@@ -35,6 +35,9 @@
  * - 길이를 늘리려고 같은 값을 변형해 반복하지 않는다.
  */
 import { priceDisplay } from '../../shared/price-display'
+import { CONCEPT_FAQ, CONCEPT_ABOUT_LINES } from '../../shared/seo/concept-content'
+import { addressInRegion, parseRegionPath, type RegionRef } from '../../shared/constants/region-slugs'
+import { REGION_PATH_RE } from '../../shared/seo/region-seed'
 
 function esc(s: string): string {
   return String(s)
@@ -153,4 +156,111 @@ export function buildCuratorNoscript(seed: NoscriptCuratorSeed | null | undefine
 
   const body = (bio ? `<p>${esc(bio)}</p>` : '') + (items.length ? `<ul>${items.join('')}</ul>` : '')
   return wrap(body)
+}
+
+/**
+ * 🧭 2026-10-12 — **정적 컨셉 표면(`/faq`·`/about`)의 본문 요약.**
+ *
+ * 대표 *"합리적인 여행, 할인권 등의 우리 유어딜의 컨셉에 맞는 내용들을 바탕으로 해서 최대한
+ * AI 검색에서도 노출이 될 수 있게"* · *"AI 서비스 유저가 여행 계획을 짠다던지 동네 맛집을
+ * 찾는다던지 할 때 유어딜과 유어딜 이용권들이 나오게끔"*.
+ *
+ * **라이브 실측(2026-10-12, Googlebot UA)**: `/faq` **33자** · `/about` **30자**. 둘 다
+ * `<title>`·`description`·canonical 은 멀쩡했고 **본문만** 비어 있었다 — 이 파일 머리말이
+ * 설명하는 그 틈과 **똑같은 모양**이다(상세는 2026-10-11 에 메웠는데 정적 표면은 빠져 있었다).
+ *
+ * 🔑 **왜 이 둘이 중요한가**: 상품 상세는 `Product`+`Offer`+`FoodEstablishment` 로 *"이런 게
+ * 있다"* 를 전달한다. 그런데 *"유어딜이 무엇이고 어떻게 쓰는가"*·*"동네 맛집 할인권은 어디서
+ * 찾나"*·*"여행 숙소 이용권이 있나"* 를 답할 **문장**이 서버 HTML 에 한 줄도 없었다. 언어모델이
+ * 인용하는 것은 그 문장이다.
+ *
+ * 🔒 **규율 ①(지어내지 않는다)을 지킨다** — 들어가는 값은 전부 `shared/seo/concept-content.ts`
+ * 이고, `/faq` 화면(`FAQPage.tsx`)과 `/about` 히어로가 **같은 배열·같은 문장**을 그린다.
+ * 그래서 크롤러가 받는 요약과 사람이 보는 화면이 구조적으로 갈릴 수 없다.
+ *
+ * 🧷 **첫 화면을 그리지 않는 이유**: 이 둘은 서버가 그릴 시드가 없고(정적 문서), `#root` 를
+ * 텍스트로 채우면 마운트 때 통째로 교체돼 깜빡인다. `<noscript>` 는 JS 가 돌면 **렌더조차
+ * 안 되므로** 사람 화면 영향 0 · 밀림 0 이다(이 파일의 존재 이유 그대로).
+ *
+ * ⚠️ **표면을 늘릴 때**: 그 화면이 실제로 그 문장을 그리고 있는지 먼저 확인할 것. 화면에 없는
+ *    문장을 여기 넣으면 그건 요약이 아니라 클로킹이다.
+ */
+export function buildStaticSurfaceNoscript(pathname: string, ssrPayload?: string | null): string {
+  // 끝 슬래시를 떼어 `resolveConsumerSurfaceSeo` 와 같은 키로 본다.
+  const path = pathname !== '/' && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname
+
+  if (path === '/faq') {
+    // Q&A 를 그대로 — 언어모델이 인용하기 가장 쉬운 모양이고, 같은 배열이 `FAQPage` JSON-LD
+    // (`surface-list-jsonld.ts`)와 화면 아코디언을 만든다.
+    const items = CONCEPT_FAQ.map(f => `<dt>${esc(f.question)}</dt><dd>${esc(f.answer)}</dd>`).join('')
+    return items ? `<noscript><dl>${items}</dl></noscript>` : ''
+  }
+
+  if (path === '/about') {
+    const lines = CONCEPT_ABOUT_LINES.map(l => `<p>${esc(l)}</p>`).join('')
+    return lines ? `<noscript>${lines}</noscript>` : ''
+  }
+
+  // 🗺️ 지역 착지 페이지 — "동네 맛집 할인권" 질의의 착지점인데 라이브 본문이 **26자**였다
+  //   (`/region/서울`, Googlebot 실측). 그 페이지가 화면에 그리는 카드(가게 · 메뉴 · 판매가)를
+  //   그대로 글로 옮긴다 — 규율 ①(지어내지 않는다)대로 **시드에 있는 값만** 쓴다.
+  //   항목은 홈과 같은 시드(MAIN)에서 오고 지역 필터는 `addressInRegion`(화면과 같은 SSOT)이다.
+  //   ⚠️ 상한 8 — `<noscript>` 도 **사람이 받는 응답에 그대로 실린다**(크롤러에게만 주는 것은
+  //      구글 가이드 위반). 요약이지 전량 덤프가 아니다.
+  const ref = regionRefOfPath(path)
+  if (ref) {
+    const rows = regionSeedRows(ssrPayload, ref).slice(0, 8)
+    if (!rows.length) return ''
+    const label = ref.sigungu ? `${ref.sido} ${ref.sigungu}` : ref.sido
+    return `<noscript><p>${esc(label)} 이용권</p><ul>${rows.map(r => `<li>${esc(r)}</li>`).join('')}</ul></noscript>`
+  }
+
+  return ''
+}
+
+/** 경로 → 지역. 판정·디코딩 규율은 `surface-list-jsonld.ts` 의 `regionRefOf` 와 같다. */
+function regionRefOfPath(path: string): RegionRef | null {
+  if (!REGION_PATH_RE.test(path)) return null
+  const seg = path.replace(/\/+$/, '').split('/')
+  try {
+    return parseRegionPath(decodeURIComponent(seg[2] || ''), seg[3] ? decodeURIComponent(seg[3]) : undefined)
+  } catch {
+    return null
+  }
+}
+
+interface RegionSeedRow {
+  name?: string | null
+  restaurant_name?: string | null
+  restaurant_address?: string | null
+  business_address?: string | null
+  price?: number | null
+  original_price?: number | null
+  discount_rate?: number | null
+  deal_only?: number | null
+}
+
+/** 시드에서 그 지역 행만 골라 한 줄씩. 교환권(`deal_only`)은 매장이 없으니 제외한다. */
+function regionSeedRows(ssrPayload: string | null | undefined, ref: RegionRef): string[] {
+  if (!ssrPayload) return []
+  let raw: RegionSeedRow[] = []
+  try {
+    const d = JSON.parse(ssrPayload) as { data?: RegionSeedRow[] | { products?: RegionSeedRow[] } }
+    const arr = Array.isArray(d?.data) ? d.data : d?.data?.products
+    raw = Array.isArray(arr) ? arr : []
+  } catch {
+    return []
+  }
+  const out: string[] = []
+  for (const p of raw) {
+    if (p?.deal_only === 1) continue
+    if (!addressInRegion(p?.restaurant_address || p?.business_address, ref)) continue
+    const store = (p?.restaurant_name || '').trim()
+    const title = (p?.name || '').trim()
+    if (!store && !title) continue
+    const d = priceDisplay({ price: p?.price, original_price: p?.original_price, discount_rate: p?.discount_rate })
+    const price = d.price > 0 ? ` 판매가 ${won(d.price)}원${d.discount > 0 ? ` (${d.discount}% 할인)` : ''}` : ''
+    out.push(`${[store, title].filter(Boolean).join(' — ')}${price}`)
+  }
+  return out
 }
