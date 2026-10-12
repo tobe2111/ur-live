@@ -2507,7 +2507,9 @@
       "ordersCustomers": "Orders & Customers",
       "curator": "My UrShop",
       "vouchers": "Vouchers",
-      "growth": "Growth"
+      "growth": "Growth",
+      "menu": "All menu",
+      "home": "Seller home"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}.{{month}} Revenue Calendar",

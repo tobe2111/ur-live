@@ -35,7 +35,7 @@ export default [
   {
     name: '↩️ 귀환 띠가 레이아웃에서 빠진다 (65개가 한꺼번에 길을 잃는다)',
     file: 'src/components/SellerLayout.tsx',
-    find: '          <BackToMyBar />',
+    find: '        <BackToMyBar />',
     replace: '',
     test: TEST,
     why: '띠는 레이아웃 한 곳에만 있다 — 빠지면 마이에서 들어간 모든 화면에서 돌아올 길이 사라진다.',

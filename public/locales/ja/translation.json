@@ -2506,7 +2506,9 @@
       "ordersCustomers": "注文·顧客",
       "curator": "マイUrShop",
       "vouchers": "利用券",
-      "growth": "成長"
+      "growth": "成長",
+      "menu": "すべてのメニュー",
+      "home": "販売管理ホーム"
     },
     "liveChat": {
       "title": "リアルタイムチャット",

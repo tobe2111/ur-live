@@ -1619,8 +1619,8 @@ html.dark .gbd, [data-theme="dark"] .gbd {
    대시보드 사이드바가 **어두운 면 + 세로 막대**에서 **흰 면 + 연파랑 알약**으로 바뀌었다.
    세 역할이 각자 다른 색(흰 6% / 앰버 그라디언트 / 보라 그라디언트)을 쓰던 것을 한 값으로 모은다 —
    세 대시보드가 서로 다르게 생길 이유가 없고, 활성 표시는 브랜드 하나면 충분하다.
-   ⚠️ `--brand-tint` 를 쓰므로 아래 §라이트 되박기가 반드시 함께 있어야 한다(다크 모드 누수). */
-.ur-seller-nav-active,
+   ⚠️ `--brand-tint` 를 쓰므로 아래 §라이트 되박기가 반드시 함께 있어야 한다(다크 모드 누수).
+   🧱 2026-10-12: 셀러 사이드바는 4단계에서 사라져 `.ur-seller-nav-active` 를 뺐다(어드민·에이전시만 남는다). */
 .ur-admin-nav-active,
 .ur-agency-nav-active { background: var(--brand-tint); }
 
@@ -1992,10 +1992,10 @@ canvas {
 /* 📱 셀러 폰 상담 FAB — 페이지가 자기 하단 고정 바를 그리면 그만큼 비켜 준다 (2026-09-15).
    대표 신고 *"버튼들이 겹치는 경우도 있고"*: 종전 FAB 은 `bottom-24`(96px 고정, safe-area 무시)였고
    `SellerBottomBar` 는 하단 탭(60px) 위 ~64px 을 덮었다 → 60~124px 과 96~136px 이 정면 충돌.
-   ⚠️ 60px = `SELLER_TABBAR_H` · 64px = `SELLER_BOTTOM_BAR_H` 의 미러다. 한쪽만 바꾸면 다시 겹친다 —
-      `seller-fab-clearance-2026-09-15.test.ts` 가 세 값의 일치를 고정한다.
+   ⚠️ 64px = `SELLER_BOTTOM_BAR_H` 의 미러다. 한쪽만 바꾸면 다시 겹친다 — `seller-mobile-fixes-2026-09-15.test.ts` 가 고정한다.
+   🧱 2026-10-12 (셀러 대시보드 제거 4단계): 하단 탭(60px)이 사라져 그 몫을 뺐다.
    ⚠️ PC(min-width:768px)는 여기서 손대지 않는다 — 바가 없고 FAB 은 `md:bottom-4` 로 구석에 산다. */
 @media (max-width: 767px) {
-  .seller-chat-fab { bottom: calc(60px + env(safe-area-inset-bottom) + 12px); }
-  body.seller-has-bottom-bar .seller-chat-fab { bottom: calc(60px + env(safe-area-inset-bottom) + 64px + 12px); }
+  .seller-chat-fab { bottom: calc(env(safe-area-inset-bottom) + 12px); }
+  body.seller-has-bottom-bar .seller-chat-fab { bottom: calc(env(safe-area-inset-bottom) + 64px + 12px); }
 }

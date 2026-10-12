@@ -1831,7 +1831,9 @@
       "ordersCustomers": "Pedidos y clientes",
       "curator": "Mi UrShop",
       "vouchers": "Cupones",
-      "growth": "Crecimiento"
+      "growth": "Crecimiento",
+      "menu": "Menú completo",
+      "home": "Inicio de ventas"
     },
     "nav": {
       "products": "Productos",

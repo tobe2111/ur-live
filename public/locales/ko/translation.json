@@ -2537,7 +2537,9 @@
       "groupbuy": "오프라인 공구·숙소",
       "ordersCustomers": "주문·고객",
       "vouchers": "이용권",
-      "growth": "성장"
+      "growth": "성장",
+      "menu": "전체 메뉴",
+      "home": "판매 관리 처음으로"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
