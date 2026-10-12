@@ -30,14 +30,13 @@ import type { DealPlan } from './DealUseChooser'
 const arrow = <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
 
 export default function DealBottomBar({
-  isJoinable, isPrelaunch, isDemoDeal, buyable, joining,
+  isJoinable, isPrelaunch, buyable, joining,
   quantity, total, setQuantity, maxQty, maxPerPerson, unitPrice, refPrice, discountPct, minReviewLevel,
   dealPlan, dealUse, setDealUse, canPayWithDeal, dealBalance,
   productId, onJoin,
 }: {
   isJoinable: boolean
   isPrelaunch: boolean
-  isDemoDeal: boolean
   buyable: boolean
   joining: boolean
   quantity: number
@@ -63,7 +62,9 @@ export default function DealBottomBar({
   useEffect(() => { if (!isJoinable) setOpen(false) }, [isJoinable])
   // 🪙 2026-10-06: 딜이 총액을 다 덮으면 카드를 안 탄다 — 버튼도 그렇게 말한다("N딜로 결제하기").
   const allDeal = canPayWithDeal && coversAll(dealPlan, dealUse)
-  const verb = isDemoDeal ? '결제하기' : '구매하기'
+  // 🎭 2026-10-12 (대표 "데모인 것을 티내지마"): 데모만 '결제하기'·'결제 불가' 를 쓰던 분기 제거 —
+  //   라벨만 보고 데모를 판별할 수 있었다. 사유·대체 보호는 `DealPurchaseBox` 머리말에 적었다.
+  const verb = '구매하기'
   const payLabel = allDeal ? `${formatNumber(total)}딜로 결제하기` : `${formatNumber(total)}원 ${verb}`
   const ctaOn = buyable || isPrelaunch
   const stepBtn = 'w-9 h-9 rounded-full flex items-center justify-center text-[17px] bg-transparent cursor-pointer disabled:opacity-40'
@@ -94,7 +95,7 @@ export default function DealBottomBar({
             className="flex-1 h-[52px] border-0 rounded-xl text-[17px] font-bold flex items-center justify-center"
             style={{ background: ctaOn ? 'var(--gbd-cta-bg)' : 'var(--gbd-sub2)', color: 'var(--gbd-cta-fg)', cursor: ctaOn ? 'pointer' : 'default' }}
           >
-            {joining ? '처리 중…' : isPrelaunch ? '사전 응모하기' : !isJoinable ? (isDemoDeal ? '결제 불가' : '구매 불가') : verb}
+            {joining ? '처리 중…' : isPrelaunch ? '사전 응모하기' : !isJoinable ? '구매 불가' : verb}
           </button>
         </div>
       </div>
@@ -133,7 +134,7 @@ export default function DealBottomBar({
           <button
             onClick={() => onJoin()}
             disabled={!isJoinable || joining}
-            aria-label={isJoinable ? payLabel : isDemoDeal ? '결제 불가' : '구매 불가'}
+            aria-label={isJoinable ? payLabel : '구매 불가'}
             className="w-full h-[52px] border-0 rounded-xl text-[17px] font-bold flex items-center justify-center gap-2"
             style={{ background: buyable ? 'var(--gbd-cta-bg)' : 'var(--gbd-sub2)', color: 'var(--gbd-cta-fg)', cursor: buyable ? 'pointer' : 'default' }}
           >

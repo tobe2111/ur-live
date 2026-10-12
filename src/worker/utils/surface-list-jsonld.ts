@@ -221,14 +221,27 @@ export function buildSurfaceListJsonLd(
   //      시드**(MAIN — 같은 캐시 키라 추가 요청 0)에서 뽑고, 지역 필터는 화면과 **같은 SSOT**
   //      (`addressInRegion`)로 건다. 손으로 주소를 파싱하면 화면과 갈려 다른 가게가 섞인다.
   const regionRef = regionRefOf(path)
-  const ITEM_PATHS = new Set(['/', '/browse'])
+  // 🏨 2026-10-12: `/stays` 추가 — 숙소 상세(`/stays/:id`)는 색인 대상이고(`canonicalDetailPath`)
+  //   그 표면이 **항목 0건**이었다. 교환권 목록(`/vouchers`)은 여전히 **제외** — 그 상세가
+  //   2026-07-07 결정으로 noindex 라, 색인하지 말라고 한 URL 을 "이 목록의 항목" 으로 제출하면
+  //   서로 반대되는 신호가 된다(허용목록 한 줄로 그 규율을 지킨다).
+  const ITEM_PATHS = new Set(['/', '/browse', '/stays'])
+  // 🔑 `/stays` 는 자기 슬롯이 없어 **홈과 같은 시드**를 받는다 — 숙소만 골라야 한다.
+  //   안 걸러내면 식당 이용권이 "숙소 목록의 항목" 으로 제출된다(빌드도 화면도 안 깨진다).
+  const keepItem = (p: SeedItem): boolean => {
+    if (regionRef) {
+      return addressInRegion(
+        (p as { restaurant_address?: string | null; business_address?: string | null }).restaurant_address
+        || (p as { business_address?: string | null }).business_address,
+        regionRef,
+      )
+    }
+    if (path === '/stays') return (p as { category?: string | null }).category === 'stay_voucher'
+    return true
+  }
   const items = ITEM_PATHS.has(path) || regionRef
     ? seedItems(ssrPayload)
-        .filter(p => !regionRef || addressInRegion(
-          (p as { restaurant_address?: string | null; business_address?: string | null }).restaurant_address
-          || (p as { business_address?: string | null }).business_address,
-          regionRef,
-        ))
+        .filter(keepItem)
         .slice(0, SURFACE_LIST_MAX * 2)
         .map((p, i) => listItem(p, i + 1, origin))
         .filter((x): x is Record<string, unknown> => x !== null)
