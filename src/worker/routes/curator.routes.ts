@@ -170,8 +170,26 @@ curatorRoutes.get('/recommendations', requireAuth(), async (c) => {
 curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
   try {
     const handle = c.req.param('handle')?.toLowerCase().trim()
+    // 🧭 2026-10-12 (대표 "나머진 다 해줘" — SEO soft-404 수리): 형식 위반도 **404** 다.
+    //   종전 400 이 soft-404 를 만들고 있었다(라이브 실측):
+    //
+    //     /u/zzzdoesnotexist9999      → 404 · noindex, follow   ← 형식 유효 + 없음. 멀쩡했다
+    //     /u/zzz-does-not-exist-9999  → **200 · index, follow**  ← 형식 위반(하이픈). 여기가 결함
+    //
+    //   워커의 `shouldNoindexMissingEntity` 는 `self-fetch-404` 에만 걸리므로, 400 을 받은 표면은
+    //   그 그물을 빠져나가 **유어딜 홈과 같은 색인 가능 URL** 이 된다. 하이픈은 사람이 유어샵 링크를
+    //   쓸 때 자연스럽게 고르는 문자라(`/u/my-shop`) 오타·추측 링크로 실제로 생긴다.
+    //
+    // 🔴 술어에 400 을 더하지 않았다 — 그쪽이 더 위험하다: 슬롯마다 400 의 뜻이 다르고, 살아 있는
+    //   엔티티가 일시적 검증 버그로 400 을 받는 날 색인에서 빠진다(타임아웃을 일부러 제외한 것과
+    //   같은 이유). 여기서는 `/u/my-shop` 이 **클라이언트 오류가 아니라 없는 페이지**이므로 404 가
+    //   HTTP 의미상 맞고, 기존 술어가 한 글자도 안 바뀐 채로 잡는다.
+    //
+    // 🔒 **쓰기 검증은 400 그대로** — 핸들 중복 확인(`/check`)과 변경(`PATCH /me/handle`)에서 형식
+    //   위반은 진짜 클라이언트 오류다. 거기까지 404 로 바꾸면 "저장 실패" 를 "없는 리소스" 라고
+    //   말하게 된다(가드가 양방향을 고정한다).
     if (!handle || !isValidHandleFormat(handle)) {
-      return c.json({ success: false, error: '잘못된 핸들 형식입니다' }, 400)
+      return c.json({ success: false, error: '큐레이터를 찾을 수 없습니다' }, 404)
     }
     const DB = c.env.DB
     // 🏭 2026-06-04 (perf 전수조사): DDL 6종을 응답 경로에서 분리 — 테이블은 0278 + repair cron 이 보장.
