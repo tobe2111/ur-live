@@ -30,7 +30,9 @@ function SellerLoginGone() {
   const location = useLocation()
   if (isAgencyWorker()) return <Navigate to="/agency/login?returnUrl=%2Fagency" replace />
   const from = (location.state as { from?: string } | null)?.from
-  const back = (from && sellerEntryRedirect(from, '')) || MY_PATH
+  // `from` 은 경로 + 검색어다(보호 라우트가 함께 싣는다) — 나눠서 넘겨야 `?status=PAID` 같은 필터가 시트까지 간다.
+  const q = from ? from.indexOf('?') : -1
+  const back = (from && sellerEntryRedirect(q < 0 ? from : from.slice(0, q), q < 0 ? '' : from.slice(q))) || MY_PATH
   return <Navigate to={`/login?returnUrl=${encodeURIComponent(back)}`} replace />
 }
 // 🚪 셀러 가입 관문 = `/store/new` 하나(2026-10-10). 옛 가입 주소는 전부 아래 리다이렉트로 그리 간다.

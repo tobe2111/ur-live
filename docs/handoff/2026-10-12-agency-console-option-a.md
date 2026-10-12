@@ -221,7 +221,7 @@
 - `/seller/orders?status=PAID` → `/login?returnUrl=/user/profile?tool=/seller/orders` — **`?status=PAID` 가 빠진다.**
   원인: `RouteGuards.tsx` 의 셀러 보호 라우트가 `/seller/login` 으로 보낼 때 `state.from` 에 `location.pathname` 만 싣는다(검색어 없음).
   로그인돼 있고 좌석이 살아 있으면 `SellerLayout` 이 쿼리를 그대로 잇는다 — 비로그인·좌석 만료 때만 필터가 빠진다(시트는 주문으로 열린다).
-  수리는 두 줄(`from: location.pathname + location.search`)이지만 **잠금표 파일**이라 대표 승인 대기.
+  → 대표 승인("허가 — 그 두 줄만") 받아 같은 PR(#1738)에서 수리 + 시험 + 주입. 배포 뒤 같은 주소로 다시 재면 `tool=/seller/orders?status=PAID` 여야 한다.
 
 ### 남은 것
 - `/api/seller/surface` 는 클라 소비자가 0 이 됐다(서버 엔드포인트만 남음 — 해는 없다, 정리는 별건).
