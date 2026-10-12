@@ -23,7 +23,7 @@
 import { useMemo, useState } from 'react'
 import { ChevronRight, ExternalLink, Search } from 'lucide-react'
 import { useSellerNavModel } from '@/components/seller-layout/useSellerNavModel'
-import { canOpenInSheet } from './tool-pages'
+import { canOpenInSheet, ownPathFor, type OwnPath } from './tool-pages'
 import Sheet from './Sheet'
 
 export default function AllToolsSheet({ storeName, onPick, onClose }: {
@@ -36,7 +36,7 @@ export default function AllToolsSheet({ storeName, onPick, onClose }: {
    *   **시트 청크가 통째로 정적 의존이 되어 lazy 가 무의미해진다**(실측으로 확인한 함정).
    *   그리고 같은 판정이 두 곳에 있으면 반드시 갈린다.
    */
-  onPick: (path: string, label: string, inSheet: boolean) => void
+  onPick: (path: string, label: string, inSheet: boolean, own: OwnPath | null) => void
   onClose: () => void
 }) {
   const { commandItems } = useSellerNavModel()
@@ -92,12 +92,14 @@ export default function AllToolsSheet({ storeName, onPick, onClose }: {
             {group && <h3 className="px-1 mb-2 text-[12px] font-bold text-gray-400">{group}</h3>}
             <div className="overflow-hidden rounded-xl bg-surface shadow-lift">
               {items.map(({ path, label, icon: Icon }) => {
-                const leaves = !canOpenInSheet(path)
+                // 🚪 대시보드 대신 갈 **전용 길**(`OWN_PATH`). 등록은 시트라 나가지 않고, 계산대만 전체화면이다.
+                const own = ownPathFor(path)
+                const leaves = own ? own === 'scan' : !canOpenInSheet(path)
                 return (
                   <button
                     key={path}
                     type="button"
-                    onClick={() => onPick(path, label, !leaves)}
+                    onClick={() => onPick(path, label, canOpenInSheet(path), own)}
                     className="w-full flex items-center gap-3 px-4 py-3 text-left border-b border-rule last:border-b-0 active:opacity-70"
                   >
                     <Icon size={18} strokeWidth={1.8} className="shrink-0 text-gray-400" aria-hidden="true" />

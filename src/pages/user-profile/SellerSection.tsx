@@ -66,6 +66,7 @@ const PinSheet = lazy(() => import('./seller-section/PinSheet'))
 const BankSheet = lazy(() => import('./seller-section/BankSheet'))
 const SettlementsSheet = lazy(() => import('./seller-section/SettlementsSheet'))
 const ToolPageSheet = lazy(() => import('./seller-section/ToolPageSheet'))
+const VoucherNewSheet = lazy(() => import('./seller-section/VoucherNewSheet'))
 
 const STATUS_NOTE: Record<string, string> = {
   pending: '승인 대기 중이에요. 준비는 지금 하고, 메인 노출과 정산은 승인 뒤에 시작됩니다.',
@@ -87,7 +88,7 @@ function todayLabelKST(): string {
  *   (`ToolPageSheet` = 대시보드 화면을 시트 안에서 그대로 렌더)로 열린다. 근거는 아래 §철거.
  *   남은 `withdraw`·`pin`·`bank`·`settlements` 는 **돈이 나가는 흐름**이라 별도 판단 대기다.
  */
-type Tool = 'withdraw' | 'tools' | 'pin' | 'bank' | 'settlements' | 'page'
+type Tool = 'withdraw' | 'tools' | 'pin' | 'bank' | 'settlements' | 'page' | 'voucherNew'
 
 /**
  * 🔀 **같은 일에 화면이 둘이 되지 않게** (2026-09-26 → **2026-10-01 철거로 거의 비었다**)
@@ -554,28 +555,27 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
         <AllToolsSheet
           storeName={store.name}
           onClose={() => setTool(null)}
-          onPick={(path, label, inSheet) => {
-            // 🔀 손수 시트가 남은 일(= 돈 하나)이면 **그리로** 보낸다 — 같은 일에 화면이 둘이 되지 않게(위 표).
-            //   2026-10-01 철거로 이 표는 `/seller/settlements` 만 덮는다. 나머지는 아래 시트 경로다.
+          onPick={(path, label, inSheet, own) => {
+            // 🔀 손수 시트가 남은 일(= 돈 하나, `/seller/settlements`)이면 **그리로** — 같은 일에 화면이 둘이 되지 않게(위 표).
             const covered = COVERED_BY_SHEET[path]
             if (covered) { setTool(covered); return }
-            // 🪟 나머지는 시트 안에서 열린다 — 나가는 둘만 종전처럼 전체화면으로
-            //   (이유는 `tool-pages.ts` 의 FULL_SCREEN_ONLY 에 값으로 적혀 있다).
-            //   ⚠️ 판정은 시트가 해서 넘겨준다 — 여기서 `tool-pages` 를 읽으면 그 지도가
-            //      **정적 의존**이 되어 시트 청크 전체가 마이에 붙는다(lazy 가 무의미해진다).
+            // 🚪 계산대·등록은 대시보드가 아니라 **마이의 전용 길**로(`tool-pages.ts` `OWN_PATH`, 2026-10-12). 판정은 시트가
+            //   넘긴다 — 여기서 `tool-pages` 를 읽으면 정적 의존이 되어 시트 청크가 마이에 붙는다. 나머지는 시트 안에서 열린다.
+            if (own === 'scan') { setTool(null); enterSeat('/store/scan'); return }
+            if (own === 'voucherNew') { setTool('voucherNew'); return }
             if (inSheet) { setPage({ path, title: label }); setPageFrom('tools'); setTool('page'); return }
             setTool(null); enterSeat(path)
           }}
         />
       )}
+      {tool === 'voucherNew' && <VoucherNewSheet onClose={() => setTool('tools')} onCreated={() => { state.refetch(); setPage({ path: '/seller/group-buy', title: '이용권' }); setPageFrom(null); setTool('page') }} />}
       {/* ↩️ 닫으면 **전체 도구로** 돌아온다 — 도구를 하나 보고 다음 도구를 보는 흐름이 끊기지 않게. */}
       {tool === 'page' && page && (
         <ToolPageSheet
           path={page.path}
           title={page.title}
           onClose={() => { const back = pageFrom; setPage(null); setPageFrom(null); setTool(back) }}
-          /* 🚪 안쪽이 셀러 밖(`/`·`/u/me` …)을 가리켰다 — 시트를 닫고 진짜로 보낸다.
-             그대로 두면 메모리 라우터엔 그 주소가 없어 **빈 화면**이 된다. */
+          /* 🚪 안쪽이 셀러 밖(`/`·`/u/me` …)을 가리켰다 — 닫고 진짜로 보낸다(메모리 라우터엔 그 주소가 없어 빈 화면이 된다). */
           onLeave={(to) => { setPage(null); setPageFrom(null); setTool(null); window.location.assign(to) }}
         />
       )}

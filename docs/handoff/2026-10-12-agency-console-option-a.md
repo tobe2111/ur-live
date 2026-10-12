@@ -97,3 +97,21 @@
   `SELLER_SEARCH_ONLY` 에 추가(설정 묶음). 마이 '전체 도구'·⌘K 에서 닿는다. 라벨 6개 언어 `seller.nav.plusFriendGuide`.
   가드: `seller-page-search-2026-09-03.test.ts` ④ + 주입 `scripts/mutations/seller-plus-friend-entry-2026-10-12.mjs`(빨간불 확인).
 - 이로써 계획서 1~4단계가 전부 E2 이상. 남은 것은 라이브 판정(E4)뿐: 마이 없는 옛 셀러 계정 머리줄 · 에이전시 계정 실사용.
+- **#1723 머지 `34f269d35`** (squash 자동 머지 — Verify·contrast·Pages 초록 확인 후). E3.
+
+## ➕ 마지막 두 길 — 대시보드에 안 가도 되는가 (같은 날, 대표 *"이제 셀러 대시보드, 에이전시 대시보드로 굳이 안가서 해도 돼?"*)
+- 재 보니 **두 길이 아직 얇은 대시보드 틀로 떨어지고 있었다**:
+  ① 전체 도구에서 '바우처 스캔' · '이용권 등록' 을 고르면 마이·에이전시 콘솔 **둘 다** 대시보드 주소로 보냈다.
+     `tool-pages.ts` 는 *"마이엔 전용 길이 있다"* 고 적어 놓고, 그 길(`VoucherNewSheet`, 2026-09-26)은 **아무도 렌더하지 않았다**(고아).
+  ② 에이전시 직원 계산대가 `/seller/scan`(대시보드)이었다 — `/store/scan` 라우트가 `requireUser`(소비자 로그인)를 요구해서다.
+     같은 요구가 **스캔 전용 기기 링크 `/store/scan?dk=` 도 막고 있었다**(로그인 없이 쓰라고 만든 링크인데 로그인 화면으로 튕김 — 기능 결함).
+- 수리: `tool-pages.ts` 에 `OWN_PATH`(scan→`/store/scan` · voucherNew→`VoucherNewSheet`) 한 곳 → `AllToolsSheet` 가 `onPick` 4번째 인자로 넘김 →
+  마이(`SellerSection`)·콘솔(`AgencyStorePlate`)이 받은 대로 연다. 등록 완료 '내 이용권 보기' 는 이용권 목록 시트로.
+  `/store/scan` 라우트에서 `ProtectedRoute requireUser` 제거 — 화면 가드(seller_token 또는 scan_device_key, 없으면 마이로)가 유일한 문이고 서버가 토큰을 검증한다.
+  셀러 가이드 '처음 시작한다면' 2·3번을 마이 경로로 + `GUIDE_SEED_VERSION` 45.
+- 가드: `dashboard-free-own-paths-2026-10-12.test.tsx` 13건(AllToolsSheet 를 실제로 렌더해 눌러 본다) + 주입 `[전용길]` 6건 전부 빨간불.
+  재조준 2건: `agency-console-plate` (*"/store/scan 이 아니라 /seller/scan"* → 같은 계산대) · `my-seller-all-in-my` (onPick 인자).
+- ⇒ **답: 사장님은 마이, 에이전시 직원은 에이전시 콘솔에서 전부 된다.** 대시보드가 남는 경우 = 마이 없는 옛 셀러 계정 · 콘솔 로그인 없는 좌석 ·
+  `/seller/*` 를 직접 연 깊은 링크 중 전용 화면(`STAY_ON_DASHBOARD`: 스캔·등록·유튜브 OAuth 복귀) · `?dash=1`.
+- ⚠️ 못 잰 것(E4): 실기기 카메라 · 에이전시 계정으로 `/store/scan` 진입 → 처리 매장이 맞게 잡히는지 · 스캔 기기 링크 비로그인 진입.
+- 다음 세션 첫 액션: 이 PR CI 확인 → 대표 지시 시 머지 → 스캔 기기 링크를 비로그인 브라우저로 열어 계산대가 뜨는지(E4).
