@@ -1,5 +1,5 @@
 /**
- * Email Service using Resend
+ * Email Service — 네이버 클라우드 SENS 메일(키가 있으면, 거래성 메일) → 아니면 Resend
  * 
  * Features:
  * - Seller approval/rejection emails
@@ -14,6 +14,27 @@
 
 import { withCircuitBreaker } from '../worker/utils/circuit-breaker'
 import type { D1Database } from '@cloudflare/workers-types'
+import { sendSensMail, sensMailConfigured, type SensMailEnv } from '../lib/ncp-sens-mail'
+
+// ✉️ 2026-10-12 — 네이버 클라우드 SENS 메일(월 1,000건 무료). 호출부 30여 곳은 Resend 키를 인자로 넘기는
+//   시그니처라 env 를 안 준다 → 워커 top-level env(`cloudflare:workers`)에서 NCP 키를 읽는다
+//   (비-Workers 런타임은 import 실패 → null = 종전 Resend 그대로).
+let _sensMailEnv: Promise<SensMailEnv | null> | null = null
+function sensMailEnv(): Promise<SensMailEnv | null> {
+  if (!_sensMailEnv) {
+    _sensMailEnv = import('cloudflare:workers')
+      .then((mod) => {
+        const e = mod.env as unknown as Record<string, unknown> | undefined
+        return sensMailConfigured(e) ? (e as SensMailEnv) : null
+      })
+      .catch(() => null)
+  }
+  return _sensMailEnv
+}
+/** 테스트용 — SENS 메일 env 주입(null = 끔). */
+export function _setSensMailEnvForTest(e: SensMailEnv | null): void {
+  _sensMailEnv = Promise.resolve(e && sensMailConfigured(e as Record<string, unknown>) ? e : null)
+}
 
 interface SendEmailParams {
   to: string
@@ -54,8 +75,12 @@ export async function sendEmail(
   const fromAddress = params.from || defaultFrom || '리스터코퍼레이션 <onboarding@resend.dev>'
   const { to, subject, html } = params
 
-  if (!apiKey) {
-    console.warn('[Email/config] RESEND_API_KEY not configured, skipping send')
+  // ✉️ 거래성 메일만 SENS — 커스텀 헤더(List-Unsubscribe = 대량·홍보)나 회신 주소가 붙은 메일은 Resend 로 둔다
+  //   (네이버 클라우드 약관상 홍보 메일은 광고 표기·수신거부 의무, 콜드 대량은 계정 정지 위험).
+  const sens = params.headers || params.replyTo ? null : await sensMailEnv()
+
+  if (!apiKey && !sens) {
+    console.warn('[Email/config] RESEND_API_KEY / SENS mail not configured, skipping send')
     return { success: false, error: 'API key not configured' }
   }
 
@@ -72,6 +97,13 @@ export async function sendEmail(
     }
   }
   
+  if (sens) {
+    const r = await sendSensMail(sens, { to, subject, html })
+    if (r.success || !apiKey) return r
+    // SENS 접수 실패(키·도메인 미등록 등) → Resend 키가 있으면 그쪽으로 한 번 더(메일이 사라지지 않게).
+    console.warn('[Email] SENS 실패 → Resend 폴백:', r.error)
+  }
+
   try {
     // ✅ FIX (H8): Retry up to 2 times with exponential backoff on transient failures.
     let response: Response | undefined;

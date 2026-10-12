@@ -7,12 +7,10 @@
  *
  * 중복 발송 방지: notifications.type + booking_id UNIQUE 체크.
  */
+import { sendTextNotice } from '../../lib/text-notice'
+import { sensConfigured } from '../../lib/ncp-sens'
 type Env = {
   DB: D1Database;
-  ALIGO_API_KEY?: string;
-  ALIGO_USER_ID?: string;
-  ALIGO_SENDER_KEY?: string;
-  ALIGO_STAY_VOUCHER_EXPIRE_SOON?: string;
 }
 
 type Row = {
@@ -49,12 +47,8 @@ export async function runVoucherExpireCron(env: Env): Promise<{ d30: number; d7:
   `
   const rows = await env.DB.prepare(sql).all<Row>().catch(() => ({ results: [] as Row[] }))
 
-  const alimtalkConfigured = !!(env.ALIGO_API_KEY && env.ALIGO_USER_ID && env.ALIGO_SENDER_KEY)
-  let sendAlimtalk: ((api: { ALIGO_API_KEY: string; ALIGO_USER_ID: string }, params: { senderKey: string; templateCode: string; to: string; message: string }) => Promise<{ success: boolean; error?: string }>) | null = null
-  if (alimtalkConfigured) {
-    const mod = await import('../../lib/aligo').catch(() => null)
-    sendAlimtalk = mod?.sendAlimtalk || null
-  }
+  // 📨 2026-10-12 알림톡 = 네이버 클라우드 SENS(키 넷이 없으면 앱 알림만). 실패 기록은 sendTextNotice 가 남긴다.
+  const alimtalkConfigured = sensConfigured(env as unknown as Record<string, unknown>)
 
   for (const r of (rows.results || [])) {
     const daysLeft = Number(r.days_left)
@@ -79,10 +73,10 @@ export async function runVoucherExpireCron(env: Env): Promise<{ d30: number; d7:
       ).run().catch(() => { /* table 없으면 silent */ })
 
       // 2. 카카오 알림톡 발송 (인프라 설정된 경우만).
-      if (alimtalkConfigured && sendAlimtalk && r.user_phone) {
+      if (alimtalkConfigured && r.user_phone) {
         const phone = r.user_phone.replace(/\D/g, '')
         if (/^01\d{8,9}$/.test(phone)) {
-          const templateCode = env.ALIGO_STAY_VOUCHER_EXPIRE_SOON || 'stay_voucher_expire_soon'
+          const templateCode = 'stay_voucher_expire_soon'
           const message =
             `[유어딜] 숙소 이용권 유효기간 안내\n\n` +
             `${r.product_name} ${voucherTypeKr}이 ${daysLeft}일 후 만료됩니다.\n\n` +
@@ -90,21 +84,10 @@ export async function runVoucherExpireCron(env: Env): Promise<{ d30: number; d7:
             `· 만료일: ${r.voucher_expires_at.slice(0, 10)}\n\n` +
             `매장에 연락하여 사용 일정을 잡아주세요.`
 
-          const result = await sendAlimtalk(
-            { ALIGO_API_KEY: env.ALIGO_API_KEY!, ALIGO_USER_ID: env.ALIGO_USER_ID! },
-            { senderKey: env.ALIGO_SENDER_KEY!, templateCode, to: phone, message },
-          ).catch((e: Error) => ({ success: false, error: e.message }))
+          const sent = await sendTextNotice(env, phone, { tpl: templateCode, title: '유어딜 알림', text: message })
 
-          if (result.success) {
-            alimtalkSent++
-          } else {
-            alimtalkFailed++
-            await env.DB.prepare(
-              `INSERT INTO alimtalk_failures (template_code, phone, message, error, retry_count, max_retries, next_retry_at, created_at)
-               VALUES (?, ?, ?, ?, 0, 3, datetime('now', '+5 minutes'), datetime('now'))`
-            ).bind(templateCode, phone, message.slice(0, 1000), (result.error || 'unknown').slice(0, 500))
-              .run().catch(() => { /* noop */ })
-          }
+          if (sent.ok) alimtalkSent++
+          else if ('error' in sent) alimtalkFailed++
         }
       }
 

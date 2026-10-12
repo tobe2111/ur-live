@@ -26,8 +26,6 @@ import { intParam } from '@/shared/pagination'
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
-  ALIGO_API_KEY?: string;
-  ALIGO_USER_ID?: string;
 };
 
 type SellerRegisterRequest = {

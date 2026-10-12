@@ -27,6 +27,7 @@ export async function sendSellerApprovalAlimtalk(env: unknown, DB: D1Database, s
     isReactivation
       ? `[유어딜] ${sellerName}님,\n계정이 다시 활성화되었어요.\n판매를 이어가실 수 있습니다.`
       : `[유어딜] ${sellerName}님,\n셀러 가입이 승인되었어요!\n지금 바로 판매를 시작해보세요.`,
+    { sellerId }, // 🔘 [이용권 등록하기] 버튼의 매장 번호(lib/alimtalk-buttons)
   ).catch(swallow('admin-sellers:approve-alimtalk'))
 }
 

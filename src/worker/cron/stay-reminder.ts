@@ -6,16 +6,13 @@
  *   - D-1: 게스트에 내일 체크인 안내 + 체크인 코드 사전 안내
  *   - D-day: 게스트에 오늘 체크인 + 코드, 호스트에 도착 예정
  *
- * 알림톡: aligo via lib/aligo (ALIGO_API_KEY/USER_ID/SENDER_KEY env 필요).
+ * 알림톡: 네이버 클라우드 SENS via lib/text-notice (NCP_* env 4종 필요 · 2026-10-12 알리고 제거).
  *   템플릿 코드는 default value 사용 — 추후 kakao_alimtalk_templates 매핑.
  */
+import { sendTextNotice } from '../../lib/text-notice'
+import { sensConfigured } from '../../lib/ncp-sens'
 type Env = {
   DB: D1Database;
-  ALIGO_API_KEY?: string;
-  ALIGO_USER_ID?: string;
-  ALIGO_SENDER_KEY?: string;
-  ALIGO_STAY_REMINDER_TEMPLATE_D1?: string;
-  ALIGO_STAY_REMINDER_TEMPLATE_DDAY?: string;
 }
 type Booking = {
   id: number; product_id: number; check_in_date: string; check_out_date: string;
@@ -70,12 +67,8 @@ export async function runStayReminderCron(env: Env): Promise<{ d1_sent: number; 
   let alimtalkFailed = 0
 
   // 알림톡 핸들러 lazy load (인프라 미설정 환경에서도 cron 동작 보장).
-  const alimtalkConfigured = !!(env.ALIGO_API_KEY && env.ALIGO_USER_ID && env.ALIGO_SENDER_KEY)
-  let sendAlimtalk: ((api: { ALIGO_API_KEY: string; ALIGO_USER_ID: string }, params: { senderKey: string; templateCode: string; to: string; message: string }) => Promise<{ success: boolean; error?: string }>) | null = null
-  if (alimtalkConfigured) {
-    const mod = await import('../../lib/aligo').catch(() => null)
-    sendAlimtalk = mod?.sendAlimtalk || null
-  }
+  // 📨 2026-10-12 알림톡 = 네이버 클라우드 SENS(키 넷이 없으면 앱 알림만). 실패 기록은 sendTextNotice 가 남긴다.
+  const alimtalkConfigured = sensConfigured(env as unknown as Record<string, unknown>)
 
   for (const b of (rows.results || [])) {
     const isToday = b.check_in_date === today
@@ -98,44 +91,26 @@ export async function runStayReminderCron(env: Env): Promise<{ d1_sent: number; 
       ).run().catch(() => { /* notifications 테이블 없으면 silent */ })
 
       // 2. 카카오 알림톡 발송 (인프라 설정된 경우만).
-      if (alimtalkConfigured && sendAlimtalk && b.guest_phone) {
+      if (alimtalkConfigured && b.guest_phone) {
         const phone = b.guest_phone.replace(/\D/g, '')
         const isValid = /^01\d{8,9}$/.test(phone)
         if (isValid) {
           const templateCode = isToday
-            ? (env.ALIGO_STAY_REMINDER_TEMPLATE_DDAY || 'stay_dday')
-            : (env.ALIGO_STAY_REMINDER_TEMPLATE_D1 || 'stay_d1')
+            ? 'stay_dday'
+            : 'stay_d1'
           const message = isToday
             ? `[유어딜]\n오늘 체크인 안내드립니다.\n\n· 숙소: ${b.product_name}\n· 객실: ${b.room_name}\n· 체크인: ${b.check_in_time || '15:00'}\n· 체크인 코드: ${b.check_in_code || '-'}\n\n즐거운 여행 되세요.`
             : `[유어딜]\n내일 체크인 예정입니다.\n\n· 숙소: ${b.product_name}\n· 객실: ${b.room_name}\n· 체크인: ${b.check_in_time || '15:00'}\n\n사전 안내문 확인 부탁드립니다.`
 
-          const result = await sendAlimtalk(
-            { ALIGO_API_KEY: env.ALIGO_API_KEY!, ALIGO_USER_ID: env.ALIGO_USER_ID! },
-            {
-              senderKey: env.ALIGO_SENDER_KEY!,
-              templateCode,
-              to: phone,
-              message,
-            },
-          ).catch((e: Error) => ({ success: false, error: e.message }))
+          const sent = await sendTextNotice(env, phone, { tpl: templateCode, title: '유어딜 알림', text: message })
 
-          if (result.success) {
-            alimtalkSent++
-          } else {
-            alimtalkFailed++
-            // 실패 row 는 alimtalk_failures 큐로 (재시도 cron 이 처리).
-            await env.DB.prepare(
-              `INSERT INTO alimtalk_failures
-                 (template_code, phone, message, error, retry_count, max_retries, next_retry_at, created_at)
-               VALUES (?, ?, ?, ?, 0, 3, datetime('now', '+5 minutes'), datetime('now'))`
-            ).bind(templateCode, phone, message.slice(0, 1000), (result.error || 'unknown').slice(0, 500))
-              .run().catch(() => { /* 테이블 없으면 silent */ })
-          }
+          if (sent.ok) alimtalkSent++
+          else if ('error' in sent) alimtalkFailed++
         }
       }
 
       // 🛡️ 2026-06-12: 발송 마킹 (인앱 알림 INSERT 이후 — 알림톡 실패 여부와 무관하게 재실행 중복 차단,
-      //   알림톡 실패분은 alimtalk_failures 큐의 재시도 cron 이 담당).
+      //   알림톡 실패분은 sendTextNotice 가 alimtalk_failures 에 기록).
       await env.DB.prepare(
         `UPDATE stay_bookings SET ${isToday ? 'reminder_dday_sent_at' : 'reminder_d1_sent_at'} = datetime('now') WHERE id = ?`
       ).bind(b.id).run().catch(() => { /* noop */ })

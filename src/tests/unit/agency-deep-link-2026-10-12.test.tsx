@@ -124,14 +124,19 @@ describe('③ 콘솔이 여는 규칙 — 좌석을 새로 받지 않는다', ()
 
 describe('④ 배선', () => {
   it('껍데기는 시트 안 반환 뒤 · 사장님 판정 뒤에 콘솔로 보낸다', () => {
+    // 2026-10-12 — 판정이 `sellerEntryRedirect` 한 곳으로 모였다(하단 ➕ · 유어샵 버튼도 같은 함수). 순서는 그 안에서 본다.
     const src = stripComments(readFileSync('src/components/SellerLayout.tsx', 'utf-8'))
     const embed = src.indexOf('if (bare || embedded) {')
-    const toMy = src.indexOf('if (toMy) return <Navigate to={toMy} replace />')
-    const toConsole = src.indexOf("const toConsole = !toMy && shouldSendAgencyToConsole(false) ? consoleRedirectFor(location.pathname, location.search) : null")
+    const judge = src.indexOf('const toMyOrConsole = sellerEntryRedirect(location.pathname, location.search)')
     expect(embed).toBeGreaterThan(0)
-    expect(toMy).toBeGreaterThan(embed)
-    expect(toConsole).toBeGreaterThan(toMy)
-    expect(src).toContain('if (toConsole) return <Navigate to={toConsole} replace />')
+    expect(judge).toBeGreaterThan(embed)
+    expect(src).toContain('if (toMyOrConsole) return <Navigate to={toMyOrConsole} replace />')
+    const lib = stripComments(readFileSync('src/lib/seller-deep-link.ts', 'utf-8'))
+    const fn = lib.slice(lib.indexOf('export function sellerEntryRedirect('))
+    const owner = fn.indexOf('const toMy = shouldSendOwnerToMy(false) ? myRedirectFor(pathname, search) : null')
+    const agency = fn.indexOf('return shouldSendAgencyToConsole(false) ? consoleRedirectFor(pathname, search) : null')
+    expect(owner).toBeGreaterThan(0)
+    expect(agency).toBeGreaterThan(owner)
   })
   it('콘솔이 연 전체화면은 dash=1 을 달아 다시 콘솔로 튕기지 않는다', () => {
     const src = stripComments(readFileSync('src/pages/agency-console/AgencyStorePlate.tsx', 'utf-8'))

@@ -303,7 +303,7 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
     // 7. 셀러 가입 신청 → 어드민 대시보드 알림 + 신청자 알림톡
     createDashboardNotification(db, 'admin', null, 'seller_registered', '새 셀러 가입', `${name}`, '/admin/seller-approval').catch(swallow('seller:api:seller-management'));
 
-    // 🛡️ 2026-04-28: 신청자에게 카카오 알림톡 (Aligo 환경변수 + 템플릿 등록 시 자동 동작)
+    // 🛡️ 2026-04-28: 신청자에게 카카오 알림톡 (SENS 환경변수 + 템플릿 승인 시 자동 동작)
     if (phone) {
       try {
         const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk');

@@ -17,10 +17,11 @@ import { cors } from 'hono/cors';
 import { verify } from 'hono/jwt';
 import type { JWTPayload } from 'hono/utils/jwt/types';
 import { sendSellerAlimtalk } from '../../alimtalk/send';
+import { sensConfigured } from '../../../lib/ncp-sens';
 import { safeError } from '../../../worker/utils/safe-error';
 import { enrichSellerOrderRows } from '../../../worker/utils/order-list-enrich';
 import { rateLimit } from '../../../worker/middleware/rate-limit';
-import { buildShippingMessage, buildCancellationMessage } from '../../alimtalk/aligo';
+import { buildShippingMessage, buildCancellationMessage } from '../../alimtalk/messages';
 import { swallow } from '@/worker/utils/swallow';
 import { VOUCHER_CATEGORY_SET, canonicalCategory, isVoucherCategory, voucherMinPriceError } from '@/shared/constants/voucher-categories';
 import { writeDigitalProductFields, writeVoucherProductFields, writeProductText } from './product-field-writers';
@@ -37,12 +38,11 @@ import { applySellerPromoRate } from '../../../worker/utils/seller-promo-rate';
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
-  ALIGO_API_KEY?: string;
-  ALIGO_USER_ID?: string;
-  ALIGO_SENDER_KEY?: string;
-  ALIGO_SENDER_PHONE?: string; ALIGO_SENDER?: string; // 라이브 이름은 ALIGO_SENDER
-  ALIGO_TPL_SHIPPING_START?: string;
-  ALIGO_TPL_ORDER_CANCEL?: string;
+  // 📨 2026-10-12 알림톡 = 네이버 클라우드 SENS(NCP_* 4종). 없으면 sendSellerAlimtalk 이 조용히 건너뛴다.
+  NCP_ACCESS_KEY?: string;
+  NCP_SECRET_KEY?: string;
+  NCP_SENS_ALIMTALK_SERVICE_ID?: string;
+  NCP_KAKAO_CHANNEL_ID?: string;
   // 🛡️ 2026-05-20: cacheInvalidate / 세션 조회용 KV 들 (전역 wrangler.toml 바인딩).
   //   미사용 라우트는 optional 로 두어 런타임 검사 가능.
   SESSION_KV?: KVNamespace;
@@ -274,7 +274,7 @@ async function handleStatusUpdate(c: Context<{ Bindings: Bindings }>) {
     }
 
     // ── 주문 취소 알림톡 (fire-and-forget) ──
-    if (dbStatus === 'CANCELLED' && c.env.ALIGO_API_KEY && c.env.ALIGO_USER_ID) {
+    if (dbStatus === 'CANCELLED' && sensConfigured(c.env as unknown as Record<string, unknown>)) {
       const order = await db.prepare(
         `SELECT order_number, shipping_phone, shipping_name, seller_id, total_amount,
                 (SELECT name FROM order_items oi JOIN products p ON oi.product_id = p.id
@@ -286,7 +286,7 @@ async function handleStatusUpdate(c: Context<{ Bindings: Bindings }>) {
       }>().catch(() => null);
 
       if (order?.shipping_phone && order.seller_id) {
-        const { subject, message } = buildCancellationMessage({
+        const { message } = buildCancellationMessage({
           orderId: order.order_number,
           buyerName: order.shipping_name ?? '고객',
           buyerPhone: order.shipping_phone,
@@ -295,15 +295,10 @@ async function handleStatusUpdate(c: Context<{ Bindings: Bindings }>) {
         });
         sendSellerAlimtalk({
           DB: db,
-          aligoApiKey: c.env.ALIGO_API_KEY,
-          aligoUserId: c.env.ALIGO_USER_ID,
-          aligoSenderKey: c.env.ALIGO_SENDER_KEY ?? '',
-          senderPhone: c.env.ALIGO_SENDER_PHONE || c.env.ALIGO_SENDER,
+          env: c.env,
           sellerId: order.seller_id,
           receiver: order.shipping_phone,
-          receiverName: order.shipping_name ?? '고객',
-          templateCode: c.env.ALIGO_TPL_ORDER_CANCEL ?? 'TBD',
-          subject,
+          templateCode: 'order_cancel',
           message,
           orderId: order.order_number,
         }).catch(e => console.warn('[Alimtalk] 주문취소 발송 실패:', e));
@@ -432,7 +427,7 @@ sellerOrdersRoutes.put('/orders/:id/tracking', async (c) => {
     } catch {} // fire and forget
 
     // ── 배송 시작 알림톡 (fire-and-forget) ──
-    if (c.env.ALIGO_API_KEY && c.env.ALIGO_USER_ID) {
+    if (sensConfigured(c.env as unknown as Record<string, unknown>)) {
       const order = await db.prepare(
         `SELECT order_number, shipping_phone, shipping_name, seller_id,
                 (SELECT name FROM order_items oi JOIN products p ON oi.product_id = p.id
@@ -444,7 +439,7 @@ sellerOrdersRoutes.put('/orders/:id/tracking', async (c) => {
       }>().catch(() => null);
 
       if (order?.shipping_phone && order.seller_id) {
-        const { subject, message } = buildShippingMessage({
+        const { message } = buildShippingMessage({
           orderId: order.order_number,
           buyerName: order.shipping_name ?? '고객',
           buyerPhone: order.shipping_phone,
@@ -454,15 +449,10 @@ sellerOrdersRoutes.put('/orders/:id/tracking', async (c) => {
         });
         sendSellerAlimtalk({
           DB: db,
-          aligoApiKey: c.env.ALIGO_API_KEY,
-          aligoUserId: c.env.ALIGO_USER_ID,
-          aligoSenderKey: c.env.ALIGO_SENDER_KEY ?? '',
-          senderPhone: c.env.ALIGO_SENDER_PHONE || c.env.ALIGO_SENDER,
+          env: c.env,
           sellerId: order.seller_id,
           receiver: order.shipping_phone,
-          receiverName: order.shipping_name ?? '고객',
-          templateCode: c.env.ALIGO_TPL_SHIPPING_START ?? 'TBD',
-          subject,
+          templateCode: 'shipping_start',
           message,
           orderId: order.order_number,
         }).catch(e => console.warn('[Alimtalk] 배송시작 발송 실패:', e));

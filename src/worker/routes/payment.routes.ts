@@ -14,7 +14,8 @@ import { webhookRouter } from './webhook.routes';
 import { TOSS_PAYMENT_URL } from '../../shared/constants';
 import { sendSellerAlimtalk } from '../../features/alimtalk/send';
 import { swallow } from '../utils/swallow';
-import { buildOrderConfirmMessage } from '../../features/alimtalk/aligo';
+import { buildOrderConfirmMessage } from '../../features/alimtalk/messages';
+import { sensConfigured } from '../../lib/ncp-sens';
 import { captureException } from '../utils/sentry';
 import { adjustUserPoints } from '../utils/point-ledger';
 import { withCircuitBreaker } from '../utils/circuit-breaker';
@@ -636,7 +637,7 @@ paymentsRouter.post('/confirm', async (c) => {
             })
 
             // 🏁 2026-06-11 [UNLOCK] (사용자 승인 — 참여하기와 동일 수술): referral 알림
-            //   (notifications INSERT + phone/누적 SELECT + 알리고 외부 HTTP)이 결제 confirm 응답을
+            //   (notifications INSERT + phone/누적 SELECT + 알림톡 외부 HTTP)이 결제 confirm 응답을
             //   막고 있었음 — 내용/순서/에러처리 그대로 응답 후(waitUntil)로만 이동.
             //   ⚠️ 적립(affiliate_earnings INSERT) 등 머니 경로는 위에서 동기 유지 — 무변경.
             {
@@ -654,10 +655,9 @@ paymentsRouter.post('/confirm', async (c) => {
                 `${productName} · 결제 ₩${booking.total_amount.toLocaleString()}`,
               ).run().catch(() => { /* table 없으면 silent */ })
 
-              // 카카오 알림톡 (ALIGO env 설정 시).
+              // 카카오 알림톡 (네이버 클라우드 SENS 설정 시 — 2026-10-12 알리고 → SENS).
               try {
-                const env = c.env as unknown as Record<string, string | undefined>
-                if (env.ALIGO_API_KEY && env.ALIGO_USER_ID && env.ALIGO_SENDER_KEY) {
+                if (sensConfigured(c.env as unknown as Record<string, unknown>)) {
                   const refUser = await c.env.DB.prepare('SELECT phone FROM users WHERE id = ?')
                     .bind(refIdNum).first<{ phone: string | null }>().catch(() => null)
                   const phone = (refUser?.phone || '').replace(/\D/g, '')
@@ -673,16 +673,9 @@ paymentsRouter.post('/confirm', async (c) => {
                       `· 결제: ₩${booking.total_amount.toLocaleString()}\n` +
                       `· 적립: ₩${booking.influencer_commission_amount.toLocaleString()}\n\n` +
                       `누적 ₩${totalEarned.toLocaleString()} — 정산 페이지에서 환급 가능합니다.`
-                    const { sendAlimtalk } = await import('../../lib/aligo')
-                    await sendAlimtalk(
-                      { ALIGO_API_KEY: env.ALIGO_API_KEY!, ALIGO_USER_ID: env.ALIGO_USER_ID! },
-                      {
-                        senderKey: env.ALIGO_SENDER_KEY!,
-                        templateCode: env.ALIGO_REFERRAL_COMMISSION_EARNED || 'referral_commission_earned',
-                        to: phone,
-                        message,
-                      },
-                    ).catch(() => { /* silent fail — 메인 흐름 보호 */ })
+                    const { sendSystemAlimtalk } = await import('../../lib/system-alimtalk')
+                    await sendSystemAlimtalk(c.env, phone, 'referral_commission_earned', message)
+                      .catch(() => { /* silent fail — 메인 흐름 보호 */ })
                   }
                 }
               } catch { /* fail-soft */ }
@@ -804,10 +797,10 @@ paymentsRouter.post('/confirm', async (c) => {
 
     // ── 알림톡 자동 발송 (주문 완료) ──────────────────────────────────────
     // 실패해도 결제 응답에 영향 없도록 fire-and-forget
-    if (c.env.ALIGO_API_KEY && c.env.ALIGO_USER_ID) {
+    if (sensConfigured(c.env as unknown as Record<string, unknown>)) {
       for (const order of updatedOrders) {
         if (!order.seller_id || !order.shipping_phone) continue;
-        const { subject, message } = buildOrderConfirmMessage({
+        const { message } = buildOrderConfirmMessage({
           orderId: orderNumber,
           buyerName: order.shipping_name ?? '고객',
           buyerPhone: order.shipping_phone,
@@ -818,15 +811,10 @@ paymentsRouter.post('/confirm', async (c) => {
         // 🛡️ 2026-05-12: console.warn → logError + Sentry. silent failure 가 셀러 미통보로 이어지면 배송 지연.
         sendSellerAlimtalk({
           DB: c.env.DB,
-          aligoApiKey: c.env.ALIGO_API_KEY,
-          aligoUserId: c.env.ALIGO_USER_ID,
-          aligoSenderKey: c.env.ALIGO_SENDER_KEY ?? '',
-          senderPhone: c.env.ALIGO_SENDER_PHONE,
+          env: c.env,
           sellerId: Number(order.seller_id),
           receiver: order.shipping_phone,
-          receiverName: order.shipping_name ?? '고객',
-          templateCode: c.env.ALIGO_TPL_ORDER_CONFIRM ?? 'TBD',
-          subject,
+          templateCode: 'order_confirm',
           message,
           orderId: orderNumber,
         }).catch(e => {

@@ -129,6 +129,27 @@ export function consoleRedirectFor(pathname: string, search: string): string | n
 }
 
 /**
+ * 🚪 **대시보드 주소로 가려는 버튼이 최종 도착지로 곧장 가게** (2026-10-12 대표 *"거치는 단계 없애줘"*).
+ *   하단 ➕ '이용권 등록' · 유어샵 '마이 내 가게' 가 `/seller/*` 로 navigate 하면, 대시보드 껍데기가 한 번 뜨려다가
+ *   (`SellerLayout`) 마이·콘솔로 다시 보낸다 — 결과는 맞는데 화면 한 번을 거친다. 같은 판정을 **누르는 순간** 하면 된다.
+ *   🔑 `SellerLayout` 도 이 함수를 쓴다 — 두 벌이면 버튼과 깊은 링크가 서로 다른 곳으로 가는 날이 온다.
+ * @returns 보낼 주소. 대시보드에 남아야 하면(옛 셀러 · 콘솔 로그인 없는 에이전시 좌석 · `dash=1` …) `null`.
+ */
+export function sellerEntryRedirect(pathname: string, search: string): string | null {
+  const toMy = shouldSendOwnerToMy(false) ? myRedirectFor(pathname, search) : null
+  if (toMy) return toMy
+  return shouldSendAgencyToConsole(false) ? consoleRedirectFor(pathname, search) : null
+}
+
+/** 버튼용 — `/seller/*` 주소를 받아 지금 이 사람이 실제로 도착할 주소를 준다(남아야 하면 원래 주소). */
+export function sellerEntryPath(path: string): string {
+  const i = path.indexOf('?')
+  const pathname = i < 0 ? path : path.slice(0, i)
+  const search = i < 0 ? '' : path.slice(i)
+  return sellerEntryRedirect(pathname, search) ?? path
+}
+
+/**
  * 마이 주소의 `?tool=` 을 읽는다. 셀러 화면 주소가 아니면 `null` — **외부 주소·`//`·역슬래시는 버린다**
  * (이 값은 시트의 메모리 라우터로만 가지만, 실패 시 대시보드로 되돌릴 때 `location` 에 들어가므로 열린 리다이렉트를 막는다).
  */

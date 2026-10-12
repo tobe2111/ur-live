@@ -119,7 +119,7 @@ export default [
   {
     name: '📩사장님통보 버튼이 하나만 남는다',
     file: NOTICE,
-    find: "      { name: '내가 등록한 게 아니에요', type: 'WL', url_mobile: OWNER_NOTICE_CLAIM_URL, url_pc: OWNER_NOTICE_CLAIM_URL },",
+    find: "    { type: 'WL', name: '내가 등록한 게 아니에요', linkMobile: OWNER_NOTICE_CLAIM_URL, linkPc: OWNER_NOTICE_CLAIM_URL },",
     replace: '',
     test: TEST,
     why: '사기 방어의 출구가 버튼에서 사라진다 — 이 통보가 존재하는 이유가 반쪽이 된다.',
@@ -127,7 +127,7 @@ export default [
   {
     name: '📩사장님통보 버튼을 발송기에 안 넘긴다',
     file: NOTICE,
-    find: '        button_1: ownerNoticeButtonsJson(),',
+    find: '        buttons: ownerNoticeButtons(),',
     replace: '',
     test: TEST,
     why: '문구만 맞고 버튼이 빠진다 — 카카오 화면에 누를 곳이 없다.',

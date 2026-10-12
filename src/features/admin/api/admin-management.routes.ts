@@ -22,7 +22,6 @@ import { cors } from 'hono/cors';
 import { executeQuery, executeRun } from '@/worker/utils/database';
 import { requireAdmin } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
-import { sendAlimtalk, buildSampleApprovalMessage } from '../../alimtalk/aligo';
 import { DEFAULT_COMMISSION_RATE } from '@/shared/constants';
 import { KOREAN_NAMES, REVIEW_TEMPLATES } from './review-templates';
 

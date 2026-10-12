@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN, COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
 import { isWholesaleSurface } from '@/utils/domain'
+import { sellerEntryPath } from '@/lib/seller-deep-link'
 import { Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Utensils, Sparkles } from 'lucide-react'
 // 🎫 2026-09-02 (대표 시안 — 코레일톡 하단 탭): 다섯 탭 전부 유어딜 아이콘. 비활성 = 선, 활성 = 면(`filled`).
 import { UrShopIcon, HomeIcon, GiftBoxIcon, TicketStubIcon, PersonIcon, PinIcon } from '@/components/icons/urdeal-icons'
@@ -401,11 +402,16 @@ export default function BottomNav() {
                        seller_token 보유(카카오 연결 셀러)면 등록 카드 직접 노출. 등록 페이지 가드
                        (requireSeller)는 토큰 존재만 검사라 전환/리로드 없이 바로 진입 가능.
                        'DISPLAY 는 active_role 로만' 룰은 탭/내비 표시용 — ➕ 시트는 역할 행동 메뉴라 토큰 기준. */}
-                  {(isSeller || hasSellerToken) && (
+                  {/* 🚪 2026-10-12 (대표 "거치는 단계 없애줘"): 두 버튼 다 대시보드 주소를 거치지 않고 최종 도착지로 곧장 —
+                       `sellerEntryPath` 가 대시보드 껍데기와 같은 판정(사장님→마이 · 에이전시→콘솔 · 옛 셀러→그대로). */}
+                  {(isSeller || hasSellerToken) && (() => {
+                    // 이름도 도착지대로 — 사장님은 마이, 에이전시 직원은 콘솔, 옛 셀러만 대시보드.
+                    const sellerHome = sellerEntryPath('/seller')
+                    return (
                     <div className="space-y-3">
                       {/* 🗑️ 2026-07-07 라이브커머스 제거: '라이브 방송 시작하기' 진입 삭제. */}
                       <button
-                        onClick={() => { setSheetOpen(false); navigate('/seller/meal-voucher/new') }}
+                        onClick={() => { setSheetOpen(false); navigate(sellerEntryPath('/seller/meal-voucher/new')) }}
                         className="w-full flex items-center gap-4 p-4 bg-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
@@ -418,19 +424,26 @@ export default function BottomNav() {
                       </button>
 
                       <button
-                        onClick={() => { setSheetOpen(false); navigate('/seller') }}
+                        onClick={() => { setSheetOpen(false); navigate(sellerHome) }}
                         className="w-full flex items-center gap-4 p-4 bg-gray-100 dark:bg-[#1D1F29] rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <div className="w-12 h-12 rounded-xl bg-[#333] flex items-center justify-center">
                           <LayoutDashboard className="w-6 h-6 text-gray-600" />
                         </div>
                         <div className="text-left">
-                          <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t('bottomNav.sellerDashboard', { defaultValue: '셀러 대시보드' })}</p>
-                          <p className="text-[12px] text-gray-500 mt-1">{t('bottomNav.sellerDashboardDesc', { defaultValue: '상품 관리, 주문, 매출 확인' })}</p>
+                          <p className="text-[15px] font-bold text-gray-900 dark:text-white">{sellerHome === '/seller'
+                            ? t('bottomNav.sellerDashboard', { defaultValue: '셀러 대시보드' })
+                            : sellerHome.startsWith('/agency') ? t('bottomNav.agencyDashboard', { defaultValue: '에이전시 대시보드' })
+                            : t('bottomNav.myStoreHome', { defaultValue: "마이 '내 가게'" })}</p>
+                          <p className="text-[12px] text-gray-500 mt-1">{sellerHome === '/seller'
+                            ? t('bottomNav.sellerDashboardDesc', { defaultValue: '상품 관리, 주문, 매출 확인' })
+                            : sellerHome.startsWith('/agency') ? t('bottomNav.agencyDashboardDesc', { defaultValue: '소속 셀러 관리' })
+                            : t('bottomNav.myStoreHomeDesc', { defaultValue: '주문·정산·이용권을 마이에서 관리' })}</p>
                         </div>
                       </button>
                     </div>
-                  )}
+                    )
+                  })()}
 
                   {/* 🌇 2026-09-04 에이전시 일몰 — ➕ 시트의 '에이전시 대시보드' 진입 2개를 삭제했다.
                       중개사는 별도 대시보드가 아니라 **셀러 대시보드**를 그대로 쓴다. */}

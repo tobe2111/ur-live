@@ -27,6 +27,7 @@ import { intParam } from '@/shared/pagination'
 import { reassignIntroducer } from './admin-sellers/reassign-introducer'
 import { registerSellerPurgeRoute } from './admin-sellers/purge-seller'  // 🗑️ 매장 완전 삭제
 import { resolveSellerNotifyTarget } from '@/worker/utils/seller-notify-phone' // 📱 사장님 알림 번호 SSOT
+import { sensConfigured } from '@/lib/ncp-sens' // 📨 2026-10-12 알림톡 = SENS
 
 export const adminSellersRoutes = new Hono<{ Bindings: Env }>();
 
@@ -374,7 +375,7 @@ adminSellersRoutes.patch('/sellers/:id/business-registration/verify', cors(), as
         '사업자등록 검증 완료', '사업자등록증 확인이 끝났어요',
         '/seller/settlements').catch(() => { /* noop */ });
 
-      // 🛡️ 2026-05-18: 카카오 알림톡 발송 (ALIGO 설정된 경우).
+      // 🛡️ 2026-05-18: 카카오 알림톡 발송 (네이버 클라우드 SENS 설정된 경우 — 2026-10-12 알리고 → SENS).
       sendBusinessRegistrationAlimtalk(c.env as unknown as { DB: D1Database } & Record<string, string | undefined>, Number(sellerId), 'verify', null).catch(() => { /* fail-soft */ });
 
       return c.json({ success: true, message: '사업자등록을 승인했습니다' });
@@ -758,7 +759,7 @@ adminSellersRoutes.patch('/sellers/:id/permissions', cors(), async (c) => {
 });
 
 // 🛡️ 2026-05-18: 사업자 검증 결과 알림톡 — verify/reject 후 셀러에게 발송.
-//   ALIGO env 미설정 시 silent skip (가이드 docs/kakao-alimtalk-templates.md 참조).
+//   SENS(NCP_*) env 미설정 시 silent skip (등록 목록 docs/alimtalk-register-list.md).
 async function sendBusinessRegistrationAlimtalk(
   env: { DB: D1Database } & Record<string, string | undefined>,
   sellerId: number,
@@ -766,12 +767,10 @@ async function sendBusinessRegistrationAlimtalk(
   reason: string | null,
 ): Promise<void> {
   // 🔔 2026-07-01: 승인/반려 본문이 완전히 달라 1코드=1본문 원칙상 tpl_code 분리
-  //   (business_registration_verified / business_registration_rejected). env override 도 action 별.
-  const templateCode = action === 'verify'
-    ? (env.ALIGO_BUSINESS_REGISTRATION_VERIFIED || 'business_registration_verified')
-    : (env.ALIGO_BUSINESS_REGISTRATION_REJECTED || 'business_registration_rejected')
+  //   (business_registration_verified / business_registration_rejected). SENS 템플릿 코드 = 이 이름.
+  const templateCode = action === 'verify' ? 'business_registration_verified' : 'business_registration_rejected'
   // env 미설정 → skip. 키는 sendSystemAlimtalk 이 직접 읽으므로 여기선 **존재 확인만**(무의미한 DB 조회 회피).
-  if (!env.ALIGO_API_KEY || !env.ALIGO_USER_ID || !env.ALIGO_SENDER_KEY) return
+  if (!sensConfigured(env)) return
 
   const seller = await env.DB.prepare(
     'SELECT name, business_name, business_number, phone FROM sellers WHERE id = ?'
@@ -786,12 +785,12 @@ async function sendBusinessRegistrationAlimtalk(
     : `[유어딜] 사업자등록증 반려\n\n· 사유: ${reason || '미상'}\n\n다시 제출해주세요. 검증 완료 후 현금 정산이 가능합니다.`
 
   try {
-    // 🔔 2026-08-09: `lib/aligo` 직접 호출 → **공용 헬퍼 경유**. 이 경로만 우회해 **발송 실패가
+    // 🔔 2026-08-09: 발송사 직접 호출 → **공용 헬퍼 경유**. 이 경로만 우회해 **발송 실패가
     //   `alimtalk_failures` 재시도 큐에 안 들어갔다**(retry cron 미포착 → 승인/반려 통보 영구 소실).
     //   덤: dedup·rate-limit(phone+template 1h)·일일 cap·발송 로그. 문안·tpl_code 는 byte-불변(카카오 글자 일치).
     //   ⚠️ 1h 내 재반려 skip 은 감수 — 위 `createDashboardNotification` 이 통보 채널을 0 으로 안 만든다.
     const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk')
-    await sendSystemAlimtalk(env, phone, templateCode, message)
+    await sendSystemAlimtalk(env, phone, templateCode, message, { sellerId }) // 🔘 반려 → [다시 제출하기] 버튼(lib/alimtalk-buttons)
   } catch { /* silent fail */ }
 }
 

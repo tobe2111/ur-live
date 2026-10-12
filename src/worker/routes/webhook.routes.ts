@@ -29,8 +29,8 @@ import { createDashboardNotification } from '../../features/notifications/api/da
  * Send an order status notification.
  *
  * Currently dispatches a Discord embed when DISCORD_WEBHOOK_URL is configured
- * in env.  Alimtalk (KakaoTalk) sending is wired via src/lib/aligo.ts but
- * requires ALIGO_API_KEY / ALIGO_USER_ID / ALIGO_SENDER_KEY to be set in env.
+ * in env.  Alimtalk (KakaoTalk) sending goes through Naver Cloud SENS (src/lib/ncp-sens.ts)
+ * and requires the four NCP_* keys to be set in env (2026-10-12, comment only).
  *
  * @param orderRepo  - OrderRepository instance scoped to the current request
  * @param orderNumber - The platform order number (equals tossOrderId)
