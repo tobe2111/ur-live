@@ -11,26 +11,24 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { GiftBoxIcon } from '@/components/icons/urdeal-icons'
+import { feedPayload, sendKakaoShare } from '@/lib/kakao-share'
 import { X } from 'lucide-react'
 import type { Voucher } from './types'
 
 type Pending = { token: string; url: string }
 
+/**
+ * 🔁 2026-10-12 — 카드 조립·전송을 `lib/kakao-share.ts` 로 **행동 불변**으로 옮겼다(사본 셋 방지).
+ *   **동기 유지**가 중요하다 — 위 머리말대로 공유창은 누른 순간에 열어야 폰 브라우저가 안 막는다.
+ */
 function sendKakao(v: Voucher, url: string): boolean {
-  const K = (window as unknown as { Kakao?: { isInitialized?: () => boolean; Share?: { sendDefault: (o: unknown) => void } } }).Kakao
-  if (!K?.Share || (K.isInitialized && !K.isInitialized())) return false
-  const link = { mobileWebUrl: url, webUrl: url }
-  K.Share.sendDefault({
-    objectType: 'feed',
-    content: {
-      title: '이용권 선물이 도착했어요',
-      description: [v.product_name, v.restaurant_name].filter(Boolean).join(', '),
-      imageUrl: v.product_image && /^https:\/\//.test(v.product_image) ? v.product_image : 'https://urdeal.kr/icons/og-default.png',
-      link,
-    },
-    buttons: [{ title: '선물 받기', link }],
-  })
-  return true
+  return sendKakaoShare(feedPayload({
+    title: '이용권 선물이 도착했어요',
+    description: [v.product_name, v.restaurant_name].filter(Boolean).join(', '),
+    imageUrl: v.product_image && /^https:\/\//.test(v.product_image) ? v.product_image : undefined,
+    url,
+    buttons: [{ title: '선물 받기' }],
+  }))
 }
 
 export default function GiftVoucherSheet({ voucher, onClose, onPendingChange }: {
