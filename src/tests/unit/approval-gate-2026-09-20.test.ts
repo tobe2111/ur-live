@@ -26,7 +26,9 @@ const STEP = read('src/pages/seller-meal-voucher/StoreStep.tsx')
 const PAYOUT = read('src/worker/cron/payouts-generate.ts')
 // 🧭 2026-10-12 대시보드 삭제 — 매장 전환은 마이의 가게 전환 시트(`StoreSwitchSheet`)가 맡는다(대시보드 `StoreSwitcher` 는 지웠다).
 const SWITCHER = read('src/pages/user-profile/StoreSwitchSheet.tsx')
+// 2026-10-12: 상태 안내 문구는 `store-status-note.ts` 로 옮겨졌다(SellerSection 600줄 래칫) — 마이가 그 모듈을 쓰는지는 아래에서 따로 본다.
 const MY_SECTION = read('src/pages/user-profile/SellerSection.tsx')
+const MY_STATUS_NOTE = read('src/pages/user-profile/seller-section/store-status-note.ts')
 const ADMIN = read('src/features/admin/api/admin-sellers.routes.ts')
 const CODES = read('src/features/group-buy/api/marketing/collab-codes.ts')
 const AUTH = read('src/worker/middleware/auth.ts')
@@ -65,7 +67,8 @@ describe('② 좌석 — 세 곳(토큰·가산·화면)이 같은 함수를 쓴
     expect(SWITCHER).toMatch(/s\.status \? STATUS_NOTE\[s\.status\]/)
     expect(SWITCHER).toMatch(/pending:/)
     expect(SWITCHER).toMatch(/rejected:/)
-    expect(MY_SECTION).toMatch(/pending: '승인 대기/)
+    expect(MY_STATUS_NOTE).toMatch(/pending: '승인 대기/)
+    expect(MY_SECTION).toMatch(/storeStatusNote\(store\?\.status/)
   })
 })
 

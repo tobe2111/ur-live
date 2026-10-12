@@ -27,7 +27,7 @@
  * ⇒ 운영자가 늘어 카톡 채널로 옮길 때 **코드 변경 0**, 어드민에서 링크만 교체하면 된다.
  */
 import { useEffect, useState } from 'react'
-import { LifeBuoy } from 'lucide-react'
+import { MessageIcon } from '@/components/icons/urdeal-icons'
 import api from '@/lib/api'
 
 /** 링크로 만들 수 있는 값인가(카톡 채널 URL 등). 전화·이메일도 각각 스킴을 붙인다. */
@@ -58,8 +58,8 @@ export default function SellerSupportContact() {
   const href = toHref(contact)
   return (
     <div className="rounded-xl bg-surface shadow-lift p-4">
-      <p className="flex items-center gap-1.5 text-[15px] font-bold text-gray-900 dark:text-white">
-        <LifeBuoy className="w-4 h-4" aria-hidden="true" /> 문제가 있으면 알려주세요
+      <p className="flex items-center gap-2 text-[15px] font-bold text-gray-900 dark:text-white">
+        <MessageIcon size={16} aria-hidden="true" /> 문제가 있으면 알려주세요
       </p>
       <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">
         주문·정산·상품 등록에서 막히면 아래로 연락 주세요. 파일럿 기간에는 담당자가 직접 답변합니다.
