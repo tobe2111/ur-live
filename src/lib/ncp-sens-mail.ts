@@ -29,6 +29,16 @@ export function sensMailConfigured(e: Record<string, unknown> | null | undefined
   return !!(e && e.NCP_ACCESS_KEY && e.NCP_SECRET_KEY && e.NCP_MAIL_SENDER)
 }
 
+/**
+ * 📮 거래성 메일을 보낼 수단이 있는가 — Resend 키 **또는** SENS 메일(2026-10-12).
+ *   🩸 배포 후 실측: 유어딜(ur-live)엔 `RESEND_API_KEY` 가 **없다**. 그런데 호출부 여럿이 발송 전에 그 키만 보고
+ *   건너뛰어서, SENS 메일을 설정해도 그 메일들이 한 통도 안 나갔다(에러 없이). 거래성 메일의 '보낼 수 있나' 판정은 이 함수 하나로.
+ */
+export function transactionalMailReady(e: unknown): boolean {
+  const env = (e ?? {}) as Record<string, unknown>
+  return !!env.RESEND_API_KEY || sensMailConfigured(env)
+}
+
 /** 요청 본문 — 순수 함수(시험이 직접 잰다). 한 통에 한 명(individual), 홍보 아님(advertising false). */
 export function buildSensMailBody(
   env: SensMailEnv,

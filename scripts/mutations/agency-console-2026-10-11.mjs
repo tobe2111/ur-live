@@ -84,8 +84,8 @@ export default [
   {
     name: '🏢 메일 준비 판정이 보낸 사람 주소를 안 본다',
     file: 'src/features/agency-console/api/agency-auth.routes.ts',
-    find: 'return !!env.RESEND_API_KEY && !!env.RESEND_FROM',
-    replace: 'return !!env.RESEND_API_KEY',
+    find: 'return (!!env.RESEND_API_KEY && !!env.RESEND_FROM) ||',
+    replace: 'return (!!env.RESEND_API_KEY) ||',
     test: TEST,
     why: '보낸 사람 주소가 없으면 Resend 기본 발신으로 가고, 그 주소는 계정 주인에게만 배달된다.',
   },
