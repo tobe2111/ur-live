@@ -130,7 +130,7 @@ describe('④ 마이 내 가게 — 첫 화면이 상품 목록을 안 받는다
   })
 
   it('그 집계는 이미 돌고 있는 병렬 묶음 안이다 — 왕복이 안 늘어난다', () => {
-    const at = ROUTE.indexOf('const [today, pending, active] = await Promise.all([')
+    const at = ROUTE.indexOf('const [today, pending, active, cert] = await Promise.all([')
     expect(at, '병렬 묶음을 못 찾았다').toBeGreaterThan(-1)
     // 묶음 안에서 products 집계를 한다(별도 await 로 빼면 왕복이 하나 는다).
     expect(ROUTE.slice(at, at + 2400)).toContain('FROM products')

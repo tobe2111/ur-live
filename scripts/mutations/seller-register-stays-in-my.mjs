@@ -34,20 +34,6 @@ export default [
     why: '이 페이지들은 대시보드 규칙상 `dark:` 가 금지돼 있다. 클래스가 없으면 전역 다크 입력 규칙이 이겨 글자가 안 보인다(2026-09-03 지도 검색창과 같은 사고).',
   },
   {
-    name: '🪟 껍데기 반환이 도매 리다이렉트 뒤로 밀린다 (겸업 사장님의 마이가 사라진다)',
-    file: 'src/components/SellerLayout.tsx',
-    // 🔁 2026-09-26 재조준: `bare` → `bare || embedded`(마이 시트 컨텍스트 추가)로 줄이 바뀌었다.
-    //   지키는 불변식은 그대로다 — **껍데기 반환이 도매 리다이렉트보다 먼저**여야 한다.
-    // 🔁 2026-09-26: 조기 반환이 여러 줄 블록이 됐다. 지키는 불변식은 그대로 —
-    //   **껍데기 반환이 도매 리다이렉트보다 먼저**여야 한다.
-    // 🩸 첫 재조준은 헛돌았다 — 진짜 블록은 그대로 두고 **뒤에 복제본**만 넣어서, 순서 검사가
-    //   여전히 통과했다. 결함을 실제로 재현하려면 도매 리다이렉트가 **먼저** 돌아야 한다.
-    find: '  if (bare || embedded) {',
-    replace: '  if (wholesaleOnly) return null\n  if (bare || embedded) {',
-    test: TEST,
-    why: '시트 안에서 `/wholesale` 로 튕기면 마이가 통째로 사라진다 — 좌석은 마이가 이미 확인하고 열었다.',
-  },
-  {
     name: '🎟️ 시트 안에서 라우팅해 마이를 떠난다 (작성 중인 내용이 날아간다)',
     file: 'src/pages/SellerMealVoucherNewPage.tsx',
     find: "                onClick={() => { if (embedded) { onClose?.(); return } navigate('/seller/group-buy') }}",

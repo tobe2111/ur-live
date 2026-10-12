@@ -81,13 +81,6 @@ describe('② 한 페이지처럼 — nav 는 하나, 안에서 탭', () => {
     for (const g of SELLER_TAB_GROUPS) for (const t of g.tabs) expect(ROUTES, `라우트 없음: ${t.path}`).toContain(`path="${t.path}"`)
   })
 
-  it('🔒 탭은 레이아웃 한 곳에서 그린다 — 페이지마다 붙이면 안 붙인 페이지가 생긴다', () => {
-    // 2026-09-03: 대상 24개 화면 중 6개가 `DashboardPageHeader` 를 안 쓴다. 헤더/페이지에 붙이는
-    // 방식이면 그 여섯에서 탭이 사라지고, 그중 `/seller/stores` 는 착지점이라 위임·운영자로 갈
-    // 길이 통째로 없어진다 — 오늘 고친 "페이지는 있는데 닿을 수 없다"의 재발이다.
-    expect(readFileSync('src/components/SellerLayout.tsx', 'utf8')).toContain('<SellerGroupTabs />')
-  })
-
   it('🔒 교환권(KT 기프티콘) 이력은 이용권 탭이 아니다 — 교환권 ≠ 이용권(명칭 SSOT)', () => {
     // 이름이 비슷해 실제로 한 번 잘못 넣었다가 되돌렸다. 다시 들어오면 그 혼동이 화면에 박힌다.
     expect(findSellerTabGroup('/seller/voucher-orders')).toBeNull()

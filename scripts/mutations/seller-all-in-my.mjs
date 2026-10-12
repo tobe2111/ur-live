@@ -33,14 +33,6 @@ export default [
     why: '이용권 등록 폼은 저장 후 /seller/group-buy 로 간다 — 표시가 없으면 마이에서 출발한 사장님이 대시보드 한복판에 남겨진다.',
   },
   {
-    name: '↩️ 귀환 띠가 레이아웃에서 빠진다 (65개가 한꺼번에 길을 잃는다)',
-    file: 'src/components/SellerLayout.tsx',
-    find: '        <BackToMyBar />',
-    replace: '',
-    test: TEST,
-    why: '띠는 레이아웃 한 곳에만 있다 — 빠지면 마이에서 들어간 모든 화면에서 돌아올 길이 사라진다.',
-  },
-  {
     name: '↩️ 귀환 흔적을 localStorage 에 적는다 (어제 것이 오늘 뜬다)',
     file: 'src/lib/seller-return.ts',
     find: "    sessionStorage.setItem(KEY, '1')",

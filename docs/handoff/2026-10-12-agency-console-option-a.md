@@ -164,3 +164,51 @@
   승인 10 중 마이 길 있음 8(연결 1 · 주인 좌석 1 · 운영자 좌석 6 — 운영자 좌석도 `/api/seller/my-stores` 가 돌려준다),
   **마이 길 없음 2(id 21·22)** — 2026-09-23 같은 분에 23·24 와 함께 만들어진 빈 가입(상품 0 · 주문 0 · 비밀번호 없음 · 사업자 서류 pending).
   새 에이전시 콘솔 계정 0(테이블이 아직 안 만들어짐). ⇒ **실제로 대시보드가 필요한 사람은 0명.** 완전 삭제는 대표 판단.
+
+## 5차 — 대시보드 완전 삭제 (대표 *"하단 시트 코드가 정확히 어떤거지? 대시보드는 완전히 지워줘"*)
+
+서비스: 🎟️ 유어딜(사업자 유저 판매 화면) · 에이전시 콘솔. 머니 경로 접촉 없음(요약 API 에 등록증 상태 읽기 1쿼리 추가뿐).
+
+### 하단 ➕ 시트가 무엇이었나
+`BottomNav.tsx` 의 '만들기' 시트 — 2026-06-10 가운데 ➕ 탭이 열던 것(동네 공구 제안 · 이용권 등록 · 셀러 대시보드 · 셀러 로그인 ·
+내 가게 등록). 2026-06-19 5탭 확정으로 `navItems` 에 `__create__` 가 빠져 **열 방법이 없는 죽은 코드**였다. 통째로 지웠다(−245줄).
+
+### 지운 것
+- 단독 틀: `SellerLayout` 은 이제 **본문 래퍼 + 보내기**뿐(머리줄·전체 메뉴·⌘K·카카오 상담 버튼·biz 파비콘·도매 전용 바운스 없음).
+- 화면: `SellerPage`(홈) · `SellerMorePage`(더보기) · `SellerLoginPage` · `SellerForgotPasswordPage` · `SellerResetPasswordPage` ·
+  홈 부품(TodayTicket·TodoRows·WeekSummary·MyVouchersRail·NewSellerSteps·MyStoresPanel·useNewOrderAlert).
+- 틀 부품: SellerGroupTabs · StoreSwitcher · BackToMyBar · AgencySeatBar · SellerApprovalBanner · SellerKakaoLinkBanner · biz-favicon.
+- `dash=1`(마이·콘솔이 못 열면 대시보드로 되돌리던 표시) — 이제 주소를 지우고 **토스트로 이유를 말한다**.
+- 마이·콘솔 '전체 도구'의 "대시보드 전체화면으로" 폴백(`enterSeat(path)` · `goFull` + `dash=1`).
+
+### 옮긴 것(기능 손실 0)
+- 운영자 문의처(`SellerSupportContact`) → 마이·콘솔 '전체 도구' 시트 맨 아래.
+- 심사 상태 기록(`SELLER_STATUS_KEY` — 유어애즈 메뉴 게이트) → 마이 판매 구역(`/my-stores/summary` 의 매장 status).
+- 등록증만 반려 안내 → 마이 판매 구역 `storeStatusNote`(요약 API 에 `cert_status` 추가 — 별도 쿼리, 목록 쿼리에 섞지 않음).
+
+### 주소 규칙(`sellerEntryRedirect` 하나)
+- 에이전시 직원(좌석 토큰이 에이전시 좌석 · 또는 콘솔 로그인만 있고 소비자 계정 없음) → `/agency?tool=…`
+  (콘솔 로그인이 없으면 콘솔이 `returnUrl` 에 `?tool=` 을 실어 로그인 뒤 이어 연다).
+- 그 밖 모두(사장님 · 비로그인 · 옛 계정) → `/user/profile?tool=…`. `/seller`·`/seller/dashboard`·`/seller/more` → 첫 화면.
+- 시트 안에서 그 셋으로 가면 시트가 닫힌다(`ToolPageSheet` `CloseOnHome`).
+- `/seller/login`·`forgot-password`·`reset-password` → `/login?returnUrl=…`(직원은 `/agency/login`).
+- 그 자리에서 렌더: `/seller/youtube/callback`(OAuth 복귀) 하나.
+
+### 검증
+- tsc 0 · 전체 유닛 943파일 12,183건 중 실패 3 → 원인 수리 후 재실행 통과(아이콘 목록 1 · 앵커 1).
+- 주입 14건 전부 빨간불 · 낡은 앵커 48건 정리(지운 화면의 주입은 삭제, 살아 있는 불변식은 새 매니페스트로 재조준).
+
+### 다음 세션의 첫 액션
+1. PR CI 확인 → 대표 머지 지시가 있으면 머지.
+2. 배포 뒤 E4: ⓐ `urdeal.kr/seller` → 비로그인이면 카카오 로그인 → 마이 ⓑ `/seller/orders?status=PAID` → 마이 시트(필터 유지)
+   ⓒ `/seller/login` → `/login?returnUrl=%2Fuser%2Fprofile` ⓓ 하단 탭 5개 그대로.
+
+### 이번에 틀렸던 판단
+- 시험 정리 스크립트가 지운 파일을 읽던 **지역 변수 이름**(`page`·`pages`·`src`)을 '죽은 식별자'로 잡아 **살아 있는 시험까지** 지웠다
+  (`src/pages/...` 경로 문자열 안의 `pages` 에 걸렸다). 되돌려 손으로 다시 했다. ⇒ 이름 매칭으로 시험을 지울 때는 **경로 문자 경계**와
+  **블록 지역 변수**를 빼고, diff 를 꼭 읽을 것.
+- 가이드 시드를 고치며 템플릿 문자열 끝 백틱을 두 번 잘랐다(tsc 가 잡았다).
+
+### 남은 것
+- `/api/seller/surface` 는 클라 소비자가 0 이 됐다(서버 엔드포인트만 남음 — 해는 없다, 정리는 별건).
+- `bottomNav.*` 시트 문구 키들이 로케일에 남아 있다(쓰는 곳 0).

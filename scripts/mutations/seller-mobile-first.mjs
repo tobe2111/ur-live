@@ -13,29 +13,12 @@ export default [
       '빌드는 경고만 내고 성공하므로 이 규칙이 사라져도 아무도 모른다.',
   },
   {
-    // 🧱 2026-10-12 4단계: 하단 탭이 사라지고 대분류를 그리는 곳은 전체 메뉴 화면 하나다 — 재조준.
-    name: '📱 전체 메뉴가 대분류를 손으로 적는다 (모델과 갈린다)',
-    file: 'src/pages/SellerMorePage.tsx',
-    find: "  const { primary, moreGroups, ctaItem } = useSellerNavModel()",
-    replace: "  const primary = [{ key: 'orders', path: '/seller/orders', label: '주문', icon: Home, active: false }] as any\n  const { moreGroups, ctaItem } = useSellerNavModel()",
-    test: 'src/tests/unit/seller-mobile-first-2026-09-14.test.ts',
-    why: '두 벌이면 반드시 갈린다 — 마이 전체 도구·검색에 있는 화면이 메뉴엔 없거나 그 반대가 되고, 에러는 안 난다.',
-  },
-  {
     name: '📱 홈이 다시 더보기에 중복된다 (isCoveredByPrimary 가 홈을 안 덮음)',
     file: 'src/components/seller/seller-primary-nav.ts',
     find: "    if (path === tab.path) return true // 홈(`/seller`)도",
     replace: "    if (tab.key === 'home') continue\n    if (path === tab.path) return true // 홈(`/seller`)도",
     test: 'src/tests/unit/seller-mobile-first-2026-09-14.test.ts',
     why: '폰 실측에서 더보기 첫 줄에 "대시보드"가 또 떴다. 같은 곳으로 가는 줄이 둘이면 사용자는 둘이 다른 줄인 줄 안다.',
-  },
-  {
-    name: '📱 매장 패널이 게이트 여부로 부모를 바꾼다 (재마운트 → 게이트 깜빡임)',
-    file: 'src/pages/SellerPage.tsx',
-    find: "            <MyStoresPanel onGateChange={onGateChange} />\n          </div>",
-    replace: "            {storeGated === true ? <div><MyStoresPanel onGateChange={onGateChange} /></div> : <MyStoresPanel onGateChange={onGateChange} />}\n          </div>",
-    test: 'src/tests/unit/seller-mobile-first-2026-09-14.test.ts',
-    why: '첫 렌더 실측에서 STEP 1 티켓이 아예 안 보였다 — 새 인스턴스가 판정 중(null)을 보고해 게이트가 풀렸다 잠겼다를 반복했다.',
   },
   {
     name: '💸 서버 오늘 매출이 다시 UTC 날짜·결제 실패 포함으로 돌아간다',

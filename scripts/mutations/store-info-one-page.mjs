@@ -64,14 +64,6 @@ export default [
     why: '입구가 갈리면 한쪽에서 고친 값이 다른 쪽과 어긋난다 — 같은 모달이 두 화면에서 열리고 있었다.',
   },
   {
-    name: 'store-info: 셀러 홈 패널의 [정보] 만 옛 자리로',
-    file: 'src/pages/seller-page/MyStoresPanel.tsx',
-    find: '                  to={`/seller/store?id=${s.seller_id}`}',
-    replace: '                  to="/seller/stores"',
-    test: TEST,
-    why: '두 입구 중 하나만 고치는 것이 이 레포의 반복 사고다(실제로 여기가 나중에 발견됐다).',
-  },
-  {
     name: 'store-info: 유어샵 설정 주소를 통째로 없앤다',
     file: 'src/routes/seller.routes.tsx',
     find: '      <Route path="/seller/mini-shop" element={<Navigate to="/seller/store" replace />} />',

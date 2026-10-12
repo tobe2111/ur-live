@@ -19,6 +19,7 @@
  *   - 어드민이 실제로 승인을 눌러 주는지 — 운영이다.
  *   - D1 과 node:sqlite 의 차이.
  */
+import { execSync } from 'node:child_process'
 import { describe, it, expect } from 'vitest'
 import { createRequire } from 'module'
 import { readFileSync } from 'node:fs'
@@ -218,10 +219,9 @@ describe('④ 승인 전엔 파트너 찾기 메뉴를 감춘다', () => {
     expect(shouldHideAdsDbNav('active')).toBe(false)
   })
 
-  it('사이드바와 그룹 탭이 같은 함수를 쓴다 — 한쪽만 감추면 다른 쪽으로 들어간다', () => {
+  it('메뉴 색인(마이·콘솔의 전체 도구가 읽는다)이 그 판정을 건다 — 그룹 탭은 대시보드 틀과 함께 지웠다(2026-10-12)', () => {
     for (const f of [
       'src/components/seller-layout/useSellerNavModel.ts',
-      'src/components/seller/SellerGroupTabs.tsx',
     ]) {
       // ⚠️ 같은 이유 — import 만 남아도 초록이 되지 않게 **그 경로에 대한 호출**을 본다.
       expect(src(f), `${f} 에서 그 판정이 실제로 걸리지 않는다`)
@@ -229,11 +229,14 @@ describe('④ 승인 전엔 파트너 찾기 메뉴를 감춘다', () => {
     }
   })
 
-  it('상태를 쓰는 곳은 배너 하나뿐이다 (여러 곳에서 쓰면 반드시 한 곳이 낡는다)', () => {
-    const banner = src('src/components/seller/SellerApprovalBanner.tsx')
-    expect(banner).toMatch(/localStorage\.setItem\(SELLER_STATUS_KEY/)
-    expect(banner, '토큰의 status 는 7일 스냅샷이라 승인돼도 배너가 안 사라진다')
-      .toContain("api.get('/api/seller/surface')")
+  it('상태를 쓰는 곳은 마이 판매 구역 하나뿐이다 (여러 곳에서 쓰면 반드시 한 곳이 낡는다)', () => {
+    // 🧭 2026-10-12 — 대시보드 틀의 승인 배너가 쓰던 자리를 마이가 넘겨받았다. 값은 서버 요약(`/my-stores/summary`)의
+    //   매장 행 status 라 토큰의 7일 스냅샷 문제가 없다.
+    expect(src('src/pages/user-profile/SellerSection.tsx')).toContain('useRecordSellerStatus(store?.status)')
+    expect(src('src/pages/user-profile/seller-section/store-status-note.ts')).toMatch(/localStorage\.setItem\(SELLER_STATUS_KEY, status\)/)
+    const writers = execSync("grep -rln 'localStorage.setItem(SELLER_STATUS_KEY' src --include=*.ts --include=*.tsx || true", { encoding: 'utf-8' })
+      .split('\n').filter((l) => l && !l.includes('src/tests/'))
+    expect(writers).toEqual(['src/pages/user-profile/seller-section/store-status-note.ts'])
   })
 
   it('surface 응답이 배너가 쓸 셋을 내려준다 — 등록증 URL 은 빼고', () => {

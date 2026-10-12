@@ -86,14 +86,6 @@ export default [
     why: '옛 로그인 세션엔 키가 없다 — 없다고 숨기면 승인된 매장의 메뉴가 사라진다.',
   },
   {
-    name: 'danggeun: 그룹 탭만 메뉴를 안 숨긴다',
-    file: 'src/components/seller/SellerGroupTabs.tsx',
-    find: "    if (tab.path === '/seller/influencers' && shouldHideAdsDbNav(sellerStatus)) return false",
-    replace: '',
-    test: TEST,
-    why: '사이드바에선 사라졌는데 탭 줄로는 들어간다 — 한쪽만 숨기는 것이 가장 흔한 누락이다.',
-  },
-  {
     name: 'danggeun: 배너가 등록증 URL 까지 내려받게 한다',
     file: 'src/features/auth/api/seller.routes.ts',
     find: "      has_business_cert: !!(await import('../../../worker/utils/seller-cert-url').then(m => m.resolveSellerCertUrl(c.env.DB, sellerId, row?.business_registration_image_url)).catch(() => row?.business_registration_image_url || null)),",

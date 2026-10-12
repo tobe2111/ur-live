@@ -17,7 +17,6 @@ import { stripComments } from '../helpers/source-text'
 const R = (p: string) => stripComments(readFileSync(p, 'utf-8'))
 const SHEET = R('src/pages/user-profile/StoreSwitchSheet.tsx')
 const SECTION = R('src/pages/user-profile/SellerSection.tsx')
-const PANEL = R('src/pages/seller-page/MyStoresPanel.tsx')
 
 describe('① 사장님이 된 뒤에도 마이에서 매장을 더할 수 있다', () => {
   it('가게 시트에 [매장 추가] 가 있고 /store/new 로 간다', () => {
@@ -26,18 +25,5 @@ describe('① 사장님이 된 뒤에도 마이에서 매장을 더할 수 있�
   })
   it('가게가 1곳이어도 시트를 열 수 있다', () => {
     expect(SECTION).toMatch(/!awaiting && stores\.length >= 1 \?/)
-  })
-})
-
-describe('② 승인 전 매장도 이용권을 등록할 수 있다 (정지만 막는다)', () => {
-  it('등록 버튼의 문지기는 정지 여부다', () => {
-    expect(PANEL).toMatch(/const canRegisterVoucher = \(s: OperableStore\) => s\.status !== 'suspended'/)
-    expect(PANEL).toMatch(/if \(!canRegisterVoucher\(s\)\) \{/)
-  })
-  it('승인 여부로 막지 않는다 (알려 주기만 한다)', () => {
-    const fn = PANEL.slice(PANEL.indexOf('async function registerVoucherFor'))
-    const body = fn.slice(0, fn.indexOf('navigate('))
-    expect(body, '승인 전 매장에서 return 하면 등록 화면의 약속("건너뛰어도 등록돼요")이 거짓이 된다')
-      .not.toMatch(/if \(!isApproved\(s\)\) \{[\s\S]*?return/)
   })
 })

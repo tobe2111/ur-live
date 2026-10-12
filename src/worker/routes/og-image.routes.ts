@@ -13,7 +13,7 @@
 import { Hono } from 'hono'
 import type { Env } from '../types/env'
 import { inlineImage, toAbsolute } from '../utils/og-inline-image'
-import { generateCuratorSVG, tileWidth, TILE_H, type CuratorForOG } from '../utils/og-curator-card'
+import { generateCuratorSVG, tileWidth, TILE_H, OG_UDAL_SRC, OG_AVATAR_TINT, type CuratorForOG } from '../utils/og-curator-card'
 import { generatePassCardSVG, PASS_PHOTO_W, PASS_PHOTO_H } from '../utils/og-pass-card'
 import { loadUdalOgPng } from '../utils/og-udal-png'
 
@@ -61,12 +61,19 @@ ogRoutes.get('/curator/:handle', async (c) => {
     //   받을 크기는 카드가 그릴 크기와 **같은 식**(`tileWidth`)으로 정한다 — 정사각으로 받아
     //   가로로 늘린 타일이 생기지 않게.
     const tw = Math.round(tileWidth(thumbs.length))
-    const [profileUri, ...tileUris] = await Promise.all([
+    // 🦦 2026-10-12: 프로필이 없으면 **유달이**를 얼굴로 쓴다(대표 지시). `contain` + 원 색 배경 —
+    //   `cover` 면 몸이 잘리고, 배경을 안 주면 jpeg 가 투명을 못 담아 검정 상자가 된다(실측).
+    //   프로필이 있으면 유달이는 **받지도 않는다**(쓸모없는 subrequest 를 만들지 않는다).
+    const hasProfile = !!String(curator.profile_image || '').trim()
+    const [profileUri, udalUri, ...tileUris] = await Promise.all([
       inlineImage(curator.profile_image, origin, 232, 232, fetch, c.env.IMAGES),
+      hasProfile
+        ? Promise.resolve(null)
+        : inlineImage(OG_UDAL_SRC, origin, 232, 232, fetch, c.env.IMAGES, { fit: 'contain', background: OG_AVATAR_TINT }),
       ...thumbs.map(t => inlineImage(t, origin, tw, TILE_H, fetch, c.env.IMAGES)),
     ])
 
-    const svg = generateCuratorSVG(curator, profileUri, tileUris.filter((u): u is string => !!u))
+    const svg = generateCuratorSVG(curator, profileUri, tileUris.filter((u): u is string => !!u), udalUri)
     return new Response(svg, {
       headers: {
         'Content-Type': 'image/svg+xml; charset=utf-8',

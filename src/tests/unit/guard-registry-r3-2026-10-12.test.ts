@@ -1,80 +1,110 @@
 /**
- * 가드 레지스트리 **R3** — 러너가 부르는 가드 파일이 실재하는가 (`scripts/check-guard-registry.mjs`)
+ * 🧟 러너가 **없는 가드 스크립트**를 부르는 것 (2026-10-12 실측 3건)
  *
- * 🩸 2026-10-12 실측. `install-git-hooks.sh` 가 세 가드를 부르는데 셋 다 **2026-10-11 도매 철거로
- *   사라져 있었다**: `check-wholesale-autologin-guarded.mjs` · `check-wholesale-login-spa-navigate.mjs`
- *   · `check-login-gate-by-price.mjs`. `|| true` 로 감싸여 있어 **차단이 아니라 스택트레이스만** 찍히고
- *   그 불변식 셋은 조용히 없어졌다. R1(파일→러너)도 R2(가드→대상)도 **못 보는 방향**이라
- *   139개 전수 초록인 채 몇 달이 지났다.
+ * ## 무슨 일이 있었나
+ * 2026-10-11 도매몰 철거로 가드 셋이 삭제됐는데 `install-git-hooks.sh` 가 계속 불렀다:
+ * `check-wholesale-autologin-guarded` · `check-wholesale-login-spa-navigate` ·
+ * `check-login-gate-by-price`. 전부 `|| true` 라 매 커밋마다 `MODULE_NOT_FOUND` **스택만 찍고
+ * 조용히 넘어갔다**(= 지키는 것 없이 겁만 주는 줄). `verify.yml` 엔 없어서 **CI 는 영원히 못 본다**.
  *
- * 🩸 그리고 **R3 의 첫 판이 같은 클래스에 빠졌다**: 러너 텍스트에 블록 주석 제거기를 썼더니
- *   셸·YAML·JS 를 **이어 붙인** 텍스트에서 한 파일의 `/*` 가 다른 파일의 `*​/` 와 짝지어
- *   **206,871자 → 54,215자(74% 증발)**, 찾아야 할 호출 셋이 그 안에 있어 **죽은 호출을 못 보고 초록**이
- *   떴다. 셸·YAML 엔 블록 주석이 없다 ⇒ **줄 주석만** 걷는다.
+ * ## 왜 R1 로는 못 잡나
+ * `check-guard-registry` 의 R1 은 *가드 → 러너* 방향이다(모든 `check-*` 가 어딘가에서 돌는가).
+ * 가드 파일이 **사라지면** R1 의 순회 대상에서도 빠지므로 **아무 말도 하지 않는다.**
+ * *"호출은 남았는데 가드가 없다"* 는 R1·R2 **사이**의 구멍이었고, R3 가 그 자리를 막는다.
  *
- * ⚠️ 이 시험이 **못 보는 것**: 변수·글롭으로 부르는 가드(리터럴만 본다) · 러너 목록 자체가 낡는 것
- *   (`runnerText()` 가 새 러너 파일을 모르면 그 안의 호출은 R1·R3 둘 다에서 안 보인다).
+ * ## 이 시험이 **못 하는 것**
+ *   - 훅이 실제로 설치됐는지(`.git/hooks` 는 클론에 안 딸려 온다 — 레포가 못 본다).
+ *   - 가드가 **일을 하는가**(그건 각 가드의 주입이 본다).
  */
 import { describe, it, expect } from 'vitest'
-import { execFileSync } from 'node:child_process'
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { spawnSync } from 'node:child_process'
+import fs from 'node:fs'
 
-const SCRIPT = 'scripts/check-guard-registry.mjs'
-const ABS = resolve(process.cwd(), SCRIPT)
-const src = readFileSync(SCRIPT, 'utf8')
+const GUARD = 'scripts/check-guard-registry.mjs'
 
-/** 합성 레포에서 가드를 돌린다 — 실제 레포 상태와 무관하게 동작을 잰다. */
-function runIn(runnerBody: string): { code: number; out: string } {
-  const dir = mkdtempSync(join(tmpdir(), 'guard-r3-'))
-  try {
-    mkdirSync(join(dir, 'scripts'), { recursive: true })
-    writeFileSync(join(dir, 'package.json'), '{"scripts":{}}')
-    writeFileSync(join(dir, 'scripts', 'check-alpha.mjs'), '// 아무것도 안 한다\n')
-    writeFileSync(join(dir, 'scripts', 'audit-gate.sh'), runnerBody)
-    try {
-      const out = execFileSync('node', [ABS, '-s'], { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
-      return { code: 0, out }
-    } catch (e: unknown) {
-      const err = e as { status?: number; stdout?: string; stderr?: string }
-      return { code: err.status ?? -1, out: `${err.stdout ?? ''}${err.stderr ?? ''}` }
-    }
-  } finally {
-    rmSync(dir, { recursive: true, force: true })
-  }
+/**
+ * 🩸 첫 판은 `execFileSync` 로 **stdout 만** 받았다. 이 가드는 기본(비-strict) 모드에서
+ *   위반을 `console.error`(stderr)로 찍고 **exit 0** 으로 끝나므로, 결함을 심어도 받은 문자열이
+ *   `''` 이라 *"통과했다"* 로 읽혔다 — 결함과 **측정 실패**가 구분되지 않았다.
+ *   ⇒ 두 스트림을 합쳐 본다. (`-s` 를 주면 exit 1 이지만, 여기선 기본 모드의 출력을 봐야 한다.)
+ */
+function run(): { code: number; out: string } {
+  const r = spawnSync('node', [GUARD], { encoding: 'utf-8' })
+  return { code: r.status ?? 1, out: `${r.stdout ?? ''}${r.stderr ?? ''}` }
 }
 
-describe('가드 레지스트리 R3 — 러너가 부르는 가드가 실재하는가', () => {
-  it('① 없는 가드를 부르면 빨간불 (동작 판정)', () => {
-    const r = runIn('node scripts/check-alpha.mjs\nnode scripts/check-ghost.mjs || true\n')
-    expect(r.code).toBe(1)
-    expect(r.out).toContain('scripts/check-ghost.mjs')
+describe('🧟 R3 — 러너의 죽은 가드 호출', () => {
+  it('지금은 죽은 호출이 0 이다', () => {
+    const { out } = run()
+    expect(out, '죽은 호출이 남아 있다 — 호출 줄을 지워라').not.toContain('파일 없음')
+    expect(out).toContain('러너의 죽은 호출 0')
   })
 
-  it('② 실재하는 가드만 부르면 초록 (①이 데이터 탓으로 헛돌지 않는다는 증거)', () => {
-    const r = runIn('node scripts/check-alpha.mjs\n')
-    expect(r.code).toBe(0)
+  /**
+   * 🔬 문자열 검사로 끝내지 않는다 — **없는 가드를 실제로 호출하게 만들어** 가드를 돌려 본다.
+   *   훅 파일을 건드리는 대신 임시 러너를 쓸 수 없는 이유: R3 는 러너 경로를 **고정 목록**으로
+   *   들고 있다(그게 그 설계의 요지다). 그래서 훅 파일을 잠깐 고치고 **반드시 되돌린다**.
+   */
+  it('없는 가드를 부르면 빨간불이 된다 (되돌려-검증)', () => {
+    const p = 'scripts/install-git-hooks.sh'
+    const orig = fs.readFileSync(p, 'utf8')
+    try {
+      // ASCII 와 비ASCII 를 **둘 다** 심는다 — 첫 판의 정규식이 ASCII 만 받아 비ASCII 를 놓쳤다.
+      fs.writeFileSync(p, `${orig}\nnode scripts/check-no-such-guard.mjs || true\nnode scripts/check-이것은-없는-가드.mjs || true\n`)
+      const { out } = run()
+      expect(out, '없는 호출을 심었는데 가드가 통과했다 — R3 가 헛돈다').toContain('파일 없음')
+      expect(out).toContain('check-no-such-guard.mjs')
+      expect(out, '파일명 문자 집합을 좁히면 이 줄이 샌다').toContain('check-이것은-없는-가드.mjs')
+    } finally {
+      fs.writeFileSync(p, orig)
+    }
+    // 복원 확인 — 이 시험이 레포를 더럽힌 채 끝나면 안 된다.
+    expect(fs.readFileSync(p, 'utf8')).toBe(orig)
+    expect(run().out).toContain('러너의 죽은 호출 0')
   })
 
-  it('③ 주석 처리된 호출은 호출이 아니다 (오탐 금지)', () => {
-    const r = runIn('node scripts/check-alpha.mjs\n# node scripts/check-ghost.mjs  ← 폐기해서 지웠다\n')
-    expect(r.code).toBe(0)
+  /**
+   * 🩸 첫 판은 `expect(src).toContain('.github/workflows')` 였고 **주입이 통과시켰다** —
+   *   그 문자열은 내가 쓴 설명 주석에도 있어서, 워크플로를 소스 목록에서 **빼도** 남아 있었다.
+   *   (이 레포가 반복해 밟은 자리: 제거를 기록하는 주석과 제거를 검사하는 단언이 같은 문자열을 공유한다.)
+   *   ⇒ 워크플로 파일에 죽은 호출을 **실제로 심어** 잡히는지 본다.
+   */
+  it('워크플로도 러너로 본다 — 훅만 보면 CI 쪽 죽은 호출이 샌다', () => {
+    const p = '.github/workflows/verify.yml'
+    const orig = fs.readFileSync(p, 'utf8')
+    try {
+      fs.writeFileSync(p, `${orig}\n      - run: node scripts/check-ci-only-dead-guard.mjs\n`)
+      const { out } = run()
+      expect(out, '워크플로를 러너로 안 보면 CI 쪽 죽은 호출이 영원히 안 보인다').toContain('check-ci-only-dead-guard.mjs')
+      expect(out).toContain(p)
+    } finally {
+      fs.writeFileSync(p, orig)
+    }
+    expect(fs.readFileSync(p, 'utf8'), '시험이 워크플로를 더럽힌 채 끝나면 안 된다').toBe(orig)
+    expect(run().out).toContain('러너의 죽은 호출 0')
+    // 훅·pre-push 도 함께 본다(목록에서 하나가 빠지면 그 러너의 죽은 호출이 샌다).
+    const src = fs.readFileSync(GUARD, 'utf8')
+    expect(src).toContain('pre-push-gate.mjs')
+    expect(src).toContain('install-git-hooks.sh')
   })
 
-  it('④ R3 은 블록 주석 제거기를 쓰지 않는다 (이어 붙인 텍스트에서 74% 증발)', () => {
-    // 🔑 `stripComments(runners)` 로 되돌리면 ①이 다시 통과해 버린다 — 그 방향을 소스로 못 박는다.
-    expect(src).not.toContain('stripComments(runners)')
-    // 줄 주석만 걷는 필터가 R3 자리에 있는가
-    expect(src).toMatch(/runners\s*\n\s*\.split\('\\n'\)\s*\n\s*\.filter\(\(l\) => !\/\^\\s\*\(#\|/)
+  it('호출을 한 건도 못 찾으면 통과가 아니라 실패다', () => {
+    const src = fs.readFileSync(GUARD, 'utf8')
+    expect(src, '하한이 없으면 정규식이 낡는 순간 영원히 초록이다').toContain('R3 이 가드 호출을 한 건도 못 찾았다')
   })
 
-  it('⑤ 측정 대상이 0건이면 통과가 아니라 실패라고 스스로 선언한다', () => {
-    expect(src).toContain('runnerText() 가 깨졌다')
-  })
-
-  it('⑥ 지금 레포에 죽은 가드 호출이 0건이다', () => {
-    const out = execFileSync('node', [ABS, '-s'], { encoding: 'utf8' })
-    expect(out).toContain('러너 호출 전부 실재')
+  it('주석 속 예시 호출은 세지 않는다 — 제거 기록이 거짓 빨간불을 내면 안 된다', () => {
+    const src = fs.readFileSync(GUARD, 'utf8')
+    expect(src).toMatch(/filter\(\(l\) => !\/\^\\s\*#\/\.test\(l\)\)/)
+    // 그리고 그 성질을 **동작으로** 확인한다 — 훅 주석에 없는 가드 호출을 적어도 초록이어야 한다.
+    const p = 'scripts/install-git-hooks.sh'
+    const orig = fs.readFileSync(p, 'utf8')
+    try {
+      fs.writeFileSync(p, `${orig}\n# node scripts/check-지워진-가드.mjs || true  (제거 기록)\n`)
+      expect(run().out, '주석을 세면 "지웠다" 는 기록이 빨간불을 낸다').toContain('러너의 죽은 호출 0')
+    } finally {
+      fs.writeFileSync(p, orig)
+    }
+    expect(fs.readFileSync(p, 'utf8')).toBe(orig)
   })
 })

@@ -298,6 +298,37 @@ adminSystemMonitoringRoutes.post('/alimtalk-test-send', async (c) => {
   }
 })
 
+/**
+ * ✉️ 2026-10-12 메일 발송 시험 — 대표 urdeal.kr 메일 도메인 인증(소유·SPF·DKIM·DMARC) 뒤.
+ * 거래성 메일이 실제로 타는 경로(`sendSystemEmail` → `sendEmail` → SENS 우선)를 그대로 타서, 네이버 클라우드가
+ * 받아 주는지와 그 오류 원문을 **오늘** 본다(실제 구매·비밀번호 찾기를 기다리지 않게). 받은편지함/스팸함 판정은
+ * 받는 사람이 한다. super_admin 만, 가입된 유저의 등록 이메일로만 보낸다(임의 주소 금지 — 발송 남용 차단).
+ */
+adminSystemMonitoringRoutes.post('/mail-test-send', async (c) => {
+  const { DB } = c.env
+  try {
+    const me = c.get('user' as never) as { id?: string | number } | undefined
+    const admin = await DB.prepare('SELECT role FROM admins WHERE id = ?').bind(me?.id ?? null).first<{ role: string }>()
+    if (admin?.role !== 'super_admin') return c.json({ success: false, error: 'super_admin 권한이 필요합니다' }, 403)
+    const body = await c.req.json<{ user_id?: unknown }>().catch(() => ({} as { user_id?: unknown }))
+    const userId = Number(body.user_id)
+    if (!Number.isInteger(userId) || userId <= 0) return c.json({ success: false, error: 'user_id 가 필요합니다' }, 400)
+    const user = await DB.prepare('SELECT email FROM users WHERE id = ?').bind(userId).first<{ email: string | null }>()
+    if (!user) return c.json({ success: false, error: '유저를 찾을 수 없습니다' }, 404)
+    if (!user.email) return c.json({ success: false, error: '그 유저에 등록된 이메일이 없습니다' }, 400)
+    const { sendSystemEmail } = await import('../../../lib/system-email')
+    const at = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul' })
+    const r = await sendSystemEmail(c.env, user.email, {
+      subject: `[유어딜] 메일 발송 시험 (${at})`,
+      html: `<p>유어딜 메일 발송 시험입니다 (${at}).</p><p>이 메일이 받은편지함에 보이면 영수증·비밀번호 찾기 같은 안내 메일이 정상으로 나갑니다.</p>`,
+    }, { ignorePreference: true })
+    const [local = '', domain = ''] = user.email.split('@')
+    return c.json({ success: r.success, result: r, to: `${local.slice(0, 1)}***@${domain}` })
+  } catch (err) {
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
+  }
+})
+
 // ── 🚦 2026-07-05: 운영 게이트 플래그 현황판 + cron heartbeat ──────────────
 //   배경(1인 운영 관측 보강): 검증 대기 게이트(커미션 예산/쇼핑 원장/fee-resolver 등)가
 //   env·platform_settings 에 흩어져 있어 "뭐가 켜져 있고 뭐가 staging 미검증인지" 볼 곳이 없었음.

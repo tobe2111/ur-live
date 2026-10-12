@@ -134,7 +134,7 @@ app.get('/my-stores/summary', async (c) => {
     const ids = stores.map(s => s.seller_id)
     const marks = ids.map(() => '?').join(',')
     const todayKst = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10)
-    const [today, pending, active] = await Promise.all([
+    const [today, pending, active, cert] = await Promise.all([
       c.env.DB.prepare(
         `SELECT seller_id, COUNT(*) AS n, COALESCE(SUM(total_amount), 0) AS rev
            FROM orders
@@ -164,10 +164,19 @@ app.get('/my-stores/summary', async (c) => {
           WHERE seller_id IN (${marks}) AND is_active = 1 AND COALESCE(status, '') != 'DELETED'
           GROUP BY seller_id`
       ).bind(...ids).all<{ seller_id: number; n: number }>().catch(() => ({ results: [] as { seller_id: number; n: number }[] })),
+      /**
+       * 🪪 2026-10-12 — **등록증 심사 상태**. 매장은 대기인데 등록증만 반려된 경우를 마이가 "승인 대기 중" 이라고
+       *   말하지 않게(종전엔 셀러 대시보드 틀의 승인 배너가 이 일을 했다 — 틀을 지웠다). 같은 병렬 묶음이라 왕복 0.
+       *   ⚠️ 별도 쿼리로 둔다 — 매장 목록 쿼리(`listOperableStores`)에 섞으면 컬럼이 없는 옛 스키마에서 **목록 전체가 빈다**.
+       */
+      c.env.DB.prepare(
+        `SELECT id AS seller_id, business_registration_status AS cert FROM sellers WHERE id IN (${marks})`
+      ).bind(...ids).all<{ seller_id: number; cert: string | null }>().catch(() => ({ results: [] as { seller_id: number; cert: string | null }[] })),
     ])
     const tMap = new Map((today.results || []).map(r => [Number(r.seller_id), r]))
     const pMap = new Map((pending.results || []).map(r => [Number(r.seller_id), Number(r.n) || 0]))
     const aMap = new Map((active.results || []).map(r => [Number(r.seller_id), Number(r.n) || 0]))
+    const cMap = new Map((cert.results || []).map(r => [Number(r.seller_id), r.cert ?? null]))
     const rows = stores.map(s => {
       const t = tMap.get(s.seller_id)
       return {
@@ -177,6 +186,7 @@ app.get('/my-stores/summary', async (c) => {
         // 🥕 2026-09-25: 당근 모델 배너를 마이 판매 섹션이 직접 그린다 — 승인 대기·반려도 좌석이
         //   열리므로(isSeatableStoreStatus) 화면이 그 사실을 말해야 한다. 추가 쿼리 0(이미 읽은 행).
         status: s.status || null,
+        cert_status: cMap.get(s.seller_id) ?? null,
         today_revenue: Number(t?.rev) || 0,
         today_orders: Number(t?.n) || 0,
         pending: pMap.get(s.seller_id) || 0,

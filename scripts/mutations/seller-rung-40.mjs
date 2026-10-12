@@ -4,22 +4,6 @@
  */
 export default [
   {
-    name: '눈금 — 묶음 탭 줄이 28px 로 돌아간다',
-    file: 'src/components/seller/SellerGroupTabs.tsx',
-    find: 'px-3.5 min-h-[40px] inline-flex items-center rounded-lg',
-    replace: 'px-3.5 py-1.5 rounded-lg',
-    test: 'src/tests/unit/seller-rung-40-2026-10-06.test.ts',
-    why: '탭 줄이 28px 로 환원되면 모든 묶음 화면의 주 내비가 다시 눈금 밖이다.',
-  },
-  {
-    name: '눈금 — 탭 줄에 금지된 tap-reach 를 쓴다(부모 overflow 로 히트영역이 죽는다)',
-    file: 'src/components/seller/SellerGroupTabs.tsx',
-    find: 'px-3.5 min-h-[40px] inline-flex items-center rounded-lg',
-    replace: 'px-3.5 py-1.5 tap-reach rounded-lg',
-    test: 'src/tests/unit/seller-rung-40-2026-10-06.test.ts',
-    why: '부모가 overflow-x-auto 라 ::after 히트영역이 세로로 잘린다 — 넓힌 만큼이 그대로 죽는다.',
-  },
-  {
     name: '눈금 — 전폭 주 버튼이 32px(ur-btn-sm) 로 돌아간다',
     file: 'src/pages/seller-settlements/DealBalanceCard.tsx',
     find: 'ur-btn ur-btn-md ur-btn-primary flex-1 sm:flex-none',

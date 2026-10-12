@@ -11,6 +11,7 @@ import { PeopleIcon } from '@/components/icons/urdeal-icons'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { feedPayload, shareViaKakao } from '@/lib/kakao-share'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { ChevronLeft, Share2, TrendingUp, DollarSign, Copy, Building2 } from 'lucide-react'
@@ -85,39 +86,31 @@ export default function InfluencerDashboardPage() {
     } finally { setLoading(false) }
   }
 
-  async function shareViaKakao(item: TopItem) {
+  /**
+   * 🔁 2026-10-12 — 카드 조립·전송을 `lib/kakao-share.ts` 로 **행동 불변**으로 옮겼다.
+   *   이 함수가 `sendDefault` 의 **네 번째 사본**이었고, 모아 보니 이미 갈려 있었다:
+   *   폴백 그림이 `urdeal.kr/og-default.png` 였는데 **라이브 404** 다(실측). 공용 값으로 바뀐다.
+   *   문구(타입 라벨·할인율·버튼 '바로 보기')와 폴백 계단은 그대로다.
+   */
+  async function shareAffiliateLink(item: TopItem) {
     try {
       const r = await api.get(`/api/affiliate/link/${item.type}/${item.id}`)
       const url = r.data?.data?.url
       if (!url) { toast.error('링크 생성 실패'); return }
 
       // 카카오톡 공유 시도 — fail-soft (클립보드 fallback).
-      try {
-        const { ensureKakaoSdk } = await import('@/lib/kakao-sdk')
-        await ensureKakaoSdk()
-        const Kakao = (window as unknown as { Kakao?: { Share?: { sendDefault?: (params: unknown) => void } } }).Kakao
-        if (Kakao?.Share?.sendDefault) {
-          const typeLabel = item.type === 'stay' ? '🏨 숙소'
-            : item.type === 'live' ? '📺 라이브'
-            : item.type === 'group-buy' ? '🏪 공구'
-            : '🛍️ 상품'
-          const description = [
-            typeLabel,
-            item.discount_pct ? `${item.discount_pct}% 할인` : null,
-          ].filter(Boolean).join(' · ')
-          Kakao.Share.sendDefault({
-            objectType: 'feed',
-            content: {
-              title: item.name,
-              description,
-              imageUrl: item.image_url || 'https://urdeal.kr/og-default.png',
-              link: { mobileWebUrl: url, webUrl: url },
-            },
-            buttons: [{ title: '바로 보기', link: { mobileWebUrl: url, webUrl: url } }],
-          })
-          return
-        }
-      } catch { /* fallback */ }
+      const typeLabel = item.type === 'stay' ? '🏨 숙소'
+        : item.type === 'live' ? '📺 라이브'
+        : item.type === 'group-buy' ? '🏪 공구'
+        : '🛍️ 상품'
+      const description = [
+        typeLabel,
+        item.discount_pct ? `${item.discount_pct}% 할인` : null,
+      ].filter(Boolean).join(' · ')
+      if (await shareViaKakao(feedPayload({
+        title: item.name, description, imageUrl: item.image_url, url,
+        buttons: [{ title: '바로 보기' }],
+      }))) return
 
       // navigator.share 또는 클립보드 fallback.
       if (typeof navigator !== 'undefined' && navigator.share) {
@@ -236,7 +229,7 @@ export default function InfluencerDashboardPage() {
                         </div>
                       </div>
                       <div className="flex gap-1 shrink-0">
-                        <button onClick={() => shareViaKakao(item)}
+                        <button onClick={() => shareAffiliateLink(item)}
                           className="p-2 bg-[#FEE500] text-[#3C1E1E] rounded-lg"
                           title="카카오톡 공유">
                           💬

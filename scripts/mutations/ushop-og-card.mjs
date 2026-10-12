@@ -6,7 +6,6 @@ const TEST = 'src/tests/unit/ushop-og-card-2026-09-28.test.ts'
 const CARD = 'src/worker/utils/og-curator-card.ts'
 const INLINE = 'src/worker/utils/og-inline-image.ts'
 const ROUTE = 'src/worker/routes/og-image.routes.ts'
-const WORKER = 'src/worker/index.ts'
 
 export default [
   {
@@ -114,14 +113,19 @@ export default [
       '굽는 자리라, 여기서 아끼는 바이트보다 "안 보인다"의 대가가 훨씬 크다.',
   },
   {
-    name: '🛍️ 카드 주소의 판 번호를 뺀다',
-    file: WORKER,
-    find: "/api/og/curator/${encodeURIComponent(cur.handle || '')}?v=3",
-    replace: "/api/og/curator/${encodeURIComponent(cur.handle || '')}",
+    name: '🛍️ 공유 그림 주소를 모양과 무관하게 만든다 (고쳐도 옛 카드가 계속 나간다)',
+    // 🔁 2026-10-12 **두 번** 재조준: ① 주소 조립이 워커 인라인 → `shared/ushop-share-card.ts` 로
+    //   ② og:image 가 합성 카드(`?v=`) → **사진 한 장**으로 바뀌어 판 번호 자체가 없어졌다.
+    //   지키려던 결함은 그대로 — *주소가 모양을 반영하지 않으면 고쳐도 옛 카드가 나간다.*
+    //   이제는 크기·fit 이 주소에 들어 있어 모양을 바꾸면 주소가 저절로 바뀐다. 그 성질을 뺀다.
+    file: 'src/shared/ushop-share-card.ts',
+    find: '  const common = `width=${SHARE_CARD_W},height=${SHARE_CARD_H},quality=85,format=jpeg,onerror=redirect`',
+    replace: "  const common = 'quality=85,format=jpeg,onerror=redirect'",
     test: TEST,
     why:
-      '카카오는 스크랩 결과를 캐시한다. 주소가 그대로면 고쳐 배포해도 옛 까만 카드가 계속 나가고, ' +
-      '잘못 나간 카드는 회수할 방법이 우리에게 없다.',
+      '카카오는 스크랩 결과를 **주소 단위**로 캐시한다. 주소에서 크기를 빼면 1200×630 을 ' +
+      '480×480 으로 바꿔도 **같은 주소**라 옛 카드가 계속 나가고, 잘못 나간 카드는 회수할 방법이 ' +
+      '우리에게 없다. (합성 카드 시절에는 이 성질이 없어서 `?v=` 를 손으로 올려야 했다.)',
   },
   {
     name: '🖼️ 이용권 카드가 Images 바인딩을 안 넘긴다 (서버 안 리사이즈 경로가 죽는다)',
