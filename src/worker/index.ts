@@ -9,7 +9,7 @@ import type { Context, Next } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { timing } from 'hono/timing';
-import { ROUTE_CHUNK_MAP } from './generated/route-chunk-map'; // 🚀 2026-07-12 라우트 청크 modulepreload(빌드 시 자동 생성)
+import { ROUTE_CHUNK_MAP, ENTRY_CSS } from './generated/route-chunk-map'; // 🚀 2026-07-12 라우트 청크 modulepreload(빌드 시 자동 생성)
 import { docsRoutes } from './routes/docs.routes'; // 2026-04-27 TD-006 split (openapi/swagger)
 import { internalDiagnosticsRoutes } from './routes/internal-diagnostics.routes'; // 2026-04-27 TD-006 split
 import { internalAdminToolsRoutes } from './routes/internal-admin-tools.routes'; // 2026-04-27 TD-006 Phase C
@@ -288,7 +288,7 @@ import { referralRoutes } from '../features/referral/api/referral.routes';
 //   (typeof navigator/window 가드 보유라 워커 안전). URL 이 클라 렌더값과 byte-일치해야 preload 적중.
 import { cfImage, cfSrcSet } from '../utils/cf-image';
 // 🖼️ 홈 첫 화면 카드 사진 preload — 링크 생성은 헬퍼가 한다(파일 크기 래칫 + 직접 테스트 용이).
-import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; import { brandJsonLdScript } from '../shared/seo/brand-jsonld'; import { buildStaticSurfaceNoscript } from './utils/crawler-noscript'; import { MAIN_SEED_PATH, REGION_PATH_RE } from '../shared/seo/region-seed'; import { REGION_DIGEST_KV_KEY, regionDigestApplies } from '../shared/seo/region-digest'; import { ushopOgImage } from '../shared/ushop-share-card'; import { applyCssFirstBoot, cssFirstApplies, routePreloadRel } from './utils/css-first-boot'; // 한 줄: 파일크기 래칫 안
+import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; import { brandJsonLdScript } from '../shared/seo/brand-jsonld'; import { buildStaticSurfaceNoscript } from './utils/crawler-noscript'; import { MAIN_SEED_PATH, REGION_PATH_RE } from '../shared/seo/region-seed'; import { REGION_DIGEST_KV_KEY, regionDigestApplies } from '../shared/seo/region-digest'; import { ushopOgImage } from '../shared/ushop-share-card'; import { applyCssFirstBoot, cssFirstApplies, routePreloadRel, appendEdgeHeaders } from './utils/css-first-boot'; // 한 줄: 파일크기 래칫 안
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -727,7 +727,7 @@ app.use('*', async (c, next) => {
       : url.pathname === '/urshorts' ? 'urshorts'
       : null;
     const routeChunks = chunkSurface ? ROUTE_CHUNK_MAP[chunkSurface] : undefined;
-    const cssFirst = cssFirstApplies(url.pathname, c.req.header('user-agent') || ''); let rb = applyCssFirstBoot(new HTMLRewriter(), nonce, cssFirst) // 🚦 2026-10-12 [UNLOCK_LOADING] CSS 먼저 → 스크립트(utils/css-first-boot.ts)
+    const cssFirst = cssFirstApplies(url.pathname, c.req.header('user-agent') || ''); appendEdgeHeaders(c.res.headers, ENTRY_CSS, (c.req.raw as { cf?: { colo?: string } }).cf?.colo); let rb = applyCssFirstBoot(new HTMLRewriter(), nonce, cssFirst) // 🚦 2026-10-12 [UNLOCK_LOADING] CSS 먼저 → 스크립트(utils/css-first-boot.ts)
       .on('script', {
         element(el) { el.setAttribute('nonce', nonce); },
       })

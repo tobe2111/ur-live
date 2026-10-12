@@ -12,7 +12,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { readFileSync } from 'node:fs'
 import {
-  cssFirstApplies, routePreloadRel, cssFirstBootScript, DEFERRED_PRELOAD_REL, DEFERRED_ENTRY_TYPE, CSS_FIRST_BACKSTOP_MS,
+  cssFirstApplies, routePreloadRel, cssFirstBootScript, earlyHintsLink, FONT_CSS_HREF, appendEdgeHeaders, DEFERRED_PRELOAD_REL, DEFERRED_ENTRY_TYPE, CSS_FIRST_BACKSTOP_MS,
 } from '@/worker/utils/css-first-boot'
 
 function stripComments(s: string) {
@@ -122,7 +122,8 @@ describe('④ 워커 배선', () => {
   const worker = stripComments(readFileSync('src/worker/index.ts', 'utf-8'))
   const mod = stripComments(readFileSync('src/worker/utils/css-first-boot.ts', 'utf-8'))
   it('HTML 재작성기가 applyCssFirstBoot 로 시작하고, 적용 여부는 cssFirstApplies 한 곳이 정한다', () => {
-    expect(worker).toMatch(/const cssFirst = cssFirstApplies\(url\.pathname, c\.req\.header\('user-agent'\) \|\| ''\); let rb = applyCssFirstBoot\(new HTMLRewriter\(\), nonce, cssFirst\)/)
+    expect(worker).toMatch(/const cssFirst = cssFirstApplies\(url\.pathname, c\.req\.header\('user-agent'\) \|\| ''\);/)
+    expect(worker).toMatch(/let rb = applyCssFirstBoot\(new HTMLRewriter\(\), nonce, cssFirst\)/)
   })
   it('워커가 넣는 라우트 청크도 같은 판정(cssFirst)으로 rel 을 고른다 — 갈리면 프리로드가 영영 안 풀리거나 CSS 와 다시 다툰다', () => {
     expect(worker).toMatch(/<link rel="\$\{routePreloadRel\(cssFirst\)\}" crossorigin href=/)
@@ -157,5 +158,56 @@ describe('⑥ 첫 방문자가 보지 않는 셸 부품은 조건이 맞을 때�
     expect(app).toMatch(/onboarding: qs\.includes\('new=1'\)/)
     expect(app).toMatch(/restore: qs\.includes\('restorable=1'\)/)
     expect(app).toMatch(/sideBanner:[^\n]*min-width: 1024px/)
+  })
+})
+
+describe('⑦ Link 헤더(Early Hints 원천) — 렌더 차단 CSS 만', () => {
+  it('엔트리 CSS 와 폰트 CSS 를 preload as=style 로 싣는다', () => {
+    expect(earlyHintsLink(['/assets/index-AB.css'])).toBe(
+      '</assets/index-AB.css>; rel=preload; as=style, </static/fonts/pretendard-dynamic-subset-v1.3.9.css>; rel=preload; as=style',
+    )
+  })
+  it('스크립트는 싣지 않는다(CSS 와 다시 다툰다)', () => {
+    expect(earlyHintsLink(['/assets/index-AB.css'])).not.toMatch(/modulepreload|\.js>/)
+  })
+  it('폰트 CSS 경로가 index.html 의 실제 href 와 같다(파일명이 바뀌면 존재하지 않는 걸 미리 받는다)', () => {
+    expect(readFileSync('index.html', 'utf-8')).toContain(`href="${FONT_CSS_HREF}"`)
+  })
+  it('워커가 모든 HTML 응답에 그 헤더를 단다 · 생성기가 ENTRY_CSS 를 낸다', () => {
+    const w = stripComments(readFileSync('src/worker/index.ts', 'utf-8'))
+    expect(w).toMatch(/appendEdgeHeaders\(c\.res\.headers, ENTRY_CSS, \(c\.req\.raw as \{ cf\?: \{ colo\?: string \} \}\)\.cf\?\.colo\)/)
+    const g = readFileSync('scripts/generate-route-chunk-map.mjs', 'utf-8')
+    expect(g).toMatch(/emit\(out, entry\.css\)/)
+    expect(g).toMatch(/export const ENTRY_CSS/)
+  })
+})
+
+describe('⑧ 응답한 데이터센터를 Server-Timing 에 싣는다(실사용자 계측)', () => {
+  it('Link + colo 를 append(덮지 않는다 — ssr-payload 가 먼저 set 한다)', () => {
+    const h = new Headers({ 'Server-Timing': 'kv;dur=10' })
+    appendEdgeHeaders(h, ['/assets/index-AB.css'], 'ICN')
+    expect(h.get('Server-Timing')).toBe('kv;dur=10, colo;desc="ICN"')
+    expect(h.get('Link')).toContain('/assets/index-AB.css')
+  })
+  it('이상한 값은 걸러 헤더를 깨지 않는다 · 없으면 안 단다', () => {
+    const h = new Headers(); appendEdgeHeaders(h, [], 'I"CN\r\nx')
+    expect(h.get('Server-Timing')).toBe('colo;desc="ICN"')
+    const h2 = new Headers(); appendEdgeHeaders(h2, [], undefined)
+    expect(h2.get('Server-Timing')).toBeNull()
+  })
+})
+
+describe('⑨ 실사용자 계측 — 연결 시간(CONN) · 데이터센터별 TTFB', () => {
+  const rep = stripComments(readFileSync('src/lib/web-vitals-report.ts', 'utf-8'))
+  const api = readFileSync('src/worker/routes/analytics.routes.ts', 'utf-8')
+  it('클라가 CONN(connectEnd) 과 colo:XXX 표본을 보낸다', () => {
+    expect(rep).toMatch(/send\('CONN', Math\.max\(0, nav\.connectEnd\), page\)/)
+    expect(rep).toMatch(/t\.name === 'colo'/)
+    expect(rep).toMatch(/send\('TTFB', nav\.responseStart, `colo:\$\{colo\}`\)/)
+  })
+  it('서버가 CONN 을 받고(수집·요약 둘 다) colo 키를 보존한다', () => {
+    expect(api).toMatch(/const validNames = \[[^\]]*'CONN'/)
+    expect(api).toMatch(/for \(const name of \[[^\]]*'CONN'/)
+    expect(api).toMatch(/\/\^colo:\(\[A-Z\]\{3,4\}\)\$\//)
   })
 })

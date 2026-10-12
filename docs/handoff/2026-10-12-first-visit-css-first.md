@@ -39,3 +39,13 @@ CDP `emulateNetworkConditions`+`setCPUThrottlingRate 4`. 헤더는 content-type/
 - 다음 레버(미착수): **부팅 JS 의 CPU 비용**(엔트리 정적 그래프 ~800KB 해석) · 교환권 목록·지도는 서버 첫 화면이 없어 이 처방이 안 맞는다(서버 첫 화면을 그리는 게 다음 수).
 - **CSS 를 HTML 에 인라인**하는 안도 쟀다: 조작가능 손해 0(오히려 빠름)이지만 사진 개선이 작다(홈 3.65→2.25, 상세는 악화). 재방문 HTML 이 33KB 늘어난다.
 - Notion 개발 로그: 머지 후 기록할 것(이 세션 미기록).
+
+## 6. 후속 (같은 PR) — 대표 *"마트 새 폰으로 첫 페이지가 10초"*
+- **재현 실패를 먼저 적는다**: 녹화-재생으로 "좋은 회선 + 먼 서버(왕복 0.2초)" 를 재면 홈이 **1.0초**에 뜬다. 10초는 이 측정기가 모델링하지 않는 것(DNS·TLS 연결 수립 · 한국 콜로가 차가움 · 이미지 리사이저 첫 요청 · 예기치 않은 reload) 쪽이다.
+- **실사용자 표본**(`GET /api/analytics/summary?day=`, 어드민 토큰): 2026-10-12 홈 LCP p50 2.6 / p75 3.7 / p95 5.6s · TTFB p50 0.45s(워커 자체 0.07s) · `/map` LCP p75 **10.4s**.
+- ⚠️ 그 TTFB 는 `responseStart - requestStart` 라 **DNS·연결·TLS 가 빠져 있었다** — 새 기기에서 가장 비싼 부분이 계측 밖이었다.
+- 그래서 추가: ① 워커가 HTML 에 `Server-Timing: colo;desc="XXX"` ② 클라가 `CONN`(= connectEnd) 과 `TTFB@colo:XXX` 표본을 보낸다 ③ `Link: rel=preload as=style`(앱 CSS + 폰트 CSS — Early Hints 103 원천, 생성기가 `ENTRY_CSS` 를 낸다).
+- **다음 세션 첫 액션(배포 + 하루 뒤)**: `summary` 에서 `vitals:<day>:TTFB:colo:*` 키를 보면 한국 사용자가 어느 데이터센터로 붙는지 나온다. `ICN` 이 아니면 요금제/라우팅 비교표를 결재함에 올릴 것(대표 판단).
+- **Cloudflare 존 설정(실측, 무료 플랜)**: http3 on · tls1.3 on · brotli on · **early_hints off · 0rtt off** → 대표가 켜기로 함(2026-10-12). 세션은 켜지 않는다(조회 전용 규율).
+- 기각(실측 효과 없음): locale-ko·app-utils-deferred 선행 preload · 폰트를 앱 마운트 뒤로. 조작가능 시간은 **폰 CPU**(엔트리 정적 그래프 해석)가 정한다 — 다음 레버는 부팅 JS 다이어트.
+- KV 쓰기: vitals 표본이 페이지뷰당 2건 늘어난다(표본율 0.25, 현재 하루 ~100건 → 무료 1천 한도 안).

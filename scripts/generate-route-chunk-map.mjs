@@ -44,10 +44,12 @@ const ROUTES = {
 }
 const MAX_LINKS = 10 // head 링크 스팸 방지 캡(핵심 큰 청크 우선 — closure 순서 = 페이지 청크 → 공유 청크)
 
-function emit(map) {
+function emit(map, entryCssFiles = []) {
   const body = `// ⚠️ AUTO-GENERATED — scripts/generate-route-chunk-map.mjs 가 빌드 시 재생성. 수동 편집 금지.
 // 라우트 표면별 lazy 페이지 청크(엔트리 폐쇄 제외) — 워커가 modulepreload 로 주입해 엔트리와 병렬 다운로드.
 export const ROUTE_CHUNK_MAP: Record<string, { js: string[]; css: string[] }> = ${JSON.stringify(map, null, 2)}
+// 🚦 2026-10-12 엔트리(index.html) CSS — 워커가 HTML 응답에 \`Link: rel=preload\` 헤더로 싣는다(Early Hints 103 원천).
+export const ENTRY_CSS: string[] = ${JSON.stringify(entryCssFiles)}
 `
   mkdirSync(dirname(OUT), { recursive: true })
   writeFileSync(OUT, body)
@@ -107,5 +109,5 @@ for (const [surface, keys] of Object.entries(ROUTES)) {
   if (jsOut.length) out[surface] = { js: jsOut, css: cssOut }
 }
 
-emit(out)
+emit(out, entry.css)
 console.log(`[route-chunk-map] 생성 완료 — ${Object.keys(out).length} surfaces:`, Object.entries(out).map(([k, v]) => `${k}(js${v.js.length}/css${v.css.length})`).join(' '))

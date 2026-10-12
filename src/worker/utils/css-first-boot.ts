@@ -87,3 +87,31 @@ export function applyCssFirstBoot(rw: HTMLRewriter, nonce: string, on: boolean):
       },
     })
 }
+
+/** 렌더 차단 CSS 두 장 중 우리가 경로를 아는 폰트 CSS — index.html 의 href 와 같아야 한다(테스트가 대조). */
+export const FONT_CSS_HREF = '/static/fonts/pretendard-dynamic-subset-v1.3.9.css'
+
+/**
+ * 🚦 HTML 응답의 `Link` 헤더 — **렌더 차단 CSS 만** 미리 받으라고 알린다.
+ *   ① 브라우저는 헤더가 오는 즉시(본문을 파싱하기 전에) 받기 시작한다.
+ *   ② Cloudflare Early Hints 를 켜면 이 헤더가 **103 응답**으로 앞당겨져, 서버가 HTML 을 만드는
+ *      동안(한국 실측 TTFB 중앙값 0.45초)에 CSS 가 출발한다.
+ *   ⚠️ 스크립트(modulepreload)는 **넣지 않는다** — 그러면 CSS 와 다시 회선을 나눠 쓴다(이 파일 머리말).
+ */
+export function earlyHintsLink(entryCss: readonly string[]): string {
+  return [...entryCss, FONT_CSS_HREF].map((h) => `<${h}>; rel=preload; as=style`).join(', ')
+}
+
+/**
+ * 📡 HTML 응답 머리에 붙이는 두 가지 — ① 위 Link 헤더 ② 어느 Cloudflare 데이터센터가 응답했는지(`colo`).
+ *   ②는 대표 신고(2026-10-12 *"마트 새 폰으로 첫 페이지가 10초"*)를 이 환경에서 재현하지 못해서 넣는다:
+ *   한국 사용자의 TTFB 중앙값이 0.45초(워커 자체는 0.07초)인데 **어디로 붙는지 아무도 모른다.**
+ *   브라우저는 `Server-Timing` 을 PerformanceNavigationTiming.serverTiming 으로 읽을 수 있고
+ *   (`exposeHeaders` 에 이미 있다), `lib/web-vitals-report.ts` 가 그 값을 실사용자 표본으로 보낸다.
+ *   ⚠️ `ssr-payload` 가 `Server-Timing` 을 **set** 하므로 여기서는 그 뒤에 **append** 한다.
+ */
+export function appendEdgeHeaders(h: Headers, entryCss: readonly string[], colo: string | undefined): void {
+  h.append('Link', earlyHintsLink(entryCss))
+  const c = (colo || '').replace(/[^A-Z]/g, '').slice(0, 4)
+  if (c) h.append('Server-Timing', `colo;desc="${c}"`)
+}
