@@ -70,8 +70,10 @@ export default [
     why: '판정 함수는 멀쩡한데 호출부가 없으면 **계산만 하고 아무 일도 안 한다**. 계산과 사용은 '
        + '다른 자리다(`check-guard-registry` 가 같은 교훈을 적어 둔 클래스).',
     file: NS,
-    find: "    const kids = childLinksHtml(path, ssrPayload)\n    return lines || kids ? `<noscript>${lines}${kids}</noscript>` : ''",
-    replace: "    return lines ? `<noscript>${lines}</noscript>` : ''",
+    // 2026-10-12: 사이에 제목(`h1`) 한 줄이 끼었다 — 불변식(허브 본문이 자식 링크를 **쓴다**)은
+    // 그대로이고, 앵커를 조립 표현 자체로 좁힌다(사이에 줄이 또 끼어도 안 낡는다).
+    find: "`<noscript>${h1}${lines}${kids}</noscript>`",
+    replace: "`<noscript>${h1}${lines}</noscript>`",
     test: TEST,
   },
   {

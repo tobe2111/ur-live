@@ -752,3 +752,91 @@ curl -sS -A "$UA" https://urdeal.kr/region | grep -o 'name="robots"[^>]*'
 
 ⚠️ **KV 에 요약이 있어야 링크가 생긴다**(cron `:15` 1회). 요약이 없으면 링크 0 이고 그건
 **설계대로**다 — ①이 비면 먼저 `X-SSR-Status`/cron 하트비트를 볼 것.
+
+---
+
+## 🏷️#️⃣ 후속 ⑩ — 색인 대상 23표면 중 **17개가 heading 0** (제목 요소가 없다)
+
+**[E2]** 라이브 실측(Googlebot UA 로 서버 HTML 을 받아 heading·img 를 **파싱해서** 셌다):
+
+      h1 있음 (6)   /blog · /pass/:id · /stays/:id · /vouchers/:id · /u/:handle
+      h1 0   (17)   /vouchers /browse /map /stays /faq /about /terms /privacy /products/:id
+                    /region /region/서울 /region/서울/종로구
+                    /experience /new-openings /creators /partners /join
+      noscript 안 heading   전 표면 **0**        img 에 alt 없음   전 표면 **0**(정상)
+
+🔑 **패턴이 정확하다** — h1 이 있는 여섯은 전부 **서버 첫 화면 빌더가 제목을 그리는** 표면이고,
+`<noscript>` 본문만 있는 표면은 본문이 `<ul>`·`<p>` 뿐이라 *"이 페이지가 무엇인가"* 를 말하는
+요소가 문서에 **하나도 없었다**. 글자는 오늘 다 채웠는데(후속 ①~⑨) **구조가 없었다.**
+그리고 `/products/:id` 는 같은 날 빵부스러기·본문을 줬는데 제목만 빠져 있었다(비대칭).
+
+**수정(한 함수 + 일곱 분기 · 잠금 파일 접촉 0)**: `crawler-noscript.ts` 에 `h1Of(text)` 를 두고
+일곱 분기가 제목을 낸다. 값은 **그 표면의 마지막 빵부스러기 단계**(`CONSUMER_SURFACE_SEO.crumb`)
+이고, 목록·지역에서는 **이미 본문 머리줄(`<p>`)로 떠 있던 같은 글자**다 ⇒ **단어가 한 글자도
+안 바뀌고 요소만 바뀐다**(클로킹이 구조적으로 불가능 — 규율 ①). 지역 허브는
+`REGION_HUB_CRUMB`(빵부스러기가 쓰는 그 상수를 export), 지역 잎은 그 분기가 이미 계산하던
+`서울 종로구 이용권`, 쇼핑 상세는 상품명, 약관은 그 문서의 `title`(시행일·판 번호는 제목에서
+빼 `<p>` 로 내렸다).
+
+🔴 **첫 화면이 제목을 그리는 표면에는 넣지 않는다** — `buildDetailNoscript`·`buildStayNoscript`·
+`buildCuratorNoscript` 는 한 글자도 안 고쳤다(같은 `#root` 안에 첫 화면의 h1 이 이미 있어, 또
+넣으면 **한 문서에 h1 이 둘**이 된다 — 규율 ②). 주입 하나가 그 반대 방향을 고정한다.
+
+🔬 **빌더를 돌려 12표면을 눈으로 봤다**: `/faq` → `<h1>자주 묻는 질문</h1><dl>…` ·
+`/browse` → `<h1>쇼핑</h1><ul><li><a href="/pass/1">…` · `/region/서울` → `<h1>서울 이용권</h1>` ·
+`/terms` → `<h1>유어딜 이용약관</h1><p>시행 2026년 7월 5일 · v1.0</p>` ·
+`/products/2917` → `<h1>프리미엄 백팩</h1><p>판매가 39,000원 · 정가 49,000원 · 20% 할인</p>`.
+
+❌ **일부러 안 한 것**
+- **홈(`/`)** — 그 첫 화면(`home-first-screen.ts`)은 React 와 **박스를 맞춘** 빌더다(가드가
+  픽셀로 대조). h1 을 끼우면 레이아웃이 움직여 밀림 0 계약을 깬다.
+- **`/privacy`·`/refund`** — `<noscript>` 자체가 아직 없다(본문이 JSX 안에만 있다 · `/refund` 는
+  결재 #25 대기).
+- **`/region` 허브 제목이 `지역` 으로 터세다** — 그 아래 첫 줄이 `지역별 이용권·동네딜`(그 화면의
+  실제 제목)이라 더 나은 후보지만, 그러면 *표면마다 다른 규칙*이 생긴다. **한 규칙**(= 마지막
+  빵부스러기 단계)을 지키는 쪽을 골랐다.
+
+🕳️ **기존 가드 하나가 내 변경을 잡았고 풀지 않고 재조준했다** — `list-surface-noscript-2026-10-12`
+의 *"라벨이 crumb SSOT 에서 온다"*. 불변식은 그대로이고 앵커가 `<p>` → `<h1>` 로 옮겨갔을 뿐이라,
+**`<p>` 로 되돌아가는 방향**과 **h1 이 둘이 되는 방향**을 단언으로 더했다. 그 주입 앵커 2건
+(`list-surface-noscript.mjs`·`region-child-links-2026-10-12.mjs`)도 결함을 한 글자도 안 바꾸고
+재조준했다.
+
+🩸 **그 앵커 이동이 오늘 내가 푸시한 가드의 *헛도는 단언*을 드러냈다** —
+`region-child-links` 의 허브 검사가 `after.startsWith(before.replace('</noscript>',''))` 였는데,
+**링크가 통째로 사라지면 `after === before` 라 그 식이 참이다**(덧붙기만 하는지는 보고, 실재하는지는
+안 봤다). 주입이 통과해서 알았다 ⇒ `toContain('<a href="/region/')` 로 **출력 판정**을 더했다.
+**"덧붙기만 한다" 는 "있다" 를 말해 주지 않는다.**
+
+🩸 **그리고 픽스처를 또 손으로 지어 썼다** — 숙소는 `{product, rooms}`, 유어샵은 `{curator, pins}`
+인데 평평하게 지어 써서 **tsc 가 TS2353 둘**을 냈다(vitest 는 통과했다 — 런타임은 모르는 필드를
+그냥 무시한다). ⇒ **픽스처 모양은 타입·라이브 응답에서 읽을 것.**
+
+**가드**: `crawler-heading-2026-10-12.test.ts` **31건** + 주입 **12건 되돌려-검증 전부 빨간불 확인**
+(절반이 반대 방향: `<p>` 회귀 · 빈 제목 태그 · 탈출 누락 · 손으로 적은 라벨 · 상세 요약에 h1 추가).
+검증: tsc 0 · 관련 12파일 254건 pass · 낡은 앵커 0(3,373건).
+
+⚠️ **이 가드가 못 보는 것**: 구글·네이버·AI 엔진이 그 heading 을 실제로 쓰는지(색인 수일~수주 ·
+서치콘솔은 **대표만** 본다) · 사람 화면(그 블록은 `<noscript>` 라 JS 가 돌면 렌더조차 안 된다 —
+**byte-동일**).
+
+### ⚠️ E4 (배포 후 — 라이브 UA 실측)
+
+```bash
+UA='Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
+# ① 17표면에 h1 이 생겼는지 — 그리고 **정확히 하나**인지
+for p in /vouchers /browse /map /stays /faq /about /terms /products/2917 \
+         /region /region/%EC%84%9C%EC%9A%B8 /region/%EC%84%9C%EC%9A%B8/%EC%A2%85%EB%A1%9C%EA%B5%AC \
+         /experience /new-openings /creators /partners /join; do
+  n=$(curl -sS -A "$UA" "https://urdeal.kr$p" | grep -o '<h1>' | wc -l)
+  echo "$p h1=$n"      # 기대: 전부 1 (종전 0)
+done
+# ② 🔴 반대 방향 — 첫 화면이 제목을 그리는 표면은 **여전히 1**(2 가 되면 h1 이 둘이다)
+for p in /pass/2919 /stays/2887 /vouchers/2192 /u/jiwon1228 /blog; do
+  echo "$p h1=$(curl -sS -A "$UA" "https://urdeal.kr$p" | grep -o '<h1>' | wc -l)"
+done
+# ③ 제목 글자가 빵부스러기 마지막 단계와 같은지(한 표면 표본)
+curl -sS -A "$UA" https://urdeal.kr/browse | grep -o '<h1>[^<]*</h1>'   # 기대: <h1>쇼핑</h1>
+```
+⚠️ `/region/*` 의 h1 은 **요약(KV)이 있어야** 본문이 생긴다 — ①이 비면 먼저 `X-SSR-Status` 와
+cron `:15` 하트비트를 볼 것(후속 ⑨와 같은 전제).

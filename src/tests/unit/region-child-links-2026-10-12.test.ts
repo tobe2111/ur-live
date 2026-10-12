@@ -109,6 +109,9 @@ describe('② 요약이 없으면 링크를 만들지 않는다 — 부재는 "�
     // 요약이 오면 링크만 덧붙는다(문구는 그대로).
     const after = buildStaticSurfaceNoscript('/region', DIGEST)
     expect(after.startsWith(before.replace('</noscript>', ''))).toBe(true)
+    // 🩸 위 `startsWith` 만으로는 **링크가 사라져도 통과**한다(`after === before` 면 참이다).
+    //    주입이 그걸 잡았다 — 판정은 "덧붙기만 한다" 가 아니라 **출력에 실재하는가**여야 한다.
+    expect(after, '허브 본문에 자식 링크가 없다').toContain('<a href="/region/')
   })
 })
 

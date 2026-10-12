@@ -41,6 +41,7 @@ import { addressInRegion, parseRegionPath, type RegionRef } from '../../shared/c
 import { REGION_PATH_RE } from '../../shared/seo/region-seed'
 import { regionChildLinks } from '../../shared/seo/region-digest'
 import { CONSUMER_SURFACE_SEO } from '../../shared/seo/consumer-surfaces'
+import { REGION_HUB_CRUMB } from './surface-list-jsonld'
 import { surfaceCopyFor } from '../../shared/seo/surface-copy'
 import { CONSUMER_TERMS } from '../../pages/terms/consumer-terms-content'
 import { SELLER_TERMS } from '../../pages/terms/seller-terms-content'
@@ -71,6 +72,23 @@ function wrap(inner: string): string {
   // ⚠️ `<noscript>` 안의 스타일은 의미가 없다(JS 가 돌면 렌더 자체가 안 된다) — 클래스를 붙이지
   //    않는 이유다. 크롤러는 텍스트만 읽고, JS 를 끈 사람에게는 브라우저 기본 스타일로 읽힌다.
   return `<noscript>${inner}</noscript>`
+}
+
+/**
+ * 🏷️ 그 표면의 **제목 한 줄**(`<h1>`). 전수 실측표·판단 근거는 가드 머리말에 있다
+ * (`src/tests/unit/crawler-heading-2026-10-12.test.ts`) — 색인 대상 23표면 중 **17개가 heading 0**
+ * 이었고, h1 이 있던 여섯은 전부 **서버 첫 화면이 제목을 그리는** 표면이었다.
+ *
+ * 🔑 **새 문구를 쓰지 않는다** — 값은 그 표면의 **마지막 빵부스러기 단계**(`crumb`)이고, 목록·지역
+ *    에서는 이미 본문 머리줄(`<p>`)로 떠 있던 같은 글자다(요소만 바뀐다 ⇒ 클로킹 불가 · 규율 ①).
+ * 🔴 **첫 화면이 제목을 그리는 표면에는 넣지 않는다**(규율 ②) — 쓰는 곳은
+ *    `buildStaticSurfaceNoscript` 뿐이다. `buildDetail/Stay/CuratorNoscript` 에 넣으면 한 문서에
+ *    h1 이 둘이 된다(주입이 그 방향을 고정).
+ * 🔴 **빈 라벨이면 아무것도 내지 않는다** — noindex 표면은 `crumb` 를 일부러 비워 둔다.
+ */
+function h1Of(text: string | null | undefined): string {
+  const t = String(text || '').trim()
+  return t ? `<h1>${esc(t)}</h1>` : ''
 }
 
 export interface NoscriptDetailSeed {
@@ -371,8 +389,8 @@ export function buildStaticSurfaceNoscript(pathname: string, ssrPayload?: string
       if (canonicalDetailPath({ id: prodId, deal_only: d.deal_only, category: d.category }) != null) return ''
       const p = priceDisplay({ price: d.price, original_price: d.original_price, discount_rate: d.discount_rate })
       const desc = (d.description || d.long_description || '').trim()
-      return wrap(lines([
-        esc(String(d.name || '').trim()),
+      // 상품명은 **그 화면의 h1 그대로** 다(`ProductDetailPage` 가 제목으로 그린다) — 요소만 맞춘다.
+      return wrap(h1Of(d.name) + lines([
         p.price > 0 ? `판매가 ${won(p.price)}원${p.hasDiscountLine && p.showOriginal ? ` · 정가 ${won(p.originalPrice)}원` : ''}${p.discount > 0 ? ` · ${p.discount}% 할인` : ''}` : '',
         desc ? esc(desc) : '',
       ]))
@@ -385,12 +403,12 @@ export function buildStaticSurfaceNoscript(pathname: string, ssrPayload?: string
     // Q&A 를 그대로 — 언어모델이 인용하기 가장 쉬운 모양이고, 같은 배열이 `FAQPage` JSON-LD
     // (`surface-list-jsonld.ts`)와 화면 아코디언을 만든다.
     const items = CONCEPT_FAQ.map(f => `<dt>${esc(f.question)}</dt><dd>${esc(f.answer)}</dd>`).join('')
-    return items ? `<noscript><dl>${items}</dl></noscript>` : ''
+    return items ? `<noscript>${h1Of(CONSUMER_SURFACE_SEO[path]?.crumb)}<dl>${items}</dl></noscript>` : ''
   }
 
   if (path === '/about') {
     const lines = CONCEPT_ABOUT_LINES.map(l => `<p>${esc(l)}</p>`).join('')
-    return lines ? `<noscript>${lines}</noscript>` : ''
+    return lines ? `<noscript>${h1Of(CONSUMER_SURFACE_SEO[path]?.crumb)}${lines}</noscript>` : ''
   }
 
   // ⚖️ 약관은 **그 문서 자체에서 파생**한다 — 제목 · 시행일 · 조항 제목. 손으로 요약을 쓰면
@@ -399,7 +417,8 @@ export function buildStaticSurfaceNoscript(pathname: string, ssrPayload?: string
   const terms: TermsDoc | null = path === '/terms' ? CONSUMER_TERMS : path === '/terms/seller' ? SELLER_TERMS : null
   if (terms) {
     const heads = terms.sections.map(x => x.title).filter(Boolean)
-    return `<noscript><p>${esc(terms.title)} (시행 ${esc(terms.effective)} · v${esc(terms.version)})</p><ul>`
+    // 제목은 그 문서 자체의 `title` — 시행일·판 번호는 제목이 아니라 그 아래 한 줄로 둔다.
+    return `<noscript>${h1Of(terms.title)}<p>시행 ${esc(terms.effective)} · v${esc(terms.version)}</p><ul>`
       + heads.map(h => `<li>${esc(h)}</li>`).join('') + '</ul></noscript>'
   }
 
@@ -413,7 +432,10 @@ export function buildStaticSurfaceNoscript(pathname: string, ssrPayload?: string
     //   a태그가 **0** 이었다(44개 지역이 sitemap 으로만 발견됐다). 링크 집합은 요약으로 판정해
     //   thin 지역을 가리키지 않는다(`regionChildLinks`). 요약이 없으면 종전과 byte-동일.
     const kids = childLinksHtml(path, ssrPayload)
-    return lines || kids ? `<noscript>${lines}${kids}</noscript>` : ''
+    // `/region` 허브는 `CONSUMER_SURFACE_SEO` 에 항목이 없다(동적 경로라 `resolveRegionSeo` 가 맡는다)
+    // — 빵부스러기가 쓰는 같은 상수에서 받는다(손으로 적으면 둘이 갈린다).
+    const h1 = h1Of(path === '/region' ? REGION_HUB_CRUMB : CONSUMER_SURFACE_SEO[path]?.crumb)
+    return lines || kids ? `<noscript>${h1}${lines}${kids}</noscript>` : ''
   }
 
   // 🗺️ 지역 착지 페이지 — "동네 맛집 할인권" 질의의 착지점인데 라이브 본문이 **26자**였다
@@ -434,8 +456,8 @@ export function buildStaticSurfaceNoscript(pathname: string, ssrPayload?: string
       if (rows.length >= 8) break
     }
     if (!rows.length) return ''
-    const label = CONSUMER_SURFACE_SEO[path]?.crumb || ''
-    const head = label ? `<p>${esc(label)}</p>` : ''
+    // 종전엔 같은 글자가 `<p>` 였다 — 단어는 그대로이고 요소만 `<h1>` 이 된다.
+    const head = h1Of(CONSUMER_SURFACE_SEO[path]?.crumb)
     return `<noscript>${head}<ul>${rows.map(liOf).join('')}</ul></noscript>`
   }
 
@@ -446,7 +468,7 @@ export function buildStaticSurfaceNoscript(pathname: string, ssrPayload?: string
     const label = ref.sigungu ? `${ref.sido} ${ref.sigungu}` : ref.sido
     // 🔗 시/도 페이지는 **자식 시군구**로 가는 길을 함께 낸다(시군구 32곳이 색인 대상인데
     //   그 트리로 들어가는 내부 링크가 0 이었다). 시군구 페이지는 잎이라 아무것도 안 붙는다.
-    return `<noscript><p>${esc(label)} 이용권</p><ul>${rows.map(liOf).join('')}</ul>`
+    return `<noscript>${h1Of(`${label} 이용권`)}<ul>${rows.map(liOf).join('')}</ul>`
       + `${childLinksHtml(path, ssrPayload)}</noscript>`
   }
 

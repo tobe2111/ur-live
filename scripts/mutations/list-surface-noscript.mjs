@@ -38,8 +38,10 @@ export default [
   {
     name: '🧾 요약 라벨을 손으로 적어 빵부스러기와 갈린다',
     file: NS,
-    find: "    const label = CONSUMER_SURFACE_SEO[path]?.crumb || ''",
-    replace: "    const label = '목록'",
+    // 2026-10-12: 같은 글자가 `<p>` → `<h1>` 이 되며 조립이 `h1Of(...)` 로 옮겨갔다 —
+    // 불변식(라벨이 crumb SSOT 에서 온다)은 그대로이고 앵커만 따라간다.
+    find: "    const head = h1Of(CONSUMER_SURFACE_SEO[path]?.crumb)",
+    replace: "    const head = h1Of('목록')",
     test: TEST,
     why: '라벨이 두 벌이 되면 빵부스러기와 본문 요약이 다른 말을 한다.',
   },
