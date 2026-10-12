@@ -232,3 +232,63 @@ S=$(curl -s -A "$UA" https://urdeal.kr/sitemap.xml); echo "loc=$(grep -c '<loc>'
 - `<html lang="ko">` 8표면 전부
 - sitemap 커버리지 453건 — `/join`(149자 thin)만 미제출이고 **그게 맞다**
 - RSS 는 `/blog` 에서만 발견 가능(글 상세엔 link 없음) — 가치 대비 미미, 안 했다
+
+---
+
+## 🍞 후속 ④ — 쇼핑 상세에 빵부스러기가 없었다 (`86e6b687e` 다음 커밋)
+
+같은 지시(*"다 개선하고 또 개선할 것 있는지 찾아줘"*)로 **색인 대상 표면을 전수로 다시 쟀다**
+(Googlebot UA 로 서버 HTML 을 받아 JSON-LD 를 **파싱해서** 노드 타입을 셌다 — grep 이 아니다):
+
+```
+표면                robots           BreadcrumbList
+/pass/2919          index, follow    O
+/stays/2887         index, follow    O
+/u/jiwon1228        index, follow    O
+/blog/:slug         index, follow    O   ← 오전에 고쳤다
+/region/서울         index, follow    O   ← 〃
+/products/2917      index, follow    X   ← 남아 있었다
+/                   index, follow    X   ← 루트라 **의도**(한 단계 체인은 무의미)
+/vouchers/:id       noindex          -    (JSON-LD 자체가 0 — noindex 라 무해)
+```
+
+즉 색인 대상 상세 **넷 중 하나만** 빵부스러기가 없었다. `buildProductMeta` 가 `[product]`
+**하나만** 내보내고 있었고(형제 둘은 breadcrumb 를 낸다), 오전 처방이 그 빌더까지 오지 않았다.
+
+**수정 (`src/worker/utils/detail-ssr-meta.ts` 한 블록)**
+`홈 › 쇼핑 › 상품명` — 중간 라벨은 `CONSUMER_SURFACE_SEO['/browse'].crumb` 에서 **받는다**
+(손으로 적으면 목록 표면의 빵부스러기와 갈리는데 에러가 전혀 안 난다).
+
+🩸 **빌더를 돌려 눈으로 보고서 조건을 좁혔다.** 첫 판은 무조건 달았는데, 이용권
+(`/products/2919` → canonical `/pass/2919`)에도 `홈 › 쇼핑 › 닭도리탕` 이 붙었다 — 그 정본의
+**제 빵부스러기는 `홈 › 동네딜 › …`** 이라, 같은 항목에 두 URL 이 서로 다른 경로를 주장한다.
+⇒ **이 페이지가 정본인 순수 쇼핑 상품일 때만** 낸다(`canonicalPath == null`). 교환권(noindex)도
+쇼핑이 아니라 제외. 실측 확인: 쇼핑 **O** / 이용권 **X** / 숙소 **X** / 교환권 **X**.
+
+🩸 **그리고 마지막 항목이 `canonical` 인지는 동작으로 판정할 수 없다** — 그 게이트 때문에
+`canonical` 은 언제나 `${origin}${pathname}` 과 같은 값이라, `pathname` 으로 바꿔도 출력이
+1바이트도 안 바뀐다(주입이 실제로 **초록**을 냈다). 조건을 나중에 넓히면 그때부터 조용히
+어긋나므로 **소스 단언으로 의도를 고정**했고, 그 단언의 첫 판은
+`indexOf('const jsonLd …')` 를 **파일 앞에서** 찾아(그 이름은 형제 빌더에도 있다) **빈 블록**을
+검사하고 있었다 — 제 하한 단언(`length > 80`)이 잡았다.
+
+**가드**: `src/tests/unit/product-breadcrumb-2026-10-12.test.ts` 10건 +
+`scripts/mutations/product-breadcrumb-2026-10-12.mjs` **5건 되돌려-검증 전부 빨간불 확인**.
+검증: tsc 0 · 인접 가드 5파일 70건 pass · 낡은 앵커 0(3,318건).
+
+### 같은 실측에서 **결함이 아니라고 판정한 것**
+- **sitemap `lastmod`** 가 `/region` 44 · `/u` 6 · 정적 표면에 없다 → **값을 지어내지 않는다**
+  (상품 359건은 실제 `updated_at` 이 있어서 낸다. 블로그 22건은 `86e6b687e` 가 추가했다)
+- **유어샵 17곳 중 6곳만 제출** → 기준이 *핀 1개 이상 또는 상품 1개 이상*이라 **빈 가게는 thin**
+- **제목 23표면 중복 0**(8~33자) · description 14~104자
+- `Offer.priceValidUntil`·`shippingDetails`·`hasMerchantReturnPolicy` **미발행** → 권장 필드지만
+  이용권은 배송하지 않고 마감 개념도 없다(2026-09-04 대표 확정) ⇒ **지어내면 거짓**
+- `/products/2192`(교환권)의 `Product` 에 `offers` 가 없는 것 → 가격이 **딜**이라 KRW 스키마
+  부적합. 의도이고 그 페이지는 noindex 다
+
+### 📌 대표 판단 사항 (코드로 안 바꿨다)
+`/pass/:id` 제목이 `{가게} {메뉴} 공동구매 - {가게명}` 으로 끝나 **다른 전 표면의 `- 유어딜`** 과
+다르고 **310건**이 그 모양이다(예: `달빛한스푼 닭도리탕 공동구매 - 달빛한스푼`). 두 가지가 걸린다 —
+① 브랜드 suffix 가 가게명이라 검색결과에서 유어딜이 안 보인다 ② 경제는 즉시판매인데(2026-06-27
+명칭 SSOT · 2026-09-04 *"마감 개념은 없어"*) 제목이 **공동구매**라고 말한다. 이미 색인된 310건의
+제목을 바꾸는 일이라 **올리고 기다린다**.

@@ -13,6 +13,7 @@ import { passShareCardUrl } from '@/shared/pass-share-card'
 import { canonicalDetailPath } from '../../shared/product-flow'
 import { productShareImage } from '@/shared/og-share-image'
 import { propertyTypeLabel } from '../../shared/stay-property-type'
+import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 export { PASS_OG_VERSION } from '@/shared/pass-share-card'
 
 // script 종료 태그 이스케이프 — <script type="application/ld+json"> 안전 임베드.
@@ -348,7 +349,36 @@ export function buildProductMeta(ssrPayload: string, origin: string, pathname: s
         },
       } : {}),
     }
-    const jsonLd = escapeScript(JSON.stringify([product]))
+    // 🍞 2026-10-12 (대표 "다 개선하고 또 개선할 것 있는지 찾아줘"): **쇼핑 상세에 빵부스러기가 없었다.**
+    //   라이브 전수(Googlebot UA 로 받아 파싱) — 색인 대상 상세 넷 중 `/products/:id` **하나만**
+    //   `BreadcrumbList` 0건이었다(`/pass`·`/stays`·`/u/:handle` 은 전부 있다). 같은 날 오전에
+    //   `/region` 44개 + `/blog` 23편에서 고친 것과 **같은 클래스**이고, 그때 쇼핑만 빠졌다.
+    //   빵부스러기가 없으면 검색결과 제목 아래에 경로 대신 **생 URL** 이 뜬다.
+    //   🔑 중간 라벨을 손으로 적지 않는다 — `/browse` 의 `crumb`(= '쇼핑')을 **같은 표**에서 받는다
+    //      (두 벌이면 목록 표면의 빵부스러기와 갈리는데 에러가 전혀 안 난다).
+    //   ⚠️ 마지막 항목은 `canonical` 이다(자기 경로 아님) — 교환권이 아닌 이용권·숙소는 canonical 이
+    //      `/pass`·`/stays` 를 가리키므로, 여기서 `pathname` 을 쓰면 빵부스러기가 **정본 아닌 URL** 을
+    //      가리켜 canonical 과 반대 신호가 된다.
+    //   📌 첫 항목은 형제(`/pass`·`/stays`)와 같은 `홈` 이다 — 목록 표면은 `유어딜` 로 시작하는데,
+    //      상세 셋의 관행을 이 한 건 때문에 바꾸면 이미 색인된 360건의 빵부스러기가 흔들린다.
+    //   🩸 **빌더를 돌려 눈으로 보고서 조건을 좁혔다.** 첫 판은 무조건 달았는데, 이용권
+    //      (`/products/2919` → canonical `/pass/2919`)에도 `홈 › 쇼핑 › 닭도리탕` 이 붙으면서
+    //      **같은 정본 항목에 두 URL 이 서로 다른 빵부스러기**를 주장했다(그 정본의 제 빵부스러기는
+    //      `홈 › 동네딜 › …` 다). 교환권(noindex)도 쇼핑이 아니다. ⇒ **이 페이지가 정본인
+    //      순수 쇼핑 상품일 때만** 낸다(`canonicalPath == null` = cross-canonical 아님).
+    //      이용권·숙소·교환권은 각자의 정본 표면이 이미 제 빵부스러기를 갖고 있다.
+    const shopCrumb = !isDeal && canonicalPath == null && pathname.startsWith('/products/')
+      ? CONSUMER_SURFACE_SEO['/browse']?.crumb
+      : null
+    const breadcrumb = shopCrumb ? {
+      '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: '홈', item: `${origin}/` },
+        { '@type': 'ListItem', position: 2, name: shopCrumb, item: `${origin}/browse` },
+        { '@type': 'ListItem', position: 3, name, item: canonical },
+      ],
+    } : null
+    const jsonLd = escapeScript(JSON.stringify(breadcrumb ? [product, breadcrumb] : [product]))
     // 🔎 2026-07-29 (소비자 SEO 실측): **교환권이 두 URL 로 갈려 한쪽만 noindex 였다.**
     //   같은 상품 id 2192 가 `/vouchers/2192` 에선 `noindex, follow`(2026-07-07 결정)인데
     //   `/products/2192` 에선 `index, follow` 로 나갔고, sitemap 이 후자를 500건 제출하고 있었다
