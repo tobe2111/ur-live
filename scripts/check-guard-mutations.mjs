@@ -164,37 +164,6 @@ const MUTATIONS = [
       '그 페이지는 메뉴에도 검색에도 없어진다 — 이 레포가 반복해 겪은 "페이지는 있는데 닿을 수 없다".',
   },
   {
-    name: '🧭 홈 할 일 행의 칩이 검은 타일로 되돌아온다 (무엇이 급한지 구별이 사라진다)',
-    file: 'src/pages/seller-page/TodoRows.tsx',
-    find: "const ACT = 'rounded-lg bg-brand-tint px-3 py-2 text-xs font-bold text-brand-text'",
-    replace: "const ACT = 'rounded-lg bg-gray-900 px-3 py-2 text-xs font-bold text-white'",
-    test: 'src/tests/unit/dashboard-rinda-shell.test.ts',
-    why:
-      '종전엔 bg-gray-900 타일이 조건에 따라 동시에 셋까지 떴다(이용권 등록 + 미처리 주문 + 정산). ' +
-      '셋이 똑같이 새까매서 우선순위를 전혀 말해 주지 못했다 — 대표가 말한 "헷갈린다"의 한 축.',
-  },
-  {
-    name: '🧭 셀러 사이드바가 다시 어두워진다',
-    // 🧱 2026-10-12 4단계: 사이드바가 사라져 같은 규칙(흰 면)을 남은 머리줄에 건다.
-    file: 'src/components/SellerLayout.tsx',
-    find: 'border-b border-rule bg-white px-3 md:px-6">',
-    replace: 'border-b border-rule bg-[#0A0A0B] px-3 md:px-6">',
-    test: 'src/tests/unit/dashboard-rinda-shell.test.ts',
-    why:
-      '흰 면 위에 흰 글자가 된다. 빌드도 타입체크도 통과하고 화면에서만 글자가 사라지는 부류라 ' +
-      '가드가 없으면 배포 뒤에야 드러난다.',
-  },
-  {
-    name: '💸 정산 금액을 다시 건수로 말한다 (₩412,000 → "412000건")',
-    file: 'src/pages/seller-page/TodoRows.tsx',
-    find: 'settlementAvailableAmount',
-    replace: 'settlementAvailableCount',
-    test: 'src/tests/unit/dashboard-rinda-shell.test.ts',
-    why:
-      '{{count}}건 문자열에 원화 금액을 넘기던 자리. 에러가 안 나고 숫자도 맞아 보여서 ' +
-      '셀러가 "정산 가능 412000건" 을 그대로 믿는다.',
-  },
-  {
     name: '뒤로가기 복원 — /browse POP 조회 무력화',
     file: 'src/pages/browse/list-restore.ts',
     find: "navType === 'POP' ? readListView<BrowseViewState>(keyRef.current) : null",
@@ -9584,22 +9553,6 @@ canvas {
     replace: "<div className={`bg-gradient-to-b from-white via-warm to-warm dark:from-[#171026] ${isPc ? 'hidden' : ''}`}>",
     test: 'src/tests/unit/account-pc-pane.test.ts',
     why: '표면 규칙 ⑥ 그라디언트 0. 다크의 #171026 보라는 체계 밖 색이었다.',
-  },
-  {
-    name: '셀러 B안 — STEP 카드 밴드가 다시 잉크(사이드바·카드·버튼 셋이 검정)',
-    file: 'src/pages/seller-page/MyStoresPanel.tsx',
-    find: "h-11 px-4 text-[14px] text-white bg-brand tabular-nums",
-    replace: "h-11 px-4 text-[14px] text-white bg-gray-900 tabular-nums",
-    test: 'src/tests/unit/seller-dashboard-b.test.ts',
-    why: '2026-09-02 대표 확정 B안. 강조는 밴드 하나(블루)여야 잉크 사이드바와 경쟁하지 않는다.',
-  },
-  {
-    name: '셀러 B안 — 상담 FAB 이 카카오 노랑으로 돌아간다',
-    file: 'src/components/SellerLayout.tsx',
-    find: "rounded-full bg-brand hover:bg-[#1557C8] text-white shadow-md",
-    replace: "rounded-full bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] shadow-md",
-    test: 'src/tests/unit/seller-dashboard-b.test.ts',
-    why: '표면 규칙 ② 강조색 하나. 화면 구석의 노랑 원은 체계 밖 색이었다.',
   },
   {
     name: '스크롤바 — thumb 이 브랜드 블루가 된다(가구가 강조색 예산을 먹음)',

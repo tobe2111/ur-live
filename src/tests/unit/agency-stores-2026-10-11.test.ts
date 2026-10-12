@@ -31,7 +31,7 @@ import { ensureAgencyConsoleTables } from '@/features/agency-console/api/agency-
 import { issueAgencyStaffToken } from '@/features/agency-console/api/agency-session'
 import { agencyStoresRoutes } from '@/features/agency-console/api/agency-stores.routes'
 import { registerAgencyLinkRoutes } from '@/features/seller/api/seller-agency-link.routes'
-import { isAgencySeatToken } from '@/components/seller/AgencySeatBar'
+import { isAgencySeatToken } from '@/shared/agency-seat-token'
 import { storeAgencyInviteRoutes } from '@/features/seller/api/store-agency-invite.routes'
 import { createSessionCookie } from '@/worker/utils/session'
 import { agencyActivityLabel } from '@/shared/agency-activity-label'

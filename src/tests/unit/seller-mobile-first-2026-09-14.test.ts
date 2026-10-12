@@ -16,26 +16,9 @@ describe('T1 다섯 대분류 SSOT — 전체 메뉴 화면이 같은 목록을 
   it('다섯이고 순서가 홈·주문·이용권·정산·더보기다', () => {
     expect(SELLER_PRIMARY_NAV.map(t => t.key)).toEqual(['home', 'orders', 'vouchers', 'settlements', 'more'])
   })
-  it('🔒 전체 메뉴는 대분류를 손으로 적지 않고 모델에서 받는다', () => {
-    const more = read('src/pages/SellerMorePage.tsx')
-    expect(more).toMatch(/const \{ primary, moreGroups, ctaItem \} = useSellerNavModel\(\)/)
-    expect(more).toMatch(/mainTabs\.map\(/)
-    expect(more).not.toMatch(/'\/seller\/orders'/)
-  })
   it('🔒 홈은 더보기에 다시 뜨지 않는다 (폰 실측: "대시보드" 줄이 중복됐다)', () => {
     expect(isCoveredByPrimary('/seller')).toBe(true)
     expect(activePrimaryKey('/seller/orders/123')).toBe('orders')
-  })
-  it('🔒 틀에는 하단 탭도 서랍도 없고, 머리줄의 전체 메뉴가 그 화면으로 간다', () => {
-    const layout = read('src/components/SellerLayout.tsx')
-    expect(layout).not.toMatch(/SellerBottomTabs|SELLER_TABBAR_H/)
-    expect(existsSync('src/components/seller-layout/SellerBottomTabs.tsx'), '삭제한 하단 탭이 되살아났다').toBe(false)
-    expect(layout).toMatch(/export const SELLER_MENU_PATH = '\/seller\/more'/)
-    expect(layout).toMatch(/<Link\s+to=\{SELLER_MENU_PATH\}/)
-    // 햄버거·서랍은 없다.
-    expect(layout).not.toMatch(/sidebarOpen/)
-    // 본문 끝은 safe-area 만큼 비운다(홈 인디케이터에 마지막 줄이 붙지 않게).
-    expect(layout).toMatch(/paddingBottom: 'calc\(env\(safe-area-inset-bottom\) \+ 20px\)'/)
   })
   it('🔒 /seller/more 라우트가 실재한다 (다섯 번째 탭의 착지점)', () => {
     expect(readFileSync('src/routes/seller.routes.tsx', 'utf8')).toContain('path="/seller/more"')
@@ -43,11 +26,6 @@ describe('T1 다섯 대분류 SSOT — 전체 메뉴 화면이 같은 목록을 
 })
 
 describe('T2 홈 M2 — 매장 게이트가 흔들리지 않는다', () => {
-  const page = read('src/pages/SellerPage.tsx')
-  it('🔒 MyStoresPanel 은 한 자리에만 있다 — 게이트 여부로 부모가 바뀌면 재마운트돼 게이트가 풀렸다 잠겼다를 반복한다(실측)', () => {
-    expect(page.match(/<MyStoresPanel /g)?.length).toBe(1)
-    expect(page).toContain('storeGated === true ?')
-  })
   /**
    * 🔄 2026-09-15 재조준 — 대표가 이 시안 결정을 **뒤집었다**: *"모바일로 볼 때는 왜 매장 등록하는게 안보이지?"*
    *   종전 이 자리는 `gateOnly={!isPc}` 를 잠갔다(폰 홈에 매장 블록 없음, 관리는 `더보기 › 매장`).
@@ -55,10 +33,6 @@ describe('T2 홈 M2 — 매장 게이트가 흔들리지 않는다', () => {
    *   ⇒ 이제 폰에서도 그린다. `gateOnly` 옵션 자체는 남긴다(다른 자리에서 쓸 수 있는 계약).
    *   상세: src/tests/unit/seller-mobile-fixes-2026-09-15.test.ts ②
    */
-  it('🔒 폰 홈에도 매장 블록이 있다 (2026-09-15 대표 지시로 09-14 시안 결정 대체)', () => {
-    expect(page).not.toMatch(/<MyStoresPanel[^>]*gateOnly/)
-    expect(read('src/pages/seller-page/MyStoresPanel.tsx')).toMatch(/if \(gateOnly\) return null/)
-  })
   it('🔒 홈 숫자는 서버가 실제로 주는 이름만 읽는다 (옛 홈은 없는 summary.* 를 읽어 언제나 0 이었다)', () => {
     const hook = read('src/pages/seller-page/useSellerHome.ts')
     expect(hook).toMatch(/d\.today_revenue/)

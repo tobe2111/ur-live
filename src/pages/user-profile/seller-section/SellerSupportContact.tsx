@@ -17,6 +17,10 @@
  * `toHref` 는 전화·이메일 스킴도 지원하지만, 그건 **폴백**이지 권장 형식이 아니다.
  * 대표가 오픈채팅 링크를 생성해 `platform_settings.operator_support_contact` 에 넣으면 이 카드가 뜬다.
  *
+ * ## 🧭 2026-10-12 — 자리를 옮겼다
+ * 셀러 대시보드 홈·더보기에 있었는데 대시보드를 지웠다. 이제 마이·콘솔의 **'전체 도구' 시트 맨 아래**에 뜬다
+ * (막혔을 때 사장님이 찾는 곳이 거기다). 그래서 테마 토큰으로 칠한다 — 그 시트는 다크를 따른다.
+ *
  * ## 🔴 값을 코드에 박지 않는다
  * 대표 연락처는 **개인정보**이고 바뀐다. `platform_settings.operator_support_contact` 에서 읽어
  * 어드민이 편집한다. **미설정이면 아무것도 안 그린다**(빈 껍데기 금지 — 기획 §2.1 과 같은 방침).
@@ -53,14 +57,14 @@ export default function SellerSupportContact() {
 
   const href = toHref(contact)
   return (
-    <div className="mt-6 rounded-xl border border-gray-200 bg-white p-4">
-      <p className="flex items-center gap-1.5 text-sm font-bold text-gray-900">
-        <LifeBuoy className="w-4 h-4" /> 문제가 있으면 알려주세요
+    <div className="rounded-xl bg-surface shadow-lift p-4">
+      <p className="flex items-center gap-1.5 text-[15px] font-bold text-gray-900 dark:text-white">
+        <LifeBuoy className="w-4 h-4" aria-hidden="true" /> 문제가 있으면 알려주세요
       </p>
-      <p className="mt-1 text-xs text-gray-500">
+      <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">
         주문·정산·상품 등록에서 막히면 아래로 연락 주세요. 파일럿 기간에는 담당자가 직접 답변합니다.
       </p>
-      <p className="mt-2 text-sm font-semibold text-gray-900 break-all">
+      <p className="mt-2 text-[15px] font-semibold text-gray-900 dark:text-white break-all">
         {href ? (
           <a href={href} className="underline underline-offset-2" target="_blank" rel="noopener noreferrer">{contact}</a>
         ) : contact}

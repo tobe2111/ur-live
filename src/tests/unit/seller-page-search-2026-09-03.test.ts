@@ -13,7 +13,6 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { SELLER_SEARCH_ONLY, NAV_GROUPS } from '@/components/seller/seller-nav'
 
-const LAYOUT = readFileSync('src/components/SellerLayout.tsx', 'utf8')
 /** 주석 제거본 — 설명 주석에 남은 이름을 배선으로 세면 가짜 초록이 된다(오늘만 네 번째로 겪었다). */
 // 📱 2026-09-14: 색인 계산은 `useSellerNavModel`(SSOT)로 이동 — 레이아웃은 그리기만 한다.
 const MODEL = readFileSync('src/components/seller-layout/useSellerNavModel.ts', 'utf8')
@@ -25,7 +24,8 @@ const PALETTE = 'src/components/dashboard/CommandPalette.tsx'
 describe('① 어드민과 같은 물건을 쓴다', () => {
   it('팔레트는 공용 컴포넌트 한 벌이다 — 복사하면 반드시 갈린다', () => {
     expect(() => readFileSync(PALETTE, 'utf8')).not.toThrow()
-    for (const f of [LAYOUT, ADMIN]) {
+    // 🧭 2026-10-12 — 셀러 대시보드 틀(⌘K 포함)은 지웠다. 마이·콘솔은 '전체 도구' 시트의 검색칸이 같은 색인을 쓴다.
+    for (const f of [ADMIN]) {
       expect(f).toContain("from '@/components/dashboard/CommandPalette'")
       expect(f).toContain('<CommandPalette items={commandItems}')
     }
@@ -39,15 +39,6 @@ describe('① 어드민과 같은 물건을 쓴다', () => {
 })
 
 describe('② 셀러 쪽 배선', () => {
-  it('⌘K / Ctrl+K 로 열린다', () => {
-    expect(LAYOUT).toMatch(/metaKey \|\| e\.ctrlKey/)
-    expect(LAYOUT).toMatch(/key\.toLowerCase\(\) === 'k'/)
-  })
-
-  it('🔒 눈에 보이는 진입점도 있다 — 단축키만 있으면 아무도 모른다', () => {
-    expect(LAYOUT).toContain('setPaletteOpen(true)')
-    expect(LAYOUT).toContain("t('seller.pageSearch'")
-  })
 
   it('🔒 검색 대상이 사이드바의 복사본이 아니다 — 그러면 못 찾던 페이지는 여전히 못 찾는다', () => {
     expect(LAYOUT_CODE).toContain('...SELLER_SEARCH_ONLY.map(')  // 실제로 목록을 펼쳐 담는가

@@ -39,6 +39,7 @@ import { clearMyReturn, withMyReturn } from '@/lib/seller-return'
 import { toast } from '@/hooks/useToast'
 import type { MyStoresState } from './useMyStores'
 import { writeReservedHeight } from './seller-reserve'
+import { SELLER_STATUS_KEY } from '@/shared/seller-approval'
 import { useSellerWork } from './seller-section/useSellerWork'
 import { useToolDeepLink } from './seller-section/useToolDeepLink' // 🚪 대시보드 깊은 링크 → 시트(2026-10-12)
 import PendingOrders from './seller-section/PendingOrders'
@@ -71,6 +72,16 @@ const VoucherNewSheet = lazy(() => import('./seller-section/VoucherNewSheet'))
 const STATUS_NOTE: Record<string, string> = {
   pending: '승인 대기 중이에요. 준비는 지금 하고, 메인 노출과 정산은 승인 뒤에 시작됩니다.',
   rejected: '서류가 반려됐어요. 사업자등록증을 다시 올리면 바로 다시 심사합니다.',
+}
+/**
+ * 🪪 매장은 대기인데 **등록증만** 반려된 경우 — "심사 중" 이라고 말하면 사장님은 기다리기만 한다(아무 일도 안 일어난다).
+ *   2026-10-12 까지는 셀러 대시보드 틀의 승인 배너가 이 문장을 말했다. 틀을 지웠으므로 마이가 말한다.
+ */
+const CERT_REJECTED_NOTE = '사업자등록증이 반려됐어요. 전체 도구 › 사업자 정보에서 다시 올리면 바로 다시 심사합니다.'
+/** 매장 상태 + 등록증 상태로 안내문을 고른다. */
+export function storeStatusNote(status: string | null | undefined, certStatus?: string | null): string | undefined {
+  if (status === 'pending' && certStatus === 'rejected') return CERT_REJECTED_NOTE
+  return status ? STATUS_NOTE[status] : undefined
 }
 
 function todayLabelKST(): string {
@@ -195,8 +206,8 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
 
   async function enterSeat(to?: string) {
     if (!(await ensureSeat())) return
-    // ↩️ 2026-09-26: 표시를 달고 보낸다 — 그 화면 맨 위에 "마이로 돌아가기" 띠가 뜬다.
-    //   안 달면 일이 끝나는 화면(등록 폼은 저장 후 `/seller/group-buy` 로 간다)에서 길을 잃는다.
+    // ↩️ 2026-09-26: 표시를 달고 보낸다 — 계산대 맨 위에 "마이로 돌아가기" 띠가 뜬다(`StoreScanPage`).
+    //   🧭 2026-10-12: 셀러 대시보드는 지웠다 — 여기로 오는 주소는 대시보드 밖 전체화면(계산대)뿐이다.
     if (to) window.location.assign(withMyReturn(to))
   }
   // ↩️ 마이에 도착했다 = 여정이 끝났다. 흔적을 지워야 다음 대시보드 방문에 띠가 안 남는다.
@@ -239,6 +250,13 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
     const id = requestAnimationFrame(() => writeReservedHeight(el.offsetHeight))
     return () => cancelAnimationFrame(id)
   }, [stores.length, store?.seller_id, store?.status])
+
+  // 🥕 심사 상태를 적어 둔다 — '전체 도구'가 승인 전 매장에 유어애즈 문을 안 보여 주는 데 쓴다(`seller-approval.ts`).
+  //   2026-10-12 까지는 대시보드 틀의 승인 배너가 썼다. 틀을 지웠으므로 이 매장을 아는 마이가 쓴다(서버가 진짜 벽이다).
+  useEffect(() => {
+    if (!store?.status) return
+    try { localStorage.setItem(SELLER_STATUS_KEY, store.status) } catch { /* quota */ }
+  }, [store?.status])
 
   const onWorkDone = () => { state.refetch() }
 
@@ -300,7 +318,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
   /** 모르는 값의 자리. 글자는 있고 안 보인다 — 높이가 진짜와 같아진다. */
   const blank = (v: string) => (awaiting ? <span className="invisible">{v}</span> : v)
 
-  const note = store?.status ? STATUS_NOTE[store.status] : undefined
+  const note = storeStatusNote(store?.status, store?.cert_status)
 
   return (
     <div
@@ -564,7 +582,8 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
             if (own === 'scan') { setTool(null); enterSeat('/store/scan'); return }
             if (own === 'voucherNew') { setPageFrom('tools'); setTool('voucherNew'); return }
             if (inSheet) { setPage({ path, title: label }); setPageFrom('tools'); setTool('page'); return }
-            setTool(null); enterSeat(path)
+            // 🧭 2026-10-12 대시보드 삭제 — 시트로 못 여는 화면은 위 두 전용 길뿐이라 여기 오지 않는다. 종전엔 남은 것을
+            //   대시보드 전체화면으로 보냈다(마이 `enterSeat(path)` · 콘솔 `goFull` + `dash=1`). 갈 대시보드가 없다.
           }}
         />
       )}

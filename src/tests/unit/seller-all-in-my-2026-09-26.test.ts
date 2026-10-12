@@ -20,7 +20,6 @@ import { readCode, stripComments } from '../helpers/source-text'
 const TOOLS = readCode('src/pages/user-profile/seller-section/AllToolsSheet.tsx')
 const SECTION = readCode('src/pages/user-profile/SellerSection.tsx')
 const LAYOUT = readCode('src/components/SellerLayout.tsx')
-const BAR = readCode('src/components/seller/BackToMyBar.tsx')
 const RETURN = readCode('src/lib/seller-return.ts')
 const SEAT = readCode('src/lib/seller-seat.ts')
 const NAVMODEL = readCode('src/components/seller-layout/useSellerNavModel.ts')
@@ -56,26 +55,8 @@ describe('② 나갔다가 돌아온다', () => {
       .toMatch(/location\.assign\(withMyReturn\(/)
   })
 
-  it('귀환 띠는 레이아웃 한 곳에만 있다', () => {
-    expect(stripComments(LAYOUT), '페이지마다 붙이면 안 붙인 페이지가 생긴다').toContain('<BackToMyBar />')
-    // 개별 셀러 페이지가 각자 붙이기 시작하면 그 순간 규약이 갈린다.
-    const pages = readCode('src/pages/SellerMorePage.tsx')
-    expect(stripComments(pages)).not.toContain('BackToMyBar')
-  })
 
-  it('띠는 세션 기록으로 판정한다 — URL 파라미터만으로는 부족하다', () => {
-    const bar = stripComments(BAR)
-    expect(bar).toContain('noteMyReturn(')
-    expect(bar).toContain('shouldOfferMyReturn()')
-    // 대시보드 안에서 한 번만 이동해도 `?from=my` 는 떨어져 나간다.
-    expect(stripComments(RETURN)).toContain('sessionStorage')
-  })
 
-  it('마이에 도착하면 흔적을 지운다', () => {
-    expect(stripComments(SECTION), '안 지우면 다음 대시보드 방문에도 띠가 남는다')
-      .toMatch(/clearMyReturn\(\)/)
-    expect(stripComments(BAR), '띠를 눌러 돌아갈 때도 지운다').toMatch(/clearMyReturn\(\)/)
-  })
 
   it('탭 수명이다 — localStorage 에 적지 않는다', () => {
     expect(stripComments(RETURN), '어제 들어간 흔적이 오늘 띠로 뜨면 안 된다')

@@ -31,7 +31,6 @@ import { stripComments } from '../helpers/source-text'
 const read = (p: string) => readFileSync(p, 'utf8')
 const code = (p: string) => stripComments(read(p))
 
-const TABS = 'src/components/seller/SellerGroupTabs.tsx'
 const CARD = 'src/components/dashboard/DashboardCard.tsx'
 const REFERRAL = 'src/pages/seller-settlements/ReferralEarningsCard.tsx'
 const STORE = 'src/pages/SellerStoreInfoPage.tsx'
@@ -40,22 +39,6 @@ const BALANCE = 'src/pages/seller-settlements/DealBalanceCard.tsx'
 const BIZREG = 'src/pages/seller-settlements/BizRegStatusBanner.tsx'
 const PANEL = 'src/pages/seller-settlements/RestaurantSettlementsSection.tsx'
 const ROUTE = 'src/features/settlement/api/restaurant-settlement.routes.ts'
-
-describe('① 묶음 탭 줄 — 박스로 40px (tap-reach 금지)', () => {
-  it('탭 링크가 min-h-[40px] 로 40px 를 **보장**한다', () => {
-    const s = code(TABS)
-    expect(s, '탭 링크의 40px 보장이 사라졌다').toContain('min-h-[40px]')
-    expect(s, 'py-1.5(=28px) 로 돌아갔다').not.toMatch(/px-3\.5\s+py-1\.5/)
-  })
-
-  it('🔴 그 줄에 tap-reach 를 쓰지 않는다 — 부모가 overflow-x-auto 라 히트영역이 잘린다', () => {
-    const s = code(TABS)
-    expect(s, '전제가 바뀌었다 — 부모의 overflow-x-auto 가 없어졌으면 이 시험을 다시 판단할 것')
-      .toContain('overflow-x-auto')
-    expect(s, 'overflow 안에서 tap-reach 는 히트 테스트까지 잘린다(넓힌 만큼이 죽는다)')
-      .not.toContain('tap-reach')
-  })
-})
 
 describe('② 전폭 주 버튼 — 자리별로 ur-btn-md(40px)', () => {
   it('정산 계좌 등록 CTA', () => {

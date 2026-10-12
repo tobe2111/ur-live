@@ -23,7 +23,6 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 // 소비자 세션과 공존해야 하는 대시보드 로그인 페이지(=KR 에서 유저 세션을 무조건 파괴하면 안 됨).
 const LOGIN_PAGES = [
   'src/pages/AdminLoginPage.tsx',
-  'src/pages/SellerLoginPage.tsx',
 ]
 
 const GATE_LOOKBACK = 12 // clearAuthData('user') 직전 N줄 안에 !isKorea() 가 있어야 함

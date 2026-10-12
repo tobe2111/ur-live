@@ -24,7 +24,9 @@ const OPS = read('src/features/seller/api/seller-operators.routes.ts')
 const STORES = read('src/features/seller/api/seller-stores.routes.ts')
 const STEP = read('src/pages/seller-meal-voucher/StoreStep.tsx')
 const PAYOUT = read('src/worker/cron/payouts-generate.ts')
-const SWITCHER = read('src/components/seller/StoreSwitcher.tsx')
+// 🧭 2026-10-12 대시보드 삭제 — 매장 전환은 마이의 가게 전환 시트(`StoreSwitchSheet`)가 맡는다(대시보드 `StoreSwitcher` 는 지웠다).
+const SWITCHER = read('src/pages/user-profile/StoreSwitchSheet.tsx')
+const MY_SECTION = read('src/pages/user-profile/SellerSection.tsx')
 const ADMIN = read('src/features/admin/api/admin-sellers.routes.ts')
 const CODES = read('src/features/group-buy/api/marketing/collab-codes.ts')
 const AUTH = read('src/worker/middleware/auth.ts')
@@ -59,9 +61,11 @@ describe('② 좌석 — 세 곳(토큰·가산·화면)이 같은 함수를 쓴
     expect(STEP).toMatch(/const seatable = \(s: OperableStore\) => isSeatableStoreStatus\(s\.status\)/)
     expect(STEP).toContain("s.status === 'pending'")
   })
-  it('매장 스위처가 대기·반려를 배지로 말한다 (앉을 수 있으니 상태가 보여야 한다)', () => {
-    expect(SWITCHER).toContain("s.status === 'pending'")
-    expect(SWITCHER).toContain("s.status === 'rejected'")
+  it('가게 전환 시트가 대기·반려를 말한다 (앉을 수 있으니 상태가 보여야 한다)', () => {
+    expect(SWITCHER).toMatch(/s\.status \? STATUS_NOTE\[s\.status\]/)
+    expect(SWITCHER).toMatch(/pending:/)
+    expect(SWITCHER).toMatch(/rejected:/)
+    expect(MY_SECTION).toMatch(/pending: '승인 대기/)
   })
 })
 

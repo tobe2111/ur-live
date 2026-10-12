@@ -63,14 +63,6 @@ describe('① 한 페이지가 세 곳의 칸을 전부 갖는다', () => {
 })
 
 describe('② 옛 입구 셋이 새 페이지로 간다', () => {
-  it('매장 정보 모달이 사라졌다 (두 곳에서 열리고 있었다)', () => {
-    expect(existsSync('src/components/seller/StoreProfileModal.tsx'),
-      '모달이 남아 있으면 그 화면에서 고친 값이 새 페이지와 갈린다').toBe(false)
-    for (const f of ['src/pages/SellerStoresPage.tsx', 'src/pages/seller-page/MyStoresPanel.tsx']) {
-      expect(src(f), `${f} 가 아직 모달을 연다`).not.toContain('StoreProfileModal')
-      expect(src(f), `${f} 의 [정보] 가 새 페이지로 가야 한다`).toContain('/seller/store?id=')
-    }
-  })
 
   it('유어샵 설정 페이지는 사라지고 그 주소는 새 페이지로 보낸다', () => {
     expect(existsSync('src/pages/SellerMiniShopPage.tsx')).toBe(false)
