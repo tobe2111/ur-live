@@ -14,7 +14,7 @@ import { transactionalMailReady } from '@/lib/ncp-sens-mail'
 import { agencyMailReady } from '@/features/agency-console/api/agency-auth.routes'
 import { stripComments } from '../helpers/source-text'
 
-const SENS = { NCP_ACCESS_KEY: 'a', NCP_SECRET_KEY: 's', NCP_MAIL_SENDER: 'no-reply@urdeal.kr' }
+const SENS = { NCP_ACCESS_KEY: 'a', NCP_SECRET_KEY: 's', NCP_MAIL_SENDER: 'no-reply@urdeal.kr', NCP_SENS_MAIL_SERVICE_ID: 'ncp:mail:kr:1:main' }
 
 describe('판정', () => {
   it('Resend 키 또는 SENS 메일 셋 중 하나만 있어도 보낸다', () => {
