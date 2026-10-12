@@ -766,9 +766,9 @@ function AppContent() {
                 ⚠️ **라우트는 남긴다** — 이미 나간 링크·북마크가 404 가 되면 안 된다. `replace` 라 뒤로가기가
                 이 주소로 되돌아오지 않는다(무한 왕복 방지). */}
             <Route path="/my-store" element={<Navigate to="/user/profile" replace />} />
-            {/* 🎟️ 계산대 스캔 POS(2026-07-06, seller_token 자체가드) · 🏪 매장 등록 단일 목적지(2026-08-26).
+            {/* 🎟️ 계산대(seller_token·스캔기기키 자체가드 — 소비자 로그인 요구 X: 에이전시 직원·스캔 기기 링크가 막혔다, 2026-10-12) · 🏪 매장 등록.
                 한 줄 표기는 file-size 래칫 때문 — 동작은 블록 표기와 동일하다. */}
-            <Route path="/store/scan" element={<ProtectedRoute requireUser><StoreScanPage /></ProtectedRoute>} />
+            <Route path="/store/scan" element={<StoreScanPage />} />
             <Route path="/store/new" element={<ProtectedRoute requireUser><ErrorBoundary><StoreClaimPage /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/store/find" element={<ProtectedRoute requireUser><ErrorBoundary><StoreOwnerClaimPage /></ErrorBoundary></ProtectedRoute>} /><Route path="/store/agency/:token" element={<ProtectedRoute requireUser><ErrorBoundary><StoreAgencyInvitePage /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/store/go" element={<ProtectedRoute requireUser><ErrorBoundary><StoreGoPage /></ErrorBoundary></ProtectedRoute>} />

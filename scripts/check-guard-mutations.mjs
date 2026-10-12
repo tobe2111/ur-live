@@ -175,9 +175,10 @@ const MUTATIONS = [
   },
   {
     name: '🧭 셀러 사이드바가 다시 어두워진다',
+    // 🧱 2026-10-12 4단계: 사이드바가 사라져 같은 규칙(흰 면)을 남은 머리줄에 건다.
     file: 'src/components/SellerLayout.tsx',
-    find: "text-gray-500 hover:bg-gray-50 hover:text-gray-900'",
-    replace: "text-white/55 hover:text-white'",
+    find: 'border-b border-rule bg-white px-3 md:px-6">',
+    replace: 'border-b border-rule bg-[#0A0A0B] px-3 md:px-6">',
     test: 'src/tests/unit/dashboard-rinda-shell.test.ts',
     why:
       '흰 면 위에 흰 글자가 된다. 빌드도 타입체크도 통과하고 화면에서만 글자가 사라지는 부류라 ' +

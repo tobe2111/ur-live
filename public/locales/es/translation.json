@@ -1831,7 +1831,9 @@
       "ordersCustomers": "Pedidos y clientes",
       "curator": "Mi UrShop",
       "vouchers": "Cupones",
-      "growth": "Crecimiento"
+      "growth": "Crecimiento",
+      "menu": "Menú completo",
+      "home": "Inicio de ventas"
     },
     "nav": {
       "products": "Productos",
@@ -1882,7 +1884,8 @@
       "partners": "Socios",
       "notifyGuide": "Avisos y guía",
       "operatingSummary": "Resumen de operación",
-      "storeInfo": "Info de tienda"
+      "storeInfo": "Info de tienda",
+      "plusFriendGuide": "Añadir canal de KakaoTalk"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -5693,7 +5696,15 @@
     "q9": "¿Qué es UrDeal?",
     "a9": "UrDeal (urdeal.kr) es una plataforma de comercio local: compra vales de tiendas de tu barrio con descuento y úsalos en la tienda con un código QR. Ofrece vales de comida, belleza y alojamiento, cupones de intercambio (gifticon), un mapa de ofertas cercanas y tu propia UrShop.",
     "q10": "¿Cómo uso un vale?",
-    "a10": "Los vales comprados aparecen en Mi página > Mis vales; muestra el QR o el PIN en la tienda para usarlos. Los cupones de intercambio se emiten justo después del pago."
+    "a10": "Los vales comprados aparecen en Mi página > Mis vales; muestra el QR o el PIN en la tienda para usarlos. Los cupones de intercambio se emiten justo después del pago.",
+    "q11": "¿Dónde encuentro pases con descuento de restaurantes cerca de mí?",
+    "a11": "El mapa de ofertas del barrio (urdeal.kr/map) muestra los pases de comida, belleza y alojamiento más cercanos a tu ubicación actual. Para verlos por zona, usa las páginas de región (p. ej. urdeal.kr/region/서울). Puedes filtrar por comida, belleza, alojamiento u otros.",
+    "q12": "¿Hay pases de alojamiento para usar en viajes?",
+    "a12": "Sí. Los pases de alojamiento se compran con descuento por adelantado en UrDeal y se canjean en el alojamiento con un código QR. Puedes verlos en urdeal.kr/stays y combinar pases de comida y actividades del mismo destino desde las páginas de región para planear un día con descuento.",
+    "q13": "¿Cuál es la diferencia entre un pase y un vale de regalo?",
+    "a13": "Un pase se usa en un local como un restaurante, un salón o un alojamiento: pagas con tarjeta y lo canjeas allí con un QR o un PIN. Un vale de regalo es un gifticon de marca para cafeterías, tiendas de conveniencia o pollerías: lo compras con Deal recargado y se emite en el momento del pago.",
+    "q14": "¿Puedo recomendar a mis amigos un pase que me guste?",
+    "a14": "Sí. Al registrarte obtienes tu propia UrShop (urdeal.kr/u/tu-usuario). Añade un pase que te guste a tu UrShop y comparte el enlace; cuando se produzca una compra por ese enlace, una parte va a quien lo recomendó."
   },
   "introduce": {
     "navStart": "Comenzar",

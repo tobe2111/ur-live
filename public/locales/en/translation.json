@@ -2507,7 +2507,9 @@
       "ordersCustomers": "Orders & Customers",
       "curator": "My UrShop",
       "vouchers": "Vouchers",
-      "growth": "Growth"
+      "growth": "Growth",
+      "menu": "All menu",
+      "home": "Seller home"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}.{{month}} Revenue Calendar",
@@ -2574,7 +2576,8 @@
       "partners": "Partners",
       "notifyGuide": "Alerts & guide",
       "operatingSummary": "Operating summary",
-      "storeInfo": "Store info"
+      "storeInfo": "Store info",
+      "plusFriendGuide": "Add KakaoTalk channel"
     },
     "bundlesSubtitle": "Bundle multiple products for set-discount sales",
     "bundleCreate": "Create Bundle",
@@ -5693,7 +5696,15 @@
     "q9": "What is UrDeal?",
     "a9": "UrDeal (urdeal.kr) is a local commerce platform where you buy neighborhood store vouchers at a discount and redeem them in-store with a QR code. It offers dining, beauty and stay vouchers, gifticon exchange coupons, a nearby deals map, and your own UrShop.",
     "q10": "How do I use a voucher?",
-    "a10": "Purchased vouchers appear in My Page > My Vouchers; show the QR or PIN at the store to redeem. Gifticon exchange coupons are issued right after payment."
+    "a10": "Purchased vouchers appear in My Page > My Vouchers; show the QR or PIN at the store to redeem. Gifticon exchange coupons are issued right after payment.",
+    "q11": "Where can I find discount passes for restaurants near me?",
+    "a11": "The neighborhood deals map (urdeal.kr/map) shows dining, beauty and stay passes closest to your current location. To browse by area, use the region pages (e.g. urdeal.kr/region/서울). You can filter by dining, beauty, stay or other.",
+    "q12": "Are there stay passes I can use when traveling?",
+    "a12": "Yes. Stay passes are bought in advance at a discount on UrDeal and redeemed at the property with a QR code. See them at urdeal.kr/stays, and combine dining and activity passes for the same destination from the region pages to plan a day at discounted prices.",
+    "q13": "What is the difference between a pass and a gift voucher?",
+    "a13": "A pass is used at a venue such as a restaurant, salon or accommodation: you pay by card and redeem it on site with a QR code or PIN. A gift voucher is a brand gifticon for cafes, convenience stores or chicken shops: you buy it with charged Deal and it is issued the moment you pay.",
+    "q14": "Can I recommend a pass I like to friends?",
+    "a14": "Yes. Everyone who signs up gets their own UrShop (urdeal.kr/u/your-handle). Add a pass you like to your UrShop and share the link; when a purchase happens through that link, a share goes to whoever recommended it."
   },
   "introduce": {
     "navStart": "Get Started",

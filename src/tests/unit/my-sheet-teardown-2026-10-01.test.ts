@@ -87,8 +87,11 @@ describe('🧹 손수 시트 철거 (2026-10-01)', () => {
     expect(bare, 'pageFrom 을 안 들고 다니면 바로가기에서 열고 닫아도 전체 도구가 뜬다')
       .toContain('const [pageFrom, setPageFrom]')
     expect(bare).toMatch(/setPageFrom\('tools'\)/)
+    // 🩸 2026-10-12 — 등록 시트(`VoucherNewSheet`)도 같은 `const back = pageFrom; … setTool(back)` 을 쓰게 되자
+    //   이 단언이 **그쪽에 매치돼** 도구 화면 시트의 닫기를 지워도 통과했다(주입이 잡았다). 도구 화면 시트만의 표지
+    //   (`setPage(null)`)까지 포함해 그 자리에 앵커한다.
     expect(bare, '닫을 때 온 곳을 안 쓰면 그 상태는 죽은 코드다')
-      .toMatch(/const back = pageFrom;[\s\S]{0,120}setTool\(back\)/)
+      .toContain('onClose={() => { const back = pageFrom; setPage(null); setPageFrom(null); setTool(back) }}')
   })
 
   it('③ 좌석이 바뀌면 열린 시트가 닫힌다 (손수 시트가 각자 하던 일)', () => {
