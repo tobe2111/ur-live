@@ -231,6 +231,8 @@ export function stayNoscriptFromPayload(
 export interface NoscriptCuratorSeed {
   curator?: { name?: string | null; bio?: string | null } | null
   pins?: Array<{ product_name?: string | null; price?: number | null; restaurant_name?: string | null } | null> | null
+  /** 사업자 유어샵(`linked_seller`)의 진열 — 핀이 비었을 때의 **두 번째 재료**. curator 응답이 동봉한다. */
+  linked_seller_products?: Array<{ name?: string | null; price?: number | null; restaurant_name?: string | null } | null> | null
 }
 
 /**
@@ -240,25 +242,60 @@ export interface NoscriptCuratorSeed {
  * 무엇인지 크롤러가 알아야 그 가게 이름으로 검색될 때 잡힌다.
  * ⚠️ 이름은 첫 화면이 이미 그리므로(규율 ②) **소개(bio)와 진열 목록만** 담는다.
  */
-export function buildCuratorNoscript(seed: NoscriptCuratorSeed | null | undefined): string {
+export function buildCuratorNoscript(
+  seed: NoscriptCuratorSeed | null | undefined,
+  opts: { withName?: boolean } = {},
+): string {
   if (!seed) return ''
   const bio = (seed.curator?.bio || '').trim()
-  const pins = Array.isArray(seed.pins) ? seed.pins : []
-  const items = pins
+  const name = (seed.curator?.name || '').trim()
+  const row = (nm: string, store: unknown, price: unknown): string => {
+    const n = String(nm || '').trim()
+    if (!n) return ''
+    const st = String(store || '').trim()
+    const pr = Number(price) || 0
+    const tail = [st, pr > 0 ? `${won(pr)}원` : ''].filter(Boolean).join(' · ')
+    return `<li>${esc(n)}${tail ? ` — ${esc(tail)}` : ''}</li>`
+  }
+  const pins = (Array.isArray(seed.pins) ? seed.pins : [])
     .filter((x): x is NonNullable<NoscriptCuratorSeed['pins']>[number] & object => !!x)
     .slice(0, 20)
-    .map((pr) => {
-      const nm = (pr.product_name || '').trim()
-      if (!nm) return ''
-      const store = (pr.restaurant_name || '').trim()
-      const price = Number(pr.price) || 0
-      const tail = [store, price > 0 ? `${won(price)}원` : ''].filter(Boolean).join(' · ')
-      return `<li>${esc(nm)}${tail ? ` — ${esc(tail)}` : ''}</li>`
-    })
+    .map((pr) => row(pr.product_name || '', pr.restaurant_name, pr.price))
+    .filter(Boolean)
+  // 🔁 핀이 한 줄도 안 나오면 **사업자 진열**로 — 둘을 합치지 않는다(user40 실측에서 둘이 같은
+  //    상품이었다 ⇒ 합치면 같은 줄을 두 번 말한다).
+  const items = pins.length ? pins : (Array.isArray(seed.linked_seller_products) ? seed.linked_seller_products : [])
+    .filter((x): x is NonNullable<NoscriptCuratorSeed['linked_seller_products']>[number] & object => !!x)
+    .slice(0, 20)
+    .map((pr) => row(pr.name || '', pr.restaurant_name, pr.price))
     .filter(Boolean)
 
-  const body = (bio ? `<p>${esc(bio)}</p>` : '') + (items.length ? `<ul>${items.join('')}</ul>` : '')
+  // 🔴 **이름만 남는다면 아무것도 내지 않는다** — 그 이름은 `<title>`·`og:title` 이 이미 말한다.
+  //   이름만 넣으면 본문 글자수는 늘지만 페이지가 thin 인 사실은 그대로다(측정만 좋아 보인다).
+  //   재료가 없는 유어샵은 **본문을 꾸미는 대신 sitemap 에서 뺀다**(`sitemap.routes` 의 🩸 주석).
+  if (!bio && !items.length) return ''
+  const body = (opts.withName && name ? `<p>${esc(name)} 유어샵</p>` : '')
+    + (bio ? `<p>${esc(bio)}</p>` : '')
+    + (items.length ? `<ul>${items.join('')}</ul>` : '')
   return wrap(body)
+}
+
+/**
+ * 워커 편의 — CURATOR 시드(**최상위** `{curator, pins, linked_seller_products}`)에서 바로.
+ *
+ * 🔑 **첫 화면이 `''` 를 돌려준 경로 전용**이다. `buildCuratorFirstScreen` 은 세 경우에 빈 문자열을
+ *   준다(사업자 유어샵 `linked_seller` · 핀 0 · 파싱 실패) — 그때 크롤러가 받는 것은 **로더뿐**이고,
+ *   라이브 실측(2026-10-12, Googlebot)에서 sitemap 이 제출한 유어샵 6건 중 **5건이 본문 6자**였다.
+ * ⚠️ 그래서 이 경로는 **이름을 빼지 않는다**(`withName`) — 첫 화면이 없으니 규율 ②의 전제가
+ *   사라진다. 숙소 상세 폴백(`stayNoscriptFromPayload`)이 숙소명을 남기는 것과 같은 판단이다.
+ */
+export function curatorNoscriptFromPayload(ssrPayload: string | null | undefined): string {
+  if (!ssrPayload) return ''
+  try {
+    return buildCuratorNoscript(JSON.parse(ssrPayload) as NoscriptCuratorSeed, { withName: true })
+  } catch {
+    return ''
+  }
 }
 
 /**
@@ -311,6 +348,37 @@ const LIST_SURFACE_KEEP: Readonly<Record<string, (p: RegionSeedRow) => boolean>>
 export function buildStaticSurfaceNoscript(pathname: string, ssrPayload?: string | null): string {
   // 끝 슬래시를 떼어 `resolveConsumerSurfaceSeo` 와 같은 키로 본다.
   const path = pathname !== '/' && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname
+
+  // 🛍️ 2026-10-12 (대표 "다 개선하고 또 개선할 것 있는지 찾아줘"): **쇼핑 상세의 크롤러 본문이 6자였다.**
+  //   라이브 실측(Googlebot UA) — `/products/2917` 은 `index, follow` + sitemap 제출인데 서버 문서에
+  //   첫 화면도 `<noscript>` 도 없다(첫 화면 빌더는 `/pass`·`/vouchers`·`/stays` 에만 있다). 시드는
+  //   **이미 와 있었다**(`PRODUCT:edge-hit` 872B) — 쓰지 않고 있었을 뿐이다.
+  //   🔑 **정본일 때만 낸다** — 같은 날 빵부스러기와 **같은 게이트**(`canonicalDetailPath(...) == null`
+  //      = "cross-canonical 아님"). 이용권·숙소는 `/products/:id` 로도 닿지만 정본이 `/pass`·`/stays`
+  //      이고 거기엔 서버 첫 화면이 이미 있다 ⇒ 정본 아닌 URL 을 키우지 않는다.
+  //   🔒 **가게·주소·전화는 안 쓴다** — `ProductDetailPage` 는 그 줄을 `category === 'meal_voucher'`
+  //      일 때만 그린다(실측 `:647`). 2917 은 `lifestyle` 인데 `restaurant_name='구서 우성아파트'`·
+  //      전화가 응답에 담겨 온다 ⇒ 그걸 요약에 넣으면 **화면에 없는 말**이고 그건 클로킹이다.
+  //   ⚠️ **오늘 이 처방이 메우는 양은 적다** — 라이브 유일 쇼핑 상품은 설명·정가·리뷰가 전부 비어
+  //      이름+가격 ~20자뿐이다. 구조가 맞을 뿐이고, 쇼핑탭이 다시 열리면 그때 값을 한다.
+  const prodId = path.match(/^\/products\/(\d+)$/)?.[1]
+  if (prodId) {
+    try {
+      const d = (JSON.parse(ssrPayload || 'null') as { data?: NoscriptDetailSeed & { deal_only?: number; category?: string } } | null)?.data
+      if (!d) return ''
+      // id 는 **경로에서** 가져온다 — 시드에 없을 수도 있고, 정본 판정은 빠질 수 없는 게이트다.
+      if (canonicalDetailPath({ id: prodId, deal_only: d.deal_only, category: d.category }) != null) return ''
+      const p = priceDisplay({ price: d.price, original_price: d.original_price, discount_rate: d.discount_rate })
+      const desc = (d.description || d.long_description || '').trim()
+      return wrap(lines([
+        esc(String(d.name || '').trim()),
+        p.price > 0 ? `판매가 ${won(p.price)}원${p.hasDiscountLine && p.showOriginal ? ` · 정가 ${won(p.originalPrice)}원` : ''}${p.discount > 0 ? ` · ${p.discount}% 할인` : ''}` : '',
+        desc ? esc(desc) : '',
+      ]))
+    } catch {
+      return ''
+    }
+  }
 
   if (path === '/faq') {
     // Q&A 를 그대로 — 언어모델이 인용하기 가장 쉬운 모양이고, 같은 배열이 `FAQPage` JSON-LD

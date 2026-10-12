@@ -6,6 +6,7 @@
  * 🛡️ 2026-04-27: TD-006 partial split — worker/index.ts 인라인 핸들러 제거.
  */
 import { Hono } from 'hono';
+import { consumerVisibleProductSql } from '../../shared/db/consumer-visible-product';
 import { buildLlmsTxt } from '../../shared/seo/llms-txt'
 import type { Env } from '@/worker/types/env';
 // 🏠 본진 몰 격리 — 운영자 SaaS 몰 상품이 유어딜 도메인으로 SEO 색인되는 것을 막는다.
@@ -129,7 +130,7 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
          WHERE category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
            AND is_active = 1
            AND group_buy_status IN ('active','achieved')
-           AND NOT (COALESCE(is_supply_product,0) = 1 AND COALESCE(supply_source_id,0) = 0)${productScope}
+           AND ${consumerVisibleProductSql('products')}${productScope}
          ORDER BY updated_at DESC LIMIT 500`
       ).all<GroupBuyRow>().catch(() => ({ results: [] as GroupBuyRow[] }));
       for (const g of groupBuys.results || []) {
@@ -162,7 +163,7 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
          WHERE is_active = 1
            AND COALESCE(deal_only, 0) = 0
            AND category NOT IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
-           AND NOT (COALESCE(is_supply_product,0) = 1 AND COALESCE(supply_source_id,0) = 0)${productScope}
+           AND ${consumerVisibleProductSql('products')}${productScope}
          ORDER BY id DESC LIMIT 500`
       ).all<{ id: number }>();
       for (const p of products.results || []) {
@@ -186,7 +187,9 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
            FROM sellers s LEFT JOIN users u ON u.id = s.linked_user_id
           WHERE s.status = 'approved'${sellerScope}
             AND ( EXISTS (SELECT 1 FROM products p WHERE p.seller_id = s.id AND p.is_active = 1)
-               OR EXISTS (SELECT 1 FROM product_pins pp WHERE pp.user_id = s.linked_user_id) )
+               OR EXISTS (SELECT 1 FROM product_pins pp JOIN products pq ON pq.id = pp.product_id
+                           WHERE pp.user_id = s.linked_user_id AND pq.is_active = 1
+                             AND ${consumerVisibleProductSql('pq')}) )
           ORDER BY s.id DESC LIMIT 200`
       ).all<{ id: number; username: string; handle: string | null }>()
         .catch(() => ({ results: [] as Array<{ id: number; username: string; handle: string | null }> }));
@@ -212,6 +215,20 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
       //   🔑 그리고 이 기준은 **워커 첫 화면 빌더와 짝이다** — `buildCuratorFirstScreen` 은
       //      `pins.length === 0` 이면 `''` 를 돌려주므로, 핀 0 인 유어샵을 제출하면 크롤러가 받는 것은
       //      로더뿐이다(= soft-404). 핀 ≥ 1 만 내보내면 **제출한 URL 은 전부 본문이 있다.**
+      //   🩸 **2026-10-12 — 그 "짝" 주장이 세 군데서 깨져 있었다**(라이브 Googlebot 실측: sitemap 이
+      //      제출한 유어샵 6건 중 **5건이 본문 6자**). ① 여기서 센 것은 `product_pins` **행**인데
+      //      API 의 `pins` 는 `p.is_active = 1 AND consumerVisibleProductSql` 를 통과한 것만이다 ⇒
+      //      *"핀 행이 있다" ≠ "핀이 보인다"*(`/u/user31`·`/u/jongmun` 이 그 경우 — 담은 상품이
+      //      비활성화됐다). ⇒ 이 EXISTS 를 **활성 상품에 매달린 핀**으로 좁혔다(상품이 다시 켜지면
+      //      다음 sitemap 부터 자동 복귀 — 수동 관리 0). ② 그 빌더는 `pins.length === 0` 말고도
+      //      **`linked_seller` 가 있으면** `''` 를 준다(React 가 `SellerPublicPage` 를 그리므로) —
+      //      `/u/user40` 이 그 경우였고 이 주석은 그 분기를 몰랐다. ③ `/s/:username`(SELLER 슬롯)은
+      //      첫 화면 빌더가 **아예 없다**. ②③ 는 sitemap 이 아니라 **본문 쪽**에서 메운다(②는
+      //      `curatorNoscriptFromPayload` 폴백으로 해소, ③은 페이로드에 상품이 안 담겨 **미해소** —
+      //      `docs/handoff/2026-10-12-canonical-facet-entity.md` 의 후속 ⑥).
+      //   ⚠️ 그래도 이 블록이 **색인 요청을 줄이는** 방향이라는 점을 잊지 말 것 — 기준을 더 조이면
+      //      멀쩡한 유어샵이 색인에서 빠지고 돌아오는 데 수주다. 조일 때는 **본문이 실제로 비는지**를
+      //      라이브로 먼저 재고 조인다(이번이 그 순서였다).
       //   ⚠️ 몰 스코프(`mainScopeFor`)를 걸지 않는다 — `users` 에는 `mall_id` 가 없고(유저는 몰에 속하지
       //      않는다), 우리가 제출하는 것은 상품 URL 이 아니라 **유어딜 본진 표면**인 `/u/{handle}` 이다.
       //   `product_pins` 는 lazy CREATE 라 실패해도 뒤 블록이 죽지 않게 catch(위 블록과 동일).
@@ -219,7 +236,9 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
         `SELECT u.handle AS handle
            FROM users u
           WHERE u.handle IS NOT NULL AND TRIM(u.handle) <> ''
-            AND EXISTS (SELECT 1 FROM product_pins pp WHERE pp.user_id = u.id)
+            AND EXISTS (SELECT 1 FROM product_pins pp JOIN products pq ON pq.id = pp.product_id
+                         WHERE pp.user_id = u.id AND pq.is_active = 1
+                           AND ${consumerVisibleProductSql('pq')})
           ORDER BY u.id DESC LIMIT 200`
       ).all<{ handle: string }>()
         .catch(() => ({ results: [] as Array<{ handle: string }> }));

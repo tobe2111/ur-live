@@ -288,7 +288,7 @@ import { referralRoutes } from '../features/referral/api/referral.routes';
 //   (typeof navigator/window 가드 보유라 워커 안전). URL 이 클라 렌더값과 byte-일치해야 preload 적중.
 import { cfImage, cfSrcSet } from '../utils/cf-image';
 // 🖼️ 홈 첫 화면 카드 사진 preload — 링크 생성은 헬퍼가 한다(파일 크기 래칫 + 직접 테스트 용이).
-import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; import { brandJsonLdScript } from '../shared/seo/brand-jsonld'; import { buildStaticSurfaceNoscript, stayNoscriptFromPayload } from './utils/crawler-noscript'; import { buildStayDetailFirstScreen } from './utils/stay-detail-ssr-body'; import { MAIN_SEED_PATH, REGION_PATH_RE } from '../shared/seo/region-seed'; import { isKnownAppPath } from '../shared/seo/known-routes'; import { REGION_DIGEST_KV_KEY, regionDigestApplies, regionThinByDigest } from '../shared/seo/region-digest'; import { ushopOgImage } from '../shared/ushop-share-card'; import { OG_CARD_W, OG_CARD_H, ogCardUrl } from '../shared/og-share-image'; // 한 줄: 파일크기 래칫 안
+import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; import { brandJsonLdScript } from '../shared/seo/brand-jsonld'; import { buildStaticSurfaceNoscript, stayNoscriptFromPayload, curatorNoscriptFromPayload } from './utils/crawler-noscript'; import { buildStayDetailFirstScreen } from './utils/stay-detail-ssr-body'; import { MAIN_SEED_PATH, REGION_PATH_RE } from '../shared/seo/region-seed'; import { isKnownAppPath } from '../shared/seo/known-routes'; import { REGION_DIGEST_KV_KEY, regionDigestApplies, regionThinByDigest } from '../shared/seo/region-digest'; import { ushopOgImage } from '../shared/ushop-share-card'; import { OG_CARD_W, OG_CARD_H, ogCardUrl } from '../shared/og-share-image'; // 한 줄: 파일크기 래칫 안
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -1045,10 +1045,10 @@ app.use('*', async (c, next) => {
       //   이미 와 있는데 `#root` 는 로더가 덮고 있었다(실측 ~1초). 유어샵은 **공유해서 퍼지는 것**이라
       //   그 1초가 가장 비싸다 → [브랜드 바 + 이름 줄 + 칩 줄 높이 + 진열 줄 4개]를 그리고 그 아래에만
       //   로더를 둔다. ⚠️ 이 슬롯은 `/u/:handle/p/:id`(핀 클릭 귀속 경로)에도 걸리므로 **한 세그먼트만**
-      //   그린다. PC 는 2열 그리드 + 전역 네비라 UA 로 가른다. 사유·경계·버린 길(쿠키로 주인 판정 /
-      //   워커가 글자 폭 계산): `utils/curator-ssr-body.ts`.
+      //   그린다. PC 는 2열 그리드 + 전역 네비라 UA 로 가른다. 사유·경계·버린 길: `utils/curator-ssr-body.ts`.
+      // 🩸 2026-10-12 폴백이 **로더뿐**이었다 — 그 빌더는 세 경우에 `''` 를 준다(사업자 유어샵 · 핀 0 · 파싱 실패). 라이브 실측(Googlebot): sitemap 제출 유어샵 6건 중 **5건이 본문 6자**. 숙소 상세와 같은 처방으로 `<noscript>` 요약을 깔아 둔다(이 경로는 **이름을 뺀다**는 규율 ②의 전제가 없다 — `utils/crawler-noscript.ts`).
       const curatorFirst = buildCuratorFirstScreen(ssrPayload, urdealLoaderHtml);
-      rb = rb.on('#root', { element(el) { el.setInnerContent(curatorFirst || urdealLoaderHtml, { html: true }); } });
+      rb = rb.on('#root', { element(el) { el.setInnerContent(curatorFirst || (curatorNoscriptFromPayload(ssrPayload) + urdealLoaderHtml), { html: true }); } });
     } else if (ssrSlot === 'STAYDETAIL' && ssrPayload) {
       // 🏨 2026-10-12 [UNLOCK_LOADING] 정본(`/stays/:id`)인데 사본(`/pass/:id`)만 서버 첫 화면이 있었다 — 정본이 더 늦게 떴다. [빵부스러기 + 히어로 + 성급 + 제목]까지 그리고 그 아래에만 로더를 둔다(모바일만 — PC 는 그리드 밖 제목 헤더 때문에 반쪽만 그리면 밀린다).
       //   🔴 폴백(사진 없음·파싱 실패)은 `<noscript>` + 로더 — 그 경로는 숙소명을 **빼지 않는다**(첫 화면이 없으니 본문이 비어 버린다). 사유·경계: `utils/stay-detail-ssr-body.ts`.

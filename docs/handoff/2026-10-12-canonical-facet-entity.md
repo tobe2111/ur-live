@@ -357,3 +357,119 @@ done
 - **봇 셸에 전역 네비(푸터)를 안 넣었다** — 상세는 빵부스러기가 허브로 잇고 있고(`a` 2개),
   링크가 0 인 `/faq`·`/about` 은 리프다. 넣으려면 `worker/index.ts`(잠금 파일 · 래칫 2672 포화)를
   건드려야 해서 **얻는 것 대비 비용이 크다** — 필요해지면 별건.
+
+---
+
+## 🛍️ 후속 ⑥ — sitemap 이 제출한 유어샵·쇼핑 상세가 크롤러에게 **빈 문서**였다 (같은 지시)
+
+### 측정 (Googlebot UA 로 받아 **태그를 걷어내고** 본문 글자를 셌다)
+
+```
+sitemap URL              슬롯      시드      첫 화면   noscript   본문
+/u/jiwon1228             CURATOR   2639B     O         1          383자
+/u/user40                CURATOR   2179B     X         0          **6자**
+/u/user31                CURATOR    402B     X         0          **6자**
+/u/jongmun               CURATOR    429B     X         0          **6자**
+/s/store_muxlddtf74b     SELLER     520B     X         0          **6자**
+/s/store_mt9rvbhg1i6     SELLER     520B     X         0          **6자**
+/products/2917           PRODUCT    872B     X         0          **6자**
+```
+
+**7건 중 6건이 `index, follow` + sitemap 제출인데 서버 문서가 비어 있었다.** 그리고 시드는
+**전부 도착해 있었다**(`X-SSR-Status: *:edge-hit`) — 쓰지 않고 있었을 뿐이다.
+
+### 🩸 원인 — sitemap 이 스스로 적어 둔 "짝" 주장이 세 군데서 깨져 있었다
+
+`sitemap.routes.ts` 는 *"핀 ≥ 1 만 내보내면 **제출한 URL 은 전부 본문이 있다**"* 고 선언했다.
+
+1. **센 것은 `product_pins` 행**이고 API 의 `pins` 는 `is_active = 1 AND
+   consumerVisibleProductSql` 를 통과한 것만이다 ⇒ **"핀 행이 있다" ≠ "핀이 보인다"**.
+   `/u/jongmun` 의 핀은 **활성인 도매 원본**(`Canvas Tote Bag`, id 6)이고 소비자 API 어디에도
+   없어 클릭하면 404 다 — `consumer-visible-product.ts` 머리말이 그 상품을 **이름까지** 적어
+   뒀는데 sitemap 쪽은 그 조건을 안 봤다.
+2. 첫 화면 빌더는 `pins.length === 0` 말고도 **`linked_seller` 가 있으면** `''` 를 준다
+   (React 가 `SellerPublicPage` 를 그리므로 레이아웃이 통째로 다르다) — `/u/user40` 이 그
+   경우이고 그 주석은 **그 분기를 몰랐다**.
+3. **`/s/:username`(SELLER 슬롯)엔 첫 화면 빌더가 아예 없다.**
+
+### 처방 — 층을 나눴다
+
+| | 처방 | 대상 |
+|---|---|---|
+| 재료 있음 | **본문을 메운다** — CURATOR 폴백 `curatorNoscriptFromPayload`(숙소 상세가 쓰는 그 처방) | `/u/user40` 및 앞으로의 사업자 유어샵 전부 |
+| 재료 있음 | `/products/:id` `<noscript>` — **정본일 때만**(빵부스러기와 같은 게이트) | 쇼핑 상세 |
+| 재료 없음 | **색인 요청을 안 한다** — 핀 EXISTS 를 **API 와 같은 술어**로 | `/u/user31`·`/u/jongmun` |
+| 미해소 | 페이로드에 상품이 안 담겨 **문서에 재료가 없다** | `/s/*` 2건 ← **다음 세션** |
+
+🔴 **이름만 적어 글자수를 늘리지 않았다** — `<title>` 이 이미 그 이름을 말하고, 그러면 본문
+글자수는 늘지만 thin 인 사실은 그대로다(**측정만 좋아 보인다**). 소개·진열이 없는 유어샵은
+`''` 를 내고 sitemap 에서 빠진다.
+
+🔒 **가게·주소·전화는 쇼핑 요약에 안 넣었다** — `ProductDetailPage` 는 그 줄을
+`category === 'meal_voucher'` 일 때만 그리는데(실측 `:647`) `lifestyle` 상품 응답에도 그
+필드가 담겨 온다(`구서 우성아파트`·`010-2207-3904`) ⇒ 넣으면 **화면에 없는 말**이고 클로킹이다.
+
+📏 **워커는 줄 수 중립** — PRODUCT 전용 `#root` 분기를 만들지 않고 catch-all 의
+`buildStaticSurfaceNoscript` 에 얹었다(래칫 2672 에 꽉 차 있어 내 주석 1줄을 압축했다).
+
+🧹 같은 커밋에서 `consumer-visible-product.ts` 머리말이 *"sitemap 에 인라인으로 복사돼 있다 …
+다음에 만질 때 이 상수로 모으면 된다"* 고 적어 둔 **인라인 사본 2곳**을 SSOT 로 모았다.
+
+### 🔬 빌더를 돌려 눈으로 봤다 (라이브 시드 그대로)
+
+```
+/u/user40     첫화면 없음  폴백 83B   "현정 유어샵 / 프리미엄 무선아이폰 — 구서 우성아파트 · 10,000원"
+/u/user31     첫화면 없음  폴백  0B   (재료 0 — sitemap 에서 뺀다)
+/u/jongmun    첫화면 없음  폴백  0B   (재료 0)
+/u/jiwon1228  첫화면 7876B  그 안 요약에 **이름 없음**(규율 ② 유지)
+/products/2917 (lifestyle)  56B  "프리미엄 무선아이폰 / 판매가 10,000원"   ← 가게·전화 없음
+/products/2919 (이용권)      0B   /products/2887 (숙소) 0B   /products/2192 (교환권) 0B
+폴백: 시드 없음·깨짐 → 둘 다 ''
+```
+
+### 🕳️ 기존 가드·주입 셋이 낡았고 셋 다 **풀지 않고 재조준**했다
+
+- `sitemap-urshop-users-2026-10-11` 픽스처 — `product_pins.product_id`·도매 컬럼 추가 +
+  **비활성 · 도매 원본 · 재판매 복제본** 세 경우를 **추가**(불변식은 그대로이고 강해졌다).
+- `curator-ssr-first-screen-2026-10-09` ⑥ — 불변식(*"`''` 면 로더로 폴백"*) 그대로. 달라진
+  것은 폴백이 로더 **앞에** 요약을 깐다는 것뿐이고, **로더가 그 자리에 남아 있는지**를 계속 고정.
+- 주입 `🔎 유어샵 요약이 핀을 중첩 구조로 읽는다` — 조립이 `row()` 헬퍼로 옮겨갔다.
+
+### 🩸 이번에 제 시험이 네 번 헛돌거나 터졌다
+
+1. **`node:sqlite` 를 그냥 import** 하면 vite 가 번들하려다 **테스트가 아예 안 돈다**
+   (`Cannot bundle Node.js built-in`) → `createRequire` 우회. 선례:
+   `legacy-seller-lookup-owner-seat-2026-10-10.test.ts`.
+2. 쿼리를 소스에서 뗄 때 마커가 템플릿 **안**에 있는데 `indexOf('\`')` 로 열린 백틱을 찾아
+   **닫는** 백틱을 집었다 → SQL 이 다음 리터럴까지 섞여 `near ")"` 로 터졌다(`lastIndexOf`).
+3. `ssrSlot === 'CURATOR' && ssrPayload` 는 **메타 rewrite 분기에도** 있어(line 900) 엉뚱한
+   블록을 봤다 → 빌더 호출로 앵커. **같은 세션에서 두 번째다**(앞서 `buildDetailMeta` 에서도).
+4. 기존 테스트의 `sqlOf` 가 `${...}` 를 통째로 지워 `AND )` 를 만들었다 → SSOT 호출만
+   **실제 술어로 치환**한 뒤 나머지를 지운다.
+
+### ⏭️ 다음 세션의 첫 액션 — E4 (배포 후, **양방향**)
+
+```bash
+UA='Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
+# ① 메워졌나
+for p in /u/user40 /products/2917; do
+  curl -sS -A "$UA" "https://urdeal.kr$p" | python3 -c "
+import sys,re,html; h=sys.stdin.read()
+t=re.sub(r'<[^>]+>',' ',h[h.find('<body'):]); print(len(' '.join(html.unescape(t).split())))"
+done        # 기대: 6자 → 올라간다 (user40 ~70자 · 2917 ~30자)
+# ② 색인 요청에서 빠졌나 / 🔴 **그리고 멀쩡한 것은 남았나**
+curl -sS https://urdeal.kr/sitemap.xml | grep -o '<loc>[^<]*</loc>' | grep -cE '/(u|s)/'
+#   기대: 6 → 4  (user31·jongmun 빠짐 / jiwon1228·user40·store_* 2건 **유지**)
+curl -sS https://urdeal.kr/sitemap.xml | grep -c '<loc>'   # 453 → 451 안팎, /pass 310 유지
+```
+
+⚠️ **②의 반대 방향을 꼭 함께 볼 것** — 기준을 조이는 변경이라, 멀쩡한 유어샵이 빠지면 색인이
+조용히 사라지고 돌아오는 데 수주다(쓰레기 URL 이 남는 것보다 이쪽이 더 나쁘다).
+
+### ⏭️ 남은 것 — `/s/:username` 2건 (별건)
+
+`달빛한스푼`·`홍대돈까스` 는 **상품이 있다**(sitemap 의 products EXISTS 를 통과한다) — thin 이
+아니라 **그 재료가 서버 문서에 안 담겨 있다**. SELLER 페이로드(`buildSellerPublicPayload`)는
+셀러 프로필만 담고 상품은 `SellerPublicPage` 가 따로 받는다. 처방은 curator 응답이
+`linked_seller_products` 를 동봉하는 것과 같은 방식으로 **페이로드에 상품을 더하는 것**이고,
+그건 API·KV 캐시(300s)를 건드리므로 별건으로 잡을 것. ❌ 이름만 넣은 noscript 로 때우지 말 것.
