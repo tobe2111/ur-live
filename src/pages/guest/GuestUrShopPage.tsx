@@ -105,7 +105,12 @@ export default function GuestUrShopPage() {
         </div>
 
         <div className="mt-6">
-          <GuestKakaoButton returnPath="/u/me" label={t('guest.shop.cta', { defaultValue: '카카오로 내 유어샵 만들기' })} />
+          {/* 유어샵은 **가입 순간 자동으로 생긴다**(KakaoAuthService.upsertUser) — "만들기" 라고 하면 거짓말이다
+              (urshop-naming N6). 그래서 버튼은 시작하기, 아래 한 줄이 무엇을 받는지 말한다. */}
+          <GuestKakaoButton returnPath="/u/me" />
+          <p className="mt-2 text-center text-[13px] text-gray-500 dark:text-gray-400">
+            {t('guest.shop.ctaNote', { defaultValue: '가입하면 내 유어샵이 바로 준비돼요' })}
+          </p>
         </div>
 
         <Link to="/partners" className="mt-6 flex items-center gap-3 rounded-2xl bg-surface shadow-lift px-4 py-4 active:opacity-80">
