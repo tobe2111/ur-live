@@ -1416,8 +1416,11 @@ const MUTATIONS = [
   {
     name: '🔎 실측 승격 호스트가 cdn-cgi 검증 목록에서 빠져 원본 직행으로 되돌아간다',
     file: 'src/utils/cf-image.ts',
-    find: ", 'cloudfront.net']",
-    replace: ']',
+    // 🔁 2026-10-12 재조준: 앵커가 배열 **끝**(`]`)에 붙어 있어서, 2026-10-12 에 유튜브 썸네일 호스트
+    //   둘을 뒤에 붙이자 낡았다(`check-stale-mutation-anchors` 가 잡았다). 지키려던 것은 그대로다 —
+    //   **실측 승격 호스트가 목록에서 빠지면 원본 직행으로 되돌아간다**. 끝에 기대지 않게 고쳤다.
+    find: ", 'cloudfront.net'",
+    replace: '',
     test: 'src/tests/unit/qa-image-host-coverage.test.ts',
     why: '2026-09-02 라이브 홈 실측: 목록에 없는 호스트 5장이 리사이저를 안 거치고 원본으로 내려왔다.',
   },

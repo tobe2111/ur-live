@@ -2161,7 +2161,13 @@ app.route('/api/guides', guideRoutes);
 // 🗑️ 2026-07-07 (라이브커머스 제거 2/N): /api/live·/api/chat(라이브 SSE+채팅) 마운트 제거.
 
 // ── 사이드 배너 (공개 API, 인증 불필요) ──
-app.get('/api/side-banners', async (c) => {
+// 🐌 2026-10-12 (대표 *"각 페이지마다도 로딩속도 개선이 필요해"* — 라이브 실측): 이 주소가
+//   **캐시 헤더를 하나도 안 갖고** 있어서 소비자 페이지를 열 때마다 콜드 D1 을 탔다(실측 **388ms**,
+//   `/urshorts`·홈·상세 어디서나). 게다가 핸들러가 요청마다 `CREATE TABLE IF NOT EXISTS` 를 돌려
+//   왕복이 2회다(per-request DDL — CLAUDE.md 가 금지하는 그 패턴). `edgeCache(600)` 을 붙이면
+//   DDL·SELECT 가 **콜로당 10분에 한 번**으로 줄고 나머지는 엣지가 답한다.
+//   ⚠️ 배너를 바꾸면 최대 10분 늦게 반영된다 — 어드민 편성 주기(수동, 드물다)를 생각하면 수용 가능.
+app.get('/api/side-banners', edgeCache(600), async (c) => {
   const env = c.env as Env;
   try {
     // Auto-create table if not exists
@@ -2216,7 +2222,7 @@ app.get('/api/image/resize', async (c) => {
   // 🛡️ 2026-05-27 (사용자 지적): naver image search / 카카오 daumcdn 호스트 추가.
   //   셀러 등록 시 naver 이미지 선택 → 다양한 외부 호스트 image_url 저장 → 변환 없으면 큰 트래픽.
   const ALLOWED_HOSTS = [
-    'firebasestorage.googleapis.com', 'img.youtube.com', 'k.kakaocdn.net', 'images.unsplash.com',
+    'firebasestorage.googleapis.com', 'img.youtube.com', 'i.ytimg.com', 'k.kakaocdn.net', 'images.unsplash.com',
     'urdeal.kr', 'ur-live.pages.dev',
     'pstatic.net',  // search.pstatic / shop-phinf / blogfiles / postfiles / phinf / mblogthumb-phinf 등
     'daumcdn.net',  // t1.daumcdn / i1.daumcdn / cf.daumcdn 등
