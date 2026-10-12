@@ -38,6 +38,7 @@ import { priceDisplay } from '../../shared/price-display'
 import { CONCEPT_FAQ, CONCEPT_ABOUT_LINES } from '../../shared/seo/concept-content'
 import { addressInRegion, parseRegionPath, type RegionRef } from '../../shared/constants/region-slugs'
 import { REGION_PATH_RE } from '../../shared/seo/region-seed'
+import { CONSUMER_SURFACE_SEO } from '../../shared/seo/consumer-surfaces'
 
 function esc(s: string): string {
   return String(s)
@@ -185,6 +186,26 @@ export function buildCuratorNoscript(seed: NoscriptCuratorSeed | null | undefine
  * ⚠️ **표면을 늘릴 때**: 그 화면이 실제로 그 문장을 그리고 있는지 먼저 확인할 것. 화면에 없는
  *    문장을 여기 넣으면 그건 요약이 아니라 클로킹이다.
  */
+/**
+ * 🧭 목록 표면 → 그 시드에서 **그 표면의 항목만** 고르는 술어.
+ *
+ * 라이브 실측(Googlebot UA, 2026-10-12)에서 이 넷의 서버 본문이 각각 **36·23·38·34자** 였다 —
+ * 구글이 thin content 로 보는 수준이고, 그 상태로는 "동네 맛집 할인권"·"여행 숙소 이용권" 같은
+ * 질의에 인용할 문장이 한 줄도 없다. 시드는 **이미 도착해 있다**(네 표면 전부 `kv-hit`).
+ *
+ * 🔑 `/stays` 는 자기 슬롯이 없어 **홈과 같은 캐시 키**(`MAIN_SEED_PATH`)를 받고 숙소만 걸러 쓴다 —
+ *   `/region/*` 과 같은 수법이라 새 self-fetch 키가 0 이다(실측 그 시드에 `stay_voucher` 5건).
+ *
+ * ⚠️ 술어를 잘못 주면 **다른 표면의 상품을 그 목록의 내용이라고 말하게 된다**(식당이 숙소 목록에).
+ *   가드가 네 술어를 각각 고정한다.
+ */
+const LIST_SURFACE_KEEP: Readonly<Record<string, (p: RegionSeedRow) => boolean>> = {
+  '/vouchers': (p) => p?.deal_only === 1,
+  '/browse': (p) => p?.deal_only !== 1,
+  '/map': (p) => p?.deal_only !== 1,
+  '/stays': (p) => p?.category === 'stay_voucher',
+}
+
 export function buildStaticSurfaceNoscript(pathname: string, ssrPayload?: string | null): string {
   // 끝 슬래시를 떼어 `resolveConsumerSurfaceSeo` 와 같은 키로 본다.
   const path = pathname !== '/' && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname
@@ -207,6 +228,23 @@ export function buildStaticSurfaceNoscript(pathname: string, ssrPayload?: string
   //   항목은 홈과 같은 시드(MAIN)에서 오고 지역 필터는 `addressInRegion`(화면과 같은 SSOT)이다.
   //   ⚠️ 상한 8 — `<noscript>` 도 **사람이 받는 응답에 그대로 실린다**(크롤러에게만 주는 것은
   //      구글 가이드 위반). 요약이지 전량 덤프가 아니다.
+  // 🧾 목록 네 표면 — 라벨은 `CONSUMER_SURFACE_SEO.crumb`(빵부스러기와 같은 SSOT)에서 온다.
+  //   ⚠️ 상한 8 은 지역 페이지와 같다 — `<noscript>` 도 **사람이 받는 응답에 그대로 실린다**.
+  const keep = LIST_SURFACE_KEEP[path]
+  if (keep) {
+    const rows: string[] = []
+    for (const p of parseSeed(ssrPayload)) {
+      if (!keep(p)) continue
+      const line = rowLine(p)
+      if (line) rows.push(line)
+      if (rows.length >= 8) break
+    }
+    if (!rows.length) return ''
+    const label = CONSUMER_SURFACE_SEO[path]?.crumb || ''
+    const head = label ? `<p>${esc(label)}</p>` : ''
+    return `<noscript>${head}<ul>${rows.map((r) => `<li>${esc(r)}</li>`).join('')}</ul></noscript>`
+  }
+
   const ref = regionRefOfPath(path)
   if (ref) {
     const rows = regionSeedRows(ssrPayload, ref).slice(0, 8)
@@ -232,6 +270,9 @@ function regionRefOfPath(path: string): RegionRef | null {
 interface RegionSeedRow {
   name?: string | null
   restaurant_name?: string | null
+  /** 교환권 카드의 머리 — 매장이 없는 대신 브랜드를 그린다. */
+  brand_name?: string | null
+  category?: string | null
   restaurant_address?: string | null
   business_address?: string | null
   price?: number | null
@@ -240,27 +281,44 @@ interface RegionSeedRow {
   deal_only?: number | null
 }
 
-/** 시드에서 그 지역 행만 골라 한 줄씩. 교환권(`deal_only`)은 매장이 없으니 제외한다. */
-function regionSeedRows(ssrPayload: string | null | undefined, ref: RegionRef): string[] {
+/**
+ * 🧾 시드 한 행 → 사람이 읽는 한 줄. 네 목록 표면과 지역 페이지가 **같은 모양**을 쓴다.
+ *
+ * 머리는 `restaurant_name`(이용권·숙소) 또는 `brand_name`(교환권) — 그 카드가 화면에 그리는 것과
+ * 같다. 둘 다 없으면 상품명만. 규율 ①(지어내지 않는다)대로 **시드에 있는 값만** 쓴다.
+ */
+function rowLine(p: RegionSeedRow): string | null {
+  const head = (p?.restaurant_name || p?.brand_name || '').trim()
+  const title = (p?.name || '').trim()
+  if (!head && !title) return null
+  // 교환권은 브랜드가 상품명 앞에 그대로 들어가는 경우가 있다(실측: `네이버페이 포인트 —
+  // 네이버페이 포인트 500원`). 같은 말을 두 번 하지 않는다.
+  const parts = head && title.startsWith(head) ? [title] : [head, title]
+  const d = priceDisplay({ price: p?.price, original_price: p?.original_price, discount_rate: p?.discount_rate })
+  const price = d.price > 0 ? ` 판매가 ${won(d.price)}원${d.discount > 0 ? ` (${d.discount}% 할인)` : ''}` : ''
+  return `${parts.filter(Boolean).join(' — ')}${price}`
+}
+
+/** 시드 문자열 → 행 배열. 모양이 다른 시드(배열 / `{products}`)를 둘 다 받는다. */
+function parseSeed(ssrPayload: string | null | undefined): RegionSeedRow[] {
   if (!ssrPayload) return []
-  let raw: RegionSeedRow[] = []
   try {
     const d = JSON.parse(ssrPayload) as { data?: RegionSeedRow[] | { products?: RegionSeedRow[] } }
     const arr = Array.isArray(d?.data) ? d.data : d?.data?.products
-    raw = Array.isArray(arr) ? arr : []
+    return Array.isArray(arr) ? arr : []
   } catch {
     return []
   }
+}
+
+/** 시드에서 그 지역 행만 골라 한 줄씩. 교환권(`deal_only`)은 매장이 없으니 제외한다. */
+function regionSeedRows(ssrPayload: string | null | undefined, ref: RegionRef): string[] {
   const out: string[] = []
-  for (const p of raw) {
+  for (const p of parseSeed(ssrPayload)) {
     if (p?.deal_only === 1) continue
     if (!addressInRegion(p?.restaurant_address || p?.business_address, ref)) continue
-    const store = (p?.restaurant_name || '').trim()
-    const title = (p?.name || '').trim()
-    if (!store && !title) continue
-    const d = priceDisplay({ price: p?.price, original_price: p?.original_price, discount_rate: p?.discount_rate })
-    const price = d.price > 0 ? ` 판매가 ${won(d.price)}원${d.discount > 0 ? ` (${d.discount}% 할인)` : ''}` : ''
-    out.push(`${[store, title].filter(Boolean).join(' — ')}${price}`)
+    const line = rowLine(p)
+    if (line) out.push(line)
   }
   return out
 }

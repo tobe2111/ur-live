@@ -592,9 +592,9 @@ app.use('*', async (c, next) => {
       ssrTarget = { slot: 'BROWSE', path: '/api/products?page=1&limit=20&exclude_deal_only=1' };
     } else if (url.pathname === '/map' && !url.search) { // 🗺️ 2026-10-11 지도 첫 화면 시드 — 홈 시드(무정렬)를 못 써 한 왕복 더 기다렸다
       ssrTarget = { slot: 'MAP', path: MAP_SEED_PATH }; // 경로 SSOT shared/map-feed-seed.ts — 화면 요청과 byte-일치
-    } else if (!url.search && REGION_PATH_RE.test(url.pathname)) {
-      // 🗺️ 2026-10-12 지역 착지 페이지 시드(크롤러 본문 **26자**였다) — 홈과 **같은 캐시 키**라 cron
-      //   예열 적중(새 self-fetch 키 0) · 지역 필터는 `addressInRegion` SSOT. 사유: `shared/seo/region-seed.ts`.
+    } else if (!url.search && (REGION_PATH_RE.test(url.pathname) || url.pathname === '/stays')) {
+      // 🗺️ 2026-10-12 지역 착지·숙소 시드(크롤러 본문 **26·34자**였다) — 홈과 **같은 캐시 키**라 cron
+      //   예열 적중(새 self-fetch 키 0). 지역은 `addressInRegion`, 숙소는 `stay_voucher` 로 걸러 쓴다.
       ssrTarget = { slot: 'MAIN', path: MAIN_SEED_PATH };
     // 🥗 2026-07-15 워커 다이어트: /live SSR 슬롯(`/api/streams?status=live&limit=20`) 제거 — 라이브커머스 영구중단(죽은 self-fetch).
     // 🗑️ 2026-07-10 [UNLOCK_LOADING] (로딩 전수조사): GROUPBUY 슬롯 제거 — `/group-buy` 는 App.tsx 에서
