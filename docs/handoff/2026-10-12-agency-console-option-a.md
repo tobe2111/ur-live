@@ -142,3 +142,14 @@
   탐침은 `--proxy-server=$HTTPS_PROXY --ssl-version-max=tls1.2` 로 라이브에 붙었다(`visual-preview.mjs` 머리말의 방법).
 - ⚠️ 아직 못 잰 것(로그인 필요): 카카오 사장님이 알림톡 `/store/go?to=scan` 을 눌러 계산대가 뜨는지 · 에이전시 계정으로 사용처리 시 매장이 맞는지
   · 하단 ➕ '이용권 등록' → 마이 등록 시트. 대표 계정(users.id=3)은 셀러 좌석이 없어 이 경로를 재현할 수 없다.
+
+## 3차 — 버튼도 곧장 (대표 "응응 거치는 단계 없애줘")
+
+- 하단 ➕ '이용권 등록'·'셀러 대시보드'와 유어샵 세 버튼이 `/seller/*` 를 거치지 않는다 — `sellerEntryPath()` 가
+  대시보드 껍데기와 **같은 판정**(`sellerEntryRedirect`, `src/lib/seller-deep-link.ts`)을 누르는 순간 한다.
+  껍데기(`SellerLayout`)도 그 함수로 바꿨다(두 벌 금지). 옛 셀러·`dash=1`·콘솔 로그인 없는 에이전시 좌석은 종전대로 대시보드.
+- ➕ 시트 두 번째 버튼 이름도 도착지대로: `마이 '내 가게'` / `에이전시 대시보드` / `셀러 대시보드`.
+- 잠금 파일 `BottomNav.tsx` — CLAUDE.md 로딩 잠금 audit log 에 기록. linkshopPath·isActivePath 불변.
+- 검증: tsc 0 · 관련 6파일 129건 pass · 주입 4 + 재조준 2 빨간불 · critical-chunks 17 · surface-role-leak 0.
+- **다음 세션 첫 액션(E4, 로그인 필요)**: 사장님 계정으로 ➕ → '이용권 등록' → 주소창이 `/seller/...` 를 한 번도 안 찍고
+  `/user/profile?tool=%2Fseller%2Fmeal-voucher%2Fnew` 로 가서 등록 시트가 뜨는지.

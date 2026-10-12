@@ -29,9 +29,9 @@ export default [
   },
   {
     name: '[에이전시링크] 껍데기가 콘솔로 안 보낸다 (옛 대시보드가 그대로 뜬다)',
-    file: LAYOUT,
-    find: '  if (toConsole) return <Navigate to={toConsole} replace />\n',
-    replace: '\n',
+    file: LIB,
+    find: '  return shouldSendAgencyToConsole(false) ? consoleRedirectFor(pathname, search) : null\n',
+    replace: '  return null\n',
     test: TEST,
     why: '에이전시 직원이 대시보드에 들어오는 주된 길이 알림 링크다 — 이 줄이 없으면 3단계 에이전시 몫이 없던 일이 된다.',
   },
