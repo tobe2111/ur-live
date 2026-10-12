@@ -51,19 +51,21 @@
 
 ## ✅ 지금 등록할 10개 (이 순서대로)
 
-| 순서 | 우리 이름 | **템플릿 코드(콘솔 입력)** | 받는 사람 | 언제 | 카테고리(대 › 소) |
+| 순서 | 우리 이름 | **템플릿 코드(콘솔 등록값)** | 받는 사람 | 언제 | 카테고리(등록값) |
 |---|---|---|---|---|---|
-| 1 | `admin_test_send` | `admintest` | 대표 | 어드민 시험 발송 | 업무알림 › 내부업무알림 |
-| 2 | `voucher_issued` | `voucherissued` | 손님 | 이용권 결제 직후 | 구매 › 구매완료 |
-| 3 | `seller_first_voucher` | `sellerfirstvoucher` | 사장님 | 첫 이용권이 팔렸을 때(매장당 1번) | 업무알림 › 주문/예약 |
-| 4 | `seller_voucher_sold` | `sellervouchersold` | 사장님 | 이용권이 팔릴 때(두 번째부터) | 업무알림 › 주문/예약 |
-| 5 | `voucher_refunded` | `voucherrefunded` | 손님 | 환불 완료 | 구매 › 구매취소 |
-| 6 | `voucher_expire_soon` | `voucherexpiresoon` | 손님 | 만료 30일 전 한 번 | 서비스이용 › 이용안내/공지 |
-| 7 | `seller_approved` | `sellerapproved` | 사장님 | 매장 승인 | 회원 › 회원가입 |
-| 8 | `business_registration_rejected` | `bizregrejected` | 사장님 | 사업자등록증 반려 | 서비스이용 › 처리완료 |
-| 9 | `seller_bank_changed` | `sellerbankchanged` | 사장님 | 정산 계좌 변경(보안) | 회원 › 회원정보/회원혜택 |
-| 10 | `payout_completed` | `payoutcompleted` | 사장님·에이전시·유저 | 정산 송금 완료 | 리포팅 › 거래알림 |
+| 1 | `admin_test_send` | `admintest` | 대표 | 어드민 시험 발송 | 기타 |
+| 2 | `voucher_issued` | `voucherissued` | 손님 | 이용권 결제 직후 | 구매 |
+| 3 | `seller_first_voucher` | `sellerfirstvoucher` | 사장님 | 첫 이용권이 팔렸을 때(매장당 1번) | 업무알림 |
+| 4 | `seller_voucher_sold` | `sellervouchersold` | 사장님 | 이용권이 팔릴 때(두 번째부터) | 업무알림 |
+| 5 | `voucher_refunded` | `voucherrefunded` | 손님 | 환불 완료 | 구매 |
+| 6 | `voucher_expire_soon` | `voucherexpiresoon` | 손님 | 만료 30일 전 한 번 | 서비스이용 |
+| 7 | `seller_approved` | `sellerapproved` | 사장님 | 매장 승인 | 서비스이용 |
+| 8 | `business_registration_rejected` | `businessregistrationrejected` | 사장님 | 사업자등록증 반려 | 업무알림 |
+| 9 | `seller_bank_changed` | `sellerbankchanged` | 사장님 | 정산 계좌 변경(보안) | 업무알림 |
+| 10 | `payout_completed` | `payoutcompleted` | 사장님·에이전시·유저 | 정산 송금 완료 | 업무알림 |
 
+> 📌 **2026-10-12 대표 등록 실측**: 코드·카테고리는 위 표가 실제 콘솔 값이다(8번 코드는 `businessregistrationrejected` — 밑줄만 뺀 전체 이름으로 등록됨).
+> 승인 목록엔 `business_registration_rejected=businessregistrationrejected` 로 적는다. 카테고리는 검수 참고용이라 발송과 무관하다.
 > 1번(시험용)을 먼저 승인받아 두면 다른 템플릿을 기다리지 않고 "알림톡이 실제로 폰에 오는지"를 바로 확인할 수 있다.
 > 이용권 1장이 팔리고 쓰이면 알림톡은 **2통**(손님 발급 + 사장님 판매)만 나간다. 안 쓰고 묵히면 30일 전 안내 1통이 더 붙는다.
 
@@ -162,7 +164,7 @@
 - **버튼(웹링크)**: `이용권 등록하기` → `https://urdeal.kr/store/go?s=#{매장번호}&to=vouchers`
 - **검수 메모(문의 내용)**: 유어딜에 판매자로 가입 신청한 매장 사장님에게, 운영팀이 가입(판매)을 승인했을 때 보내는 결과 안내입니다. 버튼은 해당 매장의 이용권 등록 화면으로 연결됩니다. #{이름}=신청자 또는 매장 이름, 버튼 링크의 #{매장번호}=매장 고유번호(숫자).
 
-### 8. `business_registration_rejected` · 코드 `bizregrejected` — 사업자등록증 반려
+### 8. `business_registration_rejected` · 코드 `businessregistrationrejected` — 사업자등록증 반려
 ```
 [유어딜] 사업자등록증 반려
 
