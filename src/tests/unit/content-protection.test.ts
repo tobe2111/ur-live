@@ -50,7 +50,11 @@ describe('크롤링 차단 — robots.txt 와 헤더 차단은 한 쌍이다', (
   })
 
   it('검색엔진·카카오 스크랩은 절대 수확 목록에 없다 (색인·공유 미리보기 = 유입)', () => {
-    const bot = read(BOT)
+    // 🔁 2026-10-12 재조준: `read(BOT)`(원문) → `code()`(주석 제거본). 불변식은 그대로이고
+    //   앵커만 옮겼다 — 원문을 보면 **"Googlebot 은 넣지 말 것" 같은 설명 주석 자체가 위반**으로
+    //   잡힌다(실제로 그렇게 거짓 빨간불이 났다). 이 레포가 d1-migrate·robots 가드에서 두 번
+    //   밟은 함정이고, 이 파일 머리말도 "판정은 항상 주석 제거본으로" 라고 적어 뒀다.
+    const bot = code(read(BOT))
     const scraperBlock = bot.slice(bot.indexOf('const SCRAPER_UA_PATTERNS'))
     for (const good of ['Googlebot', 'Yeti', 'KakaoTalk', 'Daum', 'facebookexternalhit', 'NaverBot']) {
       expect(scraperBlock, `${good} 이 수확 목록에 들어 있다`).not.toContain(good)
@@ -230,6 +234,63 @@ describe('GEO — AI 검색·인용 크롤러는 페이지 허용 / API 차단 (
     ]) {
       expect(isScraperUA(ua), ua).toBe(false)
     }
+  })
+
+  // ── 🔀 2026-10-12: 라이브 실측에서 드러난 **형제 비대칭** 셋 ──
+  //   같은 종류인데 목록에 없어서 API 가 열려 있었다(실측: 형제는 403, 이 셋은 200).
+  //   `MistralAI-User` = `ChatGPT-User`·`Perplexity-User` 와 같은 사용자-트리거,
+  //   `MistralAI-Index`·`YouBot` = `OAI-SearchBot` 과 같은 AI 답변용 색인.
+  const AI_ANSWER_SIBLINGS = ['MistralAI-User', 'MistralAI-Index', 'YouBot']
+
+  it('형제 비대칭 셋도 API 수확 목록에 있다 (실측으로 드러난 구멍)', async () => {
+    const bot = code(read(BOT))
+    const block = bot.slice(bot.indexOf('const SCRAPER_UA_PATTERNS'))
+    for (const ua of AI_ANSWER_SIBLINGS) {
+      expect(block, `${ua} 가 수확 목록에 없다 — 형제는 403 인데 이것만 열린다`).toContain(`/${ua}/i`)
+    }
+    const { isScraperUA } = await import('../../worker/middleware/bot-detection')
+    for (const ua of AI_ANSWER_SIBLINGS) {
+      expect(isScraperUA(`Mozilla/5.0 (compatible; ${ua}/1.0; +https://example.com/bot)`), ua).toBe(true)
+    }
+  })
+
+  it('그 셋의 HTML 은 안 가린다 (이 미들웨어는 /api/* 전용 — GEO 손실 0)', () => {
+    // 배선이 `/api/` 로 시작하는 경로에만 붙어 있어야 한다. HTML 라우트에 한 줄이라도
+    // 붙으면 AI 검색봇이 페이지를 못 받아 **인용 유입이 통째로** 끊긴다(비대칭의 전제가 무너진다).
+    const lines = read(WORKER)
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => !l.startsWith('//'))
+      .filter((l) => l.includes('contentScrapeGuard'))
+    expect(lines.length).toBeGreaterThan(0)
+    for (const l of lines) {
+      if (!l.startsWith('app.use(')) continue
+      expect(l, `HTML 경로에 수확 가드가 붙었다: ${l}`).toMatch(/app\.use\('\/api\//)
+    }
+  })
+
+  it('robots 전용 토큰은 UA 로 막을 수 없다 — "살리려고" LEGIT 을 좁히지 말 것', async () => {
+    // 🚧 애플·구글은 `Applebot-Extended`·`Google-Extended` 를 **robots.txt 토큰으로만** 쓴다.
+    //   크롤러가 보내는 UA 는 늘 `Applebot`·`Googlebot` 이라 UA 차단은 원리상 불가능하고,
+    //   실측에서도 `Applebot-Extended` UA 는 API 200 이었다(수확 목록에 있는데도).
+    //   그 항목을 '살리려고' LEGIT 의 `/Applebot/i` 를 좁히면 **애플 검색 색인이 통째로 막힌다.**
+    const { isScraperUA } = await import('../../worker/middleware/bot-detection')
+    expect(isScraperUA('Mozilla/5.0 (compatible; Applebot/0.1; +http://www.apple.com/go/applebot)')).toBe(false)
+    const bot = code(read(BOT))
+    const legit = bot.slice(bot.indexOf('const LEGIT_BOT_PATTERNS'), bot.indexOf('const SCRAPER_UA_PATTERNS'))
+    expect(legit, 'LEGIT 에서 /Applebot/i 가 좁혀졌다 — 애플 검색 색인이 막힌다').toContain('/Applebot/i')
+    // 실제 학습 거부는 robots 가 한다 — 그쪽이 비면 이 정책은 아무 데서도 집행되지 않는다.
+    // ⚠️ `Google-Extended` 는 **일부러 빠져 있다**(2026-10-12 대표 승인 — 구글은 그 토큰이
+    //    학습과 그라운딩을 한 덩어리로 묶어서, 막는 동안 제미나이가 우리를 근거로 쓸 수 없었다).
+    //    그래서 여기 넣으면 안 된다 — 제가 처음 넣었고 이 가드가 바로 잡아 줬다.
+    const robots = read(ROBOTS)
+      .split('\n')
+      .filter((l) => !l.trim().startsWith('#'))
+      .join('\n')
+    expect(robots, 'robots 에서 Applebot-Extended 차단이 사라졌다').toMatch(/^User-agent: Applebot-Extended$/m)
+    expect(robots, 'Google-Extended 가 robots 차단으로 되살아났다 — 제미나이 인용이 끊긴다').not.toMatch(
+      /^User-agent: Google-Extended$/m,
+    )
   })
 
   it('다섯에게 전용 User-agent 그룹을 만들지 않았다 (그룹은 합쳐지지 않아 비공개 Disallow 가 통째로 무시된다)', () => {
