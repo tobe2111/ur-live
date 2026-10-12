@@ -151,9 +151,15 @@ describe('🏨 #18 숙소 정본 단일화', () => {
   })
 
   it('⑦ 워커는 본문을 로더 **앞에** 덧붙인다 (대체가 아니다)', () => {
+    // 🔀 2026-10-12 후속 재조준: 같은 날 서버 첫 화면(`buildStayDetailFirstScreen`)이 생기면서
+    //   배선이 [첫 화면 || (`<noscript>` + 로더)] 가 됐다. **지키려던 불변식은 그대로다** —
+    //   ⓐ 로더를 대체하지 않는다(앞에 덧붙인다) ⓑ 첫 화면이 `''` 인 경우에도 본문이 남는다.
+    //   ⚠️ 폴백 쪽은 `skipTitle` 을 **쓰지 않는다**(쓰면 숙소명까지 빠져 본문이 다시 빈다) —
+    //      그 방향은 `stay-detail-ssr-first-screen-2026-10-12.test.ts` 가 함께 잠근다.
     const src = read('src/worker/index.ts')
     expect(src).toMatch(/stayNoscriptFromPayload\(ssrPayload\)/)
-    expect(src).toMatch(/setInnerContent\(stayNs \+ urdealLoaderHtml/)
+    expect(src, '로더를 대체하면 안 된다 — 앞에 덧붙인다')
+      .toMatch(/setInnerContent\(stayFirst \|\| \(stayNoscriptFromPayload\(ssrPayload\) \+ urdealLoaderHtml\)/)
   })
 })
 

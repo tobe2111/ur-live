@@ -84,6 +84,19 @@ export default memo(function DealRow({
    */
   const pd = priceDisplay({ price, original_price: originalPrice, discount_rate: discountPct })
   const hasStrike = originalPrice != null && price != null && pd.showOriginal
+  /**
+   * 🖼️ 2026-10-12 — 사진의 `alt` 을 **제목에서 파생**한다 (대표 *"모두 다 진행해줘"*).
+   *
+   * 실측(Googlebot UA): sitemap 은 상품 사진을 **`image:image` 로 359건 제출**하는데 그 사진들의
+   * `alt` 이 비어 있었다(`/u/:handle` 진열 4장 전부). *"이 사진을 색인해 달라"* 고 하면서
+   * **그게 무엇인지는 안 말하는** 상태다 — 구글 이미지가 쓰는 1순위 텍스트 신호가 `alt` 이고,
+   * 음식·딜 사진이라 이미지 검색은 실제 유입 채널이다.
+   *
+   * 🔴 **지어내지 않는다** — `title` 이 평범한 문자열일 때만 쓴다. `ReactNode` 면 `''`(장식)로
+   *    남긴다. 호출부에 문구를 새로 요구하지 않으므로 여섯 화면이 한 번에 고쳐진다.
+   * 🔴 장식 이미지의 `alt=""` 는 **맞는 값**이다(마스코트가 그 예) — 비우는 것 자체가 결함이 아니다.
+   */
+  const autoAlt = typeof title === 'string' ? title : ''
   const body = (
     <>
       {leading}
@@ -94,7 +107,7 @@ export default memo(function DealRow({
         {thumb ?? (imageUrl ? (
           <img
             src={cfImage(imageUrl, { width: 240, format: 'auto' }) || imageUrl}
-            alt=""
+            alt={autoAlt}
             width={240}
             height={240}
             loading="lazy"

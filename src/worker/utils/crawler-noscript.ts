@@ -149,21 +149,31 @@ export interface NoscriptStaySeed {
  * 상태였던 것이고, 그 상태로 canonical 을 이쪽으로 모으면 리치 페이지에서 빈 페이지로 옮기는 셈이다.
  *
  * ## 왜 `<noscript>` 인가
- * 이 표면은 서버 첫 화면이 없다(별건 — 아래 ⚠️). `<noscript>` 는 **JS 가 돌면 렌더조차 안 되므로**
- * 사람 화면이 byte-동일하고 **밀림이 0** 이다. 첫 화면을 흉내 내려면 `StayDetailPage` 의 히어로 래퍼
- * (`-mx-4 -mt-5` 풀블리드 · `DetailTitleHeader` · 등급 줄 유무)를 픽셀로 맞춰야 하는데, 그건 박스를
- * 재면서 따로 할 일이다(`/pass/:id` 는 그렇게 두 세션이 걸렸다).
+ * `<noscript>` 는 **JS 가 돌면 렌더조차 안 되므로** 사람 화면이 byte-동일하고 **밀림이 0** 이다.
+ * 첫 화면이 그리는 것(제목·성급)과 달리 주소·가격·객실은 그릴 수 없어(아이콘 SVG·거리 등 —
+ * `stay-detail-ssr-body.ts` 의 "❌ 안 그리는 것") 그 몫을 여기서 배달한다.
  *
- * ⚠️ 규율 ②("첫 화면이 그린 것은 다시 쓰지 않는다")가 여기엔 **적용되지 않는다** — 그릴 첫 화면이
- *    없어서 이름부터 아무것도 전달되지 않았다. 그래서 숙소명까지 담는다.
+ * ## 🔀 2026-10-12 후속 — 첫 화면이 생겼다. `skipTitle` 이 그 짝이다
+ * 이 주석은 한때 *"이 표면은 서버 첫 화면이 없다"* 고 적혀 있었고 그래서 규율 ②(**첫 화면이 그린
+ * 것은 다시 쓰지 않는다**)를 면제받았다. 같은 날 `buildStayDetailFirstScreen` 이 생겨 그 전제가
+ * 사라졌다 ⇒ 첫 화면을 **실제로 그린 경우에만** `skipTitle` 로 숙소명·성급을 뺀다.
+ *
+ * 🔴 **무조건 빼면 안 된다** — 첫 화면은 사진이 없거나 시드 파싱이 실패하면 `''` 를 돌려주고
+ *    워커가 `<noscript>` + 로더로 폴백한다. 그때 숙소명까지 빠지면 **본문이 다시 비어** 이 수리가
+ *    도로 무효가 된다(에러는 안 난다). 그래서 판정은 호출부(워커)가 한다.
  * ⚠️ 값은 **시드에 있는 것만**. `price` 는 이 페이로드에 없고(숙소 API 는 매장 지향 컬럼을 고른다)
  *    객실 가격에서만 범위를 만든다 — 하나의 정가를 지어내지 않는다(규율 ①).
  */
-export function buildStayNoscript(seed: NoscriptStaySeed | null | undefined): string {
+export function buildStayNoscript(
+  seed: NoscriptStaySeed | null | undefined,
+  opts: { skipTitle?: boolean } = {},
+): string {
   const p = seed?.product
   if (!p) return ''
   const stay = String(p.restaurant_name || p.name || '').trim()
   if (!stay) return ''
+  // 🔀 첫 화면이 제목·성급을 이미 그렸으면 반복하지 않는다(규율 ②). 지역은 첫 화면에 **없다** — 남긴다.
+  const skip = !!opts.skipTitle
   const region = [p.region_sido, p.region_sigungu].filter(Boolean).map(String).join(' ').trim()
   const prices = (seed?.rooms || [])
     .map((r) => Number(r?.base_price_weekday) || 0)
@@ -188,9 +198,9 @@ export function buildStayNoscript(seed: NoscriptStaySeed | null | undefined): st
     .slice(0, 8)
 
   return wrap(lines([
-    `${esc(stay)}${region ? ` · ${esc(region)}` : ''}`,
+    skip ? (region ? esc(region) : '') : `${esc(stay)}${region ? ` · ${esc(region)}` : ''}`,
     priceLine && esc(priceLine),
-    p.star_rating ? `${Number(p.star_rating)}성급` : '',
+    !skip && p.star_rating ? `${Number(p.star_rating)}성급` : '',
     rating > 0 && reviews > 0 ? `평점 ${rating.toFixed(1)} (${reviews}개 리뷰)` : '',
     addr && `주소 ${esc(addr)}`,
     desc && desc !== stay ? esc(desc) : '',
@@ -199,10 +209,13 @@ export function buildStayNoscript(seed: NoscriptStaySeed | null | undefined): st
 }
 
 /** 워커 편의 — SSR 페이로드(`{data:{product,rooms}}`)에서 바로. 파싱 실패는 `''`(fail-soft). */
-export function stayNoscriptFromPayload(ssrPayload: string | null | undefined): string {
+export function stayNoscriptFromPayload(
+  ssrPayload: string | null | undefined,
+  opts: { skipTitle?: boolean } = {},
+): string {
   if (!ssrPayload) return ''
   try {
-    return buildStayNoscript((JSON.parse(ssrPayload) as { data?: NoscriptStaySeed })?.data ?? null)
+    return buildStayNoscript((JSON.parse(ssrPayload) as { data?: NoscriptStaySeed })?.data ?? null, opts)
   } catch {
     return ''
   }

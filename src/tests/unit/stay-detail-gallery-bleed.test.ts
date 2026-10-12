@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
+import { STAY_HEAD, STAY_GRID } from '@/shared/stay-head'
 
 const STAY = 'src/pages/StayDetailPage.tsx'
 const GB = 'src/pages/GroupBuyDetailPage.tsx'
@@ -19,6 +20,11 @@ const read = (p: string) => fs.readFileSync(p, 'utf8')
  *
  * ⚠️ 이 테스트가 **못 막는 것**: 실제 픽셀은 안 잰다(소스 모양만). 좌표 회귀는 브라우저 실측이
  *    유일한 판정이다 — 수리 시 로컬 빌드에 라이브 API 를 물려 `x[0..390] top=0` 를 확인했다.
+ *
+ * 🔀 **2026-10-12 재조준**: 서버 첫 화면(`stay-detail-ssr-body`)이 생기면서 치수 클래스가
+ *    `shared/stay-head.ts`(SSOT)로 옮겨갔다 — 화면과 워커가 **같은 상수**를 쓴다. 지키려던 불변식은
+ *    그대로이므로(음수 마진 ↔ 부모 패딩이 짝이다 · 사진 아래 제목에 위 여백이 있다) **앵커만** 옮긴다.
+ *    페이지가 그 상수를 실제로 쓰는지도 함께 본다 — SSOT 가 맞아도 페이지가 우회하면 소용없다.
  */
 describe('숙소 상세 갤러리 — 다른 상세와 같은 풀블리드', () => {
   it('두 상세가 같은 갤러리 컴포넌트를 쓴다 (한쪽만 고쳐지지 않게)', () => {
@@ -37,33 +43,18 @@ describe('숙소 상세 갤러리 — 다른 상세와 같은 풀블리드', () 
     //    ② 정규식 `\bmt-5\b` 가 갤러리의 **음수** 마진 `-mt-5` 에도 매치된다(`-` 앞이 단어경계).
     //    ⇒ 배지 라벨(`propertyTypeLabel`)로 그 블록을 직접 앵커하고, 음수는 명시적으로 배제한다.
     //    ⚠️ 이 검사는 클래스만 본다 — 실제 픽셀은 브라우저로 재야 한다.
-    const s = read(STAY)
-    // 🩸 앵커를 유형 배지(`propertyTypeLabel`)로 잡았다가, 같은 날 그 배지를 빵부스러기와 중복이라
-    //    제거하면서 이 검사가 "낡은 지도"로 빨간불이 났다(조용히 통과하지 않은 건 다행이다).
-    //    ⇒ 그 블록에서 **가장 안 없어질 것**(제목 h1)로 다시 앵커한다.
-    const badge = s.indexOf('<h1 className="text-[17px] lg:text-[24px] font-extrabold">')
-    expect(badge, '모바일 제목(h1)을 못 찾았다 — 앵커가 낡았다').toBeGreaterThan(0)
-    // 배지 바로 앞 div 는 **안쪽 flex 줄**이다 — 제목 블록은 한 단계 위다. 그래서 위로 올라가며
-    // `lg:hidden` 을 가진 첫 div 를 찾는다(모바일 전용 제목 블록의 표식).
-    let cls = ''
-    for (let at = badge; at > 0; ) {
-      at = s.lastIndexOf('<div className=', at - 1)
-      if (at < 0) break
-      const c = s.slice(at, s.indexOf('>', at))
-      if (c.includes('lg:hidden')) { cls = c; break }
-    }
-    expect(cls, '모바일 제목 블록을 못 찾았다 — 앵커가 낡았다').not.toBe('')
-    expect(cls, '사진 바로 아래 제목 블록에 위 여백이 없다 — 사진과 배지가 붙는다')
-      .toMatch(/(^|[\s"])mt-5\b/)
+    // 🔀 클래스는 SSOT 에 있다. 페이지가 그걸 쓰는지도 같이 본다(우회하면 SSOT 가 맞아도 소용없다).
+    expect(read(STAY), '제목 블록이 SSOT 를 안 쓴다').toContain('className={STAY_HEAD.titleBlock}')
+    expect(STAY_HEAD.titleBlock, '모바일 전용 표식이 사라졌다').toContain('lg:hidden')
+    expect(STAY_HEAD.titleBlock, '사진 바로 아래 제목 블록에 위 여백이 없다 — 사진과 배지가 붙는다')
+      .toMatch(/(^|\s)mt-5\b/)
   })
 
   it('갤러리가 본문 여백 래퍼를 모바일에서 빠져나간다', () => {
     const s = read(STAY)
-    const i = s.indexOf('<DetailGallery')
-    expect(i).toBeGreaterThan(-1)
-    // 갤러리를 감싼 div 는 그 바로 앞에 있다.
-    const wrapper = s.lastIndexOf('<div className=', i)
-    const cls = s.slice(wrapper, i)
+    expect(s.indexOf('<DetailGallery')).toBeGreaterThan(-1)
+    expect(s, '갤러리 래퍼가 SSOT 를 안 쓴다').toContain('className={STAY_HEAD.heroWrap}')
+    const cls = STAY_HEAD.heroWrap
     expect(cls, '갤러리 래퍼에 음수 마진이 없다 — 사진만 들여쓰기된다').toMatch(/-mx-4/)
     expect(cls, '상단 여백도 빠져나가야 한다').toMatch(/-mt-5/)
     // PC 에서는 되돌린다 — 좌측 컬럼 안 카드로 떠 있어야 한다.
@@ -76,11 +67,10 @@ describe('숙소 상세 갤러리 — 다른 상세와 같은 풀블리드', () 
    * 그걸 잊으면 사진이 반대로 화면을 삐져나간다(가로 스크롤). 그래서 짝을 고정한다.
    */
   it('음수 마진이 부모 패딩과 정확히 짝이다 (px-4/py-5 ↔ -mx-4/-mt-5)', () => {
-    const s = read(STAY)
-    const i = s.indexOf('<DetailGallery')
-    const parent = s.lastIndexOf('lg:grid lg:grid-cols-', i)
-    expect(parent).toBeGreaterThan(-1)
-    const parentCls = s.slice(s.lastIndexOf('<div className="', parent), parent)
-    expect(parentCls, '부모 패딩이 px-4 py-5 가 아니다 — 갤러리의 음수 마진도 같이 고쳐라').toMatch(/px-4 py-5/)
+    expect(read(STAY), '본문 그리드가 SSOT 를 안 쓴다').toContain('className={STAY_GRID}')
+    expect(STAY_GRID, '부모 패딩이 px-4 py-5 가 아니다 — 갤러리의 음수 마진도 같이 고쳐라').toMatch(/px-4 py-5/)
+    expect(STAY_GRID, '2열 그리드가 사라졌다').toMatch(/lg:grid lg:grid-cols-/)
+    // 🔑 짝: 패딩 `px-4 py-5` ↔ 음수 `-mx-4 -mt-5`. 한쪽만 바꾸면 사진이 화면을 삐져나간다.
+    expect(STAY_HEAD.gridPad).toBe('px-4 py-5')
   })
 })
