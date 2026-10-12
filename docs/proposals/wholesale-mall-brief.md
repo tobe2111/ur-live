@@ -865,51 +865,10 @@
 | 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
 | 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (43개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (2개)
 
-- `/admin/distributor-grades`
-- `/admin/suppliers`
-- `/admin/wholesale-guide`
-- `/admin/wholesale-orders`
 - `/seller/register/supplier`
 - `/seller/supply`
-- `/supplier`
-- `/supplier/chat`
-- `/supplier/login`
-- `/supplier/register`
-- `/supplier/wholesale-orders`
-- `/wholesale`
-- `/wholesale/best`
-- `/wholesale/board`
-- `/wholesale/brands`
-- `/wholesale/cart`
-- `/wholesale/channels`
-- `/wholesale/chat`
-- `/wholesale/checkout`
-- `/wholesale/dashboard`
-- `/wholesale/deposits`
-- `/wholesale/documents`
-- `/wholesale/intro`
-- `/wholesale/join`
-- `/wholesale/login`
-- `/wholesale/margin`
-- `/wholesale/naver`
-- `/wholesale/new`
-- `/wholesale/oem`
-- `/wholesale/orders`
-- `/wholesale/premium`
-- `/wholesale/privacy`
-- `/wholesale/product/:id`
-- `/wholesale/proposals`
-- `/wholesale/quotes`
-- `/wholesale/staff`
-- `/wholesale/staff-login`
-- `/wholesale/start`
-- `/wholesale/statement`
-- `/wholesale/success`
-- `/wholesale/support`
-- `/wholesale/terms`
-- `/wholesale/wishlist`
 
 ### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (4개)
 
@@ -921,7 +880,7 @@
 - `PATCH /api/admin/supplier-products/:id/price-change`
 
 
-> 마지막 생성: 2026-08-02T15:37:42.349Z
+> 마지막 생성: 2026-10-11T17:00:30.679Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

@@ -91,8 +91,11 @@ export default [
   {
     name: '✏️ 사진 저장을 [저장] 버튼에 묶는다 (전화번호 검증에 막힌다)',
     file: EDIT,
-    find: '    if (file.size > 5 * 1024 * 1024) {',
-    replace: "    if (!me?.phone) { toast.error(t('accountSettings.phoneRequired')); return }\n    if (file.size > 5 * 1024 * 1024) {",
+    // 🔁 2026-10-11 재조준: 종전 앵커(`if (file.size > 5 * 1024 * 1024) {`)는 413 수리로 사라졌다
+    //   (압축 전 크기 가드를 걷어냈다 — 그 숫자가 실제 천장과 달라 거짓말이었다). 지키려던 것은
+    //   그대로다: **사진 변경은 다른 칸의 검증에 묶이지 않는다.** 그래서 업로드 진입 줄에 다시 건다.
+    find: '    setUploading(true)\n    const prev = image',
+    replace: "    if (!me?.phone) { toast.error(t('accountSettings.phoneRequired')); return }\n    setUploading(true)\n    const prev = image",
     test: T,
     why: '사진만 바꾸려는 사람이 전화번호 때문에 못 바꾼다.',
   },

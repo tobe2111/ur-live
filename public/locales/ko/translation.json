@@ -5555,8 +5555,8 @@
     "updateNow": "지금 업데이트",
     "photoChange": "사진 변경",
     "photoUploading": "올리는 중…",
-    "photoHint": "JPG·PNG, 5MB 이하",
-    "photoTooBig": "5MB 이하만 올릴 수 있어요",
+    "photoHint": "사진은 자동으로 줄여 올립니다",
+    "photoTooBig": "사진이 너무 커요. 다른 사진을 골라주세요",
     "photoUpdated": "프로필 사진이 바뀌었습니다",
     "photoFailed": "사진을 바꾸지 못했어요"
   },

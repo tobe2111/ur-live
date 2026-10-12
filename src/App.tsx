@@ -4,7 +4,7 @@ import { HelmetProvider } from 'react-helmet-async'
 import { QueryProvider } from './lib/react-query'
 import { ProtectedRoute, PublicRoute } from './components/auth/RouteGuards'
 import IosTopupGate from './components/IosTopupGate'
-import { isUtongstart, isWholesaleAllowedPath, isWholesaleSurface, isMarketingSurface } from './utils/domain'
+import { isMarketingSurface } from './utils/domain'
 import ToastContainer from './components/ToastContainer'
 import { ConfirmHost } from './components/ui/confirm-dialog'
 import NewVersionBanner from './components/main/NewVersionBanner'
@@ -38,7 +38,7 @@ import { isKorea } from '@/shared/config/region'
 // TD-006: route group files
 import { SellerRoutes } from './routes/seller.routes'
 import { AdminRoutes } from './routes/admin.routes'
-import { SupplierRoutes } from './routes/supplier.routes'; import { AgencyConsoleRoutes } from './routes/agency-console.routes'
+import { AgencyConsoleRoutes } from './routes/agency-console.routes'
 
 // ❌ REMOVED: Duplicate Sentry initialization (already done in main.tsx)
 
@@ -49,34 +49,7 @@ import { SupplierRoutes } from './routes/supplier.routes'; import { AgencyConsol
 //   blend)는 dead route 가 되어 import 제거(엔트리 축소). 일반상품/교환권은 '쇼핑' 탭(/vouchers)으로 이전.
 //   ⚠️ [UNLOCK_LOADING] 트레이드오프: 홈 SSR 슬롯(__SSR_INITIAL_MAIN__) 미사용 → 홈 첫 화면이 지도 로딩.
 //   worker/index.ts SSR inject 는 무수정(주입은 되나 지도 홈이 안 읽음 — 무해).
-const WholesaleCatalogPage = lazy(() => import('./pages/WholesaleCatalogPage'))
-const WholesaleDashboardPage = lazy(() => import('./pages/WholesaleDashboardPage'))
-const WholesaleDepositPage = lazy(() => import('./pages/WholesaleDepositPage'))
-const WholesaleProductPage = lazy(() => import('./pages/WholesaleProductPage'))
-const WholesaleCheckoutPage = lazy(() => import('./pages/WholesaleCheckoutPage'))
-const WholesaleCartPage = lazy(() => import('./pages/WholesaleCartPage'))
-const WholesaleSuccessPage = lazy(() => import('./pages/WholesaleSuccessPage'))
-const WholesaleOrdersPage = lazy(() => import('./pages/WholesaleOrdersPage'))
-const WholesaleStatementPage = lazy(() => import('./pages/WholesaleStatementPage'))
-const WholesaleDocsPage = lazy(() => import('./pages/WholesaleDocsPage'))
-const WholesaleOemPage = lazy(() => import('./pages/WholesaleOemPage'))
-const WholesaleQuotesPage = lazy(() => import('./pages/wholesale/WholesaleQuotesPage'))
-const WholesaleLayout = lazy(() => import('./pages/wholesale/WholesaleLayout'))
-const WholesaleNaverPage = lazy(() => import('./pages/wholesale/WholesaleNaverPage'))
-const WholesaleStartPage = lazy(() => import('./pages/wholesale/WholesaleStartPage'))
-const WholesaleBoardPage = lazy(() => import('./pages/wholesale/WholesaleBoardPage'))
-const WholesaleSupportPage = lazy(() => import('./pages/wholesale/WholesaleSupportPage'))
-const WholesaleChannelsPage = lazy(() => import('./pages/wholesale/WholesaleChannelsPage'))
-const WholesaleTermsPage = lazy(() => import('./pages/wholesale/WholesaleTermsPage'))
-const WholesalePrivacyPage = lazy(() => import('./pages/wholesale/WholesalePrivacyPage'))
 const PartnershipInquiryPage = lazy(() => import('./pages/PartnershipInquiryPage'))
-const WholesaleWishlistPage = lazy(() => import('./pages/wholesale/WholesaleWishlistPage'))
-const WholesaleProposalsPage = lazy(() => import('./pages/wholesale/WholesaleProposalsPage'))
-const WholesaleStaffPage = lazy(() => import('./pages/wholesale/WholesaleStaffPage'))
-const WholesaleStaffLoginPage = lazy(() => import('./pages/wholesale/WholesaleStaffLoginPage'))
-const WholesaleIntroPage = lazy(() => import('./pages/WholesaleIntroPage'))
-const WholesaleJoinPage = lazy(() => import('./pages/WholesaleJoinPage'))
-const WholesaleLoginPage = lazy(() => import('./pages/WholesaleLoginPage'))
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'))
 const IntroducePage = lazy(() => import('./pages/IntroducePage'))
 const CreatorApplyPage = lazy(() => import('./pages/CreatorApplyPage')); const CreatorStartPage = lazy(() => import('./pages/CreatorStartPage'))
@@ -255,50 +228,13 @@ const PageLoader = () => <BootFirstScreenLoader forceDark={isDarkLoaderSurface(w
 // 🚑 2026-07-10 [UNLOCK_LOADING] (로딩 전수조사): 대시보드(/seller·/admin)·유어애즈(/ads) 전용
 //   라이트 로더 — worker 가 이 표면들의 #root 를 라이트 #F4F5F7 placeholder 로 깔아주는데, Suspense
 //   fallback 이 테마 추종 PageLoader(다크 토글 사용자는 다크 로고)라 [라이트 빈화면 → 다크 로더 →
-//   라이트 대시보드] 색 점프가 났음. 도매 WholesaleLoader 와 동일한 정합을 유어딜 브랜드로.
+//   라이트 대시보드] 색 점프가 났음. 라이트 고정 로더로 색을 맞춘다.
 //   (대시보드는 라이트 고정 규칙 — dark: variant 금지 표면이라 forceLight 가 맞는 동작.)
 const DashboardLoader = () => (
   <div style={{ background: '#F4F5F7' }}><BrandLoader fullScreen forceLight /></div>
 )
 const isDashboardLoaderSurface = (pathname: string) => /^\/(seller|admin|ads)(\/|$)/.test(pathname)
 
-// 🏭 2026-06-29 (대표 요청 — 도매몰 페이지 로딩 애니메이션): 도매 surface(/wholesale·/supplier)
-//   전용 *라이트* 브랜드 로더. 소비자 PageLoader 는 다크(흰 spinner) 라 라이트 도매 배경(#F4F5F7)에서
-//   어색 → Suspense fallback 을 surface 별로 분기(아래 isWholesaleSurface). 색상은 WT SSOT
-//   (wholesale-theme.ts: ink #0C2454 / brand #FC5424 / fill #F4F5F7 / line2 #E7E9ED)을 인라인 하드코딩 —
-//   소비자 메인 청크에 wholesale-theme 를 끌어들이지 않기 위함(값은 브랜드 고정). 멀티-몰 커스텀
-//   브랜딩은 로딩 순간엔 기본(유통스타트)으로 표시(전환 잔상 방지보다 단순/안정 우선).
-const WholesaleLoader = () => (
-  <div
-    className="flex flex-col items-center justify-center gap-5 min-h-[100dvh]"
-    style={{ background: '#F4F5F7' }}
-    role="status"
-    aria-live="polite"
-    aria-busy="true"
-  >
-    {/* 🏷️ 브랜드 로고(라이트 배경용 PNG, public/utong-start-logo.png) — 은은한 pulse 로 '로딩 중' 표현.
-        로고 종횡비 900:310 → height 52 / width 151 명시(CLS 0). 로고 교체는 public 파일만 변경하면 반영. */}
-    <img
-      src="/utong-start-logo.png"
-      alt="유통스타트 도매몰"
-      width={151}
-      height={52}
-      decoding="async"
-      draggable={false}
-      className="w-auto select-none animate-pulse"
-      style={{ height: 52 }}
-    />
-    {/* 회전 아크(오렌지 액센트) — 명확한 로딩 모션. 200ms 후 회전 시작해 짧은 로딩엔 모션 깜빡임 방지 */}
-    <div className="relative w-6 h-6">
-      <div className="absolute inset-0 rounded-full" style={{ border: '2.5px solid #E7E9ED' }} />
-      <div
-        className="absolute inset-0 rounded-full animate-spin"
-        style={{ border: '2.5px solid transparent', borderTopColor: '#FC5424', animationDelay: '200ms' }}
-      />
-    </div>
-    <span className="sr-only">유통스타트 도매몰 로딩 중…</span>
-  </div>
-)
 
 // ✅ Router 내부에서 실행될 컴포넌트
 function AppContent() {
@@ -568,7 +504,6 @@ function AppContent() {
   const fullScreenPrefixes = ['/cart', '/checkout', '/payment', '/pay', '/points', '/seller', '/admin', '/login', '/register', '/auth', '/embed', '/introduce', '/blog', '/about', '/partners', '/creators', '/my-orders', '/store/scan', '/videos', '/design', '/mall-admin', '/agency']
   const fullScreen = fullScreenPrefixes.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
   // 🏭 유통스타트 B2B(도매몰/제조사)는 소비자 BottomNav/TopNav 미표시 — 별도 도메인·업태.
-  //   isWholesaleSurface = SSOT (`/wholesale*`·`/supplier*`). 같은 헬퍼를 BottomNav·DesktopTopNav
   //   컴포넌트가 자기-차단에도 사용 → 1차(여기서 마운트 차단) + 2차(컴포넌트 self-guard) 이중 방어.
   // 🏁 2026-06-26 [UNLOCK_LOADING] (대표 결정 — "특정 링크로 들어온 방문자는 네비 숨김"):
   //   /u/{handle}?embed=1 로 진입하면 standalone 매장처럼 상/하단 네비를 숨긴다. 한 번 본 플래그는
@@ -589,22 +524,18 @@ function AppContent() {
   //   ⇒ 판정은 `isMallSurfacePath`(shared SSOT, 워커와 같은 규칙) 하나로.
   const mallSurface = isMallSurfacePath(location.pathname)
   const hideBottomNav = fullScreen || location.pathname.startsWith('/products/')
-    || isWholesaleSurface(location.pathname) || isMarketingSurface(location.pathname) || embedHideNav
+    || isMarketingSurface(location.pathname) || embedHideNav
     || mallSurface
   // 🗺️ 2026-06-20 (대표 — 홈=리스트 / 지도는 버튼 이동): 지도 페이지(/restaurant-map)만 h-screen 자체관리
   //   풀스크린(바텀시트가 하단 담당) → main 하단 네비 여백 제외. 홈(/)=리스트는 일반 페이지(여백 필요).
-  //   ⚠️ 도매/제조사(isWholesaleSurface)는 위 hideBottomNav 가 이미 커버(여백 0) — 여기 중복 불필요.
   const mapFullScreen = location.pathname === '/map' || location.pathname === '/restaurant-map'
 
   return (
     <>
       <FrameWrapper>
-        {/* 🏭 2026-06-29 (대표 요청): 도매 surface 는 라이트 브랜드 로더로, 그 외(소비자)는 기존 PageLoader.
-            isWholesaleSurface = `/wholesale`·`/supplier` SSOT(소비자 경로엔 byte-동일 — PageLoader 유지).
-            🚑 2026-07-10: 대시보드/애즈는 라이트 고정 DashboardLoader — worker 라이트 placeholder 와 색 정합. */}
+        {/* 🚑 2026-07-10: 대시보드/애즈는 라이트 고정 DashboardLoader — worker 라이트 placeholder 와 색 정합. */}
         <Suspense fallback={
-          isWholesaleSurface(location.pathname) ? <WholesaleLoader />
-            : isDashboardLoaderSurface(location.pathname) ? <DashboardLoader />
+          isDashboardLoaderSurface(location.pathname) ? <DashboardLoader />
             : <PageLoader />
         }>
           {/* 📐 2026-05-03: PC 풀너비 활성화 — 모바일 폭 강제 제거.
@@ -641,9 +572,6 @@ function AppContent() {
               이동(06-10 페이드 의도)에만 리마운트/페이드, 쿼리 변경은 제자리 갱신(각 페이지 effect 가
               searchParams deps 로 이미 처리 — 06-05 "화면 비우지 않고 백그라운드 교체" 설계 복원). */}
           <ErrorBoundary key={location.pathname}>
-          {/* 🏭 2026-06-04 도매몰 도메인 SPA 가드 — utongstart.com 비-도매몰 경로 navigate() 차단.
-              worker 302(src/worker/index.ts)가 주 방어, 이건 SPA 내부 이동 보강(직접 로드는 worker 가 처리). */}
-          {isUtongstart() && !isWholesaleAllowedPath(location.pathname) && <Navigate to="/wholesale" replace />}
           <div key={location.pathname} className={pageEnterCls}>
           <Routes>
             {/* Public 페이지들 */}
@@ -651,49 +579,10 @@ function AppContent() {
             <Route path="/creators/apply" element={<CreatorApplyPage />} /><Route path="/creators/start" element={<CreatorStartPage />} />
             {CAMPAIGN_SIGNUP_ENABLED && <Route path="/campaign/:code" element={<CampaignApplyPage />} />}{/* 📣 캠페인 신청 — 기존 가입과 게이트 분리(이 플래그는 이 라우트만 가림) */}
             <Route path="/about" element={<AboutServicePage />} /><Route path="/about/print" element={<AboutPage />} /><Route path="/partners" element={<PartnersPage />} /><Route path="/creators" element={<CreatorsPage />} /><Route path="/mall-admin" element={<MallAdminPage />} />{/* 🏬 몰 운영자 콘솔 — 게이트 없음(서버가 operator_user_id 로 403 = fail-closed 는 서버에) */}
-            <Route path="/" element={isUtongstart() ? <Navigate to="/wholesale" replace /> : <HomeRoute />} />{/* 🖥️ lg+ = 당근 PC 홈 / 그 외 = 지도(홈=지도, 대표 2026-07-15) */}
-            <Route path="/wholesale/intro" element={<WholesaleIntroPage />} />
-            <Route path="/wholesale/join" element={<WholesaleJoinPage />} />
-            <Route path="/wholesale/login" element={<WholesaleLoginPage />} />
-            <Route path="/wholesale" element={<WholesaleCatalogPage key="home" />} />
-            {/* 💬 채팅 알림 딥링크 — 같은 카탈로그를 렌더하되 채팅 위젯 자동 오픈(WholesaleChatButton 이 pathname 감지) */}
-            <Route path="/wholesale/chat" element={<WholesaleCatalogPage key="home" />} />
-            {/* 🏬 2026-06-14 (사용자 요청): 컬렉션 전용 페이지 — 같은 컴포넌트 mode 재사용.
-                key 로 컬렉션 전환 시 강제 리마운트(초기 정렬/필터 재적용). */}
-            <Route path="/wholesale/best" element={<WholesaleCatalogPage key="best" mode="best" />} />
-            <Route path="/wholesale/new" element={<WholesaleCatalogPage key="new" mode="new" />} />
-            {/* 🏭 2026-07-03 (대표): '고마진 특가'(/wholesale/margin) 완전 숨김 — 나브 진입 제거 + 직접 URL 도 전체상품으로 리다이렉트. */}
-            <Route path="/wholesale/margin" element={<Navigate to="/wholesale" replace />} />
-            <Route path="/wholesale/premium" element={<WholesaleCatalogPage key="premium" mode="premium" />} />
-            <Route path="/wholesale/brands" element={<WholesaleCatalogPage key="brands" mode="brands" />} />
-            {/* 🏭 2026-06-27 (대표 — 모든 도매 페이지 공통 상단바): 도매 app 페이지를 WholesaleLayout 으로 감싸
-                상단 WholesaleUtilBar(회원·예치금 실시간·충전·대시보드·로그아웃) 자동 표시. 카탈로그는 자체
-                풀헤더에 동일 바 존재 → 제외. 인증·랜딩(start/staff-login)·비도매(partnership)도 제외. */}
-            <Route element={<WholesaleLayout />}>
-              <Route path="/wholesale/dashboard" element={<WholesaleDashboardPage />} />
-              <Route path="/wholesale/deposits" element={<WholesaleDepositPage />} />
-              <Route path="/wholesale/product/:id" element={<WholesaleProductPage />} />
-              <Route path="/wholesale/cart" element={<WholesaleCartPage />} />
-              <Route path="/wholesale/checkout" element={<WholesaleCheckoutPage />} />
-              <Route path="/wholesale/success" element={<WholesaleSuccessPage />} />
-              <Route path="/wholesale/orders" element={<WholesaleOrdersPage />} />
-              <Route path="/wholesale/statement" element={<WholesaleStatementPage />} />
-              <Route path="/wholesale/documents" element={<WholesaleDocsPage />} />
-              <Route path="/wholesale/oem" element={<WholesaleOemPage />} />
-              <Route path="/wholesale/quotes" element={<WholesaleQuotesPage />} />
-              <Route path="/wholesale/naver" element={<WholesaleNaverPage />} />
-              <Route path="/wholesale/board" element={<WholesaleBoardPage />} />
-              <Route path="/wholesale/support" element={<WholesaleSupportPage />} />
-              <Route path="/wholesale/channels" element={<WholesaleChannelsPage />} />
-              <Route path="/wholesale/terms" element={<WholesaleTermsPage />} />
-              <Route path="/wholesale/privacy" element={<WholesalePrivacyPage />} />
-              <Route path="/wholesale/wishlist" element={<WholesaleWishlistPage />} />
-              <Route path="/wholesale/proposals" element={<WholesaleProposalsPage />} />
-              <Route path="/wholesale/staff" element={<WholesaleStaffPage />} />
-            </Route>
-            <Route path="/wholesale/start" element={<WholesaleStartPage />} />
+            <Route path="/" element={<HomeRoute />} />{/* 🖥️ lg+ = 당근 PC 홈 / 그 외 = 지도(홈=지도, 대표 2026-07-15) */}
+            {/* 🧨 2026-10-11 도매몰 철거(대표 "도매몰 잔해들은 아예 다 삭제해줘") — /wholesale/* 라우트 42줄 제거.
+                공구 서비스(운영자 몰, `/:mallSlug`)는 별개 레일이라 무접촉 — 계획: docs/design/wholesale-teardown-plan.md */}
             <Route path="/partnership" element={<PartnershipInquiryPage />} />
-            <Route path="/wholesale/staff-login" element={<WholesaleStaffLoginPage />} />
             {/* 🗑️ 2026-07-07 라이브커머스 제거: /shorts 라우트 제거 */}
             <Route path="/v/:code" element={<VoucherVerifyPage />} />
             {/* 🛡️ 2026-04-28: 선물 받기 페이지 (인증 불필요) */}
@@ -810,8 +699,6 @@ function AppContent() {
                 (대시보드·커미션·카카오 로그인)와 다른 것이다. src/routes/agency-console.routes.tsx */}
             {AgencyConsoleRoutes()}
 
-            {/* Supplier(도매 공급자) 페이지들 — src/routes/supplier.routes.tsx (도매몰 INC-6) */}
-            {SupplierRoutes()}
 
             {/* 장바구니: 비로그인도 접근 가능 (결제 시에만 로그인 필요) */}
             <Route path="/cart" element={<ErrorBoundary><CartPage /></ErrorBoundary>} />

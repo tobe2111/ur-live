@@ -18,6 +18,7 @@ import SellerLayout from '@/components/SellerLayout'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { formatKSTDate } from '@/utils/date'
+import { prepareImageForUpload, UploadTooLargeError } from '@/lib/prepare-upload'
 
 interface Prospect {
   id: number
@@ -64,8 +65,10 @@ export default function SellerProspectsPage() {
     if (uploadingProof) return
     setUploadingProof(true)
     try {
+      // 🩸 2026-10-11: 종전엔 원본을 그대로 올려 폰 사진(>1MB)이 전역 `bodyLimit` 에 413 으로 잘렸다.
+      const ready = await prepareImageForUpload(file)
       const fd = new FormData()
-      fd.append('file', file)
+      fd.append('file', ready)
       const r = await api.post('/api/upload/image', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
       if (r.data?.success && r.data?.url) {
         setForm(f => ({ ...f, proof_image_url: r.data.url }))
@@ -73,8 +76,8 @@ export default function SellerProspectsPage() {
       } else {
         toast.error('업로드 실패')
       }
-    } catch {
-      toast.error('업로드 실패')
+    } catch (err) {
+      toast.error(err instanceof UploadTooLargeError ? '사진이 너무 커요. 다른 사진을 골라주세요' : '업로드 실패')
     } finally {
       setUploadingProof(false)
     }

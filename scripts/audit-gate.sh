@@ -53,9 +53,6 @@ if domain auth; then
   run "라우트 그림자(정적 경로가 /:param 에 가림)"                             node scripts/check-route-shadowing.mjs
   run "도달 불가 라우트(누를 데 없는 페이지)" env STRICT_ORPHAN_ROUTES=1   node scripts/check-orphan-routes.mjs
   run "API 인증 누락"                   bash scripts/check-api-auth.sh
-  run "가격기반 로그인 유도 금지"         env STRICT_LOGIN_GATE=1       node scripts/check-login-gate-by-price.mjs
-  run "도매 자동재로그인 억제(로그아웃)"   env STRICT_WHS_AUTOLOGIN=1    node scripts/check-wholesale-autologin-guarded.mjs
-  run "도매 로그인 SPA 이동(속도)"        env STRICT_LOGIN_SPA=1        node scripts/check-wholesale-login-spa-navigate.mjs
   run "도매 엣지캐시 인증 누수"            env STRICT_CACHE_AUTH=1       node scripts/check-wholesale-cache-auth-leak.mjs
 fi
 

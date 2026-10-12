@@ -43,6 +43,10 @@ const STRICT = process.argv.includes('-s') || process.argv.includes('--strict')
 const KNOWN_TABLES_EXTRA = new Set([
   'products_fts',        // FTS5 virtual table (migration 0080, CREATE VIRTUAL TABLE)
   'sqlite_master', 'sqlite_sequence', 'sqlite_temp_master',
+  // 🧨 2026-10-11 도매몰 철거: `CREATE TABLE` 을 담고 있던 `wholesale-claims.routes.ts` 가 삭제됐다.
+  //   테이블은 **프로덕션에 실재**하고(실측 `sqlite_master`), 읽는 코드도 부재를 `.catch` 로 처리한다
+  //   (`wholesale-settlement.ts` 의 정산 hold 재계산). 테이블은 계획 §3 으로 **존치**(회계 증빙).
+  'wholesale_claims',
   // ── 프로덕션 존재(레포 CREATE 미기록) — 다중 파일 일관 사용으로 실재 확인 ──
   'user_sessions', 'sessions',           // 세션 추적 (admin-metrics / reconciliation)
   'interest_list',                       // 관심상품 (group-buy)

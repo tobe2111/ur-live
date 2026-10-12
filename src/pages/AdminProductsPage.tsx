@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { normalizeAdminRole } from '@/shared/admin-roles'
 import { useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
@@ -20,12 +19,9 @@ import { formatNumber } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 import { EMPTY_FORM } from './admin-products/types'
-import type { Product, SupplySalesRow, SupplySalesSummary, SampleRequest } from './admin-products/types'
+import type { Product, SampleRequest } from './admin-products/types'
 import ProductFormModal from './admin-products/ProductFormModal'
 import SampleRequestsTab from './admin-products/SampleRequestsTab'
-import SupplySalesTab from './admin-products/SupplySalesTab'
-import SupplierProductsTab from './admin-products/SupplierProductsTab'
-import type { SupplierProductRow } from './admin-products/SupplierProductsTab'
 import type { ProductOption } from '@/components/ProductOptionForm'
 import { DEFAULT_AFFILIATE_RATE } from '@/shared/affiliate-rate'
 
@@ -35,18 +31,12 @@ export default function AdminProductsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  // 🆕 2026-06-24: 도매 파트너(wholesale 어드민)는 '제조사 등록 상품'(승인 큐)만 — 소비자 상품관리 탭 숨김.
-  //   '도매 통합 현황'의 승인 큐 카드(상품 승인/가격변경) 클릭 시 바로 이 탭으로 (deep-link `?tab=supplier-products`).
-  const isWholesaleAdmin = normalizeAdminRole(typeof window !== 'undefined' ? localStorage.getItem('admin_role') : null) === 'wholesale'
-  const [activeTab, setActiveTab] = useState<'products' | 'sample-requests' | 'supply-sales' | 'supplier-products'>(() => {
-    if (isWholesaleAdmin) return 'supplier-products'
+  // 🧨 2026-10-11 도매몰 철거: '제조사 등록 상품'·'공급 매출' 두 탭과 wholesale 역할 분기 제거
+  //   (그 API 들이 `mount-wholesale` 과 함께 사라졌다). 남은 탭은 소비자 상품관리·샘플 신청 둘.
+  const [activeTab, setActiveTab] = useState<'products' | 'sample-requests'>(() => {
     const urlTab = searchParams.get('tab')
-    return (urlTab && ['products', 'sample-requests', 'supply-sales', 'supplier-products'].includes(urlTab))
-      ? (urlTab as 'products' | 'sample-requests' | 'supply-sales' | 'supplier-products')
-      : 'products'
+    return urlTab === 'sample-requests' ? 'sample-requests' : 'products'
   })
-  // 도매몰 INC-4: 공급자 self-serve 등록 상품 승인 큐.
-  const [spStatusFilter, setSpStatusFilter] = useState('pending')
   const [error, setError] = useState('')
   const [deleting, setDeleting] = useState<number | null>(null)
   const [showModal, setShowModal] = useState(false)
@@ -55,10 +45,7 @@ export default function AdminProductsPage() {
   const [actionLoading, setActionLoading] = useState<number | null>(null)
   const [adminMemoMap, setAdminMemoMap] = useState<Record<number, string>>({})
   // 🏭 2026-06-07 공급상품 최저가 검수 체크 상태 (상품별).
-  const [lowestCheckedMap, setLowestCheckedMap] = useState<Record<number, boolean>>({})
   // 🆕 2026-06-19 (대표 확정) 제품별 플랫폼 마진 입력(미끼/마진 전략) + 저장중 상태.
-  const [marginMap, setMarginMap] = useState<Record<number, string>>({})
-  const [marginSaving, setMarginSaving] = useState<number | null>(null)
   const [productOptions, setProductOptions] = useState<ProductOption[]>([])
   const [showBulkUpload, setShowBulkUpload] = useState(false)
   // 🛡️ 2026-05-18: 체크박스 선택 상태 — 일괄 삭제/활성화/비활성화.
@@ -114,16 +101,6 @@ export default function AdminProductsPage() {
   const srLoading = sampleRequestsQ.isLoading
   const loadSampleRequests = () => sampleRequestsQ.refetch()
 
-  const supplySalesQ = useApiQuery<{ rows: SupplySalesRow[]; summary: SupplySalesSummary | null }>(['admin', 'supply-sales'], '/api/admin/supply/sales', { enabled: activeTab === 'supply-sales', headers: adminAuth, select: (r: any) => ({ rows: r?.success ? (r.data?.rows ?? []) : [], summary: r?.success ? (r.data?.summary ?? null) : null }) })
-  const supplySales = supplySalesQ.data?.rows ?? []
-  const supplySummary = supplySalesQ.data?.summary ?? null
-  const salesLoading = supplySalesQ.isLoading
-
-  const supplierProductsQ = useApiQuery<{ items: SupplierProductRow[]; defaultMarginPct: number }>(['admin', 'supplier-products', spStatusFilter], '/api/admin/supplier-products', { enabled: activeTab === 'supplier-products', headers: adminAuth, params: { status: spStatusFilter, limit: 100 }, select: (r: any) => (r?.success ? { items: r.data?.items ?? [], defaultMarginPct: Number(r.data?.default_margin_pct) || 10 } : { items: [], defaultMarginPct: 10 }) })
-  const supplierProducts = supplierProductsQ.data?.items ?? []
-  const supplierDefaultMarginPct = supplierProductsQ.data?.defaultMarginPct ?? 10
-  const spLoading = supplierProductsQ.isLoading
-  const loadSupplierProducts = () => supplierProductsQ.refetch()
 
   async function handleSampleAction(reqId: number, action: 'approve' | 'reject') {
     setActionLoading(reqId)
@@ -142,73 +119,11 @@ export default function AdminProductsPage() {
   }
 
   // 🆕 2026-06-19: 마진 입력 문자열 → API 값. '' / undefined → 미지정(undefined, 승인 시 컬럼 미변경).
-  function marginInputToPayload(productId: number): number | null | undefined {
-    const raw = marginMap[productId]
-    if (raw == null) return undefined          // 편집 안 함 → 컬럼 미변경
-    const t2 = raw.trim()
-    if (t2 === '') return null                 // 명시적 비움 → 전역 기본
-    const n = Number(t2)
-    return Number.isFinite(n) ? n : undefined
-  }
 
-  async function handleSupplierProductAction(productId: number, action: 'approve' | 'reject') {
-    setActionLoading(productId)
-    try {
-      const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
-      // 승인 시 검수 화면에서 정한 제품별 마진(미끼/마진 전략)을 함께 반영.
-      const marginPayload = action === 'approve' ? marginInputToPayload(productId) : undefined
-      await api.patch(`/api/admin/supplier-products/${productId}`, {
-        action,
-        admin_memo: adminMemoMap[productId] || null,
-        lowest_price_checked: !!lowestCheckedMap[productId],
-        ...(marginPayload !== undefined ? { margin_override_pct: marginPayload } : {}),
-      }, { headers: { Authorization: `Bearer ${token}` } })
-      toast.success(action === 'approve' ? t('admin.products.spApproveOk', { defaultValue: '공급상품이 승인되었습니다.' }) : t('admin.products.spRejectOk', { defaultValue: '공급상품이 거부되었습니다.' }))
-      loadSupplierProducts()
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { error?: string } } }
-      toast.error(axiosErr.response?.data?.error || t('admin.products.k006', { defaultValue: '처리에 실패했습니다.' }))
-    } finally { setActionLoading(null) }
-  }
 
   // 🆕 2026-06-19 (대표 확정): 제품별 플랫폼 마진 저장(승인 여부 무관). 미끼/마진 전략 조율.
-  async function handleSetMargin(productId: number) {
-    const raw = marginMap[productId]
-    const value = raw == null || raw.trim() === '' ? null : Number(raw)
-    if (value !== null && (!Number.isFinite(value) || value < 0 || value > 90)) {
-      toast.error(t('admin.products.marginInvalid', { defaultValue: '0~90 사이 숫자를 입력하세요.' }))
-      return
-    }
-    setMarginSaving(productId)
-    try {
-      const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
-      const res = await api.patch(`/api/admin/supplier-products/${productId}/margin`, { margin_override_pct: value }, { headers: { Authorization: `Bearer ${token}` } })
-      toast.success(res.data?.message || t('admin.products.marginSaved', { defaultValue: '마진이 저장되었습니다.' }))
-      loadSupplierProducts()
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { error?: string } } }
-      toast.error(axiosErr.response?.data?.error || t('admin.products.k006', { defaultValue: '처리에 실패했습니다.' }))
-    } finally { setMarginSaving(null) }
-  }
 
   // 🏭 2026-06-07 판매중 상품 공급가 변경 요청 승인/거부.
-  async function handlePriceChangeAction(productId: number, action: 'approve' | 'reject') {
-    setActionLoading(productId)
-    try {
-      const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
-      await api.patch(`/api/admin/supplier-products/${productId}/price-change`, {
-        action,
-        admin_memo: adminMemoMap[productId] || null,
-      }, { headers: { Authorization: `Bearer ${token}` } })
-      toast.success(action === 'approve'
-        ? t('admin.products.spPriceApproveOk', { defaultValue: '가격 변경이 반영되었습니다.' })
-        : t('admin.products.spPriceRejectOk', { defaultValue: '가격 변경 요청이 거부되었습니다.' }))
-      loadSupplierProducts()
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { error?: string } } }
-      toast.error(axiosErr.response?.data?.error || t('admin.products.k006', { defaultValue: '처리에 실패했습니다.' }))
-    } finally { setActionLoading(null) }
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault(); setError('')
@@ -411,43 +326,25 @@ export default function AdminProductsPage() {
         ) : undefined
       }
     >
-      {/* 탭 — 도매 파트너(wholesale)는 '제조사 등록 상품'(승인 큐)만 노출 */}
+      {/* 탭 — 🧨 2026-10-11 도매몰 철거로 '공급 판매 현황' 탭과 wholesale 역할 분기 제거 */}
       <div className="flex gap-1 mb-4 border-b border-gray-200">
-        {!isWholesaleAdmin && (
-          <button
-            onClick={() => setActiveTab('products')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'products' ? 'border-brand text-brand-text' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-          >
-            <span className="flex items-center gap-1.5"><Package className="w-4 h-4" /> {t('admin.products.k018', { defaultValue: '상품 목록' })}</span>
-          </button>
-        )}
-        {!isWholesaleAdmin && (
-          <button
-            onClick={() => setActiveTab('sample-requests')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'sample-requests' ? 'border-brand text-brand-text' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-          >
-            <span className="flex items-center gap-1.5">
-              <Truck className="w-4 h-4" /> {t('admin.products.sampleRequestsTab', { defaultValue: '샘플 신청 목록' })}
-              {pendingCount > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full">{pendingCount}</span>
-              )}
-            </span>
-          </button>
-        )}
         <button
-          onClick={() => setActiveTab('supplier-products')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'supplier-products' ? 'border-brand text-brand-text' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          onClick={() => setActiveTab('products')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'products' ? 'border-brand text-brand-text' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
         >
-          <span className="flex items-center gap-1.5"><Boxes className="w-4 h-4" /> {t('admin.products.supplierProductsTab', { defaultValue: '제조사 등록 상품' })}</span>
+          <span className="flex items-center gap-1.5"><Package className="w-4 h-4" /> {t('admin.products.k018', { defaultValue: '상품 목록' })}</span>
         </button>
-        {!isWholesaleAdmin && (
-          <button
-            onClick={() => setActiveTab('supply-sales')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'supply-sales' ? 'border-brand text-brand-text' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-          >
-            <span className="flex items-center gap-1.5"><BarChart2 className="w-4 h-4" /> {t('admin.products.k019', { defaultValue: '공급 판매 현황' })}</span>
-          </button>
-        )}
+        <button
+          onClick={() => setActiveTab('sample-requests')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'sample-requests' ? 'border-brand text-brand-text' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+        >
+          <span className="flex items-center gap-1.5">
+            <Truck className="w-4 h-4" /> {t('admin.products.sampleRequestsTab', { defaultValue: '샘플 신청 목록' })}
+            {pendingCount > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full">{pendingCount}</span>
+            )}
+          </span>
+        </button>
       </div>
 
       {error && <div className="p-4 bg-white border border-rule rounded-xl text-sm text-tone-bad mb-4">{error}</div>}
@@ -861,34 +758,7 @@ export default function AdminProductsPage() {
         />
       )}
 
-      {activeTab === 'supplier-products' && (
-        <SupplierProductsTab
-          loading={spLoading}
-          items={supplierProducts}
-          statusFilter={spStatusFilter}
-          setStatusFilter={setSpStatusFilter}
-          adminMemoMap={adminMemoMap}
-          setAdminMemoMap={setAdminMemoMap}
-          lowestCheckedMap={lowestCheckedMap}
-          setLowestCheckedMap={setLowestCheckedMap}
-          marginMap={marginMap}
-          setMarginMap={setMarginMap}
-          defaultMarginPct={supplierDefaultMarginPct}
-          marginSaving={marginSaving}
-          onSetMargin={handleSetMargin}
-          actionLoading={actionLoading}
-          onAction={handleSupplierProductAction}
-          onPriceChangeAction={handlePriceChangeAction}
-        />
-      )}
 
-      {activeTab === 'supply-sales' && (
-        <SupplySalesTab
-          loading={salesLoading}
-          supplySummary={supplySummary}
-          supplySales={supplySales}
-        />
-      )}
 
       <ProductFormModal
         open={showModal}
