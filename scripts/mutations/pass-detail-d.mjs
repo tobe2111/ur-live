@@ -41,4 +41,28 @@ export default [
     test: TEST,
     why: '예외가 어느 순간의 일인지가 자리로 읽혀야 한다(대표 확정 시안 1) — 떨어지면 손님이 스캔 실패 때 무엇을 할지 못 찾는다.',
   },
+  {
+    name: '🎟️C 머리가 다시 사진을 덮는다 (대표 "왜 사진을 가리고 있고")',
+    file: 'src/shared/pass-head.ts',
+    find: "card: 'lg:hidden relative mx-3 mb-3 px-1 pt-4 pb-5'",
+    replace: "card: 'lg:hidden relative mx-3 -mt-7 mb-3 px-1 pt-4 pb-5'",
+    test: 'src/tests/unit/pass-detail-d-2026-10-11.test.ts',
+    why: '라이브 실측 28px 가림. 히어로 크롭이 gravity=auto 라 피사체가 아래 앉으면 그 피사체가 가려진다.',
+  },
+  {
+    name: '🎟️C 머리에 판(배경·그림자)이 돌아온다',
+    file: 'src/shared/pass-head.ts',
+    find: "card: 'lg:hidden relative mx-3 mb-3 px-1",
+    replace: "card: 'lg:hidden relative mx-3 mb-3 bg-[var(--gbd-card)] shadow-lift px-1",
+    test: 'src/tests/unit/pass-detail-d-2026-10-11.test.ts',
+    why: '대표가 C(평면)를 고른 이유가 "투박하다" 였다. 판이 돌아오면 그 지적으로 되돌아간다.',
+  },
+  {
+    name: "🎟️C '1장당 N원 아껴요' 상자가 돌아온다",
+    file: 'src/pages/group-buy/PassHeadCard.tsx',
+    find: '      {/* 🔁 2026-10-12 C안: `1장당 N원 아껴요` 틴트 상자 제거',
+    replace: '      {unitSaving > 0 && <div>1장당 {formatNumber(unitSaving)}원 아껴요</div>}\n      {/* 🔁 2026-10-12 C안: `1장당 N원 아껴요` 틴트 상자 제거',
+    test: 'src/tests/unit/pass-detail-d-2026-10-11.test.ts',
+    why: '48% 와 정가 취소선이 이미 같은 말을 한다. 2026-10-12 실측에서 한 화면에 가격이 여섯 번 나왔다.',
+  },
 ]

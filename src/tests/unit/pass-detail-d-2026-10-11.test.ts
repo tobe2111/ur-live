@@ -49,6 +49,41 @@ describe('② 모바일 섹션은 같은 카드 상수를 쓴다', () => {
     for (const t of ['lg:rounded-none', 'lg:shadow-none']) expect(cls, `PC 에서 카드가 다시 풀렸다(${t})`).not.toContain(t)
     expect(readCode('src/shared/pass-head.ts'), 'PC 바탕이 다시 흰색이 됐다 — 흰 카드가 안 보인다').not.toContain('lg:bg-[var(--gbd-card)]')
   })
+
+  /**
+   * 🔁 2026-10-12 대표 확정 **C안** — *"왜 사진을 가리고 있고, 더 투박해졌지?"*
+   *
+   * D안(2026-10-11)의 머리 카드는 `-mt-7` 로 **사진을 28px 덮는 판**이었다. 라이브 실측으로 확인:
+   * 히어로 `[0,0,390,260]` ↔ 카드 위끝 `232`. 히어로 크롭이 `gravity=auto` 라 피사체가 아래쪽에
+   * 앉으면 **그 피사체가 가려진다**(대표 스크린샷의 돈가스 접시가 정확히 그 자리였다).
+   * 시안 A(현재)·B(안 가림)·C(판까지 없앤 평면) 중 **C**.
+   *
+   * ⚠️ 이 시험이 **못 막는 것**: 보기 좋은지는 그려서 봐야 한다(jsdom 에 레이아웃이 없다).
+   *   여기서는 **겹침을 만드는 클래스가 없는지**와 **판을 만드는 클래스가 없는지**만 본다.
+   */
+  it('C안 — 머리는 사진을 덮지 않고, 판(배경·그림자)이 없다', () => {
+    const src = readCode('src/shared/pass-head.ts')
+    const card = (src.match(/card:\s*'([^']+)'/) || [])[1] || ''
+    expect(card, "PASS_HEAD.card 를 못 찾았다 — 이 검사가 헛돈다").not.toBe('')
+    expect(card, '음수 위 여백이 돌아왔다 = 사진을 다시 덮는다(대표 지적 "왜 사진을 가리고 있고")').not.toMatch(/-mt-/)
+    expect(card, '머리에 판이 돌아왔다(배경) — C안은 평면이다').not.toContain('bg-[var(--gbd-card)]')
+    expect(card, '머리에 판이 돌아왔다(그림자) — C안은 평면이다').not.toContain('shadow-lift')
+    // 평면이어도 좌우는 페이지 거터(16px)와 맞아야 한다 — mx-3(12) + px-1(4)
+    expect(card, '좌우 여백이 페이지 거터와 어긋난다').toContain('mx-3')
+    expect(card, '좌우 여백이 페이지 거터와 어긋난다').toContain('px-1')
+  })
+
+  it("C안 — '1장당 N원 아껴요' 상자가 돌아오지 않았다 (같은 말을 세 번 한다)", () => {
+    const head = readCode('src/pages/group-buy/PassHeadCard.tsx')
+    expect(
+      head,
+      "'아껴요' 틴트 상자가 돌아왔다. 바로 윗줄의 `48%` 와 정가 취소선이 이미 같은 말을 하고,\n" +
+        '   그 상자는 판 안의 또 다른 상자라 🎫 규칙 ①(카드 테두리 0)·⑥(색깔 정보상자 0)에도 걸린다.\n' +
+        '   2026-10-12 실측: 그 화면 하나에 가격이 여섯 번 나왔다.',
+    ).not.toContain('아껴요')
+    // 할인율·판매가·정가 한 줄은 남아 있어야 한다(지운 것은 상자이지 가격이 아니다)
+    expect(head, '정가 취소선이 사라졌다 — 할인폭을 말할 방법이 없어진다').toContain('line-through')
+  })
 })
 
 describe('③ 결제는 구매 창 안에서만', () => {
