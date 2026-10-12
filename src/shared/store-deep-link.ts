@@ -16,7 +16,7 @@
  */
 
 export const STORE_GO_TARGETS = {
-  scan: '/seller/scan',               // 손님이 왔을 때 — 사용 처리
+  scan: '/store/scan',                // 손님이 왔을 때 — 사용 처리(대시보드 밖 매장 계산대, 2026-10-12)
   orders: '/seller/voucher-orders',   // 판매·사용 내역
   vouchers: '/seller/group-buy',      // 내 이용권 관리(판매 중지·수정)
   settlements: '/seller/settlements', // 정산·계좌

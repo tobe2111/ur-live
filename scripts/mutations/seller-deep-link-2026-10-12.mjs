@@ -31,8 +31,8 @@ export default [
   {
     name: '[깊은링크] 쿼리를 버린다 (알림톡 링크의 필터가 사라진다)',
     file: LIB,
-    find: "  const target = pathname + (search && search !== '?' ? (search.startsWith('?') ? search : `?${search}`) : '')",
-    replace: '  const target = pathname',
+    find: '  const target = pathname + q\n',
+    replace: '  const target = pathname\n',
     test: TEST,
     why: '?status=PAID 같은 필터가 빠지면 엉뚱한 목록이 열린다 — 에러는 없다.',
   },
@@ -71,7 +71,7 @@ export default [
   {
     name: '[깊은링크] 마이가 ?tool= 을 안 읽는다 (마이로 왔는데 화면이 안 열린다)',
     file: SECTION,
-    find: "  useToolDeepLink({ ready: !loading && store != null, seated, open: (p) => { void openPage(p, '') } })\n",
+    find: "  useToolDeepLink({ ready: !loading && store != null, seated, open: (p, own) => { if (own === 'voucherNew') { setPageFrom(null); setTool('voucherNew'); return } void openPage(p, '') } })\n",
     replace: '\n',
     test: TEST,
     why: '보내는 쪽만 있고 받는 쪽이 없으면 사장님은 아무것도 없는 마이를 보게 된다.',

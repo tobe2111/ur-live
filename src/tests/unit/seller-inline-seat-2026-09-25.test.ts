@@ -243,8 +243,10 @@ describe('단계 2 — 일감은 좌석에 앉아야 그리고, 보내기 전에
 describe('단계 3 — 소각은 되돌릴 수 없다', () => {
   it('사용처리는 **먼저 그 가게 좌석에 앉힌 뒤** 보낸다', () => {
     const code = stripComments(SECTION)
+    // 🩸 2026-10-12 — 전체 도구의 계산대 길(`own === 'scan'`)도 `enterSeat('/store/scan')` 을 쓰게 되자 이 단언이 그쪽에
+    //   매치돼, 큰 사용처리 버튼이 좌석을 건너뛰어도 통과했다(주입이 잡았다). **버튼의 onClick** 에 앵커한다.
     expect(code, '좌석을 안 맞추고 보내면 화면엔 A 가 떠 있는데 B 의 이용권이 소각된다')
-      .toContain("enterSeat('/store/scan')")
+      .toContain("onClick={() => enterSeat('/store/scan')}")
   })
 
   it('계산대가 되돌릴 수 없음을 **먼저** 말한다', () => {

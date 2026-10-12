@@ -70,7 +70,7 @@ describe('② 시트는 전부 열 때 받는다', () => {
   it('판정을 SellerSection 이 다시 하지 않는다 — 지도를 정적으로 읽으면 봉투가 통째로 붙는다', () => {
     expect(code, "tool-pages 를 정적 import 하면 시트 청크가 정적 의존이 되어 lazy 가 무의미해진다")
       .not.toContain("from './seller-section/tool-pages'")
-    expect(code, '시트가 넘겨준 판정을 써야 한다').toContain('onPick={(path, label, inSheet)')
+    expect(code, '시트가 넘겨준 판정을 써야 한다').toContain('onPick={(path, label, inSheet, own)')
   })
 
   it('나브 색인이 셀러 껍데기 봉투에서 떨어져 있다', () => {

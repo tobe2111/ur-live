@@ -106,7 +106,7 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
                 </div>
               )}
               {kind === 'voucher' && (
-                <a href="/seller/scan" className="mt-3 inline-flex items-center justify-center w-full py-2.5 rounded-lg border border-rule text-sm font-medium text-gray-900 hover:bg-gray-50">
+                <a href="/store/scan" className="mt-3 inline-flex items-center justify-center w-full py-2.5 rounded-lg border border-rule text-sm font-medium text-gray-900 hover:bg-gray-50">
                   {t('seller.goRedeemScreen', { defaultValue: '사용처리 화면으로' })}
                 </a>
               )}

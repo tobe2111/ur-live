@@ -15,7 +15,7 @@
  *    알림톡 링크를 누른 사장님이 **아무 화면도 없는 마이**에 떨어진다(에러 0).
  */
 import { useEffect, useRef } from 'react'
-import { TOOL_PARAM, dashboardFallback, readToolParam } from '@/lib/seller-deep-link'
+import { TOOL_PARAM, dashboardFallback, ownPathFor, readToolParam, type OwnPath } from '@/lib/seller-deep-link'
 
 /** 주소에서 `?tool=` 만 지운 경로(다른 쿼리는 남긴다). */
 function withoutTool(pathname: string, search: string): string {
@@ -28,12 +28,13 @@ function withoutTool(pathname: string, search: string): string {
 /**
  * @param ready  가게가 정해졌다(`store` 가 있고 로딩이 끝났다)
  * @param seated 그 가게에 좌석이 맞다
- * @param open   시트를 연다 — 머리 이름은 비워 넘긴다(시트가 나브 색인에서 찾는다)
+ * @param open   시트를 연다 — 머리 이름은 비워 넘긴다(시트가 나브 색인에서 찾는다).
+ *               `own` 은 그 주소의 전용 길(`OWN_PATH` — 이용권 등록이면 `VoucherNewSheet`)이다(2026-10-12).
  */
 export function useToolDeepLink({ ready, seated, open }: {
   ready: boolean
   seated: boolean
-  open: (path: string) => void
+  open: (path: string, own: OwnPath | null) => void
 }) {
   const done = useRef(false)
   useEffect(() => {
@@ -44,7 +45,7 @@ export function useToolDeepLink({ ready, seated, open }: {
     done.current = true
     if (!seated) { window.location.replace(dashboardFallback(path)); return }
     try { window.history.replaceState(window.history.state, '', withoutTool(pathname, search)) } catch { /* 무해 */ }
-    open(path)
+    open(path, ownPathFor(path))
   }, [ready, seated, open])
 }
 

@@ -44,6 +44,7 @@ import ErrorBoundary from '@/components/ErrorBoundary'
 import { SellerEmbedProvider } from '@/shared/seller-embed'
 import { SellerRoutes } from '@/routes/seller.routes'
 import Sheet from './Sheet'
+import { STORE_SCAN_PATH } from '@/lib/seller-deep-link'
 import { ensureDashStrings } from '@/i18n'
 import { useSellerNavModel } from '@/components/seller-layout/useSellerNavModel'
 
@@ -120,11 +121,15 @@ function InnerBridge({ onDepth, backRef }: {
   return null
 }
 
-/** 셀러 밖 주소를 안쪽에서 열려고 했다 — 시트를 닫고 바깥 라우터로 넘긴다. */
-function Escape({ onLeave }: { onLeave: (path: string) => void }) {
+/**
+ * 셀러 밖 주소를 안쪽에서 열려고 했다 — 시트를 닫고 바깥 라우터로 넘긴다.
+ * `to` 가 있으면 그 주소로 — 이용권 화면의 '사용처리' 탭(`/seller/scan`)이 시트 안에 카메라를 띄우지 않고
+ * 마이·콘솔과 **같은 계산대**(`/store/scan`)로 가게 한다(2026-10-12). 좌석은 시트를 열 때 이미 맞췄다.
+ */
+function Escape({ onLeave, to }: { onLeave: (path: string) => void; to?: string }) {
   const location = useLocation()
   const fired = useRef(false)
-  if (!fired.current) { fired.current = true; onLeave(location.pathname + location.search) }
+  if (!fired.current) { fired.current = true; onLeave(to ?? location.pathname + location.search) }
   return (
     <div className="flex items-center justify-center py-16">
       <Loader2 className="w-5 h-5 animate-spin text-gray-400" aria-hidden="true" />
@@ -169,6 +174,8 @@ export default function ToolPageSheet({ path, title, onClose, onLeave }: {
                   시트 안에 하나 두면 사고가 시트 안에 머문다 — 41개 화면을 한 자리로 막는다. */}
               <ErrorBoundary>
                 <Routes>
+                  {/* 🧾 같은 경로가 둘이면 먼저 선언한 쪽이 이긴다 — 셀러 라우트 표보다 **앞**에 둔다. */}
+                  <Route path="/seller/scan" element={<Escape onLeave={onLeave} to={STORE_SCAN_PATH} />} />
                   {SellerRoutes()}
                   <Route path="*" element={<Escape onLeave={onLeave} />} />
                 </Routes>
