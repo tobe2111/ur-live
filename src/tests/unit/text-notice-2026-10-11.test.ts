@@ -153,8 +153,10 @@ describe('로그인 동의 항목 — 채널 추가', () => {
 
 describe('어드민 발송 시험 엔드포인트', () => {
   const src = readFileSync('src/features/admin/api/admin-system-monitoring.routes.ts', 'utf8')
-  // 끝 경계는 바로 다음 구역(운영 게이트 현황판)
-  const block = src.slice(src.indexOf("post('/alimtalk-test-send'"), src.indexOf('// ── 🚦 2026-07-05'))
+  // 끝 경계는 바로 다음 라우트 등록. 🩸 2026-10-12: 종전엔 '다음 구역 주석'(🚦 2026-07-05)까지 잘랐는데, 그 사이에
+  //   메일 시험 라우트가 생기자 그쪽의 super_admin 줄이 이 블록에 섞여 이 엔드포인트의 확인을 지워도 통과했다(주입이 잡았다).
+  const start = src.indexOf("post('/alimtalk-test-send'")
+  const block = src.slice(start, src.indexOf('\nadminSystemMonitoringRoutes.', start))
   it('super_admin 만 보낸다', () => {
     expect(block).toMatch(/admin\?\.role !== 'super_admin'\) return c\.json\(\{[^}]*\}, 403\)/)
   })
