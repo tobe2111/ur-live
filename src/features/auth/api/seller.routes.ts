@@ -29,8 +29,7 @@ import { startDashboardSession, isDashboardSessionCurrent, deriveDashboardSeat }
 import { filterAliveRefreshRows, rotationGraceExpiryIso } from '@/worker/utils/refresh-rotation';
 import { requireSeller } from '@/worker/middleware/auth';
 import { computeWholesaleOnly } from '@/features/supply/api/wholesale-helpers';
-import { isSeatShapedToken } from '@/worker/utils/store-seat-guard';
-import { transactionalMailReady } from '@/lib/ncp-sens-mail';
+import { isSeatShapedToken } from '@/worker/utils/store-seat-guard'; import { transactionalMailReady } from '@/lib/ncp-sens-mail'; // 📮 메일 수단 판정
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
