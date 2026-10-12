@@ -1,21 +1,10 @@
 /**
- * Seller Analytics Revenue Chart (Lazy Loaded)
- *
- * Recharts를 동적으로 로드하여 초기 번들에서 377KB를 절감합니다.
+ * 셀러 매출 추이 차트 — 2026-10-11 recharts → 직접 그린 SVG(`svg-charts.tsx`).
+ * 매출·주문 두 선이 **같은 세로축**을 쓴다(종전 recharts 설정 그대로 — yAxisId 0 공유).
  */
-
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from 'recharts'
 import { useTranslation } from 'react-i18next'
 import { formatNumber } from '@/utils/format'
+import { SvgLineChart } from './svg-charts'
 
 interface RevenueDataPoint {
   date: string
@@ -30,32 +19,24 @@ interface SellerAnalyticsChartProps {
 export default function SellerAnalyticsChart({ data }: SellerAnalyticsChartProps) {
   const { t } = useTranslation()
   return (
-    <ResponsiveContainer width="100%" height={240}>
-      <LineChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-        <XAxis
-          dataKey="date"
-          tickFormatter={(v: string) => v.slice(5)}
-          tick={{ fontSize: 10, fill: '#9ca3af' }}
-        />
-        <YAxis
-          tickFormatter={(v: number) => `${(v / 10000).toFixed(0)}${t('seller.salesUnit')}`}
-          tick={{ fontSize: 10, fill: '#9ca3af' }}
-          width={50}
-        />
-        <Tooltip
-          formatter={(value, name) => {
-            if (name === 'revenue') return [`${formatNumber(value ?? 0)}${t('common.won')}`, t('seller.revenueLabel')]
-            return [`${value}${t('seller.ordersUnit')}`, t('seller.totalOrdersLabel')]
-          }}
-          labelFormatter={(label) => String(label)}
-        />
-        <Legend
-          formatter={(value: string) => value === 'revenue' ? t('seller.revenueLabel') : t('seller.totalOrdersLabel')}
-        />
-        <Line type="monotone" dataKey="revenue" stroke="#374151" strokeWidth={2} dot={false} />
-        <Line type="monotone" dataKey="orders" stroke="#6b7280" strokeWidth={1.5} dot={false} yAxisId={0} />
-      </LineChart>
-    </ResponsiveContainer>
+    <SvgLineChart
+      data={data}
+      xKey="date"
+      height={240}
+      legend
+      series={[
+        { key: 'revenue', color: '#374151', width: 2, label: t('seller.revenueLabel') },
+        { key: 'orders', color: '#6b7280', width: 1.5, label: t('seller.totalOrdersLabel') },
+      ]}
+      xFormat={(v) => v.slice(5)}
+      yFormat={(v) => `${(v / 10000).toFixed(0)}${t('seller.salesUnit')}`}
+      tip={(d) => (
+        <>
+          <p className="text-gray-500">{d.date}</p>
+          <p className="font-semibold text-gray-900">{t('seller.revenueLabel')} {formatNumber(d.revenue ?? 0)}{t('common.won')}</p>
+          <p className="text-gray-700">{t('seller.totalOrdersLabel')} {d.orders}{t('seller.ordersUnit')}</p>
+        </>
+      )}
+    />
   )
 }

@@ -34,7 +34,7 @@
  *   동작하지만 손으로 만든 시트만큼 폰에 맞진 않다 — 그게 다음 일(UI 정리)이다.
  * - 안쪽에서 `window.location.assign()` 을 쓰는 화면은 여전히 통째로 이동한다(라우터 밖이다).
  */
-import { Suspense, useCallback, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import {
   MemoryRouter, Route, Routes, useLocation, useNavigate,
   UNSAFE_LocationContext, UNSAFE_RouteContext,
@@ -44,6 +44,7 @@ import ErrorBoundary from '@/components/ErrorBoundary'
 import { SellerEmbedProvider } from '@/shared/seller-embed'
 import { SellerRoutes } from '@/routes/seller.routes'
 import Sheet from './Sheet'
+import { ensureDashStrings } from '@/i18n'
 
 /**
  * 🔌 **바깥 라우터와의 줄을 끊는다** — 이게 없으면 시트는 열리는 순간 터진다 (2026-09-28).
@@ -126,6 +127,8 @@ export default function ToolPageSheet({ path, title, onClose, onLeave }: {
 }) {
   const [deeper, setDeeper] = useState(false)
   const backRef = useRef<(() => void) | null>(null)
+  // 🌐 2026-10-11: 시트 안은 대시보드 화면이다 — 대시보드용 문구 절반을 받는다(손님 주소라 부팅 때 안 받았다).
+  useEffect(() => { void ensureDashStrings() }, [])
   const back = useCallback(() => { backRef.current?.() }, [])
 
   return (

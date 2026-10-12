@@ -19,7 +19,7 @@
  *   - ☎️ 운영자 문의(`SellerSupportContact`)는 게이트 밖 — 매장 등록 전에도 열려 있어야 한다.
  */
 import { useEffect, useState, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Lock } from 'lucide-react'
 import { isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
@@ -33,8 +33,34 @@ import MyVouchersRail from './seller-page/MyVouchersRail'
 import WeekSummary from './seller-page/WeekSummary'
 import { useSellerHome } from './seller-page/useSellerHome'
 import { useNewOrderAlert } from './seller-page/useNewOrderAlert'
+import { useSellerEmbedded } from '@/shared/seller-embed'
+import { isAgencySeatToken } from '@/shared/agency-seat-token'
+
+/**
+ * 🚪 2026-10-11 (대표 *"셀러 대시보드는 마이페이지로 가면서 안쓰지 않아?"* — 2026-09-26 *"대시보드는 쓸 필요없게끔"*)
+ *   카카오로 들어온 사장님은 판매 도구를 **마이** 에서 쓴다(같은 화면을 시트로 연다). 그래서 대시보드 첫 화면으로
+ *   오면 마이로 보낸다. **남는 사람은 둘뿐이다**:
+ *     ① 에이전시 직원 좌석 — 이메일 로그인이라 마이가 없다. 이 화면이 그들의 작업대다.
+ *     ② 마이가 없는 옛 셀러 계정(카카오 소비자 계정 없음).
+ *   마이 시트 안(메모리 라우터)에서 이 화면이 열릴 때는 보내지 않는다 — 시트가 자기 자신을 닫아 버린다.
+ *   하위 화면(`/seller/products` 등)의 깊은 링크는 그대로 둔다 — 알림톡·메일 링크가 살아 있어야 한다.
+ */
+export function shouldSendOwnerToMy(embedded: boolean): boolean {
+  if (embedded) return false
+  try {
+    if (!localStorage.getItem('user_id')) return false
+    if (isAgencySeatToken(localStorage.getItem('seller_token'))) return false
+    return true
+  } catch { return false }
+}
 
 export default function SellerPage() {
+  const embedded = useSellerEmbedded()
+  if (shouldSendOwnerToMy(embedded)) return <Navigate to="/user/profile" replace />
+  return <SellerDashboard />
+}
+
+function SellerDashboard() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const isPc = useMediaQuery('(min-width: 1024px)')

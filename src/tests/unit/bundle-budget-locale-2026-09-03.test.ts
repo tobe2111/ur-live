@@ -21,7 +21,9 @@ const SUPPORTED = ['ko', 'en', 'ja', 'zh', 'es', 'fr'] as const
 describe('① 전제 — 언어는 한 번에 하나만 받는다', () => {
   it('언어마다 dynamic import 로 따로 가져온다', () => {
     for (const lang of SUPPORTED) {
-      expect(I18N).toContain(`import('../public/locales/${lang}/translation.json')`)
+      // 🌐 2026-10-11: 손님용/대시보드용 두 쪽으로 나뉘었다 — 쪽마다 언어별로 따로 가져온다(전제 그대로).
+      expect(I18N).toContain(`import('../public/locales/${lang}/translation.json?i18n-core')`)
+      expect(I18N).toContain(`import('../public/locales/${lang}/translation.json?i18n-dash')`)
     }
   })
 
@@ -33,7 +35,8 @@ describe('① 전제 — 언어는 한 번에 하나만 받는다', () => {
 describe('② 예산은 배타적 언어 청크를 한 번만 센다', () => {
   it('가장 큰 언어 하나만 총량에 넣는다', () => {
     expect(SCRIPT).toMatch(/const LOCALE_RE = \/\^locale-\(\?:ko\|en\|ja\|zh\|es\|fr\)-\//)
-    expect(SCRIPT).toContain('const countedFiles = jsFiles.filter(f => !LOCALE_RE.test(f.name) || f === biggestLocale)')
+    // 🌐 2026-10-11: 대시보드 사용자는 손님용·대시보드용을 둘 다 받으므로 쪽마다 가장 큰 것 하나씩(최악의 사용자).
+    expect(SCRIPT).toContain('const countedFiles = jsFiles.filter(f => !LOCALE_RE.test(f.name) || f === biggestLocale || f === biggestDashLocale)')
   })
 
   it('🔒 총량 두 개가 모두 그 목록을 쓴다 — 한쪽만 고치면 두 예산이 서로 다른 것을 잰다', () => {

@@ -21,6 +21,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import api from '@/lib/api'
 import type { Restaurant } from '@/pages/restaurant-map/types'
+import { mapFeedParams, isMapSeedRequest } from '@/shared/map-feed-seed'
 
 const PAGE = 50
 /** `loadAll()` 안전 상한 — 무한 루프/폭주 차단용이지 "여기서 끊는다"는 뜻이 아니다(도달 시 로그 없이 멈춘다). */
@@ -40,23 +41,32 @@ function keyOf(category: string, near: Near, sort: string): string {
 //   (= /api/group-buy/products?status=active&category=all)를 page1 시드로 **동기** 소비 →
 //   첫 페인트가 [스켈레톤 → 콘텐츠] 대신 즉시 콘텐츠. near/sort 가 붙으면 페이로드가 다르므로 미적용.
 let _ssrSeedUsed = false
-function peekSsrMainSeed(category: string, near: Near, sort: string): Restaurant[] | null {
-  if (_ssrSeedUsed || near || sort || category !== 'all' || typeof document === 'undefined') return null
+// 🗺️ 2026-10-11 [UNLOCK_LOADING]: 지도(`/map`)도 시드를 받는다 — 워커가 `__SSR_INITIAL_MAP__`
+//   (= `MAP_SEED_PATH`, 할인 큰 순 page1)를 싣는다. 홈 시드는 무정렬이라 지도가 못 쓰고 한 왕복을 더 기다렸다.
+//   같은 요청일 때만 쓴다(`isMapSeedRequest`) — 위치를 아는 사람(거리순)은 원래대로 직접 받는다.
+let _mapSeedUsed = false
+interface Seed { items: Restaurant[]; total: number | null }
+function readSeed(id: string): Seed | null {
   try {
-    const el = document.getElementById('__SSR_INITIAL_MAIN__')
+    const el = document.getElementById(id)
     if (!el?.textContent) return null
     const parsed = JSON.parse(el.textContent)
-    if (parsed?.success && Array.isArray(parsed.data)) return parsed.data as Restaurant[]
+    if (parsed?.success && Array.isArray(parsed.data)) {
+      return { items: parsed.data as Restaurant[], total: typeof parsed.total === 'number' ? parsed.total : null }
+    }
   } catch { /* 손상된 inject — fetch fallback */ }
   return null
 }
+function peekSsrMainSeed(category: string, near: Near, sort: string): Seed | null {
+  if (typeof document === 'undefined') return null
+  if (!_mapSeedUsed && isMapSeedRequest(category, near, sort)) return readSeed('__SSR_INITIAL_MAP__')
+  if (_ssrSeedUsed || near || sort || category !== 'all') return null
+  return readSeed('__SSR_INITIAL_MAIN__')
+}
 
 async function fetchPage(category: string, page: number, near: Near, sort: string): Promise<{ items: Restaurant[]; total: number | null } | null> {
-  const params: Record<string, string | number> = { category }
-  // page1 은 파라미터를 최소로 — 정렬/near 가 없으면 무파라미터 기본 요청(= materialized·SSR 과 같은 캐시 경로).
-  if (page > 1) { params.page = page; params.limit = PAGE }
-  if (sort) params.sort = sort
-  if (near) { params.near = `${near.lat},${near.lng}`; if (page === 1) params.limit = PAGE }
+  // 파라미터는 SSOT 에서 — 워커 시드(MAP_SEED_PATH)·cron 예열과 같은 문자열이어야 미리 데운 것을 쓴다.
+  const params = mapFeedParams(category, page, near, sort, PAGE)
   const r = await api.get('/api/group-buy/products', { params }).catch(() => null)
   if (r == null) return null
   const items = (r.data?.success ? (r.data.data || []) : []) as Restaurant[]
@@ -75,7 +85,7 @@ export function useMapProducts(category: string, near?: Near, opts?: { sort?: st
     const cached = fresh(k)
     if (cached) return cached
     const seed = peekSsrMainSeed(category, near, sort)
-    return seed ? { items: seed, total: null, page: 1, done: seed.length < PAGE, ts: Date.now() } : null
+    return seed ? { items: seed.items, total: seed.total, page: 1, done: seed.items.length < PAGE, ts: Date.now() } : null
   }
 
   const [entry, setEntry] = useState<Entry>(() => seedOf(cacheKey) ?? { items: [], total: null, page: 0, done: false, ts: 0 })
@@ -146,7 +156,9 @@ export function useMapProducts(category: string, near?: Near, opts?: { sort?: st
     const cachedHit = fresh(cacheKey)
     const seeded = cachedHit ?? seedOf(cacheKey)
     if (seeded) {
-      if (!cachedHit) _ssrSeedUsed = true    // SSR 시드는 1회만 — 이후 마운트가 낡은 시드를 다시 읽지 않게
+      // SSR 시드는 1회만 — 이후 마운트가 낡은 시드를 다시 읽지 않게. 하드로드엔 시드가 하나뿐이라 둘 다 닫는다
+      //   (SPA 로 옮겨 다녀도 DOM 에 남은 옛 시드가 다른 화면의 첫 페인트로 새지 않는다).
+      if (!cachedHit) { _ssrSeedUsed = true; _mapSeedUsed = true }
       _cache.set(cacheKey, seeded)
       ref.current.entry = seeded
       setEntry(seeded)

@@ -125,8 +125,13 @@ if (indexHtmlPath) {
  */
 const LOCALE_RE = /^locale-(?:ko|en|ja|zh|es|fr)-/;
 const localeFiles = jsFiles.filter(f => LOCALE_RE.test(f.name));
-const biggestLocale = localeFiles.reduce((a, f) => (!a || f.size > a.size ? f : a), null);
-const countedFiles = jsFiles.filter(f => !LOCALE_RE.test(f.name) || f === biggestLocale);
+// 🌐 2026-10-11: 언어 파일이 손님용(`locale-ko-*`)과 대시보드용(`locale-ko-dash-*`) 두 쪽으로 나뉘었다.
+//   대시보드 사용자는 **둘 다** 받으므로 쪽마다 가장 큰 것 하나씩 센다(하나만 세면 최악의 사용자를 과소 측정한다).
+const DASH_LOCALE_RE = /^locale-(?:ko|en|ja|zh|es|fr)-dash-/;
+const biggestOf = (list) => list.reduce((a, f) => (!a || f.size > a.size ? f : a), null);
+const biggestLocale = biggestOf(localeFiles.filter(f => !DASH_LOCALE_RE.test(f.name)));
+const biggestDashLocale = biggestOf(localeFiles.filter(f => DASH_LOCALE_RE.test(f.name)));
+const countedFiles = jsFiles.filter(f => !LOCALE_RE.test(f.name) || f === biggestLocale || f === biggestDashLocale);
 
 const totalSize = countedFiles.reduce((s, f) => s + f.size, 0);
 const totalGzip = countedFiles.reduce((s, f) => s + f.gzip, 0);
@@ -373,7 +378,18 @@ const BUDGET = {
   //   `AgencyStaffStoresEditor` + 직원 목록 배정 표시, 전부 lazy)을 main(#1702 포함)과 합친 트리. 로컬 실측
   //   **7.67149 MB**(초과 1.5 KB) · critical path 198.4 / 240 KB gzip(변화 없음 — 첫 페인트 무관).
   //   규칙대로 `실측 + 3 KB` 이상인 가장 작은 두 자리 값 = 7.68(헤드룸 ~8.7 KB).
-  totalRawMB: 7.68,
+  // ⬇️ 2026-10-11 6차(첫 하향): 7.68 → **7.38**(−0.30). 무엇이 줄었나 — Sentry 를 패키지 통째가 아니라 **쓰는 함수 6개만**
+  //   싣도록 바꿨다(`src/lib/sentry-sdk.ts` 진입점). sentry 청크 실측 **431 KB → 129 KB raw**. 같은 트리 로컬 실측
+  //   **7.37413 MB** · critical path 198.3 / 240 KB(변화 없음). 규칙대로 `실측 + 3 KB` 이상인 가장 작은 두 자리 값 = 7.38.
+  //   charts(379 KB) 는 recharts 본체(원본 755 KB)가 대부분이라 import 방식으로는 못 줄인다 — 줄이려면 차트를 직접 그려야 한다.
+  // ⬇️ 2026-10-11 7차(두 번째 하향): 7.38 → **7.01**. 대시보드 차트를 직접 그린 SVG 로 바꿔 recharts(+redux·immer·d3)를
+  //   걷어냈다 — charts 청크 **388 → 7.7 KB**. 번역 분리 뒤 언어는 손님용·대시보드용을 각각 센다(대시보드 사용자 = 둘 다).
+  //   로컬 실측 **6.99784 MB** · critical path 198.5 / 240 KB 불변. 규칙대로 `실측 + 3 KB` 이상 가장 작은 두 자리 = 7.01.
+  // ⚠️ 2026-10-11 8차: 7.01 → **7.02**(+0.01). 무엇이 왜 늘었나 — 하향 직후 main 을 합치자 #1711(이용권 톡캘린더 알림·
+  //   선물 넘기기)과 #1712~#1716(SEO 첫 화면·구조화 데이터)이 들어와 같은 트리 로컬 실측 **7.01196 MB**(초과 2 KB).
+  //   늘어난 건 lazy 화면과 공유 모듈이고 critical path 198.6 / 240 KB 그대로. 규칙대로 `실측 + 3 KB` 이상 가장 작은 두 자리 = 7.02.
+  //   (이 PR 이 7.68 → 7.01 로 0.67 MB 를 덜어낸 뒤의 첫 상향이다.)
+  totalRawMB: 7.02,
   // ✅ 2026-07-29 교정 완료 — **CI 실측 2.707 MB**(run 30426592229, main+가드 변경 기준).
   //   ⚠️ 교정 전 추정은 "2.2~2.5MB" 였고 **틀렸다**. 그 추정값으로 켰다면 전 PR 이 red 였다.
   //   숫자를 지어내지 말고 반드시 CI 의 "Bundle size report" 로그에서 읽을 것.
@@ -385,7 +401,9 @@ const BUDGET = {
   // ⬆️ 2026-10-11: 2.45 → **2.46**(+0.01, 첫 상향). 같은 트리 로컬 실측 **2.45041 MB**(이 스크립트와 같은 zlib 계산,
   //   초과 0.4 KB). 늘어난 건 전부 lazy 화면(에이전시 콘솔·어드민 에이전시·사장님 활동 기록)이고 첫 페인트는 그대로다.
   //   ⚠️ 09-03 교정 뒤 한 달에 0.15 MB 가 찼다 — 다음에 닿으면 상향 말고 큰 lazy 청크(sentry 431 KB · charts 379 KB raw) 정리가 먼저다.
-  totalGzipMB: 2.46,
+  // ⬇️ 2026-10-11(첫 하향): 2.46 → **2.36**. 같은 Sentry 슬림화 — 로컬 실측 **2.35680 MB**(이 스크립트와 같은 zlib 계산).
+  // ⬇️ 2026-10-11(두 번째 하향): 2.36 → **2.26**. 같은 차트 교체 — 로컬 실측 **2.25271 MB**.
+  totalGzipMB: 2.26,
   // 🛡️ 2026-05-03: 800 → 900 상향. i18n 적용 확장 (15+ 페이지, 260+ 키) 으로
   // index 청크가 800.6KB 로 0.6KB 초과 → CI 실패. 100KB 헤드룸 확보하되
   // 비대 감지 임계는 유지 (900KB 넘으면 진짜 코드 분할 필요).

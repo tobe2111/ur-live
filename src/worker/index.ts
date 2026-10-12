@@ -173,7 +173,7 @@ import { buildDetailMeta, buildStayDetailMeta, buildProductMeta } from './utils/
 import { resolveConsumerSurfaceSeo } from '../shared/seo/consumer-surfaces';
 import { resolveConsumerAlias } from '../shared/seo/consumer-redirects';
 import { applySurfaceMeta, buildSellerSurfaceMeta, shouldNoindexMissingEntity, resolveRegionSeo } from './utils/surface-ssr-meta'; import { buildSurfaceListJsonLd, buildCuratorJsonLd } from './utils/surface-list-jsonld';
-import { fetchSsrPayload, applySsrDiagHeaders, type SsrTarget } from './utils/ssr-payload';
+import { fetchSsrPayload, applySsrDiagHeaders, type SsrTarget } from './utils/ssr-payload'; import { MAP_SEED_PATH } from '../shared/map-feed-seed';
 // 🛡️ 2026-05-20: 에이전시 = 가게 입점 영업 모델 (Phase 2).
 // 🛡️ 2026-05-18: 숙소 공구 에이전시 모니터링 — PR 1 Foundation.
 // 🛡️ 2026-05-27 (영업 검증 Layer 2): 매장 사전 등록 prospects.
@@ -590,9 +590,9 @@ app.use('*', async (c, next) => {
       ssrTarget = { slot: 'VOUCHERS', path: '/api/products?page=1&limit=20&deal_only=1&sort=price_low' };
     } else if (url.pathname === '/browse' && !url.search) {
       ssrTarget = { slot: 'BROWSE', path: '/api/products?page=1&limit=20&exclude_deal_only=1' };
-    // 🥗 2026-07-15 워커 다이어트: /live SSR 슬롯 제거 — 라이브커머스 영구중단으로 /live 라우트·/api/streams 마운트 모두 제거됨(죽은 self-fetch).
-    // } else if (url.pathname === '/live' && !url.search) {
-    //   ssrTarget = { slot: 'LIVE', path: '/api/streams?status=live&limit=20' };
+    } else if (url.pathname === '/map' && !url.search) { // 🗺️ 2026-10-11 지도 첫 화면 시드 — 홈 시드(무정렬)를 못 써 한 왕복 더 기다렸다
+      ssrTarget = { slot: 'MAP', path: MAP_SEED_PATH }; // 경로 SSOT shared/map-feed-seed.ts — 화면 요청과 byte-일치
+    // 🥗 2026-07-15 워커 다이어트: /live SSR 슬롯(`/api/streams?status=live&limit=20`) 제거 — 라이브커머스 영구중단(죽은 self-fetch).
     // 🗑️ 2026-07-10 [UNLOCK_LOADING] (로딩 전수조사): GROUPBUY 슬롯 제거 — `/group-buy` 는 App.tsx 에서
     //   `<Navigate to="/" replace/>`(홈으로 즉시 리다이렉트)이고 유일 소비자 GroupBuyListPage 는 미라우팅.
     //   콜드 시 최대 1.5s self-fetch 로 리다이렉트 응답만 느리게 만들던 순수 낭비였음. (라우트가 부활하면
@@ -716,7 +716,7 @@ app.use('*', async (c, next) => {
       : /^\/products\/\d+(?:[/?#]|$)/.test(url.pathname) ? 'product'
       : /^\/(u|profile|s)(\/|$)/.test(url.pathname) ? 'linkshop'
       : url.pathname === '/vouchers' ? 'vouchers'
-      : url.pathname === '/browse' ? 'browse'
+      : url.pathname === '/browse' ? 'browse' : url.pathname === '/map' ? 'map'
       : url.pathname === '/urshorts' ? 'urshorts'
       : null;
     const routeChunks = chunkSurface ? ROUTE_CHUNK_MAP[chunkSurface] : undefined;

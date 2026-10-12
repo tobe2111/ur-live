@@ -48,7 +48,9 @@ describe('전량 순회 금지', () => {
 
   it('SSR 시드(0-RTT)와 near 거리랭킹 경로는 그대로다 — 잠긴 계약', () => {
     expect(hook).toMatch(/__SSR_INITIAL_MAIN__/)
-    expect(hook).toMatch(/params\.near = `\$\{near\.lat\},\$\{near\.lng\}`/)
+    // 🗺️ 2026-10-11: 파라미터 조립은 `shared/map-feed-seed.ts` 로 옮겼다(워커 시드와 같은 문자열을 만들려고).
+    expect(hook).toMatch(/mapFeedParams\(category, page, near, sort, PAGE\)/)
+    expect(R('shared/map-feed-seed.ts')).toMatch(/params\.near = `\$\{near\.lat\},\$\{near\.lng\}`/)
   })
 })
 
