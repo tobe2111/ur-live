@@ -35,18 +35,24 @@
 
 ## ✅ 지금 등록할 10개 (이 순서대로)
 
-| 순서 | 우리 이름 | 받는 사람 | 언제 | 카테고리 |
-|---|---|---|---|---|
-| 1 | `admin_test_send` | 대표 | 어드민 시험 발송 | 거래 |
-| 2 | `voucher_issued` | 손님 | 이용권 결제 직후 | 주문/예약 |
-| 3 | `seller_first_voucher` | 사장님 | 첫 이용권이 팔렸을 때(매장당 1번) | 주문/예약 |
-| 4 | `seller_voucher_sold` | 사장님 | 이용권이 팔릴 때(두 번째부터) | 주문/예약 |
-| 5 | `voucher_refunded` | 손님 | 환불 완료 | 주문/예약 |
-| 6 | `voucher_expire_soon` | 손님 | 만료 30일 전 한 번 | 주문/예약 |
-| 7 | `seller_approved` | 사장님 | 매장 승인 | 회원 |
-| 8 | `business_registration_rejected` | 사장님 | 사업자등록증 반려 | 회원 |
-| 9 | `seller_bank_changed` | 사장님 | 정산 계좌 변경(보안) | 회원 |
-| 10 | `payout_completed` | 사장님·에이전시·유저 | 정산 송금 완료 | 거래 |
+> 🔤 **2026-10-12 정정 — SENS 템플릿 코드는 영문·숫자만 된다**(대표 실측: 콘솔이 *"영문, 숫자만 입력 가능합니다"*).
+> 그래서 우리 이름(`_` 포함)을 코드로 그대로 쓸 수 없다. 아래 표의 **SENS 템플릿 코드**로 등록하고,
+> 승인되면 `alimtalk_approved_templates` 에 `우리이름=코드` 로 적는다. 코드 수정은 필요 없다(`parseTemplateCodeMap` 이 이미 지원).
+> 예: `admin_test_send=admintest, voucher_issued=voucherissued`
+> 아래 "규칙 3" 의 *"코드 = 우리 이름"* 은 이 정정으로 대체된다. 나중에 등록할 9개도 같은 방식(밑줄을 뺀 소문자)으로 짓는다.
+
+| 순서 | 우리 이름 | **SENS 템플릿 코드** | 받는 사람 | 언제 | 카테고리 |
+|---|---|---|---|---|---|
+| 1 | `admin_test_send` | `admintest` | 대표 | 어드민 시험 발송 | 거래 |
+| 2 | `voucher_issued` | `voucherissued` | 손님 | 이용권 결제 직후 | 주문/예약 |
+| 3 | `seller_first_voucher` | `sellerfirstvoucher` | 사장님 | 첫 이용권이 팔렸을 때(매장당 1번) | 주문/예약 |
+| 4 | `seller_voucher_sold` | `sellervouchersold` | 사장님 | 이용권이 팔릴 때(두 번째부터) | 주문/예약 |
+| 5 | `voucher_refunded` | `voucherrefunded` | 손님 | 환불 완료 | 주문/예약 |
+| 6 | `voucher_expire_soon` | `voucherexpiresoon` | 손님 | 만료 30일 전 한 번 | 주문/예약 |
+| 7 | `seller_approved` | `sellerapproved` | 사장님 | 매장 승인 | 회원 |
+| 8 | `business_registration_rejected` | `bizregrejected` | 사장님 | 사업자등록증 반려 | 회원 |
+| 9 | `seller_bank_changed` | `sellerbankchanged` | 사장님 | 정산 계좌 변경(보안) | 회원 |
+| 10 | `payout_completed` | `payoutcompleted` | 사장님·에이전시·유저 | 정산 송금 완료 | 거래 |
 
 > 1번(시험용)을 먼저 승인받아 두면 다른 템플릿을 기다리지 않고 "알림톡이 실제로 폰에 오는지"를 바로 확인할 수 있다.
 > 이용권 1장이 팔리고 쓰이면 알림톡은 **2통**(손님 발급 + 사장님 판매)만 나간다. 안 쓰고 묵히면 30일 전 안내 1통이 더 붙는다.
