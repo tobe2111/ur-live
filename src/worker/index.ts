@@ -173,7 +173,7 @@ import { buildDetailMeta, buildStayDetailMeta, buildProductMeta } from './utils/
 import { resolveConsumerSurfaceSeo } from '../shared/seo/consumer-surfaces';
 import { resolveConsumerAlias } from '../shared/seo/consumer-redirects';
 import { applySurfaceMeta, buildSellerSurfaceMeta, shouldNoindexMissingEntity, isRetiredSurface, resolveRegionSeo } from './utils/surface-ssr-meta'; import { buildSurfaceListJsonLd, buildCuratorJsonLd } from './utils/surface-list-jsonld';
-import { fetchSsrPayload, applySsrDiagHeaders, type SsrTarget } from './utils/ssr-payload'; import { MAP_SEED_PATH } from '../shared/map-feed-seed';
+import { fetchSsrPayload, applySsrDiagHeaders, ssrWaitUntil, type SsrTarget } from './utils/ssr-payload'; import { MAP_SEED_PATH } from '../shared/map-feed-seed';
 // 🛡️ 2026-05-20: 에이전시 = 가게 입점 영업 모델 (Phase 2).
 // 🛡️ 2026-05-18: 숙소 공구 에이전시 모니터링 — PR 1 Foundation.
 // 🛡️ 2026-05-27 (영업 검증 Layer 2): 매장 사전 등록 prospects.
@@ -671,8 +671,8 @@ app.use('*', async (c, next) => {
     //   늦게 끼어들어 "순서가 뒤바뀐 것"처럼 보인다. 둘을 **병렬**로 받는다(직렬이면 그만큼 느려진다).
     if (ssrTarget) {
       const [r, extra] = await Promise.all([
-        fetchSsrPayload(ssrTarget, origin0, c.env),
-        ssrExtra ? fetchSsrPayload(ssrExtra, origin0, c.env) : Promise.resolve(null),
+        fetchSsrPayload(ssrTarget, origin0, c.env, ssrWaitUntil(c)),
+        ssrExtra ? fetchSsrPayload(ssrExtra, origin0, c.env, ssrWaitUntil(c)) : Promise.resolve(null),
       ]);
       ssrPayload = r.payload;
       // ⚠️ 'ssrStatus' 는 아래 soft-404 판정(shouldNoindexMissingEntity)이 읽는다 — 지우지 말 것.

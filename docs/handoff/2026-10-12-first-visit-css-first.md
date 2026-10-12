@@ -72,3 +72,9 @@ CDP `emulateNetworkConditions`+`setCPUThrottlingRate 4`. 헤더는 content-type/
 - **E4(배포 후 1분)**: 위 curl 이 `public, max-age=31536000, immutable` **하나만** 내고, 두 번째 요청에 `cf-cache-status: HIT`.
 - 🩸 같은 날 앞 세션의 audit log(`_headers` immutable 추가)는 라이브에서 **효과가 없었다** — 헤더 파일이 바뀌었는지가 아니라 응답 헤더를 재야 판정된다.
 - ⚠️ 이 환경에서 `! Header` 문법을 프리뷰로 확인하지 못했다(`*.pages.dev` 차단). 배포 후 curl 이 유일한 판정.
+
+## 10. 후속 — 상세·유어샵 첫 응답의 콜드 D1 대기 (대표 승인 "허가 — 진행")
+- 실측: `/pass/2919` 첫 요청 `self;dur=418` · `/u/jiwon1228` `self;dur=552` → 두 번째 28~37ms. 엣지 TTL 120~300s 가 지나면 다시 콜드.
+- 처방: `ssr-payload.ts` 에 직전 사본(1시간, Cache API) 계층 — 엣지 miss 면 사본을 바로 쓰고 응답 뒤 새로고침.
+- **E4**: `curl -sI -A '<iPhone UA>' https://urdeal.kr/pass/2919` 를 3분 간격 두 번 → 두 번째 `X-SSR-Status: DETAIL:stale-hit` + `Server-Timing` 에 `self;` 없음. 실사용자 TTFB 중앙값(`/api/analytics/summary`)이 0.45s 에서 내려가는지(하루 뒤).
+- 같은 세션의 다른 수: 첫 렌더 CPU(`formatNumber` 포매터 캐시 · 비로그인 찜 하트 구독 제거), 카드 사진 2x 상한, `_headers` 폰트 캐시 수리, 첫 방문 폰트 미루기, 지도 SDK 조기 출발.
