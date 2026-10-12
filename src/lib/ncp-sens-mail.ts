@@ -8,7 +8,14 @@
  *   회신 주소가 붙은 메일(대량·홍보·아웃리치)은 종전 Resend 로 보낸다. 네이버 클라우드 약관상 홍보 메일은
  *   `advertising: true` + 수신거부 문구가 필요하고, 대량 콜드메일은 계정 정지 위험이 있다.
  *
- * API: POST https://mail.apigw.ntruss.com/api/v1/mails (KR 리전) · 인증 헤더 3종(알림톡과 동일).
+ * API(2026-10-12 정정 — v2): POST https://sens.apigw.ntruss.com/mail/v2/services/{serviceId}/requests · 인증 헤더 3종(알림톡과 동일).
+ *   🩸 처음엔 옛 Cloud Outbound Mailer API(mail.apigw.ntruss.com/api/v1/mails)로 짰는데, 그 서비스는 2026-09-17 에
+ *   SENS 로 흡수됐고 옛 API 는 **이관된 프로젝트(mail-UUID)에 묶여** 있다. 새로 가입한 우리 계정엔 그 프로젝트가 없어
+ *   라이브 시험 발송이 `Member[…]'s default project is not exist`(500)로 막혔다. ⇒ 알림톡처럼 SENS 프로젝트의
+ *   **메일 서비스 ID**(NRN, 예 `ncp:mail:kr:…:main` — 콜론이 있어 경로에서 인코딩)로 보낸다.
+ *   v2 본문 차이: 수신자 type 은 'R' 이 아니라 'TO'. 응답은 202 + requestId.
+ *   ⚠️ 형식 출처: 네이버 클라우드 공식 문서가 이 환경에서 안 열려(CONNECT 403) 공개된 서드파티 연동 코드로 확인했다 —
+ *   첫 라이브 시험 발송(`POST /api/admin/mail-test-send`)이 최종 판정이다.
  * ⚠️ 발신 주소의 도메인(urdeal.kr)을 SENS 콘솔에 등록하고 SPF/DKIM DNS 를 넣어야 스팸함으로 안 간다.
  */
 import { sensSignature, sensSignatureMessage } from './ncp-sens'
@@ -20,13 +27,18 @@ export interface SensMailEnv {
   NCP_MAIL_SENDER?: string
   /** 발신자 이름 — 기본 '유어딜' */
   NCP_MAIL_SENDER_NAME?: string
+  /** SENS 프로젝트의 메일 서비스 ID(NRN) — 콘솔 SENS › 프로젝트에서 확인. 없으면 메일이 SENS 로 가지 않는다. */
+  NCP_SENS_MAIL_SERVICE_ID?: string
 }
 
-export const SENS_MAIL_HOST = 'https://mail.apigw.ntruss.com'
-export const SENS_MAIL_URI = '/api/v1/mails'
+export const SENS_MAIL_HOST = 'https://sens.apigw.ntruss.com'
+/** 요청 경로이자 서명 대상 URI — 서명은 **인코딩된 경로 그대로**를 쓴다(알림톡 `alimtalkUri` 와 같은 규칙). */
+export function sensMailUri(serviceId: string): string {
+  return `/mail/v2/services/${encodeURIComponent(serviceId)}/requests`
+}
 
 export function sensMailConfigured(e: Record<string, unknown> | null | undefined): boolean {
-  return !!(e && e.NCP_ACCESS_KEY && e.NCP_SECRET_KEY && e.NCP_MAIL_SENDER)
+  return !!(e && e.NCP_ACCESS_KEY && e.NCP_SECRET_KEY && e.NCP_MAIL_SENDER && e.NCP_SENS_MAIL_SERVICE_ID)
 }
 
 /**
@@ -49,7 +61,7 @@ export function buildSensMailBody(
     senderName: String(env.NCP_MAIL_SENDER_NAME || '유어딜'),
     title: p.subject,
     body: p.html,
-    recipients: [{ address: p.to, type: 'R' }],
+    recipients: [{ address: p.to, type: 'TO' }],
     individual: true,
     advertising: false,
   }
@@ -73,11 +85,13 @@ export async function sendSensMail(
 ): Promise<{ success: boolean; error?: string }> {
   const accessKey = String(env.NCP_ACCESS_KEY ?? '')
   const secretKey = String(env.NCP_SECRET_KEY ?? '')
-  if (!accessKey || !secretKey || !env.NCP_MAIL_SENDER) return { success: false, error: 'sens_mail_not_configured' }
+  const serviceId = String(env.NCP_SENS_MAIL_SERVICE_ID ?? '').trim()
+  if (!accessKey || !secretKey || !env.NCP_MAIL_SENDER || !serviceId) return { success: false, error: 'sens_mail_not_configured' }
+  const uri = sensMailUri(serviceId)
   const timestamp = String(Date.now())
   try {
-    const signature = await sensSignature(secretKey, sensSignatureMessage('POST', SENS_MAIL_URI, timestamp, accessKey))
-    const res = await fetch(`${SENS_MAIL_HOST}${SENS_MAIL_URI}`, {
+    const signature = await sensSignature(secretKey, sensSignatureMessage('POST', uri, timestamp, accessKey))
+    const res = await fetch(`${SENS_MAIL_HOST}${uri}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json; charset=utf-8',

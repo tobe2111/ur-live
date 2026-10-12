@@ -81,6 +81,7 @@ export interface Env {
   NCP_KAKAO_CHANNEL_ID?: string;         // 카카오톡 채널 검색용 ID (예: @유어딜)
   NCP_MAIL_SENDER?: string;              // ✉️ SENS 메일 발신 주소(예: no-reply@urdeal.kr) — 있으면 거래성 메일이 SENS 로(없으면 Resend)
   NCP_MAIL_SENDER_NAME?: string;         // SENS 메일 발신자 이름(기본 '유어딜')
+  NCP_SENS_MAIL_SERVICE_ID?: string;     // ✉️ SENS 프로젝트의 메일 서비스 ID(NRN, ncp:mail:kr:…) — 2026-10-12 v2 API 전환. 없으면 메일은 SENS 로 안 간다
 
   ADS_ALERT_ALIMTALK_TPL?: string;       // 🎯 유어애즈 광고 알림 알림톡 템플릿 코드(미설정 시 이메일만 · SENS 발송)
 

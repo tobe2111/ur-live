@@ -120,6 +120,7 @@ publicUtilityRoutes.get('/api/version', async (c) => {
     NCP_SENS_ALIMTALK_SERVICE_ID: !!env.NCP_SENS_ALIMTALK_SERVICE_ID,
     NCP_KAKAO_CHANNEL_ID: !!env.NCP_KAKAO_CHANNEL_ID,
     NCP_MAIL_SENDER: !!(env as { NCP_MAIL_SENDER?: string }).NCP_MAIL_SENDER, // ✉️ SENS 메일 발신 주소(2026-10-12)
+    NCP_SENS_MAIL_SERVICE_ID: !!(env as { NCP_SENS_MAIL_SERVICE_ID?: string }).NCP_SENS_MAIL_SERVICE_ID, // ✉️ SENS 메일 서비스 ID(v2)
     DB: !!env.DB,
   }
   try {

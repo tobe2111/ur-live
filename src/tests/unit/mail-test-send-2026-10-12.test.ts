@@ -14,7 +14,7 @@ import { Hono } from 'hono'
 import { adminSystemMonitoringRoutes } from '@/features/admin/api/admin-system-monitoring.routes'
 import { _setSensMailEnvForTest } from '@/services/email'
 
-const SENS = { NCP_ACCESS_KEY: 'AK', NCP_SECRET_KEY: 'SK', NCP_MAIL_SENDER: 'no-reply@urdeal.kr' }
+const SENS = { NCP_ACCESS_KEY: 'AK', NCP_SECRET_KEY: 'SK', NCP_MAIL_SENDER: 'no-reply@urdeal.kr', NCP_SENS_MAIL_SERVICE_ID: 'ncp:mail:kr:1:main' }
 
 function fakeDb(role: string, user: { email: string | null } | null) {
   const reads: string[] = []
@@ -68,7 +68,7 @@ describe('메일 발송 시험', () => {
     const r = await app(fakeDb('super_admin', { email: 'boss@example.com' })).req({ user_id: 3, to: 'stranger@evil.test' })
     const j = await r.json() as { success: boolean; to: string }
     expect(sent).toHaveLength(1)
-    expect(sent[0].url).toContain('mail.apigw.ntruss.com')
+    expect(sent[0].url).toContain('sens.apigw.ntruss.com/mail/v2/services/')
     expect(sent[0].body.recipients?.map((x) => x.address)).toEqual(['boss@example.com'])
     expect(JSON.stringify(sent[0].body)).not.toContain('stranger@evil.test')
     expect(j.success).toBe(true)

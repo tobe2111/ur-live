@@ -125,3 +125,13 @@ SENS(통합 콘솔) Mail → Domain Management 에서 urdeal.kr 등록 → 인�
   대표에게 콘솔/문서의 "메일 발송 요청" 예시를 요청함. 받기 전엔 코드를 쓰지 말 것(추측 fix 금지).
 - **다음 세션 첫 액션**: 대표가 메일 서비스 ID 를 Cloudflare 에 넣고 API 예시를 주면 → v2 로 교체 PR → 배포 →
   `POST /api/admin/mail-test-send {"user_id":3}` 재시험.
+
+## 8차 — 메일 v2 전환 코드 (2026-10-12 밤)
+- 대표 "1번 한 것 같아. API 예시는 어디서 보는지 모르겠어." → 예시 없이 진행.
+- **실측(값 아닌 모양만)**: ur-live Pages 에 `NCP_SENS_MAIL_SERVICE_ID` 존재 · plain_text · `ncp:mail:` 로 시작 · 콜론 4개 · 공백 없음 → 이름·형식 맞음.
+- v2 형식 출처: 공식 문서 차단(CONNECT 403) → 공개 서드파티 연동 코드(github sjk4425/ncloud-mcp-server `application-sens-mail.ts`)를 읽어 확인.
+  - host `https://sens.apigw.ntruss.com` · path `/mail/v2/services/{encodeURIComponent(NRN)}/requests` · **서명 URI = 인코딩된 경로 그대로**
+  - 본문 필드는 옛 형식과 같고 **수신자 type 만 `TO`**(옛 `R`) · 응답 202 + requestId
+- 수정: `src/lib/ncp-sens-mail.ts`(`sensMailUri()` 신설, 설정 판정에 서비스 ID 추가) · env 타입 · `/api/version` 플래그 · health 키 목록 · 테스트 3파일 · 주입 4건(전부 빨간불 확인).
+- ⚠️ 판정은 라이브: 머지·배포 후 `POST /api/admin/mail-test-send {"user_id":3}` → 성공이면 받은편지함/스팸함 대표 확인.
+  실패 원문이 `Forbidden` 이면 그 프로젝트의 메일 채널이 꺼져 있는 것(서드파티 코드 주석 — useMail=false).
