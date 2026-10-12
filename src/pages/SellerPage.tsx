@@ -34,7 +34,7 @@ import WeekSummary from './seller-page/WeekSummary'
 import { useSellerHome } from './seller-page/useSellerHome'
 import { useNewOrderAlert } from './seller-page/useNewOrderAlert'
 import { useSellerEmbedded } from '@/shared/seller-embed'
-import { isAgencySeatToken } from '@/shared/agency-seat-token'
+import { shouldSendOwnerToMy } from '@/lib/seller-deep-link'
 
 /**
  * 🚪 2026-10-11 (대표 *"셀러 대시보드는 마이페이지로 가면서 안쓰지 않아?"* — 2026-09-26 *"대시보드는 쓸 필요없게끔"*)
@@ -45,14 +45,9 @@ import { isAgencySeatToken } from '@/shared/agency-seat-token'
  *   마이 시트 안(메모리 라우터)에서 이 화면이 열릴 때는 보내지 않는다 — 시트가 자기 자신을 닫아 버린다.
  *   하위 화면(`/seller/products` 등)의 깊은 링크는 그대로 둔다 — 알림톡·메일 링크가 살아 있어야 한다.
  */
-export function shouldSendOwnerToMy(embedded: boolean): boolean {
-  if (embedded) return false
-  try {
-    if (!localStorage.getItem('user_id')) return false
-    if (isAgencySeatToken(localStorage.getItem('seller_token'))) return false
-    return true
-  } catch { return false }
-}
+export { shouldSendOwnerToMy }
+// ↑ 판정은 `@/lib/seller-deep-link` 한 곳에 있다(2026-10-12 — 하위 주소도 같은 판정으로 마이에 보낸다).
+//   대시보드 껍데기(`SellerLayout`)와 이 화면이 각자 판정하면 둘이 갈린다.
 
 export default function SellerPage() {
   const embedded = useSellerEmbedded()

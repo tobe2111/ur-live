@@ -22,44 +22,20 @@ import { isIndexableImageUrl } from '../../shared/seo/indexable-image';
 
 const sitemapRoutes = new Hono<{ Bindings: Env }>();
 
-// 🏭 2026-06-08 도매몰(유통스타트) 정규 도메인 — utongstart.com 호스트면 도매 전용 sitemap 발행.
-//   소비자(urdeal.kr) sitemap 과 분리: 도매 페이지는 utongstart.com loc 로, 소비자 페이지는 섞지 않음.
-const WHOLESALE_HOSTS = ['utongstart.com', 'www.utongstart.com'];
-const WHOLESALE_BASE = 'https://utongstart.com';
 
 // 📉 2026-09-02: sitemap 은 캐시 미들웨어가 없어 Yeti/Googlebot/Bingbot·uptime 프로브가 부를 때마다 D1 을 다시 읽었다
 //   (products 500+500 · sellers 200 + EXISTS 2개 · blog 100 · computeRegionStats 무제한). .xml 은 CF 기본 캐시 확장자가 아니다.
-//   캐시 키가 호스트를 포함하므로 도매(utongstart)/소비자 sitemap 은 섞이지 않는다. 미들웨어는 `worker/index.ts` 에서
+//   캐시 키가 호스트를 포함한다(2026-10-12 이후 호스트별 분기는 없다 — 도매 sitemap 제거). 미들웨어는 `worker/index.ts` 에서
 //   `app.route` 앞에 건다(이 모듈은 유닛이 직접 부르므로 `caches.default` 에 묶지 않는다).
 sitemapRoutes.get('/sitemap.xml', async (c) => {
   const reqUrl = new URL(c.req.url);
   const origin = reqUrl.origin;
-  const host = reqUrl.hostname.toLowerCase();
-  // 호스트 우선, fallback 으로 Host 헤더(프록시) 검사 — 둘 중 하나라도 utongstart 면 도매 sitemap.
-  const hdrHost = (c.req.header('host') || '').toLowerCase().split(':')[0];
-  const isWholesaleHost = WHOLESALE_HOSTS.includes(host) || host.includes('utongstart')
-    || WHOLESALE_HOSTS.includes(hdrHost) || hdrHost.includes('utongstart');
-
-  // ── 도매(유통스타트) 전용 sitemap ─────────────────────────────────────────
-  //   ⚠️ 개별 /wholesale/product/* 는 noindex/로그인 게이트 → sitemap 에 절대 포함하지 않음(공급가 비노출).
-  //   공개 랜딩(소개/카탈로그/가입/OEM)만 utongstart.com loc 로 발행.
-  if (isWholesaleHost) {
-    const wholesaleUrls: Array<{ loc: string; priority: number; changefreq: string }> = [
-      { loc: '/wholesale', priority: 1.0, changefreq: 'daily' },        // 카탈로그(도매 인덱스 루트)
-      { loc: '/wholesale/intro', priority: 0.9, changefreq: 'weekly' }, // 마케팅 랜딩
-      { loc: '/wholesale/join', priority: 0.8, changefreq: 'monthly' }, // 판매사 입점/도매 회원가입
-      { loc: '/wholesale/oem', priority: 0.7, changefreq: 'monthly' },  // OEM/ODM 상품제휴
-    ];
-    const wxml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${wholesaleUrls.map(u => `  <url>\n    <loc>${WHOLESALE_BASE}${u.loc}</loc>\n    <changefreq>${u.changefreq}</changefreq>\n    <priority>${u.priority}</priority>\n  </url>`).join('\n')}
-</urlset>`;
-    return c.body(wxml, 200, {
-      'Content-Type': 'application/xml; charset=utf-8',
-      'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
-    });
-  }
-
+  // 🧨 2026-10-12 [SEO] 도매(utongstart) 전용 sitemap 분기 **제거** — 대표 *"SEO 측면에서 … 모두 해줘"*.
+  //   2026-06-08 에 utongstart.com 호스트면 `/wholesale`·`/intro`·`/join`·`/oem` 네 URL 을 `priority 1.0~0.7`
+  //   로 발행했다. 도매몰 철거(#1710) 뒤 그 넷은 **410 Gone** 이고(`isRetiredSurface`), 게다가 그 도메인은
+  //   Cloudflare 실측으로 **어느 Pages 프로젝트에도 연결돼 있지 않아** 이 sitemap 을 받을 수 있는 요청 자체가
+  //   없었다. 색인해 달라고 선언하면서 410 을 주는 모순을 남기지 않기 위해 통째로 걷는다.
+  //   ⚠️ 소비자(urdeal.kr) sitemap 은 무접촉 — 실측 453건에 wholesale 은 이미 0건이었다.
   const DB = c.env.DB as D1Database | undefined;
   const urls: Array<{ loc: string; priority: number; changefreq: string; image?: string; lastmod?: string }> = [
     // 정적 페이지
@@ -113,8 +89,8 @@ ${wholesaleUrls.map(u => `  <url>\n    <loc>${WHOLESALE_BASE}${u.loc}</loc>\n   
     { loc: '/terms', priority: 0.3, changefreq: 'yearly' },
     { loc: '/privacy', priority: 0.3, changefreq: 'yearly' },
     { loc: '/refund', priority: 0.3, changefreq: 'yearly' },
-    // 🏭 2026-06-26 분리 감사: 도매몰(유통스타트) 페이지는 소비자(urdeal.kr) sitemap 에서 제거.
-    //   utongstart.com sitemap 브랜치가 도매 도메인 canonical 로 별도 발행 → 호스트 분리 일관.
+    // 🧨 도매몰(유통스타트) 페이지는 여기 없다 — 2026-06-26 에 호스트 분리로 뺐고, 2026-10-11 철거(#1710)로
+    //   서비스 자체가 사라졌다. 그 네 URL 은 이제 410 Gone 이다(`isRetiredSurface`). 되살리지 말 것.
   ];
 
   if (DB) {

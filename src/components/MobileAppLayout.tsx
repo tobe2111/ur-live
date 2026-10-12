@@ -36,6 +36,11 @@ const HIDE_SIDEBAR_PREFIXES = [
   '/seller', '/admin', '/supplier', '/wholesale', '/embed', '/checkout/return', '/introduce',
   '/ads', // 🆕 유어애즈(UR Ads) — 도매몰처럼 PC 풀너비(액자/사이드바/거터 제외)
   '/mall-admin', // 🏬 2026-08-10 몰 운영자 콘솔 — 대시보드 성격(소비자 액자 부적합)
+  // 🏢 2026-10-12 (대표 *"A안으로 해줘. 이건 PC버전도 중요해"*): 에이전시 콘솔이 PC 에서 430 소비자 액자에
+  //   갇혀 있었다(하네스 실측 — 가운데 좁은 칸, 좌우는 소비자 앱 바로가기·설치 QR). 안 A 의 PC 는
+  //   [맡은 매장 목록 | 판] 두 칸이라 액자 안에서는 성립하지 않는다. App.tsx 가 이미 /agency 를
+  //   fullScreen 으로 처리하므로 프레임만 푼다. 판정은 정확일치·'/agency/' 접두사라 '/agency-partner' 는 안 걸린다.
+  '/agency',
   // 📝 2026-07-01 [UNLOCK_LOADING] (대표 요청 — "블로그는 PC 전체 폭을 써야 함, 액자에 갇힘"):
   //   블로그(/blog·/blog/:slug)를 430 액자에서 제외 → PC 풀너비. App.tsx 가 이미 /blog 를
   //   fullScreen 으로 처리(상/하단 네비·사이드배너 숨김)라, 프레임만 풀면 깔끔한 풀폭 읽기 화면.
