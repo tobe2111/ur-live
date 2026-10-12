@@ -25,6 +25,7 @@
  *   증발한다(source-text.ts 헤더의 실측). **`readRaw` + 줄 앵커 정규식**만 쓴다.
  */
 import { describe, it, expect } from 'vitest'
+import { existsSync } from 'node:fs'
 import { readRaw, readCode } from '../helpers/source-text'
 
 const INDEX = 'src/worker/index.ts'
@@ -43,25 +44,35 @@ describe('🔴 R1 — 몰 관리 API 가 소비자 번들에 마운트돼 있다
     expect(mounts.length).toBe(1)
   })
 
-  it('마운트가 `if (__INCLUDE_WHOLESALE__)` 블록 **밖**이다', () => {
-    // 게이트 블록은 `if (__INCLUDE_WHOLESALE__) {` ~ 그 다음 `}` 줄까지(현재 3줄짜리 TLA import).
+  it('마운트가 **조건문 밖**이다 (들여쓰기 0 = 최상위)', () => {
+    // 🧨 2026-10-11 도매몰 철거로 `if (__INCLUDE_WHOLESALE__) { mountWholesale(...) }` 블록이
+    //   **통째로 사라졌다**. 종전 판정(블록 시작/끝을 찾아 마운트가 그 밖인지)은 앵커가 없어 빨간불이 된다.
+    //   지키려던 것은 그대로다 — *그 마운트가 조건에 걸려 소비자 번들에서 DCE 되지 않는다*.
+    //   앵커를 **"최상위에 있다"** 로 옮긴다: 들여쓰기가 0 이면 어떤 `if` 안에도 없다(더 센 불변식).
     const lines = src.split('\n')
-    const gateStart = lines.findIndex((l) => /^\s*if \(__INCLUDE_WHOLESALE__\) \{/.test(l))
-    expect(gateStart).toBeGreaterThan(-1)
-    let gateEnd = -1
-    for (let i = gateStart + 1; i < lines.length; i++) {
-      if (/^\}/.test(lines[i])) { gateEnd = i; break }
-    }
-    expect(gateEnd).toBeGreaterThan(gateStart)
+    const mountAt = lines.findIndex((l) => /^app\.route\(/.test(l) && l.includes("'/api/admin/wholesale-malls'"))
+    expect(mountAt, '마운트가 최상위(열 0)에 없다 — 조건문 안으로 들어갔으면 소비자 번들에서 빠진다')
+      .toBeGreaterThan(-1)
+  })
 
-    const mountAt = lines.findIndex((l) => /^\s*app\.route\(/.test(l) && l.includes("'/api/admin/wholesale-malls'"))
-    expect(mountAt).toBeGreaterThan(-1)
-    expect(mountAt > gateEnd || mountAt < gateStart).toBe(true)
+  it('게이트 블록이 되살아나지 않았다', () => {
+    // 블록이 다시 생기면 그 안으로 마운트가 끌려 들어가는 것이 2026-08-03 사고의 경로였다.
+    // (`scheduled` 의 `__INCLUDE_WHOLESALE__ === true` 삼항은 **블록이 아니다** — 극성 주석 참조.)
+    const gated = src.split('\n').filter((l) => /^\s*if \(__INCLUDE_WHOLESALE__\)/.test(l))
+    expect(gated, '도매 게이트 블록이 다시 생겼다 — 몰 마운트가 그 안으로 들어가지 않았는지 확인할 것').toEqual([])
   })
 })
 
 describe('🔴 R2 — 게이트 안으로 되돌아가지 않는다', () => {
-  it('mount-wholesale.ts 는 몰 관리 CRUD 를 마운트하지 않는다', () => {
+  // 🧨 2026-10-11 도매몰 철거로 `mount-wholesale.ts` 가 **삭제**됐다 — 되돌아갈 자리가 아예 없어졌다.
+  //   그래도 이 블록을 지우지 않는다: 그 파일이 다시 생기는 날 몰 마운트가 또 그 안으로 끌려가면
+  //   2026-08-03 의 404(화면은 있고 API 는 없음)가 재발한다.
+  it('mount-wholesale.ts 가 없다 (철거 상태)', () => {
+    expect(existsSync(MOUNT_WS), '도매 마운트 파일이 되살아났다 — 몰 CRUD 가 그 안에 없는지 확인할 것').toBe(false)
+  })
+
+  it('되살아나더라도 몰 관리 CRUD 는 마운트하지 않는다', () => {
+    if (!existsSync(MOUNT_WS)) return
     // 주석엔 남아 있다(왜 없는지 설명) — 그래서 `^app.route` 줄만 본다.
     const mounts = routeLines(readRaw(MOUNT_WS)).filter((l) => l.includes('wholesale-malls'))
     expect(mounts).toEqual([])

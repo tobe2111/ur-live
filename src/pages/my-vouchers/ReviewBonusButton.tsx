@@ -5,6 +5,7 @@ import { KAKAO_REVIEW_BONUS_ENABLED } from '@/shared/feature-flags'
 import { StarIcon } from '@/components/icons/urdeal-icons'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
+import { prepareImageForUpload, UploadTooLargeError } from '@/lib/prepare-upload'
 
 // 🚫 2026-10-12 대표 *"카카오맵 후기 관련 보너스 지금 없어"* — 꺼져 있으면 아무것도 그리지 않는다
 //   (훅 규칙 때문에 게이트는 바깥 껍데기에 둔다).
@@ -24,18 +25,21 @@ function ReviewBonusButtonInner({ voucherCode, restaurantName, restaurantAddress
   const [submitting, setSubmitting] = useState(false)
 
   async function uploadScreenshot(file: File) {
-    if (file.size > 5 * 1024 * 1024) { toast.error('5MB 이하만'); return }
+    // 🩸 2026-10-11: 종전엔 원본을 그대로 올리고 "5MB 이하만" 이라고 했는데, 실제 천장은 전역
+    //   `bodyLimit(1MB)` 라 폰 스크린샷도 413 이었다(보너스 신청이 거기서 막힌다).
     setUploading(true)
     try {
       // 🛠️ 2026-06-17 (기술부채 청산): DataURL(멀티MB base64 를 POST 본문/DB 에 저장하던 임시) →
       //   검증된 R2 업로드 endpoint(/api/upload/image, 유저 쿠키 인증)로. 응답 URL 만 제출.
+      const ready = await prepareImageForUpload(file)
       const fd = new FormData()
-      fd.append('file', file)
+      fd.append('file', ready)
       const res = await api.post('/api/upload/image', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
       const url = res.data?.data?.url
       if (res.data?.success && url) setScreenshotUrl(url)
       else toast.error(res.data?.error || '업로드 실패')
     } catch (err) {
+      if (err instanceof UploadTooLargeError) { toast.error('사진이 너무 커요. 다른 사진을 골라주세요'); return }
       const e = err as { response?: { data?: { error?: string } } }
       toast.error(e?.response?.data?.error || '업로드 실패')
     } finally { setUploading(false) }

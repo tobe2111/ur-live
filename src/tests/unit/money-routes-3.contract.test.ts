@@ -1,8 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { staysPublicRoutes } from '@/features/group-buy/api/stays-public.routes'
 import { giftsRoutes } from '@/features/gifts/api/gifts.routes'
-import { distributorAdminRoutes } from '@/features/supply/api/distributor-admin.routes'
-import { wholesaleSupplierRoutes } from '@/features/supply/api/wholesale-supplier.routes'
 
 /**
  * 🛡️ 2026-06-01 돈 라우트 안전망 (3) — 숙소 예약 결제 / 선물 결제 / 유통 admin / 공급사.
@@ -49,30 +47,5 @@ describe('gifts(선물 결제) 계약 + 인증', () => {
   it('선물 생성/결제확정은 미인증 401', async () => {
     expect(await rejects(giftsRoutes, 'POST', '/'), 'POST /').toBe(401)
     expect(await rejects(giftsRoutes, 'POST', '/1/confirm'), 'POST /:id/confirm').toBe(401)
-  })
-})
-
-describe('distributor-admin(유통 admin) 계약 + 인증', () => {
-  const EXPECTED = [
-    'DELETE /proposals/:id', 'GET /distributors', 'GET /grades', 'GET /orders', 'GET /orders/:id',
-    'GET /proposals', 'GET /tax-summary', 'PATCH /distributors/:id', 'POST /orders/:id/refund',
-    'POST /proposals', 'PUT /grades/:grade',
-  ]
-  it('엔드포인트 전부 마운트', () => {
-    expect(EXPECTED.filter((r) => !mounted(distributorAdminRoutes as never).has(r))).toEqual([])
-  })
-  it('환불(돈 out)은 미인증 401', async () => {
-    expect(await rejects(distributorAdminRoutes, 'POST', '/orders/1/refund')).toBe(401)
-  })
-})
-
-describe('wholesale-supplier(공급사) 계약 + 인증', () => {
-  const EXPECTED = ['GET /orders', 'POST /items/:id/ship', 'POST /orders/:id/refund']
-  it('엔드포인트 전부 마운트', () => {
-    expect(EXPECTED.filter((r) => !mounted(wholesaleSupplierRoutes as never).has(r))).toEqual([])
-  })
-  it('발송/환불은 미인증 401', async () => {
-    expect(await rejects(wholesaleSupplierRoutes, 'POST', '/orders/1/refund'), 'refund').toBe(401)
-    expect(await rejects(wholesaleSupplierRoutes, 'POST', '/items/1/ship'), 'ship').toBe(401)
   })
 })

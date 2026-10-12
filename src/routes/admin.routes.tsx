@@ -25,25 +25,16 @@ const AdminProductsPage = lazy(() => import('@/pages/AdminProductsPage'))
 const AdminFcfsPage = lazy(() => import('@/pages/AdminFcfsPage'))
 const AdminExperienceCampaignsPage = lazy(() => import('@/pages/AdminExperienceCampaignsPage'))
 const AdminVoucherDisputesPage = lazy(() => import('@/pages/AdminVoucherDisputesPage'))
-const AdminSuppliersPage = lazy(() => import('@/pages/AdminSuppliersPage'))
-const AdminDistributorGradesPage = lazy(() => import('@/pages/AdminDistributorGradesPage'))
-const AdminWholesaleImportPage = lazy(() => import('@/pages/AdminWholesaleImportPage'))
 const AdminDongnedealImportPage = lazy(() => import('@/pages/AdminDongnedealImportPage'))
-const AdminWholesaleActivityPage = lazy(() => import('@/pages/admin/AdminWholesaleActivityPage'))
 const AdminAgencyAccountsPage = lazy(() => import('@/pages/admin/AdminAgencyAccountsPage')) // 🏢 2026-10-11 새 에이전시 계정(옛 agencies 아님)
 const AdminLoginHistoryPage = lazy(() => import('@/pages/AdminLoginHistoryPage'))
-const AdminWholesaleOrdersPage = lazy(() => import('@/pages/AdminWholesaleOrdersPage'))
-// 🏦 2026-07-02 (어드민 도매 IA 통합): 예치금/출금 페이지는 라우트가 직접 렌더하지 않음 — 예치금 = AdminDistributorGradesPage('판매사 관리')의 '예치금' 탭, 출금 = AdminSuppliersPage('제조사 관리')의 '출금 처리' 탭에서 embedded 로 사용(딥링크 경로는 아래에서 컨테이너 페이지로 매핑 → 탭으로 열림).
-// 🏭 2026-06-09 Wave 2: 도매 메인 배너 관리 + 제안/신고 처리 큐.
-const AdminWholesaleBannersPage = lazy(() => import('@/pages/AdminWholesaleBannersPage'))
-const AdminWholesaleBoardPage = lazy(() => import('@/pages/AdminWholesaleBoardPage'))
+// 🧨 2026-10-11 도매몰 철거: AdminWholesaleActivityPage · AdminWholesaleOrdersPage ·
+//   AdminWholesaleProposalsPage · AdminWholesaleProductsPage · 예치금/출금 탭 컨테이너 전부 삭제.
+//   ⚠️ 같은 머지에서 main 이 더한 `AdminAgencyAccountsPage`(새 에이전시 계정)는 **도매가 아니다** — 남긴다.
 const AdminPartnershipPage = lazy(() => import('@/pages/AdminPartnershipPage'))
-const AdminWholesaleProposalsPage = lazy(() => import('@/pages/AdminWholesaleProposalsPage'))
-const AdminWholesaleProductsPage = lazy(() => import('@/pages/admin/AdminWholesaleProductsPage')) // 🏭 Wave 2 (2026-06-09): 도매 프리미엄 전용관 상품 토글.
 // 🏬 Phase 1-b (2026-06-09): 멀티-몰 테넌시 — 도매 몰 관리.
 const AdminWholesaleMallsPage = lazy(() => import('@/pages/admin/AdminWholesaleMallsPage'))
 // 🏬 Phase 2 (2026-06-09): 크로스-몰 도매 통합 현황 (운영자 랜딩).
-const AdminWholesaleOverviewPage = lazy(() => import('@/pages/admin/AdminWholesaleOverviewPage'))
 // 🔧 2026-06-29: 환경 준비상태 진단(바인딩/시크릿 설정 여부 — 다른 운영자/브라우저 정상동작 확인).
 const AdminEnvReadinessPage = lazy(() => import('@/pages/admin/AdminEnvReadinessPage'))
 // 🏭 2026-06-29 (판매사 승인 통합): AdminDistributorApprovalPage 는 더 이상 라우트가 직접 렌더하지 않음 (AdminDistributorGradesPage 의 '승인' 탭에서 embedded 로 사용). 여기 import 제거.
@@ -53,11 +44,7 @@ const AdminDistrictReportPage = lazy(() => import('@/pages/AdminDistrictReportPa
 // 🏙️ 2026-07-05: 상권 방문 리워드 캠페인 (B2G — 첫 구매 무상 딜, 총액 캡).
 const AdminVisitRewardsPage = lazy(() => import('@/pages/AdminVisitRewardsPage'))
 // 🏭 BIZ-1 (2026-06-08): 도매 클레임(RMA) 검수 페이지.
-const AdminWholesaleClaimsPage = lazy(() => import('@/pages/admin/AdminWholesaleClaimsPage'))
-const AdminWholesaleTaxPage = lazy(() => import('@/pages/admin/AdminWholesaleTaxPage'))
-const AdminWholesaleIntegrityPage = lazy(() => import('@/pages/admin/AdminWholesaleIntegrityPage'))
 const AdminBusinessMetricsPage = lazy(() => import('@/pages/admin/AdminBusinessMetricsPage'))
-const AdminWholesaleQuotesPage = lazy(() => import('@/pages/admin/AdminWholesaleQuotesPage'))
 const AdminAlimtalkPricingPage = lazy(() => import('@/pages/admin/AdminAlimtalkPricingPage'))
 const KVMonitoringPage = lazy(() => import('@/pages/admin/KVMonitoringPage'))
 const AdminSystemMonitoringPage = lazy(() => import('@/pages/AdminSystemMonitoringPage'))
@@ -85,7 +72,6 @@ const AdminSampleRequestsPage = lazy(() => import('@/pages/admin/AdminSampleRequ
 const AdminOperationsGuidePage = lazy(() => import('@/pages/admin/AdminOperationsGuidePage'))
 const AdminPlatformModelPage = lazy(() => import('@/pages/admin/AdminPlatformModelPage')); const AdminProposalsPage = lazy(() => import('@/pages/admin/AdminProposalsPage')); const AdminDecisionsPage = lazy(() => import('@/pages/admin/AdminDecisionsPage')) // 📥 2026-09-08 결재함(docs/decisions ?raw)
 // 🏭 2026-06-07: 도매몰(유통스타트 B2B) 전용 운영 가이드.
-const AdminWholesaleGuidePage = lazy(() => import('@/pages/admin/AdminWholesaleGuidePage'))
 const AdminBlogPage = lazy(() => import('@/pages/AdminBlogPage'))
 const AdminInstagramAutoDmPage = lazy(() => import('@/pages/AdminInstagramAutoDmPage'))
 const AdminSocialPage = lazy(() => import('@/pages/AdminSocialPage'))
@@ -162,6 +148,25 @@ export function AdminRoutes() {
       <Route path="/admin/region-density" element={
         <ProtectedRoute requireAdmin>
           <AdminRegionDensityPage />
+        </ProtectedRoute>
+      } />
+      {/* 🩸 2026-10-11 복원 — 도매몰 철거 때 **함께 지워졌던** 세 라우트다(도매와 무관).
+          원인: 한 줄에 라우트 셋이 몰려 있어(`} /><Route .../><Route .../>`) 블록 종료 탐지가
+          그 줄을 못 알아보고 다음 `} />`(도매 가이드)까지 통째로 먹었다. `admin-nav-classification`
+          R3 가 "라우트 없는 nav 경로" 로 잡았다. ⚠️ 한 줄에 여러 Route 를 몰아 쓰지 말 것. */}
+      <Route path="/admin/platform-model" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminPlatformModelPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/proposals" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminProposalsPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/decisions" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminDecisionsPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/district-report" element={
@@ -347,46 +352,17 @@ export function AdminRoutes() {
           <AdminVoucherDisputesPage />
         </ProtectedRoute>
       } />
-      <Route path="/admin/agencies" element={<ProtectedRoute requireAdmin><AdminAgencyAccountsPage /></ProtectedRoute>} />
-      <Route path="/admin/suppliers" element={
+      {/* 🏢 2026-10-11 (머지) 새 에이전시 계정 — 도매가 아니라 유어딜 중개사 콘솔이다. 철거 대상 아님.
+          ⚠️ 한 줄에 여러 <Route> 를 두지 말 것 — 블록 끝 탐지가 무너져 옆 라우트가 함께 삭제된다(오늘 실제로 겪었다). */}
+      <Route path="/admin/agencies" element={
         <ProtectedRoute requireAdmin>
-          <AdminSuppliersPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/admin/distributor-grades" element={
-        <ProtectedRoute requireAdmin>
-          <AdminDistributorGradesPage />
+          <AdminAgencyAccountsPage />
         </ProtectedRoute>
       } />
       {/* 🗂️ 2026-06-17: 판매사 등급 페이지 탭 분리 — 같은 컴포넌트가 경로로 탭 결정(딥링크). */}
-      <Route path="/admin/distributor-credit" element={
-        <ProtectedRoute requireAdmin>
-          <AdminDistributorGradesPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/admin/distributor-tax" element={
-        <ProtectedRoute requireAdmin>
-          <AdminDistributorGradesPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/admin/distributor-supply" element={
-        <ProtectedRoute requireAdmin>
-          <AdminDistributorGradesPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/admin/wholesale-import" element={
-        <ProtectedRoute requireAdmin>
-          <AdminWholesaleImportPage />
-        </ProtectedRoute>
-      } />
       <Route path="/admin/dongnedeal-import" element={
         <ProtectedRoute requireAdmin>
           <AdminDongnedealImportPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/admin/wholesale-activity" element={
-        <ProtectedRoute requireAdmin>
-          <AdminWholesaleActivityPage />
         </ProtectedRoute>
       } />
       <Route path="/admin/login-history" element={
@@ -394,64 +370,19 @@ export function AdminRoutes() {
           <AdminLoginHistoryPage />
         </ProtectedRoute>
       } />
-      <Route path="/admin/wholesale-orders" element={
-        <ProtectedRoute requireAdmin>
-          <AdminWholesaleOrdersPage />
-        </ProtectedRoute>
-      } />
       {/* 🏦 2026-07-02 (IA 통합): 도매 예치금 딥링크 → '판매사 관리'의 '예치금' 탭으로 열림(같은 컴포넌트 다중 매핑). */}
-      <Route path="/admin/wholesale-deposits" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminDistributorGradesPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
       {/* 🏦 2026-07-02 (IA 통합): 제조사 출금 딥링크 → '제조사 관리'의 '출금 처리' 탭으로 열림. */}
-      <Route path="/admin/wholesale-withdrawals" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminSuppliersPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
       {/* 🏭 Wave 2 (2026-06-09): 도매 메인 배너 관리 */}
-      <Route path="/admin/wholesale-banners" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminWholesaleBannersPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
-      <Route path="/admin/wholesale-board" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminWholesaleBoardPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
       <Route path="/admin/partnership" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminPartnershipPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       {/* 🏭 Wave 2 (2026-06-09): 도매 제안/신고 처리 큐 */}
-      <Route path="/admin/wholesale-proposals" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminWholesaleProposalsPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
       {/* 🏭 Wave 2 (2026-06-09): 도매 프리미엄 전용관 상품 토글 */}
-      <Route path="/admin/wholesale-products" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminWholesaleProductsPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
       {/* 🏬 Phase 2 (2026-06-09): 크로스-몰 도매 통합 현황 (운영자 랜딩) */}
-      <Route path="/admin/wholesale-overview" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminWholesaleOverviewPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
       {/* 🏭 2026-06-29 (대표 — 판매사 승인 통합): /distributor-approval 는 '판매사 관리'(GradesPage)의 '승인' 탭으로.
           같은 컴포넌트가 경로로 탭 결정(딥링크 보존) — 별도 AdminDistributorApprovalPage 직접 라우팅 제거. */}
-      <Route path="/admin/distributor-approval" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminDistributorGradesPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
       {/* 🔧 2026-06-29: 환경 준비상태 진단 — 바인딩/시크릿 설정 여부(다른 운영자/브라우저 정상동작 확인) */}
       <Route path="/admin/env-readiness" element={
         <ProtectedRoute requireAdmin>
@@ -465,29 +396,9 @@ export function AdminRoutes() {
         </ProtectedRoute>
       } />
       {/* 🏭 BIZ-1 (2026-06-08): 도매 클레임(RMA) 검수 */}
-      <Route path="/admin/wholesale-claims" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminWholesaleClaimsPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
       {/* 🏭 BIZ-3 (2026-06-08): 도매 견적/발주(Quote/PO) */}
-      <Route path="/admin/wholesale-quotes" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminWholesaleQuotesPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
       {/* 🏭 TAX-1 (2026-06-08): 도매 세무/정산 (미수·미지급 aging + 매입 역발행) */}
-      <Route path="/admin/wholesale-tax" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminWholesaleTaxPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
       {/* 🏭 DATA-1 (2026-06-08): 도매 데이터 무결성 (고아행 스윕) */}
-      <Route path="/admin/wholesale-integrity" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminWholesaleIntegrityPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
       {/* 📊 (2026-06-08): 비즈니스 지표 대시보드 (GMV·순수익률·반복구매) */}
       <Route path="/admin/business-metrics" element={
         <ProtectedRoute requireAdmin>
@@ -520,17 +431,6 @@ export function AdminRoutes() {
         </ProtectedRoute>
       } />
       {/* 🌐 2026-07-02 (대표 요청): 유어딜 플랫폼 모델 SSOT 문서 뷰어 (docs/design/*.md ?raw 자동동기화) */}
-      <Route path="/admin/platform-model" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminPlatformModelPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } /><Route path="/admin/proposals" element={<ProtectedRoute requireAdmin><ErrorBoundary><AdminProposalsPage /></ErrorBoundary></ProtectedRoute>} /><Route path="/admin/decisions" element={<ProtectedRoute requireAdmin><ErrorBoundary><AdminDecisionsPage /></ErrorBoundary></ProtectedRoute>} />
-      {/* 🏭 2026-06-07: 도매몰(유통스타트 B2B) 전용 운영 가이드 */}
-      <Route path="/admin/wholesale-guide" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminWholesaleGuidePage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
       <Route path="/admin/cafe24" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminCafe24Page /></ErrorBoundary>

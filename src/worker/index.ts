@@ -172,8 +172,8 @@ import { buildDetailMeta, buildStayDetailMeta, buildProductMeta } from './utils/
 // 🔎 2026-07-29 정적 소비자 표면 메타 SSOT(워커·클라 공용). ⚠️ 워커 값 import 는 alias 금지 — 상대경로.
 import { resolveConsumerSurfaceSeo } from '../shared/seo/consumer-surfaces';
 import { resolveConsumerAlias } from '../shared/seo/consumer-redirects';
-import { applySurfaceMeta, buildSellerSurfaceMeta, shouldNoindexMissingEntity, resolveRegionSeo } from './utils/surface-ssr-meta';
-import { fetchSsrPayload, applySsrDiagHeaders, type SsrTarget } from './utils/ssr-payload';
+import { applySurfaceMeta, buildSellerSurfaceMeta, shouldNoindexMissingEntity, resolveRegionSeo } from './utils/surface-ssr-meta'; import { buildSurfaceListJsonLd, buildCuratorJsonLd } from './utils/surface-list-jsonld';
+import { fetchSsrPayload, applySsrDiagHeaders, type SsrTarget } from './utils/ssr-payload'; import { MAP_SEED_PATH } from '../shared/map-feed-seed';
 // 🛡️ 2026-05-20: 에이전시 = 가게 입점 영업 모델 (Phase 2).
 // 🛡️ 2026-05-18: 숙소 공구 에이전시 모니터링 — PR 1 Foundation.
 // 🛡️ 2026-05-27 (영업 검증 Layer 2): 매장 사전 등록 prospects.
@@ -201,6 +201,7 @@ import { campaignApplyRoutes } from '../features/marketing/api/campaign-apply.ro
 import { adminCampaignApplicationsRoutes } from '../features/admin/api/admin-campaign-applications.routes'; import { mallAdminRoutes } from '../features/mall/api/mall-admin.routes'; // 🏬 몰 운영자 콘솔(공구 서비스) — 한 줄: 파일크기 래칫(2638) 안
 // ⏳ [TEMP-TEST] 도매 워커 배포 전 라이브 검증용 임시 마운트(아래 app.route 참조) — ur-wholesale 배포 시 제거.
 import { buyerPoolRoutes as buyerPoolTestRoutes } from '../features/supply/api/buyer-pool.routes';
+import { makerPoolRoutes } from '../features/supply/api/maker-pool.routes'; // 🧨 2026-10-11 도매 철거 — 종전엔 mount-wholesale(도매 번들)에만 있어 소비자 배포에선 죽은 링크였다. 읽는 것은 유어애즈 `ad_company_leads`(worker-ads 가 계속 수집)라 여기로 옮긴다.
 import { buyerIngestRoutes } from '../features/supply/api/buyer-ingest.routes';
 import { payoutCenterRoutes } from '../features/admin/api/admin-payout-center.routes';
 import { proxyRoutes } from './routes/proxy.routes';
@@ -287,7 +288,7 @@ import { referralRoutes } from '../features/referral/api/referral.routes';
 //   (typeof navigator/window 가드 보유라 워커 안전). URL 이 클라 렌더값과 byte-일치해야 preload 적중.
 import { cfImage, cfSrcSet } from '../utils/cf-image';
 // 🖼️ 홈 첫 화면 카드 사진 preload — 링크 생성은 헬퍼가 한다(파일 크기 래칫 + 직접 테스트 용이).
-import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; // 한 줄: 파일크기 래칫 안
+import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; import { brandJsonLdScript } from '../shared/seo/brand-jsonld'; // 한 줄: 파일크기 래칫 안
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -589,9 +590,9 @@ app.use('*', async (c, next) => {
       ssrTarget = { slot: 'VOUCHERS', path: '/api/products?page=1&limit=20&deal_only=1&sort=price_low' };
     } else if (url.pathname === '/browse' && !url.search) {
       ssrTarget = { slot: 'BROWSE', path: '/api/products?page=1&limit=20&exclude_deal_only=1' };
-    // 🥗 2026-07-15 워커 다이어트: /live SSR 슬롯 제거 — 라이브커머스 영구중단으로 /live 라우트·/api/streams 마운트 모두 제거됨(죽은 self-fetch).
-    // } else if (url.pathname === '/live' && !url.search) {
-    //   ssrTarget = { slot: 'LIVE', path: '/api/streams?status=live&limit=20' };
+    } else if (url.pathname === '/map' && !url.search) { // 🗺️ 2026-10-11 지도 첫 화면 시드 — 홈 시드(무정렬)를 못 써 한 왕복 더 기다렸다
+      ssrTarget = { slot: 'MAP', path: MAP_SEED_PATH }; // 경로 SSOT shared/map-feed-seed.ts — 화면 요청과 byte-일치
+    // 🥗 2026-07-15 워커 다이어트: /live SSR 슬롯(`/api/streams?status=live&limit=20`) 제거 — 라이브커머스 영구중단(죽은 self-fetch).
     // 🗑️ 2026-07-10 [UNLOCK_LOADING] (로딩 전수조사): GROUPBUY 슬롯 제거 — `/group-buy` 는 App.tsx 에서
     //   `<Navigate to="/" replace/>`(홈으로 즉시 리다이렉트)이고 유일 소비자 GroupBuyListPage 는 미라우팅.
     //   콜드 시 최대 1.5s self-fetch 로 리다이렉트 응답만 느리게 만들던 순수 낭비였음. (라우트가 부활하면
@@ -715,7 +716,7 @@ app.use('*', async (c, next) => {
       : /^\/products\/\d+(?:[/?#]|$)/.test(url.pathname) ? 'product'
       : /^\/(u|profile|s)(\/|$)/.test(url.pathname) ? 'linkshop'
       : url.pathname === '/vouchers' ? 'vouchers'
-      : url.pathname === '/browse' ? 'browse'
+      : url.pathname === '/browse' ? 'browse' : url.pathname === '/map' ? 'map'
       : url.pathname === '/urshorts' ? 'urshorts'
       : null;
     const routeChunks = chunkSurface ? ROUTE_CHUNK_MAP[chunkSurface] : undefined;
@@ -924,6 +925,7 @@ app.use('*', async (c, next) => {
           rb = applySurfaceMeta(rb, {
             pageTitle: cTitle, title: cTitle, description: cDesc,
             canonical: canon, ogType: 'profile', ogImage: ogCard,
+            jsonLd: buildCuratorJsonLd(ssrPayload, origin2, { title: cTitle, description: cDesc, canonical: canon }, cur),
           });
         }
       } catch { /* 파싱 실패 시 기본 메타 유지 */ }
@@ -999,7 +1001,7 @@ app.use('*', async (c, next) => {
     //   SSR inject·0-RTT·`caches.default`·#root 로더·edgeCache 전부 불변 — head rewrite 만 추가.
     if (!isWholesaleSurface && !needsRootBlank) {
       const sm = resolveConsumerSurfaceSeo(url.pathname, url.search, origin2) ?? resolveRegionSeo(url.pathname, origin2);
-      if (sm) rb = applySurfaceMeta(rb, sm);
+      if (sm) rb = applySurfaceMeta(rb, { ...sm, jsonLd: buildSurfaceListJsonLd(url.pathname, url.search, origin2, sm, ssrPayload) });
     }
     // 🪦 2026-07-29 (소비자 SEO 실측): **사라진 상세 페이지가 `200 + index,follow` 로 나가고 있었다.**
     //   `/group-buy/99999999`(당시 주소) → HTTP 200 · 제네릭 홈 메타 · robots `index, follow`. 워커 자신의 SSR
@@ -1687,6 +1689,7 @@ app.route('/api/admin/gov-notices', govNoticesRoutes); // 📢 공고 스캐너 
 //   수집을 검증할 수 있게 소비자 워커에 임시 마운트. admin 전용(requireAdmin)+격리 테이블+게이트라 유어딜 데이터
 //   무접촉. ur-wholesale 배포 시 이 3줄(import+mount) 제거 예정.
 app.route('/api/admin/buyer-pool', buyerPoolTestRoutes);
+app.route('/api/admin/maker-pool', makerPoolRoutes); // 🏭 제조사·판매사 후보 풀(격리 테이블 `supply_maker_leads` + 유어애즈 리드 읽기)
 // 📦 2026-10-11 대표 "유통 스타트는 다 필요없어": 제조사·판매사 후보 풀(유통스타트 밴드)의 [TEMP-TEST] 소비자 마운트 제거 —
 //   유통스타트 워커(mount-wholesale.ts)에만 남는다. 바이어 풀(위·아래)은 도매와 무관한 별개 사업이라 그대로 둔다.
 // 🔖 바이어 풀 북마클릿 인제스트 — requireAdmin 밖(크로스오리진, 토큰 인증+CORS). buyKorea 등에서 원클릭 전송.
@@ -1837,13 +1840,11 @@ adminApp.route('/restaurant-settlement', restaurantSettlementRoutes);
 // Naver Ad Scraper·legacy /api/scraper/d1/* 제거됨 (2026-04-22) — 법적 리스크(PIPA/정보통신망법) + adminApp 미들웨어 우회.
 // scraped_advertisers 테이블은 데이터 보존용으로 남김(직접 SQL 조회 가능).
 
-// 🏭 [wholesale-split 2026-07-16] 도매 라우트는 WHOLESALE_BUNDLE=1 빌드에서만 포함.
-//   __INCLUDE_WHOLESALE__=false(소비자) → esbuild DCE 로 mount-wholesale + 도매 그래프 전체 제외(워커 gzip ~200KB↓).
-//   ⚠️ adminApp 도매 마운트가 app.route('/api/admin', adminApp) 전에 등록돼야 해 TLA(await)로 여기서 호출.
-if (__INCLUDE_WHOLESALE__) {
-  const { mountWholesale } = await import('./mount-wholesale');
-  mountWholesale(app, adminApp);
-}
+// 🧨 [도매몰 철거 2026-10-11 대표 "도매몰 잔해들은 아예 다 삭제해줘"] 도매(B2B) 라우트 마운트 제거.
+//   종전: `if (__INCLUDE_WHOLESALE__) { mountWholesale(app, adminApp) }` — `WHOLESALE_BUNDLE=1` 빌드에서만
+//   포함됐으므로 **소비자 배포는 이 블록을 원래 안 탔다**(DCE). 즉 이 삭제로 urdeal.kr 동작은 변하지 않는다.
+//   잔류: 정산 엔진(supply-settlement 등 4파일 — 소비자 주문확정·환불·cron 이 직접 부른다) · buyer/maker 풀 ·
+//   몰 인프라(아래 `wholesale-malls`). 계획·경계: docs/design/wholesale-teardown-plan.md §1~§3.
 /**
  * 🏬 **몰 관리 CRUD 는 도매 게이트 밖이다** 〔2026-08-03 — 대표 실측 404〕
  *
@@ -2476,7 +2477,7 @@ app.get('*', async (c) => {
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
 
-  // 메타 태그가 포함된 최소 HTML 반환
+  // 메타 + 브랜드 JSON-LD 가 포함된 최소 HTML 반환(브랜드 노드는 `index.html` 쪽과 상호배타 — brand-jsonld.ts 머리말)
   const html = `<!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -2498,7 +2499,7 @@ app.get('*', async (c) => {
 <meta name="twitter:image" content="${esc(og.image)}" />
 <meta name="robots" content="index, follow" />
 <meta name="naver-site-verification" content="7be066f6c7f451d994e3a5482aa76f87e96c3c2f" />
-</head>
+${brandJsonLdScript()}</head>
 <body>
 <div id="root"></div>
 <!-- 🛡️ 2026-04-28: window.location.href 제거. 이전 코드: 같은 URL redirect →

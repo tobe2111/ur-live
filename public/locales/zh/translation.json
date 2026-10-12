@@ -5555,8 +5555,8 @@
     "updateNow": "立即更新",
     "photoChange": "更换照片",
     "photoUploading": "上传中…",
-    "photoHint": "JPG/PNG，5MB 以内",
-    "photoTooBig": "请选择 5MB 以内的文件",
+    "photoHint": "照片会自动压缩后上传",
+    "photoTooBig": "这张照片太大了，请换一张",
     "photoUpdated": "头像已更新",
     "photoFailed": "无法更换照片"
   },

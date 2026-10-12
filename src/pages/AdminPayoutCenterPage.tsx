@@ -12,7 +12,7 @@ import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { formatWon, formatNumber } from '@/utils/format'
 import AdminFinanceTabs from '@/components/admin/AdminFinanceTabs'
 import { DashboardLoadError } from '@/components/dashboard'
-import { Banknote, Landmark, Users, Building2, ExternalLink } from 'lucide-react'
+import { Banknote, Landmark, Users, Building2 } from 'lucide-react'
 
 interface SellerRow { id: number; seller_id: number; seller_name: string | null; business_name: string | null; amount: number; period_start: string | null; period_end: string | null; bank_name: string | null; account_number: string | null; account_holder: string | null; status: string; created_at: string }
 interface CuratorRow { id: number; user_id: string; user_name: string | null; amount: number; withholding_tax: number; net_amount: number; bank_name: string; bank_account: string; account_holder: string; status: string; requested_at: string; deal_deducted: number }
@@ -71,9 +71,7 @@ export default function AdminPayoutCenterPage() {
             <span className="ml-2 inline-block px-2 py-0.5 bg-tone-warn-bg text-tone-warn rounded-full text-[11px] font-semibold">권장 루틴: 매주 금요일 일괄 지급</span>
           </p>
         </div>
-        <a href="/admin/wholesale-withdrawals" className="text-[12px] text-brand-text hover:underline flex items-center gap-1">
-          제조사 출금은 전용 화면에서 <ExternalLink className="w-3 h-3" />
-        </a>
+        {/* 🧨 2026-10-11 도매몰 철거: '제조사 출금 전용 화면' 링크 제거 */}
       </div>
 
       {/* 레일 탭 */}

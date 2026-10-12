@@ -24,6 +24,7 @@
 
 ## 2. ✅ 이상적으로 잘 된 부분
 - **SSR inject 8슬롯** (`index.ts:456-486`): MAIN/VOUCHERS/BROWSE/LIVE/PRODUCT/DETAIL/SELLER/CURATOR. `caches.default` edge-hit(~5ms) + miss 시 self-fetch(1500-2000ms budget) → fresh inject.
+  - 🗺️ 2026-10-11: **MAP** 슬롯 추가(`/map` → `shared/map-feed-seed.ts` `MAP_SEED_PATH`). 그리고 전역 KV(`CACHE_KV`)는 **cron 이 쓰는 키(`SSR_KV_PATHS`)만** 읽는다 — 나머지 키는 늘 miss 라 ~100ms 헛대기였다(`ssr-payload.ts` `isKvWarmedPath`).
 - **3중 캐시**: 브라우저 `max-age=60` / edge `CDN-Cache-Control=900` / `stale-while-revalidate=120`.
 - **이미지**: `cf-image` 변환 + `dominant_color` placeholder + lazy/`fetchPriority`(above-fold eager).
 - **유저 대면 데이터**: React Query 공유 훅(`useMyData`/`useUserProfile`/`useSellerPublic`/`useGroupBuyProduct`) — dedup + 캐시 일관성 + SSR initial data 즉시 사용.

@@ -49,14 +49,30 @@ const stripTodoMarker = {
 }
 
 // 빌드 시 각 언어별 dynamic import 함수 (각각 별도 청크 생성)
-const loaders: Record<Lang, () => Promise<{ default: Record<string, unknown> }>> = {
-  ko: () => import('../public/locales/ko/translation.json'),
-  en: () => import('../public/locales/en/translation.json'),
-  ja: () => import('../public/locales/ja/translation.json'),
-  zh: () => import('../public/locales/zh/translation.json'),
-  es: () => import('../public/locales/es/translation.json'),
-  fr: () => import('../public/locales/fr/translation.json'),
+// 🌐 2026-10-11: 손님용(core)과 대시보드용(dash)을 나눠 받는다 — 빌드 플러그인(`scripts/i18n-split.mjs`)이
+//   `?i18n-core|dash` 쿼리를 보고 나눈다. 손님 첫 접속이 받는 양이 ko 기준 gzip 92 → 33 KB.
+//   플러그인이 없는 환경(vitest)에서는 쿼리가 무시돼 두 쪽 모두 전체 파일이 온다(그래도 맞게 동작한다).
+type Bundle = () => Promise<{ default: Record<string, unknown> }>
+const loaders: Record<Lang, Bundle> = {
+  ko: () => import('../public/locales/ko/translation.json?i18n-core'),
+  en: () => import('../public/locales/en/translation.json?i18n-core'),
+  ja: () => import('../public/locales/ja/translation.json?i18n-core'),
+  zh: () => import('../public/locales/zh/translation.json?i18n-core'),
+  es: () => import('../public/locales/es/translation.json?i18n-core'),
+  fr: () => import('../public/locales/fr/translation.json?i18n-core'),
 }
+const dashLoaders: Record<Lang, Bundle> = {
+  ko: () => import('../public/locales/ko/translation.json?i18n-dash'),
+  en: () => import('../public/locales/en/translation.json?i18n-dash'),
+  ja: () => import('../public/locales/ja/translation.json?i18n-dash'),
+  zh: () => import('../public/locales/zh/translation.json?i18n-dash'),
+  es: () => import('../public/locales/es/translation.json?i18n-dash'),
+  fr: () => import('../public/locales/fr/translation.json?i18n-dash'),
+}
+
+/** dash 문구가 필요한 화면 — 대시보드 주소. 마이의 판매 화면은 `ensureDashStrings()` 를 직접 부른다. */
+const DASH_PATH_RE = /^\/(seller|admin|agency|supplier|wholesale|mall-admin|distributor)(\/|$)/
+const DASH_KEY_RE = /^(seller|admin|agency|supplier|wholesale|live|liveWs)\./
 
 function detectDefaultLanguage(): Lang {
   if (typeof window !== 'undefined') {
@@ -94,6 +110,34 @@ const defaultLanguage = detectDefaultLanguage()
 const initialLanguage = detectInitialLanguage()
 
 const loaded = new Set<Lang>()
+const dashLoaded = new Set<Lang>()
+/** dash 를 한 번이라도 요청했나 — 언어를 바꾸면 새 언어의 dash 도 같이 받는다. */
+let dashWanted = false
+
+async function ensureDashLoaded(lang: string): Promise<void> {
+  const base = lang.split('-')[0] as Lang
+  if (!SUPPORTED.includes(base) || dashLoaded.has(base)) return
+  dashLoaded.add(base)
+  try {
+    const mod = await dashLoaders[base]()
+    // deep merge — core 에 이미 있는 손님용 키는 그대로, 나머지만 더한다. 'added' 이벤트로 화면이 다시 그려진다.
+    i18n.addResourceBundle(base, 'translation', mod.default || mod, true, false)
+  } catch (e) {
+    dashLoaded.delete(base)
+    if (import.meta.env.DEV) console.error(`[i18n] Failed to load dash locale: ${base}`, e)
+  }
+}
+
+/**
+ * 셀러·어드민·에이전시·제조사·도매 문구를 받는다. 대시보드 주소에서는 부팅 때 알아서 부르고,
+ * 마이 안의 판매 화면처럼 손님 주소에서 대시보드 화면을 띄우는 곳은 직접 부른다.
+ * 빠뜨려도 괜찮다 — 없는 dash 키를 요청하는 순간 `missingKeyHandler` 가 불러온다(안전망).
+ */
+export function ensureDashStrings(): Promise<void> {
+  dashWanted = true
+  const langs = new Set<string>([i18n.language || initialLanguage, defaultLanguage])
+  return Promise.all(Array.from(langs).map(ensureDashLoaded)).then(() => undefined)
+}
 
 async function ensureLanguageLoaded(lang: string): Promise<void> {
   // 🛡️ 2026-05-19: WeakSet memoize 회귀 수정.
@@ -151,20 +195,28 @@ async function bootstrap() {
       defaultNS: 'translation',
       // 첫 로드 동안 화면이 한순간 빈 텍스트로 보이는 걸 막음
       partialBundledLanguages: true,
-      react: { useSuspense: false },
+      // 🌐 2026-10-11: dash 문구가 나중에 도착하면('added') 화면을 다시 그린다.
+      react: { useSuspense: false, bindI18nStore: 'added' },
+      // 안전망 — core 에 없는 dash 키가 요청되면 그 자리에서 dash 를 받는다(받는 동안은 defaultValue 가 보인다).
+      saveMissing: true,
+      missingKeyHandler: (_lngs: readonly string[], _ns: string, key: string) => {
+        if (DASH_KEY_RE.test(key) && !dashLoaded.has((i18n.language || initialLanguage).split('-')[0] as Lang)) void ensureDashStrings()
+      },
       // 🏷️ 번역자용 `[TODO:xx]` 표식이 화면에 나가지 않게 한다(위 stripTodoMarker 주석 참조).
       postProcess: ['stripTodoMarker'],
     })
 
   // 초기 언어 + fallback 언어 동시 로드 (대부분 같은 ko 라 1번)
   const need = new Set<Lang>([initialLanguage, defaultLanguage])
-  await Promise.all(Array.from(need).map(ensureLanguageLoaded))
+  // 대시보드 주소로 들어왔으면 dash 도 처음부터 함께(페이지 청크와 병렬) — 키가 잠깐 보이는 일을 줄인다.
+  const onDash = typeof window !== 'undefined' && DASH_PATH_RE.test(window.location.pathname)
+  await Promise.all([...Array.from(need).map(ensureLanguageLoaded), ...(onDash ? [ensureDashStrings()] : [])])
 }
 
 // changeLanguage 호출 시 자동으로 lazy load 되도록 hook
 const originalChangeLanguage = i18n.changeLanguage.bind(i18n)
 i18n.changeLanguage = (async (lng?: string, ...rest: unknown[]) => {
-  if (lng) await ensureLanguageLoaded(lng)
+  if (lng) await Promise.all([ensureLanguageLoaded(lng), ...(dashWanted ? [ensureDashLoaded(lng)] : [])])
   // @ts-expect-error - i18next 타입 스프레드 호환
   return originalChangeLanguage(lng, ...rest)
 }) as typeof i18n.changeLanguage

@@ -7,11 +7,27 @@
  *
  *   ① `caches.default` — **콜로별**. hit 이면 ~5ms. KV write 한도를 안 쓰므로 비용 $0.
  *   ② `CACHE_KV` — **전역**. cron 이 15분 표본화로 기록(`cache-prewarm.ts` SSR_KV_PATHS).
+ *      **그 목록에 있는 키만 읽는다**(2026-10-11) — 나머지는 아무도 안 써서 늘 miss 였다.
  *      ①이 콜로별이라 예열이 다른 지역에 안 미치는 것을 메운다. 미바인딩이면 조용히 건너뛴다.
  *   ③ self-fetch — 콜드 D1. 슬롯별 타임아웃(아래) 안에 못 끝내면 미주입 → 클라가 직접 받는다.
  */
 
 import type { Context } from 'hono';
+import { SSR_KV_PATHS } from '../cron/cache-prewarm';
+
+/**
+ * 🔑 2026-10-11 [UNLOCK_LOADING] (대표 "로딩 개선 둘 다 진행"): KV 를 읽을 가치가 있는 키 = **cron 이 실제로 쓰는 키**.
+ *   KV 는 cron 만 쓰고(`cache-prewarm.ts` SSR_KV_PATHS), 그 밖의 키(상세 `/api/group-buy/products/:id` ·
+ *   유어샵 `/api/curator/:h` · 셀러 · 블로그 글 …)는 **영원히 비어 있다.** 그런데도 엣지 miss 마다 KV 를
+ *   먼저 물어 콜드 상세·유어샵 하드로드가 **~100ms 를 그냥 기다렸다**(라이브 `kv;dur=95~104`, 결과는 늘 miss).
+ *   에러가 안 나고 결과도 같아서 아무도 몰랐다 — 느릴 뿐이다.
+ */
+const KV_WARMED = new Set<string>(SSR_KV_PATHS);
+
+/** 이 경로를 KV 에서 찾을 가치가 있는가 — 쓰는 쪽(cron) 목록과 같은 집합. */
+export function isKvWarmedPath(path: string): boolean {
+  return KV_WARMED.has(path);
+}
 
 export interface SsrTarget {
   slot: string;
@@ -74,8 +90,8 @@ export async function fetchSsrPayload(
   } catch { /* edge cache unavailable */ }
   timings.push(`edge;dur=${Date.now() - edgeStart}`);
 
-  // ② 전역 KV — 다른 콜로에서 예열된 것을 받는다.
-  if (!payload && env.CACHE_KV) {
+  // ② 전역 KV — 다른 콜로에서 예열된 것을 받는다. **cron 이 쓰는 키만** 묻는다(위 KV_WARMED).
+  if (!payload && env.CACHE_KV && isKvWarmedPath(target.path)) {
     const kvStart = Date.now();
     try {
       const raw = await env.CACHE_KV.get(`ssr:${target.path}`, 'text');

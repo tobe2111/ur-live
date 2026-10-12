@@ -1,11 +1,11 @@
 // 🛡️ 2026-05-17: Sentry lazy load — 초기 번들에서 sentry 청크 제거.
 //   PerformanceObserver 콜백 안에서만 호출되므로 첫 페인트 영향 없음.
 //   import('@sentry/react') 의 promise 를 1회 캐싱.
-type SentryModule = typeof import('@sentry/react')
+type SentryModule = typeof import('./sentry-sdk')
 let sentryPromise: Promise<SentryModule> | null = null
 function getSentry(): Promise<SentryModule> {
   if (!sentryPromise) {
-    sentryPromise = import('@sentry/react').catch((e) => {
+    sentryPromise = import('./sentry-sdk').catch((e) => {
       if (import.meta.env.DEV) console.warn('[perf-monitor] Sentry lazy load failed', e)
       throw e
     })

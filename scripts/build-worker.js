@@ -4,9 +4,12 @@ const esbuild = require('esbuild');
 const path = require('path');
 
 // 🏭 [wholesale-split 2026-07-16] 도매(features/supply) 라우트 포함 여부 — esbuild define 로 index.ts 에 주입.
-//   - 소비자(ur-live): WHOLESALE_BUNDLE 미설정 → false → mount-wholesale + 도매 그래프 전체 DCE 제외(워커 ~200KB↓).
-//   - 도매(ur-wholesale): 빌드 env WHOLESALE_BUNDLE=1 → true → 도매 라우트 포함.
-const INCLUDE_WHOLESALE = process.env.WHOLESALE_BUNDLE === '1';
+// 🧨 2026-10-11 도매몰 철거(대표 "도매몰 잔해들은 아예 다 삭제해줘"): 도매 번들이 없어졌으므로 **항상 false**.
+//   ⚠️ define 자체는 **남긴다** — `worker/index.ts` 가 `declare const __INCLUDE_WHOLESALE__` 로 쓰고 있고,
+//   define 을 빼면 esbuild 가 그 식별자를 그대로 남겨 **런타임 ReferenceError** 가 된다. 그리고 그 식별자가
+//   cron no-op 게이트의 항이라 극성이 걸려 있다("=== true 만 no-op, 느슨하면 소비자 cron 사망").
+//   ⇒ 게이트는 건드리지 않고 입력만 상수 false 로 고정한다(종전 소비자 빌드와 byte-동일한 결과).
+const INCLUDE_WHOLESALE = false;
 
 // 🥗 [docs-split 2026-07-16] 개발자용 API 문서(OpenAPI spec ~48KB + @hono/swagger-ui) 포함 여부.
 //   - 프로덕션(소비자/도매): DOCS_BUNDLE 미설정 → false → docs.routes.ts 의 if(__INCLUDE_DOCS__) 블록 DCE
@@ -16,7 +19,7 @@ const INCLUDE_DOCS = process.env.DOCS_BUNDLE === '1';
 
 async function buildWorker() {
   try {
-    console.log(`🔧 Building Worker bundle... (wholesale routes: ${INCLUDE_WHOLESALE ? 'INCLUDED' : 'excluded'})`);
+    console.log('🔧 Building Worker bundle...');
 
     await esbuild.build({
       entryPoints: ['src/worker/index.ts'],

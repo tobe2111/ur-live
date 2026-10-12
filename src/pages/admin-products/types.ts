@@ -28,29 +28,7 @@ export interface Product {
   kt_alpha_gift_code?: string | null     // 🛡️ 2026-06-14: 있으면 교환권(기프티콘), 없으면 쇼핑 상품
 }
 
-export interface SupplySalesRow {
-  supply_product_id: number
-  supply_product_name: string
-  supply_price: number
-  seller_product_id: number
-  seller_product_name: string
-  seller_price: number
-  seller_id: number
-  seller_name: string
-  business_name: string
-  order_count: number
-  total_qty: number
-  total_revenue: number
-  total_supply_cost: number
-  seller_margin: number
-}
 
-export interface SupplySalesSummary {
-  total_orders: number
-  total_qty: number
-  total_revenue: number
-  total_supply_cost: number
-}
 
 export interface SampleRequest {
   id: number

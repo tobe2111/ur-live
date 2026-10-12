@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { authTokenRoutes } from '@/worker/routes/auth-token.routes'
 import { twofaRoutes } from '@/worker/routes/twofa.routes'
-import { supplierAuthRoutes } from '@/features/supply/api/supplier-auth.routes'
 import { sellerPinRoutes } from '@/features/seller/api/seller-pin.routes'
 import { sellerKakaoLinkRoutes } from '@/features/seller/api/seller-kakao-link.routes'
 
@@ -65,16 +64,10 @@ describe('카카오 계정 연결/해제 — 미인증 거절(계정 takeover �
   }
 })
 
-describe('auth-token / supplier-auth — 토큰발급·로그인 가드', () => {
+describe('auth-token — 토큰발급 가드', () => {
   it('auth-token: token-info 미인증 401, id-token 빈입력 거절(>=400)', async () => {
     expect(await status(authTokenRoutes as never, 'GET', '/token-info')).toBe(401)
     expect(await status(authTokenRoutes as never, 'POST', '/id-token')).toBeGreaterThanOrEqual(400)
   })
-  it('supplier-auth: login/register 무자격 요청 거절(4xx)', async () => {
-    for (const p of ['/login', '/register']) {
-      const s = await status(supplierAuthRoutes as never, 'POST', p)
-      expect(s, `POST ${p}`).toBeGreaterThanOrEqual(400)
-      expect(s, `POST ${p} not 5xx`).toBeLessThan(500)
-    }
-  })
+  // 🧨 2026-10-11 도매몰 철거: supplier-auth(제조사 로그인/가입) 계약 제거 — 라우트가 함께 삭제됐다.
 })

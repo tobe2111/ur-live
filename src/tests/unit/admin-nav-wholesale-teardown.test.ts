@@ -63,11 +63,31 @@ describe('🔴 R2 — 도매 도메인에선 그대로 보인다 (머니 게이�
     expect(isWholesaleAdminSurface()).toBe(true)
   })
 
-  it('🔴 예치금 잔액을 볼 수 있는 화면이 도매 도메인에 남아 있다', () => {
-    // 철거 계획 §4: 예치금·미확인 충전요청·미지급 정산금·plus 가 0 임을 여기서 확인한 뒤에야 삭제한다.
-    setHost('utongstart.com')
-    const paths = withoutWholesaleOnConsumer(VISIBLE_NAV_GROUPS).flatMap((g) => g.items.map((i) => i.path))
-    expect(paths).toContain('/admin/wholesale-overview')
+  /**
+   * 🔁 **2026-10-11 재조준 — 이 단언은 이제 반대를 주장하고 있었다.**
+   *
+   * 종전: *"예치금 잔액을 볼 수 있는 화면(`/admin/wholesale-overview`)이 도매 도메인에 남아 있다"*.
+   * 지키려던 것은 **"머니 게이트가 열려 있는 동안 환급 경로를 숨기지 말라"** 였다(계획 §4).
+   *
+   * 대표 지시로 철거를 실행하면서 그 게이트를 실측했고 **닫혔다**:
+   *   · `wholesale_deposits` 172,800원 → 주인 `sellers.id 5·13` 이 **존재하지 않는다**(0행)
+   *   · `wholesale_deposit_requests` 2건 **전부 confirmed** (미확인 0)
+   *   · `supplier_settlements` pending 1건(10,000원) — 테스트 주문 2건과 **같은 날·같은 시각**(2026-06-29)
+   * ⇒ 남의 돈이 아니라 테스트 한 번의 잔재다(대표 2026-08-03 *"아예 사업을 안했거든"* 과 일치).
+   *
+   * 그래서 화면 존재를 요구하는 단언은 폐기하고, **철거가 실제로 됐는지**를 대신 지킨다.
+   * ⚠️ 테이블은 지우지 않았다(계획 §3 — 회계 증빙). 데이터는 그대로 있고 **노출만** 끊었다.
+   */
+  it('🧨 철거 완료 — 도매 화면이 어느 도메인에서도 nav 에 없다', () => {
+    for (const host of ['utongstart.com', CONSUMER]) {
+      setHost(host)
+      const paths = withoutWholesaleOnConsumer(VISIBLE_NAV_GROUPS).flatMap((g) => g.items.map((i) => i.path))
+      expect(paths).not.toContain('/admin/wholesale-overview')
+      expect(paths.filter((p) => /^\/admin\/(wholesale|distributor|suppliers)/.test(p) && p !== '/admin/wholesale-malls'))
+        .toEqual([])
+      // 🏬 몰 관리는 공구 서비스다 — 함께 사라지면 안 된다(R3 와 같은 이유).
+      expect(paths).toContain('/admin/wholesale-malls')
+    }
   })
 })
 

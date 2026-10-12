@@ -41,9 +41,8 @@ import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { getUserProfileImage } from '@/utils/auth'
 import { formatPhone } from '@/utils/format-phone'
 import { toast } from '@/hooks/useToast'
+import { prepareImageForUpload, UploadTooLargeError } from '@/lib/prepare-upload'
 import { EditRow, RowActions, RowGroup, RowNote, ROW_INPUT } from './EditRow'
-
-const PHOTO_HINT = 'JPG·PNG, 5MB 이하'
 
 type Field = 'name' | 'bio' | 'phone' | 'handle' | 'sns' | null
 
@@ -130,12 +129,15 @@ export default function ProfileEditSheet({ onClose, initialName, onNameChange }:
   }, [])
 
   async function uploadPhoto(file: File) {
-    if (file.size > 5 * 1024 * 1024) { toast.error(t('accountSettings.photoTooBig', { defaultValue: '5MB 이하만 올릴 수 있어요' })); return }
+    // 🩸 2026-10-11 (대표 신고 — 413): 종전엔 **원본을 그대로** 올렸고 가드는 "5MB 이하" 였는데,
+    //   실제로 자르는 것은 전역 `bodyLimit(1MB)` 라 폰 사진은 예외 없이 413 이었다.
+    //   `prepareImageForUpload` 가 압축하고 천장을 우리가 먼저 판정한다 — `shared/upload-limits.ts`.
     setUploading(true)
     const prev = image
     try {
+      const ready = await prepareImageForUpload(file, { thumbnail: true })
       const fd = new FormData()
-      fd.append('file', file)
+      fd.append('file', ready)
       const up = await api.post('/api/upload/image', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
       const url: string | undefined = up.data?.data?.url
       if (!up.data?.success || !url) throw new Error(up.data?.error || '')
@@ -146,6 +148,10 @@ export default function ProfileEditSheet({ onClose, initialName, onNameChange }:
       toast.success(t('accountSettings.photoUpdated', { defaultValue: '프로필 사진이 바뀌었습니다' }))
     } catch (err) {
       setImage(prev)
+      if (err instanceof UploadTooLargeError) {
+        toast.error(t('accountSettings.photoTooBig', { defaultValue: '사진이 너무 커요. 다른 사진을 골라주세요' }))
+        return
+      }
       const e = err as { response?: { data?: { error?: string } } }
       toast.error(e?.response?.data?.error || t('accountSettings.photoFailed', { defaultValue: '사진을 바꾸지 못했어요' }))
     } finally { setUploading(false) }
@@ -262,7 +268,7 @@ export default function ProfileEditSheet({ onClose, initialName, onNameChange }:
                   onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void uploadPhoto(f) }} />
               </label>
               <p className="mt-2 text-[12px] text-gray-500 dark:text-gray-400 truncate">
-                {(() => { try { return localStorage.getItem('user_email') || PHOTO_HINT } catch { return PHOTO_HINT } })()}
+                {(() => { const hint = t('accountSettings.photoHint', { defaultValue: '사진은 자동으로 줄여 올립니다' }); try { return localStorage.getItem('user_email') || hint } catch { return hint } })()}
               </p>
             </div>
           </div>
