@@ -56,8 +56,8 @@ export default [
   {
     name: '[에이전시판] 콘솔이 다시 셀러 대시보드로 보낸다',
     file: PANEL,
-    find: "            <AgencyStorePlate\n              key={`${picked.sellerId}:${openPath ?? ''}`}",
-    replace: "            <button type=\"button\" onClick={() => navigate('/seller')}>운영하기</button>\n            <AgencyStorePlate\n              key={`${picked.sellerId}:${openPath ?? ''}`}",
+    find: "            <AgencyStorePlate\n              key={`${picked.sellerId}:${openPath ?? ''}:${openNonce}`}",
+    replace: "            <button type=\"button\" onClick={() => navigate('/seller')}>운영하기</button>\n            <AgencyStorePlate\n              key={`${picked.sellerId}:${openPath ?? ''}:${openNonce}`}",
     test: TEST,
     why: '이 단계의 목적이 대시보드 껍데기를 안 쓰는 것이다 — 되살아나면 4단계(껍데기 삭제)를 못 한다.',
   },
