@@ -29,12 +29,12 @@ export default [
     why: '교환권은 "매장에서 QR 보여주세요" 안내가 틀리다(기프티콘은 바코드로 쓴다).',
   },
   {
-    name: '알림톡 — 알리고가 붙인 코드 대신 우리 이름을 tpl_code 로 보낸다',
+    name: '알림톡 — 설정에 적은 등록 코드 대신 우리 이름을 템플릿 코드로 보낸다',
     file: 'src/lib/text-notice.ts',
-    find: '      templateCode: approved.get(n.tpl) || n.tpl,',
-    replace: '      templateCode: n.tpl,',
-    test: 'src/tests/unit/aligo-text-notice-2026-10-11.test.ts',
-    why: '알리고는 등록 시 자기 코드(UA_1234)를 붙인다 — 우리 이름으로 보내면 승인된 템플릿도 없는 템플릿으로 거절된다.',
+    find: '{ templateCode: approved.get(n.tpl) || n.tpl, to,',
+    replace: '{ templateCode: n.tpl, to,',
+    test: 'src/tests/unit/text-notice-2026-10-11.test.ts',
+    why: '등록 코드를 이름과 다르게 지었으면(`이름=코드`) 우리 이름으로 보내면 없는 템플릿으로 거절된다.',
   },
   {
     name: '알림톡 — 만료 안내를 7·3·1일 전에도 알림톡으로 보낸다',
@@ -49,7 +49,7 @@ export default [
     file: 'src/lib/text-notice.ts',
     find: "  if (!n.forceAlimtalk && isAlimtalkOff(n.tpl)) return { ok: false, skipped: 'turned_off' }\n",
     replace: '',
-    test: 'src/tests/unit/aligo-text-notice-2026-10-11.test.ts',
+    test: 'src/tests/unit/text-notice-2026-10-11.test.ts',
     why: '끈 알림이 등록돼 있으면 그대로 돈이 나간다.',
   },
 ]

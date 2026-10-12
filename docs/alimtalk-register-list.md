@@ -2,9 +2,14 @@
 
 > 🟢 **2026-10-12 — 등록처가 알리고 → 네이버 클라우드 SENS 로 바뀌었다** (대표 *"이걸로 가자"*, 알림톡 7.5원).
 > 알리고·비즈고는 서버 고정 IP 등록이 필수인데 유어딜 서버(Cloudflare)는 나가는 IP 가 매번 달라 막힌다(라이브 -99/-101).
-> SENS 는 API 키 서명 인증이고 허용 IP 는 선택이다. 코드: `src/lib/ncp-sens.ts` (키 넷이 있으면 자동으로 SENS 사용).
+> SENS 는 API 키 서명 인증이고 허용 IP 는 선택이다. 코드: `src/lib/ncp-sens.ts` — **알리고 코드는 전부 지웠다**(발송처는 SENS 하나).
 > **SENS 에서는 템플릿 코드를 등록할 때 직접 정한다 → 아래 "우리 이름"을 그대로 템플릿 코드로 입력한다.**
-> 그러면 승인 후 어드민 `alimtalk_approved_templates` 에 이름만 적으면 된다(`voucher_issued, seller_voucher_sold` 처럼). 아래 3번 규칙의 `=알리고코드` 는 알리고 시절 규칙이다.
+> 그러면 승인 후 어드민 `alimtalk_approved_templates` 에 이름만 적으면 된다(`voucher_issued, seller_voucher_sold` 처럼).
+>
+> 🗂️ **이름만 정해 둔 것(지금 등록 안 함 — 그 기능이 쓰이기 시작하면)**: 종전 env 코드(`ALIGO_TPL_*`·`TBD`)를 이름으로 고정했다 —
+> `order_confirm`·`shipping_start`·`order_cancel`(쇼핑 주문 — 쇼핑 탭 숨김) · `sample_approved`(도매 샘플) ·
+> `store_listed`(사장님 매장 등록 통보 — **이것만 버튼 2개**: "내 매장 관리하기"·"내가 등록한 게 아니에요", 웹링크 `https://urdeal.kr/seller/waiting`·`https://urdeal.kr/store/find`) ·
+> `gift_received`·`gift_refunded`(선물) · `stay_d1`·`stay_dday`·`stay_voucher_expire_soon`(숙소).
 
 > 대표 지시: *"템플릿 문구들도 빠짐없이 다 정리해서 만들어줘"* → *"10개 기준으로 만들어줄래?"*
 > **지금 등록할 것은 아래 10개뿐이다.** 나머지 9개는 기능이 실제로 쓰이기 시작하면 등록한다.
@@ -17,10 +22,10 @@
    바뀔 수 있는 자리는 `#{...}` 변수뿐이다. 코드는 그 자리에 실제 값을 넣어 보낸다.
 2. **버튼 없이 등록한다.** 지금 코드는 버튼을 보내지 않는다. 버튼을 붙여 등록하면 "템플릿 불일치"로 거절된다.
    링크는 본문 안의 주소로 충분하다(카카오톡이 눌리는 링크로 보여 준다).
-3. **승인되면 알리고가 붙인 코드를 알려 주세요.** 알리고는 등록하면 `UA_1234` 같은 **자기 코드**를 붙인다.
-   그 코드를 어드민 설정 `alimtalk_approved_templates` 에 `우리이름=알리고코드` 로 적어야 알림톡이 나간다.
-   예: `voucher_issued=UA_1234, seller_voucher_sold=UA_5678`. **적기 전까지는 아무것도 안 나간다**(문자도 안 나간다).
-   대표님이 코드를 알려 주시면 세션이 대신 적는다.
+3. **템플릿 코드 = 우리 이름.** SENS 는 등록할 때 코드를 직접 적는다 — 아래 "우리 이름"을 그대로 넣는다.
+   승인되면 어드민 설정 `alimtalk_approved_templates` 에 이름을 적어야 알림톡이 나간다
+   (예: `admin_test_send, voucher_issued, seller_voucher_sold`). **적기 전까지는 아무것도 안 나간다**(문자도 안 나간다).
+   코드를 이름과 다르게 지었으면 `우리이름=등록코드` 로 적는다. 대표님이 승인 소식을 주시면 세션이 대신 적는다.
 
 > 🔎 코드 쪽 정본: 손님·사장님 이용권 알림 `src/features/group-buy/api/helpers.ts`, 발송 규칙 `src/lib/text-notice.ts`.
 > 본문을 고칠 일이 생기면 **코드와 이 문서를 같은 커밋에서** 고치고, 카카오에도 다시 심사를 넣어야 한다.

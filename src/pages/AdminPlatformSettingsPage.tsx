@@ -116,7 +116,7 @@ export const OPS_POLICY_FIELDS: Array<{ key: string; label: string; hint: string
     //   ⚠️ `text: true` — 값이 'true'/'false' 문자열이라 숫자 검증 배열에 두면 저장이 거부된다.
     key: 'store_owner_notice_enabled',
     label: '사장님 매장 등록 통보(알림톡)',
-    hint: "기본 꺼짐. 'true' 로 켜도 `ALIGO_TPL_STORE_NOTICE`(카카오 검수 통과 템플릿)가 없으면 안 나간다. 자동 발송은 없고 /admin/store-owner 에서 눌러야 나간다 — 켜기 전 S-OWNERNOTICE 절차",
+    hint: "기본 꺼짐. 'true' 로 켜도 템플릿 `store_listed`(카카오 검수 통과)가 alimtalk_approved_templates 에 없으면 안 나간다. 자동 발송은 없고 /admin/store-owner 에서 눌러야 나간다 — 켜기 전 S-OWNERNOTICE 절차",
     text: true,
   },
   {

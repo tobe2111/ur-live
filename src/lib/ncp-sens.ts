@@ -69,9 +69,12 @@ export function interpretSensResponse(status: number, body: SensResponse | null)
   return { success: false, error: `[SENS ${status}] ${detail || 'unknown'}`.slice(0, 500) }
 }
 
+/** 알림톡 버튼 — 카카오 템플릿에 **같은 버튼을** 등록해야 한다(버튼도 템플릿의 일부). WL = 웹링크. */
+export interface SensButton { type: 'WL'; name: string; linkMobile: string; linkPc?: string }
+
 export async function sendSensAlimtalk(
   env: SensEnv,
-  p: { templateCode: string; to: string; content: string },
+  p: { templateCode: string; to: string; content: string; buttons?: SensButton[] },
 ): Promise<{ success: boolean; error?: string }> {
   const accessKey = String(env.NCP_ACCESS_KEY ?? '')
   const secretKey = String(env.NCP_SECRET_KEY ?? '')
@@ -93,7 +96,7 @@ export async function sendSensAlimtalk(
       body: JSON.stringify({
         plusFriendId: normalizeChannelId(channel),
         templateCode: p.templateCode,
-        messages: [{ to: p.to, content: p.content }],
+        messages: [{ to: p.to, content: p.content, ...(p.buttons?.length ? { buttons: p.buttons } : {}) }],
       }),
       signal: AbortSignal.timeout(8000),
     })

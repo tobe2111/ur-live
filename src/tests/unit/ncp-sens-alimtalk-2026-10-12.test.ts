@@ -1,10 +1,10 @@
 /**
  * 📨 알림톡을 네이버 클라우드 SENS 로 — 2026-10-12 대표 "이걸로 가자"
  *
- * 알리고·비즈고는 서버 고정 IP 등록이 필수라 Cloudflare(나가는 IP 가 매번 다름)에서 막힌다(라이브 -99/-101).
+ * 종전 발송사는 서버 고정 IP 등록이 필수라 Cloudflare(나가는 IP 가 매번 다름)에서 막혔다(라이브 -99/-101).
  * SENS 는 API 키 서명 인증이고 허용 IP 는 선택이다. 이 시험이 고정하는 것:
  *  ① 서명 원문 형식("POST {uri}\n{ts}\n{key}")과 HMAC — 한 글자만 틀려도 401 인데 에러가 늦게 드러난다
- *  ② SENS 키가 넷 다 있으면 알리고가 아니라 SENS 로 간다 · 하나라도 없으면 종전 알리고 경로
+ *  ② SENS 키가 넷 다 있으면 SENS 로 간다 · 하나라도 없으면 보내지 않는다(2026-10-12 알리고 제거)
  *  ③ 승인 전 템플릿은 SENS 로도 안 보낸다(앱 알림만, `pending:` 기록)
  *  ④ 응답 해석 — 202 + A000 만 성공, 실패는 SENS 원문을 싣는다
  *
@@ -53,7 +53,6 @@ function fakeDb(approved = '') {
 }
 
 const SENS = { NCP_ACCESS_KEY: 'AK', NCP_SECRET_KEY: 'SK', NCP_SENS_ALIMTALK_SERVICE_ID: 'ncp:kkobizmsg:kr:1:urdeal', NCP_KAKAO_CHANNEL_ID: '유어딜' }
-const ALIGO = { ALIGO_API_KEY: 'k', ALIGO_USER_ID: 'u', ALIGO_SENDER_KEY: 'sk', ALIGO_SENDER: '01011112222' }
 
 describe('① 서명', () => {
   it('원문은 "METHOD URI\\nTIMESTAMP\\nACCESSKEY"', () => {
@@ -75,13 +74,12 @@ describe('① 서명', () => {
 })
 
 describe('② 경로 선택', () => {
-  it('SENS 키가 넷 다 있으면 SENS 로 보낸다(알리고 호출 0)', async () => {
+  it('SENS 키가 넷 다 있으면 SENS 로 보낸다', async () => {
     const db = fakeDb('voucher_issued')
-    const r = await sendTextNotice({ ...ALIGO, ...SENS, DB: db }, '010-1234-5678', { tpl: 'voucher_issued', title: 't', text: '본문' })
+    const r = await sendTextNotice({ ...SENS, DB: db }, '010-1234-5678', { tpl: 'voucher_issued', title: 't', text: '본문' })
     expect(r).toEqual({ ok: true, via: 'alimtalk' })
     expect(calls).toHaveLength(1)
     expect(calls[0].url.startsWith(SENS_HOST)).toBe(true)
-    expect(calls.some(c => c.url.includes('aligo'))).toBe(false)
     const body = JSON.parse(calls[0].body)
     expect(body).toEqual({ plusFriendId: '@유어딜', templateCode: 'voucher_issued', messages: [{ to: '01012345678', content: '본문' }] })
     expect(calls[0].headers['x-ncp-iam-access-key']).toBe('AK')
@@ -98,7 +96,7 @@ describe('② 경로 선택', () => {
     expect(sensConfigured(SENS)).toBe(true)
     for (const k of Object.keys(SENS)) expect(sensConfigured({ ...SENS, [k]: '' })).toBe(false)
   })
-  it('SENS 도 알리고도 없으면 보내지 않는다', async () => {
+  it('SENS 키가 없으면 보내지 않는다', async () => {
     const r = await sendTextNotice({ DB: fakeDb('voucher_issued') }, '01012345678', { tpl: 'voucher_issued', title: 't', text: 'x' })
     expect(r).toEqual({ ok: false, skipped: 'no_credentials' })
     expect(calls).toHaveLength(0)

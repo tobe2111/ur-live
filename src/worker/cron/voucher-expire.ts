@@ -19,9 +19,6 @@
  */
 type Env = {
   DB: D1Database
-  ALIGO_API_KEY?: string
-  ALIGO_USER_ID?: string
-  ALIGO_SENDER_KEY?: string
 }
 
 type Row = {
@@ -57,7 +54,7 @@ export async function runMealVoucherExpireCron(env: Env): Promise<{ d30: number;
   `
   const rows = await env.DB.prepare(sql).all<Row>().catch(() => ({ results: [] as Row[] }))
 
-  // 📨 2026-10-11: 발송은 `sendTextNotice` 한 곳 — 카카오 승인 템플릿만(알리고가 붙인 코드로) 나가고, 승인 전이면 건너뛴다.
+  // 📨 2026-10-11: 발송은 `sendTextNotice` 한 곳 — 카카오 승인 템플릿만(어드민 승인 목록 — SENS) 나가고, 승인 전이면 건너뛴다.
   const { sendTextNotice } = await import('../../lib/text-notice')
 
   for (const r of (rows.results || [])) {

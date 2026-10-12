@@ -35,6 +35,8 @@ import { checkStoreHandover } from '@/worker/utils/store-handover-guard'
 import { ensureStoreOwnershipClaims, decideStoreClaim } from '@/worker/utils/store-ownership-claims'
 import { listStoreReports, decideStoreReport } from '@/worker/utils/store-reports'
 import { intParam } from '@/shared/pagination'
+import { approvedTemplateCode } from '@/lib/text-notice'
+import { sendSensAlimtalk, sensConfigured, type SensEnv } from '@/lib/ncp-sens'
 
 const adminStoreOwnerRoutes = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>()
 
@@ -303,8 +305,8 @@ adminStoreOwnerRoutes.get('/store-owner-notices', cors(), requireAdminRole('fina
       data: {
         notices: rows,
         // 화면이 "왜 버튼이 안 먹는지" 를 알 수 있게 게이트 상태를 같이 준다.
-        send_enabled: await m.ownerNoticeSendEnabled(c.env.DB, c.env.ALIGO_TPL_STORE_NOTICE),
-        template_ready: !!c.env.ALIGO_TPL_STORE_NOTICE && c.env.ALIGO_TPL_STORE_NOTICE !== 'TBD',
+        send_enabled: await m.ownerNoticeSendEnabled(c.env.DB, await approvedTemplateCode(c.env.DB, m.OWNER_NOTICE_KIND)),
+        template_ready: !!(await approvedTemplateCode(c.env.DB, m.OWNER_NOTICE_KIND)),
         sample_message: m.ownerNoticeMessage('예시 매장'),
       },
     })
@@ -319,22 +321,22 @@ adminStoreOwnerRoutes.post('/store-owner-notices/send',
     try {
       const env = c.env
       const m = await import('../../../worker/utils/store-owner-notice')
-      const tpl = env.ALIGO_TPL_STORE_NOTICE || ''
+      // 📨 2026-10-12 — 발송처 = 네이버 클라우드 SENS. 템플릿 `store_listed` 가 어드민 승인 목록에 있어야 한다.
+      const tpl = (await approvedTemplateCode(env.DB, m.OWNER_NOTICE_KIND)) || ''
       if (!(await m.ownerNoticeSendEnabled(env.DB, tpl))) {
         return c.json({
           success: false, code: 'SEND_DISABLED',
-          error: !tpl || tpl === 'TBD'
-            ? '카카오 템플릿 검수가 끝나면 ALIGO_TPL_STORE_NOTICE 를 넣어 주세요.'
+          error: !tpl
+            ? `카카오 템플릿 검수가 끝나면 어드민 설정 alimtalk_approved_templates 에 ${m.OWNER_NOTICE_KIND} 를 적어 주세요.`
             : 'platform_settings.store_owner_notice_enabled 가 true 가 아닙니다.',
         }, 409)
       }
-      if (!env.ALIGO_API_KEY || !env.ALIGO_USER_ID || !env.ALIGO_SENDER_KEY || !(env.ALIGO_SENDER_PHONE || env.ALIGO_SENDER)) {
-        return c.json({ success: false, code: 'ALIGO_NOT_CONFIGURED', error: '알림톡 발송 설정이 비어 있습니다' }, 409)
+      if (!sensConfigured(env as unknown as Record<string, unknown>)) {
+        return c.json({ success: false, code: 'ALIMTALK_NOT_CONFIGURED', error: '알림톡 발송 설정(네이버 클라우드 SENS)이 비어 있습니다' }, 409)
       }
-      const { sendAlimtalk } = await import('../../alimtalk/aligo')
       const r = await m.sendQueuedOwnerNotices(env.DB, {
-        apikey: env.ALIGO_API_KEY, userid: env.ALIGO_USER_ID, senderkey: env.ALIGO_SENDER_KEY,
-        sender: (env.ALIGO_SENDER_PHONE || env.ALIGO_SENDER)!, tplCode: tpl, send: sendAlimtalk,
+        tplCode: tpl,
+        send: (p) => sendSensAlimtalk(env as unknown as SensEnv, p),
       }, { limit: intParam(c.req.query('limit'), 20) })
       return c.json({ success: true, data: r })
     } catch (err) {

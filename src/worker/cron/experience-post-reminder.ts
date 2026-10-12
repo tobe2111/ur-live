@@ -13,13 +13,11 @@
  * 윈도우: selected_at 48시간~14일 — 오래된 과거 당첨자에게 소급 발송 방지.
  * 머니/정산/추첨 경로 무접촉 — notifications INSERT + 알림톡 발송만.
  */
+import { sendTextNotice } from '../../lib/text-notice'
+import { sensConfigured } from '../../lib/ncp-sens'
 type Env = {
   DB: D1Database
   OPS_SEQUENCES_ENABLED?: string
-  ALIGO_API_KEY?: string
-  ALIGO_USER_ID?: string
-  ALIGO_SENDER_KEY?: string
-  ALIGO_EXPERIENCE_POST_REMINDER?: string
 }
 
 // 콘텐츠 게시 인증 테이블 — WP-B(콘텐츠 인증) 선행 스캐폴드. 이 cron 은 read 만 하지만
@@ -75,12 +73,8 @@ export async function runExperiencePostReminder(env: Env): Promise<{ notified: n
   const rows = await DB.prepare(sql).all<Row>().catch(() => ({ results: [] as Row[] }))
   if (!(rows.results || []).length) return out
 
-  const alimtalkConfigured = !!(env.ALIGO_API_KEY && env.ALIGO_USER_ID && env.ALIGO_SENDER_KEY)
-  let sendAlimtalk: ((api: { ALIGO_API_KEY: string; ALIGO_USER_ID: string }, params: { senderKey: string; templateCode: string; to: string; message: string }) => Promise<{ success: boolean; error?: string }>) | null = null
-  if (alimtalkConfigured) {
-    const mod = await import('../../lib/aligo').catch(() => null)
-    sendAlimtalk = mod?.sendAlimtalk || null
-  }
+  // 📨 2026-10-12 알림톡 = 네이버 클라우드 SENS(키 넷이 없으면 앱 알림만). 실패 기록은 sendTextNotice 가 남긴다.
+  const alimtalkConfigured = sensConfigured(env as unknown as Record<string, unknown>)
 
   for (const r of (rows.results || [])) {
     const notifType = `exp_post_reminder_${r.entry_id}`
@@ -112,28 +106,18 @@ export async function runExperiencePostReminder(env: Env): Promise<{ notified: n
       ).run().catch(() => { /* table/컬럼 없으면 silent */ })
       out.notified++
 
-      if (alimtalkConfigured && sendAlimtalk && r.user_phone) {
+      if (alimtalkConfigured && r.user_phone) {
         const phone = r.user_phone.replace(/\D/g, '')
         if (/^01\d{8,9}$/.test(phone)) {
-          const templateCode = env.ALIGO_EXPERIENCE_POST_REMINDER || 'experience_post_reminder'
+          const templateCode = 'experience_post_reminder'
           const message =
             `[유어딜] 체험단 미션 안내\n\n` +
             `${campaignName}${where} 체험단에 당첨되신 지 48시간이 지났습니다.\n\n` +
             (missionLine ? `· 미션: ${missionLine}\n\n` : '') +
             `방문·이용 후 콘텐츠 게시를 부탁드려요. 이용권은 앱 '내 지갑'에서 확인하실 수 있습니다.`
-          const result = await sendAlimtalk(
-            { ALIGO_API_KEY: env.ALIGO_API_KEY!, ALIGO_USER_ID: env.ALIGO_USER_ID! },
-            { senderKey: env.ALIGO_SENDER_KEY!, templateCode, to: phone, message },
-          ).catch((e: Error) => ({ success: false, error: e.message }))
-          if (result.success) out.alimtalk_sent++
-          else {
-            out.alimtalk_failed++
-            await DB.prepare(
-              `INSERT INTO alimtalk_failures (template_code, phone, message, error, retry_count, max_retries, next_retry_at, created_at)
-               VALUES (?, ?, ?, ?, 0, 3, datetime('now', '+5 minutes'), datetime('now'))`
-            ).bind(templateCode, phone, message.slice(0, 1000), (result.error || 'unknown').slice(0, 500))
-              .run().catch(() => { /* noop */ })
-          }
+          const sent = await sendTextNotice(env, phone, { tpl: templateCode, title: '유어딜 알림', text: message })
+          if (sent.ok) out.alimtalk_sent++
+          else if ('error' in sent) out.alimtalk_failed++
         }
       }
     } catch { /* per-row fail-soft */ }

@@ -17,7 +17,7 @@ import { storeGoUrl } from '../../../shared/store-deep-link' // 🔗 한 번 눌
 
 
 export async function notifySellerVoucherSale(
-  env: unknown, // 📨 알리고(sendTextNotice) — 워커 env 그대로
+  env: unknown, // 📨 알림톡(sendTextNotice → SENS) — 워커 env 그대로
   DB: D1Database,
   sale: { sellerId: unknown; productName: string; qty: number; amount: number },
 ): Promise<void> {

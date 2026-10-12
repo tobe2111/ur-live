@@ -368,7 +368,7 @@ adminStreamsRoutes.post('/alimtalk/pricing', cors(), async (c) => {
  * 이미 있으면 **아무것도 하지 않고** 그대로 반환한다. 참조를 강제하는 부수효과로 **지급이 항상
  * 문서와 짝지어진다** — 나중에 "이 크레딧 왜 나갔지"를 답할 수 있다.
  *
- * ⚠️ 발송 자체는 별개다 — ALIGO 3종 키가 설정돼야 실제로 나간다(현재 미설정 → 발송 0).
+ * ⚠️ 발송 자체는 별개다 — 네이버 클라우드 SENS 키 4종(NCP_*)이 설정돼야 실제로 나간다.
  *    이 엔드포인트는 **판매·회계**만 성립시킨다.
  */
 adminStreamsRoutes.post('/alimtalk/grant', cors(), async (c) => {

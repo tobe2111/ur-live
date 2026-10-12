@@ -16,7 +16,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { sellerCertView, SELLER_CERT_LABEL } from '@/shared/seller-cert-badge'
 import {
-  ownerNoticeMessage, ownerNoticeButtonsJson,
+  ownerNoticeMessage, ownerNoticeButtons,
   OWNER_NOTICE_DASHBOARD_URL, OWNER_NOTICE_CLAIM_URL,
 } from '@/worker/utils/store-owner-notice'
 import { stripComments } from '../helpers/source-text'
@@ -109,11 +109,11 @@ describe('📩 사장님 통보 — 링크 둘, 순서가 의미다', () => {
   })
 
   it('버튼이 정확히 둘이고, 순서와 종류가 맞다', () => {
-    const b = JSON.parse(ownerNoticeButtonsJson()) as { button: Array<{ name: string; type: string; url_mobile: string }> }
-    expect(b.button.length).toBe(2)
-    expect(b.button[0].url_mobile).toBe(OWNER_NOTICE_DASHBOARD_URL)
-    expect(b.button[1].url_mobile).toBe(OWNER_NOTICE_CLAIM_URL)
-    for (const btn of b.button) {
+    const b = ownerNoticeButtons()
+    expect(b.length).toBe(2)
+    expect(b[0].linkMobile).toBe(OWNER_NOTICE_DASHBOARD_URL)
+    expect(b[1].linkMobile).toBe(OWNER_NOTICE_CLAIM_URL)
+    for (const btn of b) {
       expect(btn.type, '웹링크(WL)가 아니면 카카오가 다른 동작을 한다').toBe('WL')
       expect(btn.name.length, '버튼 이름이 비어 있다').toBeGreaterThan(0)
     }
@@ -121,6 +121,6 @@ describe('📩 사장님 통보 — 링크 둘, 순서가 의미다', () => {
 
   it('발송기에 버튼을 실제로 넘긴다 (문구만 맞고 버튼이 빠지면 눌 곳이 없다)', () => {
     const util = stripComments(readFileSync('src/worker/utils/store-owner-notice.ts', 'utf8'))
-    expect(util).toMatch(/button_1: ownerNoticeButtonsJson\(\)/)
+    expect(util).toMatch(/buttons: ownerNoticeButtons\(\)/)
   })
 })

@@ -7,8 +7,8 @@
  * - GET   /api/seller/alimtalk          — 알림톡 계정 + 템플릿 조회
  * - POST  /api/seller/alimtalk          — 알림톡 계정 등록/수정 (관리자 승인 대기)
  * - GET   /api/seller/alimtalk/balance  — 잔액 조회
- * - POST  /api/seller/alimtalk/test     — 테스트 발송
- * - POST  /api/seller/alimtalk/send     — 실제 발송 (잔액 선차감 + 실패분 환불)
+ * - POST  /api/seller/alimtalk/test     — 410 (2026-10-12 셀러 자체 채널 발송 중단 — 알리고 제거)
+ * - POST  /api/seller/alimtalk/send     — 410 (같은 이유)
  * - GET   /api/seller/alimtalk/messages — 발송 내역
  * - POST  /api/seller/alimtalk/charge   — 충전 요청
  */
@@ -19,8 +19,6 @@ import { intParam } from '@/shared/pagination'
 type Bindings = {
   DB: D1Database
   JWT_SECRET: string
-  ALIGO_API_KEY?: string
-  ALIGO_USER_ID?: string
 }
 
 export const sellerAlimtalkMgmtRoutes = new Hono<{ Bindings: Bindings }>()
@@ -114,168 +112,19 @@ sellerAlimtalkMgmtRoutes.get('/alimtalk/balance', requireSeller(), async (c) => 
   }
 })
 
-sellerAlimtalkMgmtRoutes.post('/alimtalk/test', requireSeller(), async (c) => {
-  const { DB } = c.env
-  try {
-    const authUser = getCurrentUser(c)
-    const sellerId = authUser?.id
-    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401)
+// 📨 2026-10-12 — 셀러 **자체 채널** 발송(테스트·일괄)은 알리고 전용이었다(셀러마다 알리고 발신프로필).
+//   발송처를 네이버 클라우드 SENS 하나로 바꾸며 알리고를 걷어냈고, SENS 는 유어딜 채널만 등록돼 있어
+//   셀러 채널로는 보낼 수 없다. 라이브 실측 `alimtalk_accounts` = 0곳(한 번도 쓰인 적 없음) ⇒ 410 으로 닫는다.
+//   손님 알림(주문·배송·취소)은 유어딜 채널로 계속 나간다(`features/alimtalk/send.ts`).
+const OWN_CHANNEL_GONE = {
+  success: false,
+  code: 'OWN_CHANNEL_SEND_DISCONTINUED',
+  error: '셀러 자체 채널 발송은 중단되었습니다. 손님 알림은 유어딜 채널로 자동 발송됩니다.',
+} as const
 
-    const { phone } = await c.req.json<{ phone: string }>()
-    if (!phone) return c.json({ success: false, error: '전화번호를 입력해주세요.' }, 400)
+sellerAlimtalkMgmtRoutes.post('/alimtalk/test', requireSeller(), (c) => c.json(OWN_CHANNEL_GONE, 410))
 
-    const account = await DB.prepare(
-      `SELECT id, sender_key, status FROM alimtalk_accounts WHERE seller_id = ? LIMIT 1`
-    ).bind(sellerId).first<{ id: number; sender_key: string; status: string }>()
-
-    if (!account) return c.json({ success: false, error: '브랜드메시지 계정이 없습니다.' }, 400)
-    if (account.status !== 'active') return c.json({ success: false, error: '계정이 활성 상태가 아닙니다. 관리자 승인을 기다려주세요.' }, 400)
-
-    const ALIGO_API_KEY = c.env.ALIGO_API_KEY
-    const ALIGO_USER_ID = c.env.ALIGO_USER_ID
-
-    if (!ALIGO_API_KEY || !ALIGO_USER_ID) {
-      return c.json({ success: false, error: 'Aligo API가 설정되지 않았습니다. 관리자에게 문의해주세요.' }, 500)
-    }
-
-    const { sendAlimtalk } = await import('../../../lib/aligo')
-    const result = await sendAlimtalk(
-      { ALIGO_API_KEY, ALIGO_USER_ID },
-      {
-        senderKey: account.sender_key || '',
-        templateCode: 'test',
-        to: phone,
-        message: '[테스트] 브랜드메시지 발송 테스트입니다. ur-live에서 발송되었습니다.',
-      }
-    )
-
-    return c.json({
-      success: result.success,
-      message: result.success ? '테스트 발송 성공' : `테스트 발송 실패: ${result.error}`,
-    })
-  } catch (err) {
-    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-alimtalk-mgmt]')
-  }
-})
-
-sellerAlimtalkMgmtRoutes.post('/alimtalk/send', requireSeller(), async (c) => {
-  const { DB } = c.env
-  try {
-    const authUser = getCurrentUser(c)
-    const sellerId = authUser?.id
-    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401)
-
-    const body = await c.req.json<{
-      template_id: number
-      recipients: { phone: string; variables?: Record<string, string> }[]
-      variables?: Record<string, string>
-    }>()
-
-    const { template_id, recipients, variables } = body
-    if (!template_id || !recipients?.length) {
-      return c.json({ success: false, error: '템플릿 ID와 수신자 목록은 필수입니다.' }, 400)
-    }
-
-    // 🛡️ 2026-04-22: 수신자 수 + 전화번호 형식 검증 (비용 공격 방어)
-    if (recipients.length > 500) {
-      return c.json({ success: false, error: '한 번에 최대 500명까지 발송 가능합니다.' }, 400)
-    }
-    const phoneRegex = /^01[016789][-\s]?\d{3,4}[-\s]?\d{4}$|^\d{10,11}$/
-    for (const r of recipients) {
-      if (!r?.phone || typeof r.phone !== 'string') {
-        return c.json({ success: false, error: '유효하지 않은 수신자가 있습니다.' }, 400)
-      }
-      const normalized = r.phone.replace(/[-\s]/g, '')
-      if (!phoneRegex.test(normalized) || normalized.length < 10 || normalized.length > 11) {
-        return c.json({ success: false, error: `유효하지 않은 전화번호: ${r.phone.slice(0, 4)}***` }, 400)
-      }
-    }
-
-    const account = await DB.prepare(
-      `SELECT id, sender_key, balance, status FROM alimtalk_accounts WHERE seller_id = ? LIMIT 1`
-    ).bind(sellerId).first<{ id: number; sender_key: string; balance: number; status: string }>()
-
-    if (!account) return c.json({ success: false, error: '알림톡 계정이 없습니다.' }, 400)
-    if (account.status !== 'active') return c.json({ success: false, error: '계정이 활성 상태가 아닙니다.' }, 400)
-
-    const cost = 15
-    const totalCost = cost * recipients.length
-    if (account.balance < totalCost) {
-      return c.json({ success: false, error: `잔액이 부족합니다. 필요: ${totalCost}, 현재: ${account.balance}` }, 400)
-    }
-
-    const template = await DB.prepare(
-      `SELECT template_code, template_content FROM alimtalk_templates WHERE id = ? AND account_id = ?`
-    ).bind(template_id, account.id).first<{ template_code: string; template_content: string }>()
-
-    if (!template) return c.json({ success: false, error: '템플릿을 찾을 수 없습니다.' }, 404)
-
-    const ALIGO_API_KEY = c.env.ALIGO_API_KEY
-    const ALIGO_USER_ID = c.env.ALIGO_USER_ID
-
-    if (!ALIGO_API_KEY || !ALIGO_USER_ID) {
-      return c.json({ success: false, error: 'Aligo API가 설정되지 않았습니다.' }, 500)
-    }
-
-    const { sendAlimtalk } = await import('../../../lib/aligo')
-    let successCount = 0
-    let failedCount = 0
-
-    // 잔액 선차감 (CAS — balance >= totalCost 조건부 갱신)
-    const deductResult = await DB.prepare(
-      `UPDATE alimtalk_accounts SET balance = balance - ?, updated_at = datetime('now') WHERE id = ? AND balance >= ?`
-    ).bind(totalCost, account.id, totalCost).run()
-
-    if (!deductResult.meta?.changes) {
-      return c.json({ success: false, error: '크레딧이 부족합니다.' }, 402)
-    }
-
-    for (const recipient of recipients) {
-      try {
-        // 변수 치환 (regex metachar 주입 방지 — literal replace 사용)
-        const mergedVars = { ...variables, ...recipient.variables }
-        let message = template.template_content
-        for (const [key, value] of Object.entries(mergedVars)) {
-          const literal = `#{${key}}`
-          message = message.split(literal).join(String(value ?? ''))
-        }
-
-        const result = await sendAlimtalk(
-          { ALIGO_API_KEY, ALIGO_USER_ID },
-          { senderKey: account.sender_key, templateCode: template.template_code, to: recipient.phone, message }
-        )
-
-        const status = result.success ? 'sent' : 'failed'
-        if (result.success) successCount++
-        else failedCount++
-
-        await DB.prepare(
-          `INSERT INTO alimtalk_messages (account_id, template_id, recipient_phone, message_content, status, cost, aligo_message_id, failed_reason, sent_at, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
-        ).bind(account.id, template_id, recipient.phone, message, status, result.success ? cost : 0, result.messageId || null, result.error || null).run()
-      } catch {
-        failedCount++
-      }
-    }
-
-    if (failedCount > 0) {
-      await DB.prepare(
-        `UPDATE alimtalk_accounts SET balance = balance + ?, updated_at = datetime('now') WHERE id = ?`
-      ).bind(failedCount * cost, account.id).run()
-    }
-
-    await DB.prepare(
-      `UPDATE alimtalk_accounts SET total_sent = total_sent + ?, total_failed = total_failed + ?, updated_at = datetime('now') WHERE id = ?`
-    ).bind(successCount, failedCount, account.id).run()
-
-    return c.json({
-      success: true,
-      data: { total: recipients.length, success: successCount, failed: failedCount, refunded: failedCount * cost },
-    })
-  } catch (err) {
-    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-alimtalk-mgmt]')
-  }
-})
+sellerAlimtalkMgmtRoutes.post('/alimtalk/send', requireSeller(), (c) => c.json(OWN_CHANNEL_GONE, 410))
 
 sellerAlimtalkMgmtRoutes.get('/alimtalk/messages', requireSeller(), async (c) => {
   const { DB } = c.env

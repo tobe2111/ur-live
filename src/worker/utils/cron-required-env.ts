@@ -56,26 +56,29 @@ export const CRON_REQUIRED_ENV: Readonly<Record<string, readonly CronEnvRequirem
       jobs: ['scheduled-cleanup'],
       silently: '만료 선물 자동 환불이 통째로 스킵된다(5분마다).',
     },
-    // 📌 2026-08-02: **셋을 다 적는다.** 원래 `ALIGO_API_KEY` 하나만 있었는데, 발송 가드는
-    //   `!!(API_KEY && USER_ID && SENDER_KEY)` 라 **하나만 빠져도 통째로 skip** 된다.
-    //   실제로 물렸다 — 대표가 셋을 다 등록했는데 Workers 쪽 이름이 `' ALIGO_USER_ID'`(앞 공백)로
-    //   들어가 런타임에선 undefined 였다. 그런데 이 명부엔 API_KEY 만 있어서 판정이
-    //   **`ok — 요구 키 전부 존재`** 로 나왔다. 알림톡은 여전히 0건인데 계기는 초록이었다.
-    //   ⇒ **가드가 보는 조건과 코드가 보는 조건이 같아야 한다.** 하나만 보면 나머지가 사각지대다.
+    // 📌 2026-08-02: **가드가 보는 키를 전부 적는다.** 발송 가드는 키 하나만 빠져도 통째로 skip 인데,
+    //   예전 명부엔 그중 하나만 있어서 판정이 **`ok`** 로 나왔다(알림톡 0건인데 계기는 초록 — Workers 쪽
+    //   이름이 앞 공백 낀 채로 등록된 사고). ⇒ **가드가 보는 조건과 코드가 보는 조건이 같아야 한다.**
+    // 📨 2026-10-12: 발송처 알리고 → 네이버 클라우드 SENS. `sensConfigured` 가 보는 넷(lib/ncp-sens.ts)과 같다.
     {
-      key: 'ALIGO_API_KEY',
+      key: 'NCP_ACCESS_KEY',
       jobs: ['scheduled-cleanup', 'retry-alimtalk'],
       silently: '알림톡 발송·재시도가 전부 skip — 발송 0건이 정상처럼 보인다.',
     },
     {
-      key: 'ALIGO_USER_ID',
+      key: 'NCP_SECRET_KEY',
       jobs: ['scheduled-cleanup', 'retry-alimtalk'],
-      silently: '같은 가드(3종 AND)에 걸려 알림톡이 통째로 skip — API_KEY 만 있으면 소용없다.',
+      silently: '같은 가드(4종 AND)에 걸려 알림톡이 통째로 skip — 접근 키만 있으면 소용없다.',
     },
     {
-      key: 'ALIGO_SENDER_KEY',
+      key: 'NCP_SENS_ALIMTALK_SERVICE_ID',
       jobs: ['scheduled-cleanup', 'retry-alimtalk'],
-      silently: '같은 가드(3종 AND)에 걸려 알림톡이 통째로 skip.',
+      silently: '같은 가드(4종 AND)에 걸려 알림톡이 통째로 skip.',
+    },
+    {
+      key: 'NCP_KAKAO_CHANNEL_ID',
+      jobs: ['scheduled-cleanup', 'retry-alimtalk'],
+      silently: '같은 가드(4종 AND)에 걸려 알림톡이 통째로 skip.',
     },
     {
       key: 'CACHE_KV',
@@ -151,9 +154,9 @@ export function missingEnvFor(cron: string, env: Record<string, unknown>): CronE
 /**
  * 🫥 **이름에 공백이 낀 채로 등록된 키**를 찾아낸다 — 대시보드에 붙여넣을 때 생긴다.
  *
- * 2026-08-02 실측: Workers `ur-live` 에 `' ALIGO_USER_ID'`(앞 공백)·`'DATA_ENCRYPTION_KEY '`
+ * 2026-08-02 실측: Workers `ur-live` 에 `' ALIGO_USER_ID'`(앞 공백 — 당시 알림톡 발송사 키)·`'DATA_ENCRYPTION_KEY '`
  * (뒤 공백)로 들어가 있었다. 화면에는 **정상으로 보이고**(공백은 눈에 안 보인다) 대시보드도
- * 아무 경고를 안 준다. 그런데 런타임에선 `env.ALIGO_USER_ID` 가 undefined 라 알림톡 발송
+ * 아무 경고를 안 준다. 그런데 런타임에선 그 키가 undefined 라 알림톡 발송
  * 가드(3종 AND)가 조용히 거짓이 되어 **발송 0건이 정상처럼** 보였다.
  *
  * 이 함수는 "없다"를 **"없다 + 비슷한 이름이 있다"** 로 바꿔 준다. 그 차이가 곧 조치의 차이다

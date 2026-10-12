@@ -6,7 +6,7 @@
  */
 
 import type { D1Database } from '@cloudflare/workers-types'
-import { sendTextNotice } from '../../../lib/text-notice' // 📨 알림은 알리고 하나로(알림톡 승인 전엔 문자)
+import { sendTextNotice } from '../../../lib/text-notice' // 📨 알림은 카톡 알림톡 하나로(SENS — 승인 전 템플릿은 보내지 않는다)
 import { existingColumns, columnNameOf } from '../../../worker/utils/ensure-columns'
 import { recordLedger } from '../../../worker/utils/ledger'
 import { calcInfluencerCommissionPct, type CommissionRates } from './commission-rates'
@@ -311,7 +311,7 @@ export function generateStoreOwnerToken(): string {
 
 /**
  * 사장님께 Magic Link 알림톡 발송 (best-effort).
- * 알리고(`sendTextNotice`) — 키 미설정 시 silent skip.
+ * 알림톡(`sendTextNotice` → SENS) — 키 미설정 시 silent skip.
  */
 export async function sendStoreOwnerAlimtalk(
   env: unknown,
@@ -466,7 +466,7 @@ ${data.restaurantName}
 
 /**
  * 🛡️ 2026-05-16: voucher 사용 완료 알림톡 (매장이 QR 스캔 직후).
- * 📨 2026-10-11: 알리고 하나로(`sendTextNotice`) — 'voucher_used' 가 카카오 검수를 통과해 어드민 승인 목록에
+ * 📨 2026-10-11: 알림톡 하나로(`sendTextNotice`, 2026-10-12 부터 SENS) — 'voucher_used' 가 카카오 검수를 통과해 어드민 승인 목록에
  *   오르면 알림톡, 그 전엔 문자. ⚠️ 알림톡 전환 시 message 를 승인 템플릿 본문과 일치시켜 유지.
  */
 export async function sendBuyerVoucherUsedAlimtalk(
