@@ -6,6 +6,7 @@
 import { toast } from '@/hooks/useToast'
 import { isKorea } from '@/shared/config/region'
 import { useTranslation } from 'react-i18next'
+import { buildCommerce, commercePayload, feedPayload, shareViaKakao } from '@/lib/kakao-share'
 
 interface ShareButtonProps {
   title: string
@@ -27,55 +28,28 @@ interface ShareButtonProps {
   secondaryButtonText?: string // 커머스 카드 2번째 버튼(기본 '자세히 보기')
 }
 
-/** 가격 props → 카카오 commerce 객체(또는 null). 정가만/할인가만/할인율만 어떤 조합이든 안전 처리. */
-function buildCommerce(regularPrice?: number, salePrice?: number, discountRate?: number): { regularPrice: number; discountPrice?: number; discountRate?: number } | null {
-  const sale = Math.round(Number(salePrice) || 0)
-  let regular = Math.round(Number(regularPrice) || 0)
-  let rate = Math.round(Number(discountRate) || 0)
-  // 할인율만 주어지고 정가가 없으면 판매가에서 역산.
-  if (sale > 0 && rate > 0 && regular <= sale) regular = Math.round(sale / (1 - Math.min(rate, 95) / 100))
-  const hasDiscount = sale > 0 && regular > sale
-  if (hasDiscount && rate <= 0) rate = Math.round((1 - sale / regular) * 100)
-  const base = regular || sale
-  if (!base || base <= 0) return null
-  const commerce: { regularPrice: number; discountPrice?: number; discountRate?: number } = { regularPrice: base }
-  if (hasDiscount) {
-    commerce.discountPrice = sale
-    if (rate > 0) commerce.discountRate = rate // 카카오: discountRate 는 discountPrice 있을 때만 유효
-  }
-  return commerce
-}
-
+/**
+ * 🔁 2026-10-12 — `buildCommerce` 와 `sendDefault` 호출을 `lib/kakao-share.ts` 로 **행동 불변**으로
+ *   옮겼다(유어샵 공유가 세 번째 사본이 되려던 참이었다 — 그 파일 머리말). 여기선 호출만 한다.
+ */
 async function shareKakao(
   title: string, description: string, imageUrl: string | undefined, fullUrl: string,
   buttonText: string | undefined,
   commerce: ReturnType<typeof buildCommerce>, secondaryButtonText?: string,
 ) {
-  const { ensureKakaoSdk } = await import('@/lib/kakao-sdk')
-  await ensureKakaoSdk()
-  const link = { mobileWebUrl: fullUrl, webUrl: fullUrl }
-  const img = imageUrl || 'https://urdeal.kr/icons/og-default.png'
   if (commerce) {
     // 🛒 커머스 카드 — 가격/할인율 강조 + 버튼 2개(중복 라벨이면 1개).
     const primary = buttonText || '구매하기'
     const secondary = secondaryButtonText || '자세히 보기'
-    const buttons = [{ title: primary, link }]
-    if (secondary && secondary !== primary) buttons.push({ title: secondary, link })
-    ;(window as any).Kakao.Share.sendDefault({
-      objectType: 'commerce',
-      content: { title, imageUrl: img, link },
-      commerce,
-      buttons,
-    })
+    const buttons = [{ title: primary }]
+    if (secondary && secondary !== primary) buttons.push({ title: secondary })
+    await shareViaKakao(commercePayload({ title, imageUrl, url: fullUrl, commerce, buttons }))
     return
   }
-  ;(window as any).Kakao.Share.sendDefault({
-    objectType: 'feed',
-    content: { title, description, imageUrl: img, link },
-    buttons: [
-      { title: buttonText || '유어딜에서 보기', link },
-    ],
-  })
+  await shareViaKakao(feedPayload({
+    title, description, imageUrl, url: fullUrl,
+    buttons: [{ title: buttonText || '유어딜에서 보기' }],
+  }))
 }
 
 async function shareNative(title: string, description: string, fullUrl: string) {

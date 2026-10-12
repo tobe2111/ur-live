@@ -288,7 +288,7 @@ import { referralRoutes } from '../features/referral/api/referral.routes';
 //   (typeof navigator/window 가드 보유라 워커 안전). URL 이 클라 렌더값과 byte-일치해야 preload 적중.
 import { cfImage, cfSrcSet } from '../utils/cf-image';
 // 🖼️ 홈 첫 화면 카드 사진 preload — 링크 생성은 헬퍼가 한다(파일 크기 래칫 + 직접 테스트 용이).
-import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; import { brandJsonLdScript } from '../shared/seo/brand-jsonld'; import { buildStaticSurfaceNoscript } from './utils/crawler-noscript'; import { MAIN_SEED_PATH, REGION_PATH_RE } from '../shared/seo/region-seed'; // 한 줄: 파일크기 래칫 안
+import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; import { brandJsonLdScript } from '../shared/seo/brand-jsonld'; import { buildStaticSurfaceNoscript } from './utils/crawler-noscript'; import { MAIN_SEED_PATH, REGION_PATH_RE } from '../shared/seo/region-seed'; import { ushopOgImage } from '../shared/ushop-share-card'; // 한 줄: 파일크기 래칫 안
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -906,10 +906,10 @@ app.use('*', async (c, next) => {
           const cTitle = `${cName} 유어샵 - 유어딜`;
           const cDesc = String(cur.bio || '').slice(0, 200) || `${cName}님의 추천 — 교환권·이용권 모음`;
           const canon = `${origin2}/u/${cur.handle || ''}`;
-          // 🖼️ 2026-07-01 (전수조사 후속 A): og:image 는 전용 OG 카드(1200×630 SVG, 이름·핸들·프로필 합성)를
-          //   사용 — 정사각 raw 프로필보다 소셜(카톡/트위터/FB) 카드 비율에 맞음(블로그 `/blog/og/:slug` 와 동일 방식).
-          //   프로필 유무와 무관하게 카드가 렌더되므로 무조건 설정. `/api/og/curator/:handle` = og-image.routes.ts.
-          const ogCard = `${origin2}/api/og/curator/${encodeURIComponent(cur.handle || '')}?v=3` // `?v` = 카카오 스크랩 캐시 무효화(og-curator-card.ts 머리말). v3 2026-10-09: font-family 따옴표가 XML 을 깨뜨리던 카드;
+          // 🖼️ 2026-10-12 [UNLOCK_LOADING] (대표 *"유어샵 공유 카드 다른 방법 없니?"* → *"가장 이상적으로"*):
+          //   og:image = **글자 없는 실사진**(쓸 수 있는 첫 핀을 1200×630 crop). 글자는 카톡·슬랙이 제목·설명으로
+          //   쓰므로 그림에 또 넣으면 그게 대표가 신고한 **중복**이다. 없으면 종전 합성 카드(`?v=4` — #1725 가 카드 안 사진을 고쳤는데 주소가 그대로여서 옛 카드가 나가고 있었다). 규칙 SSOT: shared/ushop-share-card.ts
+          const ogCard = ushopOgImage(ssrPayload, origin2, cur.handle || '');
           // 🔁 2026-07-29: 동일한 `.on()` 체인이 표면마다 복붙돼 있던 것을 `applySurfaceMeta` 로 통일
           //   (셀렉터·순서·값 전부 동일 — 출력 불변). canonical 은 이제 속성 이스케이프를 거친다.
           rb = applySurfaceMeta(rb, {

@@ -6,7 +6,6 @@ const TEST = 'src/tests/unit/ushop-og-card-2026-09-28.test.ts'
 const CARD = 'src/worker/utils/og-curator-card.ts'
 const INLINE = 'src/worker/utils/og-inline-image.ts'
 const ROUTE = 'src/worker/routes/og-image.routes.ts'
-const WORKER = 'src/worker/index.ts'
 
 export default [
   {
@@ -115,9 +114,11 @@ export default [
   },
   {
     name: '🛍️ 카드 주소의 판 번호를 뺀다',
-    file: WORKER,
-    find: "/api/og/curator/${encodeURIComponent(cur.handle || '')}?v=3",
-    replace: "/api/og/curator/${encodeURIComponent(cur.handle || '')}",
+    // 🔁 2026-10-12 재조준: 주소 조립이 워커 인라인 → `shared/ushop-share-card.ts`(워커·화면 공용
+    //   SSOT)로 옮겨갔다. 지키려던 결함은 그대로 — 판 번호를 떼면 옛 카드가 계속 나간다.
+    file: 'src/shared/ushop-share-card.ts',
+    find: "?v=${USHOP_OG_CARD_V}",
+    replace: '',
     test: TEST,
     why:
       '카카오는 스크랩 결과를 캐시한다. 주소가 그대로면 고쳐 배포해도 옛 까만 카드가 계속 나가고, ' +

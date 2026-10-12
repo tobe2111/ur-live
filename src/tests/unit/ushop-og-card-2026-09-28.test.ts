@@ -141,8 +141,14 @@ describe('배선 — 모듈만 맞고 라우트가 안 부르면 라이브는 �
     expect(tileWidth(0)).toBe(0)
   })
 
+  // 🔁 2026-10-12 재조준: 주소 조립이 `shared/ushop-share-card.ts`(워커·화면 공용 SSOT)로 옮겨갔다.
+  //   지키려던 불변식은 그대로 — **합성 카드 주소에 판 번호가 붙어 있다.** 워커는 그 함수를 경유하는지만 본다.
   it('og:image 주소에 판 번호가 있다 — 없으면 카톡이 옛 까만 카드를 계속 물고 있다', () => {
-    expect(worker).toMatch(/\/api\/og\/curator\/\$\{encodeURIComponent\(cur\.handle \|\| ''\)\}\?v=\d+/)
+    const ssot = stripComments(fs.readFileSync('src/shared/ushop-share-card.ts', 'utf8'))
+    expect(ssot).toMatch(/\/api\/og\/curator\/\$\{encodeURIComponent\(handle \|\| ''\)\}\?v=\$\{USHOP_OG_CARD_V\}/)
+    expect(ssot).toMatch(/USHOP_OG_CARD_V\s*=\s*[1-9]\d*/)
+    // 워커가 그 함수를 안 거치면 위 판 번호가 라이브에 닿지 않는다.
+    expect(worker).toMatch(/ushopOgImage\(ssrPayload,\s*origin2,/)
   })
 })
 

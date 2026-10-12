@@ -17,6 +17,8 @@ import SEO from '@/components/SEO'
 import type { CuratorPageResponse } from '@/features/curator/api/curator-api'
 import { fetchCuratorPage, getCuratorCache } from '@/features/curator/curator-page-cache'
 import { curatorHomePins } from '@/shared/curator-pin-order'
+import { buildUShopShareCard } from '@/shared/ushop-share-card'
+import { KAKAO_SHARE_FALLBACK_IMAGE, shareViaKakao, ushopCardPayload } from '@/lib/kakao-share'
 import { useAuthStore } from '@/client/stores/auth.store'
 // 🎫 2026-09-28 (대표 확정 s3 밀도형): 2열 격자 → 줄. 줄 카드는 `components/deal/DealRow` SSOT 를 쓴다.
 import PinRow from './curator-page/PinRow'
@@ -193,10 +195,29 @@ export default function CuratorPage() {
   }, [isOwner, data?.curator])
 
   // 🔗 2026-09-28 (대표 확정 c2 — "링크를 적지 말고 그냥 공유하기 버튼 하나로"): 헤더에서 주소 텍스트를
-  //   뺐으므로 이 버튼이 주소를 **보내는** 유일한 자리다. 네이티브 공유 시트가 있으면 그걸(카톡이 거기 뜬다),
-  //   없으면 종전대로 클립보드 복사 + 토스트.
+  //   뺐으므로 이 버튼이 주소를 **보내는** 유일한 자리다.
+  //
+  // 💬 2026-10-12 (대표 *"유어샵 링크 공유했는데 이렇게 보이면 너무 투박하잖아"* → *"가장 이상적으로"*)
+  //   종전엔 `navigator.share({ url })` 로 **주소만** 넘겼다. 그러면 카드를 만드는 주체가 카톡
+  //   스크래퍼가 되어 ① 우리 SVG 의 글자 + 카톡이 또 쓰는 제목·설명이 **중복**되고 ② **버튼이 없다**.
+  //   ⇒ 카카오 SDK 로 **우리가 카드를 지정**한다(선물 카드가 멀쩡했던 이유 — `lib/kakao-share.ts`).
+  //   무엇을 실을지는 순수 SSOT `shared/ushop-share-card.ts` 가 정한다(워커 og:image 와 같은 규칙).
+  //   폴백 계단은 그대로 둔다: 카카오 실패 → 네이티브 시트 → 클립보드 복사(한국 밖·PC 포함).
   async function shareShop() {
-    const fullUrl = `${window.location.origin}/u/${handle}`
+    const origin = window.location.origin
+    const fullUrl = `${origin}/u/${handle}`
+    try {
+      const card = buildUShopShareCard({
+        handle: String(handle || ''),
+        name: data?.curator?.name,
+        bio: data?.curator?.bio,
+        profileImage: data?.curator?.profile_image,
+        pins: data?.pins,
+        origin,
+        fallbackImage: KAKAO_SHARE_FALLBACK_IMAGE,
+      })
+      if (await shareViaKakao(ushopCardPayload(card))) return
+    } catch { /* SDK 미설정·차단 — 아래 네이티브 시트로 */ }
     const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void> }
     if (typeof nav.share === 'function') {
       try { await nav.share({ title: data?.curator?.name || '유어샵', url: fullUrl }); return }

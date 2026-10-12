@@ -18,8 +18,6 @@
     "check-product-detail-fields-repairable.mjs",
     "check-rules-version-bump.mjs",
     "check-secret-material.mjs",
-    "check-seed-version-monotonic.mjs",
-    "check-wholesale-autologin-guarded.mjs",
-    "check-wholesale-login-spa-navigate.mjs"
+    "check-seed-version-monotonic.mjs"
   ]
 }
