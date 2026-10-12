@@ -120,7 +120,9 @@ describe('① 상단 배너 = 2:1 카드 캐러셀 (2026-10-12)', () => {
   it('한 장이면 꽉 채우고 조작부(멈춤·n/N)를 안 그린다', () => {
     expect(RAIL).toMatch(/const many = banners\.length > 1/)
     expect(RAIL).toMatch(/\{many && \(/)
-    expect(RAIL).toMatch(/\$\{many \? 'snap-start shrink-0' : ''\}/)
+    // 카드가 `StripCard` 로 분리됐다 — 레일이 `many` 를 넘기고 카드가 그 값으로 스냅을 정한다.
+    expect(RAIL).toMatch(/snap=\{many\}/)
+    expect(RAIL).toMatch(/\$\{snap \? 'snap-start shrink-0' : ''\}/)
   })
 
   it('현재 장은 스크롤 위치에서 파생한다 — 따로 든 상태는 손가락과 어긋난다', () => {
@@ -141,8 +143,9 @@ describe('① 상단 배너 = 2:1 카드 캐러셀 (2026-10-12)', () => {
     expect(RAIL).toMatch(/text-\[13px\] font-medium/)
   })
 
-  it('사진 위 글자 — 글자 쪽에 어두운 그라디언트가 항상 덮인다', () => {
-    expect(RAIL).toMatch(/bg-gradient-to-r from-black\//)
+  it('그림 위에 그라디언트 덮개를 깔지 않는다 — 글자에만 옅은 그림자 (2026-10-12 대표 "그라데이션 촌스럽다")', () => {
+    expect(RAIL).not.toMatch(/bg-gradient-to-/)
+    expect(RAIL).toMatch(/\[text-shadow:/)
   })
 
   it('규격 안내가 2:1 · 자동 넘김을 말한다', () => {
@@ -150,7 +153,7 @@ describe('① 상단 배너 = 2:1 카드 캐러셀 (2026-10-12)', () => {
     expect(s.recommendedWidth).toBe(s.recommendedHeight * 2)
     expect(s.renderedNote).toMatch(/2:1/)
     expect(s.renderedNote).toMatch(/넘어간다/)
-    expect(s.notes.join(' ')).toMatch(/그라디언트/)
+    expect(s.notes.join(' ')).toMatch(/단색/)
   })
 })
 

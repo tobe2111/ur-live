@@ -4,6 +4,7 @@ import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { safeInternalPath } from '@/utils/safe-internal-path'
 import { useHomeBanners, type HomeBanner } from './useHomeBanners'
 import type { BannerSlot } from '@/shared/constants/home-showcase'
+import { inkForLuminance, measureTitleLuminance, type BannerInk } from './banner-ink'
 import { BANNER_SLOT_SPECS } from '@/shared/constants/home-showcase'
 
 /**
@@ -203,37 +204,7 @@ function StripRail({ banners }: { banners: HomeBanner[] }) {
         onWheel={many ? hold : undefined}
         className={`flex gap-2 ${many ? 'overflow-x-auto snap-x snap-mandatory scrollbar-hide' : ''}`}
       >
-        {banners.map((b, i) => {
-          const href = bannerHref(b)
-          const bg = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS.strip.requestWidth, quality: 80 }) : ''
-          return (
-            <Wrap
-              key={b.id}
-              href={href}
-              className={`relative ${many ? 'snap-start shrink-0' : ''} ${cardBasis} aspect-[2/1] overflow-hidden rounded-xl lg:rounded-2xl isolate bg-brand`}
-            >
-              {bg && (
-                <img
-                  src={bg} alt="" aria-hidden="true"
-                  /* 첫 장은 첫 화면에 그대로 보이는 그림이라 미루지 않는다. 나머지는 넘길 때 받는다. */
-                  loading={i === 0 ? 'eager' : 'lazy'}
-                  fetchPriority={i === 0 ? 'high' : 'auto'}
-                  decoding="async"
-                  className="absolute inset-0 -z-10 w-full h-full object-cover"
-                  onError={(e) => cfImageOnError(e.currentTarget, b.image_url)}
-                />
-              )}
-              {/* 어떤 사진이 올라올지 모른다 — 글자 쪽(왼쪽)만 눌러 둔다. 3D 그림이 있는 오른쪽은 그대로. */}
-              <div className="absolute inset-0 -z-10 bg-gradient-to-r from-black/35 via-black/10 to-transparent" aria-hidden="true" />
-              <div className="absolute left-5 bottom-4 max-w-[58%] text-white">
-                <strong className="block text-[24px] font-bold leading-[1.25] tracking-[-0.02em] line-clamp-2 [text-wrap:balance]">{b.title}</strong>
-                {b.description && (
-                  <span className="block mt-2 text-[13px] font-medium text-white/85 truncate">{b.description}</span>
-                )}
-              </div>
-            </Wrap>
-          )
-        })}
+        {banners.map((b, i) => <StripCard key={b.id} b={b} first={i === 0} snap={many} basis={cardBasis} />)}
       </div>
       {many && (
         <div className="relative">
@@ -247,6 +218,43 @@ function StripRail({ banners }: { banners: HomeBanner[] }) {
         </div>
       )}
     </div>
+  )
+}
+
+/** 카드 한 장. 글자색은 그림 밝기로 정한다(`banner-ink.ts`). */
+function StripCard({ b, first, snap, basis }: { b: HomeBanner; first: boolean; snap: boolean; basis: string }) {
+  const href = bannerHref(b)
+  const bg = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS.strip.requestWidth, quality: 80 }) : ''
+  const [ink, setInk] = useState<BannerInk>('light')
+  const dark = ink === 'dark'
+  return (
+    <Wrap
+      href={href}
+      className={`relative ${snap ? 'snap-start shrink-0' : ''} ${basis} aspect-[2/1] overflow-hidden rounded-xl lg:rounded-2xl isolate bg-brand`}
+    >
+      {bg && (
+        <img
+          src={bg} alt="" aria-hidden="true"
+          /* 첫 장은 첫 화면에 그대로 보이는 그림이라 미루지 않는다. 나머지는 넘길 때 받는다. */
+          loading={first ? 'eager' : 'lazy'}
+          fetchPriority={first ? 'high' : 'auto'}
+          decoding="async"
+          className="absolute inset-0 -z-10 w-full h-full object-cover"
+          onLoad={(e) => { const L = measureTitleLuminance(e.currentTarget); if (L != null) setInk(inkForLuminance(L)) }}
+          onError={(e) => cfImageOnError(e.currentTarget, b.image_url)}
+        />
+      )}
+      {/* 🎨 2026-10-12 대표 *"배경을 그라데이션으로 하니까 촌스러운데"* — 그림 위에 덮던 검은 그라데이션을 뺐다.
+          배너 그림은 단색 바탕으로 만든다(어드민 규격 안내). 글자색은 그림이 정하고(파스텔 = 짙은 글자),
+          흰 글자일 때만 옅은 그림자를 준다 — 그림의 색은 그대로 남는다.
+          글자색은 **테마가 아니라 그림**이 정하므로 dark: 짝을 **같은 값**으로 못 박는다(테마가 바뀌어도 안 변한다). */}
+      <div className={`absolute left-5 bottom-4 max-w-[58%] ${dark ? 'text-gray-900 dark:text-gray-900' : 'text-white [text-shadow:0_1px_10px_rgba(0,0,0,0.22)]'}`}>
+        <strong className="block text-[24px] font-bold leading-[1.25] tracking-[-0.02em] line-clamp-2 [text-wrap:balance]">{b.title}</strong>
+        {b.description && (
+          <span className={`block mt-2 text-[13px] font-medium truncate ${dark ? 'text-gray-700 dark:text-gray-700' : 'text-white/85'}`}>{b.description}</span>
+        )}
+      </div>
+    </Wrap>
   )
 }
 
