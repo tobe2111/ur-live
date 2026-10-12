@@ -26,8 +26,7 @@ import type { GroupBuyProductRow } from '@/shared/db/group-buy-types'
 import {
   ensureTables,
   maxTierDiscount,
-  generateVoucherCode,
-  generateUniqueVoucherCode,
+  generateUniqueVoucherCodes,
   getSellerCommissionRate,
   applyGroupBuyReferral,
   sendBuyerVoucherIssuedAlimtalk,
@@ -602,9 +601,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
       //   1) 코드 생성을 Promise.all 병렬 (이전: sequential await SELECT — qty=N 일 때 N awaits).
       //   2) order_items + vouchers INSERT 를 단일 DB.batch() 로 통합 (이전: 2 awaits).
       const expiresAt = product.voucher_expiry || null // 2026-08-22 대표: 미설정 = 무기한(90일 강제 기본값 폐지)
-      const codes = await Promise.all(
-        Array.from({ length: qty }, () => generateUniqueVoucherCode(DB))
-      )
+      const codes = await generateUniqueVoucherCodes(DB, qty)
       const lastExpiresAt = expiresAt
       const orderItemStmt = DB.prepare(`
         INSERT INTO order_items (order_id, product_id, product_name, unit_price, price, quantity, subtotal)
@@ -1211,7 +1208,7 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
 
     // voucher 발급 (qty) — order_id=정수(C1) + applied_price/expires_at(C2). batch = atomic (부분발급 차단).
     //   order_items 도 같은 batch (딜 경로와 정합 — 주문 상세 표시 + 정산 근거).
-    const codes = await Promise.all(Array.from({ length: qty }, () => generateUniqueVoucherCode(DB)))
+    const codes = await generateUniqueVoucherCodes(DB, qty)
     const orderItemStmt = DB.prepare(`
       INSERT INTO order_items (order_id, product_id, product_name, unit_price, price, quantity, subtotal)
       VALUES (?, ?, ?, ?, ?, ?, ?)

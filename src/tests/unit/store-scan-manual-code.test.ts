@@ -44,12 +44,15 @@ describe('손으로 친 코드 정규화', () => {
     expect(extractCode('https://evil.example/steal')).toBeNull()
   })
 
-  it('발급 알파벳이 대문자 전용이라는 전제가 아직 사실이다', () => {
+  it('발급 코드가 대문자 정규화로 바뀌지 않는다는 전제가 아직 사실이다', async () => {
     // 이 전제가 깨지면 위 대문자 정규화가 **유효한 코드를 망가뜨린다**.
-    const src = readFileSync('src/features/group-buy/api/helpers.ts', 'utf-8')
-    const m = src.match(/const chars = '([^']+)'/)
-    expect(m, '코드 알파벳 상수를 못 찾았다 — 정규화 전제를 재확인할 것').toBeTruthy()
-    expect(m![1]).toBe(m![1].toUpperCase())
+    // 🔢 2026-10-12: 새 코드는 6자리 숫자라 알파벳 상수가 없어졌다 — 문자열 대신 **진짜 함수**를 돌려 본다.
+    const { generateVoucherCode } = await import('@/features/group-buy/api/helpers')
+    for (let i = 0; i < 200; i++) {
+      const c = generateVoucherCode()
+      expect(c).toBe(c.toUpperCase())
+      expect(extractCode(c)).toBe(c)
+    }
   })
 })
 
@@ -70,9 +73,12 @@ describe('안내 문구가 코드 형식을 알려 준다', () => {
    *    그래서 **6개 언어 파일**을 판정 대상으로 삼는다.
    */
   for (const lang of LOCALES) {
-    it(`${lang}: seller.scan.manualPlaceholder 에 UR-XXXX-XXXX 형식이 있다`, () => {
+    // 🔢 2026-10-12: 새 코드는 6자리 숫자다 — 안내 문구도 그 모양을 보여 준다(옛 UR- 형식을 안내하면 거꾸로 헷갈린다).
+    it(`${lang}: seller.scan.manualPlaceholder 가 6자리 숫자 예시를 보여 준다`, () => {
       const j = JSON.parse(readFileSync(`public/locales/${lang}/translation.json`, 'utf-8'))
-      expect(j?.seller?.scan?.manualPlaceholder ?? '').toContain('UR-XXXX-XXXX')
+      const v = j?.seller?.scan?.manualPlaceholder ?? ''
+      expect(v).toMatch(/\b\d{6}\b/)
+      expect(v).not.toContain('UR-XXXX')
     })
   }
 })

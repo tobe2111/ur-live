@@ -144,12 +144,20 @@ interface ProtectedRouteProps {
   requireAdmin?: boolean
   requireSeller?: boolean
   requireUser?: boolean
+  /**
+   * 🚪 2026-10-12 [UNLOCK_LOADING] (대표 확정 — 로그인 전 탭 화면): 소비자 로그인이 없을 때 **로그인
+   *   화면으로 보내는 대신** 그릴 화면. 하단 탭 셋(이용권·유어샵·마이)이 쓴다 — 탭을 눌렀는데 곧장
+   *   로그인이면 그 탭이 무엇인지 볼 기회도 없다. 로그인 여부 판정은 **같은 `isUserLoggedIn`** 이다
+   *   (두 벌로 판정하면 한쪽만 고쳐져 갈린다). 셀러·어드민 분기에는 쓰지 않는다.
+   */
+  guest?: React.ReactNode
 }
 
 export function ProtectedRoute({
   children,
   requireAdmin = false,
   requireSeller = false,
+  guest,
 }: ProtectedRouteProps) {
   const location = useLocation()
 
@@ -187,6 +195,7 @@ export function ProtectedRoute({
       if (DEBUG) if (import.meta.env.DEV) console.log('[ProtectedRoute] ✅ KR 세션 로그인')
       return <>{children}</>
     }
+    if (guest !== undefined) return <>{guest}</>
     if (DEBUG) if (import.meta.env.DEV) console.log('[ProtectedRoute] ❌ KR 미인증 → /login')
     return <Navigate to={makeLoginUrl(location.pathname, location.search)} replace />
   }

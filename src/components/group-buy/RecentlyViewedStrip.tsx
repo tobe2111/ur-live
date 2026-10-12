@@ -48,6 +48,15 @@ export function readRecentlyViewedIds(): Set<number> {
   } catch { return new Set() }
 }
 
+/** 🚪 2026-10-12: 로그인 전 마이(게스트 화면)가 "최근 본 이용권" 을 그린다 — 저장소는 여기 하나. */
+export function readRecentlyViewed(): RecentItem[] {
+  try {
+    const raw = localStorage.getItem(KEY)
+    const arr = raw ? (JSON.parse(raw) as RecentItem[]) : []
+    return Array.isArray(arr) ? arr.filter((i) => i && Number.isFinite(Number(i.id)) && i.name) : []
+  } catch { return [] }
+}
+
 export default function RecentlyViewedStrip() {
   const navigate = useNavigate()
   const [items, setItems] = useState<RecentItem[]>([])

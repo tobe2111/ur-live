@@ -95,6 +95,7 @@ const UserProfilePage = lazy(() => import('./pages/UserProfilePage'))
 const WishlistPage = lazy(() => import('./pages/WishlistPage'))
 const FollowingPage = lazy(() => import('./pages/FollowingPage'))
 const MyVouchersPage = lazy(() => import('./pages/MyVouchersPage'))
+const GuestPassPage = lazy(() => import('./pages/guest/GuestPassPage')); const GuestUrShopPage = lazy(() => import('./pages/guest/GuestUrShopPage')); const GuestMyPage = lazy(() => import('./pages/guest/GuestMyPage')) // 🚪 로그인 전 탭 화면(2026-10-12)
 const MyGifticonsPage = lazy(() => import('./pages/MyGifticonsPage'))  // 🎟️ 2026-08-31 지갑 분리 — 교환권 보관함
 const StoreScanPage = lazy(() => import('./pages/StoreScanPage'))
 const InfluencerSettlementPage = lazy(() => import('./pages/InfluencerSettlementPage'))
@@ -645,7 +646,7 @@ function AppContent() {
             <Route path="/u/me/manage" element={<ProtectedRoute requireUser><ErrorBoundary><UShopManagePage /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/u/me/add" element={<ProtectedRoute requireUser><ErrorBoundary><LinkshopPinPicker /></ErrorBoundary></ProtectedRoute>} />
             {/* 🛡️ 2026-05-25: /u/me → 본인 공개페이지 자동 redirect */}
-            <Route path="/u/me" element={<ProtectedRoute requireUser><ErrorBoundary><UMeRedirectPage /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/u/me" element={<ProtectedRoute requireUser guest={<GuestUrShopPage />}><ErrorBoundary><UMeRedirectPage /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/u/:handle" element={<ErrorBoundary><CuratorPage /></ErrorBoundary>} />
             {/* SPA fallback: /u/:handle/p/:productId 클릭 시 서버 302 가 작동 안 할 때 ref 부여 후 navigate. */}
             <Route path="/u/:handle/p/:productId" element={<CuratorPinClientRedirect />} />
@@ -713,7 +714,7 @@ function AppContent() {
               </ProtectedRoute>
             } />
             <Route path="/user/profile" element={
-              <ProtectedRoute requireUser>
+              <ProtectedRoute requireUser guest={<GuestMyPage />}>
                 <UserProfilePage />
               </ProtectedRoute>
             } />
@@ -753,7 +754,7 @@ function AppContent() {
               </ProtectedRoute>
             } />
             <Route path="/my-vouchers" element={
-              <ProtectedRoute requireUser>
+              <ProtectedRoute requireUser guest={<GuestPassPage />}>
                 <MyVouchersPage />
               </ProtectedRoute>
             } />

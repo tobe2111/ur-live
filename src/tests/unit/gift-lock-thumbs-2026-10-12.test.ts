@@ -95,7 +95,9 @@ describe('② 받으면 코드가 바뀐다', () => {
   it('받기 UPDATE 가 새 코드를 함께 쓴다', () => {
     const s = stripComments(readFileSync('src/features/group-buy/api/voucher-gift.routes.ts', 'utf8'))
     expect(s).toMatch(/UPDATE vouchers SET user_id = \?, gift_from_user_id = \?, code = \?/)
-    expect(s).toMatch(/generateVoucherCode\(\)/)
+    // 🔢 2026-10-12: 코드가 6자리 숫자가 되어 겹칠 수 있다 — 새 코드는 DB 에 없는 번호로 고른다.
+    expect(s).toMatch(/const nextCode = await generateUniqueVoucherCode\(DB\)/)
+    expect(s).toMatch(/\.bind\(norm, String\(g\.sender_user_id\), nextCode,/)
   })
 })
 

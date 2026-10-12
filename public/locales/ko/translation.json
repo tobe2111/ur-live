@@ -2870,7 +2870,7 @@
       "cameraStarting": "카메라 시작 중…",
       "processing": "사용 처리 중…",
       "noDetector": "이 브라우저는 자동 인식을 지원하지 않아요 — 아래에 코드를 직접 입력해주세요.",
-      "manualPlaceholder": "코드 직접 입력 (UR-XXXX-XXXX)",
+      "manualPlaceholder": "코드 직접 입력 (123456)",
       "useBtn": "사용 처리",
       "homeCardTitle": "매장 사장님 — 손님 바우처는 여기서 스캔",
       "homeCardDesc": "손님 QR을 비추면 1탭으로 사용 처리돼요 · 매직링크는 카톡 링크 클릭(로그인 불요)",
@@ -4918,7 +4918,7 @@
     },
     "verify": {
       "codeLabel": "이용권 코드",
-      "codePlaceholder": "UR-XXXX-XXXX",
+      "codePlaceholder": "123456",
       "qrHint": "QR 주소를 붙여 넣으면 코드만 뽑아요",
       "lookup": "조회하기",
       "lookupAnother": "다른 이용권 조회",

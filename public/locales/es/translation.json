@@ -2189,7 +2189,7 @@
       "cameraStarting": "Iniciando cámara…",
       "processing": "Procesando…",
       "noDetector": "Este navegador no detecta automáticamente — ingresa el código abajo.",
-      "manualPlaceholder": "Ingresar código (UR-XXXX-XXXX)",
+      "manualPlaceholder": "Ingresar código (123456)",
       "useBtn": "Canjear",
       "homeCardTitle": "Dueños — escanea los vales de clientes aquí",
       "homeCardDesc": "Apunta al QR y canjea en un toque · Magic link sin iniciar sesión",
@@ -4916,7 +4916,7 @@
     },
     "verify": {
       "codeLabel": "Código del cupón",
-      "codePlaceholder": "UR-XXXX-XXXX",
+      "codePlaceholder": "123456",
       "qrHint": "Pega el enlace del QR y extraemos el código",
       "lookup": "Buscar",
       "lookupAnother": "Consultar otro cupón",
