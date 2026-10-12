@@ -911,3 +911,57 @@ curl -sS -A 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome
 엣지 캐시를 끄는 것은 **잠긴 SSR 0-RTT 설계**를 깬다(둘 다 잠금표 항목). ⇒ 이 발견의 산출물은
 **기록 정정**이다: `CLAUDE.md` 의 그 방어선 행과 `bot-detection.ts` 머리말에 실측을 적었다.
 ⚠️ **다음 세션은 이 보호를 *의도된 방벽*으로 믿지 말 것** — 그 과장을 전제로 삼으면 또 오판한다.
+
+---
+
+## 📋 전수 재측정 — 남은 thin 표면은 **전부 설명된다** (2026-10-12 23:35 KST)
+
+**[E2]** sitemap 453건을 **29개 모양**으로 묶어 모양마다 크롤러 본문 글자수를 쟀다(Googlebot UA,
+`#root` 안쪽만). ⚠️ 이 측정은 **오늘 밤 작업(#1751) 배포 전**이다.
+
+      모양                        건수   본문   h1   비고
+      /refund                      1     17자   0   결재 #25 — 남의 서비스 약관이라 추출 전에 결정이 필요
+      /u/:h                        4     19자   0   오늘 푸시가 2건 메우고 2건을 sitemap 에서 뺀다(배포 대기)
+      /privacy                     1     21자   0   일부러 안 함 — 본문이 JSX 안에만(국문·영문 분기)
+      /s/:h                        2     22자   0   **미해소 · 별건** — payload 에 상품이 없다
+      /products/:id                1     23자   0   오늘 푸시가 메운다(배포 대기)
+      /vouchers?category=…         3     40자   0   오늘 푸시가 메운다(배포 대기)
+      /browse                      1     60자   0   **데이터다** — 라이브 쇼핑 상품이 1건뿐
+      /region                      1    150자   0
+      /experience /creators/apply
+      /area-report /new-openings   각 1  154~195자 0
+      /pass/:id                  310    174자   1   데이터 — 데모 상품의 설명·정가·리뷰가 비어 있다
+      /stays/:id                  49    198자   1
+      /introduce /influencer
+      /creators /vouchers
+      /partners /about /terms     각 1  236~334자 0
+      /region/:sido               11    391자   0
+      /                            1    395자   0   홈은 박스 맞춘 빌더라 h1 미추가(위 ⑩ ❌)
+      /map                         1    398자   0
+      /region/:sido/:gu           32    421자   0
+      /stays                       1    471자   0
+      /faq                         1  1,537자   0   ← 오늘 ⑧이 1,515 → 1,537
+      /blog/:slug                 21  1,606자   1
+      /blog                        1  2,258자   1
+
+🔑 **결론: 구조적 결함은 남아 있지 않다.** 남은 thin 은 ① 배포 대기 ② 데이터 부족(쇼핑 1건 ·
+데모 설명 공백) ③ 결재 대기 ④ 명시적으로 별건으로 적어 둔 둘(`/privacy`·`/s/:h`) 뿐이다.
+⚠️ h1 은 이 표의 `0` 들이 **오늘 ⑩ 으로 채워질 예정**이다(배포 후 재측정 항목).
+
+### 🔎 측정 중 확인한 비-결함 셋 (파지 말 것)
+
+- **`Organization`·`WebSite` JSON-LD 는 완비** — `logo`(512px) · `address`(PostalAddress) ·
+  `email` · `parentOrganization` · `description` · `alternateName`. `sameAs` 는 **일부러 없다**
+  (운영 계정이 없다 — 404 `sameAs` 는 신뢰 신호를 깎는다).
+- **sitemap 에 이미지 확장이 있다** — `xmlns:image` + `<image:image>` **359건**.
+- **HTML 에 `ETag`·`Last-Modified` 가 없는 것은 옳다** — 봇 셸은 **UA 로 내용이 갈리므로**
+  (`shouldRenderMobileFirstScreen`) `Vary: User-Agent` 없는 ETag 는 틀린 검증자가 된다. 게다가
+  `no-cache` 는 잠긴 청크-stale 방어다. ⇒ 조건부 GET 을 붙이지 말 것.
+
+### 🎯 다음 세션의 1순위 후보 (코드 미작성 — 측정만 했다)
+
+**`FoodEstablishment.sameAs` ← `kakao_place_url`**. 상세 시드에 그 URL 이 **실측 표본 10/10**
+들어 있는데 JSON-LD 의 `sameAs` 는 **0건**이다. 그 매장을 카카오 플레이스의 같은 장소와 묶어 주는
+엔티티 조정 신호이고, 값은 시드에 이미 있어 **추가 요청 0**이다(지어내지 않는다).
+⚠️ 붙이기 전에 볼 것: ① 그 URL 이 살아 있는지(죽은 `sameAs` 는 역효과) ② `/stays/:id`·
+`/vouchers/:id` 의 시드에도 있는지 ③ `restaurant_lat`·`lng` 는 이미 `geo` 로 나가고 있다.
