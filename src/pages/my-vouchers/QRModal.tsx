@@ -62,6 +62,10 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
   const gifted = !!voucher.gift_from_user_id
   const canGift = voucher.status === 'unused' && voucher.source !== 'kt_alpha' && !gifted
   const [showGift, setShowGift] = useState(false)
+  // 🔒 2026-10-12 대표 "선물하면 해당 이용권은 쓸 수 없게" — 선물 링크가 살아 있는(친구가 받기 전) 동안 잠근다.
+  //   서버도 모든 사용 경로에서 막는다(이 화면은 그걸 미리 보여 줄 뿐이다). 회수하면 풀린다.
+  const [giftPending, setGiftPending] = useState(!!initialVoucher.gift_pending)
+  const giftLocked = voucher.status === 'unused' && giftPending
   const canSelfCancel = !gifted && voucher.status === 'unused' && Number.isFinite(createdMs) &&
     (Date.now() - createdMs) < 7 * 86400000
   async function handleSelfCancel() {
@@ -171,6 +175,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
 
   const isUsed = voucher.status === 'used'
   const isExpired = voucher.status === 'expired' || voucher.status === 'refunded'
+  const blocked = isUsed || isExpired || giftLocked // QR 을 흐리게·실시간 표시 끄기
 
   // 🎨 2026-06-21 (개선 #3): 매장 길찾기 (카카오맵). 좌표 우선, 없으면 주소 검색.
   const mapUrl = (voucher.restaurant_lat && voucher.restaurant_lng)
@@ -237,7 +242,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
           <div className="flex justify-center mb-4">
             <div className="relative p-4 rounded-2xl bg-surface border border-gray-100 dark:border-[#2C2F35]" style={{ boxShadow: '0 2px 12px rgba(10,10,10,0.06)' }}>
               {/* 스캔 프레임 코너 브래킷 (사용 가능 시) */}
-              {!isUsed && !isExpired && (
+              {!blocked && (
                 <>
                   <span className="absolute top-2 left-2 w-3.5 h-3.5 border-t-2 border-l-2 rounded-tl-[3px] border-gray-900 dark:border-white" aria-hidden />
                   <span className="absolute top-2 right-2 w-3.5 h-3.5 border-t-2 border-r-2 rounded-tr-[3px] border-gray-900 dark:border-white" aria-hidden />
@@ -245,13 +250,13 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
                   <span className="absolute bottom-2 right-2 w-3.5 h-3.5 border-b-2 border-r-2 rounded-br-[3px] border-gray-900 dark:border-white" aria-hidden />
                 </>
               )}
-              <div className={isUsed || isExpired ? 'opacity-20 grayscale' : ''}>
+              <div className={blocked ? 'opacity-20 grayscale' : ''}>
                 <ScannableQr value={qrUrl} />
               </div>
               {/* 🦦 2026-10-07 (확정 시안 ② "QR 카드 모서리에 작게"): 매장 계산대 스티커와 같은 수달이라 직원이
                   "유어딜 이용권"인 걸 바로 안다. **QR 밖** 오른쪽 아래 모서리에 걸쳐 두어 스캔을 가리지 않는다.
                   사용 완료·만료면 빠진다(그때는 도장이 그 자리의 주인공이다). */}
-              {!isUsed && !isExpired && (
+              {!blocked && (
                 // 🩸 2026-10-10 (대표 신고 "잘리고 있네"): 종전 `-right-11` 은 카드 **오른쪽 바깥**으로 44px 나갔는데,
                 //   카드가 시트 폭을 꽉 채우는 화면(PC 320px 시트)에선 그 자리가 스크롤 상자 밖이라 유달이가 잘리고
                 //   가로 스크롤바까지 생겼다. ⇒ 카드 **아래** 오른쪽 모서리에 걸친다(가로로는 카드 안 · QR 은 안 가림).
@@ -275,6 +280,14 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
                   </div>
                 </div>
               )}
+              {giftLocked && (
+                <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-white/45 dark:bg-black/45">
+                  <div className="flex items-center gap-2 rounded-xl border-[3px] border-brand bg-white/70 dark:bg-black/50 px-4 py-2 -rotate-12 shadow-sm">
+                    <GiftBoxIcon size={20} className="text-brand-text" />
+                    <span className="text-[17px] font-black tracking-tight text-brand-text">선물 중</span>
+                  </div>
+                </div>
+              )}
               {isExpired && (
                 <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-white/45 dark:bg-black/45">
                   <div className="flex items-center gap-2 rounded-xl border-[3px] border-red-500/90 bg-white/70 dark:bg-black/50 px-4 py-2 -rotate-12 shadow-sm">
@@ -288,10 +301,10 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
             </div>
           </div>
           <div className="bg-gray-100 dark:bg-[#1D1F29] rounded-xl px-3 py-2 text-center">
-            <code className={`text-[15px] tabular-nums font-bold tracking-[0.08em] ${isUsed || isExpired ? 'text-gray-400 line-through' : 'text-gray-900 dark:text-white'}`}>{voucher.code}</code>
+            <code className={`text-[15px] tabular-nums font-bold tracking-[0.08em] ${blocked ? 'text-gray-400 line-through' : 'text-gray-900 dark:text-white'}`}>{voucher.code}</code>
           </div>
           {/* 🛡️ 캡쳐 도용 방지 — 실시간 시간 + 🟢 pulse (흑백 리디자인 화면3) */}
-          {!isUsed && !isExpired && (
+          {!blocked && (
             <div className="flex items-center justify-center gap-2 mt-2">
               <span className="w-[7px] h-[7px] rounded-full bg-tone-ok animate-pulse" aria-hidden />
               <span className="text-[12px] font-semibold text-gray-400 dark:text-gray-500 tabular-nums">
@@ -300,14 +313,14 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
             </div>
           )}
           {/* 🎨 개선 #3: 화면 꺼짐 방지 활성 안내 (스캔 중 디밍 차단) */}
-          {!isUsed && !isExpired && wakeActive && (
+          {!blocked && wakeActive && (
             <p className="text-center text-[12px] text-gray-400 dark:text-gray-500 mt-2">
               {t('voucher.wakeOn', { defaultValue: '화면 꺼짐 방지 중 — 스캔하기 좋게' })}
             </p>
           )}
           {/* 🌐 2026-07-12 (앱-레디): 오프라인이어도 이 QR/코드는 저장돼 있어 매장에서 그대로 사용 가능 —
               지하·신호 약한 매장에서 "안 열릴까" 불안 제거(저장된 데이터로 렌더). */}
-          {!isUsed && !isExpired && !isOnline && (
+          {!blocked && !isOnline && (
             <p className="text-center text-[12px] font-semibold text-tone-ok mt-2">
               {t('voucher.offlineUsable', { defaultValue: '오프라인에서도 이 화면으로 사용할 수 있어요' })}
             </p>
@@ -395,7 +408,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
           )}
 
           {/* 🛡️ 선결제 안내 — "이미 결제 완료" 🟢 체크 (선물 X, 추가결제 X) */}
-          {voucher.status === 'unused' && (
+          {voucher.status === 'unused' && !giftLocked && (
             <div className="mt-4 flex items-start gap-2 bg-gray-50 dark:bg-white/[0.04] rounded-xl px-4 py-3">
               <OkIcon className="w-4 h-4 mt-1 shrink-0 text-tone-ok" />
               <div className="text-left">
@@ -407,7 +420,17 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
 
           {/* 🏁 액션: 공유 / 구매 취소·환불 (흑백 리디자인 화면3 — 2버튼 그리드).
               '선물하기'는 제거됨(2026-06-12): QR 링크 공유일 뿐 소유권 이전 아님 + 셀프취소 시 무효화 오해. */}
-          {voucher.status === 'unused' && (
+          {giftLocked && (
+            <div className="mt-4 rounded-2xl bg-brand-tint px-4 py-4 text-center">
+              <p className="text-[15px] font-bold text-gray-900 dark:text-white">친구에게 선물 중이에요</p>
+              <p className="mt-1 text-[13px] leading-relaxed text-gray-600 dark:text-gray-300">친구가 받기 전까지는 이 이용권을 쓸 수 없어요.<br />선물 보내기를 취소하면 다시 쓸 수 있어요.</p>
+              <button onClick={() => setShowGift(true)}
+                className="mt-3 w-full py-3 rounded-xl bg-brand text-white text-[15px] font-bold active:scale-[0.98] transition-transform">
+                선물 링크 보기, 보내기 취소
+              </button>
+            </div>
+          )}
+          {voucher.status === 'unused' && !giftLocked && (
             <>
               {/* 🎟️ 2026-06-20 현장 사용 — 가장 강조(잉크 풀폭). 매장에서 이걸 눌러 사용처리. */}
               <button
@@ -460,7 +483,10 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
           )}
         </div>
       </div>
-      {showGift && <GiftVoucherSheet voucher={voucher} onClose={() => setShowGift(false)} />}
+      {showGift && (
+        <GiftVoucherSheet voucher={voucher} onClose={() => setShowGift(false)}
+          onPendingChange={(p) => { if (p !== giftPending) { setGiftPending(p); invalidateVouchers() } }} />
+      )}
       {showRedeem && (
         <VoucherRedeemModal
           code={voucher.code}

@@ -339,3 +339,11 @@ export const SELLER_DORMANT_HIDDEN = true
  *         false 로 바꾸면 즉시 다시 열린다(가역).
  */
 export const PERSONAL_BROKER_SIGNUP_DISABLED = true
+
+/**
+ * KAKAO_REVIEW_BONUS_ENABLED — 사용한 이용권의 '카카오맵 후기 작성하고 보너스 받기' (2026-10-12 대표 *"카카오맵 후기 관련 보너스 지금 없어"*).
+ *   false: 내 이용권(지난 이용권 카드·사용 모달)의 후기 보너스 버튼을 숨기고, 서버 `POST /api/review-bonus/submit` 을
+ *          410(`REVIEW_BONUS_OFF`)으로 닫는다. 없는 혜택을 약속하는 버튼이 화면에 남아 있었다.
+ *   보존: 제출 내역·어드민/매장 검증 큐·레벨 API 는 그대로(과거 제출분 처리). true 로 바꾸면 즉시 복원(가역).
+ */
+export const KAKAO_REVIEW_BONUS_ENABLED = false

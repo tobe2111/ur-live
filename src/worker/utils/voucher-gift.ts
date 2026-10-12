@@ -71,3 +71,103 @@ export async function orderHasGiftedVoucher(DB: D1Database, orderId: number | st
 }
 
 export const GIFTED_REFUND_BLOCKED = '선물로 주고받은 이용권은 직접 취소·환불할 수 없어요. 고객센터로 문의해 주세요'
+
+/**
+ * 🎁 2026-10-12 대표 *"둘 다 해줘"*(선물 링크가 살아 있는 동안 보낸 사람의 셀프 환불 차단).
+ * 링크를 보낸 뒤 환불하면 돈은 안 새지만 친구 쪽에서 받으려던 선물이 "받을 수 없는 선물" 로 사라진다.
+ * ⇒ 먼저 회수하게 한다. 조회가 실패하면 막는다(위 `orderHasGiftedVoucher` 와 같은 쪽 — 환불을 *막는* 판정이라 안전하다).
+ */
+export async function orderHasPendingGift(DB: D1Database, orderId: number | string): Promise<boolean> {
+  try {
+    await ensureVoucherGiftTable(DB)
+    const row = await DB.prepare(
+      "SELECT 1 AS x FROM voucher_gifts g JOIN vouchers v ON v.id = g.voucher_id WHERE v.order_id = ? AND g.status = 'pending' LIMIT 1",
+    ).bind(orderId).first<{ x: number }>()
+    return !!row
+  } catch {
+    return true
+  }
+}
+
+export const GIFT_PENDING_REFUND_BLOCKED = '친구에게 선물 중인 이용권이에요. 선물 보내기를 취소한 뒤에 환불할 수 있어요'
+
+// ── 🔒 선물 중(받기 전) 잠금 — 2026-10-12 대표 *"선물하면 선물을 한 사람은 선물했다고 표시되고 해당 이용권은 쓸 수 없게끔"* ──
+// 링크가 살아 있는 동안(status='pending') 그 이용권은 **어떤 사용 경로로도** 소각되지 않는다.
+// 보낸 사람이 회수하면 잠금이 풀린다. 받으면 주인이 바뀌고 코드도 새로 발급된다(아래 `accept` 참조) —
+// 옛 코드를 보낸 사람이 갖고 있어도(캡처·문자·/v/ 링크) 더는 아무 데서도 안 통한다.
+export const GIFT_PENDING_USE_BLOCKED = '친구에게 선물 중인 이용권이에요. 보낸 분이 선물 보내기를 취소해야 쓸 수 있어요'
+
+/** 사용 CAS 에 붙이는 술어. `idExpr` 는 vouchers.id 를 가리키는 식(예: `vouchers.id`, `?`). */
+export function noPendingGiftSql(idExpr: string): string {
+  return `NOT EXISTS (SELECT 1 FROM voucher_gifts gp WHERE gp.voucher_id = ${idExpr} AND gp.status = 'pending')`
+}
+
+/**
+ * 친절한 거절 문구용 사전 조회. **실제 문은 CAS 의 `noPendingGiftSql` 이다** — 이 함수는 조회가 실패하면
+ * 막지 않는다(사용 경로 전체가 멎는 비용이 더 크고, CAS 가 다시 막는다).
+ */
+export async function voucherHasPendingGift(DB: D1Database, by: { id?: number; code?: string }): Promise<boolean> {
+  try {
+    await ensureVoucherGiftTable(DB)
+    const row = by.id != null
+      ? await DB.prepare("SELECT 1 AS x FROM voucher_gifts WHERE voucher_id = ? AND status = 'pending' LIMIT 1").bind(by.id).first<{ x: number }>()
+      : await DB.prepare("SELECT 1 AS x FROM voucher_gifts g JOIN vouchers v ON v.id = g.voucher_id WHERE v.code = ? AND g.status = 'pending' LIMIT 1").bind(String(by.code || '')).first<{ x: number }>()
+    return !!row
+  } catch {
+    return false
+  }
+}
+
+/**
+ * 내 지갑 목록에 선물 상태를 얹는다(`GET /api/group-buy/vouchers/my`).
+ *  - 내가 보낸 **받기 전** 선물이 걸린 이용권 → `gift_pending: true`(카드에 '선물 중', 사용 화면 잠금)
+ *  - 내가 보낸 **받은** 선물 → 이용권은 이미 친구 것이라 목록에 없다. 그래서 기록 행을 하나 붙인다
+ *    (`status: 'gifted'`, **code 없음** — 친구 이용권의 코드를 보낸 사람에게 다시 내보내지 않는다).
+ * 실패하면 원래 목록 그대로(지갑이 안 뜨는 것보다 표시가 하나 빠지는 게 낫다).
+ */
+export async function withGiftState<T extends { id?: unknown; source?: string; status?: string }>(
+  DB: D1Database, items: T[], uids: string[],
+): Promise<Array<T | Record<string, unknown>>> {
+  try {
+    await ensureVoucherGiftTable(DB)
+    const [a, b] = [uids[0], uids[1] ?? uids[0]]
+    const { results: pend } = await DB.prepare(
+      "SELECT voucher_id FROM voucher_gifts WHERE status = 'pending' AND sender_user_id IN (?, ?)",
+    ).bind(a, b).all<{ voucher_id: number }>()
+    const pendingIds = new Set((pend ?? []).map((r) => Number(r.voucher_id)))
+    const { results: sent } = await DB.prepare(`
+      SELECT g.id, g.voucher_id, g.accepted_at, g.created_at, u.name AS recipient_name,
+             p.id AS product_id, p.name AS product_name, p.image_url AS product_image,
+             p.restaurant_name, p.restaurant_address, v.applied_price
+      FROM voucher_gifts g
+      JOIN vouchers v ON v.id = g.voucher_id
+      LEFT JOIN products p ON p.id = v.product_id
+      LEFT JOIN users u ON CAST(u.id AS TEXT) = g.recipient_user_id
+      WHERE g.status = 'accepted' AND g.sender_user_id IN (?, ?)
+      ORDER BY g.accepted_at DESC
+      LIMIT 50
+    `).bind(a, b).all<Record<string, unknown>>()
+    const marked = items.map((v) =>
+      v.source !== 'kt_alpha' && v.status === 'unused' && pendingIds.has(Number(v.id)) ? { ...v, gift_pending: true } : v,
+    )
+    const history = (sent ?? []).map((g) => ({
+      id: `gift-${g.id}`,
+      code: '',
+      source: 'internal',
+      status: 'gifted',
+      gift_to_name: g.recipient_name ?? null,
+      used_at: g.accepted_at ?? null,
+      created_at: g.accepted_at ?? g.created_at,
+      product_id: g.product_id ?? null,
+      product_name: g.product_name ?? '이용권',
+      product_image: g.product_image ?? null,
+      restaurant_name: g.restaurant_name ?? null,
+      restaurant_address: g.restaurant_address ?? null,
+      applied_price: g.applied_price ?? null,
+      deal_only: 0,
+    }))
+    return [...marked, ...history]
+  } catch {
+    return items
+  }
+}

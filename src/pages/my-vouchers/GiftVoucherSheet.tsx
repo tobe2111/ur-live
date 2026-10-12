@@ -33,7 +33,12 @@ function sendKakao(v: Voucher, url: string): boolean {
   return true
 }
 
-export default function GiftVoucherSheet({ voucher, onClose }: { voucher: Voucher; onClose: () => void }) {
+export default function GiftVoucherSheet({ voucher, onClose, onPendingChange }: {
+  voucher: Voucher
+  onClose: () => void
+  /** 🔒 링크가 살아 있는지(=이용권이 잠겼는지) 바뀔 때 — 사용 화면이 잠금/해제를 따라간다. */
+  onPendingChange?: (pending: boolean) => void
+}) {
   useEscapeKey(onClose)
   const [loading, setLoading] = useState(true)
   const [pending, setPending] = useState<Pending | null>(null)
@@ -44,7 +49,7 @@ export default function GiftVoucherSheet({ voucher, onClose }: { voucher: Vouche
     let alive = true
     import('@/lib/kakao-sdk').then((m) => m.ensureKakaoSdk()).catch(() => { /* 복사로 대체 */ })
     api.get(`/api/group-buy/gifts/by-voucher/${encodeURIComponent(voucher.code)}`)
-      .then((r) => { if (alive) setPending(r.data?.data ?? null) })
+      .then((r) => { if (alive) { setPending(r.data?.data ?? null); onPendingChange?.(!!r.data?.data) } })
       .catch(() => { /* 없으면 새로 만든다 */ })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
@@ -56,6 +61,7 @@ export default function GiftVoucherSheet({ voucher, onClose }: { voucher: Vouche
     try {
       const r = await api.post('/api/group-buy/gifts', { code: voucher.code, message: message.trim() || undefined })
       setPending(r.data?.data ?? null)
+      onPendingChange?.(!!r.data?.data)
     } catch (e) {
       toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '선물 링크를 만들지 못했어요')
     } finally {
@@ -77,9 +83,10 @@ export default function GiftVoucherSheet({ voucher, onClose }: { voucher: Vouche
     try {
       await api.post(`/api/group-buy/gifts/${encodeURIComponent(token)}/cancel`)
       setPending(null)
-      toast.success('선물을 회수했어요. 이용권은 그대로 내 지갑에 있어요')
+      onPendingChange?.(false)
+      toast.success('선물 보내기를 취소했어요. 이용권은 그대로 내 지갑에 있어요')
     } catch (e) {
-      toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '회수하지 못했어요')
+      toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '선물 보내기를 취소하지 못했어요')
     } finally {
       setBusy(false)
     }
@@ -107,7 +114,7 @@ export default function GiftVoucherSheet({ voucher, onClose }: { voucher: Vouche
         <ul className="mt-4 space-y-1">
           {[
             '친구가 받으면 이 이용권은 친구 지갑으로 옮겨가요',
-            '받기 전에는 언제든 회수할 수 있어요',
+            '선물 링크를 만들면 친구가 받기 전까지 이 이용권은 쓸 수 없어요(선물 보내기를 취소하면 다시 쓸 수 있어요)',
             '받은 뒤에는 보낸 사람도 받은 사람도 직접 취소·환불할 수 없어요',
           ].map((s) => (
             <li key={s} className="flex gap-2 text-[13px] text-gray-600 dark:text-gray-300 leading-snug"><span aria-hidden>·</span><span>{s}</span></li>
@@ -130,7 +137,7 @@ export default function GiftVoucherSheet({ voucher, onClose }: { voucher: Vouche
               </button>
               <button type="button" onClick={() => revoke(pending.token)} disabled={busy}
                 className="py-3 rounded-xl border border-rule-strong text-gray-500 dark:text-gray-400 text-[13px] font-bold disabled:opacity-50">
-                선물 회수하기
+                선물 보내기 취소
               </button>
             </div>
           </>
