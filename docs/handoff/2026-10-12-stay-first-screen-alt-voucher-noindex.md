@@ -4,9 +4,18 @@
 
 ## 1. 다음 세션의 첫 액션
 
-### ⓐ PR #1746 의 E4 (아직 안 끝났다)
+### ⓐ ~~PR #1746 의 E4~~ — ✅ **끝났다**(이 세션에서 실측·기록 완료)
 
-머지 `e64bbe34e`. **라이브에서 세 가지를 재야** 완료다.
+머지 `e64bbe34e`. **세 가지 전부 통과**했고 CLAUDE.md 의 해당 두 audit 항목에 `✅ E4 판정 통과`
+를 기록했다. 측정값:
+
+| | 결과 |
+|---|---|
+| ① canonical | 여덟 표면 **전부 정확히 1개**(종전 2개) · `/pass/2887` → **`/stays/2887` 하나만** · `/pass/2919` 자기 자신 |
+| ② soft-404 | 쓰레기 4경로 **404 + `noindex, follow`** · 소비자·대시보드 **18경로 전부 200**(위험한 방향 안 일어남) |
+| ③ 얇은 본문 | `/partners` 275 · `/creators` 268 · `/influencer` 263 · `/introduce` 236 · `/new-openings` 195 · `/area-report` 178 · `/creators/apply` 177자 — 전부 `<noscript>` 에 페이지 원문이 실렸다 |
+
+재현 명령(다음에 또 필요하면):
 
 ```bash
 UA='Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
@@ -32,8 +41,7 @@ b=re.sub(r'<(script|style)[^>]*>.*?</\1>','',h,flags=re.S)
 print(len(re.sub(r'\s+',' ',re.sub(r'<[^>]+>',' ',b)).strip()))"; done
 ```
 
-그 뒤: CLAUDE.md 의 해당 두 audit 항목에 `✅ E4 판정 통과` + 측정값을 붙이고, Notion 개발
-업데이트 로그(데이터소스 `571b32b9-cefb-4453-9b84-78928c619451`)에 한 줄(서비스=유어딜 ·
+⚠️ **남은 것은 Notion 한 줄뿐이다** — 개발 업데이트 로그(데이터소스 `571b32b9-cefb-4453-9b84-78928c619451`)에 한 줄(서비스=유어딜 ·
 유형=결함 수정 · PR URL). ⚠️ `머니 경로` 속성은 **넣지 마라** — `Invalid input` 으로 거부된다.
 
 ### ⓑ 이 브랜치(PR 미생성) — 초록 확인 후 대표 지시 대기
