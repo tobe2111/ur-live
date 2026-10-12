@@ -112,3 +112,53 @@ PerplexityBot     API=403 HTML=200     Googlebot          API=200 HTML=200
 |---|---|---|
 | **#18** | 숙소 **49건**이 `/pass/:id` 와 `/stays/:id` 두 URL 로 색인 경쟁 | **둘을 같은 커밋에서** — (a) 상세 canonical (b) `sitemap.routes.ts:114` 의 하드코딩 `loc`. SSOT 는 `canonicalDetailPath` |
 | **#21** | 딜 3건 미만 지역 페이지가 `index, follow` + 본문 26자 | 요약(`ssr:region-digest`)이 이미 KV 에 있고 워커가 읽는다 ⇒ 조회 0 으로 게이트 가능. ⚠️ **요약이 없을 때는 절대 noindex 하지 않는다** |
+
+---
+
+## 8. 🩸 #18 — 내 애초 수리 방향이 라이브 실측으로 **뒤집혔다**
+
+애초 제안(§1·§4): `/pass/:id` canonical → `/stays/:id` + sitemap 도 `/stays/:id`.
+근거는 SSOT `canonicalDetailPath`(`stay_voucher` → `/stays/:id`)였다. **그대로 하면 안 된다.**
+
+**실측(Googlebot UA · 2026-10-12 · 상품 2887 = 그랑블루글램핑 평일 1박)**
+
+| | `/pass/2887` | `/stays/2887` |
+|---|---|---|
+| HTTP | 200 | 200 |
+| canonical | 자기 자신 | 자기 자신 |
+| robots | `index, follow` | `index, follow` |
+| `<title>` | 상품명(평일 1박 숙박권…) | 매장명(그랑블루글램핑&펜션…) |
+| **서버 본문** | **188자**(가게·상품·판매가 209,000·정가 272,000·23%·주소·전화) | **6자**(`urdeal` — 로더뿐) |
+| **JSON-LD** | `Product`+`Offer`+`LodgingBusiness`+Breadcrumb | `LodgingBusiness`+Breadcrumb (**Product·Offer 없음**) |
+| sitemap | **제출됨**(`/pass/` 359건) | **미제출**(`/stays/` 0건) |
+
+id 공간이 같다 — `StayDetailPage` 가 param 을 **`productId`** 로 받는다(`:113`).
+⇒ **같은 엔티티 · 두 색인 URL · 각각 자기 canonical · 제목도 다름.** 중복은 사실이다.
+
+🔴 **그런데 `/stays/:id` 로 canonical 을 옮기면 리치 페이지에서 빈 페이지로 옮기는 것이다.**
+내 애초 제안은 SSOT 만 보고 **각 URL 이 실제로 무엇을 내는지 안 재고** 쓴 것이다.
+
+### 갈림길 — 대표 판단 필요
+
+- **A. `/stays/:id` 에 서버 첫 화면 + `Product`/`Offer` 를 준다** (옳은 종착지)
+  `/pass/:id` 가 2026-09-15/16 에 받은 것과 **같은 처방**이고, 이 레포가 네 번 반복해 고친
+  *"데이터는 와 있는데 로더가 덮는다"* 클래스다(`readStaySeed(productId)` 가 이미 시드를 읽는다
+  = 데이터는 도착해 있다). ⚠️ `worker/index.ts`(**잠금 파일** → 승인 필요) + 파일 래칫이
+  **2672 로 꽉 차 있다**(주석 압축 필요 — `--rebaseline` 금지).
+- **B. 숙소 카드의 목적지를 `/pass/:id` 로 바꾼다** → `canonicalDetailPath` 수정.
+  ⚠️ **제품 결정**이다: 예약 달력·객실 선택이 있는 `/stays/:id` 로 가던 사람이 일반 패스 화면으로 간다.
+
+### 어느 쪽이든 **같은 커밋에서** 맞춰야 하는 셋
+1. 상세 canonical(`detail-ssr-meta.ts`)
+2. `sitemap.routes.ts:114` 의 하드코딩 `loc: /pass/${g.id}` → `canonicalDetailPath` 경유
+3. `/stays` ItemList·`/region` 항목(이미 `canonicalDetailPath` 를 쓴다)
+
+**지금은 sitemap(`/pass/`) 과 ItemList(`/stays/`) 가 서로 다른 URL 을 가리킨다** — 그 자체가 모순 신호다.
+
+## 9. #21 도 `worker/index.ts`(잠금) 이 필요하다
+
+`resolveRegionSeo` 는 DB 를 안 보고, noindex 게이트는 클라 렌더에만 있다. 요약(`ssr:region-digest`)이
+**이미 KV 에 있고 워커가 지역 경로에서 그 키를 읽으므로** DB 조회 0 으로 *버킷 항목 <3 → noindex* 가 된다.
+⚠️ **요약이 없을 때(KV miss·cron 전)는 절대 noindex 하지 않는다** — 데이터 부재는 thin 이 아니다.
+⚠️ 그 수정 자리가 `worker/index.ts` 라 **대표 승인 + `[UNLOCK_LOADING]` + audit log** 가 필요하고,
+파일 래칫이 2672 로 꽉 차 있다.
