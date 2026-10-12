@@ -39,6 +39,7 @@ import { canonicalDetailPath, FLOW_CONFIG } from '../../shared/product-flow'
 import { CONCEPT_FAQ, CONCEPT_ABOUT_LINES } from '../../shared/seo/concept-content'
 import { addressInRegion, parseRegionPath, type RegionRef } from '../../shared/constants/region-slugs'
 import { REGION_PATH_RE } from '../../shared/seo/region-seed'
+import { regionChildLinks } from '../../shared/seo/region-digest'
 import { CONSUMER_SURFACE_SEO } from '../../shared/seo/consumer-surfaces'
 import { surfaceCopyFor } from '../../shared/seo/surface-copy'
 import { CONSUMER_TERMS } from '../../pages/terms/consumer-terms-content'
@@ -408,7 +409,11 @@ export function buildStaticSurfaceNoscript(pathname: string, ssrPayload?: string
   const copy = surfaceCopyFor(path)
   if (copy) {
     const lines = copy.lines.map(l => `<p>${esc(l)}</p>`).join('')
-    return lines ? `<noscript>${lines}</noscript>` : ''
+    // 🔗 지역 허브는 문구 뒤에 **색인 대상 시/도 링크**를 붙인다 — 라이브 실측에서 이 허브의
+    //   a태그가 **0** 이었다(44개 지역이 sitemap 으로만 발견됐다). 링크 집합은 요약으로 판정해
+    //   thin 지역을 가리키지 않는다(`regionChildLinks`). 요약이 없으면 종전과 byte-동일.
+    const kids = childLinksHtml(path, ssrPayload)
+    return lines || kids ? `<noscript>${lines}${kids}</noscript>` : ''
   }
 
   // 🗺️ 지역 착지 페이지 — "동네 맛집 할인권" 질의의 착지점인데 라이브 본문이 **26자**였다
@@ -439,10 +444,23 @@ export function buildStaticSurfaceNoscript(pathname: string, ssrPayload?: string
     const rows = regionSeedRows(ssrPayload, ref).slice(0, 8)
     if (!rows.length) return ''
     const label = ref.sigungu ? `${ref.sido} ${ref.sigungu}` : ref.sido
-    return `<noscript><p>${esc(label)} 이용권</p><ul>${rows.map(liOf).join('')}</ul></noscript>`
+    // 🔗 시/도 페이지는 **자식 시군구**로 가는 길을 함께 낸다(시군구 32곳이 색인 대상인데
+    //   그 트리로 들어가는 내부 링크가 0 이었다). 시군구 페이지는 잎이라 아무것도 안 붙는다.
+    return `<noscript><p>${esc(label)} 이용권</p><ul>${rows.map(liOf).join('')}</ul>`
+      + `${childLinksHtml(path, ssrPayload)}</noscript>`
   }
 
   return ''
+}
+
+/**
+ * 🔗 자식 지역 링크 마크업. **조립은 한 곳에서만** 한다 — 두 자리에서 각자 쓰면 한쪽이 탈출을
+ * 빠뜨린다(이 레포가 반복해 밟은 클래스). 링크가 없으면 `''` 라 종전 출력과 byte-동일이다.
+ */
+function childLinksHtml(path: string, digestJson?: string | null): string {
+  const kids = regionChildLinks(path, digestJson)
+  if (!kids.length) return ''
+  return `<ul>${kids.map(k => `<li><a href="${esc(k.href)}">${esc(k.label)}</a></li>`).join('')}</ul>`
 }
 
 /** 경로 → 지역. 판정·디코딩 규율은 `surface-list-jsonld.ts` 의 `regionRefOf` 와 같다. */

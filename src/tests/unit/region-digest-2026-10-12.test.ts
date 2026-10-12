@@ -206,10 +206,14 @@ describe('④ 요약을 먹이면 크롤러 본문·ItemList 가 실제로 생�
 })
 
 describe('⑤ 경로 판정 — 지역·숙소만', () => {
-  it.each(['/region/서울', '/region/서울/중구', '/stays'])('%s → 쓴다', p => {
+  // 🔀 2026-10-12 재조준: **허브(`/region`)도 쓴다** — `regionChildLinks` 가 색인 대상 시/도
+  //   링크를 만드는 데 요약이 필요하다(종전엔 허브가 요약을 못 받아 크롤러에게 링크 0개를 줬다).
+  //   지키는 불변식은 그대로 — **지역·숙소 경로만** 쓴다(아래 '안 쓴다' 목록이 그 경계다).
+  //   허브가 noindex 가 되는 쪽은 `regionThinByDigest` 가 따로 막는다(그 시험이 아래에 있다).
+  it.each(['/region', '/region/서울', '/region/서울/중구', '/stays'])('%s → 쓴다', p => {
     expect(regionDigestApplies(p)).toBe(true)
   })
-  it.each(['/', '/vouchers', '/browse', '/map', '/region', '/u/jiwon1228', '/pass/2919', '/faq'])('%s → 안 쓴다', p => {
+  it.each(['/', '/vouchers', '/browse', '/map', '/u/jiwon1228', '/pass/2919', '/faq'])('%s → 안 쓴다', p => {
     expect(regionDigestApplies(p)).toBe(false)
   })
 })

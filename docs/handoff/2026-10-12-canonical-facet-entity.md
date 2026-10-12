@@ -652,3 +652,103 @@ curl -sS https://urdeal.kr/llms.txt | grep -c "유효기간이 지나면 어떻�
 ⚠️ **못 보는 것**: AI 가 실제로 그 답을 인용하는지(외부 판정 · 수일~수주) · 만료 환불 cron 이
 라이브에서 실제로 도는지(하트비트·원장만 안다 — 2026-09-30 에 그 cron 이 **환불 0건**이던 사고가
 있었다) · 다섯 언어 번역 품질(기존 관례대로 `[TODO:xx] <한국어>` 자리표시자다).
+
+---
+
+## 🔗🗺️ 후속 ⑨ — 색인 대상 지역 44개로 들어가는 **내부 링크가 0개**였다 (같은 지시)
+
+### 실측 (Googlebot UA · 라이브 · sitemap 정적·목록 23건 전수)
+
+```
+     8자  a=0  /privacy · /refund · facet 3건            ← 앞 항목들(미머지)
+    45자  a=0  /browse        120자 a=0  /region   ←★ 허브
+   368자  a=0  /map           445자 a=0  /stays
+   369자  a=4  /              2230자 a=21 /blog
+  1512자  a=0  /faq
+```
+
+🔑 **a=0 은 대부분 미머지 탓이지만, 허브는 머지 뒤에도 0 이다.** 후속 ⑥(크롤러 내부 링크)이 넣은
+것은 *목록 → 상품* 링크이고, **지역 트리**(허브 → 시/도 → 시군구)는 아무도 안 만들었다:
+
+```
+/region        본문 120자 · a태그 0   ← 허브인데 자식 시/도로 가는 길이 없다
+/region/서울    본문 364자 · 상품만    ← 자식 시군구 32곳으로 가는 길이 없다
+```
+
+⇒ **색인 대상 43~44개가 sitemap 으로만 발견되고 내부 링크 가치는 0** 이다. JS 를 렌더하는
+Googlebot 은 화면 링크를 보지만 **Yeti(네이버)·AI 검색봇은 이 문서가 전부**다.
+
+### 수정 — 잠긴 파일 **0개 접촉**
+
+| 파일 | 변경 |
+|---|---|
+| `shared/seo/region-digest.ts` | `regionDigestApplies` 에 `'/region'` 추가 + 신규 `regionChildLinks(path, digest)` |
+| `worker/utils/crawler-noscript.ts` | 신규 `childLinksHtml()` 한 곳에서 조립 + 허브·시/도 두 자리 배선 |
+
+🔑 **워커(`worker/index.ts`)는 한 글자도 안 고쳤다** — `regionDigestApplies` 는 함수고,
+`buildStaticSurfaceNoscript(url.pathname, crawlerPayload)` 는 **경로로 갈리는 단일 호출**이다.
+래칫 2672 에 여유가 0 이라 이게 결정적이었다.
+
+🔗 **링크 집합 = 색인 집합.** 판정이 `regionThinByDigest` 와 **같은 데이터·같은 술어**
+(`addressInRegion` + `REGION_INDEX_MIN_DEALS`)라 *"링크한다"* ⟺ *"thin 이 아니다"* 가 구조적으로
+보장된다. 시험이 그 동치를 **양방향**으로 잰다(링크된 것은 thin 아님 · 빠진 인천은 thin).
+
+🔴 **요약이 없으면 링크를 안 만든다** — 그리고 그건 방어 코드가 아니라 **구조**다(루프가 행에서만
+후보를 만든다). 위험한 방향은 *"cron 전이라도 허브엔 링크가 있어야 한다"* 며 전국 목록을
+폴백으로 넣는 것이고, 주입이 그쪽을 지킨다.
+
+### 눈으로 본 출력
+
+```
+허브 자식   [서울, 경기]              (인천 2건=thin 제외 · 대구 교환권뿐 제외)
+서울 자식   [종로구, 중구]            경기 자식 [파주시]      종로구(잎) []
+요약 없음   []  →  허브 본문 **종전과 byte-동일**
+href       /region/%EC%84%9C%EC%9A%B8  = resolveRegionSeo canonical (강원특별자치도 → 강원 도 확인)
+```
+
+### 🩸 이번에 틀린 것 — **같은 규칙의 세 번째 사본**
+
+주입이 두 번 통과했다(= 가드가 지키는 척). 원인은 픽스처가 아니라 **규칙이 세 곳에 있었다**:
+
+1. `if (!rows.length) return []` — 루프가 이미 0 을 내므로 **아무것도 더 안 지킨다** → 제거.
+2. 후보 수집 루프의 `deal_only` 제외 — 세는 루프가 또 거르므로 **중복** → 제거(한 곳만 남김).
+3. 그런데 그 **세는 루프**조차 `buildRegionDigest` 가 이미 교환권을 버리기 때문에, 요약으로
+   만든 픽스처에서는 지워도 결과가 같았다. **실제로 그 규칙이 일하는 자리는 요약이 없을 때**다 —
+   워커가 `crawlerPayload = digestRaw || ssrPayload` 를 넘기므로 KV miss 면 **MAIN 시드 원본**
+   (교환권 포함)이 온다 ⇒ 봉투를 **손으로 만들어** 그 경우를 재는 시험을 추가해 빨간불 확인.
+
+> 🧭 **교훈: 같은 규칙을 두 군데 두면 어느 쪽도 출력으로 판정할 수 없다**(CLAUDE.md 가 2026-10-11
+> 에 적어 둔 그 교훈을 같은 파일에서 다시 밟았다). 그리고 **주입이 통과하면 픽스처를 의심하기
+> 전에 "이 규칙이 실제로 일하는 입력이 무엇인가" 를 먼저 물을 것.**
+
+### 가드
+
+`src/tests/unit/region-child-links-2026-10-12.test.ts` **19건** — ①링크⟺색인 **양방향** + 교환권
+②부재 → 0 (+허브 본문 byte-동일) ③트리 모양(잎·모르는 시/도·깊은 경로) ④**href = resolver
+canonical**(정규화 케이스 포함) ⑤배선(허브가 요약을 받는가 · 조립 한 곳 · 상품이 먼저).
+주입 `scripts/mutations/region-child-links-2026-10-12.mjs` **9건 되돌려-검증 전부 빨간불**.
+
+🕳️ **기존 가드·주입 셋을 풀지 않고 재조준**: `region-digest` ⑤(허브도 요약을 쓴다 — 경계는 그대로) ·
+`crawler-internal-links` ③(상한 8 은 **상품 줄**의 양을 지킨다 → `<ul>` 두 벌을 따로 센다) ·
+주입 2건(`regionDigestApplies` 앵커 · thin 판정의 교환권 제외 — 같은 줄이 두 곳이 돼 함수 맥락까지
+포함. **결함은 한 글자도 안 바꿨고** 둘 다 다시 빨간불 확인).
+
+검증: tsc **0** · 신규 19 + 인접 **60건 pass** · 앵커 3,361건 실재 · pre-push 게이트
+**가드 100 · 시험 215** · 주입 잔재 0.
+
+### ⚠️ 다음 세션 — E4 (배포 후)
+
+```bash
+UA='Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
+# ① 허브에 시/도 링크가 생겼는지 (종전 a=0)
+curl -sS -A "$UA" https://urdeal.kr/region | grep -o 'href="/region/[^"]*"' | sort -u
+# ② 시/도 페이지에 자식 시군구 링크가 생겼는지 + 상품 링크가 **먼저**인지
+curl -sS -A "$UA" https://urdeal.kr/region/서울 | grep -o 'href="/\(pass\|region\)/[^"]*"' | head -20
+# ③ 🔴 반대 방향 — thin 지역이 링크되지 않았는지 (인천·세종·울산은 noindex 다)
+curl -sS -A "$UA" https://urdeal.kr/region | grep -c '인천\|세종\|울산'
+# ④ 허브가 여전히 index 인지 (허브는 noindex 대상이 아니다)
+curl -sS -A "$UA" https://urdeal.kr/region | grep -o 'name="robots"[^>]*'
+```
+
+⚠️ **KV 에 요약이 있어야 링크가 생긴다**(cron `:15` 1회). 요약이 없으면 링크 0 이고 그건
+**설계대로**다 — ①이 비면 먼저 `X-SSR-Status`/cron 하트비트를 볼 것.

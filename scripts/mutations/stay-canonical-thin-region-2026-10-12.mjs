@@ -118,8 +118,11 @@ export default [
   {
     name: 'thin 지역 — 교환권도 센다 (매장이 없는데 지역 딜로 집계)',
     file: D,
-    find: "    if (Number(r?.deal_only) === 1) continue",
-    replace: "    if (false as boolean) continue",
+    // 🔀 2026-10-12 재조준: 같은 규칙이 `regionChildLinks` 의 세는 루프에도 생겨 이 한 줄이
+    //   **두 곳**에 맞게 됐다(앵커는 유일해야 한다). `regionThinByDigest` 쪽 맥락까지 포함한다 —
+    //   결함(thin 판정이 교환권을 센다)은 한 글자도 안 바꿨다.
+    find: "  let n = 0\n  for (const r of rows) {\n    if (Number(r?.deal_only) === 1) continue",
+    replace: "  let n = 0\n  for (const r of rows) {\n    if (false as boolean) continue",
     test: T,
     why:
       '교환권(기프티콘)은 매장이 없고 주소도 지역 딜이 아니다 — 그걸 세면 실제로는 thin 인 지역이 ' +

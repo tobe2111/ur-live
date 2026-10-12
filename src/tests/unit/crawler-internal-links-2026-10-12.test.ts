@@ -121,6 +121,17 @@ describe('③ 탈출과 상한', () => {
   it('상한 8 — `<noscript>` 는 사람이 받는 응답에도 실린다', () => {
     const many = JSON.stringify({ data: Array.from({ length: 12 }, (_, i) => ({ ...PASS, id: 3000 + i, name: `메뉴${i}` })) })
     expect(lis(html('/map', many))).toBe(8)
-    expect(lis(html('/region/서울', many))).toBe(8)
+    // 🔀 2026-10-12 재조준: 지역 페이지는 상품 목록 뒤에 **자식 시군구 링크**(별도 `<ul>`)를
+    //   낸다. 이 상한이 지키려던 것은 **긴 상품 줄**(가게·메뉴·판매가)의 양이므로 그 목록에서
+    //   센다. 자식 링크는 짧은 라벨이고 상한이 따로 있다(아래 단언 + `regionChildLinks` 17).
+    const uls = html('/region/서울', many).match(/<ul>[\s\S]*?<\/ul>/g) || []
+    expect(uls.length, '목록이 두 벌(상품·자식)이어야 한다').toBe(2)
+    const [items, kids] = [String(uls[0]), String(uls[1])]
+    expect(lis(items), '상품 줄이 8을 넘었다').toBe(8)
+    expect(lis(kids), '자식 링크가 상한을 넘었다').toBeLessThanOrEqual(17)
+    // 자식 목록은 전부 지역 주소다(상품이 섞이면 상한 분리가 무의미해진다).
+    expect(kids.match(/href="\/pass\//g)).toBeNull()
+    expect(kids.match(/href="([^"]*)"/g) || [], '자식 링크가 0건이면 통과가 아니다').not.toHaveLength(0)
+    for (const h of kids.match(/href="([^"]*)"/g) || []) expect(h).toContain('/region/')
   })
 })
