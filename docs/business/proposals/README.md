@@ -8,8 +8,30 @@
 | 대행사 제휴 제안 (16:9, 30장 v8 — **09-19 확정 플로우**: 매장 코드·두 요율·코드 링크 매칭·귀사 몫 유어딜 직접 송금. PART 구분 장 4·직접 vs 경유 표·플라이휠·페르소나·목표별 설계·인출선·절차 3열, PowerPoint, 매장 모집 실행서) | `docs/business/proposals/urdeal-agency-proposal.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-agency-proposal.build.mjs`) | 없음. 파일로 전달 |
 | 매장 사장님 소개 (16:9, 15장 v7 — 대표 최종 구성안 9장 + 손님 흐름 + 페르소나·목표별 설계·쌓이는 자산·절차 3열, PowerPoint. 상세판 17장은 `urdeal-store-owner-deck-detail.*`) | `docs/business/proposals/urdeal-store-owner-deck.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-store-owner-deck.build.mjs`, 공통 모듈 `deck-common.mjs`) | 없음. 파일로 전달 |
 | 상인회 서비스 소개 + 입점 요청 (16:9, 20장 v1 — **2026-10-06 대표 지시**. 상인회 설명회 자리용. 공동 사업(전단·축제·쿠폰)과의 비교 · 세 가지 길(직접 10% / 유어딜 대행 10% / 상인회 중개 5%) · 상인회 몫의 구조와 상한 · 마지막 장이 **입점 요청 3가지**) | `docs/business/proposals/urdeal-merchant-association-deck.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-merchant-association-deck.build.mjs`, 공통 모듈 `deck-common.mjs`) | 없음. 파일로 전달 |
-| 인플루언서 제휴 소개 (16:9, 20장 v4 — **중개사 계정 · 유어딜 5% 흐름 + 09-19 확정 플로우**(코드 링크 한 탭 매칭·매장 단위 링크·매장 코드), 영입 2% 제거, 정산은 "이용권 사용 후", 유어쇼츠·이용권 지갑·QR 화면, SNS 로고, https 하이퍼링크. PART 구분 장 3·플라이휠·페르소나·인출선·절차 3열, PowerPoint) | `docs/business/proposals/urdeal-influencer-deck.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-influencer-deck.build.mjs`, 공통 모듈 `deck-common.mjs`). 기존 9장 HTML(`public/static/proposals/influencer-proposal.html`)을 대체한다 | 없음. 파일로 전달 (어드민 `/admin/proposals` 의 HTML 은 구판) |
+| 인플루언서 제휴 소개 (16:9, 20장 v4 — **중개사 계정 · 유어딜 5% 흐름 + 09-19 확정 플로우**(코드 링크 한 탭 매칭·매장 단위 링크·매장 코드), 영입 2% 제거, 정산은 "이용권 사용 후", 유어쇼츠·이용권 지갑·QR 화면, SNS 로고, https 하이퍼링크. PART 구분 장 3·플라이휠·페르소나·인출선·절차 3열, PowerPoint) | `docs/business/proposals/urdeal-influencer-deck.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-influencer-deck.build.mjs`, 공통 모듈 `deck-common.mjs`). 기존 9장 HTML(`public/static/proposals/influencer-proposal.html`)을 대체한다. **⚠️ 어드민 `/admin/proposals` 는 아직 그 9장 구판을 띄운다** — 거기서 열어 보내면 옛 내용이 나간다 | 없음. 파일로 전달 (어드민 `/admin/proposals` 의 HTML 은 구판) |
 | 소개서 3종 기획서 | `docs/business/proposals/three-decks-plan-2026-09.md` | 없음 |
+
+## 숫자는 FACTS 한 곳에서만 (2026-10-12)
+
+다섯 덱이 쓰는 모든 실측값은 `deck-common.mjs` 의 `FACTS` 가 단일 출처입니다. **덱 파일에 숫자를
+베껴 적지 마세요.** 베껴 적으면 "바꿀 때 같이 고친다" 는 주석에 기대게 되고, 그 주석은 실제로 안 지켜집니다.
+
+2026-10-12 갱신에서 실제로 드러난 세 가지:
+
+- 🩸 **상세판 덱이 "지금 팔리고 있는 실제 상품 (치즈돈가스 2인 세트)" 라면서 다른 상품의 가격을
+  보여 주고 있었습니다.** 10-06 에 숫자만 고치고 **이름을 안 고쳤기 때문**입니다. 이름·숫자가 어긋나면
+  받는 사람이 확인할 수 없고, 확인하려 들면 거짓이 드러납니다 ⇒ 이름도 `FACTS.sampleName` 에서 읽습니다.
+- 🩸 **상세판 덱이 카테고리 평균을 자기 파일에 베껴 적어** 식사 평균이 32,409 에 굳어 있었습니다
+  ⇒ `FACTS.avgNums` 로 단일화. 평균의 정의는 **판매가 평균**이지 정가 평균이 아닙니다(정가로 재면
+  40,757 이 나와 전혀 다른 값이 됩니다 — 이번에 한 번 헷갈렸습니다).
+- 🩸 **중개 몫의 최소 지급액을 "1만원" 이라고 쓸 뻔했습니다.** 1만원은 *매장(셀러) 레일*이고
+  중개 몫은 *인플루언서 레일*이라 **10만원**입니다(`cron/influencer-payout.ts` `DEFAULT_PAYOUT_MIN`).
+  파트너에게 돈 얘기를 틀리게 하는 자리이므로 코드를 보고 고쳤습니다.
+
+### 슬라이드에 쓰지 않기로 한 숫자
+
+**승인 매장 수.** 10-12 실측 10곳 중 2곳이 명시적 테스트 계정이고 중복 등록과 장소명도 섞여 있어,
+"그 10곳이 어디냐" 는 질문에 답이 궁색합니다. 방어할 수 있는 숫자(`realStores`)만 씁니다.
 
 ## 왜 docs/ 가 아니라 public/static/ 인가
 
