@@ -2,7 +2,7 @@ import { cfImage, cfSrcSet } from '../../utils/cf-image'
 import { DETAIL_HERO_DESKTOP_WIDTH, DETAIL_PC_HERO_RATIO_MULTI, DETAIL_PC_HERO_RATIO_SINGLE, detailCropUrl, detailGalleryImages, detailHeroMobileUrl } from '../../shared/detail-hero-image'
 import {
   HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE,
-  HOME_CARD_LG_QUERY, HOME_CARD_BASE_QUERY, HOME_CARD_ABOVE_FOLD,
+  HOME_CARD_LG_QUERY, HOME_CARD_BASE_QUERY, HOME_CARD_ABOVE_FOLD, HOME_CARD_MAX_DPR,
 } from '../../shared/home-card-image'
 import { HERO_STRIP_PRELOAD, heroTileUrl, pickHeroStripFromSeedJson } from '../../shared/home-hero-strip'
 import { HOME_HERO_MEDIA_QUERY } from '../../shared/home-hero-image'
@@ -60,7 +60,7 @@ export function buildHomeCardPreloadLinks(ssrExtraPayload: string): string[] {
       const href = cfImage(src, { width: w, format: 'auto' })
       // data: URI 는 이미 문서 안에 있다 — preload 할 것이 없다.
       if (!href || href.startsWith('data:')) continue
-      const set = cfSrcSet(src, w)
+      const set = cfSrcSet(src, w, HOME_CARD_MAX_DPR)
       links.push(
         `<link rel="preload" as="image" fetchpriority="high" media="${q}" href="${escAttr(href)}"${
           set ? ` imagesrcset="${escAttr(set)}"` : ''

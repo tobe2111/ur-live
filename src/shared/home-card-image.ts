@@ -31,3 +31,12 @@ export const HOME_CARD_BASE_QUERY = '(max-width: 1023px)'
  * 워커가 더 많이 당기면 **안 쓰는 사진을 받고**(트래픽 낭비), 적게 당기면 **효과가 반쪽**이 된다.
  */
 export const HOME_CARD_ABOVE_FOLD = 4
+
+/**
+ * 🖼️ 2026-10-12 카드 사진 밀도 상한 — 3x 폰(아이폰)도 2x 사진까지만 받는다(대표 *"이용권 사진들도 너무 늦게 뜨고"*).
+ * 모바일 카드 표시 폭이 175px 라 3x 는 600px(실측 37~58KB), 2x 는 400px(23~36KB) — 장당 약 37% 감소.
+ * 400px 를 175px 에 그리면 화소 밀도 2.3배라 눈에 띄는 흐림이 없다. 재생 실측: 홈 아래 카드 8장이 다 오는 시각이 당겨진다.
+ * ⚠️ 클라 카드(`DealCardMedia`)·워커 preload(`home-card-preload`)·서버 첫 화면(`home-first-screen`)이 **같은 값**을 써야 한다
+ *    — 하나만 바꾸면 preload 가 빗나가 같은 사진을 두 번 받는다.
+ */
+export const HOME_CARD_MAX_DPR = 2 as const
