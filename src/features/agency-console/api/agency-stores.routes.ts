@@ -31,6 +31,7 @@ import { frontendBase } from './agency-auth.routes'
 import { registerAgencyStoreRegisterRoute } from './agency-store-register'
 import { registerStaffStoreRoutes } from './agency-staff-stores'
 import { agencyStoreToday } from './agency-store-today'
+import { registerAgencyNotificationRoutes } from './agency-store-notifications'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string; FRONTEND_URL?: string }
 type Vars = { agencyStaff: AgencyStaffContext }
@@ -284,3 +285,5 @@ agencyStoresRoutes.post('/store-invite/revoke', cors(), requireAgencyStaff({ adm
 registerAgencyStoreRegisterRoute(agencyStoresRoutes)
 // 👥 직원별 매장 배정 — GET/PUT /staff/:id/stores. 본문은 형제 파일.
 registerStaffStoreRoutes(agencyStoresRoutes)
+// 🔔 맡은 매장들의 판매 알림(2026-10-12) — GET /notifications · POST /notifications/read. 본문은 형제 파일.
+registerAgencyNotificationRoutes(agencyStoresRoutes)

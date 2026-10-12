@@ -14,6 +14,7 @@ import { BellIcon } from '@/components/icons/urdeal-icons'
 import api from '@/lib/api'
 import { formatKSTShort } from '@/utils/date'
 import { toast } from '@/hooks/useToast'
+import { notifTarget } from '@/lib/notif-target'
 
 const Sheet = lazy(() => import('./Sheet'))
 
@@ -31,11 +32,8 @@ export interface StoreNotification {
 
 export const STORE_NOTIF_PATH = '/api/seller/my-stores/notifications'
 
-/** 알림의 링크를 어떻게 열까 — 셀러 화면이면 시트, 그 밖의 앱 주소면 이동, 없으면 아무것도. 외부 주소는 버린다. */
-export function notifTarget(link: string | null): { kind: 'sheet' | 'go'; path: string } | null {
-  if (!link || !link.startsWith('/') || link.startsWith('//') || link.includes('\\')) return null
-  return link.startsWith('/seller/') || link === '/seller' ? { kind: 'sheet', path: link } : { kind: 'go', path: link }
-}
+/** 링크 판정은 마이·콘솔 공용 — `@/lib/notif-target`. */
+export { notifTarget }
 
 export default function StoreNotifButton({ currentSellerId, onOpenPage }: {
   /** 지금 보고 있는 가게 — 이 가게 알림만 바로 연다. */

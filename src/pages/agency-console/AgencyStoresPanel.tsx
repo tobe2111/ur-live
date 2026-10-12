@@ -6,7 +6,9 @@ import { formatNumber } from '@/utils/format'
 import Sheet from '@/pages/user-profile/seller-section/Sheet'
 import { currentSeatId } from '@/lib/seller-seat'
 import { dashboardFallback, readToolParam } from '@/lib/seller-deep-link'
-import { agencyRequest, isMyAgencySeat } from './agency-api'
+import { notifTarget } from '@/lib/notif-target'
+import { agencyRequest, enterAgencyStore, isMyAgencySeat } from './agency-api'
+import AgencyNotificationsSheet, { type AgencyNotification } from './AgencyNotificationsSheet'
 import { useAgencyStores, type StoreRow } from './agency-stores-model'
 import AgencyStorePlate from './AgencyStorePlate'
 import { AgencyInviteLinkCard } from './AgencyInviteLinkCard'
@@ -36,7 +38,7 @@ export function storeRowHint(r: StoreRow): { text: string; urgent: boolean } {
   return { text: '', urgent: false }
 }
 
-type AgencySheet = 'picker' | 'requests' | 'invite' | null
+type AgencySheet = 'picker' | 'requests' | 'invite' | 'notifs' | null
 
 export function AgencyStoresPanel({ onExpired, staffId, agencyRows }: {
   onExpired: () => void
@@ -56,6 +58,44 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows }: {
    */
   const [deepPath] = useState(() => readToolParam(window.location.search))
   const [openPath, setOpenPath] = useState<string | null>(null)
+  /** 같은 화면을 다시 열 때도 판이 새로 서게(판의 열린 시트는 마운트 때 정해진다). */
+  const [openNonce, setOpenNonce] = useState(0)
+  /** 🔔 판매 알림 — 대시보드 껍데기의 종이 하던 일(2026-10-12). 콘솔을 열 때 한 번 받는다. */
+  const [notifs, setNotifs] = useState<AgencyNotification[] | null>(null)
+  const [notifUnread, setNotifUnread] = useState(0)
+  useEffect(() => {
+    void agencyRequest<{ data: { items: AgencyNotification[]; unread: number } }>('/notifications?limit=30').then((r) => {
+      if (!r.ok) { setNotifs([]); return }
+      setNotifs(r.data.data?.items ?? [])
+      setNotifUnread(Number(r.data.data?.unread) || 0)
+    })
+  }, [])
+  async function readNotifs(ids: number[] | 'all') {
+    const r = await agencyRequest('/notifications/read', { method: 'POST', body: ids === 'all' ? { all: true } : { ids } })
+    if (!r.ok) return
+    setNotifs((prev) => prev?.map((n) => (ids === 'all' || ids.includes(n.id) ? { ...n, isRead: true } : n)) ?? prev)
+    setNotifUnread((u) => (ids === 'all' ? 0 : Math.max(0, u - ids.length)))
+  }
+  /**
+   * 알림을 누르면 그 매장을 고르고 화면을 시트로 연다. **좌석은 이 클릭에서만** 받는다(사람의 행동) —
+   *   이미 이 직원의 그 매장 좌석이면 다시 받지 않는다.
+   */
+  async function openNotif(n: AgencyNotification) {
+    if (!n.isRead) void readNotifs([n.id])
+    const t = notifTarget(n.link)
+    if (!t) return
+    if (t.kind === 'go') { window.location.assign(t.path); return }
+    const store = active.find((r) => r.sellerId === n.sellerId)
+    if (!store) { toast.error('지금 맡고 있지 않은 매장 알림이에요.'); return }
+    if (!isMyAgencySeat(store.sellerId, staffId)) {
+      const r = await enterAgencyStore(store.sellerId, store.name)
+      if (!r.ok) { toast.error(r.error); return }
+    }
+    setSheet(null)
+    pick(store.sellerId)
+    setOpenPath(t.path)
+    setOpenNonce((x) => x + 1)
+  }
   /** 한 번만 쓴다 — 다른 매장을 골랐다 돌아와도 시트가 다시 열리지 않게. */
   const deepDone = useRef(false)
   useEffect(() => {
@@ -124,6 +164,12 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows }: {
         <h2 className="text-[17px] font-semibold text-gray-500">에이전시</h2>
         <div className="mt-1">
           <FlatRow
+            label="판매 알림"
+            hint={notifUnread > 0 ? `새 알림 ${notifUnread}` : notifs && notifs.length > 0 ? '모두 읽음' : '없음'}
+            urgent={notifUnread > 0}
+            onClick={() => setSheet('notifs')}
+          />
+          <FlatRow
             label="맡김 요청"
             hint={pending.length > 0 ? `새 요청 ${pending.length}` : '없음'}
             urgent={pending.length > 0}
@@ -165,7 +211,7 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows }: {
           ) : picked ? (
             // 🔑 매장이 바뀌면 판을 새로 세운다 — 열려 있던 시트·좌석 대기 상태가 다음 매장으로 새지 않게.
             <AgencyStorePlate
-              key={`${picked.sellerId}:${openPath ?? ''}`}
+              key={`${picked.sellerId}:${openPath ?? ''}:${openNonce}`}
               store={picked}
               staffId={staffId}
               initialPath={openPath && picked.sellerId === currentSeatId() ? openPath : undefined}
@@ -221,6 +267,16 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows }: {
             })}
           </ul>
         </Sheet>
+      )}
+
+      {sheet === 'notifs' && (
+        <AgencyNotificationsSheet
+          items={notifs}
+          unread={notifUnread}
+          onPick={(n) => { void openNotif(n) }}
+          onReadAll={() => { void readNotifs('all') }}
+          onClose={() => setSheet(null)}
+        />
       )}
 
       {sheet === 'requests' && (
