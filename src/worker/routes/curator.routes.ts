@@ -170,8 +170,9 @@ curatorRoutes.get('/recommendations', requireAuth(), async (c) => {
 curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
   try {
     const handle = c.req.param('handle')?.toLowerCase().trim()
+    // 🧭 2026-10-12 형식 위반도 **404** — 400 은 `shouldNoindexMissingEntity` 그물을 빠져나가 soft-404 가 된다(`/u/my-shop` 라이브 200·index 실측). 술어를 넓히지 않고 여기서 404 를 준다. 쓰기 검증은 400 그대로. 사유·양방향 불변식: `ushop-malformed-handle-404-2026-10-12.test.ts`
     if (!handle || !isValidHandleFormat(handle)) {
-      return c.json({ success: false, error: '잘못된 핸들 형식입니다' }, 400)
+      return c.json({ success: false, error: '큐레이터를 찾을 수 없습니다' }, 404)
     }
     const DB = c.env.DB
     // 🏭 2026-06-04 (perf 전수조사): DDL 6종을 응답 경로에서 분리 — 테이블은 0278 + repair cron 이 보장.

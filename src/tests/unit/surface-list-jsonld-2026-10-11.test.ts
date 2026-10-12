@@ -350,7 +350,11 @@ describe('⑧ 배선 — 워커가 두 빌더를 실제로 부른다', () => {
   const src = stripComments(workerSrc)
 
   it('정적/목록 표면: `applySurfaceMeta` 에 `jsonLd` 를 넘긴다', () => {
-    expect(src).toContain('jsonLd: buildSurfaceListJsonLd(url.pathname, url.search, origin2, sm, ssrPayload)')
+    // 🔁 2026-10-12 재조준: 마지막 인자가 `ssrPayload` → `crawlerPayload`(지역 요약 우선)로 바뀌었다.
+    //   여기가 지키려는 불변식은 **"그 자리에서 빌더를 부른다"** 이므로 변수 이름은 묶지 않는다
+    //   (어느 시드를 넘겨야 하는지는 `region-digest-2026-10-12.test.ts` ⑥ 이 따로 잠근다 —
+    //    둘 다 여기서 잠그면 중복 잠금이 되어 어느 쪽도 출력으로 판정할 수 없다).
+    expect(src).toMatch(/jsonLd: buildSurfaceListJsonLd\(url\.pathname, url\.search, origin2, sm, \w+Payload\)/)
   })
 
   it('유어샵(CURATOR): `buildCuratorJsonLd` 를 그 블록에서 부른다', () => {

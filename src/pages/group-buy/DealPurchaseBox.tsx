@@ -27,8 +27,6 @@ interface Props {
   buyable: boolean
   isJoinable: boolean
   isPrelaunch: boolean
-  /** 🎭 데모 상품 — 소비자에겐 '구매'가 아니라 '응모'로 보여야 한다(대표 2026-08-08). */
-  isDemo?: boolean
   joining: boolean
   onBuy: () => void
   onPrelaunchApply: () => void
@@ -41,22 +39,25 @@ interface Props {
 export default function DealPurchaseBox({
   discountPct, unitPrice, refPrice, unitSaving, total,
   quantity, setQuantity, maxQty, maxPerPerson,
-  buyable, isJoinable, isPrelaunch, isDemo, joining, onBuy, onPrelaunchApply, dealSlot, allDeal = false,
+  buyable, isJoinable, isPrelaunch, joining, onBuy, onPrelaunchApply, dealSlot, allDeal = false,
 }: Props) {
-  // 🎭 2026-08-08 (대표 "데모 상품들만 상품페이지에 구매하기 버튼 대신 응모하기로"): 데모는 '구매하기'가
-  //   어울리지 않아 문구를 바꿨다. 동작(onBuy)은 그대로.
-  // 🔴 2026-08-11 정정 (AB 스윕): 위 주석의 **전제가 틀렸다.** *"데모는 추첨이라 결제가 아니라 응모다"*
-  //   라고 적었는데, `onBuy` → `handleJoin` 은 **실제 결제**로 간다(토스 카드 / 딜 차감).
-  //   그래서 화면에 이런 상태가 만들어졌다 — 같은 페이지에 `응모하기` 가 **둘**인데 하나는 공짜다:
+  // 🎭 2026-10-12 (대표 *"데모인 것을 티내지마"*): 데모만 다른 라벨을 쓰던 분기를 **없앴다**.
+  //   종전엔 데모 `결제하기`·`응모 불가` / 실상품 `구매하기`·`구매 불가` 라서 **라벨만 보고 데모를
+  //   판별할 수 있었다**(라이브 홈 시드 50건 중 48건이 데모다). 실상품 쪽 문구로 통일했으므로
+  //   실상품 라벨은 byte-불변이고, 바뀐 것은 데모가 실상품과 같은 말을 한다는 것뿐이다.
+  //
+  // 🔴 그런데 2026-08-11 이 이 분기를 *일부러* 만들었다 — 그 우려를 지우고 가는 게 아니라
+  //   **같은 보호가 라벨 없이도 성립하는지** 따져 보고 지웠다. 당시 화면은 이랬다:
   //
   //     중간 FcfsApplyBlock : [응모하기]        "결제 없이 응모하면 추첨으로 선정돼요"  ← 진짜 무료
   //     하단 이 버튼        : [36,500원 응모하기]                                    ← 진짜 결제
   //
-  //   "결제 없이 응모"를 읽은 사람이 아래 큰 버튼을 누르면 결제창이 뜬다. 문구 불일치가 아니라
-  //   **오인 유도**이고, 결제 오인은 환불 분쟁으로 바로 이어진다.
-  //   ⇒ 데모에도 **돈이 나간다는 사실**을 라벨에 박는다. '구매하기'(대표가 데모엔 안 맞다고 한 말)
-  //     대신 '결제하기' 를 쓴다 — 무료 응모와 확실히 갈리고, 데모라는 정체성도 해치지 않는다.
-  const ctaLabel = isDemo ? '결제하기' : '구매하기'
+  //   오인의 원인은 "데모라서"가 아니라 **하단 버튼이 하필 '응모하기'였던 것**이다. `구매하기` 는
+  //   무료 블록의 '응모' 와 어휘가 갈리고, 게다가 이 버튼엔 **금액이 붙어 있다**(`36,500원 …`) —
+  //   무료와 구분되는 가장 강한 신호다. ⇒ 보호는 유지되고 데모 티만 사라진다.
+  //   ⚠️ 그리고 종전 처방은 애초에 반쪽이었다: 실상품에 선착순이 켜지면 같은 오인이 가능한데
+  //     그쪽은 `구매하기` 였다. 통일이 **더 정확한** 쪽이다.
+  const ctaLabel = '구매하기'
   // 🪟 2026-09-15 안 3 예외 — **이 박스만 안 2(들림)**. 스크롤을 따라다니며 본문 위에 얹히는
   //   물건이라 정말로 떠 있어야 하고, 체계가 그 자리를 위해 `--lift` 를 정의해 뒀다.
   //   ⚠️ 하드코딩 그림자를 쓰면 안 된다 — 다크는 `--lift: none` 이라 그림자가 꺼져야 하는데
@@ -104,10 +105,10 @@ export default function DealPurchaseBox({
       <button
         onClick={isPrelaunch ? onPrelaunchApply : onBuy}
         disabled={(!isJoinable && !isPrelaunch) || joining}
-        aria-label={isPrelaunch ? '사전 응모하기' : isJoinable ? (allDeal ? `${formatNumber(total)}딜로 결제하기` : `${formatNumber(total)}원 ${ctaLabel}`) : isDemo ? '응모 불가' : '구매 불가'}
+        aria-label={isPrelaunch ? '사전 응모하기' : isJoinable ? (allDeal ? `${formatNumber(total)}딜로 결제하기` : `${formatNumber(total)}원 ${ctaLabel}`) : '구매 불가'}
         style={{ width: '100%', height: 50, border: 'none', borderRadius: 14, background: (buyable || isPrelaunch) ? 'var(--gbd-cta-bg)' : 'var(--gbd-sub2)', color: 'var(--gbd-cta-fg)', fontSize: 16, fontWeight: 800, letterSpacing: '-.01em', cursor: (buyable || isPrelaunch) ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
       >
-        {joining ? '처리 중…' : isPrelaunch ? <><BellIcon size={16} aria-hidden="true" />오픈 예정 — 사전 응모하기</> : !isJoinable ? (isDemo ? '응모 불가' : '구매 불가') : <>{allDeal ? `${formatNumber(total)}딜로 결제하기` : `${formatNumber(total)}원 ${ctaLabel}`}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
+        {joining ? '처리 중…' : isPrelaunch ? <><BellIcon size={16} aria-hidden="true" />오픈 예정 — 사전 응모하기</> : !isJoinable ? ('구매 불가') : <>{allDeal ? `${formatNumber(total)}딜로 결제하기` : `${formatNumber(total)}원 ${ctaLabel}`}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
       </button>
 
       {/* 🔒 안심 한 줄 — 모바일 구매 창과 같은 문구(2026-10-11 D안). 세 줄 배지는 "결제 즉시 교환권 발급"(용어 오류)을 담고 있었다. */}

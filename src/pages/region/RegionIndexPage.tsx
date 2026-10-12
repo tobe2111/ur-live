@@ -58,6 +58,9 @@ export default function RegionIndexPage() {
               ? <>전국 <b className="text-gray-900 dark:text-white">{total}개</b> 딜 진행 중 · 우리 동네를 골라보세요</>
               : <>지역을 골라 우리 동네 딜을 확인해보세요</>}
           </p>
+          <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400 max-w-[42em] leading-relaxed">
+            시/도를 고르면 그 지역에서 지금 진행 중인 이용권과 동네딜을 모아 보여드립니다. 식당·카페·뷰티·숙소를 한 화면에서 비교할 수 있어요.
+          </p>
         </header>
 
         {isLoading ? (
