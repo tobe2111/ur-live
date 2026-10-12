@@ -2,20 +2,6 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <!-- 🗺️ 2026-10-12 지도(/map) 하드로드 — 카카오 지도 SDK 를 HTML 도착 직후 출발시킨다.
-         이전엔 [앱 부팅 → 지도 청크 → sdk.js → kakao.js → 타일] 이 줄줄이 직렬이라, 느린 4G 재생에서
-         sdk.js 가 5.2초에야 출발했다(가장 큰 그림 = 지도 타일). 여기서 출발하면 0.25초.
-         결과는 window.__urKakaoMaps 로 넘기고 lib/kakao-sdk.ts ensureKakaoMaps 가 이어받는다.
-         실패하면 자기 <script> 를 지우고 거절 → 정상 경로가 다시 시도한다(이 경로는 가속일 뿐 필수가 아니다).
-         ⚠️ preconnect 에 crossorigin 을 붙이지 않는다 — SDK 스크립트·타일 이미지는 no-cors 라
-            crossorigin 연결 풀을 쓰지 않는다(붙이면 연결을 따로 또 연다). 아래 2026-08-11 preconnect 는
-            crossorigin 이 붙어 있고 호스트도 옛 daumcdn 이라 실제로 재사용되지 않는다(잠금표상 제거하지 않음). -->
-    <script>(function(){if(!/^\/map\/?$/.test(location.pathname))return;var k='%VITE_KAKAO_JAVASCRIPT_KEY%',d=document;if(!k||k.charAt(0)==='%')return;
-['https://dapi.kakao.com','https://t1.kakaocdn.net','https://mts.kakaocdn.net'].forEach(function(h){var l=d.createElement('link');l.rel='preconnect';l.href=h;d.head.appendChild(l)});
-var s=d.createElement('script');s.async=true;s.src='https://dapi.kakao.com/v2/maps/sdk.js?appkey='+k+'&autoload=false&libraries=services';
-var p=new Promise(function(res,rej){function fail(){if(s.parentNode)s.parentNode.removeChild(s);rej(new Error('kakao maps early load failed'))}
-s.onload=function(){var m=window.kakao&&window.kakao.maps;if(m&&m.load)m.load(res);else fail()};s.onerror=fail});
-p['catch'](function(){});window.__urKakaoMaps=p;d.head.appendChild(s)})()</script>
     <!-- 🛡️ 2026-06-29 배포-청크 불일치 자동 복구 인라인 부트가드 (대표 신고 — 새 배포 후 도매몰 흰화면).
          캐시된/edge 옛 index.html 이 삭제된 app 청크(/assets/*.js·css)를 참조 → 404 → SPA fallback HTML →
          "Expected a JavaScript module script but server responded with text/html" → 앱 부팅 실패(흰화면).
@@ -271,6 +257,20 @@ p['catch'](function(){});window.__urKakaoMaps=p;d.head.appendChild(s)})()</scrip
         }
       })();
     </script>
+    <!-- 🗺️ 2026-10-12 지도(/map) 하드로드 — 카카오 지도 SDK 를 HTML 도착 직후 출발시킨다.
+         이전엔 [앱 부팅 → 지도 청크 → sdk.js → kakao.js → 타일] 이 줄줄이 직렬이라, 느린 4G 재생에서
+         sdk.js 가 5.2초에야 출발했다(가장 큰 그림 = 지도 타일). 여기서 출발하면 0.25초.
+         결과는 window.__urKakaoMaps 로 넘기고 lib/kakao-sdk.ts ensureKakaoMaps 가 이어받는다.
+         실패하면 자기 스크립트 태그를 지우고 거절 → 정상 경로가 다시 시도한다(이 경로는 가속일 뿐 필수가 아니다).
+         ⚠️ preconnect 에 crossorigin 을 붙이지 않는다 — SDK 스크립트·타일 이미지는 no-cors 라
+            crossorigin 연결 풀을 쓰지 않는다(붙이면 연결을 따로 또 연다). 아래 2026-08-11 preconnect 는
+            crossorigin 이 붙어 있고 호스트도 옛 daumcdn 이라 실제로 재사용되지 않는다(잠금표상 제거하지 않음). -->
+    <script>(function(){if(!/^\/map\/?$/.test(location.pathname))return;var k='%VITE_KAKAO_JAVASCRIPT_KEY%',d=document;if(!k||k.charAt(0)==='%')return;
+['https://dapi.kakao.com','https://t1.kakaocdn.net','https://mts.kakaocdn.net'].forEach(function(h){var l=d.createElement('link');l.rel='preconnect';l.href=h;d.head.appendChild(l)});
+var s=d.createElement('script');s.async=true;s.src='https://dapi.kakao.com/v2/maps/sdk.js?appkey='+k+'&autoload=false&libraries=services';
+var p=new Promise(function(res,rej){function fail(){if(s.parentNode)s.parentNode.removeChild(s);rej(new Error('kakao maps early load failed'))}
+s.onload=function(){var m=window.kakao&&window.kakao.maps;if(m&&m.load)m.load(res);else fail()};s.onerror=fail});
+p['catch'](function(){});window.__urKakaoMaps=p;d.head.appendChild(s)})()</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
