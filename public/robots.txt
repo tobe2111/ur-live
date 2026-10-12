@@ -67,9 +67,18 @@ Disallow: /agency/
 Allow: /seller/plus-friend-guide
 Allow: /influencer/rankings
 
-# 🏭 도매몰(유통스타트) — 게이트/거래성 경로 인덱싱 차단 (호스트 무관, 공급가/거래정보 비노출).
-#   공개 인덱스 대상: /wholesale, /wholesale/intro, /wholesale/join, /wholesale/oem (위 Allow: / 로 허용).
-#   아래는 로그인/결제/대시보드/정산 등 비공개 경로.
+# 🧨 2026-10-12 도매몰(유통스타트)은 철거됐다(#1710) — 대표 *"SEO 측면에서 어떻게 해야하는지 알려줘"*.
+#   종전 이 자리에 **"공개 인덱스 대상: /wholesale, /wholesale/intro, /wholesale/join, /wholesale/oem"**
+#   이라고 적혀 있었다. 그 넷은 Googlebot UA 실측에서 `200 + index,follow + 본문 0자`(= 교과서적
+#   soft 404)였고, 우리가 직접 색인하라고 초대하고 있었다. 이제 서버가 **410 Gone** 을 준다
+#   (`worker/utils/surface-ssr-meta.ts` `isRetiredSurface` — 왜 404·301 이 아닌지 그 주석에 있다).
+#
+# 🔴 **아래 Disallow 를 걷지도, 새로 추가하지도 말 것.**
+#   · 걷지 않는 이유: 이 경로들(결제·대시보드·정산)은 애초에 색인 의도가 0 이었고 크롤된 적이 없다.
+#     차단을 유지하면 크롤 예산을 죽은 경로에 쓰지 않는다.
+#   · **추가하지 않는 이유가 더 중요하다**: `/wholesale`·`/intro`·`/join`·`/oem` 에 Disallow 를 넣으면
+#     크롤러가 그 **410 을 읽을 수 없어 색인에 영구 잔존**한다. 지울 때는 크롤을 열어 둬야
+#     "사라졌다" 가 전달된다 — 이게 폐기 URL 처리에서 가장 흔한 실수다.
 Disallow: /wholesale/product
 Disallow: /wholesale/cart
 Disallow: /wholesale/checkout
@@ -150,6 +159,8 @@ Disallow: /
 
 Sitemap: https://urdeal.kr/sitemap.xml
 
-# NOTE(orchestrator → worker/index.ts): utongstart.com 은 호스트별 robots 를 서빙하는 것이 이상적.
-#   utongstart.com 요청 시 'Sitemap: https://utongstart.com/sitemap.xml' 로 교체(현재 sitemap.routes.ts
-#   는 이미 호스트 인식해 utongstart 도매 sitemap 발행). 이 정적 robots.txt 는 urdeal.kr 기준.
+# 🧨 2026-10-12: 여기 "utongstart.com 은 호스트별 robots 를 서빙하는 것이 이상적" 이라는 기록이
+#   있었다. 이제 **반대다** — 도매몰이 철거됐고(#1710) 그 도메인은 어느 Pages 프로젝트에도 연결돼
+#   있지 않다. 호스트별로 본문을 바꾸면 "크롤러가 받는 robots" 가 두 벌이 되는데, 그건 2026-07-29 에
+#   Cloudflare Managed robots.txt 가 우리 파일을 통째로 대체해 규칙 50줄이 서빙되지 않던 사고와
+#   같은 클래스다. 이 파일 하나가 전 호스트의 SSOT 다.

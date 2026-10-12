@@ -75,9 +75,8 @@ const HOT_PATHS: readonly string[] = [
   // 🚫 2026-07-29: 도매 5종을 **이 목록에서** 제거 — 여기는 FRONTEND_URL(소비자) 오리진으로 요청하는데
   //   도매 라우트는 소비자 번들에 없다(`__INCLUDE_WHOLESALE__`). 라이브 실측 결과 5개 전부 **404** 였다.
   //   즉 2026-06-10 에 의도한 "guest 카탈로그 warm" 은 이 경로로는 한 번도 이뤄지지 않았다.
-  //   ⚠️ 실제 도매 워밍은 **아래 utongstart 오리진 블록**이 담당한다 — 그쪽은 건드리지 않았다.
-  //   (이 컨테이너는 프록시가 utongstart.com 을 막아 그 블록의 200 여부는 확인하지 못했다.)
-  //   소비자 오리진에서도 도매를 서빙하게 되면 그때 다시 추가할 것.
+  //   🧨 2026-10-12: 그 자리를 메우던 "아래 utongstart 오리진 블록" 도 제거됐다(도매몰 철거 #1710).
+  //   즉 도매 예열은 이제 **어디에도 없다** — 서비스가 없으므로 데울 것이 없다.
   // 🛡️ 2026-05-27 (loading P1): 메인 카테고리 칩 4개 prewarm — 칩 클릭 시 cold D1 회피.
   //   카테고리 정의: GroupBuyFeed.tsx CATEGORIES (meal/stay/beauty/etc).
   // 🔁 2026-10-11 [UNLOCK_LOADING]: 칩 4종 예열은 **유지**하되 주소를 화면이 실제로 부르는 것으로 바꿨다.
@@ -246,32 +245,13 @@ export async function handleCachePrewarm(env: PrewarmEnv, opts: PrewarmOpts = {}
     logInfo(`[cron:cache-prewarm] warmed ${success}/${HOT_PATHS.length} paths`);
   }
 
-  // 🏭 2026-06-18 (전수조사 — 도매 카탈로그 cold/느림 근본원인): caches.default 는 요청 URL의 origin 으로
-  //   키가 갈린다. 위 prewarm 은 FRONTEND_URL(=urdeal.kr) origin 만 데우는데, 실제 도매 사용자는
-  //   utongstart.com 호스트로 접속 → /catalog 핸들러의 early-match/put 키가 utongstart origin 이라
-  //   prewarm 이 채운 live origin 캐시와 영영 불일치 → utongstart 도매몰은 prewarm 혜택 0(매 요청 cold D1).
-  //   도매 전용 path 만 utongstart origin 으로도 한 번 더 데운다(additive, HOT 24+dynamic≈20+WS 5 ≈ 49 < 50).
-  //   단일 몰(mall 1)이라 응답 내용 동일 — origin 키만 추가로 채움. 실패해도 무시(저영향).
-  const WS_PREWARM_PATHS: readonly string[] = [
-    '/api/wholesale/catalog?',
-    '/api/wholesale/catalog',
-    '/api/wholesale/banners',
-    '/api/wholesale/mall',
-  ];
-  const WS_PREWARM_ORIGINS = ['https://utongstart.com'];
-  await Promise.all(
-    WS_PREWARM_ORIGINS.flatMap((origin) =>
-      WS_PREWARM_PATHS.map(async (path) => {
-        try {
-          await fetch(`${origin}${path}`, {
-            method: 'GET',
-            headers: { 'User-Agent': 'ur-live-cache-prewarm/1.0', 'x-prewarm': '1' },
-            cf: { cacheTtl: 0, cacheEverything: false },
-          } as RequestInit & { cf?: Record<string, unknown> });
-        } catch { /* prewarm best-effort */ }
-      }),
-    ),
-  );
+  // 🧨 2026-10-12 [UNLOCK_LOADING] 도매(utongstart) origin 예열 **제거** — 대표 *"SEO 측면에서 … 모두 해줘"*.
+  //   2026-06-18 에 `caches.default` 키가 origin 별로 갈리는 문제를 풀려고 도매 4경로를 utongstart origin
+  //   으로 한 번 더 데웠다(`/catalog?`·`/catalog`·`/banners`·`/mall`). 2026-10-11 철거(#1710)로 그 라우트가
+  //   사라졌고, 그 도메인은 Cloudflare 실측으로 **어느 Pages 프로젝트에도 연결돼 있지 않다** → 5분마다
+  //   죽은 주소를 네 번 두드리며 **서브리퀘스트 예산(무료 50/인보케이션, 실측 ~49)에서 4칸**을 먹고 있었다.
+  //   그 블록 자신의 주석이 예산을 `HOT 24 + dynamic≈20 + WS 5 ≈ 49 < 50` 이라 적어 둔 그 자리다.
+  //   (도매가 되살아나면 이 블록 + worker 의 WHOLESALE 슬롯 + `timeoutFor` 3000ms 를 함께 복원할 것.)
 
   // 🛡️ 2026-05-27 (loading P0): 인기 셀러 + 인기 상품 detail dynamic prewarm.
   //   메인/카테고리 페이지에서 가장 많이 클릭되는 detail / 셀러 페이지 미리 채움.
