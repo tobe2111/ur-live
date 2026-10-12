@@ -25,6 +25,7 @@ import { ChevronRight, ExternalLink, Search } from 'lucide-react'
 import { useSellerNavModel } from '@/components/seller-layout/useSellerNavModel'
 import { canOpenInSheet, ownPathFor, type OwnPath } from './tool-pages'
 import Sheet from './Sheet'
+import SellerSupportContact from './SellerSupportContact'
 
 export default function AllToolsSheet({ storeName, onPick, onClose }: {
   storeName: string
@@ -65,8 +66,8 @@ export default function AllToolsSheet({ storeName, onPick, onClose }: {
       <div className="px-4 pt-3 pb-2">
         <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-2">
           <span className="font-semibold text-gray-900 dark:text-white">{storeName}</span> 의 판매 도구예요.
-          대부분 여기서 바로 열려요. <ExternalLink size={11} className="inline -mt-0.5" aria-hidden="true" /> 표시는
-          전체 화면으로 열리고, 그 위에 마이로 돌아오는 버튼이 있어요.
+          모두 여기서 바로 열려요. <ExternalLink size={11} className="inline -mt-0.5" aria-hidden="true" /> 표시(계산대)만
+          전체 화면으로 열리고, 그 위에 돌아오는 버튼이 있어요.
         </p>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" aria-hidden="true" />
@@ -114,6 +115,8 @@ export default function AllToolsSheet({ storeName, onPick, onClose }: {
             </div>
           </section>
         ))}
+        {/* ☎️ 운영자 문의 — 대시보드 홈에 있던 것을 막혔을 때 찾는 이 자리로(2026-10-12). 미설정이면 아무것도 안 그린다. */}
+        <SellerSupportContact />
       </div>
     </Sheet>
   )

@@ -39,6 +39,7 @@ import { clearMyReturn, withMyReturn } from '@/lib/seller-return'
 import { toast } from '@/hooks/useToast'
 import type { MyStoresState } from './useMyStores'
 import { writeReservedHeight } from './seller-reserve'
+import { storeStatusNote, useRecordSellerStatus } from './seller-section/store-status-note'
 import { useSellerWork } from './seller-section/useSellerWork'
 import { useToolDeepLink } from './seller-section/useToolDeepLink' // 🚪 대시보드 깊은 링크 → 시트(2026-10-12)
 import PendingOrders from './seller-section/PendingOrders'
@@ -68,10 +69,6 @@ const SettlementsSheet = lazy(() => import('./seller-section/SettlementsSheet'))
 const ToolPageSheet = lazy(() => import('./seller-section/ToolPageSheet'))
 const VoucherNewSheet = lazy(() => import('./seller-section/VoucherNewSheet'))
 
-const STATUS_NOTE: Record<string, string> = {
-  pending: '승인 대기 중이에요. 준비는 지금 하고, 메인 노출과 정산은 승인 뒤에 시작됩니다.',
-  rejected: '서류가 반려됐어요. 사업자등록증을 다시 올리면 바로 다시 심사합니다.',
-}
 
 function todayLabelKST(): string {
   // 워커도 브라우저도 TZ 를 믿을 수 없다 — KST 로 명시해 읽는다(CLAUDE.md 시각 룰).
@@ -195,8 +192,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
 
   async function enterSeat(to?: string) {
     if (!(await ensureSeat())) return
-    // ↩️ 2026-09-26: 표시를 달고 보낸다 — 그 화면 맨 위에 "마이로 돌아가기" 띠가 뜬다.
-    //   안 달면 일이 끝나는 화면(등록 폼은 저장 후 `/seller/group-buy` 로 간다)에서 길을 잃는다.
+    // ↩️ 표시를 달고 보낸다 — 계산대 맨 위에 "마이로 돌아가기" 띠가 뜬다(`StoreScanPage`). 2026-10-12 이후 여기로 오는 곳은 계산대뿐.
     if (to) window.location.assign(withMyReturn(to))
   }
   // ↩️ 마이에 도착했다 = 여정이 끝났다. 흔적을 지워야 다음 대시보드 방문에 띠가 안 남는다.
@@ -240,6 +236,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
     return () => cancelAnimationFrame(id)
   }, [stores.length, store?.seller_id, store?.status])
 
+  useRecordSellerStatus(store?.status) // 🥕 유어애즈 메뉴 게이트용 심사 상태 기록(2026-10-12 대시보드 승인 배너에서 이전)
   const onWorkDone = () => { state.refetch() }
 
   /**
@@ -300,7 +297,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
   /** 모르는 값의 자리. 글자는 있고 안 보인다 — 높이가 진짜와 같아진다. */
   const blank = (v: string) => (awaiting ? <span className="invisible">{v}</span> : v)
 
-  const note = store?.status ? STATUS_NOTE[store.status] : undefined
+  const note = storeStatusNote(store?.status, store?.cert_status)
 
   return (
     <div
@@ -564,7 +561,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
             if (own === 'scan') { setTool(null); enterSeat('/store/scan'); return }
             if (own === 'voucherNew') { setPageFrom('tools'); setTool('voucherNew'); return }
             if (inSheet) { setPage({ path, title: label }); setPageFrom('tools'); setTool('page'); return }
-            setTool(null); enterSeat(path)
+            // 🧭 2026-10-12 대시보드 삭제 — 시트로 못 여는 화면은 위 두 전용 길뿐이다(갈 대시보드 전체화면이 없다).
           }}
         />
       )}

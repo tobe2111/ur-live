@@ -19,11 +19,7 @@ import { stripComments as codeOnly } from '../helpers/source-text'
 const read = (f: string) => codeOnly(readFileSync(f, 'utf-8'))
 const CSS = readFileSync('src/index.css', 'utf-8')
 const LAYOUT = read('src/components/SellerLayout.tsx')
-const BANNER = read('src/components/SellerKakaoLinkBanner.tsx')
-const MORE = read('src/pages/SellerMorePage.tsx')
-const STORES = read('src/pages/seller-page/MyStoresPanel.tsx')
 // 📱 2026-09-14 오후(홈 M2): 할 일 카드는 `seller-page/TodoRows.tsx` 로 옮겨 갔다 — 홈 본문 + 그 행을 함께 본다.
-const PAGE = read('src/pages/SellerPage.tsx') + read('src/pages/seller-page/TodoRows.tsx')
 
 describe('셀러 대시보드 B안', () => {
   it('주 버튼(ur-btn-primary)은 브랜드 블루 — 대시보드 셋이 한 줄로 같이 바뀐다', () => {
@@ -32,36 +28,6 @@ describe('셀러 대시보드 B안', () => {
   it('화이트 고정 래퍼가 html.dark 아래서도 카드 들림(--lift)을 갖는다', () => {
     const i = CSS.indexOf('.seller-light-theme {')
     expect(CSS.slice(i, i + 600)).toMatch(/--lift: 0 2px 10px/)
-  })
-  it('틀: 사이드바 없음(4단계), 로그아웃은 빨강이 아니다, 상담 FAB 은 카카오 노랑이 아니다', () => {
-    // 🧱 2026-10-12 셀러 대시보드 제거 4단계: 사이드바·활성 알약이 사라지고 메뉴는 `/seller/more` 한 화면이다.
-    expect(LAYOUT).not.toContain('ur-seller-nav-active')
-    expect(MORE).not.toMatch(/text-red-400|text-red-500/)
-    expect(LAYOUT).not.toMatch(/text-red-400 hover:text-red-300/)
-    expect(LAYOUT).not.toContain('#FEE500')
-    expect(LAYOUT).toMatch(/rounded-full bg-brand hover:bg-\[#1557C8\] text-white/)
-  })
-  it('카카오 연동 배너: 노랑 원·이모지 없음, 버튼은 체계(ur-btn-primary)', () => {
-    expect(BANNER).not.toContain('#FEE500')
-    expect(BANNER).not.toContain('💬')
-    /**
-     * 🩸 2026-10-01 재조준: 여기는 className **문자열 전체**를 동결하고 있었다
-     *   (`"ur-btn ur-btn-sm ur-btn-primary shrink-0"`). 그래서 이 버튼에 탭 타깃을 넓히는
-     *   `tap-reach` 를 **더하기만** 해도 빨간불이 났다. 이 시험이 지키려던 것은 문자열이 아니라
-     *   *"버튼이 체계(ur-btn-primary)를 쓴다"* 다 ⇒ **클래스가 있는가**로 바꾼다(동결은 풀지 않는다 —
-     *   `bg-gray-900` 같은 손색이 들어오면 여전히 빨간불이다).
-     */
-    const cta = BANNER.slice(BANNER.indexOf("navigate('/seller/profile')"), BANNER.indexOf("navigate('/seller/profile')") + 300)
-    expect(cta, '연동하기 버튼을 못 찾았다 — 이 검사가 헛돌고 있다').toContain('className=')
-    for (const need of ['ur-btn', 'ur-btn-sm', 'ur-btn-primary', 'shrink-0']) {
-      expect(cta, `연동하기 버튼에 ${need} 가 없다`).toContain(need)
-    }
-    expect(cta, '주 버튼을 손으로 칠했다 — 체계(ur-btn-primary)를 쓸 것').not.toMatch(/bg-gray-900|bg-black|bg-\[#1/)
-  })
-  it('STEP 카드는 티켓 부품(블루 밴드 + 흰 본문) — 잉크 카드가 아니다', () => {
-    expect(STORES).toMatch(/h-11 px-4 text-\[14px\] text-white bg-brand tabular-nums/)
-    expect(STORES).not.toMatch(/bg-gray-900 rounded-2xl p-5 text-white/)
-    expect(STORES).toMatch(/className="ur-btn ur-btn-md ur-btn-primary mt-4 w-full sm:w-auto"/)
   })
   it('대시보드 카드 부품은 헤어라인 테두리 (9-14 승계 — 소비자 🎫 규칙 ①과 의도적으로 갈라진다)', () => {
     // 근거: docs/design/dashboard-rinda-2026-09.md §3. 소비자 화면은 카드가 몇 장이라 들림이 곱지만,
@@ -72,11 +38,5 @@ describe('셀러 대시보드 B안', () => {
       expect(src, f).not.toContain('shadow-lift')
       expect(src, f).not.toMatch(/border border-gray-200/)
     }
-  })
-  it('색깔 정보상자(amber) 0 — 할 일 카드는 흰 카드 + 브랜드 틴트 칩', () => {
-    // ⚠️ 부분일치 함정: `toContain('bg-amber-50')` 은 **점 색 `bg-amber-500` 에도 걸린다**(2026-09-14 실측).
-    //   막으려는 건 색깔 *정보상자*(연한 앰버 면)이지 상태 점이 아니다 → 숫자 경계로 못 박는다.
-    expect(PAGE).not.toMatch(/bg-amber-50(?!\d)/)
-    expect(PAGE).toContain('rounded-lg bg-brand-tint px-3 py-2 text-xs font-bold text-brand-text')
   })
 })

@@ -90,11 +90,12 @@ describe('③ 마이 — 큰 버튼과 같은 길', () => {
     expect(SELLER).toContain("if (own === 'voucherNew') { setPageFrom('tools'); setTool('voucherNew'); return }")
     expect(SELLER).toMatch(/tool === 'voucherNew' && <VoucherNewSheet /)
   })
-  it('전용 길 판정이 마지막 대시보드 폴백(enterSeat(path))보다 먼저다', () => {
+  it('전용 길 판정 뒤의 나머지는 전부 시트다 — 대시보드 폴백(enterSeat(path))은 없다(2026-10-12 삭제)', () => {
     const own = SELLER.indexOf("if (own === 'scan')")
-    const fallback = SELLER.indexOf('setTool(null); enterSeat(path)')
+    const sheet = SELLER.indexOf("if (inSheet) { setPage({ path, title: label }); setPageFrom('tools'); setTool('page'); return }")
     expect(own).toBeGreaterThan(-1)
-    expect(fallback).toBeGreaterThan(own)
+    expect(sheet).toBeGreaterThan(own)
+    expect(SELLER).not.toContain('enterSeat(path)')
   })
   it('VoucherNewSheet 는 lazy (등록 안 하는 사람이 위저드 값을 치르지 않게)', () => {
     expect(SELLER).toContain("const VoucherNewSheet = lazy(() => import('./seller-section/VoucherNewSheet'))")
@@ -102,9 +103,10 @@ describe('③ 마이 — 큰 버튼과 같은 길', () => {
 })
 
 describe('④ 에이전시 콘솔 — 마이와 같은 계산대 · 같은 등록 시트', () => {
-  it('scan → /store/scan (dash=1 없이 — 대시보드 껍데기를 안 탄다)', () => {
-    expect(PLATE).toContain("if (own === 'scan') { setTool(null); void goFull(STORE_SCAN_PATH); return }")
-    expect(PLATE).toContain('if (path === STORE_SCAN_PATH) { window.location.assign(path); return }')
+  it('scan → /store/scan (대시보드 껍데기를 안 탄다)', () => {
+    expect(PLATE).toContain("if (own === 'scan') { setTool(null); void goScan(); return }")
+    expect(PLATE).toContain('window.location.assign(AGENCY_SCAN_PATH)')
+    expect(PLATE).toContain('export const AGENCY_SCAN_PATH = STORE_SCAN_PATH')
   })
   it('voucherNew → 등록 시트', () => {
     expect(PLATE).toContain("if (own === 'voucherNew') { setPageFrom('tools'); setTool('voucherNew'); return }")
@@ -129,20 +131,24 @@ describe('⑤ /store/scan — 소비자 로그인을 요구하지 않고, 화면
 
 // ── 깊은 링크 (2026-10-12 2차 — 대표 *"이제 모두 가장 이상적인 형태야?"* 를 재 보니 남아 있던 문) ──────────
 //   알림톡 '사용처리'(`/store/go?to=scan`) · 주문 상세 '사용처리 화면으로' · 하단 ➕ '이용권 등록' · 유어샵 '이용권 등록' 이
-//   전부 대시보드 주소로 가서 `STAY_ON_DASHBOARD` 에 걸려 얇은 틀에 떨어졌다.
-import { STAY_ON_DASHBOARD, myRedirectFor, consoleRedirectFor } from '@/lib/seller-deep-link'
+//   전부 대시보드 주소로 가서 얇은 틀에 떨어졌다. 🧭 2026-10-12 이후엔 틀 자체가 없다 — 판정은 `sellerEntryRedirect` 하나.
+import { RENDER_BARE } from '@/lib/seller-deep-link'
 import { STORE_GO_TARGETS } from '@/shared/store-deep-link'
 
 describe('⑥ 깊은 링크도 전용 길로', () => {
-  it('대시보드에 남는 주소는 OAuth 복귀 하나뿐', () => {
-    expect([...STAY_ON_DASHBOARD]).toEqual(['/seller/youtube/callback'])
+  afterEach(() => { localStorage.clear(); sessionStorage.clear() })
+  it('그 자리에서 렌더하는 주소는 OAuth 복귀 하나뿐', () => {
+    expect([...RENDER_BARE]).toEqual(['/seller/youtube/callback'])
   })
   it('계산대 → /store/scan (쿼리 유지), 사장님·에이전시 모두', () => {
-    expect(myRedirectFor('/seller/scan', '?x=1')).toBe('/store/scan?x=1')
-    expect(consoleRedirectFor('/seller/scan', '')).toBe('/store/scan')
+    localStorage.setItem('user_id', '3')
+    expect(sellerEntryRedirect('/seller/scan', '?x=1')).toBe('/store/scan?x=1')
+    localStorage.clear(); localStorage.setItem('seller_token', seat({ agency_staff_id: 7 }))
+    expect(sellerEntryRedirect('/seller/scan', '')).toBe('/store/scan')
   })
   it('등록 → ?tool= (받는 쪽이 등록 시트로 연다)', () => {
-    expect(myRedirectFor('/seller/meal-voucher/new', '')).toBe('/user/profile?tool=%2Fseller%2Fmeal-voucher%2Fnew')
+    localStorage.setItem('user_id', '3')
+    expect(sellerEntryRedirect('/seller/meal-voucher/new', '')).toBe('/user/profile?tool=%2Fseller%2Fmeal-voucher%2Fnew')
     expect(ownPathFor('/seller/meal-voucher/new?copyFrom=3')).toBe('voucherNew')
   })
   it('마이·콘솔이 ?tool= 의 등록을 VoucherNewSheet 로 받는다', () => {
@@ -177,24 +183,22 @@ describe('⑦ 버튼이 최종 도착지로 곧장 간다', () => {
     expect(sellerEntryPath('/seller')).toBe('/agency')
     expect(sellerEntryPath('/seller/meal-voucher/new')).toBe('/agency?tool=%2Fseller%2Fmeal-voucher%2Fnew')
   })
-  it('옛 셀러(마이 없음) · dash=1 — 원래 주소 그대로(대시보드가 답)', () => {
+  it('🔴 옛 셀러(마이 없음) · dash=1 — 대시보드가 없으므로 원래 주소에 남지 않는다(마이가 로그인으로 받는다)', () => {
     localStorage.setItem('seller_token', seat({ seller_id: 1 }))
-    expect(sellerEntryPath('/seller/meal-voucher/new')).toBe('/seller/meal-voucher/new')
+    expect(sellerEntryPath('/seller/meal-voucher/new')).toBe('/user/profile?tool=%2Fseller%2Fmeal-voucher%2Fnew')
     localStorage.setItem('user_id', '3')
-    expect(sellerEntryPath('/seller/orders?dash=1')).toBe('/seller/orders?dash=1')
+    expect(sellerEntryPath('/seller/orders?dash=1')).toBe('/user/profile?tool=%2Fseller%2Forders%3Fdash%3D1')
   })
-  it('대시보드 껍데기가 같은 함수로 판정한다 (두 벌 금지)', () => {
+  it('틀이 같은 함수로 판정한다 (두 벌 금지)', () => {
     const LAYOUT = code('src/components/SellerLayout.tsx')
-    expect(LAYOUT).toContain('const toMyOrConsole = sellerEntryRedirect(location.pathname, location.search)')
-    expect(LAYOUT).not.toMatch(/myRedirectFor|consoleRedirectFor/)
+    expect(LAYOUT).toContain('const to = sellerEntryRedirect(location.pathname, location.search)')
     expect(typeof sellerEntryRedirect).toBe('function')
   })
-  it('하단 ➕ 두 버튼 · 유어샵 버튼이 sellerEntryPath 를 거친다', () => {
+  it('🗑️ 하단 ➕ 시트는 지웠다(열 방법이 없는 죽은 화면이었다) · 유어샵 버튼은 sellerEntryPath 를 거친다', () => {
     const NAV = code('src/components/main/BottomNav.tsx')
-    expect(NAV).toContain("navigate(sellerEntryPath('/seller/meal-voucher/new'))")
-    expect(NAV).toContain("const sellerHome = sellerEntryPath('/seller')")
-    expect(NAV).toContain('navigate(sellerHome)')
-    expect(NAV).not.toMatch(/navigate\('\/seller(\/meal-voucher\/new)?'\)/)
+    expect(NAV).not.toContain('sheetOpen')
+    expect(NAV).not.toContain('__create__')
+    expect(NAV).not.toMatch(/\/seller(\/login|\/meal-voucher\/new)?['"`]/)
     const CTA = code('src/pages/curator-page/SellOwnProductsCTA.tsx')
     expect(CTA).toContain('navigate(sellerEntryPath(path))')
   })

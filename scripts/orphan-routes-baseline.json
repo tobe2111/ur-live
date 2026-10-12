@@ -1,18 +1,18 @@
 {
   "orphans": [
     "/admin/kakao-test/callback",
-    "/admin/maker-pool",
     "/auth/kakao/callback",
     "/auth/kakao/consent/callback",
     "/fail",
     "/kakao-debug",
     "/mypage/wishlist",
     "/seller/consignment",
+    "/seller/forgot-password",
+    "/seller/reset-password",
+    "/seller/signup",
     "/seller/tiktok-callback",
     "/seller/youtube-growth/success",
-    "/seller/youtube/callback",
     "/success",
-    "/toss-debug",
-    "/wholesale/margin"
+    "/toss-debug"
   ]
 }

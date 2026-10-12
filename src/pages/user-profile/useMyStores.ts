@@ -27,6 +27,8 @@ export interface StoreSummaryRow {
   role: 'owner' | 'operator'
   /** 'active' | 'approved' | 'pending' | 'rejected' — 당근 모델 배너가 읽는다 */
   status: string | null
+  /** 🪪 등록증 심사 상태('pending'|'verified'|'rejected'|'exempt'|null) — 매장은 대기인데 등록증만 반려된 경우를 말하려고(2026-10-12) */
+  cert_status?: string | null
   today_revenue: number
   today_orders: number
   pending: number

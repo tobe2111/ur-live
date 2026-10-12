@@ -35,7 +35,6 @@ import { readCode, readRaw } from '../helpers/source-text'
  *     범위 밖이다 — 디자인 시스템 눈금을 바꾸는 일이라 대표 판단 사항이다.
  */
 
-const BANNER = 'src/components/SellerKakaoLinkBanner.tsx'
 const LAYOUT = 'src/components/SellerLayout.tsx'
 const BELL = 'src/components/DashboardNotificationBell.tsx'
 const CSS = 'src/index.css'
@@ -52,38 +51,8 @@ describe('셀러 공용 chrome 의 탭 타깃은 40px 눈금에 닿는다', () =
     expect(block, '`pointer-events: none` 이면 닿지 않는다').not.toMatch(/pointer-events\s*:\s*none/)
   })
 
-  it('배너는 **박스를 키우지 않고** `.tap-reach` 로 넓힌다 (+39px 재발 방지)', () => {
-    const code = readCode(BANNER)
-    const close = code.slice(code.indexOf("aria-label={t('common.close'"))
-    expect(close.slice(0, 300), '닫기에 tap-reach 가 없다').toContain('tap-reach')
-    const cta = code.slice(code.indexOf("navigate('/seller/profile')"))
-    expect(cta.slice(0, 300), '연동하기에 tap-reach 가 없다').toContain('tap-reach')
-    /**
-     * 🔒 박스 키우기 금지 — 이 행은 [40px 원형 + 글자 칸 + CTA + 닫기] 라
-     * 어느 칸을 넓혀도 글자 칸에서 빠진다. `ur-btn-md`(40px·좌우 패딩 18px)로 올리거나
-     * 닫기 패딩을 키우면 배너가 다시 두꺼워진다.
-     */
-    expect(code, '배너 CTA 가 ur-btn-sm 이 아니다 — 박스를 키우면 배너가 두꺼워진다').toContain('ur-btn ur-btn-sm ur-btn-primary')
-    expect(code, '닫기 패딩이 p-1 이 아니다 — 박스를 키우면 글자 칸이 좁아진다').toMatch(/shrink-0 p-1 /)
-  })
-
-  it('헤더 버튼은 박스가 40px 다 — 헤더가 고정 높이라 안전하다', () => {
-    const code = readCode(LAYOUT)
-    /**
-     * 🔑 **왜 여기선 박스를 키워도 되나**: 헤더가 `h-14`(56px) 고정이라 40px 버튼이 들어가도
-     *   높이가 안 변한다(실측 전후 56px 동일). 이 전제가 깨지면 처방도 바뀌므로 함께 잠근다.
-     */
-    expect(code, '헤더가 h-14(56px) 고정이 아니다 — 40px 버튼의 전제가 깨진다').toMatch(/<header className="flex h-14 /)
-    // ⚠️ `setPaletteOpen(true)` 로 앵커하면 **키보드 단축키 핸들러**가 먼저 걸려 버튼을 못 본다
-    //    (첫 판이 그래서 빨간불이 났다). 버튼 자신의 aria-label 로 앵커한다.
-    const search = code.slice(code.indexOf("aria-label={t('seller.pageSearch'"))
-    expect(search, '폰 페이지검색 버튼을 못 찾았다 — 이 검사가 헛돌고 있다').not.toBe('')
-    expect(search.slice(0, 300), '폰 페이지검색 버튼이 40px(h-10 w-10) 가 아니다').toMatch(/h-10 w-10/)
-    /**
-     * 🩸 `p-2.5`(10px)로 키웠다가 되돌렸다 — **4px 격자 규칙**(🎫 ⑧)의 반쪽 간격이라
-     *   `consumer-type-scale` 가드가 빨간불을 냈다(pre-push 게이트가 잡았다). 패딩이 아니라
-     *   **박스**로 40px 을 만든다 — 바로 위 헤더 검색 버튼과 같은 패턴이다.
-     */
+  it('알림 벨은 박스가 40px 다 (어드민·에이전시 머리줄이 쓴다)', () => {
+    // 🧱 2026-10-12 셀러 머리줄은 지웠지만 벨은 남은 대시보드 머리줄에서 그대로 쓰인다.
     expect(readCode(BELL), '알림 벨이 40px 박스가 아니다').toMatch(/relative flex h-10 w-10 items-center justify-center/)
     expect(readCode(BELL), '벨을 반쪽 간격 패딩으로 키웠다 — 4px 격자를 쓸 것').not.toMatch(/relative p-2\.5 /)
   })
