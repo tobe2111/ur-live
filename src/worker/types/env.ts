@@ -74,6 +74,12 @@ export interface Env {
   CAFE24_MALL_ID?: string;
   CAFE24_WEBHOOK_SECRET?: string;
 
+  // ---- 네이버 클라우드 SENS (알림톡, 2026-10-12 — 고정 IP 불필요. 넷 다 있으면 알리고 대신 이걸로 보낸다) ----
+  NCP_ACCESS_KEY?: string;
+  NCP_SECRET_KEY?: string;               // 시크릿으로 저장
+  NCP_SENS_ALIMTALK_SERVICE_ID?: string; // SENS 프로젝트(Biz Message)의 서비스 ID
+  NCP_KAKAO_CHANNEL_ID?: string;         // 카카오톡 채널 검색용 ID (예: @유어딜)
+
   // ---- Aligo (알림톡) ----
   ALIGO_API_KEY?: string;
   ALIGO_USER_ID?: string;

@@ -18,6 +18,7 @@
  */
 import type { D1Database } from '@cloudflare/workers-types'
 import { sendAlimtalk, sendAligoSms, resolveAligoSender } from './aligo'
+import { sendSensAlimtalk, sensConfigured, type SensEnv } from './ncp-sens'
 import { isAlimtalkOff } from './alimtalk-templates'
 
 /** 어드민에서 카카오 검수를 통과한 템플릿 코드를 쉼표로 적는 자리. */
@@ -113,11 +114,25 @@ export async function sendTextNotice(
   const e = (env ?? {}) as Record<string, unknown>
   const apiKey = String(e.ALIGO_API_KEY ?? '')
   const userId = String(e.ALIGO_USER_ID ?? '')
-  if (!apiKey || !userId) return { ok: false, skipped: 'no_credentials' }
+  // 🟢 2026-10-12 대표 "이걸로 가자" — 네이버 클라우드 SENS 키가 있으면 알림톡은 SENS 로 보낸다(고정 IP 불필요).
+  //   알리고는 서버 고정 IP 등록이 필수라 Cloudflare 에서는 막힌다(실측 -99/-101). SENS 키가 없을 때만 종전 알리고 경로.
+  const useSens = sensConfigured(e)
+  if (!useSens && (!apiKey || !userId)) return { ok: false, skipped: 'no_credentials' }
   const to = normalizeMobile(phone)
   if (!to) return { ok: false, skipped: 'invalid_phone' }
 
   const db = e.DB as D1Database | undefined
+  if (useSens) {
+    const approvedSens = await approvedTemplates(db)
+    if (!n.forceAlimtalk && !approvedSens.has(n.tpl)) {
+      await recordOutcome(db, to, `pending:${n.tpl}`, n.text, { success: false, error: 'template_not_approved' }).catch(() => {})
+      return { ok: false, skipped: 'template_not_approved' }
+    }
+    // SENS 는 템플릿 코드를 등록할 때 우리가 정한다 — 우리 이름이 곧 코드(설정에 `이름=코드` 로 다르게 적었으면 그 코드).
+    const result = await sendSensAlimtalk(e as SensEnv, { templateCode: approvedSens.get(n.tpl) || n.tpl, to, content: n.text })
+    await recordOutcome(db, to, `alimtalk:${n.tpl}`, n.text, result).catch(() => {})
+    return result.success ? { ok: true, via: 'alimtalk' } : { ok: false, via: 'alimtalk', error: result.error || 'unknown' }
+  }
   const aligoEnv = {
     ALIGO_API_KEY: apiKey,
     ALIGO_USER_ID: userId,
