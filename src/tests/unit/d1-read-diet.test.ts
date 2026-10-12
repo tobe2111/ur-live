@@ -125,7 +125,11 @@ describe('② 피드 캐시 지문 게이트', () => {
 
 describe('④ 예열', () => {
   it('동적 워밍은 :00/:30, 정규화는 19:35 UTC 하루 1회 — HOT_PATHS 는 매 틱 그대로', () => {
-    expect(SCHEDULED).toMatch(/handleCachePrewarm\(env, \{ dynamic: slotOpen\(\{ minute: 0 \}\) \|\| slotOpen\(\{ minute: 30 \}\), normalize: slotOpen\(\{ minute: 35, hour: 19 \}\) \}\)/)
+    // 🔁 2026-10-12 재조준: 같은 호출에 `regionDigest`(지역 요약, `:15`) 가 **추가**됐다. 이 시험이
+    //   지키는 불변식은 *동적 워밍은 `:00`·`:30`* · *정규화는 하루 1회* 두 가지이므로 **옵션이
+    //   더 붙는 것은 막지 않는다**(막으면 새 옵션마다 남의 가드가 깨진다). 두 값만 정확히 본다.
+    expect(SCHEDULED).toMatch(/handleCachePrewarm\(env, \{[^}]*dynamic: slotOpen\(\{ minute: 0 \}\) \|\| slotOpen\(\{ minute: 30 \}\)/)
+    expect(SCHEDULED).toMatch(/handleCachePrewarm\(env, \{[\s\S]{0,200}?normalize: slotOpen\(\{ minute: 35, hour: 19 \}\)/)
     expect(PREWARM).toMatch(/if \(env\.DB && doNormalize\) \{\s*await normalizeSupplyProductData/)
     expect(PREWARM).toMatch(/if \(env\.DB && doDynamic\) \{/)
     // HOT_PATHS 자체호출은 옵션과 무관하다(잠금표)
