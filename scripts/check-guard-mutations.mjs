@@ -9784,12 +9784,15 @@ canvas {
     why: '2026-09-02 대표 확정 안A. 예외가 사라지면 패널 안 dark: 유틸이 다시 켜져 흰 패널 위에 흰 글자가 뜬다.',
   },
   {
-    name: '홈 패널 라이트 섬 — 패널 한 곳에서 light-island 가 빠진다',
+    // 🔁 2026-10-12 **뒤집어 재조준** — 대표 확정으로 홈 패널이 테마를 따르게 됐다(09-02 "안 A" 대체).
+    //   종전 결함("섬이 빠진다")이 이제 **정답**이라 그대로 두면 이 주입은 아무것도 검증하지 않는다.
+    //   결함 방향만 반대로 돌린다: 섬이 **돌아오면** 다크에서 흰 판이 되살아난다.
+    name: '홈 패널 — light-island 가 돌아와 다크에서 흰 판이 된다',
     file: 'src/pages/pc-home/PcHomePage.tsx',
-    find: 'className="ur-home-panel light-island"',
-    replace: 'className="ur-home-panel"',
+    find: 'className="ur-home-panel"',
+    replace: 'className="ur-home-panel light-island"',
     test: 'src/tests/unit/home-panel-light-island.test.ts',
-    why: '섬 클래스가 빠진 패널은 다크에서 흰 배경 + 다크 글자색이 섞여 안 보인다.',
+    why: '섬을 붙이면 --surface 가 #FFFFFF 로 되박히고 안쪽 dark: 가 전부 꺼진다 = 되돌림의 증상 그 자체.',
   },
   {
     name: '🎫 이용권 리뷰가 다시 "구매만 하면" 쓸 수 있게 된다',
