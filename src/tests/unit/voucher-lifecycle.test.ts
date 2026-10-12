@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { generateVoucherCode } from '@/features/group-buy/api/helpers';
 
 /**
  * Voucher lifecycle tests.
@@ -8,24 +9,14 @@ import { describe, it, expect } from 'vitest';
  *   - src/pages/VoucherVerifyPage.tsx (client-side verification UI)
  *
  * These tests validate the pure business logic in isolation:
- *   1. Voucher code format (UR-XXXX-XXXX)
+ *   1. Voucher code format (6자리 숫자 — 2026-10-12)
  *   2. Status transitions (unused -> used -> can't reuse)
  *   3. Expired voucher rejection
  *   4. PIN verification
  */
 
-// ── Voucher code generator (mirrored from group-buy.routes.ts) ─────
-
-function generateVoucherCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = 'UR-';
-  for (let i = 0; i < 8; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-    if (i === 3) code += '-';
-  }
-  return code;
-}
-
+// ── Voucher code generator — 사본이 아니라 **진짜 함수**를 본다 (2026-10-12) ─────
+// 종전엔 이 파일이 생성 함수를 손으로 베껴 시험했다 — 진짜 함수가 바뀌어도 이 시험은 영원히 초록이었다.
 // ── Voucher status machine ─────────────────────────────────────────
 
 type VoucherStatus = 'unused' | 'used' | 'expired' | 'refunded';
@@ -100,45 +91,14 @@ function useVoucher(
 // ── Tests ──────────────────────────────────────────────────────────
 describe('Voucher lifecycle', () => {
 
-  // ── 1. Voucher code format (UR-XXXX-XXXX) ──────────────────────
+  // ── 1. Voucher code format — 6자리 숫자 (2026-10-12 대표 "6자리로 줄이고 숫자로만") ──
   describe('Voucher code format', () => {
-    it('matches UR-XXXX-XXXX pattern', () => {
-      const code = generateVoucherCode();
-      expect(code).toMatch(/^UR-[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+    it('6자리 숫자다', () => {
+      for (let i = 0; i < 200; i++) expect(generateVoucherCode()).toMatch(/^\d{6}$/);
     });
 
-    it('is exactly 12 characters long (UR- + 4 + - + 4)', () => {
-      const code = generateVoucherCode();
-      expect(code).toHaveLength(12);
-    });
-
-    it('does not contain ambiguous characters (0, O, 1, I)', () => {
-      // chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-      // Excluded: 0, 1, I, O to avoid confusion
-      for (let i = 0; i < 100; i++) {
-        const code = generateVoucherCode();
-        const payload = code.replace(/^UR-/, '').replace(/-/g, '');
-        expect(payload).not.toMatch(/[01IO]/);
-      }
-    });
-
-    it('starts with UR- prefix', () => {
-      const code = generateVoucherCode();
-      expect(code.startsWith('UR-')).toBe(true);
-    });
-
-    it('has a dash at position 7 (between the two 4-char groups)', () => {
-      const code = generateVoucherCode();
-      expect(code[7]).toBe('-');
-    });
-
-    it('generates unique codes (statistical check over 1000 codes)', () => {
-      const codes = new Set<string>();
-      for (let i = 0; i < 1000; i++) {
-        codes.add(generateVoucherCode());
-      }
-      // With 32^8 = ~1.1 trillion possibilities, 1000 codes should all be unique
-      expect(codes.size).toBe(1000);
+    it('앞자리 0 도 자릿수를 지킨다(문자열)', () => {
+      for (let i = 0; i < 200; i++) expect(generateVoucherCode()).toHaveLength(6);
     });
   });
 
@@ -288,7 +248,7 @@ describe('Voucher lifecycle', () => {
       const voucher = createVoucher({ store_verify_pin: 'secret' });
 
       // 1. Verify code format
-      expect(voucher.code).toMatch(/^UR-[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+      expect(voucher.code).toMatch(/^\d{6}$/);
       expect(voucher.status).toBe('unused');
 
       // 2. Use with correct PIN

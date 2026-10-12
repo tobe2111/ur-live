@@ -229,7 +229,7 @@ export default function VoucherVerifyPage() {
               value={code}
               onChange={e => setCode(e.target.value.toUpperCase())}
               onPaste={e => { e.preventDefault(); setCode(parseVoucherCode(e.clipboardData.getData('text'))) }}
-              placeholder={t('voucher.verify.codePlaceholder', { defaultValue: 'UR-XXXX-XXXX' })}
+              placeholder={t('voucher.verify.codePlaceholder', { defaultValue: '123456' })}
               className="w-full h-14 px-4 rounded-2xl bg-surface shadow-lift text-center text-[17px] font-bold tabular-nums tracking-widest text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand/40"
               maxLength={60}
             />
