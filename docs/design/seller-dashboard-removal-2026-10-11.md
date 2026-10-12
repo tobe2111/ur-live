@@ -32,7 +32,8 @@
 
 ## 순서
 
-1. 🟡 화면 판정 — 위 분류 완료(2026-10-11). 남은 것: 진입점 없는 둘(consignment · plus-friend-guide)의 처리.
+1. ✅(E2, 2026-10-12) 화면 판정 — 진입점 없던 둘 정리: `consignment` 은 이미 은퇴(2026-09-28 결재 — 리다이렉트, API 는 보존) ·
+   `plus-friend-guide` 는 검색 전용 색인(`SELLER_SEARCH_ONLY`)에 넣어 마이 '전체 도구'·⌘K 로 닿게 했다(화면은 살아 있고 알림톡 수신에 필요).
 2. ✅(E2) 에이전시 콘솔에서 맡은 매장의 판매 화면을 **마이와 같은 시트**로 연다 — 2026-10-12 대표 확정 **안 A**
    (*"A안으로 해줘. 이건 PC버전도 중요해"*). `AgencyStorePlate`(마이 판과 같은 클래스 — 시험이 짝을 대조) +
    `ToolPageSheet`·`AllToolsSheet` 재사용. PC 는 [맡은 매장 목록 | 판] 두 칸, `/agency` 를 소비자 액자에서 제외.
@@ -60,5 +61,5 @@
 각 단계는 화면 동작이 바뀌므로 하나씩 브라우저로 확인하고 가드를 함께 넣는다.
 
 ### 4단계 선행 (2026-10-12)
-- ✅(E2) 판매 알림 받은편지함을 마이로 — `/api/seller/my-stores/notifications`(사람 기준) + '내 가게' 머리의 종. 에이전시 콘솔은 ⬜.
+- ✅(E2) 판매 알림 받은편지함을 마이로 — `/api/seller/my-stores/notifications`(사람 기준) + '내 가게' 머리의 종. 에이전시 콘솔도 ✅ — `/api/agency-console/notifications` + `AgencyNotificationsSheet`(#1718).
 - 실측: 껍데기 소스 ~50KB · 닿지 않는 화면 14개 146KB raw(예산의 ~2%). 껍데기 삭제 차단 요인 = 페이지 53개의 `<SellerLayout>` 래퍼 · 껍데기 안 리다이렉트/토큰 갱신 · 테스트 11개.

@@ -1884,7 +1884,8 @@
       "partners": "Socios",
       "notifyGuide": "Avisos y guía",
       "operatingSummary": "Resumen de operación",
-      "storeInfo": "Info de tienda"
+      "storeInfo": "Info de tienda",
+      "plusFriendGuide": "Añadir canal de KakaoTalk"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",

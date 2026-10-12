@@ -2566,7 +2566,8 @@
       "partners": "合作伙伴",
       "notifyGuide": "通知·指南",
       "operatingSummary": "运营摘要",
-      "storeInfo": "门店信息"
+      "storeInfo": "门店信息",
+      "plusFriendGuide": "添加KakaoTalk频道"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
