@@ -19,6 +19,7 @@ import { checkLockout, recordFailure, clearFailures } from '@/worker/utils/accou
 import { safeError } from '@/worker/utils/safe-error'
 import { ntsCheckStatus } from '@/worker/utils/nts-business-verify'
 import { swallow } from '@/worker/utils/swallow'
+import { sensMailConfigured } from '@/lib/ncp-sens-mail'
 import {
   ensureAgencyConsoleTables, AGENCY_TOKEN_TTL_HOURS, AGENCY_NAME_MAX,
   type AgencyKind, type AgencyTokenKind,
@@ -103,7 +104,8 @@ async function mail(env: Bindings, to: string, subject: string, title: string, b
  * 그 주소는 Resend 계정 주인에게만 배달된다 — 그래서 둘 다 있어야 준비됨으로 본다.
  */
 export function agencyMailReady(env: { RESEND_API_KEY?: string; RESEND_FROM?: string }): boolean {
-  return !!env.RESEND_API_KEY && !!env.RESEND_FROM
+  // 📮 2026-10-12: SENS 메일(발신 주소 NCP_MAIL_SENDER 가 우리 도메인)이 있으면 그걸로 충분하다.
+  return (!!env.RESEND_API_KEY && !!env.RESEND_FROM) || sensMailConfigured(env as Record<string, unknown>)
 }
 /**
  * 🏛️ 에이전시 사업자번호 — 국세청 상태조회. 답이 오면 그대로 따르고, 답이 없으면(키 없음·장애) 'unverified'.

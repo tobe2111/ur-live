@@ -13,6 +13,7 @@
  */
 import { reportCronFailure } from '../utils/cron-reporter'
 import type { Env } from '../types/env'
+import { transactionalMailReady } from '../../lib/ncp-sens-mail'
 
 const SNAPSHOT_KEY = 'notification_channel_snapshot'
 
@@ -27,7 +28,7 @@ function readChannels(env: Env): Record<string, boolean> {
   return {
     webpush: !!(env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY && env.VAPID_SUBJECT),
     nativepush: !!(env.FIREBASE_PROJECT_ID && env.FIREBASE_PRIVATE_KEY && env.FIREBASE_CLIENT_EMAIL),
-    email: !!env.RESEND_API_KEY,
+    email: transactionalMailReady(env), // 📮 Resend 또는 SENS 메일(2026-10-12)
     alimtalk: !!(env.NCP_ACCESS_KEY && env.NCP_SECRET_KEY && env.NCP_SENS_ALIMTALK_SERVICE_ID && env.NCP_KAKAO_CHANNEL_ID),
   }
 }

@@ -49,6 +49,7 @@ export default function NewOpeningsPage() {
       <div className="ur-content-wide px-4 lg:px-8 py-6">
         <h1 className="text-[17px] lg:text-[24px] font-bold text-gray-900 dark:text-white">🎉 우리 동네 새 가게</h1>
         <p className="mt-1 text-[15px] text-gray-500 dark:text-gray-400">최근 30일 신규 개업 — 공공 인허가 데이터 기반이라 매일 자동 갱신됩니다.</p>
+        <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400 max-w-[42em] leading-relaxed">우리 동네에 새로 문을 연 식당·카페·뷰티숍을 지역별로 모았습니다. 지역 칩을 눌러 내 동네만 골라 볼 수 있어요.</p>
 
         {/* 지역 칩 */}
         {regions.length > 0 && (

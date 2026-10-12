@@ -72,3 +72,44 @@ export function demoRaffleDefaults(rand: () => number = Math.random): {
   const days = 5 + Math.floor(rand() * 6)                 // 5~10일
   return { spots, appliedSeed, deadlineMs: days * 24 * 60 * 60 * 1000 }
 }
+
+/**
+ * 🙈 공개 응답에서 **데모 식별자를 지운다** — 대표 2026-10-12 *"데모인 것을 티내지마"*.
+ *
+ * ## 무엇이 새고 있었나 (라이브 실측, Googlebot UA 로 서버 HTML 을 받아 셌다)
+ *
+ *     홈   `demo-deal` 43회 · `"demo"` 48회      ← __SSR_INITIAL_MAIN__ 시드 50건 중 48건이 데모
+ *     지도 `demo-deal` 48회 · `"demo"` 48회
+ *     데모 상세(/pass/2914) `demo-deal` 1회      ← __SSR_INITIAL_DETAIL__
+ *
+ * 페이지 소스를 열면 누구나, 그리고 모든 크롤러가 **어느 것이 데모인지 바로** 안다.
+ * 결정적으로 **실상품은 `slug` 가 NULL** 이다(실측: 2919 `달빛한스푼` → null) — 즉 `slug` 는
+ * 사실상 데모 전용 식별자라서, 응답에서 빼도 실상품 쪽 기능 손실이 **0** 이다.
+ *
+ * ## 왜 SELECT 가 아니라 응답에서 지우나
+ *
+ * `buildCols` 에서 `p.slug` 를 빼면 **서버 자신의 데모-후순위 정렬·`fcfs` 판정이 늘 false** 가 되어
+ * 2026-07-04 대표 지시(*"데모 이용권 노출은 항상 후순위"*)가 조용히 깨진다. 그래서 SQL 은 그대로 두고
+ * **직렬화 직전 한 자리**에서만 지운다 — 라이브 쿼리 경로와 materialized(cron 저장본) 경로가 그 한
+ * 자리를 함께 통과하므로 두 벌이 갈릴 수 없다.
+ *
+ * ## `demo` → `boost`
+ *
+ * 클라가 그 플래그를 쓰는 유일한 목적은 **'선착순 상위노출' boost 에서 제외**하는 것이다
+ * (`RestaurantMapPage` displayList). 그래서 이름을 *하는 일*로 바꿨다 — `boost: false` =
+ * "상위노출 대상 아님". 기본값(true)은 싣지 않는다(바이트 + "제외가 예외" 라는 뜻).
+ *
+ * ⚠️ 이 함수가 **못 가리는 것**: 어드민 응답(의도적으로 데모를 구분해 보여 준다) · DB·cron 저장본
+ * (서버 내부) · 사진·문구 같은 콘텐츠 자체.
+ */
+export function toPublicProductRows<T extends Record<string, unknown>>(rows: readonly T[]): T[] {
+  return rows.map((row) => {
+    const { slug: _slug, is_demo: _isDemo, ...rest } = row as T & { slug?: unknown; is_demo?: unknown }
+    const fcfs = (rest as { fcfs?: Record<string, unknown> }).fcfs
+    if (fcfs && typeof fcfs === 'object' && 'demo' in fcfs) {
+      const { demo, ...fcfsRest } = fcfs as { demo?: unknown }
+      return { ...rest, fcfs: { ...fcfsRest, ...(demo ? { boost: false } : {}) } } as unknown as T
+    }
+    return rest as unknown as T
+  })
+}

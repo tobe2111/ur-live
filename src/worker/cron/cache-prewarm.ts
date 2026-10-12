@@ -25,6 +25,11 @@
 import type { KVNamespace } from '@cloudflare/workers-types';
 import { logInfo, logError } from '../utils/logger';
 import { normalizeSupplyProductData } from '../../features/supply/api/supply-visibility';
+import {
+  REGION_DIGEST_KV_KEY, REGION_DIGEST_MAX_BYTES, REGION_DIGEST_TTL_S,
+  buildRegionDigest, digestRowsOf,
+} from '../../shared/seo/region-digest';
+import { MAIN_SEED_PATH } from '../../shared/seo/region-seed';
 
 interface PrewarmEnv {
   FRONTEND_URL?: string;
@@ -190,7 +195,15 @@ export function rotateForBudget<T>(items: readonly T[], minute: number, budget =
  *   · `normalize` — products 정규화 UPDATE 2개(products 전수 ×2, 수렴 후에도 매 틱 스캔). 하루 1회
  *   HOT_PATHS(SSR 슬롯 키)는 이 옵션과 무관하게 매 틱 돈다 — 잠금표 항목이라 제거·약화하지 않는다.
  */
-export interface PrewarmOpts { dynamic?: boolean; normalize?: boolean }
+export interface PrewarmOpts {
+  dynamic?: boolean
+  normalize?: boolean
+  /**
+   * 🗺️ 2026-10-12: 지역 요약(`ssr:region-digest`) 재빌드. 기본 **OFF** — 켜는 회차만 4 fetch 를 쓴다.
+   *   호출부는 `:15` 한 슬롯만 연다(동적 워밍이 쓰는 `:00`·`:30` 과 **겹치지 않는 위상**).
+   */
+  regionDigest?: boolean
+}
 
 export async function handleCachePrewarm(env: PrewarmEnv, opts: PrewarmOpts = {}): Promise<void> {
   const baseUrl = env.FRONTEND_URL || 'https://urdeal.kr';
@@ -261,6 +274,40 @@ export async function handleCachePrewarm(env: PrewarmEnv, opts: PrewarmOpts = {}
   //   죽은 주소를 네 번 두드리며 **서브리퀘스트 예산(무료 50/인보케이션, 실측 ~49)에서 4칸**을 먹고 있었다.
   //   그 블록 자신의 주석이 예산을 `HOT 24 + dynamic≈20 + WS 5 ≈ 49 < 50` 이라 적어 둔 그 자리다.
   //   (도매가 되살아나면 이 블록 + worker 의 WHOLESALE 슬롯 + `timeoutFor` 3000ms 를 함께 복원할 것.)
+
+  // 🗺️ 2026-10-12 [UNLOCK_LOADING] **지역 요약 재빌드** — 색인 대상 지역 43개 중 6개 시/도가
+  //   본문 0자로 나가던 것(근거·버린 길은 `shared/seo/region-digest.ts` 머리말).
+  //   활성 딜 전량(`limit=100` 4페이지 = 400행 ≥ 실측 359)을 받아 (시/도, 시군구) 묶음마다
+  //   10행까지 접어 **한 키**에 넣는다. 워커는 그 키를 **크롤러 본문·ItemList 를 만들 때만** 읽고
+  //   주입(`__SSR_INITIAL_MAIN__`)은 종전 MAIN 시드 그대로다(필드를 깎았으므로 React 가 먹으면 깨진다).
+  //   💰 비용: 이 회차만 fetch 4 + KV put 1. 호출부가 `:15` 한 슬롯만 열어 하루 24 writes
+  //   (기존 576 + 24 = 600 < 무료 1,000)이고, 동적 워밍(`:00`·`:30`)과 위상이 달라 예산이 겹치지 않는다.
+  //   실패는 전부 fail-soft — 요약이 없으면 워커가 종전처럼 MAIN 시드로 떨어진다(회귀 0).
+  if (env.CACHE_KV && opts.regionDigest) {
+    try {
+      const pages = await Promise.all([1, 2, 3, 4].map(async (page) => {
+        const r = await fetch(`${baseUrl}${MAIN_SEED_PATH}&limit=100&page=${page}`, {
+          method: 'GET',
+          headers: { 'User-Agent': 'ur-live-cache-prewarm/1.0', 'x-prewarm': '1' },
+        });
+        return r.ok ? await r.text() : null;
+      }));
+      const rows = pages.flatMap(digestRowsOf);
+      // 🔴 **0행이면 쓰지 않는다** — 네 페이지가 전부 실패한 날 빈 요약으로 덮으면 지역 페이지가
+      //   "있던 본문이 사라진" 상태가 된다(기존 요약을 들고 있다가 TTL 로 자연 만료되는 편이 낫다).
+      if (rows.length > 0) {
+        const digest = buildRegionDigest(rows);
+        if (digest.length < REGION_DIGEST_MAX_BYTES) {
+          await env.CACHE_KV.put(REGION_DIGEST_KV_KEY, digest, { expirationTtl: REGION_DIGEST_TTL_S });
+          logInfo(`[cron:cache-prewarm] region digest ${rows.length} rows -> ${digest.length}B`);
+        } else {
+          logError('[cron:cache-prewarm] region digest too large', { bytes: digest.length });
+        }
+      }
+    } catch (e) {
+      logError('[cron:cache-prewarm] region digest failed', { error: String(e) });
+    }
+  }
 
   // 🛡️ 2026-05-27 (loading P0): 인기 셀러 + 인기 상품 detail dynamic prewarm.
   //   메인/카테고리 페이지에서 가장 많이 클릭되는 detail / 셀러 페이지 미리 채움.
