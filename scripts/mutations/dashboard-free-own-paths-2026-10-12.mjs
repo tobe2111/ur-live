@@ -74,6 +74,14 @@ export default [
     why: '하단 ➕·유어샵에서 \'이용권 등록\' 을 누르면 전용 등록 시트 대신 대시보드 화면 시트가 열린다(같은 일에 화면이 둘).',
   },
   {
+    name: '[전용길] 시트 안 이용권 등록·재발행을 시트 밖으로 내보낸다',
+    file: 'src/pages/user-profile/seller-section/ToolPageSheet.tsx',
+    find: '                  <Route path="/seller/scan" element={<Escape onLeave={onLeave} to={STORE_SCAN_PATH} />} />\n',
+    replace: '                  <Route path="/seller/scan" element={<Escape onLeave={onLeave} to={STORE_SCAN_PATH} />} />\n                  <Route path="/seller/meal-voucher/new" element={<Escape onLeave={onLeave} />} />\n',
+    test: 'src/tests/unit/tool-page-sheet-renders-2026-09-28.test.tsx',
+    why: '이용권 화면의 재발행을 누르면 시트가 닫히고 대시보드 주소로 나간다 — copyFrom 이 VoucherNewSheet 에는 없어 재발행 값이 사라진다.',
+  },
+  {
     name: '[곧장] 하단 ➕ 이용권 등록이 대시보드 주소를 거친다',
     file: 'src/components/main/BottomNav.tsx',
     find: "navigate(sellerEntryPath('/seller/meal-voucher/new'))",
