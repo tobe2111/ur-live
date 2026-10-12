@@ -156,6 +156,22 @@ a cute miniature <지역> diorama on a small round floating island: <랜드마�
 Color world: <색> … the diorama sits in the RIGHT HALF … ENTIRE LEFT HALF is empty … No text, no letters, no signs, no logos.*
 (모델 `gpt-image-2.5-sunburst`, 1536×768 요청 → 1536×864 수신 → 2:1 로 위아래 크롭.)
 
+## ✅ 유달이 배너 4장 완성 (2026-10-12 대표 *"일단 지역별 말고 배너 디자인 해줘"*)
+
+Figma AI 가 한도로 막혀(두 모델 모두) **AI 생성 없이** 만들었다: 원본 검수 통과한 v6 누끼(`v6-cut-{1,2,3,6}`) +
+배경·받침대·티켓·코인·반짝이는 **코드로 그려** Playwright 로 1600×800 렌더. 다운로드 막힘도 없다(파일이 레포에 있다).
+파일: `assets/banners/udal-banner-{wave,gift,find,qr}.jpg` (각 ~80KB) · 원본 생성기 `assets/banners/source/`.
+실제 홈 캡처(자동 넘김 4.9초 간격 1→4): `assets/banners/udal-banners-home-render.jpg`.
+
+| 장 | 유달이 | 색 | 제목 / 설명(코드가 얹는 글자 — 어드민 입력) | 링크 |
+|---|---|---|---|---|
+| 1 | 손 인사 | 블루 | 처음 오셨나요? 유어딜 둘러보기 / 내 주변 할인 이용권 모아보기 | `/` |
+| 2 | 선물 | 민트 | 커피·편의점 교환권, 딜로 바로 / 스타벅스·CU 등 바로 교환 (라이브 판매 확인) | `/vouchers` |
+| 3 | 돋보기 | 코럴 | 우리 동네 할인, 지도로 찾기 / 지금 내 주변 이용권 | `/map` |
+| 4 | 폰·엄지 | 보라 | 매장에서는 QR 한 번이면 끝 / 사서 바로 쓰는 이용권 | `/vouchers` |
+
+배치 규칙(렌더로 확인): 유달이 중심 가로 76% · 소품은 오른쪽 40% 안 — 제목(왼쪽 58%)과 안 겹치고 가장자리에서 안 잘린다.
+
 ## 구현 todo (대표 결정 후)
 
 - [x] 틀 크기: **2:1 · 362×181** (대표 확정)
