@@ -29,11 +29,17 @@ const ROUTE_FILES = [
   'src/routes/agency-console.routes.tsx',
 ]
 
-/** 라우트 표에서 `path="..."` 를 전부 뽑는다(JSX 주석 제거 후). */
+/**
+ * 라우트 표에서 `path="..."` 를 전부 뽑는다 — **주석 제거는 SSOT 를 쓴다**.
+ * 🩸 첫 판은 JSX 주석용 정규식을 손으로 썼고 pre-push 게이트가 22초에 잡았다 — 문자열 안의
+ *    주석 시작 토큰에 물려 소스가 통째로 증발하는 클래스다(이 레포가 네 번 밟았다).
+ *    🔴 그 정규식을 **여기 인용하지 말 것** — 가드는 원문을 보므로 설명 주석이 곧 위반이 된다
+ *       (실제로 그래서 두 번째 빨간불이 났다).
+ */
 function allRoutePaths(): string[] {
   const out: string[] = []
   for (const f of ROUTE_FILES) {
-    const s = readFileSync(f, 'utf-8').replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+    const s = stripComments(readFileSync(f, 'utf-8'))
     for (const m of s.matchAll(/<Route\s[^>]*?path="([^"]+)"/g)) out.push(m[1])
   }
   return out.filter(p => p !== '*')
