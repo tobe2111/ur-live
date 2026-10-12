@@ -364,8 +364,7 @@ export async function sendBuyerVoucherIssuedAlimtalk(
 ${data.restaurantName || '유어딜'} · ${data.productName}
 ${data.qty}장 발급되었습니다.
 
-📱 매장에서 QR 코드 보여주세요:
-https://urdeal.kr/my-vouchers
+📱 매장에서 아래 [내 이용권 보기]를 눌러 QR 코드를 보여주세요.
 
 ⏰ 유효기간: ${expDate}
 
@@ -381,7 +380,7 @@ https://urdeal.kr/my-vouchers
 export async function sendSellerFirstVoucherAlimtalk(
   env: unknown,
   phone: string,
-  data: { restaurantName: string; productName: string; statsUrl: string }
+  data: { restaurantName: string; productName: string; sellerId: unknown } // 🔘 버튼(사용 처리·정산 계좌)의 매장 번호
 ): Promise<void> {
   if (!phone) return
   try {
@@ -394,16 +393,15 @@ ${data.restaurantName} 사장님,
 "${data.productName}" 이용권을 손님이 구매했어요.
 
 📋 손님이 오시면
-1. 손님 폰의 이용권 QR 을 셀러 대시보드 [사용 처리]로 스캔하거나
+1. 아래 [사용 처리하기]를 눌러 손님 폰의 이용권 QR 을 스캔하거나
 2. 손님이 매장 확인코드를 직접 입력해 사용 처리합니다
 3. 이미 유어딜에서 결제가 끝났으니 따로 결제 받지 마세요
 
 💰 정산
-사용 처리된 금액이 정산 계좌로 지급됩니다. 계좌를 아직 안 올리셨다면 셀러 대시보드 → 정산에서 등록해 주세요.
+사용 처리된 금액이 정산 계좌로 지급됩니다. 계좌를 아직 안 올리셨다면 아래 [정산 계좌 등록]에서 등록해 주세요.
 
-손님이 오시면 사용 처리: ${data.statsUrl}
 문의: 유어딜 고객센터`
-    await sendTextNotice(env, cleanPhone, { tpl: 'seller_first_voucher', title: '첫 이용권 판매', text: message })
+    await sendTextNotice(env, cleanPhone, { tpl: 'seller_first_voucher', title: '첫 이용권 판매', text: message, sellerId: data.sellerId })
   } catch { /* graceful */ }
 }
 
@@ -415,7 +413,7 @@ ${data.restaurantName} 사장님,
 export async function sendSellerVoucherSoldAlimtalk(
   env: unknown,
   phone: string,
-  data: { restaurantName: string; productName: string; qty: number; amount: number; scanUrl?: string; ordersUrl?: string } // 🔗 링크는 shared/store-deep-link
+  data: { restaurantName: string; productName: string; qty: number; amount: number; sellerId: unknown } // 🔘 버튼(사용 처리·판매 내역)의 매장 번호
 ): Promise<void> {
   if (!phone) return
   try {
@@ -426,11 +424,10 @@ export async function sendSellerVoucherSoldAlimtalk(
 ${data.restaurantName}
 "${data.productName}" ${data.qty}장 · ₩${Number(data.amount).toLocaleString('ko-KR')}
 
-손님이 오시면 사용 처리: ${data.scanUrl || 'https://urdeal.kr/seller/scan'}
-판매·사용 내역: ${data.ordersUrl || 'https://urdeal.kr/seller/voucher-orders'}
+손님이 오시면 아래 [사용 처리하기]를 눌러 주세요.
 
 문의: 유어딜 고객센터`
-    await sendTextNotice(env, cleanPhone, { tpl: 'seller_voucher_sold', title: '이용권 판매', text: message })
+    await sendTextNotice(env, cleanPhone, { tpl: 'seller_voucher_sold', title: '이용권 판매', text: message, sellerId: data.sellerId })
   } catch { /* graceful */ }
 }
 

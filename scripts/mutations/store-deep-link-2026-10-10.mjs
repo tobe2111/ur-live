@@ -15,12 +15,12 @@ export default [
     why: '좌석 없이 /seller/* 로 가면 ProtectedRoute 가 셀러 로그인으로 튕긴다 — 고치려던 바로 그 벽.',
   },
   {
-    name: '문자링크 — 판매 문자가 대시보드 주소로 되돌아간다',
+    name: '문자링크 — 판매 알림이 매장 번호를 안 넘긴다(버튼 링크)',
     file: 'src/features/group-buy/api/seller-sale-notify.ts',
-    find: "      scanUrl: storeGoUrl(sale.sellerId, 'scan'), ordersUrl: storeGoUrl(sale.sellerId, 'orders'),\n",
-    replace: '',
+    find: "      sellerId: sale.sellerId,\n    })\n  } catch",
+    replace: "    })\n  } catch",
     test: T,
-    why: '폰에 셀러 세션이 없으면 셀러 비밀번호 로그인으로 떨어진다(카카오 가입 사장님 막다른 길).',
+    why: '2026-10-12 링크가 알림톡 버튼으로 옮겨갔다 — 매장 번호가 없으면 버튼(s=#{매장번호})을 못 만들어 판매 알림이 아예 안 나간다.',
   },
   {
     name: '문자링크 — 모르는 화면 이름을 그대로 경로로 쓴다',

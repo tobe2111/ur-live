@@ -72,10 +72,11 @@ describe('② 화면', () => {
 
 describe('③ 배선', () => {
   const read = (p: string) => readFileSync(p, 'utf8')
-  it('판매·첫 판매 문자가 링크를 쓴다', () => {
+  // 🔘 2026-10-12: 링크가 본문 주소 → 알림톡 버튼(lib/alimtalk-buttons)으로 옮겨갔다. 버튼 링크는 매장 번호로 만들므로
+  //   지키려던 것("그 매장의 그 화면으로 바로")은 이제 **매장 번호를 넘기는가**다 — 빠지면 버튼을 못 만들어 발송이 멈춘다.
+  it('판매·첫 판매 알림이 매장 번호를 넘긴다(버튼 링크)', () => {
     const s = read('src/features/group-buy/api/seller-sale-notify.ts')
-    expect(s).toMatch(/statsUrl: storeGoUrl\(sale\.sellerId, 'scan'\)/)
-    expect(s).toMatch(/scanUrl: storeGoUrl\(sale\.sellerId, 'scan'\), ordersUrl: storeGoUrl\(sale\.sellerId, 'orders'\)/)
+    expect(s.match(/sellerId: sale\.sellerId,/g)?.length).toBe(2)
   })
   it('셀프 사용 문자가 링크를 쓴다', () => {
     expect(read('src/features/group-buy/api/group-buy-voucher.routes.ts')).toMatch(/ordersUrl: storeGoUrl\(merchantId, 'orders'\)/)

@@ -790,7 +790,7 @@ async function sendBusinessRegistrationAlimtalk(
     //   덤: dedup·rate-limit(phone+template 1h)·일일 cap·발송 로그. 문안·tpl_code 는 byte-불변(카카오 글자 일치).
     //   ⚠️ 1h 내 재반려 skip 은 감수 — 위 `createDashboardNotification` 이 통보 채널을 0 으로 안 만든다.
     const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk')
-    await sendSystemAlimtalk(env, phone, templateCode, message)
+    await sendSystemAlimtalk(env, phone, templateCode, message, { sellerId }) // 🔘 반려 → [다시 제출하기] 버튼(lib/alimtalk-buttons)
   } catch { /* silent fail */ }
 }
 

@@ -8,7 +8,7 @@
  *   await sendSystemAlimtalk(env, recipient_phone, 'seller_registered',
  *     '[유어딜] 셀러 가입 신청이 접수되었어요. 1~3일 내 검토 후 안내드립니다.')
  *
- * 템플릿 등록 (네이버 클라우드 SENS 콘솔 — 템플릿 코드 = 아래 이름):
+ * 템플릿 등록: 네이버 클라우드 SENS 콘솔 — 코드는 영문·숫자만(우리 이름에서 밑줄을 뺀 것), 목록 `docs/alimtalk-register-list.md`.
  *   - seller_registered, seller_approved, seller_rejected
  *   - agency_registered, agency_approved
  *   - new_order, gift_received, gift_refunded, settlement_completed
@@ -63,6 +63,8 @@ export async function sendSystemAlimtalk(
   phone: string,
   templateCode: string,
   message: string,
+  /** 🔘 사장님 버튼의 매장 번호 — 버튼은 `alimtalk-buttons.ts` 표에서 템플릿 이름으로 꺼낸다. */
+  opts?: { sellerId?: unknown },
 ): Promise<{ success: boolean; skipped?: boolean; error?: string; reason?: string }> {
   // 환경변수 미설정 시 silent skip (개발/스테이징 환경 호환)
   const e = env as Record<string, string | undefined>;
@@ -118,7 +120,7 @@ export async function sendSystemAlimtalk(
     //   (실패 시 문자로 대체), 아니면 문자. 종전엔 틀린 주소로 알림톡만 시도해 **성공 0건**이었다.
     //   실패 기록도 그쪽이 남긴다(재시도 큐는 알림톡 템플릿으로 다시 보내므로 여기서 태우지 않는다).
     const { sendTextNotice } = await import('./text-notice');
-    const sent = await sendTextNotice(e, cleaned, { tpl: templateCode, title: '유어딜 알림', text: message });
+    const sent = await sendTextNotice(e, cleaned, { tpl: templateCode, title: '유어딜 알림', text: message, sellerId: opts?.sellerId });
     const result: { success: boolean; error?: string } = sent.ok
       ? { success: true }
       : { success: false, error: 'error' in sent ? sent.error : sent.skipped };

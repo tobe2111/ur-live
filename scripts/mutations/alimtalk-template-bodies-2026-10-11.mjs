@@ -31,8 +31,8 @@ export default [
   {
     name: '알림톡 — 설정에 적은 등록 코드 대신 우리 이름을 템플릿 코드로 보낸다',
     file: 'src/lib/text-notice.ts',
-    find: '{ templateCode: approved.get(n.tpl) || n.tpl, to,',
-    replace: '{ templateCode: n.tpl, to,',
+    find: '    templateCode: approved.get(n.tpl) || n.tpl, to,',
+    replace: '    templateCode: n.tpl, to,',
     test: 'src/tests/unit/text-notice-2026-10-11.test.ts',
     why: '등록 코드를 이름과 다르게 지었으면(`이름=코드`) 우리 이름으로 보내면 없는 템플릿으로 거절된다.',
   },

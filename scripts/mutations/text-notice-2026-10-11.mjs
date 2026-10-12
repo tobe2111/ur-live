@@ -25,7 +25,7 @@ export default [
   {
     name: '알림 — 사장님 판매 알림이 솔라피로 되돌아간다',
     file: 'src/features/group-buy/api/helpers.ts',
-    find: "    await sendTextNotice(env, cleanPhone, { tpl: 'seller_voucher_sold', title: '이용권 판매', text: message })\n",
+    find: "    await sendTextNotice(env, cleanPhone, { tpl: 'seller_voucher_sold', title: '이용권 판매', text: message, sellerId: data.sellerId })\n",
     replace: "    await fetch('https://api.solapi.com/messages/v4/send', { method: 'POST', body: message }).catch(() => {})\n",
     test: T,
     why: '라이브에 솔라피 키가 없다 — 판매 알림이 한 통도 안 나간다.',

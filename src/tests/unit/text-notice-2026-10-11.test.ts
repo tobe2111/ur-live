@@ -66,7 +66,7 @@ describe('sendTextNotice — 카톡만: 승인된 템플릿만 알림톡, 문자
   })
   it('승인된 템플릿은 알림톡으로 — 우리 이름이 곧 템플릿 코드', async () => {
     const DB = fakeDb('voucher_used, seller_voucher_sold')
-    const r = await sendTextNotice({ ...ENV, DB }, '01033334444', { tpl: 'seller_voucher_sold', title: '이용권 판매', text: '판매' })
+    const r = await sendTextNotice({ ...ENV, DB }, '01033334444', { tpl: 'seller_voucher_sold', title: '이용권 판매', text: '판매', sellerId: 7 })
     expect(r).toEqual({ ok: true, via: 'alimtalk' })
     expect(calls).toHaveLength(1)
     expect(calls[0].body.templateCode).toBe('seller_voucher_sold')
@@ -111,7 +111,7 @@ describe('sendTextNotice — 카톡만: 승인된 템플릿만 알림톡, 문자
 
 describe('사장님 판매 알림이 실제 발송 경로에 닿는다', () => {
   it('sendSellerVoucherSoldAlimtalk → SENS 알림톡(템플릿 승인 시)', async () => {
-    await sendSellerVoucherSoldAlimtalk({ ...ENV, DB: fakeDb('seller_voucher_sold') }, '01033334444', { restaurantName: '가게', productName: '돈가스', qty: 1, amount: 9000 })
+    await sendSellerVoucherSoldAlimtalk({ ...ENV, DB: fakeDb('seller_voucher_sold') }, '01033334444', { restaurantName: '가게', productName: '돈가스', qty: 1, amount: 9000, sellerId: 7 })
     expect(calls).toHaveLength(1)
     expect(calls[0].body.messages[0].content).toContain('돈가스')
   })

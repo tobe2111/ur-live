@@ -24,6 +24,7 @@
 import type { D1Database } from '@cloudflare/workers-types'
 import { sendSensAlimtalk, sensConfigured, type SensEnv } from './ncp-sens'
 import { isAlimtalkOff } from './alimtalk-templates'
+import { alimtalkButtons } from './alimtalk-buttons'
 
 /** 어드민에서 카카오 검수를 통과한 템플릿 코드를 쉼표로 적는 자리. */
 export const APPROVED_TEMPLATES_SETTING = 'alimtalk_approved_templates'
@@ -98,7 +99,11 @@ export type TextNoticeResult =
 export async function sendTextNotice(
   env: unknown,
   phone: unknown,
-  n: { tpl: string; title: string; text: string; forceAlimtalk?: boolean },
+  n: {
+    tpl: string; title: string; text: string; forceAlimtalk?: boolean
+    /** 🔘 사장님 버튼의 매장 번호(`alimtalk-buttons.ts`). 버튼 자체는 템플릿 이름으로 표에서 꺼낸다. */
+    sellerId?: unknown
+  },
 ): Promise<TextNoticeResult> {
   // 🔕 대표가 끈 알림(alimtalk-templates.ts ALIMTALK_OFF_TEMPLATES) — 앱 알림만. 놓친 것으로 기록하지도 않는다(의도한 일이다).
   if (!n.forceAlimtalk && isAlimtalkOff(n.tpl)) return { ok: false, skipped: 'turned_off' }
@@ -115,8 +120,17 @@ export async function sendTextNotice(
     await recordOutcome(db, to, `pending:${n.tpl}`, n.text, { success: false, error: 'template_not_approved' }).catch(() => {})
     return { ok: false, skipped: 'template_not_approved' }
   }
-  // SENS 는 템플릿 코드를 등록할 때 우리가 정한다 — 우리 이름이 곧 코드(설정에 `이름=코드` 로 다르게 적었으면 그 코드).
-  const result = await sendSensAlimtalk(e as SensEnv, { templateCode: approved.get(n.tpl) || n.tpl, to, content: n.text })
+  // 🔘 버튼 — 템플릿에 등록한 버튼과 같아야 카카오가 받는다(`alimtalk-buttons.ts` 한 표). 매장 버튼인데 매장 번호가
+  //   없으면 보내도 거절되므로 보내지 않고 남긴다(호출부 결함을 숨기지 않는다).
+  const buttons = alimtalkButtons(n.tpl, { sellerId: n.sellerId })
+  if (buttons === null) {
+    await recordOutcome(db, to, `alimtalk:${n.tpl}`, n.text, { success: false, error: 'missing_store_id_for_buttons' }).catch(() => {})
+    return { ok: false, via: 'alimtalk', error: 'missing_store_id_for_buttons' }
+  }
+  // SENS 는 템플릿 코드를 등록할 때 우리가 정한다 — 설정에 `이름=코드` 로 적힌 코드(영문·숫자만 된다).
+  const result = await sendSensAlimtalk(e as SensEnv, {
+    templateCode: approved.get(n.tpl) || n.tpl, to, content: n.text, ...(buttons.length ? { buttons } : {}),
+  })
   await recordOutcome(db, to, `alimtalk:${n.tpl}`, n.text, result).catch(() => {})
   return result.success ? { ok: true, via: 'alimtalk' } : { ok: false, via: 'alimtalk', error: result.error || 'unknown' }
 }

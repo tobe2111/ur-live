@@ -81,7 +81,9 @@ describe('② 경로 선택', () => {
     expect(calls).toHaveLength(1)
     expect(calls[0].url.startsWith(SENS_HOST)).toBe(true)
     const body = JSON.parse(calls[0].body)
-    expect(body).toEqual({ plusFriendId: '@유어딜', templateCode: 'voucher_issued', messages: [{ to: '01012345678', content: '본문' }] })
+    // 🔘 버튼은 lib/alimtalk-buttons 표에서 템플릿 이름으로 실린다(손님 이용권 → [내 이용권 보기]).
+    const myVouchers = { type: 'WL', name: '내 이용권 보기', linkMobile: 'https://urdeal.kr/my-vouchers', linkPc: 'https://urdeal.kr/my-vouchers' }
+    expect(body).toEqual({ plusFriendId: '@유어딜', templateCode: 'voucher_issued', messages: [{ to: '01012345678', content: '본문', buttons: [myVouchers] }] })
     expect(calls[0].headers['x-ncp-iam-access-key']).toBe('AK')
     const ts = calls[0].headers['x-ncp-apigw-timestamp']
     const expected = createHmac('sha256', 'SK').update(sensSignatureMessage('POST', new URL(calls[0].url).pathname, ts, 'AK')).digest('base64')
