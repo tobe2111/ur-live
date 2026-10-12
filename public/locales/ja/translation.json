@@ -2870,7 +2870,7 @@
       "cameraStarting": "カメラ起動中…",
       "processing": "処理中…",
       "noDetector": "このブラウザは自動認識非対応 — 下にコードを入力してください。",
-      "manualPlaceholder": "コードを直接入力 (UR-XXXX-XXXX)",
+      "manualPlaceholder": "コードを直接入力 (123456)",
       "useBtn": "使用処理",
       "homeCardTitle": "店舗オーナー様 — お客様のバウチャーはここでスキャン",
       "homeCardDesc": "QRをかざすと1タップで使用処理 · マジックリンクはログイン不要",
@@ -4916,7 +4916,7 @@
     },
     "verify": {
       "codeLabel": "利用券コード",
-      "codePlaceholder": "UR-XXXX-XXXX",
+      "codePlaceholder": "123456",
       "qrHint": "QRのURLを貼り付けるとコードだけ取り出します",
       "lookup": "検索",
       "lookupAnother": "別の利用券を確認",

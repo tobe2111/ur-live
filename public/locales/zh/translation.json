@@ -2870,7 +2870,7 @@
       "cameraStarting": "相机启动中…",
       "processing": "处理中…",
       "noDetector": "此浏览器不支持自动识别 — 请在下方输入代码。",
-      "manualPlaceholder": "直接输入兑换码 (UR-XXXX-XXXX)",
+      "manualPlaceholder": "直接输入兑换码 (123456)",
       "useBtn": "核销",
       "homeCardTitle": "店主 — 在这里扫描顾客兑换券",
       "homeCardDesc": "对准二维码一键核销 · 魔法链接无需登录",
@@ -4916,7 +4916,7 @@
     },
     "verify": {
       "codeLabel": "使用券代码",
-      "codePlaceholder": "UR-XXXX-XXXX",
+      "codePlaceholder": "123456",
       "qrHint": "粘贴二维码链接即可自动提取代码",
       "lookup": "查询",
       "lookupAnother": "查询其他使用券",

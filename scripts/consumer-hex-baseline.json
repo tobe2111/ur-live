@@ -1,6 +1,7 @@
 {
   "total": 2112,
   "files": {
+    "src/pages/guest/GuestKakaoButton.tsx": 2,
     "src/pages/AboutPage.tsx": 25,
     "src/pages/AboutServicePage.tsx": 1,
     "src/pages/AccountDeleteWarningPage.tsx": 3,

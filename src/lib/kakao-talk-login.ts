@@ -28,6 +28,12 @@ interface TalkLoginTicket { state: string; redirectUri: string; scope: string }
 
 let ready: TalkLoginTicket | null = null
 let preparing: Promise<void> | null = null
+/**
+ * 무엇을 위해 준비했나(복귀 주소 + 의도). 2026-10-12 — 로그인 전 탭 화면(이용권·유어샵·마이)이 각자
+ * 다른 복귀 주소로 준비하게 되면서, **처음 준비한 값을 계속 돌려주면** 이용권 탭에서 준비한 표가
+ * 유어샵 탭의 버튼에 쓰여 로그인 뒤 엉뚱한 탭으로 돌아간다(에러 없이). 주소가 바뀌면 새로 받는다.
+ */
+let preparedFor: string | null = null
 
 /** 아이폰은 첫 화면을 다 그린 뒤 SDK 를 받는다(2026-05-04 사파리 멈춤 사고). */
 export const IOS_PREPARE_DELAY_MS = 1500
@@ -51,7 +57,10 @@ export function scheduleTalkLoginPrepare(redirect: string): () => void {
 
 /** 로그인 화면이 뜰 때 한 번 — SDK 와 서버 state 를 미리 받아 둔다. 실패는 조용히(종전 방식이 남는다). */
 export function prepareTalkLogin(redirect: string, intent: 'user' | 'seller' = 'user'): Promise<void> {
-  if (preparing) return preparing
+  const key = `${intent} ${redirect}`
+  if (preparing && preparedFor === key) return preparing
+  ready = null
+  preparedFor = key
   const q = new URLSearchParams({ mode: 'sdk', redirect, intent })
   preparing = Promise.all([
     fetch(`/auth/kakao/start?${q.toString()}`, { credentials: 'include' })
@@ -60,9 +69,11 @@ export function prepareTalkLogin(redirect: string, intent: 'user' | 'seller' = '
   ])
     .then(([res]) => {
       const d = res?.data
+      // 늦게 도착한 옛 준비가 새 표를 덮지 않게 — 그 사이 다른 주소로 다시 준비했으면 버린다.
+      if (preparedFor !== key) return
       if (res?.success && d?.state && d?.redirectUri) ready = d
     })
-    .catch(() => { ready = null })
+    .catch(() => { if (preparedFor === key) ready = null })
   return preparing
 }
 
@@ -83,6 +94,7 @@ export function startTalkLogin(): boolean {
     })
     ready = null // state 는 1회용 — 다시 누르면 새로 받는다
     preparing = null
+    preparedFor = null
     return true
   } catch {
     return false

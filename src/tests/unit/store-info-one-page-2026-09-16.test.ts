@@ -156,13 +156,14 @@ describe('⑥ 셀러 가입 라우터 분해 — 라우트 표가 그대로다',
   const REG = 'src/features/seller/api/seller-registration.routes.ts'
   const SESSION = 'src/features/seller/api/seller-registration/session-routes.ts'
 
-  it('다섯 경로가 그대로 있다 (두 파일에 나뉘어)', () => {
+  // 🪦 2026-10-12: `/register-from-user` 를 지웠다(부르던 가입 화면이 같은 날 사라졌다) — 다섯 → 넷.
+  it('네 경로가 그대로 있다 (두 파일에 나뉘어)', () => {
     const paths = [
       ...src(REG).matchAll(/sellerRegistrationRoutes\.(?:get|post)\('([^']+)'/g),
       ...src(SESSION).matchAll(/app\.(?:get|post)\('([^']+)'/g),
     ].map((m) => m[1]).sort()
     expect(paths).toEqual([
-      '/my-seller-status', '/register', '/register-from-user', '/switch-to-seller', '/switch-to-user',
+      '/my-seller-status', '/register', '/switch-to-seller', '/switch-to-user',
     ])
   })
 

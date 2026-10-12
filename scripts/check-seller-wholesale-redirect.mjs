@@ -13,7 +13,7 @@
  *   "이 surface 의 주인이 아니다"를 판정하면 정당한 겸업 사용자를 쫓아낸다.
  *
  * 통과(안전) 조건 — 같은 줄/블록에 아래 중 하나가 있으면 OK:
- *   · 서버 권위 판정 `wholesale_only` (셀러↔도매 SSOT computeWholesaleOnly, GET /api/seller/surface)
+ *   · 서버 권위 판정 `wholesale_only` (셀러↔도매 SSOT computeWholesaleOnly — 2026-10-12 `GET /api/seller/surface` 는 대시보드 틀과 함께 삭제)
  *   · 음성 인증 게이트 `!loggedIn` / `!token` / `!localStorage` / `!isXLoggedIn()` (비로그인 → 로그인, 정상)
  *   · 단일역할(가산 아님) 비교 `role !==` / `!== 'wholesale'` (admin role 등 — 겸직 불가 모델)
  *   · 다중역할 보호 동반조건이 있는 파생 플래그 (`supplierOnly = token && !loggedIn` 류)

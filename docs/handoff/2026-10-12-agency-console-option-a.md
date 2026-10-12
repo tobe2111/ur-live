@@ -244,3 +244,19 @@
 - `POST /api/seller/register-from-user` — 클라 호출 0(옛 가입 폼이 유일한 소비자였다). 서버 라우트 정리는 별건.
 - `BusinessCertUpload` 의 `onRead`(등록증 사진 자동 채움) — 넘기는 곳 0. 서버 OCR 은 opt-in 이라 비용 0.
 - `RegisterFields` 의 `validateSignup`·`filledRequired`·`formatPhone` — 시험만 쓴다(`formatBusinessNumber` 는 매장 등록 모달이 쓴다).
+
+### #1742 머지 + 2차 정리 PR — 안 쓰는 서버 기능·조각 (대표 "머지 해주고 1,2번도 같이 해줘")
+- PR #1742 머지 `196b91a1`(CI 초록 확인 후).
+- ① 지워진 검사 3개를 부르던 곳: **다른 세션이 main 에서 이미 수리**(`guard-registry-r3-2026-10-12.test.ts` + 훅 설치기·CLAUDE.md 줄 정리). 이 세션은 로컬 훅만 재설치.
+- ② 지운 것(전부 호출 0 실측):
+  - `POST /api/seller/register-from-user` + 그 문만 쓰던 `seller-signup-meta.ts`(채널·가게 도장) + `shared/store-place.ts`(카카오 업종 매핑)
+  - `GET /api/seller/surface`(읽던 대시보드 틀·승인 배너가 이미 삭제됨 — `computeWholesaleOnly` 는 로그인 응답이 계속 쓴다)
+  - 업로드의 등록증 자동 읽기(`ocr=1` 분기 + `BusinessCertUpload.onRead` + `shared/ocr-prefill.ts`). **어드민 OCR(`admin-seller-ocr`)은 그대로.**
+  - `RegisterFields` 의 `validateSignup`·`filledRequired`·`formatPhone`·`SignupForm` 타입.
+- 시험: 지킬 코드가 사라진 시험 3파일 삭제(OCR·가게고르기·…) + 7파일 축소/재조준(경로 수 5→4, seller routes 38→37 등). 주입 11건 삭제(대상 소멸), 주입 파일 2개 삭제.
+- 검증: tsc 0 · 관련 유닛 통과 · 낡은 앵커 0 · `--changed` 주입 209건 중 203 빨간불 확인(나머지 6건은 이 인계 미갱신 탓 — 갱신 후 해소).
+- 🩸 실수: 주입 러너를 `--help` 로 부르면 **전수 실행이 시작된다**(도움말 플래그가 없다). 백그라운드로 넘어가 파일 세 개에 주입을 남겼다 — 내 작업은 stage 돼 있어 `git checkout -- <파일>` 로 복구. 그리고 `pkill -f <패턴>` 은 **자기 셸까지 죽인다**(exit 144) — PID 로 죽일 것.
+
+### 남은 것(별건)
+- `POST /api/seller/register`(이메일·비번 셀러 가입)도 클라 호출 0 으로 보인다(가입 문은 `/store/new`). 확인 후 정리 후보.
+- 코드 밖(대표 판단): `role='wholesale'` 어드민 4개 · `utongstart.com` · `ur-wholesale` Pages 프로젝트.
