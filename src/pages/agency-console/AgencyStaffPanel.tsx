@@ -19,10 +19,12 @@ export interface StaffRow {
 }
 
 /** 직원 목록 + (관리자만) 초대·재발송·내보내기. */
-export function AgencyStaffPanel({ staff, canManage, onChanged }: {
+export function AgencyStaffPanel({ staff, canManage, onChanged, bare = false }: {
   staff: StaffRow[] | null
   canManage: boolean
   onChanged: () => void
+  /** 시트 안 — 시트 머리가 이미 '직원' 이라 제목을 또 그리지 않는다. */
+  bare?: boolean
 }) {
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<'staff' | 'admin'>('staff')
@@ -64,9 +66,9 @@ export function AgencyStaffPanel({ staff, canManage, onChanged }: {
   }
 
   return (
-    <section className="mt-8">
-      <h2 className="text-[17px] font-semibold text-gray-500">직원</h2>
-      <div className="mt-3 rounded-2xl bg-white shadow-lift">
+    <section className={bare ? '' : 'mt-8'}>
+      {!bare && <h2 className="text-[17px] font-semibold text-gray-500">직원</h2>}
+      <div className={`${bare ? '' : 'mt-3 '}rounded-2xl bg-white shadow-lift`}>
         {staff === null ? (
           <p className="p-6 text-[13px] text-gray-500">불러오는 중…</p>
         ) : (

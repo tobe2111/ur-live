@@ -30,6 +30,7 @@ import { requireAgencyStaff, newLinkToken, type AgencyStaffContext } from './age
 import { frontendBase } from './agency-auth.routes'
 import { registerAgencyStoreRegisterRoute } from './agency-store-register'
 import { registerStaffStoreRoutes } from './agency-staff-stores'
+import { agencyStoreToday } from './agency-store-today'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string; FRONTEND_URL?: string }
 type Vars = { agencyStaff: AgencyStaffContext }
@@ -64,9 +65,12 @@ agencyStoresRoutes.get('/stores', requireAgencyStaff(), async (c) => {
       id: number; seller_id: number; status: string; created_at: string; accepted_at: string | null
       business_name: string | null; seller_name: string | null; username: string | null; store_status: string | null
     }>()
+    // 🔢 판 머리의 오늘 숫자 — 운영 중인 매장만 센다(맡김 요청 단계는 아직 우리 매장이 아니다).
+    const today = await agencyStoreToday(c.env.DB, (results || []).filter((r) => r.status === 'active').map((r) => r.seller_id))
     return c.json({
       success: true,
       stores: (results || []).map((r) => ({
+        today: r.status === 'active' ? today.get(r.seller_id) ?? null : null,
         linkId: r.id,
         sellerId: r.seller_id,
         status: r.status === 'active' ? 'active' : 'pending',
