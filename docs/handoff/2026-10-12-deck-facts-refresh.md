@@ -60,3 +60,12 @@
 - 인플루언서 덱의 **"이용권 사용 뒤 정산"** 문구는 이제 코드와 일치한다
   (`payout_requires_voucher_use=true` 라이브). 종전 노트의 "대표 확인 필요" 는 해소했다.
 - 상인회 리드 파이프라인(`ad_company_leads` category='상인회') 상태는 **이번에도 안 봤다**(덱만).
+
+## 7. 가드가 또 잡았다 — 랜딩 거울
+
+푸시가 `partners-landing-2026-09-16.test.ts` **R2** 에서 막혔다. 라이브 `/partners` 랜딩이
+`src/shared/partners-facts.ts` 로 **덱과 같은 숫자를 비추기** 때문이다 — 덱만 고치면 둘이 갈린다.
+`realStores 1→2` · `influencerDb` · `influencerReachable` · `liveMeasuredAt` 를 함께 맞춰 67건 통과.
+
+🔑 **덱 FACTS 를 고칠 때는 `partners-facts.ts` 도 같은 커밋에서 고친다.** 지난주(10-06)에도
+같은 가드가 같은 자리를 잡았다 — 두 번 다 설계대로 동작했다. (그 파일 주석에 못을 박아 뒀다.)
