@@ -1,13 +1,21 @@
 // 🧱 2026-06-29 TD: MyVouchersPage god 파일 분해 — 카카오맵 후기 보너스 버튼/모달(verbatim 추출). 동작 불변.
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
+import { KAKAO_REVIEW_BONUS_ENABLED } from '@/shared/feature-flags'
 import { StarIcon } from '@/components/icons/urdeal-icons'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
 
-export default function ReviewBonusButton(
-  { voucherCode, restaurantName, restaurantAddress }:
-  { voucherCode: string; restaurantName?: string | null; restaurantAddress?: string | null },
-) {
+// 🚫 2026-10-12 대표 *"카카오맵 후기 관련 보너스 지금 없어"* — 꺼져 있으면 아무것도 그리지 않는다
+//   (훅 규칙 때문에 게이트는 바깥 껍데기에 둔다).
+export default function ReviewBonusButton(props: ReviewBonusProps) {
+  if (!KAKAO_REVIEW_BONUS_ENABLED) return null
+  return <ReviewBonusButtonInner {...props} />
+}
+
+type ReviewBonusProps = { voucherCode: string; restaurantName?: string | null; restaurantAddress?: string | null }
+
+function ReviewBonusButtonInner({ voucherCode, restaurantName, restaurantAddress }: ReviewBonusProps) {
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<'url' | 'screenshot'>('url')
   const [reviewUrl, setReviewUrl] = useState('')
@@ -59,7 +67,10 @@ export default function ReviewBonusButton(
         className="mt-4 w-full py-2 rounded-xl bg-brand text-white text-[12px] font-bold flex items-center justify-center gap-1">
         ⭐ 카카오맵 후기 작성하고 보너스 받기
       </button>
-      {open && (
+      {/* 🪟 2026-10-12 대표 신고 스크린샷(시트 뒤로 카드가 비쳐 겹쳐 보임) — 이 버튼은 '지난 이용권' 카드 안에 있고
+          그 카드는 `opacity-60` 이다. opacity 는 자식에 상속되고 새 쌓임 맥락을 만들어, fixed 시트도 반투명해지고
+          뒤 카드 밑으로 깔렸다. ⇒ body 로 portal 해서 카드 밖에 그린다. */}
+      {open && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-[10500] flex items-end sm:items-center justify-center bg-black/60" onClick={() => setOpen(false)}>
           <div className="bg-surface rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-2"><StarIcon className="w-4 h-4 inline-block align-[-3px] mr-1 text-gray-400" aria-hidden="true" />카카오맵 후기 작성 보너스</h3>
@@ -115,7 +126,8 @@ export default function ReviewBonusButton(
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   )

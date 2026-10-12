@@ -202,7 +202,7 @@
 - **발견**: `/`(동네딜 지도) · `/vouchers`(이용권+쇼핑) · `/group-buy`(동네딜) · `/browse`(쇼핑,숨김) · `/search` · `/blog` · **`/local/:code`(상권관 — B2G 상권 패키지 지역 랜딩, 2026-07-04)**
 - **상세/구매**: `/vouchers/:id` · `/pass/:id`(2026-09-16 정본 — 옛 `/group-buy/:id` 는 영구 301) · `/products/:id` · `/stays/:id` · `/checkout` · `/points/charge`
 - **유어샵**: `/u/:handle`(단일화 — **손님 화면 하나뿐**, 주인이 봐도 같다) · **`/u/me/manage`(관리 — 이름·소개·주소·SNS·흐르는 문구·핀 순서, 2026-09-28 대표 확정 e3 로 손님 화면에서 분리)** · `/u/me`(본인) · `/u/me/add`(핀 추가) · `/u/me/earnings` · `/profile/:username`·`/s/:id`(셀러 공개)
-- **🎁 이용권 선물(넘기기, 2026-10-11 대표 결정)**: 지갑 이용권 → 카카오 공유로 링크 → 친구가 `/gift/v/:token` 에서 받으면 **이용권 주인이 친구로** 바뀜(`vouchers.gift_from_user_id` 에 보낸 사람). 받기 전엔 회수 가능. 표 `voucher_gifts`, API `/api/group-buy/gifts/*`. 📅 만료일 톡캘린더 알림: 지갑 QR 화면, 게이트 `KAKAO_TALK_CALENDAR_ENABLED`.
+- **🎁 이용권 선물(넘기기, 2026-10-11 대표 결정)**: 지갑 이용권 → 카카오 공유로 링크 → 친구가 `/gift/v/:token` 에서 받으면 **이용권 주인이 친구로** 바뀜(`vouchers.gift_from_user_id` 에 보낸 사람). 받기 전엔 회수 가능. **선물 링크가 살아 있는 동안은 보낸 사람도 못 쓴다**(사용 경로 전부의 CAS 에 `noPendingGiftSql` — 2026-10-12 대표 *"해당 이용권은 쓸 수 없게끔"*), **받으면 이용권 코드가 새로 바뀐다**(보낸 사람 손의 옛 QR 무효), 보낸 사람 지갑엔 '선물 중' 표시와 '○○님에게 선물했어요' 기록(`status='gifted'`, 코드 없음). 내가 보낸 선물은 내가 못 받는다(SELF). 표 `voucher_gifts`, API `/api/group-buy/gifts/*`. 📅 만료일 톡캘린더 알림: 지갑 QR 화면, 게이트 `KAKAO_TALK_CALENDAR_ENABLED`.
 - **마이**: `/user/profile` · `/my-vouchers`(이용권 지갑) · **`/my-gifticons`(교환권 보관함 — 2026-08-31 분리: 교환권은 `/vouchers` 에서 사고 여기서 확인, 이용권은 `/my-vouchers`)** · `/my-orders` · `/my-deal-history` · `/my-commissions` · `/notifications` · `/account/settings`
 - **성장**: `/referral` · `/g/:invite_code` · `/influencer/*`(랭킹·정산·발굴) · **`/experience`(체험 캠페인 응모, 2026-07-12)**
 - **성장**: `/referral` · `/g/:invite_code` · `/influencer/*`(랭킹·정산·발굴)

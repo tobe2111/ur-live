@@ -1,0 +1,70 @@
+/**
+ * 🧬 주입 — 선물한 이용권 잠금 · 후기 보너스 끄기 · 지갑 지도 꽉 채우기 · 중복 썸네일 (2026-10-12 대표 지시)
+ */
+const T = 'src/tests/unit/gift-lock-thumbs-2026-10-12.test.ts'
+export default [
+  {
+    name: '선물 잠금 — 계산대 PIN 사용 CAS 가 선물 중 술어를 빠뜨린다',
+    file: 'src/worker/utils/counter-redeem.ts',
+    find: "       AND ${noPendingGiftSql('vouchers.id')}\n",
+    replace: '',
+    test: T,
+    why: '선물 링크를 보내 놓고 보낸 사람이 계산대에서 그 이용권을 써 버릴 수 있다.',
+  },
+  {
+    name: '선물 잠금 — 술어가 pending 이 아닌 상태까지 막는다(또는 반대로 아무것도 안 막는다)',
+    file: 'src/worker/utils/voucher-gift.ts',
+    find: "gp.status = 'pending')`",
+    replace: "gp.status = 'never')`",
+    test: T,
+    why: '술어가 헛돌면 모든 사용 경로의 잠금이 한꺼번에 사라진다.',
+  },
+  {
+    name: '선물 — 받을 때 코드를 바꾸지 않는다',
+    file: 'src/features/group-buy/api/voucher-gift.routes.ts',
+    find: 'UPDATE vouchers SET user_id = ?, gift_from_user_id = ?, code = ?',
+    replace: 'UPDATE vouchers SET user_id = ?, gift_from_user_id = ?, memo = ?',
+    test: T,
+    why: '보낸 사람 손에 남은 옛 QR 로 받은 사람의 이용권을 쓸 수 있다.',
+  },
+  {
+    name: '보낸 선물 — 지갑이 받힌 선물을 지난 기록에서 뺀다',
+    file: 'src/pages/MyVouchersPage.tsx',
+    find: "v.status === 'refunded' || v.status === 'gifted'",
+    replace: "v.status === 'refunded'",
+    test: T,
+    why: '친구에게 준 이용권이 지갑 어디에도 안 보인다(대표 "선물했다고 표시되고").',
+  },
+  {
+    name: '후기 보너스 — 버튼 게이트를 지운다',
+    file: 'src/pages/my-vouchers/ReviewBonusButton.tsx',
+    find: 'if (!KAKAO_REVIEW_BONUS_ENABLED) return null',
+    replace: 'if (false) return null',
+    test: T,
+    why: '없는 보너스를 약속하는 버튼이 다시 뜬다.',
+  },
+  {
+    name: '지갑 지도 — 고정 높이로 되돌린다',
+    file: 'src/pages/MyVouchersPage.tsx',
+    find: "const MAP_FILL = 'h-[calc(100dvh-",
+    replace: "const MAP_FILL = 'h-[460px] x-[calc(100dvh-",
+    test: T,
+    why: '지도 아래가 비어 보인다(대표 "지도를 화면 전체를 쓰던가").',
+  },
+  {
+    name: '썸네일 — 이관 키를 다시 무작위로',
+    file: 'src/worker/utils/rehost-image.ts',
+    find: 'const key = `${keyPrefix}/h/${await contentHash(buf)}.${ext}`',
+    replace: 'const key = `${keyPrefix}/h/${crypto.randomUUID()}.${ext}`',
+    test: T,
+    why: '같은 사진을 두 번 옮기면 주소가 둘이 되어 화면에 두 장으로 뜬다.',
+  },
+  {
+    name: '썸네일 — 같은 내용 칸을 안 접는다',
+    file: 'src/worker/cron/gallery-etag-dedupe.ts',
+    find: '    if (s && seen.has(s)) {',
+    replace: '    if (s && false) {',
+    test: T,
+    why: '이미 생긴 중복 51건이 그대로 남는다.',
+  },
+]

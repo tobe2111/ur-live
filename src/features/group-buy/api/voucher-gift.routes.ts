@@ -17,6 +17,7 @@ import { resolveUserIdString } from '@/worker/utils/resolve-user-id'
 import { safeError } from '@/worker/utils/safe-error'
 import { ensureVoucherGiftTable, newGiftToken, GIFT_TOKEN_RE } from '@/worker/utils/voucher-gift'
 import { notifyUser } from '@/lib/notifications'
+import { generateVoucherCode } from './helpers'
 
 export const voucherGiftRoutes = new Hono<{ Bindings: Env }>()
 
@@ -202,12 +203,26 @@ voucherGiftRoutes.post('/:token/accept', rateLimit({ action: 'voucher_gift_accep
     `).bind(norm, g.id).run()
     if ((claim.meta?.changes ?? 0) === 0) return c.json({ success: false, error: '이미 받았거나 회수된 선물이에요', code: 'NOT_PENDING' }, 409)
 
-    const move = await DB.prepare(`
-      UPDATE vouchers SET user_id = ?, gift_from_user_id = ?
-      WHERE id = ? AND status = 'unused' AND user_id = ? AND gift_from_user_id IS NULL
-        AND (expires_at IS NULL OR expires_at > datetime('now'))
-    `).bind(norm, String(g.sender_user_id), g.voucher_id, String(g.sender_user_id)).run()
-    if ((move.meta?.changes ?? 0) === 0) {
+    // 🔑 2026-10-12 대표 "선물하면 해당 이용권은 (보낸 사람이) 쓸 수 없게" — 주인만 바꾸면 **코드(=QR)는 그대로**라
+    //   보낸 사람이 받기 전에 본 화면·캡처·`/v/코드` 링크로 매장에서 그대로 쓸 수 있었다(코드만으로 통하는 경로가 있다).
+    //   ⇒ 받는 순간 코드를 새로 발급한다. 옛 코드는 어디서도 안 통한다. UNIQUE 충돌은 새 코드로 다시(1.1조 분의 1).
+    let move: D1Result | null = null
+    for (let attempt = 0; attempt < 3 && !move; attempt++) {
+      try {
+        move = await DB.prepare(`
+          UPDATE vouchers SET user_id = ?, gift_from_user_id = ?, code = ?
+          WHERE id = ? AND status = 'unused' AND user_id = ? AND gift_from_user_id IS NULL
+            AND (expires_at IS NULL OR expires_at > datetime('now'))
+        `).bind(norm, String(g.sender_user_id), generateVoucherCode(), g.voucher_id, String(g.sender_user_id)).run()
+      } catch (e) {
+        if (!/UNIQUE/i.test(String(e)) || attempt === 2) {
+          // 반쯤 넘어간 상태를 남기지 않는다 — 선물을 받기 전으로 되돌린다(다시 시도할 수 있게).
+          await DB.prepare("UPDATE voucher_gifts SET status = 'pending', recipient_user_id = NULL, accepted_at = NULL WHERE id = ? AND status = 'accepted'").bind(g.id).run().catch(() => null)
+          throw e
+        }
+      }
+    }
+    if (!move || (move.meta?.changes ?? 0) === 0) {
       await DB.prepare("UPDATE voucher_gifts SET status = 'cancelled', cancelled_at = CURRENT_TIMESTAMP WHERE id = ?").bind(g.id).run().catch(() => null)
       return c.json({ success: false, error: '더 이상 받을 수 없는 선물이에요(이미 사용·환불·만료됐어요)', code: 'UNAVAILABLE' }, 409)
     }

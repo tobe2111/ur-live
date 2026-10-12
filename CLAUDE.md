@@ -205,6 +205,7 @@
 3. 본 CLAUDE.md 의 audit log 에 변경 commit 추가
 
 ### 변경 audit log
+- 2026-10-12 `[UNLOCK_LOADING]` `MyVouchersPage.tsx` **지갑 지도 화면 높이 · 보낸 선물을 지난 기록에** (대표 `AskUserQuestion` 승인 **"지도 화면 꽉 채우기, 선물한 이용권 표시"**). ① 대표 *"이것도 지금 지도를 화면 전체를 쓰던가"* — 지도 자리(로딩 자리 포함)가 `style={{ height: 460 }}` 고정이라 폰에서 아래가 비었다 → `MAP_FILL`(`100dvh` − 상단 머리줄·하단 탭, `min-h-[360px]`). ② 대표 *"선물을 한 사람은 선물을 했다고 표시되고"* — 서버(지갑 목록 `GET /my` → `withGiftState`)가 받힌 선물을 `status='gifted'`(코드 없음) 기록으로 내려 주고, 지갑은 그것을 만료·환불과 같은 **지난 기록** 묶음에 둔다(`archivedItems` 조건 1개). **⚠️ 잠긴 VoucherMap lazy chunk(`lazy(` 1)·정렬·`useMyVouchers`·`useInvalidateMyVouchers` byte-불변** — 바뀐 것은 높이 클래스 2곳과 필터 조건 하나. 동반(비잠금): 선물 링크가 살아 있는 동안 사용 CAS 5곳 전부 잠금(`noPendingGiftSql`) · 받으면 코드 교체 · QR 화면 '선물 중' 잠금 · 카카오맵 후기 보너스 끄기(`KAKAO_REVIEW_BONUS_ENABLED=false`, 서버 410) · 후기 시트 포털(흐린 카드 안에 갇혀 겹쳐 보이던 것) · R2 이관 키 내용 해시 + 기존 중복 썸네일 etag 정리 패스. 가드 `gift-lock-thumbs-2026-10-12.test.ts` 15건 + 주입 8건 빨간불 확인. 롤백: `git revert`.
 - 2026-10-11 `[UNLOCK_LOADING]` `worker/index.ts` **서버 첫 화면을 검색 크롤러에게도 그린다 — UA 게이트 하나** (대표 *"머지해줘. **네이버도 해주고.** 그리고 SEO, GEO 모두 가장 이상적인 형태인지"* → *"언제나 최상단에 노출이 될 수 있게끔 세계최고의 SEO, GEO를 자랑하게 만들어줘"* → *"특히 이용권 페이지들은 더욱"*). **배경(라이브 실측 — UA 별로 서버 HTML 을 그대로 받아 본문 글자수를 셌다)**: `<title>`·`og:*`·`canonical`·JSON-LD·네이버 확인 메타는 **전부 완비**였는데 **본문**이 비어 있었다.
 
       UA                       /        /u/:handle   /pass/:id

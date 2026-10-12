@@ -16,6 +16,8 @@
  *   (`settlement-gate-direction-2026-09-29` 와 같은 불변식, 이 파일은 `kakao-bot-store-ops` 시험이 지킨다).
  */
 
+import { GIFT_PENDING_USE_BLOCKED, noPendingGiftSql, voucherHasPendingGift } from './voucher-gift'
+
 export const SELLER_REDEEM_CODE_RE = /^[A-Za-z0-9-]{4,64}$/
 
 export interface StoreRedeemVoucher {
@@ -72,6 +74,8 @@ export async function checkVoucherForStore(
   if (voucher.status === 'used') return { ok: false, status: 400, error: '이미 사용된 바우처입니다' }
   if (voucher.status === 'expired') return { ok: false, status: 400, error: '만료된 바우처입니다' }
   if (voucher.status === 'refunded') return { ok: false, status: 400, error: '환불된 바우처입니다' }
+  // 🎁 2026-10-12 선물 중(받기 전)인 이용권은 사장님 스캔으로도 쓸 수 없다 — 보낸 사람이 회수해야 풀린다.
+  if (await voucherHasPendingGift(DB, { id: voucher.id })) return { ok: false, status: 409, error: GIFT_PENDING_USE_BLOCKED }
   return { ok: true, voucher }
 }
 
@@ -94,7 +98,7 @@ export async function redeemVoucherForStore(
 
   // atomic CAS
   const result = await DB.prepare(
-    "UPDATE vouchers SET status = 'used', used_at = datetime('now') WHERE id = ? AND status = 'unused'"
+    `UPDATE vouchers SET status = 'used', used_at = datetime('now') WHERE id = ? AND status = 'unused' AND ${noPendingGiftSql('vouchers.id')}`,
   ).bind(voucher.id).run()
   if (!result.meta?.changes) return { ok: false, status: 409, error: '동시성 충돌 — 다시 시도해주세요' }
 

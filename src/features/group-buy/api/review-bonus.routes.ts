@@ -27,6 +27,7 @@ import type { AuthUser } from '@/worker/middleware/auth'
 import { resolveReviewBonus, debitStoreForReviewBonus } from './review-bonus-funding'
 import { swallow } from '@/worker/utils/swallow'
 import { creditReviewScoreOnApproval, getUserReviewLevelSummary } from '@/worker/utils/review-level'
+import { KAKAO_REVIEW_BONUS_ENABLED } from '@/shared/feature-flags'
 
 // 🛡️ 2026-05-20: c.get('user') 등 타입 보장 위한 Variables.
 type ReviewBonusVars = { user?: { id: string | number; email?: string; type?: string } }
@@ -63,6 +64,8 @@ async function payBonus(DB: D1Database, userId: string, amount: number, voucherI
 }
 
 userApp.post('/submit', async (c) => {
+  // 🚫 2026-10-12 대표 "카카오맵 후기 관련 보너스 지금 없어" — 버튼만 숨기면 API 로는 여전히 제출·지급이 된다.
+  if (!KAKAO_REVIEW_BONUS_ENABLED) return c.json({ success: false, error: '지금은 후기 보너스를 운영하지 않아요', code: 'REVIEW_BONUS_OFF' }, 410)
   const userId = String((c.get('user') as AuthUser).id)
   const body = await c.req.json<{ voucher_code: string; review_url?: string; screenshot_url?: string }>().catch(() => ({} as any))
   const voucherCode = String(body.voucher_code || '').trim().toUpperCase()

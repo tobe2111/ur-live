@@ -176,7 +176,10 @@ describe('⑤ 경계', () => {
     const t2 = String((await call('/', 'POST', '1', { code: 'GBTEST1000' })).json.data?.token)
     expect(t2).not.toBe(token)
     await call(`/${t2}/accept`, 'POST', '2')
-    const re = await call('/', 'POST', '2', { code: 'GBTEST1000' })
+    // 2026-10-12: 받으면 코드가 새로 바뀐다(보낸 사람이 옛 QR 로 쓰는 것 차단) — 받은 사람의 새 코드로 시도
+    const newCode = (await DB.prepare('SELECT code FROM vouchers WHERE id = 100').first<{ code: string }>())!.code
+    expect(newCode).not.toBe('GBTEST1000')
+    const re = await call('/', 'POST', '2', { code: newCode })
     expect(re.json.code).toBe('ALREADY_GIFTED')
   })
   it('남의 이용권으로는 링크를 못 만든다', async () => {
