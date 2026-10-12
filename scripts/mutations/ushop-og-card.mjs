@@ -134,8 +134,10 @@ export default [
   {
     name: '🖼️ 바인딩 경로가 원본 대신 cdn-cgi 를 다시 부른다',
     file: 'src/worker/utils/og-inline-image.ts',
-    find: "const src = await fetchImpl(abs, { headers: { Accept: 'image/*' } })",
-    replace: "const src = await fetchImpl(resizedUrl(abs, origin, width, height), { headers: { Accept: 'image/*' } })",
+    // 🔁 2026-10-12 재조준: 변수 이름이 바뀌었다(`src` 는 이제 **받아올 주소**, 응답은 `srcRes`).
+    //   지키려던 결함은 그대로 — 바인딩 경로가 cdn-cgi 를 다시 부르게 만든다.
+    find: "const srcRes = await fetchImpl(src, { headers: { Accept: 'image/*' } })",
+    replace: "const srcRes = await fetchImpl(resizedUrl(abs, origin, width, height), { headers: { Accept: 'image/*' } })",
     test: TEST,
     why: '서버 안에서 부른 cdn-cgi 는 줄여 주지 않는다(10-09 실측) — 바인딩 경로의 존재 이유가 사라진다.',
   },

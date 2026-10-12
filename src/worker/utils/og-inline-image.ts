@@ -37,6 +37,51 @@ export function resizedUrl(absUrl: string, origin: string, width: number, height
 }
 
 /**
+ * 🩸 2026-10-12 라이브 실측 — **사진이 한 장도 안 박히고 있었다.**
+ * `https://urdeal.kr/api/og/curator/jiwon1228` 가 **1,694바이트 · `<image>` 0개**로 나왔다(핀은 4장
+ * 멀쩡히 있다). 유어샵 카드가 "글자만 있는 투박한 판"으로 보인 이유가 디자인이 아니라 이것이다.
+ * 이용권 카드도 같은 원인으로 302 폴백(생 사진)을 타고 있었다 — 우리 카드가 아예 안 나간다.
+ *
+ * 🔎 **원인은 둘이고 겹쳐 있었다**:
+ *   ① 워커 **안에서** `/cdn-cgi/image/…` 를 부르면 리사이즈가 안 걸린다(2026-10-09 실측).
+ *      그 주소는 **들어오는 요청**에 대한 엣지 기능이라, 워커 서브리퀘스트는 그 파이프라인을 안 탄다.
+ *      Workers 에서 같은 일을 하는 공식 수단은 **`fetch(url, { cf: { image: … } })`** 다.
+ *   ② 타일이 `/api/media/<key>` 라 **자기 자신(워커)** 을 다시 부른다. 그 자리는 R2 공개 도메인
+ *      `media.ur-team.com/<key>` 으로 바로 가면 된다(2026-06-11 에 깐 파이프라인 — 같은 파일이다).
+ *
+ * 📏 바깥에서 같은 사진을 같은 식으로 받아 보면 **6~11KB** 다(`cf-resized: internal=ok`, 상한 160KB의
+ *   7% 미만). 즉 크기 때문이 아니라 **줄여 주는 경로를 안 타고 있던 것**이다.
+ *
+ * 🔒 전부 fail-soft 다 — `cf.image` 가 무시되면 원본이 오고 상한에 걸려 `null`(= 오늘과 같다).
+ *   예외가 나면 아래 종전 URL 경로로 떨어진다. **회귀가 구조적으로 불가능하다.**
+ */
+/** R2 공개 도메인 — `/api/media/<key>` 는 워커를 거치지 말고 여기로 바로 간다. */
+const R2_PUBLIC_HOST = 'https://media.ur-team.com'
+
+/** 워커가 **받아올** 주소. 표시용 `toAbsolute` 와 달리 자기 자신을 다시 부르지 않는다. */
+export function toFetchable(raw: string | null | undefined, origin: string): string {
+  const abs = toAbsolute(raw, origin)
+  if (!abs) return ''
+  const m = abs.match(/^https?:\/\/[^/]+\/api\/media\/(.+)$/)
+  return m ? `${R2_PUBLIC_HOST}/${m[1]}` : abs
+}
+
+/**
+ * 받은 응답이 **그림이 아님이 분명한가**. 자기-자신 호출이 SPA 셸을 200 으로 돌려주면
+ * HTML 을 jpeg 라고 박게 되고, 그건 빈 칸보다 나쁘다(깨진 그림 + 에러 0).
+ *
+ * 🔒 **`image/*` 만 통과시키지는 않는다.** content-type 이 **없는** 응답은 받아들인다 —
+ *   일부 오리진·프록시가 그림에 타입을 안 붙여 주는데, 그걸 막으면 오늘 나오던 사진이
+ *   사라진다(기존 가드의 픽스처가 정확히 그 모양이라 그 사실을 알려 줬다).
+ *   막으려는 것은 *타입이 분명히 그림이 아닌* 응답 하나뿐이다.
+ */
+function looksLikeImage(res: Response): boolean {
+  const ct = (res.headers.get('content-type') || '').toLowerCase().trim()
+  if (!ct) return true
+  return ct.startsWith('image/')
+}
+
+/**
  * Cloudflare Images 바인딩 중 여기서 쓰는 부분만. 실제 타입 패키지에 기대지 않는다(번들·타입 결합 0).
  * `input(stream).transform(opts).output(opts)` → `.response()` 가 줄인 그림 응답을 준다.
  */
@@ -75,15 +120,17 @@ export async function inlineImage(
 ): Promise<string | null> {
   const abs = toAbsolute(raw, origin)
   if (!abs) return null
+  // 받아오는 주소는 R2 공개 도메인으로 — 워커가 자기 자신을 다시 부르지 않게.
+  const src = toFetchable(raw, origin)
   // 🖼️ 2026-10-10 1순위: Images 바인딩이 있으면 원본을 받아 서버 안에서 줄인다.
   //   (cdn-cgi 는 바깥에서는 줄여 주지만 서버 안에서 부르면 원본이 와서 한도를 넘는다 — 10-09 실측)
   if (images) {
     try {
-      const src = await fetchImpl(abs, { headers: { Accept: 'image/*' } })
-      const len = Number(src.headers.get('content-length') || 0)
-      if (src.ok && src.body && !(len > OG_SOURCE_MAX_BYTES)) {
+      const srcRes = await fetchImpl(src, { headers: { Accept: 'image/*' } })
+      const len = Number(srcRes.headers.get('content-length') || 0)
+      if (srcRes.ok && srcRes.body && !(len > OG_SOURCE_MAX_BYTES)) {
         const out = await images
-          .input(src.body)
+          .input(srcRes.body)
           .transform({ width, height, fit: 'cover', gravity: 'auto' })
           .output({ format: 'image/jpeg', quality: 70 })
         const buf = await out.response().arrayBuffer()
@@ -95,11 +142,27 @@ export async function inlineImage(
       /* 바인딩 실패는 아래 종전 경로로 */
     }
   }
+  // 🖼️ 2026-10-12 2순위: Workers 네이티브 리사이즈. `/cdn-cgi/image/…` 는 워커 안에서 안 먹지만
+  //   `cf.image` 는 먹는다(머리말 실측). 무시되면 원본이 와서 상한에 걸려 null = 종전과 동일.
+  try {
+    const res = await fetchImpl(src, {
+      headers: { Accept: 'image/jpeg,image/*' },
+      cf: { image: { width, height, fit: 'cover', gravity: 'auto', quality: 70, format: 'jpeg' } },
+    } as RequestInit)
+    if (res.ok && looksLikeImage(res)) {
+      const buf = await res.arrayBuffer()
+      if (buf.byteLength && buf.byteLength <= OG_INLINE_MAX_BYTES) {
+        return `data:image/jpeg;base64,${bytesToBase64(new Uint8Array(buf))}`
+      }
+    }
+  } catch {
+    /* cf.image 미지원·실패는 아래 종전 경로로 */
+  }
   try {
     const res = await fetchImpl(resizedUrl(abs, origin, width, height), {
       headers: { Accept: 'image/jpeg,image/*' },
     })
-    if (!res.ok) return null
+    if (!res.ok || !looksLikeImage(res)) return null
     const buf = await res.arrayBuffer()
     if (!buf.byteLength || buf.byteLength > OG_INLINE_MAX_BYTES) return null
     return `data:image/jpeg;base64,${bytesToBase64(new Uint8Array(buf))}`
