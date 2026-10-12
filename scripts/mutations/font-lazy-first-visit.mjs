@@ -37,4 +37,12 @@ export default [
     test: TEST,
     why: '시트 등록 전이면 빈 결과가 온다 — 그때 표식을 세우면 다음 방문이 캐시 없이 렌더를 막고 받는다.',
   },
+  {
+    name: '🔤 /static/fonts/* 가 /* 의 no-store 를 안 뗀다(헤더가 합쳐져 캐시 무효)',
+    file: 'public/_headers',
+    find: '/static/fonts/*\n  ! Cache-Control\n',
+    replace: '/static/fonts/*\n',
+    test: 'src/tests/unit/self-hosted-fonts-2026-10-12.test.ts',
+    why: 'Pages 는 맞는 규칙의 헤더를 합친다 — 떼지 않으면 no-store 가 이겨 폰트를 매 방문 다시 받는다(라이브 BYPASS 실측).',
+  },
 ]

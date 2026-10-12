@@ -64,3 +64,11 @@ CDP `emulateNetworkConditions`+`setCPUThrottlingRate 4`. 헤더는 content-type/
 - **실측**: 조작 가능 홈 6.0→4.5 · 상세 4.9→3.9 · 교환권 3.9→3.5s, 첫 페인트 불변.
 - **E4(배포 후)**: 새 시크릿 창으로 홈 → 처음엔 시스템 글꼴, 몇 초 뒤 Pretendard. 새로고침하면 처음부터 Pretendard. DevTools 네트워크에서 첫 방문의 jsdelivr woff2 가 load 이후에 시작하는지.
 - **측정기 교훈**: xform 은 **적용 안 되면 던지게** 쓸 것(xforms11 `fontlazy` 가 그렇게 짜여 있다).
+
+## 9. 후속 — 자가호스팅 폰트 캐시가 **실제로는 꺼져 있었다** (라이브 실측)
+- `curl -sI https://urdeal.kr/static/fonts/roboto-digits-400.woff2` → `Cache-Control: no-cache, no-store, must-revalidate, public, max-age=31536000, immutable` + `Pragma: no-cache` + `Expires: 0` · `cf-cache-status: BYPASS`.
+- 원인: `/static/*` 는 `_routes.json` 에서 워커 제외 → Pages 가 `_headers` 를 적용하는데 **맞는 규칙의 헤더를 합친다**. 맨 위 `/*` 의 no-store 가 이긴다. (`/assets/*` 는 워커가 서빙해서 멀쩡했다.)
+- 처방: `/static/fonts/*`·`/manifest.webmanifest`·`/.well-known/*` 블록에 `! Cache-Control` / `! Pragma` / `! Expires` 로 떼고 다시 단다.
+- **E4(배포 후 1분)**: 위 curl 이 `public, max-age=31536000, immutable` **하나만** 내고, 두 번째 요청에 `cf-cache-status: HIT`.
+- 🩸 같은 날 앞 세션의 audit log(`_headers` immutable 추가)는 라이브에서 **효과가 없었다** — 헤더 파일이 바뀌었는지가 아니라 응답 헤더를 재야 판정된다.
+- ⚠️ 이 환경에서 `! Header` 문법을 프리뷰로 확인하지 못했다(`*.pages.dev` 차단). 배포 후 curl 이 유일한 판정.
