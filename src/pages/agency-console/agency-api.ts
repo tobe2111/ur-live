@@ -101,6 +101,7 @@ export async function agencyRequest<T = Record<string, unknown>>(
 // ── 🏢 2단계 — 맡은 매장에 들어가기 ─────────────────────────────────────────
 /** 셀러 화면이 "에이전시로 운영 중" 띠를 그릴 때 읽는 이름 — 키 SSOT 는 띠 쪽. */
 import { AGENCY_SEAT_NAME_KEY } from '@/shared/agency-seat-token'
+import { bumpSeatGeneration } from '@/lib/seller-seat'
 
 /**
  * 맡은 매장의 셀러 화면 좌석을 받아 심는다. 셀러 화면은 `seller_token` 하나로 매장을 고르므로 그 자리를 쓴다.
@@ -124,5 +125,24 @@ export async function enterAgencyStore(sellerId: number, storeName: string): Pro
   } catch {
     return { ok: false, error: '브라우저 저장공간을 쓸 수 없어요.' }
   }
+  // 🪑 콘솔이 매장을 바꿔 앉으면 좌석을 구독하는 화면(시트 안 대시보드 화면)이 옛 매장 데이터를 버리게 알린다.
+  bumpSeatGeneration()
   return { ok: true }
+}
+
+/**
+ * 🪑 지금 브라우저의 셀러 좌석이 **이 직원의 · 이 매장** 좌석인가 — 맞으면 새로 발급하지 않는다.
+ *   ⚠️ 매장 id 만 보면 안 된다. 여러 사람이 쓰는 매장 컴퓨터에서 **다른 직원**(배정이 다를 수 있다)이나
+ *   사장님 본인이 같은 매장에 앉아 있던 토큰을 그대로 쓰게 된다. 직원 id 까지 맞아야 '내 좌석' 이다.
+ */
+export function isMyAgencySeat(sellerId: number, staffId: number, token?: string | null): boolean {
+  let raw = token
+  if (raw === undefined) { try { raw = localStorage.getItem('seller_token') } catch { raw = null } }
+  const part = raw?.split('.')[1]
+  if (!part) return false
+  try {
+    const b64 = part.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(part.length / 4) * 4, '=')
+    const p = JSON.parse(atob(b64)) as { seller_id?: unknown; agency_staff_id?: unknown }
+    return Number(p.seller_id) === sellerId && Number(p.agency_staff_id) === staffId
+  } catch { return false }
 }

@@ -700,7 +700,18 @@ if (DARK) {
   await ctx.addInitScript(() => { try { localStorage.setItem('ur_theme_mode_v1', 'dark') } catch { /* private mode */ } })
 }
 if (AUTH || STORES_N > 0) {
-  const seed = AUTH === 'seller'
+  // 🏢 2026-10-12 `--auth=agency` — 에이전시 콘솔(`/agency`)을 머지 전에 본다. 콘솔은 자기 토큰 자리
+  //   (`agency_console_token`)만 읽는다 — 셀러·소비자 키는 일부러 안 심는다(섞이면 그 화면이 아니다).
+  //   응답은 `--stub-file` 로 `/api/agency-console/me` · `/staff` · `/stores` 를 준다.
+  const seed = AUTH === 'agency'
+    ? {
+        agency_console_token: 'preview',
+        agency_console_profile: JSON.stringify({
+          staff: { id: 7, email: 'jisu@agency.example', name: '김지수', role: 'admin', isOwner: true },
+          agency: { id: 3, name: '연남 매장운영', kind: 'business' },
+        }),
+      }
+    : AUTH === 'seller'
     ? { seller_token: 'preview', seller_id: '1', seller_username: 'preview', user_type: 'seller' }
     : { user_id: '1', user_type: 'user', user_handle: 'preview', user_name: '정지원' }
   /**

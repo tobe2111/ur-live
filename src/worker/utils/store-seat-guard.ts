@@ -328,6 +328,7 @@ export async function liveAgencySeatStoreId(
 const SKIP_EXACT = new Set([
   '/api/seller/login', '/api/seller/refresh', '/api/seller/logout',
   '/api/seller/my-stores', '/api/seller/my-stores/summary', '/api/seller/operating-summary',
+  '/api/seller/my-stores/notifications', '/api/seller/my-stores/notifications/read', // 🔔 2026-10-12 사람 기준 판매 알림
   '/api/seller/stores', '/api/seller/stores/verify-business',
 ])
 const SKIP_PATTERN = /^\/api\/seller\/stores\/\d+\/(token|close|channel|profile)$/

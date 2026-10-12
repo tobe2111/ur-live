@@ -30,7 +30,7 @@ type GiftView = {
 
 const DEAD: Record<Exclude<GiftView['state'], 'pending'>, string> = {
   accepted: '이미 받은 선물이에요',
-  cancelled: '보낸 분이 회수한 선물이에요',
+  cancelled: '보낸 분이 선물을 취소했어요',
   unavailable: '더 이상 받을 수 없는 선물이에요',
 }
 

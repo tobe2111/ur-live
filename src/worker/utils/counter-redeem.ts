@@ -19,16 +19,19 @@
  *   빈 문자열은 어느 쪽에서도 비밀로 치지 않는다.
  */
 import { ensureRedemptionSettingsTable } from './redemption-settings'
+import { ensureVoucherGiftTable, noPendingGiftSql } from './voucher-gift'
 
 export async function redeemByCounterSecret(DB: D1Database, code: string, secret: string) {
   // 서브쿼리가 참조하는 표가 없으면 문장 자체가 실패한다(가지를 타지 않아도 SQLite 는 prepare 에서 해석한다).
   await ensureRedemptionSettingsTable(DB)
+  await ensureVoucherGiftTable(DB) // 🎁 선물 중(받기 전) 잠금 술어가 그 표를 본다
   return DB.prepare(
     `UPDATE vouchers
        SET status = 'used', used_at = datetime('now')
      WHERE code = ?
        AND status = 'unused'
        AND (expires_at IS NULL OR expires_at > datetime('now'))
+       AND ${noPendingGiftSql('vouchers.id')}
        AND product_id IN (
          SELECT id FROM products
          WHERE id = vouchers.product_id
