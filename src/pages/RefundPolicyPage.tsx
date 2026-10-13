@@ -14,7 +14,13 @@ export default function RefundPolicyPage() {
       <SEO title={t('refundPolicy.seoTitle', { defaultValue: CONSUMER_SURFACE_SEO['/refund'].title })} description={t('refundPolicy.seoDesc', { defaultValue: CONSUMER_SURFACE_SEO['/refund'].description })} url="/refund" />
 
       {/* Header */}
-      <div className="sticky top-0 md:top-14 z-40 bg-warm/90 backdrop-blur border-b border-rule">
+      {/* 🩸 2026-10-13 — 토큰 이행에서 `bg-white/90 dark:bg-[#11141C]/90` 를 `bg-warm/90` 으로
+          바꿨더니 **CSS 가 아예 안 나왔다**(`check-ghost-classes` 가 잡았다). `--bg` 는 hex 를 담은
+          var() 라 Tailwind 가 알파를 합성하지 못한다 — 머리줄이 통째로 투명해진다.
+          `CuratorEarningsPage` 가 같은 자리에서 남긴 처방대로 **불투명 면**으로 간다:
+          페이지는 `bg-warm`, 머리줄은 `bg-surface` 라 두 면이 맞닿는 것 자체가 구분이 된다
+          (불투명하면 `backdrop-blur` 는 보이는 일이 없으므로 함께 뺀다). */}
+      <div className="sticky top-0 md:top-14 z-40 bg-surface border-b border-rule">
         <div className="ur-content-medium flex items-center justify-between px-5 py-3">
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="text-ink">
             <ChevronLeft className="w-6 h-6" />
