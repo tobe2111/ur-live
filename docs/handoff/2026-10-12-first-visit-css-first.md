@@ -86,3 +86,12 @@ CDP `emulateNetworkConditions`+`setCPUThrottlingRate 4`. 헤더는 content-type/
 - 🩸 **측정기 교훈 2**: 재생 하네스의 "웹폰트 제거" 변형이 링크 모양과 안 맞아 **적용이 안 된 채** 이전 세션 결론("효과 없음")을 만들었다. 이제 변형은 적용 안 되면 던진다(`xforms11`).
 - 🩸 **테스트 주석 제거기 함정**: App.tsx 줄 주석에 `/admin/*` 를 쓰자 `urshorts-core` 의 주석 제거가 `/*` 를 블록 주석 시작으로 읽어 무관한 시험이 깨졌다 — 줄 주석에 `/*` 를 쓰지 말 것(제거기 결함은 별건).
 - **E4 체크(배포 후)**: ① 홈 문서 modulepreload 에 `capacitor-*` · `app-routes-admin-*` 없음 ② `/admin/login` 정상 ③ `/static/fonts/*` 캐시 헤더 ④ 상세 `stale-hit` ⑤ 새 시크릿 창 첫 방문 시스템 글꼴 → Pretendard.
+
+## 12. 2026-10-13 — 손님 페이지 lazy 코드 페이지별 묶음 (대표 "아직 대기업 수준은 아니잖아")
+
+- 무엇: `scripts/surface-chunks.mjs` + `scripts/lucide-deep-imports.mjs` + 홈 폰/PC 표면 분리. CLAUDE.md 로딩 audit log 2026-10-13.
+- 실측(brotli, 첫 화면 다음 바이트): 상세 120→40 · 상품 128→32 · 유어샵 118→32 · 교환권 111→25 · 지도 126→52 · 폰 홈 37→31.
+- 재생(느린 4G·CPU4): 상세 ready 4.1→2.9s · 유어샵 4.2→2.9s · 홈 4.2→3.9s (이 수치는 PR #1741 의 폰트·CSS-first 를 **빼고** 잰 것 — 합치면 더 낮다).
+- 하네스: scratchpad `xforms12.mjs`(라이브 HTML 의 preload 를 dist·맵 기준으로 바꿔 끼운다) + `replay5.mjs`.
+- E4(배포 후): `curl -A '<iPhone UA>' https://urdeal.kr/pass/2919 | grep -o 'modulepreload[^>]*lz-[^"]*'` 로 lz- 청크가 실리는지, PC UA 로 `/` 에 PcHomePage 가, 폰 UA 로 MobileHomePage 가 실리는지.
+- 다음 후보(숫자만): 첫 화면 CSS 279KB raw/29KB br(대시보드 클래스 포함) · axios 16KB br · i18n 18KB br · 지도 타일 disableHD(대표 판단).

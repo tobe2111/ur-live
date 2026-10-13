@@ -714,7 +714,7 @@ app.use('*', async (c, next) => {
     //   라우트별 청크를 modulepreload 로 head 에 주입해 엔트리와 **병렬** 다운로드.
     //   맵은 빌드 시 vite manifest 로 생성(generate-route-chunk-map.mjs → generated/route-chunk-map.ts,
     //   같은 빌드의 해시와 항상 일치). 맵에 없는 표면/빈 맵(로컬 워커 단독 빌드)은 조용히 생략.
-    const chunkSurface = url.pathname === '/' || url.pathname === '/index.html' ? 'home'
+    const chunkSurface = url.pathname === '/' || url.pathname === '/index.html' ? (isMobileUserAgent(c.req.header('user-agent')) ? 'home' : 'homePc')
       : /^\/(?:pass|group-buy)\/\d+(?:[/?#]|$)/.test(url.pathname) ? 'gbDetail'
       : /^\/vouchers\/\d+(?:[/?#]|$)/.test(url.pathname) ? 'voucherDetail'
       : /^\/products\/\d+(?:[/?#]|$)/.test(url.pathname) ? 'product'

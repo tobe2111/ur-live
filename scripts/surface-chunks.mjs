@@ -1,0 +1,93 @@
+/**
+ * 🧩 손님 페이지의 lazy 코드를 **쓰는 페이지끼리** 묶는다 (2026-10-13 — 대표 *"아직 대기업 수준은 아니잖아"*).
+ *
+ * 실측(번들러 모듈→청크 그래프, brotli): 첫 화면 다음에 받는 것이 이용권 상세 **120KB / 16파일**, 상품 128 · 유어샵 118 ·
+ * 교환권 111 · 지도 126 이었다. 그중 `app-components`(34KB)는 상세가 243KB raw 중 **21KB** 만 쓰고 `app-home`·
+ * `app-constants`·`app-utils-deferred`·`lucide` 도 같은 모양이었다 — 봉투 안에 쓰는 게 하나만 있어도 봉투째 받는다.
+ * 봉투 규칙은 **첫 화면(엔트리)** 바이트를 줄이려고 만든 것이라 그 목적엔 맞지만, 첫 화면이 안 쓰는 모듈까지 같은
+ * 봉투에 두면 페이지끼리 서로 안 쓰는 코드를 실어 나른다.
+ *
+ * 규칙(`vite.config.ts` 의 manualChunks 가 종전 이름을 정한 **뒤에** 이 함수를 거친다):
+ *   ① 엔트리 정적 폐쇄 **안** → 종전 이름 그대로(첫 화면 청크·개수 불변 — critical-chunks 가 지킨다)
+ *   ② 손님 페이지(ROUTES)가 정적으로 닿는 모듈 → `lz-<그 모듈을 쓰는 페이지들>`
+ *      · 페이지 COMMON_MIN 곳 이상이 쓰면 `lz-common` 하나로(조합이 폭발하지 않게)
+ *      · 묶음이 MIN_GROUP 바이트 미만이면 `lz-common` 으로(파일 하나 값을 못 한다)
+ *      · 페이지 파일 자체는 건드리지 않는다(매니페스트·route-chunk-map 이 그 청크를 찾는다)
+ *   ③ 손님 페이지가 안 닿는 모듈(대시보드) → 종전 이름 그대로
+ * 대상은 src 모듈 · lucide 아이콘 파일 · 이름 규칙이 없는 라이브러리. 이름 규칙이 있는 라이브러리(react·embla·결제 SDK)는 그대로.
+ *
+ * 왜 Rollup 기본 분할(이름 안 주기)이 아닌가 — 실측: 표면당 30파일 이상으로 쪼개져 작은 파일의 압축 손실이
+ * 이득을 깎았고, **이름 있는 봉투가 이름 없는 의존을 흡수**해(Rollup 동작) 홈이 셀러 대시보드 봉투 30KB 를 끌고 왔다.
+ * ⚠️ 이 판정은 import 그래프를 따라가므로 배럴(re-export 모음)을 거치면 실제보다 넓게 잡힌다 — lucide 는 그래서
+ *   `lucide-deep-imports.mjs` 가 아이콘 파일 직접 import 로 바꿔 준다(안 그러면 모든 아이콘이 첫 화면 소속).
+ */
+import path from 'node:path'
+
+const norm = (p) => p.replace(/\\/g, '/')
+
+/** `app-utils-deferred` 는 **첫 화면 밖이라고 손으로 고른** 봉투다 — 배럴(`hooks/queries/index.ts`)이 그 안의
+ *  `useMyData` 를 다시 내보내 그래프상 첫 화면 소속처럼 보였고, 상세가 그 59KB(raw) 봉투를 통째로 끌고 왔다(실측 7.9KB br).
+ *  이 봉투는 엔트리 판정을 건너뛴다(정말 엔트리가 쓰면 critical-chunks 가 잡는다). */
+const NEVER_ENTRY = new Set(['app-utils-deferred'])
+
+export function createSurfaceChunker({ routes, root, commonMin = 4, minGroupBytes = 2000 }) {
+  let entry = null
+  let surfaceOf = null
+
+  function inEntry(id, meta) {
+    if (!entry) {
+      entry = new Set()
+      const stack = [...meta.getModuleIds()].filter((m) => meta.getModuleInfo(m)?.isEntry)
+      while (stack.length) {
+        const m = stack.pop()
+        if (entry.has(m)) continue
+        entry.add(m)
+        for (const x of meta.getModuleInfo(m)?.importedIds ?? []) stack.push(x)
+      }
+    }
+    return entry.has(id)
+  }
+
+  function surfaceName(id, meta) {
+    if (!surfaceOf) {
+      const labels = new Map()
+      const roots = new Set()
+      const all = [...meta.getModuleIds()]
+      for (const [surface, files] of Object.entries(routes)) {
+        files.forEach((file, i) => {
+          const label = files.length > 1 ? `${surface}${i + 1}` : surface
+          const target = norm(path.resolve(root, file))
+          const stack = all.filter((m) => norm(m) === target)
+          stack.forEach((m) => roots.add(m))
+          const seen = new Set()
+          while (stack.length) {
+            const m = stack.pop()
+            if (seen.has(m)) continue
+            seen.add(m)
+            if (!labels.has(m)) labels.set(m, new Set())
+            labels.get(m).add(label)
+            for (const x of meta.getModuleInfo(m)?.importedIds ?? []) stack.push(x)
+          }
+        })
+      }
+      const group = new Map()
+      const bytes = new Map()
+      for (const [m, set] of labels) {
+        if (roots.has(m)) continue
+        const g = set.size >= commonMin ? 'lz-common' : 'lz-' + [...set].sort().join('-')
+        group.set(m, g)
+        bytes.set(g, (bytes.get(g) ?? 0) + (meta.getModuleInfo(m)?.code?.length ?? 0))
+      }
+      surfaceOf = new Map([...group].map(([m, g]) => [m, (bytes.get(g) ?? 0) < minGroupBytes ? 'lz-common' : g]))
+    }
+    return surfaceOf.get(id) ?? null
+  }
+
+  /** manualChunks 가 정한 이름(name)을 받아 최종 이름을 돌려준다. */
+  return function gate(id, name, meta) {
+    const groupable = norm(id).includes('/src/') || /\/lucide-react\/dist\/esm\/icons\//.test(norm(id)) || name === undefined
+    if (!groupable) return name
+    if (!NEVER_ENTRY.has(name) && inEntry(id, meta)) return name
+    return surfaceName(id, meta) ?? name
+  }
+}

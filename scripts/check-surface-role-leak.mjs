@@ -38,7 +38,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const MAP = path.join(root, 'src/worker/generated/route-chunk-map.ts')
 
 /** 소비자가 보는 표면 — `generate-route-chunk-map.mjs` 의 ROUTES 키와 같은 이름. */
-const CONSUMER_SURFACES = ['home', 'gbDetail', 'voucherDetail', 'product', 'linkshop', 'vouchers', 'browse']
+const CONSUMER_SURFACES = ['home', 'homePc', 'gbDetail', 'voucherDetail', 'product', 'linkshop', 'vouchers', 'browse']
 
 /**
  * 소비자 첫 페인트에 절대 있으면 안 되는 청크.

@@ -7,6 +7,10 @@ import fs from 'fs';
 import { execSync } from 'child_process';
 // 🌐 2026-10-11: 번역 파일을 손님용(core)/대시보드용(dash)으로 나누는 빌드 플러그인 — src/i18n.ts 가 `?i18n-core|dash` 로 부른다.
 import { i18nSplitPlugin } from './scripts/i18n-split.mjs';
+// 🧩 2026-10-13: lucide 이름 import → 아이콘 파일 직접 import(배럴이 모듈 그래프를 흐리지 않게 — scripts/surface-chunks.mjs 참조).
+import { lucideDeepImportsPlugin } from './scripts/lucide-deep-imports.mjs';
+import { ROUTES as SURFACE_ROUTES } from './scripts/generate-route-chunk-map.mjs';
+import { createSurfaceChunker } from './scripts/surface-chunks.mjs';
 
 // 빌드마다 유니크한 버전 — 정형화된 타임스탬프 (YYYYMMDD.HHmm, UTC). SW 캐시 키 + 빌드 표시 겸용.
 //   🏁 2026-06-13 (사용자 요청 "빌드 정보 숫자 정형화"): base36 난수 → 사람이 읽는 날짜.시각 형식.
@@ -80,11 +84,21 @@ const LUCIDE_HOME_ICONS = new Set([
   'party-popper', 'paw-print', 'play', 'tag', 'ticket',
 ])
 
+
+// 🧩 2026-10-13 [LOADING_ADDITIVE] 손님 페이지 lazy 코드를 쓰는 페이지끼리 묶는다 — 근거·실측·규칙은 scripts/surface-chunks.mjs.
+const gateLazy = createSurfaceChunker({
+  routes: SURFACE_ROUTES,
+  root: __dirname,
+  commonMin: Number(process.env.LZ_COMMON || 4),
+  minGroupBytes: Number(process.env.LZ_MIN || 2000),
+})
+
 export default defineConfig({
   plugins: [
     react(),
     swVersionPlugin(),
     i18nSplitPlugin(__dirname),
+    lucideDeepImportsPlugin(),
     // 🚨 2026-04-27 (긴급 롤백): vite-plugin-pwa 비활성화.
     //   원인: navigateFallback 이 카카오 OAuth redirect 도 가로채 ERR_FAILED 발생.
     //   복구: 모든 SW 사용자측 unregister + 새 sw.js 생성 안 함.
@@ -117,7 +131,7 @@ export default defineConfig({
     },
     rollupOptions: {
       output: {
-        manualChunks(id) {
+        manualChunks(id, meta) { return gateLazy(id, ((): string | undefined => {
           // React core
           if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) {
             return 'react-core'
@@ -468,7 +482,8 @@ export default defineConfig({
           // 나머지 src/ 디렉터리 — types, constants, config, layouts
           if (id.includes('/src/types/') || id.includes('/src/constants/') ||
               id.includes('/src/config/') || id.includes('/src/layouts/')) return 'app-misc'
-        },
+          return undefined
+        })(), meta) },
       },
     },
     chunkSizeWarningLimit: 600,
