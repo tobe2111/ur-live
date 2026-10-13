@@ -1,17 +1,28 @@
 /**
- * 🛡️ 2026-05-16: 인플루언서 정산 페이지 (/influencer/settlement).
+ * 🛡️ 2026-05-16: 매장 소개 정산 페이지 (/influencer/settlement).
  *
  * 본인 잔액 + 사업자번호/계좌 등록 + 최근 attribution 내역.
  * 일반 user 로그인 필요 (referral 받은 사람 = 일반 user).
+ *
+ * 🧾 2026-10-13 (대표 *"인플루언서 정산이랑 페이지 UI 개선해야겠어 … 전체적으로 이상적이질 못해"*):
+ *   종전 화면은 위에서부터 [이모지 타일 셋 · 앰버 순위 상자 · 노랑/파랑/초록 잔액 세 칸 · 입력칸 여섯 개 …]
+ *   였다. 매번 보러 오는 것(얼마를 언제 받나)이 입력 폼 아래로 밀려 있었고, 제목엔 쓰지 않기로 한
+ *   이름이 박혀 있었고, 뒤로 가는 길이 없었고, 문의는 `prompt()` 세 번이었다.
+ *   ⇒ ① 맨 위 = 받을 돈 하나(28px) ② 정산 정보는 **요약 줄 → 시트**(처음 한 번 채우는 폼이다)
+ *     ③ 나머지는 마이와 같은 목록 문법(`list-grammar`) ④ 문의는 시트. API·필드·저장 계약은 byte-불변.
  */
 
 import { useEffect, useState } from 'react'
-import { WalletIcon, ClockIcon, OkIcon, WarnIcon } from '@/components/icons/urdeal-icons'
+import { useNavigate } from 'react-router-dom'
+import { ChevronLeft } from 'lucide-react'
+import { WalletIcon, MedalIcon, ChartIcon, BagIcon, MessageIcon, ReceiptIcon } from '@/components/icons/urdeal-icons'
 import BrandLoader from '@/components/brand/BrandLoader'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
-import { TrendingUp, Save } from 'lucide-react'
+import { SectionTitle, ListPlate, ListRow } from './user-profile/list-grammar'
+import SettleInfoSheet, { TAX_LABEL, type SettleForm } from './influencer-settlement/SettleInfoSheet'
+import DisputeSheet from './influencer-settlement/DisputeSheet'
 import ConditionalDealsSection from './influencer-settlement/ConditionalDealsSection'
 import DealsAndCodesSection from './influencer-settlement/DealsAndCodesSection'
 import PublicProfileSection from './influencer-settlement/PublicProfileSection'
@@ -41,31 +52,17 @@ interface Attribution {
   paid_at: string | null
 }
 
-// 🛡️ 2026-05-16: 본인 ranking 카드 (이번 달 commission 기준)
-function MyRankCard() {
+/**
+ * 🏅 이번 달 순위 — 목록의 한 줄로(종전엔 앰버 상자 + 트로피 이모지 둘). 값이 없으면 줄을 안 그린다.
+ */
+function useMyRank() {
   const [rank, setRank] = useState<{ national_rank: number | null; national_total_participants: number; my_commission: number } | null>(null)
   useEffect(() => {
     api.get('/api/influencer-settlement/my-rank')
       .then(r => { if (r.data?.success) setRank(r.data.data) })
-      .catch(() => { /* silent */ })
+      .catch(() => { /* 순위는 부가 정보 — 실패해도 화면은 그대로 */ })
   }, [])
-  if (!rank) return null
-  return (
-    <a href="/influencer/rankings" className="block bg-warm border border-amber-200 rounded-xl p-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-[12px] text-amber-700 font-medium">🏆 이번 달 나의 순위</p>
-          <p className="text-[24px] font-extrabold text-amber-800 mt-1">
-            {rank.national_rank ? `전국 ${rank.national_rank}위` : '아직 데이터 없음'}
-          </p>
-          {rank.national_total_participants > 0 && (
-            <p className="text-[12px] text-amber-600 mt-1">총 {rank.national_total_participants}명 중 / commission {rank.my_commission.toLocaleString()}원</p>
-          )}
-        </div>
-        <span className="text-[28px]">🏆</span>
-      </div>
-    </a>
-  )
+  return rank
 }
 
 /**
@@ -82,7 +79,13 @@ const statusLabel = (status: string, useGate: boolean): { label: string; color: 
   clawed_back: { label: '회수됨 (환불)', color: 'bg-tone-bad-bg text-tone-bad' },
 }[status] ?? { label: status, color: 'bg-tone-warn-bg text-tone-warn' })
 
+const won = (n: number | null | undefined) => `${(n ?? 0).toLocaleString()}원`
+const rowIco = (I: typeof WalletIcon) => <I className="w-[18px] h-[18px]" aria-hidden="true" />
+
 export default function InfluencerSettlementPage() {
+  const navigate = useNavigate()
+  const rank = useMyRank()
+  const [sheet, setSheet] = useState<null | 'info' | 'dispute'>(null)
   const [balance, setBalance] = useState<Balance | null>(null)
   const [recent, setRecent] = useState<Attribution[]>([])
   const [loading, setLoading] = useState(true)
@@ -92,13 +95,13 @@ export default function InfluencerSettlementPage() {
   const [ownerFunded, setOwnerFunded] = useState(false)
   /** 사용 확인 게이트가 켜져 있는가 — 보류 문구를 고르는 데만 쓴다. */
   const [useGate, setUseGate] = useState(false)
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<SettleForm>({
     business_number: '',
-    tax_type: 'other_income' as 'business_income' | 'other_income' | 'unreported',
+    tax_type: 'other_income',
     bank_name: '',
     bank_account: '',
     account_holder: '',
-    payout_method: 'cash' as 'cash' | 'deal',
+    payout_method: 'cash',
     ranking_public: true,
   })
 
@@ -136,7 +139,8 @@ export default function InfluencerSettlementPage() {
     try {
       const res = await api.put('/api/influencer-settlement/me', form)
       if (res.data?.success) {
-        toast.success('정산 정보 저장됨')
+        toast.success('저장했어요')
+        setSheet(null)
         load()
       } else {
         toast.error(res.data?.error || '저장 실패')
@@ -149,229 +153,86 @@ export default function InfluencerSettlementPage() {
 
   if (loading) return <BrandLoader fullScreen />  // 🎯 2026-07-18 로딩 단일화
 
+  const back = () => { if (window.history.length > 1) navigate(-1); else navigate('/u/me/manage') }
+  const acct = balance?.bank_account ? `${balance.bank_name || ''} ··${balance.bank_account.replace(/\D/g, '').slice(-4)}`.trim() : ''
+  const payoutHint = balance?.payout_method === 'deal' ? '딜 +20%' : '현금'
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#1D1F29] pb-20">
-      {/* 💡 flip D1: description 만 재원 게이트 — platform(기본) 은 기존 문구 byte-동일 */}
-      <SEO title="인플루언서 정산 - 유어딜" description={ownerFunded ? '매장 promo(매장 몫) 재원 커미션 잔액 / 송금 내역 / 세금 정보 관리' : 'referral commission 잔액 / 송금 내역 / 세금 정보 관리'} url="/influencer/settlement" />
-      <header className="sticky top-0 z-30 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35] px-4 py-3 flex items-center gap-2">
-        <WalletIcon className="w-5 h-5 text-brand-text" />
-        <h1 className="text-[15px] font-bold text-gray-900 dark:text-white flex-1">인플루언서 정산</h1>
-        <button
-          onClick={async () => {
-            const type = prompt('분쟁 유형 (unfair_block / commission_dispute / other)')?.trim() as 'unfair_block' | 'commission_dispute' | 'other'
-            if (!type || !['unfair_block', 'commission_dispute', 'other'].includes(type)) return
-            const sellerIdStr = type === 'unfair_block' ? prompt('대상 매장 ID (있으면)') : null
-            const desc = prompt('신고 내용 (최소 10자)')
-            if (!desc || desc.length < 10) { toast.error('10자 이상'); return }
-            try {
-              await api.post('/api/influencer-settlement/disputes', { seller_id: sellerIdStr ? Number(sellerIdStr) : undefined, type, description: desc })
-              toast.success('분쟁 신고 접수 — 어드민이 검토합니다')
-            } catch { toast.error('신고 실패') }
-          }}
-          className="text-[12px] px-2 py-1 bg-red-50 text-red-600 rounded font-bold flex items-center gap-1"
-        >
-          <WarnIcon className="w-3 h-3" /> 분쟁 신고
+    <div className="min-h-[100dvh] bg-warm pb-20">
+      <SEO title="매장 소개 정산 - 유어딜" description={ownerFunded ? '매장 몫에서 지급되는 소개 수익의 잔액·송금 내역·세금 정보 관리' : '소개 수익 잔액·송금 내역·세금 정보 관리'} url="/influencer/settlement" />
+      <header className="sticky top-0 z-30 bg-warm border-b border-rule px-2 h-12 flex items-center">
+        <button type="button" onClick={back} aria-label="뒤로" className="w-10 h-10 flex items-center justify-center text-gray-700 dark:text-gray-200 active:opacity-60">
+          <ChevronLeft className="w-5 h-5" />
         </button>
+        <h1 className="text-[15px] font-semibold text-gray-900 dark:text-white">매장 소개 정산</h1>
       </header>
 
-      <main className="ur-content-narrow mx-auto px-4 py-4 space-y-5">
-        {/* 🛡️ 2026-05-16: 카탈로그 + 성과표 + 랭킹 진입 카드 */}
-        <div className="grid grid-cols-3 gap-2">
-          <a href="/influencer/discover" className="bg-gray-800 text-white rounded-xl p-3 flex flex-col items-center justify-center active:scale-95 transition-transform">
-            <span className="text-[17px]">🛍️</span>
-            <p className="text-[12px] opacity-90 mt-1">카탈로그</p>
-          </a>
-          <a href="/influencer/analytics" className="bg-gray-800 text-white rounded-xl p-3 flex flex-col items-center justify-center active:scale-95 transition-transform">
-            <span className="text-[17px]">📊</span>
-            <p className="text-[12px] opacity-90 mt-1">성과표</p>
-          </a>
-          <a href="/influencer/rankings" className="bg-gradient-to-br from-gray-700 to-gray-800 text-white rounded-xl p-3 flex flex-col items-center justify-center active:scale-95 transition-transform">
-            <span className="text-[17px]">🏆</span>
-            <p className="text-[12px] opacity-90 mt-1">랭킹</p>
-          </a>
-        </div>
+      <main className="ur-content-narrow mx-auto px-4 pt-4">
+        {/* 받을 돈 — 이 화면의 주인공은 숫자 하나다(규칙 ③). 나머지 둘은 그 아래 한 줄. */}
+        <section className="rounded-2xl bg-surface shadow-lift p-5">
+          <p className="text-[13px] text-gray-500 dark:text-gray-400">송금 대기</p>
+          <p className="mt-1 text-[28px] font-bold tracking-[-0.02em] tabular-nums text-gray-900 dark:text-white">{won(balance?.available_amount)}</p>
+          <div className="mt-4 pt-4 border-t border-rule grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-[12px] text-gray-500 dark:text-gray-400">{useGate ? '사용 확인 대기' : '환불기간 대기'}</p>
+              <p className="mt-1 text-[15px] font-semibold tabular-nums text-gray-900 dark:text-white">{won(balance?.pending_amount)}</p>
+            </div>
+            <div>
+              <p className="text-[12px] text-gray-500 dark:text-gray-400">누적 송금</p>
+              <p className="mt-1 text-[15px] font-semibold tabular-nums text-gray-900 dark:text-white">{won(balance?.total_paid_out)}</p>
+            </div>
+          </div>
+          {ownerFunded && (
+            <p className="mt-4 text-[12px] text-gray-500 dark:text-gray-400">소개 수익은 각 매장이 자기 몫에서 지급해요. 유어딜 수수료와는 별개예요.</p>
+          )}
+        </section>
 
-        {/* 본인 랭킹 카드 */}
-        <MyRankCard />
+        {/* 정산 정보 — 처음 한 번 채우는 폼이라 요약 줄만 두고, 고칠 때 시트로 연다. */}
+        <div className="mt-8"><SectionTitle>받는 곳</SectionTitle></div>
+        <ListPlate className="mt-3">
+          <ListRow icon={rowIco(WalletIcon)} label="받는 방법" hint={payoutHint} onClick={() => setSheet('info')} testId="settle-info-open" />
+          <ListRow icon={rowIco(ReceiptIcon)} label="계좌" hint={acct || '등록 필요'} onClick={() => setSheet('info')} />
+          <ListRow icon={rowIco(ReceiptIcon)} label="세금" hint={TAX_LABEL[balance?.tax_type ?? 'other_income'] ?? '기타소득 8.8%'} onClick={() => setSheet('info')} />
+        </ListPlate>
 
-        {/* 🎬 WP-B: 조건부 우대 커미션 — 콘텐츠 링크 제출(대상 제안 있을 때만 렌더) */}
-        <PublicProfileSection />
+        {/* 협업 코드 입력 · 매장별 링크 · 성과 · 제안 수락 — 일거리는 여기서 받는다 */}
+        <div className="mt-8 space-y-3"><DealsAndCodesSection ownerFunded={ownerFunded} /></div>
         <ConditionalDealsSection />
 
-        {/* 💡 flip D1 (게이트드 선반영): owner-펀딩 확인 시에만 재원 출처 배너 —
-            platform(현행 기본/미확인) 동안 미렌더(기존 화면 byte-동일) */}
-        {ownerFunded && (
-          <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl p-3">
-            <p className="text-[12px] font-bold text-emerald-800 dark:text-emerald-300">커미션은 매장 promo(매장 몫)에서 지급됩니다</p>
-            <p className="text-[12px] text-emerald-700 dark:text-emerald-400 mt-1">
-              각 매장이 자기 promo 재원(매장 95% 안)에서 부담하는 몫입니다 — 유어딜 5%(인프라비)와 무관합니다.
-            </p>
-          </div>
-        )}
-
-        {/* 잔액 요약 */}
-        <div className="grid grid-cols-3 gap-2">
-          <div className="bg-yellow-50 rounded-xl p-3 text-center">
-            <ClockIcon className="w-4 h-4 text-yellow-700 mx-auto mb-1" />
-            <p className="text-[12px] text-yellow-700 font-medium">{useGate ? '대기 (사용 확인)' : '대기 (환불기간)'}</p>
-            <p className="text-[15px] font-extrabold text-yellow-800 mt-1">{(balance?.pending_amount ?? 0).toLocaleString()}원</p>
-          </div>
-          <div className="bg-blue-50 rounded-xl p-3 text-center">
-            <TrendingUp className="w-4 h-4 text-blue-700 mx-auto mb-1" />
-            <p className="text-[12px] text-blue-700 font-medium">송금 대기</p>
-            <p className="text-[15px] font-extrabold text-blue-800 mt-1">{(balance?.available_amount ?? 0).toLocaleString()}원</p>
-          </div>
-          <div className="bg-emerald-50 rounded-xl p-3 text-center">
-            <OkIcon className="w-4 h-4 text-emerald-700 mx-auto mb-1" />
-            <p className="text-[12px] text-emerald-700 font-medium">누적 송금</p>
-            <p className="text-[15px] font-extrabold text-emerald-800 mt-1">{(balance?.total_paid_out ?? 0).toLocaleString()}원</p>
-          </div>
-        </div>
-
-        {/* 정산 정보 입력 */}
-        <div className="bg-surface rounded-xl p-5 space-y-4 shadow-lift">
-          <h3 className="text-[15px] font-bold text-gray-900 dark:text-white">정산 정보</h3>
-
-          <div>
-            <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-200 mb-2">송금 방식</label>
-            {/* 🕯️ 2026-09-16: **선택된 칸의 글자가 다크에서 안 보였다**(실측 1.07:1 — 흰 글자 위 흰 판).
-                  원인은 오타가 아니라 **되다 만 팔레트 이행**이다 — 선택 상태가 `bg-blue-50`(다크 짝 없음)로
-                  남아 있어 다크에서도 밝은 판이 되는데, 안의 `<p>` 는 `dark:text-white` 로 흰 글자가 됐다.
-                  옆 칸은 이미 `bg-brand-tint`(다크에서 #16243D 로 뒤집히는 토큰)를 쓰고 있었다 — 같은 토큰으로 통일.
-                  ⚠️ 이 결함은 `check-dark-contrast` 가 이 경로를 재기 시작한 바로 그날 나왔다. 안 재는 입력은
-                    "괜찮다"가 아니라 **모른다**다. */}
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setForm(f => ({ ...f, payout_method: 'cash' }))}
-                className={`p-3 rounded-xl border-2 text-left ${form.payout_method === 'cash' ? 'border-brand bg-brand-tint' : 'border-gray-200 bg-white dark:bg-[#11141C]'}`}
-              >
-                <p className="text-[15px] font-bold text-gray-900 dark:text-white">현금 송금</p>
-                {/* 💎 2026-08-31 대표: 최소 금액은 현금에만 적용된다. 고르는 화면에 그 차이가
-                    안 적혀 있어서, 딜을 골랐다면 바로 받을 수 있는 사람도 10만원을 기다리는 줄 알았다. */}
-                <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">원천징수 후 계좌 입금 · 10만원 이상부터</p>
-              </button>
-              <button
-                type="button"
-                onClick={() => setForm(f => ({ ...f, payout_method: 'deal' }))}
-                className={`p-3 rounded-xl border-2 text-left ${form.payout_method === 'deal' ? 'border-brand bg-brand-tint' : 'border-gray-200 bg-white dark:bg-[#11141C]'}`}
-              >
-                <p className="text-[15px] font-bold text-gray-900 dark:text-white">딜 포인트 <span className="text-brand-text">+20%</span></p>
-                {/* 💡 flip D1: owner-펀딩일 때만 재원 출처 병기 — platform 은 기존 문구 byte-동일 */}
-                <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{ownerFunded ? '매장 promo 재원 · 유어딜 결제 사용 / 환불 X' : '유어딜 결제 / 환불 X'}</p>
-                <p className="text-[12px] font-bold text-brand-text mt-1">금액 제한 없음</p>
-              </button>
-            </div>
-          </div>
-
-          {/* 🛡️ 2026-05-16: ranking_public 토글 */}
-          <div className="flex items-center justify-between gap-3 bg-amber-50 border border-amber-200 rounded-lg p-3">
-            <div className="flex-1 min-w-0">
-              <p className="text-[12px] font-bold text-amber-800">🏆 랭킹 공개</p>
-              <p className="text-[12px] text-amber-700 mt-1">공개 시 /influencer/rankings 에 본인 ID 노출. 비공개 시 "익명 인플 #XXX" 표시</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setForm(f => ({ ...f, ranking_public: !f.ranking_public }))}
-              className={`px-3 py-2 rounded-full text-[12px] font-bold ${form.ranking_public ? 'bg-brand text-white' : 'bg-gray-300 text-gray-700 dark:text-gray-200'}`}
-            >
-              {form.ranking_public ? '공개' : '비공개'}
-            </button>
-          </div>
-
-          <div>
-            <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-200 mb-1">사업자번호 (있을 때만)</label>
-            <input
-              value={form.business_number}
-              onChange={(e) => setForm(f => ({ ...f, business_number: e.target.value.replace(/[^\d-]/g, '') }))}
-              placeholder="000-00-00000 (10자리)"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-[15px] text-gray-900 dark:text-white"
-            />
-            <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">있으면 사업소득세 3.3% 원천징수, 없으면 기타소득 8.8%</p>
-          </div>
-
-          <div>
-            <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-200 mb-1">세금 구분</label>
-            <select
-              value={form.tax_type}
-              onChange={(e) => setForm(f => ({ ...f, tax_type: e.target.value as 'business_income' | 'other_income' | 'unreported' }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-[15px] text-gray-900 dark:text-white bg-surface"
-            >
-              <option value="business_income">사업소득 (3.3% 원천징수, 사업자번호 필요)</option>
-              <option value="other_income">기타소득 (8.8% 원천징수, 사업자번호 불필요)</option>
-              <option value="unreported">무신고 (원천징수 X, 본인 책임)</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-200 mb-1">은행</label>
-            <select
-              value={form.bank_name}
-              onChange={(e) => setForm(f => ({ ...f, bank_name: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-[15px] text-gray-900 dark:text-white bg-surface"
-            >
-              <option value="">은행 선택</option>
-              {['KB국민은행','신한은행','우리은행','하나은행','NH농협은행','IBK기업은행','케이뱅크','카카오뱅크','토스뱅크','새마을금고','신협','우체국'].map(b => (
-                <option key={b} value={b}>{b}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-200 mb-1">계좌번호</label>
-            <input
-              value={form.bank_account}
-              onChange={(e) => setForm(f => ({ ...f, bank_account: e.target.value.replace(/[^\d-]/g, '') }))}
-              placeholder="000-000-000000"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-[15px] tabular-nums text-gray-900 dark:text-white"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-200 mb-1">예금주</label>
-            <input
-              value={form.account_holder}
-              onChange={(e) => setForm(f => ({ ...f, account_holder: e.target.value }))}
-              placeholder="홍길동"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-[15px] text-gray-900 dark:text-white"
-            />
-          </div>
-
-          <button
-            onClick={save}
-            disabled={saving}
-            className="w-full py-2 bg-brand text-white rounded-lg text-[15px] font-bold flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            <Save className="w-4 h-4" /> {saving ? '저장 중...' : '정산 정보 저장'}
-          </button>
-        </div>
-
-        {/* 🔑 2026-09-19 협업 코드 입력 · 매장별 링크 · 성과 · 제안 수락 (`influencer-settlement/DealsAndCodesSection.tsx`) */}
-        <DealsAndCodesSection ownerFunded={ownerFunded} />
-
-        {/* 최근 내역 */}
-        <div className="bg-surface rounded-xl p-5 shadow-lift">
-          <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">최근 commission 내역 ({recent.length}건)</h3>
+        <div className="mt-8"><SectionTitle>최근 소개 수익</SectionTitle></div>
+        <ListPlate className="mt-3">
           {recent.length === 0 ? (
-            <p className="text-[12px] text-gray-400 text-center py-6">아직 referral commission 이 없습니다</p>
-          ) : (
-            <ul className="space-y-2">
-              {recent.map(r => {
-                const status = statusLabel(r.status, useGate)
-                return (
-                  <li key={r.id} className="flex items-center justify-between gap-3 border-b border-gray-100 dark:border-[#2C2F35] pb-2 last:border-0 last:pb-0">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[15px] font-bold text-gray-900 dark:text-white">{r.commission_amount.toLocaleString()}원</p>
-                      <p className="text-[12px] text-gray-500 dark:text-gray-400">상품 #{r.product_id} · {formatKSTDate(r.created_at)}</p>
-                    </div>
-                    <span className={`text-[12px] px-2 py-1 rounded font-bold ${status.color}`}>{status.label}</span>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </div>
+            <p className="px-4 py-8 text-center text-[13px] text-gray-500 dark:text-gray-400">아직 소개 수익이 없어요</p>
+          ) : recent.map(r => {
+            const st = statusLabel(r.status, useGate)
+            return (
+              <div key={r.id} className="flex items-center gap-3 px-4 min-h-[56px] py-2 border-b border-rule last:border-b-0">
+                <div className="flex-1 min-w-0">
+                  <p className="text-[15px] font-semibold tabular-nums text-gray-900 dark:text-white">{won(r.commission_amount)}</p>
+                  <p className="text-[12px] text-gray-500 dark:text-gray-400">{formatKSTDate(r.created_at)} · 상품 {r.product_id}</p>
+                </div>
+                <span className={`shrink-0 text-[12px] px-2 py-1 rounded-md font-semibold ${st.color}`}>{st.label}</span>
+              </div>
+            )
+          })}
+        </ListPlate>
+
+        <div className="mt-8"><SectionTitle>더 보기</SectionTitle></div>
+        <ListPlate className="mt-3">
+          <ListRow icon={rowIco(MedalIcon)} label="이번 달 순위" hint={rank?.national_rank ? `전국 ${rank.national_rank}위` : '집계 전'} to="/influencer/rankings" />
+          <ListRow icon={rowIco(ChartIcon)} label="성과표" to="/influencer/analytics" />
+          <ListRow icon={rowIco(BagIcon)} label="소개할 매장 찾기" to="/influencer/discover" />
+          <ListRow icon={rowIco(MessageIcon)} label="정산 문의" hint="금액·매장 문제" onClick={() => setSheet('dispute')} />
+        </ListPlate>
+
+        {/* 공개 프로필 — 매장이 소개자를 고를 때 보는 카드 */}
+        <div className="mt-8"><PublicProfileSection /></div>
       </main>
+
+      {sheet === 'info' && (
+        <SettleInfoSheet form={form} setForm={setForm} ownerFunded={ownerFunded} saving={saving} onSave={save} onClose={() => setSheet(null)} />
+      )}
+      {sheet === 'dispute' && <DisputeSheet onClose={() => setSheet(null)} />}
     </div>
   )
 }

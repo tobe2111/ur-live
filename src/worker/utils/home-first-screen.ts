@@ -51,6 +51,7 @@
  *   다시 받는다(히어로 preload 가 2026-07-02 부터 안고 있는 것과 **같은** 트레이드오프).
  * - 마운트 전에는 탭·필터가 안 눌린다(카드 링크는 `<a href>` 라 **눌린다**).
  */
+import { nearSubtitle } from '../../shared/home-near'
 import { cfImage, cfSrcSet } from '../../utils/cf-image'
 import { DEAL_CAT_LABELS } from '../../shared/deal-cats'
 import { DEAL_GRID_GAP } from '../../shared/deal-card-grid'
@@ -147,7 +148,7 @@ interface SeedProduct {
   review_count?: number | null
 }
 interface SectionsSeed {
-  data?: Array<{ id?: number | string; title?: string | null; subtitle?: string | null; products?: SeedProduct[] }>
+  data?: Array<{ id?: number | string; title?: string | null; subtitle?: string | null; near?: boolean; products?: SeedProduct[] }>
 }
 
 function starHtml(value: number): string {
@@ -240,9 +241,11 @@ function chromeHtml(): string {
  *
  * @param sectionsSeedJson `__SSR_INITIAL_SECTIONS__` 본문(JSON 문자열)
  * @param loaderHtml 종전 유달이 로더 HTML — 그린 내용 **아래**에 짧게 붙인다
+ * @param nearLabel 📍 2026-10-13 위치 라벨(쿠키 `ur_loc_n`). 첫 줄이 위치로 정렬됐으면 소제목을
+ *   화면(`HomeSections`)과 **같은 함수**(`nearSubtitle`)로 그린다 — 다르면 마운트 때 글자가 바뀐다.
  */
-export function buildHomeFirstScreen(sectionsSeedJson: string, loaderHtml: string): string {
-  let sec: { title?: string | null; subtitle?: string | null; products?: SeedProduct[] } | undefined
+export function buildHomeFirstScreen(sectionsSeedJson: string, loaderHtml: string, nearLabel = ''): string {
+  let sec: { title?: string | null; subtitle?: string | null; near?: boolean; products?: SeedProduct[] } | undefined
   try {
     const parsed = JSON.parse(sectionsSeedJson) as SectionsSeed
     sec = (parsed?.data ?? []).find(s => Array.isArray(s?.products) && s.products.length > 0)
@@ -259,7 +262,7 @@ export function buildHomeFirstScreen(sectionsSeedJson: string, loaderHtml: strin
     `<div class="mt-3"><section class="${HOME_FS_CLASS.panel}">` +
     `<div class="${HOME_FS_CLASS.secHead}"><div class="min-w-0">` +
     `<h3 class="${HOME_FS_CLASS.secTitle}">${escText(sec.title)}</h3>` +
-    (sec.subtitle ? `<p class="${HOME_FS_CLASS.secSub}">${escText(sec.subtitle)}</p>` : '') +
+    ((sec.near || sec.subtitle) ? `<p class="${HOME_FS_CLASS.secSub}">${escText(sec.near ? nearSubtitle(nearLabel) : (sec.subtitle as string))}</p>` : '') +
     `</div></div>` +
     `<div class="${HOME_FS_CLASS.grid}">${cards}</div>` +
     `</section></div></div>`

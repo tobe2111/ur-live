@@ -14,6 +14,7 @@ import RegionLinkGrid from '@/components/region/RegionLinkGrid'
 import HomeHeroBanner from '@/components/home/HomeHeroBanner'
 import HomeBannerStrip from '@/components/home/HomeBannerStrip'
 import HomeSections from '@/components/home/HomeSections'
+import { resolveHomeNear, syncNearCookie } from '@/components/home/home-near'
 import UrShortsRail from '@/components/home/UrShortsRail'
 import { HOME_SHOWCASE_ENABLED, REGION_PAGES_ENABLED } from '@/shared/feature-flags'
 
@@ -73,6 +74,13 @@ export default function PcHomePage() {
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(() => readCachedLoc())
   // 🧭 2026-08-30 (대표 "홈에선 현재 위치가 어딘지도 나와야지") — 모바일 홈과 같은 훅.
   const dong = useCurrentDong(userLoc)
+  /**
+   * 📍 2026-10-13 (대표 — 위치를 정하면 맨 위가 그 지역에서 가까운 이용권, 시안 확정 "1,2 섞어서"):
+   *   내 위치 → 그 좌표, 지역만 고름 → 시/도 중심. 편성 섹션이 이걸로 정렬된다(어드민 수동 섹션은 그대로).
+   *   쿠키도 맞춘다 — 다음 하드로드에서 워커가 같은 위치로 섹션 시드를 받아 첫 화면부터 동네 것이 뜬다.
+   */
+  const near = resolveHomeNear({ userLoc, dongLabel: dong?.dong, regionKey: region.regionKey })
+  useEffect(() => { syncNearCookie(near.key, near.label) }, [near.key, near.label])
   // '현 위치로 설정' → 거리순 정렬 + 지역필터 해제(가까운 딜을 전부 보여줌).
   const handleLocate = (loc: { lat: number; lng: number }) => { setUserLoc(loc); setRegion({}); setSort('near') }
   // 지역 드롭다운 선택 → 지역 필터 모드(거리순 해제).
@@ -127,6 +135,7 @@ export default function PcHomePage() {
               <HomeSections
                 midBanner={<HomeBannerStrip variant="inline" />}
                 shortsRail={<UrShortsRail />}
+                near={near}
               />
               <HomeBannerStrip variant="wide" />
             </>
@@ -214,6 +223,7 @@ export default function PcHomePage() {
             regionKey={region.regionKey}
             districtKey={region.districtKey}
             userLoc={userLoc}
+            sectionNearKey={near.key}
           />
           </div>
         </main>

@@ -19,16 +19,16 @@ import { curatorApi, type CuratorPageResponse, type CuratorPin } from '@/feature
 import { fetchCuratorPage, getCuratorCache } from '@/features/curator/curator-page-cache'
 import OwnerEarningsStrip from './curator-page/OwnerEarningsStrip'
 import PinManageList from './curator-page/PinManageList'
+import { SectionTitle, ListPlate, ListRow } from './user-profile/list-grammar'
+import { EditIcon, TicketStubIcon, ReceiptIcon } from '@/components/icons/urdeal-icons'
 
 const EarnLadder = lazy(() => import('./curator-page/EarnLadder'))
 const SellOwnProductsCTA = lazy(() => import('./curator-page/SellOwnProductsCTA'))
+// 👤 프로필 편집은 **마이와 같은 시트**를 그 자리에서 띄운다(2026-10-13 대표 — 아래에서 올라오게, 이름은 "편집").
+//   시트는 한 벌이다 — 편집 화면이 두 곳이 되면 한쪽에서 바꾼 이름이 다른 쪽에 옛 이름으로 남는다(A-2 결정의 이유).
+const ProfileEditSheet = lazy(() => import('./user-profile/profile-edit/ProfileEditSheet'))
 
-const secCls = 'px-4 pt-6 pb-2 text-[12px] font-bold text-gray-400 dark:text-gray-500'
-const cardCls = 'mx-4 rounded-xl bg-surface shadow-lift overflow-hidden'
-const rowCls = 'w-full flex items-center gap-2 px-4 py-3 border-t border-rule first:border-t-0 text-left'
-const keyCls = 'text-[13px] font-semibold text-gray-900 dark:text-white'
-const valCls = 'ml-auto min-w-0 truncate text-[12px] text-gray-400 dark:text-gray-500'
-const chev = <span className="text-[12px] text-gray-400 dark:text-gray-500">›</span>
+const rowIco = (I: typeof EditIcon) => <I className="w-[18px] h-[18px]" aria-hidden="true" />
 
 /** 로컬 캐시 핸들 — 유어샵에서 [관리]로 들어온 경우 즉시 페인트(왕복 0). 없으면 대시보드로 해석. */
 function cachedHandle(): string | null {
@@ -45,6 +45,7 @@ export default function UShopManagePage() {
   })
   const [loading, setLoading] = useState(!data)
   const [reorder, setReorder] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
 
   // 핸들이 없으면 대시보드가 알려 준다(UMeRedirectPage 와 같은 해석 경로).
   useEffect(() => {
@@ -55,6 +56,14 @@ export default function UShopManagePage() {
       .catch(() => { if (alive) navigate('/creator', { replace: true }) })
     return () => { alive = false }
   }, [handle, navigate])
+
+  /** 시트를 닫으면 다시 읽는다 — 주소(핸들)를 바꿨으면 새 핸들로. */
+  const closeEdit = () => {
+    setEditOpen(false)
+    const next = cachedHandle()
+    if (next && next !== handle) { setHandle(next); return }
+    if (handle) fetchCuratorPage(handle).then((res) => { if (res?.success) setData(res) }).catch(() => {})
+  }
 
   useEffect(() => {
     if (!handle) return
@@ -83,70 +92,61 @@ export default function UShopManagePage() {
         <h1 className="text-[15px] font-semibold tracking-[-0.028em]">{t('ushop.manageTitle', { defaultValue: '유어샵 관리' })}</h1>
       </div>
 
-      {/* 적립 — 이 화면의 첫 숫자다(손님 화면에서는 뺐다). 기간은 카드가 스스로 말한다(최근 30일). */}
-      <div className={secCls}>{t('ushop.manageEarnings', { defaultValue: '적립' })}</div>
-      <div className="px-4"><OwnerEarningsStrip /></div>
-
-      {/* 👤 2026-10-11 대표 확정 **A-2** — 여기 있던 네 줄(이름·한 줄 소개·유어샵 주소·SNS)은
-          **마이 › 프로필 편집**으로 옮겼다. 이름이 두 곳(프로필 편집·여기)에 있어서, 한쪽에서
-          바꾸고 다른 쪽을 보면 옛 이름이 보이는 날이 오는 구조였다(에러 0).
-          ⇒ 유어샵 관리는 이제 **진열대**만 맡는다: 적립 · 이용권(핀) 추가·순서·삭제 · 수익.
-          ⚠️ 되돌린다면 git 이력에서 `ushop-manage/ShopInfoCards` 를 되살려 걸면 된다 — 다만 그때
-             프로필 편집에서 같은 줄들을 빼야 한다(둘 다 두면 그게 원래 문제다). 가드가 그 조건을
-             고정한다: `ushop-e3-manage-2026-09-28` 의 "편집은 정확히 한 벌". */}
-      <div className={secCls}>{t('ushop.manageMyShop', { defaultValue: '내 샵' })}</div>
-      <Link to="/user/profile" className={rowCls}>
-        <span className={keyCls}>{t('ushop.manageProfile', { defaultValue: '이름, 소개, 주소, SNS' })}</span>
-        <span className={valCls}>{t('ushop.manageProfileHint', { defaultValue: '프로필 편집에서' })}</span>{chev}
-      </Link>
-
-      <div className={secCls}>{t('ushop.manageVouchers', { defaultValue: '이용권' })} {pins.length}</div>
-      {reorder ? (
-        <div className="px-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[13px] font-bold">{t('curator.reorderTitle', { defaultValue: '핀 순서 바꾸기' })}</span>
-            <button onClick={() => setReorder(false)} className="px-4 py-2 rounded-lg bg-gray-900 dark:bg-white text-warm text-[12px] font-bold active:opacity-80">
-              {t('curator.done', { defaultValue: '완료' })}
-            </button>
+      <div className="px-4">
+        {/* 🧭 2026-10-13 (대표 *"유어샵에 관리페이지 들어가면 플로우가 복잡하게 되어있네"*):
+            종전엔 같은 일이 두 줄씩이었다 — '순서 바꾸기'·'담은 이용권 관리'가 **같은 모드**를 열었고,
+            수익 화면은 위 카드('콘솔 ›')와 아래 '대시보드' 줄로 **두 번** 링크됐고, 그 '대시보드'는
+            '내 가게' 제목 밑에 있어 가게 관리처럼 읽혔다. 프로필 줄은 마이로 **화면을 통째로 이동**했다.
+            ⇒ 세 묶음(내 유어샵 · 수익과 정산 · 내 가게), 줄마다 할 일 하나, 마이와 같은 목록 문법. */}
+        <div className="mt-6"><SectionTitle>{t('ushop.manageMyShop', { defaultValue: '내 유어샵' })}</SectionTitle></div>
+        {reorder ? (
+          <div className="mt-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[15px] font-semibold">{t('ushop.manageReorderTitle', { defaultValue: '담은 이용권 정리' })}</span>
+              <button onClick={() => setReorder(false)} className="px-4 h-9 rounded-full bg-brand text-white text-[13px] font-bold active:opacity-80">
+                {t('curator.done', { defaultValue: '완료' })}
+              </button>
+            </div>
+            <PinManageList pins={pins} onReorder={onReorder} onDeleted={onPinDeleted} />
           </div>
-          <PinManageList pins={pins} onReorder={onReorder} onDeleted={onPinDeleted} />
-        </div>
-      ) : (
-        <div className={cardCls}>
-          <Link to="/u/me/add" className={rowCls}>
-            <span className={keyCls}>{t('ushop.manageAdd', { defaultValue: '이용권 담기' })}</span>
-            <span className={valCls}>{t('ushop.manageAddMore', { defaultValue: '더 담기' })}</span>{chev}
-          </Link>
-          {pins.length > 1 && (
-            <button type="button" onClick={() => setReorder(true)} className={rowCls}>
-              <span className={keyCls}>{t('ushop.manageReorder', { defaultValue: '순서 바꾸기' })}</span>{chev}
-            </button>
-          )}
-          {pins.length > 0 && (
-            <button type="button" onClick={() => setReorder(true)} className={rowCls}>
-              <span className={keyCls}>{t('ushop.managePins', { defaultValue: '담은 이용권 관리' })}</span>
-              <span className={valCls}>{t('ushop.managePinsHint', { defaultValue: '삭제 · 순서' })}</span>{chev}
-            </button>
-          )}
-        </div>
-      )}
+        ) : (
+          <ListPlate className="mt-3">
+            {/* 👤 대표 *"프로필 편집에서 가 아니라 그냥 편집 이라고 해두면 되지"* — 누르면 그 자리에서 시트가 올라온다. */}
+            <ListRow icon={rowIco(EditIcon)} label={t('ushop.manageProfile', { defaultValue: '이름, 소개, 주소, SNS' })} hint={t('ushop.manageEdit', { defaultValue: '편집' })} onClick={() => setEditOpen(true)} />
+            <ListRow icon={rowIco(TicketStubIcon)} label={t('ushop.manageAdd', { defaultValue: '이용권 담기' })} hint={pins.length > 0 ? t('ushop.manageAddCount', { defaultValue: '{{n}}개 담음', n: pins.length }) : undefined} to="/u/me/add" />
+            {pins.length > 0 && (
+              <ListRow icon={rowIco(TicketStubIcon)} label={t('ushop.managePins', { defaultValue: '담은 이용권 정리' })} hint={t('ushop.managePinsHint', { defaultValue: '순서·삭제' })} onClick={() => setReorder(true)} />
+            )}
+          </ListPlate>
+        )}
 
-      {/* 돈 버는 길 — 빈 샵일수록 필요하다(2026-08-27 대표 확정). pins 로 막지 않는다.
-          섹션 라벨은 안 붙인다 — 이 블록이 자체 제목("내 유어샵으로 버는 법")을 갖고 있어 같은 말이 두 번 된다. */}
-      <div className="pt-6" />
+        {/* 💰 돈은 한 묶음 — 두 화면이 각각 무엇인지 이름으로 말한다(장부가 둘이라 화면도 둘이다). */}
+        <div className="mt-8"><SectionTitle>{t('ushop.manageMoney', { defaultValue: '수익과 정산' })}</SectionTitle></div>
+        {/* 적립 카드(최근 30일)가 담은 이용권 수익 화면의 입구다 — 같은 화면으로 가는 줄을 따로 두지 않는다. */}
+        <div className="mt-3"><OwnerEarningsStrip /></div>
+        <ListPlate className="mt-3">
+          <ListRow icon={rowIco(ReceiptIcon)} label={t('ushop.manageSettleRow', { defaultValue: '매장 소개 정산' })} hint={t('ushop.manageSettleHint', { defaultValue: '계좌·세금' })} to="/influencer/settlement" />
+        </ListPlate>
+
+        {/* 돈 버는 길 — 빈 샵일수록 필요하다(2026-08-27 대표 확정). pins 로 막지 않는다. */}
+        <div className="mt-8" />
+      </div>
       <Suspense fallback={null}><EarnLadder dealCount={dealCount} pinCount={pins.length} /></Suspense>
 
-      <div className={secCls}>{t('ushop.manageMyStore', { defaultValue: '내 가게' })}</div>
-      <div className="px-4"><Suspense fallback={null}><SellOwnProductsCTA /></Suspense></div>
-      <div className={`${cardCls} mt-3`}>
-        <Link to="/u/me/earnings" className={rowCls}>
-          <span className={keyCls}>{t('curator.dashboardBtn', { defaultValue: '수익 대시보드' })}</span>{chev}
-        </Link>
+      <div className="px-4">
+        <div className="mt-8"><SectionTitle>{t('ushop.manageMyStore', { defaultValue: '내 가게' })}</SectionTitle></div>
+        <div className="mt-3"><Suspense fallback={null}><SellOwnProductsCTA /></Suspense></div>
+
+        <p className="pt-8 text-[12px] text-gray-400 dark:text-gray-500 leading-[1.7]">
+          {t('ushop.manageFoot', { defaultValue: '담은 이용권이 팔리면 소개비가 자동으로 쌓입니다.' })}
+        </p>
       </div>
 
-      <p className="px-4 pt-6 text-[12px] text-gray-400 dark:text-gray-500 leading-[1.7]">
-        {t('ushop.manageFoot', { defaultValue: '담은 이용권이 팔리면 소개비가 자동으로 쌓입니다.' })}
-      </p>
+      {editOpen && (
+        <Suspense fallback={null}>
+          <ProfileEditSheet onClose={closeEdit} initialName={curator.name || ''} onNameChange={(name) => setData(prev => prev ? { ...prev, curator: { ...prev.curator, name } } : prev)} />
+        </Suspense>
+      )}
     </div>
   )
 }

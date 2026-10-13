@@ -106,7 +106,7 @@ export default function DealsAndCodesSection({ ownerFunded }: { ownerFunded: boo
 
       {/* 🤝 협업 매장 */}
       <div className="bg-surface rounded-xl p-5 shadow-lift">
-        <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">🤝 협업 매장 ({deals.length})</h3>
+        <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">협업 매장 ({deals.length})</h3>
         {ownerFunded && (
           <p className="text-[12px] text-emerald-700 dark:text-emerald-400 mb-2">우대 커미션은 매장 promo(매장 몫) 재원에서 지급됩니다 — 유어딜 5%(인프라비)와 무관.</p>
         )}

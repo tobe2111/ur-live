@@ -45,9 +45,12 @@ function makeD1(): D1Database {
     image_url TEXT, category TEXT, discount_rate INTEGER, sold_count INTEGER,
     dominant_color TEXT, avg_rating REAL, review_count INTEGER, view_count INTEGER,
     deal_only INTEGER, restaurant_name TEXT, restaurant_address TEXT, slug TEXT,
+    restaurant_lat REAL, restaurant_lng REAL,
     images TEXT, is_active INTEGER, group_buy_status TEXT, created_at TEXT,
     seller_id INTEGER, is_supply_product INTEGER, supply_source_id INTEGER, mall_id INTEGER
   )`).run()
+  // 📍 2026-10-13: 카드 컬럼(`CARD_COLS`)에 좌표 둘이 붙었다 — 위치를 정한 홈에서 섹션 카드도 km 를 그린다.
+  //   빠지면 SELECT 가 던져 리졸버가 빈 배열을 돌려주고, 이 시험은 "겹침을 못 만들었다" 로 빨개진다.
   // 🥕 2026-09-16: 홈 섹션 WHERE 에 `approvedSellerProductSql` 이 붙었다(승인된 매장만 노출).
   //   이 픽스처의 상품은 전부 `seller_id` 가 없어 **판정 결과는 종전과 같지만**, 테이블이 없으면
   //   상관 서브쿼리가 던져서 리졸버의 catch 가 빈 배열을 돌려준다 — 결과가 0 이 되어

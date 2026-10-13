@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useCurrentDong } from '@/hooks/useCurrentDong'
 import { Link, useNavigate } from 'react-router-dom'
 import { Search } from 'lucide-react'
@@ -9,6 +9,7 @@ import { useNotificationSheet } from '@/components/notifications/useNotification
 import GroupBuyFeed from '@/pages/main-home/GroupBuyFeed'
 import { useHomeQuerySync } from '@/pages/main-home/useHomeQuerySync'
 import HomeSections from '@/components/home/HomeSections'
+import { resolveHomeNear, syncNearCookie } from '@/components/home/home-near'
 import UrShortsRail from '@/components/home/UrShortsRail'
 import HomeBannerStrip from '@/components/home/HomeBannerStrip'
 import PcHomeLocationBar, { readHomeRegion, type HomeRegion } from '@/pages/pc-home/PcHomeLocationBar'
@@ -51,6 +52,13 @@ export default function MobileHomePage() {
   // 🧭 2026-08-30 (대표 "홈에선 현재 위치가 어딘지도 나와야지"): 좌표 → 동네 이름.
   //   서버 엔드포인트는 2026-07-07 부터 있었는데 **아무도 안 부르고 있었다**(useCurrentDong 주석).
   const dong = useCurrentDong(userLoc)
+  /**
+   * 📍 2026-10-13 (대표 — 위치를 정하면 맨 위가 그 지역에서 가까운 이용권, 시안 확정 "1,2 섞어서"):
+   *   내 위치 → 그 좌표, 지역만 고름 → 시/도 중심. 편성 섹션이 이걸로 정렬된다(어드민 수동 섹션은 그대로).
+   *   쿠키도 맞춘다 — 다음 하드로드에서 워커가 같은 위치로 섹션 시드를 받아 첫 화면부터 동네 것이 뜬다.
+   */
+  const near = resolveHomeNear({ userLoc, dongLabel: dong?.dong, regionKey: region.regionKey })
+  useEffect(() => { syncNearCookie(near.key, near.label) }, [near.key, near.label])
   const [category, setCategory] = useState<DealCategory>('all')
   /**
    * 🧭 **위치가 저장된 지역을 이긴다** (2026-09-08 대표 *"여기엔 거리순, 가장 가까운 순이 먼저 떠야해"*).
@@ -190,6 +198,7 @@ export default function MobileHomePage() {
           <HomeSections
             midBanner={<HomeBannerStrip variant="inline" />}
             shortsRail={<UrShortsRail />}
+            near={near}
           />
           <HomeBannerStrip variant="wide" />
         </div>
@@ -213,6 +222,7 @@ export default function MobileHomePage() {
           regionKey={region.regionKey}
           districtKey={region.districtKey}
           userLoc={userLoc}
+          sectionNearKey={near.key}
         />
       </section>
 
