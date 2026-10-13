@@ -52,6 +52,7 @@
  * - 마운트 전에는 탭·필터가 안 눌린다(카드 링크는 `<a href>` 라 **눌린다**).
  */
 import { nearSubtitle } from '../../shared/home-near'
+import { HOME_H1 } from '../../shared/seo/consumer-surfaces'
 import { cfImage, cfSrcSet } from '../../utils/cf-image'
 import { DEAL_CAT_LABELS } from '../../shared/deal-cats'
 import { DEAL_GRID_GAP } from '../../shared/deal-card-grid'
@@ -258,6 +259,9 @@ export function buildHomeFirstScreen(sectionsSeedJson: string, loaderHtml: strin
   const cards = products.map((p, i) => cardHtml(p, i < HOME_CARD_ABOVE_FOLD)).join('')
   const body =
     `<div class="${HOME_FS_CLASS.root}">` +
+    // 🩸 2026-10-13 — 크롤러가 받는 홈 문서에 제목 요소가 h3 하나뿐이었다. `sr-only` 라 박스가
+    //    0이고(= 첫 화면 잠금 무영향) React 쪽(`MobileHomePage`)도 **같은 자리에 같은 값**을 그린다.
+    `<h1 class="sr-only">${escText(HOME_H1)}</h1>` +
     chromeHtml() +
     `<div class="mt-3"><section class="${HOME_FS_CLASS.panel}">` +
     `<div class="${HOME_FS_CLASS.secHead}"><div class="min-w-0">` +

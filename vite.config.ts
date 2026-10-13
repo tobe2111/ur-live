@@ -305,19 +305,20 @@ export default defineConfig({
           // 💸 2026-09-08: 가격·할인율 표시 규칙 SSOT — 홈 딜 카드와 유어쇼츠 구매 바가 함께 읽는다.
           //   위 `deal-card-grid` 와 **정확히 같은 함정**이라 같은 자리에 둔다(가드가 바로 잡아냈다).
           if (id.includes('/src/shared/price-display')) return 'app-shared'
-          // 🩸 2026-10-13 장애: 장소 URL SSOT — 손님 매장 지도(RestaurantMiniMap)와 셀러 매장 등록이 함께 읽는다.
-          //   #1756 이 RestaurantMiniMap(→ app-components)에서 이 파일을 import 했는데 규칙이 없어 Rollup 이
-          //   셀러 쪽 사용처를 따라 셀러 봉투(app-seller-components)에 넣었다 → app-components ↔
-          //   app-seller-components **순환** → 셀러 청크의 최상위 코드가 아직 평가 안 된 app-components 값
-          //   (`TONE_PILL`/`StatusTone`)을 읽어 TDZ(`Cannot access before initialization`) → **소비자 전 페이지가**
-          //   **ErrorBoundary('문제가 발생했습니다')로** 떨어졌다. Rollup 은 경고만 찍어 빌드·CI·배포가 전부 초록이었다.
-          //   아래 onLog 게이트가 이 클래스(새 청크 순환)를 이제 빌드 실패로 막는다.
-          // 🩸 그리고 이 한 줄이 2026-10-13 에 **두 번** 들어왔다 — 같은 장애를 두 세션이 각자 고쳐 머지가
-          //   둘 다 받았다(둘째는 첫째가 return 하므로 죽은 코드). 그래서 두 가지가 동시에 깨졌다:
-          //   ① 주입 앵커가 2곳에 맞아 전수 러너가 거부한다(`주입 대상이 2곳 — 유일해야 한다`) —
-          //      main 에서 `Guard mutations (full)` 이 **연속 두 번 빨간불**이었다(#1722·#1760 head)
-          //   ② 설령 거부하지 않았어도 주입이 한 줄을 지워도 **다른 한 줄이 같은 일을 해** 가드가
-          //      실패할 수 없다 — 즉 중복은 그 가드를 조용히 끄는 것이다. 규칙은 한 줄만 둘 것.
+          // 🩸 2026-10-13: 장소 URL SSOT — 손님 매장 지도(RestaurantMiniMap)와 셀러 매장 등록이 함께 읽는다.
+          //   규칙이 없어 Rollup 이 셀러 봉투(app-seller-components)에 넣었고, 그러자 app-components →
+          //   app-seller-components → app-components **순환**이 생겨 셀러 청크의 최상위 코드가 아직 평가 안 된
+          //   app-components 값(StatusTone·TONE_PILL)을 읽다 TDZ("Cannot access before initialization") 로
+          //   터졌다 — **소비자 전 페이지가 ErrorBoundary 로** 떨어졌다. 시작은 #1756 이 RestaurantMiniMap
+          //   에서 이 파일을 import 한 것이었다. 아래 onLog 게이트가 이 클래스(새 청크 순환)를 이제
+          //   빌드 실패로 막는다.
+          //   🩸 2026-10-13(후속): 이 줄이 **두 벌**이었다 — 같은 장애를 두 세션이 각자 고쳤고 둘 다
+          //     머지됐다(각각은 초록이었다). 두 번째는 첫 `return` 때문에 **닿지 않는 죽은 규칙**이었고,
+          //     주입 앵커가 "여러 곳에 맞는다" 로 그걸 잡았다. 그리고 그게 왜 나쁜가 — **중복 잠금은
+          //     각 잠금을 시험 불가능하게 만든다**(주입이 하나를 지워도 다른 하나가 같은 일을 해서
+          //     가드가 실패할 수 없다). 설명은 합치고 규칙은 하나만 둔다.
+          //     ⚠️ 그 중복이 실제로 main 을 두 번 빨갛게 만들었다 — `Guard mutations (full)` 이
+          //     `#1722`·`#1760` head 에서 `주입 대상이 2곳 — 유일해야 한다` 로 멎었다(빌드·화면은 초록).
           if (id.includes('/src/shared/kakao-place-url')) return 'app-shared'
           // 🎬 2026-09-09: 유어쇼츠 SSOT(카드 크기·뷰어 주소·유튜브 id 파싱) — import 0 인 순수 상수 모듈인데
           //   홈 헤더 진입점이 `URSHORTS_VIEWER_PATH` 를 읽는 순간 catch-all 로 떨어져 홈 폐쇄가

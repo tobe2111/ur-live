@@ -23,6 +23,12 @@
 
 import { PARTNER_FACTS } from '../partners-facts'
 
+/**
+ * 🏠 홈의 **보이지 않는** 제목 요소 — 워커 첫 화면과 `MobileHomePage` 가 같이 쓴다.
+ * 왜 `sr-only` 인지는 아래 `'/'` 항목의 주석에 있다. 두 벌이 되면 마운트 때 제목이 바뀐다.
+ */
+export const HOME_H1 = '유어딜 - 우리 동네 맛집·카페·뷰티 이용권 할인'
+
 export interface ConsumerSurfaceSeo {
   /** og/twitter title (사이트명 접미사 **없이**) — `<SEO title>` 에 그대로 넣는 값 */
   title: string
@@ -100,6 +106,16 @@ export const VOUCHER_FILTER_CATEGORIES: readonly string[] = [
 export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> = {
   '/': {
     title: '유어딜 - 우리 동네 맛집·카페·뷰티 이용권 할인',
+    /* 🩸 2026-10-13 — **크롤러가 받는 홈 문서에 `<h1>` 이 0개였다.** 색인 대상 7표면 중 홈만
+       제목 요소가 `<h3>이런 이용권은 어떠세요?</h3>`(섹션 라벨) 하나였다. PC(`PcHomePage`)엔
+       h1 이 있지만 2026-10-11 부터 **검색 크롤러는 모바일 첫 화면을 받으므로** 그 h1 은
+       크롤러에 영영 안 간다. 가장 권위 높은 페이지가 자기가 무엇인지 제목 요소로 말하지 않았다.
+       🔑 **보이는 제목을 되살리는 게 아니다** — 2026-08-31 대표 지시로 눈에 보이는 머리글은
+       일부러 뺐고(그 결정은 그대로다) 동네 이름이 화면의 제목 역할을 한다. 그래서 `sr-only`
+       h1 이다: 박스가 0이라(`index.css` `.sr-only` 는 `position:absolute;width:1px`) 2026-10-08
+       홈 첫 화면 잠금(박스 실측 일치)에 안 걸리고, h1 없이 h3 가 단독으로 서던 접근성
+       문제(제목 단계 건너뛰기)도 함께 해소된다.
+       🔴 워커와 React 가 **같은 값**을 써야 한다 — 두 벌이면 마운트 때 제목이 바뀐다. */
     description:
       '우리 동네 맛집·카페·뷰티·숙소 이용권을 할인가로 사서 매장에서 바로 쓰세요. 기프티콘 교환권은 결제 즉시 발송, 내 주변 동네딜은 지도에서 한눈에. 가입하면 내 유어샵도 함께 열립니다.',
   },
@@ -259,6 +275,19 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
     crumb: '유어쇼츠',
     title: '유어쇼츠 - 영상으로 보는 동네 이용권',
     description: '영상으로 먼저 보고 바로 사는 동네 이용권. 도시·종류로 골라 보세요.',
+  },
+  '/about/print': {
+    /* 🩸 2026-10-13 — 색인 가능 16표면을 전수로 재니 **제네릭 기본 제목**(`index.html` 의
+       "유어딜 - 돈버는 쇼핑, …")을 받는 것은 이 경로 하나뿐이었다(나머지 15개는 고유 제목).
+       이 표에 없어서 fallback 을 받고 있었다. 게다가 본문 32자 · `index, follow` 인데
+       **`/about`(295자)의 인쇄/PDF 판**이라 내용이 겹친다(`AboutServicePage.tsx` 머리말).
+       ⇒ 인쇄판에 대한 표준 처방대로 **noindex**. 같은 내용의 두 URL 을 경쟁시키지 않는다.
+       🔴 canonical 을 `/about` 으로 돌리지 **않는다** — noindex 와 cross-canonical 을 같이 주면
+       서로 반대되는 신호다(2026-10-12 숙소 정본 단일화에서 같은 판단을 했다).
+       ⚠️ noindex 표면은 `crumb` 를 일부러 비워 둔다(가드가 양방향으로 고정). */
+    title: '유어딜 서비스 소개서 (인쇄용)',
+    description: '유어딜 서비스 소개서의 인쇄·PDF 판입니다. 웹 소개는 /about 에 있습니다.',
+    noindex: true,
   },
   '/videos': {
     // ⚠️ noindex 표면은 `crumb` 를 **일부러 비워 둔다**(가드가 양방향으로 고정).
