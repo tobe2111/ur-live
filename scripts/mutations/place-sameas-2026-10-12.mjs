@@ -131,12 +131,18 @@ export default [
     test: T,
   },
   {
-    name: '🔢↩️ 단축링크(kko.to)를 정본으로 지어낸다',
-    why: '반대 방향. `kko.to/{code}` 의 code 는 장소 id 가 아니다. 그걸 id 로 쓰면 존재하지 않는 장소 프로필을 가리킨다.',
+    name: '🔢↩️ 숫자 아닌 id 로 장소 주소를 지어낸다',
+    why:
+      '반대 방향. 등록 경로가 `kakaoPlaceUrlFromId(b.kakao_place_id)` 를 **클라가 보낸 값**으로 부른다 — ' +
+      '`kko.to` 코드처럼 숫자가 아닌 값이 오면 존재하지 않는 장소 프로필(`place.map.kakao.com/AbC_123`)을 ' +
+      '저장하고, 그게 `sameAs` 로 나가면 **남의 가게도 아닌 빈 주소**를 선언한다.\n' +
+      '🩸 첫 판은 `ID_PATTERNS` 에 `kko.to` 패턴을 더하는 것이었는데 **헛돌았다**(CI 가 잡았다) — ' +
+      '그 경로의 결과는 이 숫자 검사가 **독립적으로** 막아서, 패턴을 더해도 `sameAs` 는 그대로 null 이었다. ' +
+      '중복 잠금은 각 잠금을 시험 불가능하게 만든다 ⇒ **혼자 막는 쪽**(이 숫자 검사)에 심는다.',
     file: SSOT,
-    find: "  /^https?:\\/\\/place\\.map\\.kakao\\.com\\/(\\d{1,20})(?:[/?#]|$)/,",
-    replace: "  /^https?:\\/\\/place\\.map\\.kakao\\.com\\/(\\d{1,20})(?:[/?#]|$)/,\n  /^https?:\\/\\/kko\\.to\\/(\\w{1,20})/,",
-    test: T,
+    find: '  return /^\\d{1,20}$/.test(s) ? `https://place.map.kakao.com/${s}` : null',
+    replace: '  return s ? `https://place.map.kakao.com/${s}` : null',
+    test: W,
   },
   {
     name: '🔒 셀러 매장 저장이 검증을 다시 빠뜨린다',
