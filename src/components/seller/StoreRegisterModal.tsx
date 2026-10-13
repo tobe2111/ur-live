@@ -46,7 +46,7 @@ import { enterStoreSeat } from '@/utils/enter-store'
 import { toast } from '@/hooks/useToast'
 import { Loader2, MapPin, CheckCircle2, XCircle, BadgeCheck, FileImage, ArrowLeft, X } from 'lucide-react'
 import ManualPlaceForm from './ManualPlaceForm'; import BrokeredViaAgencyNote, { PERSONAL_BROKER_SIGNUP_DISABLED, BROKERED_VIA_AGENCY_MSG } from './BrokeredViaAgencyNote' // 🏢 2026-10-11
-import { TERMS_CURRENT_VERSION } from '@/pages/terms/terms-types'
+import { TERMS_CURRENT_VERSION } from '@/pages/terms/terms-types'; import { kakaoPlaceUrlFromId } from '@/shared/kakao-place-url'
 
 export interface RegisterPlace {
   id?: string
@@ -66,7 +66,7 @@ export function toRegisterPlace(p: KakaoPlace): RegisterPlace {
     address: p.road_address_name || p.address_name || '',
     phone: p.phone || '',
     category: p.category_name || '',
-    place_url: p.id ? `https://place.map.kakao.com/${p.id}` : undefined,
+    place_url: kakaoPlaceUrlFromId(p.id) ?? undefined,
     lat: Number(p.y) || undefined,
     lng: Number(p.x) || undefined,
   }

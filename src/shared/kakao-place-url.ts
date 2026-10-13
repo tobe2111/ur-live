@@ -65,10 +65,23 @@ export function kakaoPlaceId(url: unknown): string | null {
   return null
 }
 
+/**
+ * 장소 **id** 에서 정본 프로필 주소를 만든다.
+ *
+ * 🔑 2026-10-13 — 이 함수가 `kko.to` 틈의 절반을 네트워크 없이 닫는다. 단축링크는 URL 안에 id 가
+ * 없지만, 카카오 장소 검색으로 고른 매장은 **id 를 따로 받아 둔다**(`seller_meta.kakao_place_id`).
+ * 그 id 가 `place.map.kakao.com/{id}` 와 같은 공간이라는 증거는 우리 코드 자신에 있었다 —
+ * 세 화면이 이미 손으로 그 주소를 조립하고 있었고(`StoreRegisterModal`·`SellerMealVoucherNewPage`·
+ * 어드민 수집), 사진 스크래퍼도 같은 id 로 그 페이지를 fetch 한다. **그 세 벌을 여기로 모은다.**
+ */
+export function kakaoPlaceUrlFromId(id: unknown): string | null {
+  const s = String(id ?? '').trim()
+  return /^\d{1,20}$/.test(s) ? `https://place.map.kakao.com/${s}` : null
+}
+
 /** 장소 id 가 있으면 **정본 프로필 주소**(https)로. 없으면 null. */
 export function kakaoPlaceCanonicalUrl(url: unknown): string | null {
-  const id = kakaoPlaceId(url)
-  return id ? `https://place.map.kakao.com/${id}` : null
+  return kakaoPlaceUrlFromId(kakaoPlaceId(url))
 }
 
 /**

@@ -27,7 +27,7 @@ import { distributorPriceFromCost } from '@/lib/distributor-pricing';
 import { invalidateGroupBuyProductsCache } from '../../group-buy/api/cache-keys';
 import { parseAdminMallScope, productScopeSql } from '@/worker/utils/admin-mall-scope';
 import { fetchProductCounts } from './admin-products-counts';
-import { isValidKakaoPlaceUrl, normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url';
+import { isValidKakaoPlaceUrl, normalizeKakaoPlaceUrl, kakaoPlaceUrlFromId } from '@/shared/kakao-place-url';
 import { intParam } from '@/shared/pagination'
 import { dongnedealTextFilters } from './dongnedeal-search';
 // 🎯 2026-07-21: 시드 커버 재호스팅 — 본체는 worker/utils/rehost-image.ts (demo-image-rehost cron 과 공유 SSOT).
@@ -1257,7 +1257,7 @@ export async function kakaoPlaceLookup(
       address: doc.road_address_name || doc.address_name || null,
       lat: Number.isFinite(lat) ? lat : null,
       lng: Number.isFinite(lng) ? lng : null,
-      placeUrl: doc.id ? `https://place.map.kakao.com/${doc.id}` : normalizeKakaoPlaceUrl(doc.place_url),
+      placeUrl: kakaoPlaceUrlFromId(doc.id) ?? normalizeKakaoPlaceUrl(doc.place_url),
       placeId: doc.id || null,  // 🖼️ 카카오 플레이스 등록 사진(fetchKakaoPlacePhotos) 조회용
       // 📞 2026-07-21 (대표 "다 넣어줘 — 최대한 다 긁어와"): 카카오 키워드 API 가 주는 실전화·실업종을
       //   그간 흘리던 것 → 캡처. 전화=restaurant_phone(상세 노출), 업종=meta(참조/추후 활용).

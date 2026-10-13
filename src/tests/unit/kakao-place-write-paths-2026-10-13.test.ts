@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readCode } from '../helpers/source-text'
-import { normalizeKakaoPlaceUrl, kakaoPlaceId } from '@/shared/kakao-place-url'
+import { readdirSync, readFileSync } from 'node:fs'
+import { normalizeKakaoPlaceUrl, kakaoPlaceId, kakaoPlaceUrlFromId } from '@/shared/kakao-place-url'
 
 /**
  * 🔒 2026-10-13 — `kakao_place_url` 을 **검증 없이 저장하던 세 자리**.
@@ -53,6 +54,8 @@ describe('② SSOT 가 실제로 걸러낸다 — 문자열 검사가 아니라 
     ['호스트 접미 함정', 'https://place.map.kakao.com.evil.com/1'],
     ['스킴 장난', 'javascript:alert(1)'],
     ['프로토콜 상대', '//place.map.kakao.com/1'],
+    ['장소 id 가 아님', 'https://place.map.kakao.com/abc'],
+    ['장소 id 가 비었다', 'https://place.map.kakao.com/'],
     ['빈 값', ''],
   ])('%s → null(저장 안 됨)', (_l, raw) => {
     expect(normalizeKakaoPlaceUrl(raw)).toBeNull()
@@ -72,5 +75,56 @@ describe('② SSOT 가 실제로 걸러낸다 — 문자열 검사가 아니라 
     // `sameAs` 는 안 나간다 — 그 둘은 다른 질문이다.
     expect(normalizeKakaoPlaceUrl('https://kko.to/AbC_123')).toBe('https://kko.to/AbC_123')
     expect(kakaoPlaceId('https://kko.to/AbC_123')).toBeNull()
+  })
+})
+
+describe('③ 단축링크 틈을 id 로 닫는다 — 네트워크 왕복 0', () => {
+  /**
+   * 🔑 `kko.to` 는 URL 안에 장소 id 가 없다. 그런데 **카카오 장소 검색으로 고른 매장은 id 를 따로
+   * 받아 둔다**(`b.kakao_place_id` → `seller_meta.kakao_place_id`). 그 id 가 정본 주소의 id 와 같은
+   * 공간이라는 증거는 **우리 코드 자신**에 있었다 — 다섯 화면이 이미 손으로 그 주소를 조립하고
+   * 있었고 사진 스크래퍼도 같은 id 로 그 페이지를 받는다. 그래서 fetch 없이 닫을 수 있다.
+   *
+   * ⚠️ 닫히지 **않는** 경우: 어드민·셀러 폼에 사람이 `kko.to` 를 **직접 붙여넣는** 경로
+   *   (거기엔 id 가 같이 오지 않는다). 그건 리다이렉트를 풀어야 하는데 이 환경에서 그 동작을
+   *   검증할 수 없어 하지 않았다 — 종전과 같이 `sameAs` 부재다(손실 0).
+   */
+  it('숫자 id 만 정본이 된다', () => {
+    expect(kakaoPlaceUrlFromId('10256701')).toBe('https://place.map.kakao.com/10256701')
+    expect(kakaoPlaceUrlFromId(10256701)).toBe('https://place.map.kakao.com/10256701')
+    for (const bad of ['', '  ', 'abc', '12a', '../evil', '123456789012345678901', null, undefined, {}])
+      expect(kakaoPlaceUrlFromId(bad)).toBeNull()
+  })
+
+  it('등록 경로 둘이 URL → id 순서로 고른다', () => {
+    for (const f of [
+      'src/features/seller/api/seller-stores.routes.ts',
+      'src/features/agency-console/api/agency-store-register.ts',
+    ]) {
+      const c = readCode(f)
+      // 🔴 순서가 뒤집히면(id 우선) 사람이 고친 URL 을 id 가 덮는다 — URL 이 더 최신 입력이다.
+      expect(c, `${f} 의 폴백 순서가 사라졌다`)
+        .toMatch(/normalizeKakaoPlaceUrl\(b\.kakao_place_url\)[\s\S]{0,80}\?\?[\s\S]{0,40}kakaoPlaceUrlFromId\(b\.kakao_place_id\)/)
+    }
+  })
+
+  it('정본 주소를 손으로 조립하는 자리가 SSOT 밖에 남지 않았다', () => {
+    // 종전엔 다섯 화면이 각자 `https://place.map.kakao.com/${id}` 를 적고 있었다(두 벌 드리프트 클래스).
+    // ⚠️ 예외는 사진 스크래퍼 **둘**뿐이다 — 그건 "저장할 주소" 가 아니라 **fetch 대상과 Referer** 라
+    //   null 을 돌려받으면 안 되는 자리다(의도적으로 SSOT 를 안 쓴다).
+    const hits: string[] = []
+    const walk = (dir: string) => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const full = `${dir}/${e.name}`
+        if (e.isDirectory()) { walk(full); continue }
+        if (!/\.(ts|tsx)$/.test(e.name)) continue
+        if (full.endsWith('src/shared/kakao-place-url.ts')) continue
+        if (full.includes('/tests/')) continue // 이 시험 자신의 탐지 문자열
+        if (/place\.map\.kakao\.com\/\$\{/.test(readFileSync(full, 'utf8'))) hits.push(full)
+      }
+    }
+    walk('src')
+    expect(hits.sort(), '정본 주소를 손으로 조립하는 자리가 늘었다')
+      .toEqual(['src/worker/utils/kakao-place-photos.ts'])
   })
 })

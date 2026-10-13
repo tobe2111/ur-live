@@ -38,8 +38,7 @@ import { pickStoreChannel, registerStoreChannelRoutes } from './seller-store-cha
 import { registerStoreClaimRoutes } from './seller-store-claims.routes'; import { registerStoreReportRoutes } from './seller-store-reports.routes'
 import { registerBrokerTermsRoutes, prepareBrokerTerms, finalizeBrokeredStore } from './seller-broker-terms.routes' // 💸🔑 2026-09-19 요율·승계 코드
 import { storeTermsError, afterStoreCreated } from './store-signup-extras' // 📜🤝 2026-10-10 약관 동의 + 영입 귀속(유일한 가입 문)
-import { PERSONAL_BROKER_SIGNUP_DISABLED } from '@/shared/feature-flags'; import { BROKERED_VIA_AGENCY_MSG } from '@/shared/agency-copy'
-import { normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url'
+import { PERSONAL_BROKER_SIGNUP_DISABLED } from '@/shared/feature-flags'; import { BROKERED_VIA_AGENCY_MSG } from '@/shared/agency-copy'; import { normalizeKakaoPlaceUrl, kakaoPlaceUrlFromId } from '@/shared/kakao-place-url'
 
 const app = new Hono<{ Bindings: Env }>()
 type Ctx = Context<{ Bindings: Env }>
@@ -290,8 +289,7 @@ app.patch('/stores/:id/profile', rateLimit({ action: 'store_profile_save', max: 
       lat: b.lat != null ? String(b.lat) : undefined,
       lng: b.lng != null ? String(b.lng) : undefined,
       verify_pin: b.verify_pin != null ? String(b.verify_pin) : undefined,
-      // 🔒 2026-10-13 — 검증을 빠뜨리고 있었다(생 `String`). `store-profile` 은 300자 자르기만
-      //   하므로 아무 도메인이나 저장돼 미니맵이 그 주소를 열 수 있었다 — SSOT 를 지난다.
+      // 🔒 2026-10-13 — 생 `String` 이라 검증 0 이었다(`store-profile` 은 300자 자르기만) — SSOT 경유.
       kakao_place_url: b.kakao_place_url != null ? (normalizeKakaoPlaceUrl(b.kakao_place_url) ?? '') : undefined,
     })
     return c.json({ success: true, data: { propagated } })
@@ -497,12 +495,12 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
      *       재시도를 부추기지 않는 별개 문구 + 매장 번호를 돌려줘 운영이 손으로 붙일 수 있게 한다.
      */
     // 채널·플레이스·검증 스탬프 (sellers 100컬럼 한도 — 전부 seller_meta)
+    const storePlaceUrl = normalizeKakaoPlaceUrl(b.kakao_place_url) ?? kakaoPlaceUrlFromId(b.kakao_place_id)  // 🔑 URL 로 id 를 못 뽑으면(`kko.to`) 받아 둔 id 로. 순서 중요 — URL 이 더 최신 입력
     await setSellerMeta(c.env.DB, newSellerId, {
       store_channel: b.channel,
       manager_phone: managerPhone,
       ...(b.kakao_place_id ? { kakao_place_id: String(b.kakao_place_id) } : {}),
-      // 🔒 2026-10-13 — 위와 같은 이유로 SSOT 경유(유효하지 않으면 아예 저장하지 않는다).
-      ...(normalizeKakaoPlaceUrl(b.kakao_place_url) ? { kakao_place_url: normalizeKakaoPlaceUrl(b.kakao_place_url) as string } : {}),
+      ...(storePlaceUrl ? { kakao_place_url: storePlaceUrl } : {}),  // 🔒 SSOT 경유(위 선언)
       ...(b.category ? { kakao_category: String(b.category).slice(0, 100) } : {}),
       ...(Number.isFinite(b.lat) && Number.isFinite(b.lng) ? { store_lat: String(b.lat), store_lng: String(b.lng) } : {}),
       nts_checked: ntsResult.valid === true ? '1' : ntsResult.valid === false ? '0' : '',

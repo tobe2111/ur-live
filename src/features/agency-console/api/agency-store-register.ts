@@ -30,7 +30,7 @@ import { invalidateStoreSeatCache } from '@/worker/utils/store-seat-guard'
 import { ensureAgencyConsoleTables } from './agency-schema'
 import { requireAgencyStaff, type AgencyStaffContext } from './agency-session'
 import { frontendBase } from './agency-auth.routes'
-import { normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url'
+import { normalizeKakaoPlaceUrl, kakaoPlaceUrlFromId } from '@/shared/kakao-place-url'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string; FRONTEND_URL?: string }
 type Vars = { agencyStaff: AgencyStaffContext }
@@ -124,12 +124,16 @@ export function registerAgencyStoreRegisterRoute(app: Hono<{ Bindings: Bindings;
             data: { seller_id: sellerId } }, 500)
         }
 
+        // 🔑 저장할 장소 주소: URL 에서 id 를 뽑을 수 있으면 정본으로, 못 뽑으면(`kko.to`) 받아 둔 id 로.
+        const agencyPlaceUrl = normalizeKakaoPlaceUrl(b.kakao_place_url)
+          ?? kakaoPlaceUrlFromId(b.kakao_place_id)
         await setSellerMeta(DB, sellerId, {
           store_channel: 'brokered', // = 채널 미지정 수수료 폴백과 같은 값(요율 불변)
           manager_phone: managerPhone,
           ...(b.kakao_place_id ? { kakao_place_id: String(b.kakao_place_id) } : {}),
           // 🔒 2026-10-13 — 생 `String` 이라 아무 도메인이나 저장됐다. SSOT 경유.
-          ...(normalizeKakaoPlaceUrl(b.kakao_place_url) ? { kakao_place_url: normalizeKakaoPlaceUrl(b.kakao_place_url) as string } : {}),
+          // 🔑 URL 로 id 를 못 뽑으면(`kko.to`) 받아 둔 id 로 정본을 만든다(네트워크 왕복 0).
+          ...(agencyPlaceUrl ? { kakao_place_url: agencyPlaceUrl } : {}),
           ...(b.category ? { kakao_category: String(b.category).slice(0, 100) } : {}),
           ...(Number.isFinite(b.lat) && Number.isFinite(b.lng) ? { store_lat: String(b.lat), store_lng: String(b.lng) } : {}),
           nts_checked: ntsChecked,
