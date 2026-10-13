@@ -175,6 +175,16 @@ const ENTITY_SLOTS = new Set(['DETAIL', 'PRODUCT', 'STAYDETAIL', 'SELLER', 'CURA
  *
  * ⚠️ **타임아웃은 포함하지 않는다** — `self-fetch-timeout` 은 "없다" 가 아니라 "느리다" 이고,
  *    콜드 콜로에서 흔하다. 그걸로 noindex 를 내면 멀쩡한 상품이 색인에서 빠진다(더 큰 사고).
+ *
+ * 🔴 **400 도 포함하지 않는다.** 2026-10-12 에 "숫자 아닌 id 가 다섯 슬롯 전부 `200 + index, follow`"
+ *    를 실측하고 여기에 `self-fetch-400` 을 더하려 했는데, **그 행동이 이미 결함으로 심어져 있었다**
+ *    (`scripts/mutations/ushop-malformed-handle-404.mjs`): *"API 를 고치는 대신 술어를 넓히는 것이 더
+ *    쉬워 보인다 — 그 길은 일시적 400 을 영구 noindex 로 바꾼다."* 그 판단이 맞다. 400 은 *"요청이
+ *    틀렸다"* 이고 부재가 아니다 — 쿼리·헤더 탓인 400 을 부재로 읽으면 살아 있는 엔티티가 색인에서
+ *    빠진다. ⇒ 고칠 곳은 **API** 다: 경로 세그먼트로 식별되는 리소스가 애초에 존재할 수 없으면
+ *    그 핸들러가 **404** 를 줘야 한다(`/u/:handle` 을 2026-10-12 에 그렇게 고쳤다 — 같은 선례).
+ *    ⚠️ 그래도 **쓰기 검증·가용성 조회의 400 은 400 그대로다** — 일관성을 이유로 한쪽으로 몰면
+ *    "저장 실패" 를 "없음" 이라 말하게 된다(같은 매니페스트의 두 번째·세 번째 주입이 그걸 막는다).
  */
 export function shouldNoindexMissingEntity(slot: string, ssrStatus: string): boolean {
   return ENTITY_SLOTS.has(slot) && ssrStatus === 'self-fetch-404'

@@ -73,10 +73,15 @@ describe('ⓑ 딜 잔액 — 맨 위 숫자 한 줄 (안 C)', () => {
      *   불변식은 그대로 — *무상 딜이 있으면 화면에 뜬다*. 그래서 **정의와 사용 둘 다** 본다:
      *   정의만 보면 쓰는 데가 없어도 통과하고, 사용만 보면 조건이 상수로 바뀌어도 통과한다.
      */
-    expect(MY, '환급 조건의 정의가 사라졌다')
-      .toMatch(/const refundable = balance != null && freeBalance > 0/)
+    /**
+     * 🔁 **2026-10-12 재조준** — `refundable` 이 **숫자**(서버가 준 실제 환급 가능액)가 됐다
+     *   (충전 잔액 환급 신청이 생겼다). 줄을 그리는 조건은 `showNote` 로 이름이 바뀌었고, 무상 딜이 있거나
+     *   돌려받을 딜이 있으면 뜬다. 불변식은 그대로 — *무상 딜이 있으면 화면에 뜬다*(정의와 사용 둘 다 본다).
+     */
+    expect(MY, '안내 줄 조건의 정의가 사라졌다 — 무상 딜이 있어도 안 뜰 수 있다')
+      .toMatch(/const showNote = balance != null && \(freeBalance > 0 \|\| refundable > 0 \|\| refundPending > 0\)/)
     expect(MY, '무상 리워드 안내가 죽은 가지로 남았다 (조건이 꺼졌다)')
-      .toMatch(/\{refundable && \(/)
+      .toMatch(/\{showNote && \(/)
     expect(SHARED).toContain('note')
   })
 

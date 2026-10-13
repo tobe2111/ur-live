@@ -76,6 +76,27 @@ const SEARCH_CRAWLER_UA_PATTERNS = [
   /Perplexity-User/i,
   /Claude-User/i,
   /Claude-SearchBot/i,
+  // 🔀 2026-10-12 추가 — 라이브 실측에서 **형제는 본문을 받는데 이 여섯만 로더**였다.
+  //   UA 만 바꿔 같은 URL 을 받아 `#root` 안쪽 글자를 셌다:
+  //
+  //       UA                 /        /u/jiwon1228
+  //       Googlebot         395자       419자
+  //       OAI-SearchBot     395자       419자
+  //       Claude-SearchBot  395자       419자
+  //       PerplexityBot     395자       419자
+  //       xAI-Bot            34자        20자   ← 그록
+  //
+  //   `/pass/:id`·`/vouchers` 는 경로로 판정하는 `<noscript>` 라 전 UA 동일했고, **UA 로 가르는
+  //   두 분기(홈 MAIN · 유어샵 CURATOR)만** 갈렸다. 대표가 이름을 댄 넷 중 하나가 그록이다
+  //   (*"그록, 클로드 등 AI 모든 AI 서비스에서 검색 시 나오게 해줘"*)인데 홈이 34자였다.
+  //   🔑 이 여섯은 **이미 HTML 200 을 받는다**(라이브 실측) — 즉 막혀서 못 본 게 아니라
+  //      우리가 그릴 수 있는데 안 그려 주고 있었다.
+  /xAI-Bot/i,           // 그록 — 색인
+  /Grokbot/i,           // 그록 — 사용자 트리거
+  /meta-webindexer/i,   // Meta AI(검색용 — 학습용 `Meta-ExternalAgent` 와 다른 봇이다)
+  /MistralAI-Index/i,
+  /MistralAI-User/i,
+  /YouBot/i,
 ] as const
 
 /** 본문을 색인하는 검색 크롤러인가. */

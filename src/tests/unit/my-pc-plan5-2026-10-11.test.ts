@@ -206,7 +206,12 @@ describe('📱 폰은 한 글자도 안 바뀐다', () => {
   })
 
   it('🔴 줄 밖 안내문은 폰에서만 — 띠에서는 값 아래 한 줄이다', () => {
-    expect(STATS, '띠가 두 줄이 된다 — 띠가 아니게 된다').toMatch(/if \(inline\) return cells/)
+    // 🔁 2026-10-12 재조준: 띠 모드가 칸 옆에 **환급 신청 버튼**을 함께 돌려준다(칸은 링크라 그 안에
+    //   버튼을 못 넣는다). 불변식은 그대로 — 띠는 **줄 밖 안내문 없이** 일찍 돌아간다.
+    const at = STATS.indexOf('if (inline) return (')
+    expect(at, '띠 모드가 일찍 돌아가지 않는다 — 줄 밖 안내문까지 그려 띠가 두 줄이 된다').toBeGreaterThan(-1)
+    const early = STATS.slice(at, STATS.indexOf('\n  )\n', at))
+    expect(early, '띠 안에 줄 밖 안내문이 들어갔다').not.toContain('showNote')
     expect(STATS).toContain('무상 리워드 {formatNumber(freeBalance)}딜 포함')
   })
 })

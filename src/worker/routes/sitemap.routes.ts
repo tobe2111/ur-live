@@ -6,6 +6,7 @@
  * 🛡️ 2026-04-27: TD-006 partial split — worker/index.ts 인라인 핸들러 제거.
  */
 import { Hono } from 'hono';
+import { consumerVisibleProductSql } from '../../shared/db/consumer-visible-product';
 import { buildLlmsTxt } from '../../shared/seo/llms-txt'
 import type { Env } from '@/worker/types/env';
 // 🏠 본진 몰 격리 — 운영자 SaaS 몰 상품이 유어딜 도메인으로 SEO 색인되는 것을 막는다.
@@ -22,6 +23,18 @@ import { REGION_PAGES_ENABLED } from '../../shared/feature-flags';
 import { isIndexableImageUrl } from '../../shared/seo/indexable-image';
 // 🏨 정본 상세 주소 SSOT — 숙소 이용권은 `/stays/:id`(상세 canonical 과 같은 함수).
 import { canonicalDetailPath } from '../../shared/product-flow';
+// 🎁 교환권 필터 카테고리 SSOT — canonical 이 믿는 집합과 **같은 목록**을 읽는다.
+import { VOUCHER_FILTER_CATEGORIES } from '../../shared/seo/consumer-surfaces';
+
+/**
+ * 🎁 sitemap 이 **제출하는** 교환권 카테고리 — 재고가 많은 상위 3종.
+ * 🔴 값은 `VOUCHER_FILTER_CATEGORIES`(canonical·제목 접두가 믿는 집합)에서 **골라 온다**. 손으로
+ *   적으면 둘이 갈리고, 갈리면 *제출한 URL 의 정본이 다른 곳을 가리키는* 모순이 조용히 생긴다
+ *   (2026-10-12 오전에 `/pass`↔`/stays` 로 그 대가를 치렀다). SSOT 에서 사라진 값은 `filter` 가
+ *   떨어뜨려 제출되지 않는다 = 빈 목록을 색인 요청하지 않는다(2026-07-29 영문 슬러그 6건 사고).
+ */
+const SITEMAP_VOUCHER_CATEGORIES: readonly string[] = ['편의점', '커피/음료', '베이커리/도넛']
+  .filter((c) => VOUCHER_FILTER_CATEGORIES.includes(c))
 
 interface GroupBuyRow { id: number; category: string | null; deal_only: number | null; image_url: string | null; updated_at: string }
 
@@ -70,9 +83,15 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
     //   mobile)를 제출하고 있었다 → 어느 상품과도 매칭되지 않아 **빈 목록 6개를 색인 요청**한 셈이다.
     //   아래는 라이브 실측(`/api/products?deal_only=1`) 상위 카테고리만 남긴 것 — 재고가 실제로 있는 값.
     //   ⚠️ 값을 바꿀 때는 반드시 라이브 분포를 다시 확인할 것(카테고리는 공급사 데이터라 바뀐다).
-    { loc: `/vouchers?category=${encodeURIComponent('편의점')}`, priority: 0.75, changefreq: 'weekly' },
-    { loc: `/vouchers?category=${encodeURIComponent('커피/음료')}`, priority: 0.7, changefreq: 'weekly' },
-    { loc: `/vouchers?category=${encodeURIComponent('베이커리/도넛')}`, priority: 0.65, changefreq: 'weekly' },
+    //   🔗 2026-10-12: 값을 **`VOUCHER_FILTER_CATEGORIES`(SSOT)에서 골라 온다.** 종전엔 여기 손으로 적힌
+    //      3개와 canonical 이 믿는 값이 따로였고, canonical 쪽은 **아무 값이나** 통과시켜
+    //      `?category=테스트123` 이 자기 자신을 정본이라 선언했다(본문 43자). 이제 제출분이 허용분의
+    //      **부분집합임을 구조로 보장**한다 — SSOT 에서 사라진 값은 아래 `filter` 가 떨어뜨린다.
+    ...SITEMAP_VOUCHER_CATEGORIES.map((c, i) => ({
+      loc: `/vouchers?category=${encodeURIComponent(c)}`,
+      priority: [0.75, 0.7, 0.65][i] ?? 0.6,
+      changefreq: 'weekly',
+    })),
     { loc: '/map', priority: 0.7, changefreq: 'daily' },
     // 🔎 2026-08-26 (대표 "SEO 도 우리 서비스에 맞게") — **메타는 있는데 사이트맵에 없던 8개 표면.**
     //   `CONSUMER_SURFACE_SEO` 에 title/description 을 갖추고, 인증 게이트도 없고, robots 도 안 막는데
@@ -111,7 +130,7 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
          WHERE category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
            AND is_active = 1
            AND group_buy_status IN ('active','achieved')
-           AND NOT (COALESCE(is_supply_product,0) = 1 AND COALESCE(supply_source_id,0) = 0)${productScope}
+           AND ${consumerVisibleProductSql('products')}${productScope}
          ORDER BY updated_at DESC LIMIT 500`
       ).all<GroupBuyRow>().catch(() => ({ results: [] as GroupBuyRow[] }));
       for (const g of groupBuys.results || []) {
@@ -144,7 +163,7 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
          WHERE is_active = 1
            AND COALESCE(deal_only, 0) = 0
            AND category NOT IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
-           AND NOT (COALESCE(is_supply_product,0) = 1 AND COALESCE(supply_source_id,0) = 0)${productScope}
+           AND ${consumerVisibleProductSql('products')}${productScope}
          ORDER BY id DESC LIMIT 500`
       ).all<{ id: number }>();
       for (const p of products.results || []) {
@@ -168,7 +187,9 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
            FROM sellers s LEFT JOIN users u ON u.id = s.linked_user_id
           WHERE s.status = 'approved'${sellerScope}
             AND ( EXISTS (SELECT 1 FROM products p WHERE p.seller_id = s.id AND p.is_active = 1)
-               OR EXISTS (SELECT 1 FROM product_pins pp WHERE pp.user_id = s.linked_user_id) )
+               OR EXISTS (SELECT 1 FROM product_pins pp JOIN products pq ON pq.id = pp.product_id
+                           WHERE pp.user_id = s.linked_user_id AND pq.is_active = 1
+                             AND ${consumerVisibleProductSql('pq')}) )
           ORDER BY s.id DESC LIMIT 200`
       ).all<{ id: number; username: string; handle: string | null }>()
         .catch(() => ({ results: [] as Array<{ id: number; username: string; handle: string | null }> }));
@@ -194,6 +215,20 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
       //   🔑 그리고 이 기준은 **워커 첫 화면 빌더와 짝이다** — `buildCuratorFirstScreen` 은
       //      `pins.length === 0` 이면 `''` 를 돌려주므로, 핀 0 인 유어샵을 제출하면 크롤러가 받는 것은
       //      로더뿐이다(= soft-404). 핀 ≥ 1 만 내보내면 **제출한 URL 은 전부 본문이 있다.**
+      //   🩸 **2026-10-12 — 그 "짝" 주장이 세 군데서 깨져 있었다**(라이브 Googlebot 실측: sitemap 이
+      //      제출한 유어샵 6건 중 **5건이 본문 6자**). ① 여기서 센 것은 `product_pins` **행**인데
+      //      API 의 `pins` 는 `p.is_active = 1 AND consumerVisibleProductSql` 를 통과한 것만이다 ⇒
+      //      *"핀 행이 있다" ≠ "핀이 보인다"*(`/u/user31`·`/u/jongmun` 이 그 경우 — 담은 상품이
+      //      비활성화됐다). ⇒ 이 EXISTS 를 **활성 상품에 매달린 핀**으로 좁혔다(상품이 다시 켜지면
+      //      다음 sitemap 부터 자동 복귀 — 수동 관리 0). ② 그 빌더는 `pins.length === 0` 말고도
+      //      **`linked_seller` 가 있으면** `''` 를 준다(React 가 `SellerPublicPage` 를 그리므로) —
+      //      `/u/user40` 이 그 경우였고 이 주석은 그 분기를 몰랐다. ③ `/s/:username`(SELLER 슬롯)은
+      //      첫 화면 빌더가 **아예 없다**. ②③ 는 sitemap 이 아니라 **본문 쪽**에서 메운다(②는
+      //      `curatorNoscriptFromPayload` 폴백으로 해소, ③은 페이로드에 상품이 안 담겨 **미해소** —
+      //      `docs/handoff/2026-10-12-canonical-facet-entity.md` 의 후속 ⑥).
+      //   ⚠️ 그래도 이 블록이 **색인 요청을 줄이는** 방향이라는 점을 잊지 말 것 — 기준을 더 조이면
+      //      멀쩡한 유어샵이 색인에서 빠지고 돌아오는 데 수주다. 조일 때는 **본문이 실제로 비는지**를
+      //      라이브로 먼저 재고 조인다(이번이 그 순서였다).
       //   ⚠️ 몰 스코프(`mainScopeFor`)를 걸지 않는다 — `users` 에는 `mall_id` 가 없고(유저는 몰에 속하지
       //      않는다), 우리가 제출하는 것은 상품 URL 이 아니라 **유어딜 본진 표면**인 `/u/{handle}` 이다.
       //   `product_pins` 는 lazy CREATE 라 실패해도 뒤 블록이 죽지 않게 catch(위 블록과 동일).
@@ -201,7 +236,9 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
         `SELECT u.handle AS handle
            FROM users u
           WHERE u.handle IS NOT NULL AND TRIM(u.handle) <> ''
-            AND EXISTS (SELECT 1 FROM product_pins pp WHERE pp.user_id = u.id)
+            AND EXISTS (SELECT 1 FROM product_pins pp JOIN products pq ON pq.id = pp.product_id
+                         WHERE pp.user_id = u.id AND pq.is_active = 1
+                           AND ${consumerVisibleProductSql('pq')})
           ORDER BY u.id DESC LIMIT 200`
       ).all<{ handle: string }>()
         .catch(() => ({ results: [] as Array<{ handle: string }> }));
@@ -242,11 +279,16 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
       }
 
       // 블로그 글
+      // 🗓️ 2026-10-12: `updated_at` 을 함께 받아 **`lastmod`** 로 낸다 — 종전엔 블로그 22건이
+      //   453개 중 `lastmod` 없는 94건에 속해, 시드 재동기화로 본문이 바뀌어도 "다시 읽어라"는
+      //   신호가 0 이었다(상품 359건은 이미 `g.updated_at` 으로 내고 있었다 — 블로그만 빠졌다).
+      //   🔑 같은 커밋에서 `published_at` 재작성을 멈춘 것과 **짝**이다: 발행일이 배포마다
+      //   흔들리던 동안에는 어느 날짜도 신뢰할 수 없어 `lastmod` 를 붙여도 거짓이 됐다.
       const blogs = await DB.prepare(
-        `SELECT slug FROM blog_posts WHERE is_published = 1 ORDER BY id DESC LIMIT 100`
-      ).all<{ slug: string }>().catch(() => ({ results: [] as { slug: string }[] }));
+        `SELECT slug, updated_at FROM blog_posts WHERE is_published = 1 ORDER BY id DESC LIMIT 100`
+      ).all<{ slug: string; updated_at?: string }>().catch(() => ({ results: [] as { slug: string; updated_at?: string }[] }));
       for (const b of blogs.results || []) {
-        if (b.slug) urls.push({ loc: `/blog/${b.slug}`, priority: 0.5, changefreq: 'monthly' });
+        if (b.slug) urls.push({ loc: `/blog/${b.slug}`, priority: 0.5, changefreq: 'monthly', lastmod: b.updated_at });
       }
     } catch {
       // DB 쿼리 실패해도 정적 URL 은 응답

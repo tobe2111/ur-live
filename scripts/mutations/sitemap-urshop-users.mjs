@@ -17,8 +17,12 @@ export default [
   {
     name: '🛍️ 콘텐츠 기준(핀 EXISTS)이 빠진다(핀 0 유어샵을 제출 → 크롤러가 로더만 받아 soft-404)',
     file: SITEMAP,
-    find: '            AND EXISTS (SELECT 1 FROM product_pins pp WHERE pp.user_id = u.id)\n          ORDER BY u.id DESC LIMIT 200`',
-    replace: '          ORDER BY u.id DESC LIMIT 200`',
+    // 🔁 2026-10-12 재조준 — 기준이 "핀 **행** 존재" → "**보이는** 핀 존재"(활성 + 소비자 노출)로
+    //    좁혀졌다. 불변식은 그대로다: 제출 기준이 빠지면 본문 없는 유어샵이 색인 요청된다.
+    find: `            AND EXISTS (SELECT 1 FROM product_pins pp JOIN products pq ON pq.id = pp.product_id
+                         WHERE pp.user_id = u.id AND pq.is_active = 1
+                           AND \${consumerVisibleProductSql('pq')})`,
+    replace: '            AND 1 = 1',
     test: TEST,
     why: '`buildCuratorFirstScreen` 은 `pins.length === 0` 이면 `\'\'` 를 돌려준다 — 제출 기준과 **짝**이다.',
   },

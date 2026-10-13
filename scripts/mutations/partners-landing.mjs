@@ -228,4 +228,25 @@ export default [
       '그때 "값이 없으니 비교도 없다" 로 조용히 통과하면 이 가드가 통째로 죽는다. ' +
       '0건이면 통과가 아니라 실패여야 한다(이 레포가 반복해 당한 클래스).',
   },
+  {
+    name: '🏪 검색 스니펫이 다시 수수료를 손으로 적는다 (5%)',
+    file: 'src/shared/seo/consumer-surfaces.ts',
+    find: '수수료 ${PARTNER_FACTS.feeDirect}`',
+    replace: '수수료 5%`',
+    test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
+    why:
+      '2026-10-12 라이브 실측: 화면은 10%(SSOT), **검색 스니펫과 llms.txt 는 5%** 였다. ' +
+      '사장님은 클릭 **전에** 스니펫을 보고, AI 엔진은 그 문구를 인용한다. ' +
+      'R2 가 그간 화면만 봐서 이 자리가 몇 달 비어 있었다.',
+  },
+  {
+    name: '🏪 스니펫에서 중개 요율을 뺀다 (한쪽만 말해 또 갈린다)',
+    file: 'src/shared/seo/consumer-surfaces.ts',
+    find: '      + `(대행사를 통하면 ${PARTNER_FACTS.feeBrokered})가 붙습니다.',
+    replace: '      + `가 붙습니다.',
+    test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
+    why:
+      '직접 10% 만 말하면 대행사 경유로 들어온 사장님이 자기 요율(5%)을 어디서도 못 읽는다. ' +
+      '화면은 두 값을 나란히 말하는데 스니펫만 하나면 그게 다음 드리프트의 씨앗이다.',
+  },
 ]

@@ -23,7 +23,7 @@
  *   **형제 요청들보다 늦게 출발한다**는 것이었다 — 재는 대상을 틀리면 결론이 뒤집힌다.
  *
  * ## 🔑 동적 import 가 **맞는** 자리는 그대로 둔다
- * 시트(`WithdrawSheet`·`BankSheet`·`PinSheet`·`StoreSwitchSheet`)는 **사람이 열 때** 마운트되므로
+ * 시트(`PayoutSheet`·`RefundSheet`·`BankSheet`·`PinSheet`·`StoreSwitchSheet`)는 **사람이 열 때** 마운트되므로
  * 놓칠 첫 묶음이 없다. 이 시험은 *첫 화면*(마운트 즉시 도는 데이터)만 고정한다.
  *
  * ## 이 시험이 못 막는 것
@@ -49,8 +49,9 @@ const FIRST_SCREEN = [
 
 /** 사람이 열 때만 마운트 — 동적 import 가 맞다(되돌림 방지용 반대 방향 고정) */
 const ON_DEMAND = [
-  'src/pages/user-profile/seller-section/WithdrawSheet.tsx',
+  'src/pages/user-profile/seller-section/PayoutSheet.tsx',
   'src/pages/user-profile/seller-section/BankSheet.tsx',
+  'src/pages/user-profile/RefundSheet.tsx',
   'src/pages/user-profile/seller-section/PinSheet.tsx',
   'src/pages/user-profile/StoreSwitchSheet.tsx',
 ]

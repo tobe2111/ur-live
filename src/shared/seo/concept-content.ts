@@ -57,8 +57,8 @@ export const CONCEPT_FAQ: ConceptQa[] = [
   { key: 'faq.q2', categoryKey: 'faq.catOrder', category: '주문/결제', question: '결제가 완료되지 않았어요', answer: '결제 오류 시 카드사 또는 결제사로 문의해주세요. 토스페이먼츠 고객센터: 1544-7772' },
   { key: 'faq.q3', categoryKey: 'faq.catShipping', category: '배송', question: '배송 기간은 얼마나 걸리나요?', answer: '일반적으로 결제 완료 후 2-3일 이내 배송됩니다. 매장별로 차이가 있을 수 있으며, 상품 페이지에서 확인 가능합니다.' },
   { key: 'faq.q4', categoryKey: 'faq.catShipping', category: '배송', question: '배송 조회는 어떻게 하나요?', answer: '마이페이지 > 주문내역에서 송장번호를 확인하시고 "배송 조회" 버튼을 클릭하시면 택배사 사이트로 이동합니다.' },
-  { key: 'faq.q5', categoryKey: 'faq.catExchange', category: '교환/환불', question: '교환/반품은 어떻게 하나요?', answer: '상품 수령 후 7일 이내 마이페이지 > 주문내역에서 신청하실 수 있습니다. 단순 변심의 경우 왕복 배송비가 발생합니다.' },
-  { key: 'faq.q6', categoryKey: 'faq.catExchange', category: '교환/환불', question: '환불은 언제 되나요?', answer: '상품 회수 확인 후 3-7 영업일 이내 결제 수단으로 환불됩니다. 신용카드는 카드사 정산일에 따라 다를 수 있습니다.' },
+  { key: 'faq.q5', categoryKey: 'faq.catExchange', category: '교환/환불', question: '배송 상품의 교환/반품은 어떻게 하나요?', answer: '상품 수령 후 7일 이내 마이페이지 > 주문내역에서 신청하실 수 있습니다. 단순 변심의 경우 왕복 배송비가 발생합니다.' },
+  { key: 'faq.q6', categoryKey: 'faq.catExchange', category: '교환/환불', question: '배송 상품 환불은 언제 되나요?', answer: '상품 회수 확인 후 3-7 영업일 이내 결제 수단으로 환불됩니다. 신용카드는 카드사 정산일에 따라 다를 수 있습니다.' },
   { key: 'faq.q7', categoryKey: 'faq.catMember', category: '회원', question: '회원가입은 어떻게 하나요?', answer: '카카오 로그인으로 간편하게 가입하실 수 있습니다. 별도의 회원가입 절차 없이 카카오 계정으로 이용 가능합니다.' },
   { key: 'faq.q8', categoryKey: 'faq.catMember', category: '회원', question: '개인정보를 수정하고 싶어요', answer: '마이페이지에서 배송지, 연락처 등을 수정하실 수 있습니다. 카카오 계정 정보는 카카오에서 직접 수정해주세요.' },
   { key: 'faq.q9', categoryKey: 'faq.catService', category: '서비스', question: '유어딜은 어떤 서비스인가요?', answer: '유어딜(urdeal.kr)은 우리 동네 매장 이용권을 할인가로 구매해 매장에서 QR로 바로 사용하는 로컬 커머스 플랫폼입니다. 식사·뷰티·숙소 이용권과 기프티콘 교환권, 내 주변 동네딜 지도, 나만의 유어샵을 제공합니다.' },
@@ -69,6 +69,26 @@ export const CONCEPT_FAQ: ConceptQa[] = [
   { key: 'faq.q12', categoryKey: 'faq.catService', category: '서비스', question: '여행 갈 때 쓸 수 있는 숙소 이용권도 있나요?', answer: '있습니다. 숙소 이용권은 유어딜에서 할인가로 미리 구매해 두고 숙소에서 QR로 사용합니다. 숙소 모아보기(urdeal.kr/stays)에서 볼 수 있고, 같은 여행지의 식사·체험 이용권을 지역 페이지에서 함께 묶으면 하루 일정을 할인가로 짤 수 있습니다.' },
   { key: 'faq.q13', categoryKey: 'faq.catService', category: '서비스', question: '이용권과 교환권은 어떻게 다른가요?', answer: '이용권은 식당·뷰티숍·숙소 같은 매장에서 쓰는 권종으로, 카드로 결제하고 매장에서 QR 또는 PIN으로 사용합니다. 교환권은 카페·편의점·치킨 같은 브랜드 기프티콘으로, 충전한 딜로 구매하면 결제 즉시 발급됩니다.' },
   { key: 'faq.q14', categoryKey: 'faq.catService', category: '서비스', question: '마음에 든 할인권을 친구에게 소개할 수 있나요?', answer: '회원가입하면 누구나 자기 유어샵(urdeal.kr/u/내아이디)이 생깁니다. 마음에 든 이용권을 유어샵에 담아 링크를 공유하면, 그 링크로 구매가 일어날 때 소개한 사람에게 몫이 쌓입니다.' },
+
+  // ── 2026-10-12 추가: 이용권(간판 상품) 환불 ──────────────────────────────────────
+  //
+  // 🩸 **왜 뒤늦게 추가하나**: 이 표면의 메타는 `자주 묻는 질문 - 이용권 사용·환불` /
+  //   *"…**유효기간이 지나면 어떻게 되는지**, 환불은 언제 되는지"* 라고 **약속하는데**
+  //   답이 없었다. 유일한 환불 답(q6)은 **배송 상품** 절차("상품 회수 확인 후 3-7 영업일")라,
+  //   AI 가 *"유어딜 이용권 환불돼?"* 에 택배 반품 절차를 인용하고 있었다.
+  //   같은 커밋에서 q5·q6 **질문만** `배송 상품…` 으로 스코프했다(답변 byte-불변).
+  //
+  // 🔒 두 답은 **코드에서 확인한 것만** 적는다(지어내기 금지):
+  //   q15 ← `handleExpiredVoucherRefunds`(`worker/cron/auto-settlement.ts`, `0 18 * * *`):
+  //         미사용 만료분을 **신청 없이** 환불하고 알림을 넣는다. `payment_method==='deal_points'`
+  //         → `adjustUserPoints`(딜로) · `'toss'|'CARD'` → 토스 취소(카드로).
+  //   q16 ← `pages/my-vouchers/QRModal.tsx` 의 '환불 요청' → `POST /api/returns/request`,
+  //         화면 토스트가 *"접수되었어요. 확인 후 처리해 드릴게요"* 라 그 말과 같게 쓴다.
+  //   ⚠️ **교환권(기프티콘)은 다른 레일**이다(`voucher_orders`/KT) — 여기서 아무 말도 하지 않는다.
+  //   ⚠️ 화면은 *"미사용 시 100% 자동환불"* 이라고 **비율까지** 약속하지만, 이 배열은 규율 ③
+  //     (수치 금지)과 기존 가드에 걸리므로 비율을 적지 않는다. 비율의 SSOT 는 그 화면이다.
+  { key: 'faq.q15', categoryKey: 'faq.catExchange', category: '교환/환불', question: '이용권 유효기간이 지나면 어떻게 되나요?', answer: '유효기간 안에 쓰지 않은 이용권은 따로 신청하지 않아도 자동으로 환불되고, 알림으로 알려드립니다. 딜로 결제했으면 딜로, 카드로 결제했으면 카드로 돌아갑니다.' },
+  { key: 'faq.q16', categoryKey: 'faq.catExchange', category: '교환/환불', question: '쓰기 전에 이용권을 환불할 수 있나요?', answer: "사용 전이라면 마이페이지 > 내 이용권에서 그 이용권을 열어 '환불 요청' 을 누르시면 됩니다. 접수 후 확인하여 처리해 드립니다." },
 ]
 
 /**

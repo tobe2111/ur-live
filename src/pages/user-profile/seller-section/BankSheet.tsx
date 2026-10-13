@@ -31,8 +31,8 @@ import { assertSeat, currentSeatId, SeatMismatchError } from '@/lib/seller-seat'
 import { toast } from '@/hooks/useToast'
 import Sheet from './Sheet'
 
-/** 대시보드 폼과 같은 목록 — 한쪽에만 은행이 늘면 사장님이 자기 은행을 못 찾는다. */
-const BANKS = ['KB국민은행', '신한은행', '우리은행', '하나은행', 'NH농협은행', 'IBK기업은행', 'SC제일은행', '한국씨티은행', '케이뱅크', '카카오뱅크', '토스뱅크', '새마을금고', '신협', '우체국', '부산은행', '경남은행', '대구은행', '광주은행', '전북은행', '제주은행', '수협은행', '산업은행']
+/** 대시보드 폼과 같은 목록 — 한쪽에만 은행이 늘면 사장님이 자기 은행을 못 찾는다. SSOT `shared/banks`. */
+import { BANKS } from '@/shared/banks'
 
 export default function BankSheet({ sellerId, onClose, onDone, onFixPin }: {
   sellerId: number

@@ -1,5 +1,5 @@
 /**
- * 🧰 마이 안 판매 도구 넷 — 등록·환불·분석·출금 (2026-09-25, 설계 §19)
+ * 🧰 마이 안 판매 도구 넷 — 등록·환불·분석·출금 (2026-09-25, 설계 §19) → 출금은 2026-10-12 정산(읽기 전용)으로
  *   대표: *"등록, 환불, 분석, 출금도 마이에서 돼야해."*
  *
  * ## 🔴 이 파일이 막는 제일 큰 사고
@@ -17,7 +17,10 @@ import { describe, it, expect } from 'vitest'
 import { readCode, stripComments } from '../helpers/source-text'
 
 const SECTION = readCode('src/pages/user-profile/SellerSection.tsx')
-const WITHDRAW = readCode('src/pages/user-profile/seller-section/WithdrawSheet.tsx')
+// 💰 2026-10-12: 돈 시트가 `WithdrawSheet`(출금 신청) → `PayoutSheet`(주간 자동 정산, **읽기 전용**)로 바뀌었다.
+//   출금 신청이 읽던 잔액(`seller_deal_balances`)은 한 번도 적립되지 않아 늘 0원이었고, 서버 문은 410 이다.
+const PAYOUT = readCode('src/pages/user-profile/seller-section/PayoutSheet.tsx')
+const BANK = readCode('src/pages/user-profile/seller-section/BankSheet.tsx')
 // 🧹 2026-10-01 철거: `RefundSheet`·`AnalyticsSheet` 는 내려갔다 — 환불은 주문 대시보드 화면이,
 //    분석은 `/seller/analytics` 가 맡는다(원본이고, 손수 시트는 그 **복제**였다).
 //    아래에서 그 둘을 대상으로 하던 검사는 **대상만** 줄었고 판정은 그대로다. 사라진 판정 둘
@@ -26,65 +29,41 @@ const WITHDRAW = readCode('src/pages/user-profile/seller-section/WithdrawSheet.t
 const SHEET = readCode('src/pages/user-profile/seller-section/Sheet.tsx')
 
 describe('🔴 출금 ≠ 탈퇴 (§19-0)', () => {
-  it('출금 화면이 탈퇴 엔드포인트를 부르지 않는다', () => {
-    const code = stripComments(WITHDRAW)
-    expect(code, 'account/withdraw 는 계정 삭제다 — 사장님이 돈을 받으려다 가게를 잃는다')
+  it('정산 화면은 읽기만 한다 — 탈퇴는 물론 어떤 쓰기도 부르지 않는다', () => {
+    const code = stripComments(PAYOUT)
+    expect(code, 'account/withdraw 는 계정 삭제다 — 사장님이 돈을 보려다 가게를 잃는다')
       .not.toContain('account/withdraw')
-    expect(code).toContain("api.post('/api/seller/deal-withdraw'")
+    // 2026-10-12: 셀러 돈은 매주 자동으로 나간다 — 이 화면에서 돈을 움직이는 요청이 생기면
+    //   주간 정산과 **두 번째 출구**가 된다(같은 돈이 두 길로 나갈 수 있다).
+    expect(code, '정산 시트에 쓰기 요청이 생겼다').not.toMatch(/api\.(post|put|patch|delete)\(/)
+    expect(code, '닫은 문(deal-withdraw)을 다시 부른다').not.toContain('deal-withdraw')
+  })
+
+  it('숫자의 출처는 주간 자동 정산(payouts) 하나다', () => {
+    const code = stripComments(PAYOUT)
+    expect(code).toContain("api.get('/api/seller/payouts')")
+    expect(code, '한 번도 적립되지 않는 잔액을 다시 읽는다 — 늘 0원이 뜬다').not.toContain('/api/seller/deal-balance')
   })
 
   it('마이 판매 화면 어디에도 탈퇴 엔드포인트가 없다', () => {
-    for (const [name, code] of [['section', SECTION]] as const) {
+    for (const [name, code] of [['section', SECTION], ['payout', PAYOUT], ['bank', BANK]] as const) {
       expect(stripComments(code), `${name}`).not.toContain('account/withdraw')
     }
   })
 
-  it('최소 금액은 서버와 맞춘 하나의 값이다', () => {
-    const code = stripComments(WITHDRAW)
-    expect(code).toContain('export const MIN_WITHDRAW = 10_000')
-    // 화면이 서버보다 느슨하면 사장님이 400 을 받고 이유를 모른다.
-    expect(code).toMatch(/parsed >= MIN_WITHDRAW/)
-  })
-
-  // 🩸 이 시험은 2026-09-25 에 한 번 뒤집혔다. 처음엔 *"계좌 세 필드를 아예 안 보낸다"* 로 썼는데,
-  //   실측해 보니 `settlements` 행은 **요청 본문 값 그대로** 저장되고 어드민 지급 센터는 그 행만
-  //   읽는다(`sellers` 폴백 없음) — 안 보내면 **송금할 계좌가 없는 지급 행**이 조용히 생긴다.
-  //   ⇒ 지켜야 할 것은 "안 보낸다" 가 아니라 **"화면이 지어내지 않는다"** 였다.
-  it('입금 계좌는 서버에서 받아 그대로 돌려보낸다 (localStorage 금지)', () => {
-    const code = stripComments(WITHDRAW)
-    // ① 출처가 좌석 인증된 서버 응답이다.
-    expect(code, '계좌를 어디서도 안 받아오면 보낼 값이 없다').toContain("api.get('/api/seller/profile')")
-    // ② 그 값을 그대로 싣는다 — 이게 빠지면 어드민이 송금할 계좌가 없는 행이 생긴다.
-    for (const field of ['bank_name', 'account_number', 'account_holder']) {
-      expect(code, `${field} 가 본문에서 빠지면 지급 행이 비어서 저장된다`)
-        .toMatch(new RegExp(`${field}:\\s*payout\\.`))
-    }
-    // ③ 🔴 localStorage 는 **좌석을 안 따라간다** — 가게를 옮긴 뒤 출금하면 직전 가게 계좌로 간다.
-    //    (셀러 대시보드의 DealBalanceCard 가 실제로 그렇게 읽고 있다. 여기로 옮겨오면 안 된다.)
+  it('계좌는 좌석 인증된 서버 응답으로만 판정한다 (localStorage 금지)', () => {
+    const code = stripComments(PAYOUT)
+    expect(code).toContain("api.get('/api/seller/profile')")
+    // 🔴 localStorage 는 **좌석을 안 따라간다** — 가게를 옮긴 뒤엔 직전 가게 계좌 여부를 말한다.
     for (const key of ['seller_bank_name', 'seller_account_number', 'seller_account_holder']) {
-      expect(code, `${key} 를 읽으면 좌석이 바뀐 뒤 남의 계좌로 송금 행이 생긴다`).not.toContain(key)
+      expect(code, `${key} 를 읽으면 좌석이 바뀐 뒤 남의 가게 계좌 상태를 보여 준다`).not.toContain(key)
     }
-    // ④ 계좌를 못 받았으면 **보내지 않는다**. 송금 못 하는 행을 만드는 게 아무것도 안 하는 것보다 나쁘다.
-    expect(code).toMatch(/canSend\s*=[^\n]*payout !== null/)
   })
 
-  it('계좌 번호를 화면에 통째로 찍지 않는다', () => {
-    const code = stripComments(WITHDRAW)
-    expect(code).toContain('maskAccount(payout.account_number)')
-    // 뒤 4자리만 남는다 — 확인에는 충분하고 화면 캡처로 전부 새지 않는다.
-    expect(code).toMatch(/digits\.slice\(-4\)/)
-  })
-
-  it('서버의 412 넷이 각각 사람 말로 번역된다', () => {
-    const code = stripComments(WITHDRAW)
-    // 🩸 주입 검증이 잡은 것: 코드 이름만 찾으면 **참조 한 곳만 남아도 통과**한다
-    //   (맵 항목을 지워도 `BLOCKED.BUSINESS_REGISTRATION_REQUIRED` 가 남는다).
-    //   지키려는 건 "그 코드에 **안내 문장이 붙어 있는가**" 이므로 쌍으로 앵커한다.
-    for (const c of ['BUSINESS_REGISTRATION_REQUIRED', 'PIN_REQUIRED', 'ACCOUNT_REVERIFICATION_REQUIRED']) {
-      expect(code, `${c} 가 "출금 실패" 로 뭉뚱그려지면 사장님은 할 일을 모른다`)
-        .toMatch(new RegExp(`${c}:\\s*'[^']{10,}'`))
-    }
-    expect(code, '서버가 준 code 로 안내를 고르지 않으면 번역표가 죽은 코드가 된다').toMatch(/BLOCKED\[res\.code\]/)
+  it('조회 실패를 0원으로 위장하지 않는다', () => {
+    const code = stripComments(PAYOUT)
+    expect(code, '실패하면 "불러오지 못했어요" 가 떠야 한다 — 0원은 거짓말이다').toContain('정산 정보를 불러오지 못했어요')
+    expect(code).toMatch(/if \(!p\.data\?\.success\) \{ setFailed\(true\)/)
   })
 })
 
@@ -138,19 +117,20 @@ describe('시트는 좌석이 맞을 때만 열리고, 같은 셸을 쓴다', ()
   })
 
   it('남은 시트가 좌석을 스스로도 확인한다', () => {
-    for (const [name, code] of [['withdraw', WITHDRAW]] as const) {
+    for (const [name, code] of [['payout', PAYOUT]] as const) {
       expect(stripComments(code), `${name}`).toContain('currentSeatId() !== sellerId')
     }
   })
 
   it('쓰기 시트는 보내기 직전 assertSeat 을 지난다', () => {
-    for (const [name, code] of [['withdraw', WITHDRAW]] as const) {
+    // 💰 2026-10-12: 남은 쓰기 시트는 계좌(`BankSheet`) — 정산 시트는 읽기 전용이 됐다.
+    for (const [name, code] of [['bank', BANK]] as const) {
       expect(stripComments(code), `${name}`).toContain('assertSeat(sellerId)')
     }
   })
 
   it('시트 셸이 하나다 — 높이·z-index·스크롤 규약이 갈리지 않게', () => {
-    for (const [name, code] of [['withdraw', WITHDRAW]] as const) {
+    for (const [name, code] of [['payout', PAYOUT], ['bank', BANK]] as const) {
       expect(stripComments(code), `${name} 가 자체 오버레이를 그리면 셸이 두 벌이 된다`).toContain("from './Sheet'")
       expect(stripComments(code), `${name}`).not.toContain('fixed inset-0')
     }

@@ -131,7 +131,7 @@ function listItem(p: SeedItem, position: number, origin: string): Record<string,
 }
 
 /** 지역 허브(`/region`)의 빵부스러기 라벨 — 표의 다른 `crumb` 과 같은 길이 감각(짧게). */
-const REGION_HUB_CRUMB = '지역'
+export const REGION_HUB_CRUMB = '지역'
 
 /**
  * 빵부스러기 체인. 경로 조각을 접두부터 되짚어 표에 있는 것만 단계로 쌓는다

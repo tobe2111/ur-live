@@ -99,7 +99,10 @@ export interface DigestRow {
 
 /** 이 경로가 요약을 쓰는가 — 지역 착지 페이지와 `/stays`(자기 슬롯이 없어 홈 시드를 쓴다). */
 export function regionDigestApplies(pathname: string): boolean {
-  return pathname === '/stays' || REGION_PATH_RE.test(pathname)
+  // 🔗 2026-10-12: **허브(`/region`)도 받는다** — `regionChildLinks` 가 색인 대상 시/도 링크를
+  //   만드는 데 쓴다(종전엔 허브가 요약을 못 받아 크롤러에게 **링크 0개**를 줬다).
+  //   `regionThinByDigest` 는 따로 `REGION_PATH_RE` 를 보므로 허브가 noindex 가 되지는 않는다.
+  return pathname === '/stays' || pathname === '/region' || REGION_PATH_RE.test(pathname)
 }
 
 /** 응답 봉투(배열 / `{products}`) 둘 다 받는다 — 표면마다 모양이 다르다. */
@@ -204,4 +207,82 @@ export function regionThinByDigest(pathname: string, digestJson: string | null |
     if (addressInRegion(r?.restaurant_address || r?.business_address, ref)) n++
   }
   return n < REGION_INDEX_MIN_DEALS
+}
+
+/**
+ * 🔗 2026-10-12 — 지역 트리의 **자식 링크**(허브 → 시/도 → 시군구).
+ *
+ * **왜 있나(라이브 실측 — Googlebot UA 로 서버 HTML 의 `<a href>` 를 셌다)**: 색인 대상 지역이
+ * **43~44개**인데 그 트리로 들어가는 **내부 링크가 0개**였다. 허브 `/region` 은 본문 120자에
+ * a태그 **0**, 시/도 페이지도 자기 상품만 링크하고 **자식 시군구로 가는 길이 없었다.**
+ * ⇒ 그 44개가 **sitemap 으로만** 발견되고 내부 링크 가치는 0 이다. JS 를 렌더하는 Googlebot 은
+ * 화면의 링크를 보지만 **Yeti(네이버)·AI 검색봇은 이 문서가 전부**다.
+ *
+ * 🔑 **링크는 색인 대상만 낸다.** 판정은 `regionThinByDigest` 와 **같은 데이터·같은 술어**
+ * (`addressInRegion` + `REGION_INDEX_MIN_DEALS`)라, *"링크한다"* ⟺ *"thin 이 아니다"* 가
+ * 구조적으로 보장된다 — thin 지역을 링크하면 **색인 말라고 한 URL 로 크롤 예산이 빠진다**
+ * (오늘 교환권 상세·facet 에서 반복해 피한 그 모순이다).
+ *
+ * 🔴 **요약이 없으면 링크를 만들지 않는다** — 부재는 "없다" 가 아니다. 지어낸 링크는 404 를
+ * 가리키게 되고, 그건 아무 링크도 없는 것보다 나쁘다.
+ */
+export function regionChildLinks(
+  pathname: string,
+  digestJson: string | null | undefined,
+): Array<{ label: string; href: string }> {
+  if (!digestJson) return []
+  const clean = pathname.replace(/\/+$/, '') || '/'
+  const seg = clean.split('/')
+  // 허브(`/region`) 또는 시/도 한 단계(`/region/서울`)만. 시군구는 잎이라 자식이 없다.
+  if (seg[1] !== 'region' || seg.length > 3) return []
+  let parent: RegionRef | null = null
+  if (seg.length === 3) {
+    try {
+      parent = parseRegionPath(decodeURIComponent(seg[2] || ''))
+    } catch {
+      return []
+    }
+    if (!parent || parent.sigungu) return []
+  }
+
+  // 🔑 **요약이 없으면 링크가 구조적으로 0 이다** — 아래 루프가 행에서만 후보를 만든다.
+  //   그래서 `if (!rows.length) return []` 같은 방어를 따로 두지 않았다: 중복 잠금은 각 잠금을
+  //   시험 불가능하게 만든다(주입이 *"요약이 없어도 링크를 만든다"* 를 심었는데 통과했다 —
+  //   루프가 이미 0 을 내기 때문이다). 지금 위험한 방향은 **없는 데이터로 전국 목록을 지어내는
+  //   폴백을 넣는 것**이고, 그쪽을 주입이 지킨다.
+  const rows = digestRowsOf(digestJson)
+
+  // 후보를 모은다 — 주소 파싱은 `buildRegionDigest` 와 **같은 함수**다(두 벌이면 갈린다).
+  //   ⚠️ 여기서 교환권을 거르지 **않는다**: 거르는 자리는 아래 세는 루프 하나다(같은 규칙을 두 군데
+  //   두면 한쪽을 지워도 결과가 같아 **어느 쪽도 출력으로 판정할 수 없다**). 후보로 올라와도
+  //   세는 값이 0 이면 자연히 빠진다.
+  const cands = new Map<string, RegionRef>()
+  for (const r of rows) {
+    const ref = parseRegionFromAddress(r?.restaurant_address || r?.business_address)
+    if (!ref) continue
+    if (parent) {
+      if (ref.sido !== parent.sido || !ref.sigungu) continue
+      cands.set(`${ref.sido}\u0000${ref.sigungu}`, { sido: ref.sido, sigungu: ref.sigungu })
+    } else {
+      cands.set(ref.sido, { sido: ref.sido })
+    }
+  }
+
+  const out: Array<{ label: string; href: string }> = []
+  for (const ref of cands.values()) {
+    // 세는 방법을 `regionThinByDigest` 와 똑같이 — 그래야 링크 집합이 색인 집합과 같다.
+    let n = 0
+    for (const r of rows) {
+      if (Number(r?.deal_only) === 1) continue
+      if (addressInRegion(r?.restaurant_address || r?.business_address, ref)) n++
+    }
+    if (n < REGION_INDEX_MIN_DEALS) continue
+    const href = ref.sigungu
+      ? `/region/${encodeURIComponent(ref.sido)}/${encodeURIComponent(ref.sigungu)}`
+      : `/region/${encodeURIComponent(ref.sido)}`
+    out.push({ label: ref.sigungu || ref.sido, href })
+    // ⚠️ 상한 — `<noscript>` 는 **사람이 받는 응답에도 그대로 실린다**(크롤러 전용은 가이드 위반).
+    if (out.length >= 17) break
+  }
+  return out
 }

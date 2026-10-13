@@ -72,7 +72,9 @@ const HAS_FALLBACK = /INSERT INTO point_transactions \(user_id, type, amount, de
 /** base CREATE 가 보장하는 컬럼만 쓰는 INSERT — 드리프트로 깨질 수 없으므로 폴백 불요. */
 const MINIMAL_INSERT = /INSERT INTO point_transactions\s*\(\s*user_id,\s*type,\s*amount,\s*description\s*\)/
 /** 원장 기록을 SSOT 헬퍼에 위임하는 형태(직접 INSERT 를 안 써도 안전). */
-const VIA_SSOT = /adjustUserPoints\s*\(|recordPointTransaction\s*\(|creditFreePoints\s*\(|recordPointTxMinimal\s*\(/
+// 💸 2026-10-12: `refundDealPoints`(point-buckets — 원 버킷 복원)도 원장을 쓴다(free_delta 포함). 환불 두 경로가
+//   `adjustUserPoints` → 이것으로 옮겨가자 이 정규식이 그 파일을 '원장 언급 0' 으로 읽었다.
+const VIA_SSOT = /adjustUserPoints\s*\(|recordPointTransaction\s*\(|creditFreePoints\s*\(|recordPointTxMinimal\s*\(|refundDealPoints\s*\(/
 
 const files = walk(path.join(ROOT, 'src'))
 if (files.length < 200) {

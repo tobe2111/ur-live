@@ -3,7 +3,7 @@
 //   매장 등록 때 **매장 코드 자동 생성 + 귀사 몫 % + 인플루언서 소개비 %** · 사장님이 가입하며 코드 입력 → 주인(등록증 확인 그대로 · 첫 정산 전까지만) ·
 //   인플루언서에게는 **코드 링크 한 탭**(가입 + 즉시 매칭) · 마이페이지에 **매장 단위 고유 링크** · 귀사 몫은 유어딜이 직접 송금(청구 없음).
 //   "보수·청구·매장과 직접" 문구 전부 교체. 영입 2% 행 삭제(09-16 폐지). ✅ 코드는 같은 날 PR #1499 로 main 에(승계 코드 · 협업 코드 · 딜 % 조정 · 성과 화면).
-//   귀사 몫 직접 송금(broker-share.ts)만 게이트 broker_share_enabled OFF — §14 가 그 사실을 밝힌다. 개별 소개비 = 협업 코드 기본 % + 딜별 조정(등록 때 정한 상한 안).
+//   귀사 몫 직접 송금(broker-share.ts)은 2026-10-12 실측에서 broker_share_enabled=ON 이고 적립 1건 — §14 가 그 사실을 밝힌다(적립≠송금). 개별 소개비 = 협업 코드 기본 % + 딜별 조정(등록 때 정한 상한 안).
 // v7 (2026-09-15): v6 21장 + 참고 덱(히로인스) 장치 8장 = 29장.
 //   PART 구분 장 3 + 우상단 라벨 · 직접 vs 경유 강조 열 표 · 플라이휠 · "이런 대행사에 맞습니다" 페르소나 · 목표별 이용권 설계 표 · 운영자 화면 인출선 · 사장님/인플루언서/대행사 절차 3열 · 하단 결론 바.
 // v5 (2026-09-13): v4(09-07 대표 참고 PDF 반영)를 공통 모듈 deck-common.mjs 로 이행 + 실측 갱신
@@ -56,7 +56,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     });
     T(s, '유어딜은 손님이 미리 결제하고 매장에 찾아오는 이용권을 팝니다. 식당, 뷰티샵, 숙소가 팔고 있습니다. 매장을 모으고 대신 운영해 주실 파트너를 찾습니다.', { x: M, y: 6.2, w: 7.4, h: 0.5, fontSize: 10.5, color: C.darkMuted, lineSpacingMultiple: 1.4, valign: 'top' });
     phone(s, 'home', 9.3, 0.95, 5.95, { dark: true });
-    s.addNotes('표지. 5% / 95% / 0원. 5%: 2026-09-04 확정. 귀사 몫 직접 송금: 2026-09-16 결재 + 09-19 플로우(코드 미착수). 오른쪽은 urdeal.kr 홈(모바일) 라이브 캡처.');
+    s.addNotes('표지. 5% / 95% / 0원. 5%: 2026-09-04 확정. 귀사 몫 직접 송금: 2026-09-16 결재 + 09-19 플로우 — 2026-10-12 실측 broker_share_enabled=ON, 적립 1건. 오른쪽은 urdeal.kr 홈(모바일) 라이브 캡처.');
   }
 
   // ───────── 02 한 장 요약 ─────────
@@ -154,7 +154,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
       T(s, p, { x: x + 0.25, y: cy2 + 0.44, w: cw2 - 0.5, h: 0.68, fontSize: 9.5, color: C.inkSoft, lineSpacingMultiple: 1.35, valign: 'top' });
     });
     takeaway(s, '유어딜 정산은 매장, 귀사, 인플루언서 각자의 계좌로 갑니다. 귀사 몫을 매장에 청구할 일이 없습니다.', { y: 6.52, h: 0.34, size: 10.5 });
-    s.addNotes('5%: 2026-09-04 대표 확정. 귀사 몫·소개비 직접 송금: 2026-09-16 결재(broker-payout-model 안 1) + 09-19 플로우(매장 등록 때 두 요율). 🚧 코드 미착수. PG 2.75% 는 commission-budget.ts 실측 상수(플랫폼 부담). 정산은 used 이용권만 주간(auto-settlement.ts).');
+    s.addNotes('5%: 2026-09-04 대표 확정. 귀사 몫·소개비 직접 송금: 2026-09-16 결재(broker-payout-model 안 1) + 09-19 플로우(매장 등록 때 두 요율). ✅ 2026-10-12 실측: broker_share_enabled=ON, 적립 1건(송금은 사용 확인 뒤 월 1일). PG 2.75% 는 commission-budget.ts 실측 상수(플랫폼 부담). 정산은 used 이용권만 주간(auto-settlement.ts).');
   }
 
   // ───────── 04-2 직접 입점 vs 대행사 경유 (강조 열 표) ─────────
@@ -181,7 +181,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
       { text: '5%와 10%의 차이는 귀사 몫이 아니라 유어딜이 덜 받는 것. ', options: { color: C.inkSoft } },
       { text: '귀사 몫은 95% 안에서 등록 때 정하고, 유어딜이 보냅니다.', options: { bold: true, color: C.ink } },
     ], { y: 6.42, h: 0.42, size: 11 });
-    s.addNotes('09-15 참고 덱 "플랜별 기능 비교" 장치. 사실: fee-resolver.ts(직접 10 / 중개 5) · store-operator-model §7·§9(운영자 권한·계좌 owner 전용·회수·코드). 영입 2% 행은 09-16 폐지로 삭제. 귀사 몫 송금·코드는 09-19 확정, 코드 미착수.');
+    s.addNotes('09-15 참고 덱 "플랜별 기능 비교" 장치. 사실: fee-resolver.ts(직접 10 / 중개 5) · store-operator-model §7·§9(운영자 권한·계좌 owner 전용·회수·코드). 영입 2% 행은 09-16 폐지로 삭제. 귀사 몫 송금·코드는 09-19 확정 — 2026-10-12 실측에서 broker_share_enabled=ON, 적립 1건(송금은 사용 확인 뒤 월 1일).');
   }
 
   // ───────── 05 매장 1곳 단위 경제 + 규모별 계산 ─────────
@@ -359,7 +359,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
       ['FiVideo', '인플루언서 매니지먼트 · MCN', '"소속 크리에이터에게 줄 딜이 부족해요."', ['매장을 등록하고 소속 채널에 코드 링크를 보내면 탭 한 번에 매칭되고 소개비가 자동 귀속됩니다', '귀속, 확정, 원천징수, 지급은 유어딜이 합니다']],
       ['FiLayers', '여러 매장을 한 번에 보는 곳', '"매장마다 계정을 따로 만들기가 번거로워요."', ['운영자 권한 하나로 여러 매장을 한 대시보드에서 봅니다', '정산 계좌는 매장 주인만. 귀사는 통장을 못 건드립니다']],
     ], { y: 2.6, rowH: 0.92, gap: 0.14 });
-    s.addNotes('09-15 참고 덱 "이런 브랜드에게 추천합니다" 장치. 사실: 운영 매장 요약(SellerOperatingSummaryPage) · 귀사 몫 직접 송금(09-16 결재, 코드 미착수) · 코드 링크 매칭(09-19) · store-operator-model §7·§9(계좌 owner 전용).');
+    s.addNotes('09-15 참고 덱 "이런 브랜드에게 추천합니다" 장치. 사실: 운영 매장 요약(SellerOperatingSummaryPage) · 귀사 몫 직접 송금(09-16 결재 · 2026-10-12 ON) · 코드 링크 매칭(09-19) · store-operator-model §7·§9(계좌 owner 전용).');
   }
 
   // ───────── 08 매장 등록 10분 (+ 매장 관리 화면) ─────────
@@ -655,14 +655,14 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     T(s, '귀사 몫 %는 매장 단위입니다. 운영자별로 누가 만든 매출인지 따로 가르지 않고, 확정된 주문의 총액에 등록 때 정한 %가 붙습니다. 화면도 매장 총액을 보여 주고 그 사실을 문장으로 밝힙니다. 두 대행사가 한 매장을 나눠 맡는 구조는 지원하지 않습니다.',
       { x: lx + 0.35, y: 3.15, w: lw - 0.7, h: 1.1, fontSize: 10.5, color: C.inkSoft, lineSpacingMultiple: 1.42, valign: 'top' });
     card(s, lx, 4.55, lw, 1.45, { fill: C.tint });
-    T(s, '5%의 경계, 권한, 코드는 라이브. 귀사 몫 직접 송금은 켜기 전입니다', { x: lx + 0.35, y: 4.72, w: lw - 0.7, h: 0.3, fontSize: 12.5, bold: true, color: C.ink, charSpacing: -0.3 });
-    T(s, '5%와 95%의 경계, 정산계좌 차단, 매장 코드와 협업 코드, 성과 화면은 지금 작동하는 기능입니다. 귀사 몫을 유어딜이 직접 보내는 송금은 코드가 준비된 채 실결제 검증 뒤에 켭니다. 켜기 전까지는 종전대로 귀사 몫을 매장과 직접 정산합니다.',
+    T(s, '5%의 경계, 권한, 코드, 귀사 몫 직접 송금까지 라이브입니다', { x: lx + 0.35, y: 4.72, w: lw - 0.7, h: 0.3, fontSize: 12.5, bold: true, color: C.ink, charSpacing: -0.3 });
+    T(s, '5%와 95%의 경계, 정산계좌 차단, 매장 코드와 협업 코드, 성과 화면이 지금 작동합니다. 귀사 몫을 유어딜이 직접 보내는 레일도 켜져 있고, 실제 주문에서 적립이 시작됐습니다. 다만 적립은 송금이 아닙니다 — 손님이 이용권을 실제로 쓴 것이 확인되면 익고, 쌓인 금액이 ' + FACTS.influencerPayoutMin + ' 을 넘으면 매월 1일에 보냅니다. 아직 보낸 횟수가 많지 않다는 점은 그대로 말씀드립니다.',
       { x: lx + 0.35, y: 5.05, w: lw - 0.7, h: 0.9, fontSize: 10.5, color: C.ink, lineSpacingMultiple: 1.42, valign: 'top' });
     s.addShape(pres.shapes.LINE, { x: lx, y: 6.24, w: 0, h: 0.5, line: { color: C.brand, width: 2 } });
     T(s, '"매장 등록. 이때 매장 코드가 자동 생성되고, 중개사 몫 %와 인플루언서 커미션 %도 같이 정한다." "대행사 몫은 유어딜이 직접 송금."', { x: lx + 0.25, y: 6.2, w: lw - 0.25, h: 0.4, fontSize: 10.5, italic: true, color: C.ink, lineSpacingMultiple: 1.35, valign: 'top' });
     T(s, '유어딜 대표, 2026년 9월 19일 확정', { x: lx + 0.25, y: 6.55, w: lw, h: 0.22, fontSize: 9, color: C.gray });
     phone(s, 'seller-operating', 10.05, 1.15, 5.15, { caption: '운영 매장 요약. 화면이 그 경계를 직접 말합니다' });
-    s.addNotes('09-19 v8: 09-04 인용을 09-16·09-19 결정으로 교체. 귀사 몫은 매장 단위 %(seller_meta.broker_share_pct). PR #1499: 코드·협업 코드·성과 화면은 라이브, broker-share.ts 는 게이트 broker_share_enabled OFF(STAGING S-BROKER 5건 뒤 대표가 켠다) — 문장이 그 사실을 밝힌다. 오른쪽은 /seller/operating 실제 UI + 예시 데이터(인플루언서별 행은 캡처 시점 전).');
+    s.addNotes('귀사 몫은 매장 단위 %(seller_meta.broker_share_pct). ✅ 2026-10-12 실측으로 문장을 뒤집었다 — broker_share_enabled=**true(ON)** 이고 influencer_attributions(source=broker_share) 에 실제 적립 1건(seller 26 · 620원 · status=pending · 2026-10-07). 종전 문장 "켜기 전입니다 / 종전대로 매장과 직접 정산" 은 **지금 사실과 다르다**(대행사에게 돈 얘기를 틀리게 말하는 자리라 가장 먼저 고쳤다). 🔑 그래도 "송금했다" 고는 말하지 않는다 — pending 은 적립이고, 성숙은 payout_requires_voucher_use=true(라이브) 게이트가 이용권 사용을 확인한 뒤이고, 실제 송금은 어드민 [송금 처리] 가 한 번 더 있다. 최소 지급액은 **10만원**(cron/influencer-payout.ts DEFAULT_PAYOUT_MIN=100_000 · 라이브 influencer_payout_min=100000 · 매월 1일) — 🩸 초안에 "1만원" 이라고 썼다가 코드를 확인하고 고쳤다. 1만원은 매장(셀러) 레일의 최소액이고 중개 몫은 인플루언서 레일이라 다르다(딜로 받으면 최소액 없음). 그래서 "적립이 시작됐다 / 적립은 송금이 아니다" 두 문장으로 쪼갰다. 오른쪽은 /seller/operating 실제 UI + 예시 데이터.');
   }
 
   // ───────── PART 4 구분 장 ─────────
@@ -737,7 +737,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
       { title: '인플루언서', steps: ['귀사가 보낸 코드 링크를 탭 → 가입, 즉시 매칭', '(직접 왔다면 마이페이지에서 코드 입력)', '마이페이지에 매장 단위 링크 (복사·카톡 공유)', '콘텐츠와 유어샵에 링크', '이용권 사용 후 확정, ' + FACTS.influencerPayoutDay + ' 유어딜이 지급', '원천징수는 유어딜이 계산'], note: '소개비 %는 협업 코드의 값, 딜마다 조정' },
       { title: '귀사 (대행사)', hi: true, steps: ['셀러 계정 (사업자 인증 10분)', '매장을 "중개"로 등록 → 5%, 코드 자동 생성', '귀사 몫 %와 인플루언서 상한 % 입력, 사장님께 코드', '이용권 2~3개 열기 (사진·정가·판매가·기간)', 'DB에서 인플루언서 골라 코드 링크 발송', '대시보드에서 매장별·인플루언서별 성과와 내 몫'], note: '유어딜에 내는 돈 0. 귀사 몫은 유어딜이 송금' },
     ], { y: 2.55, h: 4.2 });
-    s.addNotes('09-15 참고 덱 "광고 집행 절차" 장치. 09-19 v8: 세 열을 대표 확정 플로우 11단계로 재배열 — PR #1499 구현(승계 코드 /store/find?code= · 협업 코드 /i/join/:code · 매장 링크 · /seller/operating). 직접 송금은 게이트 OFF.');
+    s.addNotes('09-15 참고 덱 "광고 집행 절차" 장치. 09-19 v8: 세 열을 대표 확정 플로우 11단계로 재배열 — PR #1499 구현(승계 코드 /store/find?code= · 협업 코드 /i/join/:code · 매장 링크 · /seller/operating). 직접 송금은 2026-10-12 실측 게이트 ON.');
   }
 
   // ───────── 17 FAQ + 시작하는 방법 + 연락처 ─────────

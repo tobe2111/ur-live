@@ -47,8 +47,15 @@ export default [
   {
     name: '숙소 정본 — `/pass/:id` canonical 을 자기 자신으로 환원 (두 URL 색인 경쟁)',
     file: M,
-    find: '    const canonical = `${origin}${canonicalPath && canonicalPath.startsWith(\'/\') ? canonicalPath : pathname}`',
-    replace: '    const canonical = `${origin}${pathname}`',
+    // 🔀 2026-10-12 재조준: `buildProductMeta` 도 같은 SSOT 를 쓰게 되면서 이 줄이 **두 곳**에
+    //    맞게 됐다(그러면 러너가 어느 쪽을 고쳤는지 모른다). 결함은 한 글자도 안 바꾸고 앞줄을
+    //    더해 `buildDetailMeta` 쪽으로 고유화한다 — `buildProductMeta` 는 삼항이라 모양이 다르다.
+    find:
+      "    const canonicalPath = canonicalDetailPath({ id: id ?? '', deal_only: d.deal_only, category: d.category })\n" +
+      '    const canonical = `${origin}${canonicalPath && canonicalPath.startsWith(\'/\') ? canonicalPath : pathname}`',
+    replace:
+      "    const canonicalPath = canonicalDetailPath({ id: id ?? '', deal_only: d.deal_only, category: d.category })\n" +
+      '    const canonical = `${origin}${pathname}`',
     test: T,
     why:
       '정확히 종전 상태다 — 같은 `products.id` 가 `/pass/2887` 과 `/stays/2887` **둘 다** 자기를 ' +
@@ -111,8 +118,11 @@ export default [
   {
     name: 'thin 지역 — 교환권도 센다 (매장이 없는데 지역 딜로 집계)',
     file: D,
-    find: "    if (Number(r?.deal_only) === 1) continue",
-    replace: "    if (false as boolean) continue",
+    // 🔀 2026-10-12 재조준: 같은 규칙이 `regionChildLinks` 의 세는 루프에도 생겨 이 한 줄이
+    //   **두 곳**에 맞게 됐다(앵커는 유일해야 한다). `regionThinByDigest` 쪽 맥락까지 포함한다 —
+    //   결함(thin 판정이 교환권을 센다)은 한 글자도 안 바꿨다.
+    find: "  let n = 0\n  for (const r of rows) {\n    if (Number(r?.deal_only) === 1) continue",
+    replace: "  let n = 0\n  for (const r of rows) {\n    if (false as boolean) continue",
     test: T,
     why:
       '교환권(기프티콘)은 매장이 없고 주소도 지역 딜이 아니다 — 그걸 세면 실제로는 thin 인 지역이 ' +
