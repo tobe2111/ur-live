@@ -305,21 +305,21 @@ export default defineConfig({
           // 💸 2026-09-08: 가격·할인율 표시 규칙 SSOT — 홈 딜 카드와 유어쇼츠 구매 바가 함께 읽는다.
           //   위 `deal-card-grid` 와 **정확히 같은 함정**이라 같은 자리에 둔다(가드가 바로 잡아냈다).
           if (id.includes('/src/shared/price-display')) return 'app-shared'
-          // 🩸 2026-10-13: 장소 URL SSOT — 손님 매장 지도(RestaurantMiniMap)와 셀러 매장 등록이 함께 읽는다.
-          //   규칙이 없어 Rollup 이 셀러 봉투(app-seller-components)에 넣었고, 그러자 app-components →
-          //   app-seller-components → app-components **순환**이 생겨 셀러 청크의 최상위 코드가 아직 평가 안 된
-          //   app-components 값(StatusTone)을 읽다 TDZ 로 터졌다 — **라이브 전 페이지가 오류 화면**이었다.
+          // 🩸 2026-10-13 장애: 장소 URL SSOT — 손님 매장 지도(RestaurantMiniMap)와 셀러 매장 등록이 함께 읽는다.
+          //   #1756 이 RestaurantMiniMap(→ app-components)에서 이 파일을 import 했는데 규칙이 없어 Rollup 이
+          //   셀러 쪽 사용처를 따라 셀러 봉투(app-seller-components)에 넣었다 → app-components ↔
+          //   app-seller-components **순환** → 셀러 청크의 최상위 코드가 아직 평가 안 된 app-components 값
+          //   (`TONE_PILL`/`StatusTone`)을 읽어 TDZ(`Cannot access before initialization`) → **소비자 전 페이지가**
+          //   **ErrorBoundary('문제가 발생했습니다')로** 떨어졌다. Rollup 은 경고만 찍어 빌드·CI·배포가 전부 초록이었다.
           //   아래 onLog 게이트가 이 클래스(새 청크 순환)를 이제 빌드 실패로 막는다.
+          // 🩸 그리고 이 한 줄이 2026-10-13 에 **두 번** 들어왔다 — 두 세션이 같은 사고를 각자 고쳐 머지가 둘 다
+          //   받았고(둘째는 첫째가 return 하므로 죽은 코드), 그 바람에 주입 앵커가 2곳에 맞아 `Guard mutations
+          //   (full)` 이 main 에서 **연속 두 번 빨간불**이 났다(#1760·#1722 head). 규칙은 한 줄만 둘 것.
           if (id.includes('/src/shared/kakao-place-url')) return 'app-shared'
           // 🎬 2026-09-09: 유어쇼츠 SSOT(카드 크기·뷰어 주소·유튜브 id 파싱) — import 0 인 순수 상수 모듈인데
           //   홈 헤더 진입점이 `URSHORTS_VIEWER_PATH` 를 읽는 순간 catch-all 로 떨어져 홈 폐쇄가
           //   청크를 하나 더 끌고 왔다. 위 둘과 **정확히 같은 함정**이라 같은 자리에 둔다(가드가 잡았다).
           if (id.includes('/src/shared/urshorts')) return 'app-shared'
-          // 🔥 2026-10-13 장애: #1756 이 RestaurantMiniMap(→ app-components)에서 이 파일을 import 했는데 규칙이 없어
-          //   Rollup 이 셀러 쪽 사용처를 따라 app-seller-components 에 넣었다 → app-components ↔ app-seller-components
-          //   순환 → 셀러 청크가 app-components 의 TONE_PILL 을 초기화 전에 읽어 TDZ("Cannot access before
-          //   initialization") — 소비자 전 페이지가 ErrorBoundary 로 떨어졌다. 공용 모듈은 공용 봉투로.
-          if (id.includes('/src/shared/kakao-place-url')) return 'app-shared'
           // 🖊️ 2026-08-30: 유어딜 전용 아이콘(`components/icons/urdeal-icons`)도 **정확히 같은 함정**에
           //   빠졌다. 60줄짜리 순수 SVG 리프 모듈인데 `/src/components/` catch-all 에 걸려
           //   `app-components`(166KB · 58모듈)로 들어갔고, 그걸 **BottomNav·DesktopTopNav**

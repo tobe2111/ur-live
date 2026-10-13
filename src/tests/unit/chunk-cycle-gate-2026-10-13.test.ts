@@ -11,6 +11,12 @@
  *  ① vite.config 의 onLog 가 CIRCULAR_CHUNK 를 **던진다**(경고로 흘리지 않는다)
  *  ② 허용목록은 그날 이미 있던 두 순환뿐이다(늘리는 것 = 게이트를 끄는 것)
  *  ③ kakao-place-url 은 공용 봉투(app-shared)에 있다
+ *  ④ manualChunks 의 같은 경로 규칙이 **두 번** 들어오지 않는다
+ *
+ * 🩸 ④ 가 왜 생겼나(2026-10-13): 이 사고를 **두 세션이 각자 고쳤고** 머지가 `kakao-place-url` 규칙을
+ *   두 줄 다 받았다. 둘째는 첫째가 `return` 하므로 **죽은 코드**라 빌드·화면·이 시험 ①~③ 전부 초록인데,
+ *   주입 앵커가 2곳에 맞아 `Guard mutations (full)` 이 main 에서 **연속 두 번 빨간불**이 났다
+ *   (`주입 대상이 2곳 — 유일해야 한다`). 즉 중복은 '무해한 중복' 이 아니라 **가드를 멈추는 결함**이다.
  *
  * ⚠️ 못 보는 것: 실제 빌드 결과(이 시험은 설정을 읽는다). 게이트 자체가 빌드에서 실제로 던지는지는
  *   2026-10-13 에 규칙을 빼고 빌드해 `[chunk-cycle]` 로 EXIT 1 을 확인했다.
@@ -44,5 +50,14 @@ describe('청크 순환 게이트', () => {
   it('③ kakao-place-url 은 app-shared 로 간다', () => {
     expect(src).toMatch(/if \(id\.includes\('\/src\/shared\/kakao-place-url'\)\) return 'app-shared'/)
     expect(src.indexOf("'/src/shared/kakao-place-url'")).toBeLessThan(src.indexOf("if (id.includes('/src/components/seller/')) return 'app-seller-components'"))
+  })
+
+  it('④ manualChunks 에 같은 경로 규칙이 두 번 들어오지 않는다', () => {
+    // 판정은 `id.includes('<경로>')` 의 **경로**로 한다 — 같은 경로를 두 번 분기하면 뒤쪽은 죽은 코드이고,
+    // 주입 앵커가 모호해져 가드가 멎는다(머리말 🩸).
+    const paths = [...src.matchAll(/id\.includes\('([^']+)'\)/g)].map((m) => m[1])
+    expect(paths.length, '규칙을 하나도 못 읽었다 — 정규식이 낡았다(0건이면 통과가 아니라 고장)').toBeGreaterThan(30)
+    const dup = [...new Set(paths.filter((p, i) => paths.indexOf(p) !== i))]
+    expect(dup, `같은 경로 규칙이 중복이다: ${dup.join(', ')}`).toEqual([])
   })
 })
