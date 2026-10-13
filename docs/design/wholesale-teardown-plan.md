@@ -113,6 +113,10 @@
     (`deploy/ur-wholesale-tombstone/_worker.js`)만 올린다. 프로젝트 삭제 자체는 대시보드에서 **대표가**(세션 토큰
     읽기 전용) — 삭제 뒤 `deploy-wholesale.yml` 을 지운다. ③ `utongstart.com` — 레지스트라 일이라 코드 밖(갱신 여부
     대표 판단). 가드: `wholesale-tombstone-2026-10-12.test.ts`.
+  - ✅ **2026-10-13 대표 결정 — 남은 둘 종결.** ① `ur-wholesale` 프로젝트: *"그대로 둘게 귀찮아"* → **삭제하지 않고
+    410 묘비로 존치**. 그러므로 묘비 배포 워크플로·묘비 `_worker.js`·빌드 게이트(`pages-tombstone-gate.mjs`)는
+    **영구 유지**다 — 지우면 Cloudflare Git 빌드가 다시 운영 D1·KV 가 붙은 소비자 앱 사본을 올린다.
+    ② `utongstart.com`: *"갱신 안해"* → 만료되게 둔다(코드 참조는 이미 0, 연결된 프로젝트 없음).
 - **§5-6 cron no-op 게이트: 제거하지 않았다**(대표 2026-07-29 확정 그대로 — 정산 엔진이 소비자 워커에 잔류).
 
 실행 기록·교훈: `docs/handoff/2026-10-11-wholesale-teardown.md` · 구조 SSOT: `urdeal-platform-model.md` §1.
