@@ -26,7 +26,7 @@ export default function RefundPolicyPage() {
 
       {/* Content */}
       <div className="ur-content-medium px-5 pt-6">
-        <p className="text-[12px] text-gray-400 dark:text-gray-500 mb-6">시행일자: 2026년 2월 20일</p>
+        <p className="text-[12px] text-gray-400 dark:text-gray-500 mb-6">시행일자: 2026년 10월 13일</p>
 
         {/* 회사 정보 */}
         <section>
@@ -39,9 +39,78 @@ export default function RefundPolicyPage() {
           </div>
         </section>
 
+        {/* 이용권 환불 */}
+        <section className="border-t border-gray-100 dark:border-[#2C2F35] pt-6 mt-6">
+          <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-4">이용권 환불</h2>
+
+          <div className="space-y-3">
+            <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-4">
+              <h3 className="text-[13px] font-semibold text-gray-900 dark:text-white mb-1">유효기간 안에 쓰지 않은 이용권</h3>
+              <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
+                따로 신청하지 않아도 <span className="font-semibold text-gray-900 dark:text-white">결제 금액 전액</span>이 자동으로 환불됩니다.
+                회사는 매일 한 번 만료된 이용권을 확인해 환불하고, 처리되면 알림으로 알려드립니다.
+                <span className="text-gray-500 dark:text-gray-400"> 일할 계산이나 수수료 공제는 없습니다.</span>
+              </p>
+            </div>
+
+            <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-4">
+              <h3 className="text-[13px] font-semibold text-gray-900 dark:text-white mb-1">돌려받는 방법</h3>
+              <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
+                <span className="font-semibold text-gray-900 dark:text-white">결제한 수단 그대로</span> 돌려드립니다.
+                카드로 결제했으면 카드 결제가 취소되고(카드사 사정에 따라 영업일 3~5일), 딜로 결제했으면 딜로 돌아갑니다.
+                딜은 <span className="font-semibold text-gray-900 dark:text-white">쓸 때와 같은 종류</span>로 복원됩니다 — 충전한 딜은 충전 딜로, 리워드로 받은 딜은 리워드 딜로.
+              </p>
+            </div>
+
+            <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-4">
+              <h3 className="text-[13px] font-semibold text-gray-900 dark:text-white mb-1">이미 사용한 이용권</h3>
+              <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
+                매장에서 사용 처리가 끝난 이용권은 <span className="text-tone-bad font-semibold">환불 대상이 아닙니다</span>.
+                매장이 이미 제공한 상품·서비스이기 때문입니다. 제공받은 내용에 문제가 있었다면 고객센터로 알려주세요. 개별적으로 확인해 처리해 드립니다.
+              </p>
+            </div>
+
+            <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-4">
+              <h3 className="text-[13px] font-semibold text-gray-900 dark:text-white mb-1">유효기간 전에 취소하고 싶을 때</h3>
+              <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
+                아직 사용하지 않았다면 고객센터로 요청해 주세요. 확인 후 주문 단위로 취소·환불해 드립니다.
+                기다리셔도 괜찮습니다 — 유효기간이 지나면 위와 같이 자동으로 전액 환불됩니다.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* 딜 환급 */}
+        <section className="border-t border-gray-100 dark:border-[#2C2F35] pt-6 mt-6">
+          <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-4">딜(충전 잔액) 환급</h2>
+
+          <div className="space-y-3">
+            <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-4">
+              <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
+                직접 <span className="font-semibold text-gray-900 dark:text-white">충전하고 아직 쓰지 않은 딜</span>은 현금으로 환급을 신청할 수 있습니다
+                (이용약관 제12조). 마이 페이지에서 신청하시면 확인 후 등록하신 계좌로 입금해 드립니다.
+              </p>
+            </div>
+            <ul className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
+              <li className="flex items-start gap-2">
+                <span className="mt-1">•</span>
+                <span>환급 한도는 <span className="font-semibold text-gray-900 dark:text-white">충전하신 금액</span>까지입니다.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1">•</span>
+                <span>이벤트·리워드로 받은 딜은 환급 대상이 아닙니다.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1">•</span>
+                <span>충전한 돈을 돌려드리는 것이므로 <span className="font-semibold text-gray-900 dark:text-white">원천징수를 하지 않습니다</span>. 소개 수익 출금과는 별개의 절차입니다.</span>
+              </li>
+            </ul>
+          </div>
+        </section>
+
         {/* 교환 및 반품 안내 */}
         <section className="border-t border-gray-100 dark:border-[#2C2F35] pt-6 mt-6">
-          <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-4">교환 및 반품 안내</h2>
+          <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-4">배송 상품 교환 및 반품</h2>
 
           {/* 신청 방법 */}
           <div className="mb-5">
@@ -90,68 +159,6 @@ export default function RefundPolicyPage() {
                 </p>
               </div>
             </div>
-          </div>
-        </section>
-
-        {/* 제22조 환불 */}
-        <section className="border-t border-gray-100 dark:border-[#2C2F35] pt-6 mt-6">
-          <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-4">제22조 (환불)</h2>
-
-          <div className="space-y-4">
-            {/* 1항 */}
-            <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
-              <span className="font-semibold text-gray-900 dark:text-white">1.</span> 회원은 회사에 환불을 요구할 수 있습니다. 환불은 회사가 안내하는 정책 및 방법에 따라 진행됩니다.
-            </p>
-
-            {/* 2항 */}
-            <div>
-              <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed mb-3">
-                <span className="font-semibold text-gray-900 dark:text-white">2.</span> 회사는 다음 각 호의 방식으로 환불을 진행합니다.
-              </p>
-
-              {/* 가. 경기 결제 회원 */}
-              <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-4 mb-3">
-                <h3 className="text-[13px] font-semibold text-gray-900 dark:text-white mb-2">가. 경기 결제 회원</h3>
-                <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
-                  <p>
-                    환불은 서비스를 이용한 일수를 계산하고 <span className="font-semibold text-gray-900 dark:text-white">일할 계산</span>으로 진행됩니다.
-                    결기간은 <span className="font-semibold text-gray-900 dark:text-white">300일</span>로 이용료를 일할로 나눈 금액을 환불합니다.
-                  </p>
-                  <p>
-                    결제 금액의 <span className="text-tone-bad font-semibold">10%를 제외</span>한 일수만큼 금액을 제외하고 계산되니
-                    이용자는 남은 금액만 환불받습니다.
-                  </p>
-                  <p>
-                    다만 결제 이후 <span className="font-semibold text-gray-900 dark:text-white">30일 이내</span>에 남은 기수대로 일할 계산이 이루어지며 남은 금액이 계산은
-                    카드 수수료와 할인금액을 포함한 결제 금액의 <span className="text-tone-bad font-semibold">20% 금액을 제외</span>한 금액에,
-                    남은 일 수에 대한 일할 계산을 처리합니다.
-                  </p>
-                  <p className="text-tone-bad font-semibold">
-                    16일 이후 30일 이내 사용자는 환불이 불가능합니다.
-                  </p>
-                  <div className="bg-white dark:bg-[#11141C] rounded p-3 mt-2">
-                    <p className="text-[12px] tabular-nums text-gray-600 dark:text-gray-300">
-                      <span className="font-semibold text-gray-900 dark:text-white">계산 공식:</span> [(전체금액) x 0.8 / 30] x 남은 일수
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* 나. 연간 결제 회원 */}
-              <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-4">
-                <h3 className="text-[13px] font-semibold text-gray-900 dark:text-white mb-2">나. 연간 결제 회원</h3>
-                <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
-                  연 기간은 <span className="font-semibold text-gray-900 dark:text-white">12개월</span>이고 전년 이용료는 전액 연간결제 이용료를 <span className="font-semibold text-gray-900 dark:text-white">12로 나누고</span>
-                  하루라도 이용했으면 전액 연간결제 이용료를 12로 나누고 하루라도 이용했으면 제외합니다.
-                </p>
-              </div>
-            </div>
-
-            {/* 3항 */}
-            <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
-              <span className="font-semibold text-gray-900 dark:text-white">3.</span> 본 조의 환불 금액 기준은 연간 결제 회원이라 하더라도 <span className="font-semibold text-gray-900 dark:text-white">정기결제 금액으로 계산</span> 후
-              진행됩니다. 따라서 환불 시점에 따라 환불금액이 존재하지 않는 경우도 있을 수 있습니다.
-            </p>
           </div>
         </section>
 

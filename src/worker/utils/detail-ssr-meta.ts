@@ -13,6 +13,7 @@ import { passShareCardUrl } from '@/shared/pass-share-card'
 import { canonicalDetailPath } from '../../shared/product-flow'
 import { productShareImage } from '@/shared/og-share-image'
 import { propertyTypeLabel } from '../../shared/stay-property-type'
+import { kakaoPlaceCanonicalUrl } from '../../shared/kakao-place-url'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 export { PASS_OG_VERSION } from '@/shared/pass-share-card'
 
@@ -83,14 +84,12 @@ interface DetailData {
  *    byte-동일이다(`hasPlace` 게이트 불변 — 주입이 그 방향을 고정).
  */
 export function placeSameAs(raw: unknown): string | null {
-  const s = String(raw || '').trim()
-  if (!s) return null
-  try {
-    const u = new URL(s)
-    if (u.protocol !== 'https:' || u.hostname !== 'place.map.kakao.com') return null
-    const m = /^\/(\d{1,20})$/.exec(u.pathname.replace(/\/+$/, '') || '/')
-    return m ? `https://place.map.kakao.com/${m[1]}` : null
-  } catch { return null }
+  // 🔢 2026-10-13 — 판정을 SSOT(`shared/kakao-place-url`)에 위임한다. 종전엔 이 파일이
+  //   `place.map.kakao.com/{id}` **한 모양만** 직접 검사해서, 사람이 `map.kakao.com/?itemId=`
+  //   나 `link/map/` 으로 붙여넣은 매장은 **같은 가게인데 `sameAs` 가 안 나갔다**(라이브
+  //   실측으로 세 모양이 같은 id 공간임을 확인 — 그 파일 머리말에 표로 적어 뒀다).
+  //   ⚠️ `kko.to` 단축링크는 URL 안에 id 가 없어 여기서 접을 수 없다(= `sameAs` 부재, 종전과 같다).
+  return kakaoPlaceCanonicalUrl(raw)
 }
 
 /**

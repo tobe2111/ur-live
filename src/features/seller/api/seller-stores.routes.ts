@@ -39,6 +39,7 @@ import { registerStoreClaimRoutes } from './seller-store-claims.routes'; import 
 import { registerBrokerTermsRoutes, prepareBrokerTerms, finalizeBrokeredStore } from './seller-broker-terms.routes' // 💸🔑 2026-09-19 요율·승계 코드
 import { storeTermsError, afterStoreCreated } from './store-signup-extras' // 📜🤝 2026-10-10 약관 동의 + 영입 귀속(유일한 가입 문)
 import { PERSONAL_BROKER_SIGNUP_DISABLED } from '@/shared/feature-flags'; import { BROKERED_VIA_AGENCY_MSG } from '@/shared/agency-copy'
+import { normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url'
 
 const app = new Hono<{ Bindings: Env }>()
 type Ctx = Context<{ Bindings: Env }>
@@ -289,7 +290,9 @@ app.patch('/stores/:id/profile', rateLimit({ action: 'store_profile_save', max: 
       lat: b.lat != null ? String(b.lat) : undefined,
       lng: b.lng != null ? String(b.lng) : undefined,
       verify_pin: b.verify_pin != null ? String(b.verify_pin) : undefined,
-      kakao_place_url: b.kakao_place_url != null ? String(b.kakao_place_url) : undefined,
+      // 🔒 2026-10-13 — 검증을 빠뜨리고 있었다(생 `String`). `store-profile` 은 300자 자르기만
+      //   하므로 아무 도메인이나 저장돼 미니맵이 그 주소를 열 수 있었다 — SSOT 를 지난다.
+      kakao_place_url: b.kakao_place_url != null ? (normalizeKakaoPlaceUrl(b.kakao_place_url) ?? '') : undefined,
     })
     return c.json({ success: true, data: { propagated } })
   } catch (err) {
@@ -498,7 +501,8 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
       store_channel: b.channel,
       manager_phone: managerPhone,
       ...(b.kakao_place_id ? { kakao_place_id: String(b.kakao_place_id) } : {}),
-      ...(b.kakao_place_url ? { kakao_place_url: String(b.kakao_place_url) } : {}),
+      // 🔒 2026-10-13 — 위와 같은 이유로 SSOT 경유(유효하지 않으면 아예 저장하지 않는다).
+      ...(normalizeKakaoPlaceUrl(b.kakao_place_url) ? { kakao_place_url: normalizeKakaoPlaceUrl(b.kakao_place_url) as string } : {}),
       ...(b.category ? { kakao_category: String(b.category).slice(0, 100) } : {}),
       ...(Number.isFinite(b.lat) && Number.isFinite(b.lng) ? { store_lat: String(b.lat), store_lng: String(b.lng) } : {}),
       nts_checked: ntsResult.valid === true ? '1' : ntsResult.valid === false ? '0' : '',
