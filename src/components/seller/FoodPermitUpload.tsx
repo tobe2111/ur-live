@@ -27,10 +27,11 @@ import { Loader2 } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { compressForDocument } from '@/lib/image-compress'
+import { BUSINESS_CERT_MAX_FILE_BYTES } from '@/shared/upload-limits'
 import { DashboardCard } from '@/components/dashboard'
 
-/** 서버 상한과 같은 값 — 압축 후에도 이걸 넘으면 올려 봐야 413 이다. */
-const SERVER_MAX_BYTES = 10 * 1024 * 1024
+/** 서버 상한과 같은 값(SSOT) — 압축 후에도 이걸 넘으면 올려 봐야 413 이다. */
+const SERVER_MAX_BYTES = BUSINESS_CERT_MAX_FILE_BYTES
 
 export default function FoodPermitUpload() {
   const inputRef = useRef<HTMLInputElement | null>(null)

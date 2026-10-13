@@ -5,6 +5,7 @@ import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { compressForDocument } from '@/lib/image-compress'
+import { BUSINESS_CERT_MAX_FILE_BYTES } from '@/shared/upload-limits'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import {
@@ -141,10 +142,10 @@ export default function SellerBusinessInfoPage() {
       //   할 수 있는 일이 없었다(등록증 제출이 거기서 막힌다). 가입 폼은 2026-09-15 에 같은 결함을
       //   고쳤는데 대시보드 쪽만 남아 있었다. 거절 대신 줄여서 올린다.
       const prepared = await compressForDocument(file).catch(() => file)
-      // 🪪 2026-10-10: 가입 폼과 **같은 등록증 전용 자리**(`/api/upload/business-cert`, 상한 10MB)로 올린다.
+      // 🪪 2026-10-10: 가입 폼과 **같은 등록증 전용 자리**(`/api/upload/business-cert`, 상한 SSOT `BUSINESS_CERT_MAX_FILE_BYTES`)로 올린다.
       //   종전엔 일반 상품 이미지 자리(`/api/seller/upload-image`)에 올려, 민감 문서가 상품 사진과 같은
       //   경로에 섞였고 제출 검증(우리 등록증 자리만 받는다)도 통과할 수 없었다.
-      if (prepared.size > 10 * 1024 * 1024) {
+      if (prepared.size > BUSINESS_CERT_MAX_FILE_BYTES) {
         toast.error('이미지가 너무 커요 — 다시 찍거나 다른 사진을 골라주세요')
         return
       }

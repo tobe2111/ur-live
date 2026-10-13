@@ -159,7 +159,8 @@ import { storeSeatGuard } from './utils/store-seat-guard';
 import { rateLimit } from './middleware/rate-limit';
 import { hashPassword } from '../lib/password';
 import { botProtection, scrapeProtection } from './middleware/bot-detection';
-import { bodyLimit } from './middleware/body-limit';
+import { bodyLimitByPath } from './middleware/body-limit';
+import { apiBodyLimitFor } from '../shared/upload-limits';
 import { csrfProtection, csrfTokenHandler } from '../lib/csrf';
 
 // 🛡️ 2026-04-26: 파일 중간 import 를 상단으로 이동 (CLAUDE.md 금지 패턴 — 2026-04-22 사고 재발 방지)
@@ -382,16 +383,10 @@ adminApp.use('*', adminAuditMiddleware());
 
 app.use('*', timing());
 app.use('*', logger());
-// Reject any request body larger than 1MB before it hits route handlers.
-// Bulk-upload routes apply a larger limit locally if needed.
-// 🔖 바이어 풀 북마클릿 인제스트는 상세 HTML 묶음(배치)을 받으므로 더 큰 바디 허용(자체 토큰 인증+CORS).
-//    나머지 /api/* 는 1MB. (전역 1MB 가 이 경로의 배치를 CORS 없는 413 으로 잘라 북마클릿 실패하던 것 해소.)
-const _bodyLimit1m = bodyLimit(1_000_000);
-// buyer-ingest 는 상세 HTML 배치라 1MB 보다 커야 하나, 큰 캡은 무인증 파싱 증폭(DoS) 표면 → 1.5MB 로 축소.
-//   북마클릿은 배치를 1.2MB 마다 flush(MAXB) 하므로 1.5MB 안에 충분히 들어감(Content-Length 초과분은 파싱 전 413).
-//   토큰 검사가 바디 파싱 이후라, 캡이 낮을수록 무토큰 공격자의 사전-파싱 비용이 작아짐.
-const _bodyLimitIngest = bodyLimit(1_500_000);
-app.use('/api/*', (c, next) => c.req.path === '/api/buyer-ingest' ? _bodyLimitIngest(c, next) : _bodyLimit1m(c, next));
+// 📤 /api/* 본문 천장 — 기본 1MB, 경로별 예외는 `shared/upload-limits.ts` `API_BODY_LIMIT_OVERRIDES` 한 곳
+//   (buyer-ingest 1.5MB · 등록증 2.2MB · 히어로 영상 10MB — 2026-10-13 대표 승인, 결재 2026-10-11-upload-body-limit).
+//   업로드 라우트보다 **먼저** 등록돼 있어 여기서 자른 것이 실제 천장이다. 접두 일치로 넓히지 말 것.
+app.use('/api/*', bodyLimitByPath(apiBodyLimitFor));
 app.use('/api/*', i18nMiddleware);
 // 인제스트는 토큰 인증 + 크로스오리진 → 전역 IP 레이트리밋 제외(429 가 CORS 없이 나가 북마클릿 배치 실패 방지). /known 서브경로 포함.
 app.use('/api/*', (c, next) => c.req.path.startsWith('/api/buyer-ingest') || c.req.path === '/api/instagram/webhook' ? next() : (rateLimiterMiddleware as any)(c, next));

@@ -14,7 +14,7 @@
  *   - 압축기가 실제로 목표 크기를 맞추는가 — jsdom 에 캔버스가 없어 여기서 못 돌린다.
  *     그래서 ③은 **목표 숫자가 천장 아래인지**만 본다.
  *   - 압축이 답이 될 수 없는 **둘**(등록증 2MB 목표 · 배너 **영상**)은 서버 천장을 올려야 풀린다
- *     → `docs/decisions/2026-10-11-upload-body-limit.md`(결재 대기). ②의 허용목록이 그 부채를
+ *     → `docs/decisions/2026-10-11-upload-body-limit.md`(2026-10-13 대표 승인 — ①-2 가 지킨다). ②의 허용목록이 그 부채를
  *     **이름과 사유로** 들고 있다.
  *     🩸 처음엔 셋이라고 적었다 — 도매 제조사 화면을 세었는데 **도매몰은 안 하는 서비스**다
  *     (2026-10-11 대표 정정). 안 하는 서비스를 결재 근거로 세지 말 것.
@@ -27,32 +27,36 @@ import { join } from 'node:path'
 import { stripComments } from '../helpers/source-text'
 import {
   API_BODY_LIMIT_BYTES,
+  API_BODY_LIMIT_OVERRIDES,
+  BUSINESS_CERT_BODY_LIMIT_BYTES,
+  BUSINESS_CERT_MAX_FILE_BYTES,
+  apiBodyLimitFor,
   UPLOAD_MAX_FILE_BYTES,
   MULTIPART_OVERHEAD_BYTES,
   UPLOAD_SOURCE_MAX_BYTES,
   fitsApiBodyLimit,
 } from '../../shared/upload-limits'
+import { bodyLimitByPath } from '../../worker/middleware/body-limit'
 
 const read = (p: string) => stripComments(readFileSync(p, 'utf8'))
 const WORKER = read('src/worker/index.ts')
 const COMPRESS = read('src/lib/image-compress.ts')
 const PREPARE = read('src/lib/prepare-upload.ts')
 
-describe('① 천장은 클라가 지어내지 않는다 — 서버 소스에서 다시 파싱해 대조', () => {
-  it("`/api/*` 기본 bodyLimit 과 API_BODY_LIMIT_BYTES 가 같다", () => {
-    // `const _bodyLimit1m = bodyLimit(1_000_000);`
-    const m = WORKER.match(/const\s+_bodyLimit1m\s*=\s*bodyLimit\(\s*([\d_]+)\s*\)/)
-    expect(m, '`_bodyLimit1m = bodyLimit(N)` 를 찾지 못했다 — 서버 배선이 바뀌었으면 이 시험을 재조준할 것').toBeTruthy()
-    expect(Number(m![1].replace(/_/g, ''))).toBe(API_BODY_LIMIT_BYTES)
+describe('① 천장은 클라가 지어내지 않는다 — 워커가 SSOT 를 그대로 쓰는가', () => {
+  // 🔁 2026-10-13 재조준: 종전엔 워커 소스에서 `bodyLimit(1_000_000)` 숫자를 **다시 파싱**해 상수와
+  //   대조했다. 대표 승인(두 엔드포인트 예외)으로 천장이 경로별 표가 되면서 워커는 숫자를 갖지 않고
+  //   SSOT 함수를 **그대로** 부른다 ⇒ 갈릴 수가 없다. 지키려던 것(클라가 믿는 값 = 서버가 자르는 값)은
+  //   그대로이고, 이제 "워커가 그 함수를 쓰는가" 와 "그 함수가 무엇을 돌려주는가" 를 본다.
+  it('`/api/*` 미들웨어가 SSOT 함수(`apiBodyLimitFor`)로 천장을 정한다 — 워커에 숫자가 없다', () => {
+    expect(WORKER).toMatch(/app\.use\('\/api\/\*',\s*bodyLimitByPath\(apiBodyLimitFor\)\)/)
+    expect(WORKER).toMatch(/import \{ apiBodyLimitFor \} from '\.\.\/shared\/upload-limits'/)
+    // 숫자로 된 전역 천장이 워커에 되살아나면 두 벌이 된다
+    expect(WORKER).not.toMatch(/bodyLimit\(\s*[\d_]+\s*\)/)
   })
 
-  it('그 미들웨어가 실제로 `/api/*` 전체에 걸려 있다 (업로드도 포함)', () => {
-    // 업로드만 빠지는 카브아웃이 생기면 이 단언이 깨지고, 그때 천장이 둘이 되므로 함께 판단해야 한다.
-    expect(WORKER).toMatch(/app\.use\('\/api\/\*',[^\n]*_bodyLimit1m\(c, next\)\)/)
-  })
-
-  it('업로드 라우트가 전역 미들웨어 **뒤에** 마운트된다 — 그래서 라우트 자체 한도는 천장을 못 넘는다', () => {
-    const mw = WORKER.indexOf('_bodyLimit1m(c, next)')
+  it('업로드 라우트가 전역 미들웨어 **뒤에** 마운트된다 — 그래서 미들웨어가 실제 천장이다', () => {
+    const mw = WORKER.indexOf('bodyLimitByPath(apiBodyLimitFor)')
     const mount = WORKER.indexOf("app.route('/api', uploadRoutes)")
     expect(mw).toBeGreaterThan(0)
     expect(mount).toBeGreaterThan(0)
@@ -68,6 +72,76 @@ describe('① 천장은 클라가 지어내지 않는다 — 서버 소스에서
 })
 
 /**
+ * ①-2 대표 승인 예외 (2026-10-13, 결재 2026-10-11-upload-body-limit 안 1) — **두 자리만, 필요한 값만.**
+ * 반대 방향이 더 위험하다: 접두 일치로 `/api/upload/` 전체가 열리면 `image`(100/10분)까지 IP 당
+ * 1GB/10분이 된다(결재 파일이 기각한 안 2). 그래서 "열린 곳" 과 "닫힌 곳" 을 함께 본다.
+ */
+describe('①-2 경로별 천장 — 승인된 두 자리만 열린다', () => {
+  it('등록증 2.2MB · 히어로 영상 10MB(+경계) · 인제스트 1.5MB', () => {
+    expect(apiBodyLimitFor('/api/upload/business-cert')).toBe(2_200_000)
+    expect(apiBodyLimitFor('/api/upload/banner-video')).toBe(10 * 1024 * 1024 + MULTIPART_OVERHEAD_BYTES)
+    expect(apiBodyLimitFor('/api/buyer-ingest')).toBe(1_500_000)
+  })
+
+  it('나머지는 전부 1MB — 이미지 업로드·접두·꼬리 슬래시·프로토타입 키까지', () => {
+    for (const p of [
+      '/api/upload/image', '/api/upload/', '/api/upload/business-cert/', '/api/upload/business-certX',
+      '/api/upload/banner-video/x', '/api/orders', '/api/constructor', 'constructor', '__proto__', '',
+    ]) expect(apiBodyLimitFor(p), p).toBe(API_BODY_LIMIT_BYTES)
+  })
+
+  it('표에 승인된 세 경로 말고는 없다 (조용히 늘지 않게)', () => {
+    expect([...API_BODY_LIMIT_OVERRIDES.keys()].sort()).toEqual(
+      ['/api/buyer-ingest', '/api/upload/banner-video', '/api/upload/business-cert'])
+  })
+
+  it('파일 천장이 압축 목표를 담는다 — 등록증 2MB 목표가 들어간다', () => {
+    expect(BUSINESS_CERT_MAX_FILE_BYTES).toBe(BUSINESS_CERT_BODY_LIMIT_BYTES - MULTIPART_OVERHEAD_BYTES)
+    const doc = COMPRESS.slice(COMPRESS.indexOf('compressForDocument'))
+    const target = Number(doc.match(/maxSizeMB:\s*([\d.]+)/)?.[1])
+    expect(target).toBeGreaterThan(0)
+    expect(target * 1024 * 1024).toBeLessThan(BUSINESS_CERT_MAX_FILE_BYTES)
+  })
+
+  it('미들웨어가 실제로 경로별로 자른다 (동작)', async () => {
+    const mw = bodyLimitByPath(apiBodyLimitFor)
+    const run = async (path: string, len: number) => {
+      let passed = false
+      let status = 0
+      const c = {
+        req: { path, header: (k: string) => (k === 'content-length' ? String(len) : undefined) },
+        json: (_b: unknown, s: number) => { status = s; return null },
+      }
+      await mw(c as never, async () => { passed = true })
+      return passed ? 'pass' : status
+    }
+    expect(await run('/api/upload/business-cert', 2_100_000)).toBe('pass')
+    expect(await run('/api/upload/business-cert', 2_200_001)).toBe(413)
+    expect(await run('/api/upload/image', 1_000_001)).toBe(413)
+    expect(await run('/api/upload/banner-video', 9_000_000)).toBe('pass')
+    expect(await run('/api/orders', 1_500_000)).toBe(413)
+  })
+
+  it('라우트와 클라 가드가 같은 SSOT 값을 쓴다 — 세 군데가 다시 다른 말을 하지 않게', () => {
+    const ROUTE = read('src/features/upload/api/upload.routes.ts')
+    expect(ROUTE).toMatch(/file\.size > BIZ_CERT_MAX\)/)
+    expect(ROUTE).toMatch(/file\.size > VIDEO_MAX\)/)
+    expect(ROUTE).toMatch(/const BIZ_CERT_MAX = BUSINESS_CERT_MAX_FILE_BYTES/)
+    expect(ROUTE).toMatch(/const VIDEO_MAX = BANNER_VIDEO_MAX_FILE_BYTES/)
+    for (const p of [
+      'src/components/BusinessCertUpload.tsx',
+      'src/components/seller/StoreRegisterModal.tsx',
+      'src/pages/SellerBusinessInfoPage.tsx',
+      'src/components/seller/FoodPermitUpload.tsx',
+    ]) {
+      const src = read(p)
+      expect(src, p).toContain('BUSINESS_CERT_MAX_FILE_BYTES')
+      expect(src, `${p} — 손으로 적은 10MB 가 되살아났다`).not.toMatch(/10\s*\*\s*1024\s*\*\s*1024/)
+    }
+  })
+})
+
+/**
  * ② 전수 — 클라에서 `/api/upload/*` 로 보내는 모든 자리가 압축을 거친다.
  *
  * 허용목록은 **사유와 함께만** 늘린다. "압축하면 깨진다" 는 사유는 유효하지만, 그렇다면 그 자리는
@@ -77,14 +151,14 @@ const COMPRESSORS = ['prepareImageForUpload', 'compressForUpload', 'compressForT
 
 const ALLOW: Record<string, string> = {
   // 📄 등록증·영업신고증 — `compressForDocument`(2MB 목표)를 쓰지만 그 목표가 천장(1MB)보다 크다.
-  //    해상도를 깎으면 어드민이 사업자번호를 못 읽으므로 서버 천장을 올려야 풀린다(결재 대기).
+  //    해상도를 깎으면 어드민이 사업자번호를 못 읽으므로 서버 천장을 올려야 풀린다(2026-10-13 승인으로 2.2MB — ①-2).
   //    ⇒ 압축은 거치므로 ② 자체는 통과한다. 여기 적는 것은 '압축 없음' 이 아니라 '천장 초과 가능' 이다.
   // 🧨 2026-10-11 (같은 날 오후) 도매몰 철거로 `supplier-dashboard/MultiImageUpload.tsx` 가 **삭제됐다**
   //   ⇒ 더 이상 업로드 호출부가 아니라 허용목록에서 뺀다. 이 아래 "허용목록은 실재하는 파일만 담는다"
   //   단언이 바로 그걸 잡았다(낡은 면제가 조용히 남는 것을 막는 장치가 제 일을 했다).
   'src/pages/admin/banners/BannerMediaUpload.tsx':
     '홈 히어로 **영상**(/api/upload/banner-video) — 브라우저에서 영상을 압축할 수단이 없다. 어드민 전용. '
-    + '결재 대기: docs/decisions/2026-10-11-upload-body-limit.md',
+    + '서버 천장 10MB 예외로 해소(2026-10-13 대표 승인 — docs/decisions/2026-10-11-upload-body-limit.md)',
 }
 
 function walk(dir: string, out: string[] = []): string[] {

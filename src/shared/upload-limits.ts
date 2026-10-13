@@ -17,6 +17,14 @@
  *
  * ⚠️ 천장을 올리려면 `worker/index.ts` 를 바꿔야 한다(**잠금표 파일 — 대표 승인 필요**) +
  *   무인증 파싱 증폭(DoS) 표면이 넓어진다. 그 판단은 `docs/decisions/` 로 올린다.
+ *
+ * ✅ 2026-10-13 대표 승인(*"기본안대로 모두 승인"* — `docs/decisions/2026-10-11-upload-body-limit.md` 안 1):
+ *   압축으로 **풀 수 없는 두 엔드포인트만** 천장을 올린다. 값은 이 파일의 `API_BODY_LIMIT_OVERRIDES`
+ *   **한 곳**에 있고 워커 미들웨어(`bodyLimitByPath(apiBodyLimitFor)`)·업로드 라우트·클라 가드가 전부
+ *   여기서 받는다 — 세 군데가 다른 말을 하던 이 파일의 출발점을 되풀이하지 않기 위해서다.
+ *     · `/api/upload/business-cert` 2.2MB — 등록증은 해상도를 깎으면 심사 불가(2026-09-15)
+ *     · `/api/upload/banner-video` 10MB(+경계) — 브라우저에 영상 압축 수단이 없다. `requireAdmin`
+ *   `/api/upload/image` 는 **그대로 1MB** 다(압축이 해결했다 — 넓히면 IP 당 1GB/10분이 된다).
  */
 
 /** 서버 전역 바디 한도(`worker/index.ts` `_bodyLimit1m`). 이 값보다 큰 `Content-Length` 는 라우트 전에 413. */
@@ -41,4 +49,29 @@ export const UPLOAD_SOURCE_MAX_BYTES = 25 * 1024 * 1024
 /** 이 바이트 수가 전역 바디 한도를 통과하는가. */
 export function fitsApiBodyLimit(bytes: number): boolean {
   return bytes <= UPLOAD_MAX_FILE_BYTES
+}
+
+/** 등록증·영업신고증 파일 천장 — `compressForDocument`(2MB 목표)가 들어가고 경계까지 담기는 값. */
+export const BUSINESS_CERT_BODY_LIMIT_BYTES = 2_200_000
+export const BUSINESS_CERT_MAX_FILE_BYTES = BUSINESS_CERT_BODY_LIMIT_BYTES - MULTIPART_OVERHEAD_BYTES
+
+/** 홈 히어로 영상 파일 천장(라우트가 안내하는 "최대 10MB" 그대로). 본문 천장은 경계만큼 더 크다. */
+export const BANNER_VIDEO_MAX_FILE_BYTES = 10 * 1024 * 1024
+export const BANNER_VIDEO_BODY_LIMIT_BYTES = BANNER_VIDEO_MAX_FILE_BYTES + MULTIPART_OVERHEAD_BYTES
+
+/**
+ * 경로별 본문 천장 — **정확한 경로 일치만**(접두 일치 금지: `/api/upload/` 전체가 열리는 것을 막는다).
+ * `Map` 인 이유: 평범한 객체로 두면 `constructor` 같은 프로토타입 키가 숫자가 아닌 값을 돌려줘
+ * 비교가 늘 거짓 = **천장 없음**이 된다. 경로는 늘 `/api/` 로 시작해 지금은 안 걸리지만 구조로 막는다.
+ */
+export const API_BODY_LIMIT_OVERRIDES: ReadonlyMap<string, number> = new Map([
+  // 🔖 바이어 풀 북마클릿 인제스트 — 상세 HTML 배치. 무토큰 파싱 증폭을 줄이려 일부러 낮게(1.2MB 마다 flush).
+  ['/api/buyer-ingest', 1_500_000],
+  ['/api/upload/business-cert', BUSINESS_CERT_BODY_LIMIT_BYTES],
+  ['/api/upload/banner-video', BANNER_VIDEO_BODY_LIMIT_BYTES],
+])
+
+/** 이 경로의 본문 천장. 목록에 없으면 전역 1MB. */
+export function apiBodyLimitFor(path: string): number {
+  return API_BODY_LIMIT_OVERRIDES.get(path) ?? API_BODY_LIMIT_BYTES
 }

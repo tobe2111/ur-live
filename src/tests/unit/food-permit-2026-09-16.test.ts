@@ -102,13 +102,12 @@ describe('④ 사진 크기 — 거절이 아니라 압축', () => {
     // 클라가 서버보다 크게 허용하면 압축 뒤에도 큰 파일이 "올렸는데 실패" 로 끝난다.
     // 🪪 2026-10-10: 대시보드도 등록증 전용 자리(`/api/upload/business-cert`)로 — 그 서버 상한과 대조한다.
     expect(PAGE).toMatch(/api\.post\('\/api\/upload\/business-cert'/)
+    // 🔁 2026-10-13 재조준: 종전엔 두 숫자(서버 `MAX_SIZE` · 클라 `N * 1024 * 1024`)를 따로 파싱해
+    //   대소를 비교했다. 대표 승인으로 등록증 천장이 2.2MB 가 되면서 **둘 다 같은 SSOT 상수**를 쓴다
+    //   ⇒ 크기를 비교할 필요 없이 같은 이름인지만 보면 된다(갈릴 수가 없다).
     const serverSrc = read('src/features/upload/api/upload.routes.ts')
-    const m = serverSrc.match(/const MAX_SIZE = (\d+) \* 1024 \* 1024/)
-    expect(m).toBeTruthy()
-    const serverMb = Number(m![1])
-    const clientMatch = PAGE.match(/prepared\.size > (\d+) \* 1024 \* 1024/)
-    expect(clientMatch).toBeTruthy()
-    expect(Number(clientMatch![1])).toBeLessThanOrEqual(serverMb)
+    expect(serverSrc).toMatch(/const BIZ_CERT_MAX = BUSINESS_CERT_MAX_FILE_BYTES/)
+    expect(PAGE).toMatch(/prepared\.size > BUSINESS_CERT_MAX_FILE_BYTES/)
   })
 })
 
