@@ -28,6 +28,23 @@ export function readHomeSectionsSeed<T = SeededSectionShape>(): T[] | undefined 
 }
 
 /**
+ * 📍 2026-10-13: 시드가 **어느 위치로** 만들어졌는지(`/api/sections?near=` 응답의 `near`). 위치 없이 만든
+ *   시드면 ''. 화면은 자기 위치 키와 같을 때만 시드를 쓴다 — 다르면 전국 인기가 1초 떴다가 동네 것으로
+ *   바뀌는 일이 생긴다(그건 아무것도 안 보이는 것보다 나쁘다).
+ */
+export function readHomeSectionsSeedNear(): string {
+  try {
+    if (typeof document === 'undefined') return ''
+    const el = document.getElementById('__SSR_INITIAL_SECTIONS__')
+    if (!el?.textContent) return ''
+    const r = JSON.parse(el.textContent) as { near?: unknown }
+    return typeof r?.near === 'string' ? r.near : ''
+  } catch {
+    return ''
+  }
+}
+
+/**
  * 위 섹션들에 **이미 뜬** 상품 id.
  *
  * 🔑 **쿼리 결과가 아니라 시드를 읽는 이유**: 섹션 fetch 를 구독하면 응답이 늦게 도착할 때
@@ -38,8 +55,10 @@ export function readHomeSectionsSeed<T = SeededSectionShape>(): T[] | undefined 
  * 시드가 없는 콜드 진입에서는 빈 집합이 되어 겹침이 남는다. 그건 의도된 트레이드오프다:
  * **카드가 튀는 것보다 한 번 겹치는 편이 낫다.**
  */
-export function seededSectionProductIds(): Set<number> {
+export function seededSectionProductIds(nearKey = ''): Set<number> {
   const out = new Set<number>()
+  // 📍 시드가 다른 위치로 만들어졌으면 그 id 는 지금 화면 위에 없다 — 엉뚱한 카드를 뒤로 밀지 않는다.
+  if (readHomeSectionsSeedNear() !== nearKey) return out
   const sections = readHomeSectionsSeed()
   if (!sections) return out
   for (const s of sections) {

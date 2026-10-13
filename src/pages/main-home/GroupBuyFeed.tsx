@@ -109,6 +109,7 @@ export default function GroupBuyFeed({
   districtKey,
   regionRef,
   userLoc,
+  sectionNearKey = '',
 }: {
   pc?: boolean
   /**
@@ -136,6 +137,11 @@ export default function GroupBuyFeed({
   regionRef?: RegionRef
   // 🗺️ 2026-07-16 (대표 — 현위치로 가까운 순): sort='near' 일 때 이 좌표 기준 거리순 정렬(좌표 없는 딜은 뒤로).
   userLoc?: { lat: number; lng: number } | null
+  /**
+   * 📍 2026-10-13: 위 편성 섹션이 쓴 위치 격자 키(`resolveHomeNear().key`). 시드가 그 위치로 만든 것일
+   *   때만 섹션 id 를 뒤로 민다 — 다른 위치의 시드면 그 카드는 지금 화면 위에 없다.
+   */
+  sectionNearKey?: string
 } = {}) {
   const [categoryState, setCategoryState] = useState<CategoryKey>('all')
   const [sortState, setSortState] = useState<SortKey>('popular')
@@ -257,7 +263,10 @@ export default function GroupBuyFeed({
    * 🏠 위 편성 섹션에 이미 뜬 상품 id — 홈에서만 채워진다(`/region/*` 등 다른 표면엔 시드가 없어 빈 집합).
    *   비어 있으면 아래 `pushBand` 는 종전과 **byte-동일하게** 동작한다.
    */
-  const sectionIds = useMemo(() => seededSectionProductIds(), [])
+  //   📍 키는 첫 렌더 값으로 고정한다 — 세션 중에 위치를 바꿔도 이미 그려진 카드를 재배치하지 않는다
+  //     (그때 시드는 옛 위치라 어차피 빈 집합이 된다 — 겹침 한 번이 카드가 튀는 것보다 낫다).
+  const [sectionNearKey0] = useState(sectionNearKey)
+  const sectionIds = useMemo(() => seededSectionProductIds(sectionNearKey0), [sectionNearKey0])
 
   const sortBand = (arr: FeedProduct[]) => {
     const a = [...arr]
