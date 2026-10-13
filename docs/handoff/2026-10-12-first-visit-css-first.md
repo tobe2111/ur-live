@@ -131,3 +131,13 @@ CDP `emulateNetworkConditions`+`setCPUThrottlingRate 4`. 헤더는 content-type/
 - 보류: `DesktopTopNav` — lazy 로 하면 PC 상단 네비가 늦게 끼어든다(PC 밀림). 하려면 워커가 PC UA 에 그 청크를 modulepreload 해야 한다.
 - 기각(실측): 번역 파일(locale-ko)을 load 뒤로 — 기본 문구 없는 `t()` 1,374곳(로그인·장바구니 등) 이라 키 이름이 보인다. 홈·유어샵·교환권·상세·지도 첫 화면은 locale 없이도 키 노출 0(지도 검색창 placeholder 1건 제외)이었지만 전 화면 보장이 안 된다.
 - 실사용자 vitals(10-12, 홈 43건): LCP p50 2.57 · p75 3.73s · TTFB p50 476ms. `/pass/:id` 서버 self-fetch 590ms 는 이 PR 의 SSR 직전 사본(SWR)이 배포되면 사라진다.
+
+## §18 (2026-10-13) 머지 직전 — 묶음기가 만든 청크 순환으로 /checkout 전체가 오류 화면
+- 다크 대비 검사(PR 게이트 아님)가 `/checkout` "측정 4개" 로 실패 → 단독 재현 시 7 이라 처음엔 흔들림으로 봤으나, 화면 텍스트를 찍으니
+  **"문제가 발생했습니다"**(ErrorBoundary). 원인 문구는 `window.Sentry` 를 가로채서 얻었다: `stripe-*.js` 에서 `Cannot access 't' before initialization`.
+- 원인: 묶음기가 이름 없는 `prop-types`(@stripe/react-stripe-js 의존)를 `lz-boot-gbDetailL-mapL-productL` 로 옮겨 `stripe ↔ lz` 순환.
+- 수리: `surface-chunks.mjs` 가 라이브러리끼리만 쓰는 이름 없는 의존은 손대지 않는다. 신규 가드 `check-chunk-cycles.mjs`(순환 0 동결).
+- 🩸 교훈 ①: 단독 실행 "7" 은 `route === '/checkout'` 필터가 **다른 항목**을 집은 것이었다(목록에 같은 경로가 둘). 측정기를 먼저 의심할 것.
+- 🩸 교훈 ②: 대비 검사가 아니었으면 결제 화면이 깨진 채 머지됐다 — 자동 머지 켜기 전 PR 게이트 밖 검사 결과도 볼 것.
+- 실험(효과 없음, 되돌림): 엔트리 파일을 CSS 직후 미리받기 — 3화면 5회 중간값 차이가 오차 안.
+- 대기(stash): `useProgressiveCap` 단계 확장(8장씩) — load 뒤 긴 작업 1.6초가 피드 펼치기인지 프로파일로 확인 후 별도 PR.

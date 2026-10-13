@@ -37,6 +37,11 @@ const NEVER_ENTRY = new Set(['app-utils-deferred'])
 export const LIBRARY_ENVELOPES = new Set(['sentry', 'capacitor', 'tosspayments', 'app-kakao-sdk', 'charts', 'codes'])
 
 export function createSurfaceChunker({ routes, root, commonMin = 4, minGroupBytes = 2000 }) {
+  /** 이 모듈을 import 하는 쪽이 전부 node_modules 인가 — 앱 코드가 직접 쓰지 않는 라이브러리 내부 의존. */
+  function libraryOnly(id, meta) {
+    const importers = meta.getModuleInfo(id)?.importers ?? []
+    return importers.length > 0 && importers.every((m) => norm(m).includes('/node_modules/'))
+  }
   let entry = null
   let surfaceOf = null
 
@@ -142,6 +147,13 @@ export function createSurfaceChunker({ routes, root, commonMin = 4, minGroupByte
   return function gate(id, name, meta) {
     const groupable = norm(id).includes('/src/') || /\/lucide-react\/dist\/esm\/icons\//.test(norm(id)) || name === undefined
     if (!groupable || LIBRARY_ENVELOPES.has(name)) return name
+    // 🔁 이름 없는 라이브러리가 **라이브러리만** 쓰는 의존이면 건드리지 않는다(2026-10-13 실측 사고).
+    //   `@stripe/react-stripe-js` 가 쓰는 `prop-types` 를 페이지 봉투(lz-…)로 빼자, `stripe` 봉투는 lz 를,
+    //   lz 는 그 안의 앱 코드 때문에 `stripe` 를 import 하는 **청크 순환**이 생겼다 — ESM 은 순환에서 한쪽을
+    //   먼저 평가하므로 `stripe` 가 아직 초기화 안 된 prop-types 를 읽어 결제 화면 전체가 오류 화면이 됐다
+    //   ("Cannot access 't' before initialization"). 빌드·시험은 초록이고 그 화면을 연 사람만 안다.
+    //   ⇒ 그런 의존은 Rollup 이 쓰는 쪽 라이브러리 곁에 두게 맡긴다. 순환은 check-chunk-cycles 가 잡는다.
+    if (name === undefined && !norm(id).includes('/src/') && libraryOnly(id, meta)) return name
     if (!NEVER_ENTRY.has(name) && inEntry(id, meta)) return name
     return surfaceName(id, meta) ?? name
   }
