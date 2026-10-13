@@ -157,3 +157,5 @@ CDP `emulateNetworkConditions`+`setCPUThrottlingRate 4`. 헤더는 content-type/
 - 실측(3회 중간값, load 뒤): 레이아웃 2,920→379ms · TBT 4,046→999ms · 최장 1,362→499ms. 폰트 일괄만으로는 TBT 불변이었다(레이아웃 −22%) — 셋이 함께여야 효과.
 - 🩸 측정 함정: 리플레이에 **다른 빌드의 route-chunk-map(MAPJSON)** 을 주면 페이지가 깨져 "레이아웃 0" 처럼 좋아 보인다. dist 마다 dumpmap 을 새로 뜰 것.
 - E4(배포 후): 폰 첫 방문 홈에서 스크롤해도 카드가 튀지 않는지(content-visibility 높이 기억) · Pretendard 로 한 번에 바뀌는지.
+- §20 후속: 폰트 `hit()` 이중 반복 0.3초 → 이분 탐색 · 지도 목록 `.ur-cv-rows` · 복원(POP) 중 content-visibility 끔. 전체 TBT(2회): 지도 3.81→1.92s · 유어샵 1.86→1.47 · 홈 2.63→2.05.
+- 다음 후보: 교환권(/vouchers)·상세는 load 뒤 긴 작업이 작다(150~450ms, 첫 레이아웃 위주). 남은 큰 것 = 첫 레이아웃(서버 첫 화면) 0.4~0.5초 · 엔트리 실행.

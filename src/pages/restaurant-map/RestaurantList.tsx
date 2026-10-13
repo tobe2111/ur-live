@@ -8,6 +8,7 @@ import { distanceKm, regionShort, stripStorePrefix } from './utils'
 import FcfsBadge from '@/features/group-buy/FcfsBadge'
 import type { Restaurant } from './types'
 import { type MapVoucherType, MAP_EMPTY_MSG } from './voucher-types'
+import { useIsRestoringNav } from '@/hooks/useProgressiveCap'
 
 interface Props {
   loading: boolean
@@ -92,6 +93,7 @@ function IncrementalRows({ filtered, selected, userLoc, onSelect, fcfsMap, vouch
   // 🚦 2026-09-03: 센티넬은 이제 두 가지를 한다 — 로드된 행이 남았으면 **보여 주고**,
   //   다 보여 줬는데 서버에 남았으면 **다음 페이지를 받는다**. 둘 다 없으면 관찰하지 않는다.
   const hasMore = localMore || !!hasMoreOnServer
+  const restoring = useIsRestoringNav()
   useEffect(() => {
     if (!hasMore) return
     const el = sentinelRef.current
@@ -106,7 +108,10 @@ function IncrementalRows({ filtered, selected, userLoc, onSelect, fcfsMap, vouch
   }, [hasMore, localMore, visibleCount, onLoadMore])
 
   return (
-    <div className="divide-y divide-gray-100 dark:divide-[#2C2F35]">
+    // 📐 2026-10-13: 화면 밖 행은 레이아웃을 건너뛴다(`ur-cv-rows`, index.css). 첫 마운트 레이아웃이 1,560 상자
+    //   (재생 실측 1초)였다. ⚠️ 뒤로가기로 돌아온 경우엔 끈다 — 시트 스크롤 복원(`data-scroll-restore`)이
+    //   추정 높이로 계산돼 다른 행에 내려앉는다.
+    <div className={`divide-y divide-gray-100 dark:divide-[#2C2F35]${restoring ? '' : ' ur-cv-rows'}`}>
       {filtered.slice(0, visibleCount).map(r => (
         <RestaurantRow key={r.id} r={r} isSelected={selected?.id === r.id} userLoc={userLoc} onSelect={onSelect} fcfs={fcfsMap?.get(r.id)} />
       ))}

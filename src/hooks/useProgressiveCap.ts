@@ -21,14 +21,19 @@ import { runAfterLoad } from '@/lib/after-load'
 /** 한가할 때마다 더 그리는 장수 — 한 커밋이 짧은 작업(50ms) 근처에 머물 크기. */
 export const PROGRESSIVE_STEP = 8
 
-export function useProgressiveCap(initial: number, total: number, step = PROGRESSIVE_STEP): { cap: number; capped: boolean } {
+/** 뒤로가기(POP)로 돌아온 화면인가 — 하드로드도 POP 이지만 `location.key === 'default'` 라 구분된다. */
+export function useIsRestoringNav(): boolean {
   const navType = useNavigationType()
   const location = useLocation()
-  const restoring = navType === 'POP' && location.key !== 'default'
+  return navType === 'POP' && location.key !== 'default'
+}
+
+export function useProgressiveCap(initial: number, total: number, step = PROGRESSIVE_STEP): { cap: number; capped: boolean; restoring: boolean } {
+  const restoring = useIsRestoringNav()
   const [n, setN] = useState(restoring ? Infinity : initial)
   useEffect(() => {
     if (n >= total) return
     return runAfterLoad(() => startTransition(() => setN(c => c + step)))
   }, [n, total, step])
-  return { cap: n, capped: n < total }
+  return { cap: n, capped: n < total, restoring }
 }

@@ -1353,6 +1353,11 @@ html.dark .gbd, [data-theme="dark"] .gbd {
   content-visibility: auto;
   contain-intrinsic-size: auto 260px;
 }
+/* 지도 목록 행(`RestaurantRow`, 썸네일 80px + 위아래 여백) — 같은 이유, 행 높이 추정만 다르다. */
+.ur-cv-rows > * {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 112px;
+}
 
 /* 🎨 2026-08-19 (대표 확정 — 그루폰식 색면 홈): 잉크 색면 위에 뜨는 **흰 패널**.
    그루폰 홈이 초록 배경 위에 흰 카드 패널을 얹는 그 구조를 우리 색면(--home-field)으로 한다.

@@ -69,4 +69,12 @@ export default [
     test: TEST,
     why: '폰트 요청은 CORS 라 crossorigin 없는 preload 와 캐시 키가 다르다 — 같은 파일을 두 번 받는다.',
   },
+  {
+    name: '📦 폰트 조각 대조가 이분 탐색 경계를 놓친다',
+    file: 'index.html',
+    find: 'if(lo<cs.length&&cs[lo]<=b)return 1',
+    replace: 'if(lo<cs.length&&cs[lo]<b)return 1',
+    test: TEST,
+    why: '범위 끝 글자만 쓰는 조각을 안 받는다 — 그 글자는 켠 뒤에 따로 받아 재배치가 한 번 더 생긴다.',
+  },
 ]

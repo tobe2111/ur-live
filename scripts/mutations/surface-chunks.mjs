@@ -178,6 +178,22 @@ export default [
     why: '폰트·썸네일이 올 때마다 3,300 상자 전부를 다시 배치한다(재생 트레이스 한 번에 0.4~1초).',
   },
   {
+    name: '📐 뒤로가기로 돌아와도 홈 피드가 화면 밖 칸을 생략해 스크롤 복원이 빗나간다',
+    file: 'src/pages/main-home/GroupBuyFeed.tsx',
+    find: '<div className={restoring ? gridCls : `${gridCls} ur-cv-grid`}>',
+    replace: '<div className={`${gridCls} ur-cv-grid`}>',
+    test: 'src/tests/unit/progressive-cap-2026-10-13.test.tsx',
+    why: '새로 그린 칸은 높이를 기억 못 해(추정 260px) 깊이 내려갔다 돌아오면 다른 카드에 내려앉는다 — 에러 0.',
+  },
+  {
+    name: '📐 지도 목록이 복원 중에도 화면 밖 행을 생략한다',
+    file: 'src/pages/restaurant-map/RestaurantList.tsx',
+    find: "${restoring ? '' : ' ur-cv-rows'}",
+    replace: " ur-cv-rows",
+    test: 'src/tests/unit/progressive-cap-2026-10-13.test.tsx',
+    why: '시트 스크롤 복원이 추정 높이로 계산돼 다른 가게에 내려앉는다.',
+  },
+  {
     name: '📐 화면 밖 카드 높이를 기억 못 해 스크롤이 튄다',
     file: 'src/index.css',
     find: 'contain-intrinsic-size: auto 260px;',

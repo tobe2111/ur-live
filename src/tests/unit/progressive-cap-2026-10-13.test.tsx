@@ -54,6 +54,7 @@ describe('useProgressiveCap', () => {
     const { result } = renderHook(() => useProgressiveCap(6, 50), { wrapper: wrap([{ pathname: '/', key: 'k1' }]) })
     expect(result.current.cap).toBe(Infinity)
     expect(result.current.capped).toBe(false)
+    expect(result.current.restoring, '복원 중엔 화면 밖 칸 생략(content-visibility)을 꺼야 한다 — 추정 높이로 복원이 빗나간다').toBe(true)
   })
 })
 
@@ -71,12 +72,22 @@ describe('홈 피드 배선', () => {
 describe('화면 밖 카드는 레이아웃을 건너뛴다(content-visibility)', () => {
   it('홈 피드 카드 그리드에 ur-cv-grid 가 붙고, CSS 가 auto 높이 기억과 함께 정의돼 있다', () => {
     const feed = readFileSync('src/pages/main-home/GroupBuyFeed.tsx', 'utf8')
-    expect(feed).toMatch(/<div className=\{`\$\{gridCls\} ur-cv-grid`\}>\s*\{\/\* 🛡️ 2026-05-24 \(loading P0\)/)
+    expect(feed).toMatch(/<div className=\{restoring \? gridCls : `\$\{gridCls\} ur-cv-grid`\}>\s*\{\/\* 🛡️ 2026-05-24 \(loading P0\)/)
     const css = readFileSync('src/index.css', 'utf8')
     const rule = css.match(/\.ur-cv-grid > \* \{([^}]*)\}/)?.[1] ?? ''
     expect(rule).toMatch(/content-visibility:\s*auto/)
     // `auto` 가 빠지면 한 번 그린 칸의 높이를 잊어 스크롤 중 위로 튄다
     expect(rule).toMatch(/contain-intrinsic-size:\s*auto \d+px/)
+  })
+})
+
+describe('지도 목록 행도 화면 밖은 레이아웃 생략 — 뒤로가기 복원 땐 끈다', () => {
+  it('RestaurantList 가 복원 중이 아닐 때만 ur-cv-rows 를 단다 + CSS 정의', () => {
+    const src = readFileSync('src/pages/restaurant-map/RestaurantList.tsx', 'utf8')
+    expect(src).toMatch(/\$\{restoring \? '' : ' ur-cv-rows'\}/)
+    expect(src).toMatch(/const restoring = useIsRestoringNav\(\)/)
+    const css = readFileSync('src/index.css', 'utf8')
+    expect(css.match(/\.ur-cv-rows > \* \{([^}]*)\}/)?.[1] ?? '').toMatch(/content-visibility:\s*auto[\s\S]*contain-intrinsic-size:\s*auto \d+px/)
   })
 })
 

@@ -90,6 +90,17 @@ describe('📦 켤 때 필요한 조각을 먼저 받고 한 번에 켠다(재�
     expect(SCRIPT).not.toMatch(/innerText/)
     expect(SCRIPT).toMatch(/document\.body\.textContent/)
   })
+  it('글자 대조는 정렬+이분 탐색 — 글자×범위 이중 반복은 그 자체로 0.3초 긴 작업이었다', () => {
+    expect(SCRIPT).not.toMatch(/for\(var c in cs\)/)
+    expect(SCRIPT).toMatch(/cs\.sort\(/)
+  })
+  it('범위 경계 글자도 정확히 잡는다(이분 탐색 off-by-one)', async () => {
+    const r = run({ storage: mem(), rules: [{ range: 'U+AC2C-AC2D', url: 'https://cdn.example/edge.woff2' }, { range: 'U+AC2E', url: 'https://cdn.example/miss.woff2' }], text: '\uAC2D\uAC00' })
+    r.fire('load')
+    await vi.advanceTimersByTimeAsync(10)
+    const pre = [...r.link.ownerDocument.head.querySelectorAll('link[rel="preload"]')].map((x) => (x as HTMLLinkElement).href)
+    expect(pre).toEqual(['https://cdn.example/edge.woff2'])
+  })
   it('시트를 못 읽으면(규칙 없음) 종전대로 바로 켠다', async () => {
     const r = run({ storage: mem(), text: '가' })
     r.fire('load')

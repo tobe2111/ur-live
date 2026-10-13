@@ -345,7 +345,7 @@ export default function GroupBuyFeed({
   // 무한 스크롤 센티넬 — 바닥 근처 도달 시 다음 페이지 로드. page1 이 꽉 찼을 때(50개)만 활성.
   // 📜 2026-10-13: 첫 렌더는 몇 장만, 나머지는 load 뒤 한가할 때마다 몇 장씩(`useProgressiveCap`). 덜 그린 동안엔 센티넬을 끈다.
   //    ⚠️ `sorted` 아래에 둘 것 — 전체 장수(sorted.length)를 넘겨야 언제 다 그렸는지 안다.
-  const { cap: renderCap, capped } = useProgressiveCap(firstScreen ? 12 : 6, sorted.length)
+  const { cap: renderCap, capped, restoring } = useProgressiveCap(firstScreen ? 12 : 6, sorted.length)
   const canLoadMore = items.length >= 50 && !reachedEnd && !capped
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
@@ -449,8 +449,10 @@ export default function GroupBuyFeed({
             </p>
           </div>
         )}
-        {/* 📐 2026-10-13: `ur-cv-grid` — 화면 밖 카드는 레이아웃을 건너뛴다(index.css 머리말). */}
-        <div className={`${gridCls} ur-cv-grid`}>
+        {/* 📐 2026-10-13: `ur-cv-grid` — 화면 밖 카드는 레이아웃을 건너뛴다(index.css 머리말).
+            ⚠️ 뒤로가기로 돌아온 경우엔 끈다 — 새로 그린 칸은 높이를 기억하지 못해(추정 260px) 스크롤 복원이
+            다른 카드에 내려앉는다. 그 경우는 처음부터 전부 실제 높이로 그린다. */}
+        <div className={restoring ? gridCls : `${gridCls} ur-cv-grid`}>
           {/* 🛡️ 2026-05-24 (loading P0): 첫 4개 카드 = above-fold → eager + fetchpriority=high (LCP 단축).
               나머지는 lazy 유지 (scroll 시 자연 로드). */}
           {/* 🎯 2026-07-02 (대표 "첫 페인트에 응모/추첨 배지 늦게 등장"): 피드 응답에 서버 enrich 된
