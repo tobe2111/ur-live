@@ -203,3 +203,29 @@ SSOT 머리말은 그 파일의 목적을 *"그 외 도메인은 거부 → Rest
    가 **0건**인지.
 4. **안 한 것**: `/refund` 크롤러 본문(이 글이 20KB JSX 안에만 있어 여전히 짧다 — `/terms` 처럼
    본문 SSOT 로 빼는 별건) · `kko.to` 리졸브(위 ⓐ).
+
+## 🎨 래칫이 하나를 더 찾아냈다 — `/refund` 의 손으로 박은 hex 41건
+
+푸시가 `check-consumer-hex-ratchet` 에서 막혔다(38 → 41). 제가 더한 세 줄 때문이지만 **재 보니
+그 페이지 전체가 토큰 밖**이었다 — `bg-white dark:bg-[#11141C]` / `text-gray-900 dark:text-white`
+식으로 41곳. **래칫만 올리면 그 상태가 동결되므로** 전수를 토큰으로 이행했다(41 → **0**, 동결값
+1975 → 1935): `bg-surface` 20 · `text-ink` 47 · `text-ink-soft` 31 · `border-rule` 19 ·
+`text-tone-ok` 7. 라이트·다크 둘 다 렌더해서 눈으로 확인했다.
+
+🩸 **그 이행이 제 주입 앵커 둘을 낡게 만들었다** — 앵커가 `text-gray-900 dark:text-white` 를
+품고 있었고(`check-stale-mutation-anchors` 가 잡았다), **지우지 않고 재조준**한 뒤 둘 다 개별로
+빨간불을 다시 확인했다. ⇒ **같은 PR 안에서 스타일 이행과 텍스트 앵커를 같이 건드리면 앵커가
+낡는다.** 토큰 코드모드를 돌린 뒤에는 `check-stale-mutation-anchors`(전수 ~1초)를 반드시 돌릴 것.
+
+## 📦 푸시·PR (이 세션이 끝낸 지점)
+
+- 브랜치 `claude/taste-skill-install-n1s63z` → `a7f87b480` 푸시 완료
+  (pre-push 게이트 **가드 100개 + 바뀐 코드를 보는 시험 137개 통과**)
+- **draft PR [#1756](https://github.com/tobe2111/ur-live/pull/1756)** 개설 · PR 활동 구독 ON ·
+  점검 루틴 `trig_011AYXeahvDwxspy8BV4SRgH`(55분 뒤)
+- 커밋: `a64e756bb`(장소 URL 세 결함 + `/refund` 결재 집행) · `bd62378cc`(main 머지) ·
+  `92526748b`(`kko.to` 절반을 네트워크 없이) · `a7f87b480`(토큰 이행 + 앵커 재조준)
+- 선재 CI 고장 수리는 **이미 main**: `1ab67d5b5`
+
+⚠️ **PR #1752 는 `e3bcf58dc` 로 머지됐고 E4 전항목 통과**(그 기록은 이 문서 앞부분).
+같은 브랜치 이름을 재사용했으므로 **#1752 를 다시 쓰지 말 것 — 지금 살아 있는 PR 은 #1756** 이다.
