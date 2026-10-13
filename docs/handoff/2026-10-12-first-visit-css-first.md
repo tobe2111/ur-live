@@ -169,3 +169,18 @@ CDP `emulateNetworkConditions`+`setCPUThrottlingRate 4`. 헤더는 content-type/
   매 `useRoutes` 렌더마다 다시 맞추는 것**(react-router 6 은 compilePath 를 캐시하지 않는다). 더 줄이려면 구조 변경이라 별건.
 - 🩸 측정 교훈: 전체 ready/TBT(3회)는 ±300ms 로 흔들려 30ms 급 개선을 판정 못 한다 → **바꾼 함수의 inclusive 시간**으로 판정할 것.
 - 다음 후보: react-dom 첫 커밋(홈 3.0~4.0s 구간 568ms@4x) 중 컴포넌트별 몫 · `@sentry` 초기화(load 뒤 125ms).
+
+## §22 (2026-10-13) #1767 머지 후 — 숫자 폰트 다시 자르기 · 효과 없는 처방 셋은 버림
+
+- **반영**: `roboto-digits-v2-{400..800}.woff2` — 장당 6.3KB → 2.0KB. 빠진 것은 힌팅 프로그램(fpgm·prep·cvt ≈5KB)과
+  분수 글리프(frac·numr·dnom)뿐. fonttools 로 **글자 단위** 대조: 모양·폭·tnum/pnum/lnum 치환 전부 동일(5굵기).
+  옛 파일명은 1년 immutable 캐시라 새 이름으로 교체. 시험 ⑥ 크기 상한 3KB · ⑦ 옛 이름 금지 + 주입 1건.
+- 재생 5회 중앙값(느린 4G·CPU 4배, `scratchpad/replayfs.mjs` = /static/fonts 도 DIST 에서 서빙):
+  홈 ready 3,953→3,788ms · load 3,301→3,154 · 유어샵 ready 3,490→3,364.
+- **버린 것(측정으로 효과 0)**: ① 손님 `<Routes>` 를 memo 로 분리 ② `cfImage`/`cfSrcSet` 결과 기억 ③ 셀러 경로 분할 캐시.
+  라우터·cf-image inclusive 시간이 전후 3회씩 같았다 — AppContent 재렌더가 원래 드물고, 비용은 첫 계산 자체다.
+  남은 라우터 비용(≈130ms@4x)은 바깥 Suspense 가 앱 전체를 감싸 lazy 페이지가 풀릴 때마다 `<Routes>` 가 다시 맞추는 몫으로
+  보인다. 고치려면 Suspense 경계를 안으로 옮겨야 하는데 부팅 첫 화면 이어붙이기(BootFirstScreenLoader)와 얽혀 별건.
+- **Sentry 초기화**: load 뒤 약 0.25초@4x(실폰 약 60ms) — 세션 기록·브라우저 API 감싸기·tracing 이 나눠 갖는다. 각자 쓰임이 있어 보류.
+- 폭포 관찰: 첫 렌더 전 회선은 JS 약 213KB(br)가 지배(react-core 42 · i18n 20 · axios 18 · app-utils 18 · lz-common 17 · index 16).
+  다음 바이트 레버는 axios(18KB) → fetch 래퍼 교체(api.ts 인터셉터 전면 — 큰 작업).
