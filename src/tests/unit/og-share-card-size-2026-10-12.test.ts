@@ -137,10 +137,17 @@ describe('🖼️ 공유 카드 — 1200×630 한 장 + 봇 셸 치수 선언', 
     }
   })
 
-  it('②-3 `/pass/:id` 는 **대표 확정 카드 주소 불변** (여기에 pad 를 끼우지 않는다)', () => {
+  // 🔁 2026-10-13 재조준(대표 확정 안 1-가 — *"안 1-가로 하고"*): 사진이 있으면 **가득(cover)**, 여백(pad) 아님.
+  //   사진이 없으면 종전 카드 주소 그대로(이미 공유된 링크·사진 없는 상품).
+  it('②-3 `/pass/:id` — 사진 있으면 가득 채운 카드(cover), 없으면 종전 카드', () => {
     const m = buildDetailMeta(pass, O, '/pass/2919')
     expect(m!.ogImage).toBe(`${O}/api/og/group-buy/2919?v=1`)
-    expect(m!.ogImage).not.toContain('/cdn-cgi/image/')
+    const withPhoto = JSON.stringify({ success: true, data: { ...JSON.parse(pass).data, image_url: 'https://media.ur-team.com/u/a.jpg' } })
+    const p = buildDetailMeta(withPhoto, O, '/pass/2919')!.ogImage
+    expect(p).toContain(`width=${OG_CARD_W},height=${OG_CARD_H}`)
+    expect(p).toContain('fit=cover,gravity=auto')
+    expect(p).not.toContain('fit=pad')
+    expect(p.endsWith('/https://media.ur-team.com/u/a.jpg')).toBe(true)
   })
 
   it('②-4 네 빌더 전부 배선 — 몰(공구 서비스)까지', () => {

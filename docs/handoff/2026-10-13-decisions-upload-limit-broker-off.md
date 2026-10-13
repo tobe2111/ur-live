@@ -25,3 +25,15 @@
 - 별건 발견(안 고침): 배너 **이미지** 업로드(`BannerMediaUpload` image 모드)는 압축 없이 `/api/upload/image`(1MB)로
   가는데 화면 문구는 "최대 10MB" — 1MB 넘는 히어로 사진은 413. 히어로는 고해상이 필요해 일반 압축(0.5MB)이 답이
   아닐 수 있어 판단 필요.
+
+## 후속 (같은 날) — 결재 3·4번
+대표: *"안 1-가로 하고 검색 제목은 그대로"* (시안 페이지 https://claude.ai/artifact/TfQ64X6YJCzYN5oXc25gP7 를 보고)
+- **3번 → 안 1-가**: 이용권 공유 카드 = 사진 가득(cover). `passShareCardUrl(id, origin, photo)` 하나를 서버 og:image ·
+  공유 버튼 2곳(잠금 파일 `GroupBuyDetailPage.tsx`, AskUserQuestion 승인 + CLAUDE.md audit log)이 같이 쓴다.
+  사진 없으면 종전 SVG 카드.
+- **4번 → 그대로**: 코드 변경 없음. 달빛한스푼 가게명 중복도 함께 그대로(제목 문자열이라).
+- 🩸 이번에 틀린 것: 대표에게 3·4번 기본안을 "사진 한 장"·"꼬리 유어딜"로 잘못 옮겼다(실제는 둘 다 "그대로").
+  결재 파일 원문을 다시 읽고 시안 페이지 맨 위에서 정정했다. **요약하기 전에 결재 파일의 `## 기본안` 절을 그대로 읽을 것.**
+- E4(배포 후): `curl -A 'KakaoTalk-Scrap/1.0' https://urdeal.kr/pass/2919 | grep og:image` 가
+  `cdn-cgi/image/width=1200,height=630,…,fit=cover,gravity=auto/https://media.ur-team.com/…` 인지 +
+  실제 카톡방 공유는 대표만 판정.

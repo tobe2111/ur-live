@@ -101,11 +101,11 @@ export default [
     test: TEST,
   },
   {
-    name: '↩️ `/pass/:id` 에 pad 를 끼운다 — 대표 확정 카드 주소가 바뀐다',
-    why: '그 카드는 2026-10-09 대표 확정 시안이고 카카오는 주소 단위로 캐시한다. 주소가 바뀌면 '
-       + '그 E4 판정이 무효가 되고 이미 공유된 링크가 다른 그림을 낸다.',
+    // 🔁 2026-10-13 재조준: 대표 확정이 '사진 가득(cover, 안 1-가)' 으로 바뀌었다 — pad(여백, 안 1-나)는 기각안.
+    name: '↩️ `/pass/:id` 에 pad 를 끼운다 — 대표가 고른 가득(1-가) 대신 여백(1-나)',
+    why: '2026-10-13 대표가 시안 1-가(가득)와 1-나(여백) 중 가득을 골랐다. 여백이면 정사각 사진 양옆이 흰 띠가 된다.',
     file: DETAIL,
-    find: "    const shareCard = id != null ? passShareCardUrl(id, origin) : productShareImage(photo, origin)",
+    find: "    const shareCard = id != null ? passShareCardUrl(id, origin, d.image_url ? photo : null) : productShareImage(photo, origin)",
     replace: "    const shareCard = productShareImage(photo, origin)",
     test: TEST,
   },

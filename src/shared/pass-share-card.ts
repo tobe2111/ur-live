@@ -8,8 +8,17 @@
  *
  * 카드 디자인(`worker/utils/og-pass-card.ts`)을 바꾸면 PASS_OG_VERSION 을 올릴 것.
  */
+import { ogCardUrl } from './og-share-image'
+
 export const PASS_OG_VERSION = 1
 
-export function passShareCardUrl(id: number | string, origin = 'https://urdeal.kr'): string {
-  return `${origin}/api/og/group-buy/${id}?v=${PASS_OG_VERSION}`
+/**
+ * 🖼️ 2026-10-13 대표 확정(결재 2026-10-12-pass-share-card-svg **안 1-가** — *"안 1-가로 하고"*):
+ *   사진이 있으면 **1200×630 을 가득 채운 사진 한 장**(유어샵과 같은 `fit=cover,gravity=auto`).
+ *   종전 SVG 카드는 트위터·페이스북·슬랙이 그리지 않는다. 글자는 각 서비스가 제목·설명으로 붙인다.
+ *   사진이 없을 때만 종전 카드(로고·유달이)로 떨어진다 — 그 라우트는 이미 공유된 링크를 위해 남긴다.
+ *   ⚠️ `pad`(여백) 아니다 — 대표가 시안 1-가(가득)와 1-나(여백) 중 가득을 골랐다.
+ */
+export function passShareCardUrl(id: number | string, origin = 'https://urdeal.kr', photo?: string | null): string {
+  return ogCardUrl(photo, origin, { fit: 'cover' }) || `${origin}/api/og/group-buy/${id}?v=${PASS_OG_VERSION}`
 }

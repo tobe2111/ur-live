@@ -216,9 +216,10 @@ export function buildDetailMeta(ssrPayload: string, origin: string, pathname: st
       ],
     }
     const jsonLd = escapeScript(JSON.stringify(place ? [product, place, breadcrumb] : [product, breadcrumb]))
-    // 🦦 2026-10-09 (대표 확정 시안 ② · "바꾸기"): 공유 미리보기는 사진 원본이 아니라 **공유 카드**(사진 + 귀퉁이
-    //   유달이 + `urdeal.`). JSON-LD 의 image 는 위에서 사진 그대로 둔다 — 검색엔진에겐 상품 사진이 맞다.
-    const shareCard = id != null ? passShareCardUrl(id, origin) : productShareImage(photo, origin)
+    // 🖼️ 2026-10-13 대표 확정(안 1-가): 공유 미리보기 = 사진을 가득 채운 1200×630 한 장(사진 없으면 종전 카드).
+    //   `d.image_url` 이 없을 때 `photo` 는 SVG 카드 주소로 떨어지므로 그걸 다시 감싸지 않게 원본 유무로 가른다.
+    //   JSON-LD 의 image 는 위에서 사진 그대로 둔다 — 검색엔진에겐 상품 사진이 맞다.
+    const shareCard = id != null ? passShareCardUrl(id, origin, d.image_url ? photo : null) : productShareImage(photo, origin)
     return { pageTitle, title: pageTitle, description, canonical, ogImage: shareCard, ogType: 'product', noindex: false, jsonLd }
   } catch { return null }
 }

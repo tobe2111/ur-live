@@ -17,7 +17,7 @@ export default [
   {
     name: '[유달이자리] 🖼️상세 공유 버튼이 판 번호 없는 카드 주소로 돌아간다',
     file: 'src/pages/GroupBuyDetailPage.tsx',
-    find: 'imageUrl={passShareCardUrl(productId)}',
+    find: 'imageUrl={passShareCardUrl(productId, undefined, detail.image_url)}',
     replace: 'imageUrl={`https://urdeal.kr/api/og/group-buy/${productId}`}',
     test: TEST,
     why: '카카오는 주소 단위로 카드 그림을 캐시한다 — 판 번호가 빠지면 고친 카드를 배포해도 옛 카드가 나간다.',
@@ -85,5 +85,22 @@ export default [
     replace: '{productId ? <RedeemReviewCard',
     test: TEST,
     why: '첫 60초는 직원에게 보여주는 확인 화면이다 — 그 위에 별점이 올라오면 무엇을 확인하는 화면인지 흐려진다.',
+  },
+  // ── 2026-10-13 대표 확정 안 1-가 (사진 가득 카드) ──
+  {
+    name: '[유달이자리] 🖼️이용권 공유 카드가 사진 가득(cover) 대신 여백(pad)으로',
+    file: 'src/shared/pass-share-card.ts',
+    find: "  return ogCardUrl(photo, origin, { fit: 'cover' }) || `${origin}/api/og/group-buy/${id}?v=${PASS_OG_VERSION}`",
+    replace: "  return ogCardUrl(photo, origin, { fit: 'pad' }) || `${origin}/api/og/group-buy/${id}?v=${PASS_OG_VERSION}`",
+    test: TEST,
+    why: '대표가 1-가(가득)와 1-나(여백) 중 가득을 골랐다 — 서버 og:image 와 공유 버튼이 함께 바뀐다.',
+  },
+  {
+    name: '[유달이자리] 🖼️사진 없는 이용권의 SVG 카드 주소를 다시 사진 카드로 감싼다',
+    file: 'src/worker/utils/detail-ssr-meta.ts',
+    find: 'passShareCardUrl(id, origin, d.image_url ? photo : null)',
+    replace: 'passShareCardUrl(id, origin, photo)',
+    test: TEST,
+    why: '사진이 없으면 photo 가 SVG 카드 주소로 떨어진다 — 그걸 리사이저로 감싸면 jpeg 로 못 구워 카드가 빈다.',
   },
 ]
