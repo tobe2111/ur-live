@@ -20,7 +20,35 @@ import { toast } from '@/hooks/useToast'
  * ⚠️ 카드의 `<Link>` **안**에 놓이므로 `preventDefault + stopPropagation` 이 필수다.
  *    빠지면 찜하려던 클릭이 상세 페이지로 튄다(캐러셀 화살표와 같은 함정).
  */
-export default function WishlistHeart({ productId, className = '' }: { productId: number; className?: string }) {
+type HeartProps = { productId: number; className?: string }
+
+/**
+ * ⚡ 2026-10-12 비로그인 방문자는 찜 목록 구독 자체를 안 한다. 카드마다 `useWishlist()` 가 쿼리 옵저버를
+ * 만들고 구독하는데(비로그인은 `enabled:false` 라 받을 것도 없다) 홈 첫 렌더에서 하트들만 약 100ms
+ * (CPU 4배 재생)였다. 비로그인 하트는 모양만 같고 누르면 로그인으로 보낸다 — 로그인은 페이지를 다시
+ * 불러오므로 그 뒤엔 구독하는 쪽(`LiveHeart`)이 그린다.
+ */
+export default function WishlistHeart(props: HeartProps) {
+  return isLoggedInSync() ? <LiveHeart {...props} /> : <GuestHeart {...props} />
+}
+
+function GuestHeart({ className = '' }: HeartProps) {
+  const navigate = useNavigate()
+  return (
+    <HeartButton
+      on={false}
+      popping={false}
+      className={className}
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        navigate(`/login?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`)
+      }}
+    />
+  )
+}
+
+function LiveHeart({ productId, className = '' }: HeartProps) {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const { data: items } = useWishlist()
@@ -48,10 +76,14 @@ export default function WishlistHeart({ productId, className = '' }: { productId
     }
   }
 
+  return <HeartButton on={on} popping={popping} className={className} onClick={toggle} />
+}
+
+function HeartButton({ on, popping, className, onClick }: { on: boolean; popping: boolean; className: string; onClick: (e: React.MouseEvent) => void }) {
   return (
     <button
       type="button"
-      onClick={toggle}
+      onClick={onClick}
       aria-label={on ? '찜 해제' : '찜하기'}
       aria-pressed={on}
       /* 찜된 카드의 하트는 **항상 보인다**(is-on) — 안 그러면 내가 찜했는지 hover 해야 알 수 있다. */

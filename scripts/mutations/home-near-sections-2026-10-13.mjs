@@ -91,4 +91,28 @@ export default [
     test: 'src/tests/unit/popular-score-2026-09-03.test.ts',
     why: '점수 높은 데모가 실물을 누른다(2026-09-03 대표 "실제 이용권이 무조건 위").',
   },
+  {
+    name: '📍 홈 위치 — 시드 위치가 다르면 서버가 그린 섹션을 버리고 회색 자리를 띄운다',
+    file: 'src/components/home/HomeSections.tsx',
+    find: '      placeholderData: (prev) => prev ?? staleSeed,\n',
+    replace: '',
+    test: 'src/tests/unit/home-sections-stale-seed-2026-10-13.test.tsx',
+    why: '서버 섹션 → 회색 자리 → 동네 섹션으로 두 번 바뀌고 회색 자리가 폰 부팅 시간만큼 남는다(대표 스크린샷).',
+  },
+  {
+    name: '📍 홈 위치 — 지도가 위치를 저장하면서 쿠키는 안 쓴다',
+    file: 'src/pages/RestaurantMapPage.tsx',
+    find: '      rememberLoc(loc)\n      setNearMeMode(true)',
+    replace: "      try { localStorage.setItem('ur_last_loc_v1', JSON.stringify(loc)) } catch { /* quota */ }\n      setNearMeMode(true)",
+    test: 'src/tests/unit/home-sections-stale-seed-2026-10-13.test.tsx',
+    why: '지도에서 위치를 잡고 홈을 새로 열면 서버는 위치 없는 섹션을 싣는다 — 동네 섹션을 다시 받느라 늦다.',
+  },
+  {
+    name: '📍 홈 위치 — 다른 동네로 옮겨도 옛 동네 이름 쿠키가 남는다',
+    file: 'src/shared/home-near.ts',
+    find: '    if (label === null && key && prev === key) return\n',
+    replace: '    if (label === null) return\n',
+    test: 'src/tests/unit/home-sections-stale-seed-2026-10-13.test.tsx',
+    why: '서버 첫 화면 소제목이 "동탄5동에서 가까운 순" 인데 실제는 부산 — 거짓 문구가 에러 없이 나간다.',
+  },
 ]

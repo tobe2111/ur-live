@@ -30,10 +30,20 @@ export function kstShort(utc: unknown): string {
   return `${p(k.getUTCMonth() + 1)}-${p(k.getUTCDate())} ${p(k.getUTCHours())}:${p(k.getUTCMinutes())}`
 }
 
+// ⚡ 2026-10-12 포매터를 로캘마다 **한 번만** 만든다. `n.toLocaleString(locale)` 은 부를 때마다 숫자 포매터를
+//   새로 짓는다 — 홈 첫 렌더(카드 가격·정가·할인)에서 이 함수 자체 시간만 74ms(CPU 4배 재생)였다.
+//   기본 옵션이 같으므로 출력은 toLocaleString 과 동일하다(테스트가 대조).
+const NUMBER_FORMATS = new Map<string, Intl.NumberFormat>()
+function numberFormat(locale: string): Intl.NumberFormat {
+  let f = NUMBER_FORMATS.get(locale)
+  if (!f) { f = new Intl.NumberFormat(locale); NUMBER_FORMATS.set(locale, f) }
+  return f
+}
+
 export function formatNumber(value: unknown, locale: string = 'ko-KR'): string {
   const n = Number(value ?? 0)
   if (!Number.isFinite(n)) return '0'
-  return n.toLocaleString(locale)
+  return numberFormat(locale).format(n)
 }
 
 /** 가격 포매팅 — '1,234원' 형식 */
@@ -47,7 +57,7 @@ export function formatPriceShort(value: unknown): string {
   if (!Number.isFinite(n)) return '0'
   if (n >= 100_000_000) return `${(n / 100_000_000).toFixed(1)}억`
   if (n >= 10_000) return `${(n / 10_000).toFixed(1)}만`
-  return n.toLocaleString('ko-KR')
+  return numberFormat('ko-KR').format(n)
 }
 
 /**

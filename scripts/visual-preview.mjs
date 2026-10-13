@@ -527,7 +527,7 @@ function serve() {
        *   정반대다. 청크 도착 시각이 그 사이에 찍히면 한눈에 갈린다.
        */
       if (TRACE_API && p.endsWith('.js') && NAV_T0) {
-        const name = p.split('/').pop().replace(/-[A-Za-z0-9_]{8}\.js$/, '.js')
+        const name = p.split('/').pop().replace(/-[A-Za-z0-9_-]{8}\.js$/, '.js')  // 해시에 '-' 도 온다(`helmet-D-5f2BdA`)
         API_LOG.push(`+${String(Date.now() - NAV_T0).padStart(5)}ms  📦 ${name}`)
       }
       if (p.startsWith('/api/')) {
@@ -698,6 +698,14 @@ await ctx.route('**/*', (r) => (r.request().url().startsWith(`http://127.0.0.1:$
 //    앱이 실제로 읽는 키를 심어야 다크가 뜬다.
 if (DARK) {
   await ctx.addInitScript(() => { try { localStorage.setItem('ur_theme_mode_v1', 'dark') } catch { /* private mode */ } })
+}
+/**
+ * 💤 `--no-idle` — `requestIdleCallback` 을 **부르지 않는다**(2026-10-13).
+ *   앱은 한가할 때 다음 화면을 미리 받는다(카드 prefetch · 탭 idle prefetch — 잠금표가 지키는 의도된 동작).
+ *   "첫 화면이 무엇을 받는가" 를 잴 때는 그게 섞이면 안 되므로 끈다(`check-surface-chunk-runtime.mjs`).
+ */
+if ('no-idle' in args) {
+  await ctx.addInitScript(() => { window.requestIdleCallback = () => 0; window.cancelIdleCallback = () => {} })
 }
 if (AUTH || STORES_N > 0) {
   // 🏢 2026-10-12 `--auth=agency` — 에이전시 콘솔(`/agency`)을 머지 전에 본다. 콘솔은 자기 토큰 자리
@@ -1145,7 +1153,9 @@ if (TRACE_API) {
       return m ? { at: Number(m[1]), url: m[2] } : null
     })
     .filter(Boolean)
-  console.log(`FETCH_RESULT ${JSON.stringify({ route: ROUTE, calls })}`)
+  // 📦 2026-10-13: 받은 청크 이름도 싣는다 — `check-surface-chunk-runtime.mjs` 가 "이 화면이 안 쓰는 코드를 받았나" 를 판정한다.
+  const chunks = API_LOG.filter((l) => l.includes('📦')).map((l) => l.split('📦 ')[1]?.trim()).filter(Boolean)
+  console.log(`FETCH_RESULT ${JSON.stringify({ route: ROUTE, calls, chunks })}`)
 }
 if (/문제가 발생|오류가 발생/.test(text)) {
   console.log('   ⚠️  오류 화면이다 — 시드가 라우트와 안 맞거나 목 응답 모양이 틀렸다.')

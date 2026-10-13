@@ -3399,8 +3399,8 @@ canvas {
   {
     name: '맨 위 카드 prefetch 가 첫 화면 요청과 동시에 발사된다',
     file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
-    find: '      const run = () => { prefetch(p.id); prefetchDetailChunk() }',
-    replace: '      const run = () => {}',
+    find: '      return runAfterLoad(() => { prefetch(p.id); prefetchDetailChunk() })',
+    replace: '      return runAfterLoad(() => {})',
     test: 'src/tests/unit/home-boot-cost.test.ts',
     why:
       '이 주입은 **prefetch 를 통째로 없앤다** — 그러면 카드 클릭이 fetch 워터폴이 되는데(잠금표가 ' +

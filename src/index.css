@@ -1343,6 +1343,22 @@ html.dark .gbd, [data-theme="dark"] .gbd {
   --gbd-danger-soft: #2E1518;
 }
 
+/* 📐 2026-10-13 (대표 "속도 대기업 수준으로"): 긴 카드 목록의 **화면 밖 칸은 레이아웃·페인트를 건너뛴다.**
+   재생 트레이스(느린 4G·CPU 4배): 홈 피드가 다 그려진 뒤 문서가 약 3,300 개 상자가 되고, 그 뒤로 폰트·썸네일이
+   도착할 때마다 **3,300 개 전부**를 다시 배치했다(한 번에 0.4~1초 — 이 컨테이너는 한글 글꼴이 없어 부풀려진 값).
+   `content-visibility:auto` 는 화면 근처에 온 칸만 배치한다. `contain-intrinsic-size: auto …` 의 `auto` 는 한 번
+   그려진 칸의 실제 높이를 기억하므로 스크롤이 튀지 않는다(처음 보는 칸만 260px 로 가정).
+   ⚠️ 카드 자신(그리드 칸)에 건다 — 카드 안 IntersectionObserver(상세 미리받기)는 칸의 상자를 보므로 그대로 돈다. */
+.ur-cv-grid > * {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 260px;
+}
+/* 지도 목록 행(`RestaurantRow`, 썸네일 80px + 위아래 여백) — 같은 이유, 행 높이 추정만 다르다. */
+.ur-cv-rows > * {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 112px;
+}
+
 /* 🎨 2026-08-19 (대표 확정 — 그루폰식 색면 홈): 잉크 색면 위에 뜨는 **흰 패널**.
    그루폰 홈이 초록 배경 위에 흰 카드 패널을 얹는 그 구조를 우리 색면(--home-field)으로 한다.
    ⚠️ PC 메인 전용 — 다른 페이지는 흰 배경이라 이 클래스를 쓰지 않는다.

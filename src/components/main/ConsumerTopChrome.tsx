@@ -1,4 +1,5 @@
 import PromoBar from './PromoBar'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 import DesktopTopNav from './DesktopTopNav'
 
 /**
@@ -12,9 +13,15 @@ import DesktopTopNav from './DesktopTopNav'
  *    그 판단이 여기 한 곳에 있다(PromoBar 를 다른 데서 재사용할 때 규칙을 다시 안 베끼도록).
  */
 export default function ConsumerTopChrome() {
+  /**
+   * 📱 2026-10-13: 폰에서는 프로모 바를 **마운트하지 않는다**. 종전엔 CSS 로만 숨겨서(`hidden md:block`)
+   *   보이지도 않는 띠를 위해 폰의 모든 하드로드가 `/api/promo-bar` 를 한 번씩 불렀다(첫 화면 요청 실측).
+   *   중단점은 종전 CSS 와 같은 768(md) — 화면이 넓어지면 그때 마운트된다.
+   */
+  const wide = useMediaQuery('(min-width: 768px)')
   return (
     <>
-      <div className="hidden md:block"><PromoBar /></div>
+      {wide && <PromoBar />}
       <DesktopTopNav />
     </>
   )

@@ -27,7 +27,17 @@ export function reportWebVitals(): void {
   // TTFB
   try {
     const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined
-    if (nav) send('TTFB', nav.responseStart - nav.requestStart, page)
+    if (nav) {
+      send('TTFB', nav.responseStart - nav.requestStart, page)
+      // 📡 2026-10-12 (대표 *"마트 새 폰으로 첫 페이지가 10초"* — 이 환경에서 재현 불가):
+      //   위 TTFB 는 **요청을 보낸 뒤부터**라 DNS·연결·암호화(새 기기에서 가장 비싼 부분)가 빠져 있다.
+      //   CONN = 이동 시작 → 연결 완료(리다이렉트·DNS·TCP·TLS 전부). 첫 방문이면 0 이 아니다.
+      send('CONN', Math.max(0, nav.connectEnd), page)
+      // 어느 데이터센터가 응답했나 — 워커가 `Server-Timing: colo;desc="ICN"` 를 싣는다(css-first-boot.ts).
+      //   페이지 자리에 `colo:XXX` 로 보내 같은 표본 저장소에서 데이터센터별 TTFB 분포를 본다.
+      const colo = (nav.serverTiming || []).find((t) => t.name === 'colo')?.description
+      if (colo) send('TTFB', nav.responseStart, `colo:${colo}`)
+    }
   } catch { /* unsupported */ }
 
   // LCP — 가장 큰 paint 의 마지막 entry (페이지 떠날 때 확정)
