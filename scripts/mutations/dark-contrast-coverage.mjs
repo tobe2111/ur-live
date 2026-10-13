@@ -74,7 +74,7 @@ export default [
   {
     name: '[다크대비] 입력 화면 커버리지에서 정산 경로를 뺌',
     file: 'scripts/check-dark-contrast.mjs',
-    find: "{ route: '/influencer/settlement', name: '정산 신청', auth: 'user', fill: true },",
+    find: "{ route: '/influencer/settlement', name: '정산 신청', auth: 'user', fill: true, open: '[data-testid=\"settle-info-open\"]' },",
     replace: '',
     test: 'src/tests/unit/dark-contrast-coverage-2026-09-16.test.ts',
     why: '2026-09-16 에 흰 판 위 흰 글자(1.07:1)가 실제로 나온 그 경로다. 목록에서 빠지면 다시 안 보이는 채로 돈다.',
