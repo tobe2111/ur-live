@@ -126,14 +126,19 @@ describe('⑤ 🔒 데모가 아닌 실제 이용권이 무조건 위 (2026-09-0
      * 결제·리뷰가 0(점수 0)인데도 1위여야 하고, 시드 데모(2712 등)는 점수 4.8 이어도 그 뒤다.
      * ⚠️ 이 둘의 순서를 바꾸면 **에러 없이** 데모가 홈 상단을 차지한다.
      */
-    const order = RULES.slice(RULES.indexOf('ORDER BY CASE WHEN'), RULES.indexOf('LIMIT ${limit}'))
-    expect(order).toContain('demoSlugSql')
-    // 데모 판정이 orderSql(점수) 보다 **앞**에 있어야 한다.
-    expect(order.indexOf('demoSlugSql')).toBeLessThan(order.indexOf('${orderSql}'))
+    // 📍 2026-10-13: 위치가 있을 때의 머리(`nearOrderSql`)가 앞에 붙을 수 있게 ORDER BY 가 한 겹 감싸졌다.
+    //   **위치가 없으면** 데모 판정(`demoFlag`)이 여전히 1차 키이고 점수(`orderSql`)보다 앞이다 — 그게 이 단언이다.
+    //   위치가 있을 때는 반경 10km 안에서 실매장이 데모보다 앞이고(같은 규칙), 반경 밖은 순수 거리순이다
+    //   (대표 시안 확정 — 165km 실매장이 동네 데모 위에 서면 "가까운 순" 이 거짓말이 된다). 그 동작은
+    //   `home-near-sections-2026-10-13.test.ts` 가 진짜 SQLite 로 판정한다.
+    expect(RULES).toMatch(/const demoFlag = `\(CASE WHEN \$\{demoSlugSql\('p'\)\} THEN 1 ELSE 0 END\)`/)
+    const order = RULES.slice(RULES.indexOf('ORDER BY ${head'), RULES.indexOf('LIMIT ${limit}'))
+    expect(order).toContain('${demoFlag}, ')
+    expect(order.indexOf('${demoFlag}')).toBeLessThan(order.indexOf('${orderSql}'))
   })
 
   it('인기순만이 아니라 모든 규칙 정렬에 적용된다 — 한 줄에만 걸면 다른 줄에서 새어 나온다', () => {
     // ORDER BY 는 source 와 무관하게 한 곳에서 만들어진다(마감/최신/카테고리 전부 같은 문장).
-    expect((RULES.match(/ORDER BY CASE WHEN/g) || []).length).toBe(1)
+    expect((RULES.match(/ORDER BY \$\{/g) || []).length).toBe(1)
   })
 })

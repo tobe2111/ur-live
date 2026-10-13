@@ -175,7 +175,11 @@ describe('② 프로필 편집 A-2 — 사람에 관한 것은 한 곳, 줄 목�
   it('유어샵 관리는 진열대만 맡는다 — 같은 줄을 다시 그리지 않는다', () => {
     const manage = read(MANAGE)
     expect(manage, '편집이 두 곳이 됐다').not.toContain('<ShopInfoCards')
-    // 대신 **어디로 갔는지**는 알려 준다(말 없이 사라지면 찾으러 온 사람이 길을 잃는다).
-    expect(manage).toContain('/user/profile')
+    // 🧭 2026-10-13 (대표 — 누르면 아래에서 올라오게, 이름은 "편집"): 마이로 화면을 넘기던 줄이
+    //   **같은 시트**를 그 자리에서 연다. 불변식은 그대로다 — 편집 화면은 한 벌(ProfileEditSheet)이고,
+    //   관리 화면은 그 저장을 직접 하지 않는다.
+    expect(manage).toContain("lazy(() => import('./user-profile/profile-edit/ProfileEditSheet'))")
+    expect(manage).toMatch(/<ProfileEditSheet\b/)
+    expect(manage, '관리 화면이 프로필을 직접 저장한다 — 편집이 두 곳').not.toContain('/api/curator/me/profile')
   })
 })
