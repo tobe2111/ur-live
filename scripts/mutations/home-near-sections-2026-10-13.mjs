@@ -83,4 +83,12 @@ export default [
     test: T,
     why: '사용자 쿠키가 길이 제한 없이 첫 화면에 찍힌다.',
   },
+  {
+    name: '📍 홈 위치 — 위치가 없을 때 데모 후순위를 점수 뒤로 민다',
+    file: 'src/features/sections/api/section-rules.ts',
+    find: "ORDER BY ${head || `${demoFlag}, `}${orderSql}",
+    replace: "ORDER BY ${head}${orderSql}${head ? '' : `, ${demoFlag}`}",
+    test: 'src/tests/unit/popular-score-2026-09-03.test.ts',
+    why: '점수 높은 데모가 실물을 누른다(2026-09-03 대표 "실제 이용권이 무조건 위").',
+  },
 ]
