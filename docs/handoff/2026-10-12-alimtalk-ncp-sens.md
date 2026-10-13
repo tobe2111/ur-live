@@ -145,3 +145,15 @@ SENS(통합 콘솔) Mail → Domain Management 에서 urdeal.kr 등록 → 인�
 - 다음 첫 액션: 배포 후 `POST /api/admin/mail-test-send {"user_id":3}` → `from.normalized_valid` 확인.
   true 인데도 400 이면 → 그 주소의 **도메인이 SENS 메일 프로젝트에 등록·인증**됐는지 대표 콘솔 확인.
   false 면 → 대표에게 Cloudflare 에서 `NCP_MAIL_SENDER` 를 `no-reply@urdeal.kr` 로 다시 입력 요청.
+
+## 10. 2026-10-13 — SENS 메일 첫 실발송 성공 (#1743 배포 후)
+
+- `POST /api/admin/mail-test-send {"user_id":3}` → `success:true`, `from.normalized_valid:true`(`n***@urdeal.kr`, 18자, 공백·꺾쇠·따옴표 없음).
+- 즉 직전 400("Sender address is invalid format")은 대표가 env 를 `no-reply@urdeal.kr` 로 바꾼 뒤 **배포가 안 돼서** 옛 값이 남아 있던 것이다. env 는 다음 배포부터 적용된다.
+- ⚠️ 받은편지함/스팸함 여부는 대표 확인 필요(받는 주소 `t***@kakao.com`).
+- **남은 결정(대표)**: 발신 주소를 `contact@ur-team.com` 으로 바꾸려 함. 그러려면
+  1. ur-team.com 을 SENS 메일 프로젝트에 도메인 추가 + 인증 TXT
+  2. ur-team.com 에 SPF(기존 SPF 와 **한 줄로 합침**)·DKIM·DMARC
+  3. 답장 수신: ur-team.com Cloudflare Email Routing 은 `unconfigured`(실측). `jiwon@ur-team.com` 이 하단에 공개돼 있어 외부 메일 서비스 MX 가 있을 가능성 — **MX 를 이 세션 토큰 권한으로 못 읽었다**(dns_records 는 권한 밖/스로틀). 대표가 그 메일함 위치를 확인해야 함
+  4. 그 뒤 `NCP_MAIL_SENDER` 교체 + 재배포
+- 화면에 공개된 문의 주소가 셋으로 갈려 있다: `jiwon@ur-team.com`(하단·JSON-LD) · `support@ur-team.com`(FAQ 등) · `contact@ur-team.com`(시스템 메일). 통일은 대표 결정 후.
