@@ -111,10 +111,34 @@ export function parseRegionFromAddress(address: string | null | undefined): Regi
   return { sido }
 }
 
-/** RegionRef → URL 경로. 인코딩은 브라우저/라우터에 맡긴다(여기선 원문 유지). */
+/**
+ * RegionRef → URL 경로. **퍼센트 인코딩된 형태 하나만** 돌려준다.
+ *
+ * 🩸 2026-10-13 — 종전 주석은 *"인코딩은 브라우저/라우터에 맡긴다(여기선 원문 유지)"* 였고
+ *   그게 실제 결함을 만들었다. 같은 지역 경로를 **다섯 군데**가 각자 조립하고 있었는데
+ *   둘은 날것, 셋은 인코딩이었다:
+ *
+ *       이 함수                 날것   → sitemap `<loc>` · `RegionPage` 의 `<SEO url>`(= 클라 canonical)
+ *       resolveRegionSeo        인코딩 → 워커 canonical
+ *       surface-list-jsonld     인코딩 → 빵부스러기
+ *       regionChildLinks        인코딩 → 크롤러 내부 링크
+ *
+ *   ⇒ ① **sitemap 이 `/region/서울` 을 제출하는데 페이지는 `/region/%EC%84%9C%EC%9A%B8` 을
+ *   정본으로 선언**했다(사이트맵 규격은 URL-escape 를 요구한다 — 날것 비ASCII 는 규격 위반이다)
+ *   ② 같은 페이지가 **클라 `<SEO>` 는 날것 · 워커 주입은 인코딩**으로 서로 다른 canonical 을
+ *   내보냈다(JS 를 렌더하는 크롤러와 안 하는 크롤러가 다른 정본을 본다 — 2026-10-12 에
+ *   `applyCanonical` 로 고친 "canonical 두 개" 와 같은 클래스이고, 이번엔 *값*이 갈렸다).
+ *
+ *   에러가 하나도 안 난다. 그래서 **조립을 한 곳으로 모았다** — 아래 네 호출부가 전부 이 함수를
+ *   지나므로 두 벌이 생길 수가 없다.
+ *
+ * ⚠️ 라우팅은 안 깨진다: `parseRegionPath` 가 `decodeURIComponent` 로 받으므로 `<Link to>` 가
+ *   인코딩 형태여도 그대로 해석된다(그 함수가 원래 두 형태를 다 받게 만들어져 있다).
+ */
 export function regionPath(ref: RegionRef): string {
   if (!ref.sido) return '/region'
-  return ref.sigungu ? `/region/${ref.sido}/${ref.sigungu}` : `/region/${ref.sido}`
+  const sido = encodeURIComponent(ref.sido)
+  return ref.sigungu ? `/region/${sido}/${encodeURIComponent(ref.sigungu)}` : `/region/${sido}`
 }
 
 /**

@@ -97,6 +97,11 @@ interface DetailData {
   review_count?: number
   // 🔗 2026-10-12 — 카카오 장소 프로필(`sameAs`). 시드에 이미 온다(실측 14/14).
   kakao_place_url?: string
+  // 📦 2026-10-13 — `Offer.availability` 를 화면과 같은 술어로 판정하기 위해. **두 벌 다 받는다**:
+  //   라이브 실측(id 2917) `stock: 200` ↔ `stock_quantity: 0` 이라 한쪽만 보면 멀쩡한 상품을
+  //   품절로 내보낸다(2026-07-02 에 구매 버튼에서 같은 갭으로 값을 치렀다).
+  stock?: number | null
+  stock_quantity?: number | null
 }
 
 /**
@@ -345,6 +350,12 @@ export function buildStayDetailMeta(ssrPayload: string, origin: string, pathname
         '@type': 'AggregateOffer', url: canonical, priceCurrency: 'KRW',
         lowPrice: fromPrice, ...(toPrice > fromPrice ? { highPrice: toPrice } : {}),
         offerCount: roomPrices.length,
+        // 🏨 2026-10-13: 숙소는 `InStock` **유지**가 맞다 — 쇼핑과 다른 축이다.
+        //   `AggregateOffer.availability` 는 "하나라도 살 수 있는가" 이고, 이 분기는 이미
+        //   `fromPrice > 0`(= 가격이 붙은 활성 객실이 하나 이상)일 때만 들어온다. 날짜별 잔여는
+        //   **달력**(`stay_calendar.available_count`)이 쥐고 있고 이 페이로드엔 안 온다 ⇒
+        //   그걸 모른 채 `OutOfStock` 으로 내리면 멀쩡한 숙소를 품절이라고 말하게 된다.
+        //   ⚠️ 쇼핑과 "일관성" 을 이유로 한쪽으로 몰지 말 것(두 축이다).
         availability: 'https://schema.org/InStock',
         availableAtOrFrom: { '@id': placeId },
       },
@@ -379,6 +390,8 @@ export function buildProductMeta(ssrPayload: string, origin: string, pathname: s
     const id = d.id
     const name = String(d.name).trim()
     const brand = String(d.brand_name || '').trim()
+    // 📦 화면(`ProductDetailPage` 구매 버튼)과 **같은 술어**: 두 컬럼이 다 0 이하일 때만 품절.
+    const inStock = Number(d.stock ?? 0) > 0 || Number(d.stock_quantity ?? 0) > 0
     const price = Number(d.price) || 0
     const original = Number(d.original_price) || 0
     const isDeal = Number(d.deal_only) === 1
@@ -419,7 +432,15 @@ export function buildProductMeta(ssrPayload: string, origin: string, pathname: s
       ...(!isDeal && price > 0 ? {
         offers: {
           '@type': 'Offer', url: canonical, priceCurrency: 'KRW', price,
-          availability: 'https://schema.org/InStock',
+          // 📦 2026-10-13: 종전엔 **항상 `InStock`** 이라 품절 상품도 구조화 데이터로는 "재고 있음"
+          //   이었다. 구글 상품 정책은 availability 가 **페이지와 일치**하기를 요구하고, 어긋나면
+          //   리치결과가 통째로 거절될 수 있다(그리고 사용자는 품절을 클릭한다).
+          //   🩸 **재고 컬럼이 두 벌이라 순진하게 고치면 더 나빠진다** — 라이브 실측(id 2917):
+          //   `stock: 200` 인데 `stock_quantity: 0` 이다. 어느 한쪽만 보면 **멀쩡한 상품이
+          //   OutOfStock** 이 되고 그건 오늘보다 나쁘다. 그래서 판정은 화면과 **같은 술어**다 —
+          //   `ProductDetailPage.tsx` 의 구매 버튼 `disabled`(둘 다 0 이하일 때만 품절,
+          //   2026-07-02 에 `null === 0` 갭으로 한 번 값을 치른 그 줄).
+          availability: inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
           ...(d.seller_name ? { seller: { '@type': 'Organization', name: String(d.seller_name) } } : {}),
         },
       } : {}),

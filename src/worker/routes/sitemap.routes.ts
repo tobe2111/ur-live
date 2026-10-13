@@ -110,6 +110,14 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
     { loc: '/introduce', priority: 0.6, changefreq: 'monthly' },   // 서비스 소개
     { loc: '/faq', priority: 0.6, changefreq: 'weekly' },          // FAQPage JSON-LD 보유 → 리치 결과 후보
     // 📜 약관·정책 — 유입은 적지만 **신뢰 신호**다(전자상거래 사업자 확인, 검색엔진 품질 평가).
+    // 🧾 2026-10-13: 색인 대상(`CONSUMER_SURFACE_SEO` 에 항목 있고 noindex 아님)인데 제출이 빠져
+    //   있던 둘. **본문이 있는 것만** 넣는다(실측 Googlebot: `/join` 134자 · `/terms/seller` 229자 —
+    //   `surfaceCopyFor`·약관 본문 SSOT 가 그리고 있다). 같은 전수에서 나온 나머지 다섯은
+    //   크롤러 본문이 **6자**라 제출하지 않았다(제출하면 soft-404 를 쌓는다 — 그 짝 주장이
+    //   이 파일의 규율이다): `/gdpr` · `/influencer/rankings` · `/urshorts`, 그리고
+    //   `/terms/influencer` · `/terms/group-buy` 는 **초안이라 noindex 로 돌렸다**.
+    { loc: '/join', priority: 0.5, changefreq: 'monthly' },
+    { loc: '/terms/seller', priority: 0.3, changefreq: 'yearly' },
     { loc: '/terms', priority: 0.3, changefreq: 'yearly' },
     { loc: '/privacy', priority: 0.3, changefreq: 'yearly' },
     { loc: '/refund', priority: 0.3, changefreq: 'yearly' },
@@ -305,6 +313,24 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;');
 
+/**
+ * 🔒 2026-10-13 — `<loc>` **마지막 방어선**: 비ASCII 를 퍼센트 인코딩한다.
+ *
+ * 사이트맵 규격은 `<loc>` 이 URL-escape 돼 있기를 요구한다(날것 한글은 규격 위반이다).
+ * 그리고 더 나쁜 것은 **페이지가 선언하는 canonical 과 표기가 갈리는 것**이었다 —
+ * 실측(2026-10-13): sitemap `/region/서울` ↔ 페이지 canonical `/region/%EC%84%9C%EC%9A%B8`.
+ * 조립은 `regionPath` 한 곳으로 모았고(그게 근본 처방), 이 함수는 **새 경로가 또 날것으로
+ * 들어오는 것**을 막는 그물이다.
+ *
+ * ⚠️ 멱등이다 — 이미 인코딩된 문자열은 전부 ASCII 라 그대로 지난다(`%` 가 `%25` 로 두 번
+ *    인코딩되지 않는다). 그래서 `encodeURI`/`encodeURIComponent` 를 통째로 쓰지 않는다:
+ *    전자는 이미 인코딩된 `%EC` 를 다시 먹고, 후자는 `:`·`/`·`?` 까지 깨뜨린다.
+ */
+function asciiLoc(u: string): string {
+  // eslint-disable-next-line no-control-regex
+  return u.replace(/[^\x00-\x7F]/g, (ch) => encodeURIComponent(ch));
+}
+
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
 ${urls.map(u => {
@@ -314,7 +340,7 @@ ${urls.map(u => {
     const imgLoc = isIndexableImageUrl(rawImg) ? rawImg : '';
     const imageBlock = imgLoc ? `\n    <image:image><image:loc>${xmlEscape(imgLoc)}</image:loc></image:image>` : '';
     const lastmodBlock = u.lastmod ? `\n    <lastmod>${xmlEscape(u.lastmod.replace(' ', 'T'))}Z</lastmod>` : '';
-    return `  <url>\n    <loc>${xmlEscape(origin + u.loc)}</loc>${lastmodBlock}\n    <changefreq>${u.changefreq}</changefreq>\n    <priority>${u.priority}</priority>${imageBlock}\n  </url>`;
+    return `  <url>\n    <loc>${xmlEscape(asciiLoc(origin + u.loc))}</loc>${lastmodBlock}\n    <changefreq>${u.changefreq}</changefreq>\n    <priority>${u.priority}</priority>${imageBlock}\n  </url>`;
   }).join('\n')}
 </urlset>`;
 

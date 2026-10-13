@@ -43,6 +43,7 @@ import {
   parseRegionFromAddress,
   parseRegionPath,
   addressInRegion,
+  regionPath,
   REGION_INDEX_MIN_DEALS,
   type RegionRef,
 } from '../constants/region-slugs'
@@ -277,9 +278,8 @@ export function regionChildLinks(
       if (addressInRegion(r?.restaurant_address || r?.business_address, ref)) n++
     }
     if (n < REGION_INDEX_MIN_DEALS) continue
-    const href = ref.sigungu
-      ? `/region/${encodeURIComponent(ref.sido)}/${encodeURIComponent(ref.sigungu)}`
-      : `/region/${encodeURIComponent(ref.sido)}`
+    // 🔗 2026-10-13: 조립은 `regionPath` **한 곳** — canonical·sitemap·빵부스러기와 같은 함수다.
+    const href = regionPath(ref)
     out.push({ label: ref.sigungu || ref.sido, href })
     // ⚠️ 상한 — `<noscript>` 는 **사람이 받는 응답에도 그대로 실린다**(크롤러 전용은 가이드 위반).
     if (out.length >= 17) break

@@ -32,7 +32,7 @@ import { canonicalDetailPath } from '../../shared/product-flow'
 import { curatorHomePins } from '../../shared/curator-pin-order'
 import { CONSUMER_SURFACE_SEO, CONSUMER_SITE_NAME } from '../../shared/seo/consumer-surfaces'
 import { CONCEPT_FAQ } from '../../shared/seo/concept-content'
-import { addressInRegion, parseRegionPath, type RegionRef } from '../../shared/constants/region-slugs'
+import { addressInRegion, parseRegionPath, regionPath, type RegionRef } from '../../shared/constants/region-slugs'
 import { REGION_PATH_RE } from '../../shared/seo/region-seed'
 
 /**
@@ -166,10 +166,10 @@ function crumbTrail(
     trail.push({ name: REGION_HUB_CRUMB, url: `${origin}/region` })
   }
   if (regionRef) {
-    const sidoUrl = `${origin}/region/${encodeURIComponent(regionRef.sido)}`
-    trail.push({ name: regionRef.sido, url: sidoUrl })
+    // 🔗 2026-10-13: 조립은 `regionPath` **한 곳** — canonical·sitemap 과 같은 함수다.
+    trail.push({ name: regionRef.sido, url: `${origin}${regionPath({ sido: regionRef.sido })}` })
     if (regionRef.sigungu) {
-      trail.push({ name: regionRef.sigungu, url: `${sidoUrl}/${encodeURIComponent(regionRef.sigungu)}` })
+      trail.push({ name: regionRef.sigungu, url: `${origin}${regionPath(regionRef)}` })
     }
   }
   const entry = CONSUMER_SURFACE_SEO[pathname]

@@ -15,7 +15,7 @@
  */
 import { escapeAttr, withSiteName, CONSUMER_SITE_NAME, type ResolvedSurfaceSeo } from '../../shared/seo/consumer-surfaces'
 // 🗺️ 워커 전용 — 이 표를 크리티컬 패스(consumer-surfaces)에서 끌어오면 app-constants 청크가 첫 페인트로 딸려온다.
-import { normalizeSido } from '../../shared/constants/region-slugs'
+import { normalizeSido, regionPath } from '../../shared/constants/region-slugs'
 
 /** 시군구 형태 — '중구'·'파주시'·'양양군'. 접두부 1글자 허용(중구·동구·남구가 탈락하지 않게). */
 const SIGUNGU_RE = /^[가-힣]{1,10}(시|군|구)$/
@@ -282,9 +282,9 @@ export function resolveRegionSeo(
 
   const label = sigunguRaw ? `${sido} ${sigunguRaw}` : sido
   const t = withSiteName(`${label} 이용권·동네딜 할인`, siteName)
-  const canonicalPath = sigunguRaw
-    ? `/region/${encodeURIComponent(sido)}/${encodeURIComponent(sigunguRaw)}`
-    : `/region/${encodeURIComponent(sido)}`
+  // 🔗 2026-10-13: 조립을 `regionPath` **한 곳**으로 — sitemap·빵부스러기·크롤러 링크·클라
+  //   `<SEO url>` 가 전부 그 함수를 지난다(종전엔 다섯 벌이었고 둘이 날것이었다).
+  const canonicalPath = regionPath({ sido, ...(sigunguRaw ? { sigungu: sigunguRaw } : {}) })
   return {
     pageTitle: t,
     title: t,

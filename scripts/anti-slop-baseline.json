@@ -1,7 +1,8 @@
 {
   "_comment": "anti-slop 문구·라벨 허용 상한(래칫). 줄이면 --rebaseline 으로 갱신.",
-  "_measured": "2026-09-01",
+  "_measured": "2026-10-13",
   "emDash": 0,
   "sectionNum": 0,
-  "koUpper": 0
+  "koUpper": 0,
+  "blogSeedBodyEmDash": 39
 }
