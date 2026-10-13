@@ -24,9 +24,16 @@
  *   오탐을 줄이는 두 장치: ① 루트(첫 하이픈 앞)가 생성된 집합에 없으면 Tailwind 유틸이 아니므로 제외
  *   ② 하이픈이 없는 단일 낱말은 커스텀 클래스일 확률이 높아 제외.
  *
+ *   🕳️ **2026-10-13 — `className=` 밖도 본다.** 그때까지 이 가드는 속성 리터럴만 봐서, 조회 표·
+ *   상수·토큰 표에 사는 유령을 **구조적으로** 못 봤다. 넓혀서 재니 셋이 있었고 그중 하나는
+ *   라이브 시각 결함이었다(`/about/print` 첫 톤 구역이 라이트에서 통째로 흰 바탕 —
+ *   `bg-brand-tint/40`). 뭉치 판정과 걸러낸 오탐 셋은 `ghost-classes-core.mjs` 의
+ *   `wideTokens` 머리말에 있다.
+ *
  * ⚠️ 이 검사가 **못 잡는 것**
  *   · 런타임에 조립되는 클래스(`` `bg-${c}-500` ``) — 문자열이 아니라 값이다.
- *   · className 밖에서 문자열로 쓰는 클래스(`classList.add`, 지도 오버레이 HTML 등).
+ *   · `classList.add(변수)` 처럼 **값**으로 들어가는 클래스 · 여러 줄 템플릿 리터럴.
+ *     (2026-10-13 부터 *상수·표에 든 뭉치*는 본다 — 위 🕳️ 참조.)
  *   · 생성은 됐지만 **의도와 다른** 값(`/5` 를 쓸 자리에 `/50`) — 그건 눈이 볼 일이다.
  *   · 루트(`w-`·`h-` 등)가 생성 집합에 **하나도** 없는 유틸리티 — 그 루트를 아무도 안 쓰면
  *     커스텀 클래스와 구분할 수 없어 통째로 건너뛴다(실제 레포에선 일어나지 않지만 원리상 그렇다).
@@ -35,7 +42,8 @@
  */
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { execSync } from 'node:child_process'
-import { generatedClasses, sourceTokens, utilityRoots, findGhosts } from './ghost-classes-core.mjs'
+import { generatedClasses, sourceTokens, wideTokens, utilityRoots, findGhosts } from './ghost-classes-core.mjs'
+import { stripComments } from './comment-strip.mjs'
 
 const CSS_DIR = 'dist/client/assets'
 const ALLOW_FILE = 'scripts/ghost-classes-allow.json'
@@ -68,7 +76,13 @@ const files = execSync("git ls-files 'src/**/*.tsx' 'src/**/*.ts'", { encoding: 
   .filter((f) => !f.startsWith('src/tests/'))   // 테스트는 위반 문자열 자체를 설명으로 들고 있다
 
 const tokens = []
-for (const f of files) for (const t of sourceTokens(readFileSync(f, 'utf8'))) tokens.push({ ...t, file: f })
+for (const f of files) {
+  const src = readFileSync(f, 'utf8')
+  for (const t of sourceTokens(src)) tokens.push({ ...t, file: f })
+  // 🕳️ `className=` 밖(조회 표·상수·배열·반환)의 뭉치. 주석은 먼저 걷어낸다 — 문서 주석이
+  //    클래스명을 백틱으로 인용하는데 그 모양이 템플릿 리터럴과 같아 산문이 유령으로 잡힌다.
+  for (const t of wideTokens(src, generated, stripComments)) tokens.push({ ...t, file: f })
+}
 const scanned = tokens.length
 const hits = findGhosts({ generated, roots, tokens, allow: allowed })
 

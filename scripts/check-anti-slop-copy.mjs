@@ -25,6 +25,7 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
+import { stripCommentsLines } from './comment-strip.mjs'
 
 const ROOT = process.cwd()
 const BASELINE = path.join(ROOT, 'scripts/anti-slop-baseline.json')
@@ -55,35 +56,11 @@ function walk(d, out = []) {
   return out
 }
 
-/**
- * 주석을 **문자 단위로** 걷어낸다.
- * ⚠️ 첫 판은 "줄이 `*`·`//`·`{/*` 로 시작하면 주석" 으로 판정했는데, 이 레포는 여러 줄 JSX
- *   주석(`{/* … 여러 줄 … *\/}`)을 정식으로 쓰고 그 **중간 줄**은 아무 접두사가 없다.
- *   그래서 em-dash 가 635건으로 잡혔고(거의 전부 주석), 그 값을 래칫으로 삼으면
- *   **진짜 문구에 생긴 회귀를 635건 사이에 숨겨 놓게 된다.** 상태 기계로 바꾼다.
- */
+/* 🔧 주석 제거기는 `scripts/comment-strip.mjs` 가 SSOT 다 (2026-10-13 추출 — 여기 있던 사본을
+   옮겼다). 왜 상태 기계인지·무엇을 못 하는지는 그 파일 머리말에 있다.
+   🔴 여기에 사본을 다시 만들지 말 것 — 이 레포가 다섯 번 넘어진 클래스다. */
 function stripComments(src) {
-  const out = []
-  let i = 0, line = 1, mode = 'code', buf = ''
-  const flush = () => { out.push([line, buf]); buf = '' }
-  while (i < src.length) {
-    const c = src[i], c2 = src.slice(i, i + 2), c3 = src.slice(i, i + 3)
-    if (c === '\n') { flush(); line++; i++; continue }
-    if (mode === 'code') {
-      // ⚠️ 이 분기는 자기검사가 **독립적으로 못 지킨다**: 지워도 바로 아래 `/*` 분기가
-      //    같은 주석을 삼켜서(잔재는 `{}` 뿐) 판정 결과가 같다. 더 정확하니 남기지만,
-      //    "되돌려-검증 초록" 을 이 줄의 안전 근거로 삼지 말 것.
-      if (c3 === '{/*') { mode = 'jsx'; i += 3; continue }
-      if (c2 === '/*') { mode = 'block'; i += 2; continue }
-      if (c2 === '//') { while (i < src.length && src[i] !== '\n') i++; continue }
-      buf += c; i++; continue
-    }
-    if (mode === 'jsx') { if (c3 === '*/}') { mode = 'code'; i += 3; continue } i++; continue }
-    if (c2 === '*/') { mode = 'code'; i += 2; continue }
-    i++
-  }
-  flush()
-  return out.filter(([, t]) => t.trim() && !t.includes('anti-slop-ok'))
+  return stripCommentsLines(src).filter(([, t]) => t.trim() && !t.includes('anti-slop-ok'))
 }
 
 export function scan(files) {

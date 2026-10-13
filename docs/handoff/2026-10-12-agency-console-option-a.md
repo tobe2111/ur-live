@@ -280,3 +280,14 @@
 ### 남은 것 — 대표만 할 수 있는 것(코드 밖)
 - Cloudflare 대시보드에서 `ur-wholesale` Pages 프로젝트 삭제 → 그 뒤 `deploy-wholesale.yml`·`deploy/ur-wholesale-tombstone/` 를 지우는 PR.
 - `utongstart.com` 도메인 갱신 여부(레지스트라). 코드의 `WHOLESALE_HOSTS` 는 공구 서비스 몰 조회와 한 덩어리라 남겨 둔다.
+
+## 2026-10-13 마감 — 도매 철거 잔여 종결
+
+- 라이브 점검(prod-smoke): 철거 반영 뒤 첫 회차(15:18 KST, `85ff09b69`) **통과**. 직전 두 번의 실패는
+  옛 도매몰 단계(「핵심 불변식 단언 (도매몰 + 소비자)」)가 철거 전 코드에서 돈 것이었다.
+- 대표 결정: `ur-wholesale` 프로젝트는 **삭제하지 않고 410 묘비로 존치**(*"그대로 둘게 귀찮아"*),
+  `utongstart.com` 은 **갱신 안 함**(*"갱신 안해"*).
+- ⚠️ **다음 세션에게**: 묘비 관련 코드(`deploy-wholesale.yml`·`deploy/ur-wholesale-tombstone/`·
+  `scripts/pages-tombstone-gate.mjs`·`build-prepare.mjs` 의 게이트 호출)를 "정리"하지 말 것.
+  프로젝트가 살아 있는 한 그것들이 소비자 앱 사본 재배포를 막는 유일한 장치다.
+- 이 세션의 남은 일: 없음.

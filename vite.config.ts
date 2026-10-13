@@ -112,6 +112,13 @@ const LUCIDE_HOME_ICONS = new Set([
   'party-popper', 'paw-print', 'play', 'tag', 'ticket',
 ])
 
+// 🚨 청크 순환 허용목록 — 2026-10-13 실측으로 이미 존재하던 둘(함수 export 만 오가서 평가 순서와 무관).
+//   **새 항목 추가 금지.** 새 순환은 manualChunks 규칙으로 푼다(위 onLog 게이트 주석).
+export const KNOWN_CIRCULAR_CHUNKS = new Set<string>([
+  'app-shared -> app-utils -> app-shared',
+  'app-shared -> app-utils -> capacitor -> app-shared',
+])
+
 export default defineConfig({
   plugins: [
     react(),
@@ -149,6 +156,23 @@ export default defineConfig({
       transformMixedEsModules: true,
     },
     rollupOptions: {
+      // 🚨 2026-10-13 청크 순환 게이트 — **경고로 두지 않는다.**
+      //   manualChunks 가 두 청크를 서로 import 하게 만들면, 한쪽 청크의 최상위 코드가 아직 평가 안 된
+      //   다른 쪽 값을 읽는 순간 `Cannot access 'X' before initialization` 으로 앱 전체가 죽는다.
+      //   그날 실제로 그랬다(app-components ↔ app-seller-components, 전 페이지 오류 화면). Rollup 은 이걸
+      //   'Circular chunk' 경고로만 찍고 빌드를 통과시켜서 CI 도 배포도 초록이었다.
+      //   ⇒ 이미 있던 순환(아래 KNOWN_CIRCULAR_CHUNKS — 함수만 주고받아 안 터지는 것으로 확인된 둘)만
+      //     허용하고, **새 순환은 빌드를 멈춘다.** 목록을 늘리지 말 것 — 고치는 법은 그 공용 파일에
+      //     manualChunks 규칙을 주는 것이다(보통 app-shared).
+      onLog(level, log, handler) {
+        if (log.code === 'CIRCULAR_CHUNK') {
+          const cycle = (log.ids || []).join(' -> ')
+          if (!KNOWN_CIRCULAR_CHUNKS.has(cycle)) {
+            throw new Error(`[chunk-cycle] 새 청크 순환: ${cycle} — 런타임 TDZ 크래시 위험. 공용 모듈에 manualChunks 규칙을 줄 것(vite.config.ts KNOWN_CIRCULAR_CHUNKS 참조).`)
+          }
+        }
+        handler(level, log)
+      },
       output: {
         manualChunks(id) {
           // React core
@@ -281,15 +305,18 @@ export default defineConfig({
           // 💸 2026-09-08: 가격·할인율 표시 규칙 SSOT — 홈 딜 카드와 유어쇼츠 구매 바가 함께 읽는다.
           //   위 `deal-card-grid` 와 **정확히 같은 함정**이라 같은 자리에 둔다(가드가 바로 잡아냈다).
           if (id.includes('/src/shared/price-display')) return 'app-shared'
+          // 🩸 2026-10-13: 장소 URL SSOT — 손님 매장 지도(RestaurantMiniMap)와 셀러 매장 등록이 함께 읽는다.
+          //   규칙이 없어 Rollup 이 셀러 봉투(app-seller-components)에 넣었고, 그러자 app-components →
+          //   app-seller-components → app-components **순환**이 생겨 셀러 청크의 최상위 코드가 아직 평가 안 된
+          //   app-components 값(StatusTone)을 읽다 TDZ 로 터졌다 — **라이브 전 페이지가 오류 화면**이었다.
+          //   아래 onLog 게이트가 이 클래스(새 청크 순환)를 이제 빌드 실패로 막는다.
+          //   (같은 장애를 두 세션이 따로 고쳐 이 줄이 두 번 있었다 — 둘이면 주입이 하나를 지워도 다른 하나가
+          //   같은 일을 해서 가드가 실패할 수 없다. 한 줄로 합쳤다.)
+          if (id.includes('/src/shared/kakao-place-url')) return 'app-shared'
           // 🎬 2026-09-09: 유어쇼츠 SSOT(카드 크기·뷰어 주소·유튜브 id 파싱) — import 0 인 순수 상수 모듈인데
           //   홈 헤더 진입점이 `URSHORTS_VIEWER_PATH` 를 읽는 순간 catch-all 로 떨어져 홈 폐쇄가
           //   청크를 하나 더 끌고 왔다. 위 둘과 **정확히 같은 함정**이라 같은 자리에 둔다(가드가 잡았다).
           if (id.includes('/src/shared/urshorts')) return 'app-shared'
-          // 🔥 2026-10-13 장애: #1756 이 RestaurantMiniMap(→ app-components)에서 이 파일을 import 했는데 규칙이 없어
-          //   Rollup 이 셀러 쪽 사용처를 따라 app-seller-components 에 넣었다 → app-components ↔ app-seller-components
-          //   순환 → 셀러 청크가 app-components 의 TONE_PILL 을 초기화 전에 읽어 TDZ("Cannot access before
-          //   initialization") — 소비자 전 페이지가 ErrorBoundary 로 떨어졌다. 공용 모듈은 공용 봉투로.
-          if (id.includes('/src/shared/kakao-place-url')) return 'app-shared'
           // 🖊️ 2026-08-30: 유어딜 전용 아이콘(`components/icons/urdeal-icons`)도 **정확히 같은 함정**에
           //   빠졌다. 60줄짜리 순수 SVG 리프 모듈인데 `/src/components/` catch-all 에 걸려
           //   `app-components`(166KB · 58모듈)로 들어갔고, 그걸 **BottomNav·DesktopTopNav**
