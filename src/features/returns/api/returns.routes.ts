@@ -635,11 +635,11 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
   //   `deal_used` 를 차감해 여러 번 반품해도 원래 딜을 초과 복원하지 않는다.
   if (refundSplit.deal > 0 && order.user_id != null) {
     const restore = refundSplit.deal;
-    const { adjustUserPoints } = await import('../../../worker/utils/point-ledger');
-    await adjustUserPoints(DB, {
-      userId: order.user_id, delta: restore, type: 'refund',
+    // 💸 2026-10-12: 원래 버킷으로(`adjustUserPoints` 는 유상으로만 되돌려 리워드 딜이 환급 가능 딜로 세탁됐다).
+    const { refundDealPoints } = await import('../../../worker/utils/point-buckets');
+    await refundDealPoints(DB, {
+      userId: order.user_id, amount: restore, type: 'refund', ref: [order.order_number ?? null, String(returnRecord.order_id)],
       description: `[반품 환불] 딜 사용분 복원 (order:${order.order_number || returnRecord.order_id})`,
-      orderId: returnRecord.order_id,
     }).catch(() => {});
     await DB.prepare('UPDATE orders SET deal_used = MAX(0, deal_used - ?) WHERE id = ?')
       .bind(restore, returnRecord.order_id).run().catch(() => {});

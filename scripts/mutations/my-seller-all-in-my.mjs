@@ -36,8 +36,9 @@ export default [
     name: '🧳 시트 하나가 정적 import 로 돌아온다',
     file: SECTION,
     // 🔁 2026-10-01 철거 재조준: `OrdersSheet` 가 내려갔다 → 남은 시트로 앵커 교체(불변식 동일).
-    find: "const WithdrawSheet = lazy(() => import('./seller-section/WithdrawSheet'))",
-    replace: "import WithdrawSheet from './seller-section/WithdrawSheet'",
+    // 🔁 2026-10-12 재조준: 돈 시트가 `PayoutSheet` 로 바뀌었다(불변식 동일).
+    find: "const PayoutSheet = lazy(() => import('./seller-section/PayoutSheet'))",
+    replace: "import PayoutSheet from './seller-section/PayoutSheet'",
     test: TEST,
     why: '한 줄만 정적으로 돌아와도 그 시트와 그 폐쇄가 마이 청크로 되돌아온다(조용히).',
   },
@@ -174,7 +175,8 @@ export default [
     name: '🚪 덮는 표에서 한 줄이 빠진다 (그 일만 조용히 두 화면)',
     file: SECTION,
     // 🔁 2026-10-01 철거 재조준: 표가 돈 하나만 남았다 → 그 한 줄을 뺀다(출금의 PIN 되돌아오기를 잃는다).
-    find: "  '/seller/settlements': 'withdraw',\n",
+    // 🔁 2026-10-12: 도구 이름이 'withdraw' → 'payout'(정산 = 주간 자동, 읽기 전용).
+    find: "  '/seller/settlements': 'payout',\n",
     replace: '',
     test: TEST,
     why: '표가 통째로 사라지면 눈에 띄지만, 한 줄만 빠지면 그 화면에서만 갈린다 — 아무도 못 찾는다.',

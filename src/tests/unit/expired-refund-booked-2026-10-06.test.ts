@@ -43,7 +43,7 @@ function seed(total = 1800): Db {
   db.exec(`
     CREATE TABLE products (id INTEGER PRIMARY KEY, price INTEGER, name TEXT, seller_id INTEGER);
     CREATE TABLE orders (
-      id INTEGER PRIMARY KEY, user_id TEXT, payment_method TEXT, payment_key TEXT,
+      id INTEGER PRIMARY KEY, order_number TEXT, user_id TEXT, payment_method TEXT, payment_key TEXT,
       total_amount INTEGER, refunded_amount INTEGER
     );
     CREATE TABLE vouchers (

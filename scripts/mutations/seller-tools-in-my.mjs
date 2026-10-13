@@ -5,29 +5,40 @@
 const TEST = 'src/tests/unit/seller-tools-in-my-2026-09-25.test.ts'
 
 export default [
+  // 💰 2026-10-12 재조준: 돈 시트가 `WithdrawSheet`(출금 신청) → `PayoutSheet`(주간 자동 정산, 읽기 전용).
+  //   출금 신청 전용이던 주입(412 번역 · 본문 계좌 필드 · 최소 금액)은 대상이 사라져 내렸고,
+  //   지키려던 큰 것(탈퇴 API 금지 · 좌석 · 계좌 출처 · 실패를 0으로 위장 금지)은 새 시트로 옮겼다.
   {
-    name: '🔴 출금 버튼이 탈퇴 엔드포인트를 부른다 (가게가 사라진다)',
-    file: 'src/pages/user-profile/seller-section/WithdrawSheet.tsx',
-    find: "api.post('/api/seller/deal-withdraw', {",
-    replace: "api.post('/api/seller/account/withdraw', { confirm: true } && {",
+    name: '🔴 정산 시트가 탈퇴 엔드포인트를 부른다 (가게가 사라진다)',
+    file: 'src/pages/user-profile/seller-section/PayoutSheet.tsx',
+    find: "        api.get('/api/seller/payouts'),",
+    replace: "        api.post('/api/seller/account/withdraw', { confirm: true }),",
     test: TEST,
-    why: '이름이 비슷해 실제로 내가 설계 문서에 이렇게 적어 뒀었다. 사장님은 돈을 받으려고 눌렀는데 상품이 전부 내려가고 매장이 지워진다 — 그 API 는 성공하므로 에러도 안 난다.',
+    why: '이름이 비슷해 실제로 설계 문서에 "출금" 이라고 적혀 있었다. 사장님은 돈을 보려고 눌렀는데 가게가 지워진다 — 그 API 는 성공하므로 에러도 안 난다.',
   },
   {
-    name: '🔴 화면이 출금 계좌를 지어낸다 (서버 값이 아니라 상수)',
-    file: 'src/pages/user-profile/seller-section/WithdrawSheet.tsx',
-    find: "        account_holder: payout.account_holder,",
-    replace: "        account_holder: '홍길동',",
+    name: '💰 정산 시트가 한 번도 적립되지 않는 잔액을 다시 읽는다',
+    file: 'src/pages/user-profile/seller-section/PayoutSheet.tsx',
+    find: "        api.get('/api/seller/payouts'),",
+    replace: "        api.get('/api/seller/deal-balance'),",
     test: TEST,
-    why: '목적지를 화면이 정할 수 있으면 돈이 다른 계좌로 갈 길이 열린다. 계좌는 좌석 인증된 서버 응답을 그대로 되돌려보내는 것뿐이어야 한다.',
+    why: '`seller_deal_balances` 는 적립 경로가 없어 늘 0 이다 — 사장님은 매출이 있는데 "0원" 을 본다(2026-10-12 까지 실제로 그랬다).',
   },
   {
-    name: '🔴 412 넷이 "출금 실패" 한 마디로 뭉개진다',
-    file: 'src/pages/user-profile/seller-section/WithdrawSheet.tsx',
-    find: "  BUSINESS_REGISTRATION_REQUIRED: '사업자등록증이 아직 확인되지 않았어요. 전체 도구 › 사업자 정보에서 올리면 확인 후 출금할 수 있어요.',",
-    replace: '',
+    name: '🏦 정산 시트가 계좌 여부를 localStorage 로 판정한다 (좌석을 안 따라간다)',
+    file: 'src/pages/user-profile/seller-section/PayoutSheet.tsx',
+    find: "        api.get('/api/seller/profile').catch(() => null),",
+    replace: "        Promise.resolve({ data: { success: true, data: { bank_name: localStorage.getItem('seller_bank_name'), bank_account: localStorage.getItem('seller_account_number') } } }),",
     test: TEST,
-    why: '사장님이 무엇을 해야 하는지 모른 채 같은 버튼을 반복해 누른다(레이트리밋 5회/시간에 걸린다).',
+    why: 'seller_bank_name 은 좌석을 따라 안 바뀐다 — 가게를 옮긴 뒤엔 직전 가게의 계좌 상태를 보여 준다.',
+  },
+  {
+    name: '💰 정산 조회 실패가 0원으로 위장된다',
+    file: 'src/pages/user-profile/seller-section/PayoutSheet.tsx',
+    find: "        if (!p.data?.success) { setFailed(true); return }",
+    replace: "        if (!p.data?.success) { setData({ payable: 0, scheduled_total: 0, sent_total: 0, payouts: [] }); return }",
+    test: TEST,
+    why: '모르는 것과 0 은 다르다 — 매출이 있는 사장님에게 "받을 돈 0원" 이라고 말하면 정산이 끊긴 줄 안다(머니 표면 룰).',
   },
   {
     // 🔁 2026-09-26 재조준: 대표 *"이용권 등록, 숙소까지 해줘"* 로 등록이 **마이 안으로** 들어왔다.
@@ -52,37 +63,5 @@ export default [
     replace: "    return true",
     test: 'src/tests/unit/seller-tools-in-my-2026-09-25.test.ts',
     why: '좌석 토큰이 다른 가게를 가리키는데 시트를 열면 **남의 가게 주문·정산**이 뜬다. 서버는 토큰으로 거르므로 에러가 아니라 **다른 가게 데이터**가 보인다 — 그게 더 나쁘다.',
-  },
-  {
-    name: '🏦 출금이 입금 계좌를 본문에서 뺀다 (송금 못 하는 지급 행)',
-    file: 'src/pages/user-profile/seller-section/WithdrawSheet.tsx',
-    find: "        bank_name: payout.bank_name,",
-    replace: "",
-    test: TEST,
-    why: 'settlements 행은 본문 값을 그대로 저장하고 어드민 지급 센터는 그 행만 읽는다(sellers 폴백 없음) — 빠지면 계좌 없는 지급 행이 에러 없이 쌓인다.',
-  },
-  {
-    name: '🏦 출금이 계좌를 localStorage 에서 읽는다 (좌석을 안 따라간다)',
-    file: 'src/pages/user-profile/seller-section/WithdrawSheet.tsx',
-    find: "        account_number: payout.account_number,",
-    replace: "        account_number: localStorage.getItem('seller_account_number') || '',",
-    test: TEST,
-    why: 'seller_account_number 는 좌석을 따라 안 바뀐다 — 가게를 옮긴 뒤 출금하면 직전 가게 계좌로 송금 행이 생긴다.',
-  },
-  {
-    name: '🏦 계좌가 없어도 출금을 보낼 수 있게 된다',
-    file: 'src/pages/user-profile/seller-section/WithdrawSheet.tsx',
-    find: "&& bizVerified === true && payout !== null",
-    replace: "&& bizVerified === true",
-    test: TEST,
-    why: '송금할 계좌가 없는 지급 행을 만드는 것이 아무것도 안 하는 것보다 나쁘다.',
-  },
-  {
-    name: '🏦 계좌 번호가 화면에 통째로 찍힌다',
-    file: 'src/pages/user-profile/seller-section/WithdrawSheet.tsx',
-    find: "{maskAccount(payout.account_number)}",
-    replace: "{payout.account_number}",
-    test: TEST,
-    why: '확인에 필요한 건 뒤 4자리뿐이다 — 전체를 찍으면 화면 캡처 한 장으로 계좌가 통째로 샌다.',
   },
 ]

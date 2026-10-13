@@ -56,13 +56,13 @@ function seed(): Db {
   const db = new DatabaseSync(':memory:')
   db.exec(`
     CREATE TABLE products (id INTEGER PRIMARY KEY, price INTEGER, name TEXT, seller_id INTEGER);
-    CREATE TABLE orders (id INTEGER PRIMARY KEY, user_id TEXT, payment_method TEXT, payment_key TEXT);
+    CREATE TABLE orders (id INTEGER PRIMARY KEY, order_number TEXT, user_id TEXT, payment_method TEXT, payment_key TEXT);
     CREATE TABLE vouchers (
       id INTEGER PRIMARY KEY, order_id INTEGER, product_id INTEGER, code TEXT,
       status TEXT, expires_at TEXT, applied_price INTEGER, refund_status TEXT
     );
     INSERT INTO products VALUES (7, 9000, '치즈돈가스', 14);
-    INSERT INTO orders VALUES (70, 'u3', 'deal_points', NULL);
+    INSERT INTO orders VALUES (70, NULL, 'u3', 'deal_points', NULL);
   `)
   return db
 }

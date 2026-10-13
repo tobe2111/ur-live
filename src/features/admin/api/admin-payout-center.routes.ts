@@ -50,7 +50,12 @@ payoutCenterRoutes.get('/', async (c) => {
     const DB = c.env.DB
     await ensurePayoutCols(DB)
 
-    const [sellers, curators, agencies, recentPaid] = await Promise.all([
+    // 💸 2026-10-12 딜 충전 잔액 환급(약관 제12조) — 소개 환급과 다른 돈이라 레일을 따로 둔다
+    //   (원천징수 0 · 자격 누구나). SSOT `worker/utils/deal-refund.ts`.
+    //   표가 아직 없으면 아래 '최근 지급 이력' UNION 이 통째로 깨지므로 먼저 보장한다.
+    const { listOpenDealRefunds, ensureDealRefundTable } = await import('../../../worker/utils/deal-refund')
+    await ensureDealRefundTable(DB).catch(() => {})
+    const [sellers, curators, agencies, recentPaid, refunds] = await Promise.all([
       DB.prepare(`
         SELECT st.id, st.seller_id, s.name AS seller_name, s.business_name,
                st.amount, st.period_start, st.period_end,
@@ -92,8 +97,13 @@ payoutCenterRoutes.get('/', async (c) => {
         UNION ALL
         SELECT 'agency' AS rail, p.id, a.name AS who, p.amount, p.created_at AS at, p.admin_memo AS memo
           FROM agency_commission_payouts p LEFT JOIN agencies a ON a.id = p.agency_id
+        UNION ALL
+        SELECT 'refund' AS rail, d.id, u.name AS who, d.amount, d.processed_at AS at, d.admin_memo AS memo
+          FROM deal_refund_requests d LEFT JOIN users u ON u.id = d.user_id
+         WHERE d.status = 'paid'
         ORDER BY at DESC LIMIT 30
       `).all().catch(() => ({ results: [] })),
+      listOpenDealRefunds(DB).catch(() => [] as Array<Record<string, unknown>>),
     ])
 
     return c.json({
@@ -107,6 +117,7 @@ payoutCenterRoutes.get('/', async (c) => {
           payable_matured: Number(r.payable || 0) - Number(r.maturing || 0),
         })),
         recent_paid: recentPaid.results || [],
+        refunds,
       },
     })
   } catch (err) {
@@ -268,6 +279,45 @@ payoutCenterRoutes.post('/agency/:agencyId/paid', require2FA(), async (c) => {
     return c.json({ success: true, data: { amount: total, row_count: paidRows.length } })
   } catch (err) {
     return safeError(c, err, '에이전시 지급 처리 중 오류가 발생했습니다', '[payout-center]')
+  }
+})
+
+// ── 💸 딜 충전 잔액 환급 입금완료 / 반려 (2026-10-12) ──
+//   반려는 2FA 를 요구하지 않는다(돈이 나가지 않고 딜이 되돌아간다) — 소개 환급 반려와 같은 기준.
+payoutCenterRoutes.patch('/refund/:id/paid', require2FA(), async (c) => {
+  try {
+    const id = Number(c.req.param('id'))
+    if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 ID' }, 400)
+    const body = await c.req.json<{ memo?: string }>().catch(() => ({} as { memo?: string }))
+    const { markDealRefundPaid } = await import('../../../worker/utils/deal-refund')
+    const r = await markDealRefundPaid(c.env.DB, id, (body.memo || '').slice(0, 300) || null)
+    if (!r.ok) return c.json({ success: false, error: '이미 처리됐거나 없는 신청입니다' }, 409)
+    await c.env.DB.prepare(
+      `INSERT INTO user_notifications (user_id, type, title, message, link)
+       VALUES (?, 'deal_refund_paid', ?, ?, '/user/profile')`
+    ).bind(r.userId, '환급 입금 완료', `${r.amount.toLocaleString('ko-KR')}원 입금이 완료되었습니다`).run().catch(() => {})
+    return c.json({ success: true })
+  } catch (err) {
+    return safeError(c, err, '환급 지급 처리 중 오류가 발생했습니다', '[payout-center]')
+  }
+})
+
+payoutCenterRoutes.patch('/refund/:id/reject', async (c) => {
+  try {
+    const id = Number(c.req.param('id'))
+    if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 ID' }, 400)
+    const body = await c.req.json<{ reason?: string }>().catch(() => ({} as { reason?: string }))
+    const reason = (body.reason || '').slice(0, 300) || '관리자 반려'
+    const { rejectDealRefund } = await import('../../../worker/utils/deal-refund')
+    const r = await rejectDealRefund(c.env.DB, id, reason)
+    if (!r.ok) return c.json({ success: false, error: '이미 처리됐거나 없는 신청입니다' }, 409)
+    await c.env.DB.prepare(
+      `INSERT INTO user_notifications (user_id, type, title, message, link)
+       VALUES (?, 'deal_refund_rejected', ?, ?, '/user/profile')`
+    ).bind(r.userId, '환급 신청이 반려되었어요 — 딜은 그대로 돌아왔어요', reason).run().catch(() => {})
+    return c.json({ success: true })
+  } catch (err) {
+    return safeError(c, err, '환급 반려 처리 중 오류가 발생했습니다', '[payout-center]')
   }
 })
 
