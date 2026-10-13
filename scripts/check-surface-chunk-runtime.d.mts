@@ -5,3 +5,4 @@ export function judge(chunks: string[], surface: string, surfaces?: Record<strin
 export function labelsOf(surface: string, surfaces?: Record<string, string[]>): string[]
 export function lzLabels(s: string): string[]
 export function stem(f: string): string
+export const PAGES: { name: string; args: string[]; surface: string }[]
