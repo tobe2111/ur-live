@@ -30,6 +30,12 @@ const norm = (p) => p.replace(/\\/g, '/')
  *  이 봉투는 엔트리 판정을 건너뛴다(정말 엔트리가 쓰면 critical-chunks 가 잡는다). */
 const NEVER_ENTRY = new Set(['app-utils-deferred'])
 
+/** 🔒 라이브러리 전용 봉투 — 앱 코드 몇 줄을 **일부러** 라이브러리 옆에 둔 봉투다(`vite.config.ts` 의 `/src/` 규칙).
+ *  묶음기가 그 앱 코드를 페이지 봉투로 빼면, 그 봉투가 라이브러리를 **정적으로** 끌고 와 모든 페이지가 받는다
+ *  (2026-10-13 실측: `src/lib/sentry-sdk` 가 lz-common 으로 가서 sentry 가 전 화면 미리받기에 들어갔다).
+ *  ⚠️ vite 에 "앱 코드 → 라이브러리 봉투" 규칙을 새로 만들면 여기 이름을 추가할 것 — 시험이 대조한다. */
+export const LIBRARY_ENVELOPES = new Set(['sentry', 'capacitor', 'tosspayments', 'app-kakao-sdk', 'charts', 'codes'])
+
 export function createSurfaceChunker({ routes, root, commonMin = 4, minGroupBytes = 2000 }) {
   let entry = null
   let surfaceOf = null
@@ -88,12 +94,41 @@ export function createSurfaceChunker({ routes, root, commonMin = 4, minGroupByte
           for (const x of meta.getModuleInfo(m)?.importedIds ?? []) stack.push(x)
         }
       }
+      // 🩸 2026-10-13: 페이지가 **나중에(lazy)** 부르는 부품(상세의 리뷰·미니 지도)은 정적 폐쇄 밖이라 라벨이 없어서,
+      //   그 부품을 **정적으로** 쓰는 다른 페이지의 봉투에 섞였다 — 상세가 리뷰 하나 때문에 상품 페이지 봉투(lz-product)를,
+      //   미니 지도 때문에 지도 봉투(lz-map)를 통째로 받았다(브라우저 렌더 실측). 페이지의 lazy 사용을 `<표면>L` 로 센다.
+      //   정적으로 이미 쓰는 모듈엔 L 을 붙이지 않는다(붙이면 그 페이지의 첫 화면 봉투가 쪼개진다).
+      //   최상위 페이지 컴포넌트(`src/pages/XxxPage.tsx`)로 가는 동적 import 는 라우트 lazy·카드 prefetch 라 따라가지 않는다.
+      const TOP_PAGE = /\/src\/pages\/[^/]+Page\.tsx$/
+      const staticOf = new Map([...labels].map(([m, set]) => [m, new Set(set)]))
+      for (const [surface, files] of Object.entries(routes)) {
+        files.forEach((file, i) => {
+          const label = files.length > 1 ? `${surface}${i + 1}` : surface
+          const stack = []
+          for (const [m, set] of staticOf) {
+            if (!set.has(label)) continue
+            for (const d of meta.getModuleInfo(m)?.dynamicallyImportedIds ?? []) if (!TOP_PAGE.test(norm(d))) stack.push(d)
+          }
+          const seen = new Set()
+          while (stack.length) {
+            const m = stack.pop()
+            if (seen.has(m) || inEntry(m, meta) || TOP_PAGE.test(norm(m))) continue
+            seen.add(m)
+            if (!staticOf.get(m)?.has(label)) {
+              if (!labels.has(m)) labels.set(m, new Set())
+              labels.get(m).add(label + 'L')
+            }
+            const info = meta.getModuleInfo(m)
+            for (const x of [...(info?.importedIds ?? []), ...(info?.dynamicallyImportedIds ?? [])]) stack.push(x)
+          }
+        })
+      }
       for (const [m, set] of labels) if (boot.has(m)) set.add('boot')
       const group = new Map()
       const bytes = new Map()
       for (const [m, set] of labels) {
         if (roots.has(m)) continue
-        const users = set.size - (set.has('boot') ? 1 : 0)
+        const users = new Set([...set].filter((l) => l !== 'boot').map((l) => l.replace(/L$/, ''))).size
         const g = users >= commonMin ? 'lz-common' : 'lz-' + [...set].sort().join('-')
         group.set(m, g)
         bytes.set(g, (bytes.get(g) ?? 0) + (meta.getModuleInfo(m)?.code?.length ?? 0))
@@ -106,7 +141,7 @@ export function createSurfaceChunker({ routes, root, commonMin = 4, minGroupByte
   /** manualChunks 가 정한 이름(name)을 받아 최종 이름을 돌려준다. */
   return function gate(id, name, meta) {
     const groupable = norm(id).includes('/src/') || /\/lucide-react\/dist\/esm\/icons\//.test(norm(id)) || name === undefined
-    if (!groupable) return name
+    if (!groupable || LIBRARY_ENVELOPES.has(name)) return name
     if (!NEVER_ENTRY.has(name) && inEntry(id, meta)) return name
     return surfaceName(id, meta) ?? name
   }

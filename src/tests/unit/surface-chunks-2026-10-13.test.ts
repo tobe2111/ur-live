@@ -18,7 +18,8 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
-import { createSurfaceChunker } from '../../../scripts/surface-chunks.mjs'
+import { createSurfaceChunker, LIBRARY_ENVELOPES } from '../../../scripts/surface-chunks.mjs'
+import { judge, PREFETCH_OK } from '../../../scripts/check-surface-chunk-runtime.mjs'
 import { buildLucideIconMap, rewriteLucideImports } from '../../../scripts/lucide-deep-imports.mjs'
 import { stripComments } from '../helpers/source-text'
 
@@ -34,9 +35,13 @@ function graph() {
     [P('src/shell.ts')]: { importedIds: [], code: big },
     [P('src/hooks/queries/index.ts')]: { importedIds: [P('src/hooks/queries/useMyData.ts')] },
     [P('src/hooks/queries/useMyData.ts')]: { importedIds: [], code: big },
-    [P('src/pages/A.tsx')]: { importedIds: [P('src/vitals.ts'), P('src/onlyA.ts'), P('src/shared3.ts'), P('src/tiny.ts'), P('src/hooks/queries/useMyData.ts'), P('src/shell.ts')], code: big },
+    [P('src/pages/A.tsx')]: { dynamicallyImportedIds: [P('src/pages/a/Reviews.tsx'), P('src/pages/BPage.tsx')], importedIds: [P('src/vitals.ts'), P('src/onlyA.ts'), P('src/shared3.ts'), P('src/tiny.ts'), P('src/hooks/queries/useMyData.ts'), P('src/shell.ts')], code: big },
     [P('src/pages/B.tsx')]: { importedIds: [P('src/shared3.ts'), P('src/onlyB.ts')], code: big },
-    [P('src/pages/C.tsx')]: { importedIds: [P('src/shared3.ts')], code: big },
+    [P('src/pages/C.tsx')]: { importedIds: [P('src/shared3.ts'), P('src/reviewsCore.ts')], code: big },
+    [P('src/pages/a/Reviews.tsx')]: { importedIds: [P('src/reviewsCore.ts'), P('src/onlyA.ts')], code: big },
+    [P('src/reviewsCore.ts')]: { importedIds: [], code: big },
+    [P('src/pages/BPage.tsx')]: { importedIds: [P('src/bPageOnly.ts')], code: big },
+    [P('src/bPageOnly.ts')]: { importedIds: [], code: big },
     [P('src/pages/Admin.tsx')]: { importedIds: [P('src/onlyAdmin.ts')], code: big },
     [P('src/onlyA.ts')]: { importedIds: [], code: big },
     [P('src/onlyB.ts')]: { importedIds: [], code: big },
@@ -90,6 +95,56 @@ describe('①-2 엔트리가 나중에 동적으로 부르는 모듈은 페이�
   })
   it('페이지 진입점으로 가는 동적 import(라우트 lazy)는 boot 로 세지 않는다 — 페이지 전용 모듈은 그대로', () => {
     expect(makeChunker()(P('src/onlyA.ts'), 'app-components', graph())).toBe('lz-a')
+  })
+})
+
+describe('①-3 페이지가 나중에(lazy) 쓰는 부품은 그 페이지의 lazy 봉투로', () => {
+  // 2026-10-13 렌더 실측: 상세의 리뷰·미니 지도가 상품·지도 페이지 봉투에 섞여, 상세가 그 봉투를 통째로 받았다(335 → 259KB).
+  it('lazy 로만 쓰는 부품 → lz-aL', () => {
+    expect(makeChunker()(P('src/pages/a/Reviews.tsx'), 'app-components', graph())).toBe('lz-aL')
+  })
+  it('다른 페이지가 정적으로 쓰는 부품을 lazy 로 쓰면 둘이 함께 이름에 남는다(남의 봉투에 섞이지 않는다)', () => {
+    expect(makeChunker()(P('src/reviewsCore.ts'), 'app-components', graph())).toBe('lz-aL-c')
+  })
+  it('이미 정적으로 쓰는 모듈엔 L 을 안 붙인다(첫 화면 봉투가 쪼개지지 않게)', () => {
+    expect(makeChunker()(P('src/onlyA.ts'), 'app-components', graph())).toBe('lz-a')
+  })
+  it('최상위 페이지(XxxPage.tsx)로 가는 동적 import 는 따라가지 않는다(라우트 lazy·카드 prefetch)', () => {
+    expect(makeChunker()(P('src/bPageOnly.ts'), 'app-components', graph())).toBe('app-components')
+  })
+})
+
+describe('①-4 라이브러리 전용 봉투는 건드리지 않는다', () => {
+  it('sentry 옆 앱 코드는 페이지 봉투로 빼지 않는다(빼면 sentry 가 전 화면에 실린다)', () => {
+    expect(makeChunker()(P('src/onlyA.ts'), 'sentry', graph())).toBe('sentry')
+  })
+  it('vite 에서 "앱 코드 → 라이브러리 봉투" 규칙의 이름은 전부 보호 목록에 있다', () => {
+    const lines = readFileSync('vite.config.ts', 'utf8').split('\n')
+    const libNames = new Set<string>()
+    const srcNames = new Set<string>()
+    for (const l of lines) {
+      const m = l.match(/return '([^']+)'/)
+      if (!m || l.trim().startsWith('//')) continue
+      const conds = [...l.matchAll(/id\.includes\('([^']+)'\)/g)].map((x) => x[1])
+      if (conds.some((c) => !c.startsWith('/src/'))) libNames.add(m[1])
+      if (conds.some((c) => c.startsWith('/src/'))) srcNames.add(m[1])
+    }
+    const both = [...srcNames].filter((n) => libNames.has(n))
+    expect(both.length).toBeGreaterThan(2)
+    for (const n of both) expect(LIBRARY_ENVELOPES.has(n), n).toBe(true)
+  })
+})
+
+describe('②-2 런타임 청크 판정', () => {
+  const S = { home: ['h.tsx'], gbDetail: ['d.tsx'], linkshop: ['c.tsx', 's.tsx'] }
+  it('남의 표면 봉투는 위반, 자기·공용·boot·lazy·의도된 미리받기는 통과', () => {
+    expect(judge(['lz-gbDetail.js'], 'linkshop', S)).toHaveLength(1)
+    expect(judge(['lz-linkshop1.js', 'lz-common.js', 'lz-boot-gbDetail.js', 'lz-gbDetailL-linkshop2L.js'], 'linkshop', S)).toEqual([])
+    expect(PREFETCH_OK.home).toContain('gbDetail')
+    expect(judge(['lz-gbDetail.js'], 'home', S)).toEqual([])
+  })
+  it('폰 첫 화면 금지 목록', () => {
+    expect(judge(['codes.js', 'capacitor.js', 'app-seller-components.js'], 'home', S)).toHaveLength(3)
   })
 })
 
@@ -164,6 +219,13 @@ describe('⑤ 홈은 폰/PC 를 나눈다', () => {
 })
 
 describe('⑥ 유어샵이 안 쓰는 것을 받지 않는다 (2026-10-13 느린 4G 재생 실측)', () => {
+  it('서버 시드로 그렸으면 같은 데이터 재요청을 load 뒤로 미룬다(주인은 바로)', () => {
+    const c = stripComments(readFileSync('src/pages/CuratorPage.tsx', 'utf8'))
+    expect(c).toMatch(/const deferRefresh = ssrSeededFor === handle && !isOwner && typeof document !== 'undefined' && document\.readyState !== 'complete'/)
+    expect(c).toMatch(/if \(!deferRefresh\) \{ run\(\); return/)
+    expect(c).toMatch(/window\.addEventListener\('load', onLoad, \{ once: true \}\)/)
+    expect(c).toMatch(/\{ ssrSeededFor = handle; return parsed \}/)
+  })
   it('유어샵 QR 카드는 PC 에서만 마운트한다(폰에서 qrcode 17KB 를 받지 않게)', () => {
     const qr = stripComments(readFileSync('src/pages/curator-page/UShopQrCard.tsx', 'utf8'))
     expect(qr).toMatch(/const isDesktop = useMediaQuery\('\(min-width: 1024px\)'\)\s*if \(!isDesktop\) return null/)

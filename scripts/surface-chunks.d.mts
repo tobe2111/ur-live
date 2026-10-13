@@ -9,3 +9,4 @@ export function createSurfaceChunker(opts: {
   commonMin?: number
   minGroupBytes?: number
 }): (id: string, name: string | undefined, meta: ChunkMeta) => string | undefined
+export const LIBRARY_ENVELOPES: Set<string>

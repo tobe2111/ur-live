@@ -104,3 +104,12 @@ CDP `emulateNetworkConditions`+`setCPUThrottlingRate 4`. 헤더는 content-type/
 - 실험: 번역 파일(locale-ko 33KB) 미리받기는 **효과 없음**(회선 대역 한계 — 순서만 바뀐다). 하지 않았다.
 - 남은 큰 덩어리: react-core 42 · locale-ko 33 · i18n 20 · axios 18 KB br. 조작 가능 시간을 더 줄이려면 총량을 깎아야 한다(번역 파일을 표면별로 쪼개는 것이 다음 후보).
 - ⚠️ 아직 /api/curator 를 첫 화면 뒤에 한 번 더 받는다(시드가 있는데 csrf-token 뒤 4.9초) — 다음 확인 대상.
+
+## 14. "계속 해 영구적으로" (2026-10-13 후속)
+
+- 묶음기: 페이지의 lazy 사용을 `<표면>L` 로 센다 → 상세가 받는 총량 335 → 259KB(br, 렌더 실측 `scratchpad/rtbytes.mjs` 방식: visual-preview --trace-api --no-idle 로 받은 청크를 brotli 합산).
+- 🩸 그 변경이 처음엔 `src/lib/sentry-sdk` 를 lz-common 으로 끌어가 **sentry 가 전 화면 미리받기에 들어갔다**(측정에서 표면별 +38KB 로 드러남). `LIBRARY_ENVELOPES` 로 막고 vite 규칙과 대조하는 시험을 붙였다. ⇒ 묶음기를 고치면 반드시 표면별 미리받기 목록에 `sentry` 가 없는지 볼 것.
+- 신규 가드 `check-surface-chunk-runtime.mjs` + `surface-chunk-runtime.yml`(PR 게이트 아님). 하네스에 `--no-idle` 추가, FETCH_RESULT 에 `chunks` 추가, 해시 제거 정규식이 `-` 든 해시를 놓치던 것 수리.
+- ⚠️ 판정 함수에서 해시를 다시 떼지 말 것 — `gbDetail` 이 8글자라 해시로 오인된다.
+- 유어샵 시드 재요청은 load 뒤로(주인은 즉시).
+- 남은 후보: ① 번역 파일(locale-ko 33KB br)을 표면별로 쪼개기 ② 홈 카드 viewport prefetch 의 **상세 청크**(약 40KB)를 idle 로 미루기 — `GroupBuyFeedCard` 잠금 파일이라 대표 승인 필요(2026-08-27 aboveFold 미루기와 같은 처방).
