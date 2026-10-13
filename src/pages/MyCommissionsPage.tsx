@@ -1,17 +1,17 @@
 /**
- * 🛡️ 2026-05-21: 사용자/셀러/에이전시 공통 — 추천 commission 조회 + 출금 신청.
+ * 🛡️ 2026-05-21: 사용자/셀러/에이전시 공통 — 추천 commission 조회.
  *   - GET /api/referral-tree/my-commissions: 내 commission 리스트 + 요약
- *   - POST /api/referral-tree/withdrawals: granted 잔액 출금 신청
- *   - GET /api/referral-tree/withdrawals: 내 출금 신청 이력
+ *   - GET /api/referral-tree/withdrawals: 옛 출금 신청 이력(읽기 전용)
+ *
+ * 💸 2026-10-12 출금 신청을 걷었다(대표 *"응 모두 해주고"*). 확정된 커미션은 서버가 **이미 딜로 적립**
+ *   하는데(`matureReferralCommissions`), 이 화면의 출금 신청이 같은 금액을 현금으로 또 내보내면서
+ *   딜을 빼지 않았다 — 같은 돈이 두 번 나가는 문이었다. 서버 `POST /withdrawals` 는 410 이다.
  */
-import { useState } from 'react'
-import { WalletIcon, OkIcon, ClockIcon, BadIcon } from '@/components/icons/urdeal-icons'
+import { OkIcon, ClockIcon, BadIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
-import api from '@/lib/api'
-import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
-import { formatWon } from '@/utils/format'
+import { formatNumber, formatWon } from '@/utils/format'
 import { useMyCommissions } from '@/hooks/queries/useMyCommissions'
 import CollabPerformance from './my-commissions/CollabPerformance'
 import { formatKST, formatKSTDate } from '@/utils/date'
@@ -26,49 +26,15 @@ const STATUS_FALLBACK = { label: '처리 중', cls: 'bg-gray-100 dark:bg-[#1D1F2
 
 export default function MyCommissionsPage() {
   const navigate = useNavigate()
-  // 🛡️ 2026-06-01 Tier2: 수동 Promise.all → useMyCommissions 단일 쿼리. 출금 신청 후 refetch.
+  // 🛡️ 2026-06-01 Tier2: 수동 Promise.all → useMyCommissions 단일 쿼리.
   // 🛡️ 2026-07-02: isError 분기 — 훅이 양 엔드포인트 전멸 시 throw 하게 바뀜("적립 0원" 위장 방지).
   const { data, isLoading: loading, isError, refetch } = useMyCommissions()
   const summary = data?.summary ?? { total_pending: 0, total_granted: 0, total_withdrawn: 0 }
   const commissions = data?.commissions ?? []
   const withdrawals = data?.withdrawals ?? []
-  const [showForm, setShowForm] = useState(false)
-  const [bankName, setBankName] = useState('')
-  const [accountNumber, setAccountNumber] = useState('')
-  const [accountHolder, setAccountHolder] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-
-  async function submit() {
-    if (!bankName.trim() || !accountNumber.trim() || !accountHolder.trim()) {
-      toast.error('은행명/계좌번호/예금주를 모두 입력하세요.')
-      return
-    }
-    setSubmitting(true)
-    try {
-      const res = await api.post('/api/referral-tree/withdrawals', {
-        bank_name: bankName.trim(),
-        account_number: accountNumber.trim(),
-        account_holder: accountHolder.trim(),
-      })
-      if (res.data.success) {
-        toast.success(`출금 신청 완료 — ${formatWon(res.data.data.total_amount)} (${res.data.data.commission_count}건)`)
-        setShowForm(false)
-        setBankName(''); setAccountNumber(''); setAccountHolder('')
-        refetch()
-      } else {
-        toast.error(res.data.error || '출금 신청 실패')
-      }
-    } catch (e: unknown) {
-      const ax = e as { response?: { data?: { error?: string } } }
-      toast.error(ax.response?.data?.error || '출금 신청 실패')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
   return (
     <div className="min-h-screen bg-white dark:bg-[#11141C]">
-      <SEO title="추천 수익 - 유어딜" description="3단계 추천 수익 잔액 및 출금" url="/my-commissions" />
+      <SEO title="추천 수익 - 유어딜" description="추천 수익 내역" url="/my-commissions" />
 
       <header className="sticky top-0 md:top-14 z-40 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-narrow flex items-center justify-between px-4 lg:px-8 h-[52px]">
@@ -94,58 +60,21 @@ export default function MyCommissionsPage() {
         <>
         {/* 🤝 2026-08-23: 협업 딜 성과 — 수락한 인플루언서만 렌더(없으면 null) */}
         <CollabPerformance />
-        {/* 잔액 카드 */}
+        {/* 잔액 카드 — 확정된 수익은 이미 **딜**로 들어가 있다(현금 출금 아님, 2026-10-12). */}
         <div className="rounded-3xl p-6 bg-gray-900 dark:bg-[#1D1F29] text-white mb-4">
-          <p className="text-[12px] opacity-80">출금 가능 수익</p>
-          <p className="text-[34px] font-extrabold leading-tight mt-1">{formatWon(summary.total_granted)}</p>
-          <div className="flex items-center gap-4 mt-3 text-[12px] opacity-80">
-            <span>대기 {formatWon(summary.total_pending)}</span>
-            <span>·</span>
-            <span>누적 출금 {formatWon(summary.total_withdrawn)}</span>
-          </div>
+          <p className="text-[12px] opacity-80">딜로 적립된 추천 수익</p>
+          <p className="text-[34px] font-extrabold leading-tight mt-1">{formatNumber(summary.total_granted)}<span className="ml-1 text-[17px] font-bold opacity-80">딜</span></p>
+          <p className="mt-3 text-[12px] opacity-80">
+            확정 대기 {formatNumber(summary.total_pending)}딜 — 확정되면 딜로 들어와요
+          </p>
           <button
-            onClick={() => setShowForm(true)}
-            disabled={summary.total_granted < 10000}
-            className="mt-4 w-full py-3 bg-white dark:bg-white text-gray-900 dark:text-gray-900 rounded-2xl font-bold text-[15px] disabled:opacity-50 flex items-center justify-center gap-2"
+            onClick={() => navigate('/')}
+            className="mt-4 w-full py-3 bg-white dark:bg-white text-gray-900 dark:text-gray-900 rounded-2xl font-bold text-[15px] flex items-center justify-center gap-2"
           >
-            <WalletIcon className="w-4 h-4" />
-            {summary.total_granted < 10000 ? '10,000원 이상부터 출금 가능' : '출금 신청하기'}
-            {summary.total_granted >= 10000 && <ArrowRight className="w-4 h-4" />}
+            딜로 이용권 보러 가기
+            <ArrowRight className="w-4 h-4" />
           </button>
         </div>
-
-        {/* 출금 폼 */}
-        {showForm && (
-          <div className="rounded-2xl border border-line p-4 mb-4 bg-gray-50 dark:bg-[#1D1F29]">
-            <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">계좌 정보 입력</h3>
-            <div className="space-y-2">
-              <input
-                value={bankName}
-                onChange={e => setBankName(e.target.value)}
-                placeholder="은행명 (예: 신한은행)"
-                className="w-full px-3 py-2 border border-line rounded-lg text-[15px] bg-surface text-gray-900 dark:text-white"
-              />
-              <input
-                value={accountNumber}
-                onChange={e => setAccountNumber(e.target.value)}
-                placeholder="계좌번호 (- 포함 가능)"
-                className="w-full px-3 py-2 border border-line rounded-lg text-[15px] bg-surface text-gray-900 dark:text-white"
-              />
-              <input
-                value={accountHolder}
-                onChange={e => setAccountHolder(e.target.value)}
-                placeholder="예금주명"
-                className="w-full px-3 py-2 border border-line rounded-lg text-[15px] bg-surface text-gray-900 dark:text-white"
-              />
-            </div>
-            <div className="flex gap-2 mt-3">
-              <button onClick={() => setShowForm(false)} className="flex-1 py-2 bg-gray-100 dark:bg-[#1D1F29] rounded-lg text-[15px] font-medium text-gray-700 dark:text-gray-300">취소</button>
-              <button onClick={submit} disabled={submitting} className="flex-[2] py-2 bg-brand text-white rounded-lg text-[15px] font-bold disabled:opacity-50">
-                {submitting ? '신청 중...' : `${formatWon(summary.total_granted)} 출금 신청`}
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* 출금 이력 */}
         {withdrawals.length > 0 && (

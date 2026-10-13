@@ -12,14 +12,16 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
 
 // ── 기대 매출·순수익 계산 (덱에 찍히는 숫자는 전부 여기서 나온다. 손으로 옮겨 적지 않는다) ──
 const CALC = (() => {
-  // 실제 상품 2915(홍대돈까스 · 라이브에서 지금 팔리는 유일한 실제 매장 이용권) · 원가율은 가정.
-  // ⚠️ 종전 앵커 2888(25,000 → 16,500)은 2026-10-06 실측에서 is_active=0 — 값은 deck-common FACTS.sample* 과 같다.
-  const listPrice = 14500, sale = 7500, feePct = 0.10, costRate = 0.35;
+  // 실제 상품 2915(홍대 돈가스 버크셔 · seller 14) · 원가율만 가정이다.
+  // 🔒 값을 베껴 적지 않고 FACTS 에서 읽는다 — 종전엔 여기에 14500/7500 을 적어 두고 주석으로
+  //    "바꿀 때 같이 고친다" 고 당부했는데, 바로 아래 cats 가 그 당부를 못 지켜 실제로 어긋났다.
+  const listPrice = FACTS.sampleOrigNum, sale = FACTS.samplePriceNum, feePct = 0.10, costRate = 0.35;
   const cost = Math.round(listPrice * costRate), fee = Math.round(sale * feePct), dep = sale - fee, net = dep - cost;
   const won = (n) => n.toLocaleString('ko-KR') + '원';
   const scen = [[1, 30], [3, 90], [5, 150]].map(([perDay, n]) => ({ perDay, n, rev: sale * n, fee: fee * n, dep: dep * n, cost: cost * n, net: net * n }));
-  // 2026-10-06 실측(FACTS.avgMeal·avgBeauty·avgStay 와 같은 값 — 바꿀 때 같이 고친다)
-  const cats = [['식사', 32409], ['뷰티', 45253], ['숙박', 155693]].map(([k, p]) => ({ k, p, rev: p * 30, dep: p * 30 - Math.round(p * 30 * feePct) }));
+  // 평균은 FACTS.avgNums 가 단일 출처다(종전엔 여기에 베껴 적어 식사 평균이 32,409 로 굳어 있었다).
+  const cats = [['식사', FACTS.avgNums.meal], ['뷰티', FACTS.avgNums.beauty], ['숙박', FACTS.avgNums.stay]]
+    .map(([k, p]) => ({ k, p, rev: p * 30, dep: p * 30 - Math.round(p * 30 * feePct) }));
   const discountPct = Math.round(((listPrice - sale) / listPrice) * 100);
   return { listPrice, sale, cost, fee, dep, net, discount: listPrice - sale, discountPct, scen, cats, won };
 })();
@@ -114,7 +116,7 @@ const CALC = (() => {
     title(s, '홍보비가 아니라 매출입니다.');
     card(s, M, 2.15, 5.9, 4.65);
     const x = M + 0.35, w = 5.2;
-    label(s, '지금 유어딜에서 팔리고 있는 실제 상품 (치즈돈가스 2인 세트)', x, 2.35, w);
+    label(s, '지금 유어딜에서 팔리고 있는 실제 상품 (' + FACTS.sampleName + ')', x, 2.35, w);
     const yEnd = kv(s, [
       ['정가', won(CALC.listPrice), 0], ['이용권 판매가 (할인율은 사장님이 정함)', won(CALC.sale), 0, true],
       ['유어딜 수수료 10%', '−' + won(CALC.fee), 0], ['카드 수수료', '0원 (유어딜 부담)', 0, true],
@@ -134,7 +136,7 @@ const CALC = (() => {
       T(s, p, { x: 7.75, y: py + 0.42, w: W - M - 7.75, h: 0.8, fontSize: 11, color: C.inkSoft, lineSpacingMultiple: 1.45, valign: 'top' });
       py += 1.5;
     });
-    s.addNotes('상품 2915(홍대돈까스, 라이브 유일의 실제 매장 이용권) 2026-10-06 실측: 정가 14,500 / 판매가 7,500. 카드 수수료(현재 약 2.75%, 변동 가능)는 유어딜 부담.');
+    s.addNotes('상품 2915(홍대 돈가스 버크셔) 2026-10-12 실측: 정가 14,500 / 판매가 7,500. 카드 수수료(현재 약 2.75%, 변동 가능)는 유어딜 부담.');
   }
 
   // ───────── 05 기대 매출과 순수익 ─────────
@@ -294,7 +296,7 @@ const CALC = (() => {
     const fx = M, fw = 4.6;
     card(s, fx, 2.15, fw, 4.6);
     label(s, '채우는 것', fx + 0.3, 2.33, fw - 0.6);
-    const fields = [['메뉴 이름', '"치즈돈가스 2인 세트" 처럼 손님이 아는 이름 그대로'], ['정가', '평소 받는 값. 손님에게 취소선으로 함께 보입니다'], ['판매가', '사장님이 정한 할인가. 이 값의 10%가 수수료입니다'], ['수량', '하루에 받을 수 있는 만큼. 다 팔리면 자동으로 닫힙니다'], ['유효기간', '안 정하면 무기한. 지나면 안 쓴 것은 유어딜이 환불']];
+    const fields = [['메뉴 이름', '"프리미엄 돈가스 1인 세트" 처럼 손님이 아는 이름 그대로'], ['정가', '평소 받는 값. 손님에게 취소선으로 함께 보입니다'], ['판매가', '사장님이 정한 할인가. 이 값의 10%가 수수료입니다'], ['수량', '하루에 받을 수 있는 만큼. 다 팔리면 자동으로 닫힙니다'], ['유효기간', '안 정하면 무기한. 지나면 안 쓴 것은 유어딜이 환불']];
     let fy = 2.7;
     fields.forEach(([k, v], i) => {
       numBadge(s, i + 1, fx + 0.3, fy, 0.32, { filled: false });

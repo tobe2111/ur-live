@@ -53,7 +53,7 @@ describe('5. 🧰 배선 — 낱개 목록이 아니라 묶음이다', () => {
     //   또는 전체 도구(`canOpenInSheet`). 지키는 것은 그대로다: **셋 다 없으면 마이에서 사라진다.**
     const code = stripComments(SECTION)
     for (const [job, path] of [['orders', '/seller/orders'], ['vouchers', '/seller/group-buy'],
-      ['withdraw', '/seller/settlements'], ['analytics', '/seller/analytics'],
+      ['payout', '/seller/settlements'], ['analytics', '/seller/analytics'],
       ['store', '/seller/store']] as const) {
       const viaRow = code.includes(`openPage('${path}'`) || code.includes(`'${path}': '`)
       expect(viaRow || canOpenInSheet(path), `${job}(${path}) 에 닿을 길이 없다`).toBe(true)
@@ -87,9 +87,10 @@ describe('5. 🧰 배선 — 낱개 목록이 아니라 묶음이다', () => {
   it('바로가기가 여는 것이 실제로 그려진다 (줄만 있고 시트가 없으면 아무 일도 안 난다)', () => {
     const code = stripComments(SECTION)
     // 돈은 손수 시트, 나머지는 대시보드 화면 시트 — 둘 다 **렌더 분기**가 있어야 열린다.
-    const at = code.indexOf("tool === 'withdraw'")
-    expect(at, 'withdraw 분기가 없다').toBeGreaterThan(0)
-    expect(code.slice(at, at + 200), 'withdraw 가 <WithdrawSheet 를 안 연다').toContain('<WithdrawSheet')
+    // 🔁 2026-10-12: 돈 = 정산(`PayoutSheet`, 주간 자동 · 읽기 전용).
+    const at = code.indexOf("tool === 'payout'")
+    expect(at, 'payout 분기가 없다').toBeGreaterThan(0)
+    expect(code.slice(at, at + 200), 'payout 이 <PayoutSheet 를 안 연다').toContain('<PayoutSheet')
     const pat = code.indexOf("tool === 'page'")
     expect(pat, 'page 분기가 없다 — 대시보드 화면이 하나도 안 열린다').toBeGreaterThan(0)
     expect(code.slice(pat, pat + 200), 'page 가 <ToolPageSheet 를 안 연다').toContain('<ToolPageSheet')
@@ -106,7 +107,7 @@ describe('5. 🧰 배선 — 낱개 목록이 아니라 묶음이다', () => {
 
   it('남은 시트가 공용 셸(`Sheet`)을 쓴다 — 뒤로가기·z-index·스크롤 규약이 갈리지 않게', () => {
     // 🧹 2026-10-01 철거: 네 시트가 내려가 셸을 쓰는 것이 **더 적어졌다**(셸 자체는 그대로).
-    for (const f of ['WithdrawSheet', 'ToolPageSheet', 'AllToolsSheet']) {
+    for (const f of ['PayoutSheet', 'ToolPageSheet', 'AllToolsSheet']) {
       expect(stripComments(readCode(`src/pages/user-profile/seller-section/${f}.tsx`)),
         `${f}: 자기 마크업을 쓰면 하단 네비 뒤로 숨거나 폰에서 잘린다`).toMatch(/from '\.\/Sheet'/)
     }

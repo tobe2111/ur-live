@@ -29,7 +29,7 @@
 export function expiredVoucherSelectSql(withRefundStatus: boolean): string {
   return `
       SELECT v.id, v.code, v.order_id, v.product_id, v.applied_price,
-             o.user_id, o.payment_method, o.payment_key, p.price, p.name as product_name,
+             o.user_id, o.payment_method, o.payment_key, o.order_number, p.price, p.name as product_name,
              p.seller_id
       FROM vouchers v
       JOIN orders o ON v.order_id = o.id

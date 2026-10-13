@@ -43,12 +43,14 @@ export default [
     why: '줄과 시트는 짝이다 — 한쪽만 있으면 에러 없이 조용히 아무 일도 안 난다.',
   },
   {
-    name: '🔑 PIN 이 언제나 출금으로 돌아간다 (계좌를 넣다 푼 사람이 엉뚱한 곳에 떨어진다)',
+    // 🔁 2026-10-12 재조준: 출금이 사라져 PIN 을 요구하는 쪽은 계좌 하나다 — 결함은 "PIN 을 풀고
+    //   계좌가 아닌 곳에 떨어진다" 로 그대로.
+    name: '🔑 PIN 을 풀고 계좌가 아닌 곳으로 돌아간다 (계좌를 넣다 길을 잃는다)',
     file: 'src/pages/user-profile/SellerSection.tsx',
-    find: "onDone={() => setTool(pinReturn)}",
-    replace: "onDone={() => setTool('withdraw')}",
+    find: "onDone={() => setTool('bank')}",
+    replace: "onDone={() => setTool('payout')}",
     test: TEST_ALL,
-    why: '출금도 계좌도 412 를 준다 — 돌아갈 곳이 하나면 계좌를 저장도 못 한 채 출금 화면에 떨어진다.',
+    why: '계좌를 넣으려다 PIN 을 풀었는데 정산 화면에 떨어지면 계좌를 저장도 못 한 채 끝난다.',
   },
   {
     name: '🔑 계좌 412 가 다시 막다른 길이 된다',

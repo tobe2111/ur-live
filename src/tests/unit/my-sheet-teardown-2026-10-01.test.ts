@@ -111,12 +111,14 @@ describe('🧹 손수 시트 철거 (2026-10-01)', () => {
     expect(fn, 'seatId 를 구독하지 않으면 바뀌어도 안 돈다').toMatch(/\}, \[seatId\]\)/)
   })
 
-  it('④ 돈은 아직 손수 시트다 (출금의 PIN 되돌아오기를 잃지 않게)', () => {
-    expect(bare, '출금 시트가 내려갔다 — PIN 이 막히면 대시보드는 토스트로 끝난다')
-      .toContain('<WithdrawSheet')
-    expect(bare, '표에서 돈이 빠지면 전체 도구가 대시보드 화면을 열어 그 흐름을 잃는다')
-      .toMatch(/'\/seller\/settlements':\s*'withdraw',/)
-    expect(bare, 'PIN 을 요구한 쪽으로 되돌아오지 않으면 계좌를 넣다 출금 화면에 떨어진다')
-      .toContain('setPinReturn(')
+  // 🔁 2026-10-12 재조준: 돈 시트가 출금 신청(`WithdrawSheet`) → 주간 자동 정산(`PayoutSheet`, 읽기 전용).
+  //   출금이 사라져 PIN 을 요구하는 쪽은 계좌 하나만 남았다 — 그래서 `pinReturn` 상태도 걷었다.
+  it('④ 돈은 아직 손수 시트다 (정산 · 계좌를 마이 안에서)', () => {
+    expect(bare, '정산 시트가 내려갔다 — 사장님이 "언제 얼마 들어오나" 를 마이에서 못 본다')
+      .toContain('<PayoutSheet')
+    expect(bare, '표에서 돈이 빠지면 전체 도구가 대시보드 화면을 열어 다른 화면이 된다')
+      .toMatch(/'\/seller\/settlements':\s*'payout',/)
+    expect(bare, 'PIN 을 풀면 계좌로 돌아와야 한다 — 다른 데로 가면 계좌를 넣다 길을 잃는다')
+      .toMatch(/tool === 'pin' && <PinSheet[^\n]*onDone=\{\(\) => setTool\('bank'\)\}/)
   })
 })

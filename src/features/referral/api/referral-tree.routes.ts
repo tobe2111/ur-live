@@ -938,76 +938,18 @@ referralTreeRoutes.get('/stats', requireAdmin(), async (c) => {
 //        admin PATCH approve → status='paid_out' + 송금 (수동) OR reject → 'granted' 로 복원.
 // ---------------------------------------------------------------------------
 
-const MIN_WITHDRAWAL_AMOUNT = 10_000 // 1만원
-
-referralTreeRoutes.post('/withdrawals', requireAuth(), async (c) => {
-  const user = getCurrentUser(c)
-  if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401)
-  const { DB } = c.env
-  await ensureReferralTreeTables(DB)
-  const userId = String(user.id)
-
-  const body = await c.req.json<{ bank_name?: string; account_number?: string; account_holder?: string }>().catch(() => ({}) as { bank_name?: string; account_number?: string; account_holder?: string })
-  const bankName = (body.bank_name || '').trim()
-  const accountNumber = (body.account_number || '').trim()
-  const accountHolder = (body.account_holder || '').trim()
-
-  if (!bankName || !accountNumber || !accountHolder) {
-    return c.json({ success: false, error: '은행명/계좌번호/예금주를 모두 입력하세요.' }, 400)
-  }
-  if (!/^[\d-]{5,30}$/.test(accountNumber)) {
-    return c.json({ success: false, error: '계좌번호 형식이 올바르지 않습니다.' }, 400)
-  }
-
-  // 출금 가능 commissions 합산 + 잠금 (트랜잭션 대신 status 업데이트로 처리)
-  const granted = await executeQuery<{ id: number; commission_amount: number; beneficiary_type: string }>(
-    DB,
-    "SELECT id, commission_amount, beneficiary_type FROM referral_commissions WHERE beneficiary_id = ? AND status = 'granted'",
-    [userId],
-  )
-  if (granted.length === 0) {
-    return c.json({ success: false, error: '출금 가능한 commission 이 없습니다.' }, 400)
-  }
-  const totalAmount = granted.reduce((sum, r) => sum + (r.commission_amount || 0), 0)
-  if (totalAmount < MIN_WITHDRAWAL_AMOUNT) {
-    return c.json({ success: false, error: `최소 출금 금액은 ${MIN_WITHDRAWAL_AMOUNT.toLocaleString()}원입니다. (현재 ${totalAmount.toLocaleString()}원)` }, 400)
-  }
-  const beneficiaryType = granted[0].beneficiary_type || 'user'
-
-  // 🛡️ 2026-06-04: 동시 신청 phantom 출금(초과지급) 방지 — commission 을 *먼저 원자 claim* 하고
-  //   실제 claim 된 분으로 출금액 확정. 동시요청 중 하나만 granted 를 claim(나머지는 0건 → 롤백).
-  const insertResult = await DB.prepare(
-    `INSERT INTO commission_withdrawals
-       (beneficiary_id, beneficiary_type, total_amount, commission_count, status, bank_name, account_number, account_holder)
-     VALUES (?, ?, 0, 0, 'pending', ?, ?, ?)`,
-  ).bind(userId, beneficiaryType, bankName, accountNumber, accountHolder).run()
-  const withdrawalId = insertResult.meta.last_row_id as number
-
-  // commission 원자 claim — status='granted' 인 것만 이 withdrawal 에 귀속.
-  const claim = await DB.prepare(
-    `UPDATE referral_commissions
-       SET status = 'withdrawal_requested', withdrawal_request_id = ?
-     WHERE beneficiary_id = ? AND status = 'granted'`,
-  ).bind(withdrawalId, userId).run()
-  const claimedCount = claim.meta?.changes ?? 0
-  if (claimedCount === 0) {
-    // 다른 동시 요청이 먼저 claim → phantom withdrawal 삭제 후 거부.
-    await DB.prepare("DELETE FROM commission_withdrawals WHERE id = ?").bind(withdrawalId).run().catch(() => {})
-    return c.json({ success: false, error: '출금 가능한 commission 이 없습니다.' }, 400)
-  }
-  // 실제 claim 된 합계로 출금 row 확정 (claim 시점 권위값).
-  const claimedSum = await DB.prepare(
-    "SELECT COALESCE(SUM(commission_amount), 0) AS amt FROM referral_commissions WHERE withdrawal_request_id = ?"
-  ).bind(withdrawalId).first<{ amt: number }>().catch(() => ({ amt: totalAmount }))
-  const finalTotal = claimedSum?.amt ?? totalAmount
-  await DB.prepare("UPDATE commission_withdrawals SET total_amount = ?, commission_count = ? WHERE id = ?")
-    .bind(finalTotal, claimedCount, withdrawalId).run()
-
-  return c.json({
-    success: true,
-    data: { withdrawal_id: withdrawalId, total_amount: finalTotal, commission_count: claimedCount },
-  })
-})
+// 🚪 2026-10-12 출금 신청 닫음 — **같은 돈이 두 번 나가는 문**이었다(대표 *"응 모두 해주고"*).
+//   확정된 커미션은 `matureReferralCommissions` 가 이미 **딜로 적립**한다(위 `adjustUserPoints`,
+//   유상 버킷). 그런데 이 문은 그 같은 `granted` 행을 현금으로 또 내보내면서 딜을 빼지 않았고
+//   (어드민 승인도 안 뺀다), 원천징수도 없었다 ⇒ 딜도 남고 현금도 나간다.
+//   라이브 실측(2026-10-12): `referral_commissions` 0행 · `commission_withdrawals` 0행 — 막아도 잃는 사람이 없다.
+//   확정 커미션은 딜로 쓰고, 현금이 필요한 매장 주인은 소개 수익 출금(`/api/curator/me/withdrawal`)을 쓴다.
+//   어드민 처리 라우트(아래 `/admin/withdrawals…`)는 **옛 신청이 남아 있을 때를 위해** 그대로 둔다.
+referralTreeRoutes.post('/withdrawals', requireAuth(), (c) => c.json({
+  success: false,
+  code: 'GONE',
+  error: '확정된 추천 수익은 딜로 적립돼요. 딜로 이용권을 살 수 있어요',
+}, 410))
 
 referralTreeRoutes.get('/withdrawals', requireAuth(), async (c) => {
   const user = getCurrentUser(c)

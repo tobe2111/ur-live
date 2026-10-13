@@ -86,7 +86,7 @@ describe('세부 페이지 정리 — 옛 패턴 0 (래칫)', () => {
 describe('📱 모바일 특화 (2026-09-15 대표 "모바일로도 특화가 되어야 해") — 폰 전용 분기가 살아 있다', () => {
   const PAYOUT = read('src/pages/seller-settlements/AutoPayoutSection.tsx')
   const BIZ = read('src/pages/seller-settlements/BizRegStatusBanner.tsx')
-  const DEAL = read('src/pages/seller-settlements/DealBalanceCard.tsx')
+  // 🧹 2026-10-12: 딜 잔액 카드(`DealBalanceCard`)를 걷었다 — 한 번도 적립되지 않는 잔액을 읽어 늘 0원이었다.
   it('소개 수익 카드 — 폰은 라벨·숫자 행(sm:hidden), PC 는 세 칸(hidden … sm:grid)', () => {
     const src = stripComments(REF)
     expect(src).toMatch(/className="divide-y divide-rule sm:hidden"/)
@@ -98,7 +98,7 @@ describe('📱 모바일 특화 (2026-09-15 대표 "모바일로도 특화가 �
     expect(src).toMatch(/className="hidden gap-3 sm:grid sm:grid-cols-3"/)
   })
   it('정산 화면에 이모지·색깔 정보상자가 없다 (🎫 규칙 ⑥) — 상태는 톤 글자 한 곳', () => {
-    for (const [name, src] of [['BizReg', BIZ], ['Deal', DEAL], ['Payout', PAYOUT]] as const) {
+    for (const [name, src] of [['BizReg', BIZ], ['Payout', PAYOUT]] as const) {
       const body = stripComments(src)
       expect(body, `${name}: 이모지`).not.toMatch(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u)
       expect(body, `${name}: 색깔 상자`).not.toMatch(/\bbg-(?:blue|amber|emerald|red)-50\b/)

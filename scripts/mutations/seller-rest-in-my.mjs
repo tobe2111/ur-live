@@ -5,7 +5,8 @@
 const TEST = 'src/tests/unit/seller-rest-in-my-2026-09-26.test.ts'
 const MESSAGES = 'src/pages/user-profile/seller-section/MessagesSheet.tsx'
 const PARTNERS = 'src/pages/user-profile/seller-section/PartnersSheet.tsx'
-const SETTLE = 'src/pages/user-profile/seller-section/SettlementsSheet.tsx'
+// 💰 2026-10-12: 지난 정산(`SettlementsSheet`)과 출금(`WithdrawSheet`)이 `PayoutSheet` 하나로 합쳐졌다.
+const SETTLE = 'src/pages/user-profile/seller-section/PayoutSheet.tsx'
 const SECTION = 'src/pages/user-profile/SellerSection.tsx'
 const GROUPS = 'src/components/seller/seller-tab-groups.ts'
 const NAV = 'src/components/seller/seller-nav.ts'
@@ -24,18 +25,18 @@ export default [
   {
     name: '🧾 정산 금액을 화면이 다시 계산한다 (대시보드와 숫자가 갈린다)',
     file: SETTLE,
-    find: '                    {formatNumber(r.settlement_amount)}',
-    replace: '                    {formatNumber((r.total_sales ?? 0) - (r.commission_amount ?? 0))}',
+    find: '{formatNumber(p.amount)}원',
+    replace: '{formatNumber(p.amount - 0)}원',
     test: TEST,
     why:
       '서버가 계산한 값 대신 화면이 빼면, 반올림·차감 항목 하나만 달라져도 마이와 대시보드가 ' +
       '다른 금액을 말한다. 이 레포가 반복해 당한 클래스다.',
   },
   {
-    name: '🧾 지난 정산이 0건과 실패를 같은 말로 뭉갠다',
+    name: '🧾 정산이 0건과 실패를 같은 말로 뭉갠다',
     file: SETTLE,
-    find: "          <p className=\"text-[15px] font-bold text-gray-900 dark:text-white\">아직 정산 내역이 없어요</p>",
-    replace: "          <p className=\"text-[14px] font-bold text-gray-900 dark:text-white\">목록</p>",
+    find: "아직 없어요. 이용권이 사용되면 그 금액이 매주 모여 여기에 쌓여요.",
+    replace: "정산 정보를 불러오지 못했어요.",
     test: TEST,
     why: '못 불러온 것을 "내역 없음" 으로 그리면 돈이 사라진 것처럼 보인다(머니 표면 룰).',
   },
@@ -64,8 +65,8 @@ export default [
     file: SECTION,
     // 🔁 2026-10-01 철거 재조준: `PartnersSheet` 가 내려갔다 → 남은 시트(정산)로 앵커 교체.
     //   불변식 동일: **import 만 있고 렌더가 없으면 죽은 코드다**(조용한 부재).
-    find: "      {tool === 'settlements' && <SettlementsSheet",
-    replace: "      {false && <SettlementsSheet",
+    find: "      {tool === 'payout' && (\n        <PayoutSheet",
+    replace: "      {false && (\n        <PayoutSheet",
     test: TEST,
     why:
       'import 만 보는 검사는 렌더를 지워도 초록이다 — 이 레포가 반복해 당한 클래스라 JSX 로 앵커한다. ' +
