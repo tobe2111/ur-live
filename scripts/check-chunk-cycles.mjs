@@ -58,9 +58,9 @@ if (isMain) {
     console.log('⏭️  chunk-cycles: SKIP — 빌드 산출물 없음 (npm run build:client 후 실행).')
     process.exit(0)
   }
-  const { cycles, chunks } = findChunkCycles(dir)
-  if (chunks < 20) {
-    console.log(`❌ chunk-cycles: 청크가 ${chunks}개뿐 — 빌드가 깨졌거나 경로가 낡았다(통과 아님).`)
+  const { cycles, chunks: total } = findChunkCycles(dir)
+  if (total < 20) {
+    console.log(`❌ chunk-cycles: 청크가 ${total}개뿐 — 빌드가 깨졌거나 경로가 낡았다(통과 아님).`)
     process.exit(1)
   }
   if (cycles.length) {
@@ -69,5 +69,5 @@ if (isMain) {
     console.log('   흔한 원인: 묶음기(scripts/surface-chunks.mjs)·manualChunks 가 라이브러리 의존을 다른 봉투로 옮겼다.')
     process.exit(1)
   }
-  console.log(`✅ chunk-cycles: 청크 ${chunks}개 · 순환 0`)
+  console.log(`✅ chunk-cycles: 청크 ${total}개 · 순환 0`)
 }
