@@ -32,6 +32,7 @@ import { resolveSectionProducts, CARD_COLS } from './section-rules';
 import { capRowGalleries } from '../../group-buy/api/card-gallery';
 import { maybeSeedHomeSections } from './section-seed';
 import { mainScopeFor } from '@/worker/utils/consumer-scope';
+import { nearKeyOf, parseNearKey } from '@/shared/home-near';
 const sectionsRoutes = new Hono<{ Bindings: Env }>();
 
 /**
@@ -102,10 +103,18 @@ async function ensureTables(DB: D1Database) {
  */
 sectionsRoutes.get('/', edgeCache(120), async (c) => {
   const { DB, SESSION_KV } = c.env as Env & { SESSION_KV?: KVNamespace };
+  /**
+   * 📍 2026-10-13 (대표 — 위치를 정하면 맨 위가 그 지역에서 가까운 이용권): `?near=lat,lng`.
+   *   서버가 **다시 격자(0.02°)에 맞춘다** — 클라가 정밀 좌표를 보내도 캐시가 쪼개지지 않게.
+   *   L1 키에도 그 격자를 넣는다(안 넣으면 한 위치의 결과가 다른 위치·위치 없음에 그대로 나간다).
+   *   위치가 없으면 키·쿼리·응답이 **종전과 byte-동일**이다(SSR 예열 키 `/api/sections` 불변).
+   */
+  const near = parseNearKey(c.req.query('near'));
+  const nearKey = nearKeyOf(near);
   try {
     const result = await cacheGet(
       SESSION_KV,
-      'sections:public',
+      nearKey ? `sections:public:n${nearKey}` : 'sections:public',
       async () => {
         await ensureTables(DB);
         // 🏠 2026-08-04: 승인된 시안의 세 줄을 기본으로 넣는다 — 아무도 안 만들면 홈이
@@ -189,6 +198,7 @@ sectionsRoutes.get('/', edgeCache(120), async (c) => {
             sourceValue: (s.source_value as string) ?? null,
             limit: (s.limit_count as number) ?? null,
             excludeIds: [...claimed],
+            near,
           });
           for (const p of rows) {
             const id = (p as { id?: number }).id;
@@ -200,6 +210,9 @@ sectionsRoutes.get('/', edgeCache(120), async (c) => {
         return sectionList
           .map(s => ({
             ...s,
+            // 📍 이 줄이 위치로 정렬됐는지 — 화면이 소제목을 "동탄5동에서 가까운 순" 으로 바꾼다.
+            //   수동 섹션은 위치와 무관하므로 false(어드민이 쓴 소제목 그대로).
+            ...(nearKey ? { near: normalizeSectionSource(s.source) !== 'manual' } : {}),
             // 🖼️ 2026-10-12 갤러리는 카드 SSOT(`CARD_GALLERY_MAX`)로 자른다 — 딜 피드·상품 목록은 이미 자르는데
             //   섹션만 원본 전량을 싣고 있었다(홈 SSR 시드·엣지 캐시에 그대로 올라탄다).
             products: capRowGalleries(normalizeSectionSource(s.source) === 'manual'
@@ -213,7 +226,8 @@ sectionsRoutes.get('/', edgeCache(120), async (c) => {
       { ttl: 120 }
     );
 
-    return c.json({ success: true, data: result });
+    // 📍 어느 위치로 만든 응답인지 — 화면이 SSR 시드를 쓸지(같은 격자인지) 판정한다.
+    return c.json(nearKey ? { success: true, data: result, near: nearKey } : { success: true, data: result });
   } catch (err) {
     console.error('[sections] GET / failed:', err);
     return c.json({ success: true, data: [] });

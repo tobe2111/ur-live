@@ -289,7 +289,7 @@ import { referralRoutes } from '../features/referral/api/referral.routes';
 import { cfImage, cfSrcSet } from '../utils/cf-image';
 // 🖼️ 홈 첫 화면 카드 사진 preload — 링크 생성은 헬퍼가 한다(파일 크기 래칫 + 직접 테스트 용이).
 import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; import { brandJsonLdScript } from '../shared/seo/brand-jsonld'; import { buildStaticSurfaceNoscript, stayNoscriptFromPayload, curatorNoscriptFromPayload } from './utils/crawler-noscript';
-import { VOUCHERS_SEED_PATH, voucherFacetSeedPath } from '../shared/seo/voucher-facet'; import { buildStayDetailFirstScreen } from './utils/stay-detail-ssr-body'; import { MAIN_SEED_PATH, REGION_PATH_RE } from '../shared/seo/region-seed'; import { isKnownAppPath } from '../shared/seo/known-routes'; import { REGION_DIGEST_KV_KEY, regionDigestApplies, regionThinByDigest } from '../shared/seo/region-digest'; import { ushopOgImage } from '../shared/ushop-share-card'; import { OG_CARD_W, OG_CARD_H, ogCardUrl } from '../shared/og-share-image'; // 한 줄: 파일크기 래칫 안
+import { VOUCHERS_SEED_PATH, voucherFacetSeedPath } from '../shared/seo/voucher-facet'; import { buildStayDetailFirstScreen } from './utils/stay-detail-ssr-body'; import { MAIN_SEED_PATH, REGION_PATH_RE } from '../shared/seo/region-seed'; import { isKnownAppPath } from '../shared/seo/known-routes'; import { REGION_DIGEST_KV_KEY, regionDigestApplies, regionThinByDigest } from '../shared/seo/region-digest'; import { ushopOgImage } from '../shared/ushop-share-card'; import { OG_CARD_W, OG_CARD_H, ogCardUrl } from '../shared/og-share-image'; import { nearKeyFromCookieHeader, nearLabelFromCookieHeader } from '../shared/home-near'; // 한 줄: 파일크기 래칫 안
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -580,7 +580,7 @@ app.use('*', async (c, next) => {
       // 🏠 2026-08-22 (대표 "인기 이용권이 먼저 안 뜨고 가까운 동네딜이 먼저 보여"): 홈은 피드(MAIN)와
       //   섹션(SECTIONS)을 **함께** 그리는데 시드가 피드에만 있어 섹션만 브라우저가 따로 받아 왔다
       //   (실측 0.6~1.2s). ⚠️ `/api/sections` 는 HOT_PATHS + `edgeCache(120)` 와 **한 세트**다.
-      ssrExtra = { slot: 'SECTIONS', path: '/api/sections' };
+      ssrExtra = { slot: 'SECTIONS', path: '/api/sections' + ((k) => (k ? `?near=${k}` : ''))(nearKeyFromCookieHeader(c.req.header('cookie'))) }; // 📍 2026-10-13 [UNLOCK_LOADING]: 위치 쿠키(`ur_loc`, 0.02° 격자)가 있으면 같은 격자로 섹션 시드 — 첫 화면부터 동네 것. 없으면 종전 키 byte-동일(예열·KV 워밍 그대로)
     } else if (url.pathname === '/vouchers' && (!url.search || voucherFacetSeedPath(url.search))) {
       // 🛡️ 2026-05-27: VouchersPage first-paint inject (no query — default 페이지). 클라이언트가 categoryParam/brand 변경 시 새 fetch — SSR 첫 진입만 효과.
       // 🎟️ 2026-10-12 [UNLOCK_LOADING]: sitemap 이 제출하는 `?category=<허용값>` 3건은 **크롤러 본문용으로만** 받는다(본문 8자였다 — 왜·어떤 모양만인지는 모듈 주석에).
@@ -1038,7 +1038,7 @@ app.use('*', async (c, next) => {
       //   사진 URL까지 와 있고 워커가 그 넷을 preload 로 이미 당기는데 `#root` 는 로더가 덮고 있었다 → 크롬(높이만) +
       //   첫 섹션 카드 4장을 그리고 그 아래에만 로더를 둔다. PC 는 다른 레이아웃이라 UA 로 가른다.
       //   사유·경계·버린 길(워커 React 렌더 = 번들 gzip 게이트로 불가): `utils/home-first-screen.ts`.
-      const homeFirst = buildHomeFirstScreen(ssrExtraPayload, urdealLoaderHtml);
+      const homeFirst = buildHomeFirstScreen(ssrExtraPayload, urdealLoaderHtml, nearLabelFromCookieHeader(c.req.header('cookie')));
       rb = rb.on('#root', { element(el) { el.setInnerContent(homeFirst || urdealLoaderHtml, { html: true }); } });
     } else if (ssrSlot === 'CURATOR' && ssrPayload && /^\/u\/[A-Za-z0-9_-]{1,40}\/?$/.test(url.pathname) && shouldRenderMobileFirstScreen(c.req.header('user-agent'))) {
       // 🛍️ 2026-10-09 [UNLOCK_LOADING] (대표 "모두 다 하자"): 시드에 이름·소개·핀 4개(사진 URL까지)가
@@ -1441,7 +1441,6 @@ const exactPostBot = (exactPath: string) => {
 };
 app.use('/api/auth/register', exactPostBot('/api/auth/register'));
 app.use('/api/auth/login', exactPostBot('/api/auth/login'));
-app.use('/api/seller/register', exactPostBot('/api/seller/register'));
 app.use('/api/seller/login', exactPostBot('/api/seller/login'));
 app.use('/api/admin/login', exactPostBot('/api/admin/login'));
 app.use('/api/auth/forgot-password', exactPostBot('/api/auth/forgot-password'));

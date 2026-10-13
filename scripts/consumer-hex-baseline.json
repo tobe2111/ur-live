@@ -1,5 +1,5 @@
 {
-  "total": 1935,
+  "total": 1929,
   "files": {
     "src/pages/AboutPage.tsx": 25,
     "src/pages/AboutServicePage.tsx": 1,
@@ -39,7 +39,6 @@
     "src/pages/InfluencerLandingPage.tsx": 5,
     "src/pages/InfluencerOfferAcceptPage.tsx": 8,
     "src/pages/InfluencerRankingsPage.tsx": 3,
-    "src/pages/InfluencerSettlementPage.tsx": 6,
     "src/pages/InfluencerTermsPage.tsx": 3,
     "src/pages/InterestListPage.tsx": 5,
     "src/pages/IntroducePage.tsx": 41,

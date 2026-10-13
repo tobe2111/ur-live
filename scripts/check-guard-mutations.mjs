@@ -663,7 +663,7 @@ const MUTATIONS = [
   {
     name: '🖼️ 섹션 id 가 매 렌더 새로 만들어진다 (스크롤 중 카드가 재배치된다)',
     file: 'src/pages/main-home/GroupBuyFeed.tsx',
-    find: '  const sectionIds = useMemo(() => seededSectionProductIds(), [])',
+    find: '  const sectionIds = useMemo(() => seededSectionProductIds(sectionNearKey0), [sectionNearKey0])',
     replace: '  const sectionIds = new Set<number>()',
     test: 'src/tests/unit/home-feed-defers-section-items.test.ts',
     why:

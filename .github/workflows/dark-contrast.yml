@@ -39,6 +39,7 @@ on:
       #   하필 그 파일에서 1.07:1(흰 판 위 흰 글자)이 나왔는데도.
       #   ⇒ ROUTES 에 경로를 넣으면 **그 화면을 그리는 파일도 여기 넣는다.**
       - 'src/pages/InfluencerSettlementPage.tsx'
+      - 'src/pages/influencer-settlement/**'
       - 'src/pages/InfluencerDiscoverPage.tsx'
       - 'src/pages/AddressManagementPage.tsx'
       - 'src/pages/VoucherDetailPage.tsx'

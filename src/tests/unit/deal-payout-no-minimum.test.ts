@@ -44,7 +44,8 @@ describe('딜 수령자는 최소 금액에 걸리지 않는다', () => {
 })
 
 describe('고르는 화면이 그 차이를 말해 준다', () => {
-  const PAGE = readFileSync('src/pages/InfluencerSettlementPage.tsx', 'utf-8')
+  // 🧾 2026-10-13: 받는 방법 선택이 정산 화면에서 **정산 정보 시트**로 옮겨갔다(고르는 자리 = 그 시트).
+  const PAGE = readFileSync('src/pages/influencer-settlement/SettleInfoSheet.tsx', 'utf-8')
   const ADMIN_PAGE = readFileSync('src/pages/AdminInfluencerPayoutsPage.tsx', 'utf-8')
 
   it('소개자 화면: 현금엔 문턱, 딜엔 제한 없음이 적혀 있다', () => {

@@ -92,8 +92,8 @@ export default [
   {
     name: 'A-2 — 유어샵 관리에 같은 줄을 되살린다 (편집이 두 곳)',
     file: 'src/pages/UShopManagePage.tsx',
-    find: '      <Link to="/user/profile" className={rowCls}>',
-    replace: '      <Link to="/u/me/manage" className={rowCls}>',
+    find: "const ProfileEditSheet = lazy(() => import('./user-profile/profile-edit/ProfileEditSheet'))",
+    replace: "const ProfileEditSheet = lazy(() => import('./ushop-manage/ShopInfoEditSheet'))",
     test: T,
     why:
       '값을 고치는 자리가 둘이 되면 한쪽에서 바꾸고 다른 쪽을 보면 옛 값이 보인다 — 그게 A-2 를 ' +

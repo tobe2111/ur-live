@@ -321,6 +321,16 @@ const REGION_CENTROIDS: Record<string, { lat: number; lng: number; radiusKm: num
   '전북': { lat: 35.7175, lng: 127.153, radiusKm: 65 },
 }
 
+/**
+ * 📍 2026-10-13: 지역만 고른 홈(시안 ②)이 "그 지역에서 가까운 순" 의 기준점으로 쓰는 시/도 중심.
+ *   역세권 그룹(district) 단위 좌표는 없다 — 그룹을 골라도 시/도 중심을 쓴다(호출부가 라벨도 시/도로 맞춘다).
+ */
+export function regionCentroid(regionKey: string | null | undefined): { lat: number; lng: number } | null {
+  if (!regionKey) return null
+  const c = REGION_CENTROIDS[regionKey]
+  return c ? { lat: c.lat, lng: c.lng } : null
+}
+
 /** 좌표가 시/도 반경 안인지. regionKey 미등재/무효 좌표면 null(판정 불가 — 호출부가 보수적으로 처리). */
 export function matchRegionCoords(lat: number, lng: number, regionKey: string | null | undefined): boolean | null {
   if (!regionKey) return null

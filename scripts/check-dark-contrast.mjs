@@ -227,7 +227,7 @@ const ROUTES = [
    *   한 줄 더 둔다(리스트 화면은 기존 줄이 계속 잰다).
    */
   { route: '/mypage/addresses', name: '배송지(추가 폼)', auth: 'user', fill: true, open: '[data-testid="address-add"]' },
-  { route: '/influencer/settlement', name: '정산 신청', auth: 'user', fill: true },
+  { route: '/influencer/settlement', name: '정산 신청', auth: 'user', fill: true, open: '[data-testid="settle-info-open"]' }, // 🧾 2026-10-13: 입력칸이 정산 정보 시트로 옮겨갔다 — 열어서 잰다
   { route: '/influencer/discover', name: '소개 찾기', auth: 'user', fill: true },
   { route: '/vouchers/2192', name: '교환권 상세', fill: true },
   { route: '/v/GUARD-TEST-CODE', name: '교환권 확인', fill: true },

@@ -13,6 +13,8 @@ dist/
 !postcss.config.js
 !scripts/**/*.js
 !naver-ad-scraper/**/*.js
+# 🪦 ur-wholesale 묘비(2026-10-12) — 이게 무시되면 워크플로가 빈 폴더를 배포하려다 실패한다
+!deploy/ur-wholesale-tombstone/_worker.js
 # 🛡️ public/ 의 정적 SW 들은 추적 (PWA/push/killer)
 !public/sw.js
 !public/pwa-sw.js
