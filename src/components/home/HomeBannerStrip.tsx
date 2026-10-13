@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
-import { safeInternalPath } from '@/utils/safe-internal-path'
+import { resolveBannerLink, type BannerLink } from './banner-link'
 import { useHomeBanners, type HomeBanner } from './useHomeBanners'
 import type { BannerSlot } from '@/shared/constants/home-showcase'
-import { inkForLuminance, measureTitleLuminance, type BannerInk } from './banner-ink'
 import { BANNER_SLOT_SPECS } from '@/shared/constants/home-showcase'
 
 /**
@@ -32,14 +31,19 @@ import { BANNER_SLOT_SPECS } from '@/shared/constants/home-showcase'
  */
 const STRIP_GAP_PX = 28
 
-function bannerHref(b: HomeBanner): string {
-  return b.link_url ? safeInternalPath(b.link_url, '') : ''
+function bannerLink(b: HomeBanner): BannerLink {
+  return resolveBannerLink(b.link_url, typeof window !== 'undefined' ? window.location.hostname : undefined)
 }
 
-function Wrap({ href, className, style, children }: { href: string; className: string; style?: React.CSSProperties; children: React.ReactNode }) {
-  return href
-    ? <Link to={href} className={className} style={style}>{children}</Link>
-    : <div className={className} style={style}>{children}</div>
+/**
+ * 링크가 있으면 카드 **전체**가 누르는 자리다 — 우리 주소는 앱 안 이동(`<Link>`), 남의 주소는 새 탭.
+ * `clone` 은 순환용 복제 카드(아래 StripRail) — 스크린리더·탭 순서에서 뺀다.
+ */
+function Wrap({ link, className, style, clone, children }: { link: BannerLink; className: string; style?: React.CSSProperties; clone?: boolean; children: React.ReactNode }) {
+  const a11y = clone ? { 'aria-hidden': true as const, tabIndex: -1 } : {}
+  if (link?.kind === 'internal') return <Link to={link.to} className={className} style={style} {...a11y}>{children}</Link>
+  if (link?.kind === 'external') return <a href={link.href} target="_blank" rel="noopener noreferrer" className={className} style={style} {...a11y}>{children}</a>
+  return <div className={className} style={style} {...a11y}>{children}</div>
 }
 
 export default function HomeBannerStrip({ variant }: { variant: Extract<BannerSlot, 'strip' | 'inline' | 'wide'> }) {
@@ -57,12 +61,12 @@ export default function HomeBannerStrip({ variant }: { variant: Extract<BannerSl
 
   if (variant === 'wide') {
     const b = banners[0]
-    const href = bannerHref(b)
+    const link = bannerLink(b)
     const bg = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS.wide.requestWidth, quality: 76 }) : ''
     return (
       <div className="pb-6">
         <Wrap
-          href={href}
+          link={link}
           className="relative block overflow-hidden rounded-xl isolate min-h-[104px] flex items-center justify-between gap-5 px-6 py-5 bg-gray-900 dark:bg-[#1D1F29] transition-transform hover:scale-[1.004]"
         >
           {bg && <img src={bg} alt="" aria-hidden="true" className="absolute inset-0 -z-10 w-full h-full object-cover" />}
@@ -71,7 +75,7 @@ export default function HomeBannerStrip({ variant }: { variant: Extract<BannerSl
             <strong className="block text-[17px] font-black tracking-tight text-white">{b.title}</strong>
             {b.description && <span className="block mt-1 text-[13px] text-white/80">{b.description}</span>}
           </div>
-          {href && (
+          {link && (
             <span className="shrink-0 px-5 py-2 rounded-lg bg-brand text-white text-[13px] font-bold">
               바로가기
             </span>
@@ -91,12 +95,12 @@ export default function HomeBannerStrip({ variant }: { variant: Extract<BannerSl
         : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
       }`}>
         {banners.slice(0, 3).map(b => {
-          const href = bannerHref(b)
+          const link = bannerLink(b)
           const bg = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS.inline.requestWidth, quality: 76 }) : ''
           return (
             <Wrap
               key={b.id}
-              href={href}
+              link={link}
               className="relative block overflow-hidden rounded-xl isolate min-h-[96px] flex flex-col justify-center px-5 py-4 bg-gray-800 dark:bg-[#1D1F29] transition-transform hover:scale-[1.008]"
             >
               {bg && <img src={bg} alt="" aria-hidden="true" className="absolute inset-0 -z-10 w-full h-full object-cover" />}
@@ -153,14 +157,44 @@ export default function HomeBannerStrip({ variant }: { variant: Extract<BannerSl
  *   ③ 화면 밖이거나 탭이 숨겨졌을 때 — 아래로 내려 읽는 사람 머리 위에서 혼자 돌 이유가 없다.
  *   ④ `prefers-reduced-motion` — 동작 줄이기를 켠 사람에겐 아예 안 움직이고 버튼도 안 보인다.
  *
- * ## 글자색은 그림이 정한다 (2026-10-12 대표 *"배경을 그라데이션으로 하니까 촌스러운데"*)
- * 파스텔 그림 위에 검은 스크림을 덮으면 그림이 탁해진다. 그림 왼쪽 아래(글자 자리) 밝기를 재서
- * 밝으면 짙은 글자 + 스크림 없음, 어두우면 흰 글자 + 종전 스크림(`banner-ink.ts`).
+ * ## 글자 = 흰색 · 왼쪽 아래 (2026-10-13 대표 *"제주·강원 모두 폰트 흰색 … 글자 위치가 더 내려가야 …
+ *    야놀자 스러워야"*) — 2026-10-12 의 "그림 밝기로 글자색 고르기"(`banner-ink.ts`, 이번에 삭제)를 **대체**한다.
+ * 배너가 일러스트에서 **실사 사진**(지역별)으로 바뀌자 밝기 판정이 하늘·바다 같은 밝은 면을 보고
+ * 짙은 글자를 골라, 같은 줄의 배너가 장마다 다른 글자색이 됐다. 사진 배너의 문법(야놀자·NOL)은
+ * 하나다 — **아래쪽만 어둡게 깔고 흰 글자를 왼쪽 아래에.** 그래서 글자색을 고르지 않는다.
+ *
+ * ## 마지막 장 다음은 첫 장 (2026-10-13 대표 *"마지막페이지에서 또 오른쪽으로 넘기면 첫페이지로"*)
+ * 네이티브 스크롤은 끝에서 멈춘다. 그래서 맨 뒤에 **첫 장의 복제**를 하나 두고, 복제에 도착해
+ * 멈추면 보이지 않게(애니메이션 없이) 진짜 첫 장 위치로 옮긴다 — 복제와 첫 장이 같은 그림이라
+ * 눈에는 이어 넘어간 것으로 보인다. 손가락·숫자 알약·자동 넘김 셋이 같은 길을 쓴다.
  */
 /** 한 장에 머무는 시간(ms). */
 const AUTO_ADVANCE_MS = 4500
 /** 손가락을 뗀 뒤 다시 움직이기까지(ms). */
 const RESUME_AFTER_TOUCH_MS = 8000
+
+/**
+ * 🖥️ PC(lg+) 는 **한 줄에 세 장**(2026-10-13 대표 확정 "시안 a"). 모바일과 같은 2:1 한 장을 PC 폭에 그대로
+ *   두면 1440px 에서 높이가 약 670px — 대표 *"너무 무식하게 배너가 크다"*. 세 장이면 약 215px 이다.
+ *   ⚠️ `tailwind lg` 와 같은 경계(1024px)여야 카드 폭 클래스와 순환 계산이 같은 화면을 본다.
+ */
+const PC_QUERY = '(min-width: 1024px)'
+const PC_PER_VIEW = 3
+/** PC 카드 폭 = (칸 − `STRIP_GAP_PX`(28) 둘) ÷ 3. 모바일은 카드 자신의 w-full. */
+const PC_CARD_W = 'lg:w-[calc((100%-56px)/3)]'
+
+function usePerView(): number {
+  const read = () => (typeof window !== 'undefined' && window.matchMedia?.(PC_QUERY).matches ? PC_PER_VIEW : 1)
+  const [n, setN] = useState(read)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return
+    const mq = window.matchMedia(PC_QUERY)
+    const on = () => setN(mq.matches ? PC_PER_VIEW : 1)
+    mq.addEventListener?.('change', on)
+    return () => mq.removeEventListener?.('change', on)
+  }, [])
+  return n
+}
 
 function prefersReducedMotion(): boolean {
   if (typeof window === 'undefined' || !window.matchMedia) return false
@@ -176,6 +210,15 @@ function StripRail({ banners }: { banners: HomeBanner[] }) {
   const [onScreen, setOnScreen] = useState(true)
   const [reduceMotion] = useState(prefersReducedMotion)
   const many = banners.length > 1
+  const perView = usePerView()
+
+  /**
+   * 순환용 — 맨 뒤에 **한 화면만큼**(모바일 1장 · PC 3장) 앞쪽 복제를 둔다. 복제 구간의 첫 칸에 서면
+   * 화면이 처음과 똑같으므로, 거기서 애니메이션 없이 진짜 앞쪽으로 옮겨도 눈에 안 보인다.
+   */
+  const slides = many ? [...banners, ...banners.slice(0, perView)] : banners
+  const settleRef = useRef<number | undefined>(undefined)
+  useEffect(() => () => window.clearTimeout(settleRef.current), [])
 
   const stepPx = () => {
     const first = railRef.current?.firstElementChild as HTMLElement | null
@@ -188,8 +231,37 @@ function StripRail({ banners }: { banners: HomeBanner[] }) {
     const step = stepPx()
     if (!el || !step) return
     const i = Math.round(el.scrollLeft / step)
-    setActive(Math.max(0, Math.min(banners.length - 1, i)))
+    // 복제 칸(i === 길이)은 첫 장이다 — 숫자는 `1 / N` 으로 보인다.
+    setActive(i >= banners.length ? 0 : Math.max(0, i))
+    // 복제에 **멈추면** 진짜 첫 장으로 순간이동(스크롤이 끝난 뒤에만 — 도중에 옮기면 손가락과 싸운다).
+    window.clearTimeout(settleRef.current)
+    settleRef.current = window.setTimeout(() => {
+      const at = Math.round(el.scrollLeft / step)
+      if (at >= banners.length) jumpTo(at - banners.length)
+    }, 140)
   }
+
+  /** 애니메이션 없이 옮긴다 — `scroll-smooth` 를 잠깐 끄지 않으면 거꾸로 감기는 게 보인다. */
+  const jumpTo = (i: number) => {
+    const el = railRef.current
+    const step = stepPx()
+    if (!el || !step) return
+    el.style.scrollBehavior = 'auto'
+    el.scrollLeft = i * step
+    requestAnimationFrame(() => { el.style.scrollBehavior = '' })
+  }
+
+  /**
+   * 🖱️ 이전 — 첫 장에서 왼쪽이면 복제 구간(처음과 똑같은 화면)으로 순간이동한 뒤 한 칸 미끄러진다.
+   *   PC 는 마우스라 가로로 밀 방법이 없어서(대표 *"좌우 스크롤도 안되고"*) 화살표가 유일한 조작이다.
+   */
+  const goPrev = () => {
+    hold()
+    if (active > 0) return goTo(active - 1)
+    jumpTo(banners.length)
+    requestAnimationFrame(() => goTo(banners.length - 1))
+  }
+  const goNext = () => { hold(); goTo(active + 1) }
 
   /** 숫자를 누르면 다음 장으로 **미끄러지듯** 간다(`scroll-smooth`). */
   const goTo = (i: number) => {
@@ -214,7 +286,7 @@ function StripRail({ banners }: { banners: HomeBanner[] }) {
     const wait = Math.max(AUTO_ADVANCE_MS, heldUntil - Date.now())
     const t = window.setTimeout(() => {
       if (document.visibilityState !== 'visible') return
-      goTo(active + 1 >= banners.length ? 0 : active + 1)
+      goTo(active + 1) // 마지막 장 다음은 복제(= 첫 장) — 도착하면 onScroll 이 진짜 첫 장으로 옮긴다
     }, wait)
     return () => window.clearTimeout(t)
   }, [many, paused, reduceMotion, onScreen, active, heldUntil, banners.length])
@@ -233,8 +305,21 @@ function StripRail({ banners }: { banners: HomeBanner[] }) {
           onWheel={many ? hold : undefined}
           className={`flex gap-7 px-[14px] ${many ? 'overflow-x-auto snap-x snap-mandatory scroll-px-[14px] scroll-smooth overscroll-x-contain scrollbar-hide' : ''}`}
         >
-          {banners.map((b, i) => <StripCard key={b.id} b={b} many={many} first={i === 0} />)}
+          {slides.map((b, i) => <StripCard key={i >= banners.length ? `clone-${i}` : b.id} b={b} many={many} first={i < perView} clone={i >= banners.length} />)}
         </div>
+      {many && (
+        <>
+          {/* 🖥️ PC 좌우 화살표 — 마우스엔 가로 스와이프가 없다. 모바일은 손가락이 있어 숨긴다. */}
+          <button type="button" onClick={goPrev} aria-label="이전 배너"
+            className="hidden lg:grid absolute left-0 top-1/2 -translate-y-1/2 h-11 w-11 place-items-center rounded-full bg-white text-gray-900 shadow-lift dark:bg-white dark:text-gray-900">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+          </button>
+          <button type="button" onClick={goNext} aria-label="다음 배너"
+            className="hidden lg:grid absolute right-0 top-1/2 -translate-y-1/2 h-11 w-11 place-items-center rounded-full bg-white text-gray-900 shadow-lift dark:bg-white dark:text-gray-900">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
+          </button>
+        </>
+      )}
       {many && (
         <div className="absolute right-[26px] bottom-3 flex items-center gap-2">
           {!reduceMotion && (
@@ -253,7 +338,7 @@ function StripRail({ banners }: { banners: HomeBanner[] }) {
           )}
           <button
             type="button"
-            onClick={() => goTo((active + 1) % banners.length)}
+            onClick={() => goTo(active + 1)}
             aria-label={`다음 배너 (${active + 1} / ${banners.length})`}
             className="px-2 py-1 rounded-full text-[12px] font-semibold tabular-nums text-white bg-black/30 backdrop-blur-[6px]"
           >
@@ -266,19 +351,19 @@ function StripRail({ banners }: { banners: HomeBanner[] }) {
   )
 }
 
-/** 카드 한 장. 글자색은 그림 밝기로 정한다(`banner-ink.ts`). */
-function StripCard({ b, many, first }: { b: HomeBanner; many: boolean; first: boolean }) {
-  const href = bannerHref(b)
+/** 카드 한 장 — 흰 글자를 왼쪽 아래에(야놀자 문법). 카드 전체가 누르는 자리다. */
+function StripCard({ b, many, first, clone }: { b: HomeBanner; many: boolean; first: boolean; clone?: boolean }) {
+  const link = bannerLink(b)
   const bg = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS.strip.requestWidth, quality: 76 }) : ''
-  const [ink, setInk] = useState<BannerInk>('light')
-  const dark = !!bg && ink === 'dark'
   return (
     <Wrap
-      href={href}
+      link={link}
+      clone={clone}
       /* 📐 거터(14) 안에서 **한 장이 꽉**. 모서리 14px 는 `.ur-home-panel`(모바일) 과 같은 값이다.
-         🩸 `w-[calc(100%-1.75rem)]` 로 쓰면 **거터가 두 번 빠진다** — `w-full` 이 맞다(= 362 × 181, 2:1). */
+         🩸 `w-[calc(100%-1.75rem)]` 로 쓰면 **거터가 두 번 빠진다** — `w-full` 이 맞다(= 362 × 181, 2:1).
+         📍 `justify-end` + 아래 여백 — 글자가 카드 **아래**에 앉는다(가운데에 뜨면 사진의 주인공을 가린다). */
       /* shape-lock-ok — 14px 는 임의값이 아니라 `.ur-home-panel`(모바일) 의 radius 와 **같은 값**이다. */
-      className={`relative ${many ? 'snap-start shrink-0 w-full' : 'flex-1'} overflow-hidden rounded-[14px] isolate aspect-[2/1] flex flex-col justify-center px-5 py-4 transition-transform active:scale-[.995]`} /* shape-lock-ok (위 사유) */
+      className={`relative ${many ? 'snap-start shrink-0 w-full' : 'flex-1'} ${many ? PC_CARD_W : ''} overflow-hidden rounded-[14px] isolate aspect-[2/1] flex flex-col justify-end px-5 pt-4 pb-4 transition-transform active:scale-[.995]`} /* shape-lock-ok (위 사유) */
       /* 🎨 사진이 없으면 **브랜드 면**(대표 확정 "E"). */
       style={bg ? undefined : { background: 'var(--brand-grad)' }}
     >
@@ -289,22 +374,15 @@ function StripCard({ b, many, first }: { b: HomeBanner; many: boolean; first: bo
           fetchPriority={first ? 'high' : 'auto'}
           decoding="async"
           className="absolute inset-0 -z-10 w-full h-full object-cover"
-          onLoad={(e) => { const L = measureTitleLuminance(e.currentTarget); if (L != null) setInk(inkForLuminance(L)) }}
           onError={(e) => cfImageOnError(e.currentTarget, b.image_url)}
         />
       )}
-      {/* 어두운 그림일 때만 덮는다 — 밝은(파스텔) 그림은 짙은 글자로 읽히고, 덮으면 탁해진다. */}
-      {bg && !dark && <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/75 via-black/35 to-transparent" aria-hidden="true" />}
-      {/* 글자색은 **테마가 아니라 그림**이 정하므로 dark: 짝을 같은 값으로 못 박는다. */}
-      <strong className={`block max-w-[62%] text-[24px] font-extrabold leading-[1.18] tracking-[-.03em] line-clamp-2 ${dark ? 'text-gray-900 dark:text-gray-900' : 'text-white'}`}>{b.title}</strong>
+      {/* 아래쪽만 어둡게 — 흰 글자 자리를 받친다. 위쪽 사진은 그대로 둔다(전면을 덮으면 사진이 탁해진다). */}
+      {bg && <div className="absolute inset-x-0 bottom-0 h-[70%] -z-10 bg-gradient-to-t from-black/70 via-black/30 to-transparent" aria-hidden="true" />}
+      {/* 글자는 **늘 흰색** — 테마가 아니라 사진 위에 서므로 dark: 짝도 같은 값이다. 오른쪽 아래 숫자 알약 자리를 비운다(max-w). */}
+      <strong className="block max-w-[64%] text-[24px] font-extrabold leading-[1.2] tracking-[-.03em] line-clamp-2 text-white dark:text-white [text-shadow:0_1px_8px_rgba(0,0,0,.25)]">{b.title}</strong>
       {b.description && (
-        <span className={`block max-w-[62%] mt-1 text-[13px] line-clamp-1 ${dark ? 'text-gray-700 dark:text-gray-700' : 'text-white/85'}`}>{b.description}</span>
-      )}
-      {href && (
-        /* light-fixed — 흰 알약 + 블루 글자는 그림·브랜드 면 위에만 선다(페이지 배경에 닿지 않는다). */
-        <span className="inline-flex self-start mt-3 px-4 py-2 rounded-lg bg-white text-[13px] font-bold text-brand-text"> {/* light-fixed */}
-          자세히 보기
-        </span>
+        <span className="block max-w-[64%] mt-1 text-[13px] line-clamp-1 text-white/90 dark:text-white/90">{b.description}</span>
       )}
     </Wrap>
   )
