@@ -141,3 +141,11 @@ CDP `emulateNetworkConditions`+`setCPUThrottlingRate 4`. 헤더는 content-type/
 - 🩸 교훈 ②: 대비 검사가 아니었으면 결제 화면이 깨진 채 머지됐다 — 자동 머지 켜기 전 PR 게이트 밖 검사 결과도 볼 것.
 - 실험(효과 없음, 되돌림): 엔트리 파일을 CSS 직후 미리받기 — 3화면 5회 중간값 차이가 오차 안.
 - 대기(stash): `useProgressiveCap` 단계 확장(8장씩) — load 뒤 긴 작업 1.6초가 피드 펼치기인지 프로파일로 확인 후 별도 PR.
+
+## §19 (2026-10-13) 대표 "여긴 왜이리 로딩 길어?" — 동탄5동 홈의 회색 섹션 자리
+- 라이브 재현(폰 UA): localStorage 에 위치만 있고 `ur_loc` 쿠키가 없으면 서버는 '위치 없음' 섹션 시드를 싣고, 화면은 그걸 버리고
+  회색 자리 → `/api/sections?near=` 응답 뒤 동네 섹션(두 번 교체 · 회색 자리는 부팅+요청 시간만큼). 쿠키가 있으면 회색 0.
+- 쿠키는 홈 마운트 **뒤에만** 쓰였다 → 지도·PC 위치바에서 위치를 잡고 홈을 새로 열면 늘 이 경로.
+- 수리: ① 다른 위치 시드는 placeholder 로 계속 보인다(캐시엔 안 들어감) ② `rememberLoc`(localStorage+쿠키 함께) — 지도 2곳·PC 위치바.
+  쿠키 쓰기 SSOT 는 `shared/home-near.writeNearCookie`(라벨: 같은 격자면 보존, 다른 격자면 지움).
+- 실측 참고: `/api/sections?near=` 콜드 서버 130~350ms, 쿠키 없는 curl 은 매번 DYNAMIC(쿠키 있는 요청은 엣지 HIT) — 별건 확인 대상.
