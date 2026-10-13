@@ -34,10 +34,12 @@ export const PARTNER_FACTS = {
   /** 등록 소요 — 기획 §7-3 확정값(1분·3분·5분 혼용을 이것 하나로 통일) */
   signupMinutes: '10분',
 
-  /** 📏 규모 실측 (2026-10-06 D1 실측으로 갱신). 정직 고지에 그대로 쓴다 */
-  liveMeasuredAt: '2026-10-06',
+  /** 📏 규모 실측 (2026-10-12 D1 실측으로 갱신). 정직 고지에 그대로 쓴다.
+   * ⚠️ 이 값들은 `docs/business/proposals/deck-common.mjs` 의 FACTS 와 **같아야 한다** —
+   *    `partners-landing-2026-09-16.test.ts` R2 가 두 곳을 대조한다(덱만 고치면 푸시가 막힌다). */
+  liveMeasuredAt: '2026-10-12',
   activeVouchers: '359',
-  realStores: '1',
+  realStores: '2',
 
   /**
    * 💴 실계산에 쓰는 **라이브 실제 상품**(id 2915, 홍대돈까스). 데모 시드 가격은 쓰지 않는다 — 기획 §2-5.
@@ -52,8 +54,8 @@ export const PARTNER_FACTS = {
   sample: { name: '프리미엄 돈가스 1인 세트', list: 14500, sale: 7500 },
 
   /** 🤝 소개 트랙 (기획 §0-3 실측). 사장님이 "손님을 더 부르는 법" 으로 보는 숫자 */
-  influencerDb: '282,818명',
-  influencerReachable: '61,512명',
+  influencerDb: '337,842명',
+  influencerReachable: '65,431명',
   /** 첫 카카오·네이버 후기 보너스. **지금은 유어딜 부담**(매장 부담 게이트 OFF) */
   reviewBonus: '1,000딜',
   /** 매장이 인플루언서에게 거는 소개비 — 요율은 매장이 정하고 매장이 낸다(상한 없음, 입력검증 90) */
