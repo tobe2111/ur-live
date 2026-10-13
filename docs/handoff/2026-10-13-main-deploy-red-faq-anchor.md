@@ -45,24 +45,35 @@ SPA 셸(`text/html` 59,958B)을 **PDF 로 착각해 첫 시도에 빠져나왔�
 Pages 가 **SPA 셸을 200 으로** 주므로 200 은 아무것도 말해 주지 않는다 — 판정은
 `content-type: application/pdf` + `%PDF` 매직 + 페이지 수로 할 것.
 
-## 다음 세션의 첫 액션
+**그리고 파일 이름을 두 개 지어 썼다.** 첫 E4 목록에 `urdeal-store-owner-detail-deck` ·
+`urdeal-agency-deck` 을 적었는데 실제 이름은 `urdeal-store-owner-deck-detail` ·
+`urdeal-agency-proposal` 이다. 둘이 SPA 셸을 돌려주니 **"배포가 두 건 빠졌다"** 로 오진할 뻔했다
+(없는 파일도 200 이라 구분이 안 된다 — 위 오류와 같은 함정의 두 번째 얼굴).
+⇒ **URL 목록을 기억에서 적지 말고 `AdminProposalsPage.tsx` 의 `url:` 다섯 줄에서 뽑을 것**
+(`git show origin/main:src/pages/admin/AdminProposalsPage.tsx | grep "url: '/static"`).
 
-1. 이 수리가 머지되면 **main 의 `Deploy to Cloudflare Pages` 가 초록인지** 먼저 본다
-   (초록이어야 소개서 PDF 가 라이브에 올라간다).
-2. 그 뒤 E4:
+## ✅ E4 판정 통과 (배포 후 라이브, 2026-10-13)
 
-```bash
-UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
-for f in urdeal-store-owner-deck urdeal-store-owner-detail-deck urdeal-merchant-association-deck \
-         urdeal-influencer-deck urdeal-agency-deck; do
-  curl -sS -o /tmp/x.pdf -w "$f %{http_code} %{content_type} %{size_download}\n" -A "$UA" \
-    "https://urdeal.kr/static/proposals/$f.pdf"
-done
+**main 은 내 PR 이 아니라 `#1752`(같은 줄을 따로 고친 다른 세션)가 머지되며 초록이 됐다**
+(`e3bcf58dc` → `Deploy to Cloudflare Pages` success). 그 배포로 소개서 다섯이 라이브에 올라갔다 —
+실제로 받아 **`%PDF` 매직과 페이지 수를 파싱해서** 쟀다:
+
+```
+urdeal-store-owner-deck            200 application/pdf 1,778,957  15장
+urdeal-store-owner-deck-detail     200 application/pdf 1,458,110  17장
+urdeal-merchant-association-deck   200 application/pdf 1,637,854  20장
+urdeal-influencer-deck             200 application/pdf 1,423,837  20장
+urdeal-agency-proposal             200 application/pdf 2,290,999  30장
 ```
 
-기대: 다섯 전부 `200 application/pdf`, 페이지 수 15 / 17 / 20 / 20 / 30.
-그리고 구판 `influencer-proposal.html` 은 **더 이상 9장 덱을 주지 않아야** 한다
-(지금 라이브는 308 → 452,984B 로 **옛 덱을 그대로** 주고 있다 — 배포가 안 됐기 때문이다).
+바이트가 레포 blob 과 **정확히 일치**하고, 페이지 수도 기대값 15 / 17 / 20 / 20 / 30 과 같다.
+구판 `influencer-proposal.html` 은 **452,984B 옛 9장 덱을 더는 주지 않는다** — 지금은 SPA 셸
+(59,958B)이라 그 자리에 파일이 없다(시험 `admin-proposals-asset` 이 부재를 단언한다).
+
+## 다음 세션의 첫 액션
+
+소개서 쪽은 끝났다. 남은 것은 **PR #1754 의 머지 여부(대표 판단)** 뿐이고, 그 PR 은
+main 이 이미 초록이라 **아무것도 막고 있지 않다**(앵커를 거리 상수 없이 더 튼튼하게 바꾸는 refinement).
 
 ## 남은 결정
 
