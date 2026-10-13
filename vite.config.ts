@@ -308,18 +308,18 @@ export default defineConfig({
           // 🩸 2026-10-13: 장소 URL SSOT — 손님 매장 지도(RestaurantMiniMap)와 셀러 매장 등록이 함께 읽는다.
           //   규칙이 없어 Rollup 이 셀러 봉투(app-seller-components)에 넣었고, 그러자 app-components →
           //   app-seller-components → app-components **순환**이 생겨 셀러 청크의 최상위 코드가 아직 평가 안 된
-          //   app-components 값(StatusTone)을 읽다 TDZ 로 터졌다 — **라이브 전 페이지가 오류 화면**이었다.
-          //   아래 onLog 게이트가 이 클래스(새 청크 순환)를 이제 빌드 실패로 막는다.
+          //   app-components 값(StatusTone·TONE_PILL)을 읽다 TDZ("Cannot access before initialization") 로
+          //   터졌다 — **소비자 전 페이지가 ErrorBoundary 로** 떨어졌다. 시작은 #1756 이 RestaurantMiniMap
+          //   에서 이 파일을 import 한 것이었다. 아래 onLog 게이트가 이 클래스(새 청크 순환)를 이제
+          //   빌드 실패로 막는다.
+          //   🩸 2026-10-13(후속): 이 줄이 **두 벌**이었다 — 같은 장애를 두 세션이 각자 고쳤고 둘 다
+          //     머지됐다(각각은 초록이었다). 두 번째는 첫 `return` 때문에 **닿지 않는 죽은 규칙**이었고,
+          //     주입 앵커가 "여러 곳에 맞는다" 로 그걸 잡았다. 설명은 합치고 규칙은 하나만 둔다.
           if (id.includes('/src/shared/kakao-place-url')) return 'app-shared'
           // 🎬 2026-09-09: 유어쇼츠 SSOT(카드 크기·뷰어 주소·유튜브 id 파싱) — import 0 인 순수 상수 모듈인데
           //   홈 헤더 진입점이 `URSHORTS_VIEWER_PATH` 를 읽는 순간 catch-all 로 떨어져 홈 폐쇄가
           //   청크를 하나 더 끌고 왔다. 위 둘과 **정확히 같은 함정**이라 같은 자리에 둔다(가드가 잡았다).
           if (id.includes('/src/shared/urshorts')) return 'app-shared'
-          // 🔥 2026-10-13 장애: #1756 이 RestaurantMiniMap(→ app-components)에서 이 파일을 import 했는데 규칙이 없어
-          //   Rollup 이 셀러 쪽 사용처를 따라 app-seller-components 에 넣었다 → app-components ↔ app-seller-components
-          //   순환 → 셀러 청크가 app-components 의 TONE_PILL 을 초기화 전에 읽어 TDZ("Cannot access before
-          //   initialization") — 소비자 전 페이지가 ErrorBoundary 로 떨어졌다. 공용 모듈은 공용 봉투로.
-          if (id.includes('/src/shared/kakao-place-url')) return 'app-shared'
           // 🖊️ 2026-08-30: 유어딜 전용 아이콘(`components/icons/urdeal-icons`)도 **정확히 같은 함정**에
           //   빠졌다. 60줄짜리 순수 SVG 리프 모듈인데 `/src/components/` catch-all 에 걸려
           //   `app-components`(166KB · 58모듈)로 들어갔고, 그걸 **BottomNav·DesktopTopNav**
