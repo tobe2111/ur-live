@@ -28,12 +28,13 @@ const P = (f: string) => path.join(ROOT, f)
 /** 가짜 그래프: main → shell ; pageA → {onlyA, shared3, tiny} ; pageB → {shared3, onlyB} ; pageC → shared3 ; admin → onlyAdmin */
 function graph() {
   const big = 'x'.repeat(5000)
-  const mods: Record<string, { isEntry?: boolean; importedIds: string[]; code?: string }> = {
-    [P('src/main.tsx')]: { isEntry: true, importedIds: [P('src/shell.ts'), P('src/hooks/queries/index.ts')] },
+  const mods: Record<string, { isEntry?: boolean; importedIds: string[]; dynamicallyImportedIds?: string[]; code?: string }> = {
+    [P('src/main.tsx')]: { isEntry: true, importedIds: [P('src/shell.ts'), P('src/hooks/queries/index.ts')], dynamicallyImportedIds: [P('src/vitals.ts'), P('src/pages/A.tsx')] },
+    [P('src/vitals.ts')]: { importedIds: [], code: big },
     [P('src/shell.ts')]: { importedIds: [], code: big },
     [P('src/hooks/queries/index.ts')]: { importedIds: [P('src/hooks/queries/useMyData.ts')] },
     [P('src/hooks/queries/useMyData.ts')]: { importedIds: [], code: big },
-    [P('src/pages/A.tsx')]: { importedIds: [P('src/onlyA.ts'), P('src/shared3.ts'), P('src/tiny.ts'), P('src/hooks/queries/useMyData.ts'), P('src/shell.ts')], code: big },
+    [P('src/pages/A.tsx')]: { importedIds: [P('src/vitals.ts'), P('src/onlyA.ts'), P('src/shared3.ts'), P('src/tiny.ts'), P('src/hooks/queries/useMyData.ts'), P('src/shell.ts')], code: big },
     [P('src/pages/B.tsx')]: { importedIds: [P('src/shared3.ts'), P('src/onlyB.ts')], code: big },
     [P('src/pages/C.tsx')]: { importedIds: [P('src/shared3.ts')], code: big },
     [P('src/pages/Admin.tsx')]: { importedIds: [P('src/onlyAdmin.ts')], code: big },
@@ -79,6 +80,16 @@ describe('① 묶음기 동작', () => {
   })
   it('이름 규칙이 있는 라이브러리는 그대로, 이름 없는 라이브러리는 묶는 대상', () => {
     expect(gate('/repo/node_modules/embla/x.js', 'embla', meta)).toBe('embla')
+  })
+})
+
+describe('①-2 엔트리가 나중에 동적으로 부르는 모듈은 페이지 봉투와 떨어진다', () => {
+  // 2026-10-13 유어샵 실측: 웹 바이탈 보고(엔트리 동적 import)가 상세 전용 봉투에 들어가 유어샵이 상세 코드 18KB(br)를 받았다.
+  it('엔트리 동적 import + 한 페이지 → 별도 봉투(lz-a-boot)', () => {
+    expect(makeChunker()(P('src/vitals.ts'), 'app-utils-deferred', graph())).toBe('lz-a-boot')
+  })
+  it('페이지 진입점으로 가는 동적 import(라우트 lazy)는 boot 로 세지 않는다 — 페이지 전용 모듈은 그대로', () => {
+    expect(makeChunker()(P('src/onlyA.ts'), 'app-components', graph())).toBe('lz-a')
   })
 })
 
@@ -149,5 +160,24 @@ describe('⑤ 홈은 폰/PC 를 나눈다', () => {
   })
   it('role-leak 가드가 PC 홈 표면도 본다', () => {
     expect(readFileSync('scripts/check-surface-role-leak.mjs', 'utf8')).toMatch(/CONSUMER_SURFACES = \[[^\]]*'homePc'/)
+  })
+})
+
+describe('⑥ 유어샵이 안 쓰는 것을 받지 않는다 (2026-10-13 느린 4G 재생 실측)', () => {
+  it('유어샵 QR 카드는 PC 에서만 마운트한다(폰에서 qrcode 17KB 를 받지 않게)', () => {
+    const qr = stripComments(readFileSync('src/pages/curator-page/UShopQrCard.tsx', 'utf8'))
+    expect(qr).toMatch(/const isDesktop = useMediaQuery\('\(min-width: 1024px\)'\)\s*if \(!isDesktop\) return null/)
+  })
+  it('웹에서는 앱 SDK(native)를 부르지 않는다', () => {
+    const app = stripComments(readFileSync('src/App.tsx', 'utf8'))
+    expect(app).toMatch(/if \(isNativeShell\(\)\) import\('\.\/lib\/native'\)\.then\(\(\{ setStatusBarStyle \}\)/)
+  })
+  it('환경 검증(zod)은 load 뒤로 미룬다 — 백스톱 포함', () => {
+    const main = stripComments(readFileSync('src/main.tsx', 'utf8'))
+    expect(main).toMatch(/window\.addEventListener\('load', \(\) => setTimeout\(once, 0\), \{ once: true \}\)\s*setTimeout\(once, 12000\)/)
+    expect(main).not.toMatch(/^import\('@\/shared\/config\/env-validator'\)/m)
+    // 부르는 자리는 정확히 둘 — 이미 load 끝난 경우 · load 뒤(once). 셋째가 생기면 부팅 중에 부르는 것이다.
+    expect(main.match(/runEnvValidation\(\)/g)?.length).toBe(2)
+    expect(main).toMatch(/if \(typeof window === 'undefined' \|\| document\.readyState === 'complete'\) runEnvValidation\(\)\nelse \{/)
   })
 })

@@ -95,3 +95,12 @@ CDP `emulateNetworkConditions`+`setCPUThrottlingRate 4`. 헤더는 content-type/
 - 하네스: scratchpad `xforms12.mjs`(라이브 HTML 의 preload 를 dist·맵 기준으로 바꿔 끼운다) + `replay5.mjs`.
 - E4(배포 후): `curl -A '<iPhone UA>' https://urdeal.kr/pass/2919 | grep -o 'modulepreload[^>]*lz-[^"]*'` 로 lz- 청크가 실리는지, PC UA 로 `/` 에 PcHomePage 가, 폰 UA 로 MobileHomePage 가 실리는지.
 - 다음 후보(숫자만): 첫 화면 CSS 279KB raw/29KB br(대시보드 클래스 포함) · axios 16KB br · i18n 18KB br · 지도 타일 disableHD(대표 판단).
+
+## 13. 유어샵 "왜 이렇게 늦게 뜨지" (2026-10-13)
+
+- **라이브엔 이 PR(#1741)의 개선이 하나도 없다** — 라이브 HTML 에 `ur-modulepreload`·`ur_font_warm` 0건. 대표 체감은 머지 전 상태다.
+- 느린 4G·CPU 4배 재생(유어샵 `/u/jiwon1228`): 라이브 첫 내용 **2.5초** · LCP 4.3초 → PR 적용 **1.1초 · 1.1초**(서버 첫 화면이 바로 보인다). 조작 가능은 4.7초 그대로 — 회선(1.6Mbps)이 JS 총량에 묶여 있다.
+- 같은 측정에서 찾아 고친 낭비: 상세 코드 18KB(엔트리 동적 import 가 상세 봉투에 섞임) · qrcode 17KB(폰에서 숨은 QR 마운트) · capacitor 5KB(웹 상태바) · zod 11KB(부팅 직후 → load 뒤).
+- 실험: 번역 파일(locale-ko 33KB) 미리받기는 **효과 없음**(회선 대역 한계 — 순서만 바뀐다). 하지 않았다.
+- 남은 큰 덩어리: react-core 42 · locale-ko 33 · i18n 20 · axios 18 KB br. 조작 가능 시간을 더 줄이려면 총량을 깎아야 한다(번역 파일을 표면별로 쪼개는 것이 다음 후보).
+- ⚠️ 아직 /api/curator 를 첫 화면 뒤에 한 번 더 받는다(시드가 있는데 csrf-token 뒤 4.9초) — 다음 확인 대상.

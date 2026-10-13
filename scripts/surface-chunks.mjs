@@ -70,11 +70,31 @@ export function createSurfaceChunker({ routes, root, commonMin = 4, minGroupByte
           }
         })
       }
+      // 🩸 2026-10-13 (유어샵 실측): 엔트리가 **나중에 동적으로** 부르는 모듈(웹 바이탈 보고 등)이 상세 페이지와
+      //   같은 봉투에 들어가, 유어샵이 그 보고 하나 때문에 상세 화면 코드 18KB(br)를 받았다. 엔트리 쪽 동적 import 는
+      //   페이지 표면과 별개의 '사용자'로 센다(`boot`) — 그러면 그 모듈은 상세 전용 봉투에서 떨어져 나온다.
+      //   페이지 진입점(`src/pages/`)으로 가는 동적 import 는 라우트 lazy 라 제외한다.
+      const boot = new Set()
+      {
+        const stack = []
+        for (const m of all) {
+          if (!inEntry(m, meta)) continue
+          for (const d of meta.getModuleInfo(m)?.dynamicallyImportedIds ?? []) if (!norm(d).includes('/src/pages/')) stack.push(d)
+        }
+        while (stack.length) {
+          const m = stack.pop()
+          if (boot.has(m) || inEntry(m, meta)) continue
+          boot.add(m)
+          for (const x of meta.getModuleInfo(m)?.importedIds ?? []) stack.push(x)
+        }
+      }
+      for (const [m, set] of labels) if (boot.has(m)) set.add('boot')
       const group = new Map()
       const bytes = new Map()
       for (const [m, set] of labels) {
         if (roots.has(m)) continue
-        const g = set.size >= commonMin ? 'lz-common' : 'lz-' + [...set].sort().join('-')
+        const users = set.size - (set.has('boot') ? 1 : 0)
+        const g = users >= commonMin ? 'lz-common' : 'lz-' + [...set].sort().join('-')
         group.set(m, g)
         bytes.set(g, (bytes.get(g) ?? 0) + (meta.getModuleInfo(m)?.code?.length ?? 0))
       }

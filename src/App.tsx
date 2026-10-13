@@ -35,6 +35,7 @@ const SideBanner = lazy(() => import('@/components/SideBanner'))
 const DesignVariantsPage = lazy(() => import('./pages/design-variants/DesignVariantsPage')) // 🎨 내부 시안 갤러리(링크 0 · robots 차단 · noindex)
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { isKorea } from '@/shared/config/region'
+import { isNativeShell } from '@/lib/native-platform'
 // TD-006: route group files
 import { SellerRoutes } from './routes/seller.routes'
 import { AgencyConsoleRoutes } from './routes/agency-console.routes'
@@ -448,7 +449,8 @@ function AppContent() {
     const isLight = lightPages.some(p => location.pathname === p || location.pathname.startsWith(p))
 
     // 1. Capacitor 네이티브 앱 — StatusBar 플러그인
-    import('./lib/native').then(({ setStatusBarStyle }) => {
+    //    웹에선 부르지 않는다 — 앱 SDK 청크(capacitor)를 매 화면 받던 것(2026-10-13 유어샵 실측 4.38초).
+    if (isNativeShell()) import('./lib/native').then(({ setStatusBarStyle }) => {
       setStatusBarStyle(isLight ? 'light' : 'dark')
     }).catch((err) => { if (import.meta.env.DEV) console.warn('[App] setStatusBarStyle failed:', err) })
 

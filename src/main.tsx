@@ -151,13 +151,23 @@ window.addEventListener('unhandledrejection', (e) => {
 if (!_kakaoRedirected) {
 
 // ✅ 런타임 환경 변수 검증 — 비동기 (zod chunk lazy). throw 해도 React 마운트는 진행.
-import('@/shared/config/env-validator').then(m => {
+// 🩸 2026-10-13 (대표 *"유어샵이 왜 이렇게 늦게 뜨지?"* — 느린 4G 재생 실측): 엔트리 실행 직후 바로 부르면
+//   zod(11KB br)가 **화면에 필요한 번역·페이지 청크와 같은 순간에** 회선을 나눠 쓴다(유어샵 4.09초에 동시 출발).
+//   화면을 그리는 데 아무 몫이 없으므로 `load` 뒤로 미룬다(검증 결과는 콘솔 경고뿐이다). 백스톱 12초.
+const runEnvValidation = () => import('@/shared/config/env-validator').then(m => {
   try {
     m.validateEnvForRuntime(isKorea() ? 'KR' : 'GLOBAL')
   } catch (err) {
     console.error('[main] env validation failed:', err)
   }
 }).catch(swallow('main:env-validator-load'))
+if (typeof window === 'undefined' || document.readyState === 'complete') runEnvValidation()
+else {
+  let envRan = false
+  const once = () => { if (!envRan) { envRan = true; runEnvValidation() } }
+  window.addEventListener('load', () => setTimeout(once, 0), { once: true })
+  setTimeout(once, 12000)
+}
 
 // 🛡️ 2026-05-24 (loading P0): Sentry 진짜 lazy — critical path 완전 제외.
 //   이전: import().then() 즉시 시작 → 441KB 다운로드가 main 과 경쟁 → LCP 1~2s 지연.
