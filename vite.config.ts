@@ -88,9 +88,9 @@ function proposalPdfDevPlugin() {
 //     `package`·`settings`·`shopping-cart`·`store`·`ticket`·`check-circle-2`/`circle-check`/`circle-alert`
 //     → `urdeal-icons.tsx`). 안 쓰는 것을 목록에 남기면 그만큼 셸 봉투가 커진다.
 const LUCIDE_SHELL_ICONS = new Set([
-  'bed-double', 'book-open', 'check', 'chevron-down', 'chevron-right', 'circle-help', 'coins', 'compass',
+  'bed-double', 'book-open', 'check', 'chevron-down', 'chevron-right', 'circle-help', 'coins',
   // 🪒 2026-09-30: `map-pin` 제거 — 잠금표 이행으로 셸이 `PinIcon`(유어딜 세트)을 쓴다. 26 → 25.
-  'help-circle', 'layout-grid', 'log-in', 'plus', 'radio', 'refresh-cw',
+  'help-circle', 'layout-grid', 'log-in', 'radio', 'refresh-cw',
   'scissors', 'search', 'shapes', 'smartphone', 'sparkles', 'user', 'user-plus', 'utensils', 'x', 'zap',
 ])
 
@@ -492,11 +492,13 @@ export default defineConfig({
           //     lazy 페이지에서만 쓰면 여기 넣지 말 것(넣는 순간 첫 페인트 바이트가 된다).
           //     반대로 여기 있는 모듈이 정적 import 하는 컴포넌트는 **함께 들어와야 한다**(안 그러면
           //     app-shell → app-components 정적 엣지가 생겨 app-components 가 다시 preload 된다).
+          // 🖥️ 2026-10-13: PC 사이드바는 넓은 화면에서만 lazy 로 받는다(MobileAppLayout) — 셸 목록에서 뺐다.
+          //   셸에 남겨 두면 lazy 로 바꿔도 app-shell 안에 그대로 실려 폰도 받는다(그리고 그 아이콘이 lz-common 을 끌고 온다).
+          if (id.includes('/src/components/DesktopLiveSidebar')) return 'app-desktop-chrome'
           if (
             id.includes('/src/components/FrameWrapper') ||
             id.includes('/src/components/GripFrameLayout') ||
             id.includes('/src/components/MobileAppLayout') ||
-            id.includes('/src/components/DesktopLiveSidebar') ||
             id.includes('/src/components/ErrorBoundary') ||
             id.includes('/src/components/ToastContainer') ||
             id.includes('/src/components/ScrollToTop') ||

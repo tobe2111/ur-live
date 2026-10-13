@@ -125,3 +125,9 @@ CDP `emulateNetworkConditions`+`setCPUThrottlingRate 4`. 헤더는 content-type/
 - 재생(느린 4G·CPU 4배, 5회 중간값): 첫 마운트 4,227 → 3,703ms · 그 순간 긴 작업 1,080 → 330ms.
 - 🩸 측정 주의: 이 컨테이너엔 한글 시스템 글꼴이 없어(unifont/wqy 폴백) **레이아웃 시간이 부풀려진다** — 151개 객체 레이아웃이 401ms. 트레이스의 Layout 수치를 폰 값으로 읽지 말 것. JS 시간은 쓸 만하다.
 - 같은 트레이스: 지연 로딩된 Pretendard 파일이 하나 올 때마다 전체 재레이아웃(load 뒤라 첫 화면엔 무영향).
+
+## §17 (2026-10-13) 폰이 PC 전용 부품을 받던 것
+- 프로모 바: 넓은 화면에서만 마운트(폰 하드로드마다 `/api/promo-bar` 1건 제거). PC 사이드바: lazy + 768+ 만 + 봉투 `app-desktop-chrome`(런타임 검사 금지 목록).
+- 보류: `DesktopTopNav` — lazy 로 하면 PC 상단 네비가 늦게 끼어든다(PC 밀림). 하려면 워커가 PC UA 에 그 청크를 modulepreload 해야 한다.
+- 기각(실측): 번역 파일(locale-ko)을 load 뒤로 — 기본 문구 없는 `t()` 1,374곳(로그인·장바구니 등) 이라 키 이름이 보인다. 홈·유어샵·교환권·상세·지도 첫 화면은 locale 없이도 키 노출 0(지도 검색창 placeholder 1건 제외)이었지만 전 화면 보장이 안 된다.
+- 실사용자 vitals(10-12, 홈 43건): LCP p50 2.57 · p75 3.73s · TTFB p50 476ms. `/pass/:id` 서버 self-fetch 590ms 는 이 PR 의 SSR 직전 사본(SWR)이 배포되면 사라진다.

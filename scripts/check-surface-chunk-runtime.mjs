@@ -60,7 +60,7 @@ export const PREFETCH_OK = {
   // browse: 같은 카드 컴포넌트라 함께 해소(2026-10-13)
 }
 
-export const FORBIDDEN = [/^codes$/, /^capacitor$/, /^app-seller-/, /^app-admin-/, /^app-wholesale-/, /^app-marketing$/]
+export const FORBIDDEN = [/^codes$/, /^capacitor$/, /^app-desktop-chrome$/, /^app-seller-/, /^app-admin-/, /^app-wholesale-/, /^app-marketing$/]
 
 /** 하네스가 찍은 이름(해시는 이미 뗐다) → `.js` 만 뗀다.
  *  ⚠️ 여기서 해시를 **다시** 떼지 말 것 — `lz-boot-gbDetail` 의 `gbDetail` 이 정확히 8글자라 해시로 오인돼 잘린다. */

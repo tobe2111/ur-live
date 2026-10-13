@@ -177,4 +177,28 @@ export default [
     test: 'src/tests/unit/progressive-cap-2026-10-13.test.tsx',
     why: '깊이 스크롤했다가 상세에서 돌아오면 목록이 6장이라 위치를 잃는다 — 에러 0.',
   },
+  {
+    name: '🖥️ 폰이 보이지도 않는 프로모 바를 위해 /api/promo-bar 를 부른다',
+    file: 'src/components/main/ConsumerTopChrome.tsx',
+    find: '      {wide && <PromoBar />}',
+    replace: '      <div className="hidden md:block"><PromoBar /></div>',
+    test: 'src/tests/unit/desktop-chrome-off-phone-2026-10-13.test.ts',
+    why: 'CSS 숨김은 마운트를 막지 않는다 — 폰의 모든 하드로드가 요청 하나를 더 낸다(첫 화면 요청 실측).',
+  },
+  {
+    name: '🖥️ PC 사이드바가 다시 셸 봉투에 실린다',
+    file: 'vite.config.ts',
+    find: "          if (id.includes('/src/components/DesktopLiveSidebar')) return 'app-desktop-chrome'\n",
+    replace: '',
+    test: 'src/tests/unit/desktop-chrome-off-phone-2026-10-13.test.ts',
+    why: 'lazy 로 바꿔도 이름이 app-shell 이면 그 청크째 첫 화면에 실린다 — 폰이 PC 사이드바 코드를 받는다.',
+  },
+  {
+    name: '🖥️ 폰 첫 화면 금지 목록에서 PC 사이드바 봉투가 빠진다',
+    file: 'scripts/check-surface-chunk-runtime.mjs',
+    find: ' /^app-desktop-chrome$/,',
+    replace: '',
+    test: 'src/tests/unit/desktop-chrome-off-phone-2026-10-13.test.ts',
+    why: '런타임 검사가 폰이 PC 전용 코드를 받는 회귀를 못 본다.',
+  },
 ]
