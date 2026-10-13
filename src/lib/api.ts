@@ -134,7 +134,6 @@ const PUBLIC_API_PATHS = [
   '/api/auth/firebase/sync',
   '/api/auth/firebase/register',
   '/api/seller/login',
-  '/api/seller/register',
   '/api/seller/public/',
   '/api/admin/login',
   '/api/agency/login',
