@@ -1,15 +1,11 @@
-# 🏭 도매몰(유통스타트) 별도 Pages 배포 — ur-wholesale
-#   설계 SSOT: docs/design/wholesale-separate-deploy.md (옵션 2 / P0).
-#
-#   ur-live(main.yml)와 동일한 dist/client 를 배포하되, worker 번들만 WHOLESALE_BUNDLE=1 로 빌드해
-#   도매(features/supply) 라우트를 포함시킨다(__INCLUDE_WHOLESALE__=true). 같은 D1 공유.
-#   → ur-wholesale 은 utongstart.com(도매 전용 도메인)을 서빙. ur-live 는 도매 미서빙(다이어트).
-#
-#   ⚠️ 안전:
-#     - ur-wholesale Pages 프로젝트가 없으면 이 워크플로는 실패하지만 **라이브 무영향**(도매 미운영).
-#     - 🔴 ur-wholesale 에는 **cron trigger 를 절대 걸지 말 것**(정산 이중성숙 방지 — 설계 §2.5-4).
-#       cron 은 오직 ur-live 에서만. (Pages 는 대시보드에서 별도 설정하므로 "설정 안 함"이 곧 안전.)
-#     - D1/KV/시크릿 바인딩은 대시보드에서 관리(대표 P1). 이 배포는 *코드*만 갱신.
+# 🪦 ur-wholesale = **묘비 배포** (2026-10-12 대표 *"남은 것도 다 해줘"*)
+#   도매몰은 2026-10-11 코드에서 철거됐고 빌드 분기(INCLUDE_WHOLESALE)도 false 로 고정됐다.
+#   그래서 이 워크플로가 매 push 마다 배포하던 것은 **운영 D1 이 연결된 소비자 앱의 사본**
+#   (ur-wholesale.pages.dev)이었다 — 쓰는 곳 0, 크롤러에겐 중복 사이트, 보안 수정은 따라가지만
+#   존재할 이유가 없다. ⇒ 앱 대신 `deploy/ur-wholesale-tombstone/_worker.js`(모든 요청 410)만 올린다.
+#   ⚠️ 프로젝트 자체 삭제는 Cloudflare 대시보드에서 **대표가** 한다(세션 CF 토큰은 읽기 전용).
+#     삭제한 뒤에는 이 워크플로를 지운다(그 전에 지우면 묘비가 아니라 마지막 앱 사본이 남는다).
+#   🔴 ur-wholesale 에는 cron trigger 를 걸지 말 것(정산 이중성숙 방지 — 종전 규칙 그대로).
 #   요구 secret: CLOUDFLARE_API_TOKEN · CLOUDFLARE_ACCOUNT_ID (main.yml 과 동일 재사용).
 name: Deploy ur-wholesale
 
@@ -17,7 +13,10 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    # ur-wholesale = 소비자와 같은 index.ts/client 를 공유하므로 main 의 모든 변경에 재빌드(드리프트 방지).
+    # 묘비는 앱과 무관하다 — 자기 자신과 묘비 파일이 바뀔 때만 다시 올린다.
+    paths:
+      - '.github/workflows/deploy-wholesale.yml'
+      - 'deploy/ur-wholesale-tombstone/**'
 
 concurrency:
   group: deploy-wholesale
@@ -33,21 +32,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      # 🏭 도매 포함 빌드 — WHOLESALE_BUNDLE=1 → worker 번들에 도매 라우트 포함. client 는 ur-live 와 동일.
-      - name: Build (WHOLESALE_BUNDLE=1)
-        run: WHOLESALE_BUNDLE=1 npm run build
-        env:
-          WHOLESALE_BUNDLE: '1'
-
       - name: Deploy to Cloudflare Pages (ur-wholesale)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -62,11 +46,11 @@ jobs:
           MAX_RETRY=4
           for i in $(seq 1 $MAX_RETRY); do
             echo "=== Deploy attempt $i/$MAX_RETRY (ur-wholesale) ==="
-            OUT=$(npx wrangler@3 pages deploy dist/client \
+            OUT=$(npx --yes wrangler@3 pages deploy deploy/ur-wholesale-tombstone \
                 --project-name=ur-wholesale \
                 --branch=main \
                 --commit-dirty=true \
-                --commit-message="wholesale deploy ${{ github.sha }}" 2>&1) && RC=0 || RC=$?
+                --commit-message="wholesale tombstone ${{ github.sha }}" 2>&1) && RC=0 || RC=$?
             echo "$OUT"
             if [ $RC -eq 0 ]; then
               echo "✅ ur-wholesale deploy succeeded on attempt $i"

@@ -26,7 +26,7 @@ import { readFileSync } from 'node:fs'
 const DEPLOY_WORKFLOWS = [
   '.github/workflows/main.yml',             // 소비자 Pages (ur-live)
   '.github/workflows/deploy-ads.yml',       // 유어애즈 Worker (ur-ads)
-  '.github/workflows/deploy-wholesale.yml', // 도매 Pages (ur-wholesale)
+  '.github/workflows/deploy-wholesale.yml', // 도매 묘비 Pages (ur-wholesale — 2026-10-12 부터 410 만)
   '.github/workflows/worker-deploy.yml',    // cron Worker (ur-live)
 ] as const
 

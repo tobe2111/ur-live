@@ -44,4 +44,8 @@ if (existsSync(PROPOSAL_SRC)) {
 }
 console.log(`📄 소개서 PDF ${pdfs}개 → ${PROPOSAL_DEST}`)
 
+// 🪦 2026-10-12: ur-wholesale(GitHub 직접 연결) 빌드면 산출물을 410 묘비로 — scripts/pages-tombstone-gate.mjs
+const { runTombstoneGate } = await import('./pages-tombstone-gate.mjs')
+runTombstoneGate()
+
 console.log('✅ build:prepare done')
