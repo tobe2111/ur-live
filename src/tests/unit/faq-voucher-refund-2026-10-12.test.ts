@@ -97,7 +97,16 @@ describe('③ 코드 근거가 살아 있다 — 근거가 사라지면 FAQ 가 
     const c = code(CRON)
     expect(c, '만료 환불 함수가 사라졌다').toContain('export async function handleExpiredVoucherRefunds')
     // 답변이 약속하는 두 경로: 딜 결제 → 딜로 · 카드 결제 → 카드로.
-    expect(c, '딜 환불 경로가 사라졌다').toMatch(/payment_method === 'deal_points'[\s\S]{0,400}adjustUserPoints/)
+    // 🩸 2026-10-13 앵커 재조준 — #1750 이 이 분기의 복원 호출을 `adjustUserPoints` →
+    //   `refundDealPoints`(원래 버킷 역산)로 바꿨다. **어느 함수인지**(무상/유상 버킷 정확성)는
+    //   `deal-cash-out-2026-10-12` 가 같은 블록을 이미 잠그므로 여기서 또 잠그지 않는다
+    //   (중복 잠금은 각 잠금을 시험 불가능하게 만든다 — CLAUDE.md 2026-10-11 의 교훈).
+    //   여기서 지키는 것은 FAQ 의 약속 하나다: *딜로 결제했으면 딜로 돌아간다.*
+    expect(c, '딜 환불 경로가 사라졌다')
+    //   🩸 그리고 **호출**을 앵커한다 — 함수 이름만 보면 바로 위의 구조분해 import
+    //   (`const { refundDealPoints } = await import(...)`)에 걸려, 호출을 딴 함수로 바꿔도
+    //   초록이 떴다(되돌려-검증으로 잡았다). 여는 괄호까지 요구한다.
+      .toMatch(/payment_method === 'deal_points'[\s\S]{0,400}(adjustUserPoints|refundDealPoints)\(/)
     expect(c, '카드 환불 경로가 사라졌다').toMatch(/payment_method === 'toss' \|\| voucher\.payment_method === 'CARD'/)
     expect(c, '환불 알림이 사라졌다 — 답변은 "알림으로 알려드립니다" 라고 약속한다').toContain('INSERT INTO notifications')
     expect(expiry().answer).toContain('알림')
