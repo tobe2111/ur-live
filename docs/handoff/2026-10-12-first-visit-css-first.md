@@ -159,3 +159,13 @@ CDP `emulateNetworkConditions`+`setCPUThrottlingRate 4`. 헤더는 content-type/
 - E4(배포 후): 폰 첫 방문 홈에서 스크롤해도 카드가 튀지 않는지(content-visibility 높이 기억) · Pretendard 로 한 번에 바뀌는지.
 - §20 후속: 폰트 `hit()` 이중 반복 0.3초 → 이분 탐색 · 지도 목록 `.ur-cv-rows` · 복원(POP) 중 content-visibility 끔. 전체 TBT(2회): 지도 3.81→1.92s · 유어샵 1.86→1.47 · 홈 2.63→2.05.
 - 다음 후보: 교환권(/vouchers)·상세는 load 뒤 긴 작업이 작다(150~450ms, 첫 레이아웃 위주). 남은 큰 것 = 첫 레이아웃(서버 첫 화면) 0.4~0.5초 · 엔트리 실행.
+
+## §21 (2026-10-13) #1741 머지 후 — 폰 부팅 중 안 쓰는 일 셋
+
+- PR #1741 머지(`aaa78fd`) · 배포 진행 확인.
+- 재생 CPU 프로파일(홈, `replayprof.mjs` + `mapprof2.cjs`, 소스맵 기준): `DesktopTopNav` 렌더 61~116ms(폰에서 안 보이는데),
+  `utils/format.ts:37` 첫 `Intl.NumberFormat` 54~82ms → 둘 다 제거(프로파일에서 사라짐 확인, 3회).
+- 셀러 경로 `/seller/*` 하위 트리 — 어드민과 같은 처방. matchPath 는 소폭만 줄었다: **남은 비용은 손님 경로 ~150개를
+  매 `useRoutes` 렌더마다 다시 맞추는 것**(react-router 6 은 compilePath 를 캐시하지 않는다). 더 줄이려면 구조 변경이라 별건.
+- 🩸 측정 교훈: 전체 ready/TBT(3회)는 ±300ms 로 흔들려 30ms 급 개선을 판정 못 한다 → **바꾼 함수의 inclusive 시간**으로 판정할 것.
+- 다음 후보: react-dom 첫 커밋(홈 3.0~4.0s 구간 568ms@4x) 중 컴포넌트별 몫 · `@sentry` 초기화(load 뒤 125ms).

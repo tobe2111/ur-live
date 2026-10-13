@@ -40,9 +40,24 @@ function numberFormat(locale: string): Intl.NumberFormat {
   return f
 }
 
+// ⚡ 2026-10-13 정수는 포매터 없이 쉼표만 찍는다. 위 캐시로 *반복* 비용은 없앴지만 첫 생성 한 번
+//   (`new Intl.NumberFormat('ko-KR')` — 로캘 데이터 적재)이 홈 첫 카드 가격을 그리는 바로 그 렌더에서
+//   65ms(CPU 4배 재생)였다. 가격·수량은 거의 전부 정수이고, ko-KR 정수 표기는 세 자리 쉼표·하이픈 부호뿐이라
+//   Intl 과 같은 문자열이 나온다(테스트가 Intl 과 대조). 소수·-0·안전범위 밖·다른 로캘은 종전대로 Intl.
+function groupInt(n: number): string {
+  const s = String(Math.abs(n))
+  let out = ''
+  for (let i = 0; i < s.length; i++) {
+    if (i > 0 && (s.length - i) % 3 === 0) out += ','
+    out += s[i]
+  }
+  return n < 0 ? '-' + out : out
+}
+
 export function formatNumber(value: unknown, locale: string = 'ko-KR'): string {
   const n = Number(value ?? 0)
   if (!Number.isFinite(n)) return '0'
+  if (locale === 'ko-KR' && Number.isSafeInteger(n) && !Object.is(n, -0)) return groupInt(n)
   return numberFormat(locale).format(n)
 }
 

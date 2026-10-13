@@ -37,7 +37,7 @@ import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { isKorea } from '@/shared/config/region'
 import { isNativeShell } from '@/lib/native-platform'
 // TD-006: route group files
-import { SellerRoutes } from './routes/seller.routes'
+import { SellerRouteTree, sellerTopLevelRoutes } from './routes/seller.routes'
 import { AgencyConsoleRoutes } from './routes/agency-console.routes'
 const AdminRouteTree = lazy(() => import('./routes/admin.routes')) // ⚡ 2026-10-12 어드민 표는 어드민 경로에서만 받는다(admin.routes 머리말)
 
@@ -702,9 +702,8 @@ function AppContent() {
             <Route path="/auth/kakao/link/callback" element={<KakaoLinkCallbackPage />} />
 
             {/* Seller 페이지들 (공개 + 보호) — src/routes/seller.routes.tsx */}
-            {/* NOTE: called as function (not JSX component) so RR6 createRoutesFromChildren
-                sees the Fragment+Route tree directly instead of a non-Route component wrapper */}
-            {SellerRoutes()}
+            {/* ⚡ 2026-10-13 `/seller/*` 는 하위 트리로(손님 이동마다 셀러 71경로를 맞춰 보지 않게) — 공개 가게 경로만 여기 */}
+            {sellerTopLevelRoutes()}<Route path="/seller/*" element={<SellerRouteTree />} />
 
             {/* Admin 페이지들 (공개 + 보호) — src/routes/admin.routes.tsx */}
             <Route path="/admin/*" element={<AdminRouteTree />} />
