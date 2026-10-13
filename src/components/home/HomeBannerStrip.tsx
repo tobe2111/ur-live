@@ -1,9 +1,10 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { safeInternalPath } from '@/utils/safe-internal-path'
 import { useHomeBanners, type HomeBanner } from './useHomeBanners'
 import type { BannerSlot } from '@/shared/constants/home-showcase'
+import { inkForLuminance, measureTitleLuminance, type BannerInk } from './banner-ink'
 import { BANNER_SLOT_SPECS } from '@/shared/constants/home-showcase'
 
 /**
@@ -145,96 +146,166 @@ export default function HomeBannerStrip({ variant }: { variant: Extract<BannerSl
  *   - `overscroll-x-contain` — 끝에서 더 밀어도 **페이지가 따라 움직이거나 브라우저 뒤로가기가 걸리지 않는다.**
  *   - `scroll-px-3.5` — 거터가 있는 스크롤러는 스냅 기준점도 그만큼 밀어 줘야 카드가 거터에 딱 선다.
  *
- * ## 자동 재생은 여전히 **하지 않는다**
- * 첫 화면에서 저절로 움직이는 것은 읽는 사람을 방해한다. 대표 지시 *"자연스럽고 부드럽게"* 는
- * **넘기는 느낌**에 대한 것이지 저절로 넘어가라는 말이 아니었다 — 필요하면 그때 따로 정할 일이다.
+ * ## 자동 넘김 (2026-10-12 대표 *"자동으로 넘어가게 해줘"* — 종전 "자동 재생 안 함"을 **대체**)
+ * 4.5초마다 한 장. 대신 읽는 사람을 방해하지 않게 네 가지에서는 멈춘다:
+ *   ① 일시정지 버튼(숫자 알약 왼쪽) — WCAG 2.2.2: 5초 넘게 움직이는 것은 멈출 수 있어야 한다.
+ *   ② 손가락·휠이 닿으면 8초 멈춘다 — 바로 움직이면 방금 고른 장을 빼앗는다.
+ *   ③ 화면 밖이거나 탭이 숨겨졌을 때 — 아래로 내려 읽는 사람 머리 위에서 혼자 돌 이유가 없다.
+ *   ④ `prefers-reduced-motion` — 동작 줄이기를 켠 사람에겐 아예 안 움직이고 버튼도 안 보인다.
+ *
+ * ## 글자색은 그림이 정한다 (2026-10-12 대표 *"배경을 그라데이션으로 하니까 촌스러운데"*)
+ * 파스텔 그림 위에 검은 스크림을 덮으면 그림이 탁해진다. 그림 왼쪽 아래(글자 자리) 밝기를 재서
+ * 밝으면 짙은 글자 + 스크림 없음, 어두우면 흰 글자 + 종전 스크림(`banner-ink.ts`).
  */
+/** 한 장에 머무는 시간(ms). */
+const AUTO_ADVANCE_MS = 4500
+/** 손가락을 뗀 뒤 다시 움직이기까지(ms). */
+const RESUME_AFTER_TOUCH_MS = 8000
+
+function prefersReducedMotion(): boolean {
+  if (typeof window === 'undefined' || !window.matchMedia) return false
+  try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches } catch { return false }
+}
+
 function StripRail({ banners }: { banners: HomeBanner[] }) {
+  const rootRef = useRef<HTMLDivElement>(null)
   const railRef = useRef<HTMLDivElement>(null)
   const [active, setActive] = useState(0)
+  const [paused, setPaused] = useState(false)
+  const [heldUntil, setHeldUntil] = useState(0)
+  const [onScreen, setOnScreen] = useState(true)
+  const [reduceMotion] = useState(prefersReducedMotion)
   const many = banners.length > 1
+
+  const stepPx = () => {
+    const first = railRef.current?.firstElementChild as HTMLElement | null
+    return first ? first.offsetWidth + STRIP_GAP_PX : 0
+  }
 
   /** 숫자는 스크롤 위치에서 파생한다 — 상태를 따로 들고 있으면 손가락과 어긋난다. */
   const onScroll = () => {
     const el = railRef.current
-    const first = el?.firstElementChild as HTMLElement | null
-    if (!el || !first) return
-    const step = first.offsetWidth + STRIP_GAP_PX
+    const step = stepPx()
+    if (!el || !step) return
     const i = Math.round(el.scrollLeft / step)
     setActive(Math.max(0, Math.min(banners.length - 1, i)))
   }
 
-  /** 숫자를 누르면 다음 장으로 **미끄러지듯** 간다(`scroll-smooth`). 손가락 스와이프는 네이티브라 안 거친다. */
+  /** 숫자를 누르면 다음 장으로 **미끄러지듯** 간다(`scroll-smooth`). */
   const goTo = (i: number) => {
     const el = railRef.current
-    const first = el?.firstElementChild as HTMLElement | null
-    if (!el || !first) return
-    el.scrollTo({ left: i * (first.offsetWidth + STRIP_GAP_PX), behavior: 'smooth' })
+    const step = stepPx()
+    if (!el || !step) return
+    el.scrollTo({ left: i * step, behavior: 'smooth' })
   }
 
+  // ③ 화면 밖이면 안 넘긴다.
+  useEffect(() => {
+    const el = rootRef.current
+    if (!many || !el || typeof IntersectionObserver === 'undefined') return
+    const io = new IntersectionObserver(([e]) => setOnScreen(e.isIntersecting && e.intersectionRatio >= 0.5), { threshold: [0, 0.5, 1] })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [many])
+
+  // 자동 넘김 — 장이 바뀔 때마다(손으로 넘겨도) 타이머를 새로 건다.
+  useEffect(() => {
+    if (!many || paused || reduceMotion || !onScreen) return
+    const wait = Math.max(AUTO_ADVANCE_MS, heldUntil - Date.now())
+    const t = window.setTimeout(() => {
+      if (document.visibilityState !== 'visible') return
+      goTo(active + 1 >= banners.length ? 0 : active + 1)
+    }, wait)
+    return () => window.clearTimeout(t)
+  }, [many, paused, reduceMotion, onScreen, active, heldUntil, banners.length])
+
+  // ② 손가락이 닿으면 멈춘다.
+  const hold = () => setHeldUntil(Date.now() + RESUME_AFTER_TOUCH_MS)
+
   return (
-    <div className="pb-4">
+    <div ref={rootRef} className="pb-4" aria-roledescription="carousel" aria-label="이벤트 배너">
       {/* 숫자 알약이 배너 **안**에 떠야 하므로 레일을 포함 블록으로 삼는다(스크롤러 자신에 주면 함께 스크롤된다). */}
       <div className="relative">
         <div
           ref={railRef}
           onScroll={many ? onScroll : undefined}
+          onPointerDown={many ? hold : undefined}
+          onWheel={many ? hold : undefined}
           className={`flex gap-7 px-[14px] ${many ? 'overflow-x-auto snap-x snap-mandatory scroll-px-[14px] scroll-smooth overscroll-x-contain scrollbar-hide' : ''}`}
         >
-          {banners.map((b) => {
-            const href = bannerHref(b)
-            const bg = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS.strip.requestWidth, quality: 76 }) : ''
-            return (
-              <Wrap
-                key={b.id}
-                href={href}
-                /* 📐 거터(14) 안에서 **한 장이 꽉**. 두 장부터도 폭은 같고 스냅으로 한 장씩 넘어간다.
-                   모서리 14px 는 `.ur-home-panel`(모바일) 과 같은 값이다 — 어긋나면 다시 따로 논다.
-                   🩸 `w-[calc(100%-1.75rem)]` 로 쓰면 **거터가 두 번 빠진다** — 스크롤러가 이미 `px-3.5` 를
-                      갖고 있어 `100%` 가 362(=390−28) 다. 실측 334 가 나왔고 다음 장이 42px 삐져나왔다.
-                      `w-full` 이 맞다(= 362 × 181, 2:1). */
-                /* shape-lock-ok — 14px 는 임의값이 아니라 `.ur-home-panel`(모바일) 의 radius 와 **같은 값**이다.
-                 체계(12/16)로 바꾸면 아래 패널과 어긋나 다시 "따로 논다"(가드가 CSS 에서 읽어 대조한다). */
-              className={`relative ${many ? 'snap-start shrink-0 w-full' : 'flex-1'} overflow-hidden rounded-[14px] isolate aspect-[2/1] flex flex-col justify-center px-5 py-4 transition-transform active:scale-[.995]`} /* shape-lock-ok (위 사유) */
-                /* 🎨 사진이 없으면 **브랜드 면**(대표 확정 "E"). 있으면 아래 img + 스크림이 덮는다. */
-                style={bg ? undefined : { background: 'var(--brand-grad)' }}
-              >
-                {bg && (
-                  <img
-                    src={bg} alt="" aria-hidden="true" loading="lazy"
-                    className="absolute inset-0 -z-10 w-full h-full object-cover"
-                    onError={(e) => cfImageOnError(e.currentTarget, b.image_url)}
-                  />
-                )}
-                {/* 어떤 사진이 올라올지 모른다 — 글자가 안 읽히는 사고를 막으려고 항상 덮는다. */}
-                {bg && <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/75 via-black/35 to-transparent" aria-hidden="true" />}
-                <strong className="block text-[24px] font-extrabold leading-[1.18] tracking-[-.03em] text-white line-clamp-2">{b.title}</strong>
-                {b.description && (
-                  <span className="block mt-1 text-[13px] text-white/85 line-clamp-1">{b.description}</span>
-                )}
-                {href && (
-                  /* light-fixed — 이 알약은 **브랜드 면 또는 사진 + 어두운 스크림** 위에만 선다(페이지 배경에
-                   닿지 않는다). 그래서 흰 알약 + 블루 글자가 라이트·다크에서 같은 그림이고, `dark:` 를 주면
-                   오히려 어두운 면 위에 어두운 알약이 생긴다. */
-                <span className="inline-flex self-start mt-3 px-4 py-2 rounded-lg bg-white text-[13px] font-bold text-brand-text"> {/* light-fixed */}
-                    자세히 보기
-                  </span>
-                )}
-              </Wrap>
-            )
-          })}
+          {banners.map((b, i) => <StripCard key={b.id} b={b} many={many} first={i === 0} />)}
         </div>
       {many && (
-        <button
-          type="button"
-          onClick={() => goTo((active + 1) % banners.length)}
-          aria-label={`다음 배너 (${active + 1} / ${banners.length})`}
-          className="absolute right-[26px] bottom-3 px-2 py-1 rounded-full text-[12px] font-semibold tabular-nums text-white bg-black/30 backdrop-blur-[6px]"
-        >
-          {active + 1} / {banners.length}
-        </button>
+        <div className="absolute right-[26px] bottom-3 flex items-center gap-2">
+          {!reduceMotion && (
+            <button
+              type="button"
+              onClick={() => setPaused(p => !p)}
+              aria-label={paused ? '배너 자동 넘김 다시 시작' : '배너 자동 넘김 멈춤'}
+              className="h-6 w-6 grid place-items-center rounded-full text-white bg-black/30 backdrop-blur-[6px]"
+            >
+              {paused ? (
+                <svg width="9" height="10" viewBox="0 0 9 10" aria-hidden="true"><path d="M1 1l7 4-7 4z" fill="currentColor" /></svg>
+              ) : (
+                <svg width="8" height="10" viewBox="0 0 8 10" aria-hidden="true"><path d="M1 1v8M7 1v8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+              )}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => goTo((active + 1) % banners.length)}
+            aria-label={`다음 배너 (${active + 1} / ${banners.length})`}
+            className="px-2 py-1 rounded-full text-[12px] font-semibold tabular-nums text-white bg-black/30 backdrop-blur-[6px]"
+          >
+            {active + 1} / {banners.length}
+          </button>
+        </div>
       )}
       </div>
     </div>
+  )
+}
+
+/** 카드 한 장. 글자색은 그림 밝기로 정한다(`banner-ink.ts`). */
+function StripCard({ b, many, first }: { b: HomeBanner; many: boolean; first: boolean }) {
+  const href = bannerHref(b)
+  const bg = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS.strip.requestWidth, quality: 76 }) : ''
+  const [ink, setInk] = useState<BannerInk>('light')
+  const dark = !!bg && ink === 'dark'
+  return (
+    <Wrap
+      href={href}
+      /* 📐 거터(14) 안에서 **한 장이 꽉**. 모서리 14px 는 `.ur-home-panel`(모바일) 과 같은 값이다.
+         🩸 `w-[calc(100%-1.75rem)]` 로 쓰면 **거터가 두 번 빠진다** — `w-full` 이 맞다(= 362 × 181, 2:1). */
+      /* shape-lock-ok — 14px 는 임의값이 아니라 `.ur-home-panel`(모바일) 의 radius 와 **같은 값**이다. */
+      className={`relative ${many ? 'snap-start shrink-0 w-full' : 'flex-1'} overflow-hidden rounded-[14px] isolate aspect-[2/1] flex flex-col justify-center px-5 py-4 transition-transform active:scale-[.995]`} /* shape-lock-ok (위 사유) */
+      /* 🎨 사진이 없으면 **브랜드 면**(대표 확정 "E"). */
+      style={bg ? undefined : { background: 'var(--brand-grad)' }}
+    >
+      {bg && (
+        <img
+          src={bg} alt="" aria-hidden="true"
+          loading={first ? 'eager' : 'lazy'}
+          fetchPriority={first ? 'high' : 'auto'}
+          decoding="async"
+          className="absolute inset-0 -z-10 w-full h-full object-cover"
+          onLoad={(e) => { const L = measureTitleLuminance(e.currentTarget); if (L != null) setInk(inkForLuminance(L)) }}
+          onError={(e) => cfImageOnError(e.currentTarget, b.image_url)}
+        />
+      )}
+      {/* 어두운 그림일 때만 덮는다 — 밝은(파스텔) 그림은 짙은 글자로 읽히고, 덮으면 탁해진다. */}
+      {bg && !dark && <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/75 via-black/35 to-transparent" aria-hidden="true" />}
+      {/* 글자색은 **테마가 아니라 그림**이 정하므로 dark: 짝을 같은 값으로 못 박는다. */}
+      <strong className={`block max-w-[62%] text-[24px] font-extrabold leading-[1.18] tracking-[-.03em] line-clamp-2 ${dark ? 'text-gray-900 dark:text-gray-900' : 'text-white'}`}>{b.title}</strong>
+      {b.description && (
+        <span className={`block max-w-[62%] mt-1 text-[13px] line-clamp-1 ${dark ? 'text-gray-700 dark:text-gray-700' : 'text-white/85'}`}>{b.description}</span>
+      )}
+      {href && (
+        /* light-fixed — 흰 알약 + 블루 글자는 그림·브랜드 면 위에만 선다(페이지 배경에 닿지 않는다). */
+        <span className="inline-flex self-start mt-3 px-4 py-2 rounded-lg bg-white text-[13px] font-bold text-brand-text"> {/* light-fixed */}
+          자세히 보기
+        </span>
+      )}
+    </Wrap>
   )
 }

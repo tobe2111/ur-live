@@ -59,9 +59,11 @@ export default [
     why: 'relative 가 없으면 absolute 가 바깥 블록을 기준으로 잡혀 알약이 엉뚱한 자리에 선다.',
   },
   {
-    name: '🎫2:1 사진 위 어두운 오버레이가 사라진다 (밝은 사진에서 흰 글자가 안 읽힘)',
+    // 🔁 2026-10-12 재조준: 덮개는 이제 **어두운 그림일 때만**(`!dark`) 깔린다(밝은 파스텔 그림은 짙은 글자).
+    //   지키려던 것 — 흰 글자 아래엔 덮개가 있다 — 은 그대로다.
+    name: '🎫2:1 사진 위 어두운 오버레이가 사라진다 (어두운 사진에서 흰 글자가 안 읽힘)',
     file: 'src/components/home/HomeBannerStrip.tsx',
-    find: '{bg && <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/75',
+    find: '{bg && !dark && <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/75',
     replace: '{false && <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/75',
     test: BANNER,
     why: '어떤 사진이 올라올지 모른다. 덮개가 없으면 밝은 사진 위에서 제목이 통째로 사라진다.',

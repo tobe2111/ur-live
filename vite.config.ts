@@ -315,6 +315,11 @@ export default defineConfig({
           //   홈 헤더 진입점이 `URSHORTS_VIEWER_PATH` 를 읽는 순간 catch-all 로 떨어져 홈 폐쇄가
           //   청크를 하나 더 끌고 왔다. 위 둘과 **정확히 같은 함정**이라 같은 자리에 둔다(가드가 잡았다).
           if (id.includes('/src/shared/urshorts')) return 'app-shared'
+          // 🔥 2026-10-13 장애: #1756 이 RestaurantMiniMap(→ app-components)에서 이 파일을 import 했는데 규칙이 없어
+          //   Rollup 이 셀러 쪽 사용처를 따라 app-seller-components 에 넣었다 → app-components ↔ app-seller-components
+          //   순환 → 셀러 청크가 app-components 의 TONE_PILL 을 초기화 전에 읽어 TDZ("Cannot access before
+          //   initialization") — 소비자 전 페이지가 ErrorBoundary 로 떨어졌다. 공용 모듈은 공용 봉투로.
+          if (id.includes('/src/shared/kakao-place-url')) return 'app-shared'
           // 🖊️ 2026-08-30: 유어딜 전용 아이콘(`components/icons/urdeal-icons`)도 **정확히 같은 함정**에
           //   빠졌다. 60줄짜리 순수 SVG 리프 모듈인데 `/src/components/` catch-all 에 걸려
           //   `app-components`(166KB · 58모듈)로 들어갔고, 그걸 **BottomNav·DesktopTopNav**
