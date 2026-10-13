@@ -4,6 +4,7 @@ import { ChevronLeft } from 'lucide-react'
 import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { URSHORTS_BROWSE_PATH, type UrShortItem } from '@/shared/urshorts'
+import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import BrowseCard from './urshorts/BrowseCard'
 import {
   cityFacets, categoryFacets, filterShorts, pruneFilter,
@@ -70,9 +71,11 @@ export default function UrShortsBrowsePage() {
 
   return (
     <div className="min-h-[100dvh] bg-[var(--bg)]">
+      {/* 🔎 문구는 `CONSUMER_SURFACE_SEO` 한 곳 — 워커(비-JS 크롤러용 정적 메타)와 이 `<SEO>` 가
+          같은 값을 읽는다. 두 벌로 적으면 반드시 갈라지고, 갈려도 에러가 안 난다. */}
       <SEO
-        title="유어쇼츠 - 유어딜"
-        description="영상으로 먼저 보고 바로 사는 동네 이용권. 도시·종류로 골라 보세요."
+        title={CONSUMER_SURFACE_SEO['/urshorts'].title}
+        description={CONSUMER_SURFACE_SEO['/urshorts'].description}
         url={URSHORTS_BROWSE_PATH}
       />
 
@@ -96,6 +99,14 @@ export default function UrShortsBrowsePage() {
           </span>
         )}
       </header>
+
+      {/* 🔎 2026-10-13 — 이 한 줄은 **화면과 크롤러 본문이 같은 문장**이어야 해서 있다.
+          종전 이 페이지엔 설명 문장이 하나도 없었다(제목 + 편수 + 칩 라벨뿐) — 검색에서 바로
+          들어온 사람에게 "여기가 뭐 하는 데인지" 를 말해 주는 줄이 없었고, 크롤러에게 줄 문장도
+          없었다. 문구는 `surface-copy.ts` 의 `/urshorts` 와 **같은 글자**다(가드가 대조). */}
+      <p className="px-3 pb-2 text-[13px] text-gray-500 dark:text-gray-400">
+        영상으로 먼저 보고 바로 사는 동네 이용권. 도시·종류로 골라 보세요.
+      </p>
 
       {items === null ? (
         <BrandLoader fullScreen />
