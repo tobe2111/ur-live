@@ -457,8 +457,11 @@ export async function handleExpiredVoucherRefunds(env: Env) {
       }
 
       // Refund deal points if paid with deal_points — user_points 테이블 사용
-      // 💸 2026-06-12 (4차 감사 D1): 잔액변경 + point_transactions 장부 동시 기록 (adjustUserPoints SSOT).
+      // 💸 2026-06-12 (4차 감사 D1): 잔액변경 + point_transactions 장부 동시 기록.
       //   기존엔 balance 만 올리고 장부 0건 → '딜 이용내역' 과 잔액 불일치. 금액/조건 불변.
+      // 🔁 2026-10-13 주석 정정: 이 분기의 SSOT 는 **`refundDealPoints`** 다(아래 참조).
+      //   #1750 이 `adjustUserPoints` 를 걷어냈는데 이 줄이 그 이름을 계속 가리켜,
+      //   다음 세션이 "유상 버킷으로 되돌린다" 는 옛 동작을 읽게 돼 있었다.
       if (voucher.payment_method === 'deal_points' && voucher.user_id && refundAmount > 0) {
         try {
           // 💸 2026-10-12: `adjustUserPoints` 는 **유상 버킷**으로만 되돌린다 — 무상(리워드) 딜로 산
