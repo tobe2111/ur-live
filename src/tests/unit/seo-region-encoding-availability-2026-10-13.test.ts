@@ -284,6 +284,19 @@ describe('③ sitemap 제출 ↔ 색인 선언이 서로 모순되지 않는다'
     expect(typeof base.blogSeedBodyEmDash).toBe('number')
   })
 
+  it('문구 SSOT(src/shared/seo/*.ts)가 anti-slop 범위 안이다', () => {
+    // 🩸 2026-10-13 — 이 가드는 `.tsx` 만 훑어서, 소비자 표면의 `<title>`·description·크롤러 본문·
+    //   `/llms.txt` 문구를 들고 있는 `src/shared/seo/*.ts` **전체가 무검사**였다. 블로그 시드에서
+    //   밟은 "낡은 지도" 와 같은 클래스다 — 가드가 가리키는 파일엔 문구가 없고, 문구가 있는 파일은
+    //   범위 밖이라 **hits 0 으로 영원히 초록**이다.
+    //   🔑 범위가 좁아지는 것은 **가드 자신의 자기검사**(`FIXTURE_TS_BAD`)가 매 실행마다 잡는다 —
+    //   아래 "실제로 돌려 초록인지" 단언이 그 신호를 받는다. 여기서는 의도를 소스로 못 박는다.
+    const g = readCode('scripts/check-anti-slop-copy.mjs')
+    expect(g).toMatch(/src\/shared\/seo\//)           // 범위
+    expect(g).toMatch(/FIXTURE_TS_BAD/)                 // `.ts` 자기검사 픽스처
+    expect(g).toMatch(/seoCopyFiles\.length < 8/)       // 0건이면 통과가 아니라 고장
+  })
+
   it('anti-slop 가드를 실제로 돌려 초록인지 본다 (제목 em-dash·낡은 경로를 잡는 자리)', () => {
     // 🔑 소스 단언만으로는 *검사가 실재한다* 까지만 말한다. 이 줄이 **돌려서** 판정하므로
     //   제목에 em-dash 가 되돌아오거나 BLOG_SEED 경로가 낡으면 여기서 빨간불이 난다.

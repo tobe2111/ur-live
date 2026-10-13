@@ -44,6 +44,13 @@ const MARKETING = new RegExp([
   '|InfluencerLandingPage|BusinessPage|IntroducePage|JoinPage|BlogListPage|BlogDetailPage)\\.tsx$',
   '|src/components/(SEO|ConsumerFrameRails)\\.tsx$',
   '|src/components/main/SiteFooter\\.tsx$',
+  // 🔁 2026-10-13 — **문구 SSOT 는 `.tsx` 가 아니다.** `src/shared/seo/*.ts` 가 소비자 표면의
+  //   `<title>`·description·크롤러 본문·`/llms.txt` 문구를 들고 있는데(`consumer-surfaces.ts`
+  //   `surface-copy.ts` `concept-content.ts` `llms-txt.ts`), 이 가드는 `.tsx` 만 훑어
+  //   **그 문구 전체가 무검사**였다. 블로그 시드에서 밟은 "낡은 지도" 와 같은 클래스다
+  //   (가드가 가리키는 페이지엔 문구가 없고, 문구가 있는 파일은 범위 밖).
+  //   🔑 파일 목록이 아니라 **디렉터리 규칙**으로 둔다 — 새 문구 파일이 조용히 새지 않는다.
+  '|src/shared/seo/[A-Za-z0-9-]+\\.ts$',
 ].join(''))
 const KO = /[가-힣]/
 
@@ -117,18 +124,27 @@ export const A = () => (
   </div>
 )
 `
+/* 📄 문구 SSOT(`.ts`) 픽스처 — `.tsx` 만 훑던 시절로 **조용히** 돌아가는 것을 막는다.
+   범위가 좁아지면 hits 가 0 이 되어 래칫은 초록이고, 그게 2026-10-13 까지의 상태였다. */
+const FIXTURE_TS_BAD = `export const COPY = {
+  '/partners': '매장 등록은 무료 — 판매되는 만큼만 수수료를 냅니다.',
+}
+`
 function selfTest() {
   const dir = fs.mkdtempSync(path.join(process.env.TMPDIR || '/tmp', 'slopcopy-'))
   try {
     fs.mkdirSync(path.join(dir, 'src/pages'), { recursive: true })
+    fs.mkdirSync(path.join(dir, 'src/shared/seo'), { recursive: true })
     const bad = path.join(dir, 'src/pages/AboutPage.tsx'); fs.writeFileSync(bad, FIXTURE_BAD)
     const ok = path.join(dir, 'src/pages/PartnersPage.tsx'); fs.writeFileSync(ok, FIXTURE_OK)
-    const b = scan([bad]), o = scan([ok])
+    const tsBad = path.join(dir, 'src/shared/seo/surface-copy.ts'); fs.writeFileSync(tsBad, FIXTURE_TS_BAD)
+    const b = scan([bad]), o = scan([ok]), t = scan([tsBad])
     const fail = []
     if (!b.emDash.length) fail.push('em-dash 를 못 잡는다')
     if (!b.sectionNum.length) fail.push('섹션번호를 못 잡는다')
     if (!b.koUpper.length) fail.push('한글 uppercase 를 못 잡는다')
     if (o.emDash.length || o.sectionNum.length || o.koUpper.length) fail.push('정상 코드를 오탐한다')
+    if (!t.emDash.length) fail.push('문구 SSOT(.ts) 의 em-dash 를 못 잡는다')
     return fail
   } finally { fs.rmSync(dir, { recursive: true, force: true }) }
 }
@@ -139,11 +155,24 @@ if (selfFail.length) {
   process.exit(1)
 }
 
-const files = walk(path.join(ROOT, 'src'))
-if (files.length < 300) {
-  console.error(`❌ anti-slop: .tsx 를 ${files.length}개밖에 못 찾았다 — 스캔 경로가 낡았다.`)
+const tsxFiles = walk(path.join(ROOT, 'src'))
+if (tsxFiles.length < 300) {
+  console.error(`❌ anti-slop: .tsx 를 ${tsxFiles.length}개밖에 못 찾았다 — 스캔 경로가 낡았다.`)
   process.exit(1)
 }
+/* 📄 문구 SSOT(`src/shared/seo/*.ts`)를 함께 훑는다. 위 MARKETING 주석의 이유.
+   ⚠️ **0건이면 통과가 아니라 고장이다** — 디렉터리가 옮겨지면 조용히 무검사로 돌아간다. */
+const SEO_COPY_DIR = path.join(ROOT, 'src/shared/seo')
+const seoCopyFiles = fs.existsSync(SEO_COPY_DIR)
+  ? fs.readdirSync(SEO_COPY_DIR).filter((f) => /\.ts$/.test(f) && !/\.test\.ts$/.test(f))
+      .map((f) => path.join(SEO_COPY_DIR, f))
+  : []
+if (seoCopyFiles.length < 8) {
+  console.error(`❌ anti-slop: 문구 SSOT 를 ${seoCopyFiles.length}개만 찾았다 — src/shared/seo 가 옮겨졌다.`)
+  console.error('   (경로를 같이 옮길 것 — 안 그러면 소비자 표면 문구 전체가 무검사로 돌아간다)')
+  process.exit(1)
+}
+const files = [...tsxFiles, ...seoCopyFiles]
 const hits = scan(files)
 /* ───────────────────────────────────────────────────────────────────────────
  * 📰 2026-10-13 — **블로그 시드 제목**은 이 가드가 구조적으로 못 보던 자리다.

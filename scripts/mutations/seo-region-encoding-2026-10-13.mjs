@@ -172,4 +172,15 @@ export default [
       '우리가 올리지 않은 영상에 `VideoObject` 를 발행하면 원 채널의 리치결과와 경쟁하면서 ' +
       '*우리가 출처* 라고 말하는 셈이다 — `sameAs`·`aggregateRating`·`brand` 와 같은 축(지어내지 않는다).',
   },
+  {
+    name: '🎨 anti-slop 범위가 .tsx 로 되돌아간다 (문구 SSOT 무검사)',
+    file: 'scripts/check-anti-slop-copy.mjs',
+    find: "  '|src/shared/seo/[A-Za-z0-9-]+\\\\.ts$',",
+    replace: '',
+    test: TEST,
+    why:
+      '소비자 표면의 `<title>`·description·크롤러 본문·`/llms.txt` 문구는 `.tsx` 가 아니라 ' +
+      '`src/shared/seo/*.ts` 에 있다. 범위를 좁히면 em-dash 가 되돌아와도 **hits 0 으로 영원히 초록** ' +
+      '이다(2026-10-13 까지 실제 상태). 가드 자신의 `FIXTURE_TS_BAD` 자기검사가 이것을 잡는다.',
+  },
 ]
