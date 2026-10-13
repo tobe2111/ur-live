@@ -13,7 +13,7 @@
  * ⚠️ 못 하는 것: 실제 렌더 폭(jsdom 은 레이아웃이 없다) — 위 실측이 근거다.
  */
 import { describe, it, expect } from 'vitest'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, statSync } from 'node:fs'
 import { stripComments } from '../helpers/source-text'
 
 const CSS = stripComments(readFileSync('src/index.css', 'utf-8'))
@@ -23,9 +23,9 @@ const WEIGHTS = [400, 500, 600, 700, 800]
 describe('숫자 글꼴 Roboto', () => {
   it('① 다섯 굵기가 숫자 범위로만 선언되고 파일이 있다', () => {
     for (const w of WEIGHTS) {
-      const re = new RegExp(`@font-face \\{ font-family: 'UrDigits';[^}]*font-weight: ${w};[^}]*url\\('/static/fonts/roboto-digits-${w}\\.woff2'\\)[^}]*unicode-range: U\\+0025, U\\+002C, U\\+002E, U\\+0030-0039; \\}`)
+      const re = new RegExp(`@font-face \\{ font-family: 'UrDigits';[^}]*font-weight: ${w};[^}]*url\\('/static/fonts/roboto-digits-v2-${w}\\.woff2'\\)[^}]*unicode-range: U\\+0025, U\\+002C, U\\+002E, U\\+0030-0039; \\}`)
       expect(CSS, `weight ${w}`).toMatch(re)
-      expect(existsSync(`public/static/fonts/roboto-digits-${w}.woff2`), `file ${w}`).toBe(true)
+      expect(existsSync(`public/static/fonts/roboto-digits-v2-${w}.woff2`), `file ${w}`).toBe(true)
     }
   })
   it('② 본문과 font-sans 스택 맨 앞이 UrDigits', () => {
@@ -45,5 +45,17 @@ describe('숫자 글꼴 Roboto', () => {
   it('⑤ 옛 Poppins 숫자 파일 참조가 없다', () => {
     expect(CSS).not.toMatch(/poppins-digits/)
     expect(existsSync('public/static/fonts/poppins-digits-700.woff2')).toBe(false)
+  })
+  it('⑥ 숫자 파일은 장당 3KB 이하다 — 힌팅·분수 글리프가 되살아나지 않는다(2026-10-13)', () => {
+    // 첫 화면에서 네 굵기가 최우선순위로 JS 와 회선을 나눠 쓴다. 원본(6.3KB)은 힌팅 프로그램이 대부분이었다.
+    for (const w of WEIGHTS) {
+      const size = statSync(`public/static/fonts/roboto-digits-v2-${w}.woff2`).size
+      expect(size, `weight ${w}`).toBeGreaterThan(1000) // 비어 있으면 통과가 아니라 고장
+      expect(size, `weight ${w}`).toBeLessThanOrEqual(3000)
+    }
+  })
+  it('⑦ 옛 이름(v1) 파일·참조가 없다 — 1년 immutable 캐시라 같은 이름으로 내용을 바꾸면 안 된다', () => {
+    expect(CSS).not.toMatch(/roboto-digits-\d{3}\.woff2/)
+    for (const w of WEIGHTS) expect(existsSync(`public/static/fonts/roboto-digits-${w}.woff2`)).toBe(false)
   })
 })
