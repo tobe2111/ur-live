@@ -18,6 +18,8 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
+// @ts-expect-error — .mjs 빌드 스크립트(타입 없음)
+import { isWholesaleProjectBuild } from '../../../scripts/pages-tombstone-gate.mjs'
 
 const WF = '.github/workflows/deploy-wholesale.yml'
 const TOMB = 'deploy/ur-wholesale-tombstone/_worker.js'
@@ -53,5 +55,25 @@ describe('🪦 ur-wholesale 묘비', () => {
     expect(s, '죽은 사본을 두드리면 매 회차 빨간불이 된다').not.toMatch(/ur-wholesale|\/api\/wholesale/)
     expect(s).toMatch(/for p in \/wholesale \/supplier/)
     expect(s).toMatch(/"\$code" = "410"/)
+  })
+
+  /**
+   * 🩸 2026-10-13 PR 봇 댓글로 드러났다 — ur-wholesale 은 GitHub 에 **직접 연결**돼 있어
+   *   Cloudflare 가 main push 마다 `npm run build` 로 앱 전체를 production 에 올린다. 워크플로 묘비는
+   *   다음 main push 에 덮인다. ⇒ 빌드 마지막에 게이트가 그 프로젝트의 빌드만 묘비로 바꾼다.
+   */
+  it('빌드 게이트 — ur-wholesale 빌더에서만 묘비로 바꾼다', () => {
+    expect(isWholesaleProjectBuild({ CF_PAGES: '1', CF_PAGES_URL: 'https://db7b5b04.ur-wholesale.pages.dev' })).toBe(true)
+    expect(isWholesaleProjectBuild({ CF_PAGES: '1', CF_PAGES_URL: 'https://x.ur-live.pages.dev', WHOLESALE_BUNDLE: '1' })).toBe(true)
+    expect(isWholesaleProjectBuild({ CF_PAGES: '1', CF_PAGES_URL: 'https://abc.ur-live.pages.dev' }), 'ur-live 빌드가 묘비가 되면 소비자 사이트가 410 이 된다').toBe(false)
+    expect(isWholesaleProjectBuild({}), 'GitHub Actions·로컬 빌드는 건드리지 않는다').toBe(false)
+    expect(isWholesaleProjectBuild({ CF_PAGES_URL: 'https://a.ur-wholesale.pages.dev' }), 'Pages 빌더가 아니면 무시').toBe(false)
+  })
+
+  it('빌드 게이트가 build-prepare 끝에 배선돼 있다 (build 체인의 마지막 단계)', () => {
+    const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as { scripts: Record<string, string> }
+    expect(pkg.scripts.build).toMatch(/npm run build:prepare$/)
+    const prep = readFileSync('scripts/build-prepare.mjs', 'utf8').split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n')
+    expect(prep, '배선이 빠지면 GitHub 연결 빌드가 main push 마다 앱 사본을 다시 올린다').toMatch(/^runTombstoneGate\(\)\s*$/m)
   })
 })

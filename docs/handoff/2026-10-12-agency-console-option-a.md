@@ -271,7 +271,11 @@
   → `deploy-wholesale.yml` 이 이제 `deploy/ur-wholesale-tombstone/_worker.js`(모든 요청 410 + noindex)만 올린다(paths 필터 — 묘비가 바뀔 때만).
   🩸 그 파일이 `.gitignore` 의 `*.js` 에 **조용히 무시**되고 있었다 — 그대로 푸시했으면 CI 에서 파일 없음으로 깨졌다. 예외 줄 추가.
 - ④ `prod-smoke.yml` — 도매 사본을 두드려 **철거 이후 매 회차 실패**(상시 빨간불)하던 것을 "철거 표면 `/wholesale`·`/supplier` = 410" 단언으로 교체.
-- 가드: `wholesale-tombstone-2026-10-12.test.ts` 4건 + 주입 4건 빨간불 확인.
+- 🩸 PR 봇 댓글로 드러난 것: ur-wholesale 은 **GitHub 에 직접 연결**돼 있어 Cloudflare 가 main push 마다(모든 브랜치는 미리보기로)
+  `npm run build` 로 앱 전체를 올린다(CF 실측: production `github:push main` 배포가 매번 있음) — 워크플로 묘비만으로는 다음 main push 에 덮인다.
+  → `scripts/pages-tombstone-gate.mjs` 를 `build-prepare.mjs` 끝에서 부른다: Pages 빌더(`CF_PAGES=1`)이고 주소가 `*.ur-wholesale.pages.dev`
+  이거나 `WHOLESALE_BUNDLE=1` 일 때만 `dist/client` 를 묘비 하나로 교체(ur-live·Actions·로컬 무영향). `package.json` 은 안 건드렸다(전수 주입 80분 회피).
+- 가드: `wholesale-tombstone-2026-10-12.test.ts` 6건 + 주입 6건 빨간불 확인.
 
 ### 남은 것 — 대표만 할 수 있는 것(코드 밖)
 - Cloudflare 대시보드에서 `ur-wholesale` Pages 프로젝트 삭제 → 그 뒤 `deploy-wholesale.yml`·`deploy/ur-wholesale-tombstone/` 를 지우는 PR.

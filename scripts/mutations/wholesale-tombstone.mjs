@@ -37,4 +37,20 @@ export default [
     test: TEST,
     why: '묘비 경로가 빠지면 묘비를 고쳐도 배포가 안 된다(자기참조 사각지대).',
   },
+  {
+    name: 'wholesale-tombstone: 빌드 게이트가 ur-live 빌드까지 묘비로 바꾼다',
+    file: 'scripts/pages-tombstone-gate.mjs',
+    find: "  if (env.CF_PAGES !== '1') return false",
+    replace: "  if (env.CF_PAGES !== '1') return true",
+    test: TEST,
+    why: '판정이 넓어지면 소비자 사이트 빌드가 410 묘비가 된다.',
+  },
+  {
+    name: 'wholesale-tombstone: 빌드 게이트가 배선에서 빠진다',
+    file: 'scripts/build-prepare.mjs',
+    find: "runTombstoneGate()\n",
+    replace: "\n",
+    test: TEST,
+    why: 'GitHub 연결 빌드가 main push 마다 앱 사본을 다시 올려 묘비를 덮는다.',
+  },
 ]
