@@ -51,13 +51,49 @@ export function transactionalMailReady(e: unknown): boolean {
   return !!env.RESEND_API_KEY || sensMailConfigured(env)
 }
 
+/**
+ * 📮 발신 주소 정리 (2026-10-12 — 라이브 시험 발송이 `Sender address is invalid format`(400)).
+ *   `NCP_MAIL_SENDER` 는 시크릿이라 저장 뒤엔 아무도 값을 다시 볼 수 없다. 콘솔에 붙여 넣을 때 흔히 섞이는
+ *   앞뒤 공백·줄바꿈 · 감싼 따옴표 · `유어딜 <no-reply@urdeal.kr>` 꼴을 여기서 걷어 **주소만** 보낸다.
+ *   이름은 `NCP_MAIL_SENDER_NAME` 이 따로 맡는다.
+ */
+export function normalizeSenderAddress(raw: unknown): string {
+  let v = String(raw ?? '').trim()
+  const angle = v.match(/<([^<>]+)>/)
+  if (angle) v = angle[1]
+  v = v.replace(/^["'`\s]+|["'`\s]+$/g, '')
+  return v.trim()
+}
+
+const EMAIL_SHAPE = /^[^\s@<>"'`,;]+@[^\s@<>"'`,;]+\.[A-Za-z]{2,}$/
+
+/**
+ * 🔎 발신 주소 **모양**만 — 값은 안 드러낸다(시험 발송 응답에 싣는다). 시크릿이라 다시 볼 수 없으니
+ *   "무엇이 잘못 들어갔는가" 를 이것으로 판정한다. 로컬부는 첫 글자만.
+ */
+export function describeSenderAddress(raw: unknown): Record<string, unknown> {
+  const s = String(raw ?? '')
+  const n = normalizeSenderAddress(s)
+  const [local = '', domain = ''] = n.split('@')
+  return {
+    configured: s.length > 0,
+    raw_length: s.length,
+    had_outer_whitespace: s !== s.trim(),
+    had_angle_brackets: /[<>]/.test(s),
+    had_quotes: /["'`]/.test(s),
+    at_count: (s.match(/@/g) || []).length,
+    normalized: n ? `${local.slice(0, 1)}***@${domain}` : '',
+    normalized_valid: EMAIL_SHAPE.test(n),
+  }
+}
+
 /** 요청 본문 — 순수 함수(시험이 직접 잰다). 한 통에 한 명(individual), 홍보 아님(advertising false). */
 export function buildSensMailBody(
   env: SensMailEnv,
   p: { to: string; subject: string; html: string },
 ): Record<string, unknown> {
   return {
-    senderAddress: String(env.NCP_MAIL_SENDER ?? ''),
+    senderAddress: normalizeSenderAddress(env.NCP_MAIL_SENDER),
     senderName: String(env.NCP_MAIL_SENDER_NAME || '유어딜'),
     title: p.subject,
     body: p.html,

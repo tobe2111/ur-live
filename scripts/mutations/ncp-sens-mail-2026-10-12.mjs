@@ -57,4 +57,20 @@ export default [
     test: T,
     why: 'v2 수신자 type 은 TO/CC/BCC — R 은 400 InvalidParameter.',
   },
+  {
+    name: 'SENS 메일 — 발신 주소를 정리하지 않고 그대로 보낸다',
+    file: 'src/lib/ncp-sens-mail.ts',
+    find: '    senderAddress: normalizeSenderAddress(env.NCP_MAIL_SENDER),',
+    replace: "    senderAddress: String(env.NCP_MAIL_SENDER ?? ''),",
+    test: T,
+    why: '시크릿에 섞인 공백·따옴표·이름 꼴이 그대로 가 400 Sender address is invalid format — 메일 0통.',
+  },
+  {
+    name: 'SENS 메일 — 진단이 발신 주소 원문을 드러낸다',
+    file: 'src/lib/ncp-sens-mail.ts',
+    find: "    normalized: n ? `${local.slice(0, 1)}***@${domain}` : '',",
+    replace: '    normalized: n,',
+    test: T,
+    why: '시크릿 값이 어드민 응답·로그로 샌다.',
+  },
 ]

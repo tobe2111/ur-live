@@ -11,7 +11,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createHmac } from 'node:crypto'
-import { buildSensMailBody, interpretSensMailResponse, sensMailConfigured, SENS_MAIL_HOST, sensMailUri } from '@/lib/ncp-sens-mail'
+import { buildSensMailBody, interpretSensMailResponse, normalizeSenderAddress, describeSenderAddress, sensMailConfigured, SENS_MAIL_HOST, sensMailUri } from '@/lib/ncp-sens-mail'
 import { sensSignatureMessage } from '@/lib/ncp-sens'
 import { sendEmail, _setSensMailEnvForTest } from '@/services/email'
 
@@ -94,5 +94,21 @@ describe('② ③ ④ sendEmail 경로', () => {
     await sendEmail({ to: 'a@b.com', subject: 's', html: 'h' }, 're_key')
     expect(calls).toHaveLength(1)
     expect(calls[0].url).toContain('resend.com')
+  })
+})
+
+describe('⑤ 발신 주소 정리 — 라이브 `Sender address is invalid format`(400)', () => {
+  it('공백·줄바꿈·따옴표·이름 꼴을 걷어 주소만 보낸다', () => {
+    expect(normalizeSenderAddress(' no-reply@urdeal.kr\n')).toBe('no-reply@urdeal.kr')
+    expect(normalizeSenderAddress('"no-reply@urdeal.kr"')).toBe('no-reply@urdeal.kr')
+    expect(normalizeSenderAddress('유어딜 <no-reply@urdeal.kr>')).toBe('no-reply@urdeal.kr')
+    expect(buildSensMailBody({ ...SENS, NCP_MAIL_SENDER: ' "no-reply@urdeal.kr" ' }, { to: 'a@b.com', subject: 's', html: 'h' }).senderAddress).toBe('no-reply@urdeal.kr')
+  })
+  it('모양만 드러내고 값은 안 드러낸다', () => {
+    const d = describeSenderAddress(' 유어딜 <no-reply@urdeal.kr>')
+    expect(d).toMatchObject({ had_outer_whitespace: true, had_angle_brackets: true, normalized: 'n***@urdeal.kr', normalized_valid: true })
+    expect(JSON.stringify(d)).not.toContain('no-reply')
+    expect(describeSenderAddress('urdeal.kr').normalized_valid).toBe(false)
+    expect(describeSenderAddress('').configured).toBe(false)
   })
 })

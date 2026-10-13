@@ -323,7 +323,10 @@ adminSystemMonitoringRoutes.post('/mail-test-send', async (c) => {
       html: `<p>유어딜 메일 발송 시험입니다 (${at}).</p><p>이 메일이 받은편지함에 보이면 영수증·비밀번호 찾기 같은 안내 메일이 정상으로 나갑니다.</p>`,
     }, { ignorePreference: true })
     const [local = '', domain = ''] = user.email.split('@')
-    return c.json({ success: r.success, result: r, to: `${local.slice(0, 1)}***@${domain}` })
+    // 🔎 발신 주소는 시크릿이라 다시 볼 수 없다 — 모양만 싣는다(값 노출 0). 2026-10-12 `Sender address is invalid format` 진단.
+    const { describeSenderAddress } = await import('../../../lib/ncp-sens-mail')
+    const from = describeSenderAddress((c.env as { NCP_MAIL_SENDER?: string }).NCP_MAIL_SENDER)
+    return c.json({ success: r.success, result: r, to: `${local.slice(0, 1)}***@${domain}`, from })
   } catch (err) {
     return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }

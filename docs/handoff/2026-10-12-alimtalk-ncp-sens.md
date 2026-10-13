@@ -135,3 +135,13 @@ SENS(통합 콘솔) Mail → Domain Management 에서 urdeal.kr 등록 → 인�
 - 수정: `src/lib/ncp-sens-mail.ts`(`sensMailUri()` 신설, 설정 판정에 서비스 ID 추가) · env 타입 · `/api/version` 플래그 · health 키 목록 · 테스트 3파일 · 주입 4건(전부 빨간불 확인).
 - ⚠️ 판정은 라이브: 머지·배포 후 `POST /api/admin/mail-test-send {"user_id":3}` → 성공이면 받은편지함/스팸함 대표 확인.
   실패 원문이 `Forbidden` 이면 그 프로젝트의 메일 채널이 꺼져 있는 것(서드파티 코드 주석 — useMail=false).
+
+## 9차 — v2 배포 후 시험 발송 (2026-10-12 22:3x KST)
+- #1740 머지 `eb6f09b82` → 배포(#1736 배포에 같이 실림, `/api/version` 에 `NCP_SENS_MAIL_SERVICE_ID: true`).
+- 시험 발송 결과가 **한 단계 전진**: `[SENS mail 400] (ncp:mail:kr:…:urdeal), Sender address is invalid format.`
+  → 서비스 ID·호스트·서명은 통과(이전 500 default project 해소). 이제 **발신 주소 형식**만 남음.
+- `NCP_MAIL_SENDER` 는 secret_text 라 값을 못 본다. 수정: `normalizeSenderAddress`(공백·따옴표·`이름 <주소>` 걷기) +
+  시험 발송 응답에 `from`(모양만 — 로컬부 첫 글자, 도메인, 공백/따옴표/꺾쇠 여부, 형식 유효성) 추가.
+- 다음 첫 액션: 배포 후 `POST /api/admin/mail-test-send {"user_id":3}` → `from.normalized_valid` 확인.
+  true 인데도 400 이면 → 그 주소의 **도메인이 SENS 메일 프로젝트에 등록·인증**됐는지 대표 콘솔 확인.
+  false 면 → 대표에게 Cloudflare 에서 `NCP_MAIL_SENDER` 를 `no-reply@urdeal.kr` 로 다시 입력 요청.
