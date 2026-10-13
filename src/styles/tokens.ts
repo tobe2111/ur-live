@@ -163,7 +163,9 @@ export const cards = {
   // 카드 변형
   variant: {
     default: 'bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all',
-    elevated: 'bg-white rounded-3xl shadow-2xl hover:shadow-3xl transition-all transform hover:scale-105',
+    // 🩸 `hover:shadow-3xl` 은 **Tailwind 에 없는 단계**라 CSS 가 안 나왔다(최대가 2xl).
+    //    없는 값을 지어내지 않고 제거한다 — 들림은 `hover:scale-105` 가 맡는다.
+    elevated: 'bg-white rounded-3xl shadow-2xl transition-all transform hover:scale-105',
     flat: 'bg-white rounded-2xl border border-gray-200 hover:border-gray-300 transition-all',
     glass: 'bg-white/80 backdrop-blur-lg rounded-3xl shadow-xl border border-white/20',
   },
