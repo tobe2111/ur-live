@@ -327,7 +327,7 @@ function StripCard({ b, many, first, clone }: { b: HomeBanner; many: boolean; fi
       {/* 아래쪽만 어둡게 — 흰 글자 자리를 받친다. 위쪽 사진은 그대로 둔다(전면을 덮으면 사진이 탁해진다). */}
       {bg && <div className="absolute inset-x-0 bottom-0 h-[70%] -z-10 bg-gradient-to-t from-black/70 via-black/30 to-transparent" aria-hidden="true" />}
       {/* 글자는 **늘 흰색** — 테마가 아니라 사진 위에 서므로 dark: 짝도 같은 값이다. 오른쪽 아래 숫자 알약 자리를 비운다(max-w). */}
-      <strong className="block max-w-[64%] text-[22px] font-extrabold leading-[1.2] tracking-[-.03em] line-clamp-2 text-white dark:text-white [text-shadow:0_1px_8px_rgba(0,0,0,.25)]">{b.title}</strong>
+      <strong className="block max-w-[64%] text-[24px] font-extrabold leading-[1.2] tracking-[-.03em] line-clamp-2 text-white dark:text-white [text-shadow:0_1px_8px_rgba(0,0,0,.25)]">{b.title}</strong>
       {b.description && (
         <span className="block max-w-[64%] mt-1 text-[13px] line-clamp-1 text-white/90 dark:text-white/90">{b.description}</span>
       )}
