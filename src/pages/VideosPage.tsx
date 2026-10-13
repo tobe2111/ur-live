@@ -8,6 +8,7 @@ import { youTubeEmbedUrl, youTubePlayerVars, type UrShortItem } from '@/shared/u
 import { loadYouTubePlayerApi, killCaptions, type YtPlayer } from './videos/youtube-player'
 import { priceDisplay } from '@/shared/price-display'
 import SEO from '@/components/SEO'
+import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 
 /**
  * 🎬 `/videos` — 유어쇼츠 뷰어 (2026-09-07 대표 확정: 주소는 `/videos`).
@@ -210,7 +211,14 @@ export default function VideosPage() {
 
   return (
     <div className="relative min-h-[100dvh] overflow-hidden overscroll-none bg-[#0A0C12]">
-      <SEO title="유어쇼츠 - 유어딜" description="영상으로 보고 바로 구매하는 이용권" url="/videos" noindex />
+      {/* 🔎 문구·noindex 는 `CONSUMER_SURFACE_SEO` 한 곳. 2026-10-13 까지 이 `noindex` 는 **클라에만**
+          있어서 JS 안 돌리는 크롤러(Yeti·AI 봇)에는 무효였다 — 서버는 `index, follow` 를 주고 있었다. */}
+      <SEO
+        title={CONSUMER_SURFACE_SEO['/videos'].title}
+        description={CONSUMER_SURFACE_SEO['/videos'].description}
+        url="/videos"
+        noindex
+      />
 
       {/* ▶️ **재생기 자리.** API 가 왔으면 이 껍데기 안에 우리가 만든 재생기 하나가 산다
           (`playerRef` — 영상 전환은 `loadVideoById`). React 는 이 div 만 알고, 안쪽 iframe 은

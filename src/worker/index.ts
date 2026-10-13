@@ -1441,7 +1441,6 @@ const exactPostBot = (exactPath: string) => {
 };
 app.use('/api/auth/register', exactPostBot('/api/auth/register'));
 app.use('/api/auth/login', exactPostBot('/api/auth/login'));
-app.use('/api/seller/register', exactPostBot('/api/seller/register'));
 app.use('/api/seller/login', exactPostBot('/api/seller/login'));
 app.use('/api/admin/login', exactPostBot('/api/admin/login'));
 app.use('/api/auth/forgot-password', exactPostBot('/api/auth/forgot-password'));

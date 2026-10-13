@@ -2,7 +2,6 @@
  * Seller Management API Routes
  * 
  * Endpoints:
- * - POST /api/seller/register - 셀러 회원가입
  * - GET /api/seller/profile - 셀러 프로필 조회
  * - PUT /api/seller/profile - 셀러 프로필 수정
  * - GET /api/seller/business-info - 사업자 정보 조회
@@ -167,12 +166,9 @@ async function getSellerIdFromToken(authorization: string | undefined, jwtSecret
   }
 }
 
-/**
- * POST /api/seller/register
- * 셀러 회원가입
- */
-// 🛡️ 2026-04-28 TD-006 (split): /register, /register-from-user, /my-seller-status,
-//   /switch-to-seller, /switch-to-user → src/features/seller/api/seller-registration.routes.ts
+// 🛡️ 2026-04-28 TD-006 (split): /my-seller-status, /switch-to-seller, /switch-to-user
+//   → src/features/seller/api/seller-registration.routes.ts
+//   (🪦 2026-10-12: /register · /register-from-user 는 부르는 화면이 0 이라 삭제)
 
 /**
  * GET /api/seller/profile
