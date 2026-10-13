@@ -11,7 +11,8 @@ import { isSafeInternalPath } from '@/utils/safe-internal-path'
  * ⇒ 우리 도메인이면(또는 `/` 로 시작하는 상대 경로) 경로만 떼어 앱 안에서 이동(새로고침 없음), 남의 https 면 새 탭,
  *   그 밖(`javascript:` 등)은 링크 없음.
  */
-export const OWN_HOSTS = ['urdeal.kr', 'www.urdeal.kr', 'live.ur-team.com'] as const
+// legacy-domain-ok — 구 도메인 링크도 앱 안 이동으로(이전을 구현하는 쪽이다)
+export const OWN_HOSTS = ['urdeal.kr', 'www.urdeal.kr', 'live.ur-team.com'] as const // legacy-domain-ok
 
 export type BannerLink =
   | { kind: 'internal'; to: string }
