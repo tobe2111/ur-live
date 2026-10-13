@@ -260,3 +260,19 @@
 ### 남은 것(별건)
 - `POST /api/seller/register`(이메일·비번 셀러 가입)도 클라 호출 0 으로 보인다(가입 문은 `/store/new`). 확인 후 정리 후보.
 - 코드 밖(대표 판단): `role='wholesale'` 어드민 4개 · `utongstart.com` · `ur-wholesale` Pages 프로젝트.
+
+### #1745 머지 + 3차 정리 — 남은 것 전부 (대표 "남은 것도 다 해줘")
+- PR #1745 머지 `1d3d20ef` — 배포 후 E4: `/api/seller/surface`·`/register-from-user` 404, `/`·`/user/profile`·`/store/new`·`/seller/orders` 200.
+- ① `POST /api/seller/register`(이메일·비번 가입) 삭제 — 클라 호출 0. 함께 `api.ts` 공개 경로 목록·워커 봇 가드 한 줄 제거.
+  그 INSERT 에 걸려 있던 등록증 저장 단언 2건·주입 2건은 지킬 코드가 사라져 뺐다(상태 응답의 boolean 단언은 유지).
+- ② 도매 어드민 계정 — 활성은 **2개뿐**이었다(정지원_도매 · 정종문, 나머지 둘은 이미 삭제 상태). 대표 확인("둘 다 삭제") 후
+  `DELETE /api/admin/admins/{9,8}` = **소프트 삭제**(세션 즉시 무효, 행·감사로그 보존). 남은 어드민: super_admin 2(id 5·10).
+- ③ `ur-wholesale` — CF 읽기 실측: 바인딩 `DB`·`CACHE_KV`·`RATE_LIMIT_KV`·`SESSION_KV`, 도메인 `*.pages.dev` 뿐, **매 push 마다 소비자 앱 사본이 배포**되고 있었다.
+  → `deploy-wholesale.yml` 이 이제 `deploy/ur-wholesale-tombstone/_worker.js`(모든 요청 410 + noindex)만 올린다(paths 필터 — 묘비가 바뀔 때만).
+  🩸 그 파일이 `.gitignore` 의 `*.js` 에 **조용히 무시**되고 있었다 — 그대로 푸시했으면 CI 에서 파일 없음으로 깨졌다. 예외 줄 추가.
+- ④ `prod-smoke.yml` — 도매 사본을 두드려 **철거 이후 매 회차 실패**(상시 빨간불)하던 것을 "철거 표면 `/wholesale`·`/supplier` = 410" 단언으로 교체.
+- 가드: `wholesale-tombstone-2026-10-12.test.ts` 4건 + 주입 4건 빨간불 확인.
+
+### 남은 것 — 대표만 할 수 있는 것(코드 밖)
+- Cloudflare 대시보드에서 `ur-wholesale` Pages 프로젝트 삭제 → 그 뒤 `deploy-wholesale.yml`·`deploy/ur-wholesale-tombstone/` 를 지우는 PR.
+- `utongstart.com` 도메인 갱신 여부(레지스트라). 코드의 `WHOLESALE_HOSTS` 는 공구 서비스 몰 조회와 한 덩어리라 남겨 둔다.

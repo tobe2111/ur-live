@@ -107,6 +107,12 @@
 - **§3 테이블: 무접촉**(회계 증빙). 노출만 끊었다.
 - **§5-4·5-5 미실행(대표 판단)**: `ur-wholesale` Pages 프로젝트 · `utongstart.com` 도메인(실측 — 두 프로젝트
   어디에도 미연결) · `role='wholesale'` 어드민 계정 4개.
+  - ✅ **2026-10-12 후속(대표 *"남은 것도 다 해줘"*)**: ① 도매 어드민 계정 — 남아 있던 **활성 2개**(나머지 둘은
+    이미 삭제 상태였다)를 어드민 API 로 **소프트 삭제**(세션 즉시 무효 · 행·감사로그 보존). ② `ur-wholesale` —
+    실측하니 **운영 D1·KV 가 붙은 소비자 앱 사본**이 매 push 마다 배포되고 있었다 → 워크플로가 이제 **410 묘비**
+    (`deploy/ur-wholesale-tombstone/_worker.js`)만 올린다. 프로젝트 삭제 자체는 대시보드에서 **대표가**(세션 토큰
+    읽기 전용) — 삭제 뒤 `deploy-wholesale.yml` 을 지운다. ③ `utongstart.com` — 레지스트라 일이라 코드 밖(갱신 여부
+    대표 판단). 가드: `wholesale-tombstone-2026-10-12.test.ts`.
 - **§5-6 cron no-op 게이트: 제거하지 않았다**(대표 2026-07-29 확정 그대로 — 정산 엔진이 소비자 워커에 잔류).
 
 실행 기록·교훈: `docs/handoff/2026-10-11-wholesale-teardown.md` · 구조 SSOT: `urdeal-platform-model.md` §1.
