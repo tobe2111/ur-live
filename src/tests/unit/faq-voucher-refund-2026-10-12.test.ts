@@ -97,19 +97,26 @@ describe('③ 코드 근거가 살아 있다 — 근거가 사라지면 FAQ 가 
     const c = code(CRON)
     expect(c, '만료 환불 함수가 사라졌다').toContain('export async function handleExpiredVoucherRefunds')
     // 답변이 약속하는 두 경로: 딜 결제 → 딜로 · 카드 결제 → 카드로.
-    // 🩸 2026-10-13 재조준(지우지 않았다): 첫 판은 `'deal_points'` 에서 **400자 안에**
-    //   `adjustUserPoints` 가 오는지를 봤다. #1750(딜 현금 출구 정리)이 그 분기를
-    //   `refundDealPoints`(무상/유상 버킷을 가려 되돌린다 — 무상 딜이 현금화 가능한 딜로
-    //   세탁되던 것을 막는다)로 **더 정확하게** 바꾸면서 거리와 헬퍼 이름이 함께 깨졌다.
-    //   지키려던 불변식은 그대로다: **딜로 산 이용권이 만료되면 딜로 되돌아간다.** 그래서
-    //   거리를 재지 않고 **분기 블록을 떼어** 그 안에서 딜 환불 SSOT 를 부르는지 본다
-    //   (경계는 바로 뒤에 오는 카드 분기의 `else if` 다 — 거리 상수 0개).
+    // 🩸 2026-10-13 앵커 재조준 — 두 세션이 같은 자리를 따로 고쳤고(#1752 ↔ 이 PR), 머지에서
+    //   만나 **둘의 교훈을 합쳤다.** 원래 단언은 `'deal_points'` 에서 **400자 안에**
+    //   `adjustUserPoints` 가 오는지를 봤는데, #1750(딜 현금 출구 정리)이 그 분기를
+    //   `refundDealPoints`(원래 버킷 역산 — 무상 딜이 현금화 가능한 딜로 세탁되던 것을 막는다)로
+    //   바꾸면서 **거리와 이름이 함께** 깨졌다.
+    //   ① 거리를 아예 안 쓴다 — **분기 블록을 떼어** 그 안만 본다(경계는 바로 뒤 카드 분기).
+    //      코드가 자라도 안 깨지고, 400 같은 상수가 없다.
+    //   ② **호출**을 앵커한다 — 이름만 보면 바로 위의 구조분해 import
+    //      (`const { refundDealPoints } = await import(...)`)에 걸려 **호출을 딴 함수로 바꿔도
+    //      초록**이 떴다(#1752 의 되돌려-검증이 잡았다). 여는 괄호까지 요구한다.
+    //   ③ **어느 함수인지는 여기서 잠그지 않는다** — 무상/유상 버킷 정확성은
+    //      `deal-cash-out-2026-10-12` 가 같은 블록을 이미 잠근다(중복 잠금은 각 잠금을
+    //      시험 불가능하게 만든다 — CLAUDE.md 2026-10-11 의 교훈).
+    //   여기서 지키는 것은 FAQ 의 약속 하나다: *딜로 결제했으면 딜로 돌아간다.*
     const dealAt = c.indexOf("payment_method === 'deal_points'")
     const cardAt = c.indexOf("payment_method === 'toss'")
     expect(dealAt, '딜 결제 분기가 사라졌다').toBeGreaterThan(-1)
     expect(cardAt, '카드 환불 경로가 사라졌다').toBeGreaterThan(dealAt)
-    expect(c.slice(dealAt, cardAt), '딜 환불 SSOT 호출이 사라졌다 — 딜로 돌려줄 길이 없다')
-      .toMatch(/refundDealPoints|adjustUserPoints/)
+    expect(c.slice(dealAt, cardAt), '딜 환불 호출이 사라졌다 — 딜로 돌려줄 길이 없다')
+      .toMatch(/(adjustUserPoints|refundDealPoints)\(/)
     expect(c, '카드 환불 경로가 사라졌다').toMatch(/payment_method === 'toss' \|\| voucher\.payment_method === 'CARD'/)
     expect(c, '환불 알림이 사라졌다 — 답변은 "알림으로 알려드립니다" 라고 약속한다').toContain('INSERT INTO notifications')
     expect(expiry().answer).toContain('알림')
