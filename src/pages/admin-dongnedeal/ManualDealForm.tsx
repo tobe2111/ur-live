@@ -28,6 +28,7 @@ const CATS = [
 
 const EMPTY = { name: '', category: 'meal_voucher', price: '', original_price: '', restaurant_name: '', restaurant_address: '', restaurant_phone: '', image_url: '', description: '', max_per_person: '', kakao_place_url: '', min_review_level: '' }
 import { cfImage } from '@/utils/cf-image'
+import { kakaoPlaceUrlFromId } from '@/shared/kakao-place-url'
 
 
 export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { onSaved: () => void; editDeal?: DealRow | null; onCancelEdit?: () => void }) {
@@ -123,7 +124,7 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
       restaurant_phone: p.phone || '',
       name: prev.name || p.place_name || '', // 상품명 비면 매장명으로 시드
       // 🎯 2026-07-01: 카카오 장소 페이지 URL 캡처 → 상세 지도가 매장 페이지 직접 연결.
-      kakao_place_url: p.place_url || (p.id ? `https://place.map.kakao.com/${p.id}` : ''),
+      kakao_place_url: p.place_url || kakaoPlaceUrlFromId(p.id) || '',
     }))
     setQ(p.place_name || '')
     setPlaces([])

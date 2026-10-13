@@ -98,7 +98,6 @@ describe('② 모양이 아니면 아예 안 낸다', () => {
     ['빈 값', ''],
     ['공백', '   '],
     ['URL 아님', 'not a url'],
-    ['http(비보안)', 'http://place.map.kakao.com/10256701'],
     ['id 가 숫자 아님', 'https://place.map.kakao.com/abc'],
     ['id 없음', 'https://place.map.kakao.com/'],
     ['남의 호스트', 'https://evil.example.com/10256701'],
@@ -116,14 +115,43 @@ describe('② 모양이 아니면 아예 안 낸다', () => {
 })
 
 describe('③ 정규형으로 돌려준다', () => {
+  // 🔄 2026-10-13 — `http://` 를 **거부에서 정규화로 옮겼다**(전엔 ② 의 "모양이 아니면" 목록에
+  //   있었다). 종전 판정은 https 만 받았는데, 그건 *내보내는 값*이 https 여야 한다는 요구를
+  //   *입력*에까지 적용한 것이었다 — 사람이 http 로 붙여넣은 멀쩡한 카카오 장소가 그 이유로
+  //   `sameAs` 를 못 받았다. 우리가 내보내는 것은 아래 단언대로 **언제나 https 정본**이다.
   it.each([
     ['그대로', KAKAO],
     ['끝 슬래시', `${KAKAO}/`],
     ['쿼리', `${KAKAO}?from=kakao`],
     ['해시', `${KAKAO}#x`],
     ['쿼리+해시+슬래시', `${KAKAO}/?a=1#b`],
+    ['http → https', 'http://place.map.kakao.com/10256701'],
+    // 🔢 같은 가게를 가리키는 다른 껍데기 셋 — 라이브 실측으로 같은 id 공간임을 확인했다
+    //   (`shared/kakao-place-url.ts` 머리말의 표). 종전엔 이 셋이 전부 `sameAs` 0 이었다.
+    ['지도 itemId', 'https://map.kakao.com/?itemId=10256701'],
+    ['지도 itemId(다른 파라미터와 함께)', 'https://map.kakao.com/?map_type=TYPE_MAP&itemId=10256701'],
+    ['공유 link/map', 'https://map.kakao.com/link/map/10256701'],
+    ['길찾기 link/to', 'https://map.kakao.com/link/to/10256701'],
   ])('%s → 한 모양', (_l, raw) => {
     expect(placeSameAs(raw)).toBe(KAKAO)
+  })
+
+  it('id 를 못 뽑는 카카오 링크는 sameAs 를 안 낸다 — 단축링크·좌표형', () => {
+    // 🔴 `kko.to` 는 URL 안에 id 가 없다(풀려면 네트워크 왕복이고 이 환경에서 그 동작을 검증할
+    //   수 없었다). 좌표형 `link/map/{이름},{위도},{경도}` 는 애초에 장소 id 가 아니다 —
+    //   **틀린 id 로 접는 것은 `sameAs` 가 없는 것보다 나쁘다**(남의 가게를 선언하게 된다).
+    for (const raw of [
+      'https://kko.to/AbC_123',
+      'https://map.kakao.com/',
+      'https://map.kakao.com/link/map/달빛한스푼,37.5,127.0',
+      'https://map.kakao.com/?itemId=abc',
+    ]) expect(placeSameAs(raw)).toBeNull()
+  })
+
+  it('언제나 https 정본 한 모양으로 나간다', () => {
+    for (const raw of [KAKAO, 'http://place.map.kakao.com/10256701', 'https://map.kakao.com/?itemId=10256701']) {
+      expect(placeSameAs(raw)).toMatch(/^https:\/\/place\.map\.kakao\.com\/\d+$/)
+    }
   })
 })
 
@@ -160,9 +188,19 @@ describe('⑤ 배선 — 손으로 적지 않는다', () => {
   const code = readCode('src/worker/utils/detail-ssr-meta.ts')
 
   it('매장 주소를 코드에 박아 두지 않는다', () => {
-    // 🔴 호스트를 두 벌로 적으면 한쪽만 고쳐지는 날이 온다 — 판정은 `placeSameAs` 한 곳.
+    // 🔴 호스트를 두 벌로 적으면 한쪽만 고쳐지는 날이 온다.
+    // 🔄 2026-10-13 재조준 — 판정이 SSOT(`shared/kakao-place-url`)로 옮겨갔다. 불변식은 그대로이고
+    //   **자리만** 바뀌었다: 이 파일엔 호스트가 **0건**이어야 하고, SSOT 한 곳에만 있어야 한다.
+    //   (느슨해진 게 아니다 — 종전엔 "2건" 이라 세 번째가 새면 잡혔지만 **두 벌 자체**는 허용했다.)
     expect((code.match(/place\.map\.kakao\.com/g) || []).length,
-      '호스트 리터럴이 판정 함수 밖에도 있다').toBe(2) // 검증 1 + 정규형 조립 1
+      '호스트 리터럴이 SSOT 밖에도 있다').toBe(0)
+    const ssot = readCode('src/shared/kakao-place-url.ts')
+    expect((ssot.match(/place\.map\.kakao\.com/g) || []).length,
+      'SSOT 가 호스트를 갖고 있지 않다 — 그러면 위 0 이 통과여도 아무것도 안 지킨다')
+      // 🩸 1 이다. SSOT 의 검증 정규식은 `place\\.map\\.kakao\\.com` 처럼 **이스케이프된 글자**라
+      //   이 패턴에 안 걸린다 — 평문으로 호스트가 적히는 자리는 정규형 조립 한 곳뿐이고,
+      //   그게 "한 곳에만 있다" 는 이 단언이 바라던 상태다.
+      .toBeGreaterThanOrEqual(1)
   })
 
   it('두 빌더가 같은 함수를 쓴다', () => {

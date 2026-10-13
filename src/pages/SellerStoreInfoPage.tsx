@@ -41,6 +41,7 @@ import { Loader2, Map, MapPin, Store } from 'lucide-react'
 import { useStoreInfo, type StoreInfoForm } from './seller-store-info/useStoreInfo'
 import StorePreviewCard from './seller-store-info/StorePreviewCard'
 import ImageField from './seller-store-info/ImageField'
+import { kakaoPlaceUrlFromId } from '@/shared/kakao-place-url'
 
 const INPUT = 'w-full min-h-[40px] rounded-lg border border-rule px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400'
 
@@ -66,7 +67,8 @@ export default function SellerStoreInfoPage() {
     set('address', p.road_address_name || p.address_name || form.address)
     if (p.phone) set('phone', p.phone)
     set('lat', p.y || ''); set('lng', p.x || '')
-    if (p.id) set('kakao_place_url', `https://place.map.kakao.com/${p.id}`)
+    const u = kakaoPlaceUrlFromId(p.id)
+    if (u) set('kakao_place_url', u)
     setShowMap(false)
   }
 
