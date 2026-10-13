@@ -48,6 +48,8 @@
  *    `cf-image`·`curator-pin-order` 는 이미 워커가 쓰는 순수 모듈이라 안전하다.
  */
 
+import { OG_CARD_W, OG_CARD_H } from './og-share-image'
+
 /** 공유 카드가 보는 핀 필드만. `CuratorPin` 의 부분집합이라 그대로 넘겨도 된다. */
 export interface UShopSharePin {
   product_id: number
@@ -78,9 +80,13 @@ export function isShareImagePin(p: UShopSharePin): boolean {
   return Number(p?.is_active) === 1 && !!pinPhoto(p)
 }
 
-/** 카카오 공유 카드 그림 크기 — 소셜 카드 비율(1.91:1). */
-export const SHARE_CARD_W = 1200
-export const SHARE_CARD_H = 630
+/**
+ * 카카오 공유 카드 그림 크기 — 소셜 카드 비율(1.91:1).
+ * 🔗 2026-10-12: 값을 `og-share-image.ts`(상품 카드 SSOT)에서 받는다 — **봇 셸이 선언하는
+ *    `og:image:width/height` 가 그 상수를 읽으므로**, 여기만 바꾸면 선언이 거짓이 된다.
+ */
+export const SHARE_CARD_W = OG_CARD_W
+export const SHARE_CARD_H = OG_CARD_H
 
 /**
  * 유달이 폴백의 바탕 — **딥 네이비**(2026-10-12 대표 *"유달이 때는 배경색 딥 네이비"*).

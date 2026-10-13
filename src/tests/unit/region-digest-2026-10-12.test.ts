@@ -206,19 +206,30 @@ describe('④ 요약을 먹이면 크롤러 본문·ItemList 가 실제로 생�
 })
 
 describe('⑤ 경로 판정 — 지역·숙소만', () => {
-  it.each(['/region/서울', '/region/서울/중구', '/stays'])('%s → 쓴다', p => {
+  // 🔀 2026-10-12 재조준: **허브(`/region`)도 쓴다** — `regionChildLinks` 가 색인 대상 시/도
+  //   링크를 만드는 데 요약이 필요하다(종전엔 허브가 요약을 못 받아 크롤러에게 링크 0개를 줬다).
+  //   지키는 불변식은 그대로 — **지역·숙소 경로만** 쓴다(아래 '안 쓴다' 목록이 그 경계다).
+  //   허브가 noindex 가 되는 쪽은 `regionThinByDigest` 가 따로 막는다(그 시험이 아래에 있다).
+  it.each(['/region', '/region/서울', '/region/서울/중구', '/stays'])('%s → 쓴다', p => {
     expect(regionDigestApplies(p)).toBe(true)
   })
-  it.each(['/', '/vouchers', '/browse', '/map', '/region', '/u/jiwon1228', '/pass/2919', '/faq'])('%s → 안 쓴다', p => {
+  it.each(['/', '/vouchers', '/browse', '/map', '/u/jiwon1228', '/pass/2919', '/faq'])('%s → 안 쓴다', p => {
     expect(regionDigestApplies(p)).toBe(false)
   })
 })
 
 describe('⑥ 🔴 반대 방향 — 요약이 주입(React initialData)으로 새지 않는다', () => {
-  it('`ssrPayload` 는 **SSR 응답에서 딱 한 번** 대입된다 — 요약이 그 변수로 흘러들 수 없다', () => {
+  it('`ssrPayload` 에 **값을 담는 대입은 딱 한 번** — 요약이 그 변수로 흘러들 수 없다', () => {
+    // 🔀 2026-10-12 재조준: facet 시드를 **주입에서 빼는** 한 줄(`ssrPayload = null`)이 생겨
+    //   대입이 둘이 됐다. 지키는 불변식은 그대로 — *값*을 담는 대입은 여전히 하나이고 그것은
+    //   `r.payload` 다. `null` 은 구조적으로 아무것도 샐 수 없으므로(주입을 **지우는** 방향)
+    //   예외로 두고, 그 대신 **요약·크롤러 변수를 담는 대입이 0** 임을 따로 못 박는다
+    //   (= `ssrPayload = digestRaw` / `= crawlerPayload` 는 여전히 빨간불).
     const writes = [...worker.matchAll(/\bssrPayload\s*=(?!=)([^\n;]*)/g)].map(m => m[1].trim())
-    expect(writes.length).toBe(1)
-    expect(writes[0]).toMatch(/^r\w*\.payload$/)
+    const valued = writes.filter(w => w !== 'null')
+    expect(valued.length).toBe(1)
+    expect(valued[0]).toMatch(/^r\w*\.payload$/)
+    for (const w of writes) expect(w).not.toMatch(/digest|crawler/i)
   })
 
   it('`__SSR_INITIAL_*` 주입은 `ssrPayload` 를 쓴다', () => {

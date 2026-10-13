@@ -316,7 +316,12 @@ describe('유어샵 서버 첫 화면 — 워커 HTML ↔ 진짜 컴포넌트', 
     // 🔀 2026-10-11 재조준: 불변식(**PC 에는 안 그린다**) 그대로, 그려 주는 쪽에 색인 크롤러가
     //   더해졌다 — Yeti 는 유어샵을 6자로 보고 있었다. 동작 판정은 바로 아래 시험이 한다.
     expect(cond).toContain('shouldRenderMobileFirstScreen')
-    expect(w).toContain('curatorFirst || urdealLoaderHtml')
+    // 🔀 2026-10-12 재조준: 불변식(**첫 화면이 `''` 면 로더로 폴백**) 그대로. 달라진 것은 그
+    //   폴백이 로더 **앞에** `<noscript>` 요약을 깐다는 것뿐이다 — 라이브 실측에서 이 빌더가
+    //   `''` 를 주는 세 경우(사업자 유어샵 · 핀 0 · 파싱 실패)가 전부 본문 6자였다.
+    //   ⚠️ 로더가 그 자리에 **남아 있는지**를 계속 고정한다(대체하는 방향은 회귀다).
+    expect(w).toMatch(/curatorFirst \|\| [^\n]*urdealLoaderHtml/)
+    expect(w).toContain('urdealLoaderHtml')
   })
 
   it('⑥-2 그 조건을 **동작으로** 잰다 — PC 는 안 그리고 색인 크롤러는 그린다', () => {

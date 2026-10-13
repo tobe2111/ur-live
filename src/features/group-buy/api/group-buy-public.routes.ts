@@ -516,7 +516,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     const idRaw = c.req.param('id')
     const idNum = Number(idRaw)
     if (!Number.isFinite(idNum) || idNum <= 0 || !Number.isInteger(idNum)) {
-      return c.json({ success: false, error: '잘못된 상품 ID 입니다' }, 400)
+      return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404) // 🔎 2026-10-12: 존재할 수 없는 id 는 **404** — 400 이면 워커 soft-404 판정에 안 걸려 색인 가능해진다. 술어를 넓히지 말 것(가드 canonical-facet-entity-2026-10-12)
     }
     const id = idNum
     // 🛡️ 2026-06-10 [LOADING_ADDITIVE] (사용자 신고 — 특정 상품 상세 500): 핸들러 전체 try/catch.

@@ -84,11 +84,17 @@ describe('① 네 표면의 술어가 각각 정확하다 (동작으로 잰다)'
 })
 
 describe('② 라벨은 crumb SSOT 에서 온다 — 손으로 적지 않는다', () => {
-  it('네 표면의 라벨이 빵부스러기 라벨과 같다', () => {
+  // 🏷️ 2026-10-12: 같은 글자가 `<p>` → `<h1>` 이 됐다(라이브 실측 — 색인 대상 23표면 중 17개가
+  //    heading 0 이었다). **불변식은 그대로**(라벨이 crumb SSOT 에서 온다)이고 앵커만 옮긴다 —
+  //    그리고 `<p>` 로 되돌아가는 방향을 함께 막는다(제목 신호가 조용히 사라지는 쪽이 더 나쁘다).
+  it('네 표면의 라벨이 빵부스러기 라벨과 같다 — 그리고 제목 요소로 낸다', () => {
     for (const p of ['/vouchers', '/browse', '/map', '/stays']) {
-      const head = /<p>(.*?)<\/p>/.exec(buildStaticSurfaceNoscript(p, MIXED))
-      expect(head, `${p} 라벨이 없다`).not.toBeNull()
+      const html = buildStaticSurfaceNoscript(p, MIXED)
+      const head = /<h1>(.*?)<\/h1>/.exec(html)
+      expect(head, `${p} 제목이 없다`).not.toBeNull()
       expect(head![1], `${p} 라벨이 crumb 와 갈렸다`).toBe(CONSUMER_SURFACE_SEO[p]?.crumb)
+      // 문서에 제목은 정확히 하나여야 한다(첫 화면이 그리는 표면과 달리 여기엔 h1 이 없었다).
+      expect([...html.matchAll(/<h1>/g)], `${p} h1 개수`).toHaveLength(1)
     }
   })
 })

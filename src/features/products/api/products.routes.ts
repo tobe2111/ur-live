@@ -497,12 +497,10 @@ productsRoutes.get('/:id', cors(), async (c) => {
   try {
     const id = Number(c.req.param('id'));
     
-    if (isNaN(id)) {
-      return c.json({
-        success: false,
-        error: 'Invalid product ID'
-      }, 400);
-    }
+    // 🔎 2026-10-12: 존재할 수 없는 id 는 **404**(400 이면 워커 soft-404 판정에 안 걸려 색인 가능해진다).
+    //   🔴 술어(`shouldNoindexMissingEntity`)를 넓히지 말고 여기를 고치는 것이 맞다 — 근거·범위는
+    //   가드 `canonical-facet-entity-2026-10-12` 머리말. 쓰기·하위 리소스는 400 그대로.
+    if (isNaN(id)) return c.json({ success: false, error: 'Product not found' }, 404);
     
     // 🚀 KV cache (60s) — stock/price 변동은 PUT /:id 에서 invalidateProductCache 호출.
     //    short TTL 로 무효화 누락 시에도 1분 내 자연 갱신.

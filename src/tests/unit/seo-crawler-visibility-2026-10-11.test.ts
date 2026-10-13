@@ -60,6 +60,50 @@ describe('① 검색 크롤러 판정 — 네이버가 데스크톱으로 분류
     expect(isSearchCrawlerUA('Mozilla/5.0 (compatible; PerplexityBot/1.0)')).toBe(true)
   })
 
+  /**
+   * 🤖 2026-10-12 — 라이브에서 UA 만 바꿔 `#root` 안쪽 글자를 세니 **이 여섯만 로더**였다
+   * (`/` 34자 · `/u/jiwon1228` 20자 ↔ 형제들 395·419자). 대표가 이름을 댄 넷 중 하나가
+   * 그록인데 홈이 34자였고, 여섯 다 **이미 HTML 200 을 받는다** — 막혀서 못 본 게 아니라
+   * 우리가 그릴 수 있는데 안 그려 줬다.
+   */
+  it('AI 검색·인용 봇 전부 — 그록·Meta·Mistral·You 가 빠져 있었다', () => {
+    const CITING = [
+      'Mozilla/5.0 (compatible; OAI-SearchBot/1.0; +https://openai.com/searchbot)',
+      'Mozilla/5.0 (compatible; ChatGPT-User/1.0)',
+      'Mozilla/5.0 (compatible; Claude-SearchBot/1.0; +claudebot@anthropic.com)',
+      'Mozilla/5.0 (compatible; Claude-User/1.0)',
+      'Mozilla/5.0 (compatible; PerplexityBot/1.0; +https://perplexity.ai/perplexitybot)',
+      'Mozilla/5.0 (compatible; Perplexity-User/1.0)',
+      'Mozilla/5.0 (compatible; xAI-Bot/1.0)',
+      'Mozilla/5.0 (compatible; Grokbot/1.0)',
+      'meta-webindexer/1.0',
+      'Mozilla/5.0 (compatible; MistralAI-Index/1.0)',
+      'Mozilla/5.0 (compatible; MistralAI-User/1.0)',
+      'Mozilla/5.0 (compatible; YouBot/1.0)',
+    ]
+    expect(CITING.length).toBeGreaterThanOrEqual(12)
+    for (const ua of CITING) {
+      expect(isSearchCrawlerUA(ua), `${ua} 가 본문을 못 받는다`).toBe(true)
+      expect(shouldRenderMobileFirstScreen(ua), `${ua} 에 첫 화면이 안 그려진다`).toBe(true)
+    }
+  })
+
+  it('🔴 학습 전용 토큰은 여기 섞지 않는다 — `Meta-ExternalAgent` ≠ `meta-webindexer`', () => {
+    // 🩸 둘은 **다른 봇**이다(하나는 학습이라 robots 로 막혀 있고 하나는 검색이다). `/Meta/i`
+    //    처럼 넓게 잡으면 한 줄로 둘을 같이 삼켜, 막아 둔 쪽에 본문을 그려 주게 된다.
+    for (const ua of ['Meta-ExternalAgent/1.0', 'GPTBot/1.1', 'ClaudeBot/1.0', 'CCBot/2.0', 'Google-Extended']) {
+      expect(isSearchCrawlerUA(ua), `${ua} 는 학습 전용인데 본문 대상이 됐다`).toBe(false)
+    }
+    // 반대 방향 — Applebot 본체(Siri·Spotlight)는 검색이므로 **반드시** 잡혀야 한다.
+    expect(isSearchCrawlerUA('Mozilla/5.0 (compatible; Applebot/0.1)')).toBe(true)
+    // 🩸 `Applebot-Extended` 는 위 금지 목록에 **넣지 않는다** — 첫 판에서 넣었다가 이 시험이
+    //    잡았고, 코드가 아니라 내 단언이 틀렸다. 애플은 그 토큰을 **robots.txt 로만** 쓴다
+    //    (크롤러가 보내는 UA 는 늘 `Applebot`). 그래서 ① 실재하지 않는 UA 라 첫 화면을 그려 줄
+    //    기회가 애초에 없고 ② `/Applebot/i` 를 좁혀 가르려 하면 **애플 검색 색인이 통째로 막힌다**
+    //    (`bot-detection.ts` 가 같은 이유로 같은 금지를 적어 뒀다). 학습 거부는 robots 가 한다.
+    expect(isSearchCrawlerUA('Applebot-Extended'), 'Applebot 본체를 좁히면 Siri·Spotlight 가 막힌다').toBe(true)
+  })
+
   it('🔴 사람 브라우저는 크롤러가 아니다 — 여기서 true 가 나오면 PC 에 모바일 레이아웃이 깔린다', () => {
     expect(isSearchCrawlerUA(UA.pcChrome)).toBe(false)
     expect(isSearchCrawlerUA(UA.mac)).toBe(false)

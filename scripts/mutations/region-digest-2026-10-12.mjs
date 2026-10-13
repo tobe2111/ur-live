@@ -98,7 +98,9 @@ export default [
   {
     name: '🗺️ 판정이 다른 표면까지 삼킨다 — 홈·교환권이 요약으로 그려진다',
     file: 'src/shared/seo/region-digest.ts',
-    find: "return pathname === '/stays' || REGION_PATH_RE.test(pathname)",
+    // 🔀 2026-10-12 재조준: 허브(`/region`)가 항에 더해졌다(자식 링크용). 지키는 불변식은 그대로 —
+    //   **지역·숙소 경로만** 요약을 쓴다. 결함(모든 경로가 쓴다)은 한 글자도 안 바꿨다.
+    find: "return pathname === '/stays' || pathname === '/region' || REGION_PATH_RE.test(pathname)",
     replace: "return true",
     test: TEST,
     why: '요약은 지역·숙소용 모집단이다 — 홈이 그걸 쓰면 상위 10 노출 순서가 요약 순서로 바뀐다.',

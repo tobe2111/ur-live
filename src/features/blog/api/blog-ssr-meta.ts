@@ -5,6 +5,7 @@
  *   ⚠️ 동작 불변: 기존 인라인 로직과 byte-동일한 출력(JSON-LD/canonical/OG). 순수 함수만.
  */
 import { CONSUMER_SITE_NAME } from '../../../shared/seo/consumer-surfaces'
+import { productShareImage, ogAbsHttps } from '../../../shared/og-share-image'
 
 /** 블로그 빵부스러기 라벨 — 표의 다른 `crumb` 들과 같은 감각(짧게). */
 const BLOG_CRUMB = '블로그'
@@ -68,13 +69,43 @@ export interface BlogPostMeta {
 /** 블로그 상세(/blog/:slug) 서버 메타 — payload 없거나 파싱 실패 시 null(기본 메타 유지). */
 export function buildBlogPostMeta(ssrPayload: string, origin: string): BlogPostMeta | null {
   try {
-    const post = (JSON.parse(ssrPayload) as { data?: { title?: string; summary?: string; slug?: string; author?: string; published_at?: string } })?.data
+    const post = (JSON.parse(ssrPayload) as { data?: { title?: string; summary?: string; slug?: string; author?: string; published_at?: string; updated_at?: string; thumbnail_url?: string | null } })?.data
     if (!post || !post.title) return null
     const title = stripBold(String(post.title))
     const description = stripBold(String(post.summary || '')).slice(0, 200)
     const canonical = `${origin}/blog/${post.slug || ''}`
     const pub = post.published_at ? new Date(post.published_at).toISOString() : undefined
-    const ogImage = `${origin}/blog/og/${encodeURIComponent(post.slug || '')}`
+    // 🗓️ 2026-10-12: `dateModified` 를 **`updated_at`** 에서 받는다. 종전엔 둘 다 `published_at`
+    //   이라 *"고쳤다"* 는 신호가 구조적으로 존재할 수 없었고(라이브 실측 두 값이 동일),
+    //   게다가 그 `published_at` 자신이 재시드 때마다 다시 쓰이고 있었다(같은 커밋에서 동결).
+    //   ⚠️ `updated_at` 이 `published_at` 보다 **앞서면** 쓰지 않는다 — 수정이 발행보다 먼저일
+    //   수는 없고, 그런 값을 내면 구글이 둘 다 신뢰하지 않는다(모순 신호).
+    const upRaw = post.updated_at ? new Date(post.updated_at).toISOString() : undefined
+    const mod = upRaw && pub && upRaw >= pub ? upRaw : pub
+    // 🖼️ 2026-10-12: 종전엔 `/blog/og/:slug`(글별 배너)를 가리켰는데 그게 **SVG** 다 —
+    //   실측 `content-type: image/svg+xml` · 853B.
+    //   🩸 **정정(같은 날, 더 정확한 쪽)**: 처음 여기에 *"카카오·페북·트위터가 SVG 를 안 읽어 23편이
+    //     전부 **빈 카드**"* 라고 적었는데 **카카오는 과장이다** — 2026-10-09 audit log 가
+    //     *"카드는 떴고 그 안의 외부 `<image href>` 만 비었다"* 고 적어 둔 **우리 실측**이 있다.
+    //     정확히는 ① **트위터·페북·슬랙**: 문서상 JPG·PNG·WEBP·GIF 만이라 그림이 **안 뜬다**
+    //     ② **카카오**: 뜨지만 그 배너가 제목을 **그림에 또 그려** `og:title` 과 중복이었다
+    //     (2026-10-12 대표가 유어샵에서 바로잡은 그 *"카드 안에 또 카드"*). 둘 다 고쳐야 할
+    //     이유지만 **빈 카드는 아니었다** — 근거를 과장하면 다음 세션이 그 과장을 전제로 삼는다.
+    //   🩸 그 라우트 머리말이 근거로 적어 둔 *"사이트 기본 OG 가 이미 SVG(og-image.svg)라 동일 호환"*
+    //     은 **낡은 전제**다 — 기본 OG 는 지금 `og-image.png`(실측 1200×630 라스터 44,972B)다.
+    //   🔒 **라우트는 지우지 않는다** — 이전에 스크랩된 카드가 그 주소를 물고 있다(유어샵 합성
+    //     카드와 같은 판단). 바뀐 것은 *새로 나가는 og:image 가 무엇을 가리키는가* 하나다.
+    //   📌 썸네일은 **아직 전 글이 비어 있다**(라이브 실측 `thumbnail_url: null`) — 그래서 오늘은
+    //     전부 기본 카드로 떨어지고, 글에 사진이 붙는 날 저절로 1200×630 카드가 된다.
+    //   📐 그리고 **두 축을 섞지 않는다**(`og-share-image.ts` 머리말): JSON-LD `image` 는
+    //     구글이 쓰는 **글 사진**이라 원본이 낫고, `og:image` 는 1.91:1 **카드**다.
+    //     종전엔 둘이 같은 SVG 였다 — 그래서 구글 쪽도 SVG 를 받고 있었다(글 리치결과 미지원).
+    //   🩸 그리고 JSON-LD 쪽은 **절대 URL 이어야 한다** — 상대 경로면 구글이 그 필드를 **버리면서
+    //     에러를 안 낸다**(2026-10-11 에 유어샵 핀 사진으로 값을 치른 그 자리다). `ogAbsHttps` 가
+    //     절대화 + R2 공개 도메인 치환까지 한 번에 한다. 첫 판에서 실제로 `/api/media/...` 가
+    //     그대로 샜고, **빌더를 돌려 눈으로 보고서야** 잡았다(문자열 검사로는 안 보인다).
+    const photo = ogAbsHttps(post.thumbnail_url, origin)
+    const ogImage = photo ? productShareImage(photo, origin) : `${origin}/og-image.png`
     // 🧠 2026-07-27 GEO (대표 — "구글 AI 개요에 우리 서비스가"): publisher/isPartOf 를 index.html 의
     //   사이트 전역 Organization·WebSite 노드(@id)에 **참조로 연결** — 기존엔 이름만 같은 분리 노드라
     //   검색 AI 가 "이 글의 발행자 = 유어딜(urdeal.kr) 서비스"로 묶지 못했다. @id 로 그래프가 이어지면
@@ -86,7 +117,7 @@ export function buildBlogPostMeta(ssrPayload: string, origin: string): BlogPostM
       publisher: { '@id': `${origin}/#organization` },
       isPartOf: { '@id': `${origin}/#website` },
       mainEntityOfPage: canonical, url: canonical,
-      ...(pub ? { datePublished: pub, dateModified: pub } : {}),
+      ...(pub ? { datePublished: pub, dateModified: mod || pub } : {}),
     }
     // 🍞 빵부스러기를 더하려면 노드가 둘이 되므로 `@graph` 로 감싼다(소비자는 재귀로 훑는다).
     //   `@context` 는 바깥에 한 번만 — 안쪽 노드에 남겨 두면 중복 선언이 된다.
@@ -95,7 +126,9 @@ export function buildBlogPostMeta(ssrPayload: string, origin: string): BlogPostM
     const jsonLd = escapeScript(JSON.stringify({
       '@context': 'https://schema.org',
       '@graph': [
-        { ...articleNode, image: ogImage, breadcrumb: { '@id': crumb['@id'] } },
+        // 🔴 사진이 없으면 `image` 를 **아예 안 낸다** — 브랜드 기본 카드를 "이 글의 사진"
+        //   이라고 말하는 것은 지어내기다(이 레포가 `aggregateRating`·`Offer` 에서 지키는 규율).
+        { ...articleNode, ...(photo ? { image: photo } : {}), breadcrumb: { '@id': crumb['@id'] } },
         crumb,
       ],
     }))

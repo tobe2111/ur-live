@@ -5556,9 +5556,9 @@
     "a3": "[TODO:en] 일반적으로 결제 완료 후 2-3일 이내 배송됩니다. 매장별로 차이가 있을 수 있으며, 상품 페이지에서 확인 가능합니다.",
     "q4": "[TODO:en] 배송 조회는 어떻게 하나요?",
     "a4": "[TODO:en] 마이페이지 > 주문내역에서 송장번호를 확인하시고 \"배송 조회\" 버튼을 클릭하시면 택배사 사이트로 이동합니다.",
-    "q5": "[TODO:en] 교환/반품은 어떻게 하나요?",
+    "q5": "[TODO:en] 배송 상품의 교환/반품은 어떻게 하나요?",
     "a5": "[TODO:en] 상품 수령 후 7일 이내 마이페이지 > 주문내역에서 신청하실 수 있습니다. 단순 변심의 경우 왕복 배송비가 발생합니다.",
-    "q6": "[TODO:en] 환불은 언제 되나요?",
+    "q6": "[TODO:en] 배송 상품 환불은 언제 되나요?",
     "a6": "[TODO:en] 상품 회수 확인 후 3-7 영업일 이내 결제 수단으로 환불됩니다. 신용카드는 카드사 정산일에 따라 다를 수 있습니다.",
     "q7": "[TODO:en] 회원가입은 어떻게 하나요?",
     "a7": "[TODO:en] 카카오 로그인으로 간편하게 가입하실 수 있습니다. 별도의 회원가입 절차 없이 카카오 계정으로 이용 가능합니다.",
@@ -5575,7 +5575,11 @@
     "q13": "What is the difference between a pass and a gift voucher?",
     "a13": "A pass is used at a venue such as a restaurant, salon or accommodation: you pay by card and redeem it on site with a QR code or PIN. A gift voucher is a brand gifticon for cafes, convenience stores or chicken shops: you buy it with charged Deal and it is issued the moment you pay.",
     "q14": "Can I recommend a pass I like to friends?",
-    "a14": "Yes. Everyone who signs up gets their own UrShop (urdeal.kr/u/your-handle). Add a pass you like to your UrShop and share the link; when a purchase happens through that link, a share goes to whoever recommended it."
+    "a14": "Yes. Everyone who signs up gets their own UrShop (urdeal.kr/u/your-handle). Add a pass you like to your UrShop and share the link; when a purchase happens through that link, a share goes to whoever recommended it.",
+    "q15": "[TODO:en] 이용권 유효기간이 지나면 어떻게 되나요?",
+    "a15": "[TODO:en] 유효기간 안에 쓰지 않은 이용권은 따로 신청하지 않아도 자동으로 환불되고, 알림으로 알려드립니다. 딜로 결제했으면 딜로, 카드로 결제했으면 카드로 돌아갑니다.",
+    "q16": "[TODO:en] 쓰기 전에 이용권을 환불할 수 있나요?",
+    "a16": "[TODO:en] 사용 전이라면 마이페이지 > 내 이용권에서 그 이용권을 열어 '환불 요청' 을 누르시면 됩니다. 접수 후 확인하여 처리해 드립니다."
   },
   "introduce": {
     "navStart": "Get Started",

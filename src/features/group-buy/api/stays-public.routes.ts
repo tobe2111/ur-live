@@ -156,7 +156,7 @@ staysPublicRoutes.get('/stays/my-bookings', cors(), async (c) => {
 staysPublicRoutes.get('/stays/:productId', cors(), publicCache(120), async (c) => {
   try {
     const productId = Number(c.req.param('productId'))
-    if (!Number.isFinite(productId)) return c.json({ success: false, error: 'Invalid productId' }, 400)
+    if (!Number.isFinite(productId)) return c.json({ success: false, error: '숙소를 찾을 수 없습니다' }, 404) // 🔎 2026-10-12: 존재할 수 없는 id 는 **404** — 400 이면 워커 soft-404 판정에 안 걸려 색인 가능해진다. 술어를 넓히지 말 것(가드 canonical-facet-entity-2026-10-12)
 
     // ⭐ 평점: 실예약 리뷰(stay_booking_reviews) 우선, 없으면 products 집계(데모 리뷰=product_reviews →
     //   seedDemoReviews 가 products.avg_rating/review_count 갱신)로 폴백 → 카드·상세 평점 일치.

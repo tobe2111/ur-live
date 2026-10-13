@@ -174,8 +174,15 @@ describe('④ noscript — 크롤러는 읽고, 사람 화면은 그대로다', 
   it('`/faq` 가 Q&A 를 전부 글로 낸다', () => {
     const ns = buildStaticSurfaceNoscript('/faq')
     expect(ns.startsWith('<noscript>')).toBe(true)
-    expect(ns).toContain(CONCEPT_FAQ[0].question)
-    expect(ns).toContain(CONCEPT_FAQ[CONCEPT_FAQ.length - 1].answer)
+    // 🔀 2026-10-12 재조준: 마크업을 **디코딩한 뒤** 대조한다. 지키는 불변식은 그대로(첫 질문과
+    //   마지막 답이 본문에 실린다) — 다만 `'`·`&`·`<` 가 든 답변은 `esc()` 를 지나 `&#39;` 로
+    //   나가므로 원문 문자열이 HTML 에 그대로 있지 않다(이용권 환불 답 추가에서 실제로 걸렸다).
+    //   원문 비교만 두면 **멀쩡한 답변이 거짓 빨간불**을 내고, 다음 사람이 가드를 의심한다.
+    const plain = ns.replace(/<[^>]+>/g, ' ')
+      .replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&gt;/g, '>')
+      .replace(/&lt;/g, '<').replace(/&amp;/g, '&')
+    expect(plain).toContain(CONCEPT_FAQ[0].question)
+    expect(plain).toContain(CONCEPT_FAQ[CONCEPT_FAQ.length - 1].answer)
     // 라이브 33자 → 이 요약으로 얼마나 늘어나는지. 하한을 둬서 "빈 문자열인데 통과" 를 막는다.
     expect(ns.replace(/<[^>]+>/g, '').length).toBeGreaterThan(800)
   })
