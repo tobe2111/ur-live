@@ -160,7 +160,7 @@ export default function InfluencerSettlementPage() {
   return (
     <div className="min-h-[100dvh] bg-warm pb-20">
       <SEO title="매장 소개 정산 - 유어딜" description={ownerFunded ? '매장 몫에서 지급되는 소개 수익의 잔액·송금 내역·세금 정보 관리' : '소개 수익 잔액·송금 내역·세금 정보 관리'} url="/influencer/settlement" />
-      <header className="sticky top-0 z-30 bg-warm/95 backdrop-blur border-b border-rule px-2 h-12 flex items-center">
+      <header className="sticky top-0 z-30 bg-warm border-b border-rule px-2 h-12 flex items-center">
         <button type="button" onClick={back} aria-label="뒤로" className="w-10 h-10 flex items-center justify-center text-gray-700 dark:text-gray-200 active:opacity-60">
           <ChevronLeft className="w-5 h-5" />
         </button>
