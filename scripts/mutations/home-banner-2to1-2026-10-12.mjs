@@ -37,7 +37,7 @@ export default [
   {
     name: '🎫2:1 숫자를 누를 수 없게 된다 (부드러운 넘김이 손가락 전용이 됨)',
     file: 'src/components/home/HomeBannerStrip.tsx',
-    find: '          onClick={() => goTo((active + 1) % banners.length)}\n',
+    find: '            onClick={() => goTo(active + 1)}\n',
     replace: '',
     test: BANNER,
     why: '스와이프를 모르는 사람에게 둘째 장이 영원히 안 보인다. 대표 지시 "부드럽게 넘김"의 절반이 이것이다.',
@@ -59,12 +59,12 @@ export default [
     why: 'relative 가 없으면 absolute 가 바깥 블록을 기준으로 잡혀 알약이 엉뚱한 자리에 선다.',
   },
   {
-    // 🔁 2026-10-12 재조준: 덮개는 이제 **어두운 그림일 때만**(`!dark`) 깔린다(밝은 파스텔 그림은 짙은 글자).
+    // 🔁 2026-10-13 재조준: 글자가 늘 흰색이 되면서 덮개는 다시 **사진이 있으면 늘**(아래쪽 70%) 깔린다.
     //   지키려던 것 — 흰 글자 아래엔 덮개가 있다 — 은 그대로다.
     name: '🎫2:1 사진 위 어두운 오버레이가 사라진다 (어두운 사진에서 흰 글자가 안 읽힘)',
     file: 'src/components/home/HomeBannerStrip.tsx',
-    find: '{bg && !dark && <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/75',
-    replace: '{false && <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/75',
+    find: '{bg && <div className="absolute inset-x-0 bottom-0 h-[70%] -z-10 bg-gradient-to-t from-black/70',
+    replace: '{false && <div className="absolute inset-x-0 bottom-0 h-[70%] -z-10 bg-gradient-to-t from-black/70',
     test: BANNER,
     why: '어떤 사진이 올라올지 모른다. 덮개가 없으면 밝은 사진 위에서 제목이 통째로 사라진다.',
   },
