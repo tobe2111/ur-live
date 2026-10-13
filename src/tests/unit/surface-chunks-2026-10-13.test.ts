@@ -50,11 +50,11 @@ function graph() {
 }
 
 const routes = { a: ['src/pages/A.tsx'], b: ['src/pages/B.tsx'], c: ['src/pages/C.tsx'] }
-const mk = () => createSurfaceChunker({ routes, root: ROOT, commonMin: 3, minGroupBytes: 2000 })
+const makeChunker = () => createSurfaceChunker({ routes, root: ROOT, commonMin: 3, minGroupBytes: 2000 })
 
 describe('① 묶음기 동작', () => {
   const meta = graph()
-  const gate = mk()
+  const gate = makeChunker()
   it('첫 화면 모듈은 종전 이름 그대로', () => {
     expect(gate(P('src/shell.ts'), 'app-shell', meta)).toBe('app-shell')
   })
@@ -84,10 +84,10 @@ describe('① 묶음기 동작', () => {
 
 describe('② app-utils-deferred 는 배럴이 있어도 첫 화면 소속이 아니다', () => {
   it('엔트리 배럴이 다시 내보내도 페이지 묶음으로 간다', () => {
-    expect(mk()(P('src/hooks/queries/useMyData.ts'), 'app-utils-deferred', graph())).toBe('lz-a')
+    expect(makeChunker()(P('src/hooks/queries/useMyData.ts'), 'app-utils-deferred', graph())).toBe('lz-a')
   })
   it('같은 모듈이라도 다른 봉투 이름이면 엔트리 판정을 따른다(첫 화면 바이트 보호)', () => {
-    expect(mk()(P('src/hooks/queries/useMyData.ts'), 'app-utils', graph())).toBe('app-utils')
+    expect(makeChunker()(P('src/hooks/queries/useMyData.ts'), 'app-utils', graph())).toBe('app-utils')
   })
 })
 
