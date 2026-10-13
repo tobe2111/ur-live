@@ -22,6 +22,7 @@ import api from '@/lib/api'
 import { queryKeys } from '@/hooks/queries'
 import { useFcfsMap } from '@/features/group-buy/useFcfs'
 import GroupBuyFeedCard from './GroupBuyFeedCard'
+import { useProgressiveCap } from '@/hooks/useProgressiveCap'
 import type { Product } from './types'
 import { matchAddress, matchRegionCoords } from '@/shared/constants/korea-regions'
 import { addressInRegion, type RegionRef } from '@/shared/constants/region-slugs'
@@ -306,7 +307,9 @@ export default function GroupBuyFeed({
   }
 
   // 무한 스크롤 센티넬 — 바닥 근처 도달 시 다음 페이지 로드. page1 이 꽉 찼을 때(50개)만 활성.
-  const canLoadMore = items.length >= 50 && !reachedEnd
+  // 📜 2026-10-13: 첫 렌더는 몇 장만, 나머지는 load 뒤(`useProgressiveCap`). 덜 그린 동안엔 센티넬을 끈다.
+  const { cap: renderCap, capped } = useProgressiveCap(firstScreen ? 12 : 6)
+  const canLoadMore = items.length >= 50 && !reachedEnd && !capped
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
     if (!canLoadMore) return
@@ -450,7 +453,7 @@ export default function GroupBuyFeed({
               나머지는 lazy 유지 (scroll 시 자연 로드). */}
           {/* 🎯 2026-07-02 (대표 "첫 페인트에 응모/추첨 배지 늦게 등장"): 피드 응답에 서버 enrich 된
               p.fcfs 를 첫 페인트 시드로 사용, 클라 훅(fcfsMap — 신선 카운트)이 도착하면 그 값 우선. */}
-          {sorted.map((p, idx) => {
+          {sorted.slice(0, renderCap).map((p, idx) => {
             const emb = (p as { fcfs?: { enabled?: boolean; prelaunch?: boolean; spots?: number; appliedDisplay?: number; deadline?: string | null } }).fcfs
             const seed = emb?.enabled ? { spots: emb.spots || 0, appliedDisplay: emb.appliedDisplay || 0, deadline: emb.deadline ?? null, prelaunch: !!emb.prelaunch } : undefined
             return <GroupBuyFeedCard key={p.id} p={p} aboveFold={firstScreen && idx < 4} fcfs={fcfsMap.get(p.id) ?? seed} imgWidth={cardImgWidth} userLoc={userLoc} />

@@ -153,4 +153,28 @@ export default [
     test: 'src/tests/unit/after-load-2026-10-13.test.ts',
     why: 'idle 은 부팅 중 빈틈에도 온다 — load 대기를 빼면 "첫 화면 뒤" 가 거짓말이 된다.',
   },
+  {
+    name: '📜 홈 피드가 다시 50장을 첫 렌더에 짓는다',
+    file: 'src/pages/main-home/GroupBuyFeed.tsx',
+    find: '          {sorted.slice(0, renderCap).map((p, idx) => {',
+    replace: '          {sorted.map((p, idx) => {',
+    test: 'src/tests/unit/progressive-cap-2026-10-13.test.tsx',
+    why: '보이지도 않는 카드 50장이 첫 마운트 CPU 를 먹는다 — 사람이 누를 수 있는 시점이 0.5초 늦어진다(재생 실측).',
+  },
+  {
+    name: '📜 덜 그린 동안 센티넬이 켜져 다음 페이지를 일찍 부른다',
+    file: 'src/pages/main-home/GroupBuyFeed.tsx',
+    find: '  const canLoadMore = items.length >= 50 && !reachedEnd && !capped',
+    replace: '  const canLoadMore = items.length >= 50 && !reachedEnd',
+    test: 'src/tests/unit/progressive-cap-2026-10-13.test.tsx',
+    why: '6장만 그린 짧은 목록이면 센티넬이 화면 안이라 page2(50장)를 부팅 중에 받는다.',
+  },
+  {
+    name: '📜 뒤로가기에도 짧은 목록으로 시작해 스크롤 복원이 빗나간다',
+    file: 'src/hooks/useProgressiveCap.ts',
+    find: "  const restoring = navType === 'POP' && location.key !== 'default'",
+    replace: '  const restoring = false',
+    test: 'src/tests/unit/progressive-cap-2026-10-13.test.tsx',
+    why: '깊이 스크롤했다가 상세에서 돌아오면 목록이 6장이라 위치를 잃는다 — 에러 0.',
+  },
 ]

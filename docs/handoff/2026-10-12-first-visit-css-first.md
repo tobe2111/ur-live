@@ -118,3 +118,10 @@ CDP `emulateNetworkConditions`+`setCPUThrottlingRate 4`. 헤더는 content-type/
 - `GroupBuyFeedCard` 의 aboveFold idle 경로·observer 교차 경로 둘 다 `runAfterLoad`(신규 `src/lib/after-load.ts`).
 - 런타임 청크: 홈 33→26 · 쇼핑 32→25. `PREFETCH_OK` 비움 + 베이스라인 갱신.
 - E4(배포 후): 홈 하드로드에서 `lz-gbDetail*` 가 `load` 이벤트 **뒤**에만 요청되는지, 카드 탭 시 상세가 즉시 뜨는지.
+
+## §16 (2026-10-13) 홈 피드 첫 렌더 상한 — `useProgressiveCap`
+- 홈 피드(편성 섹션 아래, 첫 화면 밖)가 50장을 첫 렌더에 다 지었다. 첫 렌더는 6장(최상단 피드면 12장), 나머지는 load 뒤 idle + `startTransition`.
+- 뒤로가기(POP, key≠default)는 처음부터 전부(스크롤 복원). 덜 그린 동안 무한 스크롤 센티넬 끔.
+- 재생(느린 4G·CPU 4배, 5회 중간값): 첫 마운트 4,227 → 3,703ms · 그 순간 긴 작업 1,080 → 330ms.
+- 🩸 측정 주의: 이 컨테이너엔 한글 시스템 글꼴이 없어(unifont/wqy 폴백) **레이아웃 시간이 부풀려진다** — 151개 객체 레이아웃이 401ms. 트레이스의 Layout 수치를 폰 값으로 읽지 말 것. JS 시간은 쓸 만하다.
+- 같은 트레이스: 지연 로딩된 Pretendard 파일이 하나 올 때마다 전체 재레이아웃(load 뒤라 첫 화면엔 무영향).
