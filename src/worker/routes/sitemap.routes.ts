@@ -116,6 +116,9 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
     //   크롤러 본문이 **6자**라 제출하지 않았다(제출하면 soft-404 를 쌓는다 — 그 짝 주장이
     //   이 파일의 규율이다): `/gdpr` · `/influencer/rankings` · `/urshorts`, 그리고
     //   `/terms/influencer` · `/terms/group-buy` 는 **초안이라 noindex 로 돌렸다**.
+    // 🎬 2026-10-13: `/urshorts` 는 크롤러 본문이 6자 → 465자(실측, 라이브 시드로 빌더를 돌렸다)가
+    //   되어서야 제출 자격을 얻었다. 그 전에 넣으면 soft-404 를 쌓는다.
+    { loc: '/urshorts', priority: 0.6, changefreq: 'daily' },
     { loc: '/join', priority: 0.5, changefreq: 'monthly' },
     { loc: '/terms/seller', priority: 0.3, changefreq: 'yearly' },
     { loc: '/terms', priority: 0.3, changefreq: 'yearly' },

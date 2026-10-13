@@ -99,8 +99,10 @@ export default [
     // ⚠️ 앵커에 **그 표면의 `crumb`** 을 붙인다 — `noindex: true,` + 앞 주석만으로는 두 표면에
     //   똑같이 맞아 러너가 "여러 곳에 맞는다" 로 거부한다(또는 엉뚱한 쪽을 고친다).
     //   🩸 첫 판은 주석 접두만 바꿔서 **통과했다** — 주석을 바꾸는 주입은 행동을 안 바꾼다.
-    find: "    noindex: true,\n    crumb: '소개 활동 약관',",
-    replace: "    crumb: '소개 활동 약관',",
+    // 🔁 재조준(같은 커밋): `crumb` 를 **같이 지웠다** — 2026-10-11 가드의 불변식(*noindex 표면엔
+    //   빵부스러기 라벨 없음*)이 그걸 요구했다. 앵커를 `title` 로 옮겼다(그 표면에서 유일한 값).
+    find: "    noindex: true,\n    title: '소개 활동 약관',",
+    replace: "    title: '소개 활동 약관',",
     test: TEST,
     why:
       '그 페이지가 스스로 *"초안이며, 실제 시행 전 법무 검토가 필요합니다"* 라고 적어 둔 문서다. ' +
@@ -136,5 +138,38 @@ export default [
       '본문 39건은 한 번에 고치면 문장 품질이 더 나빠질 위험이 커서 **동결만** 했다. 래칫이 사라지면 ' +
       '그 39건이 조용히 자란다(줄이는 건 자유, 늘리는 것만 막는 설계다). ⚠️ 이 결함은 **가드를 ' +
       '돌려서는 못 잡는다** — 검사를 끄면 그 가드는 초록이 된다. 그래서 시험이 소스로 고정한다.',
+  },
+  {
+    name: '🎬 /urshorts 시드를 주입까지 한다 (목록이 도로 10편으로 짧아진다)',
+    file: 'src/worker/index.ts',
+    find: "    if ((url.pathname === '/vouchers' && url.search) || url.pathname === '/urshorts') ssrPayload = null;",
+    replace: "    if (url.pathname === '/vouchers' && url.search) ssrPayload = null;",
+    test: TEST,
+    why:
+      '이 시드는 **10편**이고 화면은 `?all=1` 전량을 받는다. `initialData` 로 먹이면 사용자가 보던 ' +
+      '목록이 도로 짧아진다 — 2026-10-12 지역 요약에서 값을 치른 그 규율(크롤러 본문용 payload 와 ' +
+      '주입용 payload 를 변수로 가른다).',
+  },
+  {
+    name: '🎬 /urshorts 크롤러 본문이 채널명(출처)을 뺀다',
+    // 🔁 2026-10-13: 이 블록은 `urshorts-noscript.ts` 로 **추출**됐다(crawler-noscript 가 600줄
+    //   래칫을 넘겨 pre-push 게이트가 잡았다). 불변식 동일, 파일·들여쓰기만 옮겼다.
+    file: 'src/worker/utils/urshorts-noscript.ts',
+    find: "      const by = String(v.channel ?? '').trim()",
+    replace: "      const by = ''",
+    test: TEST,
+    why:
+      '이 10편은 **남의 유튜브 영상**이다(부산일보TV·해피푸게더 …). 채널명을 빼면 남의 콘텐츠를 ' +
+      '우리 것처럼 말하는 글이 된다 — `VideoObject` 를 안 내는 것과 같은 이유다.',
+  },
+  {
+    name: '🎬 /urshorts 가 VideoObject 를 낸다 (우리가 업로더가 아니다)',
+    file: 'src/worker/utils/urshorts-noscript.ts',
+    find: "      ? `<noscript>${h1}<ul>${lines.map((l) => `<li>${l}</li>`).join('')}</ul></noscript>`",
+    replace: "      ? `<noscript data-x=\"VideoObject\">${h1}<ul>${lines.map((l) => `<li>${l}</li>`).join('')}</ul></noscript>`",
+    test: TEST,
+    why:
+      '우리가 올리지 않은 영상에 `VideoObject` 를 발행하면 원 채널의 리치결과와 경쟁하면서 ' +
+      '*우리가 출처* 라고 말하는 셈이다 — `sameAs`·`aggregateRating`·`brand` 와 같은 축(지어내지 않는다).',
   },
 ]

@@ -88,6 +88,9 @@ describe('③ 지어내지 않는다', () => {
     for (const f of [
       'src/shared/seo/consumer-surfaces.ts',
       'src/worker/utils/crawler-noscript.ts',
+      // 🔁 2026-10-13 추가: `/urshorts` 본문 빌더가 모듈로 빠졌다(`crawler-noscript` 가 600줄 래칫을
+      //   넘겼다). 목록에 안 넣으면 그 자리에 `VideoObject` 가 생겨도 이 검사가 못 본다.
+      'src/worker/utils/urshorts-noscript.ts',
       'src/worker/utils/surface-list-jsonld.ts',
       'src/pages/UrShortsBrowsePage.tsx',
       'src/pages/VideosPage.tsx',
@@ -96,15 +99,33 @@ describe('③ 지어내지 않는다', () => {
     }
   })
 
-  it('/urshorts 는 크롤러 본문을 만들지 않는다 — 110자 바닥을 문장으로 채우지 않는다', () => {
+  it('/urshorts 를 **정적 마케팅 문구로** 채우지 않는다 — 시드가 없으면 아무것도 안 낸다', () => {
+    // 🔁 2026-10-13 재조준. 종전 제목은 *"크롤러 본문을 만들지 않는다"* 였고 그때는 맞았다 —
+    //   그 시점에 쓸 수 있는 수단이 `SURFACE_COPY`(정적 문구)뿐이었고, 110자 바닥을 **문장으로**
+    //   채우는 것은 패딩이기 때문이다.
+    //   🔑 전제가 바뀌었다: `/api/urshorts` 는 `cache-prewarm` HOT_PATHS 에 **이미 있는 키**라
+    //   그 시드로 **그 페이지의 실제 내용**(영상 제목 · 출처 채널 · 매장 · 지역)을 글로 낼 수 있다
+    //   (실측 6자 → 465자, 새 캐시 키 0). 그건 패딩이 아니라 그 화면에 떠 있는 것 그대로다.
+    //   ⇒ 지키려던 것 **둘은 그대로** 잠근다: ① 정적 문구(`SURFACE_COPY`)로 채우지 않는다
+    //      ② 시드가 없으면 **아무것도 내지 않는다**(지어내지 않는다).
     expect(Object.keys(SURFACE_COPY)).not.toContain('/urshorts')
     expect(buildStaticSurfaceNoscript('/urshorts', null)).toBe('')
+    expect(buildStaticSurfaceNoscript('/urshorts', JSON.stringify({ success: true, data: [] }))).toBe('')
     expect(buildStaticSurfaceNoscript('/videos', null)).toBe('')
   })
 
-  it('sitemap 에 제출하지 않는다 — 제출했으면 본문이 있어야 한다는 짝 주장', () => {
+  it('짝 주장 — 제출했으면 본문이 있어야 한다 (양방향)', () => {
+    // 🔁 2026-10-13 재조준: 불변식은 *"제출 ⟺ 본문"* 이고 그건 한 글자도 안 바뀌었다.
+    //   달라진 것은 `/urshorts` 가 그 조건을 **충족하게 됐다**는 사실이다(6자 → 465자).
+    //   그래서 "제출 안 함" 을 고정하는 대신 **짝 자체**를 고정한다 — 어느 방향으로 깨져도 빨간불.
     const sm = readCode('src/worker/routes/sitemap.routes.ts')
-    expect(sm).not.toContain('/urshorts')
+    const submitted = sm.includes("loc: '/urshorts'")
+    const hasBody = buildStaticSurfaceNoscript(
+      '/urshorts',
+      JSON.stringify({ success: true, data: [{ title: '제목', channel: '채널', region_si: '부산' }] }),
+    ).length > 0
+    expect(submitted, 'sitemap 이 /urshorts 를 제출하는데 크롤러 본문 빌더가 없다 (soft-404)').toBe(hasBody)
+    // `/videos` 는 **뷰어**다(표에서 noindex) — 제출 금지 방향은 그대로 잠근다.
     expect(sm).not.toContain("'/videos'")
   })
 })

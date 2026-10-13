@@ -3,68 +3,68 @@
 export const ROUTE_CHUNK_MAP: Record<string, { js: string[]; css: string[] }> = {
   "home": {
     "js": [
-      "/assets/PcHomePage-DlhHMefc.js",
-      "/assets/MobileHomePage-D-hjTjpG.js",
-      "/assets/app-home-B-AkAuEL.js",
-      "/assets/app-constants-CMreKrBS.js",
+      "/assets/PcHomePage-iBw4ejms.js",
+      "/assets/MobileHomePage-CeEpaJOa.js",
+      "/assets/app-home-BX8EUH1j.js",
+      "/assets/app-constants-DHQIlswZ.js",
       "/assets/lucide-home-trGMfg9E.js",
-      "/assets/GroupBuyFeed-DG-u5U_Y.js",
+      "/assets/GroupBuyFeed-BQSyN4G8.js",
       "/assets/useHomeQuerySync-Dq44KdAH.js"
     ],
     "css": []
   },
   "gbDetail": {
     "js": [
-      "/assets/GroupBuyDetailPage-9rAkOkRU.js",
-      "/assets/DeferUntilVisible-C-8TfdXW.js",
-      "/assets/app-misc-M1KJAdUQ.js",
+      "/assets/GroupBuyDetailPage-C06QJq9B.js",
+      "/assets/DeferUntilVisible-BE7yvfVe.js",
+      "/assets/app-misc-CsZYpZj6.js",
       "/assets/lucide-home-trGMfg9E.js",
-      "/assets/app-home-B-AkAuEL.js",
-      "/assets/app-constants-CMreKrBS.js",
+      "/assets/app-home-BX8EUH1j.js",
+      "/assets/app-constants-DHQIlswZ.js",
       "/assets/lucide-C6AMm63l.js",
       "/assets/seed-detail-wgQTwj3-.js",
-      "/assets/app-components-bIGIAcGg.js",
-      "/assets/app-utils-deferred-DLHuyMh4.js"
+      "/assets/app-components-BlOZIE8r.js",
+      "/assets/app-utils-deferred-CxSyuUri.js"
     ],
     "css": []
   },
   "voucherDetail": {
     "js": [
-      "/assets/VoucherDetailPage-Dbaj1RXJ.js",
+      "/assets/VoucherDetailPage-DVEaW4C_.js",
       "/assets/seed-detail-wgQTwj3-.js",
-      "/assets/app-home-B-AkAuEL.js",
-      "/assets/app-constants-CMreKrBS.js",
+      "/assets/app-home-BX8EUH1j.js",
+      "/assets/app-constants-DHQIlswZ.js",
       "/assets/lucide-home-trGMfg9E.js",
-      "/assets/app-utils-deferred-DLHuyMh4.js",
+      "/assets/app-utils-deferred-CxSyuUri.js",
       "/assets/lucide-C6AMm63l.js"
     ],
     "css": []
   },
   "product": {
     "js": [
-      "/assets/ProductDetailPage-oBsAifEk.js",
-      "/assets/app-home-B-AkAuEL.js",
-      "/assets/app-constants-CMreKrBS.js",
+      "/assets/ProductDetailPage-C-eiSB4N.js",
+      "/assets/app-home-BX8EUH1j.js",
+      "/assets/app-constants-DHQIlswZ.js",
       "/assets/lucide-home-trGMfg9E.js",
-      "/assets/app-utils-deferred-DLHuyMh4.js",
-      "/assets/app-product-components-fNWHLla7.js",
+      "/assets/app-utils-deferred-CxSyuUri.js",
+      "/assets/app-product-components-CGCegFjU.js",
       "/assets/lucide-C6AMm63l.js",
       "/assets/embla-XVrp4Y8g.js",
-      "/assets/app-components-bIGIAcGg.js",
+      "/assets/app-components-BlOZIE8r.js",
       "/assets/radix-ui-7il725KW.js"
     ],
     "css": []
   },
   "linkshop": {
     "js": [
-      "/assets/CuratorPage-BXY7bKaj.js",
-      "/assets/SellerPublicPage-sxb7W0Rc.js",
-      "/assets/app-home-B-AkAuEL.js",
-      "/assets/app-constants-CMreKrBS.js",
+      "/assets/CuratorPage-cI_FBh0f.js",
+      "/assets/SellerPublicPage-DVUEzaVL.js",
+      "/assets/app-home-BX8EUH1j.js",
+      "/assets/app-constants-DHQIlswZ.js",
       "/assets/lucide-home-trGMfg9E.js",
-      "/assets/app-features-DNoUpt-b.js",
-      "/assets/app-components-bIGIAcGg.js",
-      "/assets/app-utils-deferred-DLHuyMh4.js",
+      "/assets/app-features-BStNtJw2.js",
+      "/assets/app-components-BlOZIE8r.js",
+      "/assets/app-utils-deferred-CxSyuUri.js",
       "/assets/lucide-C6AMm63l.js",
       "/assets/radix-ui-7il725KW.js"
     ],
@@ -72,51 +72,51 @@ export const ROUTE_CHUNK_MAP: Record<string, { js: string[]; css: string[] }> = 
   },
   "vouchers": {
     "js": [
-      "/assets/VouchersPage-BXzSIpiF.js",
+      "/assets/VouchersPage-CmuulMc_.js",
       "/assets/lucide-C6AMm63l.js",
-      "/assets/app-home-B-AkAuEL.js",
-      "/assets/app-constants-CMreKrBS.js",
+      "/assets/app-home-BX8EUH1j.js",
+      "/assets/app-constants-DHQIlswZ.js",
       "/assets/lucide-home-trGMfg9E.js",
-      "/assets/app-components-bIGIAcGg.js",
-      "/assets/app-utils-deferred-DLHuyMh4.js",
+      "/assets/app-components-BlOZIE8r.js",
+      "/assets/app-utils-deferred-CxSyuUri.js",
       "/assets/radix-ui-7il725KW.js",
       "/assets/app-ui-utils-msoul5Oj.js",
-      "/assets/app-features-DNoUpt-b.js"
+      "/assets/app-features-BStNtJw2.js"
     ],
     "css": []
   },
   "browse": {
     "js": [
-      "/assets/BrowsePage-jn5ERH9s.js",
-      "/assets/app-home-B-AkAuEL.js",
-      "/assets/app-constants-CMreKrBS.js",
+      "/assets/BrowsePage-CeFM8q1S.js",
+      "/assets/app-home-BX8EUH1j.js",
+      "/assets/app-constants-DHQIlswZ.js",
       "/assets/lucide-home-trGMfg9E.js",
-      "/assets/app-utils-deferred-DLHuyMh4.js",
-      "/assets/BrowseProductCard-B4TceoEW.js",
+      "/assets/app-utils-deferred-CxSyuUri.js",
+      "/assets/BrowseProductCard-BJpbZDHd.js",
       "/assets/lucide-C6AMm63l.js"
     ],
     "css": []
   },
   "map": {
     "js": [
-      "/assets/RestaurantMapPage-Ccu7cc2U.js",
-      "/assets/app-home-B-AkAuEL.js",
-      "/assets/app-constants-CMreKrBS.js",
+      "/assets/RestaurantMapPage-Bx2aZWc7.js",
+      "/assets/app-home-BX8EUH1j.js",
+      "/assets/app-constants-DHQIlswZ.js",
       "/assets/lucide-home-trGMfg9E.js",
-      "/assets/app-components-bIGIAcGg.js",
-      "/assets/app-utils-deferred-DLHuyMh4.js",
+      "/assets/app-components-BlOZIE8r.js",
+      "/assets/app-utils-deferred-CxSyuUri.js",
       "/assets/lucide-C6AMm63l.js",
       "/assets/radix-ui-7il725KW.js",
       "/assets/app-ui-utils-msoul5Oj.js",
-      "/assets/app-features-DNoUpt-b.js"
+      "/assets/app-features-BStNtJw2.js"
     ],
     "css": []
   },
   "urshorts": {
     "js": [
-      "/assets/UrShortsBrowsePage-CA-woENb.js",
-      "/assets/app-home-B-AkAuEL.js",
-      "/assets/app-constants-CMreKrBS.js",
+      "/assets/UrShortsBrowsePage-MsnTTlSA.js",
+      "/assets/app-home-BX8EUH1j.js",
+      "/assets/app-constants-DHQIlswZ.js",
       "/assets/lucide-home-trGMfg9E.js"
     ],
     "css": []

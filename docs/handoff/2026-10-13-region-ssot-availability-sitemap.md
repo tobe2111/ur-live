@@ -21,6 +21,7 @@
 | #46 | 죽은 디자인 토큰 파일 2개 삭제 | importer 0 (`styles/tokens.ts`·`styles/themes.ts`) |
 | #56 | **블로그 제목 14편 em-dash 제거** + 틀 흩뜨리기 + 가드 범위 확장 | 21편 중 14편이 `주제 — 설명` **한 틀**이었다. 그 제목이 검색결과에 그대로 뜬다 |
 | 신규 | **검색 스니펫 11건 em-dash 제거** | 아래 §3 참조 — 가드 사각지대의 더 비싼 자리였다 |
+| #48 | **`/urshorts` 크롤러 본문 6자 → 465자** + sitemap 제출 | 아래 §2-2 — `VideoObject` 는 **일부러 안 냈다** |
 
 ### 🩸 측정이 처방을 뒤집은 자리 — #43
 
@@ -54,15 +55,33 @@
 쥐고 있고 페이로드엔 안 온다 — 모른 채 `OutOfStock` 으로 내리면 멀쩡한 숙소를 품절이라 말한다.
 ⚠️ "일관성" 을 이유로 한쪽으로 몰지 말 것. 주입이 그 방향을 고정한다.
 
+### 🎬 #48 `/urshorts` — 왜 `VideoObject` 를 안 냈나
+
+본문은 **6자 → 465자**(라이브 시드로 빌더를 돌려 눈으로 봤다). 시드는 **공짜였다** —
+`/api/urshorts` 는 `cache-prewarm` HOT_PATHS 에 **이미 있는 키**라 그 키를 그대로 쓰면 새 캐시 키·
+새 왕복이 **0**(`/stays` 가 MAIN 시드를 재사용한 그 수법). 워커 diff 는 **1줄 추가 + 1줄 수정**이고
+파일 래칫 2672 를 그대로 맞췄다.
+
+🔴 **`VideoObject` 는 안 낸다.** 이 10편은 **남의 유튜브 영상**이다(실측 채널: 부산일보TV ·
+해피푸게더 · 슬아투니 · 부산이야 · 파인예플 · 재슐랭가이드). 우리가 업로더가 아닌 영상에
+`VideoObject` 를 발행하면 원 채널의 리치결과와 경쟁하면서 *우리가 그 영상의 출처*라고 말하는
+셈이다 — 이 레포가 `sameAs`·`aggregateRating`·`brand` 에서 지키는 **지어내지 않는다** 와 같은 축이다.
+같은 이유로 본문에 **채널명을 반드시 함께** 쓴다(출처 표기). ⚠️ 우리가 직접 올린 영상이 생기면
+그때 그 건에만 낼 것.
+
+🔒 **주입하지 않는다** — 화면은 `?all=1`(전량)을 받고 이 시드는 **10편**이다. `initialData` 로
+먹이면 목록이 도로 짧아진다(2026-10-12 지역 요약에서 값을 치른 규율). 워커가 `ssrPayload = null`
+로 끊고 크롤러 본문 빌더에만 넘긴다.
+
 ## 2. 가드 (가드가 없으면 전부 되돌아온다)
 
-- 신규 시험 `src/tests/unit/seo-region-encoding-availability-2026-10-13.test.ts` **19건**
-- 신규 주입 `scripts/mutations/seo-region-encoding-2026-10-13.mjs` **12건 — 되돌려-검증 전부 빨간불 확인**
+- 신규 시험 `src/tests/unit/seo-region-encoding-availability-2026-10-13.test.ts` **25건**
+- 신규 주입 `scripts/mutations/seo-region-encoding-2026-10-13.mjs` **15건 — 되돌려-검증 전부 빨간불 확인**
 - `check-anti-slop-copy.mjs` 에 **블로그 시드 제목 0 잠금 + 본문 래칫(39) + 0건이면 실패**
 
 ### 🕳️ 기존 가드·주입 넷이 내 변경에 낡았고 **넷 다 풀지 않고 재조준**했다
 
-`breadcrumb-region-blog`(2건) · `place-sameas` · `region-child-links`.
+`breadcrumb-region-blog`(2건) · `place-sameas` · `region-child-links` · `voucher-facet-body`(주입+시험).
 전부 *불변식은 그대로이고 앵커만* 옮겼다. `check-stale-mutation-anchors` 가 잡았다(0초).
 
 ### 🩸 이번에 값을 치르고 배운 것 넷
@@ -74,6 +93,12 @@
    **자식 프로세스로 실제로 돌리는** 시험을 따로 뒀다.
 4. **러너는 `cmd:` 를 지원하지 않는다** — `test:` 만 본다. 가드 스크립트를 겨누는 주입은 그 가드를
    돌리는 *시험*을 가리켜야 한다.
+5. **`git push` 가 실패해도 exit 0 으로 보일 수 있다.** pre-push 게이트가 막은 푸시가 백그라운드에서
+   `exit 0` 으로 보고됐고, `git status -sb` 의 upstream 이 `origin/main` 인 것(= `-u` 가 안 걸렸다)만이
+   단서였다. ⇒ **푸시 성공은 `git ls-remote --heads origin <branch>` 로 확인할 것.**
+   🟢 그리고 **게이트가 제 일을 했다**: `/urshorts` 블록이 `crawler-noscript.ts` 를 **627줄**로
+   밀어 600 래칫을 넘겼고 CI 한 바퀴(실측 최대 95분) 전에 로컬 21.3초가 잡았다. `--rebaseline`
+   대신 **추출**했다(`worker/utils/urshorts-noscript.ts`, 598줄로 복귀) — CLAUDE.md 가 요구하는 방향.
 
 ## 3. 같은 사각지대의 **더 비싼 자리** — 검색 스니펫 (신규 발견·수리)
 
@@ -100,8 +125,9 @@ src/features/blog/api/blog-seed.ts    em-dash 57  ← 제목 14 + 본문 43
    - `/terms/influencer` 의 `name="robots"` 가 **`noindex`**
    - `/blog` 제목 21편에 `—` **0건**
    - 품절 상품 상세의 `availability` 가 `OutOfStock` 인지 (⚠️ 라이브에 품절 상품이 있는지 먼저 확인)
+   - `/urshorts` 크롤러 본문이 **6자에서 올라갔는지** + sitemap 에 실재하는지
    - **반대 방향**: 소비자 표면이 전부 **200** 인지, `/region/서울` 이 여전히 **200 + index** 인지
-2. 아래 §5 의 남은 항목 중 **#48 → #47 → #43 잔여** 순을 권한다(이유는 각 항목에).
+2. 아래 §5 의 남은 항목 중 **#47 → #43 잔여 → anti-slop 범위 확장** 순을 권한다(이유는 각 항목에).
 
 ## 5. 남은 것 — 왜 안 했는지까지
 
@@ -127,8 +153,7 @@ src/features/blog/api/blog-seed.ts    em-dash 57  ← 제목 14 + 본문 43
 
 ### 내가 할 수 있지만 이번 범위에 안 넣은 것
 
-- **#48 `/urshorts`** — `index, follow` 인데 크롤러 본문 **6자** · `VideoObject` 0 · sitemap 0.
-  유어쇼츠는 영상 표면이라 `VideoObject` 가 리치결과를 받을 수 있는 몇 안 되는 자리다. **다음 1순위.**
+- ~~#48 `/urshorts`~~ → **했다**(위 §2-2). 남은 것: 우리가 직접 올린 영상이 생기면 그 건에만 `VideoObject`.
 - **#47 봇 셸 `og:image:alt`** — 손대려다 멈췄다. 봇 셸(`app.get('*')`)과 `index.html` **두 셸이 있고
   경로에 따라 다른 쪽이 서빙된다**(실측: `/about` 은 봇 셸 4.5KB · `/` 는 index.html 72KB).
   index.html 에 정적으로 넣으면 상세 페이지에서 **og:image 는 바뀌는데 alt 는 홈 설명으로 남는다**

@@ -34,6 +34,7 @@ import { spawnSync } from 'node:child_process'
 import { regionPath, parseRegionPath } from '@/shared/constants/region-slugs'
 import { resolveRegionSeo } from '@/worker/utils/surface-ssr-meta'
 import { buildSurfaceListJsonLd } from '@/worker/utils/surface-list-jsonld'
+import { buildStaticSurfaceNoscript } from '@/worker/utils/crawler-noscript'
 import { regionChildLinks } from '@/shared/seo/region-digest'
 import { buildProductMeta, buildStayDetailMeta } from '@/worker/utils/detail-ssr-meta'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
@@ -190,6 +191,60 @@ describe('② 쇼핑 Offer.availability — 화면과 같은 술어', () => {
     const o = offerOf(buildStayDetailMeta(stay, O, '/stays/2887'))
     expect(o?.['@type']).toBe('AggregateOffer')
     expect(o?.availability).toBe('https://schema.org/InStock')
+  })
+})
+
+describe('🎬 /urshorts — 색인 대상인데 크롤러 본문이 6자였다', () => {
+  // 라이브 `/api/urshorts` 응답 모양에서 떼어 왔다(손으로 지어 쓰지 않는다).
+  const seed = JSON.stringify({
+    success: true,
+    data: [
+      { id: 11, video_id: 'L8rhfbzQuBM', title: "기장 바다 보며 태국 음식 '어밤부'", channel: '부산일보TV', store_name: null, region_si: '부산' },
+      { id: 7, video_id: 'x1', title: '라이옥 쌀국수', channel: '부산이야', store_name: '라이옥베트남쌀국수 부산시청점', region_si: '부산' },
+      { id: 3, video_id: 'x2', title: '', channel: '빈 제목', store_name: null, region_si: '서울' },
+    ],
+  })
+
+  it('영상 제목·출처 채널·매장·지역을 글로 낸다', () => {
+    const out = buildStaticSurfaceNoscript('/urshorts', seed)
+    expect(out).toContain('<noscript>')
+    expect(out).toContain('어밤부')
+    expect(out).toContain('부산일보TV')          // 출처 표기 — 남의 영상이다
+    expect(out).toContain('라이옥베트남쌀국수 부산시청점')
+    expect(out).not.toContain('빈 제목')          // 제목 없는 행은 거른다
+  })
+
+  it('🔴 VideoObject 를 내지 않는다 — 우리가 업로더가 아닌 영상이다', () => {
+    const meta = { title: 't', description: 'd', canonical: `${O}/urshorts` }
+    const raw = buildSurfaceListJsonLd('/urshorts', '', O, meta, seed)
+    expect(raw).not.toContain('VideoObject')
+    // 크롤러 본문에도 없다(그쪽은 글만 낸다).
+    expect(buildStaticSurfaceNoscript('/urshorts', seed)).not.toContain('VideoObject')
+  })
+
+  it('워커가 시드를 **주입하지 않는다** — 화면은 ?all=1 전량이라 목록이 도로 짧아진다', () => {
+    const w = readCode('src/worker/index.ts')
+    expect(w).toMatch(/url\.pathname === '\/urshorts'\) ssrPayload = null/)
+    // 그리고 그 키는 예열 목록에 **실재**해야 한다(새 캐시 키를 만들지 않는 것이 이 설계의 전제).
+    expect(w).toMatch(/slot: 'URSHORTS', path: '\/api\/urshorts'/)
+    expect(readCode('src/worker/cron/cache-prewarm.ts')).toMatch(/'\/api\/urshorts'/)
+  })
+
+  it('본문이 생겼으므로 sitemap 이 제출한다 (짝 주장)', () => {
+    expect(readCode('src/worker/routes/sitemap.routes.ts')).toMatch(/loc: '\/urshorts'/)
+  })
+
+  it('시드가 없거나 비면 아무것도 내지 않는다 (지어내지 않는다)', () => {
+    expect(buildStaticSurfaceNoscript('/urshorts', null)).toBe('')
+    expect(buildStaticSurfaceNoscript('/urshorts', JSON.stringify({ success: true, data: [] }))).toBe('')
+    expect(buildStaticSurfaceNoscript('/urshorts', 'not json')).toBe('')
+  })
+
+  it('시드 값을 탈출한다', () => {
+    const evil = JSON.stringify({ success: true, data: [{ title: 'a<script>x</script>&b', channel: 'c"d', region_si: '부산' }] })
+    const out = buildStaticSurfaceNoscript('/urshorts', evil)
+    expect(out).not.toContain('<script>')
+    expect(out).toContain('&lt;script&gt;')
   })
 })
 

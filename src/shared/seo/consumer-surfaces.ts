@@ -324,8 +324,10 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
     //   서는 것은 그 자체가 신뢰 문제이고, 나중에 정본이 나오면 **초안 URL 이 먼저 색인된 채로**
     //   남는다. 페이지는 그대로 200 이고(가입 흐름에서 링크로 연다) 색인만 뺀다.
     //   ⚠️ 정본으로 확정되면 이 줄을 지우고 `sitemap.routes.ts` 제출 목록에 넣을 것.
+    //   🍞 `crumb` 도 **같이** 지웠다 — 2026-10-11 가드의 불변식이다(*noindex 표면엔 빵부스러기
+    //      라벨을 두지 않는다*). 라벨이 남으면 체인이 색인하지 말라고 한 URL 을 가리킨다.
+    //      정본이 되면 `crumb` 도 같이 되살릴 것(짝이다).
     noindex: true,
-    crumb: '소개 활동 약관',
     title: '소개 활동 약관',
     description: '유어샵 링크로 이용권을 소개하는 유저에게 적용되는 약관입니다. 커미션 정책, 정산과 원천징수, 금지 행위.',
   },
@@ -336,8 +338,10 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
     //   서는 것은 그 자체가 신뢰 문제이고, 나중에 정본이 나오면 **초안 URL 이 먼저 색인된 채로**
     //   남는다. 페이지는 그대로 200 이고(가입 흐름에서 링크로 연다) 색인만 뺀다.
     //   ⚠️ 정본으로 확정되면 이 줄을 지우고 `sitemap.routes.ts` 제출 목록에 넣을 것.
+    //   🍞 `crumb` 도 **같이** 지웠다 — 2026-10-11 가드의 불변식이다(*noindex 표면엔 빵부스러기
+    //      라벨을 두지 않는다*). 라벨이 남으면 체인이 색인하지 말라고 한 URL 을 가리킨다.
+    //      정본이 되면 `crumb` 도 같이 되살릴 것(짝이다).
     noindex: true,
-    crumb: '공동구매 약관',
     title: '공동구매 약관',
     description: '유어딜 이용권 구매자에게 적용되는 약관입니다. 결제와 발급, 매장에서의 사용, 유효기간과 환불.',
   },
