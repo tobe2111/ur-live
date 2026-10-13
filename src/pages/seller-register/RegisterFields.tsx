@@ -38,7 +38,6 @@ export const STORE_CATEGORIES = [
 export const INPUT =
   'min-h-[34px] w-full border-0 bg-transparent p-0 text-[17px] font-bold leading-[1.35] tracking-[-.02em] text-gray-900 ' +
   'placeholder:font-normal placeholder:tracking-normal placeholder:text-gray-300 focus:outline-none'
-export const INPUT_BAD = 'text-tone-bad placeholder:text-tone-bad/50'
 
 /**
  * 한 줄 = 한 항목. 상자 대신 **행 구분선**이 구획하고, 지금 칸은 왼쪽 브랜드 바가 가리킨다.

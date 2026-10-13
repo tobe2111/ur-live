@@ -8,5 +8,6 @@
   "ur-pin-price": "위와 같음(map-overlays.ts).",
   "ur-pin-tail": "위와 같음(map-overlays.ts).",
   "h-...": "src/components/ui/scroll-area.tsx 주석 안의 설명 문자열 — 클래스가 아니다.",
-  "my-requests": "SellerSupplyPage 의 탭 key 문자열 — 클래스가 아니다."
+  "my-requests": "SellerSupplyPage 의 탭 key 문자열 — 클래스가 아니다.",
+  "ur-account-cols": "UserProfilePage 의 **일부러 비어 있는** 훅 클래스 — 좌석이 0 곳이면 평범한 블록이어야 하고, 두 열 분할은 `--split` 이 맡는다(index.css:1929 는 `--split` 만 정의한다). 2026-10-13 넓힌 스캔이 처음 봤다(삼항이라 좁은 스캔은 못 봤다)."
 }
