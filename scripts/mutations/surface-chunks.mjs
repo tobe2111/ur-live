@@ -212,8 +212,8 @@ export default [
   {
     name: '📜 뒤로가기에도 짧은 목록으로 시작해 스크롤 복원이 빗나간다',
     file: 'src/hooks/useProgressiveCap.ts',
-    find: "  const restoring = navType === 'POP' && location.key !== 'default'",
-    replace: '  const restoring = false',
+    find: "  return navType === 'POP' && location.key !== 'default'",
+    replace: '  return false',
     test: 'src/tests/unit/progressive-cap-2026-10-13.test.tsx',
     why: '깊이 스크롤했다가 상세에서 돌아오면 목록이 6장이라 위치를 잃는다 — 에러 0.',
   },
