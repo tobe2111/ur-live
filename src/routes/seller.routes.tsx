@@ -2,8 +2,8 @@
  * Seller routes — TD-006 분리 (2026-05-06)
  * 공개(register/login/forgot-password) + 보호(Protected) 셀러 페이지 라우트
  */
-import { lazy } from 'react'
-import { Route, Navigate, useLocation } from 'react-router-dom'
+import { lazy, Children, cloneElement, isValidElement, type ReactElement } from 'react'
+import { Route, Routes, Navigate, useLocation } from 'react-router-dom'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { ProtectedRoute } from '@/components/auth/RouteGuards'
 import { isAgencyWorker, sellerEntryRedirect } from '@/lib/seller-deep-link'
@@ -427,5 +427,45 @@ export function SellerRoutes() {
       <Route path="/seller/proxy-products" element={<SellerProxyProductsPage />} />
       <Route path="/seller/plus-friend-guide" element={<SellerPlusFriendGuidePage />} />
     </>
+  )
+}
+
+const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
+
+/**
+ * ⚡ 2026-10-13 셀러 표를 **`/seller/*` 아래에서만** 맞춘다 (어드민 표 2026-10-12 와 같은 처방).
+ *
+ * 종전엔 App.tsx 가 `{SellerRoutes()}` 로 이 표 71줄을 손님 `<Routes>` 에 펼쳐, 손님 화면의 **매 이동마다**
+ * 라우터가 셀러 경로까지 같이 맞춰 봤다(재생 프로파일 — 홈 첫 렌더에서 `matchPath` 자체 시간 28ms + 라우터
+ * 익명 22ms, CPU 4배). 이제 App 은 `/seller/*` 한 줄과 손님 경로 둘(`/s/:id`·`/profile/:id`)만 둔다.
+ * 하위 Routes 는 남은 경로로 맞추므로 `/seller` 접두를 뗀다(절대 경로 그대로면 하나도 안 맞는다).
+ * ⚠️ 새 셀러 라우트는 종전처럼 `SellerRoutes()` 에 **절대 경로**로 추가하면 된다 — 여기서 자동으로 가른다.
+ */
+function splitSellerRoutes(): { tree: ReactElement[]; top: ReactElement[] } {
+  const tree: ReactElement[] = []
+  const top: ReactElement[] = []
+  Children.forEach(SellerRoutes().props.children, (r) => {
+    if (!isValidElement(r)) return
+    const path = (r.props as { path?: string }).path
+    if (typeof path === 'string' && (path === '/seller' || path.startsWith('/seller/'))) {
+      tree.push(cloneElement(r as ReactElement<{ path: string }>, { path: path.slice('/seller'.length) || '/', key: path }))
+    } else {
+      top.push(cloneElement(r, { key: path ?? `seller-top-${top.length}` }))
+    }
+  })
+  return { tree, top }
+}
+
+/** 손님 `<Routes>` 에 그대로 두는 셀러 표 밖 경로(공개 가게 `/s/:id`·`/profile/:id`). */
+export function sellerTopLevelRoutes(): ReactElement[] {
+  return splitSellerRoutes().top
+}
+
+export function SellerRouteTree() {
+  return (
+    <Routes>
+      {splitSellerRoutes().tree}
+      <Route path="*" element={<NotFoundPage />} />
+    </Routes>
   )
 }
