@@ -149,3 +149,11 @@ CDP `emulateNetworkConditions`+`setCPUThrottlingRate 4`. 헤더는 content-type/
 - 수리: ① 다른 위치 시드는 placeholder 로 계속 보인다(캐시엔 안 들어감) ② `rememberLoc`(localStorage+쿠키 함께) — 지도 2곳·PC 위치바.
   쿠키 쓰기 SSOT 는 `shared/home-near.writeNearCookie`(라벨: 같은 격자면 보존, 다른 격자면 지움).
 - 실측 참고: `/api/sections?near=` 콜드 서버 130~350ms, 쿠키 없는 curl 은 매번 DYNAMIC(쿠키 있는 요청은 엣지 HIT) — 별건 확인 대상.
+
+## §20 (2026-10-13) load 뒤 재배치 폭풍 — 대표 "계속 개선해줘 속도. 대기업 수준으로"
+- 트레이스 요약 스크립트: `scratchpad/tsum2.cjs`(Layout>30ms 목록) · 긴 작업 내부 분해는 이 절의 node -e 한 줄(쓴 명령 그대로 handoff 에 없으니 RunTask→inner 이벤트 이름 집계로 재작성).
+- 원인 셋(전부 Layout): 폰트 조각마다 재배치 · 피드 40장 한 커밋(상자 800→3,300) · 이후 폰트/썸네일마다 3,300 상자 재배치.
+- 처방: 폰트 조각 일괄 preload 후 한 번에 켬(textContent 로 글자 수집) · 8장씩 · `.ur-cv-grid` content-visibility.
+- 실측(3회 중간값, load 뒤): 레이아웃 2,920→379ms · TBT 4,046→999ms · 최장 1,362→499ms. 폰트 일괄만으로는 TBT 불변이었다(레이아웃 −22%) — 셋이 함께여야 효과.
+- 🩸 측정 함정: 리플레이에 **다른 빌드의 route-chunk-map(MAPJSON)** 을 주면 페이지가 깨져 "레이아웃 0" 처럼 좋아 보인다. dist 마다 dumpmap 을 새로 뜰 것.
+- E4(배포 후): 폰 첫 방문 홈에서 스크롤해도 카드가 튀지 않는지(content-visibility 높이 기억) · Pretendard 로 한 번에 바뀌는지.

@@ -10,20 +10,25 @@ import { runAfterLoad } from '@/lib/after-load'
  *   앱 코드였다 — 보이지도 않는 50장을 짓느라 사람이 누를 수 있게 되는 시점이 늦었다.
  *
  * 규칙:
- *   - 처음엔 `initial` 장만 그린다. `load` 뒤 한가할 때 전부(전환 우선순위 — 입력을 막지 않는다).
+ *   - 처음엔 `initial` 장만 그린다. `load` 뒤 한가할 때마다 `step` 장씩 늘린다(전환 우선순위).
+ *     ⚠️ 한 번에 전부 그리지 말 것 — 전환은 렌더만 쪼개고 **커밋(DOM 삽입·레이아웃)은 못 쪼갠다**.
+ *     40여 장을 한 커밋에 넣으면 그 한 덩어리가 손가락을 막는다(재생 실측: load 뒤 긴 작업 1.6초).
  *   - **뒤로가기(POP)로 돌아온 경우는 처음부터 전부** — 짧은 목록이면 스크롤 복원이 빗나간다.
  *     하드로드도 POP 이지만 `location.key === 'default'` 라 구분된다.
  *   ⚠️ 호출부는 무한 스크롤 센티넬을 `capped === false` 일 때만 켤 것 — 짧은 목록이면 센티넬이 화면 안에
  *      들어와 다음 페이지를 엉뚱하게 일찍 부른다.
  */
-export function useProgressiveCap(initial: number): { cap: number; capped: boolean } {
+/** 한가할 때마다 더 그리는 장수 — 한 커밋이 짧은 작업(50ms) 근처에 머물 크기. */
+export const PROGRESSIVE_STEP = 8
+
+export function useProgressiveCap(initial: number, total: number, step = PROGRESSIVE_STEP): { cap: number; capped: boolean } {
   const navType = useNavigationType()
   const location = useLocation()
   const restoring = navType === 'POP' && location.key !== 'default'
-  const [full, setFull] = useState(restoring)
+  const [n, setN] = useState(restoring ? Infinity : initial)
   useEffect(() => {
-    if (full) return
-    return runAfterLoad(() => startTransition(() => setFull(true)))
-  }, [full])
-  return { cap: full ? Infinity : initial, capped: !full }
+    if (n >= total) return
+    return runAfterLoad(() => startTransition(() => setN(c => c + step)))
+  }, [n, total, step])
+  return { cap: n, capped: n < total }
 }

@@ -306,23 +306,6 @@ export default function GroupBuyFeed({
     } catch { /* 실패 시 버튼 유지 — 다음 시도 가능 */ } finally { setLoadingMore(false) }
   }
 
-  // 무한 스크롤 센티넬 — 바닥 근처 도달 시 다음 페이지 로드. page1 이 꽉 찼을 때(50개)만 활성.
-  // 📜 2026-10-13: 첫 렌더는 몇 장만, 나머지는 load 뒤(`useProgressiveCap`). 덜 그린 동안엔 센티넬을 끈다.
-  const { cap: renderCap, capped } = useProgressiveCap(firstScreen ? 12 : 6)
-  const canLoadMore = items.length >= 50 && !reachedEnd && !capped
-  const sentinelRef = useRef<HTMLDivElement | null>(null)
-  useEffect(() => {
-    if (!canLoadMore) return
-    const el = sentinelRef.current
-    if (!el) return
-    const io = new IntersectionObserver((entries) => {
-      if (entries[0]?.isIntersecting) loadMore()
-    }, { rootMargin: '400px' })
-    io.observe(el)
-    return () => io.disconnect()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canLoadMore, extraPages.length, loadingMore])
-
   // 🗺️ 2026-07-16 (대표 신고 — 스크롤 로드 시 재정렬): 페이지(밴드)별로 정렬해 이어붙임 → page1 은 page2 가
   //   로드돼도 위치 고정(재정렬 없음), 새 페이지만 아래로. 밴드 안에서만 정렬(정렬칩 의미 유지) + id dedup.
   const { list: sorted, regionFallback } = useMemo(() => {
@@ -358,6 +341,24 @@ export default function GroupBuyFeed({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     // regionRef 는 객체라 참조가 매 렌더 바뀔 수 있어 원시값으로 분해해 넣는다(무한 재계산 방지).
   }, [items, extraPages, sort, userLoc, sectionIds, regionKey, districtKey, regionRef?.sido, regionRef?.sigungu])
+
+  // 무한 스크롤 센티넬 — 바닥 근처 도달 시 다음 페이지 로드. page1 이 꽉 찼을 때(50개)만 활성.
+  // 📜 2026-10-13: 첫 렌더는 몇 장만, 나머지는 load 뒤 한가할 때마다 몇 장씩(`useProgressiveCap`). 덜 그린 동안엔 센티넬을 끈다.
+  //    ⚠️ `sorted` 아래에 둘 것 — 전체 장수(sorted.length)를 넘겨야 언제 다 그렸는지 안다.
+  const { cap: renderCap, capped } = useProgressiveCap(firstScreen ? 12 : 6, sorted.length)
+  const canLoadMore = items.length >= 50 && !reachedEnd && !capped
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (!canLoadMore) return
+    const el = sentinelRef.current
+    if (!el) return
+    const io = new IntersectionObserver((entries) => {
+      if (entries[0]?.isIntersecting) loadMore()
+    }, { rootMargin: '400px' })
+    io.observe(el)
+    return () => io.disconnect()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canLoadMore, extraPages.length, loadingMore])
 
   return (
     <>
@@ -448,7 +449,8 @@ export default function GroupBuyFeed({
             </p>
           </div>
         )}
-        <div className={gridCls}>
+        {/* 📐 2026-10-13: `ur-cv-grid` — 화면 밖 카드는 레이아웃을 건너뛴다(index.css 머리말). */}
+        <div className={`${gridCls} ur-cv-grid`}>
           {/* 🛡️ 2026-05-24 (loading P0): 첫 4개 카드 = above-fold → eager + fetchpriority=high (LCP 단축).
               나머지는 lazy 유지 (scroll 시 자연 로드). */}
           {/* 🎯 2026-07-02 (대표 "첫 페인트에 응모/추첨 배지 늦게 등장"): 피드 응답에 서버 enrich 된

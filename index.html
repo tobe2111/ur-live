@@ -452,10 +452,20 @@ p['catch'](function(){});window.__urKakaoMaps=p;d.head.appendChild(s)})()</scrip
          적용 안 함 = 폰트 요청 0) **load 이후 한가할 때** 켠다. 그동안은 시스템 글꼴(아이폰 Apple SD Gothic Neo ·
          안드로이드 Noto)로 그린다 — Pretendard 가 그 둘을 본뜬 글꼴이라 모양 차이가 작다.
          한 번 받은 사람은 표식이 서서 **종전과 똑같이** 처음부터 Pretendard 다(캐시 적중 = 비용 0).
-         ⚠️ 이 스크립트는 링크 **바로 뒤**여야 한다 — 파서가 body 에 닿기 전에 꺼야 렌더를 안 막는다. -->
+         ⚠️ 이 스크립트는 링크 **바로 뒤**여야 한다 — 파서가 body 에 닿기 전에 꺼야 렌더를 안 막는다.
+         📦 2026-10-13 (대표 "속도 대기업 수준으로"): 켤 때 **먼저 받고 한 번에 켠다.** 종전엔 시트를 켜는 순간
+         화면 글자가 필요로 하는 조각 파일(woff2)을 브라우저가 하나씩 받았고, **조각이 도착할 때마다 문서 전체를
+         다시 배치**했다(재생 트레이스: load 뒤 전체 레이아웃 4회). 이제 시트의 unicode-range 를 화면 글자와 대조해
+         필요한 조각만 preload(as=font · crossorigin — 브라우저 폰트 요청과 같은 캐시 키)로 받고(글자는 textContent 로 —
+         innerText 는 레이아웃을 강제해 그 자체로 0.37초 긴 작업이었다), 다 오면(또는 8초)
+         한 번에 켠다 ⇒ 재배치가 한 번으로 모인다. 시트를 못 읽으면 종전대로 바로 켠다. -->
     <script>(function(){try{var l=document.getElementById('ur-font-css');if(!l)return;try{if(localStorage.getItem('ur_font_warm')==='1')return}catch(e){return}
 l.media='print';var done=0;function warm(n){try{document.fonts.load('16px "Pretendard Variable"','가').then(function(f){if(f&&f.length){try{localStorage.setItem('ur_font_warm','1')}catch(e){}}else if(n<8)setTimeout(function(){warm(n+1)},1000)})}catch(e){}}
-function on(){if(done)return;done=1;l.media='all';setTimeout(function(){warm(0)},0)}
+function flip(){if(done>1)return;done=2;l.media='all';setTimeout(function(){warm(0)},0)}
+function hit(ur,cs){var p=ur.split(',');for(var i=0;i<p.length;i++){var m=/U\+([0-9A-F]+)(?:-([0-9A-F]+))?/i.exec(p[i]);if(!m)continue;var a=parseInt(m[1],16),b=m[2]?parseInt(m[2],16):a;for(var c in cs)if(c>=a&&c<=b)return 1}return 0}
+function on(){if(done)return;done=1;try{var rs=l.sheet&&l.sheet.cssRules,t=(document.body&&document.body.textContent)||'',cs={},u=[];for(var i=0;i<t.length;i++)cs[t.charCodeAt(i)]=1;
+for(var j=0;rs&&j<rs.length;j++){var r=rs[j];if(!r.style||r.type!==5)continue;var m=/url\(["']?([^"')]+\.woff2)/.exec(r.style.getPropertyValue('src'));if(m&&hit(r.style.getPropertyValue('unicode-range'),cs)){var h=m[1];try{h=new URL(h,l.href).href}catch(e){}u.push(h)}}
+var k=u.length,c=0;if(!k)return flip();function end(){if(++c>=k)flip()}for(var q=0;q<k;q++){var x=document.createElement('link');x.rel='preload';x.as='font';x.type='font/woff2';x.crossOrigin='anonymous';x.href=u[q];x.onload=x.onerror=end;document.head.appendChild(x)}setTimeout(flip,8000)}catch(e){flip()}}
 function idle(){(window.requestIdleCallback||function(f){setTimeout(f,1)})(on,{timeout:2000})}
 if(document.readyState==='complete')idle();else addEventListener('load',idle,{once:true});setTimeout(on,12000)}catch(e){}})()</script>
 

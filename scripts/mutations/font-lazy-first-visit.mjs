@@ -45,4 +45,28 @@ export default [
     test: 'src/tests/unit/self-hosted-fonts-2026-10-12.test.ts',
     why: 'Pages 는 맞는 규칙의 헤더를 합친다 — 떼지 않으면 no-store 가 이겨 폰트를 매 방문 다시 받는다(라이브 BYPASS 실측).',
   },
+  {
+    name: '📦 폰트 조각을 기다리지 않고 바로 켠다(조각마다 재배치)',
+    file: 'index.html',
+    find: "var k=u.length,c=0;if(!k)return flip();",
+    replace: "var k=u.length,c=0;return flip();",
+    test: TEST,
+    why: '조각 파일이 하나씩 도착할 때마다 문서 전체를 다시 배치한다(재생 트레이스: load 뒤 전체 레이아웃 여러 번).',
+  },
+  {
+    name: '📦 폰트 조각을 화면 글자와 대조하지 않고 전부 받는다',
+    file: 'index.html',
+    find: "if(m&&hit(r.style.getPropertyValue('unicode-range'),cs))",
+    replace: 'if(m)',
+    test: TEST,
+    why: '92개 조각을 전부 받으면 2MB — 화면이 안 쓰는 글자까지 받는다.',
+  },
+  {
+    name: '📦 폰트 조각 preload 가 crossorigin 없이 나가 캐시를 못 쓴다',
+    file: 'index.html',
+    find: "x.crossOrigin='anonymous';",
+    replace: '',
+    test: TEST,
+    why: '폰트 요청은 CORS 라 crossorigin 없는 preload 와 캐시 키가 다르다 — 같은 파일을 두 번 받는다.',
+  },
 ]

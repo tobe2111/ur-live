@@ -23,9 +23,14 @@ const SCRIPT = (HTML.match(/<script>(\(function\(\)\{try\{var l=document\.getEle
 
 type Store = { getItem: (k: string) => string | null; setItem: (k: string, v: string) => void }
 
-function run(opts: { storage: Store | 'throws'; ready?: DocumentReadyState; loaded?: () => unknown[] }) {
+function run(opts: { storage: Store | 'throws'; ready?: DocumentReadyState; loaded?: () => unknown[]; rules?: Array<{ range: string; url: string }>; text?: string }) {
   const doc = document.implementation.createHTMLDocument('t')
   doc.head.innerHTML = '<link id="ur-font-css" rel="stylesheet" href="/static/fonts/x.css">'
+  if (opts.text) doc.body.textContent = opts.text
+  if (opts.rules) {
+    const cssRules = opts.rules.map((r) => ({ type: 5, style: { getPropertyValue: (k: string) => (k === 'src' ? `url(${r.url}) format("woff2")` : k === 'unicode-range' ? r.range : '') } }))
+    Object.defineProperty(doc.getElementById('ur-font-css')!, 'sheet', { configurable: true, value: { cssRules } })
+  }
   Object.defineProperty(doc, 'readyState', { configurable: true, get: () => opts.ready ?? 'loading' })
   const fontsLoad = vi.fn(() => Promise.resolve(opts.loaded ? opts.loaded() : [{}]))
   Object.defineProperty(doc, 'fonts', { configurable: true, value: { load: fontsLoad } })
@@ -52,6 +57,46 @@ function mem(init: Record<string, string> = {}): Store & { data: Record<string, 
 
 beforeEach(() => vi.useFakeTimers())
 afterEach(() => vi.useRealTimers())
+
+describe('📦 켤 때 필요한 조각을 먼저 받고 한 번에 켠다(재배치 한 번)', () => {
+  const RULES = [
+    { range: 'U+AC00-AC2B, U+AC2D', url: 'https://cdn.example/sub.1.woff2' },   // '가'(AC00) 포함
+    { range: 'U+D55C', url: 'https://cdn.example/sub.2.woff2' },                // '한'(D55C) — 화면에 없음
+    { range: 'U+0041-005A', url: 'https://cdn.example/sub.3.woff2' },           // 'A'
+  ]
+  it('화면 글자가 쓰는 조각만 preload 하고, 다 받기 전엔 켜지 않는다', async () => {
+    const r = run({ storage: mem(), rules: RULES, text: '가A' })
+    r.fire('load')
+    await vi.advanceTimersByTimeAsync(10)
+    const pre = [...r.link.ownerDocument.head.querySelectorAll('link[rel="preload"]')] as HTMLLinkElement[]
+    expect(pre.every((x) => (x as unknown as { as: string }).as === 'font')).toBe(true)
+    expect(pre.map((x) => x.href).sort()).toEqual(['https://cdn.example/sub.1.woff2', 'https://cdn.example/sub.3.woff2'])
+    expect(pre.every((x) => x.crossOrigin === 'anonymous'), '폰트 요청과 캐시 키가 달라 두 번 받는다').toBe(true)
+    expect(r.link.media, '조각이 오기 전에 켰다 — 조각마다 다시 배치한다').toBe('print')
+    pre[0].onload?.(new Event('load'))
+    expect(r.link.media).toBe('print')
+    pre[1].onerror?.(new Event('error'))  // 실패도 끝으로 친다(그 조각은 브라우저가 다시 받는다)
+    expect(r.link.media).toBe('all')
+  })
+  it('조각이 끝내 안 와도 8초 뒤엔 켠다', async () => {
+    const r = run({ storage: mem(), rules: RULES, text: '가' })
+    r.fire('load')
+    await vi.advanceTimersByTimeAsync(10)
+    expect(r.link.media).toBe('print')
+    await vi.advanceTimersByTimeAsync(8000)
+    expect(r.link.media).toBe('all')
+  })
+  it('화면 글자는 textContent 로 읽는다 — innerText 는 레이아웃을 강제한다(재생 실측 0.37초 긴 작업)', () => {
+    expect(SCRIPT).not.toMatch(/innerText/)
+    expect(SCRIPT).toMatch(/document\.body\.textContent/)
+  })
+  it('시트를 못 읽으면(규칙 없음) 종전대로 바로 켠다', async () => {
+    const r = run({ storage: mem(), text: '가' })
+    r.fire('load')
+    await vi.advanceTimersByTimeAsync(10)
+    expect(r.link.media).toBe('all')
+  })
+})
 
 describe('🔤 첫 방문 폰트 미루기', () => {
   it('스크립트가 있고 링크 바로 뒤다(0건이면 아래가 전부 헛돈다)', () => {
