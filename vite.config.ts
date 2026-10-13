@@ -312,9 +312,12 @@ export default defineConfig({
           //   (`TONE_PILL`/`StatusTone`)을 읽어 TDZ(`Cannot access before initialization`) → **소비자 전 페이지가**
           //   **ErrorBoundary('문제가 발생했습니다')로** 떨어졌다. Rollup 은 경고만 찍어 빌드·CI·배포가 전부 초록이었다.
           //   아래 onLog 게이트가 이 클래스(새 청크 순환)를 이제 빌드 실패로 막는다.
-          // 🩸 그리고 이 한 줄이 2026-10-13 에 **두 번** 들어왔다 — 두 세션이 같은 사고를 각자 고쳐 머지가 둘 다
-          //   받았고(둘째는 첫째가 return 하므로 죽은 코드), 그 바람에 주입 앵커가 2곳에 맞아 `Guard mutations
-          //   (full)` 이 main 에서 **연속 두 번 빨간불**이 났다(#1760·#1722 head). 규칙은 한 줄만 둘 것.
+          // 🩸 그리고 이 한 줄이 2026-10-13 에 **두 번** 들어왔다 — 같은 장애를 두 세션이 각자 고쳐 머지가
+          //   둘 다 받았다(둘째는 첫째가 return 하므로 죽은 코드). 그래서 두 가지가 동시에 깨졌다:
+          //   ① 주입 앵커가 2곳에 맞아 전수 러너가 거부한다(`주입 대상이 2곳 — 유일해야 한다`) —
+          //      main 에서 `Guard mutations (full)` 이 **연속 두 번 빨간불**이었다(#1722·#1760 head)
+          //   ② 설령 거부하지 않았어도 주입이 한 줄을 지워도 **다른 한 줄이 같은 일을 해** 가드가
+          //      실패할 수 없다 — 즉 중복은 그 가드를 조용히 끄는 것이다. 규칙은 한 줄만 둘 것.
           if (id.includes('/src/shared/kakao-place-url')) return 'app-shared'
           // 🎬 2026-09-09: 유어쇼츠 SSOT(카드 크기·뷰어 주소·유튜브 id 파싱) — import 0 인 순수 상수 모듈인데
           //   홈 헤더 진입점이 `URSHORTS_VIEWER_PATH` 를 읽는 순간 catch-all 로 떨어져 홈 폐쇄가
