@@ -56,8 +56,8 @@ export const PAGES = [
  *   ⚠️ 여기에 표면을 더하는 것은 "그 화면이 그 코드를 받아도 된다" 는 결정이다 — 이유를 함께 적을 것.
  */
 export const PREFETCH_OK = {
-  home: ['gbDetail'],    // 홈 카드 → 이용권 상세
-  browse: ['gbDetail'],  // 쇼핑 카드(같은 카드 컴포넌트) → 이용권 상세
+  // home: 2026-10-13 카드 미리받기가 load 뒤로 옮겨져 첫 화면에서 상세 봉투를 받지 않는다(대표 승인)
+  // browse: 같은 카드 컴포넌트라 함께 해소(2026-10-13)
 }
 
 export const FORBIDDEN = [/^codes$/, /^capacitor$/, /^app-seller-/, /^app-admin-/, /^app-wholesale-/, /^app-marketing$/]

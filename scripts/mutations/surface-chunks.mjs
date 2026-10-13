@@ -137,4 +137,20 @@ export default [
     test: TEST,
     why: '첫 화면 번역·페이지 코드와 회선을 나눠 쓰는 요청이 부팅 중에 나간다.',
   },
+  {
+    name: '⏳ 보인 카드의 상세 미리받기가 다시 첫 화면과 동시에 나간다',
+    file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
+    find: '            cancelLater = runAfterLoad(() => { prefetch(p.id); prefetchDetailChunk() })',
+    replace: '            prefetch(p.id); prefetchDetailChunk()',
+    test: 'src/tests/unit/home-boot-cost.test.ts',
+    why: '홈·쇼핑 첫 화면이 상세 봉투(+데이터)를 사진과 같은 회선으로 받는다 — 에러 0, 느려질 뿐(2026-10-13 대표 승인 처방의 회귀).',
+  },
+  {
+    name: '⏳ runAfterLoad 가 load 를 안 기다린다',
+    file: 'src/lib/after-load.ts',
+    find: "  if (document.readyState === 'complete') schedule()",
+    replace: '  if (true) schedule()',
+    test: 'src/tests/unit/after-load-2026-10-13.test.ts',
+    why: 'idle 은 부팅 중 빈틈에도 온다 — load 대기를 빼면 "첫 화면 뒤" 가 거짓말이 된다.',
+  },
 ]

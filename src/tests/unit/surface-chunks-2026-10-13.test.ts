@@ -140,8 +140,10 @@ describe('②-2 런타임 청크 판정', () => {
   it('남의 표면 봉투는 위반, 자기·공용·boot·lazy·의도된 미리받기는 통과', () => {
     expect(judge(['lz-gbDetail.js'], 'linkshop', S)).toHaveLength(1)
     expect(judge(['lz-linkshop1.js', 'lz-common.js', 'lz-boot-gbDetail.js', 'lz-gbDetailL-linkshop2L.js'], 'linkshop', S)).toEqual([])
-    expect(PREFETCH_OK.home).toContain('gbDetail')
-    expect(judge(['lz-gbDetail.js'], 'home', S)).toEqual([])
+    // ⏳ 2026-10-13 (대표 승인): 카드 미리받기가 load 뒤로 옮겨져 홈·쇼핑은 상세 봉투를 받지 않는다 — 허용 목록 0.
+    expect(PREFETCH_OK.home).toBeUndefined()
+    expect(PREFETCH_OK.browse).toBeUndefined()
+    expect(judge(['lz-gbDetail.js'], 'home', S)).toHaveLength(1)
   })
   it('폰 첫 화면 금지 목록', () => {
     expect(judge(['codes.js', 'capacitor.js', 'app-seller-components.js'], 'home', S)).toHaveLength(3)

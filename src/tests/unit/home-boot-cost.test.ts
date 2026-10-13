@@ -90,14 +90,13 @@ describe('홈 부팅 비용', () => {
     const i = s.indexOf('if (aboveFold) {')
     expect(i).toBeGreaterThan(-1)
     const block = s.slice(i, i + 1400)
-    expect(block).toContain('requestIdleCallback')          // 미룬다
     /**
-     * ⚠️ **`run` 정의 자체**를 봐야 한다. 처음엔 이 1,400자 안에서 `prefetch(p.id)` 를 찾았는데,
-     *   바로 아래 IntersectionObserver 가지에도 같은 호출이 있어서 **`run` 을 빈 함수로 비워도
-     *   초록이 떴다**(되돌려-검증 B 가 그걸 잡았다). 슬라이스 검색은 이렇게 옆 코드에 기댄다.
+     * ⏳ 2026-10-13: 미루는 자리가 `requestIdleCallback` → `runAfterLoad`(load 뒤 + idle)로 옮겨갔다.
+     * ⚠️ **넘기는 함수 본문**을 봐야 한다 — 옛 판이 같은 이유로 `run` 정의를 앵커했다
+     *   (슬라이스 검색은 아래 IntersectionObserver 가지의 같은 호출에 기대 늘 통과한다).
      */
-    const runDef = block.match(/const run = \(\) => \{[^}]*\}/)
-    expect(runDef, '`const run = () => {...}` 를 못 찾았다 — 형태가 바뀌었으면 이 테스트도 같이 고쳐라').toBeTruthy()
+    const runDef = block.match(/runAfterLoad\(\(\) => \{[^}]*\}\)/)
+    expect(runDef, '`runAfterLoad(() => {...})` 를 못 찾았다 — 형태가 바뀌었으면 이 테스트도 같이 고쳐라').toBeTruthy()
     expect(runDef![0]).toContain('prefetch(p.id)')          // 그러나 여전히 한다
     expect(runDef![0]).toContain('prefetchDetailChunk()')
     // 즉시 발사로의 회귀(한 줄에 몰아 쓰는 옛 형태) 차단
@@ -108,6 +107,26 @@ describe('홈 부팅 비용', () => {
     const s = read(CARD)
     expect(s).toContain('IntersectionObserver')
     expect(s).toContain("rootMargin: '100px'")   // 트래픽 절감 계약(200px 금지)
+  })
+
+  /**
+   * ⏳ 2026-10-13 (대표 승인): 첫 화면에 이미 보이는 카드는 observer 가 **즉시** 발화한다.
+   *   그 가지에서 바로 받으면 상세 청크·데이터가 첫 화면 사진과 같은 순간에 나간다
+   *   (런타임 청크 검사가 홈에서 상세 봉투를 셌다). 교차 콜백은 **예약만** 하고, 언마운트 때 취소한다.
+   */
+  it('GroupBuyFeedCard: 보인 카드의 미리받기도 load 뒤로 — 교차 콜백에서 바로 받지 않는다', () => {
+    const s = read(CARD)
+    const at = s.indexOf('new IntersectionObserver(')
+    const cb = s.slice(at, s.indexOf("rootMargin: '100px'", at))
+    expect(cb).toMatch(/if \(e\.isIntersecting\) \{\s*cancelLater = runAfterLoad\(\(\) => \{ prefetch\(p\.id\); prefetchDetailChunk\(\) \}\)/)
+    expect(cb).not.toMatch(/if \(e\.isIntersecting\) \{\s*prefetch\(/)
+    expect(s).toMatch(/return \(\) => \{ obs\.disconnect\(\); cancelLater\?\.\(\) \}/)
+  })
+
+  it('GroupBuyFeedCard: 손가락 신호(hover/touch/focus)는 여전히 즉시 받는다', () => {
+    const s = read(CARD)
+    expect(s).toMatch(/onTouchStart=\{\(\) => \{ prefetch\(p\.id\); prefetchDetailChunk\(\) \}\}/)
+    expect(s).toMatch(/onMouseEnter=\{\(\) => \{ prefetch\(p\.id\); prefetchDetailChunk\(\) \}\}/)
   })
 
   it('GroupBuyFeedCard: 대표색이 이미 있으면 추출 자체를 건너뛴다', () => {

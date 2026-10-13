@@ -21,6 +21,7 @@ import { dealCategoryMeta } from '@/shared/deal-category-icon'
 import type { FcfsInfo } from '@/features/group-buy/useFcfs'
 import type { Product } from './types'
 import { priceDisplay } from '@/shared/price-display'
+import { runAfterLoad } from '@/lib/after-load'
 
 /**
  * 🖼️ 사진 없는 카드의 자리표시 (2026-08-30 — 이모지 → 선 아이콘)
@@ -129,22 +130,20 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
        *   미뤄도 **"클릭 시 0ms"** 라는 이 prefetch 의 목적은 그대로 달성된다.
        *   ⚠️ 지우면 안 된다 — 지우는 순간 카드 클릭이 fetch 워터폴이 된다(잠금표가 지키는 성질).
        */
-      const run = () => { prefetch(p.id); prefetchDetailChunk() }
-      if (typeof requestIdleCallback === 'function') {
-        const h = requestIdleCallback(run, { timeout: 2500 })
-        return () => cancelIdleCallback?.(h)
-      }
-      const t = setTimeout(run, 300)
-      return () => clearTimeout(t)
+      // ⏳ 2026-10-13 (대표 승인): idle 만으로는 부팅 중 빈틈에 끼어 첫 화면과 회선을 다퉜다 → `load` 뒤.
+      return runAfterLoad(() => { prefetch(p.id); prefetchDetailChunk() })
     }
     const el = linkRef.current
     if (!el || typeof IntersectionObserver === 'undefined') return
+    // ⏳ 2026-10-13 (대표 승인 — 같은 이유): 첫 화면에서 이미 보이는 카드는 observer 가 즉시 발화해
+    //   상세 청크·데이터가 첫 화면 사진과 같은 순간에 나갔다(런타임 청크 검사가 홈에서 gbDetail 을 셌다).
+    //   ⇒ 보인 순간을 기록만 하고, 실제 미리받기는 `load` 뒤. 손가락 신호(hover/touch/focus)는 즉시 그대로.
+    let cancelLater: (() => void) | undefined
     const obs = new IntersectionObserver(
       (entries) => {
         for (const e of entries) {
           if (e.isIntersecting) {
-            prefetch(p.id)
-            prefetchDetailChunk()
+            cancelLater = runAfterLoad(() => { prefetch(p.id); prefetchDetailChunk() })
             obs.disconnect()
             break
           }
@@ -155,7 +154,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
       { rootMargin: '100px' }
     )
     obs.observe(el)
-    return () => obs.disconnect()
+    return () => { obs.disconnect(); cancelLater?.() }
   }, [aboveFold, p.id, prefetch])
 
   // 🛡️ 2026-05-21: brand 정보 — gift_catalog (gc_*) 우선 → products → 없음.

@@ -113,3 +113,8 @@ CDP `emulateNetworkConditions`+`setCPUThrottlingRate 4`. 헤더는 content-type/
 - ⚠️ 판정 함수에서 해시를 다시 떼지 말 것 — `gbDetail` 이 8글자라 해시로 오인된다.
 - 유어샵 시드 재요청은 load 뒤로(주인은 즉시).
 - 남은 후보: ① 번역 파일(locale-ko 33KB br)을 표면별로 쪼개기 ② 홈 카드 viewport prefetch 의 **상세 청크**(약 40KB)를 idle 로 미루기 — `GroupBuyFeedCard` 잠금 파일이라 대표 승인 필요(2026-08-27 aboveFold 미루기와 같은 처방).
+
+## §15 (2026-10-13) 카드 상세 미리받기 load 뒤로 — 대표 승인
+- `GroupBuyFeedCard` 의 aboveFold idle 경로·observer 교차 경로 둘 다 `runAfterLoad`(신규 `src/lib/after-load.ts`).
+- 런타임 청크: 홈 33→26 · 쇼핑 32→25. `PREFETCH_OK` 비움 + 베이스라인 갱신.
+- E4(배포 후): 홈 하드로드에서 `lz-gbDetail*` 가 `load` 이벤트 **뒤**에만 요청되는지, 카드 탭 시 상세가 즉시 뜨는지.
