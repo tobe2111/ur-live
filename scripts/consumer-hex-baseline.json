@@ -1,5 +1,5 @@
 {
-  "total": 1967,
+  "total": 1929,
   "files": {
     "src/pages/AboutPage.tsx": 25,
     "src/pages/AboutServicePage.tsx": 1,
@@ -76,7 +76,6 @@
     "src/pages/ProductDetailPage.tsx": 21,
     "src/pages/ReferralIndexPage.tsx": 7,
     "src/pages/ReferralPage.tsx": 46,
-    "src/pages/RefundPolicyPage.tsx": 38,
     "src/pages/RegisterPage.tsx": 26,
     "src/pages/RestaurantMapPage.tsx": 7,
     "src/pages/SearchPage.tsx": 5,

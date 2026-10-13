@@ -39,6 +39,7 @@ import StoreStep from './seller-meal-voucher/StoreStep'
 import StoreChannelRequired from './seller-meal-voucher/StoreChannelRequired'
 import VoucherInfoStep from './seller-meal-voucher/VoucherInfoStep'
 import SaleSettingsStep from './seller-meal-voucher/SaleSettingsStep'
+import { kakaoPlaceUrlFromId } from '@/shared/kakao-place-url'
 import {
   emptyVoucherForm, applyStoreContext,
   type StoreContext, type VoucherForm,
@@ -185,7 +186,7 @@ export default function SellerMealVoucherNewPage({ embedded = false, onClose, on
       restaurant_phone: place.phone || '',
       restaurant_lat: place.y || '',
       restaurant_lng: place.x || '',
-      kakao_place_url: place.id ? `https://place.map.kakao.com/${place.id}` : f.kakao_place_url,
+      kakao_place_url: kakaoPlaceUrlFromId(place.id) ?? f.kakao_place_url,
     }))
     setPlaceSelected(true)
     toast.success(t('seller.mealVoucher.placeAutoFilled', { name: place.place_name }))

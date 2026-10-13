@@ -46,6 +46,7 @@ import { surfaceCopyFor } from '../../shared/seo/surface-copy'
 import { CONSUMER_TERMS } from '../../pages/terms/consumer-terms-content'
 import { SELLER_TERMS } from '../../pages/terms/seller-terms-content'
 import type { TermsDoc } from '../../pages/terms/terms-types'
+import { storeNameParts } from '@/shared/seo/store-name-dedupe'
 
 function esc(s: string): string {
   return String(s)
@@ -561,9 +562,7 @@ function rowLine(p: RegionSeedRow): Row | null {
   const head = (p?.restaurant_name || p?.brand_name || '').trim()
   const title = (p?.name || '').trim()
   if (!head && !title) return null
-  // 교환권은 브랜드가 상품명 앞에 그대로 들어가는 경우가 있다(실측: `네이버페이 포인트 —
-  // 네이버페이 포인트 500원`). 같은 말을 두 번 하지 않는다.
-  const parts = head && title.startsWith(head) ? [title] : [head, title]
+  const parts = storeNameParts(head, title) // 같은 말을 두 번 안 한다(근거는 그 SSOT 머리말)
   const d = priceDisplay({ price: p?.price, original_price: p?.original_price, discount_rate: p?.discount_rate })
   const price = d.price > 0 ? ` 판매가 ${won(d.price)}원${d.discount > 0 ? ` (${d.discount}% 할인)` : ''}` : ''
   return { text: `${parts.filter(Boolean).join(' — ')}${price}`, href: rowHref(p) }

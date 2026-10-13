@@ -1,6 +1,6 @@
 # `/refund` 가 남의 서비스 환불약관을 띄우고 있다 — 현행 규칙으로 다시 쓸까요?
 
-상태: open
+상태: approved
 등급: C
 역할: ops
 올린 날: 2026-10-12
@@ -61,5 +61,43 @@ sitemap.xml  →  <loc>https://urdeal.kr/refund</loc>   (제출 중)
 문서 변경이므로 `git revert` 한 번. (2번을 택했다면 `CONSUMER_SURFACE_SEO['/refund'].noindex` 와 sitemap 항목 제거.)
 
 ## 결정 (대표가 한 말 그대로)
+
+> **다 해줘**
+
+(2026-10-13. 제가 올린 대기 목록 — ① PR #1752 머지 ② `kko.to` 수정 ③ 결재 3건 — 에 대한 답.
+**안 1(현행 규칙대로 다시 쓴다)** 로 집행했습니다.)
+
+### 집행한 것
+
+`src/pages/RefundPolicyPage.tsx` 의 `제22조 (환불)` 절(남의 구독 약관 62줄)을 **삭제**하고, 위
+"코드가 실제로 하는 것" 표를 조항으로 옮겼습니다. 문구는 **코드에서 확인한 사실만** 적었습니다:
+
+| 새 절 | 근거 |
+|---|---|
+| 유효기간 안에 쓰지 않은 이용권 → **결제 금액 전액** 자동 환불, 매일 1회 확인, 알림 | `auto-settlement.handleExpiredVoucherRefunds` · cron `0 18 * * *`(KST 03:00) · `DEFAULT_UNCLAIMED_POLICY` 100% |
+| 결제한 수단 그대로(카드→카드 취소 3~5영업일 · 딜→**쓸 때와 같은 종류**의 딜) | `refundDealPoints`(원 버킷 역산, #1750) · `cancelTossPayment` |
+| 이미 사용한 이용권 → 환불 대상 아님, 문제 있으면 개별 확인 | `shared/partial-voucher-refund.ts:18` |
+| 유효기간 전 취소 → 고객센터 요청 후 **주문 단위** 취소 | `utils/order-refund.ts` |
+| **딜 환급**(신설 절) — 충전한 만큼 한도 · 리워드 딜 제외 · 원천징수 없음 | `utils/deal-refund.ts`(약관 제12조) · `POST /api/points/refund`(게이트 없음) |
+| 배송 절 제목 `교환 및 반품 안내` → **`배송 상품 교환 및 반품`** | 범위 혼동 차단(`/faq` 가 2026-10-12 에 같은 이유로 고쳐졌다) |
+
+시행일자 `2026년 2월 20일` → `2026년 10월 13일`.
+
+🔴 **일부러 안 쓴 것 — 꺼져 있는 기능**: 장 단위 일부 환불(`voucher_partial_refund_enabled` 기본
+OFF · staging P17 전제). 할 수 없는 것을 약속하면 **고치려던 그 결함이 다시 생긴다.** 가드가
+그 방향을 양쪽으로 잠근다(페이지에 "장 단위"·"일부 환불" 이 들어오면 빨간불).
+
+🔴 **미수령 차감(픽업 공구)도 안 썼다** — `pickup_unclaimed_policy_enabled` 기본 OFF 이고 기본
+비율이 100% 라 **지금 동작은 전액 환불**이다. 그 게이트를 켜는 날 이 페이지를 함께 고쳐야 하고,
+가드가 `DEFAULT_UNCLAIMED_POLICY` 의 100 을 고정해 **기본값만 바꾸면 빨간불**이 나게 해 뒀다.
+
+⚠️ **법무 검토는 여전히 남아 있습니다.** 문구는 코드의 사실을 옮긴 것이고 법률 문장으로 다듬어진
+것은 아닙니다 — 배포 전 한 번 읽어 주세요(특히 "이미 사용한 이용권은 환불 대상이 아닙니다" 절).
+
+⚠️ **크롤러 본문은 아직 짧습니다**(이 글이 20KB JSX 안에만 있다). `/terms` 처럼 본문 SSOT 로
+빼면 크롤러도 읽지만 그건 별건입니다.
+
+가드: `src/tests/unit/refund-policy-truth-2026-10-13.test.ts` 13건 +
+주입 `scripts/mutations/refund-policy-truth-2026-10-13.mjs` 7건.
 
 ## 반영 커밋

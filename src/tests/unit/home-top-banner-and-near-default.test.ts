@@ -154,8 +154,30 @@ describe('① 상단 띠 = 옆으로 넘기는 스트립 (안 3)', () => {
       .toContain('overscroll-x-contain')
   })
 
-  it('저절로 넘어가지 않는다 (자동 재생 금지 — 첫 화면에서 읽기를 방해한다)', () => {
-    expect(RAIL).not.toMatch(/setInterval|setTimeout/)
+  /**
+   * 🔁 2026-10-12 대표 *"자동으로 넘어가게 해줘"* — 종전 "자동 재생 금지" 단언을 **대체**한다.
+   *   지키려던 것(읽는 사람을 방해하지 않는다)은 네 개의 멈춤 조건으로 옮겨갔다.
+   */
+  it('저절로 넘어간다 — 타이머가 다음 장으로 스크롤하고, 끝이면 처음으로', () => {
+    const code = codeOnly(RAIL)
+    expect(SRC).toMatch(/const AUTO_ADVANCE_MS = \d+/)
+    expect(code).toMatch(/window\.setTimeout\(/)
+    expect(code).toMatch(/goTo\(active \+ 1 >= banners\.length \? 0 : active \+ 1\)/)
+  })
+
+  it('읽는 사람을 방해하지 않는다 — 멈춤·동작 줄이기·화면 밖·숨은 탭에서는 안 넘긴다', () => {
+    const code = codeOnly(RAIL)
+    expect(code, '멈춤·동작 줄이기·화면 밖 게이트가 빠졌다').toMatch(/if \(!many \|\| paused \|\| reduceMotion \|\| !onScreen\) return/)
+    expect(code, '숨은 탭에서도 넘긴다').toMatch(/document\.visibilityState !== 'visible'/)
+    expect(code, '화면 밖 판정이 없다').toMatch(/IntersectionObserver/)
+    expect(SRC, '동작 줄이기 설정을 안 본다').toMatch(/prefers-reduced-motion: reduce/)
+    expect(code, '멈춤 버튼이 없다 (WCAG 2.2.2)').toMatch(/배너 자동 넘김 멈춤/)
+  })
+
+  it('손가락이 닿으면 잠시 멈춘다 — 방금 고른 장을 빼앗지 않는다', () => {
+    const code = codeOnly(RAIL)
+    expect(code).toMatch(/onPointerDown=\{many \? hold : undefined\}/)
+    expect(code).toMatch(/Math\.max\(AUTO_ADVANCE_MS, heldUntil - Date\.now\(\)\)/)
   })
 
   it('한 장이면 꽉 채우고 숫자를 안 그린다 (`1 / 1` 금지)', () => {

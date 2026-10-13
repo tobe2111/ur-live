@@ -97,7 +97,7 @@ export default function AboutPage() {
               tag="사장님 / 매장"
               title="입점 수수료 0원"
               desc="카카오 로그인으로 바로 입점. 공구로 신규 손님 유치, 교환권 사용·정산까지 한 앱에서."
-              color="pink"
+              color="brand"
             />
             <ValueCard
               icon={<Sparkles className="w-6 h-6" />}
@@ -143,7 +143,7 @@ export default function AboutPage() {
         </Section>
 
         {/* ========== 셀러 기대효과 ========== */}
-        <Section id="seller" title="셀러 기대효과" subtitle="왜 유어딜에서 시작해야 하는가" tone="pink">
+        <Section id="seller" title="셀러 기대효과" subtitle="왜 유어딜에서 시작해야 하는가" tone="brand">
           <div className="space-y-10">
             <SubBlock title="2-1. 진입장벽 ZERO" icon={<Zap className="w-5 h-5" />}>
               <ul className="space-y-2 text-gray-700 dark:text-gray-300 text-[15px] lg:text-[15px]">
@@ -460,11 +460,21 @@ function Section({
   title: string
   subtitle?: string
   children: React.ReactNode
-  tone?: 'gray' | 'pink' | 'purple' | 'amber' | 'emerald'
+  tone?: 'gray' | 'brand' | 'purple' | 'amber' | 'emerald'
 }) {
+  /* 🩸 `bg-brand-tint/40` 는 **CSS 가 아예 안 나왔다** — `--brand-tint` 같은 var() 색에 투명도
+     접미사를 붙이면 Tailwind 가 클래스를 만들지 못한다(2026-10-13 `check-ghost-classes` 를
+     넓혀서 잡았다 — 그 전까지는 `className=` 밖의 표에 살아서 가드가 못 봤다).
+     그래서 **첫 톤 구역(셀러)만 라이트에서 통째로 흰 바탕**이었고 네 구역의 색 리듬이 거기서부터
+     깨져 있었다. 에러도 빌드 실패도 없어 재 본 사람만 안다.
+     ⇒ 선례(`CuratorEarningsPage.tsx:101`)대로 **불투명 토큰**으로 간다. 그 토큰이 애초에
+     *옅은 브랜드 면*(라이트 #EAF1FE / 다크 #16243D)으로 만들어진 값이라 `dark:` 하드코딩 헥스도
+     함께 사라진다 — `#150A10` 은 브랜드가 로즈였던 시절(2026-09-02 이전)의 잔재이고 라이트가
+     블루로 바뀐 뒤로는 한 구역 안에서 라이트=블루·다크=로즈로 어긋나 있었다.
+     🔴 다시 `/40` 을 붙이지 말 것 — 붙이면 이 구역이 조용히 투명으로 돌아간다. */
   const toneBg: Record<string, string> = {
     gray: 'bg-white dark:bg-[#11141C]',
-    pink: 'bg-brand-tint/40 dark:bg-[#150A10]',
+    brand: 'bg-brand-tint',
     purple: 'bg-purple-50/40 dark:bg-[#100A18]',
     amber: 'bg-amber-50/40 dark:bg-[#181208]',
     emerald: 'bg-emerald-50/30 dark:bg-[#0A1410]',
@@ -493,10 +503,10 @@ function ValueCard({
   tag: string
   title: string
   desc: string
-  color: 'pink' | 'purple' | 'amber' | 'emerald'
+  color: 'brand' | 'purple' | 'amber' | 'emerald'
 }) {
   const map: Record<string, string> = {
-    pink: 'bg-brand-tint  text-brand-text ',
+    brand: 'bg-brand-tint text-brand-text',
     purple: 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-300',
     amber: 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-300',
     emerald: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-300',

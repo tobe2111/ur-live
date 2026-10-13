@@ -57,4 +57,53 @@ export default [
       'strict 가 아니면 유령이 있어도 CI 가 통과한다 — 경고만 흘리는 가드는 이 레포에서 ' +
       '몇 달씩 방치된 전례가 있다(check-input-text-color).',
   },
+  // ── 2026-10-13 넓힌 스캔(`className=` 밖) ─────────────────────────────
+  {
+    name: '👻 넓힌 스캔을 통째로 끈다 (조회 표·상수의 유령이 다시 안 보인다)',
+    file: 'scripts/check-ghost-classes.mjs',
+    find: '  for (const t of wideTokens(src, generated, stripComments)) tokens.push({ ...t, file: f })',
+    replace: '  void wideTokens',
+    test: TEST,
+    why:
+      '좁은 스캔은 `className=` 속성만 본다. 끄면 `/about/print` 를 라이트에서 투명하게 만들었던 ' +
+      '`bg-brand-tint/40` 같은 조회 표 유령이 **구조적으로** 다시 안 보인다.',
+  },
+  {
+    name: '👻 주석을 안 걷고 넓힌 스캔을 돌린다 (문서 주석 산문이 유령이 된다)',
+    file: 'scripts/check-ghost-classes.mjs',
+    find: '  for (const t of wideTokens(src, generated, stripComments)) tokens.push({ ...t, file: f })',
+    replace: '  for (const t of wideTokens(src, generated)) tokens.push({ ...t, file: f })',
+    test: TEST,
+    why:
+      '이 레포의 문서 주석은 클래스명을 백틱으로 인용한다 — 그 모양이 템플릿 리터럴과 같아 ' +
+      '산문이 유령으로 잡힌다. 오탐 나는 가드는 결국 꺼진다.',
+  },
+  {
+    name: '👻 뭉치 증명을 없앤다 (아무 문자열이나 클래스로 센다)',
+    file: CORE,
+    find: "      if (ok.length < 2 || !ok.some((t) => generated.has(t))) continue",
+    replace: '      if (ok.length < 1) continue',
+    test: TEST,
+    why:
+      '"토큰 2개 이상 + 그중 하나는 이미 생성된 클래스" 가 **클래스 뭉치임을 스스로 증명**하는 ' +
+      '장치다. 없애면 산문·URL·SQL 이 전부 판정에 들어온다.',
+  },
+  {
+    name: '👻 문자열 안의 HTML 을 거르지 않는다',
+    file: CORE,
+    find: "        if (/[<>${}()\"'*\\\\]/.test(tok)) continue",
+    replace: '        if (false) continue',
+    test: TEST,
+    why:
+      '워커 SSR 빌더·마크다운 렌더러가 `class="…"` 를 문자열로 조립한다 — `gap-2">` 같은 ' +
+      '조각이 전부 유령으로 잡힌다.',
+  },
+  {
+    name: '👻 꼬리 구두점을 안 뗀다 (inline CSS 값 목록이 유령이 된다)',
+    file: CORE,
+    find: "        tok = tok.replace(/[,;]+$/, '').replace(/^(?:[a-z-]+:)+/, '')",
+    replace: "        tok = tok.replace(/^(?:[a-z-]+:)+/, '')",
+    test: TEST,
+    why: "`'opacity 220ms ease-out, filter 200ms ease-out'` 이 `ease-out,` 로 잡힌다.",
+  },
 ]
