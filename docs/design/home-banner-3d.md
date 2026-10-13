@@ -242,4 +242,4 @@ B https://www.figma.com/api/mcp/asset/0444216f-165f-40a7-a908-067d618e6dc7.png (
 - **B — 한 줄에 두 장** `assets/home-banner-pc-B.png` (약 330px)
 - **C — 한 장, 4:1 낮게** `assets/home-banner-pc-C.png` (약 340px · 사진 위아래가 잘린다)
 
-미구현 — 대표 선택 대기.
+✅ **2026-10-13 대표 확정 "시안 a" → 구현** (`assets/home-banner-pc-A-impl.png`): lg 이상에서 한 줄 세 장(`PC_CARD_W`) · 좌우 화살표(PC 전용) · 순환은 모바일과 같은 길(복제가 한 화면만큼 — PC 는 세 장).

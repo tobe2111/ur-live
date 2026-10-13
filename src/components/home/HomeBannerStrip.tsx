@@ -173,6 +173,29 @@ const AUTO_ADVANCE_MS = 4500
 /** 손가락을 뗀 뒤 다시 움직이기까지(ms). */
 const RESUME_AFTER_TOUCH_MS = 8000
 
+/**
+ * 🖥️ PC(lg+) 는 **한 줄에 세 장**(2026-10-13 대표 확정 "시안 a"). 모바일과 같은 2:1 한 장을 PC 폭에 그대로
+ *   두면 1440px 에서 높이가 약 670px — 대표 *"너무 무식하게 배너가 크다"*. 세 장이면 약 215px 이다.
+ *   ⚠️ `tailwind lg` 와 같은 경계(1024px)여야 카드 폭 클래스와 순환 계산이 같은 화면을 본다.
+ */
+const PC_QUERY = '(min-width: 1024px)'
+const PC_PER_VIEW = 3
+/** PC 카드 폭 = (칸 − `STRIP_GAP_PX`(28) 둘) ÷ 3. 모바일은 카드 자신의 w-full. */
+const PC_CARD_W = 'lg:w-[calc((100%-56px)/3)]'
+
+function usePerView(): number {
+  const read = () => (typeof window !== 'undefined' && window.matchMedia?.(PC_QUERY).matches ? PC_PER_VIEW : 1)
+  const [n, setN] = useState(read)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return
+    const mq = window.matchMedia(PC_QUERY)
+    const on = () => setN(mq.matches ? PC_PER_VIEW : 1)
+    mq.addEventListener?.('change', on)
+    return () => mq.removeEventListener?.('change', on)
+  }, [])
+  return n
+}
+
 function prefersReducedMotion(): boolean {
   if (typeof window === 'undefined' || !window.matchMedia) return false
   try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches } catch { return false }
@@ -187,9 +210,13 @@ function StripRail({ banners }: { banners: HomeBanner[] }) {
   const [onScreen, setOnScreen] = useState(true)
   const [reduceMotion] = useState(prefersReducedMotion)
   const many = banners.length > 1
+  const perView = usePerView()
 
-  /** 순환용 — 두 장 이상이면 맨 뒤에 첫 장 복제를 하나 더 둔다. */
-  const slides = many ? [...banners, banners[0]] : banners
+  /**
+   * 순환용 — 맨 뒤에 **한 화면만큼**(모바일 1장 · PC 3장) 앞쪽 복제를 둔다. 복제 구간의 첫 칸에 서면
+   * 화면이 처음과 똑같으므로, 거기서 애니메이션 없이 진짜 앞쪽으로 옮겨도 눈에 안 보인다.
+   */
+  const slides = many ? [...banners, ...banners.slice(0, perView)] : banners
   const settleRef = useRef<number | undefined>(undefined)
   useEffect(() => () => window.clearTimeout(settleRef.current), [])
 
@@ -209,7 +236,8 @@ function StripRail({ banners }: { banners: HomeBanner[] }) {
     // 복제에 **멈추면** 진짜 첫 장으로 순간이동(스크롤이 끝난 뒤에만 — 도중에 옮기면 손가락과 싸운다).
     window.clearTimeout(settleRef.current)
     settleRef.current = window.setTimeout(() => {
-      if (Math.round(el.scrollLeft / step) >= banners.length) jumpTo(0)
+      const at = Math.round(el.scrollLeft / step)
+      if (at >= banners.length) jumpTo(at - banners.length)
     }, 140)
   }
 
@@ -222,6 +250,18 @@ function StripRail({ banners }: { banners: HomeBanner[] }) {
     el.scrollLeft = i * step
     requestAnimationFrame(() => { el.style.scrollBehavior = '' })
   }
+
+  /**
+   * 🖱️ 이전 — 첫 장에서 왼쪽이면 복제 구간(처음과 똑같은 화면)으로 순간이동한 뒤 한 칸 미끄러진다.
+   *   PC 는 마우스라 가로로 밀 방법이 없어서(대표 *"좌우 스크롤도 안되고"*) 화살표가 유일한 조작이다.
+   */
+  const goPrev = () => {
+    hold()
+    if (active > 0) return goTo(active - 1)
+    jumpTo(banners.length)
+    requestAnimationFrame(() => goTo(banners.length - 1))
+  }
+  const goNext = () => { hold(); goTo(active + 1) }
 
   /** 숫자를 누르면 다음 장으로 **미끄러지듯** 간다(`scroll-smooth`). */
   const goTo = (i: number) => {
@@ -265,8 +305,21 @@ function StripRail({ banners }: { banners: HomeBanner[] }) {
           onWheel={many ? hold : undefined}
           className={`flex gap-7 px-[14px] ${many ? 'overflow-x-auto snap-x snap-mandatory scroll-px-[14px] scroll-smooth overscroll-x-contain scrollbar-hide' : ''}`}
         >
-          {slides.map((b, i) => <StripCard key={i === banners.length ? `clone-${b.id}` : b.id} b={b} many={many} first={i === 0} clone={i === banners.length} />)}
+          {slides.map((b, i) => <StripCard key={i >= banners.length ? `clone-${i}` : b.id} b={b} many={many} first={i < perView} clone={i >= banners.length} />)}
         </div>
+      {many && (
+        <>
+          {/* 🖥️ PC 좌우 화살표 — 마우스엔 가로 스와이프가 없다. 모바일은 손가락이 있어 숨긴다. */}
+          <button type="button" onClick={goPrev} aria-label="이전 배너"
+            className="hidden lg:grid absolute left-0 top-1/2 -translate-y-1/2 h-11 w-11 place-items-center rounded-full bg-white text-gray-900 shadow-lift dark:bg-white dark:text-gray-900">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+          </button>
+          <button type="button" onClick={goNext} aria-label="다음 배너"
+            className="hidden lg:grid absolute right-0 top-1/2 -translate-y-1/2 h-11 w-11 place-items-center rounded-full bg-white text-gray-900 shadow-lift dark:bg-white dark:text-gray-900">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
+          </button>
+        </>
+      )}
       {many && (
         <div className="absolute right-[26px] bottom-3 flex items-center gap-2">
           {!reduceMotion && (
@@ -310,7 +363,7 @@ function StripCard({ b, many, first, clone }: { b: HomeBanner; many: boolean; fi
          🩸 `w-[calc(100%-1.75rem)]` 로 쓰면 **거터가 두 번 빠진다** — `w-full` 이 맞다(= 362 × 181, 2:1).
          📍 `justify-end` + 아래 여백 — 글자가 카드 **아래**에 앉는다(가운데에 뜨면 사진의 주인공을 가린다). */
       /* shape-lock-ok — 14px 는 임의값이 아니라 `.ur-home-panel`(모바일) 의 radius 와 **같은 값**이다. */
-      className={`relative ${many ? 'snap-start shrink-0 w-full' : 'flex-1'} overflow-hidden rounded-[14px] isolate aspect-[2/1] flex flex-col justify-end px-5 pt-4 pb-4 transition-transform active:scale-[.995]`} /* shape-lock-ok (위 사유) */
+      className={`relative ${many ? 'snap-start shrink-0 w-full' : 'flex-1'} ${many ? PC_CARD_W : ''} overflow-hidden rounded-[14px] isolate aspect-[2/1] flex flex-col justify-end px-5 pt-4 pb-4 transition-transform active:scale-[.995]`} /* shape-lock-ok (위 사유) */
       /* 🎨 사진이 없으면 **브랜드 면**(대표 확정 "E"). */
       style={bg ? undefined : { background: 'var(--brand-grad)' }}
     >

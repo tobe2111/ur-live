@@ -49,7 +49,7 @@ export default [
   {
     name: '🎠 마지막 장에서 오른쪽으로 넘겨도 첫 장이 안 온다 (복제 칸 제거)',
     file: STRIP,
-    find: '  const slides = many ? [...banners, banners[0]] : banners',
+    find: '  const slides = many ? [...banners, ...banners.slice(0, perView)] : banners',
     replace: '  const slides = banners',
     test: GUARD,
     why: '대표 *"마지막페이지에서 또 오른쪽으로 넘기면 첫페이지로"*. 네이티브 스크롤은 끝에서 멈춘다.',
@@ -57,7 +57,7 @@ export default [
   {
     name: '🎠 복제 칸에 멈춰도 진짜 첫 장으로 안 옮긴다 (한 바퀴 뒤 숫자·스냅이 어긋남)',
     file: STRIP,
-    find: '      if (Math.round(el.scrollLeft / step) >= banners.length) jumpTo(0)',
+    find: '      if (at >= banners.length) jumpTo(at - banners.length)',
     replace: '      void 0',
     test: GUARD,
     why: '복제 칸에 남으면 다음 넘김이 갈 곳이 없다 — 두 바퀴째부터 캐러셀이 멈춘다.',
@@ -69,5 +69,29 @@ export default [
     replace: '  const a11y = {}',
     test: GUARD,
     why: '같은 배너가 두 번 읽히고 탭으로 두 번 간다.',
+  },
+  {
+    name: '🖥️ PC 배너가 다시 한 장짜리 2:1 이 된다 (1440px 에서 높이 ~670px)',
+    file: STRIP,
+    find: " ${many ? PC_CARD_W : ''} overflow-hidden",
+    replace: ' overflow-hidden',
+    test: GUARD,
+    why: '대표 *"PC버전은 너무 무식하게 배너가 큰데?"* → 시안 a(한 줄 세 장) 확정.',
+  },
+  {
+    name: '🖥️ PC 화살표가 사라진다 (마우스로는 둘째 장 이후를 볼 수 없다)',
+    file: STRIP,
+    find: 'onClick={goNext} aria-label="다음 배너"',
+    replace: 'aria-label="다음 배너"',
+    test: GUARD,
+    why: '대표 *"좌우 스크롤도 안되고"* — 마우스엔 가로 스와이프가 없다.',
+  },
+  {
+    name: '🖥️ 첫 장에서 이전을 누르면 아무 일도 안 일어난다 (순환 반쪽)',
+    file: STRIP,
+    find: '    jumpTo(banners.length)\n    requestAnimationFrame(() => goTo(banners.length - 1))',
+    replace: '    goTo(0)',
+    test: GUARD,
+    why: '끝에서 오른쪽이 처음으로 이어지면 처음에서 왼쪽도 끝으로 이어져야 한다.',
   },
 ]

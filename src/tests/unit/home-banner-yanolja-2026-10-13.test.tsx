@@ -83,14 +83,34 @@ describe('① 야놀자 문법 — 흰 글자 · 왼쪽 아래', () => {
 
 describe('③ 마지막 장 다음은 첫 장', () => {
   it('맨 뒤에 첫 장 복제를 둔다', () => {
-    expect(RAIL).toContain('const slides = many ? [...banners, banners[0]] : banners')
+    expect(RAIL).toContain('const slides = many ? [...banners, ...banners.slice(0, perView)] : banners')
     expect(RAIL).toMatch(/slides\.map\(/)
   })
   it('복제에 멈추면 애니메이션 없이 진짜 첫 장으로 옮긴다', () => {
-    expect(RAIL).toMatch(/if \(Math\.round\(el\.scrollLeft \/ step\) >= banners\.length\) jumpTo\(0\)/)
+    expect(RAIL).toMatch(/if \(at >= banners\.length\) jumpTo\(at - banners\.length\)/)
     expect(RAIL).toMatch(/el\.style\.scrollBehavior = 'auto'/)
   })
   it('숫자는 복제 칸에서도 1 / N 이다', () => {
     expect(RAIL).toMatch(/setActive\(i >= banners\.length \? 0 : Math\.max\(0, i\)\)/)
+  })
+})
+
+describe('🖥️ PC — 한 줄에 세 장 + 좌우 화살표 (대표 확정 "시안 a")', () => {
+  it('PC 에서는 세 장이 한 화면이다 — 카드 폭과 복제 수가 같은 값을 본다', () => {
+    expect(SRC).toMatch(/const PC_PER_VIEW = 3/)
+    expect(SRC, 'tailwind lg 와 다른 경계면 카드 폭과 순환 계산이 서로 다른 화면을 본다').toContain("const PC_QUERY = '(min-width: 1024px)'")
+    expect(SRC, '카드 폭 = (칸 − STRIP_GAP_PX 둘) ÷ 3').toContain("const PC_CARD_W = 'lg:w-[calc((100%-56px)/3)]'")
+    expect(CARD).toContain('${many ? PC_CARD_W : \'\'}')
+    expect(SRC).toMatch(/const STRIP_GAP_PX = 28\b/)
+  })
+  it('마우스로 넘길 수 있다 — 이전·다음 화살표가 있고 PC 에서만 보인다', () => {
+    expect(RAIL).toMatch(/onClick=\{goPrev\} aria-label="이전 배너"\s+className="hidden lg:grid/)
+    expect(RAIL).toMatch(/onClick=\{goNext\} aria-label="다음 배너"\s+className="hidden lg:grid/)
+  })
+  it('첫 장에서 이전 — 복제 구간으로 순간이동한 뒤 한 칸 미끄러진다 (끝에서 멈추지 않는다)', () => {
+    expect(RAIL).toMatch(/jumpTo\(banners\.length\)\s+requestAnimationFrame\(\(\) => goTo\(banners\.length - 1\)\)/)
+  })
+  it('PC 에서 보이는 세 장은 바로 받는다', () => {
+    expect(RAIL).toContain('first={i < perView}')
   })
 })
