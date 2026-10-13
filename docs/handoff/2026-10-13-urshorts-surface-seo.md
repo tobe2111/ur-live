@@ -61,3 +61,43 @@
   쓰지 말 것(단일 줄 import 뒤에 붙인다).
 - 프로브에서 `code(path)` 에 **호스트를 빼먹어** 전 표면이 `HTTP 000` 으로 나왔다. 결함으로 오진할
   뻔했다 — 같은 창에서 `/urshorts` 는 다른 측정으로 **200** 이었다.
+
+---
+
+## 🩸 main 이 20분 차이로 빨간불이 됐다 — 앵커 재조준 1줄을 이 PR 에 포팅
+
+**PR #1752 의 `Verify` 가 실패했는데 제 diff 와 무관했다.** 실패는
+`src/tests/unit/faq-voucher-refund-2026-10-12.test.ts:100` 의
+`toMatch(/payment_method === 'deal_points'[\s\S]{0,400}adjustUserPoints/)`.
+
+**타임라인(실측)**
+
+| 시각(KST) | 일 |
+|---|---|
+| 10:39 | #1751 머지 `e569c519d` — 이 시험이 `adjustUserPoints` 앵커와 함께 main 에 들어옴 |
+| 10:59 | #1750 머지 `a1665a4c5` — 그 분기의 복원 호출을 `adjustUserPoints` → `refundDealPoints` 로 바꿈(무상→유상 딜 세탁 수리) |
+
+**#1750 의 CI 는 왜 초록이었나**: PR 의 `Verify` 는 **머지 ref**(그 시점 base + head)에서 돈다.
+#1750 의 마지막 Verify 는 10:39 **전** base 로 돌아 **이 시험을 본 적이 없다.** 20분 차이다.
+(이 레포는 세션이 여러 개 동시에 돈다 — `check-seed-version-monotonic` 이 막는 것과 같은 클래스의
+*시험 앵커* 판이고, `check-stale-mutation-anchors` 는 **주입 매니페스트만** 보므로 못 잡는다.
+그 매니페스트의 앵커(`voucher.payment_method === 'deal_points'`)는 멀쩡해서 전수 스캔도 초록이었다.)
+
+**main 이 빨갛다는 증명**: main 의 `auto-settlement.ts` 를 받아 SSOT `stripComments` 로 돌려
+앵커를 재니 `adjustUserPoints` **false** · `refundDealPoints` **true**(나머지 단언은 전부 통과).
+⚠️ **주석을 안 걷으면 `true` 로 보인다** — 그 분기 주석이 `adjustUserPoints` 를 인용하기 때문이다.
+`code()` 는 주석을 걷으므로 CI 와 다른 답이 나온다. **원문으로 재지 말 것.**
+
+**포팅한 수정(이 PR, 시험 1줄 + 주석)**: 앵커를 `(adjustUserPoints|refundDealPoints)\(` 로.
+🔑 **둘을 다 받는 것이 의도다** — *어느 함수인지*(무상/유상 버킷 정확성)는 #1750 이 만든
+`deal-cash-out-2026-10-12.test.ts:238` 가 **같은 블록을 이미 잠근다.** 여기서 또 잠그면
+중복 잠금이 되어 어느 쪽도 출력으로 판정할 수 없다(2026-10-11 에 값을 치르고 배운 규칙).
+이 시험이 지키는 것은 FAQ 의 약속 하나다 — *딜로 결제했으면 딜로 돌아간다.*
+
+🩸 **되돌려-검증이 제 첫 판의 눈먼 자리를 잡았다**: 함수 **이름**만 앵커했더니, 바로 위
+구조분해 import(`const { refundDealPoints } = await import(...)`)에 걸려 **호출을 딴 함수로
+바꿔도 초록**이었다. 여는 괄호까지 요구해 두 방향 전부 빨간불을 확인했다
+(분기 제거 → red · 복원 호출 제거 → red · 복원 → green).
+
+⚠️ **이 한 줄은 main 이 그 수정을 품으면 no-op 이 된다**(#1752 의 범위를 넓힌 것이 아니라,
+base 가 깨진 동안 모든 PR 이 막혀 있어서 포팅한 것이다 — #1741·#1743·#1722 도 같은 이유로 빨갛다).
