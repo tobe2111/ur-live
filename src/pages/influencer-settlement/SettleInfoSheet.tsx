@@ -29,7 +29,7 @@ export const TAX_LABEL: Record<TaxType, string> = {
 
 const BANKS = ['KB국민은행', '신한은행', '우리은행', '하나은행', 'NH농협은행', 'IBK기업은행', '케이뱅크', '카카오뱅크', '토스뱅크', '새마을금고', '신협', '우체국']
 const labelCls = 'block text-[13px] font-semibold text-gray-700 dark:text-gray-200 mb-1'
-const inputCls = 'w-full h-12 px-3 rounded-xl bg-gray-100 dark:bg-[#1D1F29] text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-brand/40'
+const inputCls = 'w-full h-12 px-3 rounded-xl bg-gray-100 dark:bg-white/[0.06] text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-brand/40'
 
 export default function SettleInfoSheet({ form, setForm, ownerFunded, saving, onSave, onClose }: {
   form: SettleForm
@@ -40,7 +40,7 @@ export default function SettleInfoSheet({ form, setForm, ownerFunded, saving, on
   onClose: () => void
 }) {
   const choice = (on: boolean) =>
-    `p-3 rounded-xl text-left transition-colors ${on ? 'bg-brand-tint ring-2 ring-brand' : 'bg-gray-100 dark:bg-[#1D1F29]'}`
+    `p-3 rounded-xl text-left transition-colors ${on ? 'bg-brand-tint ring-2 ring-brand' : 'bg-gray-100 dark:bg-white/[0.06]'}`
   return (
     <Sheet
       title="정산 정보"
@@ -123,7 +123,7 @@ export default function SettleInfoSheet({ form, setForm, ownerFunded, saving, on
             type="checkbox"
             checked={form.ranking_public}
             onChange={() => setForm(f => ({ ...f, ranking_public: !f.ranking_public }))}
-            className="w-5 h-5 accent-[#1C69EF] shrink-0"
+            className="w-5 h-5 accent-brand shrink-0"
           />
         </label>
       </div>

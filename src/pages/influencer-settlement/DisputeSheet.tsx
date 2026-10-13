@@ -54,7 +54,7 @@ export default function DisputeSheet({ onClose }: { onClose: () => void }) {
         <div className="space-y-2">
           {TYPES.map(t => (
             <button key={t.key} type="button" onClick={() => setType(t.key)}
-              className={`w-full h-12 px-4 rounded-xl text-left text-[15px] font-semibold ${type === t.key ? 'bg-brand-tint ring-2 ring-brand text-gray-900 dark:text-white' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200'}`}>
+              className={`w-full h-12 px-4 rounded-xl text-left text-[15px] font-semibold ${type === t.key ? 'bg-brand-tint ring-2 ring-brand text-gray-900 dark:text-white' : 'bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-gray-200'}`}>
               {t.label}
             </button>
           ))}
@@ -62,12 +62,12 @@ export default function DisputeSheet({ onClose }: { onClose: () => void }) {
         {type === 'unfair_block' && (
           <input value={storeId} onChange={(e) => setStoreId(e.target.value.replace(/\D/g, ''))} inputMode="numeric"
             placeholder="매장 번호 (알면)" aria-label="매장 번호"
-            className="w-full h-12 px-3 rounded-xl bg-gray-100 dark:bg-[#1D1F29] text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 outline-none" />
+            className="w-full h-12 px-3 rounded-xl bg-gray-100 dark:bg-white/[0.06] text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 outline-none" />
         )}
         <div>
           <textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={5} aria-label="내용"
             placeholder="어떤 주문·매장인지, 무엇이 이상한지 적어 주세요"
-            className="w-full px-3 py-3 rounded-xl bg-gray-100 dark:bg-[#1D1F29] text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 outline-none resize-none" />
+            className="w-full px-3 py-3 rounded-xl bg-gray-100 dark:bg-white/[0.06] text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 outline-none resize-none" />
           <p className={`text-[12px] mt-1 ${ok ? 'text-gray-400' : 'text-gray-500 dark:text-gray-400'}`}>{ok ? `${desc.trim().length}자` : `${MIN}자 이상 적어 주세요`}</p>
         </div>
       </div>
