@@ -174,8 +174,15 @@ describe('④ noscript — 크롤러는 읽고, 사람 화면은 그대로다', 
   it('`/faq` 가 Q&A 를 전부 글로 낸다', () => {
     const ns = buildStaticSurfaceNoscript('/faq')
     expect(ns.startsWith('<noscript>')).toBe(true)
-    expect(ns).toContain(CONCEPT_FAQ[0].question)
-    expect(ns).toContain(CONCEPT_FAQ[CONCEPT_FAQ.length - 1].answer)
+    // 🔀 2026-10-12 재조준: 마크업을 **디코딩한 뒤** 대조한다. 지키는 불변식은 그대로(첫 질문과
+    //   마지막 답이 본문에 실린다) — 다만 `'`·`&`·`<` 가 든 답변은 `esc()` 를 지나 `&#39;` 로
+    //   나가므로 원문 문자열이 HTML 에 그대로 있지 않다(이용권 환불 답 추가에서 실제로 걸렸다).
+    //   원문 비교만 두면 **멀쩡한 답변이 거짓 빨간불**을 내고, 다음 사람이 가드를 의심한다.
+    const plain = ns.replace(/<[^>]+>/g, ' ')
+      .replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&gt;/g, '>')
+      .replace(/&lt;/g, '<').replace(/&amp;/g, '&')
+    expect(plain).toContain(CONCEPT_FAQ[0].question)
+    expect(plain).toContain(CONCEPT_FAQ[CONCEPT_FAQ.length - 1].answer)
     // 라이브 33자 → 이 요약으로 얼마나 늘어나는지. 하한을 둬서 "빈 문자열인데 통과" 를 막는다.
     expect(ns.replace(/<[^>]+>/g, '').length).toBeGreaterThan(800)
   })
@@ -186,7 +193,10 @@ describe('④ noscript — 크롤러는 읽고, 사람 화면은 그대로다', 
   })
 
   it('대상 밖 경로엔 아무것도 안 낸다 (전 표면에 같은 글이 붙는 것 차단)', () => {
-    for (const p of ['/', '/vouchers', '/pass/2919', '/u/jiwon1228', '/admin', '/region']) {
+    // 🔁 2026-10-12 재조준: `/region`(인덱스)은 이제 **대상이다** — 라이브 38자였고 sitemap 제출
+    //   URL 이라 그 표면도 문장을 갖는다(`shared/seo/surface-copy.ts`). 불변식("아무 표면에나 같은
+    //   글이 붙지 않는다")은 그대로이므로 나머지 경로로 계속 잰다.
+    for (const p of ['/', '/vouchers', '/pass/2919', '/u/jiwon1228', '/admin', '/notifications']) {
       expect(buildStaticSurfaceNoscript(p, null), `${p} 에 noscript 가 붙는다`).toBe('')
     }
   })
@@ -198,7 +208,10 @@ describe('④ noscript — 크롤러는 읽고, 사람 화면은 그대로다', 
   it('워커가 로더를 지우지 않고 앞에 붙인다 — 사람 화면은 byte-동일이어야 한다', () => {
     const c = code(WORKER)
     expect(c, 'noscript 가 로더를 대체하고 있다 — 로딩 화면이 사라진다').toContain('staticNs + urdealLoaderHtml')
-    expect(c).toContain('buildStaticSurfaceNoscript(url.pathname, ssrPayload)')
+    // 🔁 2026-10-12 재조준: 두 번째 인자가 `ssrPayload` → `crawlerPayload`(지역 요약 우선)로 바뀌었다.
+    //   불변식(그 자리에서 빌더를 부른다)은 그대로이므로 **변수 이름은 묶지 않는다** — 어느 시드를
+    //   넘기는지는 `region-digest-2026-10-12.test.ts` ⑥ 이 잠근다(중복 잠금 금지).
+    expect(c).toMatch(/buildStaticSurfaceNoscript\(url\.pathname, \w+Payload\)/)
   })
 })
 

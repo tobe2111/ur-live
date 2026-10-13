@@ -26,6 +26,14 @@ const PROFILE = 'src/pages/SellerProfileEditPage.tsx'
 const ROUTES = 'src/routes/seller.routes.tsx'
 
 describe('① 한 페이지가 세 곳의 칸을 전부 갖는다', () => {
+  it('매장 정보 모달이 사라졌다 — [정보] 는 새 페이지로 간다', () => {
+    expect(existsSync('src/components/seller/StoreProfileModal.tsx'),
+      '모달이 남아 있으면 그 화면에서 고친 값이 새 페이지와 갈린다').toBe(false)
+    const f = 'src/pages/SellerStoresPage.tsx'
+    expect(src(f), `${f} 가 아직 모달을 연다`).not.toContain('StoreProfileModal')
+    expect(src(f), `${f} 의 [정보] 가 새 페이지로 가야 한다`).toContain('/seller/store?id=')
+  })
+
   it('매장·유어샵·SNS 칸이 모두 폼에 있다', () => {
     const h = src(HOOK)
     for (const k of [
@@ -63,14 +71,6 @@ describe('① 한 페이지가 세 곳의 칸을 전부 갖는다', () => {
 })
 
 describe('② 옛 입구 셋이 새 페이지로 간다', () => {
-  it('매장 정보 모달이 사라졌다 (두 곳에서 열리고 있었다)', () => {
-    expect(existsSync('src/components/seller/StoreProfileModal.tsx'),
-      '모달이 남아 있으면 그 화면에서 고친 값이 새 페이지와 갈린다').toBe(false)
-    for (const f of ['src/pages/SellerStoresPage.tsx', 'src/pages/seller-page/MyStoresPanel.tsx']) {
-      expect(src(f), `${f} 가 아직 모달을 연다`).not.toContain('StoreProfileModal')
-      expect(src(f), `${f} 의 [정보] 가 새 페이지로 가야 한다`).toContain('/seller/store?id=')
-    }
-  })
 
   it('유어샵 설정 페이지는 사라지고 그 주소는 새 페이지로 보낸다', () => {
     expect(existsSync('src/pages/SellerMiniShopPage.tsx')).toBe(false)
@@ -156,13 +156,14 @@ describe('⑥ 셀러 가입 라우터 분해 — 라우트 표가 그대로다',
   const REG = 'src/features/seller/api/seller-registration.routes.ts'
   const SESSION = 'src/features/seller/api/seller-registration/session-routes.ts'
 
-  it('다섯 경로가 그대로 있다 (두 파일에 나뉘어)', () => {
+  // 🪦 2026-10-12: `/register-from-user` 를 지웠다(부르던 가입 화면이 같은 날 사라졌다) — 다섯 → 넷.
+  it('세 경로가 그대로 있다 — 가입 둘은 삭제됨 (2026-10-12)', () => {
     const paths = [
       ...src(REG).matchAll(/sellerRegistrationRoutes\.(?:get|post)\('([^']+)'/g),
       ...src(SESSION).matchAll(/app\.(?:get|post)\('([^']+)'/g),
     ].map((m) => m[1]).sort()
     expect(paths).toEqual([
-      '/my-seller-status', '/register', '/register-from-user', '/switch-to-seller', '/switch-to-user',
+      '/my-seller-status', '/switch-to-seller', '/switch-to-user',
     ])
   })
 

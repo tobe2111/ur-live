@@ -3,7 +3,9 @@ import { Fragment, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { resolveSectionMoreHref, isDeadEndHref } from './section-more-href'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
-import { readHomeSectionsSeed } from '@/shared/home-section-ids'
+import { readHomeSectionsSeed, readHomeSectionsSeedNear } from '@/shared/home-section-ids'
+import { nearSubtitle } from '@/shared/home-near'
+import type { HomeNear } from './home-near'
 import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import {
@@ -30,6 +32,8 @@ interface SectionProduct {
   price: number
   original_price?: number
   image_url?: string
+  restaurant_lat?: number | null
+  restaurant_lng?: number | null
   category?: string
   deal_only?: number
   dominant_color?: string | null
@@ -46,6 +50,8 @@ interface HomeSection {
   title: string
   subtitle?: string | null
   more_href?: string | null
+  /** 📍 서버가 이 줄을 위치로 정렬했으면 true(수동 섹션은 false). */
+  near?: boolean
   products: SectionProduct[]
 }
 
@@ -60,9 +66,14 @@ interface HomeSection {
  * @param midBanner 첫 섹션 **뒤에** 끼워 넣을 노드(③ 중간 배너). 섹션이 하나도 없으면 이것만
  *   남는다 — 배너 컴포넌트 자신이 "없으면 null" 이라 결국 아무것도 안 그려진다.
  */
+/**
+ * @param near 📍 2026-10-13 (대표 — 위치를 정하면 맨 위가 그 지역에서 가까운 이용권). `resolveHomeNear` 결과.
+ *   키가 있으면 서버가 규칙 섹션을 거리순으로 준다(어드민이 직접 고른 섹션은 그대로).
+ */
 export default function HomeSections(
-  { midBanner, shortsRail }: { midBanner?: React.ReactNode; shortsRail?: React.ReactNode },
+  { midBanner, shortsRail, near }: { midBanner?: React.ReactNode; shortsRail?: React.ReactNode; near?: HomeNear },
 ) {
+  const nearKey = near?.key ?? ''
   /**
    * 🖼️ 카드 사진 해상도 — 열 수를 아는 쪽이 정한다(2026-08-27).
    *   이 섹션은 룩을 위해 `pc` 를 **항상** 넘기는데, 예전엔 그 플래그가 이미지 폭까지 정해서
@@ -82,11 +93,16 @@ export default function HomeSections(
    */
   //   시드 파싱은 `shared/home-section-ids` 가 SSOT 다 — 바로 아래 피드도 같은 시드를 읽는다
   //   (섹션에 뜬 상품을 자기 밴드 뒤로 미루려고). 파서가 둘이면 한쪽만 고쳐지고 결국 갈린다.
-  const ssrSections = useMemo(() => readHomeSectionsSeed<HomeSection>(), [])
+  //   📍 시드는 **같은 위치 격자로 만든 것만** 쓴다(워커가 쿠키 `ur_loc` 로 맞춰 받아 온다).
+  //     위치가 다르면 버린다 — 전국 인기가 잠깐 떴다가 동네 것으로 바뀌면 화면이 통째로 튄다.
+  const ssrSections = useMemo(
+    () => (readHomeSectionsSeedNear() === nearKey ? readHomeSectionsSeed<HomeSection>() : undefined),
+    [nearKey],
+  )
 
   const { data: sections = [], isLoading } = useApiQuery<HomeSection[]>(
-    ['home', 'sections'],
-    '/api/sections',
+    nearKey ? ['home', 'sections', nearKey] : ['home', 'sections'],
+    nearKey ? `/api/sections?near=${nearKey}` : '/api/sections',
     {
       select: (raw) => {
         const r = raw as { success?: boolean; data?: HomeSection[] }
@@ -151,8 +167,9 @@ export default function HomeSections(
                 <h3 className="text-[17px] font-black tracking-tight text-gray-900 dark:text-white">
                   {sec.title}
                 </h3>
-                {sec.subtitle && (
-                  <p className="mt-1 text-[12px] text-gray-500 dark:text-gray-400">{sec.subtitle}</p>
+                {/* 📍 위치로 정렬된 줄은 그 사실을 말한다 — "가까운 곳부터" 같은 문구가 위치 없이 남으면 거짓말이다. */}
+                {(sec.near || sec.subtitle) && (
+                  <p className="mt-1 text-[12px] text-gray-500 dark:text-gray-400">{sec.near ? nearSubtitle(near?.label) : sec.subtitle}</p>
                 )}
               </div>
               {more && !moreIsDeadEnd && (
@@ -175,7 +192,7 @@ export default function HomeSections(
             </div>
             <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 ${DEAL_GRID_GAP}`}>
               {sec.products.map((p, i) => (
-                <GroupBuyFeedCard key={p.id} p={p} imgWidth={cardImgWidth} aboveFold={i < HOME_CARD_ABOVE_FOLD && sIdx === 0} />
+                <GroupBuyFeedCard key={p.id} p={p} imgWidth={cardImgWidth} aboveFold={i < HOME_CARD_ABOVE_FOLD && sIdx === 0} userLoc={sec.near ? near?.kmFrom : null} />
               ))}
             </div>
           </section>

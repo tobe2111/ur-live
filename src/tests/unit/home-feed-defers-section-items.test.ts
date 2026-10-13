@@ -109,7 +109,10 @@ describe('배선', () => {
   })
 
   it('섹션 id 는 시드에서 온다 — 쿼리를 구독하면 카드가 재배치된다', () => {
-    expect(FEED).toMatch(/useMemo\(\(\) => seededSectionProductIds\(\), \[\]\)/)
+    // 📍 2026-10-13: 위치 격자 키가 붙었다 — 시드가 그 위치로 만든 것일 때만 미룬다. 키는 **첫 렌더 값으로 고정**
+    //   (useState 초기값)이라 세션 중 위치가 바뀌어도 그려진 카드가 재배치되지 않는다 — 지키던 불변식 그대로.
+    expect(FEED).toMatch(/const \[sectionNearKey0\] = useState\(sectionNearKey\)/)
+    expect(FEED).toMatch(/useMemo\(\(\) => seededSectionProductIds\(sectionNearKey0\), \[sectionNearKey0\]\)/)
   })
 
   it('피드는 섹션 상품을 걸러내지 않는다 — 전체 목록이어야 한다', () => {

@@ -19,9 +19,6 @@
  */
 type Env = {
   DB: D1Database
-  ALIGO_API_KEY?: string
-  ALIGO_USER_ID?: string
-  ALIGO_SENDER_KEY?: string
 }
 
 type Row = {
@@ -57,7 +54,7 @@ export async function runMealVoucherExpireCron(env: Env): Promise<{ d30: number;
   `
   const rows = await env.DB.prepare(sql).all<Row>().catch(() => ({ results: [] as Row[] }))
 
-  // 📨 2026-10-11: 발송은 `sendTextNotice` 한 곳 — 카카오 승인 템플릿만(알리고가 붙인 코드로) 나가고, 승인 전이면 건너뛴다.
+  // 📨 2026-10-11: 발송은 `sendTextNotice` 한 곳 — 카카오 승인 템플릿만(어드민 승인 목록 — SENS) 나가고, 승인 전이면 건너뛴다.
   const { sendTextNotice } = await import('../../lib/text-notice')
 
   for (const r of (rows.results || [])) {
@@ -97,7 +94,7 @@ export async function runMealVoucherExpireCron(env: Env): Promise<{ d30: number;
           `${productName}${where} 이용권이 ${daysLeft}일 후 만료됩니다.\n\n` +
           `· 코드: ${r.code}\n` +
           `· 만료일: ${r.expires_at.slice(0, 10)}\n\n` +
-          `매장에서 내 이용권 QR 을 보여주세요: https://urdeal.kr/my-vouchers`
+          `매장에서 아래 [내 이용권 보기]를 눌러 QR 을 보여주세요.`
         const result = await sendTextNotice(env, r.user_phone, { tpl: 'voucher_expire_soon', title: '이용권 유효기간 안내', text: message })
           .catch(() => ({ ok: false as const, via: 'alimtalk' as const, error: 'exception' }))
         if (result.ok) alimtalkSent++

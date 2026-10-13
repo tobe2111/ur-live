@@ -27,6 +27,7 @@ import {
   normalizeSectionSource,
   type SectionSource,
 } from '@/shared/constants/home-showcase'
+import { NEAR_RADIUS_KM, type NearPoint } from '@/shared/home-near'
 
 /**
  * 홈 카드가 실제로 쓰는 컬럼만 — `SELECT *` 는 D1 100컬럼 한도에 걸린다(2026-06-10 사고).
@@ -39,6 +40,7 @@ import {
  * 카드 한 장을 그리는 데 필요한 최소 컬럼.
  * ⭐ 2026-08-19: `avg_rating`·`review_count` 추가 — 섹션 카드도 피드와 **같은 컴포넌트**를 쓰는데
  *   이 둘이 없어 섹션에서만 평점 줄이 비어 있었다.
+ * 📍 2026-10-13: `restaurant_lat`·`restaurant_lng` 추가 — 위치를 정한 홈에서 섹션 카드도 피드처럼 `N km` 를 그린다.
  * ⚠️ 설명은 **SQL 문자열 밖**에 둔다 — 안에 쓰면 워커 번들과 D1 쿼리에 매번 실려 나간다.
  */
 export const CARD_COLS = `
@@ -47,6 +49,7 @@ export const CARD_COLS = `
   p.avg_rating, p.review_count,
   p.deal_only,
   p.restaurant_name, p.restaurant_address, p.slug,
+  p.restaurant_lat, p.restaurant_lng,
   p.images
 `
 
@@ -136,6 +139,36 @@ export interface SectionRuleQuery {
    *   어느 섹션이 먼저 그려지느냐에 따라 점수가 흔들리면 순위가 화면 순서에 의존하게 된다.
    */
   excludeIds?: readonly number[]
+  /**
+   * 📍 2026-10-13 (대표 — 위치를 정하면 맨 위가 그 지역에서 가까운 이용권, 시안 확정 "1,2 섞어서"):
+   *   격자에 맞춘 좌표(`parseNearKey`). 있으면 정렬의 **앞**을 거리가 차지한다 — `nearOrderSql`.
+   *   ⚠️ 수동 섹션에는 안 닿는다(이 함수는 규칙 섹션만 푼다) — 어드민이 직접 고른 것이 이긴다.
+   */
+  near?: NearPoint | null
+}
+
+/**
+ * 📍 위치 정렬 앞부분. 반환값은 `ORDER BY` 의 **머리**이고, 원래 정렬(인기·최신)은 그 뒤 동률 깨기로 남는다.
+ *
+ * 세 단:
+ *   0 = 반경(`NEAR_RADIUS_KM`) 안 — **그 안에서는 실매장 먼저**, 그다음 가까운 순
+ *   1 = 반경 밖 — **순수 거리순**(반경을 넓혀 채운다). 여기서 실매장을 먼저 두면 165km 떨어진
+ *       실매장이 동네 데모 위에 선다(라이브 실측: 동탄에서 전주·서울 방배가 첫 두 칸이었다).
+ *   2 = 좌표 없음 — 맨 뒤, 데모 후순위 규칙 그대로
+ *
+ * 거리는 제곱 거리(정렬만 하므로 sqrt 불필요). 경도는 위도에 따라 줄어들므로 cos(위도)로 보정한다
+ * — 안 하면 한국(위도 37°)에서 동서 거리를 25% 부풀려 계산한다.
+ * 좌표는 `parseNearKey` 를 지난 **숫자만** 들어오므로 인라인해도 인젝션이 불가능하다(피드 near 와 같은 방식).
+ */
+export function nearOrderSql(near: NearPoint, demoFlagSql: string): string {
+  const lat = Number(near.lat), lng = Number(near.lng)
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return ''
+  const cosL = Math.cos((lat * Math.PI) / 180).toFixed(6)
+  const r2 = ((NEAR_RADIUS_KM / 111.32) ** 2).toFixed(8)
+  const has = `(p.restaurant_lat IS NOT NULL AND p.restaurant_lng IS NOT NULL AND p.restaurant_lat != 0)`
+  const d2 = `((p.restaurant_lat-(${lat}))*(p.restaurant_lat-(${lat})) + ((p.restaurant_lng-(${lng}))*${cosL})*((p.restaurant_lng-(${lng}))*${cosL}))`
+  const tier = `(CASE WHEN NOT ${has} THEN 2 WHEN ${d2} <= ${r2} THEN 0 ELSE 1 END)`
+  return `${tier}, (CASE WHEN ${tier} = 1 THEN 0 ELSE ${demoFlagSql} END), (CASE WHEN ${has} THEN ${d2} END), `
 }
 
 /**
@@ -195,12 +228,15 @@ export async function resolveSectionProducts(
     //   앞 두 묶음은 같은 `cats` 라 순서가 무의미하지만 **excl 은 반드시 마지막**이어야 맞는다.
     binds.push(...excl)
 
+    // 📍 위치가 있으면 거리 정렬이 앞을 차지하고, 원래 정렬은 동률 깨기로 남는다.
+    const demoFlag = `(CASE WHEN ${demoSlugSql('p')} THEN 1 ELSE 0 END)`
+    const head = q.near ? nearOrderSql(q.near, demoFlag) : ''
     const rows = await env.DB.prepare(`
       SELECT ${CARD_COLS}
       FROM products p
       ${joinSql}
       WHERE ${whereMain}
-      ORDER BY CASE WHEN ${demoSlugSql('p')} THEN 1 ELSE 0 END, ${orderSql}
+      ORDER BY ${head || `${demoFlag}, `}${orderSql}
       LIMIT ${limit}
     `).bind(...binds).all<Record<string, unknown>>()
     return rows.results ?? []

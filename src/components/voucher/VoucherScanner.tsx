@@ -499,7 +499,7 @@ export default function VoucherScanner() {
             autoCorrect="off"
             autoComplete="off"
             spellCheck={false}
-            placeholder={t('seller.scan.manualPlaceholder', { defaultValue: '코드 직접 입력 (UR-XXXX-XXXX)' })}
+            placeholder={t('seller.scan.manualPlaceholder', { defaultValue: '코드 직접 입력 (123456)' })}
             className="w-full pl-9 pr-3 py-2 rounded-xl border border-line text-[15px] text-gray-900 dark:text-white bg-surface focus:outline-none focus:ring-2 focus:ring-gray-400/40"
           />
         </div>

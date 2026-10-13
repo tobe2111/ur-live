@@ -248,10 +248,13 @@ healthRoutes.get('/env-readiness', requireAuth(), async (c) => {
     { key: 'TOSS_WEBHOOK_SECRET', group: 'payments', note: '결제 webhook 시그니처 검증.' },
     // 선택 기능 — fail-soft.
     { key: 'KAKAO_REST_API_KEY', group: 'optional', note: '소비자 카카오 로그인(대시보드 무관).' },
-    // 알림톡은 3종(API키+userid+발신프로필키)이 모두 있어야 발송(sendSystemAlimtalk 게이트). 하나라도 없으면 silent skip.
-    { key: 'ALIGO_API_KEY', group: 'optional', note: '알림톡 발송 — Aligo API 키. (userid·발신프로필키와 3종 세트, 하나만 빠져도 발송 0)' },
-    { key: 'ALIGO_USER_ID', group: 'optional', note: '알림톡 발송 — Aligo 계정 아이디.' },
-    { key: 'ALIGO_SENDER_KEY', group: 'optional', note: '알림톡 발송 — 카카오 발신프로필키(senderkey). 채널 등록 시 발급.' },
+    // 알림톡은 네이버 클라우드 SENS 4종이 모두 있어야 발송(sensConfigured 게이트). 하나라도 없으면 silent skip.
+    { key: 'NCP_ACCESS_KEY', group: 'optional', note: '알림톡 발송 — 네이버 클라우드 API 인증키(Access Key). 4종 세트, 하나만 빠져도 발송 0.' },
+    { key: 'NCP_SECRET_KEY', group: 'optional', note: '알림톡 발송 — 네이버 클라우드 Secret Key(시크릿으로 저장).' },
+    { key: 'NCP_SENS_ALIMTALK_SERVICE_ID', group: 'optional', note: '알림톡 발송 — SENS Biz Message 프로젝트의 서비스 ID.' },
+    { key: 'NCP_KAKAO_CHANNEL_ID', group: 'optional', note: '알림톡 발송 — 카카오톡 채널 검색용 ID(@유어딜).' },
+    { key: 'NCP_MAIL_SENDER', group: 'optional', note: '메일 발송(SENS) — 발신 주소. 메일 서비스 ID 와 함께 있으면 거래성 메일이 SENS 로(월 1,000건 무료), 없으면 Resend.' },
+    { key: 'NCP_SENS_MAIL_SERVICE_ID', group: 'optional', note: '메일 발송(SENS v2) — SENS 프로젝트의 메일 서비스 ID(ncp:mail:kr:…). 없으면 메일이 SENS 로 안 간다.' },
     { key: 'NAVER_SEARCH_CLIENT_ID', group: 'optional', note: '제조사 시중최저가 대조.' },
     { key: 'ANTHROPIC_API_KEY', group: 'optional', note: '유어애즈 AI마케터/리뷰생성.' },
     { key: 'SENTRY_DSN', group: 'optional', note: '에러 모니터링.' },

@@ -129,7 +129,7 @@ PENDING → PAID → SHIPPING → DELIVERED → DONE
 2. 줄 서 있는 신청의 계좌로 폰뱅킹 이체
 3. **입금 완료** 클릭 → 상태 기록 + 신청자에게 자동 알림
 - 소개 환급 반려 시 차감됐던 딜이 자동 복원됩니다
-- 제조사(공급사) 출금은 기존 전용 화면(\`/admin/wholesale-withdrawals\`) 그대로
+- **딜 환급 탭**(2026-10-12): 유저가 충전하고 쓰지 않은 딜의 현금 환급 신청(약관 제12조). 딜은 신청 순간 이미 빠져 있으니 그 금액을 이체하고 **입금 완료**(2FA), 못 하면 **반려**(딜 원복). 세금·수수료 없음. 셀러는 신청하지 않는다 — 판매 대금은 매주 자동 정산뿐
 
 ### 정산 프로세스 (\`/admin/settlement\`)
 1. 셀러가 정산 신청 → 상태 **REQUESTED**
@@ -408,7 +408,7 @@ current_viewers 는 120초 heartbeat 기반. peak_viewers 는 방송 중 누적 
 donations 테이블에서 payment_status='approved' 만 집계. 수수료(15%) 차감 후 셀러에게 정산됨. refunded 상태는 제외.
 
 **Q. 브랜드메시지(알림톡)가 발송 안 됩니다**
-셀러 크레딧 잔액 확인 (\`seller_credits\` 테이블). 부족하면 충전 필요. Aligo API 상태도 확인.
+셀러 크레딧 잔액 확인 (\`seller_credits\` 테이블). 부족하면 충전 필요. 네이버 클라우드 SENS 상태도 확인.
 
 **Q. 환불 처리 후 유저가 "안 들어왔다"고 합니다**
 카드 결제는 3~5 영업일 소요 (카드사 영업일 기준). 포인트/적립금은 즉시. Toss 콘솔에서 환불 이력 확인 가능.
@@ -477,7 +477,7 @@ donations 테이블에서 payment_status='approved' 만 집계. 수수료(15%) �
 - **분쟁** — recipient 가 못 받았다 신고 시 \`gifts.status\` + \`alimtalk_messages\` (수신 로그) 조회
 
 #### 알림톡 템플릿
-- \`gift_received\` 템플릿 등록 필요 (Aligo 콘솔)
+- \`gift_received\` 템플릿 등록 필요 (네이버 클라우드 SENS 콘솔 + 어드민 승인 목록)
 - 변수: \`#{sender_name}\`, \`#{product_name}\`, \`#{claim_url}\`
 - \`gift_refunded\` 템플릿 — sender 에게 30일 미수령 환불 알림 (cron 자동 발송)`,
   },
@@ -1106,7 +1106,7 @@ WITHDRAWAL_DEFAULTS.UPGRADE_REOFFER_DAYS  // 30
 - 드랍 전날 예고: fcfs 응모 상품의 마감(D-1) 저녁 KST 18:00 응모자에게 예고 (cron \`drop-d1-reminder\`).
 - 체험단 게시 리마인드: 당첨(\`selected\`) 48시간 경과 + 콘텐츠 인증 없음 → 미션 리마인드 **평생 1회** (cron \`experience-post-reminder\`).
 - 이용권 만료 임박: **기존 cron \`meal-voucher-expire\`(D-30/7/3/1)** 이 담당 — 신규 아님, 게이트 무관 상시.
-- 알림톡 템플릿(\`drop_d1_reminder\`/\`experience_post_reminder\`)은 Aligo 콘솔 등록·승인 후 실발송 — 미등록이면 인앱 알림만 나가고 알림톡은 실패 적재(무해).
+- 알림톡 템플릿(\`drop_d1_reminder\`/\`experience_post_reminder\`)은 SENS 콘솔 등록·승인(+어드민 승인 목록) 후 실발송 — 미등록이면 인앱 알림만 나가고 알림톡은 실패 적재(무해).
 
 ### ③ CS 자동응답 FAQ 봇 (카카오채널)
 - 카카오 i 오픈빌더 스킬 서버: \`POST /api/cs/kakao-skill\` — QR 사용법·환불·정산일·유효기간·딜 포인트 5문항 키워드 자동응답 + 미매칭 시 상담원 안내 폴백. **read-only(DB 접근 0)**.
@@ -1119,6 +1119,6 @@ WITHDRAWAL_DEFAULTS.UPGRADE_REOFFER_DAYS  // 30
 
 ### 문제 시
 - 다이제스트/리포트가 안 오면: \`/admin/system-monitoring\` cron 실패 탭 → \`ops-daily-digest\`/\`weekly-cohort-report\` 확인.
-- 알림톡 미발송: Aligo 3종 env + 템플릿 콘솔 등록 여부(\`docs/kakao-alimtalk-templates.md\` §운영 자동화).`,
+- 알림톡 미발송: SENS 4종 env(NCP_*) + 템플릿 승인 여부(\`docs/alimtalk-register-list.md\`).`,
   },
 ]

@@ -110,7 +110,11 @@ describe('② 410 과 404 는 서로 다른 판정이다', () => {
 
   it('워커가 410(철거) 과 404(엔티티) 를 구분해 낸다', () => {
     const s = read(WORKER)
-    expect(s).toMatch(/const goneStatus = retiredSurface \? 410 : \(entityGone \? 404 : 0\)/)
+    // 🔀 2026-10-12 재조준: 404 쪽 항이 `(entityGone || unknownPath)` 로 늘었다(등록 안 된 경로).
+    //   지키는 불변식은 그대로 — **철거는 410, 그 밖의 부재는 404**. 404 쪽 내용은 모양 무관으로 둔다.
+    expect(s).toMatch(/const goneStatus = retiredSurface \? 410 : \([^;]*\? 404 : 0\)/)
+    // 🔴 그리고 둘을 한 조건으로 **묶지 않는다** — 묶으면 내려간 상품에 410 이 나가 재등록해도 색인이 안 돌아온다.
+    expect(s).not.toMatch(/\(retiredSurface \|\|[^)]*\) \? 410/)
     expect(s).toMatch(/statusText: goneStatus === 410 \? 'Gone' : 'Not Found'/)
   })
 
@@ -121,8 +125,11 @@ describe('② 410 과 404 는 서로 다른 판정이다', () => {
     expect(read(WORKER)).toMatch(/c\.res = goneStatus\s*\?\s*new Response\(rewritten\.body, \{/)
   })
 
+  // 🔀 2026-10-12 재조준: 같은 블록이 **등록 안 된 경로**의 noindex 도 맡게 되어 조건에 항이 하나
+  //   늘었다(`unknownPath`). 지키는 불변식은 그대로 — **철거 표면이 그 블록에 들어 있다**.
+  //   `retiredSurface` 를 빼는 쪽만 잡으면 되므로 앞의 항들은 모양 무관으로 둔다.
   it('철거 표면도 noindex 를 받는다 (410 을 못 읽는 크롤러 대비)', () => {
-    expect(read(WORKER)).toMatch(/if \(entityGone \|\| retiredSurface\)/)
+    expect(read(WORKER)).toMatch(/if \([^)]*\bretiredSurface\) \{\s*\n\s*rb = rb\.on\('meta\[name="robots"\]'/)
   })
 })
 

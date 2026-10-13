@@ -56,13 +56,13 @@ beforeEach(() => {
 })
 
 /** 가짜 발송기 — 실제로 아무 데도 안 보낸다. 부른 횟수와 인자를 기록한다. */
-function fakeSender(result: { success: boolean; message: string } = { success: true, message: 'ok' }) {
-  const calls: Array<Record<string, string>> = []
+function fakeSender(result: { success: boolean; error?: string } = { success: true }) {
+  const calls: Array<{ templateCode: string; to: string; content: string }> = []
   return {
     calls,
     deps: {
-      apikey: 'k', userid: 'u', senderkey: 's', sender: '07000000000', tplCode: 'TPL_X',
-      send: async (p: Record<string, string>) => { calls.push(p); return result },
+      tplCode: 'TPL_X',
+      send: async (p: { templateCode: string; to: string; content: string }) => { calls.push(p); return result },
     },
   }
 }
@@ -129,7 +129,7 @@ describe('📤 발송 — 보낸 뒤엔 다시 안 보낸다', () => {
 
   it('실패하면 failed 로 남고 **자동 재시도되지 않는다** (문자 폭탄 방지)', async () => {
     await queueOwnerNotice(DB, 1, '010-1111-2222')
-    const f = fakeSender({ success: false, message: '수신거부' })
+    const f = fakeSender({ success: false, error: '수신거부' })
     expect(await sendQueuedOwnerNotices(DB, f.deps)).toEqual({ sent: 0, failed: 1 })
     expect((await listOwnerNotices(DB, { status: 'queued' })).length).toBe(0)
     const failed = await listOwnerNotices(DB, { status: 'failed' })
@@ -145,11 +145,11 @@ describe('📤 발송 — 보낸 뒤엔 다시 안 보낸다', () => {
     await queueOwnerNotice(DB, 1, '010-1111-2222')
     const calls: unknown[] = []
     const deps = {
-      apikey: 'k', userid: 'u', senderkey: 's', sender: '0700', tplCode: 'T',
-      send: async (p: Record<string, string>) => {
+      tplCode: 'T',
+      send: async (p: unknown) => {
         await Promise.resolve() // 두 드레인이 이 지점에서 엇갈린다
         calls.push(p)
-        return { success: true, message: 'ok' }
+        return { success: true }
       },
     }
     const [a, b] = await Promise.all([sendQueuedOwnerNotices(DB, deps), sendQueuedOwnerNotices(DB, deps)])
@@ -160,7 +160,7 @@ describe('📤 발송 — 보낸 뒤엔 다시 안 보낸다', () => {
   it('발송기가 던져도 실패로 적고 넘어간다 (한 건이 전체를 멈추지 않는다)', async () => {
     await queueOwnerNotice(DB, 1, '010-1111-2222')
     const r = await sendQueuedOwnerNotices(DB, {
-      apikey: 'k', userid: 'u', senderkey: 's', sender: '0700', tplCode: 'T',
+      tplCode: 'T',
       send: async () => { throw new Error('network down') },
     })
     expect(r).toEqual({ sent: 0, failed: 1 })
@@ -171,10 +171,10 @@ describe('📤 발송 — 보낸 뒤엔 다시 안 보낸다', () => {
     await queueOwnerNotice(DB, 1, '010-1111-2222')
     const f = fakeSender()
     await sendQueuedOwnerNotices(DB, f.deps)
-    expect(f.calls[0].message_1).toContain('홍대돈까스')
-    expect(f.calls[0].message_1).toContain('/store/find')
-    expect(f.calls[0].receiver_1).toBe('01011112222')
-    expect(f.calls[0].tpl_code).toBe('TPL_X')
+    expect(f.calls[0].content).toContain('홍대돈까스')
+    expect(f.calls[0].content).toContain('/store/find')
+    expect(f.calls[0].to).toBe('01011112222')
+    expect(f.calls[0].templateCode).toBe('TPL_X')
   })
 
   it('매장 이름이 비어도 문구가 깨지지 않는다', () => {

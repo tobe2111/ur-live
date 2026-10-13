@@ -26,14 +26,6 @@ export default [
     why: '큰 버튼은 /store/scan 인데 전체 도구만 /seller/scan 으로 가면 같은 일에 길이 둘이 되고 하나는 대시보드다.',
   },
   {
-    name: '[전용길] 에이전시 — 계산대를 대시보드 틀로(dash=1)',
-    file: 'src/pages/agency-console/AgencyStorePlate.tsx',
-    find: '    if (path === STORE_SCAN_PATH) { window.location.assign(path); return }\n',
-    replace: '',
-    test: T,
-    why: '계산대는 대시보드 밖 화면이라 dash=1 이 필요 없다 — 붙으면 콘솔 직원이 다시 대시보드 껍데기 주소를 탄다.',
-  },
-  {
     name: '[전용길] /store/scan 에 소비자 로그인 요구를 되살린다',
     file: 'src/App.tsx',
     find: '<Route path="/store/scan" element={<StoreScanPage />} />',
@@ -50,14 +42,6 @@ export default [
     why: '라우트 가드를 걷었으니 화면 가드가 유일한 문이다 — 지우면 좌석·기기 키 없는 방문자에게 계산대가 그려진다.',
   },
   {
-    name: '[전용길] 깊은 링크 — 계산대를 다시 대시보드에 남긴다',
-    file: 'src/lib/seller-deep-link.ts',
-    find: "export const STAY_ON_DASHBOARD = new Set(['/seller/youtube/callback'])",
-    replace: "export const STAY_ON_DASHBOARD = new Set(['/seller/scan', '/seller/youtube/callback'])",
-    test: T,
-    why: '알림톡 \'사용처리\' 링크(/store/go → /seller/scan)와 주문 상세 링크가 얇은 대시보드 틀로 떨어진다.',
-  },
-  {
     name: '[전용길] 깊은 링크 — 계산대를 시트(?tool=)로 보낸다',
     file: 'src/lib/seller-deep-link.ts',
     find: "  if (ownPathFor(pathname) === 'scan') return STORE_SCAN_PATH + q\n",
@@ -72,6 +56,22 @@ export default [
     replace: "open: (p) => { void openPage(p, '') }",
     test: T,
     why: '하단 ➕·유어샵에서 \'이용권 등록\' 을 누르면 전용 등록 시트 대신 대시보드 화면 시트가 열린다(같은 일에 화면이 둘).',
+  },
+  {
+    name: '[전용길] 시트 안 이용권 등록·재발행을 시트 밖으로 내보낸다',
+    file: 'src/pages/user-profile/seller-section/ToolPageSheet.tsx',
+    find: '                  <Route path="/seller/scan" element={<Escape onLeave={onLeave} to={STORE_SCAN_PATH} />} />\n',
+    replace: '                  <Route path="/seller/scan" element={<Escape onLeave={onLeave} to={STORE_SCAN_PATH} />} />\n                  <Route path="/seller/meal-voucher/new" element={<Escape onLeave={onLeave} />} />\n',
+    test: 'src/tests/unit/tool-page-sheet-renders-2026-09-28.test.tsx',
+    why: '이용권 화면의 재발행을 누르면 시트가 닫히고 대시보드 주소로 나간다 — copyFrom 이 VoucherNewSheet 에는 없어 재발행 값이 사라진다.',
+  },
+  {
+    name: '[곧장] 유어샵 버튼이 대시보드 주소를 거친다',
+    file: 'src/pages/curator-page/SellOwnProductsCTA.tsx',
+    find: 'navigate(sellerEntryPath(path))',
+    replace: 'navigate(path)',
+    test: T,
+    why: '유어샵의 이용권 등록·마이 내 가게 버튼이 다시 대시보드를 한 번 거친다.',
   },
   {
     name: '[전용길] 사장님 문자의 사용처리 링크를 대시보드로',

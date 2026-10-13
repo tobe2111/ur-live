@@ -31,42 +31,20 @@ import { stripComments } from '../helpers/source-text'
 const read = (p: string) => readFileSync(p, 'utf8')
 const code = (p: string) => stripComments(read(p))
 
-const TABS = 'src/components/seller/SellerGroupTabs.tsx'
 const CARD = 'src/components/dashboard/DashboardCard.tsx'
 const REFERRAL = 'src/pages/seller-settlements/ReferralEarningsCard.tsx'
 const STORE = 'src/pages/SellerStoreInfoPage.tsx'
 const SETTLE = 'src/pages/SellerSettlementsPage.tsx'
-const BALANCE = 'src/pages/seller-settlements/DealBalanceCard.tsx'
 const BIZREG = 'src/pages/seller-settlements/BizRegStatusBanner.tsx'
 const PANEL = 'src/pages/seller-settlements/RestaurantSettlementsSection.tsx'
 const ROUTE = 'src/features/settlement/api/restaurant-settlement.routes.ts'
-
-describe('① 묶음 탭 줄 — 박스로 40px (tap-reach 금지)', () => {
-  it('탭 링크가 min-h-[40px] 로 40px 를 **보장**한다', () => {
-    const s = code(TABS)
-    expect(s, '탭 링크의 40px 보장이 사라졌다').toContain('min-h-[40px]')
-    expect(s, 'py-1.5(=28px) 로 돌아갔다').not.toMatch(/px-3\.5\s+py-1\.5/)
-  })
-
-  it('🔴 그 줄에 tap-reach 를 쓰지 않는다 — 부모가 overflow-x-auto 라 히트영역이 잘린다', () => {
-    const s = code(TABS)
-    expect(s, '전제가 바뀌었다 — 부모의 overflow-x-auto 가 없어졌으면 이 시험을 다시 판단할 것')
-      .toContain('overflow-x-auto')
-    expect(s, 'overflow 안에서 tap-reach 는 히트 테스트까지 잘린다(넓힌 만큼이 죽는다)')
-      .not.toContain('tap-reach')
-  })
-})
 
 describe('② 전폭 주 버튼 — 자리별로 ur-btn-md(40px)', () => {
   it('정산 계좌 등록 CTA', () => {
     expect(code(SETTLE)).toContain('ur-btn ur-btn-md ur-btn-primary mt-3 w-full sm:w-auto')
   })
-  it('딜 잔액 카드의 환급·교환권 두 버튼', () => {
-    const s = code(BALANCE)
-    expect(s).toContain('ur-btn ur-btn-md ur-btn-secondary flex-1 sm:flex-none')
-    expect(s).toContain('ur-btn ur-btn-md ur-btn-primary flex-1 sm:flex-none')
-    expect(s, 'ur-btn-sm(32px) 가 남아 있다').not.toContain('ur-btn-sm')
-  })
+  // 🧹 2026-10-12 '딜 잔액 카드의 환급·교환권 두 버튼' 삭제 — 그 카드(`seller-settlements/DealBalanceCard`)가
+  //   한 번도 적립되지 않는 잔액을 읽고 있어 화면에서 걷어냈다(셀러 돈 = 주간 자동 정산 하나).
   it('사업자등록증 배너(반려/정상 두 분기 모두)', () => {
     const s = code(BIZREG)
     expect(s).toContain('ur-btn ur-btn-md ur-btn-danger')

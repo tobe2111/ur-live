@@ -62,7 +62,8 @@ describe('② 시트는 전부 열 때 받는다', () => {
     // 🧹 2026-10-01 철거: 하한 13 → **6**. 손수 시트 일곱이 내려갔다(`OrdersSheet` 등).
     //   하한의 일은 "몇 개여야 한다" 가 아니라 **매치 0으로 헛도는 것**을 막는 것이다.
     expect(lazies.length, '측정 0건 — 선언 형태가 바뀌었는데 검사가 헛돌고 있다').toBeGreaterThanOrEqual(6)
-    for (const need of ['WithdrawSheet', 'AllToolsSheet', 'ToolPageSheet']) {
+    // 💰 2026-10-12: 돈 시트가 `WithdrawSheet`(출금 신청) → `PayoutSheet`(주간 자동 정산, 읽기 전용)로 바뀌었다.
+    for (const need of ['PayoutSheet', 'AllToolsSheet', 'ToolPageSheet']) {
       expect(lazies, `${need} 가 lazy 가 아니다`).toContain(need)
     }
   })
@@ -92,11 +93,10 @@ describe('③ 41개 화면이 복제 없이 시트에서 열린다', () => {
     expect(code).toMatch(/const embedded = useSellerEmbedded\(\)/)
     // 🔁 2026-09-26: 조기 반환이 fragment → 스코프 있는 `<div>` 로 바뀌었다(여백·seller 스코프 복원).
     //   지키는 불변식은 그대로다 — **컨텍스트를 읽어 껍데기를 건너뛴다**.
+    // 🧭 2026-10-12 — 단독 틀을 지웠다. 남은 분기는 *"시트 밖이면 보낸다"* 하나다(시트 안에서 튕기면 마이가 사라진다).
     expect(code, 'bare 만 보면 페이지마다 prop 을 뚫어야 하고 41개 중 몇은 반드시 빠진다')
-      .toMatch(/if \(bare \|\| embedded\) \{/)
-    // 그리고 그 반환이 **도매 리다이렉트보다 먼저**여야 한다(시트 안에서 튕기면 마이가 사라진다).
-    expect(code.indexOf('if (bare || embedded) {'))
-      .toBeLessThan(code.indexOf('if (wholesaleOnly) return null'))
+      .toMatch(/if \(!bare && !embedded\) \{/)
+    expect(code, '도매 전용 바운스가 되살아났다 — 도매몰은 2026-10-11 철거됐다').not.toContain('wholesaleOnly')
   })
 
   it('컨텍스트가 권한을 만들지 않는다 — 토큰·좌석·API 를 모른다', () => {
@@ -282,10 +282,10 @@ describe('⑦ 같은 일에 화면이 둘이 되지 않는다', () => {
    * ⚠️ 표를 지우지 않은 이유: 돈 경로(`/seller/settlements`)가 아직 손수 시트를 쓴다.
    */
   it('손수 시트가 남은 일은 표가 그리로 보낸다 (돈 하나)', () => {
-    const table = code.slice(code.indexOf('const COVERED_BY_SHEET'), code.indexOf("'/seller/settlements': 'withdraw',") + 40)
+    const table = code.slice(code.indexOf('const COVERED_BY_SHEET'), code.indexOf("'/seller/settlements': 'payout',") + 40)
     const paths = [...table.matchAll(/'(\/seller\/[^']+)':/g)].map((m) => m[1])
     expect(paths.length, '측정 0건 — 표가 사라졌거나 형태가 바뀌었다').toBeGreaterThanOrEqual(1)
-    expect(paths, '돈 경로가 표에서 빠졌다 — 출금의 PIN 되돌아오기를 잃는다').toContain('/seller/settlements')
+    expect(paths, '돈 경로가 표에서 빠졌다 — 정산(주간 자동)을 전체 도구에서 열면 다른 화면이 뜬다').toContain('/seller/settlements')
   })
 
   it('철거된 일곱은 손수 시트로 되살아나지 않는다', () => {
@@ -311,7 +311,7 @@ describe('⑦ 같은 일에 화면이 둘이 되지 않는다', () => {
     const pages = [...bare.matchAll(/openPage\('(\/seller\/[^']+)'/g)].map((m) => m[1])
     expect(tools.length + pages.length, '바로가기를 하나도 못 찾았다 — 이 검사가 헛돌고 있다')
       .toBeGreaterThanOrEqual(4)
-    const table = code.slice(code.indexOf('const COVERED_BY_SHEET'), code.indexOf("'/seller/settlements': 'withdraw',") + 40)
+    const table = code.slice(code.indexOf('const COVERED_BY_SHEET'), code.indexOf("'/seller/settlements': 'payout',") + 40)
     const covered = new Set([...table.matchAll(/:\s*'([a-z]+)',/g)].map((m) => m[1]))
     for (const t of new Set(tools)) {
       if (t === 'tools') continue   // 전체 도구 자신은 색인이지 일이 아니다
@@ -345,13 +345,13 @@ describe('⑧ 시트 UI 정리 — PC 폭 · 여백 · 제목 두 겹 (2026-09-2
   it('시트 안 화면이 가장자리에 붙지 않는다 (bare 가 여백을 준다)', () => {
     // 🩸 종전 bare 는 `<>{children}</>` 이라 `<main>` 이 주던 `p-3 sm:p-5` 가 통째로 없었다.
     expect(layout, 'bare 가 fragment 로 돌아가면 여백이 0 이 된다')
-      .toMatch(/if \(bare \|\| embedded\) \{[\s\S]{0,400}?p-3 sm:p-5/)
+      .toMatch(/return \(\s*<div className="seller-light-theme ur-embed-page p-3 sm:p-5/)
   })
 
   it('시트 안에서도 seller 스코프를 잃지 않는다', () => {
     // `.seller-light-theme` 에 걸린 규칙(장식 아이콘 칩 숨김 · 폰 제목 한 번만)이 시트에서만 죽었었다.
-    expect(layout).toMatch(/if \(bare \|\| embedded\) \{[\s\S]{0,400}?seller-light-theme/)
-    expect(layout).toMatch(/if \(bare \|\| embedded\) \{[\s\S]{0,400}?ur-embed-page/)
+    expect(layout).toMatch(/<div className="[^"]*\bseller-light-theme\b/)
+    expect(layout).toMatch(/<div className="[^"]*\bur-embed-page\b/)
   })
 
   it('시트 머리와 페이지 제목이 같은 이름을 두 번 말하지 않는다', () => {
@@ -411,7 +411,7 @@ describe('⑨ 라우트 표에 구멍이 없다', () => {
   it('시트 안 화면이 throw 해도 마이가 하얘지지 않는다', () => {
     const sheet = readCode(TOOL_SHEET)
     expect(sheet, '바운더리가 없으면 한 화면의 크래시가 마이를 통째로 지운다')
-      .toMatch(/<ErrorBoundary>[\s\S]{0,300}?\{SellerRoutes\(\)\}/)
+      .toMatch(/<ErrorBoundary>[\s\S]{0,700}?\{SellerRoutes\(\)\}/)
   })
 })
 

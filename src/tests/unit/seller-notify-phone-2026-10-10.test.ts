@@ -69,16 +69,17 @@ describe('① 번호 고르기', () => {
 })
 
 describe('② 판매 알림 — 첫 판매 한 번(CAS) · 그 뒤 건별', () => {
-  // 📨 2026-10-11: 발송이 솔라피 → 알리고 **알림톡**(대표 "카톡만") — 승인된 템플릿만 나간다. 본문은 form(receiver_1·message_1).
-  const fetchMock = vi.fn(async () => new Response('{"code":0,"message":"ok","token":"t"}'))
+  // 📨 2026-10-11: 발송이 솔라피 → 알림톡(대표 "카톡만") — 승인된 템플릿만 나간다.
+  //   2026-10-12: 발송처 = 네이버 클라우드 SENS(JSON 본문 messages[0].to/content).
+  const fetchMock = vi.fn(async () => new Response('{"messages":[{"requestStatusCode":"A000"}]}', { status: 202 }))
   beforeEach(() => { fetchMock.mockClear(); vi.stubGlobal('fetch', fetchMock); _resetApprovedTemplatesCache() })
   afterEach(() => vi.unstubAllGlobals())
-  const env = () => ({ ALIGO_API_KEY: 'k', ALIGO_USER_ID: 'u', ALIGO_SENDER_KEY: 'sk', ALIGO_SENDER: '01099998888', DB })
+  const env = () => ({ NCP_ACCESS_KEY: 'AK', NCP_SECRET_KEY: 'SK', NCP_SENS_ALIMTALK_SERVICE_ID: 'svc', NCP_KAKAO_CHANNEL_ID: '@유어딜', DB })
   const bodies = () => fetchMock.mock.calls
-    .filter(c => String((c as unknown as [string])[0]).endsWith('/alimtalk/send/'))
+    .filter(c => String((c as unknown as [string])[0]).includes('/alimtalk/v2/services/'))
     .map(c => {
-      const f = new URLSearchParams(String((c as unknown as [string, { body: string }])[1].body))
-      return { to: f.get('receiver_1'), text: f.get('message_1') }
+      const b = JSON.parse(String((c as unknown as [string, { body: string }])[1].body)) as { messages: Array<{ to: string; content: string }> }
+      return { to: b.messages[0].to, text: b.messages[0].content }
     })
 
   it('첫 판매 → 온보딩 안내 1통, 다음 판매 → 건별 판매 1통(같은 휴대폰)', async () => {

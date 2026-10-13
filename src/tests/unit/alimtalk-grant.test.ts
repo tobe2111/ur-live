@@ -5,7 +5,7 @@
  * 어긋나면 마진 집계가 통째로 틀어진다(1단계가 `credit_transactions.price_paid` 합계를 매출로 쓴다).
  *
  * ⚠️ 이 테스트가 **못** 막는 것: D1 배치가 실제로 원자적인지, 실발송이 되는지.
- *   발송은 ALIGO 3종 키가 설정돼야 나간다 — 지금은 미설정이라 판매·회계만 성립한다.
+ *   발송은 SENS 키(NCP_*) 4종이 설정돼야 나간다 — 지금은 미설정이라 판매·회계만 성립한다.
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'

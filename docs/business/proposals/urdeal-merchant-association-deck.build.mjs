@@ -12,7 +12,7 @@
 //     ③ **입점 요청**(마지막 장) — 설명회 자리 1회 · 희망 매장 명단 · 회원 안내 1회
 //   반대로 사장님 덱의 기대수익 시나리오(상세판 5장)는 안 넣는다. 단체 자리에서 수익 표를 띄우면 약속으로 읽힌다.
 //
-// 🔢 숫자는 전부 deck-common FACTS(2026-10-06 라이브 실측) + 이 파일 상단 상수에서 나온다. 손으로 옮겨 적지 않는다.
+// 🔢 숫자는 전부 deck-common FACTS(2026-10-12 라이브 실측) + 이 파일 상단 상수에서 나온다. 손으로 옮겨 적지 않는다.
 // 성과 수치("매출 O% 증가")·트래픽 보장·수익 사례는 쓰지 않는다(three-decks-plan §0-4).
 // 기획·사실 SSOT: docs/business/proposals/three-decks-plan-2026-09.md §0 · docs/design/store-operator-model.md §7
 //   · docs/design/actor-benefit-map.md · src/worker/utils/broker-share.ts
@@ -204,7 +204,7 @@ const UNIT = (() => {
       { text: '체험단 한 팀에 나가는 무료 식사값이면, ', options: { color: C.inkSoft } },
       { text: '유어딜에서는 돈을 낸 손님이 옵니다.', options: { bold: true, color: C.ink } },
     ], { y: 6.26, h: 0.44 });
-    s.addNotes('상품 2915(홍대돈까스) 2026-10-06 D1 실측: 정가 14,500 / 판매가 7,500 → 수수료 750 → 입금 6,750. 값은 deck-common FACTS.sample* 하나에서 온다. 사용분만 정산: platform_settings.payout_requires_voucher_use=true(실측). 만료 미사용분 100% 환불: auto-settlement.ts handleExpiredVoucherRefunds.');
+    s.addNotes('상품 2915(홍대 돈가스 버크셔) 2026-10-12 D1 실측: 정가 14,500 / 판매가 7,500 → 수수료 750 → 입금 6,750. 값은 deck-common FACTS.sample* 하나에서 온다. 사용분만 정산: platform_settings.payout_requires_voucher_use=true(실측). 만료 미사용분 100% 환불: auto-settlement.ts handleExpiredVoucherRefunds.');
   }
 
   // ───────── 06 걱정되는 것 (페르소나) ─────────
@@ -343,7 +343,7 @@ const UNIT = (() => {
       { text: '먼저 돈을 주고 글을 받는 방식이 아닙니다. ', options: { color: C.inkSoft } },
       { text: '팔린 뒤에, 팔린 만큼만 나갑니다.', options: { bold: true, color: C.ink } },
     ], { y: 6.2, h: 0.5 });
-    s.addNotes('숫자: /api/admin/ads/influencer-pool/stats 2026-10-06 실측(total 282,818 · with_contact 61,512 · naver_blog 247,565 · youtube 19,571). 소개비는 매장이 정하고 매장 몫에서 나간다(broker-share.ts 머리말 · actor-benefit-map Q2-1). 캡처는 연락처를 가린 상태.');
+    s.addNotes('숫자: /api/admin/ads/influencer-pool/stats 2026-10-12 실측(total 337,842 · with_contact 65,431 · naver_blog 299,363 · youtube 20,584) — FACTS 가 단일 출처라 슬라이드는 자동 갱신된다. 소개비는 매장이 정하고 매장 몫에서 나간다(broker-share.ts 머리말 · actor-benefit-map Q2-1). 캡처는 연락처를 가린 상태.');
   }
 
   // ───────── PART 4 구분 장 ─────────
@@ -408,9 +408,9 @@ const UNIT = (() => {
       '퍼센트를 0 으로 두시면 유어딜을 거치지 않습니다. 그때는 상인회와 매장이 알아서 정하시면 됩니다.',
     ], { rowH: 0.48 });
     card(s, 9.55, 4.95, W - M - 9.55, 1.72, { fill: C.tint });
-    T(s, '아직 흐른 적이 없습니다', { x: 9.8, y: 5.09, w: W - M - 9.8 - 0.2, h: 0.26, fontSize: 11, bold: true, color: C.ink, charSpacing: -0.3 });
-    T(s, '이 송금 기능은 켜져 있지만 ' + FACTS.liveMeasuredAt + ' 기준으로 실제 적립된 건이 아직 0건입니다. 첫 상권이 들어오면 함께 확인하면서 시작하겠습니다.', { x: 9.8, y: 5.37, w: W - M - 9.8 - 0.2, h: 1.15, fontSize: 9.8, color: C.ink, lineSpacingMultiple: 1.38, valign: 'top' });
-    s.addNotes('구조: broker-share.ts — 재원은 매장 몫(debit seller:{id}), 유어딜 5% 불변. 상한 BROKER_SHARE_PCT_MAX=50 · BROKER_TERMS_SUM_MAX=90. 적립 레일은 인플루언서와 같다(influencer_attributions source=broker_share → 성숙·원천징수·지급센터 그대로). 🔴 2026-10-06 라이브 실측: 게이트 broker_share_enabled=true 인데 influencer_attributions 가 0행 — 아직 한 건도 적립된 적이 없다. 그 사실을 슬라이드가 직접 말한다. ⚠️ 대행사 덱 §14 는 아직 "켜기 전" 이라고 적혀 있다(게이트 플립 전 승인본) — 대표 확인 필요.');
+    T(s, '적립은 시작됐고, 송금은 아직입니다', { x: 9.8, y: 5.09, w: W - M - 9.8 - 0.2, h: 0.26, fontSize: 11, bold: true, color: C.ink, charSpacing: -0.3 });
+    T(s, '이 기능은 켜져 있고 ' + FACTS.liveMeasuredAt + ' 기준 실제 주문에서 적립이 1건 생겼습니다. 다만 적립은 송금이 아닙니다 — 손님이 이용권을 쓴 것이 확인되면 익고, 쌓인 금액이 ' + FACTS.influencerPayoutMin + ' 을 넘으면 매월 1일에 보냅니다. 아직 보낸 건은 없습니다.', { x: 9.8, y: 5.37, w: W - M - 9.8 - 0.2, h: 1.15, fontSize: 9.8, color: C.ink, lineSpacingMultiple: 1.38, valign: 'top' });
+    s.addNotes('구조: broker-share.ts — 재원은 매장 몫(debit seller:{id}), 유어딜 5% 불변. 상한 BROKER_SHARE_PCT_MAX=50 · BROKER_TERMS_SUM_MAX=90. 적립 레일은 인플루언서와 같다(influencer_attributions source=broker_share → 성숙·원천징수·지급센터 그대로). ✅ 2026-10-12 라이브 실측: broker_share_enabled=true 이고 influencer_attributions(source=broker_share) **1행**(seller 26 · 620원 · pending · 10-07) — 10-06 의 0행에서 바뀌었다. 슬라이드도 "적립 1건 · 송금은 아직" 으로 고쳤다(적립≠송금: 성숙은 payout_requires_voucher_use=true 게이트, 송금은 어드민 [송금 처리]). 대행사 덱 §14 도 같은 커밋에서 뒤집었다 — 두 덱이 어긋나지 않는다. 최소 지급액 10만원도 두 덱에 같이 적었다(중개 몫은 인플루언서 레일이라 매장 레일의 1만원과 다르다 — cron/influencer-payout.ts DEFAULT_PAYOUT_MIN=100_000 · 라이브 influencer_payout_min=100000).');
   }
 
   // ───────── 13 등록 절차 ─────────
@@ -472,7 +472,7 @@ const UNIT = (() => {
       y: 5.88, h: 0.96,
       text: '유어딜은 초기 서비스입니다. ' + FACTS.liveMeasuredAt + ' 기준 판매 중인 이용권 ' + FACTS.activeVouchers + '건 가운데 실제 매장이 올린 것은 ' + FACTS.realStores + '건이고, 나머지는 시범 운영을 위한 예시입니다. 손님 수를 약속하는 대신 조건을 숫자로 먼저 공개합니다. 먼저 들어오시는 매장이 그 지역과 업종의 첫 자리를 가져갑니다.',
     });
-    s.addNotes('입점 요청 장. 요청 셋은 상인회가 할 수 있는 최소 행동으로 잡았다(설득은 우리가 한다). 숫자는 FACTS(2026-10-06 실측): 활성 이용권 359건 중 실제 매장 1건(그 밖에 내부 테스트 1건). 노출·트래픽은 약속하지 않고 "첫 자리" 라는 순서만 말한다.');
+    s.addNotes('입점 요청 장. 요청 셋은 상인회가 할 수 있는 최소 행동으로 잡았다(설득은 우리가 한다). 숫자는 FACTS(2026-10-12 실측): 활성 이용권 359건 중 이용권을 올린 실제 매장 2건(홍대돈까스 seller 14 · 달빛한스푼 seller 26 — 둘 다 결제 주문 1건씩 있다). 승인 매장은 10곳이지만 그중 2곳이 [테스트] 계정이고 중복·장소명도 섞여 있어 **슬라이드에 안 쓴다**(deck-common FACTS 주석 참조). 노출·트래픽은 약속하지 않고 "첫 자리" 라는 순서만 말한다.');
   }
 
   // ───────── 15 마무리 ─────────

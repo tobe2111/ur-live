@@ -111,10 +111,9 @@ describe('ensureStoreCode — 매장이 생기는 순간 확인코드', () => {
     await ensureStoreCode(DB, 10)
     expect(getRow(10)?.store_code).toMatch(/^\d{6}$/)
   })
-  it('배선 — 매장 등록 두 문이 모두 부른다', () => {
+  // 🪦 2026-10-12: 두 번째 문(`POST /register-from-user`)을 지웠다 — 부르던 가입 화면이 같은 날 사라졌다.
+  //   매장이 생기는 문은 `/store/new`(→ `POST /api/seller/stores`) 하나다.
+  it('배선 — 매장 등록 문이 부른다', () => {
     expect(readFileSync('src/features/seller/api/seller-stores.routes.ts', 'utf8')).toMatch(/await ensureStoreCode\(c\.env\.DB, newSellerId\)/)
-    const reg = readFileSync('src/features/seller/api/seller-registration.routes.ts', 'utf8')
-    expect(reg).toMatch(/await ensureStoreCode\(db, Number\(newSellerId\)\)/)
-    expect(reg).toMatch(/BIZ_CERT_PATH\.test\(fromUserCert\)/)
   })
 })

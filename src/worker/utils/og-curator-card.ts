@@ -56,7 +56,20 @@ const OG_FONT = '"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic","Nanum Got
  * 🔒 **사진이 0장이어도 멀쩡해야 한다** — 스크래퍼가 사진을 못 받아 오는 날은 반드시 온다.
  *   그때는 타일 줄을 아예 빼고 신원 블록을 가운데로 키운다(빈 칸 4개를 보여주지 않는다).
  */
-export function generateCuratorSVG(curator: CuratorForOG, profileUri: string | null, tileUris: string[]): string {
+/**
+ * 🦦 프로필 사진이 없을 때의 얼굴 — 유달이 (2026-10-12 대표 *"없으면 유달이 사진이 뜨고?"*).
+ *
+ * 종전은 **파란 원 + 이름 첫 글자**였다. 라이브 유어샵 17곳 중 **9곳이 프로필 없음**이라
+ * 절반이 그 이니셜 카드로 공유되고 있었다 — 브랜드가 하나도 안 보인다.
+ * 그림은 `public/assets/mascot/udal-loader-v2.webp`(해시 없는 **안정 경로** — 번들 마스코트는
+ * 파일명에 해시가 붙어 워커가 주소를 모른다). 호출부가 `inlineImage(..., {fit:'contain',
+ * background:'#E4EDFD'})` 로 받아 넘긴다 — `cover` 면 몸이 잘리고, `contain` 에 배경을 안 주면
+ * **jpeg 가 투명을 못 담아** 원 안에 검정 상자가 생긴다(실측).
+ */
+export const OG_UDAL_SRC = '/assets/mascot/udal-loader-v2.webp'
+export const OG_AVATAR_TINT = '#E4EDFD'
+
+export function generateCuratorSVG(curator: CuratorForOG, profileUri: string | null, tileUris: string[], udalUri?: string | null): string {
   // 15자 — 52px 한글은 글자당 약 52px 이라 x=248 에서 시작하면 15자에 1,028px.
   //   카드 오른쪽 안전선(1,104)을 안 넘는 최대치다(18자로 두니 실제로 넘쳤다).
   const name = clamp(curator.name || curator.handle, 15)
@@ -70,12 +83,18 @@ export function generateCuratorSVG(curator: CuratorForOG, profileUri: string | n
   // (첫 렌더에서 실제로 그랬다). 높이는 236 고정이고 폭만 장수 따라 달라진다.
   const tileW = tileWidth(tiles.length)
 
-  const avatar = (cx: number, cy: number, r: number) =>
-    profileUri
-      ? `<clipPath id="cprofile"><circle cx="${cx}" cy="${cy}" r="${r}"/></clipPath>
-    <image href="${escapeXml(profileUri)}" x="${cx - r}" y="${cy - r}" width="${r * 2}" height="${r * 2}" clip-path="url(#cprofile)" preserveAspectRatio="xMidYMid slice"/>`
-      : `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#E4EDFD"/>
+  // 얼굴 우선순위: ① 프로필 사진 ② 유달이 ③ 이니셜(둘 다 못 받았을 때의 최후 폴백 — 카드는 나와야 한다)
+  const avatar = (cx: number, cy: number, r: number) => {
+    const face = profileUri || udalUri
+    if (!face) {
+      return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${OG_AVATAR_TINT}"/>
     <text x="${cx}" y="${cy + r * 0.36}" font-size="${Math.round(r * 1.05)}" font-family='${OG_FONT}' font-weight="800" fill="#1C69EF" text-anchor="middle">${initial}</text>`
+    }
+    // 유달이는 이미 원 색 배경으로 받아 왔으므로 원을 먼저 깔아도 이음매가 없다(프로필은 slice 로 꽉 찬다).
+    return `<clipPath id="cprofile"><circle cx="${cx}" cy="${cy}" r="${r}"/></clipPath>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="${OG_AVATAR_TINT}"/>
+    <image href="${escapeXml(face)}" x="${cx - r}" y="${cy - r}" width="${r * 2}" height="${r * 2}" clip-path="url(#cprofile)" preserveAspectRatio="xMidYMid slice"/>`
+  }
 
   // 사진이 있으면 [위 신원 + 아래 타일 줄], 없으면 신원만 가운데로 키운다.
   const body = hasTiles

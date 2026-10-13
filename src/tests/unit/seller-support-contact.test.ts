@@ -16,8 +16,9 @@ import { describe, it, expect } from 'vitest'
 import { readCode, usesSymbol, sliceFrom } from '../helpers/source-text'
 
 const api = readCode('src/features/seller/api/seller-gb.routes.ts')
-const cmp = readCode('src/components/seller/SellerSupportContact.tsx')
-const page = readCode('src/pages/SellerPage.tsx')
+const cmp = readCode('src/pages/user-profile/seller-section/SellerSupportContact.tsx')
+// 🧭 2026-10-12 — 셀러 대시보드 홈을 지웠다. 마이·콘솔의 '전체 도구' 시트 맨 아래가 새 자리다.
+const page = readCode('src/pages/user-profile/seller-section/AllToolsSheet.tsx')
 
 describe('🔴 값을 코드에 박지 않는다', () => {
   it('`platform_settings` 에서 읽는다 — 개인정보이고 바뀐다', () => {
@@ -59,7 +60,8 @@ describe('노출 위치·보호', () => {
     expect(block).toContain('allowUnapproved: true')
   })
 
-  it('셀러 대시보드에서 실제로 렌더된다 — 컴포넌트만 있고 안 붙으면 없는 것과 같다', () => {
+  it('전체 도구 시트에서 실제로 렌더된다 — 컴포넌트만 있고 안 붙으면 없는 것과 같다', () => {
     expect(usesSymbol(page, 'SellerSupportContact')).toBe(true)
+    expect(page).toContain('<SellerSupportContact />')
   })
 })

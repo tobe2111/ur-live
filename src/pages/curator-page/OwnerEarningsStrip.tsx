@@ -33,13 +33,14 @@ export default function OwnerEarningsStrip() {
   //   (잉크 그라디언트 + 초록 전환율 + 연어색 예정액 = 한 줄에 색이 셋). 관리 화면은 볼륨 규율에서는
   //   자유롭지만 **색 규율은 브랜드 전체 규칙**이라 예외가 아니다. 숫자가 주인공이 되게 27px 로 올린다.
   return (
-    <Link to="/creator" className="block max-w-3xl mx-auto rounded-xl bg-surface shadow-lift p-4 active:opacity-90">
+    // 🧭 2026-10-13: `/creator` 와 `/u/me/earnings` 는 같은 화면이다 — 관리 화면 안에서는 유어샵 주소 체계로 간다.
+    <Link to="/u/me/earnings" className="block max-w-3xl mx-auto rounded-xl bg-surface shadow-lift p-4 active:opacity-90">
       <div className="flex items-center">
         <span className="text-[12px] font-semibold text-gray-500 dark:text-gray-400">
           {t('curator.earn30dConfirmed', { defaultValue: '최근 30일 적립' })}
         </span>
         <span className="ml-auto text-[12px] font-semibold text-brand-text">
-          {t('curator.consoleLink', { defaultValue: '콘솔' })} ›
+          {t('curator.earningsLink', { defaultValue: '수익·출금' })} ›
         </span>
       </div>
       <div className="mt-1 text-[28px] font-bold tracking-[-0.035em] tabular-nums text-gray-900 dark:text-white">{formatWon(confirmed)}</div>

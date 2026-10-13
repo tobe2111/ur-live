@@ -10,6 +10,7 @@ import { swallow } from '../utils/swallow'
  */
 import type { Env } from '../types/env'
 import { reportCronFailure } from '../utils/cron-reporter'
+import { sendSensAlimtalk, sensConfigured, type SensEnv } from '../../lib/ncp-sens'
 
 interface FailureRow {
   id: number
@@ -48,22 +49,17 @@ export async function handleRetryAlimtalk(env: Env) {
 
     if (!results || results.length === 0) return
 
+    // 📨 2026-10-12 — 재발송도 네이버 클라우드 SENS. 키가 없으면 재시도 횟수를 태우지 않고 다음으로 미룬다.
+    if (!sensConfigured(env as unknown as Record<string, unknown>)) return
+
     let retried = 0
     let succeeded = 0
     for (const row of results) {
       retried++
       try {
-        const { sendAlimtalk } = await import('../../lib/aligo')
-        const e = env as unknown as Record<string, string | undefined>
-        const result = await sendAlimtalk(
-          { ALIGO_API_KEY: e.ALIGO_API_KEY!, ALIGO_USER_ID: e.ALIGO_USER_ID! },
-          {
-            senderKey: e.ALIGO_SENDER_KEY!,
-            templateCode: row.template_code,
-            to: row.phone,
-            message: row.message,
-          }
-        )
+        // 기록 코드가 `alimtalk:<이름>` 형태면 이름만 — SENS 템플릿 코드 = 우리 이름.
+        const templateCode = row.template_code.replace(/^(alimtalk|pending):/, '')
+        const result = await sendSensAlimtalk(env as unknown as SensEnv, { templateCode, to: row.phone, content: row.message })
         if (result.success) {
           succeeded++
           await env.DB.prepare(`

@@ -33,14 +33,6 @@ export default [
     why: '이용권 등록 폼은 저장 후 /seller/group-buy 로 간다 — 표시가 없으면 마이에서 출발한 사장님이 대시보드 한복판에 남겨진다.',
   },
   {
-    name: '↩️ 귀환 띠가 레이아웃에서 빠진다 (65개가 한꺼번에 길을 잃는다)',
-    file: 'src/components/SellerLayout.tsx',
-    find: '        <BackToMyBar />',
-    replace: '',
-    test: TEST,
-    why: '띠는 레이아웃 한 곳에만 있다 — 빠지면 마이에서 들어간 모든 화면에서 돌아올 길이 사라진다.',
-  },
-  {
     name: '↩️ 귀환 흔적을 localStorage 에 적는다 (어제 것이 오늘 뜬다)',
     file: 'src/lib/seller-return.ts',
     find: "    sessionStorage.setItem(KEY, '1')",
@@ -88,14 +80,9 @@ export default [
     test: TEST,
     why: '쌓아 둔 칸이 남으면 그 뒤 뒤로가기가 한 번 먹힌다 — 사장님은 버튼이 고장난 줄 안다.',
   },
-  {
-    name: '🔑 PIN 412 가 안내 문구로만 끝난다 (사장님이 대시보드를 찾아가야 한다)',
-    file: 'src/pages/user-profile/seller-section/WithdrawSheet.tsx',
-    find: "      if (res?.code === 'PIN_REQUIRED' && onFixPin) { toast.error(BLOCKED.PIN_REQUIRED); onFixPin(); return }",
-    replace: '',
-    test: TEST,
-    why: '돈이 나가는 흐름 한복판에서 화면이 통째로 바뀐다 — 사장님은 출금을 하다 말고 어디론가 보내진다.',
-  },
+  // 🧹 2026-10-12: '출금 PIN 412 가 안내 문구로만 끝난다' 주입을 내렸다 — 출금 신청 시트(`WithdrawSheet`)가
+  //   사라졌다(읽던 잔액이 한 번도 적립되지 않아 늘 0원이었다). PIN 412 를 그 자리에서 푸는 불변식은
+  //   계좌 시트(`BankSheet`)가 그대로 지고 있고, 아래 '계좌 412' 시험이 지킨다.
   {
     name: '🔑 PIN 을 걸기만 하고 확인은 안 한다 (출금이 또 412 를 받는다)',
     file: 'src/pages/user-profile/seller-section/PinSheet.tsx',
@@ -126,7 +113,8 @@ export default [
     //   지키는 것은 그대로다: PIN 을 풀고 나면 **요구한 시트로** 이어져야 한다.
     name: '🔑 풀고 나서 요구한 시트로 안 돌아온다 (흐름이 끊긴다)',
     file: 'src/pages/user-profile/SellerSection.tsx',
-    find: 'onDone={() => setTool(pinReturn)}',
+    // 🔁 2026-10-12: 출금이 사라져 PIN 을 요구하는 쪽은 계좌 하나 — `pinReturn` 을 걷고 계좌로 고정했다.
+    find: "onDone={() => setTool('bank')}",
     replace: '',
     test: TEST,
     why: 'PIN 을 걸고 나면 사장님이 하려던 일(출금·계좌)을 다시 찾아 눌러야 한다 — 그 사이에 왜 눌렀는지 잊는다.',

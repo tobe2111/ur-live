@@ -16,8 +16,9 @@ export default [
     // 🩸 첫 판은 지역 변수만 선언했고 **빨간불이 안 났다** — 가드는 `<OrdersSheet` 렌더와
     //   `seller-section/OrdersSheet'` import 를 보는데 그 주입은 둘 다 안 만들었다.
     //   조건을 재현하지 않는 주입은 아무것도 증명하지 않는다 ⇒ import + 렌더를 함께 심는다.
-    find: "const WithdrawSheet = lazy(() => import('./seller-section/WithdrawSheet'))",
-    replace: "const WithdrawSheet = lazy(() => import('./seller-section/WithdrawSheet'))\nconst OrdersSheet = lazy(() => import('./seller-section/OrdersSheet'))",
+    // 🔁 2026-10-12 재조준: 돈 시트가 `PayoutSheet` 로 바뀌었다(앵커만 — 결함은 그대로).
+    find: "const PayoutSheet = lazy(() => import('./seller-section/PayoutSheet'))",
+    replace: "const PayoutSheet = lazy(() => import('./seller-section/PayoutSheet'))\nconst OrdersSheet = lazy(() => import('./seller-section/OrdersSheet'))",
     test: TEST,
     why: '한 개씩 되살리는 것이 이 구조가 무너지는 방식이다 — 2026-09-26 에 범용 도구 시트를 손수 시트 위에 얹어 일곱 개가 문 두 개로 열렸다. 되돌리려면 revert 한 번이어야 한다.',
   },
@@ -54,9 +55,9 @@ export default [
     why: '주문을 보고 닫았는데 안 본 도구 목록이 뜬다. `pageFrom` 이 죽은 상태가 되므로 선언만 보는 검사는 통과한다.',
   },
   {
-    name: '💸 돈까지 철거한다 (출금의 PIN 되돌아오기를 잃는다)',
+    name: '💸 돈까지 철거한다 (정산을 전체 도구에서 열면 다른 화면이 뜬다)',
     file: SECTION,
-    find: "  '/seller/settlements': 'withdraw',",
+    find: "  '/seller/settlements': 'payout',",
     replace: "",
     test: TEST,
     why: '대시보드 `DealBalanceCard` 는 412 PIN_REQUIRED 를 "프로필에서 설정해주세요" 토스트로 끝낸다 — 돈이 나가는 흐름 한복판에서 사장님이 막힌다. 그래서 돈만 손수 시트로 남겼다.',

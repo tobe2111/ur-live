@@ -79,7 +79,9 @@ describe('홈 섹션 0-RTT — 피드와 섹션이 같은 화면이면 시드도
    */
   it('클라가 첫 render 에서 동기로 읽는다 (useEffect 면 한 프레임 늦다)', () => {
     const s = read(SECTIONS)
-    expect(s).toMatch(/useMemo\(\(\) => readHomeSectionsSeed/)
+    // 📍 2026-10-13: 시드는 **같은 위치 격자로 만든 것만** 쓴다(다른 위치 시드면 전국 인기가 1초 떴다가 바뀐다).
+    //   여전히 첫 render 의 useMemo 안에서 동기로 읽는다 — 그게 이 단언이 지키는 것이다.
+    expect(s).toMatch(/useMemo\(\s*\(\) => \(readHomeSectionsSeedNear\(\) === nearKey \? readHomeSectionsSeed/)
     expect(read(SEED_SSOT)).toContain("getElementById('__SSR_INITIAL_SECTIONS__')")
     expect(s).toContain('initialData: ssrSections')
     // initialData 는 기본이 "신선함" — 보호가 없으면 시드가 낡아도 갱신이 안 된다.

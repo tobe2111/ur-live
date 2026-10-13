@@ -142,3 +142,141 @@
   탐침은 `--proxy-server=$HTTPS_PROXY --ssl-version-max=tls1.2` 로 라이브에 붙었다(`visual-preview.mjs` 머리말의 방법).
 - ⚠️ 아직 못 잰 것(로그인 필요): 카카오 사장님이 알림톡 `/store/go?to=scan` 을 눌러 계산대가 뜨는지 · 에이전시 계정으로 사용처리 시 매장이 맞는지
   · 하단 ➕ '이용권 등록' → 마이 등록 시트. 대표 계정(users.id=3)은 셀러 좌석이 없어 이 경로를 재현할 수 없다.
+
+## 3차 — 버튼도 곧장 (대표 "응응 거치는 단계 없애줘")
+
+- 하단 ➕ '이용권 등록'·'셀러 대시보드'와 유어샵 세 버튼이 `/seller/*` 를 거치지 않는다 — `sellerEntryPath()` 가
+  대시보드 껍데기와 **같은 판정**(`sellerEntryRedirect`, `src/lib/seller-deep-link.ts`)을 누르는 순간 한다.
+  껍데기(`SellerLayout`)도 그 함수로 바꿨다(두 벌 금지). 옛 셀러·`dash=1`·콘솔 로그인 없는 에이전시 좌석은 종전대로 대시보드.
+- ➕ 시트 두 번째 버튼 이름도 도착지대로: `마이 '내 가게'` / `에이전시 대시보드` / `셀러 대시보드`.
+- 잠금 파일 `BottomNav.tsx` — CLAUDE.md 로딩 잠금 audit log 에 기록. linkshopPath·isActivePath 불변.
+- 검증: tsc 0 · 관련 6파일 129건 pass · 주입 4 + 재조준 2 빨간불 · critical-chunks 17 · surface-role-leak 0.
+- **다음 세션 첫 액션(E4, 로그인 필요)**: 사장님 계정으로 ➕ → '이용권 등록' → 주소창이 `/seller/...` 를 한 번도 안 찍고
+  `/user/profile?tool=%2Fseller%2Fmeal-voucher%2Fnew` 로 가서 등록 시트가 뜨는지.
+
+## 4차 — "남은 것 모두" (대표 "모두 진행해줘")
+
+- **오진 정정**: 직전에 *"마이 '이용권' 시트 안 '새 이용권'·'재발행' 이 대시보드 등록 화면을 띄운다"* 고 보고했는데 **틀렸다.**
+  렌더해 보니 시트 안에서 같은 위저드가 껍데기 없이(`aside` 0 · `ur-embed-page`) 뜨고 `?copyFrom` 도 받으며, 등록 뒤엔 위저드가
+  `/seller/group-buy` 로 가서 시트 안 목록이 다시 마운트된다. 고칠 것 없음 → `tool-page-sheet-renders` 에 렌더 시험 + 주입 1건으로 고정.
+  ⇒ **"대시보드 주소" 와 "대시보드 틀" 은 다르다** — 시트 안의 `/seller/*` 는 메모리 라우터 안이라 틀이 없다. 주소만 보고 판단하지 말 것.
+- **옛 계정 실측(라이브 D1, 읽기 전용, 16:20 KST)**: 셀러 13 · 승인 10 · 정지 3 · 도매 0.
+  승인 10 중 마이 길 있음 8(연결 1 · 주인 좌석 1 · 운영자 좌석 6 — 운영자 좌석도 `/api/seller/my-stores` 가 돌려준다),
+  **마이 길 없음 2(id 21·22)** — 2026-09-23 같은 분에 23·24 와 함께 만들어진 빈 가입(상품 0 · 주문 0 · 비밀번호 없음 · 사업자 서류 pending).
+  새 에이전시 콘솔 계정 0(테이블이 아직 안 만들어짐). ⇒ **실제로 대시보드가 필요한 사람은 0명.** 완전 삭제는 대표 판단.
+
+## 5차 — 대시보드 완전 삭제 (대표 *"하단 시트 코드가 정확히 어떤거지? 대시보드는 완전히 지워줘"*)
+
+서비스: 🎟️ 유어딜(사업자 유저 판매 화면) · 에이전시 콘솔. 머니 경로 접촉 없음(요약 API 에 등록증 상태 읽기 1쿼리 추가뿐).
+
+### 하단 ➕ 시트가 무엇이었나
+`BottomNav.tsx` 의 '만들기' 시트 — 2026-06-10 가운데 ➕ 탭이 열던 것(동네 공구 제안 · 이용권 등록 · 셀러 대시보드 · 셀러 로그인 ·
+내 가게 등록). 2026-06-19 5탭 확정으로 `navItems` 에 `__create__` 가 빠져 **열 방법이 없는 죽은 코드**였다. 통째로 지웠다(−245줄).
+
+### 지운 것
+- 단독 틀: `SellerLayout` 은 이제 **본문 래퍼 + 보내기**뿐(머리줄·전체 메뉴·⌘K·카카오 상담 버튼·biz 파비콘·도매 전용 바운스 없음).
+- 화면: `SellerPage`(홈) · `SellerMorePage`(더보기) · `SellerLoginPage` · `SellerForgotPasswordPage` · `SellerResetPasswordPage` ·
+  홈 부품(TodayTicket·TodoRows·WeekSummary·MyVouchersRail·NewSellerSteps·MyStoresPanel·useNewOrderAlert).
+- 틀 부품: SellerGroupTabs · StoreSwitcher · BackToMyBar · AgencySeatBar · SellerApprovalBanner · SellerKakaoLinkBanner · biz-favicon.
+- `dash=1`(마이·콘솔이 못 열면 대시보드로 되돌리던 표시) — 이제 주소를 지우고 **토스트로 이유를 말한다**.
+- 마이·콘솔 '전체 도구'의 "대시보드 전체화면으로" 폴백(`enterSeat(path)` · `goFull` + `dash=1`).
+
+### 옮긴 것(기능 손실 0)
+- 운영자 문의처(`SellerSupportContact`) → 마이·콘솔 '전체 도구' 시트 맨 아래.
+- 심사 상태 기록(`SELLER_STATUS_KEY` — 유어애즈 메뉴 게이트) → 마이 판매 구역(`/my-stores/summary` 의 매장 status).
+- 등록증만 반려 안내 → 마이 판매 구역 `storeStatusNote`(요약 API 에 `cert_status` 추가 — 별도 쿼리, 목록 쿼리에 섞지 않음).
+
+### 주소 규칙(`sellerEntryRedirect` 하나)
+- 에이전시 직원(좌석 토큰이 에이전시 좌석 · 또는 콘솔 로그인만 있고 소비자 계정 없음) → `/agency?tool=…`
+  (콘솔 로그인이 없으면 콘솔이 `returnUrl` 에 `?tool=` 을 실어 로그인 뒤 이어 연다).
+- 그 밖 모두(사장님 · 비로그인 · 옛 계정) → `/user/profile?tool=…`. `/seller`·`/seller/dashboard`·`/seller/more` → 첫 화면.
+- 시트 안에서 그 셋으로 가면 시트가 닫힌다(`ToolPageSheet` `CloseOnHome`).
+- `/seller/login`·`forgot-password`·`reset-password` → `/login?returnUrl=…`(직원은 `/agency/login`).
+- 그 자리에서 렌더: `/seller/youtube/callback`(OAuth 복귀) 하나.
+
+### 검증
+- tsc 0 · 전체 유닛 943파일 12,183건 중 실패 3 → 원인 수리 후 재실행 통과(아이콘 목록 1 · 앵커 1).
+- 주입 14건 전부 빨간불 · 낡은 앵커 48건 정리(지운 화면의 주입은 삭제, 살아 있는 불변식은 새 매니페스트로 재조준).
+
+### 머지
+- PR #1735 머지 `90290546a`(2026-10-12 20:29 KST, 대표 "초록뜨면 머지해" → 자동 머지). Notion 로그 기록함.
+
+### 다음 세션의 첫 액션
+1. 배포 뒤 E4: ⓐ `urdeal.kr/seller` → 비로그인이면 카카오 로그인 → 마이 ⓑ `/seller/orders?status=PAID` → 마이 시트(필터 유지)
+   ⓒ `/seller/login` → `/login?returnUrl=%2Fuser%2Fprofile` ⓓ 하단 탭 5개 그대로.
+
+### 이번에 틀렸던 판단
+- 시험 정리 스크립트가 지운 파일을 읽던 **지역 변수 이름**(`page`·`pages`·`src`)을 '죽은 식별자'로 잡아 **살아 있는 시험까지** 지웠다
+  (`src/pages/...` 경로 문자열 안의 `pages` 에 걸렸다). 되돌려 손으로 다시 했다. ⇒ 이름 매칭으로 시험을 지울 때는 **경로 문자 경계**와
+  **블록 지역 변수**를 빼고, diff 를 꼭 읽을 것.
+- 가이드 시드를 고치며 템플릿 문자열 끝 백틱을 두 번 잘랐다(tsc 가 잡았다).
+- **지운 화면의 시험을 정리하면서 주입이 지키던 단언까지 함께 지웠다** → CI 에서 주입 5건이 "살아남음"(헛도는 가드)으로 떴다.
+  주입은 남았는데 그걸 잡던 단언이 사라진 것. ⇒ 시험을 지울 때는 `scripts/mutations/*` 에서 그 파일을 가리키는 주입을
+  먼저 찾아, 불변식이 살아 있으면 단언을 **옮기고**, 화면과 함께 죽었으면 주입도 지울 것. 아이콘 래칫 165 → 158 도 그때 조였다.
+- 로컬 주입 실행을 멈추려고 `pkill -f check-guard-mutations` 를 썼더니 **내 셸 자신**이 그 문자열에 걸려 죽었다(exit 144).
+  ⇒ `pgrep` 으로 pid 를 보고 `kill <pid>`, 그다음 `git checkout -- src/ scripts/ .gitignore public/` 로 주입분 복원.
+
+### E4 (배포 뒤 라이브, 2026-10-12 20:5x KST · 비로그인 아이폰)
+- `/seller` · `/seller/dashboard` · `/seller/login` → `/login?returnUrl=/user/profile` ✅
+- `/seller/orders?status=PAID` → `/login?returnUrl=/user/profile?tool=/seller/orders` — **`?status=PAID` 가 빠진다.**
+  원인: `RouteGuards.tsx` 의 셀러 보호 라우트가 `/seller/login` 으로 보낼 때 `state.from` 에 `location.pathname` 만 싣는다(검색어 없음).
+  로그인돼 있고 좌석이 살아 있으면 `SellerLayout` 이 쿼리를 그대로 잇는다 — 비로그인·좌석 만료 때만 필터가 빠진다(시트는 주문으로 열린다).
+  → 대표 승인("허가 — 그 두 줄만") 받아 같은 PR(#1738)에서 수리 + 시험 + 주입. 배포 뒤 같은 주소로 다시 재면 `tool=/seller/orders?status=PAID` 여야 한다.
+
+### 남은 것
+- `/api/seller/surface` 는 클라 소비자가 0 이 됐다(서버 엔드포인트만 남음 — 해는 없다, 정리는 별건).
+- `bottomNav.*` 시트 문구 키들이 로케일에 남아 있다(쓰는 곳 0).
+
+### #1738 머지 + E4 (2026-10-12 KST)
+- PR #1738 머지 `e9e52145` — 셀러 보호 라우트가 로그인으로 보낼 때 검색어도 싣는다(`state.from` 두 줄, 대표 "허가 — 그 두 줄만").
+- E4 ✅ 비로그인 아이폰: `/seller/orders?status=PAID` → `/login?returnUrl=/user/profile?tool=/seller/orders?status=PAID` ·
+  `/seller/products?tab=active` 도 같은 모양. ⚠️ 못 잰 것: 실제 사장님 계정으로 로그인한 뒤 시트가 그 필터로 열리는지(실계정 필요).
+
+### 정리 PR — 아무도 안 부르는 화면·문구 (대표 "응 진행해")
+- 지운 파일(전부 import 0 — 실측): `SellerRegisterSupplierPage`(옛 가입 폼) · 그 부품 `seller-register/{StoreSection,AddressPickerField,PickedStoreCard,ReviewSheet}` ·
+  `components/terms/TermsConsentBox` · `SellerConsignmentPage` · `SellerYoutubeGrowthPage` · `SellerYoutubeGrowthSuccessPage`.
+  라우트는 그대로(`/seller/register/supplier` → `/store/new`, consignment·youtube-growth → 리다이렉트). API·결제 경로 무접촉.
+- 로케일 6개 언어에서 쓰는 곳 0 인 키 136개 삭제(지운 화면 전용 99 + 대시보드 삭제로 남은 37). 동적 키(`t(\`seller.${…}\`)`)는 재고 안전 확인.
+- 셀러 가이드 '재구매율 높이기' 의 없는 주소 `/seller/customers` → 마이 오늘 매출 → 매출 분석 → 고객 분석. `GUIDE_SEED_VERSION` 46 → 47.
+- 시험은 지킬 코드를 따라 줄였다: 화면 단언은 빼고 서버·`RegisterFields`·업로드 부품 단언은 남김. 주입 25건 삭제(대상 파일 소멸) · 존재를 단언하던 2건 재조준.
+
+### 남은 것(별건)
+- `POST /api/seller/register-from-user` — 클라 호출 0(옛 가입 폼이 유일한 소비자였다). 서버 라우트 정리는 별건.
+- `BusinessCertUpload` 의 `onRead`(등록증 사진 자동 채움) — 넘기는 곳 0. 서버 OCR 은 opt-in 이라 비용 0.
+- `RegisterFields` 의 `validateSignup`·`filledRequired`·`formatPhone` — 시험만 쓴다(`formatBusinessNumber` 는 매장 등록 모달이 쓴다).
+
+### #1742 머지 + 2차 정리 PR — 안 쓰는 서버 기능·조각 (대표 "머지 해주고 1,2번도 같이 해줘")
+- PR #1742 머지 `196b91a1`(CI 초록 확인 후).
+- ① 지워진 검사 3개를 부르던 곳: **다른 세션이 main 에서 이미 수리**(`guard-registry-r3-2026-10-12.test.ts` + 훅 설치기·CLAUDE.md 줄 정리). 이 세션은 로컬 훅만 재설치.
+- ② 지운 것(전부 호출 0 실측):
+  - `POST /api/seller/register-from-user` + 그 문만 쓰던 `seller-signup-meta.ts`(채널·가게 도장) + `shared/store-place.ts`(카카오 업종 매핑)
+  - `GET /api/seller/surface`(읽던 대시보드 틀·승인 배너가 이미 삭제됨 — `computeWholesaleOnly` 는 로그인 응답이 계속 쓴다)
+  - 업로드의 등록증 자동 읽기(`ocr=1` 분기 + `BusinessCertUpload.onRead` + `shared/ocr-prefill.ts`). **어드민 OCR(`admin-seller-ocr`)은 그대로.**
+  - `RegisterFields` 의 `validateSignup`·`filledRequired`·`formatPhone`·`SignupForm` 타입.
+- 시험: 지킬 코드가 사라진 시험 3파일 삭제(OCR·가게고르기·…) + 7파일 축소/재조준(경로 수 5→4, seller routes 38→37 등). 주입 11건 삭제(대상 소멸), 주입 파일 2개 삭제.
+- 검증: tsc 0 · 관련 유닛 통과 · 낡은 앵커 0 · `--changed` 주입 209건 중 203 빨간불 확인(나머지 6건은 이 인계 미갱신 탓 — 갱신 후 해소).
+- 🩸 실수: 주입 러너를 `--help` 로 부르면 **전수 실행이 시작된다**(도움말 플래그가 없다). 백그라운드로 넘어가 파일 세 개에 주입을 남겼다 — 내 작업은 stage 돼 있어 `git checkout -- <파일>` 로 복구. 그리고 `pkill -f <패턴>` 은 **자기 셸까지 죽인다**(exit 144) — PID 로 죽일 것.
+
+### 남은 것(별건)
+- `POST /api/seller/register`(이메일·비번 셀러 가입)도 클라 호출 0 으로 보인다(가입 문은 `/store/new`). 확인 후 정리 후보.
+- 코드 밖(대표 판단): `role='wholesale'` 어드민 4개 · `utongstart.com` · `ur-wholesale` Pages 프로젝트.
+
+### #1745 머지 + 3차 정리 — 남은 것 전부 (대표 "남은 것도 다 해줘")
+- PR #1745 머지 `1d3d20ef` — 배포 후 E4: `/api/seller/surface`·`/register-from-user` 404, `/`·`/user/profile`·`/store/new`·`/seller/orders` 200.
+- ① `POST /api/seller/register`(이메일·비번 가입) 삭제 — 클라 호출 0. 함께 `api.ts` 공개 경로 목록·워커 봇 가드 한 줄 제거.
+  그 INSERT 에 걸려 있던 등록증 저장 단언 2건·주입 2건은 지킬 코드가 사라져 뺐다(상태 응답의 boolean 단언은 유지).
+- ② 도매 어드민 계정 — 활성은 **2개뿐**이었다(정지원_도매 · 정종문, 나머지 둘은 이미 삭제 상태). 대표 확인("둘 다 삭제") 후
+  `DELETE /api/admin/admins/{9,8}` = **소프트 삭제**(세션 즉시 무효, 행·감사로그 보존). 남은 어드민: super_admin 2(id 5·10).
+- ③ `ur-wholesale` — CF 읽기 실측: 바인딩 `DB`·`CACHE_KV`·`RATE_LIMIT_KV`·`SESSION_KV`, 도메인 `*.pages.dev` 뿐, **매 push 마다 소비자 앱 사본이 배포**되고 있었다.
+  → `deploy-wholesale.yml` 이 이제 `deploy/ur-wholesale-tombstone/_worker.js`(모든 요청 410 + noindex)만 올린다(paths 필터 — 묘비가 바뀔 때만).
+  🩸 그 파일이 `.gitignore` 의 `*.js` 에 **조용히 무시**되고 있었다 — 그대로 푸시했으면 CI 에서 파일 없음으로 깨졌다. 예외 줄 추가.
+- ④ `prod-smoke.yml` — 도매 사본을 두드려 **철거 이후 매 회차 실패**(상시 빨간불)하던 것을 "철거 표면 `/wholesale`·`/supplier` = 410" 단언으로 교체.
+- 🩸 PR 봇 댓글로 드러난 것: ur-wholesale 은 **GitHub 에 직접 연결**돼 있어 Cloudflare 가 main push 마다(모든 브랜치는 미리보기로)
+  `npm run build` 로 앱 전체를 올린다(CF 실측: production `github:push main` 배포가 매번 있음) — 워크플로 묘비만으로는 다음 main push 에 덮인다.
+  → `scripts/pages-tombstone-gate.mjs` 를 `build-prepare.mjs` 끝에서 부른다: Pages 빌더(`CF_PAGES=1`)이고 주소가 `*.ur-wholesale.pages.dev`
+  이거나 `WHOLESALE_BUNDLE=1` 일 때만 `dist/client` 를 묘비 하나로 교체(ur-live·Actions·로컬 무영향). `package.json` 은 안 건드렸다(전수 주입 80분 회피).
+- 가드: `wholesale-tombstone-2026-10-12.test.ts` 6건 + 주입 6건 빨간불 확인.
+
+### 남은 것 — 대표만 할 수 있는 것(코드 밖)
+- Cloudflare 대시보드에서 `ur-wholesale` Pages 프로젝트 삭제 → 그 뒤 `deploy-wholesale.yml`·`deploy/ur-wholesale-tombstone/` 를 지우는 PR.
+- `utongstart.com` 도메인 갱신 여부(레지스트라). 코드의 `WHOLESALE_HOSTS` 는 공구 서비스 몰 조회와 한 덩어리라 남겨 둔다.

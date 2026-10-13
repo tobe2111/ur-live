@@ -116,8 +116,9 @@ export default [
   {
     name: '📱 띠에서도 줄 밖 안내문을 그린다 (띠가 두 줄이 된다)',
     file: 'src/pages/user-profile/MyStats.tsx',
-    find: '  if (inline) return cells',
-    replace: '  if (inline && false) return cells',
+    // 🔁 2026-10-12 재조준: 띠 모드가 칸 + 환급 버튼을 함께 돌려준다(결함은 그대로 — 일찍 안 돌아간다).
+    find: '  if (inline) return (',
+    replace: '  if (inline && false) return (',
     test: TEST,
     why: '한 줄 띠 안에 `<p>` 가 들어가면 띠가 아니게 되고, 오른쪽 끝 정렬이 통째로 무너진다',
   },

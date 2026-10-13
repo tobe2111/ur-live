@@ -27,9 +27,8 @@ import { checkLockout, recordFailure, clearFailures } from '@/worker/utils/accou
 import { swallow } from '@/worker/utils/swallow';
 import { startDashboardSession, isDashboardSessionCurrent, deriveDashboardSeat } from '@/worker/utils/dashboard-session';
 import { filterAliveRefreshRows, rotationGraceExpiryIso } from '@/worker/utils/refresh-rotation';
-import { requireSeller } from '@/worker/middleware/auth';
 import { computeWholesaleOnly } from '@/features/supply/api/wholesale-helpers';
-import { isSeatShapedToken } from '@/worker/utils/store-seat-guard';
+import { isSeatShapedToken } from '@/worker/utils/store-seat-guard'; import { transactionalMailReady } from '@/lib/ncp-sens-mail'; // 📮 메일 수단 판정
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
@@ -395,41 +394,8 @@ sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10,
   }
 });
 
-/**
- * GET /api/seller/surface — 🏭 2026-06-30 [서비스 분리] 인증된 셀러의 홈 표면(셀러 대시보드 ↔ 도매몰) 권위 판정.
- *
- *   `SellerLayout` 이 마운트 시 호출 → `wholesale_only === true` 일 때만 `/wholesale` 로 보낸다.
- *   기본은 '셀러 대시보드 노출'(절대 lock-out 금지) — 이 응답이 false/실패면 클라는 대시보드 유지.
- *   판정 SSOT 는 `computeWholesaleOnly`(겸업 계정은 항상 false). 토큰의 seller id 로만 자기 자신 조회 → IDOR 무관.
- */
-sellerRoutes.get('/surface', requireSeller(), async (c) => {
-  try {
-    const user = c.get('user' as never) as { id?: string | number; seller_id?: string | number } | undefined
-    const sellerId = Number(user?.seller_id ?? user?.id)
-    if (!Number.isFinite(sellerId) || sellerId <= 0) {
-      return c.json({ success: true, wholesale_only: false })
-    }
-    const wholesaleOnly = await computeWholesaleOnly(c.env.DB, sellerId).catch(() => false)
-    // 🥕 2026-09-16 (대표 — *"반려는 되더라도 쓸 수는 있게"*): 대시보드가 대기·반려 상태에서도 열리므로
-    //   **화면이 그 상태를 말해야 한다**. 이 응답이 `SellerApprovalBanner` 의 유일한 근거다.
-    //   ⚠️ 토큰의 `status` 를 쓰지 않는다(7일 스냅샷) · 등록증 **URL 은 안 내보낸다**(도착 여부·심사 결과만).
-    const row = await c.env.DB.prepare(
-      'SELECT status, reject_reason, business_registration_image_url, business_registration_status, business_registration_reject_reason FROM sellers WHERE id = ? LIMIT 1',
-    ).bind(sellerId).first<{ status: string; reject_reason: string | null; business_registration_image_url: string | null; business_registration_status: string | null; business_registration_reject_reason: string | null }>()
-      .catch(() => null)
-    return c.json({
-      success: true,
-      wholesale_only: wholesaleOnly,
-      status: row?.status ?? null,
-      reject_reason: row?.reject_reason ?? null,
-      cert_status: row?.business_registration_status ?? null, cert_reject_reason: row?.business_registration_reject_reason ?? null, // 🪪 2026-10-10 등록증만 반려된 경우를 배너가 구분한다
-      has_business_cert: !!(await import('../../../worker/utils/seller-cert-url').then(m => m.resolveSellerCertUrl(c.env.DB, sellerId, row?.business_registration_image_url)).catch(() => row?.business_registration_image_url || null)),
-    })
-  } catch {
-    // fail-open: 판정 실패해도 셀러 대시보드 유지(lock-out 금지).
-    return c.json({ success: true, wholesale_only: false })
-  }
-});
+// 🪦 2026-10-12: GET /api/seller/surface 삭제 — 그 응답을 읽던 대시보드 틀(SellerLayout 의 도매 판정·
+//   SellerApprovalBanner)이 지워져 부르는 곳이 0이었다. 판정 SSOT computeWholesaleOnly 는 로그인 응답이 계속 쓴다.
 
 /**
  * POST /api/seller/refresh
@@ -710,14 +676,14 @@ sellerRoutes.post('/forgot-password', cors(), rateLimit({ action: 'seller_forgot
       // 🛡️ token URL-encode (URL 특수문자 방어) + baseUrl 검증
       const resetUrl = `${baseUrl.replace(/\/+$/, '')}/seller/reset-password?token=${encodeURIComponent(token)}`;
 
-      if (RESEND_API_KEY) {
+      if (transactionalMailReady(c.env)) { // 📮 Resend 또는 SENS 메일(2026-10-12)
         await sendEmail(
           {
             to: seller.email,
             subject: '[유어딜] 셀러 비밀번호 재설정 안내',
             html: getPasswordResetEmailHTML(resetUrl),
           },
-          RESEND_API_KEY,
+          RESEND_API_KEY || '',
           RESEND_FROM
         ).catch((e) => console.error('[Seller ForgotPassword] Email send failed:', e));
       } else {

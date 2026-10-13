@@ -17,6 +17,7 @@
  *          POST /api/admin/fcfs/:productId/select — 선정(winners[] 또는 count 랜덤) + 알림
  */
 import { Hono } from 'hono'
+import { toPublicProductRows } from '@/shared/constants/demo-products'
 import type { Env } from '@/worker/types/env'
 import { requireAuth, requireAdmin } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
@@ -155,7 +156,9 @@ publicApp.get('/active', async (c) => {
       const real = countById.get(p.id as number) || 0
       out.push({ ...p, fcfs: { ...cfg, prelaunch: (byId.get(p.id as number)?.prelaunch === '1'), appliedDisplay: cfg.appliedSeed + real, realApplied: real } })
     }
-    return c.json({ success: true, data: out })
+    // 🙈 2026-10-12 (대표 "데모인 것을 티내지마"): `is_demo` alias 는 **정렬에만** 쓰고
+    //   응답에서는 지운다(`toPublicProductRows` — 데모 SSOT 와 같은 파일).
+    return c.json({ success: true, data: toPublicProductRows(out) })
   } catch (err) { return safeError(c, err, '선착순 목록 조회 실패', '[fcfs]') }
 })
 
@@ -351,7 +354,7 @@ adminApp.post('/:productId/select', async (c) => {
 
     // 🔔 2026-07-05 알림톡: 체험단 선정/승계 안내 — 앱을 안 여는 초기 유저 도달 채널 (waitUntil·fail-soft,
     //   sendSystemAlimtalk 이 dedup(phone+template 1h)·일일 캡·실패 재시도 큐 담당).
-    //   ⚠️ tpl_code fcfs_selected/fcfs_replacement 는 Aligo 콘솔 등록·승인 필요 — 아래 message 는 승인
+    //   ⚠️ tpl_code fcfs_selected/fcfs_replacement 는 SENS 콘솔 등록·승인(+어드민 승인 목록) 필요 — 아래 message 는 승인
     //   템플릿 본문과 일치시켜 유지할 것 ("추첨" 대신 "선정" 표기, alimtalk-templates.ts 레지스트리 등재).
     {
       const _alimBg = async () => {

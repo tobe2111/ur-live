@@ -332,7 +332,8 @@ describe('⑥ 배선 — 워커가 이 모듈을 홈에서만 쓴다', () => {
   })
 
   it('🔴 실패하면 종전 로더로 되돌아간다', () => {
-    expect(worker).toContain('buildHomeFirstScreen(ssrExtraPayload, urdealLoaderHtml)')
+    // 📍 2026-10-13: 셋째 인자(위치 라벨)가 붙었다 — 폴백 계약(실패 → 종전 로더)은 그대로.
+    expect(worker).toContain('buildHomeFirstScreen(ssrExtraPayload, urdealLoaderHtml, ')
     expect(worker).toContain('homeFirst || urdealLoaderHtml')
   })
 

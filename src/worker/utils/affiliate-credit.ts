@@ -286,7 +286,7 @@ export async function creditAffiliateForOrder(
 
     // 📣 실시간 판매 알림톡(크리에이터 잔존 장치 — 2026-07-21 대표): "내 링크가 돈이 됐다"는 즉각 피드백이
     //   두 번째 게시를 만든다(쿠팡파트너스 리텐션 핵심). ⚠️ 머니 무접촉 — 위 적립(멱등 changes>0 통과분)
-    //   뒤에 알림만 additive. 게이트 기본 OFF: 템플릿 'affiliate_sale_credited' 를 카카오/Aligo 콘솔에
+    //   뒤에 알림만 additive. 게이트 기본 OFF: 템플릿 'affiliate_sale_credited' 를 카카오/SENS 콘솔에
     //   등록·승인한 뒤 env AFFILIATE_SALE_ALIMTALK_ENABLED=true. sendSystemAlimtalk 은 키/템플릿 미비 시
     //   fail-soft(skip) + SHA256 dedup·1h rate-limit·일일캡 내장(인앱/웹푸시는 위에서 이미 발송됨).
     if ((env as { AFFILIATE_SALE_ALIMTALK_ENABLED?: string })?.AFFILIATE_SALE_ALIMTALK_ENABLED === 'true') {

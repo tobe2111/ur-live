@@ -92,15 +92,31 @@ describe('카드 내용 — 몰 이름·사진·공구가·마감일', () => {
 })
 
 describe('이미지·canonical', () => {
+  // 🔀 2026-10-12 재조준 — 지키려던 것(원본이 **절대 URL 로 해석된다**)은 그대로이고,
+  //   그 결과가 이제 1200×630 카드로 감싸여 나간다(`og-share-image.ts`). 값 비교를 "카드가
+  //   그 절대 URL 을 담는다"로 옮겼다 — **느슨해진 게 아니다**: 상대 경로가 origin 접두 없이
+  //   새면 카드 URL 안의 소스가 `/a.png` 로 남아 리사이저가 **못 가져온다**(아래 단언이 잡는다).
   it('절대 URL 은 그대로, 상대는 origin 접두', () => {
-    expect(buildMallMeta(base)!.ogImage).toBe('https://cdn/x.jpg')
-    expect(buildMallMeta({ ...base, product: { ...product, image_url: '/a.png' } })!.ogImage)
-      .toBe('https://urdeal.kr/a.png')
+    expect(buildMallMeta(base)!.ogImage).toContain('https://cdn/x.jpg')
+    const rel = buildMallMeta({ ...base, product: { ...product, image_url: '/a.png' } })!.ogImage
+    expect(rel).toContain('https://urdeal.kr/a.png')
+    expect(rel, '상대 경로가 그대로 샜다 — 리사이저가 원본을 못 가져온다').not.toMatch(/\/\/a\.png$/)
   })
 
-  it('이미지가 없으면 기본 OG — 깨진 카드보다 낫다', () => {
-    expect(buildMallMeta({ ...base, product: { ...product, image_url: '' } })!.ogImage)
-      .toContain('/og-image.svg')
+  it('카드는 1200×630 — 소셜 렌더러가 기대하는 비율', () => {
+    // 🖼️ 원본 비율을 그대로 보내면 잘리거나 작은 카드로 떨어진다(2026-10-12 실측).
+    const u = buildMallMeta(base)!.ogImage
+    expect(u).toContain('/cdn-cgi/image/')
+    expect(u).toContain('width=1200')
+    expect(u).toContain('height=630')
+  })
+
+  it('이미지가 없으면 기본 OG — 깨진 카드보다 낫다 (라스터)', () => {
+    // 🔴 2026-10-12: 폴백이 `og-image.svg` 였는데 **카카오·페이스북 스크래퍼는 SVG 를 안 읽는다**
+    //   → 사진 없는 몰 상품은 카드가 **통째로 빈 채** 나갔다. 라스터(`.png`)로 바꿨다.
+    const u = buildMallMeta({ ...base, product: { ...product, image_url: '' } })!.ogImage
+    expect(u).toContain('/og-image.png')
+    expect(u, 'SVG 로 되돌아갔다 — 스크래퍼가 못 읽는다').not.toContain('og-image.svg')
   })
 
   it('canonical 은 요청 경로 그대로', () => {

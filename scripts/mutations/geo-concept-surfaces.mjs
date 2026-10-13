@@ -81,16 +81,22 @@ export default [
   {
     name: '🧭 지역 요약이 시드 값을 탈출 없이 마크업에 넣는다',
     file: NOSCRIPT,
-    find: '${rows.map(r => `<li>${esc(r)}</li>`).join(\'\')}',
-    replace: '${rows.map(r => `<li>${r}</li>`).join(\'\')}',
+    // 🔗 2026-10-12 재조준 — 행 조립이 `liOf` 로 옮겨갔다(링크가 생겼다). 지키려던 것은 그대로다:
+    //   **시드 값이 탈출 없이 마크업에 들어가지 않는다.** 여기선 *링크 안쪽 글자*를 본다
+    //   (주소 쪽은 `crawler-internal-links-2026-10-12.mjs`, 링크 없는 분기는
+    //   `list-surface-noscript.mjs` 가 맡는다 — 세 경로가 다르다).
+    find: '${esc(r.text)}</a>',
+    replace: '${r.text}</a>',
     test: TEST,
     why: '가게명·메뉴명은 셀러가 입력한 값이다 — 상수가 아니라 **시드 값**이라 탈출이 실제로 일한다.',
   },
   {
     name: '🧭 지역 ItemList 가 전국 항목을 그 지역이라고 낸다',
     file: LISTLD,
-    find: '        .filter(p => !regionRef || addressInRegion(',
-    replace: '        .filter(p => true || !regionRef || addressInRegion(',
+    // 🧾 2026-10-12 재조준: 그 필터가 `keepItem`(표면별 술어 추가) 안으로 옮겨갔다.
+    //   결함은 그대로 — **지역 필터를 늘 통과시킨다**. 앵커만 새 자리로.
+    find: '      return addressInRegion(',
+    replace: '      return true || addressInRegion(',
     test: TEST,
     why: 'ItemList 는 "이 목록의 항목" 선언이다 — 다른 지역을 담으면 구조화 데이터가 페이지와 어긋난다.',
   },

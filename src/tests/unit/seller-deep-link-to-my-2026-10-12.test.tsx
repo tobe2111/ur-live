@@ -4,10 +4,9 @@
  *
  * 지키는 것:
  *   ① 어디로 보내나 — 하위 주소는 `?tool=` 로, 홈·더보기는 마이 첫 화면으로, 쿼리는 그대로
- *   ② 보내면 안 되는 길 — `dash=1`(무한 왕복 방지) · 마이에서 일부러 전체화면으로 보낸 경우 · 전용 길이 있는 화면 · OAuth 복귀
- *   ③ `?tool=` 은 셀러 주소만 받는다(되돌릴 때 `location` 에 들어가므로 열린 리다이렉트 차단)
- *   ④ 마이가 못 열면 대시보드로 되돌리고, **되돌린 주소는 다시 보내지 않는다**(왕복 0)
- *   ⑤ 좌석이 안 맞으면 토큰을 발급하지 않고 되돌린다 / 맞으면 시트를 열고 주소에서 지운다
+ *   ② 대시보드에 남는 길은 없다(2026-10-12 삭제) — 전용 길은 그리로, OAuth 복귀 하나만 그 자리에서 틀 없이
+ *   ③ `?tool=` 은 셀러 주소만 받는다(시트가 셀러 밖을 가리키면 `location` 에 들어가므로 열린 리다이렉트 차단)
+ *   ⑤ 좌석이 안 맞으면 토큰을 발급하지 않고 **말한다**(되돌릴 대시보드가 없다) / 맞으면 시트를 열고 주소에서 지운다
  *   ⑥ 배선 — 껍데기·마이·페이지 세 곳
  *
  * 이 시험이 **못 보는 것**: 실제 브라우저 이동과 시트가 그 화면을 그리는 모습(라이브 E4 — 알림톡 링크를 눌러 볼 것) ·
@@ -16,18 +15,22 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { renderHook } from '@testing-library/react'
-import {
-  DASH_PARAM, STAY_ON_DASHBOARD, dashboardFallback, myRedirectFor, readToolParam,
-} from '@/lib/seller-deep-link'
+import { RENDER_BARE, readToolParam, sellerEntryRedirect } from '@/lib/seller-deep-link'
+import { toast } from '@/hooks/useToast'
 import { FULL_SCREEN_ONLY } from '@/pages/user-profile/seller-section/tool-pages'
 import { titleForPath } from '@/pages/user-profile/seller-section/ToolPageSheet'
 import { useToolDeepLink, useToolDeepLinkFallback } from '@/pages/user-profile/seller-section/useToolDeepLink'
 import { stripComments } from '../helpers/source-text'
 
+vi.mock('@/hooks/useToast', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
+/** 카카오 사장님 — 마이가 있고 에이전시 좌석이 아니다. */
+const asOwner = () => { localStorage.clear(); sessionStorage.clear(); localStorage.setItem('user_id', '3') }
+const myRedirectFor = (p: string, q: string) => sellerEntryRedirect(p, q)
+
 const toolOf = (url: string | null) => (url ? new URL(url, 'https://x').searchParams.get('tool') : null)
 
 describe('① 어디로 보내나', () => {
-  beforeEach(() => sessionStorage.clear())
+  beforeEach(asOwner)
 
   it('하위 주소는 마이 + ?tool=<원래 주소>', () => {
     const url = myRedirectFor('/seller/orders', '')
@@ -53,31 +56,32 @@ describe('① 어디로 보내나', () => {
   })
 })
 
-describe('② 보내면 안 되는 길', () => {
-  beforeEach(() => sessionStorage.clear())
+describe('② 대시보드에 남는 길은 없다 (2026-10-12 삭제)', () => {
+  beforeEach(asOwner)
 
-  it('🔴 dash=1 은 다시 보내지 않는다 — 무한 왕복 방지', () => {
-    expect(myRedirectFor('/seller/orders', `?${DASH_PARAM}=1`)).toBeNull()
-  })
-
-  it('마이에서 일부러 전체화면으로 보낸 경우(?from=my · 세션 표시)는 남는다', () => {
-    expect(myRedirectFor('/seller/group-buy', '?from=my')).toBeNull()
+  it('🔴 옛 되돌림 표시(dash=1)·마이 표시(from=my)가 붙어 와도 보낸다 — 남을 대시보드가 없다', () => {
+    expect(myRedirectFor('/seller/orders', '?dash=1')?.startsWith('/user/profile?tool=')).toBe(true)
+    expect(myRedirectFor('/seller/group-buy', '?from=my')?.startsWith('/user/profile?tool=')).toBe(true)
     sessionStorage.setItem('ur_seller_from_my', '1')
-    expect(myRedirectFor('/seller/group-buy', '')).toBeNull()
+    expect(myRedirectFor('/seller/group-buy', '')?.startsWith('/user/profile?tool=')).toBe(true)
   })
 
-  // 🚪 2026-10-12 재조준 — 종전엔 *"전용 길이 있는 화면은 대시보드에 남는다"* 였다. 그 결과 알림톡 '사용처리' 링크·
-  //   하단 ➕ '이용권 등록' 이 얇은 대시보드 틀로 떨어졌다. 이제 **전용 길로 보낸다** — 대시보드에 남는 일이 없다.
-  it('시트로 못 여는 화면은 대시보드에 남지 않고 전용 길로 간다 (계산대 → /store/scan, 등록 → ?tool=)', () => {
+  it('🔴 로그인 안 한 사람·마이가 없는 옛 계정도 마이로 — 마이가 카카오 로그인으로 받는다', () => {
+    localStorage.clear()
+    expect(myRedirectFor('/seller/orders', '')).toBe('/user/profile?tool=%2Fseller%2Forders')
+  })
+
+  it('시트로 못 여는 화면은 전용 길로 간다 (계산대 → /store/scan, 등록 → ?tool=)', () => {
     for (const p of Object.keys(FULL_SCREEN_ONLY)) {
-      expect(STAY_ON_DASHBOARD.has(p), `${p} 가 대시보드에 남는다`).toBe(false)
+      expect(RENDER_BARE.has(p), `${p} 가 그 자리에 남는다`).toBe(false)
       expect(myRedirectFor(p, '')).not.toBeNull()
     }
     expect(myRedirectFor('/seller/scan', '')).toBe('/store/scan')
     expect(myRedirectFor('/seller/meal-voucher/new', '')).toBe('/user/profile?tool=%2Fseller%2Fmeal-voucher%2Fnew')
   })
 
-  it('외부 OAuth 복귀 주소는 남는다(code·state 를 그 화면이 직접 읽는다)', () => {
+  it('외부 OAuth 복귀 주소 하나만 그 자리에서 렌더한다(code·state 를 그 화면이 직접 읽는다)', () => {
+    expect([...RENDER_BARE]).toEqual(['/seller/youtube/callback'])
     expect(myRedirectFor('/seller/youtube/callback', '?code=abc&state=x')).toBeNull()
   })
 })
@@ -96,15 +100,6 @@ describe('③ ?tool= 은 셀러 주소만', () => {
   })
 })
 
-describe('④ 되돌린 주소는 다시 보내지 않는다 (왕복 0)', () => {
-  beforeEach(() => sessionStorage.clear())
-  it.each(['/seller/orders', '/seller/orders?status=PAID', '/seller/products/3/edit#top'])('%s', (p) => {
-    const back = dashboardFallback(p)
-    const [path, rest] = back.split('?')
-    expect(myRedirectFor(path.split('#')[0], rest ? `?${rest.split('#')[0]}` : '')).toBeNull()
-  })
-})
-
 describe('⑤ 마이가 시트를 여는 규칙', () => {
   // 판매 구역은 라우터 밖에서도 렌더된다(시험·미리보기) — 훅은 `window.location` 만 읽는다.
   //   ⚠️ 시험 셋업(`tests/setup.ts`)이 `window.location` 을 평범한 객체로 바꿔 둔다 — 그래서 값을 직접 넣는다.
@@ -112,6 +107,7 @@ describe('⑤ 마이가 시트를 여는 규칙', () => {
   let replaceState: ReturnType<typeof vi.spyOn>
   beforeEach(() => {
     replace = vi.fn()
+    vi.mocked(toast.error).mockClear()
     Object.assign(window.location, { pathname: '/user/profile', search: '?tool=%2Fseller%2Forders', replace })
     replaceState = vi.spyOn(window.history, 'replaceState').mockImplementation(() => {})
   })
@@ -125,11 +121,13 @@ describe('⑤ 마이가 시트를 여는 규칙', () => {
     expect(replaceState.mock.calls[0]?.[2]).toBe('/user/profile')
   })
 
-  it('🔴 좌석이 안 맞으면 토큰을 발급하지 않고 대시보드로 되돌린다(dash=1)', () => {
+  it('🔴 좌석이 안 맞으면 토큰을 발급하지 않고 열지도 않는다 — 주소를 지우고 말한다(대시보드는 없다)', () => {
     const open = vi.fn()
     renderHook(() => useToolDeepLink({ ready: true, seated: false, open }))
     expect(open).not.toHaveBeenCalled()
-    expect(replace).toHaveBeenCalledWith('/seller/orders?dash=1')
+    expect(replace).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledTimes(1)
+    expect(replaceState.mock.calls[0]?.[2]).toBe('/user/profile')
   })
 
   it('가게가 정해지기 전엔 아무것도 안 한다', () => {
@@ -139,14 +137,16 @@ describe('⑤ 마이가 시트를 여는 규칙', () => {
     expect(replace).not.toHaveBeenCalled()
   })
 
-  it('판매 구역이 못 뜨면(가게 0곳·실패) 페이지가 대시보드로 되돌린다', () => {
+  it('판매 구역이 못 뜨면(가게 0곳·실패) 페이지가 주소를 지우고 왜 못 여는지 말한다', () => {
     renderHook(() => useToolDeepLinkFallback({ loading: false, failed: false, storeCount: 0 }))
-    expect(replace).toHaveBeenCalledWith('/seller/orders?dash=1')
+    expect(replace).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledTimes(1)
+    expect(replaceState.mock.calls[0]?.[2]).toBe('/user/profile')
   })
 
   it('가게가 있으면 페이지는 끼어들지 않는다(판매 구역이 맡는다)', () => {
     renderHook(() => useToolDeepLinkFallback({ loading: false, failed: false, storeCount: 2 }))
-    expect(replace).not.toHaveBeenCalled()
+    expect(toast.error).not.toHaveBeenCalled()
   })
 })
 
@@ -161,13 +161,13 @@ describe('시트 머리 이름 — 색인에서 찾는다', () => {
 })
 
 describe('⑥ 배선', () => {
-  it('껍데기가 시트 안 반환 **뒤에** 판정해서 보낸다(시트 안에서 튕기면 마이가 사라진다)', () => {
+  it('틀은 시트 밖에서만 판정해서 보낸다(시트 안에서 튕기면 마이가 사라진다)', () => {
     const src = stripComments(readFileSync('src/components/SellerLayout.tsx', 'utf-8'))
-    const embedReturn = src.indexOf('if (bare || embedded) {')
-    const redirect = src.indexOf('const toMy = shouldSendOwnerToMy(false) ? myRedirectFor(location.pathname, location.search) : null')
-    expect(embedReturn).toBeGreaterThan(0)
-    expect(redirect).toBeGreaterThan(embedReturn)
-    expect(src).toContain('if (toMy) return <Navigate to={toMy} replace />')
+    const gate = src.indexOf('if (!bare && !embedded) {')
+    const redirect = src.indexOf('const to = sellerEntryRedirect(location.pathname, location.search)')
+    expect(gate).toBeGreaterThan(0)
+    expect(redirect).toBeGreaterThan(gate)
+    expect(src).toContain('if (to) return <Navigate to={to} replace />')
   })
 
   it('마이 판매 구역이 깊은 링크를 받는다', () => {
@@ -185,9 +185,8 @@ describe('⑥ 배선', () => {
     expect(app).not.toMatch(/path="\/seller/)
   })
 
-  it('대시보드 첫 화면과 껍데기가 같은 판정을 쓴다(두 벌 금지)', () => {
-    const page = stripComments(readFileSync('src/pages/SellerPage.tsx', 'utf-8'))
-    expect(page).toContain("import { shouldSendOwnerToMy } from '@/lib/seller-deep-link'")
-    expect(page).not.toMatch(/function shouldSendOwnerToMy/)
+  it('옛 홈 라우트와 틀이 같은 판정을 쓴다(두 벌 금지)', () => {
+    const routes = stripComments(readFileSync('src/routes/seller.routes.tsx', 'utf-8'))
+    expect(routes).toContain('return <Navigate to={sellerEntryRedirect(location.pathname, location.search) ?? MY_PATH} replace />')
   })
 })

@@ -125,7 +125,8 @@ describe('⑤ 도구는 시트로 · 정산은 보기만', () => {
   //   그 이유(라우트의 소비자 로그인 요구)를 걷었으므로 마이와 **같은 계산대**로 간다. 대시보드 틀을 안 탄다.
   it('사용처리는 카메라라 전체화면 — 마이와 같은 계산대(/store/scan), 대시보드 /seller/scan 아님', () => {
     expect(plate).toContain('export const AGENCY_SCAN_PATH = STORE_SCAN_PATH')
-    expect(plate).toContain('onClick={() => goFull(AGENCY_SCAN_PATH)}')
+    expect(plate).toContain('onClick={() => goScan()}')
+    expect(plate).toContain('window.location.assign(AGENCY_SCAN_PATH)')
     expect(plate).not.toContain("'/seller/scan'")
   })
 })

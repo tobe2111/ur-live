@@ -12,19 +12,21 @@ import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { formatWon, formatNumber } from '@/utils/format'
 import AdminFinanceTabs from '@/components/admin/AdminFinanceTabs'
 import { DashboardLoadError } from '@/components/dashboard'
-import { Banknote, Landmark, Users, Building2 } from 'lucide-react'
+import { Banknote, Landmark, Users, Building2, RotateCcw } from 'lucide-react'
 
 interface SellerRow { id: number; seller_id: number; seller_name: string | null; business_name: string | null; amount: number; period_start: string | null; period_end: string | null; bank_name: string | null; account_number: string | null; account_holder: string | null; status: string; created_at: string }
 interface CuratorRow { id: number; user_id: string; user_name: string | null; amount: number; withholding_tax: number; net_amount: number; bank_name: string; bank_account: string; account_holder: string; status: string; requested_at: string; deal_deducted: number }
 interface AgencyRow { agency_id: number; agency_name: string; bank_name: string | null; bank_account: string | null; account_holder: string | null; payable: number; payable_matured: number; maturing: number; row_count: number; oldest_at: string }
 interface PaidRow { rail: string; id: number; who: string | null; amount: number; at: string | null; memo: string | null }
+/** 💸 2026-10-12 딜 충전 잔액 환급(약관 제12조) — 원천징수 없음, 신청액 그대로 입금. */
+interface RefundRow { id: number; user_id: string; user_name: string | null; amount: number; bank_name: string; bank_account: string; account_holder: string; requested_at: string }
 
-type Data = { sellers: SellerRow[]; curators: CuratorRow[]; agencies: AgencyRow[]; recent_paid: PaidRow[] }
+type Data = { sellers: SellerRow[]; curators: CuratorRow[]; agencies: AgencyRow[]; recent_paid: PaidRow[]; refunds?: RefundRow[] }
 
-const RAIL_LABEL: Record<string, string> = { seller: '셀러 정산', curator: '소개 환급', agency: '에이전시 커미션' }
+const RAIL_LABEL: Record<string, string> = { seller: '셀러 정산', curator: '소개 환급', agency: '에이전시 커미션', refund: '딜 환급' }
 
 export default function AdminPayoutCenterPage() {
-  const [tab, setTab] = useState<'seller' | 'curator' | 'agency'>('seller')
+  const [tab, setTab] = useState<'seller' | 'curator' | 'agency' | 'refund'>('seller')
   const [busy, setBusy] = useState<string | null>(null)
   const q = useApiQuery<{ success: boolean; data?: Data }>(
     ['admin', 'payout-center'],
@@ -55,6 +57,7 @@ export default function AdminPayoutCenterPage() {
     seller: data?.sellers.length ?? 0,
     curator: data?.curators.length ?? 0,
     agency: (data?.agencies ?? []).filter(a => a.payable_matured > 0).length,
+    refund: data?.refunds?.length ?? 0,
   }
 
   return (
@@ -76,7 +79,7 @@ export default function AdminPayoutCenterPage() {
 
       {/* 레일 탭 */}
       <div className="flex gap-1 p-1 bg-gray-100 rounded-xl w-fit">
-        {([['seller', '셀러 정산', Banknote], ['curator', '소개 환급', Users], ['agency', '에이전시 커미션', Building2]] as const).map(([k, label, Icon]) => (
+        {([['seller', '셀러 정산', Banknote], ['curator', '소개 환급', Users], ['agency', '에이전시 커미션', Building2], ['refund', '딜 환급', RotateCcw]] as const).map(([k, label, Icon]) => (
           <button key={k} onClick={() => setTab(k)}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 ${tab === k ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}>
             <Icon className="w-3.5 h-3.5" /> {label}
@@ -131,6 +134,37 @@ export default function AdminPayoutCenterPage() {
                         setBusy(`cr${r.id}`)
                         try {
                           const resp = await api.patch(`/api/admin/payout-center/curator/${r.id}/reject`, { reason })
+                          if (resp.data?.success) { toast.success('반려 처리 — 딜이 복원되었습니다'); q.refetch() }
+                          else toast.error(resp.data?.error || '처리 실패')
+                        } catch { toast.error('처리 실패') } finally { setBusy(null) }
+                      }}
+                      className="px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg text-[12px] font-semibold disabled:opacity-50">반려</button>
+                  </td>
+                </tr>
+              ))}
+            </Table>
+          )}
+
+          {tab === 'refund' && (
+            <Table empty={!data?.refunds?.length} emptyText="대기 중인 딜 환급 신청이 없습니다"
+              head={['신청일', '유저', '입금액 (원천징수 없음)', '입금 계좌', '처리']}>
+              {data?.refunds?.map(r => (
+                <tr key={r.id} className="border-t border-gray-50">
+                  <td className="px-4 py-3 text-[12px] text-gray-500 whitespace-nowrap">{(r.requested_at || '').slice(0, 10)}</td>
+                  <td className="px-4 py-3 text-[13px] font-medium text-gray-900">{r.user_name || `#${r.user_id}`}</td>
+                  <td className="px-4 py-3 text-[13px] font-bold text-right whitespace-nowrap">{formatWon(r.amount)}</td>
+                  <td className="px-4 py-3">{bank(r.bank_name, r.bank_account, r.account_holder)}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <button disabled={busy === `r${r.id}`}
+                      onClick={() => act(`딜 환급 ${formatWon(r.amount)}`, `r${r.id}`, () => api.patch(`/api/admin/payout-center/refund/${r.id}/paid`, {}))}
+                      className="ur-btn ur-btn-sm ur-btn-primary text-[12px] disabled:opacity-50 mr-1.5">입금 완료</button>
+                    <button disabled={busy === `rr${r.id}`}
+                      onClick={async () => {
+                        const reason = window.prompt('반려 사유 (신청자에게 표시 + 딜 자동 복원)')
+                        if (reason == null) return
+                        setBusy(`rr${r.id}`)
+                        try {
+                          const resp = await api.patch(`/api/admin/payout-center/refund/${r.id}/reject`, { reason })
                           if (resp.data?.success) { toast.success('반려 처리 — 딜이 복원되었습니다'); q.refetch() }
                           else toast.error(resp.data?.error || '처리 실패')
                         } catch { toast.error('처리 실패') } finally { setBusy(null) }

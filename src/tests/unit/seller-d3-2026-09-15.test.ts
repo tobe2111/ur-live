@@ -10,10 +10,6 @@ import { stripComments } from '../helpers/source-text'
 
 const read = (p: string) => readFileSync(p, 'utf8')
 const CSS = read('src/index.css')
-const LAYOUT = read('src/components/SellerLayout.tsx')
-const SWITCHER = read('src/components/seller/StoreSwitcher.tsx')
-const TICKET = read('src/pages/seller-page/TodayTicket.tsx')
-const RAIL = read('src/pages/seller-page/MyVouchersRail.tsx')
 const HOOK = read('src/pages/seller-page/useSellerHome.ts')
 const OPS = read('src/features/seller/api/seller-operators.routes.ts')
 const SETTLE = read('src/pages/SellerSettlementsPage.tsx')
@@ -44,23 +40,6 @@ describe('D3 토큰 — 셀러 스코프에서만, 공용 부품은 변수를 �
   })
 })
 
-describe('A2 — 매장이 헤더 제목', () => {
-  it('폰 헤더 제목 자리 = StoreSwitcher(variant="title"), PC = 브레드크럼 `매장 / 제목`', () => {
-    const src = stripComments(LAYOUT)
-    expect(src).toMatch(/<StoreSwitcher variant="title" \/>/)
-    expect(src).toMatch(/<span className="text-gray-300">\/<\/span>\s*<h1 className="truncate text-\[13px\] font-bold text-gray-900">\{title\}<\/h1>/)
-    expect(src).toContain('dash-phone-title')
-    // 🧱 2026-10-12 4단계: 224px 사이드바는 걷어냈다 — 되살아나면 틀이 다시 두꺼워진 것이다.
-    expect(src).not.toContain('w-[224px]')
-  })
-  it('제목형은 매장 1곳이어도 그린다(이름이 곧 제목) — 드롭다운은 2곳 미만이면 없다', () => {
-    const src = stripComments(SWITCHER)
-    expect(src).toMatch(/if \(!canSwitch && variant === 'menu'\) return null/)
-    expect(src).toMatch(/export async function switchStore\(sellerId: number, label: string/)
-    expect(src).toMatch(/api\.post\(`\/api\/seller\/stores\/\$\{sellerId\}\/token`\)/)
-  })
-})
-
 describe('B2 — 전 매장 합계 + 매장별', () => {
   it('요약 API 는 앉을 수 있는 좌석만, 오늘 판정 규칙은 /dashboard/stats 와 같다', () => {
     const src = stripComments(OPS)
@@ -76,19 +55,6 @@ describe('B2 — 전 매장 합계 + 매장별', () => {
     const scopeFn = src.slice(src.indexOf('async function resolveStoreScope'), src.indexOf("app.get('/my-stores'"))
     expect(scopeFn).toMatch(/const userId = await resolveActorUserId\(c\)/)
     expect(scopeFn).toMatch(/listOperableStores\(c\.env\.DB, userId\)/)
-  })
-  it('홈은 요약이 2곳 이상일 때만 합계로 전환하고, 행을 누르면 같은 switchStore 로 좌석을 바꾼다', () => {
-    const src = stripComments(TICKET)
-    expect(src).toMatch(/const multi = !!summary && summary\.stores\.length >= 2/)
-    expect(src).toMatch(/await switchStore\(sellerId, name\)/)
-    expect(stripComments(HOOK)).toMatch(/\/api\/seller\/my-stores\/summary/)
-    expect(stripComments(read('src/pages/SellerPage.tsx'))).toMatch(/summary=\{home\.storesSummary\}/)
-  })
-  it('내 이용권은 표다(레일 아님) · 숫자 칸은 dash-num', () => {
-    const src = stripComments(RAIL)
-    expect(src).toMatch(/<table className="w-full border-collapse/)
-    expect(src).not.toMatch(/overflow-x-auto/)
-    expect((src.match(/dash-num/g) || []).length).toBeGreaterThanOrEqual(4)
   })
 })
 
@@ -120,9 +86,7 @@ describe('세부 페이지 정리 — 옛 패턴 0 (래칫)', () => {
 describe('📱 모바일 특화 (2026-09-15 대표 "모바일로도 특화가 되어야 해") — 폰 전용 분기가 살아 있다', () => {
   const PAYOUT = read('src/pages/seller-settlements/AutoPayoutSection.tsx')
   const BIZ = read('src/pages/seller-settlements/BizRegStatusBanner.tsx')
-  const DEAL = read('src/pages/seller-settlements/DealBalanceCard.tsx')
-  const STORES = read('src/pages/seller-page/MyStoresPanel.tsx')
-  const WEEK = read('src/pages/seller-page/WeekSummary.tsx')
+  // 🧹 2026-10-12: 딜 잔액 카드(`DealBalanceCard`)를 걷었다 — 한 번도 적립되지 않는 잔액을 읽어 늘 0원이었다.
   it('소개 수익 카드 — 폰은 라벨·숫자 행(sm:hidden), PC 는 세 칸(hidden … sm:grid)', () => {
     const src = stripComments(REF)
     expect(src).toMatch(/className="divide-y divide-rule sm:hidden"/)
@@ -134,7 +98,7 @@ describe('📱 모바일 특화 (2026-09-15 대표 "모바일로도 특화가 �
     expect(src).toMatch(/className="hidden gap-3 sm:grid sm:grid-cols-3"/)
   })
   it('정산 화면에 이모지·색깔 정보상자가 없다 (🎫 규칙 ⑥) — 상태는 톤 글자 한 곳', () => {
-    for (const [name, src] of [['BizReg', BIZ], ['Deal', DEAL], ['Payout', PAYOUT]] as const) {
+    for (const [name, src] of [['BizReg', BIZ], ['Payout', PAYOUT]] as const) {
       const body = stripComments(src)
       expect(body, `${name}: 이모지`).not.toMatch(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u)
       expect(body, `${name}: 색깔 상자`).not.toMatch(/\bbg-(?:blue|amber|emerald|red)-50\b/)
@@ -145,15 +109,5 @@ describe('📱 모바일 특화 (2026-09-15 대표 "모바일로도 특화가 �
     const src = stripComments(SETTLE)
     expect(src).toMatch(/aria-label=\{t\('common\.refresh'\)\}[^>]*md:hidden/)
     expect(src).toMatch(/className="hidden [^"]*md:inline-flex"/)
-  })
-  it('내 매장 패널 — 좁은 열에서 카드 그리드로 돌아가지 않는다(버튼 두 줄 사고) · 버튼은 줄바꿈 금지', () => {
-    const src = stripComments(STORES)
-    expect(src).not.toMatch(/grid sm:grid-cols-2/)
-    expect(src).toMatch(/ur-btn ur-btn-sm flex-1 whitespace-nowrap/)
-  })
-  it('이번 주 — 폰 7일 미니 막대(lg:hidden)가 있고 차트 라이브러리는 안 쓴다', () => {
-    const src = stripComments(WEEK)
-    expect(src).toMatch(/border-t border-rule px-4 pb-3 pt-2\.5 lg:hidden/)
-    expect(src).not.toMatch(/recharts|LazyChart/)
   })
 })

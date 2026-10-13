@@ -21,7 +21,7 @@ import type { Env } from '@/worker/types/env'
 import { cacheGet } from '@/worker/utils/cache'
 import { normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url'
 import { buildDetailMeta } from './detail-meta-enrich'
-import { demoSlugSql, isDemoSlug } from '@/shared/constants/demo-products'
+import { demoSlugSql, isDemoSlug, toPublicProductRows } from '@/shared/constants/demo-products'
 import { safeError } from '@/worker/utils/safe-error'
 import { productDetailCols, productDetailColsHealed, withColumnPruning } from '@/shared/db/product-columns'
 import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories'
@@ -410,7 +410,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     // 🔢 2026-09-03 [UNLOCK_LOADING]: 전체 개수 — 클라가 전량을 안 받고도 "N곳" 을 정확히 말한다.
     //   필터 없는 피드에서만(조합 5종·900s 캐시) · fail-soft null · 기존 필드/캐시키/헤더 전부 불변.
     const total = (!hasRegion && !hasQ && !hasBbox) ? await getActiveFeedTotal(c.env, DB, status, categories) : null
-    return c.json({ success: true, data: withOnnuri, ...(total != null ? { total } : {}) })
+    return c.json({ success: true, data: toPublicProductRows(withOnnuri), ...(total != null ? { total } : {}) })  // 🙈 2026-10-12 데모 식별자 제거(사유·불변식: demo-products.ts) · 한 줄: 래칫 1139
   })
 
   // ── GET /products/map-clusters — 🌍 2026-07-08 (대표 "수천개 대비 가장 이상적으로" — 레이어 3) ──
@@ -516,7 +516,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     const idRaw = c.req.param('id')
     const idNum = Number(idRaw)
     if (!Number.isFinite(idNum) || idNum <= 0 || !Number.isInteger(idNum)) {
-      return c.json({ success: false, error: '잘못된 상품 ID 입니다' }, 400)
+      return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404) // 🔎 2026-10-12: 존재할 수 없는 id 는 **404** — 400 이면 워커 soft-404 판정에 안 걸려 색인 가능해진다. 술어를 넓히지 말 것(가드 canonical-facet-entity-2026-10-12)
     }
     const id = idNum
     // 🛡️ 2026-06-10 [LOADING_ADDITIVE] (사용자 신고 — 특정 상품 상세 500): 핸들러 전체 try/catch.
@@ -1112,16 +1112,16 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
   router.get('/verify/:code', async (c) => {
     const { DB } = c.env
     const code = c.req.param('code')
-    if (!code || typeof code !== 'string' || code.length < 4 || code.length > 64 || !/^[A-Za-z0-9-]+$/.test(code)) {
-      return c.json({ success: false, error: '잘못된 바우처 코드입니다' }, 400)
-    }
+    if (!code || typeof code !== 'string' || code.length < 4 || code.length > 64 || !/^[A-Za-z0-9-]+$/.test(code)) return c.json({ success: false, error: '잘못된 바우처 코드입니다' }, 400)
+    const { lookupLocked, recordLookupMiss } = await import('../../../worker/utils/voucher-code-guard') // 🔢 6자리 — '없는 번호' 조회만 센다(손님 QR 5초 조회는 안 막는다)
+    if (await lookupLocked(c, DB)) return c.json({ success: false, error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' }, 429)
 
     const voucher = await DB.prepare(`
       SELECT v.*, p.name as product_name, p.restaurant_name, p.image_url as product_image, p.seller_id as product_seller_id
       FROM vouchers v LEFT JOIN products p ON v.product_id = p.id
       WHERE v.code = ?
     `).bind(code).first<VoucherRow & { product_name?: string; restaurant_name?: string; product_image?: string; product_seller_id?: number | null }>()
-    if (!voucher) return c.json({ success: false, error: '이용권을 찾을 수 없습니다' }, 404)
+    if (!voucher) { await recordLookupMiss(c, DB); return c.json({ success: false, error: '이용권을 찾을 수 없습니다' }, 404) }
 
     return c.json({
       success: true,

@@ -6,7 +6,7 @@
  */
 
 import type { D1Database } from '@cloudflare/workers-types'
-import { sendTextNotice } from '../../../lib/text-notice' // 📨 알림은 알리고 하나로(알림톡 승인 전엔 문자)
+import { sendTextNotice } from '../../../lib/text-notice' // 📨 알림은 카톡 알림톡 하나로(SENS — 승인 전 템플릿은 보내지 않는다)
 import { existingColumns, columnNameOf } from '../../../worker/utils/ensure-columns'
 import { recordLedger } from '../../../worker/utils/ledger'
 import { calcInfluencerCommissionPct, type CommissionRates } from './commission-rates'
@@ -274,33 +274,63 @@ export async function sendRefundAlimtalk(
 }
 
 /**
- * 바우처 코드 생성 — 'UR-XXXX-XXXX' (8 chars + dash, 32^8 = 1.1조 가능).
- * 🛡️ Math.random → crypto.getRandomValues (guessable code 방어).
+ * 🔢 이용권 코드 — **6자리 숫자** (2026-10-12 대표 *"6자리로 줄이고 숫자로만."*).
+ *
+ * 종전 `UR-XXXX-XXXX`(영문+숫자 8자, 1조 가지)는 손님·직원이 읽고 부르기 어려웠다. 숫자 6자리는
+ * 100만 가지라 **두 가지가 같이 바뀐다**:
+ *   ① 대입 — 코드는 열쇠다(사용 처리가 로그인 없이 [코드 + 매장 확인코드]만 받는다). 틀린 시도를
+ *      세서 막는다 → `worker/utils/voucher-code-guard.ts`
+ *   ② 겹침 — 1조 가지에선 겹칠 일이 없어서 "겹치면 저장이 실패하고 호출하는 쪽이 다시 시도한다" 고
+ *      적어 두고 **다시 시도하는 코드는 없었다**. 100만 가지에선 실제로 겹칠 수 있고, 카드 결제 확정
+ *      경로에서 겹치면 **돈은 받았는데 이용권 저장이 실패**한다. 그래서 발급 전에 DB 에 있는지 본다
+ *      (`generateUniqueVoucherCodes`).
+ *
+ * 앞자리 0 도 쓴다(`004512`) — 문자열이라 숫자로 바꾸지 말 것(앞 0 이 사라진다).
+ * 기존 `UR-` 코드는 그대로 유효하다(조회·사용은 문자열 일치).
  */
+export const VOUCHER_CODE_DIGITS = 6
+const CODE_SPACE = 10 ** VOUCHER_CODE_DIGITS
+/** 2^32 를 100만으로 나눈 나머지 쪽 치우침을 버린다(앞 번호가 더 자주 나오지 않게). */
+const UNBIASED_LIMIT = Math.floor(0x1_0000_0000 / CODE_SPACE) * CODE_SPACE
+
 export function generateVoucherCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-  const bytes = crypto.getRandomValues(new Uint8Array(8))
-  let code = 'UR-'
-  for (let i = 0; i < 8; i++) {
-    code += chars.charAt(bytes[i] % chars.length)
-    if (i === 3) code += '-'
+  const buf = new Uint32Array(1)
+  for (;;) {
+    crypto.getRandomValues(buf)
+    if (buf[0] < UNBIASED_LIMIT) return String(buf[0] % CODE_SPACE).padStart(VOUCHER_CODE_DIGITS, '0')
   }
-  return code
 }
 
 /**
- * 🛡️ 2026-05-16: UNIQUE 충돌 retry 가능한 voucher code 생성.
- *   32^8 = 1.1조 조합이라 충돌 확률 극히 낮지만 0 아님 (생일 역설 — 100만 voucher 발급 시 ~0.5%).
- *   DB collision 발생하면 최대 5회 재시도 후 예외.
+ * 겹치지 않는 코드 n 개 — 한 번의 조회로 DB 에 이미 있는 번호를 거르고, 걸린 것만 다시 뽑는다.
+ * 같은 묶음 안에서도 겹치지 않는다. 8번 안에 못 채우면 예외(그때는 번호가 바닥나고 있다는 뜻이다).
+ * ⚠️ 두 결제가 같은 순간 같은 번호를 뽑는 경우는 못 막는다(UNIQUE 가 막고 저장이 실패한다) —
+ *   100만 칸에서 동시에 같은 번호가 나올 확률이라 무시할 수준이다.
  */
+export async function generateUniqueVoucherCodes(DB: D1Database, n: number): Promise<string[]> {
+  const out = new Set<string>()
+  for (let round = 0; round < 8 && out.size < n; round++) {
+    const want = n - out.size
+    const fresh = new Set<string>()
+    while (fresh.size < want) {
+      const c = generateVoucherCode()
+      if (!out.has(c)) fresh.add(c)
+    }
+    const list = [...fresh]
+    const taken = new Set<string>()
+    try {
+      const rows = await DB.prepare(`SELECT code FROM vouchers WHERE code IN (${list.map(() => '?').join(',')})`)
+        .bind(...list).all<{ code: string }>()
+      for (const r of rows.results || []) taken.add(String(r.code))
+    } catch { /* 조회 실패 — UNIQUE 가 최후의 문이다 */ }
+    for (const c of list) if (!taken.has(c)) out.add(c)
+  }
+  if (out.size < n) throw new Error('voucher code space exhausted')
+  return [...out]
+}
+
 export async function generateUniqueVoucherCode(DB: D1Database): Promise<string> {
-  // 🛡️ 2026-05-24 Q4 perf: 사전 SELECT 제거 — UNIQUE constraint 가 진짜 충돌 잡음.
-  //   32^8 = 1.1조 조합. 100만 voucher 발급 시 충돌 확률 ~0.5% — 정상 흐름에선 발생 X.
-  //   이전: voucher 1개당 1 SELECT (qty=10 → 10 sequential await ~200ms).
-  //   이후: voucher 1개당 0 SELECT (sync 생성) → 호출자에서 Promise.all 병렬 가능.
-  //   collision 실제 발생 시: DB.batch() 가 throw → 호출자가 retry (드물어서 비용 무시).
-  void DB  // signature 유지 (호출자 변경 없이).
-  return generateVoucherCode()
+  return (await generateUniqueVoucherCodes(DB, 1))[0]
 }
 
 /** Magic Link 사장님 토큰 — 32자 hex (128bit), URL-safe. */
@@ -311,7 +341,7 @@ export function generateStoreOwnerToken(): string {
 
 /**
  * 사장님께 Magic Link 알림톡 발송 (best-effort).
- * 알리고(`sendTextNotice`) — 키 미설정 시 silent skip.
+ * 알림톡(`sendTextNotice` → SENS) — 키 미설정 시 silent skip.
  */
 export async function sendStoreOwnerAlimtalk(
   env: unknown,
@@ -364,8 +394,7 @@ export async function sendBuyerVoucherIssuedAlimtalk(
 ${data.restaurantName || '유어딜'} · ${data.productName}
 ${data.qty}장 발급되었습니다.
 
-📱 매장에서 QR 코드 보여주세요:
-https://urdeal.kr/my-vouchers
+📱 매장에서 아래 [내 이용권 보기]를 눌러 QR 코드를 보여주세요.
 
 ⏰ 유효기간: ${expDate}
 
@@ -381,7 +410,7 @@ https://urdeal.kr/my-vouchers
 export async function sendSellerFirstVoucherAlimtalk(
   env: unknown,
   phone: string,
-  data: { restaurantName: string; productName: string; statsUrl: string }
+  data: { restaurantName: string; productName: string; sellerId: unknown } // 🔘 버튼(사용 처리·정산 계좌)의 매장 번호
 ): Promise<void> {
   if (!phone) return
   try {
@@ -394,16 +423,15 @@ ${data.restaurantName} 사장님,
 "${data.productName}" 이용권을 손님이 구매했어요.
 
 📋 손님이 오시면
-1. 손님 폰의 이용권 QR 을 셀러 대시보드 [사용 처리]로 스캔하거나
+1. 아래 [사용 처리하기]를 눌러 손님 폰의 이용권 QR 을 스캔하거나
 2. 손님이 매장 확인코드를 직접 입력해 사용 처리합니다
 3. 이미 유어딜에서 결제가 끝났으니 따로 결제 받지 마세요
 
 💰 정산
-사용 처리된 금액이 정산 계좌로 지급됩니다. 계좌를 아직 안 올리셨다면 셀러 대시보드 → 정산에서 등록해 주세요.
+사용 처리된 금액이 정산 계좌로 지급됩니다. 계좌를 아직 안 올리셨다면 아래 [정산 계좌 등록]에서 등록해 주세요.
 
-손님이 오시면 사용 처리: ${data.statsUrl}
 문의: 유어딜 고객센터`
-    await sendTextNotice(env, cleanPhone, { tpl: 'seller_first_voucher', title: '첫 이용권 판매', text: message })
+    await sendTextNotice(env, cleanPhone, { tpl: 'seller_first_voucher', title: '첫 이용권 판매', text: message, sellerId: data.sellerId })
   } catch { /* graceful */ }
 }
 
@@ -415,7 +443,7 @@ ${data.restaurantName} 사장님,
 export async function sendSellerVoucherSoldAlimtalk(
   env: unknown,
   phone: string,
-  data: { restaurantName: string; productName: string; qty: number; amount: number; scanUrl?: string; ordersUrl?: string } // 🔗 링크는 shared/store-deep-link
+  data: { restaurantName: string; productName: string; qty: number; amount: number; sellerId: unknown } // 🔘 버튼(사용 처리·판매 내역)의 매장 번호
 ): Promise<void> {
   if (!phone) return
   try {
@@ -426,11 +454,10 @@ export async function sendSellerVoucherSoldAlimtalk(
 ${data.restaurantName}
 "${data.productName}" ${data.qty}장 · ₩${Number(data.amount).toLocaleString('ko-KR')}
 
-손님이 오시면 사용 처리: ${data.scanUrl || 'https://urdeal.kr/seller/scan'}
-판매·사용 내역: ${data.ordersUrl || 'https://urdeal.kr/seller/voucher-orders'}
+손님이 오시면 아래 [사용 처리하기]를 눌러 주세요.
 
 문의: 유어딜 고객센터`
-    await sendTextNotice(env, cleanPhone, { tpl: 'seller_voucher_sold', title: '이용권 판매', text: message })
+    await sendTextNotice(env, cleanPhone, { tpl: 'seller_voucher_sold', title: '이용권 판매', text: message, sellerId: data.sellerId })
   } catch { /* graceful */ }
 }
 
@@ -466,7 +493,7 @@ ${data.restaurantName}
 
 /**
  * 🛡️ 2026-05-16: voucher 사용 완료 알림톡 (매장이 QR 스캔 직후).
- * 📨 2026-10-11: 알리고 하나로(`sendTextNotice`) — 'voucher_used' 가 카카오 검수를 통과해 어드민 승인 목록에
+ * 📨 2026-10-11: 알림톡 하나로(`sendTextNotice`, 2026-10-12 부터 SENS) — 'voucher_used' 가 카카오 검수를 통과해 어드민 승인 목록에
  *   오르면 알림톡, 그 전엔 문자. ⚠️ 알림톡 전환 시 message 를 승인 템플릿 본문과 일치시켜 유지.
  */
 export async function sendBuyerVoucherUsedAlimtalk(

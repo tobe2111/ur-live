@@ -281,12 +281,24 @@ async function syncBlogSeed(DB: D1Database, env?: SeedAssetEnv): Promise<boolean
         VALUES (?, ?, ?, ?, ?, '유어딜 팀', 1, datetime('now', ?), 1, 0, ?)
       `).bind(post.slug, post.title, post.summary, post.content, post.tags, ageOffset, BLOG_SEED_VERSION).run().catch(swallow('blog:api:blog'))
     } else if (!existing.manually_edited) {
-      // 시드 관리 글 & 수동편집 안 됨 → 최신 시드 내용으로 갱신(발행일도 재분산)
+      // 시드 관리 글 & 수동편집 안 됨 → 최신 시드 내용으로 갱신.
+      // 🗓️ 2026-10-12: **발행일은 다시 쓰지 않는다**(종전엔 `published_at=datetime('now', -3i days)`
+      //   로 매 버전 bump 마다 재분산했다). 라이브 실측이 그 대가를 보여 준다 — 21편의
+      //   `published_at` 이 전부 `2026-09-24 09:51:07~10`(= 마지막 재시드 **한 순간**)이고
+      //   3일 간격으로 과거로 흩뿌려져 있었다. 즉 **그 값은 발행일이 아니라 "마지막 재시드
+      //   시각 − 3i일"** 이고, 서버 메타의 `datePublished` 가 그것을 그대로 내보낸다
+      //   ⇒ 배포마다 글 21편의 발행일이 앞으로 점프하고, 오래된 글이 **나이를 쌓지 못한다**.
+      //   에러가 안 나고 화면도 안 깨져서(목록 정렬은 여전히 3일 간격) 재 본 사람만 안다.
+      //   ⚠️ **잃는 것**: 목록은 `ORDER BY published_at DESC` 이므로, 이제 **시드 배열 순서를
+      //     바꿔도 기존 글의 표시 순서는 안 따라온다**(새로 추가되는 글은 INSERT 에서 index
+      //     기준으로 자리를 받는다). 순서를 정말 바꿔야 하면 어드민에서 발행일을 고친다.
+      //   📌 `updated_at` 은 그대로 CURRENT_TIMESTAMP — 그게 *진짜* 수정 시각이고
+      //     `dateModified`·sitemap `lastmod` 가 이제 그 값을 쓴다.
       await DB.prepare(`
         UPDATE blog_posts
-        SET title=?, summary=?, content=?, tags=?, is_seed=1, is_published=1, published_at=datetime('now', ?), seed_version=?, updated_at=CURRENT_TIMESTAMP
+        SET title=?, summary=?, content=?, tags=?, is_seed=1, is_published=1, seed_version=?, updated_at=CURRENT_TIMESTAMP
         WHERE id=? AND manually_edited=0
-      `).bind(post.title, post.summary, post.content, post.tags, ageOffset, BLOG_SEED_VERSION, existing.id).run().catch(swallow('blog:api:blog'))
+      `).bind(post.title, post.summary, post.content, post.tags, BLOG_SEED_VERSION, existing.id).run().catch(swallow('blog:api:blog'))
     }
     // manually_edited=1 → 건너뜀(수동편집 보존)
   }

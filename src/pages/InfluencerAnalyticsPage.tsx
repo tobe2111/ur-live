@@ -40,7 +40,7 @@ export default function InfluencerAnalyticsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#1D1F29] pb-20">
-      <SEO title="인플루언서 성과표 - 유어딜" description="referral 매출 / 매장별 ranking / 일별 추세" url="/influencer/analytics" />
+      <SEO title="소개 성과표 - 유어딜" description="소개로 생긴 매출, 매장별 순위, 일별 추세" url="/influencer/analytics" />
       <header className="sticky top-0 z-30 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35] px-4 py-3 flex items-center gap-2">
         <Link to="/influencer/settlement" className="text-gray-700 dark:text-gray-200"><ChevronLeft className="w-5 h-5" /></Link>
         <BarChart3 className="w-5 h-5 text-brand-text" />

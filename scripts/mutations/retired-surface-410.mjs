@@ -30,8 +30,10 @@ export default [
   {
     name: '🧨 서비스 철거와 엔티티 소멸을 한 상태코드로 묶는다',
     file: WORKER,
-    find: "const goneStatus = retiredSurface ? 410 : (entityGone ? 404 : 0);",
-    replace: "const goneStatus = (retiredSurface || entityGone) ? 410 : 0;",
+    // 🔀 2026-10-12 재조준: 등록 안 된 경로도 404 가 되어 삼항에 `unknownPath` 가 붙었다.
+    //   지키는 불변식은 그대로 — **철거 표면은 410, 엔티티 부재는 404**(둘을 섞지 않는다).
+    find: "const goneStatus = retiredSurface ? 410 : ((entityGone || unknownPath) ? 404 : 0);",
+    replace: "const goneStatus = (retiredSurface || entityGone || unknownPath) ? 410 : 0;",
     test: TEST,
     why: '상품은 다시 올라온다(404="지금 없다") — 410 을 주면 재등록해도 색인이 안 돌아온다. 둘은 다른 판정이다.',
   },
@@ -46,7 +48,8 @@ export default [
   {
     name: '🧨 철거 표면이 noindex 를 못 받는다',
     file: WORKER,
-    find: "    if (entityGone || retiredSurface) {",
+    // 🔀 2026-10-12 재조준: 같은 블록이 등록 안 된 경로의 noindex 도 맡는다(앵커만 옮겼다).
+    find: "    if (entityGone || unknownPath || retiredSurface) {",
     replace: "    if (entityGone) {",
     test: TEST,
     why: '410 을 못 읽는 수집기(네이버 Yeti 포함)를 위한 두 번째 신호다 — 하나만 두면 한쪽 크롤러에 안 전달된다.',

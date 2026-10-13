@@ -42,6 +42,38 @@ function swVersionPlugin() {
 }
 
 /**
+ * 📄 dev 전용: 대외 소개서 PDF 를 배포와 **같은 주소**(`/static/proposals/*.pdf`)로 이어 준다.
+ *
+ *   소개서의 집은 `docs/business/proposals/`(생성기 `.build.mjs` + `.pptx` + `.pdf`)이고,
+ *   배포 때 `scripts/build-prepare.mjs` 가 PDF 만 `dist/client/static/proposals/` 로 복사한다.
+ *   `public/` 에 사본을 두면 PDF 를 다시 뽑을 때 한쪽만 갱신돼 **어드민이 옛 소개서를 조용히
+ *   서빙**하므로(2026-10-12 덱 드리프트와 같은 클래스) 사본을 만들지 않는다.
+ *
+ *   그래서 dev 서버에는 그 복사가 없어 `/admin/proposals` 미리보기가 빈 화면이 된다 —
+ *   그걸 보고 다음 세션이 "고치려고" `public/` 에 사본을 만드는 것이 이 플러그인이 막는 것이다.
+ *
+ *   ⚠️ `apply: 'serve'` — 프로덕션 번들·산출물에 **한 바이트도** 들어가지 않는다.
+ */
+function proposalPdfDevPlugin() {
+  const dir = path.resolve('docs/business/proposals');
+  return {
+    name: 'ur-proposal-pdf-dev',
+    apply: 'serve' as const,
+    configureServer(server: { middlewares: { use: (fn: (req: { url?: string }, res: NodeJS.WritableStream & { setHeader: (k: string, v: string) => void }, next: () => void) => void) => void } }) {
+      server.middlewares.use((req, res, next) => {
+        const m = /^\/static\/proposals\/([^/?#]+\.pdf)(?:[?#]|$)/.exec(req.url || '');
+        if (!m) return next();
+        const file = path.resolve(dir, decodeURIComponent(m[1]));
+        // 경로 이탈 차단(dev 전용이라도 디렉터리 밖 파일을 서빙하지 않는다).
+        if (!file.startsWith(dir + path.sep) || !fs.existsSync(file)) return next();
+        res.setHeader('Content-Type', 'application/pdf');
+        fs.createReadStream(file).pipe(res);
+      });
+    },
+  };
+}
+
+/**
  * 🩺 셀(엔트리 정적 폐쇄)이 실제로 쓰는 lucide 아이콘 — 파일명(kebab) 기준.
  * 이 목록은 손으로 고치지 말 것: `src/tests/unit/lucide-shell-icons.test.ts` 가 `src/main.tsx` 에서
  * 정적 import 를 따라 가 **다시 계산**하고 불일치하면 빨간불을 낸다(새 아이콘을 셀에 넣었는데
@@ -54,7 +86,7 @@ function swVersionPlugin() {
 const LUCIDE_SHELL_ICONS = new Set([
   'bed-double', 'book-open', 'check', 'chevron-down', 'chevron-right', 'circle-help', 'coins', 'compass',
   // 🪒 2026-09-30: `map-pin` 제거 — 잠금표 이행으로 셸이 `PinIcon`(유어딜 세트)을 쓴다. 26 → 25.
-  'help-circle', 'layout-dashboard', 'layout-grid', 'log-in', 'plus', 'radio', 'refresh-cw',
+  'help-circle', 'layout-grid', 'log-in', 'plus', 'radio', 'refresh-cw',
   'scissors', 'search', 'shapes', 'smartphone', 'sparkles', 'user', 'user-plus', 'utensils', 'x', 'zap',
 ])
 
@@ -85,6 +117,7 @@ export default defineConfig({
     react(),
     swVersionPlugin(),
     i18nSplitPlugin(__dirname),
+    proposalPdfDevPlugin(),
     // 🚨 2026-04-27 (긴급 롤백): vite-plugin-pwa 비활성화.
     //   원인: navigateFallback 이 카카오 OAuth redirect 도 가로채 ERR_FAILED 발생.
     //   복구: 모든 SW 사용자측 unregister + 새 sw.js 생성 안 함.

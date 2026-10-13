@@ -78,7 +78,11 @@ describe('정렬은 서버가 한다', () => {
 
 describe('개수는 서버가 말한다', () => {
   it('응답에 total 이 additive 로 붙고, 필터가 붙은 요청에선 세지 않는다', () => {
-    expect(route).toMatch(/data: withOnnuri, \.\.\.\(total != null \? \{ total \} : \{\}\)/)
+    // 🙈 2026-10-12 재조준: 응답 배열이 `toPublicProductRows(...)` 로 감싸졌다(데모 식별자 제거).
+    //   지키려던 불변식(**total 이 additive** — 없으면 키 자체가 없다)은 그대로이므로 선택적
+    //   래퍼만 허용한다. 래퍼를 '있든 없든' 통과시키는 게 아니라, `withOnnuri` 가 그 자리에
+    //   남아 있고 total 이 조건부로 붙는 **모양**을 계속 고정한다.
+    expect(route).toMatch(/data: (?:[A-Za-z_$][\w$]*\()?withOnnuri\)?, \.\.\.\(total != null \? \{ total \} : \{\}\)/)
     expect(route).toMatch(/\(!hasRegion && !hasQ && !hasBbox\) \? await getActiveFeedTotal/)
   })
 

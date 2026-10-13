@@ -11,7 +11,7 @@
 import { Hono } from 'hono'; import { getCookie } from 'hono/cookie'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
-import { auditLog } from '@/worker/middleware/audit-log'
+import { auditLog } from '@/worker/middleware/audit-log'; import { transactionalMailReady } from '@/lib/ncp-sens-mail' // 📮 메일 수단 판정(Resend 또는 SENS)
 import { recordLedger, sellerLedgerAccount } from '@/worker/utils/ledger'; import { creditBrokerShare } from '@/worker/utils/broker-share' // 💸 2026-09-19 중개사 몫(게이트 OFF=no-op)
 import { purchaseCreditFields } from '@/worker/utils/payout-account' // 💸 2026-10-01 구매 적립 escrow 경유(이중적립 제거)
 import { formatKSTDate } from '@/utils/date' // 워커 TZ=UTC — 만료일 안내가 하루 이르던 것 교정
@@ -26,8 +26,7 @@ import type { GroupBuyProductRow } from '@/shared/db/group-buy-types'
 import {
   ensureTables,
   maxTierDiscount,
-  generateVoucherCode,
-  generateUniqueVoucherCode,
+  generateUniqueVoucherCodes,
   getSellerCommissionRate,
   applyGroupBuyReferral,
   sendBuyerVoucherIssuedAlimtalk,
@@ -602,9 +601,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
       //   1) 코드 생성을 Promise.all 병렬 (이전: sequential await SELECT — qty=N 일 때 N awaits).
       //   2) order_items + vouchers INSERT 를 단일 DB.batch() 로 통합 (이전: 2 awaits).
       const expiresAt = product.voucher_expiry || null // 2026-08-22 대표: 미설정 = 무기한(90일 강제 기본값 폐지)
-      const codes = await Promise.all(
-        Array.from({ length: qty }, () => generateUniqueVoucherCode(DB))
-      )
+      const codes = await generateUniqueVoucherCodes(DB, qty)
       const lastExpiresAt = expiresAt
       const orderItemStmt = DB.prepare(`
         INSERT INTO order_items (order_id, product_id, product_name, unit_price, price, quantity, subtotal)
@@ -921,7 +918,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
       const userRow = await DB.prepare("SELECT email, display_name FROM users WHERE id = ?")
         .bind(userId).first<{ email: string | null; display_name: string | null }>().catch(() => null)
       const userEmail = userRow?.email
-      if (userEmail && (c.env as Env & { RESEND_API_KEY?: string }).RESEND_API_KEY) {
+      if (userEmail && transactionalMailReady(c.env)) { // 📮 Resend 또는 SENS 메일(2026-10-12)
         // 🛡️ 2026-05-15: sendSystemEmail 사용 — 실패 시 email_failures 큐 자동 적재 → cron 재시도
         const { sendSystemEmail } = await import('../../../lib/system-email')
         const voucherList = (vouchers.results ?? []).map(v => `
@@ -1211,7 +1208,7 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
 
     // voucher 발급 (qty) — order_id=정수(C1) + applied_price/expires_at(C2). batch = atomic (부분발급 차단).
     //   order_items 도 같은 batch (딜 경로와 정합 — 주문 상세 표시 + 정산 근거).
-    const codes = await Promise.all(Array.from({ length: qty }, () => generateUniqueVoucherCode(DB)))
+    const codes = await generateUniqueVoucherCodes(DB, qty)
     const orderItemStmt = DB.prepare(`
       INSERT INTO order_items (order_id, product_id, product_name, unit_price, price, quantity, subtotal)
       VALUES (?, ?, ?, ?, ?, ?, ?)

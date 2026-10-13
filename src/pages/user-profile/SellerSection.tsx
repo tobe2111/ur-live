@@ -39,6 +39,7 @@ import { clearMyReturn, withMyReturn } from '@/lib/seller-return'
 import { toast } from '@/hooks/useToast'
 import type { MyStoresState } from './useMyStores'
 import { writeReservedHeight } from './seller-reserve'
+import { storeStatusNote, useRecordSellerStatus } from './seller-section/store-status-note'
 import { useSellerWork } from './seller-section/useSellerWork'
 import { useToolDeepLink } from './seller-section/useToolDeepLink' // 🚪 대시보드 깊은 링크 → 시트(2026-10-12)
 import PendingOrders from './seller-section/PendingOrders'
@@ -60,18 +61,13 @@ import { LIST_PLATE_CLS, SECTION_TITLE_CLS, ListRow as ToolRow } from './list-gr
  * 배경 스피너를 띄우지 않는다(누른 직후 화면이 깜빡이는 것보다 낫다).
  */
 const StoreSwitchSheet = lazy(() => import('./StoreSwitchSheet'))
-const WithdrawSheet = lazy(() => import('./seller-section/WithdrawSheet'))
+const PayoutSheet = lazy(() => import('./seller-section/PayoutSheet'))
 const AllToolsSheet = lazy(() => import('./seller-section/AllToolsSheet'))
 const PinSheet = lazy(() => import('./seller-section/PinSheet'))
 const BankSheet = lazy(() => import('./seller-section/BankSheet'))
-const SettlementsSheet = lazy(() => import('./seller-section/SettlementsSheet'))
 const ToolPageSheet = lazy(() => import('./seller-section/ToolPageSheet'))
 const VoucherNewSheet = lazy(() => import('./seller-section/VoucherNewSheet'))
 
-const STATUS_NOTE: Record<string, string> = {
-  pending: '승인 대기 중이에요. 준비는 지금 하고, 메인 노출과 정산은 승인 뒤에 시작됩니다.',
-  rejected: '서류가 반려됐어요. 사업자등록증을 다시 올리면 바로 다시 심사합니다.',
-}
 
 function todayLabelKST(): string {
   // 워커도 브라우저도 TZ 를 믿을 수 없다 — KST 로 명시해 읽는다(CLAUDE.md 시각 룰).
@@ -88,7 +84,7 @@ function todayLabelKST(): string {
  *   (`ToolPageSheet` = 대시보드 화면을 시트 안에서 그대로 렌더)로 열린다. 근거는 아래 §철거.
  *   남은 `withdraw`·`pin`·`bank`·`settlements` 는 **돈이 나가는 흐름**이라 별도 판단 대기다.
  */
-type Tool = 'withdraw' | 'tools' | 'pin' | 'bank' | 'settlements' | 'page' | 'voucherNew'
+type Tool = 'payout' | 'tools' | 'pin' | 'bank' | 'page' | 'voucherNew'
 
 /**
  * 🔀 **같은 일에 화면이 둘이 되지 않게** (2026-09-26 → **2026-10-01 철거로 거의 비었다**)
@@ -108,13 +104,13 @@ type Tool = 'withdraw' | 'tools' | 'pin' | 'bank' | 'settlements' | 'page' | 'vo
  *   마이를 벗어나지 않는다(`ToolPageSheet` 가 그 화면을 시트 안에서 그대로 렌더한다).
  *
  * ## 왜 표가 아직 남아 있나 — **돈 하나**
- * `/seller/settlements` 만 손수 시트(`WithdrawSheet`)를 유지한다. 그 시트가 가진 것이
- * 대시보드에 없다: 출금이 `412 PIN_REQUIRED` 로 막히면 **그 자리에서** PIN 을 걸고 돌아온다
- * (대시보드 `DealBalanceCard` 는 "프로필에서 설정해주세요" 토스트로 끝난다).
- * **돈이 나가는 흐름이라 등급 C** — 대표 판단 전에 내리지 않는다.
+ * `/seller/settlements` 만 손수 시트(`PayoutSheet`)로 연다. 2026-10-12 까지는 `WithdrawSheet`(출금 신청)
+ * 였는데, 그 시트가 읽는 잔액은 한 번도 적립되지 않아 늘 0원이었다 — 셀러 돈은 **매주 자동 정산**이다.
+ * 대시보드 화면(`SellerSettlementsPage`)은 사업자등록·세금계산서까지 싣고 있어 폰 시트로는 무겁다.
+ * 여기서는 *"얼마가 언제 들어오나"* 와 *"계좌가 있나"* 만 답한다.
  */
 const COVERED_BY_SHEET: Record<string, Tool> = {
-  '/seller/settlements': 'withdraw',
+  '/seller/settlements': 'payout',
 }
 
 /** 묶음 한 줄 — 전부 같은 모양이어야 무엇이 있는지 한눈에 읽힌다. */
@@ -126,11 +122,6 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
   const [entering, setEntering] = useState(false)
   /** 열려 있는 판매 시트. 좌석이 바뀌면 시트는 스스로 닫는다(§15-3). */
   const [tool, setTool] = useState<Tool | null>(null)
-  /**
-   * 🔑 PIN 을 **누가 요구했나**. 출금도 계좌 변경도 412 를 준다 — 한 곳으로만 돌아가면
-   *   계좌를 넣다 PIN 을 푼 사람이 엉뚱하게 출금 화면에 떨어진다.
-   */
-  const [pinReturn, setPinReturn] = useState<'withdraw' | 'bank'>('withdraw')
   /**
    * 🪟 전체 도구에서 고른 화면. **대시보드 페이지를 그대로** 시트 안에 연다(`ToolPageSheet`).
    *   `title` 을 같이 들고 다니는 이유: 시트 머리 이름을 여기서 다시 짓지 않기 위해서다 —
@@ -195,8 +186,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
 
   async function enterSeat(to?: string) {
     if (!(await ensureSeat())) return
-    // ↩️ 2026-09-26: 표시를 달고 보낸다 — 그 화면 맨 위에 "마이로 돌아가기" 띠가 뜬다.
-    //   안 달면 일이 끝나는 화면(등록 폼은 저장 후 `/seller/group-buy` 로 간다)에서 길을 잃는다.
+    // ↩️ 표시를 달고 보낸다 — 계산대 맨 위에 "마이로 돌아가기" 띠가 뜬다(`StoreScanPage`). 2026-10-12 이후 여기로 오는 곳은 계산대뿐.
     if (to) window.location.assign(withMyReturn(to))
   }
   // ↩️ 마이에 도착했다 = 여정이 끝났다. 흔적을 지워야 다음 대시보드 방문에 띠가 안 남는다.
@@ -240,6 +230,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
     return () => cancelAnimationFrame(id)
   }, [stores.length, store?.seller_id, store?.status])
 
+  useRecordSellerStatus(store?.status) // 🥕 유어애즈 메뉴 게이트용 심사 상태 기록(2026-10-12 대시보드 승인 배너에서 이전)
   const onWorkDone = () => { state.refetch() }
 
   /**
@@ -300,7 +291,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
   /** 모르는 값의 자리. 글자는 있고 안 보인다 — 높이가 진짜와 같아진다. */
   const blank = (v: string) => (awaiting ? <span className="invisible">{v}</span> : v)
 
-  const note = store?.status ? STATUS_NOTE[store.status] : undefined
+  const note = storeStatusNote(store?.status, store?.cert_status)
 
   return (
     <div
@@ -454,9 +445,9 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
         <ToolRow
           icon={<WonCoinIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
           label="정산"
-          hint="쌓인 돈 받기"
+          hint="매주 자동 입금"
           busy={entering}
-          onClick={() => openTool('withdraw')}
+          onClick={() => openTool('payout')}
         />
         {/* 🧹 2026-09-30 — 바로가기를 줄였다(⑥). 뺀 `매출 분석 · 가게 · 소개 파트너 · 브랜드메시지` 는
             지운 게 아니라 바로 아래 `전체 도구` 가 같은 시트로 연다(한 번의 탭이 두 번이 될 뿐이다).
@@ -527,30 +518,26 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           **대시보드가 쓰는 바로 그 화면**이 시트 안에서 그대로 렌더된다(복제 0).
           근거: 일곱을 430px 로 전수 측정해 가로스크롤·하드 클립·표 오버플로가 전부 0 이었다
           (결재 `2026-09-28-my-stage2-sheet-teardown.md` §측정 3차). 되돌리기는 revert 한 번. */}
-      {/* 🔑🏦 2026-09-26 (§20-5): 출금이 막히면 **그 자리에서** 푼다 — 돈이 나가는 흐름 한복판에서
-          대시보드로 보내지 않는다. 풀고 나면 요구한 시트로 되돌아온다(`pinReturn`). */}
-      {tool === 'withdraw' && (
-        <WithdrawSheet
+      {/* 💰 2026-10-12 정산 = **매주 자동으로 들어오는 돈**(읽기 전용). 종전 `WithdrawSheet` 는 한 번도
+          적립되지 않는 잔액(`seller_deal_balances`)으로 출금 신청을 받아 늘 0원이었다 — 진짜 돈은
+          원장 → 주간 자동 정산(`payouts`)이고, 사장님이 할 일은 계좌 등록 하나다. */}
+      {tool === 'payout' && (
+        <PayoutSheet
           sellerId={store.seller_id}
           onClose={() => setTool(null)}
-          onDone={() => state.refetch()}
-          onFixPin={() => { setPinReturn('withdraw'); setTool('pin') }}
           onFixBank={() => setTool('bank')}
-          onHistory={() => setTool('settlements')}
         />
       )}
-      {tool === 'pin' && <PinSheet sellerId={store.seller_id} onClose={() => setTool(null)} onDone={() => setTool(pinReturn)} />}
-      {/* 🔑 계좌 변경도 412 를 준다(서버가 계좌 탈취를 막는다) — 그때는 **계좌로** 돌아와야 한다. */}
+      {/* 🔑 계좌 변경은 412(PIN)를 준다(서버가 계좌 탈취를 막는다) — 풀고 나면 **계좌로** 돌아온다. */}
+      {tool === 'pin' && <PinSheet sellerId={store.seller_id} onClose={() => setTool(null)} onDone={() => setTool('bank')} />}
       {tool === 'bank' && (
         <BankSheet
           sellerId={store.seller_id}
           onClose={() => setTool(null)}
-          onDone={() => setTool('withdraw')}
-          onFixPin={() => { setPinReturn('bank'); setTool('pin') }}
+          onDone={() => setTool('payout')}
+          onFixPin={() => setTool('pin')}
         />
       )}
-      {/* ↩️ 지난 정산은 **출금에서만** 열린다 — 닫으면 출금으로 돌아온다(주문 → 환불과 같은 배치). */}
-      {tool === 'settlements' && <SettlementsSheet sellerId={store.seller_id} onClose={() => setTool('withdraw')} />}
       {tool === 'tools' && (
         <AllToolsSheet
           storeName={store.name}
@@ -564,7 +551,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
             if (own === 'scan') { setTool(null); enterSeat('/store/scan'); return }
             if (own === 'voucherNew') { setPageFrom('tools'); setTool('voucherNew'); return }
             if (inSheet) { setPage({ path, title: label }); setPageFrom('tools'); setTool('page'); return }
-            setTool(null); enterSeat(path)
+            // 🧭 2026-10-12 대시보드 삭제 — 시트로 못 여는 화면은 위 두 전용 길뿐이다(갈 대시보드 전체화면이 없다).
           }}
         />
       )}

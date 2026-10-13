@@ -164,37 +164,6 @@ const MUTATIONS = [
       '그 페이지는 메뉴에도 검색에도 없어진다 — 이 레포가 반복해 겪은 "페이지는 있는데 닿을 수 없다".',
   },
   {
-    name: '🧭 홈 할 일 행의 칩이 검은 타일로 되돌아온다 (무엇이 급한지 구별이 사라진다)',
-    file: 'src/pages/seller-page/TodoRows.tsx',
-    find: "const ACT = 'rounded-lg bg-brand-tint px-3 py-2 text-xs font-bold text-brand-text'",
-    replace: "const ACT = 'rounded-lg bg-gray-900 px-3 py-2 text-xs font-bold text-white'",
-    test: 'src/tests/unit/dashboard-rinda-shell.test.ts',
-    why:
-      '종전엔 bg-gray-900 타일이 조건에 따라 동시에 셋까지 떴다(이용권 등록 + 미처리 주문 + 정산). ' +
-      '셋이 똑같이 새까매서 우선순위를 전혀 말해 주지 못했다 — 대표가 말한 "헷갈린다"의 한 축.',
-  },
-  {
-    name: '🧭 셀러 사이드바가 다시 어두워진다',
-    // 🧱 2026-10-12 4단계: 사이드바가 사라져 같은 규칙(흰 면)을 남은 머리줄에 건다.
-    file: 'src/components/SellerLayout.tsx',
-    find: 'border-b border-rule bg-white px-3 md:px-6">',
-    replace: 'border-b border-rule bg-[#0A0A0B] px-3 md:px-6">',
-    test: 'src/tests/unit/dashboard-rinda-shell.test.ts',
-    why:
-      '흰 면 위에 흰 글자가 된다. 빌드도 타입체크도 통과하고 화면에서만 글자가 사라지는 부류라 ' +
-      '가드가 없으면 배포 뒤에야 드러난다.',
-  },
-  {
-    name: '💸 정산 금액을 다시 건수로 말한다 (₩412,000 → "412000건")',
-    file: 'src/pages/seller-page/TodoRows.tsx',
-    find: 'settlementAvailableAmount',
-    replace: 'settlementAvailableCount',
-    test: 'src/tests/unit/dashboard-rinda-shell.test.ts',
-    why:
-      '{{count}}건 문자열에 원화 금액을 넘기던 자리. 에러가 안 나고 숫자도 맞아 보여서 ' +
-      '셀러가 "정산 가능 412000건" 을 그대로 믿는다.',
-  },
-  {
     name: '뒤로가기 복원 — /browse POP 조회 무력화',
     file: 'src/pages/browse/list-restore.ts',
     find: "navType === 'POP' ? readListView<BrowseViewState>(keyRef.current) : null",
@@ -694,7 +663,7 @@ const MUTATIONS = [
   {
     name: '🖼️ 섹션 id 가 매 렌더 새로 만들어진다 (스크롤 중 카드가 재배치된다)',
     file: 'src/pages/main-home/GroupBuyFeed.tsx',
-    find: '  const sectionIds = useMemo(() => seededSectionProductIds(), [])',
+    find: '  const sectionIds = useMemo(() => seededSectionProductIds(sectionNearKey0), [sectionNearKey0])',
     replace: '  const sectionIds = new Set<number>()',
     test: 'src/tests/unit/home-feed-defers-section-items.test.ts',
     why:
@@ -815,26 +784,6 @@ const MUTATIONS = [
       '일몰된 개념에 매장을 붙일 수 있는 문은 남기지 않는다(2026-09-05 대표 "잔재 다 삭제").',
   },
   {
-    name: '🏪 본인 가입이 채널을 안 찍는다(직접 입점 사장님이 조용히 5% 로 돌아간다)',
-    file: 'src/features/seller/api/seller-registration.routes.ts',
-    find: '    await stampSignupStoreChannel(db, newSellerId);',
-    replace: '    // (제거)',
-    test: 'src/tests/unit/signup-store-channel-2026-09-04.test.ts',
-    why:
-      '채널이 비면 channelPlatformRate 가 undefined → 중개(5%) 폴백이다. 라이브 실측상 이 문으로 온 ' +
-      '매장 8곳 중 7곳이 미지정이었고, 에러도 경고도 없이 절반 요율로 걷혔다.',
-  },
-  {
-    name: '🏪 본인 가입 문이 중개(5%)로 찍힌다',
-    file: 'src/features/seller/api/seller-signup-meta.ts',
-    find: "  return 'direct'",
-    replace: "  return 'brokered'",
-    test: 'src/tests/unit/signup-store-channel-2026-09-04.test.ts',
-    why:
-      '이 문은 카카오 user 세션 전용 — 로그인한 본인이 자기 가게를 올린다. 여기서 brokered 가 나오면 ' +
-      '중개사가 없는 매장까지 절반 요율로 걷힌다(에이전시 일몰 후 brokered 의 출처는 /store/new 뿐).',
-  },
-  {
     name: '🏪 매장 등록 모달이 "누가 운영하나요?" 없이 제출된다',
     file: 'src/components/seller/StoreRegisterModal.tsx',
     // 🩸 2026-09-21: 등록증이 **선택**이 되면서 제출 가드에서 `!certOk` 가 빠졌다.
@@ -845,16 +794,6 @@ const MUTATIONS = [
     why:
       '에이전시 일몰 후 brokered 를 만들 수 있는 문은 여기 하나다. 이 강제가 풀리면 채널 미지정 ' +
       '매장이 다시 생기고, 미지정은 조용히 5% 로 떨어진다.',
-  },
-  {
-    name: '🌇 가입 퍼널에 에이전시 초대 코드가 되살아난다(아무도 못 켜는 스위치가 요금을 가른다)',
-    file: 'src/features/seller/api/seller-registration.routes.ts',
-    find: "    const hasInfluencerCode = !!(influencer_intro_code && influencer_intro_code.trim())",
-    replace: "    const hasInfluencerCode = !!(influencer_intro_code && influencer_intro_code.trim()); const agency_intro_code = ''",
-    test: 'src/tests/unit/signup-store-channel-2026-09-04.test.ts',
-    why:
-      '2026-09-05 대표 "에이전시 남은 잔재 다 삭제". 발급 주체(대시보드·초대 링크)가 사라졌는데 ' +
-      '읽는 쪽만 남으면, 아무도 채울 수 없는 칸이 직접 10% / 중개 5% 를 계속 가르게 된다.',
   },
   {
     name: '컨테이너 스크롤을 capture 없이 들어 영원히 못 받는다',
@@ -1219,8 +1158,10 @@ const MUTATIONS = [
   {
     name: '🔢 "N곳" 이 다시 로드된 수를 센다 — 338곳을 50곳이라 말한다',
     file: 'src/features/group-buy/api/group-buy-public.routes.ts',
-    find: 'data: withOnnuri, ...(total != null ? { total } : {})',
-    replace: 'data: withOnnuri',
+    // 🙈 2026-10-12 재조준: 응답 배열이 `toPublicProductRows(...)` 로 감싸졌다(데모 식별자 제거).
+    //   결함은 그대로 — **total 을 응답에서 떼어낸다**. 앵커만 새 모양으로 옮겼다.
+    find: 'data: toPublicProductRows(withOnnuri), ...(total != null ? { total } : {})',
+    replace: 'data: toPublicProductRows(withOnnuri)',
     test: 'src/tests/unit/map-feed-demand-loading.test.ts',
     why: '전량을 안 받으므로 개수는 서버만 안다. 응답에서 빠지면 화면이 로드된 수로 폴백해 거짓말을 한다.',
   },
@@ -3409,9 +3350,11 @@ canvas {
   },
   {
     name: '숙소 상세 사진만 여백이 생긴다(다른 상세는 풀블리드)',
-    file: 'src/pages/StayDetailPage.tsx',
-    find: 'relative -mx-4 -mt-5 lg:mx-0 lg:mt-0 bg-gray-100',
-    replace: 'relative bg-gray-100',
+    // 🔀 2026-10-12 재조준: 치수 클래스가 `shared/stay-head.ts`(SSOT)로 옮겨갔다 — 화면과 워커
+    //    첫 화면이 같은 상수를 쓴다. 불변식은 그대로이고 앵커만 그 상수로 옮긴다.
+    file: 'src/shared/stay-head.ts',
+    find: "  heroWrap: 'relative -mx-4 -mt-5 lg:mx-0 lg:mt-0 bg-gray-100",
+    replace: "  heroWrap: 'relative bg-gray-100",
     test: 'src/tests/unit/stay-detail-gallery-bleed.test.ts',
     why:
       '2026-08-30 대표 신고. 숙소는 갤러리를 본문과 같은 `px-4 py-5` 래퍼 **안**에 둬서, 같은 ' +
@@ -9595,22 +9538,6 @@ canvas {
     replace: "<div className={`bg-gradient-to-b from-white via-warm to-warm dark:from-[#171026] ${isPc ? 'hidden' : ''}`}>",
     test: 'src/tests/unit/account-pc-pane.test.ts',
     why: '표면 규칙 ⑥ 그라디언트 0. 다크의 #171026 보라는 체계 밖 색이었다.',
-  },
-  {
-    name: '셀러 B안 — STEP 카드 밴드가 다시 잉크(사이드바·카드·버튼 셋이 검정)',
-    file: 'src/pages/seller-page/MyStoresPanel.tsx',
-    find: "h-11 px-4 text-[14px] text-white bg-brand tabular-nums",
-    replace: "h-11 px-4 text-[14px] text-white bg-gray-900 tabular-nums",
-    test: 'src/tests/unit/seller-dashboard-b.test.ts',
-    why: '2026-09-02 대표 확정 B안. 강조는 밴드 하나(블루)여야 잉크 사이드바와 경쟁하지 않는다.',
-  },
-  {
-    name: '셀러 B안 — 상담 FAB 이 카카오 노랑으로 돌아간다',
-    file: 'src/components/SellerLayout.tsx',
-    find: "rounded-full bg-brand hover:bg-[#1557C8] text-white shadow-md",
-    replace: "rounded-full bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] shadow-md",
-    test: 'src/tests/unit/seller-dashboard-b.test.ts',
-    why: '표면 규칙 ② 강조색 하나. 화면 구석의 노랑 원은 체계 밖 색이었다.',
   },
   {
     name: '스크롤바 — thumb 이 브랜드 블루가 된다(가구가 강조색 예산을 먹음)',

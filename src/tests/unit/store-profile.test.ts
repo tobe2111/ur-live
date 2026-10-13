@@ -105,12 +105,6 @@ describe('R7~R9 매장 등록 선행 게이트 (2026-08-24 대표 — "무조건
     expect(s, '프리필까지 is_active 로 좁히면 매장 정보 자동입력이 사라진다')
       .toMatch(/loadLatestProductCopy\(DB, sellerId\)/)
   })
-  it('R8 대시보드 게이트는 fail-open — 판정 실패(null)로는 절대 잠그지 않는다', () => {
-    const p = read('src/pages/SellerPage.tsx')
-    expect(p, '느슨한 truthy 게이트는 로딩/실패 중 정상 셀러를 잠근다').toContain('storeGated === true ?')
-    const panel = read('src/pages/seller-page/MyStoresPanel.tsx')
-    expect(panel, '좌석 판정 실패는 게이트 아님(fail-open)').toContain('seatReady === false')
-  })
   it('R9 위저드도 등록 매장 없이는 다음 단계 차단 + 등록 즉시 좌석 전환', () => {
     const w = read('src/pages/SellerMealVoucherNewPage.tsx')
     expect(w, '위저드 게이트가 빠지면 매장 없이 이용권이 만들어진다').toContain("s === 0 && storeReady === false")

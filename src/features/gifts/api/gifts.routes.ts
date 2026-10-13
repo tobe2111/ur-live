@@ -200,30 +200,16 @@ giftsRoutes.post('/:id/confirm', requireAuth(), async (c) => {
     }
 
     // 5) 알림톡 발송 (best-effort, 실패해도 결제는 성공 처리)
-    // 🏁 2026-06-11 (응답 경로 부수효과 전수조사): 외부 HTTP(알리고) — 응답 후 실행(waitUntil).
+    // 🏁 2026-06-11 (응답 경로 부수효과 전수조사): 외부 HTTP(알림톡) — 응답 후 실행(waitUntil).
     //   블록 내용/순서/에러처리 불변 — 실행 시점만 이동. ctx 없으면(테스트) 기존처럼 동기 실행.
     {
       const _bg = async () => {
       try {
         const baseUrl = new URL(c.req.url).origin
         const claimUrl = `${baseUrl}/gift/claim/${gift.claim_token}`
-        // alimtalk 인프라 호출 (sendAlimtalk dynamic import — Worker bundle 분리 위해)
-        const ALIGO_API_KEY = (c.env as { ALIGO_API_KEY?: string }).ALIGO_API_KEY
-        const ALIGO_USER_ID = (c.env as { ALIGO_USER_ID?: string }).ALIGO_USER_ID
-        // 🛡️ 2026-04-28: 플랫폼 공통 senderKey — 빈값이면 발송 실패. env 에 등록 필요.
-        const ALIGO_SENDER_KEY = (c.env as { ALIGO_SENDER_KEY?: string }).ALIGO_SENDER_KEY
-        if (ALIGO_API_KEY && ALIGO_USER_ID && ALIGO_SENDER_KEY) {
-          const { sendAlimtalk } = await import('../../../lib/aligo')
-          await sendAlimtalk(
-            { ALIGO_API_KEY, ALIGO_USER_ID },
-            {
-              senderKey: ALIGO_SENDER_KEY,
-              templateCode: 'gift_received',
-              to: gift.recipient_phone,
-              message: `[유어딜] 선물이 도착했어요! 받기 → ${claimUrl}`,
-            }
-          )
-        }
+        // 📨 2026-10-12 — 네이버 클라우드 SENS(공용 sendSystemAlimtalk). 키가 없으면 조용히 건너뛴다.
+        const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk')
+        await sendSystemAlimtalk(c.env, gift.recipient_phone, 'gift_received', `[유어딜] 선물이 도착했어요! 받기 → ${claimUrl}`)
       } catch (notifyErr) {
         if (typeof console !== 'undefined') console.error('[gift confirm] alimtalk 실패:', notifyErr)
       }

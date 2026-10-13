@@ -94,8 +94,10 @@ describe('도매 철거 — 소비자 표면에 도매 유입 진입점이 없�
    *
    * ⚠️ 못 막는 것: 외부에 이미 퍼진 링크·검색 결과. 그건 라우트가 살아 있는 한 계속 도달한다(의도).
    */
+  // 🧭 2026-10-12 — 셀러 로그인 화면(`SellerLoginPage`)은 대시보드와 함께 지웠다(주소는 카카오 로그인 별칭).
+  //   소비자가 로그인하는 화면은 `LoginPage` 하나다.
   const CONSUMER_SURFACES = [
-    ['src/pages/SellerLoginPage.tsx', '소비자 사업자 유저 로그인'],
+    ['src/pages/LoginPage.tsx', '소비자 로그인'],
   ] as const
 
   for (const [f, why] of CONSUMER_SURFACES) {

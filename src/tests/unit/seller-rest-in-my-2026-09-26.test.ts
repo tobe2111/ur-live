@@ -23,8 +23,9 @@ import { readCode, readRaw, stripComments } from '../helpers/source-text'
 import { canOpenInSheet } from '@/pages/user-profile/seller-section/tool-pages'
 
 const SECTION = readCode('src/pages/user-profile/SellerSection.tsx')
-const SETTLE = readCode('src/pages/user-profile/seller-section/SettlementsSheet.tsx')
-const WITHDRAW = readCode('src/pages/user-profile/seller-section/WithdrawSheet.tsx')
+// 💰 2026-10-12: `WithdrawSheet`(출금 신청) + `SettlementsSheet`(지난 신청) → `PayoutSheet` 하나.
+//   출금 신청이 읽던 잔액은 한 번도 적립되지 않아 늘 0원이었다 — 셀러 돈은 주간 자동 정산이다.
+const PAYOUT = readCode('src/pages/user-profile/seller-section/PayoutSheet.tsx')
 const GROUPS = readCode('src/components/seller/seller-tab-groups.ts')
 const NAV = readCode('src/components/seller/seller-nav.ts')
 const FLAGS_RAW = readRaw('src/shared/feature-flags.ts')
@@ -45,13 +46,13 @@ const FLAGS_RAW = readRaw('src/shared/feature-flags.ts')
  */
 describe('🔴 브랜드메시지 — 마이의 손수 코드가 보내지 않는다 (등급 C)', () => {
   /** 마이가 **직접 쓴** 판매 코드. 대시보드 화면(ToolPageSheet 가 그대로 렌더)은 여기 없다. */
-  const HANDWRITTEN = ['SellerSection.tsx', 'seller-section/WithdrawSheet.tsx',
+  const HANDWRITTEN = ['SellerSection.tsx', 'seller-section/PayoutSheet.tsx',
     'seller-section/BankSheet.tsx', 'seller-section/PinSheet.tsx',
-    'seller-section/SettlementsSheet.tsx', 'seller-section/AllToolsSheet.tsx',
+    'seller-section/AllToolsSheet.tsx',
   ].map((f) => [f, readCode(`src/pages/user-profile/${f}`)] as const)
 
   it('발송·템플릿·충전 엔드포인트를 부르지 않는다', () => {
-    expect(HANDWRITTEN.length, '대상 0건 — 목록이 낡아 검사가 헛돌고 있다').toBeGreaterThanOrEqual(6)
+    expect(HANDWRITTEN.length, '대상 0건 — 목록이 낡아 검사가 헛돌고 있다').toBeGreaterThanOrEqual(5)
     for (const [name, raw] of HANDWRITTEN) {
       const code = stripComments(raw)
       for (const forbidden of ['alimtalk/send', 'alimtalk/templates', 'credits/charge', 'credits/confirm']) {
@@ -70,36 +71,36 @@ describe('🔴 브랜드메시지 — 마이의 손수 코드가 보내지 않�
  *   ⚠️ 그 화면의 조건이 서버 WHERE 와 같은지는 **이 파일의 일이 아니다** — 그 화면의 시험이 볼 일이다.
  */
 
-describe('🧾 지난 정산 — 조회 전용이고 금액을 지어내지 않는다', () => {
-  it('서버 목록을 그대로 읽는다', () => {
-    const code = stripComments(SETTLE)
-    expect(code).toMatch(/api\.get\(`\/api\/seller\/settlements\?limit=/)
+describe('🧾 정산 — 조회 전용이고 금액을 지어내지 않는다', () => {
+  it('서버(주간 자동 정산)를 그대로 읽는다', () => {
+    const code = stripComments(PAYOUT)
+    expect(code).toContain("api.get('/api/seller/payouts')")
     expect(code).toContain('currentSeatId() !== sellerId')
   })
 
   it('쓰기가 없다 — 정산 행을 화면이 바꾸지 않는다', () => {
-    expect(stripComments(SETTLE), '취소·수정은 어드민 지급 센터의 일이다')
+    expect(stripComments(PAYOUT), '송금·취소는 어드민 지급 센터의 일이다')
       .not.toMatch(/api\.(post|put|patch|delete)\(/)
   })
 
   it('금액을 화면에서 다시 계산하지 않는다', () => {
-    const code = stripComments(SETTLE)
+    const code = stripComments(PAYOUT)
     // 서버가 준 값을 formatNumber 로 찍기만 한다. 곱셈·뺄셈이 보이면 두 화면이 갈리기 시작한다.
-    expect(code).toContain('formatNumber(r.settlement_amount)')
-    expect(code, '수수료를 화면이 빼면 대시보드와 다른 숫자가 나온다').not.toMatch(/settlement_amount\s*[-*/]/)
-    expect(code).not.toMatch(/total_sales\s*[-*]\s*/)
+    expect(code).toContain('formatNumber(p.amount)')
+    expect(code, '지급 행 금액을 화면이 손대면 대시보드와 다른 숫자가 나온다').not.toMatch(/p\.amount\s*[-+*/]/)
   })
 
   it('0행일 때 빈 목록이 아니라 무슨 일인지 말한다', () => {
-    const code = stripComments(SETTLE)
-    expect(code).toContain('아직 정산 내역이 없어요')
+    const code = stripComments(PAYOUT)
+    // ⚠️ '아직 없어요' 만 찾으면 "정산 계좌가 아직 없어요" 에도 걸려 빈 목록 문구를 지워도 초록이다.
+    expect(code).toContain('아직 없어요. 이용권이 사용되면')
     expect(code, '실패와 0건은 다르게 말해야 한다').toContain('불러오지 못했어요')
   })
 
-  it('출금 시트에서만 열린다 (닫으면 출금으로 돌아온다)', () => {
+  it('바로가기 정산 줄이 이 시트를 연다', () => {
     const code = stripComments(SECTION)
-    expect(code).toMatch(/tool === 'settlements' &&[\s\S]{0,200}onClose=\{\(\) => setTool\('withdraw'\)\}/)
-    expect(stripComments(WITHDRAW), '출금 시트가 문을 갖고 있어야 도달한다').toContain('onHistory')
+    expect(code).toContain("onClick={() => openTool('payout')}")
+    expect(code).toMatch(/tool === 'payout' &&[\s\S]{0,120}<PayoutSheet/)
   })
 })
 
@@ -158,7 +159,7 @@ describe('🔌 배선 — 마이가 남은 시트를 실제로 연다', () => {
     // 🧹 2026-10-01 철거: 셋 중 둘(`PartnersSheet`·`MessagesSheet`)이 내려갔다. 판정은 그대로 —
     //   **import 만 있고 렌더가 없으면 죽은 코드다**(이 레포가 반복해 당한 클래스).
     const code = stripComments(SECTION)
-    for (const [name, tool] of [['SettlementsSheet', 'settlements']] as const) {
+    for (const [name, tool] of [['PayoutSheet', 'payout']] as const) {
       // 🔁 2026-09-26 재조준: 시트가 전부 `lazy` 로 바뀌어 정적 import 줄이 사라졌다.
       //   지키는 것은 그대로다 — **이 파일이 그 시트를 실제로 가져온다**(형태만 dynamic).
       expect(code, `${name} 로딩 누락`).toContain(`lazy(() => import('./seller-section/${name}'))`)

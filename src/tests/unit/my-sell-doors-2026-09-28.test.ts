@@ -51,15 +51,16 @@ describe('판매 문 정리 — 넷에서 둘로', () => {
     expect(PAGE).not.toContain("window.location.href = '/seller'")
   })
 
-  it('④-2 그래도 대시보드는 닿는다 — 판매 구역이 좌석에 앉혀 보낸다', () => {
+  it('④-2 그래도 그 화면들은 닿는다 — 판매 구역이 좌석에 앉혀 시트로 연다', () => {
     const SELLER = readCode('src/pages/user-profile/SellerSection.tsx')
     // 🩸 첫 판에서 `enterSeat('/seller…')` 를 앵커로 썼다가 빨간불이 났다 — 그 문자열은 없었다.
     //   대시보드 주소는 **시트가 건네주고** `enterSeat` 는 받아서 보냈다.
     // 🧹 2026-10-01 철거: 손수 시트가 내려가 `onOpenPath` 가 사라졌다. 전체 도구 하나만 그걸 쓴다.
     //   불변식은 그대로다 — **판매 구역이 좌석에 앉혀 대시보드로 보낸다**(전체화면이든 시트든).
     expect(SELLER).toContain('withMyReturn(to)')
-    expect(SELLER, '전체화면으로 나가는 길(전체 도구의 FULL_SCREEN_ONLY)이 좌석을 안 거친다')
-      .toMatch(/setTool\(null\); enterSeat\(path\)/)
+    // 🧭 2026-10-12 대시보드 삭제 — 전체화면으로 나가는 길은 계산대 하나다(`enterSeat('/store/scan')`). 대시보드 전체화면은 없다.
+    expect(SELLER, '계산대가 좌석을 안 거친다').toContain("enterSeat('/store/scan')")
+    expect(SELLER, '대시보드 전체화면으로 보내는 길이 되살아났다').not.toContain('enterSeat(path)')
     expect(SELLER, '좌석을 맞춘 뒤 대시보드 화면을 시트로 여는 길이 없다')
       .toMatch(/async function openPage\(path: string, title: string/)
     expect(SELLER).toContain("'/seller/orders'") // 그 대시보드 주소가 살아 있다

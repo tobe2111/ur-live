@@ -2,80 +2,14 @@ import { useState, useEffect } from 'react'
 import { cfImage } from '@/utils/cf-image'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN, COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
 import { isWholesaleSurface } from '@/utils/domain'
-import { Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Utensils, Sparkles } from 'lucide-react'
 // 🎫 2026-09-02 (대표 시안 — 코레일톡 하단 탭): 다섯 탭 전부 유어딜 아이콘. 비활성 = 선, 활성 = 면(`filled`).
-import { UrShopIcon, HomeIcon, GiftBoxIcon, TicketStubIcon, PersonIcon, PinIcon } from '@/components/icons/urdeal-icons'
-
-// 카카오 유저가 같은 계정을 셀러로 확장 — 비즈니스 정보 입력 페이지로 안내.
-function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
-  const { t } = useTranslation()
-  const navigate = useNavigate()
-  // 🛡️ 2026-05-01: 이미 셀러로 등록된 user 면 "전환" UX, 아니면 "등록" UX.
-  // 🛡️ 2026-05-28 [UNLOCK_LOADING] (SSR 마이그레이션 Phase 2): localStorage 직접 호출 → useState + useEffect.
-  //   SSR 시 typeof window === 'undefined' → ReferenceError 방어.
-  const [hasSellerToken, setHasSellerToken] = useState(false)
-  useEffect(() => {
-    setHasSellerToken(!!localStorage.getItem('seller_token'))
-  }, [])
-
-  if (hasSellerToken) {
-    return (
-      <div className="space-y-4">
-        <div className="text-center py-2">
-          <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gray-100 dark:bg-warm flex items-center justify-center">
-            <Radio className="w-7 h-7 text-gray-700 dark:text-gray-300" />
-          </div>
-          <p className="text-[15px] text-gray-700 dark:text-gray-300 leading-relaxed">
-            {t('bottomNav.sellerHasToken', { defaultValue: '등록된 셀러 계정이 있습니다' })}<br />
-            <span className="text-gray-500 text-[12px]">{t('bottomNav.sellerHasTokenSub', { defaultValue: '셀러 대시보드로 전환합니다' })}</span>
-          </p>
-        </div>
-        <button
-          onClick={() => {
-            localStorage.setItem('active_role', 'seller')
-            onDone()
-            window.location.href = '/seller'
-          }}
-          className="w-full flex items-center justify-center gap-2 py-4 bg-brand hover:bg-brand-dark text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
-        >
-          <Radio className="w-5 h-5" />
-          {t('bottomNav.goToSellerDashboard', { defaultValue: '셀러 대시보드로 전환' })}
-        </button>
-      </div>
-    )
-  }
-
-  // 🎨 2026-06-10 (사용자 요청 — ➕ 시트 디자인 통일): 떠 있는 아이콘+문구 블록(라이브 잔재 Radio) 제거,
-  //   '동네 공구 제안' 카드와 같은 그라데이션 카드 리스트로 통일. 동작 동일(경로 불변).
-  return (
-    <div className="space-y-3">
-      {/* 🏪 2026-08-26 (대표 — 유어샵 정합 감사): 문구는 '내 가게 등록'인데 목적지가 사업자 가입 폼이었다.
-          매장 등록이 **선행**이므로 `/store/new`(카카오맵 검색 → 등록증 첨부)로 보낸다. 사업자 인증은
-          그 다음 단계로 대시보드가 안내한다. */}
-      <button
-        onClick={() => { onDone(); navigate('/store/new') }}
-        className="w-full flex items-center gap-4 p-4 bg-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
-      >
-        <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-          <UserPlus className="w-6 h-6 text-white" />
-        </div>
-        <div className="text-left flex-1">
-          <p className="text-[15px] font-bold text-white">{t('bottomNav.openMyShop', { defaultValue: '내 가게 등록' })}</p>
-          <p className="text-[12px] text-white/80 mt-1">{t('bottomNav.sellerNoTokenSub', { defaultValue: '카카오 계정으로 가입·로그인 없이 한 번에' })}</p>
-        </div>
-      </button>
-
-    </div>
-  )
-}
+import { UrShopIcon, HomeIcon, GiftBoxIcon, TicketStubIcon, PersonIcon } from '@/components/icons/urdeal-icons'
 
 export default function BottomNav() {
   const navigate = useNavigate()
   const location = useLocation()
   const { t } = useTranslation()
-  const [sheetOpen, setSheetOpen] = useState(false)
   const [profileImage, setProfileImage] = useState<string | null>(null)
 
   useEffect(() => {
@@ -102,10 +36,8 @@ export default function BottomNav() {
       hasSellerToken: !!localStorage.getItem('seller_token'),
     })
   }, [location.pathname])
-  const { activeRole, hasSessionLogin, hasAccessToken, hasSellerToken } = authState
+  const { hasSessionLogin, hasAccessToken, hasSellerToken } = authState
   const isLoggedIn = hasAccessToken || hasSessionLogin || hasSellerToken
-  // DISPLAY 는 active_role 로만 판단 — seller_token 자동 발급 이 user UI 를 변형하지 않음
-  const isSeller = activeRole === 'seller'
 
   // 🛡️ 2026-05-25 (신모델 전환): 라이브 → 유어샵.
   //   사용자 결정: 유어샵 탭은 본인 공개페이지 (/u/{handle}).
@@ -176,6 +108,9 @@ export default function BottomNav() {
   // 🛡️ 2026-06-10 [UNLOCK_LOADING] 하단바 재구성 (사용자 승인): 쇼핑 탭 잠정 숨김 → 가운데 ➕(만들기).
   //   SHOPPING_TAB_HIDDEN=false 로 바꾸면 쇼핑 탭 즉시 복원(가역). /browse 라우트·prefetch 코드는 보존.
   //   ➕ 는 시트를 열어 (유저) 동네 공구 제안 / (셀러) 이용권 등록으로 분기 — 수요 신호 수집기.
+  //   🗑️ 2026-10-12 (대표 *"대시보드는 완전히 지워줘"*): 그 ➕ 탭은 이후 5탭 확정(06-19)으로 빠졌고, 시트는 열 방법이 없는
+  //   **죽은 화면**으로 남아 '셀러 대시보드'·'셀러 로그인' 버튼을 품고 있었다 — 시트·➕ 분기·업그레이드 패널을 통째로 지웠다.
+  //   가게 등록은 마이 판매 구역·유어샵 관리가, 동네딜은 홈이 맡는다.
   const navItems = [
     { icon: HomeIcon,    label: t('nav.home',  { defaultValue: '홈' }),    path: '/' },
     // 🎟️ 2026-06-19 [UNLOCK_LOADING] (대표 5탭 확정 — 홈=동네딜이라 동네딜 탭은 홈과 중복): 동네딜 탭 → 교환권(기프티콘).
@@ -231,33 +166,11 @@ export default function BottomNav() {
   }
 
   const renderItem = ({ icon: Icon, label, path, prefetch }: typeof navItems[0] & { prefetch?: () => Promise<unknown> }) => {
-    // ➕(만들기) — 경로 이동 대신 생성 시트 오픈 (기존 sheet 재활용).
-    const isCreate = path === '__create__'
-    const active = !isCreate && isActivePath(path)
-    // 🎫 탭 아이콘 union 에 ➕(lucide Plus)가 섞여 `filled` 를 못 받는다 — ➕ 은 위 isCreate 분기에서 끝나므로 여기선 유어딜 탭 아이콘으로 좁힌다.
-    const TabIcon = Icon as typeof HomeIcon
+    const active = isActivePath(path)
+    const TabIcon = Icon
     const isMyTab = path === '/user/profile'
     // intent(hover/press) 시 lazy 청크 prefetch — dedup 되므로 다중 호출 안전, 실패 무시.
     const warm = prefetch ? () => { try { prefetch().catch(() => {}) } catch { /* noop */ } } : undefined
-
-    if (isCreate) {
-      return (
-        <button
-          key={label}
-          onClick={() => setSheetOpen(true)}
-          onPointerDown={warm}
-          onMouseEnter={warm}
-          className="flex-1 flex flex-col items-center justify-center h-full"
-          aria-label={label}
-          aria-haspopup="dialog"
-        >
-          <span className="flex items-center justify-center w-9 h-9 -mt-0.5 rounded-full bg-brand">
-            <Icon size={20} className="text-white" strokeWidth={2.25} />
-          </span>
-          <span className="text-[12px] mt-1 text-gray-500">{label}</span>
-        </button>
-      )
-    }
 
     return (
       <button
@@ -333,145 +246,6 @@ export default function BottomNav() {
           </nav>
         </div>
       </div>
-
-      {/* Bottom Sheet */}
-      {sheetOpen && (
-        <>
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 z-[10000] bg-black/50 animate-overlay-in"
-            onClick={() => setSheetOpen(false)}
-          />
-
-          {/* Sheet — 🛡️ 2026-05-14: max-h-[85dvh] + 태블릿 max-w-[540px]. */}
-          <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] sm:max-w-[540px] z-[10001] animate-sheet-up max-h-[85dvh] overflow-y-auto">
-            <div>
-              <div
-                className="bg-gray-50 dark:bg-[#1D1F29] rounded-t-3xl"
-                style={{ paddingBottom: 'env(safe-area-inset-bottom, 16px)' }}
-              >
-                {/* Handle */}
-                <div className="flex justify-center pt-3 pb-2">
-                  <div className="w-10 h-1 bg-gray-600 rounded-full" />
-                </div>
-
-                <div className="px-6 pb-6">
-                  {/* Close — 🛡️ 2026-06-10: 시트의 유일한 진입이 ➕(만들기)가 되어 타이틀 통일 */}
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-[17px] font-bold text-gray-900 dark:text-white">
-                      {t('bottomNav.sheetTitleCreate', { defaultValue: '만들기' })}
-                    </h3>
-                    <button onClick={() => setSheetOpen(false)} aria-label={t('bottomNav.closeSheetAria', { defaultValue: '시트 닫기' })} className="p-1 rounded-full hover:bg-white/10">
-                      <X className="w-5 h-5 text-gray-500" />
-                    </button>
-                  </div>
-
-                  {/* 🧲 2026-06-10: 동네 공구 제안 — 수요 신호 수집. 🚫 2026-06-18 COMMUNITY_PROPOSAL_HIDDEN
-                       으로 숨김(셸브). 숨김 시 시트가 비지 않도록 '동네딜 둘러보기'로 폴백. */}
-                  {!COMMUNITY_PROPOSAL_HIDDEN ? (
-                  <button
-                    onClick={() => { setSheetOpen(false); navigate('/community-group-buy/new') }}
-                    className="w-full mb-3 flex items-center gap-4 p-4 bg-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
-                  >
-                    <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-                      <PinIcon className="w-6 h-6 text-white" />
-                    </div>
-                    <div className="text-left flex-1">
-                      <p className="text-[15px] font-bold text-white">{t('bottomNav.proposeDeal', { defaultValue: '우리 동네 공구 제안하기' })}</p>
-                      <p className="text-[12px] text-white/80 mt-1">{t('bottomNav.proposeDealDesc', { defaultValue: '원하는 가게를 제안하면 모아서 열어드려요' })}</p>
-                    </div>
-                  </button>
-                  ) : (!isSeller && !hasSellerToken) ? (
-                  <button
-                    onClick={() => { setSheetOpen(false); navigate('/group-buy') }}
-                    className="w-full mb-3 flex items-center gap-4 p-4 bg-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
-                  >
-                    <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-                      <PinIcon className="w-6 h-6 text-white" />
-                    </div>
-                    <div className="text-left flex-1">
-                      <p className="text-[15px] font-bold text-white">{t('bottomNav.browseDongneDeal', { defaultValue: '동네딜 둘러보기' })}</p>
-                      <p className="text-[12px] text-white/80 mt-1">{t('bottomNav.browseDongneDealDesc', { defaultValue: '내 주변 동네 공구 딜을 확인해요' })}</p>
-                    </div>
-                  </button>
-                  ) : null}
-
-                  {/* Seller: 이용권 등록 + 대시보드
-                       🏁 2026-06-11 (사용자 요청 — 겸직 유저 1탭 등록): 유저 모드(active_role='user')여도
-                       seller_token 보유(카카오 연결 셀러)면 등록 카드 직접 노출. 등록 페이지 가드
-                       (requireSeller)는 토큰 존재만 검사라 전환/리로드 없이 바로 진입 가능.
-                       'DISPLAY 는 active_role 로만' 룰은 탭/내비 표시용 — ➕ 시트는 역할 행동 메뉴라 토큰 기준. */}
-                  {(isSeller || hasSellerToken) && (
-                    <div className="space-y-3">
-                      {/* 🗑️ 2026-07-07 라이브커머스 제거: '라이브 방송 시작하기' 진입 삭제. */}
-                      <button
-                        onClick={() => { setSheetOpen(false); navigate('/seller/meal-voucher/new') }}
-                        className="w-full flex items-center gap-4 p-4 bg-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
-                      >
-                        <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-                          <Utensils className="w-6 h-6 text-white" />
-                        </div>
-                        <div className="text-left">
-                          <p className="text-[15px] font-bold text-white">{t('bottomNav.mealVoucherRegister', { defaultValue: '이용권 상품 등록' })}</p>
-                          <p className="text-[12px] text-white/80 mt-1">{t('bottomNav.mealVoucherDesc', { defaultValue: '맛집 이용권을 공구 상품으로 올리기' })}</p>
-                        </div>
-                      </button>
-
-                      <button
-                        onClick={() => { setSheetOpen(false); navigate('/seller') }}
-                        className="w-full flex items-center gap-4 p-4 bg-gray-100 dark:bg-[#1D1F29] rounded-2xl active:scale-[0.98] transition-transform"
-                      >
-                        <div className="w-12 h-12 rounded-xl bg-[#333] flex items-center justify-center">
-                          <LayoutDashboard className="w-6 h-6 text-gray-600" />
-                        </div>
-                        <div className="text-left">
-                          <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t('bottomNav.sellerDashboard', { defaultValue: '셀러 대시보드' })}</p>
-                          <p className="text-[12px] text-gray-500 mt-1">{t('bottomNav.sellerDashboardDesc', { defaultValue: '상품 관리, 주문, 매출 확인' })}</p>
-                        </div>
-                      </button>
-                    </div>
-                  )}
-
-                  {/* 🌇 2026-09-04 에이전시 일몰 — ➕ 시트의 '에이전시 대시보드' 진입 2개를 삭제했다.
-                      중개사는 별도 대시보드가 아니라 **셀러 대시보드**를 그대로 쓴다. */}
-                  {/* Logged in but no seller role — 권한 추가 유도 */}
-                  {isLoggedIn && !isSeller && !hasSellerToken && (
-                    <SellerUpgradePanel
-                      onDone={() => { setSheetOpen(false) }}
-                    />
-                  )}
-
-                  {/* Not logged in — 셀러 전용 */}
-                  {!isLoggedIn && (
-                    <div className="space-y-3">
-                      <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-2">
-                        {t('bottomNav.loginDesc', { defaultValue: '카카오 계정으로 로그인하세요.' })}
-                      </p>
-
-                      <button
-                        onClick={() => { setSheetOpen(false); navigate('/seller/login') }}
-                        className="w-full flex items-center justify-center gap-2 py-4 bg-brand hover:bg-brand-dark text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
-                      >
-                        <LogIn className="w-5 h-5" />
-                        {t('bottomNav.sellerLogin', { defaultValue: '셀러 로그인' })}
-                      </button>
-
-                      {/* 🏁 2026-07-02 단일 퍼널: 레거시 별도계정 가입 → 카카오 로그인 후 단일 관문(같은 계정 업그레이드). */}
-                      <button
-                        onClick={() => { setSheetOpen(false); navigate('/login?returnUrl=' + encodeURIComponent('/store/new')) }}
-                        className="w-full flex items-center justify-center gap-2 py-4 bg-gray-100 dark:bg-[#1D1F29] text-gray-900 dark:text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
-                      >
-                        <UserPlus className="w-5 h-5" />
-                        {t('bottomNav.openMyShop', { defaultValue: '내 가게 등록' })}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
     </>
   )
 }

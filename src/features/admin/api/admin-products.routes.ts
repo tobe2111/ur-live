@@ -18,7 +18,8 @@ import type { Env } from '@/worker/types/env';
 import { executeQuery, executeRun } from '@/worker/utils/database';
 import { writeAuditLog } from '@/worker/middleware/admin-security';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
-import { sendAlimtalk, buildSampleApprovalMessage } from '../../alimtalk/aligo';
+import { buildSampleApprovalMessage } from '../../alimtalk/messages';
+import { sendSystemAlimtalk } from '@/lib/system-alimtalk';
 import { ensureSupplyVisibilitySchema, recordSupplyPriceChange } from '../../supply/api/supply-visibility';
 import { getSupplyMeta, setSupplyMeta } from '@/worker/utils/product-supply-meta';
 import { loadPlatformCommissionPct } from '../../supply/api/wholesale-settlement';
@@ -26,7 +27,7 @@ import { distributorPriceFromCost } from '@/lib/distributor-pricing';
 import { invalidateGroupBuyProductsCache } from '../../group-buy/api/cache-keys';
 import { parseAdminMallScope, productScopeSql } from '@/worker/utils/admin-mall-scope';
 import { fetchProductCounts } from './admin-products-counts';
-import { isValidKakaoPlaceUrl, normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url';
+import { isValidKakaoPlaceUrl, normalizeKakaoPlaceUrl, kakaoPlaceUrlFromId } from '@/shared/kakao-place-url';
 import { intParam } from '@/shared/pagination'
 import { dongnedealTextFilters } from './dongnedeal-search';
 // 🎯 2026-07-21: 시드 커버 재호스팅 — 본체는 worker/utils/rehost-image.ts (demo-image-rehost cron 과 공유 SSOT).
@@ -585,24 +586,16 @@ adminProductsRoutes.patch('/sample-requests/:id', cors(), async (c) => {
       return c.json({ success: false, error: '이미 처리된 신청입니다' }, 409);
     }
 
-    if (reqInfo?.seller_phone && c.env.ALIGO_API_KEY && c.env.ALIGO_USER_ID && (c.env.ALIGO_SENDER_PHONE || c.env.ALIGO_SENDER)) {
-      const { subject, message } = buildSampleApprovalMessage({
+    // 📨 2026-10-12 — 네이버 클라우드 SENS(공용 sendSystemAlimtalk). 키·승인 템플릿 없으면 조용히 건너뛴다.
+    if (reqInfo?.seller_phone) {
+      const { message } = buildSampleApprovalMessage({
         sellerName: reqInfo.seller_name,
         productName: reqInfo.product_name,
         approved: body.action === 'approve',
         adminMemo: body.admin_memo,
       });
-      sendAlimtalk({
-        apikey: c.env.ALIGO_API_KEY,
-        userid: c.env.ALIGO_USER_ID,
-        senderkey: c.env.ALIGO_SENDER_KEY ?? '',
-        tpl_code: c.env.ALIGO_TPL_SAMPLE_APPROVED ?? 'TBD',
-        sender: (c.env.ALIGO_SENDER_PHONE || c.env.ALIGO_SENDER)!,
-        receiver_1: reqInfo.seller_phone.replace(/-/g, ''),
-        recvname_1: reqInfo.seller_name,
-        subject_1: subject,
-        message_1: message,
-      }).catch(e => { if (import.meta.env.DEV) console.warn('[Alimtalk] 샘플 승인 알림 실패:', e) });
+      sendSystemAlimtalk(c.env, reqInfo.seller_phone, 'sample_approved', message)
+        .catch(e => { if (import.meta.env.DEV) console.warn('[Alimtalk] 샘플 승인 알림 실패:', e) });
     }
 
     if (reqInfo?.seller_id) {
@@ -1264,7 +1257,7 @@ export async function kakaoPlaceLookup(
       address: doc.road_address_name || doc.address_name || null,
       lat: Number.isFinite(lat) ? lat : null,
       lng: Number.isFinite(lng) ? lng : null,
-      placeUrl: doc.id ? `https://place.map.kakao.com/${doc.id}` : normalizeKakaoPlaceUrl(doc.place_url),
+      placeUrl: kakaoPlaceUrlFromId(doc.id) ?? normalizeKakaoPlaceUrl(doc.place_url),
       placeId: doc.id || null,  // 🖼️ 카카오 플레이스 등록 사진(fetchKakaoPlacePhotos) 조회용
       // 📞 2026-07-21 (대표 "다 넣어줘 — 최대한 다 긁어와"): 카카오 키워드 API 가 주는 실전화·실업종을
       //   그간 흘리던 것 → 캡처. 전화=restaurant_phone(상세 노출), 업종=meta(참조/추후 활용).

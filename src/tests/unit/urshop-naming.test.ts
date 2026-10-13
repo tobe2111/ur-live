@@ -157,7 +157,6 @@ describe('N5 "매장 등록" 이라 말하는 버튼은 실제로 매장 등록�
   const SIGNUP_FORM = '/seller/register/supplier'
   it('소비자 화면은 사업자 가입 폼으로 직접 보내지 않는다 (매장 등록 = /store/new)', () => {
     const allow = new Set([
-      'src/pages/SellerRegisterSupplierPage.tsx', // 폼 자신(로그인 복귀 returnUrl)
       'src/pages/SellerWaitingPage.tsx',          // 심사 대기 → 폼으로 되돌림
     ])
     /**

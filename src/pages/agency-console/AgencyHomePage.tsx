@@ -55,7 +55,12 @@ export default function AgencyHomePage() {
     }
   }, [params, setParams])
 
-  if (!token || expired) return <Navigate to="/agency/login?returnUrl=%2Fagency" replace />
+  // 🚪 `?tool=`(알림·메일의 셀러 화면 주소)을 로그인 뒤까지 잇는다 — 잃으면 직원이 같은 링크를 다시 눌러야 한다(2026-10-12).
+  if (!token || expired) {
+    const tool = params.get('tool')
+    const back = tool ? `/agency?tool=${encodeURIComponent(tool)}` : '/agency'
+    return <Navigate to={`/agency/login?returnUrl=${encodeURIComponent(back)}`} replace />
+  }
 
   async function logout() {
     if (!(await confirmDialog('로그아웃할까요?'))) return

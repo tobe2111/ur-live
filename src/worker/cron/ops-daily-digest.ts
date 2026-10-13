@@ -83,13 +83,13 @@ export async function runOpsDailyDigest(env: Env): Promise<void> {
 
     const delivered = await deliverAdminOpsReport(env, { type: 'ops_daily_digest', title, body, link: '/admin' })
 
-    // 알림톡 (기본 OFF — env 게이트 + platform_settings 수신번호 + Aligo 3종 설정 모두 필요).
+    // 알림톡 (기본 OFF — env 게이트 + platform_settings 수신번호 + SENS 키 4종 모두 필요).
     if ((env as Env & { OPS_DIGEST_ALIMTALK_ENABLED?: string }).OPS_DIGEST_ALIMTALK_ENABLED === 'true') {
       try {
         const phone = await getOpsSetting(DB, 'ops_digest_phone')
         if (phone && /^01\d{8,9}$/.test(phone.replace(/\D/g, ''))) {
           const { sendSystemAlimtalk } = await import('../../lib/system-alimtalk')
-          const tpl = (env as Env & { ALIGO_OPS_DAILY_DIGEST?: string }).ALIGO_OPS_DAILY_DIGEST || 'ops_daily_digest'
+          const tpl = 'ops_daily_digest'
           await sendSystemAlimtalk(env, phone.replace(/\D/g, ''), tpl, `[유어딜] ${title}\n\n${body}`)
         }
       } catch { /* fail-soft */ }

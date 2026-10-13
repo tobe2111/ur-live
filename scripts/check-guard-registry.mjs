@@ -23,6 +23,7 @@
  *       (audit-gate.sh / .github/workflows/*.yml / git hook / package.json).
  *       → ②처럼 "만들어만 두고 안 켠" 가드를 잡는다.
  *   R2. 가드가 **코드에서 지목한 고정 파일 경로**는 존재해야 한다(주석 안의 경로는 제외).
+ *   R3. **러너가 부르는 가드 스크립트가 실재**해야 한다(R1 의 역방향 — 아래 주석에 사고 3건).
  *       → ③처럼 경로가 낡아 검사가 비는 것을 잡는다.
  *
  * ## 이 가드가 못 막는 것 (과신 금지)
@@ -113,6 +114,49 @@ const runners = runnerText()
 const unregistered = []
 const danglingTargets = []
 
+/**
+ * R3 — **러너가 부르는 가드 스크립트가 실재하는가** (R1 의 역방향).
+ *
+ * 🩸 2026-10-12 실측 3건에서 도출. 2026-10-11 도매몰 철거로 가드 셋이 삭제됐는데
+ *   `install-git-hooks.sh` 가 계속 불렀고, 전부 `|| true` 라 매 커밋마다
+ *   `MODULE_NOT_FOUND` **스택만 찍고 조용히 넘어갔다**
+ *   (`check-wholesale-autologin-guarded` · `check-wholesale-login-spa-navigate` ·
+ *    `check-login-gate-by-price`). verify.yml 엔 없어서 **CI 는 영원히 못 본다.**
+ *
+ * R1(가드 → 러너)만 있으면 이 방향이 통째로 눈먼다: 가드 파일이 **사라지면** R1 의 순회 대상에서도
+ * 빠지므로 아무 말도 하지 않는다. 즉 *"호출은 남았는데 가드가 없다"* 는 두 규칙 **사이**의 구멍이었다.
+ */
+const deadCalls = []
+{
+  // ⚠️ 파일명 문자 집합을 좁히지 말 것 — 처음엔 `[A-Za-z0-9_.-]+` 였고, 되돌려-검증에서
+  //   비ASCII 이름을 심었더니 **매칭이 0 이라 초록**이었다. 러너가 부르는 것을 그대로 본다.
+  const CALL = /(?:node|bash|sh)\s+(scripts\/check-[^\s'"&|;)]+\.(?:mjs|cjs|js|sh))/g
+  const sources = [
+    'scripts/audit-gate.sh',
+    'scripts/install-git-hooks.sh',
+    'scripts/pre-push-gate.mjs',
+    ...readdirSync('.github/workflows').filter((f) => /\.ya?ml$/.test(f)).map((f) => `.github/workflows/${f}`),
+  ]
+  const seenCall = new Set()
+  for (const src of sources) {
+    if (!existsSync(src)) continue
+    // 주석 안의 예시 호출(`# node scripts/check-foo.mjs`)은 호출이 아니다.
+    const body = readFileSync(src, 'utf8')
+      .split('\n').filter((l) => !/^\s*#/.test(l)).join('\n')
+    let c
+    while ((c = CALL.exec(body)) !== null) {
+      const key = `${src}|${c[1]}`
+      if (seenCall.has(key)) continue
+      seenCall.add(key)
+      if (!existsSync(c[1])) deadCalls.push({ runner: src, script: c[1] })
+    }
+  }
+  if (seenCall.size === 0) {
+    console.error('❌ [guard-registry] R3 이 가드 호출을 한 건도 못 찾았다 — 이 검사가 헛돈다.')
+    process.exit(1)
+  }
+}
+
 for (const g of guards) {
   const raw = readFileSync(g, 'utf8')
   const exempt = raw.includes('guard-registry-ok')
@@ -157,9 +201,18 @@ if (danglingTargets.length) {
   console.error(`     경로만 낡으면 해당 불변식은 조용히 검사되지 않습니다.`)
 }
 
+if (deadCalls.length) {
+  bad += deadCalls.length
+  console.error(`\n❌ [guard-registry] 러너가 **없는 가드 스크립트**를 부른다 ${deadCalls.length}건:`)
+  for (const d of deadCalls) console.error(`   ${d.runner}  ->  ${d.script}  (파일 없음)`)
+  console.error(`   → 가드가 폐기됐으면 **그 호출 줄도 지우세요**.`)
+  console.error(`     \`|| true\` 가 붙어 있으면 매 실행마다 MODULE_NOT_FOUND 스택만 찍고 넘어갑니다`)
+  console.error(`     (= 지키는 것 없이 겁만 주는 줄). 2026-10-12 에 실제로 3건이 그 상태였습니다.`)
+}
+
 if (bad) {
   console.error(`\n가드 레지스트리 ${bad}건 위반 — "가드가 있는데 안 돈다" 클래스 (2026-07-29 실측 3건에서 도출).`)
   process.exit(STRICT ? 1 : 0)
 }
 
-console.log(`✅ guard-registry: 가드 ${guards.length}개 전부 실행 경로에 등록됨 + 지목 파일 전부 존재.`)
+console.log(`✅ guard-registry: 가드 ${guards.length}개 전부 실행 경로에 등록됨 + 지목 파일 전부 존재 + 러너의 죽은 호출 0.`)

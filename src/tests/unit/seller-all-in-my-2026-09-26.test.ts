@@ -20,7 +20,6 @@ import { readCode, stripComments } from '../helpers/source-text'
 const TOOLS = readCode('src/pages/user-profile/seller-section/AllToolsSheet.tsx')
 const SECTION = readCode('src/pages/user-profile/SellerSection.tsx')
 const LAYOUT = readCode('src/components/SellerLayout.tsx')
-const BAR = readCode('src/components/seller/BackToMyBar.tsx')
 const RETURN = readCode('src/lib/seller-return.ts')
 const SEAT = readCode('src/lib/seller-seat.ts')
 const NAVMODEL = readCode('src/components/seller-layout/useSellerNavModel.ts')
@@ -55,28 +54,11 @@ describe('② 나갔다가 돌아온다', () => {
     expect(code, '표시가 없으면 일이 끝나는 화면에서 마이로 오는 길이 없다')
       .toMatch(/location\.assign\(withMyReturn\(/)
   })
-
-  it('귀환 띠는 레이아웃 한 곳에만 있다', () => {
-    expect(stripComments(LAYOUT), '페이지마다 붙이면 안 붙인 페이지가 생긴다').toContain('<BackToMyBar />')
-    // 개별 셀러 페이지가 각자 붙이기 시작하면 그 순간 규약이 갈린다.
-    const pages = readCode('src/pages/SellerMorePage.tsx')
-    expect(stripComments(pages)).not.toContain('BackToMyBar')
-  })
-
-  it('띠는 세션 기록으로 판정한다 — URL 파라미터만으로는 부족하다', () => {
-    const bar = stripComments(BAR)
-    expect(bar).toContain('noteMyReturn(')
-    expect(bar).toContain('shouldOfferMyReturn()')
-    // 대시보드 안에서 한 번만 이동해도 `?from=my` 는 떨어져 나간다.
-    expect(stripComments(RETURN)).toContain('sessionStorage')
-  })
-
   it('마이에 도착하면 흔적을 지운다', () => {
-    expect(stripComments(SECTION), '안 지우면 다음 대시보드 방문에도 띠가 남는다')
-      .toMatch(/clearMyReturn\(\)/)
-    expect(stripComments(BAR), '띠를 눌러 돌아갈 때도 지운다').toMatch(/clearMyReturn\(\)/)
+    // 🧱 2026-10-12 대시보드 삭제로 귀환 띠(BackToMyBar)는 사라졌지만 흔적은 매장 계산대(StoreScanPage)가 아직 읽는다.
+    expect(stripComments(SECTION), '안 지우면 다음 계산대 방문에도 "마이로" 가 남는다')
+      .toMatch(/useEffect\(\(\) => \{ clearMyReturn\(\) \}, \[\]\)/)
   })
-
   it('탭 수명이다 — localStorage 에 적지 않는다', () => {
     expect(stripComments(RETURN), '어제 들어간 흔적이 오늘 띠로 뜨면 안 된다')
       .not.toContain('localStorage')
@@ -129,31 +111,19 @@ describe('시트는 뒤로가기로 닫힌다', () => {
 // ── §20-5 온보딩 셋 ───────────────────────────────────────────────────────
 const PIN = readCode('src/pages/user-profile/seller-section/PinSheet.tsx')
 const BANK = readCode('src/pages/user-profile/seller-section/BankSheet.tsx')
-const WITHDRAW = readCode('src/pages/user-profile/seller-section/WithdrawSheet.tsx')
+// 💰 2026-10-12: 출금 신청(`WithdrawSheet`) → 정산(`PayoutSheet`, 주간 자동 · 읽기 전용).
+const PAYOUT = readCode('src/pages/user-profile/seller-section/PayoutSheet.tsx')
 
-describe('🔑🏦 출금이 막히면 그 자리에서 푼다 (§20-5)', () => {
+describe('🔑🏦 계좌가 막히면 그 자리에서 푼다 (§20-5)', () => {
   // ⚠️ "전체 도구 ›" 자체는 이제 **마이 안 시트**를 가리킨다(§20-1) — 그 문구가 있다고 나가는 게 아니다.
   //   막아야 하는 것은 **PIN·계좌**가 여전히 딴 데로 보내는 것뿐이다. 사업자등록증은 의도적으로
   //   진입으로 남겼다(사진 업로드 + OCR — §19-1 등록 폼과 같은 무게).
-  it('PIN·계좌는 시트 밖으로 보내지 않는다', () => {
-    const code = stripComments(WITHDRAW)
-    expect(code, 'PIN 안내가 아직 다른 화면을 가리킨다').not.toMatch(/PIN[^\n]*전체 도구/)
+  // 🔁 2026-10-12 재조준: 출금이 사라져 **PIN 을 요구하는 쪽은 계좌 하나**다. 정산 시트는 읽기 전용이고
+  //   막히는 일이 "계좌가 없다" 하나라 그것만 그 자리에서 연다.
+  it('계좌는 정산 시트 밖으로 보내지 않는다', () => {
+    const code = stripComments(PAYOUT)
     expect(code, '계좌 안내가 아직 다른 화면을 가리킨다').not.toMatch(/계좌[^\n]*전체 도구/)
-    expect(code).toMatch(/onFixPin\?\.\(\)|onFixPin\(\)/)
-    expect(code).toMatch(/onFixBank/)
-  })
-
-  it('사업자등록증만 진입으로 남는다 (의도적 — 업로드+OCR)', () => {
-    const code = stripComments(WITHDRAW)
-    expect(code).toMatch(/BUSINESS_REGISTRATION_REQUIRED:[^\n]*전체 도구/)
-  })
-
-  it('PIN 412 는 문구만 띄우지 않고 시트를 연다', () => {
-    expect(stripComments(WITHDRAW)).toMatch(/PIN_REQUIRED' && onFixPin/)
-    // 🔑 2026-09-26: PIN 을 요구하는 쪽이 둘이 됐다(출금·계좌). 돌아갈 곳이 갈리므로
-    //   `pinReturn` 을 함께 세운다 — 세우지 않으면 계좌를 넣다 푼 사람이 출금에 떨어진다.
-    expect(stripComments(SECTION), '출금이 PIN 시트를 안 연다')
-      .toMatch(/onFixPin=\{\(\) => \{ setPinReturn\('withdraw'\); setTool\('pin'\) \}\}/)
+    expect(code).toMatch(/onClick=\{onFixBank\}/)
   })
 
   /**
@@ -165,7 +135,7 @@ describe('🔑🏦 출금이 막히면 그 자리에서 푼다 (§20-5)', () => 
    */
   it('🔑 계좌 412 도 그 자리에서 풀고, 계좌로 되돌아온다', () => {
     expect(stripComments(BANK), '계좌 시트가 412 를 안 받으면 막다른 길이다').toMatch(/PIN_REQUIRED' && onFixPin/)
-    expect(stripComments(SECTION)).toMatch(/onFixPin=\{\(\) => \{ setPinReturn\('bank'\); setTool\('pin'\) \}\}/)
+    expect(stripComments(SECTION)).toMatch(/onFixPin=\{\(\) => setTool\('pin'\)\}/)
   })
 
   // 🩸 이 시험은 처음에 헛돌았다. `<PinSheet[\s\S]{0,160}onDone=…` 로 썼더니 그 160자가 **다음 줄의
@@ -177,11 +147,11 @@ describe('🔑🏦 출금이 막히면 그 자리에서 푼다 (§20-5)', () => 
     // 🔑 PIN 은 **요구한 쪽**으로 돌아간다 — 한 곳으로 고정하면 계좌를 넣다 푼 사람이 출금에 떨어진다.
     const pin = lines.find((l) => l.includes('<PinSheet'))
     expect(pin, '<PinSheet 렌더 줄을 못 찾았다').toBeTruthy()
-    expect(pin, 'PIN 이 요구한 시트로 안 돌아온다').toContain("onDone={() => setTool(pinReturn)}")
-    // 계좌를 저장하면 원래 하려던 출금으로 이어진다(그 흐름 때문에 계좌를 넣은 것이다).
+    expect(pin, 'PIN 을 풀면 계좌로 안 돌아온다').toContain("onDone={() => setTool('bank')}")
+    // 계좌를 저장하면 정산으로 돌아온다(정산을 보다 계좌를 넣으러 간 것이다).
     const bankAt = code.indexOf('<BankSheet')
     expect(bankAt, '<BankSheet 를 못 찾았다').toBeGreaterThan(0)
-    expect(code.slice(bankAt, bankAt + 240), '계좌 저장 뒤 출금으로 안 이어진다').toContain("onDone={() => setTool('withdraw')}")
+    expect(code.slice(bankAt, bankAt + 240), '계좌 저장 뒤 정산으로 안 돌아온다').toContain("onDone={() => setTool('payout')}")
   })
 
   it('PIN 은 거는 것과 확인하는 것이 둘 다 있다', () => {

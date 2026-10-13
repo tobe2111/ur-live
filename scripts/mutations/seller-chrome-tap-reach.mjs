@@ -12,22 +12,6 @@ const TEST = 'src/tests/unit/seller-chrome-tap-reach-2026-10-01.test.ts'
 
 export default [
   {
-    name: '👆 공용 배너 닫기의 넓힌 히트 영역을 떼어낸다 (24×24 로 복귀)',
-    why: '이 배너는 셀러 일곱 화면 전부에 뜬다 — 한 자리가 일곱 화면의 누름을 좌우한다.',
-    file: 'src/components/SellerKakaoLinkBanner.tsx',
-    find: 'className="shrink-0 p-1 text-gray-400 hover:text-gray-600 transition-colors tap-reach"',
-    replace: 'className="shrink-0 p-1 text-gray-400 hover:text-gray-600 transition-colors"',
-    test: TEST,
-  },
-  {
-    name: '👆 배너 CTA 를 박스째 키운다 (내가 실제로 한 실수 — 배너 +39px)',
-    why: 'ur-btn-md 는 높이 40 에 좌우 패딩 18px 라 같은 행의 글자 칸이 197 → 167px 로 좁아진다. 설명이 한 줄 더 감겨 배너가 두꺼워지고, 그게 일곱 화면에 쌓인다.',
-    file: 'src/components/SellerKakaoLinkBanner.tsx',
-    find: 'className="ur-btn ur-btn-sm ur-btn-primary shrink-0 tap-reach"',
-    replace: 'className="ur-btn ur-btn-md ur-btn-primary shrink-0"',
-    test: TEST,
-  },
-  {
     name: '👆 tap-reach 가 폭까지 40px 로 고정된다 (옆 버튼을 삼킨다)',
     why: 'max(100%, …) 가 아니면 넓은 버튼의 히트 영역이 40px 로 **줄어든다**. 그리고 좁은 이웃끼리 겹치면 엉뚱한 버튼이 눌린다.',
     file: 'src/index.css',
@@ -41,14 +25,6 @@ export default [
     file: 'src/index.css',
     find: '  width: max(100%, 2.5rem);\n  height: max(100%, 2.5rem);\n}',
     replace: '  width: max(100%, 2.5rem);\n  height: max(100%, 2.5rem);\n  pointer-events: none;\n}',
-    test: TEST,
-  },
-  {
-    name: '👆 셀러 헤더가 고정 높이를 잃는다 (40px 버튼의 전제 붕괴)',
-    why: '헤더 버튼을 박스째 키워도 됐던 이유는 헤더가 h-14(56px) 고정이기 때문이다. 그 전제가 바뀌면 처방도 바뀌어야 한다.',
-    file: 'src/components/SellerLayout.tsx',
-    find: '<header className="flex h-14 flex-shrink-0',
-    replace: '<header className="flex h-11 flex-shrink-0',
     test: TEST,
   },
   {

@@ -13,8 +13,6 @@ type RouteEntry = { method: string; path: string; router: string }
 // 실제 등록된 라우트 (split 후 상태) — split 코드와 동기화 필요
 const SELLER_ROUTES: RouteEntry[] = [
   // sellerRegistrationRoutes
-  { method: 'POST', path: '/register', router: 'registration' },
-  { method: 'POST', path: '/register-from-user', router: 'registration' },
   { method: 'GET', path: '/my-seller-status', router: 'registration' },
   { method: 'POST', path: '/switch-to-seller', router: 'registration' },
   { method: 'POST', path: '/switch-to-user', router: 'registration' },
@@ -191,8 +189,8 @@ describe('Hono router 우선순위 — 같은 path 등록 순서', () => {
 })
 
 describe('회귀 방지 — 등록된 라우트 수 (각 router 분배)', () => {
-  it('seller routes 총 38개', () => {
-    expect(SELLER_ROUTES.length).toBe(38)
+  it('seller routes 총 36개 (2026-10-12 /register-from-user · /register 삭제)', () => {
+    expect(SELLER_ROUTES.length).toBe(36)
   })
   it('agency routes 총 46개', () => {
     expect(AGENCY_ROUTES.length).toBe(46)
@@ -200,7 +198,7 @@ describe('회귀 방지 — 등록된 라우트 수 (각 router 분배)', () => 
   it('seller: 각 router 별 분배 확인', () => {
     const byRouter: Record<string, number> = {}
     for (const r of SELLER_ROUTES) byRouter[r.router] = (byRouter[r.router] ?? 0) + 1
-    expect(byRouter.registration).toBe(5)
+    expect(byRouter.registration).toBe(3)
     expect(byRouter.profile).toBe(7)
     expect(byRouter.settlements).toBe(6)
     expect(byRouter.account).toBe(5)

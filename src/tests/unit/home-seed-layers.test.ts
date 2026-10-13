@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { nearKeyFromCookieHeader } from '@/shared/home-near'
 import fs from 'node:fs'
 import path from 'node:path'
 import { timeoutFor } from '@/worker/utils/ssr-payload'
@@ -52,7 +53,11 @@ describe('홈 시드 두 개가 같은 계층을 받는다', () => {
   it('🔴 워커가 요청하는 경로와 워밍 경로가 byte-일치한다 (캐시 키가 곧 경로다)', () => {
     const worker = code('src/worker/index.ts')
     // 워커의 보조 시드 타깃 — 한 글자만 달라도 warm 한 키를 못 읽는다.
-    expect(worker).toMatch(/ssrExtra = \{ slot: 'SECTIONS', path: '\/api\/sections' \}/)
+    // 📍 2026-10-13: 위치 쿠키가 있으면 `?near=` 가 붙는다(워밍 밖 — 엣지·self-fetch 로 온다).
+    //   **쿠키가 없으면 경로가 정확히 `/api/sections`** 여야 한다 — 아래 행동 단언이 그걸 잰다.
+    expect(worker).toMatch(/ssrExtra = \{ slot: 'SECTIONS', path: '\/api\/sections' \+ \(\(k\) => \(k \? `\?near=\$\{k\}` : ''\)\)\(nearKeyFromCookieHeader\(c\.req\.header\('cookie'\)\)\) \}/)
+    expect(nearKeyFromCookieHeader(undefined)).toBe('')
+    expect(nearKeyFromCookieHeader('csrf=abc; other=1')).toBe('')
   })
 
   it('보조 시드는 fail-soft 다 (없어도 홈은 뜬다)', () => {

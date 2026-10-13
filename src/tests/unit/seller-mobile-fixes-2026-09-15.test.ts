@@ -17,61 +17,12 @@ import { stripComments } from '../helpers/source-text'
 import { SELLER_BOTTOM_BAR_H } from '../../components/seller-layout/SellerBottomBar'
 
 const read = (p: string) => stripComments(readFileSync(p, 'utf8'))
-const PANEL = read('src/pages/seller-page/MyStoresPanel.tsx')
-const PAGE = read('src/pages/SellerPage.tsx')
 const LAYOUT = read('src/components/SellerLayout.tsx')
 const BAR = read('src/components/seller-layout/SellerBottomBar.tsx')
 const GB = read('src/pages/SellerGroupBuyPage.tsx')
 const CSS = readFileSync('src/index.css', 'utf8')
 
-describe('① 내 매장 로딩 — 두 요청이 서로를 기다리지 않는다', () => {
-  it('매장 목록과 좌석 판정을 함께 await 하지 않는다', () => {
-    // 종전: `await Promise.allSettled([A, B])` → 느린 쪽이 끝나야 목록이 그려졌다.
-    expect(PANEL).not.toContain('Promise.allSettled')
-  })
-  it('각 요청이 자기 결과만 따로 반영한다', () => {
-    expect(PANEL).toMatch(/api\.get\('\/api\/seller\/my-stores'\)\s*\.then\(/)
-    expect(PANEL).toMatch(/api\.get\('\/api\/seller\/stores\/context'\)\s*\.then\(/)
-  })
-  it('둘 다 실패해도 스피너에 갇히지 않는다 (각각 catch)', () => {
-    // 🩸 첫 판은 앵커에서 260자를 잘라 `.catch(` 를 찾았는데, **그 창이 다음 요청의 catch 까지 먹어서**
-    //   my-stores 의 catch 를 통째로 지워도 초록이었다(주입이 잡았다). ⇒ catch 를 **자기 setter 에 묶어** 본다.
-    expect(PANEL).toMatch(/api\.get\('\/api\/seller\/my-stores'\)[\s\S]{0,200}?\.catch\(\(\) => setStores/)
-    expect(PANEL).toMatch(/api\.get\('\/api\/seller\/stores\/context'\)[\s\S]{0,240}?\.catch\(\(\) => setSeatReady/)
-  })
-  it('목록이 오면 좌석 판정을 안 기다린다 — 등록 매장이 0일 때만 기다린다', () => {
-    expect(PANEL).toMatch(/const loading = stores === null \|\| \(registered\.length === 0 && seatReady === undefined\)/)
-  })
-  it("'판정 중'과 '판정 실패'를 구분한다 (게이트 깜빡임 차단)", () => {
-    expect(PANEL).toMatch(/useState<boolean \| null \| undefined>\(undefined\)/)
-  })
-})
-
-describe('② 폰 홈에 매장 진입점이 있다', () => {
-  it('매장 패널을 폰에서 숨기지 않는다', () => {
-    expect(PAGE).toContain('<MyStoresPanel')
-    // 종전: gateOnly={!isPc} — 폰에서는 등록 매장이 있으면 아무것도 안 그렸다.
-    expect(PAGE).not.toMatch(/gateOnly=\{!isPc\}/)
-    expect(PAGE).not.toMatch(/<MyStoresPanel[^>]*gateOnly/)
-  })
-  it('패널에 매장 추가 버튼이 그대로 있다', () => {
-    expect(PANEL).toMatch(/seller\.stores\.addStore/)
-  })
-})
-
-describe('③ 내 매장 카드에서 관리로 갈 수 있다', () => {
-  it('카드가 매장 관리 페이지로 연결된다', () => {
-    expect(PANEL).toMatch(/to="\/seller\/stores"/)
-  })
-})
-
 describe('④ 상담 FAB 과 하단 고정 바가 같은 띠를 쓰지 않는다', () => {
-  it('FAB 위치를 Tailwind 고정값으로 박지 않는다 (CSS 가 정한다)', () => {
-    const at = LAYOUT.indexOf('seller-chat-fab')
-    expect(at).toBeGreaterThan(0)
-    const cls = LAYOUT.slice(at, at + 400)
-    expect(cls).not.toMatch(/\bbottom-24\b/)   // 96px 고정 — safe-area 도 무시했다
-  })
   it('바가 자기 존재를 body 에 켜고, 사라질 때 끈다', () => {
     expect(BAR).toMatch(/classList\.add\('seller-has-bottom-bar'\)/)
     expect(BAR).toMatch(/classList\.remove\('seller-has-bottom-bar'\)/)

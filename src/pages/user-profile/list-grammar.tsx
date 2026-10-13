@@ -143,7 +143,7 @@ export const ROW_LABEL_CLS = 'flex-1 min-w-0 text-[15px] font-semibold text-gray
 
 const ROW_CLS = `${ROW_SHELL_CLS} active:opacity-70 disabled:opacity-50`
 
-export function ListRow({ icon, label, hint, count, busy, onClick, to }: {
+export function ListRow({ icon, label, hint, count, busy, onClick, to, testId }: {
   icon: React.ReactNode
   label: string
   /**
@@ -167,6 +167,8 @@ export function ListRow({ icon, label, hint, count, busy, onClick, to }: {
    * **생김새로 드러내지 않는다**. 실제 경로가 있는 줄(내 유어샵 등)은 `to`, 시트를 여는 줄은 `onClick`.
    */
   to?: string
+  /** 브라우저 가드(`check-dark-contrast` 의 `open:`)가 이 줄을 눌러 시트 안 입력까지 재게 한다. */
+  testId?: string
 }) {
   const inner = (
     <>
@@ -187,9 +189,9 @@ export function ListRow({ icon, label, hint, count, busy, onClick, to }: {
       <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
     </>
   )
-  if (to) return <Link to={to} className={ROW_CLS}>{inner}</Link>
+  if (to) return <Link to={to} className={ROW_CLS} data-testid={testId}>{inner}</Link>
   return (
-    <button type="button" disabled={busy} onClick={onClick} className={ROW_CLS}>
+    <button type="button" disabled={busy} onClick={onClick} className={ROW_CLS} data-testid={testId}>
       {inner}
     </button>
   )
