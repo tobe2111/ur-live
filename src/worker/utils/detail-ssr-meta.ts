@@ -14,6 +14,7 @@ import { canonicalDetailPath } from '../../shared/product-flow'
 import { productShareImage } from '@/shared/og-share-image'
 import { propertyTypeLabel } from '../../shared/stay-property-type'
 import { kakaoPlaceCanonicalUrl } from '../../shared/kakao-place-url'
+import { storeNameJoin } from '@/shared/seo/store-name-dedupe'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 export { PASS_OG_VERSION } from '@/shared/pass-share-card'
 
@@ -155,15 +156,19 @@ export function buildDetailMeta(ssrPayload: string, origin: string, pathname: st
     // 이용권/동네딜 (group-buy) — 인덱싱 + 풀 메타 + JSON-LD
     const pageTitle = `${name} 공동구매 - ${store || '유어딜'}`
     const priceStr = price.toLocaleString('ko-KR')
+    // 🏪 2026-10-13 — 가게명이 상품명 앞에 그대로 든 경우 같은 말을 두 번 하지 않는다
+    //   (실측 `/pass/2919`: `달빛한스푼 달빛한스푼 닭도리탕`). 판단은 SSOT 하나다 —
+    //   `crawler-noscript` 가 교환권 목록에서 쓰던 그 규칙이고, 이 파일만 밖에 있었다.
+    const storeName = storeNameJoin(store, name)
     const description = (discount > 0
-      ? `🎉 ${discount}% 할인! ${store} ${name} — ${priceStr}원에 유어딜에서 바로 구매`
-      : `${store} ${name} — ${priceStr}원, 유어딜에서 할인가로 바로 구매`).replace(/\s+/g, ' ').trim().slice(0, 200)
+      ? `🎉 ${discount}% 할인! ${storeName} — ${priceStr}원에 유어딜에서 바로 구매`
+      : `${storeName} — ${priceStr}원, 유어딜에서 할인가로 바로 구매`).replace(/\s+/g, ' ').trim().slice(0, 200)
 
     const available = d.group_buy_status === 'active' || d.group_buy_status === 'achieved'
     const product: Record<string, unknown> = {
       '@context': 'https://schema.org', '@type': 'Product',
       name,
-      description: (String(d.description || '') || `${store} ${name} 공동구매`).replace(/\s+/g, ' ').trim().slice(0, 300),
+      description: (String(d.description || '') || `${storeName} 공동구매`).replace(/\s+/g, ' ').trim().slice(0, 300),
       ...(d.image_url ? { image: [photo] } : {}),
       ...(store ? { brand: { '@type': 'Brand', name: store } } : {}),
       offers: {
