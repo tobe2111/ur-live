@@ -32,7 +32,7 @@ export default [
   },
   {
     name: '🎠 사진 배너에 짙은 글자가 돌아온다 (장마다 글자색이 갈림)',
-    file: STRIP,
+    file: 'src/shared/home-strip-banners.ts', // 2026-10-14 STRIP_CLS 로 이동
     find: 'line-clamp-2 text-white dark:text-white',
     replace: 'line-clamp-2 text-gray-900 dark:text-gray-900',
     test: GUARD,
@@ -40,7 +40,7 @@ export default [
   },
   {
     name: '🎠 배너 글자가 다시 가운데로 뜬다 (야놀자 문법 이탈)',
-    file: STRIP,
+    file: 'src/shared/home-strip-banners.ts', // 2026-10-14 STRIP_CLS 로 이동
     find: 'aspect-[2/1] flex flex-col justify-end',
     replace: 'aspect-[2/1] flex flex-col justify-center',
     test: GUARD,
@@ -73,8 +73,8 @@ export default [
   {
     name: '🖥️ PC 배너가 다시 한 장짜리 2:1 이 된다 (1440px 에서 높이 ~670px)',
     file: STRIP,
-    find: " ${many ? PC_CARD_W : ''} overflow-hidden",
-    replace: ' overflow-hidden',
+    find: " ${many ? PC_CARD_W : ''} ${STRIP_CLS.card}",
+    replace: ' ${STRIP_CLS.card}',
     test: GUARD,
     why: '대표 *"PC버전은 너무 무식하게 배너가 큰데?"* → 시안 a(한 줄 세 장) 확정.',
   },
@@ -96,7 +96,7 @@ export default [
   },
   {
     name: '📏 배너 제목이 다시 24px 로 커진다',
-    file: STRIP,
+    file: 'src/shared/home-strip-banners.ts', // 2026-10-14 STRIP_CLS 로 이동
     find: 'max-w-[64%] text-[17px] font-bold',
     replace: 'max-w-[64%] text-[24px] font-bold',
     test: GUARD,
