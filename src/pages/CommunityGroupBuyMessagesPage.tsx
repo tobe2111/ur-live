@@ -8,7 +8,7 @@
  */
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { ArrowLeft, Send, Lock } from 'lucide-react'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'

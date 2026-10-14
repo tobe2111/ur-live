@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { PinIcon } from '@/components/icons/urdeal-icons'
 import { Link } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { ArrowRight } from 'lucide-react'
 import api from '@/lib/api'
 import { COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'

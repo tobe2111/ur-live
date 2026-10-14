@@ -8,7 +8,7 @@
  * 그래서 **보는 법만** 바꾼다: 눈으로 찾는 건 짧은 쪽, 권위는 전체 쪽. 전체를 감추지 않는 이유도 거기 있다.
  */
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { Check, Copy } from 'lucide-react'
 import { shortOrderNo } from '@/shared/order-number-display'
 

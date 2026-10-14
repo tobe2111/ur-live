@@ -5,7 +5,7 @@
  */
 import { Plus } from 'lucide-react'
 import { PinIcon } from '@/components/icons/urdeal-icons'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { CustomModal } from '@/components/CustomModal'
 import type { ShippingAddress } from './types'
 

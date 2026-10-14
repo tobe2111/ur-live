@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { InfoIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import SEO from '@/components/SEO'
 import type { loadTossPayments } from '@tosspayments/tosspayments-sdk'
 import { getTossPayments, getTossClientKey } from '@/lib/toss-preload'

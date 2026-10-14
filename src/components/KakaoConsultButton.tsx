@@ -8,7 +8,7 @@
  */
 import { useLocation } from 'react-router-dom'
 import { MessageIcon } from '@/components/icons/urdeal-icons'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 
 const KAKAO_CHAT_URL = 'http://pf.kakao.com/_AITdn/chat'
 

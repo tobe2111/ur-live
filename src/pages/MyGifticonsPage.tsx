@@ -13,7 +13,7 @@
  */
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import SEO from '@/components/SEO'
 import { useMyVouchers } from '@/hooks/queries'
 import { WalletPageWrapper } from '@/components/wallet/WalletAtoms'

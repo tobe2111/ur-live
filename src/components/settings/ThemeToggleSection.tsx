@@ -9,7 +9,7 @@
  *   - /user/profile (마이페이지) — 사용자가 자주 접근하는 곳
  */
 import { Monitor, Sun, Moon } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { useTheme, type ThemeMode } from '@/shared/stores/useTheme'
 import { ROW_GEOM_CLS, ROW_LABEL_CLS } from '@/pages/user-profile/list-grammar'
 import { SettingsIcon } from '@/components/icons/urdeal-icons'

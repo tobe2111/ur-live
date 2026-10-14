@@ -10,7 +10,7 @@
 import { useEffect, useState } from 'react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { Link, useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import SEO from '@/components/SEO'
 import { hostingApi, type HostSession, type HostingSummary } from '@/features/hosting/api/hosting-api'
 import { toast } from '@/hooks/useToast'

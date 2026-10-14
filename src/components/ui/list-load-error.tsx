@@ -6,7 +6,7 @@
  *
  * 문구는 이미 6개 언어에 있는 `common.loadFailed` / `common.retry` 를 쓴다(신규 키 0).
  */
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import Udal from '@/components/mascot/Udal'
 
 export function ListLoadError({ onRetry, className = '' }: { onRetry: () => void; className?: string }) {

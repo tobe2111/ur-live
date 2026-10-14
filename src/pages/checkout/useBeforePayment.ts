@@ -6,7 +6,7 @@
  */
 import { useRef } from 'react'
 import { readAffiliateRef } from '@/utils/affiliate-ref-store'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import api from '@/lib/api'
 import { addBreadcrumb } from '@/lib/sentry'
 import type { CartItem } from '@/types/cart'

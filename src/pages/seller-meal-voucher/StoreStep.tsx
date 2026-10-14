@@ -9,7 +9,7 @@
  */
 import { isSeatableStoreStatus } from '@/shared/seller-status'
 import { useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { MapPin, CheckCircle, Store, Loader2, Search } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'

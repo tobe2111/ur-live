@@ -37,7 +37,7 @@
  */
 
 import { Link } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { Share2 } from 'lucide-react'
 import VerifiedSeal from '@/components/VerifiedSeal'
 import UrDealLogo from '@/components/brand/UrDealLogo'

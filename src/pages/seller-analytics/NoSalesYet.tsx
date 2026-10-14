@@ -11,7 +11,7 @@
  *      기간을 넓히라고 말한다.
  */
 import { Link } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 
 const CARD = 'rounded-[var(--dash-radius,16px)] border border-rule bg-white p-6 text-center'
 

@@ -1,7 +1,7 @@
 import { useEffect, useState, lazy, Suspense } from 'react'
 import { GiftBoxIcon, WarnIcon } from '@/components/icons/urdeal-icons'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { ChevronRight, ChevronLeft, Map, Bookmark } from 'lucide-react'
 import api from '@/lib/api'
 import { getUserId, getUserIdSync, hasConsumerSession } from '@/utils/auth'

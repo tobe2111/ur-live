@@ -53,7 +53,7 @@ vi.mock('@/hooks/queries', () => ({ useMyVouchers: () => ({ data: vouchers(), is
 vi.mock('@/hooks/queries/useWishlist', () => ({ useWishlist: () => ({ data: [], isLoading: false, isError: false }) }))
 vi.mock('@/hooks/queries/useMyCoupons', () => ({ useMyCoupons: () => ({ data: [], isLoading: false, isError: false }) }))
 vi.mock('react-router-dom', () => ({ useNavigate: () => vi.fn(), Link: (p: Record<string, unknown>) => <a href={String(p.to)}>{p.children as never}</a> }))
-vi.mock('react-i18next', () => ({
+vi.mock('@/lib/i18n-lite', () => ({
   useTranslation: () => ({
     t: (_k: string, o?: Record<string, unknown>) => String(o?.defaultValue ?? _k),
     i18n: { language: 'ko' },

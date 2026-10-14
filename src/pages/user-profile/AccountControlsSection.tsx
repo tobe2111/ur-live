@@ -14,7 +14,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { BellIcon, MailIcon } from '@/components/icons/urdeal-icons'
 import api from '@/lib/api'
 import { ROW_SHELL_CLS, ROW_LABEL_CLS } from './list-grammar'

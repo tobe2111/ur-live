@@ -3,7 +3,7 @@ import { AlertIcon, OkIcon, InfoIcon, WarnIcon } from '@/components/icons/urdeal
 import { ReactNode, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useBackButton } from '@/hooks/useBackButton'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 
 interface ModalProps {
   isOpen: boolean

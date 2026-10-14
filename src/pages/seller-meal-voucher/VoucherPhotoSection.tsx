@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Camera } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { toast } from '@/hooks/useToast'
 import PhotoGalleryEditor, { PHOTO_MAX } from '@/components/seller/PhotoGalleryEditor'
 import type { VoucherForm } from './voucher-form'

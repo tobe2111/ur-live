@@ -3,7 +3,7 @@
  *
  * 표시만 담당. 변경/선택 클릭 시 부모의 setShowAddressModal 호출.
  */
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { AlertIcon } from '@/components/icons/urdeal-icons'
 import type { ShippingAddress } from './types'
 

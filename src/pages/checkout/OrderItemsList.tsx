@@ -3,7 +3,7 @@
  *
  * 셀러별 그룹 + 각 상품 + 배송비 표시. read-only.
  */
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { BoxIcon } from '@/components/icons/urdeal-icons'
 import { formatNumber } from '@/utils/format'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'

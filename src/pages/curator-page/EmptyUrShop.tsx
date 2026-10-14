@@ -11,7 +11,7 @@
  *   - 없음      → 종전 중립 화면(고르지 않았거나 다른 기기 — 잃어도 사고가 아니다)
  */
 import { Link } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { getUrShopIntent } from '@/utils/urshop-intent'
 import Udal from '@/components/mascot/Udal'
 

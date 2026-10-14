@@ -27,7 +27,7 @@
  *   호출부의 줄이 갖고, 여기는 `flex-1 min-w-0` 로 그 줄을 나눠 쓴다.
  *   ⚠️ **빈 진열대 판정은 여전히 이 부품이 혼자 한다** — 호출부에 개수 게이트를 두면 언젠가 갈린다.
  */
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { MAP_VOUCHER_DEFS, type MapVoucherType } from '@/pages/restaurant-map/voucher-types'
 import type { CuratorPin } from '@/features/curator/api/curator-api'
 

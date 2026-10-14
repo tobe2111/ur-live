@@ -5,7 +5,7 @@
  * 등급별 수수료/노출/혜택 안내 + 다음 등급까지의 score 격차.
  */
 import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { Award, ChevronRight, Gem, Medal, Sprout, Star, TrendingUp, type LucideIcon } from 'lucide-react'
 import api from '@/lib/api'
 import { getSellerToken } from '@/lib/seller-auth'

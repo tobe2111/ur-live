@@ -3,7 +3,7 @@
  *
  * 사용자가 보유한 딜 포인트 일부 / 전액 차감.
  */
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { formatNumber } from '@/utils/format'
 
 interface Props {

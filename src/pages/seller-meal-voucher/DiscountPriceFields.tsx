@@ -8,7 +8,7 @@
  * 셀러 대시보드 = 라이트 고정(dark: 금지).
  */
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { priceFromDiscount, discountFromPrices, type DiscountMode } from './discount-input'
 import { VOUCHER_MIN_PRICE } from '@/shared/constants/voucher-categories'
 

@@ -6,7 +6,7 @@
  *   2026-05-20 정책 변경 (사용자 요청): 적립 0 도 항상 노출 — 신규 사용자에게 referral 인지/유도.
  */
 import { Link } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { ChevronRight } from 'lucide-react'
 import { PeopleIcon } from '@/components/icons/urdeal-icons'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'

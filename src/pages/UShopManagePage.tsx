@@ -13,7 +13,7 @@
 
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { curatorApi, type CuratorPageResponse, type CuratorPin } from '@/features/curator/api/curator-api'
 import { fetchCuratorPage, getCuratorCache } from '@/features/curator/curator-page-cache'

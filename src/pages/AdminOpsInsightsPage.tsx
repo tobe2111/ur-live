@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { useAdminOpsInsights } from '@/hooks/queries'

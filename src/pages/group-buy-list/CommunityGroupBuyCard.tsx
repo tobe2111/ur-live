@@ -1,5 +1,5 @@
 // 🧱 2026-06-29 TD: GroupBuyListPage god 파일 분해 — 유저 공구(커뮤니티) 카드(verbatim 추출). 동작 불변.
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { PinIcon, BellIcon, PeopleIcon, ClockIcon } from '@/components/icons/urdeal-icons'
 import { HandCoins } from 'lucide-react'
 import { formatPrice } from '@/utils/currency'

@@ -4,7 +4,7 @@
  * - xl+: 로고/탭 숨김 (사이드바가 대신), 검색바 + 우측 액션만 표시
  */
 import { useNavigate, useLocation, Link } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { User, Radio, Search, Zap, Sparkles, Smartphone, BookOpen, ChevronRight, ChevronDown } from 'lucide-react'
 import { UrShopIcon, DongneDealIcon, HomeIcon, BagIcon, GiftBoxIcon, BellIcon, StoreIcon, PinIcon, HeartIcon } from '@/components/icons/urdeal-icons'
 import { useState, useRef, useEffect, useCallback } from 'react'

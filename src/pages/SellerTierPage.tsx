@@ -5,7 +5,7 @@
  * 등급 정보 + 점수 + 다음 등급까지 격차 + 변경 이력 + 등급별 혜택 표 표시.
  */
 import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { useNavigate } from 'react-router-dom'
 import { Award, ChevronLeft, Gem, History, Medal, Sprout, Star, TrendingUp, type LucideIcon } from 'lucide-react'
 import api from '@/lib/api'

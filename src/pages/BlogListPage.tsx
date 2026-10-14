@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { HomeIcon } from '@/components/icons/urdeal-icons'
 import { Link } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'

@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { parseUTCDate } from '@/utils/date'

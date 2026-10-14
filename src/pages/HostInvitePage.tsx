@@ -9,7 +9,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import BrandLoader from '@/components/brand/BrandLoader'
 import SEO from '@/components/SEO'
 import { hostingApi, type InviteView } from '@/features/hosting/api/hosting-api'

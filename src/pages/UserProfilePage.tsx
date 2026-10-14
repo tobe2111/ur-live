@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, lazy, Suspense } from 'react'
 import { useNavigate, useSearchParams, Navigate, Link } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { isKorea } from '@/shared/config/region'
 import SEO from '@/components/SEO'

@@ -10,7 +10,7 @@
  * (2026-08-26 대표: 채널은 "누가 운영하는가" 라는 사실이지 요금표가 아니다).
  */
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
 

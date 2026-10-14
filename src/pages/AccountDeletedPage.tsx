@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { OkIcon, HomeIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@/lib/i18n-lite';
 import SEO from '@/components/SEO';
 
 export default function AccountDeletedPage() {

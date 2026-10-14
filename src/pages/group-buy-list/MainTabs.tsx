@@ -1,6 +1,6 @@
 // 🧱 2026-06-29 TD: GroupBuyListPage god 파일 분해 — 메인 탭 스위처(verbatim 추출). 동작 불변.
 import type { Dispatch, SetStateAction } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import type { MainTab, CategoryFilter, SortOption } from './types'
 
 export default function MainTabs({ mainTab, setMainTab, setCategory, setSortBy }: {

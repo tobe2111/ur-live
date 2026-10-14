@@ -1,6 +1,6 @@
 // 🧱 2026-06-29 TD: GroupBuyListPage god 파일 분해 — 카테고리 탭(verbatim 추출). 동작 불변.
 import type { Dispatch, SetStateAction } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import type { SetURLSearchParams } from 'react-router-dom'
 import type { CategoryFilter } from './types'
 

@@ -24,7 +24,7 @@
  * 다만 **헤더 문법은 둘이 같아야 한다**(09-28 에 한쪽만 고쳐 갈렸던 클래스) —
  * `my-icon-system-2026-09-28` 이 두 파일의 라벨·이메일 크기를 대조한다.
  */
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { ChevronRight } from 'lucide-react'
 import { BellIcon } from '@/components/icons/urdeal-icons'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'

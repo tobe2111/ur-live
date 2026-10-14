@@ -2,7 +2,7 @@
  * 셀러 매출 추이 차트 — 2026-10-11 recharts → 직접 그린 SVG(`svg-charts.tsx`).
  * 매출·주문 두 선이 **같은 세로축**을 쓴다(종전 recharts 설정 그대로 — yAxisId 0 공유).
  */
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { formatNumber } from '@/utils/format'
 import { SvgLineChart } from './svg-charts'
 

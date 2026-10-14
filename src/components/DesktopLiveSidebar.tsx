@@ -8,7 +8,7 @@
  */
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { HomeIcon, StoreIcon, TicketStubIcon, GiftBoxIcon } from '@/components/icons/urdeal-icons'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { Radio, Compass, User, Plus } from 'lucide-react'
 import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN, COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
 import { useLinkshopPath } from '@/hooks/useLinkshopPath'

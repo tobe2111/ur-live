@@ -12,7 +12,7 @@
  *   지금 실제로 돈이 되는 길은 매장이 주는 **협업 코드**다(`redeemInfluencerCode` — 매장이 정한 몫).
  */
 import { Link } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { ChevronRight } from 'lucide-react'
 import SEO from '@/components/SEO'
 import Udal from '@/components/mascot/Udal'

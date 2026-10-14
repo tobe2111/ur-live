@@ -2,7 +2,7 @@
  * 🛡️ 2026-05-01: TD-018 분할 — CheckoutPage 의 sticky 헤더 추출 (점진).
  */
 import { ArrowLeft } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 
 interface Props {
   onBack: () => void

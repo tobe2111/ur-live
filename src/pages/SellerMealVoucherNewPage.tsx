@@ -21,7 +21,7 @@
  * ⚠️ 폼·검증·제출 payload·임시저장은 **한 글자도 안 바뀐다** — 시험이 그것을 고정한다.
  */
 import { useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Utensils, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react'
 import api from '@/lib/api'

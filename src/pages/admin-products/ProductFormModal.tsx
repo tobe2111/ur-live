@@ -1,5 +1,5 @@
 import type { FormEvent } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { X, Truck } from 'lucide-react'
 import ImageUpload from '@/components/ImageUpload'
 import ProductOptionForm, { ProductOption } from '@/components/ProductOptionForm'

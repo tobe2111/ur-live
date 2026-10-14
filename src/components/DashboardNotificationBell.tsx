@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { BellIcon } from '@/components/icons/urdeal-icons'
 import api from '@/lib/api'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { safeInternalPath } from '@/utils/safe-internal-path'
 
 interface Notification {

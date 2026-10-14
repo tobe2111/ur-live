@@ -32,7 +32,7 @@
  * 🩸 locale 값이 `defaultValue` 를 **이긴다** — 키가 있으면 코드의 한국어는 안 쓰인다(CLAUDE.md).
  */
 import { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { X } from 'lucide-react'
 import { Z } from '@/constants/z-index'
 import api from '@/lib/api'

@@ -1,6 +1,5 @@
-import i18n from 'i18next'
-import { initReactI18next } from 'react-i18next'
-import LanguageDetector from 'i18next-browser-languagedetector'
+// 🪶 2026-10-14: i18next·react-i18next·감지기(첫 화면 18.2 KB br) → 같은 동작의 작은 엔진. 감지는 아래 함수가 한다.
+import i18n, { initReactI18next } from './lib/i18n-lite'
 import { CRITICAL_I18N } from './i18n-critical'
 import { CONSUMER_LANGUAGE_SWITCH_HIDDEN } from './shared/feature-flags'
 
@@ -176,7 +175,6 @@ function buildInitialResources() {
 async function bootstrap() {
   // 우선 i18next init - critical resources 로 시작 (background 에 full translation 추가)
   await i18n
-    .use(LanguageDetector)
     .use(stripTodoMarker)
     .use(initReactI18next)
     .init({

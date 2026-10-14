@@ -24,7 +24,7 @@ import ProductReviews from '@/pages/product-detail/ProductReviews'
 const get = vi.fn()
 const post = vi.fn()
 vi.mock('@/lib/api', () => ({ default: { get: (...a: unknown[]) => get(...a), post: (...a: unknown[]) => post(...a) } }))
-vi.mock('react-i18next', () => ({
+vi.mock('@/lib/i18n-lite', () => ({
   useTranslation: () => ({
     t: (_k: string, o?: Record<string, unknown>) => {
       const dv = String(o?.defaultValue ?? _k)

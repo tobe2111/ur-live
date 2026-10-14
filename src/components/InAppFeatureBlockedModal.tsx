@@ -17,7 +17,7 @@
  */
 import { useEffect, useState } from 'react'
 import { X, ExternalLink, Copy, Check } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { getFeatureInfo, getInAppLabel, handleOpenExternal, type RestrictedFeature } from '@/lib/in-app-warning'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
 

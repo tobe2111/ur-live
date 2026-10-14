@@ -8,7 +8,7 @@ import {
   AlertCircle, Loader2, Info,
 } from 'lucide-react'
 import { formatWon, formatNumber, safeNum } from '@/utils/format'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 
 // 🆕 2026-06-08 어드민 비즈니스 지표 대시보드 — 경영 viability 판단용 read-only KPI.
 //   GET /api/admin/business-metrics/overview?period=30d|90d|12m. 라이트 고정 테마(dark: 금지).

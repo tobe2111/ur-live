@@ -12,7 +12,7 @@
  * 실제로 동작하는 정렬(관련도·가격·최신)은 그대로 둔다. 진짜 필터가 필요해지면 그때
  * **상위 상태로 올려서** 붙일 것 — 다시 로컬 토글로 만들지 말 것.
  */
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { ChevronDown } from 'lucide-react'
 
 interface SortFilterBarProps {

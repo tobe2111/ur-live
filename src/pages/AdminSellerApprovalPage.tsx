@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import api from '@/lib/api'
 import { sellerCertView, SELLER_CERT_LABEL } from '@/shared/seller-cert-badge'
 import { safeHttpHref } from '@/utils/safe-external-url'

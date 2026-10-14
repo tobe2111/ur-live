@@ -23,7 +23,7 @@
  * ⚠️ `text-gray-*` 대신 hex — `tailwind.config.js` 가 `gray-*` 를 INK(딥네이비)로 리맵한다.
  *   같은 이유로 시안의 로즈 톤도 **쓰지 않는다**(`rose: MONO` → 화면엔 네이비로 나온다).
  */
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { InfoIcon } from '@/components/icons/urdeal-icons'
 import { Minus, Plus } from 'lucide-react'
 import { formatNumber } from '@/utils/format'

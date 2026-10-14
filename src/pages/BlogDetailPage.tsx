@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ClockIcon, HomeIcon } from '@/components/icons/urdeal-icons'
 import { useParams, Link } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { Share2, Search, List, ChevronDown } from 'lucide-react'
 import SEO, { breadcrumbJsonLd } from '@/components/SEO'
 import { nativeShare } from '@/lib/native'

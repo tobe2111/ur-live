@@ -9,7 +9,7 @@
  * ⚠️ 이 파일은 **표시 전용**이다. 집계는 호출부가 서버 응답으로 한다.
  */
 import { Suspense, lazy } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import SegmentedTabs from '@/components/ui/segmented-tabs'
 import { BarChart2, Users, ChevronRight, Gift, Calendar, TrendingUp, Loader2 } from 'lucide-react'
 import { formatWon } from '@/utils/format'
