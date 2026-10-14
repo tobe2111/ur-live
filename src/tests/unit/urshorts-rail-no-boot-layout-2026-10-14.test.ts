@@ -17,7 +17,7 @@ describe('유어쇼츠 레일 — 목록이 오기 전에 자리를 잡는다(�
   //   (남은 0.103 은 하네스에 섹션 스텁이 없어 섹션 스켈레톤이 접히는 것 — 라이브는 시드가 있다).
   it('대기 중엔 빈 div 가 아니라 같은 패널을 카드 크기 자리표시자로 세운다', () => {
     expect(SRC).toMatch(/const waiting = items\.length === 0 && reserve && !settled/)
-    expect(SRC).toMatch(/if \(items\.length === 0 && !waiting\) return <div ref=\{wrapRef\}/)
+    expect(SRC).toMatch(/if \(items\.length === 0 && !waiting\) return <div ref=\{setWrapEl\}/)
     expect(SRC).toMatch(/waiting && Array\.from\(\{ length: 4 \}[\s\S]{0,200}style=\{\{ width: URSHORTS_CARD_W, height: URSHORTS_CARD_H \}\}/)
   })
   it('영상이 0 이었던 기억이 있으면 예약하지 않는다(대표 확정 "없으면 섹션 자체를 안 보인다")', () => {
