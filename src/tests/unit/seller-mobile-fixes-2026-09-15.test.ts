@@ -12,7 +12,7 @@
  * 주입 매니페스트: scripts/mutations/seller-mobile-fixes.mjs
  */
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { stripComments } from '../helpers/source-text'
 import { SELLER_BOTTOM_BAR_H } from '../../components/seller-layout/SellerBottomBar'
 
@@ -27,17 +27,24 @@ describe('④ 상담 FAB 과 하단 고정 바가 같은 띠를 쓰지 않는다
     expect(BAR).toMatch(/classList\.add\('seller-has-bottom-bar'\)/)
     expect(BAR).toMatch(/classList\.remove\('seller-has-bottom-bar'\)/)
   })
-  it('CSS 가 그 신호를 보고 FAB 을 올린다', () => {
-    expect(CSS).toMatch(/body\.seller-has-bottom-bar \.seller-chat-fab/)
-  })
-  it('🔢 CSS 숫자가 TS 상수와 같다 — 한쪽만 바뀌면 다시 겹친다', () => {
-    const block = CSS.slice(CSS.indexOf('.seller-chat-fab'))
-    // 🧱 2026-10-12 4단계: 하단 탭(60px)이 사라져 FAB·바 모두 바닥(safe-area)에서 잰다 — 남은 숫자는 바 높이 하나다.
-    const lifted = block.match(/body\.seller-has-bottom-bar \.seller-chat-fab \{ bottom: calc\(env\(safe-area-inset-bottom\) \+ (\d+)px/)
-    expect(lifted).toBeTruthy()
-    expect(Number(lifted![1])).toBe(SELLER_BOTTOM_BAR_H)
-    // 없어진 탭 높이가 CSS·바에 남으면 바와 FAB 이 탭 자리만큼 허공에 뜬다(마이 시트 안에서 실제로 떠 있었다).
-    expect(block.slice(0, 600)).not.toMatch(/calc\(60px/)
+  /**
+   * 🔁 2026-10-14 재조준 — 상담 FAB(`.seller-chat-fab`)은 2026-10-12 셀러 대시보드 삭제 때 **요소째** 사라졌다
+   *   (`seller-dashboard-gone-2026-10-12` 가 고정). 그 뒤 남은 CSS 두 줄은 아무것도 안 그리는 죽은 규칙이라
+   *   CSS 다이어트에서 지웠다. 지키려던 것(바와 FAB 이 겹치지 않는다)은 **FAB 이 없다**로 더 강하게 성립한다 —
+   *   FAB 이 되살아나면 바 높이만큼 올리는 규칙도 같이 되살려야 하므로 여기서 빨간불을 낸다.
+   */
+  it('상담 FAB 이 없다 — 되살리면 바 높이만큼 올리는 규칙도 함께 되살릴 것', () => {
+    const walk = (d: string, out: string[] = []): string[] => {
+      for (const n of readdirSync(d)) {
+        const p = `${d}/${n}`
+        if (statSync(p).isDirectory()) { if (n !== 'tests') walk(p, out) } else if (/\.(tsx|ts)$/.test(n)) out.push(p)
+      }
+      return out
+    }
+    const users = walk('src').filter((f) => readFileSync(f, 'utf8').includes('seller-chat-fab'))
+    expect(users).toEqual([])
+    expect(CSS).not.toMatch(/\.seller-chat-fab/)
+    // 하단 탭이 사라진 뒤 바는 바닥(safe-area)에서 잰다 — 이 줄은 FAB 과 무관하게 그대로 지킨다.
     expect(BAR).toMatch(/bottom: 'env\(safe-area-inset-bottom\)'/)
   })
   it('바 스페이서가 바 높이와 같은 상수를 쓴다 (마지막 행이 안 가린다)', () => {

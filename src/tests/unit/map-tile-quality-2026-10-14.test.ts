@@ -79,7 +79,8 @@ describe('② disableHD 는 SDK 약속 안에서 — 첫 지도보다 먼저', (
 describe('④ 지도 화면은 SDK 래퍼를 정적으로', () => {
   it('useKakaoMap 에 동적 import 가 없다', () => {
     const s = stripComments(fs.readFileSync('src/pages/restaurant-map/useKakaoMap.ts', 'utf8'))
-    expect(s).toMatch(/^import \{ ensureKakaoMaps \} from '@\/lib\/kakao-sdk'$/m)
+    // 2026-10-14 재조준: 지도 생성은 본체-준비 약속(`ensureKakaoMapsCore`)을 쓴다 — 불변식(정적 import)은 그대로.
+    expect(s).toMatch(/^import \{ ensureKakaoMaps(?:Core)? \} from '@\/lib\/kakao-sdk'$/m)
     expect(s).not.toMatch(/import\(['"]@\/lib\/kakao-sdk['"]\)/)
   })
 })

@@ -48,3 +48,22 @@
   capacitor 청크를 받았다 → `isNativeShell()`(import 없는 SSOT). 마이 첫 화면 **150.7 → 145.6KB br**.
 - 블로그 상세 공유 버튼 `nativeShare` 정적 → 누를 때 동적 import. 이제 capacitor 를 정적으로 부르는 청크 **0**.
 - 가드 `native-sdk-no-static-import-2026-10-14.test.ts`(src 전수 — `lib/native.ts` 만 허용) + 주입 2건.
+
+## 6. 지도(/map) — 선명도는 그대로, SDK 본체만 오면 먼저 그린다
+
+- 대표 확정: **지도 선명도는 낮추지 않는다.**
+- 라이브 실측(느린 4G·CPU×4, `urdeal.kr/map`): sdk.js 2.9s → kakao.js 3.8s → **2.2초 공백** → services.js 6.0s →
+  타일 8.3s~. 카카오 로더가 kakao.js → services.js 를 **차례로** 받고 그 뒤에야 `load` 콜백을 부른다.
+- services.js 를 4초 붙잡아 두고 라이브에서 재니 본체 직후(1.5s) `new kakao.maps.Map` 이 되고 타일 13장이
+  바로 나갔다(전체 준비 5.6s) ⇒ `ensureKakaoMapsCore()`(본체 스크립트 load 를 지켜보는 약속)로 지도 생성,
+  지오코더를 쓰는 `useViewportRegion`·`pan-to-region` 은 `ensureKakaoMaps()`(전체) 를 기다린다.
+- 가드 `kakao-maps-core-early-2026-10-14.test.ts`(동작 4 + 배선 3) + 주입 3건.
+- ⚠️ E4: 배포 후 vitals `LCP:/map` p75(실측 10.9s)가 내려오는지. 하네스는 외부 SDK 를 막아 못 잰다.
+
+## 7. 이 브랜치가 스스로 깨뜨린 것 둘 (전체 유닛 돌려서 잡았다)
+
+- CSS 다이어트가 `.seller-chat-fab`(요소는 10-12 에 이미 삭제) 규칙을 지워 `seller-mobile-fixes` 2건 빨강 →
+  "FAB 이 없다" 로 재조준(되살리면 빨간불) + 주입 재조준.
+- 같은 다이어트가 `no-scrollbar`/`noscroll` 별칭을 지워 `scrollbar-ink` ⑤ 빨강 → 별칭 복원 + 죽은 클래스 시험 ALLOW.
+- 🧭 **부분 시험만 돌리고 넘어가지 말 것** — 둘 다 내가 고른 관련 시험 목록 밖에 있었다.
+- 낡은 주입 앵커 3건(UrShortsRail 감싼 div · useKakaoMap · index.css)도 재조준.

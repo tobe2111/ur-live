@@ -1033,12 +1033,18 @@ html.dark body { background-color: #0C0D10; }
       즉석 표기 중 몇은 **웹킷만 껐고 파이어폭스 절반을 빼먹어** 거기서만 막대가 남았다.
       ⇒ 정의는 여기 한 벌, 소스 표기는 `scrollbar-hide` 하나로 고정한다(`scroll-consistency` 가드).
       옛 두 이름은 지우지 않고 별칭으로 둔다 — 남의 브랜치가 쓰고 있어도 안 깨지게. */
-.scrollbar-hide {
+.scrollbar-hide,
+.no-scrollbar,
+.noscroll {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;     /* Firefox */
 }
 
-.scrollbar-hide::-webkit-scrollbar {
+/* ⚠️ 2026-10-14: 별칭 둘은 이 레포에선 안 쓰지만 남의 진행 중 브랜치용으로 남긴다(`scrollbar-ink` ⑤가 지킨다).
+   죽은 클래스 정리에서 지웠다가 그 시험이 잡아 되살렸다 — 정리 대상 아님. */
+.scrollbar-hide::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar,
+.noscroll::-webkit-scrollbar {
   display: none;             /* Chrome, Safari, Opera */
 }
 

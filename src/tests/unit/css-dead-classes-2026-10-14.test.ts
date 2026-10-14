@@ -18,6 +18,8 @@ import { execSync } from 'node:child_process'
 /** 조립되는 이름 등 소스에 통째로 안 나타나는 정당한 클래스 — 사유 필수. */
 const ALLOW: Record<string, string> = {
   'max-h-screen': 'Tailwind 기본 유틸을 index.css 에서 덮어쓴다(dvh 보정) — 소스는 Tailwind 이름으로 쓴다',
+  'no-scrollbar': '`scrollbar-hide` 의 옛 별칭 — 남의 진행 중 브랜치용으로 남긴다(scrollbar-ink ⑤ 가 지킨다)',
+  'noscroll': '`scrollbar-hide` 의 옛 별칭 — 남의 진행 중 브랜치용으로 남긴다(scrollbar-ink ⑤ 가 지킨다)',
 }
 
 function classesIn(css: string): Set<string> {

@@ -21,8 +21,9 @@ export default [
   {
     name: '🗺️ 지도 화면이 SDK 래퍼를 다시 동적 import 로(왕복 한 번 추가)',
     file: 'src/pages/restaurant-map/useKakaoMap.ts',
-    find: "    ensureKakaoMaps()\n      .then(() => setSdkLoaded(true))",
-    replace: "    import('@/lib/kakao-sdk').then(() => {}); ensureKakaoMaps()\n      .then(() => setSdkLoaded(true))",
+    // 2026-10-14 재조준: 지도 생성은 본체-준비 약속(ensureKakaoMapsCore)을 쓴다 — 결함(동적 import)은 그대로.
+    find: "    ensureKakaoMapsCore()\n      .then(() => setSdkLoaded(true))",
+    replace: "    import('@/lib/kakao-sdk').then(() => {}); ensureKakaoMapsCore()\n      .then(() => setSdkLoaded(true))",
     test: TEST,
     why: '라이브 실측 — 그 왕복이 지도 생성을 늦췄다.',
   },
