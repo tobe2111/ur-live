@@ -29,7 +29,9 @@ export default [
   {
     name: '🗺️ 반대 방향 — 깊은 경로까지 정확 일치를 요구한다(대시보드 전체가 404)',
     file: SSOT,
-    find: '  return KNOWN_TOP_SEGMENTS.has(segs[0])',
+    // 🔁 2026-10-14 재조준: 2세그먼트 판정이 `KNOWN_TOP_SEGMENTS` → `KNOWN_PARENT_SEGMENTS` 로
+    //   옮겨갔다(잎 표면의 무한 꼬리 차단). **불변식은 그대로**이고 앵커만 따라갔다.
+    find: '  return KNOWN_PARENT_SEGMENTS.has(segs[0])',
     replace: '  return KNOWN_SINGLE_ROUTES.has(segs.join(\'/\'))',
     test: TEST,
     why: '라우트 표에 없는 하위 경로(`/seller/orders/xyz`)를 자르면 멀쩡한 화면이 404 가 된다 — 색인 손실은 복구가 수주다.',

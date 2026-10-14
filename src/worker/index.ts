@@ -290,7 +290,7 @@ import { referralRoutes } from '../features/referral/api/referral.routes';
 import { cfImage, cfSrcSet } from '../utils/cf-image';
 // 🖼️ 홈 첫 화면 카드 사진 preload — 링크 생성은 헬퍼가 한다(파일 크기 래칫 + 직접 테스트 용이).
 import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; import { buildVouchersFirstScreen } from './utils/vouchers-first-screen'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; import { brandJsonLdScript } from '../shared/seo/brand-jsonld'; import { buildStaticSurfaceNoscript, stayNoscriptFromPayload, curatorNoscriptFromPayload } from './utils/crawler-noscript'; import { applyCssFirstBoot, cssFirstApplies, routePreloadRel, appendEdgeHeaders } from './utils/css-first-boot'; // 한 줄: 파일크기 래칫 안
-import { VOUCHERS_SEED_PATH, voucherFacetSeedPath } from '../shared/seo/voucher-facet'; import { buildStayDetailFirstScreen } from './utils/stay-detail-ssr-body'; import { MAIN_SEED_PATH, REGION_PATH_RE } from '../shared/seo/region-seed'; import { isKnownAppPath } from '../shared/seo/known-routes'; import { REGION_DIGEST_KV_KEY, regionDigestApplies, regionThinByDigest } from '../shared/seo/region-digest'; import { ushopOgImage } from '../shared/ushop-share-card'; import { OG_CARD_W, OG_CARD_H, ogCardUrl } from '../shared/og-share-image'; import { nearKeyFromCookieHeader, nearLabelFromCookieHeader } from '../shared/home-near'; // 한 줄: 파일크기 래칫 안
+import { VOUCHERS_SEED_PATH, voucherFacetSeedPath } from '../shared/seo/voucher-facet'; import { buildStayDetailFirstScreen } from './utils/stay-detail-ssr-body'; import { MAIN_SEED_PATH, REGION_PATH_RE } from '../shared/seo/region-seed'; import { isKnownAppPath } from '../shared/seo/known-routes'; import { REGION_DIGEST_KV_KEY, regionDigestApplies, regionThinByDigest } from '../shared/seo/region-digest'; import { ushopOgImage } from '../shared/ushop-share-card'; import { OG_CARD_W, OG_CARD_H, ogCardUrl } from '../shared/og-share-image'; import { nearKeyFromCookieHeader, nearLabelFromCookieHeader } from '../shared/home-near'; import { normalizeDocPath } from '../shared/seo/path-normalize'; // 한 줄: 파일크기 래칫 안
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -2599,13 +2599,13 @@ export default {
       }
       // 🔗 블로그 슬러그 리네임 301 (맵/사유 SSOT: features/blog/api/blog-slug-redirects.ts)
       if (request.method === 'GET' || request.method === 'HEAD') {
+        const norm = normalizeDocPath(url.pathname); if (norm && isKnownAppPath(norm)) return Response.redirect(`${url.origin}${norm}${url.search || ''}`, 301); // 🔗 2026-10-14 끝 슬래시·`/index.html` 301(같은 내용의 다른 철자 — 404 가 아니다). SSOT: shared/seo/path-normalize
         const renamed = resolveRenamedBlogPath(url.pathname);
         if (renamed) return Response.redirect(`${url.origin}${renamed}${url.search || ''}`, 301);
         // 🔀 2026-07-29 별칭 경로 301 (SSOT: shared/seo/consumer-redirects).
         //   `App.tsx` 에 `<Navigate>` 로만 있던 경로들 — 서버는 그 URL 에도 SPA 셸을 200 + index,follow
         //   로 내주고 있어서 크롤러에겐 "홈과 같은 내용의 색인 가능 URL" 이 7개 더 있는 셈이었다.
-        //   클라 리다이렉트는 JS 를 돌리는 방문자에게만 통한다. SPA 내부 이동은 서버를 안 타므로
-        //   App.tsx 의 <Navigate> 는 그대로 둔다(지우면 앱 안에서 갈 곳이 없어진다).
+        //   클라 리다이렉트는 JS 를 돌리는 방문자에게만 통한다. SPA 내부 이동은 서버를 안 타므로 App.tsx 의 <Navigate> 는 그대로 둔다(지우면 앱 안에서 갈 곳이 없어진다).
         const alias = resolveConsumerAlias(url.pathname);
         // 🍽️ 2026-08-11: 목적지가 이미 쿼리를 갖는 별칭이 생겼다(`/meal-vouchers` → `/?category=…`).
         //   그냥 이어붙이면 `…?category=x?foo=y` — 두 번째 `?` 는 값의 일부로 먹힌다.
