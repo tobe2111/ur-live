@@ -41,6 +41,14 @@ export default function MobileHomePage() {
   const navigate = useNavigate()
   // 🔔 벨 → 올라오는 시트(페이지 이동 X). 배선은 `NotificationSheet` 머리말.
   const bell = useNotificationSheet()
+  // 누르는 동안만 아이콘을 채운다(하단 탭의 "활성 = 면" 과 같은 말) — 손을 떼거나 벗어나면 선으로 돌아간다.
+  const [pressed, setPressed] = useState<'search' | 'bell' | 'cart' | null>(null)
+  const pressProps = (k: 'search' | 'bell' | 'cart') => ({
+    onPointerDown: () => setPressed(k),
+    onPointerUp: () => setPressed(null),
+    onPointerLeave: () => setPressed(null),
+    onPointerCancel: () => setPressed(null),
+  })
   const [region, setRegion] = useState<HomeRegion>(() => (readCachedLoc() ? {} : readHomeRegion()))
   /**
    * 🧭 2026-09-05 (대표 "주말에 떠나는 숙소 섹션 아래의 일반 이용권들은 기본 디폴트가 현재 위치에서
@@ -127,10 +135,18 @@ export default function MobileHomePage() {
       <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="px-4 h-11 flex items-center justify-between gap-2">
           <Link to="/" aria-label="홈" className="shrink-0 flex items-center"><UrDealLogo size={17} /></Link>
-          <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
-            <button onClick={() => navigate('/search')} aria-label="검색" className="p-2 shrink-0"><Search className="h-[21px] w-[21px]" strokeWidth={1.5} /></button>
-            <button onClick={bell.open} aria-label="알림" className="p-2 shrink-0"><BellIcon className="h-[21px] w-[21px]" /></button>
-            <button onClick={() => navigate('/cart')} aria-label="장바구니" className="p-2 shrink-0"><BagIcon className="h-[21px] w-[21px]" /></button>
+          {/* ⚫ 2026-10-14 (대표 *"메인의 검색, 장바구니, 알림 버튼도 마찬가지로 똑같이"* — 하단 탭과 같은 규칙):
+              세 버튼 모두 잉크색 선, **누르는 동안·열려 있는 동안만 면으로 채운다**(알림은 시트가 열려 있으면 채움). */}
+          <div className="flex items-center gap-1 text-gray-900 dark:text-white">
+            <button onClick={() => navigate('/search')} aria-label="검색" className="p-2 shrink-0" {...pressProps('search')}>
+              <Search className="h-[21px] w-[21px]" strokeWidth={1.6} fill={pressed === 'search' ? 'currentColor' : 'none'} />
+            </button>
+            <button onClick={bell.open} aria-label="알림" className="p-2 shrink-0" {...pressProps('bell')}>
+              <BellIcon className="h-[21px] w-[21px]" filled={pressed === 'bell' || bell.isOpen} />
+            </button>
+            <button onClick={() => navigate('/cart')} aria-label="장바구니" className="p-2 shrink-0" {...pressProps('cart')}>
+              <BagIcon className="h-[21px] w-[21px]" filled={pressed === 'cart'} />
+            </button>
           </div>
         </div>
 
