@@ -251,6 +251,9 @@ try {
         const t = (n.textContent || '').trim(); if (t && !seen.includes(t)) seen.push(t)
       }))
       document.addEventListener('DOMContentLoaded', () => ob.observe(document.body, { childList: true, subtree: true }))
+      const ls = Storage.prototype.setItem, lr = Storage.prototype.removeItem
+      Storage.prototype.setItem = function (k, v) { if (/seller|token/.test(k)) seen.push('SET ' + k); return ls.apply(this, arguments) }
+      Storage.prototype.removeItem = function (k) { if (/seller|token/.test(k)) seen.push('DEL ' + k); return lr.apply(this, arguments) }
     })
     const errs = []
     const consoleErrs = []
@@ -260,7 +263,7 @@ try {
     // `networkidle` 은 "요청이 멎었다" 지 "그렸다" 가 아니다 — lazy 청크·시트가 그 뒤에 그려질 수 있어 잠깐 기다린다.
     let seen = await page.getByText(expect1, { exact: false }).count().catch(() => 0)
     if (!seen) seen = await page.getByText(expect1, { exact: false }).first().waitFor({ timeout: 10_000 }).then(() => 1, () => 0)
-    const where = seen ? '' : ` — 못 찾음 @ ${page.url()} :: ${(await page.evaluate(() => (document.body?.innerText || '').replace(/\s+/g, ' ').slice(0, 200)).catch(() => '?'))} :: 토스트 ${JSON.stringify(await page.evaluate(() => window.__toasts || []).catch(() => []))} :: 시트 ${await page.locator('[role=dialog]').count().catch(() => -1)} :: 콘솔 ${JSON.stringify(consoleErrs.slice(0, 6))}`
+    const where = seen ? '' : ` — 못 찾음 @ ${page.url()} :: ${(await page.evaluate(() => (document.body?.innerText || '').replace(/\s+/g, ' ').slice(0, 200)).catch(() => '?'))} :: 토스트 ${JSON.stringify(await page.evaluate(() => window.__toasts || []).catch(() => []))} :: 시트 ${await page.locator('[role=dialog]').count().catch(() => -1)} :: 좌석토큰 ${await page.evaluate((seat) => { const t = localStorage.getItem('seller_token'); return t === seat ? '그대로' : t ? '바뀜:' + t.slice(0, 24) : '없음' }, SEAT).catch(() => '?')} :: 콘솔 ${JSON.stringify(consoleErrs.filter((x) => !/Future Flag/.test(x)).slice(0, 6))}`
     check(`[${name}] 렌더 + 런타임 에러 0`, seen > 0 && errs.length === 0, errs.length ? errs.join(' || ') : `"${expect1}" 확인${where}`)
 
     // 🔴 대시보드 라이트 고정 — 다크 클래스가 붙으면 정책 위반이다(check-dashboard-theme 의 렌더판).
