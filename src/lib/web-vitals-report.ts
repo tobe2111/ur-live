@@ -19,6 +19,23 @@ function send(name: string, value: number, page: string) {
   } catch { /* silent */ }
 }
 
+/**
+ * 📏 CLS 세션 창 — 구글·web-vitals 와 같은 정의(2026-10-14).
+ *   밀림이 1초 넘게 끊기거나 창이 5초를 넘으면 새 창을 연다. 보고값은 **가장 큰 창**이다.
+ *   모두 더하면 오래 머문 사람일수록 점수가 커져서, 화면이 나쁜 것과 오래 본 것을 구분하지 못한다.
+ */
+export function createClsTracker() {
+  let max = 0, cur = 0, first = 0, last = 0
+  return {
+    add(value: number, t: number) {
+      if (cur > 0 && t - last < 1000 && t - first < 5000) { cur += value; last = t }
+      else { cur = value; first = t; last = t }
+      if (cur > max) max = cur
+    },
+    value: () => max,
+  }
+}
+
 export function reportWebVitals(): void {
   if (reported || typeof window === 'undefined' || typeof PerformanceObserver === 'undefined') return
   reported = true
@@ -64,22 +81,37 @@ export function reportWebVitals(): void {
     setTimeout(flush, 10000)
   } catch { /* unsupported */ }
 
-  // CLS — visibilitychange 시점 누적값
+  // CLS — 표준 방식(가장 나쁜 세션 창) · **이 페이지에 머무는 동안만**
+  //   🩸 2026-10-14: 예전엔 ① 모든 밀림을 **끝없이 더했고** ② 사람이 앱 안에서 다른 화면으로 옮겨가도
+  //   계속 세면서 ③ 이름은 **처음 연 페이지**로 붙였다. 그래서 `/my-vouchers` 에 CLS 0.721 이 찍혔는데,
+  //   재현해 보니 지갑 자신은 0.012 이고 0.699 는 **홈 탭을 누른 뒤 홈에서** 난 것이었다. 지표가 엉뚱한
+  //   화면을 가리키면 엉뚱한 화면을 고치게 된다. ⇒ 경로가 바뀌는 순간 그 값으로 확정해 보내고 멈춘다.
   try {
-    let clsValue = 0
+    const cls = createClsTracker()
+    let clsSent = false
+    const flushCls = () => {
+      if (clsSent) return
+      clsSent = true
+      send('CLS', Math.round(cls.value() * 1000), page)  // CLS 는 0-1 범위 → ×1000 정수화
+      clsObs.disconnect()
+    }
     const clsObs = new PerformanceObserver((list) => {
+      if (clsSent) return
+      // 앱 안 이동(SPA)은 문서가 그대로라 관측이 이어진다 — 이 페이지 몫이 아니므로 받기 전에 끊는다.
+      if (window.location.pathname !== page) { flushCls(); return }
       for (const entry of list.getEntries()) {
         const e = entry as PerformanceEntry & { value?: number; hadRecentInput?: boolean }
-        if (!e.hadRecentInput) clsValue += e.value || 0
+        if (!e.hadRecentInput) cls.add(e.value || 0, e.startTime)
       }
     })
     clsObs.observe({ type: 'layout-shift', buffered: true })
-    addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') {
-        send('CLS', Math.round(clsValue * 1000), page)  // CLS 는 0-1 범위 → ×1000 정수화
-        clsObs.disconnect()
-      }
-    }, { once: true })
+    addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushCls() }, { once: true })
+    addEventListener('pagehide', flushCls, { once: true })
+    // 이동은 이벤트가 따로 없다(pushState) — 밀림이 없으면 관측 콜백도 안 오므로 가볍게 확인한다.
+    const navCheck = setInterval(() => {
+      if (clsSent) { clearInterval(navCheck); return }
+      if (window.location.pathname !== page) { clearInterval(navCheck); flushCls() }
+    }, 1000)
   } catch { /* unsupported */ }
 
   // INP (replaces FID) — first-input 으로 fallback
