@@ -39,19 +39,36 @@ export interface WishlistSummary {
   drops: number
   /** 카테고리별 개수 — 많은 순. */
   byCategory: { category: string; count: number }[]
+  /**
+   * 💰 2026-10-14 (대표 확정 — 위시리스트 가안): 찜한 것을 다 사면 정가 대비 아끼는 돈(원).
+   *   카드에 이미 찍힌 정가·판매가의 차이만 더한다(지어낸 숫자 아님). 교환권(딜 결제)은 단위가
+   *   달라 빼고, 정가가 판매가 이하이거나 모르면 0 으로 친다. 0 이면 화면이 그 줄을 안 그린다.
+   */
+  savings: number
+}
+
+/** 한 상품의 정가 대비 아끼는 금액(원). 모르면 0. */
+export function itemSaving(it: Pick<WishlistItem, 'price' | 'original_price' | 'deal_only'>): number {
+  if (Number(it.deal_only) === 1) return 0
+  const now = Number(it.price), orig = Number(it.original_price)
+  if (!Number.isFinite(now) || !Number.isFinite(orig) || now <= 0 || orig <= now) return 0
+  return Math.round(orig - now)
 }
 
 export function summarize(items: WishlistItem[]): WishlistSummary {
   const cat = new Map<string, number>()
   let drops = 0
+  let savings = 0
   for (const it of items) {
     if (priceDrop(it) != null) drops++
+    savings += itemSaving(it)
     const c = it.category || 'etc'
     cat.set(c, (cat.get(c) ?? 0) + 1)
   }
   return {
     total: items.length,
     drops,
+    savings,
     byCategory: [...cat.entries()]
       .map(([category, count]) => ({ category, count }))
       .sort((a, b) => b.count - a.count),

@@ -27,7 +27,11 @@ import { UPLOAD_SOURCE_MAX_BYTES } from '../upload-limits'
  * ⇒ 자리는 **사람이 고른 것만** 값이 된다. 기본값 없는 새 컬럼(`banner_slot`)이라
  *   기존 행은 NULL 로 남고, NULL 은 어디에도 안 뜬다. 되돌리는 데이터 수정이 필요 없다.
  */
-export const BANNER_SLOTS = ['hero', 'strip', 'inline', 'wide'] as const
+/**
+ * 🎟️ 2026-10-14 `vouchers` 추가 (대표 확정 — 교환권 페이지 시안 **라안**: 목록 위 큰 배너 한 줄).
+ *   홈 배너와 **같은 어드민 화면·같은 테이블**에서 관리한다(새 관리 화면을 만들지 않는다).
+ */
+export const BANNER_SLOTS = ['hero', 'strip', 'inline', 'wide', 'vouchers'] as const
 export type BannerSlot = typeof BANNER_SLOTS[number]
 
 export const BANNER_SLOT_LABELS: Record<BannerSlot, string> = {
@@ -35,6 +39,7 @@ export const BANNER_SLOT_LABELS: Record<BannerSlot, string> = {
   strip: '상단 배너 (첫 섹션 위 · 2:1 · 최대 5장 · 자동 넘김)',
   inline: '중간 배너 (3열)',
   wide: '와이드 배너 (가로 전체)',
+  vouchers: '교환권 페이지 상단 (2:1 · PC는 4:1 · 최대 5장 · 자동 넘김)',
 }
 
 /**
@@ -141,6 +146,22 @@ export const BANNER_SLOT_SPECS: Record<BannerSlot, BannerSlotSpec> = {
     notes: [
       '제목·설명·버튼이 사진 위에 얹히므로 **왼쪽 절반은 단순한 사진**이 좋다.',
       '검은 그라디언트(좌 60% → 우 25%)가 자동으로 덮여 글자 가독성은 확보된다.',
+    ],
+  },
+  /**
+   * 🎟️ 교환권 페이지 상단(2026-10-14 라안). 폰은 홈 상단 배너와 **같은 2:1**, PC 는 목록 칸이 넓어
+   *   2:1 이면 화면을 통째로 덮으므로 **4:1** 로 위아래를 잘라 쓴다(같은 사진 한 장으로 두 화면).
+   */
+  vouchers: {
+    requestWidth: 1600,
+    recommendedWidth: 1600,
+    recommendedHeight: 800,
+    renderedNote: '폰 362 × 181 (2:1) · PC 목록 칸 가로 전체 × 4:1 (1280 기준 약 1,100 × 275)',
+    notes: [
+      '**2:1 (권장 1600 × 800)** 으로 올린다 — PC 에서는 위아래 25%씩 잘려 4:1 로 보인다. 주인공은 **가운데 띠**에.',
+      '제목·설명은 왼쪽에 얹힌다 — 그림 안에 글자를 넣지 말 것.',
+      '**최대 5장.** 한 장씩 보이고 4.5초마다 넘어간다(홈 상단 배너와 같은 동작).',
+      '등록한 배너가 없으면 자리 자체가 안 생긴다 — 교환권 목록이 그대로 위로 붙는다.',
     ],
   },
 }
