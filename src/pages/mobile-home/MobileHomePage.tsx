@@ -6,6 +6,7 @@ import { Search } from 'lucide-react'
 import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import SellOnUrdealRow from './SellOnUrdealRow'
+import MapPill from './MapPill'
 import { useNotificationSheet } from '@/components/notifications/useNotificationSheet'
 import GroupBuyFeed from '@/pages/main-home/GroupBuyFeed'
 import { useHomeQuerySync } from '@/pages/main-home/useHomeQuerySync'
@@ -150,16 +151,11 @@ export default function MobileHomePage() {
           </div>
         </div>
 
-        {/* 위치 = 제목. 오른쪽은 같은 목록의 다른 보기(지도)로 가는 전환. */}
-        <div className="px-4 pt-1 pb-3 flex items-center justify-between gap-3">
+        {/* 위치 = 제목. 🗺️ 2026-10-14 (대표 확정 다안·A) — 옆의 [목록|지도] 전환은 걷었다.
+            지도로 가는 길은 화면 아래 떠 있는 **지도 알약**(맨 아래 `MapPill`) 하나다. */}
+        <div className="px-4 pt-1 pb-3">
           <div className="min-w-0">
             <PcHomeLocationBar tone="title" value={region} onChange={handleRegion} onLocate={handleLocate} located={!!userLoc} locatedLabel={dong?.dong} />
-          </div>
-          {/* ⚠️ 하단 탭에 지도가 없으므로 **이 컨트롤이 유일한 통로**다 — 지우지 말 것.
-              아이콘을 뺀 이유: 이 줄에서 아이콘이 하는 일이 없다(라벨이 이미 두 글자다). */}
-          <div role="tablist" aria-label="보기 방식" className="shrink-0 flex items-center gap-1 rounded-lg bg-gray-100 dark:bg-white/[0.06] p-1">
-            <span role="tab" aria-selected="true" className="rounded-[6px] bg-surface px-3 py-2 text-[12px] font-bold text-gray-900 dark:text-white shadow-sm">목록</span>
-            <Link to="/map" role="tab" aria-selected="false" className="rounded-[6px] px-3 py-2 text-[12px] font-bold text-gray-500 dark:text-gray-400">지도</Link>
           </div>
         </div>
 
@@ -231,10 +227,9 @@ export default function MobileHomePage() {
       )}
 
       <section className="mt-4">
-        {/* 🗺️ 지도로 가는 길은 **상단 [목록|지도] 전환**이 갖는다(위 헤더).
-            2026-08-30 에 "내 주변 지도로 보기" 배너를 그 전환으로 바꿨고,
-            2026-08-31 에 제목·부제를 지우면서 전환도 위치 제목 옆으로 함께 올렸다.
-            ⚠️ 하단 탭에 지도가 없으므로 그 컨트롤이 **유일한 통로**다 — 지우지 말 것.
+        {/* 🗺️ 지도로 가는 길은 화면 아래 **지도 알약**(`MapPill`)이 갖는다.
+            2026-08-30 배너 → 08-31 위치 옆 [목록|지도] 전환 → 10-14 (대표 확정 다안·A) 떠 있는 알약.
+            ⚠️ 하단 탭에 지도가 없으므로 그 알약이 **유일한 통로**다 — 지우지 말 것.
             여기 있던 h2("가까운 동네 딜")와 부제는 삭제했다. 위치가 제목을 겸하므로
             같은 말을 두 번 하게 되고, 부제는 정보가 없는데 한 줄을 먹었다. */}
         <div ref={gridHeaderRef as React.RefObject<HTMLDivElement>} className="scroll-mt-24" />
@@ -256,6 +251,7 @@ export default function MobileHomePage() {
             8/26 에 지도 모달에서 뺀 것과 같은 물건이 되지 않으려면 위로 올리면 안 된다.
             사유·노출 규칙은 `./SellOnUrdealRow` 머리주석. */}
       <SellOnUrdealRow />
+      <MapPill />
       {bell.sheet}
     </div>
   )

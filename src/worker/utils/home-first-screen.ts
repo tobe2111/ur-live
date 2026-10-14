@@ -24,8 +24,8 @@
  *   1. **상단 크롬 3줄** — 높이를 만드는 클래스는 그대로. 글리프(로고·검색·알림·장바구니·핀·
  *      쉐브론·유어쇼츠 아이콘)는 **안 그린다**(두 벌이 갈리는 클래스). 위치 이름도 안 그린다 —
  *      `localStorage`(저장 지역·마지막 측위)에 달려 있어 서버가 모르고, **아는 척하면 돌아온
- *      사람에게 틀린 동네를 보여 준다.** 줄 높이는 [목록|지도] 전환과 카테고리 탭이 만든다
- *      (둘 다 **글자**라 안전하다 — 숫자로 예약하지 않는다).
+ *      사람에게 틀린 동네를 보여 준다.** 줄 높이는 위치 제목 줄과 카테고리 탭이 만든다
+ *      (둘 다 **글자**라 안전하다 — 숫자로 예약하지 않는다). [목록|지도] 전환은 2026-10-14 에 걷혔다(지도 알약).
  *   2. **첫 섹션** — 패널 + 제목/부제 + 2열 그리드에 카드 **4장**(시드 그대로).
  *      카드는 `GroupBuyFeedCard` 의 마크업을 그대로 옮기고 사진은 `DealCardMedia` 의 커버 한 장
  *      (`seen` 초기값이 `{0}` 이라 클라도 첫 렌더에 `<img>` 가 하나다).
@@ -82,12 +82,9 @@ export const HOME_FS_CLASS = {
   root: 'bg-white dark:bg-[#11141C]',
   chrome: 'sticky top-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]',
   topRow: 'px-4 h-11 flex items-center justify-between gap-2',
-  locRow: 'px-4 pt-1 pb-3 flex items-center justify-between gap-3',
+  locRow: 'px-4 pt-1 pb-3',
   locTrigger: 'inline-flex items-center gap-1 -ml-0.5 max-w-full',
   locLabel: 'text-[24px] font-black tracking-[-0.02em] text-gray-900 dark:text-white max-w-[220px] truncate',
-  viewToggle: 'shrink-0 flex items-center gap-1 rounded-lg bg-gray-100 dark:bg-white/[0.06] p-1',
-  viewOn: 'rounded-[6px] bg-surface px-3 py-2 text-[12px] font-bold text-gray-900 dark:text-white shadow-sm',
-  viewOff: 'rounded-[6px] px-3 py-2 text-[12px] font-bold text-gray-500 dark:text-gray-400',
   catRow: 'flex items-end gap-3 px-4',
   catNav: 'flex min-w-0 flex-1 gap-5 overflow-x-auto scrollbar-hide',
   catBase: 'shrink-0 pb-2 text-[15px] transition-colors border-b-2',
@@ -230,9 +227,7 @@ function chromeHtml(): string {
     `<div class="min-w-0"><div class="relative inline-block"><div class="flex items-center gap-2">` +
     `<span class="${HOME_FS_CLASS.locTrigger}"><span class="${HOME_FS_CLASS.locLabel}">&nbsp;</span></span>` +
     `</div></div></div>` +
-    `<div class="${HOME_FS_CLASS.viewToggle}">` +
-    `<span class="${HOME_FS_CLASS.viewOn}">목록</span><span class="${HOME_FS_CLASS.viewOff}">지도</span>` +
-    `</div></div>` +
+    `</div>` +
     `<div class="${HOME_FS_CLASS.catRow}"><nav class="${HOME_FS_CLASS.catNav}">${cats}</nav></div>` +
     `</div>`
   )
