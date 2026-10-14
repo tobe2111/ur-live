@@ -55,4 +55,12 @@ export default [
     test: TEST,
     why: '자리만 잡고 아무것도 안 보여야 한다 — 2026-07-01 대표 "로딩 화면 2~3개 금지".',
   },
+  {
+    name: "☕ '전체 교환권 보기'가 파라미터를 지워 기본 카테고리로 돌아간다(버튼이 헛돈다)",
+    file: 'src/pages/VouchersPage.tsx',
+    find: "params.set('category', next || ALL_CATEGORY_PARAM)",
+    replace: "if (next) params.set('category', next); else params.delete('category')",
+    test: 'src/tests/unit/vouchers-top-chrome.test.ts',
+    why: '2026-10-14 카테고리 기본값(커피/음료)이 생긴 뒤 파라미터 없음 = 커피다. 지우면 전체로 못 간다.',
+  },
 ]

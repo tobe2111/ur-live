@@ -70,6 +70,8 @@ type VouchersViewState = {
 
 // 🏭 2026-06-04 (사용자 요청): 홈(embedded) 기본 카테고리 = '커피/음료' (KT Alpha goods_type_detail).
 //   worker/index.ts MAIN 슬롯 + cache-prewarm HOT_PATH 의 category 값과 반드시 동일해야 SSR 0-RTT 정합.
+/** '전체'의 URL 표기 — 카테고리 기본값이 생겨 '파라미터 없음' 이 더는 '전체'가 아니다(2026-10-14). */
+const ALL_CATEGORY_PARAM = 'all'
 const EMBEDDED_DEFAULT_CATEGORY = VOUCHERS_DEFAULT_CATEGORY // ☕ 2026-10-14: /vouchers 도 같은 첫 카테고리(SSOT `shared/seo/voucher-facet`)
 
 // 🎨 2026-07-01 (대표 "페이지가 빨리 뜨면 되는거"): SSR seed 를 첫 렌더에 **동기 소비** → 로더 프레임 제거,
@@ -105,7 +107,9 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   //   MAIN SSR 슬롯도 같은 커피 카테고리로 warm → 0-RTT 유지 (worker/index.ts + cache-prewarm).
   // ☕ 2026-10-14 (대표 *"첫 화면은 이렇게 떠줘"*): /vouchers 도 첫 화면이 커피/음료 + 브랜드 로고 줄.
   //   URL 에 카테고리가 없으면 이 값이다(주소는 깨끗한 `/vouchers` 그대로 — 바꿔 쓰지 않는다).
-  const category = searchParams.get('category') || VOUCHERS_DEFAULT_CATEGORY
+  //   🔑 '전체'는 `?category=all` 로 적는다 — 파라미터를 지우면 기본값(커피/음료)으로 돌아가 '전체 교환권 보기'가 헛돈다.
+  const rawCategory = searchParams.get('category')
+  const category = rawCategory === ALL_CATEGORY_PARAM ? '' : (rawCategory || VOUCHERS_DEFAULT_CATEGORY)
 
   // 🎨 2026-07-01 (대표 "페이지가 빨리 뜨면"): SSR seed 를 첫 렌더에 동기 소비(1회) → products/loading 초기값에
   //   반영 → 청크 로드 후 로더 프레임 없이 콘텐츠 즉시. sort 는 searchParams 에서 직접(아래 sort const 이전).
@@ -384,7 +388,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   // 🛡️ 2026-05-19: 카테고리 변경 — 브랜드 자동 초기화 (다른 카테고리의 브랜드는 의미 없음).
   const setCategory = (next: string) => {
     const params = new URLSearchParams(searchParams)
-    if (next) params.set('category', next); else params.delete('category')
+    params.set('category', next || ALL_CATEGORY_PARAM) // 빈 값 = '전체'(지우면 기본 카테고리로 돌아간다)
     params.delete('brand')
     setSearchParams(params, { replace: true })  // 🔙 필터는 상태 — 히스토리를 쌓지 않는다(위 주석)
   }

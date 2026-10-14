@@ -53,6 +53,15 @@ describe('교환권 탭 상단', () => {
     expect(CODE).not.toMatch(/brandsOpen|setBrandsOpen/)
   })
 
+  // ☕ 2026-10-14: 카테고리 기본값(커피/음료)이 생기면서 '파라미터 없음' 이 더는 '전체'가 아니다.
+  //   '전체 교환권 보기'(빈 상태 버튼)가 파라미터를 지우면 다시 커피로 돌아가 **아무 일도 안 한다**(에러 0).
+  it('②-1 전체는 `?category=all` 로 적고, 그 값은 카테고리 없음으로 읽는다', () => {
+    const CODE = readCode('src/pages/VouchersPage.tsx')
+    expect(CODE).toContain("params.set('category', next || ALL_CATEGORY_PARAM)")
+    expect(CODE).not.toContain("params.delete('category')")
+    expect(CODE).toContain("rawCategory === ALL_CATEGORY_PARAM ? '' : (rawCategory || VOUCHERS_DEFAULT_CATEGORY)")
+  })
+
   it('③ 스트립을 없애지는 않는다 — 로고 줄은 늘 그린다', () => {
     // 모바일 브랜드 줄(바깥 `pt-2 pb-3` 블록)이 로고를 그린다 — PC 사이드바에도 같은 map 이 있어
     //   파일 어디서나 찾으면 모바일 줄을 지워도 통과한다(주입이 실제로 그걸 잡았다). 블록 안에서만 본다.
