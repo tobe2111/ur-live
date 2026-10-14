@@ -105,7 +105,13 @@ describe('④ 서비스 설명이 FAQ 맨 앞이다', () => {
 describe('⑤ 라우트와 robots', () => {
   it('/llms.txt 를 text/plain 으로 서빙한다', () => {
     expect(sitemapRoute).toMatch(/sitemapRoutes\.get\('\/llms\.txt'/)
-    const block = sitemapRoute.slice(sitemapRoute.indexOf("sitemapRoutes.get('/llms.txt'"))
+    // 🔴 **끝까지 자르지 않는다** — 뒤에 붙는 다른 라우트가 같은 헤더를 갖고 있으면 이 라우트에서
+    //   헤더를 지워도 그 뒤의 것이 매치돼 통과한다(2026-10-14 에 실제로 그랬다: IndexNow 키 파일
+    //   라우트가 아래에 붙으면서 `Content-Type` 주입이 초록이 됐다 — 이 레포가 반복해 당한 *헛도는
+    //   가드* 클래스다). 다음 `sitemapRoutes.get(` 까지로 **그 라우트 하나만** 본다.
+    const at = sitemapRoute.indexOf("sitemapRoutes.get('/llms.txt'")
+    const next = sitemapRoute.indexOf('sitemapRoutes.get(', at + 1)
+    const block = sitemapRoute.slice(at, next === -1 ? undefined : next)
     expect(block, 'Content-Type 이 없으면 브라우저·크롤러가 다운로드로 처리할 수 있다')
       .toContain("'Content-Type': 'text/plain; charset=utf-8'")
     expect(block, '빌더를 거치지 않는다').toContain('buildLlmsTxt(')
