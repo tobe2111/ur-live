@@ -88,4 +88,20 @@ export default [
     test: TEST,
     why: '모든 화면이 105KB 번역 파일을 JS 파서로 읽는다(JSON 파서보다 ~1.8배 느리다 — 실측).',
   },
+  {
+    name: '[exec-cost] 한 번만 재서 판정한다(흔들림이 그대로 빨간불)',
+    file: 'scripts/check-exec-cost.mjs',
+    find: 'export const RUNS = Math.max(1, Number(process.env.EXEC_COST_RUNS) || 3)',
+    replace: 'export const RUNS = Math.max(1, Number(process.env.EXEC_COST_RUNS) || 1)',
+    test: TEST,
+    why: '같은 빌드가 실행마다 ~9KB 흔들려(허용 4KB) 아무 변화 없는 PR 이 빨간불을 받는다.',
+  },
+  {
+    name: '[exec-cost] 못 읽은 측정을 중앙값 뒤에 숨긴다',
+    file: 'scripts/check-exec-cost.mjs',
+    find: '    if (runs.some((x) => !x)) {',
+    replace: '    if (false) {',
+    test: TEST,
+    why: '세 번 중 한 번 하네스가 깨져도 나머지 둘로 통과해 측정 고장이 안 보인다.',
+  },
 ]

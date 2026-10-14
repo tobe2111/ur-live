@@ -12,7 +12,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { parse, judge, PAGES, TOLERANCE_KB, LOCK_SLACK_KB } from '../../../scripts/check-exec-cost.mjs'
+import { parse, judge, pickMedian, RUNS, PAGES, TOLERANCE_KB, LOCK_SLACK_KB } from '../../../scripts/check-exec-cost.mjs'
 import { dashboardSurfacesFrom } from '../../../scripts/check-surface-budgets.mjs'
 import { DASHBOARD_SURFACES } from '../../../scripts/dashboard-surfaces.mjs'
 import { LIBRARY_ENVELOPES } from '../../../scripts/surface-chunks.mjs'
@@ -43,6 +43,20 @@ describe('① 실행 비용 판정', () => {
   it('새 화면 · 사라진 화면은 실패', () => {
     expect(judge({ 홈: { execKB: 300, top: [] }, 새화면: { execKB: 200, top: [] } }, base).map((e) => e.kind)).toEqual(['new'])
     expect(judge({}, base).map((e) => e.kind)).toEqual(['gone'])
+  })
+})
+
+describe('①-2 흔들림 — 세 번 재서 중앙값', () => {
+  it('기본 3회이고, 중앙값은 튀는 한 번을 버린다', () => {
+    expect(RUNS).toBeGreaterThanOrEqual(3)
+    expect(pickMedian([{ execKB: 317 }, { execKB: 325 }, { execKB: 317.4 }])?.execKB).toBe(317.4)
+    expect(pickMedian([{ execKB: 300 }])?.execKB).toBe(300)
+    expect(pickMedian([])).toBeNull()
+  })
+  it('한 번이라도 못 읽으면 그 화면은 실패다(중앙값이 고장을 가리지 않는다)', () => {
+    const src = stripComments(read('scripts/check-exec-cost.mjs'))
+    expect(src).toMatch(/if \(runs\.some\(\(x\) => !x\)\) \{[^\n]{0,240}failed\+\+; continue \}/)
+    expect(src).toMatch(/for \(let i = 0; i < RUNS; i\+\+\)/)
   })
 })
 

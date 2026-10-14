@@ -38,6 +38,20 @@ const BASELINE = path.join(ROOT, 'scripts', 'exec-cost-baseline.json')
 export const TOLERANCE_KB = 4
 /** 잠금여유 — 이만큼 줄었는데 기준을 안 내리면 실패. */
 export const LOCK_SLACK_KB = 8
+/**
+ * 🎯 화면마다 몇 번 재서 **중앙값**으로 판정하나 (2026-10-14).
+ *   한 번만 재면 같은 빌드가 실행마다 최대 ~9KB 흔들렸다(로컬 실측: 교환권 317↔325 · 어드민 520↔537) —
+ *   허용오차(4KB)보다 커서 가드가 **아무 변화 없이** 빨간불을 낼 수 있다. 세 번의 중앙값은 튀는 한 번을 버린다.
+ */
+export const RUNS = Math.max(1, Number(process.env.EXEC_COST_RUNS) || 3)
+
+/** 측정값 여럿 중 execKB 의 중앙값인 측정을 고른다(순수). 빈 배열이면 null. */
+export function pickMedian(results) {
+  const ok = results.filter(Boolean)
+  if (!ok.length) return null
+  const sorted = [...ok].sort((a, b) => a.execKB - b.execKB)
+  return sorted[Math.floor((sorted.length - 1) / 2)]
+}
 
 /** name · 하네스 인자 · 대시보드면 dashboard-surfaces 의 키(시험이 대조). */
 export const PAGES = [
@@ -96,14 +110,24 @@ function main() {
   let failed = 0
   for (const pg of PAGES) {
     if (ONLY && !pg.name.includes(ONLY)) continue
-    const r = spawnSync('node', ['scripts/visual-preview.mjs', ...pg.args, '--cpu', '--no-idle', '--name=exec-cost'], { cwd: ROOT, encoding: 'utf8', timeout: 180_000 })
-    const res = parse(r.stdout)
+    const runs = []
+    let lastOut = ''
+    for (let i = 0; i < RUNS; i++) {
+      const r = spawnSync('node', ['scripts/visual-preview.mjs', ...pg.args, '--cpu', '--no-idle', '--name=exec-cost'], { cwd: ROOT, encoding: 'utf8', timeout: 180_000 })
+      lastOut = r.stdout || ''
+      // 오류 화면은 한 번이라도 나오면 그 화면 전체를 실패로 본다(중앙값 뒤에 숨지 않게).
+      if (/문제가 발생했습니다/.test(lastOut)) { runs.length = 0; runs.push('ERR'); break }
+      runs.push(parse(r.stdout))
+    }
+    if (runs[0] === 'ERR') { console.error(`❌ ${pg.name}: 오류 화면을 쟀다 — 시드·스텁이 화면과 안 맞는다.`); failed++; continue }
+    // 한 번이라도 못 읽으면 실패 — 중앙값이 고장을 가리면 안 된다.
+    if (runs.some((x) => !x)) { console.error(`❌ ${pg.name}: 측정 결과를 못 읽었다(하네스 실패·형식 변경) — 통과가 아니다.`); failed++; continue }
+    const res = pickMedian(runs)
     if (!res) { console.error(`❌ ${pg.name}: 측정 결과를 못 읽었다(하네스 실패·형식 변경) — 통과가 아니다.`); failed++; continue }
     if (!(res.execKB > 100)) { console.error(`❌ ${pg.name}: 실행된 JS ${res.execKB}KB — 렌더가 깨졌거나 측정이 헛돌았다.`); failed++; continue }
-    if (/문제가 발생했습니다/.test(r.stdout)) { console.error(`❌ ${pg.name}: 오류 화면을 쟀다 — 시드·스텁이 화면과 안 맞는다.`); failed++; continue }
     measured[pg.name] = { execKB: res.execKB, loadedKB: res.loadedKB, top: res.top }
     const b = baseline.pages?.[pg.name]
-    console.log(`   ${pg.name.padEnd(12)} 실행 ${b ? String(b.execKB).padStart(6) : '     —'} → ${String(res.execKB).padStart(6)} KB · 받은 JS ${res.loadedKB}KB · (참고) 스크립트 ${res.scriptMs}ms · TBT ${res.tbtMs}ms @CPU×${res.cpuRate}`)
+    console.log(`   ${pg.name.padEnd(12)} 실행 ${b ? String(b.execKB).padStart(6) : '     —'} → ${String(res.execKB).padStart(6)} KB (${RUNS}회 중앙값: ${runs.map((x) => x.execKB).join('/')}) · 받은 JS ${res.loadedKB}KB · (참고) 스크립트 ${res.scriptMs}ms · TBT ${res.tbtMs}ms @CPU×${res.cpuRate}`)
   }
   if (failed) { console.error(`\n❌ exec-cost: ${failed}개 화면을 못 쟀다.`); process.exit(1) }
   if (Object.keys(measured).length === 0) { console.error('❌ exec-cost: 측정한 화면이 0개 — 통과가 아니다.'); process.exit(1) }
