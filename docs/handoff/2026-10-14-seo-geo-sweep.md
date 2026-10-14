@@ -4,7 +4,9 @@
 
 ## 🚩 다음 세션의 첫 액션
 
-`#1791` 은 **머지됐다**(`75bea667e`). `#73` 은 **PR #1808**(draft)로 올렸고, `#79`(줄표)는 그 뒤 커밋이다.
+`#1791` 은 **머지됐다**(`75bea667e`). **PR #1808**(draft)이 여섯 건을 싣고 있다 —
+`#73`(JSON-LD 두 벌) · `#79`(줄표 365건) · `#80`(가게 유어샵 구조화 데이터) · `#81`(`/map` ItemList) ·
+`#82`(고아 상세 134건) · `#83`(숙소 별점 49건) + '미해소' 거짓 표기 셋 정정.
 
 ```bash
 # ① PR 상태
@@ -51,6 +53,52 @@ node scripts/visual-preview.mjs --route=/pass/2823 --ua=iphone 2>/dev/null | tai
 
 # ⑤ E4 #75 (숙소 문구) — cron(04:20 KST) 1회 뒤
 curl -sS 'https://urdeal.kr/api/group-buy/stays/2732' | python3 -c "import sys,json;d=json.load(sys.stdin)['data']['product'];print(repr(d.get('description_full'))[:200])"
+
+# ⑥ E4 #83 (숙소 별점) — 평점이 `Product` 에 있고 `LodgingBusiness` 에는 **없는지**
+curl -sS -A "$UA" https://urdeal.kr/stays/2887 | python3 -c "
+import sys,re,json
+out=[]
+def walk(n):
+    if isinstance(n,dict):
+        if n.get('aggregateRating'): out.append((n.get('@type'), n['aggregateRating'].get('ratingValue'), n['aggregateRating'].get('reviewCount')))
+        if n.get('starRating'): out.append((n.get('@type')+'.starRating', n['starRating'].get('ratingValue'), ''))
+        for v in n.values(): walk(v)
+    elif isinstance(n,list):
+        for v in n: walk(v)
+for b in re.findall(r'<script[^>]*application/ld\+json[^>]*>(.*?)</script>', sys.stdin.read(), re.S):
+    try: walk(json.loads(b))
+    except Exception: pass
+print(out)"
+#  기대: [('Product', 4.6, 9), ('LodgingBusiness.starRating', 4, '')]
+#  🔴 반대 방향 — `('LodgingBusiness', 4.6, 9)` 가 **같이 나오면 실패**다(같은 리뷰 두 벌 선언).
+#     그리고 `/pass/2914`(식사)·`/products/:id` 가 종전과 같은지도 함께 본다.
+
+# ⑦ E4 #82 (고아 상세) + #81 (`/map` ItemList) — **cron `:15` 1회 뒤**(요약이 30/버킷으로 다시 써져야 한다)
+for p in /region/%EC%84%9C%EC%9A%B8 /region/%EC%84%9C%EC%9A%B8/%EC%A4%91%EA%B5%AC /region/%EA%B2%BD%EA%B8%B0 /map /stays; do
+  printf '%-46s ' "$p"
+  curl -sS -A "$UA" "https://urdeal.kr$p" | python3 -c "
+import sys,re,json
+h=sys.stdin.read()
+links=set(re.findall(r'<a [^>]*href="(/(?:pass|stays|products)/\d+)"', h))
+items=[]
+def walk(n):
+    if isinstance(n,dict):
+        if n.get('@type')=='ItemList': items.append(len(n.get('itemListElement') or []))
+        for v in n.values(): walk(v)
+    elif isinstance(n,list):
+        for v in n: walk(v)
+for b in re.findall(r'<script[^>]*application/ld\+json[^>]*>(.*?)</script>', h, re.S):
+    try: walk(json.loads(b))
+    except Exception: pass
+print('상세링크', len(links), '· ItemList', items)"
+done
+#  기대: /region/* 은 상세링크 **30**(종전 8) · /map 은 ItemList **10**(종전 0)
+#  🔴 반대 방향 — `/map`·`/stays` 의 **상세링크는 8 그대로**여야 한다(의도된 비대칭)
+#     그리고 `/region/*` 의 ItemList 는 **10 그대로**여야 한다(리치결과 무게 — 올리지 않았다)
+
+# ⑧ E4 #82 전체 — 고아가 줄었는지 전수로 다시 센다(허브 95개 크롤 · 약 2분)
+#    기대: sitemap 상세 360건 중 내부 링크 도달 **226 → 340 안팎**
+#    방법: sitemap 의 비상세 URL 전부 + /map /vouchers / 를 크롤해 `<a href>` 를 모아 상세 집합과 교차.
 ```
 
 ⚠️ **#75 는 cron 이 한 번 돌아야 판정된다**(일일 티어 04:20 KST). 그 전에 재면 옛 문장이 그대로이고
