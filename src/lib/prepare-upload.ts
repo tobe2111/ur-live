@@ -16,6 +16,11 @@
  */
 import { UPLOAD_SOURCE_MAX_BYTES, fitsApiBodyLimit } from '@/shared/upload-limits'
 
+/** 홈 히어로 권장 폭(`BANNER_SLOT_SPECS.hero.recommendedWidth`) — 이보다 줄이면 레티나에서 흐리다. */
+export const HERO_MAX_EDGE = 2400
+/** 히어로 압축 목표 — 파일 천장(≈0.99MB)보다 낮게 잡아 압축기 오차를 흡수한다. */
+export const HERO_TARGET_MB = 0.85
+
 /** `source` = 압축 전 원본이 너무 큼 · `compressed` = 압축했는데도 천장을 넘음(사실상 드물다). */
 export type UploadTooLargeReason = 'source' | 'compressed'
 
@@ -33,7 +38,11 @@ export class UploadTooLargeError extends Error {
  * 이미지를 업로드할 수 있는 상태로 만든다.
  *
  * - `thumbnail: true` → 프로필·아바타(0.3MB · 1024px). 작게 보이는 자리라 더 강하게 줄인다.
+ * - `hero: true` → 홈 배너(0.85MB · 2400px). 홈 최상단 전폭이라 레티나 해상도를 지킨다(2026-10-14).
  * - 기본 → 사진(0.5MB · 1280px).
+ *
+ * ⚠️ GIF 를 넘기지 말 것 — 압축기가 WebP 로 바꾸며 **첫 프레임만 남긴다**(움직임이 사라진다).
+ *   움직이는 GIF 는 호출부가 크기만 보고 그대로 올리거나 거절한다(`BannerMediaUpload` 가 그렇게 한다).
  *
  * 압축 실패는 **업로드를 막지 않는다**(fail-soft — 원본으로 시도). 다만 그 원본이 천장을 넘으면
  * 413 을 맞기 전에 우리가 던진다 — 사용자는 브라우저 기본 오류가 아니라 우리 문구를 봐야 한다.
@@ -42,7 +51,7 @@ export class UploadTooLargeError extends Error {
  */
 export async function prepareImageForUpload(
   file: File,
-  opts: { thumbnail?: boolean } = {},
+  opts: { thumbnail?: boolean; hero?: boolean } = {},
 ): Promise<File> {
   if (file.size > UPLOAD_SOURCE_MAX_BYTES) {
     throw new UploadTooLargeError('source', file.size)
@@ -50,7 +59,11 @@ export async function prepareImageForUpload(
 
   // ⚠️ 동적 import — 위 머리말 참조(잠금표 계약).
   const { compressForThumbnail, compressForUpload } = await import('./image-compress')
-  const compress = opts.thumbnail ? compressForThumbnail : compressForUpload
+  const compress = opts.thumbnail
+    ? compressForThumbnail
+    : opts.hero
+      ? (f: File) => compressForUpload(f, { maxSizeMB: HERO_TARGET_MB, maxWidthOrHeight: HERO_MAX_EDGE })
+      : compressForUpload
   const ready = await compress(file).catch(() => file)
 
   if (!fitsApiBodyLimit(ready.size)) {

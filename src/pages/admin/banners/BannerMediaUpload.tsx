@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react'
 import api from '@/lib/api'
 import { Upload, X } from 'lucide-react'
+import { prepareImageForUpload, UploadTooLargeError } from '@/lib/prepare-upload'
+import { planBannerUpload, bannerTooLargeMessage } from './banner-upload-plan'
 
 /**
  * 🖼️🎬 배너 이미지·영상 업로드 (2026-08-04 대표 "히어로도 영상으로").
@@ -10,6 +12,9 @@ import { Upload, X } from 'lucide-react'
  *
  * ⚠️ 영상은 **어드민 전용 엔드포인트**(`/api/upload/banner-video`)로 간다.
  *   공용 `/upload/image` 에 영상 MIME 을 열면 모든 셀러가 영상을 올릴 수 있게 된다.
+ *
+ * 🗜️ 2026-10-14: 이미지는 **브라우저에서 줄여 올린다**(`banner-upload-plan.ts`). 공용 업로드 천장이
+ *   1MB 라 원본을 그대로 보내면 큰 사진은 전부 413 이었다. 판정은 그 파일 한 곳에 있다.
  *
  * ⚠️ 업로드는 URL 을 **채워 줄 뿐** 저장은 아니다 — 폼의 '수정/생성' 을 눌러야 반영된다.
  *   (그 사실을 화면에 적어 둔다. 안 적으면 올리고 나가서 "왜 안 됐지" 가 된다.)
@@ -30,15 +35,24 @@ export default function BannerMediaUpload({
   const accept = isVideo ? 'video/mp4,video/webm' : 'image/jpeg,image/png,image/webp,image/gif'
 
   async function pick(file: File) {
-    setErr(''); setBusy(true)
+    setErr('')
+    const plan = planBannerUpload(file, kind)
+    if (plan.action === 'reject') {
+      setErr(plan.message)
+      if (inputRef.current) inputRef.current.value = ''
+      return
+    }
+    setBusy(true)
     try {
+      const ready = plan.action === 'compress' ? await prepareImageForUpload(file, { hero: true }) : file
       const fd = new FormData()
-      fd.append('file', file)
+      fd.append('file', ready)
       const res = await api.post(endpoint, fd)
       const url = res?.data?.data?.url
       if (!url) throw new Error('no url')
       onChange(url)
     } catch (e) {
+      if (e instanceof UploadTooLargeError) { setErr(bannerTooLargeMessage(e.reason)); return }
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
       setErr(msg || '업로드 실패')
     } finally {
@@ -87,7 +101,7 @@ export default function BannerMediaUpload({
       <p className="mt-1.5 text-xs text-gray-400">
         {isVideo
           ? 'MP4 · WebM · 최대 10MB(5MB 이하 권장 — 홈 최상단이라 클수록 첫 화면이 느려집니다).'
-          : 'JPG · PNG · WebP · GIF · 최대 10MB.'}
+          : 'JPG · PNG · WebP — 큰 사진은 자동으로 줄여 올립니다(2400px). 움직이는 GIF 는 1MB 이하.'}
         {' '}<strong className="text-gray-500">올린 뒤 아래 저장 버튼을 눌러야 반영됩니다.</strong>
       </p>
     </div>
