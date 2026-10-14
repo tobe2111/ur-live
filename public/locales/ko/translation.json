@@ -158,7 +158,7 @@
     "imageUpload": "이미지 업로드",
     "imageCompressing": "이미지 압축 중...",
     "imageDropHint": "클릭하거나 이미지를 드래그하세요",
-    "imageFormatHint": "JPG, PNG, GIF (최대 10MB) • 자동으로 {{maxSizeKB}}KB 이하로 압축됩니다",
+    "imageFormatHint": "JPG, PNG, WebP • 큰 사진은 자동으로 {{maxSizeKB}}KB 이하로 줄여 올립니다",
     "imageUploaded": "업로드된 이미지",
     "imageRemove": "이미지 제거",
     "imageUploadedMsg": "이미지가 업로드되었습니다",

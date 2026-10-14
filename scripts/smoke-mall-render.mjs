@@ -56,7 +56,13 @@ async function waitFor(url, ms = 90000) {
 
 const results = []
 const devLog = []
-const check = (name, pass, detail) => { results.push({ name, pass, detail }); console.log(`${pass ? '✅' : '❌'} ${name} — ${detail}`) }
+const check = (name, pass, detail) => {
+  results.push({ name, pass, detail })
+  console.log(`${pass ? '✅' : '❌'} ${name} — ${detail}`)
+  // 🔎 2026-10-14: 실패를 GitHub 주석으로도 낸다 — 잡 로그는 별도 저장소(blob)에 있어 원격 세션이 못 읽고,
+  //   주석은 check-runs API 로 읽힌다. "왜 빨간불인가" 가 로그 접근에 묶이지 않게.
+  if (!pass && process.env.GITHUB_ACTIONS) console.log(`::error title=smoke ${name}::${String(detail).replace(/\r?\n/g, ' | ').slice(0, 900)}`)
+}
 
 let dev = null
 let base = process.env.BASE
@@ -215,6 +221,8 @@ try {
       localStorage.setItem('ur_theme_mode_v1', 'light')
     } catch { /* private */ }
   }, SEAT)
+  // 제3자 분석 비콘은 스모크와 무관하다 — CI 만 실제로 받아 CORS 오류로 콘솔을 채우고 두 환경을 다르게 만든다.
+  await sellerCtx.route('**/*cloudflareinsights.com/**', (r) => r.fulfill({ status: 200, contentType: 'application/javascript', body: '' }))
   await sellerCtx.route('**/api/seller/**', (route) => {
     const u = route.request().url()
     let body = { success: true, data: [] }
@@ -232,12 +240,31 @@ try {
     ] }),
   }))
 
+  // 🔥 2026-10-14 — **vite 를 먼저 데운다.** CI 는 매번 빈 의존성 캐시로 시작해, 시트가 셀러 화면 청크를 처음 불러오는
+  //   순간 vite 가 새 의존성을 발견하고 **페이지를 통째로 다시 불러온다**(주석 기록: `[vite] connected` 3회). 깊은 링크는
+  //   `?tool=` 을 읽자마자 주소에서 지우므로(새로고침이 시트를 또 열지 않게 — 제품의 의도), 다시 불러온 페이지엔 시트가 없다.
+  //   운영엔 vite 가 없어 이 일이 안 일어난다 ⇒ 판정 전에 한 번씩 열어 의존성을 다 찾게 둔다(판정은 새 페이지에서).
+  for (const p of ['/seller/products/quick', '/seller/returns']) {
+    const warm = await sellerCtx.newPage()
+    await warm.goto(`${base}${p}`, { waitUntil: 'networkidle' }).catch(() => {})
+    await warm.waitForTimeout(3000)
+    await warm.close()
+  }
+
   for (const [name, path, expect1] of [
     ['B 빠른 공구 등록', '/seller/products/quick', '빠른 공구 등록'],
     // 2026-08-20 대표: 사용자-가시 라벨 반품→환불 (이용권엔 배송 반품이 없다)
     ['D 환불 요청 큐', '/seller/returns', '환불 요청이에요'],
   ]) {
     const page = await sellerCtx.newPage()
+    // 토스트는 몇 초 뒤 사라진다 — 실패 원인(예: "가게가 선택돼 있지 않아요")이 그 안에 있으므로 떠 있던 것을 모아 둔다.
+    await page.addInitScript(() => {
+      const seen = (window.__toasts = [])
+      const ob = new MutationObserver(() => document.querySelectorAll('[role=status],[role=alert]').forEach((n) => {
+        const t = (n.textContent || '').trim(); if (t && !seen.includes(t)) seen.push(t)
+      }))
+      document.addEventListener('DOMContentLoaded', () => ob.observe(document.body, { childList: true, subtree: true }))
+    })
     const errs = []
     // 🔎 실패 진단 — 콘솔·주소 변경·실패 요청을 시간순으로 모아 둔다(실패할 때만 출력).
     const trace = []
@@ -250,7 +277,7 @@ try {
       history.replaceState = (a, b, u) => { console.log('[diag] replaceState ' + u); return r(a, b, u) }
       history.pushState = (a, b, u) => { console.log('[diag] pushState ' + u); return p(a, b, u) }
     })
-    page.on('pageerror', (e) => errs.push(String(e)))
+    page.on('pageerror', (e) => errs.push(`${String(e)} @ ${String(e.stack || '').split('\n').slice(1, 3).join(' ')}`))
     const logMark = devLog.length
     await page.goto(`${base}${path}`, { waitUntil: 'networkidle' })
     // ♻️ 2026-10-14: vite dev 가 첫 방문 중 의존성을 새로 찾으면 페이지를 **통째로 리로드**한다
@@ -269,7 +296,9 @@ try {
     //   (10-12·10-14 같은 자리 두 번 — 재실행하면 통과). 글자가 뜰 때까지 기다린 뒤 센다. 판정 자체는 그대로다.
     await page.getByText(expect1, { exact: false }).first().waitFor({ timeout: 15000 }).catch(() => {})
     const seen = await page.getByText(expect1, { exact: false }).count().catch(() => 0)
-    check(`[${name}] 렌더 + 런타임 에러 0`, seen > 0 && errs.length === 0, errs[0] || `"${expect1}" 확인`)
+    // 주석(::error)으로 읽히도록 실패 원인을 detail 에 함께 싣는다 — 잡 로그는 원격 세션이 못 읽는다.
+    const where = seen ? '' : ` — 못 찾음 @ ${page.url()} :: ${(await page.evaluate(() => (document.body?.innerText || '').replace(/\s+/g, ' ').slice(0, 200)).catch(() => '?'))} :: 토스트 ${JSON.stringify(await page.evaluate(() => window.__toasts || []).catch(() => []))} :: 시트 ${await page.locator('[role=dialog]').count().catch(() => -1)}`
+    check(`[${name}] 렌더 + 런타임 에러 0`, seen > 0 && errs.length === 0, errs.length ? errs.join(' || ') : `"${expect1}" 확인${where}`)
     // 🔎 실패하면 그 자리에서 무엇이 떠 있었는지 남긴다 — CI 스크린샷은 꺼내기 어렵다(2026-10-14).
     if (!(seen > 0 && errs.length === 0)) {
       const diag = await page.evaluate(() => ({ url: location.pathname + location.search, text: (document.body?.innerText || '').replace(/\s+/g, ' ').slice(0, 400) })).catch((e) => ({ url: '?', text: String(e) }))

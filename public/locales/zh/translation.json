@@ -158,7 +158,7 @@
     "imageUpload": "上传图片",
     "imageCompressing": "图片压缩中...",
     "imageDropHint": "点击或拖拽图片到此处",
-    "imageFormatHint": "JPG, PNG, GIF (最大10MB) • 自动压缩至{{maxSizeKB}}KB以下",
+    "imageFormatHint": "JPG, PNG, WebP • 大图会自动压缩至{{maxSizeKB}}KB以下",
     "imageUploaded": "已上传的图片",
     "imageRemove": "删除图片",
     "imageUploadedMsg": "图片已上传",

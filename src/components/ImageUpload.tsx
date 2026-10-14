@@ -11,7 +11,7 @@
 import { useState, useRef } from 'react'
 import { useTranslation } from '@/lib/i18n-lite'
 import { Upload, X, Loader2, ImageIcon } from 'lucide-react'
-import { compressForUpload } from '@/lib/image-compress'
+import { prepareImageForUpload, UploadTooLargeError, uploadTooLargeMessage } from '@/lib/prepare-upload'
 import api from '@/lib/api'
 
 interface ImageUploadProps {
@@ -58,18 +58,15 @@ export default function ImageUpload({
         throw new Error('이미지 파일만 업로드 가능합니다.')
       }
 
-      // 파일 크기 검증 (10MB 초과 시 거부)
-      if (file.size > 10 * 1024 * 1024) {
-        throw new Error('이미지 크기는 10MB 이하여야 합니다.')
+      // 🗜️ 2026-10-14: 압축 **전** 크기로 자르지 않는다(종전 10MB 가드는 압축하면 올라갈 폰 사진을 거절했다).
+      //   공용 준비 헬퍼가 줄이고, 줄여도 천장(1MB)을 넘으면 413 전에 우리 문구로 막는다.
+      let compressedFile: File
+      try {
+        compressedFile = await prepareImageForUpload(file, { size: { maxSizeMB: maxSizeKB / 1024, maxWidthOrHeight: 1280 } })
+      } catch (e) {
+        if (e instanceof UploadTooLargeError) throw new Error(uploadTooLargeMessage(e))
+        throw e
       }
-
-      // 클라이언트 사이드 강한 압축 (CF Images 유료 회피).
-      // WebP 변환 + 1280px 제한 + 0.82 품질.
-      const compressedFile = await compressForUpload(file, {
-        maxSizeMB: maxSizeKB / 1024,
-        maxWidthOrHeight: 1280,
-        toWebP: true,
-      })
 
       // 🛡️ 서버 엔드포인트는 multipart/form-data 만 허용 (JSON+base64 는 무효).
       //   기존 base64 코드는 항상 400 으로 실패하고 있었음.
@@ -243,7 +240,7 @@ export default function ImageUpload({
                   {t('common.imageDropHint', { defaultValue: '클릭하거나 이미지를 드래그하세요' })}
                 </p>
                 <p className="text-[12px] text-gray-500 mt-1">
-                  {t('common.imageFormatHint', { maxSizeKB, defaultValue: 'JPG, PNG, GIF (최대 10MB) • 자동으로 {{maxSizeKB}}KB 이하로 압축됩니다' })}
+                  {t('common.imageFormatHint', { maxSizeKB, defaultValue: 'JPG, PNG, WebP • 큰 사진은 자동으로 {{maxSizeKB}}KB 이하로 줄여 올립니다' })}
                 </p>
               </div>
             </div>
