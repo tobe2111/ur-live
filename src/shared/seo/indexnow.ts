@@ -98,7 +98,7 @@ export function planIndexNow(
   const prev = (cursor || '').trim()
 
   // 첫 회차: 커서만 세운다(380건을 한꺼번에 밀어 넣지 않는다).
-  if (!prev) return { urls: [], cursor: maxLastmod, note: `첫 회차 — 커서만 세움(${entries.length}건 관측)` }
+  if (!prev) return { urls: [], cursor: maxLastmod, note: `첫 회차: 커서만 세움(${entries.length}건 관측)` }
 
   const changed = entries.filter((e) => e.lastmod > prev)
   // 🔴 **새 것부터** 자른다 — 상한에 걸리면 오래된 변경이 아니라 **최신 변경**이 먼저 가야 한다.
@@ -108,7 +108,7 @@ export function planIndexNow(
     urls,
     // ⚠️ 상한에 잘렸으면 커서를 **올리지 않는다** — 올리면 못 보낸 변경이 영구히 빠진다.
     cursor: changed.length > max ? prev : (maxLastmod || prev),
-    note: `변경 ${changed.length}건 중 ${urls.length}건 제출${changed.length > max ? ' (상한에 잘림 — 커서 유지)' : ''}`,
+    note: `변경 ${changed.length}건 중 ${urls.length}건 제출${changed.length > max ? ' (상한에 잘림, 커서 유지)' : ''}`,
   }
 }
 

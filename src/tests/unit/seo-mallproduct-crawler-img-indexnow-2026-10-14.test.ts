@@ -210,7 +210,9 @@ describe('③ IndexNow — 보낼 것만 보낸다', () => {
 
   it('③-9 cron 에 등재돼 있다 (안 돌면 아무 일도 안 일어나고 에러도 없다)', () => {
     const s = readCode('src/worker/scheduled.ts')
-    expect(s).toMatch(/safeCron\('indexnow-submit'/)
+    // 🔁 슬롯 안에서는 `slotCron(그 슬롯 주기)` 가 정본이다 — 생 `safeCron` 은 캐리어 주기(*/5)로
+    //    기록돼 하트비트 감시가 오탐한다(`cron-slot-cadence` 가드가 그 방향을 막는다).
+    expect(s).toMatch(/slotCron\('50 19 \* \* \*'\)\('indexnow-submit'/)
   })
 
   it('③-10 키 파일 라우트가 env 키와 정확히 같을 때만 응답한다', () => {

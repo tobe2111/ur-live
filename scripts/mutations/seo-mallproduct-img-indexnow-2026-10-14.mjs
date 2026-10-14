@@ -105,7 +105,7 @@ export default [
   {
     name: '🔔 IndexNow 첫 회차가 전부 밀어 넣는다',
     file: 'src/shared/seo/indexnow.ts',
-    find: "  if (!prev) return { urls: [], cursor: maxLastmod, note: `첫 회차 — 커서만 세움(${entries.length}건 관측)` }",
+    find: "  if (!prev) return { urls: [], cursor: maxLastmod, note: `첫 회차: 커서만 세움(${entries.length}건 관측)` }",
     replace: "  if (!prev) return { urls: entries.map((e) => e.loc).slice(0, max), cursor: maxLastmod, note: '첫 회차 — 전부 제출' }",
     test: TEST,
     why:
@@ -135,7 +135,7 @@ export default [
   {
     name: '🔔 제출 실패에도 커서를 올린다',
     file: 'src/worker/cron/indexnow-submit.ts',
-    find: "      return `indexnow: 제출 실패 (${post ? post.status : 'fetch 실패'}) · ${plan.urls.length}건 — 커서 유지`",
+    find: "      return `indexnow: 제출 실패 (${post ? post.status : 'fetch 실패'}) · ${plan.urls.length}건, 커서 유지`",
     replace: "      // 실패를 무시하고 아래로 내려간다",
     test: TEST,
     why: '제출이 실패했는데 커서를 올리면 그 변경이 **영구히** 빠진다(다음 회차 대상에서 사라진다).',
@@ -143,7 +143,8 @@ export default [
   {
     name: '🔔 cron 등재를 없앤다',
     file: 'src/worker/scheduled.ts',
-    find: "    ctx.waitUntil(safeCron('indexnow-submit', async () => {",
+    // 🔁 2026-10-14 재조준: 슬롯 안이라 `slotCron` 래퍼가 정본이다(`cron-slot-cadence`).
+    find: "    ctx.waitUntil(slotCron('50 19 * * *')('indexnow-submit', async () => {",
     replace: "    ctx.waitUntil((async () => {",
     test: TEST,
     why:

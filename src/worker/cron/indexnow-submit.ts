@@ -43,7 +43,7 @@ export async function handleIndexNowSubmit(env: Env): Promise<string> {
     .catch(() => null)
   if (!res || !res.ok) return `indexnow: sitemap 읽기 실패 (${res ? res.status : 'fetch 실패'})`
   const entries = parseSitemapEntries(await res.text())
-  if (!entries.length) return 'indexnow: sitemap 에 lastmod 가 있는 항목이 0건 — 보내지 않았다'
+  if (!entries.length) return 'indexnow: sitemap 에 lastmod 가 있는 항목이 0건, 보내지 않았다'
 
   const cur = await DB.prepare(`SELECT value FROM platform_settings WHERE key = ?`)
     .bind(INDEXNOW_CURSOR_KEY).first<{ value: string }>().catch(() => null)
@@ -60,7 +60,7 @@ export async function handleIndexNowSubmit(env: Env): Promise<string> {
     }).catch(() => null)
     // 🔴 실패하면 **커서를 올리지 않는다** — 올리면 그 변경이 영구히 빠진다.
     if (!post || (post.status !== 200 && post.status !== 202)) {
-      return `indexnow: 제출 실패 (${post ? post.status : 'fetch 실패'}) · ${plan.urls.length}건 — 커서 유지`
+      return `indexnow: 제출 실패 (${post ? post.status : 'fetch 실패'}) · ${plan.urls.length}건, 커서 유지`
     }
   }
 
