@@ -264,6 +264,8 @@ const CHUNGNAM_SEJONG_GROUPS: DistrictGroup[] = [
 
 export const KOREA_REGIONS: Region[] = [
   { key: '서울',       label: '서울',       districtGroups: SEOUL_GROUPS },
+  // 🗺️ 2026-10-14 대표 "서울과 경기 사이에 부산을 넣어줘" — 지역 고르기 순서
+  { key: '부산',       label: '부산',       districtGroups: BUSAN_GROUPS },
   { key: '경기',       label: '경기',       districtGroups: GYEONGGI_GROUPS },
   { key: '인천',       label: '인천',       districtGroups: INCHEON_GROUPS },
   { key: '강원',       label: '강원',       districtGroups: GANGWON_GROUPS },
@@ -271,7 +273,6 @@ export const KOREA_REGIONS: Region[] = [
   { key: '대전',       label: '대전',       districtGroups: DAEJEON_GROUPS },
   { key: '충북',       label: '충북',       districtGroups: CHUNGBUK_GROUPS },
   { key: '충남세종',   label: '충남\n세종', districtGroups: CHUNGNAM_SEJONG_GROUPS },
-  { key: '부산',       label: '부산',       districtGroups: BUSAN_GROUPS },
   { key: '울산',       label: '울산',       districtGroups: ULSAN_GROUPS },
   { key: '경남',       label: '경남',       districtGroups: GYEONGNAM_GROUPS },
   { key: '대구',       label: '대구',       districtGroups: DAEGU_GROUPS },
