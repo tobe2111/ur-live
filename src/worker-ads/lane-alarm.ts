@@ -25,6 +25,39 @@ import type { LaneRunEntry } from './lane-run-history'
 import { adaptiveIntervalHours, RETRY_MAX_FAIL_STREAK, failStreakFromHistory } from './lane-adaptive-interval'
 import { readBoost, laneCanAbsorb, MAX_BOOST_RUNS_PER_HOUR, BOOST_TTL_MS } from './lane-boost'
 
+/**
+ * 🏷️ **이 회차를 깨운 것이 알람인가 부트스트랩인가** (2026-10-14 — 관측만, 동작 무변경).
+ *
+ * ## 왜 이 값이 필요한가 (#89 의 마지막 가르기)
+ * 라이브 실측으로 둘은 이미 기각됐다 — `setAlarm` 실패(`set_ok` 6/6 `true`)와
+ * 예산·정지 게이트 건너뛰기(`over=false` · `cut` 없음 · `paused=false`). 남은 둘은
+ *   **②** 알람이 **걸린 채 제때 배달되지 않는다**(유휴 DO)
+ *   **④** 알람이 배달돼 `alarm()` 이 시작은 하는데 **재예약 전에 죽는다**
+ * 이고, 고칠 자리가 완전히 다르다(② = `ADS_PLAN`·대시보드 / ④ = 이 파일).
+ *
+ * ## 기존 계측으로는 못 가린다 (확인하고 적는다)
+ * 매시 부트스트랩이 `getAlarm()` 을 되읽어 `alarmAt`/`revived` 를 찍지만 **:01 에 한 번뿐**이고,
+ * 2026-10-14 18:01 실측에서 레인 다섯이 **부트스트랩이 보기 직전에 이미 돌아** 신선한 알람을
+ * 갖고 있었다 — 그래서 `revived` 가 아무것도 말해 주지 않았다. 하트비트의 `at` 으로 순서를
+ * 따져 보려 했으나 `adsBeat` 은 `beats.add` 배치라 **`at` 이 회차 시각이 아니다**(다섯 레인이
+ * `ads:scheduled` 와 ms 까지 같다) ⇒ 타임스탬프 비교로는 판정 불가.
+ *
+ * ## 그래서 직접 표식한다
+ * `/start` 가 체인을 새로 세울 때(`kind !== 'alive'`) 이 키에 시각을 적고, `alarm()` 이
+ * **읽고 지운다.** 창 안이면 그 회차는 `by: 'boot'`, 아니면 `by: 'alarm'`.
+ *
+ * 판정: **매시 첫 회차가 `by:'alarm'` 이면 배달이 늦은 것(②) · `by:'boot'` 이면 알람이
+ * 없었던 것(④).** 2회차 이후는 정상이면 늘 `'alarm'` 이다.
+ *
+ * ⚠️ `alarm()` 의 조기 반환(킬스위치·일시정지·예산·유령 이름)은 이 키를 **안 지운다** —
+ *   그래서 창을 둔다(낡은 표식은 `'alarm'` 으로 읽혀 ④를 **과소**보고한다. 반대 방향으로
+ *   틀리는 쪽을 골랐다: 없는 ④를 만들어 코드를 고치게 하는 것이 더 나쁘다).
+ * 🔁 되돌리기: 이 상수와 `put`·`get`·`delete` 세 줄, 스탬프의 `by` 한 줄을 지우면 끝이다.
+ */
+const BOOT_KICK_KEY = 'bootKick'
+/** 부트스트랩이 `now + 1s` 로 깨우므로 1초면 충분하지만, 콜드 스타트·큐 지연을 감안해 넉넉히 둔다. */
+const BOOT_KICK_WINDOW_MS = 15_000
+
 interface AlarmEnv {
   ADS_LANE_ALARM_INTERVAL_MS?: string
   ADS_LANE_ALARM_RUNS_PER_HOUR?: string
@@ -73,6 +106,8 @@ export class AdsLaneDurableObject extends DurableObject<Env> {
     const kind = alarmReviveKind(cur, Date.now())
     if (kind !== 'alive') {
       await this.ctx.storage.setAlarm(Date.now() + 1_000)
+      // 🏷️ **이 회차는 "부트스트랩이 깨운 것" 이라고 표식을 남긴다** — 아래 `BOOT_KICK_KEY` docblock.
+      await this.ctx.storage.put(BOOT_KICK_KEY, Date.now()).catch(() => undefined)
       // ⚠️ `revived` 를 따로 남긴다 — "원래 없었다"와 "죽어서 되살렸다"를 같은 값으로 뭉개면
       //   다음 세션이 사고를 또 못 본다(이번 사고가 6시간 안 보인 이유가 정확히 그것이다).
       return Response.json({ ok: true, lane: this.lane, started: true, revived: kind === 'stale', staleAt: kind === 'stale' ? cur : undefined })
@@ -159,6 +194,11 @@ export class AdsLaneDurableObject extends DurableObject<Env> {
     //   되찾고, 고장 난 소스는 조용히 두는 것 — 서브리퀘스트는 이 시스템의 희소 자원이다).
     // ⚠️ **`nextFail` 이 아니라 이력으로 센다** — `failStreak` 은 예외를 던진 회차만 세는데, 실제 장애는
     //   예외 없이 `diag.error` 로만 온다(실측: 4회 연속 실패인데 `fail_streak: 0`). 근거는 그 함수 docblock.
+    // 🏷️ 이 회차를 깨운 것 — 위 `BOOT_KICK_KEY` docblock(원인 ②④ 를 가르는 값).
+    const bootKick = await this.ctx.storage.get<number>(BOOT_KICK_KEY).catch(() => undefined)
+    if (bootKick != null) await this.ctx.storage.delete(BOOT_KICK_KEY).catch(() => undefined)
+    const firedBy = bootKick != null && t0 - Number(bootKick) < BOOT_KICK_WINDOW_MS ? 'boot' : 'alarm'
+
     const retryable = failStreakFromHistory(runHistory) <= RETRY_MAX_FAIL_STREAK
     const put: Record<string, unknown> = { bucket, runs: ran, failStreak: nextFail, runHistory }
     if (runs < cap && due && (!entry || entry.ok || !retryable)) put.lastRunAt = t0
@@ -220,6 +260,8 @@ export class AdsLaneDurableObject extends DurableObject<Env> {
             interval_ms: interval, next_at: new Date(at).toISOString(), fail_streak: nextFail,
             // 🔬 예약이 실제로 걸렸는가 — 위 `setOk`/`armed` docblock(원인 ①②를 가르는 값).
             set_ok: setOk,
+          // 🏷️ 이 회차를 깨운 것 — 위 `BOOT_KICK_KEY` docblock.
+          by: firedBy,
             armed_at: armed != null ? new Date(Number(armed)).toISOString() : null,
             /**
              * 📏 **이 회차가 읽고 쓴 행**(2026-09-05) — 계측기는 원래 있었는데 공용 원장에 더하고
