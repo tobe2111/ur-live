@@ -186,7 +186,7 @@ export default function BottomNav() {
             src={cfImage(profileImage, { width: 96 })}
             alt="Profile"
             className={`h-6 w-6 rounded-full object-cover transition-all ${
-              active ? 'ring-2 ring-white ring-offset-1 ring-offset-[#11141C]' : 'opacity-60'
+              active ? 'ring-2 ring-gray-900 dark:ring-white ring-offset-1 ring-offset-white dark:ring-offset-[#11141C]' : ''
             }`}
             loading="lazy"
             decoding="async"
@@ -196,17 +196,15 @@ export default function BottomNav() {
           <TabIcon
             size={22}
             filled={active}
-            className={active ? 'text-gray-900 dark:text-white' : 'text-gray-400'}
+            className="text-gray-900 dark:text-white"
             strokeWidth={1.6}
           />
         )}
-        {/* 🔴 2026-09-01 로즈 마침표: 활성은 아이콘·라벨을 통째로 물들이지 않고 아래 점 하나로 말한다.
-            로고 `urdeal.` 의 점과 같은 장치 — 로즈가 사는 자리를 셋(할인율·주 버튼·점)으로 잠근다. */}
-        <span className={`relative text-[12px] mt-1 ${
-          active ? 'font-semibold text-gray-900 dark:text-white' : 'text-gray-400'
-        }`}>
+        {/* ⚫ 2026-10-14 (대표 시안 — 야놀자 NOL 하단바 *"버튼들 검정색에 클릭 시 색이 채워지는 식으로 … 더 깔끔하게"*):
+            다섯 탭 모두 잉크색, 활성은 **아이콘이 채워지는 것(filled)과 라벨 굵기** 두 가지로만 말한다.
+            종전(09-01)의 회색 비활성 + 아래 브랜드 점은 걷었다 — 회색은 눌러도 되는지 흐리게 보였고, 점은 신호가 겹쳤다. */}
+        <span className={`text-[12px] mt-1 text-gray-900 dark:text-white ${active ? 'font-semibold' : 'font-normal'}`}>
           {label}
-          {active && <span aria-hidden="true" className="absolute left-1/2 -bottom-[7px] -translate-x-1/2 w-1 h-1 rounded-full bg-brand" />}
         </span>
       </button>
     )
