@@ -39,7 +39,7 @@ import { canonicalDetailPath, FLOW_CONFIG } from '../../shared/product-flow'
 import { CONCEPT_FAQ, CONCEPT_ABOUT_LINES } from '../../shared/seo/concept-content'
 import { parseRegionPath, type RegionRef } from '../../shared/constants/region-slugs'
 import { REGION_PATH_RE } from '../../shared/seo/region-seed'
-import { regionChildLinks } from '../../shared/seo/region-digest'
+import { regionChildLinks, REGION_NOSCRIPT_ROWS } from '../../shared/seo/region-digest'
 import { CONSUMER_SURFACE_SEO } from '../../shared/seo/consumer-surfaces'
 import { REGION_HUB_CRUMB } from './surface-list-jsonld'
 import { buildUrshortsNoscript } from './urshorts-noscript'
@@ -435,10 +435,14 @@ export function buildStaticSurfaceNoscript(pathname: string, ssrPayload?: string
   //   (`/region/서울`, Googlebot 실측). 그 페이지가 화면에 그리는 카드(가게 · 메뉴 · 판매가)를
   //   그대로 글로 옮긴다 — 규율 ①(지어내지 않는다)대로 **시드에 있는 값만** 쓴다.
   //   항목은 홈과 같은 시드(MAIN)에서 오고 지역 필터는 `addressInRegion`(화면과 같은 SSOT)이다.
-  //   ⚠️ 상한 8 — `<noscript>` 도 **사람이 받는 응답에 그대로 실린다**(크롤러에게만 주는 것은
-  //      구글 가이드 위반). 요약이지 전량 덤프가 아니다.
+  //   ⚠️ 상한은 `REGION_NOSCRIPT_ROWS` 다(2026-10-14: 8 → 30 — 고아 상세 수리, 아래 블록 주석).
   // 🧾 목록 네 표면 — 라벨은 `CONSUMER_SURFACE_SEO.crumb`(빵부스러기와 같은 SSOT)에서 온다.
-  //   ⚠️ 상한 8 은 지역 페이지와 같다 — `<noscript>` 도 **사람이 받는 응답에 그대로 실린다**.
+  //   ⚠️ **여기는 8 그대로다** — 2026-10-14 에 지역 페이지만 30 으로 올렸고 이 블록은 안 올렸다.
+  //      이유가 둘: ① 이 표면들은 **홈과 같은 50행 시드**를 쓰므로 올려도 새로 닿는 상세가 적다
+  //      (고아 134건의 원인은 지역 요약의 묶음 캡이었고, 그건 359건 전체를 본다) ② `<noscript>` 는
+  //      **사람이 받는 응답에도 그대로 실린다**(크롤러에게만 주는 것은 구글 가이드 위반) — 홈·지도는
+  //      사람 트래픽의 본류라 바이트를 늘릴 근거가 측정으로 서야 한다. 올리려면 **문서 바이트를
+  //      먼저 재고** 올릴 것. 두 값이 다른 것은 **의도**이고, 가드가 그 사실을 고정한다.
   const keep = LIST_SURFACE_KEEP[path]
   if (keep) {
     const rows: Row[] = []
@@ -456,7 +460,11 @@ export function buildStaticSurfaceNoscript(pathname: string, ssrPayload?: string
 
   const ref = regionRefOfPath(path)
   if (ref) {
-    const rows = regionSeedRows(ssrPayload, ref).slice(0, 8)
+    // 🕳️ 2026-10-14: 종전 `8` 이 **고아 상세 130건**의 절반을 만들고 있었다(라이브 실측 — 색인
+    //   상세 360건 중 내부 링크 도달 226건). 지역 페이지는 **발견이 일**인 허브인데 8줄만 냈다.
+    //   요약 묶음 상한과 **짝으로** 올렸다(한쪽만 올리면 아무 일도 안 일어난다 — 그쪽 주석 참조).
+    //   `ItemList` 는 10 그대로다(리치결과 표시 ≠ 크롤 발견).
+    const rows = regionSeedRows(ssrPayload, ref).slice(0, REGION_NOSCRIPT_ROWS)
     if (!rows.length) return ''
     const label = ref.sigungu ? `${ref.sido} ${ref.sigungu}` : ref.sido
     // 🔗 시/도 페이지는 **자식 시군구**로 가는 길을 함께 낸다(시군구 32곳이 색인 대상인데
