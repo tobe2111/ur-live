@@ -236,7 +236,10 @@ describe('④ sitemap — 핀 기준이 API 와 **같은 술어**인가 (실제 
     const close = c.indexOf('`', i)
     return c.slice(open + 1, close)
       .replace(/\$\{sellerScope\}/g, '')
-      .replace(/\$\{consumerVisibleProductSql\('pq'\)\}/g, consumerVisibleProductSql('pq'))
+      // 🔁 2026-10-14: 별칭을 **일반화**했다 — 승인 셀러 블록의 상품 EXISTS 에도 같은 SSOT 가 붙어
+    //   `'p'` 가 생겼고, `'pq'` 만 치환하던 종전 식은 그걸 지워 `AND )` 로 터뜨렸다(실제로 터졌다).
+    //   별칭마다 손으로 늘리면 다음에 또 터지므로 캡처해서 그대로 호출한다.
+    .replace(/\$\{consumerVisibleProductSql\('(\w+)'\)\}/g, (_m, a: string) => consumerVisibleProductSql(a))
   }
 
   // ⚠️ `createRequire` 로 가져온 `DatabaseSync` 는 **값**이다 — 타입으로 쓰려면 InstanceType.

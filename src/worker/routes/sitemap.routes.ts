@@ -220,11 +220,18 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
       //      상품 1개 이상 || 유어샵 핀 1개 이상(핀만 있는 큐레이터형 유어샵 보존 — `/u/jiwon1228` 이 그 경우).
       //      매장이 상품을 올리면 다음 sitemap 부터 자동으로 다시 들어온다(수동 관리 0).
       //   `product_pins` 는 lazy CREATE 라 없는 환경이 있을 수 있어 실패해도 뒤 블록(블로그)이 죽지 않게 catch.
+      // 🩸 2026-10-14: 아래 첫 EXISTS 에만 `consumerVisibleProductSql` 이 **없었다** — 핀 분기는
+      //   2026-10-12 에 같은 이유로 좁혔는데 이쪽이 빠져 있었다. 도매 원본처럼 소비자에게 안 보이는
+      //   상품만 가진 매장이 통과하면 `buildSellerNoscript` 가 `''` 를 주므로 **제출한 URL 에 본문이
+      //   없다**(그 짝 주장이 깨지는 세 번째 자리 — ①핀 행≠보이는 핀 ②사업자 유어샵 폴백 다음).
+      // 🩸 그리고 이 주석을 처음엔 **템플릿 리터럴 안**(= SQL 본문)에 넣어 tsc 가 TS1005 로 막았다.
+      //   SQL 문자열에 `//` 를 쓰면 주석이 아니라 **쿼리 텍스트**다.
       const sellers = await DB.prepare(
         `SELECT s.id AS id, s.username AS username, u.handle AS handle
            FROM sellers s LEFT JOIN users u ON u.id = s.linked_user_id
           WHERE s.status = 'approved'${sellerScope}
-            AND ( EXISTS (SELECT 1 FROM products p WHERE p.seller_id = s.id AND p.is_active = 1)
+            AND ( EXISTS (SELECT 1 FROM products p WHERE p.seller_id = s.id AND p.is_active = 1
+                            AND ${consumerVisibleProductSql('p')})
                OR EXISTS (SELECT 1 FROM product_pins pp JOIN products pq ON pq.id = pp.product_id
                            WHERE pp.user_id = s.linked_user_id AND pq.is_active = 1
                              AND ${consumerVisibleProductSql('pq')}) )

@@ -50,7 +50,10 @@ function sqlOf(varName: string): string {
   //   일반 `${...}` 제거로 그걸 지우면 `AND )` 가 되어 **SQL 이 깨진다**(실제로 터졌다).
   //   그 호출만 **실제 술어로 치환**한 뒤 나머지(스코프 등)를 지운다.
   return src.slice(open + 1, close)
-    .replace(/\$\{consumerVisibleProductSql\('pq'\)\}/g, consumerVisibleProductSql('pq'))
+    // 🔁 2026-10-14: 별칭을 **일반화**했다 — 승인 셀러 블록의 상품 EXISTS 에도 같은 SSOT 가 붙어
+    //   `'p'` 가 생겼고, `'pq'` 만 치환하던 종전 식은 그걸 지워 `AND )` 로 터뜨렸다(실제로 터졌다).
+    //   별칭마다 손으로 늘리면 다음에 또 터지므로 캡처해서 그대로 호출한다.
+    .replace(/\$\{consumerVisibleProductSql\('(\w+)'\)\}/g, (_m, a: string) => consumerVisibleProductSql(a))
     .replace(/\$\{[^}]*\}/g, '')
 }
 
