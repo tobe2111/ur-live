@@ -6,7 +6,7 @@
  *
  * ## 지키는 것 — 두 벌이 갈리는 것
  * 워커는 React 를 못 돌려 목록 줄 마크업이 두 벌이 된다. 갈려도 에러가 안 난다 — 마운트 때 조용히 튄다.
- * ⇒ 목록 줄은 **진짜 `VoucherRow` 를 렌더해** 대조하고, 페이지 크롬은 **소스에서 클래스를 읽어** 대조한다.
+ * ⇒ 목록 타일은 **진짜 `VoucherTile` 을 렌더해** 대조하고, 페이지 크롬은 **소스에서 클래스를 읽어** 대조한다.
  * 그리고 첫 화면이 비로그인 화면이므로 **로그인 흔적이 있으면 걷어내는 스크립트**가 실제로 도는지 잰다.
  *
  * ## 못 막는 것
@@ -19,7 +19,8 @@ import path from 'node:path'
 import { render } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { VoucherRow } from '@/pages/vouchers/shared'
+import { VoucherTile } from '@/pages/vouchers/shared'
+import { VOUCHER_TILE_ABOVE_FOLD, VOUCHER_TILE_CLASS } from '@/shared/voucher-tile'
 import {
   buildVouchersFirstScreen, VOUCHERS_FS_CLASS as C, VOUCHERS_FS_ROWS, soldLabelOf, vouchersFirstScreenGuardScript,
 } from '@/worker/utils/vouchers-first-screen'
@@ -42,12 +43,12 @@ const seed = (rows: unknown[]) => JSON.stringify({ success: true, data: rows })
 function workerRows(rows: unknown[]): HTMLElement[] {
   const host = document.createElement('div')
   host.innerHTML = buildVouchersFirstScreen(seed(rows), LOADER, 'n0')
-  return [...host.querySelectorAll(`#ur-first-screen .${C.list.split(' ').join('.')} > div`)] as HTMLElement[]
+  return [...host.querySelectorAll(`#ur-first-screen [class="${C.list}"] > div`)] as HTMLElement[]
 }
 function reactRow(p: unknown, idx = 0): HTMLElement {
   const qc = new QueryClient()
   const { container } = render(
-    <QueryClientProvider client={qc}><MemoryRouter><VoucherRow p={p as never} aboveFold={idx < 4} /></MemoryRouter></QueryClientProvider>,
+    <QueryClientProvider client={qc}><MemoryRouter><VoucherTile p={p as never} aboveFold={idx < VOUCHER_TILE_ABOVE_FOLD} /></MemoryRouter></QueryClientProvider>,
   )
   return container.firstElementChild as HTMLElement
 }
@@ -61,7 +62,8 @@ function shape(el: Element): unknown {
   }
 }
 
-describe('① 목록 줄 = 진짜 VoucherRow', () => {
+// 🎟️ 2026-10-14 대표 B안 — 목록이 한 줄 행(VoucherRow) → 3열 타일(VoucherTile). 불변식은 그대로: 워커 타일 = 진짜 타일.
+describe('① 목록 타일 = 진짜 VoucherTile', () => {
   for (const [label, p] of [['정가·브랜드·구매수·대표색 있음', RICH], ['최소 모양', BARE]] as const) {
     it(`${label} — 클래스·구조·글자가 같다`, () => {
       const w = workerRows([p])[0]
@@ -107,9 +109,13 @@ describe('① 목록 줄 = 진짜 VoucherRow', () => {
 describe('② 페이지 크롬 클래스 = 소스', () => {
   it('VouchersPage — 페이지 · reveal 그룹 · 정렬 줄 · 목록', () => {
     const s = code('src/pages/VouchersPage.tsx')
-    for (const k of ['page', 'reveal', 'sortBar', 'sortTitle', 'sortCount', 'listWrap', 'list'] as const) {
+    for (const k of ['page', 'reveal', 'sortBar', 'sortTitle', 'sortCount', 'listWrap'] as const) {
       expect(s, k).toContain(C[k])
     }
+    // 🎟️ B안: 목록 격자는 SSOT 상수 — 페이지와 워커가 같은 값을 쓴다(문자열 사본이면 갈린다).
+    //   ⚠️ 스켈레톤도 같은 격자를 쓴다 — 그 자리로 통과하지 않게 **목록 렌더 자리**에 앵커한다.
+    expect(s, 'list').toMatch(/className=\{VOUCHER_TILE_CLASS\.grid\}>\s*\{displayProducts\.slice\(0, embedVisible\)[\s\S]{0,120}<VoucherTile /)
+    expect(C.list).toBe(VOUCHER_TILE_CLASS.grid)
   })
   it('머리 배너 판 · 걸침 = VouchersHero (안 C, 2026-10-14)', async () => {
     const { VOUCHERS_HERO_CLS } = await import('@/pages/vouchers/VouchersHero')

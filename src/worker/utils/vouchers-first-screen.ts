@@ -5,7 +5,8 @@
  *   FCP 0.94s → LCP 2.58s). 시드(`__SSR_INITIAL_VOUCHERS__`, 20건 · 사진 URL 포함)는 HTML 에 이미 와 있는데
  *   `#root` 를 로더가 덮고 있었다. 홈·상세·유어샵과 같은 처방이다.
  *
- * 그리는 것: [머리 배너 자리 + 딜 안내 바(배너에 걸침) + 카테고리 칩 줄 높이 + '전체 교환권' 줄 + 목록 6줄].
+ * 그리는 것: [머리 배너 자리 + 딜 안내 바(배너에 걸침) + 카테고리 칩 줄 높이 + 브랜드 로고 줄 높이 + '커피/음료 교환권' 줄 + 타일 두 줄(3열)].
+ *   🎟️ 2026-10-14 대표 B안 — 목록이 한 줄 행에서 **3열 타일**(`VoucherTile`)로 바뀌었다.
  *
  * 🎟️ 2026-10-14 대표 확정 안 C — 맨 위는 제목 줄이 아니라 **배너**다. 배너는 마운트 뒤 `/api/banners` 로
  *   오므로 서버는 그 자리를 같은 높이의 어두운 판으로만 세운다(화면도 응답 전까지 같은 판을 그린다).
@@ -16,7 +17,7 @@
  *   그래서 노드 바로 뒤의 인라인 스크립트가 **로그인 흔적이 있으면 이 노드를 걷어낸다**(그러면 종전 로더).
  *   넓은 화면(1024px+)은 격자 모드라 같은 이유로 걷어낸다. 걷어내는 쪽이 늘 안전하다 — 잘못 남기면 밀린다.
  *
- * 🐢 사진은 **`fetchpriority="low"`** 다(화면의 `VoucherRow` 는 앞 4장이 high) — 의도적 차이.
+ * 🐢 사진은 **`fetchpriority="low"`** 다(화면의 `VoucherTile` 은 앞 6장이 high) — 의도적 차이.
  *   재생 실측(느린 4G·CPU 4배, 5회 중앙값): high 면 사진 4장이 CSS·JS 와 회선을 나눠 FCP 0.88→1.45s ·
  *   조작 가능 2.93→3.52s 로 **늦어졌다**. low 면 LCP 2.50→**1.17s** · FCP 1.10s · 조작 가능 3.19s.
  *   사진을 아예 빼면 LCP 가 사진(React 이후)이 되어 3.41s — 그래서 사진은 싣되 순서를 양보한다.
@@ -28,18 +29,21 @@
  * 출처(클래스는 글자 하나까지 같아야 한다 — 시험이 소스를 읽어 대조한다):
  *   `pages/VouchersPage.tsx`(페이지 · 칩 줄 그룹 · 정렬 줄 · 목록) · `pages/vouchers/VouchersHero.tsx`(배너 판 · 걸침)
  *   `pages/vouchers/DealBalanceCard.tsx`(비로그인 바) · `pages/vouchers/TopChromeReserve.tsx`(칩 줄)
- *   `components/ui/sort-menu.tsx` · `components/deal/DealRow.tsx` · `pages/vouchers/shared.tsx`(VoucherRow)
+ *   `components/ui/sort-menu.tsx` · `shared/voucher-tile.ts`(타일 클래스 SSOT) · `pages/vouchers/shared.tsx`(VoucherTile)
  */
 import { cfImage, cfSrcSet } from '../../utils/cf-image'
 import { priceDisplay } from '../../shared/price-display'
 import { formatNumber } from '../../utils/format'
 import { cardImageAlt } from '../../utils/deal-title'
 import { VOUCHERS_DEFAULT_CATEGORY } from '../../shared/seo/voucher-facet'
+import {
+  VOUCHER_TILE_CLASS, VOUCHER_TILE_ABOVE_FOLD, VOUCHER_TILE_IMG_W, VOUCHER_TILE_SIZES, voucherSoldLabel,
+} from '../../shared/voucher-tile'
 
-/** 서버가 그리는 목록 줄 수 — 폰 한 화면(844px)에 보이는 만큼. 나머지는 마운트 뒤 React 가 그린다. */
+/** 서버가 그리는 타일 수 — 폰 한 화면(844px)에 보이는 두 줄(3 × 2). 나머지는 마운트 뒤 React 가 그린다. */
 export const VOUCHERS_FS_ROWS = 6
-/** `VoucherRow` 의 `aboveFold`(idx < 4) 와 같은 값 — eager/lazy·불투명도가 갈린다. */
-const ABOVE_FOLD = 4
+/** `VoucherTile` 의 `aboveFold`(idx < VOUCHER_TILE_ABOVE_FOLD) 와 같은 값 — eager/lazy·불투명도가 갈린다. */
+const ABOVE_FOLD = VOUCHER_TILE_ABOVE_FOLD
 /** `VouchersPage` 의 PAGE_SIZE — 개수 표시(`20+`)가 시드 길이로 정해진다. */
 const PAGE_SIZE = 20
 
@@ -64,19 +68,8 @@ export const VOUCHERS_FS_CLASS = {
   sortCount: 'text-[13px] font-semibold text-gray-400 dark:text-gray-500 shrink-0',
   sortBtn: 'inline-flex items-center gap-1 rounded-full border border-line bg-surface px-3 py-2 text-[12px] font-bold text-gray-900 dark:text-white active:scale-[0.98] transition-transform',
   listWrap: 'ur-content-wide px-4 lg:px-8 pt-1 pb-6',
-  list: 'grid grid-cols-1 gap-2',
-  row: 'w-full flex items-center gap-3 text-left px-3 py-2 rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift active:opacity-60 transition-opacity ',
-  thumb: 'relative w-16 h-16 sm:w-[72px] sm:h-[72px] shrink-0 overflow-hidden rounded-xl bg-gray-100 dark:bg-[#222225] bg-gradient-to-b from-[#F7F8FA] to-[#EFF1F4] dark:from-[#15171C] dark:to-[#0F1115]',
-  img: 'w-full h-full object-cover',
-  body: 'flex-1 min-w-0',
-  eyebrow: 'text-[12px] font-semibold leading-none mb-1 text-gray-400 dark:text-gray-500 truncate',
-  title: 'text-[15px] leading-snug line-clamp-2 font-bold text-gray-900 dark:text-white',
-  priceRow: 'flex items-baseline gap-1 mt-1',
-  discount: 'text-[15px] font-extrabold text-sale tracking-tight',
-  price: 'text-[17px] font-extrabold text-gray-900 dark:text-white tracking-tight',
-  unit: 'text-[12px] font-bold text-gray-900 dark:text-white',
-  orig: 'text-[12px] ml-1 leading-none line-through text-gray-400 dark:text-gray-500',
-  meta: 'mt-1 text-[12px] text-gray-500 dark:text-gray-400',
+  /** 🎟️ 2026-10-14 B안 — 목록은 3열 타일. 타일 안 클래스는 `VOUCHER_TILE_CLASS`(React 와 같은 상수). */
+  list: VOUCHER_TILE_CLASS.grid,
 } as const
 
 interface VoucherSeedRow {
@@ -98,51 +91,44 @@ function escText(s: string): string {
   return escAttr(s).replace(/'/g, '&#39;')
 }
 
-/** `VoucherRow` 의 구매수 표기와 같은 규칙. */
-export function soldLabelOf(n: number): string {
-  return n >= 10000 ? `${(n / 10000).toFixed(1).replace(/\.0$/, '')}만`
-    : n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, '')}천`
-    : String(n)
-}
+/** 타일의 구매수 표기와 같은 규칙(SSOT 재수출 — 시험이 이 이름으로 부른다). */
+export const soldLabelOf = voucherSoldLabel
 
 /** `dominant_color` 는 `#rrggbb` 만 받는다(스타일 속성에 그대로 들어가므로). */
 function safeColor(c: unknown): string | null {
   return typeof c === 'string' && /^#[0-9a-fA-F]{6}$/.test(c) ? c : null
 }
 
-function rowHtml(p: VoucherSeedRow, idx: number): string {
+/** 진짜 `VoucherTile`(pages/vouchers/shared.tsx)과 같은 모양 — 시험이 둘을 렌더해 대조한다. */
+function tileHtml(p: VoucherSeedRow, idx: number): string {
+  const T = VOUCHER_TILE_CLASS
   const price = Number(p.price) || 0
   const orig = p.original_price != null ? Number(p.original_price) || 0 : 0
-  const hasStrike = !!orig && orig > price
-  const discountRate = hasStrike ? Math.round(((orig - price) / orig) * 100) : (Number(p.discount_rate) || 0)
-  const pd = priceDisplay({ price, original_price: hasStrike ? orig : null, discount_rate: discountRate })
-  const showOrig = hasStrike && pd.showOriginal
+  const pd = priceDisplay({ price, original_price: orig || null, discount_rate: Number(p.discount_rate) || 0 })  // 화면은 priceDisplay(p) — 같은 입력
   const sold = Number(p.sold_count || 0)
   const above = idx < ABOVE_FOLD
   const color = safeColor(p.dominant_color)
   const name = String(p.name ?? '')
   const brand = p.brand_name ? String(p.brand_name) : ''
 
-  const src = p.image_url ? (cfImage(p.image_url, { width: 240, format: 'auto' }) || p.image_url) : ''
-  const srcSet = p.image_url ? cfSrcSet(p.image_url, 240) : ''
+  const src = p.image_url ? (cfImage(p.image_url, { width: VOUCHER_TILE_IMG_W, format: 'auto' }) || p.image_url) : ''
+  const srcSet = p.image_url ? cfSrcSet(p.image_url, VOUCHER_TILE_IMG_W) : ''
   const img = src
-    ? `<img src="${escAttr(src)}"${srcSet ? ` srcset="${escAttr(srcSet)}"` : ''} sizes="120px" alt="${escAttr(cardImageAlt(name, brand || null))}" width="240" height="240" loading="${above ? 'eager' : 'lazy'}" fetchpriority="low" decoding="async" style="opacity:${above ? 1 : 0};transition:opacity 200ms ease-out" class="${VOUCHERS_FS_CLASS.img}">`
+    ? `<img src="${escAttr(src)}"${srcSet ? ` srcset="${escAttr(srcSet)}"` : ''} sizes="${VOUCHER_TILE_SIZES}" alt="${escAttr(cardImageAlt(name, brand || null))}" width="${VOUCHER_TILE_IMG_W}" height="${VOUCHER_TILE_IMG_W}" loading="${above ? 'eager' : 'lazy'}" fetchpriority="low" decoding="async" style="opacity:${above ? 1 : 0};transition:opacity 200ms ease-out" class="${T.img}">`
     : ''
 
   return (
-    `<div class="${VOUCHERS_FS_CLASS.row}">` +
-    `<div class="${VOUCHERS_FS_CLASS.thumb}"${color ? ` style="background-color:${color}"` : ''}>${img}</div>` +
-    `<div class="${VOUCHERS_FS_CLASS.body}">` +
-    (brand ? `<p class="${VOUCHERS_FS_CLASS.eyebrow}">${escText(brand)}</p>` : '') +
-    `<p class="${VOUCHERS_FS_CLASS.title}">${escText(name)}</p>` +
-    `<div class="${VOUCHERS_FS_CLASS.priceRow}">` +
-    (pd.discount > 0 ? `<span class="${VOUCHERS_FS_CLASS.discount}">${pd.discount}%</span>` : '') +
-    `<span class="${VOUCHERS_FS_CLASS.price}">${formatNumber(price)}</span>` +
-    `<span class="${VOUCHERS_FS_CLASS.unit}">딜</span>` +
-    (showOrig ? `<span class="${VOUCHERS_FS_CLASS.orig}">${formatNumber(orig)}딜</span>` : '') +
+    `<div class="${T.root}">` +
+    `<div class="${T.thumb}"${color ? ` style="background-color:${color}"` : ''}>${img}</div>` +
+    (brand ? `<span class="${T.brand}"><span class="${T.brandName}">${escText(brand)}</span><span aria-hidden="true" class="${T.chev}">›</span></span>` : '') +
+    `<p class="${T.title}">${escText(name)}</p>` +
+    `<div class="${T.priceRow}">` +
+    (pd.discount > 0 ? `<span class="${T.discount}">${pd.discount}%</span>` : '') +
+    `<span class="${T.price}">${formatNumber(price)}</span>` +
+    `<span class="${T.unit}">딜</span>` +
     `</div>` +
-    (sold > 0 ? `<div class="${VOUCHERS_FS_CLASS.meta}">구매 ${soldLabelOf(sold)}</div>` : '') +
-    `</div></div>`
+    (sold > 0 ? `<p class="${T.meta}">구매 ${voucherSoldLabel(sold)}</p>` : '') +
+    `</div>`
   )
 }
 
@@ -192,7 +178,7 @@ export function buildVouchersFirstScreen(seedJson: string, loaderHtml: string, n
     `<h2 class="${C.sortTitle}"><span class="truncate">${escText(VOUCHERS_DEFAULT_CATEGORY)} 교환권</span><span class="${C.sortCount}">${count}</span></h2>` +
     `<div class="relative shrink-0"><span class="${C.sortBtn}"><span class="w-3.5 h-3.5 inline-block"></span>낮은 가격순<span class="w-3.5 h-3.5 inline-block"></span></span></div>` +
     `</div>` +
-    `<div class="${C.listWrap}"><div class="${C.list}">${shown.map(rowHtml).join('')}</div></div>` +
+    `<div class="${C.listWrap}"><div class="${C.list}">${shown.map(tileHtml).join('')}</div></div>` +
     `</div>`
 
   return `<div id="ur-first-screen">${body}</div>${vouchersFirstScreenGuardScript(nonce)}${loaderHtml.replace('min-height:100dvh', 'min-height:34dvh')}`

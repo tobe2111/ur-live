@@ -28,7 +28,8 @@ import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { getUserIdSync } from '@/utils/auth'
 // 🖥️ 2026-07-18 (교환권 PC 2단 분리): 카드/행 + VoucherProduct 타입은 ./vouchers/shared 로 추출(파일크기 래칫).
-import { VoucherCard, VoucherRow, BrandChip, CategoryIcon, type VoucherProduct } from './vouchers/shared'
+import { VoucherCard, VoucherTile, BrandChip, CategoryIcon, type VoucherProduct } from './vouchers/shared'
+import { VOUCHER_TILE_CLASS, VOUCHER_TILE_ABOVE_FOLD } from '@/shared/voucher-tile'
 import { ChipRowReserve, BrandStripReserve } from './vouchers/TopChromeReserve'
 import { VOUCHERS_DEFAULT_CATEGORY } from '@/shared/seo/voucher-facet'
 import { GifticonBoxRailRow } from './vouchers/GifticonBoxEntry'
@@ -341,7 +342,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   // 🎫 2026-06-23 (대표 결정): 교환권은 홈 12 / /vouchers 20개 노출 후 '더보기'. 둘 다 무한스크롤 대신 cap+버튼
   //   (비embedded 도 cap → 더보기 아래로 쇼핑 섹션이 이어지게). 교환권 무한관찰 비활성, 무한스크롤은 하단 쇼핑 섹션이 담당.
   // 🎫 2026-06-26 (대표 결정): 홈 12개 / /vouchers 8개 먼저 노출 후 '더보기'.
-  const EMBED_INITIAL = embedded ? 12 : 8
+  // 🎟️ 2026-10-14 (대표 B안 — 모바일 3열 타일): /vouchers 는 9개(세 줄) — 8 이면 마지막 줄이 두 칸만 찬다.
+  const EMBED_INITIAL = embedded ? 12 : 9
   const [embedVisible, setEmbedVisible] = useState(() => restored?.embedVisible ?? EMBED_INITIAL)
   const embeddedCapped = true
   // 🔙 2026-09-13: 현재 목록을 보관 — 상세로 떠났다 뒤로 오면 이 값이 첫 렌더에 되살아난다.
@@ -379,11 +381,13 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
     return () => observer.disconnect()
   }, [hasMore, loadingMore, loading, page, loadProducts, embeddedCapped])
 
-  const setBrand = (next: string) => {
+  // 🎟️ 2026-10-14: useCallback — 타일(`VoucherTile`, memo)의 브랜드 줄이 이 함수를 받는다.
+  //   매 렌더 새 함수면 스크롤(reveal)마다 타일 전부가 다시 그려진다.
+  const setBrand = useCallback((next: string) => {
     const params = new URLSearchParams(searchParams)
     if (next) params.set('brand', next); else params.delete('brand')
     setSearchParams(params, { replace: true })  // 🔙 필터는 이동이 아니라 상태 — 히스토리를 안 쌓는다(back-navigation 테스트)
-  }
+  }, [searchParams, setSearchParams])
 
   // 🛡️ 2026-05-19: 카테고리 변경 — 브랜드 자동 초기화 (다른 카테고리의 브랜드는 의미 없음).
   const setCategory = (next: string) => {
@@ -695,16 +699,14 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
               ))}
             </div>
           ) : (
-            // 🎨 2026-06-20: /vouchers 1줄 리스트 스켈레톤 (이미지 좌측 + 텍스트 우측). PC 도 1열(사용자 요청).
-            <div className="grid grid-cols-1">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="animate-pulse flex items-center gap-4 py-4 border-b border-gray-100 dark:border-[#2C2F35]">
-                  <div className="w-[88px] h-[88px] sm:w-24 sm:h-24 shrink-0 rounded-2xl bg-gray-100 dark:bg-[#1D1F29]" />
-                  <div className="flex-1">
-                    <div className="h-3 bg-gray-100 dark:bg-[#1D1F29] rounded w-1/3" />
-                    <div className="h-4 mt-2 bg-gray-100 dark:bg-[#1D1F29] rounded w-3/4" />
-                    <div className="h-4 mt-2 bg-gray-100 dark:bg-[#1D1F29] rounded w-1/4" />
-                  </div>
+            // 🎟️ 2026-10-14: /vouchers 3열 타일 스켈레톤(사진 정사각 + 글자 세 줄) — 타일과 같은 격자.
+            <div className={VOUCHER_TILE_CLASS.grid}>
+              {Array.from({ length: 9 }).map((_, i) => (
+                <div key={i} className="animate-pulse min-w-0">
+                  <div className="aspect-square rounded-xl bg-gray-100 dark:bg-[#1D1F29]" />
+                  <div className="h-3 mt-2 bg-gray-100 dark:bg-[#1D1F29] rounded w-1/2" />
+                  <div className="h-3 mt-2 bg-gray-100 dark:bg-[#1D1F29] rounded w-full" />
+                  <div className="h-3 mt-2 bg-gray-100 dark:bg-[#1D1F29] rounded w-2/3" />
                 </div>
               ))}
             </div>
@@ -739,12 +741,13 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                 ))}
               </div>
             ) : (
-              // 🎨 2026-06-23 /vouchers — 1줄 리스트, embedVisible(기본 20)개까지만 노출 후 '더보기'(대표 결정).
-              //   내용 동일, 배치만 행. 더보기 아래로 쇼핑 섹션이 이어짐.
-              <div className="grid grid-cols-1 gap-2">
+              // 🎟️ 2026-10-14 대표 확정 *"교환권은 b 시안으로"* — 모바일 /vouchers = 3열 타일
+              //   (사진 · 브랜드 › · 이름 두 줄 · 가격 · 구매 N). 종전 한 줄 행(VoucherRow)을 대체한다.
+              //   격자 클래스는 SSOT(`VOUCHER_TILE_CLASS`) — 워커 첫 화면이 같은 값으로 그린다.
+              <div className={VOUCHER_TILE_CLASS.grid}>
                 {displayProducts.slice(0, embedVisible).map((p, idx) => (
                   <Fragment key={p.id}>
-                    <VoucherRow p={p} aboveFold={idx < 4} />
+                    <VoucherTile p={p} aboveFold={idx < VOUCHER_TILE_ABOVE_FOLD} onBrand={setBrand} />
                   </Fragment>
                 ))}
               </div>
@@ -755,8 +758,9 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                 <button
                   type="button"
                   onClick={() => {
-                    // 🎫 2026-06-26 (대표 결정): /vouchers 는 8개 시작이라 더보기도 +8(리듬 정합). 홈은 +20 유지.
-                    const next = embedVisible + (embedded ? 20 : 8)
+                    // 🎫 2026-06-26 (대표 결정): 시작 수와 같은 리듬으로 더보기. 홈은 +20 유지.
+                    //   🎟️ 2026-10-14: /vouchers 는 3열이라 +9(세 줄씩).
+                    const next = embedVisible + (embedded ? 20 : 9)
                     setEmbedVisible(next)
                     if (next >= products.length && hasMore && !loadingMore) {
                       const np = page + 1; setPage(np); loadProducts(np, false)

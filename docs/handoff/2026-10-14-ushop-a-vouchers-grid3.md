@@ -4,9 +4,8 @@
 (참고 사진: 카카오 선물하기 3열 — `docs/design/assets/consumer-pages-2026-10-14/kakao-gift-grid-ref.jpg`)
 
 ## 다음 세션의 첫 액션
-1. **교환권 3열 — 대표가 A·B·C 중 고르면 구현**(시안 `docs/design/assets/consumer-pages-2026-10-14/vouchers-grid3.jpg`, 추천 A).
-   구현 자리: `src/pages/VouchersPage.tsx`(잠금표 — `[UNLOCK_LOADING]` + 대표 승인) 의 모바일 목록 + `src/pages/vouchers/shared.tsx` 카드 +
-   서버 첫 화면 미러 `src/worker/utils/vouchers-first-screen.ts`(줄 6개 → 3열 격자, 같은 클래스). 잠긴 이미지 속성(width/height/srcSet/lazy/dominant_color)은 그대로.
+1. **교환권 B(3열 타일) 배포 뒤 폰 `/vouchers`** — 타일 두 줄(6장)이 서버 첫 화면에서 바로 뜨고 마운트 때 안 움직이는지,
+   타일의 `브랜드 ›` 를 누르면 그 브랜드로 걸러지는지(상세로 안 넘어가야 한다), 더보기 +9.
 2. 유어샵 A 배포 뒤 폰 `/u/jiwon1228` — 얼굴(사진) · 이름 24px · `이용권 N · 누적 구매 M` · SNS 이름표, 서버 첫 화면과 마운트가 안 밀리는지.
    사진 없는 유어샵(`/u/user5`)은 유달이.
 
@@ -18,10 +17,14 @@
   워커 시드 `VOUCHERS_DEFAULT_SEED_PATH`(예열 키 재사용), 서버 첫 화면도 같은 제목·로고 줄 예약.
   ⚠️ E4: 배포 뒤 폰 `/vouchers` 첫 방문 — 커피/음료 칩이 선택돼 있고 로고 줄이 뜨는지, `/api/products` 가 **0~1회**인지.
 
+- 교환권 목록 B(대표 *"교환권은 b 시안으로"*): 모바일 `VoucherTile` 3열 — 클래스 SSOT `src/shared/voucher-tile.ts` 를
+  React·워커가 함께 import. 시험이 진짜 타일을 렌더해 워커 HTML 과 대조(`vouchers-first-screen-2026-10-14` ①).
+- push 가 한 번 막혔던 이유: `first-screen-fetch-2026-10-06` 이 `'전체'=all` 분기 전 모양을 단언하고 있었다 → 재조준(01756f2ff).
+
 ## 이번에 틀렸던 판단
 - 로고 줄 가드가 PC 사이드바의 같은 `orderedBrands.map` 에 걸려 모바일 줄을 지워도 통과했다 → 모바일 블록 안에서만 보도록.
+- 타일 목록 앵커를 `toContain('className={VOUCHER_TILE_CLASS.grid}')` 로 썼더니 스켈레톤도 같은 격자라 헛돌았다 → 목록 렌더 자리로.
 - 얼굴 배경을 `bg-brand-tint` 로 두었다가 a3-p1 가드(헤더의 채운 색 면은 `관리` 하나)가 잡았다 → `bg-wash`.
 
 ## 남은 결정
-- 교환권 3열 A/B/C.
 - "누적 구매" 는 진열된 상품의 **전체 판매 수 합**이다(이 유어샵을 거친 구매 수가 아니다) — 시안 A 의 정의 그대로. 다르게 원하면 서버 집계가 필요.
