@@ -124,7 +124,9 @@ describe('③ 배선 — 워커가 facet 시드를 받고 **주입은 제외**�
 
   it('🔴 facet 시드를 사람 응답에 주입하지 않는다 — 화면은 이 시드를 안 먹는다', () => {
     const c = code(WORKER)
-    expect(c).toMatch(/const crawlerPayload = digestRaw \|\| ssrPayload;\s*\n\s*if \(url\.pathname === '\/vouchers' && url\.search\) ssrPayload = null;/)
+    // 🔁 2026-10-13 재조준: 같은 줄에 `/urshorts` 항이 더해졌다(두 표면이 같은 규율을 쓴다).
+    //   불변식은 그대로다 — ① `crawlerPayload` 를 잡은 **직후**에 ② facet 조건으로 주입을 끊는다.
+    expect(c).toMatch(/const crawlerPayload = digestRaw \|\| ssrPayload;\s*\n\s*if \([^\n]*url\.pathname === '\/vouchers' && url\.search[^\n]*\) ssrPayload = null;/)
     // 화면의 소비 조건이 `!category` 임을 함께 고정(그 조건이 바뀌면 위 결정의 전제가 사라진다).
     expect(code('src/pages/VouchersPage.tsx')).toContain("(!brand && !category && sort === 'price_low')")
   })

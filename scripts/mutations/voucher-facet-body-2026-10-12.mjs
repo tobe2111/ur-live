@@ -32,8 +32,10 @@ export default [
     why: '화면의 소비 조건은 `!category` 라 그 시드를 안 먹는다. 실으면 사람이 쓰지도 않는 '
        + 'JSON 을 내려받는다(2026-10-12 지역 요약에서 변수를 분리한 그 규율).',
     file: WORKER,
-    find: "    if (url.pathname === '/vouchers' && url.search) ssrPayload = null;",
-    replace: '',
+    // 🔁 2026-10-13 재조준: 같은 줄에 `/urshorts` 항이 더해졌다(두 표면이 같은 규율을 쓴다).
+    //   불변식(*facet 시드는 크롤러 본문까지만*)은 그대로이고, facet 항만 떼어 그 방향을 만든다.
+    find: "    if ((url.pathname === '/vouchers' && url.search) || url.pathname === '/urshorts') ssrPayload = null;",
+    replace: "    if (url.pathname === '/urshorts') ssrPayload = null;",
     test: TEST,
   },
   {

@@ -93,8 +93,11 @@ export default [
     name: '🔗 시드 타입에서 그 필드를 뺀다',
     why: '타입에 없으면 `d.kakao_place_url` 이 조용히 undefined 가 되어 배선이 살아 있는데 값이 영원히 안 온다(이 레포가 반복해 당한 *조용한 부재*)',
     file: SRC,
-    find: "  // 🔗 2026-10-12 — 카카오 장소 프로필(`sameAs`). 시드에 이미 온다(실측 14/14).\n  kakao_place_url?: string\n}",
-    replace: "}",
+    // 🔁 2026-10-13 재조준: 그 타입 블록 **끝**(`\n}`)을 앵커로 쓰고 있었는데, 같은 블록에
+    //   `stock?`·`stock_quantity?` 가 뒤에 붙어 `}` 가 더는 바로 다음 줄이 아니다. 불변식
+    //   (*타입에 필드가 있어야 값이 온다*)은 그대로이고 꼬리만 떼어 앵커를 좁혔다.
+    find: "  // 🔗 2026-10-12 — 카카오 장소 프로필(`sameAs`). 시드에 이미 온다(실측 14/14).\n  kakao_place_url?: string",
+    replace: "",
     test: T,
   },
   {

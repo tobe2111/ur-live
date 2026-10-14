@@ -55,7 +55,10 @@ export function buildLlmsTxt(origin: string): string {
     `- [${labelOf(p)}](${base}${p}): ${oneLine(CONSUMER_SURFACE_SEO[p]?.description || '')}`
 
   const out: string[] = [
-    `# 유어딜 (UrDeal) — ${base}`,
+    // 🎨 2026-10-13 — 제목에서 em-dash 를 뺐다(anti-slop R1 이 이제 이 파일을 본다).
+    //   주소는 줄을 따로 두므로 내용은 한 글자도 안 줄었다.
+    '# 유어딜 (UrDeal)',
+    base,
     '',
     `> ${CONCEPT_ABOUT_LINES[0]}`,
     '',

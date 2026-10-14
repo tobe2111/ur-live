@@ -54,6 +54,9 @@ export function sourceTokens(src) {
  *     src/pages/seller-register/…      export const       text-tone-bad/50
  *     src/styles/tokens.ts             토큰 표            shadow-3xl         (Tailwind 에 없는 단계)
  *
+ * ⚠️ 셋째 파일(`src/styles/tokens.ts`)은 2026-10-13 에 **삭제**됐다 — importer 0 인 죽은 파일이었다
+ *   (`styles/themes.ts` 와 짝). 위 표는 *이 스캔이 왜 필요했나* 의 기록이므로 그대로 둔다.
+ *
  * ## 판정 방법 — "클래스 뭉치인지"를 **스스로 증명**하게 만든다
  * 아무 문자열이나 토큰화하면 산문·URL·SQL 이 쏟아진다. 그래서 한 리터럴이
  * **① 모양이 맞는 토큰 2개 이상**이고 **② 그중 하나는 이미 생성된 클래스**일 때만 뭉치로 본다.

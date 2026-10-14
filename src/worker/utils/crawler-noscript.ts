@@ -42,13 +42,14 @@ import { REGION_PATH_RE } from '../../shared/seo/region-seed'
 import { regionChildLinks } from '../../shared/seo/region-digest'
 import { CONSUMER_SURFACE_SEO } from '../../shared/seo/consumer-surfaces'
 import { REGION_HUB_CRUMB } from './surface-list-jsonld'
+import { buildUrshortsNoscript } from './urshorts-noscript'
 import { surfaceCopyFor } from '../../shared/seo/surface-copy'
 import { CONSUMER_TERMS } from '../../pages/terms/consumer-terms-content'
 import { SELLER_TERMS } from '../../pages/terms/seller-terms-content'
 import type { TermsDoc } from '../../pages/terms/terms-types'
 import { storeNameParts } from '@/shared/seo/store-name-dedupe'
 
-function esc(s: string): string {
+export function esc(s: string): string {
   return String(s)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -87,7 +88,7 @@ function wrap(inner: string): string {
  *    h1 이 둘이 된다(주입이 그 방향을 고정).
  * 🔴 **빈 라벨이면 아무것도 내지 않는다** — noindex 표면은 `crumb` 를 일부러 비워 둔다.
  */
-function h1Of(text: string | null | undefined): string {
+export function h1Of(text: string | null | undefined): string {
   const t = String(text || '').trim()
   return t ? `<h1>${esc(t)}</h1>` : ''
 }
@@ -399,6 +400,10 @@ export function buildStaticSurfaceNoscript(pathname: string, ssrPayload?: string
       return ''
     }
   }
+
+  // 🎬 2026-10-13 — `/urshorts` 는 모듈로 뺐다(이 파일이 600줄 래칫을 넘겼다 — pre-push 게이트가
+  //   잡았다). 왜 `VideoObject` 를 안 내는지·왜 주입하지 않는지는 그 파일 머리말에 있다.
+  if (path === '/urshorts') return buildUrshortsNoscript(ssrPayload, h1Of(CONSUMER_SURFACE_SEO[path]?.crumb))
 
   if (path === '/faq') {
     // Q&A 를 그대로 — 언어모델이 인용하기 가장 쉬운 모양이고, 같은 배열이 `FAQPage` JSON-LD
