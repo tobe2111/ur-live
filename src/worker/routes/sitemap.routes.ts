@@ -131,6 +131,12 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
     { loc: '/join', priority: 0.5, changefreq: 'monthly' },
     { loc: '/terms/seller', priority: 0.3, changefreq: 'yearly' },
     { loc: '/terms', priority: 0.3, changefreq: 'yearly' },
+    // ⚖️ 2026-10-14 — 이 둘은 **반대 방향의 짝 주장 위반**이었다: 제출은 하고 있는데 크롤러 본문이
+    //   **6자**였다(라이브 Googlebot 실측 · 형제 `/terms` 는 같은 빌더로 323자). 위 2026-10-13 기록이
+    //   "미제출 색인 대상" 만 훑어서 **이 방향을 한 번도 안 셌다** — 규율은 양방향이다:
+    //   *제출 ⇒ 본문* 과 *본문 ⇒ 제출*. 지금은 `surface-copy` 가 각각 470자·252자를 낸다
+    //   (`/refund` 는 2026-10-13 결재로 코드의 현행 규칙대로 다시 쓰인 뒤의 글이다).
+    //   가드 `legal-surface-body-2026-10-14.test.ts` ③ 이 이 두 줄과 본문 길이를 **함께** 잠근다.
     { loc: '/privacy', priority: 0.3, changefreq: 'yearly' },
     { loc: '/refund', priority: 0.3, changefreq: 'yearly' },
     { loc: '/gdpr', priority: 0.3, changefreq: 'yearly' },         // 영문 개인정보·GDPR (2026-10-14 본문 382자 확보 후 제출)

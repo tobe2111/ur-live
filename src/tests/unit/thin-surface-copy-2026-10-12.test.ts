@@ -23,8 +23,9 @@
  *
  * - 그 문장이 화면에 **실제로 렌더되는지**(조건부 JSX 안에 있을 수 있다 — 소스 실재만 본다)
  * - 구글이 색인하는지(수일~수주 · 서치콘솔은 대표만 본다)
- * - `/privacy`·`/refund` — 본문이 JSX 에 박혀 문서에서 파생할 수 없어 **일부러 안 했다**
- *   (사유는 `shared/seo/surface-copy.ts` 머리말).
+ * - 🩸 **2026-10-14 정정 — 여기 `/privacy`·`/refund` 가 "일부러 안 했다" 로 적혀 있었다.
+ *   사유가 틀렸다**(두 페이지를 읽지 않고 쓴 말이다). 실측하니 통째 문장이 `/privacy` 16개 ·
+ *   `/refund` 12개였고 둘 다 SSOT 에 들어왔다. 사유의 전말은 `shared/seo/surface-copy.ts` 머리말 🩸.
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
@@ -103,6 +104,13 @@ describe('① 🔴 SSOT 의 모든 줄이 그 페이지 소스에 실재한다 (
     '/new-openings': 150,
     '/partners': 230,
     '/region': 110,
+    // ⚖️ 2026-10-14 — 법정 문서 둘(본문 6자 · index · sitemap 제출이었다). 전부 그 화면의 문장을
+    //   **옮긴** 것이고, `/refund` 는 2026-10-13 결재로 코드의 현행 규칙대로 다시 쓰인 뒤의 글이다.
+    //   `/refund` 가 짧은 이유: 가장 값진 두 문장이 **문장 안에 `<span>` 을 품어** 위 ① 의 대조를
+    //   통과할 수 없다(평탄화는 공백만 접고 태그는 남긴다 — `surface-copy.ts` 의 그 항목 🩸).
+    //   절 제목이 그 자리를 메운다.
+    '/privacy': 470,
+    '/refund': 210,
     }
     const below = entries
       .map(([path, copy]) => [path, copy.lines.join(' ').length, FLOOR[path] ?? 110] as const)
@@ -146,8 +154,13 @@ describe('② 빌더가 실제로 그 문장을 낸다 (출력 판정)', () => {
   })
 
   it('목록에 없는 표면은 삼키지 않는다', () => {
-    for (const p of ['/privacy', '/refund', '/pass/2919', '/u/jiwon1228', '/notifications']) {
+    // 🔀 2026-10-14 재조준 — `/privacy`·`/refund` 가 **표에 들어왔으므로** 예시에서 뺀다.
+    //   지키는 불변식은 그대로다: 해석기가 표에 없는 경로까지 삼키지 않는다. 예시를 표 밖
+    //   표면으로 갈아 두면 그 불변식이 계속 출력으로 판정된다(주입 `판정이 다른 표면까지
+    //   삼킨다` 가 여전히 빨간불이어야 한다).
+    for (const p of ['/cart', '/wishlist', '/pass/2919', '/u/jiwon1228', '/notifications']) {
       expect(buildStaticSurfaceNoscript(p), p).toBe('')
+      expect(SURFACE_COPY, `${p} 가 표에 들어왔다면 이 예시를 갈아야 한다`).not.toHaveProperty(p)
     }
   })
 })
