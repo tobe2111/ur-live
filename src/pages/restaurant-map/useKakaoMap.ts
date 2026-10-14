@@ -6,6 +6,7 @@ import { mapMarkerTier, shouldShowMarkerLabel, setMapHighlightPct, mapHighlightP
 import { priceDisplay } from '@/shared/price-display'
 import { readRecentlyViewedIds } from '@/components/group-buy/RecentlyViewedStrip'
 import type { Restaurant, KakaoPlace } from './types'
+import { ensureKakaoMaps } from '@/lib/kakao-sdk'
 
 // 🗺️ 2026-06-22 (대표 — "중앙 기준이 하단 시트 크기에 따라 달라진다"): 선택 핀을 *보이는 지도 영역*
 //   (상단 검색바 아래 ~ 하단 시트 위)의 중앙으로 끌어올릴 px 오프셋을 시트 snap 별로 동적 계산.
@@ -107,15 +108,15 @@ export function useKakaoMap({
       setSdkLoaded(false)
       return
     }
-    import('@/lib/kakao-sdk').then(({ ensureKakaoMaps }) => {
-      ensureKakaoMaps()
-        .then(() => setSdkLoaded(true))
-        .catch((e) => {
-          if (import.meta.env.DEV) console.error('[RestaurantMap] Kakao Maps load failed:', e)
-          setSdkLoaded(false)
-          setSdkError(true)
-        })
-    })
+    // ⚡ 2026-10-14: 정적 import — 동적 import 는 지도 청크 다음에 SDK 래퍼(1KB) 청크를 **한 번 더** 받으러 갔다
+    //   (라이브 실측 4.6초 출발 → 지도 생성 5.8초). 지도 표면 미리받기 묶음에 같이 실려 그 왕복이 사라진다.
+    ensureKakaoMaps()
+      .then(() => setSdkLoaded(true))
+      .catch((e) => {
+        if (import.meta.env.DEV) console.error('[RestaurantMap] Kakao Maps load failed:', e)
+        setSdkLoaded(false)
+        setSdkError(true)
+      })
   }, [kr, enabled])
 
   // 🗺️ 2026-06-22 (대표 — "공구 상품을 누르면 지도 한가운데로" + "중앙 기준이 시트 크기 따라 달라짐"):

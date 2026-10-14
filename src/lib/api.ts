@@ -8,7 +8,8 @@
  * 4. Seller/Admin → JWT 전용, Firebase 절대 사용 안 함
  */
 
-import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+// 🪶 2026-10-14: axios → 같은 모양의 작은 클라이언트(`http-client.ts`) — 첫 페인트 청크 −17KB br.
+import { createHttp, http, isHttpError, type AxiosError, type InternalRequestConfig as InternalAxiosRequestConfig } from './http-client';
 import { readAffiliateRef, pruneExpiredAffiliateRef } from '@/utils/affiliate-ref-store';
 import { ensureCsrfToken } from './csrf-token'
 import { readCookie } from './read-cookie'
@@ -87,7 +88,7 @@ function captureError(error: Error, context?: Record<string, any>) {
 }
 
 // ─── API 클라이언트 ──────────────────────────────────────────────────────────
-const api = axios.create({
+const api = createHttp({
   baseURL: '/',
   timeout: 15000,
   withCredentials: true, // Send httpOnly cookies (ur_session) with every request
@@ -620,7 +621,7 @@ api.interceptors.response.use(
         //   응답·듀얼유저 대시보드 토큰 401 fall-through 등으로 소비자 세션이 *부당하게* 풀리던 사고.
         let sessionConfirmedDead = false;
         try {
-          const health = await axios.get('/api/auth/session/health', { withCredentials: true });
+          const health = await http.get('/api/auth/session/health', { withCredentials: true });
           if (health.data?.data?.session) {
             // 세션은 유효 — 해당 API 자체의 권한 문제
             captureError(new Error('Buyer 401: API-specific (session valid)'), { url });
@@ -761,7 +762,7 @@ export const ERROR_MESSAGES: Record<string, string> = {
 };
 
 export function getErrorMessage(error: any): string {
-  if (axios.isAxiosError(error)) {
+  if (isHttpError(error)) {
     const code = error.response?.data?.error?.code;
     if (code && ERROR_MESSAGES[code]) return ERROR_MESSAGES[code];
     if (error.response?.data?.error?.message) return error.response.data.error.message;

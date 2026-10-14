@@ -1,4 +1,4 @@
-import axios, { AxiosError } from 'axios'
+import { isHttpError, type AxiosError } from './http-client'
 import { logError } from './sentry'
 
 // API 에러 타입
@@ -60,7 +60,7 @@ const ERROR_CODE_MESSAGES: Record<number, string> = {
  */
 export function handleApiError(error: unknown): ApiError {
   // Axios 에러인 경우
-  if (axios.isAxiosError(error)) {
+  if (isHttpError(error)) {
     const axiosError = error as AxiosError<any>
     
     // 네트워크 에러
@@ -225,7 +225,7 @@ const UNSAFE_MESSAGE_PATTERNS =
  */
 export function getUserFriendlyError(error: unknown, fallback = '요청 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'): string {
   // axios 에러 우선 처리 (data.code / data.error 접근)
-  if (axios.isAxiosError(error)) {
+  if (isHttpError(error)) {
     const data = error.response?.data as { code?: string; error?: string } | undefined
     if (data?.code && KNOWN_ERROR_CODES[data.code]) {
       return KNOWN_ERROR_CODES[data.code]
