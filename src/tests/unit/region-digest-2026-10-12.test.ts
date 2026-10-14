@@ -238,7 +238,10 @@ describe('⑥ 🔴 반대 방향 — 요약이 주입(React initialData)으로 �
 
   it('크롤러 두 소비자는 `crawlerPayload` 를 쓴다', () => {
     expect(worker).toMatch(/buildSurfaceListJsonLd\([^)]*crawlerPayload\)/)
-    expect(worker).toMatch(/buildStaticSurfaceNoscript\(url\.pathname, crawlerPayload\)/)
+    // 🔀 2026-10-14: 교환권 첫 화면 폴백도 같은 호출을 쓴다 — 하나만 맞아도 통과하면 다른 자리가 1페이지 시드로 새도 모른다.
+    const calls = worker.match(/buildStaticSurfaceNoscript\(url\.pathname, \w+\)/g) || []
+    expect(calls.length).toBeGreaterThanOrEqual(2)
+    for (const c of calls) expect(c).toBe('buildStaticSurfaceNoscript(url.pathname, crawlerPayload)')
   })
 
   it('요약이 없으면 MAIN 시드로 떨어진다 (fail-soft)', () => {

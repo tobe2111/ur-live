@@ -18,8 +18,8 @@ export default [
   {
     name: '🗺️ 크롤러 본문이 다시 1페이지 시드를 본다 — 경기 본문이 0자로 돌아간다',
     file: 'src/worker/index.ts',
-    find: 'buildStaticSurfaceNoscript(url.pathname, crawlerPayload)',
-    replace: 'buildStaticSurfaceNoscript(url.pathname, ssrPayload)',
+    find: 'const staticNs = buildStaticSurfaceNoscript(url.pathname, crawlerPayload)',
+    replace: 'const staticNs = buildStaticSurfaceNoscript(url.pathname, ssrPayload)',
     test: TEST,
     why: '이 한 인자가 결함의 전부였다 — 홈 1페이지 시드엔 색인 대상 11시/도 중 5곳만 들어 있다.',
   },

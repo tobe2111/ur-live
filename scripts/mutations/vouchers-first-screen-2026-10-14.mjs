@@ -21,8 +21,8 @@ export default [
   {
     name: '🎟️ 교환권 첫 화면 사진이 최우선순위로 돌아간다(CSS·JS 와 회선 경쟁)',
     file: 'src/worker/utils/vouchers-first-screen.ts',
-    find: 'fetchpriority="low"',
-    replace: 'fetchpriority="${above ? \'high\' : \'auto\'}"',
+    find: 'fetchpriority="low" decoding="async"',
+    replace: 'fetchpriority="${above ? \'high\' : \'auto\'}" decoding="async"',
     test: TEST,
     why: '재생 실측: high 면 조작 가능 시점이 0.6초 늦어진다.',
   },

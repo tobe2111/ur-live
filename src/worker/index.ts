@@ -1051,8 +1051,7 @@ app.use('*', async (c, next) => {
       const curatorFirst = buildCuratorFirstScreen(ssrPayload, urdealLoaderHtml);
       rb = rb.on('#root', { element(el) { el.setInnerContent(curatorFirst || (curatorNoscriptFromPayload(ssrPayload) + urdealLoaderHtml), { html: true }); } });
     } else if (ssrSlot === 'STAYDETAIL' && ssrPayload) {
-      // 🏨 2026-10-12 [UNLOCK_LOADING] 정본(`/stays/:id`)인데 사본(`/pass/:id`)만 서버 첫 화면이 있었다 — 정본이 더 늦게 떴다. [빵부스러기 + 히어로 + 성급 + 제목]까지 그리고 그 아래에만 로더를 둔다(모바일만 — PC 는 그리드 밖 제목 헤더 때문에 반쪽만 그리면 밀린다).
-      //   🔴 폴백(사진 없음·파싱 실패)은 `<noscript>` + 로더 — 그 경로는 숙소명을 **빼지 않는다**(첫 화면이 없으니 본문이 비어 버린다). 사유·경계: `utils/stay-detail-ssr-body.ts`.
+      // 🏨 2026-10-12 [UNLOCK_LOADING] 정본(`/stays/:id`)인데 사본(`/pass/:id`)만 서버 첫 화면이 있었다 — 정본이 더 늦게 떴다. [빵부스러기 + 히어로 + 성급 + 제목]까지 그리고 그 아래에만 로더를 둔다(모바일만 — PC 는 그리드 밖 제목 헤더 때문에 반쪽만 그리면 밀린다). 🔴 폴백(사진 없음·파싱 실패)은 `<noscript>` + 로더 — 그 경로는 숙소명을 **빼지 않는다**(첫 화면이 없으니 본문이 비어 버린다). 사유·경계: `utils/stay-detail-ssr-body.ts`.
       const stayFirst = buildStayDetailFirstScreen(ssrPayload, urdealLoaderHtml);
       rb = rb.on('#root', { element(el) { el.setInnerContent(stayFirst || (stayNoscriptFromPayload(ssrPayload) + urdealLoaderHtml), { html: true }); } });
     } else if (ssrSlot === 'VOUCHERS' && ssrPayload && url.pathname === '/vouchers' && shouldRenderMobileFirstScreen(c.req.header('user-agent'))) { const vouchersFirst = buildVouchersFirstScreen(ssrPayload, urdealLoaderHtml, nonce); rb = rb.on('#root', { element(el) { el.setInnerContent(vouchersFirst || (buildStaticSurfaceNoscript(url.pathname, crawlerPayload) + urdealLoaderHtml), { html: true }); } }); // 🎟️ 2026-10-14 [UNLOCK_LOADING] 교환권 LCP 가 로딩 마스코트였다 → 비로그인 목록 첫 화면(로그인 흔적·넓은 화면이면 노드를 걷어낸다). 사유·경계: utils/vouchers-first-screen.ts
