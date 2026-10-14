@@ -41,3 +41,10 @@
 - ⚠️ 남은 것: 섹션 요청이 실패·0건이면 자리가 접히며 피드가 올라간다(하네스 무스텁 0.36). 라이브는
   어드민 편성 섹션이 늘 있어 드물다. 실사용 `CLS:/` p75 가 배포 후 0.1 아래로 오는지가 E4 판정.
 - 가드 `home-sections-placeholder-2026-10-14.test.ts` + 주입 4건 빨간불 확인.
+
+## 5. 네이티브 SDK 정적 import 전수 차단
+
+- 마이 보상 광고 카드가 "앱인가?" 하나 때문에 `@capacitor/core` 를 정적으로 불러 **웹 마이·주문내역·주문상세**가
+  capacitor 청크를 받았다 → `isNativeShell()`(import 없는 SSOT). 마이 첫 화면 **150.7 → 145.6KB br**.
+- 블로그 상세 공유 버튼 `nativeShare` 정적 → 누를 때 동적 import. 이제 capacitor 를 정적으로 부르는 청크 **0**.
+- 가드 `native-sdk-no-static-import-2026-10-14.test.ts`(src 전수 — `lib/native.ts` 만 허용) + 주입 2건.

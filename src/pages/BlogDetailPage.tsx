@@ -4,7 +4,6 @@ import { useParams, Link } from 'react-router-dom'
 import { useTranslation } from '@/lib/i18n-lite'
 import { Share2, Search, List, ChevronDown } from 'lucide-react'
 import SEO, { breadcrumbJsonLd } from '@/components/SEO'
-import { nativeShare } from '@/lib/native'
 import KakaoShareButton from '@/components/KakaoShareButton'
 import { BlogMarkdown, blogToc } from '@/features/blog/BlogMarkdown'
 import { CoverImg } from '@/features/blog/BlogCover'
@@ -152,7 +151,7 @@ export default function BlogDetailPage() {
             <Link to="/blog" aria-label="블로그 검색" className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1D1F29]">
               <Search className="w-4 h-4" />
             </Link>
-            <button onClick={() => nativeShare({ title: post.title, url: `https://urdeal.kr/blog/${post.slug}` })}
+            <button onClick={() => { void import('@/lib/native').then((m) => m.nativeShare({ title: post.title, url: `https://urdeal.kr/blog/${post.slug}` })) }}
               aria-label="공유" className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1D1F29]">
               <Share2 className="w-4 h-4" />
             </button>
