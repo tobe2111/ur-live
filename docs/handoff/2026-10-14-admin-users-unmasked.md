@@ -13,3 +13,11 @@
 
 ## 다음 세션
 - E4: 배포 뒤 `/admin/users` 에서 이메일·전화가 원문으로 보이는지.
+
+## 후속 — 주문 목록·활동 피드도 해제 (대표 *"응 다 보이게 해줘"*)
+- `AdminOrdersPage` 목록의 `maskPhone`(010-****-5678) 제거 → `shipping_phone` 원본.
+- 대시보드 `AdminActivityFeed` 의 `maskPhone` 제거 → 원본.
+- 가드 `admin-orders-feed-unmasked-2026-10-14.test.ts` + 주입 `scripts/mutations/admin-orders-feed-unmasked.mjs` 2건 빨간불 확인.
+- 범위 밖으로 둔 마스킹(의도된 것): 셀러 정산 계좌번호 끝 4자리(admin-payouts) · 단체메일 발송 미리보기 이메일 ·
+  KT 교환권 진단 화면 · 웹훅 알림 메시지(외부 채널로 나간다) · 어드민 셀러 상세의 한 응답(admin-sellers.routes:919).
+- E4: 배포 뒤 `/admin/orders` 와 어드민 대시보드 활동 피드에서 별표 없는 번호가 보이는지.

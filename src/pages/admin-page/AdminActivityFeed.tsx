@@ -19,7 +19,6 @@ import { Link } from 'react-router-dom'
 import api from '@/lib/api'
 import { formatNumber } from '@/utils/format'
 import { formatKSTShort } from '@/utils/date'
-import { maskPhone } from '@/lib/mask'
 import {
   FileText, Landmark, Banknote, Package, Truck, CheckCircle2, XCircle, Undo2, AlertTriangle,
   type LucideIcon,
@@ -149,7 +148,7 @@ export default function AdminActivityFeed() {
         <div className="space-y-1">
           {visible.map((o, i) => {
             const meta = statusMeta(o.status)
-            const phone = maskPhone(o.shipping_phone)
+            const phone = (o.shipping_phone || '').trim() // 👁️ 2026-10-14 대표 "다 보이게" — 마스킹 제거
             const sub = buyerSubLabel(o)
             // 수취인이 결제자와 다를 때만 별도 표기(선물·대리 수령 식별).
             const recipient = realName(o.shipping_name)
