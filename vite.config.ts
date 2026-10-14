@@ -334,6 +334,8 @@ export default defineConfig({
           //     주입 앵커가 "여러 곳에 맞는다" 로 그걸 잡았다. 그리고 그게 왜 나쁜가 — **중복 잠금은
           //     각 잠금을 시험 불가능하게 만든다**(주입이 하나를 지워도 다른 하나가 같은 일을 해서
           //     가드가 실패할 수 없다). 설명은 합치고 규칙은 하나만 둔다.
+          //     ⚠️ 그 중복이 실제로 main 을 두 번 빨갛게 만들었다 — `Guard mutations (full)` 이
+          //     `#1722`·`#1760` head 에서 `주입 대상이 2곳 — 유일해야 한다` 로 멎었다(빌드·화면은 초록).
           if (id.includes('/src/shared/kakao-place-url')) return 'app-shared'
           // 🎬 2026-09-09: 유어쇼츠 SSOT(카드 크기·뷰어 주소·유튜브 id 파싱) — import 0 인 순수 상수 모듈인데
           //   홈 헤더 진입점이 `URSHORTS_VIEWER_PATH` 를 읽는 순간 catch-all 로 떨어져 홈 폐쇄가

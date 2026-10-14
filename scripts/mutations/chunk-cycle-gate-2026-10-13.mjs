@@ -25,4 +25,14 @@ export default [
     test: TEST,
     why: '그날 순환의 직접 원인.',
   },
+  {
+    name: '🩸 kakao-place-url 규칙이 두 번 들어온다 (주입 앵커가 모호해져 가드가 멎는다)',
+    file: 'vite.config.ts',
+    find: "          if (id.includes('/src/shared/kakao-place-url')) return 'app-shared'\n",
+    replace:
+      "          if (id.includes('/src/shared/kakao-place-url')) return 'app-shared'\n" +
+      "          if (id.includes('/src/shared/kakao-place-url')) return 'app-shared'\n",
+    test: TEST,
+    why: '2026-10-13 실제로 일어났다 — 두 세션이 같은 사고를 각자 고쳐 머지가 둘 다 받았고, 뒤쪽은 죽은 코드라 빌드·화면·①~③ 전부 초록인데 전수 주입이 main 에서 두 번 빨간불이 났다.',
+  },
 ]
