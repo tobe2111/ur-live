@@ -7,6 +7,7 @@
  */
 import { Hono } from 'hono';
 import { consumerVisibleProductSql } from '../../shared/db/consumer-visible-product';
+import { canonicalShopPath } from '../../shared/seo/shop-canonical';
 import { buildLlmsTxt } from '../../shared/seo/llms-txt'
 import { indexNowKeyPath, isValidIndexNowKey } from '../../shared/seo/indexnow'
 import type { Env } from '@/worker/types/env';
@@ -241,7 +242,10 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
       // 🛍️ 2026-10-11: 아래 '유저 유어샵' 블록이 **같은 URL 을 다시 적지 않게** 내보낸 것을 기억한다.
       const emittedShopLocs = new Set<string>();
       for (const s of sellers.results || []) {
-        const loc = s.handle ? `/u/${s.handle}` : `/s/${s.username || s.id}`;
+        // 🏪 2026-10-14 — 규칙은 `shared/seo/shop-canonical` 한 곳. 페이지 메타가 같은 함수를 써서
+        //   **제출한 URL 과 그 페이지의 canonical 이 갈릴 수 없다**(종전엔 메타가 요청된 별칭을
+        //   그대로 정본이라 말해 `/s/` 와 `/profile/` 이 서로를 모른 채 색인 경쟁했다).
+        const loc = canonicalShopPath(s.handle, s.username, s.id) || `/s/${s.id}`;
         emittedShopLocs.add(loc);
         urls.push({ loc, priority: 0.7, changefreq: 'weekly' });
       }
