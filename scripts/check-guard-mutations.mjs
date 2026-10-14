@@ -4450,8 +4450,10 @@ canvas {
   {
     name: '어드민 침묵 목록이 유령까지 센다',
     file: 'src/features/admin/api/admin-system-monitoring.routes.ts',
-    find: "  const stale = items.filter(i => (i.age_minutes ?? 0) > 60 * 24 && (i.verdict ?? 'judge') === 'judge').map(i => i.name)",
-    replace: '  const stale = items.filter(i => (i.age_minutes ?? 0) > 60 * 24).map(i => i.name)',
+    // 🔁 2026-10-14 재조준 — 임계값이 고정 24h 에서 행의 `stale` 로 옮겨가며 이 줄의 글자가 바뀌었다.
+    //    지키는 불변식(**유령 제외가 사라지면 안 된다**)은 그대로이므로 앵커만 옮겼다.
+    find: "  const stale = items.filter(i => i.stale === true && (i.verdict ?? 'judge') === 'judge').map(i => i.name)",
+    replace: '  const stale = items.filter(i => i.stale === true).map(i => i.name)',
     test: 'src/tests/unit/cron-heartbeat-verdict.test.ts',
     why:
       '판정을 계산해 놓고 **쓰지 않으면** 화면은 그대로다 — "가드는 있는데 그 자리에 안 붙어 있다" 클래스. ' +

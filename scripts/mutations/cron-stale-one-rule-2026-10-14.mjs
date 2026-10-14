@@ -11,11 +11,15 @@ export default [
     test: 'src/tests/unit/cron-stale-one-rule-2026-10-14.test.ts',
   },
   {
-    name: '💓침묵규칙 유령(승계·은퇴) 제외를 없앰',
+    // ⚠️ '유령 제외를 통째로 삭제' 하는 주입은 **이미 있다**(`check-guard-mutations.mjs` 의
+    //    '어드민 침묵 목록이 유령까지 센다' — `cron-heartbeat-verdict.test.ts` 담당).
+    //    같은 결함을 두 번 심으면 어느 가드가 잡았는지 출력으로 못 가른다(중복 잠금) ⇒
+    //    여기서는 **반대로 뒤집어** 유령만 보고하게 만든다 — 그건 ⑤가 잡는다.
+    name: '💓침묵규칙 유령 판정을 뒤집어 유령만 경보로',
     file: 'src/features/admin/api/admin-system-monitoring.routes.ts',
     find: "i.stale === true && (i.verdict ?? 'judge') === 'judge'",
-    replace: 'i.stale === true',
-    why: '개명·승계된 옛 이름은 아무도 갱신하지 않아 영원히 침묵이다 — 2026-08-08 오진의 원인.',
+    replace: "i.stale === true && (i.verdict ?? 'judge') !== 'judge'",
+    why: '승계·은퇴한 옛 이름만 경보로 올리면 진짜 침묵은 영원히 안 뜬다(경보가 정반대를 가리킨다).',
     test: 'src/tests/unit/cron-stale-one-rule-2026-10-14.test.ts',
   },
   {

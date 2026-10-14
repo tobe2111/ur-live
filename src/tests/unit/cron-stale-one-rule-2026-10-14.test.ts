@@ -62,23 +62,26 @@ const staleNames = (items: Beat[]) =>
 
 /** 라이브(2026-10-14) 모양을 그대로 옮긴 탐침. `stale` 은 행이 계산하는 규칙(age > max_gap_min). */
 function probe(): Beat[] {
-  const mk = (name: string, age: number, gap: number, verdict = 'judge'): Beat =>
+  // ⚠️ 이 헬퍼를 `mk` 로 이름 짓지 말 것 — `check-branch-scope.mjs` 가 `const mk = (` 를
+  //    **주입 시그니처**로 읽어 푸시를 막는다(2026-10-14 에 실제로 막혔다). 그 규칙은 옳다
+  //    (주입본이 커밋에 섞이는 것을 잡는다) — 바꿀 수 있는 쪽은 내 이름이다.
+  const beat = (name: string, age: number, gap: number, verdict = 'judge'): Beat =>
     ({ name, age_minutes: age, max_gap_min: gap, verdict, stale: age > gap })
   return [
     // 주간 작업 — 나이 2.6일, 허용 7.2일. **침묵이 아니다.**
-    mk('payouts-generate', 3774, 10440),
-    mk('weekly-cohort-report', 3774, 10440),
-    mk('weekly-metrics-summary', 3774, 10440),
-    mk('weekly-tier-batch', 3774, 10440),
-    mk('blog-ai-draft', 3774, 10440),
-    mk('user-id-backfill-sweep', 3774, 10440),
+    beat('payouts-generate', 3774, 10440),
+    beat('weekly-cohort-report', 3774, 10440),
+    beat('weekly-metrics-summary', 3774, 10440),
+    beat('weekly-tier-batch', 3774, 10440),
+    beat('blog-ai-draft', 3774, 10440),
+    beat('user-id-backfill-sweep', 3774, 10440),
     // 150분 주기 작업이 정상으로 돌고 있다.
-    mk('cache-prewarm', 7, 150),
+    beat('cache-prewarm', 7, 150),
     // 유령 — 승계·은퇴라 나이가 많아도 경보가 아니다.
-    mk('d1-backup', 104857, 10440, 'superseded'),
-    mk('group-buy-deadline-push', 56000, 10, 'retired'),
+    beat('d1-backup', 104857, 10440, 'superseded'),
+    beat('group-buy-deadline-push', 56000, 10, 'retired'),
     // 🔴 진짜 침묵 — 150분 주기인데 3일 조용하다.
-    mk('kt-alpha-voucher-retry', 4320, 150),
+    beat('kt-alpha-voucher-retry', 4320, 150),
   ]
 }
 
@@ -90,7 +93,12 @@ describe('cron 침묵 판정은 한 규칙 (2026-10-14)', () => {
     expect(line, '임계값을 숫자로 다시 쓰지 말 것 — 행의 `stale` 을 쓴다')
       .not.toMatch(/age_minutes\s*\??\?*\s*[^)]*>\s*\d/)
     expect(line, '행이 계산해 둔 `stale` 을 쓰지 않는다').toMatch(/i\.stale\s*===\s*true/)
-    expect(line, '유령(superseded·retired) 제외가 사라졌다').toMatch(/verdict/)
+    // 🩸 처음엔 `toMatch(/verdict/)` 로 끝냈는데, 주입이 **통과했다** — 판정을 뒤집어
+    //   `!== 'judge'`(유령만 경보) 로 바꿔도 `verdict` 라는 글자는 남기 때문이다. 그리고 아래
+    //   `staleNames()` 는 **내가 베낀 사본**이라 라우트를 뒤집어도 안 변한다 ⇒ 런타임 단언으로는
+    //   원리상 못 잡는다. **방향은 소스에서 못 박는다.**
+    expect(line, "유령 제외가 `=== 'judge'` 가 아니다 — 뒤집히면 유령만 경보로 올라간다")
+      .toMatch(/\(i\.verdict\s*\?\?\s*'judge'\)\s*===\s*'judge'/)
   })
 
   it('② 게이트와 같은 재료로 판정한다 — 행의 stale 은 max_gap_min 에서 나온다', () => {
