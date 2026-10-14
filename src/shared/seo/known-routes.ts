@@ -20,8 +20,17 @@
  * 🔴 **방향이 뒤집히면 피해가 훨씬 크다** — 허용목록이 낡으면 **멀쩡한 페이지가 404** 가 되고 색인은
  * 돌아오는 데 수주다. 그래서 두 겹으로만 판정한다:
  *   - **2세그먼트 이상**: 최상위 세그먼트만 본다(`/seller/orders/xyz` 처럼 깊은 경로를 절대 안 자른다).
- *     🔁 2026-10-14 — 그 최상위를 `KNOWN_TOP_SEGMENTS`(부모 ∪ 잎) 대신 **`KNOWN_PARENT_SEGMENTS`**
+ *     🔁 2026-10-14 — 그 최상위를 (부모 ∪ 잎) 전체가 아니라 **`KNOWN_PARENT_SEGMENTS`**
  *     (자식 라우트가 실제로 있는 것)로 본다. 사유·실측은 그 상수 주석에.
+ *
+ * 🪦 **`KNOWN_TOP_SEGMENTS`(= 부모 ∪ 잎)는 2026-10-14 에 삭제했다. 되살리지 말 것.**
+ *   위 전환으로 **프로덕션이 읽는 곳이 0** 이 됐는데(남은 참조는 주석·시험·주입뿐) 그 상태가
+ *   곧 사고를 냈다 — `unknown-path-404` 의 *"반대 방향 — 세그먼트 목록에서 대시보드를 뺀다"* 주입이
+ *   그 죽은 집합을 고치고 있어서 **결함을 심어도 시험이 통과**했다(= 헛도는 가드). CI 가 잡았다.
+ *   ⇒ 쓰이지 않는데 **load-bearing 처럼 보이는 상수**는 이 레포에서 다음 헛도는 가드의 씨앗이다.
+ *   그 집합이 하던 교차검사는 더 강한 것으로 대체돼 있다: 가드가 **라우트 네 파일을 다시 읽어**
+ *   부모 집합과 양방향으로 대조한다(`seo-path-normalize-leaf-404-2026-10-14.test.ts` ②).
+ *   다시 필요해지면 손으로 적지 말고 그 파일들에서 파생할 것.
  *   - **1세그먼트**: 정확히 일치해야 한다(그래야 `/products` 처럼 *세그먼트는 있는데 목록 라우트가
  *     없는* 경우를 잡는다). 일치하지 않으면 **몰 슬러그 후보**이므로 워커가 MALL 슬롯에 맡긴다.
  *
@@ -38,27 +47,6 @@
  * 자식 + 동적 자식 모양 모델이 필요하고, `/group-buy/confirm-payment` 가 그 위험의 증거다
  * (숫자 전용 규칙을 통째로 걸면 결제 복귀 URL 이 404) — 별건.
  */
-
-/**
- * 라우트 표에 등장하는 최상위 세그먼트(동적 패턴의 리터럴 포함) = **부모 ∪ 잎**.
- *
- * 🔁 2026-10-14 부터 판정에는 `KNOWN_PARENT_SEGMENTS` 를 쓴다. 이 집합은 **그 부분집합 관계를
- *   가드가 대조하는 자리**로 남는다(둘이 갈리면 라우트 표를 잘못 읽은 것이다).
- */
-export const KNOWN_TOP_SEGMENTS: ReadonlySet<string> = new Set([
-  '500', 'about', 'account', 'admin', 'ads', 'agency', 'area-report', 'auth',
-  'blog', 'browse', 'business', 'campaign', 'cart', 'checkout', 'community-group-buy', 'coupon',
-  'creator', 'creators', 'design', 'district', 'experience', 'fail', 'faq', 'following',
-  'g', 'gb-market', 'gdpr', 'gift', 'group-buy', 'host', 'i', 'influencer',
-  'interest-list', 'introduce', 'join', 'kakao-debug', 'local', 'login', 'mall-admin', 'map',
-  'meal-vouchers', 'my', 'my-appointments', 'my-commissions', 'my-coupons', 'my-deal-history', 'my-gifticons', 'my-orders',
-  'my-returns', 'my-reviews', 'my-stays', 'my-store', 'my-vouchers', 'mypage', 'new-openings', 'notifications',
-  'orders', 'partners', 'partnership', 'pass', 'pay', 'payment', 'points', 'privacy',
-  'privacy-policy', 'product', 'products', 'profile', 'referral', 'refund', 'refund-policy', 'region',
-  'register', 'restaurant-map', 's', 'search', 'seller', 'shipping-policy', 'soon', 'stays',
-  'store', 'success', 'terms', 'terms-of-service', 'toss-debug', 'u', 'urshorts', 'user',
-  'v', 'videos', 'vouchers', 'wishlist',
-])
 
 /** 세그먼트가 하나뿐인 **정적** 라우트. 1세그먼트 경로는 이것과 정확히 일치해야 한다. */
 export const KNOWN_SINGLE_ROUTES: ReadonlySet<string> = new Set([

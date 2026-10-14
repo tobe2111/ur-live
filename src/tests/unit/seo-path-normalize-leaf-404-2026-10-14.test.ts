@@ -29,7 +29,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { normalizeDocPath } from '@/shared/seo/path-normalize'
-import { isKnownAppPath, KNOWN_PARENT_SEGMENTS, KNOWN_TOP_SEGMENTS } from '@/shared/seo/known-routes'
+import { isKnownAppPath, KNOWN_PARENT_SEGMENTS } from '@/shared/seo/known-routes'
 import { stripComments, readCode } from '../helpers/source-text'
 
 const ROUTE_FILES = [
@@ -133,9 +133,10 @@ describe('🗺️ 잎 표면의 쓰레기 꼬리는 404 (무한 thin URL)', () =
     expect([...KNOWN_PARENT_SEGMENTS].sort()).toEqual(parents)
   })
 
-  it('②-2 부모는 전부 최상위 집합 안에 있다', () => {
-    for (const p of KNOWN_PARENT_SEGMENTS) expect(KNOWN_TOP_SEGMENTS.has(p), p).toBe(true)
-  })
+  /* 🪦 2026-10-14 — 여기 `②-2 부모는 전부 최상위 집합 안에 있다`(`KNOWN_TOP_SEGMENTS` 부분집합)가
+     있었는데 **지웠다.** ②가 라우트 네 파일에서 부모를 **다시 계산해** 양방향으로 대조하므로
+     손으로 적은 상위 집합과 또 비교하는 것은 **중복 잠금**이고(각 잠금을 시험 불가능하게 만든다),
+     게다가 그 상수는 프로덕션이 안 읽게 되어 주입이 헛돌고 있었다 — 그래서 상수와 함께 지웠다. */
 
   it('③ 실측했던 잎 꼬리가 전부 막힌다', () => {
     for (const p of LEAF_JUNK) expect(isKnownAppPath(p), p).toBe(false)

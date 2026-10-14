@@ -99,7 +99,11 @@ export default [
     name: '🗺️ 2세그먼트 판정을 최상위 집합으로 되돌린다 (잎 51개가 다시 무한 thin URL)',
     file: KNOWN,
     find: '  return KNOWN_PARENT_SEGMENTS.has(segs[0])',
-    replace: '  return KNOWN_TOP_SEGMENTS.has(segs[0])',
+    // 🔁 2026-10-14 — 종전 replace 는 `KNOWN_TOP_SEGMENTS`(부모 ∪ 잎)였는데 그 상수를 삭제했다
+    //   (프로덕션 미사용 → 다른 주입이 헛돌았다). 같은 결함을 **잎을 포함하는 살아 있는 집합**으로
+    //   표현한다 — `KNOWN_SINGLE_ROUTES` 에는 `faq` 처럼 자식 없는 잎이 들어 있어 `/faq/zzz` 가
+    //   다시 통과한다(= 되살리려는 바로 그 결함).
+    replace: '  return KNOWN_SINGLE_ROUTES.has(segs[0])',
     test: TEST,
     why:
       '라이브 실측 — `/browse/zz`·`/map/zz`·`/urshorts/zz`·`/gdpr/zz`·`/faq/a/b/c` 가 전부 ' +
