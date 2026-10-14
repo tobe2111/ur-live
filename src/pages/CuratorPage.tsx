@@ -39,6 +39,7 @@ import EmptyUrShop from './curator-page/EmptyUrShop'
 import PinCategoryChips, { pinCategory, type PinCategory } from './curator-page/PinCategoryChips'
 import UShopQrCard from './curator-page/UShopQrCard'
 import ShopInquiryLinks from './curator-page/ShopInquiryLinks'
+import { priceDisplay } from '@/shared/price-display'
 
 // 🛡️ 2026-05-25 (C 옵션 URL 통합): linked seller 있으면 같은 페이지에서 SellerPublicPage 직접 render.
 //   redirect 없음 — URL 그대로 (/u/:handle 유지). lazy chunk — 일반 user 진입 시 chunk fetch 안 함.
@@ -291,7 +292,12 @@ export default function CuratorPage() {
     const list = q ? byCat.filter(p => (`${p.product_name} ${p.note || ''}`).toLowerCase().includes(q)) : byCat
     if (sort === 'curated') return list  // 주인 순서 — 복사조차 하지 않는다(그게 기본값이다)
     const copy = [...list]
-    if (sort === 'discount') copy.sort((a, b) => (Number(b.discount_rate) || 0) - (Number(a.discount_rate) || 0))
+    // 🐛 2026-10-14 (대표 신고 → 라이브 실측): 여기서 `discount_rate` **생값**을 읽어 할인율순이
+    //   아무 일도 안 했다. 그 컬럼은 KT 기프티콘 동기화만 채우고 이용권·동네딜은 정가/판매가로
+    //   할인을 표현한다 — 라이브 상품 600건 전수 샘플이 **전부 0** 이었다. 카드가 보여주는
+    //   23%·17% 는 SSOT `priceDisplay()`(= max(선언값, 계산값))가 만든 값이라, 보이는 숫자와
+    //   정렬이 서로 다른 출처였다. **표시와 정렬은 같은 함수를 지난다.**
+    if (sort === 'discount') copy.sort((a, b) => priceDisplay(b).discount - priceDisplay(a).discount)
     else copy.sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0))
     return copy
   })()

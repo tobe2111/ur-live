@@ -9,7 +9,9 @@ import { ChevronRight } from 'lucide-react'
 import api from '@/lib/api'
 import DealRow from '@/components/deal/DealRow'
 
-interface DealLite { id: number; name: string; price: number; image_url?: string | null; discount_rate?: number | null; current_price?: number | null }
+// 🐛 2026-10-14: `original_price` 를 안 받아 `DealRow` 에 안 넘겼고, 배지는 `discount_rate`(라이브 전부 0)
+//   하나에 달려 있어 **할인 중인 이용권인데 배지가 영영 안 떴다**. 정가를 함께 넘긴다.
+interface DealLite { id: number; name: string; price: number; image_url?: string | null; original_price?: number | null; discount_rate?: number | null; current_price?: number | null }
 
 export default function SameStoreDeals({ productId, hideTitle }: { productId?: number; hideTitle?: boolean }) {
   const [deals, setDeals] = useState<DealLite[]>([])
@@ -45,6 +47,7 @@ export default function SameStoreDeals({ productId, hideTitle }: { productId?: n
             thumbSize="sm"
             title={d.name}
             price={d.current_price ?? d.price}
+            originalPrice={d.original_price ?? undefined}
             discountPct={Number(d.discount_rate) || 0}
             trailing={<ChevronRight className="w-4 h-4 text-gray-400 shrink-0" aria-hidden />}
           />

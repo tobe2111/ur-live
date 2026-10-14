@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { formatNumber } from '@/utils/format'
+import { priceDisplay } from '@/shared/price-display'
 
 interface ProductHeaderProps {
   name: string;
@@ -15,8 +16,8 @@ interface ProductHeaderProps {
 
 export function ProductHeader({ name, price, originalPrice, discountRate, sellerName, sellerId, soldCount, reviewCount, avgRating }: ProductHeaderProps) {
   const formatPrice = (p: number) => new Intl.NumberFormat('ko-KR').format(p)
-  const hasDiscount = originalPrice && originalPrice > price
-  const displayDiscount = discountRate || (hasDiscount ? Math.round((1 - price / originalPrice) * 100) : 0)
+  // 💸 2026-10-14: 할인율 규칙 사본 제거 — SSOT 경유(결과 동일, 갈릴 수가 없어진다).
+  const { showOriginal: hasDiscount, discount: displayDiscount, originalPrice: strikePrice } = priceDisplay({ price, original_price: originalPrice, discount_rate: discountRate })
 
   return (
     <>
@@ -81,7 +82,7 @@ export function ProductHeader({ name, price, originalPrice, discountRate, seller
         </div>
 
         {hasDiscount && (
-          <p className="text-[12px] text-gray-400 dark:text-gray-500 line-through mt-1">{formatPrice(originalPrice)}원</p>
+          <p className="text-[12px] text-gray-400 dark:text-gray-500 line-through mt-1">{formatPrice(strikePrice)}원</p>
         )}
       </section>
     </>

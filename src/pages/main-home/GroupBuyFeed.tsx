@@ -28,6 +28,7 @@ import { matchAddress, matchRegionCoords } from '@/shared/constants/korea-region
 import { addressInRegion, type RegionRef } from '@/shared/constants/region-slugs'
 import { parseUTCDate } from '@/utils/date'
 import { passesFeedFilters, feedFiltersKey, type FeedFilters } from '@/shared/home-feed-filters'
+import { priceDisplay } from '@/shared/price-display'
 
 interface FeedProduct extends Product {
   group_buy_current?: number
@@ -54,10 +55,9 @@ function soldOf(p: FeedProduct): number {
   return p.sold_count ?? p.group_buy_current ?? 0
 }
 function discountOf(p: FeedProduct): number {
-  if (p.discount_rate != null && p.discount_rate > 0) return p.discount_rate
-  const price = p.current_price ?? p.price ?? 0
-  const orig = p.original_price ?? 0
-  return orig > price && orig > 0 ? Math.round(((orig - price) / orig) * 100) : 0
+  // 💸 2026-10-14: 규칙 사본 제거 → SSOT. 종전 `선언>0 ? 선언 : 계산` 은 선언값이 **계산값보다
+  //   작을 때** SSOT(`max`)와 다른 숫자를 냈다 — 같은 상품이 카드와 정렬에서 다른 할인율을 갖는다.
+  return priceDisplay({ price: p.current_price ?? p.price, original_price: p.original_price, discount_rate: p.discount_rate }).discount
 }
 
 /**

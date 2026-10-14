@@ -57,6 +57,7 @@ import DealBottomBar from './group-buy/DealBottomBar'
 import { handleDealJoinError } from './group-buy/deal-join-error'
 import { useProductViewBeacon } from '@/hooks/useProductViewBeacon'
 import { passShareCardUrl } from '@/shared/pass-share-card'
+import { priceDisplay } from '@/shared/price-display'
 
 // 🛡️ 2026-05-27 (loading P1): below-fold 컴포넌트 lazy — 초기 chunk 30-50KB ↓.
 //   - Confetti: 100% 달성 시만 표시 (대부분 사용자 안 봄)
@@ -283,7 +284,8 @@ export default function GroupBuyDetailPage() {
         const mine = (Array.isArray(list) ? list : [])
           .filter(p => Number(p.seller_id) === Number(sid) && Number(p.id) !== productId)
           .slice(0, 8)
-          .map(p => ({ id: p.id, name: p.name, price: Number(p.current_price ?? p.price), original_price: p.original_price, image_url: p.image_url, discount_pct: p.discount_rate ?? null }))
+          // 🐛 2026-10-14: `discount_rate` 생값은 라이브에서 전부 0 이라 배지가 영영 안 뜬다 → SSOT 로 계산.
+          .map(p => ({ id: p.id, name: p.name, price: Number(p.current_price ?? p.price), original_price: p.original_price, image_url: p.image_url, discount_pct: priceDisplay({ price: Number(p.current_price ?? p.price), original_price: p.original_price, discount_rate: p.discount_rate }).discount || null }))
         setOtherDeals(mine)
       })
       .catch(() => { /* silent */ })
