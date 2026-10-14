@@ -106,7 +106,7 @@ export default function AdminInfluencerPoolPage() {
   const [measured, setMeasured] = useState('')     // 📏 측정 여부(1/0) — 대표 4축 ④ 백로그 가시화
   const [optedOutOnly, setOptedOutOnly] = useState(false) // 🚫 거부 표시된 리드만 — 자동 태깅 오탐 검수용
   const [collectedToday, setCollectedToday] = useState(false) // 📅 '오늘 수집' 카드 클릭 — KST 자정 기준(서버 통계와 동일 식)
-  const [tier, setTier] = useState('')          // 규모 필터(nano/micro/mid/macro/sweet)
+  const [tier, setTier] = useState('')          // 규모 필터(reach1k/nano/micro/mid/macro/sweet)
   const [sort, setSort] = useState('fit')        // 유어딜 핏순(기본)/구독자순/최근수집
   const [statusFilter, setStatusFilter] = useState('') // 아웃리치 상태 필터
   const [needFollowup, setNeedFollowup] = useState(false)
