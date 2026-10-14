@@ -6,7 +6,7 @@
  */
 import { useNavigate } from 'react-router-dom'
 import { WalletIcon } from '@/components/icons/urdeal-icons'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { ChevronRight, Search } from 'lucide-react'
 
 /**

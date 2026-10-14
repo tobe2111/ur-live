@@ -13,7 +13,7 @@
 import { useState } from 'react'
 import { GiftBoxIcon, MessageIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import {X, Loader2} from 'lucide-react'

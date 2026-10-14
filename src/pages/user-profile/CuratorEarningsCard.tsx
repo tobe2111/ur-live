@@ -11,7 +11,7 @@
 
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { ChevronRight } from 'lucide-react'
 import { UrShopIcon } from '@/components/icons/urdeal-icons'
 import { curatorApi } from '@/features/curator/api/curator-api'

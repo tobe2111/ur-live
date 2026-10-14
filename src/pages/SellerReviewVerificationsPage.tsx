@@ -7,7 +7,7 @@
  * 설계: docs/design/kakao-review-gamification.md
  */
 import { useState, useEffect, useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { Star, ExternalLink, CheckCircle2, XCircle, Loader2, Sparkles } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'

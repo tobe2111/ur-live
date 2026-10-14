@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { PeopleIcon, GiftBoxIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
-import { useTranslation, Trans } from 'react-i18next'
+import { useTranslation, Trans } from '@/lib/i18n-lite'
 import SEO from '@/components/SEO'
 import { ArrowLeft, Copy, TrendingUp, Loader2, Share2, ChevronRight } from 'lucide-react'
 import { toast } from '@/hooks/useToast'

@@ -9,7 +9,7 @@
  * "수령 · 매장에서 사용 (배송 없음)" 줄도 배송 이야기다. **줄을 아예 그리지 않는다.**
  * 교환권(휴대폰 발송)은 받는 곳이 있으니 남긴다.
  */
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { formatNumber } from '@/utils/format'
 import { getNoShippingKind } from '@/shared/product-flow'
 import type { CartItem } from '@/types/cart'

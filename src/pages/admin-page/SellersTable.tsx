@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { RefreshCw, CheckCircle, XCircle } from 'lucide-react'
 import { formatKSTDate } from '@/utils/date'
 import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'

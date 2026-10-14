@@ -18,7 +18,7 @@ import { saveListView } from '@/lib/list-view-cache'
 import { useListSeed } from './vouchers/warm-seed'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { ChevronDown } from 'lucide-react'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 // 🎟️ 2026-07-10 (대표 결정): 일반상품(쇼핑) 노출은 SHOPPING_TAB_HIDDEN 게이트 — 교환권은 유지.

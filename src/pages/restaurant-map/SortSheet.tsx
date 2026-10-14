@@ -2,7 +2,7 @@
  * 🗺️ 2026-07-15 (대표 — "할인율 순 버튼 누르면 우리 서비스 팝업으로"): 지도/리스트 정렬 선택을
  *   OS 네이티브 `<select>` 대신 **인앱 바텀시트 팝업**으로. (배민/야놀자/토스식.)
  */
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { Check, X } from 'lucide-react'
 import type { SortBy } from './types'
 import { Z } from '@/constants/z-index'

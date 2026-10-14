@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { getTossPayments } from '@/lib/toss-preload'
 import { generateOrderId } from '@/utils/orderIdGenerator'
 import { isFeatureBlocked } from '@/lib/in-app-warning'

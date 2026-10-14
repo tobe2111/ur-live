@@ -1,6 +1,6 @@
 import { useNavigate, Navigate } from 'react-router-dom'
 import { PeopleIcon, GiftBoxIcon, BagIcon } from '@/components/icons/urdeal-icons'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { ArrowLeft, Share2 } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags'

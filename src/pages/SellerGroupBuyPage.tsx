@@ -8,7 +8,7 @@
  *   공구 엔진 패널(`GB_ENGINE_ENABLED`, 기본 OFF)은 그대로 게이트 뒤에 둔다.
  */
 import { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import SegmentedTabs from '@/components/ui/segmented-tabs'
 import { useNavigate } from 'react-router-dom'
 import { AlertCircle, Plus, Ticket } from 'lucide-react'

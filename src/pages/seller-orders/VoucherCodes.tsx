@@ -10,7 +10,7 @@
  * - 빈 배열 = 정말 0장 → "발급된 이용권이 없습니다" 라고 말해도 된다.
  * 이걸 합치면 조회가 한 번 실패한 날 화면이 "이용권 없음"이라고 **단언**하게 된다.
  */
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { formatKSTDate } from '@/utils/date'
 import type { OrderVoucher } from './types'
 

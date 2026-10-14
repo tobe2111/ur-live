@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { OkIcon, AlertIcon, InfoIcon } from '@/components/icons/urdeal-icons'
 import { X } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 
 interface ToastProps {
   message: string

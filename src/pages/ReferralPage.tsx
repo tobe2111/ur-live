@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { PeopleIcon, ClockIcon, GiftBoxIcon, OkIcon, BagIcon } from '@/components/icons/urdeal-icons'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import SEO from '@/components/SEO'
 import { ArrowLeft } from 'lucide-react'
 import api from '@/lib/api'

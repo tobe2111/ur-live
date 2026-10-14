@@ -2,7 +2,7 @@
  * 🎟️ 위저드 2단계 — 이용권 정보 (종류·이름·가격·사진·실수령가)
  *   기존 SellerMealVoucherNewPage 의 해당 블록을 그대로 추출 — 로직 불변, 배치만 위저드.
  */
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { BedDouble, PartyPopper, Scissors, Utensils } from 'lucide-react'
 import api from '@/lib/api'
 import { getSellerToken } from '@/lib/seller-auth'

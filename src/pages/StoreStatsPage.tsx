@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { TicketStubIcon, OkIcon, ClockIcon, BadIcon } from '@/components/icons/urdeal-icons'
 import { useParams, useSearchParams } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { Loader2, Lock, ScanLine, Camera, X } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'

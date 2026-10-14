@@ -1,6 +1,6 @@
 // 🧱 2026-06-29 TD: GroupBuyListPage god 파일 분해 — 텍스트 검색 input(verbatim 추출). 동작 불변.
 import type { Dispatch, SetStateAction } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 
 export default function SearchBar({ searchQuery, setSearchQuery }: {
   searchQuery: string

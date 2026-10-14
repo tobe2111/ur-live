@@ -41,7 +41,7 @@
  */
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { useMyVouchers } from '@/hooks/queries/useMyData'
 import { parseUTCDate } from '@/utils/date'
 import { isStoreVoucher } from '@/shared/voucher-wallet'

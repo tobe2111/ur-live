@@ -14,6 +14,9 @@
    남은 지도 병목: 지도 생성이 React 마운트(라이브 ~5.5s)를 기다린다 — JS 다이어트(4번)가 줄인다.
 4. 🔄 JS 다이어트 — ① **axios → `lib/http-client.ts`**(XHR 기반, axios 와 같은 모양: params 직렬화 글자까지 동일 · 요청 인터셉터 역순 · 데이터 없는 요청 Content-Type 제거 · 에러 isAxiosError/code/response). 첫 페인트 JS **162.9 → 147.7KB br(−15.2KB · −9.3%)**, 청크 16 → 15(critical 리베이스라인). 가드 22건 + 주입 5건. 유닛 976파일 통과 · 소비자 4화면 렌더 확인(`pageerror: A network error occurred` 는 **옛 빌드에도 있는 선재**).
    ⚠️ `package.json` 의 axios 의존성은 **안 지웠다**(이 세션 npm 레지스트리 상태 미확인 + 번들엔 이미 0). 다음 후보: i18n(약 20KB br)·app-routes.
+   ② **i18next·react-i18next·감지기 → `lib/i18n-lite.ts`**(쓰는 동작만: deepFind 그대로 · 현재 언어→fallback→defaultValue→키 · `{{x}}` 안 넘긴 변수는 그대로/null 은 '' · postProcess · missingKeyHandler · 'added'/언어 변경 시 다시 그리기 · `<Trans>` 의 `<0>…</0>`). 283파일 import 교체(테스트 mock 4건 재조준). 첫 페인트 **173.2 → 156.2KB br(−17.0KB, CSS 포함)**, 청크 15 → 14. 가드 `i18n-lite-2026-10-14` 30건(i18next 25.8.20 실측값 대조) + 주입 7건 빨간불 확인. 유닛 1004파일 13,139건 통과 · 홈·교환권·지도·마이(가게)·유어샵·선물받기 렌더 — 원문 키 노출 0.
+   🩸 주입 하나가 헛돌았다 — `deepFind` 앞의 빠른 길을 지워도 최상위 평평한 키는 루프가 찾아서 통과했다. **그룹 안의 점 든 키**(`grp.x.y`) 픽스처를 더해 루프 자체를 깨는 주입으로 바꿨다(실제 i18next 로 같은 값 확인).
+   ⚠️ `package.json` 의 i18next 계열 의존성도 axios 처럼 남겨 뒀다(번들엔 0). 다음 후보: app-routes(3.8KB br — 작다) · app-utils(19.7KB) 내부 분석.
    🩸 전수 유닛을 돌리는 동안 주입 검사를 같이 돌려 한 건이 거짓 빨간불이 났다 — 주입 러너는 소스를 실제로 고치므로 **다른 검사와 동시에 돌리지 말 것**.
 - 대기: TTFB 지점(colo) 수집 1주 뒤 판정 · 홈 CLS p95 0.21~0.24(재생 미재현 — 10-13 위치 섹션 수리 후 재판정).
 

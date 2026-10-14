@@ -12,7 +12,7 @@
  *   - selectedAddress / onAddressSelected → 부모가 결제에 사용
  */
 import { useState, useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import api from '@/lib/api'
 import { handleApiError } from '@/lib/errorHandler'
 import { toast } from '@/hooks/useToast'

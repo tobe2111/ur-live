@@ -7,7 +7,7 @@
  * window.__urInAppBrowser 는 main.tsx 가 React 마운트 전에 set 함.
  */
 import { useState, useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import {
   detectInAppBrowser,
   openInExternalBrowser,

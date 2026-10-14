@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { HeartIcon, TicketStubIcon, GiftBoxIcon, BoxIcon, SettingsIcon, BellIcon, StoreIcon, LogOutIcon } from '@/components/icons/urdeal-icons'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { X, ChevronRight, Coins, HelpCircle, Smartphone, LogIn, UserPlus } from 'lucide-react'
 import { getUserNameSync, getUserEmail } from '@/utils/auth'
 import { sellerEntryPath } from '@/utils/seller-entry'

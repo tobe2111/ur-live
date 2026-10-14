@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import SEO from '@/components/SEO'
 import { usePopularSearches } from '@/hooks/queries/usePopularSearches'
 import api from '@/lib/api'

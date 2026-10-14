@@ -6,7 +6,7 @@
  *    게이트를 다시 좁히지 말 것 — 가드: `src/tests/unit/seller-voucher-limit.test.ts`.
  * ⚠️ 라벨은 "식당"이 아니라 "매장"이다. 뷰티·숙박 이용권에 "식당명"은 거짓말이다.
  */
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 
 type VoucherFormData = {
   restaurant_name: string

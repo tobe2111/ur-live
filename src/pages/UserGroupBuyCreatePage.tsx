@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { PinIcon, AlertIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { ChevronLeft, Phone, Loader2 } from 'lucide-react'
 import KakaoMapPicker, { type KakaoPlace } from '@/components/KakaoMapPicker'

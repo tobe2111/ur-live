@@ -9,7 +9,7 @@
 import { useEffect, useState } from 'react'
 import { ClockIcon, WarnIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { ArrowLeft, Download, Play, FileText, BookOpen, Music, Image as ImageIcon } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'

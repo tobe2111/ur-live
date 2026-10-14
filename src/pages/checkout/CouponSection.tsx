@@ -1,7 +1,7 @@
 /**
  * 🛡️ 2026-05-01: TD-018 분할 — CheckoutPage 의 쿠폰 적용 섹션 추출.
  */
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { getUserFriendlyError } from '@/lib/errorHandler'

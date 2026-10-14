@@ -9,7 +9,7 @@
  *   - 출금은 여기서 하지 않는다(유저 출금 체계 `/u/me/earnings` 링크). 머니 경로 무접촉.
  */
 import { Link } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { ChevronRight, Layers } from 'lucide-react'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { formatWon } from '@/utils/format'

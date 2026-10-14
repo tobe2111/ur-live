@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { cfImage } from '@/utils/cf-image'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { isWholesaleSurface } from '@/utils/domain'
 // 🎫 2026-09-02 (대표 시안 — 코레일톡 하단 탭): 다섯 탭 전부 유어딜 아이콘. 비활성 = 선, 활성 = 면(`filled`).
 import { UrShopIcon, HomeIcon, GiftBoxIcon, TicketStubIcon, PersonIcon } from '@/components/icons/urdeal-icons'

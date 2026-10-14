@@ -1,6 +1,6 @@
 {
   "_comment": "index.html 의 entry <script> + <link rel=modulepreload> 에 등장해도 되는 청크 이름(해시 제외). 새 이름이 들어오면 = eager import 가 청크 하나를 통째로 크리티컬 패스로 끌고 온 것. scripts/check-critical-chunks.mjs 참조.",
-  "_measured": "2026-10-14 rebaselined · 15 chunks — axios 를 작은 자체 클라이언트(lib/http-client.ts)로 대체(첫 페인트 JS 162.9 → 147.7KB br)",
+  "_measured": "2026-10-14 rebaselined · 14 chunks — i18next·react-i18next 를 작은 자체 엔진(lib/i18n-lite.ts)으로 대체(첫 페인트 JS 144.4 → 127.4KB br)",
   "chunks": [
     "app-auth",
     "app-layout",
@@ -10,7 +10,6 @@
     "app-stores",
     "app-utils",
     "helmet",
-    "i18n",
     "index",
     "lucide-shell",
     "react-core",

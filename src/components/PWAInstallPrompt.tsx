@@ -13,7 +13,7 @@
  *     로그인된 사용자만, 1회 발급 (UNIQUE constraint), localStorage 가드.
  */
 import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { Smartphone, X, Plus } from 'lucide-react'
 import { isPWAStandalone } from '@/lib/in-app-warning'
 import { detectInAppBrowser, isIOS, isAndroid } from '@/lib/in-app-browser'

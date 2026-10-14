@@ -14,7 +14,7 @@
  *   거른다 — 색인까지 거르면 그 페이지는 메뉴에도 검색에도 없어진다(이 레포가 반복해 겪은 사고. R3 가드).
  */
 import { useLocation } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { HOSTING_HIDDEN, LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import { currentSeatType } from '@/lib/seller-seat'
 import { isStoreOwner } from '@/shared/seller-roles'

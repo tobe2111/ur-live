@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 import { formatNumber } from '@/utils/format'

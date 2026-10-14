@@ -20,7 +20,7 @@
  */
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 // 🎨 2026-09-28: PC 칸도 모바일과 **같은 아이콘**을 써야 한 서비스로 읽힌다
 //    (같은 줄이 기기마다 다른 그림이면 그게 곧 '덜 만든' 인상이다).
 //    🎗️ 2026-10-11 안 5: 프로필 줄(아바타·화살표·벨)과 타일 셋이 이 파일을 떠나면서

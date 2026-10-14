@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react'
 import { StoreIcon } from '@/components/icons/urdeal-icons'
 import { BedDouble, Coffee, Droplets, Dumbbell, GraduationCap, Mic, PawPrint, Pill, Scissors, Sparkle, Stethoscope, Utensils, type LucideIcon } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import api from '@/lib/api'
 
 interface Opening { biz_name: string; category: string | null; uptae: string | null; region: string | null; apv_perm_ymd: string | null }

@@ -7,7 +7,7 @@
  */
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { AlertCircle, ChevronDown, Copy, Pencil, RefreshCw, RotateCcw, Send, Trash2 } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'

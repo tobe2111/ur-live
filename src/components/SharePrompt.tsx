@@ -4,7 +4,7 @@
  * - 한국: 카카오 공유 / 글로벌: 네이티브 공유
  */
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { X } from 'lucide-react'
 import KakaoShareButton from './KakaoShareButton'
 import { useEscapeKey } from '@/hooks/useEscapeKey'

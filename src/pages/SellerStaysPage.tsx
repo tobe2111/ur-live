@@ -6,7 +6,7 @@
  */
 import { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'

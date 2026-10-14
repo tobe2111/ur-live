@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { GiftBoxIcon, PinIcon, BagIcon, TicketStubIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { Check, ChevronRight, Search, ShieldCheck, Utensils, Zap } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'

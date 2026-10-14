@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { HeartIcon } from '@/components/icons/urdeal-icons'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { Navigation, ArrowUpDown, SlidersHorizontal, ChevronDown } from 'lucide-react'
 import type { SortBy } from './types'
 import { type MapVoucherType, MAP_VOUCHER_DEFS } from './voucher-types'

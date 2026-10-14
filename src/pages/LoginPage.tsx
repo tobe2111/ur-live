@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { PinIcon, TicketStubIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 // Firebase Auth will be lazy loaded when needed
 import { isKorea } from '@/config/region'
 import api from '@/lib/api'

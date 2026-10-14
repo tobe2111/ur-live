@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import i18next from 'i18next'
-import { useTranslation } from 'react-i18next'
+import i18next from '@/lib/i18n-lite'
+import { useTranslation } from '@/lib/i18n-lite'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'

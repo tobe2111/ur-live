@@ -10,7 +10,7 @@
  */
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { OkIcon, BadIcon } from '@/components/icons/urdeal-icons'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { Keyboard, Loader2, Image as ImageIcon } from 'lucide-react'
 import api from '@/lib/api'
 import {

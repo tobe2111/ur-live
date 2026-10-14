@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import api from '@/lib/api'
 import { ChevronDown, ChevronRight, Loader2, Pencil, Save, X, Trash2, Plus, Search } from 'lucide-react'
 import { toast } from '@/hooks/useToast'

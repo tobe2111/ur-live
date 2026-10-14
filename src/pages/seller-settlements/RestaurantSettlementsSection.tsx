@@ -5,7 +5,7 @@
  *   기존 API GET /api/seller/restaurant-settlements 를 그대로 표시만 배선.
  *   대시보드 라이트 테마 고정 (dark: variant 금지 룰).
  */
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { formatWon, formatNumber } from '@/utils/format'
 

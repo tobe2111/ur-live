@@ -1,6 +1,6 @@
 import { useEffect, useState, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 // 🟢 2026-07-13 [UNLOCK_LOADING]: qrcode.react static → lazy (LinkshopVisitorRails 와 동일 패턴).
 //   이 static import 때문에 route-chunk-map 이 홈 표면 폐쇄에 `codes`(qrcode/barcode 18KB) 를 포함 →
 //   홈 modulepreload 에 딸려옴(PC 는 거터 QR 렌더, 모바일은 안 쓰는데도 preload). QR 은 장식용 모바일-앱

@@ -26,7 +26,7 @@ import OrderStatusBar from '@/pages/user-profile/OrderStatusBar'
 const vouchers = vi.fn()
 vi.mock('@/hooks/queries/useMyData', () => ({ useMyVouchers: () => ({ data: vouchers() }) }))
 vi.mock('react-router-dom', () => ({ useNavigate: () => vi.fn() }))
-vi.mock('react-i18next', () => ({
+vi.mock('@/lib/i18n-lite', () => ({
   useTranslation: () => ({ t: (_k: string, o?: Record<string, unknown>) => String(o?.defaultValue ?? _k) }),
 }))
 

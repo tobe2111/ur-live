@@ -6,7 +6,7 @@
  */
 import { useNavigate } from 'react-router-dom'
 import { StoreIcon, WalletIcon } from '@/components/icons/urdeal-icons'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { Coins, Link2, UserPlus } from 'lucide-react'
 import { REFERRAL_GROUP_DISCOUNT_DISABLED, TOPUP_DISABLED } from '@/shared/feature-flags'
 

@@ -20,7 +20,7 @@
  */
 
 import { useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import SiteFooter from '@/components/main/SiteFooter'
 import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import HomeTopHeader from '@/components/main/HomeTopHeader'

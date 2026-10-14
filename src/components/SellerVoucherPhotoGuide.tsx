@@ -6,7 +6,7 @@
  *   네트워크 0 · 용량 ~1KB · 다국어 라벨은 i18n.
  *   셀러 대시보드(라이트 고정) — dark: variant 금지 정책 준수.
  */
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 
 /** ✅ 추천 예시 — 그릇에 담긴 음식 클로즈업(프레임을 가득 채움) */
 function GoodExampleSvg() {

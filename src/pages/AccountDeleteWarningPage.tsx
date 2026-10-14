@@ -10,7 +10,7 @@
 import { useState, useEffect } from 'react'
 import { WarnIcon, OkIcon, WalletIcon, BoxIcon, ClockIcon, HeartIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate, Link } from 'react-router-dom'
-import { useTranslation, Trans } from 'react-i18next'
+import { useTranslation, Trans } from '@/lib/i18n-lite'
 import SEO from '@/components/SEO'
 import { ChevronLeft, Loader2, ShieldOff } from 'lucide-react'
 import { getUserId, logout as authLogout } from '@/utils/auth'

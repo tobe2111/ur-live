@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { PeopleIcon, ClockIcon, BagIcon, GiftBoxIcon, TicketStubIcon, StoreIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@/lib/i18n-lite';
 import { ChevronLeft } from 'lucide-react'
 import SEO from '@/components/SEO';
 import { toast } from '@/hooks/useToast';

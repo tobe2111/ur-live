@@ -11,7 +11,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { MY_PATH } from '@/lib/seller-return'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'

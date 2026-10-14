@@ -8,7 +8,7 @@
  *   데이터/라우트/카운트 로직 불변, 표시 그룹핑·라벨만 변경.
  */
 import { useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import type { LucideIcon } from 'lucide-react'
 // 🎨 2026-09-28 (대표 *"앞으로 아이콘은 모두 저 컨셉"*): 뜻을 가진 아이콘은 전부 유어딜 것으로.
 //    lucide 로 남는 건 화살표·닫기 같은 **조작** 뿐이고, 이 목록엔 그런 게 없어 0개가 됐다.

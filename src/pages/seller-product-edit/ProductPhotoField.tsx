@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import ImageUpload from '@/components/ImageUpload'
 import PhotoGalleryEditor from '@/components/seller/PhotoGalleryEditor'
 import { isVoucherCategory } from '@/shared/constants/voucher-categories'

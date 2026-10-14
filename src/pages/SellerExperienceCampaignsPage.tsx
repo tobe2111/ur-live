@@ -6,7 +6,7 @@
  *   라이트 테마 고정(SellerLayout).
  */
 import { useState, useEffect, useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import api from '@/lib/api'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'

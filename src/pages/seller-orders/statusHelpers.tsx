@@ -2,7 +2,7 @@
  * 🛡️ 2026-05-02: TD-018 분할 — SellerOrdersPage 주문 상태 변환/렌더 헬퍼.
  *   getStatusText / StatusBadge 는 i18n 의존이라 컴포넌트화. nextStatusOf 는 pure.
  */
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { Badge } from '@/components/ui/badge'
 
 export function useStatusText() {

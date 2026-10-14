@@ -1,7 +1,7 @@
 import { X } from 'lucide-react'
 import { OkIcon, AlertIcon, InfoIcon } from '@/components/icons/urdeal-icons'
 import { useToast } from '@/hooks/useToast'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 
 // 🎨 2026-06-22 (대표 — "팝업 디자인 촌스러워"): 파스텔 색박스(green-50/red-50/blue-50) → 단일 잉크 토스트.
 // 🎫 2026-09-02 (대표 — "이 팝업들도 디자인 시스템에 맞게"): 잉크 상자 → 코레일톡 표면 체계.

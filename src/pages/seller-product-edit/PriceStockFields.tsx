@@ -17,7 +17,7 @@
  *   **625줄로 동결**돼 있어 그 안에서는 한 줄도 못 늘린다(`scripts/file-size-baseline.json`).
  */
 import { DollarSign, Box, Tag } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { priceDisplay } from '@/shared/price-display'
 
 const INPUT =

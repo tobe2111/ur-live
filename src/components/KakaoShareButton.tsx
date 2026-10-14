@@ -5,7 +5,7 @@
  */
 import { toast } from '@/hooks/useToast'
 import { isKorea } from '@/shared/config/region'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { buildCommerce, commercePayload, feedPayload, shareViaKakao } from '@/lib/kakao-share'
 
 interface ShareButtonProps {

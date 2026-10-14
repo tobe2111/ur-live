@@ -1,6 +1,6 @@
 // 🧱 2026-06-29 TD: GroupBuyListPage god 파일 분해 — 총개수 + 정렬 드롭다운 바(verbatim 추출). 동작 불변.
 import type { Dispatch, SetStateAction } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { ChevronDown } from 'lucide-react'
 import { SORT_LABELS } from './constants'
 import type { SortOption, MainTab } from './types'

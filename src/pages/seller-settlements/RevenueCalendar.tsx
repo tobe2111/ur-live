@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 
 // 🛡️ 2026-06-10: SellerSettlementsPage 분해 — 매출 캘린더 (동작 변화 0, 순수 이동).
 export default function RevenueCalendar({ dailyData }: { dailyData: { date: string; revenue: number }[] }) {

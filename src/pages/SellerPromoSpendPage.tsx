@@ -11,7 +11,7 @@
  *   platform 재원(현행 라이브 기본)인 동안 owner-펀딩 문구는 절대 노출하지 않는다.
  */
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'

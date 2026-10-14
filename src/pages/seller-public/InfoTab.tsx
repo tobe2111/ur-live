@@ -6,7 +6,7 @@
  *   `LABEL. value` 평문 + [사업자정보확인] 링크). 유어샵 맨 밑에 자연스럽게 얹힘. 카카오 문의는 유지.
  */
 import { useState, type ReactNode } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { Link } from 'react-router-dom'
 import { MessageCircle, Phone } from 'lucide-react'
 import type { Seller } from './types'

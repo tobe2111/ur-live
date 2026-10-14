@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { loadStripe, Stripe } from '@stripe/stripe-js'
 import {
   Elements,
