@@ -241,13 +241,21 @@ try {
     ['D 환불 요청 큐', '/seller/returns', '환불 요청이에요'],
   ]) {
     const page = await sellerCtx.newPage()
+    // 토스트는 몇 초 뒤 사라진다 — 실패 원인(예: "가게가 선택돼 있지 않아요")이 그 안에 있으므로 떠 있던 것을 모아 둔다.
+    await page.addInitScript(() => {
+      const seen = (window.__toasts = [])
+      const ob = new MutationObserver(() => document.querySelectorAll('[role=status],[role=alert]').forEach((n) => {
+        const t = (n.textContent || '').trim(); if (t && !seen.includes(t)) seen.push(t)
+      }))
+      document.addEventListener('DOMContentLoaded', () => ob.observe(document.body, { childList: true, subtree: true }))
+    })
     const errs = []
     page.on('pageerror', (e) => errs.push(`${String(e)} @ ${String(e.stack || '').split('\n').slice(1, 3).join(' ')}`))
     await page.goto(`${base}${path}`, { waitUntil: 'networkidle' })
     // `networkidle` 은 "요청이 멎었다" 지 "그렸다" 가 아니다 — lazy 청크·시트가 그 뒤에 그려질 수 있어 잠깐 기다린다.
     let seen = await page.getByText(expect1, { exact: false }).count().catch(() => 0)
     if (!seen) seen = await page.getByText(expect1, { exact: false }).first().waitFor({ timeout: 10_000 }).then(() => 1, () => 0)
-    const where = seen ? '' : ` — 못 찾음 @ ${page.url()} :: ${(await page.evaluate(() => (document.body?.innerText || '').replace(/\s+/g, ' ').slice(0, 300)).catch(() => '?'))}`
+    const where = seen ? '' : ` — 못 찾음 @ ${page.url()} :: ${(await page.evaluate(() => (document.body?.innerText || '').replace(/\s+/g, ' ').slice(0, 200)).catch(() => '?'))} :: 토스트 ${JSON.stringify(await page.evaluate(() => window.__toasts || []).catch(() => []))}`
     check(`[${name}] 렌더 + 런타임 에러 0`, seen > 0 && errs.length === 0, errs.length ? errs.join(' || ') : `"${expect1}" 확인${where}`)
 
     // 🔴 대시보드 라이트 고정 — 다크 클래스가 붙으면 정책 위반이다(check-dashboard-theme 의 렌더판).
