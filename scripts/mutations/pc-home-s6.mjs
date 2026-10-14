@@ -10,6 +10,14 @@ const TILES = 'src/pages/pc-home/region-tiles.ts'
 
 export default [
   {
+    name: '🧱 왼쪽 필터 열의 층이 빠져 지역 드롭다운이 카드 밑으로 들어간다',
+    file: 'src/pages/pc-home/PcFeedSidebar.tsx',
+    find: 'className="sticky top-24 z-20 self-start',
+    replace: 'className="sticky top-24 self-start',
+    test: GUARD,
+    why: '대표 신고 "이렇게 잘려서 보이네" — sticky 쌓임 맥락 안에 갇힌 드롭다운을 오른쪽 카드가 덮는다.',
+  },
+  {
     name: '🖼️ 사진 없는 지역 타일이 다시 들어온다',
     file: TILES,
     find: '    if (!photo) continue\n',

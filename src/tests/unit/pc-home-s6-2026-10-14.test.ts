@@ -128,6 +128,10 @@ describe('⑥ 숫자를 지어내지 않는다', () => {
     const b = [{ image_url: 'https://x/banner.jpg', link_url: 'https://urdeal.kr/region/%EC%84%9C%EC%9A%B8' }]
     expect(pickRegionTiles(regions, [deal('서울'), deal('부산'), deal('강원'), deal('제주')], b)[0].photo).toBe('https://x/banner.jpg')
   })
+  it('왼쪽 필터 열이 목록 카드보다 위 층이다 — 지역 드롭다운이 카드에 가려지지 않는다', () => {
+    // sticky 는 쌓임 맥락을 연다: 열에 z 가 없으면 안쪽 드롭다운이 오른쪽 카드 밑으로 들어간다(대표 신고 2026-10-14)
+    expect(SIDEBAR).toMatch(/<aside[^>]*className="sticky[^"]*\bz-(\d+|\[\d+\])/)
+  })
   it('사진 없는 타일을 그리는 대체 면이 없다', () => {
     expect(TILES).not.toMatch(/brand-grad/)
   })
