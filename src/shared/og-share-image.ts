@@ -59,6 +59,28 @@ export const OG_CARD_H = 630
  */
 export const OG_CARD_BG = '#F8F7FC'
 
+/**
+ * `og:image` 가 **무엇을 보여주는지** 한 줄. 그림을 못 받는 사람·스크린리더·그림이 깨진 카드가 읽는다.
+ *
+ * 🩸 2026-10-14 실측: `summary_large_image` 를 내는 소비자 표면 **33곳 전부 `og:image:alt` 가 0건**
+ * 이었다. `og:image:width/height` 는 2026-10-12 에 봇 셸·`index.html` 둘 다 선언했는데 **alt 만
+ * 빠졌다.** 클라 `<SEO>`(react-helmet)엔 있었으므로 **JS 를 렌더하는 크롤러만 보고 있었다** —
+ * 같은 날 제목에서 고친 *한 URL 두 값* 과 정확히 같은 클래스다.
+ *
+ * 🔑 **alt 은 `og:image` 를 고르는 같은 자리에서 정한다.** 그림이 셋(브랜드 카드 · 사진 카드 ·
+ *   유달이 폴백)이고 각각 설명이 다르므로, 두 곳에서 정하면 그림은 바뀌고 alt 은 안 바뀌는 날이 온다.
+ *
+ * ⚠️ 사진 카드는 **제목을 그대로** 쓴다 — 그 카드가 보여 주는 것이 그 제목의 대상이기 때문이다.
+ *   사진 내용을 추측해 적지 않는다(지어내지 않는 규율).
+ */
+export function ogImageAlt(image: string, title: string, siteName = '유어딜'): string {
+  const u = String(image || '')
+  if (/udal-loader/.test(u)) return `${siteName} 마스코트 유달이`
+  if (/\/og-image\.(png|svg)$/.test(u)) return `${siteName} 브랜드 카드`
+  const t = String(title || '').trim()
+  return t || `${siteName} 공유 카드`
+}
+
 /** R2 공개 도메인 — `/api/media/<key>` 는 워커를 거치지 말고 여기로(같은 결과, 3.5배 빠르다). */
 const R2_PUBLIC_HOST = 'https://media.ur-team.com'
 

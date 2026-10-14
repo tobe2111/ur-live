@@ -270,9 +270,24 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
     title: '자주 묻는 질문 - 이용권 사용·환불',
     description: '이용권은 어떻게 쓰는지, 유효기간이 지나면 어떻게 되는지, 환불은 언제 되는지. 가장 많이 묻는 것부터 답합니다.',
   },
+  /**
+   * 🩸 2026-10-14 — 이 항목만 **자기 필드 계약을 깨고 있었다.** `title` 은 바로 위 선언이
+   * *"사이트명 접미사 **없이**"* 라고 못박는데 여기만 ` - YourDeal` 을 담고 있어서,
+   * `withSiteName` 이 한국어 접미사를 **또** 붙였다 — 라이브 `<title>` 이
+   * `Privacy Policy (GDPR) - YourDeal - 유어딜`(브랜드 2회, 38자)이었다.
+   *
+   * 🔎 `withSiteName` 은 `t.includes('유어딜')` 로 중복을 막는데 **영문 표기는 못 본다.**
+   *   그래서 "영문 별칭도 보게 하자" 가 먼저 떠오르지만 그 길은 안 간다:
+   *   ① 브랜드 JSON-LD 가 선언한 별칭은 `['urdeal', 'UrDeal']` 이고 **`YourDeal` 은 거기 없다** —
+   *      그걸 별칭으로 인정하는 것은 **브랜드 표기 결정**이고 대표 몫이다.
+   *   ② `YourDeal` 은 개인정보처리방침의 **법적 당사자 표기**(`Lister Corporation ("YourDeal")`)로도
+   *      쓰인다 — 세션이 법무 문서의 이름을 바꾸지 않는다.
+   *   ⇒ 고치는 것은 **계약을 깬 이 한 줄**이고, 렌더 결과는 다른 전 표면과 같은 모양
+   *      (`Privacy Policy (GDPR) - 유어딜`)이 된다. 가드가 이 계약을 기계로 고정한다.
+   */
   '/gdpr': {
     crumb: 'Privacy Policy',
-    title: 'Privacy Policy (GDPR) - YourDeal',
+    title: 'Privacy Policy (GDPR)',
     description: 'YourDeal privacy policy and GDPR compliance information.',
   },
 
@@ -346,7 +361,11 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
           바뀌는 것(noindex 표면도 title 은 쓰인다 — `/videos`·`/search` 와 같다).
        🍞 noindex 라 `crumb` 는 **일부러 비워 둔다**(가드가 양방향으로 고정). */
     noindex: true,
-    title: '광고/제휴 문의 - 유어딜',
+    /* 🔁 2026-10-14 — 접미사를 **표에 박지 않는다.** `withSiteName` 이 붙이므로 렌더 결과는
+       `광고/제휴 문의 - 유어딜` 로 **한 글자도 안 바뀐다.** 눈에 보이는 증상이 없는데도 고치는
+       이유는 `/gdpr` 이 바로 이 모양에서 **브랜드 2회**로 터졌기 때문이다 — 접미사를 박아 두면
+       `withSiteName` 이 그 토큰을 못 알아보는 순간(영문 표기·표기 변경) 조용히 두 번 붙는다. */
+    title: '광고/제휴 문의',
     description: '광고, 제휴, 매장 입점, 상품 공급 문의를 남겨주세요. 매장 입점 안내는 /partners 에 있습니다.',
   },
   // 📜 약관 4종 — `/terms` 는 위에 있고 나머지 문서별 약관이 서버 메타 없이 남아 있었다.

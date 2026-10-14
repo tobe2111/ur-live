@@ -582,6 +582,11 @@ if(document.readyState==='complete')idle();else addEventListener('load',idle,{on
     <meta property="og:image" content="https://urdeal.kr/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
+    <!-- 🖼️ 2026-10-14: `og:image:alt` — 2026-10-12 에 width/height 는 선언했는데 **alt 만 빠져**
+         `summary_large_image` 33표면 전부 0건이었다(클라 `<SEO>` 에만 있어 JS 렌더 크롤러만 봤다).
+         값은 `shared/og-share-image.ts` `ogImageAlt` 와 **같은 문구**다 — 여기는 정적 HTML 이라
+         함수를 부를 수 없으므로 시험이 둘을 대조한다(두 벌이 갈리는 것을 막는 유일한 수단). -->
+    <meta property="og:image:alt" content="유어딜 브랜드 카드" />
     <meta name="twitter:image" content="https://urdeal.kr/og-image.png" />
 
     <!-- 🛡️ FOUC 방지 — React 마운트 전 첫 페인트부터 올바른 테마 적용.

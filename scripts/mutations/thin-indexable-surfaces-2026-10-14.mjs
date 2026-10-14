@@ -30,8 +30,10 @@ export default [
   {
     name: '🧭 /partnership 이 다시 색인 대상 — 4줄 문의 폼이 /partners 와 경쟁한다',
     file: SEO,
-    find: "    noindex: true,\n    title: '광고/제휴 문의 - 유어딜',",
-    replace: "    title: '광고/제휴 문의 - 유어딜',",
+    // 🔀 2026-10-14 재조준: 같은 날 제목 계약 수리로 ` - 유어딜` 접미사가 표에서 빠졌다
+    //   (`withSiteName` 이 붙인다). 지키는 불변식(*이 경로는 noindex 다*)은 그대로이고 앵커만 옮겼다.
+    find: "    noindex: true,\n    /* 🔁 2026-10-14 — 접미사를 **표에 박지 않는다.**",
+    replace: "    /* 🔁 2026-10-14 — 접미사를 **표에 박지 않는다.**",
     test: TEST,
     why:
       '이 화면의 글자는 넷(하나는 입력 안내, 하나는 접수 토스트)이고 합쳐 50자 남짓이다. 같은 ' +

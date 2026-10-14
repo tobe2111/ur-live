@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { HOME_H1 } from '@/shared/seo/consumer-surfaces'
+import { HOME_H1, CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import { useCurrentDong } from '@/hooks/useCurrentDong'
 import { Link, useNavigate } from 'react-router-dom'
 import { Search } from 'lucide-react'
@@ -101,9 +101,13 @@ export default function MobileHomePage() {
           `sr-only` 로 되살린다 — 박스 0이라 레이아웃 무영향이고, 워커 첫 화면과 **같은 값**이라
           마운트 때 제목이 바뀌지 않는다. */}
       <h1 className="sr-only">{HOME_H1}</h1>
+      {/* 🔁 2026-10-14 — 제목·설명을 **표에서 읽는다.** 손으로 적어 둔 값이 표와 갈려 있어서
+          **같은 URL 이 크롤러에 따라 다른 제목**을 냈다: JS 를 렌더하는 Googlebot 은 helmet 이
+          덮은 이 값을, Yeti 는 서버가 주입한 표의 값을 봤다(실측 두 값이 달랐다).
+          `jsonLd` 는 홈 전용이라 그대로 넘긴다. */}
       <SEO
-        title="유어딜 — 동네 이용권·공동구매·교환권을 할인가로"
-        description="우리 동네 이용권·동네딜·교환권을 할인가로. 온라인에서 사고 매장에서 QR·PIN으로 바로 사용하세요."
+        title={CONSUMER_SURFACE_SEO['/'].title}
+        description={CONSUMER_SURFACE_SEO['/'].description}
         url="/"
         jsonLd={[organizationJsonLd, webSiteJsonLd]}
       />

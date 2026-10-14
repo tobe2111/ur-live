@@ -20,6 +20,7 @@ import HomeSections from '@/components/home/HomeSections'
 import UrShortsRail from '@/components/home/UrShortsRail'
 import PcRegionTiles from './PcRegionTiles'
 import PcFeedSidebar from './PcFeedSidebar'
+import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 
 /**
  * 🖥️ 2026-07-15 (대표 시안 — 당근 스타일 PC 홈): lg+ 전용 풀너비 홈.
@@ -103,9 +104,10 @@ export default function PcHomePage() {
        콘텐츠는 흰 패널로 띄운다. 그루폰이 초록으로 하는 것을 우리 딥네이비로.
        ⚠️ PC 메인 한정(대표 지시) — 다른 소비자 페이지는 흰 배경 그대로. */
     <div className="bg-[var(--home-field)] min-h-[100dvh]">
+      {/* 🔁 2026-10-14 — 모바일 홈과 같은 이유로 표에서 읽는다(같은 URL 두 제목 해소). */}
       <SEO
-        title="유어딜 — 동네 이용권·공동구매·교환권을 할인가로"
-        description="우리 동네 이용권·동네딜·교환권을 할인가로. 온라인에서 사고 매장에서 QR·PIN으로 바로 사용하세요."
+        title={CONSUMER_SURFACE_SEO['/'].title}
+        description={CONSUMER_SURFACE_SEO['/'].description}
         url="/"
         jsonLd={[organizationJsonLd, webSiteJsonLd]}
       />
