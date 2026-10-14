@@ -219,7 +219,8 @@ describe('⑥ 카카오맵 연결 힌트 (index.html)', () => {
     expect(code('src/App.tsx'), '홈 라우트가 HomeRoute 가 아니다').toMatch(/path="\/"[\s\S]{0,120}HomeRoute/)
     // `/map` 라우트 + 홈에서 그리로 가는 통로(모바일 배너 · PC 히어로 칩) 둘 다 있어야 한다.
     expect(code('src/App.tsx'), '/map 라우트가 사라졌다').toMatch(/path="\/map"/)
-    expect(code('src/pages/mobile-home/MobileHomePage.tsx'), '모바일 홈에 지도 진입이 없다').toMatch(/to="\/map"/)
+    expect(code('src/pages/mobile-home/MobileHomePage.tsx'), '모바일 홈에 지도 알약이 없다').toMatch(/<MapPill\b/)
+    expect(code('src/pages/mobile-home/MapPill.tsx'), '지도 알약이 /map 으로 안 간다').toMatch(/to="\/map"/)
     expect(code('src/components/home/HomeHeroDefault.tsx'), 'PC 히어로에 지도 진입이 없다').toMatch(/to="\/map"/)
   })
 })

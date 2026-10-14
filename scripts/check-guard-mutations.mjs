@@ -2686,7 +2686,7 @@ canvas {
   },
   {
     name: '모바일 홈에서 지도로 가는 유일한 통로가 사라진다',
-    file: 'src/pages/mobile-home/MobileHomePage.tsx',
+    file: 'src/pages/mobile-home/MapPill.tsx', // 2026-10-14 위쪽 전환 → 떠 있는 지도 알약으로 옮겨갔다
     find: 'to="/map"',
     replace: 'to="/"',
     test: 'src/tests/unit/mobile-home.test.ts',
