@@ -128,6 +128,8 @@ describe('④ 교환권 페이지 상단 배너(라안) — 홈 배너와 같은
     // 📏 대표 "문장은 한줄로": 제목은 한 줄 고정(폭 72% — 오른쪽 28% 는 그림 자리)
     expect(c).toMatch(/\[&>strong\]:!line-clamp-1/)
     expect(c).toMatch(/\[&>strong\]:!max-w-\[72%\]/)
+    // 넘김 버튼은 띠에서 위로 — 아래 오른쪽은 유달이 자리(라이브에서 "2/4" 가 유달이를 가렸다)
+    expect(c).toMatch(/\$\{single \? 'top-2' : 'bottom-3'\}/)
     expect(c).toMatch(/single \? SINGLE_CARD_CLS : ''/)
   })
   it('교환권 페이지 PC·모바일 두 곳 모두에 붙어 있다(한쪽만이면 두 화면이 갈린다)', () => {

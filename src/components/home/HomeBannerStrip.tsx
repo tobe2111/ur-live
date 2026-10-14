@@ -331,7 +331,7 @@ function StripRail({ banners, single = false }: { banners: HomeBanner[]; single?
         </>
       )}
       {many && (
-        <div className="absolute right-[26px] bottom-3 flex items-center gap-2">
+        <div className={`absolute right-[26px] ${single ? 'top-2' : 'bottom-3'} flex items-center gap-2`}>{/* 🎟️ 교환권 띠: 아래 오른쪽은 그림(유달이·상품) 자리라 넘김 버튼은 위로 */}
           {!reduceMotion && (
             <button
               type="button"
