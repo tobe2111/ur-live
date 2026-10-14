@@ -257,13 +257,15 @@ try {
     })
     const errs = []
     const consoleErrs = []
+    const navs = []
+    page.on('framenavigated', (f) => { if (f === page.mainFrame()) navs.push(f.url().replace(base, '')) })
     page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') { const t = m.text(); if (!/Failed to load resource|Env Validator|환경 변수/.test(t)) consoleErrs.push(t.slice(0, 160)) } })
     page.on('pageerror', (e) => errs.push(`${String(e)} @ ${String(e.stack || '').split('\n').slice(1, 3).join(' ')}`))
     await page.goto(`${base}${path}`, { waitUntil: 'networkidle' })
     // `networkidle` 은 "요청이 멎었다" 지 "그렸다" 가 아니다 — lazy 청크·시트가 그 뒤에 그려질 수 있어 잠깐 기다린다.
     let seen = await page.getByText(expect1, { exact: false }).count().catch(() => 0)
     if (!seen) seen = await page.getByText(expect1, { exact: false }).first().waitFor({ timeout: 10_000 }).then(() => 1, () => 0)
-    const where = seen ? '' : ` — 못 찾음 @ ${page.url()} :: ${(await page.evaluate(() => (document.body?.innerText || '').replace(/\s+/g, ' ').slice(0, 200)).catch(() => '?'))} :: 토스트 ${JSON.stringify(await page.evaluate(() => window.__toasts || []).catch(() => []))} :: 시트 ${await page.locator('[role=dialog]').count().catch(() => -1)} :: 좌석토큰 ${await page.evaluate((seat) => { const t = localStorage.getItem('seller_token'); return t === seat ? '그대로' : t ? '바뀜:' + t.slice(0, 24) : '없음' }, SEAT).catch(() => '?')} :: 콘솔 ${JSON.stringify(consoleErrs.filter((x) => !/Future Flag/.test(x)).slice(0, 6))}`
+    const where = seen ? '' : ` — 못 찾음 @ ${page.url()} :: ${(await page.evaluate(() => (document.body?.innerText || '').replace(/\s+/g, ' ').slice(0, 200)).catch(() => '?'))} :: 토스트 ${JSON.stringify(await page.evaluate(() => window.__toasts || []).catch(() => []))} :: 시트 ${await page.locator('[role=dialog]').count().catch(() => -1)} :: 이동 ${JSON.stringify(navs)} :: 좌석토큰 ${await page.evaluate((seat) => { const t = localStorage.getItem('seller_token'); return t === seat ? '그대로' : t ? '바뀜:' + t.slice(0, 24) : '없음' }, SEAT).catch(() => '?')} :: 콘솔 ${JSON.stringify(consoleErrs.filter((x) => !/Future Flag/.test(x)).slice(0, 6))}`
     check(`[${name}] 렌더 + 런타임 에러 0`, seen > 0 && errs.length === 0, errs.length ? errs.join(' || ') : `"${expect1}" 확인${where}`)
 
     // 🔴 대시보드 라이트 고정 — 다크 클래스가 붙으면 정책 위반이다(check-dashboard-theme 의 렌더판).
