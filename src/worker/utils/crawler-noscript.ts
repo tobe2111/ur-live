@@ -74,6 +74,30 @@ export function h1Of(text: string | null | undefined): string {
   return t ? `<h1>${esc(t)}</h1>` : ''
 }
 
+/**
+ * ⭐ 2026-10-14 — **평점 한 줄.** 숙소(`buildStayNoscript`)와 이용권(`buildDetailNoscript`)이
+ * **같은 함수**를 쓴다.
+ *
+ * 🩸 **왜 SSOT 인가(라이브 실측)**: 숙소는 본문에 `평점 4.6 (9개 리뷰)` 를 내는데 이용권은
+ *    **안 냈다** — `/pass/:id` **310건 중 약 294건(95%)** 이 `avg_rating`·`review_count` 를
+ *    갖고 있고 JSON-LD `Product.aggregateRating` 으로는 멀쩡히 내보내면서(실측 `/pass/2793`
+ *    `ratingValue 4.7 · reviewCount 9`) **크롤러 본문엔 그 숫자가 한 글자도 없었다.**
+ *    `NoscriptDetailSeed` 에 두 필드가 선언돼 있지 않았을 뿐이고(값은 시드에 이미 와 있다)
+ *    **에러가 안 나서** 아무도 몰랐다. #83(숙소 `Product` 별점)과 같은 비대칭이다.
+ *
+ * 🔑 **JSON-LD 가 있는데 왜 본문에도 쓰나**: 둘은 다른 층이다 — 구조화 데이터는 *리치결과*를,
+ *    본문 텍스트는 *스니펫·인용*을 만든다. AI 검색엔진은 본문을 인용하고, 네이버는
+ *    schema.org `aggregateRating` 지원이 구글보다 약하다.
+ *
+ * 🔴 **리뷰가 0이면 아무것도 내지 않는다** — 2026-10-11 에 `ratingValue: 0` 으로 값을 치른
+ *    그 자리다(평점 0점짜리 상품이라고 말하는 셈이고 구글 정책 위반이다).
+ */
+export function ratingLine(avg: unknown, count: unknown): string {
+  const rating = Number(avg) || 0
+  const reviews = Number(count) || 0
+  return rating > 0 && reviews > 0 ? `평점 ${rating.toFixed(1)} (${reviews}개 리뷰)` : ''
+}
+
 export interface NoscriptDetailSeed {
   name?: string | null
   description?: string | null
@@ -86,6 +110,9 @@ export interface NoscriptDetailSeed {
   restaurant_phone?: string | null
   voucher_expiry?: string | null
   voucher_terms?: string | null
+  /** ⭐ 2026-10-14 — 평점(`ratingLine` 머리말에 실측·근거). 시드에 이미 오던 값이다. */
+  avg_rating?: number | null
+  review_count?: number | null
   /** 🖼️ 2026-10-14 — 쇼핑 상세 사진 한 장(근거는 `rowImg` 머리말). */
   image_url?: string | null
 }
@@ -122,6 +149,8 @@ export function buildDetailNoscript(d: NoscriptDetailSeed | null | undefined): s
 
   return wrap(lines([
     priceLine && esc(priceLine),
+    // ⭐ 자리는 **숙소와 같다**(가격 → 평점 → 주소) — 두 상세가 같은 순서로 읽힌다.
+    ratingLine(d.avg_rating, d.review_count),
     placeLine,
     descLine,
     expiry && `유효기간 ${esc(expiry)}`,
@@ -189,8 +218,6 @@ export function buildStayNoscript(
     ? (high > low ? `1박 ${won(low)}원~${won(high)}원` : `1박 ${won(low)}원`)
     : ''
   const addr = String(p.address || '').trim()
-  const rating = Number(p.avg_rating) || 0
-  const reviews = Number(p.review_count) || 0
   const desc = String(p.description_full || p.description || '').replace(/\s+/g, ' ').trim()
   // 객실은 **이름 + 평일가**만. 화면 객실 목록이 그대로 보여 주는 값이다.
   const roomLines = (seed?.rooms || [])
@@ -206,7 +233,7 @@ export function buildStayNoscript(
     skip ? (region ? esc(region) : '') : `${esc(stay)}${region ? ` · ${esc(region)}` : ''}`,
     priceLine && esc(priceLine),
     !skip && p.star_rating ? `${Number(p.star_rating)}성급` : '',
-    rating > 0 && reviews > 0 ? `평점 ${rating.toFixed(1)} (${reviews}개 리뷰)` : '',
+    ratingLine(p.avg_rating, p.review_count),
     addr && `주소 ${esc(addr)}`,
     desc && desc !== stay ? esc(desc) : '',
     ...roomLines,
