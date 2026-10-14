@@ -71,10 +71,11 @@ describe('② 배선 — 카드가 실제로 그 함수를 쓴다', () => {
     expect(s, '옛 alt 가 남아 있다').not.toContain('alt={p.name || cat.label}')
   })
 
-  it('교환권 카드·행 **둘 다** 브랜드를 넘긴다', () => {
+  // 🎟️ 2026-10-14: 모바일 3열 타일(`VoucherTile`, 대표 B안)이 셋째 자리로 늘었다 — 불변식(전부 브랜드를 넘긴다)은 그대로.
+  it('교환권 카드·행·타일 **전부** 브랜드를 넘긴다', () => {
     const s = readCode(VOUCHER)
     const n = s.split('cardImageAlt(p.name, p.brand_name)').length - 1
-    expect(n, '카드와 행 중 한쪽만 고쳐졌다').toBe(2)
+    expect(n, '카드·행·타일 중 일부만 고쳐졌다').toBe(3)
     expect(s.includes('alt={p.name}'), '옛 alt 가 남아 있다').toBe(false)
   })
 
