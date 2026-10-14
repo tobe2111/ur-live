@@ -37,6 +37,8 @@ export const EXCLUDE = {
     'dist/client/assets 의 **이번 빌드** CSS 와 대조한다. 낡은 dist 로 돌면 방금 정의한 클래스가 유령으로 잡힌다.',
   'check-surface-budgets.mjs':
     '이번 빌드의 dist + route-chunk-map 무게를 잰다. 낡은 dist 면 남의 변경을 내 회귀로 신고한다.',
+  'check-exec-cost.mjs':
+    '이번 빌드의 dist 를 브라우저로 10화면 렌더해 잰다(실측 ~2분 + chromium 필요). 낡은 dist 면 남의 변경을 내 회귀로 신고한다.',
 }
 
 /**

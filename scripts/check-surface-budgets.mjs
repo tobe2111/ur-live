@@ -39,12 +39,14 @@
  * ## 못 보는 것
  *   - 이미지·폰트·API 응답(바이트가 아니라 요청 — `duplicate-fetch` · `surface-chunk-runtime` 의 몫)
  *   - 실행 비용(같은 바이트라도 무거운 코드) — 그건 실사용 SLO 감시(`vitals-slo` cron)가 본다
- *   - route-chunk-map 에 없는 화면(대시보드 등 — 하드로드 진입점 등록은 `generate-route-chunk-map` ROUTES 가 강제)
+ *   - 진입점 목록 밖 화면 — 손님은 `generate-route-chunk-map` ROUTES, 대시보드·마이는 `dashboard-surfaces.mjs`(2026-10-14 편입)
+ *   - 대시보드의 두 번째 이후 화면(어드민 주문 관리 등) — 첫 화면(홈)만 잰다
  */
 import fs from 'node:fs'
 import path from 'node:path'
 import zlib from 'node:zlib'
 import { fileURLToPath } from 'node:url'
+import { DASHBOARD_SURFACES } from './dashboard-surfaces.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const BASELINE = path.join(ROOT, 'scripts', 'surface-budgets.json')
@@ -81,6 +83,46 @@ export function surfacesFrom(html, mapSrc) {
   return { surfaces: out, bootCount: boot.size, cssCount: css.length, mapCount: Object.keys(map).length }
 }
 
+/**
+ * 🧰 대시보드·마이 화면(2026-10-14) — route-chunk-map 에 없어(워커 미리받기 대상 아님) 그동안 **바이트를 아무도 안 쟀다.**
+ *   Vite 매니페스트에서 진입점의 정적 import 폐쇄를 따라가 손님 화면과 같은 식으로 잰다:
+ *   첫 화면 = 엔트리 폐쇄 + CSS + 진입점들의 정적 폐쇄(엔트리와 겹치는 건 한 번만). 이름은 `dash:<화면>`.
+ *   진입점을 매니페스트에서 못 찾으면 **실패**다(파일이 옮겨졌는데 조용히 0 으로 재면 가드가 헛돈다).
+ */
+export function dashboardSurfacesFrom(manifest, bootFiles, cssFiles, dashboards) {
+  const out = {}
+  const entries = Object.entries(manifest)
+  const resolve = (src) => {
+    if (manifest[src]) return src
+    const bySrc = entries.find(([, v]) => v.src === src)
+    if (bySrc) return bySrc[0]
+    // 같은 진입점이 여러 곳에서 lazy 로 불리면 Vite 가 키를 `_이름-해시.js` 로 바꾼다(UserProfilePage 실측).
+    const base = src.split('/').pop().replace(/\.[tj]sx?$/, '')
+    const byName = entries.filter(([, v]) => v.isDynamicEntry && v.name === base)
+    if (byName.length === 1) return byName[0][0]
+    throw new Error(`대시보드 진입점을 매니페스트에서 못 찾았다: ${src} (후보 ${byName.length}개) — 파일이 옮겨졌으면 scripts/dashboard-surfaces.mjs 를 고칠 것`)
+  }
+  const boot = new Set(bootFiles)
+  for (const [name, srcs] of Object.entries(dashboards)) {
+    const js = new Set(), css = new Set()
+    const stack = srcs.map(resolve)
+    const seen = new Set()
+    while (stack.length) {
+      const k = stack.pop()
+      if (seen.has(k)) continue
+      seen.add(k)
+      const v = manifest[k]
+      if (!v) continue
+      const f = '/' + v.file
+      if (!boot.has(f)) js.add(f)
+      for (const c of v.css || []) if (!cssFiles.includes('/' + c)) css.add('/' + c)
+      for (const x of v.imports || []) stack.push(x)
+    }
+    out[`dash:${name}`] = [...bootFiles, ...cssFiles, ...js, ...css]
+  }
+  return out
+}
+
 /** 기준과 실측을 대조해 위반 목록을 낸다(순수). */
 export function judge(measured, baseline, { tolerance = TOLERANCE_KB, slack = LOCK_SLACK_KB } = {}) {
   const errors = []
@@ -111,6 +153,14 @@ function main() {
     process.exit(1)
   }
   const { surfaces, bootCount, cssCount, mapCount } = surfacesFrom(fs.readFileSync(htmlPath, 'utf8'), fs.readFileSync(mapPath, 'utf8'))
+  const manifestPath = path.join(ROOT, 'dist/client/.vite/manifest.json')
+  if (!fs.existsSync(manifestPath)) {
+    console.error('❌ surface-budgets: dist/client/.vite/manifest.json 없음 — 대시보드 화면을 잴 수 없다(통과가 아니다).')
+    process.exit(1)
+  }
+  const bootFiles = surfaces.__boot__.filter((f) => f.endsWith('.js'))
+  const bootCss = surfaces.__boot__.filter((f) => f.endsWith('.css'))
+  Object.assign(surfaces, dashboardSurfacesFrom(JSON.parse(fs.readFileSync(manifestPath, 'utf8')), bootFiles, bootCss, DASHBOARD_SURFACES))
   if (bootCount === 0 || cssCount === 0 || mapCount === 0) {
     console.error(`❌ surface-budgets: 측정 대상이 비었다(엔트리 ${bootCount} · CSS ${cssCount} · 화면 ${mapCount}).`)
     console.error('   route-chunk-map 이 빈 맵이면 `npm run build:worker` 가 안 돈 것이다. 이 가드가 무력화된 상태다.')

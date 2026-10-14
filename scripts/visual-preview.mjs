@@ -481,6 +481,19 @@ const API_LOG = []
 let NAV_T0 = 0
 const SLOW = Number(args.slow) || 0
 const SHIFT = 'shift' in args
+/**
+ * ⚙️ `--cpu` — 첫 화면의 **실행 비용**을 잰다(2026-10-14 대표 *"대시보드랑 실행비용도 최적화 해줘"*).
+ *   바이트 예산(`check-surface-budgets`)은 "얼마나 받았나" 만 본다 — 같은 바이트라도 마운트 때
+ *   **실제로 도는 코드**가 늘면 폰이 그만큼 바빠진다. 두 값을 낸다:
+ *     · execKB  — V8 커버리지로 잰 **한 번이라도 실행된 우리 JS(/assets/*.js) 바이트**. 스텁이 고정이라
+ *                 결정적이다 → `check-exec-cost.mjs` 가 이 값을 래칫으로 잠근다(PR 게이트).
+ *     · scriptMs · taskMs · tbtMs — CPU 를 `--cpu-rate`(기본 4)배 느리게 한 상태의 스크립트 시간·
+ *                 전체 작업 시간·긴 작업 합(50ms 초과분). **시간은 러너마다 흔들리므로 판정에 안 쓴다**
+ *                 (기록·추세용). 잠그는 것은 결정적인 execKB 하나다.
+ *   ⚠️ 못 보는 것: 4초 대기 뒤에 도는 코드(스크롤·클릭 뒤) · 외부 SDK(차단됨) · 워커(서버) 실행 비용.
+ */
+const CPU = 'cpu' in args
+const CPU_RATE = Number(args['cpu-rate']) || 4
 const STORE_STATUS = typeof args.stores === 'string' && /^[a-z]+$/.test(args.stores) ? args.stores : 'approved'
 const STORES_N = (() => {
   const a = process.argv.find((x) => x.startsWith('--stores'))
@@ -711,7 +724,11 @@ if (AUTH || STORES_N > 0) {
   // 🏢 2026-10-12 `--auth=agency` — 에이전시 콘솔(`/agency`)을 머지 전에 본다. 콘솔은 자기 토큰 자리
   //   (`agency_console_token`)만 읽는다 — 셀러·소비자 키는 일부러 안 심는다(섞이면 그 화면이 아니다).
   //   응답은 `--stub-file` 로 `/api/agency-console/me` · `/staff` · `/stores` 를 준다.
-  const seed = AUTH === 'agency'
+  // 🛡️ 2026-10-14 `--auth=admin` — 어드민 대시보드 실행 비용을 잰다. 가드는 `admin_token` 존재만 본다
+  //   (점 3개짜리 JWT 가 아니면 관대 통과 — RouteGuards.isDashboardTokenUsable).
+  const seed = AUTH === 'admin'
+    ? { admin_token: 'preview', admin_id: '1', admin_name: '미리보기', admin_email: 'preview@example.com', admin_role: 'super_admin' }
+    : AUTH === 'agency'
     ? {
         agency_console_token: 'preview',
         agency_console_profile: JSON.stringify({
@@ -749,6 +766,21 @@ const consoleErrors = []
 page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(m.text().slice(0, 300)) })
 page.on('pageerror', (e) => consoleErrors.push(`[pageerror] ${String(e && e.message).slice(0, 300)}`))
 
+let CPU_CDP = null
+if (CPU) {
+  // 긴 작업은 관찰자를 **페이지보다 먼저** 걸어야 부팅 중의 것까지 잡힌다(buffered 는 일부 엔진만).
+  await page.addInitScript(() => {
+    window.__urLongTasks = []
+    try {
+      new PerformanceObserver((l) => { for (const e of l.getEntries()) window.__urLongTasks.push(e.duration) })
+        .observe({ type: 'longtask', buffered: true })
+    } catch { /* 미지원 엔진 */ }
+  })
+  await page.coverage.startJSCoverage({ resetOnNavigation: false })
+  CPU_CDP = await ctx.newCDPSession(page)
+  await CPU_CDP.send('Performance.enable')
+  await CPU_CDP.send('Emulation.setCPUThrottlingRate', { rate: CPU_RATE })
+}
 NAV_T0 = Date.now()
 await page.goto(`http://127.0.0.1:${PORT}${ROUTE}`, { waitUntil: 'domcontentloaded', timeout: 40000 }).catch(() => {})
 /**
@@ -821,6 +853,39 @@ if (SHIFT) {
   await round('재방문')
 }
 await page.waitForTimeout(4000)
+if (CPU) {
+  const cov = await page.coverage.stopJSCoverage()
+  /**
+   * 실행된 바이트 = 함수 범위를 **순서대로 칠한다**(바깥 → 안쪽, 뒤에 오는 안쪽 범위가 덮어쓴다).
+   * V8 블록 커버리지의 표준 해석이다. 우리 자산(/assets/*.js)만 센다 — 인라인 부트 스크립트는 제외.
+   */
+  let exec = 0, total = 0
+  const perChunk = {}
+  for (const e of cov) {
+    const m = /\/assets\/([^/?#]+\.js)/.exec(e.url)
+    if (!m || !e.source) continue
+    const mark = new Uint8Array(e.source.length)
+    for (const f of e.functions) for (const r of f.ranges) mark.fill(r.count > 0 ? 1 : 0, r.startOffset, r.endOffset)
+    let used = 0
+    for (let i = 0; i < mark.length; i++) used += mark[i]
+    exec += used; total += e.source.length
+    const name = m[1].replace(/-[A-Za-z0-9_-]{8}\.js$/, '.js')
+    perChunk[name] = +((perChunk[name] || 0) + used / 1024).toFixed(1)
+  }
+  const { metrics } = await CPU_CDP.send('Performance.getMetrics')
+  const mv = (n) => (metrics.find((x) => x.name === n) || {}).value || 0
+  const longs = await page.evaluate(() => window.__urLongTasks || [])
+  const tbt = longs.reduce((a, d) => a + Math.max(0, d - 50), 0)
+  const result = {
+    route: ROUTE, execKB: +(exec / 1024).toFixed(1), loadedKB: +(total / 1024).toFixed(1),
+    scriptMs: Math.round(mv('ScriptDuration') * 1000), taskMs: Math.round(mv('TaskDuration') * 1000),
+    tbtMs: Math.round(tbt), longTasks: longs.length, cpuRate: CPU_RATE,
+    top: Object.entries(perChunk).sort((a, b) => b[1] - a[1]).slice(0, 8),
+  }
+  console.log(`⚙️ 실행 비용 [${ROUTE}] 실행된 JS ${result.execKB}KB / 받은 JS ${result.loadedKB}KB · 스크립트 ${result.scriptMs}ms · 긴 작업 ${result.longTasks}개(TBT ${result.tbtMs}ms) @CPU×${CPU_RATE}`)
+  // 🤖 기계가 읽는 한 줄 — `check-exec-cost.mjs` 가 이것만 읽는다(측정기를 두 벌 만들지 않는다).
+  console.log(`CPU_RESULT ${JSON.stringify(result)}`)
+}
 /**
  * 🖱️ `--click="글자"` — 버튼을 눌러 **연 뒤**를 찍는다(여러 개면 `>>` 로 이어서).
  *   왜 필요한가: 마이의 판매 도구는 전부 **시트**라, 닫힌 화면만 찍으면 그 화면들은

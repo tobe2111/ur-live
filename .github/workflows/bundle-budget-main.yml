@@ -40,7 +40,7 @@ jobs:
   budget:
     runs-on: ubuntu-latest
     name: 번들 예산 (머지된 조합)
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -58,3 +58,8 @@ jobs:
       # 📏 2026-10-14: 화면별 첫 화면 무게 래칫도 머지된 조합에서 잰다(두 PR 이 각자 허용오차 안이어도 합치면 넘는다).
       - name: Per-surface first-screen weight budget
         run: node scripts/check-surface-budgets.mjs
+      # ⚙️ 2026-10-14: 첫 화면 실행 비용(실행된 JS)도 머지된 조합에서 잰다 — 근거는 check-exec-cost.mjs 머리말.
+      - name: Install chromium (execution cost)
+        run: npx playwright install --with-deps chromium
+      - name: First-screen execution cost budget
+        run: node scripts/check-exec-cost.mjs

@@ -7,11 +7,12 @@
  *   ① 측정 범위 — 엔트리 폐쇄 + CSS + 화면 봉투(엔트리와 겹치는 건 한 번만)
  *   ② 판정 — 늘면 실패 · 줄면 '잠그라' 실패 · 새 화면/사라진 화면 실패 · 허용오차 안은 통과
  *   ③ 배선 — verify(빌드 뒤) · main 예산 워크플로 · 기준 파일이 실제 화면 목록을 덮는다
- * ⚠️ 못 막는 것: 실행 비용 · 이미지·API · 맵에 없는 화면(대시보드).
+ * ⚠️ 못 막는 것: 이미지·API · 진입점 목록 밖 화면. (실행 비용은 2026-10-14 `check-exec-cost` 가, 대시보드는 같은 날 dash:* 로 편입)
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { surfacesFrom, judge, TOLERANCE_KB, LOCK_SLACK_KB } from '../../../scripts/check-surface-budgets.mjs'
+import { DASHBOARD_SURFACES } from '../../../scripts/dashboard-surfaces.mjs'
 
 const HTML = `<script type="module" crossorigin src="/assets/index-AAAAAAAA.js"></script>
 <link rel="modulepreload" crossorigin href="/assets/react-core-BBBBBBBB.js">
@@ -67,14 +68,17 @@ describe('③ 배선', () => {
   it('main 예산 워크플로도 돌린다', () => {
     expect(read('.github/workflows/bundle-budget-main.yml')).toContain('node scripts/check-surface-budgets.mjs')
   })
-  it('기준 파일이 하드로드 화면 전부 + __boot__ 를 덮고 값이 0 이 아니다', () => {
+  it('기준 파일이 하드로드 화면 전부 + 대시보드·마이(dash:*) + __boot__ 를 덮고 값이 0 이 아니다', () => {
     const b = JSON.parse(read('scripts/surface-budgets.json'))
     // 하드로드 화면 목록 = 생성기의 ROUTES 키(그 파일은 .mjs 라 소스에서 키를 읽는다)
     const gen = read('scripts/generate-route-chunk-map.mjs')
     const body = gen.slice(gen.indexOf('export const ROUTES = {'), gen.indexOf('\n}', gen.indexOf('export const ROUTES = {')))
     const keys = [...body.matchAll(/^  (\w+): \[/gm)].map((m) => m[1])
     expect(keys.length).toBeGreaterThan(5)
-    const want = ['__boot__', ...keys].sort()
+    // 🧰 2026-10-14: 대시보드·마이는 route-chunk-map 밖이라 `dashboard-surfaces.mjs` 에서 온다(dash:<키>).
+    const dash = Object.keys(DASHBOARD_SURFACES).map((k) => `dash:${k}`)
+    expect(dash.length).toBeGreaterThanOrEqual(3)
+    const want = ['__boot__', ...keys, ...dash].sort()
     expect(Object.keys(b.surfaces).sort()).toEqual(want)
     for (const v of Object.values(b.surfaces) as Array<{ totalKB: number }>) expect(v.totalKB).toBeGreaterThan(50)
     expect(b.toleranceKB).toBe(TOLERANCE_KB)
