@@ -40,12 +40,12 @@ export default [
     why: '로고 줄 높이는 48px 타일이 정한다 — 예약만 40px 이면 8px 밀린다.',
   },
   {
-    name: '🧷 접힘 상태를 무시하고 항상 펴서 예약한다 (반대 방향 밀림)',
+    name: "🧷 예약에 '브랜드로 찾기' 헤더 줄이 되살아난다 (진짜 줄엔 없다 → 도착 순간 위로 튄다)",
     file: RESERVE,
-    find: '{open && (',
-    replace: '{true && (',
+    find: '<div className="ur-content-wide px-4 lg:px-8 pt-2 pb-3 invisible" aria-hidden="true">',
+    replace: '<div className="ur-content-wide px-4 lg:px-8 pt-2 pb-3 invisible" aria-hidden="true"><div className="flex items-center justify-between mb-2"><span>브랜드로 찾기</span></div>',
     test: TEST,
-    why: '브랜드 접기 토글은 2026-09-01 에 생겼다. 접힌 사람에게 편 높이를 예약하면 도착 순간 위로 튄다.',
+    why: '2026-10-14 대표 지시로 헤더 줄을 지웠다. 예약에만 남으면 그 높이만큼 반대 방향 밀림이 생긴다.',
   },
   {
     name: '🧷 예약이 눈에 보인다 (로더 통일 정책 위반 — 빈 회색 상자가 뜬다)',

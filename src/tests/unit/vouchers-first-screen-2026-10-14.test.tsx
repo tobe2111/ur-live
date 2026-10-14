@@ -24,6 +24,7 @@ import {
   buildVouchersFirstScreen, VOUCHERS_FS_CLASS as C, VOUCHERS_FS_ROWS, soldLabelOf, vouchersFirstScreenGuardScript,
 } from '@/worker/utils/vouchers-first-screen'
 import { stripComments } from '../helpers/source-text'
+import { VOUCHERS_DEFAULT_CATEGORY } from '@/shared/seo/voucher-facet'
 
 const root = process.cwd()
 const code = (p: string) => stripComments(fs.readFileSync(path.join(root, p), 'utf8'))
@@ -131,6 +132,16 @@ describe('② 페이지 크롬 클래스 = 소스', () => {
     for (const k of ['chipWrap', 'chipRow', 'chip'] as const) expect(res, k).toContain(C[k])
     const sort = code('src/components/ui/sort-menu.tsx')
     expect(sort).toContain(C.sortBtn)
+  })
+  // ☕ 2026-10-14 (대표 *"첫 화면은 이렇게 떠줘"* — 커피/음료 + 브랜드 로고 줄, '브랜드로 찾기' 제거)
+  it('브랜드 로고 줄 예약 = `BrandStripReserve` · 제목 = 기본 카테고리', () => {
+    const res = code('src/pages/vouchers/TopChromeReserve.tsx')
+    for (const k of ['brandRow', 'brandItem', 'brandTile', 'brandLabel'] as const) expect(res, k).toContain(C[k])
+    expect(res, 'brandWrap(바깥 패딩 + invisible)').toContain(C.brandWrap)
+    const html = buildVouchersFirstScreen(seed([RICH]), LOADER, 'n0')
+    expect(html).toContain(`class="${C.brandWrap}"`)
+    expect(html, '칩 줄 다음, 정렬 줄 앞').toMatch(new RegExp(`${C.chip.split(' ')[0]}[\\s\\S]*${C.brandTile.split(' ')[0]}[\\s\\S]*${VOUCHERS_DEFAULT_CATEGORY.replace('/', '\\/')} 교환권`))
+    expect(html).not.toContain('전체 교환권')
   })
 })
 

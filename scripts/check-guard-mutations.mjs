@@ -9445,20 +9445,20 @@ canvas {
       '카드만 고치고 행을 두면 같은 화면 안에서 규칙이 갈린다.',
   },
   {
-    name: '🎫 교환권 브랜드 스트립이 다시 항상 펼쳐진다 (175px 이 상품을 fold 밖으로)',
+    name: "🎫 교환권 '브랜드로 찾기' 접기 버튼이 되살아난다 (대표 10-14 \"괜히 공간만 차지\")",
     file: 'src/pages/VouchersPage.tsx',
-    find: '          {brandsOpen && (\n',
-    replace: '',
+    find: '          {embedded && (\n            <div className="flex items-center justify-end mb-2">',
+    replace: '          <button type="button" className="text-[12px] font-bold">브랜드로 찾기</button>\n          {embedded && (\n            <div className="flex items-center justify-end mb-2">',
     test: 'src/tests/unit/vouchers-top-chrome.test.ts',
     why:
-      '첫 상품 위에 층이 다섯이라 상품이 1.5개밖에 안 보였다(실측 ~700px). 이런 층은 하나씩 다시 ' +
-      '얹히기 쉬워서 다섯이 됐다. 접기 게이트가 사라지면 그 상태로 돌아간다.',
+      '2026-10-14 대표가 그 줄을 지우라고 했다(첫 상품 위 층을 한 줄 덜기). 이런 층은 하나씩 다시 ' +
+      '얹히기 쉬워서 2026-09-01 에 다섯이 됐다.',
   },
   {
-    name: '🎫 브랜드 스트립이 다시 기본 접힘으로 (대표 09-02 "브랜드 펼침 · 로고가 보이게" 역행)',
+    name: '🎫 브랜드 로고 줄이 다시 사라진다 (대표 09-02·10-14 "로고가 보이게")',
     file: 'src/pages/VouchersPage.tsx',
-    find: "const [brandsOpen, setBrandsOpen] = useState(true)",
-    replace: "const [brandsOpen, setBrandsOpen] = useState(false)",
+    find: '          <div className="flex gap-2 overflow-x-auto scrollbar-hide py-1 -mx-1 px-1">\n            {orderedBrands.map(b => (',
+    replace: '          <div className="flex gap-2 overflow-x-auto scrollbar-hide py-1 -mx-1 px-1">\n            {[].map((b: never) => (',
     test: 'src/tests/unit/vouchers-top-chrome.test.ts',
     why:
       '브랜드가 이미 선택된 채 들어오면(공유 링크·재진입) 목록은 걸러져 있는데 그 이유가 화면에 ' +

@@ -34,6 +34,7 @@ import { cfImage, cfSrcSet } from '../../utils/cf-image'
 import { priceDisplay } from '../../shared/price-display'
 import { formatNumber } from '../../utils/format'
 import { cardImageAlt } from '../../utils/deal-title'
+import { VOUCHERS_DEFAULT_CATEGORY } from '../../shared/seo/voucher-facet'
 
 /** 서버가 그리는 목록 줄 수 — 폰 한 화면(844px)에 보이는 만큼. 나머지는 마운트 뒤 React 가 그린다. */
 export const VOUCHERS_FS_ROWS = 6
@@ -53,6 +54,11 @@ export const VOUCHERS_FS_CLASS = {
   chipWrap: 'ur-content-wide px-4 lg:px-8 py-2',
   chipRow: 'flex gap-2 overflow-x-auto scrollbar-hide invisible',
   chip: 'shrink-0 inline-flex items-center gap-2 h-9 pl-3 pr-4 rounded-full text-[13px] font-bold',
+  brandWrap: 'ur-content-wide px-4 lg:px-8 pt-2 pb-3 invisible',
+  brandRow: 'flex gap-2 overflow-x-auto scrollbar-hide py-1 -mx-1 px-1',
+  brandItem: 'flex flex-col items-center gap-1 shrink-0',
+  brandTile: 'w-12 h-12 rounded-2xl block',
+  brandLabel: 'text-[12px] max-w-[56px]',
   sortBar: 'ur-content-wide px-4 lg:px-8 pt-3 pb-2 border-t border-gray-100 dark:border-[#2C2F35] flex items-center justify-between gap-2',
   sortTitle: 'text-[15px] font-extrabold text-gray-900 dark:text-white flex items-center gap-2 min-w-0',
   sortCount: 'text-[13px] font-semibold text-gray-400 dark:text-gray-500 shrink-0',
@@ -180,8 +186,10 @@ export function buildVouchersFirstScreen(seedJson: string, loaderHtml: string, n
     `<div class="${C.reveal}" style="transform:translateY(0);transition:transform 0.25s ease;will-change:transform">` +
     `<div aria-hidden="true"><div class="${C.chipWrap}"><div class="${C.chipRow}"><span class="${C.chip}">&nbsp;</span></div></div></div>` +
     `</div>` +
+    // ☕ 2026-10-14: 첫 화면은 커피/음료 — 브랜드 로고 줄이 칩 아래에 선다(카테고리 목록이 오기 전엔 React 도 같은 예약).
+    `<div class="${C.brandWrap}" aria-hidden="true"><div class="${C.brandRow}"><span class="${C.brandItem}"><span class="${C.brandTile}"></span><span class="${C.brandLabel}">&nbsp;</span></span></div></div>` +
     `<div class="${C.sortBar}">` +
-    `<h2 class="${C.sortTitle}"><span class="truncate">전체 교환권</span><span class="${C.sortCount}">${count}</span></h2>` +
+    `<h2 class="${C.sortTitle}"><span class="truncate">${escText(VOUCHERS_DEFAULT_CATEGORY)} 교환권</span><span class="${C.sortCount}">${count}</span></h2>` +
     `<div class="relative shrink-0"><span class="${C.sortBtn}"><span class="w-3.5 h-3.5 inline-block"></span>낮은 가격순<span class="w-3.5 h-3.5 inline-block"></span></span></div>` +
     `</div>` +
     `<div class="${C.listWrap}"><div class="${C.list}">${shown.map(rowHtml).join('')}</div></div>` +

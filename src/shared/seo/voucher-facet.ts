@@ -28,6 +28,15 @@ import { VOUCHER_FILTER_CATEGORIES } from './consumer-surfaces'
  */
 export const VOUCHERS_SEED_PATH = '/api/products?page=1&limit=20&deal_only=1&sort=price_low'
 
+/**
+ * ☕ 2026-10-14 (대표 *"첫 화면은 이렇게 떠줘"* — 스크린샷: 커피/음료 선택 + 브랜드 로고 줄): `/vouchers` 첫 화면 카테고리.
+ *   화면(`VouchersPage` 기본값)과 서버 시드(워커 VOUCHERS 슬롯)가 **같은 상수**를 쓴다 — 갈리면 서버가 '전체'를
+ *   주고 화면은 커피를 다시 요청한다(첫 방문 요청 2회 — 2026-10-06 에 없앤 바로 그 낭비).
+ */
+export const VOUCHERS_DEFAULT_CATEGORY = '커피/음료'
+/** 첫 화면 시드 경로. `cache-prewarm.ts` HOT_PATHS 의 커피/음료 키와 byte-동일(예열이 이미 있다). */
+export const VOUCHERS_DEFAULT_SEED_PATH = `${VOUCHERS_SEED_PATH}&category=${encodeURIComponent(VOUCHERS_DEFAULT_CATEGORY)}`
+
 /** facet 시드 경로. `null` = facet 이 아니다(= 종전대로 시드 없음). */
 export function voucherFacetSeedPath(search: string): string | null {
   const q = new URLSearchParams(search)

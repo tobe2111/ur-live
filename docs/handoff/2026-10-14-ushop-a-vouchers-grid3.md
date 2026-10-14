@@ -14,7 +14,12 @@
 - 유어샵 A: `CuratorHeader` 얼굴(사진/유달이 `SHARE_MASCOT_SRC`) + 숫자 줄(`curatorSoldTotal` SSOT) + SNS 이름표(`snsHitCls` 36px 탭 / `snsPillCls`).
   서버 첫 화면(`curator-ssr-body.ts`) 같은 클래스·같은 URL·같은 숫자. 가드 5개·주입 10건 재조준(불변식 유지 — 9차 '아바타 금지'는 '이니셜 원 금지'로).
 
+- 교환권 첫 화면 = 커피/음료 + 브랜드 로고 줄 상시, '브랜드로 찾기' 토글 제거(대표 스크린샷). 기본값 SSOT `VOUCHERS_DEFAULT_CATEGORY`,
+  워커 시드 `VOUCHERS_DEFAULT_SEED_PATH`(예열 키 재사용), 서버 첫 화면도 같은 제목·로고 줄 예약.
+  ⚠️ E4: 배포 뒤 폰 `/vouchers` 첫 방문 — 커피/음료 칩이 선택돼 있고 로고 줄이 뜨는지, `/api/products` 가 **0~1회**인지.
+
 ## 이번에 틀렸던 판단
+- 로고 줄 가드가 PC 사이드바의 같은 `orderedBrands.map` 에 걸려 모바일 줄을 지워도 통과했다 → 모바일 블록 안에서만 보도록.
 - 얼굴 배경을 `bg-brand-tint` 로 두었다가 a3-p1 가드(헤더의 채운 색 면은 `관리` 하나)가 잡았다 → `bg-wash`.
 
 ## 남은 결정
