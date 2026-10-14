@@ -47,10 +47,12 @@ export default [
     test: T,
   },
   {
+    // 🔁 2026-10-14 재조준 — 앵커에서 줄표가 빠졌다(#79). 불변식(가게명을 두 번 말하지
+    //    않는다 · 두 분기 중 하나만 고치면 할인 중인 딜에서 되살아난다)은 그대로다.
     name: '🏪 할인 분기만 되돌린다 — 한 문장만 고치면 새는 자리',
     why: '설명 문장이 **둘**(할인 있음/없음)이다. 할인 중인 딜에서만 중복이 되살아나면 평상시 측정에 안 잡힌다.',
     file: META,
-    find: '      ? `🎉 ${discount}% 할인! ${storeName} — ${priceStr}원에 유어딜에서 바로 구매`',
+    find: '      ? `🎉 ${discount}% 할인! ${storeName} ${priceStr}원에 유어딜에서 바로 구매`',
     replace: '      ? `🎉 ${discount}% 할인! ${store} ${name} — ${priceStr}원에 유어딜에서 바로 구매`',
     test: T,
   },

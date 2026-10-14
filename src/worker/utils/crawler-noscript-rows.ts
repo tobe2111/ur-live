@@ -194,7 +194,7 @@ export function rowLine(p: RegionSeedRow): Row | null {
   const price = d.price > 0 ? ` 판매가 ${won(d.price)}원${d.discount > 0 ? ` (${d.discount}% 할인)` : ''}` : ''
   // `alt` 는 **그 행의 이름 부분 그대로** 다(가격은 그림을 설명하지 않으므로 뺀다).
   const alt = parts.filter(Boolean).join(' ')
-  return { text: `${parts.filter(Boolean).join(' — ')}${price}`, href: rowHref(p), img: rowImg(p, alt) }
+  return { text: `${parts.filter(Boolean).join(', ')}${price}`, href: rowHref(p), img: rowImg(p, alt) }
 }
 
 /** 시드 문자열 → 행 배열. 모양이 다른 시드(배열 / `{products}`)를 둘 다 받는다. */

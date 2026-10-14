@@ -51,7 +51,38 @@ const MARKETING = new RegExp([
   //   (가드가 가리키는 페이지엔 문구가 없고, 문구가 있는 파일은 범위 밖).
   //   🔑 파일 목록이 아니라 **디렉터리 규칙**으로 둔다 — 새 문구 파일이 조용히 새지 않는다.
   '|src/shared/seo/[A-Za-z0-9-]+\\.ts$',
+  // 🌐 2026-10-14 — **메타 description·title 을 실제로 만드는 곳은 워커다.** 위 두 규칙은
+  //   `.tsx` 페이지와 `src/shared/seo/*.ts` 만 보는데, 검색결과에 그대로 뜨는 줄
+  //   (`/pass` 310 · `/stays` 49 · `/products` · `/u` · `/region` · 크롤러 본문)은
+  //   `src/worker/utils/*-ssr-meta.ts`·`*-noscript*.ts`·`*-first-screen.ts` 가 만든다.
+  //   실측(2026-10-14, Googlebot UA · sitemap 32모양 72표본): 그 생성기들에 줄표가 **11곳**
+  //   있었고 가드는 `em-dash 0` 을 보고하고 있었다 — 2026-10-13 블로그 시드에서 밟은
+  //   **"낡은 지도"** 와 같은 클래스다(가드가 가리키는 파일엔 문구가 없고, 문구가 있는 파일은 범위 밖).
+  //   🔑 **접미사 규칙**으로 둔다 — 이 레포의 문구 생성기는 전부 그 접미사를 쓰므로
+  //   새 생성기가 조용히 새지 않는다(아래 `COPY_BUILDER_FLOOR` 가 경로 낡음을 잡는다).
+  '|src/worker/utils/[A-Za-z0-9-]*(ssr-meta|noscript|first-screen|ssr-body|list-jsonld)\\.ts$',
+  // 🏨 숙소 유형 소개 문구 — **색인 49건의 meta description 꼬리**가 이 표에서 온다.
+  //   🩸 그 파일 머리말이 *"`check-anti-slop-copy` 는 이 파일을 본다"* 고 적어 뒀는데
+  //   **사실이 아니었다**(줄표를 주입해도 가드가 통과했다 — 2026-10-14 실측). 거짓 주장은
+  //   다음 세션이 없는 가드를 믿게 만든다 ⇒ 범위에 넣고 그 머리말도 고쳤다.
+  '|src/shared/stay-property-type\\.ts$',
 ].join(''))
+
+/**
+ * 🔒 **잠금 파일은 따로 센다** (2026-10-14).
+ *
+ * `src/worker/index.ts` 는 로딩 잠금표 파일이라 문자열 한 줄도 대표 승인이 필요하고, 그 안에
+ * 줄표가 **7곳** 있다(`/blog` 제목 · `/u` 설명 폴백 · 유어애즈 제목 · 내부 헬스체크 문구 ·
+ * 그리고 실측으로 **죽은 것 3곳**: `app.get('*')` 의 봇 OG 블록은 라이브에서 0건이다).
+ *
+ * 🔴 **총합 하나로 재면 안 된다.** 비잠금 0 과 잠금 7 을 더해 `emDash ≤ 7` 로 두면
+ * *"랜딩에 새로 생긴 줄표 한 개가 7 사이에 숨는다"* — 이 가드 머리말이 401건을 두고 경고한
+ * 바로 그 실패 모드다. ⇒ 카운터를 **둘로 나눈다**: 비잠금은 **0 고정**, 잠금은 **동결만**.
+ */
+// ⚠️ `^` 로 앵커하지 않는다 — 이 가드의 자기검사는 **임시 디렉터리**에 픽스처를 쓰고
+//    `path.relative(ROOT, …)` 가 `../../tmp/…/src/worker/index.ts` 를 주므로 앵커하면 자기검사가
+//    픽스처를 못 잡는다(실제로 그렇게 한 번 터졌다). 위 MARKETING 규칙들도 같은 이유로 앵커가 없다.
+const LOCKED_COPY = /src\/worker\/index\.ts$/
 const KO = /[가-힣]/
 
 function walk(d, out = []) {
@@ -71,14 +102,16 @@ function stripComments(src) {
 }
 
 export function scan(files) {
-  const hits = { emDash: [], sectionNum: [], koUpper: [] }
+  const hits = { emDash: [], lockedEmDash: [], sectionNum: [], koUpper: [] }
   for (const f of files) {
     const rel = path.relative(ROOT, f)
     if (SKIP.test(rel)) continue
     const src = fs.readFileSync(f, 'utf-8')
     const lines = src.split('\n')
+    const posix = rel.replace(/\\/g, '/')
     for (const [n, ln] of stripComments(src)) {
-      if (ln.includes('—') && MARKETING.test(rel.replace(/\\/g, '/'))) hits.emDash.push(`${rel}:${n}`)
+      if (ln.includes('—') && LOCKED_COPY.test(posix)) hits.lockedEmDash.push(`${rel}:${n}`)
+      else if (ln.includes('—') && MARKETING.test(posix)) hits.emDash.push(`${rel}:${n}`)
       // 라벨 배열의 섹션번호: ['01', '제목', …] 형태
       if (/\[\s*'0[1-9]'\s*,|\[\s*"0[1-9]"\s*,/.test(ln)) hits.sectionNum.push(`${rel}:${n}`)
       if (/\buppercase\b/.test(ln)) {
@@ -130,6 +163,17 @@ const FIXTURE_TS_BAD = `export const COPY = {
   '/partners': '매장 등록은 무료 — 판매되는 만큼만 수수료를 냅니다.',
 }
 `
+/* 🌐 워커 문구 생성기 픽스처 (2026-10-14) — 접미사 규칙이 좁아지면 **검색결과에 뜨는 줄**이
+   무검사로 돌아간다. 2026-10-14 까지가 그 상태였고 가드는 `em-dash 0` 을 보고하고 있었다. */
+const FIXTURE_WORKER_BAD = `export function buildDetailMeta(d) {
+  return { description: \`\${d.name} — \${d.price}원, 유어딜에서 할인가로 바로 구매\` }
+}
+`
+/* 🔒 잠금 파일 픽스처 — **비잠금 카운터로 새면 안 된다**(0 고정이 깨진다).
+   반대로 잠금 카운터에 안 담기면 동결이 풀린다. 둘 다 본다. */
+const FIXTURE_LOCKED_BAD = `const bt = '유어딜 블로그 — 이용권 가이드';
+export default bt
+`
 function selfTest() {
   const dir = fs.mkdtempSync(path.join(process.env.TMPDIR || '/tmp', 'slopcopy-'))
   try {
@@ -138,13 +182,20 @@ function selfTest() {
     const bad = path.join(dir, 'src/pages/AboutPage.tsx'); fs.writeFileSync(bad, FIXTURE_BAD)
     const ok = path.join(dir, 'src/pages/PartnersPage.tsx'); fs.writeFileSync(ok, FIXTURE_OK)
     const tsBad = path.join(dir, 'src/shared/seo/surface-copy.ts'); fs.writeFileSync(tsBad, FIXTURE_TS_BAD)
+    fs.mkdirSync(path.join(dir, 'src/worker/utils'), { recursive: true })
+    const wBad = path.join(dir, 'src/worker/utils/detail-ssr-meta.ts'); fs.writeFileSync(wBad, FIXTURE_WORKER_BAD)
+    const lBad = path.join(dir, 'src/worker/index.ts'); fs.writeFileSync(lBad, FIXTURE_LOCKED_BAD)
     const b = scan([bad]), o = scan([ok]), t = scan([tsBad])
+    const w = scan([wBad]), l = scan([lBad])
     const fail = []
     if (!b.emDash.length) fail.push('em-dash 를 못 잡는다')
     if (!b.sectionNum.length) fail.push('섹션번호를 못 잡는다')
     if (!b.koUpper.length) fail.push('한글 uppercase 를 못 잡는다')
     if (o.emDash.length || o.sectionNum.length || o.koUpper.length) fail.push('정상 코드를 오탐한다')
     if (!t.emDash.length) fail.push('문구 SSOT(.ts) 의 em-dash 를 못 잡는다')
+    if (!w.emDash.length) fail.push('워커 문구 생성기(*-ssr-meta.ts)의 em-dash 를 못 잡는다')
+    if (l.emDash.length) fail.push('잠금 파일이 **비잠금** 카운터로 샌다 (0 고정이 무의미해진다)')
+    if (!l.lockedEmDash.length) fail.push('잠금 파일의 em-dash 를 잠금 카운터에 안 담는다 (동결이 풀린다)')
     return fail
   } finally { fs.rmSync(dir, { recursive: true, force: true }) }
 }
@@ -172,7 +223,34 @@ if (seoCopyFiles.length < 8) {
   console.error('   (경로를 같이 옮길 것 — 안 그러면 소비자 표면 문구 전체가 무검사로 돌아간다)')
   process.exit(1)
 }
-const files = [...tsxFiles, ...seoCopyFiles]
+/* 🌐 2026-10-14 — 워커 문구 생성기 + 잠금 파일 + 숙소 문구 표.
+   `walk()` 는 `.tsx` 만 담으므로(위) 이 `.ts` 들은 **직접 넣어야** 스캔된다.
+   ⚠️ **바닥을 둔다**: 접미사 규칙에 걸리는 파일이 갑자기 적어지면 경로가 낡은 것이고,
+   그러면 0 건은 "깨끗하다" 가 아니라 "안 봤다" 다(이 레포가 반복해 당한 헛도는 가드). */
+const COPY_BUILDER_DIR = path.join(ROOT, 'src/worker/utils')
+const COPY_BUILDER_RE = /[A-Za-z0-9-]*(ssr-meta|noscript|first-screen|ssr-body|list-jsonld)\.ts$/
+const COPY_BUILDER_FLOOR = 8
+const copyBuilders = fs.existsSync(COPY_BUILDER_DIR)
+  ? fs.readdirSync(COPY_BUILDER_DIR).filter((f) => COPY_BUILDER_RE.test(f) && !/\.test\.ts$/.test(f))
+      .map((f) => path.join(COPY_BUILDER_DIR, f))
+  : []
+if (copyBuilders.length < COPY_BUILDER_FLOOR) {
+  console.error(`❌ anti-slop: 워커 문구 생성기를 ${copyBuilders.length}개만 찾았다 (바닥 ${COPY_BUILDER_FLOOR})`)
+  console.error('   src/worker/utils 가 옮겨졌거나 접미사 규칙이 낡았다 — 경로를 같이 옮길 것.')
+  console.error('   (안 그러면 검색결과에 뜨는 메타 문구 전체가 무검사로 돌아간다)')
+  process.exit(1)
+}
+const EXTRA_COPY = [
+  'src/worker/index.ts',            // 🔒 잠금 파일 — lockedEmDash 로 따로 센다
+  'src/shared/stay-property-type.ts', // 숙소 49건 meta description 의 꼬리 문구
+]
+for (const rel of EXTRA_COPY) {
+  if (!fs.existsSync(path.join(ROOT, rel))) {
+    console.error(`❌ anti-slop: ${rel} 가 없다 — 옮겼으면 이 목록도 같이 옮길 것(조용히 무검사가 된다).`)
+    process.exit(1)
+  }
+}
+const files = [...tsxFiles, ...seoCopyFiles, ...copyBuilders, ...EXTRA_COPY.map((r) => path.join(ROOT, r))]
 const hits = scan(files)
 /* ───────────────────────────────────────────────────────────────────────────
  * 📰 2026-10-13 — **블로그 시드 제목**은 이 가드가 구조적으로 못 보던 자리다.
@@ -211,14 +289,14 @@ if (!seed || seed.titles < 10) {
   process.exit(1)
 }
 
-const cur = { emDash: hits.emDash.length, sectionNum: hits.sectionNum.length, koUpper: hits.koUpper.length, blogSeedBodyEmDash: seed.bodyEm }
+const cur = { emDash: hits.emDash.length, lockedEmDash: hits.lockedEmDash.length, sectionNum: hits.sectionNum.length, koUpper: hits.koUpper.length, blogSeedBodyEmDash: seed.bodyEm }
 
 if (process.argv.includes('--rebaseline')) {
   fs.writeFileSync(BASELINE, JSON.stringify({
     _comment: 'anti-slop 문구·라벨 허용 상한(래칫). 줄이면 --rebaseline 으로 갱신.',
     _measured: new Date().toISOString().slice(0, 10), ...cur,
   }, null, 2) + '\n')
-  console.log(`✅ anti-slop: 기준 갱신 — em-dash ${cur.emDash} · 섹션번호 ${cur.sectionNum} · 한글 uppercase ${cur.koUpper} · 블로그 본문 em-dash ${cur.blogSeedBodyEmDash}`)
+  console.log(`✅ anti-slop: 기준 갱신 — em-dash ${cur.emDash} · 잠금파일 em-dash ${cur.lockedEmDash} · 섹션번호 ${cur.sectionNum} · 한글 uppercase ${cur.koUpper} · 블로그 본문 em-dash ${cur.blogSeedBodyEmDash}`)
   process.exit(0)
 }
 
@@ -238,7 +316,7 @@ if (seed.bodyEm > (base.blogSeedBodyEmDash ?? 0)) {
   bad = true
   console.error(`❌ anti-slop: 블로그 시드 본문 em-dash 가 늘었다 → ${seed.bodyEm}건 (줄이는 건 자유, 늘리는 건 막는다)`)
 }
-for (const [k, ko] of [['emDash', 'em-dash(—) 사용자 문구'], ['sectionNum', '섹션번호 뱃지(01/02…)'], ['koUpper', '한글 라벨에 uppercase']]) {
+for (const [k, ko] of [['emDash', 'em-dash(—) 사용자 문구'], ['lockedEmDash', 'em-dash(—) 잠금 파일(worker/index.ts)'], ['sectionNum', '섹션번호 뱃지(01/02…)'], ['koUpper', '한글 라벨에 uppercase']]) {
   if (cur[k] > (base[k] ?? 0)) {
     bad = true
     console.error(`❌ anti-slop: ${ko} ${base[k] ?? 0} → ${cur[k]} (신규 ${cur[k] - (base[k] ?? 0)}건)`)
@@ -251,4 +329,4 @@ if (bad) {
   console.error('   의도적이면 그 줄에 `anti-slop-ok` 주석.')
   process.exit(1)
 }
-console.log(`✅ anti-slop: em-dash ${cur.emDash}(≤${base.emDash}) · 섹션번호 ${cur.sectionNum}(≤${base.sectionNum}) · 한글 uppercase ${cur.koUpper}(≤${base.koUpper}) · 블로그 제목 em-dash ${seed.titleEm.length}(=0) · 블로그 본문 ${seed.bodyEm}(≤${base.blogSeedBodyEmDash ?? 0})`)
+console.log(`✅ anti-slop: em-dash ${cur.emDash}(≤${base.emDash}) · 잠금파일 ${cur.lockedEmDash}(≤${base.lockedEmDash ?? 0}) · 섹션번호 ${cur.sectionNum}(≤${base.sectionNum}) · 한글 uppercase ${cur.koUpper}(≤${base.koUpper}) · 블로그 제목 em-dash ${seed.titleEm.length}(=0) · 블로그 본문 ${seed.bodyEm}(≤${base.blogSeedBodyEmDash ?? 0})`)

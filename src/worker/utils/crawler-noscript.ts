@@ -259,7 +259,7 @@ export function buildCuratorNoscript(
     const st = String(store || '').trim()
     const pr = Number(price) || 0
     const tail = [st, pr > 0 ? `${won(pr)}원` : ''].filter(Boolean).join(' · ')
-    return `<li>${esc(n)}${tail ? ` — ${esc(tail)}` : ''}</li>`
+    return `<li>${esc(n)}${tail ? `, ${esc(tail)}` : ''}</li>`
   }
   const pins = (Array.isArray(seed.pins) ? seed.pins : [])
     .filter((x): x is NonNullable<NoscriptCuratorSeed['pins']>[number] & object => !!x)

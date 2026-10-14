@@ -24,11 +24,23 @@ export default [
     name: '🧾 `/vouchers` 가 항목 허용목록에 들어간다(교환권 상세는 noindex 인데)',
     file: B,
     // 🏨 2026-10-12 재조준: 허용목록에 `/stays` 가 들어갔다(그 상세는 색인 대상이다).
-    //   결함은 그대로 — 교환권을 더해 noindex 상세를 목록 항목으로 제출한다.
-    find: "  const ITEM_PATHS = new Set(['/', '/browse', '/stays'])",
-    replace: "  const ITEM_PATHS = new Set(['/', '/browse', '/stays', '/vouchers'])",
+    // 🗺️ 2026-10-14 재조준: `/map` 도 들어갔다. **결함은 두 번 다 그대로** — 교환권을 더해
+    //   noindex 상세를 목록 항목으로 제출한다. 허용목록은 자라므로 이 앵커는 또 낡을 것이고,
+    //   그때도 지우지 말고 `, '/vouchers'` 를 더하는 형태로 재조준할 것.
+    find: "  const ITEM_PATHS = new Set(['/', '/browse', '/stays', '/map'])",
+    replace: "  const ITEM_PATHS = new Set(['/', '/browse', '/stays', '/map', '/vouchers'])",
     test: TEST,
     why: '교환권 상세는 2026-07-07 결정으로 noindex 다. 목록이 그 URL 들을 항목으로 내밀면 안 된다.',
+  },
+  {
+    // 🗺️ 2026-10-14 — `/map` 은 크롤러 본문에서 **이미 그 항목들을 링크하고 있었는데**
+    //   `ItemList` 만 0건이었다(라이브 실측 `<a href="/pass/…">` 8건). 그 누락으로 되돌린다.
+    name: '🗺️ `/map` 을 항목 허용목록에서 뺀다(링크는 있는데 구조화 신호만 0건으로 회귀)',
+    file: B,
+    find: "'/browse', '/stays', '/map'])",
+    replace: "'/browse', '/stays'])",
+    test: TEST,
+    why: '본문이 링크하는 항목을 "이 목록의 항목" 이라고 말하지 않으면 리치결과 후보에서 빠진다 — 에러는 안 난다.',
   },
   {
     name: '🧾 항목 허용목록이 사라진다(아무 표면이나 항목을 낸다)',
@@ -105,10 +117,14 @@ export default [
   {
     name: '🛍️ 유어샵 빵부스러기에 없는 `/u` 단계를 넣는다',
     file: B,
-    // 🔀 2026-10-14 재조준 — 루트를 `withCrumbRoot` 가 붙이게 되어(상세 빌더 셋과 같은 함수)
+    // 🔀 2026-10-14 재조준 ① — 루트를 `withCrumbRoot` 가 붙이게 되어(상세 빌더 셋과 같은 함수)
     //   손으로 적던 루트 줄이 사라졌다. 결함(없는 `/u` 단계)과 불변식은 한 글자도 안 바꿨다.
-    find: "const trail = withCrumbRoot(origin, [{ name, url: meta.canonical }])",
-    replace: "const trail = withCrumbRoot(origin, [{ name: '유어샵', url: `${origin}/u` }, { name, url: meta.canonical }])",
+    // 🩸 재조준 ② (같은 날) — 같은 파일에 **가게 유어샵 빌더**(`buildSellerShopJsonLd`, #80)가
+    //   생기면서 이 한 줄이 **두 곳에 맞게** 됐다(같은 틀을 베꼈으니 같은 줄이 생긴다).
+    //   ⇒ 개인 유어샵 전용인 `person` 줄과 묶어 유일 앵커로. **같은 틀을 복제하면 주입 앵커도
+    //   겹친다**고 전제할 것 — 이 세션에서 내 새 주입도 똑같이 걸렸다.
+    find: "    const trail = withCrumbRoot(origin, [{ name, url: meta.canonical }])\n    const person:",
+    replace: "    const trail = withCrumbRoot(origin, [{ name: '유어샵', url: `${origin}/u` }, { name, url: meta.canonical }])\n    const person:",
     test: TEST,
     why: '`/u` 는 라우트가 없다 — 빵부스러기가 404 를 가리키면 그 자체가 품질 신호를 깎는다.',
   },

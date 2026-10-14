@@ -289,7 +289,7 @@ export function resolveRegionSeo(
 
   // `/region` 허브
   if (!sidoRaw) {
-    const t = withSiteName('지역별 이용권·동네딜 — 우리 동네 할인 찾기', siteName)
+    const t = withSiteName('지역별 이용권·동네딜 - 우리 동네 할인 찾기', siteName)
     return {
       pageTitle: t,
       title: t,

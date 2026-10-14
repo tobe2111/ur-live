@@ -169,7 +169,7 @@ export function buildVouchersFirstScreen(seedJson: string, loaderHtml: string, n
 
   const body =
     `<div class="${C.page}">` +
-    `<h1 class="sr-only">교환권 — 인기 브랜드 기프티콘을 딜로 즉시 구매</h1>` +
+    `<h1 class="sr-only">교환권 - 인기 브랜드 기프티콘을 딜로 즉시 구매</h1>` +
     `<div class="${C.topBar}"><div class="${C.topRow}"><span class="${C.topTitle}">교환권</span></div></div>` +
     `<div class="${C.reveal}" style="transform:translateY(0);transition:transform 0.25s ease;will-change:transform">` +
     `<div class="${C.balanceWrap}"><div class="${C.balanceBar}">` +

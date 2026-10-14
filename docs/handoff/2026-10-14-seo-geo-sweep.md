@@ -4,29 +4,60 @@
 
 ## 🚩 다음 세션의 첫 액션
 
-```bash
-# ① PR #1791 이 머지됐는지 (auto-merge 걸려 있다)
-gh api repos/tobe2111/ur-live/pulls/1791 --jq '{state,mergeable,merge_state:.mergeable_state,head:.head.sha}'
+`#1791` 은 **머지됐다**(`75bea667e`). `#73` 은 **PR #1808**(draft)로 올렸고, `#79`(줄표)는 그 뒤 커밋이다.
 
-# ② 머지됐으면 E4 — 아래 셋을 라이브에서 **파싱해서** 판정한다(문자열 개수로 판정하지 말 것)
+```bash
+# ① PR 상태
+gh api repos/tobe2111/ur-live/pulls/1808 --jq '{state,mergeable,merge_state:.mergeable_state,head:.head.sha}'
+
 UA='Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
-#  #72 빵부스러기 — item 1·2 가 서로 다른 URL 인지 + 루트 이름이 전 표면에서 `유어딜` 하나인지
-curl -sS -A "$UA" https://urdeal.kr/pass/2823 | python3 -c "
+IPH='Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
+
+# ② E4 #79 (줄표) — 색인 365건의 스니펫에서 줄표가 사라졌는지. **표면별로** 센다.
+for p in /pass/2490 /pass/2823 /products/2917 /region /u/user40 /vouchers; do
+  printf '%-18s ' "$p"
+  curl -sS -A "$UA" "https://urdeal.kr$p" | python3 -c "
+import sys,re
+h=sys.stdin.read()
+t=(re.search(r'<title>(.*?)</title>',h,re.S) or [None,''])[1]
+d=re.findall(r'<meta[^>]+name=\"description\"[^>]*content=\"([^\"]*)\"',h)
+print('줄표', ('T' if '\u2014' in t else '') + ('D' if d and '\u2014' in d[0] else '') or '0', '|', t[:40], '|', (d[0] if d else '')[:60])"
+done
+#  🔴 **반대 방향도 본다** — 줄표를 빼면서 구분자를 통째로 잃지 않았는지:
+#     /pass 설명에 가게명·상품명·가격이 전부 남아야 하고 /region 제목에 ` - ` 가 있어야 한다.
+
+# ③ E4 #80 (가게 유어샵 구조화 데이터) — ld 블록이 1 → 2 가 됐는지, 종류가 맞는지
+for p in /s/store_muxlddtf74b /profile/store_muxlddtf74b /u/jiwon1228; do
+  printf '%-30s ' "$p"
+  curl -sS -A "$UA" "https://urdeal.kr$p" | python3 -c "
 import sys,re,json
-for m in re.finditer(r'<script[^>]*application/ld\+json[^>]*>(.*?)</script>', sys.stdin.read(), re.S):
-    d=json.loads(m.group(1))
-    for n in (d.get('@graph') or [d]):
-        if n.get('@type')=='BreadcrumbList':
-            print([(i['position'],i['name'],i['item']) for i in n['itemListElement']])"
-#  #74 가게 정본 — /s/ 와 /profile/ 이 **같은 하나**를 가리키는지
-for p in /s/store_mux /profile/store_mux; do curl -sS -A "$UA" "https://urdeal.kr$p" | grep -o 'rel="canonical"[^>]*'; done
-#  #75 숙소 문구 — cron(04:20 KST) 1회 뒤 줄표가 사라졌는지
-curl -sS 'https://urdeal.kr/api/group-buy/stays/2732' | python3 -c "import sys,json;d=json.load(sys.stdin)['data']['product'];print(repr(d.get('description'))[:200])"
+h=sys.stdin.read(); bl=re.findall(r'<script[^>]*application/ld\+json[^>]*>(.*?)</script>',h,re.S)
+ts=[]
+for b in bl:
+    try: d=json.loads(b)
+    except Exception: ts.append('PARSE_FAIL'); continue
+    ts += [n.get('@type') for n in (d.get('@graph') or [d]) if isinstance(n,dict)]
+print('블록',len(bl),ts)"
+done
+#  기대: /s/ · /profile/ 둘 다 블록 2 → [Organization,WebSite] + [BreadcrumbList,ProfilePage,ItemList]
+#  🔴 반대 방향 — `Person` 이 **0건**이고(가게는 사람이 아니다) 빵부스러기가 `/s` 를 안 가리키는지.
+
+# ④ E4 #73 (JSON-LD 중복) — 아이폰 UA 로 **렌더**해서 `[data-rh]` 가 0 인지.
+node scripts/visual-preview.mjs --route=/pass/2823 --ua=iphone 2>/dev/null | tail -5
+#  (렌더 하네스가 없으면: 그 파일이 쓰는 방식대로 Playwright 로 띄워 아래를 센다)
+#     document.querySelectorAll('script[type="application/ld+json"]').length        → 서버 노드만
+#     document.querySelectorAll('script[type="application/ld+json"][data-rh]').length → **0**
+#  🔴 반대 방향 — 서버가 **안 내는** 종류(클라 전용 노드)가 사라지지 않았는지도 함께 볼 것.
+
+# ⑤ E4 #75 (숙소 문구) — cron(04:20 KST) 1회 뒤
+curl -sS 'https://urdeal.kr/api/group-buy/stays/2732' | python3 -c "import sys,json;d=json.load(sys.stdin)['data']['product'];print(repr(d.get('description_full'))[:200])"
 ```
 
 ⚠️ **#75 는 cron 이 한 번 돌아야 판정된다**(일일 티어 04:20 KST). 그 전에 재면 옛 문장이 그대로이고
 그것은 회귀가 아니다. 돌았는지는 어드민 `GET /api/admin/cron-heartbeats` 의 `scheduled-cleanup` +
 그 회차 `results.stay_desc_healed` 로 본다.
+
+✅ **#72·#74 는 머지 후 라이브로 판정했다**(아래 2차 스윕 표) — 다시 재지 말 것.
 
 ## ✅ 이번 세션 완료분
 
@@ -41,7 +72,11 @@ curl -sS 'https://urdeal.kr/api/group-buy/stays/2732' | python3 -c "import sys,j
 | — | CI 빨강 수리(🩸 ②) | `57a377e0d` |
 | 78 | `/urshorts` 가 색인 대상인데 **내부 링크 0** — 딜이 붙은 행을 그 딜로 링크 | 이 커밋 |
 | 49 | (판정 종결) `Product.brand` — `/pass`·`/stays` 는 **이미 낸다** · `/products` 는 **일부러 안 낸다**(셀러 ≠ 브랜드) | 코드 변경 없음 |
-| 73 | 한 문서에 같은 `@type` 두 벌(서버 + react-helmet) — 약 380 URL. `SEO.tsx` 에서 거른다 | 이 커밋 |
+| 73 | 한 문서에 같은 `@type` 두 벌(서버 + react-helmet) — 약 380 URL. `SEO.tsx` 에서 거른다 | PR #1808 |
+| 79 | **줄표(em-dash)가 색인 365건의 검색 스니펫에** — 가드 범위가 워커 문구 생성기를 안 봤다 | 이 커밋 |
+| 80 | **가게 유어샵(`/s/:username`)에 구조화 데이터 0건** — 개인 유어샵은 ProfilePage+ItemList 를 낸다 | 이 커밋 |
+| 81 | **`/map` 이 본문에서 8건을 링크하는데 `ItemList` 는 0건** — 형제 `/stays` 와 같은 클래스의 누락 | 이 커밋 |
+| 45 | (판정 종결) 로고·유달이가 구글 이미지에 — **코드 결함 아님**(아래 2차 스윕 표) | 코드 변경 없음 |
 
 앞서 머지된 것들: `#1789`(제목·alt 표 SSOT) · `#1785`(sitemap↔색인의도↔본문 짝 전수) ·
 `#1783`(법정문서 본문) · `#1778`(thin URL 두 갈래 + 공개 API 수수료율 차단).
@@ -85,6 +120,17 @@ curl -sS 'https://urdeal.kr/api/group-buy/stays/2732' | python3 -c "import sys,j
 | `Vary: User-Agent` 없음 | HTML 은 `cf-cache-status: DYNAMIC` + `cache-control: no-cache` = **아무도 캐시하지 않는다** ⇒ UA 로 문서가 갈려도 섞일 경로가 없다 | 비결함 |
 | sitemap thin 4건 | `/browse` 60자·`/products/2917` 46자 → 라이브 쇼핑 상품이 **1건**이라 그렇다(데이터 사실) · `/u/user40` 58자 → 핀 1개(설계대로 본문 생성) · `/s/store_mux…` 22자 → **이 PR 의 #70 이 아직 라이브에 없다** | 비결함 |
 | `/region` 허브 `ItemList` 0 | 다른 목록은 다 내는데 허브만 없다. 다만 항목이 **지역 페이지**라 리치결과 가치가 거의 없고 링크 11개는 이미 있다 ⇒ **안 한다**(가치 < 코드) | 보류 |
+| **canonical 자기일치 전수** | sitemap **32모양 40표본** 전부 `200` · canonical **정확히 1개** · 자기 자신 · `og:image` 보유 · `index, follow, max-image-preview:large` | 깨끗 (짝 주장 성립) |
+| **og:image 실바이트** | 고유 **8종 전부** `200` + `image/*` + 9KB~100KB (카카오 스크래퍼 UA) | 깨끗 |
+| **`X-Robots-Tag` 헤더** | 색인 대상 9표면 + sitemap 에 **전부 없음**(메타만 쓴다) | 깨끗 — 조용한 색인 차단 0 |
+| **제목·설명 중복** | 32모양 **72표본**에서 제목 중복 0 · 설명 중복 0 | 깨끗 |
+| **`Product` 상품 필드** | `/pass`·`/stays` 는 `brand`+`offers`(url·availability·availableAtOrFrom) 완비 · `aggregateRating` 은 **리뷰 있을 때만**(지어내지 않는다) | 깨끗 |
+| `sku`·`gtin`·`priceValidUntil`·`itemCondition` | **일부러 안 낸다** — 이용권·숙소는 SKU 체계가 없고 `priceValidUntil` 은 지키지 못할 날짜를 지어내는 것이다 | 비결함 |
+| `hasMerchantReturnPolicy`·`shippingDetails` | 구조화 데이터로 환불·배송 정책을 **선언**하는 것인데, `/refund` 본문 자체가 결재 대기(#25 — 남의 서비스 약관이 떠 있다)다. 틀린 정책을 기계가 읽는 형태로 발행하는 쪽이 더 나쁘다 ⇒ **#25 결정 뒤** | 보류(#25 선행) |
+| **#45 로고·유달이가 구글 이미지에** | ① `Organization.logo` = `/icon-512.png` → **200 · 186,948B**(실존) ② robots 가 `/assets`·`/icon-*` 을 **안 막는다**(`Googlebot-Image` 로 마스코트 200 · 12,540B) ③ 크롤러 문서에 마스코트 `<img>` 가 **전 표면에 있다** ④ 그런데 `alt` 가 **비어 있고 그게 의도다** — 그건 로딩 스피너이고 장식이다(CLAUDE.md 가 그렇게 적어 뒀다) ⑤ 로고 워드마크는 **그림이 아니라 글자**다(봇 문서 인라인 `<svg>` **0개**) | **비결함** — 구조화 데이터로 되는 일이 아니다. 로딩 스피너에 설명 `alt` 를 달면 접근성 결정을 되돌리는 것이고, 브랜드 존재감의 레버는 구글 이미지가 아니라 **지식 패널**(이미 `Organization.logo` 보유)이다 |
+| `/products/:id` `brand` 없음 | 라이브 쇼핑 상품 1건의 `brand_name` 이 **null**(데이터 사실) · 빌더는 값이 있으면 낸다 | 비결함 |
+| `app.get('*')` 봇 OG 블록 | `/products`·`/u`·`/blog` 지문을 라이브에서 세니 **0건** — HTMLRewriter 경로가 이긴다(CLAUDE.md 2026-07-01 기록과 일치). 그 안의 `유어딜 블로그 — 라이브 커머스 가이드`(영구중단 기능)도 **서빙되지 않는다** | 죽은 코드 (삭제는 잠금 파일이라 별건) |
+| **#78 E4 (라이브)** | `/urshorts` 에 `<a href="/pass/…">` **2건** · 앵커 글자가 `쌀국수 + 분짜 2인 세트 판매가 23,400원 (13% 할인)` · `/vouchers/`·`/products/` **0건**(반대 방향) | ✅ 통과 |
 
 ## 🧬 #73 처방 — 왜 `SEO.tsx` 에서 걸렀나
 
@@ -118,6 +164,36 @@ AI 검색봇이 **모든 표면에서 정확히 +151자**를 받는다고 읽고
 나머지는 전부 *우리 빌더 출력*을 재므로 주석이 없다). **HTML 본문을 잴 때는 주석을 먼저 지운다.**
 이 세션 세 번째 측정 오류다(앞의 둘: 기억으로 인용한 이미지 속도 · 중첩 `@type` 계수).
 
+## 🩸 3차 스윕에서 틀린 것 / 거짓 주장을 내가 썼다
+
+1. **`stay-property-type.ts` 머리말이 거짓이었다.** 어제(같은 날) 내가 그 파일에
+   *"`check-anti-slop-copy` 는 이 파일을 본다"* 고 적어 뒀는데 **사실이 아니었다** — 줄표를
+   주입해도 가드가 `em-dash 0` 으로 통과했다(실측). 그 가드의 범위는 `.tsx` + `src/shared/seo/*.ts`
+   뿐이고 그 파일은 `src/shared/` 최상위다. ⇒ 범위에 **실제로** 넣고 머리말을 정정했다.
+   🧭 **"가드가 본다" 고 적을 때는 주입해서 확인할 것.** 거짓 주장은 다음 세션이 없는 가드를 믿게 만든다.
+2. **내 새 시험의 바닥 단언이 헛돌았다.** `COPY_BUILDER_FLOOR` 를 `\d+` 로만 봤는데 **`= 0` 도 숫자다** —
+   주입이 바닥을 0 으로 내려도 통과했다. 바닥의 일은 "몇 개여야 한다" 가 아니라 **디렉터리가
+   통째로 사라진 것을 잡는 것**이고 0 이면 그걸 못 한다 ⇒ 숫자를 꺼내 `>= 5` + `<= 실제 개수`로.
+3. **시험 픽스처를 두 번 지어 썼다.** ⓐ 유어샵 핀은 **평평한 `product_name`** 인데 `name` 으로 썼고
+   (그 파일 머리말이 **바로 그 함정을 경고**하고 있었다) ⓑ `buildCuratorNoscript` 는 **객체**를 받는데
+   `JSON.stringify` 를 넘겼다(문자열을 받는 건 `curatorNoscriptFromPayload` 다). 둘 다 **에러 없이
+   `''` 를 돌려주므로** 단언이 빈 문자열을 검사하게 된다. ⇒ **시드 모양은 기억이 아니라 타입에서.**
+4. **가드 findings 는 stderr 다.** 주입 시험을 `e.stdout` 으로 판정했더니 늘 빈 문자열이라
+   "무엇 때문에 빨간불인지" 를 못 봤다 ⇒ stdout+stderr 합본을 보는 `runGuard()` 헬퍼로.
+5. **`ls public/*.png | head` 로 파일이 없다고 오판할 뻔했다.** `Organization.logo` 가
+   `/icon-512.png` 인데 그 목록에 안 보여 "없는 파일을 가리킨다" 로 읽었다. 실제로는 존재하고
+   **라이브 200**이다(`head -12` 가 잘랐을 뿐). ⇒ **파일 부재는 목록이 아니라 조회로 판정할 것.**
+6. **기존 시험이 두 가지로 낡아 있었고, 내 `/map` 변경이 그걸 드러냈다.**
+   `surface-list-jsonld` 의 *"항목을 내는 표면은 `/`·`/browse` 뿐"* 이 **2026-10-12 에 `/stays` 가
+   허용목록에 들어간 뒤에도 초록**이었다 — 그 줄이 통과한 이유가 고약하다: 픽스처가 식사권 **1건**
+   이라 `/stays` 의 `keepItem` 에 **어차피 걸러졌다**(= 허용목록에서 `/stays` 를 빼도 결과가 같다
+   ⇒ 그 줄로는 아무것도 판정되지 않았다). 🧭 **허용목록을 시험할 때는 표면마다 "항목이 생길 수
+   있는" 시드를 줘야 한다** — 그러지 않으면 데이터 탓으로 헛돈다(이 레포가 2026-10-11 에 같은
+   자리에서 값을 치렀고 그 교훈이 바로 윗줄 주석에 적혀 있었는데도 다시 났다).
+   ⇒ 지우지 않고 재조준(허용목록 **넷**을 동작으로 세고, 숙소 행을 함께 넣어 "어차피" 를 없앴다)
+   + `/map` 전용 시험 하나 + 주입 하나. 그리고 그 변경이 기존 주입 앵커(`/vouchers`)를 또 낡게
+   만들어 그것도 재조준했다 — **허용목록은 자라므로 이 앵커는 또 낡는다.**
+
 ## ⏳ 남은 결정 / 대기 (대표 판단)
 
 - **#76 IndexNow 켜기** — 코드는 완성, 게이트 OFF. 대시보드 → ur-live → Settings → Variables →
@@ -126,6 +202,31 @@ AI 검색봇이 **모든 표면에서 정확히 +151자**를 받는다고 읽고
 - **#31 결재** — `/pass/:id` 공유 카드 SVG → 사진 한 장?
 - **#35 결재** — `/pass/:id` 310건 검색 제목의 "공동구매" 문구 + 꼬리 가게명
 - **#68 결재** — `twitter:site` 가 없는 계정(@urdeal_kr · @utongstart)을 가리키는가
+
+**🔒 `SellerPublicPage.tsx` 의 `Person` JSON-LD (대표 판단)** — 가게 유어샵 화면이 자기
+`<SEO jsonLd>` 로 `@type: 'Person'` 을 내는데 ① **가게는 사람이 아니다** ② `url` 이 **비정본**
+`/profile/:username` 이다(2026-10-14 #74 로 정본은 `/s/:username` 이 됐다). 그 파일은 **로딩
+잠금표**(잠긴 항목: `__SSR_INITIAL_SELLER__` 즉시 소비)라 객체 리터럴 한 줄도 승인이 필요하다.
+🔑 **크롤러에는 도달하지 않는다** — 봇 UA 는 스크립트 없는 문서를 받아 React 가 돌지 않는다
+(2026-10-14 실측). 그래서 지금 손해는 **GEO 쪽뿐**이고(AI 검색봇·사람은 JS 를 돌린다),
+2026-10-14 의 중복 제거(`jsonld-dedupe`)도 **종류가 안 겹쳐서** 안 지운다.
+⇒ 고치는 방법 둘: ⓐ 그 블록을 지운다(서버가 #80 으로 같은 일을 더 정확히 한다) ⓑ `@type` 을
+`ProfilePage` 로 바꿔 중복 제거가 삼키게 한다. **ⓐ 가 낫다** — 서버 노드가 정본 URL 과
+`Organization` 을 이미 들고 있으므로 클라가 같은 말을 할 이유가 없다.
+
+**🔒 잠금 파일에 남은 줄표 3곳 (대표 판단)** — `src/worker/index.ts` 는 로딩 잠금표 파일이라
+문자열 한 줄도 승인이 필요하다. 지금은 **동결만** 해 뒀다(`anti-slop-baseline.json` 의
+`lockedEmDash: 7` + 사유). 라이브에서 보이는 것은 셋이다:
+
+| 줄 | 무엇 | 라이브 |
+|---|---|---|
+| `:832` | `/blog` **제목** `유어딜 블로그 — 이용권·교환권·동네딜·유어샵 가이드` | 보인다(검색결과 제목) |
+| `:902` | `/u/:handle` 설명 폴백 `{이름}님의 추천 — 교환권·이용권 모음` | 보인다(소개 없는 유어샵 2건) |
+| `:790` | 유어애즈 랜딩 제목 `유어애즈 UR Ads — 네이버 검색광고 …` | 보인다 |
+
+나머지 넷은 **고칠 필요가 없다**: `:1238` 은 내부 헬스체크 문구, `:2403`·`:2415`·`:2459` 는
+라이브 실측 **0건인 죽은 코드**(`app.get('*')` 봇 OG 블록). 셋을 고치려면 `[UNLOCK_LOADING]`
+audit log 1줄 + 승인이면 되고, 줄 수는 안 늘어난다(문자열만).
 
 ## 🔭 아직 안 재 본 각도 (다음 스윕 후보)
 

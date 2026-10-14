@@ -79,8 +79,10 @@ export default [
     //    앵커가 모호했다 ② 그래서 **앞 줄에 `image:` 를 더했더니** 뒤따르는 스프레드가 그 키를
     //    덮어써 **행동이 안 바뀌고 가드가 통과**했다(객체 리터럴에서 나중 스프레드가 이긴다).
     //    ⇒ 스프레드 **자체**를 바꾼다. 쇼핑 빌더의 description 줄과 묶어 유일 앵커로.
-    find: "      description: (String(d.description || '') || `${name} — 유어딜`).replace(/\\s+/g, ' ').trim().slice(0, 300),\n      ...(d.image_url ? { image: [photo] } : {}),",
-    replace: "      description: (String(d.description || '') || `${name} — 유어딜`).replace(/\\s+/g, ' ').trim().slice(0, 300),\n      ...(d.image_url ? { image: [productShareImage(photo, origin)] } : {}),",
+    // 🔁 2026-10-14 재조준 — 앵커의 설명 폴백에서 줄표가 쉼표로 바뀌었다(#79). 지키려던 것
+    //    (JSON-LD `Product.image` 는 **원본**이고 소셜 카드와 두 축이다)은 한 글자도 안 바뀌었다.
+    find: "      description: (String(d.description || '') || `${name}, 유어딜`).replace(/\\s+/g, ' ').trim().slice(0, 300),\n      ...(d.image_url ? { image: [photo] } : {}),",
+    replace: "      description: (String(d.description || '') || `${name}, 유어딜`).replace(/\\s+/g, ' ').trim().slice(0, 300),\n      ...(d.image_url ? { image: [productShareImage(photo, origin)] } : {}),",
     test: TEST,
   },
   {

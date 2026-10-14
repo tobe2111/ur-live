@@ -192,7 +192,7 @@ export function buildDetailMeta(ssrPayload: string, origin: string, pathname: st
       //   판정·문구는 `shared/seo/detail-title.ts` 하나 — 클라(`VoucherDetailPage`)가 같은 함수를 쓴다.
       const title = voucherDetailTitle(name)
       const description = (String(d.description || '').replace(/\s+/g, ' ').trim().slice(0, 150))
-        || `${name} — 기프티콘 교환권을 유어딜에서 할인가로 구매하고 바로 사용하세요.`
+        || `${name} 기프티콘 교환권을 유어딜에서 할인가로 구매하고 바로 사용하세요.`
       return { pageTitle: title, title, description, canonical, ogImage: productShareImage(photo, origin), ogType: 'product', noindex: true, jsonLd: '' }
     }
 
@@ -204,8 +204,8 @@ export function buildDetailMeta(ssrPayload: string, origin: string, pathname: st
     //   `crawler-noscript` 가 교환권 목록에서 쓰던 그 규칙이고, 이 파일만 밖에 있었다.
     const storeName = storeNameJoin(store, name)
     const description = (discount > 0
-      ? `🎉 ${discount}% 할인! ${storeName} — ${priceStr}원에 유어딜에서 바로 구매`
-      : `${storeName} — ${priceStr}원, 유어딜에서 할인가로 바로 구매`).replace(/\s+/g, ' ').trim().slice(0, 200)
+      ? `🎉 ${discount}% 할인! ${storeName} ${priceStr}원에 유어딜에서 바로 구매`
+      : `${storeName} ${priceStr}원, 유어딜에서 할인가로 바로 구매`).replace(/\s+/g, ' ').trim().slice(0, 200)
 
     const available = d.group_buy_status === 'active' || d.group_buy_status === 'achieved'
     const product: Record<string, unknown> = {
@@ -323,7 +323,7 @@ export function buildStayDetailMeta(ssrPayload: string, origin: string, pathname
     const ratingStr = rating > 0 ? `⭐${rating.toFixed(1)} ` : ''
     const baseDesc = String(p.description_full || p.description || '').replace(/\s+/g, ' ').trim()
     const description = (`${ratingStr}${region ? region + ' ' : ''}${typeLabel} · ${priceStr}${baseDesc}`
-      || `${stayName} — 유어딜에서 숙소 이용권을 할인가로 예약하세요.`).trim().slice(0, 200)
+      || `${stayName}. 유어딜에서 숙소 이용권을 할인가로 예약하세요.`).trim().slice(0, 200)
 
     // 🏨 2026-10-12 [UNLOCK_LOADING] (대표 "둘 다 잠금 해제하고 가장 이상적으로"): **이 URL 이 정본이다.**
     //   실측으로 `/pass/:id`(숙소 이용권)와 `/stays/:id` 가 **같은 상품 id**를 각각 자기 canonical 로
@@ -429,13 +429,13 @@ export function buildProductMeta(ssrPayload: string, origin: string, pathname: s
 
     const pageTitle = `${name} - 유어딜`
     const description = (rate > 0
-      ? `🎉 ${rate}% 할인! ${name} — ${priceStr}${unit}, 유어딜에서 바로 구매`
-      : `${name} — ${priceStr}${unit}, 유어딜에서 할인가로 바로 구매`).replace(/\s+/g, ' ').trim().slice(0, 200)
+      ? `🎉 ${rate}% 할인! ${name} ${priceStr}${unit}, 유어딜에서 바로 구매`
+      : `${name} ${priceStr}${unit}, 유어딜에서 할인가로 바로 구매`).replace(/\s+/g, ' ').trim().slice(0, 200)
 
     const product: Record<string, unknown> = {
       '@context': 'https://schema.org', '@type': 'Product',
       name,
-      description: (String(d.description || '') || `${name} — 유어딜`).replace(/\s+/g, ' ').trim().slice(0, 300),
+      description: (String(d.description || '') || `${name}, 유어딜`).replace(/\s+/g, ' ').trim().slice(0, 300),
       ...(d.image_url ? { image: [photo] } : {}),
       ...(brand ? { brand: { '@type': 'Brand', name: brand } } : {}),
       // 💰 KRW 상품만 offer 가격 노출(딜 상품은 통화 스키마 부적합 → 가격 생략).
