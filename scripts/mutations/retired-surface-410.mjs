@@ -89,8 +89,11 @@ export default [
   {
     name: '🧨 sitemap 이 410 인 도매 URL 을 색인해 달라고 선언한다',
     file: 'src/worker/routes/sitemap.routes.ts',
-    find: "    { loc: '/browse', priority: 0.9, changefreq: 'daily' },",
-    replace: "    { loc: '/browse', priority: 0.9, changefreq: 'daily' },\n    { loc: '/wholesale', priority: 1.0, changefreq: 'daily' },",
+    // 🔀 2026-10-14 재조준 — 앵커였던 `/browse` 줄의 priority 가 0.9 → 0.5 로 바뀌었다(본문 43자
+    //   · 카탈로그 1건). **결함은 한 글자도 안 바꿨다** — 앵커를 이 파일에서 가장 안 흔들리는
+    //   홈 줄로 옮겼을 뿐이다.
+    find: "    { loc: '/', priority: 1.0, changefreq: 'daily' },",
+    replace: "    { loc: '/', priority: 1.0, changefreq: 'daily' },\n    { loc: '/wholesale', priority: 1.0, changefreq: 'daily' },",
     test: TEST,
     why: '색인 요청과 410 은 서로 반대 신호다 — 서치콘솔에 수집오류로 쌓이고 사이트맵 신뢰도가 깎인다.',
   },

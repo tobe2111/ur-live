@@ -59,7 +59,18 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
   const urls: Array<{ loc: string; priority: number; changefreq: string; image?: string; lastmod?: string }> = [
     // 정적 페이지
     { loc: '/', priority: 1.0, changefreq: 'daily' },
-    { loc: '/browse', priority: 0.9, changefreq: 'daily' },
+    // 🛍️ 2026-10-14 — 0.9 → 0.5. **본문이 43자**인데 우선순위가 `/stays`(0.85 · 439자)보다 높았다.
+    //   빌더 결함이 아니다 — 소비자 쇼핑 카탈로그가 실제로 **1건**이고(`/api/products?exclude_deal_only=1`
+    //   → total 1) 본문은 그 1건을 정확히 싣는다. 즉 **기계는 멀쩡하고 데이터가 없다**.
+    //   거기에 쇼핑 탭은 2026-07-10 대표 결정으로 **숨김**(`SHOPPING_TAB_HIDDEN`) 상태다 ⇒ 내비에서
+    //   치운 표면을 검색엔진에는 두 번째로 높은 우선순위로 밀어 넣고 있었다.
+    //   ⚠️ `noindex` 로 가리지 않는다 — 카탈로그가 늘면 본문도 **저절로** 늘어나는 자가 치유형이고,
+    //      색인을 버리면 쇼핑 재개 때 처음부터 쌓아야 한다(복구 수주). `/influencer/rankings`·
+    //      `/partnership` 에 쓴 noindex 는 **자가 치유되지 않는** 표면에 쓴 처방이다.
+    //   ⚠️ 문구로 메우는 길은 막혀 있다 — `BrowsePage.tsx` 에 옮길 산문이 **한 줄도 없다**(렌더되는
+    //      한글은 `가격대`·`상세보기`·`상품명, 브랜드명`·`상품이 없습니다` 네 라벨뿐).
+    //   롤백: 숫자 하나 환원(쇼핑 재개 시).
+    { loc: '/browse', priority: 0.5, changefreq: 'daily' },
     // 🚫 라이브커머스 영구중단(LIVE_COMMERCE_SUSPENDED) — /live·/shorts 는 sitemap 미노출(폐기 기능 URL 크롤 방지).
     // 🔎 2026-07-28 (네이버 수집 점검): '/search' 제거 — robots.txt 가 `Disallow: /search` 로 막는데
     //   사이트맵이 제출하고 있었음(상호 모순 → 서치어드바이저/서치콘솔 '수집제한' 오류 유발, 사이트맵
