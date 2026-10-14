@@ -55,12 +55,15 @@ async function waitFor(url, ms = 90000) {
 }
 
 const results = []
+const devLog = []
 const check = (name, pass, detail) => { results.push({ name, pass, detail }); console.log(`${pass ? '✅' : '❌'} ${name} — ${detail}`) }
 
 let dev = null
 let base = process.env.BASE
 if (!base) {
-  dev = spawn('npx', ['vite', '--port', '5199', '--strictPort'], { stdio: 'ignore', detached: false })
+  dev = spawn('npx', ['vite', '--port', '5199', '--strictPort'], { stdio: ['ignore', 'pipe', 'pipe'], detached: false })
+  // 🔎 실패 진단용 — vite dev 가 그동안 뭘 했는지(의존성 재최적화·리로드 등) 끝부분을 남긴다.
+  for (const st of [dev.stdout, dev.stderr]) st?.on('data', (d) => { devLog.push(String(d)); if (devLog.length > 200) devLog.shift() })
   base = 'http://localhost:5199'
   if (!await waitFor(base)) { console.error('vite dev 가 뜨지 않았다'); dev.kill(); process.exit(1) }
 }
@@ -243,6 +246,12 @@ try {
     await page.getByText(expect1, { exact: false }).first().waitFor({ timeout: 15000 }).catch(() => {})
     const seen = await page.getByText(expect1, { exact: false }).count().catch(() => 0)
     check(`[${name}] 렌더 + 런타임 에러 0`, seen > 0 && errs.length === 0, errs[0] || `"${expect1}" 확인`)
+    // 🔎 실패하면 그 자리에서 무엇이 떠 있었는지 남긴다 — CI 스크린샷은 꺼내기 어렵다(2026-10-14).
+    if (!(seen > 0 && errs.length === 0)) {
+      const diag = await page.evaluate(() => ({ url: location.pathname + location.search, text: (document.body?.innerText || '').replace(/\s+/g, ' ').slice(0, 400) })).catch((e) => ({ url: '?', text: String(e) }))
+      console.log(`   🔎 vite(끝 15줄):\n${devLog.join('').split('\n').slice(-15).join('\n')}`)
+      console.log(`   🔎 url=${diag.url}\n   🔎 text=${diag.text}\n   🔎 errs=${JSON.stringify(errs.slice(0, 3))}`)
+    }
 
     // 🔴 대시보드 라이트 고정 — 다크 클래스가 붙으면 정책 위반이다(check-dashboard-theme 의 렌더판).
     const isDark = await page.evaluate(() => document.documentElement.classList.contains('dark'))
