@@ -163,12 +163,22 @@ export function buildBlogListJsonLd(ssrPayload: string | null, origin: string, c
     if (!items.length) {
       return escapeScript(JSON.stringify({ '@context': 'https://schema.org', '@graph': [crumb] }))
     }
+    // 🧹 2026-10-14 — **같은 글을 두 벌 내던 것.** 라이브 실측: `/blog` 의 ld 블록이
+    //   **19,279바이트 = 문서의 61%**(총 20KB / 31KB)이고 `headline` 이 **40회**(고유 20편),
+    //   `Organization` 노드가 **42개**였다. `blogPost` 와 `mainEntity.itemListElement[].item` 이
+    //   **같은 BlogPosting 객체를 각각 통째로** 직렬화했기 때문이다.
+    //   ⚠️ 이 JSON 은 **사람이 받는 응답에도 그대로 실린다**(크롤러에게만 주면 구글 가이드 위반) —
+    //   즉 모든 방문자가 쓸모없는 10KB 를 더 받고 있었다. #73(`/pass` 서버+react-helmet 두 벌)과
+    //   같은 클래스의 다른 표면이다.
+    // 🔑 **`mainEntity` 쪽을 남긴다** — 소비자 표면 전부(`surface-list-jsonld.ts`)가
+    //    `ItemList` + 중첩 `item` + `numberOfItems` 한 벌로 돌고 있고, 블로그만 밖에 있었다.
+    //    `Blog` 는 name·description·url·publisher·isPartOf·mainEntity·breadcrumb 를 그대로 갖는다.
+    // 🔢 `numberOfItems` 도 그 표면들과 맞춘다(종전 선언 없음 — ItemList 권장 필드).
     const blog = {
       '@type': 'Blog', name, description, url: canonical,
       publisher: { '@id': `${origin}/#organization` },
       isPartOf: { '@id': `${origin}/#website` },
-      blogPost: items.map(it => it.item),
-      mainEntity: { '@type': 'ItemList', itemListElement: items },
+      mainEntity: { '@type': 'ItemList', numberOfItems: items.length, itemListElement: items },
       breadcrumb: { '@id': crumb['@id'] },
     }
     return escapeScript(JSON.stringify({ '@context': 'https://schema.org', '@graph': [blog, crumb] }))

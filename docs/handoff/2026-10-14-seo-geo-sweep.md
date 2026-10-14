@@ -438,8 +438,29 @@ audit log 1줄 + 승인이면 되고, 줄 수는 안 늘어난다(문자열만).
 | `/s/:username` 구조화 데이터 0 | PR #1808 의 ⑤가 **아직 머지 안 됨** | 라이브와 일관 |
 | `N명 함께 구매 중` 문구 자체 | 폐기된 것은 *"N명 더 모이면 할인 시작"*·마감 | **제 성급한 단정을 정정** |
 
-⏳ **아직 안 판 것**: `/blog` JSON-LD 가 문서의 **64%(20KB)** 이고 같은 글 20편을 **두 벌**
-(headline 40회 · Organization 노드 42개 · `numberOfItems` 선언 없음). `Blog.blogPost[]` 와
-`ItemList.itemListElement[].item` 이 각각 전체 `BlogPosting` 을 들고 있다 — #73 과 같은 클래스의
-다른 표면. 다음 세션 후보.
+### #86 · 블로그 목록 JSON-LD 가 같은 글 20편을 두 벌 (문서의 61%)
+
+**실측(Googlebot UA · 블록별)**
+
+      ld 블록 2개 · 총 20,078바이트 (문서 전체 31,475바이트 = 64%)
+        블록0    799바이트  Organization + WebSite (브랜드)
+        블록1 19,279바이트  Blog + BreadcrumbList
+      headline 40회 (고유 20편) · Organization 노드 42개 · numberOfItems 선언 없음
+
+`Blog.blogPost` 와 `Blog.mainEntity.itemListElement[].item` 이 **같은 BlogPosting 객체를 각각
+통째로** 직렬화했다. ⚠️ **이 JSON 은 사람이 받는 응답에도 그대로 실리므로**(크롤러에게만 주면
+구글 가이드 위반) 모든 방문자가 쓸모없는 8KB 를 더 받고 있었다 — #73 과 **같은 클래스의 다른 표면**.
+
+**수리**: `mainEntity` 쪽을 남기고 `blogPost` 제거 + `numberOfItems` 선언.
+🔑 소비자 표면 전부(`surface-list-jsonld.ts`)가 `ItemList` + 중첩 `item` + `numberOfItems`
+**한 벌**로 돌고 **블로그만 밖에 있었다** — 그 모양에 맞추는 것이 바이트도 줄이고 일관성도 되찾는다.
+
+**라이브 시드로 전후를 쟀다**: **19,231 → 10,872바이트(−8,359 · 43%)** · `headline` 40 → 20회 ·
+`Organization` 42 → 20 · 항목 20건·순번·상한은 불변 (라이브 측정값 19,279 와 **48바이트 차** — 재현이 맞다).
+
+가드 `blog-list-jsonld-dedupe-2026-10-14.test.ts` 7건 + 주입 **5건 되돌려-검증 전부 빨간불 확인**.
+
+⚠️ **E4**: 배포 후 `/blog` 의 ld 블록 바이트가 20,078 → 11,700 안팎인지 · `headline` 이 **20회**인지 ·
+**반대 방향** 항목이 여전히 **20건**이고 `numberOfItems` 가 선언돼 있는지 · 개별 글(`/blog/:slug`)의
+`BlogPosting` 은 **무접촉**인지(Article 리치결과는 그쪽에서 나온다).
 
