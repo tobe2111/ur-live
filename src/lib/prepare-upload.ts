@@ -21,6 +21,9 @@ export const HERO_MAX_EDGE = 2400
 /** 히어로 압축 목표 — 파일 천장(≈0.99MB)보다 낮게 잡아 압축기 오차를 흡수한다. */
 export const HERO_TARGET_MB = 0.85
 
+/** 자리별 목표의 상한 — 파일 천장(≈0.99MB) 아래. 이보다 큰 목표는 압축해도 413 이다. */
+export const SIZE_TARGET_CAP_MB = 0.9
+
 /** `source` = 압축 전 원본이 너무 큼 · `compressed` = 압축했는데도 천장을 넘음(사실상 드물다). */
 export type UploadTooLargeReason = 'source' | 'compressed'
 
@@ -39,10 +42,13 @@ export class UploadTooLargeError extends Error {
  *
  * - `thumbnail: true` → 프로필·아바타(0.3MB · 1024px). 작게 보이는 자리라 더 강하게 줄인다.
  * - `hero: true` → 홈 배너(0.85MB · 2400px). 홈 최상단 전폭이라 레티나 해상도를 지킨다(2026-10-14).
+ * - `size: { maxSizeMB, maxWidthOrHeight }` → 자리별 목표(상품 사진 800KB · 매장 사진 1920px 등).
+ *   목표는 천장 아래로 **눌러 담는다**(`SIZE_TARGET_CAP_MB`) — 호출부가 큰 값을 적어도 413 이 안 난다.
  * - 기본 → 사진(0.5MB · 1280px).
  *
- * ⚠️ GIF 를 넘기지 말 것 — 압축기가 WebP 로 바꾸며 **첫 프레임만 남긴다**(움직임이 사라진다).
- *   움직이는 GIF 는 호출부가 크기만 보고 그대로 올리거나 거절한다(`BannerMediaUpload` 가 그렇게 한다).
+ * 🎞️ GIF 는 천장 안이면 **그대로** 둔다(2026-10-14) — 압축기는 WebP 로 바꾸며 첫 프레임만 남겨
+ *   움직임이 사라진다. 천장을 넘는 GIF 만 정지 이미지로 줄인다. 움직임이 꼭 필요한 자리(배너)는
+ *   호출부가 큰 GIF 를 먼저 거절한다(`BannerMediaUpload`).
  *
  * 압축 실패는 **업로드를 막지 않는다**(fail-soft — 원본으로 시도). 다만 그 원본이 천장을 넘으면
  * 413 을 맞기 전에 우리가 던진다 — 사용자는 브라우저 기본 오류가 아니라 우리 문구를 봐야 한다.
@@ -51,11 +57,12 @@ export class UploadTooLargeError extends Error {
  */
 export async function prepareImageForUpload(
   file: File,
-  opts: { thumbnail?: boolean; hero?: boolean } = {},
+  opts: { thumbnail?: boolean; hero?: boolean; size?: { maxSizeMB: number; maxWidthOrHeight: number } } = {},
 ): Promise<File> {
   if (file.size > UPLOAD_SOURCE_MAX_BYTES) {
     throw new UploadTooLargeError('source', file.size)
   }
+  if (file.type === 'image/gif' && fitsApiBodyLimit(file.size)) return file
 
   // ⚠️ 동적 import — 위 머리말 참조(잠금표 계약).
   const { compressForThumbnail, compressForUpload } = await import('./image-compress')
@@ -63,11 +70,26 @@ export async function prepareImageForUpload(
     ? compressForThumbnail
     : opts.hero
       ? (f: File) => compressForUpload(f, { maxSizeMB: HERO_TARGET_MB, maxWidthOrHeight: HERO_MAX_EDGE })
-      : compressForUpload
+      : opts.size
+        ? (f: File) => compressForUpload(f, {
+            maxSizeMB: Math.min(opts.size!.maxSizeMB, SIZE_TARGET_CAP_MB),
+            maxWidthOrHeight: opts.size!.maxWidthOrHeight,
+          })
+        : compressForUpload
   const ready = await compress(file).catch(() => file)
 
   if (!fitsApiBodyLimit(ready.size)) {
     throw new UploadTooLargeError('compressed', ready.size)
   }
   return ready
+}
+
+/**
+ * 천장 초과를 **사람이 할 수 있는 말**로. 호출부마다 문구를 지어내면 또 갈린다(이 파일이 생긴 이유).
+ * `source` 는 원본이 브라우저가 다룰 수 없을 만큼 크다는 뜻이고, `compressed` 는 줄여도 넘는다는 뜻이다.
+ */
+export function uploadTooLargeMessage(err: UploadTooLargeError): string {
+  return err.reason === 'source'
+    ? '25MB 이하 사진만 올릴 수 있어요.'
+    : '줄여도 너무 커요. 다른 사진으로 올려 주세요.'
 }

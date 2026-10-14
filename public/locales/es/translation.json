@@ -158,7 +158,7 @@
     "imageUpload": "Subir imagen",
     "imageCompressing": "Comprimiendo imagen...",
     "imageDropHint": "Haz clic o arrastra una imagen aquí",
-    "imageFormatHint": "JPG, PNG, GIF (máx 10MB) • Auto-comprimido a {{maxSizeKB}}KB",
+    "imageFormatHint": "JPG, PNG, WebP • Las fotos grandes se comprimen a {{maxSizeKB}}KB",
     "imageUploaded": "Imagen subida",
     "imageRemove": "Eliminar imagen",
     "imageUploadedMsg": "Imagen subida correctamente",

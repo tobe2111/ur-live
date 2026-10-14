@@ -12,6 +12,7 @@
  *
  * ⚠️ 워커(esbuild)에서도 로드되므로 이 파일은 **의존성 0**을 유지할 것.
  */
+import { UPLOAD_SOURCE_MAX_BYTES } from '../upload-limits'
 
 /**
  * 배너가 놓이는 자리. DB `banners.banner_slot` 값과 1:1.
@@ -147,8 +148,12 @@ export const BANNER_SLOT_SPECS: Record<BannerSlot, BannerSlotSpec> = {
 /**
  * 용량 안내 — **작게 만들라는 말이 아니다.** Cloudflare 리사이저가 자리에 맞춰 변환하므로
  * 화질은 원본 크기에서 나오고, 용량은 R2 저장과 첫 변환에만 든다.
+ *
+ * 🩸 2026-10-14: 종전 값 2 는 **어디서도 지켜지지 않는 숫자**였다 — 업로드 천장은 1MB 였고(그래서
+ *   2MB 사진은 거절됐다), 지금은 브라우저가 원본을 2,400px · 1MB 이하로 줄여 올린다. 그래서 사람에게
+ *   의미 있는 숫자는 **고를 수 있는 원본 크기**다(`UPLOAD_SOURCE_MAX_BYTES`, 25MB). 두 벌이면 갈린다.
  */
-export const BANNER_MAX_UPLOAD_MB = 2
+export const BANNER_MAX_UPLOAD_MB = Math.round(UPLOAD_SOURCE_MAX_BYTES / (1024 * 1024))
 
 /** 어드민이 **새 배너를 만들 때**의 초기 선택. 기존 행에는 절대 소급되지 않는다(컬럼 기본값 아님). */
 export const NEW_BANNER_SLOT: BannerSlot = 'inline'

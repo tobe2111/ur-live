@@ -12,7 +12,7 @@ import { useRef, useState } from 'react'
 import { toast } from '@/hooks/useToast'
 import { ImagePlus, Loader2, X } from 'lucide-react'
 import api from '@/lib/api'
-import { compressForUpload } from '@/lib/image-compress'
+import { prepareImageForUpload, UploadTooLargeError, uploadTooLargeMessage } from '@/lib/prepare-upload'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 
 interface Props {
@@ -30,11 +30,10 @@ export default function ImageField({ label, hint, value, onChange, aspect = 'wid
 
   async function pick(file: File) {
     if (!file.type.startsWith('image/')) { toast.error('이미지 파일만 올릴 수 있어요'); return }
-    if (file.size > 10 * 1024 * 1024) { toast.error('10MB 이하 이미지만 가능합니다'); return }
     setBusy(true)
     try {
-      const c = await compressForUpload(file, { maxSizeMB: 0.5, maxWidthOrHeight: 1920, toWebP: true })
-      const up = c instanceof File ? c : new File([c], file.name.replace(/\.[^.]+$/, '') + '.webp', { type: 'image/webp' })
+      // 🗜️ 2026-10-14: 압축 전 10MB 가드 제거 — 판정은 공용 준비 헬퍼(천장 1MB)가 한다.
+      const up = await prepareImageForUpload(file, { size: { maxSizeMB: 0.5, maxWidthOrHeight: 1920 } })
       const fd = new FormData()
       fd.append('image', up)
       const res = await api.post('/api/seller/upload-image', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
@@ -45,6 +44,7 @@ export default function ImageField({ label, hint, value, onChange, aspect = 'wid
         toast.error(res.data?.error || '업로드에 실패했어요')
       }
     } catch (e) {
+      if (e instanceof UploadTooLargeError) { toast.error(uploadTooLargeMessage(e)); return }
       toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '이미지 업로드에 실패했어요')
     } finally {
       setBusy(false)

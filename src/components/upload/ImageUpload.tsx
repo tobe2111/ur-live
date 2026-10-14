@@ -6,13 +6,14 @@
  *   특징:
  *   - 드래그&드롭 + 클릭 업로드
  *   - 진행 상태 표시
- *   - 검증 (10MB / 이미지 타입)
+ *   - 검증 (이미지 타입) · 큰 사진은 자동으로 줄여 올림(공용 `prepareImageForUpload`)
  *   - 업로드 성공 시 URL 반환 (onChange callback)
  *   - 기존 URL 표시 (value prop)
  */
 import { useState, useRef } from 'react'
 import { Upload, X, ImageIcon, Loader2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
+import { prepareImageForUpload, UploadTooLargeError, uploadTooLargeMessage } from '@/lib/prepare-upload'
 
 interface Props {
   value?: string
@@ -26,48 +27,10 @@ interface Props {
 
 const TOKEN_KEYS = ['seller_token', 'admin_token', 'agency_token', 'access_token'] as const
 
-// 🛡️ 2026-05-24 (loading P0): 업로드 전 canvas resize + WebP 변환.
-//   - max 1600px (long edge) — 모바일/PC 어떤 표시 크기든 충분
-//   - WebP 0.85 quality — JPEG 대비 평균 30% 작음, 시각 무손실
-//   - GIF/SVG/AVIF 는 원본 유지 (애니메이션/벡터 깨짐 방지)
-//   - 캔버스 변환 실패 시 원본 반환 (graceful)
-async function optimizeImageForUpload(file: File): Promise<File> {
-  // 변환 대상 아님 — 그대로
-  if (/(image\/gif|image\/svg|image\/avif)/.test(file.type)) return file
-  // 1MB 미만은 변환 이득 적음 — 그대로 (CPU 절약)
-  if (file.size < 1024 * 1024) return file
-
-  const MAX_EDGE = 1600
-  const QUALITY = 0.85
-
-  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-    const url = URL.createObjectURL(file)
-    const el = new Image()
-    el.onload = () => { URL.revokeObjectURL(url); resolve(el) }
-    el.onerror = () => { URL.revokeObjectURL(url); reject(new Error('image decode failed')) }
-    el.src = url
-  })
-
-  const longEdge = Math.max(img.width, img.height)
-  const scale = longEdge > MAX_EDGE ? MAX_EDGE / longEdge : 1
-  const width = Math.round(img.width * scale)
-  const height = Math.round(img.height * scale)
-
-  const canvas = document.createElement('canvas')
-  canvas.width = width
-  canvas.height = height
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return file
-  ctx.drawImage(img, 0, 0, width, height)
-
-  const blob: Blob | null = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', QUALITY))
-  if (!blob || blob.size >= file.size) return file  // 변환 후 더 크면 원본 (이미 압축된 경우)
-
-  return new File([blob], file.name.replace(/\.[^.]+$/, '.webp'), {
-    type: 'image/webp',
-    lastModified: Date.now(),
-  })
-}
+// 🗜️ 2026-10-14: 자체 캔버스 압축(1600px · WebP 0.85)을 공용 준비 헬퍼로 옮겼다. 종전 것은
+//   ① 1MB 미만이면 그대로 ② 변환 결과가 더 크면 원본으로 되돌려 **천장(1MB) 검사가 없었고**
+//   ③ GIF 는 크기와 상관없이 원본을 보내 1MB 넘으면 413 이었다. 해상도(1600px)는 그대로 지킨다.
+const PREP_SIZE = { maxSizeMB: 0.9, maxWidthOrHeight: 1600 } as const
 
 export default function ImageUpload({
   value, onChange, tokenKey, label, required, aspectRatio = 'auto', className = '',
@@ -87,11 +50,7 @@ export default function ImageUpload({
   }
 
   async function uploadFile(file: File) {
-    // Client-side 검증 (서버에서도 검증하지만 사용자 즉시 피드백).
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('파일이 너무 큽니다 (최대 10MB)')
-      return
-    }
+    // 압축 **전** 크기로 자르지 않는다 — 큰 폰 사진도 줄이면 올라간다(준비 헬퍼가 판정한다).
     if (!file.type.startsWith('image/')) {
       toast.error('이미지 파일만 업로드 가능합니다')
       return
@@ -105,11 +64,8 @@ export default function ImageUpload({
 
     setUploading(true)
     try {
-      // 🛡️ 2026-05-24 (loading P0): 클라이언트 canvas resize + WebP.
-      //   셀러가 폰 원본 사진 (3-5MB) 업로드 시 자동 1600px max + WebP 0.85 quality →
-      //   평균 70~80% 크기 감소. 신규 업로드부터 모든 사용자가 가벼운 이미지 다운로드.
-      //   GIF / SVG 는 변환 안 함 (애니메이션 깨짐). 변환 실패 시 원본 그대로 업로드 (graceful).
-      const optimized = await optimizeImageForUpload(file).catch(() => file)
+      // 1600px · WebP 로 줄이고(천장 안 GIF 는 움직임 보존), 줄여도 1MB 를 넘으면 413 전에 우리 문구로 멈춘다.
+      const optimized = await prepareImageForUpload(file, { size: PREP_SIZE })
       const fd = new FormData()
       fd.append('file', optimized)
       const res = await fetch('/api/upload/image', {
@@ -124,6 +80,7 @@ export default function ImageUpload({
       onChange(data.data.url)
       toast.success('업로드 완료')
     } catch (err: unknown) {
+      if (err instanceof UploadTooLargeError) { toast.error(uploadTooLargeMessage(err)); return }
       toast.error((err as Error).message || '업로드 실패')
     } finally {
       setUploading(false)
@@ -205,7 +162,7 @@ export default function ImageUpload({
             <>
               <Upload className="w-6 h-6 text-gray-400 mb-2" />
               <p className="text-[12px] text-gray-600 font-semibold">클릭 또는 드래그</p>
-              <p className="text-[12px] text-gray-400 mt-1">JPG / PNG / WEBP — 최대 10MB</p>
+              <p className="text-[12px] text-gray-400 mt-1">JPG / PNG / WEBP — 큰 사진은 자동으로 줄여요</p>
             </>
           )}
         </div>

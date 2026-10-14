@@ -221,8 +221,8 @@ export default function AdminBannersPage() {
                       </li>
                       <li><strong>실제 표시:</strong> {spec.renderedNote}</li>
                       <li>
-                        <strong>용량:</strong> {BANNER_MAX_UPLOAD_MB}MB 이하
-                        <span className="text-gray-700"> — 작게 줄이지 마세요. 화면 크기에 맞춰 자동 변환되므로 <strong>원본이 커야 선명</strong>합니다</span>
+                        <strong>용량:</strong> 원본 {BANNER_MAX_UPLOAD_MB}MB까지
+                        <span className="text-gray-700"> — 작게 줄이지 마세요. 올리면 자동으로 알맞게 줄여 저장하므로 <strong>원본이 커야 선명</strong>합니다</span>
                       </li>
                       <li><strong>형식:</strong> WebP &gt; PNG &gt; JPEG (사진은 WebP/JPEG 권장)</li>
                     </ul>

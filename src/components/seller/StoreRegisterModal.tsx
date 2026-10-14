@@ -534,7 +534,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
                     {uploading ? '올리는 중…' : certUrl ? '사업자등록증 첨부됨' : channel === 'brokered' ? '매장 사업자등록증 사진 첨부' : '사업자등록증 사진 첨부'}
                   </span>
                   <span className="block text-[11px] text-gray-500 mt-0.5">
-                    {certUrl ? '다시 누르면 교체할 수 있어요' : '내용이 잘 보이는 사진으로 · 10MB 이하 jpg·png'}
+                    {certUrl ? '다시 누르면 교체할 수 있어요' : '내용이 잘 보이는 사진으로 · 큰 사진은 자동으로 줄여요'}
                   </span>
                 </span>
               </label>

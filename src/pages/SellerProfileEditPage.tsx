@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, Link } from 'react-router-dom'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
-import { compressForThumbnail } from '@/lib/image-compress'
+import { prepareImageForUpload, UploadTooLargeError, uploadTooLargeMessage } from '@/lib/prepare-upload'
 import { Button } from '@/components/ui/button'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
@@ -254,19 +254,14 @@ export default function SellerProfileEditPage() {
       return
     }
     
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setErrorMessage(t('seller.imageSizeLimit'))
-      return
-    }
+    // 🗜️ 2026-10-14: 압축 전 5MB 가드 제거 — 판정은 공용 준비 헬퍼(천장 1MB)가 한다.
     
     setUploadingImage(true)
     setErrorMessage('')
     
     try {
-      // 클라이언트 사이드 강한 압축 (CF Images 유료 회피).
-      // 프로필 이미지 → 300KB / 1024px / WebP.
-      const compressedFile = await compressForThumbnail(file)
+      // 프로필 이미지 → 300KB / 1024px / WebP. 줄여도 천장을 넘으면 413 전에 우리 문구로 멈춘다.
+      const compressedFile = await prepareImageForUpload(file, { thumbnail: true })
 
       const formData = new FormData()
       formData.append('image', compressedFile)
@@ -284,6 +279,7 @@ export default function SellerProfileEditPage() {
       }
     } catch (error: unknown) {
       if (import.meta.env.DEV) console.error('Failed to upload image:', error)
+      if (error instanceof UploadTooLargeError) { setErrorMessage(uploadTooLargeMessage(error)); return }
       const axiosErr = error as { response?: { data?: { error?: string } } }
       setErrorMessage(axiosErr.response?.data?.error || t('seller.imageUploadFailed'))
     } finally {

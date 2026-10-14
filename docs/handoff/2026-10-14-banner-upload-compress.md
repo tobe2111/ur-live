@@ -20,5 +20,17 @@
 - 처음엔 배너 전용 압축을 따로 짰다 — `lib/prepare-upload.ts` 라는 SSOT 가 이미 있었다. 그걸 확장하는 쪽으로 바꿨다.
 - 가드 면제는 **파일 단위**라 사유(영상)보다 넓게 먹는다. 면제를 늘리지 말 것.
 
-## 남은 것 (별건)
-- `components/upload/ImageUpload.tsx`(어드민 블로그·몰·숙소 등록)는 자체 캔버스 압축이 있으나 GIF 는 원본 통과 → 1MB 넘는 GIF 는 413. 안내 문구도 "10MB". 같은 클래스 — 대표 판단 시 정리.
+## 후속 (같은 날, 대표 *"나머지 문제들도 다 해결해줘"*) — 사진 업로드 여섯 자리
+배너 PR(#1776) 머지 뒤 전수: 업로드 14자리 중 **6자리가 천장 검사 없이** 보내고, 압축 **전** 5MB·10MB 가드로
+폰 사진을 거절하고 있었다. 전부 공용 `prepareImageForUpload` 로 옮겼다.
+- 상품 사진(`components/ImageUpload.tsx`) · 블로그·몰·숙소(`components/upload/ImageUpload.tsx` — 자체 캔버스 압축 폐기, 1600px 유지)
+  · 리뷰 사진 · 매장 사진(`ImageField`) · 이용권 사진(`PhotoGalleryEditor`) · 셀러 프로필 사진
+- 헬퍼에 `size` 옵션(자리별 목표, 천장 아래로 `SIZE_TARGET_CAP_MB` 0.9MB 로 눌러 담음) + 천장 안 GIF 는 그대로(움직임 보존)
+  + `uploadTooLargeMessage()` 공용 문구
+- 거짓 안내 정리: 상품 사진 6개 언어 `imageFormatHint`("최대 10MB") · 블로그 업로드 "최대 10MB" · 등록증 "10MB 이하"
+  · 어드민 배너 "용량 2MB 이하"(지켜지지 않던 숫자 → 원본 25MB SSOT `UPLOAD_SOURCE_MAX_BYTES` 파생)
+- 가드 `upload-prepare-everywhere-2026-10-14.test.ts` + 주입 6건(전부 빨간불 확인)
+
+## 남은 것
+- 없음(사진 경로). 영상(배너 10MB)·문서(등록증 2.2MB)는 서버 카브아웃으로 따로 지킨다.
+- E4: 배포 후 상품 등록·매장 사진에서 5MB 넘는 폰 사진이 올라가는지(로그인 필요 — 대표 화면 확인).

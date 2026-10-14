@@ -145,11 +145,11 @@ export function ReviewForm({ productId, onSubmitted, initialOpen = false, initia
                 onChange={async (e) => {
                   const file = e.target.files?.[0]
                   if (!file) return
-                  if (file.size > 5 * 1024 * 1024) { toast.error('5MB 이하만 가능'); return }
                   setUploading(true)
                   try {
-                    const { compressForThumbnail } = await import('@/lib/image-compress')
-                    const compressed = await compressForThumbnail(file)
+                    // 🗜️ 2026-10-14: 압축 전 5MB 가드 제거 — 줄이면 올라갈 폰 사진을 거절했다. 판정은 준비 헬퍼가 한다.
+                    const { prepareImageForUpload } = await import('@/lib/prepare-upload')
+                    const compressed = await prepareImageForUpload(file, { thumbnail: true })
                     const fd = new FormData()
                     fd.append('image', compressed)
                     const res = await api.post('/api/seller/upload-image', fd)
@@ -159,7 +159,8 @@ export function ReviewForm({ productId, onSubmitted, initialOpen = false, initia
                       toast.error(res.data?.error || '업로드 실패')
                     }
                   } catch (err: unknown) {
-                    toast.error((err as Error).message || '업로드 실패')
+                    const { UploadTooLargeError, uploadTooLargeMessage } = await import('@/lib/prepare-upload')
+                    toast.error(err instanceof UploadTooLargeError ? uploadTooLargeMessage(err) : (err as Error).message || '업로드 실패')
                   } finally {
                     setUploading(false)
                     e.target.value = ''
