@@ -17,7 +17,9 @@
 - CI 첫 실행에서 surface-budgets 가 로컬 기준과 ±1.5KB 안인지(빌드 환경 차이). 벗어나면 CI 실측으로 `--rebaseline --reason "CI 환경 기준 정렬"`.
 
 ## 틀렸던 판단
-- 없음(이번엔). 다만 SLO 테스트의 첫 픽스처가 '절대 변화 하한' 을 못 갈랐다(비율에서 먼저 걸림) — 주입이 잡아 INP 픽스처로 보강.
+- **cron 이 읽을 KV 가 cron 워커에 없었다** — 실사용 표본은 Pages(`ANALYTICS_KV`)가 쓰는데 cron 캐리어(wrangler.toml)엔
+  그 바인딩이 없어, 그대로 배포했으면 매일 `skip:` 만 남겼을 것이다. pre-push 의 `cron-bindings` 시험이 잡았다.
+  Pages 바인딩 id 를 CF API(읽기)로 확인해 `wrangler.toml` 에 선언(18a53635…). ⚠️ wrangler.toml 변경이라 머지 시 cron 워커 재배포가 일어난다. 다만 SLO 테스트의 첫 픽스처가 '절대 변화 하한' 을 못 갈랐다(비율에서 먼저 걸림) — 주입이 잡아 INP 픽스처로 보강.
 
 ## 남은 것
 - JS 다이어트 후보: CSS 28.8KB br · app-utils 19.7KB br.

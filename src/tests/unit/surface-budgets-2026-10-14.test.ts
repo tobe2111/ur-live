@@ -12,7 +12,6 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { surfacesFrom, judge, TOLERANCE_KB, LOCK_SLACK_KB } from '../../../scripts/check-surface-budgets.mjs'
-import { ROUTES } from '../../../scripts/generate-route-chunk-map.mjs'
 
 const HTML = `<script type="module" crossorigin src="/assets/index-AAAAAAAA.js"></script>
 <link rel="modulepreload" crossorigin href="/assets/react-core-BBBBBBBB.js">
@@ -70,7 +69,12 @@ describe('③ 배선', () => {
   })
   it('기준 파일이 하드로드 화면 전부 + __boot__ 를 덮고 값이 0 이 아니다', () => {
     const b = JSON.parse(read('scripts/surface-budgets.json'))
-    const want = ['__boot__', ...Object.keys(ROUTES)].sort()
+    // 하드로드 화면 목록 = 생성기의 ROUTES 키(그 파일은 .mjs 라 소스에서 키를 읽는다)
+    const gen = read('scripts/generate-route-chunk-map.mjs')
+    const body = gen.slice(gen.indexOf('export const ROUTES = {'), gen.indexOf('\n}', gen.indexOf('export const ROUTES = {')))
+    const keys = [...body.matchAll(/^  (\w+): \[/gm)].map((m) => m[1])
+    expect(keys.length).toBeGreaterThan(5)
+    const want = ['__boot__', ...keys].sort()
     expect(Object.keys(b.surfaces).sort()).toEqual(want)
     for (const v of Object.values(b.surfaces) as Array<{ totalKB: number }>) expect(v.totalKB).toBeGreaterThan(50)
     expect(b.toleranceKB).toBe(TOLERANCE_KB)
