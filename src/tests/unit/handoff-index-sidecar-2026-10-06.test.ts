@@ -46,6 +46,8 @@ const GEN = 'scripts/generate-handoff-index.mjs'
 const HOOKS = 'scripts/install-git-hooks.sh'
 const SYNC = 'scripts/check-current-work-sync.mjs'
 const SIDECAR = 'docs/handoff/INDEX.local.md'
+/** 가드 출력에서 "판정에 도달했다" 를 읽는 앵커 — **두 판정 경로에 모두** 있어야 한다(④-3). */
+const VERDICT_ANCHOR = '인계 문서'
 
 const read = (p: string) => readFileSync(p, 'utf8')
 const code = (p: string) => stripComments(read(p))
@@ -147,9 +149,32 @@ describe('④ 동기화 가드가 CURRENT_WORK.md 를 "인계 갱신" 으로 세
   })
 
   it('가드가 실제로 돈다 (등록 경로가 끊기지 않았다)', () => {
+    // 🩸 2026-10-14 재조준 — 이 단언이 **가드가 제 일을 하는 순간 빨간불**이었다.
+    //    앵커가 `'인계 문서 동기화'` 였는데 그 문구는 가드의 **✅ 경로에만** 있다
+    //    (`check-current-work-sync.mjs:39·46·54·58·62`). 경고 경로는 `⚠️ 인계 문서 미갱신` 이라
+    //    *소스를 바꿨는데 인계 문서가 없는 브랜치*(= 가드가 정확히 신고해야 하는 상태)에서
+    //    시험이 터졌다. main 에서는 `기본 브랜치 (skip)` 라 늘 초록이어서 **안 보였고**,
+    //    PR #1791 이 CI 를 그걸로 **네 번** 태웠다(882fa408 · a0bdc35f · 7d38ce72 · c0150ea9).
+    //    ⇒ 이 시험의 일은 *판정이 무엇인가*가 아니라 **판정에 도달했는가**다.
     const out = execFileSync('node', [SYNC], { encoding: 'utf8' })
-    expect(out, '가드가 아무 말도 안 한다 — 출력 형식이 바뀌었으면 이 시험을 다시 조준할 것')
-      .toContain('인계 문서 동기화')
+    expect(out, '가드가 아무 말도 안 한다 — 등록 경로가 끊겼는지 먼저 볼 것').toContain(VERDICT_ANCHOR)
+    expect(out, '가드가 어느 결론도 안 찍었다 — 출력 형식이 바뀌었으면 이 시험을 다시 조준할 것')
+      .toMatch(/인계 문서 (동기화|미갱신)/)
+  })
+
+  it('④-3 앵커가 한쪽 판정에만 있는 문구가 아니다 (위 시험이 가드를 벌하던 이유)', () => {
+    // 🔴 이 단언이 위 시험의 **짝**이다. 앵커가 ✅ 경로에만 있으면, 가드가 경고를 내는 브랜치
+    //    (= 가드가 제 일을 하는 순간)마다 위 시험이 터진다 — 그런데 main 은 `기본 브랜치 (skip)` 라
+    //    늘 초록이어서 **그 사실이 안 보인다**. 그래서 판정을 돌려 보는 것으로는 잡을 수 없고,
+    //    앵커가 두 경로에 **모두** 있는지를 소스에서 봐야 한다.
+    const g = code(SYNC)
+    const ok = g.match(/console\.log\([`'][^`']*✅[^`']*/g) || []
+    const warn = g.match(/console\.log\(`\$\{strict[^`]*/g) || []
+    expect(ok.length, '✅ 경로 로그를 못 찾았다 — 가드 출력 형식이 바뀌었으면 함께 조준할 것').toBeGreaterThan(0)
+    expect(warn.length, '⚠️/❌ 경고 경로 로그를 못 찾았다 — 같음').toBe(1)
+    for (const [label, lines] of [['✅', ok], ['경고', warn]] as const)
+      expect(lines.some(l => l.includes(VERDICT_ANCHOR)),
+        `앵커 '${VERDICT_ANCHOR}' 가 ${label} 경로에 없다 — 그 경로가 나는 브랜치에서 위 시험이 터진다`).toBe(true)
   })
 })
 

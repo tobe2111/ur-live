@@ -74,6 +74,7 @@ function pruneSellerPublicCol(err: unknown): boolean {
 export async function buildSellerPublicPayload(
   env: Pick<Env, 'DB' | 'SESSION_KV'>,
   param: string,
+  opts: { withProducts?: boolean } = {},
 ): Promise<Record<string, unknown> | null> {
   // Seller profile changes infrequently — 5 min TTL with 2 min SWR.
   // Key uses the lookup param directly (id/username/slug) so independent
@@ -138,6 +139,34 @@ export async function buildSellerPublicPayload(
       }
     }
   } catch { /* additive — 생략 가능 */ }
+
+  // 🛍️ 2026-10-14 (대표 "다 해주고 머지 후 또 개선점 찾아" — 라이브 SEO 전수): **`/s/:username` 의
+  //   크롤러 본문이 6자였다**(Googlebot UA 실측 — `urdeal` 워드마크뿐). 그 표면엔 서버 첫 화면
+  //   빌더가 아예 없고, 이 페이로드에도 재료가 없었다 — 두 가게 모두 `bio`·`business_address`
+  //   ·`profile_image`·SNS·`website_url` 이 **전부 null** 이고 이름뿐이다(실측).
+  //   그런데 **상품은 있다**(홍대돈까스·달빛한스푼 각 1개, 소비자-가시·사진 보유).
+  //
+  //   🔴 **왜 지금 중요한가**: D1 실측으로 승인 셀러 10곳 중 `linked_user_id` 가 있는 곳은 **1곳**이고
+  //   `/store_new`(유일한 가입 문)는 그 컬럼을 비운다 ⇒ **앞으로 등록되는 모든 매장의 유어샵 URL 이
+  //   `/s/store_xxx`** 다. 지금 2건이지만 처방을 안 하면 매장 수만큼 비례해 늘어난다.
+  //
+  //   🔑 **쿼리를 새로 만들지 않는다** — `/u/` 사업자 동봉이 쓰는 `loadLinkedSellerProducts`
+  //   (= `/api/products` 와 같은 `ProductService`)를 그대로 쓴다. 필터·컬럼이 갈릴 자리가 없다.
+  //   ⚠️ **옵션이 기본 false 다**: `curator.routes` 는 `linked_seller_products` 를 **따로** 동봉하므로
+  //      여기서도 담으면 `/u/` 사업자 HTML 에 같은 상품이 두 벌 실린다. 그래서 호출부
+  //      (`seller.routes GET /:id/public`)만 켠다.
+  //   💰 비용 0 에 가깝다 — 그 라우트 응답은 `CDN-Cache-Control: max-age=180` 이라 SSR 이
+  //      `caches.default` 에서 받고(실측 `SELLER:edge-hit`), cron 이 상위 셀러를 예열한다.
+  if (opts.withProducts) {
+    try {
+      const sid3 = (seller as { id?: number }).id
+      if (sid3) {
+        const { loadLinkedSellerProducts } = await import('./linkshop-seller-products')
+        const rows = await loadLinkedSellerProducts(env.DB, Number(sid3), 8)
+        if (Array.isArray(rows) && rows.length) (seller as Record<string, unknown>).products = rows
+      }
+    } catch { /* additive — 생략 가능(그러면 본문이 비고 sitemap 게이트가 그 짝을 맞춘다) */ }
+  }
 
   return seller as Record<string, unknown>;
 }

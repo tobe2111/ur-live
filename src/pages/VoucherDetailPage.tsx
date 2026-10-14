@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { voucherDetailTitle } from '@/shared/seo/detail-title'
 import { InfoIcon } from '@/components/icons/urdeal-icons'
 import { DEFAULT_QTY_CAP } from '@/shared/purchase-cap-default'
 import { useParams, useNavigate, Navigate } from 'react-router-dom'
@@ -353,7 +354,9 @@ export default function VoucherDetailPage() {
           생기면 그때 다시 잴 일이다. 그리고 그건 **대표 결정**이고 서버(`detail-ssr-meta.ts` 의
           `isVoucher`)와 **함께** 바꿔야 한다(한쪽만이면 신호가 갈린다 — 가드가 양쪽을 고정한다).
           ⚠️ 대조: `/pass/:id`(이용권 310 · 숙소 49)는 **매장·주소·메뉴가 고유**해서 색인 대상이다. */}
-      <SEO title={`${product.name} 교환권 - 유어딜`} description={cleanDescription} url={`/vouchers/${product.id}`} noindex />
+      {/* 🏷️ 2026-10-14: 이름에 이미 `교환권` 이 든 ~135건이 `교환권 교환권` 이었다(실측 6/100).
+          판정은 서버(`detail-ssr-meta`)와 **같은 함수**다. */}
+      <SEO title={voucherDetailTitle(product.name)} description={cleanDescription} url={`/vouchers/${product.id}`} noindex />
 
       {/* 🛡️ 2026-06-16 (사용자 요청): 상단 '바우처' 타이틀 바 제거. 🎨 2026-06-17 리디자인: 헤더 바 + 뒤로가기. */}
       <div className="sticky top-0 z-40 bg-white/90 dark:bg-[#11141C]/90 backdrop-blur">

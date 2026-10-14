@@ -9,6 +9,7 @@
 
 // 🔄 이용권 공유 카드 주소·판 번호는 `shared/pass-share-card.ts` 한 곳(화면의 공유 버튼과 같은 값).
 import { passShareCardUrl } from '@/shared/pass-share-card'
+import { stayDetailTitle, voucherDetailTitle } from '../../shared/seo/detail-title'
 // 🏨 정본 상세 주소 SSOT — 숙소 이용권은 `/stays/:id` 다(두 벌로 적으면 갈린다).
 import { canonicalDetailPath } from '../../shared/product-flow'
 import { productShareImage } from '@/shared/og-share-image'
@@ -17,6 +18,7 @@ import { kakaoPlaceCanonicalUrl } from '../../shared/kakao-place-url'
 import { parseRegionFromAddress } from '../../shared/constants/region-slugs'
 import { storeNameJoin } from '@/shared/seo/store-name-dedupe'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
+import { withCrumbRoot, crumbItems } from '@/shared/seo/breadcrumb'
 
 /**
  * 🏠 한국 주소를 `PostalAddress` 로 — **시/도·시군구를 채워서** 돌려준다 (2026-10-13 신설).
@@ -186,7 +188,9 @@ export function buildDetailMeta(ssrPayload: string, origin: string, pathname: st
     const isVoucher = pathname.startsWith('/vouchers/') // 교환권 — 클라 noindex 와 대칭
 
     if (isVoucher) {
-      const title = `${name} 교환권 - 유어딜`
+      // 🏷️ 2026-10-14: 이름에 이미 `교환권` 이 든 ~135건이 `교환권 교환권` 이었다.
+      //   판정·문구는 `shared/seo/detail-title.ts` 하나 — 클라(`VoucherDetailPage`)가 같은 함수를 쓴다.
+      const title = voucherDetailTitle(name)
       const description = (String(d.description || '').replace(/\s+/g, ' ').trim().slice(0, 150))
         || `${name} — 기프티콘 교환권을 유어딜에서 할인가로 구매하고 바로 사용하세요.`
       return { pageTitle: title, title, description, canonical, ogImage: productShareImage(photo, origin), ogType: 'product', noindex: true, jsonLd: '' }
@@ -244,15 +248,16 @@ export function buildDetailMeta(ssrPayload: string, origin: string, pathname: st
       ...(d.image_url ? { image: [photo] } : {}),
     } : null
     if (place) (product.offers as Record<string, unknown>).availableAtOrFrom = { '@id': placeId }
+    // 🍞 2026-10-14 — 조립은 `shared/seo/breadcrumb` 한 곳. 루트 이름이 상세·목록에서 갈려 있었고,
+    //   `동네딜` 단계가 홈과 **같은 URL** 이라 사슬이 안 나아갔다(310건). 그 단계는 **접힌다** —
+    //   유어딜의 `/` 가 곧 동네딜 피드라 줄 URL 이 따로 없다(모듈 머리말에 버린 길 둘 포함).
+    //   2026-09-16 의 의도(*리다이렉트를 가리키지 않는다*)는 그대로다: 별칭 URL 을 쓰지 않는다.
     const breadcrumb = {
       '@context': 'https://schema.org', '@type': 'BreadcrumbList',
-      itemListElement: [
-        { '@type': 'ListItem', position: 1, name: '홈', item: `${origin}/` },
-        // 🎟️ 2026-09-16: `/group-buy` 는 홈으로 301 되는 별칭이라 **빵부스러기가 리다이렉트를
-        //   가리키고 있었다**(색인 신호가 한 홉 낭비된다). 정본인 홈으로 직접.
-        { '@type': 'ListItem', position: 2, name: '동네딜', item: `${origin}/` },
-        { '@type': 'ListItem', position: 3, name, item: canonical },
-      ],
+      itemListElement: crumbItems(withCrumbRoot(origin, [
+        { name: '동네딜', url: `${origin}/` },
+        { name, url: canonical },
+      ])),
     }
     const jsonLd = escapeScript(JSON.stringify(place ? [product, place, breadcrumb] : [product, breadcrumb]))
     // 🖼️ 2026-10-13 대표 확정(안 1-가): 공유 미리보기 = 사진을 가득 채운 1200×630 한 장(사진 없으면 종전 카드).
@@ -298,6 +303,8 @@ export function buildStayDetailMeta(ssrPayload: string, origin: string, pathname
     const idm = pathname.match(/\/stays\/(\d+)/)
     const id = idm ? idm[1] : (p.id ?? '')
     const stayName = String(p.restaurant_name || p.name).trim()
+    // 🏷️ 2026-10-14: 이 공식은 **그대로 둔다** — 제목 SSOT 도 컬럼을 먼저 쓰므로 둘이 같고,
+    //   주소 우선으로 바꾸면 `강원` → `강원특별자치도` 가 되어 49건의 설명이 달라진다.
     const region = [p.region_sido, p.region_sigungu].filter(Boolean).join(' ').trim()
     const typeLabel = p.property_type ? propertyTypeLabel(p.property_type) : '숙소'
     const rooms = parsed?.data?.rooms || []
@@ -307,7 +314,10 @@ export function buildStayDetailMeta(ssrPayload: string, origin: string, pathname
     const canonical = `${origin}/stays/${id}`
     const photo = absImage(String(p.image_url || ''), origin, id) // JSON-LD 용 원본
     const ogImage = productShareImage(photo, origin) // 🖼️ 소셜 카드 — 실측 원본 1397×748·518KB 였다
-    const pageTitle = `${stayName}${region ? ` (${region})` : ''} - 유어딜`
+    // 🏷️ 2026-10-14: 클라(`StayDetailPage`)는 지역 없이 제목을 냈고 react-helmet 이 이걸 덮어
+    //   **Googlebot 이 지역을 잃고 있었다**(Yeti 는 받았다 — 한 URL 두 값). 제목은 SSOT 하나로.
+    //   🔒 공식은 **컬럼 우선** 이라 라이브 49건의 제목은 byte-동일이다(아래 설명의 지역과도 같다).
+    const pageTitle = stayDetailTitle(stayName, { sido: p.region_sido, sigungu: p.region_sigungu, address: p.address })
     const priceStr = fromPrice > 0 ? `1박 ${fromPrice.toLocaleString('ko-KR')}원~ ` : ''
     const rating = Number(p.avg_rating) || 0
     const ratingStr = rating > 0 ? `⭐${rating.toFixed(1)} ` : ''
@@ -363,11 +373,10 @@ export function buildStayDetailMeta(ssrPayload: string, origin: string, pathname
     } : null
     const breadcrumb = {
       '@type': 'BreadcrumbList', '@id': `${canonical}#breadcrumb`,
-      itemListElement: [
-        { '@type': 'ListItem', position: 1, name: '홈', item: `${origin}/` },
-        { '@type': 'ListItem', position: 2, name: '숙소', item: `${origin}/stays` },
-        { '@type': 'ListItem', position: 3, name: stayName, item: canonical },
-      ],
+      itemListElement: crumbItems(withCrumbRoot(origin, [
+        { name: '숙소', url: `${origin}/stays` },
+        { name: stayName, url: canonical },
+      ])),
     }
     const jsonLd = escapeScript(JSON.stringify({
       '@context': 'https://schema.org',
@@ -469,11 +478,10 @@ export function buildProductMeta(ssrPayload: string, origin: string, pathname: s
       : null
     const breadcrumb = shopCrumb ? {
       '@context': 'https://schema.org', '@type': 'BreadcrumbList',
-      itemListElement: [
-        { '@type': 'ListItem', position: 1, name: '홈', item: `${origin}/` },
-        { '@type': 'ListItem', position: 2, name: shopCrumb, item: `${origin}/browse` },
-        { '@type': 'ListItem', position: 3, name, item: canonical },
-      ],
+      itemListElement: crumbItems(withCrumbRoot(origin, [
+        { name: shopCrumb, url: `${origin}/browse` },
+        { name, url: canonical },
+      ])),
     } : null
     const jsonLd = escapeScript(JSON.stringify(breadcrumb ? [product, breadcrumb] : [product]))
     // 🔎 2026-07-29 (소비자 SEO 실측): **교환권이 두 URL 로 갈려 한쪽만 noindex 였다.**

@@ -17,7 +17,7 @@ import type { Env } from '@/worker/types/env'
 import { executeQuery, executeRun } from '@/worker/utils/database'
 import { writeAuditLog } from '@/worker/middleware/admin-security'
 import { rehostImageToR2 } from '@/worker/utils/rehost-image'
-import { healStayAmenities, healStayDescriptions } from './admin-stays/heal-stay-descriptions'
+import { healStayAmenities, healStayDescriptions } from './admin-stays/heal-stay-descriptions'; import { propertyTypeDesc } from '../../../shared/stay-property-type' // 한 줄: 파일크기 래칫 안
 
 // 🛡️ 2026-07-20: 데모 숙소 시드가 kakaoPlaceLookup / fetchNaverImageUrl(전체 Env 기대)를
 //   호출하는데 로컬 Bindings 가 { DB, JWT_SECRET } 로 좁아 c.env 타입 불일치(배포 차단 TS2345/2559).
@@ -298,12 +298,12 @@ const STAY_SPOTS = [
   { label: '통영', sido: '경남', sigungu: '통영시', addr: '경남 통영시 도남로', lat: 34.8368, lng: 128.4207 },
   { label: '서울 성수', sido: '서울', sigungu: '성동구', addr: '서울 성동구 연무장길', lat: 37.5446, lng: 127.0561 },
 ]
-const STAY_TYPES = [
-  { type: 'pension', label: '펜션', kakao: '펜션', mods: ['숲속 풀빌라', '계곡 앞', '프라이빗 스파', '노을뷰'], desc: '테라스에서 바비큐를 할 수 있는 독채형 펜션입니다. 옆 동과 떨어져 있어 조용히 쉬기 좋아요.' },
-  { type: 'hotel', label: '호텔', kakao: '호텔', mods: ['오션뷰', '시티', '부티크', '스카이라운지'], desc: '역과 시내에서 가까워 이동이 편합니다. 룸 컨디션이 깔끔하고 프런트는 24시간 운영해요.' },
-  { type: 'guesthouse', label: '스테이', kakao: '게스트하우스', mods: ['감성', '한옥', '북스테이', '골목 안'], desc: '조용한 골목 안에 있는 작은 스테이입니다. 동네를 천천히 걸어 보기 좋은 자리예요.' },
-  { type: 'resort', label: '리조트', kakao: '리조트', mods: ['패밀리', '온수풀', '마운틴뷰'], desc: '온수풀과 사우나를 갖춰 아이와 함께 가기 좋습니다. 부대시설만으로 하루가 채워져요.' },
-  { type: 'glamping', label: '글램핑', kakao: '글램핑', mods: ['별빛', '리버뷰', '불멍'], desc: '장비를 챙길 필요가 없는 글램핑입니다. 개별 화로가 있고 텐트에 냉난방이 들어와요.' },
+const STAY_TYPES = [ // 🏨 2026-10-14 — `desc` 는 SSOT(`shared/stay-property-type`)에서. 사고 경위는 그 머리말.
+  { type: 'pension', label: '펜션', kakao: '펜션', mods: ['숲속 풀빌라', '계곡 앞', '프라이빗 스파', '노을뷰'], desc: propertyTypeDesc('pension') },
+  { type: 'hotel', label: '호텔', kakao: '호텔', mods: ['오션뷰', '시티', '부티크', '스카이라운지'], desc: propertyTypeDesc('hotel') },
+  { type: 'guesthouse', label: '스테이', kakao: '게스트하우스', mods: ['감성', '한옥', '북스테이', '골목 안'], desc: propertyTypeDesc('guesthouse') },
+  { type: 'resort', label: '리조트', kakao: '리조트', mods: ['패밀리', '온수풀', '마운틴뷰'], desc: propertyTypeDesc('resort') },
+  { type: 'glamping', label: '글램핑', kakao: '글램핑', mods: ['별빛', '리버뷰', '불멍'], desc: propertyTypeDesc('glamping') },
 ]
 // 🏨 2026-07-21 (대표 "시설 설정 안 됨" — 이상적): 업종별 대표 시설 세트(5~6개). 상세 시설 아이콘 매핑
 //   (stay-detail/amenity-meta.tsx)이 한글 키워드로 인식. 공통 + 유형 특색.

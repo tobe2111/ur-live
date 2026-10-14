@@ -6,6 +6,7 @@
  * - 객실 선택 → 게스트 정보 입력 → 예약 생성 → /checkout 으로 이동
  */
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { stayDetailTitle } from '@/shared/seo/detail-title'
 import { PinIcon, PeopleIcon, StarIcon } from '@/components/icons/urdeal-icons'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
@@ -333,7 +334,9 @@ export default function StayDetailPage() {
 
   return (
     <div className={STAY_PAGE_ROOT}>
-      <SEO title={`${stay.restaurant_name || stay.name} - 유어딜`} description={stay.description} url={`/stays/${stay.id}`} />
+      {/* 🏷️ 2026-10-14: 종전엔 지역이 없었고 react-helmet 이 서버 제목(지역 포함)을 덮어
+          **Googlebot 만 지역을 잃고 있었다**(Yeti 는 받았다). 제목·지역은 SSOT 하나. */}
+      <SEO title={stayDetailTitle(stay.restaurant_name || stay.name, { sido: stay.region_sido, sigungu: stay.region_sigungu, address: stay.address })} description={stay.description} url={`/stays/${stay.id}`} />
 
       <div className={STAY_HEAD.shell}>
       {/* 🏷️ 2026-08-19 (대표 — "숙소 이용권은 이용권 상세페이지가 함께 개선이 안됐네.

@@ -105,8 +105,10 @@ export default [
   {
     name: '🛍️ 유어샵 빵부스러기에 없는 `/u` 단계를 넣는다',
     file: B,
-    find: "      { name: CONSUMER_SITE_NAME, url: `${origin}/` },\n      { name, url: meta.canonical },",
-    replace: "      { name: CONSUMER_SITE_NAME, url: `${origin}/` },\n      { name: '유어샵', url: `${origin}/u` },\n      { name, url: meta.canonical },",
+    // 🔀 2026-10-14 재조준 — 루트를 `withCrumbRoot` 가 붙이게 되어(상세 빌더 셋과 같은 함수)
+    //   손으로 적던 루트 줄이 사라졌다. 결함(없는 `/u` 단계)과 불변식은 한 글자도 안 바꿨다.
+    find: "const trail = withCrumbRoot(origin, [{ name, url: meta.canonical }])",
+    replace: "const trail = withCrumbRoot(origin, [{ name: '유어샵', url: `${origin}/u` }, { name, url: meta.canonical }])",
     test: TEST,
     why: '`/u` 는 라우트가 없다 — 빵부스러기가 404 를 가리키면 그 자체가 품질 신호를 깎는다.',
   },

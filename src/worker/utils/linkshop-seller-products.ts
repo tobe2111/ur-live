@@ -8,10 +8,12 @@
  *
  * 별도 파일인 이유: `curator.routes.ts` 는 파일 크기 래칫(1,397줄)에 동결돼 있다.
  */
-export async function loadLinkedSellerProducts(DB: D1Database, sellerId: number): Promise<unknown[] | null> {
+export async function loadLinkedSellerProducts(DB: D1Database, sellerId: number, limit = 100): Promise<unknown[] | null> {
   try {
     const { ProductService } = await import('../../features/products/services/ProductService')
-    const r = await new ProductService(DB).getProducts({ sellerId }, { page: 1, limit: 100 })
+    // 🛍️ 2026-10-14 — 상한을 인자로. 기본값 100 이라 기존 호출(curator 동봉)은 **byte-동일**이고,
+    //   셀러 공개 페이로드는 작게 받는다(그 쓰임은 크롤러 본문 요약 한 덩어리뿐 — 상한 8).
+    const r = await new ProductService(DB).getProducts({ sellerId }, { page: 1, limit })
     return r.data ?? []
   } catch { return null } // additive — 생략 시 클라 폴백 fetch
 }
