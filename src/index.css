@@ -6,12 +6,16 @@
    `unicode-range` 라 한글·영문은 그대로 Pretendard 이고, 숫자가 있는 화면에서만 받는다.
    처음엔 Poppins(A)였는데 Poppins 숫자는 **비례폭이고 tabular-nums 도 안 먹어서**(1111 150px vs 0000 261px)
    대기업 글꼴 비교 보드를 보고 대표가 Roboto 로 바꿨다. Roboto 숫자는 **처음부터 모두 같은 폭**이라
-   시계·카운트다운도 안 떨린다 ⇒ 계속 바뀌는 숫자를 따로 Pretendard 로 되돌릴 필요가 없다. */
-@font-face { font-family: 'UrDigits'; font-style: normal; font-weight: 400; font-display: swap; src: url('/static/fonts/roboto-digits-400.woff2') format('woff2'); unicode-range: U+0025, U+002C, U+002E, U+0030-0039; }
-@font-face { font-family: 'UrDigits'; font-style: normal; font-weight: 500; font-display: swap; src: url('/static/fonts/roboto-digits-500.woff2') format('woff2'); unicode-range: U+0025, U+002C, U+002E, U+0030-0039; }
-@font-face { font-family: 'UrDigits'; font-style: normal; font-weight: 600; font-display: swap; src: url('/static/fonts/roboto-digits-600.woff2') format('woff2'); unicode-range: U+0025, U+002C, U+002E, U+0030-0039; }
-@font-face { font-family: 'UrDigits'; font-style: normal; font-weight: 700; font-display: swap; src: url('/static/fonts/roboto-digits-700.woff2') format('woff2'); unicode-range: U+0025, U+002C, U+002E, U+0030-0039; }
-@font-face { font-family: 'UrDigits'; font-style: normal; font-weight: 800; font-display: swap; src: url('/static/fonts/roboto-digits-800.woff2') format('woff2'); unicode-range: U+0025, U+002C, U+002E, U+0030-0039; }
+   시계·카운트다운도 안 떨린다 ⇒ 계속 바뀌는 숫자를 따로 Pretendard 로 되돌릴 필요가 없다.
+   ⚡ 2026-10-13 v2: 파일을 다시 잘랐다(장당 6.3KB → 2.0KB). 빠진 것은 힌팅 프로그램(fpgm·prep·cvt ≈5KB)과
+   분수용 글리프(frac·numr·dnom — 이 사이트는 안 쓴다)뿐이고, 글자 모양·폭·tnum/pnum/lnum 치환은 원본과 글자 단위로
+   같음을 대조했다. 본문 Pretendard 웹폰트도 힌팅이 없어 숫자만 다르게 그려질 이유가 없다.
+   첫 화면에서 네 굵기가 최우선순위로 JS 와 회선을 나눠 쓰던 몫(약 17KB)이 줄었다. 크기 상한은 시험이 지킨다. */
+@font-face { font-family: 'UrDigits'; font-style: normal; font-weight: 400; font-display: swap; src: url('/static/fonts/roboto-digits-v2-400.woff2') format('woff2'); unicode-range: U+0025, U+002C, U+002E, U+0030-0039; }
+@font-face { font-family: 'UrDigits'; font-style: normal; font-weight: 500; font-display: swap; src: url('/static/fonts/roboto-digits-v2-500.woff2') format('woff2'); unicode-range: U+0025, U+002C, U+002E, U+0030-0039; }
+@font-face { font-family: 'UrDigits'; font-style: normal; font-weight: 600; font-display: swap; src: url('/static/fonts/roboto-digits-v2-600.woff2') format('woff2'); unicode-range: U+0025, U+002C, U+002E, U+0030-0039; }
+@font-face { font-family: 'UrDigits'; font-style: normal; font-weight: 700; font-display: swap; src: url('/static/fonts/roboto-digits-v2-700.woff2') format('woff2'); unicode-range: U+0025, U+002C, U+002E, U+0030-0039; }
+@font-face { font-family: 'UrDigits'; font-style: normal; font-weight: 800; font-display: swap; src: url('/static/fonts/roboto-digits-v2-800.woff2') format('woff2'); unicode-range: U+0025, U+002C, U+002E, U+0030-0039; }
 
 /* ─────────────────────────────────────────────────────────────────
    🔘 버튼 체계 (2026-08-30 — 대표 "버튼 디자인들이고 변경된게 없는데")
@@ -1341,6 +1345,22 @@ html.dark .mobile-app-container {
 html.dark .gbd, [data-theme="dark"] .gbd {
   --gbd-danger: #FF5C69;
   --gbd-danger-soft: #2E1518;
+}
+
+/* 📐 2026-10-13 (대표 "속도 대기업 수준으로"): 긴 카드 목록의 **화면 밖 칸은 레이아웃·페인트를 건너뛴다.**
+   재생 트레이스(느린 4G·CPU 4배): 홈 피드가 다 그려진 뒤 문서가 약 3,300 개 상자가 되고, 그 뒤로 폰트·썸네일이
+   도착할 때마다 **3,300 개 전부**를 다시 배치했다(한 번에 0.4~1초 — 이 컨테이너는 한글 글꼴이 없어 부풀려진 값).
+   `content-visibility:auto` 는 화면 근처에 온 칸만 배치한다. `contain-intrinsic-size: auto …` 의 `auto` 는 한 번
+   그려진 칸의 실제 높이를 기억하므로 스크롤이 튀지 않는다(처음 보는 칸만 260px 로 가정).
+   ⚠️ 카드 자신(그리드 칸)에 건다 — 카드 안 IntersectionObserver(상세 미리받기)는 칸의 상자를 보므로 그대로 돈다. */
+.ur-cv-grid > * {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 260px;
+}
+/* 지도 목록 행(`RestaurantRow`, 썸네일 80px + 위아래 여백) — 같은 이유, 행 높이 추정만 다르다. */
+.ur-cv-rows > * {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 112px;
 }
 
 /* 🎨 2026-08-19 (대표 확정 — 그루폰식 색면 홈): 잉크 색면 위에 뜨는 **흰 패널**.

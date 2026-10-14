@@ -9,6 +9,8 @@
  *   ② `CACHE_KV` — **전역**. cron 이 15분 표본화로 기록(`cache-prewarm.ts` SSR_KV_PATHS).
  *      **그 목록에 있는 키만 읽는다**(2026-10-11) — 나머지는 아무도 안 써서 늘 miss 였다.
  *      ①이 콜로별이라 예열이 다른 지역에 안 미치는 것을 메운다. 미바인딩이면 조용히 건너뛴다.
+ *   ②-b 직전 사본(2026-10-12) — ①이 만료됐을 때 **콜로에 남겨 둔 최근 사본(최대 1시간)**을 바로 쓰고,
+ *      응답 뒤(waitUntil)에 ③을 돌려 새로 채운다. 아래 `STALE_*` 참조.
  *   ③ self-fetch — 콜드 D1. 슬롯별 타임아웃(아래) 안에 못 끝내면 미주입 → 클라가 직접 받는다.
  */
 
@@ -68,10 +70,81 @@ function escapeForScript(body: string): string {
   return body.replace(/<\/script/gi, '<\\/script');
 }
 
+/**
+ * ♻️ 2026-10-12 [UNLOCK_LOADING] (대표 승인 "허가 — 진행": *"처음 접속하는 디바이스 유저는 너무 느려"*)
+ *   **직전 사본을 바로 쓰고 뒤에서 새로 받는다**(stale-while-revalidate).
+ *
+ *   왜: ① 엣지 캐시는 API 의 짧은 TTL(상세 120s · 유어샵 300s)을 그대로 따른다. 한국 콜로는 방문이 드물어
+ *   대부분의 첫 방문이 만료된 뒤에 온다 ⇒ 상세·유어샵 하드로드가 매번 ③(콜드 D1)을 기다렸다 — 라이브 실측
+ *   `self;dur=418~552ms`(두 번째 요청은 28~37ms). 실사용자 TTFB 중앙값 0.45s(워커 자체 0.07s)와 맞는다.
+ *
+ *   어떻게: ③이 성공할 때마다 같은 응답을 **별도 키**(`/__ssr_stale` 접두)에 1시간 보관한다(Cache API =
+ *   무료·KV 한도 무관). ①이 비면 그 사본을 바로 쓰고(`stale-hit`), **응답 뒤** ③을 돌려 ①과 사본을 둘 다
+ *   새로 채운다. 사본이 없으면 종전과 똑같이 ③을 기다린다.
+ *
+ *   ⚠️ 첫 화면 데이터가 최대 1시간 전 것일 수 있다 — 상세·유어샵·교환권 상세는 마운트 뒤 **항상 최신을 다시
+ *      받고**(fetchQuery / fetchCuratorPage), 결제 금액은 서버가 늘 재검증한다. 상품이 내려가면(404) 뒤의
+ *      새로고침이 사본을 지운다.
+ *   ⚠️ `waitUntil` 이 없으면(테스트·구형 호출) 사본을 **쓰지 않는다** — 새로 채울 수 없는 사본을 쓰면
+ *      1시간 내내 같은 사본만 돌게 된다.
+ *   KV 로 예열되는 목록 경로(②)는 대상이 아니다 — 이미 전역 사본이 있다.
+ */
+export const STALE_PREFIX = '/__ssr_stale'
+export const STALE_MAX_AGE_S = 3600
+
+type WaitUntil = (p: Promise<unknown>) => void
+
+/** Hono 컨텍스트에서 waitUntil 을 꺼낸다 — 실행 컨텍스트가 없으면(테스트) undefined. */
+export function ssrWaitUntil(c: Context): WaitUntil | undefined {
+  try {
+    const ctx = c.executionCtx
+    return (p) => ctx.waitUntil(p)
+  } catch {
+    return undefined
+  }
+}
+
+async function selfFetch(target: SsrTarget, origin: string): Promise<{ text: string | null; status: string }> {
+  const ctlr = new AbortController();
+  const timer = setTimeout(() => ctlr.abort(), timeoutFor(target.slot));
+  try {
+    const r = await fetch(`${origin}${target.path}`, {
+      signal: ctlr.signal,
+      headers: { 'x-ssr-prefetch': '1', 'User-Agent': 'ur-live-ssr-prefetch/1.0' },
+    });
+    if (r.ok) return { text: await r.text(), status: 'self-fetch-hit' };
+    return { text: null, status: `self-fetch-${r.status}` };
+  } catch {
+    return { text: null, status: 'self-fetch-timeout' };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function staleKey(origin: string, path: string): Request {
+  return new Request(`${origin}${STALE_PREFIX}${path}`, { method: 'GET' });
+}
+
+/** 사본 갱신 — 성공이면 넣고, 404 면 지운다(내려간 상품을 1시간 동안 살려 두지 않는다). */
+async function writeStale(origin: string, path: string, text: string | null, status: string): Promise<void> {
+  try {
+    // @ts-expect-error — Cloudflare Workers 전역 caches
+    const cache = caches.default;
+    if (text && text.startsWith('{')) {
+      await cache.put(staleKey(origin, path), new Response(text, {
+        headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': `public, max-age=${STALE_MAX_AGE_S}` },
+      }));
+    } else if (status === 'self-fetch-404') {
+      await cache.delete(staleKey(origin, path));
+    }
+  } catch { /* 사본은 가속일 뿐 — 실패해도 무해 */ }
+}
+
 export async function fetchSsrPayload(
   target: SsrTarget,
   origin: string,
   env: { CACHE_KV?: { get(key: string, type: 'text'): Promise<string | null> } },
+  waitUntil?: WaitUntil,
 ): Promise<SsrPayloadResult> {
   let payload: string | null = null;
   let status = 'skip';
@@ -103,28 +176,34 @@ export async function fetchSsrPayload(
     timings.push(`kv;dur=${Date.now() - kvStart}`);
   }
 
+  const staleable = !!waitUntil && !isKvWarmedPath(target.path);
+
+  // ②-b 직전 사본 — 바로 쓰고, 응답 뒤에 ③으로 새로 채운다.
+  if (!payload && staleable) {
+    const staleStart = Date.now();
+    try {
+      // @ts-expect-error — Cloudflare Workers 전역 caches
+      const hit = await caches.default.match(staleKey(origin, target.path));
+      if (hit && hit.status >= 200 && hit.status < 300) {
+        const text = await hit.text();
+        if (text.startsWith('{')) {
+          payload = escapeForScript(text);
+          status = 'stale-hit';
+          waitUntil!(selfFetch(target, origin).then((r) => writeStale(origin, target.path, r.text, r.status)));
+        }
+      }
+    } catch { /* 사본 불가 — ③ 폴백 */ }
+    timings.push(`stale;dur=${Date.now() - staleStart}`);
+  }
+
   // ③ self-fetch — 콜드 D1. 여기까지 오면 첫 사용자는 기다린다.
   if (!payload) {
-    const ctlr = new AbortController();
-    const timer = setTimeout(() => ctlr.abort(), timeoutFor(target.slot));
     const selfStart = Date.now();
-    try {
-      const r = await fetch(`${origin}${target.path}`, {
-        signal: ctlr.signal,
-        headers: { 'x-ssr-prefetch': '1', 'User-Agent': 'ur-live-ssr-prefetch/1.0' },
-      });
-      if (r.ok) {
-        payload = escapeForScript(await r.text());
-        status = 'self-fetch-hit';
-      } else {
-        status = `self-fetch-${r.status}`;
-      }
-    } catch {
-      status = 'self-fetch-timeout';
-    } finally {
-      clearTimeout(timer);
-    }
+    const r = await selfFetch(target, origin);
+    status = r.status;
+    if (r.text !== null) payload = escapeForScript(r.text);
     timings.push(`self;dur=${Date.now() - selfStart}`);
+    if (staleable) waitUntil!(writeStale(origin, target.path, r.text, r.status));
   }
 
   return { payload, status, timings };

@@ -1,8 +1,8 @@
 /**
  * Admin routes — TD-006 분리 (2026-05-06)
  */
-import { lazy } from 'react'
-import { Route } from 'react-router-dom'
+import { lazy, Children, cloneElement, isValidElement, type ReactElement } from 'react'
+import { Route, Routes } from 'react-router-dom'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { ProtectedRoute, PublicRoute } from '@/components/auth/RouteGuards'
 
@@ -652,5 +652,40 @@ export function AdminRoutes() {
         </ProtectedRoute>
       } />
     </>
+  )
+}
+
+const AdminNotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
+
+/**
+ * ⚡ 2026-10-12 어드민 라우트 표를 **`/admin/*` 아래에서만** 받는다 (대표 "대기업급 속도 · 근본 원인").
+ *
+ * 종전엔 App.tsx 가 `{AdminRoutes()}` 로 이 표 100줄을 소비자 `<Routes>` 에 펼쳐 넣었다 — 그래서
+ * ① 이 표(app-routes 청크)를 **모든 첫 방문이 받고** ② 소비자 화면의 매 이동마다 라우터가 어드민 경로
+ * 100개까지 같이 맞춰 봤다(재생 프로파일 `matchPath` 자체 시간 44ms, CPU 4배).
+ * 이제 App.tsx 는 `/admin/*` 한 줄만 두고 이 컴포넌트를 lazy 로 받는다. 경로는 그 아래 **하위 Routes** 라
+ * `/admin` 접두를 떼어 상대 경로로 바꾼다(하위 Routes 는 남은 경로로 맞춘다 — 절대 경로 그대로면 하나도 안 맞는다).
+ * ⚠️ 새 어드민 라우트는 종전처럼 `AdminRoutes()` 에 **절대 경로**(`/admin/…`)로 추가하면 된다 — 여기서 자동으로 뗀다.
+ */
+export function adminRouteTreeChildren(): ReactElement[] {
+  const out: ReactElement[] = []
+  Children.forEach(AdminRoutes().props.children, (r) => {
+    if (!isValidElement(r)) return
+    const path = (r.props as { path?: string }).path
+    if (typeof path === 'string' && (path === '/admin' || path.startsWith('/admin/'))) {
+      out.push(cloneElement(r as ReactElement<{ path: string }>, { path: path.slice('/admin'.length) || '/', key: path }))
+    } else {
+      out.push(r)
+    }
+  })
+  return out
+}
+
+export default function AdminRouteTree() {
+  return (
+    <Routes>
+      {adminRouteTreeChildren()}
+      <Route path="*" element={<AdminNotFoundPage />} />
+    </Routes>
   )
 }

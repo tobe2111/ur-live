@@ -93,7 +93,7 @@ export default [
   {
     name: '첫화면 — 측정기가 기계 줄을 안 찍는다',
     file: HARNESS,
-    find: '  console.log(`FETCH_RESULT ${JSON.stringify({ route: ROUTE, calls })}`)',
+    find: '  console.log(`FETCH_RESULT ${JSON.stringify({ route: ROUTE, calls, chunks })}`)',
     replace: '  void 0',
     test: T,
     why:

@@ -166,9 +166,15 @@ describe('🔤 첫 페인트를 막는 CSS 는 우리 오리진만 (2026-10-12)'
         '   2026-10-12 라이브 실측에서 자가호스팅 숫자 폰트가 실제로 그 상태였고 `cf-cache-status: BYPASS` 였다\n' +
         '   (남의 CDN 은 1년 immutable 인데 우리 것만 매 요청이 오리진까지 갔다).',
     ).toBeGreaterThan(-1)
-    const body = block.slice(i + 1, i + 4).join(' ')
+    const end = block.findIndex((l, k) => k > i && l.trim() === '')
+    const body = block.slice(i + 1, end === -1 ? undefined : end).join(' ')
     expect(body, '/static/fonts/* 에 immutable 1년 캐시가 없다').toMatch(/max-age=31536000/)
     expect(body, '/static/fonts/* 에 immutable 이 없다').toContain('immutable')
+    // 🩸 2026-10-12 라이브 실측: Pages 는 맞는 규칙의 헤더를 **합친다** — `/*` 의 no-store·Pragma·Expires 를
+    //   `!` 로 떼지 않으면 응답이 `no-cache, no-store, …, immutable` 이 되어 캐시가 통째로 안 된다(BYPASS).
+    for (const h of ['Cache-Control', 'Pragma', 'Expires']) {
+      expect(body, `/static/fonts/* 가 맨 위 /* 의 ${h} 를 떼지 않는다(합쳐져 no-store 가 이긴다)`).toContain(`! ${h}`)
+    }
   })
 
   it('⑥ src 없는 @font-face 가 되살아나지 않았다 (무효 규칙 = 조용한 거짓)', () => {

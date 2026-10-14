@@ -56,7 +56,7 @@ import { HOME_H1 } from '../../shared/seo/consumer-surfaces'
 import { cfImage, cfSrcSet } from '../../utils/cf-image'
 import { DEAL_CAT_LABELS } from '../../shared/deal-cats'
 import { DEAL_GRID_GAP } from '../../shared/deal-card-grid'
-import { HOME_CARD_ABOVE_FOLD, HOME_CARD_IMG_WIDTH_BASE } from '../../shared/home-card-image'
+import { HOME_CARD_ABOVE_FOLD, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_MAX_DPR } from '../../shared/home-card-image'
 import { canonicalDetailPath } from '../../shared/product-flow'
 import { priceDisplay } from '../../shared/price-display'
 import { stripStorePrefix } from '../../utils/deal-title'
@@ -181,7 +181,7 @@ function cardHtml(p: SeedProduct, eager: boolean): string {
   // 🖼️ 사진 — 카드와 **같은 함수·같은 폭**(모바일 전용이라 base 폭 하나로 끝난다).
   const src = p.image_url || ''
   const resized = src ? cfImage(src, { width: HOME_CARD_IMG_WIDTH_BASE, format: 'auto' }) || src : ''
-  const set = src ? cfSrcSet(src, HOME_CARD_IMG_WIDTH_BASE) : ''
+  const set = src ? cfSrcSet(src, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_MAX_DPR) : ''
   const img = resized
     ? `<img src="${escAttr(resized)}"${set ? ` srcset="${escAttr(set)}"` : ''} sizes="${escAttr(homeCardSizes(HOME_CARD_IMG_WIDTH_BASE))}" alt="${escAttr(p.name || '')}" loading="${eager ? 'eager' : 'lazy'}" fetchpriority="${eager ? 'high' : 'auto'}" decoding="async" class="${HOME_FS_CLASS.cover}">`
     : ''

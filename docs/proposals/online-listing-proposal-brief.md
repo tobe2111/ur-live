@@ -780,7 +780,7 @@
 | 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
 | 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (75개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (76개)
 
 - `/browse`
 - `/cart`
@@ -792,6 +792,7 @@
 - `/products/:id`
 - `/search`
 - `/seller`
+- `/seller/*`
 - `/seller/2fa`
 - `/seller/ad-slots`
 - `/seller/alimtalk`
@@ -1402,7 +1403,7 @@
 - `GET /api/youtube/shorts/sync`
 
 
-> 마지막 생성: 2026-10-13T02:19:22.798Z
+> 마지막 생성: 2026-10-13T19:36:50.117Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

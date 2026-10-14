@@ -387,7 +387,9 @@ describe('⑨ 라우트 표에 구멍이 없다', () => {
   }
 
   it('App.tsx 에 /seller/* 라우트가 하나도 없다', () => {
-    const app = readCode('src/App.tsx')
+    // ⚡ 2026-10-13: `/seller/*` 는 **이 표 자체**를 싣는 출입구(`SellerRouteTree`)라 예외 — 그 한 줄만.
+    //   경로를 따로 적는 것(시트가 못 여는 사각지대)은 여전히 금지다.
+    const app = readCode('src/App.tsx').replace('<Route path="/seller/*" element={<SellerRouteTree />} />', '')
     const stray = [...app.matchAll(/<Route\s+path="(\/seller\/[^"]*)"/g)].map(m => m[1])
     expect(stray, `App.tsx 의 셀러 라우트는 시트가 못 여는 사각지대다: ${stray.join(', ')}`)
       .toEqual([])

@@ -67,6 +67,9 @@ const SORT_OPTIONS = [
 //   warmCurator 는 BottomNav 가 `import('@/pages/CuratorPage').then(m => m.warmCurator)` 로 쓰므로 re-export 유지.
 export { warmCurator } from '@/features/curator/curator-page-cache'
 
+/** SSR 시드로 첫 렌더를 그린 handle — 마운트 effect 가 한 번 읽고 지운다(재방문·다른 handle 은 종전대로 바로 받는다). */
+let ssrSeededFor: string | null = null
+
 export default function CuratorPage() {
   const { handle = '' } = useParams<{ handle: string }>()
   const navigate = useNavigate()
@@ -79,7 +82,7 @@ export default function CuratorPage() {
         const el = document.getElementById('__SSR_INITIAL_CURATOR__')
         if (el?.textContent) {
           const parsed = JSON.parse(el.textContent)
-          if (parsed?.success && parsed?.curator?.handle === handle) return parsed
+          if (parsed?.success && parsed?.curator?.handle === handle) { ssrSeededFor = handle; return parsed }
         }
       }
     } catch { /* SSR 누락 — fallback */ }
@@ -129,7 +132,13 @@ export default function CuratorPage() {
     //   SSR 즉시 paint 유지(깜빡임 방지, 잠긴 GroupBuyDetail 패턴). 다른 handle 로 이동 시에만 로딩.
     if (data?.curator?.handle !== handle) setLoading(true)
     setError(null)
-    fetchCuratorPage(handle)
+    // ⏳ 2026-10-13 (대표 *"유어샵이 왜 이렇게 늦게 뜨지?"*): 서버가 넣어 준 시드로 이미 그렸으면 **같은 데이터를
+    //   바로 다시 받지 않는다** — 첫 화면의 번역·페이지 코드와 회선을 나눠 쓰던 요청이다(느린 4G 실측 4.9초).
+    //   새로 받기는 `load` 뒤로 미룬다(시드는 최대 1시간 전 사본일 수 있으므로 **생략이 아니라 미루기**).
+    //   주인은 방금 고친 것을 봐야 하므로 바로 받는다.
+    const deferRefresh = ssrSeededFor === handle && !isOwner && typeof document !== 'undefined' && document.readyState !== 'complete'
+    ssrSeededFor = null
+    const run = () => fetchCuratorPage(handle)
       .then((res) => {
         if (!alive) return
         // 🏁 2026-06-17 (핸들 변경 리다이렉트): 옛 핸들이면 서버가 new_handle 반환 → /u/{현재핸들} 자동 이동.
@@ -145,7 +154,10 @@ export default function CuratorPage() {
         setData(res)
       })
       .finally(() => alive && setLoading(false))
-    return () => { alive = false }
+    if (!deferRefresh) { run(); return () => { alive = false } }
+    const onLoad = () => setTimeout(() => { if (alive) run() }, 0)
+    window.addEventListener('load', onLoad, { once: true })
+    return () => { alive = false; window.removeEventListener('load', onLoad) }
   }, [handle, t])
 
   // 🚑 2026-07-10 [UNLOCK_LOADING]: linked_seller 확인 즉시(SSR 시드 포함) 셀러 /public 페치 시작 —

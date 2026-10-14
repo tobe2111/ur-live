@@ -351,8 +351,11 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
  *     srcSet={cfSrcSet(url, 400)}
  *     sizes="(max-width: 768px) 100vw, 400px"
  *   />
+ *
+ * `maxDpr` — 후보 밀도 상한(기본 3 = 종전과 동일). 2026-10-12 카드 사진은 2 로 묶는다
+ * (`HOME_CARD_MAX_DPR` — 3x 폰이 175px 카드에 600px 를 받던 것을 400px 로, 장당 약 37% 감소).
  */
-export function cfSrcSet(src: string | undefined | null, baseWidth: number): string {
+export function cfSrcSet(src: string | undefined | null, baseWidth: number, maxDpr: 1 | 2 | 3 = 3): string {
   if (!src) return ''
   // 🛡️ 2026-05-27: 외부 도메인은 worker proxy 1회만 (DPI별 변환은 cf.image 가 처리).
   //   1x/2x/3x 모두 별도 fetch 시 proxy 3회 → 비효율. 단일 high-res 만 반환.
@@ -364,6 +367,7 @@ export function cfSrcSet(src: string | undefined | null, baseWidth: number): str
     }
   }
   return [1, 2, 3]
+    .filter(dpi => dpi <= maxDpr)
     .map(dpi => `${cfImage(src, { width: baseWidth * dpi })} ${dpi}x`)
     .join(', ')
 }
