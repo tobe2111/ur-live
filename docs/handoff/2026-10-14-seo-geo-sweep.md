@@ -464,3 +464,77 @@ audit log 1줄 + 승인이면 되고, 줄 수는 안 늘어난다(문자열만).
 **반대 방향** 항목이 여전히 **20건**이고 `numberOfItems` 가 선언돼 있는지 · 개별 글(`/blog/:slug`)의
 `BlogPosting` 은 **무접촉**인지(Article 리치결과는 그쪽에서 나온다).
 
+
+---
+
+## #87 — 첫 화면이 없는 유어샵의 크롤러 문서에 **제목 0 · 내부 링크 0**
+
+**실측(Googlebot UA, sitemap 표본 48표면)** — `h1` 이 0개인 표면이 **정확히 하나**였고,
+그 한 곳은 **내부 링크도 0개**였다:
+
+```
+/u/user40     h1 0 · a 0 · 본문  58자 · ProfilePage+Person+ItemList(Product 1)
+/u/jiwon1228  h1 1 · a 5 · 본문 419자
+(나머지 46표면)  전부 h1 1
+```
+
+🔎 **원인**: `/u/user40` 은 `linked_seller` 유어샵이라 `buildCuratorFirstScreen` 이 **설계대로**
+`''` 를 준다(React 가 `SellerPublicPage` 를 그린다 — 레이아웃이 통째로 다르다). 그러면 폴백
+`<noscript>`(`curatorNoscriptFromPayload`)가 본문을 메우는데, 그 폴백은 이름을 `<p>` 로 쓰고
+행을 **링크 없는 `<li>`** 로 냈다 ⇒ 2026-10-12 의 내부 링크 처방(`rowHref`)과 색인 표면의
+heading 처방이 **이 경로에만 오지 않았다.** 에러가 안 나고 본문 글자수는 늘어 있어서
+측정만 보면 멀쩡해 보인다.
+
+🔑 **재료는 시드에 이미 있었다** — 핀에 `product_id 2917`·`category 'lifestyle'`·`deal_only 0`
+가 전부 온다(실측). **선언만 없었다** — 같은 날 #84(`avg_rating`)와 똑같은 클래스다.
+
+**수정**: `standalone`(= `withName`, 첫 화면이 없는 경로) 하나로 판정을 모아
+① 이름을 `h1Of(…)` 로 (제목) ② 행을 목록 표면과 **같은 `rowHref`** 로 링크.
+🔴 **첫 화면이 있는 경로는 byte-불변**(h1 0 · a 0) — 그쪽 `#root` 에 제목과 핀 링크가 **이미**
+있어서, 여기서 또 내면 `h1` 이 둘이고 같은 URL 로 가는 링크가 두 벌이 된다.
+
+**빌더를 돌려 눈으로 봤다**(라이브 시드 두 벌):
+
+```
+user40    withName=true  113B h1=1 a=1  → /products/2917
+user40    withName=false  69B h1=0 a=0  (종전과 byte-동일)
+jiwon1228 withName=true  344B h1=1 a=4  → /stays/2887 · /pass/2835 · /pass/2862 · /pass/2919
+jiwon1228 withName=false 227B h1=0 a=0  (종전과 byte-동일)
+```
+
+`/u/user40` 의 핀이 가리키는 `/products/2917` 은 **sitemap 의 유일한 `/products/` URL** 이라
+그 한 건에게는 이것이 유일한 내부 링크 기회다.
+
+🕳️ **기존 가드가 이 변경을 잡았고 풀지 않았다** — `crawler-heading-2026-10-12.test.ts` ⑤
+*"`<h1>` 조립은 한 곳에서만"*. 지키려던 불변식(두 자리에서 각자 쓰면 한쪽이 `esc()` 를
+빠뜨린다)이 **그대로 옳으므로**, 손으로 쓰던 `<h1>` 을 그 파일의 `h1Of()` 헬퍼 호출로 바꿨다.
+가드 수정 0.
+
+🩸 **주입이 내 단언 하나를 헛돈다고 잡았다** — 시드 타입 검사를 `toContain('product_id')` 로
+썼더니 `product_id?: never` 로 바꿔도 **통과**했다(이름은 남으니까). 게다가 `category`·
+`deal_only` 는 **형제 블록**(`linked_seller_products`)에도 있어 인터페이스를 통째로 보면 늘
+걸린다. ⇒ **필드 이름은 선언이 살아 있는지 말해 주지 않는다** — 블록을 나눠 타입까지 대조한다.
+⚠️ 이 결함은 타입 층이라 런타임 시험으로는 원리상 못 잡는다(vitest 는 타입체크를 안 한다).
+
+가드: `curator-fallback-head-link-2026-10-14.test.ts` 13건 + 주입 6건 **전부 빨간불 확인**.
+⚠️ **못 보는 것**: 구글·네이버가 그 링크를 실제로 따라가는지(외부 판정) · 사람 화면(`<noscript>`
+라 JS 가 돌면 렌더조차 안 된다) · 사진은 범위 밖(이번 실측은 heading·링크였다).
+
+⚠️ **E4(배포 후 라이브)**:
+```bash
+UA='Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
+# ① 폴백 유어샵에 제목·링크가 생겼는지
+curl -sS -A "$UA" https://urdeal.kr/u/user40 | grep -c '<h1>'          # 0 → 1
+curl -sS -A "$UA" https://urdeal.kr/u/user40 | grep -o 'href="/products/[0-9]*"'   # /products/2917
+# ② 반대 방향 — 첫 화면이 있는 유어샵은 h1 이 **하나**를 유지하는지(둘이 되면 회귀)
+curl -sS -A "$UA" https://urdeal.kr/u/jiwon1228 | grep -c '<h1>'       # 1 유지
+```
+
+---
+
+## 📌 이 세션의 머지 상태 (다음 세션이 먼저 볼 것)
+
+- **PR #1808** — draft 해제 + **auto-merge(squash) 켜 둠**(`68ed56230`). Verify 가 초록이 되면
+  GitHub 이 스스로 머지한다. ⚠️ **그 전에 새 커밋을 푸시하면 Verify 가 취소되고 처음부터 다시
+  돈다**(80~95분). 그래서 #87 은 **커밋만 하고 푸시를 보류**했다 — 그 PR 이 머지된 뒤 올린다.
+- 머지 대기 중인 내용: #84(평점) · #85(할인율) · #86(블로그 JSON-LD 중복) · 결재 2건 · 앵커 재조준.

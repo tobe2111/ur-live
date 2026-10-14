@@ -51,7 +51,7 @@ import type { TermsDoc } from '../../pages/terms/terms-types'
 //    `esc` 는 밖에서도 쓰므로(`urshorts-noscript.ts`) 여기서 다시 export 한다.
 import {
   esc, won, lines, wrap,
-  capRowImages, liOf, rowLine, parseSeed, regionSeedRows, sizedCdnCgi,
+  capRowImages, liOf, rowHref, rowLine, parseSeed, regionSeedRows, sizedCdnCgi,
   type RegionSeedRow, type Row,
 } from './crawler-noscript-rows'
 export { esc }
@@ -261,9 +261,21 @@ export function stayNoscriptFromPayload(
  */
 export interface NoscriptCuratorSeed {
   curator?: { name?: string | null; bio?: string | null } | null
-  pins?: Array<{ product_name?: string | null; price?: number | null; restaurant_name?: string | null } | null> | null
+  /**
+   * 🔗 2026-10-14 — `product_id`·`category`·`deal_only` 는 **링크를 만드는 재료**다.
+   *   라이브 시드에 **이미 전부 와 있었다**(실측 `/u/user40` 핀: `product_id 2917` ·
+   *   `category 'lifestyle'` · `deal_only 0`) — 선언만 없어서 쓰지 못하고 있었다.
+   *   2026-10-14 의 `avg_rating` 과 **같은 클래스**다: 값은 도착했고 타입이 안 받았다.
+   */
+  pins?: Array<{
+    product_name?: string | null; price?: number | null; restaurant_name?: string | null
+    product_id?: number | string | null; category?: string | null; deal_only?: number | null
+  } | null> | null
   /** 사업자 유어샵(`linked_seller`)의 진열 — 핀이 비었을 때의 **두 번째 재료**. curator 응답이 동봉한다. */
-  linked_seller_products?: Array<{ name?: string | null; price?: number | null; restaurant_name?: string | null } | null> | null
+  linked_seller_products?: Array<{
+    name?: string | null; price?: number | null; restaurant_name?: string | null
+    id?: number | string | null; category?: string | null; deal_only?: number | null
+  } | null> | null
 }
 
 /**
@@ -272,6 +284,36 @@ export interface NoscriptCuratorSeed {
  * 첫 화면은 진열 **줄 4개**만 그린다(그 아래는 로더). 유어샵은 공유로 퍼지는 표면이라, 담긴 것이
  * 무엇인지 크롤러가 알아야 그 가게 이름으로 검색될 때 잡힌다.
  * ⚠️ 이름은 첫 화면이 이미 그리므로(규율 ②) **소개(bio)와 진열 목록만** 담는다.
+ *
+ * ## 🔖 2026-10-14 — `withName`(= 첫 화면이 없는 경로)에서는 **제목과 링크**까지 낸다
+ *
+ * **라이브 실측(Googlebot UA, sitemap 표본 48표면)**: `h1` 이 **0개인 표면이 정확히 하나**였다 —
+ * `/u/user40`. 그 한 곳은 **내부 링크도 0개**였다(대조: `/u/jiwon1228` 는 `h1` 1 · 링크 5).
+ *
+ *       /u/user40     h1 0 · a 0 · 본문 58자 · ProfilePage+Person+ItemList(Product 1)
+ *       /u/jiwon1228  h1 1 · a 5 · 본문 419자
+ *       (나머지 46표면)  전부 h1 1
+ *
+ * 🔎 **원인은 이 경로다.** `/u/user40` 은 `linked_seller` 유어샵이라 `buildCuratorFirstScreen` 이
+ *   설계대로 `''` 를 주고(React 가 `SellerPublicPage` 를 그린다 — 레이아웃이 통째로 다르다),
+ *   그러면 이 폴백이 본문을 메운다. 그런데 그 폴백은 이름을 `<p>` 로 쓰고 행을 **링크 없는 `<li>`**
+ *   로 냈다 ⇒ 2026-10-12 의 내부 링크 처방(`rowHref`)과 색인 표면의 heading 처방이 **이 경로에만
+ *   오지 않았다.** 에러가 안 나고 본문 글자수는 늘어 있어서 측정만 보면 멀쩡해 보인다.
+ *
+ * 🔑 **재료는 이미 시드에 있었다** — 핀에 `product_id`·`category`·`deal_only` 가 전부 온다(실측).
+ *   선언만 없어서 쓰지 못했다(위 타입의 🔗 주석). 주소는 **목록 표면과 같은 `rowHref`** 를 쓴다 —
+ *   `canonicalDetailPath` SSOT 경유라 `ItemList`·sitemap 과 세 벌이 갈릴 수 없고, 교환권
+ *   (`deal_only=1`, noindex)은 **링크하지 않는다**는 그 규율도 함께 따라온다.
+ *   `/u/user40` 의 핀이 가리키는 `/products/2917` 은 **sitemap 의 유일한 `/products/` URL** 이라,
+ *   그 한 건에게는 이것이 유일한 내부 링크 기회다.
+ *
+ * 🔴 **첫 화면이 있는 경로(`withName` 없음)는 byte-불변으로 둔다.** 그 경로의 `#root` 에는
+ *   제목(`h1`)과 핀 링크가 **이미** 있다(jiwon1228 의 `h1` 1 · 링크 5 가 그것이다) — 여기서 또
+ *   내면 같은 페이지에 `h1` 이 둘이 되고 같은 URL 로 가는 링크가 두 벌이 된다. 즉 이 분기는
+ *   "폴백에만 모자란 것을 채운다" 이고, 그래서 판정이 `standalone` **하나**로 모여 있다.
+ *
+ * ⚠️ **못 보는 것**: 구글·네이버가 그 링크를 실제로 따라가는지(색인 수일~수주 · 서치콘솔은
+ *   **대표만** 본다) · 사진은 **안 붙인다**(이번 실측은 heading·링크였다 — 별건).
  */
 export function buildCuratorNoscript(
   seed: NoscriptCuratorSeed | null | undefined,
@@ -280,32 +322,40 @@ export function buildCuratorNoscript(
   if (!seed) return ''
   const bio = (seed.curator?.bio || '').trim()
   const name = (seed.curator?.name || '').trim()
-  const row = (nm: string, store: unknown, price: unknown): string => {
+  // 🔗 첫 화면이 없는 경로에서만 링크를 만든다 — 아래 `standalone` 머리말 참조.
+  const standalone = !!opts.withName
+  const row = (nm: string, store: unknown, price: unknown, href: string | null): string => {
     const n = String(nm || '').trim()
     if (!n) return ''
     const st = String(store || '').trim()
     const pr = Number(price) || 0
     const tail = [st, pr > 0 ? `${won(pr)}원` : ''].filter(Boolean).join(' · ')
-    return `<li>${esc(n)}${tail ? `, ${esc(tail)}` : ''}</li>`
+    // 🔗 `liOf` 가 글자 이스케이프와 `<a>` 감싸기를 함께 한다 — 목록 표면과 **같은 함수**다.
+    return liOf({ text: `${n}${tail ? `, ${tail}` : ''}`, href })
   }
+  const hrefOf = (id: unknown, category: unknown, dealOnly: unknown): string | null =>
+    standalone ? rowHref({ id: id as number | string | null, category: category as string | null, deal_only: dealOnly as number | null }) : null
   const pins = (Array.isArray(seed.pins) ? seed.pins : [])
     .filter((x): x is NonNullable<NoscriptCuratorSeed['pins']>[number] & object => !!x)
     .slice(0, 20)
-    .map((pr) => row(pr.product_name || '', pr.restaurant_name, pr.price))
+    .map((pr) => row(pr.product_name || '', pr.restaurant_name, pr.price, hrefOf(pr.product_id, pr.category, pr.deal_only)))
     .filter(Boolean)
   // 🔁 핀이 한 줄도 안 나오면 **사업자 진열**로 — 둘을 합치지 않는다(user40 실측에서 둘이 같은
   //    상품이었다 ⇒ 합치면 같은 줄을 두 번 말한다).
   const items = pins.length ? pins : (Array.isArray(seed.linked_seller_products) ? seed.linked_seller_products : [])
     .filter((x): x is NonNullable<NoscriptCuratorSeed['linked_seller_products']>[number] & object => !!x)
     .slice(0, 20)
-    .map((pr) => row(pr.name || '', pr.restaurant_name, pr.price))
+    .map((pr) => row(pr.name || '', pr.restaurant_name, pr.price, hrefOf(pr.id, pr.category, pr.deal_only)))
     .filter(Boolean)
 
   // 🔴 **이름만 남는다면 아무것도 내지 않는다** — 그 이름은 `<title>`·`og:title` 이 이미 말한다.
   //   이름만 넣으면 본문 글자수는 늘지만 페이지가 thin 인 사실은 그대로다(측정만 좋아 보인다).
   //   재료가 없는 유어샵은 **본문을 꾸미는 대신 sitemap 에서 뺀다**(`sitemap.routes` 의 🩸 주석).
   if (!bio && !items.length) return ''
-  const body = (opts.withName && name ? `<p>${esc(name)} 유어샵</p>` : '')
+  // 🔖 2026-10-14 — 첫 화면이 없는 경로에서는 이름이 **제목(`h1`)** 이다. 아래 머리말 참조.
+  // 🔖 조립은 `h1Of` 한 곳에서만 — 두 자리에서 각자 쓰면 한쪽이 `esc()` 를 빠뜨린다
+  //    (`crawler-heading-2026-10-12.test.ts` ⑤ 가 지키는 그 불변식이고, 그 가드가 이 변경을 잡았다).
+  const body = (standalone ? h1Of(name && `${name} 유어샵`) : '')
     + (bio ? `<p>${esc(bio)}</p>` : '')
     + (items.length ? `<ul>${items.join('')}</ul>` : '')
   return wrap(body)
