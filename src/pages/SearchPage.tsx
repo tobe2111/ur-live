@@ -11,6 +11,7 @@ import SearchStates, { addRecentSearch } from '@/components/search/SearchStates'
 import SearchSuggestPanel from '@/components/search/SearchSuggestPanel'
 import RestaurantRow from '@/pages/restaurant-map/RestaurantRow'
 import SortFilterBar from '@/components/search/SortFilterBar'
+import { priceDisplay } from '@/shared/price-display'
 
 interface Product {
   id: number
@@ -98,10 +99,13 @@ export default function SearchPage() {
     }
   }, [isError])
 
-  const getDiscountedPrice = (price: number, discountRate: number) => {
-    // 🛡️ 2026-04-22: 서버 라운딩(Math.round) 과 통일 — 표시-결제 1원 차이 방지
-    return Math.round(price * (1 - discountRate / 100))
-  }
+  // 🐛 2026-10-14: 여기 있던 `getDiscountedPrice(price, rate)` 는 `price × (1−rate/100)` 로
+  //   **판매가를 한 번 더 깎고 있었다**. 이 API 의 `price` 는 이미 파는 값이고, 정가는
+  //   `original_price` 다 — 라이브에선 `discount_rate` 가 전부 0 이라 우연히 맞아떨어졌을 뿐,
+  //   그 컬럼이 채워지는 날(KT 기프티콘 동기화가 채운다) 필터·정렬이 **이중 할인** 값을 쓴다.
+  //   SSOT `priceDisplay().price` = 실제로 파는 값.
+  const sellingPrice = (p: { price: number; original_price?: number | null; discount_rate?: number | null }) =>
+    priceDisplay(p).price
 
   const handleSearch = (searchQuery: string) => {
     // 🛡️ 2026-05-19: 최근 검색어 저장 (사용자 요청).
@@ -136,7 +140,7 @@ export default function SearchPage() {
     if (!searchResult?.products) return []
 
     let filtered = (searchResult.products as Product[]).filter(product => {
-      const price = getDiscountedPrice(product.price, product.discount_rate || 0)
+      const price = sellingPrice(product)
       if (price < priceRange.min || price > priceRange.max) return false
       // 🎟️ 2026-08-08 (대표 — "교환권 페이지에선 교환권만 검색되게"): 검색 범위가 **어디서 왔는지**에
       //   따라 정반대다. 그래서 `?scope=` 로 가른다 — 없으면 종전(이용권만) 그대로.
@@ -153,11 +157,11 @@ export default function SearchPage() {
     switch (sortBy) {
       case 'price_low':
         return filtered.sort((a, b) =>
-          getDiscountedPrice(a.price, a.discount_rate) - getDiscountedPrice(b.price, b.discount_rate)
+          sellingPrice(a) - sellingPrice(b)
         )
       case 'price_high':
         return filtered.sort((a, b) =>
-          getDiscountedPrice(b.price, b.discount_rate) - getDiscountedPrice(a.price, a.discount_rate)
+          sellingPrice(b) - sellingPrice(a)
         )
       case 'newest':
         return filtered.sort((a, b) => b.id - a.id)

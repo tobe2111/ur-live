@@ -103,7 +103,7 @@ app.get('/influencer-pool', async (c) => {
   else if (tier === 'micro') where.push('subscriber_count >= 10000 AND subscriber_count < 100000')
   else if (tier === 'mid') where.push('subscriber_count >= 100000 AND subscriber_count < 500000')
   else if (tier === 'macro') where.push('subscriber_count >= 500000')
-  else if (tier === 'sweet') where.push("(platform IN ('naver_blog','naver_cafe','tistory') OR (subscriber_count >= 10000 AND subscriber_count < 500000))")
+  else if (tier === 'sweet') where.push("subscriber_count < 500000 AND subscriber_count >= (CASE WHEN platform IN ('naver_blog','naver_cafe','tistory') THEN 1000 ELSE 10000 END)") // 블로그 1천+(10-14 대표) · 유튜브 1만+
   // 🔎 검색 — 이름/핸들/수집키워드 + **이메일·카테고리·채널소개**(2026-07-27 대표 "인플루언서 검색도 되게").
   //   소개(description)에 지역·업종이 적힌 채널이 많아, 이걸 빼면 "강남"·"카페" 로 찾아도 0건이 나온다.
   //   여러 단어를 넣으면 **AND**(각 토큰이 어딘가엔 있어야 함) — "강남 카페" 가 둘 다 만족하는 채널만 나오게.

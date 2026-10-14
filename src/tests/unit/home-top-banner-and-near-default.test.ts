@@ -117,7 +117,8 @@ describe('① 상단 띠 = 옆으로 넘기는 스트립 (안 3)', () => {
     expect(codeOnly(RAIL), '숫자가 버튼이 아니다 — 누를 수 없으면 "부드럽게 넘김"(대표 지시)이 손가락 전용이 된다')
       .toMatch(/<button[\s\S]{0,400}?onClick=\{\(\) => goTo\(active \+ 1\)\}/)
     expect(codeOnly(RAIL), '숫자가 배너 밖으로 나갔다 — 줄을 하나 더 먹으면 다시 따로 논다')
-      .toMatch(/className="absolute [^"]*right-/)
+      // 2026-10-14: 교환권 띠(single)에선 위로 올라가 className 이 템플릿이 됐다 — 두 표기 모두 '배너 안 absolute' 면 통과.
+      .toMatch(/className=(?:"|\{`)absolute [^"`]*right-/)
     expect(codeOnly(RAIL), '포함 블록(relative)이 없어졌다 — 알약이 레일과 함께 스크롤돼 흘러간다')
       .toContain('<div className="relative">')
   })

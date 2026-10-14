@@ -45,8 +45,8 @@ export default [
   {
     name: '🎫2:1 숫자 알약이 배너 밖으로 나간다 (줄이 하나 더 생겨 다시 따로 논다)',
     file: 'src/components/home/HomeBannerStrip.tsx',
-    find: 'className="absolute right-[26px] bottom-3',
-    replace: 'className="mt-2 mx-auto block',
+    find: "className={`absolute right-[26px] ${single ? 'top-2' : 'bottom-3'}",
+    replace: "className={`mt-2 mx-auto block ${single ? 'top-2' : 'bottom-3'}",
     test: BANNER,
     why: '대표 확정 "2로 가자"의 요지는 숫자가 배너 **안**에 있는 것이다(점 줄을 없앤 이유가 그 층이었다).',
   },

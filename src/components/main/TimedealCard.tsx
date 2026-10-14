@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { formatNumber } from '@/utils/format'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
+import { priceDisplay } from '@/shared/price-display'
 
 interface TimedealCardProps {
   id: number
@@ -60,11 +61,8 @@ export default function TimedealCard({
   const target = flash_deal_end ? new Date(flash_deal_end) : null
   const remaining = useCountdown(target)
 
-  const discPct = discount_rate != null && discount_rate > 0
-    ? discount_rate
-    : (original_price && original_price > price
-      ? Math.round((1 - price / original_price) * 100)
-      : 0)
+  // 💸 2026-10-14: 규칙 사본 제거 → SSOT(`max(선언, 계산)`).
+  const discPct = priceDisplay({ price, original_price, discount_rate }).discount
 
   const soldN = sold_count ?? 0
   const stockN = stock ?? 0

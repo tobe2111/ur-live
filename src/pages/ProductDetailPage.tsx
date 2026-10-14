@@ -39,7 +39,7 @@ import { readMallOrigin } from '@/shared/mall/origin'
 import { parseUTCDate } from '@/utils/date'
 import { storeAffiliateRef, arrivedViaSomeoneElsesRef } from '@/utils/affiliate-track'
 import { useProductViewBeacon } from '@/hooks/useProductViewBeacon'
-import { effectiveAffiliateRate } from '@/shared/affiliate-rate'
+import { effectiveAffiliateRate } from '@/shared/affiliate-rate'; import { priceDisplay } from '@/shared/price-display'
 
 // 🛡️ 2026-05-02: TD-018 분할 — ReviewForm/ProductReviews/ReferralSection/AccordionSection 을
 //   ./product-detail/ 로 추출. 미사용 imports (Separator, ProgressiveImage, SharePrompt, toast, Users, Clock, Product type, lucide 일부) 제거.
@@ -754,7 +754,7 @@ export default function ProductDetailPage() {
           })()}
           <KakaoShareButton
             title={product.name}
-            description={`${formatNumber(displayPrice)}${Number(product.deal_only) === 1 ? ' 딜' : '원'} ${product.original_price && product.original_price > product.price ? `(${Math.round((1 - product.price / product.original_price) * 100)}% 할인)` : ''}`}
+            description={`${formatNumber(displayPrice)}${Number(product.deal_only) === 1 ? ' 딜' : '원'} ${priceDisplay(product).discount ? `(${priceDisplay(product).discount}% 할인)` : ''}`}
             imageUrl={product.image_url || undefined}
             link={`/products/${product.id}`}
             buttonText={t('productDetailPage.viewProductCta')}

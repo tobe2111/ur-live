@@ -24,6 +24,7 @@ import BrandLoader from '@/components/brand/BrandLoader'
 //   기존엔 SSR/프리페치 데이터가 있어도 첫 프레임에 풀스크린 로더가 떴음(형제 페이지와 비대칭).
 import { pickSeedDetail } from './group-buy/seed-detail'
 import { getProductFlow, FLOW_CONFIG } from '@/shared/product-flow'
+import { priceDisplay } from '@/shared/price-display'
 
 /**
  * 🛡️ 2026-05-23: 교환권 전용 detail 페이지.
@@ -330,10 +331,8 @@ export default function VoucherDetailPage() {
   // 🧹 공급사(KT Alpha) 내부 정책 표기 제거 후 표시 (prod DB 잔존 행도 즉시 정리).
   const cleanDescription = product.description ? stripSupplierPolicy(product.description) : ''
   // 🎨 정가(원) > 교환가(딜=원) 일 때만 할인 표시 (KT Alpha 교환권 등). 데이터 없으면 미표시.
-  const hasDiscount = !!product.original_price && product.original_price > product.price
-  const discountPct = hasDiscount
-    ? Math.round(((product.original_price! - product.price) / product.original_price!) * 100)
-    : 0
+  // 💸 2026-10-14: 할인율 규칙 사본 제거 → SSOT(`max(선언, 계산)`).
+  const { showOriginal: hasDiscount, discount: discountPct } = priceDisplay(product)
 
   return (
     <div className="min-h-[100dvh] bg-white dark:bg-[#11141C] pb-52 lg:pb-40">

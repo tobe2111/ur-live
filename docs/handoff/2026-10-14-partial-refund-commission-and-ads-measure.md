@@ -49,3 +49,16 @@
   + 주입 `scripts/mutations/influencer-pool-reach1k.mjs` 3건 빨간불 확인.
 - 파일 600줄 캡에 걸려 있어 주석을 한 줄로 압축했다(라우트 600줄 유지).
 - ⚠️ E4: 배포 뒤 어드민에서 매체=네이버 블로그 + 규모=1천+ 로 총 건수가 65,823 근처인지.
+
+## 4. 네이버 카페 끔 · 스위트스팟 블로그 1천 (대표 *"네이버 카페는 이제 꺼줘. 스윗스팟은 1천으로 해줘."*)
+- **카페는 이미 꺼져 있었다** — `platform_settings.ads_collect_cafe = off`(main DB, updated_at 2026-10-14 16:52 KST).
+  그 뒤 카페 신규 0건 · 다른 매체는 706건 계속 들어옴(실측 17:24 KST). 마지막 카페 행 16:02 KST.
+- 🩸 **그런데 어드민 카페 스위치는 저장이 안 되는 상태였다**: `PATCH /api/admin/ads/influencer-pool/collect-gates` 가
+  먼저 마운트된 `PATCH /influencer-pool/:id` 에 잡혀 "잘못된 ID" 400(실측 — 세션이 `{cafe:false}` 를 보내 재현).
+  16:52 의 off 는 다른 경로(플랫폼 설정 화면 등)로 들어간 것으로 보인다. ⇒ 카페 게이트 라우터를 **먼저** 마운트.
+- 스위트스팟: 블로그(naver_blog·cafe·tistory)는 이웃 1천+, 유튜브는 종전 1만+, 둘 다 50만 미만.
+  라이브 기대값(10-14): 블로그 65,936 + 카페 225 + 유튜브 8,750 ≈ **74,911**(종전 블로그 전량 포함 ≈ 339,000).
+  ⚠️ 티스토리 599명은 이웃 수가 측정된 적이 없어(0건) 스위트스팟에서 빠진다.
+- 가드 `influencer-pool-sweet-cafe-gate-2026-10-14.test.ts`(SQLite 경계 + 실제 라우터를 소스 순서로 조립해 PATCH)
+  + 주입 `scripts/mutations/influencer-pool-sweet-cafe-gate.mjs` 3건 빨간불 확인.
+- ⚠️ E4: 배포 뒤 어드민 수집 진단의 카페 스위치를 눌러 저장되는지 · 규모=스위트스팟 총 건수가 7만 5천 근처인지.
