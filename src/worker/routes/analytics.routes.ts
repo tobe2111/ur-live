@@ -68,7 +68,19 @@ async function appendSample(kv: KVNamespace, key: string, value: number, maxSamp
   } catch { /* silent */ }
 }
 
+/**
+ * 🌏 2026-10-14: 성능 표본은 **한국에서 온 요청만** 받는다.
+ *   서비스가 한국 전용이고, 해외 표본은 사실상 우리 측정·테스트 트래픽이다(그날 `/map` LCP 표본의 데이터센터가
+ *   전부 미국이었다). 섞이면 실사용자 숫자가 미국에서 한국 CDN 을 받는 시간으로 부풀어 엉뚱한 화면을 고치게 된다.
+ *   헤더가 없으면(로컬·미지정) 막지 않는다 — 판정할 근거가 없을 때는 종전대로 받는다.
+ */
+export function isVitalsCountryAllowed(country: string | undefined | null): boolean {
+  const cc = (country || '').trim().toUpperCase()
+  return cc === '' || cc === 'KR'
+}
+
 analyticsRoutes.post('/vitals', async (c) => {
+  if (!isVitalsCountryAllowed(c.req.header('cf-ipcountry'))) return c.json({ ok: true, skipped: 'country' })
   if (Math.random() > VITALS_SAMPLE_RATE) return c.json({ ok: true, sampled: false })
   const body = await c.req.json<VitalsBody>().catch(() => ({} as VitalsBody))
   if (!body.name || typeof body.value !== 'number' || !Number.isFinite(body.value)) {
