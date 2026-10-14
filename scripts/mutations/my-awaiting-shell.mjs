@@ -43,8 +43,9 @@ export default [
   {
     name: '껍데기 — 눌리게 둔다(말없이 삼키는 탭)',
     file: SECTION,
-    find: "      className={`ur-content-medium lg:px-4 pt-4${awaiting ? ' pointer-events-none' : ''}`}",
-    replace: '      className="ur-content-medium lg:px-4 pt-4"',
+    // 🔁 2026-10-14: PC 마이 B 로 `ur-pc-card` 가 붙었다 — 결함(게이트 제거)은 그대로.
+    find: "      className={`ur-content-medium lg:px-4 pt-4 ur-pc-card${awaiting ? ' pointer-events-none' : ''}`}",
+    replace: '      className="ur-content-medium lg:px-4 pt-4 ur-pc-card"',
     test: T,
     why:
       '핸들러는 전부 `!store` 로 일찍 돌아간다 — 누르면 **아무 일도 안 일어나고 안내도 없다**. ' +

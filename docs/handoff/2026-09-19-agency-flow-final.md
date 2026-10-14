@@ -5,7 +5,7 @@
 활성화 입구 하나가 더 생긴 것이라 결제·적립·환불 코드는 한 줄도 안 바뀌었다.
 
 대표 확정: *"이걸 최종 플로우로 결정하고 중개사가 끼지 않는 매장 직접 운영도 유사한 형태로 하자. 모든 미흡한 부분은 빠짐없이 구현해줘."*
-결재 파일: `docs/decisions/2026-09-19-agency-flow-final.md` · 구조 SSOT: `urdeal-platform-model.md` §2-1 🔑.
+결재 파일: `docs/decisions/archive/2026-09-19-agency-flow-final.md` · 구조 SSOT: `urdeal-platform-model.md` §2-1 🔑.
 
 ## [E2] 한 것
 

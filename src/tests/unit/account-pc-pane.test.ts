@@ -41,8 +41,11 @@ describe('PC 마이 — 우측 칸은 메뉴가 아니라 내용', () => {
     expect(STATS).toMatch(/divide-x divide-rule/)
     expect(PANE, 'PC 가 숫자를 또 그린다 — 같은 값이 한 화면에 두 벌').not.toMatch(/grid-cols-4/)
   })
-  it('곧 쓸 이용권은 지갑·결제 완료와 같은 TicketCard 부품, 사용 가능 매장 이용권만 만료 임박순 3장', () => {
-    expect(PANE).toContain("from '@/components/ticket/TicketCard'")
+  // 🔁 2026-10-14 PC 마이 B: 티켓 카드 → **지갑과 같은 줄**(`WalletRow`). 같은 날 지갑이 안 B 로 줄이
+  //   됐다 — 같은 이용권이 두 화면에서 다른 모양이면 안 된다. 불변식 '같은 부품' 은 그대로.
+  it('곧 쓸 이용권은 지갑과 같은 WalletRow 부품, 사용 가능 매장 이용권만 만료 임박순 3장', () => {
+    expect(PANE).toContain("from '@/pages/my-vouchers/WalletRow'")
+    expect(PANE, '티켓 카드가 돌아왔다 — 지갑과 모양이 갈린다').not.toContain('TicketCard')
     expect(PANE).toMatch(/v\.status === 'unused' && isStoreVoucher\(v\)/)
     expect(PANE).toMatch(/\.slice\(0, 3\)/)
   })

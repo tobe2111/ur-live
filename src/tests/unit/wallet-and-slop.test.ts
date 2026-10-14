@@ -27,7 +27,7 @@ const R = (p: string) => readFileSync(resolve(__dirname, '../../', p), 'utf-8')
 describe('이용권 지갑', () => {
   const page = R('pages/MyVouchersPage.tsx')
 
-  it('같은 말을 반복하지 않는다 — 금액은 머리글 한 번·장수는 탭 배지 한 번, 칩 줄·요약 지표 줄은 없다 (2026-10-07 A안 + 10-08)', () => {
+  it('같은 말을 반복하지 않는다 — 장수·합계는 요약 카드 한 번, 칩 줄·요약 지표 줄은 없다 (2026-10-07 A안 + 10-08 + 10-14 안 B)', () => {
     // 종전엔 '사용 가능' 이 요약 줄·탭·칩·카드 띠에 네 번 나왔다(대표 "이 페이지 자체가 못생겼어").
     // 🎫 2026-10-08 (대표 "굳이 없어도 될 것 같아"): A안이 남겨 둔 마지막 중복을 걷었다.
     //   종전 머리글은 `88,900원 · 3장` 이었고 40px 아래 탭 배지가 같은 `unusedItems.length` 를 또 말했다.
@@ -36,10 +36,12 @@ describe('이용권 지갑', () => {
     //   코드만 보면 거리가 안 변하므로, 아래 단언은 전부 주석 제거본을 본다.
     const pageCode = stripComments(page)
     expect(pageCode.length, '주석 제거기가 파일을 통째로 먹었다').toBeGreaterThan(page.length * 0.4)
-    expect(pageCode).toMatch(/<WalletHeader[\s\S]{0,600}eyebrow=/)
-    expect(pageCode, '머리글에 장수가 돌아왔다 — 탭 배지와 같은 숫자를 두 번 말한다').not.toMatch(/countText=/)
-    expect(pageCode, '탭 배지(개수)가 사라졌다 — 이제 장수를 말하는 곳이 한 곳도 없다')
-      .toMatch(/key === 'unused' && unusedItems\.length > 0 &&/)
+    // 🔀 2026-10-14 대표 확정 안 B: 장수를 말하는 **한 곳**이 탭 배지 → 요약 카드로 옮겨갔다(불변식은 그대로 '한 번').
+    expect(pageCode, '요약 카드가 장수를 안 받는다 — 이제 장수를 말하는 곳이 한 곳도 없다')
+      .toMatch(/<WalletSummaryCard count=\{unusedItems\.length\}/)
+    expect(pageCode, '탭에 개수 배지가 돌아왔다 — 요약 카드와 같은 숫자를 두 번 말한다')
+      .not.toMatch(/key === 'unused' && unusedItems\.length/)
+    expect(pageCode, '머리글에 장수가 돌아왔다').not.toMatch(/countText=/)
     expect(page, '요약 지표 줄(stats)이 돌아왔다').not.toMatch(/heroUsable/)
     expect(page, '칩 줄(전체 N·만료 임박)이 돌아왔다').not.toMatch(/voucher\.chipAll|voucher\.chipSoon/)
     // 탭의 개수는 라벨 옆 브랜드색 숫자 한 번뿐이다 — 라벨 문자열에 개수를 이어 붙이면 '사용 가능 3 3' 이 된다.
@@ -54,8 +56,23 @@ describe('이용권 지갑', () => {
    * 문서가 되면 보조기술·크롤러가 이 화면이 무엇인지 알 방법이 사라진다.
    * ⚠️ 이 테스트가 못 잡는 것: CSS 로 sr-only 를 무력화하는 경우(실제 렌더는 안 잰다).
    */
+  /**
+   * 🎫 2026-10-14 대표 확정 안 B — 지갑 아래 "이런 이용권은 어때요?".
+   * 지키는 것: ① 새 요청을 만들지 않는다(홈 피드와 같은 키 — 첫 화면 요청 수) ② 이미 가진 상품은 빼고 권한다
+   *   ③ 시안대로 한 줄(2장) — 늘어나면 지갑이 추천 목록처럼 보인다.
+   */
+  it('추천은 홈 피드와 같은 요청 · 가진 상품 제외 · 2장', () => {
+    const reco = stripComments(R('pages/my-vouchers/WalletRecommend.tsx'))
+    expect(reco, '추천이 홈 피드와 다른 요청을 만든다').toContain('usePopularPasses()')
+    expect(reco).not.toMatch(/api\.get\(|fetch\(/)
+    expect(reco, '이미 가진 이용권을 다시 권한다').toMatch(/!ownedProductIds\.has\(p\.id\)/)
+    expect(reco).toMatch(/export const WALLET_RECO_COUNT = 2\b/)
+    expect(stripComments(page), '지갑이 추천을 안 붙였다').toMatch(/<WalletRecommend ownedProductIds=\{ownedProductIds\}/)
+  })
+
   it('제목 줄은 화면에 안 뜨지만 sr-only h1 로 남아 있다', () => {
-    expect(page).toMatch(/<WalletHeader[\s\S]{0,400}hideTitle/)
+    // 🔀 2026-10-14 안 B: 지갑은 요약 카드를 쓰고 제목은 페이지가 직접 sr-only h1 으로 남긴다.
+    expect(stripComments(page)).toMatch(/<h1 className="sr-only">\{t\('voucher\.myVouchers'\)\}<\/h1>/)
     const header = R('pages/my-vouchers/WalletHeader.tsx')
     expect(header).toMatch(/hideTitle && <h1 className="sr-only">\{title\}<\/h1>/)
     // 보이는 제목은 hideTitle 이면 렌더되지 않는다(그냥 색만 바꾸는 식이면 위반).

@@ -1958,6 +1958,28 @@ html.dark .gbd, [data-theme="dark"] .gbd {
   .ur-account-cols--split .ur-account-col--narrow .grid-cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ur-account-cols--split .ur-account-col--narrow .grid-cols-3 { grid-template-columns: minmax(0, 1fr); }
   .ur-account-cols--split .ur-account-col--narrow .grid-cols-2 { grid-template-columns: minmax(0, 1fr); }
+
+  /* 🗂️ 2026-10-14 **PC 마이 B**(대표 *"마이페이지 부분도 PC로 봤을 때 너무 정돈된 느낌이 부족해"* →
+     시안 A·B 중 *"PC 마이는 B"*) — 머리 띠 · 내 가게 · 설정 · 곧 쓸 이용권 · 내가 산 것이 **전부 카드**다.
+     종전 안 5 는 *"판은 파는 쪽에만"*(폰 문법)을 PC 에도 적용해 손님 블록이 떠 있었고, 그래서 제목과
+     카드의 왼쪽 선이 서로 안 맞았다(실측 332↔314 · 1070↔1088). 카드에 담으면 선이 하나가 된다.
+     ⚠️ **lg 전용이고 `.ur-account-pc` 안에서만** — 폰 마이는 안 C 평면 그대로다(같은 부품, 다른 껍데기).
+     ⚠️ 모양을 손으로 적지 말 것 — 이 규칙 한 곳이 다섯 블록의 그림자·모서리를 정한다. */
+  .ur-account-pc .ur-pc-card {
+    background: var(--surface);
+    border-radius: 16px;
+    box-shadow: var(--lift);
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  /* 카드 안 판은 평면 — 카드 안 카드(그림자 두 겹)를 만들지 않는다. */
+  .ur-account-pc .ur-pc-card .shadow-lift { box-shadow: none; border-radius: 0; }
+  /* 카드 안 줄·제목의 좌우 여백을 넓힌다(16 → 24). 카드 테두리에 글자가 붙어 보이지 않게. */
+  .ur-account-pc .ur-pc-card .px-4 { padding-left: 24px; padding-right: 24px; }
+  /* 구역 제목의 위 여백(mt-8)은 판 없이 공백으로 구역을 가르던 값이다 — 카드 안에선 카드가 가른다. */
+  .ur-account-pc .ur-pc-card > h2:first-child,
+  .ur-account-pc .ur-pc-card > h3:first-child { margin-top: 20px; }
+  .ur-account-pc .ur-pc-card:last-child { margin-bottom: 0; }
 }
 
 /* 🖼️ 사진 저장 억제 — iOS 짝 (2026-08-22 대표 지시)

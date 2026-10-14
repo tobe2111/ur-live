@@ -11,6 +11,23 @@ const PANEL = 'src/tests/unit/home-panel-light-island.test.ts'
 
 export default [
   {
+    name: '✂️교환권 띠 제목이 적어 둔 줄바꿈을 무시한다 ("차곡차곡 모은 딜로 커피 어때요?" 가 애매하게 끊긴다)',
+    file: 'src/components/home/HomeBannerStrip.tsx',
+    // 🔁 2026-10-14: 교환권 머리(hero) 클래스에도 같은 토큰이 생겨 앞 토큰까지 앵커(띠 = SINGLE_CARD_CLS 만).
+    find: '[&>strong]:!line-clamp-2 [&>strong]:!whitespace-pre-line ',
+    replace: '[&>strong]:!line-clamp-2 ',
+    test: 'src/tests/unit/map-chip-shorts-wishlist-2026-10-14.test.ts',
+    why: '대표 "한 줄로 끝내거나, 끊는 자리를 정한 두 줄로". 끊는 자리는 어드민 제목의 줄바꿈이 정하는데, 이 클래스가 빠지면 줄바꿈이 공백으로 뭉개져 다시 아무 데서나 끊긴다.',
+  },
+  {
+    name: '✂️교환권 띠 제목이 유달이 위로 다시 덮인다 (폭 54% → 72%)',
+    file: 'src/components/home/HomeBannerStrip.tsx',
+    find: '[&>strong]:!max-w-[54%]',
+    replace: '[&>strong]:!max-w-[72%]',
+    test: 'src/tests/unit/map-chip-shorts-wishlist-2026-10-14.test.ts',
+    why: '배너 그림의 유달이는 56~76% 자리에 있다. 72% 면 "어때요?" 가 유달이 얼굴에 겹친다(라이브 실측).',
+  },
+  {
     name: '🎫2:1 배너가 다시 전폭이 된다 (거터 제거 — "따로 논다"의 원인)',
     file: 'src/shared/home-strip-banners.ts', // 2026-10-14 클래스가 공용 상수(STRIP_CLS)로 옮겨갔다 — 서버 첫 화면과 같은 값
     find: "rail: 'flex gap-7 px-[14px]',",

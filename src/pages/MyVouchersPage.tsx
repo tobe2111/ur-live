@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState, useEffect, useMemo, useCallback } from 'react'
-import { TicketStubIcon, OkIcon, BadIcon } from '@/components/icons/urdeal-icons'
+import { TicketStubIcon, OkIcon, BadIcon, PinIcon } from '@/components/icons/urdeal-icons'
 import { safeTime } from '@/utils/safe-date'
 import { useNavigate } from 'react-router-dom'
 
@@ -11,7 +11,8 @@ import SEO from '@/components/SEO'
 import { ArrowLeft, QrCode } from 'lucide-react'
 import { useMyVouchers } from '@/hooks/queries'
 import { WalletPageWrapper } from '@/components/wallet/WalletAtoms'
-import WalletHeader from './my-vouchers/WalletHeader'
+import WalletSummaryCard from './my-vouchers/WalletSummaryCard'
+import WalletRecommend from './my-vouchers/WalletRecommend'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import VoucherDisputeBanner from '@/components/voucher/VoucherDisputeBanner'
 import { EmptyVouchers } from './my-vouchers/WalletEmpty'
@@ -131,7 +132,7 @@ export default function MyVouchersPage() {
   //   applied_price 는 '결제한(할인된) 단가', applied_discount_pct 는 할인율 → 원가 대비 절약 = 액면 * pct/(100-pct).
   const heroTotal = unusedItems.reduce((s, v) => s + (v.applied_price ?? v.product_price ?? 0), 0)
   // 🪙 2026-08-31: 이 지갑은 이용권 전용이라 단위는 항상 '원'(교환권의 '딜' 단위는 /my-gifticons 가 담당).
-  const heroUnit = t('voucher.won', { defaultValue: '원' })
+  const ownedProductIds = useMemo(() => new Set(shownVouchers.map(v => v.product_id).filter((x): x is number => x != null)), [shownVouchers])
 
   // 🎨 화면2 — 지도에서 보기 (전용 인-페이지 화면)
   // 🗺️ 2026-10-12 대표 신고 스크린샷("지도를 화면 전체를 쓰던가"): 높이 460 고정이라 폰에선 아래 절반이 비었다.
@@ -223,23 +224,10 @@ export default function MyVouchersPage() {
     <WalletPageWrapper theme={theme}>
       <SEO title={t('voucher.seoTitle')} description={t('voucher.seoDescription')} url="/my-vouchers" />
 
-      {/* 🎨 2026-07-20 (대표 — 지갑 상단 리디자인): LargeTitle + 회색 세그먼트 → 모던 지갑 헤더
-          (26px 타이틀 + 총 보유 칩 + 언더라인 탭). 교환권 보유 시에만 탭 노출. */}
-      <WalletHeader
-        title={t('voucher.myVouchers')}
-        /* 🎫 2026-09-03 (대표 "내 이용권 문장 삭제"): 화면에서 제목 줄을 지운다.
-           하단 탭 '이용권'이 이미 어디인지 말하고, 지갑의 주인공은 금액과 카드다.
-           제목은 sr-only 로만 남아 문서 구조·보조기술 접근성은 유지된다. */
-        hideTitle
-        /* 🎫 2026-10-07 (대표 확정 A안 "정돈" — "이 페이지 자체가 못생겼어"): 금액을 여기서 **한 번만** 말한다.
-           종전엔 '사용 가능' 이 요약·탭·칩·카드 띠에 네 번, 금액이 합계·카드에 두 번 나왔다.
-           🎫 2026-10-08 (대표 "굳이 없어도 될 것 같아"): 그 A안이 남겨 둔 마지막 중복 — 금액 뒤 `· 3장` —
-           도 걷었다. 바로 아래 탭 배지('사용 가능 3')가 같은 `unusedItems.length` 를 40px 안에서 또
-           말하고 있었다. 장수는 이제 **탭 배지 한 곳**뿐이고, 머리글은 금액만 말한다. */
-        eyebrow={t('voucher.walletEyebrow', { defaultValue: '쓸 수 있는 이용권' })}
-        amount={shownVouchers.length > 0 ? heroTotal : null}
-        unit={heroUnit}
-      />
+      {/* 🎫 2026-10-14 대표 확정 안 B — 요약 카드(장수 크게 · 합계 작게). 제목 줄은 2026-09-03 결정대로 sr-only.
+          장수는 이 카드 **한 곳**에서만 말한다(아래 탭엔 개수를 안 붙인다). 근거: `./my-vouchers/WalletSummaryCard`. */}
+      <h1 className="sr-only">{t('voucher.myVouchers')}</h1>
+      {shownVouchers.length > 0 && <WalletSummaryCard count={unusedItems.length} total={heroTotal} t={t} />}
 
 
       <div className="ur-content-narrow px-4 lg:px-8 pb-2">
@@ -277,14 +265,13 @@ export default function MyVouchersPage() {
                 <button key={key} type="button" onClick={() => setTab(key)}
                   className={`relative pb-2 text-[17px] tracking-[-0.02em] ${tab === key ? 'font-extrabold text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500 font-semibold'}`}>
                   {label}
-                  {key === 'unused' && unusedItems.length > 0 && <span className="ml-1 text-[13px] font-bold text-brand-text tabular-nums">{unusedItems.length}</span>}
                   {tab === key && <span aria-hidden="true" className="absolute left-0 right-0 -bottom-px h-[2.5px] bg-brand" />}
                 </button>
               ))}
               {tab === 'unused' && mapVouchers.length > 0 && (
                 <button type="button" onClick={() => setViewMode('map')}
-                  className="ml-auto pb-2 text-[13px] font-bold text-gray-600 dark:text-gray-300">
-                  {t('voucher.mapViewLink', { defaultValue: '지도로 보기' })}
+                  className="ml-auto pb-2 inline-flex items-center gap-1 text-[13px] font-bold text-gray-600 dark:text-gray-300">
+                  <PinIcon className="w-4 h-4" aria-hidden />{t('voucher.mapShort', { defaultValue: '지도' })}
                 </button>
               )}
             </div>
@@ -293,18 +280,10 @@ export default function MyVouchersPage() {
               (() => {
                 const shown = unusedItems
                 return shown.length > 0 ? (
-                  /* 🎫 2026-09-15 (대표 확정 "안 E"): **가장 급한 한 장만 펴고 나머지는 한 줄씩**.
-                     종전엔 가진 이용권을 전부 펼친 티켓으로 그려, 3장이면 스크롤 한 번이고 8장이면
-                     "내가 뭘 갖고 있나" 를 훑는 데만 네 번을 내려야 했다. `unusedItems` 는 이미
-                     **만료 가까운 순**으로 정렬돼 있어(윗쪽 sort) `shown[0]` 이 곧 '지금 쓸 것'이다.
-                     ⚠️ 접기이지 삭제가 아니다 — 줄을 누르면 종전과 **같은 QR 모달**이 열린다. */
-                  <div className="space-y-3">
-                    <VoucherTicket key={shown[0].id} v={shown[0]} muted={false} locale={locale} t={t} onShowQr={() => setQrVoucher(shown[0])} />
-                    {shown.length > 1 && (
-                      <div className="overflow-hidden rounded-2xl bg-surface shadow-lift divide-y divide-rule">
-                        {shown.slice(1).map(v => <WalletRow key={v.id} v={v} t={t} onOpen={() => setQrVoucher(v)} />)}
-                      </div>
-                    )}
+                  /* 🎫 2026-10-14 대표 확정 안 B: **모든** 이용권을 같은 한 줄로(2026-09-15 안 E 의 '첫 장만 펼친 티켓'을 대체 —
+                     같은 물건이 첫 장만 다르게 보였다). 만료 가까운 순 정렬은 그대로. 줄을 누르면 종전과 같은 QR 모달. */
+                  <div className="overflow-hidden rounded-2xl bg-surface shadow-lift divide-y divide-rule">
+                    {shown.map(v => <WalletRow key={v.id} v={v} t={t} onOpen={() => setQrVoucher(v)} />)}
                   </div>
                 ) : (
                   <p className="py-8 text-center text-[13px] text-gray-400 dark:text-gray-500">{t('voucher.noUnused', { defaultValue: '사용 가능한 이용권이 없어요' })}</p>
@@ -319,6 +298,8 @@ export default function MyVouchersPage() {
                 <p className="py-8 text-center text-[13px] text-gray-400 dark:text-gray-500">{t('voucher.noDone', { defaultValue: '사용한 이용권이 아직 없어요' })}</p>
               )
             )}
+            {/* 🎫 안 B 아래쪽 — 남는 자리를 다음에 살 것으로(홈 피드와 같은 요청 · 가진 상품은 뺀다). */}
+            {tab === 'unused' && <WalletRecommend ownedProductIds={ownedProductIds} t={t} />}
           </>
         )}
       </div>

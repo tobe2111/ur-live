@@ -820,6 +820,14 @@ await page.goto(`http://127.0.0.1:${PORT}${ROUTE}`, { waitUntil: 'domcontentload
  */
 if (SHIFT) {
   const snap = () => page.evaluate(() => {
+    /**
+     * 🔤 **같은 글자가 화면에 둘 이상이면 위치를 전부 담는다** (2026-10-14 — 대조 규칙은 `shift-compare.mjs`).
+     *   글자로 요소를 짝짓는데, 같은 글자가 두 곳에 있으면 "처음 만난 것" 이 프레임마다 다른 요소일 수 있다.
+     *   실측: `/vouchers` 에서 머리줄 제목과 하단 탭 라벨이 둘 다 '교환권' 이다. 첫 프레임엔 머리줄이 아직 없어
+     *   하단 탭(y=820)을 잡고, 완성 프레임엔 머리줄(y=8)을 잡아 **아무것도 안 움직였는데 −812 밀림** 으로 보고했다
+     *   (하단 탭 활성 라벨에서 브랜드 점 자식이 빠지며 그 라벨이 처음으로 '잎' 이 된 날 드러났다 — #1802).
+     *   ⇒ 같은 글자의 위치를 전부 모으고, 두 프레임에서 **개수가 같을 때만** 순서대로 짝짓는다(다르면 뺀다).
+     */
     const m = new Map()
     for (const el of document.querySelectorAll('p,span,h1,h2,h3,h4,button,a,label,li,div')) {
       if (el.children.length) continue

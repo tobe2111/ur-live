@@ -1,7 +1,7 @@
 # 💰 매장 손바뀜 · 귀속 시점 — 잠금 먼저 (2026-09-07)
 
 브랜치 `claude/service-page-ui-redesign-gkm900`.
-결재함: `docs/decisions/2026-09-07-store-handover-money-cut.md` (**status: 잠금만 승인 · 선택지 미결**)
+결재함: `docs/decisions/archive/2026-09-07-store-handover-money-cut.md` (**status: 잠금만 승인 · 선택지 미결**)
 
 ## 대표가 물은 것
 

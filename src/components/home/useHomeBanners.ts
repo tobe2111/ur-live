@@ -47,7 +47,7 @@ export interface HomeBanner {
  *   예열도 다시 빗나간다. 그리고 `useApiQuery` 는 `select` 를 **queryFn 안에서** 적용하므로
  *   같은 키에 다른 `select` 를 주면 캐시가 서로 덮어쓴다 — 키 하나 + 전체 목록이라야 안전하다.
  */
-function useAllHomeBanners(): HomeBanner[] {
+function useAllHomeBanners(): { all: HomeBanner[]; settled: boolean } {
   /**
    * 🎫 2026-10-14 — 응답이 오기 전에는 **서버 첫 화면과 같은 상단 배너**를 보여 준다(섹션 시드의
    *   `strip_banners`). 비워 두면 서버가 그린 배너가 마운트 때 사라졌다가 응답 뒤 다시 나타나며
@@ -59,7 +59,7 @@ function useAllHomeBanners(): HomeBanner[] {
     const strip = stripBannersOf(raw)
     return strip.length ? (strip as unknown as HomeBanner[]) : undefined
   })
-  const { data = [] } = useApiQuery<HomeBanner[]>(
+  const { data = [], isFetched } = useApiQuery<HomeBanner[]>(
     ['banners', 'all'],
     '/api/banners',
     {
@@ -72,11 +72,21 @@ function useAllHomeBanners(): HomeBanner[] {
       placeholderData: seeded,
     },
   )
-  return data
+  // `isFetched` — 성공이든 실패든 **응답이 한 번 왔다**. 실패는 select 없이 [] 라 '없음'과 같게 다룬다.
+  return { all: data, settled: isFetched }
 }
 
 export function useHomeBanners(slot: BannerSlot) {
-  const all = useAllHomeBanners()
+  return useHomeBannersState(slot).banners
+}
+
+/**
+ * 🎟️ 2026-10-14 교환권 머리(대표 확정 안 C) — 자리를 **응답 전부터** 잡아야 해서 '아직 모름'이 필요하다.
+ *   `settled=false` 동안 화면은 배너 높이를 비워 두고, 응답이 왔는데 0장이면 그때 접는다(드문 경우).
+ */
+export function useHomeBannersState(slot: BannerSlot): { banners: HomeBanner[]; settled: boolean } {
+  const { all, settled } = useAllHomeBanners()
   // 🔴 자리를 고르지 않은 배너(null)는 어디에도 안 뜬다 — 기본 자리로 승격시키지 않는다.
-  return useMemo(() => all.filter(b => b.banner_slot === slot), [all, slot])
+  const banners = useMemo(() => all.filter(b => b.banner_slot === slot), [all, slot])
+  return { banners, settled }
 }

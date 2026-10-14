@@ -25,7 +25,7 @@
 - `check-internal-links` 가 라우트 파일을 손 목록으로 들고 있어 새 라우트 모듈이 "없는 라우트" 로 보였다 — 반대 방향(라우트가 빠짐)이었으면 조용히 헛돌았을 것.
 
 ## 남은 결정/대기
-- `docs/decisions/2026-10-11-broker-share-switch-off.md` (open) — 대표가 어드민에서 `broker_share_enabled` 를 끌지.
+- `docs/decisions/archive/2026-10-11-broker-share-switch-off.md` (open) — 대표가 어드민에서 `broker_share_enabled` 를 끌지.
 - 2단계 착수 시점.
 
 ## 🔴 2026-10-11 후속 — 라이브에 메일 발송 설정이 없다 (실측)

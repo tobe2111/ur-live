@@ -1,7 +1,7 @@
 /**
  * 🪑 **셀러 목록 시드가 화면이 실제로 부르는 API 를 덮는가** (2026-10-01)
  *
- * 결재: `docs/decisions/2026-09-28-my-stage2-sheet-teardown.md`
+ * 결재: `docs/decisions/archive/2026-09-28-my-stage2-sheet-teardown.md`
  *
  * ## 왜 이 시험이 있나 — **얇은 픽스처에 두 번 당했다**
  *

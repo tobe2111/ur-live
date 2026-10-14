@@ -138,15 +138,24 @@ describe('🎗️ 머리 띠 — 사람과 숫자가 한 줄', () => {
     expect(PAGE, '페이지가 띠에 시트 열기를 안 넘긴다').toContain('onBell={bell.open}')
   })
 
-  it('띠는 카드가 아니다 — 판 없이 hairline 하나로 구역을 가른다', () => {
-    expect(BAND, '머리 띠가 흰 판이 됐다').not.toMatch(/shadow-lift|rounded-2xl/)
-    expect(BAND, '구역을 가르는 선이 없다').toContain('border-b border-rule')
+  /**
+   * 🔁 **2026-10-14 재조준 — 대표 확정 PC 마이 B**(*"PC 마이는 B"*). 안 5 의 *"띠는 카드가 아니다"* 가
+   *   **뒤집혔다**: B 는 머리를 포함해 모든 블록을 카드에 담고 같은 왼쪽 선을 쓴다(대표 *"정돈된 느낌이
+   *   부족해"*). 불변식은 *"카드 모양은 한 곳(`ur-pc-card`)에서 온다"* 로 옮겨간다 — 손으로 적은
+   *   `shadow-lift`/`rounded-2xl` 은 여전히 금지(한 칸만 다른 그림자가 되는 그 클래스).
+   */
+  it('🗂️ 띠는 카드다 — 모양은 공용 `ur-pc-card` 에서만 온다 (손으로 적지 않는다)', () => {
+    expect(BAND, '머리가 카드가 아니다 — B 가 되돌아갔다').toMatch(/className="ur-pc-card /)
+    expect(BAND, '카드 모양을 손으로 적었다 — 다른 블록과 갈린다').not.toMatch(/shadow-lift|rounded-2xl/)
+    expect(BAND, '옛 hairline 띠가 남았다').not.toContain('border-b border-rule')
   })
 })
 
 describe('🧾 오른쪽 칸 — 판을 걷고 폰과 같은 목록을 쓴다', () => {
   it('PC 칸에서 프로필 카드와 타일이 사라졌다 (둘 다 판이었다)', () => {
-    expect(PANE, 'PC 칸에 판이 돌아왔다').not.toMatch(/shadow-lift/)
+    // 🔁 2026-10-14 B: 칸 자체가 카드(`ur-pc-card`)다 — 손으로 적은 그림자만 금지.
+    expect(PANE, 'PC 칸 카드 모양을 손으로 적었다').not.toMatch(/shadow-lift/)
+    expect(PANE, 'PC 칸이 카드가 아니다').toContain('className="ur-pc-card"')
     expect(PANE, '손으로 적은 타일 목록이 돌아왔다').not.toContain('const tiles = [')
   })
 

@@ -11,7 +11,7 @@
      ⇒ Roboto 는 처음부터 고정폭이라 `.tabular-nums` 예외를 지웠다(가드 ③이 그 예외의 재등장을 막는다). `.dash-num` 의 터미널 모노스페이스도 제거.
      **배포 후 E4 판정**: urdeal.kr 에서 `/static/fonts/roboto-digits-700.woff2` 200 + 배포 CSS 에 UrDigits 가 있는지.
 3. **PR B(딜 100% 결제) — 머니 경로. #1638 에 합쳐 머지(대표가 S14 전 머지를 지시).** 커밋 `51eb4f5`(기능) + `cd83ed1`(가운뎃점 래칫 대응). **E3 까지만이다** — `docs/STAGING_CHECKLIST.md` S14 실결제 1건이 남았다(딜 충분한 계정으로 이용권 결제 → 잔액이 총액만큼 정확히 줄고 이용권 발급).
-4. 결재 `docs/decisions/2026-10-06-broker-business-cert.md`(중개사 사업자등록증 주체) 답 대기.
+4. 결재 `docs/decisions/archive/2026-10-06-broker-business-cert.md`(중개사 사업자등록증 주체) 답 대기.
 
 ## 완료분 (전부 #1631)
 - **카드 미선택 → 막다른 화면**: `TossWidgetPayPage` [UNLOCK, 대표 승인] — requestPayment 거부를 치명 상태로 보내 위젯을 숨기던 것 → ready 유지 + 인라인 안내. 잠긴 계약 byte-불변.
@@ -61,7 +61,7 @@
   가드 `voucher-discount-input-2026-10-07.test.tsx` 11건(렌더 포함) + 주입 4건 빨간불 확인.
   **#1648 머지 `ab5a330`(2026-10-07 13:24 KST) → main 배포 성공**, 라이브 번역(`할인`·자동 채움 안내) 반영 확인(E3). CI 가 raw JS 예산 0.8 KB 초과로 한 번 빨갛던 것을 7.54→7.55(전부 lazy, critical path 불변)로 조정. Notion 기록 완료.
   ⚠️ E4(실제 등록 화면에서 원/% 입력 → 판매가 저장)는 셀러 로그인이 필요해 미실시.
-- 📮 결재 `docs/decisions/2026-10-07-confirm-toss-latency.md` — 승인~완료 화면 지연(머니 경로라 결재함으로).
+- 📮 결재 `docs/decisions/archive/2026-10-07-confirm-toss-latency.md` — 승인~완료 화면 지연(머니 경로라 결재함으로).
 
 ## 남은 결정/대기
 - **S14 딜 100% 실결제** — 대표 계정(id 3)에 20,000딜 지급 완료(2026-10-07). 대표가 이용권 1건을 딜로 사면

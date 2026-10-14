@@ -13,7 +13,7 @@
  * 가 목표로 삼은 2MB 는 **천장보다 크고**, 1~2MB 로 압축된 등록증은 **아직도 413 이다**
  * (아래 ③의 `prepared.size > 10MB` 후검사도 그 죽은 숫자를 보고 있다 — 그래서 사실상 안 걸린다).
  * 해상도를 깎지 않고 고치는 유일한 길은 서버 천장을 올리는 것이라 **결재로 올렸다**:
- * `docs/decisions/2026-10-11-upload-body-limit.md`. 천장 SSOT: `src/shared/upload-limits.ts`.
+ * `docs/decisions/archive/2026-10-11-upload-body-limit.md`. 천장 SSOT: `src/shared/upload-limits.ts`.
  * ⇒ **이 전제를 다시 "10MB" 로 적지 말 것.** 같은 오기가 2026-10-11 프로필 사진 413 을 만들었다.
  *
  * ⚠️ 이 테스트가 못 막는 것: 실제 압축 품질(어드민이 등록증을 읽을 수 있는가)은 눈으로 봐야 한다.

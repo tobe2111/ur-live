@@ -9,7 +9,7 @@
  * ## ⚠️ 이 시험이 **고정하지 않는 것** (중요)
  * 기능을 없앤 게 아니라 **문만 닫았다.** API 5개 · `checkout.ts` 자동 매핑 · 정비 cron ·
  * 어드민 모니터링 · 운영 가이드 두 절(분배율 포함)은 **그대로 살아 있어야 한다** —
- * 살릴지 없앨지는 대표 판단이고(`docs/decisions/2026-09-28-dead-seller-screens.md`)
+ * 살릴지 없앨지는 대표 판단이고(`docs/decisions/archive/2026-09-28-dead-seller-screens.md`)
  * 위탁 정산은 머니 경로다. 그래서 아래 마지막 두 건이 **"지우지 말 것"** 을 고정한다.
  */
 import { describe, it, expect } from 'vitest'

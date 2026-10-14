@@ -82,7 +82,7 @@
 
 ## 🗂️ 결재는 어디에 있나
 
-`docs/decisions/2026-09-24-settlement-single-rail.md` (2번만). 1번은 이 PR 로 완료됐고 3번은
+`docs/decisions/archive/2026-09-24-settlement-single-rail.md` (2번만). 1번은 이 PR 로 완료됐고 3번은
 세무사 답변 대기라 아직 선택지를 못 만든다 ⇒ **결재함에 올리지 않았다**(결재함은 대표가 지금
 답할 수 있는 것만 둔다).
 

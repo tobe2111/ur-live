@@ -4993,7 +4993,13 @@
     "noUnusedGift": "Aucun gifticon disponible",
     "totalCountLabel": "Total",
     "requestRefundShort": "Demander un remboursement",
-    "refundRequestedShort": "Remboursement demandé"
+    "refundRequestedShort": "Remboursement demandé",
+    "walletEyebrow": "Pass utilisables",
+    "walletTotal": "Total",
+    "noExpiry": "Sans date d'expiration",
+    "mapShort": "Carte",
+    "recoTitle": "Vous aimerez peut-être",
+    "recoMore": "Voir plus"
   },
   "sellerWaiting": {
     "title": "Approbation Vendeur en Attente",

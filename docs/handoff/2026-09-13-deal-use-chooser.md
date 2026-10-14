@@ -275,4 +275,4 @@ strict 스텝 94개 중 → 플래그 43 · env 8
    **답 없이 남의 PR 을 닫지 말 것.**
 2. **검증일 반나절** — 대표만 가능. 결제 1건이면 S7·S9·S12 + 결제 복귀 3건이 한 번에 판정된다.
 3. **매장 손바뀜 절단** — `approved` 이나 머니 경로라 **단독 세션**. 좌표는
-   `docs/decisions/2026-09-07-store-handover-money-cut.md`.
+   `docs/decisions/archive/2026-09-07-store-handover-money-cut.md`.

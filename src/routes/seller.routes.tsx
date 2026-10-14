@@ -168,7 +168,7 @@ export function SellerRoutes() {
         *
         * ⚠️ **기능을 없앤 게 아니라 문만 닫았다.** API 5개·`checkout.ts` 의 자동 매핑·정비 cron·
         *   어드민 모니터링·운영 가이드 두 절은 **그대로 둔다** — 살릴지 없앨지는 대표 판단이고
-        *   (`docs/decisions/2026-09-28-dead-seller-screens.md`) 위탁 정산은 머니 경로다.
+        *   (`docs/decisions/archive/2026-09-28-dead-seller-screens.md`) 위탁 정산은 머니 경로다.
         *   `checkout.ts` 는 이미 테이블 부재를 `catch` 로 허용하므로 **오늘 결제엔 영향이 없다**(실측).
         * ⚠️ 화면 파일(`SellerConsignmentPage`)은 2026-10-12 지웠다(셀러 대시보드 틀과 함께) —
         *   되살리려면 그 커밋을 revert 한다. 다만 그때 **테이블부터 만들어야 한다** — 안 만들면

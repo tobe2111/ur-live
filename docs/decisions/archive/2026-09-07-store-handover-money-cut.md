@@ -148,6 +148,8 @@ introduced_by 붙은 매장   0곳
 
 ## 반영 커밋
 
+✅ **반영 확인(2026-10-14 실측 — origin/main 에 있는 커밋)**: `8a76c1c60` (#1404) 마감 후 넘김 · `9bd371bd4` (#1410) 마감 화면 · `d8bdb8360` (#1417) 승계 3단계. 남은 것: staging/라이브 손바뀜 판정(대표, STAGING_CHECKLIST).
+
 | 무엇 | 어디 |
 |---|---|
 | 🔐 미지급 잔액이 남은 매장은 주인을 못 바꾼다 (fail-**closed**) | `worker/utils/store-handover-guard.ts` (신규) + 손바뀜 3경로 배선 |

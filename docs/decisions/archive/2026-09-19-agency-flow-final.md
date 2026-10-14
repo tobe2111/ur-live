@@ -50,4 +50,6 @@
 
 ## 반영 커밋
 
+✅ **반영 확인(2026-10-14 실측 — origin/main 에 있는 커밋)**: `e3e182c23` (#1499) 협업 코드·딜 % 조정·중개사 몫 송금(게이트 OFF) · `8186dd7fc` (#1500) E4 기록.
+
 - 브랜치 `claude/agency-flow-review-cgfwtl` (PR 본문에 파일 목록). 구조 SSOT: `docs/design/urdeal-platform-model.md` §2-1 🔑.

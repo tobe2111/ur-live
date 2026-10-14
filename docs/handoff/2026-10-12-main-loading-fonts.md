@@ -162,7 +162,7 @@ Poppins 를 자가호스팅했으니 **아무도 안 쓴다.** 그런데 **잠�
 
 ### ④ 앞 세션에서 넘어온 미결 (그대로 대기)
 `role='wholesale'` 어드민 4개 · `utongstart.com` 도메인 · `ur-wholesale` Pages 프로젝트 ·
-🏪 공구 서비스 존치 여부(측정 결과 **존치 권고**) · 업로드 한도 결재(`docs/decisions/2026-10-11-upload-body-limit.md`).
+🏪 공구 서비스 존치 여부(측정 결과 **존치 권고**) · 업로드 한도 결재(`docs/decisions/archive/2026-10-11-upload-body-limit.md`).
 
 ### ⑤ 미착수 (실측만 해 둔 것)
 `i18n` · `axios` · `app-routes` 청크(CLAUDE.md 잠금표 주석의 그 항목들) — 이번 범위 밖.

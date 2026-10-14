@@ -1,7 +1,7 @@
 /**
  * 💸 이용권 적립 단일 레일 가드의 되돌려-검증 (2026-10-01, 대표 "최대한 이상적으로 다 해줘").
  * 가드: src/tests/unit/voucher-credit-single-rail-2026-10-01.test.ts
- * 결재: docs/decisions/2026-09-30-voucher-credit-double-rail.md
+ * 결재: docs/decisions/archive/2026-09-30-voucher-credit-double-rail.md
  *
  * 지키는 것(둘, 성질이 다르다):
  *   ① 구매 적립이 **매장에 가지 않는다**(escrow 경유) — 미사용·환불 이용권까지 지급되지 않게.

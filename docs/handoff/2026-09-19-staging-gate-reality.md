@@ -40,7 +40,7 @@ scripts/mutations/mall-payment-flow.mjs        주입 7건 — 2026-09-19 전부
 
 ## 3. 결재로 올렸다
 
-`docs/decisions/2026-09-19-staging-gate-unperformable.md` — 선택지 셋(환경 구축 / 대표 통제
+`docs/decisions/archive/2026-09-19-staging-gate-unperformable.md` — 선택지 셋(환경 구축 / 대표 통제
 매장에서의 프로덕션 검증을 공식 대체로 / 현행 유지), 기본안은 2번.
 
 ## 4. 다음 세션의 첫 액션

@@ -1,14 +1,10 @@
 /**
- * 🎟️ 2026-08-31 (대표 "페이지 윗 부분이 밋밋하고 투박하다"): 교환권 카탈로그 상단 바.
+ * 🎟️ 교환권 ↔ 쇼핑 스크롤스파이 탭 바 — **쇼핑 탭이 살아 있을 때만** 쓴다.
  *
- * 무엇이 투박했나: **탭이 하나뿐인 탭바**였다 — 가운데 "교환권" 하나에 밑줄까지 그어 놓아
- *   "다른 탭이 있어야 하는데 비어 있는" 화면처럼 보였다(쇼핑 탭은 SHOPPING_TAB_HIDDEN 으로 숨김 중).
- *   탭은 고를 것이 둘 이상일 때만 탭이다. 하나뿐이면 그건 **제목**이다.
- *
- * 그래서: 쇼핑 탭이 숨겨져 있으면 좌측 정렬 페이지 제목으로, 살아나면 예전 중앙 스크롤스파이 탭으로
- *   자동 복귀한다(플래그 하나로 되돌아간다 — 구조를 지우지 않았다).
+ * 2026-10-14 대표 확정 안 C 로 쇼핑 탭이 숨겨진 동안의 머리는 배너다(`./VouchersHero`). 그 전에는 탭이 하나뿐이라
+ *   좌측 제목 "교환권"을 그렸는데(2026-08-31), 대표 *"교환권이라고 적혀있는거 별로"* — 하단 탭과 같은 말이었다.
+ *   그 제목 분기는 지웠다. 쇼핑 탭을 되살리면(`SHOPPING_TAB_HIDDEN=false`) 이 바가 다시 맨 위에 선다.
  */
-import { SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
 import { VoucherHeaderActions } from './GifticonBoxEntry'
 
 export default function VouchersTopBar({ activeTab, onVouchers, onShopping }: {
@@ -18,26 +14,21 @@ export default function VouchersTopBar({ activeTab, onVouchers, onShopping }: {
 }) {
   return (
     <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
-      <div className={`relative flex items-center px-2 py-2 ${SHOPPING_TAB_HIDDEN ? '' : 'justify-center'}`}>
-        {SHOPPING_TAB_HIDDEN ? (
-          /* 단일 표면 — 탭이 아니라 제목. (문서용 h1 은 페이지 상단에 sr-only 로 따로 있다.) */
-          <span className="pl-2 py-2 text-[17px] font-extrabold tracking-[-0.02em] text-gray-900 dark:text-white">교환권</span>
-        ) : (
-          <div className="flex items-center gap-1">
-            {([['vouchers', '교환권'], ['shopping', '쇼핑']] as const).map(([key, label]) => {
-              const active = activeTab === key
-              return (
-                <button key={key} type="button"
-                  onClick={() => (key === 'shopping' ? onShopping() : onVouchers())}
-                  className={`relative px-4 py-2 text-[15px] font-extrabold transition-colors ${active ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}
-                >
-                  {label}
-                  {active && <span className="absolute left-4 right-4 bottom-0 h-[2.5px] rounded-full bg-gray-900 dark:bg-white" />}
-                </button>
-              )
-            })}
-          </div>
-        )}
+      <div className="relative flex items-center px-2 py-2 justify-center">
+        <div className="flex items-center gap-1">
+          {([['vouchers', '교환권'], ['shopping', '쇼핑']] as const).map(([key, label]) => {
+            const active = activeTab === key
+            return (
+              <button key={key} type="button"
+                onClick={() => (key === 'shopping' ? onShopping() : onVouchers())}
+                className={`relative px-4 py-2 text-[15px] font-extrabold transition-colors ${active ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}
+              >
+                {label}
+                {active && <span className="absolute left-4 right-4 bottom-0 h-[2.5px] rounded-full bg-gray-900 dark:bg-white" />}
+              </button>
+            )
+          })}
+        </div>
         <VoucherHeaderActions />
       </div>
     </div>

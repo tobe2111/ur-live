@@ -4993,7 +4993,13 @@
     "noUnusedGift": "사용 가능한 교환권이 없어요",
     "totalCountLabel": "전체",
     "requestRefundShort": "환불 요청",
-    "refundRequestedShort": "환불 요청 접수됨"
+    "refundRequestedShort": "환불 요청 접수됨",
+    "walletEyebrow": "쓸 수 있는 이용권",
+    "walletTotal": "합계",
+    "noExpiry": "기한 없음",
+    "mapShort": "지도",
+    "recoTitle": "이런 이용권은 어때요?",
+    "recoMore": "더보기"
   },
   "sellerWaiting": {
     "title": "셀러 승인 대기",
