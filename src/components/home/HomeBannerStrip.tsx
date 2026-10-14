@@ -361,6 +361,12 @@ function StripRail({ banners, single = false }: { banners: HomeBanner[]; single?
   )
 }
 
+/**
+ * 🎟️ 교환권 띠(single) — 2026-10-14 모바일 나안: 폰·PC 모두 4:1. 폰은 높이가 ~90px 라 설명 줄까지
+ *   들어가면 넘친다 → 설명(`span`)은 PC 에서만 보인다(제목 한 줄이 이름표다).
+ */
+const SINGLE_CARD_CLS = '!aspect-[4/1] lg:!w-full !py-3 [&>span]:hidden lg:[&>span]:block'
+
 /** 카드 한 장 — 흰 글자를 왼쪽 아래에(야놀자 문법). 카드 전체가 누르는 자리다. */
 function StripCard({ b, many, first, clone, single = false }: { b: HomeBanner; many: boolean; first: boolean; clone?: boolean; single?: boolean }) {
   const link = bannerLink(b)
@@ -373,7 +379,7 @@ function StripCard({ b, many, first, clone, single = false }: { b: HomeBanner; m
          🩸 `w-[calc(100%-1.75rem)]` 로 쓰면 **거터가 두 번 빠진다** — `w-full` 이 맞다(= 362 × 181, 2:1).
          📍 `justify-end` + 아래 여백 — 글자가 카드 **아래**에 앉는다(가운데에 뜨면 사진의 주인공을 가린다). */
       /* shape-lock-ok — 14px 는 임의값이 아니라 `.ur-home-panel`(모바일) 의 radius 와 **같은 값**이다. */
-      className={`relative ${many ? STRIP_CLS.cardMany : STRIP_CLS.cardOne} ${many ? PC_CARD_W : ''} ${STRIP_CLS.card} ${single ? 'lg:!w-full lg:aspect-[4/1]' : ''}`}
+      className={`relative ${many ? STRIP_CLS.cardMany : STRIP_CLS.cardOne} ${many ? PC_CARD_W : ''} ${STRIP_CLS.card} ${single ? SINGLE_CARD_CLS : ''}`}
       /* 🎨 사진이 없으면 **브랜드 면**(대표 확정 "E"). */
       style={bg ? undefined : { background: 'var(--brand-grad)' }}
     >

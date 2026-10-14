@@ -94,6 +94,22 @@ describe('③ 위시리스트 — 아끼는 돈 · 주소/거리 · 비슷한 �
     expect(page).toMatch(/userLoc=\{userLoc\}/)
     expect(page).toMatch(/<WishlistRecommend /)
   })
+  it('모바일 나안: 요약 카드 + 한 줄 목록, 격자와 동시에 그리지 않는다', () => {
+    const page = read('src/pages/WishlistPage.tsx')
+    expect(page).toMatch(/<WishlistSummaryCard s=\{summary\} \/>/)
+    expect(page).toMatch(/!isLgViewport \? <WishlistRows items=\{shown\} userLoc=\{userLoc\} \/> : \(/)
+    const m = read('src/pages/wishlist/WishlistMobile.tsx')
+    expect(m).toMatch(/lg:hidden/)
+    expect(m).toMatch(/<DealRow/)
+  })
+  it('거리는 홈 카드와 같은 표기(1km 미만 소수 한 자리, 10km 이상은 말하지 않음)', async () => {
+    const { wishDistance } = await import('@/pages/wishlist/WishlistMobile')
+    const loc = { lat: 37.5, lng: 127 }
+    expect(wishDistance({ restaurant_lat: 37.5045, restaurant_lng: 127 } as never, loc)).toBe('0.5km')
+    expect(wishDistance({ restaurant_lat: 37.53, restaurant_lng: 127 } as never, loc)).toBe('3km')
+    expect(wishDistance({ restaurant_lat: 38, restaurant_lng: 127 } as never, loc)).toBeNull()
+    expect(wishDistance({ restaurant_lat: 37.5, restaurant_lng: 127 } as never, null)).toBeNull()
+  })
 })
 
 describe('④ 교환권 페이지 상단 배너(라안) — 홈 배너와 같은 테이블·같은 캐러셀', () => {
@@ -104,11 +120,12 @@ describe('④ 교환권 페이지 상단 배너(라안) — 홈 배너와 같은
     expect(m.BANNER_SLOT_SPECS.vouchers.recommendedWidth).toBeGreaterThanOrEqual(1600)
     expect(m.isBannerSlot('vouchers')).toBe(true)
   })
-  it('PC 에서도 한 장씩(single) · 4:1', () => {
+  it('PC 에서도 한 장씩(single) · 폰·PC 모두 4:1 띠(모바일 나안) · 폰은 설명 줄 없음', () => {
     const c = read('src/components/home/HomeBannerStrip.tsx')
     expect(c).toMatch(/variant === 'vouchers'[\s\S]{0,120}<StripRail [^>]*single \/>/)
     expect(c).toMatch(/const perView = single \? 1 : pcPerView/)
-    expect(c).toMatch(/single \? 'lg:!w-full lg:aspect-\[4\/1\]' : ''/)
+    expect(c).toMatch(/const SINGLE_CARD_CLS = '!aspect-\[4\/1\] lg:!w-full !py-3 \[&>span\]:hidden lg:\[&>span\]:block'/)
+    expect(c).toMatch(/single \? SINGLE_CARD_CLS : ''/)
   })
   it('교환권 페이지 PC·모바일 두 곳 모두에 붙어 있다(한쪽만이면 두 화면이 갈린다)', () => {
     const v = read('src/pages/VouchersPage.tsx')
