@@ -34,7 +34,7 @@ describe('① 마법의 숫자가 아니라 마크업으로 예약한다', () =>
   it('예약은 블록이 비었고 아직 안 왔을 때만 뜬다', () => {
     // 도착 뒤에도 남으면 빈 자리가 영구히 생긴다.
     expect(PAGE).toMatch(/sections\.length === 0 && !sectionsReady && <ChipRowReserve/)
-    expect(PAGE).toMatch(/currentBrands\.length === 0 && !sectionsReady && <BrandStripReserve/)
+    expect(PAGE).toMatch(/currentBrands\.length === 0 && !sectionsReady && !!category && <BrandStripReserve/)
   })
 })
 

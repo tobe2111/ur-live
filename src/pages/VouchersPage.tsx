@@ -627,7 +627,9 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
 
       {/* 🛡️ 2026-05-19: 카테고리별 인기 브랜드 그리드.
           🏭 2026-06-04 (사용자 요청): 브랜드를 클릭(필터)해도 그리드 그대로 유지 + 선택 브랜드 강조. */}
-      {currentBrands.length === 0 && !sectionsReady && <BrandStripReserve open={brandsOpen} category={category} />}
+      {/* 🧱 2026-10-13: 브랜드 줄은 **카테고리를 고른 때만** 나온다('전체'에는 없다) — 예약도 같은 조건이어야 한다.
+          종전엔 '전체'에서도 124px 를 비워 뒀다가 카테고리 목록이 오면 사라져 목록이 위로 튀었다(실사용자 CLS p75 0.14). */}
+      {currentBrands.length === 0 && !sectionsReady && !!category && <BrandStripReserve open={brandsOpen} category={category} />}
       {currentBrands.length > 0 && (
         /* 🎫 2026-06-26 (대표 결정 A): 상단 레이어 정리 — 상품을 위로. py-4→pt-1.5/pb-3, 헤더/로고 컴팩트. */
         <div className="ur-content-wide px-4 lg:px-8 pt-2 pb-3">
