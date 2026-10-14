@@ -31,6 +31,7 @@ import SEO from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { PARTNER_FACTS as F } from '@/shared/partners-facts'
 import PhoneShot, { SHOT } from './landing/PhoneShot'
+import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 
 const BENEFITS = [
   { icon: BadgePercent, t: '동네 할인', d: '내 주변 맛집과 뷰티, 숙소를 정가보다 싸게' },
@@ -55,7 +56,7 @@ const STEPS = [
 export default function AboutServicePage() {
   return (
     <div className="min-h-[100dvh] bg-warm">
-      <SEO title="서비스 소개 - 유어딜" description="유어딜은 동네 가게의 할인 이용권을 앱에서 사고 매장에서 QR 로 쓰는 로컬 딜 플랫폼입니다." url="/about" />
+      <SEO title={CONSUMER_SURFACE_SEO['/about'].title} description={CONSUMER_SURFACE_SEO['/about'].description} url="/about" />
 
       <header className="sticky top-0 z-20 ur-panel-ink">
         <div className="ur-content-wide mx-auto px-5 lg:px-10 h-14 lg:h-16 flex items-center justify-between">

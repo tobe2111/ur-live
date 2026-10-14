@@ -270,9 +270,14 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
     title: '자주 묻는 질문 - 이용권 사용·환불',
     description: '이용권은 어떻게 쓰는지, 유효기간이 지나면 어떻게 되는지, 환불은 언제 되는지. 가장 많이 묻는 것부터 답합니다.',
   },
+  /* 🩸 2026-10-14 — 이 항목만 **필드 계약을 깨고** ` - YourDeal` 을 담아, `withSiteName` 이
+     한국어 접미사를 또 붙였다(라이브 `<title>` 브랜드 **2회**). ❌ 영문 별칭을 `withSiteName` 에
+     가르치는 길은 안 간다: 브랜드 JSON-LD 의 별칭은 `['urdeal','UrDeal']` 이고 `YourDeal` 은
+     개인정보처리방침의 **법적 당사자 표기**(`Lister Corporation ("YourDeal")`)다 — 브랜드 표기·
+     법무 문서는 대표 몫이다. 가드: `surface-title-contract-2026-10-14.test.ts`. */
   '/gdpr': {
     crumb: 'Privacy Policy',
-    title: 'Privacy Policy (GDPR) - YourDeal',
+    title: 'Privacy Policy (GDPR)',
     description: 'YourDeal privacy policy and GDPR compliance information.',
   },
 
@@ -345,8 +350,12 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
        ✅ **얻는 것이 둘이다** — 색인에서 빠지는 것 + 공유·탭에 뜨는 제목이 홈 제목에서 제 제목으로
           바뀌는 것(noindex 표면도 title 은 쓰인다 — `/videos`·`/search` 와 같다).
        🍞 noindex 라 `crumb` 는 **일부러 비워 둔다**(가드가 양방향으로 고정). */
+    /* 🔁 2026-10-14 — 접미사를 표에 박지 않는다(렌더 결과 `광고/제휴 문의 - 유어딜` **byte-동일**).
+       증상이 없는데도 고치는 이유: `/gdpr` 이 이 모양에서 브랜드 2회로 터졌다.
+       🔀 아래 두 줄 **사이에 주석을 넣지 말 것** — 주입이 그 두 줄을 한 앵커로 쓴다
+          (한 번 주석을 끼워 앵커를 낡게 만들었다). */
     noindex: true,
-    title: '광고/제휴 문의 - 유어딜',
+    title: '광고/제휴 문의',
     description: '광고, 제휴, 매장 입점, 상품 공급 문의를 남겨주세요. 매장 입점 안내는 /partners 에 있습니다.',
   },
   // 📜 약관 4종 — `/terms` 는 위에 있고 나머지 문서별 약관이 서버 메타 없이 남아 있었다.
