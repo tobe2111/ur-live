@@ -6,7 +6,25 @@ const FEED = 'src/pages/main-home/GroupBuyFeed.tsx'
 const FILT = 'src/shared/home-feed-filters.ts'
 const POP = 'src/pages/pc-home/usePopularDeals.ts'
 
+const TILES = 'src/pages/pc-home/region-tiles.ts'
+
 export default [
+  {
+    name: '🖼️ 사진 없는 지역 타일이 다시 들어온다',
+    file: TILES,
+    find: '    if (!photo) continue\n',
+    replace: '',
+    test: GUARD,
+    why: '대표 "사진 없는건 빼주면 돼" — 빠지면 파란 면에 글자만 있는 칸이 다시 생긴다.',
+  },
+  {
+    name: '🖼️ 배너 링크 비교가 인코딩된 경로와 다시 어긋난다',
+    file: TILES,
+    find: '    const path = decodeURIComponent(regionPath({ sido: r.sido }))',
+    replace: '    const path = regionPath({ sido: r.sido })',
+    test: GUARD,
+    why: '한쪽만 디코딩하면 한 번도 안 맞아 대표가 올린 지역 배너 사진이 타일에 안 쓰인다(에러 0).',
+  },
   {
     name: '🧩 PC 홈 필터가 목록까지 안 간다',
     file: PAGE,

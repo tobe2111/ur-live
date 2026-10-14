@@ -14,6 +14,7 @@
  *
  * ⚠️ 못 보는 것: 실제 화면(배너 높이·카드 폭·다크 대비) — `visual-preview --pc` 로 봐야 한다.
  */
+import { pickRegionTiles } from '@/pages/pc-home/region-tiles'
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { stripComments } from '@/tests/helpers/source-text'
@@ -110,8 +111,25 @@ describe('⑤ 거리·가격 필터', () => {
 
 describe('⑥ 숫자를 지어내지 않는다', () => {
   it('지역 타일 — 색인 게이트 통과 지역만, 네 곳이 안 모이면 줄을 안 그린다', () => {
-    expect(TILES).toMatch(/r\.indexable && r\.count > 0/)
     expect(TILES).toMatch(/if \(tiles\.length < TILE_COUNT\) return null/)
+    const sg = (n: string) => ({ sigungu: n, count: 3, indexable: true })
+    const R = (sido: string, count: number, indexable = true) => ({ sido, count, indexable, sigungu: [sg('중구')] }) as never
+    const regions = [R('서울', 50), R('경기', 40), R('부산', 30), R('강원', 20), R('제주', 10), R('세종', 99, false)]
+    const deal = (addr: string) => ({ image_url: `https://x/${addr}.jpg`, deal_only: 0, restaurant_address: `${addr} 중구 1` })
+    // 🖼️ 2026-10-14 대표 "사진 없는건 빼주면 돼" — 사진 없는 경기는 건너뛰고 제주로 채운다
+    const got = pickRegionTiles(regions, [deal('서울'), deal('부산'), deal('강원'), deal('제주')], [])
+    expect(got.map((t) => t.sido)).toEqual(['서울', '부산', '강원', '제주'])
+    expect(got.every((t) => !!t.photo)).toBe(true)
+    // 색인 게이트 밖(세종)은 사진이 있어도 안 들어온다
+    expect(pickRegionTiles(regions, [deal('세종'), deal('서울'), deal('부산'), deal('강원'), deal('제주')], []).map((t) => t.sido)).not.toContain('세종')
+    // 사진 있는 곳이 넷이 안 되면 빈 배열(줄을 안 그린다)
+    expect(pickRegionTiles(regions, [deal('서울'), deal('부산')], [])).toEqual([])
+    // 배너 사진이 이용권 사진보다 먼저
+    const b = [{ image_url: 'https://x/banner.jpg', link_url: 'https://urdeal.kr/region/%EC%84%9C%EC%9A%B8' }]
+    expect(pickRegionTiles(regions, [deal('서울'), deal('부산'), deal('강원'), deal('제주')], b)[0].photo).toBe('https://x/banner.jpg')
+  })
+  it('사진 없는 타일을 그리는 대체 면이 없다', () => {
+    expect(TILES).not.toMatch(/brand-grad/)
   })
   it('필터에 종류별 개수를 붙이지 않는다(서버가 총수를 안 준다)', () => {
     expect(SIDEBAR).not.toMatch(/count/)
