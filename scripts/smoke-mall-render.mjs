@@ -55,7 +55,13 @@ async function waitFor(url, ms = 90000) {
 }
 
 const results = []
-const check = (name, pass, detail) => { results.push({ name, pass, detail }); console.log(`${pass ? '✅' : '❌'} ${name} — ${detail}`) }
+const check = (name, pass, detail) => {
+  results.push({ name, pass, detail })
+  console.log(`${pass ? '✅' : '❌'} ${name} — ${detail}`)
+  // 🔎 2026-10-14: 실패를 GitHub 주석으로도 낸다 — 잡 로그는 별도 저장소(blob)에 있어 원격 세션이 못 읽고,
+  //   주석은 check-runs API 로 읽힌다. "왜 빨간불인가" 가 로그 접근에 묶이지 않게.
+  if (!pass && process.env.GITHUB_ACTIONS) console.log(`::error title=smoke ${name}::${String(detail).replace(/\r?\n/g, ' | ').slice(0, 900)}`)
+}
 
 let dev = null
 let base = process.env.BASE
@@ -236,10 +242,10 @@ try {
   ]) {
     const page = await sellerCtx.newPage()
     const errs = []
-    page.on('pageerror', (e) => errs.push(String(e)))
+    page.on('pageerror', (e) => errs.push(`${String(e)} @ ${String(e.stack || '').split('\n').slice(1, 3).join(' ')}`))
     await page.goto(`${base}${path}`, { waitUntil: 'networkidle' })
     const seen = await page.getByText(expect1, { exact: false }).count().catch(() => 0)
-    check(`[${name}] 렌더 + 런타임 에러 0`, seen > 0 && errs.length === 0, errs[0] || `"${expect1}" 확인`)
+    check(`[${name}] 렌더 + 런타임 에러 0`, seen > 0 && errs.length === 0, errs.length ? errs.join(' || ') : `"${expect1}" 확인`)
 
     // 🔴 대시보드 라이트 고정 — 다크 클래스가 붙으면 정책 위반이다(check-dashboard-theme 의 렌더판).
     const isDark = await page.evaluate(() => document.documentElement.classList.contains('dark'))
