@@ -307,3 +307,92 @@ expect(block).toContain("'Content-Type': 'text/plain; charset=utf-8'")
 ⚠️ **대표 판단**: `/about` 의 *"(협상 여지)"* 한 줄을 지울지는 대외 메시지 문제라 손대지 않았다.
 ⚠️ **E4**: 배포 + KV 캐시 300s 뒤 `curl /api/sellers/26/public` 에 `commission_rate` 가 **없는지** ·
    `business_number`·`ceo_name` 은 **있는지**(반대 방향) · 유어샵 화면이 종전과 같은지.
+
+---
+
+## 🩸 #1778 CI 빨간불 — **헛도는 주입**(수리 완료, `444b26e15`)
+
+`가드 주입 검증 (변경분, strict)` 스텝 하나만 실패했다. **가드가 지키는 척만 한 경우**다.
+
+    ❌ 🗺️ 반대 방향 — 세그먼트 목록에서 대시보드를 뺀다(App.tsx 만 읽던 첫 설계)
+       결함을 심었는데 unknown-path-404-2026-10-12.test.ts 가 **통과**
+
+**원인**: 같은 PR 에서 2세그먼트 판정을 `KNOWN_TOP_SEGMENTS`(부모 ∪ 잎) → `KNOWN_PARENT_SEGMENTS`
+로 옮겼다. 그 순간 `KNOWN_TOP_SEGMENTS` 는 **프로덕션이 읽는 곳이 0**(남은 참조는 주석·시험·주입)이
+됐는데 그 주입이 **그 죽은 집합**을 고치고 있었다 ⇒ 대시보드를 빼도 답이 안 바뀐다.
+
+🔑 **`check-stale-mutation-anchors` 로는 못 잡는다** — `find` 는 멀쩡히 실재했다. *낡은 지도*가
+아니라 *헛도는 가드* 이고, 그건 **결함을 실제로 심어 보는 그 스텝만** 판정할 수 있다.
+⇒ 그 스텝이 77~90분이라 미루고 싶지만, 이 클래스를 잡는 유일한 수단이다.
+
+**수리**: `KNOWN_TOP_SEGMENTS` **삭제** + 주입 셋 재조준(결함은 불변, 표현만 **살아 있는** 집합으로).
+쓰이지 않는데 load-bearing 처럼 보이는 상수는 다음 헛도는 가드의 씨앗이다.
+
+### 🧨 그리고 러너를 강제 종료해 **주입 잔재**가 남았다 (pre-commit 이 잡았다)
+
+로컬 재현을 서둘러 `TaskStop` → `pkill` 로 러너를 죽였는데, 그 순간 `partners-landing.mjs` 의
+*"스니펫에서 중개 요율을 뺀다"* 가 `consumer-surfaces.ts` 에 적용된 상태였고 **복원되지 않았다**.
+
+    find  `(대행사를 통하면 ${PARTNER_FACTS.feeBrokered})가 붙습니다.` → 0건
+    replace `가 붙습니다.`                                        → 181행에 실재
+
+⚠️ 러너가 찍은 *"복원 실패 의심: consumer-safaces.ts"* 를 **내 작업 변경 탓이라고 넘겼는데
+사실이었다.** `check-no-injection-in-progress.sh`(pre-commit)가 커밋 직전에 막았다.
+🔴 그때 훅이 권하는 `git checkout -- src/` 를 그대로 따르면 **내 작업이 통째로 날아간다** —
+한 줄만 손으로 되돌렸다(그 뒤 3,652건 잔재 검사 0 확인).
+
+⇒ **교훈 둘**: ① `pkill` 로 러너를 죽이면 잔재를 **반드시** 직접 확인한다(`find` 가 0건인지).
+② 러너의 "복원 실패 의심" 은 내 변경 때문일 수도 있고 **진짜일 수도 있다** — 구분은 `find`/`replace`
+문자열을 직접 세는 것으로만 된다.
+
+---
+
+## ②-1 색인 대상인데 크롤러 본문 6자인 표면 셋 (이 세션에서 완료)
+
+라이브 실측(Googlebot UA). **처방이 표면마다 다르고, 가르는 기준은 "본문을 정직하게 채울 수
+있는가" 다.**
+
+    /gdpr                 200 · 6자 · index        → **본문을 준다**(6자 → 382자)
+    /influencer/rankings  200 · 6자 · index        → **noindex**(산문이 20자뿐 — 채우려면 지어내야 한다)
+    /partnership          200 · 6자 · index + 제네릭 홈 제목 → **표 추가 + noindex**(4줄 문의 폼)
+    /business             301 → /partners          → **결함 아님**(앞서 제 오보를 정정)
+
+- **`/gdpr`** — 8개 절을 가진 진짜 문서이고 문장이 `<p>` 안에 통째로 있다(단일 언어·보간 없음)
+  ⇒ 요약을 *쓰는* 게 아니라 *옮기는* 것이라 `surface-copy` 의 클로킹 금지 규율을 지킨다.
+  🔒 **일부러 뺀 셋**: 이메일이 든 줄(수확 표면만 늘고 색인 보탬 0) · `Firebase (Google Cloud)`
+     가 든 줄(Firebase 클라이언트는 2026-08-04 전면 삭제 #804 — **낡았을 수 있는 법정 문구를
+     SEO SSOT 로 승격하지 않는다**) · h1(`crumb`)과 겹치는 줄.
+  🧾 본문을 얻었으니 **sitemap 제출**(`/urshorts` 와 같은 순서: 본문 실측 먼저, 제출은 그다음).
+- **`/influencer/rankings`·`/partnership`** — `robots.txt` 의 `Allow: /influencer/rankings` 는
+  **지우면 안 된다**(Disallow 면 크롤러가 noindex 를 못 읽어 영구히 색인에 남는다).
+
+🩸 **그 과정에서 기존 가드의 측정 버그를 찾았다**: `thin-surface-copy` 의 본문 추출이 태그만 떼고
+**HTML 엔티티를 안 되돌렸다.** 한글 표면 열에는 escape 대상 문자가 한 글자도 없어 몇 달간 아무도
+안 밟았는데, `/gdpr`(`("YourDeal")`)을 넣자 *코드는 멀쩡한데* 빨간불이 났다 — **빌더의 `esc()` 는
+옳고 재는 쪽이 틀렸다.** 크롤러는 디코드해서 읽으므로 그걸 흉내 내야 측정이 사실과 같아진다.
+
+🩸 **내 새 가드도 같은 클래스를 한 번 밟았다**: `/influencer/rankings` 에 산문이 없다는 전제를
+`>([^<>{}]{10,})<` 로 재다가 `=>`·`useState<` 때문에 **코드를 48자 "산문" 으로 읽었다** ⇒ 한글이 든
+텍스트 노드만 센다(+ 0건이면 통과가 아니라 측정 고장).
+
+가드: `thin-indexable-surfaces-2026-10-14.test.ts` 19건 + 주입 **14건 되돌려-검증 전부 빨간불**.
+중복 잠금을 피해 **다른 가드가 안 보는 것만** 단언한다(crumb↔noindex · noindex↔sitemap · 길이
+바닥은 각각 기존 전수 가드가 이미 잠근다).
+
+### ⚠️ E4 (배포 후)
+
+    curl -A '<Googlebot UA>' https://urdeal.kr/gdpr        → 본문 6자에서 올라갔는지
+    curl ... /partnership                                  → robots=noindex + 제목이 "광고/제휴 문의"
+    curl ... /influencer/rankings                          → robots=noindex
+    curl ... /partners  /influencer                        → **여전히 index**(반대 방향 — 이게 더 비싸다)
+    curl -sS https://urdeal.kr/sitemap.xml | grep -c '/gdpr'  → 1
+
+## 다음 할 일
+
+1. **#65 신규** — `index, follow` 인 정적 표면 전수 중 본문 6자인 것은 `/privacy`·`/refund`
+   **둘뿐**이고 **둘 다 sitemap 제출 중**이다(짝 주장 위반). `/privacy` 는 `<h2>` 절 제목만
+   파생하면 되고(`/terms` 수법), `/refund` 는 **결재 #25 대기**(남의 서비스 환불약관이라 틀린
+   법정 문구를 SSOT 로 승격하면 안 된다).
+2. **#47 정정** — `twitter:site` 는 **추가하지 않는다**: 실제 X 계정이 없고, 없는 핸들을 넣는 것은
+   `sameAs` 를 비워 둔 것과 같은 규율 위반이다. 남는 것은 `og:image:alt` 뿐이고, 그것도
+   **그림을 정직하게 설명할 수 있는 표면만**(유어샵=프로필 사진 · 상세=상품 사진).

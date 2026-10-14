@@ -117,6 +117,14 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
     //   크롤러 본문이 **6자**라 제출하지 않았다(제출하면 soft-404 를 쌓는다 — 그 짝 주장이
     //   이 파일의 규율이다): `/gdpr` · `/influencer/rankings` · `/urshorts`, 그리고
     //   `/terms/influencer` · `/terms/group-buy` 는 **초안이라 noindex 로 돌렸다**.
+    // 🧾 2026-10-14 — 그 다섯 중 **셋이 정리됐다**(대표 "다 해주고 머지 후 또 개선점 찾아"):
+    //   · `/gdpr` 은 **본문을 얻어 제출 자격이 생겼다**(6자 → 382자. 영문 법정 문서의 `<p>` 통째
+    //     문장을 `surface-copy` 로 옮겼다 — `/urshorts` 와 **같은 순서**다: 본문이 먼저, 제출은 그다음).
+    //   · `/influencer/rankings` 는 **noindex 로 돌렸다** — 그 화면의 글자가 제목+라벨 **20자**뿐이고
+    //     나머지는 로그인·데이터가 있어야 그려지는 표라, 본문을 **정직하게 채울 수가 없다**(사유는
+    //     `consumer-surfaces.ts` 의 그 항목). 같은 질의는 `/influencer`(제출 중)가 받는다.
+    //   · `/partnership` 도 **noindex** — 4줄 문의 폼이고 의도는 `/partners` 가 받는다(원래 미제출).
+    //   ⇒ 남은 미제출 색인 대상은 없다. 다음에 늘릴 때도 **본문 실측 → 제출** 순서를 지킬 것.
     // 🎬 2026-10-13: `/urshorts` 는 크롤러 본문이 6자 → 465자(실측, 라이브 시드로 빌더를 돌렸다)가
     //   되어서야 제출 자격을 얻었다. 그 전에 넣으면 soft-404 를 쌓는다.
     { loc: '/urshorts', priority: 0.6, changefreq: 'daily' },
@@ -125,6 +133,7 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
     { loc: '/terms', priority: 0.3, changefreq: 'yearly' },
     { loc: '/privacy', priority: 0.3, changefreq: 'yearly' },
     { loc: '/refund', priority: 0.3, changefreq: 'yearly' },
+    { loc: '/gdpr', priority: 0.3, changefreq: 'yearly' },         // 영문 개인정보·GDPR (2026-10-14 본문 382자 확보 후 제출)
     // 🧨 도매몰(유통스타트) 페이지는 여기 없다 — 2026-06-26 에 호스트 분리로 뺐고, 2026-10-11 철거(#1710)로
     //   서비스 자체가 사라졌다. 그 네 URL 은 이제 410 Gone 이다(`isRetiredSurface`). 되살리지 말 것.
   ];
