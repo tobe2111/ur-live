@@ -19,7 +19,6 @@ import { writeAuditLog } from '@/worker/middleware/admin-security';
 import { require2FA } from '@/worker/middleware/require-2fa';
 import { intParam } from '@/shared/pagination'
 import { rateLimit } from '@/worker/middleware/rate-limit';
-import { maskEmail, maskPhone } from '@/worker/utils/pii-mask';
 import { sendAlert } from '@/worker/utils/alerts';
 
 export const adminUsersRoutes = new Hono<{ Bindings: Env }>();
@@ -115,9 +114,10 @@ adminUsersRoutes.get('/users', rateLimit({ action: 'admin_user_list', max: 60, w
       [...params, limit, offset]
     );
 
-    // 🕶️ 2026-07-13 (데이터 감사 3단계): 대량 목록 PII 마스킹 — 이메일/전화 기본 마스킹(enumeration 유출 최소).
-    //   원문은 단건 상세(full-state, 감사로그)에서만. 검색은 서버측 raw LIKE 라 마스킹 무관(기능 불변).
-    const maskedUsers = users.map(u => ({ ...u, email: maskEmail(u.email as string | null), phone: maskPhone(u.phone as string | null) }));
+    // 👁️ 2026-10-14 대표 *"유저 관리 페이지에 유저들 정보는 마스킹처리 될게 아니라 다 보여야하잖아"* —
+    //   2026-07-13 데이터 감사 3단계의 목록 마스킹(이메일·전화)을 걷었다. CS 가 목록에서 바로 연락처를 봐야 한다.
+    //   남기는 방어: 바로 아래 열람 감사 로그(누가·검색어·건수) + 깊은 페이지네이션 알림. 그 둘을 지우지 말 것 —
+    //   마스킹이 사라진 지금은 그것이 대량 열람을 알아챌 유일한 장치다.
 
     // 🛡️ PII 대량 열람 감사 로그(누가·검색어·건수·페이지) — GET 은 audit 미들웨어가 안 잡으므로 명시 기록.
     void writeAuditLog(c, {
@@ -136,7 +136,7 @@ adminUsersRoutes.get('/users', rateLimit({ action: 'admin_user_list', max: 60, w
 
     return c.json({
       success: true,
-      data: maskedUsers,
+      data: users,
       // 🛡️ 2026-05-24: frontend 호환 — 기존 res.data.totalPages / res.data.total 직접 읽기.
       totalPages: Math.ceil(total / limit),
       total,
