@@ -27,6 +27,18 @@ export function readHomeSectionsSeed<T = SeededSectionShape>(): T[] | undefined 
   }
 }
 
+/** `__SSR_INITIAL_SECTIONS__` 응답 객체 그대로(상단 배너 `strip_banners` 등 섹션 밖 필드용). 없으면 `undefined`. */
+export function readHomeSectionsSeedRaw(): unknown {
+  try {
+    if (typeof document === 'undefined') return undefined
+    const el = document.getElementById('__SSR_INITIAL_SECTIONS__')
+    if (!el?.textContent) return undefined
+    return JSON.parse(el.textContent)
+  } catch {
+    return undefined
+  }
+}
+
 /**
  * 📍 2026-10-13: 시드가 **어느 위치로** 만들어졌는지(`/api/sections?near=` 응답의 `near`). 위치 없이 만든
  *   시드면 ''. 화면은 자기 위치 키와 같을 때만 시드를 쓴다 — 다르면 전국 인기가 1초 떴다가 동네 것으로

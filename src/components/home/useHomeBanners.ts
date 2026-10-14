@@ -1,4 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
+import { readHomeSectionsSeedRaw } from '@/shared/home-section-ids'
+import { stripBannersOf } from '@/shared/home-strip-banners'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { parseBannerSlot, type BannerSlot } from '@/shared/constants/home-showcase'
 
@@ -46,6 +48,17 @@ export interface HomeBanner {
  *   같은 키에 다른 `select` 를 주면 캐시가 서로 덮어쓴다 — 키 하나 + 전체 목록이라야 안전하다.
  */
 function useAllHomeBanners(): HomeBanner[] {
+  /**
+   * 🎫 2026-10-14 — 응답이 오기 전에는 **서버 첫 화면과 같은 상단 배너**를 보여 준다(섹션 시드의
+   *   `strip_banners`). 비워 두면 서버가 그린 배너가 마운트 때 사라졌다가 응답 뒤 다시 나타나며
+   *   첫 섹션을 위아래로 흔든다. `placeholderData` 라 캐시에 안 들어가고, 응답이 오면 그 값으로 바뀐다.
+   *   시드엔 strip 만 있다 — inline/wide 는 화면 밖이라 응답을 기다려도 아무것도 안 민다.
+   */
+  const [seeded] = useState<HomeBanner[] | undefined>(() => {
+    const raw = readHomeSectionsSeedRaw()
+    const strip = stripBannersOf(raw)
+    return strip.length ? (strip as unknown as HomeBanner[]) : undefined
+  })
   const { data = [] } = useApiQuery<HomeBanner[]>(
     ['banners', 'all'],
     '/api/banners',
@@ -56,6 +69,7 @@ function useAllHomeBanners(): HomeBanner[] {
         return r.data.map(b => ({ ...b, banner_slot: parseBannerSlot(b.banner_slot) }))
       },
       staleTime: 5 * 60_000,
+      placeholderData: seeded,
     },
   )
   return data

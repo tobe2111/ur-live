@@ -41,10 +41,8 @@
  *     나중에 채워지는 건 밀림이 아니다.
  *
  * ## 이 파일이 **못** 하는 것
- * - **배너**: `HomeBannerStrip` 은 첫 섹션 **위**에 오는데 시드에 없다(`/api/banners`). 지금
- *   라이브엔 자리(`banner_slot`)를 고른 배너가 **0건**이라 아무것도 안 그려진다(실측). 어드민이
- *   자리를 고르면 그때부터 내가 그린 카드가 배너 높이만큼 내려간다 — **오늘도 같은 밀림이
- *   스켈레톤에 일어나므로 회귀는 아니지만**, 없애려면 배너를 시드에 실어야 한다(별건).
+ * - ~~배너~~ → 2026-10-14 해소: 섹션 응답이 `strip_banners` 를 싣고 첫 장을 그린다(`stripBannerHtml`).
+ *   어드민이 배너를 바꾼 직후 최대 2분은 서버 첫 화면과 `/api/banners` 가 다를 수 있다(엣지 캐시 TTL).
  * - 클래스가 갈렸는지는 문자열로 못 잰다 → 시험이 **실제 컴포넌트를 렌더해** 대조한다.
  *   최종 판정은 프레임 캡처다(`out/firstpaint.mjs`).
  * - Save-Data 켠 사용자는 `cfImage` 가 quality 를 낮춰 URL 이 달라진다 → 그 사용자만 사진을
@@ -61,6 +59,9 @@ import { canonicalDetailPath } from '../../shared/product-flow'
 import { priceDisplay } from '../../shared/price-display'
 import { stripStorePrefix } from '../../utils/deal-title'
 import { formatNumber } from '../../utils/format'
+import { BANNER_SLOT_SPECS } from '../../shared/constants/home-showcase'
+import { STRIP_CLS, stripBannersOf, type SeededStripBanner } from '../../shared/home-strip-banners'
+import { resolveBannerLink } from '../../components/home/banner-link'
 
 function escAttr(s: string): string {
   return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -238,6 +239,35 @@ function chromeHtml(): string {
 }
 
 /**
+ * 🎫 2026-10-14 — 상단 배너의 **첫 장**. 배너는 첫 섹션 **위**라, 서버가 안 그리면 마운트 뒤 끼어들며
+ *   카드 넷을 197px 아래로 민다(라이브 첫 방문 CLS 0.197 — 이 파일 머리말이 "별건"으로 남겨 둔 바로 그것).
+ *   클래스는 `STRIP_CLS`(부품과 같은 상수), 사진은 부품과 **같은 `cfImage` 호출**이라 같은 URL 이다.
+ *   ❌ 숫자 알약·멈춤 버튼은 안 그린다 — `absolute` 라 흐름에 영향이 없고, 멈춤 버튼은 SVG 다(두 벌 금지).
+ *   🖥️ 이 첫 화면은 폰 UA 에만 나가므로 한 장 폭(PC 3장 레이아웃은 무관).
+ */
+function stripBannerHtml(banners: SeededStripBanner[]): string {
+  const b = banners[0]
+  if (!b) return ''
+  const many = banners.length > 1
+  const link = resolveBannerLink(b.link_url)
+  const bg = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS.strip.requestWidth, quality: 76 }) : ''
+  const cls = `relative ${many ? STRIP_CLS.cardMany : STRIP_CLS.cardOne} ${many ? STRIP_CLS.pcCardW : ''} ${STRIP_CLS.card}`
+  const style = bg ? '' : ' style="background:var(--brand-grad)"'
+  const inner =
+    (bg ? `<img src="${escAttr(bg)}" alt="" aria-hidden="true" loading="eager" fetchpriority="high" decoding="async" class="${STRIP_CLS.img}">` +
+      `<div class="${STRIP_CLS.scrim}" aria-hidden="true"></div>` : '') +
+    `<strong class="${escAttr(STRIP_CLS.title)}">${escText(b.title)}</strong>` +
+    (b.description ? `<span class="${STRIP_CLS.desc}">${escText(b.description)}</span>` : '')
+  const card = link?.kind === 'internal'
+    ? `<a href="${escAttr(link.to)}" class="${escAttr(cls)}"${style}>${inner}</a>`
+    : link?.kind === 'external'
+      ? `<a href="${escAttr(link.href)}" target="_blank" rel="noopener noreferrer" class="${escAttr(cls)}"${style}>${inner}</a>`
+      : `<div class="${escAttr(cls)}"${style}>${inner}</div>`
+  return `<div class="${STRIP_CLS.root}" aria-roledescription="carousel" aria-label="이벤트 배너"><div class="relative">` +
+    `<div class="${STRIP_CLS.rail} ${many ? STRIP_CLS.railMany : ''}">${card}</div></div></div>`
+}
+
+/**
  * 홈 첫 화면 HTML — 실패하면 **빈 문자열**(호출부가 종전 로더로 되돌아간다. 무회귀).
  *
  * @param sectionsSeedJson `__SSR_INITIAL_SECTIONS__` 본문(JSON 문자열)
@@ -247,9 +277,11 @@ function chromeHtml(): string {
  */
 export function buildHomeFirstScreen(sectionsSeedJson: string, loaderHtml: string, nearLabel = ''): string {
   let sec: { title?: string | null; subtitle?: string | null; near?: boolean; products?: SeedProduct[] } | undefined
+  let strip: SeededStripBanner[] = []
   try {
     const parsed = JSON.parse(sectionsSeedJson) as SectionsSeed
     sec = (parsed?.data ?? []).find(s => Array.isArray(s?.products) && s.products.length > 0)
+    strip = stripBannersOf(parsed)
   } catch {
     return ''
   }
@@ -263,7 +295,7 @@ export function buildHomeFirstScreen(sectionsSeedJson: string, loaderHtml: strin
     //    0이고(= 첫 화면 잠금 무영향) React 쪽(`MobileHomePage`)도 **같은 자리에 같은 값**을 그린다.
     `<h1 class="sr-only">${escText(HOME_H1)}</h1>` +
     chromeHtml() +
-    `<div class="mt-3"><section class="${HOME_FS_CLASS.panel}">` +
+    `<div class="mt-3">${stripBannerHtml(strip)}<section class="${HOME_FS_CLASS.panel}">` +
     `<div class="${HOME_FS_CLASS.secHead}"><div class="min-w-0">` +
     `<h3 class="${HOME_FS_CLASS.secTitle}">${escText(sec.title)}</h3>` +
     ((sec.near || sec.subtitle) ? `<p class="${HOME_FS_CLASS.secSub}">${escText(sec.near ? nearSubtitle(nearLabel) : (sec.subtitle as string))}</p>` : '') +

@@ -240,7 +240,8 @@ describe('⑤ 배선', () => {
     expect(r).toMatch(/const near = parseNearKey\(c\.req\.query\('near'\)\)/)
     expect(r).toMatch(/nearKey \? `sections:public:n\$\{nearKey\}` : 'sections:public'/)
     expect(r).toMatch(/excludeIds: \[\.\.\.claimed\],\s*near,/)
-    expect(r).toMatch(/\{ success: true, data: result, near: nearKey \}/)
+    // 2026-10-14: 상단 배너(`...extra` = strip_banners)가 같은 응답에 붙는다 — 위치를 싣는 불변식은 그대로.
+    expect(r).toMatch(/\{ success: true, data: result, near: nearKey(, \.\.\.extra)? \}/)
   })
 
   it('🔴 수동 섹션은 위치로 표시하지 않는다 — 어드민이 고른 것이 이긴다', () => {

@@ -5,6 +5,7 @@ import { resolveBannerLink, type BannerLink } from './banner-link'
 import { useHomeBanners, type HomeBanner } from './useHomeBanners'
 import type { BannerSlot } from '@/shared/constants/home-showcase'
 import { BANNER_SLOT_SPECS } from '@/shared/constants/home-showcase'
+import { STRIP_BANNER_MAX, STRIP_CLS } from '@/shared/home-strip-banners'
 
 /**
  * 🏠 ③ 중간 배너 (2026-08-04 대표 시안 승인).
@@ -56,7 +57,7 @@ export default function HomeBannerStrip({ variant }: { variant: Extract<BannerSl
    *   ⚠️ 안 2(가로 카드)로 먼저 만들었다가 대표 확정으로 안 3 으로 바꿨다 — 안 2 를 되살리지 말 것.
    */
   if (variant === 'strip') {
-    return <StripRail banners={banners.slice(0, 5)} />
+    return <StripRail banners={banners.slice(0, STRIP_BANNER_MAX)} />
   }
 
   if (variant === 'wide') {
@@ -181,7 +182,7 @@ const RESUME_AFTER_TOUCH_MS = 8000
 const PC_QUERY = '(min-width: 1024px)'
 const PC_PER_VIEW = 3
 /** PC 카드 폭 = (칸 − `STRIP_GAP_PX`(28) 둘) ÷ 3. 모바일은 카드 자신의 w-full. */
-const PC_CARD_W = 'lg:w-[calc((100%-56px)/3)]'
+const PC_CARD_W = STRIP_CLS.pcCardW
 
 function usePerView(): number {
   const read = () => (typeof window !== 'undefined' && window.matchMedia?.(PC_QUERY).matches ? PC_PER_VIEW : 1)
@@ -295,7 +296,7 @@ function StripRail({ banners }: { banners: HomeBanner[] }) {
   const hold = () => setHeldUntil(Date.now() + RESUME_AFTER_TOUCH_MS)
 
   return (
-    <div ref={rootRef} className="pb-4" aria-roledescription="carousel" aria-label="이벤트 배너">
+    <div ref={rootRef} className={STRIP_CLS.root} aria-roledescription="carousel" aria-label="이벤트 배너">
       {/* 숫자 알약이 배너 **안**에 떠야 하므로 레일을 포함 블록으로 삼는다(스크롤러 자신에 주면 함께 스크롤된다). */}
       <div className="relative">
         <div
@@ -303,7 +304,7 @@ function StripRail({ banners }: { banners: HomeBanner[] }) {
           onScroll={many ? onScroll : undefined}
           onPointerDown={many ? hold : undefined}
           onWheel={many ? hold : undefined}
-          className={`flex gap-7 px-[14px] ${many ? 'overflow-x-auto snap-x snap-mandatory scroll-px-[14px] scroll-smooth overscroll-x-contain scrollbar-hide' : ''}`}
+          className={`${STRIP_CLS.rail} ${many ? STRIP_CLS.railMany : ''}`}
         >
           {slides.map((b, i) => <StripCard key={i >= banners.length ? `clone-${i}` : b.id} b={b} many={many} first={i < perView} clone={i >= banners.length} />)}
         </div>
@@ -363,7 +364,7 @@ function StripCard({ b, many, first, clone }: { b: HomeBanner; many: boolean; fi
          🩸 `w-[calc(100%-1.75rem)]` 로 쓰면 **거터가 두 번 빠진다** — `w-full` 이 맞다(= 362 × 181, 2:1).
          📍 `justify-end` + 아래 여백 — 글자가 카드 **아래**에 앉는다(가운데에 뜨면 사진의 주인공을 가린다). */
       /* shape-lock-ok — 14px 는 임의값이 아니라 `.ur-home-panel`(모바일) 의 radius 와 **같은 값**이다. */
-      className={`relative ${many ? 'snap-start shrink-0 w-full' : 'flex-1'} ${many ? PC_CARD_W : ''} overflow-hidden rounded-[14px] isolate aspect-[2/1] flex flex-col justify-end px-5 pt-4 pb-4 transition-transform active:scale-[.995]`} /* shape-lock-ok (위 사유) */
+      className={`relative ${many ? STRIP_CLS.cardMany : STRIP_CLS.cardOne} ${many ? PC_CARD_W : ''} ${STRIP_CLS.card}`}
       /* 🎨 사진이 없으면 **브랜드 면**(대표 확정 "E"). */
       style={bg ? undefined : { background: 'var(--brand-grad)' }}
     >
@@ -373,17 +374,17 @@ function StripCard({ b, many, first, clone }: { b: HomeBanner; many: boolean; fi
           loading={first ? 'eager' : 'lazy'}
           fetchPriority={first ? 'high' : 'auto'}
           decoding="async"
-          className="absolute inset-0 -z-10 w-full h-full object-cover"
+          className={STRIP_CLS.img}
           onError={(e) => cfImageOnError(e.currentTarget, b.image_url)}
         />
       )}
       {/* 아래쪽만 어둡게 — 흰 글자 자리를 받친다. 위쪽 사진은 그대로 둔다(전면을 덮으면 사진이 탁해진다). */}
-      {bg && <div className="absolute inset-x-0 bottom-0 h-[70%] -z-10 bg-gradient-to-t from-black/70 via-black/30 to-transparent" aria-hidden="true" />}
+      {bg && <div className={STRIP_CLS.scrim} aria-hidden="true" />}
       {/* 📏 2026-10-14 대표 "배너 속 글자 크기들이 커" — 제목 24→17 · 설명 13→12. 사진이 주인공이고 글자는 이름표다. */}
       {/* 글자는 **늘 흰색** — 테마가 아니라 사진 위에 서므로 dark: 짝도 같은 값이다. 오른쪽 아래 숫자 알약 자리를 비운다(max-w). */}
-      <strong className="block max-w-[64%] text-[17px] font-bold leading-[1.25] tracking-[-.02em] line-clamp-2 text-white dark:text-white [text-shadow:0_1px_8px_rgba(0,0,0,.25)]">{b.title}</strong>
+      <strong className={STRIP_CLS.title}>{b.title}</strong>
       {b.description && (
-        <span className="block max-w-[64%] mt-1 text-[12px] line-clamp-1 text-white/90 dark:text-white/90">{b.description}</span>
+        <span className={STRIP_CLS.desc}>{b.description}</span>
       )}
     </BannerWrap>
   )
