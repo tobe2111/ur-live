@@ -53,7 +53,10 @@ describe('② /vouchers/:id — 딜 결제 화면은 딜 결제 상품에만', (
     // ⚠️ 앵커 주의: `const total = ...` 은 구매 핸들러 안에도 있어(같은 문자열) 그걸 잡으면 늘 통과한다.
     //   실제로 지켜야 하는 것은 "딜 화면을 그리기 전에 넘긴다"이므로 렌더의 <SEO> 를 앵커로 쓴다.
     const guard = VOUCHER.indexOf("flow !== 'voucher_deal'")
-    const render = VOUCHER.indexOf('교환권 - 유어딜')
+    // 🔀 2026-10-14 재조준 — 제목이 SSOT(`voucherDetailTitle`)로 옮겨가 리터럴이 사라졌다.
+    //   이 시험이 스스로 적어 둔 대로("SEO title 이 바뀌었으면 갱신할 것") 앵커만 옮긴다 — 지키는
+    //   불변식(*딜 화면을 그리기 전에 넘긴다*)은 그대로이고, `<SEO>` 가 여전히 렌더의 첫 줄이다.
+    const render = VOUCHER.indexOf('voucherDetailTitle(product.name)')
     expect(guard, '가드를 못 찾았다').toBeGreaterThan(-1)
     expect(render, '렌더 앵커를 못 찾았다 — SEO title 이 바뀌었으면 갱신할 것').toBeGreaterThan(-1)
     expect(guard).toBeLessThan(render)

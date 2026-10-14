@@ -23,7 +23,11 @@ describe('① 서버 동봉', () => {
   it('linkedSeller 있으면 ProductService.getProducts({ sellerId }) 로 상품을 동봉한다', () => {
     // 조립은 `worker/utils/linkshop-seller-products`(래칫 때문에 분리) — 라우트는 그 함수를 응답에 배선한다.
     const UTIL = readFileSync('src/worker/utils/linkshop-seller-products.ts', 'utf8')
-    expect(UTIL).toMatch(/new ProductService\(DB\)\.getProducts\(\{ sellerId \}, \{ page: 1, limit: 100 \}\)/)
+    expect(UTIL).toMatch(/new ProductService\(DB\)\.getProducts\(\{ sellerId \}, \{ page: 1, limit \}\)/)
+    // 🔀 2026-10-14 재조준 — 상한이 **인자**가 됐다(셀러 공개 페이로드가 8만 받는다 — 크롤러 본문 요약용).
+    //   지키던 불변식(*curator 동봉은 100* — 아래 시험의 클라 `limit=100` 과 짝)은 그대로라, 호출 모양 대신
+    //   **기본값**을 고정한다. 기본값이 흔들리면 그 짝이 소리 없이 깨지고 진열대에서 상품이 사라진다.
+    expect(UTIL).toMatch(/sellerId: number, limit = 100\b/)
     expect(ROUTE).toMatch(/linked_seller_products: linkedSeller\?\.id \? await loadLinkedSellerProducts\(c\.env\.DB, Number\(linkedSeller\.id\)\) : null,/)
     expect(API).toMatch(/linked_seller_products\?: unknown\[\] \| null/)
   })
