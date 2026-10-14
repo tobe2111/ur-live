@@ -132,7 +132,9 @@ describe('④ 워커 배선', () => {
     expect(routePreloadRel(false)).toBe('modulepreload')
   })
   it('부팅 스크립트는 head 맨 앞(prepend) — 스타일시트 뒤면 그 CSS 를 기다리느라 파싱을 막는다', () => {
-    expect(mod).toMatch(/el\.prepend\(cssFirstBootScript\(nonce\)/)
+    // 🎨 2026-10-14: 첫 화면 CSS <style> 과 묶어 한 번에 prepend — 부팅 스크립트가 그 묶음의 **맨 앞**이다.
+    expect(mod).toMatch(/const head = cssFirstBootScript\(nonce, crit\) \+/)
+    expect(mod).toMatch(/el\.prepend\(head, \{ html: true \}\)/)
   })
   it('부팅 스크립트에 nonce 가 붙는다(CSP strict-dynamic)', () => {
     expect(cssFirstBootScript('ABC')).toMatch(/^<script nonce="ABC">/)
