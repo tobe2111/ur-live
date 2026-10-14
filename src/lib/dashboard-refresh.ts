@@ -10,7 +10,7 @@
  * 생 `axios.post`(락 **없음**). 마운트 순간 둘이 겹칠 수 있었고, 2026-09-23 에 요청 인터셉터에도
  * 사전 갱신을 넣으면서 겹칠 확률이 더 올라갔다. ⇒ 세 경로가 **같은 락**을 쓴다.
  */
-import axios from 'axios'
+import { http } from './http-client'
 import {
   type DashboardRole, REQUEST_SKEW_MS,
   decodeJwtExpMs, needsPreemptiveRefresh, dashboardRefreshUrl, dashboardTokenKeys,
@@ -32,7 +32,7 @@ export async function refreshDashboardToken(
   if (_inflightRefresh[cacheKey]) return _inflightRefresh[cacheKey]!
   const p = (async () => {
     try {
-      const res = await axios.post(refreshUrl, { refreshToken })
+      const res = await http.post(refreshUrl, { refreshToken })
       if (res.data?.success) {
         return {
           accessToken: res.data.data.accessToken as string,
