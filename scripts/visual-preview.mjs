@@ -756,6 +756,34 @@ if (AUTH || STORES_N > 0) {
   }, seed)
 }
 
+/**
+ * 📏 `--cls` — 브라우저가 실제로 센 **누적 화면 밀림 점수**(layout-shift)를 함께 찍는다 (2026-10-14).
+ *   `--shift` 는 두 순간의 글자 위치만 비교해서, 그 **사이에** 움직였다가 돌아온 것·사진이 늦게 뜨며
+ *   민 것·한 번 이상 움직인 것을 못 본다. 실사용자 기록(`/my-vouchers` CLS 0.721)은 `--shift` 로
+ *   재현이 안 됐다 — 측정기를 의심하라는 신호다. 이 플래그는 사용자 기록과 **같은 지표**를 잰다.
+ */
+const CLS = 'cls' in args
+if (CLS) {
+  await ctx.addInitScript(() => {
+    window.__clsLog = []
+    try {
+      new PerformanceObserver((l) => {
+        for (const e of l.getEntries()) {
+          if (e.hadRecentInput) continue
+          window.__clsLog.push({
+            v: +e.value.toFixed(4),
+            t: Math.round(e.startTime),
+            src: (e.sources || []).slice(0, 3).map((s) => {
+              const n = s.node; const el = n && (n.nodeType === 1 ? n : n.parentElement)
+              const tag = el ? `${el.tagName}.${String(el.className || '').slice(0, 40)} «${(el.textContent || '').trim().slice(0, 18)}»` : '?'
+              return `${tag} y${Math.round(s.previousRect.y)}→${Math.round(s.currentRect.y)} h${Math.round(s.previousRect.height)}→${Math.round(s.currentRect.height)}`
+            }),
+          })
+        }
+      }).observe({ type: 'layout-shift', buffered: true })
+    } catch { /* 미지원 브라우저 */ }
+  })
+}
 const page = await ctx.newPage()
 /**
  * 🖨️ 2026-09-28 — **콘솔을 버리지 않는다.** 그전까지 이 하네스는 브라우저 콘솔을 통째로 버려서,
@@ -1183,6 +1211,13 @@ const SCROLL = Number(args.scroll) || 0
 if (SCROLL > 0) {
   await page.evaluate((y) => window.scrollTo(0, y), SCROLL)
   await page.waitForTimeout(600)
+}
+if (CLS) {
+  const log = await page.evaluate(() => window.__clsLog || []).catch(() => [])
+  const total = log.reduce((a, e) => a + e.v, 0)
+  console.log(`📏 CLS [${ROUTE}] ${total.toFixed(3)} (${log.length}건)`)
+  console.log(`CLS_RESULT ${JSON.stringify({ route: ROUTE, cls: +total.toFixed(4), entries: log.slice(0, 10) })}`)
+  for (const e of log.slice(0, 10)) console.log(`   ${e.t}ms ${e.v} ${e.src.join(' | ')}`)
 }
 await page.screenshot({ path: out })
 /**

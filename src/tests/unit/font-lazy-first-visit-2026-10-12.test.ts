@@ -23,7 +23,7 @@ const SCRIPT = (HTML.match(/<script>(\(function\(\)\{try\{var l=document\.getEle
 
 type Store = { getItem: (k: string) => string | null; setItem: (k: string, v: string) => void }
 
-function run(opts: { storage: Store | 'throws'; ready?: DocumentReadyState; loaded?: () => unknown[]; rules?: Array<{ range: string; url: string }>; text?: string }) {
+function run(opts: { storage: Store | 'throws'; ready?: DocumentReadyState; loaded?: () => unknown[]; reject?: () => boolean; rules?: Array<{ range: string; url: string }>; text?: string }) {
   const doc = document.implementation.createHTMLDocument('t')
   doc.head.innerHTML = '<link id="ur-font-css" rel="stylesheet" href="/static/fonts/x.css">'
   if (opts.text) doc.body.textContent = opts.text
@@ -32,7 +32,9 @@ function run(opts: { storage: Store | 'throws'; ready?: DocumentReadyState; load
     Object.defineProperty(doc.getElementById('ur-font-css')!, 'sheet', { configurable: true, value: { cssRules } })
   }
   Object.defineProperty(doc, 'readyState', { configurable: true, get: () => opts.ready ?? 'loading' })
-  const fontsLoad = vi.fn(() => Promise.resolve(opts.loaded ? opts.loaded() : [{}]))
+  const fontsLoad = vi.fn(() => (opts.reject?.()
+    ? Promise.reject(new DOMException('A network error occurred.', 'NetworkError'))
+    : Promise.resolve(opts.loaded ? opts.loaded() : [{}])))
   Object.defineProperty(doc, 'fonts', { configurable: true, value: { load: fontsLoad } })
   const listeners: Record<string, () => void> = {}
   const win = {
@@ -168,5 +170,26 @@ describe('🔤 첫 방문 폰트 미루기', () => {
     await vi.advanceTimersByTimeAsync(2100)
     expect(r.fontsLoad.mock.calls.length).toBe(3)
     expect(st.data.ur_font_warm).toBe('1')
+  })
+
+  // 🩸 2026-10-14: 폰트 조각을 못 받으면(오프라인·CDN 차단·인증서) `document.fonts.load` 가 거절하는데
+  //   거절 처리가 없어 **처리 안 된 오류**가 페이지에 떴다 — 실사용자는 Sentry 소음, 렌더 스모크는
+  //   "런타임 에러 0" 이 깨져 빨간불(셀러 환불 큐, 10-13 #1741 이후 모든 PR). 거절은 실패가 아니라 "아직" 이다.
+  it('⑥ 폰트를 못 받아도(거절) 처리 안 된 오류를 내지 않고, 다시 시도한다', async () => {
+    const st = mem()
+    let calls = 0
+    const unhandled: unknown[] = []
+    const onUnhandled = (e: unknown) => { unhandled.push(e) }
+    process.on('unhandledRejection', onUnhandled)
+    try {
+      const r = run({ storage: st, ready: 'complete', reject: () => ++calls < 3 })
+      await vi.advanceTimersByTimeAsync(2200)
+      await Promise.resolve()
+      expect(unhandled, '거절이 처리되지 않았다 — 페이지에 NetworkError 가 뜬다').toEqual([])
+      expect(r.fontsLoad.mock.calls.length).toBe(3)
+      expect(st.data.ur_font_warm).toBe('1')
+    } finally {
+      process.off('unhandledRejection', onUnhandled)
+    }
   })
 })

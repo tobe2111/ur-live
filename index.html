@@ -461,7 +461,7 @@ p['catch'](function(){});window.__urKakaoMaps=p;d.head.appendChild(s)})()</scrip
          글자×범위 이중 반복은 그 자체로 0.3초였다), 다 오면(또는 8초)
          한 번에 켠다 ⇒ 재배치가 한 번으로 모인다. 시트를 못 읽으면 종전대로 바로 켠다. -->
     <script>(function(){try{var l=document.getElementById('ur-font-css');if(!l)return;try{if(localStorage.getItem('ur_font_warm')==='1')return}catch(e){return}
-l.media='print';var done=0;function warm(n){try{document.fonts.load('16px "Pretendard Variable"','가').then(function(f){if(f&&f.length){try{localStorage.setItem('ur_font_warm','1')}catch(e){}}else if(n<8)setTimeout(function(){warm(n+1)},1000)})}catch(e){}}
+l.media='print';var done=0;function warm(n){try{document.fonts.load('16px "Pretendard Variable"','가').then(function(f){if(f&&f.length){try{localStorage.setItem('ur_font_warm','1')}catch(e){}}else if(n<8)setTimeout(function(){warm(n+1)},1000)},function(){if(n<8)setTimeout(function(){warm(n+1)},1000)})}catch(e){}}
 function flip(){if(done>1)return;done=2;l.media='all';setTimeout(function(){warm(0)},0)}
 function hit(ur,cs){var p=ur.split(',');for(var i=0;i<p.length;i++){var m=/U\+([0-9A-F]+)(?:-([0-9A-F]+))?/i.exec(p[i]);if(!m)continue;var a=parseInt(m[1],16),b=m[2]?parseInt(m[2],16):a,lo=0,hi=cs.length;while(lo<hi){var md=(lo+hi)>>1;if(cs[md]<a)lo=md+1;else hi=md}if(lo<cs.length&&cs[lo]<=b)return 1}return 0}
 function on(){if(done)return;done=1;try{var rs=l.sheet&&l.sheet.cssRules,t=(document.body&&document.body.textContent)||'',sn={},cs=[],u=[];for(var i=0;i<t.length;i++){var cc=t.charCodeAt(i);if(!sn[cc]){sn[cc]=1;cs.push(cc)}}cs.sort(function(a,b){return a-b});
@@ -582,6 +582,11 @@ if(document.readyState==='complete')idle();else addEventListener('load',idle,{on
     <meta property="og:image" content="https://urdeal.kr/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
+    <!-- 🖼️ 2026-10-14: `og:image:alt` — 2026-10-12 에 width/height 는 선언했는데 **alt 만 빠져**
+         `summary_large_image` 33표면 전부 0건이었다(클라 `<SEO>` 에만 있어 JS 렌더 크롤러만 봤다).
+         값은 `shared/og-share-image.ts` `ogImageAlt` 와 **같은 문구**다 — 여기는 정적 HTML 이라
+         함수를 부를 수 없으므로 시험이 둘을 대조한다(두 벌이 갈리는 것을 막는 유일한 수단). -->
+    <meta property="og:image:alt" content="유어딜 브랜드 카드" />
     <meta name="twitter:image" content="https://urdeal.kr/og-image.png" />
 
     <!-- 🛡️ FOUC 방지 — React 마운트 전 첫 페인트부터 올바른 테마 적용.

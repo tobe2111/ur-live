@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { readCode, readRaw } from '../helpers/source-text'
 import { DEFAULT_UNCLAIMED_POLICY } from '@/shared/pickup-refund'
+import { surfaceCopyFor } from '@/shared/seo/surface-copy'
+import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
+import { buildStaticSurfaceNoscript } from '@/worker/utils/crawler-noscript'
 
 /**
  * 💸 2026-10-13 — `/refund` 가 **우리 규칙**을 말하는지 지킨다 (결재 `2026-10-12-refund-policy-mismatch.md`).
@@ -23,7 +26,11 @@ import { DEFAULT_UNCLAIMED_POLICY } from '@/shared/pickup-refund'
  * ## ⚠️ 이 시험이 못 보는 것
  * - 라이브 `platform_settings` 의 실제 게이트 값(기본값만 본다 — 어드민이 켜면 페이지를 사람이 고쳐야 한다)
  * - 문구가 **법적으로** 충분한가(법무 검토는 코드 밖이다)
- * - 크롤러가 받는 본문(이 글은 20KB JSX 안에만 있어 `/refund` 크롤러 본문은 여전히 짧다 — 별건)
+ * - ✅ **2026-10-14 해소** — 여기 *"크롤러 본문은 여전히 짧다(별건)"* 이라고 적혀 있던 것이 그
+ *   별건이다. `/refund` 가 `SURFACE_COPY` 에 들어와 본문이 6자 → 252자가 됐고, 그래서 **같은
+ *   약속이 사는 자리가 셋**이 됐다(페이지 · 크롤러 본문 · description) ⇒ ③의 금지어 검사가 셋을
+ *   함께 훑는다. 한쪽에만 새면 약속이 두 벌이 되는데 **그건 에러를 내지 않는다.**
+ * - 문구가 실제로 **렌더되는지**(소스·SSOT 실재만 본다)
  */
 const PAGE = 'src/pages/RefundPolicyPage.tsx'
 const BAR = 'src/pages/group-buy/DealBottomBar.tsx'
@@ -81,6 +88,28 @@ describe('③ 꺼져 있는 기능을 약속하지 않는다', () => {
       .toMatch(/voucher_partial_refund_enabled/)
     expect(readRaw('src/features/admin/api/admin-system-monitoring.routes.ts'))
       .toMatch(/voucher_partial_refund_enabled'[\s\S]{0,200}default_value: 'false'/)
+  })
+
+  // 🔴 2026-10-14 — 같은 금지가 **크롤러 본문과 검색 스니펫에도** 걸린다. 페이지만 지키면
+  //   `/refund` 의 약속이 세 자리에 살면서 한 자리만 꺼진 기능을 말하는 조합이 생긴다.
+  //   판정은 문자열 비교가 아니라 **빌더 출력**으로 한다(SSOT 에 있어도 빌더가 안 내면 소용없고,
+  //   빌더가 내는데 SSOT 검사만 하면 다른 경로로 샌 문구를 못 본다).
+  it('크롤러 본문·description 도 꺼져 있는 기능을 약속하지 않는다', () => {
+    const body = buildStaticSurfaceNoscript('/refund')
+    const desc = CONSUMER_SURFACE_SEO['/refund'].description
+    expect(body, '/refund 크롤러 본문이 비었다 — 6자로 되돌아갔다').toContain('<noscript>')
+    for (const bad of ['장 단위', '일부 환불', '부분 환불', '미수령']) {
+      expect(body, `크롤러 본문이 꺼져 있는 기능을 약속한다: ${bad}`).not.toContain(bad)
+      expect(desc, `description 이 꺼져 있는 기능을 약속한다: ${bad}`).not.toContain(bad)
+    }
+  })
+
+  // 전액 약속은 세 자리에 있고 **같은 말**이어야 한다. 기본 정책값(위 ②)이 바뀌면 셋 다 고치러 온다.
+  it('전액 약속이 페이지·크롤러 본문·description 셋에 다 있다', () => {
+    expect(readCode(PAGE), '페이지').toContain('전액')
+    expect(surfaceCopyFor('/refund')!.lines.join(' '), '크롤러 본문 SSOT 가 만료 자동 환불을 말하지 않는다')
+      .toContain('만료된 이용권을 확인해 환불하고')
+    expect(CONSUMER_SURFACE_SEO['/refund'].description, 'description').toContain('전액')
   })
 })
 

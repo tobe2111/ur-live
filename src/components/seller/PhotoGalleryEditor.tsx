@@ -4,7 +4,7 @@ import { X } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
 import { getSellerToken } from '@/lib/seller-auth'
-import { compressForUpload } from '@/lib/image-compress'
+import { prepareImageForUpload, UploadTooLargeError, uploadTooLargeMessage } from '@/lib/prepare-upload'
 
 /**
  * 🖼️ **사진 여러 장 편집기** (2026-09-03 대표 *"이용권에 사진 여러 장 올릴 수 있어야하는데
@@ -55,9 +55,15 @@ export default function PhotoGalleryEditor({ photos, onChange, max = PHOTO_MAX, 
     setBusy(true)
     const added: string[] = []
     for (const f of Array.from(files).slice(0, room)) {
-      if (f.size > 5 * 1024 * 1024) { toast.error(t('seller.mealVoucher.imageSizeLimit', { defaultValue: '5MB 이하 이미지만 업로드 가능합니다' })); continue }
+      let compressed: File
       try {
-        const compressed = await compressForUpload(f, { maxSizeMB: 0.3, maxWidthOrHeight: 1280, toWebP: true })
+        // 🗜️ 2026-10-14: 압축 전 5MB 가드 제거 — 판정은 공용 준비 헬퍼(천장 1MB)가 한다.
+        compressed = await prepareImageForUpload(f, { size: { maxSizeMB: 0.3, maxWidthOrHeight: 1280 } })
+      } catch (e) {
+        toast.error(e instanceof UploadTooLargeError ? uploadTooLargeMessage(e) : t('common.uploadFailed', { defaultValue: '업로드 실패' }))
+        continue
+      }
+      try {
         try {
           const fd = new FormData()
           fd.append('file', new File([compressed], 'voucher.webp', { type: compressed.type || 'image/webp' }))

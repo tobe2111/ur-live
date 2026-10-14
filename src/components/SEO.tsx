@@ -1,5 +1,6 @@
 import { Helmet } from 'react-helmet-async'
 import { withSiteName } from '@/shared/seo/consumer-surfaces'
+import { ogImageAlt } from '@/shared/og-share-image'
 
 /**
  * 🌐 2026-10-12 — **`og:locale` 은 고정 `ko_KR` 이다.** 종전에는 i18n 언어로 바꾸고
@@ -92,7 +93,9 @@ export default function SEO({
       <meta property="og:image" content={resolvedImage} />
       <meta property="og:image:width" content="1200" />
       <meta property="og:image:height" content="630" />
-      <meta property="og:image:alt" content={`${siteName} - ${resolvedDescription.slice(0, 60)}`} />
+      {/* 🔁 2026-10-14: alt 을 **서버와 같은 함수**로 정한다. 종전엔 설명 60자를 잘라 넣었는데
+          그것은 *페이지 설명*이지 *그림 설명*이 아니었고, 봇 셸·`index.html` 과도 달랐다. */}
+      <meta property="og:image:alt" content={ogImageAlt(resolvedImage, fullTitle, siteName)} />
       <meta property="og:url" content={fullUrl} />
       <meta property="og:site_name" content={siteName} />
       <meta property="og:locale" content={OG_LOCALE} />
@@ -103,7 +106,7 @@ export default function SEO({
       <meta name="twitter:title" content={fullTitle} />
       <meta name="twitter:description" content={resolvedDescription} />
       <meta name="twitter:image" content={resolvedImage} />
-      <meta name="twitter:image:alt" content={isWholesale ? `${siteName} B2B 도매몰` : `${siteName} 동네 공동구매 · 이용권`} />
+      <meta name="twitter:image:alt" content={ogImageAlt(resolvedImage, fullTitle, siteName)} />
 
       {/* Theme color (모바일 status bar) */}
       <meta name="theme-color" content={isWholesale ? '#0A0A0A' : '#11141C'} />

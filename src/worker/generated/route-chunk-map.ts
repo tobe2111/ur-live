@@ -3,34 +3,34 @@
 export const ROUTE_CHUNK_MAP: Record<string, { js: string[]; css: string[] }> = {
   "home": {
     "js": [
-      "/assets/MobileHomePage-CyHNSnrz.js",
-      "/assets/lz-common-CD6UuLQ0.js",
-      "/assets/lz-home-homePc-BRSM9WQo.js",
-      "/assets/lz-home-homePc-map-D1udU4DZ.js",
+      "/assets/MobileHomePage-CALLih9P.js",
+      "/assets/lz-common-BxQ7plt8.js",
+      "/assets/lz-home-homePc-BZHpjOt-.js",
+      "/assets/lz-home-homePc-map-LNfNJj6c.js",
       "/assets/lz-home-homePc-urshorts-CQ3-jb6P.js"
     ],
     "css": []
   },
   "homePc": {
     "js": [
-      "/assets/PcHomePage-BffE3l_E.js",
-      "/assets/lz-home-homePc-BRSM9WQo.js",
-      "/assets/lz-common-CD6UuLQ0.js",
-      "/assets/lz-home-homePc-map-D1udU4DZ.js",
+      "/assets/PcHomePage-GBlRGhMH.js",
+      "/assets/lz-home-homePc-BZHpjOt-.js",
+      "/assets/lz-common-BxQ7plt8.js",
+      "/assets/lz-home-homePc-map-LNfNJj6c.js",
       "/assets/lz-home-homePc-urshorts-CQ3-jb6P.js",
-      "/assets/lz-homePc-map-C_KZlgVD.js",
-      "/assets/lz-homePc-Duqvj9aC.js"
+      "/assets/lz-homePc-map-Dw5dw0Fh.js",
+      "/assets/lz-homePc-D5rB6CtU.js"
     ],
     "css": []
   },
   "gbDetail": {
     "js": [
-      "/assets/GroupBuyDetailPage-CziismaR.js",
-      "/assets/lz-gbDetail-6mKKqau4.js",
-      "/assets/lz-common-CD6UuLQ0.js",
-      "/assets/lz-gbDetail-product-8NLnGsVk.js",
-      "/assets/lz-gbDetail-linkshop1-product-DK0frwFY.js",
-      "/assets/lz-boot-gbDetail-linkshop1-DnZzs82n.js",
+      "/assets/GroupBuyDetailPage-CK46Fn6J.js",
+      "/assets/lz-gbDetail-DmvBJ-6m.js",
+      "/assets/lz-common-BxQ7plt8.js",
+      "/assets/lz-gbDetail-product-CyJ2bXbm.js",
+      "/assets/lz-gbDetail-linkshop1-product-B6dHlZHh.js",
+      "/assets/lz-boot-gbDetail-linkshop1-B4Xq9vzQ.js",
       "/assets/lz-gbDetail-voucherDetail-wgQTwj3-.js",
       "/assets/lz-boot-gbDetail-DP3XBusN.js",
       "/assets/lz-gbDetail-map-WxrVsNC3.js"
@@ -39,74 +39,74 @@ export const ROUTE_CHUNK_MAP: Record<string, { js: string[]; css: string[] }> = 
   },
   "voucherDetail": {
     "js": [
-      "/assets/VoucherDetailPage-U1_f4lgy.js",
+      "/assets/VoucherDetailPage-DxKs8MC0.js",
       "/assets/lz-gbDetail-voucherDetail-wgQTwj3-.js",
-      "/assets/lz-common-CD6UuLQ0.js"
+      "/assets/lz-common-BxQ7plt8.js"
     ],
     "css": []
   },
   "product": {
     "js": [
-      "/assets/ProductDetailPage-48E-1r6V.js",
-      "/assets/lz-common-CD6UuLQ0.js",
-      "/assets/lz-gbDetail-product-8NLnGsVk.js",
-      "/assets/lz-gbDetail-linkshop1-product-DK0frwFY.js",
-      "/assets/lz-product-D-hdX5lS.js",
-      "/assets/lz-gbDetailL-product-DvM9RK0k.js"
+      "/assets/ProductDetailPage-S_fhSrN5.js",
+      "/assets/lz-common-BxQ7plt8.js",
+      "/assets/lz-gbDetail-product-CyJ2bXbm.js",
+      "/assets/lz-gbDetail-linkshop1-product-B6dHlZHh.js",
+      "/assets/lz-product-Df3RaKxF.js",
+      "/assets/lz-gbDetailL-product-D1UwVfD7.js"
     ],
     "css": []
   },
   "linkshop": {
     "js": [
-      "/assets/CuratorPage-BMXwX1v7.js",
-      "/assets/SellerPublicPage-Bl-lVGTk.js",
-      "/assets/lz-common-CD6UuLQ0.js",
-      "/assets/lz-linkshop1-Bba2wrbn.js",
-      "/assets/lz-boot-gbDetail-linkshop1-DnZzs82n.js",
-      "/assets/lz-linkshop1-vouchers-D8zuflxb.js",
-      "/assets/lz-gbDetail-linkshop1-product-DK0frwFY.js",
-      "/assets/lz-linkshop1-linkshop2-BN1OLoDo.js",
-      "/assets/lz-linkshop2-0uB9SRBp.js"
+      "/assets/CuratorPage-zkc28Gr6.js",
+      "/assets/SellerPublicPage-CF7WuW8P.js",
+      "/assets/lz-common-BxQ7plt8.js",
+      "/assets/lz-linkshop1-4SioYubB.js",
+      "/assets/lz-boot-gbDetail-linkshop1-B4Xq9vzQ.js",
+      "/assets/lz-linkshop1-vouchers-DWqm7TGb.js",
+      "/assets/lz-gbDetail-linkshop1-product-B6dHlZHh.js",
+      "/assets/lz-linkshop1-linkshop2-BbJwssbh.js",
+      "/assets/lz-linkshop2-CxLeLwnc.js"
     ],
     "css": []
   },
   "vouchers": {
     "js": [
-      "/assets/VouchersPage-DpCVyS6O.js",
-      "/assets/lz-browse-vouchers-pLYEjAsk.js",
-      "/assets/lz-common-CD6UuLQ0.js",
-      "/assets/lz-vouchers-COfIg9jJ.js",
-      "/assets/lz-linkshop1-vouchers-D8zuflxb.js"
+      "/assets/VouchersPage-BisBP-bR.js",
+      "/assets/lz-browse-vouchers-DJXdfQEE.js",
+      "/assets/lz-common-BxQ7plt8.js",
+      "/assets/lz-vouchers-7Em5LFFk.js",
+      "/assets/lz-linkshop1-vouchers-DWqm7TGb.js"
     ],
     "css": []
   },
   "browse": {
     "js": [
-      "/assets/BrowsePage-C15B57yp.js",
-      "/assets/lz-browse-vouchers-pLYEjAsk.js",
-      "/assets/lz-common-CD6UuLQ0.js",
-      "/assets/lz-browse-5ZmCAgNj.js"
+      "/assets/BrowsePage-DjWYBl_R.js",
+      "/assets/lz-browse-vouchers-DJXdfQEE.js",
+      "/assets/lz-common-BxQ7plt8.js",
+      "/assets/lz-browse-BPzoCBDK.js"
     ],
     "css": []
   },
   "map": {
     "js": [
-      "/assets/RestaurantMapPage-BVIl92lX.js",
-      "/assets/lz-common-CD6UuLQ0.js",
-      "/assets/lz-home-homePc-map-D1udU4DZ.js",
-      "/assets/lz-map-DJngoqFw.js",
+      "/assets/RestaurantMapPage-DdZ8ohNi.js",
+      "/assets/lz-common-BxQ7plt8.js",
+      "/assets/lz-home-homePc-map-LNfNJj6c.js",
+      "/assets/lz-map-DvTIIRP9.js",
       "/assets/lz-gbDetail-map-WxrVsNC3.js",
-      "/assets/app-kakao-sdk-Du5io4nO.js",
-      "/assets/lz-boot-gbDetailL-map-productL-COmhEYO-.js",
-      "/assets/lz-homePc-map-C_KZlgVD.js"
+      "/assets/app-kakao-sdk-D6fMZg5d.js",
+      "/assets/lz-boot-gbDetailL-map-productL-DTgvIf7b.js",
+      "/assets/lz-homePc-map-Dw5dw0Fh.js"
     ],
     "css": []
   },
   "urshorts": {
     "js": [
-      "/assets/UrShortsBrowsePage-CDiCxUIz.js",
-      "/assets/lz-common-CD6UuLQ0.js",
-      "/assets/lz-urshorts-BjMynEt4.js",
+      "/assets/UrShortsBrowsePage-COqBumF7.js",
+      "/assets/lz-common-BxQ7plt8.js",
+      "/assets/lz-urshorts-tXJNx-p9.js",
       "/assets/lz-home-homePc-urshorts-CQ3-jb6P.js"
     ],
     "css": []

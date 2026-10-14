@@ -1,13 +1,16 @@
 import { ArrowLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import SEO from '@/components/SEO'
+// 🔁 2026-10-14: 제목·설명을 **표에서 읽는다**(`PartnersPage`·`CreatorsPage` 선례).
+//   손으로 적어 두면 표와 화면이 조용히 갈린다 — 실제로 둘이 같은 틀린 값을 들고 있었다.
+import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 
 export default function GDPRPage() {
   const navigate = useNavigate()
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#11141C]">
-      <SEO title="Privacy Policy (GDPR) - YourDeal" description="YourDeal privacy policy and GDPR compliance information." url="/gdpr" />
+      <SEO title={CONSUMER_SURFACE_SEO['/gdpr'].title} description={CONSUMER_SURFACE_SEO['/gdpr'].description} url="/gdpr" />
       {/* 🛡️ 2026-05-20: 정책 페이지 ur-content-medium (1024px) 으로 PC 가독성 향상. */}
       <div className="ur-content-medium px-5 lg:px-8 py-8 lg:py-12">
         <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-[15px] mb-6">

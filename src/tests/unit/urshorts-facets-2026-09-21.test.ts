@@ -153,6 +153,11 @@ describe('④ 두 지역 목록이 갈리지 않는다', () => {
     expect([...URSHORTS_REGION_KEYS]).toEqual(KOREA_REGIONS.map((r) => r.key))
   })
 
+  // 🗺️ 2026-10-14 대표 "서울과 경기 사이에 부산을 넣어줘" — 지역 고르기의 앞 세 칸.
+  it('지역 순서: 서울 → 부산 → 경기', () => {
+    expect(KOREA_REGIONS.slice(0, 3).map((r) => r.key)).toEqual(['서울', '부산', '경기'])
+  })
+
   it('서버 허용 목록도 같은 것을 쓴다', () => {
     expect([...REGION_SI]).toEqual([...URSHORTS_REGION_KEYS])
   })

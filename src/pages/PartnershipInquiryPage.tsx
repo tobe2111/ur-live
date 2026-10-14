@@ -10,6 +10,7 @@ import { ChevronLeft, Handshake } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
+import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 
 const TYPES = [
   { v: 'ad', l: '📣 광고 문의' },
@@ -49,7 +50,7 @@ export default function PartnershipInquiryPage() {
   if (done) {
     return (
       <div className="min-h-screen bg-white dark:bg-[#11141C] flex items-center justify-center px-4">
-        <SEO title="광고/제휴 문의 - 유어딜" description="광고, 제휴, 입점, 상품 공급 문의" url="/partnership" />
+        <SEO title={CONSUMER_SURFACE_SEO['/partnership'].title} description={CONSUMER_SURFACE_SEO['/partnership'].description} url="/partnership" />
         <div className="text-center max-w-sm">
           <OkIcon className="w-14 h-14 mx-auto text-emerald-500" />
           <h1 className="mt-4 text-[17px] font-extrabold text-gray-900 dark:text-white">접수됐어요!</h1>
@@ -67,7 +68,7 @@ export default function PartnershipInquiryPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#11141C] pb-24">
-      <SEO title="광고/제휴 문의 - 유어딜" description="광고, 제휴, 매장 입점, 상품 공급 문의를 남겨주세요" url="/partnership" />
+      <SEO title={CONSUMER_SURFACE_SEO['/partnership'].title} description={CONSUMER_SURFACE_SEO['/partnership'].description} url="/partnership" />
       <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-narrow flex items-center px-4 py-3">
           <button onClick={() => navigate(-1)} aria-label="뒤로"

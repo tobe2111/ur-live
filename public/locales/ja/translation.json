@@ -158,7 +158,7 @@
     "imageUpload": "画像アップロード",
     "imageCompressing": "画像を圧縮中...",
     "imageDropHint": "クリックまたは画像をドラッグしてください",
-    "imageFormatHint": "JPG, PNG, GIF (最大10MB) • 自動で{{maxSizeKB}}KB以下に圧縮されます",
+    "imageFormatHint": "JPG, PNG, WebP • 大きな写真は自動で{{maxSizeKB}}KB以下に縮小されます",
     "imageUploaded": "アップロードされた画像",
     "imageRemove": "画像を削除",
     "imageUploadedMsg": "画像がアップロードされました",

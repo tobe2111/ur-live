@@ -248,24 +248,36 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
     title: '유어딜 이용약관',
     description: '유어딜 서비스를 이용하는 모든 회원에게 적용되는 이용약관 정본입니다. 회원 가입과 탈퇴, 딜 포인트, 결제와 환불, 회사와 회원의 책임.',
   },
+  // ⚖️ 2026-10-14 — 이 둘의 description 이 **동어반복**이었다(`유어딜 개인정보처리방침입니다.` 14자 ·
+  //   `유어딜 환불 및 반품 정책을 안내합니다.` 21자). 라이브 실측에서 형제 `/terms` 만 내용을 말하는
+  //   86자를 갖고 있었고, 이 둘은 검색결과 스니펫 자리에 "제목을 한 번 더" 쓰고 있었다.
+  //   ⇒ 그 문서에 **실제로 있는 절**만 적는다(지어내지 않는다 — 아래 둘은 전부 실재 절 제목이다).
+  //   🔴 `/refund` 의 *전액 자동 환불* 은 코드가 하는 일이다(`DEFAULT_UNCLAIMED_POLICY` 100% ·
+  //      게이트 기본 OFF). 그 기본값이 바뀌면 `refund-policy-truth` 가드가 빨간불이 되고 **페이지와
+  //      이 description 을 함께** 고치러 오게 된다(꺼져 있는 기능은 여기에도 쓰지 않는다).
   '/privacy': {
     crumb: '개인정보처리방침',
     title: '개인정보처리방침',
-    description: '유어딜 개인정보처리방침입니다.',
+    description: '유어딜이 수집하는 개인정보 항목과 처리 목적, 보유 기간, 제3자 제공과 위탁, 정보주체의 권리와 파기 절차를 안내합니다.',
   },
   '/refund': {
     crumb: '환불정책',
     title: '환불정책',
-    description: '유어딜 환불 및 반품 정책을 안내합니다.',
+    description: '쓰지 않은 이용권은 유효기간이 지나면 결제 금액 전액이 자동으로 환불됩니다. 딜 환급, 배송 상품 교환과 반품, 환불 소요기간까지 안내합니다.',
   },
   '/faq': {
     crumb: '자주 묻는 질문',
     title: '자주 묻는 질문 - 이용권 사용·환불',
     description: '이용권은 어떻게 쓰는지, 유효기간이 지나면 어떻게 되는지, 환불은 언제 되는지. 가장 많이 묻는 것부터 답합니다.',
   },
+  /* 🩸 2026-10-14 — 이 항목만 **필드 계약을 깨고** ` - YourDeal` 을 담아, `withSiteName` 이
+     한국어 접미사를 또 붙였다(라이브 `<title>` 브랜드 **2회**). ❌ 영문 별칭을 `withSiteName` 에
+     가르치는 길은 안 간다: 브랜드 JSON-LD 의 별칭은 `['urdeal','UrDeal']` 이고 `YourDeal` 은
+     개인정보처리방침의 **법적 당사자 표기**(`Lister Corporation ("YourDeal")`)다 — 브랜드 표기·
+     법무 문서는 대표 몫이다. 가드: `surface-title-contract-2026-10-14.test.ts`. */
   '/gdpr': {
     crumb: 'Privacy Policy',
-    title: 'Privacy Policy (GDPR) - YourDeal',
+    title: 'Privacy Policy (GDPR)',
     description: 'YourDeal privacy policy and GDPR compliance information.',
   },
 
@@ -338,8 +350,12 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
        ✅ **얻는 것이 둘이다** — 색인에서 빠지는 것 + 공유·탭에 뜨는 제목이 홈 제목에서 제 제목으로
           바뀌는 것(noindex 표면도 title 은 쓰인다 — `/videos`·`/search` 와 같다).
        🍞 noindex 라 `crumb` 는 **일부러 비워 둔다**(가드가 양방향으로 고정). */
+    /* 🔁 2026-10-14 — 접미사를 표에 박지 않는다(렌더 결과 `광고/제휴 문의 - 유어딜` **byte-동일**).
+       증상이 없는데도 고치는 이유: `/gdpr` 이 이 모양에서 브랜드 2회로 터졌다.
+       🔀 아래 두 줄 **사이에 주석을 넣지 말 것** — 주입이 그 두 줄을 한 앵커로 쓴다
+          (한 번 주석을 끼워 앵커를 낡게 만들었다). */
     noindex: true,
-    title: '광고/제휴 문의 - 유어딜',
+    title: '광고/제휴 문의',
     description: '광고, 제휴, 매장 입점, 상품 공급 문의를 남겨주세요. 매장 입점 안내는 /partners 에 있습니다.',
   },
   // 📜 약관 4종 — `/terms` 는 위에 있고 나머지 문서별 약관이 서버 메타 없이 남아 있었다.
