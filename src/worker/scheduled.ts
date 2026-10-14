@@ -342,6 +342,17 @@ export async function handleCronScheduled(
     }))
   }
 
+  // 🔔 2026-10-14 (대표 "다 해주고"): IndexNow 제출 — 하루 한 번(19:50 UTC = 04:50 KST, 비어 있던 슬롯).
+  //   기본 OFF 다(`INDEXNOW_ENABLED` + `INDEXNOW_KEY` 둘 다 필요) — 근거·비용은 그 핸들러 머리말.
+  if (cron === '*/5 * * * *' && slotOpen({ minute: 50, hour: 19 })) {
+    // 🔔 슬롯 안에서는 `slotCron(그 슬롯의 주기)` 를 쓴다 — 생 `safeCron` 은 캐리어 주기(*/5)로
+    //    기록돼 하트비트 침묵 감시가 매일 오탐을 낸다(`cron-slot-cadence` 가드가 잡았다).
+    ctx.waitUntil(slotCron('50 19 * * *')('indexnow-submit', async () => {
+      const { handleIndexNowSubmit } = await import('./cron/indexnow-submit')
+      return handleIndexNowSubmit(env)
+    }))
+  }
+
   if (cron === '*/5 * * * *' && slotOpen({ minute: 40, hour: 9 })) {
     ctx.waitUntil(slotCron('40 9 * * *')('stay-reminder', async () => {
       const { runStayReminderCron } = await import('./cron/stay-reminder')
