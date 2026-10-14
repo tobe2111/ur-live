@@ -31,7 +31,7 @@ import { BANNER_SLOT_SPECS } from '@/shared/constants/home-showcase'
  */
 const STRIP_GAP_PX = 28
 
-function bannerLink(b: HomeBanner): BannerLink {
+export function bannerLink(b: HomeBanner): BannerLink {
   return resolveBannerLink(b.link_url, typeof window !== 'undefined' ? window.location.hostname : undefined)
 }
 
@@ -39,7 +39,7 @@ function bannerLink(b: HomeBanner): BannerLink {
  * 링크가 있으면 카드 **전체**가 누르는 자리다 — 우리 주소는 앱 안 이동(`<Link>`), 남의 주소는 새 탭.
  * `clone` 은 순환용 복제 카드(아래 StripRail) — 스크린리더·탭 순서에서 뺀다.
  */
-function Wrap({ link, className, style, clone, children }: { link: BannerLink; className: string; style?: React.CSSProperties; clone?: boolean; children: React.ReactNode }) {
+export function BannerWrap({ link, className, style, clone, children }: { link: BannerLink; className: string; style?: React.CSSProperties; clone?: boolean; children: React.ReactNode }) {
   const a11y = clone ? { 'aria-hidden': true as const, tabIndex: -1 } : {}
   if (link?.kind === 'internal') return <Link to={link.to} className={className} style={style} {...a11y}>{children}</Link>
   if (link?.kind === 'external') return <a href={link.href} target="_blank" rel="noopener noreferrer" className={className} style={style} {...a11y}>{children}</a>
@@ -65,7 +65,7 @@ export default function HomeBannerStrip({ variant }: { variant: Extract<BannerSl
     const bg = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS.wide.requestWidth, quality: 76 }) : ''
     return (
       <div className="pb-6">
-        <Wrap
+        <BannerWrap
           link={link}
           className="relative block overflow-hidden rounded-xl isolate min-h-[104px] flex items-center justify-between gap-5 px-6 py-5 bg-gray-900 dark:bg-[#1D1F29] transition-transform hover:scale-[1.004]"
         >
@@ -80,7 +80,7 @@ export default function HomeBannerStrip({ variant }: { variant: Extract<BannerSl
               바로가기
             </span>
           )}
-        </Wrap>
+        </BannerWrap>
       </div>
     )
   }
@@ -98,7 +98,7 @@ export default function HomeBannerStrip({ variant }: { variant: Extract<BannerSl
           const link = bannerLink(b)
           const bg = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS.inline.requestWidth, quality: 76 }) : ''
           return (
-            <Wrap
+            <BannerWrap
               key={b.id}
               link={link}
               className="relative block overflow-hidden rounded-xl isolate min-h-[96px] flex flex-col justify-center px-5 py-4 bg-gray-800 dark:bg-[#1D1F29] transition-transform hover:scale-[1.008]"
@@ -109,7 +109,7 @@ export default function HomeBannerStrip({ variant }: { variant: Extract<BannerSl
                 <small className="block mb-1 text-[12px] font-bold tracking-wide text-white/80">{b.description}</small>
               )}
               <strong className="text-[15px] font-bold leading-snug tracking-tight text-white">{b.title}</strong>
-            </Wrap>
+            </BannerWrap>
           )
         })}
       </div>
@@ -356,7 +356,7 @@ function StripCard({ b, many, first, clone }: { b: HomeBanner; many: boolean; fi
   const link = bannerLink(b)
   const bg = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS.strip.requestWidth, quality: 76 }) : ''
   return (
-    <Wrap
+    <BannerWrap
       link={link}
       clone={clone}
       /* 📐 거터(14) 안에서 **한 장이 꽉**. 모서리 14px 는 `.ur-home-panel`(모바일) 과 같은 값이다.
@@ -385,6 +385,6 @@ function StripCard({ b, many, first, clone }: { b: HomeBanner; many: boolean; fi
       {b.description && (
         <span className="block max-w-[64%] mt-1 text-[12px] line-clamp-1 text-white/90 dark:text-white/90">{b.description}</span>
       )}
-    </Wrap>
+    </BannerWrap>
   )
 }

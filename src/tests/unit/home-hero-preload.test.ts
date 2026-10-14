@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
-import { buildHomeHeroPreloadLink } from '@/worker/utils/home-card-preload'
+import { buildHomeHeroPreloadLink, heroStripPreloadLinks, HERO_STRIP_RETIRED } from '@/worker/utils/home-card-preload'
 import { pickHeroPhotoFrom, pickHeroPhotoFromSeedJson, isOwnMedia } from '@/shared/home-hero-photo'
 import { HOME_HERO_REQUEST_WIDTH, HOME_HERO_QUALITY, HOME_HERO_MEDIA_QUERY } from '@/shared/home-hero-image'
 import { HERO_STRIP_PRELOAD, heroTileUrl } from '@/shared/home-hero-strip'
@@ -26,6 +26,12 @@ const pad = (n = 5) => Array.from({ length: n }, (_, i) => ({ image_url: `/api/m
  *    배포 후 브라우저 실측이 유일한 판정이다.
  */
 describe('홈 히어로 preload', () => {
+  /** 🧩 2026-10-14 시안 4: PC 홈이 히어로 띠를 안 그린다 → 워커가 아무도 안 쓰는 사진을 최우선으로 받지 않게 한다. */
+  it('띠가 은퇴한 동안 워커는 히어로 preload 를 내지 않는다', () => {
+    expect(HERO_STRIP_RETIRED).toBe(true)
+    expect(buildHomeHeroPreloadLink(seed([...pad(), { image_url: '/api/media/x.jpg', slug: 'real', id: 1 }]))).toBeNull()
+  })
+
   it('시드에서 실상품을 우선 고른다 (데모는 마지막)', () => {
     const pick = pickHeroPhotoFrom([
       { image_url: 'https://media.ur-team.com/a.jpg', slug: 'demo-deal-1', id: 1 },
@@ -51,8 +57,8 @@ describe('홈 히어로 preload', () => {
   it('깨진 시드는 null — 홈이 안 뜨면 안 된다', () => {
     expect(pickHeroPhotoFromSeedJson('{{{')).toBeNull()
     expect(pickHeroPhotoFromSeedJson(JSON.stringify({ success: false }))).toBeNull()
-    expect(buildHomeHeroPreloadLink('{{{')).toBeNull()
-    expect(buildHomeHeroPreloadLink(seed([]))).toBeNull()
+    expect(heroStripPreloadLinks('{{{')).toBeNull()
+    expect(heroStripPreloadLinks(seed([]))).toBeNull()
   })
 
   /**
@@ -65,7 +71,7 @@ describe('홈 히어로 preload', () => {
     const expectedHref = heroTileUrl(src)
     expect(expectedHref).toBeTruthy()
     // 앞 5개는 아래 매대 첫 줄이라 띠가 건너뛴다 → 6번째가 띠의 첫 타일이다.
-    const link = buildHomeHeroPreloadLink(seed([...pad(), { image_url: src, slug: 'real', id: 1 }, ...pad(4)]))!
+    const link = heroStripPreloadLinks(seed([...pad(), { image_url: src, slug: 'real', id: 1 }, ...pad(4)]))!
     expect(link).toContain(`href="${expectedHref.replace(/"/g, '&quot;')}"`)
   })
 
@@ -83,7 +89,7 @@ describe('홈 히어로 preload', () => {
 
   it('첫 화면에 보이는 앞 몇 장만 당긴다 (띠 전체를 당기지 않는다)', () => {
     const many = Array.from({ length: 20 }, (_, i) => ({ image_url: `/api/media/t${i}.jpg`, slug: 'real', id: i + 1 }))
-    const link = buildHomeHeroPreloadLink(seed(many))!
+    const link = heroStripPreloadLinks(seed(many))!
     expect(link.match(/rel="preload"/g)?.length).toBe(HERO_STRIP_PRELOAD)
     expect(HERO_STRIP_PRELOAD).toBeLessThanOrEqual(3)
   })
@@ -93,7 +99,7 @@ describe('홈 히어로 preload', () => {
    *    media 로 막지 않으면 폰이 안 쓰는 바이트를 받는다 — 고치려던 것보다 나쁜 회귀다.
    */
   it('보이지 않는 폭에서는 안 받는다 (media 게이트 + 컨테이너 중단점 일치)', () => {
-    const link = buildHomeHeroPreloadLink(seed([...pad(), { image_url: '/api/media/h.jpg', slug: 'real', id: 7 }]))!
+    const link = heroStripPreloadLinks(seed([...pad(), { image_url: '/api/media/h.jpg', slug: 'real', id: 7 }]))!
     expect(link).toContain(`media="${HOME_HERO_MEDIA_QUERY}"`)
     expect(HOME_HERO_MEDIA_QUERY).toBe('(min-width: 768px)')
     // 띠 컨테이너가 md 를 벗어나면 이 상수도 같이 고쳐야 한다.
@@ -101,7 +107,7 @@ describe('홈 히어로 preload', () => {
   })
 
   it('첫 화면 최상단이므로 우선순위를 높인다', () => {
-    const link = buildHomeHeroPreloadLink(seed([...pad(), { image_url: '/api/media/h.jpg', slug: 'real', id: 7 }]))!
+    const link = heroStripPreloadLinks(seed([...pad(), { image_url: '/api/media/h.jpg', slug: 'real', id: 7 }]))!
     expect(link).toContain('rel="preload"')
     expect(link).toContain('as="image"')
     expect(link).toContain('fetchpriority="high"')

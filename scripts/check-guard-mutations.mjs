@@ -9733,8 +9733,8 @@ canvas {
     //   결함 방향만 반대로 돌린다: 섬이 **돌아오면** 다크에서 흰 판이 되살아난다.
     name: '홈 패널 — light-island 가 돌아와 다크에서 흰 판이 된다',
     file: 'src/pages/pc-home/PcHomePage.tsx',
-    find: 'className="ur-home-panel"',
-    replace: 'className="ur-home-panel light-island"',
+    find: 'className="ur-home-panel !mb-0 flex gap-8 items-start"',
+    replace: 'className="ur-home-panel !mb-0 flex gap-8 items-start light-island"',
     test: 'src/tests/unit/home-panel-light-island.test.ts',
     why: '섬을 붙이면 --surface 가 #FFFFFF 로 되박히고 안쪽 dark: 가 전부 꺼진다 = 되돌림의 증상 그 자체.',
   },

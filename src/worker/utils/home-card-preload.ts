@@ -143,7 +143,22 @@ export function buildDetailHeroPreloadLink(ssrPayload: string, isVoucherSurface:
  *
  * @returns `<link …>` 문자열(여러 줄이면 이어 붙인 하나), 없으면 null(fail-soft).
  */
+/** 🧩 2026-10-14: PC 홈 히어로 띠 은퇴(시안 4). */
+export const HERO_STRIP_RETIRED = true
+
 export function buildHomeHeroPreloadLink(mainSeedPayload: string): string | null {
+  /**
+   * 🧩 2026-10-14 (대표 확정 "시안 4"): PC 홈이 이 히어로(사진 띠)를 **더 이상 그리지 않는다** — 맨 위는
+   *   어드민 배너(큰 1 + 작은 2)다. 띠는 768px 미만에선 원래 `hidden` 이라 이제 **어떤 화면도** 이 사진을 안 쓴다.
+   *   그대로 두면 PC 하드로드마다 아무도 안 쓰는 두 장(~26KB)을 최우선으로 받는다 — 위 '어드민 배너가 있으면?'
+   *   이 경고한 그 손해가 이제 상시다. ⇒ 아무것도 내지 않는다(워커 호출부는 null 을 그냥 건너뛴다 — 잠금 파일 무접촉).
+   *   PC 히어로 띠를 되살리면 이 return 을 지운다.
+   */
+  return HERO_STRIP_RETIRED ? null : heroStripPreloadLinks(mainSeedPayload)
+}
+
+/** 띠가 다시 쓰일 때의 preload — 클라이언트 `HeroDealStrip` 과 byte-일치(시험이 대조). */
+export function heroStripPreloadLinks(mainSeedPayload: string): string | null {
   const links: string[] = []
   for (const tile of pickHeroStripFromSeedJson(mainSeedPayload).slice(0, HERO_STRIP_PRELOAD)) {
     const href = heroTileUrl(tile.src)

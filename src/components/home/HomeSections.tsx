@@ -7,6 +7,7 @@ import { readHomeSectionsSeed, readHomeSectionsSeedNear } from '@/shared/home-se
 import { nearSubtitle } from '@/shared/home-near'
 import type { HomeNear } from './home-near'
 import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
+import SectionRail from './SectionRail'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import {
   HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_LG_QUERY, HOME_CARD_ABOVE_FOLD,
@@ -71,7 +72,11 @@ interface HomeSection {
  *   키가 있으면 서버가 규칙 섹션을 거리순으로 준다(어드민이 직접 고른 섹션은 그대로).
  */
 export default function HomeSections(
-  { midBanner, shortsRail, near }: { midBanner?: React.ReactNode; shortsRail?: React.ReactNode; near?: HomeNear },
+  { midBanner, shortsRail, near, rail = false }: {
+    midBanner?: React.ReactNode; shortsRail?: React.ReactNode; near?: HomeNear
+    /** ↔️ 2026-10-14 PC 홈(시안 6): 그리드 대신 화살표로 넘기는 한 줄. 모바일은 기본(그리드) 그대로. */
+    rail?: boolean
+  },
 ) {
   const nearKey = near?.key ?? ''
   /**
@@ -177,7 +182,8 @@ export default function HomeSections(
           <section className="ur-home-panel">
             <div className="flex items-end justify-between gap-4 mb-3">
               <div className="min-w-0">
-                <h3 className="text-[17px] font-black tracking-tight text-gray-900 dark:text-white">
+                {/* ⚠️ 모바일 클래스 문자열은 워커 첫 화면(`home-first-screen`)이 글자 그대로 미러한다 — 통째로 둔다. */}
+                <h3 className={rail ? 'text-[24px] font-bold tracking-[-.02em] text-gray-900 dark:text-white' : 'text-[17px] font-black tracking-tight text-gray-900 dark:text-white'}>
                   {sec.title}
                 </h3>
                 {/* 📍 위치로 정렬된 줄은 그 사실을 말한다 — "가까운 곳부터" 같은 문구가 위치 없이 남으면 거짓말이다. */}
@@ -203,11 +209,15 @@ export default function HomeSections(
                 </Link>
               )}
             </div>
-            <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 ${DEAL_GRID_GAP}`}>
-              {sec.products.map((p, i) => (
+            {(() => {
+              const cards = sec.products.map((p, i) => (
                 <GroupBuyFeedCard key={p.id} p={p} imgWidth={cardImgWidth} aboveFold={i < HOME_CARD_ABOVE_FOLD && sIdx === 0} userLoc={sec.near ? near?.kmFrom : null} />
-              ))}
-            </div>
+              ))
+              // ↔️ 첫 섹션 앞 4장은 PC 에서도 첫 화면 근처 — 워커가 4열 폭(400)으로 미리 받는다(`home-card-preload`). 그 계약 그대로.
+              return rail
+                ? <SectionRail count={sec.products.length}>{cards}</SectionRail>
+                : <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 ${DEAL_GRID_GAP}`}>{cards}</div>
+            })()}
           </section>
           {/* 🎬 2026-09-07 (대표 확정): 유어쇼츠는 **인기 이용권 다음**. 히어로 바로 아래로 올리면
               홈이 첫 딜을 보여 주는 시각(559ms→304ms로 당겨 둔 값)이 늦어지고, 4열 그리드가
