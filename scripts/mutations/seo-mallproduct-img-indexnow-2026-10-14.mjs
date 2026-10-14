@@ -1,3 +1,6 @@
+// 🔁 2026-10-14 — 행·글자 조립이 `crawler-noscript-rows.ts` 로 **추출**됐다(685줄 → 래칫 600 초과).
+//    아래 앵커들의 결함은 한 글자도 안 바꿨고 **파일 경로만** 따라갔다.
+const NS_ROWS = 'src/worker/utils/crawler-noscript-rows.ts'
 /**
  * 🧬 2026-10-14 — 몰 상품 thin URL · 크롤러 문서 사진 · IndexNow 의 주입.
  *
@@ -51,7 +54,7 @@ export default [
   },
   {
     name: '🖼️ 크롤러 문서 사진 상한을 없앤다 (전 행에 사진)',
-    file: 'src/worker/utils/crawler-noscript.ts',
+    file: NS_ROWS,
     // ⚠️ `replace` 를 `'  return rows'` 로 쓰면 안 된다 — 실제 코드 `  return rows.map((r) => {` 의
     //    **부분문자열**이라 주입-잔재 검사가 늘 거짓 경보를 낸다(2026-10-14 pre-commit 이 실제로 막았다).
     find: '  return rows.map((r) => {',
@@ -63,7 +66,7 @@ export default [
   },
   {
     name: '🖼️ 워커 프록시로 가는 사진을 다시 쓴다 (리사이즈 안 됨)',
-    file: 'src/worker/utils/crawler-noscript.ts',
+    file: NS_ROWS,
     find: "  return u.startsWith('/cdn-cgi/image/') ? u : ''",
     replace: '  return u',
     test: TEST,
@@ -74,7 +77,7 @@ export default [
   },
   {
     name: '🖼️ 사진 상한을 행 인덱스로 센다 (쓸 수 없는 행이 자리를 먹는다)',
-    file: 'src/worker/utils/crawler-noscript.ts',
+    file: NS_ROWS,
     find: '    if (r.img && used < ROW_IMG_MAX) { used += 1; return r }',
     replace: '    if (used < ROW_IMG_MAX) { used += 1; return r }',
     test: TEST,
@@ -85,7 +88,7 @@ export default [
   },
   {
     name: '🖼️ alt 에 가격을 섞는다',
-    file: 'src/worker/utils/crawler-noscript.ts',
+    file: NS_ROWS,
     find: "  const alt = parts.filter(Boolean).join(' ')",
     replace: "  const alt = `${parts.filter(Boolean).join(' ')}${price}`",
     test: TEST,
@@ -93,7 +96,7 @@ export default [
   },
   {
     name: '🖼️ 사진을 링크 밖으로 뺀다',
-    file: 'src/worker/utils/crawler-noscript.ts',
+    file: NS_ROWS,
     find: '  return `<li>${r.href ? `<a href="${esc(r.href)}">${body}</a>` : body}</li>`',
     replace: '  return `<li>${img}${r.href ? `<a href="${esc(r.href)}">${esc(r.text)}</a>` : esc(r.text)}</li>`',
     test: TEST,

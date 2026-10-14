@@ -8,6 +8,9 @@
 const SSOT = 'src/shared/seo/store-name-dedupe.ts'
 const META = 'src/worker/utils/detail-ssr-meta.ts'
 const NS = 'src/worker/utils/crawler-noscript.ts'
+// 🔁 2026-10-14 — 행·글자 조립이 `crawler-noscript-rows.ts` 로 **추출**됐다(685줄 → 래칫 600 초과).
+//    아래 앵커들의 결함은 한 글자도 안 바꿨고 **파일 경로만** 따라갔다.
+const NS_ROWS = 'src/worker/utils/crawler-noscript-rows.ts'
 const T = 'src/tests/unit/store-name-dedupe-2026-10-13.test.ts'
 
 export default [
@@ -62,7 +65,7 @@ export default [
   {
     name: '🏪 크롤러 요약이 판단을 다시 구현한다 — 두 벌이 된다',
     why: '이 결함의 근본 원인이 바로 *두 곳이 따로 판단한 것*이다. 되돌리면 겉보기 동작은 같지만 다음에 한쪽만 고쳐져 또 갈린다.',
-    file: NS,
+    file: NS_ROWS,
     find: '  const parts = storeNameParts(head, title)',
     replace: '  const parts = head && title.startsWith(head) ? [title] : [head, title]',
     test: T,

@@ -31,8 +31,11 @@ import { canonicalDetailPath, FLOW_CONFIG } from '@/shared/product-flow'
 import { readFileSync } from 'node:fs'
 import { stripComments } from '../helpers/source-text'
 
+// 🔁 2026-10-14 재조준: 행·링크 조립이 `crawler-noscript-rows.ts` 로 **추출**됐다(685줄 → 래칫 600).
+//    불변식(주소를 손으로 적지 않는다)은 그대로이므로 **두 파일을 함께** 읽는다 — 다시 옮겨도 안 깨진다.
 const SRC = 'src/worker/utils/crawler-noscript.ts'
-const code = () => stripComments(readFileSync(SRC, 'utf8'))
+const SRC_ROWS = 'src/worker/utils/crawler-noscript-rows.ts'
+const code = () => stripComments(readFileSync(SRC, 'utf8') + '\n' + readFileSync(SRC_ROWS, 'utf8'))
 
 /** 탐침 시드 — 네 종류 + 링크를 만들 수 없는 행을 **함께** 담는다. */
 const PASS = { id: 2919, name: '닭도리탕', restaurant_name: '달빛한스푼', category: 'meal_voucher', price: 31000, original_price: 35000, restaurant_address: '서울 종로구 1길' }

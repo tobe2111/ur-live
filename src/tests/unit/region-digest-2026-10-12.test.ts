@@ -44,7 +44,10 @@ import { buildSurfaceListJsonLd } from '@/worker/utils/surface-list-jsonld'
 const worker = readCode('src/worker/index.ts')
 const cron = readCode('src/worker/cron/cache-prewarm.ts')
 const scheduled = readCode('src/worker/scheduled.ts')
+// 🔁 2026-10-14 재조준: `RegionSeedRow` 가 `crawler-noscript-rows.ts` 로 추출됐다(래칫 600).
+//    불변식(소비자가 읽는 필드가 화이트리스트에 있다)은 그대로 — 두 파일을 함께 읽는다.
 const noscriptSrc = readCode('src/worker/utils/crawler-noscript.ts')
+  + '\n' + readCode('src/worker/utils/crawler-noscript-rows.ts')
 const jsonLdSrc = readCode('src/worker/utils/surface-list-jsonld.ts')
 const META = { title: 't', description: 'd', canonical: 'https://urdeal.kr/x' }
 

@@ -45,7 +45,8 @@ export default [
   {
     name: '🗺️ 몰 상품 귀속 경로를 막는다 — 소개비 클릭 경로가 404',
     file: SSOT,
-    find: "  if (segs.length === 3 && segs[1] === 'p') return true",
+    // 🔁 2026-10-14 재조준: 판정이 몰 경로 SSOT(`parseMallProductPath`)로 바뀌었다(불변식 그대로).
+    find: "  if (segs.length === 3 && segs[1] === 'p') return parseMallProductPath(pathname) != null",
     replace: "  if (false) return true",
     test: TEST,
     why: '`/:mallSlug/p/:id` 는 최상위가 파라미터인 유일한 다중 세그먼트 패턴이다 — 막으면 몰 손님의 상품 링크가 전부 404 다.',
@@ -77,7 +78,8 @@ export default [
   {
     name: '🗺️ 없는 몰이 다시 200 — MALL 을 엔티티 슬롯에서 뺀다',
     file: 'src/worker/utils/surface-ssr-meta.ts',
-    find: "'BLOGPOST', 'MALL'])",
+    // 🔁 2026-10-14 재조준: `MALLPRODUCT` 가 더해지며 집합이 여러 줄이 됐다(불변식 그대로).
+    find: "'BLOGPOST', 'MALL',",
     replace: "'BLOGPOST'])",
     test: TEST,
     why: '1세그먼트 미등록 경로는 몰 후보라 라우트 판정에서 제외된다 — MALL 슬롯이 받지 않으면 그 구멍이 다시 열린다.',
