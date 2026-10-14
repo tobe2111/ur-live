@@ -57,6 +57,7 @@ export async function runVitalsSlo(env: Env, nowMs = Date.now()): Promise<string
       `실사용 성능 기준 ${findings.length}건 벗어남 (${target})`,
       lines.join('\n') + (findings.length > 8 ? `\n…외 ${findings.length - 8}건` : ''),
       '/admin/system-monitoring',
+    // intentional: 알림 실패가 판정 기록(하트비트 out)을 막으면 안 된다 — 결과는 아래 반환값에 남는다
     ).catch(() => {})
   }
   return `${target}: 판정 ${judged} · 위반 ${findings.filter((f) => f.kind === 'breach').length} · 회귀 ${findings.filter((f) => f.kind === 'regression').length} · 표본부족 ${thin}`

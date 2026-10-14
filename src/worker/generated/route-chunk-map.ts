@@ -3,110 +3,114 @@
 export const ROUTE_CHUNK_MAP: Record<string, { js: string[]; css: string[] }> = {
   "home": {
     "js": [
-      "/assets/MobileHomePage-Dwy1Ztnu.js",
-      "/assets/lz-home-homePc-CFXmcYf_.js",
-      "/assets/lz-common-ecj4lXlF.js",
-      "/assets/lz-home-homePc-map-D99CjBwT.js",
-      "/assets/lz-home-homePc-urshorts-CnnbYGVf.js"
+      "/assets/MobileHomePage-CyHNSnrz.js",
+      "/assets/lz-common-CD6UuLQ0.js",
+      "/assets/lz-home-homePc-BRSM9WQo.js",
+      "/assets/lz-home-homePc-map-D1udU4DZ.js",
+      "/assets/lz-home-homePc-urshorts-CQ3-jb6P.js"
     ],
     "css": []
   },
   "homePc": {
     "js": [
-      "/assets/PcHomePage-D3VZV2W5.js",
-      "/assets/lz-home-homePc-CFXmcYf_.js",
-      "/assets/lz-common-ecj4lXlF.js",
-      "/assets/lz-home-homePc-map-D99CjBwT.js",
-      "/assets/lz-home-homePc-urshorts-CnnbYGVf.js",
-      "/assets/lz-homePc-map-BT1GjYBu.js",
-      "/assets/lz-homePc-DYywU9U9.js"
+      "/assets/PcHomePage-BffE3l_E.js",
+      "/assets/lz-home-homePc-BRSM9WQo.js",
+      "/assets/lz-common-CD6UuLQ0.js",
+      "/assets/lz-home-homePc-map-D1udU4DZ.js",
+      "/assets/lz-home-homePc-urshorts-CQ3-jb6P.js",
+      "/assets/lz-homePc-map-C_KZlgVD.js",
+      "/assets/lz-homePc-Duqvj9aC.js"
     ],
     "css": []
   },
   "gbDetail": {
     "js": [
-      "/assets/GroupBuyDetailPage-CGSVrGOq.js",
-      "/assets/lz-gbDetail--e6IzUMT.js",
-      "/assets/lz-common-ecj4lXlF.js",
-      "/assets/lz-gbDetail-map-KSTD5UzF.js",
-      "/assets/lz-gbDetail-product-VAhxLZmq.js",
-      "/assets/lz-gbDetail-linkshop1-product-0yz-D0Eg.js",
-      "/assets/lz-gbDetail-linkshop1-DgT9RY4A.js",
-      "/assets/lz-gbDetail-voucherDetail-wgQTwj3-.js"
+      "/assets/GroupBuyDetailPage-CziismaR.js",
+      "/assets/lz-gbDetail-6mKKqau4.js",
+      "/assets/lz-common-CD6UuLQ0.js",
+      "/assets/lz-gbDetail-product-8NLnGsVk.js",
+      "/assets/lz-gbDetail-linkshop1-product-DK0frwFY.js",
+      "/assets/lz-boot-gbDetail-linkshop1-DnZzs82n.js",
+      "/assets/lz-gbDetail-voucherDetail-wgQTwj3-.js",
+      "/assets/lz-boot-gbDetail-DP3XBusN.js",
+      "/assets/lz-gbDetail-map-WxrVsNC3.js"
     ],
     "css": []
   },
   "voucherDetail": {
     "js": [
-      "/assets/VoucherDetailPage-BQqMrwTp.js",
+      "/assets/VoucherDetailPage-U1_f4lgy.js",
       "/assets/lz-gbDetail-voucherDetail-wgQTwj3-.js",
-      "/assets/lz-common-ecj4lXlF.js"
+      "/assets/lz-common-CD6UuLQ0.js"
     ],
     "css": []
   },
   "product": {
     "js": [
-      "/assets/ProductDetailPage-DtbZP0ac.js",
-      "/assets/lz-common-ecj4lXlF.js",
-      "/assets/lz-gbDetail-product-VAhxLZmq.js",
-      "/assets/lz-gbDetail-linkshop1-product-0yz-D0Eg.js",
-      "/assets/lz-product-DRH48t2F.js"
+      "/assets/ProductDetailPage-48E-1r6V.js",
+      "/assets/lz-common-CD6UuLQ0.js",
+      "/assets/lz-gbDetail-product-8NLnGsVk.js",
+      "/assets/lz-gbDetail-linkshop1-product-DK0frwFY.js",
+      "/assets/lz-product-D-hdX5lS.js",
+      "/assets/lz-gbDetailL-product-DvM9RK0k.js"
     ],
     "css": []
   },
   "linkshop": {
     "js": [
-      "/assets/CuratorPage-CztoVHQy.js",
-      "/assets/SellerPublicPage-5alCchiJ.js",
-      "/assets/lz-common-ecj4lXlF.js",
-      "/assets/lz-linkshop1-BuWROvx5.js",
-      "/assets/lz-gbDetail-linkshop1-DgT9RY4A.js",
-      "/assets/lz-linkshop1-vouchers-CA-F8xpR.js",
-      "/assets/lz-gbDetail-linkshop1-product-0yz-D0Eg.js",
-      "/assets/lz-linkshop1-linkshop2-BQo3XFAC.js",
-      "/assets/lz-linkshop2-jzbzng_x.js"
+      "/assets/CuratorPage-BMXwX1v7.js",
+      "/assets/SellerPublicPage-Bl-lVGTk.js",
+      "/assets/lz-common-CD6UuLQ0.js",
+      "/assets/lz-linkshop1-Bba2wrbn.js",
+      "/assets/lz-boot-gbDetail-linkshop1-DnZzs82n.js",
+      "/assets/lz-linkshop1-vouchers-D8zuflxb.js",
+      "/assets/lz-gbDetail-linkshop1-product-DK0frwFY.js",
+      "/assets/lz-linkshop1-linkshop2-BN1OLoDo.js",
+      "/assets/lz-linkshop2-0uB9SRBp.js"
     ],
     "css": []
   },
   "vouchers": {
     "js": [
-      "/assets/VouchersPage-CHTyt7Zo.js",
-      "/assets/lz-browse-vouchers-fnbemp6_.js",
-      "/assets/lz-common-ecj4lXlF.js",
-      "/assets/lz-vouchers-Brlj8NXb.js",
-      "/assets/lz-linkshop1-vouchers-CA-F8xpR.js"
+      "/assets/VouchersPage-DpCVyS6O.js",
+      "/assets/lz-browse-vouchers-pLYEjAsk.js",
+      "/assets/lz-common-CD6UuLQ0.js",
+      "/assets/lz-vouchers-COfIg9jJ.js",
+      "/assets/lz-linkshop1-vouchers-D8zuflxb.js"
     ],
     "css": []
   },
   "browse": {
     "js": [
-      "/assets/BrowsePage-QP-f7ne3.js",
-      "/assets/lz-browse-vouchers-fnbemp6_.js",
-      "/assets/lz-common-ecj4lXlF.js",
-      "/assets/lz-browse-BogyY9nX.js"
+      "/assets/BrowsePage-C15B57yp.js",
+      "/assets/lz-browse-vouchers-pLYEjAsk.js",
+      "/assets/lz-common-CD6UuLQ0.js",
+      "/assets/lz-browse-5ZmCAgNj.js"
     ],
     "css": []
   },
   "map": {
     "js": [
-      "/assets/RestaurantMapPage-PyGIlhkU.js",
-      "/assets/lz-common-ecj4lXlF.js",
-      "/assets/lz-home-homePc-map-D99CjBwT.js",
-      "/assets/lz-map-XejYaiu5.js",
-      "/assets/lz-gbDetail-map-KSTD5UzF.js",
-      "/assets/lz-homePc-map-BT1GjYBu.js"
+      "/assets/RestaurantMapPage-BVIl92lX.js",
+      "/assets/lz-common-CD6UuLQ0.js",
+      "/assets/lz-home-homePc-map-D1udU4DZ.js",
+      "/assets/lz-map-DJngoqFw.js",
+      "/assets/lz-gbDetail-map-WxrVsNC3.js",
+      "/assets/app-kakao-sdk-Du5io4nO.js",
+      "/assets/lz-boot-gbDetailL-map-productL-COmhEYO-.js",
+      "/assets/lz-homePc-map-C_KZlgVD.js"
     ],
     "css": []
   },
   "urshorts": {
     "js": [
-      "/assets/UrShortsBrowsePage-BoY1vsWT.js",
-      "/assets/lz-common-ecj4lXlF.js",
-      "/assets/lz-urshorts-pN3CrBRc.js",
-      "/assets/lz-home-homePc-urshorts-CnnbYGVf.js"
+      "/assets/UrShortsBrowsePage-CDiCxUIz.js",
+      "/assets/lz-common-CD6UuLQ0.js",
+      "/assets/lz-urshorts-BjMynEt4.js",
+      "/assets/lz-home-homePc-urshorts-CQ3-jb6P.js"
     ],
     "css": []
   }
 }
 // 🚦 2026-10-12 엔트리(index.html) CSS — 워커가 HTML 응답에 `Link: rel=preload` 헤더로 싣는다(Early Hints 103 원천).
-export const ENTRY_CSS: string[] = ["/assets/index-CQXVI4ge.css"]
+export const ENTRY_CSS: string[] = ["/assets/index-WbXdEzzO.css"]
