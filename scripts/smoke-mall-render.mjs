@@ -218,9 +218,8 @@ try {
       localStorage.setItem('ur_theme_mode_v1', 'light')
     } catch { /* private */ }
   }, SEAT)
-  // 🧪 2026-10-14 진단: CI 는 Cloudflare 분석 비콘을 실제로 받고(로컬은 막힘) 거기서만 깊은 링크 시트가 안 열렸다.
-  //   비콘을 빈 스크립트로 바꿔 두 환경을 같게 만든다 — 이걸로 초록이 되면 비콘이 원인이다(제품 확인 필요).
-  if (process.env.SMOKE_STUB_BEACON !== '0') await sellerCtx.route('**/*cloudflareinsights.com/**', (r) => r.fulfill({ status: 200, contentType: 'application/javascript', body: '' }))
+  // 제3자 분석 비콘은 스모크와 무관하다 — CI 만 실제로 받아 CORS 오류로 콘솔을 채우고 두 환경을 다르게 만든다.
+  await sellerCtx.route('**/*cloudflareinsights.com/**', (r) => r.fulfill({ status: 200, contentType: 'application/javascript', body: '' }))
   await sellerCtx.route('**/api/seller/**', (route) => {
     const u = route.request().url()
     let body = { success: true, data: [] }
@@ -238,6 +237,17 @@ try {
     ] }),
   }))
 
+  // 🔥 2026-10-14 — **vite 를 먼저 데운다.** CI 는 매번 빈 의존성 캐시로 시작해, 시트가 셀러 화면 청크를 처음 불러오는
+  //   순간 vite 가 새 의존성을 발견하고 **페이지를 통째로 다시 불러온다**(주석 기록: `[vite] connected` 3회). 깊은 링크는
+  //   `?tool=` 을 읽자마자 주소에서 지우므로(새로고침이 시트를 또 열지 않게 — 제품의 의도), 다시 불러온 페이지엔 시트가 없다.
+  //   운영엔 vite 가 없어 이 일이 안 일어난다 ⇒ 판정 전에 한 번씩 열어 의존성을 다 찾게 둔다(판정은 새 페이지에서).
+  for (const p of ['/seller/products/quick', '/seller/returns']) {
+    const warm = await sellerCtx.newPage()
+    await warm.goto(`${base}${p}`, { waitUntil: 'networkidle' }).catch(() => {})
+    await warm.waitForTimeout(3000)
+    await warm.close()
+  }
+
   for (const [name, path, expect1] of [
     ['B 빠른 공구 등록', '/seller/products/quick', '빠른 공구 등록'],
     // 2026-08-20 대표: 사용자-가시 라벨 반품→환불 (이용권엔 배송 반품이 없다)
@@ -251,9 +261,6 @@ try {
         const t = (n.textContent || '').trim(); if (t && !seen.includes(t)) seen.push(t)
       }))
       document.addEventListener('DOMContentLoaded', () => ob.observe(document.body, { childList: true, subtree: true }))
-      const ls = Storage.prototype.setItem, lr = Storage.prototype.removeItem
-      Storage.prototype.setItem = function (k, v) { if (/seller|token/.test(k)) seen.push('SET ' + k); return ls.apply(this, arguments) }
-      Storage.prototype.removeItem = function (k) { if (/seller|token/.test(k)) seen.push('DEL ' + k); return lr.apply(this, arguments) }
     })
     const errs = []
     const consoleErrs = []
