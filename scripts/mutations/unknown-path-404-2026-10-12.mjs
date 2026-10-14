@@ -22,14 +22,18 @@ export default [
     name: '🗺️ 1세그먼트를 정확 일치가 아니라 세그먼트 집합으로 판정 — `/products` 가 통과한다',
     file: SSOT,
     find: '  if (segs.length === 1) return KNOWN_SINGLE_ROUTES.has(segs[0])',
-    replace: '  if (segs.length === 1) return KNOWN_TOP_SEGMENTS.has(segs[0])',
+    // 🔁 2026-10-14 — `KNOWN_TOP_SEGMENTS` 가 삭제돼(프로덕션 미사용) 같은 결함을 **살아 있는**
+    //   집합으로 표현한다. `products` 는 `/products/:id` 때문에 **부모**이므로 defect 는 그대로다.
+    replace: '  if (segs.length === 1) return KNOWN_PARENT_SEGMENTS.has(segs[0])',
     test: TEST,
     why: '`products` 는 `/products/:id` 때문에 세그먼트 집합엔 있지만 **목록 라우트가 없다** — 정확 일치여야 그 클래스를 잡는다.',
   },
   {
     name: '🗺️ 반대 방향 — 깊은 경로까지 정확 일치를 요구한다(대시보드 전체가 404)',
     file: SSOT,
-    find: '  return KNOWN_TOP_SEGMENTS.has(segs[0])',
+    // 🔁 2026-10-14 재조준: 2세그먼트 판정이 `KNOWN_TOP_SEGMENTS` → `KNOWN_PARENT_SEGMENTS` 로
+    //   옮겨갔다(잎 표면의 무한 꼬리 차단). **불변식은 그대로**이고 앵커만 따라갔다.
+    find: '  return KNOWN_PARENT_SEGMENTS.has(segs[0])',
     replace: '  return KNOWN_SINGLE_ROUTES.has(segs.join(\'/\'))',
     test: TEST,
     why: '라우트 표에 없는 하위 경로(`/seller/orders/xyz`)를 자르면 멀쩡한 화면이 404 가 된다 — 색인 손실은 복구가 수주다.',
@@ -37,8 +41,12 @@ export default [
   {
     name: '🗺️ 반대 방향 — 세그먼트 목록에서 대시보드를 뺀다(App.tsx 만 읽던 첫 설계)',
     file: SSOT,
-    find: "  '500', 'about', 'account', 'admin', 'ads', 'agency', 'area-report', 'auth',",
-    replace: "  '500', 'about', 'account', 'area-report', 'auth',",
+    // 🔁 2026-10-14 재조준 — 종전 앵커는 `KNOWN_TOP_SEGMENTS` 의 줄이었고, 2세그먼트 판정이
+    //   `KNOWN_PARENT_SEGMENTS` 로 옮겨간 뒤 그 집합은 **프로덕션이 안 읽게** 됐다 ⇒ 결함을 심어도
+    //   시험이 통과하는 **헛도는 주입**이 되어 CI 가 잡았다(그래서 그 상수를 삭제했다).
+    //   불변식은 그대로이고 앵커만 **살아 있는** 집합으로 따라갔다.
+    find: "  'about', 'account', 'admin', 'ads', 'agency', 'area-report', 'auth', 'blog',",
+    replace: "  'about', 'account', 'area-report', 'auth', 'blog',",
     test: TEST,
     why: '라우트는 네 파일에 있다 — App.tsx 하나만 읽으면 `/admin`·`/seller`·`/agency` ~180개를 404 로 만든다. ②가 네 파일을 다시 읽어 그걸 잡는다.',
   },

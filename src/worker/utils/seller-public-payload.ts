@@ -24,7 +24,16 @@ const SELLER_PUBLIC_COLS: Array<{ expr: string; out?: string; probe?: string }> 
   { expr: 's.business_address', out: 'business_address', probe: 'business_address' },
   { expr: 's.profile_image', out: 'profile_image', probe: 'profile_image' },
   { expr: 's.bio', out: 'bio', probe: 'bio' },
-  { expr: 's.commission_rate', out: 'commission_rate', probe: 'commission_rate' },
+  // 🔒 2026-10-14 — `commission_rate` 를 **일부러 뺐다**. 되살리지 말 것.
+  //   라이브 실측(인증 0, id 순회): 홍대돈까스 5 · 청룡갈비 5 · 달빛한스푼 10 이 그대로 나갔고,
+  //   이 응답은 `__SSR_INITIAL_SELLER__` 로 서빙 HTML 에 박혀 **크롤러까지** 받았다.
+  //   소비자 화면은 그 값을 한 번도 읽지 않는다(전수 확인 — 걸리는 것은 상품의
+  //   `referral_commission_rate` 이거나 셀러 **본인** 정산 화면이다).
+  //   🔴 매장별 요율은 내부 상거래 조건이다 — `/about` 이 "셀러별 개별 조정(협상 여지)" 라고
+  //   알려 주는데 남의 요율까지 조회되면 그게 바로 협상 근거가 된다. CLAUDE.md 가 AI 초안에
+  //   요구하는 "운영 정보 차단(수수료율·정산·커미션)" 과 같은 기준을 공개 API 에도 적용한다.
+  //   ✅ `business_number`·`ceo_name` 은 **남긴다** — 통신판매업자 표기 의무 정보이고
+  //      유어샵 사업자정보 섹션이 실제로 쓴다(같이 지우면 표기 의무를 깨뜨린다).
   { expr: 's.created_at' },
   { expr: 's.sns_instagram', out: 'sns_instagram', probe: 'sns_instagram' },
   { expr: 's.sns_youtube', out: 'sns_youtube', probe: 'sns_youtube' },

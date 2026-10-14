@@ -207,7 +207,23 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
     description: '매장을 직접 섭외하지 않아도 됩니다. 마음에 든 이용권을 내 유어샵에 담아 링크로 소개하면, 그 링크로 팔릴 때마다 몫이 쌓입니다.',
   },
   '/influencer/rankings': {
-    crumb: '소개 랭킹',
+    /* 🚫 2026-10-14 — **noindex**(대표 "다 해주고 머지 후 또 개선점 찾아"). 라이브 실측(Googlebot UA):
+       `200 · 본문 6자 · index, follow`. 제목·description 은 멀쩡한데 **읽을 것이 없다.**
+       🔎 그래서 `surface-copy` 로 본문을 주려다 **못 한다는 것을 재서 알았다** — 이 화면의 글자는
+          `이 달의 소개 랭킹`(= 이 title 과 같은 말) · `지역별 매출 Top` · 표 머리(`매출 commission`
+          `referral 건수`)뿐이다. 합쳐 **20자**이고 나머지는 로그인·데이터가 있어야 그려지는 표다.
+          `surface-copy` 의 바닥은 표면당 110자이고, 그걸 채우려고 문장을 **지어내는 것**은 이 레포의
+          규율을 깨는 것이다(*"이름만 적어 글자수를 늘리지 않는다 — 측정만 좋아 보이고 thin 인
+          사실은 그대로다"*). 2026-10-13 에 `/urshorts` 를 같은 이유로 `surface-copy` 에서 뺐다.
+       🔑 그리고 이 표면이 서는 질의는 **`/influencer`(237자, 색인, sitemap 제출)가 이미 받는다** —
+          "동네 딜 소개로 수익" 은 그쪽 랜딩의 일이고, 이 페이지는 소개자가 자기 순위를 보는 **도구**다
+          (선례: `/search`·`/gb-market`·`/videos` 전부 도구라서 noindex).
+       🔴 **`robots.txt` 의 `Allow: /influencer/rankings` 는 지우지 말 것** — `Disallow` 로 막으면
+          크롤러가 이 noindex 를 **읽을 수 없어** 이미 색인된 URL 이 영구히 남는다(CLAUDE.md 가
+          적어 둔 폐기 URL 처리의 가장 흔한 실수). 크롤은 열어 두고 색인만 뺀다.
+       🍞 `crumb` 도 같이 지웠다 — 2026-10-11 가드의 불변식(*noindex 표면엔 빵부스러기 라벨을 두지
+          않는다*). 색인 말라고 한 URL 을 체인이 가리키게 두지 않는다. */
+    noindex: true,
     title: '이 달의 소개 랭킹',
     description: '지역별로 이번 달 소개 성과가 높은 유어샵을 봅니다. 어떤 딜이 실제로 팔리는지 참고하세요.',
   },
@@ -304,6 +320,27 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
     title: '소개 마켓',
     description: '지금 소개 몫이 걸린 이용권을 찾아 내 유어샵에 담으세요.',
     noindex: true,
+  },
+  '/partnership': {
+    /* 🚫 2026-10-14 — **이 표에 아예 없었다**(대표 "다 해주고 머지 후 또 개선점 찾아").
+       라이브 실측(Googlebot UA): `200 · 본문 6자 · index, follow` + **제네릭 홈 제목**
+       (`유어딜 - 돈버는 쇼핑, …`) — 2026-10-13 에 `/about/print` 에서 고친 것과 같은 결함이고
+       이 경로만 남아 있었다. 클라 `<SEO title="광고/제휴 문의 - 유어딜">` 은 react-helmet 이라
+       **JS 안 돌리는 크롤러엔 무효**다(이 파일 머리말의 그 클래스).
+       🔎 **발견 경로가 흔하다** — `SiteFooter` 가 전 페이지에서 링크하고 유어샵 `ShopInquiryLinks`
+          도 링크한다 ⇒ 크롤러는 확실히 온다. 그래서 "안 보이니 괜찮다" 가 성립하지 않는다.
+       🔑 **noindex 인 이유**: 이 화면의 글자는 `광고/제휴 문의` · `함께 성장할 파트너를 찾습니다` ·
+          `광고 · 제휴 · 매장 입점 · 상품 공급 ...` · `연락처 또는 이메일 중 하나는 꼭 남겨주세요.`
+          넷뿐이고(하나는 입력 안내, 하나는 접수 토스트) 합쳐 **50자 남짓**인 **문의 폼**이다.
+          그리고 이 페이지가 받을 질의(*매장 입점*·*제휴*)는 **`/partners`(237자, 색인, sitemap
+          제출)가 이미 받는다** ⇒ 같은 의도로 thin URL 을 경쟁시키지 않는다(선례 `/search`·
+          `/gb-market` 과 같은 판단이고, 그 둘도 "폼·도구" 라서 뺐다).
+       ✅ **얻는 것이 둘이다** — 색인에서 빠지는 것 + 공유·탭에 뜨는 제목이 홈 제목에서 제 제목으로
+          바뀌는 것(noindex 표면도 title 은 쓰인다 — `/videos`·`/search` 와 같다).
+       🍞 noindex 라 `crumb` 는 **일부러 비워 둔다**(가드가 양방향으로 고정). */
+    noindex: true,
+    title: '광고/제휴 문의 - 유어딜',
+    description: '광고, 제휴, 매장 입점, 상품 공급 문의를 남겨주세요. 매장 입점 안내는 /partners 에 있습니다.',
   },
   // 📜 약관 4종 — `/terms` 는 위에 있고 나머지 문서별 약관이 서버 메타 없이 남아 있었다.
   //   ⚠️ description 에 **시행일·버전을 넣지 않는다.** `TermsDocument` 가 그렇게 만들고 있었는데

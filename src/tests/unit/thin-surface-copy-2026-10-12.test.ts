@@ -40,6 +40,28 @@ const read = (p: string) => readFileSync(resolve(ROOT, p), 'utf8')
 /** JSX 는 줄바꿈·들여쓰기로 문장을 쪼갠다 — 비교 전에 공백을 하나로 접는다. */
 const flat = (s: string) => s.replace(/\s+/g, ' ')
 
+/**
+ * 크롤러가 **실제로 읽는 글자**. 태그를 떼고 **HTML 엔티티를 되돌린다.**
+ *
+ * 🩸 2026-10-14 — 종전엔 태그만 떼서 `&quot;`·`&amp;` 가 그대로 남았다. 한글 표면 열에는
+ *   escape 대상 문자가 **한 글자도 없어서** 아무도 안 밟았는데, `/gdpr`(영문, `("YourDeal")`)
+ *   을 넣자 *코드는 멀쩡한데* 빨간불이 났다 — 빌더의 `esc()` 는 옳고 **재는 쪽이 틀렸다.**
+ *   크롤러는 엔티티를 디코드해서 읽으므로 그걸 흉내 내야 측정이 사실과 같아진다.
+ *
+ * ⚠️ `&amp;` 를 **마지막에** 되돌린다 — 먼저 되돌리면 `&amp;quot;`(문자열 그대로의 `&quot;`)가
+ *   `"` 로 두 번 디코드된다.
+ */
+const crawlerText = (html: string) =>
+  html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/\s+/g, ' ')
+    .trim()
+
 describe('① 🔴 SSOT 의 모든 줄이 그 페이지 소스에 실재한다 (클로킹 방지)', () => {
   const entries = Object.entries(SURFACE_COPY)
 
@@ -68,6 +90,10 @@ describe('① 🔴 SSOT 의 모든 줄이 그 페이지 소스에 실재한다 (
     //   커밋에 적고 함께 내릴 것. 늘리는 건 자유다.
     const FLOOR: Record<string, number> = {
     '/area-report': 140,
+    // 🇪🇺 2026-10-14 — `/gdpr`(영문 법정 문서). 382자이고 전부 `<p>` 통째 문장을 **옮긴** 것이다
+    //   (이메일이 든 줄 · 낡았을 수 있는 `Firebase` 줄 · h1 과 겹치는 줄은 일부러 뺐다 — 사유는
+    //   `surface-copy.ts` 의 그 항목 주석).
+    '/gdpr': 380,
     '/creators': 230,
     '/creators/apply': 150,
     '/experience': 120,
@@ -105,7 +131,7 @@ describe('② 빌더가 실제로 그 문장을 낸다 (출력 판정)', () => {
   it.each(Object.keys(SURFACE_COPY))('%s — noscript 본문이 생긴다', path => {
     const ns = buildStaticSurfaceNoscript(path)
     expect(ns).toContain('<noscript>')
-    const text = ns.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+    const text = crawlerText(ns)
     // 라이브 실측 최악이 15자였다 — 그보다 확실히 길어야 의미가 있다.
     expect(text.length, `${path} 본문 ${text.length}자`).toBeGreaterThan(40)
     for (const line of SURFACE_COPY[path].lines) expect(text).toContain(line)
