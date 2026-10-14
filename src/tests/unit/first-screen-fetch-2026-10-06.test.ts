@@ -102,7 +102,7 @@ describe('③ 교환권 — 첫 응답을 버리지 않는다', () => {
   //   바꿔 쓰는 자동 선택이 아니라 **기본값**(`VOUCHERS_DEFAULT_CATEGORY`)이다. 지키려던 것(첫 방문에도
   //   카테고리가 잡힌 채 열리고, 요청은 한 번)은 더 단단해졌다 — 서버 시드도 같은 카테고리로 온다.
   it('첫 카테고리는 기본값이다 — URL 을 바꿔 쓰는 자동 선택이 되살아나지 않는다', () => {
-    expect(SRC).toContain("searchParams.get('category') || VOUCHERS_DEFAULT_CATEGORY")
+    expect(SRC).toContain("(rawCategory || VOUCHERS_DEFAULT_CATEGORY)")
     expect(SRC).not.toContain("next.set('category', cached.data[0].category)")
     // 시드 소비 조건도 같은 기본값 — 갈리면 서버 시드를 버리고 다시 요청한다.
     expect(SRC).toContain("(category === VOUCHERS_DEFAULT_CATEGORY && !brand && sort === 'price_low')")
