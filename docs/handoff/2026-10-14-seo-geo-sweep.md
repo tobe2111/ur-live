@@ -538,3 +538,16 @@ curl -sS -A "$UA" https://urdeal.kr/u/jiwon1228 | grep -c '<h1>'       # 1 유�
   GitHub 이 스스로 머지한다. ⚠️ **그 전에 새 커밋을 푸시하면 Verify 가 취소되고 처음부터 다시
   돈다**(80~95분). 그래서 #87 은 **커밋만 하고 푸시를 보류**했다 — 그 PR 이 머지된 뒤 올린다.
 - 머지 대기 중인 내용: #84(평점) · #85(할인율) · #86(블로그 JSON-LD 중복) · 결재 2건 · 앵커 재조준.
+
+### 🚫 7차 스윕에서 **결함 아님으로 판정** (다시 파지 말 것)
+
+| 재 본 것 | 실측 | 판정 |
+|---|---|---|
+| 설명 중복·길이 | sitemap 표본 56건 **중복 0** · 160자 초과 **0** · 중앙값 68자 | 정상 |
+| `YourDeal` 표기 | 법적 당사자명(`Lister Corporation ("YourDeal")`) — 같은 날 `consumer-surfaces.ts:273` 이 이미 검토·기록 | 의도 |
+| `img` alt | 전수 분류: **채워짐 19 · `alt=""` 8 · 속성 없음 0**. `alt=""` 는 전부 유달이 로더 + PC 배너 **배경 레이어**(`aria-hidden`, 제목은 `<strong>` 로 따로 있다) | 정상 — 내 첫 측정이 `alt=""` 를 '없음' 으로 셌다(이 세션 **세 번째** 측정기 오류) |
+| `Offer` 필드 | `url`·`priceCurrency`·`price`·`availability`·`availableAtOrFrom` 완비. `priceValidUntil` 은 **없는 사실**이라 안 넣는다(이용권 `voucher_expiry` 는 *사용* 기한이고 *가격* 유효기간이 아니다 — 축이 다르다) | 정상 |
+| JSON-LD 모양 두 가지 | `/pass`·`/products` 는 **노드 배열**(각 노드가 자기 `@context` 보유 — 전수 확인) · 나머지는 `{@context,@graph}` | 둘 다 유효 |
+| 이미지 sitemap | `xmlns:image` 선언 + `<image:image>` **359건** (#45) | 이미 있다 |
+| `llms.txt` 사실 | 수수료 **10%(대행사 5%)** — #30 수리가 그대로 유지 | 정상 |
+| 크롤러 전용 바이트 비중 | 최고 `/faq` 68.4%(FAQPage 4.5KB + noscript 2.0KB) — 같은 Q&A 를 두 기제로 내지만 **용도가 다르다**(리치결과 ↔ 비-JS 본문). `#root` 에는 안 그린다(3자리 중복 아님) | 정상 |
