@@ -23,6 +23,7 @@ const ALLOW: Record<string, string> = {
 }
 
 function classesIn(css: string): Set<string> {
+  // comment-stripper-ok — CSS 파일(index.css)의 주석이다. JS 정규식·문자열 리터럴이 없어 이 제거기가 물릴 자리가 없다.
   const noComments = css.replace(/\/\*[\s\S]*?\*\//g, '')
   // 선택자 쪽만 — 선언 블록 안의 값(url(...a.b) 등)을 클래스로 오인하지 않게 블록을 지운다
   const selectorsOnly = noComments.replace(/\{[^{}]*\}/g, '{}')
