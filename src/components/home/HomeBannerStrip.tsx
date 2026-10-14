@@ -366,8 +366,11 @@ function StripRail({ banners, single = false }: { banners: HomeBanner[]; single?
  *   들어가면 넘친다 → 설명(`span`)은 PC 에서만 보인다(제목 한 줄이 이름표다).
  *   📏 같은 날 대표 *"문장은 한줄로 맞춰줘"*: 제목은 **언제나 한 줄**(폰 15px · PC 24px, 폭 72%).
  *   오른쪽 28% 는 그림(유달이·상품)의 자리라 글자가 거기까지 가지 않는다.
+ *   ↕️ 같은 날 대표 *"글자를 높이 기준으로 중앙에"*: 띠는 낮아서(폰 ~90px) 글자를 세로 가운데에 둔다.
+ *   아래를 어둡게 까는 막(`div` scrim)은 띠에선 뺀다 — 글자가 아래에 있지 않으니 받칠 게 없고,
+ *   남겨 두면 오른쪽 아래 상품 카드만 칙칙해진다(라이브에서 확인).
  */
-const SINGLE_CARD_CLS = '!aspect-[4/1] lg:!w-full !py-3 [&>span]:hidden lg:[&>span]:block [&>strong]:!max-w-[72%] [&>strong]:!line-clamp-1 [&>strong]:!text-[15px] lg:[&>strong]:!text-[24px]'
+const SINGLE_CARD_CLS = '!aspect-[4/1] lg:!w-full !py-3 [&>span]:hidden lg:[&>span]:block [&>strong]:!max-w-[72%] [&>strong]:!line-clamp-1 [&>strong]:!text-[15px] lg:[&>strong]:!text-[24px] !justify-center [&>div]:hidden'
 
 /** 카드 한 장 — 흰 글자를 왼쪽 아래에(야놀자 문법). 카드 전체가 누르는 자리다. */
 function StripCard({ b, many, first, clone, single = false }: { b: HomeBanner; many: boolean; first: boolean; clone?: boolean; single?: boolean }) {
