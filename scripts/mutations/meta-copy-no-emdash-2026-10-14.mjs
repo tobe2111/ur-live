@@ -21,16 +21,20 @@ export default [
   {
     name: '✂️ 줄표 — /pass 310건 설명에 되살린다(정가 분기)',
     file: META,
-    find: ': `${storeName} ${priceStr}원, 유어딜에서 할인가로 바로 구매`',
-    replace: ': `${storeName} — ${priceStr}원, 유어딜에서 할인가로 바로 구매`',
+    // 🔁 2026-10-14 재조준: #85 가 설명에 별점·지역·정가·할인율을 더했다(문구가 길어졌을 뿐
+    //   불변식은 그대로 — **줄표 0 · 두 분기 모두**). 앵커만 새 문구로 옮긴다.
+    find: ': `${ratingPrefix}${regionStr}${storeName} ${priceStr}원, 유어딜에서 할인가로 바로 구매${descTail}`',
+    replace: ': `${ratingPrefix}${regionStr}${storeName} — ${priceStr}원, 유어딜에서 할인가로 바로 구매${descTail}`',
     test: T,
     why: '대표가 2026-08-31 에 직접 "AI 티" 로 지적한 문자다. 색인 310건의 검색 스니펫에 그대로 뜬다.',
   },
   {
     name: '✂️ 줄표 — /pass 할인 분기에만 되살린다(두 분기 중 하나만 고치면 되살아나는 자리)',
     file: META,
-    find: '? `🎉 ${discount}% 할인! ${storeName} ${priceStr}원에 유어딜에서 바로 구매`',
-    replace: '? `🎉 ${discount}% 할인! ${storeName} — ${priceStr}원에 유어딜에서 바로 구매`',
+    // 🔁 2026-10-14 재조준: 할인 분기가 `priceDisplay` 기반으로 바뀌었다(선언값 0 에 묶여
+    //   한 번도 돌지 않던 것 수리 — #85). 지키는 것은 같다: 이 분기에도 줄표가 없어야 한다.
+    find: '? `${ratingPrefix}${regionStr}${storeName} ${priceStr}원${origStr} ${pd.discount}% 할인${descTail}`',
+    replace: '? `${ratingPrefix}${regionStr}${storeName} — ${priceStr}원${origStr} ${pd.discount}% 할인${descTail}`',
     test: T,
     why: '할인 중인 딜에서만 되살아나므로 정가 상품만 보면 눈에 안 띈다(2026-10-13 가게명 중복에서 같은 자리를 밟았다).',
   },
