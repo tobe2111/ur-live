@@ -56,6 +56,10 @@ export default {
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
+    // 🧹 2026-10-14: 시험 파일의 클래스 문자열(픽스처·단언)로 유틸을 만들지 않는다 — 앱이 안 쓰는 CSS 가
+    //   모든 화면의 렌더 차단 CSS 에 실렸다(실측 −3.4KB raw · −0.36KB br). 워커(src/worker)는 **빼지 않는다**:
+    //   서버가 그리는 첫 화면 HTML 이 그 클래스를 쓴다.
+    "!./src/tests/**",
   ],
   theme: {
     extend: {

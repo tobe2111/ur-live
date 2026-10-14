@@ -118,6 +118,15 @@ function ShortCard({ item, load, onOpen }: { item: UrShortItem; load: boolean; o
 }
 const MemoCard = memo(ShortCard)
 
+/** 지난 방문의 영상 수 — 0 이면 다음 홈에서 자리를 예약하지 않는다. 모르면 null(= 예약한다). */
+const RAIL_HINT_KEY = 'ur_urshorts_n'
+function readRailHint(): number | null {
+  try { const v = localStorage.getItem(RAIL_HINT_KEY); return v == null ? null : Number(v) } catch { return null }
+}
+function writeRailHint(n: number) {
+  try { localStorage.setItem(RAIL_HINT_KEY, String(n)) } catch { /* 저장 불가 브라우저 — 매번 예약한다 */ }
+}
+
 export default function UrShortsRail() {
   const [items, setItems] = useState<UrShortItem[]>([])
   const [near, setNear] = useState(false)
@@ -129,6 +138,12 @@ export default function UrShortsRail() {
   //    영원히 안 와 썸네일이 0장으로 굳는다. 폰(서버가 첫 화면을 그려 페이지가 처음부터 긴 경우)
   //    에서 재현 3/3. ⇒ 콜백 ref 로 **지금 붙어 있는 요소**를 state 로 들고, 바뀌면 관측기를 다시 건다.
   const [wrapEl, setWrapEl] = useState<HTMLElement | null>(null)
+  // 📐 2026-10-14 (실사용 홈 CLS p75 0.199): 목록이 오기 전엔 자리를 비워 뒀다가, 도착하면 ~296px 레일이
+  //   **인기 이용권 바로 아래에 끼어들어** 그 아래(피드)를 통째로 밀었다. ⇒ 지난번에 영상이 있었으면(또는
+  //   처음이면) **같은 패널을 카드 자리만 비워** 먼저 세운다 — 높이가 같아 도착해도 안 민다.
+  //   영상이 0 이었던 기억이 있으면 예약하지 않는다(대표 확정 "영상이 없으면 섹션 자체를 안 보인다").
+  const [reserve] = useState(() => readRailHint() !== 0)
+  const [settled, setSettled] = useState(false)
   const railRef = useRef<HTMLDivElement | null>(null)
 
   /**
@@ -173,9 +188,11 @@ export default function UrShortsRail() {
     fetch('/api/urshorts')
       .then((r) => r.json() as Promise<{ success?: boolean; data?: UrShortItem[] }>)
       .then((r) => {
-        if (alive && r?.success && Array.isArray(r.data)) setItems(r.data)
+        if (!alive) return
+        if (r?.success && Array.isArray(r.data)) { setItems(r.data); writeRailHint(r.data.length) }
+        setSettled(true)
       })
-      .catch(() => { /* fail-soft: 레일이 안 뜰 뿐 홈은 열린다 */ })
+      .catch(() => { if (alive) setSettled(true) /* fail-soft: 레일이 안 뜰 뿐 홈은 열린다 */ })
     return () => { alive = false }
   }, [nearData])
 
@@ -184,7 +201,9 @@ export default function UrShortsRail() {
     if (!r) return
     setEdge({ l: r.scrollLeft > 8, r: r.scrollLeft < r.scrollWidth - r.clientWidth - 8 })
   }, [])
-  useEffect(() => { sync() }, [sync, items.length])
+  // 🧮 2026-10-14: 마운트·목록 도착 때 재지 않는다. 화살표는 **마우스를 올렸을 때만** 보이므로 그때 잰다
+  //   (`onPointerEnter`) — 종전엔 부팅 중에 scrollWidth 를 읽어 **강제 동기 레이아웃**이 났고, 홈 부팅에서
+  //   앱 함수 중 가장 비쌌다(CPU×4 프로파일 76ms). 폰은 화살표가 없으니 한 번도 안 잰다.
 
   // 보이는 폭에서 카드 한 장을 뺀 만큼. 한 장이 겹쳐 넘어와 어디까지 봤는지 잃지 않는다.
   const nudge = (dir: 1 | -1) => {
@@ -199,7 +218,10 @@ export default function UrShortsRail() {
    * 단 **관측용 빈 div 는 남긴다**: 이게 없으면 IntersectionObserver 가 붙을 곳이 없어
    * 영원히 데이터를 안 부른다(첫 판에서 실제로 그랬다).
    */
-  if (items.length === 0) return <div ref={setWrapEl} aria-hidden="true" />
+  //   예약 중(목록 도착 전)에는 아래 같은 `<section>` 을 그대로 그린다 — **같은 DOM 노드**라 관측(IO)이
+  //   끊기지 않는다(종전엔 빈 div → section 으로 노드가 바뀌어, 썸네일 관측이 떨어져 나간 div 를 보고 있었다).
+  const waiting = items.length === 0 && reserve && !settled
+  if (items.length === 0 && !waiting) return <div ref={setWrapEl} aria-hidden="true" />
 
   return (
     <section className="ur-home-panel ur-panel-ink" ref={setWrapEl}>
@@ -218,7 +240,9 @@ export default function UrShortsRail() {
             아예 없었다(대표 신고). 카드를 누르는 것은 그대로 뷰어다 — 그건 보러 가는 동작이다. */}
         <Link
           to={URSHORTS_BROWSE_PATH}
-          className="shrink-0 whitespace-nowrap text-[12px] font-bold text-white/75 underline-offset-4 hover:underline"
+          className={`shrink-0 whitespace-nowrap text-[12px] font-bold text-white/75 underline-offset-4 hover:underline${waiting ? ' invisible' : ''}`}
+          tabIndex={waiting ? -1 : undefined}
+          aria-hidden={waiting || undefined}
         >
           전체 보기
         </Link>
@@ -228,7 +252,7 @@ export default function UrShortsRail() {
           `group` 이 없으면 그 변형은 **영원히 안 걸린다** — 즉 PC 화살표가 한 번도 뜬 적이 없다.
           `hidden` 이 기본값이라 에러도 경고도 없고, 대표에게는 그냥 "넘길 방법이 없는 레일"로 보였다.
           이 레포가 반복해 만난 "코드는 있는데 안 되던" 클래스 그대로다(뷰어 스와이프가 같은 날 같은 꼴). */}
-      <div className="group relative">
+      <div className="group relative" onPointerEnter={sync}>
         {/* 화살표는 PC 에서 레일에 마우스를 올렸을 때만. 폰은 잘린 카드가 이미 말한다. */}
         {edge.l && (
           <button
@@ -245,6 +269,9 @@ export default function UrShortsRail() {
           onScroll={sync}
           className="scrollbar-hide flex snap-x snap-mandatory gap-3 overflow-x-auto"
         >
+          {waiting && Array.from({ length: 4 }, (_, i) => (
+            <span key={i} aria-hidden="true" className="block shrink-0 rounded-[10px] bg-media-slot" style={{ width: URSHORTS_CARD_W, height: URSHORTS_CARD_H }} />
+          ))}
           {items.map((it) => (
             <MemoCard
               key={it.id}
@@ -254,7 +281,7 @@ export default function UrShortsRail() {
             />
           ))}
           {/* 끝까지 민 사람은 이미 관심이 있다. 그 자리에 문을 둔다. */}
-          <Link
+          {!waiting && <Link
             to={URSHORTS_BROWSE_PATH}
             className="grid shrink-0 snap-start place-items-center gap-2 rounded-[10px] border border-dashed border-white/20 text-center text-brand-text"
             style={{ width: URSHORTS_CARD_W, height: URSHORTS_CARD_H }}
@@ -266,7 +293,7 @@ export default function UrShortsRail() {
                 {items.length}편
               </span>
             </span>
-          </Link>
+          </Link>}
         </div>
         {edge.r && (
           <button

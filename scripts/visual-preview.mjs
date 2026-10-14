@@ -809,6 +809,8 @@ if (CPU) {
   CPU_CDP = await ctx.newCDPSession(page)
   await CPU_CDP.send('Performance.enable')
   await CPU_CDP.send('Emulation.setCPUThrottlingRate', { rate: CPU_RATE })
+  // 🔬 `--cpu-profile=경로.json` — 같은 실행의 CPU 프로파일(어느 함수가 시간을 먹는지). 판정에는 안 쓴다.
+  if (typeof args['cpu-profile'] === 'string') { await CPU_CDP.send('Profiler.enable'); await CPU_CDP.send('Profiler.start') }
 }
 NAV_T0 = Date.now()
 await page.goto(`http://127.0.0.1:${PORT}${ROUTE}`, { waitUntil: 'domcontentloaded', timeout: 40000 }).catch(() => {})
@@ -899,6 +901,10 @@ if (CPU) {
     exec += used; total += e.source.length
     const name = m[1].replace(/-[A-Za-z0-9_-]{8}\.js$/, '.js')
     perChunk[name] = +((perChunk[name] || 0) + used / 1024).toFixed(1)
+  }
+  if (typeof args['cpu-profile'] === 'string') {
+    const { profile } = await CPU_CDP.send('Profiler.stop')
+    fs.writeFileSync(args['cpu-profile'], JSON.stringify(profile))
   }
   const { metrics } = await CPU_CDP.send('Performance.getMetrics')
   const mv = (n) => (metrics.find((x) => x.name === n) || {}).value || 0
