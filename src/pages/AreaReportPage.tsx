@@ -52,7 +52,7 @@ export default function AreaReportPage() {
       <SEO title={seo?.title ?? '우리 동네 상권 리포트'} description={seo?.description ?? ''} url={path} noindex={seo?.noindex} />
       <div className="ur-content-medium px-4 lg:px-8 py-6">
         <h1 className="text-[17px] lg:text-[24px] font-bold text-gray-900 dark:text-white">📊 {region ? `${region} 상권 리포트` : '우리 동네 상권 리포트'}</h1>
-        <p className="mt-1 text-[15px] text-gray-500 dark:text-gray-400">공공 인허가 데이터 기반 — 업종별 영업 현황과 최근 90일 개업·폐업 흐름을 무료로 확인하세요.</p>
+        <p className="mt-1 text-[15px] text-gray-500 dark:text-gray-400">공공 인허가 데이터 기반입니다. 업종별 영업 현황과 최근 90일 개업·폐업 흐름을 무료로 확인하세요.</p>
 
         {/* 지역 선택 칩 */}
         {(data?.regions?.length || 0) > 0 && (
@@ -139,7 +139,7 @@ export default function AreaReportPage() {
           </>
         )}
 
-        <p className="mt-8 text-[12px] text-gray-400 dark:text-gray-500">출처: 지방행정 인허가 공공데이터 — 수치는 수집 범위 내 집계이며 실제 전수와 다를 수 있습니다.</p>
+        <p className="mt-8 text-[12px] text-gray-400 dark:text-gray-500">출처는 지방행정 인허가 공공데이터입니다. 수치는 수집 범위 내 집계이며 실제 전수와 다를 수 있습니다.</p>
       </div>
     </div>
   )

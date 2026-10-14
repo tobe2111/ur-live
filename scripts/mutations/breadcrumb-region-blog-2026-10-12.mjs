@@ -12,10 +12,10 @@ export default [
   {
     name: '빵부스러기 — 지역 단계를 안 쌓는다 (종전 상태: 44개 전부 0건)',
     file: S,
-    find: `  if (regionRef) {
-    const sidoUrl = \`\${origin}/region/\${encodeURIComponent(regionRef.sido)}\``,
-    replace: `  if (false as boolean) {
-    const sidoUrl = \`\${origin}/region/\${encodeURIComponent(regionRef!.sido)}\``,
+    // 🔁 2026-10-13 재조준: 조립이 `regionPath` SSOT 로 옮겨갔다(날것/인코딩 다섯 벌을 한 벌로).
+    //   불변식(*지역 단계를 쌓는다*)은 그대로이고 앵커만 옮긴다.
+    find: '  if (regionRef) {\n    // 🔗 2026-10-13: 조립은 `regionPath` **한 곳**',
+    replace: '  if (false as boolean) {\n    // 🔗 2026-10-13: 조립은 `regionPath` **한 곳**',
     test: T,
     why:
       '정확히 종전 상태다. 경로가 동적이라 표 조회가 한 단계도 못 쌓고 `trail.length === 1` 에서 ' +
@@ -32,8 +32,9 @@ export default [
   {
     name: '빵부스러기 — 지역 URL 을 정규화 전 값으로 만든다 (canonical 과 어긋난다)',
     file: S,
-    find: '    const sidoUrl = `${origin}/region/${encodeURIComponent(regionRef.sido)}`',
-    replace: '    const sidoUrl = `${origin}${pathname}`',
+    // 🔁 2026-10-13 재조준: 같은 결함(canonical 과 다른 URL)을 `regionPath` 호출부에서 만든다.
+    find: "    trail.push({ name: regionRef.sido, url: `${origin}${regionPath({ sido: regionRef.sido })}` })",
+    replace: "    trail.push({ name: regionRef.sido, url: `${origin}${pathname}` })",
     test: T,
     why:
       '`/region/강원특별자치도` 가 canonical `/region/강원` 과 다른 URL 을 가리킨다 — 같은 페이지를 ' +

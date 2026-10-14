@@ -601,6 +601,7 @@ app.use('*', async (c, next) => {
     //   그 API 가 사라진 뒤 **매 요청 404 를 받고 있었다**(라이브 실측 `X-SSR-Status: WHOLESALE:self-fetch-404`).
     //   게다가 이 슬롯만 타임아웃 3000ms(최장)라 죽은 경로를 크롤할 때마다 그만큼 기다렸다 404 를 받고 셸을 내려보냈다 — 지우면 self-fetch·타임아웃·soft-404 가 한꺼번에 사라진다.
     //   (도매가 되살아나면 이 분기 + `timeoutFor` 의 WHOLESALE 3000ms + prewarm 키를 함께 복원할 것.)
+    } else if (url.pathname === '/urshorts' && !url.search) { ssrTarget = { slot: 'URSHORTS', path: '/api/urshorts' }; // 🎬 2026-10-13: 크롤러 본문 6자 → 이 키는 HOT_PATHS 에 **이미 있다**(새 캐시 키 0). 주입은 아래에서 끊는다(화면은 ?all=1 전량).
     } else if (url.pathname === '/blog' && !url.search) {
       // 📝 2026-07-01 블로그 목록 SSR — BlogListPage 가 __SSR_INITIAL_BLOG__ 를 0-RTT consume(마운트 후
       //   cold fetch 워터폴 제거) + 아래 head rewrite 에서 Blog/ItemList 구조화데이터 주입(검색 리치결과).
@@ -692,7 +693,7 @@ app.use('*', async (c, next) => {
     // ⚠️ 요약 **원본**을 따로 잡는다 — 봉투가 MAIN 시드와 같아 받는 쪽이 못 가른다. thin 판정은 시드를 보면 멀쩡한 지역을 thin 으로 읽는다(경기 49건인데 시드엔 0건).
     const digestRaw = digestP ? await digestP : null;
     const crawlerPayload = digestRaw || ssrPayload;
-    if (url.pathname === '/vouchers' && url.search) ssrPayload = null; // 🎟️ facet 시드는 크롤러 본문까지만 — 주입 블록은 이 값만 읽는다(VOUCHERS 슬롯엔 preload 가 없다)
+    if ((url.pathname === '/vouchers' && url.search) || url.pathname === '/urshorts') ssrPayload = null; // 🎟️🎬 facet·유어쇼츠 시드는 크롤러 본문까지만 — 주입 블록은 이 값만 읽는다(VOUCHERS 슬롯엔 preload 가 없다)
     const ssrSlot = ssrTarget?.slot ?? 'MAIN';
     // 🧨 2026-10-12 [UNLOCK_LOADING] 철거된 표면(`/wholesale`·`/supplier`)은 **410 Gone**. 종전 `isWholesaleSurface`(2026-06-05 — 도매 라이트 테마로 홈 shell 깜빡임 차단)는 가릴 페이지가 없어졌다(#1710).
     //   판정은 `isRetiredSurface`(SSOT — 왜 410 이고 왜 301·robots 차단이 아닌지 그 함수 주석에), `#root` 는 소비자 catch-all 로더에 맡긴다(410 이어도 본문은 셸이라 `NotFoundPage` 가 정상 렌더).

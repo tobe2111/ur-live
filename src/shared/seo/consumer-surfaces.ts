@@ -230,7 +230,7 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
   '/terms': {
     crumb: '이용약관',
     title: '유어딜 이용약관',
-    description: '유어딜 서비스를 이용하는 모든 회원에게 적용되는 이용약관 정본 — 회원 가입과 탈퇴, 딜 포인트, 결제와 환불, 회사와 회원의 책임.',
+    description: '유어딜 서비스를 이용하는 모든 회원에게 적용되는 이용약관 정본입니다. 회원 가입과 탈퇴, 딜 포인트, 결제와 환불, 회사와 회원의 책임.',
   },
   '/privacy': {
     crumb: '개인정보처리방침',
@@ -245,7 +245,7 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
   '/faq': {
     crumb: '자주 묻는 질문',
     title: '자주 묻는 질문 - 이용권 사용·환불',
-    description: '이용권은 어떻게 쓰는지, 유효기간이 지나면 어떻게 되는지, 환불은 언제 되는지 — 가장 많이 묻는 것부터 답합니다.',
+    description: '이용권은 어떻게 쓰는지, 유효기간이 지나면 어떻게 되는지, 환불은 언제 되는지. 가장 많이 묻는 것부터 답합니다.',
   },
   '/gdpr': {
     crumb: 'Privacy Policy',
@@ -315,17 +315,35 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
   '/terms/seller': {
     crumb: '판매자 약관',
     title: '판매자 이용약관',
-    description: '유어딜에서 상품·이용권을 판매하는 사업자 유저에게 적용되는 약관 — 입점, 정산과 수수료, 금지 행위, 책임 범위.',
+    description: '유어딜에서 상품·이용권을 판매하는 사업자 유저에게 적용되는 약관입니다. 입점, 정산과 수수료, 금지 행위, 책임 범위.',
   },
   '/terms/influencer': {
-    crumb: '소개 활동 약관',
+    // 🚫 2026-10-13: **noindex** — 이 페이지는 스스로 *"초안이며, 실제 시행 전 법무 검토가
+    //   필요합니다"* 라고 적어 둔 문서다(`InfluencerTermsPage.tsx:` 그 줄이 화면에 떠 있다). 그런데
+    //   `index, follow` 로 색인 가능했다. 법무 검토 전 약관이 검색결과에 "유어딜 약관" 으로
+    //   서는 것은 그 자체가 신뢰 문제이고, 나중에 정본이 나오면 **초안 URL 이 먼저 색인된 채로**
+    //   남는다. 페이지는 그대로 200 이고(가입 흐름에서 링크로 연다) 색인만 뺀다.
+    //   ⚠️ 정본으로 확정되면 이 줄을 지우고 `sitemap.routes.ts` 제출 목록에 넣을 것.
+    //   🍞 `crumb` 도 **같이** 지웠다 — 2026-10-11 가드의 불변식이다(*noindex 표면엔 빵부스러기
+    //      라벨을 두지 않는다*). 라벨이 남으면 체인이 색인하지 말라고 한 URL 을 가리킨다.
+    //      정본이 되면 `crumb` 도 같이 되살릴 것(짝이다).
+    noindex: true,
     title: '소개 활동 약관',
-    description: '유어샵 링크로 이용권을 소개하는 유저에게 적용되는 약관 — 커미션 정책, 정산과 원천징수, 금지 행위.',
+    description: '유어샵 링크로 이용권을 소개하는 유저에게 적용되는 약관입니다. 커미션 정책, 정산과 원천징수, 금지 행위.',
   },
   '/terms/group-buy': {
-    crumb: '공동구매 약관',
+    // 🚫 2026-10-13: **noindex** — 이 페이지는 스스로 *"초안이며, 실제 시행 전 법무 검토가
+    //   필요합니다"* 라고 적어 둔 문서다(`GroupBuyTermsPage.tsx:` 그 줄이 화면에 떠 있다). 그런데
+    //   `index, follow` 로 색인 가능했다. 법무 검토 전 약관이 검색결과에 "유어딜 약관" 으로
+    //   서는 것은 그 자체가 신뢰 문제이고, 나중에 정본이 나오면 **초안 URL 이 먼저 색인된 채로**
+    //   남는다. 페이지는 그대로 200 이고(가입 흐름에서 링크로 연다) 색인만 뺀다.
+    //   ⚠️ 정본으로 확정되면 이 줄을 지우고 `sitemap.routes.ts` 제출 목록에 넣을 것.
+    //   🍞 `crumb` 도 **같이** 지웠다 — 2026-10-11 가드의 불변식이다(*noindex 표면엔 빵부스러기
+    //      라벨을 두지 않는다*). 라벨이 남으면 체인이 색인하지 말라고 한 URL 을 가리킨다.
+    //      정본이 되면 `crumb` 도 같이 되살릴 것(짝이다).
+    noindex: true,
     title: '공동구매 약관',
-    description: '유어딜 이용권 구매자에게 적용되는 약관 — 결제와 발급, 매장에서의 사용, 유효기간과 환불.',
+    description: '유어딜 이용권 구매자에게 적용되는 약관입니다. 결제와 발급, 매장에서의 사용, 유효기간과 환불.',
   },
   '/area-report': {
     crumb: '상권 리포트',
@@ -361,7 +379,7 @@ export function resolveAreaReportSeo(
   return {
     pageTitle,
     title: pageTitle,
-    description: `${region} 업종별 영업 현황과 최근 90일 개업·폐업 흐름 — 공공 인허가 데이터 기반.`,
+    description: `${region} 업종별 영업 현황과 최근 90일 개업·폐업 흐름입니다. 공공 인허가 데이터로 집계했습니다.`,
     canonical: `${origin}/area-report/${encodeURIComponent(region)}`,
     ...(looksLikeRegion ? {} : { noindex: true as const }),
   }
@@ -512,7 +530,7 @@ export function resolveConsumerSurfaceSeo(
       description = `${brand} ${entry.description}`
     } else if (category) {
       title = `${category} ${entry.title}`
-      description = `${category} — ${entry.description}`
+      description = `${category}: ${entry.description}`
     }
   }
 

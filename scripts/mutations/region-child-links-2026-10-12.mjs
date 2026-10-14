@@ -61,8 +61,10 @@ export default [
     why: '`강원특별자치도` 주소는 `강원` 으로 정규화된다. 원문을 그대로 href 로 쓰면 canonical 과 '
        + '다른 URL 을 가리키는데 **에러가 전혀 안 난다**(같은 세션 빵부스러기 작업의 교훈).',
     file: DG,
-    find: "      : `/region/${encodeURIComponent(ref.sido)}`",
-    replace: "      : `/region/${encodeURIComponent(ref.sido)}-x`",
+    // 🔁 2026-10-13 재조준: 조립이 `regionPath` SSOT 로 옮겨갔다(다섯 벌 → 한 벌). 불변식
+    //   (*canonical 과 같은 URL*)은 그대로이고, 같은 결함을 호출부에서 만든다.
+    find: '    const href = regionPath(ref)',
+    replace: "    const href = `/region/${encodeURIComponent(ref.sido)}-x`",
     test: TEST,
   },
   {

@@ -44,6 +44,13 @@ const MARKETING = new RegExp([
   '|InfluencerLandingPage|BusinessPage|IntroducePage|JoinPage|BlogListPage|BlogDetailPage)\\.tsx$',
   '|src/components/(SEO|ConsumerFrameRails)\\.tsx$',
   '|src/components/main/SiteFooter\\.tsx$',
+  // 🔁 2026-10-13 — **문구 SSOT 는 `.tsx` 가 아니다.** `src/shared/seo/*.ts` 가 소비자 표면의
+  //   `<title>`·description·크롤러 본문·`/llms.txt` 문구를 들고 있는데(`consumer-surfaces.ts`
+  //   `surface-copy.ts` `concept-content.ts` `llms-txt.ts`), 이 가드는 `.tsx` 만 훑어
+  //   **그 문구 전체가 무검사**였다. 블로그 시드에서 밟은 "낡은 지도" 와 같은 클래스다
+  //   (가드가 가리키는 페이지엔 문구가 없고, 문구가 있는 파일은 범위 밖).
+  //   🔑 파일 목록이 아니라 **디렉터리 규칙**으로 둔다 — 새 문구 파일이 조용히 새지 않는다.
+  '|src/shared/seo/[A-Za-z0-9-]+\\.ts$',
 ].join(''))
 const KO = /[가-힣]/
 
@@ -117,18 +124,27 @@ export const A = () => (
   </div>
 )
 `
+/* 📄 문구 SSOT(`.ts`) 픽스처 — `.tsx` 만 훑던 시절로 **조용히** 돌아가는 것을 막는다.
+   범위가 좁아지면 hits 가 0 이 되어 래칫은 초록이고, 그게 2026-10-13 까지의 상태였다. */
+const FIXTURE_TS_BAD = `export const COPY = {
+  '/partners': '매장 등록은 무료 — 판매되는 만큼만 수수료를 냅니다.',
+}
+`
 function selfTest() {
   const dir = fs.mkdtempSync(path.join(process.env.TMPDIR || '/tmp', 'slopcopy-'))
   try {
     fs.mkdirSync(path.join(dir, 'src/pages'), { recursive: true })
+    fs.mkdirSync(path.join(dir, 'src/shared/seo'), { recursive: true })
     const bad = path.join(dir, 'src/pages/AboutPage.tsx'); fs.writeFileSync(bad, FIXTURE_BAD)
     const ok = path.join(dir, 'src/pages/PartnersPage.tsx'); fs.writeFileSync(ok, FIXTURE_OK)
-    const b = scan([bad]), o = scan([ok])
+    const tsBad = path.join(dir, 'src/shared/seo/surface-copy.ts'); fs.writeFileSync(tsBad, FIXTURE_TS_BAD)
+    const b = scan([bad]), o = scan([ok]), t = scan([tsBad])
     const fail = []
     if (!b.emDash.length) fail.push('em-dash 를 못 잡는다')
     if (!b.sectionNum.length) fail.push('섹션번호를 못 잡는다')
     if (!b.koUpper.length) fail.push('한글 uppercase 를 못 잡는다')
     if (o.emDash.length || o.sectionNum.length || o.koUpper.length) fail.push('정상 코드를 오탐한다')
+    if (!t.emDash.length) fail.push('문구 SSOT(.ts) 의 em-dash 를 못 잡는다')
     return fail
   } finally { fs.rmSync(dir, { recursive: true, force: true }) }
 }
@@ -139,20 +155,70 @@ if (selfFail.length) {
   process.exit(1)
 }
 
-const files = walk(path.join(ROOT, 'src'))
-if (files.length < 300) {
-  console.error(`❌ anti-slop: .tsx 를 ${files.length}개밖에 못 찾았다 — 스캔 경로가 낡았다.`)
+const tsxFiles = walk(path.join(ROOT, 'src'))
+if (tsxFiles.length < 300) {
+  console.error(`❌ anti-slop: .tsx 를 ${tsxFiles.length}개밖에 못 찾았다 — 스캔 경로가 낡았다.`)
   process.exit(1)
 }
+/* 📄 문구 SSOT(`src/shared/seo/*.ts`)를 함께 훑는다. 위 MARKETING 주석의 이유.
+   ⚠️ **0건이면 통과가 아니라 고장이다** — 디렉터리가 옮겨지면 조용히 무검사로 돌아간다. */
+const SEO_COPY_DIR = path.join(ROOT, 'src/shared/seo')
+const seoCopyFiles = fs.existsSync(SEO_COPY_DIR)
+  ? fs.readdirSync(SEO_COPY_DIR).filter((f) => /\.ts$/.test(f) && !/\.test\.ts$/.test(f))
+      .map((f) => path.join(SEO_COPY_DIR, f))
+  : []
+if (seoCopyFiles.length < 8) {
+  console.error(`❌ anti-slop: 문구 SSOT 를 ${seoCopyFiles.length}개만 찾았다 — src/shared/seo 가 옮겨졌다.`)
+  console.error('   (경로를 같이 옮길 것 — 안 그러면 소비자 표면 문구 전체가 무검사로 돌아간다)')
+  process.exit(1)
+}
+const files = [...tsxFiles, ...seoCopyFiles]
 const hits = scan(files)
-const cur = { emDash: hits.emDash.length, sectionNum: hits.sectionNum.length, koUpper: hits.koUpper.length }
+/* ───────────────────────────────────────────────────────────────────────────
+ * 📰 2026-10-13 — **블로그 시드 제목**은 이 가드가 구조적으로 못 보던 자리다.
+ *
+ * 위 `MARKETING` 은 `BlogListPage|BlogDetailPage` 를 담고 있고 `walk()` 는 `.tsx` 만 훑는데,
+ * 블로그 **문구는 그 페이지가 아니라 `src/features/blog/api/blog-seed.ts`(`.ts`)** 에 있다.
+ * 즉 가드가 가리키는 페이지엔 검사할 문구가 없고, 문구가 있는 파일은 범위 밖이었다 —
+ * 이 레포가 반복해 당한 **"낡은 지도"**(가드는 초록인데 지키는 게 없다).
+ *
+ * 실측(2026-10-13): 시드 제목 **21편 중 14편**이 `주제 — 설명` 이었다. 그 제목은 `/blog/:slug` 의
+ * `<title>` 이자 **검색결과에 그대로 뜨는 줄**이고, 열넷이 같은 틀이라는 것 자체가 AI 티다.
+ *
+ * 🔑 **제목만 0 으로 잠근다.** 본문(content)의 43건은 래칫으로 동결만 한다 —
+ *   ① 제목은 검색결과에 서고 본문은 글 안에 있어 값이 다르다
+ *   ② 본문 43건을 한 번에 고치면 문장 품질이 더 나빠질 위험이 크다(산문을 기계로 못 고친다)
+ *   ⇒ 줄이는 건 자유이고 **늘리는 것만 막는다**. 줄인 뒤 `--rebaseline`.
+ * ─────────────────────────────────────────────────────────────────────────── */
+const BLOG_SEED = path.join(ROOT, 'src/features/blog/api/blog-seed.ts')
+function blogSeedCounts() {
+  if (!fs.existsSync(BLOG_SEED)) return null   // 파일이 사라지면 "통과" 가 아니라 아래에서 실패시킨다
+  // ⚠️ 이 파일의 `stripComments` 는 **[줄번호, 코드] 배열**을 돌려준다(위 스캐너가 줄을 찍어야
+  //   하기 때문). 문자열이 필요하므로 합친다 — 2026-10-13 에 그걸 혼동해 `matchAll` 로 터졌다.
+  const code = stripCommentsLines(fs.readFileSync(BLOG_SEED, 'utf-8'))
+    .filter(([, t]) => !t.includes('anti-slop-ok'))
+    .map(([, t]) => t)
+    .join('\n')
+  const titles = [...code.matchAll(/\btitle:\s*'((?:[^'\\]|\\.)*)'/g)].map((m) => m[1])
+  const titleEm = titles.filter((t) => t.includes('\u2014'))
+  const total = (code.match(/\u2014/g) || []).length
+  return { titles: titles.length, titleEm, bodyEm: total - titleEm.reduce((n, t) => n + (t.match(/\u2014/g) || []).length, 0) }
+}
+const seed = blogSeedCounts()
+if (!seed || seed.titles < 10) {
+  console.error(`❌ anti-slop: 블로그 시드 제목을 ${seed ? seed.titles : 0}개만 읽었다 — 0건이면 통과가 아니라 고장이다`)
+  console.error('   (파일이 옮겨졌으면 이 가드의 BLOG_SEED 경로를 같이 옮길 것 — 안 그러면 제목이 무검사로 돌아간다)')
+  process.exit(1)
+}
+
+const cur = { emDash: hits.emDash.length, sectionNum: hits.sectionNum.length, koUpper: hits.koUpper.length, blogSeedBodyEmDash: seed.bodyEm }
 
 if (process.argv.includes('--rebaseline')) {
   fs.writeFileSync(BASELINE, JSON.stringify({
     _comment: 'anti-slop 문구·라벨 허용 상한(래칫). 줄이면 --rebaseline 으로 갱신.',
     _measured: new Date().toISOString().slice(0, 10), ...cur,
   }, null, 2) + '\n')
-  console.log(`✅ anti-slop: 기준 갱신 — em-dash ${cur.emDash} · 섹션번호 ${cur.sectionNum} · 한글 uppercase ${cur.koUpper}`)
+  console.log(`✅ anti-slop: 기준 갱신 — em-dash ${cur.emDash} · 섹션번호 ${cur.sectionNum} · 한글 uppercase ${cur.koUpper} · 블로그 본문 em-dash ${cur.blogSeedBodyEmDash}`)
   process.exit(0)
 }
 
@@ -163,6 +229,15 @@ if (!fs.existsSync(BASELINE)) {
 }
 const base = JSON.parse(fs.readFileSync(BASELINE, 'utf-8'))
 let bad = false
+if (seed.titleEm.length > 0) {
+  bad = true
+  console.error(`❌ anti-slop: 블로그 시드 **제목**에 em-dash ${seed.titleEm.length}건 (0 이어야 한다 — 검색결과에 그대로 뜨는 줄이다)`)
+  seed.titleEm.slice(0, 14).forEach((t) => console.error('   ' + t))
+}
+if (seed.bodyEm > (base.blogSeedBodyEmDash ?? 0)) {
+  bad = true
+  console.error(`❌ anti-slop: 블로그 시드 본문 em-dash 가 늘었다 → ${seed.bodyEm}건 (줄이는 건 자유, 늘리는 건 막는다)`)
+}
 for (const [k, ko] of [['emDash', 'em-dash(—) 사용자 문구'], ['sectionNum', '섹션번호 뱃지(01/02…)'], ['koUpper', '한글 라벨에 uppercase']]) {
   if (cur[k] > (base[k] ?? 0)) {
     bad = true
@@ -176,4 +251,4 @@ if (bad) {
   console.error('   의도적이면 그 줄에 `anti-slop-ok` 주석.')
   process.exit(1)
 }
-console.log(`✅ anti-slop: em-dash ${cur.emDash}(≤${base.emDash}) · 섹션번호 ${cur.sectionNum}(≤${base.sectionNum}) · 한글 uppercase ${cur.koUpper}(≤${base.koUpper})`)
+console.log(`✅ anti-slop: em-dash ${cur.emDash}(≤${base.emDash}) · 섹션번호 ${cur.sectionNum}(≤${base.sectionNum}) · 한글 uppercase ${cur.koUpper}(≤${base.koUpper}) · 블로그 제목 em-dash ${seed.titleEm.length}(=0) · 블로그 본문 ${seed.bodyEm}(≤${base.blogSeedBodyEmDash ?? 0})`)

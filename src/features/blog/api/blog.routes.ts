@@ -24,7 +24,7 @@ const MAX_PENDING_AI_DRAFTS = 5
 // 관리자가 /admin/blog 에서 직접 수정한 글(manually_edited=1)은 재시드해도 보존됩니다.
 // 💸 2026-07-05 v5: 딜 가이드에 유상/무상 버킷 정책 반영.
 // v6 (2026-07-18): 딜 충전 종료(대표 확정) — 딜=활동 적립 리워드 프레임으로 딜포인트/결제 관련 글 갱신
-const BLOG_SEED_VERSION = 13 // 2026-08-31 지갑 분리 — 교환권은 '내 교환권', 이용권은 '내 이용권'
+const BLOG_SEED_VERSION = 14 // 2026-10-13 제목 14편 em-dash 제거 (anti-slop — `X — Y` 한 틀이던 것을 흩뜨렸다)
 
 // 테이블 자동 생성
 async function ensureBlogTable(DB: D1Database) {
