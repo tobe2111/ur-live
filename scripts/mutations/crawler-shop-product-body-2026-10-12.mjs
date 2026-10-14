@@ -33,8 +33,10 @@ export default [
     why: '반대 방향. 첫 화면의 h1 이 이미 이름을 말하므로(규율 ②) 그 경로의 요약에 이름을 넣으면 '
        + '중복이다 — 2026-10-12 og:image 항목이 지적한 "카드 안에 또 카드" 와 같은 클래스.',
     file: NS,
-    find: "const body = (opts.withName && name ? `<p>${esc(name)} 유어샵</p>` : '')",
-    replace: "const body = (name ? `<p>${esc(name)} 유어샵</p>` : '')",
+    // 🔁 2026-10-14 재조준 — 그 줄이 `standalone` 게이트 + `h1Of()` 로 바뀌었다(#87).
+    //   불변식 그대로: **첫 화면이 이름을 말하는 경로에서 요약이 또 말하면 중복**이다.
+    find: "const body = (standalone ? h1Of(name && `${name} 유어샵`) : '')",
+    replace: "const body = (h1Of(name && `${name} 유어샵`) || '')",
     test: TEST,
   },
   {
