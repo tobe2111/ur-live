@@ -29,6 +29,8 @@ import { render } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import PinRow from '@/pages/curator-page/PinRow'
 import CuratorHeader from '@/pages/curator-page/CuratorHeader'
+import { curatorSoldTotal } from '@/shared/curator-pin-order'
+import { SHARE_MASCOT_SRC } from '@/shared/ushop-share-card'
 import {
   buildCuratorFirstScreen, CURATOR_FS_CLASS, CURATOR_THUMB_WIDTH,
   CURATOR_FS_ROWS, CURATOR_SEARCH_MIN_PINS, CURATOR_LOGO_SIZE,
@@ -222,8 +224,10 @@ describe('유어샵 서버 첫 화면 — 워커 HTML ↔ 진짜 컴포넌트', 
   it('④-1 워커도 그 자리를 같은 클래스로 비워 둔다 + 아이콘 path 는 안 옮긴다', () => {
     const html = buildCuratorFirstScreen(SEED(), LOADER)
     expect(html).toContain(`class="${CURATOR_FS_CLASS.manageBtn} invisible pointer-events-none"`)
-    // SNS 2 + 공유 = 빈 원 3개
-    expect((html.match(new RegExp(`class="${CURATOR_FS_CLASS.iconBtn.replace(/[[\]]/g, '\\$&')}"`, 'g')) || []).length).toBe(3)
+    // 🔄 2026-10-14 (유어샵 A): SNS 는 이름 아래 줄의 이름표로 내려갔다 ⇒ 이름 줄의 빈 원은 **공유 하나**.
+    expect((html.match(new RegExp(`class="${CURATOR_FS_CLASS.iconBtn.replace(/[[\]]/g, '\\$&')}"`, 'g')) || []).length).toBe(1)
+    // SNS 2 = 이름표 자리 2개(글자는 브랜드명, 아이콘은 빈 칸)
+    expect((html.match(new RegExp(`class="${CURATOR_FS_CLASS.snsPill.replace(/[[\]]/g, '\\$&')}"`, 'g')) || []).length).toBe(2)
     // 🔴 SVG 를 손으로 옮기지 않는다(두 벌이 갈리는 클래스)
     expect(html).not.toContain('<svg')
     expect(html).not.toContain('<path')
@@ -238,7 +242,32 @@ describe('유어샵 서버 첫 화면 — 워커 HTML ↔ 진짜 컴포넌트', 
     })
     const html = buildCuratorFirstScreen(seed, LOADER)
     expect((html.match(new RegExp(`class="${CURATOR_FS_CLASS.iconBtn.replace(/[[\]]/g, '\\$&')}"`, 'g')) || []).length).toBe(1)
+    expect(html).not.toContain(CURATOR_FS_CLASS.snsPill) // SNS 없으면 이름표 자리 0
     expect(html).not.toContain(CURATOR_FS_CLASS.bio) // bio 없으면 그 줄 자체가 없다
+  })
+
+  // ─────────────────────────────────────────────── ④-3 얼굴·숫자 줄 (2026-10-14 유어샵 A)
+  it('④-4 얼굴·숫자 줄이 진짜 `CuratorHeader` 와 같다(사진 URL · 유달이 · 숫자)', () => {
+    const pins = [{ id: 1, product_id: 1, product_name: 'a', price: 1000, sold_count: 300 }, { id: 2, product_id: 2, product_name: 'b', price: 2000, sold_count: 11 }]
+    for (const profile_image of ['https://media.ur-team.com/u/3/face.webp', null]) {
+      const curator = { id: 3, handle: 'jiwon1228', name: '정지원', bio: '소개', profile_image, youtube_url: 'y', instagram_url: '', tiktok_url: '' }
+      const html = buildCuratorFirstScreen(JSON.stringify({ success: true, curator, pins }), LOADER)
+      const host = document.createElement('div'); host.innerHTML = html
+      const { container } = render(
+        <MemoryRouter>
+          <CuratorHeader curator={curator as never} counts={{ pins: pins.length }} soldTotal={curatorSoldTotal(pins)} onCopyLink={() => {}} />
+        </MemoryRouter>,
+      )
+      const sImg = host.querySelector(`.${CURATOR_FS_CLASS.avatar.split(' ').join('.')} img`)!
+      const cImg = container.querySelector('.w-14.h-14 img')!
+      expect(sImg.getAttribute('src'), `얼굴 URL (${profile_image ? '사진' : '유달이'})`).toBe(cImg.getAttribute('src'))
+      if (!profile_image) expect(sImg.getAttribute('src')).toBe(SHARE_MASCOT_SRC)
+      // 숫자 줄 글자가 같다 — 마운트 때 숫자가 바뀌어 보이면 안 된다
+      const sStats = host.querySelector('p.' + CURATOR_FS_CLASS.stats.split(' ')[0])!.textContent
+      const cStats = container.querySelector('p.' + CURATOR_FS_CLASS.stats.split(' ')[0])!.textContent
+      expect(sStats).toBe(cStats)
+      expect(sStats).toContain('누적 구매 311')
+    }
   })
 
   // ─────────────────────────────────────────────── ⑤ 안 그리는 것 / 폴백

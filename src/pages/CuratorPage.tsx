@@ -16,7 +16,7 @@ import { useTranslation } from '@/lib/i18n-lite'
 import SEO from '@/components/SEO'
 import type { CuratorPageResponse } from '@/features/curator/api/curator-api'
 import { fetchCuratorPage, getCuratorCache } from '@/features/curator/curator-page-cache'
-import { curatorHomePins } from '@/shared/curator-pin-order'
+import { curatorHomePins, curatorSoldTotal } from '@/shared/curator-pin-order'
 import { buildUShopShareCard, ushopShareImage } from '@/shared/ushop-share-card'
 import { KAKAO_SHARE_FALLBACK_IMAGE, shareViaKakao, ushopCardPayload } from '@/lib/kakao-share'
 import { useAuthStore } from '@/client/stores/auth.store'
@@ -348,14 +348,14 @@ export default function CuratorPage() {
             모바일은 같은 DOM 이 세로로 흐른다. 액자 해제는 `shared/pc-fullbleed.ts`(한 세그먼트만). */}
         <div className="ur-ushop-pc">
         <div className="ur-ushop-side">
-        {/* 🩸 2026-09-28 렌더 실측: 여기에 `counts={{ pins }}` 를 주면 헤더가 `담은 이용권 6` 이라 적고
-            90px 아래 칩이 `전체 6` 이라 또 적는다 — **같은 수를 두 번 말하는 것**이고, 그 중복은
-            이번 단계가 칩 게이트를 열면서 **내가 만든 것**이다(그 전엔 칩이 뜨질 않았다).
-            칩 쪽이 기능(분류별 개수 + 필터)이라 헤더에서 뺀다.
-            ⚠️ 사업자 유어샵(`SellerPublicPage`)은 본문에 칩이 없어 **거기선 그대로 넘긴다.** */}
+        {/* 👤 2026-10-14 (대표 확정 유어샵 A): 머리 아래 `이용권 N · 누적 구매 M` 한 줄.
+            ⚠️ 2026-09-28 에는 같은 수를 칩(`전체 N`)과 두 번 말한다는 이유로 counts 를 뺐다 — 확정 시안 A 가
+            그 줄을 머리에 다시 두었고(시안에도 칩 `전체 4` 가 함께 있다) **누적 구매**라는 새 정보를 함께 싣는다. */}
         <CuratorHeader
           curator={curator}
           canEdit={isOwner}
+          counts={{ pins: pins.length }}
+          soldTotal={curatorSoldTotal(pins)}
           onCopyLink={shareShop}
         />
         <UShopQrCard />

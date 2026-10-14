@@ -20,8 +20,8 @@
  *   ④ **버튼 두 자리**(c2) — `[⤴ 공유]`(항상) + `[관리]`(주인만, `/u/me/manage`).
  *      공유는 방문자에게도 보인다 — 손님이 친구에게 넘기는 것이 유어샵의 확산 경로다.
  *      ⇒ "주인/방문자 차이는 버튼 한 자리" 의 **그 한 자리는 `관리`** 다.
- *   ⑤ **아바타 제거**(9차) — 라이브 대부분이 프로필 사진이 없어 그 자리는 사실상 항상 이니셜 원이었다.
- *      사람을 보여주는 게 아니라 **사람이 없다는 걸 보여주는** 자리였다.
+ *   ⑤ ~~**아바타 제거**(9차)~~ → 🔄 **2026-10-14 대표 확정 A 로 되살렸다**(아래 `avatarCls` 주석).
+ *      9차의 이유(사진 없는 유어샵은 이니셜 원뿐)는 **유달이**로 채워 해소한다 — 이니셜 원은 쓰지 않는다.
  *   ⑥ 🩸 **흐르는 문구(마퀴) 제거**(2026-09-29 대표 *"배고프다 뭐먹지?는 아예 빼기"*) —
  *      맨 위 30px 풀블리드 띠였고, 라이브 실측에서 그 띠가 **순수 검정 `#000000`** 이었다.
  *      우리 팔레트에 없는 값이고(다크 바탕은 `#11141C`), 화면 첫인상을 그 띠가 전부 먹었다.
@@ -43,6 +43,9 @@ import VerifiedSeal from '@/components/VerifiedSeal'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { EditIcon } from '@/components/icons/urdeal-icons'
 import { snsUrl } from '@/utils/sns-url'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
+import { formatNumber } from '@/utils/format'
+import { SHARE_MASCOT_SRC } from '@/shared/ushop-share-card'
 
 interface CuratorHeaderProps {
   curator: {
@@ -62,6 +65,8 @@ interface CuratorHeaderProps {
   canEdit?: boolean
   /** 숫자 한 줄 — 담은 이용권 / 내 상품. 0 은 그리지 않는다. */
   counts?: { pins?: number; products?: number }
+  /** 누적 구매 — 이 유어샵에 진열된 이용권들이 팔린 횟수의 합(상품 `sold_count` 합). 0 이면 안 그린다. */
+  soldTotal?: number
   accountType?: 'user' | 'business'
   /** 공유 — `navigator.share` 있으면 시트, 없으면 링크 복사(호출부가 정한다). */
   onCopyLink: () => void
@@ -86,28 +91,53 @@ interface CuratorHeaderProps {
 const iconBtnCls = 'w-9 h-9 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-wash active:opacity-70 transition-colors'
 const manageBtnCls = 'h-9 px-3 rounded-full bg-brand text-white text-[15px] font-bold inline-flex items-center gap-1 shrink-0 active:opacity-70'
 
-export default function CuratorHeader({ curator, canEdit, counts, accountType, onCopyLink }: CuratorHeaderProps) {
+/**
+ * 👤 2026-10-14 (대표 확정 **유어샵 A · 얼굴 있는 머리** — 시안 `docs/design/consumer-pages-2026-10-14.md` §5).
+ *   9차(2026-09-28)에 아바타를 뺀 이유는 *"라이브 대부분이 사진이 없어 이니셜 원만 떴다"* 였다.
+ *   A 는 그 빈자리를 **유달이**로 채운다 — 공유 카드(`ushopShareImage`)가 사진 없는 유어샵에 쓰는
+ *   **같은 그림**(`SHARE_MASCOT_SRC`)이라 카톡방에서 본 얼굴과 들어와서 본 얼굴이 같다.
+ *   SNS 는 이름 줄 오른쪽 아이콘 → **이름 아래 줄의 작은 이름표**로 내려간다(그 줄 왼쪽은 숫자 한 줄).
+ */
+const avatarCls = 'w-14 h-14 rounded-full overflow-hidden bg-wash shrink-0'
+/** 이름표 하나의 탭 영역(36px — 2026-09-16 의 하한 34px 를 지킨다). 보이는 알약은 안쪽 `snsPillCls`. */
+const snsHitCls = 'h-9 inline-flex items-center active:opacity-70'
+const snsPillCls = 'h-7 px-3 rounded-full bg-wash inline-flex items-center gap-1 text-[12px] font-semibold text-gray-600 dark:text-gray-300'
+
+export default function CuratorHeader({ curator, canEdit, counts, soldTotal, accountType, onCopyLink }: CuratorHeaderProps) {
   const { t } = useTranslation()
   const hasSns = !!(curator.youtube_url || curator.instagram_url || curator.tiktok_url)
-  const showCounts = (counts?.pins ?? 0) > 0 || (counts?.products ?? 0) > 0
+  const pinsN = counts?.pins ?? 0
+  const productsN = counts?.products ?? 0
+  const sold = soldTotal ?? 0
+  const showStats = pinsN > 0 || productsN > 0 || sold > 0
+  const photo = curator.profile_image ? cfImage(curator.profile_image, { width: 112, height: 112, fit: 'cover' }) : null
 
-  /** SNS 링크 — 이름 줄의 버튼 그룹에 들어간다(전용 줄을 쓰지 않는다. 위 🔧 참조). */
+  /** SNS 이름표 — 이름 아래 줄 오른쪽. 브랜드 이름은 번역하지 않는다. */
   const snsLinks = hasSns ? (
     <>
       {curator.youtube_url && (
-              <a href={snsUrl('youtube', curator.youtube_url)} target="_blank" rel="noopener noreferrer" aria-label="YouTube" className={iconBtnCls}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.6V8.4l6.2 3.6-6.2 3.6Z" /></svg>
-          </a>
+        <a href={snsUrl('youtube', curator.youtube_url)} target="_blank" rel="noopener noreferrer" aria-label="YouTube" className={snsHitCls}>
+          <span className={snsPillCls}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.6V8.4l6.2 3.6-6.2 3.6Z" /></svg>
+            YouTube
+          </span>
+        </a>
       )}
       {curator.instagram_url && (
-              <a href={snsUrl('instagram', curator.instagram_url)} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className={iconBtnCls}>
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="5" /><circle cx="12" cy="12" r="3.7" /><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none" /></svg>
-          </a>
+        <a href={snsUrl('instagram', curator.instagram_url)} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className={snsHitCls}>
+          <span className={snsPillCls}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="5" /><circle cx="12" cy="12" r="3.7" /><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none" /></svg>
+            Instagram
+          </span>
+        </a>
       )}
       {curator.tiktok_url && (
-              <a href={snsUrl('tiktok', curator.tiktok_url)} target="_blank" rel="noopener noreferrer" aria-label="TikTok" className={iconBtnCls}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 3c.3 2.2 1.6 3.9 3.8 4.1v2.6c-1.3.1-2.5-.3-3.8-1v5.7c0 4.4-3.4 6.9-6.9 5.8-3.2-1-4.1-5-1.7-7.2 1-.9 2.4-1.3 3.8-1.1v2.7c-.4-.1-.8-.1-1.2 0-1.2.3-1.7 1.4-1.3 2.5.4 1.1 1.8 1.5 2.7.7.5-.4.7-1 .7-1.7V3h3.9Z" /></svg>
-          </a>
+        <a href={snsUrl('tiktok', curator.tiktok_url)} target="_blank" rel="noopener noreferrer" aria-label="TikTok" className={snsHitCls}>
+          <span className={snsPillCls}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.5 3c.3 2.2 1.6 3.9 3.8 4.1v2.6c-1.3.1-2.5-.3-3.8-1v5.7c0 4.4-3.4 6.9-6.9 5.8-3.2-1-4.1-5-1.7-7.2 1-.9 2.4-1.3 3.8-1.1v2.7c-.4-.1-.8-.1-1.2 0-1.2.3-1.7 1.4-1.3 2.5.4 1.1 1.8 1.5 2.7.7.5-.4.7-1 .7-1.7V3h3.9Z" /></svg>
+            TikTok
+          </span>
+        </a>
       )}
     </>
   ) : null
@@ -128,35 +158,27 @@ export default function CuratorHeader({ curator, canEdit, counts, accountType, o
           </Link>
         </div>
 
-        {/* ③④ 상호명 줄 — 그 위 선 없음(면으로 나뉜다). 오른쪽이 버튼 자리. */}
-        <div className="flex items-start px-4 pt-4 pb-4">
+        {/* ③④ 상호명 줄 — [얼굴] [이름·소개] [공유 · 관리]. 그 위 선 없음(면으로 나뉜다). */}
+        <div className="flex items-center gap-3 px-4 pt-4">
+          {/* 👤 얼굴 — 사진이 없으면 유달이(공유 카드와 같은 그림). 장식이라 alt 는 비운다(옆에 이름이 있다). */}
+          <div className={avatarCls}>
+            {photo ? (
+              <img src={photo} alt="" width={56} height={56} className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, curator.profile_image)} />
+            ) : (
+              <img src={SHARE_MASCOT_SRC} alt="" width={56} height={56} className="w-full h-full object-contain" />
+            )}
+          </div>
           <div className="min-w-0 flex-1">
-            <div className="flex items-start gap-2 min-w-0">
-              {/* 🩸 2026-09-30 렌더 실측: `truncate` 라 주인 화면(SNS 2 + 공유 + 관리)에서 왼쪽 칸이 156px 가 되고
-                  "지원의 동네가게" 가 **"지원의 동네…"** 로 잘렸다. 가게 이름은 이 화면의 정체 자체다.
-                  대표 제약은 *"이름 크기는 그대로"*(17px)·*"SNS 버튼들 위치도 그대로"* 라 둘 다 안 건드리고
-                  **두 줄까지 허용**한다(`line-clamp-2`) — 크기도 자리도 안 옮기면서 이름이 다 보인다. */}
-              <h1 className="text-[17px] font-bold text-gray-900 dark:text-white leading-tight tracking-[-0.03em] line-clamp-2">{curator.name}</h1>
+            <div className="flex items-center gap-2 min-w-0">
+              {/* 이름은 이 화면의 정체 자체라 자르지 않고 두 줄까지 허용한다(2026-09-30 실측 — 잘린 이름 사고). */}
+              <h1 className="text-[24px] font-bold text-gray-900 dark:text-white leading-tight tracking-[-0.03em] line-clamp-2">{curator.name}</h1>
               {accountType === 'business' && <VerifiedSeal size={17} className="shrink-0" />}
             </div>
             {curator.bio && (
-              <p className="mt-1 text-[12px] text-gray-600 dark:text-gray-300 leading-snug line-clamp-2">{curator.bio}</p>
-            )}
-            {showCounts && (
-              <p className="mt-1 text-[12px] text-gray-400 dark:text-gray-500 tabular-nums">
-                {(counts?.pins ?? 0) > 0 && <span>{t('curator.countPins', { defaultValue: '담은 이용권' })} {counts!.pins}</span>}
-                {(counts?.pins ?? 0) > 0 && (counts?.products ?? 0) > 0 && <span> · </span>}
-                {(counts?.products ?? 0) > 0 && <span>{t('curator.countProducts', { defaultValue: '내 상품' })} {counts!.products}</span>}
-              </p>
+              <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400 leading-snug line-clamp-2">{curator.bio}</p>
             )}
           </div>
-          {/* 🔧 2026-09-28 (대표 확정 **상단 1안**): SNS 아이콘이 **자기 줄을 통째로** 쓰고 있었다
-              (라이브 실측 36px + 여백 = 48px). 아이콘 두세 개를 위해 줄 하나를 쓰는 건 비싸서
-              이름 줄의 버튼 자리로 올린다. 공유·관리 버튼은 **그대로 있다**(대표 확인 요청 사항).
-              주인 화면 최악(이름 10자 + SNS 3 + 공유 + 관리)에서 오른쪽 끝 374/390px 로 안 잘린다
-              (실측: 이름 칸이 `flex-1 truncate` 라 넘치는 대신 이름이 줄어든다 — 112px 남음). */}
           <div className="ml-3 flex items-center gap-2 shrink-0">
-            {snsLinks}
             <button
               type="button"
               onClick={onCopyLink}
@@ -173,24 +195,9 @@ export default function CuratorHeader({ curator, canEdit, counts, accountType, o
             ) : (
               /*
                * 🪑 2026-10-09 — **방문자에게도 이 자리를 비워 둔다**(보이지 않는 같은 버튼).
-               *
-               * 왜: 서버가 이 화면의 첫 화면을 그리려면(`worker/utils/curator-ssr-body.ts`) 이름 칸의
-               *   폭이 **누가 보든 같아야** 한다. 390px 실측 — 왼쪽 칸이 방문자 `222px` ↔ 주인 `140px`
-               *   (SNS 2 + 공유 + 관리)이고, 이름이 그 사이 폭이면 `line-clamp-2` 가 1줄↔2줄로 갈려
-               *   헤더 높이가 `126px ↔ 148px` 로 **22px** 어긋난다(측정값). 서버는 누가 보는지 모르므로
-               *   그 어긋남은 마운트 때 아래 전체를 밀어내는 밀림이 된다.
-               *
-               * 🔑 그리고 이것은 **확정 시안을 더 정확히 지키는 쪽**이다 — c2 는 *"주인/방문자 차이는
-               *   버튼 한 자리"* 라고 정했는데, 지금까지 실제 차이는 버튼 + **이름의 줄 수** + 헤더
-               *   높이 셋이었다. 자리를 비워 두면 차이가 진짜로 한 자리(버튼의 유무)만 남는다.
-               *
-               * 📏 오늘 라이브에서 **보이는 변화는 0** 이다: 유어샵 17곳 전부 이름이 좁은 폭(140~228px)에도
-               *   한 줄로 들어간다(최장 10자). 변화가 생기는 것은 그 창에 들어오는 이름이 생기는 날이고,
-               *   그때는 주인·방문자가 **같은 모양**을 본다.
-               *
-               * ⚠️ `<span>` 이다 — 링크·버튼이면 보이지 않는 채로 **탭 순서에 끼고** 스크린리더가 읽는다.
-               *   `invisible`(visibility:hidden)은 자리를 유지하고 `aria-hidden` 은 읽히지 않게 한다.
-               *   라벨 텍스트를 **같은 `t()`** 로 두는 이유: 폭이 번역마다 달라도 둘이 같이 달라진다.
+               *   서버가 첫 화면을 그리려면(`worker/utils/curator-ssr-body.ts`) 이름 칸의 폭이 **누가 보든
+               *   같아야** 한다 — 폭이 갈리면 `line-clamp-2` 가 1줄↔2줄로 갈려 마운트 때 아래가 밀린다.
+               *   `<span>` + `invisible` + `aria-hidden` — 탭 순서에도 스크린리더에도 안 잡힌다.
                */
               <span aria-hidden="true" className={`${manageBtnCls} invisible pointer-events-none`}>
                 <EditIcon size={17} aria-hidden="true" />
@@ -200,6 +207,20 @@ export default function CuratorHeader({ curator, canEdit, counts, accountType, o
           </div>
         </div>
 
+        {/* 📊 이름 아래 한 줄 — 왼쪽 숫자(이용권 · 누적 구매), 오른쪽 SNS 이름표. 둘 다 없으면 줄 자체가 없다. */}
+        {(showStats || hasSns) && (
+          <div className="mt-2 px-4 flex items-center justify-between gap-2">
+            <p className="min-w-0 truncate text-[13px] text-gray-500 dark:text-gray-400 tabular-nums">
+              {pinsN > 0 && <span>{t('curator.countVouchers', { defaultValue: '이용권' })} <b className="font-bold text-gray-900 dark:text-white">{pinsN}</b></span>}
+              {pinsN > 0 && productsN > 0 && <span> · </span>}
+              {productsN > 0 && <span>{t('curator.countProducts', { defaultValue: '내 상품' })} <b className="font-bold text-gray-900 dark:text-white">{productsN}</b></span>}
+              {(pinsN > 0 || productsN > 0) && sold > 0 && <span> · </span>}
+              {sold > 0 && <span>{t('curator.countSold', { defaultValue: '누적 구매' })} <b className="font-bold text-gray-900 dark:text-white">{formatNumber(sold)}</b></span>}
+            </p>
+            {hasSns && <div className="flex items-center gap-1 shrink-0">{snsLinks}</div>}
+          </div>
+        )}
+        <div className="h-4" />
       </div>
     </header>
   )
