@@ -1,6 +1,6 @@
 /**
  * 🪙 **같은 숫자를 두 화면이 반대로 보여 주지 않는다** + 🔇 **같은 화면에 같은 문이 둘이 아니다**
- * (2026-09-28 — 결재 `docs/decisions/2026-09-28-my-duplicate-entry-and-slab.md`)
+ * (2026-09-28 — 결재 `docs/decisions/archive/2026-09-28-my-duplicate-entry-and-slab.md`)
  *
  * ## 🔁 2026-09-29 재조준 — 대표 확정 **안 C**(코레일톡 전체메뉴 형태)
  * 딜 잔액이 **별도 카드**(`TeamPointsCard`, 판매 구역 아래)에서 페이지 맨 위 **숫자 한 줄**

@@ -1,6 +1,6 @@
 /**
  * 📄 중개사가 매장을 등록할 때 받는 서류는 매장 등록증이다 (2026-10-10 대표 결재 —
- * docs/decisions/2026-10-06-broker-business-cert.md 안 1).
+ * docs/decisions/archive/2026-10-06-broker-business-cert.md 안 1).
  *
  * 메인 노출 심사(`approvedSellerProductSql`)는 매장 행(`sellers.status`)을 본다. 서류가 중개사 것이면
  * 심사 근거와 심사 대상이 갈린다 — 에러는 안 나고 판정만 틀린다. 그래서 운영 방식이 '중개·대행' 일 때

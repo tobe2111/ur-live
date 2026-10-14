@@ -67,7 +67,7 @@ GET /api/og/curator/jiwon1228 → 200, 1,826 B
 
 # 🎟️ 이용권 일부 환불 (같은 날, 별건 — 머니 경로)
 
-대표: ***"일부 환불 가능하게 해줘."*** 결재 기록: `docs/decisions/2026-09-28-voucher-partial-refund.md`.
+대표: ***"일부 환불 가능하게 해줘."*** 결재 기록: `docs/decisions/archive/2026-09-28-voucher-partial-refund.md`.
 
 ## 설계 — 금액이 아니라 **장 단위**
 

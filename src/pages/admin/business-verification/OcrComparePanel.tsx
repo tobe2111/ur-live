@@ -1,7 +1,7 @@
 /**
  * 🔍 서류 OCR — 읽은 값을 **등록 매장과 나란히** 보여 준다 (어드민 전용).
  *
- * 2026-09-16 (결재 `docs/decisions/2026-09-16-ocr-license-automation.md` §안전 레일 ①
+ * 2026-09-16 (결재 `docs/decisions/archive/2026-09-16-ocr-license-automation.md` §안전 레일 ①
  * *"1단계는 추출값을 어드민 화면에 입력값과 나란히 띄우기만 한다"*).
  *
  * ## 🩸 이 파일이 없으면 축 전체가 죽은 코드다

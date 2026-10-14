@@ -27,7 +27,7 @@
  * 🩸 **처음엔 `getLedgerReceivable`(순수 원장)을 봤는데 그게 결함이었다** — 마감을 해도 원장은
  *   안 줄어서 **영원히 막혔다**(막다른 길). 지금은 `getUnsettledBalance`(원장 − 배정분)를 본다.
  *
- * 결정 문서: `docs/decisions/2026-09-07-store-handover-money-cut.md`
+ * 결정 문서: `docs/decisions/archive/2026-09-07-store-handover-money-cut.md`
  *
  * ## ⚠️ 이 가드가 **막지 못하는 것** (과신 금지)
  *   - 잔액이 0 인 상태의 손바뀜은 그대로 통과한다 — 그게 의도다(줄 돈이 없으니 샐 돈도 없다).

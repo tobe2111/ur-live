@@ -200,5 +200,7 @@ SELECT credit_account, amount FROM ledger_entries WHERE event_type='voucher_used
 
 ## 반영 커밋
 
+✅ **반영 확인(2026-10-14 실측 — origin/main 에 있는 커밋)**: `aed1694ca` (#1591) payout-account SSOT · 이중레일 제거.
+
 - 2026-10-01 신규 SSOT `payout-account.ts` + 구매 3자리 + `payouts-generate` + 어드민 집계 2곳
   + 가드 18건 + 주입 9건(전부 빨간불 확인)

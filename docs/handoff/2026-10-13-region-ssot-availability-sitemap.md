@@ -145,7 +145,7 @@ src/features/blog/api/blog-seed.ts    em-dash 57  ← 제목 14 + 본문 43
   워커 301 을 붙일 수 있다 — 레코드 없이 리다이렉트 코드를 넣어도 요청이 우리에게 도달조차 안 한다.
 - **#31 결재** `/pass/:id` 공유 카드 SVG → 사진 한 장?
 - **#35 결재** `/pass/:id` 310건 검색 제목. 대표 제안(`[유어딜] {이용권명}`)을 **5안으로 기록**해 뒀다
-  (`docs/decisions/2026-10-12-pass-title-groupbuy.md`). **대표 답을 기다린다.**
+  (`docs/decisions/archive/2026-10-12-pass-title-groupbuy.md`). **대표 답을 기다린다.**
 - **`twitter:site` = `@urdeal_kr`** — 그 핸들이 **레포 전체에서 `SEO.tsx:79` 한 줄에만** 있고
   푸터 링크도 `sameAs` 도 없다. 실재하지 않으면 **죽은 계정을 가리키는 메타**이고 그건 신뢰 신호를
   깎는다(이 레포가 브랜드 `sameAs` 에서 지키는 규율). x.com 이 이 환경에서 막혀 확인 못 했다.

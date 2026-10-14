@@ -145,7 +145,7 @@
 | 순 receivable | **Σ(credit − fee_amount) − Σ(debit)** | `src/worker/utils/ledger.ts:477-500` `getLedgerReceivable` |
 | payout 가능 잔액 | receivable − 이미 payout(pending/approved/sent) 처리분 | `ledger.ts:504-544`, `admin-payouts.routes.ts:39` |
 | 신규 credit 규칙 | `fee_amount` = amount 중 payee 몫이 아닌 부분(플랫폼 수수료). net 을 그대로 credit 하면 fee_amount = 0 | `ledger.ts:484` |
-| 계정 키의 한계 | 사람이 아니라 매장 행. 집계에 기간이 없다(전기간 누적) | `docs/decisions/2026-09-07-store-handover-money-cut.md` |
+| 계정 키의 한계 | 사람이 아니라 매장 행. 집계에 기간이 없다(전기간 누적) | `docs/decisions/archive/2026-09-07-store-handover-money-cut.md` |
 
 ### 5-2. 주기와 단계
 

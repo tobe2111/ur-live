@@ -10,7 +10,7 @@
  * ■ 왜 아무도 못 잡았나
  *   `check-dark-contrast` 는 목록 화면에서 **빈 껍데기**를 잰다(유어샵 8건 vs 실데이터 60건).
  *   상품이 없으면 가격 줄 자체가 안 그려지므로 이 글자는 **한 번도 측정된 적이 없다.**
- *   → 결재 `docs/decisions/2026-09-28-dark-contrast-guard-coverage.md`
+ *   → 결재 `docs/decisions/archive/2026-09-28-dark-contrast-guard-coverage.md`
  *
  * ■ 이 시험이 하는 일
  *   클래스 이름을 문자열로 대조하지 **않는다**(`gray-400` 이라고 적혀 있어도 스케일이 바뀌면 무의미).

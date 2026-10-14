@@ -46,7 +46,7 @@ curl -s 'https://urdeal.kr/api/group-buy/products?status=active' | python3 -c "i
 
 1. **"②(등록증 대조)는 기계로 불가능"** 이라고 오전 결재에 적었다. **국세청 API 기준에서만 맞다** —
    OCR 을 쓰면 된다(당근이 하는 것이 그것). 결재 파일에 정정 문단을 넣었고 후속 결재를 올렸다:
-   `docs/decisions/2026-09-16-ocr-license-automation.md`.
+   `docs/decisions/archive/2026-09-16-ocr-license-automation.md`.
    그리고 재 보니 **영업신고증이 사업자등록증보다 자동화 가치가 크다** — 대조할 공개 원장이
    우리 DB 에 이미 있다(`store_prospects` **269,708행**, 지방행정 인허가정보, 업종 넷 일치).
 2. **주입이 내 시험 넷을 헛돈다고 잡았다.** 배선 검사를 `toContain('함수이름')` 으로 썼는데

@@ -106,7 +106,7 @@ hint 상호참조도 번호 → 이름. 머리말에 규약을 박았다.
 
 ## 🔴 (후속) 두 번째 결함 — 이용권 한 장에 매장 적립이 두 번
 
-결재: `docs/decisions/2026-09-30-voucher-credit-double-rail.md` (open, 등급 C, 코드 미변경)
+결재: `docs/decisions/archive/2026-09-30-voucher-credit-double-rail.md` (open, 등급 C, 코드 미변경)
 
 ### 다음 세션의 첫 액션
 

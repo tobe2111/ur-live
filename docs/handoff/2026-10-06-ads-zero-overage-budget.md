@@ -114,7 +114,7 @@ SELECT value FROM platform_settings WHERE key='cron_hb:ads:read-budget'   -- DB_
 ## 🔓 후속 — npm audit 게이트 (대표 승인 "승인", 2026-10-06)
 
 CI 가 `npm audit` 한 스텝에서만 막혔고(다른 44개 통과) 그 3건은 main 선재였다. 결재 기본안
-1번을 승인받아 처리 — 상세는 `docs/decisions/2026-10-06-npm-audit-three-new-advisories.md`.
+1번을 승인받아 처리 — 상세는 `docs/decisions/archive/2026-10-06-npm-audit-three-new-advisories.md`.
 
 | | 결과 |
 |---|---|

@@ -76,5 +76,5 @@
    문이다(09-28 에 이름 옆 알약을 지우며 그렇게 정했다).
 
 ## 남은 결정
-- 시트 일곱 철거 판정(`docs/decisions/2026-09-28-my-stage2-sheet-teardown.md`)은 **판정 불가**로
+- 시트 일곱 철거 판정(`docs/decisions/archive/2026-09-28-my-stage2-sheet-teardown.md`)은 **판정 불가**로
   남아 있다 — 하네스가 목록 API 를 시드하지 않아 빈 화면을 재고 있었다. 2회차 전제는 그 파일에.

@@ -197,7 +197,7 @@ export const SURFACE_COPY: Readonly<Record<string, SurfaceCopy>> = {
 
      즉 가르는 기준(그 화면의 문장을 그대로 옮길 수 있느냐)으로 **둘 다 자격이 있었다**.
      `/refund` 를 막고 있던 나머지 하나 — 내용 자체가 남의 서비스 환불약관이던 것 — 은
-     결재 `docs/decisions/2026-10-12-refund-policy-mismatch.md` 에서 대표 *"다 해줘"* 로
+     결재 `docs/decisions/archive/2026-10-12-refund-policy-mismatch.md` 에서 대표 *"다 해줘"* 로
      2026-10-13 에 코드의 현행 규칙대로 다시 쓰였다(그 결재 자신이 *"크롤러 본문은 아직 짧습니다 …
      별건입니다"* 라고 남긴 그 별건이 이 항목이다).
 
