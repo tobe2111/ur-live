@@ -99,7 +99,9 @@ sellersRouter.get('/:id/public', async (c) => {
   try {
     const param = c.req.param('id');
     // 🚀 2026-07-11: 본문을 buildSellerPublicPayload(SSOT)로 위임 — 동작/캐시키/enrich 전부 기존과 동일.
-    const seller = await buildSellerPublicPayload(c.env, param);
+    // 🛍️ 2026-10-14: `withProducts` — 이 응답이 `/s/:username` 의 SSR 시드이고 그 표면의
+    //   크롤러 본문(`buildSellerNoscript`)의 **유일한 재료**다. 근거는 그 함수 머리말.
+    const seller = await buildSellerPublicPayload(c.env, param, { withProducts: true });
     if (!seller) {
       return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404);
     }

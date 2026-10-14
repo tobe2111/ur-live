@@ -14,6 +14,7 @@ import DealRow from '@/components/deal/DealRow'
 import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
+import { priceDisplay } from '@/shared/price-display'
 
 export interface VoucherProduct {
   id: number
@@ -37,10 +38,8 @@ export interface VoucherProduct {
 export const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: VoucherProduct; aboveFold: boolean }) {
   const navigate = useNavigate()
   const prefetchProduct = usePrefetchGroupBuyProduct()  // 🚑 2026-07-10: /vouchers/:id 와 동일 키·엔드포인트
-  const hasStrike = !!p.original_price && p.original_price > p.price
-  const discountRate = hasStrike
-    ? Math.round(((p.original_price! - p.price) / p.original_price!) * 100)
-    : (p.discount_rate || 0)
+  // 💸 2026-10-14: 할인율 규칙 사본 제거 — SSOT 가 `showOriginal`(취소선)과 `discount`(배지)를 함께 정한다.
+  const { showOriginal: hasStrike, discount: discountRate } = priceDisplay(p)
   // 🎫 2026-06-21 (대표 요청): 교환권은 리뷰/별점 미표시 — 구매수(소셜 proof)만.
   const soldCount = Number(p.sold_count || 0)
   const soldLabel = soldCount >= 10000
@@ -128,10 +127,8 @@ export const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: Vouc
 export const VoucherRow = memo(function VoucherRow({ p, aboveFold }: { p: VoucherProduct; aboveFold: boolean }) {
   const navigate = useNavigate()
   const prefetchProduct = usePrefetchGroupBuyProduct()  // 🚑 2026-07-10: /vouchers/:id 와 동일 키·엔드포인트
-  const hasStrike = !!p.original_price && p.original_price > p.price
-  const discountRate = hasStrike
-    ? Math.round(((p.original_price! - p.price) / p.original_price!) * 100)
-    : (p.discount_rate || 0)
+  // 💸 2026-10-14: 할인율 규칙 사본 제거 — SSOT 가 `showOriginal`(취소선)과 `discount`(배지)를 함께 정한다.
+  const { showOriginal: hasStrike, discount: discountRate } = priceDisplay(p)
   // 🎫 2026-06-21 (대표 요청): 교환권은 리뷰/별점 미표시 — 구매수만.
   const soldCount = Number(p.sold_count || 0)
   const soldLabel = soldCount >= 10000

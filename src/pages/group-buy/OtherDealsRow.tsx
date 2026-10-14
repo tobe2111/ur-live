@@ -11,6 +11,7 @@
  */
 import { cfImage } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
+import { priceDisplay } from '@/shared/price-display'
 
 export interface OtherDeal { id: number; name: string; price: number; original_price?: number | null; image_url?: string | null; discount_pct?: number | null }
 
@@ -30,7 +31,8 @@ export default function OtherDealsRow({ deals, sellerHandle, sellerUsername }: {
         </div>
         <div className="scrollbar-hide" style={{ display: 'flex', gap: 12, overflowX: 'auto', padding: '14px 18px 2px', scrollSnapType: 'x proximity', scrollPaddingInline: 18 }}>
           {deals.map((o) => {
-            const pct = o.discount_pct || (o.original_price && o.original_price > o.price ? Math.round((1 - o.price / o.original_price) * 100) : 0)
+            // 💸 2026-10-14: 규칙 사본 제거 → SSOT. 호출부가 이미 SSOT 로 계산해 넘기므로 `discount_pct` 는 선언값 자리다.
+            const pct = priceDisplay({ price: o.price, original_price: o.original_price, discount_rate: o.discount_pct }).discount
             return (
               <a key={o.id} href={`/pass/${o.id}`} style={{ flex: '0 0 152px', textDecoration: 'none', scrollSnapAlign: 'start' }}>
                 <div style={{ position: 'relative', width: 152, height: 152, borderRadius: 14, overflow: 'hidden', backgroundColor: 'var(--gbd-chip)', backgroundImage: o.image_url ? `url("${cfImage(o.image_url, { width: 300, format: 'auto' }) || o.image_url}")` : undefined, backgroundSize: 'cover', backgroundPosition: 'center' }}>

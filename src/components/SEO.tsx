@@ -1,6 +1,7 @@
 import { Helmet } from 'react-helmet-async'
 import { withSiteName } from '@/shared/seo/consumer-surfaces'
 import { ogImageAlt } from '@/shared/og-share-image'
+import { ROBOTS_NOINDEX } from '@/shared/seo/robots-directives'
 
 /**
  * 🌐 2026-10-12 — **`og:locale` 은 고정 `ko_KR` 이다.** 종전에는 i18n 언어로 바꾸고
@@ -83,7 +84,11 @@ export default function SEO({
     <Helmet>
       <title>{fullTitle}</title>
       <meta name="description" content={resolvedDescription} />
-      {noindex && <meta name="robots" content="noindex, nofollow" />}
+      {/* 🤖 2026-10-14: 여기는 오래 `noindex, nofollow` 리터럴이었고 서버는 `noindex, follow` 를
+            냈다. `react-helmet-async` 는 `meta[data-rh]` 만 질의해 **서버 태그를 지우지 않으므로**
+            둘이 공존하고, 구글은 충돌 시 가장 제한적인 쪽을 쓴다 ⇒ `nofollow` 가 이겨 크롤 열린
+            noindex 6표면 + 교환권 상세 2,260건이 막다른 길이었다. 값은 SSOT 하나로. */}
+      {noindex && <meta name="robots" content={ROBOTS_NOINDEX} />}
       <link rel="canonical" href={fullUrl} />
 
       {/* Open Graph */}

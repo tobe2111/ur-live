@@ -8,6 +8,7 @@ import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import api from '@/lib/api'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
+import { priceDisplay } from '@/shared/price-display'
 
 // 📱 2026-09-28 (대표 확정 *"아직 앱은 하나도 없어"*): App Store·Google Play 배지를 **전부 삭제**했다.
 //   여기 있던 링크는 실재하지 않는 앱의 스토어 주소(`id6745051422` · `com.urdeal.app`)라, 누르면
@@ -260,7 +261,7 @@ export default function IntroducePage() {
                 <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.4), transparent 35%, rgba(0,0,0,0.85))' }} />
                 {d.original_price && d.price && d.original_price > d.price && (
                   <div className="absolute top-2.5 left-2.5 flex items-center gap-1 px-2 py-1 rounded-md bg-red-500">
-                    <span className="text-[12px] font-extrabold text-white">{Math.round((1 - d.price / d.original_price) * 100)}%</span>
+                    <span className="text-[12px] font-extrabold text-white">{priceDisplay(d).discount}%</span>
                   </div>
                 )}
                 <div className="absolute bottom-2.5 left-2.5 right-2.5">

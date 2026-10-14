@@ -217,8 +217,10 @@ app.patch('/short-links/:id', async (c) => {
 })
 
 // 🎯 인플루언서 공용 풀 어드민 — 별도 파일로 분리(파일크기 상한). 같은 /api/admin/ads 경로로 마운트.
+// 🎛️ 카페 게이트를 **먼저** 마운트한다(2026-10-14) — 인플루언서 라우트의 `PATCH /influencer-pool/:id` 가
+//   `collect-gates` 를 id 로 잡아 "잘못된 ID" 400 을 냈다(어드민 카페 스위치가 저장되지 않았다). 순서를 바꾸지 말 것.
+app.route('/', adminAdsCollectGatesRoutes)
 app.route('/', adminAdsInfluencerRoutes)
 app.route('/', adminAdsPoolOpsRoutes)
-app.route('/', adminAdsCollectGatesRoutes)
 
 export { app as adminAdsRoutes }

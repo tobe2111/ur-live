@@ -125,4 +125,12 @@ export default [
     test: TEST,
     why: '목록 페이지 청크가 엔트리 뒤에 직렬로 따라와 로더 구간이 길어진다 — 에러는 안 난다.',
   },
+  {
+    name: '🎬 유어쇼츠 썸네일 신호가 떨어진 관측 div 에 붙는다',
+    file: 'src/components/home/UrShortsRail.tsx',
+    find: '  }, [wrapEl, near, nearData])',
+    replace: '  }, [near, nearData])',
+    test: 'src/tests/unit/urshorts-rail-detached-observer-2026-10-14.test.tsx',
+    why: '목록이 오면 빈 div 가 section 으로 바뀌는데 관측기가 옛 div 를 계속 본다 — 썸네일 0장(폰 재현 3/3).',
+  },
 ]

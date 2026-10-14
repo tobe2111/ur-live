@@ -17,6 +17,9 @@ import { priceDrop, summarize, sortWishlist, type WishlistSort } from './wishlis
 import BrandLoader from '@/components/brand/BrandLoader'
 import GroupBuyFeedCard from './main-home/GroupBuyFeedCard'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { readCachedLoc } from '@/shared/utils/cached-loc'
+import WishlistRecommend from './wishlist/WishlistRecommend'
+import { WishlistSummaryCard, WishlistRows } from './wishlist/WishlistMobile'
 // 🖼️ 폭·중단점은 워커의 카드 preload 와 같은 값이어야 한다(`shared/home-card-image` SSOT).
 import { HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_LG_QUERY } from '@/shared/home-card-image'
 
@@ -62,6 +65,9 @@ const WishlistPage: React.FC = () => {
   const tk = walletTokens[theme]
 
   const summary = summarize(wishlists)
+  // 📍 2026-10-14 (대표 확정 가안+나안): 카드에 주소·거리. 위치는 마지막 측위 캐시만 읽는다 —
+  //    찜 목록을 열었다고 위치 권한을 묻지 않는다(없으면 주소만 뜬다).
+  const [userLoc] = useState(() => readCachedLoc())
   const shown = sortWishlist(wishlists, sort)
 
   // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): ad-hoc 스피너 → BrandLoader (지갑 테마 표면과 자동 정합).
@@ -121,9 +127,11 @@ const WishlistPage: React.FC = () => {
             title={t('wishlist.title')}
             /* 인하가 없으면 그 말을 아예 안 한다 — "가격 내린 것 0개" 는 알려주는 게 아니라 실망시키는 문장이다. */
             subtitle={
-              summary.drops > 0
-                ? `${t('wishlist.subtitleCount', { count: wishlists.length })} · ${t('wishlist.dropCount', { count: summary.drops, defaultValue: '가격 내린 것 {{count}}개' })}`
-                : t('wishlist.subtitleCount', { count: wishlists.length })
+              [
+                t('wishlist.subtitleCount', { count: wishlists.length }),
+                summary.drops > 0 ? t('wishlist.dropCount', { count: summary.drops, defaultValue: '가격 내린 것 {{count}}개' }) : '',
+                /* 💰 아끼는 돈은 PC 레일·모바일 요약 카드가 말한다(2026-10-14 모바일 나안) — 여기서 또 말하지 않는다. */
+              ].filter(Boolean).reduce((acc, x, i) => (i === 0 ? x : `${acc} · ${x}`), '')
             }
           />
         </div>
@@ -150,17 +158,23 @@ const WishlistPage: React.FC = () => {
              찜 목록만 다른 모양이면 같은 상품이 화면마다 달라 보인다(그루폰 wishlist 도 같은 카드다).
              하트는 카드가 내장하고 있어 여기서 따로 그리지 않는다 — 누르면 목록에서 빠진다. */
           <>
+            {/* 📱 2026-10-14 (대표 확정 — 모바일 나안): 레일 자리가 없는 폰은 맨 위 요약 카드. */}
+            <WishlistSummaryCard s={summary} />
             <div className="mb-4">
               <WishlistSortChips value={sort} onChange={setSort} />
             </div>
             {/* 🖥️ PC 만 좌측 요약 레일 — 모바일은 세로가 귀해서 같은 정보를 제목 밑 한 줄이 맡는다. */}
             <div className="lg:grid lg:grid-cols-[220px_1fr] lg:gap-6 lg:items-start">
               <WishlistSummaryRail s={summary} />
+              {/* 📱 폰은 사진 작은 한 줄 목록(`DealRow`), PC 는 홈과 같은 격자 카드. 둘을 동시에 그리지 않는다
+                  — 숨긴 쪽 사진까지 받게 된다. */}
+              {!isLgViewport ? <WishlistRows items={shown} userLoc={userLoc} /> : (
               <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 ${DEAL_GRID_GAP}`}>
                 {shown.map((item, i) => (
                   <GroupBuyFeedCard
                     key={item.id}
                     imgWidth={cardImgWidth}
+                    userLoc={userLoc}
                     aboveFold={i < 4}
                     flags={<WishlistFlag drop={priceDrop(item)} />}
                     p={{
@@ -175,6 +189,9 @@ const WishlistPage: React.FC = () => {
                       seller_id: item.seller_id,
                       seller_name: item.seller_name,
                       restaurant_name: item.restaurant_name,
+                      restaurant_address: item.restaurant_address,
+                      restaurant_lat: item.restaurant_lat,
+                      restaurant_lng: item.restaurant_lng,
                       expires_at: item.expires_at,
                       group_buy_status: item.group_buy_status,
                       dominant_color: item.dominant_color,
@@ -182,7 +199,10 @@ const WishlistPage: React.FC = () => {
                   />
                 ))}
               </div>
+              )}
             </div>
+            {/* 💗 2026-10-14 (대표 확정 가안+나안): 찜이 적으면 비던 자리를 비슷한 이용권이 채운다. */}
+            <WishlistRecommend wished={wishlists} imgWidth={cardImgWidth} userLoc={userLoc} />
           </>
         )}
       </div>

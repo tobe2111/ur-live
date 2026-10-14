@@ -15,6 +15,7 @@ import { usePrefetchProduct } from '@/hooks/usePrefetchProduct'
 import { SORT_LABELS, ITEMS_PER_PAGE } from './browse/types'
 import type { Product, SortOption } from './browse/types'
 import BrowseProductCard from './browse/BrowseProductCard'
+import { priceDisplay } from '@/shared/price-display'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types/RecentlyViewedSection 을 ./browse/ 로 추출.
 //   미사용 lucide 아이콘 (Clock — RecentlyViewed 내부로 이동) 정리.
@@ -357,7 +358,8 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
       case 'price_asc': result.sort((a, b) => pr(a) - pr(b)); break
       case 'price_desc': result.sort((a, b) => pr(b) - pr(a)); break
       case 'popular': result.sort((a, b) => (Number(b.sold_count) || 0) - (Number(a.sold_count) || 0)); break
-      case 'discount': result.sort((a, b) => (Number(b.discount_rate) || 0) - (Number(a.discount_rate) || 0)); break
+      // 🐛 2026-10-14: 생값은 라이브에서 전부 0 이라 정렬이 죽는다(유어샵과 같은 자리). SSOT 경유.
+      case 'discount': result.sort((a, b) => priceDisplay(b).discount - priceDisplay(a).discount); break
       case 'newest': result.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0)); break
     }
     return result

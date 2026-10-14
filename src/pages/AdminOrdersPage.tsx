@@ -65,15 +65,8 @@ interface Order {
   items?: OrderItem[]
 }
 
-// 🛡️ 2026-06-14: 개인정보 마스킹 — 운영자 목록에서 연락처 일부 가림 (상세 모달은 전체 표시).
-function maskPhone(phone?: string | null): string {
-  if (!phone) return '-'
-  const d = phone.replace(/[^0-9]/g, '')
-  if (d.length < 7) return phone
-  // 010-1234-5678 → 010-****-5678
-  if (d.length >= 10) return `${d.slice(0, 3)}-****-${d.slice(-4)}`
-  return `${d.slice(0, 3)}-****`
-}
+// 👁️ 2026-10-14 대표 *"다 보이게 해줘"* — 목록의 연락처 마스킹(2026-06-14)을 걷었다. CS 가 목록에서 바로 연락한다.
+//   유저 관리 목록(admin-users.routes)과 같은 결정이다. 다시 가리려면 두 곳을 함께.
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
   card: '카드', 간편결제: '간편결제', easypay: '간편결제', 'EASY_PAY': '간편결제',
@@ -443,7 +436,7 @@ export default function AdminOrdersPage() {
       </div>
 
       {/* 주문 테이블 */}
-      {/* 🛡️ 2026-06-14: 컬럼 상세화 — 주문번호/일시 / 고객(명·이메일·연락처마스킹) / 상품요약(수량) /
+      {/* 🛡️ 2026-06-14: 컬럼 상세화 — 주문번호/일시 / 고객(명·이메일·연락처) / 상품요약(수량) /
           판매자 / 결제수단 / 주문상태 / 결제상태 / 금액 / 배송(송장). 한눈에 "누가 무엇을 얼마에" 파악. */}
       <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white overflow-hidden">
         <div className="overflow-x-auto">
@@ -492,7 +485,7 @@ export default function AdminOrdersPage() {
                     <td className="px-4 py-3 max-w-[200px]">
                       <p className="text-xs font-semibold text-gray-900">{order.shipping_name || order.user_name || '-'}</p>
                       {order.user_email && <p className="text-xs text-gray-400 truncate">{order.user_email}</p>}
-                      <p className="text-xs text-gray-400">{maskPhone(order.shipping_phone)}</p>
+                      <p className="text-xs text-gray-400">{order.shipping_phone || '-'}</p>
                     </td>
                     <td className="px-4 py-3 max-w-[240px]">
                       <p className="text-xs text-gray-900 line-clamp-2">{productSummary}</p>

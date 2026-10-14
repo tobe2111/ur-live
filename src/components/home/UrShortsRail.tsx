@@ -123,7 +123,12 @@ export default function UrShortsRail() {
   const [near, setNear] = useState(false)
   const [nearData, setNearData] = useState(false)
   const [edge, setEdge] = useState({ l: false, r: false })
-  const wrapRef = useRef<HTMLDivElement | null>(null)
+  // 🩸 2026-10-14 (대표 신고 *"유어쇼츠가 로딩에 걸려서 안 보이는 경우가 많아"*): 관측 대상을
+  //    `useRef` 로 두면 **목록이 오는 순간 빈 관측 div 가 <section> 으로 바뀌어도 관측기는 옛 div
+  //    (문서에서 떨어진 것)를 계속 본다** — 떨어진 요소는 다시는 교차하지 않으므로 300px 신호가
+  //    영원히 안 와 썸네일이 0장으로 굳는다. 폰(서버가 첫 화면을 그려 페이지가 처음부터 긴 경우)
+  //    에서 재현 3/3. ⇒ 콜백 ref 로 **지금 붙어 있는 요소**를 state 로 들고, 바뀌면 관측기를 다시 건다.
+  const [wrapEl, setWrapEl] = useState<HTMLElement | null>(null)
   const railRef = useRef<HTMLDivElement | null>(null)
 
   /**
@@ -143,7 +148,7 @@ export default function UrShortsRail() {
    *   종전 300px 그대로 둔다. 스크롤을 아예 안 한 사람의 요청 수는 **여전히 0** 이다.
    */
   useEffect(() => {
-    const el = wrapRef.current
+    const el = wrapEl
     if (!el) return
     if (typeof IntersectionObserver === 'undefined') { setNear(true); setNearData(true); return }
     // 이름을 `mk` 로 두지 않는다 — `check-branch-scope` 가 그 이름을 **주입 지문**으로 쓴다
@@ -160,7 +165,7 @@ export default function UrShortsRail() {
       near ? null : watchFrom('300px', () => setNear(true)),
     ]
     return () => ios.forEach((io) => io?.disconnect())
-  }, [near, nearData])
+  }, [wrapEl, near, nearData])
 
   useEffect(() => {
     if (!nearData) return
@@ -194,10 +199,10 @@ export default function UrShortsRail() {
    * 단 **관측용 빈 div 는 남긴다**: 이게 없으면 IntersectionObserver 가 붙을 곳이 없어
    * 영원히 데이터를 안 부른다(첫 판에서 실제로 그랬다).
    */
-  if (items.length === 0) return <div ref={wrapRef} aria-hidden="true" />
+  if (items.length === 0) return <div ref={setWrapEl} aria-hidden="true" />
 
   return (
-    <section className="ur-home-panel ur-panel-ink" ref={wrapRef}>
+    <section className="ur-home-panel ur-panel-ink" ref={setWrapEl}>
       <div className="mb-3 flex items-end justify-between gap-4">
         {/* 🌑 잉크 패널 위라 글자는 **테마 분기 없이 늘 밝다**(위 .ur-panel-ink 주석).
             흰 알파를 쓰는 이유: 회색 토큰은 라이트 토큰으로 읽혀 짝(dark:)을 요구받는데,

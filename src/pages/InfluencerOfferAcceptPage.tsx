@@ -3,6 +3,7 @@
  *   제안 내용(매장·이용권·커미션%) 보여주고, 카카오 로그인 → 수락 → 전용 홍보 링크 발급.
  *   noindex(초대장 — 검색 노출 대상 아님).
  */
+import { ROBOTS_NOINDEX } from '@/shared/seo/robots-directives'
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
@@ -54,7 +55,7 @@ export default function InfluencerOfferAcceptPage() {
 
   return (
     <div className="min-h-[100dvh] bg-white dark:bg-[#0A0A0A] flex items-center justify-center p-5">
-      <Helmet><meta name="robots" content="noindex, nofollow" /><title>협업 제안 - 유어딜</title></Helmet>
+      <Helmet><meta name="robots" content={ROBOTS_NOINDEX} /><title>협업 제안 - 유어딜</title></Helmet>
       <div className="w-full max-w-md">
         {error && !offer ? (
           <div className="text-center space-y-2">

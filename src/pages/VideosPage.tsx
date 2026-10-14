@@ -9,6 +9,7 @@ import { loadYouTubePlayerApi, killCaptions, type YtPlayer } from './videos/yout
 import { priceDisplay } from '@/shared/price-display'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
+import NearbyPassesCard, { useNearbyFeed } from './videos/NearbyPassesCard'
 
 /**
  * 🎬 `/videos` — 유어쇼츠 뷰어 (2026-09-07 대표 확정: 주소는 `/videos`).
@@ -94,6 +95,9 @@ export default function VideosPage() {
   // 재생기를 만드는 시점의 영상 id. 의존성에 넣으면 영상마다 재생기를 새로 만들게 된다.
   const wantIdRef = useRef<string | null>(null)
   wantIdRef.current = wantId
+  // 🎬 2026-10-14 (시안 ② 나안): 이용권 없는 영상의 흰 카드용 인기 이용권. **그런 영상을 처음 만났을 때 한 번**
+  //    받는다(홈 피드와 같은 예열 주소라 엣지 캐시가 받는다 — 넘길 때마다 다시 부르지 않는다).
+  const nearbyFeed = useNearbyFeed(!!cur && !cur.product_id)
 
   const go = useMemo(() => (d: 1 | -1) => {
     setItems((list) => {
@@ -378,6 +382,10 @@ export default function VideosPage() {
             구매
           </Link>
         </div>
+      ) : cur && nearbyFeed ? (
+        /* 🎬 2026-10-14 대표 *"없을 때에도 흰색 프레임은 두고 안내"* — 같은 자리·같은 흰 카드에
+           영상 속 지역의 인기 이용권 세 장. 고를 게 없으면(피드 실패·빈 목록) 종전처럼 안 그린다. */
+        <NearbyPassesCard feed={nearbyFeed} regionSi={cur.region_si} />
       ) : null}
     </div>
   )

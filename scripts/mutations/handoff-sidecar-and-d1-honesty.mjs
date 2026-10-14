@@ -96,6 +96,14 @@ export default [
   },
 
   {
+    name: '인계 가드 앵커 — 판정 하나에만 있는 문구로 되돌린다(가드가 제 일을 할 때 시험이 터진다)',
+    file: T_SIDECAR,
+    find: "const VERDICT_ANCHOR = '인계 문서'",
+    replace: "const VERDICT_ANCHOR = '인계 문서 동기화'",
+    test: T_SIDECAR,
+    why: '그 문구는 ✅ 경로에만 있다 — 소스를 바꿨는데 인계가 없는 브랜치(= 가드가 신고해야 하는 상태)마다 시험이 빨간불이 되고, main 은 skip 이라 몇 달간 안 보인다(PR #1791 이 CI 를 그걸로 네 번 태웠다).',
+  },
+  {
     name: '인계 목차 — merge=union 을 되돌린다(지운 블록이 조용히 되살아난다)',
     file: '.gitattributes',
     find: '#   가드: src/tests/unit/handoff-index-sidecar-2026-10-06.test.ts',

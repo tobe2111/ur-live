@@ -73,7 +73,8 @@ export default function PoolFilters(p: PoolFiltersProps) {
       </select>
       <select value={p.tier} onChange={e => p.setTier(e.target.value)} className={SEL} title="유어딜 딜엔 마이크로/중형(1만~50만)이 효율적">
         <option value="">전체 규모</option>
-        <option value="sweet">스위트스팟 (1만~50만)</option>
+        <option value="reach1k">이웃·구독 1천+</option>
+        <option value="sweet">스위트스팟 (블로그 1천+ · 유튜브 1만~50만)</option>
         <option value="nano">나노 (~1만)</option>
         <option value="micro">마이크로 (1만~10만)</option>
         <option value="mid">중형 (10만~50만)</option>

@@ -9,11 +9,12 @@ import { formatNumber } from '@/utils/format'
 import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'
 import { seededColor, cardGradient } from '@/utils/card-gradient'
 import type { Product } from './types'
+import { priceDisplay } from '@/shared/price-display'
 
 export default function FeaturedCard({ product, to, eyebrow }: { product: Product; to?: string; eyebrow?: string }) {
   const navigate = useNavigate()
-  const disc = product.discount_rate || (product.original_price && product.original_price > 0
-    ? Math.round((1 - (product.price || 0) / product.original_price) * 100) : 0)
+  // 💸 2026-10-14: 할인율 규칙 사본 제거 — SSOT 경유(`||` 폴백과 결과 동일, 갈릴 수가 없어진다).
+  const disc = priceDisplay(product).discount
   const grad = cardGradient(product.dominant_color || seededColor(product.id))
   return (
     <button

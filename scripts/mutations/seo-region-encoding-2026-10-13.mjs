@@ -165,8 +165,10 @@ export default [
   {
     name: '🎬 /urshorts 가 VideoObject 를 낸다 (우리가 업로더가 아니다)',
     file: 'src/worker/utils/urshorts-noscript.ts',
-    find: "      ? `<noscript>${h1}<ul>${lines.map((l) => `<li>${l}</li>`).join('')}</ul></noscript>`",
-    replace: "      ? `<noscript data-x=\"VideoObject\">${h1}<ul>${lines.map((l) => `<li>${l}</li>`).join('')}</ul></noscript>`",
+    // 🩸 2026-10-14 재조준 — 딜 링크가 들어오며 `<li>` 조립이 행 쪽으로 옮겨가 이 앵커가 낡았다.
+    //   지키는 불변식(**우리가 업로더가 아닌 영상에 VideoObject 를 내지 않는다**)은 그대로다.
+    find: "      ? `<noscript>${h1}<ul>${lines.join('')}</ul></noscript>`",
+    replace: "      ? `<noscript data-x=\"VideoObject\">${h1}<ul>${lines.join('')}</ul></noscript>`",
     test: TEST,
     why:
       '우리가 올리지 않은 영상에 `VideoObject` 를 발행하면 원 채널의 리치결과와 경쟁하면서 ' +
