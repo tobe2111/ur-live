@@ -138,6 +138,12 @@ describe('④ 교환권 페이지 상단 배너(라안) — 홈 배너와 같은
     const v = read('src/pages/VouchersPage.tsx')
     expect(v.match(/<HomeBannerStrip variant="vouchers" \/>/g)?.length).toBe(2)
     expect(v).toMatch(/<div className="-mx-\[14px\]"><HomeBannerStrip variant="vouchers" \/><\/div>/)
-    expect(v).toMatch(/\{!embedded && <div className="ur-content-wide px-\[2px\] \[&:not\(:empty\)\]:pt-3"><HomeBannerStrip variant="vouchers" \/><\/div>\}/)
+    // 🔀 2026-10-14 안 C: 폰은 배너가 **머리**다(`VouchersHero` → `BannerHeroRail`, 같은 테이블·같은 캐러셀).
+    //   목록 위 띠는 쇼핑 탭 모드(탭 바가 머리일 때)로만 남는다.
+    expect(v).toMatch(/\{!embedded && !heroMode && <div className="ur-content-wide px-\[2px\] \[&:not\(:empty\)\]:pt-3"><HomeBannerStrip variant="vouchers" \/><\/div>\}/)
+    expect(v).toMatch(/\{heroMode && <VouchersHero>/)
+    const hero = read('src/pages/vouchers/VouchersHero.tsx')
+    expect(hero).toContain("useHomeBannersState('vouchers')")
+    expect(hero).toMatch(/<BannerHeroRail banners=\{banners\} \/>/)
   })
 })

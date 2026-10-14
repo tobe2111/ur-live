@@ -106,13 +106,24 @@ describe('① 목록 줄 = 진짜 VoucherRow', () => {
 describe('② 페이지 크롬 클래스 = 소스', () => {
   it('VouchersPage — 페이지 · reveal 그룹 · 정렬 줄 · 목록', () => {
     const s = code('src/pages/VouchersPage.tsx')
-    for (const k of ['page', 'reveal', 'balanceWrap', 'sortBar', 'sortTitle', 'sortCount', 'listWrap', 'list'] as const) {
+    for (const k of ['page', 'reveal', 'sortBar', 'sortTitle', 'sortCount', 'listWrap', 'list'] as const) {
       expect(s, k).toContain(C[k])
     }
   })
-  it('상단 바 · 비로그인 잔액 바 · 칩 예약 · 정렬 버튼', () => {
-    const bar = code('src/pages/vouchers/VouchersTopBar.tsx')
-    expect(bar).toContain(C.topBar); expect(bar).toContain(C.topTitle); expect(bar).toContain(C.topRow.trim())
+  it('머리 배너 판 · 걸침 = VouchersHero (안 C, 2026-10-14)', async () => {
+    const { VOUCHERS_HERO_CLS } = await import('@/pages/vouchers/VouchersHero')
+    expect(C.hero).toBe(VOUCHERS_HERO_CLS.hero)
+    expect(C.overlap).toBe(VOUCHERS_HERO_CLS.overlap)
+    // 응답 전에도 같은 판을 그린다 — '아직 모름'에서 접으면 서버 첫 화면과 갈린다.
+    const hero = code('src/pages/vouchers/VouchersHero.tsx')
+    expect(hero).toMatch(/if \(settled && banners\.length === 0\)/)
+    // 배너 카드 높이 = 예약 판 높이 — 다르면 배너가 도착하는 순간 판 안에서 잘리거나 빈 띠가 남는다.
+    const { HERO_CARD_CLS } = await import('@/components/home/HomeBannerStrip')
+    const h = VOUCHERS_HERO_CLS.hero.match(/h-\[(\d+)px\]/)?.[1]
+    expect(h).toBeTruthy()
+    expect(HERO_CARD_CLS).toContain(`!h-[${h}px]`)
+  })
+  it('비로그인 잔액 바 · 칩 예약 · 정렬 버튼', () => {
     const bal = code('src/pages/vouchers/DealBalanceCard.tsx')
     expect(bal).toContain(C.balanceBar.replace(' h-11 px-4', '')); expect(bal).toContain("'h-11 px-4'")
     expect(bal).toContain(C.balanceText); expect(bal).toContain(C.balanceLink); expect(bal).toContain('딜을 모으면 더 싸게 살 수 있어요')
