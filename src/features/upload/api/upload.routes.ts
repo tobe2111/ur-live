@@ -21,6 +21,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { rateLimit } from '../../../worker/middleware/rate-limit'
+import { BUSINESS_CERT_MAX_FILE_BYTES, BANNER_VIDEO_MAX_FILE_BYTES } from '../../../shared/upload-limits'
 import { requireAdmin } from '../../../worker/middleware/auth'
 import { safeError } from '../../../worker/utils/safe-error'
 
@@ -34,7 +35,11 @@ type Bindings = {
 export const uploadRoutes = new Hono<{ Bindings: Bindings }>()
 
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'])
-const MAX_SIZE = 10 * 1024 * 1024  // 10MB
+const MAX_SIZE = 10 * 1024 * 1024  // 10MB — `/upload/image` 는 전역 1MB 가 먼저 자른다(이 값은 도달 불가)
+// 📤 2026-10-13 대표 승인 — 두 자리만 전역 천장 예외. 값은 SSOT 에서 받는다(워커 미들웨어와 같은 수).
+const BIZ_CERT_MAX = BUSINESS_CERT_MAX_FILE_BYTES
+const VIDEO_MAX = BANNER_VIDEO_MAX_FILE_BYTES
+const mb = (n: number) => Math.round(n / 1024 / 1024 * 10) / 10
 
 // 매직 바이트 (확장자 위변조 차단).
 const MAGIC_BYTES: Record<string, number[][]> = {
@@ -249,8 +254,8 @@ uploadRoutes.post('/upload/banner-video', cors(), requireAdmin(), rateLimit({ ac
 
     const file = formData.get('file')
     if (!(file instanceof File)) return c.json({ success: false, error: 'file field 필요' }, 400)
-    if (file.size > MAX_SIZE) {
-      return c.json({ success: false, error: `영상이 너무 큽니다 (최대 ${MAX_SIZE / 1024 / 1024}MB · 5MB 이하 권장)` }, 413)
+    if (file.size > VIDEO_MAX) {
+      return c.json({ success: false, error: `영상이 너무 큽니다 (최대 ${mb(VIDEO_MAX)}MB · 5MB 이하 권장)` }, 413)
     }
     if (file.size < 1000) return c.json({ success: false, error: '파일이 너무 작습니다' }, 400)
     if (!VIDEO_MIME.has(file.type)) {
@@ -286,7 +291,7 @@ uploadRoutes.post('/upload/business-cert', cors(), rateLimit({ action: 'biz-cert
     if (!formData) return c.json({ success: false, error: 'multipart/form-data 필요' }, 400)
     const file = formData.get('file')
     if (!(file instanceof File)) return c.json({ success: false, error: 'file field 필요' }, 400)
-    if (file.size > MAX_SIZE) return c.json({ success: false, error: `파일이 너무 큽니다 (최대 ${MAX_SIZE / 1024 / 1024}MB)` }, 413)
+    if (file.size > BIZ_CERT_MAX) return c.json({ success: false, error: `파일이 너무 큽니다 (최대 ${mb(BIZ_CERT_MAX)}MB)` }, 413)
     if (file.size < 100) return c.json({ success: false, error: '파일이 너무 작습니다' }, 400)
     if (!ALLOWED_MIME.has(file.type)) return c.json({ success: false, error: `허용 파일 타입: ${[...ALLOWED_MIME].join(', ')}` }, 415)
     const buffer = await file.arrayBuffer()

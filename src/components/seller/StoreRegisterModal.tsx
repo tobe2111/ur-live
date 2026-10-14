@@ -40,7 +40,7 @@ import api from '@/lib/api'
 import KakaoMapPicker, { type KakaoPlace } from '@/components/KakaoMapPicker'
 import { formatBusinessNumber } from '@/pages/seller-register/RegisterFields'
 import { formatPhone, isValidMobilePhone, digitsOnly } from '@/utils/format-phone'
-import { compressForDocument } from '@/lib/image-compress'
+import { compressForDocument } from '@/lib/image-compress'; import { BUSINESS_CERT_MAX_FILE_BYTES } from '@/shared/upload-limits'
 import { readStoreReferrer, clearStoreReferrer } from '@/utils/store-referrer'
 import { enterStoreSeat } from '@/utils/enter-store'
 import { toast } from '@/hooks/useToast'
@@ -175,9 +175,9 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
   async function uploadCert(file: File) {
     setUploading(true)
     try {
-      // 📄 2026-09-15 (대표 신고 413): 폰 사진은 서버 상한(10MB)을 쉽게 넘는다. 여기만 압축을 안 거쳐
-      //   등록증 단계에서 매장 등록이 통째로 막혔다. 실패해도 원본으로 시도한다(압축이 등록을 막지 않는다).
+      // 📄 압축은 실패해도 원본으로 시도(2026-09-15) · 천장은 서버와 같은 SSOT 값(2026-10-13 대표 승인 2.2MB)
       const prepared = await compressForDocument(file).catch(() => file)
+      if (prepared.size > BUSINESS_CERT_MAX_FILE_BYTES) { toast.error('이미지가 너무 커요 — 다시 찍거나 다른 사진을 골라주세요'); return }
       const fd = new FormData()
       fd.append('file', prepared)
       const r = await api.post('/api/upload/business-cert', fd, { headers: { 'Content-Type': 'multipart/form-data' } })

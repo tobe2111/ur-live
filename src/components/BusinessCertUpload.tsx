@@ -7,6 +7,7 @@ import { useRef, useState, type ChangeEvent } from 'react'
 import { ImagePlus } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { compressForDocument } from '@/lib/image-compress'
+import { BUSINESS_CERT_MAX_FILE_BYTES } from '@/shared/upload-limits'
 
 export default function BusinessCertUpload({ value, onChange, required, hideLabel }: {
   value: string
@@ -26,7 +27,7 @@ export default function BusinessCertUpload({ value, onChange, required, hideLabe
       // 📄 2026-09-15: 종전엔 10MB 넘으면 **그냥 거절**했다 — 폰 사진은 그걸 쉽게 넘는데 사장님이
       //   할 수 있는 일이 없었다(가입이 거기서 막힌다). 거절 대신 줄여서 올린다.
       const prepared = await compressForDocument(file).catch(() => file)
-      if (prepared.size > 10 * 1024 * 1024) { toast.error('이미지가 너무 커요 — 다시 찍거나 다른 사진을 골라주세요'); return }
+      if (prepared.size > BUSINESS_CERT_MAX_FILE_BYTES) { toast.error('이미지가 너무 커요 — 다시 찍거나 다른 사진을 골라주세요'); return }
       const fd = new FormData()
       fd.append('file', prepared)
       const res = await fetch('/api/upload/business-cert', { method: 'POST', body: fd })

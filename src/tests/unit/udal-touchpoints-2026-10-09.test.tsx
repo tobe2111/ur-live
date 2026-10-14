@@ -65,19 +65,25 @@ describe('② 이용권 공유 카드', () => {
     expect(svg).not.toMatch(/원<|%\s*할인|할인</)
   })
 
-  it('이용권 상세의 og:image 는 공유 카드이고, JSON-LD 는 상품 사진을 유지한다', () => {
+  // 🔁 2026-10-13 재조준(대표 확정 안 1-가): 사진이 있으면 **사진 가득 카드**, 없을 때만 종전 SVG 카드.
+  it('이용권 상세의 og:image — 사진이 있으면 가득 채운 사진, 없으면 종전 카드 · JSON-LD 는 원본 사진', () => {
     const payload = JSON.stringify({ data: { id: 2888, name: '치즈돈가스', restaurant_name: '홍대돈까스', price: 9000, image_url: 'https://img.example.com/a.jpg', group_buy_status: 'active' } })
     const m = buildDetailMeta(payload, 'https://urdeal.kr', '/pass/2888')
-    expect(m?.ogImage).toBe(`https://urdeal.kr/api/og/group-buy/2888?v=${PASS_OG_VERSION}`)
+    expect(m?.ogImage).toBe('https://urdeal.kr/cdn-cgi/image/width=1200,height=630,quality=85,format=jpeg,onerror=redirect,fit=cover,gravity=auto/https://img.example.com/a.jpg')
     expect(m?.jsonLd).toContain('https://img.example.com/a.jpg')
+    const noPhoto = JSON.stringify({ data: { id: 2888, name: '치즈돈가스', price: 9000, group_buy_status: 'active' } })
+    expect(buildDetailMeta(noPhoto, 'https://urdeal.kr', '/pass/2888')?.ogImage).toBe(`https://urdeal.kr/api/og/group-buy/2888?v=${PASS_OG_VERSION}`)
   })
 
   it('상세 페이지의 카카오 공유 버튼(모바일·PC 둘 다)도 같은 판 번호의 카드 주소를 보낸다', () => {
     const page = stripComments(R('pages/GroupBuyDetailPage.tsx'))
-    expect(page.match(/passShareCardUrl\(productId\)/g)?.length).toBe(2)
+    expect(page.match(/passShareCardUrl\(productId, undefined, detail\.image_url\)/g)?.length).toBe(2)
     expect(page).not.toMatch(/[iI]mageUrl=\{`[^`]*\/api\/og\/group-buy\//)
     expect(passShareCardUrl(7)).toBe(`https://urdeal.kr/api/og/group-buy/7?v=${PASS_OG_VERSION}`)
     expect(passShareCardUrl(7)).toMatch(/\?v=\d+$/)
+    // 사진을 넘기면 서버 og:image 와 **같은** 사진 가득 카드 주소다(두 벌이면 갈린다)
+    expect(passShareCardUrl(7, undefined, 'https://img.example.com/a.jpg')).toBe('https://urdeal.kr/cdn-cgi/image/width=1200,height=630,quality=85,format=jpeg,onerror=redirect,fit=cover,gravity=auto/https://img.example.com/a.jpg')
+    expect(passShareCardUrl(7, undefined, 'https://img.example.com/a.jpg')).not.toContain('fit=pad')
   })
 
   it('유달이를 못 읽으면 유달이 없이도 올바른 카드를 그린다', () => {

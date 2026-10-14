@@ -28,3 +28,17 @@ export function bodyLimit(maxBytes = 1_000_000) {
     return next();
   };
 }
+
+/**
+ * 경로마다 천장이 다른 버전 — 천장 표는 `shared/upload-limits.ts` `apiBodyLimitFor` 가 SSOT.
+ * 요청마다 미들웨어를 새로 만들지 않도록 천장값별로 한 번만 만들어 둔다.
+ */
+export function bodyLimitByPath(limitFor: (path: string) => number) {
+  const cache = new Map<number, ReturnType<typeof bodyLimit>>()
+  return (c: Context, next: Next) => {
+    const max = limitFor(c.req.path)
+    let mw = cache.get(max)
+    if (!mw) { mw = bodyLimit(max); cache.set(max, mw) }
+    return mw(c, next)
+  }
+}

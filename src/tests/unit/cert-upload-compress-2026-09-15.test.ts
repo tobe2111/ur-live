@@ -55,9 +55,10 @@ describe('② 압축이 등록을 막지 않는다 (fail-soft)', () => {
 describe('③ 가입 경로가 큰 사진을 "그냥 거절" 하지 않는다', () => {
   it('압축 전 크기로 잘라내던 옛 가드가 되살아나지 않는다', () => {
     // 종전: `if (file.size > 10MB) { toast.error(...); return }` — 폰 사진은 그걸 넘는데 할 수 있는 일이 없었다.
-    expect(SIGNUP).not.toMatch(/if \(file\.size > 10 \* 1024 \* 1024\)/)
+    expect(SIGNUP).not.toMatch(/if \(file\.size > /)
     // 압축 **뒤에도** 넘으면 그때는 말해 준다(그건 정당한 거절이다).
-    expect(SIGNUP).toMatch(/prepared\.size > 10 \* 1024 \* 1024/)
+    // 🔁 2026-10-13 재조준: 손으로 적은 10MB → 서버와 같은 SSOT 상수(2.2MB 천장, 대표 승인).
+    expect(SIGNUP).toMatch(/prepared\.size > BUSINESS_CERT_MAX_FILE_BYTES/)
   })
 })
 

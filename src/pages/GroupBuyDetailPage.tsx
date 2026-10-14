@@ -569,7 +569,7 @@ export default function GroupBuyDetailPage() {
         productId={detail.id}
         title={detail.name}
         shareDescription={`${detail.restaurant_name ? detail.restaurant_name + ' · ' : ''}${detail.group_buy_current}명 함께 구매 중 · ${displayDiscountPct > 0 ? `${displayDiscountPct}% 할인` : '공동구매 특가'}${myUserId ? ' · 친구 초대 시 양쪽 0.5% 보너스 (첫 1회)' : ''}`}
-        shareImageUrl={passShareCardUrl(productId)}
+        shareImageUrl={passShareCardUrl(productId, undefined, detail.image_url)}
         shareLink={shareLink}
         myUserId={myUserId}
         price={Number((detail as { deal_only?: number }).deal_only) === 1 ? undefined : detail.price}
@@ -643,7 +643,7 @@ export default function GroupBuyDetailPage() {
             <KakaoShareButton
               title={`${detail.name} 공구 참여하기`}
               description={`${detail.restaurant_name ? detail.restaurant_name + ' · ' : ''}${detail.group_buy_current}명 함께 구매 중`}
-              imageUrl={passShareCardUrl(productId)}
+              imageUrl={passShareCardUrl(productId, undefined, detail.image_url)}
               link={shareLink}
               buttonText="나도 참여하기"
               {...(Number((detail as { deal_only?: number }).deal_only) === 1 ? {} : {
