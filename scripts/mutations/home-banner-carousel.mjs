@@ -94,4 +94,12 @@ export default [
     test: GUARD,
     why: '끝에서 오른쪽이 처음으로 이어지면 처음에서 왼쪽도 끝으로 이어져야 한다.',
   },
+  {
+    name: '📏 배너 제목이 다시 24px 로 커진다',
+    file: STRIP,
+    find: 'max-w-[64%] text-[17px] font-bold',
+    replace: 'max-w-[64%] text-[24px] font-bold',
+    test: GUARD,
+    why: '대표가 "배너 속 글자 크기들이 커" 라고 바로잡은 값이다(2026-10-14). 크면 사진의 주인공을 글자가 덮는다.',
+  },
 ]

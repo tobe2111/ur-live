@@ -114,3 +114,11 @@ describe('🖥️ PC — 한 줄에 세 장 + 좌우 화살표 (대표 확정 "�
     expect(RAIL).toContain('first={i < perView}')
   })
 })
+
+describe('📏 글자는 이름표 크기 (2026-10-14 대표 "배너 속 글자 크기들이 커")', () => {
+  it('제목 17px · 설명 12px — 사진이 주인공이다', () => {
+    // 이 파일엔 다른 배너 부품도 {b.title} 을 17px 로 그린다 — 띠 카드(max-w-[64%])로 앵커한다.
+    expect(SRC).toMatch(/<strong className="block max-w-\[64%\] text-\[17px\] [^"]*">\{b\.title\}/)
+    expect(SRC).toMatch(/<span className="block max-w-\[64%\] [^"]*\btext-\[12px\][^"]*">\{b\.description\}/)
+  })
+})
