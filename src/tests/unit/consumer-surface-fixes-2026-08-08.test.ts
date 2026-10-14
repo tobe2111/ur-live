@@ -56,11 +56,11 @@ describe('② 카테고리를 고르면 그 카테고리만 보인다 (PC 홈)',
 
   it("🔴 카테고리를 모르는 위 줄(배너·순위·지역)은 category === 'all' 일 때만 렌더된다", () => {
     // 이 조건이 빠지면 숙소를 눌러도 화면 맨 위가 카테고리 무관한 블록으로 남는다.
-    // 🧩 2026-10-14 시안 4: 편성 섹션 → [큰 배너·순위·지역] 으로 바뀌었고 게이트는 그 셋을 함께 감싼다.
+    // 🧩 2026-10-14 시안 4: [큰 배너·편성 섹션·지역] 으로 바뀌었고 게이트는 그 셋을 함께 감싼다.
     const gate = pc.indexOf("{category === 'all' && (")
     expect(gate, '위 줄이 카테고리 게이트 없이 렌더되고 있다').toBeGreaterThan(-1)
     const end = pc.indexOf(')}', gate)
-    for (const tag of ['<PcHeroBanners', '<PcTopRank', '<PcRegionTiles']) {
+    for (const tag of ['<PcHeroBanners', '<HomeSections', '<PcRegionTiles']) {
       const at = pc.indexOf(tag)
       expect(at > gate && at < end, `${tag} 가 게이트 밖에 있다`).toBe(true)
     }

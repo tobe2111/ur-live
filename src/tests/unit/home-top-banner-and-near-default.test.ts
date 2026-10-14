@@ -45,7 +45,7 @@ describe('① 상단 띠 배너 자리(strip)', () => {
     const pc = codeOnly(read('src/pages/pc-home/PcHomePage.tsx'))
     const hero = pc.indexOf('<PcHeroBanners')
     expect(hero, 'PC: 큰 배너 미배선').toBeGreaterThan(-1)
-    expect(hero).toBeLessThan(pc.indexOf('<PcTopRank'))
+    expect(hero).toBeLessThan(pc.indexOf('<HomeSections'))
     expect(codeOnly(read('src/pages/pc-home/PcHeroBanners.tsx'))).toContain("useHomeBanners('strip')")
   })
 

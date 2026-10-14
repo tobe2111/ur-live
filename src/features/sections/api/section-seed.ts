@@ -39,6 +39,8 @@ interface SeedSection {
 /**
  * 기본 노출 줄.
  * ⚠️ 2026-08-04 대표 지시로 **'오늘 마감 임박' 은 뺐다**("아예 필요없어").
+ * ⚠️ 2026-10-14 대표 지시 *"주말에 떠나는 숙소 이건 빼줘 아예. 모바일도 마찬가지고"* — 시드에서도 뺐다
+ *   (라이브 행은 비활성으로 돌렸다 — 지우지 않아 어드민에서 되살릴 수 있다). 숙소는 홈 필터의 '숙소' 가 맡는다.
  *   규칙(`deadline`) 자체는 살아 있어 어드민에서 언제든 다시 만들 수 있다.
  */
 export const HOME_SECTION_SEED: SeedSection[] = [
@@ -49,14 +51,6 @@ export const HOME_SECTION_SEED: SeedSection[] = [
     source_value: null,
     limit_count: SECTION_DEFAULT_LIMIT,
     more_href: '/?sort=popular',
-  },
-  {
-    title: '주말에 떠나는 숙소',
-    subtitle: '가까운 곳부터 천천히',
-    source: 'category',
-    source_value: 'stay_voucher',
-    limit_count: SECTION_DEFAULT_LIMIT,
-    more_href: '/stays',
   },
 ]
 

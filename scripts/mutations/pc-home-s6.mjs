@@ -1,6 +1,6 @@
-// 🧩 PC 홈 시안 4 (2026-10-14 대표 확정 — 큰 배너 1 + 작은 2 → 인기 순위 → 지역 → 필터 + 목록)
-//   가드: src/tests/unit/pc-home-s4-2026-10-14.test.ts
-const GUARD = 'src/tests/unit/pc-home-s4-2026-10-14.test.ts'
+// 🧩 PC 홈 시안 6 (2026-10-14 대표 확정 — 큰 배너 1 + 작은 2 → 어드민 섹션 + 유어쇼츠 → 지역 → 필터 + 목록)
+//   가드: src/tests/unit/pc-home-s6-2026-10-14.test.ts
+const GUARD = 'src/tests/unit/pc-home-s6-2026-10-14.test.ts'
 const PAGE = 'src/pages/pc-home/PcHomePage.tsx'
 const FEED = 'src/pages/main-home/GroupBuyFeed.tsx'
 const FILT = 'src/shared/home-feed-filters.ts'
@@ -32,7 +32,7 @@ export default [
     why: '위치를 모르는 매장을 "1km 안"에 넣으면 거짓 안내가 된다.',
   },
   {
-    name: '🧩 순위 줄 주소가 예열 주소와 갈린다',
+    name: '🧩 지역 사진용 인기 목록 주소가 예열 주소와 갈린다',
     file: POP,
     find: "category=all&sort=popular')",
     replace: "sort=popular&category=all')",
@@ -46,5 +46,13 @@ export default [
     replace: '            {HOME_SHOWCASE_ENABLED && <PcHeroBanners />}<HomeHeroBanner />',
     test: GUARD,
     why: '위치 칩이 두 군데가 되어 어느 쪽이 진짜인지 갈린다 — 시안 4 가 대체한 것.',
+  },
+  {
+    name: '🧩 PC 섹션이 모바일과 다른 고정 순위 줄로 되돌아간다',
+    file: PAGE,
+    find: '<HomeSections rail near={near} shortsRail={<UrShortsRail />}',
+    replace: '<HomeSections rail shortsRail={<UrShortsRail />}',
+    test: GUARD,
+    why: '위치를 넘기지 않으면 PC 섹션만 전국 인기순이 된다 — 2026-10-13 "위치를 정하면 맨 위가 그 동네" 규칙이 PC 에서만 깨진다.',
   },
 ]

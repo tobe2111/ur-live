@@ -261,9 +261,7 @@ describe('⑤ 배선', () => {
       const s = code(p)
       expect(s, p).toMatch(/const near = resolveHomeNear\(\{ userLoc, dongLabel: dong\?\.dong, regionKey: region\.regionKey \}\)/)
       expect(s, p).toMatch(/useEffect\(\(\) => \{ syncNearCookie\(near\.key, near\.label\) \}, \[near\.key, near\.label\]\)/)
-      // 🧩 2026-10-14 시안 4: PC 홈은 편성 섹션을 안 그린다 — 섹션에 넘기는 `near={near}` 는 모바일 홈만.
-      if (p.includes('mobile-home')) expect(s, p).toMatch(/near=\{near\}/)
-      else expect(s, p).not.toMatch(/<HomeSections/)
+      expect(s, p).toMatch(/near=\{near\}/)
       expect(s, p).toMatch(/sectionNearKey=\{near\.key\}/)
     }
   })

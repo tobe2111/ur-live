@@ -1,10 +1,12 @@
 /**
- * 🧩 PC 홈 시안 4 (2026-10-14 대표 확정 — *"시안은 2번과 3번이 섞이면 좋겠는데? 위 배너 부분은 3번이
- *    마음에 들어"* → *"응 일단 이렇게 만들까?"*).
+ * 🧩 PC 홈 시안 6 (2026-10-14 대표 확정 — 시안 4(*"2번과 3번 섞어서, 위 배너는 3번"*)에서
+ *    *"지금 인기 이용권이 아니잖아 … 모바일에서 이름 바꿨잖아. 같이 바뀌는거 아니야?"* →
+ *    *"주말에 떠나는 숙소 이건 빼줘 아예. 모바일도 마찬가지고. 그 상태로 시안대로 구현해줘"*).
  *
  * 고정하는 것:
- *   ① 순서 — [큰 배너 1 + 작은 배너 2] → [인기 순위] → [지역 4칸] → [왼쪽 필터 + 목록]
- *   ② 대체한 것이 되살아나지 않는다 — 히어로(색면 + 위치 칩) · 편성 섹션 · 유어쇼츠 줄
+ *   ① 순서 — [큰 배너 1 + 작은 배너 2] → [어드민 섹션 + 유어쇼츠] → [지역 4칸] → [왼쪽 필터 + 목록]
+ *   ② 대체한 것이 되살아나지 않는다 — 히어로(색면 + 위치 칩) · 시안 4 의 별도 순위 줄
+ *      (PC 만의 고정 제목은 어드민 섹션 이름과 갈렸고 위치 정렬을 잃었다)
  *   ③ 위치 칩은 사라지지 않고 왼쪽 필터로 옮겼다(같은 부품) — 지우면 PC 에서 지역을 고를 길이 없다
  *   ④ 순위 줄의 주소 = cron 예열 주소 · 피드 인기순 키(한 글자라도 다르면 콜드 D1)
  *   ⑤ 거리·가격 필터 판정(진짜 함수를 부른다)
@@ -19,7 +21,6 @@ import { passesFeedFilters, feedFiltersKey } from '@/shared/home-feed-filters'
 
 const PAGE = stripComments(readFileSync('src/pages/pc-home/PcHomePage.tsx', 'utf8'))
 const SIDEBAR = stripComments(readFileSync('src/pages/pc-home/PcFeedSidebar.tsx', 'utf8'))
-const RANK = stripComments(readFileSync('src/pages/pc-home/PcTopRank.tsx', 'utf8'))
 const POP = stripComments(readFileSync('src/pages/pc-home/usePopularDeals.ts', 'utf8'))
 const TILES = stripComments(readFileSync('src/pages/pc-home/PcRegionTiles.tsx', 'utf8'))
 const HERO = stripComments(readFileSync('src/pages/pc-home/PcHeroBanners.tsx', 'utf8'))
@@ -27,7 +28,7 @@ const FEED = stripComments(readFileSync('src/pages/main-home/GroupBuyFeed.tsx', 
 
 describe('① 순서 — 시안 4', () => {
   it('배너 → 순위 → 지역 → 필터+목록', () => {
-    const at = ['<PcHeroBanners', '<PcTopRank', '<PcRegionTiles', '<PcFeedSidebar', '<GroupBuyFeed'].map((t) => PAGE.indexOf(t))
+    const at = ['<PcHeroBanners', '<HomeSections', '<PcRegionTiles', '<PcFeedSidebar', '<GroupBuyFeed'].map((t) => PAGE.indexOf(t))
     for (const i of at) expect(i).toBeGreaterThan(-1)
     for (let k = 1; k < at.length; k++) expect(at[k]).toBeGreaterThan(at[k - 1])
   })
@@ -39,8 +40,14 @@ describe('① 순서 — 시안 4', () => {
 })
 
 describe('② 대체한 것이 되살아나지 않는다', () => {
-  it.each(['<HomeHeroBanner', '<HomeSections', '<UrShortsRail', 'variant="strip"'])('%s 없음', (tag) => {
+  it.each(['<HomeHeroBanner', '<PcTopRank', 'variant="strip"'])('%s 없음', (tag) => {
     expect(PAGE).not.toContain(tag)
+  })
+  it('PC 섹션 = 모바일과 같은 부품 · 위치 정렬 · 유어쇼츠는 첫 섹션 다음(모바일과 같은 자리)', () => {
+    expect(PAGE).toMatch(/<HomeSections rail near=\{near\} shortsRail=\{<UrShortsRail \/>\}/)
+    const SEC = stripComments(readFileSync('src/components/home/HomeSections.tsx', 'utf8'))
+    expect(SEC).toMatch(/return rail\s*\n?\s*\? <SectionRail count=\{sec\.products\.length\}>\{cards\}<\/SectionRail>/)
+    expect(SEC).toContain('{sIdx === 0 && shortsRail}')
   })
 })
 
@@ -59,7 +66,7 @@ describe('③ 위치 칩은 왼쪽 필터로 옮겼다', () => {
   })
 })
 
-describe('④ 순위 줄 = 예열 주소 · 피드 인기순 키', () => {
+describe('④ 지역 사진용 인기 목록 = 예열 주소 · 피드 인기순 키', () => {
   const URL = '/api/group-buy/products?status=active&category=all&sort=popular'
   it('예열 목록에 그 주소가 있다', () => {
     const prewarm = stripComments(readFileSync('src/worker/cron/cache-prewarm.ts', 'utf8'))
@@ -70,12 +77,8 @@ describe('④ 순위 줄 = 예열 주소 · 피드 인기순 키', () => {
     expect(POP).toContain(`api.get('${URL}')`)
     expect(POP).toContain("queryKeys.groupBuyList('active', 'all', 'popular')")
   })
-  it('순위·지역 둘 다 같은 훅을 쓴다(요청 하나)', () => {
-    expect(RANK).toContain('usePopularDeals()')
+  it('지역 타일이 그 훅을 쓴다', () => {
     expect(TILES).toContain('usePopularDeals()')
-  })
-  it('교환권(deal_only)은 순위에 안 섞는다', () => {
-    expect(RANK).toMatch(/filter\(\(p\) => p\.deal_only !== 1\)/)
   })
 })
 

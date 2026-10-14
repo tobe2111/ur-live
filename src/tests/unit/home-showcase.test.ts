@@ -218,7 +218,7 @@ describe('③ 되돌리기 — 플래그 하나로 전부 꺼진다', () => {
     //    편성 콘텐츠(어드민 배너)는 없으면 기본값으로 그려진다 — 아래 별도 항목이 그걸 고정한다.
     const renders: number[] = []
     // 🧩 2026-10-14 시안 4: PC 편성 콘텐츠 = 큰 배너(`PcHeroBanners`) + 가로 배너(`HomeBannerStrip wide`).
-    for (const comp of ['PcHeroBanners', 'HomeBannerStrip']) {
+    for (const comp of ['PcHeroBanners', 'HomeSections', 'HomeBannerStrip']) {
       const re = new RegExp(`<${comp}\\b`, 'g')
       for (let m = re.exec(page); m; m = re.exec(page)) renders.push(m.index)
     }
@@ -455,7 +455,7 @@ describe('⑪ 홈이 기본으로 시안 모양이어야 한다 (2026-08-04 "시
   it('기본 노출 줄이 시드로 존재한다', () => {
     // 기능만 넣고 섹션을 안 만들면 홈은 "틀만 있고 안이 빈" 화면이 된다 — 그게 실제로 났다.
     // ⚠️ '오늘 마감 임박' 은 2026-08-04 대표 지시로 제외("아예 필요없어") — ⑫ 에서 부재를 고정한다.
-    for (const t of ['지금 인기 이용권', '주말에 떠나는 숙소']) {
+    for (const t of ['지금 인기 이용권']) {
       expect(seed).toContain(t)
     }
   })
@@ -525,7 +525,10 @@ describe('⑫ 배너 미디어 업로드 · 시드 조정 (2026-08-04 대표 3·
   it("시드에서 '오늘 마감 임박' 이 빠졌다 (대표 \"아예 필요없어\")", () => {
     expect(seed).not.toMatch(/title: '오늘 마감 임박'/)
     expect(seed).toMatch(/title: '지금 인기 이용권'/)
-    expect(seed).toMatch(/title: '주말에 떠나는 숙소'/)
+  })
+
+  it("시드에서 '주말에 떠나는 숙소' 가 빠졌다 (2026-10-14 대표 \"빼줘 아예. 모바일도 마찬가지고\")", () => {
+    expect(seed).not.toMatch(/title: '주말에 떠나는 숙소'/)
   })
 })
 

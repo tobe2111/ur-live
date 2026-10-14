@@ -16,7 +16,8 @@ import { resolveHomeNear, syncNearCookie } from '@/components/home/home-near'
 import { HOME_SHOWCASE_ENABLED, REGION_PAGES_ENABLED } from '@/shared/feature-flags'
 import type { FeedFilters } from '@/shared/home-feed-filters'
 import PcHeroBanners from './PcHeroBanners'
-import PcTopRank from './PcTopRank'
+import HomeSections from '@/components/home/HomeSections'
+import UrShortsRail from '@/components/home/UrShortsRail'
 import PcRegionTiles from './PcRegionTiles'
 import PcFeedSidebar from './PcFeedSidebar'
 
@@ -31,9 +32,9 @@ import PcFeedSidebar from './PcFeedSidebar'
 
 /**
  * 🧩 2026-10-14 (대표 확정 "시안 4" — *"시안은 2번과 3번이 섞이면 좋겠는데? 위 배너 부분은 3번이 마음에 들어"*
- *   → *"응 일단 이렇게 만들까?"*): 위에서부터 [큰 배너 1 + 작은 배너 2] → [인기 이용권 순위] →
- *   [어디로 갈까요? 지역 4칸] → [왼쪽 필터 + 4열 목록]. 시안 SSOT: `docs/design/pc-home-redesign-2026-10-13.md`.
- *   ⚠️ 이 구성이 대체한 것: 히어로(색면 + 위치 칩 + 사진 띠) · 한 줄 세 장 배너 · 편성 섹션 · 유어쇼츠 줄.
+ *   → *"응 일단 이렇게 만들까?"* → 시안 6 *"주말에 떠나는 숙소 이건 빼줘 … 시안대로 구현"*): 위에서부터
+ *   [큰 배너 1 + 작은 배너 2] → [어드민 섹션(모바일과 같은 것) + 유어쇼츠] → [어디로 갈까요? 지역 4칸] → [왼쪽 필터 + 4열 목록]. 시안 SSOT: `docs/design/pc-home-redesign-2026-10-13.md`.
+ *   ⚠️ 이 구성이 대체한 것: 히어로(색면 + 위치 칩 + 사진 띠) · 한 줄 세 장 배너 · 중간 배너(inline).
  *      위치 칩은 왼쪽 필터로 옮겼다(같은 부품). 모바일 홈은 그대로다.
  */
 const SORT_CHIPS = [
@@ -116,8 +117,11 @@ export default function PcHomePage() {
           <>
             {/* ① 큰 배너 1 + 작은 배너 2 — 배너가 없으면 아무것도 안 그린다(대표 규칙). */}
             {HOME_SHOWCASE_ENABLED && <PcHeroBanners />}
-            {/* ② 인기 이용권 순위 · ③ 어디로 갈까요? — 모자라면(3장 미만·4곳 미만) 줄 자체를 안 그린다. */}
-            <PcTopRank />
+            {/* ② 어드민 편성 섹션 — **모바일과 같은 섹션**(제목·순서·위치 정렬이 어드민 하나로 같이 간다).
+                PC 는 한 줄로 넘긴다(`rail`). 유어쇼츠는 모바일과 같은 자리(첫 섹션 다음).
+                2026-10-14 대표 "시안 6" — 시안 4 의 '인기 순위' 별도 줄을 대체(이름이 어드민과 갈리고 위치 정렬을 잃었다). */}
+            {HOME_SHOWCASE_ENABLED && <HomeSections rail near={near} shortsRail={<UrShortsRail />} midBanner={<HomeBannerStrip variant="inline" />} />}
+            {/* ③ 어디로 갈까요? — 네 곳이 안 모이면 줄 자체를 안 그린다. */}
             {REGION_PAGES_ENABLED && <PcRegionTiles />}
             {/* 어드민이 '가로 전체' 자리를 고른 배너가 있을 때만(없으면 null). */}
             {HOME_SHOWCASE_ENABLED && <HomeBannerStrip variant="wide" />}

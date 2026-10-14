@@ -41,9 +41,6 @@ const escAttr = (s: string) => s.replace(/"/g, '&quot;')
  * @returns `<link …>` 문자열 배열. 시드가 깨졌거나 사진이 없으면 **빈 배열**(fail-soft —
  *   preload 가 없다고 홈이 안 뜨면 안 된다).
  */
-/** 🧩 2026-10-14: PC 홈이 편성 섹션을 그리는가(시안 4 이후 아니다). */
-export const PC_HOME_SECTIONS_SHOWN = false
-
 export function buildHomeCardPreloadLinks(ssrExtraPayload: string): string[] {
   let first: Array<{ image_url?: string }>
   try {
@@ -56,11 +53,10 @@ export function buildHomeCardPreloadLinks(ssrExtraPayload: string): string[] {
   for (const p of first.slice(0, HOME_CARD_ABOVE_FOLD)) {
     const src = p?.image_url
     if (!src) continue
-    // 🧩 2026-10-14 (시안 4): PC 홈은 편성 섹션을 그리지 않는다 → 4열(lg+) 폭 preload 는 아무도 안 쓴다.
-    //   폰(2·3열) 폭만 남긴다. PC 에 섹션을 되살리면 `PC_HOME_SECTIONS_SHOWN` 을 true 로.
-    const widths: Array<[string, number]> = [[HOME_CARD_BASE_QUERY, HOME_CARD_IMG_WIDTH_BASE]]
-    if (PC_HOME_SECTIONS_SHOWN) widths.push([HOME_CARD_LG_QUERY, HOME_CARD_IMG_WIDTH_LG])
-    for (const [q, w] of widths) {
+    for (const [q, w] of [
+      [HOME_CARD_BASE_QUERY, HOME_CARD_IMG_WIDTH_BASE],
+      [HOME_CARD_LG_QUERY, HOME_CARD_IMG_WIDTH_LG],
+    ] as const) {
       const href = cfImage(src, { width: w, format: 'auto' })
       // data: URI 는 이미 문서 안에 있다 — preload 할 것이 없다.
       if (!href || href.startsWith('data:')) continue
