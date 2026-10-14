@@ -396,3 +396,84 @@ expect(block).toContain("'Content-Type': 'text/plain; charset=utf-8'")
 2. **#47 정정** — `twitter:site` 는 **추가하지 않는다**: 실제 X 계정이 없고, 없는 핸들을 넣는 것은
    `sameAs` 를 비워 둔 것과 같은 규율 위반이다. 남는 것은 `og:image:alt` 뿐이고, 그것도
    **그림을 정직하게 설명할 수 있는 표면만**(유어샵=프로필 사진 · 상세=상품 사진).
+
+---
+
+## ⚖️ #65 — sitemap 이 제출하는 `/privacy`·`/refund` 가 크롤러 본문 6자 (짝 주장, 반대 방향)
+
+PR #1778 머지(`a49f7687`) 뒤 같은 전수에서 나온 다음 건. **방향이 반대라서 지금까지 한 번도 안 셌다.**
+
+### 무엇이었나 (라이브 Googlebot UA 실측)
+
+```
+/privacy  200 · index, follow · 본문 6자 · sitemap 제출 · description 14자
+/refund   200 · index, follow · 본문 6자 · sitemap 제출 · description 21자
+/terms    200 · index, follow · 본문 323자 · description 76자   ← 같은 빌더, 같은 문서 종류
+```
+
+`sitemap.routes.ts` 의 규율은 *"본문이 있는 것만 넣는다"* 인데, 2026-10-13 기록이 **미제출 색인
+대상만** 훑어서 *제출했는데 본문이 없는* 쪽을 셈에서 빼먹었다. 규율은 양방향이다 —
+**제출 ⇒ 본문** 과 **본문 ⇒ 제출**.
+
+### 🩸 가로막던 사유 둘이 **둘 다 틀렸거나 이미 해소돼 있었다**
+
+1. `surface-copy.ts` 머리말: *"본문이 JSX 에 박혀 파생할 수 없다"* → 그 뒤 같은 날 내가
+   *"문장이 거기 없어서"* 로 고쳐 적었다. **둘 다 페이지를 읽지 않고 쓴 말이다.** 실제로 훑으니
+   통째 문장이 `/privacy` 16개(69~136자) · `/refund` 12개였다.
+2. `/refund` 는 *"내용 자체가 결재 대기"* → 결재 `2026-10-12-refund-policy-mismatch.md` 가
+   대표 **"다 해줘"** 로 2026-10-13 집행 완료. 그 결재 자신이 *"크롤러 본문은 아직 짧습니다 …
+   별건입니다"* 라고 남긴 그 별건이 이 작업이다.
+
+### 한 것
+
+| 파일 | 변경 |
+|---|---|
+| `shared/seo/surface-copy.ts` | `/privacy` 5줄 474자 · `/refund` 6줄 217자 추가 + 머리말의 틀린 사유 둘을 정정 기록 |
+| `shared/seo/consumer-surfaces.ts` | description 동어반복 → 그 문서에 **실재하는 절**만 (14→68자 · 21→79자) |
+| `worker/routes/sitemap.routes.ts` | 반대 방향 짝 주장 위반을 기록(코드 변경 없음, 주석) |
+| `tests/unit/thin-surface-copy-2026-10-12.test.ts` | FLOOR 2건 + 머리말 정정 + "삼키지 않는다" 예시 재조준(`/cart`·`/wishlist`) |
+| `tests/unit/refund-policy-truth-2026-10-13.test.ts` | 꺼져 있는 기능 금지를 **크롤러 본문·description 까지** 확장(+2건) |
+| `tests/unit/legal-surface-body-2026-10-14.test.ts` | **신규 12건** — 중복 잠금 피해 *새로운 것만* |
+| `scripts/mutations/legal-surface-body-2026-10-14.mjs` | **신규 12건**, 절반 반대 방향 — 전부 빨간불 확인 |
+
+렌더 결과(눈으로 읽었다): `/privacy` **483자** · `/refund` **222자**, 둘 다 h1 보유.
+
+### 🩸 이번에 값을 치르고 배운 것 둘
+
+1. **가드의 `flat` 은 공백만 접고 태그는 안 뗀다.** 내 추출 스크립트는 태그를 뗐다 ⇒ 후보를
+   과대 보고했고, 그 오해로 *"평탄화가 `전액 이` 를 만든다"* 는 틀린 기제를 적고 **페이지의
+   마침표를 `<span>` 안으로 옮기는 쓸모없는 수정**까지 했다(가드가 즉시 잡아 되돌렸다 —
+   `RefundPolicyPage.tsx` 는 **byte-불변**). ⇒ **가드가 쓰는 정규화 함수를 그대로 가져다 재라.**
+   같은 클래스를 같은 날 `/gdpr` 엔티티에서 이미 한 번 밟았다.
+2. **주입 두 건이 헛돌았고 둘 다 내 조준 실수였다**: ① `source: []` 을 새 시험에 겨눴는데 그
+   시험은 페이지를 상수로 직접 읽어 `source` 를 안 본다 → 클로킹 대조가 사는 thin 시험으로 재조준
+   ② *바닥 숫자를 내리는* 주입은 **원리상 빨간불이 안 난다**(단언을 느슨하게 만드는 변경은 그
+   단언으로 못 잡는다) → 바닥이 **지키는 결함**(줄 하나 삭제)으로 교체.
+
+### 🔴 일부러 안 한 것
+
+- `/refund` 의 가장 값진 두 문장(*"결제 금액 전액이 자동으로 환불됩니다"* · *"환불 대상이
+  아닙니다"*)은 **문장 안에 `<span>` 을 품어** 쓸 수 없다. 전자는 절 제목이 자리를 메우고,
+  후자의 절(`이미 사용한 이용권`)은 **통째로 뺐다** — 규칙 없이 제목만 남기면 *"사용한 것도
+  처리해 준다"* 로 읽힌다(어중간한 반쪽 주장이 빠뜨린 것보다 나쁘다).
+- `/privacy` 의 **영문 블록**(`!isKR`). 라이브 호스트는 `urdeal.kr` 하나라 아무도 못 본다
+  (GLOBAL 미런칭·폐기 #804). 가드 ① 이 양방향으로 잠근다.
+- 사업자 정보 줄(이메일·등록번호). `/gdpr` 과 같은 기준 — 수확 표면만 늘고 색인 보탬 0.
+- **본문 SSOT 추출**(`/terms` 처럼 `TermsDoc` 로). 법정 페이지 364·332줄 JSX 를 데이터로 옮기는
+  일이라 렌더 동일성 검증이 따로 필요하다 — 여전히 별건이고, 그때 이 `surface-copy` 항목은 지운다.
+
+### ⚠️ E4 (배포 후 라이브, 양방향)
+
+```bash
+UA='Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
+curl -sS -A "$UA" https://urdeal.kr/privacy    # 본문 6자 → 480자 안팎 · h1 있음
+curl -sS -A "$UA" https://urdeal.kr/refund     # 본문 6자 → 220자 안팎
+#   description 이 14·21자에서 올라갔는지 (<meta name="description">)
+#   🔴 반대 방향 — 이쪽이 더 비싸다:
+curl -sS -A "$UA" https://urdeal.kr/privacy | grep -o 'content="index, follow"'   # 여전히 index
+curl -sS -A "$UA" https://urdeal.kr/refund  | grep -o 'content="index, follow"'
+curl -sS https://urdeal.kr/sitemap.xml | grep -cE '/(privacy|refund)<'            # 2 유지
+#   그리고 /privacy 본문에 영문 절이 0건인지 (Information We Collect)
+```
+⚠️ 글자수만 보고 판정하지 말 것 — 2026-10-12 에 `/experience` 154자를 "아직 thin" 으로 오진한
+그 함정이다(그 154자가 고쳐 둔 문구였다). **숫자를 보면 그 숫자를 만든 코드를 먼저 찾을 것.**
