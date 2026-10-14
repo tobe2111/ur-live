@@ -334,6 +334,9 @@ export function buildStayDetailMeta(ssrPayload: string, origin: string, pathname
     //   얹은 배열) 매장을 `@id` 로 분리해 Offer 가 가리킨다 — `/pass/:id` 와 **같은 모양**.
     const placeId = `${canonical}#place`
     const staySameAs = placeSameAs(p.kakao_place_url)
+    // ⭐ 평점은 **한 곳에서만** 조립한다 — 두 엔티티가 각자 만들면 둘 중 하나가 조용히 갈린다.
+    const hasRating = rating > 0 && Number(p.review_count) > 0
+    const aggregateRatingNode = { '@type': 'AggregateRating', ratingValue: rating, reviewCount: Number(p.review_count) }
     const lodging: Record<string, unknown> = {
       '@type': 'LodgingBusiness', '@id': placeId,
       name: stayName,
@@ -343,7 +346,10 @@ export function buildStayDetailMeta(ssrPayload: string, origin: string, pathname
       ...((a => a ? { address: a } : {})(postalAddress(p.address, p.region_sido))),
       ...(p.latitude && p.longitude ? { geo: { '@type': 'GeoCoordinates', latitude: p.latitude, longitude: p.longitude } } : {}),
       ...(p.star_rating ? { starRating: { '@type': 'Rating', ratingValue: p.star_rating } } : {}),
-      ...(rating > 0 && Number(p.review_count) > 0 ? { aggregateRating: { '@type': 'AggregateRating', ratingValue: rating, reviewCount: Number(p.review_count) } } : {}),
+      // ⭐ 2026-10-14: 평점은 **`Product` 로 옮겼다**(아래). 여기엔 `Product` 가 안 만들어질 때만
+      //   남긴다 — 같은 리뷰 묶음을 두 엔티티에 선언하면 무엇의 평점인지 문서가 스스로 모순된다.
+      //   `starRating`(호텔 등급)은 다른 사실이라 그대로 둔다.
+      ...(hasRating && fromPrice <= 0 ? { aggregateRating: aggregateRatingNode } : {}),
       ...(fromPrice > 0 ? { priceRange: `₩${fromPrice.toLocaleString('ko-KR')}~` } : {}),
       url: canonical,
     }
@@ -357,6 +363,20 @@ export function buildStayDetailMeta(ssrPayload: string, origin: string, pathname
       ...(baseDesc ? { description: baseDesc.slice(0, 300) } : {}),
       ...(p.image_url ? { image: [photo] } : {}),
       brand: { '@type': 'Brand', name: stayName },
+      // ⭐ 2026-10-14 — **정본이 사본보다 약했다.** 라이브 실측(Googlebot UA, 같은 상품의 두 URL):
+      //
+      //     /pass/2887  (사본, canonical → /stays/2887)   Product.aggregateRating  4.6(9)  ← 있음
+      //     /stays/2887 (정본)                            Product.aggregateRating  없음     ← 별점 0
+      //                                                   LodgingBusiness          4.6(9)
+      //
+      //   구글은 정본으로 통합하므로 **숙소 49건이 Product 리치결과의 별점을 잃는다**(그 리치결과는
+      //   `Product.aggregateRating` 또는 `review` 를 요구한다). 게다가 두 URL 이 같은 4.6 을 서로
+      //   **다른 엔티티의 평점**이라고 주장하고 있었다. 🔑 출처가 `products.avg_rating` ·
+      //   `products.review_count`(**상품 컬럼**)이므로 `Product` 가 맞는 자리이고, 식사·쇼핑 경로와
+      //   `/pass` 사본이 이미 그렇게 한다 — 즉 숙소 한 자리만 갈려 있었다.
+      //   🔴 지어내지 않는다: 평점·리뷰수 둘 다 양수일 때만 낸다(리뷰 0 에 평점 0 을 내면 "0점짜리
+      //      상품" 이라고 말하는 것이고 구글 정책 위반이다 — 2026-10-11 에 값을 치른 자리).
+      ...(hasRating ? { aggregateRating: aggregateRatingNode } : {}),
       offers: {
         '@type': 'AggregateOffer', url: canonical, priceCurrency: 'KRW',
         lowPrice: fromPrice, ...(toPrice > fromPrice ? { highPrice: toPrice } : {}),
