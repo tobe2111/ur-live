@@ -126,8 +126,11 @@ describe('④ 교환권 페이지 상단 배너(라안) — 홈 배너와 같은
     expect(c).toMatch(/const perView = single \? 1 : pcPerView/)
     expect(c).toMatch(/const SINGLE_CARD_CLS = '!aspect-\[4\/1\] lg:!w-full !py-3 \[&>span\]:hidden lg:\[&>span\]:block /)
     // 📏 대표 "문장은 한줄로": 제목은 한 줄 고정(폭 72% — 오른쪽 28% 는 그림 자리)
-    expect(c).toMatch(/\[&>strong\]:!line-clamp-1/)
-    expect(c).toMatch(/\[&>strong\]:!max-w-\[72%\]/)
+    // ✂️ 대표 "한 줄이거나, 끊는 자리를 정한 두 줄": 폭 54%(유달이 왼쪽) · 최대 두 줄 · 제목의 줄바꿈이 끊는 자리 · 낱말 단위
+    expect(c).toMatch(/\[&>strong\]:!line-clamp-2/)
+    expect(c).toMatch(/\[&>strong\]:!max-w-\[54%\]/)
+    expect(c).toMatch(/\[&>strong\]:!whitespace-pre-line/)
+    expect(c).toMatch(/\[&>strong\]:!\[word-break:keep-all\]/)
     // ↕️ 대표 "글자를 높이 기준으로 중앙에" — 띠는 세로 가운데, 아래 어둡게 까는 막 없음
     expect(c).toMatch(/SINGLE_CARD_CLS = '[^']*!justify-center[^']*\[&>div\]:hidden'/)
     // 넘김 버튼은 띠에서 위로 — 아래 오른쪽은 유달이 자리(라이브에서 "2/4" 가 유달이를 가렸다)
