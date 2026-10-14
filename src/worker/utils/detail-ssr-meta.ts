@@ -16,6 +16,7 @@ import { productShareImage } from '@/shared/og-share-image'
 import { propertyTypeLabel } from '../../shared/stay-property-type'
 import { kakaoPlaceCanonicalUrl } from '../../shared/kakao-place-url'
 import { parseRegionFromAddress } from '../../shared/constants/region-slugs'
+import { priceDisplay } from '../../shared/price-display'
 import { storeNameJoin } from '@/shared/seo/store-name-dedupe'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import { withCrumbRoot, crumbItems } from '@/shared/seo/breadcrumb'
@@ -203,9 +204,41 @@ export function buildDetailMeta(ssrPayload: string, origin: string, pathname: st
     //   (실측 `/pass/2919`: `달빛한스푼 달빛한스푼 닭도리탕`). 판단은 SSOT 하나다 —
     //   `crawler-noscript` 가 교환권 목록에서 쓰던 그 규칙이고, 이 파일만 밖에 있었다.
     const storeName = storeNameJoin(store, name)
-    const description = (discount > 0
-      ? `🎉 ${discount}% 할인! ${storeName} ${priceStr}원에 유어딜에서 바로 구매`
-      : `${storeName} ${priceStr}원, 유어딜에서 할인가로 바로 구매`).replace(/\s+/g, ' ').trim().slice(0, 200)
+    // 📝 2026-10-14 — **설명을 숙소와 같은 모양으로.** 라이브 실측(샘플 50): `/pass` 310건의
+    //   meta description 이 **중앙값 50자 · 46%가 50자 미만 · 전부 80자 미만**이고, 그중
+    //   `유어딜에서 할인가로 바로 구매`(14자)는 **310건에 똑같이 붙는 상투구**라 고유한 부분은
+    //   25~30자뿐이었다. 같은 날 백필을 받은 숙소는 **중앙값 71자**에
+    //   `⭐4.5 강원 춘천시 호텔 · 1박 129,000원~ {소개}` 로 별점·지역·가격·소개를 담는다.
+    //   ⇒ #83·#84 와 **같은 비대칭**이다(숙소가 풍부해졌는데 이용권이 안 따라왔다).
+    //
+    // 🔑 **지어내지 않는다 — 전부 시드에 이미 온 값이다**: 별점은 `avg_rating`(실측 294/310건이
+    //    보유) · 지역은 `restaurant_address` 를 **`parseRegionFromAddress` SSOT**(같은 파일의
+    //    `postalAddress` 가 `addressLocality` 에 쓰는 그 함수)로 · 정가·할인율은 그 상품의 값 ·
+    //    소개는 `description`. 하나라도 없으면 그 조각만 빠지고 나머지는 종전과 같다.
+    // 🔴 **리뷰 0이면 별점을 말하지 않는다** — `ratingLine` 과 같은 규율(평점 0점짜리로 읽힌다).
+    // 🔴 **설명이 상품명과 같으면 버린다** — 시드 실측상 흔하다(같은 말을 두 번 하지 않는다).
+    // 📏 `slice(0, 200)` 은 종전 그대로. 구글은 ~155자에서 자르지만 자르는 쪽이 모자란 쪽보다 낫다.
+    // 🩸 **할인율이 310건 전부에서 사라지고 있었다.** 종전 분기는 `d.current_discount_pct` 를
+    //    믿는데 라이브 샘플 45건에서 그 값과 `discount_rate` 가 **전부 0**이고, 정가·판매가로
+    //    계산하면 **45/45건에 할인이 있다(중앙 20%)**. 즉 `🎉 N% 할인` 분기는 한 번도 돈 적이 없고,
+    //    커머스 스니펫에서 가장 강한 신호가 구조적으로 빠져 있었다. **에러가 안 나서 아무도 몰랐다.**
+    // 🔑 이 레포엔 바로 그 사고를 위해 만든 SSOT 가 있다 — `priceDisplay` 의 `Math.max(선언값,
+    //    계산값)`(2026-08-19 대표 신고 *"할인율도 나타나야 할 것 같다"* 의 처방). **같은 파일의
+    //    `<noscript>` 본문은 이미 그 함수를 써서 "11% 할인" 을 맞게 말하고 있었고** description
+    //    만 밖에 있었다 ⇒ 둘을 같은 함수로 모은다(한 문서가 두 할인율을 말할 수 없게 된다).
+    const pd = priceDisplay({ price, original_price: d.original_price, discount_rate: d.current_discount_pct })
+    const passRating = Number(d.avg_rating) || 0
+    const passReviews = Number(d.review_count) || 0
+    const ratingPrefix = passRating > 0 && passReviews > 0 ? `⭐${passRating.toFixed(1)} ` : ''
+    const passRef = parseRegionFromAddress(String(d.restaurant_address || ''))
+    const regionStr = passRef ? `${passRef.sido}${passRef.sigungu ? ` ${passRef.sigungu}` : ''} · ` : ''
+    const origStr = pd.showOriginal && pd.originalPrice > pd.price ? ` (정가 ${pd.originalPrice.toLocaleString('ko-KR')}원)` : ''
+    const passDesc = String(d.description || '').replace(/\s+/g, ' ').trim()
+    const descTail = passDesc && passDesc !== name && passDesc !== storeName ? ` ${passDesc}` : ''
+    const description = (pd.discount > 0
+      ? `${ratingPrefix}${regionStr}${storeName} ${priceStr}원${origStr} ${pd.discount}% 할인${descTail}`
+      : `${ratingPrefix}${regionStr}${storeName} ${priceStr}원, 유어딜에서 할인가로 바로 구매${descTail}`)
+      .replace(/\s+/g, ' ').trim().slice(0, 200)
 
     const available = d.group_buy_status === 'active' || d.group_buy_status === 'achieved'
     const product: Record<string, unknown> = {
