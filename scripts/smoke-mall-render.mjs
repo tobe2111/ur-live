@@ -244,8 +244,11 @@ try {
     const errs = []
     page.on('pageerror', (e) => errs.push(`${String(e)} @ ${String(e.stack || '').split('\n').slice(1, 3).join(' ')}`))
     await page.goto(`${base}${path}`, { waitUntil: 'networkidle' })
-    const seen = await page.getByText(expect1, { exact: false }).count().catch(() => 0)
-    check(`[${name}] 렌더 + 런타임 에러 0`, seen > 0 && errs.length === 0, errs.length ? errs.join(' || ') : `"${expect1}" 확인`)
+    // `networkidle` 은 "요청이 멎었다" 지 "그렸다" 가 아니다 — lazy 청크·시트가 그 뒤에 그려질 수 있어 잠깐 기다린다.
+    let seen = await page.getByText(expect1, { exact: false }).count().catch(() => 0)
+    if (!seen) seen = await page.getByText(expect1, { exact: false }).first().waitFor({ timeout: 10_000 }).then(() => 1, () => 0)
+    const where = seen ? '' : ` — 못 찾음 @ ${page.url()} :: ${(await page.evaluate(() => (document.body?.innerText || '').replace(/\s+/g, ' ').slice(0, 300)).catch(() => '?'))}`
+    check(`[${name}] 렌더 + 런타임 에러 0`, seen > 0 && errs.length === 0, errs.length ? errs.join(' || ') : `"${expect1}" 확인${where}`)
 
     // 🔴 대시보드 라이트 고정 — 다크 클래스가 붙으면 정책 위반이다(check-dashboard-theme 의 렌더판).
     const isDark = await page.evaluate(() => document.documentElement.classList.contains('dark'))
