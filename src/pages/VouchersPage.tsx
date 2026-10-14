@@ -35,6 +35,7 @@ import VouchersTopBar from './vouchers/VouchersTopBar'
 import { SortMenu } from '@/components/ui/sort-menu'
 import { SORT_OPTIONS, type SortKey } from './vouchers/constants'
 import ShoppingGrid from './vouchers/ShoppingGrid'
+import { priceDisplay } from '@/shared/price-display'
 import HomeBannerStrip from '@/components/home/HomeBannerStrip'
 
 interface BrandSummary {
@@ -279,9 +280,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   const displayProducts = useMemo(() => {
     const arr = [...products]
     const price = (p: VoucherProduct) => Number(p.price) || 0
-    const disc = (p: VoucherProduct) => p.original_price && p.original_price > p.price
-      ? Math.round(((p.original_price - p.price) / p.original_price) * 100)
-      : (Number(p.discount_rate) || 0)
+    // 💸 2026-10-14: 할인율 규칙 사본을 지우고 SSOT 를 쓴다(결과는 같고, 갈릴 수가 없어진다).
+    const disc = (p: VoucherProduct) => priceDisplay(p).discount
     switch (sort) {
       case 'price_low': arr.sort((a, b) => price(a) - price(b)); break
       case 'price_high': arr.sort((a, b) => price(b) - price(a)); break
