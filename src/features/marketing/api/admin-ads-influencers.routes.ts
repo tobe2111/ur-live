@@ -204,7 +204,7 @@ app.get('/influencer-pool/send-queue', async (c) => {
 })
 
 // PATCH /api/admin/ads/influencer-pool/:id { status?, memo?, follow_up_at? } — 아웃리치 큐레이션
-app.patch('/influencer-pool/:id', async (c) => {
+app.patch('/influencer-pool/:id{[0-9]+}', async (c) => {
   const id = Number(c.req.param('id')); if (!Number.isFinite(id)) return c.json({ success: false, error: '잘못된 ID' }, 400)
   const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
   const sets: string[] = []; const binds: (string | number)[] = []
@@ -530,7 +530,7 @@ app.get('/seller-match', async (c) => {
 })
 
 // DELETE /api/admin/ads/influencer-pool/:id
-app.delete('/influencer-pool/:id', async (c) => {
+app.delete('/influencer-pool/:id{[0-9]+}', async (c) => {
   const id = Number(c.req.param('id')); if (!Number.isFinite(id)) return c.json({ success: false, error: '잘못된 ID' }, 400)
   await adsLeadsDb(c.env).prepare('DELETE FROM ad_influencer_leads WHERE id = ? AND account_id = ?').bind(id, POOL).run().catch(() => null)
   return c.json({ success: true })
