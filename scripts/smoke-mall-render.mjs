@@ -259,7 +259,7 @@ try {
     const consoleErrs = []
     const navs = []
     page.on('framenavigated', (f) => { if (f === page.mainFrame()) navs.push(f.url().replace(base, '')) })
-    page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') { const t = m.text(); if (!/Failed to load resource|Env Validator|환경 변수/.test(t)) consoleErrs.push(t.slice(0, 160)) } })
+    page.on('console', (m) => { if (/\[vite\]/.test(m.text())) consoleErrs.push(m.text().slice(0, 160)); else if (m.type() === 'error' || m.type() === 'warning') { const t = m.text(); if (!/Failed to load resource|Env Validator|환경 변수/.test(t)) consoleErrs.push(t.slice(0, 160)) } })
     page.on('pageerror', (e) => errs.push(`${String(e)} @ ${String(e.stack || '').split('\n').slice(1, 3).join(' ')}`))
     await page.goto(`${base}${path}`, { waitUntil: 'networkidle' })
     // `networkidle` 은 "요청이 멎었다" 지 "그렸다" 가 아니다 — lazy 청크·시트가 그 뒤에 그려질 수 있어 잠깐 기다린다.
