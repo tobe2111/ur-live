@@ -218,6 +218,9 @@ try {
       localStorage.setItem('ur_theme_mode_v1', 'light')
     } catch { /* private */ }
   }, SEAT)
+  // 🧪 2026-10-14 진단: CI 는 Cloudflare 분석 비콘을 실제로 받고(로컬은 막힘) 거기서만 깊은 링크 시트가 안 열렸다.
+  //   비콘을 빈 스크립트로 바꿔 두 환경을 같게 만든다 — 이걸로 초록이 되면 비콘이 원인이다(제품 확인 필요).
+  if (process.env.SMOKE_STUB_BEACON !== '0') await sellerCtx.route('**/*cloudflareinsights.com/**', (r) => r.fulfill({ status: 200, contentType: 'application/javascript', body: '' }))
   await sellerCtx.route('**/api/seller/**', (route) => {
     const u = route.request().url()
     let body = { success: true, data: [] }
