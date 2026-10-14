@@ -69,6 +69,18 @@ describe('이름 E — 제목이 붙은 구역이 파는 쪽', () => {
       const src = readCode(`src/pages/user-profile/${f}.tsx`)
       expect(src, `${f} 에 판이 생겼다 — 파는 쪽 표시가 무의미해진다`).not.toMatch(/shadow-lift/)
     }
+    /**
+     * 🔁 **2026-10-14 PC 마이 B** — PC(lg+)에서는 이 부품들이 **카드**다(대표 *"PC 마이는 B"*).
+     *   그 모양은 부품 소스가 아니라 `index.css` 의 `.ur-account-pc .ur-pc-card`(lg 전용)가 입힌다 —
+     *   그래서 위 단언(소스에 `shadow-lift` 0)은 **폰** 규칙으로 계속 유효하다. 그 CSS 가 미디어쿼리
+     *   밖으로 새면 폰까지 카드가 되므로, 규칙이 lg 블록 안에 있는지를 함께 고정한다.
+     */
+    const css = readFileSync('src/index.css', 'utf8')
+    const at = css.indexOf('.ur-account-pc .ur-pc-card {')
+    expect(at, 'PC 카드 규칙이 없다 — B 가 사라졌다').toBeGreaterThan(0)
+    const before = css.slice(0, at)
+    expect(before.lastIndexOf('@media (min-width: 1024px)'), 'PC 카드 규칙이 lg 미디어쿼리 밖이다 — 폰까지 카드가 된다')
+      .toBeGreaterThan(before.lastIndexOf('\n}\n'))
   })
 
   it('🔴 옛 표시자(띠·경계선)가 되살아나지 않았다 — 둘이 되면 규칙 ②가 깨진다', () => {

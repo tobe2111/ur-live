@@ -21,7 +21,7 @@ import { SectionTitle } from './list-grammar'
 export default function SettingsGroup({ children }: { children: ReactNode }) {
   return (
     /* 🧱 가로 패딩 없음: 줄·패널이 자기 `px-4` 를 갖는다. */
-    <div className="ur-content-medium lg:px-4">
+    <div className="ur-content-medium lg:px-4 ur-pc-card">
       <SectionTitle>설정 · 고객지원</SectionTitle>
       <div>{children}</div>
     </div>

@@ -74,8 +74,9 @@ export default [
     //   **PC 숫자 카드 넷의 부활**을 막는다(우측 칸의 절반을 먹던 그것 — 실측상 셋이 0 이었다).
     name: '🔵 PC 숫자 카드 넷이 되살아난다 (셋이 0 인데 카드 넷)',
     file: 'src/pages/user-profile/AccountPcPane.tsx',
-    find: '  return (\n    <div className="space-y-5 pb-2">',
-    replace: '  return (\n    <div className="space-y-5 pb-2">\n      <div className="grid grid-cols-4 gap-4" />',
+    // 🔁 2026-10-14 재조준(PC 마이 B): 칸 루트가 카드(`ur-pc-card`)가 됐다 — 결함은 그대로.
+    find: '  return (\n    <div className="ur-pc-card">',
+    replace: '  return (\n    <div className="ur-pc-card">\n      <div className="grid grid-cols-4 gap-4" />',
     test: TEST,
     why: 'PC 우측 칸은 좌우 패딩이 0 이라 양수 오프셋은 거터가 아니라 카드 안쪽이다 — 띠가 일감 카드를 세로로 갈랐다(하네스 실측).',
   },

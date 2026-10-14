@@ -25,11 +25,16 @@ import { useTranslation } from '@/lib/i18n-lite'
 //    (같은 줄이 기기마다 다른 그림이면 그게 곧 '덜 만든' 인상이다).
 //    🎗️ 2026-10-11 안 5: 프로필 줄(아바타·화살표·벨)과 타일 셋이 이 파일을 떠나면서
 //       `ChevronRight`·`cfImage`·`BellIcon`·타일 아이콘 셋·`SellerSwitchInline` 의 소비처가 0이 됐다.
-import { parseUTCDate, formatKSTDate } from '@/utils/date'
+import { parseUTCDate } from '@/utils/date'
 import { useMyVouchers } from '@/hooks/queries/useMyData'
 import { isStoreVoucher } from '@/shared/voucher-wallet'
-import { TicketCard } from '@/components/ticket/TicketCard'
+// 🎫 2026-10-14 **PC 마이 B**: 곧 쓸 이용권이 티켓 카드 셋 → **지갑과 같은 줄**(`WalletRow`).
+//    같은 날 대표가 지갑을 안 B(전부 같은 줄 + [사용])로 확정했다 — 같은 이용권이 지갑에선 줄,
+//    PC 마이에선 파란 밴드 티켓이면 한 서비스 안에서 두 모양이 된다. 부품을 공유하면 갈릴 수가 없다.
+import WalletRow from '@/pages/my-vouchers/WalletRow'
+import type { Voucher } from '@/pages/my-vouchers/types'
 import OrderStatusBar from './OrderStatusBar'
+import { SECTION_TITLE_CLS } from './list-grammar'
 
 type MyVoucher = NonNullable<ReturnType<typeof useMyVouchers>['data']>[number]
 
@@ -58,46 +63,32 @@ export default function AccountPcPane() {
     return [...list].sort((a, b) => (dday(a.expires_at) ?? 9e9) - (dday(b.expires_at) ?? 9e9)).slice(0, 3)
   }, [vouchers])
 
+  /* 🗂️ 2026-10-14 **PC 마이 B**(대표 *"PC 마이는 B"*) — 이 칸이 **카드 한 장**이 됐다.
+     [곧 쓸 이용권 · 전체 ›] → 줄 셋 → hairline → 이용권 현황. 종전엔 티켓 카드 셋과 현황 숫자가
+     각자 떠 있어 왼쪽 선이 서로 안 맞았다(대표 스크린샷 실측: 제목 1070 ↔ 현황 1088).
+     ⚠️ 카드 모양은 **`ur-pc-card` 클래스 한 곳**(index.css, lg 전용)에서 온다 — 손으로 `shadow-lift` 를
+        적지 않는다. 같은 클래스를 판매·설정·내가 산 것 구역이 함께 쓴다(한 칸만 다른 그림자면 두 벌이다). */
   return (
-    <div className="space-y-5 pb-2">
-      {/* 🔢 2026-09-29 (대표 확정 **안 C**) — **숫자 카드 넷을 걷었다.** 같은 넷이 이제 페이지
-          맨 위 `MyStats` 한 줄에 있다(2열 래퍼 밖, 폰과 같은 부품). 여기 있던 카드들은 한 장에
-          `p-5` + 28px 숫자 + 링크 줄이라 넷이 우측 칸의 절반을 먹었고, 실측상 **셋이 0** 이었다.
-          목적지는 하나도 안 잃었다 — 네 경로 전부 그 줄의 칸이 그대로 들고 간다. */}
-
-      {/* ④ 곧 쓸 이용권 — 티켓 카드 (지갑·결제 완료와 같은 부품). 없으면 이 절 자체를 그리지 않는다. */}
+    <div className="ur-pc-card">
       {soon.length > 0 && (
-        <div>
-          <h5 className="text-[15px] font-extrabold text-gray-900 dark:text-white mb-3">{t('my.soonVouchers', { defaultValue: '곧 쓸 이용권' })}</h5>
-          <div className="grid grid-cols-3 gap-4">
-            {soon.map(v => {
-              const d = dday(v.expires_at)
-              const store = v.restaurant_name ? String(v.restaurant_name) : ''
-              const name = String(v.product_name ?? '')
-              return (
-                <TicketCard
-                  key={String(v.id)}
-                  bandLeft={v.expires_at ? `${formatKSTDate(v.expires_at)}까지` : t('my.noExpiry', { defaultValue: '기한 없음' })}
-                  bandRight={d == null ? undefined : `D-${d}`}
-                  muted={d != null && d > 30}
-                  onClick={() => navigate('/my-vouchers')}
-                >
-                  <div className="px-4 pt-3 pb-4">
-                    {store && <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">{store}</p>}
-                    <p className="text-[15px] font-bold text-gray-900 dark:text-white truncate">{name}</p>
-                    <p className="mt-2 text-[13px] font-bold text-brand-text">{t('my.useVoucher', { defaultValue: '사용하기' })} ›</p>
-                  </div>
-                </TicketCard>
-              )
-            })}
+        <>
+          <div className="flex items-center justify-between px-4 pt-5 pb-1">
+            <h2 className={SECTION_TITLE_CLS}>{t('my.soonVouchers', { defaultValue: '곧 쓸 이용권' })}</h2>
+            <button type="button" onClick={() => navigate('/my-vouchers')} className="text-[13px] text-gray-500 dark:text-gray-400 active:opacity-70">
+              {t('common.seeAll', { defaultValue: '전체 보기' })} ›
+            </button>
           </div>
-        </div>
+          <div className="divide-y divide-rule">
+            {soon.map(v => (
+              <WalletRow key={String(v.id)} v={v as unknown as Voucher} t={t} onOpen={() => navigate('/my-vouchers')} />
+            ))}
+          </div>
+        </>
       )}
-
-      {/* ③ 이용권 현황 — 안 5 에서 **곧 쓸 이용권 다음**으로 내렸다. 그 위가 '지금 쓸 것',
-          여기가 '지금까지 산 것의 요약', 아래 `ShoppingGroup` 이 전체 목록 — 구체 → 요약 → 전체 순이다.
-          리뷰어 레벨 카드를 뺐으므로 2열 그리드도 함께 걷는다(혼자 남으면 반쪽 폭이 된다). */}
-      <OrderStatusBar />
+      {/* ③ 이용권 현황 — 구체(지금 쓸 것) → 요약 순서는 안 5 그대로. 같은 카드 안에서 hairline 으로만 가른다. */}
+      <div className={soon.length > 0 ? 'border-t border-rule pt-4 pb-2' : 'pt-4 pb-2'}>
+        <OrderStatusBar />
+      </div>
     </div>
   )
 }

@@ -297,7 +297,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
     <div
       ref={rootRef}
       aria-busy={awaiting || undefined}
-      className={`ur-content-medium lg:px-4 pt-4${awaiting ? ' pointer-events-none' : ''}`}
+      className={`ur-content-medium lg:px-4 pt-4 ur-pc-card${awaiting ? ' pointer-events-none' : ''}`}
     >
       {/* 🔵 2026-09-29 (대표 확정 **안 C**) — **구역 띠를 걷었다.**
           09-28 의 띠(`w-[3px] bg-brand`)는 *"제목이 붙은 구역이 파는 쪽"* 이라는 이름 E 규칙을 구역

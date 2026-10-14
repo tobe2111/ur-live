@@ -36,4 +36,17 @@
 공통: 모든 블록이 카드 안에 있고 1200px 안에서 같은 왼쪽 선을 쓴다. 파란 면은 `이용권 등록·관리` 하나.
 ⚠️ 시안의 상단 GNB 는 단순화한 자리표시다(실제 GNB 는 바꾸지 않는다).
 
-미구현 — 대표 선택 대기.
+대표 선택(2026-10-14): **교환권 C · 이용권 B · PC 마이 B** (*"교환권 C 배너가 머리 이거 좋다. 이용권은 B. PC 마이는 B."*)
+
+## ✅ 구현 (2026-10-14, 브랜치 `claude/service-page-ui-redesign-gkm900`)
+
+- **교환권 C** — `pages/vouchers/VouchersHero.tsx`(196px 판을 응답 전부터 예약 · 0장 확정 시만 접음) + `HomeBannerStrip` `hero` 모드 + 서버 첫 화면(`vouchers-first-screen.ts`) 같은 클래스. commit c0938a068.
+- **이용권 지갑 B** — `WalletSummaryCard`(장수 1회) · 사용 가능 전부 `WalletRow`(+[사용]) · `WalletRecommend`(홈과 같은 키 · 가진 것 제외 2장). commit 141a44235.
+- **PC 마이 B** — 머리 띠 → 카드(64px 아바타 · 24px 이름 · 숫자 앞 구분선) · 곧 쓸 이용권 = 지갑과 같은 `WalletRow` 줄 + 이용권 현황을 한 카드에 · 내 가게/설정/내가 산 것도 카드. 모양은 `.ur-account-pc .ur-pc-card`(lg 전용) 한 곳. 폰 마이 불변.
+
+## 4. 교환권 1줄 2개 비교 — `assets/consumer-pages-2026-10-14/vouchers-grid.jpg`
+대표 *"교환권을 1줄에 2개씩 보여주게 할까?"* — 현재(1줄 1개 목록) vs 2열 격자 비교. 추천: **1줄 유지**(교환권은 브랜드·금액을 훑는 목록이라 이름이 두 줄로 접히면 비교가 느려진다). 대표 판정 대기.
+
+## 5. 유어샵 — `assets/consumer-pages-2026-10-14/ushop.jpg`
+A~E 다섯 안. 추천 **C**. 대표 선택 대기.
+

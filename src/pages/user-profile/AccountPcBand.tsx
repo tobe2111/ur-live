@@ -46,17 +46,20 @@ export default function AccountPcBand({ counts, userName, profileImage, onEditPr
   const { t } = useTranslation()
 
   return (
-    /* 🧱 가로 패딩 `px-4` — 아래 평면 줄(`ListRow` 의 `px-4`)과 왼쪽 끝을 맞춘다.
-       여백을 안 주면 아바타가 칸 끝에 붙어 아래 목록과 2단으로 어긋나 보인다. */
-    <div className="flex items-center gap-4 px-4 pt-1 pb-4 border-b border-rule">
+    /* 🗂️ 2026-10-14 **PC 마이 B**(대표 *"PC 마이는 B"*) — 띠가 **카드 한 장**이 됐다.
+       안 5 의 hairline 띠는 아래 블록들이 떠 있는 동안 혼자 선만 긋고 있어 *"정돈된 느낌이 부족"* 했다
+       (대표). B 는 이 머리를 포함해 **모든 블록을 카드에 담고 같은 왼쪽 선**을 쓴다.
+       ⚠️ 카드 모양은 `ur-pc-card`(index.css, lg 전용) 한 곳 — 아래 구역들과 같은 클래스다.
+       🧱 안쪽 패딩은 그 클래스가 `.px-4` 를 넓혀 준다(카드 안 줄들과 같은 값). */
+    <div className="ur-pc-card flex items-center gap-5 px-4 py-5">
       <img
         src={profileImage ? cfImage(profileImage, { width: 128 }) : `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=1C69EF&color=ffffff&size=128`}
         alt=""
-        width={48}
-        height={48}
+        width={64}
+        height={64}
         loading="lazy"
         decoding="async"
-        className="w-12 h-12 rounded-full object-cover shrink-0"
+        className="w-16 h-16 rounded-full object-cover shrink-0"
         onError={(e) => cfImageOnError(e.currentTarget, profileImage)}
       />
       {/* 👤 폰 헤더와 **같은 문법**: 줄 전체가 눌리고, 오른쪽 끝에 `프로필 편집 ›`.
@@ -68,7 +71,7 @@ export default function AccountPcBand({ counts, userName, profileImage, onEditPr
         className="min-w-0 flex items-center gap-2 text-left active:opacity-70 transition-opacity"
       >
         <span className="min-w-0">
-          <span className="block text-[17px] font-extrabold text-gray-900 dark:text-white truncate tracking-[-0.01em]">{userName}</span>
+          <span className="block text-[24px] font-extrabold text-gray-900 dark:text-white truncate tracking-[-0.02em] leading-tight">{userName}</span>
           <span className="block text-[13px] text-gray-500 dark:text-gray-400 truncate mt-1">{localStorage.getItem('user_email') || ''}</span>
         </span>
         <span className="shrink-0 text-[12px] font-semibold text-gray-500 dark:text-gray-400">{t('userProfile.editProfile', { defaultValue: '프로필 편집' })}</span>
@@ -77,7 +80,7 @@ export default function AccountPcBand({ counts, userName, profileImage, onEditPr
       <SellerSwitchInline seats={sellerSeats} />
       {/* 🔢 숫자는 오른쪽 끝에 붙는다 — 사람(왼쪽)과 자산(오른쪽)이 한 줄에서 갈린다.
           ⚠️ `min-w-0` 이 없으면 긴 숫자가 이름 칸을 밀어낸다. */}
-      <div className="ml-auto min-w-0">
+      <div className="ml-auto min-w-0 pl-5 border-l border-rule">
         <MyStats inline voucher={counts.voucher} gifticon={counts.gifticon} coupon={counts.coupon} />
       </div>
       <button
