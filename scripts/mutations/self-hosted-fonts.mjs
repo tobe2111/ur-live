@@ -46,7 +46,7 @@ export default [
   {
     name: '🔤 /static/fonts/* immutable 캐시를 뺀다 (매 방문 재다운로드)',
     file: 'public/_headers',
-    find: '/static/fonts/*\n  Cache-Control: public, max-age=31536000, immutable',
+    find: '  ! Expires\n  Cache-Control: public, max-age=31536000, immutable',
     replace: '# (제거)',
     test: TEST,
     why: '빼면 맨 위 `/*` 의 `no-cache, no-store` 에 걸린다. 2026-10-12 실측에서 숫자 폰트가 실제로 그 상태(엣지 BYPASS)였다.',

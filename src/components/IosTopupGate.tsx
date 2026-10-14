@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { IOS_HIDE_DIGITAL_TOPUP, TOPUP_DISABLED } from '@/shared/feature-flags'
-import { isNative, isIOS, openExternalUrl } from '@/lib/native'
+import { isNativeShell, isIOSShell } from '@/lib/native-platform'
 
 /**
  * 🛡️ 2026-06-27: iOS 인앱결제(IAP) 정책 대비 게이트 — '딜 충전'(순수 디지털) 전용.
@@ -50,7 +50,7 @@ export default function IosTopupGate({ children }: { children: ReactNode }) {
   // 서비스 전체 종료가 iOS 게이트보다 우선 (전 플랫폼)
   if (TOPUP_DISABLED) return <TopupClosedNotice />
 
-  const gated = IOS_HIDE_DIGITAL_TOPUP && isNative() && isIOS()
+  const gated = IOS_HIDE_DIGITAL_TOPUP && isNativeShell() && isIOSShell()
   if (!gated) return <>{children}</>
 
   return (
@@ -62,7 +62,7 @@ export default function IosTopupGate({ children }: { children: ReactNode }) {
         충전 후 앱으로 돌아오면 잔액이 반영됩니다.
       </p>
       <button
-        onClick={() => openExternalUrl(CHARGE_WEB_URL)}
+        onClick={() => { void import('@/lib/native').then((m) => m.openExternalUrl(CHARGE_WEB_URL)) }}
         className="mt-6 rounded-xl bg-brand px-6 py-3 text-[15px] font-bold text-white"
       >
         웹에서 충전하기

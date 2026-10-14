@@ -40,6 +40,7 @@ import { useSearchPan, useSearchDeals } from './restaurant-map/useSearchPan'
 import GeoHelpSheet, { type GeoHelpReason } from './restaurant-map/GeoHelpSheet'
 import { detectInAppBrowser } from '@/lib/in-app-browser'
 import { checkPermission } from '@/lib/in-app-warning'
+import { readCachedLoc, rememberLoc } from '@/shared/utils/cached-loc'
 
 // re-export so that any callers importing KakaoPlace from RestaurantMapPage 가 깨지지 않음
 export type { KakaoPlace }
@@ -62,12 +63,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   // 📍 2026-07-02 (대표 "첫 화면과 완성 화면이 달라 헷갈림"): 거리(km)는 GPS 측위 후에만 계산돼
   //   1~5초 늦게 나타나던 것 — 마지막 측위를 localStorage 에 캐시해 **재방문부터는 첫 페인트에 즉시**
   //   표시(수십 m 오차는 km 단위 표시에 무해), fresh GPS 도착 시 조용히 갱신. 첫 방문(캐시 없음)만 기존과 동일.
-  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(() => {
-    try {
-      const c = JSON.parse(localStorage.getItem('ur_last_loc_v1') || 'null')
-      return c && Number.isFinite(c.lat) && Number.isFinite(c.lng) ? { lat: c.lat, lng: c.lng } : null
-    } catch { return null }
-  })
+  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(() => readCachedLoc())
   // 🛡️ 2026-04-28: 이용권 카테고리 (식사/뷰티/헬스) — meal_voucher 인프라 재활용
   // 🧭 2026-07-20 (대표 — /stays 칩 죽은 링크 수리): `?category=` 딥링크로 초기 카테고리 선택 지원
   //   (예: /map?category=meal_voucher — /stays 칩·외부 공유용). 무효 값은 'all' 폴백.
@@ -209,7 +205,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       (pos) => {
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude }
         setUserLoc(loc)
-        try { localStorage.setItem('ur_last_loc_v1', JSON.stringify(loc)) } catch { /* quota */ }
+        rememberLoc(loc)
       },
       () => { /* 거부/실패 — 캐시 위치(있으면) 유지, 없으면 거리 비표시 */ },
       { timeout: 5000, enableHighAccuracy: false, maximumAge: 600000 }
@@ -371,7 +367,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     const applyLoc = (loc: { lat: number; lng: number }) => {
       setLocating(false)
       setUserLoc(loc)
-      try { localStorage.setItem('ur_last_loc_v1', JSON.stringify(loc)) } catch { /* quota */ }
+      rememberLoc(loc)
       setNearMeMode(true)
       setSortBy('distance')
       if (mapInstance.current && window.kakao?.maps) {

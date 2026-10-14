@@ -74,7 +74,7 @@ analyticsRoutes.post('/vitals', async (c) => {
   if (!body.name || typeof body.value !== 'number' || !Number.isFinite(body.value)) {
     return c.json({ ok: false }, 400)
   }
-  const validNames = ['LCP', 'FID', 'CLS', 'INP', 'TTFB']
+  const validNames = ['LCP', 'FID', 'CLS', 'INP', 'TTFB', 'CONN']
   if (!validNames.includes(body.name)) return c.json({ ok: false }, 400)
   if (body.value < 0 || body.value > 1_000_000) return c.json({ ok: false }, 400)
   const kv = analyticsWriteKv(c.env)
@@ -82,7 +82,9 @@ analyticsRoutes.post('/vitals', async (c) => {
 
   const day = todayKey()
   // 페이지 키워드 정규화 (group-buy/123 → group-buy)
-  const page = (body.page || '').replace(/\/\d+/g, '').slice(0, 60) || 'unknown'
+  // 📡 `colo:XXX` 는 데이터센터별 표본(web-vitals-report) — 숫자 제거·자르기와 무관하게 대문자 4자만 받는다.
+  const coloM = /^colo:([A-Z]{3,4})$/.exec(body.page || '')
+  const page = coloM ? `colo:${coloM[1]}` : ((body.page || '').replace(/\/\d+/g, '').slice(0, 60) || 'unknown')
   const sampleKey = `vitals:${day}:${body.name}:${page}`
   await appendSample(kv, sampleKey, Math.round(body.value))
   await incrementCounter(kv, `vitals_count:${day}:${body.name}`, 1)
@@ -120,7 +122,7 @@ analyticsRoutes.get('/summary', requireAdmin(), async (c) => {
   const vitals: Record<string, { p50: number; p75: number; p95: number; samples: number }> = {}
   const funnel: Record<string, number> = {}
 
-  for (const name of ['LCP', 'FID', 'CLS', 'INP', 'TTFB']) {
+  for (const name of ['LCP', 'FID', 'CLS', 'INP', 'TTFB', 'CONN']) {
     try {
       const list = await kv.list({ prefix: `vitals:${day}:${name}:` })
       for (const k of list.keys) {

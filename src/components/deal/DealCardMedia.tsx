@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'
+import { HOME_CARD_MAX_DPR } from '@/shared/home-card-image'
 import { rememberWarmImage } from '@/utils/image-warm'
 
 /** 스와이프로 칠 최소 가로 이동(px). 이보다 작으면 그냥 탭으로 본다. */
@@ -323,7 +324,7 @@ function DealCardMedia({
             <img
               key={src}
               src={cfImage(src, { width, format: 'auto' }) || src}
-              srcSet={cfSrcSet(src, width) || undefined}
+              srcSet={cfSrcSet(src, width, HOME_CARD_MAX_DPR) || undefined}
               sizes={`(max-width: 640px) 50vw, (max-width: 1024px) 33vw, ${width}px`}
               alt={isCover ? alt : ''}
               loading={isCover && eager ? 'eager' : 'lazy'}

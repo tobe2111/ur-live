@@ -11,7 +11,7 @@
  * 🔒 격자(0.02°≈2km)로 반올림한 값만 쿠키에 싣는다 — 정밀 좌표를 매 요청 서버에 보내지 않는다.
  */
 import { findRegionByKey, regionCentroid } from '@/shared/constants/korea-regions'
-import { NEAR_COOKIE, NEAR_LABEL_COOKIE, nearCookieValue, nearKeyOf, type NearPoint } from '@/shared/home-near'
+import { nearKeyOf, writeNearCookie, type NearPoint } from '@/shared/home-near'
 
 export interface HomeNear {
   /** 격자 키 `37.20,127.08` — 요청 쿼리·쿼리키·시드 판정에 쓴다. 없으면 ''. */
@@ -36,13 +36,7 @@ export function resolveHomeNear(input: {
   return { key: '', label: '', kmFrom: null }
 }
 
-/** 쿠키를 맞춘다(30일). 위치가 없으면 지운다 — 남겨 두면 다음 방문이 엉뚱한 동네로 시작한다. */
+/** 쿠키를 맞춘다(30일). 위치가 없으면 지운다 — 남겨 두면 다음 방문이 엉뚱한 동네로 시작한다. 쓰기는 SSOT `writeNearCookie`. */
 export function syncNearCookie(key: string, label = ''): void {
-  try {
-    if (typeof document === 'undefined') return
-    const tail = (v: string, on: boolean) => `${v}; path=/; max-age=${on ? 2592000 : 0}; samesite=lax; secure`
-    document.cookie = `${NEAR_COOKIE}=${tail(key ? nearCookieValue(key) : '', !!key)}`
-    // 라벨은 워커가 그리는 첫 화면의 소제목용("동탄5동에서 가까운 순") — 위치가 없으면 같이 지운다.
-    document.cookie = `${NEAR_LABEL_COOKIE}=${tail(key && label ? encodeURIComponent(label) : '', !!(key && label))}`
-  } catch { /* 쿠키 차단 — 시드만 못 맞출 뿐 화면은 정상 */ }
+  writeNearCookie(key, label)
 }

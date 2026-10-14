@@ -32,6 +32,8 @@ export function useApiQuery<T = unknown>(
     headers?: Record<string, string>
     /** 🛡️ 2026-06-03: 대시보드 즉시렌더용 — sessionStorage 등 동기 캐시 seed. refetchOnMount:'always' 와 함께 쓰면 즉시 표시 + 백그라운드 fresh. */
     initialData?: T
+    /** 📍 2026-10-13: 응답을 기다리는 동안 보여 줄 값(캐시에 안 들어간다). 키가 바뀔 때 직전 값을 넘기려면 함수형. */
+    placeholderData?: T | ((prev: T | undefined) => T | undefined)
   },
 ): UseQueryResult<T> {
   return useQuery<T>({
@@ -51,5 +53,6 @@ export function useApiQuery<T = unknown>(
     refetchInterval: opts?.refetchInterval,
     refetchIntervalInBackground: false,
     initialData: opts?.initialData,
+    placeholderData: opts?.placeholderData as never,
   })
 }

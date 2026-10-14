@@ -100,7 +100,7 @@ describe('① 상단 띠 = 옆으로 넘기는 스트립 (안 3)', () => {
     expect(codeOnly(RAIL), '숫자 알약이 사라졌다 — `N / 전체` 표기가 없다')
       .toMatch(/\{active \+ 1\} \/ \{banners\.length\}/)
     expect(codeOnly(RAIL), '숫자가 버튼이 아니다 — 누를 수 없으면 "부드럽게 넘김"(대표 지시)이 손가락 전용이 된다')
-      .toMatch(/<button[\s\S]{0,400}?onClick=\{\(\) => goTo\(\(active \+ 1\) % banners\.length\)\}/)
+      .toMatch(/<button[\s\S]{0,400}?onClick=\{\(\) => goTo\(active \+ 1\)\}/)
     expect(codeOnly(RAIL), '숫자가 배너 밖으로 나갔다 — 줄을 하나 더 먹으면 다시 따로 논다')
       .toMatch(/className="absolute [^"]*right-/)
     expect(codeOnly(RAIL), '포함 블록(relative)이 없어졌다 — 알약이 레일과 함께 스크롤돼 흘러간다')
@@ -158,11 +158,14 @@ describe('① 상단 띠 = 옆으로 넘기는 스트립 (안 3)', () => {
    * 🔁 2026-10-12 대표 *"자동으로 넘어가게 해줘"* — 종전 "자동 재생 금지" 단언을 **대체**한다.
    *   지키려던 것(읽는 사람을 방해하지 않는다)은 네 개의 멈춤 조건으로 옮겨갔다.
    */
+  /** 🔁 2026-10-13 재조준 — "끝이면 처음으로" 가 되감기(0 으로 scrollTo) → **복제 칸 경유 순환**으로
+   *   바뀌었다(대표 *"마지막페이지에서 또 오른쪽으로 넘기면 첫페이지로"*). 불변식은 그대로이고
+   *   순환 자체는 `home-banner-yanolja-2026-10-13.test.tsx` 가 지킨다. */
   it('저절로 넘어간다 — 타이머가 다음 장으로 스크롤하고, 끝이면 처음으로', () => {
     const code = codeOnly(RAIL)
     expect(SRC).toMatch(/const AUTO_ADVANCE_MS = \d+/)
     expect(code).toMatch(/window\.setTimeout\(/)
-    expect(code).toMatch(/goTo\(active \+ 1 >= banners\.length \? 0 : active \+ 1\)/)
+    expect(code).toMatch(/goTo\(active \+ 1\)/)
   })
 
   it('읽는 사람을 방해하지 않는다 — 멈춤·동작 줄이기·화면 밖·숨은 탭에서는 안 넘긴다', () => {

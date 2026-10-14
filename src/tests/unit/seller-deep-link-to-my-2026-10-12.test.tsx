@@ -181,8 +181,10 @@ describe('⑥ 배선', () => {
   })
 
   it('🔴 셀러 주소는 전부 시트가 렌더하는 라우트 표 안에 있다 — 밖에 있으면 시트가 바깥으로 튕기고 껍데기가 또 보낸다(왕복)', () => {
-    const app = readFileSync('src/App.tsx', 'utf-8')
+    // ⚡ 2026-10-13: `/seller/*` 는 이 표 자체를 싣는 출입구(`SellerRouteTree`)라 그 한 줄만 예외.
+    const app = readFileSync('src/App.tsx', 'utf-8').replace('<Route path="/seller/*" element={<SellerRouteTree />} />', '')
     expect(app).not.toMatch(/path="\/seller/)
+    expect(readFileSync('src/App.tsx', 'utf-8')).toMatch(/<Route path="\/seller\/\*" element=\{<SellerRouteTree \/>\} \/>/)
   })
 
   it('옛 홈 라우트와 틀이 같은 판정을 쓴다(두 벌 금지)', () => {

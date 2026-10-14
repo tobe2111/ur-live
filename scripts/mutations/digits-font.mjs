@@ -30,9 +30,17 @@ export default [
   {
     name: '🔢 숫자 글꼴 파일 경로가 옛 Poppins 로 돌아간다',
     file: 'src/index.css',
-    find: "url('/static/fonts/roboto-digits-700.woff2')",
+    find: "url('/static/fonts/roboto-digits-v2-700.woff2')",
     replace: "url('/static/fonts/poppins-digits-700.woff2')",
     test: TEST,
     why: '그 파일은 지웠다 — 404 가 나도 화면은 조용히 Pretendard 로 떨어져 아무도 모른다.',
+  },
+  {
+    name: '🔢 숫자 글꼴이 옛 v1 파일명으로 돌아간다(1년 캐시 — 같은 이름 재사용 금지)',
+    file: 'src/index.css',
+    find: "url('/static/fonts/roboto-digits-v2-400.woff2')",
+    replace: "url('/static/fonts/roboto-digits-400.woff2')",
+    test: TEST,
+    why: '옛 파일은 지웠다 — 404 면 화면은 조용히 Pretendard 로 떨어진다. 그리고 그 이름은 1년 immutable 캐시에 6.3KB 가 남아 있다.',
   },
 ]

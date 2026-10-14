@@ -7,6 +7,10 @@ import fs from 'fs';
 import { execSync } from 'child_process';
 // 🌐 2026-10-11: 번역 파일을 손님용(core)/대시보드용(dash)으로 나누는 빌드 플러그인 — src/i18n.ts 가 `?i18n-core|dash` 로 부른다.
 import { i18nSplitPlugin } from './scripts/i18n-split.mjs';
+// 🧩 2026-10-13: lucide 이름 import → 아이콘 파일 직접 import(배럴이 모듈 그래프를 흐리지 않게 — scripts/surface-chunks.mjs 참조).
+import { lucideDeepImportsPlugin } from './scripts/lucide-deep-imports.mjs';
+import { ROUTES as SURFACE_ROUTES } from './scripts/generate-route-chunk-map.mjs';
+import { createSurfaceChunker } from './scripts/surface-chunks.mjs';
 
 // 빌드마다 유니크한 버전 — 정형화된 타임스탬프 (YYYYMMDD.HHmm, UTC). SW 캐시 키 + 빌드 표시 겸용.
 //   🏁 2026-06-13 (사용자 요청 "빌드 정보 숫자 정형화"): base36 난수 → 사람이 읽는 날짜.시각 형식.
@@ -84,9 +88,9 @@ function proposalPdfDevPlugin() {
 //     `package`·`settings`·`shopping-cart`·`store`·`ticket`·`check-circle-2`/`circle-check`/`circle-alert`
 //     → `urdeal-icons.tsx`). 안 쓰는 것을 목록에 남기면 그만큼 셸 봉투가 커진다.
 const LUCIDE_SHELL_ICONS = new Set([
-  'bed-double', 'book-open', 'check', 'chevron-down', 'chevron-right', 'circle-help', 'coins', 'compass',
+  'bed-double', 'book-open', 'check', 'chevron-down', 'chevron-right', 'circle-help', 'coins',
   // 🪒 2026-09-30: `map-pin` 제거 — 잠금표 이행으로 셸이 `PinIcon`(유어딜 세트)을 쓴다. 26 → 25.
-  'help-circle', 'layout-grid', 'log-in', 'plus', 'radio', 'refresh-cw',
+  'help-circle', 'layout-grid', 'log-in', 'radio', 'refresh-cw',
   'scissors', 'search', 'shapes', 'smartphone', 'sparkles', 'user', 'user-plus', 'utensils', 'x', 'zap',
 ])
 
@@ -112,6 +116,14 @@ const LUCIDE_HOME_ICONS = new Set([
   'party-popper', 'paw-print', 'play', 'tag', 'ticket',
 ])
 
+
+// 🧩 2026-10-13 [LOADING_ADDITIVE] 손님 페이지 lazy 코드를 쓰는 페이지끼리 묶는다 — 근거·실측·규칙은 scripts/surface-chunks.mjs.
+const gateLazy = createSurfaceChunker({
+  routes: SURFACE_ROUTES,
+  root: __dirname,
+  commonMin: Number(process.env.LZ_COMMON || 4),
+  minGroupBytes: Number(process.env.LZ_MIN || 2000),
+})
 // 🚨 청크 순환 허용목록 — 2026-10-13 실측으로 이미 존재하던 둘(함수 export 만 오가서 평가 순서와 무관).
 //   **새 항목 추가 금지.** 새 순환은 manualChunks 규칙으로 푼다(위 onLog 게이트 주석).
 export const KNOWN_CIRCULAR_CHUNKS = new Set<string>([
@@ -124,6 +136,7 @@ export default defineConfig({
     react(),
     swVersionPlugin(),
     i18nSplitPlugin(__dirname),
+    lucideDeepImportsPlugin(),
     proposalPdfDevPlugin(),
     // 🚨 2026-04-27 (긴급 롤백): vite-plugin-pwa 비활성화.
     //   원인: navigateFallback 이 카카오 OAuth redirect 도 가로채 ERR_FAILED 발생.
@@ -174,7 +187,7 @@ export default defineConfig({
         handler(level, log)
       },
       output: {
-        manualChunks(id) {
+        manualChunks(id, meta) { return gateLazy(id, ((): string | undefined => {
           // React core
           if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) {
             return 'react-core'
@@ -248,6 +261,10 @@ export default defineConfig({
           if (id.includes('react-helmet-async')) return 'helmet'
           // Capacitor (native SDK — 웹에선 no-op이지만 main chunk에서 분리해 캐싱 개선)
           if (id.includes('@capacitor/')) return 'capacitor'
+          // 📱 2026-10-12 `lib/native.ts`(Capacitor 래퍼)는 Capacitor 와 **같은 봉투**로 — `/src/lib/` catch-all 로
+          //   app-utils 에 들어가면 app-utils 가 capacitor 청크를 정적으로 끌어와 **모든 첫 방문**이 받는다
+          //   (판정만 필요한 자리는 `lib/native-platform.ts`, 실제 기능은 앱 안에서만 동적으로).
+          if (id.includes('/src/lib/native.ts')) return 'capacitor'
           // Image compression (seller upload pages만 사용 — 지연 캐싱)
           if (id.includes('browser-image-compression')) return 'img-utils'
           // 🛡️ 2026-05-06: 소스 코드 분할 — index entry 추가 분리.
@@ -308,10 +325,17 @@ export default defineConfig({
           // 🩸 2026-10-13: 장소 URL SSOT — 손님 매장 지도(RestaurantMiniMap)와 셀러 매장 등록이 함께 읽는다.
           //   규칙이 없어 Rollup 이 셀러 봉투(app-seller-components)에 넣었고, 그러자 app-components →
           //   app-seller-components → app-components **순환**이 생겨 셀러 청크의 최상위 코드가 아직 평가 안 된
-          //   app-components 값(StatusTone)을 읽다 TDZ 로 터졌다 — **라이브 전 페이지가 오류 화면**이었다.
-          //   아래 onLog 게이트가 이 클래스(새 청크 순환)를 이제 빌드 실패로 막는다.
-          //   (같은 장애를 두 세션이 따로 고쳐 이 줄이 두 번 있었다 — 둘이면 주입이 하나를 지워도 다른 하나가
-          //   같은 일을 해서 가드가 실패할 수 없다. 한 줄로 합쳤다.)
+          //   app-components 값(StatusTone·TONE_PILL)을 읽다 TDZ("Cannot access before initialization") 로
+          //   터졌다 — **소비자 전 페이지가 ErrorBoundary 로** 떨어졌다. 시작은 #1756 이 RestaurantMiniMap
+          //   에서 이 파일을 import 한 것이었다. 아래 onLog 게이트가 이 클래스(새 청크 순환)를 이제
+          //   빌드 실패로 막는다.
+          //   🩸 2026-10-13(후속): 이 줄이 **두 벌**이었다 — 같은 장애를 두 세션이 각자 고쳤고 둘 다
+          //     머지됐다(각각은 초록이었다). 두 번째는 첫 `return` 때문에 **닿지 않는 죽은 규칙**이었고,
+          //     주입 앵커가 "여러 곳에 맞는다" 로 그걸 잡았다. 그리고 그게 왜 나쁜가 — **중복 잠금은
+          //     각 잠금을 시험 불가능하게 만든다**(주입이 하나를 지워도 다른 하나가 같은 일을 해서
+          //     가드가 실패할 수 없다). 설명은 합치고 규칙은 하나만 둔다.
+          //     ⚠️ 그 중복이 실제로 main 을 두 번 빨갛게 만들었다 — `Guard mutations (full)` 이
+          //     `#1722`·`#1760` head 에서 `주입 대상이 2곳 — 유일해야 한다` 로 멎었다(빌드·화면은 초록).
           if (id.includes('/src/shared/kakao-place-url')) return 'app-shared'
           // 🎬 2026-09-09: 유어쇼츠 SSOT(카드 크기·뷰어 주소·유튜브 id 파싱) — import 0 인 순수 상수 모듈인데
           //   홈 헤더 진입점이 `URSHORTS_VIEWER_PATH` 를 읽는 순간 catch-all 로 떨어져 홈 폐쇄가
@@ -414,6 +438,8 @@ export default defineConfig({
           // 기능 모듈 API — seller/admin/agency/auth 기능 코드 (대시보드에서만 사용)
           if (id.includes('/src/features/')) return 'app-features'
           // 라우트 그룹 정의 파일 — seller/admin/agency 라우트 (큰 Route 트리)
+          // ⚡ 2026-10-12 어드민 라우트 표는 App 이 `/admin/*` 에서 lazy 로 받는다 — 같은 봉투면 소비자 첫 방문이 받는다.
+          if (id.includes('/src/routes/admin.routes')) return 'app-routes-admin'
           if (id.includes('/src/routes/')) return 'app-routes'
           // 기타 공유 컴포넌트 — 하위 디렉터리 별 분리
           // 🛡️ 2026-05-24 (loading P0): 셀러/스트리밍 컴포넌트 분리 → app-components -248KB.
@@ -504,11 +530,13 @@ export default defineConfig({
           //     lazy 페이지에서만 쓰면 여기 넣지 말 것(넣는 순간 첫 페인트 바이트가 된다).
           //     반대로 여기 있는 모듈이 정적 import 하는 컴포넌트는 **함께 들어와야 한다**(안 그러면
           //     app-shell → app-components 정적 엣지가 생겨 app-components 가 다시 preload 된다).
+          // 🖥️ 2026-10-13: PC 사이드바는 넓은 화면에서만 lazy 로 받는다(MobileAppLayout) — 셸 목록에서 뺐다.
+          //   셸에 남겨 두면 lazy 로 바꿔도 app-shell 안에 그대로 실려 폰도 받는다(그리고 그 아이콘이 lz-common 을 끌고 온다).
+          if (id.includes('/src/components/DesktopLiveSidebar')) return 'app-desktop-chrome'
           if (
             id.includes('/src/components/FrameWrapper') ||
             id.includes('/src/components/GripFrameLayout') ||
             id.includes('/src/components/MobileAppLayout') ||
-            id.includes('/src/components/DesktopLiveSidebar') ||
             id.includes('/src/components/ErrorBoundary') ||
             id.includes('/src/components/ToastContainer') ||
             id.includes('/src/components/ScrollToTop') ||
@@ -527,7 +555,8 @@ export default defineConfig({
           // 나머지 src/ 디렉터리 — types, constants, config, layouts
           if (id.includes('/src/types/') || id.includes('/src/constants/') ||
               id.includes('/src/config/') || id.includes('/src/layouts/')) return 'app-misc'
-        },
+          return undefined
+        })(), meta) },
       },
     },
     chunkSizeWarningLimit: 600,

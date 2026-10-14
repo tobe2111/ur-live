@@ -62,6 +62,23 @@ export function parseNearKey(raw: string | null | undefined): NearPoint | null {
 /** 쿠키 값(밑줄 구분)으로. */
 export const nearCookieValue = (key: string) => key.replace(',', '_')
 
+/**
+ * 위치 쿠키를 쓴다(30일) — 화면 쪽 **유일한** 쓰기 창구. 위치가 없으면 지운다.
+ * 라벨(`ur_loc_n`)은 워커가 그리는 첫 화면 소제목용. `label` 이 `null` 이면 **라벨은 건드리지 않는다**
+ * (지도처럼 동네 이름을 모르는 곳이 좌표만 갱신할 때 — 같은 격자면 기존 라벨이 맞고, 다른 격자면 지운다).
+ */
+export function writeNearCookie(key: string, label: string | null = ''): void {
+  try {
+    if (typeof document === 'undefined') return
+    const tail = (v: string, on: boolean) => `${v}; path=/; max-age=${on ? 2592000 : 0}; samesite=lax; secure`
+    const prev = nearKeyFromCookieHeader(document.cookie)
+    document.cookie = `${NEAR_COOKIE}=${tail(key ? nearCookieValue(key) : '', !!key)}`
+    if (label === null && key && prev === key) return
+    const l = label || ''
+    document.cookie = `${NEAR_LABEL_COOKIE}=${tail(key && l ? encodeURIComponent(l) : '', !!(key && l))}`
+  } catch { /* 쿠키 차단 — 시드만 못 맞출 뿐 화면은 정상 */ }
+}
+
 /** `Cookie` 헤더 원문에서 위치 키를 읽는다. 없거나 깨졌으면 ''. */
 export function nearKeyFromCookieHeader(header: string | null | undefined): string {
   if (!header) return ''

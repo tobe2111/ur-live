@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { HOME_H1 } from '@/shared/seo/consumer-surfaces'
 import { useCurrentDong } from '@/hooks/useCurrentDong'
 import { Link, useNavigate } from 'react-router-dom'
 import { Search } from 'lucide-react'
@@ -95,6 +96,11 @@ export default function MobileHomePage() {
 
   return (
     <div className="bg-white dark:bg-[#11141C] min-h-[100dvh]">
+      {/* 🩸 2026-10-13 — 이 화면엔 제목 요소가 하나도 없었다(아래 2026-08-31 메모대로 **보이는**
+          머리글을 일부러 뺀 결과인데, 요소까지 같이 사라졌다). 보이는 디자인은 그대로 두고
+          `sr-only` 로 되살린다 — 박스 0이라 레이아웃 무영향이고, 워커 첫 화면과 **같은 값**이라
+          마운트 때 제목이 바뀌지 않는다. */}
+      <h1 className="sr-only">{HOME_H1}</h1>
       <SEO
         title="유어딜 — 동네 이용권·공동구매·교환권을 할인가로"
         description="우리 동네 이용권·동네딜·교환권을 할인가로. 온라인에서 사고 매장에서 QR·PIN으로 바로 사용하세요."

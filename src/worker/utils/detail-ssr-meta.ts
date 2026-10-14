@@ -14,8 +14,42 @@ import { canonicalDetailPath } from '../../shared/product-flow'
 import { productShareImage } from '@/shared/og-share-image'
 import { propertyTypeLabel } from '../../shared/stay-property-type'
 import { kakaoPlaceCanonicalUrl } from '../../shared/kakao-place-url'
+import { parseRegionFromAddress } from '../../shared/constants/region-slugs'
 import { storeNameJoin } from '@/shared/seo/store-name-dedupe'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
+
+/**
+ * 🏠 한국 주소를 `PostalAddress` 로 — **시/도·시군구를 채워서** 돌려준다 (2026-10-13 신설).
+ *
+ * ## 무엇이 문제였나 (라이브 실측)
+ * ```
+ * /pass/2919   FoodEstablishment  {"streetAddress":"서울 서초구 방배중앙로 165","addressCountry":"KR"}
+ * /stays/2887  LodgingBusiness    addressRegion:"강원" 만 있고 addressLocality 없음
+ * ```
+ * `addressLocality`(시군구)가 **전 매장 0건**이었다. 구글 `LocalBusiness` 가 권하는 필드이고,
+ * **로컬 질의가 이 서비스의 본류**라 가장 아쉬운 자리다. 재료와 도구가 둘 다 있었는데
+ * (API 가 주소를 주고, `/region/*` 44개를 가르는 파서가 레포에 있다) 그 둘이 안 만나고 있었다.
+ *
+ * 🔴 **`streetAddress` 는 전체 주소를 그대로 둔다.** 앞머리를 떼면 파싱이 어긋난 주소에서
+ *    길 이름이 잘려 나간다 — *덜 정확한 쪽*이 아니라 *틀린 주소*가 되는 거래다. 시/도가
+ *    두 번 나오는 것은 구글이 허용하고, 숙소가 이미 그 모양으로 돌고 있다(동작 보존).
+ * 🔴 파싱이 실패하면 **아무것도 안 넣는다** — 지어내지 않는다(이 레포가 `aggregateRating`·
+ *    `Offer` 에서 지키는 규율과 같다).
+ */
+function postalAddress(raw: unknown, sidoHint?: unknown): Record<string, unknown> | null {
+  const addr = raw == null ? '' : String(raw).trim()
+  if (!addr) return null
+  const ref = parseRegionFromAddress(addr)
+  const region = ref?.sido || (sidoHint ? String(sidoHint) : '')
+  return {
+    '@type': 'PostalAddress',
+    streetAddress: addr,
+    ...(region ? { addressRegion: region } : {}),
+    ...(ref?.sigungu ? { addressLocality: ref.sigungu } : {}),
+    addressCountry: 'KR',
+  }
+}
+
 export { PASS_OG_VERSION } from '@/shared/pass-share-card'
 
 // script 종료 태그 이스케이프 — <script type="application/ld+json"> 안전 임베드.
@@ -199,7 +233,7 @@ export function buildDetailMeta(ssrPayload: string, origin: string, pathname: st
       '@context': 'https://schema.org', '@type': bizType, '@id': placeId,
       name: store,
       ...(sameAs ? { sameAs: [sameAs] } : {}),
-      ...(d.restaurant_address ? { address: { '@type': 'PostalAddress', streetAddress: String(d.restaurant_address), addressCountry: 'KR' } } : {}),
+      ...((a => a ? { address: a } : {})(postalAddress(d.restaurant_address))),
       ...(d.restaurant_lat && d.restaurant_lng ? { geo: { '@type': 'GeoCoordinates', latitude: d.restaurant_lat, longitude: d.restaurant_lng } } : {}),
       ...(d.restaurant_phone ? { telephone: String(d.restaurant_phone) } : {}),
       ...(d.image_url ? { image: [photo] } : {}),
@@ -291,7 +325,7 @@ export function buildStayDetailMeta(ssrPayload: string, origin: string, pathname
       ...(staySameAs ? { sameAs: [staySameAs] } : {}),
       ...(baseDesc ? { description: baseDesc.slice(0, 300) } : {}),
       ...(p.image_url ? { image: [photo] } : {}),
-      ...(p.address ? { address: { '@type': 'PostalAddress', streetAddress: String(p.address), addressRegion: p.region_sido || undefined, addressCountry: 'KR' } } : {}),
+      ...((a => a ? { address: a } : {})(postalAddress(p.address, p.region_sido))),
       ...(p.latitude && p.longitude ? { geo: { '@type': 'GeoCoordinates', latitude: p.latitude, longitude: p.longitude } } : {}),
       ...(p.star_rating ? { starRating: { '@type': 'Rating', ratingValue: p.star_rating } } : {}),
       ...(rating > 0 && Number(p.review_count) > 0 ? { aggregateRating: { '@type': 'AggregateRating', ratingValue: rating, reviewCount: Number(p.review_count) } } : {}),

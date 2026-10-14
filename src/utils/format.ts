@@ -30,10 +30,35 @@ export function kstShort(utc: unknown): string {
   return `${p(k.getUTCMonth() + 1)}-${p(k.getUTCDate())} ${p(k.getUTCHours())}:${p(k.getUTCMinutes())}`
 }
 
+// ⚡ 2026-10-12 포매터를 로캘마다 **한 번만** 만든다. `n.toLocaleString(locale)` 은 부를 때마다 숫자 포매터를
+//   새로 짓는다 — 홈 첫 렌더(카드 가격·정가·할인)에서 이 함수 자체 시간만 74ms(CPU 4배 재생)였다.
+//   기본 옵션이 같으므로 출력은 toLocaleString 과 동일하다(테스트가 대조).
+const NUMBER_FORMATS = new Map<string, Intl.NumberFormat>()
+function numberFormat(locale: string): Intl.NumberFormat {
+  let f = NUMBER_FORMATS.get(locale)
+  if (!f) { f = new Intl.NumberFormat(locale); NUMBER_FORMATS.set(locale, f) }
+  return f
+}
+
+// ⚡ 2026-10-13 정수는 포매터 없이 쉼표만 찍는다. 위 캐시로 *반복* 비용은 없앴지만 첫 생성 한 번
+//   (`new Intl.NumberFormat('ko-KR')` — 로캘 데이터 적재)이 홈 첫 카드 가격을 그리는 바로 그 렌더에서
+//   65ms(CPU 4배 재생)였다. 가격·수량은 거의 전부 정수이고, ko-KR 정수 표기는 세 자리 쉼표·하이픈 부호뿐이라
+//   Intl 과 같은 문자열이 나온다(테스트가 Intl 과 대조). 소수·-0·안전범위 밖·다른 로캘은 종전대로 Intl.
+function groupInt(n: number): string {
+  const s = String(Math.abs(n))
+  let out = ''
+  for (let i = 0; i < s.length; i++) {
+    if (i > 0 && (s.length - i) % 3 === 0) out += ','
+    out += s[i]
+  }
+  return n < 0 ? '-' + out : out
+}
+
 export function formatNumber(value: unknown, locale: string = 'ko-KR'): string {
   const n = Number(value ?? 0)
   if (!Number.isFinite(n)) return '0'
-  return n.toLocaleString(locale)
+  if (locale === 'ko-KR' && Number.isSafeInteger(n) && !Object.is(n, -0)) return groupInt(n)
+  return numberFormat(locale).format(n)
 }
 
 /** 가격 포매팅 — '1,234원' 형식 */
@@ -47,7 +72,7 @@ export function formatPriceShort(value: unknown): string {
   if (!Number.isFinite(n)) return '0'
   if (n >= 100_000_000) return `${(n / 100_000_000).toFixed(1)}억`
   if (n >= 10_000) return `${(n / 10_000).toFixed(1)}만`
-  return n.toLocaleString('ko-KR')
+  return numberFormat('ko-KR').format(n)
 }
 
 /**

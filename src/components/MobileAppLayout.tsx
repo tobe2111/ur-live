@@ -1,10 +1,18 @@
 import { ReactNode, lazy, Suspense, CSSProperties, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
-import DesktopLiveSidebar from './DesktopLiveSidebar'
 import { useTheme } from '@/shared/stores/useTheme'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { isFullBleedPcPath } from '@/shared/pc-fullbleed'
 import { isMallSurfacePath } from '@/shared/mall/resolve'
+
+/**
+ * 🖥️ 2026-10-13: 사이드바는 `hidden md:flex` 라 폰에선 안 보이는데 정적 import 라 폰도 그 코드를 받았다.
+ *   넓은 화면에서만 마운트하고 코드는 따로 받는다. 넓은 화면이면 모듈 평가 즉시 받기 시작해 페이지 청크와
+ *   나란히 도착한다. 사이드바는 `fixed` 라 늦게 와도 본문을 밀지 않는다(본문 여백은 `showSidebar` 로 이미 잡혀 있다).
+ */
+const loadSidebar = () => import('./DesktopLiveSidebar')
+const DesktopLiveSidebar = lazy(loadSidebar)
+if (typeof window !== 'undefined' && window.matchMedia?.('(min-width: 768px)').matches) void loadSidebar()
 
 // 🗑️ 2026-07-07 라이브커머스 제거: DesktopLiveLeft/RightPanel 제거.
 const ConsumerFrameRails = lazy(() => import('./ConsumerFrameRails'))
@@ -154,6 +162,7 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
   // 📱 2026-09-02 (유어샵 워터폴 실측): 두 레일은 안에서 `hidden xl:flex` 라 모바일에선 안 보이는데, 마운트는
   //   되므로 lazy 청크 + 그 안의 QR 라이브러리(codes 82KB)를 **폰에서도** 내려받고 있었다. 뷰포트가 xl 일 때만 마운트.
   const isXl = useMediaQuery('(min-width: 1280px)')
+  const wideForSidebar = useMediaQuery('(min-width: 768px)')
   // 📐 2026-06-17: 단일 폰 폭(430) — 페이지별 폭 분기 제거(액자가 페이지마다 안 튐).
   const frameWidth = '430px'
 
@@ -178,7 +187,7 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
   return (
     <>
       {/* PC (xl+) 좌측 사이드바 — 일반 페이지 + 라이브/쇼츠 (fixed). */}
-      {showSidebar && <DesktopLiveSidebar />}
+      {showSidebar && wideForSidebar && <Suspense fallback={null}><DesktopLiveSidebar /></Suspense>}
       {/* 🗑️ 2026-07-07 라이브커머스 제거: DesktopLiveLeft/RightPanel 렌더 제거 */}
       {/* 🗑️ 2026-09-02 (대표 확정 — 유어샵 안P1): 방문자 PC 거터 레일(`LinkshopVisitorRails`) 삭제.
           유어샵은 이제 lg+ 에서 액자를 벗어 진짜 PC 페이지(좌 프로필 열 + 우 3열 진열대)라 거터가 없다.

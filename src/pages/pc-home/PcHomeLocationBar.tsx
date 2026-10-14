@@ -4,6 +4,7 @@ import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { ChevronDown, LocateFixed, Loader2, X } from 'lucide-react'
 import { KOREA_REGIONS, findRegionByKey } from '@/shared/constants/korea-regions'
 import { toast } from '@/hooks/useToast'
+import { rememberLoc } from '@/shared/utils/cached-loc'
 
 /**
  * 🗺️ 2026-07-16 (대표 — PC 홈 위치 필터): "현재 위치 어디인지 + 장소 설정 + 가까운 이용권 필터".
@@ -95,7 +96,7 @@ export default function PcHomeLocationBar({
         navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 })
       )
       const { latitude: lat, longitude: lng } = pos.coords
-      try { localStorage.setItem('ur_last_loc_v1', JSON.stringify({ lat, lng })) } catch { /* ignore */ }
+      rememberLoc({ lat, lng })
       // 🗺️ 2026-07-16 (대표 — 현위치로 가까운 순): 실좌표를 상위로 → 피드를 '가까운 순' 정렬(지역 필터 아님,
       //   숨기지 않고 거리순 재배열). 역지오코딩/지역세팅은 하지 않음(빈 화면·Kakao 의존 제거).
       onLocate?.({ lat, lng })

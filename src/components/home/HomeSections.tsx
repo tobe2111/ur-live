@@ -99,6 +99,18 @@ export default function HomeSections(
     () => (readHomeSectionsSeedNear() === nearKey ? readHomeSectionsSeed<HomeSection>() : undefined),
     [nearKey],
   )
+  /**
+   * 📍 2026-10-13 (대표 *"여긴 왜이리 로딩 길어?"* — 동탄5동 홈에서 회색 자리가 오래 떠 있던 스크린샷):
+   *   시드가 **다른 위치**로 만든 것이면 그걸 정답으로 쓰지는 않되(위 규칙 그대로), 동네 섹션이 오기 전까지
+   *   **화면에서 지우지도 않는다.** 종전엔 서버가 그려 둔 섹션 → 회색 자리 → 동네 섹션으로 **두 번** 바뀌었고,
+   *   회색 자리는 앱이 부팅하고 요청이 끝날 때까지(폰에서 수 초) 남았다. 이제 한 번만 바뀐다.
+   *   위치를 바꾼 경우(📍 다시 잡기)도 직전 섹션을 그대로 두고 바꿔 끼운다 — 빈 칸보다 낫다.
+   *   ⚠️ placeholder 는 캐시에 안 들어간다 — 이 위치의 정답으로 오인될 일이 없다.
+   */
+  const staleSeed = useMemo(
+    () => (readHomeSectionsSeedNear() === nearKey ? undefined : readHomeSectionsSeed<HomeSection>()),
+    [nearKey],
+  )
 
   const { data: sections = [], isLoading } = useApiQuery<HomeSection[]>(
     nearKey ? ['home', 'sections', nearKey] : ['home', 'sections'],
@@ -110,6 +122,7 @@ export default function HomeSections(
       },
       staleTime: 5 * 60_000,
       initialData: ssrSections,
+      placeholderData: (prev) => prev ?? staleSeed,
       // ⚠️ initialData 는 기본적으로 "신선함"으로 간주된다 — 그대로 두면 시드가 낡아도 갱신이 안 된다.
       //   (가드: check-query-initialdata) 마운트마다 백그라운드 갱신시켜 화면은 즉시, 값은 최신으로.
       refetchOnMount: 'always',

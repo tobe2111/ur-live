@@ -125,7 +125,10 @@ describe('홈 카드 사진 preload — 클라와 워커가 같은 URL 을 만�
     // DealCardMedia 가 쓰는 형태와 **같은 인자**로 만들어 비교한다.
     const media = code('src/components/deal/DealCardMedia.tsx')
     expect(media).toMatch(/cfImage\(src, \{ width, format: 'auto' \}\)/)
-    expect(media).toMatch(/cfSrcSet\(src, width\)/)
+    // 2026-10-12: 카드 밀도 상한(HOME_CARD_MAX_DPR) — 카드·preload·서버 첫 화면이 **같은 상수**를 넘겨야 URL 이 같다.
+    expect(media).toMatch(/cfSrcSet\(src, width, HOME_CARD_MAX_DPR\)/)
+    expect(code('src/worker/utils/home-card-preload.ts')).toMatch(/cfSrcSet\(src, w, HOME_CARD_MAX_DPR\)/)
+    expect(code('src/worker/utils/home-first-screen.ts')).toMatch(/cfSrcSet\(src, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_MAX_DPR\)/)
 
     for (const src of [
       '/api/media/uploads/demo/2026-08/a8818855-f067-4e32-bf0f-f54d6d3f3626.jpg',
@@ -147,5 +150,15 @@ describe('홈 카드 사진 preload — 클라와 워커가 같은 URL 을 만�
   it('중단점 두 개가 서로 여집합이다 (틈이 생기면 그 폭에서 preload 가 없다)', () => {
     expect(HOME_CARD_LG_QUERY).toBe('(min-width: 1024px)')
     expect(HOME_CARD_BASE_QUERY).toBe('(max-width: 1023px)')
+  })
+})
+
+describe('🖼️ 카드 사진 밀도 상한 (2026-10-12)', () => {
+  it('상한 2 면 3x 후보가 없고, 기본값은 종전처럼 1x·2x·3x 다', () => {
+    const src = '/api/media/uploads/demo/2026-08/a.jpg'
+    const capped = cfSrcSet(src, HOME_CARD_IMG_WIDTH_BASE, 2)
+    expect(capped).toMatch(/ 1x, .* 2x$/)
+    expect(capped).not.toMatch(/ 3x/)
+    expect(cfSrcSet(src, HOME_CARD_IMG_WIDTH_BASE)).toMatch(/ 3x$/) // 다른 화면(상세 히어로 등)은 그대로
   })
 })

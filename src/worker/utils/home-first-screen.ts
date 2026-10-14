@@ -52,10 +52,11 @@
  * - 마운트 전에는 탭·필터가 안 눌린다(카드 링크는 `<a href>` 라 **눌린다**).
  */
 import { nearSubtitle } from '../../shared/home-near'
+import { HOME_H1 } from '../../shared/seo/consumer-surfaces'
 import { cfImage, cfSrcSet } from '../../utils/cf-image'
 import { DEAL_CAT_LABELS } from '../../shared/deal-cats'
 import { DEAL_GRID_GAP } from '../../shared/deal-card-grid'
-import { HOME_CARD_ABOVE_FOLD, HOME_CARD_IMG_WIDTH_BASE } from '../../shared/home-card-image'
+import { HOME_CARD_ABOVE_FOLD, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_MAX_DPR } from '../../shared/home-card-image'
 import { canonicalDetailPath } from '../../shared/product-flow'
 import { priceDisplay } from '../../shared/price-display'
 import { stripStorePrefix } from '../../utils/deal-title'
@@ -180,7 +181,7 @@ function cardHtml(p: SeedProduct, eager: boolean): string {
   // 🖼️ 사진 — 카드와 **같은 함수·같은 폭**(모바일 전용이라 base 폭 하나로 끝난다).
   const src = p.image_url || ''
   const resized = src ? cfImage(src, { width: HOME_CARD_IMG_WIDTH_BASE, format: 'auto' }) || src : ''
-  const set = src ? cfSrcSet(src, HOME_CARD_IMG_WIDTH_BASE) : ''
+  const set = src ? cfSrcSet(src, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_MAX_DPR) : ''
   const img = resized
     ? `<img src="${escAttr(resized)}"${set ? ` srcset="${escAttr(set)}"` : ''} sizes="${escAttr(homeCardSizes(HOME_CARD_IMG_WIDTH_BASE))}" alt="${escAttr(p.name || '')}" loading="${eager ? 'eager' : 'lazy'}" fetchpriority="${eager ? 'high' : 'auto'}" decoding="async" class="${HOME_FS_CLASS.cover}">`
     : ''
@@ -258,6 +259,9 @@ export function buildHomeFirstScreen(sectionsSeedJson: string, loaderHtml: strin
   const cards = products.map((p, i) => cardHtml(p, i < HOME_CARD_ABOVE_FOLD)).join('')
   const body =
     `<div class="${HOME_FS_CLASS.root}">` +
+    // 🩸 2026-10-13 — 크롤러가 받는 홈 문서에 제목 요소가 h3 하나뿐이었다. `sr-only` 라 박스가
+    //    0이고(= 첫 화면 잠금 무영향) React 쪽(`MobileHomePage`)도 **같은 자리에 같은 값**을 그린다.
+    `<h1 class="sr-only">${escText(HOME_H1)}</h1>` +
     chromeHtml() +
     `<div class="mt-3"><section class="${HOME_FS_CLASS.panel}">` +
     `<div class="${HOME_FS_CLASS.secHead}"><div class="min-w-0">` +
