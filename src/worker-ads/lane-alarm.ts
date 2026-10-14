@@ -165,7 +165,37 @@ export class AdsLaneDurableObject extends DurableObject<Env> {
     await this.ctx.storage.put(put).catch(() => undefined)
 
     const at = nextWakeAt(Date.now(), interval, ran, cap, nextFail)
-    await this.ctx.storage.setAlarm(at).catch(() => undefined)
+    /**
+     * 🔬 **예약이 실제로 걸렸는지 되읽는다** (2026-10-14 — 관측만, 동작 무변경).
+     *
+     * ## 왜 (라이브 실측 17:16Z — 스탬프를 D1 에서 읽어 비교)
+     * 여섯 레인이 `next_at` 을 **1분 뒤**로 적어 두고 **14~15분이 지나도 안 깨어났다**:
+     * ```
+     *   enrich-influencer    at=17:00:55  next_at=17:01:55  → 15분 지연  runs=1 cap=60
+     *   maintenance          at=17:01:26  next_at=17:02:26  → 14분 지연  runs=2 cap=60
+     *   maintenance-rescan   at=17:00:00  next_at=18:00:00  →  정상      runs=1 cap=1  ← 통제군
+     * ```
+     * 통제군이 가리키는 바: `cap` 을 소진해 **다음 정시**로 잡은 알람은 깨어나고,
+     * **1분 뒤**로 잡은 알람만 안 깨어난다. 설계는 `cap=60`·`interval=1분` = 시간당 60회인데
+     * 실측은 **1~2회/시간**이다(측정 레인이라 `CLAUDE.md` 가 말하는 연락처 병목에 직결).
+     *
+     * 🕳️ **그런데 밖에서는 원인을 가를 수 없다.** 아래 `.catch` 가 실패를 삼키고 스탬프는
+     *   **그 뒤에** `next_at` 을 적으므로, 두 경우가 **같은 기록**을 남긴다:
+     *     ① `setAlarm` 이 실패했다 → *"예약했다고 적었는데 예약은 없다"*  (고칠 자리: 이 코드)
+     *     ② 예약은 걸렸는데 런타임이 안 깨운다 → (고칠 자리: 요금제·플랫폼 설정)
+     *   둘은 처방이 완전히 다르다 — ②면 `ADS_PLAN`(`lane-alarm-policy.ts:81`)이 `'paid'` 인데
+     *   계정이 무료인 쪽을 봐야 하고, 그 값은 **대표가 대시보드에서** 바꾼다.
+     *
+     * ⇒ 성공 여부와 **되읽은 값**을 스탬프에 남긴다. `armed_at` 이 `null` 이면 ①, 값이 있는데
+     *   그 시각이 지나도 다음 회차가 없으면 ②다.
+     *
+     * ⚠️ 관측이 레인을 멈추면 안 된다 — 되읽기도 실패를 삼킨다(이 파일의 하우스 규칙).
+     * ⚠️ 이 두 줄을 "정리" 하지 말 것: `set_ok`/`armed_at` 이 빠지면 위 ①②가 **다시 구분
+     *   불가**가 되고, 그 사실은 에러를 내지 않는다(기록이 그럴듯해 보인다).
+     */
+    let setOk = true
+    await this.ctx.storage.setAlarm(at).catch(() => { setOk = false })
+    const armed = await this.ctx.storage.getAlarm().catch(() => null)
 
     // 📊 스탬프 — **이 시범의 목적이 측정이다.** 한도에 닿는지, 회차가 실제로 이어지는지 여기서만 보인다.
     //   ⚠️ 키를 레인별로 가른다 — 한 키를 공유하면 나중 레인이 앞 레인의 기록을 덮어써 둘 다 못 본다.
@@ -188,6 +218,9 @@ export class AdsLaneDurableObject extends DurableObject<Env> {
           put.bind(`${LANE_ALARM_STAMP_KEY}:${this.lane}`, serializeLaneStamp({
             at: new Date().toISOString(), lane: this.lane, ms: Date.now() - t0, runs_this_hour: ran, cap,
             interval_ms: interval, next_at: new Date(at).toISOString(), fail_streak: nextFail,
+            // 🔬 예약이 실제로 걸렸는가 — 위 `setOk`/`armed` docblock(원인 ①②를 가르는 값).
+            set_ok: setOk,
+            armed_at: armed != null ? new Date(Number(armed)).toISOString() : null,
             /**
              * 📏 **이 회차가 읽고 쓴 행**(2026-09-05) — 계측기는 원래 있었는데 공용 원장에 더하고
              *   레인별 값은 버렸다. 그래서 "하루 37만 쓰기·2억 읽기가 **어느 레인** 것인가"에
