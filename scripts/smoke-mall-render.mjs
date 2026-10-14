@@ -261,7 +261,8 @@ try {
     if (!(seen > 0 && errs.length === 0)) {
       const diag = await page.evaluate(() => ({ url: location.pathname + location.search, text: (document.body?.innerText || '').replace(/\s+/g, ' ').slice(0, 400) })).catch((e) => ({ url: '?', text: String(e) }))
       console.log(`   🔎 vite(끝 15줄):\n${devLog.join('').split('\n').slice(-15).join('\n')}`)
-      console.log(`   🔎 trace:\n${trace.filter((l) => !/vitals|\[vite\]|Download the React/.test(l)).slice(-40).map((l) => '     ' + l).join('\n')}`)
+      console.log(`   🔎 trace:\n${trace.filter((l) => !/vitals|\[vite\]|Download the React/.test(l)).slice(0, 45).map((l) => '     ' + l).join('\n')}`)
+      console.log(`   🔎 vite 재최적화·리로드:\n${devLog.join('').split('\n').filter((l) => /optimiz|reload|dependenc|page reload/i.test(l)).slice(-15).join('\n')}`)
       console.log(`   🔎 url=${diag.url}\n   🔎 text=${diag.text}\n   🔎 errs=${JSON.stringify(errs.slice(0, 3))}`)
     }
 
