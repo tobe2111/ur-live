@@ -239,6 +239,17 @@ try {
   ]) {
     const page = await sellerCtx.newPage()
     const errs = []
+    // 🔎 실패 진단 — 콘솔·주소 변경·실패 요청을 시간순으로 모아 둔다(실패할 때만 출력).
+    const trace = []
+    const t0 = Date.now()
+    page.on('console', (m) => trace.push(`+${Date.now() - t0}ms console.${m.type()} ${m.text().slice(0, 200)}`))
+    page.on('requestfailed', (r) => trace.push(`+${Date.now() - t0}ms reqfail ${r.url().slice(0, 120)} ${r.failure()?.errorText || ''}`))
+    page.on('framenavigated', (f) => { if (f === page.mainFrame()) trace.push(`+${Date.now() - t0}ms nav ${f.url()}`) })
+    await page.addInitScript(() => {
+      const r = history.replaceState.bind(history), p = history.pushState.bind(history)
+      history.replaceState = (a, b, u) => { console.log('[diag] replaceState ' + u); return r(a, b, u) }
+      history.pushState = (a, b, u) => { console.log('[diag] pushState ' + u); return p(a, b, u) }
+    })
     page.on('pageerror', (e) => errs.push(String(e)))
     await page.goto(`${base}${path}`, { waitUntil: 'networkidle' })
     // ⏳ 2026-10-14: networkidle 직후 바로 세면 CI(콜드 vite dev)에서 화면이 아직 안 그려져 0 이 나왔다
@@ -250,6 +261,7 @@ try {
     if (!(seen > 0 && errs.length === 0)) {
       const diag = await page.evaluate(() => ({ url: location.pathname + location.search, text: (document.body?.innerText || '').replace(/\s+/g, ' ').slice(0, 400) })).catch((e) => ({ url: '?', text: String(e) }))
       console.log(`   🔎 vite(끝 15줄):\n${devLog.join('').split('\n').slice(-15).join('\n')}`)
+      console.log(`   🔎 trace:\n${trace.filter((l) => !/vitals|\[vite\]|Download the React/.test(l)).slice(-40).map((l) => '     ' + l).join('\n')}`)
       console.log(`   🔎 url=${diag.url}\n   🔎 text=${diag.text}\n   🔎 errs=${JSON.stringify(errs.slice(0, 3))}`)
     }
 
