@@ -9,6 +9,7 @@
 
 // 🔄 이용권 공유 카드 주소·판 번호는 `shared/pass-share-card.ts` 한 곳(화면의 공유 버튼과 같은 값).
 import { passShareCardUrl } from '@/shared/pass-share-card'
+import { stayDetailTitle, voucherDetailTitle } from '../../shared/seo/detail-title'
 // 🏨 정본 상세 주소 SSOT — 숙소 이용권은 `/stays/:id` 다(두 벌로 적으면 갈린다).
 import { canonicalDetailPath } from '../../shared/product-flow'
 import { productShareImage } from '@/shared/og-share-image'
@@ -186,7 +187,9 @@ export function buildDetailMeta(ssrPayload: string, origin: string, pathname: st
     const isVoucher = pathname.startsWith('/vouchers/') // 교환권 — 클라 noindex 와 대칭
 
     if (isVoucher) {
-      const title = `${name} 교환권 - 유어딜`
+      // 🏷️ 2026-10-14: 이름에 이미 `교환권` 이 든 ~135건이 `교환권 교환권` 이었다.
+      //   판정·문구는 `shared/seo/detail-title.ts` 하나 — 클라(`VoucherDetailPage`)가 같은 함수를 쓴다.
+      const title = voucherDetailTitle(name)
       const description = (String(d.description || '').replace(/\s+/g, ' ').trim().slice(0, 150))
         || `${name} — 기프티콘 교환권을 유어딜에서 할인가로 구매하고 바로 사용하세요.`
       return { pageTitle: title, title, description, canonical, ogImage: productShareImage(photo, origin), ogType: 'product', noindex: true, jsonLd: '' }
@@ -298,6 +301,8 @@ export function buildStayDetailMeta(ssrPayload: string, origin: string, pathname
     const idm = pathname.match(/\/stays\/(\d+)/)
     const id = idm ? idm[1] : (p.id ?? '')
     const stayName = String(p.restaurant_name || p.name).trim()
+    // 🏷️ 2026-10-14: 이 공식은 **그대로 둔다** — 제목 SSOT 도 컬럼을 먼저 쓰므로 둘이 같고,
+    //   주소 우선으로 바꾸면 `강원` → `강원특별자치도` 가 되어 49건의 설명이 달라진다.
     const region = [p.region_sido, p.region_sigungu].filter(Boolean).join(' ').trim()
     const typeLabel = p.property_type ? propertyTypeLabel(p.property_type) : '숙소'
     const rooms = parsed?.data?.rooms || []
@@ -307,7 +312,10 @@ export function buildStayDetailMeta(ssrPayload: string, origin: string, pathname
     const canonical = `${origin}/stays/${id}`
     const photo = absImage(String(p.image_url || ''), origin, id) // JSON-LD 용 원본
     const ogImage = productShareImage(photo, origin) // 🖼️ 소셜 카드 — 실측 원본 1397×748·518KB 였다
-    const pageTitle = `${stayName}${region ? ` (${region})` : ''} - 유어딜`
+    // 🏷️ 2026-10-14: 클라(`StayDetailPage`)는 지역 없이 제목을 냈고 react-helmet 이 이걸 덮어
+    //   **Googlebot 이 지역을 잃고 있었다**(Yeti 는 받았다 — 한 URL 두 값). 제목은 SSOT 하나로.
+    //   🔒 공식은 **컬럼 우선** 이라 라이브 49건의 제목은 byte-동일이다(아래 설명의 지역과도 같다).
+    const pageTitle = stayDetailTitle(stayName, { sido: p.region_sido, sigungu: p.region_sigungu, address: p.address })
     const priceStr = fromPrice > 0 ? `1박 ${fromPrice.toLocaleString('ko-KR')}원~ ` : ''
     const rating = Number(p.avg_rating) || 0
     const ratingStr = rating > 0 ? `⭐${rating.toFixed(1)} ` : ''
