@@ -2,6 +2,7 @@ import { Helmet } from 'react-helmet-async'
 import { withSiteName } from '@/shared/seo/consumer-surfaces'
 import { ogImageAlt } from '@/shared/og-share-image'
 import { ROBOTS_NOINDEX } from '@/shared/seo/robots-directives'
+import { dropServerDuplicates, serverJsonLdTypes } from '@/shared/seo/jsonld-dedupe'
 
 /**
  * 🌐 2026-10-12 — **`og:locale` 은 고정 `ko_KR` 이다.** 종전에는 i18n 언어로 바꾸고
@@ -18,6 +19,39 @@ import { ROBOTS_NOINDEX } from '@/shared/seo/robots-directives'
  *    `single-language-signals-2026-10-12.test.ts` 머리말).
  */
 const OG_LOCALE = 'ko_KR'
+
+/**
+ * 🧬 2026-10-14 — 서버가 이미 낸 `@type` 은 클라가 **다시 내지 않는다**.
+ *
+ * 실측(아이폰 UA 로 실제 렌더): `/pass/2823` 이 `Product`·`BreadcrumbList` 를 **두 벌**(서버 2 +
+ * helmet 2) 내고 있었고 서버 `Product` 에만 `aggregateRating` 이 있었다 — 같은 URL 에 서로 다른
+ * 내용의 같은 종류가 둘이면 어느 쪽이 쓰일지 정해져 있지 않다. `/products`·`/region`·`/blog` 도
+ * 같은 모양이다(약 380 URL). 사유·영향 범위는 `shared/seo/jsonld-dedupe.ts` 머리말.
+ *
+ * 🔒 **첫 로드에서만** 거른다 — 서버 노드는 `<head>` 에 남으므로 SPA 이동 뒤에는 *다른 페이지의*
+ *    노드와 비교하게 된다. 크롤러는 URL 마다 새로 받으니 첫 로드만으로 충분하다.
+ * 🔒 **한 번만 읽는다** — 그 값은 문서 수명 동안 바뀌지 않는다(서버가 더 넣지 않는다).
+ *    읽기에 실패하면 빈 집합 ⇒ 아무것도 거르지 않는다(fail-open).
+ */
+const INITIAL_PATH = typeof location === 'undefined' ? null : location.pathname
+
+/**
+ * 호출부가 넘긴 노드에서 **지금 이 문서의 서버 노드와 종류가 겹치는 것**을 뺀다.
+ *
+ * 🩸 **종류를 메모하지 않는다**(한 번 읽어 캐시하려다 되돌렸다). 첫 `<SEO>` 렌더가 언제인지에
+ *    판정이 매달리면 *검증할 수 없는* 설계가 된다 — 실제로 시험이 **헛돌았다**(서버 노드가 없던
+ *    첫 렌더에서 빈 집합을 캐시해 두 번째 렌더에서 아무것도 안 걸렀고, 그래도 초록이었다).
+ *    대신 매 렌더에 다시 읽는다(비-helmet 블록 두어 개의 `JSON.parse` — 무시할 비용).
+ * 🔒 기준 경로는 **모듈 로드 시점**에 잡는다(엔트리는 defer 라 그때 문서는 이미 파싱돼 있고
+ *    클라 라우팅은 아직 일어나지 않았다) ⇒ 첫 로드에서만 거른다.
+ */
+function usableJsonLd(
+  jsonLd: Record<string, unknown> | Record<string, unknown>[] | undefined,
+): Record<string, unknown>[] {
+  const firstLoad = INITIAL_PATH !== null && typeof document !== 'undefined'
+    && typeof location !== 'undefined' && location.pathname === INITIAL_PATH
+  return dropServerDuplicates(jsonLd, firstLoad ? serverJsonLdTypes(document) : new Set<string>())
+}
 
 interface SEOProps {
   title?: string
@@ -127,14 +161,11 @@ export default function SEO({
              서로 다른 두 토큰이 공존하면 소유확인이 어느 쪽을 볼지 불확실해지므로 여기선 삭제한다.
           ⚠️ utongstart.com(도매)은 별도 등록·별도 토큰 필요 — 필요 시 그 도메인 정적 HTML 에 추가할 것. */}
 
-      {/* JSON-LD — 단일 또는 배열 둘 다 지원 (Google 권장: 페이지당 여러 개 OK) */}
-      {Array.isArray(jsonLd) ? (
-        jsonLd.map((ld, i) => (
-          <script key={i} type="application/ld+json">{JSON.stringify(ld)}</script>
-        ))
-      ) : jsonLd ? (
-        <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
-      ) : null}
+      {/* JSON-LD — 단일 또는 배열 둘 다 지원 (Google 권장: 페이지당 여러 개 OK).
+          🧬 2026-10-14: 서버가 이미 낸 종류는 빠진다(위 `usableJsonLd` 주석). */}
+      {usableJsonLd(jsonLd).map((ld, i) => (
+        <script key={i} type="application/ld+json">{JSON.stringify(ld)}</script>
+      ))}
     </Helmet>
   )
 }
