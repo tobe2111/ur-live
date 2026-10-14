@@ -35,6 +35,7 @@
  * - 길이를 늘리려고 같은 값을 변형해 반복하지 않는다.
  */
 import { priceDisplay } from '../../shared/price-display'
+import { cfImage } from '../../utils/cf-image'
 import { canonicalDetailPath, FLOW_CONFIG } from '../../shared/product-flow'
 import { CONCEPT_FAQ, CONCEPT_ABOUT_LINES } from '../../shared/seo/concept-content'
 import { addressInRegion, parseRegionPath, type RegionRef } from '../../shared/constants/region-slugs'
@@ -105,6 +106,8 @@ export interface NoscriptDetailSeed {
   restaurant_phone?: string | null
   voucher_expiry?: string | null
   voucher_terms?: string | null
+  /** 🖼️ 2026-10-14 — 쇼핑 상세 사진 한 장(근거는 `rowImg` 머리말). */
+  image_url?: string | null
 }
 
 /**
@@ -392,7 +395,11 @@ export function buildStaticSurfaceNoscript(pathname: string, ssrPayload?: string
       const p = priceDisplay({ price: d.price, original_price: d.original_price, discount_rate: d.discount_rate })
       const desc = (d.description || d.long_description || '').trim()
       // 상품명은 **그 화면의 h1 그대로** 다(`ProductDetailPage` 가 제목으로 그린다) — 요소만 맞춘다.
-      return wrap(h1Of(d.name) + lines([
+      // 🖼️ 2026-10-14 — 사진 한 장(근거는 `rowImg` 머리말). 시드에 없으면 **만들지 않는다**.
+      //   `alt` 는 상품명 그대로다(그 화면의 h1 과 같은 글자).
+      const shot = typeof d.image_url === 'string' ? sizedCdnCgi(d.image_url.trim(), 400) : ''
+      const imgTag = shot && d.name ? `<img src="${esc(shot)}" alt="${esc(String(d.name))}">` : ''
+      return wrap(h1Of(d.name) + imgTag + lines([
         p.price > 0 ? `판매가 ${won(p.price)}원${p.hasDiscountLine && p.showOriginal ? ` · 정가 ${won(p.originalPrice)}원` : ''}${p.discount > 0 ? ` · ${p.discount}% 할인` : ''}` : '',
         desc ? esc(desc) : '',
       ]))
@@ -464,7 +471,7 @@ export function buildStaticSurfaceNoscript(pathname: string, ssrPayload?: string
     if (!rows.length) return ''
     // 종전엔 같은 글자가 `<p>` 였다 — 단어는 그대로이고 요소만 `<h1>` 이 된다.
     const head = h1Of(CONSUMER_SURFACE_SEO[path]?.crumb)
-    return `<noscript>${head}<ul>${rows.map(liOf).join('')}</ul></noscript>`
+    return `<noscript>${head}<ul>${capRowImages(rows).map(liOf).join('')}</ul></noscript>`
   }
 
   const ref = regionRefOfPath(path)
@@ -474,7 +481,7 @@ export function buildStaticSurfaceNoscript(pathname: string, ssrPayload?: string
     const label = ref.sigungu ? `${ref.sido} ${ref.sigungu}` : ref.sido
     // 🔗 시/도 페이지는 **자식 시군구**로 가는 길을 함께 낸다(시군구 32곳이 색인 대상인데
     //   그 트리로 들어가는 내부 링크가 0 이었다). 시군구 페이지는 잎이라 아무것도 안 붙는다.
-    return `<noscript>${h1Of(`${label} 이용권`)}<ul>${rows.map(liOf).join('')}</ul>`
+    return `<noscript>${h1Of(`${label} 이용권`)}<ul>${capRowImages(rows).map(liOf).join('')}</ul>`
       + `${childLinksHtml(path, ssrPayload)}</noscript>`
   }
 
@@ -516,6 +523,8 @@ interface RegionSeedRow {
   original_price?: number | null
   discount_rate?: number | null
   deal_only?: number | null
+  /** 🖼️ 2026-10-14 — 사진. 지역 요약 화이트리스트(`region-digest.ts`)에 이미 있고 라이브에 실재한다. */
+  image_url?: string | null
 }
 
 /**
@@ -524,7 +533,80 @@ interface RegionSeedRow {
  * 머리는 `restaurant_name`(이용권·숙소) 또는 `brand_name`(교환권) — 그 카드가 화면에 그리는 것과
  * 같다. 둘 다 없으면 상품명만. 규율 ①(지어내지 않는다)대로 **시드에 있는 값만** 쓴다.
  */
-interface Row { text: string; href: string | null }
+interface Row { text: string; href: string | null; img?: { src: string; alt: string } }
+
+/**
+ * 🖼️ 2026-10-14 — **비-JS 크롤러가 받는 문서에 사진이 0장이었다** (대표 "다 해주고").
+ *
+ * 라이브 실측(UA 별로 같은 경로를 받아 셌다):
+ *
+ *       표면          Googlebot   iPhone    Yeti      문서의 img
+ *       /vouchers      19.0KB     67.1KB    19.0KB    1 (유달이 로더뿐)
+ *       /products/:id   6.2KB     54.4KB     6.2KB    1
+ *       (대조) /       72.8KB    120.8KB    72.8KB    5 (카드 4장 + 로더)
+ *
+ * 🩸 **먼저 제 근거를 정정한다**: 처음 *"구글 이미지에 들어갈 자리가 없다"* 고 읽었는데 틀렸다 —
+ *    봇 셸에도 **엔트리 스크립트가 있어서**(`script src` 1) Googlebot 은 렌더해서 React 카드의
+ *    `<img>` 를 본다. 실제 공백은 **JS 를 안 돌리는 쪽**이다: 네이버 Yeti · AI 검색봇.
+ *    ⇒ 가치는 *구글 이미지 유입*이 아니라 **네이버 이미지 검색 + 구글 렌더 지연 보험**이다.
+ *    (2026-10-11 에 상세 히어로를 진짜 `<img>` 로 바꾼 것은 **React 쪽** 수리였고 이건 서버 쪽이다.)
+ *
+ * 🔑 **사진은 시드에 이미 와 있다** — `image_url` 은 지역 요약 화이트리스트(`region-digest.ts`)에
+ *    들어 있고 라이브 응답에 실재한다. 새 조회가 **0** 이다.
+ *
+ * 🔴 **앞 4행만** 사진을 받는다(글은 8행 그대로). `<noscript>` 는 **사람이 받는 응답에도 그대로
+ *    실리므로** 전량 덤프가 아니라 요약이어야 한다는 이 파일의 규율이고, 크롤러가 실제로 내려받는
+ *    바이트도 그만큼이다(cdn-cgi 로 폭 200 → 장당 ~7KB).
+ *
+ * 🔴 **치수를 선언하지 않는다** — 우리 사진은 비율이 제각각이라(2026-08-31 실측: 세로가 더 긴 것
+ *    37%, 중앙값 1:1) `height` 를 적으면 **모르는 값을 지어내는 것**이다. `<noscript>` 라 사람
+ *    화면의 CLS 와도 무관하다.
+ *
+ * ⚠️ **못 보는 것**: 네이버가 `<noscript>` 안의 `<img>` 를 실제로 이미지 검색에 색인하는지는
+ *    **외부 판정**이다(서치어드바이저는 대표만 본다). 문서에 자리를 만든 것까지가 우리 몫이다.
+ */
+const ROW_IMG_MAX = 4
+
+/**
+ * 🔴 **워커 프록시로 가는 사진은 쓰지 않는다.**
+ *
+ * `cfImage` 는 검증 안 된 호스트를 `/api/image/resize` 로 보내는데, **그 경로는 리사이즈를 못 한다**
+ * (2026-06-11 실측 — 리사이저가 워커 내부 서브요청엔 적용되지 않아 항상 원본 폴백이다).
+ * 그러면 크롤러가 **원본 통째**를 받아 가고(`/products/2917` 실측에서 실제로 그랬다) 우리 워커
+ * 인보케이션도 함께 늘어난다. 공유 카드에서 같은 이유로 cdn-cgi 를 직접 조립한 그 판단과 같다
+ * (2026-10-12: 워커 프록시 경유 3MB ↔ cdn-cgi 196KB).
+ *
+ * ⇒ 폭이 보장되는 **cdn-cgi 경로만** 쓰고, 아니면 그 행은 **사진 없이 글만** 남긴다.
+ *   사진이 몇 장 빠지는 것이 큰 원본을 뿌리는 것보다 싸다.
+ */
+function sizedCdnCgi(raw: string, width: number): string {
+  const u = cfImage(raw, { width, quality: 80 })
+  return u.startsWith('/cdn-cgi/image/') ? u : ''
+}
+
+/** 행의 사진 — 시드에 `image_url` 이 없으면 **만들지 않는다**(지어내지 않는다). */
+function rowImg(p: RegionSeedRow, alt: string): { src: string; alt: string } | undefined {
+  const raw = typeof p?.image_url === 'string' ? p.image_url.trim() : ''
+  if (!raw || !alt) return undefined
+  const src = sizedCdnCgi(raw, 200)
+  return src ? { src, alt } : undefined
+}
+/**
+ * 사진을 **`ROW_IMG_MAX` 장까지만** 남긴다(나머지 행은 글만).
+ *
+ * 🩸 2026-10-14 — 처음엔 *앞 N **행***(`i < ROW_IMG_MAX`)으로 셌는데, 그러면 사진을 못 쓰는 행
+ *   (사진 없음 · 워커 프록시 호스트)이 **자리를 먹는다**. 주입 검증이 그걸 잡았다: 프록시 가드를
+ *   지운 주입이 **초록**이었다 — 탐침의 프록시 행이 5번째라 어차피 상한에 걸려 사진이 안 붙었고,
+ *   그래서 그 가드를 없애도 출력이 1바이트도 안 바뀌었다. 지키려는 것은 *"문서에 사진 N장"* 이므로
+ *   **그려진 사진을 센다**.
+ */
+function capRowImages(rows: Row[]): Row[] {
+  let used = 0
+  return rows.map((r) => {
+    if (r.img && used < ROW_IMG_MAX) { used += 1; return r }
+    return { text: r.text, href: r.href }
+  })
+}
 
 /**
  * 🔗 2026-10-12 (대표 *"다 개선하고 또 개선할 것 있는지 찾아줘"*): **행의 링크.**
@@ -560,7 +642,10 @@ function rowHref(p: RegionSeedRow): string | null {
 
 /** 한 행 → `<li>`. 링크가 없으면 **글만** 남긴다(빈 `<a>` 를 만들지 않는다). */
 function liOf(r: Row): string {
-  return `<li>${r.href ? `<a href="${esc(r.href)}">${esc(r.text)}</a>` : esc(r.text)}</li>`
+  // 🖼️ 사진은 링크 **안쪽**에 둔다 — 그래야 그 그림이 어느 페이지의 것인지 크롤러가 안다.
+  const img = r.img ? `<img src="${esc(r.img.src)}" alt="${esc(r.img.alt)}">` : ''
+  const body = `${img}${esc(r.text)}`
+  return `<li>${r.href ? `<a href="${esc(r.href)}">${body}</a>` : body}</li>`
 }
 
 function rowLine(p: RegionSeedRow): Row | null {
@@ -570,7 +655,9 @@ function rowLine(p: RegionSeedRow): Row | null {
   const parts = storeNameParts(head, title) // 같은 말을 두 번 안 한다(근거는 그 SSOT 머리말)
   const d = priceDisplay({ price: p?.price, original_price: p?.original_price, discount_rate: p?.discount_rate })
   const price = d.price > 0 ? ` 판매가 ${won(d.price)}원${d.discount > 0 ? ` (${d.discount}% 할인)` : ''}` : ''
-  return { text: `${parts.filter(Boolean).join(' — ')}${price}`, href: rowHref(p) }
+  // `alt` 는 **그 행의 이름 부분 그대로** 다(가격은 그림을 설명하지 않으므로 뺀다).
+  const alt = parts.filter(Boolean).join(' ')
+  return { text: `${parts.filter(Boolean).join(' — ')}${price}`, href: rowHref(p), img: rowImg(p, alt) }
 }
 
 /** 시드 문자열 → 행 배열. 모양이 다른 시드(배열 / `{products}`)를 둘 다 받는다. */

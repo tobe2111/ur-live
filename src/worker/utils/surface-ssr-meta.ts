@@ -163,7 +163,21 @@ export function buildSellerSurfaceMeta(
  * 🪦 개별 엔티티를 렌더하는 SSR 슬롯 — 이들만 "대상이 없으면 noindex" 대상이다.
  *   목록 슬롯(MAIN/VOUCHERS/BROWSE/BLOG)은 API 가 404 여도 페이지 자체는 유효하므로 제외.
  */
-const ENTITY_SLOTS = new Set(['DETAIL', 'PRODUCT', 'STAYDETAIL', 'SELLER', 'CURATOR', 'BLOGPOST', 'MALL'])
+const ENTITY_SLOTS = new Set([
+  'DETAIL', 'PRODUCT', 'STAYDETAIL', 'SELLER', 'CURATOR', 'BLOGPOST', 'MALL',
+  // 🩸 2026-10-14 — **형제 하나가 빠져 있었다.** 2026-10-12 에 `MALL` 을 넣으면서 `MALLPRODUCT`
+  //   (`/{슬러그}/p/{id}` — 소개비 귀속 경로)를 놓쳤고, 그 경로가 **아무 슬러그·아무 id** 로
+  //   무한 thin URL 이 됐다. 라이브 실측(Googlebot UA):
+  //
+  //       /zzqqxx/p/2887     200 · index,follow · canonical 자기자신 · 본문 32자
+  //                          x-ssr-status: MALLPRODUCT:self-fetch-404   ← 404 를 받고도 200 을 냈다
+  //       /zzqqxx/p/999999   같음
+  //       (대조) /zzqqxx     404 · noindex                              ← 1세그먼트는 멀쩡했다
+  //
+  //   `/group-buy/99999999`(2026-07-29)과 **글자 그대로 같은 모양**이다 — 워커가 그 순간 404 를
+  //   받아 놓고 쓰지 않는 것. 그때 만든 기계가 이 슬롯만 비켜 갔다.
+  'MALLPRODUCT',
+])
 
 /**
  * 사라진 상세 페이지를 색인에서 빼야 하는가.

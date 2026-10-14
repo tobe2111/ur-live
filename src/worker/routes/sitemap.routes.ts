@@ -8,6 +8,7 @@
 import { Hono } from 'hono';
 import { consumerVisibleProductSql } from '../../shared/db/consumer-visible-product';
 import { buildLlmsTxt } from '../../shared/seo/llms-txt'
+import { indexNowKeyPath, isValidIndexNowKey } from '../../shared/seo/indexnow'
 import type { Env } from '@/worker/types/env';
 // 🏠 본진 몰 격리 — 운영자 SaaS 몰 상품이 유어딜 도메인으로 SEO 색인되는 것을 막는다.
 //   색인은 배포로 못 되돌린다(회수 시점의 통제권이 검색엔진에 있음) → 첫 몰 개설보다 먼저 들어가야 하는 가드.
@@ -367,5 +368,20 @@ sitemapRoutes.get('/llms.txt', (c) => {
       // robots.txt 와 같은 성격 — 자주 안 바뀌고 크롤러가 반복해 읽는다.
       'Cache-Control': 'public, max-age=3600',
     },
+  })
+})
+
+// 🔔 2026-10-14 (대표 "다 해주고"): IndexNow **소유 증명 키 파일**.
+//   규격상 `https://<host>/<key>.txt` 에 그 키가 그대로 적혀 있어야 제출이 접수된다.
+//   🔑 **키는 비밀이 아니다** — 공개되는 것이 규격이고, 그래서 env 값을 그대로 돌려준다.
+//   `/{무엇}.txt` 를 통째로 잡지 않고 **env 키와 정확히 같은 이름일 때만** 응답한다 —
+//   안 그러면 `/robots.txt`·`/llms.txt`·몰 슬러그와 다툰다.
+//   ⚠️ 게이트(`INDEXNOW_ENABLED`)와 무관하게 응답한다: 키 파일이 먼저 있어야 대표가 게이트를
+//     켠 **그 순간** 제출이 접수된다(파일이 없으면 첫 제출이 통째로 거절된다).
+sitemapRoutes.get('/:file{[A-Za-z0-9-]{8,128}\\.txt}', (c) => {
+  const key = (c.env.INDEXNOW_KEY || '').trim()
+  if (!isValidIndexNowKey(key) || c.req.path !== indexNowKeyPath(key)) return c.notFound()
+  return new Response(key, {
+    headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=3600' },
   })
 })

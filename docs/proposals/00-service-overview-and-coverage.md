@@ -302,12 +302,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 330 | 1029 |
+| 전체 | 330 | 1030 |
 | 도메인 버킷 (5개 소개서) | 131 | 460 |
 | 공통/인프라 (의도적 제외) | 153 | 488 |
-| **미커버 (점검 필요)** | **46** | **81** |
+| **미커버 (점검 필요)** | **46** | **82** |
 
-⚠️ **미커버 127건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 128건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -358,6 +358,7 @@
 - `/videos`
 
 **미커버 API 엔드포인트**
+- `GET /:file{[A-Za-z0-9-]{8,128}\\.txt}` (`src/worker/routes/sitemap.routes.ts`)
 - `POST /:id{[0-9]+}/view` (`src/features/products/api/product-view.routes.ts`)
 - `PATCH /:id/amount` (`src/features/returns/api/return-amount.routes.ts`)
 - `POST /:id/approve` (`src/worker/routes/mall-applications-admin.routes.ts`)
@@ -1599,7 +1600,7 @@
 
 
 
-> 마지막 생성: 2026-10-13T19:36:50.301Z
+> 마지막 생성: 2026-10-14T01:22:23.663Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->
