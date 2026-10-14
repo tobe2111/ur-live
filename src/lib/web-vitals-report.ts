@@ -7,6 +7,16 @@
 
 let reported = false
 
+/**
+ * 🤖 2026-10-14: 자동화 브라우저(Playwright·Selenium·CI 하네스)는 보고하지 않는다.
+ *   실측 — 그날 `/map` LCP 10.9초 표본의 데이터센터가 전부 미국(EWR·IAD·ORD …)이고 한국(ICN)은 0 이었다.
+ *   우리가 라이브를 재려고 띄운 헤드리스 브라우저가 미국에서 카카오 타일(한국 CDN)을 받느라 느렸던 것이
+ *   "실사용자 지표" 로 집계됐다. 사람의 브라우저는 `navigator.webdriver` 가 false 다(표준 — WebDriver 명세).
+ */
+export function isAutomatedBrowser(): boolean {
+  try { return typeof navigator !== 'undefined' && navigator.webdriver === true } catch { return false }
+}
+
 function send(name: string, value: number, page: string) {
   try {
     const body = JSON.stringify({ name, value, page })
@@ -38,6 +48,7 @@ export function createClsTracker() {
 
 export function reportWebVitals(): void {
   if (reported || typeof window === 'undefined' || typeof PerformanceObserver === 'undefined') return
+  if (isAutomatedBrowser()) return
   reported = true
   const page = window.location.pathname
 
@@ -127,6 +138,7 @@ export function reportWebVitals(): void {
 }
 
 export function reportFunnel(event: 'view' | 'click' | 'join' | 'success', product_id?: number): void {
+  if (isAutomatedBrowser()) return
   try {
     const body = JSON.stringify({ event, product_id, page: window.location.pathname })
     if (navigator.sendBeacon) {
