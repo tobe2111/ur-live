@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
+import { VOUCHER_TILE_CLASS } from '@/shared/voucher-tile'
 
 /**
  * 🏷️ 2026-09-07 (대표 — "할인율도 빨강으로 유지")
@@ -50,7 +51,11 @@ describe('할인율은 한 색이다', () => {
     const lines = code(p).split('\n').filter((l) => PCT.test(l))
     expect(lines.length, `${p} 에서 할인율 렌더 줄을 못 찾았다 — 경로가 낡았을 수 있다`)
       .toBeGreaterThan(0)
-    for (const l of lines) expect(l, l.trim().slice(0, 90)).toMatch(/text-sale/)
+    for (const l of lines) {
+      // 🎟️ 2026-10-14: 교환권 타일은 클래스를 SSOT 상수로 받는다(워커 첫 화면과 같은 값) — 그 상수의 값을 본다.
+      if (/className=\{T\.discount\}/.test(l)) { expect(VOUCHER_TILE_CLASS.discount).toMatch(/text-sale/); continue }
+      expect(l, l.trim().slice(0, 90)).toMatch(/text-sale/)
+    }
   })
 
   it('할인율에 브랜드 블루가 남아 있지 않다 (블루는 행동 전용)', () => {

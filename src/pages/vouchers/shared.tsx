@@ -15,6 +15,7 @@ import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
 import { priceDisplay } from '@/shared/price-display'
+import { VOUCHER_TILE_CLASS, VOUCHER_TILE_IMG_W, VOUCHER_TILE_SIZES, voucherSoldLabel } from '@/shared/voucher-tile'
 
 export interface VoucherProduct {
   id: number
@@ -189,6 +190,90 @@ export const VoucherRow = memo(function VoucherRow({ p, aboveFold }: { p: Vouche
       discountPct={discountRate}
       meta={soldCount > 0 ? `구매 ${soldLabel}` : undefined}
     />
+  )
+})
+
+/**
+ * 🎟️ 2026-10-14 대표 확정 *"교환권은 b 시안으로"* — 모바일 `/vouchers` 목록 = **3열 타일**.
+ *   [사진] · [브랜드 ›] · [이름 두 줄] · [할인율 가격] · [구매 N] (카카오 선물하기 모양).
+ *   클래스는 `@/shared/voucher-tile` 한 곳 — 워커 첫 화면이 같은 상수로 그린다(갈리면 마운트 때 밀린다).
+ *   ⚠️ 이미지 계약(width/height/srcSet/sizes/lazy/fetchPriority/onLoad 색추출/fade-in)은 위 두 카드와 같다.
+ *   정가 취소선은 안 쓴다 — 3열 폭(~114px)에서 가격 줄이 두 줄로 꺾인다. 할인율이 같은 정보를 말한다.
+ *   브랜드 줄은 진짜 버튼이다(누르면 그 브랜드로 거른다) — 그래서 바깥은 `button` 이 아니라 `role="link"`.
+ */
+export const VoucherTile = memo(function VoucherTile({ p, aboveFold, onBrand }: {
+  p: VoucherProduct
+  aboveFold: boolean
+  onBrand?: (brand: string) => void
+}) {
+  const navigate = useNavigate()
+  const prefetchProduct = usePrefetchGroupBuyProduct()  // /vouchers/:id 와 같은 키·엔드포인트
+  const { discount: discountRate } = priceDisplay(p)
+  const soldCount = Number(p.sold_count || 0)
+  const [cardColor, setCardColor] = useState<string | null>(p.dominant_color || null)
+  const [imgError, setImgError] = useState(false)
+  const T = VOUCHER_TILE_CLASS
+  const go = () => navigate(`/vouchers/${p.id}`)
+  return (
+    <div
+      role="link"
+      tabIndex={0}
+      onClick={go}
+      onKeyDown={(e) => { if (e.key === 'Enter') go() }}
+      onMouseEnter={() => prefetchProduct(p.id)}
+      onTouchStart={() => prefetchProduct(p.id)}
+      onFocus={() => prefetchProduct(p.id)}
+      className={T.root}
+    >
+      <div className={T.thumb} style={cardColor ? { backgroundColor: cardColor } : undefined}>
+        {p.image_url && !imgError ? (
+          <img
+            src={cfImage(p.image_url, { width: VOUCHER_TILE_IMG_W, format: 'auto' }) || p.image_url}
+            srcSet={cfSrcSet(p.image_url, VOUCHER_TILE_IMG_W) || undefined}
+            sizes={VOUCHER_TILE_SIZES}
+            alt={cardImageAlt(p.name, p.brand_name)}
+            width={VOUCHER_TILE_IMG_W}
+            height={VOUCHER_TILE_IMG_W}
+            loading={aboveFold ? 'eager' : 'lazy'}
+            fetchPriority={aboveFold ? 'high' : 'auto'}
+            decoding="async"
+            onLoad={(e) => {
+              const el = e.currentTarget as HTMLImageElement
+              el.style.opacity = '1'
+              const color = extractDominantColor(el)
+              if (color) {
+                if (!cardColor) setCardColor(color)
+                if (!p.dominant_color) reportDominantColor(p.id, color)
+              }
+            }}
+            onError={() => setImgError(true)}
+            style={{ opacity: aboveFold ? 1 : 0, transition: 'opacity 200ms ease-out' }}
+            className={T.img}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-gray-400 dark:text-gray-400">
+            <GiftBoxIcon className="w-8 h-8" />
+          </div>
+        )}
+      </div>
+      {p.brand_name && (
+        <button
+          type="button"
+          onClick={(e) => { if (!onBrand) return; e.stopPropagation(); onBrand(p.brand_name!) }}
+          className={T.brand}
+        >
+          <span className={T.brandName}>{p.brand_name}</span>
+          <span aria-hidden="true" className={T.chev}>›</span>
+        </button>
+      )}
+      <p className={T.title}>{p.name}</p>
+      <div className={T.priceRow}>
+        {discountRate > 0 && <span className={T.discount}>{discountRate}%</span>}
+        <span className={T.price}>{formatNumber(p.price)}</span>
+        <span className={T.unit}>딜</span>
+      </div>
+      {soldCount > 0 && <p className={T.meta}>구매 {voucherSoldLabel(soldCount)}</p>}
+    </div>
   )
 })
 

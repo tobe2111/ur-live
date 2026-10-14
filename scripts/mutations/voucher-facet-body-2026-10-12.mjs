@@ -23,8 +23,8 @@ export default [
     why: 'SSOT 를 안 쓰면 예열 목록(HOT_PATHS)과 byte-불일치가 조용히 생긴다. 2026-10-11 에 '
        + '칩 4종이 정확히 그 방식으로 몇 달간 헛돌았다(캐시 키가 곧 주소다).',
     file: WORKER,
-    find: 'path: voucherFacetSeedPath(url.search) || VOUCHERS_SEED_PATH',
-    replace: "path: '/api/products?page=1&limit=20&deal_only=1&sort=price_low'",
+    find: 'path: voucherFacetSeedPath(url.search) || VOUCHERS_DEFAULT_SEED_PATH',
+    replace: "path: '/api/products?page=1&limit=20&deal_only=1&sort=price_low&category=%EC%BB%A4%ED%94%BC%2F%EC%9D%8C%EB%A3%8C'",
     test: TEST,
   },
   {

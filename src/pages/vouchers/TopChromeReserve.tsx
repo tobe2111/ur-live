@@ -20,8 +20,6 @@
  * jsdom 은 레이아웃이 없어 "높이가 같은가" 를 단위시험으로 못 잰다 → 클래스가 진짜 블록과
  * 같은지만 시험이 대조하고, 실제 밀림 여부는 브라우저 프레임 캡처가 판정한다.
  */
-import { ChevronDown } from 'lucide-react'
-import { CategoryIcon } from './shared'
 
 /**
  * 카테고리 칩 줄(`py-2` + `h-9` 알약) 과 같은 높이.
@@ -44,25 +42,17 @@ export function ChipRowReserve() {
  * `brandsOpen` 을 그대로 받는다 — 접힌 상태면 로고 줄이 없으므로 예약도 같이 줄어든다.
  * 숫자였다면 그 경우를 못 따라갔다(접기 토글은 2026-09-01 에 생겼다).
  */
-export function BrandStripReserve({ open, category }: { open: boolean; category: string }) {
+export function BrandStripReserve() {
+  // ☕ 2026-10-14: '브랜드로 찾기' 헤더 줄이 사라졌다(대표 지시) — 예약도 로고 줄만. 늘 펼친다.
   return (
     <div className="ur-content-wide px-4 lg:px-8 pt-2 pb-3 invisible" aria-hidden="true">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[12px] font-bold flex items-center gap-2">
-          <CategoryIcon category={category} />
-          브랜드로 찾기
-          <ChevronDown className="w-3.5 h-3.5" />
+      <div className="flex gap-2 overflow-x-auto scrollbar-hide py-1 -mx-1 px-1">
+        {/* `BrandChip` 과 같은 치수: w-12 h-12 타일 + gap-1 + text-[12px] 라벨 */}
+        <span className="flex flex-col items-center gap-1 shrink-0">
+          <span className="w-12 h-12 rounded-2xl block" />
+          <span className="text-[12px] max-w-[56px]">&nbsp;</span>
         </span>
       </div>
-      {open && (
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide py-1 -mx-1 px-1">
-          {/* `BrandChip` 과 같은 치수: w-12 h-12 타일 + gap-1 + text-[12px] 라벨 */}
-          <span className="flex flex-col items-center gap-1 shrink-0">
-            <span className="w-12 h-12 rounded-2xl block" />
-            <span className="text-[12px] max-w-[56px]">&nbsp;</span>
-          </span>
-        </div>
-      )}
     </div>
   )
 }

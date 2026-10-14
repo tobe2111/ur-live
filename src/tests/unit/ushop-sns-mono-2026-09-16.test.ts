@@ -49,8 +49,12 @@ describe('② 세 링크가 같은 모양을 공유한다', () => {
     expect(decl, 'iconBtnCls 선언').not.toBeNull()
     expect(decl![1], '36px 원 + 회색 잉크').toMatch(/w-9 h-9 rounded-full[\s\S]*text-gray-500 dark:text-gray-400/)
     // 셋이 **같은 상수**를 쓴다 — 문자열을 다시 적는 순간 갈린다.
-    expect((SNS.match(/className=\{iconBtnCls\}/g) ?? []).length, '유튜브·인스타·틱톡 셋').toBe(3)
-    expect(SNS, 'SNS 자리에 손으로 적은 치수 금지').not.toMatch(/className="w-9 h-9/)
+    // 🔄 2026-10-14 (대표 확정 유어샵 A): SNS 는 이름 아래 줄의 **이름표**가 됐다 — 셋이 같은 상수 두 벌
+    //   (탭 영역 `snsHitCls` 36px + 보이는 알약 `snsPillCls`)을 쓴다. 공유는 여전히 `iconBtnCls`.
+    expect((SNS.match(/className=\{snsHitCls\}/g) ?? []).length, '유튜브·인스타·틱톡 셋 — 탭 영역').toBe(3)
+    expect((SNS.match(/className=\{snsPillCls\}/g) ?? []).length, '유튜브·인스타·틱톡 셋 — 알약').toBe(3)
+    expect(SRC, '탭 영역 36px').toMatch(/const snsHitCls = 'h-9 /)
+    expect(SNS, 'SNS 자리에 손으로 적은 치수 금지').not.toMatch(/className="(w-9 h-9|h-7 px)/)
   })
 
   it('공유 버튼도 SNS 와 같은 모양이다 (안 C)', () => {

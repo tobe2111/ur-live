@@ -40,12 +40,12 @@ export default [
     why: '로고 줄 높이는 48px 타일이 정한다 — 예약만 40px 이면 8px 밀린다.',
   },
   {
-    name: '🧷 접힘 상태를 무시하고 항상 펴서 예약한다 (반대 방향 밀림)',
+    name: "🧷 예약에 '브랜드로 찾기' 헤더 줄이 되살아난다 (진짜 줄엔 없다 → 도착 순간 위로 튄다)",
     file: RESERVE,
-    find: '{open && (',
-    replace: '{true && (',
+    find: '<div className="ur-content-wide px-4 lg:px-8 pt-2 pb-3 invisible" aria-hidden="true">',
+    replace: '<div className="ur-content-wide px-4 lg:px-8 pt-2 pb-3 invisible" aria-hidden="true"><div className="flex items-center justify-between mb-2"><span>브랜드로 찾기</span></div>',
     test: TEST,
-    why: '브랜드 접기 토글은 2026-09-01 에 생겼다. 접힌 사람에게 편 높이를 예약하면 도착 순간 위로 튄다.',
+    why: '2026-10-14 대표 지시로 헤더 줄을 지웠다. 예약에만 남으면 그 높이만큼 반대 방향 밀림이 생긴다.',
   },
   {
     name: '🧷 예약이 눈에 보인다 (로더 통일 정책 위반 — 빈 회색 상자가 뜬다)',
@@ -54,5 +54,13 @@ export default [
     replace: '<div className="ur-content-wide px-4 lg:px-8 pt-2 pb-3" aria-hidden="true">',
     test: TEST,
     why: '자리만 잡고 아무것도 안 보여야 한다 — 2026-07-01 대표 "로딩 화면 2~3개 금지".',
+  },
+  {
+    name: "☕ '전체 교환권 보기'가 파라미터를 지워 기본 카테고리로 돌아간다(버튼이 헛돈다)",
+    file: 'src/pages/VouchersPage.tsx',
+    find: "params.set('category', next || ALL_CATEGORY_PARAM)",
+    replace: "if (next) params.set('category', next); else params.delete('category')",
+    test: 'src/tests/unit/vouchers-top-chrome.test.ts',
+    why: '2026-10-14 카테고리 기본값(커피/음료)이 생긴 뒤 파라미터 없음 = 커피다. 지우면 전체로 못 간다.',
   },
 ]

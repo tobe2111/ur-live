@@ -15,6 +15,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { readCode } from '../helpers/source-text'
 
 const SRC = readFileSync(resolve(__dirname, '../../pages/VouchersPage.tsx'), 'utf-8')
 
@@ -43,17 +44,30 @@ describe('교환권 탭 상단', () => {
     expect((SRC.match(/<DealBalanceCard\b/g) ?? []).length).toBe(2)   // 모바일 + PC
   })
 
-  it('② 브랜드 스트립은 접기 토글로 게이트된다(기본은 펼침 — 2026-09-02 B안)', () => {
-    expect(SRC).toMatch(/\{brandsOpen && \(/)
-    expect(SRC).toMatch(/브랜드로 찾기/)
+  // 🔄 2026-10-14 재조준 (대표 *"브랜드로 찾기 저 문구? 버튼 없애고. 괜히 공간만 차지하잖아"*):
+  //   접기 토글째 없앴다 — 로고 줄은 **늘** 펼친다(09-02 B안 "로고가 보이게" 의 끝판).
+  it('② 브랜드로 찾기 문구·접기 버튼이 없다', () => {
+    // 판정은 주석을 뺀 실행되는 코드로 — 제거를 기록한 주석이 그 문구를 인용한다.
+    const CODE = readCode('src/pages/VouchersPage.tsx')
+    expect(CODE).not.toMatch(/브랜드로 찾기/)
+    expect(CODE).not.toMatch(/brandsOpen|setBrandsOpen/)
   })
 
-  it('③ 스트립을 없애지는 않는다 — 펼치면 그대로 나온다', () => {
-    expect(SRC).toMatch(/orderedBrands\.map/)
-    expect(SRC).toMatch(/setBrandsOpen/)
+  // ☕ 2026-10-14: 카테고리 기본값(커피/음료)이 생기면서 '파라미터 없음' 이 더는 '전체'가 아니다.
+  //   '전체 교환권 보기'(빈 상태 버튼)가 파라미터를 지우면 다시 커피로 돌아가 **아무 일도 안 한다**(에러 0).
+  it('②-1 전체는 `?category=all` 로 적고, 그 값은 카테고리 없음으로 읽는다', () => {
+    const CODE = readCode('src/pages/VouchersPage.tsx')
+    expect(CODE).toContain("params.set('category', next || ALL_CATEGORY_PARAM)")
+    expect(CODE).not.toContain("params.delete('category')")
+    expect(CODE).toContain("rawCategory === ALL_CATEGORY_PARAM ? '' : (rawCategory || VOUCHERS_DEFAULT_CATEGORY)")
   })
 
-  it('④ 기본 펼침 — 대표 2026-09-02 "브랜드 펼침 · 로고가 보이게"(09-01 기본 접기를 대체)', () => {
-    expect(SRC).toMatch(/const \[brandsOpen, setBrandsOpen\] = useState\(true\)/)
+  it('③ 스트립을 없애지는 않는다 — 로고 줄은 늘 그린다', () => {
+    // 모바일 브랜드 줄(바깥 `pt-2 pb-3` 블록)이 로고를 그린다 — PC 사이드바에도 같은 map 이 있어
+    //   파일 어디서나 찾으면 모바일 줄을 지워도 통과한다(주입이 실제로 그걸 잡았다). 블록 안에서만 본다.
+    const CODE = readCode('src/pages/VouchersPage.tsx')
+    const at = CODE.indexOf('className="ur-content-wide px-4 lg:px-8 pt-2 pb-3"')
+    expect(at, '모바일 브랜드 줄 블록').toBeGreaterThan(-1)
+    expect(CODE.slice(at, at + 1200)).toMatch(/\{orderedBrands\.map\(/)
   })
 })

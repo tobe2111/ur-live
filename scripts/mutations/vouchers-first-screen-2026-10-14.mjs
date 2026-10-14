@@ -11,12 +11,22 @@ export default [
     why: '로그인하면 잔액 자리가 한 줄 바 → 카드가 되어 서버가 그린 목록이 마운트 때 아래로 밀린다.',
   },
   {
-    name: '🎟️ 교환권 첫 화면 목록 줄의 판 클래스가 DealRow 와 갈린다',
+    // 🔁 2026-10-14 재조준(대표 B안 — 3열 타일): 클래스는 이제 SSOT(`VOUCHER_TILE_CLASS`)를 두 곳이 import 해
+    //   문자열이 갈릴 수 없다. 남은 갈림 자리는 **구조**다 — 워커가 브랜드 줄의 `›` 를 빠뜨리는 것.
+    name: '🎟️ 교환권 첫 화면 타일의 브랜드 줄 구조가 VoucherTile 과 갈린다',
     file: 'src/worker/utils/vouchers-first-screen.ts',
-    find: "row: 'w-full flex items-center gap-3 text-left px-3 py-2 rounded-2xl",
-    replace: "row: 'w-full flex items-center gap-3 text-left px-3 py-3 rounded-2xl",
+    find: '<span aria-hidden="true" class="${T.chev}">›</span>',
+    replace: '',
     test: TEST,
-    why: '세로 여백이 다르면 줄마다 높이가 갈려 마운트 때 목록 전체가 움직인다.',
+    why: '브랜드 줄 모양이 다르면 마운트 때 타일 높이·글자가 바뀌어 첫 화면이 움직인다.',
+  },
+  {
+    name: '🎟️ 교환권 모바일 목록이 다시 한 줄 행으로 — 워커 첫 화면(3열)과 갈린다',
+    file: 'src/pages/VouchersPage.tsx',
+    find: '<div className={VOUCHER_TILE_CLASS.grid}>\n                {displayProducts.slice(0, embedVisible)',
+    replace: '<div className="grid grid-cols-1 gap-2">\n                {displayProducts.slice(0, embedVisible)',
+    test: TEST,
+    why: '서버는 3열 타일을 그리는데 화면이 한 줄 행을 그리면 마운트 때 목록 전체가 바뀐다.',
   },
   {
     name: '🎟️ 교환권 첫 화면 사진이 최우선순위로 돌아간다(CSS·JS 와 회선 경쟁)',

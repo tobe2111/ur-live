@@ -25,8 +25,9 @@
  *
  *   1. **브랜드 바** — `UrDealLogo` 는 글자(`urdeal`) + 점 하나라 워커가 그릴 수 있다
  *      (정적 로더가 이미 size 34 로 같은 것을 그린다 — 그 선례를 19 로 되풀이한다).
- *   2. **이름 줄** — 이름(h1) + 소개(bio). 오른쪽 버튼 자리는 **높이·폭만**:
- *      SNS·공유는 빈 `w-9 h-9`, 관리는 `invisible` 알약. 🔴 **아이콘 path 는 안 옮긴다**
+ *   2. **이름 줄** — 얼굴(2026-10-14 A) + 이름(h1) + 소개(bio). 오른쪽 버튼 자리는 **높이·폭만**:
+ *      공유는 빈 `w-9 h-9`, 관리는 `invisible` 알약. 그 아래 **숫자 줄**(이용권·누적 구매) +
+ *      SNS 이름표 자리(글자는 브랜드명, 아이콘은 빈 칸). 🔴 **아이콘 path 는 안 옮긴다**
  *      (lucide `Share2`·SNS SVG·`EditIcon` — 손으로 옮기면 두 벌이 갈린다). 아이콘은 그 빈
  *      칸 **안에서** 나중에 나타나므로 밀림 0 이다(2026-10-08 교환권 상세와 같은 처방).
  *   3. **칩·정렬 줄** — 라벨은 **안 그린다**(카테고리 라벨 표는 `voucher-types.ts` 에 있고 그
@@ -40,7 +41,8 @@
  * ❌ **안 그리는 것**: 검색창(핀 12개 이상일 때만 — 자리 높이만 예약) · 빈 유어샵 화면
  *    (`EmptyUrShop`: 주인/방문자 문구가 갈린다) · 사업자 유어샵(`linked_seller` 가 있으면
  *    React 는 `SellerPublicPage` 를 그린다 — 레이아웃이 통째로 다르다) · 맨 아래 유입 링크
- *    (`!isOwner` 게이트) · 프로필 사진(`CuratorHeader` 가 ⑤에서 아바타를 지웠다 — 자리가 없다).
+ *    (`!isOwner` 게이트).
+ *    🔄 2026-10-14 유어샵 A 로 **얼굴이 돌아왔다** — 그 자리는 서버도 그린다(아래 `avatar`).
  * ❌ **PC(lg+)는 안 그린다** — UA 로 가른다. PC 는 `.ur-ushop-pc` 2열 그리드 + 전역
  *    `DesktopTopNav` 가 `#root` 안에 따로 서므로, 서버가 그 둘을 모른 채 그리면 마운트 때
  *    가로·세로가 같이 움직인다(④홈과 같은 판단).
@@ -56,7 +58,8 @@
 import { cfImage } from '../../utils/cf-image'
 import { priceDisplay } from '../../shared/price-display'
 import { formatNumber } from '../../utils/format'
-import { curatorHomePins } from '../../shared/curator-pin-order'
+import { curatorHomePins, curatorSoldTotal } from '../../shared/curator-pin-order'
+import { SHARE_MASCOT_SRC } from '../../shared/ushop-share-card'
 import { buildCuratorNoscript } from './crawler-noscript'
 
 function escAttr(s: string): string {
@@ -79,11 +82,21 @@ export const CURATOR_FS_CLASS = {
   headerInner: 'max-w-3xl mx-auto',
   brandBar: 'lg:hidden flex items-center px-4 pt-3',
   brandLink: 'active:opacity-70',
-  nameRow: 'flex items-start px-4 pt-4 pb-4',
+  nameRow: 'flex items-center gap-3 px-4 pt-4',
+  avatar: 'w-14 h-14 rounded-full overflow-hidden bg-wash shrink-0',
+  avatarPhoto: 'w-full h-full object-cover',
+  avatarUdal: 'w-full h-full object-contain',
   nameCol: 'min-w-0 flex-1',
-  nameLine: 'flex items-start gap-2 min-w-0',
-  h1: 'text-[17px] font-bold text-gray-900 dark:text-white leading-tight tracking-[-0.03em] line-clamp-2',
-  bio: 'mt-1 text-[12px] text-gray-600 dark:text-gray-300 leading-snug line-clamp-2',
+  nameLine: 'flex items-center gap-2 min-w-0',
+  h1: 'text-[24px] font-bold text-gray-900 dark:text-white leading-tight tracking-[-0.03em] line-clamp-2',
+  bio: 'mt-1 text-[13px] text-gray-500 dark:text-gray-400 leading-snug line-clamp-2',
+  statsRow: 'mt-2 px-4 flex items-center justify-between gap-2',
+  stats: 'min-w-0 truncate text-[13px] text-gray-500 dark:text-gray-400 tabular-nums',
+  statNum: 'font-bold text-gray-900 dark:text-white',
+  snsGroup: 'flex items-center gap-1 shrink-0',
+  snsHit: 'h-9 inline-flex items-center active:opacity-70',
+  snsPill: 'h-7 px-3 rounded-full bg-wash inline-flex items-center gap-1 text-[12px] font-semibold text-gray-600 dark:text-gray-300',
+  headerPad: 'h-4',
   cluster: 'ml-3 flex items-center gap-2 shrink-0',
   iconBtn: 'w-9 h-9 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-wash active:opacity-70 transition-colors',
   manageBtn: 'h-9 px-3 rounded-full bg-brand text-white text-[15px] font-bold inline-flex items-center gap-1 shrink-0 active:opacity-70',
@@ -131,6 +144,7 @@ interface CuratorSeedPin {
   deal_pct?: number | null
   dominant_color?: string | null
   restaurant_name?: string | null
+  sold_count?: number | null
 }
 interface CuratorSeed {
   success?: boolean
@@ -138,6 +152,7 @@ interface CuratorSeed {
     handle?: string
     name?: string
     bio?: string | null
+    profile_image?: string | null
     youtube_url?: string | null
     instagram_url?: string | null
     tiktok_url?: string | null
@@ -213,15 +228,36 @@ export function buildCuratorFirstScreen(ssrPayload: string, loaderHtml: string):
     // 빈 유어샵은 `EmptyUrShop`(주인/방문자 문구가 갈린다) → 그리지 않는다.
     if (pins.length === 0) return ''
 
-    const snsCount =
-      (c.youtube_url ? 1 : 0) + (c.instagram_url ? 1 : 0) + (c.tiktok_url ? 1 : 0)
-    // SNS + 공유 = 빈 원 / 관리 = invisible 알약. 아이콘 path 는 옮기지 않는다(머리말 참조).
-    const iconSlots = `<span class="${CURATOR_FS_CLASS.iconBtn}"></span>`.repeat(snsCount + 1)
+    // 공유 = 빈 원 / 관리 = invisible 알약. 아이콘 path 는 옮기지 않는다(머리말 참조).
     const cluster =
-      `<div class="${CURATOR_FS_CLASS.cluster}">${iconSlots}` +
+      `<div class="${CURATOR_FS_CLASS.cluster}"><span class="${CURATOR_FS_CLASS.iconBtn}"></span>` +
       `<span class="${CURATOR_FS_CLASS.manageBtn} invisible pointer-events-none">` +
         `<span style="display:inline-block;width:17px;height:17px"></span>관리` +
       '</span></div>'
+
+    // 👤 얼굴(2026-10-14 대표 확정 유어샵 A) — `CuratorHeader` 와 같은 URL(cfImage 112·cover)·같은 유달이.
+    const photo = (c.profile_image || '').trim()
+    const photoSrc = photo ? cfImage(photo, { width: 112, height: 112, fit: 'cover' }) || photo : ''
+    const avatar =
+      `<div class="${CURATOR_FS_CLASS.avatar}">` +
+        (photoSrc
+          ? `<img src="${escAttr(photoSrc)}" alt="" width="56" height="56" class="${CURATOR_FS_CLASS.avatarPhoto}">`
+          : `<img src="${escAttr(SHARE_MASCOT_SRC)}" alt="" width="56" height="56" class="${CURATOR_FS_CLASS.avatarUdal}">`) +
+      '</div>'
+
+    // 📊 이름 아래 한 줄 — 숫자는 화면과 같은 함수(`curatorSoldTotal`)로. SNS 는 이름표 **자리만**(글자는 브랜드명 그대로).
+    const sold = curatorSoldTotal(pins)
+    const num = (n: number) => `<b class="${CURATOR_FS_CLASS.statNum}">${escText(formatNumber(n))}</b>`
+    const statsText =
+      `<span>이용권 ${num(pins.length)}</span>` +
+      (sold > 0 ? `<span> · </span><span>누적 구매 ${num(sold)}</span>` : '')
+    const snsNames = [c.youtube_url && 'YouTube', c.instagram_url && 'Instagram', c.tiktok_url && 'TikTok'].filter(Boolean) as string[]
+    const snsHtml = snsNames.length
+      ? `<div class="${CURATOR_FS_CLASS.snsGroup}">` +
+          snsNames.map((n) => `<span class="${CURATOR_FS_CLASS.snsHit}"><span class="${CURATOR_FS_CLASS.snsPill}"><span style="display:inline-block;width:15px;height:15px"></span>${n}</span></span>`).join('') +
+        '</div>'
+      : ''
+    const statsRow = `<div class="${CURATOR_FS_CLASS.statsRow}"><p class="${CURATOR_FS_CLASS.stats}">${statsText}</p>${snsHtml}</div>`
 
     const header =
       `<header class="${CURATOR_FS_CLASS.header}"><div class="${CURATOR_FS_CLASS.headerInner}">` +
@@ -232,12 +268,16 @@ export function buildCuratorFirstScreen(ssrPayload: string, loaderHtml: string):
           `<a href="/" aria-label="유어딜 홈" class="${CURATOR_FS_CLASS.brandLink}">${logoHtml(CURATOR_LOGO_SIZE)}</a>` +
         '</div>' +
         `<div class="${CURATOR_FS_CLASS.nameRow}">` +
+          avatar +
           `<div class="${CURATOR_FS_CLASS.nameCol}">` +
             `<div class="${CURATOR_FS_CLASS.nameLine}"><h1 class="${CURATOR_FS_CLASS.h1}">${escText(c.name)}</h1></div>` +
             (c.bio ? `<p class="${CURATOR_FS_CLASS.bio}">${escText(c.bio)}</p>` : '') +
           '</div>' +
           cluster +
         '</div>' +
+        // 핀이 1개 이상일 때만 첫 화면을 그리므로 숫자 줄은 늘 있다(화면도 pins>0 이면 그린다).
+        statsRow +
+        `<div class="${CURATOR_FS_CLASS.headerPad}"></div>` +
       '</div></header>'
 
     // 검색창은 핀 12개 이상일 때만 뜬다 — 자리 **높이만** 예약(입력칸 내용은 안 그린다).

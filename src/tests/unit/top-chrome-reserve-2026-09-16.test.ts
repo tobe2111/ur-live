@@ -49,12 +49,11 @@ describe('② 치수를 정하는 클래스가 진짜 블록과 같다', () => {
     }
   })
 
-  it('브랜드 줄: 바깥 패딩 · 헤더 · 로고 줄', () => {
+  // 🔄 2026-10-14: '브랜드로 찾기' 헤더 줄이 사라졌다(대표 지시) — 예약에도 헤더가 없어야 한다(있으면 그 높이만큼 밀린다).
+  it('브랜드 줄: 바깥 패딩 · 로고 줄 (헤더 줄 없음)', () => {
+    expect(RESERVE, '헤더 줄이 예약에 남지 않는다').not.toMatch(/브랜드로 찾기|justify-between mb-2/)
     for (const cls of [
       'ur-content-wide px-4 lg:px-8 pt-2 pb-3',   // 바깥 패딩 (2026-09-30: pt-1.5 → pt-2, 4px 격자)
-      'flex items-center justify-between mb-2',   // 헤더 줄 (mb-1.5 → mb-2)
-      'text-[12px] font-bold',                     // 헤더 글자 크기
-      'w-3.5 h-3.5',                               // ChevronDown
       'flex gap-2 overflow-x-auto scrollbar-hide py-1 -mx-1 px-1',   // 로고 줄 (gap-2.5 → gap-2)
     ]) {
       expect(PAGE, `real brand: ${cls}`).toContain(cls)
@@ -79,9 +78,9 @@ describe('③ 자리만 잡고 아무것도 보이지 않는다', () => {
     expect(RESERVE.match(/aria-hidden="true"/g)?.length ?? 0).toBeGreaterThanOrEqual(2)
   })
 
-  it('접힘 상태를 따라간다 — 로고 줄은 open 일 때만', () => {
-    // 접힌 채로 예약만 펴면 반대 방향으로 같은 크기의 밀림이 난다.
-    expect(RESERVE).toMatch(/\{open && \(/)
-    expect(PAGE).toMatch(/<BrandStripReserve open=\{brandsOpen\}/)
+  // 🔄 2026-10-14: 접힘이 없어졌다 — 예약도 로고 줄을 늘 잡는다(반대 방향 밀림이 생길 상태가 없다).
+  it('접힘 상태가 없다 — 예약은 로고 줄을 늘 잡는다', () => {
+    expect(RESERVE).not.toMatch(/\{open && \(/)
+    expect(PAGE).toMatch(/<BrandStripReserve \/>/)
   })
 })

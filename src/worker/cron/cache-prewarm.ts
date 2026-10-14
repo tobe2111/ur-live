@@ -143,7 +143,8 @@ const HOT_PATHS: readonly string[] = [
 //   (라이브 실측 `DETAIL:self-fetch-hit` 에 `kv;dur=95~104ms` — 순수 대기). 쓰는 쪽과 읽는 쪽이 같은 목록을 본다.
 export const SSR_KV_PATHS: readonly string[] = [
   '/api/group-buy/products?status=active&category=all',            // MAIN(홈)
-  '/api/products?page=1&limit=20&deal_only=1&sort=price_low',      // VOUCHERS
+  // ☕ 2026-10-14: /vouchers 첫 화면이 커피/음료로 열린다 — 시드 경로 = VOUCHERS_DEFAULT_SEED_PATH(byte-일치).
+  '/api/products?page=1&limit=20&deal_only=1&sort=price_low&category=%EC%BB%A4%ED%94%BC%2F%EC%9D%8C%EB%A3%8C', // VOUCHERS
   '/api/products?page=1&limit=20&exclude_deal_only=1',             // BROWSE
   // 🚫 2026-07-29: LIVE(/api/streams) · WHOLESALE(/api/wholesale/catalog) 제거 — 소비자 오리진에서
   //   둘 다 404 라 `if (res.ok)` 를 통과한 적이 없다(KV 기록 0). 남은 4키가 실제로 쓰이는 슬롯이다.

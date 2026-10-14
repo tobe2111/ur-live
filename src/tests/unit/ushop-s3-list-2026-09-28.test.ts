@@ -130,10 +130,14 @@ describe('⑤-2 같은 숫자를 두 번 말하지 않는다 (렌더 실측으�
   // 🩸 첫 렌더에서 160px 안에 "6" 이 **세 번** 있었다: 헤더 `담은 이용권 6` · 칩 `전체 6` · 목록 `6개`.
   //   칩 게이트를 연 것이 이번 단계이므로 그 중복도 이번 단계가 만든 것이다.
   //   (2026-09-01 지갑에서 고친 것과 같은 자리 — 요약 줄이 말한 걸 섹션 헤더가 다시 말하던 것.)
-  it('개인 유어샵 헤더에 핀 개수를 넘기지 않는다(칩이 말한다)', () => {
+  // 🔄 2026-10-14 재조준(대표 확정 **유어샵 A**): 시안 A 가 머리 아래 `이용권 N · 누적 구매 M` 한 줄을
+  //   다시 두었다(시안에도 칩 `전체 N` 이 함께 있다). 개수만 되풀이하는 것을 막던 이 가드는
+  //   이제 **새 정보(누적 구매)와 함께일 때만** 개수를 넘기는지를 본다.
+  it('개인 유어샵 헤더에 개수를 넘기면 누적 구매도 함께 넘긴다', () => {
     const call = page.slice(page.indexOf('<CuratorHeader'), page.indexOf('<UShopQrCard'))
     expect(call.length, '헤더 호출 구간을 실제로 잘랐다').toBeGreaterThan(40)
-    expect(call).not.toMatch(/counts=/)
+    expect(call).toMatch(/counts=/)
+    expect(call, '누적 구매는 화면·서버 공용 SSOT 로').toMatch(/soldTotal=\{curatorSoldTotal\(pins\)\}/)
   })
 
   it('목록 개수는 검색이 더 걸렀을 때만 적는다', () => {

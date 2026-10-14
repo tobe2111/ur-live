@@ -28,8 +28,10 @@ import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { getUserIdSync } from '@/utils/auth'
 // 🖥️ 2026-07-18 (교환권 PC 2단 분리): 카드/행 + VoucherProduct 타입은 ./vouchers/shared 로 추출(파일크기 래칫).
-import { VoucherCard, VoucherRow, BrandChip, CategoryIcon, type VoucherProduct } from './vouchers/shared'
+import { VoucherCard, VoucherTile, BrandChip, CategoryIcon, type VoucherProduct } from './vouchers/shared'
+import { VOUCHER_TILE_CLASS, VOUCHER_TILE_ABOVE_FOLD } from '@/shared/voucher-tile'
 import { ChipRowReserve, BrandStripReserve } from './vouchers/TopChromeReserve'
+import { VOUCHERS_DEFAULT_CATEGORY } from '@/shared/seo/voucher-facet'
 import { GifticonBoxRailRow } from './vouchers/GifticonBoxEntry'
 import VouchersTopBar from './vouchers/VouchersTopBar'
 import VouchersHero from './vouchers/VouchersHero'
@@ -69,7 +71,9 @@ type VouchersViewState = {
 
 // 🏭 2026-06-04 (사용자 요청): 홈(embedded) 기본 카테고리 = '커피/음료' (KT Alpha goods_type_detail).
 //   worker/index.ts MAIN 슬롯 + cache-prewarm HOT_PATH 의 category 값과 반드시 동일해야 SSR 0-RTT 정합.
-const EMBEDDED_DEFAULT_CATEGORY = '커피/음료'
+/** '전체'의 URL 표기 — 카테고리 기본값이 생겨 '파라미터 없음' 이 더는 '전체'가 아니다(2026-10-14). */
+const ALL_CATEGORY_PARAM = 'all'
+const EMBEDDED_DEFAULT_CATEGORY = VOUCHERS_DEFAULT_CATEGORY // ☕ 2026-10-14: /vouchers 도 같은 첫 카테고리(SSOT `shared/seo/voucher-facet`)
 
 // 🎨 2026-07-01 (대표 "페이지가 빨리 뜨면 되는거"): SSR seed 를 첫 렌더에 **동기 소비** → 로더 프레임 제거,
 //   청크 로드 끝나면 콘텐츠 즉시. (기존엔 loading=true 로 시작 후 effect 에서 소비 → 로더 한 프레임.)
@@ -77,7 +81,7 @@ const EMBEDDED_DEFAULT_CATEGORY = '커피/음료'
 function readVouchersSsrSeed(embedded: boolean, category: string, brand: string, sort: string): VoucherProduct[] | null {
   const match = embedded
     ? (category === EMBEDDED_DEFAULT_CATEGORY && !brand && sort === 'price_low')
-    : (!brand && !category && sort === 'price_low')
+    : (category === VOUCHERS_DEFAULT_CATEGORY && !brand && sort === 'price_low') // 워커 시드 = VOUCHERS_DEFAULT_SEED_PATH
   if (!match || typeof document === 'undefined') return null
   try {
     const el = document.getElementById(embedded ? '__SSR_INITIAL_MAIN__' : '__SSR_INITIAL_VOUCHERS__')
@@ -102,7 +106,11 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   const brand = searchParams.get('brand') || ''
   // 🏭 2026-06-04 (사용자 요청): 홈(embedded)은 기본 카테고리를 '커피/음료' 로 — 첫 진입 시 커피 브랜드 먼저.
   //   MAIN SSR 슬롯도 같은 커피 카테고리로 warm → 0-RTT 유지 (worker/index.ts + cache-prewarm).
-  const category = searchParams.get('category') || (embedded ? EMBEDDED_DEFAULT_CATEGORY : '')
+  // ☕ 2026-10-14 (대표 *"첫 화면은 이렇게 떠줘"*): /vouchers 도 첫 화면이 커피/음료 + 브랜드 로고 줄.
+  //   URL 에 카테고리가 없으면 이 값이다(주소는 깨끗한 `/vouchers` 그대로 — 바꿔 쓰지 않는다).
+  //   🔑 '전체'는 `?category=all` 로 적는다 — 파라미터를 지우면 기본값(커피/음료)으로 돌아가 '전체 교환권 보기'가 헛돈다.
+  const rawCategory = searchParams.get('category')
+  const category = rawCategory === ALL_CATEGORY_PARAM ? '' : (rawCategory || VOUCHERS_DEFAULT_CATEGORY)
 
   // 🎨 2026-07-01 (대표 "페이지가 빨리 뜨면"): SSR seed 를 첫 렌더에 동기 소비(1회) → products/loading 초기값에
   //   반영 → 청크 로드 후 로더 프레임 없이 콘텐츠 즉시. sort 는 searchParams 에서 직접(아래 sort const 이전).
@@ -127,18 +135,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   //   sections = 카테고리별 (편의점/카페/외식 등) + 각 카테고리 내 인기 브랜드 12개.
   //   첫 로드 시 cnt 가장 많은 카테고리 자동 선택. 카테고리 변경 시 브랜드 list 자동 갱신.
   const [sections, setSections] = useState<CategorySection[]>([])
-  /**
-   * 🗂️ 2026-09-01 (대표 "나안"): 브랜드 스트립을 **기본 접기**.
-   *   실측(미리보기 하네스, 430px): 첫 상품 위에 잔액 슬래브 250 + 고아 링크 40 + 카테고리 칩 60
-   *   + 브랜드 스트립 175 + 섹션 헤더 60 ≈ **700px** 이 쌓여 상품이 1.5개밖에 안 보였다.
-   *   그중 가장 두꺼운 것이 브랜드 스트립인데, 브랜드는 상품 이름에 이미 들어 있다
-   *   ("스타벅스 아메리카노" · "CU 모바일상품권") — 같은 정보로 두 번 거르게 하는 층이다.
-   *   ⚠️ 없애지는 않는다. 2026-05-19 대표 요청으로 들어간 "카테고리 + 브랜드 2단 구조"라
-   *   **'브랜드로 찾기' 를 누르면 그대로 나온다.** 딥링크로 브랜드가 이미 잡혀 있으면 펴서 시작한다
-   *   (접힌 채 선택 상태면 왜 걸러졌는지 알 수 없다).
-   */
-  // 🎫 2026-09-02 (대표 확정 — 교환권 B안 "칩 + 브랜드 펼침 · 로고가 보이게"): 기본 펼침. 09-01 '기본 접기'를 대체. 접기 토글은 남긴다.
-  const [brandsOpen, setBrandsOpen] = useState(true)
+  // 🗂️ 브랜드 줄 접기(2026-09-01 나안 → 09-02 B안 기본 펼침)는 2026-10-14 대표 지시로 토글째 없앴다 — 늘 펼친다.
   // 📐 2026-07-29 (CLS 실측 0.188 수리): 카테고리/브랜드 블록이 **상품 목록보다 늦게** 도착해
   //   목록을 아래로 밀어냈다. 상품은 SSR 시드로 즉시 그려지는데(`__SSR_INITIAL_VOUCHERS__`)
   //   그 위 두 블록은 `/api/vouchers/categories` 응답을 기다리기 때문이다. 첫 방문(로컬 캐시 없음)
@@ -233,14 +230,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
         if (Date.now() - cached.ts < 60 * 60_000 && Array.isArray(cached.data)) {
           setSections(cached.data)
           setSectionsReady(true)
-          // 🏭 2026-06-04 (flash fix): embedded(홈)에서는 첫 카테고리 자동선택 X.
-          //   기존: 홈 SSR(전체 deal) 표시 → JS 가 ?category=첫카테고리 로 교체 → 내용/URL 깜빡임.
-          //   embedded 는 category 비워둬 SSR MAIN 즉시표시 유지 + 홈 URL 깨끗('/').
-          if (!embedded && !category && !brand && cached.data.length > 0) {
-            const next = new URLSearchParams(searchParams)
-            next.set('category', cached.data[0].category)
-            setSearchParams(next, { replace: true })
-          }
+          // ☕ 2026-10-14: 여기 있던 '첫 카테고리 자동 선택(URL 바꿔 쓰기)'은 지웠다 — 카테고리 기본값이
+          //   이제 `VOUCHERS_DEFAULT_CATEGORY` 라 빈 경우가 없다(서버 시드도 같은 카테고리로 와서 재요청 0).
         }
       }
     } catch { /* localStorage 손상 — 무시 */ }
@@ -351,7 +342,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   // 🎫 2026-06-23 (대표 결정): 교환권은 홈 12 / /vouchers 20개 노출 후 '더보기'. 둘 다 무한스크롤 대신 cap+버튼
   //   (비embedded 도 cap → 더보기 아래로 쇼핑 섹션이 이어지게). 교환권 무한관찰 비활성, 무한스크롤은 하단 쇼핑 섹션이 담당.
   // 🎫 2026-06-26 (대표 결정): 홈 12개 / /vouchers 8개 먼저 노출 후 '더보기'.
-  const EMBED_INITIAL = embedded ? 12 : 8
+  // 🎟️ 2026-10-14 (대표 B안 — 모바일 3열 타일): /vouchers 는 9개(세 줄) — 8 이면 마지막 줄이 두 칸만 찬다.
+  const EMBED_INITIAL = embedded ? 12 : 9
   const [embedVisible, setEmbedVisible] = useState(() => restored?.embedVisible ?? EMBED_INITIAL)
   const embeddedCapped = true
   // 🔙 2026-09-13: 현재 목록을 보관 — 상세로 떠났다 뒤로 오면 이 값이 첫 렌더에 되살아난다.
@@ -389,16 +381,18 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
     return () => observer.disconnect()
   }, [hasMore, loadingMore, loading, page, loadProducts, embeddedCapped])
 
-  const setBrand = (next: string) => {
+  // 🎟️ 2026-10-14: useCallback — 타일(`VoucherTile`, memo)의 브랜드 줄이 이 함수를 받는다.
+  //   매 렌더 새 함수면 스크롤(reveal)마다 타일 전부가 다시 그려진다.
+  const setBrand = useCallback((next: string) => {
     const params = new URLSearchParams(searchParams)
     if (next) params.set('brand', next); else params.delete('brand')
     setSearchParams(params, { replace: true })  // 🔙 필터는 이동이 아니라 상태 — 히스토리를 안 쌓는다(back-navigation 테스트)
-  }
+  }, [searchParams, setSearchParams])
 
   // 🛡️ 2026-05-19: 카테고리 변경 — 브랜드 자동 초기화 (다른 카테고리의 브랜드는 의미 없음).
   const setCategory = (next: string) => {
     const params = new URLSearchParams(searchParams)
-    if (next) params.set('category', next); else params.delete('category')
+    params.set('category', next || ALL_CATEGORY_PARAM) // 빈 값 = '전체'(지우면 기본 카테고리로 돌아간다)
     params.delete('brand')
     setSearchParams(params, { replace: true })  // 🔙 필터는 상태 — 히스토리를 쌓지 않는다(위 주석)
   }
@@ -624,26 +618,17 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           🏭 2026-06-04 (사용자 요청): 브랜드를 클릭(필터)해도 그리드 그대로 유지 + 선택 브랜드 강조. */}
       {/* 🧱 2026-10-13: 브랜드 줄은 **카테고리를 고른 때만** 나온다('전체'에는 없다) — 예약도 같은 조건이어야 한다.
           종전엔 '전체'에서도 124px 를 비워 뒀다가 카테고리 목록이 오면 사라져 목록이 위로 튀었다(실사용자 CLS p75 0.14). */}
-      {currentBrands.length === 0 && !sectionsReady && !!category && <BrandStripReserve open={brandsOpen} category={category} />}
+      {currentBrands.length === 0 && !sectionsReady && !!category && <BrandStripReserve />}
       {currentBrands.length > 0 && (
         /* 🎫 2026-06-26 (대표 결정 A): 상단 레이어 정리 — 상품을 위로. py-4→pt-1.5/pb-3, 헤더/로고 컴팩트. */
         <div className="ur-content-wide px-4 lg:px-8 pt-2 pb-3">
-          <div className="flex items-center justify-between mb-2">
-            <button
-              type="button"
-              onClick={() => setBrandsOpen(v => !v)}
-              className="text-[12px] font-bold text-gray-500 dark:text-gray-400 flex items-center gap-2"
-            >
-              <CategoryIcon category={category} />
-              브랜드로 찾기
-              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${brandsOpen ? 'rotate-180' : ''}`} />
-            </button>
-            {/* 🧭 정렬: 홈(embedded)은 여기 / /vouchers 는 아래 '상품' 섹션 헤더로 이동(2026-06-20) */}
-            {embedded && <SortMenu value={sort} options={SORT_OPTIONS} onChange={(v) => setSort(v)} />}
-          </div>
-          {/* 🧭 2026-06-20 (사용자: 상품이 너무 아래로 밀림): /vouchers 도 홈처럼 1행 가로 스크롤로 압축 —
-              12개 로고 그리드(3~4행)가 상품을 fold 아래로 밀던 주범. 클릭/ring 강조 동작 불변. */}
-          {brandsOpen && (
+          {/* ☕ 2026-10-14 (대표 *"브랜드로 찾기 저 문구? 버튼 없애고. 괜히 공간만 차지하잖아"*): 접기 버튼·문구 제거 —
+              로고 줄은 늘 펼쳐 둔다. 홈(embedded)만 정렬 메뉴 줄이 남는다(그 자리에 정렬이 있다). */}
+          {embedded && (
+            <div className="flex items-center justify-end mb-2">
+              <SortMenu value={sort} options={SORT_OPTIONS} onChange={(v) => setSort(v)} />
+            </div>
+          )}
           <div className="flex gap-2 overflow-x-auto scrollbar-hide py-1 -mx-1 px-1">
             {orderedBrands.map(b => (
               <BrandChip
@@ -655,7 +640,6 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
               />
             ))}
           </div>
-          )}
         </div>
       )}
 
@@ -715,16 +699,14 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
               ))}
             </div>
           ) : (
-            // 🎨 2026-06-20: /vouchers 1줄 리스트 스켈레톤 (이미지 좌측 + 텍스트 우측). PC 도 1열(사용자 요청).
-            <div className="grid grid-cols-1">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="animate-pulse flex items-center gap-4 py-4 border-b border-gray-100 dark:border-[#2C2F35]">
-                  <div className="w-[88px] h-[88px] sm:w-24 sm:h-24 shrink-0 rounded-2xl bg-gray-100 dark:bg-[#1D1F29]" />
-                  <div className="flex-1">
-                    <div className="h-3 bg-gray-100 dark:bg-[#1D1F29] rounded w-1/3" />
-                    <div className="h-4 mt-2 bg-gray-100 dark:bg-[#1D1F29] rounded w-3/4" />
-                    <div className="h-4 mt-2 bg-gray-100 dark:bg-[#1D1F29] rounded w-1/4" />
-                  </div>
+            // 🎟️ 2026-10-14: /vouchers 3열 타일 스켈레톤(사진 정사각 + 글자 세 줄) — 타일과 같은 격자.
+            <div className={VOUCHER_TILE_CLASS.grid}>
+              {Array.from({ length: 9 }).map((_, i) => (
+                <div key={i} className="animate-pulse min-w-0">
+                  <div className="aspect-square rounded-xl bg-gray-100 dark:bg-[#1D1F29]" />
+                  <div className="h-3 mt-2 bg-gray-100 dark:bg-[#1D1F29] rounded w-1/2" />
+                  <div className="h-3 mt-2 bg-gray-100 dark:bg-[#1D1F29] rounded w-full" />
+                  <div className="h-3 mt-2 bg-gray-100 dark:bg-[#1D1F29] rounded w-2/3" />
                 </div>
               ))}
             </div>
@@ -759,12 +741,13 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                 ))}
               </div>
             ) : (
-              // 🎨 2026-06-23 /vouchers — 1줄 리스트, embedVisible(기본 20)개까지만 노출 후 '더보기'(대표 결정).
-              //   내용 동일, 배치만 행. 더보기 아래로 쇼핑 섹션이 이어짐.
-              <div className="grid grid-cols-1 gap-2">
+              // 🎟️ 2026-10-14 대표 확정 *"교환권은 b 시안으로"* — 모바일 /vouchers = 3열 타일
+              //   (사진 · 브랜드 › · 이름 두 줄 · 가격 · 구매 N). 종전 한 줄 행(VoucherRow)을 대체한다.
+              //   격자 클래스는 SSOT(`VOUCHER_TILE_CLASS`) — 워커 첫 화면이 같은 값으로 그린다.
+              <div className={VOUCHER_TILE_CLASS.grid}>
                 {displayProducts.slice(0, embedVisible).map((p, idx) => (
                   <Fragment key={p.id}>
-                    <VoucherRow p={p} aboveFold={idx < 4} />
+                    <VoucherTile p={p} aboveFold={idx < VOUCHER_TILE_ABOVE_FOLD} onBrand={setBrand} />
                   </Fragment>
                 ))}
               </div>
@@ -775,8 +758,9 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                 <button
                   type="button"
                   onClick={() => {
-                    // 🎫 2026-06-26 (대표 결정): /vouchers 는 8개 시작이라 더보기도 +8(리듬 정합). 홈은 +20 유지.
-                    const next = embedVisible + (embedded ? 20 : 8)
+                    // 🎫 2026-06-26 (대표 결정): 시작 수와 같은 리듬으로 더보기. 홈은 +20 유지.
+                    //   🎟️ 2026-10-14: /vouchers 는 3열이라 +9(세 줄씩).
+                    const next = embedVisible + (embedded ? 20 : 9)
                     setEmbedVisible(next)
                     if (next >= products.length && hasMore && !loadingMore) {
                       const np = page + 1; setPage(np); loadProducts(np, false)

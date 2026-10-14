@@ -94,12 +94,17 @@ describe('유어샵 안3 — 주인 띠 삭제 · 버튼 한 자리', () => {
   // 🔧 2026-09-28 재조준(9차 대표 확정 — "정 이라고 적혀있는 프로필 이미지 부분 없애는게 좋을 것 같아"):
   //   배너 히어로 금지는 그대로. **아바타 요구는 뒤집혔다** — 라이브 대부분이 프로필 사진이 없어
   //   그 자리는 사실상 항상 이니셜 원이었다(사람이 *없다*는 걸 보여주는 자리). ⇒ 금지로 전환.
-  it('헤더는 배너 히어로도 아바타도 그리지 않는다', () => {
+  // 🔄 2026-10-14 재조준(대표 확정 **유어샵 A · 얼굴 있는 머리**): 아바타가 돌아왔다. 9차가 막으려던 것은
+  //   *이니셜 원*(사람이 없다는 걸 보여주는 자리)이었고, A 는 그 빈자리를 **유달이**로 채운다 —
+  //   공유 카드가 사진 없는 유어샵에 쓰는 같은 그림(`SHARE_MASCOT_SRC`). 배너 히어로 금지는 그대로다.
+  it('헤더는 배너 히어로를 그리지 않고, 얼굴은 사진 또는 유달이다(이니셜 원 금지)', () => {
     const src = codeOnly(read(HEADER))
     expect(src).not.toMatch(/aspect-\[16\/9\]/)
     expect(src).not.toContain('uploadBanner')
-    expect(src).not.toMatch(/w-14 h-14 rounded-full/)
     expect(src).not.toContain('profile_image.startsWith')
+    expect(src, '얼굴 자리').toMatch(/const avatarCls = 'w-14 h-14 rounded-full/)
+    expect(src, '사진 없으면 유달이').toMatch(/photo \? \([\s\S]{0,400}\) : \([\s\S]{0,120}SHARE_MASCOT_SRC/)
+    expect(src, '이니셜 글자로 채우지 않는다').not.toMatch(/name\.(charAt|slice)\(0/)
   })
 })
 
