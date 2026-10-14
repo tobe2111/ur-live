@@ -93,13 +93,23 @@ export const FONT_CSS_HREF = '/static/fonts/pretendard-dynamic-subset-v1.3.9.css
 
 /**
  * 🚦 HTML 응답의 `Link` 헤더 — **렌더 차단 CSS 만** 미리 받으라고 알린다.
+ *   🩸 2026-10-14 (대표 신고 — 구글 검색으로 들어가니 *"이 화면이 2초는 넘게"* 비어 있었다):
+ *      엔트리 CSS 는 Vite 가 `<link rel="stylesheet" crossorigin>` 으로 내보낸다. 미리 받기에 `crossorigin`
+ *      이 없으면 요청 방식(no-cors ↔ cors)이 달라 **브라우저가 미리 받은 것을 버리고 같은 파일을 다시 받는다**.
+ *      실측(라이브 · 안드로이드 크롬): index-*.css 가 두 번 — 미리 받은 것(1025→1140ms)은 버려지고, 렌더를
+ *      막는 쪽(1206→1276ms)은 파서가 그 줄에 닿은 뒤에야 출발했다. 즉 미리 받기 효과가 0 이었고 첫 그림이
+ *      그 두 번째 다운로드를 기다렸다. ⇒ 엔트리 CSS 는 `crossorigin` 을 **실제 태그와 같게** 단다.
+ *      폰트 CSS 태그(index.html)는 `crossorigin` 이 **없으므로** 미리 받기에도 붙이지 않는다(붙이면 반대로 어긋난다).
  *   ① 브라우저는 헤더가 오는 즉시(본문을 파싱하기 전에) 받기 시작한다.
  *   ② Cloudflare Early Hints 를 켜면 이 헤더가 **103 응답**으로 앞당겨져, 서버가 HTML 을 만드는
  *      동안(한국 실측 TTFB 중앙값 0.45초)에 CSS 가 출발한다.
  *   ⚠️ 스크립트(modulepreload)는 **넣지 않는다** — 그러면 CSS 와 다시 회선을 나눠 쓴다(이 파일 머리말).
  */
 export function earlyHintsLink(entryCss: readonly string[]): string {
-  return [...entryCss, FONT_CSS_HREF].map((h) => `<${h}>; rel=preload; as=style`).join(', ')
+  return [
+    ...entryCss.map((h) => `<${h}>; rel=preload; as=style; crossorigin`),
+    `<${FONT_CSS_HREF}>; rel=preload; as=style`,
+  ].join(', ')
 }
 
 /**
