@@ -205,7 +205,8 @@ describe('⑧ 가드가 실제로 존재한다', () => {
     const HARNESS = readCode('scripts/visual-preview.mjs')
     expect(HARNESS, '출력이 꺼져 있으면 가드가 읽을 줄이 없다')
       .toContain('\n    console.log(`SHIFT_RESULT ${JSON.stringify({ route: ROUTE')
-    expect(HARNESS, '보이는 곳/화면 밖을 안 가르면 푸터 흔들림이 결함으로 올라온다')
+    // 2026-10-14 재조준: 판정 몸통이 순수 모듈(`shift-compare.mjs`)로 옮겨갔다 — 불변식은 그대로.
+    expect(readCode('scripts/shift-compare.mjs'), '보이는 곳/화면 밖을 안 가르면 푸터 흔들림이 결함으로 올라온다')
       .toContain('const vis = y < fold')
   })
 })

@@ -113,7 +113,8 @@ export default [
   },
   {
     name: '가드 — 보이는 곳과 화면 밖을 안 가른다',
-    file: HARNESS,
+    // 2026-10-14 재조준: 판정 몸통이 `shift-compare.mjs` 로 옮겨갔다.
+    file: 'scripts/shift-compare.mjs',
     find: '        const vis = y < fold',
     replace: '        const vis = true',
     test: T,
