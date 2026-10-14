@@ -290,7 +290,7 @@ import { referralRoutes } from '../features/referral/api/referral.routes';
 import { cfImage, cfSrcSet } from '../utils/cf-image';
 // 🖼️ 홈 첫 화면 카드 사진 preload — 링크 생성은 헬퍼가 한다(파일 크기 래칫 + 직접 테스트 용이).
 import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; import { buildVouchersFirstScreen } from './utils/vouchers-first-screen'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; import { brandJsonLdScript } from '../shared/seo/brand-jsonld'; import { buildStaticSurfaceNoscript, stayNoscriptFromPayload, curatorNoscriptFromPayload } from './utils/crawler-noscript'; import { applyCssFirstBoot, cssFirstApplies, routePreloadRel, appendEdgeHeaders } from './utils/css-first-boot'; // 한 줄: 파일크기 래칫 안
-import { VOUCHERS_SEED_PATH, voucherFacetSeedPath } from '../shared/seo/voucher-facet'; import { buildStayDetailFirstScreen } from './utils/stay-detail-ssr-body'; import { MAIN_SEED_PATH, REGION_PATH_RE } from '../shared/seo/region-seed'; import { isKnownAppPath } from '../shared/seo/known-routes'; import { REGION_DIGEST_KV_KEY, regionDigestApplies, regionThinByDigest } from '../shared/seo/region-digest'; import { ushopOgImage } from '../shared/ushop-share-card'; import { ogImageAlt, OG_CARD_W, OG_CARD_H, ogCardUrl } from '../shared/og-share-image'; import { nearKeyFromCookieHeader, nearLabelFromCookieHeader } from '../shared/home-near'; import { normalizeDocPath } from '../shared/seo/path-normalize'; // 한 줄: 파일크기 래칫 안
+import { VOUCHERS_SEED_PATH, voucherFacetSeedPath } from '../shared/seo/voucher-facet'; import { buildStayDetailFirstScreen } from './utils/stay-detail-ssr-body'; import { MAIN_SEED_PATH, REGION_PATH_RE } from '../shared/seo/region-seed'; import { isKnownAppPath } from '../shared/seo/known-routes'; import { REGION_DIGEST_KV_KEY, regionDigestApplies, regionThinByDigest } from '../shared/seo/region-digest'; import { ushopOgImage } from '../shared/ushop-share-card'; import { ogImageAlt, OG_CARD_W, OG_CARD_H, ogCardUrl } from '../shared/og-share-image'; import { nearKeyFromCookieHeader, nearLabelFromCookieHeader } from '../shared/home-near'; import { normalizeDocPath } from '../shared/seo/path-normalize'; import { ROBOTS_INDEX, ROBOTS_NOINDEX } from '../shared/seo/robots-directives'; // 한 줄: 파일크기 래칫 안
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -997,7 +997,7 @@ app.use('*', async (c, next) => {
     //   색인만 막는다. (진짜 404 상태 전환은 별개 결정 — handoff 참조.)
     const entityGone = shouldNoindexMissingEntity(ssrSlot, ssrStatus); const unknownPath = ssrSlot !== 'MALL' && !isKnownAppPath(url.pathname);
     if (entityGone || unknownPath || retiredSurface) {
-      rb = rb.on('meta[name="robots"]', { element(el) { el.setAttribute('content', 'noindex, follow'); } });
+      rb = rb.on('meta[name="robots"]', { element(el) { el.setAttribute('content', ROBOTS_NOINDEX); } });
     }
     if (ssrSlot === 'SELLER' && ssrPayload) {
       const sellerMeta = buildSellerSurfaceMeta(ssrPayload, origin2, url.pathname);
@@ -2492,7 +2492,7 @@ app.get('*', async (c) => {
 <meta name="twitter:title" content="${esc(og.title)}" />
 <meta name="twitter:description" content="${esc(og.desc)}" />
 <meta name="twitter:image" content="${esc(og.image)}" />
-<meta name="robots" content="index, follow" />
+<meta name="robots" content="${ROBOTS_INDEX}" />
 <meta name="naver-site-verification" content="7be066f6c7f451d994e3a5482aa76f87e96c3c2f" />
 ${brandJsonLdScript()}</head>
 <body>

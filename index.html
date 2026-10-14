@@ -518,7 +518,11 @@ if(document.readyState==='complete')idle();else addEventListener('load',idle,{on
     <meta name="description" content="할인가로 사서 매장에서 바로 쓰는 이용권, 기프티콘 교환권, 내 주변 동네딜, 무료 체험단 응모, 나만의 유어샵까지. 유어딜에서 돈버는 쇼핑." />
     <meta name="keywords" content="이용권,교환권,기프티콘,동네딜,공동구매,맛집,뷰티,숙소,할인,쿠폰,체험단,리뷰,유어샵,로컬딜,유어딜" />
     <meta name="author" content="리스터코퍼레이션" />
-    <meta name="robots" content="index, follow" />
+    <!-- 🤖 2026-10-14: 값은 `src/shared/seo/robots-directives.ts` 의 `ROBOTS_INDEX` 가 SSOT.
+         정적 HTML 이라 import 할 수 없어 여기만 리터럴이고,
+         `robots-directives-2026-10-14.test.ts` 가 **같은 글자인지** 대조한다.
+         `max-image-preview:large` 를 지우면 검색결과·Discover 의 큰 이미지 자격을 포기한다. -->
+    <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta property="og:title" content="유어딜 - 돈버는 쇼핑, 이용권·교환권·동네딜" />
     <meta property="og:description" content="할인가로 사서 매장에서 바로 쓰는 이용권, 기프티콘 교환권, 내 주변 동네딜, 무료 체험단 응모, 나만의 유어샵까지. 유어딜에서 돈버는 쇼핑." />
     <meta property="og:type" content="website" />

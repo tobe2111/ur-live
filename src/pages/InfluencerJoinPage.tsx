@@ -7,6 +7,7 @@
  * 흐름: 미리보기(공개 API) → [카카오 로그인] → 복귀 → 자동 입력(`/codes/redeem`) → 내 링크 표시.
  * `/i/offer/:token`(아웃리치 수락 페이지) 과 같은 골격 — 401 이면 returnUrl 로 되돌아온다.
  */
+import { ROBOTS_NOINDEX } from '@/shared/seo/robots-directives'
 import { useEffect, useState } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
@@ -61,7 +62,7 @@ export default function InfluencerJoinPage() {
 
   return (
     <div className="min-h-[100dvh] bg-warm flex items-center justify-center p-5">
-      <Helmet><meta name="robots" content="noindex, nofollow" /><title>협업 코드 - 유어딜</title></Helmet>
+      <Helmet><meta name="robots" content={ROBOTS_NOINDEX} /><title>협업 코드 - 유어딜</title></Helmet>
       <div className="w-full max-w-md">
         {error && !preview ? (
           <div className="text-center space-y-2">

@@ -16,6 +16,7 @@
 import { escapeAttr, withSiteName, CONSUMER_SITE_NAME, type ResolvedSurfaceSeo } from '../../shared/seo/consumer-surfaces'
 // 🗺️ 워커 전용 — 이 표를 크리티컬 패스(consumer-surfaces)에서 끌어오면 app-constants 청크가 첫 페인트로 딸려온다.
 import { normalizeSido, regionPath } from '../../shared/constants/region-slugs'
+import { ROBOTS_NOINDEX } from '../../shared/seo/robots-directives'
 
 /** 시군구 형태 — '중구'·'파주시'·'양양군'. 접두부 1글자 허용(중구·동구·남구가 탈락하지 않게). */
 const SIGUNGU_RE = /^[가-힣]{1,10}(시|군|구)$/
@@ -76,7 +77,7 @@ export function applySurfaceMeta<T extends RewriterLike<T>>(rb: T, meta: Surface
       .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', img) } })
   }
   if (meta.noindex) {
-    out = out.on('meta[name="robots"]', { element(el) { el.setAttribute('content', 'noindex, follow') } })
+    out = out.on('meta[name="robots"]', { element(el) { el.setAttribute('content', ROBOTS_NOINDEX) } })
   }
   const ld = meta.jsonLd
   let withCanon = applyCanonical(out, meta.canonical)
