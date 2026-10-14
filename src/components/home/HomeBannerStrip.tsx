@@ -331,7 +331,7 @@ function StripRail({ banners, single = false }: { banners: HomeBanner[]; single?
         </>
       )}
       {many && (
-        <div className="absolute right-[26px] bottom-3 flex items-center gap-2">
+        <div className={`absolute right-[26px] ${single ? 'top-2' : 'bottom-3'} flex items-center gap-2`}>{/* 🎟️ 교환권 띠: 아래 오른쪽은 그림(유달이·상품) 자리라 넘김 버튼은 위로 */}
           {!reduceMotion && (
             <button
               type="button"
@@ -364,8 +364,10 @@ function StripRail({ banners, single = false }: { banners: HomeBanner[]; single?
 /**
  * 🎟️ 교환권 띠(single) — 2026-10-14 모바일 나안: 폰·PC 모두 4:1. 폰은 높이가 ~90px 라 설명 줄까지
  *   들어가면 넘친다 → 설명(`span`)은 PC 에서만 보인다(제목 한 줄이 이름표다).
+ *   📏 같은 날 대표 *"문장은 한줄로 맞춰줘"*: 제목은 **언제나 한 줄**(폰 15px · PC 24px, 폭 72%).
+ *   오른쪽 28% 는 그림(유달이·상품)의 자리라 글자가 거기까지 가지 않는다.
  */
-const SINGLE_CARD_CLS = '!aspect-[4/1] lg:!w-full !py-3 [&>span]:hidden lg:[&>span]:block'
+const SINGLE_CARD_CLS = '!aspect-[4/1] lg:!w-full !py-3 [&>span]:hidden lg:[&>span]:block [&>strong]:!max-w-[72%] [&>strong]:!line-clamp-1 [&>strong]:!text-[15px] lg:[&>strong]:!text-[24px]'
 
 /** 카드 한 장 — 흰 글자를 왼쪽 아래에(야놀자 문법). 카드 전체가 누르는 자리다. */
 function StripCard({ b, many, first, clone, single = false }: { b: HomeBanner; many: boolean; first: boolean; clone?: boolean; single?: boolean }) {
