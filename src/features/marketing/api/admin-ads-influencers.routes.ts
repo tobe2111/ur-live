@@ -97,9 +97,9 @@ app.get('/influencer-pool', async (c) => {
   if (c.req.query('hasInstagram') === '1') where.push('instagram IS NOT NULL')
   const status = (c.req.query('status') || '').trim()   // 아웃리치 상태 필터
   if (['new', 'contacted', 'interested', 'contracted', 'rejected', 'hold'].includes(status)) { where.push('status = ?'); binds.push(status) }
-  // 🎯 규모 필터(tier) — 유어딜 딜은 마이크로/중형(1만~50만)이 실전 효율 최고. YT 구독자 기준(네이버블로그는 지표 없어 무관).
+  // 🎯 규모(tier) — `subscriber_count` = YT 구독자 · 네이버 블로그 **이웃 수**(10-14 실측 70% 채움). `reach1k`=1천+(10-14 대표 — 나노는 1천 미만을 섞고 마이크로는 1천~1만을 뺀다).
   const tier = (c.req.query('tier') || '').trim()
-  if (tier === 'nano') where.push('subscriber_count > 0 AND subscriber_count < 10000')
+  if (tier === 'reach1k') where.push('subscriber_count >= 1000'); else if (tier === 'nano') where.push('subscriber_count > 0 AND subscriber_count < 10000')
   else if (tier === 'micro') where.push('subscriber_count >= 10000 AND subscriber_count < 100000')
   else if (tier === 'mid') where.push('subscriber_count >= 100000 AND subscriber_count < 500000')
   else if (tier === 'macro') where.push('subscriber_count >= 500000')
@@ -204,7 +204,7 @@ app.get('/influencer-pool/send-queue', async (c) => {
 })
 
 // PATCH /api/admin/ads/influencer-pool/:id { status?, memo?, follow_up_at? } — 아웃리치 큐레이션
-app.patch('/influencer-pool/:id', async (c) => {
+app.patch('/influencer-pool/:id{[0-9]+}', async (c) => {
   const id = Number(c.req.param('id')); if (!Number.isFinite(id)) return c.json({ success: false, error: '잘못된 ID' }, 400)
   const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
   const sets: string[] = []; const binds: (string | number)[] = []
@@ -530,7 +530,7 @@ app.get('/seller-match', async (c) => {
 })
 
 // DELETE /api/admin/ads/influencer-pool/:id
-app.delete('/influencer-pool/:id', async (c) => {
+app.delete('/influencer-pool/:id{[0-9]+}', async (c) => {
   const id = Number(c.req.param('id')); if (!Number.isFinite(id)) return c.json({ success: false, error: '잘못된 ID' }, 400)
   await adsLeadsDb(c.env).prepare('DELETE FROM ad_influencer_leads WHERE id = ? AND account_id = ?').bind(id, POOL).run().catch(() => null)
   return c.json({ success: true })

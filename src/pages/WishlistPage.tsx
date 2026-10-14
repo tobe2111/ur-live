@@ -17,6 +17,9 @@ import { priceDrop, summarize, sortWishlist, type WishlistSort } from './wishlis
 import BrandLoader from '@/components/brand/BrandLoader'
 import GroupBuyFeedCard from './main-home/GroupBuyFeedCard'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { readCachedLoc } from '@/shared/utils/cached-loc'
+import WishlistRecommend from './wishlist/WishlistRecommend'
+import { formatNumber } from '@/utils/format'
 // 🖼️ 폭·중단점은 워커의 카드 preload 와 같은 값이어야 한다(`shared/home-card-image` SSOT).
 import { HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_LG_QUERY } from '@/shared/home-card-image'
 
@@ -62,6 +65,9 @@ const WishlistPage: React.FC = () => {
   const tk = walletTokens[theme]
 
   const summary = summarize(wishlists)
+  // 📍 2026-10-14 (대표 확정 가안+나안): 카드에 주소·거리. 위치는 마지막 측위 캐시만 읽는다 —
+  //    찜 목록을 열었다고 위치 권한을 묻지 않는다(없으면 주소만 뜬다).
+  const [userLoc] = useState(() => readCachedLoc())
   const shown = sortWishlist(wishlists, sort)
 
   // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): ad-hoc 스피너 → BrandLoader (지갑 테마 표면과 자동 정합).
@@ -121,9 +127,12 @@ const WishlistPage: React.FC = () => {
             title={t('wishlist.title')}
             /* 인하가 없으면 그 말을 아예 안 한다 — "가격 내린 것 0개" 는 알려주는 게 아니라 실망시키는 문장이다. */
             subtitle={
-              summary.drops > 0
-                ? `${t('wishlist.subtitleCount', { count: wishlists.length })} · ${t('wishlist.dropCount', { count: summary.drops, defaultValue: '가격 내린 것 {{count}}개' })}`
-                : t('wishlist.subtitleCount', { count: wishlists.length })
+              [
+                t('wishlist.subtitleCount', { count: wishlists.length }),
+                summary.drops > 0 ? t('wishlist.dropCount', { count: summary.drops, defaultValue: '가격 내린 것 {{count}}개' }) : '',
+                /* 💰 2026-10-14: 다 사면 아끼는 돈 — PC 레일과 같은 값(summarize 한 곳). 0 이면 말하지 않는다. */
+                summary.savings > 0 ? `다 사면 ${formatNumber(summary.savings)}원 아껴요` : '',
+              ].filter(Boolean).reduce((acc, x, i) => (i === 0 ? x : i === 1 ? `${acc} · ${x}` : `${acc}, ${x}`), '')
             }
           />
         </div>
@@ -161,6 +170,7 @@ const WishlistPage: React.FC = () => {
                   <GroupBuyFeedCard
                     key={item.id}
                     imgWidth={cardImgWidth}
+                    userLoc={userLoc}
                     aboveFold={i < 4}
                     flags={<WishlistFlag drop={priceDrop(item)} />}
                     p={{
@@ -175,6 +185,9 @@ const WishlistPage: React.FC = () => {
                       seller_id: item.seller_id,
                       seller_name: item.seller_name,
                       restaurant_name: item.restaurant_name,
+                      restaurant_address: item.restaurant_address,
+                      restaurant_lat: item.restaurant_lat,
+                      restaurant_lng: item.restaurant_lng,
                       expires_at: item.expires_at,
                       group_buy_status: item.group_buy_status,
                       dominant_color: item.dominant_color,
@@ -183,6 +196,8 @@ const WishlistPage: React.FC = () => {
                 ))}
               </div>
             </div>
+            {/* 💗 2026-10-14 (대표 확정 가안+나안): 찜이 적으면 비던 자리를 비슷한 이용권이 채운다. */}
+            <WishlistRecommend wished={wishlists} imgWidth={cardImgWidth} userLoc={userLoc} />
           </>
         )}
       </div>

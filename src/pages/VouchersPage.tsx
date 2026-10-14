@@ -36,6 +36,7 @@ import { SortMenu } from '@/components/ui/sort-menu'
 import { SORT_OPTIONS, type SortKey } from './vouchers/constants'
 import ShoppingGrid from './vouchers/ShoppingGrid'
 import { priceDisplay } from '@/shared/price-display'
+import HomeBannerStrip from '@/components/home/HomeBannerStrip'
 
 interface BrandSummary {
   brand_name: string
@@ -343,8 +344,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
     loadProducts(1, true)
   }, [brand, category, sort, loadProducts])
 
-  // 🧭 2026-06-10 v2 (사용자 결정): 홈은 12개 + '더보기' 버튼 확장(+20) — 무한 IO 완전 비활성.
-  //   홈 하단(동네딜/일반상품/푸터)이 항상 한 호흡에 닿고, 원하는 사람만 버튼으로 확장.
+  // 🧭 2026-06-10 v2 (사용자 결정): 홈은 12개 + '더보기'(+20) — 무한 IO 비활성(하단이 한 호흡에 닿게).
   // 🎫 2026-06-23 (대표 결정): 교환권은 홈 12 / /vouchers 20개 노출 후 '더보기'. 둘 다 무한스크롤 대신 cap+버튼
   //   (비embedded 도 cap → 더보기 아래로 쇼핑 섹션이 이어지게). 교환권 무한관찰 비활성, 무한스크롤은 하단 쇼핑 섹션이 담당.
   // 🎫 2026-06-26 (대표 결정): 홈 12개 / /vouchers 8개 먼저 노출 후 '더보기'.
@@ -400,15 +400,13 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
     setSearchParams(params, { replace: true })  // 🔙 필터는 상태 — 히스토리를 쌓지 않는다(위 주석)
   }
 
-  // 🎨 2026-07-01 (대표 "2번 로딩 근본 해결" — urdeal 로더 유지): standalone(/vouchers) 은 로딩 중
-  //   전체화면 BrandLoader 로 early-return → 청크 로더와 끊김 없이 이어져 '한 번'으로 보임(헤더가 중간에 안 뜸).
-  //   embedded(홈)은 청크 로더가 없고 다른 콘텐츠와 공존해야 하므로 인라인 유지(아래 {loading?} 블록).
+  // 🎨 2026-07-01 (대표 "2번 로딩 근본 해결"): standalone 은 로딩 중 전체화면 BrandLoader 로 early-return(청크 로더와 이어져 '한 번').
+  //   embedded(홈)은 다른 콘텐츠와 공존해야 하므로 인라인 유지(아래 {loading?} 블록).
   if (loading && !embedded) return <BrandLoader fullScreen />
 
   // 🖥️ 2026-07-18 (대표 승인 — 교환권 PC 2단): PC(lg+)는 모바일을 세로로 늘린 형태 대신 **좌측 필터 레일
   //   (딜 잔액 컴팩트 카드 + 카테고리 세로 리스트 + 브랜드 그리드) + 우측 상품 그리드** 로 렌더(카카오 선물하기/SSG PC).
-  //   embedded 는 항상 false(홈=동네딜)라 미해당 → 모바일(<lg)은 아래 기존 레이아웃 그대로 byte-불변.
-  //   isPc 는 useMediaQuery 동기 초기화(첫 렌더부터 정확)라 모바일↔PC 브랜치 플래시 없음.
+  //   embedded 는 항상 false 라 미해당(모바일 <lg 는 아래 기존 레이아웃). isPc 는 동기 초기화라 브랜치 플래시 없음.
   if (isPc && !embedded) {
     return (
       <div className="bg-warm dark:bg-[#11141C] min-h-[100dvh]">
@@ -464,6 +462,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
 
           {/* ── 우측 상품 그리드 ── */}
           <main>
+            <div className="-mx-[14px]"><HomeBannerStrip variant="vouchers" /></div>{/* 🎟️ 2026-10-14 대표 확정 라안 — 배너 자체 거터 14 를 상쇄해 그리드와 맞춤. 없으면 0px */}
             {/* 인기 브랜드 — 상단 가로 스트립(대표 — 좌레일 하단은 불편 → 상품 바로 위로). */}
             {currentBrands.length > 0 && (
               <div className="mb-5 pb-4 border-b border-gray-100 dark:border-[#2C2F35]">
@@ -677,6 +676,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
         </div>
       )}
 
+      {!embedded && <div className="ur-content-wide px-[2px] [&:not(:empty)]:pt-3"><HomeBannerStrip variant="vouchers" /></div>}{/* 🎟️ 라안 — 모바일은 머리 아래·목록 위 */}
       {/* 🎫 2026-06-20 (사용자: 상품 시작 지점 구별 안 됨): 브라우즈 chrome ↔ 상품 리스트 경계 명확화.
           구분선(border-t) + '상품' 섹션 헤더(카테고리/브랜드 + 개수) + 정렬을 상품 바로 위로. /vouchers 전용. */}
       {!embedded && (
