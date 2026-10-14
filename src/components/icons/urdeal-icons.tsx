@@ -506,6 +506,8 @@ export const BagIcon = forwardRef<SVGSVGElement, IconProps>(function BagIcon({ s
   )
 })
 
+/** 지도 — **세 칸으로 접힌 지도**(핀='여기'와 다르다, 이쪽은 '지도로 보기' — 2026-10-14 모바일 홈 지도 알약). */
+export const MapFoldIcon = forwardRef<SVGSVGElement, IconProps>(function MapFoldIcon({ size = 24, filled, ...props }, ref) { return <svg ref={ref} {...base} width={size} height={size} {...props}><path d="M3.5 6.2 9 4.2l6 2 5.5-2v13.6L15 19.8l-6-2-5.5 2z" fill={filled ? 'currentColor' : 'none'} /><path d="M9 4.2v13.6M15 6.2v13.6" stroke={filled ? KNOCKOUT : 'currentColor'} /></svg> })
 /** 지갑(딜 잔액) — **접힌 지갑 + 잠금 단추**. 동전(WonCoin)은 '금액', 이쪽은 '담아 두는 곳'. */
 export const WalletIcon = forwardRef<SVGSVGElement, IconProps>(function WalletIcon({ size = 24, filled, ...props }, ref) {
   return (

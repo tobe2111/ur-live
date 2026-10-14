@@ -7,9 +7,9 @@
  */
 export default [
   {
-    name: '상단1안 — SNS 를 다시 자기 줄로 내린다',
+    name: '유어샵 A — SNS 이름표가 숫자 줄에서 사라진다',
     file: 'src/pages/curator-page/CuratorHeader.tsx',
-    find: '            {snsLinks}\n',
+    find: '{hasSns && <div className="flex items-center gap-1 shrink-0">{snsLinks}</div>}',
     replace: '',
     test: 'src/tests/unit/ushop-top-chrome-2026-09-28.test.ts',
     why:

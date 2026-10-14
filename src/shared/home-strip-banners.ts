@@ -47,6 +47,7 @@ export const STRIP_CLS = {
   pcCardW: 'lg:w-[calc((100%-56px)/3)]',
   img: 'absolute inset-0 -z-10 w-full h-full object-cover',
   scrim: 'absolute inset-x-0 bottom-0 h-[70%] -z-10 bg-gradient-to-t from-black/70 via-black/30 to-transparent',
-  title: 'block max-w-[64%] text-[17px] font-bold leading-[1.25] tracking-[-.02em] line-clamp-2 text-white dark:text-white [text-shadow:0_1px_8px_rgba(0,0,0,.25)]',
+  /** 끊는 자리는 어드민 제목의 줄바꿈이 정한다(`whitespace-pre-line`) — 폭이 끊으면 '부산 / 합리적으로' 처럼 구 가운데서 잘린다(2026-10-15 실측). */
+  title: 'block max-w-[64%] text-[17px] font-bold leading-[1.25] tracking-[-.02em] whitespace-pre-line [word-break:keep-all] line-clamp-2 text-white dark:text-white [text-shadow:0_1px_8px_rgba(0,0,0,.25)]',
   desc: 'block max-w-[64%] mt-1 text-[12px] line-clamp-1 text-white/90 dark:text-white/90',
 } as const

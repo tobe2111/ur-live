@@ -173,6 +173,8 @@ interface DetailSeed {
   restaurant_phone?: string | null
   voucher_expiry?: string | null
   voucher_terms?: string | null
+  avg_rating?: number | null
+  review_count?: number | null
 }
 
 /**

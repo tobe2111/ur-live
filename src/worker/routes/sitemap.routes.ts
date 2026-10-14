@@ -273,8 +273,15 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
       //      **`linked_seller` 가 있으면** `''` 를 준다(React 가 `SellerPublicPage` 를 그리므로) —
       //      `/u/user40` 이 그 경우였고 이 주석은 그 분기를 몰랐다. ③ `/s/:username`(SELLER 슬롯)은
       //      첫 화면 빌더가 **아예 없다**. ②③ 는 sitemap 이 아니라 **본문 쪽**에서 메운다(②는
-      //      `curatorNoscriptFromPayload` 폴백으로 해소, ③은 페이로드에 상품이 안 담겨 **미해소** —
-      //      `docs/handoff/2026-10-12-canonical-facet-entity.md` 의 후속 ⑥).
+      //      `curatorNoscriptFromPayload` 폴백, ③은 `buildSellerNoscript`).
+      //   ✅ **2026-10-14 — ③ 도 해소됐고, 이 주석이 그걸 몰라 거짓이 됐다.** 여기 *"페이로드에
+      //      상품이 안 담겨 **미해소**"* 라고 적혀 있었는데 라이브 실측(Googlebot UA)으로 뒤집혔다:
+      //      SELLER 시드에 **`products` 배열이 있고**(`/s/store_mux…` 1,178B · 1건) 본문도
+      //      `/s/store_mux…` **64자** · `/s/store_mt9…` **78자**로 나온다(`buildSellerNoscript`,
+      //      `worker/index.ts` 의 `ssrSlot === 'SELLER'` 폴백에 배선됨). ②도 함께 확인했다 —
+      //      `/u/user40` 본문 58자(핀 1건·소개 없음 = 그 가게의 정직한 최소 본문).
+      //      🧭 **고쳐진 뒤 남은 "미해소" 표기는 다음 세션을 같은 자리로 다시 보낸다**(실제로
+      //      2026-10-14 세션이 이 줄을 믿고 한 사이클 다시 팠다). 해소하면 같은 커밋에서 지울 것.
       //   ⚠️ 그래도 이 블록이 **색인 요청을 줄이는** 방향이라는 점을 잊지 말 것 — 기준을 더 조이면
       //      멀쩡한 유어샵이 색인에서 빠지고 돌아오는 데 수주다. 조일 때는 **본문이 실제로 비는지**를
       //      라이브로 먼저 재고 조인다(이번이 그 순서였다).

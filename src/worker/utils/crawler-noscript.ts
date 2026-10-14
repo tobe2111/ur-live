@@ -39,7 +39,7 @@ import { canonicalDetailPath, FLOW_CONFIG } from '../../shared/product-flow'
 import { CONCEPT_FAQ, CONCEPT_ABOUT_LINES } from '../../shared/seo/concept-content'
 import { parseRegionPath, type RegionRef } from '../../shared/constants/region-slugs'
 import { REGION_PATH_RE } from '../../shared/seo/region-seed'
-import { regionChildLinks } from '../../shared/seo/region-digest'
+import { regionChildLinks, REGION_NOSCRIPT_ROWS } from '../../shared/seo/region-digest'
 import { CONSUMER_SURFACE_SEO } from '../../shared/seo/consumer-surfaces'
 import { REGION_HUB_CRUMB } from './surface-list-jsonld'
 import { buildUrshortsNoscript } from './urshorts-noscript'
@@ -51,7 +51,7 @@ import type { TermsDoc } from '../../pages/terms/terms-types'
 //    `esc` 는 밖에서도 쓰므로(`urshorts-noscript.ts`) 여기서 다시 export 한다.
 import {
   esc, won, lines, wrap,
-  capRowImages, liOf, rowLine, parseSeed, regionSeedRows, sizedCdnCgi,
+  capRowImages, liOf, rowHref, rowLine, parseSeed, regionSeedRows, sizedCdnCgi,
   type RegionSeedRow, type Row,
 } from './crawler-noscript-rows'
 export { esc }
@@ -74,6 +74,30 @@ export function h1Of(text: string | null | undefined): string {
   return t ? `<h1>${esc(t)}</h1>` : ''
 }
 
+/**
+ * ⭐ 2026-10-14 — **평점 한 줄.** 숙소(`buildStayNoscript`)와 이용권(`buildDetailNoscript`)이
+ * **같은 함수**를 쓴다.
+ *
+ * 🩸 **왜 SSOT 인가(라이브 실측)**: 숙소는 본문에 `평점 4.6 (9개 리뷰)` 를 내는데 이용권은
+ *    **안 냈다** — `/pass/:id` **310건 중 약 294건(95%)** 이 `avg_rating`·`review_count` 를
+ *    갖고 있고 JSON-LD `Product.aggregateRating` 으로는 멀쩡히 내보내면서(실측 `/pass/2793`
+ *    `ratingValue 4.7 · reviewCount 9`) **크롤러 본문엔 그 숫자가 한 글자도 없었다.**
+ *    `NoscriptDetailSeed` 에 두 필드가 선언돼 있지 않았을 뿐이고(값은 시드에 이미 와 있다)
+ *    **에러가 안 나서** 아무도 몰랐다. #83(숙소 `Product` 별점)과 같은 비대칭이다.
+ *
+ * 🔑 **JSON-LD 가 있는데 왜 본문에도 쓰나**: 둘은 다른 층이다 — 구조화 데이터는 *리치결과*를,
+ *    본문 텍스트는 *스니펫·인용*을 만든다. AI 검색엔진은 본문을 인용하고, 네이버는
+ *    schema.org `aggregateRating` 지원이 구글보다 약하다.
+ *
+ * 🔴 **리뷰가 0이면 아무것도 내지 않는다** — 2026-10-11 에 `ratingValue: 0` 으로 값을 치른
+ *    그 자리다(평점 0점짜리 상품이라고 말하는 셈이고 구글 정책 위반이다).
+ */
+export function ratingLine(avg: unknown, count: unknown): string {
+  const rating = Number(avg) || 0
+  const reviews = Number(count) || 0
+  return rating > 0 && reviews > 0 ? `평점 ${rating.toFixed(1)} (${reviews}개 리뷰)` : ''
+}
+
 export interface NoscriptDetailSeed {
   name?: string | null
   description?: string | null
@@ -86,6 +110,9 @@ export interface NoscriptDetailSeed {
   restaurant_phone?: string | null
   voucher_expiry?: string | null
   voucher_terms?: string | null
+  /** ⭐ 2026-10-14 — 평점(`ratingLine` 머리말에 실측·근거). 시드에 이미 오던 값이다. */
+  avg_rating?: number | null
+  review_count?: number | null
   /** 🖼️ 2026-10-14 — 쇼핑 상세 사진 한 장(근거는 `rowImg` 머리말). */
   image_url?: string | null
 }
@@ -122,6 +149,8 @@ export function buildDetailNoscript(d: NoscriptDetailSeed | null | undefined): s
 
   return wrap(lines([
     priceLine && esc(priceLine),
+    // ⭐ 자리는 **숙소와 같다**(가격 → 평점 → 주소) — 두 상세가 같은 순서로 읽힌다.
+    ratingLine(d.avg_rating, d.review_count),
     placeLine,
     descLine,
     expiry && `유효기간 ${esc(expiry)}`,
@@ -189,8 +218,6 @@ export function buildStayNoscript(
     ? (high > low ? `1박 ${won(low)}원~${won(high)}원` : `1박 ${won(low)}원`)
     : ''
   const addr = String(p.address || '').trim()
-  const rating = Number(p.avg_rating) || 0
-  const reviews = Number(p.review_count) || 0
   const desc = String(p.description_full || p.description || '').replace(/\s+/g, ' ').trim()
   // 객실은 **이름 + 평일가**만. 화면 객실 목록이 그대로 보여 주는 값이다.
   const roomLines = (seed?.rooms || [])
@@ -206,7 +233,7 @@ export function buildStayNoscript(
     skip ? (region ? esc(region) : '') : `${esc(stay)}${region ? ` · ${esc(region)}` : ''}`,
     priceLine && esc(priceLine),
     !skip && p.star_rating ? `${Number(p.star_rating)}성급` : '',
-    rating > 0 && reviews > 0 ? `평점 ${rating.toFixed(1)} (${reviews}개 리뷰)` : '',
+    ratingLine(p.avg_rating, p.review_count),
     addr && `주소 ${esc(addr)}`,
     desc && desc !== stay ? esc(desc) : '',
     ...roomLines,
@@ -234,9 +261,21 @@ export function stayNoscriptFromPayload(
  */
 export interface NoscriptCuratorSeed {
   curator?: { name?: string | null; bio?: string | null } | null
-  pins?: Array<{ product_name?: string | null; price?: number | null; restaurant_name?: string | null } | null> | null
+  /**
+   * 🔗 2026-10-14 — `product_id`·`category`·`deal_only` 는 **링크를 만드는 재료**다.
+   *   라이브 시드에 **이미 전부 와 있었다**(실측 `/u/user40` 핀: `product_id 2917` ·
+   *   `category 'lifestyle'` · `deal_only 0`) — 선언만 없어서 쓰지 못하고 있었다.
+   *   2026-10-14 의 `avg_rating` 과 **같은 클래스**다: 값은 도착했고 타입이 안 받았다.
+   */
+  pins?: Array<{
+    product_name?: string | null; price?: number | null; restaurant_name?: string | null
+    product_id?: number | string | null; category?: string | null; deal_only?: number | null
+  } | null> | null
   /** 사업자 유어샵(`linked_seller`)의 진열 — 핀이 비었을 때의 **두 번째 재료**. curator 응답이 동봉한다. */
-  linked_seller_products?: Array<{ name?: string | null; price?: number | null; restaurant_name?: string | null } | null> | null
+  linked_seller_products?: Array<{
+    name?: string | null; price?: number | null; restaurant_name?: string | null
+    id?: number | string | null; category?: string | null; deal_only?: number | null
+  } | null> | null
 }
 
 /**
@@ -245,6 +284,36 @@ export interface NoscriptCuratorSeed {
  * 첫 화면은 진열 **줄 4개**만 그린다(그 아래는 로더). 유어샵은 공유로 퍼지는 표면이라, 담긴 것이
  * 무엇인지 크롤러가 알아야 그 가게 이름으로 검색될 때 잡힌다.
  * ⚠️ 이름은 첫 화면이 이미 그리므로(규율 ②) **소개(bio)와 진열 목록만** 담는다.
+ *
+ * ## 🔖 2026-10-14 — `withName`(= 첫 화면이 없는 경로)에서는 **제목과 링크**까지 낸다
+ *
+ * **라이브 실측(Googlebot UA, sitemap 표본 48표면)**: `h1` 이 **0개인 표면이 정확히 하나**였다 —
+ * `/u/user40`. 그 한 곳은 **내부 링크도 0개**였다(대조: `/u/jiwon1228` 는 `h1` 1 · 링크 5).
+ *
+ *       /u/user40     h1 0 · a 0 · 본문 58자 · ProfilePage+Person+ItemList(Product 1)
+ *       /u/jiwon1228  h1 1 · a 5 · 본문 419자
+ *       (나머지 46표면)  전부 h1 1
+ *
+ * 🔎 **원인은 이 경로다.** `/u/user40` 은 `linked_seller` 유어샵이라 `buildCuratorFirstScreen` 이
+ *   설계대로 `''` 를 주고(React 가 `SellerPublicPage` 를 그린다 — 레이아웃이 통째로 다르다),
+ *   그러면 이 폴백이 본문을 메운다. 그런데 그 폴백은 이름을 `<p>` 로 쓰고 행을 **링크 없는 `<li>`**
+ *   로 냈다 ⇒ 2026-10-12 의 내부 링크 처방(`rowHref`)과 색인 표면의 heading 처방이 **이 경로에만
+ *   오지 않았다.** 에러가 안 나고 본문 글자수는 늘어 있어서 측정만 보면 멀쩡해 보인다.
+ *
+ * 🔑 **재료는 이미 시드에 있었다** — 핀에 `product_id`·`category`·`deal_only` 가 전부 온다(실측).
+ *   선언만 없어서 쓰지 못했다(위 타입의 🔗 주석). 주소는 **목록 표면과 같은 `rowHref`** 를 쓴다 —
+ *   `canonicalDetailPath` SSOT 경유라 `ItemList`·sitemap 과 세 벌이 갈릴 수 없고, 교환권
+ *   (`deal_only=1`, noindex)은 **링크하지 않는다**는 그 규율도 함께 따라온다.
+ *   `/u/user40` 의 핀이 가리키는 `/products/2917` 은 **sitemap 의 유일한 `/products/` URL** 이라,
+ *   그 한 건에게는 이것이 유일한 내부 링크 기회다.
+ *
+ * 🔴 **첫 화면이 있는 경로(`withName` 없음)는 byte-불변으로 둔다.** 그 경로의 `#root` 에는
+ *   제목(`h1`)과 핀 링크가 **이미** 있다(jiwon1228 의 `h1` 1 · 링크 5 가 그것이다) — 여기서 또
+ *   내면 같은 페이지에 `h1` 이 둘이 되고 같은 URL 로 가는 링크가 두 벌이 된다. 즉 이 분기는
+ *   "폴백에만 모자란 것을 채운다" 이고, 그래서 판정이 `standalone` **하나**로 모여 있다.
+ *
+ * ⚠️ **못 보는 것**: 구글·네이버가 그 링크를 실제로 따라가는지(색인 수일~수주 · 서치콘솔은
+ *   **대표만** 본다) · 사진은 **안 붙인다**(이번 실측은 heading·링크였다 — 별건).
  */
 export function buildCuratorNoscript(
   seed: NoscriptCuratorSeed | null | undefined,
@@ -253,32 +322,40 @@ export function buildCuratorNoscript(
   if (!seed) return ''
   const bio = (seed.curator?.bio || '').trim()
   const name = (seed.curator?.name || '').trim()
-  const row = (nm: string, store: unknown, price: unknown): string => {
+  // 🔗 첫 화면이 없는 경로에서만 링크를 만든다 — 아래 `standalone` 머리말 참조.
+  const standalone = !!opts.withName
+  const row = (nm: string, store: unknown, price: unknown, href: string | null): string => {
     const n = String(nm || '').trim()
     if (!n) return ''
     const st = String(store || '').trim()
     const pr = Number(price) || 0
     const tail = [st, pr > 0 ? `${won(pr)}원` : ''].filter(Boolean).join(' · ')
-    return `<li>${esc(n)}${tail ? ` — ${esc(tail)}` : ''}</li>`
+    // 🔗 `liOf` 가 글자 이스케이프와 `<a>` 감싸기를 함께 한다 — 목록 표면과 **같은 함수**다.
+    return liOf({ text: `${n}${tail ? `, ${tail}` : ''}`, href })
   }
+  const hrefOf = (id: unknown, category: unknown, dealOnly: unknown): string | null =>
+    standalone ? rowHref({ id: id as number | string | null, category: category as string | null, deal_only: dealOnly as number | null }) : null
   const pins = (Array.isArray(seed.pins) ? seed.pins : [])
     .filter((x): x is NonNullable<NoscriptCuratorSeed['pins']>[number] & object => !!x)
     .slice(0, 20)
-    .map((pr) => row(pr.product_name || '', pr.restaurant_name, pr.price))
+    .map((pr) => row(pr.product_name || '', pr.restaurant_name, pr.price, hrefOf(pr.product_id, pr.category, pr.deal_only)))
     .filter(Boolean)
   // 🔁 핀이 한 줄도 안 나오면 **사업자 진열**로 — 둘을 합치지 않는다(user40 실측에서 둘이 같은
   //    상품이었다 ⇒ 합치면 같은 줄을 두 번 말한다).
   const items = pins.length ? pins : (Array.isArray(seed.linked_seller_products) ? seed.linked_seller_products : [])
     .filter((x): x is NonNullable<NoscriptCuratorSeed['linked_seller_products']>[number] & object => !!x)
     .slice(0, 20)
-    .map((pr) => row(pr.name || '', pr.restaurant_name, pr.price))
+    .map((pr) => row(pr.name || '', pr.restaurant_name, pr.price, hrefOf(pr.id, pr.category, pr.deal_only)))
     .filter(Boolean)
 
   // 🔴 **이름만 남는다면 아무것도 내지 않는다** — 그 이름은 `<title>`·`og:title` 이 이미 말한다.
   //   이름만 넣으면 본문 글자수는 늘지만 페이지가 thin 인 사실은 그대로다(측정만 좋아 보인다).
   //   재료가 없는 유어샵은 **본문을 꾸미는 대신 sitemap 에서 뺀다**(`sitemap.routes` 의 🩸 주석).
   if (!bio && !items.length) return ''
-  const body = (opts.withName && name ? `<p>${esc(name)} 유어샵</p>` : '')
+  // 🔖 2026-10-14 — 첫 화면이 없는 경로에서는 이름이 **제목(`h1`)** 이다. 아래 머리말 참조.
+  // 🔖 조립은 `h1Of` 한 곳에서만 — 두 자리에서 각자 쓰면 한쪽이 `esc()` 를 빠뜨린다
+  //    (`crawler-heading-2026-10-12.test.ts` ⑤ 가 지키는 그 불변식이고, 그 가드가 이 변경을 잡았다).
+  const body = (standalone ? h1Of(name && `${name} 유어샵`) : '')
     + (bio ? `<p>${esc(bio)}</p>` : '')
     + (items.length ? `<ul>${items.join('')}</ul>` : '')
   return wrap(body)
@@ -435,10 +512,14 @@ export function buildStaticSurfaceNoscript(pathname: string, ssrPayload?: string
   //   (`/region/서울`, Googlebot 실측). 그 페이지가 화면에 그리는 카드(가게 · 메뉴 · 판매가)를
   //   그대로 글로 옮긴다 — 규율 ①(지어내지 않는다)대로 **시드에 있는 값만** 쓴다.
   //   항목은 홈과 같은 시드(MAIN)에서 오고 지역 필터는 `addressInRegion`(화면과 같은 SSOT)이다.
-  //   ⚠️ 상한 8 — `<noscript>` 도 **사람이 받는 응답에 그대로 실린다**(크롤러에게만 주는 것은
-  //      구글 가이드 위반). 요약이지 전량 덤프가 아니다.
+  //   ⚠️ 상한은 `REGION_NOSCRIPT_ROWS` 다(2026-10-14: 8 → 30 — 고아 상세 수리, 아래 블록 주석).
   // 🧾 목록 네 표면 — 라벨은 `CONSUMER_SURFACE_SEO.crumb`(빵부스러기와 같은 SSOT)에서 온다.
-  //   ⚠️ 상한 8 은 지역 페이지와 같다 — `<noscript>` 도 **사람이 받는 응답에 그대로 실린다**.
+  //   ⚠️ **여기는 8 그대로다** — 2026-10-14 에 지역 페이지만 30 으로 올렸고 이 블록은 안 올렸다.
+  //      이유가 둘: ① 이 표면들은 **홈과 같은 50행 시드**를 쓰므로 올려도 새로 닿는 상세가 적다
+  //      (고아 134건의 원인은 지역 요약의 묶음 캡이었고, 그건 359건 전체를 본다) ② `<noscript>` 는
+  //      **사람이 받는 응답에도 그대로 실린다**(크롤러에게만 주는 것은 구글 가이드 위반) — 홈·지도는
+  //      사람 트래픽의 본류라 바이트를 늘릴 근거가 측정으로 서야 한다. 올리려면 **문서 바이트를
+  //      먼저 재고** 올릴 것. 두 값이 다른 것은 **의도**이고, 가드가 그 사실을 고정한다.
   const keep = LIST_SURFACE_KEEP[path]
   if (keep) {
     const rows: Row[] = []
@@ -456,7 +537,11 @@ export function buildStaticSurfaceNoscript(pathname: string, ssrPayload?: string
 
   const ref = regionRefOfPath(path)
   if (ref) {
-    const rows = regionSeedRows(ssrPayload, ref).slice(0, 8)
+    // 🕳️ 2026-10-14: 종전 `8` 이 **고아 상세 130건**의 절반을 만들고 있었다(라이브 실측 — 색인
+    //   상세 360건 중 내부 링크 도달 226건). 지역 페이지는 **발견이 일**인 허브인데 8줄만 냈다.
+    //   요약 묶음 상한과 **짝으로** 올렸다(한쪽만 올리면 아무 일도 안 일어난다 — 그쪽 주석 참조).
+    //   `ItemList` 는 10 그대로다(리치결과 표시 ≠ 크롤 발견).
+    const rows = regionSeedRows(ssrPayload, ref).slice(0, REGION_NOSCRIPT_ROWS)
     if (!rows.length) return ''
     const label = ref.sigungu ? `${ref.sido} ${ref.sigungu}` : ref.sido
     // 🔗 시/도 페이지는 **자식 시군구**로 가는 길을 함께 낸다(시군구 32곳이 색인 대상인데

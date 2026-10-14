@@ -6,7 +6,7 @@
  *
  * ## 지키는 것 — 두 벌이 갈리는 것
  * 워커는 React 를 못 돌려 목록 줄 마크업이 두 벌이 된다. 갈려도 에러가 안 난다 — 마운트 때 조용히 튄다.
- * ⇒ 목록 줄은 **진짜 `VoucherRow` 를 렌더해** 대조하고, 페이지 크롬은 **소스에서 클래스를 읽어** 대조한다.
+ * ⇒ 목록 타일은 **진짜 `VoucherTile` 을 렌더해** 대조하고, 페이지 크롬은 **소스에서 클래스를 읽어** 대조한다.
  * 그리고 첫 화면이 비로그인 화면이므로 **로그인 흔적이 있으면 걷어내는 스크립트**가 실제로 도는지 잰다.
  *
  * ## 못 막는 것
@@ -19,11 +19,13 @@ import path from 'node:path'
 import { render } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { VoucherRow } from '@/pages/vouchers/shared'
+import { VoucherTile } from '@/pages/vouchers/shared'
+import { VOUCHER_TILE_ABOVE_FOLD, VOUCHER_TILE_CLASS } from '@/shared/voucher-tile'
 import {
   buildVouchersFirstScreen, VOUCHERS_FS_CLASS as C, VOUCHERS_FS_ROWS, soldLabelOf, vouchersFirstScreenGuardScript,
 } from '@/worker/utils/vouchers-first-screen'
 import { stripComments } from '../helpers/source-text'
+import { VOUCHERS_DEFAULT_CATEGORY } from '@/shared/seo/voucher-facet'
 
 const root = process.cwd()
 const code = (p: string) => stripComments(fs.readFileSync(path.join(root, p), 'utf8'))
@@ -41,12 +43,12 @@ const seed = (rows: unknown[]) => JSON.stringify({ success: true, data: rows })
 function workerRows(rows: unknown[]): HTMLElement[] {
   const host = document.createElement('div')
   host.innerHTML = buildVouchersFirstScreen(seed(rows), LOADER, 'n0')
-  return [...host.querySelectorAll(`#ur-first-screen .${C.list.split(' ').join('.')} > div`)] as HTMLElement[]
+  return [...host.querySelectorAll(`#ur-first-screen [class="${C.list}"] > div`)] as HTMLElement[]
 }
 function reactRow(p: unknown, idx = 0): HTMLElement {
   const qc = new QueryClient()
   const { container } = render(
-    <QueryClientProvider client={qc}><MemoryRouter><VoucherRow p={p as never} aboveFold={idx < 4} /></MemoryRouter></QueryClientProvider>,
+    <QueryClientProvider client={qc}><MemoryRouter><VoucherTile p={p as never} aboveFold={idx < VOUCHER_TILE_ABOVE_FOLD} /></MemoryRouter></QueryClientProvider>,
   )
   return container.firstElementChild as HTMLElement
 }
@@ -60,7 +62,8 @@ function shape(el: Element): unknown {
   }
 }
 
-describe('① 목록 줄 = 진짜 VoucherRow', () => {
+// 🎟️ 2026-10-14 대표 B안 — 목록이 한 줄 행(VoucherRow) → 3열 타일(VoucherTile). 불변식은 그대로: 워커 타일 = 진짜 타일.
+describe('① 목록 타일 = 진짜 VoucherTile', () => {
   for (const [label, p] of [['정가·브랜드·구매수·대표색 있음', RICH], ['최소 모양', BARE]] as const) {
     it(`${label} — 클래스·구조·글자가 같다`, () => {
       const w = workerRows([p])[0]
@@ -106,9 +109,13 @@ describe('① 목록 줄 = 진짜 VoucherRow', () => {
 describe('② 페이지 크롬 클래스 = 소스', () => {
   it('VouchersPage — 페이지 · reveal 그룹 · 정렬 줄 · 목록', () => {
     const s = code('src/pages/VouchersPage.tsx')
-    for (const k of ['page', 'reveal', 'sortBar', 'sortTitle', 'sortCount', 'listWrap', 'list'] as const) {
+    for (const k of ['page', 'reveal', 'sortBar', 'sortTitle', 'sortCount', 'listWrap'] as const) {
       expect(s, k).toContain(C[k])
     }
+    // 🎟️ B안: 목록 격자는 SSOT 상수 — 페이지와 워커가 같은 값을 쓴다(문자열 사본이면 갈린다).
+    //   ⚠️ 스켈레톤도 같은 격자를 쓴다 — 그 자리로 통과하지 않게 **목록 렌더 자리**에 앵커한다.
+    expect(s, 'list').toMatch(/className=\{VOUCHER_TILE_CLASS\.grid\}>\s*\{displayProducts\.slice\(0, embedVisible\)[\s\S]{0,120}<VoucherTile /)
+    expect(C.list).toBe(VOUCHER_TILE_CLASS.grid)
   })
   it('머리 배너 판 · 걸침 = VouchersHero (안 C, 2026-10-14)', async () => {
     const { VOUCHERS_HERO_CLS } = await import('@/pages/vouchers/VouchersHero')
@@ -131,6 +138,16 @@ describe('② 페이지 크롬 클래스 = 소스', () => {
     for (const k of ['chipWrap', 'chipRow', 'chip'] as const) expect(res, k).toContain(C[k])
     const sort = code('src/components/ui/sort-menu.tsx')
     expect(sort).toContain(C.sortBtn)
+  })
+  // ☕ 2026-10-14 (대표 *"첫 화면은 이렇게 떠줘"* — 커피/음료 + 브랜드 로고 줄, '브랜드로 찾기' 제거)
+  it('브랜드 로고 줄 예약 = `BrandStripReserve` · 제목 = 기본 카테고리', () => {
+    const res = code('src/pages/vouchers/TopChromeReserve.tsx')
+    for (const k of ['brandRow', 'brandItem', 'brandTile', 'brandLabel'] as const) expect(res, k).toContain(C[k])
+    expect(res, 'brandWrap(바깥 패딩 + invisible)').toContain(C.brandWrap)
+    const html = buildVouchersFirstScreen(seed([RICH]), LOADER, 'n0')
+    expect(html).toContain(`class="${C.brandWrap}"`)
+    expect(html, '칩 줄 다음, 정렬 줄 앞').toMatch(new RegExp(`${C.chip.split(' ')[0]}[\\s\\S]*${C.brandTile.split(' ')[0]}[\\s\\S]*${VOUCHERS_DEFAULT_CATEGORY.replace('/', '\\/')} 교환권`))
+    expect(html).not.toContain('전체 교환권')
   })
 })
 
@@ -180,5 +197,20 @@ describe('④ 폴백과 배선', () => {
   it('워커 배선: /vouchers 하나 · 폰 UA · nonce · 폴백은 종전(크롤러 요약 + 로더)', () => {
     const w = code('src/worker/index.ts')
     expect(w).toMatch(/ssrSlot === 'VOUCHERS' && ssrPayload && url\.pathname === '\/vouchers' && shouldRenderMobileFirstScreen\(c\.req\.header\('user-agent'\)\)\) \{ const vouchersFirst = buildVouchersFirstScreen\(ssrPayload, urdealLoaderHtml, nonce\); rb = rb\.on\('#root', \{ element\(el\) \{ el\.setInnerContent\(vouchersFirst \|\| \(buildStaticSurfaceNoscript\(url\.pathname, crawlerPayload\) \+ urdealLoaderHtml\)/)
+  })
+})
+
+describe('⑤ 시작 개수 = 세 줄(9) — 초기값과 리셋이 같은 상수', () => {
+  // 🩸 2026-10-14 라이브 실측: 초기값만 9 로 바꿨더니 카테고리·브랜드 리셋 effect 가 **마운트에서도**
+  //   돌아 `embedded ? 12 : 8` 로 덮어써 첫 화면이 8 장(마지막 줄 두 칸)이었다. 빌드·시험 전부 초록이었다.
+  const src = stripComments(fs.readFileSync(path.join(process.cwd(), 'src/pages/VouchersPage.tsx'), 'utf8'))
+  it('시작 개수 상수는 /vouchers 9', () => {
+    expect(src).toMatch(/const EMBED_INITIAL = embedded \? 12 : 9\b/)
+  })
+  it('리셋은 같은 상수를 쓴다(숫자를 손으로 적지 않는다)', () => {
+    const calls = src.match(/setEmbedVisible\(([^)]*)\)/g) ?? []
+    expect(calls.length).toBeGreaterThan(0)
+    expect(calls.filter(c => /setEmbedVisible\(\s*embedded\s*\?/.test(c))).toEqual([])
+    expect(src).toMatch(/setEmbedVisible\(EMBED_INITIAL\)/)
   })
 })

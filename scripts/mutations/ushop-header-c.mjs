@@ -24,9 +24,9 @@ export default [
   {
     name: '🔵 SNS 세 링크가 상수 대신 손으로 적은 치수로 돌아간다',
     file: HEADER,
-    find: "aria-label=\"Instagram\" className={iconBtnCls}>",
+    find: "aria-label=\"Instagram\" className={snsHitCls}>",
     replace:
-      'aria-label="Instagram" className="w-9 h-9 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-wash active:opacity-70 transition-colors">',
+      'aria-label="Instagram" className="h-9 inline-flex items-center active:opacity-70">',
     test: SNS,
     why:
       '문자열을 다시 적는 순간 셋이 갈릴 수 있게 된다 — 2026-09-16 이 "글자 하나까지 같아야 ' +

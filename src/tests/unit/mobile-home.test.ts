@@ -30,8 +30,9 @@ describe('모바일 메인은 딜 피드다 (지도 아님)', () => {
    * 홈이 지도였으므로, 배너가 사라지면 사용자는 지도를 찾을 방법이 없다 — 하단 탭에도 지도가 없다
    * (대표 확정 "안 넣기 — 상단 배너만"). 이 한 줄이 지워져도 화면은 멀쩡해 보여서 리뷰로는 안 걸린다.
    */
-  it('피드 상단에 지도 진입 배너가 있다', () => {
-    expect(code(MOBILE)).toMatch(/to="\/map"/)
+  it('지도 진입이 있다 (2026-10-14 부터 떠 있는 지도 알약 — MapPill)', () => {
+    expect(code(MOBILE)).toMatch(/<MapPill\b/)
+    expect(code('src/pages/mobile-home/MapPill.tsx')).toMatch(/to="\/map"/)
   })
 
   it('PC 홈과 같은 재료를 쓴다 (한쪽만 개선되는 것 차단)', () => {

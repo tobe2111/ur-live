@@ -2686,7 +2686,7 @@ canvas {
   },
   {
     name: '모바일 홈에서 지도로 가는 유일한 통로가 사라진다',
-    file: 'src/pages/mobile-home/MobileHomePage.tsx',
+    file: 'src/pages/mobile-home/MapPill.tsx', // 2026-10-14 위쪽 전환 → 떠 있는 지도 알약으로 옮겨갔다
     find: 'to="/map"',
     replace: 'to="/"',
     test: 'src/tests/unit/mobile-home.test.ts',
@@ -4450,8 +4450,10 @@ canvas {
   {
     name: '어드민 침묵 목록이 유령까지 센다',
     file: 'src/features/admin/api/admin-system-monitoring.routes.ts',
-    find: "  const stale = items.filter(i => (i.age_minutes ?? 0) > 60 * 24 && (i.verdict ?? 'judge') === 'judge').map(i => i.name)",
-    replace: '  const stale = items.filter(i => (i.age_minutes ?? 0) > 60 * 24).map(i => i.name)',
+    // 🔁 2026-10-14 재조준 — 임계값이 고정 24h 에서 행의 `stale` 로 옮겨가며 이 줄의 글자가 바뀌었다.
+    //    지키는 불변식(**유령 제외가 사라지면 안 된다**)은 그대로이므로 앵커만 옮겼다.
+    find: "  const stale = items.filter(i => i.stale === true && (i.verdict ?? 'judge') === 'judge').map(i => i.name)",
+    replace: '  const stale = items.filter(i => i.stale === true).map(i => i.name)',
     test: 'src/tests/unit/cron-heartbeat-verdict.test.ts',
     why:
       '판정을 계산해 놓고 **쓰지 않으면** 화면은 그대로다 — "가드는 있는데 그 자리에 안 붙어 있다" 클래스. ' +
@@ -9445,20 +9447,20 @@ canvas {
       '카드만 고치고 행을 두면 같은 화면 안에서 규칙이 갈린다.',
   },
   {
-    name: '🎫 교환권 브랜드 스트립이 다시 항상 펼쳐진다 (175px 이 상품을 fold 밖으로)',
+    name: "🎫 교환권 '브랜드로 찾기' 접기 버튼이 되살아난다 (대표 10-14 \"괜히 공간만 차지\")",
     file: 'src/pages/VouchersPage.tsx',
-    find: '          {brandsOpen && (\n',
-    replace: '',
+    find: '          {embedded && (\n            <div className="flex items-center justify-end mb-2">',
+    replace: '          <button type="button" className="text-[12px] font-bold">브랜드로 찾기</button>\n          {embedded && (\n            <div className="flex items-center justify-end mb-2">',
     test: 'src/tests/unit/vouchers-top-chrome.test.ts',
     why:
-      '첫 상품 위에 층이 다섯이라 상품이 1.5개밖에 안 보였다(실측 ~700px). 이런 층은 하나씩 다시 ' +
-      '얹히기 쉬워서 다섯이 됐다. 접기 게이트가 사라지면 그 상태로 돌아간다.',
+      '2026-10-14 대표가 그 줄을 지우라고 했다(첫 상품 위 층을 한 줄 덜기). 이런 층은 하나씩 다시 ' +
+      '얹히기 쉬워서 2026-09-01 에 다섯이 됐다.',
   },
   {
-    name: '🎫 브랜드 스트립이 다시 기본 접힘으로 (대표 09-02 "브랜드 펼침 · 로고가 보이게" 역행)',
+    name: '🎫 브랜드 로고 줄이 다시 사라진다 (대표 09-02·10-14 "로고가 보이게")',
     file: 'src/pages/VouchersPage.tsx',
-    find: "const [brandsOpen, setBrandsOpen] = useState(true)",
-    replace: "const [brandsOpen, setBrandsOpen] = useState(false)",
+    find: '          <div className="flex gap-2 overflow-x-auto scrollbar-hide py-1 -mx-1 px-1">\n            {orderedBrands.map(b => (',
+    replace: '          <div className="flex gap-2 overflow-x-auto scrollbar-hide py-1 -mx-1 px-1">\n            {[].map((b: never) => (',
     test: 'src/tests/unit/vouchers-top-chrome.test.ts',
     why:
       '브랜드가 이미 선택된 채 들어오면(공유 링크·재진입) 목록은 걸러져 있는데 그 이유가 화면에 ' +

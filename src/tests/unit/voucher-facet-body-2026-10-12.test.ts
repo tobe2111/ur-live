@@ -117,7 +117,8 @@ describe('③ 배선 — 워커가 facet 시드를 받고 **주입은 제외**�
 
   it('경로는 SSOT 에서 온다 — 리터럴을 손으로 적지 않는다', () => {
     const c = code(WORKER)
-    expect(c).toContain("path: voucherFacetSeedPath(url.search) || VOUCHERS_SEED_PATH")
+    // ☕ 2026-10-14: 맨 경로 시드 = 커피/음료(첫 화면 기본 카테고리 — `VOUCHERS_DEFAULT_SEED_PATH`).
+    expect(c).toContain("path: voucherFacetSeedPath(url.search) || VOUCHERS_DEFAULT_SEED_PATH")
     // 종전 인라인 리터럴이 되살아나면 예열 키와 갈린다.
     expect(c).not.toContain("'/api/products?page=1&limit=20&deal_only=1&sort=price_low'")
   })
@@ -128,7 +129,9 @@ describe('③ 배선 — 워커가 facet 시드를 받고 **주입은 제외**�
     //   불변식은 그대로다 — ① `crawlerPayload` 를 잡은 **직후**에 ② facet 조건으로 주입을 끊는다.
     expect(c).toMatch(/const crawlerPayload = digestRaw \|\| ssrPayload;\s*\n\s*if \([^\n]*url\.pathname === '\/vouchers' && url\.search[^\n]*\) ssrPayload = null;/)
     // 화면의 소비 조건이 `!category` 임을 함께 고정(그 조건이 바뀌면 위 결정의 전제가 사라진다).
-    expect(code('src/pages/VouchersPage.tsx')).toContain("(!brand && !category && sort === 'price_low')")
+    // ☕ 2026-10-14: 소비 조건 = 기본 카테고리(커피/음료). facet 주소는 여전히 주입하지 않으므로
+    //   `?category=편의점` 화면은 이 시드를 받지 못한다(받아도 카테고리가 달라 안 먹는다).
+    expect(code('src/pages/VouchersPage.tsx')).toContain("(category === VOUCHERS_DEFAULT_CATEGORY && !brand && sort === 'price_low')")
   })
 
   it('🔥 `커피/음료` 시드 경로는 예열 목록의 항목과 **byte-동일**이다(갈리면 예열이 헛돈다)', () => {

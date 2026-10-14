@@ -89,8 +89,8 @@ export default [
   {
     name: '🛍️ 아이콘 SVG 를 워커가 손으로 그린다(두 벌이 갈린다)',
     file: MOD,
-    find: '    const iconSlots = `<span class="${CURATOR_FS_CLASS.iconBtn}"></span>`.repeat(snsCount + 1)',
-    replace: '    const iconSlots = `<span class="${CURATOR_FS_CLASS.iconBtn}"><svg width="18" height="18"><path d="M1 1"/></svg></span>`.repeat(snsCount + 1)',
+    find: '`<div class="${CURATOR_FS_CLASS.cluster}"><span class="${CURATOR_FS_CLASS.iconBtn}"></span>`',
+    replace: '`<div class="${CURATOR_FS_CLASS.cluster}"><span class="${CURATOR_FS_CLASS.iconBtn}"><svg width="18" height="18"><path d="M1 1"/></svg></span>`',
     test: TEST,
     why: 'lucide·SNS path 를 옮기면 아이콘이 바뀌는 날 조용히 갈린다 — 빈 칸만 예약하고 아이콘은 마운트 때 그 안에서 나타나게 한다.',
   },

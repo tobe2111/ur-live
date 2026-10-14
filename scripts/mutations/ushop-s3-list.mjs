@@ -86,10 +86,10 @@ export default [
       's3 는 칩을 정렬 줄과 한 쌍으로 쓴다.',
   },
   {
-    name: 's3 — 헤더가 칩과 같은 숫자를 또 말한다',
+    name: 's3 — 헤더가 칩과 같은 숫자만 말한다(유어샵 A 의 누적 구매가 빠진다)',
     file: 'src/pages/CuratorPage.tsx',
-    find: '          canEdit={isOwner}\n          onCopyLink={shareShop}',
-    replace: '          canEdit={isOwner}\n          counts={{ pins: pins.length }}\n          onCopyLink={shareShop}',
+    find: '          soldTotal={curatorSoldTotal(pins)}\n',
+    replace: '',
     test: 'src/tests/unit/ushop-s3-list-2026-09-28.test.ts',
     why:
       '칩이 `전체 6` 이라 적는 90px 위에서 헤더가 `담은 이용권 6` 이라 또 적는다. 렌더 실측으로 잡은 ' +

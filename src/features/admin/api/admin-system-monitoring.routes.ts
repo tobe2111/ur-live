@@ -52,14 +52,23 @@ adminSystemMonitoringRoutes.get('/cron-failures', async (c) => {
 //   맨 위가 곧 '멈췄을 가능성이 가장 높은 작업'이다. 상세 배경: worker/utils/cron-heartbeat.ts
 adminSystemMonitoringRoutes.get('/cron-heartbeats', async (c) => {
   const items = await listCronHeartbeats(c.env.DB)
-  // 하루 넘게 기록이 없으면 눈에 띄게(대부분 cron 이 일 1회 이상이다 — 주간/월간 작업은 오탐이므로
-  // 화면에서 사람이 판단하도록 표시만 하고 서버는 단정하지 않는다).
-  // 🪦 단, **유령은 뺀다** — 개명·승계된 옛 이름은 아무도 갱신하지 않아 영원히 나이를 먹는다.
+  // 🪦 **유령은 뺀다** — 개명·승계된 옛 이름은 아무도 갱신하지 않아 영원히 나이를 먹는다.
   //   게이트(`getCronHealth`)와 경보(`cron-stale-watch`)는 이미 같은 판정으로 걸러서 조용한데
   //   이 목록만 안 걸러, 화면엔 12건이 뜨고 실제 알림은 2건인 상태였다. 그 격차가 오진을 만들었다:
   //   2026-08-08 에 두 세션이 이 목록을 읽고 "레인 4개 침묵"으로 보고했지만 진짜는 하나뿐이었다.
   //   ⚠️ 목록(`items`)에서 지우진 않는다 — 각 행에 `verdict` 가 실려 있어 화면이 라벨로 구분한다.
-  const stale = items.filter(i => (i.age_minutes ?? 0) > 60 * 24 && (i.verdict ?? 'judge') === 'judge').map(i => i.name)
+  // 🔴 2026-10-14 — **임계값도 행에 맡긴다.** 종전엔 여기서 `age > 60 * 24`(고정 하루)를 따로 재서,
+  //   허용 간격이 7일인 주간 작업이 **7일 중 6일 상시 경보**였다(라이브 실측: 허용 7일+ judge 작업
+  //   6개가 **전부** 거짓 — `payouts-generate`·`weekly-*`·`blog-ai-draft`·`user-id-backfill-sweep`,
+  //   나이 2.6일 < 허용 7.2일). 그 6건이 목록을 채워 **진짜 침묵을 묻는다** — 2026-08-08 오진과
+  //   같은 클래스이고, 2026-10-14 에 한 세션이 그대로 재현했다(6건을 침묵으로 보고 + 승계된
+  //   `d1-backup`(72.8일, 실제로는 `d1-backup-chunked` 로 정상 승계)을 결함으로 올릴 뻔했다).
+  //   🔑 판정 재료는 **이미 행에 있다** — `max_gap_min`(작업이 신고한 주기, 없으면 cron 식에서 유도)과
+  //   그것으로 계산된 `stale`. 게이트(`getCronHealth`)·어드민 카드(`HeartbeatCards`)는 그걸 쓰는데
+  //   이 한 줄만 안 썼다. `cron-heartbeat.ts` 의 `listCronHeartbeats` 주석이 적어 둔 의도가
+  //   *"게이트·경보·어드민이 같은 판정을 쓰고 화면과 알림이 갈라지지 않는다"* 이고, 이 줄이 그 예외였다.
+  //   ⚠️ 여기서 임계값을 다시 재지 말 것 — 규칙이 두 벌이면 **에러 없이** 갈라진다(그게 이 결함이었다).
+  const stale = items.filter(i => i.stale === true && (i.verdict ?? 'judge') === 'judge').map(i => i.name)
 
   // 🔭 2026-07-29: 하트비트는 **기록된 행**만 본다 — 게이트는 켜져 있는데 한 번도 안 돈 레인은
   //   목록에 아예 없어서 `stale` 판정 대상조차 아니다("안 도는 건지 원래 없는 건지" 구분 불가).

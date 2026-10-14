@@ -185,4 +185,31 @@ export default [
       '`src/shared/seo/*.ts` 에 있다. 범위를 좁히면 em-dash 가 되돌아와도 **hits 0 으로 영원히 초록** ' +
       '이다(2026-10-13 까지 실제 상태). 가드 자신의 `FIXTURE_TS_BAD` 자기검사가 이것을 잡는다.',
   },
+  // ⭐ 2026-10-14 — 숙소 평점이 `LodgingBusiness` 에만 있어 정본이 사본보다 약했다(49건).
+  {
+    name: '⭐ 숙소 평점을 Product 에서 뺀다(정본 49건이 별점을 잃는다)',
+    file: 'src/worker/utils/detail-ssr-meta.ts',
+    find: '      ...(hasRating ? { aggregateRating: aggregateRatingNode } : {}),\n      offers: {',
+    replace: '      offers: {',
+    test: TEST,
+    why:
+      'Product 리치결과의 별점은 `Product.aggregateRating`(또는 `review`)을 요구한다. ' +
+      '숙소에만 달면 정본(`/stays/:id`)이 사본(`/pass/:id`)보다 약해지는데 에러는 안 난다.',
+  },
+  {
+    name: '⭐ 같은 리뷰를 Product 와 숙소 둘 다에 선언한다(문서가 스스로 모순)',
+    file: 'src/worker/utils/detail-ssr-meta.ts',
+    find: '      ...(hasRating && fromPrice <= 0 ? { aggregateRating: aggregateRatingNode } : {}),',
+    replace: '      ...(hasRating ? { aggregateRating: aggregateRatingNode } : {}),',
+    test: TEST,
+    why: '같은 4.6(9)이 두 엔티티의 평점이라고 말하면 무엇을 평가한 것인지 문서가 답하지 못한다.',
+  },
+  {
+    name: '⭐ 리뷰 0 에도 평점을 낸다(0점짜리 상품이라고 말한다)',
+    file: 'src/worker/utils/detail-ssr-meta.ts',
+    find: '    const hasRating = rating > 0 && Number(p.review_count) > 0',
+    replace: '    const hasRating = true',
+    test: TEST,
+    why: '구글은 리뷰 없는 aggregateRating 을 정책 위반으로 본다 — 2026-10-11 에 값을 치른 자리다.',
+  },
 ]

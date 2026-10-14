@@ -9,7 +9,7 @@ const SRC = 'src/pages/curator-page/CuratorHeader.tsx'
  *   (공유 버튼도 같은 상수를 쓴다). 앵커만 그 자리로 옮기고 **막는 것은 그대로다** —
  *   브랜드 색 면 복귀 · 그라디언트 복귀 · 터치 영역 축소.
  */
-const TILE = '{iconBtnCls}'
+const TILE = '{snsHitCls}' // 🔄 2026-10-14 유어샵 A — SNS 는 이름표(탭 영역 상수)
 
 export default [
   {
@@ -31,8 +31,8 @@ export default [
   {
     name: '🎨 글리프에 흰색을 박는다 (테마·hover 를 못 따라간다)',
     file: SRC,
-    find: '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5',
-    replace: '<svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M23.5',
+    find: '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M23.5',
+    replace: '<svg width="15" height="15" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M23.5',
     test: TEST,
     why: 'currentColor 라야 바깥 className 이 색을 정한다 — 흰색을 박으면 라이트에서 안 보인다.',
   },

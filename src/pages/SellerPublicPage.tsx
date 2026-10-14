@@ -16,6 +16,7 @@ import SEO from '@/components/SEO'
 import VouchersTab from './seller-public/VouchersTab'
 // 🏁 2026-06-25 (대표 "통일"): 사업자 유어샵 헤더를 canonical CuratorHeader 로 — ProfileHeader 폐기(헤더 1개).
 import CuratorHeader from './curator-page/CuratorHeader'
+import { curatorSoldTotal } from '@/shared/curator-pin-order'
 import UShopQrCard from './curator-page/UShopQrCard'
 import type { CuratorProfile } from '@/features/curator/api/curator-api'
 // 🏪 2026-09-03 (대표 "홈 카드로 동일해야지"): 내 상품도 홈과 **같은 카드** — 유어샵 통일의 마지막 한 곳.
@@ -318,6 +319,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
         curator={headerCurator}
         canEdit={isOwner}
         counts={{ pins: vouchers.length, products: shopProducts.length }}
+        soldTotal={curatorSoldTotal([...vouchers, ...shopProducts])}
         accountType="business"
         onCopyLink={copyLink}
       />

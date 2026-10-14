@@ -105,4 +105,37 @@ export default [
     test: TEST,
     why: '요약은 지역·숙소용 모집단이다 — 홈이 그걸 쓰면 상위 10 노출 순서가 요약 순서로 바뀐다.',
   },
+  // 🕳️ 2026-10-14 — 고아 상세 134건 수리. 두 캡은 **짝**이라 각각 되돌려 본다.
+  {
+    name: '🕳️ 묶음 상한을 10 으로 되돌린다(고아 상세가 돌아온다)',
+    file: 'src/shared/seo/region-digest.ts',
+    find: 'export const REGION_DIGEST_PER_BUCKET = 30',
+    replace: 'export const REGION_DIGEST_PER_BUCKET = 10',
+    test: TEST,
+    why: '버킷 46개 중 8개가 10건을 넘는다 — 그 상한이 101건을 잘라 내부 링크가 0인 상세를 만든다.',
+  },
+  {
+    name: '🕳️ 지역 noscript 행을 8 로 되돌린다(요약은 큰데 출력이 안 는다)',
+    file: 'src/shared/seo/region-digest.ts',
+    find: 'export const REGION_NOSCRIPT_ROWS = 30',
+    replace: 'export const REGION_NOSCRIPT_ROWS = 8',
+    test: TEST,
+    why: '요약을 30 으로 채워 놓고 8줄만 내면 KV 값만 커지고 발견되는 상세는 그대로다.',
+  },
+  {
+    name: '🔴 `ItemList` 상한을 noscript 와 같이 올린다(사람 응답 JSON 이 두 배)',
+    file: 'src/worker/utils/surface-list-jsonld.ts',
+    find: 'export const SURFACE_LIST_MAX = 10',
+    replace: 'export const SURFACE_LIST_MAX = 30',
+    test: TEST,
+    why: '그 JSON 은 사람이 받는 응답에도 그대로 실린다 — 2026-10-11 에 20→10 으로 내린 이유다.',
+  },
+  {
+    name: '🔗 지역 블록이 상한 상수 대신 손으로 적은 8 을 쓴다(두 값이 갈린다)',
+    file: 'src/worker/utils/crawler-noscript.ts',
+    find: 'regionSeedRows(ssrPayload, ref).slice(0, REGION_NOSCRIPT_ROWS)',
+    replace: 'regionSeedRows(ssrPayload, ref).slice(0, 8)',
+    test: TEST,
+    why: '요약 묶음 상한과 출력 행 수가 두 곳에서 각자 정해지면 한쪽을 올려도 아무 일이 안 난다.',
+  },
 ]

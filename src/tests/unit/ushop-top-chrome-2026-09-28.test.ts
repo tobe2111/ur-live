@@ -53,11 +53,14 @@ describe('① SNS 가 전용 줄을 쓰지 않는다', () => {
     expect(header).toContain('snsUrl(')
   })
 
-  it('SNS 링크가 버튼 그룹 안에 들어간다', () => {
+  // 🔄 2026-10-14 재조준(대표 확정 **유어샵 A**): SNS 는 이름 줄 버튼 그룹 → **이름 아래 숫자 줄의 오른쪽**.
+  //   지키려던 것(SNS 가 *자기 줄을 통째로* 쓰지 않는다)은 그대로다 — 숫자 줄과 한 줄을 나눠 쓴다.
+  it('SNS 는 숫자 줄 오른쪽에 들어가고 이름 줄 버튼 그룹엔 없다', () => {
     expect(header, 'snsLinks 를 만든다').toMatch(/const snsLinks = hasSns \?/)
-    // 이름 줄의 오른쪽 그룹(ml-3 …)이 SNS 를 먼저 그린다.
     const group = header.slice(header.indexOf('className="ml-3 flex items-center'))
-    expect(group.slice(0, 200), '버튼 그룹이 snsLinks 를 그린다').toContain('{snsLinks}')
+    expect(group.slice(0, 400), '이름 줄 버튼 그룹에 SNS 없음').not.toContain('{snsLinks}')
+    const stats = header.slice(header.indexOf('(showStats || hasSns)'))
+    expect(stats.slice(0, 1600), '숫자 줄이 snsLinks 를 그린다').toContain('{snsLinks}')
   })
 
   it('SNS 전용 줄(px-4 pb-3)이 없다', () => {

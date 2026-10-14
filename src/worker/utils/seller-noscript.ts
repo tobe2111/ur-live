@@ -4,7 +4,9 @@
  * ## 실측 — 이 표면만 통째로 비어 있었다
  * Googlebot UA 로 sitemap 제출 URL 을 전수로 받아 `#root` 안의 글자를 셌더니, 가게 유어샵 3건 중
  * **2건이 6자**(`urdeal` 워드마크뿐)였다 — `/s/store_mt9rvbhg1i6`(홍대돈까스)·
- * `/s/store_muxlddtf74b`(달빛한스푼). `sitemap.routes.ts` 가 스스로 ③으로 적어 둔 **미해소** 항목이고,
+ * `/s/store_muxlddtf74b`(달빛한스푼). `sitemap.routes.ts` 가 스스로 ③으로 적어 뒀던 항목이고
+ * (**2026-10-14 에 그 "미해소" 표기를 지웠다** — 고쳐진 뒤 남은 표기는 다음 세션을 같은 자리로
+ * 다시 보낸다),
  * 그 주석은 *"페이로드에 상품이 안 담겨"* 라고만 적었는데 **더 나빴다**: 페이로드를 열어 보니
  * `bio`·`business_address`·`profile_image`·SNS·`website_url` 이 **전부 null** 이고 이름뿐이었다.
  *

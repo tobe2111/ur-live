@@ -16,6 +16,7 @@ import { productShareImage } from '@/shared/og-share-image'
 import { propertyTypeLabel } from '../../shared/stay-property-type'
 import { kakaoPlaceCanonicalUrl } from '../../shared/kakao-place-url'
 import { parseRegionFromAddress } from '../../shared/constants/region-slugs'
+import { priceDisplay } from '../../shared/price-display'
 import { storeNameJoin } from '@/shared/seo/store-name-dedupe'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import { withCrumbRoot, crumbItems } from '@/shared/seo/breadcrumb'
@@ -192,7 +193,7 @@ export function buildDetailMeta(ssrPayload: string, origin: string, pathname: st
       //   판정·문구는 `shared/seo/detail-title.ts` 하나 — 클라(`VoucherDetailPage`)가 같은 함수를 쓴다.
       const title = voucherDetailTitle(name)
       const description = (String(d.description || '').replace(/\s+/g, ' ').trim().slice(0, 150))
-        || `${name} — 기프티콘 교환권을 유어딜에서 할인가로 구매하고 바로 사용하세요.`
+        || `${name} 기프티콘 교환권을 유어딜에서 할인가로 구매하고 바로 사용하세요.`
       return { pageTitle: title, title, description, canonical, ogImage: productShareImage(photo, origin), ogType: 'product', noindex: true, jsonLd: '' }
     }
 
@@ -203,9 +204,41 @@ export function buildDetailMeta(ssrPayload: string, origin: string, pathname: st
     //   (실측 `/pass/2919`: `달빛한스푼 달빛한스푼 닭도리탕`). 판단은 SSOT 하나다 —
     //   `crawler-noscript` 가 교환권 목록에서 쓰던 그 규칙이고, 이 파일만 밖에 있었다.
     const storeName = storeNameJoin(store, name)
-    const description = (discount > 0
-      ? `🎉 ${discount}% 할인! ${storeName} — ${priceStr}원에 유어딜에서 바로 구매`
-      : `${storeName} — ${priceStr}원, 유어딜에서 할인가로 바로 구매`).replace(/\s+/g, ' ').trim().slice(0, 200)
+    // 📝 2026-10-14 — **설명을 숙소와 같은 모양으로.** 라이브 실측(샘플 50): `/pass` 310건의
+    //   meta description 이 **중앙값 50자 · 46%가 50자 미만 · 전부 80자 미만**이고, 그중
+    //   `유어딜에서 할인가로 바로 구매`(14자)는 **310건에 똑같이 붙는 상투구**라 고유한 부분은
+    //   25~30자뿐이었다. 같은 날 백필을 받은 숙소는 **중앙값 71자**에
+    //   `⭐4.5 강원 춘천시 호텔 · 1박 129,000원~ {소개}` 로 별점·지역·가격·소개를 담는다.
+    //   ⇒ #83·#84 와 **같은 비대칭**이다(숙소가 풍부해졌는데 이용권이 안 따라왔다).
+    //
+    // 🔑 **지어내지 않는다 — 전부 시드에 이미 온 값이다**: 별점은 `avg_rating`(실측 294/310건이
+    //    보유) · 지역은 `restaurant_address` 를 **`parseRegionFromAddress` SSOT**(같은 파일의
+    //    `postalAddress` 가 `addressLocality` 에 쓰는 그 함수)로 · 정가·할인율은 그 상품의 값 ·
+    //    소개는 `description`. 하나라도 없으면 그 조각만 빠지고 나머지는 종전과 같다.
+    // 🔴 **리뷰 0이면 별점을 말하지 않는다** — `ratingLine` 과 같은 규율(평점 0점짜리로 읽힌다).
+    // 🔴 **설명이 상품명과 같으면 버린다** — 시드 실측상 흔하다(같은 말을 두 번 하지 않는다).
+    // 📏 `slice(0, 200)` 은 종전 그대로. 구글은 ~155자에서 자르지만 자르는 쪽이 모자란 쪽보다 낫다.
+    // 🩸 **할인율이 310건 전부에서 사라지고 있었다.** 종전 분기는 `d.current_discount_pct` 를
+    //    믿는데 라이브 샘플 45건에서 그 값과 `discount_rate` 가 **전부 0**이고, 정가·판매가로
+    //    계산하면 **45/45건에 할인이 있다(중앙 20%)**. 즉 `🎉 N% 할인` 분기는 한 번도 돈 적이 없고,
+    //    커머스 스니펫에서 가장 강한 신호가 구조적으로 빠져 있었다. **에러가 안 나서 아무도 몰랐다.**
+    // 🔑 이 레포엔 바로 그 사고를 위해 만든 SSOT 가 있다 — `priceDisplay` 의 `Math.max(선언값,
+    //    계산값)`(2026-08-19 대표 신고 *"할인율도 나타나야 할 것 같다"* 의 처방). **같은 파일의
+    //    `<noscript>` 본문은 이미 그 함수를 써서 "11% 할인" 을 맞게 말하고 있었고** description
+    //    만 밖에 있었다 ⇒ 둘을 같은 함수로 모은다(한 문서가 두 할인율을 말할 수 없게 된다).
+    const pd = priceDisplay({ price, original_price: d.original_price, discount_rate: d.current_discount_pct })
+    const passRating = Number(d.avg_rating) || 0
+    const passReviews = Number(d.review_count) || 0
+    const ratingPrefix = passRating > 0 && passReviews > 0 ? `⭐${passRating.toFixed(1)} ` : ''
+    const passRef = parseRegionFromAddress(String(d.restaurant_address || ''))
+    const regionStr = passRef ? `${passRef.sido}${passRef.sigungu ? ` ${passRef.sigungu}` : ''} · ` : ''
+    const origStr = pd.showOriginal && pd.originalPrice > pd.price ? ` (정가 ${pd.originalPrice.toLocaleString('ko-KR')}원)` : ''
+    const passDesc = String(d.description || '').replace(/\s+/g, ' ').trim()
+    const descTail = passDesc && passDesc !== name && passDesc !== storeName ? ` ${passDesc}` : ''
+    const description = (pd.discount > 0
+      ? `${ratingPrefix}${regionStr}${storeName} ${priceStr}원${origStr} ${pd.discount}% 할인${descTail}`
+      : `${ratingPrefix}${regionStr}${storeName} ${priceStr}원, 유어딜에서 할인가로 바로 구매${descTail}`)
+      .replace(/\s+/g, ' ').trim().slice(0, 200)
 
     const available = d.group_buy_status === 'active' || d.group_buy_status === 'achieved'
     const product: Record<string, unknown> = {
@@ -323,7 +356,7 @@ export function buildStayDetailMeta(ssrPayload: string, origin: string, pathname
     const ratingStr = rating > 0 ? `⭐${rating.toFixed(1)} ` : ''
     const baseDesc = String(p.description_full || p.description || '').replace(/\s+/g, ' ').trim()
     const description = (`${ratingStr}${region ? region + ' ' : ''}${typeLabel} · ${priceStr}${baseDesc}`
-      || `${stayName} — 유어딜에서 숙소 이용권을 할인가로 예약하세요.`).trim().slice(0, 200)
+      || `${stayName}. 유어딜에서 숙소 이용권을 할인가로 예약하세요.`).trim().slice(0, 200)
 
     // 🏨 2026-10-12 [UNLOCK_LOADING] (대표 "둘 다 잠금 해제하고 가장 이상적으로"): **이 URL 이 정본이다.**
     //   실측으로 `/pass/:id`(숙소 이용권)와 `/stays/:id` 가 **같은 상품 id**를 각각 자기 canonical 로
@@ -334,6 +367,9 @@ export function buildStayDetailMeta(ssrPayload: string, origin: string, pathname
     //   얹은 배열) 매장을 `@id` 로 분리해 Offer 가 가리킨다 — `/pass/:id` 와 **같은 모양**.
     const placeId = `${canonical}#place`
     const staySameAs = placeSameAs(p.kakao_place_url)
+    // ⭐ 평점은 **한 곳에서만** 조립한다 — 두 엔티티가 각자 만들면 둘 중 하나가 조용히 갈린다.
+    const hasRating = rating > 0 && Number(p.review_count) > 0
+    const aggregateRatingNode = { '@type': 'AggregateRating', ratingValue: rating, reviewCount: Number(p.review_count) }
     const lodging: Record<string, unknown> = {
       '@type': 'LodgingBusiness', '@id': placeId,
       name: stayName,
@@ -343,7 +379,10 @@ export function buildStayDetailMeta(ssrPayload: string, origin: string, pathname
       ...((a => a ? { address: a } : {})(postalAddress(p.address, p.region_sido))),
       ...(p.latitude && p.longitude ? { geo: { '@type': 'GeoCoordinates', latitude: p.latitude, longitude: p.longitude } } : {}),
       ...(p.star_rating ? { starRating: { '@type': 'Rating', ratingValue: p.star_rating } } : {}),
-      ...(rating > 0 && Number(p.review_count) > 0 ? { aggregateRating: { '@type': 'AggregateRating', ratingValue: rating, reviewCount: Number(p.review_count) } } : {}),
+      // ⭐ 2026-10-14: 평점은 **`Product` 로 옮겼다**(아래). 여기엔 `Product` 가 안 만들어질 때만
+      //   남긴다 — 같은 리뷰 묶음을 두 엔티티에 선언하면 무엇의 평점인지 문서가 스스로 모순된다.
+      //   `starRating`(호텔 등급)은 다른 사실이라 그대로 둔다.
+      ...(hasRating && fromPrice <= 0 ? { aggregateRating: aggregateRatingNode } : {}),
       ...(fromPrice > 0 ? { priceRange: `₩${fromPrice.toLocaleString('ko-KR')}~` } : {}),
       url: canonical,
     }
@@ -357,6 +396,20 @@ export function buildStayDetailMeta(ssrPayload: string, origin: string, pathname
       ...(baseDesc ? { description: baseDesc.slice(0, 300) } : {}),
       ...(p.image_url ? { image: [photo] } : {}),
       brand: { '@type': 'Brand', name: stayName },
+      // ⭐ 2026-10-14 — **정본이 사본보다 약했다.** 라이브 실측(Googlebot UA, 같은 상품의 두 URL):
+      //
+      //     /pass/2887  (사본, canonical → /stays/2887)   Product.aggregateRating  4.6(9)  ← 있음
+      //     /stays/2887 (정본)                            Product.aggregateRating  없음     ← 별점 0
+      //                                                   LodgingBusiness          4.6(9)
+      //
+      //   구글은 정본으로 통합하므로 **숙소 49건이 Product 리치결과의 별점을 잃는다**(그 리치결과는
+      //   `Product.aggregateRating` 또는 `review` 를 요구한다). 게다가 두 URL 이 같은 4.6 을 서로
+      //   **다른 엔티티의 평점**이라고 주장하고 있었다. 🔑 출처가 `products.avg_rating` ·
+      //   `products.review_count`(**상품 컬럼**)이므로 `Product` 가 맞는 자리이고, 식사·쇼핑 경로와
+      //   `/pass` 사본이 이미 그렇게 한다 — 즉 숙소 한 자리만 갈려 있었다.
+      //   🔴 지어내지 않는다: 평점·리뷰수 둘 다 양수일 때만 낸다(리뷰 0 에 평점 0 을 내면 "0점짜리
+      //      상품" 이라고 말하는 것이고 구글 정책 위반이다 — 2026-10-11 에 값을 치른 자리).
+      ...(hasRating ? { aggregateRating: aggregateRatingNode } : {}),
       offers: {
         '@type': 'AggregateOffer', url: canonical, priceCurrency: 'KRW',
         lowPrice: fromPrice, ...(toPrice > fromPrice ? { highPrice: toPrice } : {}),
@@ -429,13 +482,13 @@ export function buildProductMeta(ssrPayload: string, origin: string, pathname: s
 
     const pageTitle = `${name} - 유어딜`
     const description = (rate > 0
-      ? `🎉 ${rate}% 할인! ${name} — ${priceStr}${unit}, 유어딜에서 바로 구매`
-      : `${name} — ${priceStr}${unit}, 유어딜에서 할인가로 바로 구매`).replace(/\s+/g, ' ').trim().slice(0, 200)
+      ? `🎉 ${rate}% 할인! ${name} ${priceStr}${unit}, 유어딜에서 바로 구매`
+      : `${name} ${priceStr}${unit}, 유어딜에서 할인가로 바로 구매`).replace(/\s+/g, ' ').trim().slice(0, 200)
 
     const product: Record<string, unknown> = {
       '@context': 'https://schema.org', '@type': 'Product',
       name,
-      description: (String(d.description || '') || `${name} — 유어딜`).replace(/\s+/g, ' ').trim().slice(0, 300),
+      description: (String(d.description || '') || `${name}, 유어딜`).replace(/\s+/g, ' ').trim().slice(0, 300),
       ...(d.image_url ? { image: [photo] } : {}),
       ...(brand ? { brand: { '@type': 'Brand', name: brand } } : {}),
       // 💰 KRW 상품만 offer 가격 노출(딜 상품은 통화 스키마 부적합 → 가격 생략).
