@@ -251,7 +251,20 @@ try {
       history.pushState = (a, b, u) => { console.log('[diag] pushState ' + u); return p(a, b, u) }
     })
     page.on('pageerror', (e) => errs.push(String(e)))
+    const logMark = devLog.length
     await page.goto(`${base}${path}`, { waitUntil: 'networkidle' })
+    // ♻️ 2026-10-14: vite dev 가 첫 방문 중 의존성을 새로 찾으면 페이지를 **통째로 리로드**한다
+    //   (CI 실측: lucide 아이콘 파일 단위 import 를 하나씩 발견하며 6번 — "optimized dependencies changed. reloading").
+    //   깊은 링크(`/seller/returns` → `/user/profile?tool=…`)는 `?tool=` 을 지운 직후 리로드를 맞으면 시트가 안 열린다.
+    //   배포본은 미리 묶인 파일이라 이 리로드가 없다 — 그래서 **리로드가 실제로 있었을 때만** 한 번 다시 연다.
+    {
+      const reloaded = () => devLog.slice(logMark).join('').includes('optimized dependencies changed')
+      await page.getByText(expect1, { exact: false }).first().waitFor({ timeout: 8000 }).catch(() => {})
+      if (reloaded() && (await page.getByText(expect1, { exact: false }).count().catch(() => 0)) === 0) {
+        console.log(`   ♻️ [${name}] vite 의존성 재최적화 리로드가 있었다 — 한 번 다시 연다`)
+        await page.goto(`${base}${path}`, { waitUntil: 'networkidle' })
+      }
+    }
     // ⏳ 2026-10-14: networkidle 직후 바로 세면 CI(콜드 vite dev)에서 화면이 아직 안 그려져 0 이 나왔다
     //   (10-12·10-14 같은 자리 두 번 — 재실행하면 통과). 글자가 뜰 때까지 기다린 뒤 센다. 판정 자체는 그대로다.
     await page.getByText(expect1, { exact: false }).first().waitFor({ timeout: 15000 }).catch(() => {})
