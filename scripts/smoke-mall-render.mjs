@@ -238,6 +238,9 @@ try {
     const errs = []
     page.on('pageerror', (e) => errs.push(String(e)))
     await page.goto(`${base}${path}`, { waitUntil: 'networkidle' })
+    // ⏳ 2026-10-14: networkidle 직후 바로 세면 CI(콜드 vite dev)에서 화면이 아직 안 그려져 0 이 나왔다
+    //   (10-12·10-14 같은 자리 두 번 — 재실행하면 통과). 글자가 뜰 때까지 기다린 뒤 센다. 판정 자체는 그대로다.
+    await page.getByText(expect1, { exact: false }).first().waitFor({ timeout: 15000 }).catch(() => {})
     const seen = await page.getByText(expect1, { exact: false }).count().catch(() => 0)
     check(`[${name}] 렌더 + 런타임 에러 0`, seen > 0 && errs.length === 0, errs[0] || `"${expect1}" 확인`)
 
