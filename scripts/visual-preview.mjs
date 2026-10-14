@@ -42,6 +42,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { sellerListResponse } from './preview-seeds/seller-lists.mjs'
 import { looksEmpty, emptyHintMatch } from './preview-seeds/empty-screen-hint.mjs'
+import { compareSnaps } from './shift-compare.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const DIST = path.join(ROOT, 'dist/client')
@@ -826,7 +827,9 @@ if (SHIFT) {
       if (s.length < 2 || s.length > 40) continue
       const r = el.getBoundingClientRect()
       if (r.width === 0 && r.height === 0) continue
-      if (!m.has(s)) m.set(s, Math.round(r.top + window.scrollY))
+      // 같은 글자가 여러 곳에 있으면 **전부** 문서 순서대로 담는다(아래 대조 주석 참조).
+      if (!m.has(s)) m.set(s, [])
+      m.get(s).push(Math.round(r.top + window.scrollY))
     }
     return { pos: Object.fromEntries(m), docH: document.documentElement.scrollHeight, vh: window.innerHeight }
   })
@@ -841,7 +844,6 @@ if (SHIFT) {
     const a = await snap()
     await page.waitForTimeout(SLOW + 2500)
     const b = await snap()
-    const moved = [], gone = [], born = []
     /**
      * 👁️ **보이는 곳이 밀렸는가** 를 따로 센다 (2026-10-01).
      *   그전까지는 문서 전체의 이동만 셌는데, 그러면 **화면 밖 푸터가 움직인 것**과
@@ -850,18 +852,8 @@ if (SHIFT) {
      *   기준: 첫 스냅 시점의 y 가 첫 화면(뷰포트) 안이면 '보이는 곳'.
      *   ⚠️ 스크롤 0 을 가정한다(하네스는 늘 맨 위에서 잰다).
      */
-    const fold = a.vh || 0
-    let movedVisible = 0
-    for (const [k, y] of Object.entries(a.pos)) {
-      if (!(k in b.pos)) { gone.push(k); continue }
-      const d = b.pos[k] - y
-      if (Math.abs(d) > 8) {
-        const vis = y < fold
-        if (vis) movedVisible++
-        moved.push(`${vis ? '👁️ ' : '   '}${k} ${y}→${b.pos[k]} (${d > 0 ? '+' : ''}${d})`)
-      }
-    }
-    for (const k of Object.keys(b.pos)) if (!(k in a.pos)) born.push(k)
+    // 판정 몸통은 순수 모듈 하나(`shift-compare.mjs`) — 시험이 그 함수를 직접 돌린다.
+    const { moved, gone, born, movedVisible } = compareSnaps(a, b)
     const verdict = movedVisible ? '🔴 보이는 곳이 밀림' : moved.length ? '🟡 화면 밖만 밀림' : '🟢 안 밀림'
     console.log(`📐 밀림 측정 [${ROUTE}] ${label} ${verdict} — 이동 ${moved.length}(보이는 곳 ${movedVisible}) · 사라짐 ${gone.length} · 생김 ${born.length} · 문서높이 ${a.docH}→${b.docH}px`)
     /**
