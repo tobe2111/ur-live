@@ -4993,7 +4993,13 @@
     "noUnusedGift": "使用できるギフト券がありません",
     "totalCountLabel": "全体",
     "requestRefundShort": "返金リクエスト",
-    "refundRequestedShort": "返金リクエスト受付済み"
+    "refundRequestedShort": "返金リクエスト受付済み",
+    "walletEyebrow": "使えるチケット",
+    "walletTotal": "合計",
+    "noExpiry": "期限なし",
+    "mapShort": "地図",
+    "recoTitle": "こんなチケットはいかが？",
+    "recoMore": "もっと見る"
   },
   "sellerWaiting": {
     "title": "セラー承認待機",

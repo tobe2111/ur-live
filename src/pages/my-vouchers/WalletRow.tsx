@@ -7,9 +7,10 @@
  * 8장이면 "내가 뭘 갖고 있나" 를 훑는 데 네 번을 내려야 한다.
  *
  * ## 규칙
- *   - **가장 급한 한 장만** 티켓으로 펴고(=지금 쓸 것), 나머지는 이 줄로 접는다.
+ *   - ~~가장 급한 한 장만 티켓으로 펴고 나머지는 이 줄로 접는다~~ → 2026-10-14 대표 확정 **안 B**: 사용 가능한
+ *     이용권은 **전부 이 줄**이다(같은 물건이 첫 장만 다르게 보였다 — 대표 스크린샷). 오른쪽은 [사용] 알약.
  *   - 줄에는 "무엇을 / 어디서 / 언제까지" 만. 코드·QR·환불은 눌러서 연다.
- *   - 오른쪽 자리는 **남은 기간(D-N)**이다 (2026-10-07 대표 *"응 남은 기간 표시로 해줘"*).
+ *   - 남은 기간(D-N)을 말한다 (2026-10-07 대표 *"응 남은 기간 표시로 해줘"*) — 안 B 에서 이름 아래 줄로 옮겼다.
  *     지갑 A안에서 금액은 머리글 합계 한 번만 말한다 — 줄마다 장별 가격을 또 적으면 같은 말의 반복이고,
  *     이미 산 이용권에서 사람이 훑는 건 "얼마였나"가 아니라 "언제까지 써야 하나"다.
  *   - 임박(D-2 이하)은 `--tone-bad` 로 굵게 — 지갑에서 유일하게 급한 것이다.
@@ -19,7 +20,7 @@
  * 색은 토큰만 — 툴킷 기본 초록·빨강을 hex 로 직접 적지 말 것(그게 "AI 같다"의 정체였다).
  */
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
-import { TicketStubIcon } from '@/components/icons/urdeal-icons'
+import { TicketStubIcon, ClockIcon } from '@/components/icons/urdeal-icons'
 import { safeDate } from '@/utils/safe-date'
 import type { Voucher } from './types'
 
@@ -47,23 +48,29 @@ export default function WalletRow({ v, t, onOpen }: {
       onClick={onOpen}
       className="w-full flex items-center gap-3 px-4 py-4 text-left active:bg-black/[0.03] dark:active:bg-white/[0.04] transition-colors"
     >
-      <div className="w-[42px] h-[42px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-brand-tint">
+      <div className="w-14 h-14 shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-brand-tint">
         {v.product_image
-          ? <img src={cfImage(v.product_image, { width: 140, quality: 82, format: 'auto' }) || v.product_image} alt="" loading="lazy" className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, v.product_image)} />
-          : <TicketStubIcon className="w-[18px] h-[18px] text-brand-text opacity-45" aria-hidden />}
+          ? <img src={cfImage(v.product_image, { width: 168, quality: 82, format: 'auto' }) || v.product_image} alt="" loading="lazy" className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, v.product_image)} />
+          : <TicketStubIcon className="w-5 h-5 text-brand-text opacity-45" aria-hidden />}
       </div>
 
       <div className="flex-1 min-w-0">
-        <div className="text-[15px] font-bold tracking-tight text-gray-900 dark:text-white truncate">{v.product_name}</div>
         {v.restaurant_name && (
-          <div className="text-[12px] text-gray-500 dark:text-gray-400 truncate mt-1">{v.restaurant_name}</div>
+          <div className="text-[13px] text-gray-500 dark:text-gray-400 truncate">{v.restaurant_name}</div>
         )}
+        <div className="text-[15px] font-bold tracking-tight text-gray-900 dark:text-white truncate">{v.product_name}</div>
+        {/* 🎫 2026-10-14 안 B: 남은 기간은 이름 아래 한 줄로 내려왔다(오른쪽은 [사용] 자리). 값과 임박 색은 그대로. */}
+        <div className={`mt-1 flex items-center gap-1 text-[12px] tabular-nums ${urgent ? 'font-extrabold text-tone-bad' : 'text-gray-500 dark:text-gray-400'}`}>
+          <ClockIcon className="w-[13px] h-[13px] shrink-0" aria-hidden />
+          {d === null ? t('voucher.noExpiry', { defaultValue: '기한 없음' }) : d === 0 ? 'D-DAY' : `D-${d}`}
+        </div>
       </div>
 
-      {d !== null && (
-        <div className={`shrink-0 text-[15px] tabular-nums ${urgent ? 'font-extrabold text-tone-bad' : 'font-bold text-gray-700 dark:text-gray-200'}`}>
-          {d === 0 ? 'D-DAY' : `D-${d}`}
-        </div>
+      {/* 줄 전체가 버튼이라 이 알약은 그림이다 — 누를 곳이 어딘지 말해 준다. */}
+      {v.status === 'unused' && (
+        <span aria-hidden className="shrink-0 inline-flex items-center h-8 px-3.5 rounded-full bg-brand text-white text-[13px] font-bold">
+          {t('voucher.use', { defaultValue: '사용' })}
+        </span>
       )}
     </button>
   )

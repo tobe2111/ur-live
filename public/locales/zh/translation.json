@@ -4993,7 +4993,13 @@
     "noUnusedGift": "没有可用的礼品券",
     "totalCountLabel": "全部",
     "requestRefundShort": "申请退款",
-    "refundRequestedShort": "退款申请已提交"
+    "refundRequestedShort": "退款申请已提交",
+    "walletEyebrow": "可用的券",
+    "walletTotal": "合计",
+    "noExpiry": "无期限",
+    "mapShort": "地图",
+    "recoTitle": "看看这些券？",
+    "recoMore": "更多"
   },
   "sellerWaiting": {
     "title": "卖家审核等待",
