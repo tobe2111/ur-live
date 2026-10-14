@@ -55,3 +55,6 @@ jobs:
         run: npm run build
       - name: Bundle size budget
         run: npm run check:bundle:budget
+      # 📏 2026-10-14: 화면별 첫 화면 무게 래칫도 머지된 조합에서 잰다(두 PR 이 각자 허용오차 안이어도 합치면 넘는다).
+      - name: Per-surface first-screen weight budget
+        run: node scripts/check-surface-budgets.mjs

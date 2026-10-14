@@ -909,6 +909,13 @@ jobs:
       - name: Critical path chunk composition (strict)
         run: node scripts/check-critical-chunks.mjs
 
+      # 📏 2026-10-14 (대표 "대기업 수준 — 기능이 늘어나도 최적화된 상태"): 화면별 **첫 화면 무게**
+      #   (엔트리 + CSS + 그 화면 봉투, brotli) 래칫. 위 두 예산은 헐겁거나(critical 240KB 선 vs 실측 ~175)
+      #   이름만 본다 — 상세·지도 봉투의 바이트는 어떤 PR 게이트도 안 쟀다. 늘면 실패, 줄면 잠그라고 실패.
+      #   반드시 build:worker 뒤(route-chunk-map 필요).
+      - name: Per-surface first-screen weight budget (strict)
+        run: node scripts/check-surface-budgets.mjs
+
       # 🔁 2026-10-13: 청크끼리 서로 import 하면(순환) 평가 순서에 따라 화면이 통째로 오류가 된다 —
       #   묶음기가 prop-types 를 페이지 봉투로 옮겨 stripe ↔ lz-… 순환이 생기자 /checkout 전체가 오류 화면이었다
       #   (빌드·타입·단위시험 전부 초록). 반드시 build 뒤에 둘 것(산출물 필요).

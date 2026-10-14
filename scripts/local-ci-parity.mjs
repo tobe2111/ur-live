@@ -35,6 +35,8 @@ export const EXCLUDE = {
     'dist/client/assets 의 **이번 빌드** 청크를 본다. 낡은 dist 면 고친 순환을 다시 신고하거나 새 순환을 놓친다.',
   'check-ghost-classes.mjs':
     'dist/client/assets 의 **이번 빌드** CSS 와 대조한다. 낡은 dist 로 돌면 방금 정의한 클래스가 유령으로 잡힌다.',
+  'check-surface-budgets.mjs':
+    '이번 빌드의 dist + route-chunk-map 무게를 잰다. 낡은 dist 면 남의 변경을 내 회귀로 신고한다.',
 }
 
 /**

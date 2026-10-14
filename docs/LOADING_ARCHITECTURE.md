@@ -92,4 +92,20 @@
 5. **쿼리 파라미터 변경은 제자리 갱신** — 페이지가 searchParams 를 반응형으로 처리(effect deps). 리마운트 유발 금지(App.tsx key 는 pathname — 가드 고정).
 6. **검증은 실측** — `node scripts/probe-loading.mjs /new-page` (원격 세션은 `PROXY_RELAY=1`). 기준: 풀스크린 로더 1회만(재등장=⚠️), warm 콘텐츠 ≤ ~1.5s. 추측으로 "빠르겠지" 금지.
 
+7. **첫 화면 무게는 예산 안에서** — `scripts/surface-budgets.json` 이 화면마다 [엔트리 + CSS + 그 화면 봉투] 의 brotli 무게를 잠근다.
+   새 하드로드 화면은 예산을 갖고 들어오고(`--rebaseline --reason`), 늘리려면 사유를 남긴다. 먼저 lazy 로 내릴 수 있는지 볼 것.
+
+## 📏 성능 예산 체계 (2026-10-14 — 대표 "대기업 수준. 기능이 늘어나도 최적화된 상태여야")
+
+한 번 줄이고 끝나는 게 아니라 **늘어나는 방향을 기계가 막고, 줄인 것은 잠그는** 구조다. 층이 셋이다.
+
+| 층 | 무엇을 보나 | 언제 | 실패하면 |
+|---|---|---|---|
+| ① 빌드 바이트 | 화면별 첫 화면 무게(brotli) 래칫 — `check-surface-budgets.mjs` | 모든 PR + main 머지 직후 | PR 차단(+1.5KB 초과) · 3KB 이상 줄었는데 안 잠가도 차단 |
+| ② 브라우저 재생 | 밀림·중복 요청·남의 봉투·다크 대비 — `layout-shift`·`duplicate-fetch`·`surface-chunk-runtime`·`dark-contrast` | 주기 워크플로 | 빨간 워크플로(PR 게이트 아님 — 환경 민감) |
+| ③ 실사용 | 화면별 p75 LCP·INP·CLS·TTFB 를 SLO·지난 7일과 대조 — `cron/vitals-slo.ts` | 매일 09:20 KST | 어드민 알림 `perf_slo` |
+
+SLO = 구글 'Good' 경계(LCP 2.5s · INP 200ms · CLS 0.1 · TTFB 800ms). 회귀 = 지난 7일 중앙값보다 25% 이상 + 절대 변화(LCP 300ms 등).
+①은 바이트만, ③은 결과만 본다 — ①이 초록인데 ③이 빨가면 바이트가 아니라 실행·API·레이아웃 문제다.
+
 이 체크리스트의 기계화 가능한 부분(로더 위상·pathname key·prefetch 정합·시드·청크 표면 동기)은 `scripts/check-loader-continuity.mjs` 가 pre-commit + CI 에서 강제한다.
