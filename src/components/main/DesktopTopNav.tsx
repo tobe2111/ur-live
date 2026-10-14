@@ -23,6 +23,7 @@ import UrDealLogo from '@/components/brand/UrDealLogo'
 import { ShortsIcon } from '@/components/icons/urdeal-icons'
 import { URSHORTS_BROWSE_PATH } from '@/shared/urshorts'
 import NotificationDropdown from './NotificationDropdown'
+import MapViewChip from './MapViewChip'
 
 export default function DesktopTopNav() {
   const navigate = useNavigate()
@@ -491,6 +492,8 @@ export default function DesktopTopNav() {
             )}
             </div>
 
+            {/* 🗺️ 2026-10-14 대표 확정(시안 ① 다안) — 지금 카테고리 그대로 지도로. 지도 위에선 숨긴다. */}
+            {!hideDealCats && <MapViewChip dealCat={activeDealCat} />}
             <Link
               to={URSHORTS_BROWSE_PATH}
               className="shrink-0 flex items-center gap-2 whitespace-nowrap px-2 text-[13px] font-bold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"

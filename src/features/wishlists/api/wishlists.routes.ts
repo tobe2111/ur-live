@@ -98,6 +98,7 @@ wishlistRoutes.get('/', requireAuth(), async (c) => {
              p.name as product_name, p.price, p.original_price,
              p.discount_rate, p.image_url, p.stock, p.category, p.deal_only,
              p.is_active, p.restaurant_name,
+             p.restaurant_address, p.restaurant_lat, p.restaurant_lng,
              p.group_buy_deadline AS expires_at, p.group_buy_status,
              ${withColor ? 'p.dominant_color,' : ''}
              ${withBase ? 'n.base_price,' : ''}
