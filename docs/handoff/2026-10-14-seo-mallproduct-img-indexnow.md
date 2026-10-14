@@ -268,3 +268,42 @@ expect(block).toContain("'Content-Type': 'text/plain; charset=utf-8'")
   ·`/u/jiwon1228`·`/region/서울`·`/group-buy/confirm-payment`·`/seller/orders` 가 **200 유지**인지
 - 잎 꼬리 10개가 **404 + noindex** 인지
 - `/faq/` 는 종전처럼 200(canonical `/faq`) 인지 — 301 로 바뀌어도 무해하나 값을 기록할 것
+
+---
+
+# 그 다음 — #63 공개 셀러 API 가 매장별 수수료율을 내보낸다 (SEO 아님, 영업비밀)
+
+#1778 이 CI 중일 때 라이브를 다시 쓸며 찾았다. **인증 0 · id 순회**만으로:
+
+```
+/api/sellers/14/public   홍대돈까스   commission_rate=5    business_number=4790902930
+/api/sellers/20/public   청룡갈비     commission_rate=5
+/api/sellers/26/public   달빛한스푼   commission_rate=10   ← 같은 서비스에서 2배
+```
+
+그 응답은 `__SSR_INITIAL_SELLER__` 로 **서빙 HTML 에 박혀** `/s/*`·`/profile/*` 에서 크롤러까지 받는다.
+**소비자 화면은 그 값을 한 번도 읽지 않는다** — src 전수로 세니 걸리는 것은 상품의
+`referral_commission_rate`(다른 필드)이거나 셀러 **본인** 정산 화면(인증됨)이다.
+
+🔴 **짝이 더 나쁘다**: 대외 랜딩 `/about`(sitemap 제출·색인 대상) `AboutPage.tsx:187` 이
+*"어드민에서 셀러별 commission_rate 개별 조정 (협상 여지)"* 라고 **알려 준다.** 요율이 매장마다
+다르고 협상 가능하다고 알리면서 **남의 요율을 조회할 수단까지** 열어 둔 셈이다.
+
+그리고 CLAUDE.md 는 AI 블로그 초안에 *"운영 정보 차단 — 수수료율·정산·커미션을 아예 넣지 않는다"* 를
+강제한다 ⇒ **같은 정보에 두 가지 기준**이었다.
+
+**처방(구현 완료, 커밋 대기)**: `seller-public-payload.ts` 의 SELECT 목록에서 그 한 줄 제거 + 제거 사유를
+그 자리에 남김 + 가드. `business_number`·`business_address`·`representative_name` 은 **통신판매업자 표기
+의무** 정보이고 유어샵 사업자정보 섹션이 실제로 쓰므로 **반대 방향도 잠갔다**.
+
+가드 `seller-public-no-rate-2026-10-14.test.ts` 5건 + 주입 **6건 되돌려-검증 전부 빨간불 확인**
+(절반이 반대 방향: 사업자번호·대표자명·소개 제거).
+
+🩸 **주입 하나가 또 헛돌았다**: `대표자명을 지운다` 가 통과했다 — `ceo_name` 이 같은 파일의 **다른
+블록**(`seller_business_info` enrich, 122~137줄)에도 있어서 SELECT 줄을 지워도 문자열이 남았다.
+⇒ 단언을 **`SELLER_PUBLIC_COLS` 배열 안**으로 좁혔다. **전체 파일 `includes` 는 "그 목록에서 사라졌다"를
+판정할 수 없다.** (오늘 네 번째 앵커 사고다.)
+
+⚠️ **대표 판단**: `/about` 의 *"(협상 여지)"* 한 줄을 지울지는 대외 메시지 문제라 손대지 않았다.
+⚠️ **E4**: 배포 + KV 캐시 300s 뒤 `curl /api/sellers/26/public` 에 `commission_rate` 가 **없는지** ·
+   `business_number`·`ceo_name` 은 **있는지**(반대 방향) · 유어샵 화면이 종전과 같은지.
