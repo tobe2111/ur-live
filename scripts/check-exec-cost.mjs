@@ -106,7 +106,7 @@ function main() {
     console.log(`   ${pg.name.padEnd(12)} 실행 ${b ? String(b.execKB).padStart(6) : '     —'} → ${String(res.execKB).padStart(6)} KB · 받은 JS ${res.loadedKB}KB · (참고) 스크립트 ${res.scriptMs}ms · TBT ${res.tbtMs}ms @CPU×${res.cpuRate}`)
   }
   if (failed) { console.error(`\n❌ exec-cost: ${failed}개 화면을 못 쟀다.`); process.exit(1) }
-  if (!Object.keys(measured).length) { console.error('❌ exec-cost: 측정한 화면이 0개 — 통과가 아니다.'); process.exit(1) }
+  if (Object.keys(measured).length === 0) { console.error('❌ exec-cost: 측정한 화면이 0개 — 통과가 아니다.'); process.exit(1) }
 
   // --only 로 일부만 쟀으면 나머지 기준은 그대로 두고 판정도 잰 것만.
   const scoped = ONLY ? { ...baseline, pages: Object.fromEntries(Object.entries(baseline.pages || {}).filter(([n]) => measured[n])) } : baseline
