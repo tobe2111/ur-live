@@ -78,3 +78,77 @@ describe('①② 를 가르는 값이 스탬프에 남는다', () => {
     expect(code).not.toMatch(/const\s+setOk\s*=\s*true/)
   })
 })
+
+/**
+ * 🏷️ **②④ 를 가르는 두 번째 값 — 이 회차를 깨운 것이 알람인가 부트스트랩인가.**
+ *
+ * ## 왜 또 필요한가 (①은 위에서 이미 죽었다)
+ * 2026-10-14 18:02:42Z 라이브: `set_ok` 6/6 `true` · `armed_at` 6/6 이 `next_at` 과 일치
+ * ⇒ **후보 ①(`setAlarm` 실패) 기각.** 예산·정지 게이트 건너뛰기도 같은 실측에서 기각
+ * (`ads:read-budget over=false wover=false cut=없음` · `ads:lanes-paused paused=false`).
+ * 남은 둘은 고칠 자리가 완전히 다르다:
+ *   **②** 알람이 **걸린 채 제때 배달되지 않는다**(유휴 DO) → `ADS_PLAN`·대시보드(대표)
+ *   **④** 배달돼 `alarm()` 이 시작은 하는데 **재예약 전에 죽는다**     → 이 파일
+ *
+ * ## 🕳️ 기존 계측으로는 못 가린다 — **확인하고 적는다**
+ * 매시 부트스트랩이 `getAlarm()` 을 되읽어 `alarmAt`/`revived` 를 찍지만 **:01 에 한 번뿐**이고,
+ * 18:01 실측에서 레인 다섯이 **부트스트랩이 보기 직전에 이미 돌아** 신선한 알람을 갖고 있었다
+ * ⇒ `revived` 가 아무것도 말해 주지 않았다(`collect` 하나만 `revived=false` = 알람 부재).
+ * 하트비트 `at` 으로 순서를 따지려 했으나 `adsBeat` 은 `beats.add` **배치**라 `at` 이 회차 시각이
+ * 아니다(다섯 레인이 `ads:scheduled` 와 ms 까지 동일) ⇒ **타임스탬프 비교로는 판정 불가.**
+ *
+ * 🧭 그래서 이 값을 만들었다 — 그리고 순서가 중요하다: **있는 계측을 전수로 읽어 못 한다는 것을
+ * 확인한 뒤에** 새 계측을 만들었다(이 세션에서 그 반대로 해서 계측을 두 벌 만든 적이 있다).
+ *
+ * ## 판정법 (배포 + 정각 1회 뒤 스탬프)
+ * **매시 첫 회차의 `by`** 가 `'alarm'` → 배달이 늦은 것(**②**) · `'boot'` → 알람이 없던 것(**④**).
+ * 2회차 이후는 정상이면 늘 `'alarm'`.
+ *
+ * ## ⚠️ 이 시험이 **못 보는 것**
+ * - 실제로 어느 쪽인지. 판정은 **라이브 스탬프**만 한다.
+ * - DO 런타임 동작(`LaneAlarm` 은 유닛에서 인스턴스화 불가) ⇒ **계약만** 고정한다.
+ * - 조기 반환(킬스위치·일시정지·예산·유령 이름)은 표식을 안 지운다. 창(15초)이 그걸 덮지만,
+ *   낡은 표식은 `'alarm'` 으로 읽혀 **④를 과소보고**한다 — 반대 방향으로 틀리는 쪽을 골랐다
+ *   (없는 ④를 만들어 코드를 고치게 하는 것이 더 나쁘다). 이 비대칭은 의도다.
+ */
+describe('②④ 를 가르는 값 — 이 회차를 깨운 것', () => {
+  it('부트스트랩이 되살릴 때 표식을 남긴다', () => {
+    // `/start` 의 `kind !== 'alive'` 분기 안에서만 써야 한다 — 늘 쓰면 모든 회차가 'boot' 가 된다.
+    const revive = code.slice(code.indexOf("if (kind !== 'alive')"))
+    const body = revive.slice(0, revive.indexOf('return Response.json'))
+    expect(body).toMatch(/\.put\(BOOT_KICK_KEY,\s*Date\.now\(\)\)/)
+  })
+
+  it('`alarm()` 이 그 표식을 읽고 **지운다** — 안 지우면 이후 회차가 전부 boot 로 오염된다', () => {
+    expect(code).toMatch(/\.get<number>\(BOOT_KICK_KEY\)/)
+    expect(code).toMatch(/\.delete\(BOOT_KICK_KEY\)/)
+  })
+
+  it('창으로 판정한다 — 낡은 표식이 영원히 boot 로 읽히지 않는다', () => {
+    expect(code).toMatch(/const\s+BOOT_KICK_WINDOW_MS\s*=\s*[\d_]+/)
+    const m = code.match(/const\s+BOOT_KICK_WINDOW_MS\s*=\s*([\d_]+)/)
+    const ms = Number(String(m?.[1] ?? '').replace(/_/g, ''))
+    expect(Number.isFinite(ms)).toBe(true)
+    // 부트스트랩이 `now + 1s` 로 깨우므로 그보다 커야 하고, 1분 간격보다는 작아야 한다
+    // (크면 정상 알람 회차까지 'boot' 로 삼킨다 = ④를 과대보고).
+    expect(ms).toBeGreaterThan(1_000)
+    expect(ms).toBeLessThan(60_000)
+    expect(code).toMatch(/t0\s*-\s*Number\(bootKick\)\s*<\s*BOOT_KICK_WINDOW_MS/)
+  })
+
+  it('스탬프가 그 값을 싣는다 — 안 실으면 라이브에서 읽을 수 없다', () => {
+    const stamp = code.slice(code.indexOf('serializeLaneStamp({'))
+    expect(stamp.slice(0, 900)).toMatch(/by:\s*firedBy/)
+  })
+
+  it('반대 방향 — 되살리기(`setAlarm(now + 1s)`)를 빼지 않았다', () => {
+    // 표식을 넣다가 이 줄을 지우면 부트스트랩이 체인을 못 세운다(표식만 쌓인다).
+    expect(code).toMatch(/\.setAlarm\(Date\.now\(\)\s*\+\s*1_000\)/)
+  })
+
+  it('반대 방향 — `firedBy` 가 한쪽으로 굳지 않는다', () => {
+    // 상수로 굳으면 매시 첫 회차 판정이 통째로 거짓이 된다(둘 다 같은 답을 낸다).
+    expect(code).not.toMatch(/const\s+firedBy\s*=\s*'(boot|alarm)'/)
+    expect(code).toMatch(/firedBy\s*=\s*bootKick\s*!=\s*null\s*&&/)
+  })
+})
