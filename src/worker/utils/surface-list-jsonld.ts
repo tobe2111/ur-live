@@ -269,7 +269,13 @@ export function buildSurfaceListJsonLd(
   //   그 표면이 **항목 0건**이었다. 교환권 목록(`/vouchers`)은 여전히 **제외** — 그 상세가
   //   2026-07-07 결정으로 noindex 라, 색인하지 말라고 한 URL 을 "이 목록의 항목" 으로 제출하면
   //   서로 반대되는 신호가 된다(허용목록 한 줄로 그 규율을 지킨다).
-  const ITEM_PATHS = new Set(['/', '/browse', '/stays'])
+  // 🗺️ 2026-10-14: `/map` 추가 — 이 표면은 **이미 그 항목들을 크롤러 본문에서 링크하고 있었다**
+  //   (라이브 실측: `<a href="/pass/…">` **8건**) 그런데 `ItemList` 는 **0건**이었다. 즉 "이 목록의
+  //   항목" 이라는 구조화 신호만 빠져 있었고, 형제 `/stays`(2026-10-12 추가)와 **같은 클래스의
+  //   누락**이다(허용목록에 아무도 넣지 않았을 뿐 — 위 주석들이 `/map` 을 한 번도 언급하지 않는다).
+  //   필터는 필요 없다 — `/map` 은 동네딜 전부를 보여 주는 표면이고(이용권·숙소 둘 다 정당한 항목),
+  //   교환권은 `listItem` 이 행마다 걸러 낸다(머리말 규율 2).
+  const ITEM_PATHS = new Set(['/', '/browse', '/stays', '/map'])
   // 🔑 `/stays` 는 자기 슬롯이 없어 **홈과 같은 시드**를 받는다 — 숙소만 골라야 한다.
   //   안 걸러내면 식당 이용권이 "숙소 목록의 항목" 으로 제출된다(빌드도 화면도 안 깨진다).
   const keepItem = (p: SeedItem): boolean => {
@@ -391,6 +397,118 @@ export function buildCuratorJsonLd(
         isPartOf: { '@id': `${origin}/#website` },
         breadcrumb: breadcrumbRef(meta.canonical),
         mainEntity: person,
+      },
+    ]
+    if (items.length) {
+      nodes.push({
+        '@type': 'ItemList',
+        name: `${name} 유어샵 진열`,
+        numberOfItems: items.length,
+        itemListElement: items,
+      })
+    }
+    return escapeScript(JSON.stringify({ '@context': 'https://schema.org', '@graph': nodes }))
+  } catch {
+    return ''
+  }
+}
+
+/**
+ * 🏪 **가게 유어샵**(`/s/:username` — SELLER 슬롯)의 구조화 데이터 (2026-10-14).
+ *
+ * ## 실측 — 형제는 내는데 이 표면만 0건이었다
+ * Googlebot UA 로 받아 `ld+json` 블록을 세니:
+ *
+ *     /u/jiwon1228            블록 2 → [Organization, WebSite] + [BreadcrumbList, ProfilePage, ItemList]
+ *     /s/store_muxlddtf74b    블록 1 → [Organization, WebSite]  ← **페이지 노드가 없다**
+ *     /s/store_mt9rvbhg1i6    블록 1 → 같음
+ *
+ * 즉 가게 유어샵은 **빵부스러기도 진열 목록도 페이지 종류도** 없이 사이트 전역 브랜드 노드만
+ * 받고 있었다. `seller-noscript.ts` 머리말이 *"이 파일이 안 하는 것: 메타·OG·JSON-LD"* 로
+ * 적어 둔 바로 그 구멍이다(그 PR 은 본문만 채웠다).
+ *
+ * 🔴 **2건이라서 작은 문제가 아니다.** `/s/:username` 은 2026-10-14 기록대로 **앞으로 등록되는
+ * 모든 매장의 유어샵 URL** 이다(`/store/new` 가 `linked_user_id` 를 비우므로 sitemap 이 `/u/` 가
+ * 아니라 `/s/` 로 갈린다). 지금 2건인 것은 매장이 2곳이라서일 뿐이다.
+ *
+ * ## 모양 — `/u/:handle` 과 **같은 틀**이고 주인만 다르다
+ * `ProfilePage.mainEntity` 가 개인 유어샵은 `Person`, 가게 유어샵은 **`Organization`** 이다.
+ * 가게를 `Person` 이라고 말하면 구글이 엔티티를 사람으로 적재한다(아래 ⚠️ 참조).
+ *
+ * ## 규율 (형제 빌더와 같다)
+ * - **지어내지 않는다** — 넣는 값은 전부 그 페이로드다. 없는 필드는 **키 자체를 안 만든다**
+ *   (`sameAs`·`image` 는 실제 값이 있을 때만). 라이브 실측상 이 가게들은 `bio`·`profile_image`·
+ *   SNS·`website_url` 이 전부 `null` 이라 지금은 이름·진열만 나간다.
+ * - **추가 요청 0** — 진열은 그 표면이 이미 받아 둔 `__SSR_INITIAL_SELLER__` 시드의 `products` 다.
+ * - **빵부스러기는 두 단계**(유어딜 › 가게명). `유어샵` 을 중간에 넣으면 `/s` 라는 **없는 URL** 을
+ *   가리킨다(`buildCuratorJsonLd` 가 `/u` 로 같은 함정을 적어 뒀다).
+ * - **정본은 `meta.canonical`** 이다 — `buildSellerSurfaceMeta` 가 `canonicalShopPath` SSOT 로 고른
+ *   그 값이고, `/profile/:username` 별칭으로 들어와도 같은 하나를 가리킨다(2026-10-14 #74).
+ * - **행 조립을 다시 쓰지 않는다** — `listItem`(목록·지역·유어샵이 쓰는 것)을 그대로 쓴다.
+ *   그래서 항목 URL(`canonicalDetailPath` SSOT) · 교환권 제외 · 상한이 **자동으로 같다**.
+ *
+ * ## ⚠️ 이 빌더가 **안 하는 것** (그리고 안 하는 이유)
+ * - **주소·전화**: 이 페이로드의 `business_address` 는 라이브에서 `null` 이고 애초에 담겨 오지 않는다.
+ *   같은 가게의 주소는 상세(`/pass/:id`)가 `FoodEstablishment` 로 이미 내고 있다 — 없는 값을
+ *   채우려고 다른 모듈을 끌어오지 않는다(지어내기 금지).
+ * - **클라(`SellerPublicPage.tsx`)의 `Person` 노드**: 그 화면은 자기 `<SEO jsonLd>` 로
+ *   `@type: 'Person'` 을 내는데 ① 가게는 사람이 아니고 ② `url` 이 **비정본** `/profile/:username`
+ *   이다. 둘 다 결함이지만 그 파일은 **로딩 잠금표**라 문자열 한 줄도 대표 승인이 필요하다 ⇒
+ *   인계에 대기 항목으로 올렸다. 🔑 **크롤러에는 그 노드가 도달하지 않는다**(봇 UA 는 스크립트
+ *   없는 문서를 받아 React 가 돌지 않는다 — 2026-10-14 실측) ⇒ 지금 손해는 GEO 쪽뿐이다.
+ *   그리고 종류가 겹치지 않아 2026-10-14 의 중복 제거(`shared/seo/jsonld-dedupe`)도 안 지운다.
+ */
+export function buildSellerShopJsonLd(
+  ssrPayload: string,
+  origin: string,
+  meta: { title: string; description: string; canonical: string }
+): string {
+  try {
+    const sp = (JSON.parse(ssrPayload) as {
+      data?: {
+        name?: string | null
+        business_name?: string | null
+        profile_image?: string | null
+        website_url?: string | null
+        sns_instagram?: string | null
+        sns_youtube?: string | null
+        sns_facebook?: string | null
+        sns_twitter?: string | null
+        products?: SeedItem[] | null
+      }
+    })?.data
+    const name = String(sp?.name || sp?.business_name || '').trim()
+    if (!name) return ''
+
+    const items = (Array.isArray(sp?.products) ? sp!.products! : [])
+      .map((p, i) => listItem(p, i + 1, origin))
+      .filter((x): x is Record<string, unknown> => x !== null)
+      .slice(0, SURFACE_LIST_MAX)
+      .map((x, i) => ({ ...x, position: i + 1 }))
+
+    // 🔗 `sameAs` 는 엔티티 결합(검색엔진이 "이 가게가 그 인스타 계정" 임을 아는 것)의 유일한 수단이다.
+    //    🔴 **없는 계정을 가리키지 않는다** — 값이 없으면 키를 안 만든다(빈 배열도 안 낸다).
+    const sameAs = [sp?.website_url, sp?.sns_instagram, sp?.sns_youtube, sp?.sns_facebook, sp?.sns_twitter]
+      .map(v => String(v || '').trim())
+      .filter(v => /^https?:\/\//.test(v))
+
+    const org: Record<string, unknown> = { '@type': 'Organization', name, url: meta.canonical }
+    if (sp?.profile_image) org.image = String(sp.profile_image)
+    if (sameAs.length) org.sameAs = sameAs
+
+    const trail = withCrumbRoot(origin, [{ name, url: meta.canonical }])
+    const nodes: Array<Record<string, unknown>> = [
+      breadcrumbNode(trail, meta.canonical),
+      {
+        '@type': 'ProfilePage',
+        '@id': meta.canonical,
+        url: meta.canonical,
+        name: meta.title,
+        description: meta.description,
+        inLanguage: 'ko',
+        isPartOf: { '@id': `${origin}/#website` },
+        breadcrumb: breadcrumbRef(meta.canonical),
+        mainEntity: org,
       },
     ]
     if (items.length) {

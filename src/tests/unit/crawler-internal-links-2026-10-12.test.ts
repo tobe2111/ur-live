@@ -30,6 +30,7 @@ import { buildStaticSurfaceNoscript } from '@/worker/utils/crawler-noscript'
 import { canonicalDetailPath, FLOW_CONFIG } from '@/shared/product-flow'
 import { readFileSync } from 'node:fs'
 import { stripComments } from '../helpers/source-text'
+import { REGION_NOSCRIPT_ROWS } from '@/shared/seo/region-digest'
 
 // 🔁 2026-10-14 재조준: 행·링크 조립이 `crawler-noscript-rows.ts` 로 **추출**됐다(685줄 → 래칫 600).
 //    불변식(주소를 손으로 적지 않는다)은 그대로이므로 **두 파일을 함께** 읽는다 — 다시 옮겨도 안 깨진다.
@@ -121,16 +122,23 @@ describe('③ 탈출과 상한', () => {
     expect(s).not.toContain('onmouseover="x"')
   })
 
-  it('상한 8 — `<noscript>` 는 사람이 받는 응답에도 실린다', () => {
-    const many = JSON.stringify({ data: Array.from({ length: 12 }, (_, i) => ({ ...PASS, id: 3000 + i, name: `메뉴${i}` })) })
-    expect(lis(html('/map', many))).toBe(8)
-    // 🔀 2026-10-12 재조준: 지역 페이지는 상품 목록 뒤에 **자식 시군구 링크**(별도 `<ul>`)를
-    //   낸다. 이 상한이 지키려던 것은 **긴 상품 줄**(가게·메뉴·판매가)의 양이므로 그 목록에서
-    //   센다. 자식 링크는 짧은 라벨이고 상한이 따로 있다(아래 단언 + `regionChildLinks` 17).
+  it('상한이 있다 — `<noscript>` 는 사람이 받는 응답에도 실린다(요약이지 전량 덤프가 아니다)', () => {
+    // 🔀 2026-10-14 재조준: **상한 값이 표면별로 갈렸다.** 지역 페이지는 고아 상세 130건 수리로
+    //   `REGION_NOSCRIPT_ROWS`(30)가 됐고, 목록 네 표면(`/map`·`/stays` …)은 **8 그대로**다
+    //   (의도된 비대칭 — 그쪽은 홈과 같은 50행 시드를 쓰고 사람 트래픽 본류다).
+    //   🔑 지키려던 불변식은 "숫자 8" 이 아니라 **상한이 있다 · 전량이 아니다**이므로 상수에서
+    //   받아 재고, 두 표면이 각자의 상한을 지키는지 본다(한쪽 값을 다른 쪽에 베끼지 않는다).
+    const N = REGION_NOSCRIPT_ROWS + 4
+    const many = JSON.stringify({ data: Array.from({ length: N }, (_, i) => ({ ...PASS, id: 3000 + i, name: `메뉴${i}` })) })
+    expect(lis(html('/map', many)), '목록 표면은 8 그대로다').toBe(8)
+    // 지역 페이지는 상품 목록 뒤에 **자식 시군구 링크**(별도 `<ul>`)를 낸다. 이 상한이 지키려던
+    // 것은 **긴 상품 줄**(가게·메뉴·판매가)의 양이므로 그 목록에서 센다. 자식 링크는 짧은
+    // 라벨이고 상한이 따로 있다(아래 단언 + `regionChildLinks` 17).
     const uls = html('/region/서울', many).match(/<ul>[\s\S]*?<\/ul>/g) || []
     expect(uls.length, '목록이 두 벌(상품·자식)이어야 한다').toBe(2)
     const [items, kids] = [String(uls[0]), String(uls[1])]
-    expect(lis(items), '상품 줄이 8을 넘었다').toBe(8)
+    expect(lis(items), '지역 상품 줄이 상한을 넘었다').toBe(REGION_NOSCRIPT_ROWS)
+    expect(lis(items), '전량 덤프가 됐다').toBeLessThan(N)
     expect(lis(kids), '자식 링크가 상한을 넘었다').toBeLessThanOrEqual(17)
     // 자식 목록은 전부 지역 주소다(상품이 섞이면 상한 분리가 무의미해진다).
     expect(kids.match(/href="\/pass\//g)).toBeNull()

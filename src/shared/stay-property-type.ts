@@ -49,7 +49,14 @@ export function propertyTypeLabel(t?: string | null): string {
  *
  * ⚠️ 문구를 고칠 때는 **`STAY_TYPES[].desc` 가 이 표를 읽고 있는지** 확인할 것(가드가 대조한다).
  * ⚠️ 줄표(`—`)를 넣지 말 것 — 이 문구는 색인 대상 49건의 meta description 이 된다
- *    (anti-slop: 줄표는 가장 많이 지적되는 AI 티이고, `check-anti-slop-copy` 는 이 파일을 본다).
+ *    (anti-slop: 줄표는 가장 많이 지적되는 AI 티다).
+ *
+ * 🩸 **2026-10-14 정정 — 이 자리에 거짓 주장이 있었다.** 바로 위 줄이 *"`check-anti-slop-copy` 는
+ *    이 파일을 본다"* 고 적어 뒀는데 **사실이 아니었다**: 그 가드는 `.tsx` 페이지와
+ *    `src/shared/seo/*.ts` 만 훑었고, 줄표를 주입해도 `em-dash 0` 으로 통과했다(실측).
+ *    같은 날 그 가드의 범위에 이 파일을 **실제로 넣었고**(`EXTRA_COPY`) 자기검사 픽스처가
+ *    범위 축소를 잡는다. ⇒ 지금은 위 문장이 참이다. **가드가 본다고 적을 때는 주입해서 확인할 것** —
+ *    거짓 주장은 다음 세션이 없는 가드를 믿게 만든다(그게 이 레포가 반복해 당한 비용이다).
  */
 export const STAY_PROPERTY_TYPE_DESCS: Record<string, string> = {
   pension: '테라스에서 바비큐를 할 수 있는 독채형 펜션입니다. 옆 동과 떨어져 있어 조용히 쉬기 좋아요.',

@@ -192,6 +192,74 @@ describe('② 쇼핑 Offer.availability — 화면과 같은 술어', () => {
     expect(o?.['@type']).toBe('AggregateOffer')
     expect(o?.availability).toBe('https://schema.org/InStock')
   })
+
+  /**
+   * ⭐ 2026-10-14 — **정본이 사본보다 약했다.** 라이브 실측(Googlebot UA, 같은 상품의 두 URL):
+   *
+   *     /pass/2887  (사본, canonical → /stays/2887)   Product.aggregateRating  4.6(9)
+   *     /stays/2887 (정본)                            Product.aggregateRating  없음
+   *                                                   LodgingBusiness          4.6(9)
+   *
+   * 구글은 정본으로 통합하므로 숙소 **49건 전부**(실측: 객실 가격 있음 49 · 평점 보유 49)가
+   * Product 리치결과의 별점을 잃었다. 그리고 두 URL 이 같은 4.6 을 서로 **다른 엔티티의
+   * 평점**이라고 주장했다. 출처가 `products.avg_rating`·`review_count`(상품 컬럼)이므로
+   * `Product` 가 맞는 자리다 — 식사·쇼핑 경로와 `/pass` 사본이 이미 그렇게 한다.
+   */
+  describe('⭐ 숙소 평점은 Product 에 — 정본이 사본보다 약하지 않게', () => {
+    const stayWith = (rooms: Array<Record<string, unknown>>) => JSON.stringify({
+      success: true,
+      data: {
+        product: {
+          id: 2887, name: '평일 1박 숙박권', restaurant_name: '그랑블루',
+          restaurant_address: '강원 속초시 1', avg_rating: 4.6, review_count: 9, star_rating: 4,
+        },
+        rooms,
+      },
+    })
+    const ROOMS = [{ name: '스탠다드', base_price_weekday: 149000 }]
+    const graphOf = (json: string) => JSON.parse(json.replace(/<\\\/script/g, '</script'))['@graph'] as Array<Record<string, any>>
+    const pick = (g: Array<Record<string, any>>, t: string) => g.find(n => n['@type'] === t)
+
+    it('평점은 `Product` 가 갖는다 — 그 리치결과가 요구하는 자리다', () => {
+      const g = graphOf(buildStayDetailMeta(stayWith(ROOMS), O, '/stays/2887')!.jsonLd)
+      expect(pick(g, 'Product')?.aggregateRating).toEqual({
+        '@type': 'AggregateRating', ratingValue: 4.6, reviewCount: 9,
+      })
+    })
+
+    it('🔴 같은 리뷰를 두 엔티티에 선언하지 않는다 — 문서가 스스로 모순된다', () => {
+      const g = graphOf(buildStayDetailMeta(stayWith(ROOMS), O, '/stays/2887')!.jsonLd)
+      expect(g.filter(n => n.aggregateRating).map(n => n['@type'])).toEqual(['Product'])
+      // `starRating`(호텔 등급)은 다른 사실이라 숙소에 그대로 남는다.
+      expect(pick(g, 'LodgingBusiness')?.starRating).toBeTruthy()
+    })
+
+    it('`Product` 가 안 만들어지면(객실 가격 0) 평점을 잃지 않고 숙소가 든다', () => {
+      const g = graphOf(buildStayDetailMeta(stayWith([{ name: '문의', base_price_weekday: 0 }]), O, '/stays/2887')!.jsonLd)
+      expect(pick(g, 'Product'), '가격 없으면 Product 를 안 만든다').toBeUndefined()
+      expect(g.filter(n => n.aggregateRating).map(n => n['@type'])).toEqual(['LodgingBusiness'])
+    })
+
+    it('🔴 리뷰가 0이면 아무 노드도 평점을 안 낸다 — 0점짜리 상품이라고 말하지 않는다', () => {
+      const zero = JSON.stringify({
+        success: true,
+        data: {
+          product: { id: 1, name: '숙박권', restaurant_name: 'X', restaurant_address: '강원 속초시 1', avg_rating: 0, review_count: 0 },
+          rooms: ROOMS,
+        },
+      })
+      const g = graphOf(buildStayDetailMeta(zero, O, '/stays/1')!.jsonLd)
+      expect(g.filter(n => n.aggregateRating)).toEqual([])
+    })
+
+    it('사본(`/pass/:id`)과 정본(`/stays/:id`)이 같은 자리에 평점을 둔다', () => {
+      // 🔑 이 단언이 결함 자체다 — 두 URL 이 같은 4.6 을 다른 엔티티의 평점이라 말하면 안 된다.
+      const g = graphOf(buildStayDetailMeta(stayWith(ROOMS), O, '/stays/2887')!.jsonLd)
+      const src = readFileSync('src/worker/utils/detail-ssr-meta.ts', 'utf8')
+      expect(src, '식사·쇼핑 경로는 Product 에 둔다').toContain('product.aggregateRating = {')
+      expect(pick(g, 'Product')?.aggregateRating, '숙소도 같은 자리여야 한다').toBeTruthy()
+    })
+  })
 })
 
 describe('🎬 /urshorts — 색인 대상인데 크롤러 본문이 6자였다', () => {

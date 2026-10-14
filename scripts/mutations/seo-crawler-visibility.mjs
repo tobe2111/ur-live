@@ -94,9 +94,10 @@ export default [
     name: '🔎 유어샵 요약이 핀을 **중첩** 구조로 읽는다(조용히 비는 그 실수)',
     file: NS,
     // 🔁 2026-10-12 재조준 — 핀 한 줄 조립이 `row()` 헬퍼로 옮겨갔다(사업자 진열과 공유).
+    // 🔁 2026-10-14 재조준 — 그 헬퍼가 링크 인자(`hrefOf`)를 하나 더 받는다(#87).
     //   불변식 그대로: **평평한 시드를 중첩으로 읽으면 조용히 빈다**.
-    find: '    .map((pr) => row(pr.product_name || \'\', pr.restaurant_name, pr.price))',
-    replace: '    .map((pr) => row((pr as unknown as { product?: { name?: string } }).product?.name || \'\', pr.restaurant_name, pr.price))',
+    find: '    .map((pr) => row(pr.product_name || \'\', pr.restaurant_name, pr.price, hrefOf(pr.product_id, pr.category, pr.deal_only)))',
+    replace: '    .map((pr) => row((pr as unknown as { product?: { name?: string } }).product?.name || \'\', pr.restaurant_name, pr.price, hrefOf(pr.product_id, pr.category, pr.deal_only)))',
     test: TEST,
     why: '`pins[]` 는 평평하다 — 중첩으로 읽으면 전부 undefined 가 되는데 **에러가 안 난다**(처음 실제로 그랬다).',
   },

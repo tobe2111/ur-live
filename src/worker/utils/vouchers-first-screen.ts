@@ -171,7 +171,7 @@ export function buildVouchersFirstScreen(seedJson: string, loaderHtml: string, n
 
   const body =
     `<div class="${C.page}">` +
-    `<h1 class="sr-only">교환권 — 인기 브랜드 기프티콘을 딜로 즉시 구매</h1>` +
+    `<h1 class="sr-only">교환권 - 인기 브랜드 기프티콘을 딜로 즉시 구매</h1>` +
     `<div class="${C.hero}"></div>` +
     `<div class="${C.overlap}"><div class="${C.balanceBar}">` +
     `<span class="${C.balanceText}">딜을 모으면 더 싸게 살 수 있어요</span>` +

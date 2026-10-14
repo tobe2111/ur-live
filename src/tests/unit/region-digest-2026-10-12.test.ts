@@ -35,11 +35,11 @@
 import { describe, it, expect } from 'vitest'
 import { readCode } from '../helpers/source-text'
 import {
-  REGION_DIGEST_FIELDS, REGION_DIGEST_KV_KEY, REGION_DIGEST_PER_BUCKET, REGION_DIGEST_TTL_S,
+  REGION_DIGEST_FIELDS, REGION_DIGEST_KV_KEY, REGION_DIGEST_PER_BUCKET, REGION_NOSCRIPT_ROWS, REGION_DIGEST_TTL_S,
   buildRegionDigest, digestRowsOf, regionDigestApplies,
 } from '@/shared/seo/region-digest'
 import { buildStaticSurfaceNoscript } from '@/worker/utils/crawler-noscript'
-import { buildSurfaceListJsonLd } from '@/worker/utils/surface-list-jsonld'
+import { buildSurfaceListJsonLd, SURFACE_LIST_MAX } from '@/worker/utils/surface-list-jsonld'
 
 const worker = readCode('src/worker/index.ts')
 const cron = readCode('src/worker/cron/cache-prewarm.ts')
@@ -55,6 +55,9 @@ const META = { title: 't', description: 'd', canonical: 'https://urdeal.kr/x' }
  * 라이브 분포를 축소한 탐침 — **경기가 50건 시드에 한 건도 없던** 그 모양을 재현한다.
  * 서울이 앞을 다 차지하고 경기·충남·숙소가 뒤에 온다.
  */
+/** 묶음 상한보다 확실히 많게 — 상한을 재는 단언이 픽스처 크기에 끌려가지 않게. */
+const OVER_CAP = REGION_DIGEST_PER_BUCKET + 5
+
 function probeRows() {
   const rows: Record<string, unknown>[] = []
   let id = 1
@@ -65,13 +68,16 @@ function probeRows() {
     push({ name: `교환권${i}`, brand_name: 'GS25', category: '편의점', price: 300, deal_only: 1,
       restaurant_address: '서울특별시 중구 교환권로 1' })
   }
-  for (let i = 0; i < 60; i++) {
+  for (let i = 0; i < OVER_CAP * 2; i++) {
     push({ name: `서울상품${i}`, restaurant_name: `서울가게${i}`, category: 'meal_voucher',
       restaurant_address: `서울특별시 중구 세종대로 ${i}`, price: 10000 + i, original_price: 20000,
       image_url: '/api/media/a.jpg', slug: `demo-deal-${i}` })
   }
-  // 🔴 **같은 시/도의 다른 시군구** — 묶음 키가 시/도만 보면 이 20건이 통째로 탈락한다.
-  for (let i = 0; i < 20; i++) {
+  // 🔴 **같은 시/도의 다른 시군구** — 묶음 키가 시/도만 보면 이것이 통째로 탈락한다.
+  // 🔁 2026-10-14 재조준: 개수를 `OVER_CAP`(캡 + 5)에서 파생시켰다. 종전엔 `20` 이라 적어 둬서
+  //    캡이 10 → 30 으로 오르는 순간 **"정확히 캡" 단언이 깨졌다**(픽스처가 캡보다 작으면 그
+  //    단언은 상한을 재는 게 아니라 픽스처 크기를 잰다). 캡 값과 무관하게 의미가 서야 한다.
+  for (let i = 0; i < OVER_CAP; i++) {
     push({ name: `종로상품${i}`, restaurant_name: `종로가게${i}`, category: 'meal_voucher',
       restaurant_address: `서울특별시 종로구 율곡로 ${i}`, price: 12000 })
   }
@@ -89,7 +95,7 @@ function probeRows() {
     push({ name: `홍천식당${i}`, restaurant_name: `홍천가게${i}`, category: 'meal_voucher',
       restaurant_address: `강원특별자치도 홍천군 ${i}로`, price: 9000 })
   }
-  for (let i = 0; i < 15; i++) {
+  for (let i = 0; i < OVER_CAP; i++) {
     push({ name: `숙박권${i}`, restaurant_name: `글램핑${i}`, category: 'stay_voucher',
       restaurant_address: `강원특별자치도 홍천군 ${i}로`, price: 209000, original_price: 272000 })
   }
@@ -106,25 +112,25 @@ describe('① 요약이 색인 대상 지역을 실제로 담는다 (동작 판�
     expect(addrs.some(a => a.startsWith('충청남도 홍성군'))).toBe(true)
   })
 
-  it('묶음당 상한을 지킨다 — 서울 중구 60건이 10건으로', () => {
+  it('묶음당 상한을 지킨다 — 서울 중구에 상한보다 많이 넣어도 상한만큼만', () => {
     const seoul = rows.filter(r => String(r.restaurant_address || '').startsWith('서울특별시 중구'))
     expect(seoul.length).toBe(REGION_DIGEST_PER_BUCKET)
   })
 
   it('🔴 묶음은 **시군구까지** 가른다 — 같은 시/도의 다른 구가 통째로 탈락하지 않는다', () => {
-    // 시/도만 묶으면 서울 상한 10 이 중구에서 다 차고 종로구는 0 이 된다(시군구 32개 색인 페이지).
+    // 시/도만 묶으면 서울 상한이 중구에서 다 차고 종로구는 0 이 된다(시군구 32개 색인 페이지).
     const jongno = rows.filter(r => String(r.restaurant_address || '').startsWith('서울특별시 종로구'))
     expect(jongno.length).toBe(REGION_DIGEST_PER_BUCKET)
   })
 
   it('숙소 묶음이 따로 있다 — 그 시군구가 이미 꽉 찼어도 남는다', () => {
-    // 탐침의 숙소는 홍천군 식당 12건 **뒤**에 온다 — 전용 묶음이 없으면 0 건이 된다.
+    // 탐침의 숙소는 홍천군 식당 **뒤**에 온다 — 전용 묶음이 없으면 0 건이 된다.
     expect(rows.filter(r => r.category === 'stay_voucher').length).toBe(REGION_DIGEST_PER_BUCKET)
   })
 
   it('교환권(deal_only=1)은 **주소가 있어도** 지역 묶음 자리를 먹지 않는다', () => {
     expect(rows.some(r => Number(r.deal_only) === 1)).toBe(false)
-    // 탐침은 서울 중구 교환권 12건을 **맨 앞에** 둔다 — 세면 실제 매장 딜이 0 건이 된다.
+    // 탐침은 서울 중구 교환권을 **맨 앞에** 둔다 — 세면 실제 매장 딜이 그만큼 밀린다.
     const seoul = rows.filter(r => String(r.restaurant_address || '').startsWith('서울특별시 중구'))
     expect(seoul.length).toBe(REGION_DIGEST_PER_BUCKET)
   })
@@ -278,5 +284,57 @@ describe('⑦ cron 배선 — 위상·비용', () => {
     expect(REGION_DIGEST_KV_KEY).toMatch(/^ssr:/)
     expect(cron).toContain('REGION_DIGEST_KV_KEY')
     expect(worker).toContain('REGION_DIGEST_KV_KEY')
+  })
+})
+
+/**
+ * 🕳️ 2026-10-14 — **고아 상세 134건**(색인 상세 360건 중 내부 링크 도달 226건, 라이브 실측).
+ *
+ * 원인은 이 파일의 묶음 상한과 지역 `<noscript>` 행 상한이 **둘 다 작았던 것**이고, 둘은 짝이라
+ * 한쪽만 올리면 아무 일도 안 일어난다. 그래서 가드가 **관계**를 고정한다 — 값 자체가 아니라.
+ */
+describe('⑦ 지역 허브가 상세를 발견시킨다 (고아 수리)', () => {
+  it('🔗 두 상한은 짝이다 — noscript 행 ≤ 묶음 상한', () => {
+    // noscript 가 더 크면 그 초과분은 **요약에 없어서** 아무것도 못 낸다(조용한 무효).
+    // 반대로 묶음만 크면 KV 값만 커지고 출력이 안 는다.
+    expect(REGION_NOSCRIPT_ROWS).toBeLessThanOrEqual(REGION_DIGEST_PER_BUCKET)
+    // 그리고 종전 값(8)으로 되돌아가지 않는다 — 그게 고아를 만든 값이다.
+    expect(REGION_NOSCRIPT_ROWS).toBeGreaterThanOrEqual(20)
+  })
+
+  it('🔴 `ItemList` 상한은 안 따라 올라간다 — 리치결과 표시 ≠ 크롤 발견', () => {
+    // `ItemList` JSON 은 **사람이 받는 응답에도 그대로 실린다**(2026-10-11 에 20항목 10.3KB 를
+    // 10항목 5.4KB 로 내린 이유). `<noscript>` 행은 브라우저가 렌더조차 하지 않는다.
+    expect(SURFACE_LIST_MAX).toBe(10)
+    expect(SURFACE_LIST_MAX).toBeLessThan(REGION_NOSCRIPT_ROWS)
+  })
+
+  it('지역 페이지가 상한만큼 상세 링크를 낸다 — 8줄이 아니라', () => {
+    const digest = buildRegionDigest(probeRows())
+    const html = buildStaticSurfaceNoscript('/region/서울/중구', digest)
+    const hrefs = [...html.matchAll(/href="(\/(?:pass|stays|products)\/\d+)"/g)].map(m => m[1])
+    expect(hrefs.length).toBe(REGION_NOSCRIPT_ROWS)
+    expect(new Set(hrefs).size).toBe(hrefs.length)   // 같은 상세를 두 번 링크하지 않는다
+  })
+
+  it('지역 트리 전수에서 도달하는 상세가 묶음 상한을 따라 늘어난다', () => {
+    // 🔑 이 단언이 이 변경의 **출력**이다 — 상수 비교가 아니라 "몇 건이 발견되는가" 를 센다.
+    const digest = buildRegionDigest(probeRows())
+    const reach = new Set<string>()
+    for (const p of ['/region/서울', '/region/서울/중구', '/region/서울/종로구', '/region/경기',
+                     '/region/경기/파주시', '/region/충남/홍성군', '/region/강원/홍천군']) {
+      const html = buildStaticSurfaceNoscript(p, digest)
+      for (const m of html.matchAll(/href="(\/(?:pass|stays|products)\/\d+)"/g)) reach.add(m[1])
+    }
+    // 종전 상한(8)이면 7표면 × 8 = 최대 56 이고 겹침까지 생각하면 그보다 적다.
+    expect(reach.size).toBeGreaterThan(60)
+  })
+
+  it('목록 네 표면(`/map`·`/stays` …)은 8 그대로 — 의도된 비대칭', () => {
+    // 그 표면들은 **홈과 같은 50행 시드**를 쓰므로 올려도 새로 닿는 상세가 적고, `<noscript>` 가
+    // 사람 응답에도 실리는데 홈·지도는 사람 트래픽 본류다. 올리려면 문서 바이트를 먼저 재라.
+    const src = readCode('src/worker/utils/crawler-noscript.ts')
+    expect(src).toContain('if (rows.length >= 8) break')
+    expect(src).toContain('regionSeedRows(ssrPayload, ref).slice(0, REGION_NOSCRIPT_ROWS)')
   })
 })

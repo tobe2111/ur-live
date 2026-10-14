@@ -84,16 +84,43 @@ describe('① 항목은 색인 가능한 상세만 가리킨다', () => {
       .mainEntity.numberOfItems).toBe(2)
   })
 
-  it('항목을 내는 표면은 `/`·`/browse` 뿐 — 나머지는 시드를 줘도 빵부스러기만', () => {
-    const seed = mainSeed([PASS])
-    for (const p of ['/', '/browse']) {
-      expect(node(buildSurfaceListJsonLd(p, '', ORIGIN, { ...META, canonical: ORIGIN + p }, seed),
-        'CollectionPage'), `${p} 는 항목을 내야 한다`).toBeDefined()
+  // 🔁 2026-10-14 재조준 — 이 시험이 **두 가지로 낡아 있었다.** 이름은 *"`/`·`/browse` 뿐"* 인데
+  //   `/stays` 는 2026-10-12 에 허용목록에 들어갔고, 그런데도 초록이던 이유가 고약하다: 픽스처가
+  //   식사권 **1건**이라 `/stays` 의 `keepItem` 에 **어차피 걸러졌다**(= 그 표면을 허용목록에서
+  //   빼도 결과가 같다 ⇒ 판정 불가). 이 레포가 반복해 당한 *"데이터 탓으로 헛도는 가드"* 다.
+  //   ⇒ 표면마다 **항목이 생길 수 있는 시드**를 주고(숙소엔 숙소 행) 허용목록을 **동작으로** 센다.
+  //   지키려던 불변식(`/vouchers`·정적 표면은 시드를 줘도 항목 0)은 한 글자도 안 바꿨다.
+  it('항목을 내는 표면은 허용목록 넷뿐 — 나머지는 *낼 수 있는* 시드를 줘도 빵부스러기만', () => {
+    const STAY = { ...PASS, id: 3100, category: 'stay_voucher', name: '양양 풀빌라' }
+    // 두 종류를 함께 넣어 **어느 표면도 "어차피 걸러져서" 통과하지 못하게** 한다.
+    const seed = mainSeed([PASS, STAY])
+    for (const p of ['/', '/browse', '/stays', '/map']) {
+      const list = node(buildSurfaceListJsonLd(p, '', ORIGIN, { ...META, canonical: ORIGIN + p }, seed),
+        'CollectionPage')
+      expect(list, `${p} 는 항목을 내야 한다`).toBeDefined()
+      expect(list!.mainEntity.numberOfItems, `${p} 항목 0건`).toBeGreaterThan(0)
     }
-    for (const p of ['/vouchers', '/map', '/stays', '/faq', '/terms']) {
+    for (const p of ['/vouchers', '/faq', '/terms', '/experience', '/region']) {
       expect(node(buildSurfaceListJsonLd(p, '', ORIGIN, { ...META, canonical: ORIGIN + p }, seed),
         'CollectionPage'), `${p} 가 항목을 냈다`).toBeUndefined()
     }
+  })
+
+  // 🗺️ 2026-10-14: `/map` 은 **이미 크롤러 본문에서 그 항목들을 링크하고 있었다**(라이브 실측
+  //   `<a href="/pass/…">` 8건) 그런데 `ItemList` 가 0건이었다 — 구조화 신호만 빠진 누락.
+  //   `/stays` 와 달리 **필터가 없는 것이 의도다**: 동네딜 전부를 보여 주는 표면이라 이용권·숙소
+  //   둘 다 정당한 항목이고, 교환권만 `listItem` 이 행마다 걸러 낸다.
+  it('`/map` 은 이용권·숙소를 함께 내고 교환권만 빠진다', () => {
+    const json = buildSurfaceListJsonLd('/map', '', ORIGIN, { ...META, canonical: `${ORIGIN}/map` },
+      mainSeed([
+        PASS,
+        { ...PASS, id: 3100, category: 'stay_voucher', name: '양양 풀빌라' },
+        { ...PASS, id: 7001, name: '스타벅스 아메리카노', deal_only: 1, category: 'cafe' },
+      ]))
+    const list = node(json, 'CollectionPage')!.mainEntity
+    expect(list.itemListElement.map((x: Node) => x.url))
+      .toEqual([`${ORIGIN}/pass/2919`, `${ORIGIN}/stays/3100`])
+    expect(list.numberOfItems).toBe(2)
   })
 
   it('끝 슬래시(`/browse/`)도 같은 키로 본다 — 리졸버가 이미 떼고 찾는다', () => {
