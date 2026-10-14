@@ -36,15 +36,17 @@ describe('① 상단 띠 배너 자리(strip)', () => {
     expect(parseBannerSlot('')).toBeNull()
   })
 
-  it('두 홈 모두 첫 섹션 **위**에 그린다 (한쪽만 반영하면 두 홈이 갈린다)', () => {
-    for (const p of ['src/pages/mobile-home/MobileHomePage.tsx', 'src/pages/pc-home/PcHomePage.tsx']) {
-      const src = codeOnly(read(p))
-      const strip = src.indexOf('<HomeBannerStrip variant="strip" />')
-      const sections = src.indexOf('<HomeSections')
-      expect(strip, `${p}: strip 배너 미배선`).toBeGreaterThan(-1)
-      expect(sections, `${p}: HomeSections 없음`).toBeGreaterThan(-1)
-      expect(strip, `${p}: strip 이 첫 섹션 아래에 있다`).toBeLessThan(sections)
-    }
+  it('두 홈 모두 strip 배너를 맨 위 콘텐츠 앞에 그린다 (한쪽만 반영하면 두 홈이 갈린다)', () => {
+    const m = codeOnly(read('src/pages/mobile-home/MobileHomePage.tsx'))
+    const strip = m.indexOf('<HomeBannerStrip variant="strip" />')
+    expect(strip, '모바일: strip 배너 미배선').toBeGreaterThan(-1)
+    expect(strip, '모바일: strip 이 첫 섹션 아래에 있다').toBeLessThan(m.indexOf('<HomeSections'))
+    // 🧩 2026-10-14 시안 4: PC 는 같은 strip 배너를 `PcHeroBanners`(큰 1 + 작은 2)로 그리고, 그것이 맨 위다.
+    const pc = codeOnly(read('src/pages/pc-home/PcHomePage.tsx'))
+    const hero = pc.indexOf('<PcHeroBanners')
+    expect(hero, 'PC: 큰 배너 미배선').toBeGreaterThan(-1)
+    expect(hero).toBeLessThan(pc.indexOf('<PcTopRank'))
+    expect(codeOnly(read('src/pages/pc-home/PcHeroBanners.tsx'))).toContain("useHomeBanners('strip')")
   })
 
   it('등록된 배너가 없으면 아무것도 안 그린다 (대표 확정 "안 올리면 아예 안 보이게")', () => {

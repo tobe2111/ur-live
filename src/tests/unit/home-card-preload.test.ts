@@ -6,7 +6,7 @@ import {
   HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE,
   HOME_CARD_LG_QUERY, HOME_CARD_BASE_QUERY, HOME_CARD_ABOVE_FOLD,
 } from '@/shared/home-card-image'
-import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink } from '@/worker/utils/home-card-preload'
+import { buildHomeCardPreloadLinks, PC_HOME_SECTIONS_SHOWN, buildDetailHeroPreloadLink } from '@/worker/utils/home-card-preload'
 import { DETAIL_HERO_DESKTOP_WIDTH, DETAIL_PC_HERO_RATIO_MULTI, DETAIL_PC_HERO_RATIO_SINGLE, detailCropUrl, detailHeroMobileUrl } from '@/shared/detail-hero-image'
 
 /**
@@ -64,13 +64,15 @@ describe('홈 카드 사진 preload — 클라와 워커가 같은 URL 을 만�
       data: [{ products: [1, 2, 3, 4, 5, 6].map((n) => ({ image_url: `/api/media/uploads/demo/p${n}.jpg` })) }],
     })
     const links = buildHomeCardPreloadLinks(seed)
-    expect(links).toHaveLength(HOME_CARD_ABOVE_FOLD * 2)   // 5·6번째는 안 당긴다(eager 개수와 동일)
+    // 🧩 2026-10-14 시안 4: PC 홈이 섹션을 안 그리므로 4열(lg) 폭은 당기지 않는다 — 폰 폭만.
+    expect(PC_HOME_SECTIONS_SHOWN).toBe(false)
+    expect(links).toHaveLength(HOME_CARD_ABOVE_FOLD)   // 5·6번째는 안 당긴다(eager 개수와 동일)
     for (const l of links) {
       expect(l).toMatch(/^<link rel="preload" as="image" fetchpriority="high" media="/)
     }
     // 뷰포트별로 갈라 붙는다 — 하나로 합치면 한쪽이 반드시 어긋난다.
     expect(links.filter((l) => l.includes(HOME_CARD_BASE_QUERY))).toHaveLength(HOME_CARD_ABOVE_FOLD)
-    expect(links.filter((l) => l.includes(HOME_CARD_LG_QUERY))).toHaveLength(HOME_CARD_ABOVE_FOLD)
+    expect(links.filter((l) => l.includes(HOME_CARD_LG_QUERY))).toHaveLength(0)
   })
 
   it('시드가 깨져도 홈이 죽지 않는다 (fail-soft)', () => {

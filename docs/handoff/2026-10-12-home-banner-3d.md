@@ -32,3 +32,12 @@ Figma 크레딧 확인 → design 문서 표의 부산·강원·제주·경주 �
   🩸 `visual-preview` 는 `dist/client` 를 띄운다 — 소스 수정 후 **`npx vite build` 없이 재면 옛 값**을 잰다(박스 58→21 로 확인).
 - 대표 "시안은 2번과 3번이 섞이면 좋겠는데? 위 배너 부분은 3번" → 혼합안 `docs/design/assets/pc-home-s4.jpg` (구성: `pc-home-redesign-2026-10-13.md` 말미).
 - **다음 세션 첫 액션**: 대표가 시안 4 를 확정하면 PC 홈(`pages/pc-home/PcHomePage`) 을 [시안3 히어로 → TOP5 랭킹 → 지역 4칸 → 시안2 필터+그리드] 로 구현. 지금 PC 상단은 "한 줄 3장" 캐러셀(10-13 확정)인데 시안 4 는 큰 1 + 작은 2 — 이 교체가 첫 조각이다.
+
+## 2026-10-14 — PC 홈 시안 4 구현 (대표 "응 일단 이렇게 만들까?")
+- PR #1772(배너 글자 17/12) 머지 `827643f`.
+- PC 홈 재배치: `PcHeroBanners`(큰 1 + 작은 2, strip 배너) → `PcTopRank`(인기 10, 5장씩) → `PcRegionTiles`(지역 4칸) → `ur-home-panel` 안 `PcFeedSidebar` + `GroupBuyFeed filters`.
+  위치 칩은 히어로에서 왼쪽 필터로 이전(같은 `PcHomeLocationBar`). 히어로·편성 섹션·유어쇼츠 줄은 PC 에서 빠짐(모바일 불변).
+- 워커 히어로 preload: PC 가 띠를 안 그리므로 `buildHomeHeroPreloadLink` → null(`HERO_STRIP_RETIRED`). 워커 파일 무접촉.
+- 🩸 첫 렌더에서 순위·지역 제목·카드 글자가 **색면(--home-field) 위에서 안 보였다** — 그 두 줄도 `ur-home-panel` 에 담았다.
+- 가드 `pc-home-s4-2026-10-14.test.ts` (순서·대체물 부활 금지·필터 배선·예열 주소·필터 판정).
+- **다음 첫 액션**: 배포 후 `urdeal.kr` PC(1440)에서 큰 배너 화살표·1/5·자동 넘김, 순위 화살표, 지역 타일 → `/region/*`, 거리/가격 필터 확인(E4).

@@ -217,7 +217,8 @@ describe('③ 되돌리기 — 플래그 하나로 전부 꺼진다', () => {
     //    말고는 없다). 되돌리기 규칙이 지배하는 건 **편성 콘텐츠**(①섹션·③배너)이고, 히어로의
     //    편성 콘텐츠(어드민 배너)는 없으면 기본값으로 그려진다 — 아래 별도 항목이 그걸 고정한다.
     const renders: number[] = []
-    for (const comp of ['HomeSections', 'HomeBannerStrip']) {
+    // 🧩 2026-10-14 시안 4: PC 편성 콘텐츠 = 큰 배너(`PcHeroBanners`) + 가로 배너(`HomeBannerStrip wide`).
+    for (const comp of ['PcHeroBanners', 'HomeBannerStrip']) {
       const re = new RegExp(`<${comp}\\b`, 'g')
       for (let m = re.exec(page); m; m = re.exec(page)) renders.push(m.index)
     }
@@ -227,14 +228,17 @@ describe('③ 되돌리기 — 플래그 하나로 전부 꺼진다', () => {
     expect(ungated).toEqual([])
   })
 
-  it('히어로는 플래그와 무관하게 항상 그려진다 (위치·지도 칩이 사라지면 안 된다)', () => {
+  /**
+   * 🧩 2026-10-14 시안 4: 히어로가 사라지고 위치 칩은 **탐색 패널 왼쪽 필터**로 옮겼다.
+   *   불변식은 그대로다 — 플래그를 꺼도 지역 선택·현 위치·지도 진입이 홈에서 사라지면 안 된다.
+   */
+  it('위치 컨트롤(왼쪽 필터)은 플래그와 무관하게 항상 그려진다', () => {
     const page = code('src/pages/pc-home/PcHomePage.tsx')
-    const at = page.indexOf('<HomeHeroBanner')
+    const at = page.indexOf('<PcFeedSidebar')
     expect(at).toBeGreaterThan(-1)
-    // 히어로 렌더 앞 200자 안에 플래그 게이트가 붙어 있으면 안 된다(예전 형태로의 회귀).
     expect(page.slice(Math.max(0, at - 200), at)).not.toMatch(/HOME_SHOWCASE_ENABLED\s*&&\s*$/)
-    // 그리고 위치 컨트롤을 실제로 넘겨받아야 칩이 동작한다(넘기지 않으면 조용히 사라진다).
-    expect(page).toMatch(/<HomeHeroBanner[\s\S]{0,200}controls=\{/)
+    expect(page).toMatch(/<PcFeedSidebar[\s\S]{0,200}onLocate=\{handleLocate\}/)
+    expect(code('src/pages/pc-home/PcFeedSidebar.tsx')).toContain('to="/map"')
   })
 
   it('플래그가 feature-flags SSOT 에 있다', () => {

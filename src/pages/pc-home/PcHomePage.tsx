@@ -11,12 +11,14 @@ import PcHomeAppBand from './PcHomeAppBand'
 import { readHomeRegion, type HomeRegion } from './PcHomeLocationBar'
 import { readCachedLoc } from '@/shared/utils/cached-loc'
 import RegionLinkGrid from '@/components/region/RegionLinkGrid'
-import HomeHeroBanner from '@/components/home/HomeHeroBanner'
 import HomeBannerStrip from '@/components/home/HomeBannerStrip'
-import HomeSections from '@/components/home/HomeSections'
 import { resolveHomeNear, syncNearCookie } from '@/components/home/home-near'
-import UrShortsRail from '@/components/home/UrShortsRail'
 import { HOME_SHOWCASE_ENABLED, REGION_PAGES_ENABLED } from '@/shared/feature-flags'
+import type { FeedFilters } from '@/shared/home-feed-filters'
+import PcHeroBanners from './PcHeroBanners'
+import PcTopRank from './PcTopRank'
+import PcRegionTiles from './PcRegionTiles'
+import PcFeedSidebar from './PcFeedSidebar'
 
 /**
  * 🖥️ 2026-07-15 (대표 시안 — 당근 스타일 PC 홈): lg+ 전용 풀너비 홈.
@@ -27,6 +29,13 @@ import { HOME_SHOWCASE_ENABLED, REGION_PAGES_ENABLED } from '@/shared/feature-fl
  *   상단 네비는 전역 DesktopTopNav(홈 인지 — 풀폭 정렬) 가 담당 → 여기선 콘텐츠만.
  */
 
+/**
+ * 🧩 2026-10-14 (대표 확정 "시안 4" — *"시안은 2번과 3번이 섞이면 좋겠는데? 위 배너 부분은 3번이 마음에 들어"*
+ *   → *"응 일단 이렇게 만들까?"*): 위에서부터 [큰 배너 1 + 작은 배너 2] → [인기 이용권 순위] →
+ *   [어디로 갈까요? 지역 4칸] → [왼쪽 필터 + 4열 목록]. 시안 SSOT: `docs/design/pc-home-redesign-2026-10-13.md`.
+ *   ⚠️ 이 구성이 대체한 것: 히어로(색면 + 위치 칩 + 사진 띠) · 한 줄 세 장 배너 · 편성 섹션 · 유어쇼츠 줄.
+ *      위치 칩은 왼쪽 필터로 옮겼다(같은 부품). 모바일 홈은 그대로다.
+ */
 const SORT_CHIPS = [
   { key: 'popular',  label: '인기순' },
   { key: 'newest',   label: '최신순' },
@@ -84,7 +93,9 @@ export default function PcHomePage() {
   // '현 위치로 설정' → 거리순 정렬 + 지역필터 해제(가까운 딜을 전부 보여줌).
   const handleLocate = (loc: { lat: number; lng: number }) => { setUserLoc(loc); setRegion({}); setSort('near') }
   // 지역 드롭다운 선택 → 지역 필터 모드(거리순 해제).
-  const handleRegion = (r: HomeRegion) => { setRegion(r); setUserLoc(null); setSort((s) => (s === 'near' ? 'popular' : s)) }
+  const handleRegion = (r: HomeRegion) => { setRegion(r); setUserLoc(null); setSort((s) => (s === 'near' ? 'popular' : s)); setFilters((f) => ({ ...f, maxKm: null })) }
+  // 🎚️ 왼쪽 필터의 거리·가격(지역·종류는 위 state 가 맡는다). 위치를 풀면 거리 필터도 같이 푼다(판정 불가).
+  const [filters, setFilters] = useState<FeedFilters>({})
 
   return (
     /* 🎨 2026-08-19 (대표 확정 — 그루폰식 색면): PC 메인 배경을 브랜드 잉크(#16181C)로 덮고
@@ -98,74 +109,45 @@ export default function PcHomePage() {
         jsonLd={[organizationJsonLd, webSiteJsonLd]}
       />
 
-      {/* 🏠 ④ 히어로 (2026-08-19 대표 확정 — 통합형 190px) — 풀블리드, 컨테이너 **밖**.
-          위치·지도 칩이 이 안으로 들어갔으므로 **쇼케이스 플래그와 무관하게 항상 그린다**.
-          ⚠️ 예전처럼 `HOME_SHOWCASE_ENABLED &&` 로 감싸면 플래그를 끄는 순간 지역 선택·현 위치·
-          지도 진입이 홈에서 통째로 사라진다(칩이 여기 말고는 없다). 플래그가 지배하는 건
-          아래 ①섹션·③배너뿐이고, 히어로 **콘텐츠**(어드민 배너)는 없으면 기본값으로 그려진다. */}
-      <HomeHeroBanner controls={{ region, onRegionChange: handleRegion, onLocate: handleLocate, located: !!userLoc, locatedLabel: dong?.dong }} />
+      <div className="max-w-[1440px] mx-auto px-6 lg:px-8 pt-6 pb-10 flex flex-col gap-6">
+        {/* 🎯 2026-08-08 대표 규칙 유지 — 카테고리를 고르면 맨 위가 **그 카테고리**여야 한다(위 세 줄은 카테고리를 모른다).
+            상단 네비의 식사·미용·숙소는 `/?category=` 로 오므로, 그때는 아래 탐색 패널이 맨 위로 온다. */}
+        {category === 'all' && (
+          <>
+            {/* ① 큰 배너 1 + 작은 배너 2 — 배너가 없으면 아무것도 안 그린다(대표 규칙). */}
+            {HOME_SHOWCASE_ENABLED && <PcHeroBanners />}
+            {/* ② 인기 이용권 순위 · ③ 어디로 갈까요? — 모자라면(3장 미만·4곳 미만) 줄 자체를 안 그린다. */}
+            <PcTopRank />
+            {REGION_PAGES_ENABLED && <PcRegionTiles />}
+            {/* 어드민이 '가로 전체' 자리를 고른 배너가 있을 때만(없으면 null). */}
+            {HOME_SHOWCASE_ENABLED && <HomeBannerStrip variant="wide" />}
+          </>
+        )}
 
-      {/* 🖥️ 2026-07-19 (대표 — "왼쪽 카테고리보단 위에"): 좌측 레일 제거 → 풀너비. 카테고리는 상단 가로 바(PcHomeRail).
-          📐 2026-08-17 (대표 — "컴팩트하게, 여백이 많은 느낌" · 여기어때/그루폰 참고): 컨테이너 1600→1440
-          + 상하 여백 축소. 카드 밀도는 GroupBuyFeed pc 그리드(xl 5열·2xl 6열)와 짝. */}
-      {/* 🎫 2026-09-03 (대표 — "히어로 사진과 아래 흰색 공간 사이 공백을 없애줘"): `pt-4`(16px) 삭제.
-          히어로 사진은 `absolute inset-0` 이라 섹션 바닥이 곧 사진 바닥인데, 그 아래 16px 만큼
-          색면이 띠처럼 드러나 사진이 패널에 안 닿고 떠 보였다. 흰 패널이 사진 밑단에 그대로 물린다
-          (패널의 둥근 윗모서리가 그 이음매를 만든다 — 그루폰식 "색면 위 매대"). */}
-      <div className="max-w-[1440px] mx-auto px-6 lg:px-8">
-        <main className="min-w-0">
-          {/* 🗺️ 2026-08-19 (대표 확정 — 통합형 히어로): 여기 있던 **위치바 흰 패널(145px)**을 없앴다.
-              위치 선택·현 위치·지도 진입은 전부 히어로 안 칩으로 옮겼다 — 헤더 114 + 히어로 190 =
-              304px 만에 딜이 시작된다(이전 559px). 두 벌로 두면 어느 쪽이 진짜인지 갈린다. */}
-
-          {/* 🏠 ① 카테고리 섹션(+더보기) · ③ 중간 배너 (2026-08-04 대표 시안 승인).
-              어드민이 만든 섹션·배너가 하나도 없으면 **전부 null** → 아래 딜 그리드가 그대로
-              이어진다(대표 확정 "안 올리면 아예 안 보이게"). 되돌리기는 플래그 하나. */}
-          {/* 🎯 2026-08-08 (대표 — "카테고리 페이지를 눌러도 맨 위가 그 카테고리에 맞는 이용권이 안 나와.
-              UI 자체가 잘못됐어. 그 카테고리 이용권만 나와야지"): 쇼케이스 섹션·배너는 **어드민이 큐레이션한
-              홈 전용 편성**이라 카테고리를 모른다. 그래서 숙소를 눌러도 맨 위엔 그대로 남아 있었고,
-              카테고리로 걸러진 그리드는 그 **아래**에 있었다 — 화면 맨 위가 카테고리와 무관했던 이유.
-              ⇒ 카테고리를 고른 순간엔 숨긴다. 'all'(홈 기본)에서만 편성이 보인다. */}
-          {HOME_SHOWCASE_ENABLED && category === 'all' && (
-            <>
-              {/* 🎫 2026-09-05 (대표 "인기 이용권 섹션 위에 배너가 작게" — 시안 안 2): 첫 섹션 위 가로 카드.
-                  ⚠️ 모바일에만 두지 않는다 — 두 홈이 같은 섹션·같은 배너 자리를 쓰는데 한쪽만 반영하면
-                  이 레포가 이미 여러 번 겪은 "한쪽만 개선되는" 상태가 된다(더보기 링크가 그랬다). */}
-              <HomeBannerStrip variant="strip" />
-              <HomeSections
-                midBanner={<HomeBannerStrip variant="inline" />}
-                shortsRail={<UrShortsRail />}
-                near={near}
-              />
-              <HomeBannerStrip variant="wide" />
-            </>
-          )}
-
-          {/* 🏷️ 2026-08-08: 카테고리를 고르면 제목·설명이 **그 카테고리를 말한다.** 이전엔 숙소를 눌러도
-              제목이 "내 주변 가까운 딜"이라, 화면이 걸러졌다는 신호가 어디에도 없었다. */}
-          {/* 🎨 그루폰 구조 — 제목·정렬칩·그리드를 하나의 흰 패널에 담는다(색면 위에 뜬 매대). */}
-          <div className="ur-home-panel">
-          <header ref={gridHeaderRef} className="mb-3 scroll-mt-24">
+        {/* ④ 탐색 — 왼쪽 필터 + 목록(시안 2). 흰 패널 하나에 담는다(색면 위에 뜬 매대). */}
+        <div className="ur-home-panel !mb-0 flex gap-8 items-start">
+          <PcFeedSidebar
+            region={region} onRegionChange={handleRegion} onLocate={handleLocate}
+            located={!!userLoc} locatedLabel={dong?.dong}
+            category={category} onCategoryChange={setCategory}
+            filters={filters} onFiltersChange={setFilters}
+          />
+          <main className="min-w-0 flex-1">
+          {/* 🏷️ 2026-08-08: 카테고리를 고르면 제목이 **그 카테고리를 말한다**(걸러졌다는 신호). */}
+          <header ref={gridHeaderRef} className="mb-4 scroll-mt-24 flex items-center justify-between gap-4 flex-wrap">
+            <div>
             <h1 className="text-[24px] font-black tracking-tight text-gray-900 dark:text-white">
               {catLabel
                 ? `${catLabel} 이용권`
-                : userLoc ? (dong?.dong ? `${dong.dong} 주변 딜` : '내 주변 가까운 딜') : region.regionKey ? '이 지역 동네 딜' : '가까운 동네 딜'}
+                : userLoc ? (dong?.dong ? `${dong.dong} 근처 이용권` : '내 주변 가까운 딜') : region.regionKey ? '이 지역 동네 딜' : '가까운 동네 딜'}
             </h1>
-            {/* 🧹 2026-08-31: 기본 부제 "이용권 · 공동구매 · 교환권을 할인가로 바로 만나보세요." 삭제.
-                정보가 0인데 한 줄을 먹는다 — 모바일 홈에서 같은 이유로 지웠고, PC 만 남아 있었다.
-                카테고리를 고른 경우엔 **걸러졌다는 신호**라 유지한다(그건 정보다). */}
             {catLabel && (
               <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{`${catLabel} 이용권만 모아 봤어요.`}</p>
             )}
-          </header>
+            </div>
 
-          {/* 정렬 칩 — 현위치 설정 시 '가까운 순' 칩 노출(거리순).
-              🎨 2026-09-07 (대표 승인 — 홈 개선 안 B): 선택 = **브랜드 블루 면**.
-              종전엔 잉크 검정이었는데 지도 칩·유어샵 카테고리·교환권 카테고리는 전부 블루로 통일돼
-              있었다. 같은 서비스에서 "선택됨"이 두 색이면 사용자가 규칙을 못 배운다.
-              ⚠️ 바로 위 카테고리 칩(`GroupBuyFeed`)도 **같이** 바꿨다 — 한쪽만 바꾸면 같은 줄에
-                 선택 색이 둘이 되어 오히려 더 어긋난다. */}
-          <div className="flex items-center gap-2 mb-4 flex-wrap">
+          {/* 정렬 칩 — 제목 오른쪽(시안 2). 선택 = 브랜드 블루 면(2026-09-07 안 B — 서비스 공통). */}
+          <div className="flex items-center gap-2 flex-wrap">
             {userLoc && (
               <button
                 onClick={() => setSort('near')}
@@ -197,9 +179,9 @@ export default function PcHomePage() {
               )
             })}
           </div>
+          </header>
 
-          {/* 🏨 2026-07-20: 숙소 카테고리 = 제자리 필터(카테고리 클릭 무이동 원칙). 날짜·인원 검색은
-              명시적 배너 링크로만 /stays 이동(이전: 숙소 칩이 저절로 /stays 로 넘어가던 것 제거). */}
+          {/* 🏨 2026-07-20: 숙소 = 제자리 필터. 날짜·인원 검색은 명시적 링크로만 /stays 이동. */}
           {category === 'stay_voucher' && (
             <Link
               to="/stays"
@@ -210,9 +192,7 @@ export default function PcHomePage() {
             </Link>
           )}
 
-          {/* 딜 그리드 — 모바일 홈과 동일 GroupBuyFeed (pc 레이아웃).
-              GroupBuyFeed 하단에 '전체 동네딜 보기 →' 링크가 이미 포함됨(중복 방지 위해 여기선 미추가). */}
-          {/* 실측: 이 피드는 히어로·편성섹션 아래라 첫 행이 접힘 밖(모바일 1,605px / PC 1,385px) */}
+          {/* 딜 그리드 — 모바일 홈과 동일 GroupBuyFeed (pc 레이아웃). 접힘 아래라 firstScreen=false. */}
           <GroupBuyFeed
             pc
             firstScreen={false}
@@ -224,9 +204,10 @@ export default function PcHomePage() {
             districtKey={region.districtKey}
             userLoc={userLoc}
             sectionNearKey={near.key}
+            filters={filters}
           />
-          </div>
-        </main>
+          </main>
+        </div>
       </div>
 
       {/* 🗺️ 2026-08-03 (대표 — 여기어때 하단 링크 그리드 차용): 지역 텍스트 링크.

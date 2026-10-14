@@ -27,6 +27,7 @@ import type { Product } from './types'
 import { matchAddress, matchRegionCoords } from '@/shared/constants/korea-regions'
 import { addressInRegion, type RegionRef } from '@/shared/constants/region-slugs'
 import { parseUTCDate } from '@/utils/date'
+import { passesFeedFilters, feedFiltersKey, type FeedFilters } from '@/shared/home-feed-filters'
 
 interface FeedProduct extends Product {
   group_buy_current?: number
@@ -111,6 +112,7 @@ export default function GroupBuyFeed({
   regionRef,
   userLoc,
   sectionNearKey = '',
+  filters,
 }: {
   pc?: boolean
   /**
@@ -143,6 +145,8 @@ export default function GroupBuyFeed({
    *   때만 섹션 id 를 뒤로 민다 — 다른 위치의 시드면 그 카드는 지금 화면 위에 없다.
    */
   sectionNearKey?: string
+  /** 🎚️ 2026-10-14 PC 홈 왼쪽 필터(거리·가격) — 받아 둔 페이지 안에서 거른다. 미지정이면 출력 불변. */
+  filters?: FeedFilters
 } = {}) {
   const [categoryState, setCategoryState] = useState<CategoryKey>('all')
   const [sortState, setSortState] = useState<SortKey>('popular')
@@ -313,7 +317,7 @@ export default function GroupBuyFeed({
     const seen = new Set<number | string>()
     const out: FeedProduct[] = []
     const pushBand = (band: FeedProduct[], filterRegion: boolean) => {
-      const src = filterRegion ? band.filter(inRegion) : band
+      const src = (filterRegion ? band.filter(inRegion) : band).filter(p => passesFeedFilters(p, filters, userLoc))
       /**
        * 🖼️ 2026-09-06 (대표 — "메인에서 같은 이용권 사진이 두 번"의 나머지 절반):
        *   바로 위 편성 섹션('지금 인기 이용권'·'주말에 떠나는 숙소')에 이미 뜬 상품을
@@ -340,7 +344,7 @@ export default function GroupBuyFeed({
     // inRegion/sortBand 는 매 렌더 재생성(아래 deps 를 클로저) → deps 에 원천값만 나열.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     // regionRef 는 객체라 참조가 매 렌더 바뀔 수 있어 원시값으로 분해해 넣는다(무한 재계산 방지).
-  }, [items, extraPages, sort, userLoc, sectionIds, regionKey, districtKey, regionRef?.sido, regionRef?.sigungu])
+  }, [items, extraPages, sort, userLoc, sectionIds, regionKey, districtKey, regionRef?.sido, regionRef?.sigungu, feedFiltersKey(filters)])
 
   // 무한 스크롤 센티넬 — 바닥 근처 도달 시 다음 페이지 로드. page1 이 꽉 찼을 때(50개)만 활성.
   // 📜 2026-10-13: 첫 렌더는 몇 장만, 나머지는 load 뒤 한가할 때마다 몇 장씩(`useProgressiveCap`). 덜 그린 동안엔 센티넬을 끈다.
@@ -438,7 +442,9 @@ export default function GroupBuyFeed({
       ) : sorted.length === 0 ? (
         // 🛡️ 2026-05-20: 사용자 요청 — 빈 상태에서 인접 지역 공구 자동 노출.
         //   선택 카테고리에 결과 없으면 전체 카테고리로 자동 fallback fetch.
-        <EmptyStateWithFallback category={category} onReset={() => setCategory('all')} />
+        feedFiltersKey(filters).replace('|', '') ? (
+          <p className="px-4 py-16 text-center text-[15px] text-gray-500 dark:text-gray-400">조건에 맞는 이용권이 아직 없어요. 거리나 가격을 넓혀 보세요.</p>
+        ) : <EmptyStateWithFallback category={category} onReset={() => setCategory('all')} />
       ) : (
         <>
         {/* 🗺️ 2026-07-19: 지역 매칭 0 → 전체 폴백 사실을 명시(조용한 오표시 방지 — "부산인데 서울 딜?" 오해 차단). */}
@@ -490,17 +496,9 @@ export default function GroupBuyFeed({
         </div>
       )}
 
-      {/* 🏪 2026-09-15 (대표 — "피드 끝 한줄 안 1로 변경할 수 있나?"): 이 자리에 있던 알약 버튼
-          (2026-08-31 `🏪 유어딜에서 판매하세요`)을 **걷어냈다.** 없앤 게 아니라 **중복을 지웠다** —
-          2026-09-14 에 대표가 확정한 **안 1**(`SellOnUrdealRow`: 구분선 + 문장 + `시작하기 ›`)이
-          모바일 홈의 바로 아래(`MobileHomePage` 피드 다음)에 이미 있어서, 피드 끝에 **문이 둘**
-          겹쳐 있었다. 그것도 규칙이 서로 달랐다 — 알약은 `sellerEntryPath()`(셀러면 대시보드),
-          안 1 은 `seller_token` 있으면 미노출 + `/store/new`. 안 1 설계문서가 *"규칙이 둘이 되면
-          언젠가 갈린다"* 고 적어 둔 그 상태였고, 08-31 알약은 **안 1 이 생기기 2주 전** 물건이다.
-          ⇒ 남기는 쪽은 대표가 확정한 안 1. 여기(공유 피드)는 비운다.
-          ✅ 이 피드를 쓰는 다른 화면은 문이 안 사라진다 — `/region/*` 는 `SiteFooter` 를 달고
-             있고 그 안에 `/store/new`·`/partners` 가 있다(실측). 08-31 이 메우려던 구멍은
-             **푸터가 없는 모바일 홈**이었고, 그 자리는 안 1 이 맡는다. */}
+      {/* 🏪 2026-09-15 (대표 "피드 끝 한줄 안 1로"): 여기 있던 판매 알약을 걷어냈다 — 모바일 홈 바로 아래
+          `SellOnUrdealRow`(안 1)와 **문이 둘**로 겹쳤고 규칙도 달랐다. 공유 피드는 비운다
+          (`/region/*` 는 `SiteFooter` 가 `/store/new`·`/partners` 문을 이미 갖는다). */}
     </>
   )
 }
