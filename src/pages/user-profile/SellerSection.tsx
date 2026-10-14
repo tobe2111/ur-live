@@ -99,7 +99,7 @@ type Tool = 'payout' | 'tools' | 'pin' | 'bank' | 'page' | 'voucherNew'
  *
  * ## 🧹 그 조건이 충족돼서 내렸다 (2026-10-01, 대표 *"철거도 해주고"*)
  * 일곱 화면을 430px 로 전수 측정했다 — **가로스크롤 0 · 하드 클립 0 · 표 오버플로 0**
- * (결재 `docs/decisions/2026-09-28-my-stage2-sheet-teardown.md` §측정 3차). 폰에서 깨지지 않는다.
+ * (결재 `docs/decisions/archive/2026-09-28-my-stage2-sheet-teardown.md` §측정 3차). 폰에서 깨지지 않는다.
  * ⇒ 두 벌을 유지할 이유가 사라졌으므로 손수 시트 쪽을 지웠다. 도착지는 **대시보드 화면 하나**이고,
  *   마이를 벗어나지 않는다(`ToolPageSheet` 가 그 화면을 시트 안에서 그대로 렌더한다).
  *

@@ -1,7 +1,7 @@
 /**
  * 💸 **이용권 한 장에 매장 적립이 두 번** 이던 것 (2026-10-01)
  *
- * 결재: `docs/decisions/2026-09-30-voucher-credit-double-rail.md`
+ * 결재: `docs/decisions/archive/2026-09-30-voucher-credit-double-rail.md`
  * (대표 2026-10-01 *"최대한 이상적으로 다 해줘"*).
  *
  * ## 무엇이 깨져 있었나 — 결함이 **둘**이고 성질이 다르다

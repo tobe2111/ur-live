@@ -68,7 +68,7 @@ cron 하트비트 143건 → 실패 1 · 침묵 1(retired, 의도된 것) · CPU
 
 로컬 게이트가 빨간불이라 알았다(내 변경은 문서 1개뿐이었으니 **main 상태**였다). 수리까지 해서
 PR #1626 을 올렸는데, 그 직후 **main 이 `#1619` 로 같은 것을 이미 고쳐 놓은 것을 발견**했다
-(결재 `docs/decisions/2026-10-06-npm-audit-three-new-advisories.md` · 상태 **approved**).
+(결재 `docs/decisions/archive/2026-10-06-npm-audit-three-new-advisories.md` · 상태 **approved**).
 ⇒ **내 의존성 변경·면제 등재를 통째로 버리고**(`git reset --hard origin/main`) 이 기록만 남겼다.
 
 🔑 **그 세션이 나보다 정확했다 — 배울 점이 거기 있다.** 나는 `.audit-allowlist.json` 의
@@ -100,7 +100,7 @@ main 의 수리본에서도 지금 게이트가 ✅ 다(`source-map-js` 는 나�
 상향 — 둘 다 유효하고 main 쪽이 체인을 더 위에서 끊는다).
 
 ## 📬 결재함 — 19건 중 **열린 것 1건** (기한 지남)
-`docs/decisions/2026-10-02-expired-refund-not-booked.md` · 등급 C · 기한 **10-05(지남)**
+`docs/decisions/archive/2026-10-02-expired-refund-not-booked.md` · 등급 C · 기한 **10-05(지남)**
 > 만료 환불 cron 이 돈을 돌려줄 때 `orders.refunded_amount` 도 올릴까요? (기본안: 1번 = 올린다)
 
 지금 그 주문에 누군가 환불을 누르면 1,800 이 **또** 나간다(상한이 0 이라 전액이 다시 계산된다).

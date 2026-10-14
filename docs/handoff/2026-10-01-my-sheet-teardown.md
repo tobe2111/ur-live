@@ -1,7 +1,7 @@
 # 마이의 손수 시트 철거 — 같은 일에 화면이 하나가 됐다 (2026-10-01)
 
 **[E2 검증됨]** 대표 *"머지해줘. 하고나면 뭐 해야해? 철거도 해주고"*.
-PR #1602 를 머지(`9890cb4fa`)하고, 결재 `docs/decisions/2026-09-28-my-stage2-sheet-teardown.md`
+PR #1602 를 머지(`9890cb4fa`)하고, 결재 `docs/decisions/archive/2026-09-28-my-stage2-sheet-teardown.md`
 의 선택지 1(철거·권고)을 실행했다.
 
 ## 다음 세션의 첫 액션

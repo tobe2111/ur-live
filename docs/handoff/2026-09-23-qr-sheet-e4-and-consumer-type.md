@@ -75,7 +75,7 @@ QR 을 찌그러뜨리지 않는다.
 1. **②의 E4 판정**: 배포 후 `urdeal.kr` 의 이용권 지갑·QR 시트·결제 완료에서
    숫자가 Pretendard 로 뜨는지 + **시계가 초마다 안 흔들리는지**(연속 프레임 폭 비교).
 2. **대표 판단 대기 2건**(결재함):
-   `docs/decisions/2026-09-19-staging-gate-unperformable.md`(staging 게이트) ·
+   `docs/decisions/archive/2026-09-19-staging-gate-unperformable.md`(staging 게이트) ·
    `docs/decisions/2026-09-19-withholding-base-fee-deduction.md`(원천징수 과세표준).
 3. **막힌 것**: 운영자 신청→승인 워크스루는 대표가 셀러로 `/seller/gb/new` 에 로그인해야 진행된다
    (슬러그는 영구 주소라 먼저 정해야 한다).

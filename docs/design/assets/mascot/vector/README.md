@@ -1,6 +1,6 @@
 # 유달이 벡터 정본 (v1 · 2026-10-11)
 
-대표: *"벡터 원본으로도 만들어주고, 2번으로 너가 직접 벡터로 옮겨줘."* (결재 `docs/decisions/2026-10-11-udal-master-for-goods.md`)
+대표: *"벡터 원본으로도 만들어주고, 2번으로 너가 직접 벡터로 옮겨줘."* (결재 `docs/decisions/archive/2026-10-11-udal-master-for-goods.md`)
 
 확정 턴어라운드(정면 `../otter-view-front.png` · 옆 `otter-view-side.png` · 뒤 `otter-view-back.png`)를 보고 세션이 도형으로 다시 그렸다. **굿즈·인쇄의 정본은 이 SVG**이고, 생성 그림(PNG)은 화면용이다.
 

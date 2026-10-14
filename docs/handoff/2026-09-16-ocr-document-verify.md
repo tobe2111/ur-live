@@ -1,6 +1,6 @@
 # 서류 OCR — 읽고, 등록 매장과 맞춰 보기 (2026-09-16)
 
-대표가 Workers AI 바인딩을 켜면서 결재 `docs/decisions/2026-09-16-ocr-license-automation.md` 가
+대표가 Workers AI 바인딩을 켜면서 결재 `docs/decisions/archive/2026-09-16-ocr-license-automation.md` 가
 **승인**으로 닫혔다. 그 1차 구현.
 
 ## 다음 세션의 첫 액션

@@ -1,7 +1,7 @@
 /**
  * 🧾 **소급 기록** — 이미 환불한 이용권이 주문 장부에 안 적혀 있던 행을 메운다 (2026-10-06)
  *
- * 결재 `docs/decisions/2026-10-02-expired-refund-not-booked.md` (대표 "남은 것도 다 해줘").
+ * 결재 `docs/decisions/archive/2026-10-02-expired-refund-not-booked.md` (대표 "남은 것도 다 해줘").
  *
  * ## #1625 와 무엇이 다른가
  *

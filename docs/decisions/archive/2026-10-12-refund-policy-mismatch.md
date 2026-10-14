@@ -101,3 +101,5 @@ OFF · staging P17 전제). 할 수 없는 것을 약속하면 **고치려던 �
 주입 `scripts/mutations/refund-policy-truth-2026-10-13.mjs` 7건.
 
 ## 반영 커밋
+
+✅ **반영 확인(2026-10-14 실측 — origin/main 에 있는 커밋)**: `508ad614e` (#1756) /refund 재작성. 라이브 E4 미판정(`59b2f4919` #1757).

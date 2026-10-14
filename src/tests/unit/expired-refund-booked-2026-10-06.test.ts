@@ -1,7 +1,7 @@
 /**
  * 🧾 만료 환불을 **주문 장부에 적는다** — 같은 돈이 두 번 나가는 것을 막는다 (2026-10-06)
  *
- * 결재 `docs/decisions/2026-10-02-expired-refund-not-booked.md` (대표 2026-10-06 "모두 다 해줘").
+ * 결재 `docs/decisions/archive/2026-10-02-expired-refund-not-booked.md` (대표 2026-10-06 "모두 다 해줘").
  *
  * ## 무엇이 깨져 있었나 (2026-10-02 라이브 실측)
  *

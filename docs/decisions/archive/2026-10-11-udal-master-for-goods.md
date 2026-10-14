@@ -43,4 +43,6 @@
 → 벡터 정본은 2번(세션이 직접)으로 승인. 상표 출원은 보류(대표 검토 중).
 
 ## 반영 커밋
+
+✅ **반영 확인(2026-10-14 실측 — origin/main 에 있는 커밋)**: `f61eca25b` (#1692) 벡터 정본(`docs/design/assets/mascot/vector/`). ⚠️ 아래 `36423a1` 은 머지 전 브랜치 커밋이라 main 에 없다. 상표 출원은 보류(대표).
 `36423a1` 벡터 정본 v1 (`docs/design/assets/mascot/vector/`)

@@ -35,7 +35,7 @@
 **다른 환불 네 경로는 전부 그 칸을 올린다**(`refund.ts:189` · `order-refund.ts:335` ·
 `voucher-partial-refund.ts:90` · `order.routes.ts:838`) — 규칙이 없는 게 아니라 **한 자리가 규칙 밖**이다.
 
-⇒ 등급 C 라 **코드 미변경**. 결재 `docs/decisions/2026-10-02-expired-refund-not-booked.md`.
+⇒ 등급 C 라 **코드 미변경**. 결재 `docs/decisions/archive/2026-10-02-expired-refund-not-booked.md`.
 ⚠️ **가드는 수리와 같은 커밋에 박는다** — 지금 박으면 빨간불이거나 *"만료 환불은 이 칸을 안 쓴다"* 를
 단언해 **결함을 정답으로 동결**한다(2026-09-30 에 겪은 클래스). 가드 설계는 그 결재문 §기본안에 적어 뒀다.
 

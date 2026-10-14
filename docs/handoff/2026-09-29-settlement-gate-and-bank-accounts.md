@@ -48,7 +48,7 @@
 > 어드민 → `/admin/platform-settings` → 머니 스위치 **⑨ 자동정산에서 원장 기록분 제외** → `ON` → 저장
 
 **지금이 가장 안전하다** — 양쪽 레일의 정산행이 아직 0이라 켜도 아무 일이 안 일어나고, 이용권이
-팔린 뒤엔 이미 양쪽에 적힌 것을 손으로 맞춰야 한다. 결재 파일: `docs/decisions/2026-09-24-settlement-single-rail.md`
+팔린 뒤엔 이미 양쪽에 적힌 것을 손으로 맞춰야 한다. 결재 파일: `docs/decisions/archive/2026-09-24-settlement-single-rail.md`
 
 ---
 

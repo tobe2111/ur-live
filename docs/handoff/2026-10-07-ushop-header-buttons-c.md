@@ -37,5 +37,5 @@
 ## 남은 결정 / 대기
 
 - 대표가 직접 처리하기로 한 것(**재촉 금지**): 어드민 값 셋(brokered 5.5 · direct 11 ·
-  meal_voucher 5.5) · 잔여 950원(`seller:14`) · `docs/decisions/2026-10-02-expired-refund-not-booked.md`.
+  meal_voucher 5.5) · 잔여 950원(`seller:14`) · `docs/decisions/archive/2026-10-02-expired-refund-not-booked.md`.
 - 알고 있으나 안 고친 것: `ads:enrich-company` CPU 한도 실패(재발 빈도 미측정).

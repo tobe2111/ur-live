@@ -3,10 +3,10 @@
 대표: *"기본안대로 모두 승인 3,4번 은 빼고. 일단 그 2가지는 자세히 설명해줘 시안을 보여주면서 하거나"*
 
 ## 한 것
-1. **에이전시 몫 스위치 OFF** (`docs/decisions/2026-10-11-broker-share-switch-off.md`)
+1. **에이전시 몫 스위치 OFF** (`docs/decisions/archive/2026-10-11-broker-share-switch-off.md`)
    - 어드민에 이 스위치를 켜고 끄는 화면이 없다 → 세션이 어드민 API 로 `false` 로 바꾸고 다시 읽어 확인.
    - 다시 켤 때: `PUT /api/admin/tools/settings {"broker_share_enabled":"true"}` (조건: 에이전시 1단계 + S-BROKER).
-2. **업로드 천장 — 두 엔드포인트만** (`docs/decisions/2026-10-11-upload-body-limit.md`)
+2. **업로드 천장 — 두 엔드포인트만** (`docs/decisions/archive/2026-10-11-upload-body-limit.md`)
    - 등록증 2.2MB · 히어로 영상 10MB(+경계). 이미지 업로드는 1MB 그대로.
    - 값은 `src/shared/upload-limits.ts` `API_BODY_LIMIT_OVERRIDES` 한 곳(Map — 프로토타입 키 차단).
      워커 `bodyLimitByPath(apiBodyLimitFor)` · 업로드 라우트 · 클라 등록증 가드 4곳이 전부 여기서 받는다
