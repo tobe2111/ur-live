@@ -126,8 +126,14 @@ describe('④ 교환권 페이지 상단 배너(라안) — 홈 배너와 같은
     expect(c).toMatch(/const perView = single \? 1 : pcPerView/)
     expect(c).toMatch(/const SINGLE_CARD_CLS = '!aspect-\[4\/1\] lg:!w-full !py-3 \[&>span\]:hidden lg:\[&>span\]:block /)
     // 📏 대표 "문장은 한줄로": 제목은 한 줄 고정(폭 72% — 오른쪽 28% 는 그림 자리)
-    expect(c).toMatch(/\[&>strong\]:!line-clamp-1/)
-    expect(c).toMatch(/\[&>strong\]:!max-w-\[72%\]/)
+    // ✂️ 대표 "한 줄이거나, 끊는 자리를 정한 두 줄": 폭 54%(유달이 왼쪽) · 최대 두 줄 · 제목의 줄바꿈이 끊는 자리 · 낱말 단위
+    // 🔁 2026-10-14: 교환권 머리(hero) 클래스도 같은 토큰을 쓰게 돼 파일 전체 검색이 헛돈다 — 띠 상수만 본다.
+    const single = (c.match(/const SINGLE_CARD_CLS = '([^']*)'/) || [])[1] || ''
+    expect(single, 'SINGLE_CARD_CLS 를 못 찾았다 — 이 검사가 헛돈다').not.toBe('')
+    expect(single).toMatch(/\[&>strong\]:!line-clamp-2/)
+    expect(single).toMatch(/\[&>strong\]:!max-w-\[54%\]/)
+    expect(single).toMatch(/\[&>strong\]:!whitespace-pre-line/)
+    expect(single).toMatch(/\[&>strong\]:!\[word-break:keep-all\]/)
     // ↕️ 대표 "글자를 높이 기준으로 중앙에" — 띠는 세로 가운데, 아래 어둡게 까는 막 없음
     expect(c).toMatch(/SINGLE_CARD_CLS = '[^']*!justify-center[^']*\[&>div\]:hidden'/)
     // 넘김 버튼은 띠에서 위로 — 아래 오른쪽은 유달이 자리(라이브에서 "2/4" 가 유달이를 가렸다)
@@ -138,6 +144,12 @@ describe('④ 교환권 페이지 상단 배너(라안) — 홈 배너와 같은
     const v = read('src/pages/VouchersPage.tsx')
     expect(v.match(/<HomeBannerStrip variant="vouchers" \/>/g)?.length).toBe(2)
     expect(v).toMatch(/<div className="-mx-\[14px\]"><HomeBannerStrip variant="vouchers" \/><\/div>/)
-    expect(v).toMatch(/\{!embedded && <div className="ur-content-wide px-\[2px\] \[&:not\(:empty\)\]:pt-3"><HomeBannerStrip variant="vouchers" \/><\/div>\}/)
+    // 🔀 2026-10-14 안 C: 폰은 배너가 **머리**다(`VouchersHero` → `BannerHeroRail`, 같은 테이블·같은 캐러셀).
+    //   목록 위 띠는 쇼핑 탭 모드(탭 바가 머리일 때)로만 남는다.
+    expect(v).toMatch(/\{!embedded && !heroMode && <div className="ur-content-wide px-\[2px\] \[&:not\(:empty\)\]:pt-3"><HomeBannerStrip variant="vouchers" \/><\/div>\}/)
+    expect(v).toMatch(/\{heroMode && <VouchersHero>/)
+    const hero = read('src/pages/vouchers/VouchersHero.tsx')
+    expect(hero).toContain("useHomeBannersState('vouchers')")
+    expect(hero).toMatch(/<BannerHeroRail banners=\{banners\} \/>/)
   })
 })

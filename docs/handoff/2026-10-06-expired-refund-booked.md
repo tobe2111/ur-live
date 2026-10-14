@@ -1,7 +1,7 @@
 # 만료 환불을 주문 장부에 적는다 — 이중환불 구멍 (2026-10-06)
 
 대표 2026-10-06 **"모두 다 해줘"** 의 네 번째(마지막) PR. **머니 경로 · 등급 C · 단독 PR.**
-결재 `docs/decisions/2026-10-02-expired-refund-not-booked.md`(이 커밋에서 `approved`).
+결재 `docs/decisions/archive/2026-10-02-expired-refund-not-booked.md`(이 커밋에서 `approved`).
 
 ## 무엇이 깨져 있었나
 

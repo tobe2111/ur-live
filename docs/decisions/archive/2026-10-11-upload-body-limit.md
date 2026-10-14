@@ -67,4 +67,5 @@ PR #1710 에서 **이미지 업로드 전부를 압축으로** 해결했습니�
 - 값은 `src/shared/upload-limits.ts` `API_BODY_LIMIT_OVERRIDES` 한 곳 — 워커 미들웨어·업로드 라우트·클라 가드 넷이 전부 여기서 받는다.
 
 ## 반영 커밋
-<비워 둔다>
+
+✅ **반영 확인(2026-10-14 실측 — origin/main 에 있는 커밋)**: `268205c45` (#1765) `API_BODY_LIMIT_OVERRIDES`.

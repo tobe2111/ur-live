@@ -32,6 +32,7 @@ import { VoucherCard, VoucherRow, BrandChip, CategoryIcon, type VoucherProduct }
 import { ChipRowReserve, BrandStripReserve } from './vouchers/TopChromeReserve'
 import { GifticonBoxRailRow } from './vouchers/GifticonBoxEntry'
 import VouchersTopBar from './vouchers/VouchersTopBar'
+import VouchersHero from './vouchers/VouchersHero'
 import { SortMenu } from '@/components/ui/sort-menu'
 import { SORT_OPTIONS, type SortKey } from './vouchers/constants'
 import ShoppingGrid from './vouchers/ShoppingGrid'
@@ -95,6 +96,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   // 🖥️ 2026-07-16 (대표 — 카탈로그 PC 당근 그리드): /vouchers 모바일=1열 리스트, PC(lg+)=그리드(홈과 통일). gridMode 만 분기(나머지 chrome 불변).
   const isPc = useMediaQuery('(min-width: 1024px)')
   const gridMode = embedded || isPc
+  /** 🎟️ 2026-10-14 안 C — 모바일 /vouchers 의 머리 = 배너(쇼핑 탭이 숨겨진 동안). */
+  const heroMode = !embedded && SHOPPING_TAB_HIDDEN
   const [searchParams, setSearchParams] = useSearchParams()
   const brand = searchParams.get('brand') || ''
   // 🏭 2026-06-04 (사용자 요청): 홈(embedded)은 기본 카테고리를 '커피/음료' 로 — 첫 진입 시 커피 브랜드 먼저.
@@ -542,9 +545,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
     )
   }
 
-  // 🛡️ 2026-07-03 (대표 신고 — 모바일 쇼핑탭 하단 네비 실종): min-h-screen(=100vh) → min-h-[100dvh].
-  //   100vh 는 주소창 포함 '큰 뷰포트'라 카카오톡 인앱/일부 안드로이드 웹뷰에서 fixed 하단 네비를
-  //   화면 밖으로 밀어냄(CLAUDE.md 룰 #8). 정상 동작하는 홈(RestaurantMapPage)도 min-h-[100dvh] 사용.
+  // 🛡️ 2026-07-03: min-h-screen(=100vh) → min-h-[100dvh] — 100vh 는 인앱 웹뷰에서 하단 네비를 밀어낸다(룰 #8).
+  const balanceCard = <DealBalanceCard balance={dealBalance} loggedIn={!!userId} />  // 머리(안 C)든 탭 바 모드든 한 부품
   return (
     <div className={embedded ? '' : 'bg-warm dark:bg-[#11141C] pb-safe-nav md:pb-20 min-h-[100dvh]'}>
       {!embedded && (
@@ -554,38 +556,32 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           url={brand ? `/vouchers?brand=${encodeURIComponent(brand)}` : '/vouchers'}
         />
       )}
-      {/* 🔎 2026-07-29 (소비자 SEO 실측): 이 페이지엔 h1 이 **하나도 없었다** — 서빙 HTML 의 유일한 h1 은
-          index.html 의 숨겨진 인앱 차단 화면이었다. 탭바의 "교환권"은 <button>(탭)이라 제목이 될 수 없어,
-          문서 제목용 h1 을 시각적으로 숨겨 둔다(스크린리더·크롤러엔 노출). */}
+      {/* 🔎 2026-07-29: 문서 제목용 h1 — 화면엔 제목 줄이 없어(안 C) 시각적으로 숨긴다(스크린리더·크롤러엔 노출). */}
       <h1 className="sr-only">{brand ? `${brand} 교환권` : '교환권'} — 인기 브랜드 기프티콘을 딜로 즉시 구매</h1>
 
+      {/* 🎟️ 2026-10-14 대표 확정 안 C — 머리는 배너(검색·보관함이 그 위, 잔액 카드가 아래 끝에 걸침). 쇼핑 탭이
+          살아나면 교환권↔쇼핑 탭 바가 필요하므로 종전 구조로 돌아간다(플래그 하나). 근거: `./vouchers/VouchersHero`. */}
+      {!embedded && !SHOPPING_TAB_HIDDEN && <VouchersTopBar activeTab={activeTab} onVouchers={goToVouchers} onShopping={goToShopping} />}
+      {heroMode && <VouchersHero>{balanceCard}</VouchersHero>}
 
-      {/* 상단 바 — 제목(단일 표면) 또는 교환권↔쇼핑 스크롤스파이 탭 + [보관함][검색]. 홈(embedded)은 홈 헤더가 담당. */}
-      {!embedded && <VouchersTopBar activeTab={activeTab} onVouchers={goToVouchers} onShopping={goToShopping} />}
-
-      {/* 🎫 2026-06-23: 교환권 본문(잔액/카테고리/브랜드/리스트) — 항상 표시. 아래 쇼핑 섹션과 한 스크롤로 이어짐. */}
-      {/* 🛡️ 2026-05-28 (사용자 요청): 잔액 카드 + 카테고리 = scroll-up reveal 그룹 (headroom).
-            아래로 스크롤 시 숨김(콘텐츠 공간 최대화), 살짝 위로 올리면 둘 다 다시 내려옴.
-            sticky top-[45px] (헤더 바로 아래) + revealTop 따라 translateY. bg 는 페이지 배경과 동일 (콘텐츠 비침 방지).
-            🎫 2026-06-23 (대표 '가장 이상적으로'): 쇼핑 섹션에 있을 땐(activeTab==='shopping') 강제 숨김 —
-            쇼핑의 sticky 카테고리 바(top-[45px] 동일 슬롯)와 겹치지 않게 '한 번에 한 카테고리 바'만 상단에. */}
+      {/* 🛡️ 2026-05-28: scroll-up reveal 그룹(headroom) — 내리면 숨고 살짝 올리면 내려온다. 안 C 에선 칩 줄만
+            맨 위(top-0)에 붙는다(잔액은 배너에 걸쳐 있다). 쇼핑 섹션에 있을 땐 강제 숨김(카테고리 바는 한 번에 하나). */}
       <div
-        className="sticky top-[45px] z-20 bg-warm dark:bg-[#11141C]"
+        className={heroMode ? 'sticky top-0 z-20 bg-warm pt-1' : 'sticky top-[45px] z-20 bg-warm dark:bg-[#11141C]'}
         style={{
           transform: (revealTop && activeTab !== 'shopping') ? 'translateY(0)' : 'translateY(-110%)',
           transition: 'transform 0.25s ease',
           willChange: 'transform',
         }}
       >
-      {/* 🪙 2026-09-14 (대표 확정 — 안 A3 + 42px): 잔액 카드.
-            구조와 지운 문구의 사유는 `./vouchers/DealBalanceCard` 머리주석. 여기는 자리와 여백만. */}
-      <div className="ur-content-wide px-4 lg:px-8 pt-3">
-        <DealBalanceCard balance={dealBalance} loggedIn={!!userId} />
-      </div>
+      {/* 🪙 2026-09-14 잔액 카드(탭 바 모드) — 사유는 `./vouchers/DealBalanceCard` 머리주석. */}
+      {!heroMode && (
+        <div className="ur-content-wide px-4 lg:px-8 pt-3">
+          {balanceCard}
+        </div>
+      )}
 
-      {/* 🛡️ 2026-05-19: 카테고리 바 — 사용자 요청 (전체 탭 X, KT Alpha 분류 그대로).
-            2026-05-28: 자체 sticky 제거 — 위 reveal 그룹(wrapper)이 sticky 담당. */}
-      {/* 자리 예약 — 숫자가 아니라 같은 마크업으로(사유·실측: `./vouchers/TopChromeReserve`). */}
+      {/* 🛡️ 2026-05-19: 카테고리 바(KT Alpha 분류 그대로). 자리 예약 — 숫자가 아니라 같은 마크업으로(사유·실측: `./vouchers/TopChromeReserve`). */}
       {sections.length === 0 && !sectionsReady && <ChipRowReserve />}
       {sections.length > 0 && (
         <div className="bg-warm dark:bg-[#11141C]">
@@ -676,7 +672,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
         </div>
       )}
 
-      {!embedded && <div className="ur-content-wide px-[2px] [&:not(:empty)]:pt-3"><HomeBannerStrip variant="vouchers" /></div>}{/* 🎟️ 라안 — 모바일은 머리 아래·목록 위 */}
+      {!embedded && !heroMode && <div className="ur-content-wide px-[2px] [&:not(:empty)]:pt-3"><HomeBannerStrip variant="vouchers" /></div>}{/* 탭 바 모드에서만 — 안 C 에선 배너가 머리다 */}
       {/* 🎫 2026-06-20 (사용자: 상품 시작 지점 구별 안 됨): 브라우즈 chrome ↔ 상품 리스트 경계 명확화.
           구분선(border-t) + '상품' 섹션 헤더(카테고리/브랜드 + 개수) + 정렬을 상품 바로 위로. /vouchers 전용. */}
       {!embedded && (

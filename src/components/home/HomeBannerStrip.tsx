@@ -210,7 +210,7 @@ function prefersReducedMotion(): boolean {
  * `single` — PC 에서도 한 장씩(교환권 페이지 라안). 카드 폭은 칸 전체, 높이는 4:1 로 낮춘다
  *   (2:1 로 두면 PC 목록 칸 1,100px 에 550px 짜리 배너가 서서 목록이 첫 화면에서 사라진다).
  */
-function StripRail({ banners, single = false }: { banners: HomeBanner[]; single?: boolean }) {
+function StripRail({ banners, single = false, hero = false }: { banners: HomeBanner[]; single?: boolean; hero?: boolean }) {
   const rootRef = useRef<HTMLDivElement>(null)
   const railRef = useRef<HTMLDivElement>(null)
   const [active, setActive] = useState(0)
@@ -220,7 +220,7 @@ function StripRail({ banners, single = false }: { banners: HomeBanner[]; single?
   const [reduceMotion] = useState(prefersReducedMotion)
   const many = banners.length > 1
   const pcPerView = usePerView()
-  const perView = single ? 1 : pcPerView
+  const perView = single ? 1 : pcPerView  // 머리(hero)는 폰 전용이라 pcPerView 가 이미 1 이다
 
   /**
    * 순환용 — 맨 뒤에 **한 화면만큼**(모바일 1장 · PC 3장) 앞쪽 복제를 둔다. 복제 구간의 첫 칸에 서면
@@ -232,7 +232,7 @@ function StripRail({ banners, single = false }: { banners: HomeBanner[]; single?
 
   const stepPx = () => {
     const first = railRef.current?.firstElementChild as HTMLElement | null
-    return first ? first.offsetWidth + STRIP_GAP_PX : 0
+    return first ? first.offsetWidth + (hero ? 0 : STRIP_GAP_PX) : 0  // 머리(hero)는 간격 없이 끝에서 끝까지
   }
 
   /** 숫자는 스크롤 위치에서 파생한다 — 상태를 따로 들고 있으면 손가락과 어긋난다. */
@@ -313,9 +313,9 @@ function StripRail({ banners, single = false }: { banners: HomeBanner[]; single?
           onScroll={many ? onScroll : undefined}
           onPointerDown={many ? hold : undefined}
           onWheel={many ? hold : undefined}
-          className={`${STRIP_CLS.rail} ${many ? STRIP_CLS.railMany : ''}`}
+          className={`${STRIP_CLS.rail} ${many ? STRIP_CLS.railMany : ''} ${hero ? HERO_RAIL_CLS : ''}`}
         >
-          {slides.map((b, i) => <StripCard single={single} key={i >= banners.length ? `clone-${i}` : b.id} b={b} many={many} first={i < perView} clone={i >= banners.length} />)}
+          {slides.map((b, i) => <StripCard hero={hero} single={single} key={i >= banners.length ? `clone-${i}` : b.id} b={b} many={many} first={i < perView} clone={i >= banners.length} />)}
         </div>
       {many && (
         <>
@@ -331,7 +331,7 @@ function StripRail({ banners, single = false }: { banners: HomeBanner[]; single?
         </>
       )}
       {many && (
-        <div className={`absolute right-[26px] ${single ? 'top-2' : 'bottom-3'} flex items-center gap-2`}>{/* 🎟️ 교환권 띠: 아래 오른쪽은 그림(유달이·상품) 자리라 넘김 버튼은 위로 */}
+        <div className={`absolute right-[26px] ${single ? 'top-2' : 'bottom-3'} flex items-center gap-2 ${hero ? HERO_COUNTER_CLS : ''}`}>{/* 🎟️ 교환권 띠: 아래 오른쪽은 그림(유달이·상품) 자리라 넘김 버튼은 위로 */}
           {!reduceMotion && (
             <button
               type="button"
@@ -366,16 +366,37 @@ function StripRail({ banners, single = false }: { banners: HomeBanner[]; single?
  *   들어가면 넘친다 → 설명(`span`)은 PC 에서만 보인다(제목 한 줄이 이름표다).
  *   📏 같은 날 대표 *"문장은 한줄로 맞춰줘"*: 제목은 **언제나 한 줄**(폰 15px · PC 24px, 폭 72%).
  *   오른쪽 28% 는 그림(유달이·상품)의 자리라 글자가 거기까지 가지 않는다.
+ *   ✂️ 같은 날 대표 *"한줄로 끝내거나, 아니면 차곡차곡 모은 딜로 / 커피 어때요? 이렇게 2줄로. 지금 애매하게 끊기잖아"*:
+ *   72% 한 줄은 유달이(그림 56~76%) 위로 글자가 덮였다. ⇒ 폭은 **54%**(유달이 왼쪽까지), 줄은 **최대 두 줄**,
+ *   끊는 자리는 **제목에 적은 줄바꿈**이 정한다(`whitespace-pre-line`) — 어드민 제목에 Enter 를 넣으면 그 자리에서 끊긴다.
+ *   줄바꿈 없는 제목이 넘치면 **낱말 단위로만** 넘어간다(`keep-all` — 한글 글자 중간에서 끊지 않는다).
  *   ↕️ 같은 날 대표 *"글자를 높이 기준으로 중앙에"*: 띠는 낮아서(폰 ~90px) 글자를 세로 가운데에 둔다.
  *   아래를 어둡게 까는 막(`div` scrim)은 띠에선 뺀다 — 글자가 아래에 있지 않으니 받칠 게 없고,
  *   남겨 두면 오른쪽 아래 상품 카드만 칙칙해진다(라이브에서 확인).
  */
-const SINGLE_CARD_CLS = '!aspect-[4/1] lg:!w-full !py-3 [&>span]:hidden lg:[&>span]:block [&>strong]:!max-w-[72%] [&>strong]:!line-clamp-1 [&>strong]:!text-[15px] lg:[&>strong]:!text-[24px] !justify-center [&>div]:hidden'
+/**
+ * 🎟️ 교환권 **머리 배너** (2026-10-14 대표 확정 안 C "배너가 머리" — 모바일). 같은 캐러셀을 화면 끝에서 끝까지,
+ *   높이 196px 로 쓴다. 위 오른쪽엔 검색·보관함이 떠 있고 아래 28px 엔 잔액 카드가 걸쳐 올라온다
+ *   (`pages/vouchers/VouchersHero`). 그래서 글자는 **왼쪽 위**(아이콘 줄 아래)에 서고 숫자 알약도 왼쪽 위로 간다.
+ *   사진은 **오른쪽에 붙여** 자른다 — 4:1 그림의 주인공(유달이·상품)이 오른쪽 28% 에 있다(`BANNER_SLOT_SPECS.vouchers`).
+ *   기존 클래스를 덮어쓰는 방식(`!`)이라 홈 배너·교환권 PC 띠의 클래스 문자열은 한 글자도 안 바뀐다.
+ *   ⚠️ 196 은 `VOUCHERS_HERO_CLS.hero`(예약 판)·서버 첫 화면과 같은 값이어야 한다 — 시험이 대조한다.
+ */
+export const HERO_CARD_CLS = '!aspect-auto !h-[196px] !rounded-none !justify-start !pt-[60px] [&>img]:object-right [&>div]:!h-full [&>div]:!bg-gradient-to-r [&>strong]:!max-w-[60%] [&>strong]:!leading-[1.35] [&>strong]:!whitespace-pre-line [&>strong]:![word-break:keep-all] [&>span]:hidden'
+const HERO_RAIL_CLS = '!gap-0 !px-0 !scroll-px-0'
+const HERO_COUNTER_CLS = '!right-auto !bottom-auto left-4 !top-3'  // top·bottom 둘 다 걸리면 세로로 늘어나 알약이 가운데로 온다(실측)
+
+/** 머리 배너 — 교환권 페이지 맨 위(모바일). 0장이면 부르는 쪽이 안 그린다. */
+export function BannerHeroRail({ banners }: { banners: HomeBanner[] }) {
+  return <StripRail banners={banners.slice(0, STRIP_BANNER_MAX)} hero />
+}
+
+const SINGLE_CARD_CLS = '!aspect-[4/1] lg:!w-full !py-3 [&>span]:hidden lg:[&>span]:block [&>strong]:!max-w-[54%] [&>strong]:!line-clamp-2 [&>strong]:!whitespace-pre-line [&>strong]:![word-break:keep-all] [&>strong]:!leading-snug [&>strong]:!text-[15px] lg:[&>strong]:!text-[24px] !justify-center [&>div]:hidden'
 
 /** 카드 한 장 — 흰 글자를 왼쪽 아래에(야놀자 문법). 카드 전체가 누르는 자리다. */
-function StripCard({ b, many, first, clone, single = false }: { b: HomeBanner; many: boolean; first: boolean; clone?: boolean; single?: boolean }) {
+function StripCard({ b, many, first, clone, single = false, hero = false }: { b: HomeBanner; many: boolean; first: boolean; clone?: boolean; single?: boolean; hero?: boolean }) {
   const link = bannerLink(b)
-  const bg = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS[single ? 'vouchers' : 'strip'].requestWidth, quality: 76 }) : ''
+  const bg = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS[single || hero ? 'vouchers' : 'strip'].requestWidth, quality: 76 }) : ''
   return (
     <BannerWrap
       link={link}
@@ -384,7 +405,7 @@ function StripCard({ b, many, first, clone, single = false }: { b: HomeBanner; m
          🩸 `w-[calc(100%-1.75rem)]` 로 쓰면 **거터가 두 번 빠진다** — `w-full` 이 맞다(= 362 × 181, 2:1).
          📍 `justify-end` + 아래 여백 — 글자가 카드 **아래**에 앉는다(가운데에 뜨면 사진의 주인공을 가린다). */
       /* shape-lock-ok — 14px 는 임의값이 아니라 `.ur-home-panel`(모바일) 의 radius 와 **같은 값**이다. */
-      className={`relative ${many ? STRIP_CLS.cardMany : STRIP_CLS.cardOne} ${many ? PC_CARD_W : ''} ${STRIP_CLS.card} ${single ? SINGLE_CARD_CLS : ''}`}
+      className={`relative ${many ? STRIP_CLS.cardMany : STRIP_CLS.cardOne} ${many ? PC_CARD_W : ''} ${STRIP_CLS.card} ${single ? SINGLE_CARD_CLS : ''} ${hero ? HERO_CARD_CLS : ''}`}
       /* 🎨 사진이 없으면 **브랜드 면**(대표 확정 "E"). */
       style={bg ? undefined : { background: 'var(--brand-grad)' }}
     >

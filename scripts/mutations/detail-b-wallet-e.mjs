@@ -87,10 +87,11 @@ export default [
       '**번호가 화면 어디에도 없어진다** — 지우는 쪽은 에러가 안 난다.',
   },
   {
-    name: '[상세B지갑E] 🎫지갑이 다시 전부 펼친 티켓이 된다',
+    // 🔀 2026-10-14 대표 확정 안 B: 전부 줄로 — 이제 막는 쪽은 '펼친 티켓으로 되돌아가는 것'이다.
+    name: '[상세B지갑E] 🎫지갑이 다시 첫 장만 펼친 티켓이 된다',
     file: 'src/pages/MyVouchersPage.tsx',
-    find: `                    <VoucherTicket key={shown[0].id} v={shown[0]} muted={false} locale={locale} t={t} onShowQr={() => setQrVoucher(shown[0])} />`,
-    replace: `                    {shown.map(v => <VoucherTicket key={v.id} v={v} muted={false} locale={locale} t={t} onShowQr={() => setQrVoucher(v)} />)}`,
+    find: `                    {shown.map(v => <WalletRow key={v.id} v={v} t={t} onOpen={() => setQrVoucher(v)} />)}`,
+    replace: `                    <VoucherTicket key={shown[0].id} v={shown[0]} muted={false} locale={locale} t={t} onShowQr={() => setQrVoucher(shown[0])} />{shown.slice(1).map(v => <WalletRow key={v.id} v={v} t={t} onOpen={() => setQrVoucher(v)} />)}`,
     test: TEST,
     why:
       '안 E 의 전부다. 되돌려도 화면은 멀쩡하고 오히려 "정보가 더 많아 보인다" — ' +
@@ -119,8 +120,8 @@ export default [
   {
     name: '[상세B지갑E] 🎫접힌 줄 오른쪽에 장별 가격이 되돌아온다 (2026-10-07 남은 기간으로 교체)',
     file: 'src/pages/my-vouchers/WalletRow.tsx',
-    find: `{d === 0 ? 'D-DAY' : `,
-    replace: `{v.applied_price}{d === 0 ? 'D-DAY' : `,
+    find: `d === 0 ? 'D-DAY' : `,
+    replace: `v.applied_price ? String(v.applied_price) : d === 0 ? 'D-DAY' : `,
     test: TEST,
     why:
       '지갑 A안에서 금액은 머리글 합계 한 번만 말한다. 줄마다 가격을 다시 적으면 같은 말의 반복이고, ' +

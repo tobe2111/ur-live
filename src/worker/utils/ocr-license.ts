@@ -1,7 +1,7 @@
 /**
  * 🔍 서류 OCR — 사업자등록증 · 영업신고증 두 축.
  *
- * 2026-09-16 (결재 `docs/decisions/2026-09-16-ocr-license-automation.md`,
+ * 2026-09-16 (결재 `docs/decisions/archive/2026-09-16-ocr-license-automation.md`,
  * 대표가 Pages `ur-live` production 에 Workers AI 바인딩을 켜며 착수).
  *
  * ## 이 파일이 하는 일은 딱 하나 — **읽기**

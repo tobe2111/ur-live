@@ -122,3 +122,5 @@ scripts/mutations/mall-payment-flow.mjs      주입 7건 — 전부 되돌려-�
 
 
 ## 반영 커밋
+
+✅ **반영 확인(2026-10-14 실측 — origin/main 에 있는 커밋)**: `ca1f80e80` (#1526) STAGING_CHECKLIST 머리말 ⓐ~ⓓ 규칙.

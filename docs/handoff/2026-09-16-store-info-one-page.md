@@ -73,4 +73,4 @@ CLAUDE.md 의 god 파일 룰(600줄)을 이 세션이 두 번 넘겼다(앞문 �
 
 - `/seller/profile` 의 죽은 핸들러 3종 정리(위 2번) — 별건.
 - `/seller/business-info` 는 **일부러 합치지 않았다**(심사·정산·PIN 인증 — 성격이 다르다).
-- OCR 결재 `docs/decisions/2026-09-16-ocr-license-automation.md` — 대표가 Workers AI 바인딩을 켜야 시작.
+- OCR 결재 `docs/decisions/archive/2026-09-16-ocr-license-automation.md` — 대표가 Workers AI 바인딩을 켜야 시작.

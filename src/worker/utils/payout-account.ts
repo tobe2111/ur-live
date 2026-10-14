@@ -1,7 +1,7 @@
 /**
  * 💸 **원장 계정 ↔ 지급 대상(payee) 규칙 SSOT** (2026-10-01).
  *
- * 결재: `docs/decisions/2026-09-30-voucher-credit-double-rail.md` (대표 2026-10-01 *"최대한 이상적으로 다 해줘"*).
+ * 결재: `docs/decisions/archive/2026-09-30-voucher-credit-double-rail.md` (대표 2026-10-01 *"최대한 이상적으로 다 해줘"*).
  *
  * ## 무엇이 깨져 있었나 (라이브 실측 2026-09-30)
  *

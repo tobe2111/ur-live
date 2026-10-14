@@ -135,12 +135,12 @@ describe('상세 안 B — 표면이 두 톤이다', () => {
 })
 
 describe('지갑 안 E — 급한 한 장만 펴고 나머지는 한 줄', () => {
-  it('사용 가능 목록이 첫 장만 티켓, 나머지는 WalletRow 다', () => {
+  // 🔀 2026-10-14 대표 확정 안 B 가 안 E 의 '첫 장만 펼친 티켓'을 대체했다 — 같은 물건이 첫 장만 다르게 보였다.
+  //   불변식은 "사용 가능 목록은 펼친 티켓이 아니라 줄" 로 넓어졌다(첫 장도 포함).
+  it('사용 가능 목록은 전부 같은 한 줄(WalletRow)이다 — 첫 장만 펼친 티켓으로 되돌아가지 않는다', () => {
     const src = readCode(WALLET)
-    expect(src, '목록이 다시 전부 펼친 티켓이 됐다').toMatch(/shown\[0\]/)
-    expect(src, '접힌 줄(WalletRow)이 사라졌다').toMatch(/<WalletRow\b/)
-    expect(src, '나머지를 slice(1) 로 넘기지 않는다 — 첫 장이 두 번 나온다')
-      .toMatch(/shown\.slice\(1\)/)
+    expect(src, '모든 이용권을 줄로 그리지 않는다').toMatch(/shown\.map\(v => <WalletRow\b/)
+    expect(src, '첫 장만 펼친 티켓이 되돌아왔다').not.toMatch(/shown\[0\]/)
   })
 
   it('접힌 줄을 누르면 같은 QR 모달이 열린다 (접기이지 삭제가 아니다)', () => {

@@ -122,4 +122,5 @@ SELECT COUNT(*) n, COALESCE(SUM(price),0) won FROM youtube_growth_requests;   --
 
 ## 반영 커밋
 
-<비워 둔다>
+✅ **반영 확인(2026-10-14 실측 — origin/main 에 있는 커밋)**: `9573f1bd3` (#1563) consignment·youtube-growth 은퇴 · 이후 `90290546a` (#1735) 셀러 대시보드 전체 삭제.
+

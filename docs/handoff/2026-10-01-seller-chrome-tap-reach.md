@@ -21,7 +21,7 @@ done
 |---|---|---|
 | ① | 셀러 일곱 화면 430px 측정 **완결** — 전부 🟢 | 가로스크롤·하드 클립·표 오버플로 **일곱 모두 0** |
 | ② | 공용 chrome 탭 타깃 **40px** (`ur-btn-md` 눈금) | 네 자리: 배너 닫기 24→40 · 배너 CTA 32→40 · 헤더 검색 32→40 · 알림 벨 36→40 |
-| ③ | 철거 판단 재료 → 결재문 `측정 3차` | `docs/decisions/2026-09-28-my-stage2-sheet-teardown.md` |
+| ③ | 철거 판단 재료 → 결재문 `측정 3차` | `docs/decisions/archive/2026-09-28-my-stage2-sheet-teardown.md` |
 | 🔀 | 시드 기제 **둘 → 하나** | `--seller-work` 를 `--seller-lists` 별명으로, 데이터는 모듈 하나 |
 
 가드: `seller-chrome-tap-reach-2026-10-01` 4건 + `seller-list-fixtures-2026-10-01` +2건 ·

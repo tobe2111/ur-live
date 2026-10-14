@@ -1,7 +1,7 @@
 /**
  * 🧾 서류 ↔ 등록 매장 대조 — OCR 결과를 사람이 1초에 볼 수 있는 형태로 만든다.
  *
- * 2026-09-16 (결재 `docs/decisions/2026-09-16-ocr-license-automation.md`).
+ * 2026-09-16 (결재 `docs/decisions/archive/2026-09-16-ocr-license-automation.md`).
  *
  * ## 무엇과 무엇을 맞추나 — 결재 문서의 계획을 실측으로 고쳤다
  *

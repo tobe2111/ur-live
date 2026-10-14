@@ -455,7 +455,7 @@ sellers.linked_user_id → 비움 (두 신호가 다른 사람을 가리키지 �
 
 ## 9. ✅ 확정 플로우 — 대행사(중개사) → 매장 → 인플루언서 (2026-09-19 대표 확정 · PR #1499 구현)
 
-결재 정본 `docs/decisions/2026-09-19-agency-flow-final.md` · 대표 문장 원문 `2026-09-19-broker-matching-flow.md` · 구조 표 `urdeal-platform-model.md` §2-1 🔑.
+결재 정본 `docs/decisions/archive/2026-09-19-agency-flow-final.md` · 대표 문장 원문 `2026-09-19-broker-matching-flow.md` · 구조 표 `urdeal-platform-model.md` §2-1 🔑.
 여기엔 **이 모델(§4·§7·§8)에서 무엇이 달라졌는가**만 적는다.
 
 | 자리 | §8 까지 | 09-19 (#1499) |

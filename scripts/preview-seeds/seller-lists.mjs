@@ -1,7 +1,7 @@
 /**
  * 🪑 **셀러 목록 API 시드** — 마이의 판매 시트 일곱을 폰 폭에서 실제로 재기 위한 픽스처.
  *
- * 결재: `docs/decisions/2026-09-28-my-stage2-sheet-teardown.md`
+ * 결재: `docs/decisions/archive/2026-09-28-my-stage2-sheet-teardown.md`
  * (대표 2026-09-30 "측정부터 (권장)" → 2026-10-01 "최대한 이상적으로 다 해줘").
  *
  * ## 왜 필요한가 — 1차 측정이 **빈 화면을 재서** 헛돌았다

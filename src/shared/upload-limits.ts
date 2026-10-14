@@ -18,7 +18,7 @@
  * ⚠️ 천장을 올리려면 `worker/index.ts` 를 바꿔야 한다(**잠금표 파일 — 대표 승인 필요**) +
  *   무인증 파싱 증폭(DoS) 표면이 넓어진다. 그 판단은 `docs/decisions/` 로 올린다.
  *
- * ✅ 2026-10-13 대표 승인(*"기본안대로 모두 승인"* — `docs/decisions/2026-10-11-upload-body-limit.md` 안 1):
+ * ✅ 2026-10-13 대표 승인(*"기본안대로 모두 승인"* — `docs/decisions/archive/2026-10-11-upload-body-limit.md` 안 1):
  *   압축으로 **풀 수 없는 두 엔드포인트만** 천장을 올린다. 값은 이 파일의 `API_BODY_LIMIT_OVERRIDES`
  *   **한 곳**에 있고 워커 미들웨어(`bodyLimitByPath(apiBodyLimitFor)`)·업로드 라우트·클라 가드가 전부
  *   여기서 받는다 — 세 군데가 다른 말을 하던 이 파일의 출발점을 되풀이하지 않기 위해서다.

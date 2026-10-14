@@ -148,7 +148,7 @@ node scripts/visual-preview.mjs --route=/user/profile --auth=user --stores=1 \
 
 ## 측정 이력 (결재문에서 내려온 원문 — 1차·2026-09-30 · 2차·2026-10-01)
 
-> 📍 이 두 절은 `docs/decisions/2026-09-28-my-stage2-sheet-teardown.md` 에 있었다.
+> 📍 이 두 절은 `docs/decisions/archive/2026-09-28-my-stage2-sheet-teardown.md` 에 있었다.
 > **3차 측정(2026-10-01)이 2차의 판정을 두 군데 정정**했고, 결재문은 대표가 5분에 읽는 자리라
 > 현재 상태만 남기고 상세를 여기로 내렸다(결재문은 어드민 번들에 `eager` 로 박힌다 — 그 무게도 이유다).
 > **내용은 한 글자도 바꾸지 않았다.** 3차 본문과 최종 권고는 결재문에 있다.

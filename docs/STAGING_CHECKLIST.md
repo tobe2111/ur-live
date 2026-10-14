@@ -17,7 +17,7 @@
 >
 > ### 🔁 2026-09-21 대표 승인 — "staging 실결제" 는 **대표 통제 매장에서의 프로덕션 검증**으로 대체한다
 >
-> 결재 `docs/decisions/2026-09-19-staging-gate-unperformable.md`(대표 *"모두 승인"*, 기본안=안 2).
+> 결재 `docs/decisions/archive/2026-09-19-staging-gate-unperformable.md`(대표 *"모두 승인"*, 기본안=안 2).
 > **배경**: 이 규칙이 2.5개월간 **한 건도 닫지 못했다** — 프로덕션 D1 을 공유하면 의미가 없어 별도 D1 이
 > 필요한데, 1인 운영에서 그 유지보수를 아무도 시작하지 않았다. 그동안 머니 경로 변경은 *"배포는 됐지만
 > 검증은 안 된"* 상태로 쌓였고, **문서가 거짓말을 하고 있었다**(audit log 는 "검증 필수" 라고 적어 두지만
@@ -212,7 +212,7 @@ GET /api/admin/promo-ledger/order/:orderNumber      (read-only, finance 권한)
 
 ## 🧾 S-EXBOOK — 만료 환불이 주문 장부에 적힌다 (2026-10-06)
 
-게이트 없음(배포되면 바로 적용). 결재 `docs/decisions/2026-10-02-expired-refund-not-booked.md`.
+게이트 없음(배포되면 바로 적용). 결재 `docs/decisions/archive/2026-10-02-expired-refund-not-booked.md`.
 
 **왜 staging 이 필요한가**: 유닛 시험은 SSOT SQL 을 실제 sqlite 에 돌려 *"적으면 두 번째 환불액이
 0"* 까지 증명했지만, **라이브 cron 이 그 자리에서 실제로 부르는지**는 발화해 봐야 안다
@@ -292,7 +292,7 @@ S-EXBOOK4 가 그 방향이다.
 
 🔴 **같은 판정에서 나온 새 결함**: `orders.refunded_amount` 가 여전히 **0** 이라 그 주문을 또 환불할 수
 있다(1,800 → 3,600). 어드민·셀러·주문 세 자리에서 누를 수 있다. 등급 C · 코드 미변경 ·
-결재 `docs/decisions/2026-10-02-expired-refund-not-booked.md`.
+결재 `docs/decisions/archive/2026-10-02-expired-refund-not-booked.md`.
 
 ### 🔴 2026-10-01 — **판정 도구가 수수료를 0원으로 읽고 있었다** (대표 *"모두 진행해줘"*)
 
@@ -409,7 +409,7 @@ S3 `order:N`(✅ `order-ledger-credit.ts` 와 일치) · S5 `voucher:{id}` · S6
 ## **S-OCR** — 서류 OCR 자동 승인 (2026-09-16)
 
 게이트 `platform_settings.ocr_auto_verify_enabled`(기본 `false`). 결재
-`docs/decisions/2026-09-16-ocr-license-automation.md`.
+`docs/decisions/archive/2026-09-16-ocr-license-automation.md`.
 
 ⚠️ **게이트를 켜기 전에 S-OCR-1~3 을 먼저 통과해야 한다.** 이 축의 오판은
 정상 사장님을 쫓아내거나(반려) 위조를 통과시키는(승인) 양방향 피해를 낸다.
