@@ -77,6 +77,10 @@ export function WishlistSummaryRail({ s }: { s: WishlistSummary }) {
         {headline.n}
       </div>
       <p className="mt-2 text-[12px] text-gray-500 dark:text-gray-400">{headline.cap}</p>
+      {/* 💰 2026-10-14 (대표 확정 가안+나안): 다 사면 아끼는 돈. 0 이면 말하지 않는다. */}
+      {s.savings > 0 && (
+        <p className="mt-1 text-[13px] font-bold text-sale">다 사면 {formatNumber(s.savings)}원 아껴요</p>
+      )}
       {rows.length > 0 && (
         <>
           <hr className="my-4 border-0 border-t border-rule" />

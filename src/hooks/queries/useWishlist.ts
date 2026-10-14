@@ -29,6 +29,10 @@ export interface WishlistItem {
   dominant_color?: string | null
   /** 🏪 카드 머천트 줄 (`products.restaurant_name`) */
   restaurant_name?: string | null
+  /** 📍 2026-10-14 (위시리스트 가안+나안): 카드의 주소·거리 줄. 찜은 '나중에 갈 곳' 이라 위치가 중요하다. */
+  restaurant_address?: string | null
+  restaurant_lat?: number | null
+  restaurant_lng?: number | null
   /** ⏳ 공구 마감(`products.group_buy_deadline`) — 마감 임박 표시·정렬 */
   expires_at?: string | null
   group_buy_status?: string | null
