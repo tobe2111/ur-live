@@ -13,7 +13,7 @@ export const VOUCHER_TILE_CLASS = {
   /** 3열 격자 — 4px 격자(가로 8 · 세로 24). 태블릿 폭은 4열. */
   grid: 'grid grid-cols-3 sm:grid-cols-4 gap-x-2 gap-y-6',
   root: 'ur-cv-card min-w-0 flex flex-col text-left cursor-pointer active:opacity-70 transition-opacity',
-  thumb: 'relative aspect-square w-full overflow-hidden rounded-xl bg-gradient-to-b from-[#F7F8FA] to-[#EFF1F4] dark:from-[#15171C] dark:to-[#0F1115]',
+  thumb: 'relative aspect-square w-full overflow-hidden rounded-xl bg-wash',
   img: 'w-full h-full object-cover',
   /** 브랜드 줄 — 누르면 그 브랜드로 거른다(카카오 선물하기의 `브랜드 ›`). */
   brand: 'mt-2 max-w-full inline-flex items-center gap-1 self-start text-[13px] font-bold text-gray-900 dark:text-white',
