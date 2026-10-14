@@ -182,4 +182,24 @@ export async function runDailyCleanup(DB: D1Database, results: Record<string, nu
     const n = await purgeStaleCartIntents(DB);
     if (n > 0) results.cart_intents_purged = n;
   } catch (e) { logError('[Cron] cart_intents purge error:', { error: String(e) }); }
+
+  // ── 25. 🏨 2026-10-14: 숙소 소개 문구 백필 — **치유가 도는 경로가 없었다** ──
+  //   라이브 실측(Googlebot UA): 색인 대상 표본 79건 중 **74건(93%)**의 meta description 에 줄표가
+  //   있었고, 숙소 49건은 `춘천의 호텔 — 접근성 좋은 호텔 — 깔끔한 룸 컨디션과 24시간 프런트.` 그대로다
+  //   — 2026-08-31 **대표가 "AI 티" 로 직접 지적한 그 문장**이다. 고치는 코드는 그때 쓰였고
+  //   2026-09-14 에 강화되고 시험까지 붙었는데, 호출처가 **어드민 재시드 POST 하나**뿐이라
+  //   아무도 누르지 않아 한 번도 안 돌았다(실측 `/api/group-buy/stays/2732`: `description` 빈 문자열 ·
+  //   `description_full` 옛 문장). ⇒ `demo-fcfs-renew` 가 적어 둔 그 교훈과 같은 자리다 —
+  //   *"이미 만들어진 것들은 여기서 자가치유된다(일회성 SQL 대신 코드 경로)."*
+  //
+  //   🔒 **안전**: 대상이 `slug LIKE 'demo-stay-%'` + 줄표를 가진 행뿐이라 **관리자 수기 문구를 안 덮고**,
+  //      새 문구엔 줄표가 없어 **두 번 돌려도 무해**하다(멱등성이 그 지문에서 나온다). 전부 fail-soft.
+  //   🔢 횟수를 `results` 에 싣는다 — 안 실으면 "돌았는데 0건" 과 "안 돌았음" 을 구분할 수 없다
+  //      (그 파일이 `amenityHealed` 에서 실제로 치른 교훈이다).
+  try {
+    const { healStayDescriptions } = await import('../../features/admin/api/admin-stays/heal-stay-descriptions');
+    const { STAY_TYPE_DESC_LIST } = await import('../../shared/stay-property-type');
+    const n = await healStayDescriptions(DB as never, STAY_TYPE_DESC_LIST);
+    if (n > 0) results.stay_desc_healed = n;
+  } catch (e) { logError('[Cron] stay_desc heal error:', { error: String(e) }); }
 }

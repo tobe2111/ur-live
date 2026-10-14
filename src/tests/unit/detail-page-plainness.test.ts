@@ -23,6 +23,7 @@
  * - 새로 생기는 다른 상세 페이지. 파일 목록이 여기 하드코딩돼 있다.
  */
 import { describe, it, expect } from 'vitest'
+import { STAY_PROPERTY_TYPE_DESCS } from '@/shared/stay-property-type'
 import { readFileSync } from 'node:fs'
 
 const read = (p: string) => readFileSync(p, 'utf-8')
@@ -57,9 +58,15 @@ describe('번역투·조립 문구가 되돌아오지 않았다', () => {
     const src = code(read(STAY_SEED))
     expect(src, '지역·유형 접두사 조립이 되살아났다').not.toMatch(/const desc = `\$\{spot\.\w+\}의 \$\{ty\.\w+\}/)
     // desc 안의 줄표(—)는 두 번째 절을 잇는 그 습관 자체다. 마침표로 끊어 쓴다.
-    const descs = [...src.matchAll(/desc:\s*'([^']+)'/g)].map((m) => m[1])
-    expect(descs.length, 'STAY_TYPES desc 를 못 읽었다 — 셀렉터가 낡았다').toBeGreaterThanOrEqual(5)
+    // 🔀 2026-10-14 재조준 — 문구가 `shared/stay-property-type` SSOT 로 옮겨갔다(정비 cron 이 같은
+    //   표를 읽어야 했다: 어드민 라우트에 값이 있던 탓에 **치유가 한 번도 안 돌았다**).
+    //   ⇒ 값을 **SSOT 에서 직접** 읽는다 — 문자열 셀렉터보다 강하다(진짜 값을 본다).
+    //   그리고 시드가 그 표를 읽는지도 함께 본다(두 벌이 되면 이 가드가 반쪽만 보게 된다).
+    const descs = Object.values(STAY_PROPERTY_TYPE_DESCS)
+    expect(descs.length, '문구 SSOT 가 비었다 — 이 단언이 아무것도 안 지킨다').toBeGreaterThanOrEqual(5)
     for (const d of descs) expect(d, `조립 줄표가 남아 있다: ${d}`).not.toContain('—')
+    expect(src, '시드가 문구를 손으로 적는다 — SSOT 와 갈린다').not.toMatch(/desc:\s*'[^']{20,}'/)
+    expect(src).toContain("desc: propertyTypeDesc('")
   })
 
   it('이미 저장된 옛 문장을 고치는 백필이 있다 (신규만 고치면 라이브는 안 바뀐다)', () => {
