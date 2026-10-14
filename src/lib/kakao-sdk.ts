@@ -77,6 +77,28 @@ export function ensureKakaoSdk(): Promise<void> {
   return kakaoSdkPromise
 }
 
+
+/**
+ * 🗺️ 2026-10-14 (대표 "모두 순서대로 진행" — 개선점 보고 3번): **느린 회선에서만** 일반 화질 타일.
+ *   지도 LCP 요소는 지도 타일이다. 라이브 실측(느린 4G·CPU 4배, 전국 보기 13장): 고화질 687KB → 일반 285KB(-59%),
+ *   LCP 9.7~10.1s → 8.3~8.5s. 대신 레티나 화면에서 지도가 흐려진다 — 그래서 **회선이 느리다고 브라우저가 말할 때만**
+ *   쓴다(데이터 절약 · 4G 미만 · 추정 다운로드 3Mbps 미만). 빠른 회선과 그 정보를 안 주는 브라우저(iOS 사파리)는
+ *   종전 고화질 그대로다. `disableHD` 는 **첫 지도를 만들기 전에만** 효과가 있어 SDK 준비가 끝나는 이 자리에서 한다.
+ */
+export function prefersLowResMapTiles(nav: unknown = typeof navigator !== 'undefined' ? navigator : undefined): boolean {
+  const c = (nav as { connection?: { saveData?: boolean; effectiveType?: string; downlink?: number } } | undefined)?.connection
+  if (!c) return false
+  if (c.saveData) return true
+  if (c.effectiveType && c.effectiveType !== '4g') return true
+  return typeof c.downlink === 'number' && c.downlink > 0 && c.downlink < 3
+}
+function applyTileQuality(): void {
+  try {
+    const maps = (window as unknown as { kakao?: { maps?: { disableHD?: () => void } } }).kakao?.maps
+    if (prefersLowResMapTiles() && maps?.disableHD) maps.disableHD()
+  } catch { /* 화질 선택 실패는 지도를 막지 않는다 */ }
+}
+
 /**
  * Kakao Maps SDK를 로드 (지도 전용 — 별도 스크립트)
  */
@@ -90,7 +112,7 @@ export function ensureKakaoMaps(): Promise<void> {
   const early = (window as unknown as { __urKakaoMaps?: Promise<void> }).__urKakaoMaps
   if (early) {
     delete (window as unknown as { __urKakaoMaps?: Promise<void> }).__urKakaoMaps
-    kakaoMapsPromise = early.catch(() => {
+    kakaoMapsPromise = early.then(applyTileQuality, () => {
       kakaoMapsPromise = null
       return ensureKakaoMaps()
     })
@@ -132,7 +154,7 @@ export function ensureKakaoMaps(): Promise<void> {
 
     if (!existing) document.head.appendChild(script)
     else if (w.kakao?.maps) onLoad()
-  })
+  }).then(applyTileQuality)
 
   return kakaoMapsPromise
 }
