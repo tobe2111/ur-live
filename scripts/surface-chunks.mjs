@@ -33,8 +33,13 @@ const NEVER_ENTRY = new Set(['app-utils-deferred'])
 /** 🔒 라이브러리 전용 봉투 — 앱 코드 몇 줄을 **일부러** 라이브러리 옆에 둔 봉투다(`vite.config.ts` 의 `/src/` 규칙).
  *  묶음기가 그 앱 코드를 페이지 봉투로 빼면, 그 봉투가 라이브러리를 **정적으로** 끌고 와 모든 페이지가 받는다
  *  (2026-10-13 실측: `src/lib/sentry-sdk` 가 lz-common 으로 가서 sentry 가 전 화면 미리받기에 들어갔다).
- *  ⚠️ vite 에 "앱 코드 → 라이브러리 봉투" 규칙을 새로 만들면 여기 이름을 추가할 것 — 시험이 대조한다. */
-export const LIBRARY_ENVELOPES = new Set(['sentry', 'capacitor', 'tosspayments', 'app-kakao-sdk', 'charts', 'codes'])
+ *  ⚠️ vite 에 "앱 코드 → 라이브러리 봉투" 규칙을 새로 만들면 여기 이름을 추가할 것 — 시험이 대조한다.
+ *
+ *  🩸 2026-10-14 — `app-ui-utils` 가 빠져 있었다. 2026-07-29 에 `cn()`(src/lib/utils) + tailwind-merge(raw 102KB)를
+ *   전용 봉투로 뺐는데(vite 규칙 '/src/lib/utils' → app-ui-utils), 이 묶음기(10-13)가 그 앱 코드를 **목록 안에서 유일하게
+ *   정적으로 쓰는 지도** 봉투로 옮겼다 → tailwind-merge 가 따라갔고, `cn()` 을 쓰는 화면 ~190개(마이·어드민·장바구니·결제…)가
+ *   **지도 페이지 코드 전부**(lz-map 24.9KB br)를 받았다(`check-surface-budgets` dash:* 실측). 에러는 0 이었다. */
+export const LIBRARY_ENVELOPES = new Set(['sentry', 'capacitor', 'tosspayments', 'app-kakao-sdk', 'charts', 'codes', 'app-ui-utils'])
 
 export function createSurfaceChunker({ routes, root, commonMin = 4, minGroupBytes = 2000 }) {
   /** 이 모듈을 import 하는 쪽이 전부 node_modules 인가 — 앱 코드가 직접 쓰지 않는 라이브러리 내부 의존. */

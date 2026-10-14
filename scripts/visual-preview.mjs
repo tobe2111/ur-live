@@ -42,6 +42,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { sellerListResponse } from './preview-seeds/seller-lists.mjs'
 import { looksEmpty, emptyHintMatch } from './preview-seeds/empty-screen-hint.mjs'
+import { compareSnaps } from './shift-compare.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const DIST = path.join(ROOT, 'dist/client')
@@ -481,6 +482,19 @@ const API_LOG = []
 let NAV_T0 = 0
 const SLOW = Number(args.slow) || 0
 const SHIFT = 'shift' in args
+/**
+ * ⚙️ `--cpu` — 첫 화면의 **실행 비용**을 잰다(2026-10-14 대표 *"대시보드랑 실행비용도 최적화 해줘"*).
+ *   바이트 예산(`check-surface-budgets`)은 "얼마나 받았나" 만 본다 — 같은 바이트라도 마운트 때
+ *   **실제로 도는 코드**가 늘면 폰이 그만큼 바빠진다. 두 값을 낸다:
+ *     · execKB  — V8 커버리지로 잰 **한 번이라도 실행된 우리 JS(/assets/*.js) 바이트**. 스텁이 고정이라
+ *                 결정적이다 → `check-exec-cost.mjs` 가 이 값을 래칫으로 잠근다(PR 게이트).
+ *     · scriptMs · taskMs · tbtMs — CPU 를 `--cpu-rate`(기본 4)배 느리게 한 상태의 스크립트 시간·
+ *                 전체 작업 시간·긴 작업 합(50ms 초과분). **시간은 러너마다 흔들리므로 판정에 안 쓴다**
+ *                 (기록·추세용). 잠그는 것은 결정적인 execKB 하나다.
+ *   ⚠️ 못 보는 것: 4초 대기 뒤에 도는 코드(스크롤·클릭 뒤) · 외부 SDK(차단됨) · 워커(서버) 실행 비용.
+ */
+const CPU = 'cpu' in args
+const CPU_RATE = Number(args['cpu-rate']) || 4
 const STORE_STATUS = typeof args.stores === 'string' && /^[a-z]+$/.test(args.stores) ? args.stores : 'approved'
 const STORES_N = (() => {
   const a = process.argv.find((x) => x.startsWith('--stores'))
@@ -711,7 +725,11 @@ if (AUTH || STORES_N > 0) {
   // 🏢 2026-10-12 `--auth=agency` — 에이전시 콘솔(`/agency`)을 머지 전에 본다. 콘솔은 자기 토큰 자리
   //   (`agency_console_token`)만 읽는다 — 셀러·소비자 키는 일부러 안 심는다(섞이면 그 화면이 아니다).
   //   응답은 `--stub-file` 로 `/api/agency-console/me` · `/staff` · `/stores` 를 준다.
-  const seed = AUTH === 'agency'
+  // 🛡️ 2026-10-14 `--auth=admin` — 어드민 대시보드 실행 비용을 잰다. 가드는 `admin_token` 존재만 본다
+  //   (점 3개짜리 JWT 가 아니면 관대 통과 — RouteGuards.isDashboardTokenUsable).
+  const seed = AUTH === 'admin'
+    ? { admin_token: 'preview', admin_id: '1', admin_name: '미리보기', admin_email: 'preview@example.com', admin_role: 'super_admin' }
+    : AUTH === 'agency'
     ? {
         agency_console_token: 'preview',
         agency_console_profile: JSON.stringify({
@@ -777,6 +795,21 @@ const consoleErrors = []
 page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(m.text().slice(0, 300)) })
 page.on('pageerror', (e) => consoleErrors.push(`[pageerror] ${String(e && e.message).slice(0, 300)}`))
 
+let CPU_CDP = null
+if (CPU) {
+  // 긴 작업은 관찰자를 **페이지보다 먼저** 걸어야 부팅 중의 것까지 잡힌다(buffered 는 일부 엔진만).
+  await page.addInitScript(() => {
+    window.__urLongTasks = []
+    try {
+      new PerformanceObserver((l) => { for (const e of l.getEntries()) window.__urLongTasks.push(e.duration) })
+        .observe({ type: 'longtask', buffered: true })
+    } catch { /* 미지원 엔진 */ }
+  })
+  await page.coverage.startJSCoverage({ resetOnNavigation: false })
+  CPU_CDP = await ctx.newCDPSession(page)
+  await CPU_CDP.send('Performance.enable')
+  await CPU_CDP.send('Emulation.setCPUThrottlingRate', { rate: CPU_RATE })
+}
 NAV_T0 = Date.now()
 await page.goto(`http://127.0.0.1:${PORT}${ROUTE}`, { waitUntil: 'domcontentloaded', timeout: 40000 }).catch(() => {})
 /**
@@ -788,26 +821,25 @@ await page.goto(`http://127.0.0.1:${PORT}${ROUTE}`, { waitUntil: 'domcontentload
 if (SHIFT) {
   const snap = () => page.evaluate(() => {
     /**
-     * 🔤 **같은 글자가 화면에 둘 이상이면 재지 않는다** (2026-10-14).
+     * 🔤 **같은 글자가 화면에 둘 이상이면 위치를 전부 담는다** (2026-10-14 — 대조 규칙은 `shift-compare.mjs`).
      *   글자로 요소를 짝짓는데, 같은 글자가 두 곳에 있으면 "처음 만난 것" 이 프레임마다 다른 요소일 수 있다.
      *   실측: `/vouchers` 에서 머리줄 제목과 하단 탭 라벨이 둘 다 '교환권' 이다. 첫 프레임엔 머리줄이 아직 없어
      *   하단 탭(y=820)을 잡고, 완성 프레임엔 머리줄(y=8)을 잡아 **아무것도 안 움직였는데 −812 밀림** 으로 보고했다
      *   (하단 탭 활성 라벨에서 브랜드 점 자식이 빠지며 그 라벨이 처음으로 '잎' 이 된 날 드러났다 — #1802).
-     *   두 프레임 중 어느 쪽에서든 둘 이상이면 그 글자는 짝을 확신할 수 없으므로 뺀다.
+     *   ⇒ 같은 글자의 위치를 전부 모으고, 두 프레임에서 **개수가 같을 때만** 순서대로 짝짓는다(다르면 뺀다).
      */
     const m = new Map()
-    const n = new Map()
     for (const el of document.querySelectorAll('p,span,h1,h2,h3,h4,button,a,label,li,div')) {
       if (el.children.length) continue
       const s = (el.textContent || '').trim()
       if (s.length < 2 || s.length > 40) continue
       const r = el.getBoundingClientRect()
       if (r.width === 0 && r.height === 0) continue
-      n.set(s, (n.get(s) || 0) + 1)
-      if (!m.has(s)) m.set(s, Math.round(r.top + window.scrollY))
+      // 같은 글자가 여러 곳에 있으면 **전부** 문서 순서대로 담는다(아래 대조 주석 참조).
+      if (!m.has(s)) m.set(s, [])
+      m.get(s).push(Math.round(r.top + window.scrollY))
     }
-    const dup = [...n].filter(([, c]) => c > 1).map(([s]) => s)
-    return { pos: Object.fromEntries(m), dup, docH: document.documentElement.scrollHeight, vh: window.innerHeight }
+    return { pos: Object.fromEntries(m), docH: document.documentElement.scrollHeight, vh: window.innerHeight }
   })
   /**
    * 🔁 **두 번 잰다 — 첫 방문과 재방문.**
@@ -820,7 +852,6 @@ if (SHIFT) {
     const a = await snap()
     await page.waitForTimeout(SLOW + 2500)
     const b = await snap()
-    const moved = [], gone = [], born = []
     /**
      * 👁️ **보이는 곳이 밀렸는가** 를 따로 센다 (2026-10-01).
      *   그전까지는 문서 전체의 이동만 셌는데, 그러면 **화면 밖 푸터가 움직인 것**과
@@ -829,20 +860,8 @@ if (SHIFT) {
      *   기준: 첫 스냅 시점의 y 가 첫 화면(뷰포트) 안이면 '보이는 곳'.
      *   ⚠️ 스크롤 0 을 가정한다(하네스는 늘 맨 위에서 잰다).
      */
-    const fold = a.vh || 0
-    let movedVisible = 0
-    const ambiguous = new Set([...(a.dup || []), ...(b.dup || [])])
-    for (const [k, y] of Object.entries(a.pos)) {
-      if (ambiguous.has(k)) continue
-      if (!(k in b.pos)) { gone.push(k); continue }
-      const d = b.pos[k] - y
-      if (Math.abs(d) > 8) {
-        const vis = y < fold
-        if (vis) movedVisible++
-        moved.push(`${vis ? '👁️ ' : '   '}${k} ${y}→${b.pos[k]} (${d > 0 ? '+' : ''}${d})`)
-      }
-    }
-    for (const k of Object.keys(b.pos)) if (!(k in a.pos)) born.push(k)
+    // 판정 몸통은 순수 모듈 하나(`shift-compare.mjs`) — 시험이 그 함수를 직접 돌린다.
+    const { moved, gone, born, movedVisible } = compareSnaps(a, b)
     const verdict = movedVisible ? '🔴 보이는 곳이 밀림' : moved.length ? '🟡 화면 밖만 밀림' : '🟢 안 밀림'
     console.log(`📐 밀림 측정 [${ROUTE}] ${label} ${verdict} — 이동 ${moved.length}(보이는 곳 ${movedVisible}) · 사라짐 ${gone.length} · 생김 ${born.length} · 문서높이 ${a.docH}→${b.docH}px`)
     /**
@@ -862,6 +881,39 @@ if (SHIFT) {
   await round('재방문')
 }
 await page.waitForTimeout(4000)
+if (CPU) {
+  const cov = await page.coverage.stopJSCoverage()
+  /**
+   * 실행된 바이트 = 함수 범위를 **순서대로 칠한다**(바깥 → 안쪽, 뒤에 오는 안쪽 범위가 덮어쓴다).
+   * V8 블록 커버리지의 표준 해석이다. 우리 자산(/assets/*.js)만 센다 — 인라인 부트 스크립트는 제외.
+   */
+  let exec = 0, total = 0
+  const perChunk = {}
+  for (const e of cov) {
+    const m = /\/assets\/([^/?#]+\.js)/.exec(e.url)
+    if (!m || !e.source) continue
+    const mark = new Uint8Array(e.source.length)
+    for (const f of e.functions) for (const r of f.ranges) mark.fill(r.count > 0 ? 1 : 0, r.startOffset, r.endOffset)
+    let used = 0
+    for (let i = 0; i < mark.length; i++) used += mark[i]
+    exec += used; total += e.source.length
+    const name = m[1].replace(/-[A-Za-z0-9_-]{8}\.js$/, '.js')
+    perChunk[name] = +((perChunk[name] || 0) + used / 1024).toFixed(1)
+  }
+  const { metrics } = await CPU_CDP.send('Performance.getMetrics')
+  const mv = (n) => (metrics.find((x) => x.name === n) || {}).value || 0
+  const longs = await page.evaluate(() => window.__urLongTasks || [])
+  const tbt = longs.reduce((a, d) => a + Math.max(0, d - 50), 0)
+  const result = {
+    route: ROUTE, execKB: +(exec / 1024).toFixed(1), loadedKB: +(total / 1024).toFixed(1),
+    scriptMs: Math.round(mv('ScriptDuration') * 1000), taskMs: Math.round(mv('TaskDuration') * 1000),
+    tbtMs: Math.round(tbt), longTasks: longs.length, cpuRate: CPU_RATE,
+    top: Object.entries(perChunk).sort((a, b) => b[1] - a[1]).slice(0, 8),
+  }
+  console.log(`⚙️ 실행 비용 [${ROUTE}] 실행된 JS ${result.execKB}KB / 받은 JS ${result.loadedKB}KB · 스크립트 ${result.scriptMs}ms · 긴 작업 ${result.longTasks}개(TBT ${result.tbtMs}ms) @CPU×${CPU_RATE}`)
+  // 🤖 기계가 읽는 한 줄 — `check-exec-cost.mjs` 가 이것만 읽는다(측정기를 두 벌 만들지 않는다).
+  console.log(`CPU_RESULT ${JSON.stringify(result)}`)
+}
 /**
  * 🖱️ `--click="글자"` — 버튼을 눌러 **연 뒤**를 찍는다(여러 개면 `>>` 로 이어서).
  *   왜 필요한가: 마이의 판매 도구는 전부 **시트**라, 닫힌 화면만 찍으면 그 화면들은

@@ -132,6 +132,15 @@ export const KNOWN_CIRCULAR_CHUNKS = new Set<string>([
 ])
 
 export default defineConfig({
+  /**
+   * ⚙️ 2026-10-14 실행 비용 — JSON 은 **JS 객체 리터럴이 아니라 `JSON.parse("…")` 문자열**로 낸다.
+   *   번역 파일(ko 105KB · 대시보드 ko 113KB)이 모든 화면에서 큰 객체 리터럴로 파싱·컴파일되고 있었다.
+   *   V8 은 같은 데이터를 JSON 문자열로 받으면 훨씬 싸게 읽는다(JS 파서 대신 JSON 파서 — V8 공식 권고,
+   *   10KB 이상에서 효과). 값은 똑같고 바뀌는 건 **읽는 방식**뿐이다. 이름 있는 export(`import { a } from x.json`)
+   *   는 안 생기는데, 소스에 그런 import 는 0건이다(전부 default — `src/i18n.ts` 가 `mod.default` 로 읽는다).
+   *   가드: `exec-cost-2026-10-14.test.ts` · 측정: `scripts/check-exec-cost.mjs`.
+   */
+  json: { stringify: true },
   plugins: [
     react(),
     swVersionPlugin(),
@@ -258,6 +267,10 @@ export default defineConfig({
           //   react-helmet-async: ~10KB (SEO, lazy 페이지 진입 시 필요)
           if (id.includes('node_modules/axios/')) return 'axios'
           if (id.includes('node_modules/zustand/')) return 'zustand'
+          // 🧩 2026-10-14 [LOADING_ADDITIVE] `cn()` 의 두 의존을 그 봉투(app-ui-utils)에 **명시**한다. 규칙이 없으면 묶음기가
+          //   clsx(cva 와 공유라 '라이브러리 전용' 이 아님)를 지도 봉투로 옮겨 app-ui-utils ↔ lz-map 순환이 생긴다(빌드 게이트가 잡았다).
+          //   app-ui-utils 는 묶음기 보호 목록(LIBRARY_ENVELOPES)에 있다 — 근거: scripts/surface-chunks.mjs.
+          if (id.includes('node_modules/clsx/') || id.includes('node_modules/tailwind-merge/')) return 'app-ui-utils'
           if (id.includes('react-helmet-async')) return 'helmet'
           // Capacitor (native SDK — 웹에선 no-op이지만 main chunk에서 분리해 캐싱 개선)
           if (id.includes('@capacitor/')) return 'capacitor'

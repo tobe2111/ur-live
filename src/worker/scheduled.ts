@@ -353,6 +353,15 @@ export async function handleCronScheduled(
     }))
   }
 
+  // 📈 2026-10-14 (대표 "대기업 수준 — 기능이 늘어나도 최적화된 상태"): 실사용 성능 SLO 일일 감시.
+  //   어제 p75 를 기준·지난 7일과 대조해 벗어나면 어드민 알림. 09:20 KST(00:20 UTC, 비어 있던 슬롯).
+  if (cron === '*/5 * * * *' && slotOpen({ minute: 20, hour: 0 })) {
+    ctx.waitUntil(slotCron('20 0 * * *')('vitals-slo', async () => {
+      const { runVitalsSlo } = await import('./cron/vitals-slo')
+      return runVitalsSlo(env)
+    }))
+  }
+
   if (cron === '*/5 * * * *' && slotOpen({ minute: 40, hour: 9 })) {
     ctx.waitUntil(slotCron('40 9 * * *')('stay-reminder', async () => {
       const { runStayReminderCron } = await import('./cron/stay-reminder')
