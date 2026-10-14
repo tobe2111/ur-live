@@ -25,7 +25,7 @@ type Store = { getItem: (k: string) => string | null; setItem: (k: string, v: st
 
 function run(opts: { storage: Store | 'throws'; ready?: DocumentReadyState; loaded?: () => unknown[]; reject?: () => boolean; rules?: Array<{ range: string; url: string }>; text?: string }) {
   const doc = document.implementation.createHTMLDocument('t')
-  doc.head.innerHTML = '<link id="ur-font-css" rel="stylesheet" href="/static/fonts/x.css">'
+  doc.head.innerHTML = '<link id="ur-font-css" rel="stylesheet" href="/static/fonts/x.css" media="print">'
   if (opts.text) doc.body.textContent = opts.text
   if (opts.rules) {
     const cssRules = opts.rules.map((r) => ({ type: 5, style: { getPropertyValue: (k: string) => (k === 'src' ? `url(${r.url}) format("woff2")` : k === 'unicode-range' ? r.range : '') } }))
@@ -121,7 +121,7 @@ describe('🔤 첫 방문 폰트 미루기', () => {
     const between = HTML.slice(HTML.indexOf('/>', link), script).replace(/<!--[\s\S]*?-->/g, '')
     expect(between).not.toMatch(/<(?!script)[a-z]/i)
     // href 는 그대로(Early Hints Link 헤더 · 자가호스팅 가드가 이 경로를 대조한다)
-    expect(HTML).toMatch(/id="ur-font-css"\s+rel="stylesheet"\s+href="\/static\/fonts\/pretendard-dynamic-subset-v1\.3\.9\.css"/)
+    expect(HTML).toMatch(/id="ur-font-css"\s+rel="stylesheet"\s+href="\/static\/fonts\/pretendard-dynamic-subset-v1\.3\.9\.css"\s+media="print"/)
   })
 
   it('① 처음 오는 사람 — 바로 끄고, load 뒤 한가할 때 켜고, 받은 뒤 표식을 세운다', async () => {
@@ -143,16 +143,20 @@ describe('🔤 첫 방문 폰트 미루기', () => {
     expect(r.link.media).toBe('all')
   })
 
-  it('② 한 번 받은 사람 — 손대지 않는다', () => {
+  it('② 한 번 받은 사람 — **즉시** 켠다(종전과 같이 처음부터 Pretendard)', () => {
     const r = run({ storage: mem({ ur_font_warm: '1' }) })
-    expect(r.link.media).toBe('')
+    expect(r.link.media).toBe('all')
     vi.advanceTimersByTime(20000)
-    expect(r.link.media).toBe('')
+    expect(r.link.media).toBe('all')
   })
 
-  it('③ 저장소가 막혔으면 손대지 않는다', () => {
+  it('③ 저장소가 막혔으면 즉시 켠다(표식을 못 세우면 매번 미루게 되므로 종전 동작이 낫다)', () => {
     const r = run({ storage: 'throws' })
-    expect(r.link.media).toBe('')
+    expect(r.link.media).toBe('all')
+  })
+
+  it('⚡ 링크는 처음부터 media=print — 렌더 차단 시트 뒤 인라인 스크립트는 그 시트를 기다리느라 파서를 막는다', () => {
+    expect(HTML).toMatch(/id="ur-font-css"\s+rel="stylesheet"\s+href="[^"]+"\s+media="print"/)
   })
 
   it('④ load 가 끝내 안 와도 백스톱으로 켠다', async () => {

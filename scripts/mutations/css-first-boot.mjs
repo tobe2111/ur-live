@@ -9,7 +9,7 @@ export default [
   {
     name: '🚦 백스톱이 사라져 CSS 신호가 안 오면 앱이 영영 안 뜬다',
     file: MOD,
-    find: 'setTimeout(run,${CSS_FIRST_BACKSTOP_MS});',
+    find: 'setTimeout(run,${critical ? CRITICAL_BACKSTOP_MS : CSS_FIRST_BACKSTOP_MS});',
     replace: '',
     test: TEST,
     why: '부팅 스크립트가 유일한 부팅 경로다 — 백스톱이 없으면 CSS load 이벤트를 놓친 기기에서 앱이 통째로 멈춘다.',

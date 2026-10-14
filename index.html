@@ -443,6 +443,7 @@ p['catch'](function(){});window.__urKakaoMaps=p;d.head.appendChild(s)})()</scrip
       id="ur-font-css"
       rel="stylesheet"
       href="/static/fonts/pretendard-dynamic-subset-v1.3.9.css"
+      media="print"
     />
     <!-- 🔤 2026-10-12 처음 오는 기기는 Pretendard 를 **앱이 조작 가능해진 뒤에** 받는다 (대표 *"처음 접속하는
          디바이스 유저는 너무 느려"* · *"근본적인 원인 문제도 해결하고"*).
@@ -460,8 +461,14 @@ p['catch'](function(){});window.__urKakaoMaps=p;d.head.appendChild(s)})()</scrip
          innerText 는 레이아웃을 강제해 그 자체로 0.37초 긴 작업이었다 · 대조는 정렬+이분 탐색 —
          글자×범위 이중 반복은 그 자체로 0.3초였다), 다 오면(또는 8초)
          한 번에 켠다 ⇒ 재배치가 한 번으로 모인다. 시트를 못 읽으면 종전대로 바로 켠다. -->
-    <script>(function(){try{var l=document.getElementById('ur-font-css');if(!l)return;try{if(localStorage.getItem('ur_font_warm')==='1')return}catch(e){return}
-l.media='print';var done=0;function warm(n){try{document.fonts.load('16px "Pretendard Variable"','가').then(function(f){if(f&&f.length){try{localStorage.setItem('ur_font_warm','1')}catch(e){}}else if(n<8)setTimeout(function(){warm(n+1)},1000)},function(){if(n<8)setTimeout(function(){warm(n+1)},1000)})}catch(e){}}
+    <!-- ⚡ 2026-10-14 (대표 신고 — 구글로 들어온 첫 방문이 빈 화면 2초): 링크가 **처음부터** `media="print"` 다.
+         종전엔 렌더 차단 링크로 두고 바로 뒤 스크립트가 끄는 구조였는데, **렌더 차단 시트 뒤의 인라인 스크립트는 그
+         시트가 다 올 때까지 실행되지 않는다** — 즉 파서가 이 14KB 를 기다리느라 body(서버가 그린 첫 화면)에 못 갔다.
+         A/B(라이브 HTML · 느린 4G·CPU 4배 · 6회 중앙값, 첫 화면 CSS 를 넣은 상태 위에서): HTML 도착→내용 **1.14→0.72초**.
+         한 번 받은 사람은 아래 스크립트가 **즉시** `all` 로 켠다(캐시 적중이라 첫 그림 전에 붙는다) · 저장소가 막혀도 `all`.
+         ⚠️ 스크립트를 끈 브라우저는 시스템 글꼴로 남는다(그 사람에겐 원래도 이 사이트가 안 돈다). -->
+    <script>(function(){try{var l=document.getElementById('ur-font-css');if(!l)return;try{if(localStorage.getItem('ur_font_warm')==='1'){l.media='all';return}}catch(e){l.media='all';return}
+var done=0;function warm(n){try{document.fonts.load('16px "Pretendard Variable"','가').then(function(f){if(f&&f.length){try{localStorage.setItem('ur_font_warm','1')}catch(e){}}else if(n<8)setTimeout(function(){warm(n+1)},1000)},function(){if(n<8)setTimeout(function(){warm(n+1)},1000)})}catch(e){}}
 function flip(){if(done>1)return;done=2;l.media='all';setTimeout(function(){warm(0)},0)}
 function hit(ur,cs){var p=ur.split(',');for(var i=0;i<p.length;i++){var m=/U\+([0-9A-F]+)(?:-([0-9A-F]+))?/i.exec(p[i]);if(!m)continue;var a=parseInt(m[1],16),b=m[2]?parseInt(m[2],16):a,lo=0,hi=cs.length;while(lo<hi){var md=(lo+hi)>>1;if(cs[md]<a)lo=md+1;else hi=md}if(lo<cs.length&&cs[lo]<=b)return 1}return 0}
 function on(){if(done)return;done=1;try{var rs=l.sheet&&l.sheet.cssRules,t=(document.body&&document.body.textContent)||'',sn={},cs=[],u=[];for(var i=0;i<t.length;i++){var cc=t.charCodeAt(i);if(!sn[cc]){sn[cc]=1;cs.push(cc)}}cs.sort(function(a,b){return a-b});

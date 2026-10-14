@@ -8,8 +8,8 @@ export default [
   {
     name: '🔤 첫 방문에도 폰트를 바로 받는다(시트를 안 끈다)',
     file: 'index.html',
-    find: "l.media='print';var done=0;",
-    replace: 'var done=0;',
+    find: 'href="/static/fonts/pretendard-dynamic-subset-v1.3.9.css"\n      media="print"',
+    replace: 'href="/static/fonts/pretendard-dynamic-subset-v1.3.9.css"',
     test: TEST,
     why: '폰트 17개·420KB 가 최우선순위로 앱 스크립트와 회선을 다툰다 — 첫 방문 조작 가능이 1~1.5초 늦어진다.',
   },
@@ -24,7 +24,7 @@ export default [
   {
     name: '🔤 한 번 받은 사람도 매번 미룬다(표식을 안 본다)',
     file: 'index.html',
-    find: "if(localStorage.getItem('ur_font_warm')==='1')return",
+    find: "if(localStorage.getItem('ur_font_warm')==='1'){l.media='all';return}",
     replace: 'void 0',
     test: TEST,
     why: '재방문자는 폰트가 캐시에 있어 비용 0 인데, 미루면 매 방문 시스템 글꼴 → Pretendard 교체가 보인다.',
