@@ -42,8 +42,10 @@ export default [
     why: '쇼핑 목록의 주소는 `/browse` 다. `/products` 는 2026-10-12 수리로 **404 + noindex** 인 경로다 '
        + '— 빵부스러기가 404 를 가리키면 그 체인을 구글이 버린다.',
     file: META,
-    find: "{ '@type': 'ListItem', position: 2, name: shopCrumb, item: `${origin}/browse` }",
-    replace: "{ '@type': 'ListItem', position: 2, name: shopCrumb, item: `${origin}/products` }",
+    // 🔀 2026-10-14 재조준 — 조립이 `crumbItems(withCrumbRoot(...))` 로 옮겨가 `position` 을
+    //   손으로 안 적는다. 결함(없는 목록 URL `/products` 를 가리킨다)과 불변식은 그대로다.
+    find: "{ name: shopCrumb, url: `${origin}/browse` }",
+    replace: "{ name: shopCrumb, url: `${origin}/products` }",
     test: TEST,
   },
   {
@@ -51,8 +53,9 @@ export default [
     why: '빵부스러기 마지막은 현재 페이지의 **정본**이어야 한다. `pathname` 을 쓰면 canonical 과 '
        + '다른 URL 을 가리켜 서로 반대 신호가 된다(2026-10-12 오전 canonical 작업의 교훈).',
     file: META,
-    find: "{ '@type': 'ListItem', position: 3, name, item: canonical },\n      ],\n    } : null",
-    replace: "{ '@type': 'ListItem', position: 3, name, item: `${origin}${pathname}` },\n      ],\n    } : null",
+    // 🔀 2026-10-14 재조준 — 같은 이유. 마지막 항목이 `canonical` 이어야 한다는 불변식은 그대로.
+    find: "{ name, url: canonical },\n      ])),\n    } : null",
+    replace: "{ name, url: `${origin}${pathname}` },\n      ])),\n    } : null",
     test: TEST,
   },
 ]

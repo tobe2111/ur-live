@@ -18,6 +18,7 @@ import { kakaoPlaceCanonicalUrl } from '../../shared/kakao-place-url'
 import { parseRegionFromAddress } from '../../shared/constants/region-slugs'
 import { storeNameJoin } from '@/shared/seo/store-name-dedupe'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
+import { withCrumbRoot, crumbItems } from '@/shared/seo/breadcrumb'
 
 /**
  * 🏠 한국 주소를 `PostalAddress` 로 — **시/도·시군구를 채워서** 돌려준다 (2026-10-13 신설).
@@ -247,15 +248,16 @@ export function buildDetailMeta(ssrPayload: string, origin: string, pathname: st
       ...(d.image_url ? { image: [photo] } : {}),
     } : null
     if (place) (product.offers as Record<string, unknown>).availableAtOrFrom = { '@id': placeId }
+    // 🍞 2026-10-14 — 조립은 `shared/seo/breadcrumb` 한 곳. 루트 이름이 상세·목록에서 갈려 있었고,
+    //   `동네딜` 단계가 홈과 **같은 URL** 이라 사슬이 안 나아갔다(310건). 그 단계는 **접힌다** —
+    //   유어딜의 `/` 가 곧 동네딜 피드라 줄 URL 이 따로 없다(모듈 머리말에 버린 길 둘 포함).
+    //   2026-09-16 의 의도(*리다이렉트를 가리키지 않는다*)는 그대로다: 별칭 URL 을 쓰지 않는다.
     const breadcrumb = {
       '@context': 'https://schema.org', '@type': 'BreadcrumbList',
-      itemListElement: [
-        { '@type': 'ListItem', position: 1, name: '홈', item: `${origin}/` },
-        // 🎟️ 2026-09-16: `/group-buy` 는 홈으로 301 되는 별칭이라 **빵부스러기가 리다이렉트를
-        //   가리키고 있었다**(색인 신호가 한 홉 낭비된다). 정본인 홈으로 직접.
-        { '@type': 'ListItem', position: 2, name: '동네딜', item: `${origin}/` },
-        { '@type': 'ListItem', position: 3, name, item: canonical },
-      ],
+      itemListElement: crumbItems(withCrumbRoot(origin, [
+        { name: '동네딜', url: `${origin}/` },
+        { name, url: canonical },
+      ])),
     }
     const jsonLd = escapeScript(JSON.stringify(place ? [product, place, breadcrumb] : [product, breadcrumb]))
     // 🖼️ 2026-10-13 대표 확정(안 1-가): 공유 미리보기 = 사진을 가득 채운 1200×630 한 장(사진 없으면 종전 카드).
@@ -371,11 +373,10 @@ export function buildStayDetailMeta(ssrPayload: string, origin: string, pathname
     } : null
     const breadcrumb = {
       '@type': 'BreadcrumbList', '@id': `${canonical}#breadcrumb`,
-      itemListElement: [
-        { '@type': 'ListItem', position: 1, name: '홈', item: `${origin}/` },
-        { '@type': 'ListItem', position: 2, name: '숙소', item: `${origin}/stays` },
-        { '@type': 'ListItem', position: 3, name: stayName, item: canonical },
-      ],
+      itemListElement: crumbItems(withCrumbRoot(origin, [
+        { name: '숙소', url: `${origin}/stays` },
+        { name: stayName, url: canonical },
+      ])),
     }
     const jsonLd = escapeScript(JSON.stringify({
       '@context': 'https://schema.org',
@@ -477,11 +478,10 @@ export function buildProductMeta(ssrPayload: string, origin: string, pathname: s
       : null
     const breadcrumb = shopCrumb ? {
       '@context': 'https://schema.org', '@type': 'BreadcrumbList',
-      itemListElement: [
-        { '@type': 'ListItem', position: 1, name: '홈', item: `${origin}/` },
-        { '@type': 'ListItem', position: 2, name: shopCrumb, item: `${origin}/browse` },
-        { '@type': 'ListItem', position: 3, name, item: canonical },
-      ],
+      itemListElement: crumbItems(withCrumbRoot(origin, [
+        { name: shopCrumb, url: `${origin}/browse` },
+        { name, url: canonical },
+      ])),
     } : null
     const jsonLd = escapeScript(JSON.stringify(breadcrumb ? [product, breadcrumb] : [product]))
     // 🔎 2026-07-29 (소비자 SEO 실측): **교환권이 두 URL 로 갈려 한쪽만 noindex 였다.**

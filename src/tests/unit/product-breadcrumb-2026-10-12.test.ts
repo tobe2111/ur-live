@@ -23,7 +23,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { buildProductMeta, buildDetailMeta, buildStayDetailMeta } from '@/worker/utils/detail-ssr-meta'
-import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
+import { CONSUMER_SURFACE_SEO, CONSUMER_SITE_NAME } from '@/shared/seo/consumer-surfaces'
 import { readFileSync } from 'node:fs'
 import { stripComments } from '../helpers/source-text'
 
@@ -60,7 +60,9 @@ describe('① 쇼핑 상세가 빵부스러기를 낸다', () => {
     const items = bc[0].itemListElement as Array<Record<string, unknown>>
     expect(items.length).toBe(3)
     expect(items.map(i => i.position)).toEqual([1, 2, 3])
-    expect(items.map(i => i.name)).toEqual(['홈', '쇼핑', SHOP.name])
+    // 🔀 2026-10-14 재조준 — 루트 이름이 상세 `홈` ↔ 목록 `유어딜` 로 갈려 있었고(같은 URL 두 이름)
+    //   `shared/seo/breadcrumb` 가 한 값으로 붙인다. 지키던 것(3단계 · position 연속 · 중간은 표의 crumb)은 그대로다.
+    expect(items.map(i => i.name)).toEqual([CONSUMER_SITE_NAME, '쇼핑', SHOP.name])
   })
 
   it('중간 단계는 `/browse` 를 가리키고 라벨은 그 표의 crumb 와 **같은 값**', () => {
@@ -93,7 +95,9 @@ describe('① 쇼핑 상세가 빵부스러기를 낸다', () => {
     const from = c.indexOf('const shopCrumb')
     const block = c.slice(from, c.indexOf('const jsonLd = escapeScript', from))
     expect(block.length, '빵부스러기 블록을 못 찾았다 — 이 단언이 아무것도 안 지킨다').toBeGreaterThan(80)
-    expect(block).toMatch(/position: 3, name, item: canonical/)
+    // 🔀 2026-10-14 재조준 — 항목 조립이 `crumbItems(withCrumbRoot(...))` 로 옮겨가 `position` 을
+    //   손으로 적지 않는다(접은 뒤 1..N 으로 다시 매긴다). 지키던 것은 *마지막 항목이 `canonical`* 이다.
+    expect(block).toMatch(/\{ name, url: canonical \}/)
     expect(block, '마지막 항목에 pathname 을 쓰면 정본 아닌 URL 을 가리킨다').not.toMatch(/\$\{origin\}\$\{pathname\}/)
   })
 
@@ -129,7 +133,14 @@ describe('③ 형제 빌더의 빵부스러기는 그대로 (회귀 방지)', ()
   it('이용권 상세(`/pass/:id`)', () => {
     const m = buildDetailMeta(pay({ id: 2919, name: '닭도리탕', price: 31000, category: 'meal_voucher', restaurant_name: '달빛한스푼' }), O, '/pass/2919')
     const items = crumbOf(m?.jsonLd)[0]?.itemListElement as Array<Record<string, unknown>> | undefined
-    expect(items?.map(i => i.name)[1], '이용권 상세의 중간 단계는 동네딜이다').toBe('동네딜')
+    // 🔀 2026-10-14 재조준 — 이 단언은 **결함을 단언하고 있었다**: `동네딜` 단계의 URL 이 홈과 같아
+    //   사슬이 안 나아갔다(310건, 라이브 실측). 지키려던 것은 *형제 빌더가 빵부스러기를 계속 낸다* 이고,
+    //   그 자리에 **더 강한 불변식**을 둔다 — 연속한 두 항목이 같은 URL 이면 안 된다.
+    expect(items, '이용권 상세의 빵부스러기가 사라졌다').toBeTruthy()
+    expect(items!.map(i => i.name)[0]).toBe(CONSUMER_SITE_NAME)
+    expect(items!.map(i => i.name).at(-1), '마지막 항목은 이 상품이다').toBe('닭도리탕')
+    const urls = items!.map(i => String(i.item))
+    expect(urls.filter((u, i) => i > 0 && u === urls[i - 1]), `사슬이 안 나아간다: ${urls.join(' > ')}`).toEqual([])
   })
 
   it('숙소 상세(`/stays/:id`)', () => {

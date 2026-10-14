@@ -31,6 +31,7 @@
 import { canonicalDetailPath } from '../../shared/product-flow'
 import { curatorHomePins } from '../../shared/curator-pin-order'
 import { CONSUMER_SURFACE_SEO, CONSUMER_SITE_NAME } from '../../shared/seo/consumer-surfaces'
+import { withCrumbRoot } from '../../shared/seo/breadcrumb'
 import { CONCEPT_FAQ } from '../../shared/seo/concept-content'
 import { addressInRegion, parseRegionPath, regionPath, type RegionRef } from '../../shared/constants/region-slugs'
 import { REGION_PATH_RE } from '../../shared/seo/region-seed'
@@ -146,7 +147,9 @@ function crumbTrail(
   origin: string,
   regionRef?: RegionRef | null,
 ): Array<{ name: string; url: string }> {
-  const trail: Array<{ name: string; url: string }> = [{ name: CONSUMER_SITE_NAME, url: `${origin}/` }]
+  // 🍞 2026-10-14 — 루트는 `withCrumbRoot` 가 붙인다(상세 빌더 셋과 **같은 함수**). 종전엔 여기서
+  //   손으로 붙여, 상세는 `홈` 목록은 `유어딜` 로 같은 URL 이 두 이름을 갖고 있었다.
+  const trail: Array<{ name: string; url: string }> = []
   const segs = pathname.split('/').filter(Boolean)
   let acc = ''
   for (const s of segs) {
@@ -173,7 +176,9 @@ function crumbTrail(
     }
   }
   const entry = CONSUMER_SURFACE_SEO[pathname]
-  if (entry?.canonicalParams?.length && trail.length > 1) {
+  // ⚠️ `trail` 에 루트가 더는 안 들어 있다 — 종전 `length > 1`(루트 말고 한 단계라도 쌓였나)과
+  //   같은 뜻이 되도록 `length > 0` 으로. 숫자만 옮기면 조건의 의미가 뒤집힌다.
+  if (entry?.canonicalParams?.length && trail.length > 0) {
     let params: URLSearchParams | null = null
     try { params = new URLSearchParams(search || '') } catch { params = null }
     const leaf = (params?.get('brand') || params?.get('category') || '').trim()
@@ -182,7 +187,7 @@ function crumbTrail(
       trail.push({ name: leaf, url: `${origin}${pathname}?${key}=${encodeURIComponent(leaf)}` })
     }
   }
-  return trail
+  return withCrumbRoot(origin, trail)
 }
 
 /**
@@ -369,10 +374,8 @@ export function buildCuratorJsonLd(
       .filter((x): x is Record<string, unknown> => x !== null)
       .slice(0, SURFACE_LIST_MAX)
       .map((x, i) => ({ ...x, position: i + 1 }))
-    const trail = [
-      { name: CONSUMER_SITE_NAME, url: `${origin}/` },
-      { name, url: meta.canonical },
-    ]
+    // 🍞 유어샵은 **두 단계**다 — `유어샵` 을 중간에 넣으면 `/u` 라는 없는 URL 을 가리킨다(2026-10-11).
+    const trail = withCrumbRoot(origin, [{ name, url: meta.canonical }])
     const person: Record<string, unknown> = { '@type': 'Person', name, url: meta.canonical }
     if (curator?.handle) person.identifier = String(curator.handle)
     if (curator?.profile_image) person.image = String(curator.profile_image)
