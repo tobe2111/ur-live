@@ -34,3 +34,31 @@ describe('하단 탭 — 검정 + 채움', () => {
     expect(render).not.toMatch(/rounded-full bg-brand/)
   })
 })
+
+/**
+ * 홈 상단 검색·알림·장바구니도 같은 규칙(대표 *"메인의 검색, 장바구니, 알림 버튼도 마찬가지로 똑같이"*).
+ * 잉크색 선 · 누르는 동안(알림은 시트가 열려 있는 동안도) 면으로 채운다.
+ */
+const HOME = stripComments(readFileSync('src/pages/mobile-home/MobileHomePage.tsx', 'utf8'))
+const head = HOME.slice(HOME.indexOf('aria-label="검색"') - 300, HOME.indexOf('aria-label="장바구니"') + 300)
+
+describe('홈 상단 아이콘 — 검정 + 누르면 채움', () => {
+  it('구간을 찾았다', () => {
+    expect(head).toMatch(/aria-label="알림"/)
+  })
+  it('세 버튼 묶음이 잉크색이다(회색 아님)', () => {
+    expect(head).toMatch(/flex items-center gap-1 text-gray-900 dark:text-white/)
+    expect(head).not.toMatch(/text-gray-500 dark:text-gray-400/)
+  })
+  it('세 버튼 모두 누르는 상태를 받는다', () => {
+    for (const k of ['search', 'bell', 'cart']) expect(head).toContain(`pressProps('${k}')`)
+  })
+  it('누르면 채운다 — 검색·장바구니는 누르는 동안, 알림은 열려 있는 동안도', () => {
+    expect(head).toMatch(/fill=\{pressed === 'search' \? 'currentColor' : 'none'\}/)
+    expect(head).toMatch(/filled=\{pressed === 'bell' \|\| bell\.isOpen\}/)
+    expect(head).toMatch(/filled=\{pressed === 'cart'\}/)
+  })
+  it('손을 떼거나 벗어나면 선으로 돌아간다', () => {
+    for (const ev of ['onPointerUp', 'onPointerLeave', 'onPointerCancel']) expect(HOME).toMatch(new RegExp(`${ev}: \\(\\) => setPressed\\(null\\)`))
+  })
+})

@@ -13,3 +13,9 @@
 
 ## ✅ 구현 완료
 - `src/components/main/BottomNav.tsx` — className 만(잠긴 `linkshopPath`·`isActivePath`·5탭 정의 불변).
+
+## ➕ 홈 상단 검색·알림·장바구니 (같은 날)
+대표: *"유어딜 메인의 검색, 장바구니, 알림 버튼도 마찬가지로 똑같이 해줘"*
+- `src/pages/mobile-home/MobileHomePage.tsx` — 회색(gray-500) → 잉크. **누르는 동안 면**으로 채우고 손을 떼면 선으로.
+  알림은 시트가 열려 있는 동안에도 채운다(지금 열린 것을 알려 준다). 검색은 lucide 돋보기 원을 채운다.
+- ⚠️ PC 상단(`DesktopTopNav`)은 이번 범위 밖 — 회색 `text-gray-700` 그대로.

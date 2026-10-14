@@ -22,4 +22,20 @@ export default [
     test: TEST,
     why: '채움 + 굵기에 점까지 더하면 신호가 셋이 되어 "깔끔하게" 가 무너진다.',
   },
+  {
+    name: '⚫ 홈 상단 아이콘을 회색으로 되돌린다',
+    file: 'src/pages/mobile-home/MobileHomePage.tsx',
+    find: 'flex items-center gap-1 text-gray-900 dark:text-white',
+    replace: 'flex items-center gap-1 text-gray-500 dark:text-gray-400',
+    test: TEST,
+    why: '하단 탭과 상단 아이콘의 규칙이 갈린다 — 대표가 "똑같이" 로 묶었다.',
+  },
+  {
+    name: '⚫ 손을 떼도 채움이 남는다',
+    file: 'src/pages/mobile-home/MobileHomePage.tsx',
+    find: '    onPointerUp: () => setPressed(null),\n',
+    replace: '',
+    test: TEST,
+    why: '누른 뒤 아이콘이 채워진 채로 남아 그 화면이 열려 있는 것처럼 보인다.',
+  },
 ]
