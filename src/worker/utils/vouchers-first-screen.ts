@@ -44,9 +44,9 @@ const PAGE_SIZE = 20
 
 export const VOUCHERS_FS_CLASS = {
   page: 'bg-warm dark:bg-[#11141C] pb-safe-nav md:pb-20 min-h-[100dvh]',
-  hero: 'relative h-[196px] overflow-hidden bg-gray-900 dark:bg-[#1D1F29]',
+  hero: 'relative h-[196px] overflow-hidden bg-gray-900 dark:bg-surface',
   overlap: 'relative z-10 -mt-7 px-4',
-  reveal: 'sticky top-0 z-20 bg-warm dark:bg-[#11141C] pt-1',
+  reveal: 'sticky top-0 z-20 bg-warm pt-1',
   balanceBar: 'w-full flex items-center justify-between gap-2 rounded-xl bg-surface shadow-lift active:scale-[0.99] transition-transform h-11 px-4',
   balanceText: 'text-[12px] text-gray-600 dark:text-gray-300 truncate text-left',
   balanceLink: 'shrink-0 inline-flex items-center gap-1 text-[12px] font-bold text-brand-text',

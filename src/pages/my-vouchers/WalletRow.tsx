@@ -68,7 +68,7 @@ export default function WalletRow({ v, t, onOpen }: {
 
       {/* 줄 전체가 버튼이라 이 알약은 그림이다 — 누를 곳이 어딘지 말해 준다. */}
       {v.status === 'unused' && (
-        <span aria-hidden className="shrink-0 inline-flex items-center h-8 px-3.5 rounded-full bg-brand text-white text-[13px] font-bold">
+        <span aria-hidden className="shrink-0 inline-flex items-center h-8 px-3 rounded-full bg-brand text-white text-[13px] font-bold">
           {t('voucher.use', { defaultValue: '사용' })}
         </span>
       )}

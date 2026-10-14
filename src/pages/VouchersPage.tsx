@@ -567,7 +567,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
       {/* 🛡️ 2026-05-28: scroll-up reveal 그룹(headroom) — 내리면 숨고 살짝 올리면 내려온다. 안 C 에선 칩 줄만
             맨 위(top-0)에 붙는다(잔액은 배너에 걸쳐 있다). 쇼핑 섹션에 있을 땐 강제 숨김(카테고리 바는 한 번에 하나). */}
       <div
-        className={heroMode ? 'sticky top-0 z-20 bg-warm dark:bg-[#11141C] pt-1' : 'sticky top-[45px] z-20 bg-warm dark:bg-[#11141C]'}
+        className={heroMode ? 'sticky top-0 z-20 bg-warm pt-1' : 'sticky top-[45px] z-20 bg-warm dark:bg-[#11141C]'}
         style={{
           transform: (revealTop && activeTab !== 'shopping') ? 'translateY(0)' : 'translateY(-110%)',
           transition: 'transform 0.25s ease',

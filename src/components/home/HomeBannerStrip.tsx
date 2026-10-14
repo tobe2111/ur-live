@@ -366,6 +366,10 @@ function StripRail({ banners, single = false, hero = false }: { banners: HomeBan
  *   들어가면 넘친다 → 설명(`span`)은 PC 에서만 보인다(제목 한 줄이 이름표다).
  *   📏 같은 날 대표 *"문장은 한줄로 맞춰줘"*: 제목은 **언제나 한 줄**(폰 15px · PC 24px, 폭 72%).
  *   오른쪽 28% 는 그림(유달이·상품)의 자리라 글자가 거기까지 가지 않는다.
+ *   ✂️ 같은 날 대표 *"한줄로 끝내거나, 아니면 차곡차곡 모은 딜로 / 커피 어때요? 이렇게 2줄로. 지금 애매하게 끊기잖아"*:
+ *   72% 한 줄은 유달이(그림 56~76%) 위로 글자가 덮였다. ⇒ 폭은 **54%**(유달이 왼쪽까지), 줄은 **최대 두 줄**,
+ *   끊는 자리는 **제목에 적은 줄바꿈**이 정한다(`whitespace-pre-line`) — 어드민 제목에 Enter 를 넣으면 그 자리에서 끊긴다.
+ *   줄바꿈 없는 제목이 넘치면 **낱말 단위로만** 넘어간다(`keep-all` — 한글 글자 중간에서 끊지 않는다).
  *   ↕️ 같은 날 대표 *"글자를 높이 기준으로 중앙에"*: 띠는 낮아서(폰 ~90px) 글자를 세로 가운데에 둔다.
  *   아래를 어둡게 까는 막(`div` scrim)은 띠에선 뺀다 — 글자가 아래에 있지 않으니 받칠 게 없고,
  *   남겨 두면 오른쪽 아래 상품 카드만 칙칙해진다(라이브에서 확인).
@@ -378,7 +382,7 @@ function StripRail({ banners, single = false, hero = false }: { banners: HomeBan
  *   기존 클래스를 덮어쓰는 방식(`!`)이라 홈 배너·교환권 PC 띠의 클래스 문자열은 한 글자도 안 바뀐다.
  *   ⚠️ 196 은 `VOUCHERS_HERO_CLS.hero`(예약 판)·서버 첫 화면과 같은 값이어야 한다 — 시험이 대조한다.
  */
-export const HERO_CARD_CLS = '!aspect-auto !h-[196px] !rounded-none !justify-start !pt-[60px] [&>img]:object-right [&>div]:!h-full [&>div]:!bg-gradient-to-r [&>strong]:!max-w-[60%] [&>strong]:!leading-[1.35] [&>span]:hidden'
+export const HERO_CARD_CLS = '!aspect-auto !h-[196px] !rounded-none !justify-start !pt-[60px] [&>img]:object-right [&>div]:!h-full [&>div]:!bg-gradient-to-r [&>strong]:!max-w-[60%] [&>strong]:!leading-[1.35] [&>strong]:!whitespace-pre-line [&>strong]:![word-break:keep-all] [&>span]:hidden'
 const HERO_RAIL_CLS = '!gap-0 !px-0 !scroll-px-0'
 const HERO_COUNTER_CLS = '!right-auto !bottom-auto left-4 !top-3'  // top·bottom 둘 다 걸리면 세로로 늘어나 알약이 가운데로 온다(실측)
 
@@ -387,7 +391,7 @@ export function BannerHeroRail({ banners }: { banners: HomeBanner[] }) {
   return <StripRail banners={banners.slice(0, STRIP_BANNER_MAX)} hero />
 }
 
-const SINGLE_CARD_CLS = '!aspect-[4/1] lg:!w-full !py-3 [&>span]:hidden lg:[&>span]:block [&>strong]:!max-w-[72%] [&>strong]:!line-clamp-1 [&>strong]:!text-[15px] lg:[&>strong]:!text-[24px] !justify-center [&>div]:hidden'
+const SINGLE_CARD_CLS = '!aspect-[4/1] lg:!w-full !py-3 [&>span]:hidden lg:[&>span]:block [&>strong]:!max-w-[54%] [&>strong]:!line-clamp-2 [&>strong]:!whitespace-pre-line [&>strong]:![word-break:keep-all] [&>strong]:!leading-snug [&>strong]:!text-[15px] lg:[&>strong]:!text-[24px] !justify-center [&>div]:hidden'
 
 /** 카드 한 장 — 흰 글자를 왼쪽 아래에(야놀자 문법). 카드 전체가 누르는 자리다. */
 function StripCard({ b, many, first, clone, single = false, hero = false }: { b: HomeBanner; many: boolean; first: boolean; clone?: boolean; single?: boolean; hero?: boolean }) {

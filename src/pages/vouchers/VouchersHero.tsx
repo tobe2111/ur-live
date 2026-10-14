@@ -28,7 +28,7 @@ import { BannerHeroRail } from '@/components/home/HomeBannerStrip'
 
 export const VOUCHERS_HERO_CLS = {
   /** 배너 판 — 높이 196 = 아이콘 줄 + 제목 두 줄 + 잔액 카드가 걸칠 28. */
-  hero: 'relative h-[196px] overflow-hidden bg-gray-900 dark:bg-[#1D1F29]',
+  hero: 'relative h-[196px] overflow-hidden bg-gray-900 dark:bg-surface',
   /** 잔액 카드가 배너 아래 끝에 걸친다. */
   overlap: 'relative z-10 -mt-7 px-4',
   /** 배너가 0장일 때 — 아이콘만 오른쪽에. */
