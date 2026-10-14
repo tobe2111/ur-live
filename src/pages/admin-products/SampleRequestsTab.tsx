@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { Loader2, Truck, CheckCircle, XCircle, Clock } from 'lucide-react'
 import { formatKSTDate } from '@/utils/date'
 import type { SampleRequest } from './types'

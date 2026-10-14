@@ -13,7 +13,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { PinIcon, StoreIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { formatNumber } from '@/utils/format'

@@ -9,7 +9,7 @@
  */
 
 import { useState, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { Upload, X, Loader2, ImageIcon } from 'lucide-react'
 import { prepareImageForUpload, UploadTooLargeError, uploadTooLargeMessage } from '@/lib/prepare-upload'
 import api from '@/lib/api'

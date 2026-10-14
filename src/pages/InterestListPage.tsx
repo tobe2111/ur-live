@@ -5,7 +5,7 @@
 import { useNavigate } from 'react-router-dom'
 import { BellIcon } from '@/components/icons/urdeal-icons'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { ListLoadError } from '@/components/ui/list-load-error'
 import { ChevronLeft, Trash2 } from 'lucide-react'
 import SEO from '@/components/SEO'

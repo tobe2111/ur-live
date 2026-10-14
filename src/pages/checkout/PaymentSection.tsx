@@ -8,7 +8,7 @@
  * 핵심 결제 처리 콜백 (onPaymentSuccess / onBeforePayment) 은 부모에서 props 로 전달.
  */
 import { lazy, Suspense } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { formatNumber } from '@/utils/format'
 import { isKorea } from '@/config/region'
 import { TOPUP_DISABLED } from '@/shared/feature-flags'

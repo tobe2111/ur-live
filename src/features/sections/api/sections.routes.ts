@@ -33,6 +33,8 @@ import { capRowGalleries } from '../../group-buy/api/card-gallery';
 import { maybeSeedHomeSections } from './section-seed';
 import { mainScopeFor } from '@/worker/utils/consumer-scope';
 import { nearKeyOf, parseNearKey } from '@/shared/home-near';
+import { listActiveBanners } from '../../banners/api/banners.routes';
+import { STRIP_BANNER_MAX } from '@/shared/home-strip-banners';
 const sectionsRoutes = new Hono<{ Bindings: Env }>();
 
 /**
@@ -226,8 +228,27 @@ sectionsRoutes.get('/', edgeCache(120), async (c) => {
       { ttl: 120 }
     );
 
+    /**
+     * 🎫 2026-10-14 — **상단 배너(strip)를 같은 응답에 싣는다.** 그 배너는 첫 섹션 **위**에 오는데
+     *   서버 첫 화면(`home-first-screen.ts`)이 이 응답만 시드로 받는다. 배너가 따로 오면 마운트 뒤에
+     *   끼어들어 첫 섹션을 197px 아래로 민다 — 라이브 실측 첫 방문 CLS **0.197**(위치 유무와 무관, 매번).
+     *   조회는 `/api/banners` 와 **같은 함수**(`listActiveBanners`)다. 실패하면 빈 배열(섹션은 그대로 나간다).
+     *   배너가 없으면 필드 자체를 안 싣는다 — 종전 응답과 byte-동일.
+     */
+    const stripBanners = await cacheGet(SESSION_KV, 'home:strip_banners', async () => {
+      try {
+        return (await listActiveBanners(DB, 'strip')).slice(0, STRIP_BANNER_MAX).map(b => ({
+          id: b.id, title: b.title, image_url: b.image_url, link_url: b.link_url ?? null,
+          description: b.description ?? null, banner_slot: 'strip', display_order: b.display_order,
+        }));
+      } catch {
+        return [];
+      }
+    }, { ttl: 120 }).catch(() => [] as unknown[]);
+    const extra = Array.isArray(stripBanners) && stripBanners.length > 0 ? { strip_banners: stripBanners } : {};
+
     // 📍 어느 위치로 만든 응답인지 — 화면이 SSR 시드를 쓸지(같은 격자인지) 판정한다.
-    return c.json(nearKey ? { success: true, data: result, near: nearKey } : { success: true, data: result });
+    return c.json(nearKey ? { success: true, data: result, near: nearKey, ...extra } : { success: true, data: result, ...extra });
   } catch (err) {
     console.error('[sections] GET / failed:', err);
     return c.json({ success: true, data: [] });

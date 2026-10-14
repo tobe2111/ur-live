@@ -2,7 +2,7 @@
  * 🛡️ 2026-05-02: TD-018 분할 — SellerOrdersPage 주문 상세 모달.
  *   상태 변경 + 송장 등록 폼 포함. helpers 는 ./statusHelpers 에서 import.
  */
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { XCircle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatKST } from '@/utils/date'

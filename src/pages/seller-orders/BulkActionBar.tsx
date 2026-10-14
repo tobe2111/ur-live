@@ -5,7 +5,7 @@
  * 파일 크기 래칫(`file-size-baseline.json` 이 615줄로 동결)에 자리를 만들기 위해서고,
  * PC 표 전용 UI 라 모바일 카드 뷰(`MobileOrderList`)와 관심사가 갈리기 때문이다.
  */
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { Loader2 } from 'lucide-react'
 
 export default function BulkActionBar({

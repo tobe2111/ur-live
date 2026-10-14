@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { BellIcon, BagIcon } from '@/components/icons/urdeal-icons'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { ArrowLeft, Search, X, Navigation, SlidersHorizontal } from 'lucide-react'
 import { storage } from '@/shared/utils/storage'
 import UrDealLogo from '@/components/brand/UrDealLogo'

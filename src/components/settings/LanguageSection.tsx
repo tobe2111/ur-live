@@ -3,7 +3,7 @@
  * SellerLayout 의 changeLanguage 패턴(:209)과 동일 — i18n + html lang + i18nextLng 동기.
  * /user/profile 은 화이트/다크 토글 페이지 — dark: variant 필수.
  */
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { Globe } from 'lucide-react'
 
 const LANGS: Array<{ code: string; label: string }> = [

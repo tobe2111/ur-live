@@ -9,7 +9,7 @@
  * 혜택 문구는 라이브에서 실제로 되는 것만이다(`GuestBenefits` 머리말).
  */
 import { Link } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import SEO from '@/components/SEO'
 import { CouponIcon, ScanIcon, WonCoinIcon, GiftBoxIcon } from '@/components/icons/urdeal-icons'
 import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'

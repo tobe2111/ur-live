@@ -9,7 +9,7 @@
 import { useEffect, useState } from 'react'
 import { PeopleIcon } from '@/components/icons/urdeal-icons'
 import { Link, useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import api from '@/lib/api'
 import { feedPayload, shareViaKakao } from '@/lib/kakao-share'
 import SEO from '@/components/SEO'

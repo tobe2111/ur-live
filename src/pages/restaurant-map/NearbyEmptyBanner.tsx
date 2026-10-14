@@ -5,7 +5,7 @@
  *   정렬/필터/노출 자체는 불변(안내만 추가). 조건 미충족이면 null(렌더 0).
  */
 import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { distanceKm } from './utils'
 import type { Restaurant } from './types'
 import Udal from '@/components/mascot/Udal'

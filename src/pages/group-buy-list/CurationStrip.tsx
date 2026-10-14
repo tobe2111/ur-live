@@ -6,7 +6,7 @@
  *   `tone-*` 로 옮길 것(지금 색은 MONO 중화로 전부 같은 회색이다).
  */
 // 🧱 2026-06-29 TD: GroupBuyListPage god 파일 분해 — 큐레이션 스트립(verbatim 추출). 동작/스타일 불변.
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'
 import type { GroupBuyProduct } from './types'
 

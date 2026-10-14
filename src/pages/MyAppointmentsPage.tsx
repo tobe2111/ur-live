@@ -9,7 +9,7 @@
 import { useEffect, useState } from 'react'
 import { PinIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { ArrowLeft, Calendar, CalendarPlus, Phone, X } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'

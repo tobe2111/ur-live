@@ -21,7 +21,7 @@
  */
 import { useMemo, useState } from 'react'
 import { shortOrderNo } from '@/shared/order-number-display'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import SegmentedTabs from '@/components/ui/segmented-tabs'
 import { parseUTCDate } from '@/utils/date'
 import { formatWon } from '@/utils/format'

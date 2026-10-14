@@ -55,6 +55,7 @@ async function waitFor(url, ms = 90000) {
 }
 
 const results = []
+const devLog = []
 const check = (name, pass, detail) => {
   results.push({ name, pass, detail })
   console.log(`${pass ? '✅' : '❌'} ${name} — ${detail}`)
@@ -66,7 +67,9 @@ const check = (name, pass, detail) => {
 let dev = null
 let base = process.env.BASE
 if (!base) {
-  dev = spawn('npx', ['vite', '--port', '5199', '--strictPort'], { stdio: 'ignore', detached: false })
+  dev = spawn('npx', ['vite', '--port', '5199', '--strictPort'], { stdio: ['ignore', 'pipe', 'pipe'], detached: false })
+  // 🔎 실패 진단용 — vite dev 가 그동안 뭘 했는지(의존성 재최적화·리로드 등) 끝부분을 남긴다.
+  for (const st of [dev.stdout, dev.stderr]) st?.on('data', (d) => { devLog.push(String(d)); if (devLog.length > 200) devLog.shift() })
   base = 'http://localhost:5199'
   if (!await waitFor(base)) { console.error('vite dev 가 뜨지 않았다'); dev.kill(); process.exit(1) }
 }
@@ -263,17 +266,47 @@ try {
       document.addEventListener('DOMContentLoaded', () => ob.observe(document.body, { childList: true, subtree: true }))
     })
     const errs = []
-    const consoleErrs = []
-    const navs = []
-    page.on('framenavigated', (f) => { if (f === page.mainFrame()) navs.push(f.url().replace(base, '')) })
-    page.on('console', (m) => { if (/\[vite\]/.test(m.text())) consoleErrs.push(m.text().slice(0, 160)); else if (m.type() === 'error' || m.type() === 'warning') { const t = m.text(); if (!/Failed to load resource|Env Validator|환경 변수/.test(t)) consoleErrs.push(t.slice(0, 160)) } })
+    // 🔎 실패 진단 — 콘솔·주소 변경·실패 요청을 시간순으로 모아 둔다(실패할 때만 출력).
+    const trace = []
+    const t0 = Date.now()
+    page.on('console', (m) => trace.push(`+${Date.now() - t0}ms console.${m.type()} ${m.text().slice(0, 200)}`))
+    page.on('requestfailed', (r) => trace.push(`+${Date.now() - t0}ms reqfail ${r.url().slice(0, 120)} ${r.failure()?.errorText || ''}`))
+    page.on('framenavigated', (f) => { if (f === page.mainFrame()) trace.push(`+${Date.now() - t0}ms nav ${f.url()}`) })
+    await page.addInitScript(() => {
+      const r = history.replaceState.bind(history), p = history.pushState.bind(history)
+      history.replaceState = (a, b, u) => { console.log('[diag] replaceState ' + u); return r(a, b, u) }
+      history.pushState = (a, b, u) => { console.log('[diag] pushState ' + u); return p(a, b, u) }
+    })
     page.on('pageerror', (e) => errs.push(`${String(e)} @ ${String(e.stack || '').split('\n').slice(1, 3).join(' ')}`))
+    const logMark = devLog.length
     await page.goto(`${base}${path}`, { waitUntil: 'networkidle' })
-    // `networkidle` 은 "요청이 멎었다" 지 "그렸다" 가 아니다 — lazy 청크·시트가 그 뒤에 그려질 수 있어 잠깐 기다린다.
-    let seen = await page.getByText(expect1, { exact: false }).count().catch(() => 0)
-    if (!seen) seen = await page.getByText(expect1, { exact: false }).first().waitFor({ timeout: 10_000 }).then(() => 1, () => 0)
-    const where = seen ? '' : ` — 못 찾음 @ ${page.url()} :: ${(await page.evaluate(() => (document.body?.innerText || '').replace(/\s+/g, ' ').slice(0, 200)).catch(() => '?'))} :: 토스트 ${JSON.stringify(await page.evaluate(() => window.__toasts || []).catch(() => []))} :: 시트 ${await page.locator('[role=dialog]').count().catch(() => -1)} :: 이동 ${JSON.stringify(navs)} :: 좌석토큰 ${await page.evaluate((seat) => { const t = localStorage.getItem('seller_token'); return t === seat ? '그대로' : t ? '바뀜:' + t.slice(0, 24) : '없음' }, SEAT).catch(() => '?')} :: 콘솔 ${JSON.stringify(consoleErrs.filter((x) => !/Future Flag/.test(x)).slice(0, 6))}`
+    // ♻️ 2026-10-14: vite dev 가 첫 방문 중 의존성을 새로 찾으면 페이지를 **통째로 리로드**한다
+    //   (CI 실측: lucide 아이콘 파일 단위 import 를 하나씩 발견하며 6번 — "optimized dependencies changed. reloading").
+    //   깊은 링크(`/seller/returns` → `/user/profile?tool=…`)는 `?tool=` 을 지운 직후 리로드를 맞으면 시트가 안 열린다.
+    //   배포본은 미리 묶인 파일이라 이 리로드가 없다 — 그래서 **리로드가 실제로 있었을 때만** 한 번 다시 연다.
+    {
+      const reloaded = () => devLog.slice(logMark).join('').includes('optimized dependencies changed')
+      await page.getByText(expect1, { exact: false }).first().waitFor({ timeout: 8000 }).catch(() => {})
+      if (reloaded() && (await page.getByText(expect1, { exact: false }).count().catch(() => 0)) === 0) {
+        console.log(`   ♻️ [${name}] vite 의존성 재최적화 리로드가 있었다 — 한 번 다시 연다`)
+        await page.goto(`${base}${path}`, { waitUntil: 'networkidle' })
+      }
+    }
+    // ⏳ 2026-10-14: networkidle 직후 바로 세면 CI(콜드 vite dev)에서 화면이 아직 안 그려져 0 이 나왔다
+    //   (10-12·10-14 같은 자리 두 번 — 재실행하면 통과). 글자가 뜰 때까지 기다린 뒤 센다. 판정 자체는 그대로다.
+    await page.getByText(expect1, { exact: false }).first().waitFor({ timeout: 15000 }).catch(() => {})
+    const seen = await page.getByText(expect1, { exact: false }).count().catch(() => 0)
+    // 주석(::error)으로 읽히도록 실패 원인을 detail 에 함께 싣는다 — 잡 로그는 원격 세션이 못 읽는다.
+    const where = seen ? '' : ` — 못 찾음 @ ${page.url()} :: ${(await page.evaluate(() => (document.body?.innerText || '').replace(/\s+/g, ' ').slice(0, 200)).catch(() => '?'))} :: 토스트 ${JSON.stringify(await page.evaluate(() => window.__toasts || []).catch(() => []))} :: 시트 ${await page.locator('[role=dialog]').count().catch(() => -1)}`
     check(`[${name}] 렌더 + 런타임 에러 0`, seen > 0 && errs.length === 0, errs.length ? errs.join(' || ') : `"${expect1}" 확인${where}`)
+    // 🔎 실패하면 그 자리에서 무엇이 떠 있었는지 남긴다 — CI 스크린샷은 꺼내기 어렵다(2026-10-14).
+    if (!(seen > 0 && errs.length === 0)) {
+      const diag = await page.evaluate(() => ({ url: location.pathname + location.search, text: (document.body?.innerText || '').replace(/\s+/g, ' ').slice(0, 400) })).catch((e) => ({ url: '?', text: String(e) }))
+      console.log(`   🔎 vite(끝 15줄):\n${devLog.join('').split('\n').slice(-15).join('\n')}`)
+      console.log(`   🔎 trace:\n${trace.filter((l) => !/vitals|\[vite\]|Download the React/.test(l)).slice(0, 45).map((l) => '     ' + l).join('\n')}`)
+      console.log(`   🔎 vite 재최적화·리로드:\n${devLog.join('').split('\n').filter((l) => /optimiz|reload|dependenc|page reload/i.test(l)).slice(-15).join('\n')}`)
+      console.log(`   🔎 url=${diag.url}\n   🔎 text=${diag.text}\n   🔎 errs=${JSON.stringify(errs.slice(0, 3))}`)
+    }
 
     // 🔴 대시보드 라이트 고정 — 다크 클래스가 붙으면 정책 위반이다(check-dashboard-theme 의 렌더판).
     const isDark = await page.evaluate(() => document.documentElement.classList.contains('dark'))

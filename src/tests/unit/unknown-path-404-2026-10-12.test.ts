@@ -19,7 +19,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
-import { isKnownAppPath, KNOWN_TOP_SEGMENTS, KNOWN_SINGLE_ROUTES } from '@/shared/seo/known-routes'
+import { isKnownAppPath, KNOWN_PARENT_SEGMENTS, KNOWN_SINGLE_ROUTES } from '@/shared/seo/known-routes'
 import { stripComments } from '../helpers/source-text'
 
 const ROUTE_FILES = [
@@ -52,7 +52,9 @@ describe('🗺️ 등록 안 된 경로 404', () => {
   it('① 측정 대상이 비어 있지 않다 (0건이면 통과가 아니라 고장)', () => {
     const ps = allRoutePaths()
     expect(ps.length).toBeGreaterThan(250)
-    expect(KNOWN_TOP_SEGMENTS.size).toBeGreaterThan(60)
+    // 🔁 2026-10-14 — `KNOWN_TOP_SEGMENTS` 가 삭제돼(프로덕션 미사용 → 주입이 헛돌았다)
+    //   2세그먼트 판정이 실제로 읽는 집합으로 바꿨다. 지키는 것은 같다: *측정 대상이 비지 않았다*.
+    expect(KNOWN_PARENT_SEGMENTS.size).toBeGreaterThan(20)
     expect(KNOWN_SINGLE_ROUTES.size).toBeGreaterThan(40)
   })
 

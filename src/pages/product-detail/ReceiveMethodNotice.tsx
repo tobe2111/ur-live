@@ -15,7 +15,7 @@
  * 🔴 판정 기준은 **몰이 아니라 픽업 데이터**다. 본진에서 열린 픽업 상품에도 똑같이 적용돼야 한다
  *   (`products.routes` GET /:id 주석과 같은 원칙 — 몰 결합을 만들지 않는다).
  */
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { STORAGE_NOTICE } from '@/shared/pickup'
 import { parseUTCDate } from '@/utils/date'
 

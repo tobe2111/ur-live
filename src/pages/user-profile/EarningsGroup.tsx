@@ -5,7 +5,7 @@
  * 1탭 뒤로. 카드 컴포넌트/데이터 로직은 자식 그대로 — 표시 위계만 변경. 펼침 상태는 기억.
  */
 import { useState, type ReactNode } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { WonCoinIcon } from '@/components/icons/urdeal-icons'
 import { SectionTitle, FoldRow, rowIcon } from './list-grammar'
 

@@ -3,7 +3,7 @@
  *
  * 상품금액 / 배송비 / 쿠폰 할인 / 공동구매 할인 / 딜 포인트 / 총 결제 금액 / VAT / 적립 예정.
  */
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { formatNumber } from '@/utils/format'
 
 interface Props {

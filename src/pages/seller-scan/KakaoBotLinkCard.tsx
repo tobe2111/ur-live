@@ -5,7 +5,7 @@
  *   서버: `/api/seller/kakao-bot/*` (seller-kakao-bot.routes.ts). 게이트가 꺼져 있으면 "준비 중" 만 보인다.
  */
 import { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { MessageCircle, Copy, XCircle } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'

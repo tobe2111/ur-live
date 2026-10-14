@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import { StarIcon, AlertIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { ArrowLeft } from 'lucide-react'
 import Udal from '@/components/mascot/Udal'
 import SEO from '@/components/SEO'

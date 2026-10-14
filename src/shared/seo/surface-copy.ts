@@ -38,12 +38,19 @@
  *
  * ## ⚠️ 이 파일이 안 하는 것
  *
- * - **법정 문서는 여기 없다.** `/terms`·`/terms/seller` 는 그 문서 자체(`TermsDoc`)의 **조항
+ * - **약관은 여기 없다.** `/terms`·`/terms/seller` 는 그 문서 자체(`TermsDoc`)의 **조항
  *   제목**을 `crawler-noscript.ts` 가 파생해 쓴다 — 손으로 요약하면 개정될 때 갈린다.
  * - **`/privacy`(21자)·`/refund`(17자)는 일부러 안 했다.** 그 둘은 본문이 **JSX 안에 박혀**
  *   있어(게다가 `/privacy` 는 국문·영문 분기) 문서에서 파생할 수가 없고, 손으로 요약을 쓰면
  *   **화면에 없는 말**이 되어 이 파일의 규율을 내가 깨는 셈이다. 올바른 수선은 그 둘도
  *   `TermsDoc` 같은 콘텐츠 SSOT 로 옮기는 것이고 **별건**이다(법정 문서라 문구 변경 = 대표 확인).
+ *
+ *   🔑 **2026-10-14 정정 — 가르는 기준은 "법정 문서냐" 가 아니라 "그 화면의 문장을 그대로 옮길
+ *   수 있느냐" 다.** 같은 날 `/gdpr`(본문 6자, index)을 넣었는데 그건 법정 문서이면서도
+ *   **통째 문장이 `<p>` 안에 그대로** 있다(단일 언어 · 보간 없음) ⇒ 요약을 *쓰는* 것이 아니라
+ *   *옮기는* 것이라 이 파일의 규율을 지킨다. `/privacy`·`/refund` 가 안 되는 이유는 법정 문서라서가
+ *   아니라 **문장이 거기 없어서**다(분기·단편). 다음 세션이 이 줄을 "법정 문서 금지" 로 읽어
+ *   `/gdpr` 을 되돌리지 않게 적어 둔다.
  * - 구글이 실제로 색인하는지(수일~수주 · 서치콘솔은 대표만 본다).
  */
 
@@ -155,6 +162,28 @@ export const SURFACE_COPY: Readonly<Record<string, SurfaceCopy>> = {
       '별도 가입 없이 로그인만 하면 시작! 동네 딜을 사고, 마음에 든 딜은 내 유어샵에 담아 소개하면 됩니다.',
     ],
     source: ['src/pages/JoinChoicePage.tsx'],
+  },
+
+  /* 🇪🇺 2026-10-14 — `/gdpr` 본문 6자 (대표 "다 해주고 머지 후 또 개선점 찾아").
+     라이브 실측(Googlebot UA): `200 · 본문 6자 · index, follow` 인데 제목·description 은 멀쩡했다
+     — 즉 **메타는 있고 읽을 것이 없는** 그 클래스다. 이 페이지는 8개 절을 가진 **진짜 문서**이고
+     문장이 `<p>` 안에 통째로 있어(단일 언어 · 보간 없음) 요약을 쓰지 않고 **옮기기만** 하면 된다.
+
+     🔒 **고른 기준 셋** — 지어내지 않는 것 말고도 둘을 더 피했다:
+     ① **이메일이 든 줄은 안 쓴다**(`jiwon@ur-team.com`). 화면엔 이미 공개돼 있지만 `<noscript>` 에
+        또 심으면 수확 표면이 하나 늘 뿐 색인에 보탬이 0 이다.
+     ② **"6. Data Transfers" 줄은 안 쓴다** — 그 문장이 `Firebase (Google Cloud)` 를 든다. Firebase
+        클라이언트는 2026-08-04 에 **전면 삭제**됐다(#804) ⇒ 낡았을 수 있는 법정 문구를 SEO SSOT 로
+        **승격**하지 않는다. 문구 자체의 수정은 법정 문서라 **대표 확인**이고 별건으로 올렸다.
+     ③ h1 과 겹치는 줄(`Privacy Policy & GDPR Compliance`)도 뺐다 — 빌더가 `crumb`(`Privacy Policy`)로
+        h1 을 이미 낸다(같은 말을 두 번 하지 않는다 — 2026-10-12 숙소 상세와 같은 규율). */
+  '/gdpr': {
+    lines: [
+      'Lister Corporation ("YourDeal") is the data controller for personal data processed through urdeal.kr.',
+      'We retain personal data for as long as your account is active. Order data is kept for 5 years for tax compliance. You can delete your account at any time.',
+      'We use essential cookies for authentication and session management. No third-party tracking cookies are used without consent.',
+    ],
+    source: ['src/pages/GDPRPage.tsx'],
   },
 }
 

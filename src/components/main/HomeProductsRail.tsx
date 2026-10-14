@@ -10,7 +10,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { BagIcon } from '@/components/icons/urdeal-icons'
 import { Link } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { ArrowRight } from 'lucide-react'
 import api from '@/lib/api'
 import BrowseProductCard from '@/pages/browse/BrowseProductCard'

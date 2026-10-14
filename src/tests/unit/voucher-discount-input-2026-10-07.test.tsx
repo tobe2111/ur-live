@@ -17,7 +17,7 @@ import { readCode } from '../helpers/source-text'
 import { priceFromDiscount, discountFromPrices } from '@/pages/seller-meal-voucher/discount-input'
 import { priceDisplay } from '@/shared/price-display'
 
-vi.mock('react-i18next', () => ({
+vi.mock('@/lib/i18n-lite', () => ({
   useTranslation: () => ({ t: (k: string, o?: { defaultValue?: string }) => o?.defaultValue ?? k }),
 }))
 

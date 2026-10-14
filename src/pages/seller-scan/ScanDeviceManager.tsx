@@ -5,7 +5,7 @@
  *   ⚠️ 키 원문은 발급 응답 1회만 표시(서버엔 해시만) — 새로 보려면 재발급.
  */
 import { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { Smartphone, Copy, XCircle, Plus } from 'lucide-react'
 import api from '@/lib/api'
 import ScannableQr from '@/components/voucher/ScannableQr'

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 //   (일반 유저 유어샵(CuratorPage)은 추천템이 메인이라 그대로.)
 // 🏁 2026-06-26 (대표 — "상품·이용권 모두 전체 등록 페이지로"): 얄팍한 빠른등록 모달(QuickProductModal) 제거 →
 //   등록은 정식 풀페이지(/seller/products/new · /seller/meal-voucher/new)로. (lazy/Suspense 도 미사용→제거)
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { storeAffiliateRef } from '@/utils/affiliate-track'
 import api from '@/lib/api'

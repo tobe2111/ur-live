@@ -1,7 +1,7 @@
 // 🧱 2026-06-29 TD: GroupBuyListPage god 파일 분해 — 지역 필터 바(verbatim 추출). 동작 불변.
 import type { Dispatch, SetStateAction } from 'react'
 import { PinIcon } from '@/components/icons/urdeal-icons'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { ChevronDown } from 'lucide-react'
 import type { CategoryFilter } from './types'
 

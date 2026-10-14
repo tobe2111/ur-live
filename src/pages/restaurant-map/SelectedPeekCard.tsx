@@ -2,7 +2,7 @@ import CatIcon from './CatIcon'
 import { priceDisplay } from '@/shared/price-display'
 import { Radio, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import type { Restaurant } from './types'
 

@@ -3,7 +3,7 @@
  *
  * 수령인 / 연락처 / Daum 우편번호 검색 / 주소 / 상세주소 입력 폼.
  */
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { CustomModal } from '@/components/CustomModal'
 
 interface NewAddress {

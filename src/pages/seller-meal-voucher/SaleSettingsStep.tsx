@@ -3,7 +3,7 @@
  *   - 목표 인원 입력 제거(2026-08-23 리뉴얼 — 즉시판매 단일가 모델에서 vestigial, 항상 0 전송)
  *   - 유효기간 기본 = 제한 없음(2026-08-22 대표 정책: 미설정 = 무기한). 토글로만 날짜 설정.
  */
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { Users } from 'lucide-react'
 import CardPreview from './CardPreview'
 import type { VoucherForm } from './voucher-form'

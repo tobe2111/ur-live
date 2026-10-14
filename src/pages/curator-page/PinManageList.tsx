@@ -2,7 +2,7 @@
  * 🧱 2026-09-02 (file-size 래칫 — 유어샵 안3/안P1 구현): `CuratorPage.tsx` 에서 **그대로 추출** — 동작·마크업 불변.
  */
 import { useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { curatorApi, type CuratorPin } from '@/features/curator/api/curator-api'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'

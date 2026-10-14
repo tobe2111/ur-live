@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { AlertIcon } from '@/components/icons/urdeal-icons'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { alertDialog } from '@/components/ui/confirm-dialog'

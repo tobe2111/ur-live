@@ -12,7 +12,7 @@
 import { useState } from 'react'
 import InfluencerPicker from './seller-influencer-deals/InfluencerPicker'
 import CollabCodesSection from './seller-influencer-deals/CollabCodesSection'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import api from '@/lib/api'

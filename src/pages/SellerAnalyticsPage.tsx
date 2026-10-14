@@ -14,7 +14,7 @@
  *   안쪽 화면에서는 ← 로 요약으로 돌아온다.
  */
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardLoading } from '@/components/dashboard'

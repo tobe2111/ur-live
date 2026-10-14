@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { Button } from '@/components/ui/button'
 import { Loader2, FileText, Search } from 'lucide-react'
 import type { BusinessInfo, BusinessFormData } from './types'

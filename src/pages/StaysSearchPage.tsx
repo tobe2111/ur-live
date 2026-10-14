@@ -14,7 +14,7 @@ import { TicketStubIcon, StayLineIcon, PinIcon, PeopleIcon } from '@/components/
 import { MAP_VOUCHER_DEFS } from '@/pages/restaurant-map/voucher-types'
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import { Search, Calendar, SlidersHorizontal, X } from 'lucide-react'

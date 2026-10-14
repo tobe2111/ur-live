@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { BoxIcon, AlertIcon, ReceiptIcon } from '@/components/icons/urdeal-icons'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { useNavigate, useSearchParams } from 'react-router-dom'

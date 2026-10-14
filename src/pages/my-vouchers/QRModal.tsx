@@ -2,7 +2,7 @@
 //   QRCodeSVG(lazy)·VoucherQRCode 는 모듈 내부 전용, QRModal 만 페이지가 사용.
 import { useState, useEffect } from 'react'
 import { OkIcon, PinIcon, BadIcon, GiftBoxIcon } from '@/components/icons/urdeal-icons'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import ScannableQr from '@/components/voucher/ScannableQr'

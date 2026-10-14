@@ -7,7 +7,7 @@
  * PC 에선 max-w-[430px] 중앙 정렬 (모바일 앱 프레임 일관성).
  */
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { Check } from 'lucide-react'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { KOREA_REGIONS } from '@/shared/constants/korea-regions'

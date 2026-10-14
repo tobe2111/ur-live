@@ -12,7 +12,7 @@
  *   라이트다(`bg-gray-100 dark:bg-[#222225]` — 다크는 사용자 토글). 대시보드 규칙상 여기엔
  *   `dark:` variant 를 쓸 수 없으므로(check-dashboard-theme) **라이트 단일**로 그린다.
  */
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { MapPin, Ticket } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import type { VoucherForm } from './voucher-form'

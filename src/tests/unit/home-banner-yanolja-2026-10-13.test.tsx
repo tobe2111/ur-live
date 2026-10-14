@@ -14,10 +14,24 @@
  */
 import { describe, it, expect, vi } from 'vitest'
 import { readFileSync } from 'fs'
+import { STRIP_CLS } from '@/shared/home-strip-banners'
 import { render } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { resolveBannerLink } from '@/components/home/banner-link'
 import { stripComments } from '../helpers/source-text'
+
+/**
+ * 🎫 2026-10-14 — 배너 클래스가 공용 상수(`STRIP_CLS`, 서버 첫 화면과 같은 값)로 옮겨갔다.
+ *   불변식은 그대로이므로 **참조를 실제 값으로 되돌려 넣은 소스**를 검사한다(상수를 바꾸면 여기서 잡힌다).
+ */
+function resolveStripCls(src: string): string {
+  const v = (k: string) => (STRIP_CLS as Record<string, string>)[k]
+  return src
+    .replace(/\$\{STRIP_CLS\.(\w+)\}/g, (_, k) => v(k))
+    .replace(/\{STRIP_CLS\.(\w+)\}/g, (_, k) => `"${v(k)}"`)
+    .replace(/STRIP_CLS\.(\w+)/g, (_, k) => `'${v(k)}'`)
+}
+
 
 const LIVE = [
   { id: 2, title: '교환권', link_url: 'https://urdeal.kr/vouchers' },
@@ -29,7 +43,7 @@ const LIVE = [
 
 vi.mock('@/components/home/useHomeBanners', () => ({ useHomeBanners: () => LIVE }))
 
-const SRC = stripComments(readFileSync('src/components/home/HomeBannerStrip.tsx', 'utf-8'))
+const SRC = resolveStripCls(stripComments(readFileSync('src/components/home/HomeBannerStrip.tsx', 'utf-8')))
 const CARD = SRC.slice(SRC.indexOf('function StripCard('))
 const RAIL = SRC.slice(SRC.indexOf('function StripRail('), SRC.indexOf('function StripCard('))
 

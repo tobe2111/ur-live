@@ -11,10 +11,23 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
+import { STRIP_CLS } from '@/shared/home-strip-banners'
 import { HOME_SORT_KEYS } from '@/pages/main-home/useHomeQuerySync'
 import {
   BANNER_SLOTS, BANNER_SLOT_LABELS, BANNER_SLOT_SPECS, isBannerSlot, parseBannerSlot,
 } from '@/shared/constants/home-showcase'
+
+/**
+ * 🎫 2026-10-14 — 배너 클래스가 공용 상수(`STRIP_CLS`, 서버 첫 화면과 같은 값)로 옮겨갔다.
+ *   불변식은 그대로이므로 **참조를 실제 값으로 되돌려 넣은 소스**를 검사한다(상수를 바꾸면 여기서 잡힌다).
+ */
+function resolveStripCls(src: string): string {
+  const v = (k: string) => (STRIP_CLS as Record<string, string>)[k]
+  return src
+    .replace(/\$\{STRIP_CLS\.(\w+)\}/g, (_, k) => v(k))
+    .replace(/\{STRIP_CLS\.(\w+)\}/g, (_, k) => `"${v(k)}"`)
+    .replace(/STRIP_CLS\.(\w+)/g, (_, k) => `'${v(k)}'`)
+}
 
 const read = (p: string) => readFileSync(p, 'utf-8')
 /** 주석은 판정에서 뺀다 — 설명 문장에 든 이름 때문에 초록이 뜨는 사고가 이 레포에서 실제로 났다. */
@@ -71,7 +84,7 @@ describe('① 상단 띠 배너 자리(strip)', () => {
  *    안 2 로 되돌아가는 것을 막는 게 아니라, 안 3 이 실제로 **스와이프 스트립인지**를 고정한다.
  */
 describe('① 상단 띠 = 옆으로 넘기는 스트립 (안 3)', () => {
-  const SRC = read('src/components/home/HomeBannerStrip.tsx')
+  const SRC = resolveStripCls(read('src/components/home/HomeBannerStrip.tsx'))
   const RAIL = SRC.slice(SRC.indexOf('function StripRail('))
 
   it('네이티브 가로 스크롤 + scroll-snap 으로 넘긴다 (JS 캐러셀 라이브러리 0)', () => {

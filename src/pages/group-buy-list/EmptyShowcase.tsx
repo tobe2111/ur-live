@@ -1,5 +1,5 @@
 // 🧱 2026-06-29 TD: GroupBuyListPage god 파일 분해 — 빈 화면 '곧 오픈' showcase(verbatim 추출). 동작 불변.
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { Plus, type LucideIcon } from 'lucide-react'
 import { SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
 

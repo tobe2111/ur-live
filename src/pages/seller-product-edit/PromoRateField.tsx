@@ -11,7 +11,7 @@
  *   재원이 아직 플랫폼 부담(`promo_funding_source ≠ 'owner'`)인 동안 열면 **매장이 건 소개비를
  *   유어딜이 대신 문다.** 순서는 재원 전환이 먼저다(commission-funding-restructure.md §1).
  */
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { SELLER_PROMO_FIELD_ENABLED } from '@/shared/feature-flags'
 import PromoMarginCalculator, { promoGuideFor } from '../seller-product-new/PromoMarginCalculator'
 

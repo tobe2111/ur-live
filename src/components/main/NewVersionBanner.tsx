@@ -5,7 +5,7 @@
  *   App 루트에 1회 마운트. BottomNav 위에 떠서 가림 없이 노출.
  */
 import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { RefreshCw, X } from 'lucide-react'
 import { NEW_VERSION_EVENT, applyVersionUpdate } from '@/lib/version-check'
 

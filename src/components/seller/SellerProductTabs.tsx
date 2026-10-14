@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 
 /**
  * 🧭 2026-06-09 IA 정리: 상품 관리 3페이지(내 상품/묶음/재고) 상단 공유 탭.

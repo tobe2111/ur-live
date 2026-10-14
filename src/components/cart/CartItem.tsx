@@ -2,7 +2,7 @@ import React from 'react'
 import { Minus, Plus, X, ImageOff } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { priceDisplay } from '@/shared/price-display'
 
 interface CartItem {

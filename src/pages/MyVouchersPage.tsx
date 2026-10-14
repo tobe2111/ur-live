@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom'
 // 🛡️ 2026-05-27 (loading P1): VoucherMap (Kakao Maps SDK ~150KB) 별도 chunk lazy.
 //   사용자가 '지도 보기' 토글 시만 로드 → 초기 paint 영향 0.
 const VoucherMap = lazy(() => import('./my-vouchers/VoucherMap'))
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import SEO from '@/components/SEO'
 import { ArrowLeft, QrCode } from 'lucide-react'
 import { useMyVouchers } from '@/hooks/queries'

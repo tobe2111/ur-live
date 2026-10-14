@@ -5,7 +5,7 @@
  *   이 페이지는 대시보드 맥락(SellerLayout + 사용 방식 설정 카드)만 담당.
  */
 import { useState, useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { Camera } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'

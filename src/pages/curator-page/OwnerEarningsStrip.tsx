@@ -3,7 +3,7 @@
  *   CuratorPage 가 701줄 동결이라 카테고리 칩·PC 2단을 얹으려면 자기완결 블록을 먼저 떼어내야 했다.
  */
 import { Link } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { formatWon, formatNumber } from '@/utils/format'
 import type { DashboardStats } from '@/features/curator/api/curator-api'

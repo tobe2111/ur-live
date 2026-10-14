@@ -15,7 +15,7 @@
 import { useState } from 'react'
 import { BellIcon, GiftBoxIcon, HeartIcon, HomeIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { Baby, Cake, Check, ChevronRight, Dumbbell, PawPrint, Scissors, Shirt, Sparkle, Sparkles, Utensils, X } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'

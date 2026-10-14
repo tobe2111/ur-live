@@ -10,7 +10,7 @@
  * 대표 확정: 사장님 줄 오른쪽 "팔린 만큼만 수수료" 문구는 빼기로 했다(2026-10-12).
  */
 import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import SEO from '@/components/SEO'
 import Udal from '@/components/mascot/Udal'
 import { StoreIcon, InfoIcon, HomeIcon, SettingsIcon, ReceiptIcon } from '@/components/icons/urdeal-icons'

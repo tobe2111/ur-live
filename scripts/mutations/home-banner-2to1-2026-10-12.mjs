@@ -12,17 +12,17 @@ const PANEL = 'src/tests/unit/home-panel-light-island.test.ts'
 export default [
   {
     name: '🎫2:1 배너가 다시 전폭이 된다 (거터 제거 — "따로 논다"의 원인)',
-    file: 'src/components/home/HomeBannerStrip.tsx',
-    find: "className={`flex gap-7 px-[14px] ${many ?",
-    replace: "className={`flex gap-7 ${many ?",
+    file: 'src/shared/home-strip-banners.ts', // 2026-10-14 클래스가 공용 상수(STRIP_CLS)로 옮겨갔다 — 서버 첫 화면과 같은 값
+    find: "rail: 'flex gap-7 px-[14px]',",
+    replace: "rail: 'flex gap-7',",
     test: BANNER,
     why: '거터 14px 는 `.ur-home-panel`(모바일)과 같은 값이다. 빼면 배너만 전폭이 되어 아래 패널과 다시 따로 논다.',
   },
   {
     name: '🎫2:1 카드 폭 계산에서 거터가 두 번 빠진다 (실측 334px · 다음 장 42px 삐져나옴)',
-    file: 'src/components/home/HomeBannerStrip.tsx',
-    find: "${many ? 'snap-start shrink-0 w-full' : 'flex-1'}",
-    replace: "${many ? 'snap-start shrink-0 w-[calc(100%-1.75rem)]' : 'flex-1'}",
+    file: 'src/shared/home-strip-banners.ts',
+    find: "cardMany: 'snap-start shrink-0 w-full',",
+    replace: "cardMany: 'snap-start shrink-0 w-[calc(100%-1.75rem)]',",
     test: BANNER,
     why: '스크롤러가 이미 px-3.5 를 갖고 있어 100% 가 362 다. 한 번 더 빼면 의도 없는 미리보기가 생긴다.',
   },
@@ -63,8 +63,8 @@ export default [
     //   지키려던 것 — 흰 글자 아래엔 덮개가 있다 — 은 그대로다.
     name: '🎫2:1 사진 위 어두운 오버레이가 사라진다 (어두운 사진에서 흰 글자가 안 읽힘)',
     file: 'src/components/home/HomeBannerStrip.tsx',
-    find: '{bg && <div className="absolute inset-x-0 bottom-0 h-[70%] -z-10 bg-gradient-to-t from-black/70',
-    replace: '{false && <div className="absolute inset-x-0 bottom-0 h-[70%] -z-10 bg-gradient-to-t from-black/70',
+    find: '{bg && <div className={STRIP_CLS.scrim}',
+    replace: '{false && <div className={STRIP_CLS.scrim}',
     test: BANNER,
     why: '어떤 사진이 올라올지 모른다. 덮개가 없으면 밝은 사진 위에서 제목이 통째로 사라진다.',
   },

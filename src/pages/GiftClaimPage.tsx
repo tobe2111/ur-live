@@ -13,7 +13,7 @@
 import { useEffect, useState } from 'react'
 import { GiftBoxIcon, OkIcon, BadIcon, PinIcon, MessageIcon } from '@/components/icons/urdeal-icons'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useTranslation, Trans } from 'react-i18next'
+import { useTranslation, Trans } from '@/lib/i18n-lite'
 import BrandLoader from '@/components/brand/BrandLoader'
 import Udal from '@/components/mascot/Udal'
 import api from '@/lib/api'

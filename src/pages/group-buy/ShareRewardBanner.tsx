@@ -13,7 +13,7 @@
  */
 import { useEffect, useState } from 'react'
 import { GiftBoxIcon } from '@/components/icons/urdeal-icons'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import { Copy, Check } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'

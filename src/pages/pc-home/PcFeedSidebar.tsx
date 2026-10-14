@@ -42,7 +42,10 @@ export default function PcFeedSidebar({
   onFiltersChange: (f: FeedFilters) => void
 }) {
   return (
-    <aside aria-label="이용권 필터" className="sticky top-24 self-start w-[248px] shrink-0 rounded-2xl bg-gray-50 dark:bg-white/[0.04] p-4">
+    // 🧱 2026-10-14 대표 신고("이렇게 잘려서 보이네") — `sticky` 는 자기 쌓임 맥락을 연다. 그래서 안쪽 지역
+    //    드롭다운(z-[10500])이 이 열 **안에서만** 겨루고, 뒤에 그려지는 오른쪽 목록 카드가 그 위를 덮었다.
+    //    열 자체를 목록보다 위 층(z-20)에 둔다 — 상단 네비(z-9999)보다는 아래라 스크롤 때 네비를 안 덮는다.
+    <aside aria-label="이용권 필터" className="sticky top-24 z-20 self-start w-[248px] shrink-0 rounded-2xl bg-gray-50 dark:bg-white/[0.04] p-4">
       <Group label="지역">
         <PcHomeLocationBar value={region} onChange={onRegionChange} onLocate={onLocate} located={located} locatedLabel={locatedLabel} />
       </Group>

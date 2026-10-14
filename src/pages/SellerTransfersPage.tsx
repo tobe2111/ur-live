@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '@/lib/i18n-lite'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
