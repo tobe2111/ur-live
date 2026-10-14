@@ -53,7 +53,8 @@ export default [
     name: '🏷️#️⃣ 지역 페이지 44곳이 제목을 안 낸다',
     why: '"동네 맛집 할인권" 질의의 착지점인데 제목이 사라진다',
     file: SRC,
-    find: "    return `<noscript>${h1Of(`${label} 이용권`)}<ul>${rows.map(liOf).join('')}</ul>`",
+    // 🔁 2026-10-14 재조준: 사진 상한(`capRowImages`)이 끼며 모양이 바뀌었다(불변식 그대로).
+    find: "    return `<noscript>${h1Of(`${label} 이용권`)}<ul>${capRowImages(rows).map(liOf).join('')}</ul>`",
     replace: "    return `<noscript><p>${esc(label)} 이용권</p><ul>${rows.map(liOf).join('')}</ul>`",
     test: T,
   },
@@ -61,7 +62,8 @@ export default [
     name: '🏷️#️⃣ 쇼핑 상세 제목이 그냥 문단으로 돌아간다',
     why: '상품명이 `<p>` 가 되어 그 화면의 h1 과 요소가 갈린다',
     file: SRC,
-    find: "      return wrap(h1Of(d.name) + lines([",
+    // 🔁 2026-10-14 재조준: 상세에 사진(`imgTag`)이 끼며 모양이 바뀌었다(불변식 그대로).
+    find: "      return wrap(h1Of(d.name) + imgTag + lines([",
     replace: "      return wrap(lines([\n        esc(String(d.name || '').trim()),",
     test: T,
   },

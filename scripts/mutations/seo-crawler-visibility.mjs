@@ -5,6 +5,9 @@
 const TEST = 'src/tests/unit/seo-crawler-visibility-2026-10-11.test.ts'
 const UA = 'src/shared/seo/crawler-ua.ts'
 const NS = 'src/worker/utils/crawler-noscript.ts'
+// 🔁 2026-10-14 — 행·글자 조립이 `crawler-noscript-rows.ts` 로 **추출**됐다(685줄 → 래칫 600 초과).
+//    아래 앵커들의 결함은 한 글자도 안 바꿨고 **파일 경로만** 따라갔다.
+const NS_ROWS = 'src/worker/utils/crawler-noscript-rows.ts'
 const META = 'src/worker/utils/detail-ssr-meta.ts'
 const BRAND = 'src/shared/seo/brand-jsonld.ts'
 const WORKER = 'src/worker/index.ts'
@@ -73,7 +76,7 @@ export default [
   },
   {
     name: '🔎 `<noscript>` 가 값 없는 빈 라벨을 남긴다',
-    file: NS,
+    file: NS_ROWS,
     find: '  const kept = items.filter((x): x is string => typeof x === \'string\' && x.trim().length > 0)',
     replace: '  const kept = items.map((x) => (typeof x === \'string\' ? x : \'\'))',
     test: TEST,
@@ -81,7 +84,7 @@ export default [
   },
   {
     name: '🔎 `<noscript>` 가 주소·매장명을 escape 없이 찍는다',
-    file: NS,
+    file: NS_ROWS,
     find: '    .replace(/</g, \'&lt;\')\n    .replace(/>/g, \'&gt;\')',
     replace: '',
     test: TEST,

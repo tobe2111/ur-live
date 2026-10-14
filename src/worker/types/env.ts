@@ -361,6 +361,10 @@ export interface Env {
   //   기본 OFF — 미설정/기타값이면 원장 기록 안 함(현행과 100% 동일). staging 검증 후 활성.
   //   이용권/공구 주문은 skip(각자 경로에서 이미 원장 기록). 역전은 order-refund 에 배선(게이트 무관).
   SHOPPING_LEDGER_ENABLED?: string;
+  /** 🔔 IndexNow(네이버·Bing 즉시 색인 요청) — 기본 OFF. 켜는 것은 대표의 일(게이트 ON = 결재). */
+  INDEXNOW_ENABLED?: string;
+  /** 🔔 IndexNow 소유 증명 키. **비밀이 아니다** — `/{key}.txt` 로 공개되는 것이 규격이다. */
+  INDEXNOW_KEY?: string;
 
   // ---- 인플루언서↔업체 성과기반 매칭 정산 스위치 (2026-07-14) ----
   //   매칭 자체는 **어드민 전용 읽기 도구**(requireAdmin — env 게이트 불필요). 아래는 **정산(머니)** 전용:

@@ -7,6 +7,9 @@
  */
 const TEST = 'src/tests/unit/list-surface-noscript-2026-10-12.test.ts'
 const NS = 'src/worker/utils/crawler-noscript.ts'
+// 🔁 2026-10-14 — 행·글자 조립이 `crawler-noscript-rows.ts` 로 **추출**됐다(685줄 → 래칫 600 초과).
+//    아래 앵커들의 결함은 한 글자도 안 바꿨고 **파일 경로만** 따라갔다.
+const NS_ROWS = 'src/worker/utils/crawler-noscript-rows.ts'
 const LD = 'src/worker/utils/surface-list-jsonld.ts'
 const WORKER = 'src/worker/index.ts'
 
@@ -55,11 +58,12 @@ export default [
   },
   {
     name: '🧾 요약이 시드 값을 탈출 없이 마크업에 넣는다',
-    file: NS,
+    file: NS_ROWS,
     // 🔗 2026-10-12 재조준 — 행 조립이 `liOf` 로 옮겨갔다. 불변식은 그대로이고, 여기선
     //   그 시험의 탐침 시드는 **링크가 붙는 행**(id 가 있다)이므로 *링크 안쪽* 글자를 본다
     //   — 링크 없는 분기(`: esc(r.text)}`)는 그 시드가 안 지나가서 주입이 헛돈다(확인했다).
-    find: '${esc(r.text)}</a>',
+    // 🔁 2026-10-14 재조준: 사진이 붙으며 탈출 지점이 `body` 조립으로 옮겨갔다(불변식 그대로).
+    find: '  const body = `${img}${esc(r.text)}`',
     replace: '${r.text}</a>',
     test: TEST,
     why: '가게명·상품명은 판매자가 넣은 값이다 — 상수만 싸면 탈출 여부를 판정할 수 없어 탐침 값으로 잰다.',

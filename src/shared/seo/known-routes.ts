@@ -64,6 +64,8 @@ export const KNOWN_SINGLE_ROUTES: ReadonlySet<string> = new Set([
   'urshorts', 'videos', 'vouchers', 'wishlist',
 ])
 
+import { parseMallProductPath } from '../mall/resolve'
+
 /**
  * 이 경로가 앱 라우트 표의 모양과 맞는가(= 404 로 선언하지 **않을** 경로인가).
  *
@@ -74,6 +76,18 @@ export function isKnownAppPath(pathname: string): boolean {
   if (segs.length === 0) return true                        // 홈
   if (segs.length === 1) return KNOWN_SINGLE_ROUTES.has(segs[0])
   // `/:mallSlug/p/:id` — 최상위가 파라미터인 유일한 다중 세그먼트 패턴(몰 상품 귀속 경로).
-  if (segs.length === 3 && segs[1] === 'p') return true
+  //
+  // 🩸 2026-10-14 — 종전은 `segs[1] === 'p'` 만 보고 **무조건 통과**였다. 그래서 id 가 숫자가
+  //   아닌 `/zzqqxx/p/abc` 는 `parseMallProductPath` 가 거부해 **SSR 슬롯이 아예 안 잡히고**
+  //   (라이브 실측: `x-ssr-status` 헤더 자체가 없다), 여기서 "아는 경로" 로 통과해
+  //   **200 + index,follow + 자기 canonical + 본문 32자** 로 나갔다. 무한 thin URL 이다.
+  //
+  // 🔑 판정을 **몰 경로 SSOT 와 같은 함수**로 한다 — 두 벌로 적으면 "슬롯은 안 잡는데 아는
+  //   경로" 라는 **지금의 틈**이 다시 생긴다(그 틈이 이 결함의 정체다).
+  //
+  // 🔴 **반대 방향이 훨씬 비싸다**: 실재하는 몰 상품 경로를 404 로 만들면 소개비 귀속 링크가
+  //   통째로 죽고 색인 복구는 수주다. 그래서 문법이 맞으면 **여전히 통과**시키고(= 200 유지),
+  //   실재 여부는 `shouldNoindexMissingEntity` 가 self-fetch 404 로만 판정한다.
+  if (segs.length === 3 && segs[1] === 'p') return parseMallProductPath(pathname) != null
   return KNOWN_TOP_SEGMENTS.has(segs[0])
 }

@@ -10,6 +10,9 @@ const TEST = 'src/tests/unit/geo-concept-surfaces-2026-10-12.test.ts'
 const ROBOTS = 'public/robots.txt'
 const WORKER = 'src/worker/index.ts'
 const NOSCRIPT = 'src/worker/utils/crawler-noscript.ts'
+// 🔁 2026-10-14 — 행·글자 조립이 `crawler-noscript-rows.ts` 로 **추출**됐다(685줄 → 래칫 600 초과).
+//    아래 앵커들의 결함은 한 글자도 안 바꿨고 **파일 경로만** 따라갔다.
+const NS_ROWS = 'src/worker/utils/crawler-noscript-rows.ts'
 const LISTLD = 'src/worker/utils/surface-list-jsonld.ts'
 const FAQ_PAGE = 'src/pages/FAQPage.tsx'
 
@@ -64,7 +67,7 @@ export default [
   },
   {
     name: '🧭 지역 요약에서 지역 필터가 빠져 다른 동네 가게가 섞인다',
-    file: NOSCRIPT,
+    file: NS_ROWS,
     find: "    if (!addressInRegion(p?.restaurant_address || p?.business_address, ref)) continue",
     replace: "    if (false) continue",
     test: TEST,
@@ -72,7 +75,7 @@ export default [
   },
   {
     name: '🧭 지역 요약이 교환권을 매장 이용권처럼 말한다',
-    file: NOSCRIPT,
+    file: NS_ROWS,
     find: '    if (p?.deal_only === 1) continue',
     replace: '    if (false) continue',
     test: TEST,
@@ -80,12 +83,13 @@ export default [
   },
   {
     name: '🧭 지역 요약이 시드 값을 탈출 없이 마크업에 넣는다',
-    file: NOSCRIPT,
+    file: NS_ROWS,
     // 🔗 2026-10-12 재조준 — 행 조립이 `liOf` 로 옮겨갔다(링크가 생겼다). 지키려던 것은 그대로다:
     //   **시드 값이 탈출 없이 마크업에 들어가지 않는다.** 여기선 *링크 안쪽 글자*를 본다
     //   (주소 쪽은 `crawler-internal-links-2026-10-12.mjs`, 링크 없는 분기는
     //   `list-surface-noscript.mjs` 가 맡는다 — 세 경로가 다르다).
-    find: '${esc(r.text)}</a>',
+    // 🔁 2026-10-14 재조준: 사진이 붙으며 탈출 지점이 `body` 조립으로 옮겨갔다(불변식 그대로).
+    find: '  const body = `${img}${esc(r.text)}`',
     replace: '${r.text}</a>',
     test: TEST,
     why: '가게명·메뉴명은 셀러가 입력한 값이다 — 상수가 아니라 **시드 값**이라 탈출이 실제로 일한다.',

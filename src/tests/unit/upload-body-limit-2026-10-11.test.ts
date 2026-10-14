@@ -156,9 +156,10 @@ const ALLOW: Record<string, string> = {
   // 🧨 2026-10-11 (같은 날 오후) 도매몰 철거로 `supplier-dashboard/MultiImageUpload.tsx` 가 **삭제됐다**
   //   ⇒ 더 이상 업로드 호출부가 아니라 허용목록에서 뺀다. 이 아래 "허용목록은 실재하는 파일만 담는다"
   //   단언이 바로 그걸 잡았다(낡은 면제가 조용히 남는 것을 막는 장치가 제 일을 했다).
-  'src/pages/admin/banners/BannerMediaUpload.tsx':
-    '홈 히어로 **영상**(/api/upload/banner-video) — 브라우저에서 영상을 압축할 수단이 없다. 어드민 전용. '
-    + '서버 천장 10MB 예외로 해소(2026-10-13 대표 승인 — docs/decisions/2026-10-11-upload-body-limit.md)',
+  // 🩸 2026-10-14 — `BannerMediaUpload.tsx` 를 여기서 뺐다. **영상** 사유로 파일을 통째 면제했더니
+  //   같은 파일의 **이미지** 경로(/api/upload/image, 1MB)가 원본을 그대로 보내는데도 눈에서 빠졌다
+  //   (화면은 "최대 10MB" 라고 안내했다). 이제 이미지는 `prepareImageForUpload({ hero: true })` 를 거치고
+  //   영상은 서버 카브아웃(①-2)이 받는다. ⇒ **면제는 파일 단위라 사유보다 넓게 먹는다 — 면제를 늘리지 말 것.**
 }
 
 function walk(dir: string, out: string[] = []): string[] {
@@ -248,6 +249,7 @@ describe('⑤ 세 자리가 실제로 배선됐다 — 압축본을 보낸다', 
     'src/pages/user-profile/profile-edit/ProfileEditSheet.tsx',
     'src/pages/my-vouchers/ReviewBonusButton.tsx',
     'src/pages/SellerProspectsPage.tsx',
+    'src/pages/admin/banners/BannerMediaUpload.tsx',
   ]
   for (const p of SITES) {
     it(`${p.split('/').pop()} — fd 에 담기는 것이 압축본이다`, () => {

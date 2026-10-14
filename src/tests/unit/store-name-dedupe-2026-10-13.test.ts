@@ -111,7 +111,8 @@ describe('③ 두 곳이 같은 SSOT 를 쓴다 — 두 벌이면 또 갈린다'
   })
 
   it('상세 메타·크롤러 요약 둘 다 SSOT 를 import 한다', () => {
-    for (const f of ['src/worker/utils/detail-ssr-meta.ts', 'src/worker/utils/crawler-noscript.ts']) {
+    // 🔁 2026-10-14 재조준: 크롤러 요약의 행 조립이 `crawler-noscript-rows.ts` 로 추출됐다(래칫 600).
+    for (const f of ['src/worker/utils/detail-ssr-meta.ts', 'src/worker/utils/crawler-noscript-rows.ts']) {
       expect(readCode(f), `${f} 가 SSOT 를 안 쓴다`).toMatch(/store-name-dedupe/)
     }
   })
@@ -122,7 +123,7 @@ describe('③ 두 곳이 같은 SSOT 를 쓴다 — 두 벌이면 또 갈린다'
   })
 
   it('🔴 크롤러 요약이 판단을 다시 구현하지 않는다', () => {
-    const c = readCode('src/worker/utils/crawler-noscript.ts')
+    const c = readCode('src/worker/utils/crawler-noscript-rows.ts')
     expect(c.match(/title\.startsWith\(head\)/g) || []).toHaveLength(0)
   })
 })
