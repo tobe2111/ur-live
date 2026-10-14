@@ -101,7 +101,10 @@ describe('③ 배선 — 두 페이지가 서로의 것을 담지 않는다', ()
     // 진입점은 파일 크기 래칫 때문에 컴포넌트로 분리돼 있다. 목적지와 배선을 함께 본다.
     expect(strip(read('src/pages/vouchers/GifticonBoxEntry.tsx'))).toContain("navigate('/my-gifticons')")
     const page = strip(read('src/pages/VouchersPage.tsx'))
-    expect(page).toMatch(/<VouchersTopBar\b/)          // 모바일: 상단 바가 [보관함][검색] 을 싣는다
+    // 모바일: 안 C(2026-10-14) — 머리 배너 위 아이콘이 보관함으로 간다. 쇼핑 탭 모드면 탭 바가 같은 일을 한다.
+    expect(page).toMatch(/<VouchersHero\b/)
+    expect(strip(read('src/pages/vouchers/VouchersHero.tsx'))).toContain("navigate('/my-gifticons')")
+    expect(page).toMatch(/<VouchersTopBar\b/)
     expect(strip(read('src/pages/vouchers/VouchersTopBar.tsx'))).toMatch(/<VoucherHeaderActions\b/)
     expect(page).toMatch(/<GifticonBoxRailRow\b/)      // PC: 좌 레일 행
   })

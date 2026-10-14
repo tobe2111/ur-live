@@ -60,12 +60,14 @@ export default [
     why: '같은 날 대표가 "페이지가 아니라 올라오는 시트" 로 바꾸라고 한 그 동작이 PC 에서만 되살아난다',
   },
   {
-    name: '🎗️ 머리 띠를 흰 판 카드로 되돌린다',
+    // 🔁 2026-10-14 재조준(대표 확정 PC 마이 B): 방향이 뒤집혔다 — 이제 결함은 '카드가 된 것' 이 아니라
+    //   **카드 모양을 공용 클래스 대신 손으로 적는 것**(한 칸만 다른 그림자가 된다)이다.
+    name: '🎗️ 머리 카드 모양을 공용 클래스 대신 손으로 적는다',
     file: 'src/pages/user-profile/AccountPcBand.tsx',
-    find: 'className="flex items-center gap-4 px-4 pt-1 pb-4 border-b border-rule"',
-    replace: 'className="flex items-center gap-4 px-4 py-4 rounded-2xl bg-surface shadow-lift"',
+    find: 'className="ur-pc-card flex items-center gap-5 px-4 py-5"',
+    replace: 'className="flex items-center gap-5 px-4 py-5 rounded-2xl bg-surface shadow-lift"',
     test: TEST,
-    why: '안 C 의 "판은 파는 쪽에만" 이 깨진다 — 손님 칸에 판이 서면 그 표시가 무의미해진다',
+    why: 'B 의 카드 다섯이 한 규칙(`ur-pc-card`)에서 모양을 받아야 같은 그림자·모서리로 선다 — 하나만 손으로 적으면 갈린다',
   },
   {
     name: '🧾 PC 칸에 손으로 적은 타일 목록을 되살린다',

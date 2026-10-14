@@ -4993,7 +4993,13 @@
     "noUnusedGift": "No hay gifticons disponibles",
     "totalCountLabel": "Total",
     "requestRefundShort": "Solicitar reembolso",
-    "refundRequestedShort": "Reembolso solicitado"
+    "refundRequestedShort": "Reembolso solicitado",
+    "walletEyebrow": "Pases disponibles",
+    "walletTotal": "Total",
+    "noExpiry": "Sin vencimiento",
+    "mapShort": "Mapa",
+    "recoTitle": "Quizá te interese",
+    "recoMore": "Ver más"
   },
   "sellerWaiting": {
     "title": "Aprobación de Vendedor Pendiente",

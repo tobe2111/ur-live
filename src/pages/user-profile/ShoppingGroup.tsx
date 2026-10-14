@@ -61,7 +61,7 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
   return (
     /* 🧱 가로 패딩을 **주지 않는다** — 평면 행이 자기 `px-4` 를 갖는다(문법 머리말 참조).
        여기에 px-4 를 또 주면 글자가 32px 들어가 구역 제목과 왼쪽 끝이 어긋난다. */
-    <div className="ur-content-medium lg:px-4">
+    <div className="ur-content-medium lg:px-4 ur-pc-card">
       <SectionTitle>{t('shopping.sectionTitle', { defaultValue: '내가 산 것' })}</SectionTitle>
       <div>
         {items.map((item) => (

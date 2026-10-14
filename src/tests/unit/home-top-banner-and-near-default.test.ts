@@ -157,14 +157,15 @@ describe('① 상단 띠 = 옆으로 넘기는 스트립 (안 3)', () => {
     expect(scroller, `배너 좌우 거터가 패널(${pad}px)과 달라졌다 — 전폭으로 돌아가면 다시 따로 논다`)
       .toContain(twGutter)
 
-    const scrollerAll = (codeOnly(RAIL).match(/className=\{`flex gap-\d+[\s\S]{0,160}?`\}/) || [])[0] || ''
+    // 🔁 2026-10-14: 교환권 머리(hero) 덮어쓰기 한 조각이 붙어 className 이 160자를 넘었다 — 창만 넓힌다(범위는 여전히 그 한 줄).
+    const scrollerAll = (codeOnly(RAIL).match(/className=\{`flex gap-\d+[\s\S]{0,240}?`\}/) || [])[0] || ''
     expect(scrollerAll, '스냅 기준점에 거터가 안 들어갔다 — 카드가 거터에 안 맞고 어정쩡하게 선다')
       .toContain(`scroll-${twGutter}`)
     expect(codeOnly(RAIL), `배너 모서리가 패널(${radius}px)과 다르다`).toContain(`rounded-[${radius}px]`)
   })
 
   it('끝에서 더 밀어도 페이지가 끌리거나 뒤로가기가 걸리지 않는다', () => {
-    const scrollerAll = (codeOnly(RAIL).match(/className=\{`flex gap-\d+[\s\S]{0,160}?`\}/) || [])[0] || ''
+    const scrollerAll = (codeOnly(RAIL).match(/className=\{`flex gap-\d+[\s\S]{0,240}?`\}/) || [])[0] || ''
     expect(scrollerAll, '스트립 스크롤러의 className 을 못 찾았다 — 이 검사가 헛돈다').not.toBe('')
     expect(scrollerAll, 'overscroll-x-contain 이 빠졌다 — 가로 스크롤 끝에서 브라우저 뒤로가기가 발동한다')
       .toContain('overscroll-x-contain')

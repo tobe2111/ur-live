@@ -4993,7 +4993,13 @@
     "noUnusedGift": "No gifticons available to use",
     "totalCountLabel": "Total",
     "requestRefundShort": "Request refund",
-    "refundRequestedShort": "Refund requested"
+    "refundRequestedShort": "Refund requested",
+    "walletEyebrow": "Passes you can use",
+    "walletTotal": "Total",
+    "noExpiry": "No expiry",
+    "mapShort": "Map",
+    "recoTitle": "You might also like",
+    "recoMore": "More"
   },
   "sellerWaiting": {
     "title": "Seller Approval Pending",

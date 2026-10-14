@@ -13,8 +13,9 @@ export default [
   {
     name: '✂️교환권 띠 제목이 적어 둔 줄바꿈을 무시한다 ("차곡차곡 모은 딜로 커피 어때요?" 가 애매하게 끊긴다)',
     file: 'src/components/home/HomeBannerStrip.tsx',
-    find: '[&>strong]:!whitespace-pre-line ',
-    replace: '',
+    // 🔁 2026-10-14: 교환권 머리(hero) 클래스에도 같은 토큰이 생겨 앞 토큰까지 앵커(띠 = SINGLE_CARD_CLS 만).
+    find: '[&>strong]:!line-clamp-2 [&>strong]:!whitespace-pre-line ',
+    replace: '[&>strong]:!line-clamp-2 ',
     test: 'src/tests/unit/map-chip-shorts-wishlist-2026-10-14.test.ts',
     why: '대표 "한 줄로 끝내거나, 끊는 자리를 정한 두 줄로". 끊는 자리는 어드민 제목의 줄바꿈이 정하는데, 이 클래스가 빠지면 줄바꿈이 공백으로 뭉개져 다시 아무 데서나 끊긴다.',
   },

@@ -84,11 +84,12 @@ export default [
   {
     name: '🪙잔액 페이지가 부품 대신 다시 인라인으로 그린다',
     file: 'src/pages/VouchersPage.tsx',
-    find: `        <DealBalanceCard balance={dealBalance} loggedIn={!!userId} />`,
+    // 🔀 2026-10-14 안 C: 모바일 잔액 카드는 한 요소(`balanceCard`)로 모아 머리·탭 바 두 모드가 함께 쓴다.
+    find: `  const balanceCard = <DealBalanceCard balance={dealBalance} loggedIn={!!userId} />`,
     /* ⚠️ 심는 표식은 **시험이 찾는 그 값**이어야 한다(main #1579 이 40 으로 옮기며 남긴 경고).
        안 B 의 큰 숫자는 28px 이므로 여기도 28 — 갈리면 "인라인 회귀" 단언이 헛돈다
        (다른 단언 때문에 빨갛긴 해서, 지키려던 그 줄이 죽은 걸 아무도 못 본다). */
-    replace: `        <div className="rounded-2xl p-5 bg-white shadow-lift"><span className="text-[28px]">0</span></div>`,
+    replace: `  const balanceCard = <div className="rounded-2xl p-5 bg-white shadow-lift"><span className="text-[28px]">0</span></div>`,
     test: 'src/tests/unit/vouchers-top-chrome.test.ts',
     why:
       '2026-09-14 에 잔액 카드를 부품으로 뺐고, `vouchers-top-chrome` ① 의 불변식(0 이면 큰 카드를 ' +

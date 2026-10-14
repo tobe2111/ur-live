@@ -5,7 +5,11 @@
  *   FCP 0.94s → LCP 2.58s). 시드(`__SSR_INITIAL_VOUCHERS__`, 20건 · 사진 URL 포함)는 HTML 에 이미 와 있는데
  *   `#root` 를 로더가 덮고 있었다. 홈·상세·유어샵과 같은 처방이다.
  *
- * 그리는 것: [상단 바 + 딜 안내 바 + 카테고리 칩 줄 높이 + '전체 교환권' 줄 + 목록 6줄].
+ * 그리는 것: [머리 배너 자리 + 딜 안내 바(배너에 걸침) + 카테고리 칩 줄 높이 + '전체 교환권' 줄 + 목록 6줄].
+ *
+ * 🎟️ 2026-10-14 대표 확정 안 C — 맨 위는 제목 줄이 아니라 **배너**다. 배너는 마운트 뒤 `/api/banners` 로
+ *   오므로 서버는 그 자리를 같은 높이의 어두운 판으로만 세운다(화면도 응답 전까지 같은 판을 그린다).
+ *   검색·보관함 아이콘은 그 판 위에 떠 있어(absolute) 높이를 안 만든다 — 그리지 않는다.
  *
  * 🔴 첫 화면은 **비로그인 화면**이다. 잔액 자리가 로그인 여부로 높이가 다르고(한 줄 바 ↔ 카드),
  *   그 판단은 브라우저 `localStorage.user_id`(`getUserIdSync`)로 한다 — 서버는 모른다.
@@ -22,7 +26,7 @@
  *   아이콘이 차지하는 **가로 자리**만 같은 치수의 빈 span 으로 세운다(세로 높이는 글자 줄이 정한다).
  *
  * 출처(클래스는 글자 하나까지 같아야 한다 — 시험이 소스를 읽어 대조한다):
- *   `pages/VouchersPage.tsx`(페이지 · 정렬 줄 · 목록) · `pages/vouchers/VouchersTopBar.tsx`
+ *   `pages/VouchersPage.tsx`(페이지 · 칩 줄 그룹 · 정렬 줄 · 목록) · `pages/vouchers/VouchersHero.tsx`(배너 판 · 걸침)
  *   `pages/vouchers/DealBalanceCard.tsx`(비로그인 바) · `pages/vouchers/TopChromeReserve.tsx`(칩 줄)
  *   `components/ui/sort-menu.tsx` · `components/deal/DealRow.tsx` · `pages/vouchers/shared.tsx`(VoucherRow)
  */
@@ -40,11 +44,9 @@ const PAGE_SIZE = 20
 
 export const VOUCHERS_FS_CLASS = {
   page: 'bg-warm dark:bg-[#11141C] pb-safe-nav md:pb-20 min-h-[100dvh]',
-  topBar: 'sticky top-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]',
-  topRow: 'relative flex items-center px-2 py-2 ',
-  topTitle: 'pl-2 py-2 text-[17px] font-extrabold tracking-[-0.02em] text-gray-900 dark:text-white',
-  reveal: 'sticky top-[45px] z-20 bg-warm dark:bg-[#11141C]',
-  balanceWrap: 'ur-content-wide px-4 lg:px-8 pt-3',
+  hero: 'relative h-[196px] overflow-hidden bg-gray-900 dark:bg-surface',
+  overlap: 'relative z-10 -mt-7 px-4',
+  reveal: 'sticky top-0 z-20 bg-warm pt-1',
   balanceBar: 'w-full flex items-center justify-between gap-2 rounded-xl bg-surface shadow-lift active:scale-[0.99] transition-transform h-11 px-4',
   balanceText: 'text-[12px] text-gray-600 dark:text-gray-300 truncate text-left',
   balanceLink: 'shrink-0 inline-flex items-center gap-1 text-[12px] font-bold text-brand-text',
@@ -170,12 +172,12 @@ export function buildVouchersFirstScreen(seedJson: string, loaderHtml: string, n
   const body =
     `<div class="${C.page}">` +
     `<h1 class="sr-only">교환권 — 인기 브랜드 기프티콘을 딜로 즉시 구매</h1>` +
-    `<div class="${C.topBar}"><div class="${C.topRow}"><span class="${C.topTitle}">교환권</span></div></div>` +
-    `<div class="${C.reveal}" style="transform:translateY(0);transition:transform 0.25s ease;will-change:transform">` +
-    `<div class="${C.balanceWrap}"><div class="${C.balanceBar}">` +
+    `<div class="${C.hero}"></div>` +
+    `<div class="${C.overlap}"><div class="${C.balanceBar}">` +
     `<span class="${C.balanceText}">딜을 모으면 더 싸게 살 수 있어요</span>` +
     `<span class="${C.balanceLink}">모으는 방법 <span class="w-3 h-3 inline-block"></span></span>` +
     `</div></div>` +
+    `<div class="${C.reveal}" style="transform:translateY(0);transition:transform 0.25s ease;will-change:transform">` +
     `<div aria-hidden="true"><div class="${C.chipWrap}"><div class="${C.chipRow}"><span class="${C.chip}">&nbsp;</span></div></div></div>` +
     `</div>` +
     `<div class="${C.sortBar}">` +

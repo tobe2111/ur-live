@@ -11,28 +11,28 @@
 const VPAGE = 'src/pages/MyVouchersPage.tsx'
 const T = 'src/tests/unit/wallet-and-slop.test.ts'
 
+// 🔀 2026-10-14 대표 확정 안 B: 장수를 말하는 **한 곳**이 탭 배지 → 요약 카드로 옮겨갔다. 두 방향은 그대로다.
 export default [
   {
-    name: '🎟️ 지갑 머리글에 장수가 다시 붙는다 (탭 배지와 같은 숫자를 두 번)',
+    name: '🎟️ 지갑 탭에 개수 배지가 돌아온다 (요약 카드와 같은 숫자를 두 번)',
     file: VPAGE,
-    find: "        eyebrow={t('voucher.walletEyebrow', { defaultValue: '쓸 수 있는 이용권' })}\n        amount=",
+    find: '                  {tab === key && <span aria-hidden="true" className="absolute left-0 right-0 -bottom-px h-[2.5px] bg-brand" />}',
     replace:
-      "        eyebrow={t('voucher.walletEyebrow', { defaultValue: '쓸 수 있는 이용권' })}\n" +
-      "        countText={`${unusedItems.length}${t('voucher.heroCountUnit', { defaultValue: '장' })}`}\n" +
-      '        amount=',
+      "                  {key === 'unused' && unusedItems.length > 0 && <span className=\"ml-1 text-[13px] font-bold text-brand-text tabular-nums\">{unusedItems.length}</span>}\n" +
+      '                  {tab === key && <span aria-hidden="true" className="absolute left-0 right-0 -bottom-px h-[2.5px] bg-brand" />}',
     test: T,
     why:
-      '정확히 종전 코드다. 금액 옆에 장수를 붙이는 건 늘 그럴듯해 보여서 다시 붙기 쉽고, ' +
-      '그때 바로 아래 탭 배지가 같은 숫자를 또 말하는 것은 눈에 안 띈다.',
+      '정확히 종전 코드다. 탭에 개수를 붙이는 건 늘 그럴듯해 보여서 다시 붙기 쉽고, ' +
+      '그때 바로 위 요약 카드가 같은 숫자를 크게 말하고 있다는 것은 눈에 안 띈다.',
   },
   {
-    name: '🎟️ 지갑 탭 배지(개수)가 사라진다 — 장수를 말하는 곳이 0이 된다',
+    name: '🎟️ 지갑 요약 카드가 장수를 안 받는다 — 장수를 말하는 곳이 0이 된다',
     file: VPAGE,
-    find: "{key === 'unused' && unusedItems.length > 0 &&",
-    replace: '{false &&',
+    find: '<WalletSummaryCard count={unusedItems.length}',
+    replace: '<WalletSummaryCard count={0}',
     test: T,
     why:
-      '중복을 걷는 방향으로만 가드를 걸면 **둘 다 없어지는 것**은 못 막는다. 머리글에서 뺀 ' +
-      '다음이라 탭 배지가 장수를 말하는 **유일한** 자리다 — 사라지면 "몇 장 남았나" 를 알 길이 없다.',
+      '중복을 걷는 방향으로만 가드를 걸면 **둘 다 없어지는 것**은 못 막는다. 요약 카드가 장수를 말하는 ' +
+      '**유일한** 자리다 — 0 으로 박히면 "몇 장 남았나" 를 알 길이 없고 에러도 없다.',
   },
 ]
