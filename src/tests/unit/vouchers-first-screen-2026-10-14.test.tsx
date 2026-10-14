@@ -199,3 +199,18 @@ describe('④ 폴백과 배선', () => {
     expect(w).toMatch(/ssrSlot === 'VOUCHERS' && ssrPayload && url\.pathname === '\/vouchers' && shouldRenderMobileFirstScreen\(c\.req\.header\('user-agent'\)\)\) \{ const vouchersFirst = buildVouchersFirstScreen\(ssrPayload, urdealLoaderHtml, nonce\); rb = rb\.on\('#root', \{ element\(el\) \{ el\.setInnerContent\(vouchersFirst \|\| \(buildStaticSurfaceNoscript\(url\.pathname, crawlerPayload\) \+ urdealLoaderHtml\)/)
   })
 })
+
+describe('⑤ 시작 개수 = 세 줄(9) — 초기값과 리셋이 같은 상수', () => {
+  // 🩸 2026-10-14 라이브 실측: 초기값만 9 로 바꿨더니 카테고리·브랜드 리셋 effect 가 **마운트에서도**
+  //   돌아 `embedded ? 12 : 8` 로 덮어써 첫 화면이 8 장(마지막 줄 두 칸)이었다. 빌드·시험 전부 초록이었다.
+  const src = stripComments(fs.readFileSync(path.join(process.cwd(), 'src/pages/VouchersPage.tsx'), 'utf8'))
+  it('시작 개수 상수는 /vouchers 9', () => {
+    expect(src).toMatch(/const EMBED_INITIAL = embedded \? 12 : 9\b/)
+  })
+  it('리셋은 같은 상수를 쓴다(숫자를 손으로 적지 않는다)', () => {
+    const calls = src.match(/setEmbedVisible\(([^)]*)\)/g) ?? []
+    expect(calls.length).toBeGreaterThan(0)
+    expect(calls.filter(c => /setEmbedVisible\(\s*embedded\s*\?/.test(c))).toEqual([])
+    expect(src).toMatch(/setEmbedVisible\(EMBED_INITIAL\)/)
+  })
+})

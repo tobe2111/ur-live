@@ -150,14 +150,18 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   const [page, setPage] = useState(() => restored?.page ?? 1)
   const [hasMore, setHasMore] = useState(() => restored ? restored.hasMore
     : ssrSeedRef.current != null ? ssrSeedRef.current.length === PAGE_SIZE : true)
-  // 🎫 2026-06-26 (대표 결정): 교환권 노출 cap 리셋 — 홈 12개 / /vouchers 8개. 카테고리·브랜드 변경 시 초기화.
+  // 🎫 2026-06-26 (대표 결정): 교환권 노출 cap 리셋 — 홈 12개 / /vouchers 9개. 카테고리·브랜드 변경 시 초기화.
   // 🔙 2026-09-13: 되살린 경우 **첫 실행만** 건너뛴다. 이 effect 는 마운트에서도 도는데, 그대로
   //   두면 복원한 '더보기' 확장분을 8개로 되돌려 문서가 다시 짧아진다(= 스크롤 복원도 같이 깨진다).
+  // 🎟️ 2026-10-14 (대표 B안 — 모바일 3열 타일): /vouchers 는 9개(세 줄) — 8 이면 마지막 줄이 두 칸만 찬다.
+  //   🩸 이 리셋이 **마운트에서도** 돌아서, 아래 초기값만 9 로 바꾼 첫 판은 라이브에서 8 개가 떴다.
+  //   ⇒ 초기값과 리셋이 같은 상수를 쓴다(두 벌이면 갈린다).
+  const EMBED_INITIAL = embedded ? 12 : 9
   const embedResetSkipRef = useRef(restored != null)
   useEffect(() => {
     if (embedResetSkipRef.current) { embedResetSkipRef.current = false; return }
-    setEmbedVisible(embedded ? 12 : 8)
-  }, [embedded, category, brand])
+    setEmbedVisible(EMBED_INITIAL)
+  }, [embedded, category, brand, EMBED_INITIAL])
   const loadMoreRef = useRef<HTMLDivElement>(null)
 
   // 🛡️ 2026-05-28 (사용자 요청): 잔액 카드 + 카테고리 scroll-up reveal (headroom).
@@ -342,8 +346,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   // 🎫 2026-06-23 (대표 결정): 교환권은 홈 12 / /vouchers 20개 노출 후 '더보기'. 둘 다 무한스크롤 대신 cap+버튼
   //   (비embedded 도 cap → 더보기 아래로 쇼핑 섹션이 이어지게). 교환권 무한관찰 비활성, 무한스크롤은 하단 쇼핑 섹션이 담당.
   // 🎫 2026-06-26 (대표 결정): 홈 12개 / /vouchers 8개 먼저 노출 후 '더보기'.
-  // 🎟️ 2026-10-14 (대표 B안 — 모바일 3열 타일): /vouchers 는 9개(세 줄) — 8 이면 마지막 줄이 두 칸만 찬다.
-  const EMBED_INITIAL = embedded ? 12 : 9
+  // 🎟️ 2026-10-14 (대표 B안 — 모바일 3열 타일): /vouchers 는 9개(세 줄) — 상수는 위 리셋 effect 옆에 둔다.
   const [embedVisible, setEmbedVisible] = useState(() => restored?.embedVisible ?? EMBED_INITIAL)
   const embeddedCapped = true
   // 🔙 2026-09-13: 현재 목록을 보관 — 상세로 떠났다 뒤로 오면 이 값이 첫 렌더에 되살아난다.

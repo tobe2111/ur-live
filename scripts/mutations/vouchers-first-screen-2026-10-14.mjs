@@ -44,4 +44,12 @@ export default [
     test: TEST,
     why: '첫 화면을 못 그리는 경우(시드 실패·PC) 크롤러 본문이 다시 8자가 된다.',
   },
+  {
+    name: '🎟️ 교환권 리셋 effect 가 옛 숫자로 시작 개수를 덮어쓴다(9 → 8)',
+    file: 'src/pages/VouchersPage.tsx',
+    find: '    setEmbedVisible(EMBED_INITIAL)\n',
+    replace: '    setEmbedVisible(embedded ? 12 : 8)\n',
+    test: TEST,
+    why: '그 effect 는 마운트에서도 돈다 — 첫 화면이 8 장(마지막 줄 두 칸)이 된다. 2026-10-14 라이브 실측.',
+  },
 ]
