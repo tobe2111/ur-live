@@ -44,8 +44,8 @@ export const HUMAN_VOICE_RULES = [
   'brief 에 없는 수치·사실·후기를 지어내지 마라.',
 ].join(' ')
 
-/** 플랫폼별 시스템 프롬프트(순수 — 테스트 가능). blog-ai 규칙(폐기어/운영정보 금지) 위에 얹는다. */
-export function socialSystemPrompt(platform: SocialPlatform): string {
+/** 플랫폼별 출력 형식 규칙 — 손님용·공급용 프롬프트가 같은 형식을 쓴다(두 벌이면 갈린다). */
+export function platformFormatRules(platform: SocialPlatform): string {
   const fmt: Record<SocialPlatform, string> = {
     threads: [
       '스레드(Threads) 게시물 초안을 쓴다. 대화체·짧은 호흡. 500자 이내.',
@@ -61,5 +61,10 @@ export function socialSystemPrompt(platform: SocialPlatform): string {
       '반드시 아래 JSON 만 출력: {"title":"영상 제목","body":"설명란(줄바꿈 허용)","hashtags":["태그 8~12개(#없이 단어만)"]}',
     ].join(' '),
   }
-  return `${PROMO_BRIEF}\n\n## 사람처럼 쓰기(필수)\n${HUMAN_VOICE_RULES}\n\n## 출력 형식\n${fmt[platform]}`
+  return fmt[platform]
+}
+
+/** 플랫폼별 시스템 프롬프트(순수 — 테스트 가능). blog-ai 규칙(폐기어/운영정보 금지) 위에 얹는다. */
+export function socialSystemPrompt(platform: SocialPlatform): string {
+  return `${PROMO_BRIEF}\n\n## 사람처럼 쓰기(필수)\n${HUMAN_VOICE_RULES}\n\n## 출력 형식\n${platformFormatRules(platform)}`
 }

@@ -11,7 +11,7 @@ import { socialSystemPrompt, findForbidden, type SocialPlatform, type PromoTopic
 export interface SocialDraft { title: string; body: string; hashtags: string[] }
 
 /** JSON 관대 파싱(코드펜스/서두 텍스트 허용). */
-function parseSocialJson(raw: string, platform: SocialPlatform): SocialDraft | null {
+export function parseSocialJson(raw: string, platform: SocialPlatform): SocialDraft | null {
   let s = (raw || '').trim()
   const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/)
   if (fence) s = fence[1].trim()
@@ -34,7 +34,7 @@ function parseSocialJson(raw: string, platform: SocialPlatform): SocialDraft | n
   }
 }
 
-async function callClaudeRaw(apiKey: string, system: string, user: string): Promise<string | null> {
+export async function callClaudeRaw(apiKey: string, system: string, user: string): Promise<string | null> {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },

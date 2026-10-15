@@ -156,3 +156,23 @@ YOUTUBE_CLIENT_ID / YOUTUBE_CLIENT_SECRET  (기존 youtube 기능과 공유)
 ## 구현 로그
 - 2026-07-15 게이트드 foundation — 설계 + Threads/Instagram/YouTube 커넥터 + 초안-우선 오케스트레이터 + 어드민 라우트/UI + 주간 cron. 전 게이트 OFF.
 - 2026-07-15 릴스/쇼츠 영상 파이프라인 — AI 스토리보드 생성(유튜브 쇼츠 + 인스타 릴스) + 렌더 게이트웨이(Creatomate, 게이트 OFF) + 어드민 영상 컨트롤(기획/렌더/폴링). done → media_url → 발행.
+
+## 🎯 2026-10-15 공급 모으기 마케터 — 누구에게 말하는가
+
+대표: *"한동안은 매장을 꾸준히 모으는 형태로 가야지. 인플루언서도 모아야하고 양면성 플랫폼이잖아."*
+
+| 대상 | 착지 | 브리프 | 검증 |
+|---|---|---|---|
+| 매장 사장님 (`store`) | `/partners` | `supplyBrief('store')` — 수수료는 **라이브 설정값**(`platform_fee_pct_direct/brokered`) | `findSupplyViolation` — 설정에 없는 `N%`·규모(`N곳`)·꺼진 혜택·과장 폐기 |
+| 소개 파트너 (`creator`) | `/creators/apply` | `supplyBrief('creator')` — 몫은 **매장이 정한다**(숫자 없음) | 같은 검증 + 퍼센트 전면 금지 |
+| 손님 (`consumer`) | `/` | 종전 `PROMO_BRIEF` | 종전 `findForbidden` |
+
+- 모듈: `social-audience.ts`(대상·착지·`?src=` 태그·혼합비) · `social-supply-brief.ts` · `social-supply-compose.ts`(키 없는 작성기) · `social-supply-content.ts`(LLM) · `social-funnel.ts`(성과).
+- **혼합비** `platform_settings.social_audience_mix` (기본 `store:3,creator:2,consumer:0`). 손님 0 인 이유: 실매장이 손에 꼽히는 동안 손님을 부르면 데모 상품을 보게 된다.
+- **유입 태그** `sns-{th|yt}-{게시물id}`, 인스타는 `sns-ig`(캡션 링크가 안 눌려 프로필 링크 하나로 들어온다 → 게시물 단위 귀속 불가, 정직하게 플랫폼 단위로 센다).
+- **성과 퍼널** `GET /api/admin/social/funnel` — 랜딩(`acquisition_landings`) → 가입(`user_acquisition`) → 매장 등록(랜딩 **이후** 생긴 `seller_operators` 주인 좌석, 회수 제외) → 소개 파트너 신청(`acquisition_conversions kind='creator_apply'`, 신청서가 first-touch 소스를 실어 보낸다).
+- **되먹임** 다음 주제 = 안 써 본 주제 먼저, 다 썼으면 게시물당 공급 전환이 높은 주제(`pickTopicByPerformance`).
+- **주기** 초안 생성 매일 09:00 KST(ur-ads `runDailySocialDraftJob`, 하트비트 `social-draft`). 키가 없어도 결정론 작성기로 만든다.
+- **바뀌지 않은 것** 초안은 여전히 draft, 발행은 승인 + 플랫폼 스위치 + 계정의 3중 조건. 켜는 결정: `docs/decisions/2026-10-15-supply-marketer-launch.md`.
+- 🛑 `/influencer`·`/creators` 로 보내지 않는다 — 그 두 페이지가 꺼진 담기 보상을 약속한다(결재 Q3).
+- 가드: `social-supply-marketer-2026-10-15.test.ts`(조합 전수 · 검증기 자체 · 진짜 SQLite 퍼널 · 배선) + 주입 13건.

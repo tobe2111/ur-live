@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import api from '@/lib/api'
+import { readAcquisitionSource } from '@/lib/acquisition'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 
@@ -29,7 +30,7 @@ export default function CreatorApplyPage() {
     if (!agree) { setErr('제휴 제안 수신에 동의해주세요.'); return }
     setBusy(true)
     try {
-      const r = await api.post('/api/creator-apply', { ...f, agree })
+      const r = await api.post('/api/creator-apply', { ...f, agree, acq_src: readAcquisitionSource() })
       if (r.data?.success) { setClaimCode(typeof r.data.claim_code === 'string' ? r.data.claim_code : null); setDone(true) }
       else setErr(r.data?.error || '신청에 실패했습니다. 잠시 후 다시 시도해주세요.')
     } catch (e) {
