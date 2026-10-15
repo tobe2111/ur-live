@@ -137,7 +137,7 @@ describe('⑤-2 같은 숫자를 두 번 말하지 않는다 (렌더 실측으�
     const call = page.slice(page.indexOf('<CuratorHeader'), page.indexOf('<UShopQrCard'))
     expect(call.length, '헤더 호출 구간을 실제로 잘랐다').toBeGreaterThan(40)
     expect(call).toMatch(/counts=/)
-    expect(call, '누적 구매는 화면·서버 공용 SSOT 로').toMatch(/soldTotal=\{curatorSoldTotal\(pins\)\}/)
+    expect(call, '누적 구매는 화면·서버 공용 SSOT 로').toMatch(/soldTotal=\{curatorSoldTotal\(curator\)\}/)
   })
 
   it('목록 개수는 검색이 더 걸렀을 때만 적는다', () => {

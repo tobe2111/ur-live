@@ -156,6 +156,7 @@ interface CuratorSeed {
     youtube_url?: string | null
     instagram_url?: string | null
     tiktok_url?: string | null
+    ushop_sold?: number | null // 🛍️ 이 유어샵을 거쳐 팔린 수(머리의 '누적 구매')
   }
   pins?: CuratorSeedPin[]
   linked_seller?: unknown
@@ -246,7 +247,7 @@ export function buildCuratorFirstScreen(ssrPayload: string, loaderHtml: string):
       '</div>'
 
     // 📊 이름 아래 한 줄 — 숫자는 화면과 같은 함수(`curatorSoldTotal`)로. SNS 는 이름표 **자리만**(글자는 브랜드명 그대로).
-    const sold = curatorSoldTotal(pins)
+    const sold = curatorSoldTotal(c)
     const num = (n: number) => `<b class="${CURATOR_FS_CLASS.statNum}">${escText(formatNumber(n))}</b>`
     const statsText =
       `<span>이용권 ${num(pins.length)}</span>` +
