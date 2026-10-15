@@ -464,7 +464,7 @@ export default defineConfig({
           //   (`lib/tab-warm.ts`, app-utils)가 들어오자 도우미가 app-shared → app-utils 로 옮겨 app-shared(지역 판정의 동적
           //   import)가 app-utils 를 import 하게 됐고, app-utils 는 원래 app-shared 를 import 한다 ⇒ 순환(check-chunk-cycles).
           //   main 처럼 app-shared 에 고정한다.
-          if (id.includes('vite/preload-helper')) return 'app-shared'
+          if (id.endsWith('vite/preload-helper.js')) return 'app-shared' // 라이브러리 아님(Vite 내부 도우미) — includes 로 쓰면 surface-chunks 시험이 라이브러리 봉투로 오인한다
           // 🚪 2026-10-15: 하단 탭 미리받기는 App 이 마운트 뒤 **동적으로** 부른다 — 부팅 봉투(app-utils)에 넣지 않는다.
           if (id.includes('/src/lib/tab-warm')) return 'app-tab-warm'
           // 앱 유틸: src/utils/, src/hooks/, src/lib/ — App 전체에 공유되지만 별도 캐싱
