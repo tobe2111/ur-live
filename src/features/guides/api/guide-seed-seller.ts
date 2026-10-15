@@ -581,7 +581,9 @@ A. KT Alpha 카탈로그 sync 는 매일 갱신. 신규 브랜드 추가는 KT A
   // 🗺️ 2026-07-02: 카카오맵 리뷰 게이미피케이션 — 매장 확인 큐 (docs/design/kakao-review-gamification.md)
   {
     key: 'review-verifications', icon: '🗺️', title: '카카오맵 리뷰 확인 (동네 리뷰어 레벨)', order: 230,
-    content: `### 무엇인가요?
+    content: `> ⏸️ **지금은 운영하지 않습니다** (2026-10-12). 손님 쪽 후기 인증·보너스 지급이 꺼져 있어 새 인증이 들어오지 않습니다. 아래는 다시 켜질 때를 위한 안내입니다.
+
+### 무엇인가요?
 이용권을 사용한 손님이 **카카오맵에 후기를 쓰고 인증(URL/스크린샷)을 제출**하면, 사장님이
 \`/seller/review-verifications\` 에서 실제 후기를 확인하고 승인/거절하는 화면입니다.
 

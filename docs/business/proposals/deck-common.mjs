@@ -31,7 +31,7 @@ export const FACTS = {
   feeDirect: '10%', feeBrokered: '5%',
   pgNote: '카드 수수료(현재 약 2.75%, 카드사 정책에 따라 바뀔 수 있음)는 유어딜이 자기 몫 안에서 냅니다.',
   introPct: '2%', introTerm: '1년',
-  reviewBonus: '1,000딜',
+  reviewBonus: '지금은 운영하지 않음', // 2026-10-12 종료(KAKAO_REVIEW_BONUS_ENABLED=false). 슬라이드에 약속하지 말 것
   minPayout: '1만원',
   liveMeasuredAt: '2026-10-12',
   activeVouchers: '359', realStores: '2',
