@@ -28,3 +28,24 @@
 - `useBalance`: `initialData`(localStorage) · `enabled: isLoggedInSync()` — 서버 undefined/false vs 브라우저 값 → 결제 버튼(`allDeal`) 갈림.
 - `KakaoShareButton` `isKorea()`(서버는 늘 KR) · `cf-image` Save-Data 품질(데이터 절약 사용자만 URL 이 갈림).
 - `BrandLoader` 애니메이션 지연(시간 기반) — 시드가 있으면 안 그려진다.
+
+## 5. 3단계 — 같은 PR 에 넣었다 (워커가 리액트 그대로 상세를 그린다)
+| 무엇 | 어디 |
+|---|---|
+| 서버 렌더 진입점(페이지 그대로) | `src/ssr/pass-detail-entry.tsx` |
+| 워커용 한 파일 번들 | `vite.ssr-pass.config.ts` · `npm run build:ssr-pass` → `dist/ssr-pass/` |
+| 워커가 번들/스텁으로 푼다 | `scripts/build-worker.js`(`virtual:pass-ssr`) · `src/worker/ssr/pass-ssr-stub.ts` |
+| 폰 · `/pass/:id` · 캐시 · 폴백 | `src/worker/utils/pass-ssr.ts` |
+| 앱 붙기 전 누름 기억 | `src/lib/early-tap.ts` · `DealBottomBar.tsx` |
+| 가드 | `pass-ssr-2026-10-15.test.ts` · `scripts/check-pass-ssr-smoke.mjs`(CI) · 주입 7건 |
+
+측정(로컬 A/B, 8회 중간값): 가격·구매하기 보이는 시각 3.00 → 1.68초 · 첫 페인트 차이 없음 · 앱 붙는 시각 +0.3초.
+
+### 다음 세션의 첫 액션(3단계)
+배포 뒤 라이브: `curl -A '<iPhone UA>' https://urdeal.kr/pass/2919 | grep -c 'data-early-tap="buy"'` 가 1 이상 →
+Playwright(iPhone 13 · CPU 4배 · 느린 4G)로 구매하기 보이는 시각과 마운트 때 밀림 0 확인.
+
+### 이번에 틀렸던 판단
+- 측정 서버가 HTML 을 압축하지 않아 서버 렌더가 첫 페인트를 0.3초 늦추는 것처럼 보였다 — 압축을 켜니 차이가 사라졌다.
+- 5회 중간값이 첫 페인트 +0.6초로 나와 원인을 찾았는데 8회로 늘리니 범위가 겹쳤다(잡음). **회차를 늘리기 전에 결론 내지 말 것.**
+- 처음 만든 측정기의 '마운트' 판정이 문서가 비어 있는 순간을 마운트로 셌다(83ms) — 첫 화면 노드를 **본 뒤** 사라질 때로 고쳤다.

@@ -18,6 +18,7 @@
  *   사전 응모·구매 불가는 창을 열지 않는다(종전 동작 그대로).
  */
 import { useEffect, useState } from 'react'
+import { consumeEarlyTap, EARLY_TAP_ATTR } from '@/lib/early-tap'
 import { formatNumber } from '@/utils/format'
 import { Z } from '@/constants/z-index'
 import { FieldCard, FieldRow } from '@/components/ticket/FieldCard'
@@ -60,6 +61,8 @@ export default function DealBottomBar({
   const [open, setOpen] = useState(false)
   // 구매가 불가능해지면(품절 등) 열린 창을 닫는다 — 누를 수 없는 결제 버튼만 남지 않게.
   useEffect(() => { if (!isJoinable) setOpen(false) }, [isJoinable])
+  // 👆 2026-10-15: 서버가 그린 화면에서 앱이 붙기 전에 '구매하기' 를 눌렀으면 붙자마자 창을 연다(lib/early-tap).
+  useEffect(() => { if (consumeEarlyTap('buy') && isJoinable && !isPrelaunch) setOpen(true) }, []) // eslint-disable-line react-hooks/exhaustive-deps
   // 🪙 2026-10-06: 딜이 총액을 다 덮으면 카드를 안 탄다 — 버튼도 그렇게 말한다("N딜로 결제하기").
   const allDeal = canPayWithDeal && coversAll(dealPlan, dealUse)
   // 🎭 2026-10-12 (대표 "데모인 것을 티내지마"): 데모만 '결제하기'·'결제 불가' 를 쓰던 분기 제거 —
@@ -92,6 +95,7 @@ export default function DealBottomBar({
             onClick={isPrelaunch ? () => document.getElementById('fcfs-apply-block')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) : () => setOpen(true)}
             disabled={(!isJoinable && !isPrelaunch) || joining}
             aria-haspopup={isPrelaunch ? undefined : 'dialog'}
+            {...{ [EARLY_TAP_ATTR]: isPrelaunch || !isJoinable ? undefined : 'buy' }}
             className="flex-1 h-[52px] border-0 rounded-xl text-[17px] font-bold flex items-center justify-center"
             style={{ background: ctaOn ? 'var(--gbd-cta-bg)' : 'var(--gbd-sub2)', color: 'var(--gbd-cta-fg)', cursor: ctaOn ? 'pointer' : 'default' }}
           >
