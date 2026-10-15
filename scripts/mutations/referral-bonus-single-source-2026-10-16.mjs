@@ -45,8 +45,8 @@ export default [
   {
     name: '[refbonus] 🔴 반대 방향 — 설정값 경로(A)를 라우트에서 지운다',
     file: ROUTES,
-    find: 'rates.user_referral_bonus_pct',
-    replace: '0 /* removed */',
+    find: '    const userBonusAmount = hasInfluencer ? Math.floor(totalAmount * rates.user_referral_bonus_pct / 100) : 0',
+    replace: '    const userBonusAmount = 0 /* removed */',
     test: TEST,
     why:
       '"0.5% 없앤다" 를 넓게 읽어 어드민 스위치까지 지우는 쪽. 나중에 대표가 보너스를 켜고 싶어도 ' +
