@@ -23,6 +23,15 @@ type Props = {
   productId: number
   /** 스크롤 후 가운데에 뜨는 제목 */
   title: string
+  /**
+   * 🔗 2026-10-15 — 공유 카드 제목. 안 넘기면 `title`(보이는 머리글)을 그대로 쓴다(숙소 등 종전 동작).
+   *
+   * **왜 가르나**: `title` 은 한 자리에서 두 일을 하고 있었다 — 사진 위 머리글(아래 108줄)과
+   * 카카오 공유 카드 제목(아래). 머리글은 **상품명 하나**여야 하고(가게명이 붙으면 좁은 화면에서
+   * 잘린다) 공유 카드 제목은 **검색 제목과 같아야** 한다(`passDetailTitle` — 한 링크가 받는 쪽에
+   * 따라 다른 이름으로 불리면 안 된다). 둘을 한 값으로 묶으면 한쪽을 고칠 때마다 다른 쪽이 망가진다.
+   */
+  shareTitle?: string
   shareDescription: string
   shareImageUrl: string
   shareLink: string
@@ -38,7 +47,7 @@ type Props = {
 }
 
 export default function DetailFloatingHeader({
-  productId, title, shareDescription, shareImageUrl, shareLink, myUserId, price, discountPct, heroRef, onBack, overPhoto = false,
+  productId, title, shareTitle, shareDescription, shareImageUrl, shareLink, myUserId, price, discountPct, heroRef, onBack, overPhoto = false,
 }: Props) {
   // 📜 스크롤 상태를 **여기서** 갖는다. 예전엔 페이지가 각자 갖고 prop 으로 내려 줬는데, 그러다 보니
   //    숙소 상세는 이 컴포넌트를 아예 안 쓰고 뒤로가기 버튼만 따로 두게 됐다(대표 "왜 계속 다르게 하는거지?").
@@ -120,11 +129,11 @@ export default function DetailFloatingHeader({
               : <Bookmark className="w-[18px] h-[18px] text-gray-900 dark:text-white" />}
           />
           <KakaoShareButton
-            title={title}
+            title={shareTitle ?? title}
             description={shareDescription}
             imageUrl={shareImageUrl}
             link={shareLink}
-            buttonText="나도 참여하기"
+            buttonText="구매하기"
             {...(price ? { salePrice: price, discountRate: discountPct ?? 0, secondaryButtonText: '자세히 보기' } : {})}
             compact
             className={chip}

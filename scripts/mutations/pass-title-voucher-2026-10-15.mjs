@@ -60,8 +60,9 @@ export default [
   },
   {
     name: '[pass-title] 클라가 제목을 손으로 조립한다',
-    file: CLIENT, find: 'title={passDetailTitle(detail.name, detail.restaurant_name)}',
-    replace: "title={`${detail.name} 이용권 - ${detail.restaurant_name || '유어딜'}`}", test: TEST,
+    // 🔁 2026-10-15 재조준 — 공유 카드도 같은 SSOT 를 쓰게 되어 두 곳에 맞는다. 앞 `<SEO` 줄로 가른다.
+    file: CLIENT, find: '<SEO\n        title={passDetailTitle(detail.name, detail.restaurant_name)}',
+    replace: "<SEO\n        title={`${detail.name} 이용권 - ${detail.restaurant_name || '유어딜'}`}", test: TEST,
     why: '같은 두 벌 — 이쪽은 react-helmet 이라 Googlebot 만 본다.',
   },
   {

@@ -19,8 +19,10 @@ export default [
   {
     name: '[pass-desc] 클라가 다시 자기 문장을 만든다 (수리 전 라이브 상태)',
     file: CLIENT,
-    find: '        description={passDetailDescription(detail)}',
-    replace: '        description={`${detail.restaurant_name || \'\'} ${detail.name} 이용권, ${detail.group_buy_current}명 함께 구매 중`}',
+    // 🔁 2026-10-15 재조준 — 공유 카드도 같은 SSOT 를 쓰게 되어 이 문자열이 두 곳에 맞는다.
+    //    지키려는 불변식(`<SEO>` 메타가 SSOT 를 지난다)은 그대로다 — 뒤 줄까지 포함해 가른다.
+    find: '        description={passDetailDescription(detail)}\n        url={`/pass/${productId}`}',
+    replace: '        description={`${detail.restaurant_name || \'\'} ${detail.name} 이용권, ${detail.group_buy_current}명 함께 구매 중`}\n        url={`/pass/${productId}`}',
     test: TEST,
     why:
       '이게 수리 전 라이브다 — **활성 359건 중 357건이 `0명`** 이고 react-helmet 이 서버 메타를 ' +

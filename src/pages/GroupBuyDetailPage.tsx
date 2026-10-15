@@ -573,7 +573,17 @@ export default function GroupBuyDetailPage() {
       <DetailFloatingHeader
         productId={detail.id}
         title={detail.name}
-        shareDescription={`${detail.restaurant_name ? detail.restaurant_name + ' · ' : ''}${detail.group_buy_current}명 함께 구매 중 · ${displayDiscountPct > 0 ? `${displayDiscountPct}% 할인` : '이용권 특가'}${myUserId ? ' · 친구 초대 시 양쪽 0.5% 보너스 (첫 1회)' : ''}`}
+        /* 🔗 2026-10-15 [UNLOCK_LOADING] (대표 결재 "응 결재 해줄게 해줘") — 공유 카드도 검색과 같은 SSOT.
+            종전 문구는 세 가지를 **동시에** 틀리고 있었다(전부 라이브 실측):
+              ① 참여 인원수 — 활성 이용권 359건 중 **357건이 `group_buy_current = 0`** 이라 `0명` 이었다.
+                 그리고 이 상품은 모여서 사는 게 아니다(2026-05-30 A2 즉시판매 단일가 · 2026-09-04 "마감 개념은 없어").
+              ② 제목의 '공구 참여' — 폐기된 개념인데 **제목은 전 경로에 실린다**(commerce 카드 포함).
+              ③ 추천 보너스 약속 — 라이브 `user_referral_bonus_pct` 가 **0** 이다(2026-08-23 대표 "심플 모델").
+                 **안 주는 보상을 약속하고 있었다** — 2026-10-06 에 `MyVouchersPage` 의 공유 모달을 같은
+                 이유로 지웠는데 이 자리가 남아 있었다.
+            ⇒ 제목·설명을 서버 og 와 **같은 함수**로 받는다(한 링크가 받는 쪽에 따라 다른 말을 하지 않는다). */
+        shareTitle={passDetailTitle(detail.name, detail.restaurant_name)}
+        shareDescription={passDetailDescription(detail)}
         shareImageUrl={passShareCardUrl(productId, undefined, detail.image_url)}
         shareLink={shareLink}
         myUserId={myUserId}
@@ -646,11 +656,11 @@ export default function GroupBuyDetailPage() {
           <span className="ml-auto flex items-center gap-1 pb-1">
             <PinButton productId={detail.id} price={detail.price} variant="detail-floating" className="!w-9 !h-9 shrink-0" />
             <KakaoShareButton
-              title={`${detail.name} 공구 참여하기`}
-              description={`${detail.restaurant_name ? detail.restaurant_name + ' · ' : ''}${detail.group_buy_current}명 함께 구매 중`}
+              title={passDetailTitle(detail.name, detail.restaurant_name)}
+              description={passDetailDescription(detail)}
               imageUrl={passShareCardUrl(productId, undefined, detail.image_url)}
               link={shareLink}
-              buttonText="나도 참여하기"
+              buttonText="구매하기"
               {...(Number((detail as { deal_only?: number }).deal_only) === 1 ? {} : {
                 salePrice: detail.price,
                 discountRate: displayDiscountPct,
