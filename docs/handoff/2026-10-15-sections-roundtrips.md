@@ -31,3 +31,11 @@
 ## 틀렸던 판단
 - 처음에 "위치 쿠키와 localStorage 가 어긋나 섹션이 교체된다"를 의심했는데 **내 하네스가 쿠키만 심고
   localStorage 를 안 심어서** 생긴 인공물이었다. 둘 다 심으니 교체 없음.
+
+## 추가 — D1 읽기 복제 1단계 (대표 결재 "응 켜고 코드 작업 진행해줘")
+- `src/worker/utils/d1-read-replica.ts`: `publicReadDb(db)`(세션 'first-unconstrained', API 없으면 원본) · `dbKey(db)`(세션→원본, isolate 메모 키).
+- 적용: `/api/sections` GET 만. 메모 키를 `dbKey` 로 바꾼 곳: sections ensureTables · section-seed · consumer-scope hasMallColumn · banners ensureBannerColumns.
+  ⚠️ 다른 곳에 `publicReadDb` 를 넓힐 때 그 경로의 isolate 메모(`WeakSet<D1Database>` 77+31곳)를 `dbKey` 로 안 바꾸면 요청마다 DDL·PRAGMA 가 다시 돈다.
+- 허용 파일 목록은 시험이 고정(`sections-roundtrips-2026-10-15.test.ts` 마지막 describe). 머니·어드민·셀러 금지.
+- **대시보드에서 켜는 것은 대표 몫**(아직 안 켜짐 — 켜기 전엔 세션도 원본으로 가서 지금과 동일).
+- 다음: 대표가 켠 뒤 `GET /d1/database/{uuid}` 의 `read_replication.mode` 확인 → 2단계 대상(이용권 목록·상세는 잠금 파일이라 승인 필요).

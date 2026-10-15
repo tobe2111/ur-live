@@ -1,5 +1,6 @@
 import type { Env } from '@/worker/types/env'
 import { SECTION_DEFAULT_LIMIT } from '@/shared/constants/home-showcase'
+import { dbKey } from '@/worker/utils/d1-read-replica'
 
 /**
  * 🏠 홈 섹션 기본 시드 (2026-08-04 대표 신고 *"너가 줬던 시안이랑 완전 다르잖아"*).
@@ -83,9 +84,9 @@ const _seedConfirmed = new WeakSet<D1Database>()
 
 export async function maybeSeedHomeSections(env: Env): Promise<void> {
   const DB = env.DB
-  if (_seedConfirmed.has(DB)) return
+  if (_seedConfirmed.has(dbKey(DB))) return
   try {
-    if (await readSeededVersion(DB) >= SECTION_SEED_VERSION) { _seedConfirmed.add(DB); return }
+    if (await readSeededVersion(DB) >= SECTION_SEED_VERSION) { _seedConfirmed.add(dbKey(DB)); return }
 
     const { results } = await DB.prepare('SELECT title FROM homepage_sections').all<{ title: string }>()
     const existing = new Set((results ?? []).map(r => String(r.title)))
@@ -112,7 +113,7 @@ export async function maybeSeedHomeSections(env: Env): Promise<void> {
       `INSERT INTO platform_settings (key, value, updated_at) VALUES (?, ?, datetime('now'))
        ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`
     ).bind(SETTING_KEY, String(SECTION_SEED_VERSION)).run()
-    _seedConfirmed.add(DB)
+    _seedConfirmed.add(dbKey(DB))
   } catch {
     /* 시드 실패가 홈을 깨뜨리지 않는다 — 다음 요청에서 다시 시도된다. */
   }

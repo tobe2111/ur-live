@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest'
 // node:sqlite 는 vite 가 번들 못 하므로 계산된 specifier + @vite-ignore 로 런타임 동적 로드.
 const { DatabaseSync } = await import(/* @vite-ignore */ ('node:' + 'sqlite')) as { DatabaseSync: new (p: string) => { prepare: (sql: string) => { run: (...a: never[]) => { changes: number | bigint }; get: (...a: never[]) => unknown; all: (...a: never[]) => unknown[] } } }
 import { readFileSync } from 'node:fs'
+import { execSync } from 'node:child_process'
 import { sectionsRoutes } from '@/features/sections/api/sections.routes'
 import { resolveSectionProducts, takeUnclaimed } from '@/features/sections/api/section-rules'
 import { SECTION_SEED_VERSION } from '@/features/sections/api/section-seed'
@@ -194,5 +195,62 @@ describe('동시에 물어도 결과는 직렬과 같다', () => {
     const raw = await resolveSectionProducts(env, { source: 'category', sourceValue: 'stay_voucher', limit: 4 })
     const taken = takeUnclaimed(raw, new Set(top.map((r) => r.id as number)), 4)
     expect(taken.length).toBeLessThan(4)
+  })
+})
+
+/**
+ * 🌏 2026-10-15 결재(D1 읽기 복제 — 대표 *"응 켜고 코드 작업 진행해줘"*). 켜도 **세션 API 로 물어야만** 사본으로 간다.
+ *   ① 이 라우트의 질의가 전부 세션으로 가는가 ② 요청마다 새 세션이어도 isolate 메모가 안 빗나가는가
+ *   ③ 세션 API 가 없으면 원본 그대로인가 ④ 머니 경로가 이 함수를 안 쓰는가.
+ * ⚠️ 못 보는 것: Cloudflare 가 실제로 한국 근처 사본으로 보내는지(라이브만 안다) · 사본 지연의 실제 크기.
+ */
+describe('D1 읽기 복제 — 공개 편성 읽기만 사본으로', () => {
+  function replicated() {
+    const base = makeDb()
+    let primaryCalls = 0, sessionCalls = 0, sessions = 0
+    const DB = {
+      prepare: (sql: string) => { primaryCalls++; return base.DB.prepare(sql) },
+      // 요청마다 **새 세션 객체** — 진짜 런타임과 같다(메모가 세션을 키로 쓰면 매번 빗나간다).
+      withSession: () => { sessions++; return { prepare: (sql: string) => { sessionCalls++; return base.DB.prepare(sql) } } },
+    } as unknown as D1Database
+    return { DB, log: base.log, stats: () => ({ primaryCalls, sessionCalls, sessions }) }
+  }
+
+  it('라우트의 질의가 전부 세션(사본)으로 간다 — 원본 직행 0', async () => {
+    const r = replicated()
+    await timed({ DB: r.DB }, '/?near=37.12,127.02')
+    const s = r.stats()
+    expect(s.sessions, '세션을 열지 않았다 — 복제를 켜도 원본으로 간다').toBeGreaterThan(0)
+    expect(s.sessionCalls).toBeGreaterThan(3)
+    expect(s.primaryCalls).toBe(0)
+  })
+
+  it('요청마다 새 세션이어도 메모가 유지된다 — 두 번째 요청에 DDL·시드 버전·PRAGMA 재질의 0', async () => {
+    const r = replicated()
+    await timed({ DB: r.DB }, '/?near=37.14,127.02')
+    const before = r.log.length
+    await timed({ DB: r.DB }, '/?near=37.16,127.04')
+    const second = r.log.slice(before)
+    expect(second.filter((q) => /^\s*(CREATE|ALTER|PRAGMA)/i.test(q))).toEqual([])
+    expect(second.filter((q) => q.includes('platform_settings') && !q.includes('popular_weight') && !/IN \(/.test(q))).toEqual([])
+  })
+
+  it('세션 API 가 없으면 원본 그대로 (로컬·옛 런타임 무회귀)', async () => {
+    const { publicReadDb, dbKey } = await import('@/worker/utils/d1-read-replica')
+    const plain = { prepare: () => null } as unknown as D1Database
+    expect(publicReadDb(plain)).toBe(plain)
+    expect(dbKey(plain)).toBe(plain)
+    const primary = { prepare: () => null, withSession: () => ({ prepare: () => null }) } as unknown as D1Database
+    const s = publicReadDb(primary)
+    expect(s).not.toBe(primary)
+    expect(dbKey(s)).toBe(primary)
+  })
+
+  it('publicReadDb 는 허용된 공개 읽기 파일에서만 쓴다 — 머니·관리 경로 금지', () => {
+    const ALLOWED = new Set(['src/features/sections/api/sections.routes.ts'])
+    const hits = execSync(`grep -rlE "publicReadDb\\(" src --include=*.ts --include=*.tsx`, { encoding: 'utf-8' })
+      .split('\n').filter(Boolean).filter((f) => !f.includes('/tests/') && !f.endsWith('d1-read-replica.ts'))
+    expect(hits.length, '쓰는 곳이 0 이면 복제를 켜도 아무 효과가 없다').toBeGreaterThan(0)
+    for (const f of hits) expect(ALLOWED.has(f), `${f} 는 허용 목록 밖 — 사본 지연을 견디는 공개 읽기인지 판단 후 목록에 추가`).toBe(true)
   })
 })

@@ -35,6 +35,7 @@ import { mainScopeFor } from '@/worker/utils/consumer-scope';
 import { nearKeyOf, parseNearKey } from '@/shared/home-near';
 import { listActiveBanners } from '../../banners/api/banners.routes';
 import { STRIP_BANNER_MAX } from '@/shared/home-strip-banners';
+import { publicReadDb, dbKey } from '@/worker/utils/d1-read-replica';
 const sectionsRoutes = new Hono<{ Bindings: Env }>();
 
 /**
@@ -50,8 +51,8 @@ async function invalidateSectionsCache(env: Env): Promise<void> {
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 async function ensureTables(DB: D1Database) {
-  if (_done_ensureTables.has(DB)) return
-  _done_ensureTables.add(DB)
+  if (_done_ensureTables.has(dbKey(DB))) return
+  _done_ensureTables.add(dbKey(DB))
   try {
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS homepage_sections (
@@ -104,7 +105,10 @@ async function ensureTables(DB: D1Database) {
  *      `bypassIfAuthed` 라 어드민 자신은 항상 최신을 본다.
  */
 sectionsRoutes.get('/', edgeCache(120), async (c) => {
-  const { DB, SESSION_KV } = c.env as Env & { SESSION_KV?: KVNamespace };
+  const { SESSION_KV } = c.env as Env & { SESSION_KV?: KVNamespace };
+  // 🌏 2026-10-15 결재(D1 읽기 복제): 공개 편성 읽기는 가까운 사본에서 — 근거·금지 경로는 `d1-read-replica.ts`.
+  const DB = publicReadDb((c.env as Env).DB);
+  const readEnv = { ...(c.env as Env), DB } as Env;
   /**
    * 📍 2026-10-13 (대표 — 위치를 정하면 맨 위가 그 지역에서 가까운 이용권): `?near=lat,lng`.
    *   서버가 **다시 격자(0.02°)에 맞춘다** — 클라가 정밀 좌표를 보내도 캐시가 쪼개지지 않게.
@@ -140,7 +144,7 @@ sectionsRoutes.get('/', edgeCache(120), async (c) => {
       async () => {
         // 🏠 2026-08-04: 승인된 시안의 세 줄을 기본으로 넣는다 — 아무도 안 만들면 홈이
         //   "틀만 있고 안이 빈" 화면이 되고, 그건 시안이 아니다(대표 신고). 편집·삭제는 보존.
-        await maybeSeedHomeSections(c.env as Env);
+        await maybeSeedHomeSections(readEnv);
         const weightsP = resolvePopularWeights(DB);
         weightsP.catch(() => {});
 
@@ -153,7 +157,7 @@ sectionsRoutes.get('/', edgeCache(120), async (c) => {
         // 테이블·컬럼이 없을 때만 만든다(새 DB · 옛 스키마) — 정상 경로에서 DDL 6왕복을 안 기다린다.
         const { results: sections } = await selectSections().catch(async () => {
           await ensureTables(DB);
-          await maybeSeedHomeSections(c.env as Env);
+          await maybeSeedHomeSections(readEnv);
           return selectSections();
         });
 
@@ -223,7 +227,7 @@ sectionsRoutes.get('/', edgeCache(120), async (c) => {
         let ahead = 0;
         for (const s of sectionList) {
           if (normalizeSectionSource(s.source) === 'manual') continue;
-          pending.set(s.id as number, resolveSectionProducts(c.env as Env, {
+          pending.set(s.id as number, resolveSectionProducts(readEnv, {
             source: normalizeSectionSource(s.source),
             sourceValue: (s.source_value as string) ?? null,
             limit: (s.limit_count as number) ?? null,

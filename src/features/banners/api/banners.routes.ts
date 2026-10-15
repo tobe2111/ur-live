@@ -21,6 +21,7 @@
 import { Hono } from 'hono';
 import { safeError } from '../../../worker/utils/safe-error';
 import { isBannerSlot, type BannerSlot } from '../../../shared/constants/home-showcase';
+import { dbKey } from '../../../worker/utils/d1-read-replica';
 
 type Bindings = {
   DB: D1Database;
@@ -35,8 +36,8 @@ export const bannerRoutes = new Hono<{ Bindings: Bindings }>();
  */
 const _bannerColsReady = new WeakSet<D1Database>();
 export async function ensureBannerColumns(DB: D1Database): Promise<void> {
-  if (_bannerColsReady.has(DB)) return;
-  _bannerColsReady.add(DB);
+  if (_bannerColsReady.has(dbKey(DB))) return;
+  _bannerColsReady.add(dbKey(DB));
   for (const sql of [
     // ⚠️ **DEFAULT 를 주지 않는다.** SQLite 는 ADD COLUMN 의 기본값을 기존 행에도 적용하므로,
     //    기본값이 있으면 예전에 올려둔 배너가 전부 그 자리를 차지한 것으로 읽힌다(실제 사고).
