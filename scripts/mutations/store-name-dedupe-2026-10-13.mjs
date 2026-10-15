@@ -62,8 +62,10 @@ export default [
     name: '🏪 Product.description 폴백만 되돌린다',
     why: '설명이 빈 상품에서만 쓰이는 자리라 눈에 안 띈다. 구글이 읽는 구조화 데이터라 설명 메타보다 더 오래 남는다.',
     file: META,
-    find: '`${storeName} 공동구매`',
-    replace: '`${store} ${name} 공동구매`',
+    // 🔁 2026-10-15 재조준: 그 폴백 문구가 `공동구매` → `이용권` 으로 바뀌었다(제목 SSOT 작업).
+    //    지키는 불변식은 그대로다 — **가게 이름을 한 번만** 말한다(`${store} ${name}` 중복 금지).
+    find: '`${storeName} 이용권`',
+    replace: '`${store} ${name} 이용권`',
     test: T,
   },
   {
