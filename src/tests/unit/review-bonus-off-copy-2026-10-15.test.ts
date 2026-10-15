@@ -29,6 +29,6 @@ describe('후기 보너스가 꺼져 있는 동안 금액을 약속하지 않는
   })
   it('가이드 두 곳이 운영 중단을 먼저 말한다', () => {
     expect(R('src/features/guides/api/guide-seed-seller.ts')).toContain('지금은 운영하지 않습니다** (2026-10-12)')
-    expect(R('src/features/guides/api/guide-seed-admin.ts')).toContain('2026-10-12 부터 운영 중단')
+    expect(R('src/features/guides/api/guide-seed-admin.ts')).toContain('2026-10-12 부터 운영 중단**')
   })
 })
