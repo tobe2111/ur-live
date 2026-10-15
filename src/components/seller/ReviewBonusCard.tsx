@@ -9,11 +9,20 @@
  */
 import { useCallback, useEffect, useState } from 'react'
 import api from '@/lib/api'
+import { KAKAO_REVIEW_BONUS_ENABLED } from '@/shared/feature-flags'
 import { Loader2, MessageSquareHeart } from 'lucide-react'
 
 interface Policy { amount: number; store_set: boolean; funded_by: 'owner' | 'platform' }
 
+// 🚫 2026-10-12 대표 *"카카오맵 후기 관련 보너스 지금 없어"* — 손님 쪽 제출 버튼은 이미 꺼졌는데
+//   사장님 화면엔 금액 설정 카드가 남아 **없는 보너스를 설정**하게 하고 있었다. 꺼져 있으면 안 그린다
+//   (훅 규칙 때문에 게이트는 바깥 껍데기에 둔다 — ReviewBonusButton 과 같은 모양).
 export default function ReviewBonusCard() {
+  if (!KAKAO_REVIEW_BONUS_ENABLED) return null
+  return <ReviewBonusCardInner />
+}
+
+function ReviewBonusCardInner() {
   const [policy, setPolicy] = useState<Policy | null>(null)
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(true)
