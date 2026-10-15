@@ -20,8 +20,11 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { createSurfaceChunker } from '../../../scripts/surface-chunks.mjs'
-import { ROUTES } from '../../../scripts/generate-route-chunk-map.mjs'
 import { stripComments, readCode } from '../helpers/source-text'
+
+// 생성기는 .d.mts 를 둘 수 없다 — 본문의 템플릿 문자열(생성 파일의 `export const …`)이 계약 검사(pre-push-roots)에 export 로 읽힌다.
+const GEN_PATH = '../../../scripts/generate-route-chunk-map.mjs'
+const { ROUTES } = (await import(GEN_PATH as string)) as { ROUTES: Record<string, string[]> }
 
 const ROOT = '/repo'
 const P = (f: string) => path.join(ROOT, f)
@@ -38,14 +41,14 @@ describe('① 로딩 화면이 뜨던 페이지가 청크 병렬화에 등재돼
     guestUShop: 'src/pages/guest/GuestUrShopPage.tsx',
   } as const
   it.each(Object.entries(NEW))('%s → %s', (key, file) => {
-    expect((ROUTES as Record<string, string[]>)[key]).toContain(file)
+    expect(ROUTES[key]).toContain(file)
     expect(() => readFileSync(file, 'utf-8')).not.toThrow()
   })
   it('지역은 시/도·허브 두 페이지 모두', () => {
     expect(ROUTES.region).toEqual(['src/pages/region/RegionPage.tsx', 'src/pages/region/RegionIndexPage.tsx'])
   })
   it('로그인 화면(셀러 도구와 코드를 나눠 쓰는 페이지)은 등재하지 않는다 — 대시보드 청크 무접촉', () => {
-    const files = Object.values(ROUTES as Record<string, string[]>).flat()
+    const files = Object.values(ROUTES).flat()
     expect(files).not.toContain('src/pages/UserProfilePage.tsx')
     expect(files).not.toContain('src/pages/MyVouchersPage.tsx')
   })
