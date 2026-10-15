@@ -25,8 +25,9 @@ const PRELOAD_ONLY_ROUTES = table('PRELOAD_ONLY_ROUTES')
 
 describe('미리받기 전용 표면', () => {
   it('표 읽기가 헛돌지 않는다', () => { expect(Object.keys(ROUTES).length).toBeGreaterThan(5) })
-  it('표면 다섯이 있고 진입 파일이 실재한다', () => {
-    expect(Object.keys(PRELOAD_ONLY_ROUTES).sort()).toEqual(['blog', 'blogPost', 'region', 'stayDetail', 'stays'])
+  it('색인 진입점 다섯이 들어 있고 진입 파일이 실재한다', () => {
+    // 같은 날 다른 세션이 장바구니·검색·게스트 탭을 함께 등재했다 — 이 시험이 지키는 것은 색인 진입점 다섯이 빠지지 않는 것.
+    expect(Object.keys(PRELOAD_ONLY_ROUTES)).toEqual(expect.arrayContaining(['blog', 'blogPost', 'region', 'stayDetail', 'stays']))
     for (const files of Object.values(PRELOAD_ONLY_ROUTES)) for (const f of files) expect(existsSync(f), f).toBe(true)
   })
   it('묶음용 ROUTES 와 겹치지 않는다(겹치면 묶음이 다시 짜인다)', () => {

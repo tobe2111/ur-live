@@ -46,22 +46,29 @@ export const ROUTES = {
   // 🎬 2026-09-21 유어쇼츠 전체 보기 — 홈 레일의 「전체 보기」·상단 네비가 여기로 온다(하드로드 진입점).
   urshorts: ['src/pages/UrShortsBrowsePage.tsx'],
 }
-
 /**
- * 🏨 2026-10-15 (대표 *"다른 로딩 개선점도 찾아줘"* — 라이브 폭포 실측): 색인 대상 진입점인데 미리받기 목록에
- * 없어서 화면 청크가 **엔트리가 다 돈 뒤에야** 출발했다(`/stays` 실측: 엔트리 1.4초 → StaysSearchPage 2.6초 출발).
- * 숙소 정본(`/stays/:id`, sitemap 49건) · 블로그 · 지역 착지(sitemap 44건)도 같은 자리다.
- *
- * ⚠️ `ROUTES` 와 **따로** 두는 이유: `ROUTES` 는 vite.config 의 페이지별 청크 묶음(`surfaceChunkName`)에도 쓰인다.
- *   여기에 넣었더니 묶음이 다시 짜이면서 `lz-browse-vouchers ↔ lz-common` 순환이 생겨 빌드 게이트가 멈췄다.
- *   이 표는 **미리받기에만** 쓰고 묶음은 건드리지 않는다(지금 있는 청크를 엔트리와 병렬로 받기만 한다).
+ * 🐢 2026-10-15 (대표 "각 페이지마다도 느리고" — 18곳 실측): **preload 만** 받는 표면.
+ *   이 페이지들은 맵에 없어서 페이지 청크가 앱 부팅(느린 4G 약 2.5초) **뒤에야** 출발했다. 장바구니·로그아웃 마이는
+ *   그 뒤 20여 파일을 받느라 "로그인하세요" 안내 하나를 5.1~5.6초에 띄웠고, 그 사이 `load` 가 지나 센트리(129KB)가
+ *   같은 회선을 나눠 썼다 — preload 는 `load` 를 붙들므로 등재하면 센트리도 페이지 뒤로 밀린다.
+ *   ⚠️ `ROUTES` 와 따로 두는 이유: `ROUTES` 는 vite 묶음기(`surface-chunks.mjs`)의 입력이기도 하다. 여기 넣으면
+ *      묶음이 다시 짜여 기존 화면이 무거워지거나(공용 기준 4 → 전 화면 +7~9KB) 파일이 늘었다(기준을 올리면 +2~5개).
+ *      preload 만이면 청크 구성은 1바이트도 안 바뀌고 출발 시점만 당겨진다.
+ *   로그인 화면(UserProfilePage·MyVouchersPage)은 셀러 도구와 코드를 나눠 써서 넣지 않는다.
  */
 export const PRELOAD_ONLY_ROUTES = {
+  cart: ['src/pages/CartPage.tsx'],
+  search: ['src/pages/SearchPage.tsx'],
+  faq: ['src/pages/FAQPage.tsx'],
   stays: ['src/pages/StaysSearchPage.tsx'],
   stayDetail: ['src/pages/StayDetailPage.tsx'],
+  // 🏨 2026-10-15 블로그 목록·글 — 색인 진입점(같은 날 다른 세션이 함께 등재)
   blog: ['src/pages/BlogListPage.tsx'],
   blogPost: ['src/pages/BlogDetailPage.tsx'],
-  region: ['src/pages/region/RegionIndexPage.tsx', 'src/pages/region/RegionPage.tsx'],
+  region: ['src/pages/region/RegionPage.tsx', 'src/pages/region/RegionIndexPage.tsx'],
+  guestMy: ['src/pages/guest/GuestMyPage.tsx'],
+  guestPass: ['src/pages/guest/GuestPassPage.tsx'],
+  guestUShop: ['src/pages/guest/GuestUrShopPage.tsx'],
 }
 const MAX_LINKS = 10 // head 링크 스팸 방지 캡(핵심 큰 청크 우선 — closure 순서 = 페이지 청크 → 공유 청크)
 

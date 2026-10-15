@@ -303,3 +303,71 @@ curl -sS -A "$UA" https://urdeal.kr/pass/2919 | grep -o '<title>[^<]*</title>'
 
 ⚠️ **여전히 못 잰 것**: 카카오가 실제로 그리는 카드(렌더 주체가 카카오다 — **대표만** 판정).
 아직 공유 안 해 본 `/pass` 링크로 볼 것(카카오는 주소 단위로 카드를 캐시한다).
+
+---
+
+# 🧾 결재 상정 — `?ref=` 배너의 죽은 보너스 약속 (대표 *"`?ref=` 배너 결재 올려줘"*)
+
+위 E4 가 남긴 `0.5% 보너스` **1건**이 그대로 이 결재의 대상이다.
+결재문: **`docs/decisions/2026-10-15-ref-banner-dead-bonus.md`**(안 1~4 + 동반 질문 ⓐⓑⓒ).
+
+## 실측 — 결재문에 담지 않은 코드 경로 전수
+
+| 자리 | 값 |
+|---|---|
+| `GroupBuyDetailPage.tsx:674~683` | 배너 JSX (`isInfluencerLanding &&`) |
+| `:151` `:174` `:675` | `refUserId` → `isInfluencerLanding` → 배너. **이 셋이 전부**(전수 grep) |
+| `:155` | `storeAffiliateRef(aff ?? ref)` — **별도 effect**. 배너를 지워도 귀속이 안 깨진다 |
+| `:207~208` | `shareLink = /pass/:id?ref=<myUserId>` — 공유 버튼이 이 주소를 쓴다 |
+| `:403` | 결제 시 `getPurchaseRef()` 전송. 주석이 *"배너가 약속하는 양쪽 0.5% 보너스의 실제 지급 경로"* 라 적는다 |
+| `:754` | `Sparkles` 두 번째 사용처 — 배너를 지워도 import 는 남는다 |
+| `commission-rates.ts:126` | `user_bonus = has_influencer ? total × pct/100 : 0` |
+| `commission-rates.ts:141` | `calcSplitInfluencerBlocked` — *"회사가 보장"* 경로도 같은 `pct` |
+| `group-buy.routes.ts:478` | 실제 적립 계산, 같은 식 |
+| `GroupBuyTermsPage.tsx:59` | 약관 제5조 — 같은 약속의 형제 |
+
+라이브 설정(어드민 `/api/admin/tools/settings`, 키 391개):
+`user_referral_bonus_pct='0'` · `influencer_commission_pct='0'` · `invite_reward_enabled` **키 부재**.
+라이브 `/terms/group-buy` → **200 · `noindex, follow`** · sitemap `terms/group-buy` **0건** · UI 링크 **0**.
+
+## 🩸 이번에 틀렸던 것
+
+**"보상이 0 이다" 를 설정 한 줄로 단정하려 했다.** `user_referral_bonus_pct='0'` 만 보고 올리려다,
+배너 문구가 *"참여 시"*(구매 시점)라 **초대 보상**(`grantInviteRewardForFirstPurchase`, 1,000딜)이
+같은 시점에 걸릴 수 있음을 깨달았다. 그쪽도 꺼져 있어 결론은 같았지만,
+**"이 레일이 0" 과 "구매자가 아무것도 못 받는다" 는 다른 주장**이다 — 후자를 말하려면 레일을 전부 세야 한다.
+
+**그리고 반려 결재 하나를 archive 로 옮기려다 멈췄다.** `2026-09-21-settlement-structure-payouts.md`
+(28.7KB, `상태: rejected`)가 번들 상쇄 후보로 보였는데, `archive/README.md:41` 과
+`handoff/2026-10-14-decisions-inbox-cleanup.md:19` 가 **둘 다 "옮기지 말 것"** 이라 적어 뒀다
+(Q1 이 **10-31 재상정**). ⇒ **`상태:` 한 줄로 기계적으로 옮기지 말 것** — 그 README 가 경고한 그 자리다.
+
+## 다음 세션의 첫 액션
+1. 대표 답이 오면 그 말을 **그대로** `## 결정` 에 옮기고 구현. 안 1·2·3 은 잠금표 파일 1곳 접촉이라
+   같은 커밋에서 **CLAUDE.md audit log + grep 전후 대조**(주석 제거본 기준:
+   `__SSR_INITIAL_DETAIL__`(1) · `pickSeedDetail`(2) · `lazy(`(3) · `passShareCardUrl`(3) · `rootMargin`(1)).
+2. 안 4 는 **머니 경로** — 단독 세션 + staging 실결제. 이 결재문만으로 켜지 말 것.
+3. 가드: 수리하든 조건부로 바꾸든 *"라이브 0 인 보상을 화면이 약속하지 않는다"* 를 주입으로 고정할 것
+   (지갑 2026-10-06 수리에는 그 가드가 없어서 이 배너가 넉 달 남았다).
+
+### 🧹 결재함 하이진 — 답이 난 결재가 open 으로 남아 있었다 (2026-10-15)
+
+`?ref=` 결재(#1857 `74020c944`)를 올린 뒤 결재함 12건을 전수로 재니 **open 4건**인데
+그중 하나(`2026-10-14-pass-description.md`)는 **이미 답이 나고 구현·배포까지 끝난 것**이었다 —
+대표 ***"응 승인할게 해줘"*** → `7fed4aaf6`(#1850) → E4 통과(활성 전수 `명 함께 구매 중` 0건).
+`상태: open` · `결정 <비워 둠>` 그대로여서 **대표가 이미 끝난 것을 다시 읽어야 했다.**
+
+🔑 **왜 생기나**: 결재는 *파일*로 올리는데 답은 *채팅*으로 온다. 승인받은 세션은 그 자리에서
+구현·머지·audit log 까지 가는데(그게 맞다) **결재문으로 돌아와 닫는 단계가 빠진다** —
+audit log 에는 인용이 남아 있어서 아무도 모른다. ⇒ **승인을 받으면 그 세션에서 결재문도 닫는다**
+(`상태` · `결정`(대표 말 그대로) · `반영 커밋`). 닫지 않으면 결재함이 곧 낡은 지도가 된다.
+
+**닫지 않은 나머지 셋은 전부 진짜 open 임을 확인했다**(기계적으로 닫지 않았다):
+- `2026-10-14-locked-emdash.md` — `scripts/anti-slop-baseline.json` 의 `lockedEmDash: 7` 그대로(미수리)
+- `2026-10-15-ads-alarm-stall-alert.md` — 오늘 올린 것
+- `2026-10-15-ref-banner-dead-bonus.md` — 이번 것
+
+⚠️ **`2026-09-21-settlement-structure-payouts.md`(rejected)는 `archive/` 로 옮기지 말 것** —
+`archive/README.md:41` + `handoff/2026-10-14-decisions-inbox-cleanup.md:19` 이 *"Q1 10-31 재상정"* 으로
+두 번 명시했다. `상태:` 한 줄만 보고 옮기면 재상정 대상이 사라진다(이 세션도 번들 상쇄용으로
+옮기려다 그 두 줄을 읽고 멈췄다).
