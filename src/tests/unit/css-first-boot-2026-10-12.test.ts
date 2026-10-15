@@ -193,7 +193,7 @@ describe('⑦ Link 헤더(Early Hints 원천) — 렌더 차단 CSS 만', () => 
     const w = stripComments(readFileSync('src/worker/index.ts', 'utf-8'))
     expect(w).toMatch(/appendEdgeHeaders\(c\.res\.headers, ENTRY_CSS, \(c\.req\.raw as \{ cf\?: \{ colo\?: string \} \}\)\.cf\?\.colo\)/)
     const g = readFileSync('scripts/generate-route-chunk-map.mjs', 'utf-8')
-    expect(g).toMatch(/emit\(out, entry\.css\)/)
+    expect(g).toMatch(/emit\(out, entry\.css, bootJs\)/)
     expect(g).toMatch(/export const ENTRY_CSS/)
   })
 })
