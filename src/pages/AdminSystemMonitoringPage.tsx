@@ -70,6 +70,10 @@ export default function AdminSystemMonitoringPage() {
   const navigate = useNavigate()
   const [tab, setTab] = useState<'cron' | 'alimtalk' | 'delivery' | 'ops' | 'points'>('cron')
   const [showResolved, setShowResolved] = useState(false)
+  // 🔎 2026-10-15 — 심각도 칩을 **누를 수 있게**. 미해결 1,331건(critical 11 · error 621 ·
+  //   warning 699) 중 최신 100건만 보이는데 그 창의 81%가 `blocked:*` 소음이라 **error 가
+  //   한 건도 화면에 없었다**(실측). 숫자는 원래 보였고 **행이** 안 보였다 — 칩이 그 행으로 가는 문이다.
+  const [cronSeverity, setCronSeverity] = useState<string | null>(null)
   const [acting, setActing] = useState<number | null>(null)
   const [channels, setChannels] = useState<Record<string, boolean> | null>(null)
   const [testing, setTesting] = useState(false)
@@ -108,8 +112,8 @@ export default function AdminSystemMonitoringPage() {
 
   // 🛡️ 2026-06-03 Tier2(대시보드): 탭별 수동 페칭 → useApiQuery (cron / alimtalk, resolved key 반응형).
   const cronQ = useApiQuery<{ items: CronFailure[]; counts: Array<{ severity: string; cnt: number }> }>(
-    ['admin', 'cron-failures', showResolved], '/api/admin/cron-failures',
-    { params: { resolved: showResolved ? 1 : 0 }, enabled: tab === 'cron', select: (r: any) => ({ items: r?.success ? (r.data.items || []) : [], counts: r?.success ? (r.data.unresolved_counts || []) : [] }) },
+    ['admin', 'cron-failures', showResolved, cronSeverity], '/api/admin/cron-failures',
+    { params: { resolved: showResolved ? 1 : 0, ...(cronSeverity ? { severity: cronSeverity } : {}) }, enabled: tab === 'cron', select: (r: any) => ({ items: r?.success ? (r.data.items || []) : [], counts: r?.success ? (r.data.unresolved_counts || []) : [] }) },
   )
   const alimtalkQ = useApiQuery<{ items: AlimtalkFailure[]; stats: { abandoned: number; pending: number; succeeded: number }; by_template: Array<{ template_code: string; unresolved: number; abandoned: number; registered: boolean; last_error: string | null }> }>(
     ['admin', 'alimtalk-failures', showResolved], '/api/admin/alimtalk-failures',
@@ -270,12 +274,27 @@ export default function AdminSystemMonitoringPage() {
         {/* 통계 */}
         {tab === 'cron' && cronCounts.length > 0 && (
           <DashboardCard className="!p-3">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => setCronSeverity(null)}
+                className={`px-2.5 py-1 rounded-full text-xs font-bold border ${cronSeverity === null ? 'bg-brand text-white border-brand' : 'bg-white border-gray-200 text-gray-600'}`}>
+                전체
+              </button>
               {cronCounts.map(c => (
-                <span key={c.severity} className={`px-2.5 py-1 rounded-full text-xs font-bold border ${SEVERITY_BADGE[c.severity] || 'bg-gray-100'}`}>
+                <button
+                  key={c.severity}
+                  onClick={() => setCronSeverity(cronSeverity === c.severity ? null : c.severity)}
+                  aria-pressed={cronSeverity === c.severity}
+                  className={`px-2.5 py-1 rounded-full text-xs font-bold border ${cronSeverity === c.severity ? 'bg-brand text-white border-brand' : (SEVERITY_BADGE[c.severity] || 'bg-gray-100')}`}>
                   {c.severity}: {c.cnt}건
-                </span>
+                </button>
               ))}
+              {cronSeverity && (
+                // 🔴 거른 목록을 '전부' 로 오해하지 않게 — 100칸 상한이 걸렸는지 그대로 말한다.
+                <span className="text-[11px] text-gray-500">
+                  {cronSeverity} 최신 {cronFailures.length}건{cronFailures.length >= 100 ? ' (상한 100)' : ''}
+                </span>
+              )}
             </div>
           </DashboardCard>
         )}

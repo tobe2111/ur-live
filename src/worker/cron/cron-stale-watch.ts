@@ -29,6 +29,7 @@
  */
 import { listCronHeartbeats, adsLanesPausedFrom, isPausedAdsBeat } from '../utils/cron-heartbeat'
 import { classifyBeat, freshBaseNames } from '../utils/cron-beat-retirement'
+import { isBlockedBeat } from '../utils/cron-beat-blocked'
 import { reportCronFailure } from '../utils/cron-reporter'
 import type { Env } from '../types/env'
 
@@ -76,7 +77,13 @@ export async function handleCronStaleWatch(env: Env): Promise<{ checked: number;
   //   ⇒ 이제 cron 이 **못 한 것을 못 했다고 말한다**(`skipped:'...'`). 그 한마디가 붙은 비트만
   //   고른다. 정상 회차는 이 필드를 아예 안 실으므로 **오탐이 구조적으로 0** 이고, 앞으로 만들
   //   어떤 cron 이든 같은 관례만 따르면 공짜로 감시된다.
-  const blocked = beats.filter(b => b.name !== SELF && /(^|[\s,{])skipped[=:]/.test(b.result || ''))
+  //   🔴 **2026-10-15 정정 — 그 처방이 키만 보고 값을 안 봤다.** 하트비트 145개 중 표식이 붙은
+  //   12개를 전수로 읽으니 **11개가 멀쩡한 레인**이었다(`skipped=min_interval` 페이싱 9 ·
+  //   `skipped=309`·`skipped=6` 카운터 2 · `skipped=false` 1). 12시간마다 거짓 `blocked:*` 를
+  //   쏘아 미해결 `cron_failures` 1,331건이 쌓이고 어드민 최신 100건의 **81%** 가 이 소음이라
+  //   **진짜 error 621건이 화면에 도달하지 못했다** — 거짓 경보는 침묵보다 나쁘다.
+  //   판정은 `cron-beat-blocked.ts` 한 곳이고, 모르는 값은 여전히 blocked 다(기본값이 의도).
+  const blocked = beats.filter(b => b.name !== SELF && isBlockedBeat(b.result))
   if (!beats.length) return { checked: 0, alerted: [] }
 
   // 이전 알림 시각 (없거나 깨졌으면 빈 맵 — 처음이면 알린다)
