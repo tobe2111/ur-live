@@ -7,14 +7,18 @@
  * 적어 두고, 그 버튼의 컴포넌트가 마운트하면서 `consumeEarlyTap(이름)` 으로 한 번 꺼내 실행한다.
  *
  * 꺼내면 지운다 — 두 번 실행되지 않는다. 다른 이름이면 건드리지 않는다.
+ *
+ * 꺼내는 순간 `__urHydrated` 를 세운다 — 이 함수는 버튼이 **이어받아진 뒤**(마운트 effect) 불리므로,
+ * 그 뒤의 누름은 React 가 직접 받아야 한다(스크립트가 계속 가로채면 버튼이 영영 안 열린다).
  */
 export const EARLY_TAP_ATTR = 'data-early-tap'
 
-type W = { __urEarlyTap?: string | null }
+type W = { __urEarlyTap?: string | null; __urHydrated?: boolean }
 
 export function consumeEarlyTap(name: string): boolean {
   if (typeof window === 'undefined') return false
   const w = window as unknown as W
+  w.__urHydrated = true
   if (w.__urEarlyTap !== name) return false
   w.__urEarlyTap = null
   return true

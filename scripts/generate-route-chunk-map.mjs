@@ -69,12 +69,22 @@ export const PRELOAD_ONLY_ROUTES = {
 }
 const MAX_LINKS = 10 // head 링크 스팸 방지 캡(핵심 큰 청크 우선 — closure 순서 = 페이지 청크 → 공유 청크)
 
-function emit(map, entryCssFiles = []) {
+/**
+ * 🧊 2026-10-15: 한국어 core 문구 청크 — 엔트리가 부팅 직후 동적 import 로 받는다(`src/i18n.ts`).
+ *   서버가 앱 전체를 그린 화면은 브라우저가 이어받기 **전에** 이 문구를 기다리므로(서버와 같은 문구여야 한다),
+ *   워커가 그 응답에만 modulepreload 로 미리 출발시킨다(`worker/utils/pass-ssr.ts`). 화면 봉투(ROUTE_CHUNK_MAP)에
+ *   넣지 않는 이유: 모든 화면이 어차피 받는 파일이라 화면별 무게 예산(check-surface-budgets)을 부풀린다.
+ */
+export const LOCALE_CORE_KEY = 'public/locales/ko/translation.json?i18n-core'
+
+function emit(map, entryCssFiles = [], localeCore = '') {
   const body = `// ⚠️ AUTO-GENERATED — scripts/generate-route-chunk-map.mjs 가 빌드 시 재생성. 수동 편집 금지.
 // 라우트 표면별 lazy 페이지 청크(엔트리 폐쇄 제외) — 워커가 modulepreload 로 주입해 엔트리와 병렬 다운로드.
 export const ROUTE_CHUNK_MAP: Record<string, { js: string[]; css: string[] }> = ${JSON.stringify(map, null, 2)}
 // 🚦 2026-10-12 엔트리(index.html) CSS — 워커가 HTML 응답에 \`Link: rel=preload\` 헤더로 싣는다(Early Hints 103 원천).
 export const ENTRY_CSS: string[] = ${JSON.stringify(entryCssFiles)}
+// 🧊 2026-10-15 한국어 core 문구 청크 — 서버가 그린 화면을 이어받기 전에 기다리는 파일(worker/utils/pass-ssr.ts 가 미리받기).
+export const LOCALE_CORE: string = ${JSON.stringify(localeCore)}
 `
   mkdirSync(dirname(OUT), { recursive: true })
   writeFileSync(OUT, body)
@@ -135,7 +145,9 @@ function main() {
     if (jsOut.length) out[surface] = { js: jsOut, css: cssOut }
   }
 
-  emit(out, entry.css)
+  const lc = manifest[LOCALE_CORE_KEY]
+  if (!lc) console.warn(`[route-chunk-map] 매니페스트에 한국어 core 문구가 없음: ${LOCALE_CORE_KEY} — 이어받기 전 문구 미리받기가 빠진다`)
+  emit(out, entry.css, lc ? '/' + lc.file : '')
   console.log(`[route-chunk-map] 생성 완료 — ${Object.keys(out).length} surfaces:`, Object.entries(out).map(([k, v]) => `${k}(js${v.js.length}/css${v.css.length})`).join(' '))
 }
 

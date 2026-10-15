@@ -86,7 +86,7 @@ analyticsRoutes.post('/vitals', async (c) => {
   if (!body.name || typeof body.value !== 'number' || !Number.isFinite(body.value)) {
     return c.json({ ok: false }, 400)
   }
-  const validNames = ['LCP', 'FID', 'CLS', 'INP', 'TTFB', 'CONN']
+  const validNames = ['LCP', 'FID', 'CLS', 'INP', 'TTFB', 'CONN', 'HYD'] // HYD = 서버 화면 이어받기 갈림 수(0 이 정상, main.tsx)
   if (!validNames.includes(body.name)) return c.json({ ok: false }, 400)
   if (body.value < 0 || body.value > 1_000_000) return c.json({ ok: false }, 400)
   const kv = analyticsWriteKv(c.env)
@@ -134,7 +134,7 @@ analyticsRoutes.get('/summary', requireAdmin(), async (c) => {
   const vitals: Record<string, { p50: number; p75: number; p95: number; samples: number }> = {}
   const funnel: Record<string, number> = {}
 
-  for (const name of ['LCP', 'FID', 'CLS', 'INP', 'TTFB', 'CONN']) {
+  for (const name of ['LCP', 'FID', 'CLS', 'INP', 'TTFB', 'CONN', 'HYD']) {
     try {
       const list = await kv.list({ prefix: `vitals:${day}:${name}:` })
       for (const k of list.keys) {

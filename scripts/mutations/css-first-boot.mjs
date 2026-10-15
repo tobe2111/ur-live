@@ -57,7 +57,7 @@ export default [
   {
     name: '🚦 SideBanner 가 다시 폰에서도 마운트된다',
     file: 'src/App.tsx',
-    find: '&& shellNeed.sideBanner && <Suspense fallback={null}><SideBanner /></Suspense>}',
+    find: '&& <WideOnly query="(min-width: 1024px)" /* `hidden lg:flex` — 폰에선 안 보인다 */><Suspense fallback={null}><SideBanner /></Suspense></WideOnly>}',
     replace: '&& <Suspense fallback={null}><SideBanner /></Suspense>}',
     test: TEST,
     why: '폰에선 hidden 인 배너가 151KB 봉투를 부팅에 끌고 온다 — 에러 없이 첫 방문만 느려진다.',
@@ -65,8 +65,8 @@ export default [
   {
     name: '🚦 생성기가 엔트리 CSS 를 안 넘긴다(Link 헤더가 폰트만 남는다)',
     file: 'scripts/generate-route-chunk-map.mjs',
-    find: 'emit(out, entry.css)',
-    replace: 'emit(out)',
+    find: "emit(out, entry.css, lc ? '/' + lc.file : '')",
+    replace: "emit(out, [], lc ? '/' + lc.file : '')",
     test: TEST,
     why: '빈 배열이면 에러 없이 Link 헤더에서 앱 CSS 가 빠진다 — Early Hints 가 켜져도 효과 0.',
   },

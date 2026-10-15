@@ -3,3 +3,5 @@
 export const ROUTE_CHUNK_MAP: Record<string, { js: string[]; css: string[] }> = {}
 // 🚦 2026-10-12 엔트리(index.html) CSS — 워커가 HTML 응답에 `Link: rel=preload` 헤더로 싣는다(Early Hints 103 원천).
 export const ENTRY_CSS: string[] = []
+// 🧊 2026-10-15 한국어 core 문구 청크 — 서버가 그린 화면을 이어받기 전에 기다리는 파일(worker/utils/pass-ssr.ts 가 미리받기).
+export const LOCALE_CORE: string = ""

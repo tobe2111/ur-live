@@ -3,7 +3,10 @@
  * 🧊 이용권 상세 서버 렌더 번들 스모크 (2026-10-15 서버 렌더 3단계).
  *
  * `npm run build:ssr-pass` 가 만든 `dist/ssr-pass/pass-detail-entry.js` 를 **브라우저 전역 없이**(window·localStorage
- * 없음 — 워커와 같다) 불러 상품 하나를 실제로 그린다. 그려진 HTML 에 상품명·가격·구매하기·누름 기억 표시가 있는지 본다.
+ * 없음 — 워커와 같다) 불러 **앱 전체**를 실제로 그린다. 그려진 HTML 에 상품명·가격·구매하기·누름 기억 표시·하단 탭이
+ * 있는지, 그리고 서버가 못 그려 "브라우저에서 그려라" 로 넘긴 자리(`<!--$!-->`)가 **없는지** 본다(있으면 그 자리는
+ * 이어받기가 아니라 새로 그려진다 — 허용목록 밖 동적 import 를 첫 화면이 쓴 것).
+ * 두 상품을 차례로 그려 **요청끼리 섞이지 않는지**도 본다(QueryClient 를 요청마다 새로 만든다).
  *
  * 왜 필요한가: 워커는 번들이 없거나 렌더가 던지면 **조용히** 종전 손그림 첫 화면으로 폴백한다(무회귀가 목적이라).
  * 그 폴백이 영구화되면 서버 렌더가 꺼져 있는데 아무도 모른다 — 빌드도 화면도 초록이다. 이 검사가 그 상태를 빨간불로 만든다.
@@ -30,17 +33,21 @@ const PRODUCT = {
 }
 
 const mod = await import(pathToFileURL(BUNDLE).href)
-if (typeof mod.renderPassDetail !== 'function') fail('renderPassDetail 가 없다')
+if (typeof mod.renderPassApp !== 'function') fail('renderPassApp 가 없다')
 let html = ''
+let html2 = ''
 try {
-  html = mod.renderPassDetail(PRODUCT, '/pass/2919')
+  html = await mod.renderPassApp(PRODUCT, '/pass/2919')
+  html2 = await mod.renderPassApp({ ...PRODUCT, id: 3001, name: '두번째 상품' }, '/pass/3001?ref=7')
 } catch (e) {
   fail(`렌더가 던졌다 — ${(e && e.stack) || e}`)
 }
-const need = [['상품명', '스모크 닭도리탕'], ['가격', '31,000'], ['구매하기', '구매하기'], ['누름 기억 표시', 'data-early-tap="buy"'], ['가게', '스모크가게']]
+const need = [['상품명', '스모크 닭도리탕'], ['가격', '31,000'], ['구매하기', '구매하기'], ['누름 기억 표시', 'data-early-tap="buy"'], ['가게', '스모크가게'], ['하단 탭', 'aria-label="마이"']]
 const missing = need.filter(([, s]) => !html.includes(s)).map(([k]) => k)
 if (html.length < 5000) fail(`HTML 이 너무 짧다(${html.length}) — 로더나 빈 화면이 그려졌다`)
 if (missing.length) fail(`빠진 것: ${missing.join(', ')}`)
 if (/페이지 로딩/.test(html)) fail('로딩 화면이 그려졌다')
-console.log(`✅ pass-ssr-smoke: ${html.length}자 — 상품명·가격·구매하기·누름 기억 표시 확인`)
+if (html.includes('<!--$!-->')) fail('서버가 못 그리고 브라우저로 넘긴 자리가 있다(<!--$!-->) — 첫 화면이 허용목록 밖 동적 import 를 쓴다')
+if (!html2.includes('두번째 상품') || html2.includes('스모크 닭도리탕')) fail('두 번째 요청에 첫 요청의 상품이 섞였다(요청마다 새 QueryClient 가 아니다)')
+console.log(`✅ pass-ssr-smoke: ${html.length}자 — 앱 전체(하단 탭 포함)·상품명·가격·구매하기·누름 기억 표시 · 넘긴 자리 0 · 요청 격리 확인`)
 process.exit(0) // 번들 안 모듈이 타이머를 남겨도 기다리지 않는다

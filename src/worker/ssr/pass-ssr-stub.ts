@@ -3,4 +3,4 @@
  * 워커 빌드가 이걸 묶는다(로컬 단독 워커 빌드·pre-commit). 그러면 워커는 종전 손그림 첫 화면을 쓴다.
  * 실제 배포 빌드(`npm run build`)는 `build:ssr-pass` 가 그 번들을 먼저 만든다.
  */
-export const renderPassDetail: undefined | ((product: { id: number } & Record<string, unknown>, path: string) => string) = undefined
+export const renderPassApp: undefined | ((product: { id: number } & Record<string, unknown>, url: string) => Promise<string>) = undefined

@@ -137,6 +137,15 @@ export function reportWebVitals(): void {
   } catch { /* unsupported */ }
 }
 
+/**
+ * 🧊 2026-10-15: 서버 화면 이어받기(hydrate)의 갈림 수 — 0 이 정상. 갈리면 React 가 그 영역을 버리고 다시 그리는데
+ *   화면은 멀쩡해서 아무도 모른다(서버 렌더의 이득만 조용히 사라진다). 그래서 숫자로 보낸다.
+ */
+export function reportHydration(mismatches: number): void {
+  if (isAutomatedBrowser()) return
+  send('HYD', Math.max(0, Math.min(1000, mismatches | 0)), typeof location !== 'undefined' ? location.pathname : 'unknown')
+}
+
 export function reportFunnel(event: 'view' | 'click' | 'join' | 'success', product_id?: number): void {
   if (isAutomatedBrowser()) return
   try {

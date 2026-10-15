@@ -144,20 +144,24 @@ describe('④ 워커 배선', () => {
 
 describe('⑥ 첫 방문자가 보지 않는 셸 부품은 조건이 맞을 때만 마운트(app-components 151KB 를 부팅에서 뺀다)', () => {
   const app = stripComments(readFileSync('src/App.tsx', 'utf-8'))
+  // 🧊 2026-10-15: push·sideBanner 문지기는 `shellNeed` 식에서 **부품**(`SignedInOnly`·`WideOnly`)으로 옮겨갔다 —
+  //   렌더 중 localStorage·matchMedia 를 직접 읽으면 서버 화면 이어받기(hydrate)가 갈린다(app-hydrate-2026-10-15.test.tsx).
+  //   지키는 것(첫 방문자에겐 그 부품을 마운트하지 않는다)은 그대로다 — 앵커만 새 모양으로.
   it.each([
-    ['onboarding', 'OnboardingTrigger'],
-    ['restore', 'RestoreAccountModal'],
-    ['push', 'PushNotificationSetup'],
-    ['sideBanner', 'SideBanner'],
-  ])('%s → <%s> 앞에 문지기가 있다', (k, comp) => {
+    ['onboarding', 'OnboardingTrigger', 'shellNeed\\.onboarding && '],
+    ['restore', 'RestoreAccountModal', 'shellNeed\\.restore && '],
+    ['push', 'PushNotificationSetup', '<SignedInOnly>'],
+    ['sideBanner', 'SideBanner', '<WideOnly query="\\(min-width: 1024px\\)"[^>]*>'],
+  ])('%s → <%s> 앞에 문지기가 있다', (_k, comp, gate) => {
     expect(app, `${comp} 가 무조건 마운트된다 — 첫 방문자도 app-components 를 다시 받는다`).toMatch(
-      new RegExp(`shellNeed\\.${k} && <Suspense fallback=\\{null\\}><${comp} />`),
+      new RegExp(`${gate}<Suspense fallback=\\{null\\}><${comp} />`),
     )
   })
   it('문지기 조건이 컴포넌트 자신의 조건과 같다', () => {
     expect(app).toMatch(/onboarding: qs\.includes\('new=1'\)/)
     expect(app).toMatch(/restore: qs\.includes\('restorable=1'\)/)
-    expect(app).toMatch(/sideBanner:[^\n]*min-width: 1024px/)
+    const signed = app.slice(app.indexOf('function SignedInOnly'), app.indexOf('function WideOnly'))
+    for (const k of ['user_id', 'seller_id', 'admin_id', 'agency_id']) expect(signed).toContain(`useStoredValue('${k}')`)
   })
 })
 
@@ -188,7 +192,7 @@ describe('⑦ Link 헤더(Early Hints 원천) — 렌더 차단 CSS 만', () => 
     const w = stripComments(readFileSync('src/worker/index.ts', 'utf-8'))
     expect(w).toMatch(/appendEdgeHeaders\(c\.res\.headers, ENTRY_CSS, \(c\.req\.raw as \{ cf\?: \{ colo\?: string \} \}\)\.cf\?\.colo\)/)
     const g = readFileSync('scripts/generate-route-chunk-map.mjs', 'utf-8')
-    expect(g).toMatch(/emit\(out, entry\.css\)/)
+    expect(g).toMatch(/emit\(out, entry\.css\b/)
     expect(g).toMatch(/export const ENTRY_CSS/)
   })
 })

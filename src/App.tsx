@@ -27,6 +27,7 @@ import KakaoConsultButton from '@/components/KakaoConsultButton'
 import { featureFlags } from '@/shared/config/feature-flags'
 import { CAMPAIGN_SIGNUP_ENABLED } from '@/shared/feature-flags'
 import { captureInflowRef } from '@/utils/affiliate-track'
+import { useStoredValue } from '@/hooks/useStoredValue'; import { useMediaQuery } from '@/hooks/useMediaQuery'; import { HydrationPriority } from '@/lib/hydration-priority'
 // lazy-loaded — only rendered conditionally, not on initial paint
 const PushNotificationSetup = lazy(() => import('./components/PushNotificationSetup'))
 const PWAInstallPrompt = lazy(() => import('./components/PWAInstallPrompt'))
@@ -240,6 +241,22 @@ const isDashboardLoaderSurface = (pathname: string) => /^\/(seller|admin|ads)(\/
 
 
 // ✅ Router 내부에서 실행될 컴포넌트
+/**
+ * 🧊 2026-10-15 서버 렌더 이어받기: 로그인 흔적·화면 폭으로 갈리는 셸 부품의 문지기.
+ *   렌더 중 localStorage·matchMedia 를 직접 읽으면 서버(없음)와 브라우저(있음)가 첫 렌더부터 갈려 React 가 서버 HTML 을 버린다.
+ *   그리고 그 읽기를 **AppContent(이어받기 영역의 바깥)** 에 두면, 이어받기가 끝나기 전에 바뀐 값이 영역 안으로 흘러들어
+ *   React 가 영역 전체를 다시 그린다("Suspense boundary received an update before it finished hydrating").
+ *   ⇒ 값을 읽는 일은 **영역 안쪽의 이 작은 부품**이 한다 — 서버 스냅샷(null·false)으로 이어받고 그다음 실제 값으로 다시 그린다.
+ */
+function SignedInOnly({ children }: { children: ReactNode }) {
+  const u = useStoredValue('user_id'); const s = useStoredValue('seller_id')
+  const a = useStoredValue('admin_id'); const g = useStoredValue('agency_id')
+  return u || s || a || g ? <>{children}</> : null
+}
+function WideOnly({ query, children }: { query: string; children: ReactNode }) {
+  return useMediaQuery(query) ? <>{children}</> : null
+}
+
 function AppContent() {
   // ✅ authInitialized ref: 중복 초기화 방지 (StrictMode 이중 마운트 대비)
   const authInitialized = useRef(false)
@@ -386,8 +403,6 @@ function AppContent() {
   const shellNeed = {
     onboarding: qs.includes('new=1'),                       // OnboardingTrigger: ?new=1 일 때만 모달
     restore: qs.includes('restorable=1'),                   // RestoreAccountModal: ?restorable=1 일 때만
-    push: (() => { try { return !!(localStorage.getItem('user_id') || localStorage.getItem('seller_id') || localStorage.getItem('admin_id') || localStorage.getItem('agency_id')) } catch { return false } })(),
-    sideBanner: typeof window !== 'undefined' && !!window.matchMedia?.('(min-width: 1024px)').matches, // `hidden lg:flex` — 폰에선 안 보인다
   }
   // 🧭 2026-06-10 페이지 전환 페이드 — 첫 로드(LCP)는 제외, 라우트 이동부터 적용.
   // 🚑 2026-07-10 [UNLOCK_LOADING]: 기준을 location.key → pathname 변경 여부로. key 기준이면 쿼리-전용
@@ -573,7 +588,7 @@ function AppContent() {
           <OfflineBanner />
           <ConfirmHost />
           <ScrollToTop />
-          {shellNeed.push && <Suspense fallback={null}><PushNotificationSetup /></Suspense>}
+          <SignedInOnly><Suspense fallback={null}><PushNotificationSetup /></Suspense></SignedInOnly>
           {/* 🛡️ 2026-06-04 (사용자 신고 — 영구 수정): 모바일 BottomNav(fixed h-14 lg:hidden)가
               콘텐츠 하단을 가림. BottomNav 표시 페이지에만 하단 여백(높이+safe-area) 예약.
               hideBottomNav 페이지(결제/풀스크린/대시보드 등)는 여백 0 — 자체 레이아웃 보존. */}
@@ -944,13 +959,14 @@ function AppContent() {
           </div>
           {!hideBottomNav && <BottomNav />}
           {!fullScreen && !mallSurface /* 🏬 몰 표면엔 유어딜 배너 금지(본진 입구) */
-            && !isFullBleedPcPath(location.pathname) /* 🖥️ PC 풀너비(홈·카탈로그)는 자체 레이아웃 */ && shellNeed.sideBanner && <Suspense fallback={null}><SideBanner /></Suspense>}
+            && !isFullBleedPcPath(location.pathname) /* 🖥️ PC 풀너비(홈·카탈로그)는 자체 레이아웃 */ && <WideOnly query="(min-width: 1024px)" /* `hidden lg:flex` — 폰에선 안 보인다 */><Suspense fallback={null}><SideBanner /></Suspense></WideOnly>}
           {/* 🛡️ 2026-05-24 (사용자 명령): 우하단 카카오 FAB 잠시 숨김 (featureFlags.kakaoFab=false).
               복원: src/shared/config/feature-flags.ts 의 kakaoFab 을 true 로. 대신 /user/profile 페이지에 별도 배치. */}
           {!fullScreen && featureFlags.kakaoFab && <KakaoConsultButton />}
           </div>
         </Suspense>
       </FrameWrapper>
+      <HydrationPriority />{/* 🧊 서버 화면 이어받기를 유휴 → 보통 우선순위로(lib/hydration-priority) — 위 Suspense 바깥이어야 한다 */}
       <ToastContainer />
       <NewVersionBanner />
     </>
@@ -962,12 +978,15 @@ function AppContent() {
 //   server: <App Router={StaticRouter} routerProps={{ location: url }} />.
 //   타입: ComponentType 추상화 (BrowserRouter 와 StaticRouter prop 인터페이스 다름).
 import type { ComponentType, ReactNode } from 'react'
+import type { QueryClient } from '@tanstack/react-query'
 type RouterLike = ComponentType<{ children?: ReactNode; [key: string]: unknown }>
 export type { RouterLike }
 
 interface AppProps {
   Router?: RouterLike
   routerProps?: Record<string, unknown>
+  /** 🧊 2026-10-15 서버 렌더(`src/ssr/pass-detail-entry.tsx`): 요청마다 새 QueryClient. 브라우저는 안 넘긴다(모듈 싱글턴). */
+  queryClient?: QueryClient
 }
 
 function App({
@@ -979,13 +998,14 @@ function App({
   //   fallback(불투명 BrandLoader) 표출 → "클릭 → 유어딜 로더 → 상세" 로 통일. (이미 로드된 청크는 서스펜드
   //   안 해 즉시 전환 — 플래시 없음. BrandLoader 는 위상동기라 짧은 로드도 블링크 없음.)
   routerProps = { future: { v7_startTransition: false, v7_relativeSplatPath: true } },
+  queryClient,
 }: AppProps = {}) {
   return (
     // 🛡️ 청크(배포 전환) + 일반 에러를 단일 ErrorBoundary 가 처리(청크는 recoverFromChunkError 자동복구).
     //   기존 ChunkErrorBoundary 는 최내곽 per-route ErrorBoundary 가 먼저 잡아 死코드였음 → 제거·통합.
     <ErrorBoundary>
       <HelmetProvider>
-        <QueryProvider>
+        <QueryProvider client={queryClient}>
           <Router {...routerProps}>
             <AppContent />
           </Router>
