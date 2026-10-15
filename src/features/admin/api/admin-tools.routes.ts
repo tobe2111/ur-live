@@ -354,15 +354,22 @@ adminToolsRoutes.put('/settings', async (c) => {
  *   mode=orphan    같은 사람의 쪼개진 잔액 행을 합친다(적립 → 고아 행 삭제, 원장 dedup 멱등)
  *   mode=reconcile 설명 안 되는 잔액에 *출처 불명* 보정행을 남긴다(**잔액 불변**)
  *   mode=both      둘 다 — 병합을 먼저 하고 그 결과 위에서 보정한다(순서가 중요하다)
+ *   mode=reclass   충전 기록 없는 계정의 유상 잔액을 무상으로 옮긴다(잔액 불변 · 'both' 에 안 들어감)
  *
  * ⚠️ `apply` 는 사람이 dry-run 결과를 눈으로 본 뒤에만 준다. 감사 로그에 남는다.
  */
 adminToolsRoutes.post('/points-reconcile', async (c) => {
   const body = await c.req.json<{ apply?: boolean; mode?: string }>().catch(() => ({} as { apply?: boolean; mode?: string }))
   const apply = body.apply === true
-  const mode = body.mode === 'orphan' || body.mode === 'reconcile' ? body.mode : 'both'
+  const mode = body.mode === 'orphan' || body.mode === 'reconcile' || body.mode === 'reclass' ? body.mode : 'both'
   try {
-    const { mergeOrphanBalances, reconcileLegacyBalances } = await import('../../../worker/utils/points-reconcile')
+    const { mergeOrphanBalances, reconcileLegacyBalances, reclassifyUnpaidToFree } = await import('../../../worker/utils/points-reconcile')
+    // ③ 버킷 재분류는 'both' 에 넣지 않는다 — 다른 판단(무엇이 환급 가능한 돈인가)이라 따로 누른다.
+    if (mode === 'reclass') {
+      const reclass = await reclassifyUnpaidToFree(c.env.DB, apply)
+      await writeAuditLog(c, { action: 'points_bucket_reclass', targetType: 'points', after: { apply, reclass: reclass.results } }).catch(() => {})
+      return c.json({ success: true, apply, mode, reclass })
+    }
     // 병합이 먼저다 — 합치고 나야 남는 불일치가 진짜 '설명 안 되는' 것이다.
     const orphan = mode === 'reconcile' ? null : await mergeOrphanBalances(c.env.DB, apply)
     const reconcile = mode === 'orphan' ? null : await reconcileLegacyBalances(c.env.DB, apply)
