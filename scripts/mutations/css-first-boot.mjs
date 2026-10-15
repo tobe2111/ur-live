@@ -65,8 +65,8 @@ export default [
   {
     name: '🚦 생성기가 엔트리 CSS 를 안 넘긴다(Link 헤더가 폰트만 남는다)',
     file: 'scripts/generate-route-chunk-map.mjs',
-    find: 'emit(out, entry.css)',
-    replace: 'emit(out)',
+    find: 'emit(out, entry.css, bootJs)',
+    replace: 'emit(out, [], bootJs)',
     test: TEST,
     why: '빈 배열이면 에러 없이 Link 헤더에서 앱 CSS 가 빠진다 — Early Hints 가 켜져도 효과 0.',
   },
