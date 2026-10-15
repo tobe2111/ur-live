@@ -26,6 +26,12 @@
 import type { D1Database } from '@cloudflare/workers-types'
 import { findBalanceMismatches, type BalanceMismatchRow } from './ledger-integrity-checks'
 
+/** 오늘 날짜(KST, YYYY-MM-DD). 보정행에 박는 날짜 — 🩸 2026-10-15 전엔 `2026-08-31` 로 고정돼 있어
+ *  10-15 에 쓴 행도 8월에 쓴 것처럼 읽혔다. */
+export function kstToday(now: Date = new Date()): string {
+  return new Date(now.getTime() + 9 * 3600_000).toISOString().slice(0, 10)
+}
+
 /** 병합 원장 타입 — 이 문자열이 곧 멱등 키다. */
 export const ORPHAN_MERGE_TYPE = 'orphan_merge'
 /** 레거시 보정 원장 타입 — 〃 */
@@ -151,9 +157,70 @@ export async function reconcileLegacyBalances(
       delta: adjust,
       type: LEGACY_RECONCILE_TYPE,
       // 🔎 원래 숫자를 그대로 남긴다 — 나중에 누가 봐도 무엇을 덮었는지 알아야 한다.
-      description: `정합 보정(출처 불명) 2026-08-31: 잔액 ${m.balance} · 원장합 ${m.computed} · 차이 ${adjust}`,
+      description: `정합 보정(출처 불명) ${kstToday()}: 잔액 ${m.balance} · 원장합 ${m.computed} · 차이 ${adjust}`,
     }).catch(() => false)
     results.push({ user_id: String(m.user_id), balance: m.balance, computed: m.computed, adjust, outcome: ok ? 'written' : 'failed' })
   }
   return { found: rows, results, applied: true }
+}
+
+// ── ③ 버킷 재분류 — 실제 돈을 낸 적 없는데 유상(환급 가능) 잔액이 있는 계정 ─────────────────────
+/**
+ * 🩸 2026-10-15 실측: 유상/무상 버킷(`free_balance`)은 2026-07-05 에 생겼다. 그 **전에** 받은 리워드
+ * (가입 보너스 3,000 · 광고 시청 등)는 컬럼 기본값 0 때문에 **유상**으로 남았다 — 32번(06-30 가입)은
+ * 3,000 이 유상, 같은 보너스를 07-09 에 받은 33번은 무상이었다. 유상은 딜 환급(현금)의 한도라
+ * 그대로 두면 **보너스가 현금으로 나간다.**
+ *
+ * 판정은 보수적으로: **충전 기록이 한 번도 없고(`total_charged = 0` 이고 금액 있는 `charge` 원장 0)**
+ * 유상 잔액이 0 보다 큰 계정만. 돈을 낸 적이 있으면 건드리지 않는다(나눌 근거가 없다).
+ *
+ * - 기본 dry-run. 잔액(`balance`)은 바꾸지 않는다 — 버킷만 옮긴다.
+ * - CAS: 같은 조건을 UPDATE 의 WHERE 에 다시 걸어 그 사이 충전이 들어오면 건너뛴다.
+ * - 원장에 `bucket_reclass` 행(금액 0 · free_delta=+옮긴 양)을 남겨 무엇을 옮겼는지 보인다.
+ * - 멱등: 옮기고 나면 유상이 0 이라 다시 안 잡힌다.
+ */
+export const BUCKET_RECLASS_TYPE = 'bucket_reclass'
+
+export interface ReclassRow { user_id: string; balance: number; free_balance: number; paid: number }
+export interface ReclassResult extends ReclassRow { outcome: 'moved' | 'skipped' | 'failed' }
+
+const UNPAID_WITH_PAID_BALANCE = `
+  COALESCE(up.total_charged, 0) = 0
+  AND up.balance - COALESCE(up.free_balance, 0) > 0
+  AND NOT EXISTS (SELECT 1 FROM point_transactions pt
+                   WHERE pt.user_id = up.user_id AND pt.type = 'charge' AND COALESCE(pt.amount, 0) > 0)`
+
+export async function findUnpaidPaidBalances(DB: D1Database): Promise<ReclassRow[]> {
+  const r = await DB.prepare(`
+    SELECT up.user_id AS user_id, up.balance AS balance, COALESCE(up.free_balance, 0) AS free_balance,
+           up.balance - COALESCE(up.free_balance, 0) AS paid
+      FROM user_points up
+     WHERE ${UNPAID_WITH_PAID_BALANCE}
+     ORDER BY paid DESC`).all<ReclassRow>()
+  return r.results ?? []
+}
+
+export async function reclassifyUnpaidToFree(
+  DB: D1Database,
+  apply: boolean,
+): Promise<{ found: ReclassRow[]; results: ReclassResult[]; applied: boolean }> {
+  const found = await findUnpaidPaidBalances(DB)
+  const results: ReclassResult[] = []
+  if (apply !== true) return { found, results, applied: false } // 기본 dry-run — 버킷을 안 건드린다
+  for (const row of found) {
+    const r = await DB.prepare(`
+      UPDATE user_points SET free_balance = balance, updated_at = datetime('now')
+       WHERE user_id = ? AND user_id IN (SELECT up.user_id FROM user_points up WHERE ${UNPAID_WITH_PAID_BALANCE})`,
+    ).bind(row.user_id).run().catch(() => null)
+    const changed = Number(r?.meta?.changes ?? 0)
+    if (!r) { results.push({ ...row, outcome: 'failed' }); continue }
+    if (changed === 0) { results.push({ ...row, outcome: 'skipped' }); continue }
+    await DB.prepare(
+      `INSERT INTO point_transactions (user_id, type, amount, free_delta, description) VALUES (?, ?, 0, ?, ?)`,
+    ).bind(row.user_id, BUCKET_RECLASS_TYPE, row.paid,
+      `버킷 재분류 ${kstToday()}: 충전 기록 없는 유상 잔액 ${row.paid} → 무상 (잔액 ${row.balance} 불변)`,
+    ).run().catch(() => null)
+    results.push({ ...row, outcome: 'moved' })
+  }
+  return { found, results, applied: true }
 }
