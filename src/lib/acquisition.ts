@@ -84,3 +84,11 @@ export function claimAcquisitionIfLoggedIn(isLoggedIn: boolean): void {
     ).catch(() => {})
   } catch { /* ignore */ }
 }
+
+/**
+ * 🎯 2026-10-15 — 비로그인 전환(소개 파트너 신청 등)에 실어 보낼 first-touch 소스. 없거나 만료면 null.
+ * 서버가 다시 검증(`normalizeAcqSource`)하므로 여기서는 읽기만 한다.
+ */
+export function readAcquisitionSource(): string | null {
+  try { return readStored()?.src ?? null } catch { return null }
+}

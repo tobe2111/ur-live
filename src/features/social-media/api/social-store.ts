@@ -56,6 +56,9 @@ export async function ensureSocialTables(DB: D1Database): Promise<void> {
     `ALTER TABLE social_posts ADD COLUMN storyboard TEXT`,
     `ALTER TABLE social_posts ADD COLUMN render_provider_job TEXT`,
     `ALTER TABLE social_posts ADD COLUMN render_status TEXT`,
+    // 🎯 2026-10-15 공급 모으기 — 대상(store/creator/consumer) + 유입 태그(?src=). NULL = 종전 손님용 글.
+    `ALTER TABLE social_posts ADD COLUMN audience TEXT`,
+    `ALTER TABLE social_posts ADD COLUMN src_tag TEXT`,
   ]) { await DB.prepare(ddl).run().catch(swallow()) }
 }
 
@@ -155,6 +158,7 @@ export interface SocialPostRow {
   external_id: string | null; external_url: string | null; error: string | null
   scheduled_at: string | null; published_at: string | null; ai_generated: number
   storyboard: string | null; render_provider_job: string | null; render_status: string | null
+  audience: string | null; src_tag: string | null
   created_at: string; updated_at: string
 }
 
@@ -322,5 +326,53 @@ export async function usedTopicSlugs(DB: D1Database, platform: SocialPlatform): 
   const r = await DB.prepare(
     `SELECT DISTINCT topic_slug FROM social_posts WHERE platform = ? AND topic_slug IS NOT NULL`
   ).bind(platform).all<{ topic_slug: string }>().catch(() => ({ results: [] as { topic_slug: string }[] }))
+  return (r.results || []).map((x) => x.topic_slug).filter(Boolean)
+}
+
+// ── 🎯 2026-10-15 공급 모으기 ─────────────────────────────────────────
+
+/**
+ * 공급 초안의 빈 행을 먼저 만든다 — 유입 태그가 **게시물 번호**를 품어야 해서(`sns-th-{id}`)
+ * 번호를 받은 뒤 본문을 채운다(`fillSupplyDraft`). 본문 생성이 실패하면 `archivePost` 로 치운다.
+ */
+export async function reserveDraft(DB: D1Database, platform: SocialPlatform, audience: string, topicSlug: string): Promise<number | null> {
+  await ensureSocialTables(DB)
+  const r = await DB.prepare(
+    `INSERT INTO social_posts (platform, topic_slug, body, status, audience) VALUES (?, ?, '(작성 중)', 'draft', ?)`
+  ).bind(platform, topicSlug, audience).run().catch(() => null)
+  const id = r?.meta?.last_row_id
+  return id ? Number(id) : null
+}
+
+export async function fillSupplyDraft(
+  DB: D1Database, id: number,
+  d: { title: string; body: string; hashtags: string[]; media_kind: string; ai_generated: boolean; src_tag: string },
+): Promise<void> {
+  await ensureSocialTables(DB)
+  await DB.prepare(
+    `UPDATE social_posts SET title = ?, body = ?, hashtags = ?, media_kind = ?, ai_generated = ?, src_tag = ?,
+            updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+  ).bind(d.title, d.body, JSON.stringify(d.hashtags), d.media_kind, d.ai_generated ? 1 : 0, d.src_tag, id).run().catch(() => null)
+}
+
+/** 최근 N일 동안 대상별 초안 수(보관 제외) — 혼합비 맞추기의 입력. 종전 글(audience NULL)은 손님으로 센다. */
+export async function audienceCounts(DB: D1Database, days = 30): Promise<Record<string, number>> {
+  await ensureSocialTables(DB)
+  const r = await DB.prepare(
+    `SELECT COALESCE(audience, 'consumer') AS a, COUNT(*) AS n FROM social_posts
+      WHERE status != 'archived' AND created_at >= datetime('now', ?)
+      GROUP BY COALESCE(audience, 'consumer')`
+  ).bind(`-${Math.max(1, Math.trunc(days))} days`).all<{ a: string; n: number }>().catch(() => ({ results: [] as { a: string; n: number }[] }))
+  const out: Record<string, number> = {}
+  for (const row of r.results || []) out[row.a] = Number(row.n) || 0
+  return out
+}
+
+/** 대상별로 이미 쓴 주제(플랫폼 무관 — 같은 주제를 채널만 바꿔 연달아 내지 않게). */
+export async function usedTopicSlugsForAudience(DB: D1Database, platform: SocialPlatform, audience: string): Promise<string[]> {
+  await ensureSocialTables(DB)
+  const r = await DB.prepare(
+    `SELECT DISTINCT topic_slug FROM social_posts WHERE platform = ? AND audience = ? AND topic_slug IS NOT NULL AND status != 'archived'`
+  ).bind(platform, audience).all<{ topic_slug: string }>().catch(() => ({ results: [] as { topic_slug: string }[] }))
   return (r.results || []).map((x) => x.topic_slug).filter(Boolean)
 }

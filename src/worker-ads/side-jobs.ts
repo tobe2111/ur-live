@@ -41,12 +41,29 @@ export function runFollowupJob(env: Env, hourUTC: number, beat: BeatFn, defer: D
   })())
 }
 
-/** 월요일 00:00 UTC — 소셜 초안 + 유어애즈 AI 주간 리포트. 둘 다 개별 fail-soft(하나가 죽어도 다른 하나는 돈다). */
+/**
+ * 매일 00:00 UTC(09:00 KST) — 소셜 홍보 초안(공급 모으기 · 대상 혼합비).
+ * 🎯 2026-10-15 주간 → 매일: 대표 *"매장을 꾸준히 모으는 형태로"*. 과다 생성은 `createSocialDraft` 의
+ *    플랫폼별 미검토 상한(8)이 막고, 게이트(`SOCIAL_AUTO_DRAFT_ENABLED`) OFF 면 no-op 이다.
+ *    하트비트를 따로 둔다 — 주간 리포트와 묶여 있으면 초안이 멎어도 일주일 동안 아무도 모른다.
+ */
+export function runDailySocialDraftJob(env: Env, hourUTC: number, beat: BeatFn, defer: Defer, gapMin: number): void {
+  if (hourUTC !== 0) return
+  defer((async () => {
+    const t0 = Date.now()
+    try {
+      const { handleSocialDraft } = await import('@/worker/cron/social-draft')
+      await handleSocialDraft(env)
+      await beat('social-draft', true, Date.now() - t0, undefined, gapMin)
+    } catch (err) { await beat('social-draft', false, Date.now() - t0, err, gapMin) }
+  })())
+}
+
+/** 월요일 00:00 UTC — 유어애즈 AI 주간 리포트. (소셜 초안은 2026-10-15 매일 잡으로 분리) */
 export function runWeeklyJob(env: Env, hourUTC: number, dowUTC: number, beat: BeatFn, defer: Defer, gapMin: number): void {
   if (hourUTC !== 0 || dowUTC !== 1) return
   defer((async () => {
     const t0 = Date.now()
-    try { const { handleSocialDraft } = await import('@/worker/cron/social-draft'); await handleSocialDraft(env) } catch { /* fail-soft */ }
     try { const { handleAdsWeeklyReport } = await import('@/features/marketing/api/weekly-report'); await handleAdsWeeklyReport(env) } catch { /* fail-soft */ }
     await beat('weekly-report', true, Date.now() - t0, undefined, gapMin)
   })())
