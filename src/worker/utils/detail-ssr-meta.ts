@@ -10,13 +10,13 @@
 // 🔄 이용권 공유 카드 주소·판 번호는 `shared/pass-share-card.ts` 한 곳(화면의 공유 버튼과 같은 값).
 import { passShareCardUrl } from '@/shared/pass-share-card'
 import { stayDetailTitle, voucherDetailTitle, passDetailTitle } from '../../shared/seo/detail-title'
+import { passDetailDescription } from '../../shared/seo/detail-description'
 // 🏨 정본 상세 주소 SSOT — 숙소 이용권은 `/stays/:id` 다(두 벌로 적으면 갈린다).
 import { canonicalDetailPath } from '../../shared/product-flow'
 import { productShareImage } from '@/shared/og-share-image'
 import { propertyTypeLabel } from '../../shared/stay-property-type'
 import { kakaoPlaceCanonicalUrl } from '../../shared/kakao-place-url'
 import { parseRegionFromAddress } from '../../shared/constants/region-slugs'
-import { priceDisplay } from '../../shared/price-display'
 import { storeNameJoin } from '@/shared/seo/store-name-dedupe'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import { withCrumbRoot, crumbItems } from '@/shared/seo/breadcrumb'
@@ -199,7 +199,6 @@ export function buildDetailMeta(ssrPayload: string, origin: string, pathname: st
 
     // 이용권/동네딜 (group-buy) — 인덱싱 + 풀 메타 + JSON-LD
     const pageTitle = passDetailTitle(name, store)
-    const priceStr = price.toLocaleString('ko-KR')
     // 🏪 2026-10-13 — 가게명이 상품명 앞에 그대로 든 경우 같은 말을 두 번 하지 않는다
     //   (실측 `/pass/2919`: `달빛한스푼 달빛한스푼 닭도리탕`). 판단은 SSOT 하나다 —
     //   `crawler-noscript` 가 교환권 목록에서 쓰던 그 규칙이고, 이 파일만 밖에 있었다.
@@ -226,19 +225,11 @@ export function buildDetailMeta(ssrPayload: string, origin: string, pathname: st
     //    계산값)`(2026-08-19 대표 신고 *"할인율도 나타나야 할 것 같다"* 의 처방). **같은 파일의
     //    `<noscript>` 본문은 이미 그 함수를 써서 "11% 할인" 을 맞게 말하고 있었고** description
     //    만 밖에 있었다 ⇒ 둘을 같은 함수로 모은다(한 문서가 두 할인율을 말할 수 없게 된다).
-    const pd = priceDisplay({ price, original_price: d.original_price, discount_rate: d.current_discount_pct })
-    const passRating = Number(d.avg_rating) || 0
-    const passReviews = Number(d.review_count) || 0
-    const ratingPrefix = passRating > 0 && passReviews > 0 ? `⭐${passRating.toFixed(1)} ` : ''
-    const passRef = parseRegionFromAddress(String(d.restaurant_address || ''))
-    const regionStr = passRef ? `${passRef.sido}${passRef.sigungu ? ` ${passRef.sigungu}` : ''} · ` : ''
-    const origStr = pd.showOriginal && pd.originalPrice > pd.price ? ` (정가 ${pd.originalPrice.toLocaleString('ko-KR')}원)` : ''
-    const passDesc = String(d.description || '').replace(/\s+/g, ' ').trim()
-    const descTail = passDesc && passDesc !== name && passDesc !== storeName ? ` ${passDesc}` : ''
-    const description = (pd.discount > 0
-      ? `${ratingPrefix}${regionStr}${storeName} ${priceStr}원${origStr} ${pd.discount}% 할인${descTail}`
-      : `${ratingPrefix}${regionStr}${storeName} ${priceStr}원, 유어딜에서 할인가로 바로 구매${descTail}`)
-      .replace(/\s+/g, ' ').trim().slice(0, 200)
+    // 🔁 2026-10-15 — 이 블록을 `shared/seo/detail-description.ts` 로 **그대로 옮겼다**(출력 byte-불변).
+    //   이유: 클라(`GroupBuyDetailPage`)가 react-helmet 으로 이 메타를 덮는데 **다른 문장**을 내고
+    //   있었다 — `🎉 11% 할인! 달빛한스푼 달빛한스푼 닭도리탕 이용권, 0명 함께 구매 중` (357/359건이
+    //   `0명` · 가게명 두 번 · 별점·지역·정가 없음). 제목과 같은 두 벌 결함이라 같은 처방을 쓴다.
+    const description = passDetailDescription(d)
 
     const available = d.group_buy_status === 'active' || d.group_buy_status === 'achieved'
     const product: Record<string, unknown> = {

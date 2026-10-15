@@ -133,12 +133,12 @@ describe('③ 반대 방향 — 섞이면 안 되는 것', () => {
   })
 
   it('배선 — 할인율 출처가 priceDisplay 다(선언 컬럼 직독 금지)', () => {
-    const src = stripComments(readFileSync('src/worker/utils/detail-ssr-meta.ts', 'utf8'))
-    const i = src.indexOf('const storeName = storeNameJoin(store, name)')
-    const j = src.indexOf('const available =', i)
+    // 🔁 2026-10-15 재조준: 이 블록이 `shared/seo/detail-description.ts` 로 옮겨갔다(클라가 같은
+    //   함수를 쓰게 만든 커밋 — 출력은 byte-불변). 지키는 불변식은 그대로이고 **자리만** 옮겼다.
+    const src = stripComments(readFileSync('src/shared/seo/detail-description.ts', 'utf8'))
+    const i = src.indexOf('export function passDetailDescription')
     expect(i, '앵커가 낡았다').toBeGreaterThanOrEqual(0)
-    expect(j).toBeGreaterThan(i)
-    const block = src.slice(i, j)
+    const block = src.slice(i)
     expect(block, '할인율을 priceDisplay 없이 쓰면 선언값 0 에 다시 묶인다').toMatch(/priceDisplay\(/)
     expect(block).toMatch(/pd\.discount > 0/)
     // 🩸 첫 판은 `/\bdiscount > 0/` 였는데 `\b` 가 `pd.discount` 의 `.` 뒤에서도 매치돼

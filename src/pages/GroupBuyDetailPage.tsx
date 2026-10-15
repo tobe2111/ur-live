@@ -34,7 +34,6 @@ import { dealCategoryMeta } from '@/shared/deal-category-icon'
 // 🛡️ 2026-06-12 (감사 1단계 — 핀 표면): 공유 버튼 옆 핀 버튼 (additive — 잠금 항목 무변경).
 import PinButton from '@/components/curator/PinButton'
 import { toast } from '@/hooks/useToast'
-import { formatNumber } from '@/utils/format'
 import { safeDate, safeTime } from '@/utils/safe-date'
 import { publicSellerHandle } from '@/shared/seller-handle'
 import { cfImage } from '@/utils/cf-image'
@@ -60,6 +59,7 @@ import { handleDealJoinError } from './group-buy/deal-join-error'
 import { useProductViewBeacon } from '@/hooks/useProductViewBeacon'
 import { passShareCardUrl } from '@/shared/pass-share-card'
 import { priceDisplay } from '@/shared/price-display'
+import { passDetailDescription } from '@/shared/seo/detail-description'
 
 // 🛡️ 2026-05-27 (loading P1): below-fold 컴포넌트 lazy — 초기 chunk 30-50KB ↓.
 //   - Confetti: 100% 달성 시만 표시 (대부분 사용자 안 봄)
@@ -515,11 +515,12 @@ export default function GroupBuyDetailPage() {
       {/* 🛡️ 2026-05-15: SEO 풀 적용 — JSON-LD Product/Offer schema + 동적 OG image */}
       <SEO
         title={passDetailTitle(detail.name, detail.restaurant_name)}
-        description={
-          displayDiscountPct > 0
-            ? `🎉 ${displayDiscountPct}% 할인! ${detail.restaurant_name || ''} ${detail.name} 이용권 — ${detail.group_buy_current}명 함께 구매 중, ${formatNumber(unitPrice)}원`
-            : `${detail.restaurant_name || ''} ${detail.name} 이용권 — ${detail.group_buy_current}명 함께 구매 중, ${formatNumber(detail.price)}원`
-        }
+        /* 📝 2026-10-15 [UNLOCK_LOADING] (대표 승인 "응 승인할게 해줘") — 설명도 서버와 같은 SSOT.
+           종전 이 자리는 `… 이용권 — N명 함께 구매 중` 이었고 **활성 359건 중 357건이 `0명`** 이라
+           검색 스니펫이 "아무도 안 산 물건" 이라고 말했다(그 기제는 애초에 없다 — 즉시판매 단일가).
+           게다가 가게명을 두 번 말하고 별점·지역·정가를 버려, react-helmet 이 서버 메타를 덮는
+           Googlebot 쪽만 나쁜 문장을 받고 있었다. 근거·규율은 `shared/seo/detail-description.ts`. */
+        description={passDetailDescription(detail)}
         url={`/pass/${productId}`}
         image={detail.image_url || `https://urdeal.kr/api/og/group-buy/${productId}.png`}
         type="product"
