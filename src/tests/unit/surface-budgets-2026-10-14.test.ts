@@ -73,7 +73,10 @@ describe('③ 배선', () => {
     // 하드로드 화면 목록 = 생성기의 ROUTES 키(그 파일은 .mjs 라 소스에서 키를 읽는다)
     const gen = read('scripts/generate-route-chunk-map.mjs')
     const body = gen.slice(gen.indexOf('export const ROUTES = {'), gen.indexOf('\n}', gen.indexOf('export const ROUTES = {')))
-    const keys = [...body.matchAll(/^  (\w+): \[/gm)].map((m) => m[1])
+    const keys: string[] = [...body.matchAll(/^  (\w+): \[/gm)].map((m) => m[1])
+    // 🏨 2026-10-15: 미리받기 전용 표면(`PRELOAD_ONLY_ROUTES`)도 하드로드 화면이다 — 예산을 함께 갖는다.
+    const pre = gen.slice(gen.indexOf('export const PRELOAD_ONLY_ROUTES = {'), gen.indexOf('\n}', gen.indexOf('export const PRELOAD_ONLY_ROUTES = {')))
+    keys.push(...[...pre.matchAll(/^  (\w+): \[/gm)].map((m) => m[1]))
     expect(keys.length).toBeGreaterThan(5)
     // 🧰 2026-10-14: 대시보드·마이는 route-chunk-map 밖이라 `dashboard-surfaces.mjs` 에서 온다(dash:<키>).
     const dash = Object.keys(DASHBOARD_SURFACES).map((k) => `dash:${k}`)
