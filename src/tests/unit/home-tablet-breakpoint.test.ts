@@ -50,9 +50,10 @@ const SECTIONS = 'src/components/home/HomeSections.tsx'
 
 describe('홈 본문과 상단 헤더가 같은 경계를 쓴다', () => {
   it('HomeRoute 가 md(768) 에서 PC 홈으로 넘어간다', () => {
-    const s = code(read(ROUTE))
-    const m = s.match(/useMediaQuery\('\(min-width:\s*(\d+)px\)'\)/)
-    expect(m, 'HomeRoute 의 뷰포트 분기를 못 읽었다').toBeTruthy()
+    // 2026-10-15: 경계값이 `shared/route-surface` 의 HOME_DESKTOP_QUERY 로 올라갔다(앱 부팅도 같은 값으로 홈을 고른다).
+    expect(code(read(ROUTE)), 'HomeRoute 가 경계 SSOT 를 안 쓴다').toMatch(/useMediaQuery\(HOME_DESKTOP_QUERY\)/)
+    const m = code(read('src/shared/route-surface.ts')).match(/HOME_DESKTOP_QUERY = '\(min-width:\s*(\d+)px\)'/)
+    expect(m, 'HOME_DESKTOP_QUERY 를 못 읽었다').toBeTruthy()
     expect(
       Number(m![1]),
       '홈 본문 경계가 헤더(md=768)보다 높다 — 그 사이 구간이 다시 옛 디자인이 된다',

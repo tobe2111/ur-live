@@ -82,6 +82,7 @@ import { isKeyboardOpen, isEditableElementFocused } from '@/lib/keyboard-viewpor
 import { swallow } from '@/shared/utils/swallow'
 import { installImageProtection } from '@/lib/image-protect'
 import { captureBootFirstScreen } from '@/lib/boot-first-screen'
+import { preloadBootPage, bootSurface } from '@/lib/boot-page' // 🚀 2026-10-15 하드로드 페이지 준비(폴백 단계 제거)
 import { hasSessionPersistProbe, clearSessionPersistProbe } from '@/shared/session-persist-probe'
 import { processAuthCallbackParams } from '@/utils/auth-callback-bootstrap'
 import { runAfterLoad } from '@/lib/after-load'
@@ -490,6 +491,8 @@ async function bootApp() {
       //   React 가 컨테이너를 비워도 노드는 살아 있고, Suspense 폴백이 같은 노드를 도로 붙인다
       //   (불투명 풀스크린 로더가 방금 도착한 히어로를 덮던 것 제거 — `lib/boot-first-screen.ts`).
       captureBootFirstScreen()
+      // 🚀 2026-10-15: 이 주소의 페이지 모듈을 첫 렌더 전에 준비 — '페이지 로딩 중' 단계와 React 의 0.5초 공개 지연을 건너뛴다(lib/boot-page).
+      await preloadBootPage(bootSurface())
       // ✅ React StrictMode 제거 (중복 마운트 방지)
       ReactDOM.createRoot(rootElement).render(
         <ThemeProvider>

@@ -238,20 +238,25 @@ const CHECKS = [
 //   새 표면이 modulepreload 를 조용히 못 받거나(워커에만 추가) 죽은 맵을 만든다(생성기에만 추가).
 //   새 하드로드 진입 페이지를 만들면 **두 파일에 같은 키를 함께 등재**할 것 (docs/LOADING_ARCHITECTURE.md 체크리스트).
 function checkChunkSurfaceSync() {
+  // 🧭 2026-10-15: 주소 → 표면 판정이 `src/shared/route-surface.ts` 로 옮겨갔다(워커와 앱 부팅이 같은 함수를 쓴다).
+  //   불변식은 그대로 — 생성기 표 ↔ 판정 함수의 키셋이 양방향으로 같아야 하고, 워커는 그 함수를 불러야 한다.
   const worker = read('src/worker/index.ts')
+  const surf = read('src/shared/route-surface.ts')
   const gen = read('scripts/generate-route-chunk-map.mjs')
-  if (!worker || !gen) return ['chunk-surface: 파일 누락']
-  const workerKeys = new Set([...worker.matchAll(/\?\s*'([A-Za-z]+)'\s*(?::|;)/g)].map((m) => m[1]))
-  // worker 의 chunkSurface 삼항 체인에서 키 추출이 과추출될 수 있어, 생성기 ROUTES 키 기준으로 양방향 포함 검사
-  const genKeys = [...gen.matchAll(/^\s{2}([A-Za-z]+):\s*\[/gm)].map((m) => m[1])
+  if (!worker || !surf || !gen) return ['chunk-surface: 파일 누락']
   const errs = []
+  if (!/const chunkSurface = routeSurface\(/.test(worker)) errs.push('chunk-surface: 워커가 routeSurface() 를 부르지 않음 — 판정이 두 벌이 된다')
+  const genKeys = [...gen.matchAll(/^\s{2}([A-Za-z]+):\s*\[/gm)].map((m) => m[1])
+  if (genKeys.length < 10) errs.push(`chunk-surface: 생성기 표면 키를 ${genKeys.length}개밖에 못 읽음 — 파서가 낡았다(헛도는 가드 차단)`)
+  // ⚠️ `return` 줄에서만 센다 — 타입 목록(RouteSurface)에도 같은 이름이 있어, 전체에서 세면 판정 줄을 지워도 통과한다(주입으로 확인).
+  const returned = new Set([...surf.matchAll(/return [^\n]*/g)].flatMap((m) => [...m[0].matchAll(/'([A-Za-z]+)'/g)].map((x) => x[1])))
   for (const k of genKeys) {
-    if (!worker.includes(`'${k}'`)) errs.push(`chunk-surface: 생성기 ROUTES '${k}' 가 worker chunkSurface 에 없음 — modulepreload 미주입(죽은 맵)`)
+    if (!returned.has(k)) errs.push(`chunk-surface: 생성기 ROUTES '${k}' 가 route-surface 판정에 없음 — modulepreload 미주입(죽은 맵)`)
   }
-  const workerSurfaceBlock = worker.match(/const chunkSurface =[\s\S]*?: null;/)?.[0] || ''
-  for (const m of workerSurfaceBlock.matchAll(/'([A-Za-z]+)'\s*$/gm)) {
-    const k = m[1]
-    if (k !== 'null' && !genKeys.includes(k)) errs.push(`chunk-surface: worker 표면 '${k}' 가 생성기 ROUTES 에 없음 — 그 표면은 청크 병렬화를 못 받음`)
+  for (const m of surf.matchAll(/return [^\n]*?'([A-Za-z]+)'/g)) {
+    for (const k of [...m[0].matchAll(/'([A-Za-z]+)'/g)].map((x) => x[1])) {
+      if (!genKeys.includes(k)) errs.push(`chunk-surface: 판정 표면 '${k}' 가 생성기 ROUTES 에 없음 — 그 표면은 청크 병렬화를 못 받음`)
+    }
   }
   return errs
 }

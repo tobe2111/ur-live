@@ -69,8 +69,8 @@ describe('③ 배선 — 동적 import 는 App.tsx 한 곳', () => {
   const app = stripComments(fs.readFileSync('src/App.tsx', 'utf8'))
   const warm = stripComments(fs.readFileSync('src/pages/mobile-home/map-warmup.ts', 'utf8'))
   it('App.tsx 가 지도 lazy 와 같은 로더를 등록한다', () => {
-    expect(app).toMatch(/const loadMapPage = \(\) => import\('\.\/pages\/RestaurantMapPage'\); registerRoutePreload\('map', loadMapPage\)/)
-    expect(app).toMatch(/const RestaurantMapPage = lazy\(loadMapPage\)/)
+    // 🚀 2026-10-15: 로더는 lazyPage 래퍼의 load 하나 — 받아 두면 지도 화면이 "준비됨" 이 된다(lib/boot-page).
+    expect(app).toMatch(/const RestaurantMapPage = lazyPage\(\(\) => import\('\.\/pages\/RestaurantMapPage'\)\); registerRoutePreload\('map', RestaurantMapPage\.load\)/)
   })
   it('홈 미리 데우기는 지도 페이지를 직접 import 하지 않는다', () => {
     expect(warm).not.toMatch(/RestaurantMapPage/)

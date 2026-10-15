@@ -39,9 +39,11 @@ describe('미리받기 전용 표면', () => {
     expect(gen).toContain('Object.entries({ ...ROUTES, ...PRELOAD_ONLY_ROUTES })')
   })
   it('워커가 각 표면을 고른다', () => {
-    const blk = worker.slice(worker.indexOf('const chunkSurface ='), worker.indexOf('const routeChunks'))
+    // 2026-10-15: 표면 판정이 `shared/route-surface.ts` 한 함수로 모였다(워커·앱 부팅이 같이 쓴다).
+    expect(worker).toMatch(/const chunkSurface = routeSurface\(/)
+    const rs = readFileSync('src/shared/route-surface.ts', 'utf-8')
+    const blk = rs.slice(rs.indexOf('export function routeSurface'))
     for (const k of Object.keys(PRELOAD_ONLY_ROUTES)) expect(blk, k).toContain(`'${k}'`)
-    expect(blk).toMatch(/\/\^\\\/stays\\\/\\d\+\\\/\?\$\/\.test\(url\.pathname\) \? 'stayDetail'/)
   })
   it('🈯 한국어 번역 청크도 라우트 청크와 함께 미리 받는다', () => {
     expect(gen).toMatch(/k\.includes\('locales\/ko\/translation\.json'\) && k\.endsWith\('\?i18n-core'\)/)

@@ -210,7 +210,7 @@ PENDING → PAID → SHIPPING → DELIVERED → DONE
 - 종료된 방송은 다시보기로 자동 저장
 - 문제 있는 방송은 **숨김** 처리 (삭제 대신 권장)
 
-### 카카오맵 리뷰 인증 (\`/admin/kakao-reviews\`) — 2026-07-02 게이미피케이션
+### 카카오맵 리뷰 인증 (\`/admin/kakao-reviews\`) — ⏸️ **2026-10-12 부터 운영 중단**(\`KAKAO_REVIEW_BONUS_ENABLED=false\`, 제출 API 410 — 아래는 다시 켤 때의 절차)
 - 손님의 카카오맵 후기 인증은 **매장(셀러 \`/seller/review-verifications\`)이 1차 확인** — 어드민 큐는 샘플링 감사 + 상위 권한
 - 승인 시 보너스 딜(\`kakao_review_bonus_amount\`) + **동네 리뷰어 점수/레벨** 자동 적립 (레벨 임계값: \`review_level_thresholds\`)
 - OCR "자동검증 통과" 는 **참고 라벨** — 자동 지급 없음 (지급 판정은 사람)

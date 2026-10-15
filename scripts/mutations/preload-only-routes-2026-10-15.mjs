@@ -10,9 +10,9 @@ export default [
   },
   {
     name: '🏨 숙소 상세 하드로드가 화면 청크를 미리 안 받는다',
-    file: 'src/worker/index.ts',
-    find: "/^\\/stays\\/\\d+\\/?$/.test(url.pathname) ? 'stayDetail'",
-    replace: "/^\\/never\\/$/.test(url.pathname) ? 'stayDetail'",
+    file: 'src/shared/route-surface.ts',
+    find: "  if (/^\\/stays\\/\\d+(?:[/?#]|$)/.test(p)) return 'stayDetail'\n",
+    replace: '',
     test: 'src/tests/unit/preload-only-routes-2026-10-15.test.ts',
     why: '숙소 정본(sitemap 49건)의 화면 청크가 다시 엔트리가 다 돈 뒤에야 출발한다',
   },

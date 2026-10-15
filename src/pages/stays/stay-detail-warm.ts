@@ -10,6 +10,7 @@
  * (`stayDetailRequest`), 이미 도착했으면 첫 렌더에 동기로 쓴다(`peekWarmStay`). 둘이 갈리면 받아 놓고 못 쓴다.
  */
 import api from '@/lib/api'
+import { loadRoute } from '@/lib/route-preload' // App.tsx 가 등록한 같은 로더 — 받으면 화면이 '준비됨'이 된다
 
 export interface WarmStayResponse { success?: boolean; data?: { product?: unknown; rooms?: unknown } }
 
@@ -47,6 +48,6 @@ export function peekWarmStay(id: number): WarmStayResponse | null {
 export function warmStayDetail(id: number | string): void {
   const n = Number(id)
   if (!Number.isFinite(n) || n <= 0) return
-  if (!chunkWarm) { chunkWarm = true; import('@/pages/StayDetailPage').catch(() => { chunkWarm = false }) }
+  if (!chunkWarm) { chunkWarm = true; loadRoute('stayDetail').catch(() => { chunkWarm = false }) }
   if (!peekWarmStay(n)) stayDetailRequest(n).catch(() => { /* 상세가 다시 묻는다 */ })
 }

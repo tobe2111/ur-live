@@ -15,6 +15,7 @@
  * ⚠️ 못 막는 것: 실제 바이트(빌드 후 `check-bundle-size`·`check-surface-role-leak` 와 실측의 몫) · 청크 사이 순환으로 인한
  *   런타임 초기화 오류(브라우저 렌더 — 2026-10-13 에 22개 경로를 렌더해 새 오류 0 을 확인했다).
  */
+import { routeSurface } from '@/shared/route-surface'
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
@@ -213,7 +214,10 @@ describe('⑤ 홈은 폰/PC 를 나눈다', () => {
   })
   it('워커가 UA 로 고른다', () => {
     const w = readFileSync('src/worker/index.ts', 'utf8')
-    expect(w).toContain("? (isMobileUserAgent(c.req.header('user-agent')) ? 'home' : 'homePc')")
+    // 🧭 2026-10-15: 판정은 공용 함수(shared/route-surface) — 워커는 UA 를 그 함수에 넘긴다.
+    expect(w).toContain("const chunkSurface = routeSurface(url.pathname, isMobileUserAgent(c.req.header('user-agent')), authed)")
+    expect(routeSurface('/', true, false)).toBe('home')
+    expect(routeSurface('/', false, false)).toBe('homePc')
   })
   it('role-leak 가드가 PC 홈 표면도 본다', () => {
     expect(readFileSync('scripts/check-surface-role-leak.mjs', 'utf8')).toMatch(/CONSUMER_SURFACES = \[[^\]]*'homePc'/)

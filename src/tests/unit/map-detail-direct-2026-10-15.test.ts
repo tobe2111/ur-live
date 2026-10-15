@@ -58,11 +58,13 @@ describe('③ 누르기 전에 상세를 데운다', () => {
   it('홈 카드와 같은 캐시 키 · 같은 lazy 모듈', () => {
     const s = code('src/pages/restaurant-map/prefetch-detail.ts')
     expect(s).toMatch(/prefetchGroupBuyProduct\(qc, k\)/)
-    expect(s).toMatch(/import\('@\/pages\/GroupBuyDetailPage'\)/)
+    // 2026-10-15: 화면 코드는 App.tsx 가 등록한 같은 로더(`loadRoute`)로 받는다 — 직접 import() 하면 '준비됨' 이 안 된다(boot-page).
+    expect(s).toMatch(/loadRoute\('gbDetail'\)/)
     expect(s).toMatch(/warmStayDetail\(p\.id\)/)
-    expect(code('src/pages/stays/stay-detail-warm.ts')).toMatch(/import\('@\/pages\/StayDetailPage'\)/)
-    expect(readFileSync('src/App.tsx', 'utf-8')).toMatch(/lazy\(\(\) => import\('\.\/pages\/StayDetailPage'\)\)/)
-    expect(readFileSync('src/App.tsx', 'utf-8')).toMatch(/lazy\(\(\) => import\('\.\/pages\/GroupBuyDetailPage'\)\)/)
+    expect(code('src/pages/stays/stay-detail-warm.ts')).toMatch(/loadRoute\('stayDetail'\)/)
+    const app = readFileSync('src/App.tsx', 'utf-8')
+    expect(app).toMatch(/lazyPage\(\(\) => import\('\.\/pages\/StayDetailPage'\)\);[^\n]*registerRoutePreload\('stayDetail', StayDetailPage\.load\)/)
+    expect(app).toMatch(/lazyPage\(\(\) => import\('\.\/pages\/GroupBuyDetailPage'\)\);[^\n]*registerRoutePreload\('gbDetail', GroupBuyDetailPage\.load\)/)
   })
 })
 

@@ -15,6 +15,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { prefetchGroupBuyProduct } from '@/hooks/queries/useGroupBuyProduct'
 import { canonicalDetailPath } from '@/shared/product-flow'
 import { warmStayDetail } from '@/pages/stays/stay-detail-warm'
+import { loadRoute } from '@/lib/route-preload' // App.tsx 가 등록한 같은 로더 — 받으면 화면이 '준비됨'이 된다
 
 let passChunk = false
 const warmed = new Set<string>()
@@ -24,7 +25,7 @@ export function usePrefetchMapDetail() {
   return useCallback((p: { id: number | string; category?: string | null; deal_only?: number | string | null }) => {
     const path = canonicalDetailPath(p) || ''
     if (path.startsWith('/pass/')) {
-      if (!passChunk) { passChunk = true; import('@/pages/GroupBuyDetailPage').catch(() => { passChunk = false }) }
+      if (!passChunk) { passChunk = true; loadRoute('gbDetail').catch(() => { passChunk = false }) }
       const k = String(p.id)
       if (!warmed.has(k)) { warmed.add(k); prefetchGroupBuyProduct(qc, k).catch(() => { warmed.delete(k) }) }
     } else if (path.startsWith('/stays/')) {

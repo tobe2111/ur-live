@@ -19,9 +19,9 @@ export default [
   },
   {
     name: '🐢 로그인한 사람에게도 로그인 전 화면 청크를 미리 받게 한다',
-    file: 'src/worker/index.ts',
-    find: "url.pathname === '/user/profile' ? (authed ? null : 'guestMy')",
-    replace: "url.pathname === '/user/profile' ? 'guestMy'",
+    file: 'src/shared/route-surface.ts',
+    find: "if (p === '/user/profile') return authed ? null : 'guestMy'",
+    replace: "if (p === '/user/profile') return 'guestMy'",
     test: TEST,
     why: '로그인 사용자의 마이는 다른 화면인데 안 쓰는 로그인 전 청크를 받는다.',
   },

@@ -119,8 +119,8 @@ export default [
   },
   {
     name: '🎬 하드로드 진입점이 청크 병렬화에서 빠진다',
-    file: 'src/worker/index.ts',
-    find: "url.pathname === '/urshorts' ? 'urshorts' : ",
+    file: 'src/shared/route-surface.ts',
+    find: "  if (p === '/urshorts') return 'urshorts'\n",
     replace: '',
     test: TEST,
     why: '목록 페이지 청크가 엔트리 뒤에 직렬로 따라와 로더 구간이 길어진다 — 에러는 안 난다.',

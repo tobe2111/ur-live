@@ -73,7 +73,8 @@ describe('① 배선 — 하단 탭 셋에 게스트 화면', () => {
 
   it('게스트 화면은 lazy(첫 페인트 번들에 안 들어간다)', () => {
     for (const c of ['GuestPassPage', 'GuestUrShopPage', 'GuestMyPage'])
-      expect(app).toMatch(new RegExp(`const ${c} = lazy\\(\\(\\) => import\\('./pages/guest/${c}'\\)\\)`))
+      // 🚀 2026-10-15: lazyPage(lib/boot-page) 도 lazy 다 — 별도 청크 그대로, 준비됐으면 폴백 없이 그릴 뿐.
+      expect(app).toMatch(new RegExp(`const ${c} = lazy(?:Page)?\\(\\(\\) => import\\('./pages/guest/${c}'\\)\\)`))
   })
 })
 

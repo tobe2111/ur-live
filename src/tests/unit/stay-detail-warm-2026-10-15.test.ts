@@ -82,6 +82,7 @@ describe('④ 홈 첫 화면이 숙소 청크를 끌고 오지 않는다', () =>
   it('카드는 데우기 모듈을 동적으로만 부른다', () => {
     const s = code('src/pages/main-home/GroupBuyFeedCard.tsx')
     expect(s).not.toMatch(/^import .*stay-detail-warm/m)
-    expect(s).toMatch(/import\('@\/pages\/stays\/stay-detail-warm'\)\.then\(\(m\) => m\.warmStayDetail\(id\)\)/)
+    // 상대 경로 — 화면이 아니라 데우기 모듈이고(화면 코드는 그 안에서 loadRoute 로 받는다), boot-page ⑥ 은 `@/pages/` 직접 import() 를 막는다.
+    expect(s).toMatch(/import\('\.\.\/stays\/stay-detail-warm'\)\.then\(\(m\) => m\.warmStayDetail\(id\)\)/)
   })
 })
