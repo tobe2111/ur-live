@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom'
 import { HelmetProvider } from 'react-helmet-async'
 import { QueryProvider } from './lib/react-query'
+import { runAfterLoad } from './lib/after-load'
 import { ProtectedRoute, PublicRoute } from './components/auth/RouteGuards'
 import IosTopupGate from './components/IosTopupGate'
 import { isMarketingSurface } from './utils/domain'
@@ -443,7 +444,8 @@ function AppContent() {
 
   // 🚪 2026-10-15 하단 탭 화면 코드를 첫 화면 뒤(load + 한가 + 3초)에 미리 받는다 — 탭을 처음 눌러도 로더가 안 뜨게(src/lib/tab-warm.ts).
   //   그 모듈은 **따로** 받는다 — 정적으로 묶으면 대시보드(마이·어드민·에이전시) 첫 화면까지 +1.7KB 가 실렸다(surface-budgets).
-  useEffect(() => { let stop: (() => void) | undefined; let off = false; import('./lib/tab-warm').then((m) => { if (!off) stop = m.startTabWarm(location.pathname) }).catch(() => {}); return () => { off = true; stop?.() } }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  //   그 모듈조차 첫 화면 **뒤**(load + 한가)에 받는다 — 마운트 즉시 받으면 홈 첫 화면 청크가 26 → 27 이 됐다(surface-chunk-runtime).
+  useEffect(() => { let stop: (() => void) | undefined; let off = false; const stopLoad = runAfterLoad(() => { import('./lib/tab-warm').then((m) => { if (!off) stop = m.startTabWarm(location.pathname) }).catch(() => {}) }); return () => { off = true; stopLoad(); stop?.() } }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // 네이티브 앱 + 모바일 브라우저: 페이지에 따라 상태바 스타일 / theme-color 변경
   useEffect(() => {

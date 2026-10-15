@@ -86,7 +86,7 @@ describe('tab-warm', () => {
 
   it('⑥ App 이 마운트 때 실제로 부른다', () => {
     const app = stripComments(readFileSync('src/App.tsx', 'utf8'))
-    expect(app).toMatch(/import\('\.\/lib\/tab-warm'\)\.then\(\(m\) => \{ if \(!off\) stop = m\.startTabWarm\(location\.pathname\) \}\)/)
+    expect(app).toMatch(/runAfterLoad\(\(\) => \{ import\('\.\/lib\/tab-warm'\)\.then\(\(m\) => \{ if \(!off\) stop = m\.startTabWarm\(location\.pathname\) \}\)/)
     // 정적으로 묶으면 대시보드 첫 화면까지 실린다(2026-10-15 surface-budgets +1.7KB).
     expect(app).not.toMatch(/^import .*lib\/tab-warm/m)
   })
