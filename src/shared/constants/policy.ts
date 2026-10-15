@@ -96,8 +96,11 @@ export const COMMISSION_DEFAULTS = {
   //   드리프트는 표현식이 아니라 테스트가 막는다: affiliate-rate-ssot 이 이 값 == 기본값×100 을 못박는다.
   AFFILIATE_COMMISSION_PCT: 2,
 
-  /** 공구 양쪽 보너스 (추천인 + 피추천인 각각 %) */
-  REFERRAL_BONUS_BOTHSIDES_PCT: 0.5,
+  // 🗑️ 2026-10-16 — `REFERRAL_BONUS_BOTHSIDES_PCT: 0.5`(공구 양쪽 보너스)를 지웠다.
+  //   대표 **"0.5%는 안주는거야"** (전날 결재 *"0.5% 레퍼럴은 아예 없어"*).
+  //   이 상수를 읽던 유일한 지급 경로(`referral-bonus.ts`)가 같은 커밋에서 사라졌고, 남겨 두면
+  //   **아무도 안 주는 숫자를 어드민 정책표와 제안서가 계속 광고**한다(바로 그 거짓 약속을 닫은 참이다).
+  //   이 보너스의 진실은 이제 `platform_settings.user_referral_bonus_pct` 하나뿐이다(라이브 0).
 
   /** 큐레이터 핀 어필리에이트 % — 큐레이터에게만 적립 (피구매자 X).
    *  BOTHSIDES 0.5 와 별도. products.referral_commission_rate 가 있으면 그쪽 우선.

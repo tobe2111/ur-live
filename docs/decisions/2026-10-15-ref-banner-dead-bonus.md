@@ -113,3 +113,53 @@ PR #1861 — 여섯 자리에서 지우고, 세 자리는 **반대 방향으로 
 
 가드 `ref-bonus-dead-promise-2026-10-15.test.ts` 21건 + 주입 **10건 되돌려-검증 전부 빨간불 확인**
 (절반이 반대 방향). 잠금표 지문 8종 주석제거본 전후 동일.
+
+---
+
+## 🔴 후속 (2026-10-16) — 그 "안 지운 서버 레일" 의 근거가 틀렸다
+
+위 ⚠️ 가 *"비율이 0이라 아무 일도 안 한다"* 고 적었는데 **뒷문장이 사실이 아니었다.** 코드를 끝까지
+따라가니 0.5% 경로가 **둘**이고 하나는 설정을 쳐다보지도 않았다:
+
+| | 자리 | 비율 출처 | 상태 |
+|---|---|---|---|
+| **A** | `group-buy.routes:477` · `commission-rates.calcSplit` · `helpers.applyGroupBuyReferral` | 어드민 `platform_settings.user_referral_bonus_pct`(라이브 **0**) | 꺼짐 ✅ |
+| **B** | `group-buy.routes:905` → `referral-bonus.ts` | **`COMMISSION_DEFAULTS.REFERRAL_BONUS_BOTHSIDES_PCT` 0.5 상수** | **켜짐** 🔴 |
+
+B 는 `POST /join/:id`(딜 결제 공구 참여) 안에 있고, `refRaw` 로 쓰는 `X-Affiliate-Ref` 헤더는
+`lib/api.ts:179` 가 저장된 소개 ref 를 **모든 요청에 자동 첨부**한다. 즉 소개 링크로 들어온 사람이
+딜로 참여하면 추천인·구매자 **양쪽에 결제액 0.5% 가 딜로 지급**됐을 것이다. 2026-08-23 "심플 모델"로
+설정을 0 으로 내린 뒤에도 B 는 그 값을 안 봤다.
+
+🔑 **안 터진 이유는 정책이 아니라 트래픽이다** — 라이브 `point_transactions` 의
+`type='referral_bonus'` 가 **0행**(소개 ref 를 달고 딜로 참여한 주문이 아직 없다). 지뢰였다.
+
+그리고 숫자는 코드 밖에서도 광고되고 있었다 — 어드민 정책표 행 1개 + **대외 제안서 2종**
+(`docs/proposals/linkshop-brief.md` · `00-service-overview-and-coverage.md`)이 *"공구 양쪽 추천
+보너스 (각각) 0.5%"* 를 싣고 있었다.
+
+### 대표 답 (2026-10-16, 그대로 옮김)
+
+> **"0.5%는 안주는거야. 소개비는 매장 사장님이 설정했다면 매장에서 부담하는거."**
+
+### 반영
+
+| 자리 | 처방 |
+|---|---|
+| `group-buy.routes` 호출 + `referral-bonus.ts`(106줄) | **삭제** — 지급 경로 B 제거 |
+| `shared/constants/policy.ts` `REFERRAL_BONUS_BOTHSIDES_PCT: 0.5` | **삭제**(읽는 코드 0) |
+| `admin-policy/policy-rows.ts` 행 | 삭제 |
+| `generate-proposal-refs.mjs` 행 + 제안서 2종 재생성 | 삭제 |
+| `point-credit-ledger-row.test.ts` 의 그 모듈 전용 describe 5건 | 은퇴(대상 소멸) |
+
+⇒ 이 보너스의 진실은 이제 **`platform_settings.user_referral_bonus_pct` 하나**다. 어드민에서 0 이면
+정말로 0 이고, 켜고 싶으면 그 설정을 올린다(상수를 다시 심지 않는다).
+
+🔒 **안 지운 것** — 대표 두 번째 문장이 그대로 경계다: **매장이 건 소개비**
+(`seller_influencer_deals` 라이브 active **1건** · 상품별 `referral_commission_rate`)는 매장 부담이라
+**살아 있어야 한다.** 이름이 비슷해 같이 지워지기 쉬워 주입 3건이 그 반대 방향을 고정한다.
+
+가드 `referral-bonus-single-source-2026-10-16.test.ts` 12건 + 주입 **7건 되돌려-검증 전부 빨간불 확인**
+(넷이 반대 방향). 🩸 그중 **셋이 처음에 헛돌았다** — `> 0` 게이트만 봐서 `Math.max(1, …)` 바닥깔기를
+놓쳤고, 설정 키가 같은 파일에 네 군데 있어 조회 목록에서만 빼도 통과했고, `toContain` 이
+`seller_influencer_deals_REMOVED` 를 **부분문자열로 통과**시켰다. 주입이 아니었으면 전부 초록이었다.
