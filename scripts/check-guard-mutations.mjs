@@ -2293,9 +2293,9 @@ const MUTATIONS = [
   },
   {
     name: '태블릿 홈이 다시 옛 디자인이 된다(헤더는 md, 본문은 lg 로 갈림)',
-    file: 'src/pages/pc-home/HomeRoute.tsx',
-    find: "useMediaQuery('(min-width: 768px)')",
-    replace: "useMediaQuery('(min-width: 1024px)')",
+    file: 'src/shared/route-surface.ts',
+    find: "export const HOME_DESKTOP_QUERY = '(min-width: 768px)'",
+    replace: "export const HOME_DESKTOP_QUERY = '(min-width: 1024px)'",
     test: 'src/tests/unit/home-tablet-breakpoint.test.ts',
     why:
       '상단 헤더는 `hidden md:block`(768) 인데 이 분기가 lg(1024) 면 **768~1023 구간만 헤더는 새 ' +
