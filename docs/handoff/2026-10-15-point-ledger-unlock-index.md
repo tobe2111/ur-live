@@ -26,3 +26,10 @@
 - D1 sqlite_master 독립 확인: CHECK 문자열 0 · `type TEXT NOT NULL DEFAULT 'charge'`(끝으로 이동) · 인덱스 3개(`idx_point_tx_user_type`·`idx_point_tx_user`·`idx_point_tx_type`).
 - ⚠️ 과거 미기록분(주문 89·90 의 딜 사용 7,400 등)은 소급되지 않는다. 대표 잔액(111,500) ↔ 원장 합 불일치는 카드 ② 잔액 정비 판단 전에 세션이 검사 결과를 먼저 읽고 보고할 것.
 - 다음: VERIFICATION_DAY 1회차 결제 — 이제 '딜 사용 기록 1행' 판정이 가능하다.
+
+## 2단계 — 잔액 정비 + 버킷 재분류 (대표 "둘 다 해줘")
+- **잔액 정비(기록 보정) 실행 10:30 KST**: 3·32·33·24번에 `legacy_reconcile` 1행씩(80,200 / 3,000 / 3,000 / 100). 재검사 불일치 **0**. 잔액·무상잔액 불변 확인(D1).
+- **원인 규명 — 32·24번 유상 잔액**: 무상 버킷(`free_balance`)은 **2026-07-05** 에 생겼다. 32번(06-30 가입)의 가입 보너스 3,000 은 그 전이라 기본값 0 → **유상**, 같은 보너스를 07-09 에 받은 33번은 무상. 24번 150 도 광고 리워드 등 충전 0. 전 계정 스캔 결과 유상 잔액이 있는 계정은 **이 둘뿐**이고 둘 다 충전 기록 0. 대기 중인 환급 신청 없음.
+- **도구 추가(코드 경로)**: `points-reconcile.ts` `reclassifyUnpaidToFree` + `POST /api/admin/tools/points-reconcile {mode:'reclass'}`. 기본 dry-run · CAS(UPDATE 에 조건 재확인) · 잔액 불변 · 원장 `bucket_reclass`(금액 0, free_delta=+옮긴 양). 'both' 에 안 들어간다.
+- 함께: 보정행 설명의 날짜가 `2026-08-31` 고정이었다 → 오늘(KST). 10-15 에 쓴 4행은 설명에 08-31 이 박혀 있다(created_at 은 정확).
+- 다음: 배포 후 reclass dry-run(32·24 기대) → apply → D1 로 `free_balance = balance` 확인.

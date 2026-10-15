@@ -22,7 +22,7 @@ const { DatabaseSync } = await import(/* @vite-ignore */ ('node:' + 'sqlite')) a
     }
   }
 }
-import { findOrphanBalances, mergeOrphanBalances, reconcileLegacyBalances } from '@/worker/utils/points-reconcile'
+import { findOrphanBalances, mergeOrphanBalances, reconcileLegacyBalances, reclassifyUnpaidToFree, kstToday } from '@/worker/utils/points-reconcile'
 
 function makeD1(): D1Database {
   const db = new DatabaseSync(':memory:')
@@ -133,5 +133,76 @@ describe('🩹 레거시 정합 보정', () => {
     await reconcileLegacyBalances(DB, true)
     await reconcileLegacyBalances(DB, true)
     expect(one<{ n: number }>(DB, `SELECT COUNT(*) n FROM point_transactions WHERE type='legacy_reconcile'`).n).toBe(1)
+  })
+})
+
+describe('🪣 버킷 재분류 — 충전 기록 없는 유상 잔액 (2026-10-15 라이브 32·24번)', () => {
+  let DB: D1Database
+  beforeEach(() => {
+    DB = makeD1()
+    // 32번: 07-05 버킷 도입 전 가입 보너스 → 유상 3,000 (충전 0)
+    exec(DB, `INSERT INTO user_points (user_id, balance, free_balance, total_charged) VALUES ('32', 3000, 0, 0)`)
+    // 33번: 같은 보너스가 도입 뒤라 무상 — 대상 아님
+    exec(DB, `INSERT INTO user_points (user_id, balance, free_balance, total_charged) VALUES ('33', 3000, 3000, 0)`)
+    // 24번: 광고 리워드(금액 0 인 charge 행) — 대상
+    exec(DB, `INSERT INTO user_points (user_id, balance, free_balance, total_charged) VALUES ('24', 150, 0, 0)`)
+    exec(DB, `INSERT INTO point_transactions (user_id, type, amount) VALUES ('24', 'charge', 0)`)
+    // 7번: 실제로 충전했다 — 유상이 맞다, 절대 건드리면 안 된다
+    exec(DB, `INSERT INTO user_points (user_id, balance, free_balance, total_charged) VALUES ('7', 5000, 0, 0)`)
+    exec(DB, `INSERT INTO point_transactions (user_id, type, amount) VALUES ('7', 'charge', 5000)`)
+  })
+
+  it('🔴 충전한 적 없는 유상 잔액만 찾는다 (돈 낸 계정·이미 무상인 계정 제외)', async () => {
+    const r = await reclassifyUnpaidToFree(DB, false)
+    expect(r.found.map(f => f.user_id).sort()).toEqual(['24', '32'])
+  })
+
+  it('🔴 dry-run 은 한 줄도 안 쓴다', async () => {
+    await reclassifyUnpaidToFree(DB, false)
+    expect(one<{ f: number }>(DB, `SELECT free_balance f FROM user_points WHERE user_id='32'`).f).toBe(0)
+    expect(one<{ n: number }>(DB, `SELECT COUNT(*) n FROM point_transactions WHERE type='bucket_reclass'`).n).toBe(0)
+  })
+
+  it('🔴 apply — 무상으로 옮기고 **잔액은 그대로**, 원장에 흔적을 남긴다', async () => {
+    const r = await reclassifyUnpaidToFree(DB, true)
+    expect(r.results.every(x => x.outcome === 'moved')).toBe(true)
+    const row = one<{ b: number; f: number }>(DB, `SELECT balance b, free_balance f FROM user_points WHERE user_id='32'`)
+    expect(row).toEqual({ b: 3000, f: 3000 })
+    expect(one<{ b: number; f: number }>(DB, `SELECT balance b, free_balance f FROM user_points WHERE user_id='7'`))
+      .toEqual({ b: 5000, f: 0 })
+    const tx = one<{ amount: number; free_delta: number }>(DB,
+      `SELECT amount, free_delta FROM point_transactions WHERE user_id='32' AND type='bucket_reclass'`)
+    expect(tx).toEqual({ amount: 0, free_delta: 3000 })
+  })
+
+  it('멱등 — 두 번째는 찾는 게 없다', async () => {
+    await reclassifyUnpaidToFree(DB, true)
+    const again = await reclassifyUnpaidToFree(DB, true)
+    expect(again.found).toEqual([])
+    expect(one<{ n: number }>(DB, `SELECT COUNT(*) n FROM point_transactions WHERE type='bucket_reclass'`).n).toBe(2)
+  })
+
+  it('🔴 CAS — 찾은 뒤(UPDATE 직전) 충전이 들어오면 옮기지 않는다', async () => {
+    // 조회는 끝났고 UPDATE 가 나가기 직전에 충전이 끼어드는 경우를 만든다.
+    const inner = DB as unknown as { prepare: (s: string) => unknown }
+    const orig = inner.prepare.bind(DB)
+    let injected = false
+    inner.prepare = (sql: string) => {
+      if (!injected && /^\s*UPDATE user_points SET free_balance/.test(sql)) {
+        injected = true
+        exec(DB, `INSERT INTO point_transactions (user_id, type, amount) VALUES ('32', 'charge', 1000)`)
+      }
+      return orig(sql)
+    }
+    const r = await reclassifyUnpaidToFree(DB, true)
+    expect(r.results.find(x => x.user_id === '32')?.outcome).toBe('skipped')
+    expect(one<{ f: number }>(DB, `SELECT free_balance f FROM user_points WHERE user_id='32'`).f).toBe(0)
+  })
+})
+
+describe('📅 보정행 날짜 — 고정값이 아니라 오늘(KST)', () => {
+  it('KST 자정 직후는 그날 날짜', () => {
+    expect(kstToday(new Date('2026-10-14T15:30:00Z'))).toBe('2026-10-15')
+    expect(kstToday(new Date('2026-10-15T14:59:00Z'))).toBe('2026-10-15')
   })
 })
