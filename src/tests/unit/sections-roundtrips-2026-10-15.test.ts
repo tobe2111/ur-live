@@ -245,6 +245,9 @@ describe('D1 읽기 복제 — 공개 편성 읽기만 사본으로', () => {
     const s = publicReadDb(primary)
     expect(s).not.toBe(primary)
     expect(dbKey(s)).toBe(primary)
+    // DB 바인딩이 없는 환경(라우트 시험 스텁)에서 던지면 그 라우트 시험 전부가 500 이 된다
+    expect(publicReadDb(undefined as unknown as D1Database)).toBeUndefined()
+    expect(dbKey(undefined as unknown as D1Database)).toBeUndefined()
   })
 
   it('누가 답했는지 X-D1-Served 로 내보낸다 — 켜기만 하고 안 쓰는 상태와 구분', async () => {

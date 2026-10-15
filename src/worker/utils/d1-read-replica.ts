@@ -24,7 +24,7 @@ type WithSession = D1Database & { withSession?: (constraint?: string) => unknown
  * 'first-unconstrained' — 첫 질의를 가장 가까운 사본이 받는다(원본을 거치지 않는다).
  */
 export function publicReadDb(db: D1Database): D1Database {
-  const fn = (db as WithSession).withSession
+  const fn = (db as WithSession | undefined)?.withSession // DB 바인딩이 없는 환경(시험 스텁)에서도 원본(=undefined) 그대로
   if (typeof fn !== 'function') return db
   try {
     const s = fn.call(db, 'first-unconstrained') as D1Database & { [PRIMARY]?: D1Database }
@@ -42,7 +42,7 @@ export function publicReadDb(db: D1Database): D1Database {
  *   DDL 로 다시 낸다(이 레포의 2% 프로파일러 래퍼가 같은 모양이다).
  */
 export function dbKey(db: D1Database): D1Database {
-  return (db as D1Database & { [PRIMARY]?: D1Database })[PRIMARY] ?? db
+  return (db as (D1Database & { [PRIMARY]?: D1Database }) | undefined)?.[PRIMARY] ?? db
 }
 
 /**
