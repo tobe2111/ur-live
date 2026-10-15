@@ -71,45 +71,17 @@ describe('creditFreePoints — 잔액만 늘고 원장 행이 없는 사태 방�
   })
 })
 
-describe('공구 추천 보너스 — 원장 행이 곧 중복 방지 키다 (2026-08-02)', () => {
-  // 2026-08-02: 라우트 인라인 블록을 `referral-bonus.ts` 로 추출했다.
-  // ⚠️ 처음엔 라우트 파일에서 앵커 문자열로 블록을 잘라 봤는데, 추출하자 앵커가 사라져
-  //    "블록을 못 찾았다"로 **터졌다** — 조용히 통과하지 않게 만들어 둔 게 실제로 값을 했다.
-  const SRC_RB = readFileSync('src/features/group-buy/api/referral-bonus.ts', 'utf8')
-  const ROUTES = readFileSync('src/features/group-buy/api/group-buy.routes.ts', 'utf8')
-
-  it('원장 INSERT 가 실패하면 최소 컬럼으로 다시 쓴다', () => {
-    // 여기가 단순 불일치보다 나쁜 이유: 중복 방지가 **이 행이 남았는지로** 판정한다.
-    // 행이 없으면 같은 (추천인, 참여자) 조합이 매번 다시 보상받는다 = 반복 지급.
-    expect(SRC_RB, '폴백이 없다').toContain('recordPointTxMinimal(')
-    const tx = SRC_RB.slice(SRC_RB.indexOf('async function recordBonusTx'))
-    expect(tx.slice(0, 900), '확장 컬럼 INSERT 의 catch 에 폴백이 없다').toContain('recordPointTxMinimal(')
-  })
-
-  it('폴백이 description 을 그대로 쓴다 (중복 방지가 LIKE 로 읽는다)', () => {
-    // 중복 방지: `description LIKE '%' || 'from:REF' || '%'`. 문구를 바꾸면 dedup 이 못 찾는다.
-    expect(SRC_RB, '폴백이 호출부가 준 desc 를 안 넘긴다')
-      .toMatch(/recordPointTxMinimal\(DB, uid, 'referral_bonus', bonus, desc\)/)
-    expect(SRC_RB, 'inviteeDesc 에 from: 마커가 없다 — dedup 키가 깨진다')
-      .toMatch(/inviteeDesc\s*=\s*`[^`]*from:\$\{refUserId\}/)
-  })
-
-  it('중복 방지가 여전히 point_transactions 를 읽는다 (전제 확인)', () => {
-    // 이 전제가 바뀌면(예: 별도 테이블로 이동) 위 두 검사의 이유가 사라진다 — 그때 같이 고칠 것.
-    expect(SRC_RB).toMatch(/SELECT 1 FROM point_transactions[\s\S]{0,200}?referral_bonus/)
-  })
-
-  it('라우트가 이 모듈을 실제로 호출한다 (고아 모듈 방지)', () => {
-    expect(ROUTES, '추출해 놓고 호출을 안 하면 보너스가 통째로 사라진다')
-      .toContain('grantGroupBuyReferralBonus(')
-  })
-
-  it('추출 후 라우트에 옛 인라인 적립이 남아 있지 않다 (이중 지급 방지)', () => {
-    expect(ROUTES.includes("swallow('group-buy:referral-bonus:referrer-balance')"),
-      '인라인 블록이 남아 있다 — 모듈과 함께 두 번 지급된다').toBe(false)
-  })
-})
-
+// 🗑️ 2026-10-16 — 여기 있던 `describe('공구 추천 보너스 — 원장 행이 곧 중복 방지 키다 (2026-08-02)')`
+//    5건을 **지웠다**. 그 검사들이 지키던 대상(`referral-bonus.ts` 의 `grantGroupBuyReferralBonus`)이
+//    같은 커밋에서 사라졌기 때문이다 — 대표 **"0.5%는 안주는거야"**.
+//
+//    그 블록이 지키던 불변식(원장 행 = 중복 방지 키 · 폴백이 description 을 안 바꾼다 · 고아 모듈 금지)은
+//    **그 함수에 한정된 것**이라 함께 은퇴한다. 그 자리를 대신하는 불변식(*0.5% 를 상수로 주는 경로가
+//    없다 · 설정값 경로는 남아 있다*)은 `referral-bonus-single-source-2026-10-16.test.ts` **한 곳**이
+//    맡는다. 여기에 같은 단언을 또 두면 중복 잠금이라 어느 쪽도 출력으로 판정할 수 없다.
+//
+//    ⚠️ 위 `creditFreePoints` 블록이 지키는 교훈(잔액만 늘고 원장 행이 없으면 중복 방지가 무너진다)은
+//    그대로 유효하다 — 다른 적립 경로에도 같은 클래스가 있다.
 describe('원장 불일치 조사 경로 — 데이터가 없으면 아무도 못 고친다', () => {
   it('cron 이 상세를 DB 에 남긴다 (예전엔 콘솔로만 가서 몇 주간 조사 불가였다)', () => {
     const cron = readFileSync('src/worker/cron/ledger-integrity-check.ts', 'utf8')
