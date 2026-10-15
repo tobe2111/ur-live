@@ -16,8 +16,34 @@
 import { Hono } from 'hono';
 import type { Env } from '@/worker/types/env';
 import { requireAdmin } from '../middleware/auth';
+import { readReplicaDb } from '../utils/d1-read-replica';
 
 const internalDiagnosticsRoutes = new Hono<{ Bindings: Env }>();
+
+// ─── 🌏 D1 읽기 복제본 판정 (2026-10-15) ───────────────────────────────────────
+//   같은 읽기를 원본과 복제본 세션으로 각각 3번 돌려 **어느 지역이 응답했는지**(D1 meta)와 걸린 시간을 돌려준다.
+//   이 요청을 받은 데이터센터(`colo`) 기준이다 — 한국 손님이 붙는 홍콩에서 부르면 그 손님이 받는 값과 같다.
+//   판정: replica 의 served_by_primary 가 false 이고 served_by_region 이 원본과 다르면 복제본이 일하고 있다.
+internalDiagnosticsRoutes.get('/api/_internal/d1-replica-probe', requireAdmin(), async (c) => {
+  const base = c.env.DB;
+  const sql = 'SELECT COUNT(*) AS n FROM products WHERE is_active = 1';
+  const probe = async (db: D1Database) => {
+    const out: Array<{ ms: number; region?: unknown; primary?: unknown }> = [];
+    for (let i = 0; i < 3; i++) {
+      const t = Date.now();
+      try {
+        const r = await db.prepare(sql).all();
+        const m = (r.meta || {}) as Record<string, unknown>;
+        out.push({ ms: Date.now() - t, region: m.served_by_region, primary: m.served_by_primary });
+      } catch (e) {
+        out.push({ ms: Date.now() - t, region: `error: ${String((e as Error)?.message || e).slice(0, 80)}` });
+      }
+    }
+    return out;
+  };
+  const colo = (c.req.raw as unknown as { cf?: { colo?: string } }).cf?.colo ?? null;
+  return c.json({ success: true, data: { colo, primary: await probe(base), replica: await probe(readReplicaDb(base)) } });
+});
 
 // ─── 카카오 로그인 진단 (iOS WebKit 수정 효과 확인 + 회귀 감지) ───────────────
 //   기록은 kakao.routes.ts /sync/callback 가 fire-and-forget 으로 남김.

@@ -17,9 +17,9 @@ export function isAutomatedBrowser(): boolean {
   try { return typeof navigator !== 'undefined' && navigator.webdriver === true } catch { return false }
 }
 
-function send(name: string, value: number, page: string) {
+function send(name: string, value: number, page: string, parts?: LcpParts) {
   try {
-    const body = JSON.stringify({ name, value, page })
+    const body = JSON.stringify(parts ? { name, value, page, parts } : { name, value, page })
     if (navigator.sendBeacon) {
       navigator.sendBeacon('/api/analytics/vitals', new Blob([body], { type: 'application/json' }))
     } else {
@@ -46,6 +46,31 @@ export function createClsTracker() {
   }
 }
 
+/**
+ * 🔬 2026-10-15 LCP 를 네 구간으로 나눈다(구글 web-vitals 의 LCP attribution 과 같은 정의).
+ *   LCP 숫자 하나로는 **무엇을 고칠지** 모른다 — 서버가 늦은지, 사진을 늦게 부른 건지, 사진이 무거운 건지,
+ *   다 받아 놓고 그리지 못한 건지(자바스크립트·글꼴)가 전부 같은 숫자로 보인다. 그래서 실사용 폰에서 구간을 잰다.
+ *   - ttfb    : 이동 시작 → 첫 바이트(연결·서버 포함)
+ *   - delay   : 첫 바이트 → 그 사진 요청을 시작하기까지(발견이 늦다 = 미리받기·서버 첫 화면의 일)
+ *   - load    : 사진을 받는 시간(무게·CDN 의 일)
+ *   - render  : 다 받은 뒤 화면에 그려지기까지(자바스크립트·CSS·글꼴이 막는다)
+ *   네 값의 합 = LCP. 글자가 LCP 면 delay·load 는 0 이고 render 가 첫 바이트 뒤 전부다.
+ */
+export interface LcpParts { ttfb: number; delay: number; load: number; render: number }
+
+export function lcpParts(
+  lcp: number,
+  responseStart: number,
+  resource?: { startTime: number; requestStart?: number; responseEnd?: number } | null,
+): LcpParts {
+  const ttfb = Math.max(0, Math.min(lcp, responseStart))
+  if (!resource) return { ttfb, delay: 0, load: 0, render: Math.max(0, lcp - ttfb) }
+  // 교차 출처 사진은 Timing-Allow-Origin 이 없으면 requestStart 가 0 이다 — 그땐 startTime 으로 본다.
+  const start = Math.min(lcp, Math.max(ttfb, resource.requestStart || resource.startTime))
+  const end = Math.min(lcp, Math.max(start, resource.responseEnd || start))
+  return { ttfb, delay: start - ttfb, load: end - start, render: lcp - end }
+}
+
 export function reportWebVitals(): void {
   if (reported || typeof window === 'undefined' || typeof PerformanceObserver === 'undefined') return
   if (isAutomatedBrowser()) return
@@ -65,16 +90,25 @@ export function reportWebVitals(): void {
       //   페이지 자리에 `colo:XXX` 로 보내 같은 표본 저장소에서 데이터센터별 TTFB 분포를 본다.
       const colo = (nav.serverTiming || []).find((t) => t.name === 'colo')?.description
       if (colo) send('TTFB', nav.responseStart, `colo:${colo}`)
+      // 🔬 2026-10-15 SRV = 워커가 이 문서를 만드는 데 쓴 시간(`Server-Timing: total`). TTFB 에서 이걸 빼면 **길(연결·거리)**
+      //   이 남는다 — 느린 첫 바이트가 서버 탓인지 거리 탓인지를 실사용 폰에서 가른다(데이터센터별로도 같은 저장소).
+      const srv = (nav.serverTiming || []).find((t) => t.name === 'total')?.duration
+      if (typeof srv === 'number' && srv >= 0) {
+        send('SRV', srv, page)
+        if (colo) send('SRV', srv, `colo:${colo}`)
+      }
     }
   } catch { /* unsupported */ }
 
   // LCP — 가장 큰 paint 의 마지막 entry (페이지 떠날 때 확정)
   try {
     let lcpValue = 0
+    let lcpUrl = ''
     const lcpObs = new PerformanceObserver((list) => {
       const entries = list.getEntries()
-      const last = entries[entries.length - 1] as PerformanceEntry & { renderTime?: number; loadTime?: number }
+      const last = entries[entries.length - 1] as PerformanceEntry & { renderTime?: number; loadTime?: number; url?: string }
       lcpValue = last.renderTime || last.loadTime || last.startTime
+      lcpUrl = last.url || ''
     })
     lcpObs.observe({ type: 'largest-contentful-paint', buffered: true })
     // 📈 2026-09-02: LCP 를 `visibilitychange→hidden` 에만 보내면 카카오 인앱/사파리처럼 그 이벤트가 안 오는
@@ -84,7 +118,15 @@ export function reportWebVitals(): void {
     const flush = () => {
       if (sent || lcpValue <= 0) return
       sent = true
-      send('LCP', lcpValue, page)
+      let parts: LcpParts | undefined
+      try {
+        const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined
+        const res = lcpUrl
+          ? (performance.getEntriesByName(lcpUrl, 'resource')[0] as PerformanceResourceTiming | undefined)
+          : undefined
+        if (nav) parts = lcpParts(lcpValue, nav.responseStart, res ?? null)
+      } catch { /* 구간을 못 재도 LCP 는 보낸다 */ }
+      send('LCP', lcpValue, page, parts)
       lcpObs.disconnect()
     }
     addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush() }, { once: true })
