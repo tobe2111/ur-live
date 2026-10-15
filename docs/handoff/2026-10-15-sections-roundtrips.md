@@ -37,5 +37,11 @@
 - 적용: `/api/sections` GET 만. 메모 키를 `dbKey` 로 바꾼 곳: sections ensureTables · section-seed · consumer-scope hasMallColumn · banners ensureBannerColumns.
   ⚠️ 다른 곳에 `publicReadDb` 를 넓힐 때 그 경로의 isolate 메모(`WeakSet<D1Database>` 77+31곳)를 `dbKey` 로 안 바꾸면 요청마다 DDL·PRAGMA 가 다시 돈다.
 - 허용 파일 목록은 시험이 고정(`sections-roundtrips-2026-10-15.test.ts` 마지막 describe). 머니·어드민·셀러 금지.
-- **대시보드에서 켜는 것은 대표 몫**(아직 안 켜짐 — 켜기 전엔 세션도 원본으로 가서 지금과 동일).
-- 다음: 대표가 켠 뒤 `GET /d1/database/{uuid}` 의 `read_replication.mode` 확인 → 2단계 대상(이용권 목록·상세는 잠금 파일이라 승인 필요).
+- ✅ **켜짐(2026-10-15, 대표 권한 위임 후 세션이 CF API 로)** — `read_replication.mode` disabled → **auto** 재조회 확인.
+- 🔎 판정 장치: `/api/sections` 응답 헤더 `X-D1-Served`(`d1ServedLabel` — D1 `meta.served_by_primary/served_by_region`).
+  배포 후 `curl -sI 'https://urdeal.kr/api/sections?near=37.5,127.0'` (캐시 미스 키로) 에서 `replica:` 가 나오면 사본에서 읽는다.
+  ⚠️ 이 환경은 미국 경유라 한국 사본 여부는 못 본다 — `replica:` 인지까지만.
+- 다음 세션 첫 액션: ① 위 curl ② 다음 날 09:25 KST SLO `/` TTFB·LCP 를 직전 7일과 비교
+  ③ 효과 있으면 유어샵(`curator.routes`)·블로그로 확대(비잠금) → 이용권 목록·상세는 잠금 파일이라 **승인 필요**
+  (다른 세션의 "상세 서버 렌더" 계획의 전제이기도 하다 — 서버 렌더도 데이터를 기다린다).
+- 🩸 틀렸던 판단: "토큰은 조회 전용이라 켜는 건 대표 몫" 이라 적었는데 토큰엔 D1 편집 권한이 있었다. **권한은 문서가 아니라 호출로 판정할 것.**

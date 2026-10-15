@@ -35,7 +35,7 @@ import { mainScopeFor } from '@/worker/utils/consumer-scope';
 import { nearKeyOf, parseNearKey } from '@/shared/home-near';
 import { listActiveBanners } from '../../banners/api/banners.routes';
 import { STRIP_BANNER_MAX } from '@/shared/home-strip-banners';
-import { publicReadDb, dbKey } from '@/worker/utils/d1-read-replica';
+import { publicReadDb, dbKey, d1ServedLabel } from '@/worker/utils/d1-read-replica';
 const sectionsRoutes = new Hono<{ Bindings: Env }>();
 
 /**
@@ -116,6 +116,7 @@ sectionsRoutes.get('/', edgeCache(120), async (c) => {
    *   위치가 없으면 키·쿼리·응답이 **종전과 byte-동일**이다(SSR 예열 키 `/api/sections` 불변).
    */
   const near = parseNearKey(c.req.query('near'));
+  let d1Served: string | null = null; // 🔎 어느 사본이 답했나 — `X-D1-Served` 로 내보낸다(E4 판정용)
   const nearKey = nearKeyOf(near);
   try {
     /**
@@ -155,11 +156,13 @@ sectionsRoutes.get('/', edgeCache(120), async (c) => {
           FROM homepage_sections WHERE is_active = 1 ORDER BY sort_order ASC
         `).all();
         // 테이블·컬럼이 없을 때만 만든다(새 DB · 옛 스키마) — 정상 경로에서 DDL 6왕복을 안 기다린다.
-        const { results: sections } = await selectSections().catch(async () => {
+        const sectionsRes = await selectSections().catch(async () => {
           await ensureTables(DB);
           await maybeSeedHomeSections(readEnv);
           return selectSections();
         });
+        d1Served = d1ServedLabel(sectionsRes);
+        const sections = sectionsRes.results;
 
         const sectionList = (sections ?? []) as Array<Record<string, unknown>>;
 
@@ -284,6 +287,7 @@ sectionsRoutes.get('/', edgeCache(120), async (c) => {
     const stripBanners = await bannersP; // ⚡ 위에서 섹션과 **함께** 시작했다
     const extra = Array.isArray(stripBanners) && stripBanners.length > 0 ? { strip_banners: stripBanners } : {};
 
+    if (d1Served) c.header('X-D1-Served', d1Served);
     // 📍 어느 위치로 만든 응답인지 — 화면이 SSR 시드를 쓸지(같은 격자인지) 판정한다.
     return c.json(nearKey ? { success: true, data: result, near: nearKey, ...extra } : { success: true, data: result, ...extra });
   } catch (err) {

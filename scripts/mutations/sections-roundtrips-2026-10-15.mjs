@@ -78,4 +78,20 @@ export default [
     test: T,
     why: 'dbKey 가 세션 자신을 돌려줘 모든 isolate 메모가 요청마다 빗나간다.',
   },
+  {
+    name: '🔎 읽기 복제 — 누가 답했는지 헤더를 안 낸다',
+    file: 'src/features/sections/api/sections.routes.ts',
+    find: "    if (d1Served) c.header('X-D1-Served', d1Served);\n",
+    replace: '',
+    test: T,
+    why: '복제를 켜 놓고 실제로 사본에서 읽는지 라이브에서 판정할 길이 사라진다.',
+  },
+  {
+    name: '🔎 읽기 복제 — 사본인데 원본이라 적는다',
+    file: 'src/worker/utils/d1-read-replica.ts',
+    find: "m.served_by_primary ? 'primary' : 'replica'",
+    replace: "'primary'",
+    test: T,
+    why: '사본 사용을 원본으로 보고해 효과 판정이 뒤집힌다.',
+  },
 ]

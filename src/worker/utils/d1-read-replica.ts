@@ -44,3 +44,15 @@ export function publicReadDb(db: D1Database): D1Database {
 export function dbKey(db: D1Database): D1Database {
   return (db as D1Database & { [PRIMARY]?: D1Database })[PRIMARY] ?? db
 }
+
+/**
+ * 🔎 이 질의를 누가 받았나 — 복제를 켜 놓고 **실제로 사본에서 읽는지**는 응답 메타로만 알 수 있다
+ *   (켜기만 하고 안 쓰는 상태와 구분이 안 된다). D1 결과의 `meta.served_by_primary` / `served_by_region`.
+ *   원본이면 `primary:<지역>`, 사본이면 `replica:<지역>`, 메타가 없으면(로컬·옛 런타임) null.
+ */
+export function d1ServedLabel(res: unknown): string | null {
+  const m = (res as { meta?: { served_by_primary?: boolean; served_by_region?: string } } | null)?.meta
+  if (!m || (m.served_by_primary === undefined && !m.served_by_region)) return null
+  const region = typeof m.served_by_region === 'string' ? m.served_by_region.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 16) : ''
+  return `${m.served_by_primary ? 'primary' : 'replica'}${region ? `:${region}` : ''}`
+}

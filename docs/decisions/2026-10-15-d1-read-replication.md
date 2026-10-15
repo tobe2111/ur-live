@@ -51,7 +51,14 @@ Cloudflare D1 읽기 복제(Read Replication)를 켜고, 손님 화면의 **읽�
 대시보드에서 읽기 복제를 끈다(그 즉시 모든 질의가 원본으로 간다). 코드는 그대로 둬도 무해하다.
 
 ## 결정 (대표가 한 말 그대로)
-"응 켜고 코드 작업 진행해줘" (2026-10-15) — 안 1. 대시보드에서 켜는 것은 대표(세션 CF 토큰은 조회 전용).
+"응 켜고 코드 작업 진행해줘" (2026-10-15) — 안 1.
+이어서 대표 *"너한테 대시보드 설정 권한 줄게"* · *"전에 나 너한테 권한 다 준 것 같은데?"* — 세션이 CF API 로 직접 켰다.
+
+## 실행 기록
+- 2026-10-15 21:4x KST — `PUT /accounts/{acc}/d1/database/d9530ba6-…` `{"read_replication":{"mode":"auto"}}` →
+  재조회 `read_replication.mode`: **disabled → auto** (원본 지역 ENAM 그대로). 토큰에 D1 편집 권한이 있었다.
+- 끄기: 같은 호출에 `"mode":"disabled"`.
+- 판정: 홈 `/api/sections` 응답 헤더 `X-D1-Served`(`replica:<지역>` / `primary:<지역>`) + 다음 날 09:25 KST SLO 회차의 `/` TTFB·LCP.
 
 
 ## 반영 커밋

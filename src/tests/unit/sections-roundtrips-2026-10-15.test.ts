@@ -246,6 +246,27 @@ describe('D1 읽기 복제 — 공개 편성 읽기만 사본으로', () => {
     expect(dbKey(s)).toBe(primary)
   })
 
+  it('누가 답했는지 X-D1-Served 로 내보낸다 — 켜기만 하고 안 쓰는 상태와 구분', async () => {
+    const base = makeDb()
+    const withMeta = (sql: string) => {
+      const q = base.DB.prepare(sql) as unknown as { bind: (...a: unknown[]) => unknown; all: () => Promise<{ results: unknown[] }> }
+      const all = q.all.bind(q)
+      q.all = async () => ({ ...(await all()), meta: { served_by_primary: false, served_by_region: 'APAC' } })
+      return q
+    }
+    const DB = { prepare: base.DB.prepare, withSession: () => ({ prepare: withMeta }) } as unknown as D1Database
+    const res = await sectionsRoutes.request('/?near=37.18,127.06', {}, { DB } as never, { waitUntil: () => {}, passThroughOnException: () => {}, props: {} } as never)
+    expect(res.headers.get('X-D1-Served')).toBe('replica:APAC')
+  })
+
+  it('d1ServedLabel — 원본/사본/메타 없음 · 지역 문자열은 안전한 글자만', async () => {
+    const { d1ServedLabel } = await import('@/worker/utils/d1-read-replica')
+    expect(d1ServedLabel({ meta: { served_by_primary: true, served_by_region: 'ENAM' } })).toBe('primary:ENAM')
+    expect(d1ServedLabel({ meta: { served_by_primary: false, served_by_region: 'APAC' } })).toBe('replica:APAC')
+    expect(d1ServedLabel({ results: [] })).toBeNull()
+    expect(d1ServedLabel({ meta: { served_by_primary: false, served_by_region: 'A\r\nX: y' } })).toBe('replica:AXy')
+  })
+
   it('publicReadDb 는 허용된 공개 읽기 파일에서만 쓴다 — 머니·관리 경로 금지', () => {
     const ALLOWED = new Set(['src/features/sections/api/sections.routes.ts'])
     const hits = execSync(`grep -rlE "publicReadDb\\(" src --include=*.ts --include=*.tsx`, { encoding: 'utf-8' })
