@@ -7,7 +7,9 @@
  * ⚠️ **이 시험이 못 보는 것**
  *   - 브라우저에서 react-helmet 이 실제로 어느 값을 남기는지(jsdom 밖 · 라이브 UA 실측이 판정)
  *   - 구글이 그 제목을 검색결과에 쓰는지(제목 재작성은 구글이 한다)
- *   - 이용권(`/pass/:id`) 제목 — **일부러 범위 밖**이다(결재 #35 대기 · 서버·클라 이미 동일)
+ *   - 이용권(`/pass/:id`) 제목의 **문구 규칙**(단어·중복·꼬리 가게명) — 2026-10-15 대표 승인으로
+ *     SSOT 에 들어왔고, 그 생성기는 `pass-title-voucher-2026-10-15.test.ts` 가 본다.
+ *     여기서 보는 것은 **세 종류가 한 파일에 모였는가**와 SSOT 전체에 `공동구매` 0건인가뿐이다.
  */
 import { describe, it, expect } from 'vitest'
 import { stayDetailTitle, voucherDetailTitle } from '@/shared/seo/detail-title'
@@ -106,14 +108,19 @@ describe('🏷️ 상세 제목 SSOT', () => {
     expect(m).not.toContain('const region = stayRegionLabel(')
   })
 
-  // ──────────────────── ⑤ 🔴 반대 방향 — 이용권 제목은 범위 밖이다
-  it('⑤-1 /pass/:id 제목은 한 글자도 안 바뀐다 (결재 #35 대기)', () => {
-    const m = readCode('src/worker/utils/detail-ssr-meta.ts')
-    expect(m).toContain('const pageTitle = `${name} 공동구매 - ${store || \'유어딜\'}`')
-    const d = readCode('src/pages/GroupBuyDetailPage.tsx')
-    expect(d).toContain('${detail.name} 공동구매 - ${detail.restaurant_name || \'유어딜\'}')
-    // SSOT 가 그 문구를 흡수하지 않았는지 — 흡수하면 승인 없이 310건이 바뀔 수 있다.
-    expect(readCode('src/shared/seo/detail-title.ts')).not.toContain('공동구매')
+  // ──────────────────── ⑤ 세 종류가 한 파일에 모였다
+  it('⑤-1 이용권 제목도 SSOT 에 들어왔다 — 공동구매 라는 말은 안 쓴다', () => {
+    // 🔁 2026-10-15 재조준: 이 자리는 종전 `${name} 공동구매 - ${store}` **리터럴을 동결**했다
+    //    (결재 #35 대기 · "승인 없이 310건이 바뀌지 않게"). 대표 승인이 왔으므로 지키는 방향이
+    //    **뒤집힌다** — 리터럴로 돌아가는 것을 막는다. 제목 생성기 자체(단어·중복·꼬리)는
+    //    `pass-title-voucher-2026-10-15.test.ts` 가 보므로 여기선 **가족 수준**만 본다.
+    const ssot = readCode('src/shared/seo/detail-title.ts')
+    for (const fn of ['stayDetailTitle', 'voucherDetailTitle', 'passDetailTitle']) {
+      expect(ssot).toContain(`export function ${fn}`)
+    }
+    // 🔴 이 파일만 보는 것: SSOT **전체**에 `공동구매` 0건(실행되는 줄). 생성기 한 줄이 아니라
+    //    파일 단위라, 다음 세션이 그 말을 쓰는 **새 함수**를 더해도 잡힌다.
+    expect(ssot).not.toContain('공동구매')
   })
 
   it('⑤-2 SSOT 가 사이트 이름을 지어내지 않는다 (상수에서 받는다)', () => {

@@ -5,8 +5,11 @@
  * `src/tests/unit/detail-title-ssot-2026-10-14.test.ts`.
  *
  * 🔴 **절반이 반대 방향이다** — 이 처방은 "더 바꾸는" 쪽으로 틀리면 피해가 크다:
- *    이용권 제목 310건은 **결재 #35 대기**이고, 숙소 지역을 주소 우선으로 바꾸면 49건이
- *    `강원` → `강원특별자치도` 로 길어지며 `/region/강원` 슬러그 표기와도 어긋난다.
+ *    숙소 지역을 주소 우선으로 바꾸면 49건이 `강원` → `강원특별자치도` 로 길어지며
+ *    `/region/강원` 슬러그 표기와도 어긋난다.
+ *    🔁 2026-10-15: 이용권 제목 동결(결재 #35)은 **승인으로 해제**됐다 — 그 주입은
+ *    "공동구매 라는 말이 SSOT 에 다시 들어온다" 로 재조준했고, 생성기 규칙은
+ *    `scripts/mutations/pass-title-voucher-2026-10-15.mjs` 가 본다.
  *
  * 🧭 이름에 `상세 제목` 을 공유한다 — 러너의 `--only` 는 정규식이 아니라 **부분일치**다.
  */
@@ -105,15 +108,17 @@ export default [
     why: '이게 수리 전 라이브 상태다 — ~135건이 `교환권 교환권` 으로 브라우저 탭·공유 카드에 뜬다.',
   },
   {
-    name: '🏷️ 상세 제목 — 반대 방향: SSOT 가 이용권 문구를 흡수한다 (결재 #35)',
+    name: '🏷️ 상세 제목 — SSOT 에 공동구매 를 쓰는 함수가 다시 생긴다',
     file: SSOT,
     find: "export function voucherDetailTitle(",
-    replace: "export function passDetailTitle(name: unknown, store: unknown): string {\n  return `${String(name ?? '').trim()} 공동구매 - ${String(store ?? '').trim() || CONSUMER_SITE_NAME}`\n}\nexport function voucherDetailTitle(",
+    replace: "export function groupBuyDetailTitle(name: unknown, store: unknown): string {\n  return `${String(name ?? '').trim()} 공동구매 - ${String(store ?? '').trim() || CONSUMER_SITE_NAME}`\n}\nexport function voucherDetailTitle(",
     test: TEST,
     why:
-      '`/pass/:id` 제목 310건은 **결재 #35 대기**다(`공동구매` 라는 말 · 꼬리 가게명). SSOT 가 그 ' +
-      '문구를 품으면 다음 세션이 "여기 다 모여 있으니" 하고 승인 없이 바꾸게 된다 — 범위 밖임을 ' +
-      '시험 ⑤-1 이 고정한다.',
+      '🔁 2026-10-15 재조준 — 종전 이 주입은 **결재 #35 대기**(이용권 제목 동결)를 지키려고 ' +
+      '`passDetailTitle` 을 심었다. 승인이 왔으므로 그 함수는 이제 정상이고, 지켜야 하는 것은 ' +
+      '**그 말이 다시 들어오는 것**이다: 이 상품은 모여서 사는 게 아니다(2026-05-30 즉시판매 단일가). ' +
+      '시험 ⑤-1 이 생성기 한 줄이 아니라 **SSOT 파일 전체**를 보는 이유가 이 주입이다 — ' +
+      '다음 세션이 이름만 다른 함수로 그 말을 되살리면 310건 제목이 조용히 되돌아간다.',
   },
   {
     name: '🏷️ 상세 제목 — 사이트 이름을 리터럴로 박는다',

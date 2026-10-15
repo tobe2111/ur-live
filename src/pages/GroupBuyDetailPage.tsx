@@ -8,6 +8,8 @@ import SellerCard from './group-buy/SellerCard'
 import StoreIntro, { hasStoreIntro } from './group-buy/StoreIntro'
 import PassHeadCard from './group-buy/PassHeadCard'
 import { PASS_CARD, PASS_PAGE_BG } from '@/shared/pass-head'
+// 🏷️ 2026-10-15 (대표 승인): 제목은 서버와 **같은 SSOT** — 두 벌이면 Googlebot(JS 렌더)과 Yeti(서버 HTML)가 다른 제목을 본다.
+import { passDetailTitle } from '@/shared/seo/detail-title'
 import { DEFAULT_QTY_CAP } from '@/shared/purchase-cap-default'
 import DetailTitleHeader from './group-buy/DetailTitleHeader'
 import DetailBreadcrumb, { voucherCrumbs } from '@/components/deal/DetailBreadcrumb'
@@ -512,11 +514,11 @@ export default function GroupBuyDetailPage() {
     <div className={`gbd ${PASS_PAGE_BG}`} style={{ color: 'var(--gbd-ink)', minHeight: '100dvh' }}>{/* 🎟️ 10-11 D안: 모바일 회색 바탕 위 흰 카드 */}
       {/* 🛡️ 2026-05-15: SEO 풀 적용 — JSON-LD Product/Offer schema + 동적 OG image */}
       <SEO
-        title={`${detail.name} 공동구매 - ${detail.restaurant_name || '유어딜'}`}
+        title={passDetailTitle(detail.name, detail.restaurant_name)}
         description={
           displayDiscountPct > 0
-            ? `🎉 ${displayDiscountPct}% 할인! ${detail.restaurant_name || ''} ${detail.name} 공동구매 — ${detail.group_buy_current}명 함께 구매 중, ${formatNumber(unitPrice)}원`
-            : `${detail.restaurant_name || ''} ${detail.name} 공동구매 — ${detail.group_buy_current}명 함께 구매 중, ${formatNumber(detail.price)}원`
+            ? `🎉 ${displayDiscountPct}% 할인! ${detail.restaurant_name || ''} ${detail.name} 이용권 — ${detail.group_buy_current}명 함께 구매 중, ${formatNumber(unitPrice)}원`
+            : `${detail.restaurant_name || ''} ${detail.name} 이용권 — ${detail.group_buy_current}명 함께 구매 중, ${formatNumber(detail.price)}원`
         }
         url={`/pass/${productId}`}
         image={detail.image_url || `https://urdeal.kr/api/og/group-buy/${productId}.png`}
@@ -525,7 +527,7 @@ export default function GroupBuyDetailPage() {
           '@context': 'https://schema.org',
           '@type': 'Product',
           name: detail.name,
-          description: detail.description || `${detail.restaurant_name || ''} ${detail.name} 공동구매`,
+          description: detail.description || `${detail.restaurant_name || ''} ${detail.name} 이용권`,
           image: detail.image_url ? [detail.image_url] : undefined,
           brand: detail.restaurant_name ? { '@type': 'Brand', name: detail.restaurant_name } : undefined,
           offers: {
@@ -570,7 +572,7 @@ export default function GroupBuyDetailPage() {
       <DetailFloatingHeader
         productId={detail.id}
         title={detail.name}
-        shareDescription={`${detail.restaurant_name ? detail.restaurant_name + ' · ' : ''}${detail.group_buy_current}명 함께 구매 중 · ${displayDiscountPct > 0 ? `${displayDiscountPct}% 할인` : '공동구매 특가'}${myUserId ? ' · 친구 초대 시 양쪽 0.5% 보너스 (첫 1회)' : ''}`}
+        shareDescription={`${detail.restaurant_name ? detail.restaurant_name + ' · ' : ''}${detail.group_buy_current}명 함께 구매 중 · ${displayDiscountPct > 0 ? `${displayDiscountPct}% 할인` : '이용권 특가'}${myUserId ? ' · 친구 초대 시 양쪽 0.5% 보너스 (첫 1회)' : ''}`}
         shareImageUrl={passShareCardUrl(productId, undefined, detail.image_url)}
         shareLink={shareLink}
         myUserId={myUserId}
