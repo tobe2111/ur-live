@@ -145,6 +145,30 @@ export interface SectionRuleQuery {
    *   ⚠️ 수동 섹션에는 안 닿는다(이 함수는 규칙 섹션만 푼다) — 어드민이 직접 고른 것이 이긴다.
    */
   near?: NearPoint | null
+  /**
+   * ⚡ 2026-10-15 (대표 *"첫 접속 시 2~3배 느려 · 이런 이용권은 어떠세요? 도 너무 늦게 떠"*):
+   *   **위 섹션들 몫만큼 더 받는다.** 라우트가 규칙 섹션을 **동시에** 묻기 위해서다 — 종전엔 섹션마다
+   *   "위에서 쓴 상품"이 정해진 뒤에야 다음 질의를 보냈다(직렬). D1 이 미국 동부(ENAM)라 한국 콜로에서
+   *   질의 하나가 왕복 ~170ms 이고, 그 직렬 사슬이 홈 HTML 의 첫 바이트를 그만큼 붙잡았다.
+   *   여기서 `limit + overfetch` 를 받아 두면 라우트가 위 섹션이 가져간 것을 빼고 앞에서 `limit` 개를
+   *   자른다 — 위 섹션들이 가져갈 수 있는 수가 최대 `overfetch` 라서 **직렬과 같은 결과**다
+   *   (정렬이 결정적이어야 성립하므로 맨 끝에 `p.id DESC` 동률 깨기를 둔다).
+   */
+  overfetch?: number
+  /** 인기 가중치 — 라우트가 한 번 읽어 여러 섹션에 나눠 준다(섹션마다 같은 행을 묻지 않게). */
+  weights?: Promise<{ sold: number; review: number; view: number }>
+}
+
+/** 동시 질의 결과에서 이미 쓴 상품을 빼고 앞에서 `limit` 개 — 직렬로 물었을 때와 같은 목록. */
+export function takeUnclaimed<T extends { id?: unknown }>(rows: readonly T[], claimed: ReadonlySet<number>, limit: number): T[] {
+  const out: T[] = []
+  for (const r of rows) {
+    if (out.length >= limit) break
+    const id = r.id
+    if (typeof id === 'number' && claimed.has(id)) continue
+    out.push(r)
+  }
+  return out
 }
 
 /**
@@ -186,6 +210,8 @@ export async function resolveSectionProducts(
   if (!rule) return []
 
   const limit = clampSectionLimit(q.limit)
+  // 정수·0~60 으로만 — SQL 에 인라인되는 값이다.
+  const overfetch = Number.isFinite(q.overfetch) ? Math.min(60, Math.max(0, Math.floor(q.overfetch as number))) : 0
 
   // 카테고리 지정은 화이트리스트 안에서만 — 아니면 전체 이용권으로 폴백(빈 줄보다 낫다).
   const wanted = (q.sourceValue || '').trim()
@@ -215,7 +241,7 @@ export async function resolveSectionProducts(
     let orderSql = rule.order
     const binds: (string | number)[] = [...cats]
     if (source === 'popular') {
-      const w = await resolvePopularWeights(env.DB)
+      const w = await (q.weights ?? resolvePopularWeights(env.DB))
       joinSql = `CROSS JOIN (
         SELECT MAX(COALESCE(p2.sold_count,0)) ms, MAX(COALESCE(p2.review_count,0)) mr, MAX(COALESCE(p2.view_count,0)) mv
         FROM products p2 WHERE ${await conds('p2')}
@@ -236,8 +262,8 @@ export async function resolveSectionProducts(
       FROM products p
       ${joinSql}
       WHERE ${whereMain}
-      ORDER BY ${head || `${demoFlag}, `}${orderSql}
-      LIMIT ${limit}
+      ORDER BY ${head || `${demoFlag}, `}${orderSql}, p.id DESC
+      LIMIT ${limit + overfetch}
     `).bind(...binds).all<Record<string, unknown>>()
     return rows.results ?? []
   } catch {

@@ -73,10 +73,19 @@ async function readSeededVersion(DB: D1Database): Promise<number> {
  * 버전이 올랐을 때만 실행. **제목이 같은 섹션이 이미 있으면 건너뛴다**(대표 편집 보존).
  * 실패는 통째로 삼킨다 — 시드가 홈 조회를 깨뜨리면 안 된다.
  */
+/**
+ * ⚡ 2026-10-15 (대표 *"첫 접속 시 2~3배 느려 · 이런 이용권은 어떠세요? 도 너무 늦게 떠"*): 버전 확인을
+ *   **isolate 당 한 번만** 한다. 종전엔 섹션 캐시가 빌 때마다 `platform_settings` 를 한 번 더 물었고,
+ *   D1 이 미국 동부(ENAM)라 한국 콜로에서 그 한 번이 왕복 ~170ms 를 HTML 앞에 붙였다.
+ *   버전은 배포 때만 오르므로(상수) 한 isolate 안에서 "이미 됐다" 는 바뀌지 않는다.
+ */
+const _seedConfirmed = new WeakSet<D1Database>()
+
 export async function maybeSeedHomeSections(env: Env): Promise<void> {
   const DB = env.DB
+  if (_seedConfirmed.has(DB)) return
   try {
-    if (await readSeededVersion(DB) >= SECTION_SEED_VERSION) return
+    if (await readSeededVersion(DB) >= SECTION_SEED_VERSION) { _seedConfirmed.add(DB); return }
 
     const { results } = await DB.prepare('SELECT title FROM homepage_sections').all<{ title: string }>()
     const existing = new Set((results ?? []).map(r => String(r.title)))
@@ -103,6 +112,7 @@ export async function maybeSeedHomeSections(env: Env): Promise<void> {
       `INSERT INTO platform_settings (key, value, updated_at) VALUES (?, ?, datetime('now'))
        ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`
     ).bind(SETTING_KEY, String(SECTION_SEED_VERSION)).run()
+    _seedConfirmed.add(DB)
   } catch {
     /* 시드 실패가 홈을 깨뜨리지 않는다 — 다음 요청에서 다시 시도된다. */
   }
