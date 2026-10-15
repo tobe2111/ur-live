@@ -106,3 +106,10 @@ PC 헤드리스에선 페이지가 짧아 두 신호가 로드 즉시 같이 와
 - 🩸 첫 교체(줄바꿈 없음)를 라이브에서 재 보니 폭이 끊어 `부산 / 합리적으로` · `아껴서 / 맛있게` 로 잘렸다. 홈 띠 제목(`STRIP_CLS.title`)에 `whitespace-pre-line` 이 **없어서** 어드민 Enter 가 공백이 되던 것 — 교환권 배너는 10-14 에 같은 처방을 받았고 홈 띠만 빠져 있었다. `whitespace-pre-line [word-break:keep-all]` 추가(SSR 첫 화면도 같은 SSOT).
 - 가드 `home-strip-title-break-2026-10-15.test.ts` + 주입 1건 빨간불 확인.
 - 다음 첫 액션: 배포 후 iPhone 13 으로 홈 3·4·5번째 띠가 쉼표 뒤에서 두 줄로 끊기는지(E4).
+
+## 2026-10-15 — 어드민 배너 제목에서 줄 띄어쓰기
+대표 *"어드민에서 배너의 글 작성할 때 줄 띄어쓰기도 설정할 수 있게"*. 제목 칸이 한 줄 `<input>` 이라 Enter 를 못 쳤다(그래서 지역 배너 줄바꿈을 API 로 넣었다).
+- `AdminBannersPage` 제목 → `<textarea rows={2}>` + 안내 한 줄, 목록 제목 `whitespace-pre-line`.
+- `shared/banner-title.ts` `clampTitleLines` — 배너는 두 줄(line-clamp-2)이라 세 번째 줄부터는 공백으로 이어 붙인다(글자 보존).
+- 서버(`admin-banners.routes`)는 제목을 그대로 저장 → 수정 불필요. 홈 띠·교환권 배너 둘 다 pre-line 이라 바로 반영.
+- 가드 `admin-banner-title-lines-2026-10-15.test.ts` 6건 + 주입 2건 빨간불 확인.

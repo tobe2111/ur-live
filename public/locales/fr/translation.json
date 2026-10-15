@@ -3152,7 +3152,8 @@
       "k039": "등록된 배너가 없습니다.",
       "k040": "활성",
       "k041": "비활성",
-      "k042": "비활성화"
+      "k042": "비활성화",
+      "titleLineHint": "Appuyez sur Entrée pour couper la ligne : la bannière coupe au même endroit (deux lignes max.)"
     },
     "settlement": {
       "loadingData": "Chargement des données de règlement...",
