@@ -46,6 +46,23 @@ export const ROUTES = {
   // 🎬 2026-09-21 유어쇼츠 전체 보기 — 홈 레일의 「전체 보기」·상단 네비가 여기로 온다(하드로드 진입점).
   urshorts: ['src/pages/UrShortsBrowsePage.tsx'],
 }
+
+/**
+ * 🏨 2026-10-15 (대표 *"다른 로딩 개선점도 찾아줘"* — 라이브 폭포 실측): 색인 대상 진입점인데 미리받기 목록에
+ * 없어서 화면 청크가 **엔트리가 다 돈 뒤에야** 출발했다(`/stays` 실측: 엔트리 1.4초 → StaysSearchPage 2.6초 출발).
+ * 숙소 정본(`/stays/:id`, sitemap 49건) · 블로그 · 지역 착지(sitemap 44건)도 같은 자리다.
+ *
+ * ⚠️ `ROUTES` 와 **따로** 두는 이유: `ROUTES` 는 vite.config 의 페이지별 청크 묶음(`surfaceChunkName`)에도 쓰인다.
+ *   여기에 넣었더니 묶음이 다시 짜이면서 `lz-browse-vouchers ↔ lz-common` 순환이 생겨 빌드 게이트가 멈췄다.
+ *   이 표는 **미리받기에만** 쓰고 묶음은 건드리지 않는다(지금 있는 청크를 엔트리와 병렬로 받기만 한다).
+ */
+export const PRELOAD_ONLY_ROUTES = {
+  stays: ['src/pages/StaysSearchPage.tsx'],
+  stayDetail: ['src/pages/StayDetailPage.tsx'],
+  blog: ['src/pages/BlogListPage.tsx'],
+  blogPost: ['src/pages/BlogDetailPage.tsx'],
+  region: ['src/pages/region/RegionIndexPage.tsx', 'src/pages/region/RegionPage.tsx'],
+}
 const MAX_LINKS = 10 // head 링크 스팸 방지 캡(핵심 큰 청크 우선 — closure 순서 = 페이지 청크 → 공유 청크)
 
 function emit(map, entryCssFiles = []) {
@@ -92,7 +109,7 @@ function main() {
   const entryCss = new Set(entry.css)
 
   const out = {}
-  for (const [surface, keys] of Object.entries(ROUTES)) {
+  for (const [surface, keys] of Object.entries({ ...ROUTES, ...PRELOAD_ONLY_ROUTES })) {
     // 🧱 2026-08-22: 진입점이 여러 개인 표면(home = PC/모바일, linkshop = 큐레이터/셀러)은
     //   **각 진입점의 페이지 청크를 먼저** 모은 뒤 공유 청크를 붙인다.
     //   ⚠️ 예전엔 키 순서대로 폐쇄를 이어붙여서, 첫 키의 폐쇄가 MAX_LINKS 를 채우면 **두 번째

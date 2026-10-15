@@ -4,6 +4,14 @@
 const T = 'src/tests/unit/tab-warm-2026-10-15.test.ts'
 export default [
   {
+    name: '탭미리받기 — 개발 서버에서도 돈다(vite 재최적화 리로드로 React 두 벌)',
+    file: 'src/App.tsx',
+    find: 'useEffect(() => { if (import.meta.env.DEV) return; let stop',
+    replace: 'useEffect(() => { let stop',
+    test: T,
+    why: 'render smoke 가 useState of null 로 빨간불이 된다(2026-10-15).',
+  },
+  {
     name: '탭미리받기 — App 이 부르지 않는다(탭을 처음 누를 때마다 로더가 다시 뜬다)',
     file: 'src/App.tsx',
     find: 'if (!off) stop = m.startTabWarm(location.pathname)',

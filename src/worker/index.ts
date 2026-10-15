@@ -718,8 +718,8 @@ app.use('*', async (c, next) => {
       : /^\/(u|profile|s)(\/|$)/.test(url.pathname) ? 'linkshop'
       : url.pathname === '/vouchers' ? 'vouchers'
       : url.pathname === '/browse' ? 'browse' : url.pathname === '/map' ? 'map'
-      : url.pathname === '/urshorts' ? 'urshorts'
-      : null;
+      : url.pathname === '/urshorts' ? 'urshorts' : url.pathname === '/stays' ? 'stays' : /^\/stays\/\d+\/?$/.test(url.pathname) ? 'stayDetail'
+      : url.pathname === '/blog' ? 'blog' : url.pathname.startsWith('/blog/') ? 'blogPost' : /^\/region(\/|$)/.test(url.pathname) ? 'region' : null; // 🏨 2026-10-15 색인 진입점 추가(generate-route-chunk-map ROUTES 와 1:1)
     const routeChunks = chunkSurface ? ROUTE_CHUNK_MAP[chunkSurface] : undefined;
     const cssFirst = cssFirstApplies(url.pathname, c.req.header('user-agent') || ''); appendEdgeHeaders(c.res.headers, ENTRY_CSS, (c.req.raw as { cf?: { colo?: string } }).cf?.colo); let rb = applyCssFirstBoot(new HTMLRewriter(), nonce, cssFirst) // 🚦 2026-10-12 [UNLOCK_LOADING] CSS 먼저 → 스크립트(utils/css-first-boot.ts)
       .on('script', {

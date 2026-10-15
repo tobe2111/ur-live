@@ -36,6 +36,7 @@
 
 import { shouldRenderMobileFirstScreen } from '../../shared/seo/crawler-ua'
 import { CRITICAL_CSS } from '../generated/critical-css'
+import { UDAL_LOADER_SRC } from '../../shared/udal-loader'
 
 /**
  * 어디에 거나 — **서버가 첫 화면을 그리는 표면만**(폰 UA). 거기선 스크립트 없이도 내용이 보이므로
@@ -113,6 +114,11 @@ export function applyCssFirstBoot(rw: HTMLRewriter, nonce: string, on: boolean, 
   }
   return rw
     .on('head', { element(el) { el.prepend(head, { html: true }) } })
+    // 🦦 2026-10-15 (대표 *"로딩페이지가 있어서 더 로딩이 걸리는건 아닌지"* → 승인 "빼기"): 서버가 첫 화면을 그리는
+    //   표면에선 유달이 로더가 첫 화면이 아니다(내용 **아래**에만 있다). 그런데 index.html 의 유달이 preload 가
+    //   최우선으로 받아 첫 화면 CSS 와 회선을 나눠 썼다 — 라이브 느린 4G 8회 교차: 홈 첫 그림 1,104 → 1,040ms.
+    //   그림 자체는 로더 `<img>` 가 보통 우선순위로 그대로 받는다(로더가 첫 화면인 표면은 이 함수가 안 걸려 preload 유지).
+    .on(`link[rel="preload"][href="${UDAL_LOADER_SRC}"]`, { element(el) { el.remove() } })
     .on('link[rel="modulepreload"]', { element(el) { el.setAttribute('rel', DEFERRED_PRELOAD_REL) } })
     .on('script[type="module"]', {
       element(el) {

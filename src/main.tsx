@@ -161,7 +161,12 @@ const runEnvValidation = () => import('@/shared/config/env-validator').then(m =>
     console.error('[main] env validation failed:', err)
   }
 }).catch(swallow('main:env-validator-load'))
-if (typeof window === 'undefined' || document.readyState === 'complete') runEnvValidation()
+// 🎲 2026-10-15 (대표 *"다른 로딩 개선점도 찾아줘"* — /stays 폭포 실측): SPA 에선 `load` 직후가 곧 화면 데이터·사진을
+//   받는 순간이라, 미뤄도 zod 15KB 가 그 자리에서 회선을 나눠 썼다. 검사 대상은 **빌드 때 정해지는 값**이라 모든
+//   방문자에게 같다 — 운영에선 1% 표본이면 설정 누락을 충분히 잡는다(개발 환경은 매번).
+const envSampled = import.meta.env.DEV || Math.random() < 0.01
+if (!envSampled) { /* 표본 밖 — 받지 않는다 */ }
+else if (typeof window === 'undefined' || document.readyState === 'complete') runEnvValidation()
 else {
   let envRan = false
   const once = () => { if (!envRan) { envRan = true; runEnvValidation() } }
