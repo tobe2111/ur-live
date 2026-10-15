@@ -107,3 +107,12 @@ export async function recordAcquisitionConversion(DB: D1Database, rawSrc: unknow
     await DB.prepare('INSERT INTO acquisition_conversions (src, kind) VALUES (?, ?)').bind(src, kind).run()
   } catch { /* fail-soft */ }
 }
+
+/**
+ * env 를 받는 판 — **메인 D1** 에 쓴다는 결정을 이 한 곳에 둔다. 유어애즈 리드 DB 를 함께 쓰는 라우트
+ * (`influencer-apply.routes`)가 `env.DB` 를 직접 만지지 않게 하려는 것이다(`ads-leads-db.test` R1 —
+ * 리드 테이블을 만지는 파일에서 맨 `env.DB` 는 "리드 DB 를 잘못 고른 것" 과 구분이 안 된다).
+ */
+export async function recordAcquisitionConversionMain(env: { DB: D1Database }, rawSrc: unknown, kind: ConversionKind): Promise<void> {
+  await recordAcquisitionConversion(env.DB, rawSrc, kind)
+}
