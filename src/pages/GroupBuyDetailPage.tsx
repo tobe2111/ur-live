@@ -147,11 +147,11 @@ export default function GroupBuyDetailPage() {
   useEffect(() => {
     import('@/lib/seller-tracking').then(m => m.captureTrackingFromUrl())
   }, [])
-  // 🛡️ 2026-05-15: 인플루언서 link 진입 (?ref=) — 단독 랜딩 모드
-  const refUserId = searchParams.get('ref')
   // 🧭 2026-06-10 (유어샵 적립): 핀 리다이렉트 ?aff=(유저 큐레이터) — 인플 ?ref= 와 별도 레일
   // 🧭 2026-07-11 (감사 §R2): ?ref=(인플 share_url) 도 커미션 레일에 저장 — 기존엔 랜딩 배너
-  //   플래그(refUserId)로만 쓰고 미저장 → share_url 진입 구매가 무적립. aff 우선(명시적 공구 파라미터).
+  //   플래그로만 쓰고 미저장 → share_url 진입 구매가 무적립. aff 우선(명시적 공구 파라미터).
+  //   ⚠️ 그 배너는 2026-10-15 에 지웠다(아래 제거 기록 참조). **이 effect 는 배너와 무관하다** —
+  //   저장이 사라지면 소개 귀속이 통째로 깨지므로 배너를 되살리든 말든 건드리지 말 것.
   useEffect(() => { storeAffiliateRef(searchParams.get('aff') || searchParams.get('ref')) }, [searchParams])
 
   // 🛡️ 2026-06-11 (플로우 감사 갭#5): 토스 실패 복귀(?fail=1) 무안내였음 — failUrl 만 만들고
@@ -171,7 +171,6 @@ export default function GroupBuyDetailPage() {
     } catch { /* */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-  const isInfluencerLanding = !!refUserId
   const qc = useQueryClient()
   // 🧭 2026-06-22 (전수조사): 첫 paint 시드 — 홈 카드 prefetch(RQ) / SSR inject / localCache 를 즉시 소비.
   //   시드가 있으면 skeleton 을 건너뛰고 바로 content (axios fetch 는 freshness 보정으로 background 수행).
@@ -400,7 +399,8 @@ export default function GroupBuyDetailPage() {
       try {
         // 🛡️ 2026-06-11 (플로우 감사 갭#3/#3b): 서버가 이미 지원하는 안전장치 2개를 드디어 전송 —
         //   idempotency_key(이중탭/재시도 중복발급·이중차감 영구 차단, VoucherDetailPage:115 동일 패턴)
-        //   + ref(?ref= 배너가 약속하는 양쪽 0.5% 보너스의 실제 지급 경로 — 미전송이면 무적립이었음).
+        //   + ref(소개 귀속 — 미전송이면 무적립이었음. 2026-10-15 에 배너는 지웠지만 이 전송은 남는다:
+        //     살아 있는 레일은 매장이 제안한 딜 소개비이고 그건 이 `ref` 로만 귀속된다).
         const { getPurchaseRef } = await import('@/lib/seller-tracking') // 🔗 마지막에 연 소개 링크(24시간)
         const ref = getPurchaseRef() || undefined
         const idempotency_key = `gb_${productId}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
@@ -671,16 +671,13 @@ export default function GroupBuyDetailPage() {
             />
           </span>
         </nav>
-        {/* 추천 진입 배너 (?ref=) — 어트리뷰션 유지 */}
-        {isInfluencerLanding && (
-          <div style={{ margin: '14px 18px 0', borderRadius: 14, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10, background: 'var(--gbd-ink)', color: 'var(--gbd-card)' }}>
-            <Sparkles style={{ width: 20, height: 20, flex: '0 0 auto' }} />
-            <div style={{ minWidth: 0 }}>
-              <p style={{ fontSize: 11.5, fontWeight: 700, opacity: .9, margin: 0 }}>친구 추천 공구</p>
-              <p style={{ fontSize: 13.5, fontWeight: 800, margin: '2px 0 0' }}>참여 시 양쪽 0.5% 보너스 딜</p>
-            </div>
-          </div>
-        )}
+        {/* 🗑️ 2026-10-15 (대표 결재 "0.5% 레퍼럴은 아예 없어"): `?ref=` 진입 배너 제거.
+            그 배너는 "참여 시 양쪽 0.5% 보너스 딜" 을 약속했는데 라이브는 그 반대였다 —
+            `user_referral_bonus_pct` 0 · `influencer_commission_pct` 0 · `invite_reward_enabled` 행 부재,
+            그리고 원장 `point_transactions.type='referral_bonus'` 가 **0행**(한 번도 지급된 적 없음).
+            🔒 소개 귀속은 안 깨진다 — `?ref=` 저장은 아래 `storeAffiliateRef` effect 가 직접 하고,
+            결제 때 `getPurchaseRef()` 로 실려 간다(살아 있는 레일 = 매장이 제안한 딜 소개비).
+            되살리려면 배너를 새로 쓸 것: 비율·수령자가 2026-08 이후 정책과 다르다. */}
 
         {/* 🎟️ 2026-10-11 (대표 확정 "D안"): 모바일 제목·가격·수량 → 사진 위로 겹치는 머리 카드 하나.
             주소·"결제 즉시 교환권 발급"·수량 카드를 걷었다(수량은 구매 창으로 — `DealBottomBar`).
