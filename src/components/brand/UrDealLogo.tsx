@@ -7,7 +7,7 @@
  *   - 색: 라이트=네이비 #16181C / 다크=웜화이트 #F8F7FC, 점은 항상 로즈 #1C69EF
  *   - 원본 규정: docs/design/brand-assets/ (핸드오프 납품본 아카이브)
  *
- * Poppins 는 index.html 에서 urdeal 6글자 서브셋(&text=)만 로드 — 미로딩/폴백 시 Pretendard 800.
+ * Poppins 는 index.html 에서 urdeal 6글자 서브셋(&text=)만 로드 — 미로딩/폴백 시 기기 기본 글꼴 800.
  */
 interface UrDealLogoProps {
   size?: number
@@ -30,7 +30,7 @@ export default function UrDealLogo({ size = 20, forceDark = false, forceLight = 
       aria-label="urdeal — 유어딜"
       className={`inline-flex items-baseline select-none ${textClass} ${className}`}
       style={{
-        fontFamily: "'Poppins', 'Pretendard Variable', system-ui, sans-serif",
+        fontFamily: "'Poppins', system-ui, sans-serif",
         fontWeight: 800,
         fontSize: size,
         letterSpacing: '-0.035em',

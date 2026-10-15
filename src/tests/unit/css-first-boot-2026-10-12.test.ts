@@ -12,7 +12,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { readFileSync } from 'node:fs'
 import {
-  cssFirstApplies, routePreloadRel, cssFirstBootScript, earlyHintsLink, FONT_CSS_HREF, appendEdgeHeaders, DEFERRED_PRELOAD_REL, DEFERRED_ENTRY_TYPE, CSS_FIRST_BACKSTOP_MS,
+  cssFirstApplies, routePreloadRel, cssFirstBootScript, earlyHintsLink, appendEdgeHeaders, DEFERRED_PRELOAD_REL, DEFERRED_ENTRY_TYPE, CSS_FIRST_BACKSTOP_MS,
 } from '@/worker/utils/css-first-boot'
 
 function stripComments(s: string) {
@@ -132,7 +132,9 @@ describe('④ 워커 배선', () => {
     expect(routePreloadRel(false)).toBe('modulepreload')
   })
   it('부팅 스크립트는 head 맨 앞(prepend) — 스타일시트 뒤면 그 CSS 를 기다리느라 파싱을 막는다', () => {
-    expect(mod).toMatch(/el\.prepend\(cssFirstBootScript\(nonce\)/)
+    // 🎨 2026-10-14: 첫 화면 CSS <style> 과 묶어 한 번에 prepend — 부팅 스크립트가 그 묶음의 **맨 앞**이다.
+    expect(mod).toMatch(/const head = cssFirstBootScript\(nonce, crit\) \+/)
+    expect(mod).toMatch(/el\.prepend\(head, \{ html: true \}\)/)
   })
   it('부팅 스크립트에 nonce 가 붙는다(CSP strict-dynamic)', () => {
     expect(cssFirstBootScript('ABC')).toMatch(/^<script nonce="ABC">/)
@@ -162,33 +164,31 @@ describe('⑥ 첫 방문자가 보지 않는 셸 부품은 조건이 맞을 때�
 })
 
 describe('⑦ Link 헤더(Early Hints 원천) — 렌더 차단 CSS 만', () => {
-  it('엔트리 CSS 와 폰트 CSS 를 preload as=style 로 싣는다', () => {
+  it('엔트리 CSS 를 preload as=style 로 싣는다 (2026-10-15: 폰트 CSS 는 손님 화면이 기기 글꼴로 바뀌어 없다)', () => {
     expect(earlyHintsLink(['/assets/index-AB.css'])).toBe(
-      '</assets/index-AB.css>; rel=preload; as=style; crossorigin, </static/fonts/pretendard-dynamic-subset-v1.3.9.css>; rel=preload; as=style',
+      '</assets/index-AB.css>; rel=preload; as=style; crossorigin',
     )
   })
-  it('엔트리 CSS preload 의 crossorigin 은 빌드된 태그와 같다 — 다르면 같은 CSS 를 두 번 받는다(2026-10-15)', () => {
-    // Vite 가 엔트리 CSS 를 crossorigin 으로 낸다는 사실은 빌드 뒤 check-critical-chunks 가 dist/client/index.html 로 대조한다.
-    expect(earlyHintsLink(['/assets/index-AB.css'])).toMatch(/index-AB\.css>; rel=preload; as=style; crossorigin/)
-    // 폰트 CSS 태그(index.html)에는 crossorigin 이 없다 → preload 에도 없어야 한다.
-    const tag = readFileSync('index.html', 'utf-8').match(/<link\s+id="ur-font-css"[\s\S]*?\/>/)?.[0] ?? ''
-    expect(tag).toContain(FONT_CSS_HREF)
-    expect(tag).not.toMatch(/crossorigin/)
-    expect(earlyHintsLink([])).not.toMatch(/crossorigin/)
-    const v = readFileSync('scripts/check-critical-chunks.mjs', 'utf-8')
-    expect(v).toMatch(/ENTRY_CSS_CROSSORIGIN/)
+  it('미리 받기의 crossorigin 이 실제 <link> 와 같다 — 다르면 같은 CSS 를 두 번 받는다 (2026-10-14 라이브 실측)', () => {
+    const parts = earlyHintsLink(['/assets/index-AB.css']).split(', ')
+    // 엔트리 CSS 태그: Vite 가 crossorigin 을 단다(빌드 산출물 실측 `<link rel="stylesheet" crossorigin href="/assets/index-*.css">`)
+    //   → 미리 받기도 crossorigin. Vite 설정이 이 속성을 끄는 날엔 이 단언과 함께 바꿀 것.
+    expect(parts.find((x) => x.includes('/assets/index-AB.css'))).toMatch(/; crossorigin$/)
+    const vite = readFileSync('vite.config.ts', 'utf-8')
+    expect(vite).not.toMatch(/crossorigin\s*:\s*false|modulePreload[^\n]*crossorigin/i)
   })
   it('스크립트는 싣지 않는다(CSS 와 다시 다툰다)', () => {
     expect(earlyHintsLink(['/assets/index-AB.css'])).not.toMatch(/modulepreload|\.js>/)
   })
-  it('폰트 CSS 경로가 index.html 의 실제 href 와 같다(파일명이 바뀌면 존재하지 않는 걸 미리 받는다)', () => {
-    expect(readFileSync('index.html', 'utf-8')).toContain(`href="${FONT_CSS_HREF}"`)
+  it('없는 폰트 CSS 를 미리 받으라고 하지 않는다 (2026-10-15 기기 글꼴 전환 — 그 시트는 지웠다)', () => {
+    expect(earlyHintsLink(['/assets/index-AB.css'])).not.toMatch(/\/static\/fonts\//)
+    expect(readFileSync('index.html', 'utf-8')).not.toMatch(/id="ur-font-css"/)
   })
   it('워커가 모든 HTML 응답에 그 헤더를 단다 · 생성기가 ENTRY_CSS 를 낸다', () => {
     const w = stripComments(readFileSync('src/worker/index.ts', 'utf-8'))
     expect(w).toMatch(/appendEdgeHeaders\(c\.res\.headers, ENTRY_CSS, \(c\.req\.raw as \{ cf\?: \{ colo\?: string \} \}\)\.cf\?\.colo\)/)
     const g = readFileSync('scripts/generate-route-chunk-map.mjs', 'utf-8')
-    expect(g).toMatch(/emit\(out, entry\.css\)/)
+    expect(g).toMatch(/emit\(out, entry\.css, bootJs\)/)
     expect(g).toMatch(/export const ENTRY_CSS/)
   })
 })

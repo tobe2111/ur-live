@@ -163,7 +163,12 @@ const runEnvValidation = () => import('@/shared/config/env-validator').then(m =>
     console.error('[main] env validation failed:', err)
   }
 }).catch(swallow('main:env-validator-load'))
-if (typeof window === 'undefined' || document.readyState === 'complete') runEnvValidation()
+// 🎲 2026-10-15 (대표 *"다른 로딩 개선점도 찾아줘"* — /stays 폭포 실측): SPA 에선 `load` 직후가 곧 화면 데이터·사진을
+//   받는 순간이라, 미뤄도 zod 15KB 가 그 자리에서 회선을 나눠 썼다. 검사 대상은 **빌드 때 정해지는 값**이라 모든
+//   방문자에게 같다 — 운영에선 1% 표본이면 설정 누락을 충분히 잡는다(개발 환경은 매번).
+const envSampled = import.meta.env.DEV || Math.random() < 0.01
+if (!envSampled) { /* 표본 밖 — 받지 않는다 */ }
+else if (typeof window === 'undefined' || document.readyState === 'complete') runEnvValidation()
 else {
   let envRan = false
   const once = () => { if (!envRan) { envRan = true; runEnvValidation() } }
@@ -201,10 +206,43 @@ if (typeof window !== 'undefined') {
   let sentryStarted = false
   const startSentry = () => { if (sentryStarted) return; sentryStarted = true; initSentryDeferred() }
   const afterPaint = () => { if (ric) ric(startSentry, { timeout: 4000 }); else setTimeout(startSentry, 2000) }
-  if (document.readyState === 'complete') afterPaint()
-  else {
-    window.addEventListener('load', afterPaint, { once: true })
-    setTimeout(startSentry, 12000)  // 백스톱: load 가 안 와도 켜진다
+  /**
+   * 📡 2026-10-15 (폰 CPU 4배 프로파일 — 홈 첫 4초에 센트리 실행 50KB · CPU 144ms): 미리 켜는 것은
+   *   **성능 표본 세션(1%, `tracesSampleRate` 와 같은 비율)뿐**이다. 나머지 99% 는 **오류가 실제로 났을 때만**
+   *   켜고 그 오류를 직접 보낸다(SDK 의 전역 핸들러는 켜진 뒤의 오류만 본다). 오류 기록 자체는 위
+   *   `installErrorTelemetry()` 가 처음부터 따로 남기므로 구멍이 없다.
+   *   ⚠️ 잃는 것: 센트리 '세션(크래시 없는 비율)' 지표 — 오류 없는 세션이 센트리에 안 잡힌다.
+   */
+  const SENTRY_PRELOAD_RATE = 0.01
+  const SENTRY_ON_ERROR_DELAY_MS = 5000
+  if (Math.random() < SENTRY_PRELOAD_RATE) {
+    if (document.readyState === 'complete') afterPaint()
+    else {
+      window.addEventListener('load', afterPaint, { once: true })
+      setTimeout(startSentry, 12000)  // 백스톱: load 가 안 와도 켜진다
+    }
+  } else {
+    // 켜지기 **전**의 오류만 직접 보낸다 — 켜진 뒤엔 SDK 의 전역 핸들러가 잡으므로 여기서 또 보내면 두 번이다.
+    const early: unknown[] = []
+    let starting = false
+    const onEarlyError = (err: unknown) => {
+      if (!err) return
+      early.push(err)
+      if (starting) return
+      starting = true
+      // 5초 뒤에 켠다 — 부팅 중 난 오류 하나 때문에 화면을 그리는 CPU 를 센트리가 나눠 쓰지 않게(지도 실측:
+      //   카카오 SDK 실패 한 건이 부팅 한가운데 SDK 실행 67KB 를 끌고 왔다). 오류 기록 자체는
+      //   installErrorTelemetry 가 이미 즉시 남겼고, 그 사이 난 오류는 `early` 에 쌓였다가 함께 간다.
+      setTimeout(() => import('./lib/sentry').then((m) => m.ensureSentry()).then((S) => {
+        window.removeEventListener('error', onErrorEvent)
+        window.removeEventListener('unhandledrejection', onRejection)
+        for (const e of early.splice(0)) S.captureException(e)
+      }).catch(swallow('main:sentry-on-error')), SENTRY_ON_ERROR_DELAY_MS)
+    }
+    const onErrorEvent = (e: Event) => onEarlyError((e as ErrorEvent).error ?? (e as ErrorEvent).message)
+    const onRejection = (e: Event) => onEarlyError((e as PromiseRejectionEvent).reason)
+    window.addEventListener('error', onErrorEvent)
+    window.addEventListener('unhandledrejection', onRejection)
   }
 }
 

@@ -39,8 +39,11 @@ function run(path: string, key = 'testkey123') {
 describe('index.html 지도 SDK 조기 출발', () => {
   it('스크립트가 index.html 에 있다(0건이면 아래 시험이 전부 헛돈다)', () => {
     expect(SCRIPT.length).toBeGreaterThan(200)
-    // <head> 맨 앞쪽 — 스타일시트보다 앞이어야 CSS 를 기다리지 않고 바로 돈다
-    expect(HTML.indexOf('__urKakaoMaps')).toBeLessThan(HTML.indexOf('rel="stylesheet"'))
+    // <head> 맨 앞쪽 — 스타일시트보다 앞이어야 CSS 를 기다리지 않고 바로 돈다.
+    //   2026-10-15: 원본 index.html 엔 stylesheet 링크가 없다(폰트 시트 제거 · 앱 CSS 는 빌드가 넣는다) —
+    //   빌드가 그 링크를 `</head>` 쪽에 넣으므로 `</head>` 보다 앞이면 된다. 있으면 그보다도 앞이어야 한다.
+    const ss = HTML.indexOf('rel="stylesheet"')
+    expect(HTML.indexOf('__urKakaoMaps')).toBeLessThan(ss === -1 ? HTML.indexOf('</head>') : ss)
   })
 
   it('① /map 에서만 출발한다', () => {

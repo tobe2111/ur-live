@@ -4,7 +4,7 @@ import { useTranslation } from '@/lib/i18n-lite'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Map as MapIcon, ChevronDown, Search, LocateFixed, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
-import { priceDisplay } from '@/shared/price-display'
+import { priceDisplay } from '@/shared/price-display'; import { detailHref } from '@/shared/product-flow'; import { usePrefetchMapDetail } from './restaurant-map/prefetch-detail'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
@@ -49,7 +49,7 @@ export type { KakaoPlace }
 
 export default function RestaurantMapPage({ home = false, mode = 'map' }: { home?: boolean; mode?: 'map' | 'list' } = {}) {
   const { t } = useTranslation()
-  const navigate = useNavigate()
+  const navigate = useNavigate(); const prefetchDetail = usePrefetchMapDetail()
   const bell = useNotificationSheet()  // 🔔 벨 → 올라오는 시트. 배선은 `NotificationSheet` 머리말.
   const [selected, setSelected] = useState<Restaurant | null>(null)
   const [region, setRegion] = useState('')
@@ -673,7 +673,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             filtered={displayList}
             selected={null}
             userLoc={userLoc}
-            onSelect={(r) => navigate(`/products/${r.id}`)}
+            onSelect={(r) => navigate(detailHref(r))} onIntent={prefetchDetail}
             fcfsMap={fcfsMap} onApplyFcfs={applyFcfs} voucherType={voucherType}
             onLoadMore={loadMore} hasMoreOnServer={!reachedEnd}
           />

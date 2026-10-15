@@ -8,9 +8,9 @@ const TEST = 'src/tests/unit/sentry-sdk-slim-2026-10-11.test.ts'
 export default [
   {
     name: '[Sentry슬림] 호출부가 다시 패키지를 통째로 불러온다',
-    file: 'src/lib/performance-monitor.ts',
-    find: "sentryPromise = import('./sentry-sdk')",
-    replace: "sentryPromise = import('@sentry/react')",
+    file: 'src/lib/sentry.ts',
+    find: "_ready = import('./sentry-sdk')",
+    replace: "_ready = import('@sentry/react')",
     test: TEST,
     why: '실측 431 KB → 129 KB 로 줄인 것이 그대로 되돌아간다.',
   },

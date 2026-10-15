@@ -210,8 +210,9 @@ export default [
   {
     name: '🎞️ PC 레일 화살표가 다시 죽는다 (group 제거)',
     file: 'src/components/home/UrShortsRail.tsx',
-    find: '      <div className="group relative">',
-    replace: '      <div className="relative">',
+    // 2026-10-14 재조준: 감싼 div 에 호버 측정(onPointerEnter)이 붙었다 — 불변식(group 클래스)은 그대로.
+    find: '      <div className="group relative" onPointerEnter={sync}>',
+    replace: '      <div className="relative" onPointerEnter={sync}>',
     test: 'src/tests/unit/urshorts-core.test.ts',
     why:
       '`group-hover:grid` 는 조상에 `group` 이 없으면 **영원히 안 걸린다.** 기본값이 `hidden` 이라 ' +

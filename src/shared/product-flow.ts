@@ -155,3 +155,18 @@ export function canonicalDetailPath(p: {
   if (isVoucherCategory(p.category)) return FLOW_CONFIG.group_buy_toss.detailPath(p.id)
   return null
 }
+
+/**
+ * 🧭 2026-10-15 (대표 *"지도에서 이용권 들어갈 때 쓸데없는 페이지들이 로딩 중에 잠깐잠깐 뜨거든?"*):
+ *   **앱 안에서 상품으로 가는 링크는 이 함수로 만든다.** 종전엔 지도 카드·목록·찜·리뷰·최근 본 상품이
+ *   전부 `/products/:id` 로 보냈고, 쇼핑 상세가 청크·데이터를 받은 **뒤에야** 종류를 알고 `/pass/:id` 로
+ *   다시 보냈다 — 로더 → 쇼핑 상세 → 로더 → 이용권 상세, 같은 상품을 두 번 받는다(에러 0).
+ *   종류를 모르는 호출부(category·deal_only 없음)는 `/products/:id` 로 남는다 — 그 화면의 정렬이 안전판이다.
+ */
+export function detailHref(p: {
+  id: string | number
+  deal_only?: number | string | null
+  category?: string | null
+}): string {
+  return canonicalDetailPath(p) ?? FLOW_CONFIG.standard_checkout.detailPath(p.id)
+}

@@ -17,15 +17,16 @@
  */
 
 /** key: D1 인스턴스, value: [판정, 만료 ms] */
+import { dbKey } from './d1-read-replica' // 세션(사본)이어도 메모는 원본 기준
 const _memo = new WeakMap<D1Database, [boolean, number]>()
 const TTL_MS = 60_000
 
 export function _resetAffiliateProgramMemo(DB: D1Database): void {
-  _memo.delete(DB)
+  _memo.delete(dbKey(DB))
 }
 
 export async function isAffiliateProgramEnabled(DB: D1Database): Promise<boolean> {
-  const hit = _memo.get(DB)
+  const hit = _memo.get(dbKey(DB))
   if (hit && hit[1] > Date.now()) return hit[0]
   let on = false
   try {
@@ -36,7 +37,7 @@ export async function isAffiliateProgramEnabled(DB: D1Database): Promise<boolean
   } catch {
     on = false                    // 못 읽으면 약속하지 않는다
   }
-  _memo.set(DB, [on, Date.now() + TTL_MS])
+  _memo.set(dbKey(DB), [on, Date.now() + TTL_MS])
   return on
 }
 

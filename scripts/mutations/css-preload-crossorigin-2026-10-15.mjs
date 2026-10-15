@@ -11,11 +11,11 @@ export default [
     why: 'Vite 태그는 crossorigin 이라 모드가 다른 preload 는 재사용되지 않는다 — 첫 화면을 막는 37KB 를 두 번 받는다.',
   },
   {
-    name: '🔁 폰트 CSS preload 에도 crossorigin 을 붙인다(이번엔 폰트가 두 번)',
+    name: '🔁 crossorigin 스위치를 끈다(태그와 어긋난다)',
     file: 'src/worker/utils/css-first-boot.ts',
-    find: "[...entry, `<${FONT_CSS_HREF}>; rel=preload; as=style`]",
-    replace: "[...entry, `<${FONT_CSS_HREF}>; rel=preload; as=style; crossorigin`]",
+    find: 'export const ENTRY_CSS_CROSSORIGIN = true',
+    replace: 'export const ENTRY_CSS_CROSSORIGIN = false',
     test: TEST,
-    why: '폰트 CSS 태그엔 crossorigin 이 없다 — 반대 방향 불일치.',
+    why: 'Vite 태그는 crossorigin 인데 스위치를 끄면 미리 받은 CSS 가 버려진다(폰트 쪽 반대 방향 주입은 2026-10-15 기기 글꼴 전환으로 대상이 사라져 이것으로 재조준).',
   },
 ]

@@ -2,26 +2,19 @@
 //   PerformanceObserver 콜백 안에서만 호출되므로 첫 페인트 영향 없음.
 //   import('@sentry/react') 의 promise 를 1회 캐싱.
 type SentryModule = typeof import('./sentry-sdk')
-let sentryPromise: Promise<SentryModule> | null = null
-function getSentry(): Promise<SentryModule> {
-  if (!sentryPromise) {
-    sentryPromise = import('./sentry-sdk').catch((e) => {
-      if (import.meta.env.DEV) console.warn('[perf-monitor] Sentry lazy load failed', e)
-      throw e
-    })
-  }
-  return sentryPromise
-}
-// fire-and-forget wrapper — 각 호출이 sentry chunk 도착 후 실행.
+// 📡 2026-10-15: 이 모듈은 부팅 1초 뒤 시작되는데, 빵부스러기 하나 때문에 센트리 SDK 를 받아 실행했다
+//   (홈 실측 실행 50KB · CPU 144ms@4×). 이제 빵부스러기는 **쌓기만** 하고(`queueBreadcrumb`),
+//   실제로 보낼 메시지·예외가 생길 때만 `ensureSentry()` 가 SDK 를 받는다.
+const lib = () => import('./sentry')
 const Sentry = {
   addBreadcrumb: (b: Parameters<SentryModule['addBreadcrumb']>[0]) => {
-    getSentry().then((S) => S.addBreadcrumb(b)).catch(() => {})
+    lib().then((m) => m.queueBreadcrumb(b)).catch(() => {})
   },
   captureMessage: (msg: string, level?: any) => {
-    getSentry().then((S) => S.captureMessage(msg, level)).catch(() => {})
+    lib().then((m) => m.ensureSentry()).then((S) => S.captureMessage(msg, level)).catch(() => {})
   },
   captureException: (err: any, ctx?: any) => {
-    getSentry().then((S) => S.captureException(err, ctx)).catch(() => {})
+    lib().then((m) => m.ensureSentry()).then((S) => S.captureException(err, ctx)).catch(() => {})
   },
 }
 

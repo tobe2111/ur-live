@@ -8,6 +8,7 @@ import { nearSubtitle } from '@/shared/home-near'
 import type { HomeNear } from './home-near'
 import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
 import SectionRail from './SectionRail'
+import DealCardPlaceholder from './DealCardPlaceholder'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import {
   HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_LG_QUERY, HOME_CARD_ABOVE_FOLD,
@@ -144,21 +145,27 @@ export default function HomeSections(
    *   ⚠️ 로딩이 끝났는데 섹션이 0건이면 자리를 **남기지 않는다** — 대표 확정 "안 올리면 아예 안 보이게".
    */
   if (isLoading && visible.length === 0) {
+    // 📐 2026-10-14 — 자리는 **진짜 첫 섹션과 같은 모양**이어야 한다(제목 줄 · 카드 줄 구조 · 그 뒤 유어쇼츠 레일).
+    //   종전 자리는 레일을 빠뜨리고 카드가 ~90px 낮아서, 응답 순간 아래 피드가 415px 밀렸다(하네스 CLS 0.16).
+    //   레일은 자기 자리를 스스로 잡는다(`UrShortsRail` — 지난 방문에 영상이 0개였으면 안 잡는다).
     return (
       <>
         <section className="ur-home-panel" aria-hidden="true">
-          <div className="h-[22px] w-40 rounded bg-gray-100 dark:bg-white/[0.06] mb-1" />
-          <div className="h-[15px] w-56 rounded bg-gray-100 dark:bg-white/[0.06] mb-3" />
-          <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 ${DEAL_GRID_GAP}`}>
-            {[0, 1, 2, 3].map((i) => (
-              <div key={i}>
-                <div className="aspect-[4/3] rounded-xl bg-gray-100 dark:bg-white/[0.06]" />
-                <div className="h-[13px] w-3/4 rounded bg-gray-100 dark:bg-white/[0.06] mt-2" />
-                <div className="h-[13px] w-1/2 rounded bg-gray-100 dark:bg-white/[0.06] mt-2" />
-              </div>
-            ))}
+          <div className="mb-3">
+            <h3 className={`${rail ? 'text-[24px] font-bold tracking-[-.02em]' : 'text-[17px] font-black tracking-tight'} flex`}>
+              <span className="rounded bg-gray-100 dark:bg-white/[0.06] text-transparent select-none w-40">가</span>
+            </h3>
+            <p className="flex mt-1 text-[12px]"><span className="rounded bg-gray-100 dark:bg-white/[0.06] text-transparent select-none w-56">가</span></p>
           </div>
+          {rail
+            ? <SectionRail count={4}>{[0, 1, 2, 3].map((i) => <DealCardPlaceholder key={i} />)}</SectionRail>
+            : (
+              <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 ${DEAL_GRID_GAP}`}>
+                {[0, 1, 2, 3].map((i) => <DealCardPlaceholder key={i} />)}
+              </div>
+            )}
         </section>
+        {shortsRail}
         {midBanner}
       </>
     )

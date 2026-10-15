@@ -19,14 +19,16 @@ import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import { Search, Calendar, SlidersHorizontal, X } from 'lucide-react'
 import { useStaysSearch } from '@/hooks/queries/useStaysSearch'
+import { kstYmd } from '@/shared/stays-early'
 
 const PROPERTY_TYPE_LABELS: Record<string, string> = {
   hotel: '호텔', motel: '모텔', pension: '펜션', guesthouse: '게스트하우스',
   resort: '리조트', glamping: '글램핑', house: '주택',
 }
 
-function todayIso() { return new Date().toISOString().slice(0, 10) }
-function tomorrowIso() { return new Date(Date.now() + 86400000).toISOString().slice(0, 10) }
+// 📅 2026-10-15: 한국 시간 — 종전 toISOString()(UTC)은 한국 0~9시에 체크인을 어제로 잡았다(shared/stays-early.ts).
+function todayIso() { return kstYmd(0) }
+function tomorrowIso() { return kstYmd(1) }
 
 function buildQs(filters: Record<string, string | number>): string {
   const qs = new URLSearchParams()

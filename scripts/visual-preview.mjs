@@ -551,7 +551,7 @@ function serve() {
          *   화면 하나를 찍으려고 이 파일에 분기를 계속 얹지 않게(가입 완료·승계 코드·중개 조건이 그 경우였다).
          *   메서드는 가리지 않는다 — 찍으려는 것은 화면이지 서버 동작이 아니다.
          */
-        if (STUBS && Object.prototype.hasOwnProperty.call(STUBS, p)) return res.end(JSON.stringify(STUBS[p]))
+        // ⬇️ 스텁 파일 응답은 기록·지연을 감은 **뒤에** 돌려준다(아래 `STUBS` 줄).
         // 🔀 두 겹을 **순서대로** 감는다(동시 세션 병합 2026-10-01): 안쪽이 기록, 바깥이 지연.
         //   둘 다 `res.end` 를 감싸므로 한쪽만 남기면 다른 쪽이 조용히 사라진다.
         if (TRACE_API) {
@@ -577,6 +577,12 @@ function serve() {
           const realEnd = res.end.bind(res)
           res.end = (body) => { setTimeout(() => realEnd(body), SLOW); return res }
         }
+        /**
+         * 🩸 2026-10-14 — 이 줄이 원래 기록·지연 래퍼 **앞**에 있어서, `--stub-file` 응답만 `--slow` 를
+         *   무시하고 즉답했다(`--trace-api` 에도 안 찍혔다). 그래서 홈 편성 섹션을 늦춰 밀림을 재려던
+         *   측정이 실제로는 늦추지 않은 것이었다. 응답 순서는 그대로, 감는 순서만 바로잡는다.
+         */
+        if (STUBS && Object.prototype.hasOwnProperty.call(STUBS, p)) return res.end(JSON.stringify(STUBS[p]))
         // 큐레이터 조회는 시드와 같은 페이로드로 — 아니면 백그라운드 갱신이 오류 상태로 빠진다
         if (p.startsWith('/api/curator/') && !p.includes('/me/')) return res.end(JSON.stringify(CURATOR_SEED))
         if (args.cart) {
@@ -809,6 +815,8 @@ if (CPU) {
   CPU_CDP = await ctx.newCDPSession(page)
   await CPU_CDP.send('Performance.enable')
   await CPU_CDP.send('Emulation.setCPUThrottlingRate', { rate: CPU_RATE })
+  // 🔬 `--cpu-profile=경로.json` — 같은 실행의 CPU 프로파일(어느 함수가 시간을 먹는지). 판정에는 안 쓴다.
+  if (typeof args['cpu-profile'] === 'string') { await CPU_CDP.send('Profiler.enable'); await CPU_CDP.send('Profiler.start') }
 }
 NAV_T0 = Date.now()
 await page.goto(`http://127.0.0.1:${PORT}${ROUTE}`, { waitUntil: 'domcontentloaded', timeout: 40000 }).catch(() => {})
@@ -899,6 +907,10 @@ if (CPU) {
     exec += used; total += e.source.length
     const name = m[1].replace(/-[A-Za-z0-9_-]{8}\.js$/, '.js')
     perChunk[name] = +((perChunk[name] || 0) + used / 1024).toFixed(1)
+  }
+  if (typeof args['cpu-profile'] === 'string') {
+    const { profile } = await CPU_CDP.send('Profiler.stop')
+    fs.writeFileSync(args['cpu-profile'], JSON.stringify(profile))
   }
   const { metrics } = await CPU_CDP.send('Performance.getMetrics')
   const mv = (n) => (metrics.find((x) => x.name === n) || {}).value || 0

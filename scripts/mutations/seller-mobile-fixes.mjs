@@ -14,12 +14,14 @@ export default [
     why: '전역 클래스가 남아 바가 없는 페이지에서도 FAB 이 올라간 채 떠 있다.',
   },
   {
-    name: '📱 CSS 숫자가 바 높이 상수와 갈린다 (다시 겹친다)',
+    name: '📱 상담 FAB 이 되살아난다 (바 높이만큼 올리는 규칙 없이)',
     file: 'src/index.css',
-    find: '  body.seller-has-bottom-bar .seller-chat-fab { bottom: calc(env(safe-area-inset-bottom) + 64px + 12px); }',
-    replace: '  body.seller-has-bottom-bar .seller-chat-fab { bottom: calc(env(safe-area-inset-bottom) + 40px + 12px); }',
+    // 2026-10-14 재조준: FAB 은 2026-10-12 대시보드 삭제로 요소째 사라졌고 죽은 CSS 도 지웠다.
+    //   지키려던 것(바와 FAB 이 겹치지 않는다)은 이제 "FAB 이 없다" 로 성립한다.
+    find: '@tailwind base;',
+    replace: '@tailwind base;\n.seller-chat-fab { position: fixed; bottom: 12px; }',
     test: TEST,
-    why: '이 레포가 반복해 당한 "두 곳에 같은 숫자" — 한쪽만 바뀌면 에러 없이 조용히 겹친다.',
+    why: '바 높이만큼 올리는 규칙 없이 FAB 이 되살아나면 하단 고정 바와 다시 겹친다.',
   },
   {
     name: '📱 이용권이 0건인데도 고정 바를 그린다 (등록 버튼 둘)',

@@ -9,6 +9,8 @@ export interface RecentProduct {
   image?: string
   // 🛡️ 2026-05-19: 교환권 (KT Alpha) 구분 — 단위 표시용 (1 → '딜', 0/NULL → '원').
   deal_only?: number
+  /** 2026-10-15: 정본 상세로 바로 가기 위해(detailHref) — 옛 기록엔 없다(없으면 /products 가 정렬한다). */
+  category?: string | null
 }
 
 export interface Product {

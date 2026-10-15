@@ -9,6 +9,7 @@ import type { D1Database } from '@cloudflare/workers-types'
 import { sendTextNotice } from '../../../lib/text-notice' // 📨 알림은 카톡 알림톡 하나로(SENS — 승인 전 템플릿은 보내지 않는다)
 import { existingColumns, columnNameOf } from '../../../worker/utils/ensure-columns'
 import { recordLedger } from '../../../worker/utils/ledger'
+import { dbKey } from '../../../worker/utils/d1-read-replica' // 세션(사본)이어도 메모는 원본 기준
 import { calcInfluencerCommissionPct, type CommissionRates } from './commission-rates'
 // 💸 매장 수수료율(채널 > override > tier > default)은 `seller-commission-rate.ts` 로 분리했다
 //   (2026-08-27 — 채널 요율이 들어오며 설명이 필요한 개념이 됐다). 호출부 호환을 위해 재수출한다.
@@ -37,8 +38,8 @@ export { getMealVoucherCommissionRate, getSellerCommissionRate } from './seller-
  */
 let _ensuredTables = false
 export async function ensureTables(DB: D1Database): Promise<void> {
-  if (_done_ensureTables.has(DB)) return
-  _done_ensureTables.add(DB)
+  if (_done_ensureTables.has(dbKey(DB))) return
+  _done_ensureTables.add(dbKey(DB))
   if (_ensuredTables) return
   const columns = [
     'restaurant_name TEXT', 'restaurant_address TEXT', 'restaurant_phone TEXT',

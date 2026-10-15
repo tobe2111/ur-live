@@ -167,7 +167,10 @@ describe('R5 — 인프라가 새 주소를 안다', () => {
   })
 
   it('🔴 큐레이터 핀 redirect 가 정본으로 보낸다', () => {
-    expect(src('src/worker/routes/curator.routes.ts')).toContain('`/pass/${productId}?aff=')
+    // 2026-10-15: 교환권(deal_only=1)은 /vouchers 로 갈라졌다 — 이용권 분기는 여전히 정본 /pass.
+    const c = src('src/worker/routes/curator.routes.ts')
+    expect(c).toContain("'/vouchers' : '/pass'}/${productId}?aff=")
+    expect(c).not.toMatch(/redirect\(`\/group-buy\//)
   })
 })
 

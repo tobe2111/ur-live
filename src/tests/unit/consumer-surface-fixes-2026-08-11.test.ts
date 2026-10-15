@@ -204,7 +204,8 @@ describe('⑥ 카카오맵 연결 힌트 (index.html)', () => {
   })
 
   it('기존 힌트를 지우지 않았다 (잠금표: 추가는 OK, 제거 금지)', () => {
-    for (const h of ['https://cdn.jsdelivr.net', 'https://t1.kakaocdn.net', 'https://img1.kakaocdn.net']) {
+    // 2026-10-15: cdn.jsdelivr 는 대표 승인으로 뺐다(손님 화면 본문을 기기 글꼴로 — 그 오리진을 첫 화면에서 쓰지 않는다).
+    for (const h of ['https://t1.kakaocdn.net', 'https://img1.kakaocdn.net']) {
       expect(html, `${h} preconnect 이 사라졌다`).toContain(`href="${h}"`)
     }
   })

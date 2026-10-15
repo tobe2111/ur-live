@@ -19,12 +19,13 @@
  */
 
 import { swallow } from './swallow'
+import { dbKey } from './d1-read-replica' // 세션(사본)이어도 메모는 원본 기준
 
 const _ensured = new WeakSet<object>()
 
 export async function ensureSupplyMetaTable(DB: D1Database): Promise<void> {
-  if (_ensured.has(DB)) return
-  _ensured.add(DB)
+  if (_ensured.has(dbKey(DB))) return
+  _ensured.add(dbKey(DB))
   await DB.prepare(`CREATE TABLE IF NOT EXISTS product_supply_meta (
     product_id INTEGER NOT NULL,
     key TEXT NOT NULL,

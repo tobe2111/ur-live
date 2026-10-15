@@ -167,7 +167,7 @@ function logoHtml(size: number): string {
   const dot = Math.max(2, size * 0.18)
   return (
     '<span class="inline-flex items-baseline select-none text-[#16181C] dark:text-[#F8F7FC]"' +
-    ` style="font-family:'Poppins','Pretendard Variable',system-ui,sans-serif;font-weight:800;font-size:${size}px;letter-spacing:-0.035em;line-height:1">` +
+    ` style="font-family:'Poppins',system-ui,sans-serif;font-weight:800;font-size:${size}px;letter-spacing:-0.035em;line-height:1">` +
     'urdeal' +
     `<span class="bg-brand" style="display:inline-block;width:${dot}px;height:${dot}px;border-radius:50%;margin-left:${size * 0.08}px"></span>` +
     '</span>'

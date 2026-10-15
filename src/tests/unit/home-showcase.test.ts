@@ -335,7 +335,8 @@ describe('⑥ 옛 배너가 저절로 뜨지 않는다 · 자리 필터', () => 
 
   it('컬럼 ALTER 는 요청마다가 아니라 WeakSet 메모이즈 뒤에 있다 (per-request DDL 금지)', () => {
     expect(src).toMatch(/WeakSet<D1Database>/)
-    expect(src).toMatch(/_bannerColsReady\.has\(DB\)/)
+    // 🌏 2026-10-15: 키가 `dbKey(DB)` — 읽기 복제 세션은 요청마다 새 객체라 원본으로 메모한다(불변식 그대로).
+    expect(src).toMatch(/_bannerColsReady\.has\(dbKey\(DB\)\)/)
   })
 
   it('어드민 저장 경로도 같은 ensureBannerColumns 를 쓰고, 미지정을 null 로 저장한다', () => {

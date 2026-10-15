@@ -109,4 +109,10 @@ describe('♻️ SSR 직전 사본', () => {
     expect(src).toMatch(/fetchSsrPayload\(ssrTarget, origin0, c\.env, ssrWaitUntil\(c\)\)/)
     expect(src).toMatch(/fetchSsrPayload\(ssrExtra, origin0, c\.env, ssrWaitUntil\(c\)\)/)
   })
+
+  it('⏱️ 직전 사본은 24시간 보관한다(2026-10-15 대표 승인) — 1시간이면 덜 보는 상세가 늘 콜드였다', async () => {
+    const m = await import('@/worker/utils/ssr-payload')
+    expect(m.STALE_MAX_AGE_S).toBe(86400)
+  })
 })
+

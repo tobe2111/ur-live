@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom'
 import { HelmetProvider } from 'react-helmet-async'
 import { QueryProvider } from './lib/react-query'
+import { runAfterLoad } from './lib/after-load'
 import { ProtectedRoute, PublicRoute } from './components/auth/RouteGuards'
 import IosTopupGate from './components/IosTopupGate'
 import { isMarketingSurface } from './utils/domain'
@@ -132,7 +133,7 @@ const GroupBuyDetailPage = lazyPage(() => import('./pages/GroupBuyDetailPage'));
 const GroupBuyConfirmPaymentPage = lazy(() => import('./pages/GroupBuyConfirmPaymentPage'))
 // 🛡️ 2026-05-18: 숙소 공구 사용자 페이지 — PR 3/6, PR 6/6.
 const StaysSearchPage = lazyPage(() => import('./pages/StaysSearchPage')); registerBootPage('stays', StaysSearchPage.load); const SoonPage = lazy(() => import('./pages/SoonPage')) /* 🌱 오픈 예정 모아보기 */
-const StayDetailPage = lazyPage(() => import('./pages/StayDetailPage')); registerBootPage('stayDetail', StayDetailPage.load)
+const StayDetailPage = lazyPage(() => import('./pages/StayDetailPage')); registerBootPage('stayDetail', StayDetailPage.load); registerRoutePreload('stayDetail', StayDetailPage.load) // 숙소 카드·지도가 미리 받는다
 const MyStaysPage = lazy(() => import('./pages/MyStaysPage'))
 // 🛡️ 2026-06-12 (전수조사 4차 B-1): 숙소 Toss 결제 returnUrl 경량 confirm 페이지.
 const StayCheckoutReturnPage = lazy(() => import('./pages/StayCheckoutReturnPage'))
@@ -161,13 +162,13 @@ const AccountDeleteWarningPage = lazy(() => import('./pages/AccountDeleteWarning
 const AccountDeletedPage = lazy(() => import('./pages/AccountDeletedPage'))
 
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
-const BlogListPage = lazy(() => import('./pages/BlogListPage'))
+const BlogListPage = lazyPage(() => import('./pages/BlogListPage')); registerBootPage('blog', BlogListPage.load)
 const NewOpeningsPage = lazy(() => import('./pages/NewOpeningsPage')) // 🎉 우리 동네 새 가게(공공 인허가 개업 피드)
 const AreaReportPage = lazy(() => import('./pages/AreaReportPage')) // 📊 상권 리포트(아웃리치 이메일 미끼·SEO)
 // 🗺️ 2026-08-03 지역 허브 + 시/도·시군구 착지 페이지(도시별 색인). 롤백은 REGION_PAGES_ENABLED.
 const RegionIndexPage = lazyPage(() => import('./pages/region/RegionIndexPage')); registerBootPage('region', RegionIndexPage.load)
 const RegionPage = lazyPage(() => import('./pages/region/RegionPage')); registerBootPage('region', RegionPage.load)
-const BlogDetailPage = lazy(() => import('./pages/BlogDetailPage'))
+const BlogDetailPage = lazyPage(() => import('./pages/BlogDetailPage')); registerBootPage('blogPost', BlogDetailPage.load)
 const ReferralPage = lazy(() => import('./pages/ReferralPage'))
 const RestaurantMapPage = lazyPage(() => import('./pages/RestaurantMapPage')); registerRoutePreload('map', RestaurantMapPage.load); registerBootPage('map', RestaurantMapPage.load) // 🗺️ 홈이 미리 받는다(lib/route-preload)
 // 🏙️ 2026-07-04 상권관 랜딩(B2G 상권 패키지) — /local/:code (시군구/행정동 코드).
@@ -441,6 +442,13 @@ function AppContent() {
       return () => clearTimeout(t)
     }
   }, [])
+
+  // 🚪 2026-10-15 하단 탭 화면 코드를 첫 화면 뒤(load + 한가 + 3초)에 미리 받는다 — 탭을 처음 눌러도 로더가 안 뜨게(src/lib/tab-warm.ts).
+  //   그 모듈은 **따로** 받는다 — 정적으로 묶으면 대시보드(마이·어드민·에이전시) 첫 화면까지 +1.7KB 가 실렸다(surface-budgets).
+  //   그 모듈조차 첫 화면 **뒤**(load + 한가)에 받는다 — 마운트 즉시 받으면 홈 첫 화면 청크가 26 → 27 이 됐다(surface-chunk-runtime).
+  //   개발 서버에선 안 한다 — vite dev 가 그 페이지들의 의존성을 새로 찾아 페이지를 통째로 다시 불러오고, 그 사이 React 가
+  //   두 벌이 되어 `useState` of null 이 났다(2026-10-15 render smoke). 미리받기는 운영에서만 의미가 있다.
+  useEffect(() => { if (import.meta.env.DEV) return; let stop: (() => void) | undefined; let off = false; const stopLoad = runAfterLoad(() => { import('./lib/tab-warm').then((m) => { if (!off) stop = m.startTabWarm(location.pathname) }).catch(() => {}) }); return () => { off = true; stopLoad(); stop?.() } }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // 네이티브 앱 + 모바일 브라우저: 페이지에 따라 상태바 스타일 / theme-color 변경
   useEffect(() => {

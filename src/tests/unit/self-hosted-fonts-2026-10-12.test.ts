@@ -62,7 +62,6 @@ import { readRaw, stripComments } from '../helpers/source-text'
 const HTML_RAW = readRaw('index.html')
 const HTML = HTML_RAW.replace(/<!--[\s\S]*?-->/g, '')
 const HEADERS = readRaw('public/_headers')
-const PRETENDARD = 'public/static/fonts/pretendard-dynamic-subset-v1.3.9.css'
 const POPPINS = 'public/static/fonts/poppins-800-urdeal-v24.woff2'
 
 /** 인라인 스타일 블록 안의 **실행되는** CSS. HTML 주석은 위에서 이미 걷혔고, CSS 주석은 공용 스캐너가 걷는다. */
@@ -88,7 +87,9 @@ function blockingStylesheetHrefs(): string[] {
 describe('🔤 첫 페인트를 막는 CSS 는 우리 오리진만 (2026-10-12)', () => {
   it('① 렌더 블로킹 stylesheet 가 외부 오리진을 가리키지 않는다', () => {
     const hrefs = blockingStylesheetHrefs()
-    expect(hrefs.length, '`index.html` 에 stylesheet 링크가 0개 — 선택자가 낡았다(측정 0건은 통과가 아니라 실패)').toBeGreaterThan(0)
+    // 2026-10-15: 원본 index.html 의 stylesheet 링크는 0개가 정상이다(앱 CSS 는 빌드가 넣는다 · 폰트 시트는 지웠다).
+    //   선택자가 낡아 헛도는 것은 `<link` 태그 전체 수로 막는다.
+    expect([...HTML.matchAll(/<link\b[^>]*>/g)].length, '`index.html` 에 link 태그가 0개 — 선택자가 낡았다').toBeGreaterThan(5)
     const external = hrefs.filter((h) => /^(https?:)?\/\//.test(h))
     expect(
       external,
@@ -105,37 +106,25 @@ describe('🔤 첫 페인트를 막는 CSS 는 우리 오리진만 (2026-10-12)'
     }
   })
 
-  it('②-1 들여온 Pretendard 사본이 실재하고 통째로 잘리지 않았다', () => {
-    expect(existsSync(PRETENDARD), `${PRETENDARD} 가 없다 — href 가 404 가 되어 폰트 전멸`).toBe(true)
-    const css = readFileSync(PRETENDARD, 'utf8')
-    expect((css.match(/@font-face/g) || []).length, '@font-face 92개여야 한다(업스트림 v1.3.9 의 서브셋 수)').toBe(92)
-    expect((css.match(/unicode-range/g) || []).length, 'unicode-range 가 @font-face 수와 달라졌다').toBe(92)
-    expect((css.match(/src:url/g) || []).length, 'src 가 @font-face 수와 달라졌다').toBe(92)
+  /**
+   * 🔤 2026-10-15 (대표 *"쿠팡, 네이버처럼 하자"* → *"진행해"*): 손님 화면 본문은 **기기 기본 글꼴**이다.
+   *   종전 ②③(들여온 Pretendard 사본의 형태·href 일치)은 그 사본을 지우면서 이 불변식으로 바뀌었다 —
+   *   웹 본문 글꼴이 되살아나면 첫 방문자가 약 14개 woff2 · 384KB 를 다시 받고, 받은 뒤 글자가 바뀌며
+   *   문서 전체가 다시 배치된다(에러는 0).
+   */
+  it('②-1 index.html 이 본문 웹폰트 시트를 받지 않는다', () => {
+    const hrefs = blockingStylesheetHrefs().concat(
+      [...HTML.matchAll(/<link\b[^>]*>/g)].map((m) => (m[0].match(/href="([^"]+)"/) || [])[1] || ''),
+    )
+    expect(hrefs.filter((h) => /pretendard/i.test(h)), 'Pretendard 시트가 되살아났다').toEqual([])
+    expect(HTML, '폰트 지연 로더가 되살아났다').not.toMatch(/ur_font_warm|id="ur-font-css"/)
   })
 
-  it('②-2 src 에 상대경로가 0건이다 (있으면 폰트 92개가 전부 404)', () => {
-    const css = readFileSync(PRETENDARD, 'utf8')
-    const rel = (css.match(/url\(\.\.?[/\\]/g) || []).length
-    expect(
-      rel,
-      '사본의 src 가 상대경로다. 업스트림은 `url(../../../packages/…)` 이고 그 기준은 jsdelivr 의\n' +
-        '   디렉터리다 — 우리 오리진에 그대로 두면 `/packages/…` 를 찾아 404 가 난다.\n' +
-        '   들여올 때 jsdelivr 절대주소로 바꿀 것(절차는 그 파일 머리말).',
-    ).toBe(0)
-    const abs = (css.match(/url\(https:\/\/cdn\.jsdelivr\.net\/gh\/orioncactus\/pretendard@/g) || []).length
-    expect(abs, 'woff2 를 가리키는 jsdelivr 절대주소가 92건이어야 한다').toBeGreaterThanOrEqual(92)
-    expect(css, '폰트 파일은 렌더를 막지 않아야 한다 — font-display 가 swap 이어야 한다').toContain('font-display:swap')
-    expect((css.match(/@import/g) || []).length, '사본에 @import 가 생겼다 — 또 하나의 렌더 블로킹 외부 요청이 된다').toBe(0)
-  })
-
-  it('③ index.html 의 href 와 실제 파일명이 같다 (버전 한쪽만 올리는 사고)', () => {
-    const href = blockingStylesheetHrefs().find((h) => h.includes('pretendard'))
-    expect(href, 'index.html 이 Pretendard 사본을 가리키지 않는다').toBeTruthy()
-    expect(href, 'href 는 우리 오리진 절대경로여야 한다').toMatch(/^\/static\/fonts\//)
-    expect(
-      existsSync(`public${href}`),
-      `index.html 은 ${href} 를 가리키는데 그 파일이 없다 — 파일명과 href 를 같이 올릴 것`,
-    ).toBe(true)
+  it('②-2 본문 글꼴 목록에 Pretendard 가 없다 (index.html · index.css · tailwind)', () => {
+    expect(inlineCss(), '인라인 CSS 의 html 글꼴에 Pretendard').not.toMatch(/Pretendard/)
+    expect(stripComments(readRaw('src/index.css')), 'index.css 에 Pretendard').not.toMatch(/Pretendard/)
+    expect(stripComments(readRaw('tailwind.config.js')), 'tailwind sans 에 Pretendard').not.toMatch(/Pretendard/)
+    expect(existsSync('public/static/fonts/pretendard-dynamic-subset-v1.3.9.css'), '지운 사본이 되살아났다').toBe(false)
   })
 
   it('④ Poppins 워드마크는 인라인 @font-face + 자가호스팅 woff2', () => {

@@ -31,7 +31,7 @@ import { sliceCardGallery } from './card-gallery'
 import { getActiveFeedTotal } from './feed-total'
 // 🍽️ 2026-06-17 (#5 대표 메뉴): products god-table 증식 차단용 K-V 사이드테이블에서 메뉴 읽기.
 import { getSupplyMeta } from '../../../worker/utils/product-supply-meta'
-import { intParam } from '@/shared/pagination'
+import { intParam } from '@/shared/pagination'; import { publicReadDb } from '../../../worker/utils/d1-read-replica' // 한 줄: 래칫
 // 🏪 2026-09-16 (대표 — "승인이 되어야 메인에 노출"): 승인 전 매장의 이용권을 피드·지도에서 가린다.
 import { approvedSellerProductSql } from '@/shared/db/consumer-visible-product'
 import { voucherCanRedeem } from './voucher-can-redeem'; import { withGiftState, voucherHasPendingGift, noPendingGiftSql, GIFT_PENDING_USE_BLOCKED } from '../../../worker/utils/voucher-gift' // 🎁 선물 중·보낸 선물 표시
@@ -89,12 +89,12 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
   //   ?status=active|achieved|expired|all  (default: active)
   //   ?category=meal_voucher|beauty_voucher|...|all  (default: all)
   router.get('/products', async (c) => {
-    const { DB } = c.env
+    const DB = publicReadDb(c.env.DB) // 🌏 2026-10-15 [UNLOCK_LOADING] D1 읽기 복제 — 공개 읽기만 사본
     // 🛡️ 2026-06-04 (근본 perf): ensureTables 가 cold isolate 에서 ~6s 블록(_diag 측정 5972ms) →
     //   SSR self-fetch(1.5s 제한) 타임아웃 → 동네딜 SSR 미주입 → 카드 콜드 로딩(교환권/쇼핑은 빠른 이유:
     //   /api/products 는 이미 ensureTables 제거). 핫패스에서 비차단(waitUntil)으로 전환 — 테이블/컬럼은
     //   production 에 이미 존재(수개월 운영), 누락분은 쿼리 graceful fallback(_dominantColorCol 등)이 처리.
-    try { c.executionCtx?.waitUntil?.(ensureTables(DB).catch(() => {})) } catch { /* no ctx — skip */ }
+    try { c.executionCtx?.waitUntil?.(ensureTables(c.env.DB).catch(() => {})) } catch { /* no ctx — skip */ }
 
     // 🛡️ 2026-05-04 (perf): 매 요청 UPDATE 제거 (100-300ms latency 절감).
     //   마감된 공동구매 자동 만료는 scheduled-cleanup cron 에서 처리.
@@ -419,7 +419,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
   //   cell = 격자 크기(도 단위, 화이트리스트 스냅 — 인젝션 불가), bbox = 보이는 영역(검증 float 인라인).
   //   ⚠️ /products/:id 보다 먼저 등록해야 'map-clusters' 가 :id 로 매칭되지 않음.
   router.get('/products/map-clusters', async (c) => {
-    const { DB } = c.env
+    const DB = publicReadDb(c.env.DB) // 🌏 2026-10-15 [UNLOCK_LOADING] D1 읽기 복제 — 공개 읽기만 사본
     const categoryParam = c.req.query('category') || 'all'
     const validCategories = VOUCHER_CATEGORIES as readonly string[]
     const categories = categoryParam === 'all'
@@ -512,7 +512,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
 
   // ── GET /products/:id — 상세 ──
   router.get('/products/:id', async (c) => {
-    const { DB } = c.env
+    const DB = publicReadDb(c.env.DB) // 🌏 2026-10-15 [UNLOCK_LOADING] D1 읽기 복제 — 공개 읽기만 사본
     const idRaw = c.req.param('id')
     const idNum = Number(idRaw)
     if (!Number.isFinite(idNum) || idNum <= 0 || !Number.isInteger(idNum)) {
@@ -670,7 +670,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
 
   // ── GET /live-ticker — 전체 공구 최근 참여 (SNS 스타일 ticker) ──
   router.get('/live-ticker', async (c) => {
-    const { DB } = c.env
+    const DB = publicReadDb(c.env.DB) // 🌏 2026-10-15 [UNLOCK_LOADING] D1 읽기 복제 — 공개 읽기만 사본
     try {
       const { results } = await DB.prepare(`
         SELECT
@@ -703,7 +703,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
 
   // ── GET /products/:id/participants — 최근 참여자 마스킹 20명 ──
   router.get('/products/:id/participants', async (c) => {
-    const { DB } = c.env
+    const DB = publicReadDb(c.env.DB) // 🌏 2026-10-15 [UNLOCK_LOADING] D1 읽기 복제 — 공개 읽기만 사본
     const idRaw = c.req.param('id')
     const idNum = Number(idRaw)
     if (!Number.isFinite(idNum) || idNum <= 0 || !Number.isInteger(idNum)) {
