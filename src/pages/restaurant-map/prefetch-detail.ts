@@ -14,9 +14,9 @@ import { useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { prefetchGroupBuyProduct } from '@/hooks/queries/useGroupBuyProduct'
 import { canonicalDetailPath } from '@/shared/product-flow'
+import { warmStayDetail } from '@/pages/stays/stay-detail-warm'
 
 let passChunk = false
-let stayChunk = false
 const warmed = new Set<string>()
 
 export function usePrefetchMapDetail() {
@@ -28,7 +28,7 @@ export function usePrefetchMapDetail() {
       const k = String(p.id)
       if (!warmed.has(k)) { warmed.add(k); prefetchGroupBuyProduct(qc, k).catch(() => { warmed.delete(k) }) }
     } else if (path.startsWith('/stays/')) {
-      if (!stayChunk) { stayChunk = true; import('@/pages/StayDetailPage').catch(() => { stayChunk = false }) }
+      warmStayDetail(p.id)   // 화면 코드 + 데이터 — 상세가 같은 요청을 이어받는다
     }
   }, [qc])
 }

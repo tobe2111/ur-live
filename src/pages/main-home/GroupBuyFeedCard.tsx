@@ -5,7 +5,7 @@
  * 공구 핵심 정보 (현재/목표 인원 + 마감 시간) 한눈에.
  */
 
-import { memo, useEffect, useRef, useState, type ReactNode } from 'react'
+import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { StarIcon } from '@/components/icons/urdeal-icons'
 import { Link } from 'react-router-dom'
 import { formatNumber } from '@/utils/format'
@@ -22,6 +22,7 @@ import type { FcfsInfo } from '@/features/group-buy/useFcfs'
 import type { Product } from './types'
 import { priceDisplay } from '@/shared/price-display'
 import { runAfterLoad } from '@/lib/after-load'
+import { warmStayDetail } from '@/pages/stays/stay-detail-warm'
 
 /**
  * 🖼️ 사진 없는 카드의 자리표시 (2026-08-30 — 이모지 → 선 아이콘)
@@ -90,11 +91,14 @@ function formatSoldCount(n: number): string {
 //   CHUNK 도 미리 받아둠 → 첫 클릭에도 Suspense 폴백(PageLoader) 없이 즉시 마운트. 1회 dedupe.
 //   App.tsx 의 lazy import 와 동일 모듈 → Vite 가 같은 chunk 로 합침. (additive — 기존 데이터 prefetch 불변)
 let _detailChunkPrefetched = false
-function prefetchDetailChunk() {
+function prefetchPassChunk() {
   if (_detailChunkPrefetched) return
   _detailChunkPrefetched = true
   import('@/pages/GroupBuyDetailPage').catch(() => { _detailChunkPrefetched = false })
 }
+
+/** 숙소는 `warmStayDetail` 이 화면 코드까지 데운다 — 이용권 화면을 받지 않는다. */
+function noopChunk() {}
 
 /**
  * 🔗 `to` 는 **유어샵 핀 전용 탈출구**다 (2026-08-27).
@@ -112,7 +116,13 @@ function prefetchDetailChunk() {
  */
 function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc, to, flags, hideWishlist = false, titleNode, overlayExtra, className = '' }: { p: FeedCardProduct; aboveFold?: boolean; fcfs?: FcfsInfo; imgWidth?: number; userLoc?: { lat: number; lng: number } | null; to?: string; flags?: ReactNode; hideWishlist?: boolean; titleNode?: ReactNode; overlayExtra?: ReactNode; className?: string }) {
   // 🛡️ 2026-05-22 Phase 2 (100% 영구): hover / touch 즉시 prefetch → 클릭 시 0ms.
-  const prefetch = usePrefetchGroupBuyProduct()
+  const prefetchGb = usePrefetchGroupBuyProduct()
+  // 🏨 2026-10-15 (대표 승인 "허가 — 대상만 수정"): 미리받기 **대상**이 목적지를 따른다. 숙소 카드(/stays/:id)는
+  //   이용권 상세(청크·데이터)를 데우고 있어 숙소 상세에선 소용이 없었다(라이브: 누른 뒤 로더 ~0.2초).
+  //   시점(load 뒤·observer 100px·hover/touch/focus)은 한 글자도 안 바뀐다 — 무엇을 받느냐만.
+  const isStay = (to ?? canonicalDetailPath(p) ?? '').startsWith('/stays/')
+  const prefetch = useCallback((id: number | string) => { if (isStay) warmStayDetail(id); else prefetchGb(id) }, [isStay, prefetchGb])
+  const prefetchDetailChunk = isStay ? noopChunk : prefetchPassChunk
 
   // 🛡️ 2026-05-27 (loading P0): 모바일 viewport prefetch — touch 보다 1-2초 빠름.
   //   IntersectionObserver 로 카드가 viewport 에 들어오면 자동 prefetch.
@@ -155,7 +165,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
     )
     obs.observe(el)
     return () => { obs.disconnect(); cancelLater?.() }
-  }, [aboveFold, p.id, prefetch])
+  }, [aboveFold, p.id, prefetch, prefetchDetailChunk])
 
   // 🛡️ 2026-05-21: brand 정보 — gift_catalog (gc_*) 우선 → products → 없음.
   const brandName = p.brand_name || p.gc_brand_name || null
