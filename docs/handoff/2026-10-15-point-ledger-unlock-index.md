@@ -32,4 +32,9 @@
 - **원인 규명 — 32·24번 유상 잔액**: 무상 버킷(`free_balance`)은 **2026-07-05** 에 생겼다. 32번(06-30 가입)의 가입 보너스 3,000 은 그 전이라 기본값 0 → **유상**, 같은 보너스를 07-09 에 받은 33번은 무상. 24번 150 도 광고 리워드 등 충전 0. 전 계정 스캔 결과 유상 잔액이 있는 계정은 **이 둘뿐**이고 둘 다 충전 기록 0. 대기 중인 환급 신청 없음.
 - **도구 추가(코드 경로)**: `points-reconcile.ts` `reclassifyUnpaidToFree` + `POST /api/admin/tools/points-reconcile {mode:'reclass'}`. 기본 dry-run · CAS(UPDATE 에 조건 재확인) · 잔액 불변 · 원장 `bucket_reclass`(금액 0, free_delta=+옮긴 양). 'both' 에 안 들어간다.
 - 함께: 보정행 설명의 날짜가 `2026-08-31` 고정이었다 → 오늘(KST). 10-15 에 쓴 4행은 설명에 08-31 이 박혀 있다(created_at 은 정확).
-- 다음: 배포 후 reclass dry-run(32·24 기대) → apply → D1 로 `free_balance = balance` 확인.
+- ✅ **E4 — 버킷 재분류 라이브 적용 11:27 KST** (PR #1839 머지 `4438922`, 배포는 #1840 런에 포함 — #1839 자체 Pages 런은 뒤 푸시에 밀려 cancelled).
+  - dry-run: 정확히 **32번 3,000 · 24번 150** 두 계정만 잡혔다(예측과 일치).
+  - apply 후 D1: 32번 `balance 3000 / free_balance 3000` · 24번 `150 / 150` — **잔액 불변, 유상 0**. 원장 `bucket_reclass` 2행(amount 0, free_delta 3000·150).
+  - 재-dry-run `found: []`(멱등) · 잔액 정비 재검사 불일치 **0**.
+  - 🩸 #1839 머지 직후 그 커밋의 Pages 배포가 **cancelled** 였다 — 실패가 아니라 다음 main 푸시(#1840)가 같은 동시성 그룹을 대체한 것. 판정은 '내 커밋이 지금 배포 런의 조상인가'(`git merge-base --is-ancestor`)로 했다.
+- 남은 것: VERIFICATION_DAY 1회차 결제 — '딜 사용 기록 1행' 판정.
