@@ -17,7 +17,6 @@ import { purchaseCreditFields } from '@/worker/utils/payout-account' // 💸 202
 import { formatKSTDate } from '@/utils/date' // 워커 TZ=UTC — 만료일 안내가 하루 이르던 것 교정
 import { swallow } from '@/worker/utils/swallow'
 import { resolveUserIdString } from '@/worker/utils/resolve-user-id'
-import { grantGroupBuyReferralBonus } from './referral-bonus'
 import { productDetailColsHealed, withColumnPruning } from '@/shared/db/product-columns'
 import { getCommissionRates, calcInfluencerCommissionPct } from './commission-rates'
 import type { Env } from '@/worker/types/env'
@@ -900,16 +899,21 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
       'SELECT code, expires_at FROM vouchers WHERE order_id = ? AND user_id = ?'
     ).bind(newOrderId, userId).all<{ code: string; expires_at: string }>()
 
-    // 💸 추천 보너스(양쪽 0.5%) — 잔액·원장·중복방지가 한 세트라 모듈로 분리(2026-08-02).
-    //   원장 행이 곧 중복 방지 키다 — 상세는 referral-bonus.ts 상단 참조.
-    await grantGroupBuyReferralBonus({
-      DB,
-      refRaw: c.req.header('X-Affiliate-Ref') || '',
-      userId,
-      totalAmount,
-      productName: product.name,
-      orderNumber,
-    })
+    // 🗑️ 2026-10-16 (대표 **"0.5%는 안주는거야"** · 전날 결재 *"0.5% 레퍼럴은 아예 없어"*):
+    //   여기 있던 `grantGroupBuyReferralBonus`(양쪽 0.5% 딜 지급)를 **지웠다**.
+    //
+    //   🩸 **왜 지웠나 — 이 자리가 어드민 스위치를 무시하고 있었다.** 0.5% 보너스 경로가 둘이었다:
+    //     A) `:478`·`:533` 와 `cart-checkout.routes` — `rates.user_referral_bonus_pct`(라이브 **0**)를
+    //        읽어 `if (userBonusAmount > 0)` 로 가른다 ⇒ 어드민에서 끈 것이 실제로 꺼진다.
+    //     B) 여기 — `COMMISSION_DEFAULTS.REFERRAL_BONUS_BOTHSIDES_PCT` **0.5 상수**를 썼다.
+    //        **`platform_settings` 를 쳐다보지도 않았다.**
+    //   그래서 2026-08-23 "심플 모델"로 설정을 0 으로 내린 뒤에도 B 는 계속 0.5% 였다. 안 터진 이유는
+    //   정책이 아니라 트래픽이다 — 소개 ref 를 달고 딜로 참여한 주문이 아직 0건이라
+    //   `point_transactions.type='referral_bonus'` 가 **0행**이었을 뿐이다(라이브 실측). 지뢰였다.
+    //
+    //   ⇒ 경로를 **A 하나로** 모은다. 이제 이 보너스의 진실은 `user_referral_bonus_pct` 하나뿐이고,
+    //      어드민에서 0 이면 **정말로** 안 나간다. 되살리려면 그 설정을 올릴 것 — 상수를 다시 심지 말 것.
+    //   가드: `referral-bonus-single-source-2026-10-16.test.ts`.
 
     // 🏁 2026-06-11 (참여하기 느림 수술): 이메일 영수증(Resend 외부 HTTP) — 응답 후 실행(waitUntil).
     //   블록 내용/순서/에러처리 불변 — 실행 시점만 이동. ctx 없으면(테스트) 기존처럼 동기 실행.

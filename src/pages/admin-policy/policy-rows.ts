@@ -87,7 +87,6 @@ export const POLICY_SECTIONS: PolicySection[] = [
       { key: 'INFLUENCER_STORE_INTRO_MONTHS', value: String(COMMISSION_DEFAULTS.INFLUENCER_STORE_INTRO_MONTHS), unit: '개월', desc: '위 영입 커미션 유효기간 — 영입일(introduced_at) 기산. 매장별 referral_bonus_until 이 있으면 그 값 우선' },
       { key: 'CURATOR_AFFILIATE_PCT', value: pct(COMMISSION_DEFAULTS.CURATOR_AFFILIATE_PCT), unit: '%', desc: '유어샵 큐레이터 어필리에이트' },
       { key: 'AFFILIATE_COMMISSION_PCT', value: pct(COMMISSION_DEFAULTS.AFFILIATE_COMMISSION_PCT), unit: '%', desc: '제휴 마케팅 (쿠팡파트너스형) 추천인 보상' },
-      { key: 'REFERRAL_BONUS_BOTHSIDES_PCT', value: pct(COMMISSION_DEFAULTS.REFERRAL_BONUS_BOTHSIDES_PCT), unit: '%', desc: '공구 양쪽 보너스 (추천인 + 피추천인)' },
       { key: 'STAYS_COMMISSION_CAP_PCT', value: pct(COMMISSION_DEFAULTS.STAYS_COMMISSION_CAP_PCT), unit: '%', desc: '숙박 카테고리 commission 상한' },
       { key: 'TIER_COMMISSION_BONUS', value: fmtList(COMMISSION_DEFAULTS.TIER_COMMISSION_BONUS), unit: '%', desc: '셀러 등급별 보너스' },
     ],
