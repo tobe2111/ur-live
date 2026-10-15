@@ -312,12 +312,22 @@ export async function handleChunkedBackup(
   // ⚠️ 예전엔 무조건 targets[0](ads)부터 시작했다. ads 는 끝나자마자 그날 것을 또 시작하므로
   //   **main 차례가 영영 오지 않았다** — 분할 백업 도입 후 메인 DB 는 한 번도 백업된 적이 없다.
   const today = new Date().toISOString().slice(0, 10)
-  for (const t of targets) {
+  // 🩸 2026-10-15 실측: 업체 DB 마지막 백업이 **08-31(45일 전)**이었다. 목록 순서대로 "오늘 안 끝낸 첫 대상"을
+  //   잡으니, ads 는 하루에 끝나고 main 은 사흘씩 걸려 **둘 중 하나는 늘 '오늘 안 끝남'** 이었다 → company 차례가
+  //   영영 오지 않았다(08-24 에 main 이 굶던 것과 같은 병, 대상만 바뀌었다). ⇒ **가장 오래 전에 끝낸 쪽부터** 시작한다.
+  //   마커가 없으면 가장 오래된 것으로 친다. 같으면 목록 순서.
+  const pending: Array<{ db: D1Database; label: string; last: string; i: number }> = []
+  for (const [i, t] of targets.entries()) {
     if (!t.db) continue
     const done = await stateDb.prepare('SELECT value FROM platform_settings WHERE key = ?')
       .bind(doneKey(t.label)).first<{ value: string }>().catch(() => null)
     if (done?.value === today) continue        // 오늘 것은 이미 끝났다 — 다음 대상으로
-    const r = await backupChunked(env, { db: t.db, label: t.label, stateDb, maxReads: opts?.maxReads })
+    pending.push({ db: t.db, label: t.label, last: done?.value || '', i })
+  }
+  pending.sort((a, b) => (a.last < b.last ? -1 : a.last > b.last ? 1 : a.i - b.i))
+  const next = pending[0]
+  if (next) {
+    const r = await backupChunked(env, { db: next.db, label: next.label, stateDb, maxReads: opts?.maxReads })
     return r as unknown as Record<string, unknown>
   }
   // 전부 오늘 것을 끝냈다 — 다음 날짜까지 쉰다(같은 날 두 번 뜨지 않는다).
