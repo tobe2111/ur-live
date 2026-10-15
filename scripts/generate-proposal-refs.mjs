@@ -434,7 +434,6 @@ function onlineRows() {
 
 // ── 링크샵 / 큐레이터 ──
 function linkshopRows() {
-  const bothsides = num(SRC.policy, /REFERRAL_BONUS_BOTHSIDES_PCT:\s*([\d._]+)/)
   const curatorAff = num(SRC.policy, /CURATOR_AFFILIATE_PCT:\s*([\d._]+)/)
   const affiliate = num(SRC.policy, /AFFILIATE_COMMISSION_PCT:\s*([\d._]+)/)
   const pinMax = num(SRC.policy, /PIN_MAX_PER_USER:\s*([\d_]+)/)
@@ -448,7 +447,6 @@ function linkshopRows() {
   const donationCap = num(SRC.donations, /DAILY_CAP\s*=\s*([\d_]+)/)
   return [
     row('제휴 마케팅 추천 보상 (default)', pct(affiliate), 'src/shared/constants/policy.ts:COMMISSION_DEFAULTS.AFFILIATE_COMMISSION_PCT'),
-    row('공구 양쪽 추천 보너스 (각각)', pct(bothsides), 'src/shared/constants/policy.ts:COMMISSION_DEFAULTS.REFERRAL_BONUS_BOTHSIDES_PCT'),
     row('큐레이터 핀 어필리에이트', pct(curatorAff), 'src/shared/constants/policy.ts:COMMISSION_DEFAULTS.CURATOR_AFFILIATE_PCT'),
     row('후원 수수료 (default)', pct(donationComm), 'src/features/donations/api/donations.routes.ts:donation_commission_rate fallback'),
     row('후원 1일 한도 (인당)', won(donationCap), 'src/features/donations/api/donations.routes.ts:DAILY_CAP'),
