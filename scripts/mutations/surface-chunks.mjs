@@ -67,9 +67,9 @@ export default [
   },
   {
     name: '🧩 폰 홈이 다시 PC 홈 청크까지 받는다',
-    file: 'src/worker/index.ts',
-    find: "? (isMobileUserAgent(c.req.header('user-agent')) ? 'home' : 'homePc')",
-    replace: "? 'home'",
+    file: 'src/shared/route-surface.ts',
+    find: "return mobileUa ? 'home' : 'homePc'",
+    replace: "return 'home'",
     test: TEST,
     why: 'PC 사용자는 홈 preload 를 못 받고(homePc 미사용), 맵을 되돌리면 폰이 ~9KB 를 더 받는다.',
   },

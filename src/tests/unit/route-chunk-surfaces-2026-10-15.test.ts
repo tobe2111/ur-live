@@ -15,6 +15,7 @@
  * ⚠️ 못 막는 것: 실제 바이트(빌드 후 `check-surface-budgets` 의 몫) · 로그인 판정이 쿠키(`ur_session`)와 앱(`localStorage`)
  *   에서 갈리는 경우(preload 가 빗나갈 뿐 화면은 같다) · 실제로 빨라졌는지(브라우저 실측의 몫).
  */
+import { routeSurface } from '@/shared/route-surface'
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
@@ -53,24 +54,26 @@ describe('① 로딩 화면이 뜨던 페이지가 청크 병렬화에 등재돼
 })
 
 describe('② 워커가 경로를 표면으로 고른다', () => {
+  // 🧭 2026-10-15: 판정이 공용 함수(shared/route-surface)로 옮겨갔다 — 앱 부팅(lib/boot-page)도 같은 함수를 쓴다.
+  //   불변식은 그대로이고, 판정은 이제 소스 문자열이 아니라 **함수를 불러** 본다.
   const w = stripComments(readCode('src/worker/index.ts'))
-  const block = w.slice(w.indexOf('const chunkSurface ='), w.indexOf('const routeChunks ='))
   it('로그인 전 탭은 세션 쿠키가 없을 때만 guest 표면', () => {
     expect(w).toMatch(/const authed = \/\(\?:\^\|;\\s\*\)ur_session=\/\.test\(c\.req\.header\('cookie'\) \|\| ''\)/)
-    expect(block).toContain("url.pathname === '/u/me' && !authed ? 'guestUShop'")
-    expect(block).toContain("url.pathname === '/user/profile' ? (authed ? null : 'guestMy')")
-    expect(block).toContain("url.pathname === '/my-vouchers' ? (authed ? null : 'guestPass')")
+    expect(w).toContain("const chunkSurface = routeSurface(url.pathname, isMobileUserAgent(c.req.header('user-agent')), authed)")
+    expect(routeSurface('/u/me', true, false)).toBe('guestUShop')
+    expect(routeSurface('/user/profile', true, false)).toBe('guestMy')
+    expect(routeSurface('/user/profile', true, true)).toBe(null)
+    expect(routeSurface('/my-vouchers', true, false)).toBe('guestPass')
+    expect(routeSurface('/my-vouchers', true, true)).toBe(null)
   })
   it('/u/me 판정이 유어샵(/u/:handle) 판정보다 먼저 온다 — 뒤면 로그아웃 방문자가 유어샵 청크를 받는다', () => {
-    const me = block.indexOf("'/u/me'")
-    const shop = block.indexOf("'linkshop'")
-    expect(me).toBeGreaterThan(-1)
-    expect(shop).toBeGreaterThan(-1)
-    expect(me).toBeLessThan(shop)
+    expect(routeSurface('/u/me', true, false)).toBe('guestUShop')
+    expect(routeSurface('/u/me', true, true)).toBe('linkshop')
+    expect(routeSurface('/u/jiwon1228', true, false)).toBe('linkshop')
   })
   it('공개 페이지 표면', () => {
-    for (const s of ["'/cart' ? 'cart'", "'/search' ? 'search'", "'/faq' ? 'faq'", "'/stays' ? 'stays'", "'stayDetail'", "'region'"]) {
-      expect(block).toContain(s)
+    for (const [p, want] of [['/cart', 'cart'], ['/search', 'search'], ['/faq', 'faq'], ['/stays', 'stays'], ['/stays/12', 'stayDetail'], ['/region/서울', 'region']] as const) {
+      expect(routeSurface(p, true, false)).toBe(want)
     }
   })
 })

@@ -10,7 +10,8 @@
  * Phase 1+ 사용자 결정 C 옵션: URL 통합 (셀러 권한 시 자동 redirect).
  */
 
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
+import { SellerPublicPage } from './seller-public/lazy-seller-public'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from '@/lib/i18n-lite'
 import SEO from '@/components/SEO'
@@ -43,7 +44,7 @@ import { priceDisplay } from '@/shared/price-display'
 
 // 🛡️ 2026-05-25 (C 옵션 URL 통합): linked seller 있으면 같은 페이지에서 SellerPublicPage 직접 render.
 //   redirect 없음 — URL 그대로 (/u/:handle 유지). lazy chunk — 일반 user 진입 시 chunk fetch 안 함.
-const SellerPublicPage = lazy(() => import('./SellerPublicPage'))
+//   🚀 2026-10-15: 래퍼는 seller.routes 와 **하나**를 같이 쓴다(`seller-public/lazy-seller-public` — 한쪽이 받아 두면 양쪽 다 즉시).
 // 🔧 2026-09-28 (e3): 판매 진입 CTA · 수익 사다리도 `/u/me/manage` 로 옮겨 갔다(여기 lazy import 0).
 
 // 🔍 2026-08-31 (대표 "유어샵 나머지"): 검색창은 **눈으로 못 훑을 때만** 낸다.

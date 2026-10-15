@@ -17,9 +17,25 @@ export function registerRoutePreload(name: string, load: Loader): void {
 
 /** 등록된 화면 코드를 한 번만 받는다. 실패해도 조용히 — 그 화면이 갈 때 다시 받는다. */
 export function preloadRoute(name: string): void {
-  if (started.has(name)) return
+  void loadRoute(name)
+}
+
+/**
+ * 🚀 2026-10-15: 같은 일을 하되 **모듈을 돌려준다**(유어샵 탭처럼 받은 모듈의 함수를 바로 쓰는 곳).
+ *   등록된 로더는 `lib/boot-page` 의 `lazyPage(...).load` 다 — 그 로더로 받아야 화면 컴포넌트가
+ *   "준비됨" 으로 바뀌어, 그 화면으로 갈 때 "페이지 로딩 중" 이 한 번도 안 뜬다.
+ *   ⚠️ 같은 모듈을 `import()` 로 **직접** 받으면 코드는 받아지지만 그 표시가 안 바뀐다(2026-10-15 라이브 실측 —
+ *   홈 카드가 상세 코드를 미리 받아 두고도 누를 때마다 로딩 화면이 0.35초 떴다).
+ */
+const inflight = new Map<string, Promise<unknown>>()
+export function loadRoute(name: string): Promise<unknown> {
+  const hit = inflight.get(name)
+  if (hit) return hit
   const load = loaders.get(name)
-  if (!load) return
+  if (!load) return Promise.resolve(undefined)
   started.add(name)
-  load().catch(() => { started.delete(name) })
+  const p = load().catch((e) => { started.delete(name); inflight.delete(name); throw e })
+  inflight.set(name, p)
+  p.catch(() => { /* 호출부가 안 받아도 처리되지 않은 거절로 남지 않게 */ })
+  return p
 }
