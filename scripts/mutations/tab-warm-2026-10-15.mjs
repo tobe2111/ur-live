@@ -75,5 +75,13 @@ export default [
     test: 'src/tests/unit/sentry-sdk-slim-2026-10-11.test.ts',
     why: '기본값(route)이면 탭을 누를 때마다 센트리로 요청 2건이 우리 요청과 같은 순간에 나간다.',
   },
+  {
+    name: '탭미리받기 — 쇼핑 화면에서도 교환권 목록을 받는다',
+    file: 'src/lib/tab-warm.ts',
+    find: 'const SELF_LISTING = /^\\/(vouchers|browse)(\\/|$)/',
+    replace: 'const SELF_LISTING = /^\\/(vouchers)(\\/|$)/',
+    test: T,
+    why: '쇼핑은 같은 /api/products 를 스스로 부른다 — 한 화면에서 같은 경로가 두 번(CI duplicate-fetch).',
+  },
 ]
 

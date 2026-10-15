@@ -118,9 +118,10 @@ describe('tab-warm', () => {
     expect(readListView(VOUCHERS_DEFAULT_VIEW_KEY)).toBeNull()
   })
 
-  it('⑦ 교환권 화면 자신에서는 목록을 미리 받지 않는다(스스로 받는다)', () => {
+  it('⑦ 교환권·쇼핑 화면에서는 목록을 미리 받지 않는다(스스로 /api/products 를 부른다)', () => {
     const src = stripComments(readFileSync('src/lib/tab-warm.ts', 'utf8'))
-    expect(src).toMatch(/pathname === '\/vouchers' \? loaders : \[\.\.\.loaders, \(\) => import\('@\/pages\/vouchers\/tab-warm-list'\)\.then\(\(m\) => m\.warmVouchersList\(\)\)\]/)
+    expect(src).toMatch(/SELF_LISTING\.test\(pathname\) \? loaders : \[\.\.\.loaders, \(\) => import\('@\/pages\/vouchers\/tab-warm-list'\)\.then\(\(m\) => m\.warmVouchersList\(\)\)\]/)
+    expect(src).toContain("const SELF_LISTING = /^\\/(vouchers|browse)(\\/|$)/")
     // 첫 화면 번들에 정적으로 묶지 않는다(홈 청크 개수 회귀)
     expect(src).not.toMatch(/^import .*list-view-cache/m)
     expect(src).not.toMatch(/^import .*tab-warm-list/m)

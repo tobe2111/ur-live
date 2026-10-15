@@ -66,6 +66,9 @@ export function warmTabChunks(loaders: Loader[], delayMs = TAB_WARM_DELAY_MS): (
   return () => { cancelled = true; stopLoad(); if (timer !== undefined) clearTimeout(timer) }
 }
 
+/** 교환권 목록 미리받기를 하지 않는 화면 — 스스로 `/api/products` 를 부른다. */
+const SELF_LISTING = /^\/(vouchers|browse)(\/|$)/
+
 /** 대시보드(셀러·어드민·에이전시·유어애즈)에는 하단 탭이 없다 — 받지 않는다. */
 const NO_TAB_PREFIX = /^\/(seller|admin|agency|ads|wholesale|supplier)(\/|$)/
 
@@ -86,6 +89,8 @@ export function startTabWarm(pathname: string): () => void {
   if (!loaders) return () => {}
   // 교환권 목록은 교환권 화면 밖에서만 미리 받는다(그 화면은 스스로 받는다).
   // 별도 모듈로 나중에 부른다 — 정적으로 묶으면 홈 첫 화면 청크가 하나 늘었다(2026-10-15 CI surface-chunk-runtime 26→27).
-  const withData: Loader[] = pathname === '/vouchers' ? loaders : [...loaders, () => import('@/pages/vouchers/tab-warm-list').then((m) => m.warmVouchersList())]
+  //   쇼핑(`/browse`)도 뺀다 — 같은 `/api/products` 를 스스로 부르는 화면이라 한 화면에서 같은 경로가 두 번이 된다
+  //   (2026-10-15 CI duplicate-fetch 가 잡았다: 쇼핑 +176ms · +3240ms).
+  const withData: Loader[] = SELF_LISTING.test(pathname) ? loaders : [...loaders, () => import('@/pages/vouchers/tab-warm-list').then((m) => m.warmVouchersList())]
   return warmTabChunks(withData)
 }
