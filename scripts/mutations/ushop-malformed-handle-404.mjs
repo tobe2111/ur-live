@@ -13,8 +13,8 @@ export default [
   {
     name: '🧭 형식 위반 유어샵이 다시 400 을 줘 soft-404 가 된다',
     file: CURATOR,
-    find: "      return c.json({ success: false, error: '큐레이터를 찾을 수 없습니다' }, 404)\n    }\n    const DB = c.env.DB",
-    replace: "      return c.json({ success: false, error: '잘못된 핸들 형식입니다' }, 400)\n    }\n    const DB = c.env.DB",
+    find: "      return c.json({ success: false, error: '큐레이터를 찾을 수 없습니다' }, 404)\n    }\n    const DB = getAuthUserId(c)",
+    replace: "      return c.json({ success: false, error: '잘못된 핸들 형식입니다' }, 400)\n    }\n    const DB = getAuthUserId(c)",
     test: TEST,
     why: '워커 술어는 `self-fetch-404` 에만 걸린다 — 400 이면 `/u/my-shop` 이 색인 가능한 유어딜 홈 복제본이 된다.',
   },

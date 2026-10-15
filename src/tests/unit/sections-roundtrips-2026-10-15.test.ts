@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest'
+import { readCode } from '../helpers/source-text'
 // node:sqlite 는 vite 가 번들 못 하므로 계산된 specifier + @vite-ignore 로 런타임 동적 로드.
 const { DatabaseSync } = await import(/* @vite-ignore */ ('node:' + 'sqlite')) as { DatabaseSync: new (p: string) => { prepare: (sql: string) => { run: (...a: never[]) => { changes: number | bigint }; get: (...a: never[]) => unknown; all: (...a: never[]) => unknown[] } } }
 import { readFileSync } from 'node:fs'
@@ -284,10 +285,23 @@ describe('D1 읽기 복제 — 공개 편성 읽기만 사본으로', () => {
   })
 
   it('2단계 — 유어샵이 거치는 isolate 메모도 원본 기준(dbKey)', () => {
-    for (const f of ['src/worker/utils/ushop-sales.ts', 'src/worker/utils/affiliate-program.ts', 'src/worker/utils/seller-operators.ts']) {
+    for (const f of ['src/worker/utils/ushop-sales.ts', 'src/worker/utils/affiliate-program.ts', 'src/worker/utils/seller-operators.ts',
+      'src/worker/utils/product-supply-meta.ts', 'src/worker/utils/seller-meta.ts', 'src/features/group-buy/api/helpers.ts']) {
       const src = readFileSync(f, 'utf-8')
       expect(src, `${f}: 세션마다 메모가 빗나가 DDL·설정 조회가 요청마다 다시 돈다`).not.toMatch(/\.(has|get|add|set|delete)\(DB\b/)
     }
+  })
+
+  it('3단계 이용권 — 공개 GET 다섯만 사본, 로그인·사용처리 경로는 원본', () => {
+    const src = readCode('src/features/group-buy/api/group-buy-public.routes.ts') // 주석 제거본 — 설명 속 'UPDATE' 오탐 방지
+    const handlers = src.split(/\n  router\./)
+    const using = handlers.filter((h) => h.includes('publicReadDb(c.env.DB)')).map((h) => h.slice(0, h.indexOf(',')))
+    expect(using.sort()).toEqual(["get('/live-ticker'", "get('/products'", "get('/products/:id'", "get('/products/:id/participants'", "get('/products/map-clusters'"].sort())
+    for (const h of handlers.filter((x) => x.includes('publicReadDb(c.env.DB)'))) {
+      expect(h, '사본 핸들러에서 쓰기').not.toMatch(/\b(INSERT|UPDATE|DELETE)\b|\.run\(\)/)
+      expect(h.slice(0, 200), '사본 핸들러는 로그인 없는 공개 경로여야').not.toMatch(/requireAuth|requireAdmin/)
+    }
+    expect(src).toMatch(/ensureTables\(c\.env\.DB\)/)
   })
 
   it('publicReadDb 는 허용된 공개 읽기 파일에서만 쓴다 — 머니·관리 경로 금지', () => {
@@ -295,6 +309,7 @@ describe('D1 읽기 복제 — 공개 편성 읽기만 사본으로', () => {
       'src/features/sections/api/sections.routes.ts',
       'src/worker/routes/curator.routes.ts', // 2단계 — 익명 방문만(아래 시험)
       'src/features/blog/api/blog.routes.ts', // 2단계 — 발행 글 읽기만(아래 시험)
+      'src/features/group-buy/api/group-buy-public.routes.ts', // 3단계 — 공개 목록·상세 GET 만(아래 시험)
     ])
     const hits = execSync(`grep -rlE "publicReadDb\\(" src --include=*.ts --include=*.tsx`, { encoding: 'utf-8' })
       .split('\n').filter(Boolean).filter((f) => !f.includes('/tests/') && !f.endsWith('d1-read-replica.ts'))

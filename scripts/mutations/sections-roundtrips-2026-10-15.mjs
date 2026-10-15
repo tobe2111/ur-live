@@ -118,4 +118,20 @@ export default [
     test: T,
     why: '익명 유어샵 요청마다 CREATE TABLE·INDEX 두 왕복이 다시 붙는다.',
   },
+  {
+    name: '🌏 3단계 — 내 이용권(로그인)까지 사본으로',
+    file: 'src/features/group-buy/api/group-buy-public.routes.ts',
+    find: "  router.get('/my', requireAuth(), async (c) => {\n",
+    replace: "  router.get('/my', requireAuth(), async (c) => {\n    void publicReadDb(c.env.DB)\n",
+    test: T,
+    why: '방금 산 이용권이 지갑에 몇 초 안 보일 수 있다 — 로그인 경로는 원본.',
+  },
+  {
+    name: '🌏 3단계 — 이용권 테이블 메모가 세션 기준',
+    file: 'src/features/group-buy/api/helpers.ts',
+    find: '  if (_done_ensureTables.has(dbKey(DB))) return',
+    replace: '  if (_done_ensureTables.has(DB)) return',
+    test: T,
+    why: '목록 요청마다 ensureTables(20+ DDL)가 백그라운드에서 다시 돈다.',
+  },
 ]

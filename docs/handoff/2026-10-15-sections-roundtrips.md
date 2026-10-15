@@ -51,4 +51,5 @@
 - 블로그 `GET /public`·`/public/:slug` 읽기만 사본. 조회수 POST·재시드·관리는 원본.
 - 같이 고친 메모 키(`dbKey`): `ushop-sales` ensured · `affiliate-program` _memo · `seller-operators` ensure — 안 고치면 익명 유어샵 요청마다 DDL·설정 조회 재실행.
 - 가드: `sections-roundtrips-2026-10-15.test.ts` 허용 목록 3파일 + 2단계 시험 3건 + 주입 3건(빨간불 확인).
-- 남은 것: 이용권 목록·상세(잠금 파일 — 내일 효과 확인 후 승인 요청).
+- 3단계(대표 잠금 해제): 이용권 공개 GET 다섯(목록·지도 클러스터·상세·티커·참여자) 사본. `/my`·`/vouchers/*`·`/verify` 원본.
+  메모 `dbKey`: helpers ensureTables · product-supply-meta · seller-meta. CLAUDE.md 로딩 audit log 기록.
