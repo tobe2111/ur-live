@@ -683,7 +683,7 @@ app.use('*', async (c, next) => {
     //   index.html <head> 의 잠긴 3개 preconnect origin 과 동일(미러 — 변경 아님).
     //   Cloudflare Early Hints(대시보드 Speed→Optimization toggle) 켜지면 103 으로 HTML 본문 전 송출(무료).
     //   toggle off 여도 응답 헤더라 브라우저가 본문 파싱 전 preconnect 시작 → 소폭 이득, 회귀 0.
-    c.res.headers.append('Link', '<https://cdn.jsdelivr.net>; rel=preconnect; crossorigin, <https://t1.kakaocdn.net>; rel=preconnect; crossorigin, <https://img1.kakaocdn.net>; rel=preconnect; crossorigin');
+    c.res.headers.append('Link', '<https://t1.kakaocdn.net>; rel=preconnect; crossorigin, <https://img1.kakaocdn.net>; rel=preconnect; crossorigin');
 
     // ⚠️ 요약 **원본**을 따로 잡는다 — 봉투가 MAIN 시드와 같아 받는 쪽이 못 가른다. thin 판정은 시드를 보면 멀쩡한 지역을 thin 으로 읽는다(경기 49건인데 시드엔 0건).
     const digestRaw = digestP ? await digestP : null;
@@ -922,7 +922,7 @@ app.use('*', async (c, next) => {
     const urdealLoaderHtml =
       '<div style="min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px">' +
         `<img src="${UDAL_LOADER_SRC}" alt="" aria-hidden="true" draggable="false" width="${udalLoaderWidth(34)}" height="${udalLoaderHeight(34)}" decoding="async" class="ur-udal-hop select-none pointer-events-none" style="width:${udalLoaderWidth(34)}px;height:auto">` +
-        '<div class="ur-loader-breathe text-[#16181C] dark:text-[#F8F7FC]" style="display:inline-flex;align-items:baseline;font-family:\'Poppins\',\'Pretendard Variable\',system-ui,sans-serif;font-weight:800;font-size:34px;letter-spacing:-0.035em;line-height:1">' +
+        '<div class="ur-loader-breathe text-[#16181C] dark:text-[#F8F7FC]" style="display:inline-flex;align-items:baseline;font-family:\'Poppins\',system-ui,sans-serif;font-weight:800;font-size:34px;letter-spacing:-0.035em;line-height:1">' +
           'urdeal' +
           '<span class="bg-brand" style="display:inline-block;width:6.12px;height:6.12px;border-radius:50%;margin-left:2.72px"></span>' +
         '</div>' +

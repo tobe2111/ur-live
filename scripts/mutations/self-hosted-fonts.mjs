@@ -12,10 +12,18 @@ export default [
   {
     name: '🔤 Pretendard CSS 를 다시 jsdelivr 에서 받는다 (렌더 블로킹 외부 요청 복귀)',
     file: 'index.html',
-    find: '      href="/static/fonts/pretendard-dynamic-subset-v1.3.9.css"',
-    replace: '      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"',
+    find: '         배치하는 일도 없다. 숫자 글꼴(UrDigits)·워드마크(Poppins)는 그대로다. -->',
+    replace: '         배치하는 일도 없다. 숫자 글꼴(UrDigits)·워드마크(Poppins)는 그대로다. -->\n    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />',
     test: TEST,
     why: '이 사고의 본체. 되돌리면 첫 페인트가 384ms 늦고 편차가 264ms 로 돌아가는데 **에러는 0건**이다.',
+  },
+  {
+    name: '🔤 손님 본문 글꼴에 Pretendard 를 되살린다 (2026-10-15 기기 글꼴 전환 되돌림)',
+    file: 'src/index.css',
+    find: '      "UrDigits",\n',
+    replace: '      "UrDigits",\n      "Pretendard Variable",\n',
+    test: TEST,
+    why: '목록에 이름만 돌아와도 시트를 다시 받게 되는 길이 열린다 — 대표 확정(쿠팡·네이버처럼 기기 글꼴)의 되돌림이다.',
   },
   {
     name: '🔤 Poppins 를 다시 fonts.googleapis.com stylesheet 로 받는다',
@@ -26,14 +34,6 @@ export default [
       '    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@800&text=urdeal&display=swap" rel="stylesheet" />',
     test: TEST,
     why: '0.2KB 인데 382ms 였다 — 바이트가 아니라 외부 오리진의 왕복이 비용이라는 증거 자리.',
-  },
-  {
-    name: '🔤 들여온 사본의 src 를 상대경로로 되돌린다 (폰트 92개 전부 404)',
-    file: 'public/static/fonts/pretendard-dynamic-subset-v1.3.9.css',
-    find: 'url(https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/packages/pretendard/dist/web/variable/woff2-dynamic-subset/PretendardVariable.subset.0.woff2)',
-    replace: 'url(../../../packages/pretendard/dist/web/variable/woff2-dynamic-subset/PretendardVariable.subset.0.woff2)',
-    test: TEST,
-    why: '업스트림이 상대경로라 그대로 들여오면 우리 오리진에서 404 다 — 디자인이 전멸하는데 에러 로그는 안 난다.',
   },
   {
     name: '🔤 Poppins 인라인 @font-face 의 unicode-range 를 뺀다',

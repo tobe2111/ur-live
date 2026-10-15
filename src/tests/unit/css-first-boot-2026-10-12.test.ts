@@ -12,7 +12,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { readFileSync } from 'node:fs'
 import {
-  cssFirstApplies, routePreloadRel, cssFirstBootScript, earlyHintsLink, FONT_CSS_HREF, appendEdgeHeaders, DEFERRED_PRELOAD_REL, DEFERRED_ENTRY_TYPE, CSS_FIRST_BACKSTOP_MS,
+  cssFirstApplies, routePreloadRel, cssFirstBootScript, earlyHintsLink, appendEdgeHeaders, DEFERRED_PRELOAD_REL, DEFERRED_ENTRY_TYPE, CSS_FIRST_BACKSTOP_MS,
 } from '@/worker/utils/css-first-boot'
 
 function stripComments(s: string) {
@@ -164,19 +164,13 @@ describe('⑥ 첫 방문자가 보지 않는 셸 부품은 조건이 맞을 때�
 })
 
 describe('⑦ Link 헤더(Early Hints 원천) — 렌더 차단 CSS 만', () => {
-  it('엔트리 CSS 와 폰트 CSS 를 preload as=style 로 싣는다', () => {
+  it('엔트리 CSS 를 preload as=style 로 싣는다 (2026-10-15: 폰트 CSS 는 손님 화면이 기기 글꼴로 바뀌어 없다)', () => {
     expect(earlyHintsLink(['/assets/index-AB.css'])).toBe(
-      '</assets/index-AB.css>; rel=preload; as=style; crossorigin, </static/fonts/pretendard-dynamic-subset-v1.3.9.css>; rel=preload; as=style',
+      '</assets/index-AB.css>; rel=preload; as=style; crossorigin',
     )
   })
   it('미리 받기의 crossorigin 이 실제 <link> 와 같다 — 다르면 같은 CSS 를 두 번 받는다 (2026-10-14 라이브 실측)', () => {
-    const html = readFileSync('index.html', 'utf-8')
-    // 폰트 CSS 태그: crossorigin 없음 → 미리 받기에도 없음
-    const font = html.match(/<link\b[^>]*id="ur-font-css"[^>]*>/)?.[0] ?? ''
-    expect(font).toContain(FONT_CSS_HREF)
-    expect(font).not.toMatch(/crossorigin/)
     const parts = earlyHintsLink(['/assets/index-AB.css']).split(', ')
-    expect(parts.find((x) => x.includes(FONT_CSS_HREF))).not.toMatch(/crossorigin/)
     // 엔트리 CSS 태그: Vite 가 crossorigin 을 단다(빌드 산출물 실측 `<link rel="stylesheet" crossorigin href="/assets/index-*.css">`)
     //   → 미리 받기도 crossorigin. Vite 설정이 이 속성을 끄는 날엔 이 단언과 함께 바꿀 것.
     expect(parts.find((x) => x.includes('/assets/index-AB.css'))).toMatch(/; crossorigin$/)
@@ -186,8 +180,9 @@ describe('⑦ Link 헤더(Early Hints 원천) — 렌더 차단 CSS 만', () => 
   it('스크립트는 싣지 않는다(CSS 와 다시 다툰다)', () => {
     expect(earlyHintsLink(['/assets/index-AB.css'])).not.toMatch(/modulepreload|\.js>/)
   })
-  it('폰트 CSS 경로가 index.html 의 실제 href 와 같다(파일명이 바뀌면 존재하지 않는 걸 미리 받는다)', () => {
-    expect(readFileSync('index.html', 'utf-8')).toContain(`href="${FONT_CSS_HREF}"`)
+  it('없는 폰트 CSS 를 미리 받으라고 하지 않는다 (2026-10-15 기기 글꼴 전환 — 그 시트는 지웠다)', () => {
+    expect(earlyHintsLink(['/assets/index-AB.css'])).not.toMatch(/\/static\/fonts\//)
+    expect(readFileSync('index.html', 'utf-8')).not.toMatch(/id="ur-font-css"/)
   })
   it('워커가 모든 HTML 응답에 그 헤더를 단다 · 생성기가 ENTRY_CSS 를 낸다', () => {
     const w = stripComments(readFileSync('src/worker/index.ts', 'utf-8'))

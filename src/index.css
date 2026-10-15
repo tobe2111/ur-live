@@ -398,8 +398,8 @@
     font-feature-settings: "rlig" 1, "calt" 1;
     font-family:
       "UrDigits",
-      "Pretendard Variable",
-      Pretendard,
+      /* 🔤 2026-10-15 (대표 *"쿠팡, 네이버처럼 하자"*): Pretendard 를 뺐다 — 기기 기본 글꼴(아이폰 Apple SD Gothic Neo ·
+         안드로이드 Noto Sans KR · 윈도우 맑은 고딕). tailwind.config.js 의 sans 와 같은 목록이어야 한다. */
       -apple-system,
       BlinkMacSystemFont,
       system-ui,

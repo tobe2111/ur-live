@@ -64,10 +64,9 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        // ⚠️ 'Pretendard Variable' 이 먼저다 — index.html 이 CDN 에서 로드하는 실제 패밀리명이
-        // 그것이고, 여기 'Pretendard' 만 있으면 `font-sans` 를 명시한 자리는 로드된 적 없는
-        // 이름을 찾다 실패해 시스템 폰트로 떨어진다(본문은 index.css body 규칙이 덮어 무사했다).
-        sans: ['UrDigits', 'Pretendard Variable', 'Pretendard', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+        // 🔤 2026-10-15 (대표 *"쿠팡, 네이버처럼 하자"*): 손님 화면 본문은 **기기 기본 글꼴**이다 — 웹폰트를
+        //   받지 않는다. 이 목록은 index.css body 규칙과 **같아야** 한다(`font-sans` 를 명시한 자리와 본문이 갈린다).
+        sans: ['UrDigits', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'Roboto', 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'sans-serif'],
       },
       colors: {
         border: 'hsl(var(--border))',

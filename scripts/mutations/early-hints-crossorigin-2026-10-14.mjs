@@ -15,11 +15,11 @@ export default [
     why: '실제 태그는 crossorigin 이라 요청 방식이 갈려 미리 받은 CSS 가 버려지고 첫 그림이 두 번째 다운로드를 기다린다.',
   },
   {
-    name: '🚦 폰트 CSS 미리 받기에 crossorigin 을 붙인다',
+    name: '🔤 지운 폰트 CSS 를 다시 미리 받으라고 한다',
     file: FILE,
-    find: '`<${FONT_CSS_HREF}>; rel=preload; as=style`',
-    replace: '`<${FONT_CSS_HREF}>; rel=preload; as=style; crossorigin`',
+    find: "rel=preload; as=style; crossorigin`).join(', ')",
+    replace: "rel=preload; as=style; crossorigin`).concat(['</static/fonts/pretendard-dynamic-subset-v1.3.9.css>; rel=preload; as=style']).join(', ')",
     test: TEST,
-    why: '폰트 CSS 태그엔 crossorigin 이 없다 — 반대 방향으로 어긋나 그 파일을 두 번 받는다.',
+    why: '2026-10-15 손님 화면은 기기 글꼴이라 그 시트가 없다 — 없는 파일을 매 첫 방문 미리 받는다(404).',
   },
 ]
