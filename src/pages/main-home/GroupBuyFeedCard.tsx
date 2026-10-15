@@ -22,7 +22,6 @@ import type { FcfsInfo } from '@/features/group-buy/useFcfs'
 import type { Product } from './types'
 import { priceDisplay } from '@/shared/price-display'
 import { runAfterLoad } from '@/lib/after-load'
-import { warmStayDetail } from '@/pages/stays/stay-detail-warm'
 
 /**
  * 🖼️ 사진 없는 카드의 자리표시 (2026-08-30 — 이모지 → 선 아이콘)
@@ -99,6 +98,10 @@ function prefetchPassChunk() {
 
 /** 숙소는 `warmStayDetail` 이 화면 코드까지 데운다 — 이용권 화면을 받지 않는다. */
 function noopChunk() {}
+/** 동적 import — 정적으로 두면 홈 첫 화면이 숙소 청크를 끌고 온다(`home-chunk-diet`). 이 모듈은 숙소 상세 청크에 함께 실린다. */
+function warmStay(id: number | string) {
+  import('@/pages/stays/stay-detail-warm').then((m) => m.warmStayDetail(id)).catch(() => {})
+}
 
 /**
  * 🔗 `to` 는 **유어샵 핀 전용 탈출구**다 (2026-08-27).
@@ -121,7 +124,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
   //   이용권 상세(청크·데이터)를 데우고 있어 숙소 상세에선 소용이 없었다(라이브: 누른 뒤 로더 ~0.2초).
   //   시점(load 뒤·observer 100px·hover/touch/focus)은 한 글자도 안 바뀐다 — 무엇을 받느냐만.
   const isStay = (to ?? canonicalDetailPath(p) ?? '').startsWith('/stays/')
-  const prefetch = useCallback((id: number | string) => { if (isStay) warmStayDetail(id); else prefetchGb(id) }, [isStay, prefetchGb])
+  const prefetch = useCallback((id: number | string) => { if (isStay) warmStay(id); else prefetchGb(id) }, [isStay, prefetchGb])
   const prefetchDetailChunk = isStay ? noopChunk : prefetchPassChunk
 
   // 🛡️ 2026-05-27 (loading P0): 모바일 viewport prefetch — touch 보다 1-2초 빠름.

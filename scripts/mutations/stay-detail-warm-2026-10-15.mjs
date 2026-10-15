@@ -20,7 +20,7 @@ export default [
     find: '    stayDetailRequest(productId)\n      .then((body) => {', replace: '    api.get(`/api/group-buy/stays/${productId}`).then((r) => r.data)\n      .then((body) => {', test: TEST,
     why: '날아가는 데운 요청을 못 이어받아 같은 것을 두 번 받는다.' },
   { name: '🏨 숙소 카드가 다시 이용권 상세를 데운다', file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
-    find: 'if (isStay) warmStayDetail(id); else prefetchGb(id)', replace: 'prefetchGb(id)', test: TEST,
+    find: 'if (isStay) warmStay(id); else prefetchGb(id)', replace: 'prefetchGb(id)', test: TEST,
     why: '숙소 상세 청크·데이터를 누른 뒤에야 받아 로더가 뜬다.' },
   { name: '🏨 숙소 카드가 이용권 청크까지 받는다', file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
     find: 'const prefetchDetailChunk = isStay ? noopChunk : prefetchPassChunk', replace: 'const prefetchDetailChunk = prefetchPassChunk', test: TEST,

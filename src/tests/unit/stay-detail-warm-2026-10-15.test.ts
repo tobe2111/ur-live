@@ -68,12 +68,20 @@ describe('③ 숙소 카드는 숙소 상세를 데운다 (GroupBuyFeedCard — 
   const s = code('src/pages/main-home/GroupBuyFeedCard.tsx')
   it('목적지가 /stays 면 숙소 데우기 · 아니면 종전 그대로', () => {
     expect(s).toMatch(/const isStay = \(to \?\? canonicalDetailPath\(p\) \?\? ''\)\.startsWith\('\/stays\/'\)/)
-    expect(s).toMatch(/if \(isStay\) warmStayDetail\(id\); else prefetchGb\(id\)/)
+    expect(s).toMatch(/if \(isStay\) warmStay\(id\); else prefetchGb\(id\)/)
     expect(s).toMatch(/const prefetchDetailChunk = isStay \? noopChunk : prefetchPassChunk/)
   })
   it('시점(hover/touch/focus · observer 100px · load 뒤)은 그대로', () => {
     expect(s).toMatch(/onTouchStart=\{\(\) => \{ prefetch\(p\.id\); prefetchDetailChunk\(\) \}\}/)
     expect(s).toMatch(/rootMargin: '100px'/)
     expect(s).toMatch(/return runAfterLoad\(\(\) => \{ prefetch\(p\.id\); prefetchDetailChunk\(\) \}\)/)
+  })
+})
+
+describe('④ 홈 첫 화면이 숙소 청크를 끌고 오지 않는다', () => {
+  it('카드는 데우기 모듈을 동적으로만 부른다', () => {
+    const s = code('src/pages/main-home/GroupBuyFeedCard.tsx')
+    expect(s).not.toMatch(/^import .*stay-detail-warm/m)
+    expect(s).toMatch(/import\('@\/pages\/stays\/stay-detail-warm'\)\.then\(\(m\) => m\.warmStayDetail\(id\)\)/)
   })
 })
