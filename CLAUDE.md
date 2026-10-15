@@ -990,6 +990,13 @@ PR(#806·#1149·#1296·#1400)은 **객체 자체가 `null`**. 그 대조군이 �
 않기 때문**이다(#1815~#1827 전부 머지됐는데 `present`) — 안 그러면 "null = 꺼짐" 과 "null = 머지됨" 이
 구분되지 않는다.
 
+🩸 **`merge_method` 를 빼면 422 다** (2026-10-15 실측 — #1834): 본문 없이 `PUT /ccr/auto_merge` 를
+치면 GitHub 이 기본 `merge` 로 무장하려 하고 이 레포는 머지 커밋을 금지하므로
+`Merge method merge commits are not allowed on this repository` 로 거부된다. **실패가 조용하지도
+않지만 오독하기 쉽다** — 그 문장을 "auto-merge 를 쓸 수 없다" 로 읽으면 다시 대표에게 버튼을
+떠넘기게 된다(2026-10-14 규칙이 막으려던 바로 그 자리다). **`{"merge_method":"squash"}` 를 함께
+보낸다** — 응답이 `{"enabled":true,"merge_method":"squash"}` 면 무장된 것이다.
+
 🔴 **그리고 auto-merge 는 조건을 다 채워도 멎는다 — 켠 것으로 일을 끝냈다고 보지 말 것.** 2026-10-14
 #1828 실측: `auto_merge` 무장 · `Verify` **success** · `mergeable:true` · `mergeable_state:clean` ·
 `draft:false` 인데 **2분+ 동안 머지되지 않았다**(같은 세션의 #1826·#1827 은 정상 자동 머지됐으니 간헐이다).
@@ -1022,7 +1029,8 @@ draft·auto-merge·리뷰 스레드는 GraphQL 전용 기능이라 **전용 REST
 G=https://api.github.com/repos/tobe2111/ur-live/pulls/<번호>
 curl -sS -X POST "$G/ccr/ready_for_review"            # draft 해제
 curl -sS -X POST "$G/ccr/convert_to_draft"            # 다시 draft 로
-curl -sS -X PUT    "$G/ccr/auto_merge"                # 초록 뜨면 자동 머지 (DELETE 로 해제)
+curl -sS -X PUT    "$G/ccr/auto_merge" -H 'Content-Type: application/json' \
+  --data '{"merge_method":"squash"}'                   # 초록 뜨면 자동 머지 (DELETE 로 해제)
 curl -sS       "$G/ccr/review_threads"                # 리뷰 스레드 조회
 curl -sS -X POST "$G/ccr/comments/<id>/resolve"       # 스레드 해결 (또는 /unresolve)
 curl -sS -X PUT  "$G/merge" -H 'Content-Type: application/json' \

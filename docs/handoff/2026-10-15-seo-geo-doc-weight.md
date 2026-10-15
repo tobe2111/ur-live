@@ -105,9 +105,20 @@ preconnect 8 · Speculation Rules 1 · nonce 2 · script 15 **전부 보존**.
    나와 **거짓 "복원 실패"** 가 떴다(CLAUDE.md 가 적어 둔 그 함정). 읽히지 않는 이름
    (`urlOmitted`)으로 바꿨다 — 결함은 그대로다.
 
+### 7. `.mjs` 를 import 하는 시험은 `.d.mts` 형제 선언이 필요하다 (선례 13건)
+
+제 tsc 실행이 그 경로를 안 봐서 "tsc 0" 으로 보고했는데 **pre-commit 이 TS7016 으로 막았다.**
+레포엔 길이 둘이다 — `.d.mts`(실제 타입, 13건) ↔ `@ts-ignore`(any, 2건). 전자를 썼다: 후자는
+시그니처가 바뀌어도 안 잡힌다. ⚠️ **"tsc 0" 을 보고하기 전에 전체 tsc 가 그 파일을 셌는지 볼 것.**
+
+### 8. auto-merge 는 `merge_method` 를 빼면 422 다 (CLAUDE.md 에 기록)
+
+본문 없이 `PUT /ccr/auto_merge` → `Merge method merge commits are not allowed`. 이 레포는 squash
+전용이다. 그 문장을 *"auto-merge 를 못 쓴다"* 로 읽으면 2026-10-14 규칙이 막으려던 자리로 돌아간다.
+
 ## 가드
 
-`src/tests/unit/seo-doc-weight-place-url-2026-10-15.test.ts` 12건 +
+`src/tests/unit/seo-doc-weight-place-url-2026-10-15.test.ts` 14건 +
 주입 `scripts/mutations/seo-doc-weight-place-url-2026-10-15.mjs` 7건(셋이 **반대 방향**).
 
 ⚠️ **못 보는 것**: ①이 실제로 **빠른지**(바이트는 쟀지만 TTFB·LCP 는 브라우저가 판정한다) ·
