@@ -202,3 +202,76 @@ curl -sS -A "$GB" https://urdeal.kr/pass/2919 | grep -o 'name="description" cont
 ```
 ⓒ **클라 설명은 curl 로 볼 수 없다** — JS 를 렌더해야 나타난다. 렌더 하네스로
 `document.querySelector('meta[name=description]').content` 를 읽어야 한다.
+
+---
+
+## 후속 3 — 공유 카드도 한 함수로 (대표 결재 "응 결재 해줄게 해줘")
+
+오전(제목)·오후(설명)에 SSOT 를 만들고 **공유 카드는 일부러 빼 뒀다**(승인 범위 밖). 그 자리를
+결재받아 고쳤고, 재 보니 **셋이 동시에** 틀렸다.
+
+| 자리 | 종전 | 라이브 실측 |
+|---|---|---|
+| `shareDescription` · 카카오 `description` | `{가게} · {N}명 함께 구매 중 · {N}% 할인 · 친구 초대 시 양쪽 0.5% 보너스 (첫 1회)` | `group_buy_current` 분포 **0:357 · 1:1 · 3:1** → 거의 전부 `0명` · `user_referral_bonus_pct = '0'` |
+| 카카오 `title` | `{상품명} 공구 참여하기` | '참여'는 2026-06-27 폐기 개념 |
+| 버튼 라벨 | `나도 참여하기` | 같음 |
+
+### 🔬 도달 범위를 재서 우선순위가 뒤집혔다
+
+`KakaoShareButton` 은 가격이 있으면 **commerce 템플릿**으로 가고
+`commercePayload({ title, imageUrl, url, commerce, buttons })` 는 **`description` 을 안 받는다**.
+
+- `description` → **feed 카드(가격 없는 교환권)** + `navigator.share` 시트
+- `title` → **전 경로**(commerce 카드 포함)
+
+⇒ 처음엔 `0명 함께 구매 중` 을 가장 큰 결함으로 보고할 뻔했는데 **제목이 더 넓다.**
+`shareDescription` 을 고치기 전에 **그 값이 어디까지 가는지**부터 재라.
+
+### 수정
+
+- 공유 제목·설명 → `passDetailTitle` · `passDetailDescription`(검색과 같은 함수)
+- `DetailFloatingHeader` 에 선택 prop **`shareTitle`** 신설 + `title={shareTitle ?? title}` —
+  `title` 이 **보이는 머리글**과 **공유 카드 제목** 두 일을 하고 있었다(머리글에 가게명이 붙으면
+  390px 에서 잘린다). 숙소는 `shareTitle` 을 안 넘겨 종전 동작.
+- 라벨 `나도 참여하기` → `구매하기`(공유 부품 한 곳 — 숙소도 같이 바뀐다. 즉시 구매라 맞다)
+
+### 📦 래칫 둘이 서로 다른 이야기를 한다 — 같이 봐야 판정이 된다
+
+- `surface-chunk-runtime` 홈 **26 → 27**: `region-slugs` 가 종전 `lz-home-homePc` 에 있었는데
+  상세가 그 모듈을 읽게 되자 봉투가 `lz-gbDetail-home-homePc`(1,872B)로 **쪼개졌다.**
+  홈은 **그 코드를 이미 받고 있었으므로 늘어난 것은 요청 하나다.**
+- `surface-budgets` 홈 **195.5 / 예산 196.4** — 바이트는 **안 늘었다**(예산 밑).
+  gbDetail 은 **198.8 → 200.6(+1.7)** — 설명 SSOT 의 실제 비용.
+
+개수만 보면 "홈이 나빠졌다", 바이트만 보면 "홈은 그대로, 상세가 +1.7" 이다.
+
+### 🩸 이번에 틀린 것
+
+1. **JSX 속성 자리에 `{/* */}` 주석** — 거기선 `/* */` 여야 한다. `npx vitest` 는 통과했고
+   (그 시험은 소스를 **문자열로** 읽는다) **`npm run build` 에서만** 터졌다(`Expected "..." but found "}"`).
+   ⇒ 잠긴 파일 JSX 를 고쳤으면 **tsc·build 를 먼저** 돌릴 것.
+2. **제거를 기록한 주석이 제거한 문구를 인용** → 파일 **원문 전체**를 검사한 단언이 거짓 빨간불.
+   판정을 호출 자리 + `readCode`(주석 제거본)로 옮겼다. 이 레포 **다섯 번째**다.
+3. **지문 개수는 원문 grep 과 다르다** — `CountdownRing` 은 실행 코드에 **0**(주석에만 있다).
+   바로 위 audit 항목의 `CountdownRing(1)` 은 원문 값이다.
+4. **배포 폴링 하네스가 또 거짓말했다** — #1849(권종 접미사 **제거**)를 `이용권` **존재**로 판정해
+   부호가 뒤집혀 있었다. 같은 세션 **세 번째** 측정기 오류. 판정 기준이 수리 방향과 같은 부호인지 볼 것.
+
+### ⚠️ 안 한 것 (같은 죽은 약속, 다른 표면)
+
+`?ref=` 진입 배너가 여전히 `친구 추천 공구` / `참여 시 양쪽 0.5% 보너스 딜` 이라고 말한다
+(`GroupBuyDetailPage.tsx` 670줄 안팎). **라이브 보너스는 0** 이다. 혜택 약속은 **결재 대상**이고
+선례(`MyVouchersPage` 2026-10-06)는 **삭제**라 넓히지 않았다 — 별건으로 올릴 것.
+
+### 다음 세션 첫 액션 (E4)
+
+```bash
+# 배포 뒤
+UA='Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
+curl -sS -A "$UA" https://urdeal.kr/pass/2919 | grep -o '<title>[^<]*</title>'
+# 카드 생김새는 **대표만** 판정 — 실제 카톡방에서 /pass 링크 공유
+#   ① 제목이 `{상품명} 이용권 - {가게명}` 인지
+#   ② `0명 함께 구매 중`·`공구 참여하기`·보너스 문구 0건인지
+#   ③ 버튼이 `구매하기` 인지
+#   ④ 🔴 숙소 카드 제목이 **종전과 같은지**(깨지면 숙소가 이용권 규칙에 끌려간다)
+```
