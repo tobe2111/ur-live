@@ -11,6 +11,8 @@ import { i18nSplitPlugin } from './scripts/i18n-split.mjs';
 import { lucideDeepImportsPlugin } from './scripts/lucide-deep-imports.mjs';
 import { ROUTES as SURFACE_ROUTES } from './scripts/generate-route-chunk-map.mjs';
 import { createSurfaceChunker } from './scripts/surface-chunks.mjs';
+import { slimHtml } from './scripts/html-slim.mjs';
+import { transform as esbuildTransform } from 'esbuild';
 
 // 빌드마다 유니크한 버전 — 정형화된 타임스탬프 (YYYYMMDD.HHmm, UTC). SW 캐시 키 + 빌드 표시 겸용.
 //   🏁 2026-06-13 (사용자 요청 "빌드 정보 숫자 정형화"): base36 난수 → 사람이 읽는 날짜.시각 형식.
@@ -147,6 +149,16 @@ export default defineConfig({
     i18nSplitPlugin(__dirname),
     lucideDeepImportsPlugin(),
     proposalPdfDevPlugin(),
+    // ✂️ 2026-10-15: 배포 HTML 에서 개발자용 주석을 걷는다 — 첫 그림 전 <head> 압축 34KB 중 ~17KB 가 주석이었다
+    //   (scripts/html-slim.mjs). 빌드 산출물에만 — 소스 index.html 과 개발 서버는 그대로다.
+    {
+      name: 'ur-html-slim',
+      apply: 'build' as const,
+      transformIndexHtml: {
+        order: 'post' as const,
+        handler: (html: string) => slimHtml(html, async (code: string) => (await esbuildTransform(code, { minify: true, loader: 'js', target: 'es2017' })).code),
+      },
+    },
     // 🚨 2026-04-27 (긴급 롤백): vite-plugin-pwa 비활성화.
     //   원인: navigateFallback 이 카카오 OAuth redirect 도 가로채 ERR_FAILED 발생.
     //   복구: 모든 SW 사용자측 unregister + 새 sw.js 생성 안 함.
