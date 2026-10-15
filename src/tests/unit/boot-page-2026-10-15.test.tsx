@@ -29,7 +29,12 @@ import path from 'node:path'
 import { readCode } from '@/tests/helpers/source-text'
 import { lazyPage, preloadBootPage, registerBootPage } from '@/lib/boot-page'
 import { routeSurface } from '@/shared/route-surface'
-import { ROUTES, PRELOAD_ONLY_ROUTES } from '../../../scripts/generate-route-chunk-map.mjs'
+// 생성기 모듈은 .d.mts 를 두지 않는다 — 그 파일은 생성 본문(템플릿) 안에도 `export const` 줄이 있어
+// pre-push-roots 의 '.d.mts 계약' 검사와 충돌한다. 경로를 변수로 넘겨 타입 해석을 건너뛴다.
+const GEN = '../../../scripts/generate-route-chunk-map.mjs'
+const { ROUTES, PRELOAD_ONLY_ROUTES } = (await import(/* @vite-ignore */ GEN)) as {
+  ROUTES: Record<string, string[]>; PRELOAD_ONLY_ROUTES: Record<string, string[]>
+}
 
 describe('① lazyPage — 준비되면 lazy 를 거치지 않는다', () => {
   it('load() 전에는 멈춘다(경계 없이 렌더하면 던진다)', () => {
