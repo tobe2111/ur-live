@@ -220,7 +220,13 @@ i18n.changeLanguage = (async (lng?: string, ...rest: unknown[]) => {
 }) as typeof i18n.changeLanguage
 
 // 부트스트랩 시작 (모듈 로드 시 자동 실행)
-void bootstrap()
+/**
+ * 🧊 2026-10-15 서버 렌더 이어받기: 이 약속이 풀리면 첫 화면이 쓸 한국어 문구(critical + core)가 다 들어와 있다.
+ *   서버(`src/ssr/pass-detail-entry.tsx`)는 **이 모듈을 그대로** 불러 이 약속을 기다린 뒤 그리고,
+ *   브라우저(`main.tsx`)는 서버가 그린 화면을 이어받기 전에 같은 약속을 기다린다 — 둘이 같은 문구로 그려야 이어받기가 안 갈린다.
+ *   (사본을 따로 두면 언젠가 갈리고, 갈려도 에러는 0 이다 — React 가 조용히 화면을 버리고 다시 그릴 뿐.)
+ */
+export const i18nReady: Promise<void> = bootstrap().catch(() => {})
 
 export default i18n
 

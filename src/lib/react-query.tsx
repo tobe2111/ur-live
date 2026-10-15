@@ -30,12 +30,14 @@ export const queryClient = new QueryClient({
 
 interface QueryProviderProps {
   children: ReactNode
+  /** 🧊 2026-10-15 서버 렌더: 요청마다 새 QueryClient 를 넘긴다(모듈 하나를 요청끼리 나눠 쓰면 다른 요청의 데이터가 섞인다). */
+  client?: QueryClient
 }
 
 // 🎯 Provider 컴포넌트
-export function QueryProvider({ children }: QueryProviderProps) {
+export function QueryProvider({ children, client }: QueryProviderProps) {
   return (
-    <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={client ?? queryClient}>
       {children}
     </QueryClientProvider>
   )

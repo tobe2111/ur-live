@@ -21,6 +21,7 @@
  */
 
 import type { Context, Next } from 'hono';
+import { withReadReplicaEnv } from '../utils/d1-read-replica';
 
 interface CacheOptions {
   /** 인증 헤더 (Authorization / Cookie session) 가 있으면 캐싱을 우회할지. default: true */
@@ -144,6 +145,10 @@ function makeCacheMiddleware(ttlSeconds: number, opts: CacheOptions = {}) {
     }
 
     // L1, L2 모두 miss → 다음 미들웨어로 (D1 hit)
+    // 🌏 2026-10-15: 이 응답은 엣지에 수 분 남는다 → 원본(미국 동부) 대신 **가까운 읽기 복제본**에서 읽는다.
+    //   복제 지연(보통 1초 미만)은 캐시 수명보다 훨씬 작아 손님이 보는 신선도는 그대로다. 로그인 우회 경로(위 return)와
+    //   쓰기 요청은 이 줄에 오지 않는다 — 원본 그대로. 근거·한계: utils/d1-read-replica.ts
+    c.env = withReadReplicaEnv(c.env);
     await next();
 
     // 성공 응답만 캐싱 (4xx/5xx 캐싱 안 함)
@@ -214,6 +219,9 @@ export function publicCache(ttlSeconds: number) {
   //   기존: 5분 cron × 13 endpoint = 일 3,744 KV write → 무료 한도 1,000 초과 (비용 발생)
   //   변경: edge cache (`caches.default`) 만 — 한도 무한, 비용 $0.
   //   한국 (ICN PoP) 사용자 99%+ → cron warming 이 한국 PoP 채워서 hit 동일.
+  //   🩸 2026-10-15 정정(실측): 위 줄은 틀렸다. 무료 요금제 존이라 한국 손님은 ICN 이 아니라 **홍콩(HKG)·미국 서부**에
+  //   붙는다(실사용 TTFB 표본의 데이터센터). 엣지 캐시는 데이터센터마다 따로라 그 콜로가 비면 D1 로 가고, D1 원본은 미국 동부다
+  //   → 그래서 캐시 미스 경로는 가까운 읽기 복제본을 쓴다(위 `makeCacheMiddleware` 의 `withReadReplicaEnv`).
   //   글로벌 사용자 (1%) 는 첫 사용자만 D1 hit, 이후 같은 PoP edge cache.
   //   region 간 share 필요한 endpoint 만 publicCacheWithKv 사용.
   return makeCacheMiddleware(ttlSeconds, { bypassIfAuthed: false, tag: 'public', useKv: false });

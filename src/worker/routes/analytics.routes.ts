@@ -34,6 +34,20 @@ interface VitalsBody {
   name?: 'LCP' | 'FID' | 'CLS' | 'INP' | 'TTFB'
   value?: number
   page?: string
+  /** 🔬 2026-10-15 LCP 구간(web-vitals-report `lcpParts`) — LCP 에만 붙는다. 같은 표본 결정으로 함께 저장한다. */
+  parts?: { ttfb?: unknown; delay?: unknown; load?: unknown; render?: unknown }
+}
+
+/** LCP 구간 이름 — 저장 키 `vitals:{day}:LCP_TTFB:{page}` 등. summary·SLO 와 같은 목록을 쓴다. */
+export const LCP_PART_NAMES = ['LCP_TTFB', 'LCP_DELAY', 'LCP_LOAD', 'LCP_RENDER'] as const
+
+/** 구간 값이 유효하면(0 이상·LCP 이하) 저장할 [이름, 값] 목록을 돌려준다. 하나라도 이상하면 전부 버린다(합이 안 맞는 표본은 섞지 않는다). */
+export function lcpPartSamples(lcp: number, parts: VitalsBody['parts']): Array<[string, number]> {
+  if (!parts || typeof parts !== 'object') return []
+  const vals = [parts.ttfb, parts.delay, parts.load, parts.render].map((v) => (typeof v === 'number' ? v : NaN))
+  if (vals.some((v) => !Number.isFinite(v) || v < 0 || v > lcp + 1)) return []
+  if (Math.abs(vals.reduce((a, b) => a + b, 0) - lcp) > Math.max(5, lcp * 0.02)) return []
+  return LCP_PART_NAMES.map((n, i) => [n, Math.round(vals[i])])
 }
 
 interface FunnelBody {
@@ -86,7 +100,7 @@ analyticsRoutes.post('/vitals', async (c) => {
   if (!body.name || typeof body.value !== 'number' || !Number.isFinite(body.value)) {
     return c.json({ ok: false }, 400)
   }
-  const validNames = ['LCP', 'FID', 'CLS', 'INP', 'TTFB', 'CONN']
+  const validNames = ['LCP', 'FID', 'CLS', 'INP', 'TTFB', 'CONN', 'HYD', 'SRV'] // SRV = 워커 문서 생성 시간(Server-Timing total) // HYD = 서버 화면 이어받기 갈림 수(0 이 정상, main.tsx)
   if (!validNames.includes(body.name)) return c.json({ ok: false }, 400)
   if (body.value < 0 || body.value > 1_000_000) return c.json({ ok: false }, 400)
   const kv = analyticsWriteKv(c.env)
@@ -99,6 +113,9 @@ analyticsRoutes.post('/vitals', async (c) => {
   const page = coloM ? `colo:${coloM[1]}` : ((body.page || '').replace(/\/\d+/g, '').slice(0, 60) || 'unknown')
   const sampleKey = `vitals:${day}:${body.name}:${page}`
   await appendSample(kv, sampleKey, Math.round(body.value))
+  if (body.name === 'LCP' && !coloM) {
+    for (const [n, v] of lcpPartSamples(body.value, body.parts)) await appendSample(kv, `vitals:${day}:${n}:${page}`, v)
+  }
   await incrementCounter(kv, `vitals_count:${day}:${body.name}`, 1)
   return c.json({ ok: true })
 })
@@ -134,7 +151,7 @@ analyticsRoutes.get('/summary', requireAdmin(), async (c) => {
   const vitals: Record<string, { p50: number; p75: number; p95: number; samples: number }> = {}
   const funnel: Record<string, number> = {}
 
-  for (const name of ['LCP', 'FID', 'CLS', 'INP', 'TTFB', 'CONN']) {
+  for (const name of ['LCP', 'FID', 'CLS', 'INP', 'TTFB', 'CONN', 'HYD', 'SRV', ...LCP_PART_NAMES]) {
     try {
       const list = await kv.list({ prefix: `vitals:${day}:${name}:` })
       for (const k of list.keys) {

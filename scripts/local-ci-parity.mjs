@@ -39,6 +39,8 @@ export const EXCLUDE = {
     '이번 빌드의 dist + route-chunk-map 무게를 잰다. 낡은 dist 면 남의 변경을 내 회귀로 신고한다.',
   'check-exec-cost.mjs':
     '이번 빌드의 dist 를 브라우저로 10화면 렌더해 잰다(실측 ~2분 + chromium 필요). 낡은 dist 면 남의 변경을 내 회귀로 신고한다.',
+  'check-pass-ssr-smoke.mjs':
+    'dist/ssr-pass 번들(npm run build:ssr-pass)이 있어야 판정한다. 번들이 없으면 일부러 실패한다(번들 부재 = 서버 렌더 꺼짐).',
 }
 
 /**

@@ -1,29 +1,30 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useSyncExternalStore } from 'react'
 
 /**
  * 🖥️ 2026-07-15: 뷰포트 미디어쿼리 훅 (SSR-safe).
- *   - 초기값: 클라이언트면 즉시 `matchMedia` 결과(첫 렌더부터 정확 — createRoot 비-hydrate 라 미스매치 0),
- *     SSR/window 없음이면 `fallback`(기본 false).
- *   - 변경 구독(addEventListener) — 리사이즈/뷰포트 전환 시 리렌더.
+ *   - 브라우저 렌더(createRoot): 첫 렌더부터 실제 `matchMedia` 결과 — 늦게 끼어들지 않는다.
+ *   - 서버 렌더·hydrate 첫 렌더: `fallback`(기본 false) — 서버와 같은 값을 그린 뒤 hydrate 직후 실제 값으로 다시 그린다.
+ *   - 변경 구독 — 리사이즈/뷰포트 전환 시 리렌더.
+ *
+ * 🧊 2026-10-15 서버 렌더 2단계: `useState` 초기값 → `useSyncExternalStore`. 종전엔 서버가 `fallback` 을,
+ *   hydrate 하는 브라우저가 실제 값을 **같은 첫 렌더**에 그려 결과가 갈렸다(데스크톱 상세 갤러리의 감시 `<img>`).
+ *   서버 스냅샷이 그 갈림을 없앤다. 보통의 브라우저 렌더는 종전과 같다(첫 렌더부터 정확 — 시험이 고정).
  *
  * 사용: `const isDesktop = useMediaQuery('(min-width: 1024px)')`
  */
 export function useMediaQuery(query: string, fallback = false): boolean {
-  const [matches, setMatches] = useState<boolean>(() => {
+  const subscribe = useCallback((cb: () => void) => {
+    if (typeof window === 'undefined' || !window.matchMedia) return () => {}
+    const mql = window.matchMedia(query)
+    mql.addEventListener('change', cb)
+    return () => mql.removeEventListener('change', cb)
+  }, [query])
+  const get = useCallback(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return fallback
     return window.matchMedia(query).matches
-  })
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return
-    const mql = window.matchMedia(query)
-    const onChange = () => setMatches(mql.matches)
-    onChange() // 마운트 시점 값 동기화(초기값과 뷰포트 변화 사이 갭 방어)
-    mql.addEventListener('change', onChange)
-    return () => mql.removeEventListener('change', onChange)
-  }, [query])
-
-  return matches
+  }, [query, fallback])
+  const getServer = useCallback(() => fallback, [fallback])
+  return useSyncExternalStore(subscribe, get, getServer)
 }
 
 export default useMediaQuery

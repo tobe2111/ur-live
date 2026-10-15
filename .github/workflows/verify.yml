@@ -895,6 +895,13 @@ jobs:
           VITE_TOSS_CLIENT_KEY: 'pr-verify'
         run: npm run build:client
 
+      # 🧊 2026-10-15 상세 서버 렌더 번들 — 워커가 묶는다(없으면 스텁이라 실제 경로를 못 시험한다).
+      - name: Build pass SSR bundle
+        run: npm run build:ssr-pass
+
+      - name: Pass SSR smoke (번들이 실제로 상세를 그리는가)
+        run: node scripts/check-pass-ssr-smoke.mjs
+
       - name: Build worker
         run: npm run build:worker
 

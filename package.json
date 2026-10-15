@@ -7,7 +7,7 @@
     "dev": "concurrently \"npm run dev:worker\" \"npm run dev:client\"",
     "dev:worker": "wrangler dev --local",
     "dev:client": "vite",
-    "build": "npm run build:client && npm run build:ssr && (npm run prerender:main || echo '[build] prerender skip (graceful)') && npm run build:worker && npm run build:prepare",
+    "build": "npm run build:client && npm run build:ssr && (npm run prerender:main || echo '[build] prerender skip (graceful)') && npm run build:ssr-pass && npm run build:worker && npm run build:prepare",
     "build:client": "vite build",
     "build:worker": "node scripts/build-seed-assets.mjs && node scripts/generate-route-chunk-map.mjs && node scripts/build-worker.js",
     "build:prepare": "node scripts/build-prepare.mjs",
@@ -48,7 +48,8 @@
     "deploy:production": "bash scripts/deploy-production.sh",
     "audit:check": "bash scripts/check-npm-audit.sh",
     "smoke:mall": "node scripts/smoke-mall-render.mjs",
-    "build:seed": "node scripts/build-seed-assets.mjs"
+    "build:seed": "node scripts/build-seed-assets.mjs",
+    "build:ssr-pass": "vite build -c vite.ssr-pass.config.ts"
   },
   "dependencies": {
     "@capacitor-community/admob": "6.2.0",

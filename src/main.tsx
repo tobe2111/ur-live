@@ -69,7 +69,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import ThemeProvider from '@/components/ThemeProvider'
 import './index.css'
-import './i18n' // ✅ i18n 초기화
+import i18n, { i18nReady } from './i18n' // ✅ i18n 초기화(모듈 로드 시 시작) — 서버 화면 이어받기 전엔 이 약속을 기다린다
 // 🛡️ 2026-05-23 Frontend 에러 telemetry — window.onerror + unhandledrejection 캐치 → /api/_errors/log
 import { installErrorTelemetry, reportError } from '@/lib/error-telemetry'
 installErrorTelemetry()
@@ -82,7 +82,12 @@ import { isKeyboardOpen, isEditableElementFocused } from '@/lib/keyboard-viewpor
 import { swallow } from '@/shared/utils/swallow'
 import { installImageProtection } from '@/lib/image-protect'
 import { captureBootFirstScreen } from '@/lib/boot-first-screen'
+import { setHydrationRoot } from '@/lib/hydration-priority'
 import { preloadBootPage, bootSurface } from '@/lib/boot-page' // 🚀 2026-10-15 하드로드 페이지 준비(폴백 단계 제거)
+/** 약속이 ms 안에 풀리면 true. 못 풀리면 false — 이어받기를 포기하고 새로 그린다(무한 대기 금지). */
+function waitAtMost(p: Promise<unknown>, ms: number): Promise<boolean> {
+  return Promise.race([p.then(() => true, () => false), new Promise<boolean>((r) => setTimeout(() => r(false), ms))])
+}
 import { hasSessionPersistProbe, clearSessionPersistProbe } from '@/shared/session-persist-probe'
 import { processAuthCallbackParams } from '@/utils/auth-callback-bootstrap'
 import { runAfterLoad } from '@/lib/after-load'
@@ -455,12 +460,31 @@ async function bootApp() {
       captureBootFirstScreen()
       // 🚀 2026-10-15: 이 주소의 페이지 모듈을 첫 렌더 전에 준비 — '페이지 로딩 중' 단계와 React 의 0.5초 공개 지연을 건너뛴다(lib/boot-page).
       await preloadBootPage(bootSurface())
-      // ✅ React StrictMode 제거 (중복 마운트 방지)
-      ReactDOM.createRoot(rootElement).render(
-        <ThemeProvider>
-          <App />
-        </ThemeProvider>
-      )
+      // 🧊 2026-10-15: 서버가 앱 전체를 그려 보냈으면(`#root[data-ssr="app"]` — worker/utils/pass-ssr.ts) 다시 그리지 않고
+      //   **이어받는다**(hydrateRoot). 서버와 같은 문구(i18nReady)가 들어온 뒤에만 — 문구가 다르면 React 가 화면을 버린다.
+      //   언어가 한국어가 아니면(서버는 한국어로 그린다) 이어받지 않고 종전처럼 새로 그린다.
+      if (rootElement.getAttribute('data-ssr') === 'app' && (await waitAtMost(i18nReady, 3000)) && i18n.language === 'ko') {
+        let mismatches = 0
+        const hydration = ReactDOM.hydrateRoot(rootElement, <ThemeProvider><App /></ThemeProvider>, {
+          onRecoverableError(err) {
+            mismatches += 1
+            if (import.meta.env.DEV) console.error('[hydrate] 서버 화면과 갈림 — React 가 그 영역을 다시 그린다', err)
+          },
+        })
+        setHydrationRoot(hydration) // 셸이 커밋되면 본문 이어받기를 유휴 → 보통 우선순위로(lib/hydration-priority)
+        // 👆 React 가 이제 듣고 있다 — 이 뒤의 클릭은 React 가 그 자리를 먼저 이어받고 다시 실행한다(선택적 이어받기).
+        //   그 전(앱 코드가 아직 안 받아진 1~2초)의 클릭만 워커의 누름 기억 스크립트가 맡는다(worker/utils/pass-ssr.ts).
+        ;(window as unknown as { __urHydrated?: boolean }).__urHydrated = true
+        // 📡 갈림 수를 표본으로 보낸다(HYD — 0 이 정상). 보이지 않는 실패라 숫자로만 보인다.
+        setTimeout(() => { import('./lib/web-vitals-report').then((m) => m.reportHydration(mismatches)).catch(() => {}) }, 4000)
+      } else {
+        // ✅ React StrictMode 제거 (중복 마운트 방지)
+        ReactDOM.createRoot(rootElement).render(
+          <ThemeProvider>
+            <App />
+          </ThemeProvider>
+        )
+      }
 
       // 🛡️ 2026-07-16 (대표 신고 복구): 부팅 성공 신호 — index.html 부트가드 워치독(12s)이 '앱 안 뜸'으로
       //   판단해 복구 오버레이(#ur-stuck-recover)를 띄웠다면 제거(느린 회선 false-positive 자동 해제).

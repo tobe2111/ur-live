@@ -30,7 +30,16 @@ export function rememberLoc(loc: { lat: number; lng: number }): void {
 
 export function readCachedLoc(): { lat: number; lng: number } | null {
   try {
-    const c = JSON.parse(localStorage.getItem(LAST_LOC_KEY) || 'null')
+    return parseCachedLoc(localStorage.getItem(LAST_LOC_KEY))
+  } catch {
+    return null
+  }
+}
+
+/** 저장 문자열 → 좌표. 렌더 중에 읽어야 하는 화면은 `useStoredValue(LAST_LOC_KEY)` 결과를 여기 넘긴다(서버 렌더 안전). */
+export function parseCachedLoc(raw: string | null): { lat: number; lng: number } | null {
+  try {
+    const c = JSON.parse(raw || 'null')
     return c && Number.isFinite(c.lat) && Number.isFinite(c.lng) ? { lat: c.lat as number, lng: c.lng as number } : null
   } catch {
     return null

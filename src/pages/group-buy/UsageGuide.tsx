@@ -21,6 +21,7 @@
  *   ③ `사용 방법: QR 제시 · 확인코드` 행 삭제 — 바로 위 타일이 같은 말을 한다.
  */
 import { safeDate } from '@/utils/safe-date'
+import { formatKSTDate } from '@/utils/date'
 import { ClockIcon } from '@/components/icons/urdeal-icons'
 import RedeemHowTo from './RedeemHowTo'
 
@@ -32,7 +33,8 @@ const DEFAULT_TERMS = [
 export default function UsageGuide({
   voucherExpiry, voucherTerms,
 }: { voucherExpiry?: string | null; voucherTerms?: string | null }) {
-  const expiry = voucherExpiry ? safeDate(voucherExpiry)?.toLocaleDateString('ko-KR') : null
+  // 🕘 2026-10-15: 시간대를 박는다 — 없으면 브라우저 시간대로 찍혀 서버(UTC) 렌더와 자정 근처에서 하루 갈린다.
+  const expiry = voucherExpiry && safeDate(voucherExpiry) ? formatKSTDate(voucherExpiry) : null
   const terms = voucherTerms
     ? voucherTerms.split('\n').map(s => s.trim()).filter(Boolean)
     : DEFAULT_TERMS

@@ -94,6 +94,8 @@ export default defineConfig({
       // 🧪 런타임 내장 모듈 — 번들러가 못 푼다. 스텁이 없으면 이걸 import 하는 파일을
       //   **거쳐서 도달하는** 테스트까지 통째로 로드 실패한다(근거는 스텁 파일 헤더).
       'cloudflare:workers': path.resolve(__dirname, './src/tests/stubs/cloudflare-workers.ts'),
+      // 🧊 2026-10-15 상세 서버 렌더 번들 — 워커 빌드가 실제 번들로 푼다(scripts/build-worker.js). 시험에선 스텁.
+      'virtual:pass-ssr': path.resolve(__dirname, './src/worker/ssr/pass-ssr-stub.ts'),
     },
   },
 });
