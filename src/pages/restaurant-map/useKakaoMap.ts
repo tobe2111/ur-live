@@ -192,6 +192,12 @@ export function useKakaoMap({
       //   "데스크톱 Chrome UA + 터치"(DevTools Responsive 에뮬·Windows 터치 노트북) 환경에서 마우스
       //   핸들러만 바인딩해 터치 팬이 완전 불능 — 그 환경에서만 터치→마우스 어댑터 부착(그 외 no-op).
       shimCleanupRef.current = attachKakaoTouchShim(mapRef.current)
+      // 🗺️ 2026-10-15 첫 타일을 다 받으면 한 번 알린다 — main.tsx 가 `/map` 에서 GTM(153KB)을 그 뒤로 미룬다.
+      const onTiles = () => {
+        try { window.kakao.maps.event.removeListener(mapInstance.current, 'tilesloaded', onTiles) } catch { /* */ }
+        window.dispatchEvent(new Event('ur:map-tiles-loaded'))
+      }
+      window.kakao.maps.event.addListener(mapInstance.current, 'tilesloaded', onTiles)
       // 🛡️ 2026-06-20: 커스텀 wheel 핸들러 제거 — 네이티브 scrollwheel 줌(위 옵션)에 위임(커서기준·트랙패드 핀치 부드럽게).
     }
 
