@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { routeSurface } from '@/shared/route-surface'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { stripComments } from '../helpers/source-text'
@@ -136,7 +137,10 @@ describe('R5 — 인프라가 새 주소를 안다', () => {
 
   it('🔴 청크 프리로드 표면이 `/pass/:id` 를 잡는다', () => {
     // 안 잡으면 페이지 청크가 엔트리 실행 후에야 직렬로 내려온다(로더 구간이 길어진다).
-    expect(/\^\\\/\(\?:pass\|group-buy\)\\\/\\d\+/.test(worker())).toBe(true)
+    // 🧭 2026-10-15: 판정이 공용 함수(shared/route-surface)로 옮겨갔다 — 워커는 그것을 부른다.
+    expect(worker()).toContain('const chunkSurface = routeSurface(')
+    expect(routeSurface('/pass/2919', true, false)).toBe('gbDetail')
+    expect(routeSurface('/group-buy/2919', true, false)).toBe('gbDetail')
   })
 
   it('🔴 sitemap 이 **정본**을 제출한다 — 301 을 제출하면 색인 신호가 한 홉 낭비된다', () => {

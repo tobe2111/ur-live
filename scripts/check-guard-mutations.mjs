@@ -2293,9 +2293,9 @@ const MUTATIONS = [
   },
   {
     name: '태블릿 홈이 다시 옛 디자인이 된다(헤더는 md, 본문은 lg 로 갈림)',
-    file: 'src/pages/pc-home/HomeRoute.tsx',
-    find: "useMediaQuery('(min-width: 768px)')",
-    replace: "useMediaQuery('(min-width: 1024px)')",
+    file: 'src/shared/route-surface.ts',
+    find: "export const HOME_DESKTOP_QUERY = '(min-width: 768px)'",
+    replace: "export const HOME_DESKTOP_QUERY = '(min-width: 1024px)'",
     test: 'src/tests/unit/home-tablet-breakpoint.test.ts',
     why:
       '상단 헤더는 `hidden md:block`(768) 인데 이 분기가 lg(1024) 면 **768~1023 구간만 헤더는 새 ' +
@@ -6109,16 +6109,9 @@ canvas {
       '단지 "린트를 끈 1,000줄짜리 파일"이 된다. 이 주입은 처음엔 **초록이 떴다** — 검사가 배열 ' +
       '본문만 봐서 선언 위에 심은 헬퍼를 못 봤다. 파일 전체를 보게 고친 뒤 빨강.',
   },
-  {
-    name: '추천 보너스 원장 폴백 제거',
-    file: 'src/features/group-buy/api/referral-bonus.ts',
-    find: "await recordPointTxMinimal(DB, uid, 'referral_bonus', bonus, desc)",
-    replace: '/* removed */',
-    test: 'src/tests/unit/point-credit-ledger-row.test.ts',
-    why:
-      '이 원장 행은 잔액 기록이자 **중복 방지 키**다(`alreadyRewarded` 가 description LIKE 로 읽는다). ' +
-      '행이 없으면 같은 추천 조합이 매번 다시 보상받는다 — 불일치를 넘어 반복 지급.',
-  },
+  // 🗑️ 2026-10-16 — '추천 보너스 원장 폴백 제거' 주입을 **지웠다**. 앵커 파일
+  //   `src/features/group-buy/api/referral-bonus.ts` 가 같은 날 삭제됐다(대표 "0.5%는 안주는거야").
+  //   그 자리를 대신하는 주입은 `scripts/mutations/referral-bonus-single-source-2026-10-16.mjs` 7건.
   {
     name: '회차 조건 clamp 를 순진한 Number 로',
     file: 'src/features/marketing/api/store-trades.ts',

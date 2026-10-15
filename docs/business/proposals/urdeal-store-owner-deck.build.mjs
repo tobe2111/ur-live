@@ -214,7 +214,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
       { text: '한 번 판 이용권은 ', options: { color: C.inkSoft } },
       { text: '매장 페이지, 소개자의 유어샵, 손님 지갑에 남아 다음 판매를 만듭니다.', options: { bold: true, color: C.ink } },
     ], { y: 6.2, w: 7.0 });
-    s.addNotes('09-15 참고 덱 "누적 자산화" 프레임. 매장 페이지 = CuratorPage(/u/:handle, linked_seller 인라인). 소개자 유어샵 = 핀. 손님 지갑 = /my-vouchers(로그인 필요라 캡처 없음). 리뷰 보너스 1,000딜 유어딜 부담. 오른쪽은 /u/jiwon1228 라이브 캡처.');
+    s.addNotes('09-15 참고 덱 "누적 자산화" 프레임. 매장 페이지 = CuratorPage(/u/:handle, linked_seller 인라인). 소개자 유어샵 = 핀. 손님 지갑 = /my-vouchers(로그인 필요라 캡처 없음). 리뷰 보너스는 2026-10-12 종료 — 말하지 않는다. 오른쪽은 /u/jiwon1228 라이브 캡처.');
   }
 
   // ───────── 05 활용 시나리오 ─────────
@@ -237,7 +237,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
       y += 0.93;
     });
     phone(s, 'detail', 10.0, 1.05, 5.35, { caption: '손님이 보는 이용권 (라이브 화면)' });
-    s.addNotes('사용 조건 프리셋: voucher-usage-conditions.ts (평일만 / 점심시간 11~15시 등). 수량 한정: 상품 필드. 이용권별 링크·카톡 공유: /group-buy/:id OG. 매장 QR: 매장 페이지 주소를 QR 로 만드는 것(전용 포스터 기능은 없음 — 그래서 "주소를 QR 로 만들어"로 적음). 리뷰 보너스 1,000딜 유어딜 부담.');
+    s.addNotes('사용 조건 프리셋: voucher-usage-conditions.ts (평일만 / 점심시간 11~15시 등). 수량 한정: 상품 필드. 이용권별 링크·카톡 공유: /group-buy/:id OG. 매장 QR: 매장 페이지 주소를 QR 로 만드는 것(전용 포스터 기능은 없음 — 그래서 "주소를 QR 로 만들어"로 적음). 리뷰 보너스는 2026-10-12 종료 — 말하지 않는다.');
   }
 
   // ───────── 06 FAQ ─────────

@@ -5,6 +5,7 @@
  * 공구 핵심 정보 (현재/목표 인원 + 마감 시간) 한눈에.
  */
 
+import { loadRoute } from '@/lib/route-preload'
 import { memo, useEffect, useRef, useState, type ReactNode } from 'react'
 import { StarIcon } from '@/components/icons/urdeal-icons'
 import { Link } from 'react-router-dom'
@@ -93,7 +94,10 @@ let _detailChunkPrefetched = false
 function prefetchDetailChunk() {
   if (_detailChunkPrefetched) return
   _detailChunkPrefetched = true
-  import('@/pages/GroupBuyDetailPage').catch(() => { _detailChunkPrefetched = false })
+  // 🚀 2026-10-15: `import()` 를 직접 부르면 코드는 받지만 상세 화면이 "준비됨" 으로 안 바뀌어, 누를 때마다
+  //   "페이지 로딩 중" 이 0.35초 떴다(라이브 실측 3회 — 위 주석의 '폴백 없이 즉시' 약속이 실제론 안 지켜졌다).
+  //   App.tsx 가 등록한 같은 로더로 받는다(lib/route-preload `loadRoute` · lib/boot-page `lazyPage`).
+  loadRoute('gbDetail').catch(() => { _detailChunkPrefetched = false })
 }
 
 /**

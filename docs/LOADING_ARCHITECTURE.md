@@ -88,7 +88,15 @@
    상세는 `qc.fetchQuery`(in-flight 이어받기)로. (다르면 프리페치 100% 낭비 — 2026-07-10 실사고 2건.)
 4. **하드로드 진입점이면 두 곳 등재**:
    - (트래픽 큰 공개 페이지) `worker/index.ts` SSR 슬롯 + `cache-prewarm HOT_PATHS`
-   - (모든 하드로드 진입점) `scripts/generate-route-chunk-map.mjs` ROUTES + `worker/index.ts` chunkSurface — 청크가 엔트리와 병렬 다운로드. **한쪽만 넣으면 loader-continuity 가드가 차단.**
+   - (모든 하드로드 진입점) `scripts/generate-route-chunk-map.mjs` ROUTES(또는 PRELOAD_ONLY_ROUTES) + `src/shared/route-surface.ts` — 청크가 엔트리와 병렬 다운로드. **한쪽만 넣으면 loader-continuity 가드가 차단.**
+     (2026-10-15: 주소 → 표면 판정은 워커 안이 아니라 `shared/route-surface.ts` 한 곳이다 — 워커와 앱 부팅이 같은 함수를 쓴다.)
+   - 🚀 **그리고 그 페이지는 `lazyPage` 로 감싸고 `registerBootPage('<표면>', X.load)` 를 단다**(2026-10-15).
+     `React.lazy` 는 코드를 미리 받아 둬도 첫 렌더에서 한 번 멈추고, React 18 은 그때 그린 폴백을 **최소 0.5초** 보여 준 뒤에야 내용을 드러낸다.
+     부팅(main.tsx)이 그 표면의 페이지를 첫 렌더 전에 준비해 두면 "페이지 로딩 중" 단계가 통째로 사라진다
+     (같은 문서 A/B 5회: 홈 −0.76초 · 교환권 −0.51초 · 유어샵 −0.33초 · 이용권 상세 −0.16초, 폴백 5/5 → 0/5).
+     가드 `boot-page-2026-10-15.test.tsx` 가 ROUTES ∪ PRELOAD_ONLY_ROUTES 의 **모든 표면**에 등록이 있는지 본다.
+   - 🔗 **미리받기는 `import()` 로 직접 하지 말고 `loadRoute('<이름>')`**(lib/route-preload) — 직접 import 는 코드만 받고
+     화면 컴포넌트를 "준비됨" 으로 못 바꿔, 누를 때 로딩 화면이 그대로 뜬다(홈 카드 → 상세 실측 0.35초).
 5. **쿼리 파라미터 변경은 제자리 갱신** — 페이지가 searchParams 를 반응형으로 처리(effect deps). 리마운트 유발 금지(App.tsx key 는 pathname — 가드 고정).
 6. **검증은 실측** — `node scripts/probe-loading.mjs /new-page` (원격 세션은 `PROXY_RELAY=1`). 기준: 풀스크린 로더 1회만(재등장=⚠️), warm 콘텐츠 ≤ ~1.5s. 추측으로 "빠르겠지" 금지.
 
