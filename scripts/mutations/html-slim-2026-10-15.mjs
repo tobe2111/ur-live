@@ -35,4 +35,13 @@ export default [
     test: T,
     why: '모듈은 남고 배포 HTML 은 주석 17KB 를 그대로 싣는다.',
   },
+  {
+    name: 'HTML다이어트 — 상세 직전 사본이 다시 1시간',
+    file: 'src/worker/utils/ssr-payload.ts',
+    find: 'export const STALE_MAX_AGE_S = 86400',
+    replace: 'export const STALE_MAX_AGE_S = 3600',
+    test: 'src/tests/unit/ssr-stale-while-revalidate-2026-10-12.test.ts',
+    why: '덜 보는 상세는 1시간 안에 같은 콜로에서 다시 열릴 일이 드물어 구글 첫 방문이 콜드 self-fetch(579ms)를 기다린다.',
+  },
 ]
+
