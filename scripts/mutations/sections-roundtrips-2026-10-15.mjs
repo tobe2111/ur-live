@@ -94,4 +94,28 @@ export default [
     test: T,
     why: '사본 사용을 원본으로 보고해 효과 판정이 뒤집힌다.',
   },
+  {
+    name: '🌏 2단계 — 유어샵 주인도 사본에서 읽는다',
+    file: 'src/worker/routes/curator.routes.ts',
+    find: 'getAuthUserId(c) == null ? publicReadDb(c.env.DB) : c.env.DB',
+    replace: 'publicReadDb(c.env.DB)',
+    test: T,
+    why: '주인이 핀·사진을 고친 직후 새로고침하면 사본 지연으로 옛 값이 보인다.',
+  },
+  {
+    name: '🌏 2단계 — 블로그 조회수 쓰기까지 세션으로',
+    file: 'src/features/blog/api/blog.routes.ts',
+    find: "  await c.env.DB.prepare(\n    `UPDATE blog_posts SET view_count",
+    replace: "  await publicReadDb(c.env.DB).prepare(\n    `UPDATE blog_posts SET view_count",
+    test: T,
+    why: '공개 읽기 경계가 쓰기 경로로 번진다(허용 목록의 의미가 사라진다).',
+  },
+  {
+    name: '🌏 2단계 — 유어샵 매출 테이블 메모가 세션 기준',
+    file: 'src/worker/utils/ushop-sales.ts',
+    find: '  if (ensured.has(dbKey(DB))) return',
+    replace: '  if (ensured.has(DB)) return',
+    test: T,
+    why: '익명 유어샵 요청마다 CREATE TABLE·INDEX 두 왕복이 다시 붙는다.',
+  },
 ]

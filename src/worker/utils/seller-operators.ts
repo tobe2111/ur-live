@@ -26,6 +26,7 @@
  *   부여·회수는 그 판정의 isolate 캐시를 즉시 비운다(다른 isolate 는 최대 15초).
  */
 import { invalidateStoreSeatCache } from './store-seat-guard'
+import { dbKey } from './d1-read-replica' // 세션(사본)이어도 메모는 원본 기준
 
 /** 매장에 대한 계정의 권한. owner = 실소유(1명), operator = 위임받아 운영. */
 export type OperatorRole = 'owner' | 'operator'
@@ -58,8 +59,8 @@ const _done_ensureSellerOperators = new WeakSet<object>()
  * ⚠️ `revoked_at` 은 **행 삭제 대신**이다. 누가 언제 이 매장을 운영했는지가 분쟁 시 유일한 근거다.
  */
 export async function ensureSellerOperators(DB: D1Database): Promise<void> {
-  if (_done_ensureSellerOperators.has(DB)) return
-  _done_ensureSellerOperators.add(DB)
+  if (_done_ensureSellerOperators.has(dbKey(DB))) return
+  _done_ensureSellerOperators.add(dbKey(DB))
   try {
     await DB.prepare(`CREATE TABLE IF NOT EXISTS seller_operators (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

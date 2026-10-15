@@ -267,8 +267,35 @@ describe('D1 읽기 복제 — 공개 편성 읽기만 사본으로', () => {
     expect(d1ServedLabel({ meta: { served_by_primary: false, served_by_region: 'A\r\nX: y' } })).toBe('replica:AXy')
   })
 
+  it('2단계 유어샵 — 사본은 익명 방문에만(주인은 편집 직후 옛 값을 보면 안 된다)', () => {
+    const src = readFileSync('src/worker/routes/curator.routes.ts', 'utf-8')
+    const lines = src.split('\n').filter((l) => l.includes('publicReadDb(c.env.DB)'))
+    expect(lines.length, '유어샵 공개 조회가 사본을 안 쓴다').toBe(1)
+    expect(lines[0]).toMatch(/getAuthUserId\(c\) == null \? publicReadDb\(c\.env\.DB\) : c\.env\.DB/)
+  })
+
+  it('2단계 블로그 — 발행 글 읽기만 사본, 조회수 쓰기·관리 경로는 원본', () => {
+    const src = readFileSync('src/features/blog/api/blog.routes.ts', 'utf-8')
+    const cut = src.indexOf("app.post('/public/:slug/view'")
+    expect(cut).toBeGreaterThan(0)
+    const before = src.slice(0, cut), after = src.slice(cut)
+    expect((before.match(/publicReadDb\(c\.env\.DB\)/g) ?? []).length).toBe(2)
+    expect(after).not.toMatch(/publicReadDb\(/)
+  })
+
+  it('2단계 — 유어샵이 거치는 isolate 메모도 원본 기준(dbKey)', () => {
+    for (const f of ['src/worker/utils/ushop-sales.ts', 'src/worker/utils/affiliate-program.ts', 'src/worker/utils/seller-operators.ts']) {
+      const src = readFileSync(f, 'utf-8')
+      expect(src, `${f}: 세션마다 메모가 빗나가 DDL·설정 조회가 요청마다 다시 돈다`).not.toMatch(/\.(has|get|add|set|delete)\(DB\b/)
+    }
+  })
+
   it('publicReadDb 는 허용된 공개 읽기 파일에서만 쓴다 — 머니·관리 경로 금지', () => {
-    const ALLOWED = new Set(['src/features/sections/api/sections.routes.ts'])
+    const ALLOWED = new Set([
+      'src/features/sections/api/sections.routes.ts',
+      'src/worker/routes/curator.routes.ts', // 2단계 — 익명 방문만(아래 시험)
+      'src/features/blog/api/blog.routes.ts', // 2단계 — 발행 글 읽기만(아래 시험)
+    ])
     const hits = execSync(`grep -rlE "publicReadDb\\(" src --include=*.ts --include=*.tsx`, { encoding: 'utf-8' })
       .split('\n').filter(Boolean).filter((f) => !f.includes('/tests/') && !f.endsWith('d1-read-replica.ts'))
     expect(hits.length, '쓰는 곳이 0 이면 복제를 켜도 아무 효과가 없다').toBeGreaterThan(0)

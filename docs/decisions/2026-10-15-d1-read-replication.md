@@ -63,5 +63,7 @@ Cloudflare D1 읽기 복제(Read Replication)를 켜고, 손님 화면의 **읽�
 
 ## 반영 커밋
 - 1단계: 홈 섹션(`/api/sections`) 읽기를 세션 API 로 — `src/worker/utils/d1-read-replica.ts` (이 커밋, PR #1830)
-- 2단계(미착수): 이용권 목록·상세(`group-buy-public.routes.ts` — 로딩 잠금 파일, 별도 승인 필요)·유어샵·블로그
+- 2단계: 유어샵(`curator.routes.ts` — **익명 방문만**, 로그인은 원본) · 블로그 공개 목록·글(조회수 쓰기·관리는 원본)
+  + 유어샵이 거치는 isolate 메모 3곳(`ushop-sales`·`affiliate-program`·`seller-operators`)을 `dbKey` 로
+- 3단계(미착수): 이용권 목록·상세(`group-buy-public.routes.ts` — 로딩 잠금 파일, **별도 승인 필요**)
 

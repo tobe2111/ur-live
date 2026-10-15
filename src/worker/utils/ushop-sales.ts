@@ -17,11 +17,13 @@
  *   - 셀 때는 취소·환불·실패 주문을 뺀다(기록을 지우지 않는다 — 상태로 거른다).
  */
 
+import { dbKey } from './d1-read-replica' // 세션(사본)이어도 isolate 메모는 원본 기준
+
 const ensured = new WeakSet<D1Database>()
 
 export async function ensureUShopSalesTable(DB: D1Database): Promise<void> {
-  if (ensured.has(DB)) return
-  ensured.add(DB)
+  if (ensured.has(dbKey(DB))) return
+  ensured.add(dbKey(DB))
   await DB.prepare(
     `CREATE TABLE IF NOT EXISTS ushop_sales (
       order_id INTEGER NOT NULL,

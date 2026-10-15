@@ -14,6 +14,7 @@ import { generateBlogDraft, PROMO_TOPICS, type PromoTopic } from './blog-ai';
 //   정적 import → 동적 import 로 이동(guide-seed 와 동일 검증된 패턴). 시드 동기화 발생 시에만 로드 → 메인 워커 번들 축소.
 import { intParam } from '@/shared/pagination'
 import { loadSeedAsset, isBlogSeed, SEED_ASSET_PATHS, type SeedAssetEnv } from '../../../worker/utils/seed-assets'
+import { publicReadDb } from '../../../worker/utils/d1-read-replica'
 const app = new Hono<{ Bindings: Env }>()
 
 // AI 초안: 미검토(비공개) 초안이 이만큼 쌓이면 추가 생성 중단(관리자 검토 유도).
@@ -82,14 +83,15 @@ app.get('/public', async (c) => {
   if (q) { conds.push('(title LIKE ? OR summary LIKE ? OR content LIKE ?)'); const like = `%${q}%`; binds.push(like, like, like) }
   const where = `WHERE ${conds.join(' AND ')}`
 
+  const R = publicReadDb(c.env.DB) // 🌏 2026-10-15 D1 읽기 복제 — 발행 글 읽기만 사본(쓰기·재시드는 원본)
   const [posts, total] = await Promise.all([
-    c.env.DB.prepare(`
+    R.prepare(`
       SELECT id, slug, title, summary, tags, author, thumbnail_url, published_at
       FROM blog_posts ${where}
       ORDER BY published_at DESC
       LIMIT ? OFFSET ?
     `).bind(...binds, limit, offset).all(),
-    c.env.DB.prepare(`SELECT COUNT(*) as cnt FROM blog_posts ${where}`).bind(...binds).first<{ cnt: number }>(),
+    R.prepare(`SELECT COUNT(*) as cnt FROM blog_posts ${where}`).bind(...binds).first<{ cnt: number }>(),
   ])
 
   return c.json({
@@ -102,7 +104,7 @@ app.get('/public', async (c) => {
 // ── 공개: 단건 조회 ────────────────────────────────────────────
 app.get('/public/:slug', async (c) => {
   await ensureBlogTable(c.env.DB)
-  const post = await c.env.DB.prepare(`
+  const post = await publicReadDb(c.env.DB).prepare(`
     SELECT * FROM blog_posts WHERE slug = ? AND is_published = 1
   `).bind(c.req.param('slug')).first()
 

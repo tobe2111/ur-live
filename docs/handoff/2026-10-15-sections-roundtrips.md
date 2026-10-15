@@ -45,3 +45,10 @@
   ③ 효과 있으면 유어샵(`curator.routes`)·블로그로 확대(비잠금) → 이용권 목록·상세는 잠금 파일이라 **승인 필요**
   (다른 세션의 "상세 서버 렌더" 계획의 전제이기도 하다 — 서버 렌더도 데이터를 기다린다).
 - 🩸 틀렸던 판단: "토큰은 조회 전용이라 켜는 건 대표 몫" 이라 적었는데 토큰엔 D1 편집 권한이 있었다. **권한은 문서가 아니라 호출로 판정할 것.**
+
+## 2단계 (유어샵·블로그)
+- 유어샵 `GET /api/curator/:handle`: `getAuthUserId(c) == null ? publicReadDb(...) : 원본` — 주인은 편집 직후 옛 값 금지라 로그인=원본.
+- 블로그 `GET /public`·`/public/:slug` 읽기만 사본. 조회수 POST·재시드·관리는 원본.
+- 같이 고친 메모 키(`dbKey`): `ushop-sales` ensured · `affiliate-program` _memo · `seller-operators` ensure — 안 고치면 익명 유어샵 요청마다 DDL·설정 조회 재실행.
+- 가드: `sections-roundtrips-2026-10-15.test.ts` 허용 목록 3파일 + 2단계 시험 3건 + 주입 3건(빨간불 확인).
+- 남은 것: 이용권 목록·상세(잠금 파일 — 내일 효과 확인 후 승인 요청).
