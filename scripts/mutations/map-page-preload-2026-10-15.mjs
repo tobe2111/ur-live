@@ -21,7 +21,7 @@ export default [
   {
     name: '🗺️ 미리받기가 매번 다시 받는다(한 번만 아님)',
     file: 'src/lib/route-preload.ts',
-    find: '  if (started.has(name)) return\n',
+    find: '  if (hit) return hit\n',
     replace: '',
     test: TEST,
     why: '누르는 순간 + 한가할 때 두 번 부른다 — 두 번째는 아무것도 안 해야 한다.',
@@ -29,8 +29,8 @@ export default [
   {
     name: '🗺️ 실패한 미리받기를 다시 시도하지 않는다',
     file: 'src/lib/route-preload.ts',
-    find: '  load().catch(() => { started.delete(name) })',
-    replace: '  load().catch(() => {})',
+    find: 'started.delete(name); inflight.delete(name); throw e',
+    replace: 'started.delete(name); throw e',
     test: TEST,
     why: '일시 실패 한 번으로 그 탭 수명 동안 미리받기가 꺼진다.',
   },

@@ -1,0 +1,43 @@
+/**
+ * 🧭 주소 → 화면 표면(surface) 판정 — **워커와 앱이 같은 함수**를 쓴다 (2026-10-15).
+ *
+ * 표면 이름은 `scripts/generate-route-chunk-map.mjs` 의 `ROUTES`·`PRELOAD_ONLY_ROUTES` 키와 같다.
+ *   - 워커: 그 표면의 페이지 청크를 modulepreload 로 싣는다(하드로드 청크 병렬화).
+ *   - 앱(main.tsx): 같은 표면의 페이지 모듈을 **첫 렌더 전에** 준비해서, React 가 "페이지 로딩 중" 을
+ *     한 번 그렸다가 바꾸는 단계를 건너뛴다(`lib/boot-page.ts` 머리말 — 그 단계에 React 의 0.5초
+ *     공개 지연이 걸려 있었다).
+ *
+ * 종전엔 이 판정이 `worker/index.ts` 안에만 있었다. 앱이 같은 판단을 하려면 사본이 필요했고,
+ * 사본은 언젠가 갈린다(갈려도 에러가 안 난다 — 미리받기만 조용히 빗나간다).
+ *
+ * @param mobileUa 홈만 갈린다(폰 = home, 넓은 화면 = homePc). 워커는 UA, 앱도 UA 로 판정한다.
+ * @param authed   로그인 전 탭(guest*)은 세션이 없을 때만. 워커는 `ur_session` 쿠키, 앱은 로컬 로그인 흔적.
+ */
+export type RouteSurface =
+  | 'home' | 'homePc' | 'gbDetail' | 'voucherDetail' | 'product'
+  | 'guestUShop' | 'guestMy' | 'guestPass'
+  | 'cart' | 'search' | 'faq' | 'stays' | 'stayDetail' | 'region'
+  | 'linkshop' | 'vouchers' | 'browse' | 'map' | 'urshorts'
+
+export function routeSurface(pathname: string, mobileUa: boolean, authed: boolean): RouteSurface | null {
+  const p = pathname
+  if (p === '/' || p === '/index.html') return mobileUa ? 'home' : 'homePc'
+  if (/^\/(?:pass|group-buy)\/\d+(?:[/?#]|$)/.test(p)) return 'gbDetail'
+  if (/^\/vouchers\/\d+(?:[/?#]|$)/.test(p)) return 'voucherDetail'
+  if (/^\/products\/\d+(?:[/?#]|$)/.test(p)) return 'product'
+  if (p === '/u/me' && !authed) return 'guestUShop'
+  if (p === '/user/profile') return authed ? null : 'guestMy'
+  if (p === '/my-vouchers') return authed ? null : 'guestPass'
+  if (p === '/cart') return 'cart'
+  if (p === '/search') return 'search'
+  if (p === '/faq') return 'faq'
+  if (p === '/stays') return 'stays'
+  if (/^\/stays\/\d+(?:[/?#]|$)/.test(p)) return 'stayDetail'
+  if (/^\/region(?:\/|$)/.test(p)) return 'region'
+  if (/^\/(u|profile|s)(\/|$)/.test(p)) return 'linkshop'
+  if (p === '/vouchers') return 'vouchers'
+  if (p === '/browse') return 'browse'
+  if (p === '/map') return 'map'
+  if (p === '/urshorts') return 'urshorts'
+  return null
+}

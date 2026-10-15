@@ -45,7 +45,8 @@ describe('home 표면이 실제 홈 라우트를 가리킨다', () => {
   it('`/` 가 렌더하는 페이지들이 표에 있다', () => {
     // HomeRoute 가 실제로 lazy import 하는 페이지 = 홈이 쓰는 청크.
     const home = read(HOME_ROUTE)
-    const imported = [...home.matchAll(/lazy\(\(\) => import\('([^']+)'\)\)/g)].map((m) => m[1])
+    // 🚀 2026-10-15: lazyPage(lib/boot-page) 도 같은 lazy 다 — 둘 다 센다.
+    const imported = [...home.matchAll(/lazy(?:Page)?\(\(\) => import\('([^']+)'\)\)/g)].map((m) => m[1])
     expect(imported.length, 'HomeRoute 가 lazy import 를 안 한다 — 구조가 바뀌었다').toBeGreaterThanOrEqual(2)
     const block = routesBlock()
     for (const spec of imported) {

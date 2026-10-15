@@ -20,7 +20,7 @@ import OfflineBanner from './components/OfflineBanner'
 import BottomNav from '@/components/main/BottomNav'
 import BrandLoader, { BootFirstScreenLoader } from '@/components/brand/BrandLoader'
 import { trackFunnel } from '@/lib/funnel'
-import { registerRoutePreload } from '@/lib/route-preload'
+import { registerRoutePreload } from '@/lib/route-preload'; import { lazyPage, registerBootPage } from '@/lib/boot-page'
 import ConsumerTopChrome from '@/components/main/ConsumerTopChrome'
 import { swallow } from '@/shared/utils/swallow'
 import KakaoConsultButton from '@/components/KakaoConsultButton'
@@ -73,10 +73,10 @@ const MyDealHistoryPage = lazy(() => import('./pages/MyDealHistoryPage'))
 const TossWidgetPayPage = lazy(() => import('./pages/TossWidgetPayPage'))
 const TossDebugPage = lazy(() => import('./pages/TossDebugPage'))
 const PointsChargeSuccessPage = lazy(() => import('./pages/PointsChargeSuccessPage'))
-const CartPage = lazy(() => import('./pages/CartPage'))
-const SearchPage = lazy(() => import('./pages/SearchPage'))
+const CartPage = lazyPage(() => import('./pages/CartPage')); registerBootPage('cart', CartPage.load)
+const SearchPage = lazyPage(() => import('./pages/SearchPage')); registerBootPage('search', SearchPage.load)
 // 🛡️ 2026-05-25 (migration 0278): 큐레이터 유어샵
-const CuratorPage = lazy(() => import('./pages/CuratorPage'))
+const CuratorPage = lazyPage(() => import('./pages/CuratorPage')); registerBootPage('linkshop', CuratorPage.load); registerRoutePreload('linkshop', CuratorPage.load)
 const CuratorEarningsPage = lazy(() => import('./pages/CuratorEarningsPage'))
 // 🏁 2026-06-22 (대표 — 상품/이용권 전용 추가 페이지): 유어샵 핀 picker.
 const LinkshopPinPicker = lazy(() => import('./pages/curator-page/LinkshopPinPicker'))
@@ -90,14 +90,14 @@ const HostInvitePage = lazy(() => import('./pages/HostInvitePage'))
 // 🛡️ 2026-05-25 (Phase 2 잔여): 반품 회수 송장 추적 UI
 const MyReturnsPage = lazy(() => import('./pages/MyReturnsPage'))
 // 🛡️ 2026-05-25: /u/me → 본인 공개페이지 redirect
-const UMeRedirectPage = lazy(() => import('./pages/UMeRedirectPage'))
+const UMeRedirectPage = lazyPage(() => import('./pages/UMeRedirectPage')); registerRoutePreload('uMe', UMeRedirectPage.load)
 // 🔧 2026-09-28 (대표 확정 e3): 유어샵 관리 화면 — 유어샵은 손님 화면 하나뿐, 고치는 일은 전부 여기.
 const UShopManagePage = lazy(() => import('./pages/UShopManagePage'))
-const UserProfilePage = lazy(() => import('./pages/UserProfilePage'))
+const UserProfilePage = lazyPage(() => import('./pages/UserProfilePage')); registerRoutePreload('my', UserProfilePage.load)
 const WishlistPage = lazy(() => import('./pages/WishlistPage'))
 const FollowingPage = lazy(() => import('./pages/FollowingPage'))
-const MyVouchersPage = lazy(() => import('./pages/MyVouchersPage'))
-const GuestPassPage = lazy(() => import('./pages/guest/GuestPassPage')); const GuestUrShopPage = lazy(() => import('./pages/guest/GuestUrShopPage')); const GuestMyPage = lazy(() => import('./pages/guest/GuestMyPage')) // 🚪 로그인 전 탭 화면(2026-10-12)
+const MyVouchersPage = lazyPage(() => import('./pages/MyVouchersPage')); registerRoutePreload('myVouchers', MyVouchersPage.load)
+const GuestPassPage = lazyPage(() => import('./pages/guest/GuestPassPage')); const GuestUrShopPage = lazyPage(() => import('./pages/guest/GuestUrShopPage')); const GuestMyPage = lazyPage(() => import('./pages/guest/GuestMyPage')); registerBootPage('guestPass', GuestPassPage.load); registerBootPage('guestUShop', GuestUrShopPage.load); registerBootPage('guestMy', GuestMyPage.load) // 🚪 로그인 전 탭 화면(2026-10-12)
 const MyGifticonsPage = lazy(() => import('./pages/MyGifticonsPage'))  // 🎟️ 2026-08-31 지갑 분리 — 교환권 보관함
 const StoreScanPage = lazy(() => import('./pages/StoreScanPage'))
 const InfluencerSettlementPage = lazy(() => import('./pages/InfluencerSettlementPage'))
@@ -108,12 +108,12 @@ const MyFollowsPage = lazy(() => import('./pages/MyFollowsPage'))
 const MyDigitalLibraryPage = lazy(() => import('./pages/MyDigitalLibraryPage'))
 const VoucherVerifyPage = lazy(() => import('./pages/VoucherVerifyPage'))
 const StoreStatsPage = lazy(() => import('./pages/StoreStatsPage'))
-const BrowsePage = lazy(() => import('./pages/BrowsePage'))
+const BrowsePage = lazyPage(() => import('./pages/BrowsePage')); registerBootPage('browse', BrowsePage.load)
 // 🎬 2026-09-07 유어쇼츠 뷰어(세로 한 편씩) + 2026-09-21 전체 보기(도시·종류 그리드) — **둘 다 lazy**(홈이 재생 코드를 받으면 안 된다)
 const VideosPage = lazy(() => import('./pages/VideosPage'))
-const UrShortsBrowsePage = lazy(() => import('./pages/UrShortsBrowsePage'))
+const UrShortsBrowsePage = lazyPage(() => import('./pages/UrShortsBrowsePage')); registerBootPage('urshorts', UrShortsBrowsePage.load)
 // 🛡️ 2026-05-19: 교환권 전용 페이지 — /browse 와 분리 (카카오 선물하기 스타일).
-const VouchersPage = lazy(() => import('./pages/VouchersPage'))
+const VouchersPage = lazyPage(() => import('./pages/VouchersPage')); registerBootPage('vouchers', VouchersPage.load); registerRoutePreload('vouchers', VouchersPage.load)
 const ExperienceCampaignsPage = lazy(() => import('./pages/ExperienceCampaignsPage'))
 // 🆕 2026-06-26 통합 마케팅 서비스(가칭) — 3번째 서비스 /ads(유어딜/도매몰과 분리된 surface). 2026-06-27: /ads = 공개 랜딩, /ads/dashboard = 입점 대시보드
 const MarketingLandingPage = lazy(() => import('./pages/marketing/MarketingLandingPage'))
@@ -126,13 +126,13 @@ const MarketingLegalPage = lazy(() => import('./pages/marketing/MarketingLegalPa
 const MarketingUnlockPage = lazy(() => import('./pages/marketing/MarketingUnlockPage'))
 const MarketingDashboardPage = lazy(() => import('./pages/marketing/MarketingDashboardPage'))
 const MarketingKakaoCallbackPage = lazy(() => import('./pages/marketing/MarketingKakaoCallbackPage'))
-const VoucherDetailPage = lazy(() => import('./pages/VoucherDetailPage'))
+const VoucherDetailPage = lazyPage(() => import('./pages/VoucherDetailPage')); registerBootPage('voucherDetail', VoucherDetailPage.load)
 // 🗺️ 2026-07-03 /group-buy 은퇴(홈이 담당) → 홈 리다이렉트. 🎟️ 09-16 상세 정본은 `/pass/:id`(옛 주소는 301).
-const GroupBuyDetailPage = lazy(() => import('./pages/GroupBuyDetailPage'))
+const GroupBuyDetailPage = lazyPage(() => import('./pages/GroupBuyDetailPage')); registerBootPage('gbDetail', GroupBuyDetailPage.load); registerRoutePreload('gbDetail', GroupBuyDetailPage.load) // 홈 카드가 미리 받는다
 const GroupBuyConfirmPaymentPage = lazy(() => import('./pages/GroupBuyConfirmPaymentPage'))
 // 🛡️ 2026-05-18: 숙소 공구 사용자 페이지 — PR 3/6, PR 6/6.
-const StaysSearchPage = lazy(() => import('./pages/StaysSearchPage')); const SoonPage = lazy(() => import('./pages/SoonPage')) /* 🌱 오픈 예정 모아보기 */
-const StayDetailPage = lazy(() => import('./pages/StayDetailPage'))
+const StaysSearchPage = lazyPage(() => import('./pages/StaysSearchPage')); registerBootPage('stays', StaysSearchPage.load); const SoonPage = lazy(() => import('./pages/SoonPage')) /* 🌱 오픈 예정 모아보기 */
+const StayDetailPage = lazyPage(() => import('./pages/StayDetailPage')); registerBootPage('stayDetail', StayDetailPage.load)
 const MyStaysPage = lazy(() => import('./pages/MyStaysPage'))
 // 🛡️ 2026-06-12 (전수조사 4차 B-1): 숙소 Toss 결제 returnUrl 경량 confirm 페이지.
 const StayCheckoutReturnPage = lazy(() => import('./pages/StayCheckoutReturnPage'))
@@ -153,7 +153,7 @@ const ReferralIndexPage = lazy(() => import('./pages/ReferralIndexPage'))
 const MyCommissionsPage = lazy(() => import('./pages/MyCommissionsPage'))
 const MyAppointmentsPage = lazy(() => import('./pages/MyAppointmentsPage'))
 const MyGroupBuysPage = lazy(() => import('./pages/MyGroupBuysPage'))
-const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'))
+const ProductDetailPage = lazyPage(() => import('./pages/ProductDetailPage')); registerBootPage('product', ProductDetailPage.load)
 
 // Account (탈퇴) 페이지들
 const AccountSettingsPage = lazy(() => import('./pages/AccountSettingsPage'))
@@ -165,12 +165,11 @@ const BlogListPage = lazy(() => import('./pages/BlogListPage'))
 const NewOpeningsPage = lazy(() => import('./pages/NewOpeningsPage')) // 🎉 우리 동네 새 가게(공공 인허가 개업 피드)
 const AreaReportPage = lazy(() => import('./pages/AreaReportPage')) // 📊 상권 리포트(아웃리치 이메일 미끼·SEO)
 // 🗺️ 2026-08-03 지역 허브 + 시/도·시군구 착지 페이지(도시별 색인). 롤백은 REGION_PAGES_ENABLED.
-const RegionIndexPage = lazy(() => import('./pages/region/RegionIndexPage'))
-const RegionPage = lazy(() => import('./pages/region/RegionPage'))
+const RegionIndexPage = lazyPage(() => import('./pages/region/RegionIndexPage')); registerBootPage('region', RegionIndexPage.load)
+const RegionPage = lazyPage(() => import('./pages/region/RegionPage')); registerBootPage('region', RegionPage.load)
 const BlogDetailPage = lazy(() => import('./pages/BlogDetailPage'))
 const ReferralPage = lazy(() => import('./pages/ReferralPage'))
-const loadMapPage = () => import('./pages/RestaurantMapPage'); registerRoutePreload('map', loadMapPage) // 🗺️ 홈이 미리 받는다(lib/route-preload)
-const RestaurantMapPage = lazy(loadMapPage)
+const RestaurantMapPage = lazyPage(() => import('./pages/RestaurantMapPage')); registerRoutePreload('map', RestaurantMapPage.load); registerBootPage('map', RestaurantMapPage.load) // 🗺️ 홈이 미리 받는다(lib/route-preload)
 // 🏙️ 2026-07-04 상권관 랜딩(B2G 상권 패키지) — /local/:code (시군구/행정동 코드).
 const LocalTownPage = lazy(() => import('./pages/LocalTownPage'))
 // 🧾 2026-07-13 상권 쿠폰(영수증 페이백) — /district/:slug 랜딩 + /district/my 지갑 (한 컴포넌트)
@@ -195,7 +194,7 @@ const RefundPolicyPage = lazy(() => import('./pages/RefundPolicyPage'))
 const GDPRPage = lazy(() => import('./pages/GDPRPage'))
 const AffiliatePage = lazy(() => import('./pages/AffiliatePage'))
 const GbMarketplacePage = lazy(() => import('./pages/GbMarketplacePage'))
-const FAQPage = lazy(() => import('./pages/FAQPage'))
+const FAQPage = lazyPage(() => import('./pages/FAQPage')); registerBootPage('faq', FAQPage.load)
 
 // 🔧 Debug 페이지
 const KakaoDebugPage = lazy(() => import('./pages/KakaoDebugPage'))
