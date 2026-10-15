@@ -1,5 +1,6 @@
-import { lazy } from 'react'
+import { lazyPage, registerBootPage } from '@/lib/boot-page'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { HOME_DESKTOP_QUERY } from '@/shared/route-surface'
 
 /**
  * 🖥️ 2026-07-15 (대표 시안 — 당근 스타일 PC 홈): 홈(`/`) 뷰포트 분기.
@@ -18,18 +19,20 @@ import { useMediaQuery } from '@/hooks/useMediaQuery'
  *   PcHomePage(GroupBuyFeed)·RestaurantMapPage(useMapProducts) 양쪽 다 소비 → 0-RTT 유지.
  *   두 페이지 모두 lazy — 뷰포트에 필요한 청크만 로드.
  */
-const PcHomePage = lazy(() => import('./PcHomePage'))
+const PcHomePage = lazyPage(() => import('./PcHomePage')); registerBootPage('homePc', PcHomePage.load)
 /**
  * 📱 2026-08-19 (대표 확정 — 그루폰 모바일 홈 시안): 모바일 메인이 **지도 → 딜 피드**로 바뀌었다.
  *   *"지금은 맵 링크잖아. 대신 변경되는 페이지에서 맵으로 이동하기 버튼이 있어야겠지?"*
  *   ⇒ 2026-08-30: 그 '상단 배너'는 **목록/지도 전환 컨트롤**(피드 제목 옆)로 대체됐다 —
  *      배너 한 블록이 사라지고 진입은 콘텐츠에 붙었다. `/map` 라우트·하단 탭 5개는 그대로.
  */
-const MobileHomePage = lazy(() => import('@/pages/mobile-home/MobileHomePage'))
+const MobileHomePage = lazyPage(() => import('@/pages/mobile-home/MobileHomePage')); registerBootPage('home', MobileHomePage.load)
+// 🚀 2026-10-15: 두 홈 모두 `lazyPage` — 하드로드에서 부팅이 미리 준비해 두면(main.tsx · lib/boot-page)
+//   "페이지 로딩 중" 을 한 번 그렸다 바꾸는 단계와 React 의 0.5초 공개 지연 없이 바로 그린다.
 
 export default function HomeRoute() {
   // ⚠️ 768 = Tailwind `md` = DesktopTopNav 의 `hidden md:block` 과 같은 경계(위 주석 참조).
-  const isDesktop = useMediaQuery('(min-width: 768px)')
+  const isDesktop = useMediaQuery(HOME_DESKTOP_QUERY)
   return (
     <>
       {/* 🔎 2026-07-29 (소비자 SEO 실측): 홈에 h1 이 **하나도 없었다** — 렌더된 DOM 의 유일한 h1 은

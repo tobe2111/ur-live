@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { loadRoute } from '@/lib/route-preload'
 import { cfImage } from '@/utils/cf-image'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from '@/lib/i18n-lite'
@@ -121,22 +122,24 @@ export default function BottomNav() {
     // 🎟️ 2026-07-10 [UNLOCK_LOADING] (대표 결정 — 일반상품 SHOPPING_TAB_HIDDEN 게이트로 숨김·교환권 유지):
     //   /vouchers 가 순수 교환권 페이지로 복귀(06-19 형태) → 라벨 쇼핑→교환권, 아이콘 ShoppingBag→Gift.
     //   path/prefetch 불변. SHOPPING_TAB_HIDDEN=false 로 일반상품 복원 시 라벨 재검토.
-    { icon: GiftBoxIcon, label: t('nav.vouchers', { defaultValue: '교환권' }), path: '/vouchers', prefetch: () => import('@/pages/VouchersPage') },
+    { icon: GiftBoxIcon, label: t('nav.vouchers', { defaultValue: '교환권' }), path: '/vouchers', prefetch: () => loadRoute('vouchers') },
     // 🎟️ 2026-06-18 (대표 결정): 가운데 → '이용권'. 교환권(기프티콘)은 MMS 발송 카탈로그(탭2)이고,
     //   이용권(동네딜 이용권 등)은 매장에서 QR/PIN 으로 '앱에서 꺼내 쓰는' 지갑이라 상시 탭 가치가 높음.
-    { icon: TicketStubIcon, label: t('nav.myGbVouchers', { defaultValue: '이용권' }), path: '/my-vouchers', prefetch: () => import('@/pages/MyVouchersPage') },
+    { icon: TicketStubIcon, label: t('nav.myGbVouchers', { defaultValue: '이용권' }), path: '/my-vouchers', prefetch: () => loadRoute('myVouchers') },
     // 🧭 2026-06-10: 유어샵도 청크+데이터 동시 워밍 (동네딜과 동일) — 누르는 순간 선요청.
+    // 🚀 2026-10-15: 탭 미리받기는 전부 `loadRoute(이름)` — App.tsx 가 등록한 lazyPage 로더라 받아 두면 그 화면이 "준비됨" 이 되어
+    //   탭을 눌러도 "페이지 로딩 중" 이 안 뜬다(직접 import 는 코드만 받고 그 표시를 못 바꿨다 — lib/boot-page).
     { icon: UrShopIcon,  label: t('nav.linkshop', { defaultValue: '유어샵' }), path: linkshopPath, prefetch: () => {
       if (linkshopPath.startsWith('/u/') && !linkshopPath.startsWith('/u/me')) {
         // 🖼️ 2026-07-01 (로딩 딥다이브, additive): 사업자 유어샵(/u/ + linked_seller)은 CuratorPage 가
         //   SellerPublicPage 를 lazy 렌더 → 그 청크도 함께 워밍(직렬 청크 대기 제거). 소비자-only 는 no-op 수준.
-        if (localStorage.getItem('linked_seller_username')) { import('@/pages/SellerPublicPage').catch(() => {}) }
-        return import('@/pages/CuratorPage').then((m) => { m.warmCurator?.(linkshopPath.slice(3)) })
+        if (localStorage.getItem('linked_seller_username')) { loadRoute('sellerPublic').catch(() => {}) }
+        return loadRoute('linkshop').then((m) => { (m as { warmCurator?: (h: string) => void } | undefined)?.warmCurator?.(linkshopPath.slice(3)) })
       }
-      if (linkshopPath.startsWith('/profile/')) return import('@/pages/SellerPublicPage')
-      return import('@/pages/UMeRedirectPage')
+      if (linkshopPath.startsWith('/profile/')) return loadRoute('sellerPublic')
+      return loadRoute('uMe')
     } },
-    { icon: PersonIcon,  label: t('nav.my',    { defaultValue: '마이' }),  path: '/user/profile', prefetch: () => import('@/pages/UserProfilePage') },
+    { icon: PersonIcon,  label: t('nav.my',    { defaultValue: '마이' }),  path: '/user/profile', prefetch: () => loadRoute('my') },
   ]
 
   const isActivePath = (path: string) => {

@@ -10,6 +10,7 @@
  * 이 시험이 **못 보는 것**: 라이브 TTFB 실측(배포 뒤 `X-SSR-Status`·`Server-Timing` 으로 판정) ·
  *   axios 의 실제 직렬화(여기선 URLSearchParams 로 대조 — 이 값들엔 같은 결과) · 워커 HTMLRewriter 주입 자체.
  */
+import { routeSurface } from '@/shared/route-surface'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { renderHook } from '@testing-library/react'
@@ -82,7 +83,9 @@ describe('② 지도 첫 화면 시드', () => {
   it('워커가 /map(쿼리 없음)에서 MAP 슬롯으로 그 경로를 싣고, 청크도 병렬로 받는다', () => {
     const w = code('src/worker/index.ts')
     expect(w).toMatch(/url\.pathname === '\/map' && !url\.search\) \{\s*ssrTarget = \{ slot: 'MAP', path: MAP_SEED_PATH \}/)
-    expect(w).toMatch(/url\.pathname === '\/map' \? 'map'/)
+    // 🧭 2026-10-15: 표면 판정은 공용 함수(shared/route-surface) — 워커가 그것을 부른다.
+    expect(w).toContain("const chunkSurface = routeSurface(url.pathname, isMobileUserAgent(c.req.header('user-agent')), authed)")
+    expect(routeSurface('/map', true, false)).toBe('map')
     const gen = code('scripts/generate-route-chunk-map.mjs')
     expect(gen).toMatch(/map: \['src\/pages\/RestaurantMapPage\.tsx'\]/)
   })

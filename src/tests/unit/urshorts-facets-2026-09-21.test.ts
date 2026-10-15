@@ -14,6 +14,7 @@
  * - **유튜브 설명글·태그의 실제 수율** — 라이브 키가 있어야 재진다. 오늘 제목만으로 10편 중 7편.
  * - 워커 HTMLRewriter 의 modulepreload 주입(런타임 전용 — 배포 후 curl 로만 판정).
  */
+import { routeSurface } from '@/shared/route-surface'
 import { describe, it, expect } from 'vitest'
 import { readCode, stripComments } from '../helpers/source-text'
 import { KOREA_REGIONS } from '@/shared/constants/korea-regions'
@@ -249,7 +250,8 @@ describe('⑥ 배선', () => {
   it('하드로드 진입점이 청크 병렬화에 등록돼 있다', () => {
     expect(stripComments(readCode('scripts/generate-route-chunk-map.mjs')))
       .toMatch(/urshorts:\s*\['src\/pages\/UrShortsBrowsePage\.tsx'\]/)
-    expect(stripComments(readCode('src/worker/index.ts')))
-      .toMatch(/url\.pathname === '\/urshorts' \? 'urshorts'/)
+    // 🧭 2026-10-15: 표면 판정은 공용 함수(shared/route-surface).
+    expect(stripComments(readCode('src/worker/index.ts'))).toContain('const chunkSurface = routeSurface(')
+    expect(routeSurface('/urshorts', true, false)).toBe('urshorts')
   })
 })
