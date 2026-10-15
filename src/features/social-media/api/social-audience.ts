@@ -36,8 +36,9 @@ export const AUDIENCE_LABEL: Record<SocialAudience, string> = {
  * 🔴 `/influencer`·`/creators` 로 보내지 않는다 — 2026-10-15 실측으로 두 페이지 문구가
  *    *"유어샵에 담아 소개하면 팔릴 때마다 몫이 쌓인다"* 를 약속하는데 그 보상
  *    (`affiliate_program_enabled`)은 **꺼져 있다**(`actor-benefit-map.md` §1). 마케터가 그 페이지로
- *    사람을 보내면 거짓 약속을 확성한다. 문구 수정은 결재 대상이라 따로 올렸다
- *    (`docs/decisions/2026-10-15-supply-marketer-launch.md`). 신청서는 그 약속을 하지 않는다.
+ *    사람을 보내면 거짓 약속을 확성한다. 대표 결정(같은 날 Q3=A)으로 두 페이지 문구는
+ *    "매장이 소개 몫을 건 딜이면" 조건부로 고쳤지만, 신청서가 여전히 가장 정확한 착지다
+ *    (`docs/decisions/2026-10-15-supply-marketer-launch.md`).
  */
 export const AUDIENCE_LANDING: Record<SocialAudience, string> = {
   store: '/partners',

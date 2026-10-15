@@ -157,12 +157,12 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
   '/about': {
     crumb: '서비스 소개',
     title: '서비스 소개 - 유어딜은 이렇게 작동합니다',
-    description: '매장은 손님이 온 다음에만 비용을 냅니다. 손님은 동네 이용권을 할인가로 사고, 마음에 든 딜은 내 유어샵에 담아 소개하면 몫이 쌓입니다. 매장·소개·구매 셋이 함께 이득인 구조.',
+    description: '매장은 손님이 온 다음에만 비용을 냅니다. 손님은 동네 이용권을 할인가로 사고, 마음에 든 딜은 내 유어샵에 담아 소개할 수 있고, 매장이 소개 몫을 건 딜이면 그 몫이 쌓입니다. 매장·소개·구매 셋이 함께 이득인 구조.',
   },
   '/creators': {
     crumb: '소개 파트너',
     title: '동네 딜 소개하고 수익 받기',
-    description: '링크 하나로 우리 동네 맛집을 소개하고 팔릴 때마다 몫을 받으세요. 가입 → 유어샵에 담기 → 링크 공유, 3단계면 시작입니다.',
+    description: '링크 하나로 우리 동네 맛집을 소개하세요. 매장이 소개 몫을 건 딜이 내 링크로 팔리면 그 몫이 쌓입니다. 가입 → 유어샵에 담기 → 링크 공유, 3단계면 시작입니다.',
   },
   '/creators/apply': {
     crumb: '신청',
@@ -204,7 +204,7 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
   '/influencer': {
     crumb: '소개로 수익',
     title: '동네 딜 소개로 수익 만들기',
-    description: '매장을 직접 섭외하지 않아도 됩니다. 마음에 든 이용권을 내 유어샵에 담아 링크로 소개하면, 그 링크로 팔릴 때마다 몫이 쌓입니다.',
+    description: '매장을 직접 섭외하지 않아도 됩니다. 매장이 소개 몫을 건 이용권을 내 유어샵에 담아 링크로 소개하면, 그 링크로 팔릴 때마다 매장이 정한 비율만큼 쌓입니다.',
   },
   '/influencer/rankings': {
     /* 🚫 2026-10-14 — **noindex**(대표 "다 해주고 머지 후 또 개선점 찾아"). 라이브 실측(Googlebot UA):

@@ -42,7 +42,7 @@ const BENEFITS = [
 /** 3자 구조 — 각자가 내는 것과 받는 것. 셋이 한 문장으로 이어지도록 순서 고정. */
 const TRIANGLE = [
   { icon: StoreIcon, t: '매장', gives: '팔린 만큼만 내는 판매 수수료', gets: '선불 광고비 없이 새 손님' },
-  { icon: Megaphone, t: '소개하는 사람', gives: '내 유어샵에 담아 링크 하나로 소개', gets: '팔릴 때마다 쌓이는 몫' },
+  { icon: Megaphone, t: '소개하는 사람', gives: '내 유어샵에 담아 링크 하나로 소개', gets: '매장이 건 소개 몫' },
   { icon: PeopleIcon, t: '소비자', gives: '앱에서 미리 결제', gets: '검증된 동네 가게를 할인가로' },
 ]
 

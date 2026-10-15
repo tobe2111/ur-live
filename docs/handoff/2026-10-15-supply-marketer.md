@@ -22,3 +22,13 @@
 - 결재 Q1~Q3 (위 파일).
 - 🆕 `partners-facts.ts` 의 `reviewBonus: '1,000딜'` — 2026-10-12 에 카카오맵 후기 보너스를 껐다(`KAKAO_REVIEW_BONUS_ENABLED=false`)는 기록이 있다. `/partners` 가 이 값을 쓰는지 확인 필요(이번 범위 밖, 마케터 브리프에는 넣지 않았다).
 - 네이버 블로그·카페·틱톡은 하지 않는다(결재 파일 "하지 않는 것" 참조).
+
+## 2차 — 대표 결정 반영 (2026-10-15)
+대표: *"응 보상은 꺼줘. 처음 2주는 내가 한 건씩 승인해볼게."*
+- Q3=A: 담기 보상은 OFF 유지. 무조건 "팔릴 때마다 몫" 을 약속하던 문구를 **"매장이 소개 몫을 건 딜/이용권이면"** 조건부로 고침 —
+  `consumer-surfaces.ts`(/about·/creators·/influencer) · `surface-copy.ts` · `InfluencerLandingPage` · `CreatorsPage` · `EarnLadder` ·
+  `AboutServicePage` · `inbound-onboarding.ts` 메일 · `concept-content.ts` FAQ q14·소개 · 6개 언어 `faq.a14`.
+- Q2: 첫 2주 수동 승인 = 기존 초안 우선 흐름 그대로(코드 변경 없음).
+- Q1(계정 연결·자동 초안 스위치)은 대기.
+- 남은 의심(범위 밖): `partners-facts.ts` 의 `reviewBonus '1,000딜'` — 카카오맵 후기 보너스는 10-12 에 꺼졌다. 확인 필요.
+- 검증: 관련 유닛 167파일 pass(`seo-region-encoding-availability` 1건은 병렬 부하 타임아웃 — 단독 pass, main 도 동일).
