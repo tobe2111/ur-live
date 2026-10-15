@@ -3,7 +3,10 @@
  *
  * 플랫폼별 미작성 주제로 **비공개 초안**을 생성한다(관리자 검토 후 발행). 자동 발행 없음.
  * 킬스위치: env.SOCIAL_AUTO_DRAFT_ENABLED === 'true' 일 때만(기본 OFF → API 토큰 낭비 0).
- * ANTHROPIC_API_KEY 미설정 시 no-op. 미검토 초안 과다 시 자동 skip(createSocialDraft 내부 캡).
+ * 미검토 초안 과다 시 자동 skip(createSocialDraft 내부 캡).
+ * 🎯 2026-10-15: ANTHROPIC 키 게이트 제거 — 키가 없으면 결정론 작성기로 만든다(2026-08-01 라우트와 같은 판단.
+ *    이 크론에만 게이트가 남아 있어서, 키 없는 환경에선 스위치를 켜도 초안이 0건이었다).
+ *    대상(매장·소개 파트너·손님)은 createSocialDraft 가 어드민 혼합비로 고른다.
  */
 import type { Env } from '../types/env';
 import { logInfo, logError } from '../utils/logger';
@@ -11,7 +14,6 @@ import { logInfo, logError } from '../utils/logger';
 export async function handleSocialDraft(env: Env): Promise<void> {
   const e = env as unknown as Record<string, string | undefined>;
   if (e.SOCIAL_AUTO_DRAFT_ENABLED !== 'true') return; // 킬스위치 OFF → no-op
-  if (!env.ANTHROPIC_API_KEY) return;
   try {
     const { createSocialDraft } = await import('../../features/social-media/api/social-draft');
     const { SOCIAL_PLATFORMS } = await import('../../features/social-media/api/social-brief');

@@ -715,6 +715,16 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
     { desc: 'social_posts.storyboard', sql: "ALTER TABLE social_posts ADD COLUMN storyboard TEXT" },
     { desc: 'social_posts.render_provider_job', sql: "ALTER TABLE social_posts ADD COLUMN render_provider_job TEXT" },
     { desc: 'social_posts.render_status', sql: "ALTER TABLE social_posts ADD COLUMN render_status TEXT" },
+    // 🎯 2026-10-15 공급 모으기 마케터 — 누구에게 말하는 글인가 + 유입 태그(?src=, 성과 퍼널 귀속).
+    { desc: 'social_posts.audience', sql: "ALTER TABLE social_posts ADD COLUMN audience TEXT" },
+    { desc: 'social_posts.src_tag', sql: "ALTER TABLE social_posts ADD COLUMN src_tag TEXT" },
+    { desc: 'acquisition_conversions', sql: `CREATE TABLE IF NOT EXISTS acquisition_conversions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      src TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    )` },
+    { desc: 'idx_acq_conv_src', sql: "CREATE INDEX IF NOT EXISTS idx_acq_conv_src ON acquisition_conversions(src, kind)" },
     { desc: 'idx_wholesale_chat_threads_dist', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_chat_threads_dist ON wholesale_chat_threads(distributor_seller_id, last_message_at DESC)" },
     { desc: 'idx_wholesale_chat_threads_sup', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_chat_threads_sup ON wholesale_chat_threads(supplier_id, last_message_at DESC)" },
     { desc: 'idx_wholesale_chat_messages_thread', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_chat_messages_thread ON wholesale_chat_messages(thread_id, id)" },
