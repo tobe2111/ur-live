@@ -98,8 +98,16 @@ export const FONT_CSS_HREF = '/static/fonts/pretendard-dynamic-subset-v1.3.9.css
  *      동안(한국 실측 TTFB 중앙값 0.45초)에 CSS 가 출발한다.
  *   ⚠️ 스크립트(modulepreload)는 **넣지 않는다** — 그러면 CSS 와 다시 회선을 나눠 쓴다(이 파일 머리말).
  */
+//   🔁 2026-10-15 (대표 *"첫 접속 시 2~3배 느려"*): 엔트리 CSS 의 preload 에 `crossorigin` 이 없었다.
+//   Vite 는 그 CSS 를 `<link rel="stylesheet" crossorigin href=…>` 로 내므로(같은 출처여도 CORS 모드)
+//   모드가 다른 preload 는 **재사용되지 않고 같은 37KB 를 한 번 더** 받았다 — 첫 화면을 막는 바로 그 파일이다.
+//   라이브 실측(느린 4G·CPU 4배, 4회×2세트): 요청 2 → 1 · HTML 도착→첫 화면 1.83~1.93초 → 1.65~1.74초.
+//   폰트 CSS 는 index.html 태그에 crossorigin 이 **없어서** 그대로 둔다(둘 다 태그와 같아야 한다 —
+//   `check-critical-chunks` 가 빌드된 index.html 과 대조한다).
+export const ENTRY_CSS_CROSSORIGIN = true
 export function earlyHintsLink(entryCss: readonly string[]): string {
-  return [...entryCss, FONT_CSS_HREF].map((h) => `<${h}>; rel=preload; as=style`).join(', ')
+  const entry = entryCss.map((h) => `<${h}>; rel=preload; as=style${ENTRY_CSS_CROSSORIGIN ? '; crossorigin' : ''}`)
+  return [...entry, `<${FONT_CSS_HREF}>; rel=preload; as=style`].join(', ')
 }
 
 /**

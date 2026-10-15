@@ -164,8 +164,19 @@ describe('⑥ 첫 방문자가 보지 않는 셸 부품은 조건이 맞을 때�
 describe('⑦ Link 헤더(Early Hints 원천) — 렌더 차단 CSS 만', () => {
   it('엔트리 CSS 와 폰트 CSS 를 preload as=style 로 싣는다', () => {
     expect(earlyHintsLink(['/assets/index-AB.css'])).toBe(
-      '</assets/index-AB.css>; rel=preload; as=style, </static/fonts/pretendard-dynamic-subset-v1.3.9.css>; rel=preload; as=style',
+      '</assets/index-AB.css>; rel=preload; as=style; crossorigin, </static/fonts/pretendard-dynamic-subset-v1.3.9.css>; rel=preload; as=style',
     )
+  })
+  it('엔트리 CSS preload 의 crossorigin 은 빌드된 태그와 같다 — 다르면 같은 CSS 를 두 번 받는다(2026-10-15)', () => {
+    // Vite 가 엔트리 CSS 를 crossorigin 으로 낸다는 사실은 빌드 뒤 check-critical-chunks 가 dist/client/index.html 로 대조한다.
+    expect(earlyHintsLink(['/assets/index-AB.css'])).toMatch(/index-AB\.css>; rel=preload; as=style; crossorigin/)
+    // 폰트 CSS 태그(index.html)에는 crossorigin 이 없다 → preload 에도 없어야 한다.
+    const tag = readFileSync('index.html', 'utf-8').match(/<link\s+id="ur-font-css"[\s\S]*?\/>/)?.[0] ?? ''
+    expect(tag).toContain(FONT_CSS_HREF)
+    expect(tag).not.toMatch(/crossorigin/)
+    expect(earlyHintsLink([])).not.toMatch(/crossorigin/)
+    const v = readFileSync('scripts/check-critical-chunks.mjs', 'utf-8')
+    expect(v).toMatch(/ENTRY_CSS_CROSSORIGIN/)
   })
   it('스크립트는 싣지 않는다(CSS 와 다시 다툰다)', () => {
     expect(earlyHintsLink(['/assets/index-AB.css'])).not.toMatch(/modulepreload|\.js>/)

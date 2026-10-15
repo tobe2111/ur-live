@@ -73,8 +73,8 @@ export default [
   {
     name: '🚦 Link 헤더에 스크립트까지 싣는다',
     file: MOD,
-    find: "return [...entryCss, FONT_CSS_HREF].map((h) => `<${h}>; rel=preload; as=style`).join(', ')",
-    replace: "return [...entryCss, FONT_CSS_HREF, '/assets/index.js'].map((h) => `<${h}>; rel=preload; as=style`).join(', ')",
+    find: "return [...entry, `<${FONT_CSS_HREF}>; rel=preload; as=style`].join(', ')",
+    replace: "return [...entry, `<${FONT_CSS_HREF}>; rel=preload; as=style`, '</assets/index.js>; rel=preload; as=style'].join(', ')",
     test: TEST,
     why: '스크립트가 103 으로 앞당겨지면 CSS 와 다시 회선을 나눠 쓴다.',
   },
