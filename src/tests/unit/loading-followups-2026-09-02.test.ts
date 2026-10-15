@@ -30,11 +30,12 @@ describe('① 실사용자 vitals 가 쌓인다', () => {
     const s = code('src/lib/web-vitals-report.ts')
     const at = s.indexOf("type: 'largest-contentful-paint'")
     expect(at).toBeGreaterThan(0)
-    const win = s.slice(at, at + 900)
+    // 🔬 2026-10-15: flush 안에 LCP 4구간 계산이 들어와 블록이 길어졌다 — 창을 넓히되 불변식(한 번만·세 경로)은 그대로.
+    const win = s.slice(at, at + 2000)
     expect(win).toMatch(/addEventListener\('pagehide', flush, \{ once: true \}\)/)
     expect(win).toMatch(/setTimeout\(flush, 10000\)/)
     expect(win).toMatch(/if \(sent \|\| lcpValue <= 0\) return/)
-    expect(win).toMatch(/send\('LCP', lcpValue, page\)/)
+    expect(win).toMatch(/send\('LCP', lcpValue, page(, parts)?\)/)
   })
 })
 
