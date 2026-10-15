@@ -28,11 +28,18 @@ import type React from 'react'
 export type SheetSnap = 'peek' | 'mid' | 'full'
 
 /** 시트 top 고정값 = full 위치. 이동은 전부 transform 으로(레이아웃 불변 → 컴포지터 애니메이션). */
+/** peek 시트가 화면 아래에서 덮는 높이(px). 아래 peek translate·useKakaoMap(가려진 타일 미루기)이 같은 값을 쓴다. */
+export const SHEET_PEEK_VISIBLE_PX = 240
+/** 시트 윗모서리 반경(rounded-t-3xl). 지도 칸을 이만큼 시트 밑으로 겹쳐야 둥근 모서리 뒤가 회색으로 안 비친다. */
+export const SHEET_CORNER_PX = 24
+/** 지금 PC 폭(lg, 1024+)인가 — 시트 대신 좌측 패널이라 가려지는 아래가 없다. */
+export const isLgNow = (): boolean =>
+  typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(min-width: 1024px)').matches
 export const SHEET_BASE_TOP = 'calc(env(safe-area-inset-top, 0px) + 104px)'
 export const SHEET_SNAP_TRANSLATE: Record<SheetSnap, string> = {
   full: 'translateY(0px)',
   mid: 'translateY(calc(40dvh - env(safe-area-inset-top, 0px) - 104px))',
-  peek: 'translateY(calc(100dvh - 240px - env(safe-area-inset-top, 0px) - 104px))',
+  peek: `translateY(calc(100dvh - ${SHEET_PEEK_VISIBLE_PX}px - env(safe-area-inset-top, 0px) - 104px))`,
 }
 export const SHEET_SNAP_TRANSITION = 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)'
 

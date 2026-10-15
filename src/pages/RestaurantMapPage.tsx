@@ -27,7 +27,7 @@ import { Screen } from '@/components/ui/screen'
 import { type MapVoucherType } from './restaurant-map/voucher-types'
 import { useKakaoMap, type ServerCluster } from './restaurant-map/useKakaoMap'
 import { useViewportRegion } from './restaurant-map/useViewportRegion'
-import { useSheetDrag, SHEET_BASE_TOP, SHEET_SNAP_TRANSLATE, SHEET_SNAP_TRANSITION } from './restaurant-map/useSheetDrag'
+import { useSheetDrag, SHEET_BASE_TOP, SHEET_SNAP_TRANSLATE, SHEET_SNAP_TRANSITION, SHEET_PEEK_VISIBLE_PX, SHEET_CORNER_PX, isLgNow } from './restaurant-map/useSheetDrag'
 import { distanceKm } from './restaurant-map/utils'
 import type { Restaurant, KakaoPlace, SortBy } from './restaurant-map/types'
 import { useFeedWindow } from './restaurant-map/useFeedWindow'
@@ -321,7 +321,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   //   🔴 둘은 **한 번의 순회**에서 같이 나와야 한다(근거·함정은 coord-groups.ts).
   const { withCoords, coordGroupSize } = useMemo(() => groupByCoord(filtered), [filtered])
 
-  const { mapRef, mapInstance, sdkLoaded, sdkError, panToProduct } = useKakaoMap({
+  const { mapRef, mapInstance, sdkLoaded, sdkError, panToProduct, layoutHeightRef } = useKakaoMap({
     kr,
     enabled: mode === 'map',
     withCoords,
@@ -334,6 +334,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     favorites,
     sheetSnap,
     serverClusters: aggClusters, dataReady: !loading,  // 🗺️ 첫 목록 뒤에 지도 생성(타일 한 벌 — useKakaoMap)
+    hiddenBottomPx: isLgNow() ? 0 : SHEET_PEEK_VISIBLE_PX - SHEET_CORNER_PX,  // 🗺️ 시트에 가려진 타일은 안 받는다(useKakaoMap)
   })
   // 📍 2026-09-09 (대표 확정 "안 R1"): 시트의 "이 지역"을 지금 보는 화면의 실제 이름으로(동탄6동 …).
   const viewportRegion = useViewportRegion({ mapInstance, enabled: mode === 'map' && sdkLoaded })
@@ -559,9 +560,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   //   시각적 snap top 설계값(peek 100dvh-240px · mid 40dvh · full safe+104px)은 기존과 동일 —
   //   useKakaoMap centerOffsetForSheet 미러 유지.
   // 🗺️ 2026-07-16: 동기 초기화(첫 프레임 flash 방지 — PC 분할 레이아웃이 마운트 후 깜빡이지 않게). SSR-safe.
-  const [isLgViewport, setIsLgViewport] = useState(
-    () => typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(min-width: 1024px)').matches
-  )
+  const [isLgViewport, setIsLgViewport] = useState(isLgNow)
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return
     const mq = window.matchMedia('(min-width: 1024px)')
@@ -587,11 +586,15 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     const el = mapRef.current
     if (!el || typeof ResizeObserver === 'undefined') return
     let timer: ReturnType<typeof setTimeout> | null = null
+    let lastW = el.clientWidth
     const ro = new ResizeObserver(() => {
       if (timer) clearTimeout(timer)
       timer = setTimeout(() => {
         const map = mapInstance.current
         if (!map || !window.kakao?.maps) return
+        // 가려진 아래를 펼 때는 useKakaoMap 이 이미 relayout·보정했다 — 다시 하면 진행 중인 pan 을 끊는다.
+        if (el.clientHeight === layoutHeightRef.current && el.clientWidth === lastW) return
+        lastW = el.clientWidth; layoutHeightRef.current = el.clientHeight
         try { const c = map.getCenter?.(); map.relayout(); if (c) map.setCenter(c) } catch { /* silent */ }
       }, 150)
     })

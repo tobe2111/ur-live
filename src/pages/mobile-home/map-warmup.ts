@@ -17,10 +17,13 @@
  *   ⚠️ crossorigin 을 붙이지 않는다 — 타일은 no-cors 이미지라 crossorigin 연결 풀을 안 쓴다
  *   (index.html 의 /map 이른 시작 스크립트와 같은 규칙).
  *
- * 못 하는 것: 지도 화면 코드 자체(~1초)는 미리 받지 않는다 — 홈에서 지도 페이지를 동적 import 하면
- *   묶음기(`surface-chunks.mjs`)가 지도 모듈에 홈 라벨을 붙여 봉투가 다시 짜인다(별건).
+ * - 🆕 2026-10-15 (대표 2번 승인): **지도 화면 코드도** 미리 받는다 — 알약을 누른 뒤 ~1초가 그 청크였다.
+ *   SDK 를 다 받은 **다음에** 받는다(같은 회선을 둘이 나눠 쓰지 않게). 홈에서 `import()` 를 직접 쓰지 않고
+ *   App.tsx 가 등록한 로더를 이름으로 부른다(`lib/route-preload` — 묶음기 봉투가 안 바뀐다).
+ *   누르는 순간에도 한 번 더 부른다(한가할 때가 아직 안 왔으면 거기서 출발 — 한 번만 받는다).
  */
 import { runAfterLoad } from '@/lib/after-load'
+import { preloadRoute } from '@/lib/route-preload'
 
 const TILE_HOST = 'https://mts.kakaocdn.net'
 
@@ -33,13 +36,16 @@ function saveData(): boolean {
 export function warmKakaoMapsAfterLoad(): () => void {
   return runAfterLoad(() => {
     if (saveData()) return
-    import('@/lib/kakao-sdk').then((m) => m.ensureKakaoMaps()).catch(() => { /* 지도 화면이 다시 시도한다 */ })
+    import('@/lib/kakao-sdk').then((m) => m.ensureKakaoMaps())
+      .catch(() => { /* 지도 화면이 다시 시도한다 */ })
+      .then(() => preloadRoute('map'))
   }, 4000)
 }
 
 let preconnected = false
-/** 지도로 가기 직전(누르는 순간) 타일 호스트에 연결을 미리 연다. 한 번만. */
+/** 지도로 가기 직전(누르는 순간) 지도 화면 코드를 받기 시작하고, 타일 호스트에 연결을 미리 연다. 한 번만. */
 export function preconnectMapTiles(): void {
+  preloadRoute('map')
   if (preconnected || typeof document === 'undefined') return
   preconnected = true
   try {
