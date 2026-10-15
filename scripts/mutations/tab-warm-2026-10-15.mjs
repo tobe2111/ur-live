@@ -53,7 +53,7 @@ export default [
   },
   {
     name: '탭미리받기 — 교환권 목록 보관 키가 페이지와 갈린다',
-    file: 'src/lib/tab-warm.ts',
+    file: 'src/pages/vouchers/tab-warm-list.ts',
     find: 'export const VOUCHERS_DEFAULT_VIEW_KEY = `vouchers:list:page:${VOUCHERS_DEFAULT_CATEGORY}||price_low`',
     replace: 'export const VOUCHERS_DEFAULT_VIEW_KEY = `vouchers:page:${VOUCHERS_DEFAULT_CATEGORY}`',
     test: T,
@@ -61,11 +61,19 @@ export default [
   },
   {
     name: '탭미리받기 — 사용자가 본 목록을 덮는다',
-    file: 'src/lib/tab-warm.ts',
+    file: 'src/pages/vouchers/tab-warm-list.ts',
     find: '  if (readListView(VOUCHERS_DEFAULT_VIEW_KEY) != null) return false\n  const body',
     replace: '  const body',
     test: T,
     why: '더보기로 편 목록(뒤로가기 복원용)을 1페이지로 덮으면 2026-09-13 의 "목록이 도로 짧아짐" 이 돌아온다.',
+  },
+  {
+    name: '탭미리받기 — 센트리 세션이 다시 화면마다 열린다',
+    file: 'src/lib/sentry.ts',
+    find: "Sentry.browserSessionIntegration({ lifecycle: 'page' }),",
+    replace: '',
+    test: 'src/tests/unit/sentry-sdk-slim-2026-10-11.test.ts',
+    why: '기본값(route)이면 탭을 누를 때마다 센트리로 요청 2건이 우리 요청과 같은 순간에 나간다.',
   },
 ]
 

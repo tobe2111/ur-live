@@ -7,7 +7,8 @@
  */
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { warmTabChunks, pickTabLoaders, shouldWarmTabs, LOGGED_IN_TABS, GUEST_TABS, TAB_WARM_DELAY_MS, warmVouchersList, VOUCHERS_DEFAULT_VIEW_KEY, VOUCHERS_PAGE_SIZE, VOUCHERS_PAGE_INITIAL_VISIBLE } from '@/lib/tab-warm'
+import { warmTabChunks, pickTabLoaders, shouldWarmTabs, LOGGED_IN_TABS, GUEST_TABS, TAB_WARM_DELAY_MS } from '@/lib/tab-warm'
+import { warmVouchersList, VOUCHERS_DEFAULT_VIEW_KEY, VOUCHERS_PAGE_SIZE, VOUCHERS_PAGE_INITIAL_VISIBLE } from '@/pages/vouchers/tab-warm-list'
 import { readListView, saveListView, dropListView } from '@/lib/list-view-cache'
 import { VOUCHERS_DEFAULT_SEED_PATH } from '@/shared/seo/voucher-facet'
 import { stripComments } from '../helpers/source-text'
@@ -119,6 +120,9 @@ describe('tab-warm', () => {
 
   it('⑦ 교환권 화면 자신에서는 목록을 미리 받지 않는다(스스로 받는다)', () => {
     const src = stripComments(readFileSync('src/lib/tab-warm.ts', 'utf8'))
-    expect(src).toMatch(/pathname === '\/vouchers' \? loaders : \[\.\.\.loaders, \(\) => warmVouchersList\(\)\]/)
+    expect(src).toMatch(/pathname === '\/vouchers' \? loaders : \[\.\.\.loaders, \(\) => import\('@\/pages\/vouchers\/tab-warm-list'\)\.then\(\(m\) => m\.warmVouchersList\(\)\)\]/)
+    // 첫 화면 번들에 정적으로 묶지 않는다(홈 청크 개수 회귀)
+    expect(src).not.toMatch(/^import .*list-view-cache/m)
+    expect(src).not.toMatch(/^import .*tab-warm-list/m)
   })
 })

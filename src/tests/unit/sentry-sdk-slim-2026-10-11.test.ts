@@ -39,7 +39,7 @@ describe('Sentry 는 진입점 하나로만 들어온다', () => {
   it('진입점은 쓰는 이름만 다시 내보낸다 (통째 재수출 금지)', () => {
     const src = stripComments(read('src/lib/sentry-sdk.ts'))
     expect(src).not.toMatch(/export \* from ['"]@sentry\/react['"]/)
-    for (const name of ['init', 'browserTracingIntegration', 'captureException', 'captureMessage', 'addBreadcrumb', 'setUser']) {
+    for (const name of ['init', 'browserTracingIntegration', 'browserSessionIntegration', 'captureException', 'captureMessage', 'addBreadcrumb', 'setUser']) {
       expect(src, `${name} 이 빠지면 그 호출이 런타임에 undefined`).toMatch(new RegExp(`\\b${name}\\b`))
     }
   })
@@ -52,5 +52,9 @@ describe('Sentry 는 진입점 하나로만 들어온다', () => {
 
   it('🔴 진입점은 sentry 청크에 묶인다 (다른 청크로 새면 Sentry 가 첫 화면에 실린다)', () => {
     expect(stripComments(read('vite.config.ts'))).toMatch(/id\.includes\('@sentry'\) \|\| id\.includes\('\/src\/lib\/sentry-sdk'\)\) return 'sentry'/)
+  })
+
+  it('📡 세션은 페이지 단위다 — 화면 이동마다 센트리로 요청을 보내지 않는다(2026-10-15)', () => {
+    expect(stripComments(read('src/lib/sentry.ts'))).toMatch(/browserSessionIntegration\(\{ lifecycle: 'page' \}\)/)
   })
 })

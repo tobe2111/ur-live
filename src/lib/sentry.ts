@@ -41,6 +41,10 @@ export async function initSentry() {
       //   영구 fix: replay 완전 제거. 에러는 browserTracing + Sentry 기본 capture 로 충분.
       integrations: [
         Sentry.browserTracingIntegration(),
+        // 📡 2026-10-15 (대표 *"각 페이지 들어갈 때 시간이 걸려"* — 라이브 실측): 기본값('route')은 화면을 옮길 때마다
+        //   세션을 새로 열어 **탭을 누를 때마다 센트리로 요청 2건**이 우리 요청과 같은 순간에 나갔다(폰 회선을 나눠 쓴다).
+        //   세션은 페이지를 연 단위로만 센다('page'). 에러·추적 수집은 그대로다.
+        Sentry.browserSessionIntegration({ lifecycle: 'page' }),
       ],
 
       // 🛡️ 2026-05-01: Sentry 429 (quota 초과) 신고 — 샘플링 대폭 축소.

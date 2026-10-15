@@ -14,8 +14,6 @@
  *  - 페이지 진입점(`src/pages/`)만 부른다 — 묶음기가 이것을 부팅 사용자로 세지 않는 경로다(`surface-chunks.mjs`).
  */
 import { runAfterLoad } from '@/lib/after-load'
-import { readListView, saveListView } from '@/lib/list-view-cache'
-import { VOUCHERS_DEFAULT_CATEGORY, VOUCHERS_DEFAULT_SEED_PATH } from '@/shared/seo/voucher-facet'
 
 type Loader = () => Promise<unknown>
 
@@ -24,6 +22,8 @@ export const LOGGED_IN_TABS: Loader[] = [
   () => import('@/pages/MyVouchersPage'),
   () => import('@/pages/UserProfilePage'),
   () => import('@/pages/CuratorPage'),
+  // 홈 맨 위 [목록|지도] 전환의 지도 — 라이브 실측 지도 진입 시 청크 6개를 누른 뒤에 받아 로더 0.2초.
+  () => import('@/pages/RestaurantMapPage'),
 ]
 
 export const GUEST_TABS: Loader[] = [
@@ -31,6 +31,7 @@ export const GUEST_TABS: Loader[] = [
   () => import('@/pages/guest/GuestPassPage'),
   () => import('@/pages/guest/GuestUrShopPage'),
   () => import('@/pages/guest/GuestMyPage'),
+  () => import('@/pages/RestaurantMapPage'),
 ]
 
 /** 첫 화면이 자리 잡은 뒤 이만큼 더 기다린다 — 방금 뜬 화면의 늦은 사진·데이터와 겹치지 않게. */
@@ -76,38 +77,6 @@ export function pickTabLoaders(pathname: string, store: Pick<Storage, 'getItem'>
   return loggedIn ? LOGGED_IN_TABS : GUEST_TABS
 }
 
-/**
- * 🎁 교환권 탭은 코드가 와 있어도 **상품 목록**을 기다리는 로더가 남는다(로컬 실측 — 청크 0건인데 로더 15프레임).
- * 그래서 탭 코드를 받은 뒤 **기본 화면(커피/음료 · 낮은 가격순) 1페이지**도 받아, 페이지가 재방문에 쓰는
- * 보관함(`list-view-cache`)에 넣어 둔다 → 처음 눌러도 `warm` 시드로 그려지고 최신 목록은 뒤에서 교체된다.
- *  - 주소는 워커 시드·cron 예열과 **같은 키**(`VOUCHERS_DEFAULT_SEED_PATH`)라 엣지 캐시를 맞는다.
- *  - 보관 키·모양은 `VouchersPage` 의 것과 같아야 한다 — 시험이 그 소스와 대조한다(갈리면 조용히 안 쓰인다).
- *  - 이미 보관본이 있으면 덮지 않는다(그쪽이 사용자가 실제로 본 것이다).
- */
-export const VOUCHERS_PAGE_SIZE = 20
-export const VOUCHERS_PAGE_INITIAL_VISIBLE = 9
-export const VOUCHERS_DEFAULT_VIEW_KEY = `vouchers:list:page:${VOUCHERS_DEFAULT_CATEGORY}||price_low`
-
-export async function warmVouchersList(fetcher: (url: string) => Promise<ListBody> = defaultFetch): Promise<boolean> {
-  if (readListView(VOUCHERS_DEFAULT_VIEW_KEY) != null) return false
-  const body = await fetcher(VOUCHERS_DEFAULT_SEED_PATH).catch(() => null)
-  if (!body?.success || !Array.isArray(body.data) || body.data.length === 0) return false
-  if (readListView(VOUCHERS_DEFAULT_VIEW_KEY) != null) return false // 받는 사이 사용자가 먼저 열었다
-  saveListView(VOUCHERS_DEFAULT_VIEW_KEY, {
-    products: body.data,
-    page: 1,
-    hasMore: body.data.length === VOUCHERS_PAGE_SIZE,
-    embedVisible: VOUCHERS_PAGE_INITIAL_VISIBLE,
-  })
-  return true
-}
-
-type ListBody = { success?: boolean; data?: unknown } | null
-async function defaultFetch(url: string): Promise<ListBody> {
-  const r = await fetch(url, { credentials: 'same-origin' })
-  return r.ok ? ((await r.json()) as ListBody) : null
-}
-
 /** App 마운트 1회. */
 export function startTabWarm(pathname: string): () => void {
   if (typeof window === 'undefined') return () => {}
@@ -116,6 +85,7 @@ export function startTabWarm(pathname: string): () => void {
   const loaders = pickTabLoaders(pathname, store)
   if (!loaders) return () => {}
   // 교환권 목록은 교환권 화면 밖에서만 미리 받는다(그 화면은 스스로 받는다).
-  const withData: Loader[] = pathname === '/vouchers' ? loaders : [...loaders, () => warmVouchersList()]
+  // 별도 모듈로 나중에 부른다 — 정적으로 묶으면 홈 첫 화면 청크가 하나 늘었다(2026-10-15 CI surface-chunk-runtime 26→27).
+  const withData: Loader[] = pathname === '/vouchers' ? loaders : [...loaders, () => import('@/pages/vouchers/tab-warm-list').then((m) => m.warmVouchersList())]
   return warmTabChunks(withData)
 }
