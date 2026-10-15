@@ -402,8 +402,7 @@ curatorRoutes.get('/:handle/p/:productId/redirect', async (c) => {
       //   일반 쇼핑 상품까지 voucher 흐름으로 오분류 → /group-buy 교환권 chrome 으로 떨어짐.
       //   order-type.ts SSOT 와 동일하게 deal_only=1(교환권) 또는 voucher 카테고리(오프라인 공구)만 voucher 흐름.
       const isVoucherFlow = !!prod && (Number(prod.deal_only) === 1 || isVoucherCategory(prod.category))
-      // 🧭 2026-10-15: 교환권(deal_only=1)은 /vouchers — /pass 로 보내면 이용권 화면이 교환권을 그렸다(숙소는 /pass 유지: /stays 는 ?aff= 를 안 읽는다).
-      if (isVoucherFlow) return c.redirect(`${Number(prod!.deal_only) === 1 ? '/vouchers' : '/pass'}/${productId}?aff=${pin.user_id}`, 302)
+      if (isVoucherFlow) return c.redirect(`${Number(prod!.deal_only) === 1 ? '/vouchers' : '/pass'}/${productId}?aff=${pin.user_id}`, 302) // 🧭 2026-10-15 교환권은 /vouchers(숙소는 /pass — /stays 는 ?aff 를 안 읽는다)
     } catch { /* 판별 실패 — 기존 경로 */ }
     // 물리상품 — ProductDetailPage 가 localStorage.affiliate_ref 저장 (기존 시스템 재활용)
     return c.redirect(`/products/${productId}?ref=${pin.user_id}`, 302)
