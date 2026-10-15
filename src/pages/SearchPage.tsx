@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { detailHref } from '@/shared/product-flow'
+import { usePrefetchMapDetail } from './restaurant-map/prefetch-detail'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from '@/lib/i18n-lite'
 import SEO from '@/components/SEO'
@@ -46,6 +48,7 @@ interface SearchSuggestion {
 export default function SearchPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const prefetchDetail = usePrefetchMapDetail() // 🧭 2026-10-15: 손가락이 닿은 순간 상세를 데운다(지도와 같은 훅)
   const { t } = useTranslation()
   const query = searchParams.get('q') || ''
   /** 🎟️ 검색 범위 — 'exchange'(교환권 전용, `/vouchers` 에서 진입) / 그 외 = 이용권만(기본). */
@@ -263,7 +266,8 @@ export default function SearchPage() {
                   }}
                   isSelected={false}
                   userLoc={null}
-                  onSelect={(r) => navigate(`/pass/${r.id}`)}
+                  onSelect={(r) => navigate(detailHref(r))}
+                  onIntent={prefetchDetail}
                 />
               ))}
             </div>

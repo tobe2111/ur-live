@@ -20,12 +20,14 @@ import { distanceKm, regionShort, stripStorePrefix } from './utils'
 import FcfsBadge from '@/features/group-buy/FcfsBadge'
 import type { Restaurant } from './types'
 
-export const RestaurantRow = memo(function RestaurantRow({ r, isSelected, userLoc, onSelect, fcfs }: {
+export const RestaurantRow = memo(function RestaurantRow({ r, isSelected, userLoc, onSelect, fcfs, onIntent }: {
   r: Restaurant
   isSelected: boolean
   userLoc: { lat: number; lng: number } | null
   onSelect: (r: Restaurant) => void
   fcfs?: { spots: number; appliedDisplay: number }
+  /** 손가락이 닿은 순간(누르기 전) — 상세를 데운다(2026-10-15). */
+  onIntent?: (r: Restaurant) => void
 }) {
   // 💸 2026-09-09: 자체 계산 → SSOT. 이 행은 지도 **바로 아래**에 있어, 마커가 34% 라고 한 상품이
   //   여기서 다른 숫자면 한 화면에서 두 값이 보인다(선언값이 계산값보다 크면 갈린다).
@@ -42,6 +44,7 @@ export const RestaurantRow = memo(function RestaurantRow({ r, isSelected, userLo
   return (
     <button
       onClick={() => onSelect(r)}
+      onPointerDown={onIntent ? () => onIntent(r) : undefined}
       className={`w-full flex gap-3 py-4 text-left transition-colors ${
         isSelected
           ? 'bg-brand/[0.06] dark:bg-brand/[0.14]'

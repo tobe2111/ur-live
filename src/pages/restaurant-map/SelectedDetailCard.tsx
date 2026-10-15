@@ -1,3 +1,4 @@
+import { detailHref } from '@/shared/product-flow'
 import CatIcon from './CatIcon'
 import { HeartIcon, PinIcon, TicketStubIcon } from '@/components/icons/urdeal-icons'
 import { priceDisplay } from '@/shared/price-display'
@@ -91,7 +92,7 @@ export default function SelectedDetailCard({ selected, userLoc, liveSellerIds, f
           </a>
         )}
         <button
-          onClick={() => navigate(`/products/${selected.id}`)}
+          onClick={() => navigate(detailHref(selected))}
           className="flex-1 flex items-center justify-center gap-2 h-10 bg-brand text-white rounded-xl text-[15px] font-bold active:scale-[0.97] transition-transform"
         >
           <TicketStubIcon className="w-4 h-4" /> {t('map.detail.buyVoucher', { defaultValue: '바우처 구매' })}
