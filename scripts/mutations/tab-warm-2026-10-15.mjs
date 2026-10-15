@@ -6,8 +6,8 @@ export default [
   {
     name: '탭미리받기 — App 이 부르지 않는다(탭을 처음 누를 때마다 로더가 다시 뜬다)',
     file: 'src/App.tsx',
-    find: 'useEffect(() => startTabWarm(location.pathname), [])',
-    replace: 'useEffect(() => { void startTabWarm }, [])',
+    find: 'if (!off) stop = m.startTabWarm(location.pathname)',
+    replace: 'if (!off) void m.startTabWarm',
     test: T,
     why: '모듈은 남아 있는데 아무도 안 부르면 에러 없이 2026-05-27 의 빈 자리로 돌아간다.',
   },

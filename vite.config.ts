@@ -460,6 +460,13 @@ export default defineConfig({
           //   두 번 밟은 함정 — 필수 모듈을 같이 삼킨다). 새 모듈이 여기 없으면 종전대로 app-utils 로 간다(안전한 기본).
           //   ⚠️ 이 목록의 모듈이 홈/엔트리 정적 폐쇄에 들어오면 `check-critical-chunks`·`home-chunk-diet` 가 빨강이다.
           if (/\/src\/(?:lib\/(?:sentry|performance-monitor|web-vitals-report|acquisition|errorHandler|in-app-warning|kakao-touch-shim|read-table-file|supplier-api|seller-auth|biz-favicon|image-compress)|utils\/(?:kakao-login-overlay|courier-tracking|csv-download|currency|format-phone|enter-store|orderIdGenerator)|hooks\/(?:queries\/(?:useMy[A-Za-z]+|useReferral|useAffiliate|useDealHistory|useDigitalLibrary|useAddresses|useBlogPost|useFollowing|useMapProducts)|useChatPoll|useFocusTrap|useProduct|usePersistScroll|useForceLightTheme|usePrefetchProduct))\.tsx?$/.test(id)) return 'app-utils-deferred'
+          // 🔁 2026-10-15: Vite 의 동적 import 도우미(`vite/preload-helper`)는 **처음 필요한 청크**로 간다. 하단 탭 미리받기
+          //   (`lib/tab-warm.ts`, app-utils)가 들어오자 도우미가 app-shared → app-utils 로 옮겨 app-shared(지역 판정의 동적
+          //   import)가 app-utils 를 import 하게 됐고, app-utils 는 원래 app-shared 를 import 한다 ⇒ 순환(check-chunk-cycles).
+          //   main 처럼 app-shared 에 고정한다.
+          if (id.includes('vite/preload-helper')) return 'app-shared'
+          // 🚪 2026-10-15: 하단 탭 미리받기는 App 이 마운트 뒤 **동적으로** 부른다 — 부팅 봉투(app-utils)에 넣지 않는다.
+          if (id.includes('/src/lib/tab-warm')) return 'app-tab-warm'
           // 앱 유틸: src/utils/, src/hooks/, src/lib/ — App 전체에 공유되지만 별도 캐싱
           if (id.includes('/src/utils/') || id.includes('/src/hooks/') || id.includes('/src/lib/')) return 'app-utils'
           // 기능 모듈 API — seller/admin/agency/auth 기능 코드 (대시보드에서만 사용)
