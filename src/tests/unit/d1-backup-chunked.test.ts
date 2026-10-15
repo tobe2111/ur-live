@@ -288,6 +288,23 @@ describe('라벨 회전 — 메인 DB 가 자기 차례를 받는가', () => {
     expect(r.label, '업체 DB 가 대상 목록에 없다 — 그 DB 는 백업 경로가 아예 없어진다').toBe('company')
   })
 
+  it('🔑 가장 오래 전에 끝낸 대상부터 — 업체 DB 가 굶지 않는다 (2026-10-15 실측 45일 무백업)', async () => {
+    const store = new Map<string, string>()
+    store.set('backup_done:ads', '2026-10-14')
+    store.set('backup_done:main', '2026-10-11')
+    store.set('backup_done:company', '2026-08-31')
+    const r = await handleChunkedBackup(envOf(store, fakeBucket()), {}) as { label?: string }
+    expect(r.label, '목록 순서대로 잡았다 — ads·main 이 번갈아 안 끝나면 업체 DB 는 영영 백업 안 된다').toBe('company')
+  })
+
+  it('마커가 없는 대상은 가장 오래된 것으로 친다', async () => {
+    const store = new Map<string, string>()
+    store.set('backup_done:ads', '2026-10-14')
+    store.set('backup_done:company', '2026-10-13')
+    const r = await handleChunkedBackup(envOf(store, fakeBucket()), {}) as { label?: string }
+    expect(r.label).toBe('main')
+  })
+
   it('label 을 주면 그 대상만 민다 (운영자가 "메인 지금 떠라"를 할 수 있어야 한다)', async () => {
     const store = new Map<string, string>()
     store.set('backup_done:main', new Date().toISOString().slice(0, 10))

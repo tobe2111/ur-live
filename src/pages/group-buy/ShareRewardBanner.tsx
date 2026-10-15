@@ -16,6 +16,7 @@ import { GiftBoxIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from '@/lib/i18n-lite'
 import { Copy, Check } from 'lucide-react'
 import api from '@/lib/api'
+import { getUserIdSync } from '@/utils/auth'
 import { toast } from '@/hooks/useToast'
 
 interface Props {
@@ -36,6 +37,9 @@ export default function ShareRewardBanner({ sellerId, productId }: Props) {
     let alive = true
     const id = Number(sellerId)
     if (!Number.isFinite(id) || id <= 0) return
+    // 비로그인이면 묻지 않는다 — 서버가 401 을 주고 배너도 안 뜬다(2026-10-15 실측: 로그아웃 상태의 모든 이용권 상세가
+    //   이 요청 하나로 401 을 냈다). 딜은 로그인한 소개자에게만 있다.
+    if (!getUserIdSync()) return
     api.get(`/api/influencer-settlement/deal-for-seller/${id}`)
       .then(r => {
         const d = r.data?.data
