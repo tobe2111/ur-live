@@ -42,8 +42,11 @@ export default [
   {
     name: '[surface-budgets] verify 에서 경고로만 돈다',
     file: '.github/workflows/verify.yml',
-    find: '      - name: Per-surface first-screen weight budget (strict)\n        run: node scripts/check-surface-budgets.mjs\n',
-    replace: '      - name: Per-surface first-screen weight budget (strict)\n        continue-on-error: true\n        run: node scripts/check-surface-budgets.mjs\n',
+    // 🔁 2026-10-16 재조준: `run:` 줄에 `ci-run` 래퍼가 붙어(실패를 annotation 으로 내보낸다)
+    //   명령 문자열을 앵커로 쓰면 낡는다. 지키는 불변식은 **그 스텝이 strict 라는 것**이므로
+    //   `- name:` 줄만 앵커로 두고 `continue-on-error` 를 끼워 넣는다 — 결함은 한 글자도 안 바뀌었다.
+    find: '      - name: Per-surface first-screen weight budget (strict)\n',
+    replace: '      - name: Per-surface first-screen weight budget (strict)\n        continue-on-error: true\n',
     test: TEST,
     why: '빨간불이 떠도 PR 이 머지된다.',
   },

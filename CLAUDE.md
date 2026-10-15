@@ -1754,6 +1754,18 @@ navigate(returnUrl)
 >   (라이브 active 1건)와 상품별 `referral_commission_rate` 이고, 플랫폼이 깔아 주던 어필리에이트 2%는
 >   이미 꺼져 있다(2026-08-22 대표 *"어필리에이트 전략은 빼려고 해"* → `affiliate_program_enabled` 행 부재).
 >   ⚠️ 이름이 비슷해 0.5% 정리에 휩쓸리기 쉽다 — **그 둘은 지우지 말 것**(주입이 반대 방향을 고정).
+> ✅ **E4 판정 통과(배포 후 라이브, 머지 `0e58ab293`)** — 지급 경로 둘 중 설정을 안 읽던 B 를 지웠다.
+>   **배포 전에 기준점을 먼저 잡고** 양방향으로 쟀다(0 만 보면 *지워졌다*와 *원래 없었다*를 구분할 수 없다):
+>   라이브 어드민 정책 청크에서 `공구 양쪽 보너스` **1 → 0** · `REFERRAL_BONUS_BOTHSIDES_PCT` **2 → 0** ·
+>   `추천인 + 피추천인` **1 → 0**, 대조군 `원천징수` **4 → 4** · `어필리에이트`·`커미션` **1 · 1 유지**
+>   (청크 해시 `DGJunL-A` → `Dj4TW5DE`). 원장 `referral_bonus`·`invite_reward` **배포 전후 0행**이고
+>   대조군이 다섯 유형을 실수로 돌려주므로 그 0 은 쿼리가 빈 것이 아니다(`donate 10 · charge 9 · refund 7
+>   · legacy_reconcile 4 · bucket_reclass 2`). 🔴 **반대 방향도 살아 있다** — 소개비 약정 **1건**(매장 15 ↔
+>   인플 37 · **5%** · `active`) · 귀속 원장 **1건**(`broker_share`) · 설정 `user_referral_bonus_pct` **0** 이
+>   유일한 출처로 남았다. ⚠️ **못 잰 것**: 지운 모듈은 **워커** 모듈이라 `_worker.js` 가 공개로 안 읽히고,
+>   행동 증명은 **소개 링크로 딜 참여**가 필요해 세션이 못 한다(머니 경로) — **①만 보고 "통과" 라고 하지 않는다.**
+>   🩸 측정하며 컬럼 이름을 두 번 짐작해 틀렸다(`is_active`→`status` · `commission_rate`→`commission_pct`).
+>   **`pragma_table_info` 로 먼저 확인할 것.** 상세: `docs/handoff/2026-10-16-referral-bonus-single-source.md`
 
 ## 🆕 새 페이지 생성 체크리스트
 

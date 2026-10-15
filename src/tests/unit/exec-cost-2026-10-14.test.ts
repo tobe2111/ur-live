@@ -108,7 +108,9 @@ describe('④ 배선', () => {
   it('verify: 빌드 → chromium 설치 → 실행 비용 순서', () => {
     const build = v.indexOf('run: npm run build:worker')
     const install = v.indexOf('Install chromium (execution cost)')
-    const run = v.indexOf('run: node scripts/check-exec-cost.mjs')
+    // 🔁 2026-10-16 재조준: `run:` 줄에 `ci-run` 래퍼가 붙었다(실패를 annotation 으로 내보낸다).
+    //   지키는 불변식은 **순서**이므로 명령 앞부분이 아니라 스크립트 이름으로 앵커한다.
+    const run = v.indexOf('scripts/check-exec-cost.mjs')
     expect(build).toBeGreaterThan(0)
     expect(install).toBeGreaterThan(build)
     expect(run).toBeGreaterThan(install)
@@ -116,7 +118,8 @@ describe('④ 배선', () => {
     expect(v.slice(run, run + 200)).not.toMatch(/continue-on-error:\s*true/)
   })
   it('main push 예산 워크플로도 잰다(두 PR 이 각자 통과해도 합치면 넘는다)', () => {
-    expect(read('.github/workflows/bundle-budget-main.yml')).toMatch(/run: node scripts\/check-exec-cost\.mjs/)
+    // 🔁 2026-10-16: 같은 이유 — 불변식은 **그 워크플로가 이 가드를 돌린다**는 것이다(명령 앞부분 아님).
+    expect(read('.github/workflows/bundle-budget-main.yml')).toMatch(/scripts\/check-exec-cost\.mjs/)
   })
   it('로컬 게이트 제외에 사유가 있다(브라우저 렌더 ~2분 · 이번 빌드 필요)', () => {
     expect(read('scripts/local-ci-parity.mjs')).toMatch(/'check-exec-cost\.mjs':\s*\n\s*'[^']{10,}'/)
