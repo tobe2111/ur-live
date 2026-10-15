@@ -122,10 +122,7 @@ const LUCIDE_HOME_ICONS = new Set([
 const gateLazy = createSurfaceChunker({
   routes: SURFACE_ROUTES,
   root: __dirname,
-  // 🩸 2026-10-15: 표면이 10 → 19 로 늘자 고정값 4 가 너무 낮아져, 새 표면 넷이 같이 쓰는 모듈이 전부 lz-common(모든 화면이
-  //   정적으로 받는 봉투)으로 올라가 기존 화면이 +7~9KB(br) 무거워졌다. 공용 기준은 **표면 수에 비례**해야 표면을 더해도
-  //   기존 화면이 안 무거워진다 — 10곳일 때 4(종전과 같다), 19곳이면 8.
-  commonMin: Number(process.env.LZ_COMMON || Math.max(4, Math.ceil(Object.keys(SURFACE_ROUTES).length * 0.4))),
+  commonMin: Number(process.env.LZ_COMMON || 4),
   minGroupBytes: Number(process.env.LZ_MIN || 2000),
 })
 // 🚨 청크 순환 허용목록 — 2026-10-13 실측으로 이미 존재하던 둘(함수 export 만 오가서 평가 순서와 무관).

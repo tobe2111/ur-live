@@ -36,19 +36,26 @@
 - 그 사이 `load` 가 이미 지나 **센트리(129KB)가 같은 회선을 나눠 썼다**(3.1초 출발 → 5.6초 도착).
   preload 는 `load` 를 붙들므로 맵에 올리면 센트리도 페이지 뒤로 밀린다(한 수정으로 둘이 풀린다).
 
-## 3. 이번 변경
+## 3. 이번 변경 (PR #1856)
 
-- `scripts/generate-route-chunk-map.mjs` ROUTES 에 9곳: `cart` `search` `faq` `stays` `stayDetail` `region`(시/도·허브) `guestMy` `guestPass` `guestUShop`.
-  로그인 화면(`UserProfilePage`·`MyVouchersPage`)은 **넣지 않았다** — 셀러 도구와 코드를 나눠 써 대시보드 청크가 흔들린다.
+- `scripts/generate-route-chunk-map.mjs` 에 **preload 전용 표 `PRELOAD_ONLY_ROUTES`** 9곳:
+  `cart` `search` `faq` `stays` `stayDetail` `region`(시/도·허브) `guestMy` `guestPass` `guestUShop`. 생성기는 `ROUTES` 와 합쳐 맵을 낸다.
+  로그인 화면(`UserProfilePage`·`MyVouchersPage`)은 셀러 도구와 코드를 나눠 써서 **넣지 않았다**.
 - `src/worker/index.ts` chunkSurface: 로그인 전 탭은 `ur_session` 쿠키가 없을 때만 guest 표면. `/u/me` 는 유어샵 판정보다 **먼저**. 줄 수 2672(래칫 상한).
-- 🩸 **묶음기 결함 둘이 드러났다**(`check-surface-budgets` 가 잡았다):
-  1. `scripts/surface-chunks.mjs` — 공용 봉투(`lz-common`) 기준이 **lazy 사용자까지** 셌다. 결제 위젯이 lz-common 에 들어가 stripe·toss 를 끌고 와
-     **전 화면 +15~21KB(br)**. ⇒ lazy·boot 로만 쓰는 모듈은 종전 이름 그대로.
-  2. `vite.config.ts` — 공용 기준이 **고정값 4**. 표면 10 → 19 로 늘자 기존 화면 +7~9KB. ⇒ 표면 수의 40%(10곳=4 · 19곳=8).
-- 가드: `src/tests/unit/route-chunk-surfaces-2026-10-15.test.ts` + 주입 `scripts/mutations/route-chunk-surfaces-2026-10-15.mjs` 5건 전부 빨간불 확인.
+- **청크 구성은 1바이트도 안 바뀐다** — 기존 10화면 예산 ±0.2KB, 런타임 청크 수 6화면 전부 기준 이하. 새 9화면 예산만 추가(리베이스라인 사유 기록).
+- 가드: `src/tests/unit/route-chunk-surfaces-2026-10-15.test.ts` + 주입 `scripts/mutations/route-chunk-surfaces-2026-10-15.mjs` 4건.
+
+### 🩸 첫 시도(ROUTES 에 넣기)를 버린 이유 — 남은 묶음기 결함
+
+`ROUTES` 는 vite 묶음기(`scripts/surface-chunks.mjs`)의 입력이기도 하다. 거기 넣자 묶음이 다시 짜였다:
+1. 공용 봉투(`lz-common`) 기준이 **lazy 사용자까지** 센다 → 결제 위젯이 lz-common 에 들어가 stripe·toss 를 끌고 와 **전 화면 +15~21KB(br)**.
+   lazy 전용 모듈을 빼는 수리는 효과가 있었지만(어드민 −14 · 에이전시 −20KB) 일부 화면 청크 수가 +1 돼 런타임 래칫에 걸렸다.
+2. 공용 기준 **고정값 4** → 표면 19곳에서 기존 화면 +7~9KB. 40% 비례로 바꾸면 바이트는 줄지만 파일이 +2~5개.
+⇒ 둘 다 이 PR 에서 되돌렸다. **표면을 `ROUTES` 로 옮기는 날 다시 드러난다** — 그때 1번(lazy 전용 제외)부터 손볼 것.
 
 ## 4. 이번에 틀렸던 판단
 
+- 로컬 A/B(`route.fulfill` 로 dist 를 서빙)는 **네트워크 감속이 안 걸려** 무효였다(FCP 0.3초). 속도 효과는 배포 후 라이브로만 판정.
 - 첫 측정기가 `p.evaluate` 폴링이라 CPU 4배에서 1~2초 늦게 봤다(`/pass` 첫 내용이 FCP 1.4초인데 4.7초로 찍혔다). ⇒ 페이지 안 rAF 로 판정.
 - 로그아웃 마이·장바구니의 3초를 "무언가를 기다린다(API?)" 로 보고했는데 API 는 0 이었다 — **청크 발견이 늦은 것**이었다.
 - "유료 전환이 필요하다" 고 보고했는데 대표가 **이미 유료**라고 했다. API 로 확인하려 했지만 이 토큰엔 요금제 조회 권한이 없다.

@@ -72,7 +72,9 @@ describe('③ 배선', () => {
     const b = JSON.parse(read('scripts/surface-budgets.json'))
     // 하드로드 화면 목록 = 생성기의 ROUTES 키(그 파일은 .mjs 라 소스에서 키를 읽는다)
     const gen = read('scripts/generate-route-chunk-map.mjs')
-    const body = gen.slice(gen.indexOf('export const ROUTES = {'), gen.indexOf('\n}', gen.indexOf('export const ROUTES = {')))
+    // 🐢 2026-10-15: preload 전용 표(`PRELOAD_ONLY_ROUTES`)도 워커가 미리받게 하는 화면이다 — 둘 다 센다.
+    const block = (name: string) => gen.slice(gen.indexOf(`export const ${name} = {`), gen.indexOf('\n}', gen.indexOf(`export const ${name} = {`)))
+    const body = block('ROUTES') + block('PRELOAD_ONLY_ROUTES')
     const keys = [...body.matchAll(/^  (\w+): \[/gm)].map((m) => m[1])
     expect(keys.length).toBeGreaterThan(5)
     // 🧰 2026-10-14: 대시보드·마이는 route-chunk-map 밖이라 `dashboard-surfaces.mjs` 에서 온다(dash:<키>).

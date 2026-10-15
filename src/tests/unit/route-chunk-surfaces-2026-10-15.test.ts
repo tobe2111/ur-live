@@ -7,11 +7,10 @@
  *   출발했고, 그 사이 `load` 가 지나 센트리(129KB)가 같은 회선을 나눠 썼다.
  *   ⇒ 맵에 올리면 엔트리와 병렬로 받고, preload 는 `load` 를 붙들어 센트리도 페이지 뒤로 밀린다.
  *
- * 등재하자 묶음기(`scripts/surface-chunks.mjs`)의 결함 둘이 드러났다(`check-surface-budgets` 가 잡았다):
- *   ① **lazy 사용자까지 공용 기준에 셌다** — 장바구니·숙소 상세가 결제 위젯을 *나중에* 부르는 것만으로 사용자가 4곳을
- *      넘어 위젯이 `lz-common`(모든 화면이 정적으로 받는 봉투)에 들어갔고, stripe·toss 를 끌고 와 **전 화면 +15~21KB(br)**.
- *   ② **공용 기준이 고정값 4** — 표면이 10 → 19 로 늘자 새 표면 넷이 같이 쓰는 모듈이 전부 공용이 돼 **전 화면 +7~9KB**.
- *      기준을 표면 수에 비례(40%)시키면 10곳일 때 4(종전과 같다), 19곳이면 8.
+ * 🩸 처음엔 `ROUTES` 에 넣었다 — 그 표는 vite 묶음기(`scripts/surface-chunks.mjs`)의 입력이기도 해서 묶음이 다시 짜였다:
+ *   결제 위젯이 공용 봉투로 가 전 화면 +15~21KB(br)(묶음기가 lazy 사용자까지 공용 기준에 센다) · 기준을 올리면 파일 +2~5개.
+ *   ⇒ **preload 전용 표(`PRELOAD_ONLY_ROUTES`)** 로 분리 — 청크 구성은 1바이트도 안 바뀌고 출발 시점만 당겨진다.
+ *   (묶음기의 lazy 계산은 이 PR 범위 밖이다 — 그 표면들을 `ROUTES` 로 옮기는 날 다시 드러난다. 인계 문서 참조.)
  *
  * ⚠️ 못 막는 것: 실제 바이트(빌드 후 `check-surface-budgets` 의 몫) · 로그인 판정이 쿠키(`ur_session`)와 앱(`localStorage`)
  *   에서 갈리는 경우(preload 가 빗나갈 뿐 화면은 같다) · 실제로 빨라졌는지(브라우저 실측의 몫).
@@ -19,12 +18,11 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
-import { createSurfaceChunker } from '../../../scripts/surface-chunks.mjs'
 import { stripComments, readCode } from '../helpers/source-text'
 
 // 생성기는 .d.mts 를 둘 수 없다 — 본문의 템플릿 문자열(생성 파일의 `export const …`)이 계약 검사(pre-push-roots)에 export 로 읽힌다.
 const GEN_PATH = '../../../scripts/generate-route-chunk-map.mjs'
-const { ROUTES } = (await import(GEN_PATH as string)) as { ROUTES: Record<string, string[]> }
+const { ROUTES, PRELOAD_ONLY_ROUTES } = (await import(GEN_PATH as string)) as { ROUTES: Record<string, string[]>; PRELOAD_ONLY_ROUTES: Record<string, string[]> }
 
 const ROOT = '/repo'
 const P = (f: string) => path.join(ROOT, f)
@@ -41,14 +39,14 @@ describe('① 로딩 화면이 뜨던 페이지가 청크 병렬화에 등재돼
     guestUShop: 'src/pages/guest/GuestUrShopPage.tsx',
   } as const
   it.each(Object.entries(NEW))('%s → %s', (key, file) => {
-    expect(ROUTES[key]).toContain(file)
+    expect(PRELOAD_ONLY_ROUTES[key]).toContain(file)
     expect(() => readFileSync(file, 'utf-8')).not.toThrow()
   })
   it('지역은 시/도·허브 두 페이지 모두', () => {
-    expect(ROUTES.region).toEqual(['src/pages/region/RegionPage.tsx', 'src/pages/region/RegionIndexPage.tsx'])
+    expect(PRELOAD_ONLY_ROUTES.region).toEqual(['src/pages/region/RegionPage.tsx', 'src/pages/region/RegionIndexPage.tsx'])
   })
   it('로그인 화면(셀러 도구와 코드를 나눠 쓰는 페이지)은 등재하지 않는다 — 대시보드 청크 무접촉', () => {
-    const files = Object.values(ROUTES).flat()
+    const files = [...Object.values(ROUTES), ...Object.values(PRELOAD_ONLY_ROUTES)].flat()
     expect(files).not.toContain('src/pages/UserProfilePage.tsx')
     expect(files).not.toContain('src/pages/MyVouchersPage.tsx')
   })
@@ -77,42 +75,18 @@ describe('② 워커가 경로를 표면으로 고른다', () => {
   })
 })
 
-describe('③ 묶음기 — lazy 로만 쓰는 모듈은 공용 봉투(lz-common)로 끌어올리지 않는다', () => {
-  // 가짜 그래프: 페이지 4곳이 pay.ts 를 **나중에(lazy)** 부른다. 그리고 shared.ts 는 4곳이 정적으로 쓴다.
-  function graph() {
-    const big = 'x'.repeat(5000)
-    const mods: Record<string, { isEntry?: boolean; importedIds: string[]; dynamicallyImportedIds?: string[]; code?: string }> = {
-      [P('src/main.tsx')]: { isEntry: true, importedIds: [] },
-      [P('src/pay.ts')]: { importedIds: [], code: big },
-      [P('src/tinyPay.ts')]: { importedIds: [], code: 'x' },
-      [P('src/shared.ts')]: { importedIds: [], code: big },
-    }
-    for (const n of ['A', 'B', 'C', 'D']) {
-      mods[P(`src/pages/${n}.tsx`)] = { importedIds: [P('src/shared.ts')], dynamicallyImportedIds: [P('src/pay.ts')], code: big }
-    }
-    mods[P('src/pages/A.tsx')].dynamicallyImportedIds!.push(P('src/tinyPay.ts'))
-    return { getModuleIds: () => Object.keys(mods)[Symbol.iterator](), getModuleInfo: (id: string) => mods[id] ?? null }
-  }
-  const routes = { a: ['src/pages/A.tsx'], b: ['src/pages/B.tsx'], c: ['src/pages/C.tsx'], d: ['src/pages/D.tsx'] }
-  const gate = createSurfaceChunker({ routes, root: ROOT, commonMin: 4, minGroupBytes: 2000 })
-  it('정적으로 4곳이 쓰면 공용 — 종전 동작 그대로', () => {
-    expect(gate(P('src/shared.ts'), 'app-components', graph())).toBe('lz-common')
+describe('③ preload 전용 표는 묶음기 입력과 섞이지 않는다', () => {
+  it('ROUTES(묶음기 입력)에 preload 전용 표면이 없다 — 섞이면 기존 화면 청크가 다시 짜인다', () => {
+    for (const k of Object.keys(PRELOAD_ONLY_ROUTES)) expect(Object.keys(ROUTES), k).not.toContain(k)
+    expect(Object.keys(PRELOAD_ONLY_ROUTES).length).toBeGreaterThanOrEqual(9)
   })
-  it('lazy 로만 4곳이 쓰면 종전 이름 그대로(공용 봉투가 결제 SDK 를 정적으로 끌고 오지 않게)', () => {
-    expect(gate(P('src/pay.ts'), 'payments', graph())).toBe('payments')
-  })
-  it('lazy 로만 쓰는 작은 묶음도 공용으로 합치지 않는다', () => {
-    expect(gate(P('src/tinyPay.ts'), 'payments', graph())).not.toBe('lz-common')
-  })
-})
-
-describe('④ 공용 기준은 표면 수에 비례한다', () => {
-  it('vite 가 고정값이 아니라 표면 수의 40% 를 쓴다(10곳=4 · 19곳=8)', () => {
+  it('vite 는 ROUTES 만 묶음기에 넘긴다', () => {
     const v = stripComments(readFileSync('vite.config.ts', 'utf8'))
-    expect(v).toContain('commonMin: Number(process.env.LZ_COMMON || Math.max(4, Math.ceil(Object.keys(SURFACE_ROUTES).length * 0.4))),')
-    const n = Object.keys(ROUTES).length
-    expect(n, '표면 수').toBeGreaterThanOrEqual(19)
-    expect(Math.max(4, Math.ceil(n * 0.4))).toBeGreaterThanOrEqual(8)
-    expect(Math.max(4, Math.ceil(10 * 0.4))).toBe(4)
+    expect(v).toContain("import { ROUTES as SURFACE_ROUTES } from './scripts/generate-route-chunk-map.mjs'")
+    expect(v).not.toContain('PRELOAD_ONLY_ROUTES')
+  })
+  it('생성기는 두 표를 모두 맵으로 낸다 — preload 전용 표를 빼먹으면 워커가 주입할 게 없다', () => {
+    const g = stripComments(readFileSync('scripts/generate-route-chunk-map.mjs', 'utf8'))
+    expect(g).toContain('Object.entries({ ...ROUTES, ...PRELOAD_ONLY_ROUTES })')
   })
 })
