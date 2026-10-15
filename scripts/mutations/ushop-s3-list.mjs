@@ -88,7 +88,7 @@ export default [
   {
     name: 's3 — 헤더가 칩과 같은 숫자만 말한다(유어샵 A 의 누적 구매가 빠진다)',
     file: 'src/pages/CuratorPage.tsx',
-    find: '          soldTotal={curatorSoldTotal(pins)}\n',
+    find: '          soldTotal={curatorSoldTotal(curator)}\n',
     replace: '',
     test: 'src/tests/unit/ushop-s3-list-2026-09-28.test.ts',
     why:

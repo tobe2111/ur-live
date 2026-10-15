@@ -355,7 +355,7 @@ export default function CuratorPage() {
           curator={curator}
           canEdit={isOwner}
           counts={{ pins: pins.length }}
-          soldTotal={curatorSoldTotal(pins)}
+          soldTotal={curatorSoldTotal(curator)}
           onCopyLink={shareShop}
         />
         <UShopQrCard />

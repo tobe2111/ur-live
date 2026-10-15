@@ -252,6 +252,9 @@ cartCheckoutRoutes.post('/cart/confirm-toss', rateLimit({ action: 'gb_cart_confi
       stmts.push(DB.prepare('UPDATE products SET group_buy_current = COALESCE(group_buy_current, 0) + ? WHERE id = ?').bind(l.qty, l.productId))
     }
     await DB.batch(stmts)
+    // 🛍️ 2026-10-15: 유어샵 경유 기록 — 단건과 같은 함수(장바구니는 줄마다). 커미션·결제와 무관, fail-soft.
+    const { recordUShopSale } = await import('../../../worker/utils/ushop-sales')
+    c.executionCtx?.waitUntil(recordUShopSale(DB, { orderId: newOrderId, ref: referralInfluencerId, buyerId: userId, items: priced.lines.map(l => ({ productId: l.productId, qty: l.qty })) }))
 
     // ── 셀러별 정산 기록 ───────────────────────────────────────────────────────
     //    ⚠️ 셀러가 섞여 있어도 여기서 갈라 적는다 — `orders.seller_id` 가 null 이어도 정산이 안 깨지는 이유.

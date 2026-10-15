@@ -31,7 +31,7 @@ import { getPolicy } from '../utils/dynamic-policy'
 import { intParam } from '@/shared/pagination'; import { loadLinkedSellerProducts } from '../utils/linkshop-seller-products' // 한 줄: 래칫 1397
 import { consumerVisibleProductSql } from '../../shared/db/consumer-visible-product'
 import { isAffiliateProgramEnabled, gateAffiliateRows } from '../utils/affiliate-program'
-import { findOwnedApprovedSeller, OWNED_STORE_WHERE_SQL } from '../utils/seller-operators'
+import { findOwnedApprovedSeller, OWNED_STORE_WHERE_SQL } from '../utils/seller-operators'; import { countUShopSales } from '../utils/ushop-sales' // 한 줄: 래칫
 
 const curatorRoutes = new Hono<{ Bindings: Env }>()
 
@@ -240,10 +240,9 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
     //   핀마다 **이 유어샵 주인이 그 매장과 맺은 활성 딜의 %** 를 실어 보낸다.
     //   조건은 SSOT(`findActiveDealPctsBySeller`)가 갖는다 — 여기서 WHERE 를 베끼면 결제와 갈린다.
     //
-    //   ⚠️ 딜은 **유어샵 주인** 기준이지 보는 사람 기준이 아니다. 그래서 익명 엣지 캐시(300s)에
-    //     실려도 정확하다 — 누가 보든 같은 값이다.
-    //   💸 왕복 1회. 핀마다 부르면 핀 수만큼 왕복한다.
-    const dealBySeller = await findActiveDealPctsBySeller(DB, String(userId))
+    //   ⚠️ 딜은 **유어샵 주인** 기준(보는 사람 무관 — 익명 엣지 캐시에 실려도 정확). 💸 왕복 1회.
+    //   🛍️ 2026-10-15 대표 *"바꾸자"*: 누적 구매 = **이 유어샵을 거쳐** 팔린 수(`ushop-sales.ts`) — 같은 왕복에 실린다.
+    const [dealBySeller, ushopSold] = await Promise.all([findActiveDealPctsBySeller(DB, String(userId)), countUShopSales(DB, userId)])
     const pins = gateAffiliateRows((pinsResult.results as Record<string, unknown>[]).map((r) => ({
       ...r,
       // null = 이 매장과 딜이 없음 → 팔려도 소개비 0. 화면이 두 덩어리로 가르는 근거.
@@ -322,6 +321,7 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
         accent,
         // ✨ 2026-07-04 유어샵 1단계: 매장 유어샵 하단 추천(핀) 섹션 opt-in (기본 0=off).
         linkshop_show_recommend: showRecommend,
+        ushop_sold: ushopSold, // 🛍️ 이 유어샵을 거쳐 팔린 수(머리의 '누적 구매')
       },
       pins: pins ?? [],
       // 🛡️ 2026-05-25 신모델: linked seller 있으면 셀러 공개페이지로 자연 흡수.

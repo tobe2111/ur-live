@@ -34,3 +34,12 @@
 - 🩸 **그런데 React 목록이 9가 아니라 8장**이었다. 카테고리·브랜드 리셋 effect 가 **마운트에서도** 돌며 `embedded ? 12 : 8` 로 덮어썼다(초기값만 9로 바꿨다). 빌드·시험 전부 초록이었다.
 - 수정: 초기값과 리셋이 같은 상수 `EMBED_INITIAL` · 시험 ⑤ + 주입 1건(빨간불 확인).
 - 다음 세션 첫 액션: 배포 후 `/vouchers` 폰 첫 화면 타일 수가 **9**인지 렌더로 센다(`.grid.grid-cols-3 [role=link]`).
+
+## 🛍️ 후속 (2026-10-15) — 유어샵 '누적 구매' = 이 유어샵을 거쳐 팔린 수 (대표 "바꾸자")
+- 종전: 진열 상품들의 `sold_count`(어디서 팔렸든 전체) 합 → `/u/jiwon1228` 에 311.
+- 🩸 **유어샵 경유 구매는 어디에도 안 남고 있었다**: `?aff=<주인 id>` 가 결제까지 오지만 기록은 커미션이 실제로 붙을 때의
+  `influencer_attributions` 뿐(라이브 1행 — 그것도 중개 몫 `broker_share` 였다). `order_referrer_intents` 표는 라이브에 **없다**.
+- 수정: 신규 `worker/utils/ushop-sales.ts`(표 `ushop_sales` — 돈 무관, 멱등 PK(order_id, product_id)) · 구매 경로 셋(딜 /join · 카드 확정 · 장바구니)이
+  기록 · curator API 가 `curator.ushop_sold` 를 싣고 화면·서버 첫 화면이 `curatorSoldTotal(curator)` 로 읽는다. 0 이면 그 칸을 숨긴다.
+- ⚠️ 배포 직후엔 **전 유어샵이 0 → '누적 구매' 칸이 사라진다**(과거 기록이 없어서). 유어샵 링크로 산 구매부터 쌓인다.
+- 못 보는 것: 셀러 id 와 유저 id 가 같은 숫자일 때(handle 있는 유저만 받는 것으로 줄였다) · 쇼핑 주문(쇼핑 탭 숨김 — order.routes 미배선).

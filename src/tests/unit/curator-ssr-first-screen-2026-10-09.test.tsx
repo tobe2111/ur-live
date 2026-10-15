@@ -248,14 +248,15 @@ describe('유어샵 서버 첫 화면 — 워커 HTML ↔ 진짜 컴포넌트', 
 
   // ─────────────────────────────────────────────── ④-3 얼굴·숫자 줄 (2026-10-14 유어샵 A)
   it('④-4 얼굴·숫자 줄이 진짜 `CuratorHeader` 와 같다(사진 URL · 유달이 · 숫자)', () => {
+    // 🛍️ 2026-10-15: 누적 구매 = 이 유어샵을 거쳐 팔린 수(`curator.ushop_sold`). 상품 전체 판매수(sold_count)는 **무시**해야 한다.
     const pins = [{ id: 1, product_id: 1, product_name: 'a', price: 1000, sold_count: 300 }, { id: 2, product_id: 2, product_name: 'b', price: 2000, sold_count: 11 }]
     for (const profile_image of ['https://media.ur-team.com/u/3/face.webp', null]) {
-      const curator = { id: 3, handle: 'jiwon1228', name: '정지원', bio: '소개', profile_image, youtube_url: 'y', instagram_url: '', tiktok_url: '' }
+      const curator = { id: 3, handle: 'jiwon1228', name: '정지원', bio: '소개', profile_image, youtube_url: 'y', instagram_url: '', tiktok_url: '', ushop_sold: 7 }
       const html = buildCuratorFirstScreen(JSON.stringify({ success: true, curator, pins }), LOADER)
       const host = document.createElement('div'); host.innerHTML = html
       const { container } = render(
         <MemoryRouter>
-          <CuratorHeader curator={curator as never} counts={{ pins: pins.length }} soldTotal={curatorSoldTotal(pins)} onCopyLink={() => {}} />
+          <CuratorHeader curator={curator as never} counts={{ pins: pins.length }} soldTotal={curatorSoldTotal(curator)} onCopyLink={() => {}} />
         </MemoryRouter>,
       )
       const sImg = host.querySelector(`.${CURATOR_FS_CLASS.avatar.split(' ').join('.')} img`)!
@@ -266,8 +267,14 @@ describe('유어샵 서버 첫 화면 — 워커 HTML ↔ 진짜 컴포넌트', 
       const sStats = host.querySelector('p.' + CURATOR_FS_CLASS.stats.split(' ')[0])!.textContent
       const cStats = container.querySelector('p.' + CURATOR_FS_CLASS.stats.split(' ')[0])!.textContent
       expect(sStats).toBe(cStats)
-      expect(sStats).toContain('누적 구매 311')
+      expect(sStats).toContain('누적 구매 7')
+      expect(sStats).not.toContain('311') // 진열 상품의 전체 판매수 합이 새면 안 된다
     }
+    // 유어샵을 거친 판매가 없으면 그 칸 자체가 없다(0 을 적지 않는다) — 서버·화면 둘 다
+    const curator0 = { id: 3, handle: 'jiwon1228', name: '정지원', bio: '소개', profile_image: null, youtube_url: '', instagram_url: '', tiktok_url: '' }
+    const html0 = buildCuratorFirstScreen(JSON.stringify({ success: true, curator: curator0, pins }), LOADER)
+    expect(html0).not.toContain('누적 구매')
+    expect(curatorSoldTotal({ ...curator0, ushop_sold: undefined })).toBe(0)
   })
 
   // ─────────────────────────────────────────────── ⑤ 안 그리는 것 / 폴백
