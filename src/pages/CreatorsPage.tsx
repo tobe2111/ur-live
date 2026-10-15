@@ -84,7 +84,7 @@ export default function CreatorsPage() {
               {/* 숫자는 카드에 담지 않는다. 담는 순간 "3열 균등 카드" 가 된다 */}
               <dl className="mt-10 lg:mt-12 flex flex-wrap gap-x-10 gap-y-6 lg:gap-x-14">
                 <Stat n="0원" d="시작에 드는 돈" />
-                <Stat n="promo%" d="내 링크로 팔린 금액에서 내 몫" />
+                <Stat n="promo%" d="매장이 건 소개 몫 (딜마다 다름)" />
                 <Stat n={F.minPayout} d="정산 최소 지급액" />
               </dl>
 
@@ -117,7 +117,7 @@ export default function CreatorsPage() {
             <div>
               <p className="flex items-start gap-2 lg:gap-4 text-[17px] lg:text-[34px] font-extrabold text-ink leading-[1.35] tracking-[-0.025em]">
                 <Link2 className="w-5 h-5 lg:w-8 lg:h-8 mt-1 lg:mt-2 text-brand shrink-0" strokeWidth={1.9} aria-hidden />
-                <span>내 링크로 판매될 때마다 <span className="text-brand-text">판매액의 소개비(promo%)</span> 적립</span>
+                <span>매장이 소개 몫을 건 딜이 내 링크로 팔리면 <span className="text-brand-text">판매액의 소개비(promo%)</span> 적립</span>
               </p>
               <ul className="mt-8 lg:mt-12 border-t border-rule">
                 {TERMS.map((t) => (

@@ -57,7 +57,7 @@ export default function InfluencerLandingPage() {
             <span className="text-brand">소개하면</span> 몫이 남습니다.
           </h1>
           <p className="text-[17px] text-gray-600 dark:text-gray-300 leading-relaxed max-w-2xl mx-auto mb-8">
-            매장을 직접 섭외하지 않아도 됩니다. 마음에 든 동네 이용권을 내 유어샵에 담아<br className="hidden sm:inline" />
+            매장을 직접 섭외하지 않아도 됩니다. 매장이 소개 몫을 건 동네 이용권을 내 유어샵에 담아<br className="hidden sm:inline" />
             링크로 소개하면, 그 링크로 팔릴 때마다 매장이 정한 비율만큼 쌓여요.
           </p>
           <button

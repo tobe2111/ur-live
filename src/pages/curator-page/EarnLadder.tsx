@@ -81,7 +81,7 @@ export default function EarnLadder({ dealCount, pinCount }: Props) {
                 {pinCount > 0 && <span className="ml-2 text-[12px] font-bold text-gray-400">{pinCount}개 담음</span>}
               </p>
               <p className="mt-1 text-[12px] leading-relaxed text-gray-600 dark:text-gray-300">
-                담은 이용권은 내 유어샵에 <b className="text-gray-900 dark:text-white">계속 남습니다</b>. 내 샵으로 팔릴 때마다 소개비가 붙어요.
+                담은 이용권은 내 유어샵에 <b className="text-gray-900 dark:text-white">계속 남습니다</b>. 매장이 소개 몫을 건 이용권이 내 샵으로 팔리면 소개비가 붙어요.
               </p>
             </div>
           </div>

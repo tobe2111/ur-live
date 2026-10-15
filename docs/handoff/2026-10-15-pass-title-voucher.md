@@ -450,3 +450,58 @@ point_transactions WHERE type IN ('referral_bonus','invite_reward')  →  0행
 3. 지문 기준선(주석제거본, 제거 **전**): `__SSR_INITIAL_DETAIL__`(1) · `pickSeedDetail`(2) · `lazy(`(3) ·
    `passShareCardUrl`(3) · `rootMargin`(1) · `handleJoin`(3) · `storeAffiliateRef`(2) · `getPurchaseRef`(3).
    바뀐 것은 배너 셋뿐: `Sparkles` 3→2 · `isInfluencerLanding` 2→0 · `refUserId` 2→0.
+
+---
+
+## ✅ E4 판정 (배포 후 라이브, 2026-10-15 23:00 KST · main `756e7a523`)
+
+**결론: ① 통과 · ② 번들 수준까지만 확인(실구매 미측정).** 위 "다음 세션의 첫 액션" 1·2 를 이 절이 대체한다.
+
+### 🔑 판정 기준을 한 번 고쳐서 얻었다
+
+배너·약관은 **클라가 그린다** — 서버 HTML 에는 애초에 없으므로 `curl` 로 메타를 보면
+**수리 전에도 0** 이다(= 부호가 안 맞는 기준). 같은 날 공유 카드 E4 가 그 함정을 한 번 밟았고
+이번엔 그 교훈대로 **배포된 번들**에서 쟀다.
+
+청크 해시가 바뀐 것부터 확인: `GroupBuyDetailPage-D2pIBsS3` → **`DDLR5-Bl`**.
+상세 표면 봉투 **29개**(`/pass/2919` modulepreload 전량 + `app-routes` 에서 찾은 약관·공유 페이지 청크)를 받아 셌다.
+
+```
+① 죽은 약속이 사라졌는가
+0.5% 보너스        1 → 0   ← 10-13 공유 카드 E4 가 "남은 하나가 ?ref= 배너" 라 적어 둔 그 1건
+친구 추천 공구     → 0
+보너스 딜          → 0
+양쪽 보너스        → 0     (InfluencerDiscoverPage 청크)
+회사가 보장        → 0     (약관 청크)
+약관 referral      → 0 ·  약관 0.5% → 0
+
+➕ 대조군 (0 은 결함과 측정 실패를 구분하지 못한다)
+상세 구매하기 1 · 약관 운영하지 않습니다 1 · 소개비 4 · 추천 링크 4 · 본인 추천 1 · 계정 정지 1
+⇒ 대체 문구가 실재한다
+
+두 약관 일치 (한쪽만 고치는 것이 가장 조용한 실패)
+인플 약관 현재 운영하지 않습니다 1 · 0.5% 0
+
+서버 문서(Googlebot UA)로도 교차 확인: /terms/group-buy · /pass/2919 죽은문구 0건
+```
+
+### 🔴 ②(반대 방향) — 번들에 살아 있다, 실구매는 못 쟀다
+
+배포된 상세 청크에서 소개 귀속이 그대로다:
+
+```
+마운트 effect   M(be.get("aff")||be.get("ref"))              ← storeAffiliateRef (minified)
+결제 딜 경로    {quantity:Pe,payment_method:"deal",ref:r,…}
+결제 카드 경로  {quantity:Pe,payment_method:"toss",ref:a()||void 0,…}
+app-utils       affiliate_ref / _expires / _at + TTL 864e5 (24h)
+```
+
+⚠️ **여전히 못 잰 것 = 실제 귀속 행.** 소개 링크로 **구매까지 가서** `influencer_attributions` 에
+행이 생기는지는 **실결제가 필요해 세션이 못 한다**(머니 경로). 코드가 배포됐다는 것까지가
+여기서 잴 수 있는 전부다 — **①만 보고 "통과" 라고 말하지 않는다.**
+
+### 남은 것
+
+- 서버 레일 `referral-bonus.ts` + `group-buy.routes:903` 호출은 **그대로**(비율 0 → no-op).
+  삭제는 별건 **등급 C** — 다음 결재로.
+- 실구매 ② 는 대표가 라이브에서 한 번 소개 링크로 사 보면 즉시 판정된다.
