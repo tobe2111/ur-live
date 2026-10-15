@@ -76,6 +76,17 @@ export function insta(method, p, params) {
   if (!t) throw new Error('META_IG_ACCESS_TOKEN missing');
   return metaCall(IG, t, method, p, params);
 }
+// Facebook 페이지: META_FB_PAGE_TOKEN 없으면 null (호출측에서 건너뜀). 이미지 있으면 /photos, 없으면 /feed
+export async function fbPagePost(message, link, image) {
+  const t = process.env.META_FB_PAGE_TOKEN;
+  if (DRY) return { id: fakeId('fb') };
+  if (!t) return null;
+  const FB = 'https://graph.facebook.com/v21.0';
+  const me = await metaCall(FB, t, 'GET', 'me', { fields: 'id,name' });
+  return image
+    ? metaCall(FB, t, 'POST', `${me.id}/photos`, { url: image, caption: `${message}\n\n${link}` })
+    : metaCall(FB, t, 'POST', `${me.id}/feed`, { message, link });
+}
 
 // ---------- GitHub issues (Actions 에서 GITHUB_TOKEN 사용) ----------
 export async function createIssue(title, body, labels = []) {

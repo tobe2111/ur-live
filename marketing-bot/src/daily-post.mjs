@@ -1,5 +1,5 @@
 // 매일 게시: Threads 텍스트 1개 + Instagram 이미지 캡션 1개. 70% 유용/공감, 30% 딜 홍보.
-import { DRY, log, readJson, writeJson, claude, threads, insta, utmLink, productImage, kstNow, IG_USER_ID, THREADS_USER_ID } from './lib.mjs';
+import { DRY, log, readJson, writeJson, claude, threads, insta, fbPagePost, utmLink, productImage, kstNow, IG_USER_ID, THREADS_USER_ID } from './lib.mjs';
 
 const schedule = readJson('data/schedule.json', {});
 const { products } = readJson('data/products.json', { products: [] });
@@ -62,6 +62,14 @@ async function main() {
       const c = await insta('POST', `${IG_USER_ID}/media`, { image_url: image, caption: body.slice(0, 2100) });
       const r = await insta('POST', `${IG_USER_ID}/media_publish`, { creation_id: c.id });
       posts.push({ platform: 'instagram', id: r.id, content_id: cid, promo: isPromo, product_id: product.id, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('instagram'), bio_link: link, dry: DRY || undefined });
+      // ---- Facebook 페이지 (IG 게시 시 같은 이미지/캡션 + 링크) ----
+      const fcid = `fb-${n('facebook')}`;
+      const flink = utmLink(product, 'facebook', isPromo ? 'todaydeal' : 'daily', fcid, now);
+      try {
+        const f = await fbPagePost(body.slice(0, 2100), flink, image);
+        if (!f) log('Facebook: META_FB_PAGE_TOKEN 없음 → 건너뜀');
+        else posts.push({ platform: 'facebook', id: f.post_id || f.id, content_id: fcid, promo: isPromo, product_id: product.id, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('instagram'), link: flink, dry: DRY || undefined });
+      } catch (e) { log(`Facebook 게시 실패: ${e.message}`); }
     }
   } else log('Instagram: 지금은 게시 슬롯 아님 또는 이미 게시함');
 
