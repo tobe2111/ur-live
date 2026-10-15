@@ -7,13 +7,24 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync, existsSync } from 'node:fs'
-import { ROUTES, PRELOAD_ONLY_ROUTES } from '../../../scripts/generate-route-chunk-map.mjs'
 import { stripComments } from '../helpers/source-text'
 
 const worker = stripComments(readFileSync('src/worker/index.ts', 'utf8'))
 const vite = readFileSync('vite.config.ts', 'utf8')
+const gen = readFileSync('scripts/generate-route-chunk-map.mjs', 'utf8')
+/** 생성기 소스에서 표 하나를 읽는다(.mjs 를 import 하면 타입 선언이 필요하고, 그 계약 시험이 템플릿 속 export 를 오인한다). */
+function table(name: string): Record<string, string[]> {
+  const start = gen.indexOf(`export const ${name} = {`)
+  const body = gen.slice(start, gen.indexOf('\n}', start))
+  const out: Record<string, string[]> = {}
+  for (const m of body.matchAll(/^  (\w+): \[([^\]]*)\]/gm)) out[m[1]] = [...m[2].matchAll(/'([^']+)'/g)].map((x) => x[1])
+  return out
+}
+const ROUTES = table('ROUTES')
+const PRELOAD_ONLY_ROUTES = table('PRELOAD_ONLY_ROUTES')
 
 describe('미리받기 전용 표면', () => {
+  it('표 읽기가 헛돌지 않는다', () => { expect(Object.keys(ROUTES).length).toBeGreaterThan(5) })
   it('표면 다섯이 있고 진입 파일이 실재한다', () => {
     expect(Object.keys(PRELOAD_ONLY_ROUTES).sort()).toEqual(['blog', 'blogPost', 'region', 'stayDetail', 'stays'])
     for (const files of Object.values(PRELOAD_ONLY_ROUTES)) for (const f of files) expect(existsSync(f), f).toBe(true)
@@ -24,7 +35,6 @@ describe('미리받기 전용 표면', () => {
     expect(vite).not.toMatch(/PRELOAD_ONLY_ROUTES/)
   })
   it('생성기가 두 표를 함께 쓴다', () => {
-    const gen = readFileSync('scripts/generate-route-chunk-map.mjs', 'utf8')
     expect(gen).toContain('Object.entries({ ...ROUTES, ...PRELOAD_ONLY_ROUTES })')
   })
   it('워커가 각 표면을 고른다', () => {
