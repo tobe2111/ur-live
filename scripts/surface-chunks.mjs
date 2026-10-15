@@ -134,16 +134,24 @@ export function createSurfaceChunker({ routes, root, commonMin = 4, minGroupByte
         })
       }
       for (const [m, set] of labels) if (boot.has(m)) set.add('boot')
+      // 🩸 2026-10-15 (표면 9곳 추가 실측): `lz-common` 은 거의 모든 페이지가 **정적으로** 받는 봉투인데, 여기 들어가는
+      //   기준이 *lazy 사용자*까지 셌다. 장바구니·숙소 상세 등이 결제 위젯(`TossPaymentWidget`·`StripeCheckout`)을
+      //   **나중에** 부르는 것만으로 사용자가 4곳을 넘어 그 위젯이 lz-common 에 들어갔고, lz-common 이 stripe·toss 를
+      //   정적으로 끌고 와 **모든 화면이 +15~21KB(br)** 를 받게 됐다(check-surface-budgets 가 잡았다).
+      //   ⇒ 아무도 정적으로 안 쓰는 모듈(lazy·boot 만)은 첫 화면 봉투로 끌어올리지 않는다 — 종전 이름을 그대로 둔다
+      //   (lazy import 가 필요할 때만 받는다). 작은 묶음을 lz-common 으로 합치는 규칙도 같은 이유로 그런 모듈엔 안 쓴다.
+      const lazyOnly = (set) => [...set].every((l) => l === 'boot' || l.endsWith('L'))
       const group = new Map()
       const bytes = new Map()
       for (const [m, set] of labels) {
         if (roots.has(m)) continue
         const users = new Set([...set].filter((l) => l !== 'boot').map((l) => l.replace(/L$/, ''))).size
+        if (lazyOnly(set) && users >= commonMin) { group.set(m, null); continue }
         const g = users >= commonMin ? 'lz-common' : 'lz-' + [...set].sort().join('-')
         group.set(m, g)
         bytes.set(g, (bytes.get(g) ?? 0) + (meta.getModuleInfo(m)?.code?.length ?? 0))
       }
-      surfaceOf = new Map([...group].map(([m, g]) => [m, (bytes.get(g) ?? 0) < minGroupBytes ? 'lz-common' : g]))
+      surfaceOf = new Map([...group].map(([m, g]) => [m, g === null ? null : (bytes.get(g) ?? 0) < minGroupBytes ? (lazyOnly(labels.get(m)) ? g : 'lz-common') : g]))
     }
     return surfaceOf.get(id) ?? null
   }

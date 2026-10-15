@@ -45,6 +45,20 @@ export const ROUTES = {
   map: ['src/pages/RestaurantMapPage.tsx'],
   // 🎬 2026-09-21 유어쇼츠 전체 보기 — 홈 레일의 「전체 보기」·상단 네비가 여기로 온다(하드로드 진입점).
   urshorts: ['src/pages/UrShortsBrowsePage.tsx'],
+  // 🐢 2026-10-15 (대표 "각 페이지마다도 느리고" — 18곳 실측): 아래 표면은 맵에 없어서 페이지 청크가
+  //   앱 부팅(느린 4G 약 2.5초) **뒤에야** 출발했다. 장바구니·로그아웃 마이는 그 뒤 20여 파일을 받느라
+  //   "로그인하세요" 안내 하나를 5.1~5.6초에 띄웠다. 그리고 그 사이 `load` 가 이미 지나 센트리(129KB)가
+  //   같은 회선을 나눠 썼다 — preload 는 `load` 를 붙들므로 등재하면 센트리도 페이지 뒤로 밀린다.
+  //   로그인 화면(UserProfilePage·MyVouchersPage)은 셀러 도구와 코드를 나눠 써서 여기 안 넣는다(대시보드 청크 무접촉).
+  cart: ['src/pages/CartPage.tsx'],
+  search: ['src/pages/SearchPage.tsx'],
+  faq: ['src/pages/FAQPage.tsx'],
+  stays: ['src/pages/StaysSearchPage.tsx'],
+  stayDetail: ['src/pages/StayDetailPage.tsx'],
+  region: ['src/pages/region/RegionPage.tsx', 'src/pages/region/RegionIndexPage.tsx'],
+  guestMy: ['src/pages/guest/GuestMyPage.tsx'],
+  guestPass: ['src/pages/guest/GuestPassPage.tsx'],
+  guestUShop: ['src/pages/guest/GuestUrShopPage.tsx'],
 }
 const MAX_LINKS = 10 // head 링크 스팸 방지 캡(핵심 큰 청크 우선 — closure 순서 = 페이지 청크 → 공유 청크)
 
