@@ -82,8 +82,9 @@ const OPERATION = new Set([
  * 🔧 2026-10-12: 165 → **158**. 셀러 대시보드 삭제(틀·홈·더보기·➕ 시트)가 lucide 뜻 아이콘 7건을 함께 걷었다.
  *    여유를 남겨 두면 주입의 +1 이 통과한다(PR CI 의 주입 검증이 잡았다) — 같은 커밋에서 내린다.
  * 🔧 2026-10-13: 158 → **156**. 매장 소개 정산 화면 재구성·유어샵 관리 정리가 lucide 뜻 아이콘 2건(`TrendingUp` 외)을 걷었다 — 같은 커밋에서 내린다.
+ * 🔧 2026-10-15: 156 → **155**. 실측 155건(main 에 합쳐진 정리분) — 여유 1칸이 남아 주입의 +1 이 통과해 PR CI 가 빨간불이 됐다. 같은 규칙대로 내린다.
  */
-const MEANING_BASELINE = 156
+const MEANING_BASELINE = 155
 
 const read = (f: string) => readFileSync(f, 'utf8')
 
