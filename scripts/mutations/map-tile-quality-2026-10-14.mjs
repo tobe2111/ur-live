@@ -1,22 +1,22 @@
-// 🗺️ 지도 타일 화질 — 느린 회선에서만 일반 화질(2026-10-14) — 되돌려-검증 주입.
+// 🗺️ 지도 타일 화질 — 언제나 고화질(2026-10-15 반전) — 되돌려-검증 주입.
 const TEST = 'src/tests/unit/map-tile-quality-2026-10-14.test.ts'
 
 export default [
   {
-    name: '🗺️ 지도 타일을 회선과 무관하게 늘 일반 화질로(레티나에서 흐려진다)',
+    name: '🗺️ 이른 SDK 경로에서 화질을 다시 내린다(disableHD)',
     file: 'src/lib/kakao-sdk.ts',
-    find: '  if (!c) return false\n',
-    replace: '  if (!c) return true\n',
+    find: 'kakaoMapsPromise = early.then(() => {}, () => {',
+    replace: 'kakaoMapsPromise = early.then(() => { (window as any).kakao?.maps?.disableHD?.() }, () => {',
     test: TEST,
-    why: 'iOS 사파리는 회선 정보를 안 준다 — 모르면 고화질이어야 한다.',
+    why: '대표 "화질은 줄일 수 없어" — /map 하드로드는 거의 다 이른 경로를 탄다.',
   },
   {
-    name: '🗺️ 지도 화질 선택이 이른 SDK 경로에서 빠진다',
+    name: '🗺️ 정상 SDK 경로에서 화질을 다시 내린다(disableHD)',
     file: 'src/lib/kakao-sdk.ts',
-    find: 'kakaoMapsPromise = early.then(applyTileQuality, () => {',
-    replace: 'kakaoMapsPromise = early.then(() => {}, () => {',
+    find: "        w.kakao.maps.load(() => resolve())",
+    replace: "        w.kakao.maps.load(() => { w.kakao.maps.disableHD?.(); resolve() })",
     test: TEST,
-    why: '/map 하드로드는 거의 다 이른 경로를 탄다 — 여기서 빠지면 처방이 통째로 사라진다.',
+    why: '홈 → 지도 알약 경로는 정상 경로를 탄다.',
   },
   {
     name: '🗺️ 지도 화면이 SDK 래퍼를 다시 동적 import 로(왕복 한 번 추가)',

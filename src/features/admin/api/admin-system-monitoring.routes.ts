@@ -17,16 +17,26 @@ import { neverFiredLanes, orphanLaneBeats, KNOWN_LANES_KEY } from '@/worker-ads/
 export const adminSystemMonitoringRoutes = new Hono<{ Bindings: Env }>()
 
 // ── GET /cron-failures ──────────────────────────────────────────
+// 🔎 2026-10-15 — **심각도로 걸러서 본다.** 종전엔 `resolved` 하나로 `created_at DESC LIMIT 100`
+//   이라, 미해결 1,331건(critical 11 · error 621 · warning 699) 중 **최신 100건만** 보였고
+//   그 창의 81%가 `blocked:*` 소음이어서 **error 는 한 건도 화면에 없었다**(실측: warning 94 ·
+//   critical 6 · error 0). 집계(`unresolved_counts`)는 원래 내려가고 있었으니 보이지 않은 것은
+//   **숫자가 아니라 행**이다 — 그래서 더하는 것은 `severity` 필터 하나다(기본 동작 byte-동일).
+//   🔴 정렬은 바꾸지 않는다: severity 우선으로 바꾸면 100칸이 critical·error 로 차고
+//   최근 warning 이 영영 안 보인다(가리는 쪽만 바뀐다).
 adminSystemMonitoringRoutes.get('/cron-failures', async (c) => {
   const { DB } = c.env
   const resolved = c.req.query('resolved') === '1'
+  // 화이트리스트 밖(오타·주입)은 필터 없음으로 — 빈 목록을 '이상 없음' 으로 읽게 하지 않는다.
+  const sevRaw = (c.req.query('severity') || '').trim().toLowerCase()
+  const severity = ['critical', 'error', 'warning'].includes(sevRaw) ? sevRaw : null
   try {
     const { results } = await DB.prepare(`
       SELECT id, job_name, error_message, severity, resolved, created_at
       FROM cron_failures
-      WHERE resolved = ?
+      WHERE resolved = ?${severity ? ' AND severity = ?' : ''}
       ORDER BY created_at DESC LIMIT 100
-    `).bind(resolved ? 1 : 0).all()
+    `).bind(...(severity ? [resolved ? 1 : 0, severity] : [resolved ? 1 : 0])).all()
 
     const counts = await DB.prepare(`
       SELECT severity, COUNT(*) as cnt FROM cron_failures
@@ -38,11 +48,13 @@ adminSystemMonitoringRoutes.get('/cron-failures', async (c) => {
       data: {
         items: results || [],
         unresolved_counts: counts.results || [],
+        // 화면이 "거르지 않은 100건" 과 "critical 만 100건" 을 구분할 수 있게 그대로 돌려준다.
+        severity: severity,
       },
     })
   } catch {
     // 테이블 없으면 빈 결과
-    return c.json({ success: true, data: { items: [], unresolved_counts: [] } })
+    return c.json({ success: true, data: { items: [], unresolved_counts: [], severity } })
   }
 })
 
