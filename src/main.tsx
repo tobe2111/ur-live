@@ -84,6 +84,7 @@ import { installImageProtection } from '@/lib/image-protect'
 import { captureBootFirstScreen } from '@/lib/boot-first-screen'
 import { hasSessionPersistProbe, clearSessionPersistProbe } from '@/shared/session-persist-probe'
 import { processAuthCallbackParams } from '@/utils/auth-callback-bootstrap'
+import { runAfterLoad } from '@/lib/after-load'
 
 declare global {
   interface Window {
@@ -322,12 +323,20 @@ if (import.meta.env.PROD) {
     s.onload = () => { try { window.gtag?.('config', 'G-B1ST2L37CM') } catch { /* */ } }
     document.head.appendChild(s)
   }
-  if ('requestIdleCallback' in window) {
-    // 🛡️ 2026-05-27 v2: 4s → 10s. GTM (153KB) 첫 paint/LCP 후 충분히 늦게 fetch.
-    requestIdleCallback(loadGTM, { timeout: 10000 })
+  // 🗺️ 2026-10-15 (대표 "지도 속도"): idle 만으로는 첫 화면 *뒤* 가 아니었다 — `/map` 실측(느린 4G)에서 GTM
+  //   153KB 가 지도 타일을 받는 한복판(5.0초, 타일 4.3~9초)에 출발해 회선을 나눠 썼다(2026-10-12 센트리와 같은
+  //   클래스). 다른 화면은 load 뒤 한가할 때로. load·신호가 영영 안 와도 20초 백스톱.
+  //   🩸 같은 날 라이브 재측정으로 정정: `/map` 은 load(4.3~4.6초)가 타일 요청(4.5초)보다 **먼저** 온다 —
+  //   load 만 기다리면 GTM 이 4.8초에 출발해 여전히 타일과 겹쳤다. 그래서 `/map` 으로 들어온 경우엔 지도가
+  //   첫 타일을 다 받았다는 신호(`ur:map-tiles-loaded`, useKakaoMap)를 기다린 뒤 load·한가할 때로.
+  let gtmStarted = false
+  const startGTM = () => { if (gtmStarted) return; gtmStarted = true; loadGTM() }
+  if (/^\/map\/?$/.test(location.pathname)) {
+    window.addEventListener('ur:map-tiles-loaded', () => runAfterLoad(startGTM, 10000), { once: true })
   } else {
-    setTimeout(loadGTM, 8000)
+    runAfterLoad(startGTM, 10000)
   }
+  setTimeout(startGTM, 20000)
 }
 
 // 🚨 2026-04-27 (긴급 롤백): PWA SW 가 OAuth redirect 차단 → 모든 페이지 ERR_FAILED.

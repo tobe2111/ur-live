@@ -55,6 +55,8 @@ interface UseKakaoMapParams {
   sheetSnap?: 'peek' | 'mid' | 'full'
   /** 🌍 줌아웃 시 서버 집계(레이어 3). non-null·비어있지 않으면 개별 핀 대신 이것만 렌더. */
   serverClusters?: ServerCluster[] | null
+  /** 🗺️ 2026-10-15 첫 목록이 도착했는가(실패해도 true). 지도는 이게 true 가 된 뒤에 만든다 — 아래 initMap 주석. */
+  dataReady?: boolean
 }
 
 export function useKakaoMap({
@@ -70,6 +72,7 @@ export function useKakaoMap({
   favorites,
   sheetSnap = 'peek',
   serverClusters = null,
+  dataReady = true,
 }: UseKakaoMapParams) {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstance = useRef<any>(null)
@@ -142,8 +145,21 @@ export function useKakaoMap({
     }
   }, [])
 
+  // 🗺️ 2026-10-15 (대표 "지도 속도"): 홈이 SDK 를 미리 받아 두면 SDK 가 목록보다 먼저 준비된다. 그때 지도를
+  //   바로 만들면 [기본 중심·레벨 7 타일 12장] 을 받은 뒤, 목록이 오자 초기 맞춤(아래 didInitialFit)이 중심·레벨을
+  //   옮겨 **타일을 한 벌 더** 받는다(실측 12 → 24장 — 느린 회선에서 가장 비싼 바이트다). 그래서 첫 목록이
+  //   도착할 때까지 생성을 미룬다 — 생성과 맞춤이 같은 실행에서 일어나 타일이 한 벌만 나간다.
+  //   목록이 영영 안 오면(회선 멈춤) 4초 뒤 그냥 만든다 — 빈 회색보다 지도가 낫다.
+  const [createGateExpired, setCreateGateExpired] = useState(false)
+  useEffect(() => {
+    if (!sdkLoaded || dataReady || createGateExpired) return
+    const id = setTimeout(() => setCreateGateExpired(true), 4000)
+    return () => clearTimeout(id)
+  }, [sdkLoaded, dataReady, createGateExpired])
+
   const initMap = useCallback(() => {
     if (!sdkLoaded || !mapRef.current || !window.kakao?.maps) return
+    if (!mapInstance.current && !dataReady && !createGateExpired) return
 
     // 🏘️ 생성 시점 중심 = 내 위치(캐시 포함) 우선 → 데이터 도착 전에도 첫 프레임부터 내 동네(점프 없음).
     const center = (userLoc && Number.isFinite(userLoc.lat) && Number.isFinite(userLoc.lng))
@@ -178,6 +194,12 @@ export function useKakaoMap({
       //   "데스크톱 Chrome UA + 터치"(DevTools Responsive 에뮬·Windows 터치 노트북) 환경에서 마우스
       //   핸들러만 바인딩해 터치 팬이 완전 불능 — 그 환경에서만 터치→마우스 어댑터 부착(그 외 no-op).
       shimCleanupRef.current = attachKakaoTouchShim(mapRef.current)
+      // 🗺️ 2026-10-15 첫 타일을 다 받으면 한 번 알린다 — main.tsx 가 `/map` 에서 GTM(153KB)을 그 뒤로 미룬다.
+      const onTiles = () => {
+        try { window.kakao.maps.event.removeListener(mapInstance.current, 'tilesloaded', onTiles) } catch { /* */ }
+        window.dispatchEvent(new Event('ur:map-tiles-loaded'))
+      }
+      window.kakao.maps.event.addListener(mapInstance.current, 'tilesloaded', onTiles)
       // 🛡️ 2026-06-20: 커스텀 wheel 핸들러 제거 — 네이티브 scrollwheel 줌(위 옵션)에 위임(커서기준·트랙패드 핀치 부드럽게).
     }
 
@@ -412,7 +434,7 @@ export function useKakaoMap({
     //   viewportRev(idle)·serverClusters 추가 — diff 재조정이라 재실행 비용은 '변한 오버레이'만.
     //   gridSize 는 initMap 내부에서 map.getLevel() 로 직접 계산(M3 — 상태 경유 X).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sdkLoaded, withCoords, kakaoPlaces, userLoc, favorites, coordGroupSize, setSelected, setSuggestionFor, panToProduct, viewportRev, serverClusters])
+  }, [sdkLoaded, withCoords, kakaoPlaces, userLoc, favorites, coordGroupSize, setSelected, setSuggestionFor, panToProduct, viewportRev, serverClusters, dataReady, createGateExpired])
 
   useEffect(() => { initMap() }, [initMap])
 

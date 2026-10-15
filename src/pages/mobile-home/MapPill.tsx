@@ -12,10 +12,14 @@
  *
  * ⚠️ 하단 탭에 지도가 없으므로 이 알약이 **유일한 통로**다 — 지우지 말 것.
  */
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { MapFoldIcon } from '@/components/icons/urdeal-icons'
+import { warmKakaoMapsAfterLoad, preconnectMapTiles } from './map-warmup'
 
 export default function MapPill() {
+  // 🗺️ 2026-10-15 홈이 다 뜬 뒤 지도 SDK 를 미리 받아 둔다 — 누르면 SDK 왕복 셋을 기다리지 않는다(`map-warmup.ts`).
+  useEffect(() => warmKakaoMapsAfterLoad(), [])
   return (
     <div
       className="fixed left-0 right-0 z-40 flex justify-center pointer-events-none hide-on-keyboard"
@@ -24,6 +28,7 @@ export default function MapPill() {
       <Link
         to="/map"
         aria-label="지도로 보기"
+        onPointerDown={preconnectMapTiles}
         // 면 = `--ink`(라이트 #16181C · 다크 #F8F7FC) · 글자 = `--surface` — 토큰이 모드마다 뒤집혀 늘 바탕의 반대다.
         className="pointer-events-auto inline-flex h-8 items-center gap-1 rounded-full bg-ink px-4 text-[13px] font-bold text-surface shadow-[0_4px_12px_rgba(0,0,0,0.25)] active:scale-95 transition-transform"
       >

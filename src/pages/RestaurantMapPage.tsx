@@ -333,7 +333,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     userLoc,
     favorites,
     sheetSnap,
-    serverClusters: aggClusters,
+    serverClusters: aggClusters, dataReady: !loading,  // 🗺️ 첫 목록 뒤에 지도 생성(타일 한 벌 — useKakaoMap)
   })
   // 📍 2026-09-09 (대표 확정 "안 R1"): 시트의 "이 지역"을 지금 보는 화면의 실제 이름으로(동탄6동 …).
   const viewportRegion = useViewportRegion({ mapInstance, enabled: mode === 'map' && sdkLoaded })
