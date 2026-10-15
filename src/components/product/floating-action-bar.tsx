@@ -94,6 +94,7 @@ export function FloatingActionBar({
         {onToggleWishlist && (
           <button
             onClick={onToggleWishlist}
+            aria-label="찜"
             className="flex flex-col items-center justify-center w-12 h-12 rounded-xl border border-line transition-all active:scale-95"
           >
             <HeartIcon filled={isWishlisted}
@@ -128,7 +129,13 @@ export function FloatingActionBar({
               <span className="text-[13px] font-extrabold text-white">🎁 딜로 교환</span>
             </>
           ) : (
-            <span className="text-[15px] font-extrabold text-white">{disabled ? '품절' : '바로 구매'}</span>
+            <>
+              {/* 2026-10-15: 계산만 하고 안 쓰던 할인율을 CTA 위에 노출 — 결제 직전 혜택 재확인(실데이터: price/originalPrice). */}
+              {!disabled && discount > 0 && (
+                <span className="text-[11px] font-bold text-white/80">{discount}% 할인 · {(price ?? 0).toLocaleString('ko-KR')}원</span>
+              )}
+              <span className="text-[15px] font-extrabold text-white">{disabled ? '품절' : '바로 구매'}</span>
+            </>
           )}
         </button>
       </div>
