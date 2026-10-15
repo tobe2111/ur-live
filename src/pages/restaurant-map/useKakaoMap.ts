@@ -166,6 +166,20 @@ export function useKakaoMap({
       try { map.relayout() } catch { /* silent */ }
     }
   }, [])
+  // 🗺️ 2026-10-15 (2차, 대표 "그렇게 할게" — 보이는 곳 먼저, 가려진 곳은 그다음): 카드를 열 때까지 아래를
+  //   안 받으면 느린 회선에서 카드를 여는 순간 아래 216px 가 회색으로 비었다. 그래서 **보이는 타일이 다 뜬 뒤
+  //   한가할 때** 칸을 미리 편다 — 첫 화면 이득은 그대로이고, 카드를 열 땐 이미 받아 둔 타일이 보인다.
+  //   지도가 움직이는 중(드래그·줌·이동 애니메이션)이면 setCenter 가 끼어들지 않게 다음 idle 까지 미룬다.
+  //   데이터 절약 모드는 미리 받지 않는다(카드를 열 때만 — 종전 동작).
+  const movingRef = useRef(false)
+  const pendingReleaseRef = useRef(false)
+  const releaseHiddenBottomRef = useRef(releaseHiddenBottom)
+  releaseHiddenBottomRef.current = releaseHiddenBottom
+  const prefetchHiddenBottom = useCallback(() => {
+    if (!hiddenBottomRef.current || prefersDataSaving()) return
+    if (movingRef.current) { pendingReleaseRef.current = true; return }
+    releaseHiddenBottomRef.current()
+  }, [])
 
   const panToProduct = useCallback((lat: number, lng: number, level?: number, snap?: 'peek' | 'mid' | 'full' | 'card') => {
     const map = mapInstance.current
@@ -234,7 +248,13 @@ export function useKakaoMap({
       // ⚡ 2026-07-08 (레이어 1 — 뷰포트 컬링): 이동/줌 멈춤(idle)마다 보이는 영역 기준으로 다시 그림.
       window.kakao.maps.event.addListener(mapInstance.current, 'idle', () => {
         setViewportRev(v => v + 1)
+        movingRef.current = false
+        if (pendingReleaseRef.current) { pendingReleaseRef.current = false; prefetchHiddenBottom() }
       })
+      const markMoving = () => { movingRef.current = true }
+      for (const ev of ['dragstart', 'zoom_start', 'center_changed']) {
+        window.kakao.maps.event.addListener(mapInstance.current, ev, markMoving)
+      }
       // 🗺️ 2026-07-27 (대표 신고 "F12 모바일 에뮬레이션에서 지도 스와이프 아예 안 됨"): 카카오 SDK 는
       //   "데스크톱 Chrome UA + 터치"(DevTools Responsive 에뮬·Windows 터치 노트북) 환경에서 마우스
       //   핸들러만 바인딩해 터치 팬이 완전 불능 — 그 환경에서만 터치→마우스 어댑터 부착(그 외 no-op).
@@ -243,6 +263,7 @@ export function useKakaoMap({
       const onTiles = () => {
         try { window.kakao.maps.event.removeListener(mapInstance.current, 'tilesloaded', onTiles) } catch { /* */ }
         window.dispatchEvent(new Event('ur:map-tiles-loaded'))
+        whenIdle(prefetchHiddenBottom)
       }
       window.kakao.maps.event.addListener(mapInstance.current, 'tilesloaded', onTiles)
       // 🛡️ 2026-06-20: 커스텀 wheel 핸들러 제거 — 네이티브 scrollwheel 줌(위 옵션)에 위임(커서기준·트랙패드 핀치 부드럽게).
@@ -551,4 +572,17 @@ export function useKakaoMap({
   }, [selected, hiddenBottomPx, releaseHiddenBottom])
 
   return { mapRef, mapInstance, sdkLoaded, sdkError, panToProduct, layoutHeightRef }
+}
+
+/** 데이터 절약 모드면 화면 밖 타일을 미리 받지 않는다. */
+function prefersDataSaving(): boolean {
+  const c = (typeof navigator !== 'undefined' ? (navigator as { connection?: { saveData?: boolean } }).connection : undefined)
+  return !!c?.saveData
+}
+
+/** 한가할 때 실행(사파리는 requestIdleCallback 이 없어 짧은 지연으로 대신한다). */
+function whenIdle(cb: () => void): void {
+  const ric = (window as { requestIdleCallback?: (f: () => void, o?: { timeout: number }) => number }).requestIdleCallback
+  if (ric) ric(cb, { timeout: 3000 })
+  else setTimeout(cb, 300)
 }
