@@ -88,4 +88,20 @@ export default [
     test: 'scripts/check-loader-continuity.mjs',
     why: 'FAQ 하드로드가 청크 병렬화도 부팅 준비도 못 받는다 — 에러 없이 로더만 길어진다.',
   },
+  {
+    name: '🚀 부팅이 홈을 UA 로 고른다(렌더러는 뷰포트)',
+    file: 'src/lib/boot-page.tsx',
+    find: "    const narrow = typeof matchMedia === 'function'\n      ? !matchMedia(HOME_DESKTOP_QUERY).matches\n      : isMobileUserAgent(navigator.userAgent)\n",
+    replace: "    const narrow = isMobileUserAgent(navigator.userAgent)\n",
+    test: TEST,
+    why: '좁은 창의 데스크톱 브라우저가 안 그릴 PC 홈 코드를 받는다(CI chunks 27 → 30).',
+  },
+  {
+    name: '🚀 /u/* 에서 사업자 유어샵 페이지까지 받는다',
+    file: 'src/routes/seller.routes.tsx',
+    find: "registerBootPage('linkshop', () => (isCuratorShopPath(location.pathname) ? Promise.resolve() : SellerPublicPage.load()));",
+    replace: "registerBootPage('linkshop', SellerPublicPage.load);",
+    test: TEST,
+    why: '일반 유어샵에서 그리지도 않을 SellerPublicPage 청크를 받는다(CI chunks 26 → 28).',
+  },
 ]

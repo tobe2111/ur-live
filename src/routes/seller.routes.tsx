@@ -3,7 +3,7 @@
  * 공개(register/login/forgot-password) + 보호(Protected) 셀러 페이지 라우트
  */
 import { SellerPublicPage } from '@/pages/seller-public/lazy-seller-public'
-import { registerBootPage } from '@/lib/boot-page'
+import { registerBootPage } from '@/lib/boot-page'; import { isCuratorShopPath } from '@/shared/route-surface'
 import { registerRoutePreload } from '@/lib/route-preload'
 import { lazy, Children, cloneElement, isValidElement, type ReactElement } from 'react'
 import { Route, Routes, Navigate, useLocation } from 'react-router-dom'
@@ -68,7 +68,7 @@ const SellerAppointmentsPage = lazy(() => import('@/pages/SellerAppointmentsPage
 const MyLedgerPage = lazy(() => import('@/pages/MyLedgerPage'))
 const StoreOwnerDashboardPage = lazy(() => import('@/pages/StoreOwnerDashboardPage'))
 const SellerProfileEditPage = lazy(() => import('@/pages/SellerProfileEditPage'))
-registerBootPage('linkshop', SellerPublicPage.load); registerRoutePreload('sellerPublic', SellerPublicPage.load) // 🚀 2026-10-15 CuratorPage 와 같은 래퍼(lib/boot-page)
+registerBootPage('linkshop', () => (isCuratorShopPath(location.pathname) ? Promise.resolve() : SellerPublicPage.load())); registerRoutePreload('sellerPublic', SellerPublicPage.load) // 🚀 2026-10-15 CuratorPage 와 같은 래퍼(lib/boot-page)
 const SellerSettlementsPage = lazy(() => import('@/pages/SellerSettlementsPage'))
 // 🏪 2026-08-19 매장 운영자 관리 (store-operator-model.md 2단계) — 소유자 전용, 서버가 최종 게이트.
 const SellerOperatorsPage = lazy(() => import('@/pages/SellerOperatorsPage'))

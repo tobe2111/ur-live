@@ -21,14 +21,14 @@
  * ⚠️ 이 시험이 못 보는 것: 실제로 몇 ms 빨라지는지(브라우저 측정만 판정한다 — scratch `abboot.mjs`/`spanav.mjs`
  *    방식) · React 의 공개 지연 값 자체(React 내부) · 등록은 됐는데 그 표면의 실제 라우트가 다른 컴포넌트를 그리는 경우.
  */
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { createElement } from 'react'
 import { renderToString } from 'react-dom/server'
 import fs from 'node:fs'
 import path from 'node:path'
 import { readCode } from '@/tests/helpers/source-text'
-import { lazyPage, preloadBootPage, registerBootPage } from '@/lib/boot-page'
-import { routeSurface } from '@/shared/route-surface'
+import { lazyPage, preloadBootPage, registerBootPage, bootSurface } from '@/lib/boot-page'
+import { routeSurface, isCuratorShopPath, HOME_DESKTOP_QUERY } from '@/shared/route-surface'
 // 생성기 모듈은 .d.mts 를 두지 않는다 — 그 파일은 생성 본문(템플릿) 안에도 `export const` 줄이 있어
 // pre-push-roots 의 '.d.mts 계약' 검사와 충돌한다. 경로를 변수로 넘겨 타입 해석을 건너뛴다.
 const GEN = '../../../scripts/generate-route-chunk-map.mjs'
@@ -171,5 +171,48 @@ describe('⑧ 사업자 유어샵 페이지 래퍼는 하나', () => {
   })
   it('래퍼 파일이 실재한다', () => {
     expect(fs.existsSync(path.resolve('src/pages/seller-public/lazy-seller-public.ts'))).toBe(true)
+  })
+})
+
+/**
+ * 🧪 2026-10-15 CI(chunks)가 잡은 두 결함 — 빌드·화면 정상, 안 쓸 코드만 미리 받았다.
+ *   ⑨ 부팅이 홈을 **UA** 로 골랐다. 렌더러(HomeRoute)는 **뷰포트**로 고른다 → 좁은 창의 데스크톱 브라우저가
+ *      PC 홈(lz-homePc · lz-homePc-map)을 받았다(폰 430 · 데스크톱 UA 하네스에서 청크 27 → 30).
+ *   ⑩ 유어샵 표면에 두 페이지(CuratorPage · SellerPublicPage)를 다 걸어, `/u/*` 에서 안 그릴 사업자 페이지를 받았다(26 → 28).
+ */
+describe('⑨ 홈 표면은 뷰포트로 — HomeRoute 와 같은 쿼리', () => {
+  afterEach(() => { vi.unstubAllGlobals() })
+  const stub = (desktopViewport: boolean, ua: string) => {
+    vi.stubGlobal('matchMedia', (q: string) => ({ matches: q === HOME_DESKTOP_QUERY ? desktopViewport : false }))
+    vi.stubGlobal('location', { pathname: '/' })
+    vi.stubGlobal('navigator', { userAgent: ua })
+  }
+  const DESKTOP_UA = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36'
+  const PHONE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148'
+  it('좁은 창 + 데스크톱 UA → home (UA 가 아니라 뷰포트)', () => {
+    stub(false, DESKTOP_UA)
+    expect(bootSurface()).toBe('home')
+  })
+  it('넓은 창 + 폰 UA → homePc', () => {
+    stub(true, PHONE_UA)
+    expect(bootSurface()).toBe('homePc')
+  })
+  it('HomeRoute 가 같은 상수로 고른다(두 벌 금지)', () => {
+    const home = readCode('src/pages/pc-home/HomeRoute.tsx')
+    expect(home).toMatch(/useMediaQuery\(HOME_DESKTOP_QUERY\)/)
+    expect(home).not.toMatch(/useMediaQuery\('\(min-width/)
+  })
+})
+
+describe('⑩ 유어샵 표면 안에서 그 주소가 그리는 페이지만 받는다', () => {
+  it.each([
+    ['/u/jiwon1228', true], ['/u/me', true], ['/u', true],
+    ['/profile/store1', false], ['/s/store1', false], ['/user/profile', false],
+  ])('%s → CuratorPage=%s', (p, want) => {
+    expect(isCuratorShopPath(p)).toBe(want)
+  })
+  it('CuratorPage 부팅 로더는 /u/* 에서만, SellerPublicPage 는 그 밖에서만', () => {
+    expect(readCode('src/App.tsx')).toMatch(/registerBootPage\('linkshop', \(\) => \(isCuratorShopPath\(location\.pathname\) \? CuratorPage\.load\(\) : Promise\.resolve\(\)\)\)/)
+    expect(readCode('src/routes/seller.routes.tsx')).toMatch(/registerBootPage\('linkshop', \(\) => \(isCuratorShopPath\(location\.pathname\) \? Promise\.resolve\(\) : SellerPublicPage\.load\(\)\)\)/)
   })
 })

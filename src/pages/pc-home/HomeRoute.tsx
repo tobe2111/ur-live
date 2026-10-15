@@ -1,5 +1,6 @@
 import { lazyPage, registerBootPage } from '@/lib/boot-page'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { HOME_DESKTOP_QUERY } from '@/shared/route-surface'
 
 /**
  * 🖥️ 2026-07-15 (대표 시안 — 당근 스타일 PC 홈): 홈(`/`) 뷰포트 분기.
@@ -31,7 +32,7 @@ const MobileHomePage = lazyPage(() => import('@/pages/mobile-home/MobileHomePage
 
 export default function HomeRoute() {
   // ⚠️ 768 = Tailwind `md` = DesktopTopNav 의 `hidden md:block` 과 같은 경계(위 주석 참조).
-  const isDesktop = useMediaQuery('(min-width: 768px)')
+  const isDesktop = useMediaQuery(HOME_DESKTOP_QUERY)
   return (
     <>
       {/* 🔎 2026-07-29 (소비자 SEO 실측): 홈에 h1 이 **하나도 없었다** — 렌더된 DOM 의 유일한 h1 은

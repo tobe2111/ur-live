@@ -22,7 +22,7 @@
  *   - 주소 → 표면 판정은 워커와 **같은 함수**(`shared/route-surface`)다.
  */
 import { createElement, lazy, type ComponentType } from 'react'
-import { routeSurface, type RouteSurface } from '@/shared/route-surface'
+import { routeSurface, HOME_DESKTOP_QUERY, type RouteSurface } from '@/shared/route-surface'
 import { isMobileUserAgent } from '@/shared/detail-hero-image'
 
 /** 첫 렌더를 이 이상 붙잡지 않는다(ms). 미리받은 청크면 수십 ms 안에 끝난다. */
@@ -45,7 +45,11 @@ export function registerBootPage(surface: RouteSurface, load: Loader): void {
 export function bootSurface(): RouteSurface | null {
   try {
     const authed = !!localStorage.getItem('user_id') || !!localStorage.getItem('session_login')
-    return routeSurface(location.pathname, isMobileUserAgent(navigator.userAgent), authed)
+    // 홈은 뷰포트로 고른다 — HomeRoute 와 같은 쿼리(UA 로 고르면 안 그릴 홈을 받는다).
+    const narrow = typeof matchMedia === 'function'
+      ? !matchMedia(HOME_DESKTOP_QUERY).matches
+      : isMobileUserAgent(navigator.userAgent)
+    return routeSurface(location.pathname, narrow, authed)
   } catch {
     return null
   }

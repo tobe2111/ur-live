@@ -20,7 +20,7 @@ import OfflineBanner from './components/OfflineBanner'
 import BottomNav from '@/components/main/BottomNav'
 import BrandLoader, { BootFirstScreenLoader } from '@/components/brand/BrandLoader'
 import { trackFunnel } from '@/lib/funnel'
-import { registerRoutePreload } from '@/lib/route-preload'; import { lazyPage, registerBootPage } from '@/lib/boot-page'
+import { registerRoutePreload } from '@/lib/route-preload'; import { lazyPage, registerBootPage } from '@/lib/boot-page'; import { isCuratorShopPath } from '@/shared/route-surface'
 import ConsumerTopChrome from '@/components/main/ConsumerTopChrome'
 import { swallow } from '@/shared/utils/swallow'
 import KakaoConsultButton from '@/components/KakaoConsultButton'
@@ -76,7 +76,7 @@ const PointsChargeSuccessPage = lazy(() => import('./pages/PointsChargeSuccessPa
 const CartPage = lazyPage(() => import('./pages/CartPage')); registerBootPage('cart', CartPage.load)
 const SearchPage = lazyPage(() => import('./pages/SearchPage')); registerBootPage('search', SearchPage.load)
 // 🛡️ 2026-05-25 (migration 0278): 큐레이터 유어샵
-const CuratorPage = lazyPage(() => import('./pages/CuratorPage')); registerBootPage('linkshop', CuratorPage.load); registerRoutePreload('linkshop', CuratorPage.load)
+const CuratorPage = lazyPage(() => import('./pages/CuratorPage')); registerBootPage('linkshop', () => (isCuratorShopPath(location.pathname) ? CuratorPage.load() : Promise.resolve())); registerRoutePreload('linkshop', CuratorPage.load)
 const CuratorEarningsPage = lazy(() => import('./pages/CuratorEarningsPage'))
 // 🏁 2026-06-22 (대표 — 상품/이용권 전용 추가 페이지): 유어샵 핀 picker.
 const LinkshopPinPicker = lazy(() => import('./pages/curator-page/LinkshopPinPicker'))

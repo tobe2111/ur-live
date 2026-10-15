@@ -19,6 +19,19 @@ export type RouteSurface =
   | 'cart' | 'search' | 'faq' | 'stays' | 'stayDetail' | 'region'
   | 'linkshop' | 'vouchers' | 'browse' | 'map' | 'urshorts'
 
+/**
+ * 홈이 PC 홈을 그리는 경계 — `HomeRoute` 가 이 쿼리로 두 홈을 고른다(Tailwind \`md\`).
+ * 앱 부팅은 UA 가 아니라 **이 쿼리로** 홈 표면을 고른다: 렌더러가 뷰포트로 고르는데 부팅이 UA 로 고르면
+ * 좁은 창의 데스크톱 브라우저(또는 넓은 태블릿)에서 안 그릴 홈을 미리 받는다(2026-10-15 chunks 검사가 잡았다).
+ * 워커는 뷰포트를 모르므로 UA 로 판정한다 — 그쪽은 추정이 최선이다.
+ */
+export const HOME_DESKTOP_QUERY = '(min-width: 768px)'
+
+/** 유어샵 표면 안에서 어느 페이지가 그리는가 — `/u/*` 는 CuratorPage, `/profile/*`·`/s/*` 는 SellerPublicPage. */
+export function isCuratorShopPath(pathname: string): boolean {
+  return /^\/u(\/|$)/.test(pathname)
+}
+
 export function routeSurface(pathname: string, mobileUa: boolean, authed: boolean): RouteSurface | null {
   const p = pathname
   if (p === '/' || p === '/index.html') return mobileUa ? 'home' : 'homePc'
