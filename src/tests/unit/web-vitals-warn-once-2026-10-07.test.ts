@@ -45,7 +45,8 @@ function feed(type: string, entries: unknown[]) {
   for (const o of made) if (o.types.includes(type) && !o.disconnected) o.cb({ getEntries: () => entries })
 }
 /** captureMessage 는 동적 import 의 `.then` 안에서 불린다 — 마이크로태스크를 비워야 보인다. */
-const settle = () => new Promise<void>((r) => setTimeout(r, 0))
+// 2026-10-15: 경로가 `./sentry` → `ensureSentry()` → `./sentry-sdk` 로 한 단계 늘었다(보낼 때만 SDK 를 켠다) — 몇 틱 비운다.
+const settle = async () => { for (let i = 0; i < 20; i++) await new Promise<void>((r) => setTimeout(r, 0)) }
 
 describe('성능 경고 중복 — trackPageLoad (2026-10-07)', () => {
   beforeEach(() => {
@@ -158,7 +159,8 @@ describe('성능 경고 중복 — trackPageLoad (2026-10-07)', () => {
     window.dispatchEvent(new Event('pagehide'))
     await settle()
     expect(msgs()).toHaveLength(0)
-    // 그래도 breadcrumb 은 남는다 — 바뀐 것은 보고뿐이다.
-    expect(addBreadcrumb.mock.calls.length).toBeGreaterThan(0)
+    // 2026-10-15: 보낼 것이 없으면 SDK 를 아예 켜지 않는다 — 빵부스러기는 쌓이기만 하고 SDK 로 가지 않는다
+    //   (종전엔 빵부스러기 하나 때문에 매 세션 SDK 를 받아 실행했다 — 홈 실측 CPU 144ms@4×).
+    expect(addBreadcrumb.mock.calls.length).toBe(0)
   })
 })

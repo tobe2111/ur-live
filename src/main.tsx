@@ -199,10 +199,39 @@ if (typeof window !== 'undefined') {
   let sentryStarted = false
   const startSentry = () => { if (sentryStarted) return; sentryStarted = true; initSentryDeferred() }
   const afterPaint = () => { if (ric) ric(startSentry, { timeout: 4000 }); else setTimeout(startSentry, 2000) }
-  if (document.readyState === 'complete') afterPaint()
-  else {
-    window.addEventListener('load', afterPaint, { once: true })
-    setTimeout(startSentry, 12000)  // 백스톱: load 가 안 와도 켜진다
+  /**
+   * 📡 2026-10-15 (폰 CPU 4배 프로파일 — 홈 첫 4초에 센트리 실행 50KB · CPU 144ms): 미리 켜는 것은
+   *   **성능 표본 세션(1%, `tracesSampleRate` 와 같은 비율)뿐**이다. 나머지 99% 는 **오류가 실제로 났을 때만**
+   *   켜고 그 오류를 직접 보낸다(SDK 의 전역 핸들러는 켜진 뒤의 오류만 본다). 오류 기록 자체는 위
+   *   `installErrorTelemetry()` 가 처음부터 따로 남기므로 구멍이 없다.
+   *   ⚠️ 잃는 것: 센트리 '세션(크래시 없는 비율)' 지표 — 오류 없는 세션이 센트리에 안 잡힌다.
+   */
+  const SENTRY_PRELOAD_RATE = 0.01
+  if (Math.random() < SENTRY_PRELOAD_RATE) {
+    if (document.readyState === 'complete') afterPaint()
+    else {
+      window.addEventListener('load', afterPaint, { once: true })
+      setTimeout(startSentry, 12000)  // 백스톱: load 가 안 와도 켜진다
+    }
+  } else {
+    // 켜지기 **전**의 오류만 직접 보낸다 — 켜진 뒤엔 SDK 의 전역 핸들러가 잡으므로 여기서 또 보내면 두 번이다.
+    const early: unknown[] = []
+    let starting = false
+    const onEarlyError = (err: unknown) => {
+      if (!err) return
+      early.push(err)
+      if (starting) return
+      starting = true
+      import('./lib/sentry').then((m) => m.ensureSentry()).then((S) => {
+        window.removeEventListener('error', onErrorEvent)
+        window.removeEventListener('unhandledrejection', onRejection)
+        for (const e of early.splice(0)) S.captureException(e)
+      }).catch(swallow('main:sentry-on-error'))
+    }
+    const onErrorEvent = (e: Event) => onEarlyError((e as ErrorEvent).error ?? (e as ErrorEvent).message)
+    const onRejection = (e: Event) => onEarlyError((e as PromiseRejectionEvent).reason)
+    window.addEventListener('error', onErrorEvent)
+    window.addEventListener('unhandledrejection', onRejection)
   }
 }
 

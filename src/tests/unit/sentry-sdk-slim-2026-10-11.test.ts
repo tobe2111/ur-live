@@ -44,10 +44,37 @@ describe('Sentry 는 진입점 하나로만 들어온다', () => {
     }
   })
 
-  it('세 호출부가 진입점을 동적 import 한다 (첫 페인트 영향 0 유지)', () => {
-    for (const f of ['src/lib/sentry.ts', 'src/lib/performance-monitor.ts', 'src/lib/api.ts']) {
-      expect(stripComments(read(f)), f).toMatch(/import\('\.\/sentry-sdk'\)/)
+  it('SDK 는 lib/sentry 의 ensureSentry 한 곳에서만 동적 import 한다 (첫 페인트 영향 0 유지)', () => {
+    expect(stripComments(read('src/lib/sentry.ts'))).toMatch(/import\('\.\/sentry-sdk'\)/)
+    // 2026-10-15: 성능 측정·API 오류는 SDK 를 직접 부르지 않고 lib/sentry 를 거친다(보낼 때만 켠다).
+    for (const f of ['src/lib/performance-monitor.ts', 'src/lib/api.ts']) {
+      const src = stripComments(read(f))
+      expect(src, f).not.toMatch(/(?<!typeof )import\('\.\/sentry-sdk'\)/) // 타입 표기(typeof import)는 런타임이 아니다
+      expect(src, f).toMatch(/import\('\.\/sentry'\)/)
     }
+  })
+
+  it('📡 빵부스러기·사용자 정보는 SDK 를 부르지 않고 쌓기만 한다 — 보낼 것이 생길 때만 켠다(2026-10-15)', () => {
+    const src = stripComments(read('src/lib/sentry.ts'))
+    // 함수 본문만 잘라 본다 — 이름 접두가 같은 함수(setUser / setUserContext)를 섞어 읽지 않게.
+    const body = (name: string) => { const i = src.indexOf(`export function ${name}(`); expect(i, name).toBeGreaterThan(-1); return src.slice(i, src.indexOf('\n}\n', i)) }
+    for (const n of ['addBreadcrumb', 'queueBreadcrumb', 'setUser', 'setUserContext']) {
+      expect(body(n), n).toMatch(/whenReady\(/)
+      expect(body(n), n).not.toMatch(/ensureSentry\(/)
+    }
+    const perf = stripComments(read('src/lib/performance-monitor.ts'))
+    expect(perf).toMatch(/addBreadcrumb:[\s\S]{0,120}queueBreadcrumb\(b\)/)
+    expect(perf).not.toMatch(/addBreadcrumb:[\s\S]{0,120}ensureSentry/)
+  })
+
+  it('📡 미리 켜는 것은 표본 1% 뿐이고, 나머지는 오류가 날 때 켠다(2026-10-15)', () => {
+    const main = stripComments(read('src/main.tsx'))
+    expect(main).toMatch(/const SENTRY_PRELOAD_RATE = 0\.01/)
+    expect(main).toMatch(/if \(Math\.random\(\) < SENTRY_PRELOAD_RATE\)/)
+    expect(main).toMatch(/addEventListener\('error', onErrorEvent\)/)
+    expect(main).toMatch(/addEventListener\('unhandledrejection', onRejection\)/)
+    // 켜진 뒤엔 SDK 전역 핸들러가 잡는다 — 리스너를 떼지 않으면 같은 오류가 두 번 간다.
+    expect(main).toMatch(/removeEventListener\('error', onErrorEvent\)/)
   })
 
   it('🔴 진입점은 sentry 청크에 묶인다 (다른 청크로 새면 Sentry 가 첫 화면에 실린다)', () => {

@@ -6,10 +6,40 @@
 import { isNoiseEvent, type SentryLikeEvent } from './sentry-noise'
 
 type SentryModule = typeof import('./sentry-sdk')
-let _sentryPromise: Promise<SentryModule> | null = null
-function loadSentry(): Promise<SentryModule> {
-  if (!_sentryPromise) _sentryPromise = import('./sentry-sdk')
-  return _sentryPromise
+// 📡 2026-10-15 (대표 *"아직 로딩 및 최적화 부분에서 대기업 수준 아니잖아"* — 폰 CPU 4배 프로파일):
+//   센트리는 **보낼 게 생겼을 때만** 켠다. 종전엔 init 을 `load` 뒤로 미뤄 놓고도, 성능 측정이 부팅 1초 뒤
+//   빵부스러기를 남기려고 SDK 를 받아 실행해서(홈 실측 실행 50KB · CPU 144ms@4×) 미룬 효과가 없었다.
+//   이제 SDK 를 부르는 길은 `ensureSentry()` 하나뿐이고, 빵부스러기·사용자 정보는 **켜질 때까지 쌓아 뒀다가**
+//   켜지는 순간 함께 싣는다(그 자체로는 SDK 를 부르지 않는다). 오류는 `installErrorTelemetry` 가 처음부터
+//   따로 잡고, main.tsx 가 오류가 나는 순간 이 함수를 불러 센트리에도 보낸다.
+let _mod: SentryModule | null = null
+let _ready: Promise<SentryModule> | null = null
+const _pending: Array<(S: SentryModule) => void> = []
+const PENDING_MAX = 50
+
+/** SDK 를 받고 한 번만 초기화한다. 캡처 경로만 부른다. */
+export function ensureSentry(): Promise<SentryModule> {
+  if (!_ready) {
+    _ready = import('./sentry-sdk').then(async (S) => {
+      await initWith(S)
+      _mod = S
+      for (const f of _pending.splice(0)) { try { f(S) } catch { /* 한 건 실패가 나머지를 막지 않게 */ } }
+      return S
+    })
+  }
+  return _ready
+}
+
+/** 빵부스러기(객체 형태)를 켜질 때까지 쌓는다 — 성능 측정 모듈용. SDK 를 부르지 않는다. */
+export function queueBreadcrumb(b: Parameters<SentryModule['addBreadcrumb']>[0]): void {
+  whenReady((S) => S.addBreadcrumb(b))
+}
+
+/** 켜져 있으면 바로, 아니면 켜질 때 — SDK 를 부르지 않는다. */
+function whenReady(f: (S: SentryModule) => void): void {
+  if (_mod) { try { f(_mod) } catch { /* noop */ } return }
+  _pending.push(f)
+  if (_pending.length > PENDING_MAX) _pending.shift()
 }
 
 /**
@@ -19,7 +49,11 @@ function loadSentry(): Promise<SentryModule> {
  * - 세션 재생 (에러 발생 시)
  * - 에러 필터링
  */
-export async function initSentry() {
+export async function initSentry(): Promise<void> {
+  if (import.meta.env.PROD) await ensureSentry()
+}
+
+async function initWith(Sentry: SentryModule): Promise<void> {
   if (import.meta.env.PROD) {
     const dsn = import.meta.env.VITE_SENTRY_DSN
 
@@ -28,7 +62,6 @@ export async function initSentry() {
       return
     }
 
-    const Sentry = await loadSentry()
     Sentry.init({
       dsn,
       environment: import.meta.env.MODE,
@@ -92,7 +125,7 @@ export async function initSentry() {
  */
 export function captureError(error: Error, context?: Record<string, any>) {
   if (import.meta.env.PROD) {
-    loadSentry().then((S) => S.captureException(error, { extra: context })).catch(() => {})
+    ensureSentry().then((S) => S.captureException(error, { extra: context })).catch(() => {})
   } else {
     console.error('🐛 Error:', error, context)
   }
@@ -110,7 +143,7 @@ export function logError(error: Error, context?: Record<string, any>) {
  */
 export function captureMessage(message: string, level: 'info' | 'warning' | 'error' = 'info') {
   if (import.meta.env.PROD) {
-    loadSentry().then((S) => S.captureMessage(message, level)).catch(() => {})
+    ensureSentry().then((S) => S.captureMessage(message, level)).catch(() => {})
   } else {
     // Dev message suppressed
   }
@@ -121,7 +154,7 @@ export function captureMessage(message: string, level: 'info' | 'warning' | 'err
  */
 export function setUser(user: { id: string; email?: string; username?: string } | null) {
   if (import.meta.env.PROD) {
-    loadSentry().then((S) => S.setUser(user)).catch(() => {})
+    whenReady((S) => S.setUser(user))
   }
 }
 
@@ -137,7 +170,7 @@ export function addBreadcrumb(
   data?: Record<string, any>,
   level: 'info' | 'warning' | 'error' = 'info',
 ) {
-  loadSentry().then((S) => S.addBreadcrumb({ category, message, data, level })).catch(() => {})
+  whenReady((S) => S.addBreadcrumb({ category, message, data, level }))
 }
 
 /**
@@ -145,11 +178,11 @@ export function addBreadcrumb(
  * `type`은 'user' | 'seller' | 'admin' 등 세그먼트 구분용.
  */
 export function setUserContext(user: { id: string | number; type?: string; email?: string }) {
-  loadSentry().then((S) => S.setUser({
+  whenReady((S) => S.setUser({
     id: String(user.id),
     ...(user.email ? { email: user.email } : {}),
     ...(user.type ? { segment: user.type } : {}),
-  })).catch(() => {})
+  }))
 }
 
 /**
