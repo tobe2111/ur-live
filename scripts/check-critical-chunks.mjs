@@ -75,6 +75,24 @@ if (found.length === 0) {
   process.exit(1);
 }
 
+// 🔁 2026-10-15 엔트리 CSS 의 CORS 모드 대조 — 워커가 HTML 응답에 다는 `Link: rel=preload` 는 이 태그와
+//   crossorigin 여부가 **같아야** 재사용된다. 다르면 첫 화면을 막는 CSS 를 두 번 받는다(라이브 실측 0.2초).
+//   Vite 가 태그 모양을 바꾸면(crossorigin 을 빼면) 여기서 빨간불 → `css-first-boot.ts` 의 ENTRY_CSS_CROSSORIGIN 을 맞출 것.
+{
+  const tag = html.match(/<link[^>]*rel="stylesheet"[^>]*href="\/assets\/index-[^"]+\.css"[^>]*>/)?.[0]
+  const src = fs.readFileSync(path.join(root, 'src/worker/utils/css-first-boot.ts'), 'utf8')
+  const flag = src.match(/export const ENTRY_CSS_CROSSORIGIN = (true|false)/)?.[1]
+  if (!tag || !flag) {
+    console.error('❌ critical-chunks: 엔트리 CSS 태그 또는 ENTRY_CSS_CROSSORIGIN 을 못 찾았다(측정 실패는 통과가 아니다).')
+    process.exit(1)
+  }
+  if (/\scrossorigin\b/.test(tag) !== (flag === 'true')) {
+    console.error(`❌ critical-chunks: 엔트리 CSS 태그(${tag})와 Link preload 의 crossorigin 이 다르다 — 같은 CSS 를 두 번 받는다.`)
+    console.error('   → src/worker/utils/css-first-boot.ts 의 ENTRY_CSS_CROSSORIGIN 을 태그에 맞출 것.')
+    process.exit(1)
+  }
+}
+
 const baselinePath = path.join(__dirname, 'critical-chunks-baseline.json');
 
 if (rebaseline) {
