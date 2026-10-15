@@ -101,7 +101,11 @@ export default function InfluencerDiscoverPage() {
     const url = genRefLink(product.id)
     const shareData = {
       title: `${product.restaurant_name ? product.restaurant_name + ' · ' : ''}${product.name}`,
-      text: `${product.restaurant_name || ''} ${product.name} 공동구매 — 친구 추천 시 양쪽 보너스`,
+      // 🗑️ 2026-10-15 (대표 결재 "0.5% 레퍼럴은 아예 없어"): 종전 `친구 추천 시 양쪽 보너스` 제거.
+      // 숫자는 없었지만 `/pass` 배너와 같은 거짓 약속이고, 이 문구는 `navigator.share` 로 **카톡방에 박힌다**
+      // (구매자에게 가는 보너스는 라이브에 없다 — 원장 `referral_bonus` 0행). 소개한 쪽이 받는 길은
+      // 매장이 그 딜에 걸어 둔 소개비이고, 그 비율은 이 카탈로그 카드가 이미 따로 보여 준다.
+      text: `${product.restaurant_name || ''} ${product.name}`,
       url,
     }
     const nav = typeof navigator !== 'undefined' ? navigator : null
