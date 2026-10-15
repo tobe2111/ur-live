@@ -287,10 +287,17 @@ if (import.meta.env.PROD) {
   }
   // 🗺️ 2026-10-15 (대표 "지도 속도"): idle 만으로는 첫 화면 *뒤* 가 아니었다 — `/map` 실측(느린 4G)에서 GTM
   //   153KB 가 지도 타일을 받는 한복판(5.0초, 타일 4.3~9초)에 출발해 회선을 나눠 썼다(2026-10-12 센트리와 같은
-  //   클래스). `load` 는 타일이 다 와야 오므로 그 뒤 한가할 때로. load 가 영영 안 와도 20초 백스톱.
+  //   클래스). 다른 화면은 load 뒤 한가할 때로. load·신호가 영영 안 와도 20초 백스톱.
+  //   🩸 같은 날 라이브 재측정으로 정정: `/map` 은 load(4.3~4.6초)가 타일 요청(4.5초)보다 **먼저** 온다 —
+  //   load 만 기다리면 GTM 이 4.8초에 출발해 여전히 타일과 겹쳤다. 그래서 `/map` 으로 들어온 경우엔 지도가
+  //   첫 타일을 다 받았다는 신호(`ur:map-tiles-loaded`, useKakaoMap)를 기다린 뒤 load·한가할 때로.
   let gtmStarted = false
   const startGTM = () => { if (gtmStarted) return; gtmStarted = true; loadGTM() }
-  runAfterLoad(startGTM, 10000)
+  if (/^\/map\/?$/.test(location.pathname)) {
+    window.addEventListener('ur:map-tiles-loaded', () => runAfterLoad(startGTM, 10000), { once: true })
+  } else {
+    runAfterLoad(startGTM, 10000)
+  }
   setTimeout(startGTM, 20000)
 }
 

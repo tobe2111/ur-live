@@ -39,4 +39,12 @@ export default [
     test: 'src/tests/unit/map-speed-warmup-2026-10-15.test.ts',
     why: '2026-10-15 실측: SDK 를 미리 받은 경로에서 기본 중심 타일 12장 + 초기 맞춤 뒤 12장 = 24장.',
   },
+  {
+    name: '📊 /map 에서 GTM 이 타일 신호를 안 기다리고 load 만 기다린다',
+    file: 'src/main.tsx',
+    find: "    window.addEventListener('ur:map-tiles-loaded', () => runAfterLoad(startGTM, 10000), { once: true })\n",
+    replace: '    runAfterLoad(startGTM, 10000)\n',
+    test: 'src/tests/unit/map-speed-warmup-2026-10-15.test.ts',
+    why: '2026-10-15 라이브 재측정: /map 은 load 4.3~4.6초 · 타일 요청 4.5초 → GTM 4.8초로 여전히 겹쳤다.',
+  },
 ]

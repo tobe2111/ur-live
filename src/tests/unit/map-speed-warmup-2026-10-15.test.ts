@@ -88,12 +88,21 @@ describe('③ 지도 알약 배선', () => {
 
 describe('④ GTM 은 load 뒤 — 지도 타일과 회선을 나눠 쓰지 않는다', () => {
   const main = stripComments(fs.readFileSync('src/main.tsx', 'utf8'))
-  const gtm = main.slice(main.indexOf('const loadGTM'), main.indexOf('const loadGTM') + 900)
+  const gtm = main.slice(main.indexOf('const loadGTM'), main.indexOf('const loadGTM') + 1400)
   it('loadGTM 블록을 찾았다(헛도는 가드 방지)', () => {
     expect(main.indexOf('const loadGTM')).toBeGreaterThan(0)
   })
   it('runAfterLoad 로 예약한다', () => {
     expect(gtm).toMatch(/runAfterLoad\(startGTM/)
+  })
+  it('/map 으로 들어오면 첫 타일 신호를 기다린다 — /map 은 load 가 타일 요청보다 먼저 온다(라이브 실측)', () => {
+    expect(gtm).toMatch(/addEventListener\('ur:map-tiles-loaded', \(\) => runAfterLoad\(startGTM/)
+  })
+  it('지도가 첫 타일을 다 받으면 그 신호를 한 번 보낸다', () => {
+    const hook = stripComments(fs.readFileSync('src/pages/restaurant-map/useKakaoMap.ts', 'utf8'))
+    expect(hook).toMatch(/addListener\(mapInstance\.current, 'tilesloaded', onTiles\)/)
+    expect(hook).toMatch(/dispatchEvent\(new Event\('ur:map-tiles-loaded'\)\)/)
+    expect(hook).toMatch(/removeListener\(mapInstance\.current, 'tilesloaded', onTiles\)/)
   })
   it('requestIdleCallback 으로 바로 예약하지 않는다(부팅 중 빈틈에 끼어든다)', () => {
     expect(gtm).not.toMatch(/requestIdleCallback\(loadGTM/)
