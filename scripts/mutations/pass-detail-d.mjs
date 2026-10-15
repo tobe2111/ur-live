@@ -12,8 +12,8 @@ export default [
   {
     name: '🎟️D 유효기간 빈 폴백이 돌아온다',
     file: 'src/pages/group-buy/UsageGuide.tsx',
-    find: "const expiry = voucherExpiry ? safeDate(voucherExpiry)?.toLocaleDateString('ko-KR') : null",
-    replace: "const expiry = voucherExpiry ? safeDate(voucherExpiry)?.toLocaleDateString('ko-KR') : '발급 후 사용 기간 적용'",
+    find: "const expiry = voucherExpiry && safeDate(voucherExpiry) ? formatKSTDate(voucherExpiry) : null",
+    replace: "const expiry = voucherExpiry && safeDate(voucherExpiry) ? formatKSTDate(voucherExpiry) : '발급 후 사용 기간 적용'",
     test: TEST,
     why: '대표가 짚은 "부연설명" 그 자체 — 아무 정보도 없는 문장이다.',
   },

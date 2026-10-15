@@ -13,7 +13,9 @@ import { passDetailTitle } from '@/shared/seo/detail-title'
 import { DEFAULT_QTY_CAP } from '@/shared/purchase-cap-default'
 import DetailTitleHeader from './group-buy/DetailTitleHeader'
 import DetailBreadcrumb, { voucherCrumbs } from '@/components/deal/DetailBreadcrumb'
-import { readCachedLoc, distanceKm } from './group-buy/detail-derived'
+import { distanceKm } from './group-buy/detail-derived'
+import { LAST_LOC_KEY, parseCachedLoc } from '@/shared/utils/cached-loc'
+import { useStoredValue } from '@/hooks/useStoredValue'
 import DetailFloatingHeader from '@/components/deal/DetailFloatingHeader'
 import { derivePricing } from './group-buy/pricing'
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
@@ -197,12 +199,14 @@ export default function GroupBuyDetailPage() {
   const productId = Number(id)
   // 👁️ 홈 인기순의 클릭 신호 — 세션당 1회(훅이 가드).
   useProductViewBeacon(productId)
-  const isLoggedIn = !!localStorage.getItem('user_id') || !!localStorage.getItem('uid')
+  // 🧊 2026-10-15 서버 렌더 2단계: 렌더 중 localStorage 직접 읽기 금지 — 서버에선 던지고 hydrate 에선 갈린다(hooks/useStoredValue).
+  const storedUserId = useStoredValue('user_id'), storedUid = useStoredValue('uid')
+  const isLoggedIn = !!storedUserId || !!storedUid
   // 🛡️ 2026-05-15: 본인 product 인 경우 "공구 관리" CTA 표시 (셀러 대시보드 진입점)
-  const sellerId = localStorage.getItem('seller_id')
+  const sellerId = useStoredValue('seller_id')
   const isOwnProduct = !!sellerId && detail?.seller_id != null && Number(detail.seller_id) === Number(sellerId)
   // 🛡️ 2026-05-15: 본인 추천 링크 (친구 초대 시 양쪽 1% 보너스 딜)
-  const myUserId = localStorage.getItem('user_id') || localStorage.getItem('uid') || ''
+  const myUserId = storedUserId || storedUid || ''
   const shareLink = myUserId
     ? `/pass/${productId}?ref=${myUserId}`
     : `/pass/${productId}`
@@ -336,7 +340,8 @@ export default function GroupBuyDetailPage() {
   // 💰 가격 파생값은 SSOT(`group-buy/pricing.ts`)에서 — 카드와 상세가 다른 할인율을 보이던 것을 막는다.
   const { unitPrice, refPrice, unitSaving, displayDiscountPct } = derivePricing(detail)
   // 🧮 파생값은 순수 모듈에서 — 셋 다 "데이터 없으면 그 자리를 비운다"는 같은 규칙이다.
-  const userLoc = readCachedLoc()
+  const storedLoc = useStoredValue(LAST_LOC_KEY)
+  const userLoc = useMemo(() => parseCachedLoc(storedLoc), [storedLoc])
   const distKm = distanceKm(userLoc, detail?.restaurant_lat, detail?.restaurant_lng)
   const total = unitPrice * quantity
   const totalSaving = unitSaving * quantity
