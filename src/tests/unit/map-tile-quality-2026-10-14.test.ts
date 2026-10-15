@@ -1,41 +1,37 @@
 /**
- * 🗺️ 지도 타일 화질 — 느린 회선에서만 일반 화질 〔2026-10-14〕
+ * 🗺️ 지도 타일 화질 — 언제나 고화질 〔2026-10-14 신설 → 2026-10-15 반전〕
  *
- * 대표 *"모두 순서대로 진행"* (개선점 보고 3번). 지도 LCP 요소가 지도 타일이고, 전국 보기 13장이
- * 고화질 687KB ↔ 일반 285KB 였다(라이브 실측, 느린 4G). 일반 화질은 레티나에서 흐리므로 **회선이 느리다고
- * 브라우저가 말할 때만** 쓴다. 이 시험은 ① 판정 규칙 ② `disableHD` 가 **첫 지도보다 먼저**(SDK 준비가 끝나는
- * 약속 안에서) 불리는지 ③ 빠른 회선·정보 없음(iOS)은 고화질 그대로인지 ④ 지도 화면이 SDK 래퍼를 동적 import
- * 로 한 번 더 기다리지 않는지 를 본다.
+ * 2026-10-14 에 느린 회선에서만 `kakao.maps.disableHD()` 로 일반 화질 타일을 받게 했다가,
+ * 2026-10-15 대표 *"화질은 줄일 수 없어"* → *"저화질도 되돌려줘"* 로 걷어냈다.
+ * 이 시험은 ① 지도 코드 어디에서도 `disableHD` 를 부르지 않는지 ② 느린 회선·데이터 절약이어도
+ * SDK 준비가 화질을 내리지 않는지(실제 실행) ③ 지도 화면이 SDK 래퍼를 동적 import 로 한 번 더
+ * 기다리지 않는지 를 본다.
  *
- * 못 막는 것: 실제 타일 바이트·LCP(라이브 측정만 판정) · 카카오가 `disableHD` 를 바꾸는 것(외부 계약).
+ * 못 막는 것: 카카오가 기본 화질을 바꾸는 것(외부 계약) · 실제 타일 바이트(라이브 측정만 판정).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import fs from 'node:fs'
-import { prefersLowResMapTiles } from '@/lib/kakao-sdk'
+import { execFileSync } from 'node:child_process'
 import { stripComments } from '../helpers/source-text'
 
 type W = Window & { __urKakaoMaps?: Promise<void>; kakao?: unknown }
 
-describe('① 판정 규칙', () => {
-  it('정보가 없으면(iOS 사파리) 고화질', () => {
-    expect(prefersLowResMapTiles({})).toBe(false)
-    expect(prefersLowResMapTiles(undefined)).toBe(false)
+describe('① 소스 어디에서도 disableHD 를 부르지 않는다', () => {
+  it('src/ · index.html 실행 코드에 disableHD 호출 0', () => {
+    const files = execFileSync('git', ['ls-files', 'src', 'index.html'], { encoding: 'utf8' })
+      .split('\n')
+      .filter((f) => /\.(ts|tsx|js|mjs|html)$/.test(f) && !f.startsWith('src/tests/'))
+    expect(files.length).toBeGreaterThan(500) // 목록이 비면 통과가 아니라 고장
+    const hits = files.filter((f) => fs.existsSync(f) && /disableHD\s*\(/.test(stripComments(fs.readFileSync(f, 'utf8'))))
+    expect(hits).toEqual([])
   })
-  it('빠른 4G 는 고화질', () => {
-    expect(prefersLowResMapTiles({ connection: { effectiveType: '4g', downlink: 10 } })).toBe(false)
-    expect(prefersLowResMapTiles({ connection: { effectiveType: '4g' } })).toBe(false)
-  })
-  it('데이터 절약 · 4G 미만 · 3Mbps 미만이면 일반 화질', () => {
-    expect(prefersLowResMapTiles({ connection: { saveData: true, effectiveType: '4g', downlink: 10 } })).toBe(true)
-    expect(prefersLowResMapTiles({ connection: { effectiveType: '3g' } })).toBe(true)
-    expect(prefersLowResMapTiles({ connection: { effectiveType: '4g', downlink: 1.6 } })).toBe(true)
-  })
-  it('downlink 0(알 수 없음)은 느린 것으로 치지 않는다', () => {
-    expect(prefersLowResMapTiles({ connection: { effectiveType: '4g', downlink: 0 } })).toBe(false)
+  it('kakao-sdk 에서 회선 기반 화질 선택 함수가 사라졌다', () => {
+    const s = stripComments(fs.readFileSync('src/lib/kakao-sdk.ts', 'utf8'))
+    expect(s).not.toMatch(/prefersLowResMapTiles|applyTileQuality/)
   })
 })
 
-describe('② disableHD 는 SDK 약속 안에서 — 첫 지도보다 먼저', () => {
+describe('② 느린 회선이어도 SDK 준비가 화질을 내리지 않는다', () => {
   beforeEach(() => {
     vi.resetModules()
     vi.stubEnv('VITE_KAKAO_JAVASCRIPT_KEY', 'testkey123')
@@ -45,28 +41,8 @@ describe('② disableHD 는 SDK 약속 안에서 — 첫 지도보다 먼저', (
   })
   const setConn = (c: unknown) => Object.defineProperty(navigator, 'connection', { value: c, configurable: true })
 
-  it('이른 약속 경로 — 느린 회선이면 resolve 전에 disableHD', async () => {
-    setConn({ effectiveType: '3g' })
-    const order: string[] = []
-    ;(window as W).kakao = { maps: { disableHD: () => order.push('hd-off') } }
-    ;(window as W).__urKakaoMaps = Promise.resolve()
-    const { ensureKakaoMaps } = await import('@/lib/kakao-sdk')
-    await ensureKakaoMaps().then(() => order.push('map'))
-    expect(order).toEqual(['hd-off', 'map'])
-  })
-  it('정상 경로 — 느린 회선이면 resolve 전에 disableHD', async () => {
-    setConn({ saveData: true })
-    const order: string[] = []
-    const { ensureKakaoMaps } = await import('@/lib/kakao-sdk')
-    const p = ensureKakaoMaps().then(() => order.push('map'))
-    await vi.waitFor(() => expect(document.head.querySelector('script[src*="dapi.kakao.com"]')).not.toBeNull())
-    ;(window as W).kakao = { maps: { load: (cb: () => void) => cb(), disableHD: () => order.push('hd-off') } }
-    document.head.querySelector('script[src*="dapi.kakao.com"]')!.dispatchEvent(new Event('load'))
-    await p
-    expect(order).toEqual(['hd-off', 'map'])
-  })
-  it('빠른 회선은 부르지 않는다', async () => {
-    setConn({ effectiveType: '4g', downlink: 10 })
+  it('이른 약속 경로 — 데이터 절약 · 3G 여도 disableHD 를 안 부른다', async () => {
+    setConn({ saveData: true, effectiveType: '3g', downlink: 0.5 })
     const spy = vi.fn()
     ;(window as W).kakao = { maps: { disableHD: spy } }
     ;(window as W).__urKakaoMaps = Promise.resolve()
@@ -74,9 +50,20 @@ describe('② disableHD 는 SDK 약속 안에서 — 첫 지도보다 먼저', (
     await ensureKakaoMaps()
     expect(spy).not.toHaveBeenCalled()
   })
+  it('정상 경로 — 데이터 절약이어도 disableHD 를 안 부른다', async () => {
+    setConn({ saveData: true })
+    const spy = vi.fn()
+    const { ensureKakaoMaps } = await import('@/lib/kakao-sdk')
+    const p = ensureKakaoMaps()
+    await vi.waitFor(() => expect(document.head.querySelector('script[src*="dapi.kakao.com"]')).not.toBeNull())
+    ;(window as W).kakao = { maps: { load: (cb: () => void) => cb(), disableHD: spy } }
+    document.head.querySelector('script[src*="dapi.kakao.com"]')!.dispatchEvent(new Event('load'))
+    await p
+    expect(spy).not.toHaveBeenCalled()
+  })
 })
 
-describe('④ 지도 화면은 SDK 래퍼를 정적으로', () => {
+describe('③ 지도 화면은 SDK 래퍼를 정적으로', () => {
   it('useKakaoMap 에 동적 import 가 없다', () => {
     const s = stripComments(fs.readFileSync('src/pages/restaurant-map/useKakaoMap.ts', 'utf8'))
     // 2026-10-14 재조준: 지도 생성은 본체-준비 약속(`ensureKakaoMapsCore`)을 쓴다 — 불변식(정적 import)은 그대로.

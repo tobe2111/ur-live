@@ -21,6 +21,7 @@ import OfflineBanner from './components/OfflineBanner'
 import BottomNav from '@/components/main/BottomNav'
 import BrandLoader, { BootFirstScreenLoader } from '@/components/brand/BrandLoader'
 import { trackFunnel } from '@/lib/funnel'
+import { registerRoutePreload } from '@/lib/route-preload'
 import ConsumerTopChrome from '@/components/main/ConsumerTopChrome'
 import { swallow } from '@/shared/utils/swallow'
 import KakaoConsultButton from '@/components/KakaoConsultButton'
@@ -169,7 +170,8 @@ const RegionIndexPage = lazy(() => import('./pages/region/RegionIndexPage'))
 const RegionPage = lazy(() => import('./pages/region/RegionPage'))
 const BlogDetailPage = lazy(() => import('./pages/BlogDetailPage'))
 const ReferralPage = lazy(() => import('./pages/ReferralPage'))
-const RestaurantMapPage = lazy(() => import('./pages/RestaurantMapPage'))
+const loadMapPage = () => import('./pages/RestaurantMapPage'); registerRoutePreload('map', loadMapPage) // 🗺️ 홈이 미리 받는다(lib/route-preload)
+const RestaurantMapPage = lazy(loadMapPage)
 // 🏙️ 2026-07-04 상권관 랜딩(B2G 상권 패키지) — /local/:code (시군구/행정동 코드).
 const LocalTownPage = lazy(() => import('./pages/LocalTownPage'))
 // 🧾 2026-07-13 상권 쿠폰(영수증 페이백) — /district/:slug 랜딩 + /district/my 지갑 (한 컴포넌트)

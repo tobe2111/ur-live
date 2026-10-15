@@ -16,8 +16,24 @@ export default [
   },
   {
     name: '[pass-title] 같은 말을 두 번 한다',
-    file: SSOT, find: "n.includes('이용권') ? n :", replace: 'false ? n :', test: TEST,
-    why: '`1개월 이용권 + 운동복 이용권` — 라이브 2건이 그렇게 된다.',
+    file: SSOT, find: 'KWON_WORD.test(n) ? n :', replace: 'false ? n :', test: TEST,
+    why:
+      '`1개월 이용권 + 운동복 이용권` · `평일 1박 숙박권 (…) 이용권` — 라이브 55건이 그렇게 된다. ' +
+      '🔁 2026-10-15 재조준: 판정이 `includes(\'이용권\')` → `KWON_WORD` 로 넓어졌다(불변식 동일).',
+  },
+  {
+    name: '[pass-title] 권종 판정을 글자 일치로 좁힌다 (수리 전 상태)',
+    file: SSOT, find: 'KWON_WORD.test(n)', replace: "n.includes('이용권')", test: TEST,
+    why:
+      '배포 후 실측한 **그 결함**이다 — 글자가 같은 2건만 걸러 나머지 53건이 `평일 1박 숙박권 ' +
+      '(스탠다드 룸) 이용권` 으로 나갔다. `교환권 교환권` 과 같은 클래스인데 단어가 달라 안 걸렸다.',
+  },
+  {
+    name: '[pass-title] 권 복합어 경계를 없앤다 — 한 글자 권 이 접미사를 삼킨다',
+    file: SSOT, find: 'const KWON_WORD = /[가-힣A-Za-z0-9]권/', replace: 'const KWON_WORD = /권/', test: TEST,
+    why:
+      '**반대 방향** — 앞 글자 경계가 없으면 이름 아무 데나 띄어 쓴 `권` 한 글자가 권종으로 읽혀 ' +
+      '접미사가 사라진다. 넓히다가 306건이 무엇인지 말하지 않는 제목이 되는 쪽이 더 비싸다.',
   },
   {
     name: '[pass-title] 꼬리를 가게 이름 대신 사이트 이름으로',
@@ -31,7 +47,9 @@ export default [
   },
   {
     name: '[pass-title] 앞 공백을 다시 남긴다',
-    file: SSOT, find: "(n.includes('이용권') ? n : `${n} 이용권`).trim()", replace: "(n.includes('이용권') ? n : `${n} 이용권`)", test: TEST,
+    // 🔁 2026-10-15 재조준: 판정이 `KWON_WORD` 로 넓어졌다. 지키는 불변식은 그대로 —
+    //    이름이 비어도 `<title>` 이 공백으로 시작하지 않는다.
+    file: SSOT, find: '(KWON_WORD.test(n) ? n : `${n} 이용권`).trim()', replace: '(KWON_WORD.test(n) ? n : `${n} 이용권`)', test: TEST,
     why: '이름이 비면 `<title>` 이 공백으로 시작한다.',
   },
   {

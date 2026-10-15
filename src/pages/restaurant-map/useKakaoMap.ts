@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from 'react'
+import { useRef, useState, useCallback, useEffect, useLayoutEffect } from 'react'
 import { distanceKm } from './utils'
 import { attachKakaoTouchShim } from '@/lib/kakao-touch-shim'
 import { buildAggContent, buildClusterContent, buildPinContent, buildPlaceContent, buildMeContent, applyPinTierStyle } from './map-overlays'
@@ -12,7 +12,7 @@ import { ensureKakaoMapsCore } from '@/lib/kakao-sdk'
 //   (상단 검색바 아래 ~ 하단 시트 위)의 중앙으로 끌어올릴 px 오프셋을 시트 snap 별로 동적 계산.
 //   ⚠️ 시트 snap top 설계값은 useSheetDrag.ts(SHEET_SNAP_TRANSLATE 주석)와 미러 — 그쪽 변경 시 함께 갱신.
 const SHEET_TOP_SEARCH_INSET = 76 // 상단 floating glass 검색바 대략 높이(px)
-function centerOffsetForSheet(snap: 'peek' | 'mid' | 'full' | 'card'): number {
+function centerOffsetForSheet(snap: 'peek' | 'mid' | 'full' | 'card', mapH?: number): number {
   if (typeof window === 'undefined') return 150
   const H = window.innerHeight
   const isLg = !!window.matchMedia?.('(min-width: 1024px)').matches
@@ -26,8 +26,9 @@ function centerOffsetForSheet(snap: 'peek' | 'mid' | 'full' | 'card'): number {
     //   옛 92dvh 기준(H*0.08) 잔재를 실제값 104px 로 정합(safe-area 는 수십 px 라 근사 무해).
     : (isLg ? H * 0.2 : 104)
   const visibleCenter = (SHEET_TOP_SEARCH_INSET + sheetTop) / 2
-  // 양수 = 핀을 기하학적 중앙(H/2)에서 이만큼 위로 끌어올림 → 보이는 영역 중앙에 위치.
-  return Math.max(0, H / 2 - visibleCenter)
+  // 양수 = 핀을 지도 칸의 중앙에서 이만큼 위로 끌어올림 → 보이는 영역 중앙에 위치.
+  //   지도 칸은 첫 화면에서 시트 위까지만일 수 있다(releaseHiddenBottom) — 그래서 화면 높이가 아니라 칸 높이의 중앙.
+  return Math.max(0, (mapH && mapH > 0 ? mapH : H) / 2 - visibleCenter)
 }
 
 /** 🌍 2026-07-08 (레이어 3): 서버 집계 셀 — 줌아웃에선 개별 딜 대신 격자별 개수·최저가·대표사진만 렌더. */
@@ -57,6 +58,8 @@ interface UseKakaoMapParams {
   serverClusters?: ServerCluster[] | null
   /** 🗺️ 2026-10-15 첫 목록이 도착했는가(실패해도 true). 지도는 이게 true 가 된 뒤에 만든다 — 아래 initMap 주석. */
   dataReady?: boolean
+  /** 🗺️ 2026-10-15 첫 화면에서 시트가 가리는 아래 높이(px, 모바일 peek). 0 이면 미룰 것 없음(PC). — releaseHiddenBottom 주석. */
+  hiddenBottomPx?: number
 }
 
 export function useKakaoMap({
@@ -73,6 +76,7 @@ export function useKakaoMap({
   sheetSnap = 'peek',
   serverClusters = null,
   dataReady = true,
+  hiddenBottomPx = 0,
 }: UseKakaoMapParams) {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstance = useRef<any>(null)
@@ -129,12 +133,49 @@ export function useKakaoMap({
   //   panTo(기하학적 중앙)만 하면 핀이 시트 근처(아래쪽)에 박힘. projection 으로 중심좌표를 남쪽으로 옮겨
   //   핀을 위로 끌어올림 → 시각적 중앙 배치. 오프셋은 시트 snap(현재 또는 호출자 지정)에 따라 동적 계산.
   //   projection 미지원/실패 시 plain panTo 폴백.
+  // 🗺️ 2026-10-15 (대표 "지도 속도" — 1번 승인): **시트에 가려진 타일은 받지 않는다.** 첫 화면의 아래 240px 는
+  //   peek 시트가 덮고 있어서, 지도 칸을 화면 끝까지 두면 아무도 못 보는 타일을 함께 받았다(아이폰 12장 중 3장,
+  //   안드로이드 15장 중 6장 — 느린 회선에서 보이는 타일과 회선을 나눈다). 그래서 지도를 만들 때 칸의 아래를
+  //   시트 위까지만 둔다(`style.bottom`). 시트는 peek 아래로 안 내려가므로 그 영역이 보이는 건 **이용권을 골라
+  //   납작한 카드로 바뀔 때뿐**이고, 그때 여기서 칸을 화면 끝까지 펴면서 **위쪽 내용이 한 픽셀도 안 움직이게**
+  //   중심을 아래로 보정한다(칸이 d 만큼 아래로 자라면 화면 중심이 d/2 내려가므로 지도 중심도 d/2 내린다).
+  //   React 상태가 아니라 DOM 스타일을 직접 다루는 이유: 선택 클릭 → panToProduct 가 **같은 동기 흐름에서**
+  //   넓어진 칸을 기준으로 오프셋을 계산해야 해서다(상태로 하면 pan 애니메이션 도중 relayout 이 끼어든다).
+  const hiddenBottomRef = useRef(false)
+  const hiddenBottomPxRef = useRef(hiddenBottomPx)
+  hiddenBottomPxRef.current = hiddenBottomPx
+  /** 마지막으로 relayout 한 칸 높이 — 페이지의 ResizeObserver 가 이 값과 같으면 다시 하지 않는다(진행 중인 pan 보호). */
+  const layoutHeightRef = useRef<number | null>(null)
+  const releaseHiddenBottom = useCallback(() => {
+    if (!hiddenBottomRef.current) return
+    hiddenBottomRef.current = false
+    const el = mapRef.current
+    if (!el) return
+    const oldH = el.clientHeight
+    el.style.bottom = ''
+    const newH = el.clientHeight
+    layoutHeightRef.current = newH
+    const map = mapInstance.current
+    const delta = newH - oldH
+    if (!map || !window.kakao?.maps || delta <= 0) { try { map?.relayout?.() } catch { /* */ } return }
+    try {
+      const proj = map.getProjection()
+      const pt = proj.pointFromCoords(map.getCenter())
+      const target = proj.coordsFromPoint(new window.kakao.maps.Point(pt.x, pt.y + delta / 2))
+      map.relayout()
+      map.setCenter(target)
+    } catch {
+      try { map.relayout() } catch { /* silent */ }
+    }
+  }, [])
+
   const panToProduct = useCallback((lat: number, lng: number, level?: number, snap?: 'peek' | 'mid' | 'full' | 'card') => {
     const map = mapInstance.current
     if (!map || !window.kakao?.maps || !Number.isFinite(lat) || !Number.isFinite(lng)) return
+    if (snap === 'card') releaseHiddenBottom()
     if (typeof level === 'number') map.setLevel(level)
     const latlng = new window.kakao.maps.LatLng(lat, lng)
-    const offsetY = centerOffsetForSheet(snap ?? sheetSnapRef.current)
+    const offsetY = centerOffsetForSheet(snap ?? sheetSnapRef.current, mapRef.current?.clientHeight)
     try {
       const proj = map.getProjection()
       const pt = proj.pointFromCoords(latlng)
@@ -143,7 +184,7 @@ export function useKakaoMap({
     } catch {
       map.panTo(latlng)
     }
-  }, [])
+  }, [releaseHiddenBottom])
 
   // 🗺️ 2026-10-15 (대표 "지도 속도"): 홈이 SDK 를 미리 받아 두면 SDK 가 목록보다 먼저 준비된다. 그때 지도를
   //   바로 만들면 [기본 중심·레벨 7 타일 12장] 을 받은 뒤, 목록이 오자 초기 맞춤(아래 didInitialFit)이 중심·레벨을
@@ -169,6 +210,12 @@ export function useKakaoMap({
       : new window.kakao.maps.LatLng(37.5665, 126.978)
 
     if (!mapInstance.current) {
+      const hb = hiddenBottomPxRef.current
+      if (hb > 0 && sheetSnapRef.current === 'peek' && selectedIdRef.current == null) {
+        mapRef.current.style.bottom = `${hb}px`
+        hiddenBottomRef.current = true
+      }
+      layoutHeightRef.current = mapRef.current.clientHeight
       mapInstance.current = new window.kakao.maps.Map(mapRef.current, {
         center,
         level: 7,
@@ -500,5 +547,10 @@ export function useKakaoMap({
     }
   }, [])
 
-  return { mapRef, mapInstance, sdkLoaded, sdkError, panToProduct }
+  // 선택(카드)이 생기거나 PC 폭이 되면 가려진 아래가 드러난다 — 칸을 편다. 그리기 전에(layout effect) 해서 회색 틈이 안 보이게.
+  useLayoutEffect(() => {
+    if (selected || hiddenBottomPx === 0) releaseHiddenBottom()
+  }, [selected, hiddenBottomPx, releaseHiddenBottom])
+
+  return { mapRef, mapInstance, sdkLoaded, sdkError, panToProduct, layoutHeightRef }
 }
