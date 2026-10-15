@@ -11,6 +11,7 @@ import BannerMediaUpload from './admin/banners/BannerMediaUpload'
 // 🏠 2026-08-04: 배너 **자리**(히어로/중간/와이드) + **영상 배경**. 자리 종류는 SSOT 에서만 온다.
 //   🔴 '노출 안 함'(null)이 기본 상태다 — 자리를 고른 배너만 홈에 뜬다.
 import { BANNER_SLOTS, BANNER_SLOT_LABELS, BANNER_SLOT_SPECS, BANNER_MAX_UPLOAD_MB, NEW_BANNER_SLOT, type BannerSlot } from '@/shared/constants/home-showcase'
+import { clampTitleLines } from '@/shared/banner-title'
 
 interface Banner {
   id: number
@@ -154,7 +155,10 @@ export default function AdminBannersPage() {
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('admin.banners.titleOptional', { defaultValue: '제목 (선택)' })}</label>
-                <input type="text" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder={t('admin.banners.titlePlaceholder', { defaultValue: '비워두면 이미지만 표시됩니다' })} />
+                {/* ↵ 2026-10-15 대표 — 제목에 Enter 로 줄을 나눌 수 있다. 홈·교환권 배너가 그 자리에서 끊는다(whitespace-pre-line).
+                    배너는 두 줄까지라 세 번째 줄부터는 공백으로 이어 붙인다(clampTitleLines). */}
+                <textarea rows={2} value={formData.title} onChange={e => setFormData({ ...formData, title: clampTitleLines(e.target.value) })} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm leading-snug text-gray-900 resize-none focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder={t('admin.banners.titlePlaceholder', { defaultValue: '비워두면 이미지만 표시됩니다' })} />
+                <p className="mt-1 text-[11px] text-gray-400">{t('admin.banners.titleLineHint', { defaultValue: 'Enter 로 줄을 나누면 배너에서도 그 자리에서 넘어갑니다 (최대 두 줄)' })}</p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('admin.banners.k015', { defaultValue: '순서' })} <span className="text-gray-400 font-normal">{t('admin.banners.k016', { defaultValue: '(숫자 낮을수록 앞에 표시)' })}</span></label>
@@ -301,7 +305,7 @@ export default function AdminBannersPage() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between mb-1">
-                <h3 className={`text-sm font-semibold ${banner.title ? 'text-gray-900' : 'text-gray-400 italic'}`}>{banner.title || t('admin.banners.noTitle', { defaultValue: '(제목 없음 — 이미지만)' })}</h3>
+                <h3 className={`text-sm font-semibold whitespace-pre-line ${banner.title ? 'text-gray-900' : 'text-gray-400 italic'}`}>{banner.title || t('admin.banners.noTitle', { defaultValue: '(제목 없음 — 이미지만)' })}</h3>
                 <div className="flex items-center gap-2 ml-4 flex-shrink-0">
                   <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
                     banner.banner_slot ? 'bg-tone-info-bg text-tone-info' : 'bg-gray-100 text-gray-500'
