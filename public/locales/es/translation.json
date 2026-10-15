@@ -3152,7 +3152,8 @@
       "k039": "등록된 배너가 없습니다.",
       "k040": "활성",
       "k041": "비활성",
-      "k042": "비활성화"
+      "k042": "비활성화",
+      "titleLineHint": "Pulsa Enter para cortar la línea: el banner también se corta ahí (máx. dos líneas)"
     },
     "settlement": {
       "loadingData": "Cargando datos de liquidación...",

@@ -319,7 +319,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
         curator={headerCurator}
         canEdit={isOwner}
         counts={{ pins: vouchers.length, products: shopProducts.length }}
-        soldTotal={curatorSoldTotal([...vouchers, ...shopProducts])}
+        soldTotal={curatorSoldTotal(curator)}
         accountType="business"
         onCopyLink={copyLink}
       />

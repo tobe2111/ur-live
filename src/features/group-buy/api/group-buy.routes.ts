@@ -521,6 +521,9 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
           const { markFcfsPaid } = await import('../../../worker/utils/fcfs-gate')
           await markFcfsPaid(DB, Number(productId), userId)
         } catch { /* fail-soft */ }
+        // 🛍️ 2026-10-15: 유어샵을 거쳐 샀으면 기록(커미션과 무관 — 유어샵 머리의 '누적 구매').
+        const { recordUShopSale } = await import('../../../worker/utils/ushop-sales')
+        await recordUShopSale(DB, { orderId: newOrderId, ref: referralInfluencerId, buyerId: userId, items: [{ productId: Number(productId), qty }] })
       })())
     }
 
@@ -1289,6 +1292,9 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
         const { markFcfsPaid } = await import('../../../worker/utils/fcfs-gate')
         await markFcfsPaid(DB, Number(productId), userId)
       } catch { /* fail-soft */ }
+      // 🛍️ 2026-10-15: 유어샵 경유 기록 — 딜 경로와 대칭(카드로 사도 같은 숫자에 들어간다).
+      const { recordUShopSale } = await import('../../../worker/utils/ushop-sales')
+      await recordUShopSale(DB, { orderId: newOrderId, ref: referralInfluencerId, buyerId: userId, items: [{ productId: Number(productId), qty }] })
     })())
 
     // 🛡️ 2026-05-31: 정산 정합 — 딜 경로(group-buy /join)와 동일하게 ledger + donations + 인플 attribution.

@@ -13,6 +13,7 @@ import { ROUTES as SURFACE_ROUTES } from './scripts/generate-route-chunk-map.mjs
 import { createSurfaceChunker } from './scripts/surface-chunks.mjs';
 import { slimHtml } from './scripts/html-slim.mjs';
 import { transform as esbuildTransform } from 'esbuild';
+import { stripHtmlCommentsPlugin } from './scripts/strip-html-comments.mjs';
 
 // 빌드마다 유니크한 버전 — 정형화된 타임스탬프 (YYYYMMDD.HHmm, UTC). SW 캐시 키 + 빌드 표시 겸용.
 //   🏁 2026-06-13 (사용자 요청 "빌드 정보 숫자 정형화"): base36 난수 → 사람이 읽는 날짜.시각 형식.
@@ -149,8 +150,9 @@ export default defineConfig({
     i18nSplitPlugin(__dirname),
     lucideDeepImportsPlugin(),
     proposalPdfDevPlugin(),
-    // ✂️ 2026-10-15: 배포 HTML 에서 개발자용 주석을 걷는다 — 첫 그림 전 <head> 압축 34KB 중 ~17KB 가 주석이었다
-    //   (scripts/html-slim.mjs). 빌드 산출물에만 — 소스 index.html 과 개발 서버는 그대로다.
+    stripHtmlCommentsPlugin(),
+    // ✂️ 2026-10-15: 위 플러그인(#1834)이 HTML 주석을 걷고, 이것은 그 뒤에 **인라인 스크립트 속** 주석·공백을 압축한다
+    //   (첫 그림 전 <head> 압축 34KB 중 주석 ~8.5KB + 스크립트 속 ~8KB — scripts/html-slim.mjs). 빌드 산출물에만.
     {
       name: 'ur-html-slim',
       apply: 'build' as const,

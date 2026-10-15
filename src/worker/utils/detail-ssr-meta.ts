@@ -274,6 +274,24 @@ export function buildDetailMeta(ssrPayload: string, origin: string, pathname: st
     const place = hasPlace ? {
       '@context': 'https://schema.org', '@type': bizType, '@id': placeId,
       name: store,
+      // 🔗 2026-10-15 — **빌더 둘이 갈려 있었다.** 라이브 실측(Googlebot UA, 표본 44):
+      //
+      //     LodgingBusiness (숙소)      url 14/14 · priceRange 14/14 · description 14/14
+      //     FoodEstablishment (이용권)  url  0/30 · priceRange  0/30 · description  0/30
+      //
+      //   빌더 단위로 정확히 쪼개진다 — 데이터가 없어서가 아니라 **이 자리에 안 적혀 있어서**다.
+      //   `url` 은 구글 LocalBusiness 권장 필드("그 지점의 완전한 URL")이고 `canonical` 은 바로
+      //   위에서 이미 계산돼 있으므로 **새 조회·새 데이터가 0** 이다.
+      //   🔑 **페이지 간 모순이 안 생기는지 먼저 쟀다**: 활성 딜 359건의 고유 매장이 **358**
+      //     (1매장=1딜, 2개인 곳 한 곳). 한 매장이 여러 딜을 가지면 각 딜 페이지가 서로 다른
+      //     `url` 을 주장하게 되는데, 실측 분포가 1:1 이라 그 일이 안 일어난다. `@id` 는 원래
+      //     페이지 스코프(`#place`)라 엔티티는 이미 페이지별이고, 숙소가 이미 같은 방식이다.
+      //   🔴 `priceRange`·`description` 은 **일부러 안 넣는다** — 숙소는 상품이 곧 그 숙소라
+      //     객실 가격대·소개가 그 업체의 것이지만, 이용권은 **상품 ≠ 매장**이다. 딜 한 건의 값을
+      //     식당의 가격대·소개라고 말하는 것은 지어내기다(이 레포가 `aggregateRating`·`Offer` 에서
+      //     지키는 규율 그대로). 영업시간도 같은 이유가 아니라 **데이터가 아예 없다**(실측:
+      //     `/api/group-buy/products/:id` 응답에 시간 관련 키 0개).
+      url: canonical,
       ...(sameAs ? { sameAs: [sameAs] } : {}),
       ...((a => a ? { address: a } : {})(postalAddress(d.restaurant_address))),
       ...(d.restaurant_lat && d.restaurant_lng ? { geo: { '@type': 'GeoCoordinates', latitude: d.restaurant_lat, longitude: d.restaurant_lng } } : {}),

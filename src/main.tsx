@@ -207,6 +207,7 @@ if (typeof window !== 'undefined') {
    *   ⚠️ 잃는 것: 센트리 '세션(크래시 없는 비율)' 지표 — 오류 없는 세션이 센트리에 안 잡힌다.
    */
   const SENTRY_PRELOAD_RATE = 0.01
+  const SENTRY_ON_ERROR_DELAY_MS = 5000
   if (Math.random() < SENTRY_PRELOAD_RATE) {
     if (document.readyState === 'complete') afterPaint()
     else {
@@ -222,11 +223,14 @@ if (typeof window !== 'undefined') {
       early.push(err)
       if (starting) return
       starting = true
-      import('./lib/sentry').then((m) => m.ensureSentry()).then((S) => {
+      // 5초 뒤에 켠다 — 부팅 중 난 오류 하나 때문에 화면을 그리는 CPU 를 센트리가 나눠 쓰지 않게(지도 실측:
+      //   카카오 SDK 실패 한 건이 부팅 한가운데 SDK 실행 67KB 를 끌고 왔다). 오류 기록 자체는
+      //   installErrorTelemetry 가 이미 즉시 남겼고, 그 사이 난 오류는 `early` 에 쌓였다가 함께 간다.
+      setTimeout(() => import('./lib/sentry').then((m) => m.ensureSentry()).then((S) => {
         window.removeEventListener('error', onErrorEvent)
         window.removeEventListener('unhandledrejection', onRejection)
         for (const e of early.splice(0)) S.captureException(e)
-      }).catch(swallow('main:sentry-on-error'))
+      }).catch(swallow('main:sentry-on-error')), SENTRY_ON_ERROR_DELAY_MS)
     }
     const onErrorEvent = (e: Event) => onEarlyError((e as ErrorEvent).error ?? (e as ErrorEvent).message)
     const onRejection = (e: Event) => onEarlyError((e as PromiseRejectionEvent).reason)

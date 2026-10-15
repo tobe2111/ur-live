@@ -75,6 +75,9 @@ describe('Sentry 는 진입점 하나로만 들어온다', () => {
     expect(main).toMatch(/addEventListener\('unhandledrejection', onRejection\)/)
     // 켜진 뒤엔 SDK 전역 핸들러가 잡는다 — 리스너를 떼지 않으면 같은 오류가 두 번 간다.
     expect(main).toMatch(/removeEventListener\('error', onErrorEvent\)/)
+    // 오류가 나도 부팅 한가운데서 켜지 않는다(지도 실측 — 카카오 실패 한 건이 SDK 67KB 를 끌고 왔다).
+    expect(main).toMatch(/const SENTRY_ON_ERROR_DELAY_MS = 5000/)
+    expect(main).toMatch(/\}\)\.catch\(swallow\('main:sentry-on-error'\)\), SENTRY_ON_ERROR_DELAY_MS\)/)
   })
 
   it('🔴 진입점은 sentry 청크에 묶인다 (다른 청크로 새면 Sentry 가 첫 화면에 실린다)', () => {

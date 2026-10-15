@@ -48,15 +48,14 @@ export function curatorHomePins<T extends CuratorPinOrderFields>(pins: readonly 
 }
 
 /**
- * 👤 2026-10-14 (대표 확정 유어샵 A): 머리 아래 숫자 줄의 **누적 구매** — 진열된 상품들의 `sold_count` 합.
- *   화면(`CuratorPage`)과 서버 첫 화면(`curator-ssr-body`)이 같은 함수를 쓴다 — 두 벌이면 마운트 때
- *   숫자가 바뀌어 보인다. 음수·비숫자는 0 으로 친다(지어내지 않는다).
+ * 👤 2026-10-14 (대표 확정 유어샵 A): 머리 아래 숫자 줄의 **누적 구매**.
+ *   🛍️ 2026-10-15 대표 *"바꾸자"* — **이 유어샵을 거쳐 팔린 수**(서버가 `curator.ushop_sold` 로 싣는다,
+ *   근거 `worker/utils/ushop-sales.ts`). 종전엔 진열 상품들의 `sold_count`(어디서 팔렸든 전체) 합이었다 —
+ *   그건 이 유어샵 주인이 만든 판매가 아니다. ⚠️ `sold_count` 로 되돌리지 말 것.
+ *   화면(`CuratorPage`·`SellerPublicPage`)과 서버 첫 화면(`curator-ssr-body`)이 같은 함수를 쓴다 —
+ *   두 벌이면 마운트 때 숫자가 바뀌어 보인다. 음수·비숫자·없음은 0(지어내지 않는다 — 0 이면 머리가 숨긴다).
  */
-export function curatorSoldTotal(pins: ReadonlyArray<{ sold_count?: number | null }>): number {
-  let n = 0
-  for (const p of pins) {
-    const v = Number(p.sold_count)
-    if (Number.isFinite(v) && v > 0) n += v
-  }
-  return Math.floor(n)
+export function curatorSoldTotal(curator: { ushop_sold?: number | null } | null | undefined): number {
+  const v = Number(curator?.ushop_sold)
+  return Number.isFinite(v) && v > 0 ? Math.floor(v) : 0
 }

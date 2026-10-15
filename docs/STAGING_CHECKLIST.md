@@ -258,6 +258,7 @@ S-EXBOOK4 가 그 방향이다.
 
 | 날짜 | 항목 | 결과 | 비고 |
 |---|---|---|---|
+| 2026-10-15 | **S-USEGATE-2** — 미사용 이용권의 소개비는 성숙하지 않는다 | ✅ **라이브 판정** | 게이트 `payout_requires_voucher_use='true'` · `influencer-payout` cron 이 `available_at`(10-14 04:55Z) **이후** 10-14 19:01Z 에 정상 실행(`cron_hb` ok) · 그 뒤에도 `influencer_attributions` id 1 `pending` · 이용권 id 4 `unused`. 송금 대기에 안 뜬다 |
 | 2026-10-14 | **S-VC1 · S-VC4** — 딜·카드 구매가 에스크로로 | ✅ **원장 판정**(결제 0건 — 대표가 이미 한 주문 90·91·92) | `group_buy_join` 3건 전부 `credit=platform:escrow` · `fee_amount=0` |
 | 2026-10-14 | **S-VC2** — 사용 처리 분개 | ✅ 원장 판정(주문 90 · 이용권 3) | `voucher_used` 7,125 → `merchant:14` + 375 → `platform:revenue` = 에스크로 7,500 전액 |
 | 2026-10-14 | **S7 ②** — 중개 매장 5% | ✅ 원장 판정(주문 89·90) | 50/1,000 · 375/7,500. ① 직판 10% 는 대표가 운영하는 직판 매장이 없어 **2회차** |

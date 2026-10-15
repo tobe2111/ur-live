@@ -984,6 +984,31 @@ draft 를 해제하고 auto-merge(squash)를 켜 두면 GitHub 이 체크 통과
 🔴 **먼저 un-draft, 그 다음 auto-merge** — draft 전환은 auto-merge 를 날리므로 순서가 뒤집히면
 조용히 안 켜진다(GitHub 이 그 경고를 명시한다). 켠 뒤 `auto_merge.enabled` 를 **응답으로 확인**할 것.
 
+🩸 **그 확인은 `PUT /ccr/auto_merge` 의 응답에만 쓸 것** (2026-10-14 양방향 실측) — GitHub REST 의
+**PR 객체에는 `auto_merge.enabled` 필드가 없다**(필드는 `enabled_by`·`merge_method`·`commit_title`·
+`commit_message` 넷). 그래서 `gh api .../pulls/N --jq .auto_merge.enabled` 는 **켜져 있어도 `null`** 이고,
+그 null 을 "안 켜졌다" 로 읽으면 멀쩡한 auto-merge 를 다시 켜거나 — 더 나쁘게 — *"머지 자동화가 깨졌다"* 로
+보고하고 대표에게 버튼을 떠넘기게 된다(이 절이 생긴 그 사고다). **PR 객체에서의 판정은 `.auto_merge != null`**:
+`gh api .../pulls/N --jq '{auto_on:(.auto_merge!=null),method:.auto_merge.merge_method}'`.
+🔬 양방향으로 쟀다 — 켜진 PR(#1828)은 객체가 있고 `enabled` 만 없다 · auto-merge 규칙 이전에 머지된
+PR(#806·#1149·#1296·#1400)은 **객체 자체가 `null`**. 그 대조군이 유효한 이유는 **머지가 객체를 지우지
+않기 때문**이다(#1815~#1827 전부 머지됐는데 `present`) — 안 그러면 "null = 꺼짐" 과 "null = 머지됨" 이
+구분되지 않는다.
+
+🩸 **`merge_method` 를 빼면 422 다** (2026-10-15 실측 — #1834): 본문 없이 `PUT /ccr/auto_merge` 를
+치면 GitHub 이 기본 `merge` 로 무장하려 하고 이 레포는 머지 커밋을 금지하므로
+`Merge method merge commits are not allowed on this repository` 로 거부된다. **실패가 조용하지도
+않지만 오독하기 쉽다** — 그 문장을 "auto-merge 를 쓸 수 없다" 로 읽으면 다시 대표에게 버튼을
+떠넘기게 된다(2026-10-14 규칙이 막으려던 바로 그 자리다). **`{"merge_method":"squash"}` 를 함께
+보낸다** — 응답이 `{"enabled":true,"merge_method":"squash"}` 면 무장된 것이다.
+
+🔴 **그리고 auto-merge 는 조건을 다 채워도 멎는다 — 켠 것으로 일을 끝냈다고 보지 말 것.** 2026-10-14
+#1828 실측: `auto_merge` 무장 · `Verify` **success** · `mergeable:true` · `mergeable_state:clean` ·
+`draft:false` 인데 **2분+ 동안 머지되지 않았다**(같은 세션의 #1826·#1827 은 정상 자동 머지됐으니 간헐이다).
+그 문장(*"켜 두면 GitHub 이 체크 통과를 기다려 머지한다"*)만 믿고 턴을 끝내면 **PR 이 초록인 채 열려 남고
+아무 신호도 없다** — 이 레포가 반복해 당한 **조용한 부재**다. ⇒ 초록을 확인한 뒤에도 **머지됐는지를 따로
+보고**, `clean` 인데 안 머지됐으면 위 `PUT /merge` 로 **세션이 끝낸다**(#1828 은 그렇게 `b55bafffb` 로 들어갔다).
+
 > 🩸 **이 규칙은 실제로 떠넘긴 뒤에 생겼다.** 2026-09-16, PR #1472 는 CI 초록·충돌 0 인데 draft 라
 > 머지가 405 였다. `mcp__github__update_pull_request` 가 rate limit(`for user ID 64677275`)이라
 > 대표에게 "Ready for review 눌러 주세요" 라고 했다. **그런데 그때 이미 다른 경로가 멀쩡한 걸 확인해
@@ -1009,7 +1034,8 @@ draft·auto-merge·리뷰 스레드는 GraphQL 전용 기능이라 **전용 REST
 G=https://api.github.com/repos/tobe2111/ur-live/pulls/<번호>
 curl -sS -X POST "$G/ccr/ready_for_review"            # draft 해제
 curl -sS -X POST "$G/ccr/convert_to_draft"            # 다시 draft 로
-curl -sS -X PUT    "$G/ccr/auto_merge"                # 초록 뜨면 자동 머지 (DELETE 로 해제)
+curl -sS -X PUT    "$G/ccr/auto_merge" -H 'Content-Type: application/json' \
+  --data '{"merge_method":"squash"}'                   # 초록 뜨면 자동 머지 (DELETE 로 해제)
 curl -sS       "$G/ccr/review_threads"                # 리뷰 스레드 조회
 curl -sS -X POST "$G/ccr/comments/<id>/resolve"       # 스레드 해결 (또는 /unresolve)
 curl -sS -X PUT  "$G/merge" -H 'Content-Type: application/json' \
