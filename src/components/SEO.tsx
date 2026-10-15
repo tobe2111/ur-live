@@ -112,7 +112,6 @@ export default function SEO({
       ? `${siteName} - B2B 도매사이트, 제조사 직거래 도매가 사입`
       : `${siteName} - 돈버는 쇼핑, 동네 가게 공동구매 · 이용권`)
   const fullUrl = url ? `${baseUrl}${url}` : baseUrl
-  const twitterSite = isWholesale ? '@utongstart' : '@urdeal_kr'
 
   return (
     <Helmet>
@@ -141,7 +140,14 @@ export default function SEO({
 
       {/* Twitter */}
       <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:site" content={twitterSite} />
+      {/* 🐦 2026-10-15 (대표 승인 "추천대로"): `twitter:site` 를 **지웠다** — 라이브 실측으로
+          **어떤 스크래퍼에도 도달한 적이 없다.** Twitterbot·facebookexternalhit·KakaoTalk-Scrap 은
+          전부 **봇 셸**(`worker/index.ts` app.get('*'), 실측 10.9KB)을 받고 그 셸엔 이 메타가 없다.
+          이 파일은 react-helmet = **JS 렌더 후**이고 Twitterbot 은 JS 를 안 돌린다 ⇒ 그 핸들은 이
+          목적으로 한 번도 쓰인 적이 없는 값이었다(틀린 출처가 붙은 것이 아니라 **안 붙었다**).
+          🔴 **되살리려면 이 자리가 아니라 봇 셸이다** — 그리고 그 전에 계정이 실재하는지 확인해야 한다
+          (이 환경은 x.com 이 프록시에 막혀 확인할 수 없었다). 없는 계정을 가리키면 카드에 틀린 출처가
+          붙는데, 그건 지금처럼 아무것도 안 붙는 것보다 나쁘다. */}
       <meta name="twitter:title" content={fullTitle} />
       <meta name="twitter:description" content={resolvedDescription} />
       <meta name="twitter:image" content={resolvedImage} />

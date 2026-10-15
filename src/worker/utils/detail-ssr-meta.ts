@@ -9,7 +9,7 @@
 
 // 🔄 이용권 공유 카드 주소·판 번호는 `shared/pass-share-card.ts` 한 곳(화면의 공유 버튼과 같은 값).
 import { passShareCardUrl } from '@/shared/pass-share-card'
-import { stayDetailTitle, voucherDetailTitle } from '../../shared/seo/detail-title'
+import { stayDetailTitle, voucherDetailTitle, passDetailTitle } from '../../shared/seo/detail-title'
 // 🏨 정본 상세 주소 SSOT — 숙소 이용권은 `/stays/:id` 다(두 벌로 적으면 갈린다).
 import { canonicalDetailPath } from '../../shared/product-flow'
 import { productShareImage } from '@/shared/og-share-image'
@@ -198,7 +198,7 @@ export function buildDetailMeta(ssrPayload: string, origin: string, pathname: st
     }
 
     // 이용권/동네딜 (group-buy) — 인덱싱 + 풀 메타 + JSON-LD
-    const pageTitle = `${name} 공동구매 - ${store || '유어딜'}`
+    const pageTitle = passDetailTitle(name, store)
     const priceStr = price.toLocaleString('ko-KR')
     // 🏪 2026-10-13 — 가게명이 상품명 앞에 그대로 든 경우 같은 말을 두 번 하지 않는다
     //   (실측 `/pass/2919`: `달빛한스푼 달빛한스푼 닭도리탕`). 판단은 SSOT 하나다 —
@@ -244,7 +244,7 @@ export function buildDetailMeta(ssrPayload: string, origin: string, pathname: st
     const product: Record<string, unknown> = {
       '@context': 'https://schema.org', '@type': 'Product',
       name,
-      description: (String(d.description || '') || `${storeName} 공동구매`).replace(/\s+/g, ' ').trim().slice(0, 300),
+      description: (String(d.description || '') || `${storeName} 이용권`).replace(/\s+/g, ' ').trim().slice(0, 300),
       ...(d.image_url ? { image: [photo] } : {}),
       ...(store ? { brand: { '@type': 'Brand', name: store } } : {}),
       offers: {
