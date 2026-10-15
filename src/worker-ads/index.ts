@@ -22,7 +22,7 @@ import { publicDataRoutes } from './public-data.routes'
 import { chainRoutes } from './chain.routes'
 import { createBeatBatch, makeBeatWriter } from './beat-batch'
 import { closeTick } from './tail-bound'
-import { runAutobidJob, runFollowupJob, runWeeklyJob } from './side-jobs'
+import { runAutobidJob, runFollowupJob, runWeeklyJob, runDailySocialDraftJob } from './side-jobs'
 import { dispatchPendingLanes, type RunnableLane } from './lane-runner'
 import { laneUrl } from './self-beat'
 import { enrichRoutes } from './enrich.routes'
@@ -578,6 +578,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   ctx.waitUntil(recordKnownLanes(env, laneReg.list()))
 
   runWeeklyJob(env, hourUTC, dowUTC, adsBeat, (p) => ctx.waitUntil(p), staleGapMinutes(7 * 24 * 60))
+  runDailySocialDraftJob(env, hourUTC, adsBeat, (p) => ctx.waitUntil(p), staleGapMinutes(24 * 60))
 
   // 🚦 여기서 비로소 띄운다 — 이번 회차 예산만큼만. 미룬 레인은 **버린 게 아니라** 다음 차례에 돈다
   //   (`selectLanesForHour` 가 모든 레인이 `groups` 시간 안에 반드시 한 번 돎을 보장 — 유닛이 강제).

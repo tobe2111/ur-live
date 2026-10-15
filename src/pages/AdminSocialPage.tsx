@@ -19,9 +19,10 @@ import {
 import SocialAccountsPanel from './admin-social/SocialAccountsPanel'
 import SocialDraftEditor from './admin-social/SocialDraftEditor'
 import SocialVideoControls from './admin-social/SocialVideoControls'
+import SocialFunnelPanel from './admin-social/SocialFunnelPanel'
 import {
-  PLATFORMS, STATUS_META, parseHashtags,
-  type SocialAccount, type SocialGate, type SocialPost, type SocialPlatform,
+  PLATFORMS, STATUS_META, parseHashtags, AUDIENCES, AUDIENCE_LABEL,
+  type SocialAccount, type SocialGate, type SocialPost, type SocialPlatform, type SocialAudienceChoice,
 } from './admin-social/types'
 import { parseUTCDate } from '@/utils/date'
 
@@ -31,6 +32,7 @@ export default function AdminSocialPage() {
   const [editing, setEditing] = useState<SocialPost | null>(null)
   const [genLoading, setGenLoading] = useState<SocialPlatform | null>(null)
   const [busyId, setBusyId] = useState<number | null>(null)
+  const [audience, setAudience] = useState<SocialAudienceChoice>('auto')
 
   useEffect(() => {
     if (!localStorage.getItem('admin_token')) navigate('/admin/login', { replace: true })
@@ -56,7 +58,7 @@ export default function AdminSocialPage() {
   const generate = async (p: SocialPlatform) => {
     setGenLoading(p)
     try {
-      const { data } = await api.post('/api/admin/social/posts/generate', { platform: p })
+      const { data } = await api.post('/api/admin/social/posts/generate', audience === 'auto' ? { platform: p } : { platform: p, audience })
       if (data?.success) { toast.success(`${PLATFORMS.find((x) => x.key === p)?.label} 초안을 생성했습니다`); refetchPosts() }
       else if (data?.skipped) toast.error(data.skipped)
       else toast.error(data?.error === 'NOT_CONFIGURED' ? 'ANTHROPIC_API_KEY 가 설정되지 않았습니다' : (data?.error || '생성 실패'))
@@ -131,6 +133,14 @@ export default function AdminSocialPage() {
           <span className="font-semibold text-gray-900">AI 초안 생성</span>
           <span className="text-xs text-gray-400">유어딜 홍보 문구를 사람 톤으로 자동 생성 (비공개 초안)</span>
         </div>
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <span className="text-xs text-gray-500">누구에게</span>
+          {AUDIENCES.map(({ key, label }) => (
+            <button key={key} onClick={() => setAudience(key)} className={`rounded-full px-3 py-1 text-sm ${audience === key ? 'bg-brand text-white' : 'bg-gray-100 text-gray-600'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
         <div className="flex flex-wrap gap-2">
           {PLATFORMS.map(({ key, label, emoji }) => (
             <Button key={key} variant="outline" onClick={() => generate(key)} disabled={genLoading !== null}>
@@ -139,6 +149,11 @@ export default function AdminSocialPage() {
             </Button>
           ))}
         </div>
+      </div>
+
+      {/* 📈 공급 모으기 성과 — 어느 글이 매장·소개 파트너를 데려왔나 */}
+      <div className="mb-6">
+        <SocialFunnelPanel />
       </div>
 
       {/* 플랫폼 필터 */}
@@ -179,6 +194,9 @@ export default function AdminSocialPage() {
                       <span>{meta?.emoji}</span>
                       <span className="text-xs font-medium text-gray-500">{meta?.label}</span>
                       <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${st.cls}`}>{st.label}</span>
+                      {post.audience && post.audience !== 'consumer' && (
+                        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700">{AUDIENCE_LABEL[post.audience] || post.audience}</span>
+                      )}
                       {post.ai_generated ? <span className="rounded-full bg-tone-info-bg px-2 py-0.5 text-xs text-tone-info">AI</span> : null}
                       {post.media_kind === 'image' && <ImageIcon className="h-3.5 w-3.5 text-gray-400" />}
                       {post.media_kind === 'video' && <Video className="h-3.5 w-3.5 text-gray-400" />}

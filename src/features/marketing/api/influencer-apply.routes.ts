@@ -12,6 +12,7 @@ import { welcomeEmail, textToHtml } from './outreach-send'
 import { getOrCreateClaimCode } from './lead-claim'
 import { sendEmail } from '@/services/email'
 import { adsLeadsDb } from '../../../shared/ads/leads-db'
+import { recordAcquisitionConversion } from '@/worker/utils/acquisition'
 
 const app = new Hono<{ Bindings: Env }>()
 const POOL = 0 // 공용 풀 센티넬
@@ -68,6 +69,9 @@ app.post('/', rateLimit({ action: 'creator-apply', max: 10, windowSec: 3600 }), 
   const leadRow = await adsLeadsDb(c.env).prepare('SELECT id FROM ad_influencer_leads WHERE account_id = ? AND platform = ? AND channel_id = ?')
     .bind(POOL, platform, channelId).first<{ id: number }>().catch(() => null)
   const claimCode = leadRow ? await getOrCreateClaimCode(adsLeadsDb(c.env), leadRow.id).catch(() => null) : null
+  // 🎯 2026-10-15 유입 귀속 — 소셜 글(?src=sns-…)에서 왔으면 신청 1건을 그 소스에 센다(메인 D1, 개인정보 없음).
+  //   접수 성공 뒤에만 남긴다(검증 실패 요청은 위에서 이미 반환). fail-soft.
+  if (b.acq_src) await recordAcquisitionConversion(c.env.DB, b.acq_src, 'creator_apply')
   // 📨 접수 확인 메일(거래성 — 신청 행위에 대한 확인, 신청 = 사전동의라 발송 적법). fail-soft: 발송 실패가 접수를 안 막음.
   if (email && c.env.RESEND_API_KEY) {
     const send = async () => {

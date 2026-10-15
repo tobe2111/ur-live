@@ -19,6 +19,8 @@ import { createSocialDraft } from './social-draft'
 import { publishPost, isPlatformEnabled } from './social-publish'
 import { generateVideoPlan, startVideoRender, checkVideoRender } from './social-video-flow'
 import { videoRenderStatus } from './social-video-render'
+import { isSocialAudience, SOCIAL_AUDIENCES, AUDIENCE_LABEL, AUDIENCE_LANDING, INSTAGRAM_BIO_SRC, landingUrl } from './social-audience'
+import { loadFunnel } from './social-funnel'
 
 const socialMediaRoutes = new Hono<{ Bindings: Env }>()
 
@@ -74,9 +76,29 @@ socialMediaRoutes.post('/posts/generate', async (c) => {
   const platform = String(b.platform || '')
   if (!isSocialPlatform(platform)) return c.json({ success: false, error: '지원하지 않는 플랫폼' }, 400)
   const topicSlug = b.topicSlug ? String(b.topicSlug) : undefined
-  const r = await createSocialDraft(c.env, platform, topicSlug)
+  // 🎯 2026-10-15 대상(store/creator/consumer). 생략하면 어드민 혼합비(social_audience_mix)로 고른다.
+  const audience = isSocialAudience(b.audience) ? b.audience : undefined
+  const r = await createSocialDraft(c.env, platform, topicSlug, audience)
   if (!r.ok) return c.json({ success: false, error: r.error, skipped: r.skipped }, r.error === 'NOT_CONFIGURED' ? 503 : 400)
   return c.json({ success: true, id: r.id, title: r.title, posts: await listPosts(c.env.DB, { platform }) })
+})
+
+// GET /funnel — 📈 2026-10-15 공급 모으기 성과: 유입 태그(sns-…)별 랜딩 → 가입 → 매장 등록 → 소개 파트너 신청.
+//   게시물과 이어 붙여 "어느 글이 매장을 데려왔나" 를 보여 준다. 읽기 전용.
+socialMediaRoutes.get('/funnel', async (c) => {
+  const rows = await loadFunnel(c.env.DB)
+  const posts = await listPosts(c.env.DB)
+  const bySrc = new Map(posts.filter((p) => p.src_tag).map((p) => [p.src_tag as string, p]))
+  return c.json({
+    success: true,
+    rows: rows.map((r) => {
+      const p = bySrc.get(r.src)
+      return { ...r, post: p ? { id: p.id, platform: p.platform, audience: p.audience, title: p.title, status: p.status, external_url: p.external_url } : null }
+    }),
+    audiences: SOCIAL_AUDIENCES.map((a) => ({ audience: a, label: AUDIENCE_LABEL[a], landing: AUDIENCE_LANDING[a] })),
+    // 인스타 프로필 링크에 걸어 둘 주소(대상별) — 캡션 링크가 안 눌려서 귀속은 이 한 줄로 받는다.
+    instagramBioLinks: SOCIAL_AUDIENCES.filter((a) => a !== 'consumer').map((a) => ({ audience: a, url: landingUrl(a, INSTAGRAM_BIO_SRC) })),
+  })
 })
 
 // POST /posts  body: { platform, title?, body, hashtags?, media_url?, media_kind? } — 수동 초안 작성
