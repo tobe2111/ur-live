@@ -9,7 +9,7 @@ import type { Context, Next } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { timing } from 'hono/timing';
-import { ROUTE_CHUNK_MAP, ENTRY_CSS } from './generated/route-chunk-map'; // 🚀 2026-07-12 라우트 청크 modulepreload(빌드 시 자동 생성)
+import { ROUTE_CHUNK_MAP, ENTRY_CSS, BOOT_JS } from './generated/route-chunk-map'; // 🚀 2026-07-12 라우트 청크 modulepreload(빌드 시 자동 생성)
 import { docsRoutes } from './routes/docs.routes'; // 2026-04-27 TD-006 split (openapi/swagger)
 import { internalDiagnosticsRoutes } from './routes/internal-diagnostics.routes'; // 2026-04-27 TD-006 split
 import { internalAdminToolsRoutes } from './routes/internal-admin-tools.routes'; // 2026-04-27 TD-006 Phase C
@@ -733,7 +733,7 @@ app.use('*', async (c, next) => {
           // 🚀 2026-07-12 [UNLOCK_LOADING]: 라우트 청크 modulepreload 주입(엔트리와 병렬) — Vite 가 index.html 에 넣는 것과 동일 속성(crossorigin). css 는 preload(as=style).
           //   SSR payload 유무와 무관(청크는 항상 필요). 상세 주석은 위 chunkSurface 선언부.
           if (routeChunks) {
-            for (const f of routeChunks.js) {
+            for (const f of [...routeChunks.js, ...BOOT_JS]) { // 🈯 2026-10-15 + 한국어 번역 청크(BOOT_JS)
               el.append(`<link rel="${routePreloadRel(cssFirst)}" crossorigin href="${f}">`, { html: true });
             }
             for (const f of routeChunks.css) {

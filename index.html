@@ -271,6 +271,14 @@ var s=d.createElement('script');s.async=true;s.src='https://dapi.kakao.com/v2/ma
 var p=new Promise(function(res,rej){function fail(){if(s.parentNode)s.parentNode.removeChild(s);rej(new Error('kakao maps early load failed'))}
 s.onload=function(){var m=window.kakao&&window.kakao.maps;if(m&&m.load)m.load(res);else fail()};s.onerror=fail});
 p['catch'](function(){});window.__urKakaoMaps=p;d.head.appendChild(s)})()</script>
+    <!-- 🏨 2026-10-15 숙소 목록(/stays) 하드로드 — 첫 검색 요청을 HTML 도착 직후 보낸다(실측: React 가 그린 뒤 3.4초 출발 · LCP ~7초).
+         결과는 window.__urStaysEarly 로 넘기고 hooks/queries/useStaysSearch 가 **같은 주소일 때만** 이어받는다(shared/stays-early.ts 와 바이트 일치 — 시험이 대조).
+         실패하면 화면이 일반 경로로 다시 받는다(가속일 뿐 필수가 아니다). 날짜는 한국 시간. -->
+    <script>(function(){if(!/^\/stays\/?$/.test(location.pathname)||location.search)return;if(!window.fetch||!window.Promise)return;
+function y(o){return new Date(Date.now()+324e5+o*864e5).toISOString().slice(0,10)}
+var q='check_in='+y(0)+'&check_out='+y(1)+'&guests=2&sort=recent';
+var p=fetch('/api/group-buy/stays/search?'+q,{credentials:'same-origin'}).then(function(r){if(!r.ok)throw new Error('stays early '+r.status);return r.json()});
+p['catch'](function(){});window.__urStaysEarly={qs:q,p:p}})()</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />

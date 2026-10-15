@@ -42,4 +42,9 @@ describe('미리받기 전용 표면', () => {
     for (const k of Object.keys(PRELOAD_ONLY_ROUTES)) expect(blk, k).toContain(`'${k}'`)
     expect(blk).toMatch(/\/\^\\\/stays\\\/\\d\+\\\/\?\$\/\.test\(url\.pathname\) \? 'stayDetail'/)
   })
+  it('🈯 한국어 번역 청크도 라우트 청크와 함께 미리 받는다', () => {
+    expect(gen).toMatch(/k\.includes\('locales\/ko\/translation\.json'\) && k\.endsWith\('\?i18n-core'\)/)
+    expect(gen).toContain('export const BOOT_JS: string[] = ${JSON.stringify(bootJs)}')
+    expect(worker).toMatch(/for \(const f of \[\.\.\.routeChunks\.js, \.\.\.BOOT_JS\]\)/)
+  })
 })

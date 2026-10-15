@@ -1,6 +1,14 @@
 // 🏨 2026-10-15 — 색인 진입점 청크 미리받기(워커 chunkSurface)
 export default [
   {
+    name: '🈯 번역 청크를 미리 안 받는다',
+    file: 'src/worker/index.ts',
+    find: 'for (const f of [...routeChunks.js, ...BOOT_JS])',
+    replace: 'for (const f of [...routeChunks.js])',
+    test: 'src/tests/unit/preload-only-routes-2026-10-15.test.ts',
+    why: '번역이 엔트리 실행 뒤에야 출발해 화면이 임시 문구로 그렸다가 다시 그린다(실측 2.5초 → 0.24초 차이)',
+  },
+  {
     name: '🏨 숙소 상세 하드로드가 화면 청크를 미리 안 받는다',
     file: 'src/worker/index.ts',
     find: "/^\\/stays\\/\\d+\\/?$/.test(url.pathname) ? 'stayDetail'",

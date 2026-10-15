@@ -65,12 +65,14 @@ export const PRELOAD_ONLY_ROUTES = {
 }
 const MAX_LINKS = 10 // head 링크 스팸 방지 캡(핵심 큰 청크 우선 — closure 순서 = 페이지 청크 → 공유 청크)
 
-function emit(map, entryCssFiles = []) {
+function emit(map, entryCssFiles = [], bootJs = []) {
   const body = `// ⚠️ AUTO-GENERATED — scripts/generate-route-chunk-map.mjs 가 빌드 시 재생성. 수동 편집 금지.
 // 라우트 표면별 lazy 페이지 청크(엔트리 폐쇄 제외) — 워커가 modulepreload 로 주입해 엔트리와 병렬 다운로드.
 export const ROUTE_CHUNK_MAP: Record<string, { js: string[]; css: string[] }> = ${JSON.stringify(map, null, 2)}
 // 🚦 2026-10-12 엔트리(index.html) CSS — 워커가 HTML 응답에 \`Link: rel=preload\` 헤더로 싣는다(Early Hints 103 원천).
 export const ENTRY_CSS: string[] = ${JSON.stringify(entryCssFiles)}
+// 🈯 2026-10-15 손님 화면이 부팅 직후 **반드시** 부르는 동적 청크(한국어 번역) — 워커가 라우트 청크와 함께 modulepreload.
+export const BOOT_JS: string[] = ${JSON.stringify(bootJs)}
 `
   mkdirSync(dirname(OUT), { recursive: true })
   writeFileSync(OUT, body)
@@ -131,7 +133,13 @@ function main() {
     if (jsOut.length) out[surface] = { js: jsOut, css: cssOut }
   }
 
-  emit(out, entry.css)
+  // 🈯 2026-10-15 (대표 *"계속 개선점 찾아줘"* — /stays 폭포 실측): 한국어 번역 청크(locale-ko, 약 35KB)는 i18n 이 **엔트리를
+  //   다 실행한 뒤에야** 동적으로 부른다(실측 3.2초 도착). 그 사이 화면은 임시 문구로 그렸다가 다시 그린다.
+  //   손님 화면은 전부 이 청크를 쓰므로 라우트 청크와 함께 미리 받는다(국문 기본 — 다른 언어는 그대로 동적).
+  const koKey = Object.keys(manifest).find((k) => k.includes('locales/ko/translation.json') && k.endsWith('?i18n-core'))
+  const bootJs = koKey && manifest[koKey]?.file ? ['/' + manifest[koKey].file] : []
+  if (!bootJs.length) console.warn('[route-chunk-map] 한국어 번역 청크를 매니페스트에서 못 찾았다 — 미리받기 생략')
+  emit(out, entry.css, bootJs)
   console.log(`[route-chunk-map] 생성 완료 — ${Object.keys(out).length} surfaces:`, Object.entries(out).map(([k, v]) => `${k}(js${v.js.length}/css${v.css.length})`).join(' '))
 }
 
