@@ -573,12 +573,11 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   }
 
   runFollowupJob(env, hourUTC, adsBeat, (p) => ctx.waitUntil(p), dailyGapMinutes())
+  runWeeklyJob(env, hourUTC, dowUTC, adsBeat, (p) => ctx.waitUntil(p), staleGapMinutes(7 * 24 * 60))
+  runDailySocialDraftJob(env, hourUTC, adsBeat, (p) => ctx.waitUntil(p), staleGapMinutes(24 * 60))
 
   // 🔭 이번 실행이 '알고 있는' 레인(게이트 ON)을 남긴다 — 하트비트와 대조해 '한 번도 안 돈 레인'을 판정.
   ctx.waitUntil(recordKnownLanes(env, laneReg.list()))
-
-  runWeeklyJob(env, hourUTC, dowUTC, adsBeat, (p) => ctx.waitUntil(p), staleGapMinutes(7 * 24 * 60))
-  runDailySocialDraftJob(env, hourUTC, adsBeat, (p) => ctx.waitUntil(p), staleGapMinutes(24 * 60))
 
   // 🚦 여기서 비로소 띄운다 — 이번 회차 예산만큼만. 미룬 레인은 **버린 게 아니라** 다음 차례에 돈다
   //   (`selectLanesForHour` 가 모든 레인이 `groups` 시간 안에 반드시 한 번 돎을 보장 — 유닛이 강제).
