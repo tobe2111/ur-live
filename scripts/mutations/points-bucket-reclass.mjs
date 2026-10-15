@@ -3,6 +3,14 @@ const FILE = 'src/worker/utils/points-reconcile.ts'
 const TEST = 'src/tests/unit/points-reconcile.test.ts'
 export default [
   {
+    name: '🪣 재분류 도구의 dry-run 이 사라진다 (검사만 하려다 버킷이 옮겨진다)',
+    file: FILE,
+    find: '  if (apply !== true) return { found, results, applied: false } // 기본 dry-run — 버킷을 안 건드린다',
+    replace: '',
+    test: TEST,
+    why: '돈을 만지는 도구는 보기만 해도 안전해야 한다 — 검사 버튼이 실행이 되면 사람이 판단할 기회가 사라진다.',
+  },
+  {
     name: '🪣 재분류가 실제로 충전한 계정까지 무상으로 옮긴다',
     file: FILE,
     find: "                   WHERE pt.user_id = up.user_id AND pt.type = 'charge' AND COALESCE(pt.amount, 0) > 0)`",

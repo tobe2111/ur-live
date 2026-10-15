@@ -206,7 +206,7 @@ export async function reclassifyUnpaidToFree(
 ): Promise<{ found: ReclassRow[]; results: ReclassResult[]; applied: boolean }> {
   const found = await findUnpaidPaidBalances(DB)
   const results: ReclassResult[] = []
-  if (!apply) return { found, results, applied: false }
+  if (apply !== true) return { found, results, applied: false } // 기본 dry-run — 버킷을 안 건드린다
   for (const row of found) {
     const r = await DB.prepare(`
       UPDATE user_points SET free_balance = balance, updated_at = datetime('now')
