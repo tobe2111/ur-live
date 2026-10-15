@@ -72,8 +72,10 @@ export default [
   {
     name: '🧱 skipped 판정 — 반대 방향: 허용목록에 true 를 넣는다',
     file: U,
-    find: "  'min_interval',\n])",
-    replace: "  'min_interval',\n  'true',\n])",
+    // 🔁 2026-10-15 재조준 — 허용목록이 페이싱 넷으로 자라 종전 앵커(`'min_interval',\n])`)가
+    //    닫는 줄이 아니게 됐다. **불변식은 그대로**: `true` 를 넣으면 거짓 침묵이 돌아온다.
+    find: "  'rescan_hour',  // :127 maintenance",
+    replace: "  'true',\n  'rescan_hour',  // :127 maintenance",
     test: T,
     why:
       '`skipped: true` 는 이 레포에서 **"내 일을 못 했다"** 로 10곳 넘게 쓰인다(테이블 없음 · ' +
@@ -130,5 +132,49 @@ export default [
     why:
       'React Query 키에 필터가 없으면 칩을 눌러도 **캐시된 옛 목록**이 그대로 나온다 — 화면은 ' +
       '선택 상태를 보여 주는데 목록은 안 바뀌어서, 사람이 "error 가 없다" 고 오판한다.',
+  },
+  {
+    name: '🧱 시각 페이싱 셋을 허용목록에서 뺀다 (첫 판 — 15→3 이 남는다)',
+    file: U,
+    find: "  'even_hour',    // :241 collect-company",
+    replace: "  // 'even_hour',    // :241 collect-company",
+    test: T,
+    why:
+      '라이브 경보 15건 중 **3건이 blocked 로 남는다**(off_hour · rescan_hour · even_hour). 셋 다 ' +
+      '러너의 의도적 시각 페이싱이라 내일 저절로 돈다 — 사람이 할 일이 없는데 매일 04시 KST 에 ' +
+      '거짓 경보가 올라오고, 그 소음이 다시 진짜 error 를 가린다(이 수리가 막으려던 그 사고).',
+  },
+  {
+    name: '🧱 꺼짐(gate_off)을 건강하다고 분류한다 — 거짓 침묵 복귀',
+    file: U,
+    find: "  'gate_off',   // env 게이트가 'true' 가 아니다",
+    replace: "  // 'gate_off',   // env 게이트가 'true' 가 아니다",
+    test: T,
+    why:
+      '🔴 **반대 방향.** 게이트가 꺼진 레인은 **사람이 켜야** 도는 것이고, 2026-08-31 이 잡으려던 ' +
+      '사고(바인딩 부재로 이미지 이관이 넉 달간 무음)가 정확히 이 모양이다. 두 집합의 경계는 ' +
+      '"내일 저절로 도는가" 이고, 꺼짐을 페이싱으로 옮기면 그 사고가 다시 조용해진다.',
+  },
+  {
+    name: '🧱 러너에 분류 안 된 새 페이싱 이유가 생긴다 (내일의 거짓 경보)',
+    file: 'src/worker-ads/lane-alarm-runners.ts',
+    find: "      if (new Date().getUTCHours() % 4 !== 1) return { skipped: 'off_hour' }",
+    replace: "      if (new Date().getUTCHours() % 4 !== 1) return { skipped: 'quarter_hour' }",
+    test: T,
+    why:
+      '이게 **내일 실제로 일어나는 일**이다 — 누가 레인에 새 페이싱 이유를 붙이면 그 이름은 두 ' +
+      '집합 어디에도 없어 기본값 `blocked` 로 떨어지고, 매일 04시 KST 거짓 경보가 하나 늘어난다. ' +
+      '빌드·시험·화면 전부 멀쩡해서 **재 본 사람만 안다**(이 수리가 바로 그래서 두 번 필요했다).',
+  },
+  {
+    name: '🧱 분류 전수 검사가 리터럴을 0건 찾는다 (표기 변경 → 헛도는 가드)',
+    file: T,
+    find: "    const found = [...code.matchAll(/skipped:\\s*'([^']+)'/g)].map((m) => m[1])",
+    replace: "    const found = [...code.matchAll(/skippedZZ:\\s*'([^']+)'/g)].map((m) => m[1])",
+    test: T,
+    why:
+      '러너가 표기를 바꾸면(`skipped:` → 다른 모양) match 가 0건이 되고 `unclassified` 도 빈 ' +
+      '배열이라 **분류를 아무리 빼먹어도 초록**이다. 하한 10 이 그 자리를 막는다 — 이 주입이 ' +
+      '빨간불이어야 그 하한이 실제로 일하고 있다는 증거다.',
   },
 ]

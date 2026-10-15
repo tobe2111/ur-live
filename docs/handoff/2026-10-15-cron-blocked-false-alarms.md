@@ -97,3 +97,85 @@ curl -sS "https://live.ur-team.com/api/admin/cron-failures?resolved=0&severity=e
   게다가 서버 description(2026-10-13·14 에 가게명 중복 제거 + 지역·별점 보강됨)과 **두 벌**이라
   Googlebot(JS 렌더)은 옛 문구를, Yeti 는 새 문구를 받는다. 제목에서 방금 고친 그 구조이고,
   `GroupBuyDetailPage.tsx` 는 **잠금표 파일**이라 결재가 필요하다.
+
+---
+
+## 후속 (같은 날) — 첫 판은 15건 중 3건을 못 잡았다
+
+### 🩸 내 조사 방법이 틀렸다
+
+허용목록을 `min_interval` 하나로 정한 근거는 **하트비트 한 장 스냅샷**이었다
+(`/api/admin/cron-heartbeats` 145개 중 표식 12개). 그런데 **시각 페이싱 레인은 자기 시각에만
+그 표식을 낸다** — 홀수시만 돌거나, 4시간마다 돌거나, rescan 시각을 비켜 준다 ⇒ 스냅샷을 뜬
+그 순간엔 정상 실행 중이라 표식이 없다.
+
+권위 있는 출처는 **경보가 실제로 무엇에 울렸나** = `cron_failures` 였다. 10-15 04시 KST 배치
+15건을 전수로 읽으니:
+
+```
+blocked:__catchup                    skipped=29            ← 카운터 (healthy)
+blocked:ads:collect-franchise        skipped=min_interval  ← 허용목록 (healthy)
+blocked:ads:collect-localdata-chain  skipped=min_interval
+blocked:ads:collect-nara-contract    skipped=min_interval
+blocked:ads:collect-nara-vendor      skipped=min_interval
+blocked:ads:collect-nps              skipped=min_interval
+blocked:ads:collect-storeinfo        skipped=min_interval
+blocked:ads:daily-batch              skipped=min_interval
+blocked:ads:maintenance              skipped=rescan_hour   ← 🔴 첫 판에 없다
+blocked:ads:maintenance-rescan       skipped=min_interval
+blocked:ads:scan-notices             skipped=off_hour      ← 🔴 첫 판에 없다
+blocked:ads:sweep-mx                 skipped=min_interval
+blocked:ads:sweep-nts                skipped=min_interval
+blocked:demo-name-heal               skipped=309           ← 카운터 (healthy)
+blocked:group-buy-feed-cache         skipped=false         ← falsy (healthy)
+```
+현 하트비트에 `ads:collect-company skipped=even_hour` 도 있다. ⇒ **첫 판 그대로면 15 → 3** 이고
+0 이 아니었다.
+
+셋 다 `src/worker-ads/lane-alarm-runners.ts` 의 **의도적 시각 페이싱**이다(`:127` rescan 시각
+비켜 주기 · `:241` 홀수시만 · `:507` 4시간마다). 고장이 아니고 **내일 저절로 돈다.**
+
+### 🔑 그리고 빈도도 틀리게 적어 뒀다
+
+`cron-stale-watch` 는 `slotCron('0 19 * * *')` = **일 1회 04시 KST** 다. 처음에 "12시간마다" 로
+적었는데 `cron_failures` 의 날짜별 집계가 그걸 바로 반증한다 — 10-10~10-15 전부 **04시 한 번**
+(12·15·14·16·15·15건). CLAUDE.md 방어선 행과 모듈 머리말을 함께 정정했다.
+
+### 처방 — 허용목록 3줄 + 세 번째가 없게 구조로
+
+| | |
+|---|---|
+| `HEALTHY_SKIP_REASONS` | `min_interval` · **`even_hour`** · **`off_hour`** · **`rescan_hour`** (페이싱) |
+| `BLOCKING_SKIP_REASONS` (신규) | `gate_off` · `disabled` — **꺼짐은 사람이 켜야 돈다** ⇒ 경보가 맞다 |
+
+경계를 한 질문으로 적어 뒀다: **"내일 저절로 돌까?"** 돈다 → healthy · 사람이 켜야 한다 → blocking.
+
+🔒 **구조적 수리가 본체다** — 가드가 러너의 `skipped:` 리터럴 **전수**가 두 집합 중 하나에 있는지
+묻는다. 내일 누가 `skipped: 'quarter_hour'` 를 붙이면 그 자리에서 빨간불이 난다(주입으로 확인).
+그게 없으면 같은 실수가 **세 번째로** 난다 — 빌드·시험·화면이 전부 멀쩡해서 재 본 사람만 안다.
+
+가드 **21건** + 주입 **15건**(신규 4 · 재조준 1) 전부 되돌려-검증 빨간불 확인.
+🩸 그 과정에서 내 주입 하나가 헛돌았다 — `toBeGreaterThanOrEqual(10)` → `(0)` 으로 바꿔도
+리터럴이 여전히 다 잡히니 `unclassified` 가 정확했다(**하한을 낮추는 것만으로는 가드가 안 헐거워진다**).
+⇒ *매치가 실제로 0건이 되는* 주입(정규식 교체)으로 바꿨고 그때 빨간불이 났다.
+
+### ⚠️ 다음 세션의 첫 액션 (E4)
+
+**10-16 04시 KST 회차 뒤**에만 판정된다(일 1회).
+
+```bash
+# 어드민 토큰($TOK) 확보 후
+curl -sS "https://live.ur-team.com/api/admin/cron-failures?severity=warning&limit=100" \
+  -H "Authorization: Bearer $TOK" -H "User-Agent: <브라우저 UA>" \
+  | python3 -c "import sys,json;rows=json.load(sys.stdin)['data']['items'];
+import collections;c=collections.Counter(r['created_at'][:13] for r in rows if r['job_name'].startswith('blocked:'));print(sorted(c.items())[-3:])"
+```
+기대: `2026-10-15 19:` 시각대(= 10-16 04시 KST)에 `blocked:*` **0건**(종전 15건).
+🔴 **한쪽만 보면 판정이 안 된다** — 0건이 "고쳐짐" 인지 "cron 이 안 돌았음" 인지 구분하려면
+하트비트 `cron-stale-watch` 의 `at` 이 그 시각으로 갱신됐는지 **함께** 볼 것.
+
+### ⚠️ 못 보는 것
+
+- 이유 문자열이 *진짜* 막힘인지는 글자로만 판정한다.
+- 이미 쌓인 1,331건은 그대로다(과거 행 일괄 해결은 데이터 쓰기 = 결재).
+- `skipped` 를 아예 안 싣고 조용히 아무 일도 안 하는 cron(원래 한계).

@@ -51,11 +51,13 @@ export default [
     //    않는다 · 두 분기 중 하나만 고치면 할인 중인 딜에서 되살아난다)은 그대로다.
     name: '🏪 할인 분기만 되돌린다 — 한 문장만 고치면 새는 자리',
     why: '설명 문장이 **둘**(할인 있음/없음)이다. 할인 중인 딜에서만 중복이 되살아나면 평상시 측정에 안 잡힌다.',
-    file: META,
+    file: 'src/shared/seo/detail-description.ts',
     // 🔁 2026-10-14 재조준: #85 로 할인 분기 문구가 바뀌었다. 지키는 불변식은 그대로 —
     //   **`storeNameJoin` 이 두 분기 모두에 걸려야 한다**(한쪽만 고치면 그 분기로 샌다).
-    find: '      ? `${ratingPrefix}${regionStr}${storeName} ${priceStr}원${origStr} ${pd.discount}% 할인${descTail}`',
-    replace: '      ? `${ratingPrefix}${regionStr}${store} ${name} ${priceStr}원${origStr} ${pd.discount}% 할인${descTail}`',
+    // 🔁 2026-10-15 재조준: 생성기가 `shared/seo/detail-description.ts` 로 옮겨갔다(클라가 같은
+    //   함수를 쓰게 만든 커밋 · 출력 byte-불변). 지키는 불변식은 그대로다.
+    find: "    ? `${ratingPrefix}${regionStr}${storeName} ${priceStr}원${origStr} ${pd.discount}% 할인${tail}`",
+    replace: "    ? `${ratingPrefix}${regionStr}${store} ${name} ${priceStr}원${origStr} ${pd.discount}% 할인${tail}`",
     test: T,
   },
   {

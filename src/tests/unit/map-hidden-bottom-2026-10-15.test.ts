@@ -57,3 +57,30 @@ describe('② 카드가 뜨면 펴고, 위쪽 내용은 안 움직인다', () =>
     expect(page).toMatch(/if \(el\.clientHeight === layoutHeightRef\.current && el\.clientWidth === lastW\) return/)
   })
 })
+
+describe('③ 보이는 타일이 다 뜬 뒤 한가할 때 가려진 아래를 미리 받는다 (2차)', () => {
+  const tilesStart = hook.indexOf("const onTiles = () =>")
+  const onTiles = hook.slice(tilesStart, hook.indexOf("addListener(mapInstance.current, 'tilesloaded'", tilesStart))
+  it('첫 tilesloaded 뒤에 한가할 때 예약한다(첫 화면 전에는 안 편다)', () => {
+    expect(tilesStart).toBeGreaterThan(0)
+    expect(onTiles).toMatch(/whenIdle\(prefetchHiddenBottom\)/)
+  })
+  it('데이터 절약 모드면 미리 받지 않는다', () => {
+    const i = hook.indexOf('const prefetchHiddenBottom = useCallback(')
+    const body = hook.slice(i, hook.indexOf('}, [])', i))
+    expect(body).toMatch(/if \(!hiddenBottomRef\.current \|\| prefersDataSaving\(\)\) return/)
+    expect(hook).toMatch(/function prefersDataSaving\(\)[\s\S]{0,200}saveData/)
+  })
+  it('지도가 움직이는 중이면 펴지 않고 다음 idle 로 미룬다', () => {
+    const i = hook.indexOf('const prefetchHiddenBottom = useCallback(')
+    const body = hook.slice(i, hook.indexOf('}, [])', i))
+    expect(body).toMatch(/if \(movingRef\.current\) \{ pendingReleaseRef\.current = true; return \}/)
+    expect(hook).toMatch(/for \(const ev of \['dragstart', 'zoom_start', 'center_changed'\]\)/)
+    const idle = hook.slice(hook.indexOf("addListener(mapInstance.current, 'idle'"), hook.indexOf('const markMoving'))
+    expect(idle).toMatch(/movingRef\.current = false/)
+    expect(idle).toMatch(/if \(pendingReleaseRef\.current\) \{ pendingReleaseRef\.current = false; prefetchHiddenBottom\(\) \}/)
+  })
+  it('사파리(requestIdleCallback 없음)도 미룬 뒤 실행한다', () => {
+    expect(hook).toMatch(/function whenIdle\([\s\S]{0,300}if \(ric\) ric\(cb, \{ timeout: 3000 \}\)\s*else setTimeout\(cb, 300\)/)
+  })
+})
