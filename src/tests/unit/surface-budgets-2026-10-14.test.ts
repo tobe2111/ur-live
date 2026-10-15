@@ -61,7 +61,8 @@ describe('③ 배선', () => {
   const read = (p: string) => readFileSync(p, 'utf8')
   it('verify.yml 이 build:worker 뒤에 돌린다', () => {
     const y = read('.github/workflows/verify.yml')
-    const run = y.indexOf('run: node scripts/check-surface-budgets.mjs')
+    // 🔁 2026-10-16 재조준: 같은 이유(ci-run 래퍼) — 불변식은 build:worker 뒤라는 순서다.
+    const run = y.indexOf('scripts/check-surface-budgets.mjs')
     expect(run).toBeGreaterThan(y.indexOf('run: npm run build:worker'))
     expect(y.slice(run - 300, run)).not.toMatch(/continue-on-error:\s*true/)
   })
