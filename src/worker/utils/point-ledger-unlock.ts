@@ -46,6 +46,10 @@ export interface LedgerUnlockResult {
   types_after: Record<string, number> | null
   /** 전후 대조 결과. dry-run 이면 null. */
   verified: boolean | null
+  /** `type` 을 쓰던 인덱스 — 컬럼을 갈아끼우려고 떼었다가 다시 단 것. */
+  recreated_indexes?: string[]
+  /** 실패했을 때 손으로 되살릴 수 있게 원래 SQL 을 돌려준다. */
+  index_sql?: string[]
   error?: string
 }
 
@@ -56,6 +60,27 @@ async function snapshot(DB: D1Database): Promise<{ n: number; types: Record<stri
   let n = 0
   for (const row of r.results ?? []) { types[String(row.type)] = Number(row.n); n += Number(row.n) }
   return { n, types }
+}
+
+async function columns(DB: D1Database): Promise<Set<string>> {
+  const r = await DB.prepare(`PRAGMA table_info(point_transactions)`).all<{ name: string }>()
+  return new Set((r.results ?? []).map(c => String(c.name)))
+}
+
+/** `type` 컬럼을 쓰는 인덱스(자동 인덱스 제외 — sql 이 있는 것만). */
+async function typeIndexes(DB: D1Database): Promise<{ name: string; sql: string }[]> {
+  const r = await DB.prepare(
+    `SELECT name, sql FROM sqlite_master WHERE type='index' AND tbl_name='point_transactions' AND sql IS NOT NULL`,
+  ).all<{ name: string; sql: string }>()
+  return (r.results ?? []).filter(i => {
+    const cols = /\(([^)]*)\)\s*(WHERE[\s\S]*)?$/i.exec(i.sql)
+    return !!cols && /(^|[\s,"`(])type([\s,"`)]|$)/i.test(cols[1] + (cols[2] ?? ''))
+  })
+}
+
+/** 원래 CREATE INDEX 를 재실행 안전하게. */
+function ifNotExists(sql: string): string {
+  return /IF NOT EXISTS/i.test(sql) ? sql : sql.replace(/^\s*CREATE\s+(UNIQUE\s+)?INDEX\s+/i, (m, u) => `CREATE ${u ?? ''}INDEX IF NOT EXISTS `)
 }
 
 /** 현재 스키마에 옛 CHECK 가 남아 있나. */
@@ -80,28 +105,49 @@ export async function unlockPointLedgerTypes(DB: D1Database, apply: boolean): Pr
   }
   if (!had || !apply) return base
 
+  // 🩸 2026-10-15 — **라이브에는 `type` 을 쓰는 인덱스가 있다**(`idx_point_tx_user_type(user_id, type)`).
+  //   SQLite 는 인덱스가 걸린 컬럼을 DROP 하지 못한다 → 종전 절차는 3번째 문장에서 멈추고
+  //   `_type_bak` 만 남긴 채 실패했을 것이다. 시험의 스키마가 그 인덱스를 빠뜨려 아무도 몰랐다.
+  //   ⇒ 그 인덱스를 **먼저 떼고, 컬럼을 갈아끼운 뒤, 원래 SQL 그대로 다시 단다.**
+  const deps = await typeIndexes(DB)
+  base.recreated_indexes = deps.map(d => d.name)
   try {
     // ⚠️ 한 문장씩. batch 로 묶으면 중간 실패 시 어디까지 갔는지 알 수 없다.
-    await DB.prepare(`ALTER TABLE point_transactions ADD COLUMN _type_bak TEXT`).run()
-    await DB.prepare(`UPDATE point_transactions SET _type_bak = type`).run()
-    await DB.prepare(`ALTER TABLE point_transactions DROP COLUMN type`).run()
+    // 🔁 상태 기반 — 전에 중간에서 멈췄으면 남은 단계부터 이어서 한다(같은 단계를 두 번 하지 않는다).
+    let cols = await columns(DB)
+    if (!cols.has('_type_bak')) await DB.prepare(`ALTER TABLE point_transactions ADD COLUMN _type_bak TEXT`).run()
+    if (cols.has('type')) await DB.prepare(`UPDATE point_transactions SET _type_bak = type`).run()
+    for (const d of deps) await DB.prepare(`DROP INDEX IF EXISTS "${d.name}"`).run()
+    if (cols.has('type')) await DB.prepare(`ALTER TABLE point_transactions DROP COLUMN type`).run()
     await DB.prepare(`ALTER TABLE point_transactions ADD COLUMN type TEXT NOT NULL DEFAULT 'charge'`).run()
     await DB.prepare(`UPDATE point_transactions SET type = COALESCE(_type_bak, 'charge')`).run()
     await DB.prepare(`ALTER TABLE point_transactions DROP COLUMN _type_bak`).run()
+    for (const d of deps) await DB.prepare(ifNotExists(d.sql)).run()
     // 0253 이 함께 만들던 인덱스 — 컬럼을 갈아끼웠으니 다시 확인해 준다.
     await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_point_tx_user ON point_transactions(user_id)`).run().catch(() => null)
     await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_point_tx_type ON point_transactions(type)`).run().catch(() => null)
+    cols = await columns(DB)
+    if (cols.has('_type_bak')) throw new Error('_type_bak 가 남았다')
   } catch (err) {
-    return { ...base, applied: true, error: (err as Error)?.message || String(err), verified: false }
+    // 떼어 둔 인덱스는 컬럼이 살아 있으면 되붙인다(실패해도 원 SQL 을 결과로 돌려준다).
+    for (const d of deps) await DB.prepare(ifNotExists(d.sql)).run().catch(() => null)
+    return {
+      ...base, applied: true, verified: false,
+      error: (err as Error)?.message || String(err),
+      index_sql: deps.map(d => d.sql),
+    }
   }
 
   const after = await snapshot(DB)
   const stillLocked = await hasLegacyTypeCheck(DB)
   // 🔎 **전후가 같아야 한다.** 타입이 전부 'charge' 로 뭉개지는 것이 이 절차의 유일한 실패 모양이다.
   const sameTypes = JSON.stringify(before.types) === JSON.stringify(after.types)
+  // 떼어 냈던 인덱스가 전부 다시 있어야 한다 — 없으면 조회가 조용히 느려진다.
+  const nowIdx = new Set((await typeIndexes(DB)).map(d => d.name))
+  const indexesBack = deps.every(d => nowIdx.has(d.name))
   return {
     ...base, applied: true,
     rows_after: after.n, types_after: after.types,
-    verified: !stillLocked && after.n === before.n && sameTypes,
+    verified: !stillLocked && after.n === before.n && sameTypes && indexesBack,
   }
 }

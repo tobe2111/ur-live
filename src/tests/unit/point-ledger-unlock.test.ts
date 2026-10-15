@@ -107,6 +107,47 @@ describe('🔓 원장 CHECK 제약', () => {
   })
 })
 
+describe('🩸 라이브 인덱스 — `idx_point_tx_user_type(user_id, type)` (2026-10-15 실측)', () => {
+  /**
+   * 위 시험의 스키마는 그 인덱스를 빠뜨렸다. SQLite 는 인덱스가 걸린 컬럼을 DROP 못 해서,
+   * 종전 절차는 **라이브에서 3번째 문장에 멈췄을 것**이다(`_type_bak` 만 남기고).
+   * 시험이 라이브와 달라서 아무도 몰랐다 ⇒ 라이브 sqlite_master 를 그대로 옮긴다.
+   */
+  const LIVE_INDEX = `CREATE INDEX idx_point_tx_user_type ON point_transactions(user_id, type)`
+  let DB: D1Database
+  beforeEach(() => { DB = makeD1(LIVE_SCHEMA); raw(DB, LIVE_INDEX); seed(DB) })
+
+  it('🔴 인덱스가 있어도 풀리고, 그 인덱스가 원래 모양으로 돌아온다', async () => {
+    const r = await unlockPointLedgerTypes(DB, true)
+    expect(r.error, `실패: ${JSON.stringify(r)}`).toBeUndefined()
+    expect(r.verified).toBe(true)
+    expect(r.recreated_indexes).toEqual(['idx_point_tx_user_type'])
+    const idx = one<{ sql: string } | undefined>(DB,
+      `SELECT sql FROM sqlite_master WHERE name='idx_point_tx_user_type'`)
+    expect(idx?.sql).toMatch(/\(user_id, type\)/)
+    expect(await hasLegacyTypeCheck(DB)).toBe(false)
+    raw(DB, `INSERT INTO point_transactions (user_id,type,amount) VALUES ('3','usage',-5000)`)
+  })
+
+  it('🔁 전에 중간에서 멈췄어도(`_type_bak` 이 남음) 이어서 끝낸다', async () => {
+    raw(DB, `ALTER TABLE point_transactions ADD COLUMN _type_bak TEXT`)
+    raw(DB, `UPDATE point_transactions SET _type_bak = type`)
+    const r = await unlockPointLedgerTypes(DB, true)
+    expect(r.verified, JSON.stringify(r)).toBe(true)
+    expect(r.types_after).toEqual(r.types_before)
+    const cols = (DB as unknown as { __db: { prepare: (s: string) => { all: () => { name: string }[] } } })
+      .__db.prepare(`PRAGMA table_info(point_transactions)`).all().map(c => c.name)
+    expect(cols).not.toContain('_type_bak')
+  })
+
+  it('type 을 안 쓰는 인덱스는 건드리지 않는다', async () => {
+    raw(DB, `CREATE INDEX idx_pt_order ON point_transactions(order_id)`)
+    const r = await unlockPointLedgerTypes(DB, true)
+    expect(r.recreated_indexes).toEqual(['idx_point_tx_user_type'])
+    expect(one<{ n: number }>(DB, `SELECT COUNT(*) n FROM sqlite_master WHERE name='idx_pt_order'`).n).toBe(1)
+  })
+})
+
 describe('🔢 판별식 — `points_amount` 는 NULL 이 아니라 0 이다', () => {
   /**
    * 라이브 컬럼은 `NOT NULL DEFAULT 0`. 모던 기록자는 그 컬럼을 안 쓰므로 **0** 으로 저장된다.
