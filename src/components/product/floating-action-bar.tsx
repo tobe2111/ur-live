@@ -132,7 +132,7 @@ export function FloatingActionBar({
             <>
               {/* 2026-10-15: 계산만 하고 안 쓰던 할인율을 CTA 위에 노출 — 결제 직전 혜택 재확인(실데이터: price/originalPrice). */}
               {!disabled && discount > 0 && (
-                <span className="text-[11px] font-bold text-white/80">{discount}% 할인 · {(price ?? 0).toLocaleString('ko-KR')}원</span>
+                <span className="text-[12px] font-bold text-white/80">{discount}% 할인 · {(price ?? 0).toLocaleString('ko-KR')}원</span>
               )}
               <span className="text-[15px] font-extrabold text-white">{disabled ? '품절' : '바로 구매'}</span>
             </>
