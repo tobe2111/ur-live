@@ -258,6 +258,7 @@ S-EXBOOK4 가 그 방향이다.
 
 | 날짜 | 항목 | 결과 | 비고 |
 |---|---|---|---|
+| 2026-10-15 | ✅ **딜 거래 기록 옛 CHECK 제거(VERIFICATION_DAY 0단계)** | ✅ **E4 통과** | 대표 승인 *"딜 사용 내역 이거 승인해줄테니 너가 해줘"*. 도구가 라이브 인덱스 `idx_point_tx_user_type(user_id,type)` 때문에 `DROP COLUMN` 에서 멈출 상태라 먼저 수리(#1835 `81fe2527b`). 10:05 KST 어드민 API apply → `verified:true`. D1 sqlite_master 실측: CHECK 0 · 26행 유지(charge 9/donate 10/refund 7) · 인덱스 3개 존재. 이제 `usage`·`admin_gift` 기록이 저장된다 ⇒ S12·S13 '딜 차감 1회' 판정 가능. ⚠️ 주문 89·90 의 과거 미기록분은 소급되지 않는다 |
 | 2026-10-15 | **S-USEGATE-2** — 미사용 이용권의 소개비는 성숙하지 않는다 | ✅ **라이브 판정** | 게이트 `payout_requires_voucher_use='true'` · `influencer-payout` cron 이 `available_at`(10-14 04:55Z) **이후** 10-14 19:01Z 에 정상 실행(`cron_hb` ok) · 그 뒤에도 `influencer_attributions` id 1 `pending` · 이용권 id 4 `unused`. 송금 대기에 안 뜬다 |
 | 2026-10-14 | **S-VC1 · S-VC4** — 딜·카드 구매가 에스크로로 | ✅ **원장 판정**(결제 0건 — 대표가 이미 한 주문 90·91·92) | `group_buy_join` 3건 전부 `credit=platform:escrow` · `fee_amount=0` |
 | 2026-10-14 | **S-VC2** — 사용 처리 분개 | ✅ 원장 판정(주문 90 · 이용권 3) | `voucher_used` 7,125 → `merchant:14` + 375 → `platform:revenue` = 에스크로 7,500 전액 |

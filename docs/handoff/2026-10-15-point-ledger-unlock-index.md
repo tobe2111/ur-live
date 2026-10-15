@@ -18,3 +18,11 @@
 ## 다음 세션의 첫 액션
 - 머지·배포 뒤 dry-run → apply 를 어드민 API 로 실행하고 sqlite_master 로 판정(CHECK 사라짐 · 행수·타입 분포 동일 · 인덱스 존재).
   결과는 이 파일 아래에 기록한다.
+
+## ✅ 실행 결과 (2026-10-15 10:05 KST)
+- #1835 머지(`81fe2527b`) → Pages 배포 success 확인 후 실행.
+- dry-run: `had_check:true · 26행(charge 9/donate 10/refund 7)`.
+- apply: `verified:true · rows 26→26 · types 동일 · recreated_indexes:["idx_point_tx_user_type"]`.
+- D1 sqlite_master 독립 확인: CHECK 문자열 0 · `type TEXT NOT NULL DEFAULT 'charge'`(끝으로 이동) · 인덱스 3개(`idx_point_tx_user_type`·`idx_point_tx_user`·`idx_point_tx_type`).
+- ⚠️ 과거 미기록분(주문 89·90 의 딜 사용 7,400 등)은 소급되지 않는다. 대표 잔액(111,500) ↔ 원장 합 불일치는 카드 ② 잔액 정비 판단 전에 세션이 검사 결과를 먼저 읽고 보고할 것.
+- 다음: VERIFICATION_DAY 1회차 결제 — 이제 '딜 사용 기록 1행' 판정이 가능하다.
