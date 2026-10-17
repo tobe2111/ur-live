@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { PinIcon } from '@/components/icons/urdeal-icons'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { ChevronDown, LocateFixed, Loader2, X } from 'lucide-react'
-import { KOREA_REGIONS, findRegionByKey } from '@/shared/constants/korea-regions'
+import { KOREA_REGIONS } from '@/shared/constants/korea-regions'
 import { toast } from '@/hooks/useToast'
 import { rememberLoc } from '@/shared/utils/cached-loc'
+import { homeLocationLabel } from './home-location-label'
 
 /**
  * 🗺️ 2026-07-16 (대표 — PC 홈 위치 필터): "현재 위치 어디인지 + 장소 설정 + 가까운 이용권 필터".
@@ -27,16 +28,6 @@ export function readHomeRegion(): HomeRegion {
   return {}
 }
 
-function labelFor(r: HomeRegion): string {
-  if (!r.regionKey) return '전국'
-  const region = findRegionByKey(r.regionKey)
-  if (!region) return '전국'
-  if (r.districtKey) {
-    const dg = region.districtGroups.find(g => g.key === r.districtKey)
-    if (dg) return `${region.label} · ${dg.label.split('/')[0]}`
-  }
-  return region.label
-}
 
 export default function PcHomeLocationBar({
   value,
@@ -170,7 +161,7 @@ export default function PcHomeLocationBar({
           aria-expanded={open}
         >
           {!title && <PinIcon className={`${hero ? 'w-[14px] h-[14px]' : 'w-[18px] h-[18px]'} shrink-0 ${hero ? 'text-[#16181C]' : 'text-gray-900 dark:text-white'}`} />}
-          <span className={`${title ? 'text-[24px] font-black tracking-[-0.02em] text-gray-900 dark:text-white' : hero ? 'text-[12px] font-extrabold text-[#16181C]' : 'text-[15px] font-extrabold text-gray-900 dark:text-white flex-1 min-w-0 text-left'} max-w-[220px] truncate`}>{located ? (locatedLabel || '내 주변') : labelFor(value)}</span>
+          <span className={`${title ? 'text-[24px] font-black tracking-[-0.02em] text-gray-900 dark:text-white' : hero ? 'text-[12px] font-extrabold text-[#16181C]' : 'text-[15px] font-extrabold text-gray-900 dark:text-white flex-1 min-w-0 text-left'} max-w-[220px] truncate`}>{homeLocationLabel({ located, dongLabel: locatedLabel, region: value })}</span>
           <ChevronDown className={`${title ? 'w-5 h-5 text-gray-400 dark:text-gray-500' : hero ? 'w-[13px] h-[13px] text-[#4B4F58]' : 'w-4 h-4 text-gray-400'} shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
         {/* 두 칸을 가르는 실선 — 한 알약 안에서 "지역 고르기"와 "현 위치"가 다른 일임을 말한다. */}

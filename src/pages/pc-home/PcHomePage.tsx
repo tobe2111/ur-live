@@ -21,6 +21,7 @@ import UrShortsRail from '@/components/home/UrShortsRail'
 import PcRegionTiles from './PcRegionTiles'
 import PcFeedSidebar from './PcFeedSidebar'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
+import { homeFeedTitle } from './home-location-label'
 
 /**
  * 🖥️ 2026-07-15 (대표 시안 — 당근 스타일 PC 홈): lg+ 전용 풀너비 홈.
@@ -145,7 +146,7 @@ export default function PcHomePage() {
             <h1 className="text-[24px] font-black tracking-tight text-gray-900 dark:text-white">
               {catLabel
                 ? `${catLabel} 이용권`
-                : userLoc ? (dong?.dong ? `${dong.dong} 근처 이용권` : '내 주변 가까운 딜') : region.regionKey ? '이 지역 동네 딜' : '가까운 동네 딜'}
+                : homeFeedTitle({ located: !!userLoc, dongLabel: dong?.dong, region })}
             </h1>
             {catLabel && (
               <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{`${catLabel} 이용권만 모아 봤어요.`}</p>
