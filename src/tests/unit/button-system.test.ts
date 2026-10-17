@@ -116,8 +116,11 @@ describe('현재 위치 표시 — 만들어 놓고 안 부르는 일이 없게'
   })
 
   it('위치 이름을 못 얻어도 화면이 깨지지 않는다 (폴백 유지)', () => {
+    // 2026-10-17: 이름 조립이 공용 함수로 옮겨갔다(제목·위치 칸 같은 이름) — 폴백은 거기서 지킨다.
     const bar = readFileSync(resolve(root, 'src/pages/pc-home/PcHomeLocationBar.tsx'), 'utf-8')
-    expect(bar).toMatch(/locatedLabel \|\| '내 주변'/)
+    const lbl = readFileSync(resolve(root, 'src/pages/pc-home/home-location-label.ts'), 'utf-8')
+    expect(bar).toMatch(/homeLocationLabel\(\{ located, dongLabel: locatedLabel/)
+    expect(lbl).toMatch(/dongLabel\?\.trim\(\) \|\| '내 주변'/)
   })
 })
 
