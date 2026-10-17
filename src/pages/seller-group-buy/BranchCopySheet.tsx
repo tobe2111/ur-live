@@ -66,7 +66,7 @@ export default function BranchCopySheet({ productId, productName, onClose }: { p
 
   return (
     <div className="fixed inset-0 z-[10600] flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
-      <div className="w-full max-w-md rounded-t-2xl bg-white sm:rounded-2xl max-h-[85dvh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-md rounded-t-2xl bg-white sm:rounded-[var(--dash-radius,16px)] max-h-[85dvh] flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 pt-5 pb-3">
           <div className="min-w-0">
             <p className="text-[17px] font-bold text-gray-900">다른 지점에 복사</p>

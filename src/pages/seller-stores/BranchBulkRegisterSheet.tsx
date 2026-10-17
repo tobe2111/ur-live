@@ -96,7 +96,7 @@ export default function BranchBulkRegisterSheet({ onClose, onDone }: { onClose: 
 
   return (
     <div className="fixed inset-0 z-[10600] flex items-end justify-center bg-black/40 sm:items-center" onClick={running ? undefined : onClose}>
-      <div className="w-full max-w-lg rounded-t-2xl bg-white sm:rounded-2xl max-h-[90dvh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-lg rounded-t-2xl bg-white sm:rounded-[var(--dash-radius,16px)] max-h-[90dvh] flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 pt-5 pb-3">
           <div>
             <p className="text-[17px] font-bold text-gray-900">지점 여러 곳 한 번에 등록</p>

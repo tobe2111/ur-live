@@ -17,7 +17,7 @@
 /** 실제 라우트 1st 세그먼트에서 추출(2026-07-29 기준). 라우트 추가 시 함께 갱신 — 테스트가 강제. */
 export const RESERVED_SLUGS: readonly string[] = [
   '500', 'a', 'about', 'account', 'admin', 'ads',
-  'agency', 'agency-partner', 'area-report', 'auth', 'blog', 'browse',
+  'agency', 'agency-partner', 'area-report', 'auth', 'blog', 'brand', 'browse',
   'business', 'campaign', 'cart', 'checkout', 'community-group-buy', 'coupon', 'creator',
   'creators', 'design', 'district', 'experience', 'fail', 'faq', 'following',
   'g', 'gb-market', 'gdpr', 'gift', 'group-buy', 'host',
