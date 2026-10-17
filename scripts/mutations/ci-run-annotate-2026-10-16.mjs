@@ -113,6 +113,36 @@ export default [
       '"선재 실패" 로 떠넘기게 된다(이 레포가 실제로 반복한 오진).',
   },
   {
+    name: '[ci-run] 성공 시 notice 를 안 낸다 (초록 표본이 사라진다)',
+    file: RUN,
+    find: "} else if (process.env.CI_RUN_NOTICE === '1') {",
+    replace: '} else if (false) {',
+    test: TEST,
+    why:
+      '래칫이 간헐로 빨간불을 낼 때(실측 18회 중 2회) *분산이냐 증가냐* 를 가리려면 **초록 표본**이 ' +
+      '필요하다. 성공 숫자를 안 남기면 빨간불이 뜰 때까지 기다려야 하고, 그동안 판정이 멎는다.',
+  },
+  {
+    name: '[ci-run] 🔴 반대 방향 — notice 를 PR 워크플로에도 붙인다',
+    file: WF_VERIFY,
+    find: '      - name: First-screen execution cost budget (strict)',
+    replace: "      - name: First-screen execution cost budget (strict)\n        env:\n          CI_RUN_NOTICE: '1'",
+    test: TEST,
+    why:
+      '초록 PR 화면이 notice annotation 으로 덮인다 — 다음 세션이 **초록을 빨강으로 오독**하고, ' +
+      '래퍼가 보장이라고 적어 둔 "성공 로그를 소음으로 덮지 않는다" 가 깨진다.',
+  },
+  {
+    name: '[ci-run] 성공 annotation 을 error 로 낸다',
+    file: RUN,
+    find: "      emitAnnotation('notice', `${label} 통과",
+    replace: "      emitAnnotation('error', `${label} 통과",
+    test: TEST,
+    why:
+      '통과한 잡에 error annotation 이 붙으면 PR·main 화면이 빨간불처럼 보인다. ' +
+      '수준(level)은 "이것이 실패인가" 를 말하는 유일한 신호다.',
+  },
+  {
     name: '[ci-run] 허용목록 밖 속성도 싣는다',
     file: LIB,
     find: "  const allowed = ['title', 'file', 'line', 'endLine', 'col', 'endColumn']",

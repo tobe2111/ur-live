@@ -17,7 +17,16 @@
  *    `spawnSync` 로 모아서 찍으면 긴 스텝(8분)이 끝까지 아무것도 안 보인다.
  * 2. **종료코드를 그대로 전달한다** — 가드가 막던 것을 이 래퍼가 통과시키면 안 된다.
  *    신호로 죽었으면 `128+signo` 로 바꿔 **0 이 되지 않게** 한다(가장 조용한 실패 모드다).
- * 3. 실패할 때만 annotation 을 낸다(성공 로그를 소음으로 덮지 않는다).
+ * 3. **PR 에서는 실패할 때만** annotation 을 낸다(성공 로그를 소음으로 덮지 않는다).
+ * 4. `CI_RUN_NOTICE=1` 이면 **성공해도** notice 를 낸다 — main 전용 래칫에만 준다.
+ *
+ * ## 왜 성공에도 필요한가 (2026-10-18)
+ * `check-exec-cost.mjs` 는 성공해도 화면마다 `기준 → 실측` 과 **3회 값 전부**를 찍는다.
+ * 그런데 실패할 때만 annotation 을 내면 **초록 run 의 그 숫자가 버려진다** — 래칫이 간헐로
+ * 빨간불을 낼 때(실측 2026-10-15: 18회 중 2회) *분산이냐 증가냐* 를 가리려면 **초록 표본**이
+ * 있어야 하는데, 지금은 빨간불을 기다려야만 숫자를 볼 수 있다.
+ * 🔴 **PR 에는 주지 않는다** — 초록 PR 화면이 notice 로 덮이면 다음 세션이 초록을 빨강으로
+ *   오독한다(보장 3 을 깨지 않는다). main 푸시는 하루 ~20회라 notice 1개는 감당 가능하다.
  */
 import { spawn } from 'node:child_process'
 import os from 'node:os'
@@ -70,6 +79,9 @@ function main() {
     if (exit !== 0) {
       emitAnnotation(level, `${label} 실패(exit ${exit})\n${tail(buf, TAIL_CHARS)}`, { title: 'ci-run' })
       appendSummary(`### ❌ ${label} (exit ${exit})\n\n\`\`\`\n${tail(buf, SUMMARY_CHARS)}\n\`\`\`\n`)
+    } else if (process.env.CI_RUN_NOTICE === '1') {
+      // 통과한 측정값도 남긴다(main 전용) — 간헐 빨간불을 초록 표본과 대조해야 판정이 된다.
+      emitAnnotation('notice', `${label} 통과\n${tail(buf, TAIL_CHARS)}`, { title: 'ci-run' })
     }
     process.exit(exit)
   })
