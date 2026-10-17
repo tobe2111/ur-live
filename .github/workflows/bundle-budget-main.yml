@@ -57,9 +57,15 @@ jobs:
         run: node scripts/ci-run.mjs npm run check:bundle:budget
       # 📏 2026-10-14: 화면별 첫 화면 무게 래칫도 머지된 조합에서 잰다(두 PR 이 각자 허용오차 안이어도 합치면 넘는다).
       - name: Per-surface first-screen weight budget
+        # 📊 2026-10-18: 통과해도 숫자를 annotation 으로 남긴다(main 전용) — PR 에는 주지 않는다.
+        env:
+          CI_RUN_NOTICE: '1'
         run: node scripts/ci-run.mjs node scripts/check-surface-budgets.mjs
       # ⚙️ 2026-10-14: 첫 화면 실행 비용(실행된 JS)도 머지된 조합에서 잰다 — 근거는 check-exec-cost.mjs 머리말.
       - name: Install chromium (execution cost)
         run: npx playwright install --with-deps chromium
       - name: First-screen execution cost budget
+        # 📊 2026-10-18: 이 스텝이 성공해도 3회 값이 남아야 **간헐 빨간불**을 초록 표본과 대조할 수 있다.
+        env:
+          CI_RUN_NOTICE: '1'
         run: node scripts/ci-run.mjs node scripts/check-exec-cost.mjs

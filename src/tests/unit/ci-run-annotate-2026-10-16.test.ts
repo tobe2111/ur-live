@@ -14,6 +14,7 @@
  * ② 래퍼가 종료코드를 **삼키지 않는다** — 가드를 통과시키면 그게 더 큰 사고다
  * ③ 실패할 때만 annotation 을 낸다 · 로컬에서는 안 낸다
  * ④ 이스케이프 규칙(`%`→`%25` 먼저) — 순서가 틀리면 줄바꿈이 깨져 메시지가 뭉개진다
+ * ⑤ `CI_RUN_NOTICE=1`(**main 전용**)이면 성공해도 숫자를 남긴다 — PR 에는 안 준다
  *
  * ## 못 보는 것
  * - GitHub 가 그 annotation 을 실제로 저장·노출하는지(플랫폼 동작 — 배포 후 API 로만 확인)
@@ -25,6 +26,7 @@ import fs from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { escapeData, escapeProp, annotationLine, emitAnnotation } from '../../../scripts/lib/ci-annotate.mjs'
 import { tail, exitCodeOf, TAIL_CHARS } from '../../../scripts/ci-run.mjs'
+import { runSteps } from '../../../scripts/local-ci-parity.mjs'
 
 const read = (p: string) => fs.readFileSync(p, 'utf8')
 /** 래칫 스텝의 `run:` 줄 — 워크플로 둘 × 가드 셋 */
@@ -88,6 +90,48 @@ describe('③ annotation 은 CI 에서만 · 실패할 때만', () => {
     } catch (e: any) { out = String(e.stdout || '') + String(e.stderr || '') }
     expect(out).toContain('::error')
     expect(out).toContain('541.1 KB')
+  })
+  it('성공하면 기본값에서는 아무것도 안 찍는다(PR 화면을 덮지 않는다)', () => {
+    const out = execFileSync('node', ['scripts/ci-run.mjs', 'node', '-e', "console.log('홈 322.7 KB')"],
+      { encoding: 'utf8', env: { ...process.env, GITHUB_ACTIONS: 'true', CI_RUN_NOTICE: '' } })
+    expect(out).toContain('홈 322.7 KB')   // tee 는 그대로
+    expect(out).not.toContain('::notice')  // annotation 은 없다
+    expect(out).not.toContain('::error')
+  })
+  it('CI_RUN_NOTICE=1 이면 성공해도 숫자가 notice 로 남는다', () => {
+    const out = execFileSync('node', ['scripts/ci-run.mjs', 'node', '-e', "console.log('홈 322.7 → 325.1 KB (3회: 324/325.1/326)')"],
+      { encoding: 'utf8', env: { ...process.env, GITHUB_ACTIONS: 'true', CI_RUN_NOTICE: '1' } })
+    expect(out).toContain('::notice')
+    expect(out).toContain('3회: 324/325.1/326')  // 판정에 쓰는 바로 그 값
+    expect(out).not.toContain('::error')         // 통과를 빨강으로 오독하게 만들지 않는다
+  })
+  it('실패는 NOTICE 가 켜져 있어도 error 로 낸다(통과로 위장되지 않는다)', () => {
+    let out = ''
+    try {
+      execFileSync('node', ['scripts/ci-run.mjs', 'node', '-e', "console.error('넘었다'); process.exit(1)"],
+        { encoding: 'utf8', env: { ...process.env, GITHUB_ACTIONS: 'true', CI_RUN_NOTICE: '1' } })
+    } catch (e: any) { out = String(e.stdout || '') + String(e.stderr || '') }
+    expect(out).toContain('::error')
+    expect(out).not.toContain('::notice')
+  })
+})
+
+describe('⑤ notice 는 main 전용 — PR 워크플로엔 안 붙인다', () => {
+  // 🔑 YAML 은 parity 모듈의 공용 리더로 읽는다(파서를 두 벌 만들지 않는다).
+  const steps = (f: string) =>
+    runSteps(`.github/workflows/${f}`).filter((st) => st.run.includes('ci-run.mjs'))
+  it('main 예산 워크플로의 두 래칫이 CI_RUN_NOTICE=1 을 받는다', () => {
+    const on = steps('bundle-budget-main.yml').filter((st) => st.env.CI_RUN_NOTICE === '1')
+    expect(on.length).toBeGreaterThanOrEqual(2)
+    expect(on.map((st) => st.name)).toContain('First-screen execution cost budget')
+  })
+  it('🔴 verify.yml(PR)에는 하나도 없다 — 초록 PR 을 notice 로 덮지 않는다', () => {
+    const v = steps('verify.yml')
+    expect(v.length).toBeGreaterThanOrEqual(3)           // 0건이면 통과가 아니라 측정 실패
+    expect(v.filter((st) => st.env.CI_RUN_NOTICE === '1')).toEqual([])
+  })
+  it('래퍼가 그 env 를 실제로 읽는다(워크플로만 고치고 코드가 안 읽으면 조용히 무효)', () => {
+    expect(read('scripts/ci-run.mjs')).toContain("process.env.CI_RUN_NOTICE === '1'")
   })
 })
 

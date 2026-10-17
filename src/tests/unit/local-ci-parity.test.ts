@@ -25,6 +25,7 @@ import { readFileSync } from 'node:fs'
 import {
   ciStrictGuards,
   ciWarnGuards,
+  guardsIn,
   guardsMentioned,
   localGateGuards,
   localGateSteps,
@@ -149,5 +150,29 @@ describe('⑥ 게이트는 CI 와 **같은 모드**로 돌린다 (이름만 뽑�
       localGateSteps().flatMap((s: { guards: string[] }) => s.guards),
     )
     expect([...fromSteps].sort()).toEqual([...new Set(localGateGuards())].sort())
+  })
+})
+
+describe('⑦ npm 스크립트에 감싸인 차단 가드도 보인다 (2026-10-18)', () => {
+  // 🩸 왜: `verify.yml` 의 `Bundle size budget` 은 strict 인데 `npm run check:bundle:budget`
+  //   으로 호출돼 파서에 **0건**으로 보였고, 그 이름이 보이는 유일한 자리는 같은 파일의
+  //   보고·아티팩트 스텝(`continue-on-error: true`)이라 `check-bundle-size.mjs` 가 통째로
+  //   "CI 경고" 로 분류됐다 — 차단 가드가 로컬 게이트에서 **조용히 빠진** 채 parity 는 "건강".
+  it('npm run 뒤에 숨은 check-* 를 풀어낸다', () => {
+    expect(guardsIn('node scripts/ci-run.mjs npm run check:bundle:budget')).toContain('check-bundle-size.mjs')
+  })
+  it('리터럴 경로는 종전대로 줍는다', () => {
+    expect(guardsIn('node scripts/check-exec-cost.mjs')).toEqual(['check-exec-cost.mjs'])
+  })
+  it('🔴 npm 해석은 generate-* 를 가드로 세지 않는다 — 세면 푸시 게이트가 빌드를 돌린다', () => {
+    // `npm run build:worker` 는 generate-route-chunk-map.mjs 를 돌리는 **빌드**다.
+    // 이 규칙 없이 측정했을 때 로컬 게이트 스텝이 100 → 101 로 늘었다(실측).
+    expect(guardsIn('npm run build:worker')).toEqual([])
+    expect(localGateSteps().some((s: { run: string }) => s.run.includes('build:worker'))).toBe(false)
+  })
+  it('그래서 bundle-size 는 이제 strict 로 분류되고, 제외라면 사유가 있다', () => {
+    expect(ciStrictGuards()).toContain('check-bundle-size.mjs')
+    expect(Object.keys(EXCLUDE)).toContain('check-bundle-size.mjs')
+    expect(String(EXCLUDE['check-bundle-size.mjs']).length).toBeGreaterThan(20)
   })
 })

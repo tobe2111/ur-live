@@ -39,6 +39,8 @@ export const EXCLUDE = {
     '이번 빌드의 dist + route-chunk-map 무게를 잰다. 낡은 dist 면 남의 변경을 내 회귀로 신고한다.',
   'check-exec-cost.mjs':
     '이번 빌드의 dist 를 브라우저로 10화면 렌더해 잰다(실측 ~2분 + chromium 필요). 낡은 dist 면 남의 변경을 내 회귀로 신고한다.',
+  'check-bundle-size.mjs':
+    '`--budget` 은 이번 빌드의 dist 총량을 잰다(형제 셋과 같은 이유). 2026-10-18 까지는 npm 스크립트에 감싸여 파서에 **안 보였고**, 그래서 예외가 아니라 조용한 부재였다.',
 }
 
 /**
@@ -164,6 +166,68 @@ export function workflowYamlErrors(dir = WORKFLOW_DIR) {
  *   `check-bundle-size.mjs` 는 CI 에서 경고인데 게이트가 **차단**으로 오해하고 있었다.
  *   반대 방향(차단인데 경고로 오해)이면 가드가 조용히 샌다 — 같은 결함의 위험한 쪽이다.
  */
+/** package.json 의 스크립트 — `npm run X` 뒤에 숨은 가드를 풀기 위해 읽는다. */
+function npmScripts() {
+  try {
+    return createRequire(import.meta.url)('../package.json').scripts ?? {}
+  } catch {
+    return {}
+  }
+}
+
+/** 문자열에서 `scripts/check-*.mjs|sh` 를 줍는다(순수). */
+function literalGuards(text) {
+  return [...String(text).matchAll(/scripts\/((?:check|generate)-[a-z0-9-]+\.(?:mjs|sh))/g)].map((m) => m[1])
+}
+
+/**
+ * 한 `run:` 블록이 돌리는 가드 이름 — **리터럴 경로 + `npm run X` 해석**.
+ *
+ * 🩸 2026-10-18: 리터럴만 보고 있었다. `verify.yml` 의 `Bundle size budget` 은 strict 인데
+ *   `npm run check:bundle:budget` 으로 호출돼 **0건**으로 읽혔고, 그 가드 이름이 보이는
+ *   유일한 자리는 같은 파일의 **보고·아티팩트 스텝**(`continue-on-error: true`)이라
+ *   `check-bundle-size.mjs` 가 통째로 "CI 경고" 로 분류됐다 — 즉 차단 가드가 로컬 게이트에서
+ *   **조용히 빠져** 있었고 `check-local-ci-parity` 는 "건강" 으로 보고했다.
+ *   전수 측정(2026-10-18): 이 모양의 차단 가드는 `check-bundle-size.mjs` 하나,
+ *   그리고 빌드 생성기 `generate-route-chunk-map.mjs`(게이트 대상 아님).
+ */
+export function guardsIn(run) {
+  const scripts = npmScripts()
+  const viaNpm = [...String(run).matchAll(/npm run ([a-z0-9:._-]+)/g)]
+    .flatMap((m) => literalGuards(scripts[m[1]] ?? ''))
+    // 🔴 npm 해석에서는 `check-*` 만 가드로 센다. `generate-*` 는 **빌드 스크립트 안**에서
+    //   돌아가는 생성기라(`npm run build:worker` → generate-route-chunk-map), 가드로 세면
+    //   푸시 게이트가 **빌드를 돌리기 시작한다**(실측: 이 규칙 없이 스텝이 100 → 101).
+    //   리터럴 경로의 `generate-*` 는 2026-09-26 결정대로 그대로 센다(차단 스텝 둘이 그 모양이다).
+    .filter((g) => g.startsWith('check-'))
+  return [...new Set([...literalGuards(run), ...viaNpm])]
+}
+
+/**
+ * 한 워크플로의 **`run:` 을 가진 모든 스텝** — 이름·명령·env·경고여부.
+ *
+ * 🔑 YAML 파서를 두 벌 만들지 않기 위해 여기서 내보낸다. 시험이 `js-yaml` 을 직접 import 하면
+ *   타입 선언이 없어 tsc 가 막고(@types 추가는 `package.json` 변경 = 전수 주입 스윕),
+ *   줄 단위 정규식으로 흉내 내면 이 레포가 2026-09-14 에 당한 그 오분류가 되돌아온다.
+ */
+export function runSteps(ymlPath) {
+  const yaml = loadYamlParser()
+  const doc = yaml.load(readFileSync(ymlPath, 'utf8'))
+  const out = []
+  for (const job of Object.values(doc?.jobs ?? {})) {
+    for (const step of job?.steps ?? []) {
+      if (typeof step?.run !== 'string') continue
+      out.push({
+        name: String(step?.name ?? ''),
+        run: step.run,
+        env: step?.env ?? {},
+        warn: step?.['continue-on-error'] === true,
+      })
+    }
+  }
+  return out
+}
+
 function collectGuards(ymlPath) {
   const yaml = loadYamlParser()
   const doc = yaml.load(readFileSync(ymlPath, 'utf8'))
@@ -175,7 +239,7 @@ function collectGuards(ymlPath) {
       const run = typeof step?.run === 'string' ? step.run : ''
       const isWarn = step?.['continue-on-error'] === true
       const bucket = isWarn ? warn : strict
-      const guards = [...run.matchAll(/scripts\/((?:check|generate)-[a-z0-9-]+\.(?:mjs|sh))/g)].map((m) => m[1])
+      const guards = guardsIn(run)
       for (const g of guards) bucket.add(g)
       // strict 스텝은 **명령·env 그대로** 보관한다 — 게이트가 CI 와 같은 모드로 돌리려면
       // 이름만으로는 부족하다(플래그 44 · env 8 이 그 증거다).

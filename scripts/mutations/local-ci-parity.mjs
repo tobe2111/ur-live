@@ -89,6 +89,41 @@ export default [
       '94개 중 절반이 로컬에서 경고로 통과한다. 게이트가 초록을 찍고 CI 가 43분 뒤 막았다.',
   },
   {
+    name: '🧩 npm 스크립트에 감싸인 가드를 못 본다 (차단 가드가 조용히 빠진다)',
+    file: SSOT,
+    find: "    .flatMap((m) => literalGuards(scripts[m[1]] ?? ''))",
+    replace: '    .flatMap(() => [])',
+    test: TEST,
+    why:
+      '2026-10-18 실측: `Bundle size budget` 은 strict 인데 `npm run check:bundle:budget` 으로 ' +
+      '호출돼 파서에 0건이었고, 이름이 보이는 유일한 자리가 보고 스텝(continue-on-error)이라 ' +
+      '`check-bundle-size.mjs` 가 통째로 "CI 경고" 로 분류됐다 — 차단 가드가 로컬 게이트에서 ' +
+      '**조용히 빠진** 채 parity 는 "건강" 으로 보고했다.',
+  },
+  {
+    name: '🧩 🔴 반대 방향 — npm 해석이 generate-* 까지 가드로 센다',
+    file: SSOT,
+    find: "    .filter((g) => g.startsWith('check-'))",
+    replace: '    .filter(() => true)',
+    test: TEST,
+    why:
+      '`npm run build:worker` 가 generate-route-chunk-map.mjs 를 돌리므로, 거르지 않으면 ' +
+      '**푸시 게이트가 빌드를 돌리기 시작한다**(실측: 로컬 게이트 스텝 100 → 101). ' +
+      '넓히는 쪽이 조용하고 더 느리다.',
+  },
+  {
+    name: '🧩 EXCLUDE 의 bundle-size 사유를 비운다',
+    file: SSOT,
+    find:
+      "    '`--budget` 은 이번 빌드의 dist 총량을 잰다(형제 셋과 같은 이유). " +
+      "2026-10-18 까지는 npm 스크립트에 감싸여 파서에 **안 보였고**, 그래서 예외가 아니라 조용한 부재였다.',",
+    replace: "    '',",
+    test: TEST,
+    why:
+      '제외는 **이유가 적혀야** 예외이고, 비면 다시 조용한 부재다. EXCLUDE 는 이 레포에서 ' +
+      '"왜 로컬에서 못 도는지" 를 적어 두는 유일한 자리다.',
+  },
+  {
     name: '🚪 게이트가 스텝 env 를 안 넘긴다 (STRICT_* 로 켜는 가드가 헛돈다)',
     file: 'scripts/pre-push-gate.mjs',
     find: `      env: { ...process.env, ...step.env },`,
