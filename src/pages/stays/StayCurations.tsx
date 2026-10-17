@@ -57,11 +57,11 @@ export function buildStayCurations(items: StaySearchItem[]): StayCurationRow[] {
  * 스테이'(`SimilarStays`)도 이 부품을 쓴다.
  */
 export function StayCardRow({
-  items, checkIn, checkOut, guests,
-}: { items: StaySearchItem[]; checkIn: string; checkOut: string; guests: number }) {
+  items, checkIn, checkOut, guests, firstAboveFold = false,
+}: { items: StaySearchItem[]; checkIn: string; checkOut: string; guests: number; firstAboveFold?: boolean }) {
   return (
     <div className="mt-3 flex gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory -mx-4 px-4 lg:mx-0 lg:px-0">
-      {items.map(s => (
+      {items.map((s, i) => (
         <div key={s.id} className="shrink-0 snap-start w-[68%] sm:w-[42%] lg:w-[28%] xl:w-[23%]">
           <GroupBuyFeedCard
             p={{
@@ -74,7 +74,9 @@ export function StayCardRow({
               avg_rating: s.avg_rating ?? undefined,
               review_count: s.review_count ?? undefined,
             } as never}
-            aboveFold={false}
+            /* ⚡ 2026-10-17 첫 화면 첫 줄의 첫 장만 먼저 받는다 — 전부 lazy 였을 때 느린 회선 lazy 여백이
+               커서 사진 15장이 같은 순간에 출발했고, 맨 위 사진(LCP)이 회선을 나눠 쓰느라 ~5초에 떴다(라이브). */
+            aboveFold={firstAboveFold && i === 0}
             /* 🔗 날짜·인원을 이어 보낸다 — 빠지면 상세가 오늘 날짜로 다시 잡아 요금이 달라진다. */
             to={`/stays/${s.id}?check_in=${checkIn}&check_out=${checkOut}&guests=${guests}`}
           />
@@ -92,11 +94,11 @@ export default function StayCurations({
 
   return (
     <div className="space-y-8 pb-2">
-      {rows.map(row => (
+      {rows.map((row, ri) => (
         <section key={row.key}>
           <h2 className="text-[17px] sm:text-[17px] font-extrabold tracking-tight text-gray-900 dark:text-white px-1">{row.title}</h2>
           {/* 가로 스크롤 — 한 장을 크게 보여 주는 것이 목적이라 폭을 % 로 잡는다(사진이 커진다). */}
-          <StayCardRow items={row.items} checkIn={checkIn} checkOut={checkOut} guests={guests} />
+          <StayCardRow items={row.items} checkIn={checkIn} checkOut={checkOut} guests={guests} firstAboveFold={ri === 0} />
         </section>
       ))}
       <div className="flex items-center justify-between px-1 pt-2">

@@ -43,11 +43,20 @@ import { UDAL_LOADER_SRC } from '../../shared/udal-loader'
  * CSS 를 먼저 받는 것이 순이득이다. 첫 화면이 스크립트에 달린 표면(교환권 목록·지도)은 같은 실험에서
  * **오히려 나빠졌다**(교환권 목록 사진 3.0 → 3.5s · 지도 5.4 → 6.1s) — 그래서 범위 밖이다.
  *   홈 `/` · 이용권 상세 `/pass/:id`·`/group-buy/:id` · 교환권 상세 `/vouchers/:id` · 유어샵 `/u/:handle`
+ *   · 교환권 목록 `/vouchers` · 숙소 상세 `/stays/:id`
+ *
+ * 🔁 2026-10-17 — 교환권 목록·숙소 상세 추가. 위 "범위 밖" 판정은 그 둘이 **스크립트에 달려 있던** 10-12 의 것이고,
+ *   그 뒤 서버가 첫 화면을 그리게 됐는데(교환권 10-14 · 숙소 10-12) 이 목록만 안 따라왔다 — 서버가 그린 첫 화면이
+ *   JS 20여 개와 회선을 나눈 앱 CSS 를 기다렸다. 라이브 HTML 에 같은 변환을 입혀 실제 회선으로 A/B(느린 4G·CPU 4배):
+ *     교환권 목록  HTML 뒤 첫 그림 2.45 → 0.23s(5회) · LCP(배너) 그대로 · 조작 가능 그대로
+ *     숙소 상세    HTML 뒤 첫 그림 2.35 → 0.18s(4회) · LCP 3.08 → 2.91s · 조작 가능 +0.4s(위와 같은 교환)
+ *   ⚠️ 판정은 경로만 본다 — `/vouchers?category=…` 처럼 첫 화면이 안 그려지는 요청에도 걸린다(그땐 로더 + 조작 +0.3s).
+ *   🔒 새 첫 화면을 서버에 붙이면 **이 목록도 같은 커밋에서** 고칠 것(시험 ⑤-2 가 ROOTS 와 대조한다).
  */
 export function cssFirstApplies(pathname: string, ua: string): boolean {
   if (!shouldRenderMobileFirstScreen(ua)) return false
-  return pathname === '/'
-    || /^\/(?:pass|group-buy|vouchers)\/\d+\/?$/.test(pathname)
+  return pathname === '/' || pathname === '/vouchers'
+    || /^\/(?:pass|group-buy|vouchers|stays)\/\d+\/?$/.test(pathname)
     || (/^\/u\/[^/]+\/?$/.test(pathname) && !/^\/u\/me\/?$/.test(pathname))
 }
 
