@@ -105,13 +105,13 @@ describe('배선', () => {
   const FEED = code('src/pages/main-home/GroupBuyFeed.tsx')
 
   it('피드가 밴드 단위로 미루기를 적용한다', () => {
-    expect(FEED).toMatch(/deferSeeded\(sortBand\(src\), sort === 'near' \? NO_DEFER : sectionIds\)/)
+    expect(FEED).toMatch(/deferSeeded\(sortBand\(src\), nearKey \? NO_DEFER : sectionIds\)/)
   })
 
   it('📍 2026-10-17 거리순에서는 미루지 않는다 — 가장 가까운 것이 맨 위여야 한다', () => {
     // 섹션도 같은 위치로 정렬되므로 거리순에서 미루면 가장 가까운 것들이 통째로 밴드 끝으로 간다(대표 신고).
     expect(FEED).toMatch(/const NO_DEFER: ReadonlySet<number> = new Set\(\)/)
-    expect(FEED).not.toMatch(/sort === 'near' \? sectionIds/)
+    expect(FEED).not.toMatch(/(sort === 'near'|nearKey) \? sectionIds/)
   })
 
   it('섹션 id 는 시드에서 온다 — 쿼리를 구독하면 카드가 재배치된다', () => {
