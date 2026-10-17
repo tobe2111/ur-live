@@ -32,3 +32,29 @@
 
 1. 사본 판정(D1 replication) — `2026-10-15-sections-roundtrips.md` 의 2026-10-17 절. 내일 09:25 KST SLO.
 2. 상세 개선을 계속한다면 JS 가 아니라 **(program) 1.3s** 의 정체(스타일 재계산·배치·파싱 중 무엇인가)를 Performance trace 로 먼저 가를 것.
+
+## 🔁 후속(같은 날) — "(program) 1.3s" 의 정체 = **이 컨테이너의 한글 글꼴 부재**(착시)
+
+Chrome 트레이스(라이브 `/pass/2919`, 느린 4G·CPU 4배) 메인 스레드 self 시간:
+
+| | 글꼴 그대로 | 한글 글꼴 별칭 후 |
+|---|---|---|
+| `InlineNode::ShapeTextIncludingFirstLine`(글자 모양 계산) | **540~670ms** | 목록에서 사라짐 |
+| JS(`FunctionCall`) | 390~590ms | 310~380ms |
+| 배치(`performLayout`) | 106~249ms | 105~126ms |
+| 스타일 재계산 | 44~154ms | 38~48ms |
+
+- 이 컨테이너엔 `Apple SD Gothic Neo`·`system-ui` 한글 글꼴이 없어 글자마다 대체 글꼴을 찾는다 — 실제 폰엔 없는 비용이다
+  (2026-10-14 `css-first-boot` 항목이 같은 함정을 적어 뒀는데 또 밟았다).
+- **재는 법**: `~/.config/fontconfig/fonts.conf` 에 `Apple SD Gothic Neo`·`system-ui`·`-apple-system`·`sans-serif` → `WenQuanYi Zen Hei` 별칭 + `fc-cache -f`. 그 뒤에 잰 값만 폰 값으로 읽을 것.
+
+글꼴을 맞춘 뒤 4회(라이브):
+
+| TTFB | FCP | LCP | TBT@CPU×4 |
+|---|---|---|---|
+| 0.40~1.00s | 0.64~1.22s | **1.22~2.42s** | 145~211ms |
+
+- LCP = 히어로 사진(51KB). HTML 도착 **~70ms 뒤** 출발해 그 다운로드가 끝나는 순간이 LCP 다 — 이미 바닥에 가깝다.
+- ⇒ **상세의 클라이언트 쪽은 더 줄일 게 거의 없다.** 남은 지렛대는 TTFB(D1 사본 — 판정 대기)와 회선뿐.
+  사진 화질을 낮추면 ~13KB(≈65ms) 를 얻지만 화질 교환이라 대표 판단이고 권하지 않는다.
+- 🩸 **이 세션이 대표에게 "브라우저 자체 처리 1.3초를 갈라 보자" 고 올린 전제가 이 착시였다.** 정정했다.
