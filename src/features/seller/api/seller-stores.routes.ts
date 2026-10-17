@@ -325,7 +325,7 @@ app.post('/stores/verify-business', rateLimit({ action: 'store_nts_verify', max:
 })
 
 // ── POST /stores — 매장 등록 (카카오맵 검색 결과 기반) ─────────────────────────────
-app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 3600 }), async (c) => {
+app.post('/stores', rateLimit({ action: 'store_register', max: 60, windowSec: 3600 }), async (c) => { // 🏬 10→60(2026-10-17): 지점 일괄 등록이 한 곳씩 부른다(BranchBulkRegisterSheet) — 등록은 늘 승인 대기라 남용 여지는 그대로
   try {
     const userId = await resolveActorUserId(c)
     if (!userId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)

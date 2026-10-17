@@ -34,7 +34,9 @@ import { getOrIssueOwnerClaimCode, formatStoreCode } from '@/worker/utils/store-
 import { readBrokerTerms } from '@/worker/utils/broker-share'
 import { isSeatableStoreStatus } from '@/shared/seller-status'
 import { shippingOrderSql } from '@/shared/db/shipping-order-sql'
+import { allInChunks } from '@/worker/utils/d1-in-chunks'
 import {
+  MAX_OPERABLE_STORES,
   listOperableStores,
   canOperateStore,
   isStoreOwner,
@@ -46,6 +48,11 @@ import {
 import { registerAgencyLinkRoutes } from './seller-agency-link.routes' // 🏢 2026-10-11 에이전시에 맡기기·끊기
 import { registerKakaoBotLinkRoutes } from './seller-kakao-bot.routes' // 💬 2026-10-10 카카오톡으로 매장 관리(연결 코드·연결 목록)
 import { registerStoreNotificationRoutes } from './seller-store-notifications' // 🔔 2026-10-12 내 매장들의 판매 알림(마이·콘솔)
+import { registerProductCopyRoutes } from './seller-product-copy.routes' // 🏬 2026-10-17
+import { registerBrandRoutes } from './seller-brands.routes' // 🏷️ 2026-10-17 브랜드로 묶기
+
+/** 🏬 마이 요약에 담는 매장 수 상한 — 바인딩이 아니라 응답 크기 기준(조각으로 나눠 돈다). 목록과 같은 값이어야 한다. */
+const MAX_SUMMARY_STORES = MAX_OPERABLE_STORES
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -124,24 +131,25 @@ app.get('/my-stores/summary', async (c) => {
   try {
     const scope = await resolveStoreScope(c)
     if (!scope) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+    // 🏬 2026-10-17 프랜차이즈: 종전 `.slice(0, 20)` — 지점이 20곳을 넘는 브랜드는 나머지가 **조용히 빠졌다**.
+    //   이유는 바인딩 한도(100)였다 → 잘라 두지 않고 `allInChunks` 로 나눠 돌린다(병렬, 조각당 90).
     const stores = scope.stores
       .filter(s => isSeatableStoreStatus(s.status))
-      .slice(0, 20)
+      .slice(0, MAX_SUMMARY_STORES)
     const currentSellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
     if (stores.length === 0) {
       return c.json({ success: true, data: { stores: [], totals: { today_revenue: 0, today_orders: 0, pending: 0 }, current_seller_id: currentSellerId ?? null } })
     }
     const ids = stores.map(s => s.seller_id)
-    const marks = ids.map(() => '?').join(',')
     const todayKst = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10)
-    const [today, pending, active, cert] = await Promise.all([
-      c.env.DB.prepare(
+    const [todayRows, pendingRows, activeRows, certRows] = await Promise.all([
+      allInChunks(ids, (chunk, marks) => c.env.DB.prepare(
         `SELECT seller_id, COUNT(*) AS n, COALESCE(SUM(total_amount), 0) AS rev
            FROM orders
           WHERE seller_id IN (${marks}) AND status IN ('PAID','DONE') AND DATE(created_at, '+9 hours') = ?
           GROUP BY seller_id`
-      ).bind(...ids, todayKst).all<{ seller_id: number; n: number; rev: number }>().catch(() => ({ results: [] as { seller_id: number; n: number; rev: number }[] })),
-      c.env.DB.prepare(
+      ).bind(...chunk, todayKst).all<{ seller_id: number; n: number; rev: number }>().then(r => r.results || [])),
+      allInChunks(ids, (chunk, marks) => c.env.DB.prepare(
         // 🧭 2026-10-07: **배송 주문만** — 이용권·교환권은 [주문 확인] 할 일이 없어 영원히 여기 쌓였다
         //   (클라 `order-stage.ts` 와 같은 규칙, SQL 짝 `shipping-order-sql.ts`).
         `SELECT o.seller_id, COUNT(*) AS n
@@ -149,30 +157,29 @@ app.get('/my-stores/summary', async (c) => {
           WHERE o.seller_id IN (${marks}) AND o.status IN ('PAID','DONE','PAY_COMPLETE') AND o.created_at >= datetime('now', '-30 days')
             AND ${shippingOrderSql('o')}
           GROUP BY o.seller_id`
-      ).bind(...ids).all<{ seller_id: number; n: number }>().catch(() => ({ results: [] as { seller_id: number; n: number }[] })),
+      ).bind(...chunk).all<{ seller_id: number; n: number }>().then(r => r.results || [])),
       /**
        * ⚡ 2026-10-01 — **판매 중 개수**(대표 *"내 가게 이 부분이 가장 늦게 떠"*).
        *   마이 첫 화면의 `판매 중 N개` 한 줄을 그리려고 화면이 `/api/seller/products` 로
-       *   **상품 목록 전체**를 따로 받고 있었다. 그것도 이 응답이 와야 좌석이 정해져서
-       *   **직렬 2단**이었다(하네스 실측 `+368ms → +518ms`). 숫자 하나면 되는 일이다.
-       *   ⇒ 여기 이미 돌고 있는 병렬 묶음에 집계 하나를 얹는다 — **왕복은 안 늘어난다.**
+       *   **상품 목록 전체**를 따로 받고 있었다. 숫자 하나면 되는 일이다 → 같은 병렬 묶음에 집계 하나.
        *   ⚠️ 판정 기준은 셀러 대시보드 목록과 같게 `is_active = 1` + 삭제 제외.
        */
-      c.env.DB.prepare(
+      allInChunks(ids, (chunk, marks) => c.env.DB.prepare(
         `SELECT seller_id, COUNT(*) AS n
            FROM products
           WHERE seller_id IN (${marks}) AND is_active = 1 AND COALESCE(status, '') != 'DELETED'
           GROUP BY seller_id`
-      ).bind(...ids).all<{ seller_id: number; n: number }>().catch(() => ({ results: [] as { seller_id: number; n: number }[] })),
+      ).bind(...chunk).all<{ seller_id: number; n: number }>().then(r => r.results || [])),
       /**
        * 🪪 2026-10-12 — **등록증 심사 상태**. 매장은 대기인데 등록증만 반려된 경우를 마이가 "승인 대기 중" 이라고
-       *   말하지 않게(종전엔 셀러 대시보드 틀의 승인 배너가 이 일을 했다 — 틀을 지웠다). 같은 병렬 묶음이라 왕복 0.
+       *   말하지 않게. 같은 병렬 묶음이라 왕복 0.
        *   ⚠️ 별도 쿼리로 둔다 — 매장 목록 쿼리(`listOperableStores`)에 섞으면 컬럼이 없는 옛 스키마에서 **목록 전체가 빈다**.
        */
-      c.env.DB.prepare(
+      allInChunks(ids, (chunk, marks) => c.env.DB.prepare(
         `SELECT id AS seller_id, business_registration_status AS cert FROM sellers WHERE id IN (${marks})`
-      ).bind(...ids).all<{ seller_id: number; cert: string | null }>().catch(() => ({ results: [] as { seller_id: number; cert: string | null }[] })),
+      ).bind(...chunk).all<{ seller_id: number; cert: string | null }>().then(r => r.results || [])),
     ])
+    const today = { results: todayRows }, pending = { results: pendingRows }, active = { results: activeRows }, cert = { results: certRows }
     const tMap = new Map((today.results || []).map(r => [Number(r.seller_id), r]))
     const pMap = new Map((pending.results || []).map(r => [Number(r.seller_id), Number(r.n) || 0]))
     const aMap = new Map((active.results || []).map(r => [Number(r.seller_id), Number(r.n) || 0]))
@@ -476,6 +483,8 @@ app.get('/operating-summary', async (c) => {
 
 registerKakaoBotLinkRoutes(app)
 registerStoreNotificationRoutes(app, resolveStoreScope)
+registerProductCopyRoutes(app, resolveActorUserId) // 🏬 2026-10-17 이용권을 다른 지점에 복사(프랜차이즈)
+registerBrandRoutes(app, resolveActorUserId) // 🏷️ 2026-10-17 브랜드로 묶기(보여 주기용 — 정산·권한은 지점 그대로)
 registerAgencyLinkRoutes(app, requireOwnerOfCurrentStore)
 
 export { app as sellerOperatorsRoutes }

@@ -168,6 +168,7 @@ const AreaReportPage = lazy(() => import('./pages/AreaReportPage')) // 📊 상�
 // 🗺️ 2026-08-03 지역 허브 + 시/도·시군구 착지 페이지(도시별 색인). 롤백은 REGION_PAGES_ENABLED.
 const RegionIndexPage = lazyPage(() => import('./pages/region/RegionIndexPage')); registerBootPage('region', RegionIndexPage.load)
 const RegionPage = lazyPage(() => import('./pages/region/RegionPage')); registerBootPage('region', RegionPage.load)
+const BrandPage = lazy(() => import('./pages/brand/BrandPage')) // 🏷️ 2026-10-17 프랜차이즈 브랜드 페이지(/brand/:slug)
 const BlogDetailPage = lazyPage(() => import('./pages/BlogDetailPage')); registerBootPage('blogPost', BlogDetailPage.load)
 const ReferralPage = lazy(() => import('./pages/ReferralPage'))
 const RestaurantMapPage = lazyPage(() => import('./pages/RestaurantMapPage')); registerRoutePreload('map', RestaurantMapPage.load); registerBootPage('map', RestaurantMapPage.load) // 🗺️ 홈이 미리 받는다(lib/route-preload)
@@ -903,6 +904,7 @@ function AppContent() {
             <Route path="/region" element={<RegionIndexPage />} />
             <Route path="/region/:sido" element={<RegionPage />} />
             <Route path="/region/:sido/:sigungu" element={<RegionPage />} />
+            <Route path="/brand/:slug" element={<BrandPage />} />
             <Route path="/area-report" element={<AreaReportPage />} />
             <Route path="/area-report/:region" element={<AreaReportPage />} />
             <Route path="/blog/:slug" element={<BlogDetailPage />} />

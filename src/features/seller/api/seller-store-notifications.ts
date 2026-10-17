@@ -21,8 +21,11 @@ import { safeError } from '@/worker/utils/safe-error'
 type Ctx = Context<{ Bindings: Env }>
 type Scope = { userId: number | null; stores: { seller_id: number; business_name?: string | null; name?: string | null; status?: string | null }[] } | null
 
-/** 한 번에 보는 매장 수 상한 — 바인딩 한도 안. 요약(`/my-stores/summary`)과 같은 20. */
-export const NOTIF_MAX_STORES = 20
+/**
+ * 한 번에 보는 매장 수 상한 — 바인딩 한도(100) 안. 이 문장은 매장 id 뒤에 `LIMIT ?` 하나를 더 묶으므로 90.
+ * 🏬 2026-10-17: 종전 20 이라 지점이 많은 브랜드는 21번째 지점부터 판매 알림이 **안 왔다**(에러 0).
+ */
+export const NOTIF_MAX_STORES = 90
 
 export function scopedStoreIds(scope: Scope): number[] {
   if (!scope) return []

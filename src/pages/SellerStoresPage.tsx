@@ -7,16 +7,19 @@
  *
  * 수수료(최종): 직접(내 가게) = 유어딜 10% · 중개(관리 대행) = 유어딜 5% — 등록 시 선택.
  */
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, lazy, Suspense } from 'react'
 import { Link } from 'react-router-dom'
 import SellerLayout from '@/components/SellerLayout'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
-import { Store, Plus, Loader2, Trash2, Users, KeyRound, Copy } from 'lucide-react'
+import { Store, Plus, Loader2, Trash2, Users, KeyRound, Copy, Tag } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import StoreRegisterModal from '@/components/seller/StoreRegisterModal'
 import SellerWithdrawSection from '@/components/seller/SellerWithdrawSection'
 import ReviewBonusCard from '@/components/seller/ReviewBonusCard'
+// 🏬 2026-10-17 프랜차이즈 — 지점 여러 곳 한 번에 등록 · 브랜드로 묶기(눌렀을 때 받는다)
+const BranchBulkRegisterSheet = lazy(() => import('./seller-stores/BranchBulkRegisterSheet'))
+const BrandManageSheet = lazy(() => import('./seller-stores/BrandManageSheet'))
 
 interface OperableStore {
   seller_id: number; role: 'owner' | 'operator'; source: 'link' | 'grant'
@@ -34,6 +37,8 @@ export default function SellerStoresPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
+  const [bulk, setBulk] = useState(false)
+  const [brandOpen, setBrandOpen] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true); setError(null)
@@ -70,6 +75,17 @@ export default function SellerStoresPage() {
             className="ur-btn ur-btn-md ur-btn-primary flex items-center gap-1.5 transition">
             <Plus className="w-4 h-4" /> 매장 등록
           </button>
+        </div>
+        {/* 🏬 2026-10-17 프랜차이즈 편의 — 지점이 여럿인 본사·점주. 규칙은 그대로(지점 단위, 그 지점 주인이 정한다). */}
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => setBulk(true)} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-[13px] font-semibold text-gray-700 hover:bg-gray-50">
+            <Store className="w-4 h-4" /> 지점 여러 곳 한 번에 등록
+          </button>
+          {stores.length > 1 && (
+            <button onClick={() => setBrandOpen(true)} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-[13px] font-semibold text-gray-700 hover:bg-gray-50">
+              <Tag className="w-4 h-4" /> 브랜드로 묶기
+            </button>
+          )}
         </div>
 
         {error && (
@@ -154,6 +170,10 @@ export default function SellerStoresPage() {
       </div>
 
       {adding && <StoreRegisterModal onClose={() => setAdding(false)} onDone={() => { setAdding(false); load() }} />}
+      <Suspense fallback={null}>
+        {bulk && <BranchBulkRegisterSheet onClose={() => setBulk(false)} onDone={load} />}
+        {brandOpen && <BrandManageSheet stores={stores.map(s => ({ seller_id: s.seller_id, name: s.business_name || s.name || `매장 #${s.seller_id}` }))} onClose={() => setBrandOpen(false)} />}
+      </Suspense>
     </SellerLayout>
   )
 }

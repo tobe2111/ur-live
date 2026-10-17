@@ -2542,6 +2542,7 @@
       "usage": "Vales usados",
       "expired": "{{count}} caducados",
       "copyStoreLink": "Copiar enlace del local",
+      "copyToBranches": "Copiar a otras sucursales",
       "sendAlimtalk": "Avisar al local",
       "rotateLink": "Emitir nuevo enlace (el anterior caduca)",
       "rotateConfirm": "El enlace anterior caducará y se enviará uno nuevo. ¿Continuar?",

@@ -3223,6 +3223,7 @@
       "usage": "券使用",
       "expired": "过期 {{count}}",
       "copyStoreLink": "复制店主链接",
+      "copyToBranches": "复制到其他门店",
       "sendAlimtalk": "通知店主",
       "rotateLink": "签发新链接（旧链接失效）",
       "rotateConfirm": "旧链接将失效并发送新链接。继续吗？",

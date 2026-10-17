@@ -3223,6 +3223,7 @@
       "usage": "バウチャー使用",
       "expired": "期限切れ {{count}}",
       "copyStoreLink": "店主リンクをコピー",
+      "copyToBranches": "他の店舗にコピー",
       "sendAlimtalk": "店主へ通知",
       "rotateLink": "新しいリンクを発行（旧リンク無効）",
       "rotateConfirm": "旧リンクが無効になり新しいリンクが送られます。続けますか？",
