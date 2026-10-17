@@ -2,7 +2,7 @@
 export default [
   {
     name: '🏨 숙소 예약 주문번호가 다시 비어 들어간다',
-    file: 'src/features/group-buy/api/stays-public.routes.ts',
+    file: 'src/features/group-buy/api/stay-order-number.ts',
     find: '  return `STAYORD-${Date.now()',
     replace: '  return null as unknown as string; `STAYORD-${Date.now()',
     test: 'src/tests/unit/stay-order-number-2026-10-17.test.ts',

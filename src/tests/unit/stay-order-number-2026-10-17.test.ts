@@ -11,7 +11,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { createRequire } from 'module'
-import { stayOrderNumber, kstToday } from '@/features/group-buy/api/stays-public.routes'
+import { stayOrderNumber, kstToday } from '@/features/group-buy/api/stay-order-number'
 
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as typeof import('node:sqlite')
 const SRC = readFileSync('src/features/group-buy/api/stays-public.routes.ts', 'utf8')

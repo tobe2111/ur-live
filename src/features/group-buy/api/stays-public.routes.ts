@@ -13,6 +13,7 @@ import { rateLimit } from '../../../worker/middleware/rate-limit'
 import { publicCache } from '../../../worker/middleware/edge-cache'
 import { releaseStayInventory } from '../../../worker/utils/stay-inventory'
 import { parseSessionCookie } from '../../../worker/utils/session'
+import { stayOrderNumber, kstToday } from './stay-order-number'
 
 type Bindings = { DB: D1Database }
 export const staysPublicRoutes = new Hono<{ Bindings: Bindings }>()
@@ -536,7 +537,6 @@ staysPublicRoutes.post('/stays/bookings/create', cors(), rateLimit({ action: 'st
     await c.env.DB.prepare(`UPDATE orders SET stay_booking_id = ? WHERE id = ?`).bind(bookingId, orderId).run()
       .catch(() => { /* noop */ })
 
-    // 상태 이력.
     await c.env.DB.prepare(
       `INSERT INTO stay_booking_status_log (booking_id, prev_status, new_status, changed_by_role, changed_by_id, reason)
        VALUES (?, NULL, 'pending', 'user', ?, '예약 생성')`
@@ -569,21 +569,6 @@ staysPublicRoutes.post('/stays/bookings/create', cors(), rateLimit({ action: 'st
     return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[stays-public]')
   }
 })
-
-/**
- * 🛡️ 2026-10-17 숙소 예약 주문번호 — orders.order_number 는 NOT NULL UNIQUE 인데 두 INSERT 가
- *   이 컬럼을 안 넣어 **모든 날짜·이용권 예약이 '주문 생성 실패'** 로 끝났다(라이브 stay_bookings 0건).
- *   토스 orderId('STAY-{orders.id}')와 **일부러 다른** 모양이다 — 같으면 결제 webhook 이 이 주문을
- *   일반 주문 확정 경로로 처리하기 시작한다(숙소 확정은 /stays/bookings/confirm 이 맡는다).
- */
-export function stayOrderNumber(): string {
-  return `STAYORD-${Date.now().toString(36).toUpperCase()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`
-}
-
-/** 한국 날짜(YYYY-MM-DD) — 체크인이 오늘(KST)보다 이르면 막는다. */
-export function kstToday(now: number = Date.now()): string {
-  return new Date(now + 9 * 3600_000).toISOString().slice(0, 10)
-}
 
 function generateCheckInCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'  // I/O/1/0 제외 (가독성)
@@ -920,9 +905,7 @@ staysPublicRoutes.get('/stays/orders/:orderId', cors(), async (c) => {
 //     3) 결제 성공 → returnUrl=/stays/checkout-return?order_id=...&paymentKey=...&amount=...
 //     4) 클라이언트가 이 endpoint 호출 → 토스 confirm API + booking status='confirmed'
 //     5) 캘린더 available_count 차감 (race condition 가드)
-//   🛡️ 2026-06-12 (전수조사 4차 B-2 다객실 confirm 단일화): orders.stay_booking_id(첫 booking)만
-//     confirmed 하던 것을 stay_bookings WHERE order_id=? 전체 루프로 — 각 booking CAS + 달력 차감.
-//     단건 주문은 루프가 1건이라 기존 동작과 동일.
+//   🛡️ 2026-06-12 (B-2): 주문의 stay_bookings 전체를 루프 — booking 마다 CAS + 달력 차감.
 staysPublicRoutes.post('/stays/bookings/confirm', cors(), rateLimit({ action: 'stay_booking_confirm', max: 10, windowSec: 300 }), async (c) => {
   try {
     const userId = await resolveStayUserId(c)
