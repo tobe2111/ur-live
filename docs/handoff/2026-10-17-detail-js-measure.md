@@ -74,3 +74,9 @@ Chrome 트레이스(라이브 `/pass/2919`, 느린 4G·CPU 4배) 메인 스레�
 
 ⚠️ E4(배포 후): 라이브 `/vouchers`·`/stays/2887` HTML 에 `ur-modulepreload` · 첫 그림이 HTML 뒤 ~0.3s · `/stays` LCP 가 5s 에서 내려왔는지.
 🔬 A/B 방법: playwright `page.route(target, fulfill(variantHTML))` — 문서만 바꾸고 나머지는 실제 회선. 부트 스크립트·`<style id="ur-critical">` 는 이미 적용된 `/pass/2919` 응답에서 복사했다.
+
+## ✅ E4 — #1886 배포 후 라이브 판정 (2026-10-18 03:20 KST)
+- `/vouchers`·`/stays/2887` HTML: `ur-modulepreload` 15 · `ur-critical` 1. 대조군 `/map`·`/stays` 0 (범위 밖 의도).
+- 느린 4G·CPU 4배·Pixel 7, 5회 중앙값: HTML→첫 그림 `/vouchers` **0.22s**(배포 전 A/B 2.45s) · `/stays/2887` **0.25s**(2.35s) · `/stays` LCP **3.76s**(~5.0s).
+- `/vouchers` 첫 회 1.57s 는 캐시 콜드 1회차(나머지 4회 0.18~0.28s).
+- 측정 스크립트: scratchpad `live4.mjs`(커밋 안 함).
