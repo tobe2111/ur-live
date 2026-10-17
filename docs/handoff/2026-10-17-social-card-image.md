@@ -45,3 +45,9 @@ unenv 껍데기로 바꿔 끼운다(dry-run 산출물에서 `unenv` 86회 실측
 처방: `wrangler-ads.toml` 에 `no_bundle = true` — dry-run 산출물이 `dist-ads/index.js` 와 **바이트 동일**, unenv 0.
 로컬 workerd(miniflare, 2025-12-01 + nodejs_compat)로 기동 + `fs.mkdtempSync` 성공 확인(node:http/net/tls/dns 포함 전 모듈 로드).
 ⚠️ 못 본 것: 프로덕션에서 실제 렌더(배포 후 E4 — 2·5번 초안에 다시 요청).
+
+## 4. E4 라이브 판정 (2026-10-18 06:20 KST)
+- #1892 머지(`a72b5478a`) → `Deploy ur-ads Worker` 성공 → 어드민 `POST /api/admin/social/posts/{2,5}/card-image` 둘 다 `success:true`.
+- 산출물 `media.ur-team.com/social/card-2-1792271998570.jpg` · `card-5-1792272002943.jpg` — 둘 다 1080×1350, 약 98KB.
+- 눈으로 확인: Pretendard 제목·본문, Poppins 워드마크 `urdeal.`, 유달이(손 흔들기 / 엄지+휴대폰) 원본 해상도 이내로 렌더, 소품 카드·URL 줄 정상. unenv `fs.mkdtemp` 오류 재발 없음.
+- 남은 일: 초안 발행 자체는 대표 판단(발행 = 결재 C).
