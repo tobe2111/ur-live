@@ -365,6 +365,7 @@ staysPublicRoutes.post('/stays/bookings/create', cors(), rateLimit({ action: 'st
       }
       nights = Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000)
       if (nights < 1) return c.json({ success: false, error: '체크아웃은 체크인 이후여야 합니다' }, 400)
+      if (checkIn < kstToday()) return c.json({ success: false, error: '지난 날짜는 예약할 수 없습니다. 날짜를 다시 골라 주세요' }, 400)
     } else {
       nights = voucherNights
     }
@@ -484,16 +485,16 @@ staysPublicRoutes.post('/stays/bookings/create', cors(), rateLimit({ action: 'st
     //   voucher 모드는 stay_check_in_date / out 가 NULL (사용 시 셀러와 협의).
     const orderResult = await c.env.DB.prepare(
       `INSERT INTO orders (
-         user_id, seller_id, total_amount, status, payment_status,
+         order_number, user_id, seller_id, total_amount, status, payment_status,
          shipping_name, shipping_phone, created_at,
          stay_check_in_date, stay_check_out_date, stay_nights
-       ) VALUES (?, ?, ?, 'PENDING', 'pending', ?, ?, datetime('now'), ?, ?, ?)`
+       ) VALUES (?, ?, ?, ?, 'PENDING', 'pending', ?, ?, datetime('now'), ?, ?, ?)`
     ).bind(
-      userId, room.seller_id, totalAmount, guestName, guestPhone,
+      stayOrderNumber(), userId, room.seller_id, totalAmount, guestName, guestPhone,
       saleMode === 'date' ? checkIn : null,
       saleMode === 'date' ? checkOut : null,
       nights,
-    ).run().catch(() => null)
+    ).run().catch((e: Error) => { console.error('[stays-public] order insert', e?.message); return null })
 
     const orderId = orderResult ? Number(orderResult.meta.last_row_id) : 0
     if (!orderId) {
@@ -568,6 +569,21 @@ staysPublicRoutes.post('/stays/bookings/create', cors(), rateLimit({ action: 'st
     return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[stays-public]')
   }
 })
+
+/**
+ * 🛡️ 2026-10-17 숙소 예약 주문번호 — orders.order_number 는 NOT NULL UNIQUE 인데 두 INSERT 가
+ *   이 컬럼을 안 넣어 **모든 날짜·이용권 예약이 '주문 생성 실패'** 로 끝났다(라이브 stay_bookings 0건).
+ *   토스 orderId('STAY-{orders.id}')와 **일부러 다른** 모양이다 — 같으면 결제 webhook 이 이 주문을
+ *   일반 주문 확정 경로로 처리하기 시작한다(숙소 확정은 /stays/bookings/confirm 이 맡는다).
+ */
+export function stayOrderNumber(): string {
+  return `STAYORD-${Date.now().toString(36).toUpperCase()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`
+}
+
+/** 한국 날짜(YYYY-MM-DD) — 체크인이 오늘(KST)보다 이르면 막는다. */
+export function kstToday(now: number = Date.now()): string {
+  return new Date(now + 9 * 3600_000).toISOString().slice(0, 10)
+}
 
 function generateCheckInCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'  // I/O/1/0 제외 (가독성)
@@ -688,6 +704,7 @@ staysPublicRoutes.post('/stays/bookings/create-multi', cors(), rateLimit({ actio
         }
         nights = Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000)
         if (nights < 1) return c.json({ success: false, error: `${room.name}: 체크아웃은 체크인 이후` }, 400)
+        if (checkIn < kstToday()) return c.json({ success: false, error: `${room.name}: 지난 날짜는 예약할 수 없습니다` }, 400)
         if (room.min_nights && nights < room.min_nights) {
           return c.json({ success: false, error: `${room.name}: 최소 ${room.min_nights}박` }, 400)
         }
@@ -766,16 +783,16 @@ staysPublicRoutes.post('/stays/bookings/create-multi', cors(), rateLimit({ actio
     const totalNights = prepared.reduce((s, p) => s + p.nights, 0)
     const orderResult = await c.env.DB.prepare(
       `INSERT INTO orders (
-         user_id, seller_id, total_amount, status, payment_status,
+         order_number, user_id, seller_id, total_amount, status, payment_status,
          shipping_name, shipping_phone, created_at,
          stay_check_in_date, stay_check_out_date, stay_nights
-       ) VALUES (?, ?, ?, 'PENDING', 'pending', ?, ?, datetime('now'), ?, ?, ?)`
+       ) VALUES (?, ?, ?, ?, 'PENDING', 'pending', ?, ?, datetime('now'), ?, ?, ?)`
     ).bind(
-      userId, sellerId, totalAmount, guestName, guestPhone,
+      stayOrderNumber(), userId, sellerId, totalAmount, guestName, guestPhone,
       saleMode === 'date' ? prepared[0].checkIn : null,
       saleMode === 'date' ? prepared[0].checkOut : null,
       totalNights,
-    ).run().catch(() => null)
+    ).run().catch((e: Error) => { console.error('[stays-public] order insert', e?.message); return null })
     const orderId = orderResult ? Number(orderResult.meta.last_row_id) : 0
     if (!orderId) return c.json({ success: false, error: '주문 생성 실패' }, 500)
 
