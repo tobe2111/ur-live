@@ -184,7 +184,7 @@ export default function StaysSearchPage() {
           <>
           {curated && <StayCurations items={items} checkIn={filters.check_in} checkOut={filters.check_out} guests={filters.guests} />}
           <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 ${DEAL_GRID_GAP}`}>
-            {items.map((s) => {
+            {items.map((s, i) => {
               const typeLabel = s.property_type ? (PROPERTY_TYPE_LABELS[s.property_type] || s.property_type) : ''
               const starLabel = s.star_rating ? `${s.star_rating}성급` : ''
               return (
@@ -202,7 +202,8 @@ export default function StaysSearchPage() {
                     avg_rating: s.avg_rating ?? undefined,
                     review_count: s.review_count ?? undefined,
                   } as never}
-                  aboveFold={false}
+                  /* ⚡ 2026-10-17 큐레이션 줄이 없을 때(필터 적용)만 격자 첫 줄 두 장이 첫 화면이다. */
+                  aboveFold={!curated && i < 2}
                   flags={
                     (typeLabel || starLabel) ? (
                       <p className="text-[12px] font-bold leading-none mb-1 text-gray-900 dark:text-gray-100">

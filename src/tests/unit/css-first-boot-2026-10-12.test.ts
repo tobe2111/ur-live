@@ -105,10 +105,10 @@ describe('③ 문서 파싱 중이면 엔트리는 DOMContentLoaded 까지 기�
 describe('⑤ 적용 표면 — 서버가 첫 화면을 그리는 곳(폰)만', () => {
   const PHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1'
   const PC = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'
-  it.each(['/', '/pass/2919', '/group-buy/2888', '/vouchers/2192', '/u/jiwon1228'])('적용: %s', (p) => {
+  it.each(['/', '/pass/2919', '/group-buy/2888', '/vouchers/2192', '/u/jiwon1228', '/vouchers', '/stays/2887'])('적용: %s', (p) => {
     expect(cssFirstApplies(p, PHONE)).toBe(true)
   })
-  it.each(['/vouchers', '/map', '/browse', '/stays', '/u/me', '/u/jiwon1228/p/2887', '/user/profile', '/seller', '/admin'])(
+  it.each(['/map', '/browse', '/stays', '/u/me', '/u/jiwon1228/p/2887', '/user/profile', '/seller', '/admin'])(
     '미적용(첫 화면이 스크립트에 달림 — 실측상 나빠진다): %s', (p) => {
       expect(cssFirstApplies(p, PHONE)).toBe(false)
     })
@@ -220,5 +220,28 @@ describe('⑨ 실사용자 계측 — 연결 시간(CONN) · 데이터센터별 
     expect(api).toMatch(/const validNames = \[[^\]]*'CONN'/)
     expect(api).toMatch(/for \(const name of \[[^\]]*'CONN'/)
     expect(api).toMatch(/\/\^colo:\(\[A-Z\]\{3,4\}\)\$\//)
+  })
+})
+
+describe('⑤-2 서버가 그리는 첫 화면 = CSS 먼저 적용 표면 (2026-10-17)', () => {
+  // 교환권 목록·숙소 상세가 서버 첫 화면을 얻은 뒤에도 이 목록이 안 따라와 첫 그림이 ~2.4초 늦었다.
+  // ROOTS(첫 화면 CSS 를 만드는 모듈)마다 대표 경로를 하나씩 두고, 그 경로가 적용 표면인지 본다.
+  const PHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1'
+  const SAMPLE: Record<string, string> = {
+    'src/worker/utils/home-first-screen.ts': '/',
+    'src/worker/utils/detail-ssr-body.ts': '/pass/2919',
+    'src/worker/utils/voucher-detail-ssr-body.ts': '/vouchers/2192',
+    'src/worker/utils/curator-ssr-body.ts': '/u/jiwon1228',
+    'src/worker/utils/stay-detail-ssr-body.ts': '/stays/2887',
+    'src/worker/utils/vouchers-first-screen.ts': '/vouchers',
+  }
+  it('ROOTS 의 모든 첫 화면 모듈에 대표 경로가 있다(새 첫 화면이 생기면 여기서 멈춘다)', async () => {
+    // @ts-expect-error — .mjs 생성기(타입 없음)
+    const { ROOTS } = await import('../../../scripts/generate-critical-css.mjs')
+    expect(ROOTS.length).toBeGreaterThan(0)
+    for (const r of ROOTS as string[]) expect(SAMPLE[r], `대표 경로 없음: ${r}`).toBeTruthy()
+  })
+  it.each(Object.entries(SAMPLE))('%s → %s 는 CSS 먼저 적용', (_root, path) => {
+    expect(cssFirstApplies(path, PHONE)).toBe(true)
   })
 })

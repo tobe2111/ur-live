@@ -39,12 +39,14 @@ export default [
     why: '라우트 청크만 즉시 출발하면 처방이 반쪽이 된다 — 에러 없이 첫 화면만 다시 늦어진다.',
   },
   {
-    name: '🚦 적용 범위가 교환권 목록까지 넓어진다(첫 화면이 스크립트에 달린 표면)',
+    // 🔁 2026-10-17 재조준 — 교환권 목록은 서버 첫 화면을 얻어 적용 표면이 됐다(css-first-boot.ts 머리말).
+    //   불변식(스크립트에 달린 표면은 빼다)은 그대로이고, 남은 그런 표면인 지도로 옮겼다.
+    name: '🚦 적용 범위가 지도까지 넓어진다(첫 화면이 스크립트에 달린 표면)',
     file: MOD,
-    find: "|| /^\\/(?:pass|group-buy|vouchers)\\/\\d+\\/?$/.test(pathname)",
-    replace: "|| /^\\/(?:pass|group-buy|vouchers)(\\/\\d+)?\\/?$/.test(pathname)",
+    find: "return pathname === '/' || pathname === '/vouchers'",
+    replace: "return pathname === '/' || pathname === '/vouchers' || pathname === '/map'",
     test: TEST,
-    why: '교환권 목록·지도는 스크립트가 와야 내용이 뜬다 — 실측상 사진이 0.5~0.7초 늦어진다.',
+    why: '지도는 스크립트가 와야 내용이 뜬다 — 실측상 지도 5.4 → 6.1초로 늦어졌다.',
   },
   {
     name: '🚦 PC 에도 건다(서버가 PC 첫 화면을 안 그린다)',
