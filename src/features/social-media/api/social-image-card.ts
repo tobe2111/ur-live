@@ -19,6 +19,17 @@ import type { SocialAudience } from './social-audience'
 export const CARD_W = 1080
 export const CARD_H = 1350
 
+/**
+ * 카드 팔레트 — 디자인 시스템 실측값(`src/index.css` 토큰과 같은 값).
+ * ⚠️ 이 카드는 **사이트 CSS 밖**(렌더 브라우저의 빈 페이지)에서 그려져 토큰을 쓸 수 없다 — 그래서 값을 여기 한 곳에 둔다
+ *    (`ushop-share-card.ts` 의 SHARE_MASCOT_BG 와 같은 이유. consumer-hex 래칫에 이 파일 1곳으로 등록).
+ */
+export const CARD_PALETTE = {
+  brand: '#1C69EF', brandText: '#4D8DF5', brandTint: '#E8F0FE', bg: '#F8F7FC', navy: '#0F1A33',
+  ink: '#16181C', inkSoft: '#4F545A', inkFaint: '#666C72', rule: '#E2E5E9', white: '#FFFFFF',
+} as const
+const P = CARD_PALETTE
+
 /** 카드가 쓰는 정적 자산의 공개 주소 — 렌더 브라우저가 인터넷에서 받는다. */
 export interface CardAssets {
   /** Pretendard 동적 서브셋 CSS */
@@ -56,9 +67,9 @@ const PROP_HTML: Record<SocialAudience, string> = {
 }
 
 const THEMES: Record<SocialAudience, Theme> = {
-  store: { bg: '#F8F7FC', ink: '#16181C', sub: '#4F545A', chipBg: '#1C69EF', chipInk: '#FFFFFF', dot: '#1C69EF', url: '#16181C', deco: 'rgba(28,105,239,0.07)' },
-  creator: { bg: '#0F1A33', ink: '#FFFFFF', sub: 'rgba(255,255,255,0.74)', chipBg: '#1C69EF', chipInk: '#FFFFFF', dot: '#4D8DF5', url: '#FFFFFF', deco: 'rgba(77,141,245,0.12)' },
-  consumer: { bg: '#1C69EF', ink: '#FFFFFF', sub: 'rgba(255,255,255,0.84)', chipBg: '#FFFFFF', chipInk: '#1C69EF', dot: '#FFFFFF', url: '#FFFFFF', deco: 'rgba(255,255,255,0.10)' },
+  store: { bg: P.bg, ink: P.ink, sub: P.inkSoft, chipBg: P.brand, chipInk: P.white, dot: P.brand, url: P.ink, deco: 'rgba(28,105,239,0.07)' },
+  creator: { bg: P.navy, ink: P.white, sub: 'rgba(255,255,255,0.74)', chipBg: P.brand, chipInk: P.white, dot: P.brandText, url: P.white, deco: 'rgba(77,141,245,0.12)' },
+  consumer: { bg: P.brand, ink: P.white, sub: 'rgba(255,255,255,0.84)', chipBg: P.white, chipInk: P.brand, dot: P.white, url: P.white, deco: 'rgba(255,255,255,0.10)' },
 }
 
 /** 카드 상단 꼬리표 — 누구에게 하는 말인지 한눈에. */
@@ -133,18 +144,18 @@ body{background:${t.bg};font-family:'Pretendard Variable',Pretendard,system-ui,s
 .chip{background:${t.chipBg};color:${t.chipInk};font-size:30px;font-weight:700;letter-spacing:-0.02em;padding:16px 28px;border-radius:999px}
 .mid{margin-top:120px;max-width:880px}
 h1{font-size:${fs}px;font-weight:800;line-height:1.2;letter-spacing:-0.045em;word-break:keep-all;overflow-wrap:break-word;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
-.bar{width:88px;height:8px;border-radius:4px;background:${t.chipBg === '#FFFFFF' ? '#FFFFFF' : '#1C69EF'};margin:56px 0 44px}
+.bar{width:88px;height:8px;border-radius:4px;background:${t.chipBg === P.white ? P.white : P.brand};margin:56px 0 44px}
 p.sub{font-size:40px;font-weight:500;line-height:1.5;letter-spacing:-0.025em;color:${t.sub};word-break:keep-all;max-width:640px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .bottom{margin-top:auto;display:flex;align-items:flex-end;justify-content:space-between}
 .url{font-size:34px;font-weight:700;letter-spacing:-0.02em;color:${t.url};display:flex;align-items:center;gap:14px}
 .url b{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:50%;background:${t.chipBg};color:${t.chipInk};font-size:30px}
 .mascot{position:absolute;right:64px;bottom:150px;height:${MASCOT_H[input.audience]}px;width:auto;${input.audience === 'store' ? 'filter:drop-shadow(0 24px 40px rgba(15,26,51,0.18));' : ''}}
-.prop{position:absolute;left:96px;bottom:200px;width:540px;background:#FFFFFF;border-radius:36px;padding:36px 40px;box-shadow:0 30px 60px rgba(15,26,51,0.16);transform:rotate(-3deg);color:#16181C}
-.prop .k{font-size:26px;font-weight:600;color:#666C72;letter-spacing:-0.02em}
+.prop{position:absolute;left:96px;bottom:200px;width:540px;background:${P.white};border-radius:36px;padding:36px 40px;box-shadow:0 30px 60px rgba(15,26,51,0.16);transform:rotate(-3deg);color:${P.ink}}
+.prop .k{font-size:26px;font-weight:600;color:${P.inkFaint};letter-spacing:-0.02em}
 .prop .v{font-size:40px;font-weight:800;letter-spacing:-0.035em;margin-top:10px;line-height:1.25}
 .prop .row{display:flex;align-items:center;gap:14px;margin-top:22px}
-.prop .ok{display:inline-flex;align-items:center;gap:10px;background:#E8F0FE;color:#1C69EF;font-size:26px;font-weight:700;padding:10px 18px;border-radius:999px}
-.prop .cut{position:relative;margin:26px -40px 0;border-top:3px dashed #E2E5E9}
+.prop .ok{display:inline-flex;align-items:center;gap:10px;background:${P.brandTint};color:${P.brand};font-size:26px;font-weight:700;padding:10px 18px;border-radius:999px}
+.prop .cut{position:relative;margin:26px -40px 0;border-top:3px dashed ${P.rule}}
 .prop .cut:before,.prop .cut:after{content:'';position:absolute;top:-17px;width:32px;height:32px;border-radius:50%;background:${t.bg}}
 .prop .cut:before{left:-16px}.prop .cut:after{right:-16px}
 </style></head><body>
