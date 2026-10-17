@@ -13,6 +13,7 @@ import { rateLimit } from '../../../worker/middleware/rate-limit'
 import { publicCache } from '../../../worker/middleware/edge-cache'
 import { releaseStayInventory } from '../../../worker/utils/stay-inventory'
 import { parseSessionCookie } from '../../../worker/utils/session'
+import { stayOrderNumber, kstToday } from './stay-order-number'
 
 type Bindings = { DB: D1Database }
 export const staysPublicRoutes = new Hono<{ Bindings: Bindings }>()
@@ -365,6 +366,7 @@ staysPublicRoutes.post('/stays/bookings/create', cors(), rateLimit({ action: 'st
       }
       nights = Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000)
       if (nights < 1) return c.json({ success: false, error: '체크아웃은 체크인 이후여야 합니다' }, 400)
+      if (checkIn < kstToday()) return c.json({ success: false, error: '지난 날짜는 예약할 수 없습니다. 날짜를 다시 골라 주세요' }, 400)
     } else {
       nights = voucherNights
     }
@@ -484,16 +486,16 @@ staysPublicRoutes.post('/stays/bookings/create', cors(), rateLimit({ action: 'st
     //   voucher 모드는 stay_check_in_date / out 가 NULL (사용 시 셀러와 협의).
     const orderResult = await c.env.DB.prepare(
       `INSERT INTO orders (
-         user_id, seller_id, total_amount, status, payment_status,
+         order_number, user_id, seller_id, total_amount, status, payment_status,
          shipping_name, shipping_phone, created_at,
          stay_check_in_date, stay_check_out_date, stay_nights
-       ) VALUES (?, ?, ?, 'PENDING', 'pending', ?, ?, datetime('now'), ?, ?, ?)`
+       ) VALUES (?, ?, ?, ?, 'PENDING', 'pending', ?, ?, datetime('now'), ?, ?, ?)`
     ).bind(
-      userId, room.seller_id, totalAmount, guestName, guestPhone,
+      stayOrderNumber(), userId, room.seller_id, totalAmount, guestName, guestPhone,
       saleMode === 'date' ? checkIn : null,
       saleMode === 'date' ? checkOut : null,
       nights,
-    ).run().catch(() => null)
+    ).run().catch((e: Error) => { console.error('[stays-public] order insert', e?.message); return null })
 
     const orderId = orderResult ? Number(orderResult.meta.last_row_id) : 0
     if (!orderId) {
@@ -535,7 +537,6 @@ staysPublicRoutes.post('/stays/bookings/create', cors(), rateLimit({ action: 'st
     await c.env.DB.prepare(`UPDATE orders SET stay_booking_id = ? WHERE id = ?`).bind(bookingId, orderId).run()
       .catch(() => { /* noop */ })
 
-    // 상태 이력.
     await c.env.DB.prepare(
       `INSERT INTO stay_booking_status_log (booking_id, prev_status, new_status, changed_by_role, changed_by_id, reason)
        VALUES (?, NULL, 'pending', 'user', ?, '예약 생성')`
@@ -688,6 +689,7 @@ staysPublicRoutes.post('/stays/bookings/create-multi', cors(), rateLimit({ actio
         }
         nights = Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000)
         if (nights < 1) return c.json({ success: false, error: `${room.name}: 체크아웃은 체크인 이후` }, 400)
+        if (checkIn < kstToday()) return c.json({ success: false, error: `${room.name}: 지난 날짜는 예약할 수 없습니다` }, 400)
         if (room.min_nights && nights < room.min_nights) {
           return c.json({ success: false, error: `${room.name}: 최소 ${room.min_nights}박` }, 400)
         }
@@ -766,16 +768,16 @@ staysPublicRoutes.post('/stays/bookings/create-multi', cors(), rateLimit({ actio
     const totalNights = prepared.reduce((s, p) => s + p.nights, 0)
     const orderResult = await c.env.DB.prepare(
       `INSERT INTO orders (
-         user_id, seller_id, total_amount, status, payment_status,
+         order_number, user_id, seller_id, total_amount, status, payment_status,
          shipping_name, shipping_phone, created_at,
          stay_check_in_date, stay_check_out_date, stay_nights
-       ) VALUES (?, ?, ?, 'PENDING', 'pending', ?, ?, datetime('now'), ?, ?, ?)`
+       ) VALUES (?, ?, ?, ?, 'PENDING', 'pending', ?, ?, datetime('now'), ?, ?, ?)`
     ).bind(
-      userId, sellerId, totalAmount, guestName, guestPhone,
+      stayOrderNumber(), userId, sellerId, totalAmount, guestName, guestPhone,
       saleMode === 'date' ? prepared[0].checkIn : null,
       saleMode === 'date' ? prepared[0].checkOut : null,
       totalNights,
-    ).run().catch(() => null)
+    ).run().catch((e: Error) => { console.error('[stays-public] order insert', e?.message); return null })
     const orderId = orderResult ? Number(orderResult.meta.last_row_id) : 0
     if (!orderId) return c.json({ success: false, error: '주문 생성 실패' }, 500)
 
@@ -903,9 +905,7 @@ staysPublicRoutes.get('/stays/orders/:orderId', cors(), async (c) => {
 //     3) 결제 성공 → returnUrl=/stays/checkout-return?order_id=...&paymentKey=...&amount=...
 //     4) 클라이언트가 이 endpoint 호출 → 토스 confirm API + booking status='confirmed'
 //     5) 캘린더 available_count 차감 (race condition 가드)
-//   🛡️ 2026-06-12 (전수조사 4차 B-2 다객실 confirm 단일화): orders.stay_booking_id(첫 booking)만
-//     confirmed 하던 것을 stay_bookings WHERE order_id=? 전체 루프로 — 각 booking CAS + 달력 차감.
-//     단건 주문은 루프가 1건이라 기존 동작과 동일.
+//   🛡️ 2026-06-12 (B-2): 주문의 stay_bookings 전체를 루프 — booking 마다 CAS + 달력 차감.
 staysPublicRoutes.post('/stays/bookings/confirm', cors(), rateLimit({ action: 'stay_booking_confirm', max: 10, windowSec: 300 }), async (c) => {
   try {
     const userId = await resolveStayUserId(c)
