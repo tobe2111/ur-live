@@ -12,13 +12,14 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { parse, judge, pickMedian, RUNS, PAGES, TOLERANCE_KB, LOCK_SLACK_KB } from '../../../scripts/check-exec-cost.mjs'
+import { parse, judge, pickFloor, RUNS, PAGES, TOLERANCE_KB, LOCK_SLACK_KB } from '../../../scripts/check-exec-cost.mjs'
 import { dashboardSurfacesFrom } from '../../../scripts/check-surface-budgets.mjs'
 import { DASHBOARD_SURFACES } from '../../../scripts/dashboard-surfaces.mjs'
 import { LIBRARY_ENVELOPES } from '../../../scripts/surface-chunks.mjs'
 import { stripComments } from '../helpers/source-text'
 
 const read = (f: string) => readFileSync(f, 'utf8')
+const base = { pages: { 홈: { execKB: 300, top: [['a.js', 100]] as Array<[string, number]> } } }
 
 describe('① 실행 비용 판정', () => {
   it('하네스의 CPU_RESULT 한 줄을 읽는다 — 없거나 깨졌으면 null(= 측정 실패, 통과 아님)', () => {
@@ -27,7 +28,6 @@ describe('① 실행 비용 판정', () => {
     expect(parse('⚙️ 실행 비용 … 줄만 있고 기계용 줄이 없다')).toBeNull()
     expect(parse('CPU_RESULT {깨진')).toBeNull()
   })
-  const base = { pages: { 홈: { execKB: 300, top: [['a.js', 100]] as Array<[string, number]> } } }
   it('허용오차 안은 통과', () => {
     expect(judge({ 홈: { execKB: 300 + TOLERANCE_KB - 0.1, top: [] } }, base)).toEqual([])
   })
@@ -46,17 +46,97 @@ describe('① 실행 비용 판정', () => {
   })
 })
 
-describe('①-2 흔들림 — 세 번 재서 중앙값', () => {
-  it('기본 3회이고, 중앙값은 튀는 한 번을 버린다', () => {
+/**
+ * 📏 라이브 CI 실제 표본 (main 10-15~10-17 세 회차 · 화면당 3회 = 30점).
+ *   ❌ 둘은 그 회차가 실제로 부른 발간불이다(job 116534627981 · 116587563406).
+ *   형식: [기준, [표본1, 표본2, 표본3]]
+ */
+const CI_SAMPLES: Record<string, Record<string, [number, number[]]>> = {
+  '10-15 ❌ fbc64c074': {
+    홈: [345.7, [346.9, 346.9, 346.9]], '홈(PC)': [453.7, [454.8, 454.7, 454.7]],
+    교환권: [320.7, [321.8, 321.8, 321.8]], '이용권 상세': [352.4, [362.5, 354.7, 354.7]],
+    쇼핑: [296.2, [297.1, 297.1, 297.1]], 지도: [351, [360, 352.3, 352.3]],
+    유어샵: [295.9, [296.9, 296.9, 296.9]], 마이: [405.8, [406.8, 406.8, 406.8]],
+    어드민: [529.8, [531.5, 539.4, 539.4]], 에이전시: [478.1, [486.9, 486.9, 479.2]],
+  },
+  '10-15 ❌ 0e58ab293': {
+    홈: [333.3, [341.4, 333.9, 341.4]], '홈(PC)': [453.7, [453.7, 453.7, 453.7]],
+    교환권: [320.7, [318.5, 318.3, 318.5]], '이용권 상세': [352.4, [351.7, 351.9, 351.7]],
+    쇼핑: [296.2, [292.7, 292.7, 292.7]], 지도: [351, [346.2, 346.2, 346.2]],
+    유어샵: [295.9, [289.4, 289.4, 289.4]], 마이: [405.8, [407.8, 407.8, 407.8]],
+    어드민: [529.8, [533, 533.2, 533.1]], 에이전시: [478.1, [480.4, 480.4, 480.4]],
+  },
+  '10-17 ✅ 3d49f187b': {
+    홈: [322.7, [322.8, 322.8, 322.8]], '홈(PC)': [435.3, [435.6, 435.6, 435.6]],
+    교환권: [305.2, [305.3, 319, 305.5]], '이용권 상세': [339, [338.6, 338.7, 338.7]],
+    쇼핑: [279.6, [279.5, 279.5, 279.5]], 지도: [337.4, [336.7, 335.4, 335.5]],
+    유어샵: [276.2, [276.3, 276.3, 276.3]], 마이: [383.8, [382.8, 383, 382.8]],
+    어드민: [521.2, [520, 520, 520]], 에이전시: [468, [467.1, 467.5, 467.4]],
+  },
+}
+const asResults = (v: number[]) => v.map((execKB) => ({ execKB }))
+const medianOf = (v: number[]) => [...v].sort((a, b) => a - b)[1]
+
+describe('①-2 흔들림 — 세 번 재서 바닥값(최소)', () => {
+  it('기본 3회이고, 바닥값은 위로 튀는 표본을 둘까지 버린다', () => {
     expect(RUNS).toBeGreaterThanOrEqual(3)
-    expect(pickMedian([{ execKB: 317 }, { execKB: 325 }, { execKB: 317.4 }])?.execKB).toBe(317.4)
-    expect(pickMedian([{ execKB: 300 }])?.execKB).toBe(300)
-    expect(pickMedian([])).toBeNull()
+    // 중앙값이면 317.4 — 튀는 한 번만 버린다
+    expect(pickFloor(asResults([317, 325, 317.4]))?.execKB).toBe(317)
+    // ⭐ 참조 사고: 셋 중 **둘**이 높은 갈래여도 바닥은 낮은 갈래를 고른다(10-15 어드민)
+    expect(pickFloor(asResults([539.4, 531.5, 539.4]))?.execKB).toBe(531.5)
+    expect(pickFloor(asResults([300]))?.execKB).toBe(300)
+    expect(pickFloor([])).toBeNull()
   })
-  it('한 번이라도 못 읽으면 그 화면은 실패다(중앙값이 고장을 가리지 않는다)', () => {
+  it('라이브 표본 30점 — 바닥값은 한 번도 허용오차를 안 넘고, 중앙값은 3번 넘는다', () => {
+    let floorOver = 0
+    let medianOver = 0
+    let n = 0
+    for (const run of Object.values(CI_SAMPLES)) {
+      for (const [base, v] of Object.values(run)) {
+        n++
+        if (pickFloor(asResults(v))!.execKB - base > TOLERANCE_KB) floorOver++
+        if (medianOf(v) - base > TOLERANCE_KB) medianOver++
+      }
+    }
+    expect(n).toBe(30) // 표본이 줄었으면 통과가 아니다
+    expect(floorOver).toBe(0)
+    expect(medianOver).toBe(3) // 바꾼 이유 — 이 셋이 10-15 빨간불이다
+  })
+  /**
+   * 🩸 이 시험의 첫 판은 *"아래 방향 이상치 0건"* 을 단언했는데 **내 시험이 그 주장을 반증했다**:
+   *   [531.5, 539.4, 539.4] 는 "둘이 위로 튄 것" 과 "하나가 아래로 떨어진 것" 이 **같은 모양**이다 —
+   *   3표본으로는 방향을 알 수 없다. 그 주장은 통계가 아니라 ⓐ 실행 커버리지가 아래에서 단조라는 성질과
+   *   ⓑ 10-15 홈의 높은 갈래가 `lz-home-homePc-map.js`·`react-router.js` 를 **이름으로 댄 것** 에서 온다.
+   *   ⇒ 여기서는 통계로 **말할 수 있는 것만** 단언한다: 흔들림이 매끄러운 잡음이 아니라 **두 갈래**다.
+   */
+  it('흔들림은 매끄러운 잡음이 아니라 두 갈래다 — 폭은 0 아니면 7KB 이상(그 사이가 비어 있다)', () => {
+    const spreads: number[] = []
+    for (const run of Object.values(CI_SAMPLES)) {
+      for (const [, v] of Object.values(run)) spreads.push(Math.max(...v) - Math.min(...v))
+    }
+    expect(spreads).toHaveLength(30)
+    // 허용오차(4KB)와 관측된 가장 작은 '큰 폭'(7.5KB) 사이에 표본이 하나도 없다
+    expect(spreads.filter((x) => x > TOLERANCE_KB && x < 7)).toEqual([])
+    expect(spreads.filter((x) => x > TOLERANCE_KB)).toHaveLength(6)
+    // 그 여섯의 폭은 허용오차의 두 배가 넘는다 ⇒ 중앙값 한 겹으로는 못 막는다
+    expect(Math.min(...spreads.filter((x) => x > TOLERANCE_KB))).toBeGreaterThan(TOLERANCE_KB * 1.8)
+  })
+  it('바닥값이어도 진짜 증가는 막는다(새 코드가 꼭 돌면 모든 표본에 들어 바닥도 오른다)', () => {
+    const floor = pickFloor(asResults([310, 310.2, 318]))!
+    expect(judge({ 홈: { execKB: floor.execKB, top: [] } }, base)[0].kind).toBe('grew')
+  })
+  it('한 번이라도 못 읽으면 그 화면은 실패다(추정기가 고장을 가리지 않는다)', () => {
     const src = stripComments(read('scripts/check-exec-cost.mjs'))
     expect(src).toMatch(/if \(runs\.some\(\(x\) => !x\)\) \{[^\n]{0,240}failed\+\+; continue \}/)
     expect(src).toMatch(/for \(let i = 0; i < RUNS; i\+\+\)/)
+    // 바닥값은 낮은 표본을 채택하므로 이 세 검사가 특히 중요하다
+    expect(src).toMatch(/문제가 발생했습니다/)
+    expect(src).toMatch(/res\.execKB > 100/)
+  })
+  it('판정에 쓰는 추정기는 바닥값이다(중앙값으로 되돌아가면 10-15 빨간불이 재발한다)', () => {
+    const src = stripComments(read('scripts/check-exec-cost.mjs'))
+    expect(src).toMatch(/const res = pickFloor\(runs\)/)
+    expect(src).not.toMatch(/pickMedian/)
   })
 })
 

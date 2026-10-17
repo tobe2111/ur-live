@@ -39,18 +39,45 @@ export const TOLERANCE_KB = 4
 /** 잠금여유 — 이만큼 줄었는데 기준을 안 내리면 실패. */
 export const LOCK_SLACK_KB = 8
 /**
- * 🎯 화면마다 몇 번 재서 **중앙값**으로 판정하나 (2026-10-14).
+ * 🎯 화면마다 몇 번 재나 (2026-10-14).
  *   한 번만 재면 같은 빌드가 실행마다 최대 ~9KB 흔들렸다(로컬 실측: 교환권 317↔325 · 어드민 520↔537) —
- *   허용오차(4KB)보다 커서 가드가 **아무 변화 없이** 빨간불을 낼 수 있다. 세 번의 중앙값은 튀는 한 번을 버린다.
+ *   허용오차(4KB)보다 커서 가드가 **아무 변화 없이** 빨간불을 낼 수 있다.
  */
 export const RUNS = Math.max(1, Number(process.env.EXEC_COST_RUNS) || 3)
 
-/** 측정값 여럿 중 execKB 의 중앙값인 측정을 고른다(순수). 빈 배열이면 null. */
-export function pickMedian(results) {
+/**
+ * 🎯 여러 번 잰 값 중 **무엇을 그 화면의 값으로 쓰나** — 바닥값(최소)이다 (2026-10-17).
+ *
+ * 🩸 **중앙값이던 것을 바꿨다. 근거는 라이브 CI 실측 30점이다**(main 10-15~10-17 세 회차의 3회 표본 전부):
+ *   분포가 **두 갈래**이고 **위로만** 튄다 — 낮은 갈래는 서로 0.3KB 안으로 모이고(결정적),
+ *   높은 갈래가 +7.5~13.7KB 로 떨어져 나온다. 중앙값은 **한 번** 튀는 것만 버리므로
+ *   셋 중 **둘**이 높은 갈래에 떨어지면 그대로 채택한다 — 그게 10-15 빨간불 둘의 정체다:
+ *     어드민  531.5/539.4/539.4 → 중앙값 539.4 (기준 529.8, +9.6 ❌) · 바닥값 531.5 (+1.7 ✅)
+ *     에이전시 486.9/486.9/479.2 → 중앙값 486.9 (기준 478.1, +8.8 ❌) · 바닥값 479.2 (+1.1 ✅)
+ *     홈     341.4/333.9/341.4 → 중앙값 341.4 (기준 333.3, +8.1 ❌) · 바닥값 333.9 (+0.6 ✅)
+ *   30점 전수에서 **중앙값 최악 +9.6 · 초과 3건** ↔ **바닥값 최악 +3.2 · 초과 0건**.
+ *   즉 그 세 빨간불은 코드 증가가 아니라 **추정기가 분산을 채택한 것**이었다.
+ *
+ * 🔑 **바닥값이 원리상 옳은 쪽이다**: 실행 커버리지는 아래에서 단조다 — 첫 화면에 **꼭 돌아야 하는 코드**는
+ *   어느 표본에서도 돌고, 그 위는 창 안에 우연히 들어온 뒷일(지도 SDK 예열 · `load` 뒤 미리받기)이다.
+ *   10-15 홈의 높은 갈래가 `lz-home-homePc-map.js +12.8 · react-router.js +12.0` 을 이름으로 댄 것이 그 증거다.
+ *   ⇒ 바닥값은 "이 화면이 **반드시** 태우는 양"이고, 그게 이 가드가 재려던 값이다.
+ *
+ * 🔴 **그래도 허용오차를 올리거나 `--rebaseline` 으로 덮지 않는다** — 그러면 진짜 증가가 그만큼 조용히 샌다.
+ *   바닥값은 진짜 증가를 **똑같이** 잡는다: 새 코드가 첫 화면에 꼭 돌면 모든 표본이 그걸 포함해 바닥도 같이 올라간다.
+ *
+ * ⚠️ **바닥값이 못 보는 것**: 표본 하나가 *덜* 돌아 낮게 찍히는 경우(끊긴 측정)는 중앙값이면 버려지는데
+ *   바닥값은 채택한다. 🩸 처음 이 자리에 *"실측 30점에 그 방향 이상치는 0건"* 이라고 적었는데
+ *   **시험이 그 주장을 반증했다** — `[531.5, 539.4, 539.4]` 는 "둘이 위로" 와 "하나가 아래로" 가 **같은 모양**이라
+ *   3표본으로는 방향을 알 수 없다. 비대칭의 근거는 통계가 아니라 위의 ⓐ 단조성과 ⓑ 높은 갈래가 댄 청크 이름이다.
+ *   낮은 쪽 위장은 ① 오류 화면 · ② 못 읽은 표본 · ③ `execKB > 100` 세 검사가 먼저 실패로 잡고,
+ *   남는 것은 잠금여유(−8KB) 쪽 빨간불로 드러난다(이 가드는 양방향이다).
+ *   ⇒ 그래서 세 검사를 약화하면 안 된다. 바닥값은 그 셋에 **더** 의존한다.
+ */
+export function pickFloor(results) {
   const ok = results.filter(Boolean)
   if (!ok.length) return null
-  const sorted = [...ok].sort((a, b) => a.execKB - b.execKB)
-  return sorted[Math.floor((sorted.length - 1) / 2)]
+  return [...ok].sort((a, b) => a.execKB - b.execKB)[0]
 }
 
 /** name · 하네스 인자 · 대시보드면 dashboard-surfaces 의 키(시험이 대조). */
@@ -115,19 +142,19 @@ function main() {
     for (let i = 0; i < RUNS; i++) {
       const r = spawnSync('node', ['scripts/visual-preview.mjs', ...pg.args, '--cpu', '--no-idle', '--name=exec-cost'], { cwd: ROOT, encoding: 'utf8', timeout: 180_000 })
       lastOut = r.stdout || ''
-      // 오류 화면은 한 번이라도 나오면 그 화면 전체를 실패로 본다(중앙값 뒤에 숨지 않게).
+      // 오류 화면은 한 번이라도 나오면 그 화면 전체를 실패로 본다(추정기 뒤에 숨지 않게).
       if (/문제가 발생했습니다/.test(lastOut)) { runs.length = 0; runs.push('ERR'); break }
       runs.push(parse(r.stdout))
     }
     if (runs[0] === 'ERR') { console.error(`❌ ${pg.name}: 오류 화면을 쟀다 — 시드·스텁이 화면과 안 맞는다.`); failed++; continue }
-    // 한 번이라도 못 읽으면 실패 — 중앙값이 고장을 가리면 안 된다.
+    // 한 번이라도 못 읽으면 실패 — 추정기가 고장을 가리면 안 된다(바닥값은 특히 낮은 표본을 채택한다).
     if (runs.some((x) => !x)) { console.error(`❌ ${pg.name}: 측정 결과를 못 읽었다(하네스 실패·형식 변경) — 통과가 아니다.`); failed++; continue }
-    const res = pickMedian(runs)
+    const res = pickFloor(runs)
     if (!res) { console.error(`❌ ${pg.name}: 측정 결과를 못 읽었다(하네스 실패·형식 변경) — 통과가 아니다.`); failed++; continue }
     if (!(res.execKB > 100)) { console.error(`❌ ${pg.name}: 실행된 JS ${res.execKB}KB — 렌더가 깨졌거나 측정이 헛돌았다.`); failed++; continue }
     measured[pg.name] = { execKB: res.execKB, loadedKB: res.loadedKB, top: res.top }
     const b = baseline.pages?.[pg.name]
-    console.log(`   ${pg.name.padEnd(12)} 실행 ${b ? String(b.execKB).padStart(6) : '     —'} → ${String(res.execKB).padStart(6)} KB (${RUNS}회 중앙값: ${runs.map((x) => x.execKB).join('/')}) · 받은 JS ${res.loadedKB}KB · (참고) 스크립트 ${res.scriptMs}ms · TBT ${res.tbtMs}ms @CPU×${res.cpuRate}`)
+    console.log(`   ${pg.name.padEnd(12)} 실행 ${b ? String(b.execKB).padStart(6) : '     —'} → ${String(res.execKB).padStart(6)} KB (${RUNS}회 중 바닥값: ${runs.map((x) => x.execKB).join('/')}) · 받은 JS ${res.loadedKB}KB · (참고) 스크립트 ${res.scriptMs}ms · TBT ${res.tbtMs}ms @CPU×${res.cpuRate}`)
   }
   if (failed) { console.error(`\n❌ exec-cost: ${failed}개 화면을 못 쟀다.`); process.exit(1) }
   if (Object.keys(measured).length === 0) { console.error('❌ exec-cost: 측정한 화면이 0개 — 통과가 아니다.'); process.exit(1) }
