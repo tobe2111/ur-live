@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import SocialAccountsPanel from './admin-social/SocialAccountsPanel'
 import SocialDraftEditor from './admin-social/SocialDraftEditor'
+import SocialCardImage from './admin-social/SocialCardImage'
 import SocialVideoControls from './admin-social/SocialVideoControls'
 import SocialFunnelPanel from './admin-social/SocialFunnelPanel'
 import {
@@ -216,6 +217,10 @@ export default function AdminSocialPage() {
                     )}
                     {post.status === 'failed' && post.error && (
                       <div className="mt-2 flex items-start gap-1 text-xs text-tone-bad"><AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />{post.error}</div>
+                    )}
+                    {/* 🖼️ 카드 이미지 — 인스타(이미지 필수)·스레드(선택) 초안 */}
+                    {(post.platform === 'instagram' || post.platform === 'threads') && post.status !== 'published' && post.status !== 'archived' && (
+                      <SocialCardImage post={post} onChange={() => refetchPosts()} />
                     )}
                     {/* 릴스/쇼츠 영상 컨트롤 — 유튜브·인스타 초안(미발행)만 */}
                     {(post.platform === 'youtube' || post.platform === 'instagram') && post.status !== 'published' && post.status !== 'archived' && (

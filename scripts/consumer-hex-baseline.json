@@ -1,6 +1,7 @@
 {
-  "total": 1929,
+  "total": 1939,
   "files": {
+    "src/features/social-media/api/social-image-card.ts": 10,
     "src/pages/AboutPage.tsx": 25,
     "src/pages/AboutServicePage.tsx": 1,
     "src/pages/AccountDeleteWarningPage.tsx": 3,
