@@ -3223,6 +3223,7 @@
       "usage": "Vouchers used",
       "expired": "{{count}} expired",
       "copyStoreLink": "Copy store link",
+      "copyToBranches": "Copy to other branches",
       "sendAlimtalk": "Notify store owner",
       "rotateLink": "Issue new link (old link expires)",
       "rotateConfirm": "The old link will expire and a new one will be sent. Continue?",

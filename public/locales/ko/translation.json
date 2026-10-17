@@ -3223,6 +3223,7 @@
       "usage": "바우처 사용",
       "expired": "만료 {{count}}",
       "copyStoreLink": "사장님 링크 복사",
+      "copyToBranches": "다른 지점에 복사",
       "sendAlimtalk": "사장님께 알림톡",
       "rotateLink": "새 링크 발급 (이전 링크 무효화)",
       "rotateConfirm": "이전 링크가 만료되고 새 링크가 발송됩니다. 진행하시겠습니까?",

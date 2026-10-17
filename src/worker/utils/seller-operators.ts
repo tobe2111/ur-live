@@ -90,13 +90,19 @@ export async function ensureSellerOperators(DB: D1Database): Promise<void> {
  *   ② `seller_operators` 의 미회수 행 — 위임받은 매장.
  * ①이 있으면 ①이 이긴다(자기 매장을 남이 operator 로 강등시킬 수 없다).
  */
+/**
+ * 🏬 2026-10-17 — 한 사람이 운영할 수 있는 매장 수 상한. 종전 50 이라 지점이 50곳 넘는 브랜드는
+ *   나머지가 마이·매장 전환 목록에서 **조용히 빠졌다**. 이 상한은 응답 크기 보호용이지 정책이 아니다.
+ */
+export const MAX_OPERABLE_STORES = 500
+
 export async function listOperableStores(DB: D1Database, userId: number): Promise<OperableStore[]> {
   if (!Number.isFinite(userId) || userId <= 0) return []
   await ensureSellerOperators(DB)
 
   const owned = await DB.prepare(
     `SELECT id AS seller_id, business_name, name, status, username, address
-       FROM sellers WHERE linked_user_id = ? LIMIT 50`
+       FROM sellers WHERE linked_user_id = ? LIMIT ${MAX_OPERABLE_STORES}`
   ).bind(userId).all<{ seller_id: number; business_name: string | null; name: string | null; status: string | null; username: string | null; address: string | null }>()
     .catch(() => ({ results: [] as never[] }))
 
@@ -105,7 +111,7 @@ export async function listOperableStores(DB: D1Database, userId: number): Promis
        FROM seller_operators o
        JOIN sellers s ON s.id = o.seller_id
       WHERE o.user_id = ? AND o.revoked_at IS NULL
-      LIMIT 50`
+      LIMIT ${MAX_OPERABLE_STORES}`
   ).bind(userId).all<{ seller_id: number; role: string; business_name: string | null; name: string | null; status: string | null; username: string | null; address: string | null }>()
     .catch(() => ({ results: [] as never[] }))
 
