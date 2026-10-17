@@ -36,6 +36,9 @@
 import { priceDisplay } from '../price-display'
 import { storeNameJoin } from './store-name-dedupe'
 import { parseRegionFromAddress } from '../constants/region-slugs'
+// ⚡ 2026-10-17 숫자는 formatNumber 로 — 상세 첫 렌더에서 이 함수가 Intl 로캘 데이터를 처음 적재해
+//   64ms(라이브 실측, CPU 4배)를 혼자 썼다. 정수 빠른 길이 같은 문자열을 낸다(format.ts 머리말·테스트가 Intl 과 대조).
+import { formatNumber } from '../../utils/format'
 
 /**
  * 이용권 설명이 읽는 시드 필드. 서버 `DetailData` 와 클라 `GroupBuyDetail` **둘 다** 이 모양을
@@ -62,7 +65,7 @@ export function passDetailDescription(d: PassDescriptionInput): string {
   const name = String(d.name ?? '').trim()
   const store = String(d.restaurant_name ?? '').trim()
   const price = Number(d.price) || 0
-  const priceStr = price.toLocaleString('ko-KR')
+  const priceStr = formatNumber(price)
   const storeName = storeNameJoin(store, name)
   const pd = priceDisplay({ price, original_price: Number(d.original_price) || 0, discount_rate: Number(d.current_discount_pct) || 0 })
   const rating = Number(d.avg_rating) || 0
@@ -70,7 +73,7 @@ export function passDetailDescription(d: PassDescriptionInput): string {
   const ratingPrefix = rating > 0 && reviews > 0 ? `⭐${rating.toFixed(1)} ` : ''
   const ref = parseRegionFromAddress(String(d.restaurant_address ?? ''))
   const regionStr = ref ? `${ref.sido}${ref.sigungu ? ` ${ref.sigungu}` : ''} · ` : ''
-  const origStr = pd.showOriginal && pd.originalPrice > pd.price ? ` (정가 ${pd.originalPrice.toLocaleString('ko-KR')}원)` : ''
+  const origStr = pd.showOriginal && pd.originalPrice > pd.price ? ` (정가 ${formatNumber(pd.originalPrice)}원)` : ''
   // 🔴 소개가 상품명·가게명과 같으면 버린다(같은 말을 두 번 하지 않는다 — 시드 실측상 흔하다).
   const intro = String(d.description ?? '').replace(/\s+/g, ' ').trim()
   const tail = intro && intro !== name && intro !== storeName ? ` ${intro}` : ''
