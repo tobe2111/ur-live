@@ -45,4 +45,28 @@ export default [
     test: TEST,
     why: 'R2 고아 정리 크론이 DB 참조 없는 카드로 보고 지운다.',
   },
+  {
+    name: '🖼️ 유달이를 원본보다 크게 그린다',
+    file: 'src/features/social-media/api/social-image-card.ts',
+    find: 'export const MASCOT_DRAW_H = 470',
+    replace: 'export const MASCOT_DRAW_H = 620',
+    test: TEST,
+    why: '480px 원본을 키우면 털과 수염이 뭉개져 카드가 싸 보인다(1차 카드의 실패).',
+  },
+  {
+    name: '🖼️ 하단 조각을 다시 기울인다',
+    file: 'src/features/social-media/api/social-image-card.ts',
+    find: '.prop{background:${P.white};',
+    replace: '.prop{transform:rotate(-3deg);background:${P.white};',
+    test: TEST,
+    why: '기울인 티켓은 템플릿 장식으로 읽힌다.',
+  },
+  {
+    name: '🖼️ 한글 제목이 글자 중간에서 끊긴다',
+    file: 'src/features/social-media/api/social-image-card.ts',
+    find: 'letter-spacing:-0.032em;word-break:keep-all;',
+    replace: 'letter-spacing:-0.032em;',
+    test: TEST,
+    why: '"이용권" 이 "이용 / 권" 으로 갈린다.',
+  },
 ]

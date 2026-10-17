@@ -45,31 +45,41 @@ export const DEFAULT_CARD_ASSETS: CardAssets = {
   pretendardCss: 'https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css',
   poppinsWoff2: `${SITE}/static/fonts/poppins-800-urdeal-v24.woff2`,
   mascot: {
-    store: `${SITE}/assets/mascot/udal-pose-qr.webp`,
-    creator: `${SITE}/assets/mascot/udal-pose-highfive.webp`,
-    consumer: `${SITE}/assets/mascot/udal-pose-wallet.webp`,
+    store: `${SITE}/assets/mascot/udal-social-phone.webp`,
+    creator: `${SITE}/assets/mascot/udal-social-wave.webp`,
+    consumer: `${SITE}/assets/mascot/udal-social-gift.webp`,
   },
 }
 
-interface Theme { bg: string; ink: string; sub: string; chipBg: string; chipInk: string; dot: string; url: string; deco: string }
-
-/** 유달이 그림 높이 — 원본 해상도를 넘겨 키우면 흐려지므로 그림별로 둔다(원본 238~487px). */
-const MASCOT_H: Record<SocialAudience, number> = { store: 360, creator: 350, consumer: 360 }
+interface Theme { bg: string; ink: string; sub: string; label: string; dot: string; accent: string; floor: string; propShadow: string; halo: string }
 
 /**
- * 빈 하단을 채우는 **화면 조각**(실물 UI 를 닮은 카드). 숫자·금액·약속은 넣지 않는다 —
- * 서비스가 실제로 하는 동작만(사용 처리 · 매장의 소개 제안 · 이용권 보관)을 보여 준다.
+ * 유달이 그림 높이 — 원본(v6 누끼, 약 480px)을 거의 1:1 로 쓴다. 키우면 털이 뭉개진다(1차 카드는 238px 를 360px 로 키워 흐렸다).
+ * ⚠️ 이 값을 원본 높이보다 크게 올리지 말 것 — 테스트가 고정한다.
  */
-const PROP_HTML: Record<SocialAudience, string> = {
-  store: `<div class="prop"><div class="k">이용권 사용 처리</div><div class="v">손님 휴대폰 QR 확인</div><div class="cut"></div><div class="row"><span class="ok">✓ 사용 완료</span><span class="k">새 기기 없이</span></div></div>`,
-  creator: `<div class="prop"><div class="k">새 소개 제안이 왔어요</div><div class="v">동네 가게가 먼저<br>소개 몫을 정해 제안</div><div class="cut"></div><div class="row"><span class="ok">제안 보기</span><span class="k">수락은 내가 결정</span></div></div>`,
-  consumer: `<div class="prop"><div class="k">내 이용권</div><div class="v">미리 사고, 매장에서<br>QR로 바로 사용</div><div class="cut"></div><div class="row"><span class="ok">✓ 사용 가능</span><span class="k">유어딜 지갑</span></div></div>`,
+export const MASCOT_DRAW_H = 470
+
+/**
+ * 하단 왼쪽 **화면 조각** — 서비스가 실제로 하는 동작 하나(사용 처리 · 매장의 소개 제안 · 이용권 보관).
+ * 숫자·금액·약속은 넣지 않는다. 기울이거나 티켓 홈을 파지 않는다(값싼 장식으로 읽힌다) — 앱 알림 한 장처럼 평평하게.
+ */
+const PROP: Record<SocialAudience, { icon: string; k: string; v: string; ok: string }> = {
+  store: { icon: 'qr', k: '이용권 사용 처리', v: '손님 휴대폰 QR만 확인', ok: '사용 완료' },
+  creator: { icon: 'mail', k: '새 소개 제안이 도착했어요', v: '수락하면 내 유어샵에 진열', ok: '고르는 건 나' },
+  consumer: { icon: 'ticket', k: '내 이용권', v: '매장에서 QR로 바로 사용', ok: '사용 가능' },
+}
+
+/** 조각 아이콘 — 유어딜 아이콘 세트와 같은 문법(24 그리드 · 획 1.6 · 둥근 끝). */
+const PROP_ICON: Record<string, string> = {
+  qr: '<rect x="4" y="4" width="6" height="6" rx="1.2"/><rect x="14" y="4" width="6" height="6" rx="1.2"/><rect x="4" y="14" width="6" height="6" rx="1.2"/><path d="M14 14h2.5M20 14v2.5M14 18v2M17.5 20H20"/>',
+  mail: '<rect x="3.5" y="5.5" width="17" height="13" rx="2.4"/><path d="m4.5 7 7.5 6 7.5-6"/>',
+  ticket: '<path d="M4 8.2a2 2 0 0 0 2-2h12a2 2 0 0 0 2 2v7.6a2 2 0 0 0-2 2H6a2 2 0 0 0-2-2z"/><path d="M14 6.5v11" stroke-dasharray="1.6 2"/>',
 }
 
 const THEMES: Record<SocialAudience, Theme> = {
-  store: { bg: P.bg, ink: P.ink, sub: P.inkSoft, chipBg: P.brand, chipInk: P.white, dot: P.brand, url: P.ink, deco: 'rgba(28,105,239,0.07)' },
-  creator: { bg: P.navy, ink: P.white, sub: 'rgba(255,255,255,0.74)', chipBg: P.brand, chipInk: P.white, dot: P.brandText, url: P.white, deco: 'rgba(77,141,245,0.12)' },
-  consumer: { bg: P.brand, ink: P.white, sub: 'rgba(255,255,255,0.84)', chipBg: P.white, chipInk: P.brand, dot: P.white, url: P.white, deco: 'rgba(255,255,255,0.10)' },
+  store: { bg: P.bg, ink: P.ink, sub: P.inkSoft, label: P.inkFaint, dot: P.brand, accent: P.brand, floor: 'rgba(15,26,51,0.13)', propShadow: '0 18px 48px rgba(15,26,51,0.10)', halo: 'rgba(28,105,239,0.07)' },
+  creator: { bg: P.navy, ink: P.white, sub: 'rgba(255,255,255,0.68)', label: 'rgba(255,255,255,0.55)', dot: P.brandText, accent: P.brandText, floor: 'rgba(0,0,0,0.38)', propShadow: '0 22px 56px rgba(0,0,0,0.38)', halo: 'rgba(77,141,245,0.13)' },
+  consumer: { bg: P.brand, ink: P.white, sub: 'rgba(255,255,255,0.80)', label: 'rgba(255,255,255,0.70)', dot: P.white, accent: P.white, floor: 'rgba(8,30,80,0.30)', propShadow: '0 22px 56px rgba(8,30,80,0.28)', halo: 'rgba(255,255,255,0.10)' },
 }
 
 /** 카드 상단 꼬리표 — 누구에게 하는 말인지 한눈에. */
@@ -90,14 +100,14 @@ export function escHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
 }
 
-/** 제목 길이에 맞춘 글자 크기 — 3줄 안에 들어가게. */
+/** 제목 길이에 맞춘 글자 크기 — 3줄 안에 들어가게. 굵기 700(800 은 한글이 뭉친다 — 배너 실측). */
 export function headlineSize(title: string): number {
   const n = [...title].length
-  if (n <= 12) return 112
-  if (n <= 20) return 100
-  if (n <= 28) return 88
-  if (n <= 38) return 76
-  return 66
+  if (n <= 10) return 116
+  if (n <= 16) return 104
+  if (n <= 24) return 96
+  if (n <= 34) return 84
+  return 72
 }
 
 /**
@@ -123,53 +133,61 @@ export function cardHeadline(title: string): string {
 
 export interface CardInput { audience: SocialAudience; title: string; body: string }
 
-/** 1080×1350 카드 HTML. 렌더러는 `document.fonts.ready` 까지 기다린 뒤 찍는다. */
+/**
+ * 1080×1350 카드 HTML. 렌더러는 `document.fonts.ready` 까지 기다린 뒤 찍는다.
+ *
+ * 구성(위→아래, 좌우 여백 96 한 격자): 워드마크 + 대상 · 제목(굵기 700 · 한글 단어 단위 줄바꿈 · 줄 길이 균형) ·
+ * 보조 한 문장 · 하단 왼쪽 앱 조각 + 주소 · 오른쪽 유달이(바닥 그림자 위에 선다).
+ * 장식 원·강조 막대·기울인 티켓은 쓰지 않는다(템플릿 티가 난다 — 1차 카드의 실패).
+ */
 export function buildCardHtml(input: CardInput, assets: CardAssets = DEFAULT_CARD_ASSETS): string {
   const t = THEMES[input.audience]
   const head = cardHeadline(input.title)
   const sub = cardSubline(input.body)
   const fs = headlineSize(head)
+  const pr = PROP[input.audience]
   return `<!doctype html><html lang="ko"><head><meta charset="utf-8">
 <link rel="stylesheet" href="${escHtml(assets.pretendardCss)}">
 <style>
 @font-face{font-family:'UrPoppins';src:url('${escHtml(assets.poppinsWoff2)}') format('woff2');font-weight:800;font-display:block}
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:${CARD_W}px;height:${CARD_H}px;overflow:hidden}
-body{background:${t.bg};font-family:'Pretendard Variable',Pretendard,system-ui,sans-serif;color:${t.ink};-webkit-font-smoothing:antialiased;position:relative}
-.deco{position:absolute;right:-220px;top:-180px;width:760px;height:760px;border-radius:50%;background:${t.deco}}
-.wrap{position:absolute;inset:0;padding:96px 96px 88px;display:flex;flex-direction:column}
-.top{display:flex;align-items:center;justify-content:space-between}
-.logo{font-family:'UrPoppins','Pretendard Variable',sans-serif;font-weight:800;font-size:52px;letter-spacing:-0.035em;line-height:1;display:inline-flex;align-items:baseline;color:${t.ink}}
-.logo i{display:inline-block;width:10px;height:10px;border-radius:50%;background:${t.dot};margin-left:4px}
-.chip{background:${t.chipBg};color:${t.chipInk};font-size:30px;font-weight:700;letter-spacing:-0.02em;padding:16px 28px;border-radius:999px}
-.mid{margin-top:120px;max-width:880px}
-h1{font-size:${fs}px;font-weight:800;line-height:1.2;letter-spacing:-0.045em;word-break:keep-all;overflow-wrap:break-word;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
-.bar{width:88px;height:8px;border-radius:4px;background:${t.chipBg === P.white ? P.white : P.brand};margin:56px 0 44px}
-p.sub{font-size:40px;font-weight:500;line-height:1.5;letter-spacing:-0.025em;color:${t.sub};word-break:keep-all;max-width:640px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-.bottom{margin-top:auto;display:flex;align-items:flex-end;justify-content:space-between}
-.url{font-size:34px;font-weight:700;letter-spacing:-0.02em;color:${t.url};display:flex;align-items:center;gap:14px}
-.url b{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:50%;background:${t.chipBg};color:${t.chipInk};font-size:30px}
-.mascot{position:absolute;right:64px;bottom:150px;height:${MASCOT_H[input.audience]}px;width:auto;${input.audience === 'store' ? 'filter:drop-shadow(0 24px 40px rgba(15,26,51,0.18));' : ''}}
-.prop{position:absolute;left:96px;bottom:200px;width:540px;background:${P.white};border-radius:36px;padding:36px 40px;box-shadow:0 30px 60px rgba(15,26,51,0.16);transform:rotate(-3deg);color:${P.ink}}
-.prop .k{font-size:26px;font-weight:600;color:${P.inkFaint};letter-spacing:-0.02em}
-.prop .v{font-size:40px;font-weight:800;letter-spacing:-0.035em;margin-top:10px;line-height:1.25}
-.prop .row{display:flex;align-items:center;gap:14px;margin-top:22px}
-.prop .ok{display:inline-flex;align-items:center;gap:10px;background:${P.brandTint};color:${P.brand};font-size:26px;font-weight:700;padding:10px 18px;border-radius:999px}
-.prop .cut{position:relative;margin:26px -40px 0;border-top:3px dashed ${P.rule}}
-.prop .cut:before,.prop .cut:after{content:'';position:absolute;top:-17px;width:32px;height:32px;border-radius:50%;background:${t.bg}}
-.prop .cut:before{left:-16px}.prop .cut:after{right:-16px}
+body{background:${t.bg};font-family:'Pretendard Variable',Pretendard,system-ui,sans-serif;color:${t.ink};-webkit-font-smoothing:antialiased;text-rendering:geometricPrecision;position:relative;font-feature-settings:'ss06'}
+.wrap{position:absolute;inset:0;padding:92px 96px 96px;display:flex;flex-direction:column}
+.top{display:flex;align-items:center;justify-content:space-between;height:56px}
+.logo{font-family:'UrPoppins','Pretendard Variable',sans-serif;font-weight:800;font-size:46px;letter-spacing:-0.035em;line-height:1;display:inline-flex;align-items:baseline;color:${t.ink}}
+.logo i{display:inline-block;width:9px;height:9px;border-radius:50%;background:${t.dot};margin-left:4px}
+.label{font-size:28px;font-weight:600;letter-spacing:-0.01em;color:${t.label}}
+.mid{margin-top:124px;position:relative;z-index:2}
+h1{font-size:${fs}px;font-weight:700;line-height:1.26;letter-spacing:-0.032em;word-break:keep-all;overflow-wrap:break-word;text-wrap:balance;max-width:888px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+p.sub{margin-top:40px;font-size:38px;font-weight:500;line-height:1.5;letter-spacing:-0.02em;color:${t.sub};word-break:keep-all;text-wrap:pretty;max-width:760px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.foot{margin-top:auto;position:relative;z-index:1;width:540px}
+.prop{background:${P.white};color:${P.ink};border-radius:32px;padding:30px 32px;display:flex;align-items:center;gap:24px;box-shadow:${t.propShadow}}
+.prop .ic{flex:none;width:76px;height:76px;border-radius:22px;background:${P.brandTint};display:flex;align-items:center;justify-content:center}
+.prop .ic svg{width:40px;height:40px;fill:none;stroke:${P.brand};stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.prop .tx{min-width:0;flex:1}
+.prop .k{font-size:24px;font-weight:600;color:${P.inkFaint};letter-spacing:-0.01em}
+.prop .v{font-size:32px;font-weight:700;letter-spacing:-0.025em;margin-top:6px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prop .ok{display:inline-block;margin-top:14px;font-size:22px;font-weight:700;color:${P.brand};background:${P.brandTint};padding:7px 14px;border-radius:999px;letter-spacing:-0.01em}
+.url{margin-top:44px;font-size:32px;font-weight:700;letter-spacing:-0.015em;color:${t.ink};display:flex;align-items:center;gap:12px}
+.url svg{width:30px;height:30px;fill:none;stroke:${t.accent};stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.halo{position:absolute;right:-150px;bottom:-190px;width:820px;height:820px;border-radius:50%;background:${t.halo}}
+.hero{position:absolute;z-index:3;right:64px;bottom:96px;width:420px;height:${MASCOT_DRAW_H + 40}px;display:flex;align-items:flex-end;justify-content:center}
+.hero:before{content:'';position:absolute;left:50%;bottom:6px;width:300px;height:44px;margin-left:-150px;border-radius:50%;background:radial-gradient(closest-side,${t.floor},transparent)}
+.hero img{position:relative;height:${MASCOT_DRAW_H}px;width:auto;display:block}
 </style></head><body>
-<div class="deco"></div>
 <div class="wrap">
-  <div class="top"><span class="logo">urdeal<i></i></span><span class="chip">${escHtml(CARD_CHIP[input.audience])}</span></div>
+  <div class="top"><span class="logo">urdeal<i></i></span><span class="label">${escHtml(CARD_CHIP[input.audience])}</span></div>
   <div class="mid">
     <h1>${escHtml(head)}</h1>
-    <div class="bar"></div>
     ${sub ? `<p class="sub">${escHtml(sub)}</p>` : ''}
   </div>
-  <div class="bottom"><span class="url"><b>→</b>${escHtml(CARD_URL[input.audience])}</span></div>
+  <div class="foot">
+    <div class="prop"><span class="ic"><svg viewBox="0 0 24 24">${PROP_ICON[pr.icon]}</svg></span><div class="tx"><div class="k">${escHtml(pr.k)}</div><div class="v">${escHtml(pr.v)}</div><span class="ok">${escHtml(pr.ok)}</span></div></div>
+    <div class="url">${escHtml(CARD_URL[input.audience])}<svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg></div>
+  </div>
 </div>
-${PROP_HTML[input.audience]}
-<img class="mascot" src="${escHtml(assets.mascot[input.audience])}" alt="">
+<div class="halo"></div>
+<div class="hero"><img src="${escHtml(assets.mascot[input.audience])}" alt=""></div>
 </body></html>`
 }

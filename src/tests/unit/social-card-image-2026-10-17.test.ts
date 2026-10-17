@@ -8,7 +8,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { readFileSync, existsSync } from 'node:fs'
 import {
-  buildCardHtml, cardSubline, cardHeadline, headlineSize, CARD_URL, CARD_CHIP, DEFAULT_CARD_ASSETS, escHtml,
+  buildCardHtml, cardSubline, cardHeadline, headlineSize, CARD_URL, CARD_CHIP, DEFAULT_CARD_ASSETS, escHtml, MASCOT_DRAW_H,
 } from '@/features/social-media/api/social-image-card'
 import { AUDIENCE_LANDING, SOCIAL_AUDIENCES } from '@/features/social-media/api/social-audience'
 import { readCode } from '../helpers/source-text'
@@ -63,6 +63,35 @@ describe('카드 HTML', () => {
       const visible = html.replace(/<style>[\s\S]*?<\/style>/, '').replace(/<[^>]+>/g, ' ')
       expect(visible).not.toMatch(/\d+\s*(%|원|딜)/)
     }
+  })
+})
+
+/** webp 높이(VP8 · VP8L · VP8X) — 의존성 없이 머리만 읽는다. */
+function webpHeight(file: string): number {
+  const b = readFileSync(file)
+  const kind = b.toString('ascii', 12, 16)
+  if (kind === 'VP8X') return 1 + b.readUIntLE(27, 3)
+  if (kind === 'VP8L') return 1 + (((b[22] | (b[23] << 8) | (b[24] << 16)) >> 6) & 0x3fff)
+  return b.readUInt16LE(28) & 0x3fff
+}
+
+describe('품질 규율', () => {
+  it('유달이를 원본보다 크게 그리지 않는다(키우면 털이 뭉개진다 — 1차 카드는 238px 를 360px 로 키웠다)', () => {
+    for (const a of SOCIAL_AUDIENCES) {
+      const h = webpHeight(`public/assets/mascot/${DEFAULT_CARD_ASSETS.mascot[a].split('/').pop()}`)
+      expect(h, `${a} 원본 높이`).toBeGreaterThan(400)
+      expect(MASCOT_DRAW_H, `${a}: 그리는 높이 ${MASCOT_DRAW_H} > 원본 ${h}`).toBeLessThanOrEqual(h)
+    }
+  })
+  it('템플릿 장식을 쓰지 않는다(기울인 조각 · 강조 막대 · 굵기 800 제목)', () => {
+    const html = buildCardHtml({ audience: 'store', title: '제목', body: '본문.' })
+    expect(html).not.toMatch(/rotate\(/)
+    expect(html).not.toMatch(/class="bar"/)
+    expect(html).toMatch(/h1\{[^}]*font-weight:700/)
+  })
+  it('한글 제목은 단어 단위로 줄을 바꾼다(글자 중간에서 끊기지 않는다)', () => {
+    const html = buildCardHtml({ audience: 'creator', title: '제목', body: '본문.' })
+    expect(html).toMatch(/h1\{[^}]*word-break:keep-all/)
   })
 })
 
