@@ -69,4 +69,12 @@ export default [
     test: TEST,
     why: '"이용권" 이 "이용 / 권" 으로 갈린다.',
   },
+  {
+    name: '🖼️ wrangler 가 ur-ads 번들을 다시 묶는다',
+    file: 'wrangler-ads.toml',
+    find: 'no_bundle = true',
+    replace: 'no_bundle = false',
+    test: TEST,
+    why: 'wrangler@3 가 node:fs 를 unenv 껍데기로 바꿔 카드 렌더가 "fs.mkdtemp is not implemented" 로 죽는다.',
+  },
 ]

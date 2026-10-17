@@ -11,6 +11,11 @@
 
 name = "ur-ads"
 main = "dist-ads/index.js"
+# 🖼️ 2026-10-17 소셜 카드 렌더 — wrangler 가 **다시 번들하지 않게** 한다. 번들은 [build] 의 esbuild 가 이미 끝냈다(외부는 cloudflare:* · node:* 뿐).
+#   다시 번들하면 wrangler@3 가 node:fs 를 unenv 껍데기로 바꿔 끼워 @cloudflare/playwright 가
+#   "[unenv] fs.mkdtemp is not implemented yet!" 로 죽었다(라이브 첫 실행). no_bundle 이면 런타임 진짜 node:fs
+#   (compatibility_date ≥ 2025-09-01 + nodejs_compat)를 쓴다 — 로컬 workerd 로 기동·mkdtempSync 확인.
+no_bundle = true
 # 🔒 2026-07-23 전수조사: workers.dev 라우트 비활성 — /__ads/*(무인증 수집 트리거·self-chain·시트 rewrite)가
 #   공개 도달 가능하던 표면 봉인. 접근은 Service Binding(메인 env.ADS·자기 SELF)으로만(바인딩은 라우트 불필요).
 workers_dev = false

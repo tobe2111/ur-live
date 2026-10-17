@@ -152,6 +152,13 @@ describe('배선', () => {
     expect(toml).toMatch(/\[browser\]\s*\nbinding = "BROWSER"/)
     expect(toml).toMatch(/\[\[r2_buckets\]\]\s*\nbinding = "MEDIA_BUCKET"\s*\nbucket_name = "ur-live-media"/)
   })
+  it('wrangler 가 번들을 다시 묶지 않는다(다시 묶으면 node:fs 가 unenv 껍데기가 되어 렌더가 죽는다 — 라이브 첫 실행)', () => {
+    const toml = readFileSync('wrangler-ads.toml', 'utf8').replace(/^\s*#.*$/gm, '')
+    expect(toml).toMatch(/^no_bundle = true$/m)
+    const date = /^compatibility_date = "(\d{4}-\d{2}-\d{2})"/m.exec(toml)?.[1] ?? ''
+    expect(date >= '2025-09-01', `compatibility_date ${date} 는 진짜 node:fs 이전`).toBe(true)
+    expect(toml).toMatch(/compatibility_flags = \[[^\]]*"nodejs_compat"/)
+  })
   it('매일 크론이 인스타 초안에 카드 이미지를 붙인다', () => {
     const cron = readCode('src/worker/cron/social-draft.ts')
     expect(cron).toMatch(/platform === 'instagram'[\s\S]{0,200}attachCardImage\(env, r\.id\)/)

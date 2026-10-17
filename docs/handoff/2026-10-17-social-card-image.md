@@ -36,3 +36,12 @@ R2 고아 정리 크론은 `uploads/` 만 보므로 `social/` 카드는 안 지�
 로컬 렌더(1080×1350, Pretendard 로드 확인)로 세 대상 다 눈으로 봤다.
 
 ⚠️ 못 본 것: Cloudflare 브라우저에서의 실제 렌더(배포 후 E4) · 인스타 앱에서의 실제 크기.
+
+## 3차 — 라이브 첫 실행이 렌더에서 죽었다 (#1882 머지 `fb58198` 뒤)
+
+`POST /api/admin/social/posts/{2,5}/card-image` → `렌더 실패: browserType.connectOverCDP: [unenv] fs.mkdtemp is not implemented yet!`
+원인: `deploy-ads.yml` 이 `wrangler@3` 로 배포하는데, wrangler 가 esbuild 결과물을 **다시 번들**하면서 `node:fs` 를
+unenv 껍데기로 바꿔 끼운다(dry-run 산출물에서 `unenv` 86회 실측). 우리 esbuild 번들은 이미 완결이고 외부는 `cloudflare:*` · `node:*` 뿐.
+처방: `wrangler-ads.toml` 에 `no_bundle = true` — dry-run 산출물이 `dist-ads/index.js` 와 **바이트 동일**, unenv 0.
+로컬 workerd(miniflare, 2025-12-01 + nodejs_compat)로 기동 + `fs.mkdtempSync` 성공 확인(node:http/net/tls/dns 포함 전 모듈 로드).
+⚠️ 못 본 것: 프로덕션에서 실제 렌더(배포 후 E4 — 2·5번 초안에 다시 요청).
