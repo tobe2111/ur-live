@@ -92,6 +92,7 @@ const SORTS: Array<SortOptionItem<'popular' | 'discount' | 'newest'>> = [
 // 🗺️ 거리순 — 위치가 있을 때만 낀다. 2026-09-08 까지 PcHomePage 전용이라 폰에서는 실제로 거리순인데
 //    알약이 "인기순"이라고 적혀 있었다(SortMenu 는 value 가 options 에 없으면 options[0] 을 그린다).
 //    근거·함정: `home-nearest-first.test.ts`.
+const NO_DEFER: ReadonlySet<number> = new Set()
 const NEAR_SORT: SortOptionItem<'near'> = { key: 'near', label: '거리순', Icon: PinIcon }
 type SortKey = typeof SORTS[number]['key'] | 'near'
 type CategoryKey = typeof CATEGORIES[number]['key']
@@ -328,7 +329,8 @@ export default function GroupBuyFeed({
        *      로드될 때 이미 그려진 카드가 움직인다 — 바로 위 주석의 2026-07-16 사고 그대로다.
        *   섹션 id 는 SSR 시드에서 첫 렌더에 확정된다(구독 아님) → 재정렬이 구조적으로 없다.
        */
-      for (const p of deferSeeded(sortBand(src), sectionIds)) {
+      // 📍 2026-10-17 대표 신고: 거리순에선 안 미룬다 — 섹션도 같은 위치로 정렬돼 가장 가까운 것이 통째로 뒤로 갔다.
+      for (const p of deferSeeded(sortBand(src), sort === 'near' ? NO_DEFER : sectionIds)) {
         if (p?.id != null && !seen.has(p.id)) { seen.add(p.id); out.push(p) }
       }
     }
