@@ -32,8 +32,8 @@ export default [
   {
     name: '[pass-desc] 생성기가 참가자 수를 읽는다 (서버까지 번진다)',
     file: SSOT,
-    find: '  const priceStr = price.toLocaleString(\'ko-KR\')',
-    replace: '  const priceStr = `${price.toLocaleString(\'ko-KR\')}원, ${Number((d as { group_buy_current?: unknown }).group_buy_current) || 0}명 함께 구매 중`',
+    find: '  const priceStr = formatNumber(price)',
+    replace: '  const priceStr = `${formatNumber(price)}원, ${Number((d as { group_buy_current?: unknown }).group_buy_current) || 0}명 함께 구매 중`',
     test: TEST,
     why:
       '이제 서버·클라가 **한 함수**를 쓰므로 이 자리가 새면 두 표면이 함께 되돌아간다. ' +
