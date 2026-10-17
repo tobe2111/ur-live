@@ -633,7 +633,7 @@ const MUTATIONS = [
   {
     name: '🖼️ 피드가 섹션 상품을 미루지 않는다 (같은 사진이 위아래로 두 번)',
     file: 'src/pages/main-home/GroupBuyFeed.tsx',
-    find: "deferSeeded(sortBand(src), sort === 'near' ? NO_DEFER : sectionIds)",
+    find: 'deferSeeded(sortBand(src), nearKey ? NO_DEFER : sectionIds)',
     replace: 'sortBand(src)',
     test: 'src/tests/unit/home-feed-defers-section-items.test.ts',
     why:

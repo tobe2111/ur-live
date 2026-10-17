@@ -27,7 +27,7 @@ describe('홈 피드 — 정렬을 서버로', () => {
   })
 
   it('거리순은 sort 가 아니라 near 로 나간다', () => {
-    expect(feed).toMatch(/const serverSort = sort === 'near' \? '' : sort/)
+    expect(feed).toMatch(/const serverSort = nearKey \? '' : sort/)
     expect(feed).toMatch(/&near=\$\{nearKey\}/)
   })
 

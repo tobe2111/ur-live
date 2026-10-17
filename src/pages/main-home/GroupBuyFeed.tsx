@@ -209,11 +209,12 @@ export default function GroupBuyFeed({
    *   거리순은 `sort` 가 아니라 `near`(서버 거리 랭킹)가 담당한다.
    *   ⚠️ 좌표는 **서버 캐시키 단위(0.02°≈2km)로 반올림**해 보낸다 — 몇 m 움직일 때마다 캐시가 갈리면
    *      엣지 적중이 무너진다. 화면에 보이는 최종 순서는 아래 `sortBand` 가 정확한 좌표로 다시 매긴다.
+   * 📍 2026-10-17: 거리 필터(1·3km)도 가까운 후보를 받는다 — 인기순 1페이지만 걸러 "없어요" 라고 거짓말하던 것.
    */
-  const nearKey = sort === 'near' && userLoc
+  const nearKey = (sort === 'near' || filters?.maxKm != null) && userLoc
     ? `${(Math.round(userLoc.lat / 0.02) * 0.02).toFixed(2)},${(Math.round(userLoc.lng / 0.02) * 0.02).toFixed(2)}`
     : ''
-  const serverSort = sort === 'near' ? '' : sort
+  const serverSort = nearKey ? '' : sort
   const feedParams = `${serverSort ? `&sort=${serverSort}` : ''}${nearKey ? `&near=${nearKey}` : ''}`
   const { data: items = [], isLoading: loading, isError, refetch } = useQuery<FeedProduct[]>({
     queryKey: queryKeys.groupBuyList('active', category, serverSort || (nearKey && `near:${nearKey}`) || ''),
@@ -226,22 +227,19 @@ export default function GroupBuyFeed({
       }
       return arr
     },
-    initialData: ssrInitial,
-    initialDataUpdatedAt: ssrInitial ? Date.now() - 60_000 : 0,  // SSR 데이터를 1분 stale 로 표시 → useQuery 가 background refetch
+    initialData: nearKey ? undefined : ssrInitial,  // 시드는 위치 없는 인기순 — 가까운 후보 요청엔 안 맞는다
+    initialDataUpdatedAt: ssrInitial && !nearKey ? Date.now() - 60_000 : 0,
     refetchOnWindowFocus: false,
     // 🚦 2026-09-03: 정렬을 바꾸면 캐시키가 갈리므로 그대로 두면 **빈 화면 → 스켈레톤**이 된다.
     //   직전 결과를 유지한 채 새 정렬을 받아 온다(그 사이 sortBand 가 로드된 것만이라도 즉시 재정렬).
     placeholderData: (prev) => prev,
   })
 
-  // 📄 2026-07-08 (대표 "전체 상품이 안 나옴 — 50곳밖에"): 서버 기본 피드는 LIMIT 50(캐시/SSR 고정).
-  //   50개 초과분은 페이지네이션으로 이어 로드(page=2,3…, 같은 정렬 = DEMO_LAST,created_at DESC → 중복/누락 0).
-  //   1페이지는 기존 SSR/캐시 fast-path 유지, 이후만 라이브 fetch — 무한스크롤로 전체 노출.
+  // 📄 2026-07-08: 서버 피드는 LIMIT 50 — 초과분은 page=2,3… 로 이어 로드(1페이지만 SSR/캐시 fast-path).
   const [extraPages, setExtraPages] = useState<FeedProduct[][]>([])
   const [loadingMore, setLoadingMore] = useState(false)
   const [reachedEnd, setReachedEnd] = useState(false)
-  // 카테고리·정렬 변경 시 누적분 리셋 (🚦 2026-09-03: 정렬이 서버로 갔으므로 옛 순서로 받은 페이지가
-  //   새 정렬 결과와 섞이면 중복·누락이 생긴다 — 밴드를 통째로 버리고 page2 부터 다시 쌓는다.)
+  // 카테고리·정렬 변경 시 누적분 리셋 — 옛 순서 페이지가 섞이면 중복·누락(2026-09-03).
   useEffect(() => { setExtraPages([]); setReachedEnd(false) }, [category, serverSort, nearKey])
 
   // 🗺️ 2026-07-16 (대표 신고 — 스크롤 로드 시 이용권 배치가 제멋대로 바뀜): '누적 전체 재정렬'이 아니라
@@ -329,8 +327,8 @@ export default function GroupBuyFeed({
        *      로드될 때 이미 그려진 카드가 움직인다 — 바로 위 주석의 2026-07-16 사고 그대로다.
        *   섹션 id 는 SSR 시드에서 첫 렌더에 확정된다(구독 아님) → 재정렬이 구조적으로 없다.
        */
-      // 📍 2026-10-17 대표 신고: 거리순에선 안 미룬다 — 섹션도 같은 위치로 정렬돼 가장 가까운 것이 통째로 뒤로 갔다.
-      for (const p of deferSeeded(sortBand(src), sort === 'near' ? NO_DEFER : sectionIds)) {
+      // 📍 2026-10-17 대표 신고: 거리 기준이면 안 미룬다 — 가장 가까운 것이 통째로 뒤로 갔다.
+      for (const p of deferSeeded(sortBand(src), nearKey ? NO_DEFER : sectionIds)) {
         if (p?.id != null && !seen.has(p.id)) { seen.add(p.id); out.push(p) }
       }
     }
@@ -347,6 +345,9 @@ export default function GroupBuyFeed({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     // regionRef 는 객체라 참조가 매 렌더 바뀔 수 있어 원시값으로 분해해 넣는다(무한 재계산 방지).
   }, [items, extraPages, sort, userLoc, sectionIds, regionKey, districtKey, regionRef?.sido, regionRef?.sigungu, feedFiltersKey(filters)])
+  // 📍 2026-10-17: 필터로 0건이면 **끝까지 더 찾아본 뒤에야** "없어요" — 불러온 1페이지만 보고 단정하지 않는다.
+  const hunting = !!feedFiltersKey(filters).replace('|', '') && sorted.length === 0 && !reachedEnd && !isError
+  useEffect(() => { if (hunting && !loading && !loadingMore) void loadMore() }, [hunting, loading, loadingMore, extraPages.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // 무한 스크롤 센티넬 — 바닥 근처 도달 시 다음 페이지 로드. page1 이 꽉 찼을 때(50개)만 활성.
   // 📜 2026-10-13: 첫 렌더는 몇 장만, 나머지는 load 뒤 한가할 때마다 몇 장씩(`useProgressiveCap`). 덜 그린 동안엔 센티넬을 끈다.
@@ -442,10 +443,9 @@ export default function GroupBuyFeed({
           <button onClick={() => refetch()} className="inline-block px-5 py-3 bg-brand text-white rounded-full text-[15px] font-bold">다시 시도</button>
         </div>
       ) : sorted.length === 0 ? (
-        // 🛡️ 2026-05-20: 사용자 요청 — 빈 상태에서 인접 지역 공구 자동 노출.
-        //   선택 카테고리에 결과 없으면 전체 카테고리로 자동 fallback fetch.
+        // 🛡️ 2026-05-20: 빈 상태 — 카테고리 결과 없으면 전체로 자동 fallback fetch.
         feedFiltersKey(filters).replace('|', '') ? (
-          <p className="px-4 py-16 text-center text-[15px] text-gray-500 dark:text-gray-400">조건에 맞는 이용권이 아직 없어요. 거리나 가격을 넓혀 보세요.</p>
+          <p className="px-4 py-16 text-center text-[15px] text-gray-500 dark:text-gray-400">{hunting ? '조건에 맞는 이용권을 찾고 있어요…' : '조건에 맞는 이용권이 아직 없어요. 거리나 가격을 넓혀 보세요.'}</p>
         ) : <EmptyStateWithFallback category={category} onReset={() => setCategory('all')} />
       ) : (
         <>

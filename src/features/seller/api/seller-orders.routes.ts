@@ -706,55 +706,60 @@ sellerOrdersRoutes.patch('/orders/bulk-status', async (c) => {
 //   먼저 등록된 쪽이 이겨서 **한 번도 실행된 적이 없다** — 고쳐도 아무 일이 안 일어나는 코드라 지웠다.
 //   ⚠️ App.tsx 중복은 check-duplicate-routes 가 잡지만 **Hono 라우트 중복은 아직 아무도 안 본다.**
 
-sellerOrdersRoutes.post('/products', async (c) => {
+export type SellerProductCreateBody = {
+  name: string;
+  description?: string;
+  // 🛡️ 2026-07-02 (쇼핑 전수조사): 상세 설명/이미지 — 이전엔 POST 에서 저장 안 돼 셀러가 쓴 상세가 소실.
+  long_description?: string;
+  detail_images?: string;
+  images?: string | null;  // 🖼️ 2026-09-03 사진 목록 JSON(첫 장=대표) — 카드 캐러셀이 읽는 컬럼
+  price: number;
+  original_price?: number;
+  stock?: number;
+  image_url?: string;
+  category?: string;
+  live_stream_id?: number | null;
+  // 이용권 (meal_voucher) 전용 필드 — category=meal_voucher 일 때만 사용
+  restaurant_name?: string;
+  restaurant_address?: string;
+  restaurant_phone?: string;
+  voucher_terms?: string;
+  voucher_expiry?: string;
+  group_buy_target?: number;
+  group_buy_deadline?: string;
+  store_verify_pin?: string;
+  // 🗺️ 2026-06-25: 좌표/외부예약/지역 — 이용권 지도·예약·하이퍼로컬 (등록 시 누락 수정)
+  restaurant_lat?: number | null;
+  restaurant_lng?: number | null;
+  external_booking_url?: string | null;
+  region_si?: string | null;
+  region_gu?: string | null;
+  // 🛡️ 2026-05-15: 티어 할인 — JSON 문자열로 받음
+  group_buy_tiers?: string | null;
+  // 🛡️ 2026-05-05: 디지털 상품 필드
+  product_kind?: string;
+  delivery_type?: string;
+  content_url?: string | null;
+  content_format?: string | null;
+  access_duration_days?: number | null;
+  preview_url?: string | null;
+  // 🍽️ 2026-06-17 (#5 대표 메뉴): OCR/수동 추출 메뉴 — product_supply_meta 'menu' 에 저장 (products 컬럼 증식 방지).
+  menu?: Array<{ name: string; price?: string; desc?: string }>;
+  // 💰 2026-07-05 (§1 인플루언서 엔진): 셀러가 설정한 소개비 % (fraction 0~0.5) → 어필리에이트 override.
+  //   ⚠️ platform_settings.seller_promo_field_enabled==='true' 일 때만 저장(owner-funding 검증 전 누수 방지).
+  referral_enabled?: boolean;
+  referral_commission_rate?: number;
+};
+
+sellerOrdersRoutes.post('/products', (c) => createSellerProduct(c));
+/** 🏬 2026-10-17 프랜차이즈: 지점 복사(`seller-product-copy.routes`)가 **같은 등록 경로**를 타도록 함수로 뺐다.
+ *  `forced` 는 이미 권한(`canOperateStore`)을 통과한 매장·본문 — 두 벌이면 복사본만 검증·매장 확정을 건너뛴다. */
+export async function createSellerProduct(c: Context<{ Bindings: Bindings }>, forced?: { sellerId: number; body: SellerProductCreateBody }) {
   try {
-    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
+    const sellerId = forced ? forced.sellerId : await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
     if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
-    const body = await c.req.json<{
-      name: string;
-      description?: string;
-      // 🛡️ 2026-07-02 (쇼핑 전수조사): 상세 설명/이미지 — 이전엔 POST 에서 저장 안 돼 셀러가 쓴 상세가 소실.
-      long_description?: string;
-      detail_images?: string;
-      images?: string | null;  // 🖼️ 2026-09-03 사진 목록 JSON(첫 장=대표) — 카드 캐러셀이 읽는 컬럼
-      price: number;
-      original_price?: number;
-      stock?: number;
-      image_url?: string;
-      category?: string;
-      live_stream_id?: number | null;
-      // 이용권 (meal_voucher) 전용 필드 — category=meal_voucher 일 때만 사용
-      restaurant_name?: string;
-      restaurant_address?: string;
-      restaurant_phone?: string;
-      voucher_terms?: string;
-      voucher_expiry?: string;
-      group_buy_target?: number;
-      group_buy_deadline?: string;
-      store_verify_pin?: string;
-      // 🗺️ 2026-06-25: 좌표/외부예약/지역 — 이용권 지도·예약·하이퍼로컬 (등록 시 누락 수정)
-      restaurant_lat?: number | null;
-      restaurant_lng?: number | null;
-      external_booking_url?: string | null;
-      region_si?: string | null;
-      region_gu?: string | null;
-      // 🛡️ 2026-05-15: 티어 할인 — JSON 문자열로 받음
-      group_buy_tiers?: string | null;
-      // 🛡️ 2026-05-05: 디지털 상품 필드
-      product_kind?: string;
-      delivery_type?: string;
-      content_url?: string | null;
-      content_format?: string | null;
-      access_duration_days?: number | null;
-      preview_url?: string | null;
-      // 🍽️ 2026-06-17 (#5 대표 메뉴): OCR/수동 추출 메뉴 — product_supply_meta 'menu' 에 저장 (products 컬럼 증식 방지).
-      menu?: Array<{ name: string; price?: string; desc?: string }>;
-      // 💰 2026-07-05 (§1 인플루언서 엔진): 셀러가 설정한 소개비 % (fraction 0~0.5) → 어필리에이트 override.
-      //   ⚠️ platform_settings.seller_promo_field_enabled==='true' 일 때만 저장(owner-funding 검증 전 누수 방지).
-      referral_enabled?: boolean;
-      referral_commission_rate?: number;
-    }>();
+    const body: SellerProductCreateBody = forced ? forced.body : await c.req.json<SellerProductCreateBody>();
 
     const { name, description, price, stock, image_url } = body;
     const category = canonicalCategory(body.category) ?? undefined; // 레거시 → canonical (안 하면 피드에 안 뜬다)
@@ -983,7 +988,7 @@ sellerOrdersRoutes.post('/products', async (c) => {
     console.error('Create seller product error:', error);
     return c.json({ success: false, error: '요청 처리 중 오류가 발생했습니다' }, 500);
   }
-});
+}
 
 // ─── PUT /api/seller/products/:id ──────────────────────────────────────────
 sellerOrdersRoutes.put('/products/:id', async (c) => {

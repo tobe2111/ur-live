@@ -16,8 +16,8 @@ export default [
   {
     name: '🧮 요약 API 가 앉을 수 없는(정지) 매장까지 센다 (좌석 전환은 거부되는데 합계엔 들어간다)',
     file: 'src/features/seller/api/seller-operators.routes.ts',
-    find: "      .filter(s => isSeatableStoreStatus(s.status))\n      .slice(0, 20)",
-    replace: '      .slice(0, 20)',
+    find: "      .filter(s => isSeatableStoreStatus(s.status))\n      .slice(0, MAX_SUMMARY_STORES)",
+    replace: '      .slice(0, MAX_SUMMARY_STORES)',
     test: TEST,
     why: '좌석 토큰(/stores/:id/token)과 같은 판정(isSeatableStoreStatus — 2026-09-20 부터 대기·반려 포함, 정지 제외). 요약이 그 밖을 세면 화면의 합계와 전환 가능한 매장이 어긋난다.',
   },

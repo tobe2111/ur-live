@@ -88,7 +88,7 @@ export const KNOWN_SINGLE_ROUTES: ReadonlySet<string> = new Set([
  *   증거다 — 숫자 전용 규칙을 통째로 걸면 **결제 복귀 URL 이 404** 가 된다. 별건.
  */
 export const KNOWN_PARENT_SEGMENTS: ReadonlySet<string> = new Set([
-  'about', 'account', 'admin', 'ads', 'agency', 'area-report', 'auth', 'blog',
+  'about', 'account', 'admin', 'ads', 'agency', 'area-report', 'auth', 'blog', 'brand',
   'campaign', 'community-group-buy', 'coupon', 'creators', 'design', 'district', 'g', 'gift',
   'group-buy', 'host', 'i', 'influencer', 'local', 'my', 'mypage', 'pass',
   'pay', 'payment', 'points', 'product', 'products', 'profile', 'referral', 'region',

@@ -2542,6 +2542,7 @@
       "usage": "Bons utilisés",
       "expired": "{{count}} expirés",
       "copyStoreLink": "Copier le lien du commerce",
+      "copyToBranches": "Copier vers d'autres établissements",
       "sendAlimtalk": "Prévenir le commerçant",
       "rotateLink": "Nouveau lien (l’ancien expire)",
       "rotateConfirm": "L'ancien lien expirera et un nouveau sera envoyé. Continuer ?",

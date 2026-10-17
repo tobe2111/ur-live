@@ -5,10 +5,10 @@
  *   스위치는 `PUT /api/seller/products/:id { is_active, status }` — 상품 관리 화면과 같은 계약
  *   (서버 허용 status 는 ACTIVE/HIDDEN — 'PAUSED' 는 400, 2026-07-02 실측).
  */
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from '@/lib/i18n-lite'
-import { AlertCircle, ChevronDown, Copy, Pencil, RefreshCw, RotateCcw, Send, Trash2 } from 'lucide-react'
+import { AlertCircle, ChevronDown, Copy, CopyPlus, Pencil, RefreshCw, RotateCcw, Send, Trash2 } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
@@ -17,6 +17,8 @@ import { formatNumber, formatWon, safeNum } from '@/utils/format'
 import { GB_ENGINE_ENABLED } from '@/shared/feature-flags'
 import type { HomeVoucher } from '../seller-page/useSellerHome'
 import GroupBuyOpenPanel from './GroupBuyOpenPanel'
+// 🏬 2026-10-17 프랜차이즈 — 지점이 둘 이상일 때만 쓰는 시트라 눌렀을 때 받는다.
+const BranchCopySheet = lazy(() => import('./BranchCopySheet'))
 
 export interface VoucherStat { product_id: number; total: number; used: number; unused: number; expired: number }
 
@@ -34,6 +36,7 @@ export default function VoucherRow({ v, stat, commissionRate, onChanged }: Props
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [copying, setCopying] = useState(false)
   const headers = { Authorization: `Bearer ${localStorage.getItem('seller_token')}` }
 
   const gross = safeNum(v.price) * safeNum(v.sold)
@@ -187,6 +190,7 @@ export default function VoucherRow({ v, stat, commissionRate, onChanged }: Props
           <div className="flex flex-wrap gap-2">
             {/* 🧭 2026-06-10 (재방문 루프 갭): 1탭 복사 재발행 */}
             <button type="button" onClick={() => navigate(`/seller/meal-voucher/new?copyFrom=${v.id}`)} className={GHOST}><RefreshCw size={13} /> {t('seller.groupBuy.reissue', { defaultValue: '같은 내용으로 재발행' })}</button>
+            <button type="button" onClick={() => setCopying(true)} className={GHOST}><CopyPlus size={13} /> {t('seller.vouchers.copyToBranches', { defaultValue: '다른 지점에 복사' })}</button>
             <button type="button" onClick={() => deleteVoucher()} className={`${GHOST} text-tone-bad`}><Trash2 size={13} /> {t('common.delete', { defaultValue: '삭제' })}</button>
             <button type="button" onClick={copyStoreLink} className={GHOST}><Copy size={13} /> {t('seller.vouchers.copyStoreLink', { defaultValue: '사장님 링크 복사' })}</button>
             {v.restaurant_phone ? (
@@ -205,6 +209,11 @@ export default function VoucherRow({ v, stat, commissionRate, onChanged }: Props
             <GroupBuyOpenPanel productId={v.id} listPrice={safeNum(v.price)} category={v.category || 'meal_voucher'} headers={headers} />
           )}
         </div>
+      )}
+      {copying && (
+        <Suspense fallback={null}>
+          <BranchCopySheet productId={v.id} productName={v.name} onClose={() => setCopying(false)} />
+        </Suspense>
       )}
     </div>
   )

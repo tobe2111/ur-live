@@ -20,6 +20,7 @@
  */
 import type { ReactNode } from 'react'
 import StoreReportLink from './StoreReportLink'
+import BrandBranchesLink from './BrandBranchesLink'
 
 export default function StoreLocation({
   name, address, phone, lat, lng, map, sellerId, productId, onProfile,
@@ -93,6 +94,8 @@ export default function StoreLocation({
           길찾기
         </a>
       </div>
+      {/* 🏷️ 2026-10-17 프랜차이즈 — 브랜드에 묶인 지점이면 "다른 지점 N곳 보기". 없으면 아무것도 안 그린다. */}
+      <BrandBranchesLink sellerId={sellerId} />
       {/* 🚨 제보 입구 — 회색 작은 글씨 한 줄. 크게 그리면 멀쩡한 매장을 의심하게 만든다. */}
       <div style={{ paddingTop: 12 }}>
         <StoreReportLink sellerId={sellerId} productId={productId} storeName={name} />

@@ -163,6 +163,18 @@
 > 🔒 이전 주인 몫이 남아 있으면 **막고**, 마감(`/api/admin/payouts/handover-closeout`)을 먼저 하게 한다.
 > SSOT: `store-operator-model.md` §8.
 
+> 🏬 **프랜차이즈 지점 (2026-10-17 대표 확정 — "응응 다 해줘")**: **규칙 하나 — 모든 건 지점 단위이고, 그 지점의
+> 주인이 정한다.** 지점 = `sellers` 행 하나(사업자번호·계좌·정산·확인코드·리뷰가 지점마다). 직영점은 본사가 주인,
+> 가맹점은 점주가 주인이고 본사는 점주가 들인 **운영자**다(`seller_operators`). 에이전시가 영업해 온 지점도 같은
+> 규칙 — 운영자가 하나 더 붙을 뿐이고, 수수료 채널(직접 10%/중개 5%)은 *누가 데려왔나*로 지점마다 정한다.
+> **브랜드(`store_brands` + `store_brand_members`)는 보여 주기용 묶음**이다 — 정산·권한·이용권 어느 것도 브랜드에
+> 안 붙는다. 넣는 건 브랜드를 만든 사람이 **운영할 수 있는 지점만**, 빼는 건 그 사람 또는 **지점 주인**(주인이 늘 이긴다),
+> 한 지점은 브랜드 하나. 편의 기능: 지점 일괄 등록(같은 `POST /api/seller/stores` 를 한 곳씩) · 이용권 다른 지점에
+> 복사(`POST /api/seller/products/:id/copy-to/:sellerId` — 같은 등록 함수 `createSellerProduct`, 지점 고유 정보는
+> 대상 지점 프로필로) · 브랜드 페이지 `/brand/:slug`(가까운 지점부터) · 이용권 상세 "다른 지점 N곳 보기".
+> 매장 목록 상한 50/20 → 500(바인딩 한도는 조각으로, `d1-in-chunks.ts`). 💰 돈 이동 0.
+> ⏳ 아직 없음: **어느 지점에서나 쓰는 이용권**(사는 지점 ≠ 쓰는 지점 — 정산 귀속이 바뀌는 머니 경로, 결재 필요).
+
 ### 2-2. 도매(B2B) 행위자 — §12 참조
 - **판매사** (도매가로 사입해 재판매, `sellers.is_distributor=1`)
 - **제조사** (도매몰에 상품 공급, suppliers)
@@ -222,6 +234,7 @@
 - **마이**: `/user/profile` · `/my-vouchers`(이용권 지갑) · **`/my-gifticons`(교환권 보관함 — 2026-08-31 분리: 교환권은 `/vouchers` 에서 사고 여기서 확인, 이용권은 `/my-vouchers`)** · `/my-orders` · `/my-deal-history` · `/my-commissions` · `/notifications` · `/account/settings`
 - **성장**: `/referral` · `/g/:invite_code` · `/influencer/*`(랭킹·정산·발굴) · **`/experience`(체험 캠페인 응모, 2026-07-12)**
 - **성장**: `/referral` · `/g/:invite_code` · `/influencer/*`(랭킹·정산·발굴)
+- **🏷️ 브랜드(2026-10-17)**: `/brand/:slug` — 프랜차이즈 지점 묶음, 가까운 지점부터 + 지점들의 이용권(`/api/brands/:slug`, 읽기 전용)
 - **상권(B2G)**: `/district/:slug`(영수증 페이백 랜딩) · `/district/my`(상권 쿠폰 지갑) — `/local/:code` 상권관과 연계
 - 🏬 **운영자 몰 (2026-08-01)**: **`/:mallSlug`** — 몰 홈. ⚠️ **catch-all 바로 앞**이 이 라우트의 자리다
   (1-세그먼트를 전부 매치하므로 뒤에 두는 라우트는 조용히 죽는다). 몰이 아니면 `NotFoundPage` 를 렌더 —
@@ -552,3 +565,4 @@ pre-commit + `verify.yml` + `audit-gate.sh` 가 결정론으로 강제(수동 �
 - 2026-10-11 에이전시 2단계(PR-B) — 매장 연결(`agency_store_links`) · 사장님 맡기기/끊기(`/api/seller/agency-link`) · 에이전시 수락/거절/내려놓기 · 직원 매장 좌석(`agency_staff_id` claim, `store-seat-guard` 가 매 요청 맡김·직원·에이전시 상태 대조, 역할 operator 고정, 사람·주인 폴백 전부 거절) · 셀러 화면 "에이전시로 운영 중" 띠 · 매장 초대 링크(`agency_store_invites`, `/store/agency/:token`) · 동반 보안 수리: `/api/seller/switch-to-user` 가 위임 좌석에게 사장님 소비자 세션을 주던 구멍. [E2]- 2026-10-11 🧨 **도매몰(유통스타트) 철거** (대표 *"도매몰 잔해들은 아예 다 삭제해줘"*) — 삭제 **177파일 · −37,367줄**: 라우트 마운트(`mount-wholesale.ts`) · 화면 전부(`/wholesale/*`·`/supplier/*`·어드민 도매 밴드 3개) · `features/supply` 의 도매 라우트 50. **머니 게이트는 실측으로 닫혔다**(예치금 172,800원의 주인 `sellers.id 5·13` 이 **존재하지 않고**, 충전요청 2건 전부 confirmed, 미지급 정산 1건이 테스트 주문과 같은 시각). **DB 테이블은 하나도 안 지웠다**(회계 증빙 — 노출만 끊었다). 🔴 **남긴 것**: 정산 엔진 4파일(소비자 주문확정·환불·cron 이 직접 부른다) · `computeWholesaleOnly` · buyer 풀 6 · maker 풀 4(**유어애즈 워커가 쓴다** → `/admin/maker-pool` 을 소비자 워커에 마운트하고 유어애즈 밴드로 이전) · 몰 인프라(공구 서비스) · `__INCLUDE_WHOLESALE__` define(지우면 런타임 ReferenceError + cron no-op 게이트의 항). 🏪 **공구 서비스는 안 지웠다 — 대표 결정 대기**(운영자 0명·열린 몰 0개라 지금 비용 0, 지우는 데 1분·다시 쓰는 데 며칠). ⚠️ **코드 밖은 대표 몫**: `role='wholesale'` 어드민 계정 4개 · `utongstart.com`(두 Pages 어디에도 안 붙어 있다) · `ur-wholesale` Pages 프로젝트. 가드 `wholesale-teardown-2026-10-11` 21건(지운 것 + **남긴 것** 둘 다 고정) + 주입 8건 · 불변식 116→113. 🩸 **과삭제 3건을 전부 가드가 잡았다**(유어딜 가입 화면 · 결재함 라우트 셋 · 고아 `</div>`) — 상세: `docs/handoff/2026-10-11-wholesale-teardown.md` §6. PR #1710 (`ebd463c6`·`37d72f5f`·`033a7bdd`). [E2]
 - 2026-10-12 셀러 대시보드 제거 2단계 — 에이전시 콘솔 **안 A**(모바일+PC): 맡은 매장의 판을 마이와 같은 시트로 연다(`AgencyStorePlate`) · `/api/agency-console/stores` 에 오늘 숫자(마이와 같은 규칙, 운영 중 매장만) · `/agency` 소비자 액자 제외 · 대시보드 [운영하기] 제거. [E2]
 - 2026-10-12 셀러 대시보드 제거 4단계 — 단독 대시보드 **얇은 틀**: 사이드바·하단 탭 제거, 머리줄 [매장·검색·알림·전체 메뉴] + `/seller/more` 허브. 숨김 화면은 보존(대표 결정 "남겨 두기"). 판매 알림은 마이(`/api/seller/my-stores/notifications`)·콘솔(`/api/agency-console/notifications`)에서 본다. [E2]
+- 2026-10-17 🏬 **프랜차이즈 지점 편의**(대표 "응응 다 해줘") — 매장 목록 상한 50/20 → 500(조각 조회) · 지점 일괄 등록 시트 · 이용권 다른 지점에 복사 · 브랜드 묶음(`store_brands`) + `/brand/:slug` + 상세 "다른 지점 보기". 규칙: 지점 단위, 그 지점 주인이 정한다. 돈 이동 0. 가드 `franchise-branches-2026-10-17` 16건 + 주입 11건. [E2]
