@@ -746,8 +746,9 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
 
       {/* 🗺️ 2026-07-16 (대표 요청 — 위치 로딩 표시): 측위 중이면 상단 중앙(검색바 아래)에 작은 알약.
           지도를 안 가리게 pointer-events-none. PC 분할에선 지도 영역(좌 400px 패널 오른쪽) 중앙 정렬. */}
+      {/* 🧱 2026-10-17 대표 신고: 상단 바가 94px(검색+칩)까지라 62px 알약이 칩 사이에 끼었다 → 칩 아래로. PC 는 상단 바 없음. */}
       {locating && (
-        <div className="absolute top-[62px] left-1/2 -translate-x-1/2 lg:left-[calc(50%+200px)] z-20 pointer-events-none">
+        <div className="absolute top-[104px] lg:top-4 left-1/2 -translate-x-1/2 lg:left-[calc(50%+200px)] z-20 pointer-events-none">
           <span className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-gray-900/85 text-white text-[12px] font-semibold shadow-lg backdrop-blur">
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
             내 위치 찾는 중…
