@@ -19,7 +19,16 @@ export async function handleSocialDraft(env: Env): Promise<void> {
     const { SOCIAL_PLATFORMS } = await import('../../features/social-media/api/social-brief');
     for (const platform of SOCIAL_PLATFORMS) {
       const r = await createSocialDraft(env, platform);
-      if (r.ok) logInfo(`[cron:social-draft] ${platform} 초안 생성: "${r.title}" (id=${r.id}, 비공개)`);
+      if (r.ok) {
+        logInfo(`[cron:social-draft] ${platform} 초안 생성: "${r.title}" (id=${r.id}, 비공개)`);
+        // 🖼️ 2026-10-17: 인스타는 이미지가 없으면 게시가 막힌다 → 초안과 함께 카드 이미지를 만든다(실패해도 초안은 남음).
+        if (platform === 'instagram') {
+          const { attachCardImage } = await import('../../features/social-media/api/social-image-render');
+          const img = await attachCardImage(env, r.id).catch((e) => ({ ok: false as const, error: String(e) }));
+          if (img.ok) logInfo(`[cron:social-draft] instagram 카드 이미지: ${img.url}`);
+          else logError('[cron:social-draft] 카드 이미지 실패(초안은 유지)', { id: r.id, error: img.error });
+        }
+      }
       else if (r.skipped) logInfo(`[cron:social-draft] ${platform} skip — ${r.skipped}`);
       else logError(`[cron:social-draft] ${platform} 생성 실패`, { error: r.error });
     }

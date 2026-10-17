@@ -17,6 +17,9 @@ esbuild.build({
   },
   external: [
     'cloudflare:*',
+    // 🖼️ 2026-10-17: @cloudflare/playwright(소셜 카드 렌더)가 node:* 내장 모듈을 import 한다.
+    //   ur-ads 는 compatibility_flags=nodejs_compat 이라 런타임이 제공 — 번들하지 않고 그대로 둔다.
+    'node:*',
     '__STATIC_CONTENT_MANIFEST',
     'firebase-admin',
     'firebase-admin/*',

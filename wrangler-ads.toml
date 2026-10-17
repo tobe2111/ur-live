@@ -69,6 +69,18 @@ database_name = "urads-company-db"
 database_id = "0e9a8f82-32fb-4584-878c-cdaec6c0aff0"
 
 
+# 🖼️ 2026-10-17 소셜 카드 이미지(인스타 피드는 이미지 필수) — 카드 HTML 을 브라우저로 찍어 R2 에 올린다.
+#   BROWSER = Cloudflare Browser Rendering. 무료 플랜은 하루 10분·동시 3개이고 넘으면 과금이 아니라 실패한다.
+#   MEDIA_BUCKET = 메인과 같은 미디어 버킷(공개 도메인 media.ur-team.com). 키는 `social/` 접두라
+#   메인의 고아 정리 크론(`uploads/` 접두만 본다)이 건드리지 않는다.
+#   🔴 대시보드가 아니라 여기 선언한다 — 이 파일에 없으면 다음 배포가 바인딩을 지운다(위 ADS_DB 주석).
+[browser]
+binding = "BROWSER"
+
+[[r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "ur-live-media"
+
 # ⏰ **DO 알람 레인** (2026-08-02) — cron 부모의 CPU 천장을 우회하는 유일한 무료 경로.
 #   부모가 `SELF.fetch` 로 띄운 자식의 CPU 는 **호출자 몫에서 나가서**, 부모가 3.6초에 죽으며
 #   매 정각 레인 절반이 끌려갔다(실측: 8개 중 4 사망 · 6개로 줄여도 3 사망 — 비율 그대로).

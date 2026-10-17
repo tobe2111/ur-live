@@ -255,6 +255,8 @@ Kling 3 ~82 · Veo 3.1 이미지→영상 ~90 · Kling Motion Control ~164(실�
 | `udal-loader-v2.webp` | 확정 시안 ① 로더(2026-10-07) | 철칙 이전 확정분(대표 확정) |
 | `app-icon-*.png` · `apple-touch-icon.png` · `ios-splash-*.png` · `favicon*` · `icon-192/512.png` (`public/`) · iOS `Splash.imageset` | 앱 아이콘 6-B (2026-10-11 대표 확정) — **생성 아님**, 확정 얼굴 `otter-face-happy.png` 합성 | 확정 그림 재사용(철칙 ①~⑥ 대상 아님 — 새로 그린 유달이가 없다) |
 
+> 🖼️ 2026-10-17: `udal-pose-qr.webp`·`udal-pose-highfive.webp`·`udal-pose-wallet.webp` 는 `public/assets/mascot/` 에도 **같은 파일의 사본**이 있다(소셜 카드 렌더 브라우저가 고정 주소로 받아 간다 — `src/assets` 는 빌드 해시가 붙어 주소가 매번 바뀐다). 새로 그린 그림이 아니라 위 확정분의 재사용이다.
+
 > ⚠️ "철칙 이전 확정분" 은 2026-10-11 이전에 대표가 화면에서 확정한 그림이다. **이 표기를 새 그림에 쓰지 말 것** — 새 그림의 검수 칸은 반드시 숫자 결과다.
 
 ## 캐릭터 설정서 (AI 영상·추가 생성용 고정 문구)

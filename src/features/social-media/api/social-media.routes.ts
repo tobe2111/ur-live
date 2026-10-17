@@ -9,6 +9,7 @@
  */
 import { Hono } from 'hono'
 import type { Env } from '../../../worker/types/env'
+import { attachCardImage } from './social-image-render'
 import { requireAdmin } from '../../../worker/middleware/auth'
 import { SOCIAL_PLATFORMS, isSocialPlatform, PLATFORM_LABEL, PLATFORM_MEDIA } from './social-brief'
 import {
@@ -182,6 +183,15 @@ socialMediaRoutes.get('/posts/:id/render-status', async (c) => {
   const r = await checkVideoRender(c.env, id)
   if (!r.ok) return c.json({ success: false, error: r.error }, 400)
   return c.json({ success: true, status: r.status, url: r.url, post: await getPost(c.env.DB, id) })
+})
+
+// POST /posts/:id/card-image — 🖼️ 2026-10-17 카드 이미지(1080×1350) 생성·교체. 인스타는 이미지 없이 게시 불가.
+socialMediaRoutes.post('/posts/:id/card-image', async (c) => {
+  const id = Number(c.req.param('id'))
+  if (!Number.isFinite(id)) return c.json({ success: false, error: '잘못된 ID' }, 400)
+  const r = await attachCardImage(c.env, id)
+  if (!r.ok) return c.json({ success: false, error: r.error, post: await getPost(c.env.DB, id) }, 400)
+  return c.json({ success: true, url: r.url, post: await getPost(c.env.DB, id) })
 })
 
 // DELETE /posts/:id — 보관(archive)
