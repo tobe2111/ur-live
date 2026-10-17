@@ -253,7 +253,9 @@ Kling 3 ~82 · Veo 3.1 이미지→영상 ~90 · Kling Motion Control ~164(실�
 | `udal-pose-stand.webp` | 〃 | 〃 |
 | `udal-pose-wallet.webp` | 〃 | 〃 |
 | `udal-loader-v2.webp` | 확정 시안 ① 로더(2026-10-07) | 철칙 이전 확정분(대표 확정) |
-| `app-icon-*.png` · `apple-touch-icon.png` · `ios-splash-*.png` · `favicon*` · `icon-192/512.png` (`public/`) · iOS `Splash.imageset` | 앱 아이콘 6-B (2026-10-11 대표 확정) — **생성 아님**, 확정 얼굴 `otter-face-happy.png` 합성 | 확정 그림 재사용(철칙 ①~⑥ 대상 아님 — 새로 그린 유달이가 없다) |
+| `app-icon-*.png` · `apple-touch-icon.png` · `ios-splash-*.png` (`public/`) · iOS `Splash.imageset` | 앱 아이콘 6-B (2026-10-11 대표 확정) — **생성 아님**, 확정 얼굴 `otter-face-happy.png` 합성 | 확정 그림 재사용(철칙 ①~⑥ 대상 아님 — 새로 그린 유달이가 없다) |
+
+> 🔁 2026-10-17 대표 *"유달이 말고, urdeal 로고로"* — `favicon*`·`icon-192/512.png` 은 유달이에서 빠져 urdeal. 로고가 됐다(`scripts/app-icon/make-favicon.py`).
 
 > ⚠️ "철칙 이전 확정분" 은 2026-10-11 이전에 대표가 화면에서 확정한 그림이다. **이 표기를 새 그림에 쓰지 말 것** — 새 그림의 검수 칸은 반드시 숫자 결과다.
 
