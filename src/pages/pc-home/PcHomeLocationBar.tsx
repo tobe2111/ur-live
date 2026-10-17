@@ -146,7 +146,7 @@ export default function PcHomeLocationBar({
   const chip = 'border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-transparent hover:bg-gray-50 dark:hover:bg-white/[0.04]'
 
   return (
-    <div ref={boxRef} className="relative inline-block">
+    <div ref={boxRef} className={tone === 'panel' ? 'relative block w-full' : 'relative inline-block'}>
       {/* 🎫 2026-09-03 (대표 확정 — 히어로 컨트롤 안 1 + 위치 칩 3안 "흰 면 · 한 단계 작게"):
           히어로에서는 지역 선택과 현 위치가 **한 알약 안의 두 칸**이다. 둘은 원래 "어디서 볼까"라는
           하나의 일인데 같은 무게 알약 둘로 쪼개져 있었다(대표 신고 "AI 느낌").
@@ -157,18 +157,20 @@ export default function PcHomeLocationBar({
           덩어리라 주 행동보다 먼저 읽힌다(시안 2번에서 실측). 그림자도 그래서 없다. */}
       <div className={hero
         ? 'inline-flex items-stretch h-8 rounded-full overflow-hidden bg-white text-[#16181C]' // light-fixed: 잉크 히어로 위
-        : 'flex items-center gap-2'}>
+                // 🧱 2026-10-17 (대표 신고 "버튼이 튀어나가고"): `panel` 은 PC 왼쪽 필터 열(안쪽 216px) 하나만 쓴다.
+        //   지역 칸과 '현 위치로 설정' 을 한 줄에 두면 그 폭을 넘어 열 밖으로 삐져나갔다 → 두 줄로 쌓는다.
+        : 'flex flex-col gap-2'}>
         <button
           onClick={() => setOpen(o => !o)}
           className={title
             ? 'inline-flex items-center gap-1 -ml-0.5 max-w-full'
             : hero
               ? 'inline-flex items-center gap-2 pl-4 pr-2 hover:bg-gray-50 transition-colors' // light-fixed: 흰 알약 안
-              : `inline-flex items-center gap-2 pl-2 pr-2 py-2 rounded-xl border transition-colors ${chip}`}
+              : `flex w-full items-center gap-2 pl-3 pr-2 py-2 rounded-xl border transition-colors ${chip}`}
           aria-expanded={open}
         >
           {!title && <PinIcon className={`${hero ? 'w-[14px] h-[14px]' : 'w-[18px] h-[18px]'} shrink-0 ${hero ? 'text-[#16181C]' : 'text-gray-900 dark:text-white'}`} />}
-          <span className={`${title ? 'text-[24px] font-black tracking-[-0.02em] text-gray-900 dark:text-white' : hero ? 'text-[12px] font-extrabold text-[#16181C]' : 'text-[15px] font-extrabold text-gray-900 dark:text-white'} max-w-[220px] truncate`}>{located ? (locatedLabel || '내 주변') : labelFor(value)}</span>
+          <span className={`${title ? 'text-[24px] font-black tracking-[-0.02em] text-gray-900 dark:text-white' : hero ? 'text-[12px] font-extrabold text-[#16181C]' : 'text-[15px] font-extrabold text-gray-900 dark:text-white flex-1 min-w-0 text-left'} max-w-[220px] truncate`}>{located ? (locatedLabel || '내 주변') : labelFor(value)}</span>
           <ChevronDown className={`${title ? 'w-5 h-5 text-gray-400 dark:text-gray-500' : hero ? 'w-[13px] h-[13px] text-[#4B4F58]' : 'w-4 h-4 text-gray-400'} shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
         {/* 두 칸을 가르는 실선 — 한 알약 안에서 "지역 고르기"와 "현 위치"가 다른 일임을 말한다. */}
@@ -181,7 +183,7 @@ export default function PcHomeLocationBar({
             ? 'inline-flex items-center justify-center w-8 h-8 rounded-full text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors disabled:opacity-60'
             : hero
               ? 'inline-flex items-center px-2 text-[#4B4F58] hover:bg-gray-50 hover:text-[#16181C] transition-colors disabled:opacity-60' // light-fixed: 흰 알약 안
-              : `inline-flex items-center gap-2 px-3 py-2 rounded-xl border text-[13px] font-bold whitespace-nowrap transition-colors disabled:opacity-60 ${chip} text-gray-700 dark:text-gray-200`}
+              : `flex w-full items-center justify-center gap-2 px-3 py-2 rounded-xl border text-[13px] font-bold whitespace-nowrap transition-colors disabled:opacity-60 ${chip} text-gray-700 dark:text-gray-200`}
         >
           {locating ? <Loader2 className="w-[15px] h-[15px] animate-spin" /> : <LocateFixed className="w-[15px] h-[15px]" />}
           {/* 📱 2026-08-19: 좁은 폭(<640)에서는 **아이콘만**. 360px 기기에서 이 라벨이 세 줄로 터져

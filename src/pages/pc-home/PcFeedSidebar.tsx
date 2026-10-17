@@ -68,10 +68,11 @@ export default function PcFeedSidebar({
       </Group>
       {located && (
         <Group label="거리">
-          <div className="flex flex-wrap gap-1">
+          {/* 🧱 2026-10-17 (대표 신고): `flex-wrap` 이라 '전국' 하나만 다음 줄로 떨어졌다 → 네 칸 고정 격자. */}
+          <div className="grid grid-cols-4 gap-1">
             {DISTANCE_CHOICES.map(({ km, label }) => {
               const on = (filters.maxKm ?? null) === km
-              return <button key={label} type="button" aria-pressed={on} onClick={() => onFiltersChange({ ...filters, maxKm: km })} className={chip(on)}>{label}</button>
+              return <button key={label} type="button" aria-pressed={on} onClick={() => onFiltersChange({ ...filters, maxKm: km })} className={`${chip(on)} !px-0 w-full whitespace-nowrap`}>{label}</button>
             })}
           </div>
         </Group>
