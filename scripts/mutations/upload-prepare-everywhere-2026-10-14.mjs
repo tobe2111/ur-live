@@ -51,12 +51,4 @@ export default [
     test: T,
     why: '로케일 값이 코드 기본값을 이긴다 — 코드만 고치면 화면은 계속 거짓말을 한다.',
   },
-  {
-    name: '폰트로더 — 폰트 다운로드 거절을 처리하지 않는다(처리 안 된 오류)',
-    file: 'index.html',
-    find: "},function(){if(n<8)setTimeout(function(){warm(n+1)},1000)})}catch(e){}}",
-    replace: "})}catch(e){}}",
-    test: 'src/tests/unit/font-lazy-first-visit-2026-10-12.test.ts',
-    why: '오프라인·CDN 차단 때 페이지에 NetworkError 가 뜬다 — Sentry 소음 + 렌더 스모크 "런타임 에러 0" 빨간불(2026-10-14).',
-  },
 ]

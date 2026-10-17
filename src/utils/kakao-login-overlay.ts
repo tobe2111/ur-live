@@ -48,7 +48,7 @@ export function showKakaoLoadingOverlay(opts: { forceLight?: boolean; label?: st
     const logo = document.createElement('div')
     logo.className = 'ur-loader-breathe'
     logo.setAttribute('aria-label', 'urdeal — 유어딜')
-    logo.style.cssText = `animation-delay:${breatheDelay};display:inline-flex;align-items:baseline;font-family:'Poppins','Pretendard Variable',system-ui,sans-serif;font-weight:800;font-size:34px;line-height:1;letter-spacing:-0.035em;color:${ink}`
+    logo.style.cssText = `animation-delay:${breatheDelay};display:inline-flex;align-items:baseline;font-family:'Poppins',system-ui,sans-serif;font-weight:800;font-size:34px;line-height:1;letter-spacing:-0.035em;color:${ink}`
     logo.appendChild(document.createTextNode('urdeal'))
     const dot = document.createElement('span')
     dot.style.cssText = 'display:inline-block;width:6.12px;height:6.12px;background:#1C69EF;border-radius:50%;margin-left:2.72px'

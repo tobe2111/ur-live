@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react'
 import { ClockIcon } from '@/components/icons/urdeal-icons'
 import DealMiniCard from '@/components/deal/DealMiniCard'
+import { detailHref } from '@/shared/product-flow'
 import type { RecentProduct } from './types'
 
 export default function RecentlyViewedSection() {
@@ -35,7 +36,7 @@ export default function RecentlyViewedSection() {
         {items.map(p => (
           <DealMiniCard
             key={p.id}
-            to={`/products/${p.id}`}
+            to={detailHref(p)}
             imageUrl={p.image}
             title={p.name || ''}
             price={p.price ?? null}

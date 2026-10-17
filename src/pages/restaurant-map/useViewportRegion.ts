@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { ensureKakaoMaps } from '@/lib/kakao-sdk'
 import { mapRegionLabel, regionDepth, shouldRefetchRegion, type MapRegionParts } from '@/shared/map-region-label'
 
 interface Params {
@@ -29,8 +30,21 @@ export function useViewportRegion({ mapInstance, enabled }: Params): string | nu
   /** 마지막으로 실제 지오코딩을 부른 자리(중복 호출 차단용). */
   const lastRef = useRef<{ lat: number; lng: number; level: number } | null>(null)
 
+  /**
+   * ⏳ 2026-10-14 — 지도는 이제 SDK **본체**만 오면 먼저 그려진다(`ensureKakaoMapsCore`). 지오코더(services.js)는
+   *   그보다 늦게 오므로, 여기서는 **전체 준비**를 기다린 뒤에 붙는다. 기다리지 않으면 첫 진입에 Geocoder 가
+   *   없어 조용히 빠지고(아래 return), 다음 `enabled` 변화 전까지 지역명이 영영 "이 지역" 으로 남는다.
+   */
+  const [servicesReady, setServicesReady] = useState(() => !!(window as unknown as { kakao?: any }).kakao?.maps?.services?.Geocoder)
   useEffect(() => {
-    if (!enabled) return
+    if (!enabled || servicesReady) return
+    let alive = true
+    ensureKakaoMaps().then(() => { if (alive) setServicesReady(true) }, () => { /* 실패 — 오늘과 같은 "이 지역" */ })
+    return () => { alive = false }
+  }, [enabled, servicesReady])
+
+  useEffect(() => {
+    if (!enabled || !servicesReady) return
     const map = mapInstance.current
     const kakao = (window as unknown as { kakao?: any }).kakao
     if (!map || !kakao?.maps?.services?.Geocoder) return
@@ -93,7 +107,7 @@ export function useViewportRegion({ mapInstance, enabled }: Params): string | nu
       if (timer) clearTimeout(timer)
       try { kakao.maps.event.removeListener(map, 'idle', onIdle) } catch { /* */ }
     }
-  }, [enabled, mapInstance])
+  }, [enabled, servicesReady, mapInstance])
 
   return label
 }

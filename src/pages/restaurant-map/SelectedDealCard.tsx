@@ -15,10 +15,12 @@
  *   실측: `scripts/check-dark-contrast.mjs` 는 `/map` 은 보지만 **핀을 누른 뒤의 이 카드는 못 봤다** —
  *   그게 이 결함이 살던 자리다.
  */
+import { detailHref } from '@/shared/product-flow'
 import CatIcon from './CatIcon'
 import { PinIcon, StarIcon } from '@/components/icons/urdeal-icons'
 import { priceDisplay } from '@/shared/price-display'
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
+import { usePrefetchMapDetail } from './prefetch-detail'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { formatNumber } from '@/utils/format'
@@ -57,6 +59,9 @@ export default function SelectedDealCard({
   const navigate = useNavigate()
   const cardRef = useRef<HTMLDivElement | null>(null)
   const draggedRef = useRef(false)
+  // 🧭 2026-10-15: 카드가 뜬 순간 상세 코드·데이터를 데운다 — 누른 뒤 풀스크린 로더가 안 뜨게(prefetch-detail.ts).
+  const prefetchDetail = usePrefetchMapDetail()
+  useEffect(() => { prefetchDetail(selected) }, [selected.id, prefetchDetail]) // eslint-disable-line react-hooks/exhaustive-deps
   // 🗺️ 2026-07-25 (전수조사 L2): 터치/마우스를 Pointer Events 로 단일화 + move 추적.
   //   기존: 터치는 start/end 만(카드가 손가락을 안 따라옴 = 뻑뻑), 마우스는 카드 밖 릴리즈 시 up 유실,
   //   세로 제스처와의 축 구분 없음. → 축 판별(|dx|>|dy|×1.2) 후 수평이면 캡처 + rAF 로 카드가
@@ -129,7 +134,7 @@ export default function SelectedDealCard({
   // 드래그 후 뒤이어 오는 카드 click(상세 이동)을 삼킨다.
   const onCardClick = () => {
     if (draggedRef.current) { draggedRef.current = false; return }
-    navigate(`/products/${selected.id}`)
+    navigate(detailHref(selected))
   }
   // ⌨️ 키보드 좌우 화살표(PC 접근성).
   const onKeyDown = (e: React.KeyboardEvent) => {

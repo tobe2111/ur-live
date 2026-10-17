@@ -79,7 +79,8 @@ export function clearFirebaseTokenCache() {
 
 // ─── Sentry 에러 헬퍼 — lazy load ────────────────────────────────────────────────
 function captureError(error: Error, context?: Record<string, any>) {
-  import('./sentry-sdk').then((Sentry) => {
+  // 📡 2026-10-15: 보낼 때 켠다(ensureSentry) — 직접 SDK 를 부르면 init 없이 받아 실행만 했다.
+  import('./sentry').then((m) => m.ensureSentry()).then((Sentry) => {
     Sentry.captureException(error, { extra: context });
   }).catch(() => {
     // Sentry chunk 로드 실패 시 silent skip (production telemetry 만 영향, app 동작 영향 없음).

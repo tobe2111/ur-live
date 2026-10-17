@@ -1,3 +1,4 @@
+import { detailHref } from '@/shared/product-flow'
 import CatIcon from './CatIcon'
 import { priceDisplay } from '@/shared/price-display'
 import { Radio, X } from 'lucide-react'
@@ -49,7 +50,7 @@ export default function SelectedPeekCard({ selected, liveSellerIds, onClose }: P
             </div>
           </div>
           <button
-            onClick={() => navigate(`/products/${selected.id}`)}
+            onClick={() => navigate(detailHref(selected))}
             className="self-center px-3 py-2 bg-brand text-white text-[12px] font-bold rounded-xl shrink-0 active:scale-95 transition-transform"
           >
             {t('map.detail.buy', { defaultValue: '구매' })}

@@ -66,7 +66,8 @@ describe('② 느린 회선이어도 SDK 준비가 화질을 내리지 않는다
 describe('③ 지도 화면은 SDK 래퍼를 정적으로', () => {
   it('useKakaoMap 에 동적 import 가 없다', () => {
     const s = stripComments(fs.readFileSync('src/pages/restaurant-map/useKakaoMap.ts', 'utf8'))
-    expect(s).toMatch(/^import \{ ensureKakaoMaps \} from '@\/lib\/kakao-sdk'$/m)
+    // 2026-10-14 재조준: 지도 생성은 본체-준비 약속(`ensureKakaoMapsCore`)을 쓴다 — 불변식(정적 import)은 그대로.
+    expect(s).toMatch(/^import \{ ensureKakaoMaps(?:Core)? \} from '@\/lib\/kakao-sdk'$/m)
     expect(s).not.toMatch(/import\(['"]@\/lib\/kakao-sdk['"]\)/)
   })
 })

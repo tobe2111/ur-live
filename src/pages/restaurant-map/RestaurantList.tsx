@@ -16,6 +16,7 @@ interface Props {
   selected: Restaurant | null
   userLoc: { lat: number; lng: number } | null
   onSelect: (r: Restaurant) => void
+  onIntent?: (r: Restaurant) => void
   /** 🎯 선착순: id→{spots,appliedDisplay}. 있으면 추첨 배지 표시(응모는 카드 탭 → 상세). */
   fcfsMap?: Map<number, { spots: number; appliedDisplay: number }>
   /** @deprecated 2026-07-03 카드 내 응모 버튼 제거 — 상세에서 응모. 호출부 호환 위해 유지(미사용). */
@@ -31,7 +32,7 @@ interface Props {
   hasMoreOnServer?: boolean
 }
 
-export default function RestaurantList({ loading, filtered, selected, userLoc, onSelect, fcfsMap, voucherType = 'all', onLoadMore, hasMoreOnServer }: Props) {
+export default function RestaurantList({ loading, filtered, selected, userLoc, onSelect, fcfsMap, voucherType = 'all', onLoadMore, hasMoreOnServer, onIntent }: Props) {
 
   if (loading) {
     return (
@@ -68,7 +69,7 @@ export default function RestaurantList({ loading, filtered, selected, userLoc, o
      · 썸네일 72→88px, '구매' 버튼 제거 → 줄 전체 탭(onSelect). 리스트모드=상세이동 / 지도모드=포커스+SelectedFocusCard 구매CTA
      · 색상 B&W 통일(분홍→흑백, SelectedFocusCard 정합). 선착순 '지원'은 기능상 유지(탭=네비와 다른 액션). */
   return (
-    <IncrementalRows filtered={filtered} selected={selected} userLoc={userLoc} onSelect={onSelect} fcfsMap={fcfsMap} voucherType={voucherType} onLoadMore={onLoadMore} hasMoreOnServer={hasMoreOnServer} />
+    <IncrementalRows filtered={filtered} selected={selected} userLoc={userLoc} onSelect={onSelect} fcfsMap={fcfsMap} voucherType={voucherType} onLoadMore={onLoadMore} hasMoreOnServer={hasMoreOnServer} onIntent={onIntent} />
   )
 }
 
@@ -76,11 +77,12 @@ const PAGE = 40
 
 /** ⚡ 2026-07-12 (대표 "더 개선" — 리스트 렉): 전량 DOM 렌더(최대 500행×이미지) → 40행씩 점진 렌더.
  *  홈(`/`)이 리스트 모드라 지도 컬링만으론 부족했던 남은 렉 원인. 센티넬 도달 시 +40(무한 스크롤). */
-function IncrementalRows({ filtered, selected, userLoc, onSelect, fcfsMap, voucherType, onLoadMore, hasMoreOnServer }: {
+function IncrementalRows({ filtered, selected, userLoc, onSelect, fcfsMap, voucherType, onLoadMore, hasMoreOnServer, onIntent }: {
   filtered: Restaurant[]
   selected: Restaurant | null
   userLoc: { lat: number; lng: number } | null
   onSelect: (r: Restaurant) => void
+  onIntent?: (r: Restaurant) => void
   fcfsMap?: Map<number, { spots: number; appliedDisplay: number }>
   voucherType: MapVoucherType
   onLoadMore?: () => void
@@ -113,7 +115,7 @@ function IncrementalRows({ filtered, selected, userLoc, onSelect, fcfsMap, vouch
     //   추정 높이로 계산돼 다른 행에 내려앉는다.
     <div className={`divide-y divide-gray-100 dark:divide-[#2C2F35]${restoring ? '' : ' ur-cv-rows'}`}>
       {filtered.slice(0, visibleCount).map(r => (
-        <RestaurantRow key={r.id} r={r} isSelected={selected?.id === r.id} userLoc={userLoc} onSelect={onSelect} fcfs={fcfsMap?.get(r.id)} />
+        <RestaurantRow key={r.id} r={r} isSelected={selected?.id === r.id} userLoc={userLoc} onSelect={onSelect} fcfs={fcfsMap?.get(r.id)} onIntent={onIntent} />
       ))}
       {hasMore && <div ref={sentinelRef} className="h-10" aria-hidden />}
     </div>

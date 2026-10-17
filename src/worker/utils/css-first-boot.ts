@@ -35,6 +35,8 @@
  */
 
 import { shouldRenderMobileFirstScreen } from '../../shared/seo/crawler-ua'
+import { CRITICAL_CSS } from '../generated/critical-css'
+import { UDAL_LOADER_SRC } from '../../shared/udal-loader'
 
 /**
  * 어디에 거나 — **서버가 첫 화면을 그리는 표면만**(폰 UA). 거기선 스크립트 없이도 내용이 보이므로
@@ -55,18 +57,29 @@ export const DEFERRED_PRELOAD_REL = 'ur-modulepreload'
 export const DEFERRED_ENTRY_TYPE = 'ur-module'
 /** CSS 신호가 끝내 안 와도 이 시간 뒤엔 출발한다(ms). */
 export const CSS_FIRST_BACKSTOP_MS = 3000
+/**
+ * 첫 화면 CSS 를 넣은 응답의 백스톱(ms). 그때 앱 CSS 는 렌더를 막지 않으므로, 3초에 스크립트를 출발시키면
+ * 앱 CSS 가 아직 안 온 느린 회선에서 React 가 **첫 화면 CSS 만 있는 채로** 다른 화면을 그린다(스타일 깨짐).
+ * 첫 화면은 이미 보이므로 기다려도 손해가 없다 — 그래서 길게 잡는다.
+ */
+export const CRITICAL_BACKSTOP_MS = 10000
+/** 첫 화면 CSS `<style>` 의 id — 시험·디버깅용 표식. */
+export const CRITICAL_STYLE_ID = 'ur-critical'
 
 /** 앱 CSS 를 가리키는 판정 — Vite 엔트리 CSS 는 `/assets/index-<hash>.css` 다. */
 const APP_CSS_TEST = "/\\/assets\\/index-[^/]*\\.css/"
 
-export function cssFirstBootScript(nonce: string): string {
+export function cssFirstBootScript(nonce: string, critical = false): string {
   // ⚠️ 구형 브라우저도 돌 수 있게 ES5 로만 쓴다(이게 실패하면 앱이 안 뜬다).
+  // 🎨 2026-10-14 `critical` — 첫 화면 CSS 를 넣었으면 앱 CSS 링크는 `media=print`(렌더 안 막음)로 와 있다.
+  //   그 CSS 가 도착하면(=run) **스크립트보다 먼저** `media=all` 로 되돌린다 — React 는 앱 CSS 가 붙은 뒤에만 그린다.
   const js = `(function(){var go=0,d=document;function run(){if(go)return;go=1;
+var cs=d.querySelectorAll('link[rel="stylesheet"][media="print"][href*="/assets/index-"]');for(var k=0;k<cs.length;k++)cs[k].media='all';
 var ls=d.querySelectorAll('link[rel="${DEFERRED_PRELOAD_REL}"]');for(var i=0;i<ls.length;i++){var l=d.createElement('link');l.rel='modulepreload';l.crossOrigin='';l.href=ls[i].getAttribute('href');d.head.appendChild(l)}
 function entry(){var es=d.querySelectorAll('script[type="${DEFERRED_ENTRY_TYPE}"]');for(var j=0;j<es.length;j++){var s=d.createElement('script');s.type='module';s.crossOrigin='';s.src=es[j].getAttribute('src');d.head.appendChild(s)}}
 if(d.readyState==='loading')d.addEventListener('DOMContentLoaded',entry,{once:true});else entry()}
 function hit(e){var t=e.target;if(t&&t.tagName==='LINK'&&t.rel==='stylesheet'&&${APP_CSS_TEST}.test(t.href||''))run()}
-d.addEventListener('load',hit,true);d.addEventListener('error',hit,true);setTimeout(run,${CSS_FIRST_BACKSTOP_MS});
+d.addEventListener('load',hit,true);d.addEventListener('error',hit,true);setTimeout(run,${critical ? CRITICAL_BACKSTOP_MS : CSS_FIRST_BACKSTOP_MS});
 d.addEventListener('DOMContentLoaded',function(){var c=d.querySelector('link[rel="stylesheet"][href*="/assets/index-"]');if(!c||c.sheet)run()},{once:true})})()`
   return `<script nonce="${nonce}">${js}</script>`
 }
@@ -74,11 +87,38 @@ d.addEventListener('DOMContentLoaded',function(){var c=d.querySelector('link[rel
 /** 워커가 직접 넣는 라우트 청크의 rel — 적용 표면에선 지연 rel, 아니면 그대로 modulepreload. */
 export function routePreloadRel(on: boolean): string { return on ? DEFERRED_PRELOAD_REL : 'modulepreload' }
 
-/** HTMLRewriter 에 세 가지를 건다(`on` 일 때만). 호출부는 한 줄. */
-export function applyCssFirstBoot(rw: HTMLRewriter, nonce: string, on: boolean): HTMLRewriter {
+/**
+ * 🎨 첫 화면 CSS 를 넣을 수 있는가 — 생성물이 비었으면(로컬 워커 단독 빌드 등) **종전과 byte-동일**하게 간다.
+ *   `</style` 이 들어 있으면 인라인이 HTML 을 깨뜨리므로 넣지 않는다(생성기가 이미 막지만 두 겹).
+ */
+export function criticalCssUsable(css: string = CRITICAL_CSS): boolean {
+  return css.length > 0 && !/<\/style/i.test(css)
+}
+
+/**
+ * HTMLRewriter 에 건다(`on` 일 때만). 호출부는 한 줄.
+ *   ① 부팅 스크립트(+ 첫 화면 CSS `<style>`)를 `<head>` 맨 앞에
+ *   ② modulepreload·엔트리를 지연 상태로
+ *   ③ 🎨 2026-10-14 첫 화면 CSS 가 있으면 앱 CSS 링크를 `media=print` — **받기는 하되 렌더를 막지 않는다**.
+ *      받는 시점은 그대로다: `Link` 헤더 preload(as=style · crossorigin)가 응답 머리에서 이미 출발시켰고,
+ *      이 링크는 그 캐시를 쓴다(그래서 crossorigin 이 실제 태그와 같아야 한다 — `earlyHintsLink`).
+ */
+export function applyCssFirstBoot(rw: HTMLRewriter, nonce: string, on: boolean, critical: string = CRITICAL_CSS): HTMLRewriter {
   if (!on) return rw
+  const crit = criticalCssUsable(critical)
+  const head = cssFirstBootScript(nonce, crit) + (crit ? `<style id="${CRITICAL_STYLE_ID}">${critical}</style>` : '')
+  if (crit) {
+    rw = rw.on('link[rel="stylesheet"]', {
+      element(el) { if (/^\/assets\/index-[^/]*\.css$/.test(el.getAttribute('href') || '')) el.setAttribute('media', 'print') },
+    })
+  }
   return rw
-    .on('head', { element(el) { el.prepend(cssFirstBootScript(nonce), { html: true }) } })
+    .on('head', { element(el) { el.prepend(head, { html: true }) } })
+    // 🦦 2026-10-15 (대표 *"로딩페이지가 있어서 더 로딩이 걸리는건 아닌지"* → 승인 "빼기"): 서버가 첫 화면을 그리는
+    //   표면에선 유달이 로더가 첫 화면이 아니다(내용 **아래**에만 있다). 그런데 index.html 의 유달이 preload 가
+    //   최우선으로 받아 첫 화면 CSS 와 회선을 나눠 썼다 — 라이브 느린 4G 8회 교차: 홈 첫 그림 1,104 → 1,040ms.
+    //   그림 자체는 로더 `<img>` 가 보통 우선순위로 그대로 받는다(로더가 첫 화면인 표면은 이 함수가 안 걸려 preload 유지).
+    .on(`link[rel="preload"][href="${UDAL_LOADER_SRC}"]`, { element(el) { el.remove() } })
     .on('link[rel="modulepreload"]', { element(el) { el.setAttribute('rel', DEFERRED_PRELOAD_REL) } })
     .on('script[type="module"]', {
       element(el) {
@@ -88,11 +128,15 @@ export function applyCssFirstBoot(rw: HTMLRewriter, nonce: string, on: boolean):
     })
 }
 
-/** 렌더 차단 CSS 두 장 중 우리가 경로를 아는 폰트 CSS — index.html 의 href 와 같아야 한다(테스트가 대조). */
-export const FONT_CSS_HREF = '/static/fonts/pretendard-dynamic-subset-v1.3.9.css'
-
 /**
  * 🚦 HTML 응답의 `Link` 헤더 — **렌더 차단 CSS 만** 미리 받으라고 알린다.
+ *   🩸 2026-10-14 (대표 신고 — 구글 검색으로 들어가니 *"이 화면이 2초는 넘게"* 비어 있었다):
+ *      엔트리 CSS 는 Vite 가 `<link rel="stylesheet" crossorigin>` 으로 내보낸다. 미리 받기에 `crossorigin`
+ *      이 없으면 요청 방식(no-cors ↔ cors)이 달라 **브라우저가 미리 받은 것을 버리고 같은 파일을 다시 받는다**.
+ *      실측(라이브 · 안드로이드 크롬): index-*.css 가 두 번 — 미리 받은 것(1025→1140ms)은 버려지고, 렌더를
+ *      막는 쪽(1206→1276ms)은 파서가 그 줄에 닿은 뒤에야 출발했다. 즉 미리 받기 효과가 0 이었고 첫 그림이
+ *      그 두 번째 다운로드를 기다렸다. ⇒ 엔트리 CSS 는 `crossorigin` 을 **실제 태그와 같게** 단다.
+ *   🔤 2026-10-15: 폰트 CSS 미리 받기는 뺐다 — 손님 화면이 기기 기본 글꼴로 바뀌어 그 시트가 없다.
  *   ① 브라우저는 헤더가 오는 즉시(본문을 파싱하기 전에) 받기 시작한다.
  *   ② Cloudflare Early Hints 를 켜면 이 헤더가 **103 응답**으로 앞당겨져, 서버가 HTML 을 만드는
  *      동안(한국 실측 TTFB 중앙값 0.45초)에 CSS 가 출발한다.
@@ -102,12 +146,11 @@ export const FONT_CSS_HREF = '/static/fonts/pretendard-dynamic-subset-v1.3.9.css
 //   Vite 는 그 CSS 를 `<link rel="stylesheet" crossorigin href=…>` 로 내므로(같은 출처여도 CORS 모드)
 //   모드가 다른 preload 는 **재사용되지 않고 같은 37KB 를 한 번 더** 받았다 — 첫 화면을 막는 바로 그 파일이다.
 //   라이브 실측(느린 4G·CPU 4배, 4회×2세트): 요청 2 → 1 · HTML 도착→첫 화면 1.83~1.93초 → 1.65~1.74초.
-//   폰트 CSS 는 index.html 태그에 crossorigin 이 **없어서** 그대로 둔다(둘 다 태그와 같아야 한다 —
-//   `check-critical-chunks` 가 빌드된 index.html 과 대조한다).
+//   (폰트 CSS 미리 받기는 같은 날 기기 기본 글꼴 전환으로 사라졌다.) 태그와 같은지는
+//   `check-critical-chunks` 가 빌드된 index.html 과 대조한다.
 export const ENTRY_CSS_CROSSORIGIN = true
 export function earlyHintsLink(entryCss: readonly string[]): string {
-  const entry = entryCss.map((h) => `<${h}>; rel=preload; as=style${ENTRY_CSS_CROSSORIGIN ? '; crossorigin' : ''}`)
-  return [...entry, `<${FONT_CSS_HREF}>; rel=preload; as=style`].join(', ')
+  return entryCss.map((h) => `<${h}>; rel=preload; as=style${ENTRY_CSS_CROSSORIGIN ? '; crossorigin' : ''}`).join(', ')
 }
 
 /**

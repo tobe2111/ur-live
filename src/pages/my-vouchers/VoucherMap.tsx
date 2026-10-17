@@ -90,7 +90,7 @@ export default function VoucherMap<T extends VoucherMapItem>({
         // 🎨 핀 위 라벨 — "가게 · D-N" (시안)
         const dN = daysLeft(v.expires_at)
         const safeName = (v.restaurant_name || v.product_name).replace(/</g, '&lt;')
-        const labelHtml = `<div style="transform:translateY(-46px);background:#11141C;color:#fff;font:600 11px 'Pretendard',sans-serif;padding:5px 9px;border-radius:9px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.2)">${safeName}${dN !== null ? ` · D-${dN}` : ''}</div>`
+        const labelHtml = `<div style="transform:translateY(-46px);background:#11141C;color:#fff;font:600 11px system-ui,sans-serif;padding:5px 9px;border-radius:9px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.2)">${safeName}${dN !== null ? ` · D-${dN}` : ''}</div>`
         const overlay = new w.kakao.maps.CustomOverlay({ position: pos, content: labelHtml, yAnchor: 1, zIndex: 3 })
         overlay.setMap(map)
         w.kakao.maps.event.addListener(marker, 'click', () => onMarkerClick(v))

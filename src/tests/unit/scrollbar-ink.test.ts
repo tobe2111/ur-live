@@ -78,7 +78,9 @@ describe('스크롤바 안 1 — 얇은 잉크 (2026-09-03 대표 확정)', () =
   })
 
   it('⑥ 소스는 숨김을 `scrollbar-hide` 한 이름으로만 쓴다', () => {
-    const files = walk('src').filter((f) => /\.(tsx|ts)$/.test(f) && !f.includes('src/tests/'))
+    const files = walk('src').filter((f) => /\.(tsx|ts)$/.test(f) && !f.includes('src/tests/')
+      // 생성물(critical-css.ts)은 index.css 의 사본이라 별칭 정의(⑤가 지키는 것)를 그대로 담는다 — 소스 사용처가 아니다.
+      && !f.includes('src/worker/generated/'))
     const bad: string[] = []
     for (const f of files) {
       const t = readFileSync(f, 'utf8')

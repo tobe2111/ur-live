@@ -12,6 +12,7 @@
 export {
   init,
   browserTracingIntegration,
+  browserSessionIntegration,
   captureException,
   captureMessage,
   addBreadcrumb,

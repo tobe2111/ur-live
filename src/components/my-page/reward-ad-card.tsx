@@ -2,7 +2,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from '@/lib/i18n-lite'
 import { Play } from 'lucide-react'
 import api from '@/lib/api'
-import { Capacitor } from '@capacitor/core'
+// 📦 2026-10-14 — `@capacitor/core` 를 정적으로 부르면 웹의 마이 첫 화면이 네이티브 SDK(capacitor 청크 5KB br)를
+//   같이 받았다(이 카드는 웹에선 렌더조차 안 하는데). 판정은 import 없는 SSOT 로 한다(`native-platform` — main.tsx 와 같은 것).
+import { isNativeShell } from '@/lib/native-platform'
 import { formatNumber } from '@/utils/format'
 import { alertDialog } from '@/components/ui/confirm-dialog'
 
@@ -18,7 +20,7 @@ export function RewardAdCard() {
   const [loading, setLoading] = useState(false)
   const [rewarded, setRewarded] = useState<number | null>(null)
   const [newBalance, setNewBalance] = useState<number | null>(null)
-  const isNative = Capacitor.isNativePlatform()
+  const isNative = isNativeShell()
 
   useEffect(() => {
     // 웹은 렌더 자체를 안 하므로 상태 조회도 생략 (네이티브 전용).

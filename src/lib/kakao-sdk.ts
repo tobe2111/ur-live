@@ -85,6 +85,50 @@ export function ensureKakaoSdk(): Promise<void> {
  *   [SDK 를 일찍 출발 · 시트에 가려진 타일을 안 받기 · 화면 코드 미리받기] 로 줄인다.
  *   가드: `map-tile-quality-2026-10-14.test.ts` — disableHD 호출이 소스에 되살아나면 빨간불.
  */
+let kakaoCorePromise: Promise<void> | null = null
+const KAKAO_CORE_SCRIPT = /\/mapjsapi\/js\/main\//
+
+/**
+ * 🗺️ 지도 **본체**(kakao.js)만 실행되면 바로 풀리는 약속 (2026-10-14 — `/map` LCP).
+ *
+ * 카카오 로더(sdk.js)는 파일을 **하나씩 차례로** 받는다: kakao.js(100KB) → services.js(6KB) → 그때서야
+ * `kakao.maps.load` 콜백. 그런데 지도 그리기(`new kakao.maps.Map`)는 본체만 있으면 된다 — 라이브에서
+ * services.js 를 4초 붙잡아 두고 재 보니 본체 직후(1.5초) 지도가 생성되고 타일 13장이 바로 나갔다
+ * (전체 준비 신호는 5.6초). 느린 4G·CPU×4 재생에선 그 사이가 **2.2초**였다.
+ * ⇒ 지도 생성은 이 약속을, 지오코더(`kakao.maps.services`)를 쓰는 곳은 여전히 `ensureKakaoMaps()` 를 기다린다.
+ *    services 를 늦게 받는 것이 아니다 — 같은 순서로 받고, 지도만 먼저 그린다.
+ * 화질은 언제나 고화질이다(위 주석 — disableHD 를 부르지 않는다).
+ */
+export function ensureKakaoMapsCore(): Promise<void> {
+  if (kakaoCorePromise) return kakaoCorePromise
+  const full = ensureKakaoMaps()
+  kakaoCorePromise = new Promise<void>((resolve, reject) => {
+    let done = false
+    const ok = () => { if (done) return; done = true; resolve() }
+    full.then(ok, (e) => { if (!done) { kakaoCorePromise = null; reject(e) } })
+    const w = window as unknown as { kakao?: { maps?: { Map?: unknown } } }
+    if (w.kakao?.maps?.Map) { ok(); return }
+    const watch = (n: Node) => {
+      if (n instanceof HTMLScriptElement && KAKAO_CORE_SCRIPT.test(n.src)) {
+        n.addEventListener('load', () => { if (w.kakao?.maps?.Map) ok() }, { once: true })
+        return true
+      }
+      return false
+    }
+    // 이미 붙어 있으면(하드로드 — index.html 이 일찍 출발시킨 경우) 그 태그에 건다.
+    const existing = document.querySelector('script[src*="/mapjsapi/js/main/"]')
+    if (existing && watch(existing)) return
+    try {
+      const ob = new MutationObserver((ms) => {
+        for (const m of ms) for (const n of Array.from(m.addedNodes)) if (watch(n)) { ob.disconnect(); return }
+      })
+      ob.observe(document.head, { childList: true })
+      full.finally(() => ob.disconnect())
+    } catch { /* 관찰 실패 — 전체 준비(full)로 풀린다 */ }
+  })
+  return kakaoCorePromise
+}
+
 /**
  * Kakao Maps SDK를 로드 (지도 전용 — 별도 스크립트)
  */

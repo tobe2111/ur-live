@@ -30,6 +30,7 @@ import { stayAddressLine, stayRegionLabel } from '@/shared/stay-address'
 import { STAY_HEAD, STAY_PAGE_ROOT, STAY_GRID } from '@/shared/stay-head'
 import StayBookingPanel, { cancellationLabel } from './stay-detail/StayBookingPanel'
 import BrandLoader from '@/components/brand/BrandLoader'
+import { peekWarmStay, stayDetailRequest } from './stays/stay-detail-warm'
 
 // 🗺️ 2026-07-21 (대표 "숙소 카카오맵 연결 무조건 되게"): 딜 상세와 동일한 잠금 lazy 패턴 —
 //   IntersectionObserver 게이트(RestaurantMiniMap 내부)라 스크롤 도달 전 Kakao SDK 0 fetch.
@@ -108,8 +109,11 @@ function readStaySeed(productId: number): StayDetail | null {
     const el = document.getElementById('__SSR_INITIAL_STAYDETAIL__')
     if (!el?.textContent) return null
     const p = (JSON.parse(el.textContent) as { data?: { product?: StayDetail } })?.data?.product
-    return p && Number(p.id) === productId ? p : null
-  } catch { return null }
+    if (p && Number(p.id) === productId) return p
+  } catch { /* 아래 데운 값으로 */ }
+  // 🏨 2026-10-15: 목록에서 손가락이 닿을 때 데워 둔 값(`stay-detail-warm`) — 있으면 로더 없이 바로 그린다.
+  const w = peekWarmStay(productId)?.data?.product as StayDetail | undefined
+  return w && Number(w.id) === productId ? w : null
 }
 
 export default function StayDetailPage() {
@@ -178,9 +182,9 @@ export default function StayDetailPage() {
 
   useEffect(() => {
     if (!Number.isFinite(productId)) { navigate('/stays'); return }
-    api.get(`/api/group-buy/stays/${productId}`)
-      .then((r) => {
-        if (r.data?.success) setStay(r.data.data.product as StayDetail)
+    stayDetailRequest(productId)
+      .then((body) => {
+        if (body?.success) setStay(body.data?.product as StayDetail)
         // 🏨 2026-07-20 (숙소 상세 SSOT 안전판): stay_info 미보유 stay_voucher(구형 딜 등)는
         //   죽은 화면 대신 일반 딜 상세로 폴백 — canonicalDetailPath 가 숙소를 /stays 로 보내는
         //   단방향 정규화의 역방향 안전판(딜 상세는 숙소로 재리다이렉트 안 하므로 루프 0).

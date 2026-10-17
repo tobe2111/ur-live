@@ -29,8 +29,9 @@ describe('숫자 글꼴 Roboto', () => {
     }
   })
   it('② 본문과 font-sans 스택 맨 앞이 UrDigits', () => {
-    expect(CSS).toMatch(/body \{[^}]*font-family:\s*"UrDigits",\s*"Pretendard Variable"/)
-    expect(TW).toMatch(/sans: \['UrDigits', 'Pretendard Variable'/)
+    // 2026-10-15: 그 뒤는 기기 기본 글꼴(쿠팡·네이버처럼 — Pretendard 제거)
+    expect(CSS).toMatch(/body \{[^}]*font-family:\s*"UrDigits",/)
+    expect(TW).toMatch(/sans: \['UrDigits', '-apple-system'/)
   })
   it('③ tabular-nums · .dash-num 에 글꼴을 따로 박지 않는다', () => {
     const rules = CSS.match(/[^{}]*\.(?:tabular-nums|dash-num)[^{}]*\{[^}]*\}/g) || []

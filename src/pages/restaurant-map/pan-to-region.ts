@@ -7,6 +7,7 @@
  *   services 라이브러리는 kakao-sdk 가 `libraries=services` 로 이미 로드(Geocoder + Places 포함).
  */
 import { findRegionByKey, findDistrictGroup } from '@/shared/constants/korea-regions'
+import { ensureKakaoMaps } from '@/lib/kakao-sdk'
 
 type LL = { lat: number; lng: number }
 
@@ -44,7 +45,11 @@ function geocoderQuery(regionKey: string, districtKey: string): string {
 }
 
 /** Kakao services(Places 우선 → Geocoder 폴백)로 지명 → 좌표. 미지원/실패 시 null. */
-function geocode(query: string): Promise<LL | null> {
+async function geocode(query: string): Promise<LL | null> {
+  // ⏳ 2026-10-14 — 지도는 SDK 본체만으로 먼저 그려진다(`ensureKakaoMapsCore`). services 는 그 뒤에 오므로
+  //   아직 없으면 전체 준비를 기다린다(실패해도 아래가 null → 시/도 중심표로 폴백 — 종전과 같다).
+  const w = window as unknown as { kakao?: any }
+  if (!w.kakao?.maps?.services) { try { await ensureKakaoMaps() } catch { /* 폴백 */ } }
   return new Promise((resolve) => {
     try {
       const kakao = (window as unknown as { kakao?: any }).kakao

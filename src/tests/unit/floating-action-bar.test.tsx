@@ -59,4 +59,11 @@ describe('FloatingActionBar', () => {
     // 이전 회귀: 'linear-gradient(135deg, #6b7280, #6b7280)' — 같은 색 2번.
     expect(bg).not.toMatch(/#6b7280.*#6b7280/)
   })
+
+  it('할인 있으면 CTA 위에 할인율·가격 노출, 없으면 미노출', () => {
+    const { getByText, rerender, queryByText } = render(<FloatingActionBar {...baseProps} price={8000} originalPrice={10000} />)
+    expect(getByText('20% 할인 · 8,000원')).toBeTruthy()
+    rerender(<FloatingActionBar {...baseProps} price={8000} />)
+    expect(queryByText(/% 할인/)).toBeNull()
+  })
 })

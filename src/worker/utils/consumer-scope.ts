@@ -20,6 +20,7 @@
  *    **컬럼이 없으면 몰 자체가 존재할 수 없으므로**(몰 스탬프 수단이 그 컬럼이다) 조건을 빼도 누수가 0 이다.
  *    ⇒ 부재 시 빈 문자열을 반환하는 것은 "조용한 우회"가 아니라 **구조적으로 안전한 폴백**이다.
  */
+import { dbKey } from './d1-read-replica'
 
 /** 유어딜 본진 몰 id. 1=유통스타트(폐기 예정)와 겸용 상태 — `operator-mall-saas-gap.md` §8-C 참조. */
 export const MAIN_MALL_ID = 1
@@ -50,8 +51,8 @@ const mallColumnCache = new WeakMap<D1Database, Map<string, Promise<boolean>>>()
 
 /** 테이블에 `mall_id` 컬럼이 있는지(1회 감지 후 캐시). 실패 시 `false`(=조건 생략, 위 주석 참조). */
 export function hasMallColumn(DB: D1Database, table: 'products' | 'sellers'): Promise<boolean> {
-  let byTable = mallColumnCache.get(DB)
-  if (!byTable) { byTable = new Map(); mallColumnCache.set(DB, byTable) }
+  let byTable = mallColumnCache.get(dbKey(DB))
+  if (!byTable) { byTable = new Map(); mallColumnCache.set(dbKey(DB), byTable) }
   const hit = byTable.get(table)
   if (hit) return hit
   const probe = DB.prepare(`PRAGMA table_info('${table}')`)

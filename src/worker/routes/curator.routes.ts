@@ -31,7 +31,7 @@ import { getPolicy } from '../utils/dynamic-policy'
 import { intParam } from '@/shared/pagination'; import { loadLinkedSellerProducts } from '../utils/linkshop-seller-products' // 한 줄: 래칫 1397
 import { consumerVisibleProductSql } from '../../shared/db/consumer-visible-product'
 import { isAffiliateProgramEnabled, gateAffiliateRows } from '../utils/affiliate-program'
-import { findOwnedApprovedSeller, OWNED_STORE_WHERE_SQL } from '../utils/seller-operators'; import { countUShopSales } from '../utils/ushop-sales' // 한 줄: 래칫
+import { findOwnedApprovedSeller, OWNED_STORE_WHERE_SQL } from '../utils/seller-operators'; import { countUShopSales } from '../utils/ushop-sales'; import { publicReadDb } from '../utils/d1-read-replica' // 한 줄: 래칫
 
 const curatorRoutes = new Hono<{ Bindings: Env }>()
 
@@ -174,7 +174,7 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
     if (!handle || !isValidHandleFormat(handle)) {
       return c.json({ success: false, error: '큐레이터를 찾을 수 없습니다' }, 404)
     }
-    const DB = c.env.DB
+    const DB = getAuthUserId(c) == null ? publicReadDb(c.env.DB) : c.env.DB // 🌏 2026-10-15 D1 읽기 복제 — 익명만 사본(로그인=주인일 수 있어 편집 직후 옛 값 금지)
     // 🏭 2026-06-04 (perf 전수조사): DDL 6종을 응답 경로에서 분리 — 테이블은 0278 + repair cron 이 보장.
     try { c.executionCtx?.waitUntil?.(ensureCuratorTables(DB).catch(() => {})) } catch { /* no ctx — skip */ }
 
@@ -402,7 +402,7 @@ curatorRoutes.get('/:handle/p/:productId/redirect', async (c) => {
       //   일반 쇼핑 상품까지 voucher 흐름으로 오분류 → /group-buy 교환권 chrome 으로 떨어짐.
       //   order-type.ts SSOT 와 동일하게 deal_only=1(교환권) 또는 voucher 카테고리(오프라인 공구)만 voucher 흐름.
       const isVoucherFlow = !!prod && (Number(prod.deal_only) === 1 || isVoucherCategory(prod.category))
-      if (isVoucherFlow) return c.redirect(`/pass/${productId}?aff=${pin.user_id}`, 302)
+      if (isVoucherFlow) return c.redirect(`${Number(prod!.deal_only) === 1 ? '/vouchers' : '/pass'}/${productId}?aff=${pin.user_id}`, 302) // 🧭 2026-10-15 교환권은 /vouchers(숙소는 /pass — /stays 는 ?aff 를 안 읽는다)
     } catch { /* 판별 실패 — 기존 경로 */ }
     // 물리상품 — ProductDetailPage 가 localStorage.affiliate_ref 저장 (기존 시스템 재활용)
     return c.redirect(`/products/${productId}?ref=${pin.user_id}`, 302)

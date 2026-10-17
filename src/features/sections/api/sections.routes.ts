@@ -28,13 +28,14 @@ import {
   clampSectionLimit,
   normalizeSectionSource,
 } from '@/shared/constants/home-showcase';
-import { resolveSectionProducts, CARD_COLS } from './section-rules';
+import { resolveSectionProducts, resolvePopularWeights, takeUnclaimed, CARD_COLS } from './section-rules';
 import { capRowGalleries } from '../../group-buy/api/card-gallery';
 import { maybeSeedHomeSections } from './section-seed';
 import { mainScopeFor } from '@/worker/utils/consumer-scope';
 import { nearKeyOf, parseNearKey } from '@/shared/home-near';
 import { listActiveBanners } from '../../banners/api/banners.routes';
 import { STRIP_BANNER_MAX } from '@/shared/home-strip-banners';
+import { publicReadDb, dbKey, d1ServedLabel } from '@/worker/utils/d1-read-replica';
 const sectionsRoutes = new Hono<{ Bindings: Env }>();
 
 /**
@@ -50,8 +51,8 @@ async function invalidateSectionsCache(env: Env): Promise<void> {
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 async function ensureTables(DB: D1Database) {
-  if (_done_ensureTables.has(DB)) return
-  _done_ensureTables.add(DB)
+  if (_done_ensureTables.has(dbKey(DB))) return
+  _done_ensureTables.add(dbKey(DB))
   try {
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS homepage_sections (
@@ -104,7 +105,10 @@ async function ensureTables(DB: D1Database) {
  *      `bypassIfAuthed` 라 어드민 자신은 항상 최신을 본다.
  */
 sectionsRoutes.get('/', edgeCache(120), async (c) => {
-  const { DB, SESSION_KV } = c.env as Env & { SESSION_KV?: KVNamespace };
+  const { SESSION_KV } = c.env as Env & { SESSION_KV?: KVNamespace };
+  // 🌏 2026-10-15 결재(D1 읽기 복제): 공개 편성 읽기는 가까운 사본에서 — 근거·금지 경로는 `d1-read-replica.ts`.
+  const DB = publicReadDb((c.env as Env).DB);
+  const readEnv = { ...(c.env as Env), DB } as Env;
   /**
    * 📍 2026-10-13 (대표 — 위치를 정하면 맨 위가 그 지역에서 가까운 이용권): `?near=lat,lng`.
    *   서버가 **다시 격자(0.02°)에 맞춘다** — 클라가 정밀 좌표를 보내도 캐시가 쪼개지지 않게.
@@ -112,23 +116,53 @@ sectionsRoutes.get('/', edgeCache(120), async (c) => {
    *   위치가 없으면 키·쿼리·응답이 **종전과 byte-동일**이다(SSR 예열 키 `/api/sections` 불변).
    */
   const near = parseNearKey(c.req.query('near'));
+  let d1Served: string | null = null; // 🔎 어느 사본이 답했나 — `X-D1-Served` 로 내보낸다(E4 판정용)
   const nearKey = nearKeyOf(near);
   try {
+    /**
+     * ⚡ 2026-10-15 (대표 *"첫 접속 시 2~3배 다른 사이트에 비해 느려 · 이런 이용권은 어떠세요? 도 너무 늦게 떠"*):
+     *   **질의를 차례로 기다리지 않는다.** D1 은 미국 동부(ENAM, 읽기 복제 꺼짐 — CF API 실측)이고 홈 HTML 은
+     *   이 응답을 SSR 시드로 기다린다. 한국 콜로에서 질의 하나가 왕복 ~170ms 인데 이 핸들러는 캐시가 비면
+     *   [DDL 6 → 시드 버전 → 섹션 → 수동 상품 → 규칙 섹션 1 → 규칙 섹션 2 … → 배너] 를 **한 줄로** 돌았다
+     *   (새 isolate 면 12왕복 안팎 ≈ 2초 — SSR 타임아웃 2000ms 에 걸려 시드가 빠지면 첫 화면이 섹션을 못 그린다).
+     *   ① DDL 은 실패할 때만(아래 `loadSections`) ② 시드 버전은 isolate 당 한 번(`maybeSeedHomeSections`)
+     *   ③ 배너·인기 가중치는 처음부터 병렬 ④ 규칙 섹션은 **동시에** 묻고 위에서 쓴 것을 나중에 뺀다(`overfetch`).
+     *   결과는 종전과 같다 — 같은 SQL·같은 순서 규칙이고, 바뀐 것은 기다리는 모양뿐이다.
+     */
+    const bannersP = cacheGet(SESSION_KV, 'home:strip_banners', async () => {
+      try {
+        return (await listActiveBanners(DB, 'strip')).slice(0, STRIP_BANNER_MAX).map(b => ({
+          id: b.id, title: b.title, image_url: b.image_url, link_url: b.link_url ?? null,
+          description: b.description ?? null, banner_slot: 'strip', display_order: b.display_order,
+        }));
+      } catch {
+        return [];
+      }
+    }, { ttl: 120 }).catch(() => [] as unknown[]);
     const result = await cacheGet(
       SESSION_KV,
       nearKey ? `sections:public:n${nearKey}` : 'sections:public',
       async () => {
-        await ensureTables(DB);
         // 🏠 2026-08-04: 승인된 시안의 세 줄을 기본으로 넣는다 — 아무도 안 만들면 홈이
         //   "틀만 있고 안이 빈" 화면이 되고, 그건 시안이 아니다(대표 신고). 편집·삭제는 보존.
-        await maybeSeedHomeSections(c.env as Env);
+        await maybeSeedHomeSections(readEnv);
+        const weightsP = resolvePopularWeights(DB);
+        weightsP.catch(() => {});
 
-        const { results: sections } = await DB.prepare(`
+        const selectSections = () => DB.prepare(`
           SELECT id, title, subtitle, layout,
                  COALESCE(source, '${DEFAULT_SECTION_SOURCE}') AS source,
                  source_value, limit_count, more_href
           FROM homepage_sections WHERE is_active = 1 ORDER BY sort_order ASC
         `).all();
+        // 테이블·컬럼이 없을 때만 만든다(새 DB · 옛 스키마) — 정상 경로에서 DDL 6왕복을 안 기다린다.
+        const sectionsRes = await selectSections().catch(async () => {
+          await ensureTables(DB);
+          await maybeSeedHomeSections(readEnv);
+          return selectSections();
+        });
+        d1Served = d1ServedLabel(sectionsRes);
+        const sections = sectionsRes.results;
 
         const sectionList = (sections ?? []) as Array<Record<string, unknown>>;
 
@@ -191,17 +225,32 @@ sectionsRoutes.get('/', edgeCache(120), async (c) => {
           productsBySection.set(s.id as number, kept);
         }
 
-        // 규칙 섹션은 **렌더 순서대로** — 위에 나온 것을 빼고 다음 후보로 채운다.
-        const ruleProducts = new Map<number, unknown[]>();
+        // ⚡ 규칙 섹션 후보는 **동시에** 묻는다 — 수동 몫만 빼고, 위 섹션들이 가져갈 수 있는 만큼 더 받는다.
+        const pending = new Map<number, Promise<Record<string, unknown>[]>>();
+        let ahead = 0;
         for (const s of sectionList) {
           if (normalizeSectionSource(s.source) === 'manual') continue;
-          const rows = await resolveSectionProducts(c.env as Env, {
+          pending.set(s.id as number, resolveSectionProducts(readEnv, {
             source: normalizeSectionSource(s.source),
             sourceValue: (s.source_value as string) ?? null,
             limit: (s.limit_count as number) ?? null,
             excludeIds: [...claimed],
             near,
-          });
+            overfetch: ahead,
+            weights: weightsP,
+          }));
+          ahead += clampSectionLimit(s.limit_count as number);
+        }
+
+        // 규칙 섹션은 **렌더 순서대로** — 위에 나온 것을 빼고 다음 후보로 채운다.
+        const ruleProducts = new Map<number, unknown[]>();
+        for (const s of sectionList) {
+          if (normalizeSectionSource(s.source) === 'manual') continue;
+          const rows = takeUnclaimed(
+            (await pending.get(s.id as number)) ?? [],
+            claimed,
+            clampSectionLimit(s.limit_count as number),
+          );
           for (const p of rows) {
             const id = (p as { id?: number }).id;
             if (typeof id === 'number') claimed.add(id);
@@ -235,18 +284,10 @@ sectionsRoutes.get('/', edgeCache(120), async (c) => {
      *   조회는 `/api/banners` 와 **같은 함수**(`listActiveBanners`)다. 실패하면 빈 배열(섹션은 그대로 나간다).
      *   배너가 없으면 필드 자체를 안 싣는다 — 종전 응답과 byte-동일.
      */
-    const stripBanners = await cacheGet(SESSION_KV, 'home:strip_banners', async () => {
-      try {
-        return (await listActiveBanners(DB, 'strip')).slice(0, STRIP_BANNER_MAX).map(b => ({
-          id: b.id, title: b.title, image_url: b.image_url, link_url: b.link_url ?? null,
-          description: b.description ?? null, banner_slot: 'strip', display_order: b.display_order,
-        }));
-      } catch {
-        return [];
-      }
-    }, { ttl: 120 }).catch(() => [] as unknown[]);
+    const stripBanners = await bannersP; // ⚡ 위에서 섹션과 **함께** 시작했다
     const extra = Array.isArray(stripBanners) && stripBanners.length > 0 ? { strip_banners: stripBanners } : {};
 
+    if (d1Served) c.header('X-D1-Served', d1Served);
     // 📍 어느 위치로 만든 응답인지 — 화면이 SSR 시드를 쓸지(같은 격자인지) 판정한다.
     return c.json(nearKey ? { success: true, data: result, near: nearKey, ...extra } : { success: true, data: result, ...extra });
   } catch (err) {
