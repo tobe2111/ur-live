@@ -53,3 +53,9 @@
 - 가드: `sections-roundtrips-2026-10-15.test.ts` 허용 목록 3파일 + 2단계 시험 3건 + 주입 3건(빨간불 확인).
 - 3단계(대표 잠금 해제): 이용권 공개 GET 다섯(목록·지도 클러스터·상세·티커·참여자) 사본. `/my`·`/vouchers/*`·`/verify` 원본.
   메모 `dbKey`: helpers ensureTables · product-supply-meta · seller-meta. CLAUDE.md 로딩 audit log 기록.
+
+## 2026-10-17 배포 확인 (PR #1830 머지 `617f86fa5`)
+- [E3] 배포됨. 라이브 `/api/sections?near=…` 응답에 `X-D1-Served` 헤더가 실재한다.
+- 이 컨테이너의 출구가 **IAD(미국 동부)** 라 값은 `primary:ENAM` — 가장 가까운 사본이 원본 자신이라 정상이다. **한국에서 사본이 쓰이는지는 여기서 못 잰다.**
+- 복제 설정 재확인: `read_replication.mode = auto`, 원본 ENAM.
+- **다음 세션 첫 액션**: ① 대표 폰(한국)에서 `https://urdeal.kr/api/sections?near=37.5,127.0` 응답 헤더 `x-d1-served` 가 `replica:APAC…` 인지(대표만 잴 수 있다) ② 다음 날 09:25 KST SLO 하트비트에서 `/`·`/pass/:id` TTFB 가 내려갔는지.
