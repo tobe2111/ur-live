@@ -1,0 +1,46 @@
+name: SNS daily post
+on:
+  schedule:
+    # 슬롯 09:00 / 12:30 / 19:30 KST (스크립트가 오늘 슬롯만 게시)
+    - cron: '0 0 * * *'
+    - cron: '30 3 * * *'
+    - cron: '30 10 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'DRY_RUN (1=실제 게시/발송 안 함)'
+        default: '0'
+permissions:
+  contents: write
+  issues: write
+concurrency:
+  group: marketing-bot-data
+  cancel-in-progress: false
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: marketing-bot
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run
+        env:
+          DRY_RUN: ${{ inputs.dry_run || '0' }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          META_IG_ACCESS_TOKEN: ${{ secrets.META_IG_ACCESS_TOKEN }}
+          META_THREADS_ACCESS_TOKEN: ${{ secrets.META_THREADS_ACCESS_TOKEN }}
+          META_FB_PAGE_TOKEN: ${{ secrets.META_FB_PAGE_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node src/daily-post.mjs
+      - name: Commit data
+        if: always()
+        run: |
+          git config user.name "urdeal-marketing-bot"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/
+          git diff --cached --quiet || (git commit -m "chore(marketing-bot): update data [skip ci]" && git pull --rebase && git push)

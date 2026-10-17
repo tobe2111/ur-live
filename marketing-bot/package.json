@@ -1,0 +1,13 @@
+{
+  "name": "urdeal-marketing-bot",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "post": "node src/daily-post.mjs",
+    "reply": "node src/reply-comments.mjs",
+    "review": "node src/weekly-review.mjs",
+    "influencer": "node src/influencer.mjs",
+    "test": "node --check src/lib.mjs && node --check src/daily-post.mjs && node --check src/reply-comments.mjs && node --check src/weekly-review.mjs && node --check src/influencer.mjs && DRY_RUN=1 FORCE=1 node src/daily-post.mjs && DRY_RUN=1 node src/reply-comments.mjs && DRY_RUN=1 node src/weekly-review.mjs && DRY_RUN=1 node src/influencer.mjs"
+  }
+}
