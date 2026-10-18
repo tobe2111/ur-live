@@ -52,4 +52,4 @@
 
 ## 반영 커밋
 
-<비워 둔다>
+00fa83ef9 (브랜치 claude/influencer-proposal-03yqmh — PR 은 이 커밋 뒤에 연다)

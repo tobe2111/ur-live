@@ -42,3 +42,4 @@
 
 ## 반영 커밋
 
+c1cba7cf0 (브랜치 claude/influencer-proposal-03yqmh — PR 은 이 커밋 뒤에 연다)
