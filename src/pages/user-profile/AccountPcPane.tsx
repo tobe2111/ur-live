@@ -68,6 +68,12 @@ export default function AccountPcPane() {
      각자 떠 있어 왼쪽 선이 서로 안 맞았다(대표 스크린샷 실측: 제목 1070 ↔ 현황 1088).
      ⚠️ 카드 모양은 **`ur-pc-card` 클래스 한 곳**(index.css, lg 전용)에서 온다 — 손으로 `shadow-lift` 를
         적지 않는다. 같은 클래스를 판매·설정·내가 산 것 구역이 함께 쓴다(한 칸만 다른 그림자면 두 벌이다). */
+  /* 🫙 2026-10-18 — 이용권을 한 장도 안 산 사람에게 **빈 흰 카드**가 떠 있었다(하네스 1440 실측).
+     곧 쓸 이용권은 0줄, 아래 `OrderStatusBar` 는 산 적이 없으면 스스로 null 이라 카드 껍데기와
+     안쪽 여백만 남았다. 같은 판정(매장 이용권을 한 장이라도 샀는가 = `isStoreVoucher`)으로 카드째 접는다.
+     ⚠️ 응답 전(`vouchers === undefined`)에는 접지 않는다 — 산 사람에게 카드가 늦게 끼어들며 아래를 민다. */
+  if (vouchers !== undefined && !((vouchers ?? []) as MyVoucher[]).some(isStoreVoucher)) return null
+
   return (
     <div className="ur-pc-card">
       {soon.length > 0 && (

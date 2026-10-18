@@ -4,7 +4,7 @@ import { useTranslation } from '@/lib/i18n-lite'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { isKorea } from '@/shared/config/region'
 import SEO from '@/components/SEO'
-import { cfImage, cfImageOnError } from '@/utils/cf-image'
+import { profileAvatarSrc, profileAvatarOnError, profileAvatarFitCls } from '@/pages/user-profile/profile-avatar'
 import { logoutAll } from '@/features/auth/login-flow.service'
 import { getUserProfileImage } from '@/utils/auth'
 import { RewardAdCard } from '@/components/my-page/reward-ad-card'
@@ -192,13 +192,13 @@ export default function UserProfilePage() {
       <div className="ur-content-medium px-4 lg:px-8 pt-5 pb-5">
         <div className="flex items-center gap-3">
           <img
-            src={profileImage ? cfImage(profileImage, { width: 128 }) : `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=111827&color=ffffff&size=128`}
+            src={profileAvatarSrc(profileImage, 128)}
             alt={`${userName} 프로필 이미지`}
             loading="lazy"
             decoding="async"
-            className="w-16 h-16 rounded-full object-cover flex-shrink-0"
+            className={`w-16 h-16 rounded-full flex-shrink-0 ${profileAvatarFitCls(profileImage)}`}
             style={{ border: '2px solid rgba(255,255,255,0.15)' }}
-            onError={(e) => cfImageOnError(e.currentTarget, profileImage)}
+            onError={(e) => profileAvatarOnError(e.currentTarget, profileImage)}
           />
           {/* 🎨 2026-09-28 (대표 *"대기업수준이 필요해"*) — **'프로필 편집' 회색 알약을 없애고
               프로필 줄 전체를 누르게 했다.** 그 알약은 크림 바탕 위 `bg-gray-100` 이라 배경과 거의
