@@ -38,10 +38,10 @@ describe('⚡ 셀러 라우트 표 — /seller/* 아래 하위 Routes', () => {
     }
   })
 
-  it('② 표 밖 경로는 손님 Routes 에 원래 경로 그대로', () => {
-    const outside = original.filter((p) => !sellerOnly.includes(p))
-    expect(outside).toEqual(expect.arrayContaining(['/s/:sellerId', '/profile/:sellerId']))
-    expect(topRoutes.map((r) => r.path).sort()).toEqual([...outside].sort())
+  it('② 표 밖 경로(공개 가게 둘)는 부팅 묶음의 손님 Routes 에 — 표 안엔 /seller 경로뿐', () => {
+    // ⚡ 2026-10-18: 공개 가게 두 줄은 `seller-public.routes.tsx`(부팅) 로 옮겼다 — 표는 /seller/* 에서만 받는다.
+    expect(original.filter((p) => !sellerOnly.includes(p)), '표 안에 /seller 밖 경로가 생기면 그 경로는 표가 lazy 라 하드로드에서 안 맞는다').toEqual([])
+    expect(topRoutes.map((r) => r.path).sort()).toEqual(['/profile/:sellerId', '/s/:sellerId'])
   })
 
   it('③ 없는 셀러 경로는 404 · App 은 /seller/* 한 줄', () => {
@@ -51,6 +51,10 @@ describe('⚡ 셀러 라우트 표 — /seller/* 아래 하위 Routes', () => {
     expect(app).not.toMatch(/\{SellerRoutes\(\)\}/)
     expect(app).toMatch(/<Route path="\/seller\/\*" element=\{<SellerRouteTree \/>\} \/>/)
     expect(app).toMatch(/\{sellerTopLevelRoutes\(\)\}/)
+    // ⚡ 2026-10-18 표는 lazy — 정적 import 하면 손님 첫 방문에 raw 28KB 가 다시 실린다.
+    expect(app).toMatch(/const SellerRouteTree = lazy\(\(\) => import\('\.\/routes\/seller\.routes'\)\)/)
+    expect(app).not.toMatch(/import \{[^}]*\} from '\.\/routes\/seller\.routes'/)
+    expect(app).toMatch(/import \{ sellerTopLevelRoutes \} from '\.\/routes\/seller-public\.routes'/)
   })
 
   it('④ 실제 손님 라우터 아래에서 렌더하면 깊은 셀러 경로가 그 화면에 닿는다', () => {

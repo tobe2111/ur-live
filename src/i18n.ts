@@ -69,6 +69,17 @@ const dashLoaders: Record<Lang, Bundle> = {
   fr: () => import('../public/locales/fr/translation.json?i18n-dash'),
 }
 
+// 🧹 2026-10-18 소스 어디에서도 안 가리키는 키(`scripts/i18n-split.mjs` collectReferencedKeys) — 손님 core 에서 뺐다(첫 방문 −7KB br).
+//   화면이 그런 키를 요청하면 missingKeyHandler 가 받는다(dash 와 같은 안전망).
+const restLoaders: Record<Lang, Bundle> = {
+  ko: () => import('../public/locales/ko/translation.json?i18n-rest'),
+  en: () => import('../public/locales/en/translation.json?i18n-rest'),
+  ja: () => import('../public/locales/ja/translation.json?i18n-rest'),
+  zh: () => import('../public/locales/zh/translation.json?i18n-rest'),
+  es: () => import('../public/locales/es/translation.json?i18n-rest'),
+  fr: () => import('../public/locales/fr/translation.json?i18n-rest'),
+}
+
 /** dash 문구가 필요한 화면 — 대시보드 주소. 마이의 판매 화면은 `ensureDashStrings()` 를 직접 부른다. */
 const DASH_PATH_RE = /^\/(seller|admin|agency|supplier|wholesale|mall-admin|distributor)(\/|$)/
 const DASH_KEY_RE = /^(seller|admin|agency|supplier|wholesale|live|liveWs)\./
@@ -125,6 +136,24 @@ async function ensureDashLoaded(lang: string): Promise<void> {
     dashLoaded.delete(base)
     if (import.meta.env.DEV) console.error(`[i18n] Failed to load dash locale: ${base}`, e)
   }
+}
+
+const restLoaded = new Set<Lang>()
+async function ensureRestLoaded(lang: string): Promise<void> {
+  const base = lang.split('-')[0] as Lang
+  if (!SUPPORTED.includes(base) || restLoaded.has(base)) return
+  restLoaded.add(base)
+  try {
+    const mod = await restLoaders[base]()
+    i18n.addResourceBundle(base, 'translation', mod.default || mod, true, false)
+  } catch (e) {
+    restLoaded.delete(base)
+    if (import.meta.env.DEV) console.error(`[i18n] Failed to load rest locale: ${base}`, e)
+  }
+}
+/** core 에서 뺀 키가 요청됐을 때 — 지금 언어와 기본 언어의 rest 를 받는다. */
+function ensureRestStrings(): void {
+  for (const l of new Set<string>([i18n.language || initialLanguage, defaultLanguage])) void ensureRestLoaded(l)
 }
 
 /**
@@ -197,8 +226,14 @@ async function bootstrap() {
       react: { useSuspense: false, bindI18nStore: 'added' },
       // 안전망 — core 에 없는 dash 키가 요청되면 그 자리에서 dash 를 받는다(받는 동안은 defaultValue 가 보인다).
       saveMissing: true,
-      missingKeyHandler: (_lngs: readonly string[], _ns: string, key: string) => {
-        if (DASH_KEY_RE.test(key) && !dashLoaded.has((i18n.language || initialLanguage).split('-')[0] as Lang)) void ensureDashStrings()
+      missingKeyHandler: (_l: readonly string[], _n: string, key: string, fb?: string) => {
+        if (DASH_KEY_RE.test(key)) { if (!dashLoaded.has((i18n.language || initialLanguage).split('-')[0] as Lang)) void ensureDashStrings(); return }
+        const lng = (i18n.language || initialLanguage).split('-')[0] as Lang
+        // ⚠️ core 가 아직 안 왔으면 모든 키가 '빠진' 상태다 — 그때 rest 를 부르면 모든 손님이 받는다. core 가 온 뒤에만 판정한다.
+        // ⚠️ 한국어 화면이 기본값(defaultValue)을 가진 키를 못 찾은 것은 rest 를 받을 이유가 아니다 — 그 기본값이 곧 한국어 문구다
+        //   (실측: 그런 키 대부분은 locale 에 아예 없어 rest 를 받아도 소용없었다). 키 이름이 그대로 보일 자리이거나
+        //   다른 언어(기본값이 한국어라 그대로 두면 언어가 섞인다)일 때만 받는다.
+        if (loaded.has(lng) && !restLoaded.has(lng) && (fb === key || fb == null || lng !== 'ko')) ensureRestStrings()
       },
       // 🏷️ 번역자용 `[TODO:xx]` 표식이 화면에 나가지 않게 한다(위 stripTodoMarker 주석 참조).
       postProcess: ['stripTodoMarker'],

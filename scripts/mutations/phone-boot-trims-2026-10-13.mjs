@@ -8,8 +8,8 @@ export default [
   {
     name: '📱 PC 상단 네비를 폰에서도 다시 렌더한다',
     file: 'src/components/main/ConsumerTopChrome.tsx',
-    find: '      {wide && <DesktopTopNav />}',
-    replace: '      <DesktopTopNav />',
+    find: "      {wide && <Suspense fallback={null}><DesktopTopNav /></Suspense>}",
+    replace: "      <Suspense fallback={null}><DesktopTopNav /></Suspense>",
     test: TEST,
     why: '안 보이는 헤더를 매 하드로드 렌더 — 폰 부팅 75ms(CPU 4배). 에러 없이 느려지기만 한다.',
   },

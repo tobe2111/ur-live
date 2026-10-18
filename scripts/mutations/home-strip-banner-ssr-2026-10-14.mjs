@@ -32,8 +32,8 @@ export default [
   {
     name: '🎫 서버 배너 사진 폭이 부품과 달라 같은 사진을 두 번 받는다',
     file: 'src/worker/utils/home-first-screen.ts',
-    find: 'cfImage(b.image_url, { width: BANNER_SLOT_SPECS.strip.requestWidth, quality: 76 })',
-    replace: 'cfImage(b.image_url, { width: 800, quality: 76 })',
+    find: "stripBannerImageUrl(b.image_url, 'strip')",
+    replace: "stripBannerImageUrl(b.image_url, 'vouchers')",
     test: TEST,
     why: 'URL 이 한 글자만 달라도 브라우저는 캐시를 못 쓴다 — 첫 화면 가장 큰 사진을 두 번 받는다.',
   },
@@ -56,8 +56,8 @@ export default [
   {
     name: '🎫 시드 배너 장수 상한이 사라진다',
     file: 'src/shared/home-strip-banners.ts',
-    find: '.slice(0, STRIP_BANNER_MAX)',
-    replace: '',
+    find: "    .map(b => ({ ...b, banner_slot: 'strip' as const }))\n    .slice(0, STRIP_BANNER_MAX)",
+    replace: "    .map(b => ({ ...b, banner_slot: 'strip' as const }))",
     test: TEST,
     why: '부품은 다섯 장만 그리는데 시드가 더 실으면 장수 표시(1 / N)가 서버·앱에서 갈린다.',
   },

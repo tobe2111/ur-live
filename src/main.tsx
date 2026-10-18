@@ -82,6 +82,7 @@ import { isKeyboardOpen, isEditableElementFocused } from '@/lib/keyboard-viewpor
 import { swallow } from '@/shared/utils/swallow'
 import { installImageProtection } from '@/lib/image-protect'
 import { captureBootFirstScreen } from '@/lib/boot-first-screen'
+import { warmDesktopChrome } from '@/components/main/ConsumerTopChrome'
 import { preloadBootPage, bootSurface } from '@/lib/boot-page' // 🚀 2026-10-15 하드로드 페이지 준비(폴백 단계 제거)
 import { hasSessionPersistProbe, clearSessionPersistProbe } from '@/shared/session-persist-probe'
 import { processAuthCallbackParams } from '@/utils/auth-callback-bootstrap'
@@ -492,7 +493,7 @@ async function bootApp() {
       //   (불투명 풀스크린 로더가 방금 도착한 히어로를 덮던 것 제거 — `lib/boot-first-screen.ts`).
       captureBootFirstScreen()
       // 🚀 2026-10-15: 이 주소의 페이지 모듈을 첫 렌더 전에 준비 — '페이지 로딩 중' 단계와 React 의 0.5초 공개 지연을 건너뛴다(lib/boot-page).
-      await preloadBootPage(bootSurface())
+      await Promise.all([preloadBootPage(bootSurface()), warmDesktopChrome()]) // 🖥️ 2026-10-18 넓은 화면이면 PC 상단 네비도 같이(ConsumerTopChrome 머리말)
       // ✅ React StrictMode 제거 (중복 마운트 방지)
       ReactDOM.createRoot(rootElement).render(
         <ThemeProvider>

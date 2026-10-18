@@ -47,6 +47,18 @@ export interface HomeBanner {
  *   예열도 다시 빗나간다. 그리고 `useApiQuery` 는 `select` 를 **queryFn 안에서** 적용하므로
  *   같은 키에 다른 `select` 를 주면 캐시가 서로 덮어쓴다 — 키 하나 + 전체 목록이라야 안전하다.
  */
+/** `/api/banners` 응답과 같은 모양의 시드 — 교환권 페이지 SSR 보조 시드. 없거나 깨졌으면 `undefined`. */
+function readBannersSeed(): HomeBanner[] | undefined {
+  if (typeof document === 'undefined') return undefined
+  try {
+    const txt = document.getElementById('__SSR_INITIAL_BANNERS__')?.textContent
+    if (!txt) return undefined
+    const r = JSON.parse(txt) as { success?: boolean; data?: HomeBanner[] }
+    if (!r?.success || !Array.isArray(r.data)) return undefined
+    return r.data.map(b => ({ ...b, banner_slot: parseBannerSlot(b.banner_slot) }))
+  } catch { return undefined }
+}
+
 function useAllHomeBanners(): { all: HomeBanner[]; settled: boolean } {
   /**
    * 🎫 2026-10-14 — 응답이 오기 전에는 **서버 첫 화면과 같은 상단 배너**를 보여 준다(섹션 시드의
@@ -55,6 +67,10 @@ function useAllHomeBanners(): { all: HomeBanner[]; settled: boolean } {
    *   시드엔 strip 만 있다 — inline/wide 는 화면 밖이라 응답을 기다려도 아무것도 안 민다.
    */
   const [seeded] = useState<HomeBanner[] | undefined>(() => {
+    // 🖼️ 2026-10-18 교환권 페이지는 `/api/banners` 응답 **전체**를 시드로 받는다(`__SSR_INITIAL_BANNERS__`) —
+    //   서버 첫 화면이 머리 배너 첫 장을 그렸으니 마운트 때도 같은 배너가 바로 서야 한다(안 그러면 판만 남았다가 다시 그려진다).
+    const full = readBannersSeed()
+    if (full) return full
     const raw = readHomeSectionsSeedRaw()
     const strip = stripBannersOf(raw)
     return strip.length ? (strip as unknown as HomeBanner[]) : undefined

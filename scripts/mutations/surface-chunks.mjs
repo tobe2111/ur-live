@@ -116,8 +116,8 @@ export default [
   {
     name: '🧩 라이브러리 전용 봉투도 페이지 봉투로 뺀다',
     file: 'scripts/surface-chunks.mjs',
-    find: '    if (!groupable || LIBRARY_ENVELOPES.has(name)) return name',
-    replace: '    if (!groupable) return name',
+    find: "    if (!groupable || LIBRARY_ENVELOPES.has(name) || LAZY_ENVELOPES.has(name)) return name",
+    replace: "    if (!groupable || LAZY_ENVELOPES.has(name)) return name",
     test: TEST,
     why: 'sentry 옆 앱 코드가 lz-common 으로 가서 sentry 가 전 화면 미리받기에 실린다(실측).',
   },

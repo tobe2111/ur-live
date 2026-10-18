@@ -1,6 +1,27 @@
+import { Suspense } from 'react'
 import PromoBar from './PromoBar'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
-import DesktopTopNav from './DesktopTopNav'
+import { lazyPage, BOOT_PAGE_WAIT_MS } from '@/lib/boot-page'
+
+/** PC 상단 네비가 뜨는 폭 — 아래 `useMediaQuery` 와 부팅 준비(`warmDesktopChrome`)가 같은 값을 쓴다. */
+export const DESKTOP_CHROME_QUERY = '(min-width: 768px)'
+
+/**
+ * 🖥️ 2026-10-18 (대표 *"다 이상적으로 해줘"* — 첫 방문 화면 코드 무게): PC 상단 네비(+계정 메뉴·앱 받기 모달·
+ *   알림 드롭다운, raw ~33KB)는 폰에선 마운트조차 안 되는데 **정적 import 라 폰의 첫 방문 묶음에 실려 왔다.**
+ *   이제 자기 청크(`app-desktop-chrome`)로 떼고, 넓은 화면이면 `main.tsx` 가 **첫 렌더 전에** 받아 둔다
+ *   (`warmDesktopChrome`) — 그래서 PC 는 종전처럼 첫 렌더부터 그려지고 늦게 끼어들며 본문을 밀지 않는다
+ *   (2026-10-13 audit log 가 lazy 를 피한 이유가 정확히 그것이었다 — `lazyPage` 는 준비된 모듈을 동기로 그린다).
+ *   상한(BOOT_PAGE_WAIT_MS) 안에 못 받으면 그 한 번만 늦게 뜬다(종전 페이지 lazy 와 같은 폴백).
+ */
+const DesktopTopNav = lazyPage(() => import('./DesktopTopNav'))
+
+export function warmDesktopChrome(): Promise<unknown> {
+  try {
+    if (typeof matchMedia !== 'function' || !matchMedia(DESKTOP_CHROME_QUERY).matches) return Promise.resolve()
+  } catch { return Promise.resolve() }
+  return Promise.race([DesktopTopNav.load().catch(() => undefined), new Promise((r) => setTimeout(r, BOOT_PAGE_WAIT_MS))])
+}
 
 /**
  * 🧢 소비자 화면 상단 묶음 (2026-08-19).
@@ -24,11 +45,11 @@ export default function ConsumerTopChrome() {
    *   PC 는 첫 렌더부터 `wide=true`(matchMedia 동기 초기값)로 종전과 똑같이 그려진다 —
    *   2026-10-13 audit log 가 경고한 *"늦게 끼어들며 본문을 민다"* 는 lazy 에만 해당한다.
    */
-  const wide = useMediaQuery('(min-width: 768px)')
+  const wide = useMediaQuery(DESKTOP_CHROME_QUERY)
   return (
     <>
       {wide && <PromoBar />}
-      {wide && <DesktopTopNav />}
+      {wide && <Suspense fallback={null}><DesktopTopNav /></Suspense>}
     </>
   )
 }

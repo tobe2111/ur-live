@@ -35,8 +35,8 @@ export default [
   {
     name: '🚀 main.tsx 가 페이지 준비를 기다리지 않는다',
     file: 'src/main.tsx',
-    find: '      await preloadBootPage(bootSurface())\n',
-    replace: '      void preloadBootPage(bootSurface())\n',
+    find: "      await Promise.all([preloadBootPage(bootSurface()), warmDesktopChrome()])",
+    replace: "      void preloadBootPage(bootSurface()); await Promise.all([warmDesktopChrome()])",
     test: TEST,
     why: '첫 렌더가 준비 전에 돌아 lazy 가 멈추고 폴백 단계가 그대로 남는다.',
   },
@@ -66,7 +66,7 @@ export default [
   },
   {
     name: '🚀 사업자 유어샵 래퍼가 둘이 된다',
-    file: 'src/routes/seller.routes.tsx',
+    file: 'src/routes/seller-public.routes.tsx',
     find: "import { SellerPublicPage } from '@/pages/seller-public/lazy-seller-public'\n",
     replace: "import { lazy as lazySP } from 'react'\nconst SellerPublicPage = Object.assign(lazySP(() => import('@/pages/SellerPublicPage')), { load: () => import('@/pages/SellerPublicPage') })\n",
     test: TEST,
@@ -98,7 +98,7 @@ export default [
   },
   {
     name: '🚀 /u/* 에서 사업자 유어샵 페이지까지 받는다',
-    file: 'src/routes/seller.routes.tsx',
+    file: 'src/routes/seller-public.routes.tsx',
     find: "registerBootPage('linkshop', () => (isCuratorShopPath(location.pathname) ? Promise.resolve() : SellerPublicPage.load()));",
     replace: "registerBootPage('linkshop', SellerPublicPage.load);",
     test: TEST,

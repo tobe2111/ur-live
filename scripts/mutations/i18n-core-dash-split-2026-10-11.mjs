@@ -10,8 +10,8 @@ export default [
   {
     name: '[i18n분리] 손님 화면이 쓰는 대시보드 키를 core 에 안 남긴다',
     file: SPLIT,
-    find: "    if (exact.has(p)) return true\n",
-    replace: "    if (exact.has(p) && false) return true\n",
+    find: "    if (exact.has(p)) return true\n    for (const x of exact)",
+    replace: "    if (exact.has(p) && false) return true\n    for (const x of exact)",
     test: TEST,
     why: '유어샵·마이 판매 구역에 seller.* 키 이름이 그대로 뜬다.',
   },

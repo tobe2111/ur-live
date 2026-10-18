@@ -90,11 +90,10 @@ function proposalPdfDevPlugin() {
 //    (`alert-circle`·`bell`·`gift`·`heart`·`home`/`house`·`info`·`log-out`·`message-circle`·
 //     `package`·`settings`·`shopping-cart`·`store`·`ticket`·`check-circle-2`/`circle-check`/`circle-alert`
 //     → `urdeal-icons.tsx`). 안 쓰는 것을 목록에 남기면 그만큼 셸 봉투가 커진다.
+// 🖥️ 2026-10-18: 25 → 2. PC 상단 네비가 lazy(`app-desktop-chrome`)가 되면서 셸 폐쇄가 쓰는 lucide 는 둘뿐이다.
+//    네비가 쓰던 아이콘은 홈이 쓰는 것은 `LUCIDE_HOME_ICONS`, 나머지는 `LUCIDE_DESKTOP_ICONS` 로 갔다.
 const LUCIDE_SHELL_ICONS = new Set([
-  'bed-double', 'book-open', 'check', 'chevron-down', 'chevron-right', 'circle-help', 'coins',
-  // 🪒 2026-09-30: `map-pin` 제거 — 잠금표 이행으로 셸이 `PinIcon`(유어딜 세트)을 쓴다. 26 → 25.
-  'help-circle', 'layout-grid', 'log-in', 'radio', 'refresh-cw',
-  'scissors', 'search', 'shapes', 'smartphone', 'sparkles', 'user', 'user-plus', 'utensils', 'x', 'zap',
+  'refresh-cw', 'x',
 ])
 
 /**
@@ -117,6 +116,21 @@ const LUCIDE_HOME_ICONS = new Set([
   // ⚠️ `Loader2` 는 **별칭**이고 구현은 `loader-circle` 이다 — 둘 다 적는다(2026-09-16 함정).
   'loader-2', 'loader-circle',
   'party-popper', 'paw-print', 'play', 'tag', 'ticket',
+  // 🖥️ 2026-10-18: 셸(PC 네비)에서 넘어온 홈 아이콘 — 카테고리 줄·정렬·검색
+  'bed-double', 'chevron-down', 'chevron-right', 'layout-grid', 'scissors', 'search', 'shapes', 'utensils',
+])
+
+/**
+ * 🖥️ **PC 상단 네비만 쓰는 lucide 아이콘** (2026-10-18). 네비가 lazy 청크(`app-desktop-chrome`)가 되면서
+ * 이 아이콘들이 셸 봉투를 떠났다. 목록이 없으면 214개짜리 `lucide` 봉투로 떨어져 **PC 가 네비 하나 때문에
+ * 54KB 를 받는다**. 홈 목록과 겹치는 것은 홈 쪽에 둔다(PC 홈은 그 봉투를 이미 받는다).
+ * 🔒 손으로 관리하지 않는다 — `lucide-shell-icons.test.ts` ④ 가 네비 폐쇄를 다시 계산해 대조한다.
+ */
+const LUCIDE_DESKTOP_ICONS = new Set([
+  'book-open', 'check', 'circle-help', 'coins', 'help-circle', 'log-in', 'radio', 'smartphone',
+  'sparkles', 'user', 'user-plus', 'zap',
+  // PC 사이드바(`DesktopLiveSidebar` — 같은 `app-desktop-chrome` 청크). 빠지면 PC 가 아이콘 둘 때문에 214개 봉투를 받는다(실측).
+  'compass', 'plus',
 ])
 
 
@@ -245,7 +259,9 @@ export default defineConfig({
             //   배럴은 트리쉐이킹 후 0바이트라 의존을 만들지 않는다(실측 확인).
             if (!icon || LUCIDE_SHELL_ICONS.has(icon[1])) return 'lucide-shell'
             // 🏠 2026-10-12: 홈이 쓰는 11개만 따로 — 214개 봉투를 첫 화면에서 뗀다(위 주석 참조).
-            return LUCIDE_HOME_ICONS.has(icon[1]) ? 'lucide-home' : 'lucide'
+            if (LUCIDE_HOME_ICONS.has(icon[1])) return 'lucide-home'
+            // 🖥️ 2026-10-18: PC 상단 네비만 쓰는 것 — 네비가 lazy 라 셸에서 빠졌다(위 목록 주석)
+            return LUCIDE_DESKTOP_ICONS.has(icon[1]) ? 'lucide-desktop' : 'lucide'
           }
           // Sentry
           // 📦 2026-10-11: `src/lib/sentry-sdk.ts`(쓰는 함수만 다시 내보내는 진입점)도 같은 청크 — 다른 청크로 새면
@@ -263,6 +279,7 @@ export default defineConfig({
             const localeMatch = id.match(/\/locales\/(ko|en|ja|zh|es|fr)\/translation\.json/)
             // 🌐 2026-10-11: 대시보드용 절반은 따로 — 손님은 이 청크를 안 받는다(규칙 추가만).
             if (localeMatch && id.includes('?i18n-dash')) return `locale-${localeMatch[1]}-dash`
+            if (localeMatch && id.includes('?i18n-rest')) return `locale-${localeMatch[1]}-rest` // 🧹 2026-10-18 소스가 안 가리키는 키(i18n-split 머리말)
             if (localeMatch) return `locale-${localeMatch[1]}`
           }
           // Radix UI components (대부분 셀러/어드민 페이지에서만 사용)
@@ -317,8 +334,14 @@ export default defineConfig({
           //   첫 페인트로 들어온다(`check-critical-chunks` 가 **새 청크 9개**로 잡았다).
           //   ⚠️ `NotificationSheet`(시트 셸)는 **여기 넣지 않는다** — 벨을 누른 뒤에야 필요하고,
           //     `useNotificationSheet` 이 `lazy()` 로 경계를 긋는다. 넣으면 첫 페인트 바이트가 된다.
-          if (id.includes('/src/components/notifications/NotificationPanel') ||
-              id.includes('/src/components/notifications/useNotificationSheet')) return 'app-layout'
+          // 🖥️ 2026-10-18: 패널 몸통은 자기 청크로 — 정적으로 닿던 길(`DesktopTopNav`→드롭다운)이 lazy 가 되어
+          //   이제 PC 네비와 벨 시트(둘 다 lazy)만 쓴다. app-layout 에 두면 첫 화면이 패널과 그 아이콘 봉투를 받는다.
+          //   시트 몸통(`NotificationSheet`)도 같은 봉투 — 묶음기가 `lz-common`(대부분의 첫 화면)으로 옮기지 않게 이름을 지킨다
+          //   (`scripts/surface-chunks.mjs` LAZY_ENVELOPES). 벨을 누를 때만 받는다.
+          if (/\/src\/components\/notifications\/Notification(Panel|Sheet)\.tsx/.test(id)) return 'app-notification-panel'
+          if (id.includes('/src/components/notifications/useNotificationSheet')) return 'app-layout'
+          // 🖥️ 2026-10-18 PC 상단 네비와 그것만 쓰는 부품 — 폰 첫 방문에서 뺀다(ConsumerTopChrome 머리말). 넓은 화면이면 첫 렌더 전에 받는다.
+          if (/\/src\/components\/main\/(DesktopTopNav|AccountMenu|AppDownloadModal|NotificationDropdown)\.tsx/.test(id)) return 'app-desktop-chrome'
           if (id.includes('/src/components/main/')) return 'app-layout'
           // 인증 컴포넌트 — 🩺 2026-09-16: **`RouteGuards` 만** 여기다.
           //   이전엔 `auth/` 폴더를 통째로 묶었는데, 그 봉투는 `RouteGuards`(셀 폐쇄) 때문에
@@ -474,6 +497,7 @@ export default defineConfig({
           // 라우트 그룹 정의 파일 — seller/admin/agency 라우트 (큰 Route 트리)
           // ⚡ 2026-10-12 어드민 라우트 표는 App 이 `/admin/*` 에서 lazy 로 받는다 — 같은 봉투면 소비자 첫 방문이 받는다.
           if (id.includes('/src/routes/admin.routes')) return 'app-routes-admin'
+          if (id.includes('/src/routes/seller.routes')) return 'app-routes-seller' // ⚡ 2026-10-18 셀러 표 — /seller/* 에서만(seller-public.routes 머리말)
           if (id.includes('/src/routes/')) return 'app-routes'
           // 기타 공유 컴포넌트 — 하위 디렉터리 별 분리
           // 🛡️ 2026-05-24 (loading P0): 셀러/스트리밍 컴포넌트 분리 → app-components -248KB.

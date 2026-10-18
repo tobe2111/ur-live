@@ -102,7 +102,7 @@ describe('③ 표면 판정은 한 함수 — 워커와 앱', () => {
 })
 
 describe('④ 하드로드 미리받기 표면 전부에 부팅 로더', () => {
-  const src = ['src/App.tsx', 'src/pages/pc-home/HomeRoute.tsx', 'src/routes/seller.routes.tsx'].map(readCode).join('\n')
+  const src = ['src/App.tsx', 'src/pages/pc-home/HomeRoute.tsx', 'src/routes/seller-public.routes.tsx'].map(readCode).join('\n')
   const registered = new Set([...src.matchAll(/registerBootPage\('([a-zA-Z]+)'/g)].map((m) => m[1]))
   const surfaces = [...Object.keys(ROUTES), ...Object.keys(PRELOAD_ONLY_ROUTES)]
   it('표면 목록이 비어 있지 않다(헛도는 가드 차단)', () => {
@@ -121,7 +121,9 @@ describe('④ 하드로드 미리받기 표면 전부에 부팅 로더', () => {
 describe('⑤ main.tsx 가 첫 렌더 전에 기다린다', () => {
   const main = readCode('src/main.tsx')
   it('await preloadBootPage(bootSurface()) 가 createRoot 앞에 있다', () => {
-    const a = main.indexOf('await preloadBootPage(bootSurface())')
+    // 2026-10-18: PC 상단 네비 준비와 같이 기다린다(Promise.all) — 불변식(첫 렌더 전에 기다린다)은 그대로
+    expect(main).toMatch(/await Promise\.all\(\[preloadBootPage\(bootSurface\(\)\)/)
+    const a = main.indexOf('preloadBootPage(bootSurface())')
     const b = main.indexOf('ReactDOM.createRoot(rootElement)')
     expect(a).toBeGreaterThan(0); expect(b).toBeGreaterThan(a)
   })
@@ -136,8 +138,8 @@ describe('⑥ 미리받기 지점이 페이지를 import() 로 직접 받지 않
     expect(code).not.toMatch(/import\(['"]@\/pages\//)
     expect(code).toContain(want)
   })
-  it('로더 이름은 App.tsx·seller.routes 가 등록한 것뿐이다', () => {
-    const reg = ['src/App.tsx', 'src/routes/seller.routes.tsx'].map(readCode).join('\n')
+  it('로더 이름은 App.tsx·seller-public.routes 가 등록한 것뿐이다', () => {
+    const reg = ['src/App.tsx', 'src/routes/seller-public.routes.tsx'].map(readCode).join('\n')
     const names = new Set([...reg.matchAll(/registerRoutePreload\('([a-zA-Z]+)'/g)].map((m) => m[1]))
     const used = ['src/pages/main-home/GroupBuyFeedCard.tsx', 'src/components/main/BottomNav.tsx']
       .flatMap((f) => [...readCode(f).matchAll(/loadRoute\('([a-zA-Z]+)'\)/g)].map((m) => m[1]))
@@ -165,9 +167,9 @@ describe('⑦ loadRoute', () => {
 
 describe('⑧ 사업자 유어샵 페이지 래퍼는 하나', () => {
   it('SellerPublicPage 를 lazy 로 직접 감싸는 곳이 없다', () => {
-    const files = ['src/App.tsx', 'src/pages/CuratorPage.tsx', 'src/routes/seller.routes.tsx']
+    const files = ['src/App.tsx', 'src/pages/CuratorPage.tsx', 'src/routes/seller-public.routes.tsx']
     for (const f of files) expect(readCode(f)).not.toMatch(/lazy\(\(\) => import\(['"][^'"]*SellerPublicPage['"]\)\)/)
-    for (const f of ['src/pages/CuratorPage.tsx', 'src/routes/seller.routes.tsx']) expect(readCode(f)).toMatch(/from '[^']*lazy-seller-public'/)
+    for (const f of ['src/pages/CuratorPage.tsx', 'src/routes/seller-public.routes.tsx']) expect(readCode(f)).toMatch(/from '[^']*lazy-seller-public'/)
   })
   it('래퍼 파일이 실재한다', () => {
     expect(fs.existsSync(path.resolve('src/pages/seller-public/lazy-seller-public.ts'))).toBe(true)
@@ -213,6 +215,6 @@ describe('⑩ 유어샵 표면 안에서 그 주소가 그리는 페이지만 �
   })
   it('CuratorPage 부팅 로더는 /u/* 에서만, SellerPublicPage 는 그 밖에서만', () => {
     expect(readCode('src/App.tsx')).toMatch(/registerBootPage\('linkshop', \(\) => \(isCuratorShopPath\(location\.pathname\) \? CuratorPage\.load\(\) : Promise\.resolve\(\)\)\)/)
-    expect(readCode('src/routes/seller.routes.tsx')).toMatch(/registerBootPage\('linkshop', \(\) => \(isCuratorShopPath\(location\.pathname\) \? Promise\.resolve\(\) : SellerPublicPage\.load\(\)\)\)/)
+    expect(readCode('src/routes/seller-public.routes.tsx')).toMatch(/registerBootPage\('linkshop', \(\) => \(isCuratorShopPath\(location\.pathname\) \? Promise\.resolve\(\) : SellerPublicPage\.load\(\)\)\)/)
   })
 })

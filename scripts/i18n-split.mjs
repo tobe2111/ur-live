@@ -56,6 +56,45 @@ export function collectConsumerDashKeys(root) {
   return { exact, prefixes }
 }
 
+/**
+ * 🧹 2026-10-18 손님 core 에서 **소스 어디에서도 언급되지 않는 키**도 뺀다 (대표 *"다 이상적으로 해줘"* — 첫 방문 무게).
+ *   실측(ko): core 2,445키 중 746키(raw 39KB)를 src 의 어떤 문자열도 가리키지 않았다 — 지워진 화면의 문구들이다.
+ *   core brotli 28.8 → 21.9KB(−7KB, **모든 화면의 첫 방문**). 빠진 키는 `rest` 청크로 가고, 화면이 그 키를
+ *   요청하면 `src/i18n.ts` 의 missingKeyHandler 가 rest 를 받아 다시 그린다(dash 와 같은 안전망 — 받는 동안 defaultValue).
+ *   판정은 **보수적**: 키 모양 문자열 리터럴 · 그 조상 · 끝이 '.' 인 리터럴(접두어) · 템플릿 접두어(`x.${…}`) 중 하나라도
+ *   걸리면 남긴다. 대시보드 전용 파일이 쓰는 키도 남긴다(대시보드는 rest 를 부팅 때 안 받는다).
+ */
+const ANY_KEY_RE = /['"`]([A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z0-9_-]+)+\.?)['"`]/g
+const ANY_TEMPLATE_RE = /`([A-Za-z][A-Za-z0-9_.-]*)\$\{/g
+
+export function collectReferencedKeys(root) {
+  const exact = new Set()
+  const prefixes = new Set()
+  for (const f of walk(path.join(root, 'src'))) {
+    const s = fs.readFileSync(f, 'utf-8')
+    for (const m of s.matchAll(ANY_KEY_RE)) { if (m[1].endsWith('.')) prefixes.add(m[1].slice(0, -1)); else exact.add(m[1]) }
+    for (const m of s.matchAll(ANY_TEMPLATE_RE)) prefixes.add(m[1].replace(/\.$/, ''))
+  }
+  return { exact, prefixes }
+}
+
+/** 조상이 언급돼도 남긴다(`t('a.b')` 를 접두어로 쓰는 코드가 있다) — keep 과 다른 점은 **조상 방향**이다. */
+function makeRefKeep({ exact, prefixes }) {
+  return (p) => {
+    if (exact.has(p)) return true
+    // 짝 키 — `t(f.key.replace(/\.q/, '.a'))`(FAQ)처럼 질문 키에서 답 키를 만드는 자리는 문자열로 안 남는다.
+    //   질문(`…q1`)이 가리켜지면 답(`…a1`)도 core 에 둔다(빠지면 한국어 기본값이 다른 언어 화면에 뜬다).
+    const qa = p.replace(/\.a(\d+)$/, '.q$1')
+    if (qa !== p && exact.has(qa)) return true
+    const parts = p.split('.')
+    for (let i = 1; i < parts.length; i++) {
+      const pre = parts.slice(0, i).join('.')
+      if (exact.has(pre) || prefixes.has(pre)) return true
+    }
+    return prefixes.has(p)
+  }
+}
+
 function isDashKey(key) {
   const head = key.split('.')[0]
   return DASH_NAMESPACES.includes(head)
@@ -75,10 +114,12 @@ function makeKeep({ exact, prefixes }) {
  * 번역 객체를 core / dash 로 나눈다. 원본은 건드리지 않는다.
  * 평면 키(`"admin.dashboard.x": "…"`)와 중첩 객체가 섞여 있어도 같은 규칙으로 나눈다.
  */
-export function splitTranslation(obj, used) {
+export function splitTranslation(obj, used, refs) {
   const keep = makeKeep(used)
+  const refKeep = refs ? makeRefKeep(refs) : null
   const core = {}
   const dash = {}
+  const rest = {}
   const put = (target, pathParts, value) => {
     let cur = target
     for (let i = 0; i < pathParts.length - 1; i++) {
@@ -88,8 +129,23 @@ export function splitTranslation(obj, used) {
     }
     cur[pathParts[pathParts.length - 1]] = value
   }
+  /** 대시보드 바깥 키 — refs 가 없으면 종전대로 통째 core, 있으면 언급된 가지만 core · 나머지는 rest. */
+  const splitNonDash = (top, value) => {
+    if (!refKeep) { core[top] = value; return }
+    const visit = (node, parts) => {
+      const p = parts.join('.')
+      if (node && typeof node === 'object' && !Array.isArray(node)) {
+        for (const [k, v] of Object.entries(node)) visit(v, [...parts, k])
+        return
+      }
+      if (refKeep(p)) put(core, parts, node)
+      else put(rest, parts, node)
+    }
+    if (top.includes('.')) { if (refKeep(top)) core[top] = value; else rest[top] = value; return }
+    visit(value, [top])
+  }
   for (const [top, value] of Object.entries(obj)) {
-    if (!isDashKey(top)) { core[top] = value; continue }
+    if (!isDashKey(top)) { splitNonDash(top, value); continue }
     dash[top] = value
     if (top.includes('.')) { if (keep(top)) core[top] = value; continue }
     // 중첩 — 잎까지 내려가며 keep 인 가지만 core 로 복사
@@ -100,21 +156,23 @@ export function splitTranslation(obj, used) {
     }
     visit(value, [top])
   }
-  return { core, dash }
+  return { core, dash, rest }
 }
 
 /** Vite 플러그인 — `translation.json?i18n-core|dash` 를 나눠서 돌려준다(쿼리 없으면 그대로). */
 export function i18nSplitPlugin(root) {
   let used = null
+  let refs = null
   return {
     name: 'i18n-split',
     enforce: 'pre',
-    buildStart() { used = collectConsumerDashKeys(root) },
+    buildStart() { used = collectConsumerDashKeys(root); refs = collectReferencedKeys(root) },
     transform(code, id) {
-      const m = id.match(/\/locales\/[a-z]{2}\/translation\.json\?i18n-(core|dash)$/)
+      const m = id.match(/\/locales\/[a-z]{2}\/translation\.json\?i18n-(core|dash|rest)$/)
       if (!m) return null
       if (!used) used = collectConsumerDashKeys(root)
-      const parts = splitTranslation(JSON.parse(code), used)
+      if (!refs) refs = collectReferencedKeys(root)
+      const parts = splitTranslation(JSON.parse(code), used, refs)
       return { code: JSON.stringify(parts[m[1]]), map: null }
     },
   }

@@ -19,6 +19,9 @@
  */
 import { cfImage } from '../utils/cf-image'
 
+/** 🖼️ 2026-10-18 상세 히어로만 85 — 기본값(75)을 낮출 때 상품의 큰 사진은 지킨다. 근거: `utils/cf-image.ts` CF_IMAGE_DEFAULT_QUALITY. */
+export const DETAIL_HERO_QUALITY = 85
+
 /** 모바일 히어로 프레임 3:2 (2026-08-31 대표 승인 — 네이버 사진 70장 실측 근거). */
 export const DETAIL_HERO_RATIO = 3 / 2
 /** 모바일 히어로 요청 폭. 430px 프레임 ×2 배율 ≈ 860 → 900. */
@@ -61,7 +64,7 @@ export const DETAIL_PC_THUMB_RATIO = 5 / 4
  *   비교 대상을 틀리면 부호까지 뒤집힌다.
  */
 export function detailCropUrl(src: string, w: number, ratio: number): string {
-  return cfImage(src, { width: w, height: Math.round(w / ratio), fit: 'cover', gravity: 'auto', format: 'auto' }) || src
+  return cfImage(src, { width: w, height: Math.round(w / ratio), fit: 'cover', gravity: 'auto', format: 'auto', quality: DETAIL_HERO_QUALITY }) || src
 }
 
 /** 모바일 슬라이드 = 3:2 프레임에 채우고(cover) 피사체를 찾아 자른다(gravity=auto). */
@@ -71,7 +74,7 @@ export function detailHeroMobileUrl(src: string, w: number = DETAIL_HERO_MOBILE_
 
 /** 크롭 없는 폭 리사이즈(비율을 유지해야 하는 자리 — 예: 전체보기 모달). */
 export function detailPlainUrl(src: string, w: number): string {
-  return cfImage(src, { width: w, format: 'auto' }) || src
+  return cfImage(src, { width: w, format: 'auto', quality: DETAIL_HERO_QUALITY }) || src
 }
 
 /**

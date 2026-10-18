@@ -5,7 +5,7 @@ import { resolveBannerLink, type BannerLink } from './banner-link'
 import { useHomeBanners, type HomeBanner } from './useHomeBanners'
 import type { BannerSlot } from '@/shared/constants/home-showcase'
 import { BANNER_SLOT_SPECS } from '@/shared/constants/home-showcase'
-import { STRIP_BANNER_MAX, STRIP_CLS } from '@/shared/home-strip-banners'
+import { STRIP_BANNER_MAX, STRIP_CLS, HERO_CARD_CLS, HERO_RAIL_CLS, stripBannerImageUrl } from '@/shared/home-strip-banners'
 
 /**
  * 🏠 ③ 중간 배너 (2026-08-04 대표 시안 승인).
@@ -382,8 +382,8 @@ function StripRail({ banners, single = false, hero = false }: { banners: HomeBan
  *   기존 클래스를 덮어쓰는 방식(`!`)이라 홈 배너·교환권 PC 띠의 클래스 문자열은 한 글자도 안 바뀐다.
  *   ⚠️ 196 은 `VOUCHERS_HERO_CLS.hero`(예약 판)·서버 첫 화면과 같은 값이어야 한다 — 시험이 대조한다.
  */
-export const HERO_CARD_CLS = '!aspect-auto !h-[196px] !rounded-none !justify-start !pt-[60px] [&>img]:object-right [&>div]:!h-full [&>div]:!bg-gradient-to-r [&>strong]:!max-w-[60%] [&>strong]:!leading-[1.35] [&>strong]:!whitespace-pre-line [&>strong]:![word-break:keep-all] [&>span]:hidden'
-const HERO_RAIL_CLS = '!gap-0 !px-0 !scroll-px-0'
+// 🎟️ 2026-10-18 머리 카드·레일 클래스는 `shared/home-strip-banners.ts` 로 옮겼다 — 서버 첫 화면(`worker/utils/vouchers-first-screen.ts`)이 같은 상수로 그린다.
+export { HERO_CARD_CLS }
 const HERO_COUNTER_CLS = '!right-auto !bottom-auto left-4 !top-3'  // top·bottom 둘 다 걸리면 세로로 늘어나 알약이 가운데로 온다(실측)
 
 /** 머리 배너 — 교환권 페이지 맨 위(모바일). 0장이면 부르는 쪽이 안 그린다. */
@@ -396,7 +396,7 @@ const SINGLE_CARD_CLS = '!aspect-[4/1] lg:!w-full !py-3 [&>span]:hidden lg:[&>sp
 /** 카드 한 장 — 흰 글자를 왼쪽 아래에(야놀자 문법). 카드 전체가 누르는 자리다. */
 function StripCard({ b, many, first, clone, single = false, hero = false }: { b: HomeBanner; many: boolean; first: boolean; clone?: boolean; single?: boolean; hero?: boolean }) {
   const link = bannerLink(b)
-  const bg = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS[single || hero ? 'vouchers' : 'strip'].requestWidth, quality: 76 }) : ''
+  const bg = stripBannerImageUrl(b.image_url, single || hero ? 'vouchers' : 'strip')  // 서버 첫 화면과 같은 URL(같은 함수) — 갈리면 사진을 두 번 받는다
   return (
     <BannerWrap
       link={link}

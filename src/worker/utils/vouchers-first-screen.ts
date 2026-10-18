@@ -36,6 +36,8 @@ import { priceDisplay } from '../../shared/price-display'
 import { formatNumber } from '../../utils/format'
 import { cardImageAlt } from '../../utils/deal-title'
 import { VOUCHERS_DEFAULT_CATEGORY } from '../../shared/seo/voucher-facet'
+import { STRIP_CLS, HERO_CARD_CLS, HERO_RAIL_CLS, stripBannerImageUrl, bannersOfSlot } from '../../shared/home-strip-banners'
+import { resolveBannerLink } from '../../components/home/banner-link'
 import {
   VOUCHER_TILE_CLASS, VOUCHER_TILE_ABOVE_FOLD, VOUCHER_TILE_IMG_W, VOUCHER_TILE_SIZES, voucherSoldLabel,
 } from '../../shared/voucher-tile'
@@ -145,7 +147,47 @@ export function vouchersFirstScreenGuardScript(nonce: string): string {
  * 교환권 목록 첫 화면 HTML — 실패하면 **빈 문자열**(호출부가 종전 로더로 되돌아간다. 무회귀).
  * @param seedJson `__SSR_INITIAL_VOUCHERS__` 본문(`{ success, data: [...] }`)
  */
-export function buildVouchersFirstScreen(seedJson: string, loaderHtml: string, nonce: string): string {
+/**
+ * 🖼️ 2026-10-18 머리 배너 첫 장을 **판 안에** 그린다 (대표 *"다 이상적으로 해줘"* — 교환권 LCP 가 배너였다).
+ *
+ * 실측(라이브 · 느린 4G · CPU 4배): 배너 사진 요청이 **3.8초에야** 출발했다 — 화면 코드가 다 돌고
+ * `/api/banners` 응답을 받은 뒤에야 `<img>` 가 생겼기 때문이다. 판(196px)은 이미 서 있으니 사진만 늦었고,
+ * 그 사진이 이 화면의 가장 큰 그림(LCP 4.3초)이었다. 워커가 같은 응답을 보조 시드로 받아(예열 키 —
+ * 새 캐시 키 0) 첫 장을 **같은 클래스 · 같은 사진 주소**로 그리면 사진이 HTML 직후 출발한다.
+ *
+ * 🔒 마크업은 `StripRail` → `StripCard`(hero) 와 같다 — 레일·카드 클래스는 상수(`STRIP_CLS`·`HERO_*`)에서 오고
+ *   사진 주소는 `stripBannerImageUrl` 한 함수다. 판 높이가 고정이라 마운트 때 무엇이 바뀌어도 아래는 안 밀린다.
+ * ❌ 그리지 않는 것: 숫자 알약·넘김 버튼(위치가 absolute 라 높이를 안 만든다) · 둘째 장 이후.
+ */
+function heroBannerHtml(bannersJson: string | null | undefined): string {
+  if (!bannersJson) return ''
+  let banners
+  try { banners = bannersOfSlot(JSON.parse(bannersJson), 'vouchers') } catch { return '' }
+  const b = banners[0]
+  if (!b) return ''
+  const many = banners.length > 1
+  const link = resolveBannerLink(b.link_url)
+  const bg = stripBannerImageUrl(b.image_url, 'vouchers')
+  const cls = `relative ${many ? STRIP_CLS.cardMany : STRIP_CLS.cardOne} ${many ? STRIP_CLS.pcCardW : ''} ${STRIP_CLS.card}  ${HERO_CARD_CLS}`
+  const style = bg ? '' : ' style="background:var(--brand-grad)"'
+  const inner =
+    (bg ? `<img src="${escAttr(bg)}" alt="" aria-hidden="true" loading="eager" fetchpriority="high" decoding="async" class="${STRIP_CLS.img}">` +
+      `<div class="${STRIP_CLS.scrim}" aria-hidden="true"></div>` : '') +
+    `<strong class="${escAttr(STRIP_CLS.title)}">${escText(b.title)}</strong>` +
+    (b.description ? `<span class="${STRIP_CLS.desc}">${escText(b.description)}</span>` : '')
+  const card = link?.kind === 'internal'
+    ? `<a href="${escAttr(link.to)}" class="${escAttr(cls)}"${style}>${inner}</a>`
+    : link?.kind === 'external'
+      ? `<a href="${escAttr(link.href)}" target="_blank" rel="noopener noreferrer" class="${escAttr(cls)}"${style}>${inner}</a>`
+      : `<div class="${escAttr(cls)}"${style}>${inner}</div>`
+  return `<div class="${STRIP_CLS.root}" aria-roledescription="carousel" aria-label="이벤트 배너"><div class="relative">` +
+    `<div class="${STRIP_CLS.rail} ${many ? STRIP_CLS.railMany : ''} ${HERO_RAIL_CLS}">${card}</div></div></div>`
+}
+
+/**
+ * @param bannersJson `/api/banners` 응답(보조 시드). 없거나 교환권 배너가 0장이면 종전처럼 빈 판.
+ */
+export function buildVouchersFirstScreen(seedJson: string, loaderHtml: string, nonce: string, bannersJson?: string | null): string {
   let rows: VoucherSeedRow[]
   try {
     const parsed = JSON.parse(seedJson) as { success?: boolean; data?: VoucherSeedRow[] }
@@ -164,7 +206,7 @@ export function buildVouchersFirstScreen(seedJson: string, loaderHtml: string, n
   const body =
     `<div class="${C.page}">` +
     `<h1 class="sr-only">교환권 - 인기 브랜드 기프티콘을 딜로 즉시 구매</h1>` +
-    `<div class="${C.hero}"></div>` +
+    `<div class="${C.hero}">${heroBannerHtml(bannersJson)}</div>` +
     `<div class="${C.overlap}"><div class="${C.balanceBar}">` +
     `<span class="${C.balanceText}">딜을 모으면 더 싸게 살 수 있어요</span>` +
     `<span class="${C.balanceLink}">모으는 방법 <span class="w-3 h-3 inline-block"></span></span>` +

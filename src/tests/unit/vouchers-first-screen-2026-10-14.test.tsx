@@ -196,7 +196,7 @@ describe('④ 폴백과 배선', () => {
   })
   it('워커 배선: /vouchers 하나 · 폰 UA · nonce · 폴백은 종전(크롤러 요약 + 로더)', () => {
     const w = code('src/worker/index.ts')
-    expect(w).toMatch(/ssrSlot === 'VOUCHERS' && ssrPayload && url\.pathname === '\/vouchers' && shouldRenderMobileFirstScreen\(c\.req\.header\('user-agent'\)\)\) \{ const vouchersFirst = buildVouchersFirstScreen\(ssrPayload, urdealLoaderHtml, nonce\); rb = rb\.on\('#root', \{ element\(el\) \{ el\.setInnerContent\(vouchersFirst \|\| \(buildStaticSurfaceNoscript\(url\.pathname, crawlerPayload\) \+ urdealLoaderHtml\)/)
+    expect(w).toMatch(/ssrSlot === 'VOUCHERS' && ssrPayload && url\.pathname === '\/vouchers' && shouldRenderMobileFirstScreen\(c\.req\.header\('user-agent'\)\)\) \{ const vouchersFirst = buildVouchersFirstScreen\(ssrPayload, urdealLoaderHtml, nonce, ssrExtraPayload\); rb = rb\.on\('#root', \{ element\(el\) \{ el\.setInnerContent\(vouchersFirst \|\| \(buildStaticSurfaceNoscript\(url\.pathname, crawlerPayload\) \+ urdealLoaderHtml\)/)
   })
 })
 

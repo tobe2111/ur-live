@@ -59,8 +59,7 @@ import { canonicalDetailPath } from '../../shared/product-flow'
 import { priceDisplay } from '../../shared/price-display'
 import { stripStorePrefix } from '../../utils/deal-title'
 import { formatNumber } from '../../utils/format'
-import { BANNER_SLOT_SPECS } from '../../shared/constants/home-showcase'
-import { STRIP_CLS, stripBannersOf, type SeededStripBanner } from '../../shared/home-strip-banners'
+import { STRIP_CLS, stripBannersOf, stripBannerImageUrl, type SeededStripBanner } from '../../shared/home-strip-banners'
 import { resolveBannerLink } from '../../components/home/banner-link'
 
 function escAttr(s: string): string {
@@ -245,7 +244,7 @@ function stripBannerHtml(banners: SeededStripBanner[]): string {
   if (!b) return ''
   const many = banners.length > 1
   const link = resolveBannerLink(b.link_url)
-  const bg = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS.strip.requestWidth, quality: 76 }) : ''
+  const bg = stripBannerImageUrl(b.image_url, 'strip')
   const cls = `relative ${many ? STRIP_CLS.cardMany : STRIP_CLS.cardOne} ${many ? STRIP_CLS.pcCardW : ''} ${STRIP_CLS.card}`
   const style = bg ? '' : ' style="background:var(--brand-grad)"'
   const inner =
