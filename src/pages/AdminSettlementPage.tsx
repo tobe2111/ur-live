@@ -6,6 +6,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import AdminFinanceTabs from '@/components/admin/AdminFinanceTabs'
+import CrossOwnerRedemptionsCard from '@/components/admin/CrossOwnerRedemptionsCard'
 import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { DollarSign, TrendingUp, Users, Download, CheckCircle, Clock } from 'lucide-react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
@@ -161,6 +162,8 @@ export default function AdminSettlementPage() {
   return (
     <AdminLayout title={t('admin.pages.settlement')}>
       <AdminFinanceTabs />
+      {/* 🏷️ 2026-10-18 브랜드 3단계 — 다른 점주 지점이 받아 정산이 넘어간 이용권(꺼져 있고 0건이면 안 그림) */}
+      <CrossOwnerRedemptionsCard />
       {/* 🛡️ 2026-07-02 (감사 #10): 정산 통계/내역 로드 실패(5xx/401/403)를 빈 화면으로 위장하지 않도록 표면화 */}
       {(statsQ.isError || recordsQ.isError) && (
         <div className="mx-auto max-w-5xl px-4 pt-4">

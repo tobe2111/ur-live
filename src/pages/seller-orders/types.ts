@@ -22,6 +22,8 @@ export interface OrderVoucher {
   status: string
   used_at?: string | null
   expires_at?: string | null
+  /** 🏷️ 다른 점주 가맹점이 받은 이용권이면 그 지점 이름 — 정산도 그 지점으로 간다(브랜드 3단계). */
+  redeemed_store_name?: string | null
 }
 
 export interface Order {

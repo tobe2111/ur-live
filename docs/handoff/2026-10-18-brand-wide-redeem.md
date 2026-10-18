@@ -31,8 +31,14 @@
 - 가드 `brand-cross-owner-2026-10-18.test.ts` 19건 + 주입 `scripts/mutations/brand-cross-owner-2026-10-18.mjs` 8건(전부 빨간불 확인)
 - 셀러 가이드는 **안 고쳤다** — 게이트가 꺼져 있는 동안 없는 기능을 안내하면 안 된다. 켤 때 같은 커밋에서 '지점이 여러 곳이라면' 절 + `GUIDE_SEED_VERSION` +1.
 
-### 알려진 틈 (원래부터 있던 것)
-- 사용 취소(un-redeem)가 원장을 되돌리지 않는다 → 다른 지점에서 다시 쓰면 원장은 첫 지점 그대로(멱등 키가 voucher id). Rail A 는 기록을 따라간다. 시험 머리말에 적어 둠.
+### 후속 — 누가 무엇을 보나 (대표 "응", 읽기·표시만)
+- 손님 상세 `BrandBranchesLink`: 다른 점주 지점 수를 같은 주인 지점과 섞지 않고 따로 + "소개 링크로 산 이용권은 가맹점에서 못 쓸 수 있어요"(문구 SSOT `pages/group-buy/brand-branches-label.ts`, 서버 `of-store` 가 `cross_owner_branches` 를 싣는다)
+- 판 지점 주문 상세 `VoucherCodes`: 다른 점주 지점이 받은 이용권에 "○○에서 사용 · 정산도 그 지점으로" (`order-list-enrich` 조인, 기록 테이블이 없으면 종전 조회로 폴백)
+- 어드민 정산 화면 `CrossOwnerRedemptionsCard` ← `GET /api/admin/brand-cross-owner/redemptions`(읽기 전용, 게이트 꺼짐·0건이면 카드 안 보임)
+- 가드 `brand-cross-owner-visibility-2026-10-18.test.ts` 13건 + 주입 5건(전부 빨간불 확인)
+
+### 정정 — "사용 취소 원장 틈"은 실재하지 않는다
+- 앞서 *사용 취소 뒤 다른 지점에서 다시 쓰면 원장이 첫 지점 그대로* 라고 적었는데, 코드에 사용됨 → 미사용 경로가 **없다**(유일한 되돌림은 분쟁의 환불됨 → 미사용). 실제로 일어나지 않는 경우다.
 
 ### 테스트 사장님 계정 (E4 용 — 비밀번호는 레포에 없다, 대표에게 채팅으로만 전달)
 - 유저 `users.id = 44` · 이메일 `test-owner-brandwide@ur-team.com`

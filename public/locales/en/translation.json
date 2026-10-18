@@ -3307,6 +3307,7 @@
     "voucherUnused": "Unused",
     "voucherNone": "No vouchers issued yet.",
     "voucherUsedAt": "Used {{d}}",
+    "voucherRedeemedElsewhere": "Used at {{store}} · settlement goes to that branch",
     "voucherUntil": "Until {{d}}",
     "voucherCodeHeader": "Voucher code",
     "copyOrderNumber": "Copy full order number",
