@@ -15,6 +15,7 @@ import { passDetailDescription } from '../../shared/seo/detail-description'
 import { canonicalDetailPath } from '../../shared/product-flow'
 import { productShareImage } from '@/shared/og-share-image'
 import { propertyTypeLabel } from '../../shared/stay-property-type'
+import { stayRegionShort } from '../../shared/stay-address'
 import { kakaoPlaceCanonicalUrl } from '../../shared/kakao-place-url'
 import { parseRegionFromAddress } from '../../shared/constants/region-slugs'
 import { storeNameJoin } from '@/shared/seo/store-name-dedupe'
@@ -345,9 +346,9 @@ export function buildStayDetailMeta(ssrPayload: string, origin: string, pathname
     const idm = pathname.match(/\/stays\/(\d+)/)
     const id = idm ? idm[1] : (p.id ?? '')
     const stayName = String(p.restaurant_name || p.name).trim()
-    // 🏷️ 2026-10-14: 이 공식은 **그대로 둔다** — 제목 SSOT 도 컬럼을 먼저 쓰므로 둘이 같고,
-    //   주소 우선으로 바꾸면 `강원` → `강원특별자치도` 가 되어 49건의 설명이 달라진다.
-    const region = [p.region_sido, p.region_sigungu].filter(Boolean).join(' ').trim()
+    // 🏷️ 2026-10-18: 제목과 **같은 함수** — 주소를 짧은 표기로 읽는다. 종전 컬럼 공식은 12건에서
+    //   주소와 다른 지역을 검색 설명에 적었다(`강원 속초시` ↔ 주소 양양군). 일치하는 37건은 byte-동일.
+    const region = stayRegionShort(p.region_sido, p.region_sigungu, p.address)
     const typeLabel = p.property_type ? propertyTypeLabel(p.property_type) : '숙소'
     const rooms = parsed?.data?.rooms || []
     const roomPrices = rooms.map(r => Number(r.base_price_weekday) || 0).filter(v => v > 0)

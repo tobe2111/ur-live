@@ -13,7 +13,6 @@
  */
 import { describe, it, expect } from 'vitest'
 import { stayDetailTitle, voucherDetailTitle } from '@/shared/seo/detail-title'
-import { stayRegionLabel } from '@/shared/stay-address'
 import { withSiteName, CONSUMER_SITE_NAME } from '@/shared/seo/consumer-surfaces'
 import { readCode } from '../helpers/source-text'
 
@@ -41,10 +40,23 @@ describe('🏷️ 상세 제목 SSOT', () => {
     expect(stayDetailTitle('x', reg)).not.toContain('강원특별자치도')
   })
 
-  it('①-4 컬럼이 둘 다 비었을 때만 주소에서 뽑는다 (순수 추가 — 기존 출력 불변)', () => {
+  // 🔁 2026-10-18 재조준 — 종전엔 *"컬럼이 둘 다 비었을 때만 주소"* 였다. 그런데 라이브 49건 중
+  //   **12건은 컬럼이 주소와 다른 곳**을 가리켜 검색 제목이 틀린 지역을 말했다(`stay-address.ts`
+  //   의 `stayRegionShort` 머리말). 불변식은 그대로 둘이다 — ⓐ 짧은 표기(`강원`, 슬러그와 같은 표기)
+  //   ⓑ 일치하는 37건은 byte-동일. 바뀐 것은 *충돌하면 주소가 이긴다* 하나다.
+  it('①-4 컬럼이 비면 주소에서 — 그래도 짧은 표기다', () => {
     const only = { sido: null, sigungu: '', address: '강원특별자치도 속초시 번영로 1' }
-    expect(stayDetailTitle('x', only)).toBe(`x (${stayRegionLabel(null, null, only.address)}) - 유어딜`)
-    expect(stayDetailTitle('x', only)).toBe('x (강원특별자치도 속초시) - 유어딜')
+    expect(stayDetailTitle('x', only)).toBe('x (강원 속초시) - 유어딜')
+  })
+
+  it('①-5 컬럼이 주소와 다르면 주소가 이긴다 (라이브 12건 — 2887·2719)', () => {
+    expect(stayDetailTitle('그랑블루', { sido: '강원', sigungu: '속초시', address: '강원특별자치도 양양군 강현면 동해대로 3275' }))
+      .toBe('그랑블루 (강원 양양군) - 유어딜')
+    // 도부터 다른 경우
+    expect(stayDetailTitle('y', { sido: '강원', sigungu: '춘천시', address: '경기 가평군 북면 멱골로272번길 9' }))
+      .toBe('y (경기 가평군) - 유어딜')
+    // 주소가 시·군·구를 못 주면 종전대로 컬럼
+    expect(stayDetailTitle('z', { sido: '서울', sigungu: '종로구', address: '서울' })).toBe('z (서울 종로구) - 유어딜')
   })
 
   // ──────────────────── ② 교환권 — 같은 말을 두 번 하지 않는다
@@ -101,11 +113,15 @@ describe('🏷️ 상세 제목 SSOT', () => {
   })
 
   it('④-3 숙소 설명의 지역 공식은 제목과 같다 (한 문서에 두 공식 금지)', () => {
-    // 설명은 종전 공식을 **그대로 둔다** — 제목 SSOT 도 컬럼 우선이므로 둘이 같은 값이다.
+    // 🔁 2026-10-18 재조준: 불변식(*한 문서에 지역 공식 하나*)은 그대로이고, 그 공식이 컬럼 이어붙이기에서
+    //   `stayRegionShort` 로 옮겨갔다. 제목 SSOT 도 같은 함수를 부른다.
     const m = readCode('src/worker/utils/detail-ssr-meta.ts')
-    expect(m).toContain("const region = [p.region_sido, p.region_sigungu].filter(Boolean).join(' ').trim()")
-    // 🔴 주소 우선으로 바뀌면 설명만 `강원특별자치도` 가 되어 제목과 갈린다.
+    expect(m).toContain('const region = stayRegionShort(p.region_sido, p.region_sigungu, p.address)')
+    expect(m).not.toContain("const region = [p.region_sido, p.region_sigungu]")
     expect(m).not.toContain('const region = stayRegionLabel(')
+    expect(readCode('src/shared/seo/detail-title.ts')).toContain('stayRegionShort(region?.sido, region?.sigungu, region?.address)')
+    // 크롤러 본문도 같은 함수(세 번째 자리 — 종전엔 이것도 컬럼 이어붙이기였다)
+    expect(readCode('src/worker/utils/crawler-noscript.ts')).toContain('stayRegionShort(p.region_sido, p.region_sigungu, p.address)')
   })
 
   // ──────────────────── ⑤ 세 종류가 한 파일에 모였다

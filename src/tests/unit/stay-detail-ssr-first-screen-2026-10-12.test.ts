@@ -183,7 +183,9 @@ describe('📰 ⑥ `<noscript>` — 첫 화면이 그린 것은 반복하지 않
   it('첫 화면 경로는 숙소명·성급을 뺀다(규율 ②), 지역·가격·주소·객실은 남는다', () => {
     const html = buildStayDetailFirstScreen(seed({ star_rating: 4 }), LOADER)
     const ns = html.slice(html.indexOf('<noscript'))
-    expect(ns).toContain('강원 속초시')
+    // 2026-10-18 — 이 픽스처는 컬럼(속초시)과 주소(양양군)가 갈린 경우다. 지역은 제목·설명과 같은
+    //   `stayRegionShort` 를 지나 **주소가 이긴다**(지키는 것은 그대로 '지역이 남는다').
+    expect(ns).toContain('강원 양양군')
     expect(ns).toContain('149,000원')
     expect(ns, '숙소명이 두 번 나온다').not.toContain('그랑블루')
     expect(ns, '성급이 두 번 나온다').not.toContain('4성급')

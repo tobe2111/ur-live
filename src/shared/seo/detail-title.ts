@@ -66,18 +66,17 @@
  *   `…교환권 10만원권`·`롯데모바일교환권 …` 처럼 **가운데**에 들었고, 그 단어를 또 붙이는 것은
  *   어느 자리든 중복이다.
  */
-import { stayRegionLabel } from '../stay-address'
+import { stayRegionShort } from '../stay-address'
 import { CONSUMER_SITE_NAME } from './consumer-surfaces'
 
 /**
  * 숙소 상세 제목.
  *
- * 🔴 **지역은 컬럼(`region_sido`+`region_sigungu`)이 먼저다** — 서버가 종전에 쓴 바로 그 공식이라
- *    라이브 49건의 제목이 **byte-동일**로 남는다(바뀌는 것은 *클라가 이제 같은 값을 낸다*는 것뿐).
- *    컬럼이 정규화된 짧은 형태(`강원`)이고, 그게 `/region/강원` 슬러그와도 같은 표기다 —
- *    주소에서 뽑으면 `강원특별자치도` 가 되어 제목이 길어지고 그 슬러그와 어긋난다.
- * 🔁 컬럼이 **둘 다 비었을 때만** 주소에서 뽑는다(`stayRegionLabel` — 화면이 쓰는 그 규칙).
- *    순수 추가라 기존 출력은 안 바뀌고, 컬럼이 빈 숙소만 지역을 되찾는다.
+ * 🔴 **지역은 `stayRegionShort` 하나** — 주소를 `/region` 과 같은 파서로 읽은 짧은 표기(`강원 양양군`).
+ *    🩸 2026-10-18 정정: 종전엔 *"컬럼이 먼저"* 였고 그 근거가 *"라이브 49건 byte-동일"* 이었는데,
+ *    그 49건 중 **12건은 컬럼이 주소와 다른 곳을 가리킨다**(`/stays/2887` 제목 `(강원 속초시)` ↔
+ *    주소 양양군 · 2719 는 도부터 다르다). 같은 숙소의 화면 주소 줄은 2026-09-14 부터 주소가 이긴다.
+ *    짧은 표기끼리라 나머지 37건은 **같은 문자열**이고(실측 37/37), 틀린 12건만 바뀐다.
  */
 export function stayDetailTitle(
   name: unknown,
@@ -85,8 +84,7 @@ export function stayDetailTitle(
   siteName: string = CONSUMER_SITE_NAME,
 ): string {
   const n = String(name ?? '').trim()
-  const cols = [region?.sido, region?.sigungu].map((x) => String(x ?? '').trim()).filter(Boolean).join(' ')
-  const r = cols || stayRegionLabel(null, null, region?.address)
+  const r = stayRegionShort(region?.sido, region?.sigungu, region?.address)
   return `${n}${r ? ` (${r})` : ''} - ${siteName}`
 }
 
