@@ -50,4 +50,28 @@ export default [
     test: TEST,
     why: '빨간불이 떠도 PR 이 머지된다.',
   },
+  {
+    name: '[surface-budgets] 손님 화면 폐쇄를 10개에서 자른다',
+    file: G,
+    find: "    out[`${prefix}${name}`] = [...bootFiles, ...cssFiles, ...js, ...css]",
+    replace: "    out[`${prefix}${name}`] = [...bootFiles, ...cssFiles, ...[...js].slice(0, 10), ...css]",
+    test: TEST,
+    why: '11번째 뒤로 붙은 무게가 다시 예산 밖으로 숨는다(#1912 의 +6.0 착시 · 숨은 cart +33KB).',
+  },
+  {
+    name: '[surface-budgets] main 이 손님 화면을 맵 그대로 잰다',
+    file: G,
+    find: '  Object.assign(surfaces, routeSurfaces, dashboardSurfacesFrom(',
+    replace: '  Object.assign(surfaces, dashboardSurfacesFrom(',
+    test: TEST,
+    why: '폐쇄를 계산만 하고 안 쓰면 측정은 다시 10개 상한에 묶인다.',
+  },
+  {
+    name: '[surface-budgets] 맵·폐쇄 어긋남을 못 본다',
+    file: G,
+    find: '    if (miss.length) errors.push(',
+    replace: '    if (false) errors.push(',
+    test: TEST,
+    why: '생성기와 측정기가 다른 진입점을 읽어도 조용히 지나간다.',
+  },
 ]

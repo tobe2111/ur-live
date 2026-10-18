@@ -59,16 +59,18 @@ export default [
   {
     name: '[dash-budget] 진입점을 못 찾아도 조용히 넘어간다',
     file: B,
-    find: '    throw new Error(`대시보드 진입점을 매니페스트에서 못 찾았다',
-    replace: '    return null; throw new Error(`대시보드 진입점을 매니페스트에서 못 찾았다',
+    // 🔁 2026-10-18 재조준: 손님 화면도 같은 폐쇄 함수를 쓰게 되면서 메시지에서 '대시보드' 를 뺐다 — 결함은 그대로.
+    find: '    throw new Error(`진입점을 매니페스트에서 못 찾았다',
+    replace: '    return null; throw new Error(`진입점을 매니페스트에서 못 찾았다',
     test: TEST,
     why: '파일이 옮겨지면 그 화면을 0 에 가깝게 재며 영원히 통과한다.',
   },
   {
     name: '[dash-budget] 전이 import 를 안 따라간다',
     file: B,
-    find: '      for (const x of v.imports || []) stack.push(x)\n    }\n    out[`dash:${name}`]',
-    replace: '    }\n    out[`dash:${name}`]',
+    // 🔁 2026-10-18 재조준: 폐쇄 함수가 손님·대시보드 공용이 되며 키가 `${prefix}${name}` 이 됐다 — 결함은 그대로.
+    find: '      for (const x of v.imports || []) stack.push(x)\n    }\n    out[`${prefix}${name}`]',
+    replace: '    }\n    out[`${prefix}${name}`]',
     test: TEST,
     why: '대시보드가 지도 봉투를 통째로 끌고 와도(실제로 그랬다 — lz-map 24.9KB) 안 보인다.',
   },
