@@ -26,6 +26,7 @@ import { Hono } from 'hono'
 import type { Env } from '../types/env'
 import { CS_FAQ_ENTRIES, CS_FAQ_FALLBACK, matchCsFaq } from '../../features/cs/api/cs-faq'
 import { isStoreOpsEnabled, hasBotLinkNoDdl, resolveLinkedSeat } from '../utils/kakao-bot-store'
+import { recordUnanswered } from '../utils/cs-unanswered'
 import { parseStoreCommand, runLinkCommand, runStoreCommand, helpText, STORE_QUICK, type BotReply, type BotCtx } from '../utils/kakao-bot-commands'
 
 const app = new Hono<{ Bindings: Env }>()
@@ -114,7 +115,9 @@ app.post('/api/cs/kakao-skill', async (c) => {
         if (seat.kind === 'revoked') return c.json(skillResponse(STORE_SEAT_REVOKED))
       }
     }
-    return c.json(skillResponse(CS_FAQ_FALLBACK))
+    // 💬 2026-10-18 — 답하지 못한 질문을 모은다(개인정보 가림 · 응답 뒤 · 실패 무시). 주간 보고가 FAQ 후보로 읽는다.
+    if (DB) defer(recordUnanswered(DB, utterance).catch(() => false))
+    return c.json(await done(skillResponse(CS_FAQ_FALLBACK)))
   } catch {
     // 어떤 오류든 봇은 항상 200 + 폴백 (오픈빌더가 5xx 면 "응답 없음" 노출).
     return c.json(skillResponse(CS_FAQ_FALLBACK))

@@ -13,6 +13,8 @@ import type { Env } from '@/worker/types/env'
 import { isDocumentedRegistered } from '@/lib/alimtalk-templates'
 import { listCronHeartbeats, getCronHealth, cpuDeathKey } from '@/worker/utils/cron-heartbeat'
 import { planBulkResolve, type BulkResolveInput } from '@/worker/utils/cron-failure-bulk'
+import { listUnanswered } from '@/worker/utils/cs-unanswered'
+import { intParam } from '@/shared/pagination'
 import { neverFiredLanes, orphanLaneBeats, KNOWN_LANES_KEY } from '@/worker-ads/lane-cadence'
 
 export const adminSystemMonitoringRoutes = new Hono<{ Bindings: Env }>()
@@ -157,6 +159,16 @@ adminSystemMonitoringRoutes.post('/cron-failures/bulk-resolve', async (c) => {
     if (plan.dryRun) return c.json({ success: true, data: { dry_run: true, matched, resolved: 0 } })
     const res = await DB.prepare(`UPDATE cron_failures SET resolved = 1 WHERE ${plan.where}`).bind(...plan.binds).run()
     return c.json({ success: true, data: { dry_run: false, matched, resolved: Number(res.meta?.changes ?? 0) } })
+  } catch (err) {
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
+  }
+})
+
+// ── GET /cs-unanswered ── 카카오 봇이 답하지 못한 질문(개인정보 가림 · 많이 물은 순) ──
+adminSystemMonitoringRoutes.get('/cs-unanswered', async (c) => {
+  try {
+    const rows = await listUnanswered(c.env.DB, intParam(c.req.query('days'), 7), intParam(c.req.query('limit'), 50))
+    return c.json({ success: true, data: rows })
   } catch (err) {
     return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }
