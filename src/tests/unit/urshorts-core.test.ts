@@ -127,7 +127,11 @@ describe('③ 홈 첫 화면이 비용을 안 문다', () => {
   //   앵커만 옮기고, 새로 생긴 불변식(목록이 썸네일보다 **먼저** 와야 한다)을 더한다.
   it('데이터를 다가올 때만 부른다 — 마운트 fetch 는 홈 전체에 요청을 하나 더 얹는다', () => {
     const eff = RAIL.slice(RAIL.indexOf('if (!nearData) return'), RAIL.indexOf('const sync'))
-    expect(eff, 'fetch 가 스크롤 게이트 밖으로 나왔다 — 홈 첫 화면 요청이 하나 는다').toContain("fetch('/api/urshorts')")
+    // 🔁 2026-10-18 재조준: 요청은 모듈 단일 비행(`loadRailList`)이 낸다 — 다시 마운트돼도 한 번.
+    //   지키려던 것(그 호출이 스크롤 게이트 **안**에 있다)은 그대로이고, 모듈 함수가 마운트에서 안 불린다.
+    expect(eff, 'fetch 가 스크롤 게이트 밖으로 나왔다 — 홈 첫 화면 요청이 하나 는다').toContain('loadRailList()')
+    const outside = RAIL.slice(0, RAIL.indexOf('if (!nearData) return'))
+    expect(outside.split('loadRailList().then').length - 1, '게이트 밖에서 목록을 부른다').toBe(0)
   })
 
   it('썸네일은 더 가까운 신호를 쓴다 (레일이 안 보이면 10장을 안 받는다)', () => {
