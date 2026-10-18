@@ -14,6 +14,12 @@ import type { Env } from '@/worker/types/env';
 import { executeQuery } from '@/worker/utils/database';
 import { intParam } from '@/shared/pagination'
 import { parseAdminMallScope, productScopeSql, orderScopeSql } from '@/worker/utils/admin-mall-scope'
+import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories'
+
+// 📦 2026-10-18 — '미발송 주문' 은 **배송이 있는 주문만** 센다. 이용권(매장 사용)·교환권(딜 즉시 발급)
+//   결제도 같은 orders 테이블에 PAID/PREPARING 으로 남는데, 보낼 물건이 없으니 영원히 '미발송' 으로
+//   쌓였다(실측: 6건 중 4건이 이용권). 판정은 SSOT `getOrderKind`(order-type.ts)와 같은 신호.
+export const NO_SHIPPING_ITEM_EXCLUDE = ` AND NOT EXISTS (SELECT 1 FROM order_items ns_oi JOIN products ns_p ON ns_p.id = ns_oi.product_id WHERE ns_oi.order_id = o.id AND (COALESCE(ns_p.deal_only, 0) = 1 OR ns_p.category IN (${VOUCHER_CATEGORIES.map(c => `'${c}'`).join(', ')})))`
 
 export const adminStatsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -161,7 +167,7 @@ adminStatsRoutes.get('/dashboard/stats', cors(), async (c) => {
     // 🛡️ 2026-05-24 Q1: 어드민 대시보드에 교환권 거래 분리 표시 (사용자 요청).
     safe<CountRow>(`SELECT COUNT(*) as count FROM vouchers v WHERE DATE(v.created_at, '+9 hours')=?${voucherScope}`, [today]),
     safe<SalesRow>(`SELECT COALESCE(SUM(v.applied_price),0) as total FROM vouchers v WHERE DATE(v.created_at, '+9 hours')=?${voucherScope}`, [today]),
-    safe<CountRow>(`SELECT COUNT(*) as count FROM orders o WHERE UPPER(o.status) IN ('PAID','DONE','PREPARING')${orderScope}`),
+    safe<CountRow>(`SELECT COUNT(*) as count FROM orders o WHERE UPPER(o.status) IN ('PAID','DONE','PREPARING')${orderScope}${NO_SHIPPING_ITEM_EXCLUDE}`),
     safe<CountRow>("SELECT COUNT(*) as count FROM returns WHERE status = 'requested'"),
     safe<CountRow>("SELECT COUNT(*) as count FROM payouts WHERE status = 'pending'"),
     safe<CountRow>("SELECT COUNT(*) as count FROM sellers WHERE status = 'pending'"),
