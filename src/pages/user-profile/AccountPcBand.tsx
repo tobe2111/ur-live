@@ -27,7 +27,7 @@
 import { useTranslation } from '@/lib/i18n-lite'
 import { ChevronRight } from 'lucide-react'
 import { BellIcon } from '@/components/icons/urdeal-icons'
-import { cfImage, cfImageOnError } from '@/utils/cf-image'
+import { profileAvatarSrc, profileAvatarOnError, profileAvatarFitCls } from '@/pages/user-profile/profile-avatar'
 import MyStats from './MyStats'
 import SellerSwitchInline from './SellerSwitchInline'
 import type { MyStoresState } from './useMyStores'
@@ -53,14 +53,14 @@ export default function AccountPcBand({ counts, userName, profileImage, onEditPr
        🧱 안쪽 패딩은 그 클래스가 `.px-4` 를 넓혀 준다(카드 안 줄들과 같은 값). */
     <div className="ur-pc-card flex items-center gap-5 px-4 py-5">
       <img
-        src={profileImage ? cfImage(profileImage, { width: 128 }) : `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=1C69EF&color=ffffff&size=128`}
+        src={profileAvatarSrc(profileImage, 128)}
         alt=""
         width={64}
         height={64}
         loading="lazy"
         decoding="async"
-        className="w-16 h-16 rounded-full object-cover shrink-0"
-        onError={(e) => cfImageOnError(e.currentTarget, profileImage)}
+        className={`w-16 h-16 rounded-full shrink-0 ${profileAvatarFitCls(profileImage)}`}
+        onError={(e) => profileAvatarOnError(e.currentTarget, profileImage)}
       />
       {/* 👤 폰 헤더와 **같은 문법**: 줄 전체가 눌리고, 오른쪽 끝에 `프로필 편집 ›`.
           ⚠️ 벨·좌석 전환은 이 버튼 **밖**이다 — 안에 넣으면 그 둘이 편집을 여는 셈이 된다. */}

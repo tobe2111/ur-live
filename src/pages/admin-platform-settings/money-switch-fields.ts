@@ -118,6 +118,13 @@ export const COMMISSION_BUDGET_FIELDS: MoneySwitchField[] = [
     options: [{ value: 'false', label: 'OFF (현행 — 중개사는 매장과 직접 정산)' }, { value: 'true', label: 'ON — 매장 등록 때 정한 % 를 유어딜이 중개사에게' }],
     hint: '🔴 머니 경로. 매장 몫에서 나간다(유어딜 5% 불변). 라이브 중개 매장 1곳·주문 0건이라 켜도 오늘 영향 0. 절차: S-BROKER',
   },
+  // 🏷️ 2026-10-18 결재 `2026-10-18-franchise-cross-owner-redeem.md` — 점주가 다른 가맹점끼리 이용권 사용.
+  //   🩸 `ops-gate-reachable` 이 이번에도 잡았다 — OPS_GATES 에 등재하고 손잡이를 안 만들었다.
+  {
+    key: 'brand_cross_owner_redeem_enabled', label: '다른 점주 가맹점끼리 이용권 사용', default: 'false',
+    options: [{ value: 'false', label: 'OFF (현행 — 같은 주인 지점만, 정산은 판 지점)' }, { value: 'true', label: 'ON — 받기를 켠 다른 점주 지점도 받고, 그 지점이 정산받음' }],
+    hint: '🔴 머니 경로(정산받는 매장이 바뀐다). 받는 지점 사장님이 "다른 점주 이용권 받기"를 켠 곳만 · 소개비가 붙은 이용권은 제외 · 수수료는 쓴 지점 요율. 끄면 앞으로의 사용만 막힌다(이미 받은 건 그 지점 정산). 손님 셀프 사용은 아직 다른 점주 지점을 못 쓴다(잠금 파일). 절차: S-BRANDX',
+  },
   {
     key: 'invite_reward_monthly_budget_krw', label: '초대 보상 월 예산 (딜, 0=무제한)', default: '0',
     hint: '이달 지급 합계가 예산 초과 시 자동 skip',

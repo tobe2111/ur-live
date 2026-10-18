@@ -49,6 +49,8 @@ const KEYS_AT_CLEANUP = [
   'voucher_partial_deal_enabled', 'voucher_cart_enabled', 'pickup_unclaimed_policy_enabled',
   'partial_refund_enabled', 'voucher_partial_refund_enabled', 'gb_pricing_enabled',
   'settlement_skip_ledgered', 'outreach_auto_send', 'review_bonus_owner_funded',
+  // 2026-10-18 추가 — 다른 점주 가맹점 사용(결재 2026-10-18-franchise-cross-owner-redeem). 새 손잡이는 여기에 등록한다.
+  'brand_cross_owner_redeem_enabled',
 ]
 
 describe('머니 스위치 라벨 — 짚을 수 있는가', () => {

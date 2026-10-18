@@ -107,6 +107,9 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   // 💸 2026-09-19 중개사 몫 직접 송금(결재 2026-09-16 안 1) — read-site: broker-share.ts creditBrokerShare.
   //   기본 OFF = 중개사는 장부 밖(2026-09-04 규칙). 켜기 전 STAGING S-BROKER 실결제.
   broker_share_enabled: boolStr,
+  // 🏷️ 2026-10-18 브랜드 3단계(결재 2026-10-18-franchise-cross-owner-redeem) — read-site: brand-cross-owner.ts.
+  //   OFF = 같은 주인 지점만(1·2단계). 켜면 "다른 점주 이용권 받기"를 켠 가맹점도 받고 정산은 쓴 지점. 켜기 전 S-BRANDX.
+  brand_cross_owner_redeem_enabled: boolStr,
   // 💸 채널별 요율(직접10%/중개5%) 승격 게이트 — read-site: ledger.ts channelPlatformRate.
   //   env 가 아니라 여기 둔 이유: 어드민에서 **재배포 없이** 끌 수 있어야 롤백이 빠르다.
   fee_channel_rates_enabled: boolStr,

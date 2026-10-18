@@ -192,6 +192,13 @@
     "seeAll": "Ver todo"
   },
   "seller": {
+    "crossOwner": {
+      "title": "Aceptar cupones de otros dueños",
+      "note": "Si aquí se usa un cupón vendido por otro dueño de la misma marca, la venta se liquida a esta tienda. No se aceptan cupones con comisión de referido.",
+      "on": "Ahora aceptas cupones de otros dueños",
+      "off": "Solo se aceptan cupones del mismo dueño",
+      "fail": "No se pudo cambiar la configuración"
+    },
     "relink": {
       "title": "¿Cambió su cuenta de Kakao?",
       "desc": "Su cuenta de vendedor se conserva. Inicie sesión con su nuevo Kakao y confirme su correo y contraseña de vendedor.",
@@ -2560,7 +2567,9 @@
       "brandWideFail": "No se pudo cambiar el ajuste",
       "brandWideTitle": "También válido en {{count}} de tus sucursales",
       "brandWideTitleOff": "Válido en otras sucursales",
-      "brandWideNote": "Se canjea con el código o escaneo de esa sucursal. La liquidación queda en esta sucursal."
+      "brandWideNote": "Se canjea con el código o escaneo de esa sucursal. La liquidación queda en esta sucursal.",
+      "brandWideTitleAll": "También se puede usar en {{count}} sucursales de la marca",
+      "brandWideNoteCross": "Si se usa en una sucursal del mismo dueño, se liquida aquí; si se usa en la de otro dueño, se liquida allí. Los cupones con comisión de referido solo se usan en sucursales del mismo dueño."
     },
     "ordersM3": {
       "today": "Hoy",
@@ -2617,6 +2626,7 @@
     "voucherUnused": "미사용",
     "voucherNone": "아직 발급된 이용권이 없습니다.",
     "voucherUsedAt": "{{d}} 사용",
+    "voucherRedeemedElsewhere": "Usado en {{store}} · la liquidación va a esa sucursal",
     "voucherUntil": "{{d}}까지",
     "voucherCodeHeader": "이용권 코드",
     "copyOrderNumber": "전체 주문번호 복사",

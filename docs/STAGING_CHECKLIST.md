@@ -390,6 +390,24 @@ S3 `order:N`(✅ `order-ledger-credit.ts` 와 일치) · S5 `voucher:{id}` · S6
 
 상태: ⬜ 미검증 (2026-09-19 배선). 통과 전 프로덕션 ON 금지.
 
+## 🏷️ S-BRANDX — 가맹점 간 이용권 사용 + 쓴 지점 정산 (2026-10-18)
+
+**S-BRANDX** — 결재 `docs/decisions/2026-10-18-franchise-cross-owner-redeem.md`(대표 "결재해줄게" + ①②③ 권장안).
+게이트 `platform_settings.brand_cross_owner_redeem_enabled`(기본 `false`) · 판정·기록 SSOT `src/worker/utils/brand-cross-owner.ts` ·
+사용 경로 2곳(카운터 `group-buy-voucher.routes /:code/use` · 사장님 스캔 `voucher-seller-redeem.ts`) · 정산 2레일(원장 `settlementMerchantFor` · 주간 `auto-settlement.ts`).
+⚠️ **손님 셀프 사용은 이 단계에서 다른 점주 지점을 받지 않는다**(잠금 파일 `group-buy-public.routes` 가 이용권 id 를 안 넘긴다 → fail-closed).
+**켜는 것은 대표 판단.** 준비: 주인이 다른 두 지점 A(판 지점)·B(받는 지점)를 한 브랜드로 묶고, B 주인이 "다른 점주 이용권 받기"를 켠다.
+
+| ID | 시나리오 | 통과 기준 |
+|---|---|---|
+| S-BRANDX-1 | A 이용권(브랜드 전 지점 켬) 카드 결제 1건 → B 카운터에서 B 확인코드로 사용 | 사용 성공 · `voucher_redeem_stores` 1행(store=B, sold=A, cross_owner=1) |
+| S-BRANDX-2 | 위 사용 직후 원장 | `voucher_used` 의 `merchant:{B}` credit 1회 · `merchant:{A}` 0 · 수수료율 = B 채널(직접 10% / 중개 5%) |
+| S-BRANDX-3 | 소개 링크(소개비 약정)로 산 A 이용권을 B 에서 사용 | **거절**(403/400) — 같은 주인 지점에서만 쓸 수 있다 |
+| S-BRANDX-4 | B 주인이 받기를 끈 뒤 같은 시도 | 거절 |
+| S-BRANDX-5 | 게이트 OFF 복귀 후 B 에서 시도 | 거절 — 1·2단계와 동일(같은 주인 지점만). 이미 쓴 S-BRANDX-1 의 정산은 B 그대로 |
+
+상태: ⬜ 미검증 (2026-10-18 배선). 통과 전 프로덕션 ON 금지.
+
 ## 🔒 S-USEGATE — 소개 커미션 사용 확인 게이트 (2026-09-16)
 
 **S-USEGATE** — 대표 확정 *"모든게 다 이용권을 쓰고 나서 정산 할 때 정산되는거고"* (2026-09-16).

@@ -47,6 +47,11 @@ export function VoucherCodes({ vouchers }: { vouchers?: OrderVoucher[] }) {
               ) : v.expires_at ? (
                 <p className="text-[11.5px] text-gray-500 mt-0.5">{t('seller.voucherUntil', { defaultValue: '{{d}}까지', d: formatKSTDate(v.expires_at) })}</p>
               ) : null}
+              {v.redeemed_store_name ? (
+                <p className="text-[11.5px] text-tone-warn mt-0.5">
+                  {t('seller.voucherRedeemedElsewhere', { defaultValue: '{{store}}에서 사용 · 정산도 그 지점으로 가요', store: v.redeemed_store_name })}
+                </p>
+              ) : null}
             </div>
             <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[11.5px] font-semibold ${s.cls}`}>
               {s.text}

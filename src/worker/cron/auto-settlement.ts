@@ -24,6 +24,7 @@ import {
   type UnclaimedPolicy,
 } from '../../shared/pickup-refund';
 import { recordLedger } from '../utils/ledger';
+import { ensureRedeemStoreTable, REDEEM_STORE_SETTLEMENT_SQL } from '../utils/brand-cross-owner';
 import {
   expiredVoucherSelectSql,
   expiredVoucherClaimSql,
@@ -170,12 +171,19 @@ export async function handleAutoSettlement(env: Env) {
     //   (repair-schema/helpers ensure 로만 추가) 극단적 순서에서 'no such column' 으로 정산 회차
     //   전체가 skip 될 수 있음 → cron 이 스스로 멱등 보증(WeakSet 메모, 실패 무해).
     await ensureIsExperienceColumn(DB)
+    // 🏷️ 2026-10-18 브랜드 3단계(결재 2026-10-18-franchise-cross-owner-redeem): 다른 점주 지점이 받은 이용권은
+    //   **쓴 지점**으로 묶고 그 지점의 수수료율을 쓴다(③). 기록이 없으면 판 지점 그대로 — 게이트 OFF 면 기록 자체가
+    //   생기지 않으므로 이 쿼리는 종전과 같은 행을 같은 지점으로 돌려준다. 원장(Rail B)도 같은 기록을 읽는다
+    //   (`settlementMerchantFor`) — 둘이 갈리면 같은 매출이 두 지점으로 간다. 조각은 brand-cross-owner.ts 한 곳.
+    await ensureRedeemStoreTable(DB)
     const usedVouchers = await DB.prepare(`
-      SELECT v.id, v.product_id, v.order_id, v.applied_price, p.price, p.seller_id, p.restaurant_name,
+      SELECT v.id, v.product_id, v.order_id, v.applied_price, p.price,
+             ${REDEEM_STORE_SETTLEMENT_SQL} AS seller_id,
+             COALESCE(CASE WHEN ${REDEEM_STORE_SETTLEMENT_SQL} <> p.seller_id THEN s.business_name END, p.restaurant_name) AS restaurant_name,
              COALESCE(s.commission_rate, ?) as commission_rate
       FROM vouchers v
       JOIN products p ON v.product_id = p.id
-      LEFT JOIN sellers s ON s.id = p.seller_id
+      LEFT JOIN sellers s ON s.id = ${REDEEM_STORE_SETTLEMENT_SQL}
       WHERE v.status = 'used'
         AND v.used_at < ?
         AND v.settlement_id IS NULL
