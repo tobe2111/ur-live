@@ -66,8 +66,6 @@ const KNOWN: Record<string, string> = {
     '컬럼은 현재 라이브에 존재(같은 클래스, 잠복)',
   'src/features/supply/api/wholesale-helpers.ts':
     '🔴 라이브에 없음 — 잠재 500: sellers.nts_status',
-  'src/worker/cron/seller-daily-report.ts':
-    '컬럼은 현재 라이브에 존재(같은 클래스, 잠복)',
 }
 
 const SRC = execSync(`git ls-files 'src/**/*.ts' | grep -v '/tests/'`, { encoding: 'utf8' })
