@@ -192,6 +192,13 @@
     "seeAll": "Tout voir"
   },
   "seller": {
+    "crossOwner": {
+      "title": "Accepter les bons d'autres propriétaires",
+      "note": "Si un bon vendu par un autre propriétaire de la même marque est utilisé ici, la vente est réglée à cet établissement. Les bons avec commission de parrainage ne sont pas acceptés.",
+      "on": "Vous acceptez les bons d'autres propriétaires",
+      "off": "Seuls les bons du même propriétaire sont acceptés",
+      "fail": "Impossible de modifier le réglage"
+    },
     "relink": {
       "title": "Compte Kakao changé ?",
       "desc": "Votre compte vendeur est conservé. Connectez-vous avec le nouveau Kakao puis confirmez votre e-mail et mot de passe vendeur.",
@@ -2560,7 +2567,9 @@
       "brandWideFail": "Impossible de modifier le réglage",
       "brandWideTitle": "Aussi valable dans {{count}} de vos établissements",
       "brandWideTitleOff": "Valable dans d'autres établissements",
-      "brandWideNote": "Validé avec le code ou le scan de cet établissement. Le règlement reste à cet établissement."
+      "brandWideNote": "Validé avec le code ou le scan de cet établissement. Le règlement reste à cet établissement.",
+      "brandWideTitleAll": "Aussi utilisable dans {{count}} établissements de la marque",
+      "brandWideNoteCross": "Utilisé chez le même propriétaire, il est réglé ici ; utilisé chez un autre propriétaire, il est réglé là-bas. Les bons avec commission de parrainage ne s'utilisent que chez le même propriétaire."
     },
     "ordersM3": {
       "today": "Aujourd'hui",

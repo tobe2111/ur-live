@@ -873,6 +873,13 @@
     "seoDesc": "View your saved products"
   },
   "seller": {
+    "crossOwner": {
+      "title": "Accept other owners' vouchers",
+      "note": "When a voucher sold by another owner in the same brand is used here, the sale settles to this store. Vouchers with a referral fee are not accepted.",
+      "on": "Now accepting other owners' vouchers",
+      "off": "Only same-owner vouchers are accepted",
+      "fail": "Could not change the setting"
+    },
     "relink": {
       "title": "Changed your Kakao account?",
       "desc": "Your seller account stays intact. Log in with your new Kakao, then confirm your seller email and password to continue.",
@@ -3241,7 +3248,9 @@
       "brandWideFail": "Couldn't change the setting",
       "brandWideTitle": "Also usable at {{count}} of your branches",
       "brandWideTitleOff": "Usable at other branches",
-      "brandWideNote": "Redeemed with that branch's store code or scan. Settlement stays with this branch."
+      "brandWideNote": "Redeemed with that branch's store code or scan. Settlement stays with this branch.",
+      "brandWideTitleAll": "Also usable at {{count}} brand branches",
+      "brandWideNoteCross": "Used at a same-owner branch, it settles here; used at another owner's branch, it settles there. Vouchers with a referral fee can only be used at same-owner branches."
     },
     "ordersM3": {
       "today": "Today",

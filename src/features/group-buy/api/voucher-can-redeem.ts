@@ -29,8 +29,9 @@ export async function voucherCanRedeem(c: Context, productSellerId: number | nul
     const code = c.req.param('code')
     const DB = (c.env as { DB?: D1Database } | undefined)?.DB
     if (!code || !DB) return false
-    const v = await DB.prepare('SELECT product_id FROM vouchers WHERE code = ? LIMIT 1')
-      .bind(code).first<{ product_id: number }>().catch(() => null)
-    return !!v && await canStoreRedeemProduct(DB, Number(v.product_id), Number(productSellerId), Number(u.id))
+    const v = await DB.prepare('SELECT id, product_id FROM vouchers WHERE code = ? LIMIT 1')
+      .bind(code).first<{ id: number; product_id: number }>().catch(() => null)
+    // 이용권 id 까지 넘긴다 — 3단계(다른 점주 지점)는 이용권마다 판매 비용을 봐야 해서, 없으면 처리 경로와 갈린다.
+    return !!v && await canStoreRedeemProduct(DB, Number(v.product_id), Number(productSellerId), Number(u.id), Number(v.id))
   } catch { return false }
 }

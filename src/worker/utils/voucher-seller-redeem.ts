@@ -18,6 +18,7 @@
 
 import { GIFT_PENDING_USE_BLOCKED, noPendingGiftSql, voucherHasPendingGift } from './voucher-gift'
 import { canStoreRedeemProduct } from './brand-wide-redeem'
+import { recordVoucherRedeemStore, settlementMerchantFor } from './brand-cross-owner'
 
 export const SELLER_REDEEM_CODE_RE = /^[A-Za-z0-9-]{4,64}$/
 
@@ -70,9 +71,10 @@ export async function checkVoucherForStore(
   ).bind(code).first<StoreRedeemVoucher>()
   if (!voucher) return { ok: false, status: 404, error: '바우처를 찾을 수 없습니다' }
   // 🏷️ 2026-10-18 브랜드 전 지점 사용 — 판 지점이 아니어도, 이용권이 켜져 있고 주인이 같은 형제 지점이면 받는다.
-  //   정산은 여기서도 판 지점(voucher.seller_id)으로 간다 — 아래 원장 블록은 그대로다.
+  //   정산은 판 지점(voucher.seller_id)으로 간다. 🏷️ 3단계(게이트 ON · 다른 점주 지점)만 예외 — 아래 CAS 직후
+  //   `recordVoucherRedeemStore` 가 받은 지점을 적고, 원장은 `settlementMerchantFor` 로 그 지점을 정산받는 매장으로 쓴다.
   if (actorSellerId !== null && Number(voucher.seller_id) !== Number(actorSellerId)
-      && !(await canStoreRedeemProduct(DB, Number(voucher.product_id), voucher.seller_id, Number(actorSellerId)))) {
+      && !(await canStoreRedeemProduct(DB, Number(voucher.product_id), voucher.seller_id, Number(actorSellerId), Number(voucher.id)))) {
     return { ok: false, status: 403, error: '본인 매장의 voucher 가 아닙니다' }
   }
   if (voucher.status === 'used') return { ok: false, status: 400, error: '이미 사용된 바우처입니다' }
@@ -106,6 +108,14 @@ export async function redeemVoucherForStore(
   ).bind(voucher.id).run()
   if (!result.meta?.changes) return { ok: false, status: 409, error: '동시성 충돌 — 다시 시도해주세요' }
 
+  // 🏷️ 2026-10-18 3단계 — 어느 지점이 받았는지 적는다(판 지점이면 옛 기록을 지운다). 원장보다 **먼저** 끝나야
+  //   아래 원장이 그 기록을 읽는다 — 그래서 waitUntil 이 아니라 await 다. 실패는 삼킨다(정산은 판 지점 그대로).
+  if (opts.actorSellerId !== null) {
+    await recordVoucherRedeemStore(DB, {
+      voucherId: Number(voucher.id), soldSellerId: voucher.seller_id, storeSellerId: Number(opts.actorSellerId),
+    }).catch(() => { /* 기록 실패 = 판 지점 정산(종전) */ })
+  }
+
   // 🚪 2026-07-13 (데이터 감사 2단계): 방문 통합 이벤트 — 완결고리 '방문' 노드(멱등·best-effort).
   opts.waitUntil((async () => {
     try {
@@ -122,7 +132,8 @@ export async function redeemVoucherForStore(
   opts.waitUntil((async () => {
     try {
       const { recordVoucherUsedLedger } = await import('./ledger'); const { debitOwnerPromoForOrder } = await import('./owner-promo')
-      const merchantId = voucher.consigned_from_seller_id ?? voucher.seller_id
+      // 정산받는 매장 — 다른 점주 지점이 받았으면 그 지점(3단계), 아니면 종전 그대로. Rail A 와 같은 기록을 읽는다.
+      const merchantId = await settlementMerchantFor(DB, Number(voucher.id), voucher.consigned_from_seller_id ?? voucher.seller_id)
       const sellerForCommission = voucher.consigned_from_seller_id ? voucher.seller_id : null
       const amount = voucher.applied_price || 0
       if (merchantId && amount > 0) {
