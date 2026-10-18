@@ -11,7 +11,7 @@ export default function OwnerManagePanel({ onManage, compact = false }: { onMana
     <div className={compact ? 'flex items-center gap-3' : 'mt-4'}>
       <div className={compact ? 'flex-1 min-w-0' : 'mb-3'}>
         <p className="text-[15px] font-bold" style={{ color: 'var(--gbd-ink)' }}>내 가게 이용권이에요</p>
-        <p className="text-[13px] mt-0.5" style={{ color: 'var(--gbd-sub)' }}>{compact ? '주인은 구매할 수 없어요' : '주인은 구매할 수 없어요. 판매·사용 현황은 관리에서 봐요.'}</p>
+        <p className="text-[13px] mt-1" style={{ color: 'var(--gbd-sub)' }}>{compact ? '주인은 구매할 수 없어요' : '주인은 구매할 수 없어요. 판매·사용 현황은 관리에서 봐요.'}</p>
       </div>
       <button
         type="button"
