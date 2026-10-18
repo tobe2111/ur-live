@@ -15,6 +15,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { stripComments } from '../helpers/source-text'
 import { profileAvatarSrc, profileAvatarOnError, PROFILE_FALLBACK_SRC } from '@/pages/user-profile/profile-avatar'
+import { SHARE_MASCOT_SRC } from '@/shared/ushop-share-card'
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const n of readdirSync(dir)) {
@@ -33,7 +34,7 @@ describe('① 프로필 사진 폴백 = 유달이(외부 서비스 0)', () => {
     expect(hits).toEqual([])
   })
   it('사진이 없으면 우리 오리진의 유달이, 있으면 리사이즈 주소', () => {
-    expect(PROFILE_FALLBACK_SRC.startsWith('/')).toBe(true)
+    expect(PROFILE_FALLBACK_SRC).toBe(SHARE_MASCOT_SRC) // 유어샵과 같은 얼굴(두 벌이면 갈린다)
     expect(profileAvatarSrc(null, 128)).toBe(PROFILE_FALLBACK_SRC)
     expect(profileAvatarSrc('https://media.ur-team.com/u/1.webp', 128)).not.toBe(PROFILE_FALLBACK_SRC)
   })
@@ -55,6 +56,10 @@ describe('① 프로필 사진 폴백 = 유달이(외부 서비스 0)', () => {
       expect(s, f).toMatch(/onError=\{\(e\) => profileAvatarOnError\(/)
     }
   })
+})
+
+it('마이가 유어샵 공유 모듈을 끌어오지 않는다(첫 화면 무게 — surface-budgets dash:my)', () => {
+  expect(stripComments(readFileSync('src/pages/user-profile/profile-avatar.ts', 'utf8'))).not.toMatch(/ushop-share-card/)
 })
 
 describe('② PC 오른쪽 위 빈 카드', () => {

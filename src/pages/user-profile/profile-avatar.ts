@@ -8,9 +8,11 @@
  * ⇒ 유어샵과 **같은 그림**(`SHARE_MASCOT_SRC`, 우리 오리진)으로 통일한다.
  */
 import { cfImage } from '@/utils/cf-image'
-import { SHARE_MASCOT_SRC } from '@/shared/ushop-share-card'
 
-export const PROFILE_FALLBACK_SRC = SHARE_MASCOT_SRC
+/** 유어샵 머리·공유 카드와 **같은 그림**(`SHARE_MASCOT_SRC`). 값을 그 모듈에서 import 하지 않는다 —
+ *  `ushop-share-card` 를 끌어오면 마이 첫 화면이 유어샵 봉투(lz-linkshop) 3.3KB 를 같이 받는다
+ *  (surface-budgets 실측). 두 값이 같은지는 시험이 대조한다. */
+export const PROFILE_FALLBACK_SRC = '/assets/mascot/udal-loader-v2.webp'
 
 /** 사진이 있으면 리사이즈한 사진, 없으면 유달이. */
 export function profileAvatarSrc(image: string | null | undefined, width: number): string {
