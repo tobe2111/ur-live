@@ -14,7 +14,7 @@
  */
 
 import { Hono } from 'hono'
-import { curatorAdminDiagnostic } from './curator/admin-diagnostic.routes'
+import { curatorAdminDiagnostic } from './curator/admin-diagnostic.routes'; import { findPin, logPinClick } from '../utils/pin-click-log'
 import { findActiveDealPctsBySeller } from '@/worker/utils/influencer-deal'
 import type { Env } from '../types/env'
 import { requireAuth, optionalAuth, requireAdmin } from '../middleware/auth'
@@ -351,44 +351,10 @@ curatorRoutes.get('/:handle/p/:productId/redirect', async (c) => {
     }
     const DB = c.env.DB
 
-    const pin = await DB.prepare(
-      `SELECT pp.id, pp.user_id, pp.product_id
-       FROM product_pins pp
-       JOIN users u ON u.id = pp.user_id
-       WHERE u.handle = ? AND pp.product_id = ?
-       LIMIT 1`,
-    )
-      .bind(handle, productId)
-      .first<{ id: number; user_id: number; product_id: number }>()
-
-    if (!pin) {
-      // 핀 없어도 상품 페이지로는 안전하게 redirect (404 보다 UX 우월)
-      return c.redirect(`/products/${productId}`, 302)
-    }
-
-    // 봇 탐지: ip + UA hash 저장 (직접 저장 X)
-    const ip = c.req.header('cf-connecting-ip') || c.req.header('x-real-ip') || ''
-    const ua = c.req.header('user-agent') || ''
-    const dailySalt = new Date().toISOString().slice(0, 10)
-    const ipHash = await sha256Short(`${ip}|${dailySalt}`)
-    const uaHash = await sha256Short(ua)
-
-    // 클릭 로그 + count 증가 (best-effort — 실패해도 redirect 는 진행)
-    c.executionCtx.waitUntil(
-      (async () => {
-        try {
-          await DB.prepare(
-            `INSERT INTO pin_click_logs (pin_id, curator_user_id, product_id, ip_hash, user_agent_hash, referer)
-             VALUES (?, ?, ?, ?, ?, ?)`,
-          )
-            .bind(pin.id, pin.user_id, pin.product_id, ipHash, uaHash, c.req.header('referer') || null)
-            .run()
-          await DB.prepare(`UPDATE product_pins SET click_count = click_count + 1 WHERE id = ?`)
-            .bind(pin.id)
-            .run()
-        } catch { /* ignore */ }
-      })(),
-    )
+    const pin = await findPin(DB, handle, productId)
+    // 핀 없어도 상품 페이지로는 안전하게 redirect (404 보다 UX 우월)
+    if (!pin) return c.redirect(`/products/${productId}`, 302)
+    c.executionCtx.waitUntil(logPinClick(DB, pin, c.req.raw)) // 클릭 로그 + count (best-effort — 통계 전용)
 
     // 🧭 2026-06-10 (유어샵×교환권 적립 루프 단절 fix): 교환권/공구 상품 핀은 공구 상세로 —
     //   기존엔 무조건 /products(물리상품 레일)로 보내 교환권 핀 구매가 적립 0 이었음.
@@ -411,13 +377,14 @@ curatorRoutes.get('/:handle/p/:productId/redirect', async (c) => {
   }
 })
 
-async function sha256Short(input: string): Promise<string> {
-  try {
-    const data = new TextEncoder().encode(input)
-    const buf = await crypto.subtle.digest('SHA-256', data)
-    return Array.from(new Uint8Array(buf)).slice(0, 12).map(b => b.toString(16).padStart(2, '0')).join('')
-  } catch { return '' }
-}
+// POST /api/curator/:handle/p/:productId/click (public · 비콘) — 유어샵 화면 안에서 카드를 눌렀을 때 클릭만 기록.
+//   2026-10-18 대표 결재 `2026-10-15-ushop-pin-spa-nav` 안 1: 앱 안 이동으로 바꾸며 리다이렉트가 하던 기록을 여기로. 통계 전용(귀속 무관).
+curatorRoutes.post('/:handle/p/:productId/click', async (c) => { // 제한 없음 — 같은 기록을 하는 GET 리다이렉트와 같은 조건(통계 전용)
+  const handle = c.req.param('handle')?.toLowerCase().trim(); const productId = Number(c.req.param('productId'))
+  if (!handle || !isValidHandleFormat(handle) || !Number.isFinite(productId)) return c.body(null, 204)
+  try { const pin = await findPin(c.env.DB, handle, productId); if (pin) c.executionCtx.waitUntil(logPinClick(c.env.DB, pin, c.req.raw)) } catch { /* 통계 — 무시 */ }
+  return c.body(null, 204)
+})
 
 // ============================================================
 // GET /api/curator/handle/check?q=foo  (public)

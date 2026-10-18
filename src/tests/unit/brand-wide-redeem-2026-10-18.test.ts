@@ -188,7 +188,7 @@ describe('⑤ 손님 셀프 — 형제 코드 수용, scan_only 지점 제외', 
 describe('⑤-2 켤 수 있나 — 판 지점 주인만, 받아 줄 지점이 있을 때만', () => {
   it('checkBrandWideSettable', async () => {
     const { DB } = fresh()
-    expect(await checkBrandWideSettable(DB, 10, 1)).toEqual({ ok: true, acceptingCount: 2 })
+    expect(await checkBrandWideSettable(DB, 10, 1)).toEqual({ ok: true, acceptingCount: 2, sameOwnerCount: 2, crossOwnerCount: 0 }) // 3단계 게이트 OFF — 가맹점 0
     expect(await checkBrandWideSettable(DB, 99, 1)).toEqual({ ok: false, code: 'NOT_OWNER' }) // 운영자
     expect(await checkBrandWideSettable(DB, 20, 3)).toEqual({ ok: false, code: 'NO_SAME_OWNER_BRANCH' }) // 가맹점 주인
     expect(await checkBrandWideSettable(DB, 30, 6)).toEqual({ ok: false, code: 'NO_BRAND' })
@@ -204,16 +204,17 @@ describe('⑥ 배선 — 세 사용 경로 + 정산은 판 지점', () => {
   })
   it('사장님 스캔: 형제 지점이면 403 대신 판정 함수', () => {
     const src = stripComments(readFileSync('src/worker/utils/voucher-seller-redeem.ts', 'utf8'))
-    expect(src).toMatch(/!\(await canStoreRedeemProduct\(DB, Number\(voucher\.product_id\), voucher\.seller_id, Number\(actorSellerId\)\)\)/)
+    expect(src).toMatch(/!\(await canStoreRedeemProduct\(DB, Number\(voucher\.product_id\), voucher\.seller_id, Number\(actorSellerId\), Number\(voucher\.id\)\)\)/)
   })
   it('손님 셀프(잠금 파일): 상품 id 를 게이트에 넘긴다 — 승인된 두 줄', () => {
     const src = stripComments(readFileSync('src/features/group-buy/api/group-buy-public.routes.ts', 'utf8'))
     expect(src).toMatch(/SELECT v\.id, v\.status, v\.product_id, p\.seller_id FROM vouchers v/)
-    expect(src).toMatch(/checkSelfRedeemGate\(DB, pre\.seller_id, String\(body\.store_code \|\| ''\), pre\.product_id\)/)
+    expect(src).toMatch(/checkSelfRedeemGate\(DB, pre\.seller_id, String\(body\.store_code \|\| ''\), pre\.product_id, pre\.id\)/) // 🏷️ 2026-10-18 이용권 id 는 다른 점주 지점 판정용
   })
-  it('원장 상인은 여전히 판 지점(voucher.seller_id)', () => {
+  it('원장 상인은 판 지점(voucher.seller_id)이 기본 — 다른 점주 지점 기록이 있을 때만 바뀐다(3단계)', () => {
+    // 같은 주인 지점은 기록이 cross_owner=0 이라 settlementMerchantFor 가 이 기본값을 그대로 돌려준다(brand-cross-owner 시험).
     const src = stripComments(readFileSync('src/worker/utils/voucher-seller-redeem.ts', 'utf8'))
-    expect(src).toMatch(/const merchantId = voucher\.consigned_from_seller_id \?\? voucher\.seller_id/)
+    expect(src).toMatch(/const merchantId = await settlementMerchantFor\(DB, Number\(voucher\.id\), voucher\.consigned_from_seller_id \?\? voucher\.seller_id\)/)
     expect(src).toMatch(/merchant_id: merchantId/)
   })
 })
@@ -222,6 +223,6 @@ describe('⑦ /v 화면의 처리 버튼(can_redeem)도 같은 판정을 쓴다'
   it('형제 지점이면 canStoreRedeemProduct 로 판정 — 표시와 실제 처리가 갈리지 않는다', () => {
     const src = stripComments(readFileSync('src/features/group-buy/api/voucher-can-redeem.ts', 'utf8'))
     expect(src).toMatch(/if \(Number\(productSellerId\) === Number\(u\.id\)\) return true/)
-    expect(src).toMatch(/await canStoreRedeemProduct\(DB, Number\(v\.product_id\), Number\(productSellerId\), Number\(u\.id\)\)/)
+    expect(src).toMatch(/await canStoreRedeemProduct\(DB, Number\(v\.product_id\), Number\(productSellerId\), Number\(u\.id\), Number\(v\.id\)\)/)
   })
 })

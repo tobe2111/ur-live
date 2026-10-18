@@ -134,6 +134,25 @@ const LUCIDE_DESKTOP_ICONS = new Set([
 ])
 
 
+/**
+ * 🔀 2026-10-18 [LOADING_ADDITIVE] 공용 부품 묶음 하나를 통째로 받던 것 — `app-cross`.
+ *   실측(번들러 모듈→청크 간선): 장바구니는 '쇼핑 계속하기' 링크(`components/mall/ContinueShoppingLink`) **하나** 때문에,
+ *   로그아웃 마이는 딜 카드(`components/deal/DealMiniCard`) **하나** 때문에 화면 밖 공용 부품 묶음 `app-components`
+ *   (br 26.6KB)를 받았고, 그 묶음이 다시 상품 화면 묶음(lz-product · lz-productL → 사진 슬라이드 embla)을 끌고 왔다.
+ *   ⇒ 그 작은 부품들과 그들이 쓰는 모듈(몰 출처 · 빼기 아이콘)만 작은 고정 묶음으로 뺀다. 묶음기는 이 이름을 안 건드린다.
+ *   결과(정적 폐쇄 brotli): 장바구니 266.4 → 195.5 · 로그아웃 마이 249.7 → 197.3 · 어드민 −4.6 · 에이전시 −4.7 ·
+ *   상품 상세 +1.3(몰 출처·빼기 아이콘을 이 묶음에서 받는다) · 나머지 손님 화면 ±0.3.
+ *   🩸 버린 길 셋(실측): ① 묶음기가 '밖에서 쓰는 모듈'을 자동으로 고르게 하면 대시보드가 거의 전부를 써서 43KB 봉투가 생겨
+ *      손님 화면이 15~26KB 무거워졌다 ② 미리받기 전용 화면을 사용자로 세면 홈 +1.6 · 장바구니 그대로 ③ 작은 유틸 9개를
+ *      넣었더니 홈·상세가 그중 한둘 때문에 봉투 전체(2.9KB)를 받았다 — **손님 첫 화면이 쓰는 모듈은 넣지 말 것.**
+ *   ⚠️ 이 목록의 모듈은 페이지 묶음(lz-*)에 있는 것을 import 하면 안 된다 — 순환이 생긴다(빌드 게이트가 잡는다).
+ *   가드: `cross-envelope-2026-10-18.test.ts` + `check-surface-budgets`(cart·guestMy 무게 래칫).
+ */
+export const CROSS_MODULES = [
+  '/src/components/mall/', '/src/shared/mall/origin', '/src/components/deal/DealMiniCard',
+  '/lucide-react/dist/esm/icons/minus.js',
+]
+
 // 🧩 2026-10-13 [LOADING_ADDITIVE] 손님 페이지 lazy 코드를 쓰는 페이지끼리 묶는다 — 근거·실측·규칙은 scripts/surface-chunks.mjs.
 const gateLazy = createSurfaceChunker({
   routes: SURFACE_ROUTES,
@@ -244,6 +263,8 @@ export default defineConfig({
           //     app-components → recharts static dep 만들어 charts (518 KB) 가 초기 preload 됨).
           //   이제 charts 청크는 dashboard 페이지가 lazy-load 할 때만 fetch.
           if (id.includes('recharts') || id.includes('d3-') || id.includes('/src/components/charts/')) return 'charts'
+          // 🔀 2026-10-18 화면 밖 공용 유틸 — 근거는 위 CROSS_MODULES 주석
+          if (CROSS_MODULES.some((p) => id.includes(p))) return 'app-cross'
           // Icons
           // 🩺 2026-09-16 [UNLOCK_LOADING] 아이콘 다이어트 — 셀이 쓰는 42개만 첫 화면으로.
           //   실측(번들러 모듈→청크 그래프): 트리쉐이킹은 멀정하다(1,534개 중 260개만 남는다).

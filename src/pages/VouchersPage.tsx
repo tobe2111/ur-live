@@ -32,6 +32,7 @@ import { VoucherCard, VoucherTile, BrandChip, CategoryIcon, type VoucherProduct 
 import { VOUCHER_TILE_CLASS, VOUCHER_TILE_ABOVE_FOLD } from '@/shared/voucher-tile'
 import { ChipRowReserve, BrandStripReserve } from './vouchers/TopChromeReserve'
 import { VOUCHERS_DEFAULT_CATEGORY } from '@/shared/seo/voucher-facet'
+import { resolveConsumerSurfaceSeo } from '@/shared/seo/consumer-surfaces'
 import { GifticonBoxRailRow } from './vouchers/GifticonBoxEntry'
 import VouchersTopBar from './vouchers/VouchersTopBar'
 import VouchersHero from './vouchers/VouchersHero'
@@ -402,6 +403,9 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
 
   // 🎨 2026-07-01 (대표 "2번 로딩 근본 해결"): standalone 은 로딩 중 전체화면 BrandLoader 로 early-return(청크 로더와 이어져 '한 번').
   //   embedded(홈)은 다른 콘텐츠와 공존해야 하므로 인라인 유지(아래 {loading?} 블록).
+  // 🔎 2026-10-18 [UNLOCK_LOADING] SEO 는 서버와 **같은 함수** — 종전 클라는 facet(`?category=편의점`)에서도 정본을
+  //   `/vouchers` 로 적고 설명에 다른 권종(김밥천국)을 섞어, JS 를 렌더하는 구글이 facet 20개를 통합할 수 있었다.
+  const vSeo = resolveConsumerSurfaceSeo('/vouchers', searchParams.toString() ? `?${searchParams}` : '', '')!, vouchersSeo = { title: vSeo.title, description: vSeo.description, url: vSeo.canonical }
   if (loading && !embedded) return <BrandLoader fullScreen />
 
   // 🖥️ 2026-07-18 (대표 승인 — 교환권 PC 2단): PC(lg+)는 모바일을 세로로 늘린 형태 대신 **좌측 필터 레일
@@ -410,11 +414,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   if (isPc && !embedded) {
     return (
       <div className="bg-warm dark:bg-[#11141C] min-h-[100dvh]">
-        <SEO
-          title={brand ? `${brand} 교환권 - 유어딜` : '교환권 - 유어딜'}
-          description="스타벅스, GS25, 김밥천국 등 인기 브랜드 교환권을 딜로 구매하세요. 즉시 발송."
-          url={brand ? `/vouchers?brand=${encodeURIComponent(brand)}` : '/vouchers'}
-        />
+        <SEO {...vouchersSeo} />
         {/* 🔎 2026-07-29 (소비자 SEO 실측): 이 페이지엔 h1 이 **하나도 없었다** — 서빙 HTML 의 유일한 h1 은
             index.html 의 숨겨진 인앱 차단 화면이었다. 탭바의 "교환권"은 <button>(탭)이라 제목이 될 수 없어,
             문서 제목용 h1 을 시각적으로 숨겨 둔다(스크린리더·크롤러엔 노출). */}
@@ -547,11 +547,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   return (
     <div className={embedded ? '' : 'bg-warm dark:bg-[#11141C] pb-safe-nav md:pb-20 min-h-[100dvh]'}>
       {!embedded && (
-        <SEO
-          title={brand ? `${brand} 교환권 - 유어딜` : '교환권 - 유어딜'}
-          description="스타벅스, GS25, 김밥천국 등 인기 브랜드 교환권을 딜로 구매하세요. 즉시 발송."
-          url={brand ? `/vouchers?brand=${encodeURIComponent(brand)}` : '/vouchers'}
-        />
+        <SEO {...vouchersSeo} />
       )}
       {/* 🔎 2026-07-29: 문서 제목용 h1 — 화면엔 제목 줄이 없어(안 C) 시각적으로 숨긴다(스크린리더·크롤러엔 노출). */}
       <h1 className="sr-only">{brand ? `${brand} 교환권` : '교환권'} — 인기 브랜드 기프티콘을 딜로 즉시 구매</h1>

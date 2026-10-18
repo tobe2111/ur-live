@@ -21,7 +21,8 @@
  * 화면(표면)마다 **첫 화면에 실제로 받는 것**을 brotli(품질 11) 바이트로:
  *   첫 화면 무게 = 엔트리 폐쇄 JS(index.html 의 entry + modulepreload)
  *                + 앱 CSS(index.html 의 /assets/*.css)
- *                + 그 화면 봉투 JS(route-chunk-map 의 js 중 엔트리 폐쇄에 없는 것)
+ *                + 그 화면 진입점의 정적 import 폐쇄(엔트리 폐쇄에 없는 것 — 2026-10-18 부터 매니페스트로, 상한 없음)
+ *   ⚠️ route-chunk-map(워커 미리받기 맵)은 js 를 10개에서 자르므로 무게 측정에 쓰지 않는다 — 대조에만 쓴다.
  * 그리고 `__boot__` 행 = 엔트리 폐쇄 JS + CSS (모든 화면이 공통으로 내는 값 — 따로 잠근다).
  *
  * ## 판정 (래칫 — 양방향)
@@ -47,6 +48,7 @@ import path from 'node:path'
 import zlib from 'node:zlib'
 import { fileURLToPath } from 'node:url'
 import { DASHBOARD_SURFACES } from './dashboard-surfaces.mjs'
+import { ROUTES, PRELOAD_ONLY_ROUTES } from './generate-route-chunk-map.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const BASELINE = path.join(ROOT, 'scripts', 'surface-budgets.json')
@@ -90,6 +92,23 @@ export function surfacesFrom(html, mapSrc) {
  *   진입점을 매니페스트에서 못 찾으면 **실패**다(파일이 옮겨졌는데 조용히 0 으로 재면 가드가 헛돈다).
  */
 export function dashboardSurfacesFrom(manifest, bootFiles, cssFiles, dashboards) {
+  return closureSurfacesFrom(manifest, bootFiles, cssFiles, dashboards, 'dash:')
+}
+
+/**
+ * 🔭 손님 화면도 정적 폐쇄로 잰다 (2026-10-18 — #1912 의 stayDetail +6.0KB 착시에서 나온 구멍).
+ *   종전엔 손님 화면의 봉투를 route-chunk-map 에서 읽었는데, 그 맵은 **워커 미리받기용**이라 js 를 10개(`MAX_LINKS`)에서
+ *   자른다. 그러면 11번째부터는 **무게 예산에서도 안 보인다** — 실측: stayDetail 의 `lz-vouchers`(6.0KB)가 main 에서 11번째라
+ *   안 세였다가, 다른 봉투 하나가 사라지자 상한 안으로 들어와 **아무것도 안 늘었는데 +6.0** 이 찍혔다(정적 폐쇄 실측은 −0.2).
+ *   반대 방향이 더 나쁘다 — 11번째 이후로 30KB 가 붙어도 초록이다. ⇒ 대시보드와 같은 방식(매니페스트 정적 폐쇄, 상한 없음).
+ *   route-chunk-map 은 여기선 **대조용**으로만 쓴다(맵의 js 는 폐쇄의 부분집합이어야 한다 — 아니면 둘 중 하나가 틀렸다).
+ */
+export function routeSurfacesFrom(manifest, bootFiles, cssFiles, routes) {
+  return closureSurfacesFrom(manifest, bootFiles, cssFiles, routes, '')
+}
+
+/** 진입점 표 → 화면별 파일 목록(엔트리 폐쇄 + CSS + 진입점들의 정적 폐쇄, 겹치는 건 한 번만). */
+export function closureSurfacesFrom(manifest, bootFiles, cssFiles, table, prefix) {
   const out = {}
   const entries = Object.entries(manifest)
   const resolve = (src) => {
@@ -100,10 +119,10 @@ export function dashboardSurfacesFrom(manifest, bootFiles, cssFiles, dashboards)
     const base = src.split('/').pop().replace(/\.[tj]sx?$/, '')
     const byName = entries.filter(([, v]) => v.isDynamicEntry && v.name === base)
     if (byName.length === 1) return byName[0][0]
-    throw new Error(`대시보드 진입점을 매니페스트에서 못 찾았다: ${src} (후보 ${byName.length}개) — 파일이 옮겨졌으면 scripts/dashboard-surfaces.mjs 를 고칠 것`)
+    throw new Error(`진입점을 매니페스트에서 못 찾았다: ${src} (후보 ${byName.length}개) — 파일이 옮겨졌으면 scripts/dashboard-surfaces.mjs · generate-route-chunk-map.mjs ROUTES 를 고칠 것`)
   }
   const boot = new Set(bootFiles)
-  for (const [name, srcs] of Object.entries(dashboards)) {
+  for (const [name, srcs] of Object.entries(table)) {
     const js = new Set(), css = new Set()
     const stack = srcs.map(resolve)
     const seen = new Set()
@@ -118,9 +137,26 @@ export function dashboardSurfacesFrom(manifest, bootFiles, cssFiles, dashboards)
       for (const c of v.css || []) if (!cssFiles.includes('/' + c)) css.add('/' + c)
       for (const x of v.imports || []) stack.push(x)
     }
-    out[`dash:${name}`] = [...bootFiles, ...cssFiles, ...js, ...css]
+    out[`${prefix}${name}`] = [...bootFiles, ...cssFiles, ...js, ...css]
   }
   return out
+}
+
+/**
+ * 맵(미리받기용, 잘린 목록)이 폐쇄(무게용, 전체)의 부분집합인지 — 아니면 두 계산 중 하나가 틀렸다(순수).
+ *   예: 생성기가 다른 진입점을 읽거나, 폐쇄가 import 를 덜 따라가면 여기서 갈린다.
+ */
+export function mapSubsetErrors(mapSurfaces, closureSurfaces) {
+  const errors = []
+  for (const [s, files] of Object.entries(mapSurfaces)) {
+    if (s === '__boot__') continue
+    const c = closureSurfaces[s]
+    if (!c) { errors.push(`${s}: 미리받기 맵엔 있는데 진입점 표(ROUTES·PRELOAD_ONLY_ROUTES)엔 없다`); continue }
+    const set = new Set(c)
+    const miss = files.filter((f) => f.endsWith('.js') && !set.has(f))
+    if (miss.length) errors.push(`${s}: 미리받기 맵의 청크가 정적 폐쇄에 없다 — ${miss.map(chunkName).join(', ')}`)
+  }
+  return errors
 }
 
 /** 기준과 실측을 대조해 위반 목록을 낸다(순수). */
@@ -160,7 +196,17 @@ function main() {
   }
   const bootFiles = surfaces.__boot__.filter((f) => f.endsWith('.js'))
   const bootCss = surfaces.__boot__.filter((f) => f.endsWith('.css'))
-  Object.assign(surfaces, dashboardSurfacesFrom(JSON.parse(fs.readFileSync(manifestPath, 'utf8')), bootFiles, bootCss, DASHBOARD_SURFACES))
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
+  // 🔭 2026-10-18: 손님 화면은 맵(10개 상한)이 아니라 정적 폐쇄로 잰다 — 맵은 대조에만 쓴다.
+  const routeSurfaces = routeSurfacesFrom(manifest, bootFiles, bootCss, { ...ROUTES, ...PRELOAD_ONLY_ROUTES })
+  const subsetErrs = mapSubsetErrors(surfaces, routeSurfaces)
+  if (subsetErrs.length) {
+    console.error('❌ surface-budgets: 미리받기 맵과 정적 폐쇄가 어긋난다(둘 중 하나가 틀렸다):')
+    for (const e of subsetErrs) console.error(`   · ${e}`)
+    process.exit(1)
+  }
+  for (const k of Object.keys(surfaces)) if (k !== '__boot__') delete surfaces[k]
+  Object.assign(surfaces, routeSurfaces, dashboardSurfacesFrom(manifest, bootFiles, bootCss, DASHBOARD_SURFACES))
   if (bootCount === 0 || cssCount === 0 || mapCount === 0) {
     console.error(`❌ surface-budgets: 측정 대상이 비었다(엔트리 ${bootCount} · CSS ${cssCount} · 화면 ${mapCount}).`)
     console.error('   route-chunk-map 이 빈 맵이면 `npm run build:worker` 가 안 돈 것이다. 이 가드가 무력화된 상태다.')

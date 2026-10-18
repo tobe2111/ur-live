@@ -17,6 +17,9 @@ interface State {
   enabled: boolean
   settable: boolean
   accepting_count?: number
+  same_owner_count?: number
+  /** 🏷️ 3단계 — "다른 점주 이용권 받기"를 켠 가맹점 수(게이트 ON 일 때만 0 이상). 정산이 그 지점으로 간다. */
+  cross_owner_count?: number
   code?: 'NO_BRAND' | 'NOT_OWNER' | 'NO_SAME_OWNER_BRANCH'
   reason?: string
 }
@@ -57,18 +60,23 @@ export default function BrandWideToggle({ productId }: { productId: number }) {
   }
 
   const canFlip = s.enabled || s.settable
+  const cross = s.cross_owner_count ?? 0
   return (
     <div className="flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-3">
       <div className="min-w-0">
         <p className="text-[13px] font-bold text-gray-900">
-          {s.settable
-            ? t('seller.vouchers.brandWideTitle', { defaultValue: '같은 주인 지점 {{count}}곳에서도 사용', count: s.accepting_count ?? 0 })
-            : t('seller.vouchers.brandWideTitleOff', { defaultValue: '다른 지점에서도 사용' })}
+          {!s.settable
+            ? t('seller.vouchers.brandWideTitleOff', { defaultValue: '다른 지점에서도 사용' })
+            : cross > 0
+              ? t('seller.vouchers.brandWideTitleAll', { defaultValue: '브랜드 지점 {{count}}곳에서도 사용', count: s.accepting_count ?? 0 })
+              : t('seller.vouchers.brandWideTitle', { defaultValue: '같은 주인 지점 {{count}}곳에서도 사용', count: s.accepting_count ?? 0 })}
         </p>
         <p className="mt-0.5 text-[12px] text-gray-500">
-          {s.settable || s.enabled
-            ? t('seller.vouchers.brandWideNote', { defaultValue: '그 지점의 확인코드·스캔으로 사용 처리돼요. 정산은 이 지점으로 들어와요.' })
-            : s.reason}
+          {!(s.settable || s.enabled)
+            ? s.reason
+            : cross > 0
+              ? t('seller.vouchers.brandWideNoteCross', { defaultValue: '같은 주인 지점에서 쓰면 이 지점으로, 다른 점주 지점에서 쓰면 그 지점으로 정산돼요. 소개비가 붙은 이용권은 같은 주인 지점에서만 쓸 수 있어요.' })
+              : t('seller.vouchers.brandWideNote', { defaultValue: '그 지점의 확인코드·스캔으로 사용 처리돼요. 정산은 이 지점으로 들어와요.' })}
         </p>
       </div>
       {canFlip && (

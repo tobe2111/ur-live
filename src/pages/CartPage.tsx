@@ -1,9 +1,8 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react'
 import { BagIcon, StoreIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from '@/lib/i18n-lite'
 import SEO from '@/components/SEO'
-import OptionSelectModal from '@/components/OptionSelectModal'
 import { useCart, useUpdateCartQuantity, useRemoveFromCart, useUpdateCartOption } from '@/hooks/useCart'
 import { CartHeader } from '@/components/cart/CartHeader'
 import { CartItemComponent } from '@/components/cart/CartItem'
@@ -23,9 +22,10 @@ import { hasConsumerSession } from '@/utils/auth'
 import CustomModal from './cart/CustomModal'
 import BrandLoader from '@/components/brand/BrandLoader'
 import ContinueShoppingLink from '@/components/mall/ContinueShoppingLink'
+// ⚡ 2026-10-18: 옵션 변경 창은 열 때만 받는다(정적이면 첫 화면이 상품 봉투·embla 까지 받았다). 가드: cross-envelope-2026-10-18.test.ts
+const OptionSelectModal = lazy(() => import('@/components/OptionSelectModal'))
 
-// 🛡️ 2026-05-02: TD-018 분할 — CustomModal 을 ./cart/CustomModal 로 추출. CustomModal 내부에서 쓰던 lucide 아이콘 (AlertCircle, CheckCircle, Info) 은
-//   해당 파일로 이동. 본체에서 X 아이콘은 헤더 닫기 버튼에서 계속 사용.
+// 🛡️ 2026-05-02: TD-018 분할 — CustomModal 을 ./cart/CustomModal 로 추출(그 아이콘도 그 파일로).
 
 /** 📦 2026-09-01: 배송비 판정은 SSOT 하나로 — 여기와 결제 화면이 갈려 총액이 달랐다(product-flow.ts). */
 function isNoShippingItem(item: CartItem): boolean {
@@ -586,15 +586,13 @@ function CartPageContent() {
         type={modal.type}
       />
 
-      <OptionSelectModal
-        isOpen={optionModal.isOpen}
-        onClose={closeOptionModal}
-        productId={optionModal.productId as number}
-        productName={optionModal.productName as string}
-        currentOptionId={optionModal.currentOptionId as number | undefined}
-        currentOptionValue={optionModal.currentOptionValue}
-        onOptionSelected={handleOptionChange}
-      />
+      {optionModal.isOpen && (
+        <Suspense fallback={null}>
+          <OptionSelectModal isOpen={optionModal.isOpen} onClose={closeOptionModal} onOptionSelected={handleOptionChange}
+            productId={optionModal.productId as number} productName={optionModal.productName as string}
+            currentOptionId={optionModal.currentOptionId as number | undefined} currentOptionValue={optionModal.currentOptionValue} />
+        </Suspense>
+      )}
     </div>
   )
 }

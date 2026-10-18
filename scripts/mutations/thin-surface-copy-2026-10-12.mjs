@@ -104,7 +104,7 @@ export default [
   {
     name: '🧭 본문을 다시 한 줄로 줄인다 — thin 으로 되돌아간다',
     file: 'src/shared/seo/surface-copy.ts',
-    find: "      '고르고, 함께 사고, 매장에서 쓰기.',",
+    find: "      '고르고, 사고, 매장에서 쓰기.',",
     replace: '',
     test: 'src/tests/unit/thin-surface-copy-2026-10-12.test.ts',
     why: '2026-10-12 2차에서 `/introduce` 를 66 → 205자로 늘렸다. 길이 하한이 없으면 다음 정리 PR 이 조용히 되돌린다 — 화면은 안 깨지고 라이브를 재 본 사람만 안다.',

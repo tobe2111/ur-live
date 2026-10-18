@@ -93,13 +93,16 @@ describe('② 담은 핀은 귀속 경로를 잃지 않는다 (돈이 새는 회
 
   // 🔧 2026-09-28 재조준(s3): 일반유저 쪽은 줄 카드라 `to` 가 아니라 `DealRow` 의 `to` 로 간다.
   //   **같은 돈 불변식**이다 — 상세로 직행시키면 화면은 같은데 귀속만 조용히 사라진다.
-  it('일반유저 유어샵 — 줄 카드가 /u/{handle}/p/{id} 로 간다', () => {
+  // 🔄 2026-10-18 재조준(결재 `2026-10-15-ushop-pin-spa-nav` 안 1): 서버 경유 → **앱 안 이동 + 누르는 순간 귀속**.
+  //   불변식은 그대로다 — 줄 카드를 눌러 상세로 가면 **소개 값이 저장돼야 한다**. 이제 그 일은 `onPinClick` 이 한다.
+  it('일반유저 유어샵 — 줄 카드는 누르는 순간 귀속(onPinClick)을 붙이고 정본 상세로 간다', () => {
     const src = read(PIN_ROW)
     const at = src.indexOf('<DealRow')
     expect(at, '줄 카드 호출부를 못 찾았다 — 마크업이 바뀌었다(검사가 무의미해진다)').toBeGreaterThan(0)
     const call = src.slice(at, at + 400)
-    expect(call).toMatch(/to=\{`\/u\/\$\{handle\}\/p\/\$\{pin\.product_id\}`\}/)
-    expect(codeOnly(src), '상세 직행 금지').not.toMatch(/`\/group-buy\/|`\/products\//)
+    expect(call).toMatch(/to=\{pinHref\(pin\)\}/)
+    expect(call).toMatch(/onClick=\{\(\) => onPinClick\(handle, curatorUserId, pin\.product_id\)\}/)
+    expect(codeOnly(src), '목적지를 손으로 적지 않는다(정본 SSOT)').not.toMatch(/`\/group-buy\/|`\/products\/|`\/pass\//)
   })
 
   it('매장 자기 이용권 그리드는 `to` 를 넘기지 않는다 (귀속 대상이 아니다)', () => {

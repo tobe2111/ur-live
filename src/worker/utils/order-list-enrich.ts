@@ -30,10 +30,20 @@ type Row = Record<string, unknown>
 async function attachVouchers(DB: D1Database, orderRows: Row[], oIds: number[]): Promise<void> {
   try {
     const ph = oIds.map(() => '?').join(',')
-    const { results = [] } = await DB.prepare(
-      `SELECT order_id, code, status, used_at, expires_at
-         FROM vouchers WHERE order_id IN (${ph}) ORDER BY id ASC`,
-    ).bind(...oIds).all<Row>()
+    // 🏷️ 2026-10-18 브랜드 3단계 — 다른 점주 지점이 받았으면(정산이 그 지점으로 넘어감) 그 지점 이름을 싣는다.
+    //   기록 테이블(`voucher_redeem_stores`)은 첫 사용 때 생긴다 — 아직 없으면 조인이 던지므로 종전 조회로 떨어진다.
+    const results = await DB.prepare(
+      `SELECT v.order_id, v.code, v.status, v.used_at, v.expires_at,
+              COALESCE(rs.business_name, rs.name) AS redeemed_store_name
+         FROM vouchers v
+         LEFT JOIN voucher_redeem_stores r ON r.voucher_id = v.id AND r.cross_owner = 1
+         LEFT JOIN sellers rs ON rs.id = r.store_seller_id
+        WHERE v.order_id IN (${ph}) ORDER BY v.id ASC`,
+    ).bind(...oIds).all<Row>().then((r) => r.results ?? [])
+      .catch(() => DB.prepare(
+        `SELECT order_id, code, status, used_at, expires_at
+           FROM vouchers WHERE order_id IN (${ph}) ORDER BY id ASC`,
+      ).bind(...oIds).all<Row>().then((r) => r.results ?? []))
     if (results.length === 0) return
     const byOrder = new Map<number, Row[]>()
     for (const v of results) {

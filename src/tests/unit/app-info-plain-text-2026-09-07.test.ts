@@ -67,26 +67,30 @@ describe('마이페이지 앱 정보 — 줄글 (안 2)', () => {
   })
 
   it('④ 업데이트 버튼은 새 버전이 있을 때만 선다', () => {
-    // 버튼이 hasUpdate 분기 안에 있어야 한다. 항상 보이면 종전 카드와 같은 실수다.
-    const hasUpdateAt = body.indexOf('hasUpdate ?')
-    const isLatestAt = body.indexOf('isLatest ?')
+    // 🔁 2026-10-18 재조준: 상태 분기(`isLatest ?` · 확인 버튼)가 사라져 `hasUpdate &&` 하나가 됐다.
+    //   지키려던 것(버튼이 항상 보이지 않는다)은 그대로다.
+    const gateAt = body.indexOf('hasUpdate && (')
     const btnAt = body.indexOf('bg-brand')
-    expect(hasUpdateAt, 'hasUpdate 분기가 없다').toBeGreaterThan(0)
+    expect(gateAt, 'hasUpdate 게이트가 없다').toBeGreaterThan(0)
     expect(btnAt, '브랜드 버튼이 없다').toBeGreaterThan(0)
-    expect(btnAt, '브랜드 버튼이 hasUpdate 분기보다 앞이다 — 항상 보인다는 뜻').toBeGreaterThan(hasUpdateAt)
-    expect(btnAt, '브랜드 버튼이 isLatest 분기 뒤다 — 최신일 때도 뜬다는 뜻').toBeLessThan(isLatestAt)
+    expect(btnAt, '브랜드 버튼이 hasUpdate 게이트보다 앞이다 — 항상 보인다는 뜻').toBeGreaterThan(gateAt)
+    expect(body, 'hasUpdate 는 서버·로컬 버전이 둘 다 있고 다를 때만 참이어야 한다')
+      .toMatch(/const hasUpdate = !loading && serverVersion && localBuildVersion && serverVersion !== localBuildVersion/)
   })
 
-  it('⑤ 조회 실패/미확인일 때 "최신" 이라고 말하지 않는다', () => {
-    // isLatest 는 서버·로컬 버전이 **둘 다 있고 같을 때만** 참이어야 한다.
-    expect(body).toMatch(/const isLatest = !loading && serverVersion && localBuildVersion/)
-    // 마지막 분기(둘 중 하나가 없는 경우)는 단정이 아니라 다시 확인하는 버튼이다.
-    //
-    // 🩸 처음엔 `toContain('handleCheck')` 였는데 **되돌려-검증이 그걸 잡았다**: 배선을
-    //    `onClick={() => {}}` 으로 끊어도 초록이었다. 같은 이름이 이 함수 안에 *정의*로도
-    //    있기 때문이다(`const handleCheck = async () => {`). 존재가 아니라 **배선**을 봐야 한다.
-    expect(body, '미확인 상태의 확인 버튼이 handleCheck 에 연결돼 있지 않다')
-      .toContain('onClick={handleCheck}')
+  /**
+   * 🔁 2026-10-18 (대표 *"나머지 다 가장 이상적으로"*) — 종전 ⑤는 *"미확인이면 확인 버튼"* 을 고정했다.
+   *   그 버튼과 `최신 버전이에요` 문구는 **이미 자동으로 하는 일**(`version-check` 가 5분마다·탭 복귀마다
+   *   확인해 `NewVersionBanner` 를 띄운다)을 사람에게 시키는 개발자용 표시였다 ⇒ 뺐다.
+   *   이제 지키는 것은 반대 방향이다 — 그 둘과 괄호 속 빌드 번호가 되살아나지 않는다.
+   */
+  it('⑤ 평소엔 버전 한 줄뿐 — 확인 버튼·최신 문구·빌드 번호가 화면에 없다', () => {
+    expect(body, '"최신 버전인지 확인" 버튼이 되살아났다').not.toContain('accountSettings.checkLatest')
+    expect(body, '"최신 버전이에요" 문구가 되살아났다').not.toContain('accountSettings.isLatest')
+    expect(body, '수동 확인 핸들러가 되살아났다').not.toContain('handleCheck')
+    // 빌드 번호는 `title` 로만 — 본문 텍스트로 찍히면 `v1.0.676 (20261018.0940)` 이 돌아온다.
+    expect(body, '빌드 번호가 본문에 다시 찍힌다').not.toMatch(/\{BUILD_HASH && <span/)
+    expect(body).toContain('title={BUILD_HASH || undefined}')
   })
 
   it('⑥ 띄어 쓴 가운뎃점으로 값을 잇지 않는다 (check-middle-dot-chain 래칫)', () => {

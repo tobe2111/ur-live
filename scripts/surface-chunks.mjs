@@ -38,8 +38,12 @@ const NEVER_ENTRY = new Set(['app-utils-deferred'])
  *  🩸 2026-10-14 — `app-ui-utils` 가 빠져 있었다. 2026-07-29 에 `cn()`(src/lib/utils) + tailwind-merge(raw 102KB)를
  *   전용 봉투로 뺐는데(vite 규칙 '/src/lib/utils' → app-ui-utils), 이 묶음기(10-13)가 그 앱 코드를 **목록 안에서 유일하게
  *   정적으로 쓰는 지도** 봉투로 옮겼다 → tailwind-merge 가 따라갔고, `cn()` 을 쓰는 화면 ~190개(마이·어드민·장바구니·결제…)가
- *   **지도 페이지 코드 전부**(lz-map 24.9KB br)를 받았다(`check-surface-budgets` dash:* 실측). 에러는 0 이었다. */
-export const LIBRARY_ENVELOPES = new Set(['sentry', 'capacitor', 'tosspayments', 'app-kakao-sdk', 'charts', 'codes', 'app-ui-utils'])
+ *   **지도 페이지 코드 전부**(lz-map 24.9KB br)를 받았다(`check-surface-budgets` dash:* 실측). 에러는 0 이었다.
+ *
+ *  🔀 2026-10-18 — `app-cross`: 라이브러리 봉투는 아니지만 같은 이유로 고정한다. 화면 밖 공용 묶음(app-components)과
+ *   손님 페이지가 함께 쓰는 작은 유틸 묶음이다(vite.config.ts CROSS_MODULES). 묶음기가 페이지 묶음으로 옮기면
+ *   app-components 가 그 페이지 묶음을 통째로 끌고 온다 — 그걸 막으려고 만든 봉투다. */
+export const LIBRARY_ENVELOPES = new Set(['sentry', 'capacitor', 'tosspayments', 'app-kakao-sdk', 'charts', 'codes', 'app-ui-utils', 'app-cross'])
 
 /** 🔔 **누를 때만 받는 봉투** — 묶음기가 페이지 봉투로 옮기지 않는다(2026-10-18).
  *  알림 시트는 `lazy()` 인데 거의 모든 화면이 그 훅(`useNotificationSheet`)을 갖고 있어 묶음기가 `lz-common` 에 넣었다.

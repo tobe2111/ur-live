@@ -180,7 +180,14 @@
 > **CAS 안에서 비밀 재대조**) · 사장님 스캔·카카오 챗봇(`voucher-seller-redeem`) · 손님 셀프(`self-redeem-gate` —
 > scan_only 지점 제외). 켜는 사람은 판 지점 주인만(`GET/PUT /api/seller/products/:id/brand-wide`). 💰 **정산은 판 지점
 > 그대로**(원장 merchant = `voucher.seller_id`) — 같은 주인의 주머니라 돈 이동 0.
-> ⏳ 아직 없음: **가맹점(주인 다름) 사이의 사용** — 쓴 지점으로 정산을 옮기는 머니 경로라 결재 필요(3단계).
+> 🏷️ **3단계 — 점주가 다른 가맹점끼리 (2026-10-18 대표 "결재해줄게" + ①②③ 권장안 · 게이트 뒤, 기본 OFF)**:
+> 게이트 `platform_settings.brand_cross_owner_redeem_enabled` 가 켜지면 같은 브랜드의 **주인 다른 지점**도 받는다.
+> ① 받는 지점 주인이 "다른 점주 이용권 받기"를 켠 곳만(`seller_meta.brand_cross_owner_accept`, 주인만 바꿈 —
+> `GET/PUT /api/seller/cross-owner-accept`) ② 판매 때 소개비·중개 몫이 이미 나간 이용권은 제외(같은 주인 지점에서만)
+> ③ 수수료는 쓴 지점의 채널 요율. 💰 **정산은 쓴 지점**: 사용 순간 `voucher_redeem_stores` 에 받은 지점을 적고
+> 두 레일이 같은 기록을 읽는다(Rail B 원장 `settlementMerchantFor` · Rail A 주간 `REDEEM_STORE_SETTLEMENT_SQL`,
+> SSOT `worker/utils/brand-cross-owner.ts`). 정산은 게이트를 다시 안 본다(사용 순간의 사실). ⚠️ 손님 셀프 사용은
+> 잠금 파일이라 아직 다른 점주 지점을 못 쓴다(fail-closed — 이용권 id 없음). 검증 절차 S-BRANDX.
 
 ### 2-2. 도매(B2B) 행위자 — §12 참조
 - **판매사** (도매가로 사입해 재판매, `sellers.is_distributor=1`)
@@ -572,5 +579,6 @@ pre-commit + `verify.yml` + `audit-gate.sh` 가 결정론으로 강제(수동 �
 - 2026-10-11 에이전시 2단계(PR-B) — 매장 연결(`agency_store_links`) · 사장님 맡기기/끊기(`/api/seller/agency-link`) · 에이전시 수락/거절/내려놓기 · 직원 매장 좌석(`agency_staff_id` claim, `store-seat-guard` 가 매 요청 맡김·직원·에이전시 상태 대조, 역할 operator 고정, 사람·주인 폴백 전부 거절) · 셀러 화면 "에이전시로 운영 중" 띠 · 매장 초대 링크(`agency_store_invites`, `/store/agency/:token`) · 동반 보안 수리: `/api/seller/switch-to-user` 가 위임 좌석에게 사장님 소비자 세션을 주던 구멍. [E2]- 2026-10-11 🧨 **도매몰(유통스타트) 철거** (대표 *"도매몰 잔해들은 아예 다 삭제해줘"*) — 삭제 **177파일 · −37,367줄**: 라우트 마운트(`mount-wholesale.ts`) · 화면 전부(`/wholesale/*`·`/supplier/*`·어드민 도매 밴드 3개) · `features/supply` 의 도매 라우트 50. **머니 게이트는 실측으로 닫혔다**(예치금 172,800원의 주인 `sellers.id 5·13` 이 **존재하지 않고**, 충전요청 2건 전부 confirmed, 미지급 정산 1건이 테스트 주문과 같은 시각). **DB 테이블은 하나도 안 지웠다**(회계 증빙 — 노출만 끊었다). 🔴 **남긴 것**: 정산 엔진 4파일(소비자 주문확정·환불·cron 이 직접 부른다) · `computeWholesaleOnly` · buyer 풀 6 · maker 풀 4(**유어애즈 워커가 쓴다** → `/admin/maker-pool` 을 소비자 워커에 마운트하고 유어애즈 밴드로 이전) · 몰 인프라(공구 서비스) · `__INCLUDE_WHOLESALE__` define(지우면 런타임 ReferenceError + cron no-op 게이트의 항). 🏪 **공구 서비스는 안 지웠다 — 대표 결정 대기**(운영자 0명·열린 몰 0개라 지금 비용 0, 지우는 데 1분·다시 쓰는 데 며칠). ⚠️ **코드 밖은 대표 몫**: `role='wholesale'` 어드민 계정 4개 · `utongstart.com`(두 Pages 어디에도 안 붙어 있다) · `ur-wholesale` Pages 프로젝트. 가드 `wholesale-teardown-2026-10-11` 21건(지운 것 + **남긴 것** 둘 다 고정) + 주입 8건 · 불변식 116→113. 🩸 **과삭제 3건을 전부 가드가 잡았다**(유어딜 가입 화면 · 결재함 라우트 셋 · 고아 `</div>`) — 상세: `docs/handoff/2026-10-11-wholesale-teardown.md` §6. PR #1710 (`ebd463c6`·`37d72f5f`·`033a7bdd`). [E2]
 - 2026-10-12 셀러 대시보드 제거 2단계 — 에이전시 콘솔 **안 A**(모바일+PC): 맡은 매장의 판을 마이와 같은 시트로 연다(`AgencyStorePlate`) · `/api/agency-console/stores` 에 오늘 숫자(마이와 같은 규칙, 운영 중 매장만) · `/agency` 소비자 액자 제외 · 대시보드 [운영하기] 제거. [E2]
 - 2026-10-12 셀러 대시보드 제거 4단계 — 단독 대시보드 **얇은 틀**: 사이드바·하단 탭 제거, 머리줄 [매장·검색·알림·전체 메뉴] + `/seller/more` 허브. 숨김 화면은 보존(대표 결정 "남겨 두기"). 판매 알림은 마이(`/api/seller/my-stores/notifications`)·콘솔(`/api/agency-console/notifications`)에서 본다. [E2]
+- 2026-10-18 🏷️ **브랜드 3단계 — 다른 점주 가맹점끼리 사용 + 쓴 지점 정산**(대표 "결재해줄게", ①②③ 권장안) — 게이트 `brand_cross_owner_redeem_enabled` 기본 OFF · 받는 지점 동의 · 소개비 이용권 제외 · `voucher_redeem_stores` 를 두 정산 레일이 같이 읽음. 가드 `brand-cross-owner-2026-10-18` 19건 + 주입 8건. [E2]
 - 2026-10-18 🏷️ **브랜드 전 지점 사용**(대표 "응 진행해줘") — 이용권마다 스위치 · 같은 주인 지점만 받음 · 정산은 판 지점 그대로. 사용 처리 3경로 + 설정 API + 손님 상세 "N곳 어디서나 사용 가능". 가드 `brand-wide-redeem-2026-10-18` 18건 + 주입 7건. [E2]
 - 2026-10-17 🏬 **프랜차이즈 지점 편의**(대표 "응응 다 해줘") — 매장 목록 상한 50/20 → 500(조각 조회) · 지점 일괄 등록 시트 · 이용권 다른 지점에 복사 · 브랜드 묶음(`store_brands`) + `/brand/:slug` + 상세 "다른 지점 보기". 규칙: 지점 단위, 그 지점 주인이 정한다. 돈 이동 0. 가드 `franchise-branches-2026-10-17` 16건 + 주입 11건. [E2]

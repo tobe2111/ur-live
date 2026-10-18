@@ -4,7 +4,7 @@ import { useTranslation } from '@/lib/i18n-lite'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { isKorea } from '@/shared/config/region'
 import SEO from '@/components/SEO'
-import { cfImage, cfImageOnError } from '@/utils/cf-image'
+import { profileAvatarSrc, profileAvatarOnError, profileAvatarFitCls } from '@/pages/user-profile/profile-avatar'
 import { logoutAll } from '@/features/auth/login-flow.service'
 import { getUserProfileImage } from '@/utils/auth'
 import { RewardAdCard } from '@/components/my-page/reward-ad-card'
@@ -192,13 +192,13 @@ export default function UserProfilePage() {
       <div className="ur-content-medium px-4 lg:px-8 pt-5 pb-5">
         <div className="flex items-center gap-3">
           <img
-            src={profileImage ? cfImage(profileImage, { width: 128 }) : `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=111827&color=ffffff&size=128`}
+            src={profileAvatarSrc(profileImage, 128)}
             alt={`${userName} 프로필 이미지`}
             loading="lazy"
             decoding="async"
-            className="w-16 h-16 rounded-full object-cover flex-shrink-0"
+            className={`w-16 h-16 rounded-full flex-shrink-0 ${profileAvatarFitCls(profileImage)}`}
             style={{ border: '2px solid rgba(255,255,255,0.15)' }}
-            onError={(e) => cfImageOnError(e.currentTarget, profileImage)}
+            onError={(e) => profileAvatarOnError(e.currentTarget, profileImage)}
           />
           {/* 🎨 2026-09-28 (대표 *"대기업수준이 필요해"*) — **'프로필 편집' 회색 알약을 없애고
               프로필 줄 전체를 누르게 했다.** 그 알약은 크림 바탕 위 `bg-gray-100` 이라 배경과 거의
@@ -303,7 +303,7 @@ export default function UserProfilePage() {
           sellerSeats={sellerSeats}
         />
       ) : (
-        <MyStats voucher={counts.voucher} gifticon={counts.gifticon} coupon={counts.coupon} />
+        <MyStats voucher={counts.voucher} coupon={counts.coupon} />
       )}
 
       <div className={sellerSeats.stores.length > 0 ? 'ur-account-cols ur-account-cols--split' : 'ur-account-cols'}>
@@ -416,9 +416,7 @@ export default function UserProfilePage() {
             ur-content-medium 부모 wrap — 다른 섹션과 동일 폭 정렬 (overflow 영구 fix). */}
       {/* 🧱 2026-09-29(안 C): 가로 패딩 없음 — 평면 줄이 자기 `px-4` 를 갖는다.
           여기서 또 주면 이 구역만 16px 들여쓰여 제목 줄이 옆 구역과 안 맞는다(첫 렌더에서 실제로 그랬다). */}
-      <div className="ur-content-medium lg:px-4">
-        <RoleCtaGrid />
-      </div>
+      <RoleCtaGrid />
 
       {/* 🧹 2026-06-22 (대표 — 도움말 비중 축소): 도움말/약관 InsetGroup 을 최하단 footer 로 이동(아래 로그아웃 다음). */}
 

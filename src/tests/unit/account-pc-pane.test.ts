@@ -32,9 +32,10 @@ describe('PC 마이 — 우측 칸은 메뉴가 아니라 내용', () => {
    * 🔁 2026-09-29 재조준(안 C) — 숫자 넷이 **큰 카드 넷**에서 페이지 맨 위 **한 줄**로 옮겨갔다.
    * 실측상 그중 셋이 0 이었고 카드 넷이 우측 칸의 절반을 먹었다. 목적지는 하나도 안 잃었다.
    */
-  it('숫자 넷(딜·이용권·교환권·쿠폰)이 주인공 — 한 줄에서 각자 목적지로 간다', () => {
+  // 🔁 2026-10-18 재조준: 넷 → **셋**(대표 *"같은 숫자 하나로"*). 교환권 숫자는 '내 교환권' 줄 한 곳이다.
+  it('숫자 셋(딜·이용권·쿠폰)이 주인공 — 한 줄에서 각자 목적지로 간다', () => {
     const STATS = codeOnly(read('src/pages/user-profile/MyStats.tsx'))
-    for (const p of ['/my-deal-history', '/my-vouchers', '/my-gifticons', '/my-coupons']) {
+    for (const p of ['/my-deal-history', '/my-vouchers', '/my-coupons']) {
       expect(STATS, p).toContain(p)
     }
     // 넷이 한 줄이다 — 다시 격자 카드가 되면 그때 그 화면으로 돌아간 것이다.
@@ -96,8 +97,10 @@ describe('PC 마이 — 우측 칸은 메뉴가 아니라 내용', () => {
    *   '같은 부품' 검사가 구조적으로 대신한다.
    */
   it('🔴 지갑 분리(이용권 ↔ 교환권)가 PC 에서 둘 다 닿는다', () => {
+    // 🔁 2026-10-18: 교환권은 숫자 줄을 떠나 '내가 산 것' 목록(폰·PC 같은 부품)에서 닿는다.
     const STATS = codeOnly(read('src/pages/user-profile/MyStats.tsx'))
-    expect(STATS).toContain('/my-gifticons')
+    const SHOP = codeOnly(read('src/pages/user-profile/ShoppingGroup.tsx'))
+    expect(SHOP).toContain('/my-gifticons')
     expect(STATS).toContain('/my-vouchers')
     // 숫자 줄은 폰·PC 가 **같은 부품**이다 — PC 가 따로 그리면 두 값이 갈린다.
     const BAND = codeOnly(read('src/pages/user-profile/AccountPcBand.tsx'))

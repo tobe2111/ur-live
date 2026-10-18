@@ -5,8 +5,8 @@ export default [
   {
     name: '🏷️ 브랜드 전 지점: 주인이 다른 가맹점도 받아 준다',
     file: 'src/worker/utils/brand-wide-redeem.ts',
-    find: 'accepting: ownerId != null && sibOwner === ownerId && Number(r.ok_status) === 1,',
-    replace: 'accepting: ownerId != null && Number(r.ok_status) === 1,',
+    find: 'accepting: ownerId != null && sibOwner === ownerId && okStatus,',
+    replace: 'accepting: ownerId != null && okStatus,',
     test: TEST,
     why: '주인이 다르면 남의 손님을 공짜로 받아 주게 된다(정산은 판 지점에 남으므로) — 같은 주인만 받는 것이 이 단계의 머니 안전판이다.',
   },
@@ -45,7 +45,7 @@ export default [
   {
     name: '🏷️ 브랜드 전 지점: 사장님 스캔이 아무 지점이나 받아 준다',
     file: 'src/worker/utils/brand-wide-redeem.ts',
-    find: '  return siblings.some((s) => s.accepting && s.seller_id === Number(actorSellerId))',
+    find: '  return sib ? siblingAccepts(DB, sib, voucherId) : false',
     replace: '  return siblings.length > 0',
     test: TEST,
     why: '같은 브랜드라도 받아 주는 지점만 — 가맹점·심사 중 지점의 스캔은 막는다.',
@@ -53,7 +53,7 @@ export default [
   {
     name: '🏷️ 브랜드 전 지점: 셀프 게이트에 상품 id 를 안 넘긴다(잠금 파일)',
     file: 'src/features/group-buy/api/group-buy-public.routes.ts',
-    find: "checkSelfRedeemGate(DB, pre.seller_id, String(body.store_code || ''), pre.product_id)",
+    find: "checkSelfRedeemGate(DB, pre.seller_id, String(body.store_code || ''), pre.product_id, pre.id)",
     replace: "checkSelfRedeemGate(DB, pre.seller_id, String(body.store_code || ''))",
     test: TEST,
     why: '안 넘기면 손님이 다른 지점에서 그 지점 코드를 넣어도 막힌다 — 켜 둔 기능이 셀프 경로에서만 조용히 죽는다.',
@@ -61,7 +61,7 @@ export default [
   {
     name: '🏷️ 브랜드 전 지점: /v 처리 버튼이 형제 지점을 다른 매장으로 본다',
     file: 'src/features/group-buy/api/voucher-can-redeem.ts',
-    find: '    return !!v && await canStoreRedeemProduct(DB, Number(v.product_id), Number(productSellerId), Number(u.id))',
+    find: '    return !!v && await canStoreRedeemProduct(DB, Number(v.product_id), Number(productSellerId), Number(u.id), Number(v.id))',
     replace: '    return false',
     test: TEST,
     why: '실제 처리는 형제 지점을 받는데 화면이 "다른 매장의 이용권" 을 띄우면 처리할 수 있는 사장님에게 버튼이 사라진다.',

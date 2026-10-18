@@ -44,16 +44,21 @@ app.get('/of-store/:sellerId', async (c) => {
     //   0 이면 "전 지점 사용" 을 말하지 않는다 — 켜 두었어도 받아 줄 지점이 없으면 약속이 거짓이 된다.
     const productId = Number(c.req.query('product'))
     let usable_branches = 0
+    // 🏷️ 3단계 — 받기를 켠 **다른 점주** 지점 수. 소개 링크로 산 이용권은 그 지점들이 받지 않으므로(결재 ②)
+    //   같은 주인 지점과 섞어 "어디서나" 로 약속하지 않고 따로 싣는다. 게이트가 꺼져 있으면 0.
+    let cross_owner_branches = 0
     if (Number.isFinite(productId) && productId > 0 && await isBrandWideEnabled(c.env.DB, productId).catch(() => false)) {
       const owner = await c.env.DB.prepare('SELECT seller_id FROM products WHERE id = ? LIMIT 1').bind(productId)
         .first<{ seller_id: number | null }>().catch(() => null)
       if (owner?.seller_id && Number(owner.seller_id) === sellerId) {
         const { siblings } = await brandSiblingsOf(c.env.DB, sellerId)
         const n = siblings.filter((s) => s.accepting).length
-        usable_branches = n > 0 ? n + 1 : 0 // 판 지점 자신 포함
+        cross_owner_branches = siblings.filter((s) => !s.accepting && s.crossOwnerOk).length
+        // 판 지점 자신 포함. 같은 주인 지점이 없어도 다른 점주 지점이 받으면 판 지점 1곳은 센다.
+        usable_branches = n > 0 || cross_owner_branches > 0 ? n + 1 : 0
       }
     }
-    return c.json({ success: true, data: { ...b, usable_branches } })
+    return c.json({ success: true, data: { ...b, usable_branches, cross_owner_branches } })
   } catch (err) {
     return safeError(c, err, '브랜드를 불러오지 못했습니다', '[brands]')
   }

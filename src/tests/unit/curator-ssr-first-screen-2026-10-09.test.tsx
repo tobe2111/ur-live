@@ -27,6 +27,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { render } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import { pinHref } from '@/pages/curator-page/pin-nav'
 import PinRow from '@/pages/curator-page/PinRow'
 import CuratorHeader from '@/pages/curator-page/CuratorHeader'
 import { curatorSoldTotal } from '@/shared/curator-pin-order'
@@ -114,7 +115,7 @@ describe('유어샵 서버 첫 화면 — 워커 HTML ↔ 진짜 컴포넌트', 
     const pin = PIN()
     const { container } = render(
       <MemoryRouter>
-        <PinRow pin={pin as never} handle="jiwon1228" order={1} />
+        <PinRow pin={pin as never} handle="jiwon1228" curatorUserId={3} order={1} />
       </MemoryRouter>,
     )
     const real = container.querySelector('a')!
@@ -122,9 +123,13 @@ describe('유어샵 서버 첫 화면 — 워커 HTML ↔ 진짜 컴포넌트', 
     const doc = new DOMParser().parseFromString(`<div>${html}</div>`, 'text/html')
     const served = doc.querySelector('.ur-ushop-rows > a')!
 
-    // 목적지 — 반드시 귀속 경로(`/u/:handle/p/:productId`)
-    expect(served.getAttribute('href')).toBe(real.getAttribute('href'))
+    // 목적지 — 2026-10-18(결재 `2026-10-15-ushop-pin-spa-nav` 안 1) 부터 **일부러 다르다**:
+    //   · 서버 첫 화면(React 전)은 귀속 경로 `/u/:handle/p/:productId` — 앱이 안 떴을 때 누르면 서버가 클릭·귀속을 붙인다
+    //   · React 줄은 정본 상세로 앱 안 이동 + `onPinClick`(소개 값 저장·비콘) — 같은 일을 화면 안에서 한다
+    //   둘이 같은 상품을 가리키는지만 본다(마운트 때 노드가 교체되므로 href 차이는 밀림이 아니다).
     expect(served.getAttribute('href')).toBe('/u/jiwon1228/p/2887')
+    expect(real.getAttribute('href')).toBe(pinHref(pin as never))
+    expect(real.getAttribute('href')!.endsWith('/2887')).toBe(true)
     // 루트 클래스 토큰 동치
     expect(tokens(served.className)).toEqual(tokens(real.className))
     // 줄 안 요소들의 클래스 순서까지 같은가

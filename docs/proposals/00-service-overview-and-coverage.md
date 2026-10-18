@@ -292,8 +292,8 @@
 | 도매몰 (유통스타트) | `wholesale-mall-brief.md` | 2 | 4 |
 | 오프라인 공구 / 동네딜 | `offline-groupbuy-brief.md` | 29 | 95 |
 | 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 76 | 273 |
-| 유어샵 / 담기·소개 | `linkshop-brief.md` | 24 | 86 |
-| **합계** | — | **131** | **458** |
+| 유어샵 / 담기·소개 | `linkshop-brief.md` | 24 | 87 |
+| **합계** | — | **131** | **459** |
 
 ### 전체 커버리지 검증 (자동 — 빠진 기능 보증)
 
@@ -302,12 +302,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 331 | 1036 |
-| 도메인 버킷 (5개 소개서) | 131 | 458 |
-| 공통/인프라 (의도적 제외) | 153 | 489 |
-| **미커버 (점검 필요)** | **47** | **89** |
+| 전체 | 331 | 1041 |
+| 도메인 버킷 (5개 소개서) | 131 | 459 |
+| 공통/인프라 (의도적 제외) | 153 | 491 |
+| **미커버 (점검 필요)** | **47** | **91** |
 
-⚠️ **미커버 136건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 138건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -423,6 +423,8 @@
 - `GET /by-voucher/:code` (`src/features/group-buy/api/voucher-gift.routes.ts`)
 - `POST /cart/confirm-toss` (`src/features/group-buy/api/cart-checkout.routes.ts`)
 - `POST /cart/init` (`src/features/group-buy/api/cart-checkout.routes.ts`)
+- `GET /cross-owner-accept` (`src/features/seller/api/seller-brands.routes.ts`)
+- `PUT /cross-owner-accept` (`src/features/seller/api/seller-brands.routes.ts`)
 - `GET /deal-plan/:productId` (`src/features/group-buy/api/deal-plan.routes.ts`)
 - `POST /fee-context/channel` (`src/features/seller/api/seller-store-channel.routes.ts`)
 - `POST /kakao-bot/link-code` (`src/features/seller/api/seller-kakao-bot.routes.ts`)
@@ -1410,7 +1412,7 @@
 - `/u/me/manage`
 - `/user/affiliate`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (86개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (87개)
 
 
 **/api/admin-payouts/disputes**
@@ -1439,6 +1441,7 @@
 
 **/api/curator/:handle**
 - `GET /api/curator/:handle`
+- `POST /api/curator/:handle/p/:productId/click`
 - `GET /api/curator/:handle/p/:productId/redirect`
 
 **/api/curator/handle**
@@ -1601,7 +1604,7 @@
 
 
 
-> 마지막 생성: 2026-10-18T05:15:22.715Z
+> 마지막 생성: 2026-10-18T07:42:58.037Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

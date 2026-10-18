@@ -26,6 +26,7 @@ import { resolveSellerNotifyTarget } from '../../../worker/utils/seller-notify-p
 import { storeGoUrl } from '../../../shared/store-deep-link'
 import { redeemByCounterSecret } from '../../../worker/utils/counter-redeem'
 import { findBrandBranchForVoucherCode } from '../../../worker/utils/brand-wide-redeem'
+import { recordVoucherRedeemStore, settlementMerchantFor } from '../../../worker/utils/brand-cross-owner'
 import { redeemVoucherForStore } from '../../../worker/utils/voucher-seller-redeem'
 import { GIFTED_REFUND_BLOCKED, GIFT_PENDING_REFUND_BLOCKED, GIFT_PENDING_USE_BLOCKED, noPendingGiftSql, voucherHasPendingGift } from '../../../worker/utils/voucher-gift'
 
@@ -163,6 +164,11 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
         ).bind(code).first<{ voucher_id: number; order_id: number | null; user_id: string; applied_price: number | null; phone: string | null; product_name: string; restaurant_name: string | null; category: string | null; seller_id: number | null; consigned_from_seller_id: number | null }>()
         if (meta) {
           responseMeta = { product_name: meta.product_name, restaurant_name: meta.restaurant_name }
+          // 🏷️ 2026-10-18 3단계 — 어느 지점의 확인코드로 받았는지 적는다(판 지점이면 옛 기록을 지운다).
+          //   아래 원장보다 먼저 끝나야 원장이 그 기록을 읽는다 — 그래서 await. 실패는 판 지점 정산(종전).
+          await recordVoucherRedeemStore(DB, {
+            voucherId: Number(meta.voucher_id), soldSellerId: meta.seller_id, storeSellerId: brandBranch ?? meta.seller_id,
+          }).catch(() => { /* 기록 실패 = 판 지점 정산 */ })
           // 🚪 2026-07-13 (데이터 감사 2단계): 방문 통합 이벤트 — 완결고리 '방문' 노드(멱등·best-effort).
           //   user_id 는 vouchers.user_id(meta.user_id) 그대로 → 이용권↔방문↔유저 단일 조인키.
           c.executionCtx?.waitUntil((async () => {
@@ -182,7 +188,8 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
           c.executionCtx?.waitUntil((async () => {
             try {
               const { recordVoucherUsedLedger } = await import('../../../worker/utils/ledger'); const { debitOwnerPromoForOrder } = await import('../../../worker/utils/owner-promo')
-              const merchantId = meta.consigned_from_seller_id ?? meta.seller_id ?? 0
+              // 정산받는 매장 — 다른 점주 지점이 받았으면 그 지점(3단계 · 요율도 그 지점 채널), 아니면 종전 그대로.
+              const merchantId = (await settlementMerchantFor(DB, Number(meta.voucher_id), meta.consigned_from_seller_id ?? meta.seller_id)) ?? 0
               const sellerId = meta.consigned_from_seller_id ? meta.seller_id : null
               const amount = meta.applied_price || 0
               if (merchantId && amount > 0) {

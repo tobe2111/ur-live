@@ -47,41 +47,47 @@ const STORE_UNUSED = { source: 'internal', id: 7, status: 'unused', expires_at: 
 beforeEach(() => vouchers.mockReset())
 
 describe('① 교환권은 이용권으로 세지 않는다 (대표 신고의 재현)', () => {
-  it('발송 실패한 KT 교환권만 가진 계정은 이용권 현황 자체가 안 뜬다', () => {
+  /* 📐 2026-10-18 — 종전엔 "바 자체가 안 뜬다(null)" 를 단언했다. 그 null 이 첫 방문의 밀림을 만들어
+     (응답 뒤에 바가 생기며 아래 목록이 100px 밀렸다) 자리는 늘 세우고 **숫자를 감추는** 쪽으로 바뀌었다.
+     지키려는 것은 그대로다 — 교환권 한 장이 '이용권 1장' 으로 둔갑하지 않는다. */
+  it('발송 실패한 KT 교환권만 가진 계정엔 이용권 숫자가 안 보이고 빈 안내가 뜬다', () => {
     vouchers.mockReturnValue([CEO_FAILED_GIFTICON])
     const { container } = render(<OrderStatusBar />)
-    // 이용권 0장 → 바를 그릴 이유가 없다. "내 이용권 0" 과 같은 답이 된다.
-    expect(container.firstChild).toBeNull()
+    expect(screen.getByText('아직 산 이용권이 없어요')).toBeTruthy()
+    const row = screen.getByText('구매완료').closest('div.flex') as HTMLElement
+    expect(row.className, '숫자 줄은 높이만 잡고 안 보여야 한다 — "내 이용권 0" 과 같은 답').toContain('invisible')
+    expect(container.firstChild).not.toBeNull()
   })
 
   it('`deal_only=1`(딜 전용 = 교환권)도 마찬가지로 빠진다 — 판정은 source 하나가 아니다', () => {
     vouchers.mockReturnValue([{ source: 'internal', id: 9, status: 'unused', deal_only: 1 }])
-    const { container } = render(<OrderStatusBar />)
-    expect(container.firstChild).toBeNull()
+    render(<OrderStatusBar />)
+    expect(screen.getByText('아직 산 이용권이 없어요')).toBeTruthy()
   })
 
   it('교환권과 이용권이 섞여 오면 이용권만 센다', () => {
     vouchers.mockReturnValue([CEO_FAILED_GIFTICON, STORE_UNUSED])
     render(<OrderStatusBar />)
     expect(countOf('구매완료')).toBe(1)
-    expect(countOf('사용가능')).toBe(1)
   })
 })
 
-describe('② 모르는 상태를 사용가능으로 세지 않는다', () => {
-  it("'사용가능' 은 unused 일 때만 — 낯선 상태는 어느 칸에도 안 들어간다", () => {
+/* 🔢 2026-10-18 (대표 *"같은 숫자 하나로 줄여줘"*) — '사용가능' 칸은 위 숫자 줄(`이용권 N`)로 옮겨갔다.
+   그 숫자는 지갑 첫 탭과 같은 술어(`isUsableWalletItem`)로 센다 — 발송 실패 교환권을 빼는 일은 그 함수와
+   `useMyCounts` 의 지갑 분리가 맡는다. 이 바에 남은 불변식은 **모르는 상태를 아무 칸에나 넣지 않는다** 다. */
+describe('② 모르는 상태를 아무 칸에나 넣지 않는다', () => {
+  it("낯선 상태는 총계에만 남고 '사용완료'·'만료·환불' 어느 칸에도 안 들어간다", () => {
     vouchers.mockReturnValue([{ source: 'internal', id: 11, status: 'processing', deal_only: 0 }])
     render(<OrderStatusBar />)
     expect(countOf('구매완료')).toBe(1)   // 산 것은 맞으니 총계에는 남는다
-    expect(countOf('사용가능')).toBe(0)   // 🔑 옛 `else → usable` 이면 1 이 된다
     expect(countOf('사용완료')).toBe(0)
-    expect(countOf('만료·환불')).toBe(0)
+    expect(countOf('만료·환불')).toBe(0)   // 🔑 else 폴백이면 1 이 된다
   })
 
-  it('status 가 비어 있으면(컬럼 DEFAULT = unused) 사용가능으로 센다', () => {
-    vouchers.mockReturnValue([{ source: 'internal', id: 12, status: null, deal_only: 0 }])
+  it("'사용가능' 칸이 이 바로 돌아오지 않는다 — 위 숫자 줄과 같은 뜻의 숫자가 두 번 선다", () => {
+    vouchers.mockReturnValue([STORE_UNUSED])
     render(<OrderStatusBar />)
-    expect(countOf('사용가능')).toBe(1)
+    expect(screen.queryByText('사용가능')).toBeNull()
   })
 })
 
@@ -97,7 +103,6 @@ describe('③ 기존 분류는 그대로다 (회귀 방지)', () => {
     expect(countOf('구매완료')).toBe(4)
     expect(countOf('사용완료')).toBe(1)
     expect(countOf('만료·환불')).toBe(2)
-    expect(countOf('사용가능')).toBe(1)
   })
 
   it('기간이 지난 이용권은 status 가 unused 여도 만료로 센다 (ISO Z 형태)', () => {
@@ -106,7 +111,6 @@ describe('③ 기존 분류는 그대로다 (회귀 방지)', () => {
     ])
     render(<OrderStatusBar />)
     expect(countOf('만료·환불')).toBe(1)
-    expect(countOf('사용가능')).toBe(0)
   })
 
   it('UTC-naive(`Z` 없음) 만료 문자열도 같은 답을 낸다 — parseUTCDate SSOT', () => {

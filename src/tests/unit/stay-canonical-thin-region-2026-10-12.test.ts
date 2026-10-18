@@ -136,7 +136,10 @@ describe('🏨 #18 숙소 정본 단일화', () => {
     const ns = stayNoscriptFromPayload(staySeed(ROOMS))
     const text = ns.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
     expect(text.length).toBeGreaterThan(100)
-    expect(text).toContain('속초시')
+    // 🔁 2026-10-18: 이 픽스처(라이브 2887)는 컬럼이 `속초시` 인데 주소는 양양군이다 — 그 틀린 지역을
+    //   고정하던 단언이었다. 크롤러 본문은 이제 주소를 읽는다(`stayRegionShort`).
+    expect(text).toContain('양양군')
+    expect(text).not.toContain('속초시')
     expect(text).toContain('149,000')
     expect(text).toContain('강원특별자치도 양양군')
     expect(text).toContain('스탠다드 텐트')

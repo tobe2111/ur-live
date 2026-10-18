@@ -1,205 +1,121 @@
 /**
- * Seller Daily Report — 셀러 일일 보고서 메일
+ * 📊 사장님 일일 리포트 메일 — 어제 이용권이 몇 장 팔리고 몇 장 쓰였는지.
  *
- * 매일 18UTC batch 합류 (KST 03:00 — 한국에선 새벽이라 다음날 아침 확인).
+ * 매일 18:40 UTC(= 한국 새벽 3:40) growth 배치에서 돈다 → 사장님은 아침에 확인한다.
  *
- * 처리:
- *   1) sellers.daily_report_enabled = 1 인 셀러 조회
- *   2) 어제 (00:00~23:59 KST) 매출/주문/라이브/시청자 요약
- *   3) Resend 이메일 발송 (RESEND_API_KEY 있을 때만)
+ * 🩸 2026-10-18 수리 (대표 "4번 하자") — 이 리포트는 **한 통도 나간 적이 없었다**:
+ *   ① 수신 대상이 `daily_report_enabled = 1` 인데 기본값이 0 이고 켜는 화면이 없었다 → 0명
+ *   ② `status = 'active'` 만 봐서 승인된 사장님(`approved`)이 빠졌다
+ *   ③ 시간 비교를 ISO 문자열(`…T…Z`)로 해서 D1 형식(`… HH:MM:SS`)과 하루 경계가 어긋났다
+ *   ④ 날짜 표시가 `getUTCDate() + 1` 이라 월말에 "10-32" 가 됐다
+ *   ⑤ 내용이 라이브 방송·시청자(영구 중단 기능)였고 정작 이용권 판매·사용이 없었다
+ * ⇒ 대상은 게이트 `seller_daily_report_enabled`(기본 OFF — 켜면 승인된 사장님 전원, `seller_meta.daily_report_opt_out='1'` 은 제외).
+ *   게이트가 꺼져 있으면 예전 개별 동의(`daily_report_enabled = 1`)만 받는다.
  *
- * 사용자가 수신 거부 가능 (sellers.daily_report_enabled 컬럼 토글).
- *
- * 마이그레이션: sellers.daily_report_enabled 컬럼 (idempotent ALTER).
+ * 활동이 0 인 날은 보내지 않는다(스팸 방지). 머니 경로 무접촉 — 읽기와 메일 발송뿐.
  */
 
-import type { Env } from '../types/env';
+import type { Env } from '../types/env'
+import { sendEmail } from '../../services/email'
+import { transactionalMailReady } from '../../lib/ncp-sens-mail'
+import { getSellerMeta } from '../utils/seller-meta'
+import { settingOn, yesterdayKstRange, escHtml, SELLER_DAILY_REPORT_GATE } from '../utils/owner-nudges'
 
-import { swallow } from '../utils/swallow';
-import { sendEmail } from '../../services/email';
-import { transactionalMailReady } from '../../lib/ncp-sens-mail';
-interface SellerRow {
-  id: number;
-  business_name: string | null;
-  email: string;
+interface SellerRow { id: number; business_name: string | null; email: string | null }
+export type DailyReportStats = { sold: number; soldAmount: number; used: number; orders: number; orderAmount: number; newReviews: number; avgRating: number }
+
+export function buildReportHTML(sellerName: string, date: string, s: DailyReportStats): string {
+  const row = (label: string, value: string) =>
+    `<tr><td style="padding:10px 0;color:#666c72;font-size:14px">${label}</td><td style="padding:10px 0;text-align:right;font-size:17px;font-weight:700;color:#16181c">${value}</td></tr>`
+  const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}원`
+  const tip = s.sold === 0 && s.used > 0
+    ? '어제는 새로 팔린 이용권은 없었지만 손님이 다녀갔어요. 사진이나 가격을 한 번 점검해 보세요.'
+    : s.sold > 0 ? '어제 판매가 있었어요. 손님이 오면 QR 로 사용 처리를 꼭 해 주세요(정산 근거가 됩니다).'
+      : '새 후기를 확인해 보세요.'
+  return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>${escHtml(sellerName)} 일일 리포트</title></head>
+<body style="margin:0;padding:24px;background:#f8f7fc;font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#16181c">
+<div style="max-width:520px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden">
+<div style="background:#1c69ef;color:#fff;padding:20px 24px"><div style="font-size:13px;opacity:.85">${escHtml(date)} 일일 리포트</div><div style="font-size:20px;font-weight:700;margin-top:4px">${escHtml(sellerName)}</div></div>
+<div style="padding:8px 24px 20px"><table style="width:100%;border-collapse:collapse">
+${row('팔린 이용권', `${s.sold}장`)}${row('이용권 판매액', won(s.soldAmount))}${row('손님이 사용한 이용권', `${s.used}장`)}
+${s.orders ? row('쇼핑 주문', `${s.orders}건 · ${won(s.orderAmount)}`) : ''}${row('새 후기', s.newReviews ? `${s.newReviews}건 · 평균 ${s.avgRating.toFixed(1)}점` : '0건')}
+</table><p style="margin:16px 0 0;padding:14px;background:#f8f7fc;border-radius:10px;font-size:13px;color:#4f545a">${tip}</p>
+<div style="text-align:center;margin-top:20px"><a href="https://urdeal.kr/user/profile" style="display:inline-block;padding:12px 22px;background:#1c69ef;color:#fff;text-decoration:none;border-radius:10px;font-weight:700;font-size:15px">내 가게 보기</a></div></div>
+<div style="padding:12px;text-align:center;font-size:12px;color:#81868c">유어딜 · 리포트를 그만 받으려면 urteam.corp@gmail.com 으로 알려 주세요.</div>
+</div></body></html>`
 }
 
-function buildReportHTML(opts: {
-  sellerName: string;
-  yesterdayDate: string;
-  revenue: number;
-  orderCount: number;
-  liveCount: number;
-  totalViewers: number;
-  newReviews: number;
-  avgRating: number;
-}) {
-  return `<!DOCTYPE html>
-<html lang="ko">
-<head><meta charset="UTF-8"><title>${opts.sellerName} 일일 리포트</title></head>
-<body style="font-family: -apple-system, sans-serif; background: #f9fafb; padding: 24px; color: #111827;">
-  <div style="max-width: 560px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden;">
-    <div style="background: linear-gradient(135deg, #374151, #6b7280); padding: 24px; color: white;">
-      <h1 style="margin: 0; font-size: 20px;">📊 ${opts.yesterdayDate} 일일 리포트</h1>
-      <p style="margin: 4px 0 0; opacity: 0.9;">${opts.sellerName}</p>
-    </div>
-    <div style="padding: 20px;">
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-        ${stat('💰 매출', `${(opts.revenue / 10_000).toFixed(0)}만원`)}
-        ${stat('📦 주문', `${opts.orderCount}건`)}
-        ${stat('🎥 라이브', `${opts.liveCount}회`)}
-        ${stat('👥 시청자', `${Number(opts.totalViewers ?? 0).toLocaleString('ko-KR')}명`)}
-        ${stat('⭐ 새 리뷰', `${opts.newReviews}건`)}
-        ${stat('★ 평균 별점', opts.avgRating.toFixed(1))}
-      </div>
-      <div style="margin-top: 20px; padding: 14px; background: #f3f4f6; border-radius: 10px; font-size: 12px; color: #92400e;">
-        💡 <strong>오늘의 추천</strong>:
-        ${opts.liveCount === 0 ? '어제 라이브가 없었어요. 오늘 짧게라도 시작해보세요!' :
-          opts.revenue === 0 ? '시청자가 있는데 매출 0건. 가격/혜택 점검 권장.' :
-          '꾸준한 활동 감사합니다 🎉'}
-      </div>
-      <div style="margin-top: 20px; text-align: center;">
-        <a href="https://urdeal.kr/seller" style="display: inline-block; padding: 10px 20px; background: #374151; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">대시보드 →</a>
-      </div>
-    </div>
-    <div style="padding: 12px; background: #f9fafb; text-align: center; font-size: 10px; color: #9ca3af;">
-      유어딜 일일 리포트 ·
-      <a href="https://urdeal.kr/seller/settings" style="color: #6b7280;">수신 거부</a>
-    </div>
-  </div>
-</body>
-</html>`;
-}
+export async function handleSellerDailyReport(env: Env): Promise<{ sent: number; failed: number; targets: number }> {
+  const DB = env.DB
+  const out = { sent: 0, failed: 0, targets: 0 }
+  if (!DB) return out
+  if (!transactionalMailReady(env)) return out
 
-function stat(label: string, value: string): string {
-  return `<div style="background: #f9fafb; padding: 12px; border-radius: 10px;">
-    <div style="font-size: 11px; color: #6b7280;">${label}</div>
-    <div style="font-size: 18px; font-weight: bold; margin-top: 4px;">${value}</div>
-  </div>`;
-}
+  const gateOn = await settingOn(DB, SELLER_DAILY_REPORT_GATE)
+  const where = gateOn
+    ? `status IN ('approved','active')`
+    : `status IN ('approved','active') AND COALESCE(daily_report_enabled, 0) = 1`
+  const sellers = (await DB.prepare(
+    `SELECT id, business_name, email FROM sellers WHERE ${where} AND email IS NOT NULL AND email != '' LIMIT 1000`,
+  ).all<SellerRow>().catch(() => ({ results: [] as SellerRow[] }))).results || []
+  if (!sellers.length) return out
 
-export async function handleSellerDailyReport(env: Env): Promise<void> {
-  const DB = env.DB;
-  if (!DB) return;
+  const meta = await getSellerMeta(DB, sellers.map(s => s.id)).catch(() => new Map<number, Record<string, string>>())
+  const targets = sellers.filter(s => meta.get(s.id)?.daily_report_opt_out !== '1')
+  out.targets = targets.length
+  if (!targets.length) return out
 
-  // 📮 2026-10-12: Resend 키 또는 SENS 메일 중 하나만 있으면 보낸다(유어딜엔 Resend 키가 없다 — 실측).
-  const resendKey = (env as Env & { RESEND_API_KEY?: string }).RESEND_API_KEY || '';
-  if (!transactionalMailReady(env)) {
-    console.info('[cron:seller-daily-report] 메일 수단(RESEND_API_KEY / SENS 메일) 미설정 — skip');
-    return;
+  const { date, start, end } = yesterdayKstRange()
+  const stats = new Map<number, DailyReportStats>()
+  const get = (id: number) => {
+    let v = stats.get(id)
+    if (!v) { v = { sold: 0, soldAmount: 0, used: 0, orders: 0, orderAmount: 0, newReviews: 0, avgRating: 0 }; stats.set(id, v) }
+    return v
+  }
+  const ids = targets.map(s => s.id)
+  for (let i = 0; i < ids.length; i += 100) {
+    const chunk = ids.slice(i, i + 100)
+    const ph = chunk.map(() => '?').join(',')
+    // 팔린 이용권 — 0원 체험권은 판매가 아니라서 뺀다(컬럼이 없는 옛 스키마면 그냥 센다).
+    const soldSql = (exp: string) => `SELECT p.seller_id AS sid, COUNT(*) AS n, COALESCE(SUM(COALESCE(v.applied_price, p.price, 0)), 0) AS amt
+      FROM vouchers v JOIN products p ON p.id = v.product_id
+      WHERE p.seller_id IN (${ph}) AND v.created_at >= ? AND v.created_at < ? ${exp} GROUP BY p.seller_id`
+    const sold = await DB.prepare(soldSql('AND COALESCE(v.is_experience, 0) = 0')).bind(...chunk, start, end).all<{ sid: number; n: number; amt: number }>()
+      .catch(() => DB.prepare(soldSql('')).bind(...chunk, start, end).all<{ sid: number; n: number; amt: number }>())
+      .catch(() => ({ results: [] as { sid: number; n: number; amt: number }[] }))
+    for (const r of sold.results || []) { const v = get(r.sid); v.sold = Number(r.n); v.soldAmount = Number(r.amt) }
+
+    const used = await DB.prepare(`SELECT p.seller_id AS sid, COUNT(*) AS n FROM vouchers v JOIN products p ON p.id = v.product_id
+      WHERE p.seller_id IN (${ph}) AND v.status = 'used' AND v.used_at >= ? AND v.used_at < ? GROUP BY p.seller_id`)
+      .bind(...chunk, start, end).all<{ sid: number; n: number }>().catch(() => ({ results: [] as { sid: number; n: number }[] }))
+    for (const r of used.results || []) get(r.sid).used = Number(r.n)
+
+    const orders = await DB.prepare(`SELECT seller_id AS sid, COUNT(*) AS n, COALESCE(SUM(total_amount), 0) AS amt FROM orders
+      WHERE seller_id IN (${ph}) AND payment_status = 'approved' AND created_at >= ? AND created_at < ? GROUP BY seller_id`)
+      .bind(...chunk, start, end).all<{ sid: number; n: number; amt: number }>().catch(() => ({ results: [] as { sid: number; n: number; amt: number }[] }))
+    for (const r of orders.results || []) { const v = get(r.sid); v.orders = Number(r.n); v.orderAmount = Number(r.amt) }
+
+    const reviews = await DB.prepare(`SELECT p.seller_id AS sid, COUNT(*) AS n, COALESCE(AVG(pr.rating), 0) AS avg_r
+      FROM product_reviews pr JOIN products p ON p.id = pr.product_id
+      WHERE p.seller_id IN (${ph}) AND pr.created_at >= ? AND pr.created_at < ? GROUP BY p.seller_id`)
+      .bind(...chunk, start, end).all<{ sid: number; n: number; avg_r: number }>().catch(() => ({ results: [] as { sid: number; n: number; avg_r: number }[] }))
+    for (const r of reviews.results || []) { const v = get(r.sid); v.newReviews = Number(r.n); v.avgRating = Number(r.avg_r) }
   }
 
-  // sellers.daily_report_enabled 컬럼 보장 (idempotent)
-  await DB.prepare(`ALTER TABLE sellers ADD COLUMN daily_report_enabled INTEGER DEFAULT 0`).run().catch(swallow('worker:cron:seller-daily-report'));
-
-  // 수신 활성화한 셀러만
-  const sellers = await DB.prepare(`
-    SELECT id, business_name, email
-    FROM sellers
-    WHERE status = 'active' AND daily_report_enabled = 1
-    LIMIT 1000
-  `).all<SellerRow>().catch(() => ({ results: [] as SellerRow[] }));
-
-  if (!sellers.results?.length) {
-    console.info('[cron:seller-daily-report] enabled sellers: 0');
-    return;
-  }
-
-  // 어제 KST 00:00 ~ 23:59 → UTC 로 환산 (KST = UTC+9)
-  // 어제 KST 시작 = 2일 전 UTC 15:00
-  const now = new Date();
-  const yesterdayKstStart = new Date(now.getTime() - 86400_000);
-  yesterdayKstStart.setUTCHours(15, 0, 0, 0); // 어제 KST 00:00 = 어제 UTC 15:00 (= 그저께 UTC 15:00)
-  yesterdayKstStart.setUTCDate(yesterdayKstStart.getUTCDate() - 1);
-  const yesterdayKstEnd = new Date(yesterdayKstStart.getTime() + 86399_000);
-  const yesterdayDate = `${yesterdayKstStart.getUTCFullYear()}-${String(yesterdayKstStart.getUTCMonth() + 1).padStart(2, '0')}-${String(yesterdayKstStart.getUTCDate() + 1).padStart(2, '0')}`;
-
-  let sent = 0;
-  let failed = 0;
-
-  const start = yesterdayKstStart.toISOString();
-  const end = yesterdayKstEnd.toISOString();
-
-  // ✅ PERF: 셀러별 3개 쿼리 (revenue/lives/reviews) → IN clause + GROUP BY 단일 query 3개 (총 3 쿼리만 실행).
-  // 100명 셀러 × 3 = 300 쿼리 → 3 쿼리. (chunk size 100 으로 IN 절 보호)
-  type RevAgg = { seller_id: number; cnt: number; rev: number };
-  type LiveAgg = { seller_id: number; cnt: number; viewers: number };
-  type ReviewAgg = { seller_id: number; cnt: number; avg_r: number };
-  const revMap = new Map<number, { cnt: number; rev: number }>();
-  const liveMap = new Map<number, { cnt: number; viewers: number }>();
-  const reviewMap = new Map<number, { cnt: number; avg_r: number }>();
-
-  const sellerIds = sellers.results.map(s => s.id);
-  const CHUNK = 100;
-  for (let i = 0; i < sellerIds.length; i += CHUNK) {
-    const chunk = sellerIds.slice(i, i + CHUNK);
-    const ph = chunk.map(() => '?').join(',');
+  const resendKey = (env as Env & { RESEND_API_KEY?: string }).RESEND_API_KEY || ''
+  for (const s of targets) {
+    const st = stats.get(s.id)
+    if (!st || st.sold + st.used + st.orders + st.newReviews === 0) continue
     try {
-      const { results } = await DB.prepare(`
-        SELECT seller_id, COUNT(*) AS cnt, COALESCE(SUM(total_amount), 0) AS rev
-        FROM orders WHERE seller_id IN (${ph}) AND payment_status = 'approved'
-          AND created_at >= ? AND created_at <= ?
-        GROUP BY seller_id
-      `).bind(...chunk, start, end).all<RevAgg>();
-      for (const r of results ?? []) revMap.set(r.seller_id, { cnt: r.cnt, rev: r.rev });
-    } catch { /* best-effort */ }
-    try {
-      const { results } = await DB.prepare(`
-        SELECT seller_id, COUNT(*) AS cnt, COALESCE(SUM(peak_viewers), 0) AS viewers
-        FROM live_streams WHERE seller_id IN (${ph})
-          AND created_at >= ? AND created_at <= ?
-        GROUP BY seller_id
-      `).bind(...chunk, start, end).all<LiveAgg>();
-      for (const r of results ?? []) liveMap.set(r.seller_id, { cnt: r.cnt, viewers: r.viewers });
-    } catch { /* best-effort */ }
-    try {
-      const { results } = await DB.prepare(`
-        SELECT p.seller_id AS seller_id, COUNT(*) AS cnt, COALESCE(AVG(pr.rating), 0) AS avg_r
-        FROM product_reviews pr
-        JOIN products p ON p.id = pr.product_id
-        WHERE p.seller_id IN (${ph})
-          AND pr.created_at >= ? AND pr.created_at <= ?
-        GROUP BY p.seller_id
-      `).bind(...chunk, start, end).all<ReviewAgg>();
-      for (const r of results ?? []) reviewMap.set(r.seller_id, { cnt: r.cnt, avg_r: r.avg_r });
-    } catch { /* best-effort */ }
-  }
-
-  for (const s of sellers.results) {
-    try {
-      const rev = revMap.get(s.id) ?? null;
-      const lives = liveMap.get(s.id) ?? null;
-      const reviews = reviewMap.get(s.id) ?? null;
-
-      // 활동 0 인 셀러는 메일 skip (스팸 방지)
-      const totalActivity = (rev?.cnt ?? 0) + (lives?.cnt ?? 0) + (reviews?.cnt ?? 0);
-      if (totalActivity === 0) continue;
-
-      const html = buildReportHTML({
-        sellerName: s.business_name || '셀러',
-        yesterdayDate,
-        revenue: rev?.rev ?? 0,
-        orderCount: rev?.cnt ?? 0,
-        liveCount: lives?.cnt ?? 0,
-        totalViewers: lives?.viewers ?? 0,
-        newReviews: reviews?.cnt ?? 0,
-        avgRating: reviews?.avg_r ?? 0,
-      });
-
-      // 공용 발송(`services/email`) — SENS 메일이 있으면 그쪽, 거절되면 Resend 키가 있을 때 한 번 더.
+      const name = s.business_name || '사장님'
       const res = await sendEmail(
-        { to: s.email, subject: `[유어딜] ${s.business_name || '셀러'} ${yesterdayDate} 일일 리포트`, html },
+        { to: String(s.email), subject: `[유어딜] ${name} ${date} 이용권 리포트`, html: buildReportHTML(name, date, st) },
         resendKey,
         (env as Env & { RESEND_FROM?: string }).RESEND_FROM,
-      );
-
-      if (res.success) sent++;
-      else failed++;
-    } catch (err) {
-      console.error(`[cron:seller-daily-report] ${s.id} failed:`, err);
-      failed++;
-    }
+      )
+      if (res.success) out.sent++
+      else out.failed++
+    } catch { out.failed++ }
   }
-
-  console.info(`[cron:seller-daily-report] sent=${sent} failed=${failed}`);
+  return out
 }

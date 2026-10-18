@@ -8,6 +8,7 @@
  * 정상이 된 지 오래였다는 뜻이다.
  *
  * ⇒ 이용권의 실제 생애로 바꾼다: **구매완료 → 사용가능 → 사용완료 → 만료·환불**.
+ *   🔢 2026-10-18: '사용가능' 은 맨 위 숫자 줄(`이용권 N`)로 옮겨갔다 — 이 바는 남은 셋을 말한다.
  *   숫자는 주문(orders)이 아니라 **이용권(vouchers)** 에서 센다 — 사람이 세는 단위가 그것이다
  *   ("내 이용권 몇 장 남았나"). 데이터는 `/my-vouchers` 지갑과 **같은 훅**을 쓰므로 두 화면이 갈릴 수 없다.
  *
@@ -52,10 +53,15 @@ interface VoucherRow { status?: string | null; expires_at?: string | null; sourc
 export default function OrderStatusBar() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { data: vouchersRaw = [] } = useMyVouchers()
+  const { data } = useMyVouchers()
+  // 📐 2026-10-18 — **모르는 것**과 **0** 을 가른다. 캐시가 없는 첫 방문(새 기기·다른 계정으로 바꾼 직후)엔
+  //   `data` 가 아직 없다. 그때 종전처럼 `null` 을 돌려주면, 응답이 온 순간 바가 생기며 아래
+  //   '내가 산 것' 목록 전체가 **100px 아래로 밀렸다**(하네스 `--slow=1500 --shift` 실측 — 보이는 줄 13~28개).
+  const vouchersRaw = data ?? []
+  const known = data !== undefined
 
   const counts = useMemo(() => {
-    const c: Record<string, number> = { bought: 0, usable: 0, used: 0, gone: 0 }
+    const c: Record<string, number> = { bought: 0, used: 0, gone: 0 }
     const now = Date.now()
     for (const v of vouchersRaw as VoucherRow[]) {
       // 🎟️ 교환권(KT·딜 전용)은 여기서 세지 않는다 — 아래 '내 교환권' 행이 맡는다.
@@ -69,19 +75,25 @@ export default function OrderStatusBar() {
       //   (KT-알파 병합 경로 등)에서 `...ZZ` → NaN → `NaN < now` 가 **false** 라 만료된 이용권이
       //   조용히 '사용가능' 으로 세어진다. `parseUTCDate` 가 두 형태를 모두 받는다.
       if (v.expires_at && parseUTCDate(v.expires_at).getTime() < now) { c.gone++; continue }
-      // ✅ 허용목록 — `else c.usable++` 로 두면 **모르는 상태가 전부 '사용가능'** 이 된다(이번 사고).
-      //   `''` 는 컬럼 DEFAULT('unused')와 같은 뜻이라 함께 받는다. 그 밖은 어느 칸에도 안 넣는다.
-      if (st === 'unused' || st === '') c.usable++   // 미사용 + 기간 안 — 지금 쓸 수 있는 것
+      // 🔢 2026-10-18 — **'사용가능' 칸을 뺐다**(대표 *"같은 숫자 하나로 줄여줘"*). 지금 쓸 수 있는 장수는
+      //   맨 위 숫자 줄의 `이용권 N` 이 그 한 곳이다 — 거기는 지갑 첫 탭과 같은 술어(`isUsableWalletItem`)로
+      //   센다. 여기서 따로 세면 같은 화면에 같은 뜻의 숫자가 둘이 되고, 술어가 달라 **값까지** 갈릴 수 있었다
+      //   (이 바는 기간 지난 미사용을 빼고, 위 줄은 지갑과 같이 status 만 본다).
+      //   ✅ 2026-09-03 의 교훈(모르는 상태를 '사용가능' 으로 세지 않는다)은 그대로다 — 이제 그 칸 자체가 없다.
     }
     return c
   }, [vouchersRaw])
 
-  // 산 적이 없으면 0 넷을 보여줄 이유가 없다(기존 동작 승계).
-  if (!counts.bought) return null
+  // 📐 자리는 **언제나 같은 높이**로 선다 — 세 상태가 같은 숫자 줄을 쓰고 보이는 것만 다르다.
+  //   · 아직 모름   → 숫자 줄을 `invisible` 로(0 을 적지 않는다 — 모르는 것과 0 은 다르다)
+  //   · 산 적 없음  → 숫자 줄은 `invisible` 로 높이만 잡고 그 위에 빈 안내 한 줄
+  //   · 산 적 있음  → 종전 그대로
+  //   종전의 *"산 적이 없으면 숨긴다"* 는 첫 방문의 밀림을 만들었다 — 숨기면 응답 뒤에 생겨나고,
+  //   미리 세워 두면 0장인 사람에게서 접히며 **위로** 밀린다. 높이를 안 바꾸는 것만이 둘 다 막는다.
+  const state: 'unknown' | 'empty' | 'ready' = !known ? 'unknown' : counts.bought ? 'ready' : 'empty'
 
   const items = [
     { label: t('voucherStatus.bought', { defaultValue: '구매완료' }), key: 'bought', path: '/my-vouchers' },
-    { label: t('voucherStatus.usable', { defaultValue: '사용가능' }), key: 'usable', path: '/my-vouchers' },
     { label: t('voucherStatus.used', { defaultValue: '사용완료' }), key: 'used', path: '/my-vouchers' },
     { label: t('voucherStatus.gone', { defaultValue: '만료·환불' }), key: 'gone', path: '/my-vouchers' },
   ]
@@ -92,15 +104,26 @@ export default function OrderStatusBar() {
        🧱 가로 패딩 없음: 아래 목록 줄(`px-4`)과 왼쪽 끝을 맞춘다. */
     <div className="ur-content-medium lg:px-4 pt-3">
       <p className="px-4 text-[12px] font-bold text-gray-500 dark:text-gray-400 mb-2">{t('voucherStatus.sectionTitle', { defaultValue: '이용권 현황' })}</p>
-      <div className="flex items-center justify-between px-2 py-2">
+      <div className="relative">
+      <div className={`flex items-center justify-between px-2 py-2 ${state === 'ready' ? '' : 'invisible'}`} aria-hidden={state === 'ready' ? undefined : true}>
         {items.map(o => (
-          <button key={o.label} onClick={() => navigate(o.path)} className="flex-1 text-center">
+          <button key={o.label} onClick={() => navigate(o.path)} tabIndex={state === 'ready' ? undefined : -1} className="flex-1 text-center">
             <p className={`text-[17px] font-extrabold ${counts[o.key] ? 'text-gray-900 dark:text-white' : 'text-gray-300 dark:text-white/20'}`} style={{ letterSpacing: '-0.02em' }}>
               {counts[o.key] || 0}
             </p>
             <p className="text-[12px] text-gray-900 dark:text-white/55 mt-1">{o.label}</p>
           </button>
         ))}
+      </div>
+      {state === 'empty' && (
+        <button
+          onClick={() => navigate('/')}
+          className="absolute inset-0 flex items-center justify-center gap-1 text-[13px] text-gray-500 dark:text-gray-400"
+        >
+          {t('voucherStatus.empty', { defaultValue: '아직 산 이용권이 없어요' })}
+          <span className="font-semibold text-gray-900 dark:text-white">{t('voucherStatus.browse', { defaultValue: '이용권 둘러보기' })} ›</span>
+        </button>
+      )}
       </div>
     </div>
   )

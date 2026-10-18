@@ -18,6 +18,7 @@ import {
 } from '@/components/icons/urdeal-icons'
 import { SectionTitle, ListRow, rowIcon } from './list-grammar'
 import type { MyCounts } from './types'
+import { SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
 
 /** 🖊️ 2026-08-30: `icon` 이모지 문자열 → lucide 컴포넌트.
  *  이 목록은 마이페이지의 주 메뉴다 — 11칸이 전부 이모지라 같은 행 오른쪽의
@@ -44,17 +45,24 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
    */
   const items: Item[] = [
     // 🎟️ 2026-08-31 (대표 — 지갑 분리): 이용권/교환권은 서로 다른 보관함이라 행도 둘.
-    { Icon: TicketStubIcon, label: t('shopping.voucher', { defaultValue: '내 이용권' }), count: counts.voucher, path: '/my-vouchers' },
+    // 🔢 2026-10-18 (대표 *"같은 숫자 하나로 줄여줘"*): 이용권·쿠폰 장수는 **맨 위 숫자 줄(`MyStats`)이
+    //   그 한 곳**이라 이 두 줄엔 숫자를 안 단다(종전엔 같은 값이 세 번·두 번 나왔다). 교환권은 반대로
+    //   숫자 줄에 칸이 없으므로(폰·PC 같은 세 칸) **이 줄이 그 한 곳**이다 — 그래서 숫자가 남는다.
+    { Icon: TicketStubIcon, label: t('shopping.voucher', { defaultValue: '내 이용권' }), path: '/my-vouchers' },
     { Icon: GiftBoxIcon, label: t('shopping.gifticon', { defaultValue: '내 교환권' }), count: counts.gifticon, path: '/my-gifticons' },
-    { Icon: CouponIcon, label: t('shopping.coupons', { defaultValue: '쿠폰함' }), count: counts.coupon, path: '/my-coupons' },
+    { Icon: CouponIcon, label: t('shopping.coupons', { defaultValue: '쿠폰함' }), path: '/my-coupons' },
     { Icon: StayLineIcon, label: t('shopping.myStays', { defaultValue: '내 숙소 예약' }), path: '/my-stays' },
     // 🧹 2026-09-02 (대표 "디지털 보관함도 필요없고"): 전자책·강의는 지금 파는 물건이 아니다.
     //   라우트(/my/digital)와 페이지는 남긴다 — 되살릴 때 이 줄만 되돌리면 된다.
     { Icon: HeartIcon, label: t('shopping.wishlist', { defaultValue: '찜한 상품' }), count: counts.wish, path: '/wishlist' },
     { Icon: StarIcon, label: t('shopping.myFollows', { defaultValue: '내 단골 가게' }), path: '/my/follows' },
-    { Icon: BellIcon, label: t('shopping.interestList', { defaultValue: '관심 맛집' }), path: '/interest-list' },
+    /* 🛍️ 2026-10-18 — '관심 맛집'·'배송지 관리' 는 **쇼핑 탭이 숨겨진 동안** 감춘다.
+       관심 등록 버튼은 쇼핑 목록(`/browse`)에만 남아 있고(가게·이용권 화면엔 없다 — 라이브 누적 1건),
+       배송지는 배송 상품에만 쓰인다(이용권·교환권은 배송이 없다). 둘 다 들어가면 빈 화면이다.
+       라우트·페이지는 남긴다 — 쇼핑을 다시 열면(`SHOPPING_TAB_HIDDEN=false`) 이 두 줄이 저절로 돌아온다. */
+    ...(SHOPPING_TAB_HIDDEN ? [] : [{ Icon: BellIcon, label: t('shopping.interestList', { defaultValue: '관심 맛집' }), path: '/interest-list' }]),
     { Icon: BoxIcon, label: t('shopping.orders', { defaultValue: '주문 내역' }), sub: t('shopping.ordersSub', { defaultValue: '최근 3개월' }), path: '/my-orders' },
-    { Icon: PinIcon, label: t('userProfile.addressManage', { defaultValue: '배송지 관리' }), path: '/mypage/addresses' },
+    ...(SHOPPING_TAB_HIDDEN ? [] : [{ Icon: PinIcon, label: t('userProfile.addressManage', { defaultValue: '배송지 관리' }), path: '/mypage/addresses' }]),
     { Icon: ReviewIcon, label: t('userProfile.myReviews', { defaultValue: '내 리뷰' }), path: '/my-reviews' },
   ]
 

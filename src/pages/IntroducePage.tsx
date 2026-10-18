@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react'
 import { GiftBoxIcon, PinIcon, BagIcon, TicketStubIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
-import { useTranslation } from '@/lib/i18n-lite'
 import { Check, ChevronRight, Search, ShieldCheck, Utensils, Zap } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
+import { CONCEPT_FAQ } from '@/shared/seo/concept-content'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import api from '@/lib/api'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { priceDisplay } from '@/shared/price-display'
+import { loginPathFromHere } from '@/utils/login-return'
 
 // 📱 2026-09-28 (대표 확정 *"아직 앱은 하나도 없어"*): App Store·Google Play 배지를 **전부 삭제**했다.
 //   여기 있던 링크는 실재하지 않는 앱의 스토어 주소(`id6745051422` · `com.urdeal.app`)라, 누르면
@@ -26,8 +27,10 @@ interface GbItem {
   original_price?: number
 }
 
+/** `/faq` 와 같은 문답에서 이 소개 화면에 보일 여섯. 키가 사라지면 시험이 잡는다. */
+export const INTRODUCE_FAQ_KEYS = ['faq.q10', 'faq.q13', 'faq.q15', 'faq.q16', 'faq.q11', 'faq.q7'] as const
+
 export default function IntroducePage() {
-  const { t } = useTranslation()
   const navigate = useNavigate()
   const [deals, setDeals] = useState<GbItem[]>([])
   const [faqOpen, setFaqOpen] = useState<number | null>(0)
@@ -38,25 +41,24 @@ export default function IntroducePage() {
       .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
   }, [])
 
-  const faqs = [
-    { q: t('introduce.faq1Q', { defaultValue: '꼭 앱을 설치해야 하나요?' }), a: t('introduce.faq1A', { defaultValue: '웹에서도 둘러보기와 구매 모두 가능합니다. 단, 공구 오픈 알림·쿠폰 등은 앱에서 더 편하게 이용하실 수 있어요.' }) },
-    { q: t('introduce.faq2Q', { defaultValue: '교환권을 샀는데 환불 되나요?' }), a: t('introduce.faq2A', { defaultValue: '구매일로부터 7일 이내·미사용 교환권은 100% 환불 가능합니다. 유효기간 내에만 사용하시면 되고, 양도도 자유롭게 하실 수 있어요.' }) },
-    { q: t('introduce.faq3Q', { defaultValue: '목표 인원이 안 모이면 어떻게 되나요?' }), a: t('introduce.faq3A', { defaultValue: '동네 공구는 즉시 구매·확정 발급이에요. 목표 인원과 관계없이 지금 바로 그룹 특가로 결제되고 교환권이 곧장 발급됩니다. 인원은 함께 사는 분들을 보여주는 소셜 표시일 뿐이에요.' }) },
-    { q: t('introduce.faq4Q', { defaultValue: '동네 공구는 어디서 찾나요?' }), a: t('introduce.faq4A', { defaultValue: '홈 또는 "동네 공구" 탭에서 지역·카테고리(맛집·뷰티·숙소 등)별로 진행 중인 공구를 확인할 수 있어요.' }) },
-    { q: t('introduce.faq5Q', { defaultValue: '셀러 입점 조건은?' }), a: t('introduce.faq5A', { defaultValue: '사업자 등록이 된 식당·브랜드라면 누구나 신청 가능합니다. 입점 수수료는 없고 판매 수수료만 부담합니다.' }) },
-    { q: t('introduce.faq6Q', { defaultValue: '결제는 어떤 방법이 가능한가요?' }), a: t('introduce.faq6A', { defaultValue: '신용카드·체크카드·계좌이체·간편결제(카카오페이/토스) 모두 지원합니다.' }) },
-  ]
+  // 🧾 2026-10-18 — 이 FAQ 는 `/faq`·llms.txt 와 **같은 SSOT** 에서 고른다. 종전엔 이 화면만의
+  //   여섯 문답이 i18n 키로 따로 있었고, 거기서 "7일 이내 환불·양도 자유", "앱에서 더 편하게"(앱이
+  //   없다), "카카오페이" 같은 사실이 아닌 답이 굳어 있었다. 같은 질문에 답이 두 벌이면 반드시 갈린다.
+  const faqs = INTRODUCE_FAQ_KEYS
+    .map(k => CONCEPT_FAQ.find(f => f.key === k))
+    .filter((f): f is (typeof CONCEPT_FAQ)[number] => !!f)
+    .map(f => ({ q: f.question, a: f.answer }))
 
   const features = [
-    { icon: BagIcon, color: '#EF4444', title: '동네 공구 단일 특가', desc: '대량 단가를 미리 떼와 처음부터 모두에게 같은 그룹 특가. 인원에 따라 가격이 오르내리지 않아요.' },
-    { icon: TicketStubIcon, color: '#6b7280', title: '교환권 즉시 발급', desc: '결제하면 교환권이 바로 발급돼요. 목표 인원과 무관하게 즉시 확정되니 매장에서 바로 사용하세요.' },
-    { icon: PinIcon, color: '#9ca3af', title: '우리 동네 기반', desc: '맛집·뷰티·숙소·헬스까지. 내 지역에서 진행 중인 공구를 카테고리·지역별로 골라보세요.' },
-    { icon: GiftBoxIcon, color: '#6b7280', title: '친구 초대 보너스', desc: '친구를 초대해 함께 구매하면 두 분 모두에게 보너스 딜이 적립돼요.' },
+    { icon: BagIcon, color: '#EF4444', title: '처음부터 한 가격', desc: '인원이 모일 때까지 기다리지 않아요. 지금 사도, 나중에 사도 같은 할인가예요.' },
+    { icon: TicketStubIcon, color: '#6b7280', title: '결제하면 바로 이용권', desc: '결제가 끝나면 내 이용권에 바로 들어와요. 매장에서 QR 또는 PIN을 보여 주면 끝이에요.' },
+    { icon: PinIcon, color: '#9ca3af', title: '우리 동네 기반', desc: '맛집·뷰티·숙소까지. 지도에서 내 주변 이용권을 가까운 순으로 골라 보세요.' },
+    { icon: GiftBoxIcon, color: '#6b7280', title: '내 유어샵으로 소개', desc: '가입하면 내 유어샵이 생겨요. 좋았던 이용권을 담아 두면 링크 하나로 소개가 돼요.' },
   ]
 
   return (
     <div className="bg-[#11141C] text-white min-h-screen">
-      <SEO title={t('introduce.seoTitle', { defaultValue: CONSUMER_SURFACE_SEO['/introduce'].title })} description={t('introduce.seoDesc', { defaultValue: CONSUMER_SURFACE_SEO['/introduce'].description })} url="/introduce" />
+      <SEO title={CONSUMER_SURFACE_SEO['/introduce'].title} description={CONSUMER_SURFACE_SEO['/introduce'].description} url="/introduce" />
 
       {/* ─── NAV ─── */}
       <header className="sticky top-0 z-50 bg-[#11141C]/90 backdrop-blur-md border-b border-[#2C2F35]">
@@ -66,8 +68,8 @@ export default function IntroducePage() {
           </button>
           <nav className="hidden md:flex items-center gap-1">
             <a href="#features" className="px-3 py-2 text-[13px] font-semibold text-gray-400 hover:text-white transition-colors">기능</a>
-            <a href="#deals" className="px-3 py-2 text-[13px] font-semibold text-gray-400 hover:text-white transition-colors">동네 공구</a>
-            <a href="#for-sellers" className="px-3 py-2 text-[13px] font-semibold text-gray-400 hover:text-white transition-colors">셀러 입점</a>
+            <a href="#deals" className="px-3 py-2 text-[13px] font-semibold text-gray-400 hover:text-white transition-colors">동네 이용권</a>
+            <a href="#for-sellers" className="px-3 py-2 text-[13px] font-semibold text-gray-400 hover:text-white transition-colors">매장 입점</a>
             <a href="#faq" className="px-3 py-2 text-[13px] font-semibold text-gray-400 hover:text-white transition-colors">FAQ</a>
           </nav>
           <div className="flex items-center gap-2">
@@ -93,7 +95,7 @@ export default function IntroducePage() {
           <div className="flex-1 min-w-0">
             <div className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-red-500/10 border border-red-500/20 mb-6">
               <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-              <span className="text-[12px] font-extrabold text-red-400">우리 동네 공동구매</span>
+              <span className="text-[12px] font-extrabold text-red-400">우리 동네 이용권</span>
             </div>
             <h1
               className="text-[clamp(40px,5.5vw,72px)] font-black leading-[1.02] text-white"
@@ -101,19 +103,19 @@ export default function IntroducePage() {
             >
               우리 동네<br />
               맛집·뷰티·숙소,<br />
-              <span className="text-transparent bg-clip-text bg-gray-800 italic">함께 사서 특가.</span>
+              <span className="text-transparent bg-clip-text bg-gray-800 italic">할인가로 바로.</span>
             </h1>
             <p className="text-[17px] text-gray-400 mt-6 max-w-[480px] leading-relaxed">
-              대량 단가를 미리 떼와 처음부터 모두에게 같은 그룹 특가.<br />
-              결제하면 교환권이 바로 발급돼요.
+              온라인에서 할인가로 미리 사고, 매장에서 QR로 바로 써요.<br />
+              쓰지 못하면 유효기간이 지난 뒤 자동으로 환불돼요.
             </p>
 
             <div className="flex flex-wrap items-center gap-4 mt-8">
               <button
-                onClick={() => navigate('/group-buy')}
+                onClick={() => navigate('/')}
                 className="flex items-center gap-2 px-6 py-4 rounded-2xl text-gray-900 text-[15px] font-extrabold bg-white hover:bg-gray-100 transition-colors"
               >
-                <BagIcon className="w-4 h-4" /> 동네 공구 둘러보기
+                <BagIcon className="w-4 h-4" /> 동네 이용권 둘러보기
               </button>
               <button
                 onClick={() => navigate('/')}
@@ -151,9 +153,9 @@ export default function IntroducePage() {
                 <div className="w-full h-full rounded-[34px] bg-[#11141C] relative overflow-hidden">
                   {/* notch */}
                   <div className="absolute top-3 left-1/2 -translate-x-1/2 w-[80px] h-[22px] bg-black rounded-2xl z-20" />
-                  {/* 공구 badge */}
+                  {/* 이용권 badge */}
                   <div className="absolute top-12 left-4 flex items-center gap-1 px-2 py-1 rounded-lg bg-red-500 z-10">
-                    <span className="text-[12px] font-extrabold text-white">🔥 동네 공구</span>
+                    <span className="text-[12px] font-extrabold text-white">동네 이용권</span>
                   </div>
                   {/* fake bg */}
                   <div className="absolute inset-0 bg-gradient-to-b from-[#2A0A0A] via-[#1A0808] to-black" />
@@ -167,7 +169,7 @@ export default function IntroducePage() {
                     </div>
                     <div className="mt-2 flex gap-2">
                       <div className="flex-1 py-2 rounded-lg bg-gray-800 text-center text-[12px] font-extrabold text-white">바로 구매</div>
-                      <div className="flex-1 py-2 rounded-lg bg-white/10 text-center text-[12px] font-bold text-white">교환권 발급</div>
+                      <div className="flex-1 py-2 rounded-lg bg-white/10 text-center text-[12px] font-bold text-white">QR로 사용</div>
                     </div>
                   </div>
                 </div>
@@ -204,7 +206,7 @@ export default function IntroducePage() {
         <div className="mb-12 text-center">
           <p className="text-[12px] font-extrabold text-red-400 tracking-[0.15em] mb-3">WHY URDEAL</p>
           <h2 className="text-[clamp(28px,4vw,48px)] font-black text-white" style={{ letterSpacing: '-0.03em' }}>
-            동네 공구, 이렇게 다릅니다
+            유어딜은 이렇게 다릅니다
           </h2>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -226,25 +228,25 @@ export default function IntroducePage() {
         </div>
       </section>
 
-      {/* ─── 인기 동네 공구 ─── */}
+      {/* ─── 인기 이용권 ─── */}
       <section id="deals" className="max-w-[1280px] mx-auto px-6 py-16">
         <div className="mb-8">
-          <p className="text-[12px] font-extrabold text-red-400 tracking-[0.15em] mb-3">● 동네 공구</p>
+          <p className="text-[12px] font-extrabold text-red-400 tracking-[0.15em] mb-3">● 동네 이용권</p>
           <h2 className="text-[clamp(24px,3.5vw,44px)] font-black text-white" style={{ letterSpacing: '-0.03em' }}>
-            지금 인기 동네 공구
+            지금 인기 이용권
           </h2>
-          <p className="text-[15px] text-gray-500 mt-3">우리 동네 맛집·뷰티·숙소를 그룹 특가로. 결제 즉시 교환권이 발급돼요.</p>
+          <p className="text-[15px] text-gray-500 mt-3">우리 동네 맛집·뷰티·숙소 이용권을 할인가로. 결제하면 내 이용권에 바로 들어와요.</p>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {(deals.length > 0 ? deals : [
             { id: 0, name: '동네 맛집 이용권', restaurant_name: '곧 오픈' },
-            { id: 0, name: '뷰티 시술 공구', restaurant_name: '곧 오픈' },
+            { id: 0, name: '뷰티 시술 이용권', restaurant_name: '곧 오픈' },
             { id: 0, name: '펜션·호텔 숙박', restaurant_name: '곧 오픈' },
-            { id: 0, name: '헬스 PT 공구', restaurant_name: '곧 오픈' },
+            { id: 0, name: '헬스 PT 이용권', restaurant_name: '곧 오픈' },
           ] as GbItem[]).map((d, idx) => (
             <button
               key={`${d.id}-${idx}`}
-              onClick={() => d.id ? navigate(`/pass/${d.id}`) : navigate('/group-buy')}
+              onClick={() => d.id ? navigate(`/pass/${d.id}`) : navigate('/')}
               className="block rounded-2xl overflow-hidden border border-[#2C2F35] hover:border-[#2C2F35] transition-all hover:scale-[1.02]"
             >
               <div className="aspect-[3/4] relative bg-gradient-to-br from-[#1A0808] to-[#11141C]">
@@ -276,10 +278,10 @@ export default function IntroducePage() {
         </div>
         <div className="mt-6 text-center">
           <button
-            onClick={() => navigate('/group-buy')}
+            onClick={() => navigate('/')}
             className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-[#2C2F35] text-[13px] font-bold text-gray-300 hover:border-[#444] hover:text-white transition-colors"
           >
-            전체 동네 공구 보기 <ChevronRight className="w-4 h-4" />
+            전체 이용권 보기 <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </section>
@@ -290,14 +292,14 @@ export default function IntroducePage() {
           <div className="mb-12 text-center">
             <p className="text-[12px] font-extrabold text-red-400 tracking-[0.15em] mb-3">HOW IT WORKS</p>
             <h2 className="text-[clamp(24px,3.5vw,44px)] font-black text-white" style={{ letterSpacing: '-0.03em' }}>
-              고르고, 함께 사고, 매장에서 쓰기.
+              고르고, 사고, 매장에서 쓰기.
             </h2>
           </div>
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              { n: '01', Icon: Search, title: '동네 공구 고르기', desc: '홈 또는 동네 공구 탭에서 지역·카테고리(맛집·뷰티·숙소 등)별로 진행 중인 공구를 골라보세요.' },
-              { n: '02', Icon: BagIcon, title: '그룹 특가로 구매', desc: '인원과 무관하게 처음부터 같은 그룹 특가. 결제하면 교환권이 즉시 발급돼요.' },
-              { n: '03', Icon: Utensils, title: '매장 방문·사용', desc: '발급된 교환권을 매장에서 제시하고 사용하세요. 숙소·배송 상품은 안내에 따라 이용하시면 돼요.' },
+              { n: '01', Icon: Search, title: '이용권 고르기', desc: '홈이나 지도에서 지역·카테고리(맛집·뷰티·숙소 등)별로 이용권을 골라 보세요.' },
+              { n: '02', Icon: BagIcon, title: '할인가로 구매', desc: '인원과 상관없이 처음부터 같은 할인가. 결제하면 내 이용권에 바로 들어와요.' },
+              { n: '03', Icon: Utensils, title: '매장 방문·사용', desc: '매장에서 QR 또는 PIN을 보여 주면 사용 처리돼요. 숙소는 예약한 날짜에 맞춰 이용하시면 돼요.' },
             ].map(s => (
               <div key={s.n} className="relative p-8 rounded-3xl bg-[#111] border border-[#2C2F35] overflow-hidden">
                 <div className="absolute -top-4 -right-2 text-[100px] font-black opacity-[0.04] text-white select-none">{s.n}</div>
@@ -321,9 +323,9 @@ export default function IntroducePage() {
               <span className="text-[12px] font-extrabold text-white">설치 없이 바로 시작</span>
             </div>
             <h2 className="text-[clamp(28px,4vw,48px)] font-black text-white leading-tight mb-3" style={{ letterSpacing: '-0.03em' }}>
-              지금 시작하고<br />우리 동네<br /><span className="opacity-90">그룹 특가</span> 받기 🎁
+              지금 시작하고<br />우리 동네<br /><span className="opacity-90">할인 이용권</span> 받기
             </h2>
-            <p className="text-[15px] text-white/80 mb-8">전화번호만 있으면 3초 만에 시작할 수 있어요.</p>
+            <p className="text-[15px] text-white/80 mb-8">카카오 로그인 한 번이면 시작할 수 있어요.</p>
             {/* 📱 앱 배지가 있던 자리 — 앱이 없으므로 원래 보조였던 웹 진입을 주 CTA 로 올린다. */}
             <button
               onClick={() => navigate('/')}
@@ -341,13 +343,13 @@ export default function IntroducePage() {
           <div className="max-w-[680px]">
             <p className="text-[12px] font-extrabold text-red-400 tracking-[0.15em] mb-3">FOR SELLERS</p>
             <h2 className="text-[clamp(28px,4vw,48px)] font-black text-white mb-8" style={{ letterSpacing: '-0.03em' }}>
-              우리 가게, 오늘부터<br />동네 공구 맛집.
+              우리 가게, 오늘부터<br />동네 단골 맛집.
             </h2>
             <div className="space-y-5 mb-10">
               {[
-                { title: '입점 수수료 0원, 판매 수수료만', desc: '판매되는 만큼만 부담해요. 가입비·월 고정비 없습니다.' },
-                { title: '에이전시 매칭으로 공구 운영까지', desc: '직접 운영이 어렵다면 검증된 에이전시가 공구 등록·관리를 도와줘요.' },
-                { title: '정산·셀러 대시보드 제공', desc: '주문 모니터링 · 정산 · 리뷰 관리까지 한 곳에서.' },
+                { title: '가입비·월 고정비 0원', desc: '이용권이 팔렸을 때만 판매 수수료가 붙어요. 먼저 내는 돈은 없습니다.' },
+                { title: '에이전시에 맡겨도 돼요', desc: '직접 운영이 어렵다면 에이전시가 이용권 등록과 관리를 대신할 수 있어요.' },
+                { title: '주문·정산을 한 곳에서', desc: '사용 처리와 주문 확인, 정산까지 마이 페이지의 내 가게에서 해요.' },
               ].map(b => (
                 <div key={b.title} className="flex items-start gap-4">
                   <div className="w-7 h-7 rounded-full bg-red-500/20 flex items-center justify-center shrink-0 mt-1">
@@ -368,10 +370,10 @@ export default function IntroducePage() {
                 입점 신청하기 →
               </button>
               <button
-                onClick={() => navigate('/seller/login')}
+                onClick={() => navigate(loginPathFromHere('/user/profile'))} // 사장님 → 로그인 뒤 마이 '내 가게'
                 className="px-6 py-4 rounded-2xl text-[15px] font-extrabold text-white bg-[#1D1F29] hover:bg-[#222] transition-colors border border-[#2C2F35]"
               >
-                셀러 로그인
+                이미 가입했어요
               </button>
             </div>
           </div>
@@ -421,7 +423,7 @@ export default function IntroducePage() {
                 <UrDealLogo size={22} forceDark />
               </div>
               <p className="text-[13px] text-gray-500 leading-relaxed max-w-[320px]">
-                우리 동네 맛집·뷰티·숙소를 그룹 특가로.<br />함께 사서 더 좋은 가격, 교환권은 결제 즉시 발급.
+                우리 동네 맛집·뷰티·숙소 이용권을 할인가로.<br />매장에서 QR로 바로 쓰세요.
               </p>
             </div>
           </div>

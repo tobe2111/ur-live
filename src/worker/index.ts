@@ -222,7 +222,7 @@ import { kakaoSocialRoutes } from '../features/kakao-social/api/kakao-social.rou
 import { affiliateRoutes } from '../features/affiliate/api/affiliate.routes';
 import { adminToolsRoutes } from '../features/admin/api/admin-tools.routes';
 import { adminMetricsRoutes } from '../features/admin/api/admin-metrics.routes';
-import { adminSystemMonitoringRoutes } from '../features/admin/api/admin-system-monitoring.routes'; import { agencyAdminRoutes } from '../features/agency-console/api/agency-admin.routes';
+import { adminSystemMonitoringRoutes } from '../features/admin/api/admin-system-monitoring.routes'; import { adminBrandCrossOwnerRoutes } from '../features/admin/api/admin-brand-cross-owner.routes'; import { agencyAdminRoutes } from '../features/agency-console/api/agency-admin.routes';
 import { blogRoutes as adminBlogRoutes } from '../features/blog/api/blog.routes';
 // 🥗 2026-07-15 워커 다이어트(대표 승인): 소셜 자동화(게이트 OFF·미사용)의 정적 import 를 제거해
 //   메인 워커 번들에서 그래프 분리 → Cloudflare Free 1MB 압축한도 회복(배포 언블록). 재도입 시 아래 mount 와
@@ -291,7 +291,7 @@ import { referralRoutes } from '../features/referral/api/referral.routes';
 import { cfImage, cfSrcSet } from '../utils/cf-image';
 // 🖼️ 홈 첫 화면 카드 사진 preload — 링크 생성은 헬퍼가 한다(파일 크기 래칫 + 직접 테스트 용이).
 import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { routeSurface } from '../shared/route-surface'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; import { buildVouchersFirstScreen } from './utils/vouchers-first-screen'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; import { brandJsonLdScript } from '../shared/seo/brand-jsonld'; import { buildStaticSurfaceNoscript, stayNoscriptFromPayload, curatorNoscriptFromPayload, voucherFacetNoscript } from './utils/crawler-noscript'; import { buildSellerNoscript } from './utils/seller-noscript'; import { applyCssFirstBoot, cssFirstApplies, routePreloadRel, appendEdgeHeaders } from './utils/css-first-boot'; // 한 줄: 파일크기 래칫 안
-import { VOUCHERS_DEFAULT_SEED_PATH, voucherFacetSeedPath } from '../shared/seo/voucher-facet'; import { buildStayDetailFirstScreen } from './utils/stay-detail-ssr-body'; import { MAIN_SEED_PATH, REGION_PATH_RE } from '../shared/seo/region-seed'; import { isKnownAppPath } from '../shared/seo/known-routes'; import { REGION_DIGEST_KV_KEY, regionDigestApplies, regionThinByDigest } from '../shared/seo/region-digest'; import { ushopOgImage } from '../shared/ushop-share-card'; import { ogImageAlt, OG_CARD_W, OG_CARD_H, ogCardUrl } from '../shared/og-share-image'; import { nearKeyFromCookieHeader, nearLabelFromCookieHeader } from '../shared/home-near'; import { normalizeDocPath } from '../shared/seo/path-normalize'; import { ROBOTS_INDEX, ROBOTS_NOINDEX } from '../shared/seo/robots-directives'; import { BANNERS_SEED_PATH } from '../shared/home-strip-banners'; // 한 줄: 파일크기 래칫 안
+import { VOUCHERS_DEFAULT_SEED_PATH, voucherFacetSeedPath } from '../shared/seo/voucher-facet'; import { buildStayDetailFirstScreen } from './utils/stay-detail-ssr-body'; import { MAIN_SEED_PATH, REGION_PATH_RE } from '../shared/seo/region-seed'; import { isKnownAppPath } from '../shared/seo/known-routes'; import { REGION_DIGEST_KV_KEY, regionDigestApplies, regionThinByDigest } from '../shared/seo/region-digest'; import { ushopOgImage, ushopDescFallback } from '../shared/ushop-share-card'; import { ogImageAlt, OG_CARD_W, OG_CARD_H, ogCardUrl } from '../shared/og-share-image'; import { nearKeyFromCookieHeader, nearLabelFromCookieHeader } from '../shared/home-near'; import { normalizeDocPath } from '../shared/seo/path-normalize'; import { ROBOTS_INDEX, ROBOTS_NOINDEX } from '../shared/seo/robots-directives'; import { BANNERS_SEED_PATH } from '../shared/home-strip-banners'; // 한 줄: 파일크기 래칫 안
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -781,7 +781,7 @@ app.use('*', async (c, next) => {
       // 🆕 2026-07-01 유어애즈(/ads) surface 서버측 OG/canonical 주입 — 도매 surface 와 동일 패턴.
       //   비-JS 크롤러/소셜 스크래퍼(카톡/페북/슬랙)는 react-helmet(<SEO>)을 못 봐 index.html 의
       //   소비자(유어딜) 기본 메타만 봄 → 마케팅 랜딩 공유/검색 시 "유어딜..."로 오노출되던 것 교정.
-      const adTitle = '유어애즈 UR Ads — 네이버 검색광고 자동화·키워드 분석 마케팅 툴';
+      const adTitle = '유어애즈 UR Ads, 네이버 검색광고 자동화·키워드 분석 마케팅 툴'; // 2026-10-18 [UNLOCK_LOADING] 줄표 → 쉼표(결재 2026-10-14-locked-emdash)
       const adDesc = '연관키워드·검색량 분석, 자동입찰, 쇼핑 순위 추적, 부정클릭 방어, AI 주간 리포트까지. 네이버 광고 성과를 높이는 셀러 마케팅 자동화 도구.';
       const adCanonical = `${new URL(c.req.url).origin}${url.pathname}`;
       const adOgImg = `${new URL(c.req.url).origin}/og-urads.png`;
@@ -823,7 +823,7 @@ app.use('*', async (c, next) => {
         rb = applyCanonical(rb, m.canonical);
       }
     } else if (url.pathname === '/blog') {
-      const bt = '유어딜 블로그 — 이용권·교환권·동네딜·유어샵 가이드';
+      const bt = '유어딜 블로그, 이용권·교환권·동네딜·유어샵 가이드'; // 2026-10-18 [UNLOCK_LOADING] 줄표 → 쉼표(결재 2026-10-14-locked-emdash)
       const bd = '할인가로 사서 매장에서 바로 쓰는 이용권, 기프티콘 교환권, 내 주변 동네딜, 나만의 유어샵까지. 유어딜 활용법과 서비스 소식을 전합니다.';
       const canon = `${origin2}/blog`;
       // 📝 목록 Blog+ItemList JSON-LD — payload 기반(콜드 timeout 시 '') 계산은 blog-ssr-meta.ts.
@@ -893,7 +893,7 @@ app.use('*', async (c, next) => {
         if (cur && (cur.name || cur.handle)) {
           const cName = String(cur.name || '@' + (cur.handle || ''));
           const cTitle = `${cName} 유어샵 - 유어딜`;
-          const cDesc = String(cur.bio || '').slice(0, 200) || `${cName}님의 추천 — 교환권·이용권 모음`;
+          const cDesc = String(cur.bio || '').slice(0, 200) || ushopDescFallback(cName); // 2026-10-18 [UNLOCK_LOADING] 폴백 한 벌(shared/ushop-share-card)
           const canon = `${origin2}/u/${cur.handle || ''}`;
           // 🖼️ 2026-10-12 [UNLOCK_LOADING] (대표 *"유어샵 공유 카드 다른 방법 없니?"* → *"그냥 사각형 전체를 사진 및 이미지로 가득채워줘"*): og:image = **1200×630 을 가득 채운 사진 한 장**(프로필 → 없으면 유달이 `fit=pad`). 글자는 카톡·슬랙이 제목·설명으로 쓰므로 그림에 또 넣지 않는다. SSOT: `shared/ushop-share-card.ts`.
           const ogCard = ushopOgImage(ssrPayload, origin2, cur.handle || '');
@@ -1767,7 +1767,7 @@ adminApp.route('/tools', adminToolsRoutes);
 adminApp.route('/metrics', adminMetricsRoutes);
 adminApp.route('/business-metrics', platformMetricsRoutes); // 비즈니스 지표(GMV·순수익률·반복구매·여신미수)
 // 🛡️ 2026-05-07: Cron / 알림톡 실패 모니터링 (admin 가시성)
-adminApp.route('/', adminSystemMonitoringRoutes); adminApp.route('/', agencyAdminRoutes); // 🏢 /agency-accounts — 새 에이전시 계정 목록·정지(옛 agencies 아님)
+adminApp.route('/', adminSystemMonitoringRoutes); adminApp.route('/', adminBrandCrossOwnerRoutes); adminApp.route('/', agencyAdminRoutes); // 🏢 /agency-accounts — 새 에이전시 계정 목록·정지(옛 agencies 아님)
 adminApp.route('/', adminManagementRoutes);
 // 🛡️ 2026-04-22 배치 138 (TD-006 부분): admin-coupons 분리 — admin-management.routes.ts 줄임
 adminApp.route('/', adminCouponsRoutes);
@@ -2395,7 +2395,7 @@ app.get('*', async (c) => {
         .bind(curatorMatch[1]).first<any>().catch(() => null);
       if (u) {
         og.title = `${u.name || '@' + u.handle} 유어샵 - 유어딜`;
-        og.desc = (u.bio || '').slice(0, 200) || `${u.name || '@' + u.handle}님의 추천 — 교환권·공구 모음`;
+        og.desc = (u.bio || '').slice(0, 200) || ushopDescFallback(u.name || '@' + u.handle); // 2026-10-18 같은 폴백 한 벌
         const pi = u.profile_image as string | null;
         if (pi) og.image = pi.startsWith('r2://') ? `${BASE_URL}/api/media/${pi.slice(5)}` : (pi.startsWith('/') ? `${BASE_URL}${pi}` : pi);
       }

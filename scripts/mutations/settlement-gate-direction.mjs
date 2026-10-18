@@ -32,9 +32,10 @@ export default [
   {
     name: '🚦 이용권 사용 시점의 원장 기록이 설정값 게이트 뒤로 들어간다',
     file: 'src/features/group-buy/api/group-buy-voucher.routes.ts',
-    find: '              const merchantId = meta.consigned_from_seller_id ?? meta.seller_id ?? 0',
+    // 🎯 2026-10-18 재조준: 정산 매장이 settlementMerchantFor(브랜드 3단계) 를 거친다 — 불변식(원장은 조건 없이 기록) 그대로.
+    find: '              const merchantId = (await settlementMerchantFor(DB, Number(meta.voucher_id), meta.consigned_from_seller_id ?? meta.seller_id)) ?? 0',
     replace:
-      "              const _g = await DB.prepare(\"SELECT value FROM platform_settings WHERE key = 'ledger_enabled'\").first()\n              if (_g?.value !== 'true') return\n              const merchantId = meta.consigned_from_seller_id ?? meta.seller_id ?? 0",
+      "              const _g = await DB.prepare(\"SELECT value FROM platform_settings WHERE key = 'ledger_enabled'\").first()\n              if (_g?.value !== 'true') return\n              const merchantId = (await settlementMerchantFor(DB, Number(meta.voucher_id), meta.consigned_from_seller_id ?? meta.seller_id)) ?? 0",
     test: TEST,
     why: '원장이 조건부가 되면 "지금 켜도 빠지는 정산은 없다"가 거짓이 된다 — 게이트 ON 상태에서 원장이 꺼지면 양쪽 레일이 동시에 침묵한다.',
   },

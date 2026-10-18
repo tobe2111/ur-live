@@ -26,8 +26,10 @@ export default [
   {
     name: '[urshorts-layout] 요청이 실패하면 빈 패널이 영원히 남는다',
     file: 'src/components/home/UrShortsRail.tsx',
-    find: '.catch(() => { if (alive) setSettled(true)',
-    replace: '.catch(() => { if (alive) void 0',
+    // 🔁 2026-10-18 재조준: 요청이 모듈 단일 비행(`loadRailList`)으로 옮겨갔다. 실패가 `null` 로
+    //   안 떨어지고 영원히 기다리면 받는 쪽의 `setSettled(true)` 가 안 와 빈 패널이 남는다. 불변식 그대로.
+    find: '      if (railList === entry) railList = null\n      return null',
+    replace: '      if (railList === entry) railList = null\n      return new Promise<null>(() => {})',
     test: 'src/tests/unit/urshorts-rail-no-boot-layout-2026-10-14.test.ts',
     why: '네트워크 실패 시 카드 없는 검정 패널이 홈에 박제된다.',
   },

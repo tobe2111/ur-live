@@ -7,6 +7,8 @@
  *   DELETE /brands/stores/:sellerId     — 지점 빼기(브랜드 만든 사람 또는 그 지점 주인)
  *   GET    /products/:id/brand-wide     — 🏷️ 2026-10-18 이 이용권을 같은 주인 지점에서도 쓰게 할 수 있나 + 지금 값
  *   PUT    /products/:id/brand-wide     — 켜기/끄기 { enabled } (판 지점 주인만)
+ *   GET    /cross-owner-accept          — 🏷️ 3단계 지금 좌석의 지점이 다른 점주 이용권을 받나 + 게이트 상태
+ *   PUT    /cross-owner-accept          — 켜기/끄기 { enabled } (그 지점 주인만 — 결재 ①)
  *
  * 규칙은 `store-brands.ts` 머리말(대표 확정 — 지점 단위, 그 지점 주인이 정한다). 이 파일은 배선뿐이다.
  * 💰 돈 안 움직임.
@@ -18,7 +20,10 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import {
   addStoreToBrand, createBrand, listMyBrands, normalizeBrandName, normalizeBrandSlug, randomBrandSlug, removeStoreFromBrand,
 } from '@/worker/utils/store-brands'
-import { BRAND_WIDE_META_KEY, checkBrandWideSettable, isBrandWideEnabled } from '@/worker/utils/brand-wide-redeem'
+import { BRAND_WIDE_META_KEY, checkBrandWideSettable, isBrandWideEnabled, STORE_OWNER_SQL } from '@/worker/utils/brand-wide-redeem'
+import { CROSS_OWNER_ACCEPT_META, isCrossOwnerAccepting, isCrossOwnerRedeemEnabled } from '@/worker/utils/brand-cross-owner'
+import { setSellerMeta } from '@/worker/utils/seller-meta'
+import { getSellerIdFromToken } from '@/lib/seller-shared'
 import { setSupplyMeta } from '@/worker/utils/product-supply-meta'
 
 type Ctx = Context<{ Bindings: Env }>
@@ -26,7 +31,7 @@ type Ctx = Context<{ Bindings: Env }>
 const BRAND_WIDE_ERRORS: Record<string, string> = {
   NOT_OWNER: '이 지점의 주인만 바꿀 수 있어요',
   NO_BRAND: '먼저 매장 관리에서 지점들을 한 브랜드로 묶어 주세요',
-  NO_SAME_OWNER_BRANCH: '받아 줄 지점이 없어요. 주인이 같은 지점끼리만 함께 쓸 수 있어요(가맹점은 아직 안 돼요)',
+  NO_SAME_OWNER_BRANCH: '받아 줄 지점이 없어요. 주인이 같은 지점이나, "다른 점주 이용권 받기"를 켠 가맹점이 있어야 해요',
 }
 
 /** 이용권과 그 판 지점 — 없거나 지점이 없는 상품(플랫폼 상품)은 null. */
@@ -126,7 +131,8 @@ export function registerBrandRoutes(app: Hono<{ Bindings: Env }>, resolveActorUs
       return c.json({
         success: true,
         data: settable.ok
-          ? { enabled, settable: true, accepting_count: settable.acceptingCount }
+          ? { enabled, settable: true, accepting_count: settable.acceptingCount,
+              same_owner_count: settable.sameOwnerCount, cross_owner_count: settable.crossOwnerCount }
           : { enabled, settable: false, code: settable.code, reason: BRAND_WIDE_ERRORS[settable.code] },
       })
     } catch (err) {
@@ -149,6 +155,48 @@ export function registerBrandRoutes(app: Hono<{ Bindings: Env }>, resolveActorUs
         return c.json({ success: false, code: settable.code, error: BRAND_WIDE_ERRORS[settable.code] }, settable.code === 'NOT_OWNER' ? 403 : 409)
       }
       await setSupplyMeta(c.env.DB, productId, { [BRAND_WIDE_META_KEY]: b.enabled ? '1' : '0' })
+      return c.json({ success: true, data: { enabled: b.enabled } })
+    } catch (err) {
+      return safeError(c, err, '설정을 바꾸지 못했습니다', '[seller-brands]')
+    }
+  })
+
+  /** 이 지점의 주인인가 — 받기 동의(①)는 그 지점 주인만 정한다(운영자 X). */
+  async function isStoreOwner(db: D1Database, sellerId: number, userId: number): Promise<boolean> {
+    if (!Number.isFinite(sellerId) || sellerId <= 0) return false
+    const r = await db.prepare(`SELECT ${STORE_OWNER_SQL} AS owner_id FROM sellers s WHERE s.id = ? LIMIT 1`)
+      .bind(sellerId).first<{ owner_id: number | null }>().catch(() => null)
+    return r?.owner_id != null && Number(r.owner_id) === Number(userId)
+  }
+
+  app.get('/cross-owner-accept', async (c) => {
+    try {
+      const userId = await resolveActorUserId(c)
+      if (!userId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+      // 지점은 지금 좌석(셀러 토큰)의 지점 — 화면이 id 를 따로 들고 다니지 않는다(낡은 localStorage 로 남의 지점을 보지 않게).
+      const sellerId = Number(await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET))
+      if (!(await isStoreOwner(c.env.DB, sellerId, userId))) return c.json({ success: false, error: '이 지점의 주인만 볼 수 있어요' }, 403)
+      const [enabled, gate] = await Promise.all([isCrossOwnerAccepting(c.env.DB, sellerId), isCrossOwnerRedeemEnabled(c.env.DB)])
+      // gate=false 면 화면은 토글을 숨긴다 — 켜 둬도 아무 일도 안 하는 스위치를 보여 주지 않는다.
+      return c.json({ success: true, data: { enabled, available: gate } })
+    } catch (err) {
+      return safeError(c, err, '설정을 불러오지 못했습니다', '[seller-brands]')
+    }
+  })
+
+  app.put('/cross-owner-accept', rateLimit({ action: 'cross_owner_accept_set', max: 30, windowSec: 3600 }), async (c) => {
+    try {
+      const userId = await resolveActorUserId(c)
+      if (!userId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+      const sellerId = Number(await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET))
+      const b = await c.req.json<{ enabled?: unknown }>().catch(() => ({} as { enabled?: unknown }))
+      if (typeof b.enabled !== 'boolean') return c.json({ success: false, error: '잘못된 요청입니다' }, 400)
+      if (!(await isStoreOwner(c.env.DB, sellerId, userId))) return c.json({ success: false, error: '이 지점의 주인만 바꿀 수 있어요' }, 403)
+      // 켜는 것은 게이트가 열려 있을 때만. 끄는 것은 언제나 된다(점주가 빠져나갈 길은 막지 않는다).
+      if (b.enabled && !(await isCrossOwnerRedeemEnabled(c.env.DB))) {
+        return c.json({ success: false, code: 'NOT_AVAILABLE', error: '아직 열리지 않은 기능이에요' }, 409)
+      }
+      await setSellerMeta(c.env.DB, sellerId, { [CROSS_OWNER_ACCEPT_META]: b.enabled ? '1' : '0' })
       return c.json({ success: true, data: { enabled: b.enabled } })
     } catch (err) {
       return safeError(c, err, '설정을 바꾸지 못했습니다', '[seller-brands]')

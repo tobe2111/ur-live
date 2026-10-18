@@ -46,6 +46,8 @@ import { handleSellerChurnDetect } from './seller-churn-detect'
 import { handleLedgerReconcile } from './ledger-reconcile'
 import { handleTikTokVideosSync } from './tiktok-videos-sync'
 import { handleSellerDailyReport } from './seller-daily-report'
+import { handleReviewRequest } from './review-request'
+import { handleSellerDocsNudge } from './seller-docs-nudge'
 import { handleAdSlotsAward } from './ad-slots-award'
 import { getFeatureFlags } from '../utils/feature-flags'
 import { logError, logInfo } from '../utils/logger'
@@ -170,6 +172,9 @@ export function runDailyLane(group: DailyGroup, d: DailyLaneDeps): void {
     }
     // 2026-04-27: 셀러 일일 리포트 메일 (RESEND_API_KEY 있을 때만)
     await handleSellerDailyReport(env).catch(e => onFailure('growth-daily-batch/seller-daily-report', e))
+    // 📮 2026-10-18 (대표 "4,5,6번 하자"): 이용권 쓴 다음 날 후기 요청 · 서류 빠진 사장님 보완 안내 — 둘 다 게이트 기본 OFF
+    await handleReviewRequest(env).catch(e => onFailure('growth-daily-batch/review-request', e))
+    await handleSellerDocsNudge(env).catch(e => onFailure('growth-daily-batch/seller-docs-nudge', e))
     // 2026-05-05: 광고 슬롯 낙찰 처리
     await handleAdSlotsAward(env).catch(e => onFailure('growth-daily-batch/ad-slots-award', e))
   }))
