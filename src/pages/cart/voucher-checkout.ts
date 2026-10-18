@@ -17,9 +17,10 @@
 import type { CartItem } from '@/types/cart'
 import { getCartItemPrice } from '@/types/cart'
 import { isNoShippingProduct } from '@/shared/product-flow'
-import { appendPaySummary } from '@/shared/pay-summary'
-import { resolveTossFlow } from '@/lib/toss-key-type'
 import api from '@/lib/api'
+// ⚡ 2026-10-18: `pay-summary`·`toss-key-type` 는 **결제 버튼을 누른 뒤**에만 쓴다 — 아래 함수 안에서 동적으로 부른다.
+//   정적으로 두면 두 작은 모듈이 이용권 상세 봉투(lz-gbDetail, br 11KB+)에 들어 있어서 장바구니 첫 화면이 그 봉투를
+//   통째로 받았다(`check-surface-budgets` 정적 폐쇄 실측). 가드: cross-envelope-2026-10-18.test.ts
 
 /** 이 줄이 **배송이 없는가** — 배송비 판정과 같은 SSOT. 교환권·이용권 둘 다 참이다. */
 export function isVoucherCartItem(item: CartItem): boolean {
@@ -91,6 +92,10 @@ export async function startVoucherCartCheckout(
     orderId: string; amount: number; orderName: string; clientKey?: string; flow?: 'widget' | 'redirect' | 'invalid'; dealUsed?: number
   }
   if (!d.clientKey) return { ok: false, error: '결제 시스템이 설정되지 않았습니다. 관리자에게 문의해주세요.' }
+  const [{ resolveTossFlow }, { appendPaySummary }] = await Promise.all([
+    import('@/lib/toss-key-type'),
+    import('@/shared/pay-summary'),
+  ])
   // 키 형식을 클라에서도 한 번 더 본다 — 서버 flow 가 캐시로 어긋나도 위젯이 안 깨지게(단일 경로와 동일).
   if (resolveTossFlow(d.flow, d.clientKey) === 'invalid') {
     return { ok: false, error: '결제 시스템이 설정되지 않았습니다. 관리자에게 문의해주세요.' }

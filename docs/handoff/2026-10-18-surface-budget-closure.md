@@ -24,3 +24,26 @@ guestMy(로그아웃 마이)도 embla·상품 상세 봉투를 받는다 — 같
 
 ## 이번에 틀렸던 판단
 - 처음엔 이 구멍을 "#1912 의 측정 착시" 로만 봤다. 정정해 보니 **실제 화면 셋이 25~33KB 를 숨기고 있었다** — 착시가 아니라 가드의 눈먼 자리였다.
+
+---
+
+## 2차 (같은 날) — 장바구니·로그아웃 마이 다이어트
+**원인**: 작은 공용 부품 하나(`components/mall/*`·`shared/mall/origin`·`DealMiniCard`·lucide `minus`) 때문에
+그것이 들어 있던 봉투(app-components ~70KB + 그 봉투가 끌고 오는 embla·상품 상세 봉투)를 **통째로** 받았다.
+- `vite.config.ts` `CROSS_MODULES` → 좁은 전용 봉투 **`app-cross`**(묶음기 `LIBRARY_ENVELOPES` 에도 등록 — 안 그러면 다시 페이지 봉투로 옮겨진다)
+- `CartPage` 옵션 모달 lazy(열 때만) · `voucher-checkout` 의 `pay-summary`·`toss-key-type` 을 결제 버튼 뒤 동적 import
+
+| 화면 | 전 | 후 |
+|---|---|---|
+| cart | 266.4 | **195.5** |
+| guestMy | 249.7 | **197.3** |
+| dash:admin | 304.9 | 300.3 |
+| dash:agency | 306.5 | 301.8 |
+| product | 193.5 | 194.8 (+1.3, 허용 안) |
+critical-chunks 14 불변 · chunk-cycles 0 · exec-cost 10화면 예산 안(전부 소폭 감소).
+
+**버린 길 셋**(다시 시도하지 말 것): ① 장바구니를 ROUTES 에 넣어 묶음기 사용자로 세기 → `lz-browse-vouchers ↔ lz-common` 순환
+② 화면 밖 공용 모듈을 `lz-outside` 하나로 → 43KB 봉투가 생겨 오히려 증가 ③ app-cross 에 유틸 9개 → 손님 상세 화면 +2.9 ⇒ **4개로 좁혔다.**
+가드 `cross-envelope-2026-10-18.test.ts` + 주입 4건(되돌려-검증 4/4 빨간불).
+
+**다음 후보**: `guestMy` 197 · `stayDetail` 229.9 — stayDetail 의 `lz-home-homePc-vouchers` 5.8KB 를 누가 끌고 오는지 같은 방법(manifest imports 역추적)으로.
