@@ -64,7 +64,7 @@ export default [
     //   지금 지킬 것은 **숫자 한 줄이 페이지 맨 위에 있다** 는 것이다(폰·PC 공통).
     name: '🖥️ 상단 숫자 한 줄이 사라진다 (PC 가 다시 카드 넷으로 갈 길이 열린다)',
     file: 'src/pages/UserProfilePage.tsx',
-    find: '      <MyStats voucher={counts.voucher} gifticon={counts.gifticon} coupon={counts.coupon} />\n',
+    find: '      <MyStats voucher={counts.voucher} coupon={counts.coupon} />\n',
     replace: '',
     test: TEST,
     why: '폰 배치를 그대로 늘리면 오늘 숫자 옆이 통째로 비고 사용처리가 한참 아래로 밀린다 — 09-28 "PC가 심플하다" 의 원인.',

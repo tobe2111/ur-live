@@ -45,9 +45,12 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
    */
   const items: Item[] = [
     // 🎟️ 2026-08-31 (대표 — 지갑 분리): 이용권/교환권은 서로 다른 보관함이라 행도 둘.
-    { Icon: TicketStubIcon, label: t('shopping.voucher', { defaultValue: '내 이용권' }), count: counts.voucher, path: '/my-vouchers' },
+    // 🔢 2026-10-18 (대표 *"같은 숫자 하나로 줄여줘"*): 이용권·쿠폰 장수는 **맨 위 숫자 줄(`MyStats`)이
+    //   그 한 곳**이라 이 두 줄엔 숫자를 안 단다(종전엔 같은 값이 세 번·두 번 나왔다). 교환권은 반대로
+    //   숫자 줄에 칸이 없으므로(폰·PC 같은 세 칸) **이 줄이 그 한 곳**이다 — 그래서 숫자가 남는다.
+    { Icon: TicketStubIcon, label: t('shopping.voucher', { defaultValue: '내 이용권' }), path: '/my-vouchers' },
     { Icon: GiftBoxIcon, label: t('shopping.gifticon', { defaultValue: '내 교환권' }), count: counts.gifticon, path: '/my-gifticons' },
-    { Icon: CouponIcon, label: t('shopping.coupons', { defaultValue: '쿠폰함' }), count: counts.coupon, path: '/my-coupons' },
+    { Icon: CouponIcon, label: t('shopping.coupons', { defaultValue: '쿠폰함' }), path: '/my-coupons' },
     { Icon: StayLineIcon, label: t('shopping.myStays', { defaultValue: '내 숙소 예약' }), path: '/my-stays' },
     // 🧹 2026-09-02 (대표 "디지털 보관함도 필요없고"): 전자책·강의는 지금 파는 물건이 아니다.
     //   라우트(/my/digital)와 페이지는 남긴다 — 되살릴 때 이 줄만 되돌리면 된다.

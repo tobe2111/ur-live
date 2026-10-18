@@ -1274,7 +1274,8 @@ const MUTATIONS = [
   {
     name: '🧹 이용권 현황이 다시 배송 5단계로',
     file: 'src/pages/user-profile/OrderStatusBar.tsx',
-    find: "key: 'usable', path: '/my-vouchers' }",
+    // 🔁 2026-10-18 재조준: '사용가능' 칸이 위 숫자 줄로 옮겨가 앵커를 '사용완료' 칸으로. 불변식 그대로.
+    find: "key: 'used', path: '/my-vouchers' }",
     replace: "key: 'shipping', path: '/my-orders?status=shipping' }",
     test: 'src/tests/unit/mypage-cleanup-2026-09-02.test.ts',
     why: '\uc720\uc5b4\ub51c\uc740 \ubc30\uc1a1\uc774 \uc5c6\uc5b4 \uadf8 \uce78\uc774 \uc601\uc6d0\ud788 0\uc774\ub2e4.',
@@ -9811,10 +9812,12 @@ canvas {
       '이 바만 통째로 세면 같은 화면이 서로 다른 답을 말한다.',
   },
   {
-    name: "🎟️ '사용가능' 이 다시 else 폴백 (모르는 상태를 전부 쓸 수 있다고 말한다)",
+    // 🔁 2026-10-18 재조준: '사용가능' 칸이 사라져(위 숫자 줄이 그 한 곳) 같은 클래스 — **모르는 상태를
+    //   아무 칸에나 넣는다** — 를 남은 칸(만료·환불)에서 지킨다. 낯선 status 가 '만료' 로 새면 안 된다.
+    name: "🎟️ 모르는 상태가 다시 아무 칸에나 들어간다 (else 폴백)",
     file: 'src/pages/user-profile/OrderStatusBar.tsx',
-    find: "      if (st === 'unused' || st === '') c.usable++",
-    replace: '      c.usable++',
+    find: "      if (st === 'refunded' || st === 'expired') { c.gone++; continue }",
+    replace: "      if (st !== 'unused' && st !== '') { c.gone++; continue }",
     test: 'src/tests/unit/voucher-status-wallet-split.test.tsx',
     why:
       'KT 병합은 **발송 실패**를 `status:\'unused\'` + `kt_status:\'failed\'` 로 실어 보낸다(카드가 실패 UI 를 ' +

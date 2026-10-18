@@ -57,8 +57,10 @@ describe('② 주문 현황 → 이용권 현황 (배송 5단계 폐기)', () =>
     }
   })
 
-  it('이용권 생애 4단계다', () => {
-    for (const k of ['bought', 'usable', 'used', 'gone']) expect(SRC).toContain(`key: '${k}'`)
+  // 🔁 2026-10-18 재조준: '사용가능'(usable) 은 위 숫자 줄로 옮겨갔다(같은 숫자 한 곳). 남은 셋이 이 바다.
+  it('이용권 생애 단계(구매완료·사용완료·만료환불)다', () => {
+    for (const k of ['bought', 'used', 'gone']) expect(SRC).toContain(`key: '${k}'`)
+    expect(SRC, "'사용가능' 이 돌아오면 위 숫자 줄과 같은 뜻의 숫자가 두 번 선다").not.toContain("key: 'usable'")
     expect(SRC).toContain('voucherStatus.sectionTitle')
   })
 

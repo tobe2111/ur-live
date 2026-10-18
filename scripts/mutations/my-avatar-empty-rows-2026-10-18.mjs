@@ -37,8 +37,9 @@ export default [
   {
     name: '👤 마이 점검: 쓰이는 줄(쿠폰함)까지 같이 감춘다',
     file: 'src/pages/user-profile/ShoppingGroup.tsx',
-    find: "    { Icon: CouponIcon, label: t('shopping.coupons', { defaultValue: '쿠폰함' }), count: counts.coupon, path: '/my-coupons' },",
-    replace: "    ...(SHOPPING_TAB_HIDDEN ? [] : [{ Icon: CouponIcon, label: t('shopping.coupons', { defaultValue: '쿠폰함' }), count: counts.coupon, path: '/my-coupons' }]),",
+    // 🔁 2026-10-18 재조준: 쿠폰 숫자가 위 숫자 줄로 옮겨가 이 줄의 `count` 가 빠졌다. 불변식 그대로.
+    find: "    { Icon: CouponIcon, label: t('shopping.coupons', { defaultValue: '쿠폰함' }), path: '/my-coupons' },",
+    replace: "    ...(SHOPPING_TAB_HIDDEN ? [] : [{ Icon: CouponIcon, label: t('shopping.coupons', { defaultValue: '쿠폰함' }), path: '/my-coupons' }]),",
     test: TEST,
     why: '반대 방향 — 쿠폰은 라이브에 활성 쿠폰이 있어 살아 있다. 정리를 이유로 쓰이는 줄을 같이 지우면 안 된다.',
   },

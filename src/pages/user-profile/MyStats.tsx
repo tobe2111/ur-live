@@ -47,11 +47,9 @@ const RefundSheet = lazy(() => import('./RefundSheet'))
 /** 💸 충전은 2026-07-18 에 종료됐다 — 딜의 "자세히" 는 내역이다. */
 const DEAL_PATH = TOPUP_DISABLED ? '/my-deal-history' : '/points/charge'
 
-function Cell({ label, to, value, className = '', compact = false, foot }: {
+function Cell({ label, to, value, compact = false, foot }: {
   label: string
   to: string
-  /** 칸을 특정 폭에서만 보이게 할 때(교환권은 폰에서 넷째 칸이 되면 숫자가 잘린다). */
-  className?: string
   /** `undefined` = 아직 모름(안 그린다) · `null` = 조회 실패(`—`) · 숫자 = 값 */
   value: number | null | undefined
   /**
@@ -68,7 +66,7 @@ function Cell({ label, to, value, className = '', compact = false, foot }: {
     ? 'shrink-0 px-5 first:pl-0 last:pr-0 text-right'
     : 'flex-1 min-w-0 px-3 first:pl-4 last:pr-4'
   return (
-    <Link to={to} className={`${box} active:opacity-70 ${className}`}>
+    <Link to={to} className={`${box} active:opacity-70`}>
       <span className={`flex items-center gap-1 text-[13px] font-semibold text-gray-500 dark:text-gray-400${compact ? ' justify-end' : ''}`}>
         <span className="truncate">{label}</span>
         <ChevronRight className="w-3 h-3 shrink-0" aria-hidden="true" />
@@ -90,9 +88,8 @@ function Cell({ label, to, value, className = '', compact = false, foot }: {
   )
 }
 
-export default function MyStats({ voucher, gifticon, coupon, inline = false }: {
+export default function MyStats({ voucher, coupon, inline = false }: {
   voucher?: number | null
-  gifticon?: number | null
   coupon?: number | null
   /**
    * 🎗️ 2026-10-11 **안 5**: PC 머리 띠 안에 **그대로 끼워 넣는 모드**(`AccountPcBand`).
@@ -169,9 +166,11 @@ export default function MyStats({ voucher, gifticon, coupon, inline = false }: {
         foot={inline && refundable > 0 ? `환급 가능 ${formatNumber(refundable)}` : undefined}
       />
       <Cell compact={inline} label="이용권" to="/my-vouchers" value={voucher} />
-      {/* 📱 교환권은 **폰에서 넷째 칸이 되면 칸이 너무 좁다**(390px ÷ 4 = 97px, 안쪽 여백 빼면 73px).
-          폰에서는 아래 `내가 산 것` 목록의 '내 교환권' 줄이 같은 숫자를 들고 있으므로 잃는 게 없다. */}
-      <Cell compact={inline} className="hidden lg:block" label="교환권" to="/my-gifticons" value={gifticon} />
+      {/* 🔢 2026-10-18 (대표 *"같은 숫자 하나로 줄여줘"*) — **교환권 칸을 뺐다. 폰·PC 가 같은 세 칸이다.**
+          종전엔 PC 에서만 넷째 칸(교환권)이 섰다(폰은 390px ÷ 4 가 너무 좁아서). 그래서 PC 는 교환권
+          장수를 이 줄과 아래 '내 교환권' 줄에서 **두 번** 말했고, 폰과 PC 가 다른 칸 수를 보였다.
+          ⇒ 교환권 숫자는 **'내 교환권' 줄 한 곳**이다. 이 줄의 셋(딜·이용권·쿠폰)은 반대로 여기가 그 한 곳이라
+             아래 목록의 '내 이용권'·'쿠폰함' 줄은 숫자를 안 단다(`ShoppingGroup`). */}
       <Cell compact={inline} label="쿠폰" to="/my-coupons" value={coupon} />
     </div>
   )

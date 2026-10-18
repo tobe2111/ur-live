@@ -112,7 +112,7 @@ describe('🎗️ 머리 띠 — 사람과 숫자가 한 줄', () => {
     expect(PAGE, '폰에서 숫자 한 줄이 사라졌다').toMatch(/\) : \(\s*<MyStats voucher=/)
   })
 
-  it('🔢 숫자는 **같은 부품**이다 — 두 호출부가 같은 세 prop 을 넘긴다', () => {
+  it('🔢 숫자는 **같은 부품**이다 — 두 호출부가 같은 prop 을 넘긴다', () => {
     const props = (src: string) => {
       const at = src.indexOf('<MyStats ')
       expect(at, 'MyStats 호출을 못 찾았다 — 이 검사가 헛돌고 있다').toBeGreaterThan(-1)
@@ -123,7 +123,8 @@ describe('🎗️ 머리 띠 — 사람과 숫자가 한 줄', () => {
     }
     const a = props(PAGE)
     const b = props(BAND)
-    expect(a.length, '폰 호출부에서 prop 셋을 못 찾았다').toBe(3)
+    // 🔁 2026-10-18: 셋 → 둘(교환권 칸을 뺐다 — 폰·PC 같은 세 칸, 딜은 부품이 직접 읽는다).
+    expect(a.length, '폰 호출부에서 prop 둘을 못 찾았다').toBe(2)
     expect(b, `PC 띠와 폰이 다른 값을 넘긴다: ${a.join(' ')} vs ${b.join(' ')}`).toEqual(a)
   })
 
