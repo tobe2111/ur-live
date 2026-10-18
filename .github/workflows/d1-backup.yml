@@ -35,7 +35,7 @@ permissions:
 
 jobs:
   backup:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30 # export 가 대용량일 수 있음 — 넉넉히
     steps:
       - uses: actions/checkout@v4

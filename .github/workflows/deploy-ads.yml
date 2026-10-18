@@ -36,7 +36,7 @@ concurrency:
 
 jobs:
   deploy-ads:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # ⏱️ 15 → 25: 정각 회차 보호(최대 6분) + 레이트 리밋 백오프(최대 8.5분) + 설치·번들이 15분 안에 안 들어간다.
     #   짧게 두면 **대기 도중 타임아웃**으로 끝나 재시도가 또 무의미해진다.
     timeout-minutes: 25

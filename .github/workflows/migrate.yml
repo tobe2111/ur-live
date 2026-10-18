@@ -11,7 +11,7 @@ on:
 
 jobs:
   migrate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: Run D1 Migration
     # 🛡️ 2026-04-22 배치 117 (TD-012): Node 20 deprecation 대비.
     env:

@@ -920,8 +920,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     const code = c.req.param('code')
     if (!code) return c.json({ success: false, error: '잘못된 요청입니다' }, 400)
     try {
-      // 🛰️ 2026-06-23 사용 위치(소프트 증거, 게이트 X) — body 에 있으면만 기록.
-      // 🎟️ 2026-07-02 (대표 — 매장별 사용 방식 선택): store_code 모드면 매장 확인코드 동봉 필수.
+      // 🛰️ 사용 위치(소프트 증거, 게이트 X — body 에 있으면만 기록) · 🎟️ store_code 모드면 매장 확인코드 동봉 필수(2026-07-02).
       const body = await c.req.json<{ lat?: number; lng?: number; store_code?: string }>().catch(() => ({} as { lat?: number; lng?: number; store_code?: string }))
 
       // 🎟️ 모드 게이트 — CAS 이전에 매장 설정 확인. scan_only=셀프 차단 / store_code=코드 일치 필수.
@@ -935,10 +934,10 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       //   scan_only/코드 불일치를 전부 403 으로 닫는다(직원 QR 은 이 게이트 밖이라 그대로 열려 있다).
       //   ⚠️ 조건은 `status === 'unused'` 하나다 — 예전의 `seller_id != null` 은 **판매자 없는 상품이
       //   게이트를 통째로 건너뛰게** 만들어 데모 100개 전량을 무방비로 뒀다.
-      if (pre.status === 'unused') {
+      let redeemStore: number | null = null; if (pre.status === 'unused') { // 🏷️ redeemStore = 확인코드가 연 브랜드 지점(아래 사용 직후 기록)
         const { checkSelfRedeemGate } = await import('../../../worker/utils/self-redeem-gate')
-        const gate = await checkSelfRedeemGate(DB, pre.seller_id, String(body.store_code || ''), pre.product_id)
-        if (!gate.ok) return c.json({ success: false, code: gate.code, error: gate.error }, gate.status)
+        const gate = await checkSelfRedeemGate(DB, pre.seller_id, String(body.store_code || ''), pre.product_id, pre.id)
+        if (!gate.ok) return c.json({ success: false, code: gate.code, error: gate.error }, gate.status); redeemStore = gate.branchSellerId ?? null
         if (await voucherHasPendingGift(DB, { id: pre.id })) return c.json({ success: false, code: 'GIFT_PENDING', error: GIFT_PENDING_USE_BLOCKED }, 409) // 🎁 선물 중 잠금
       }
       // 🛡️ 머니룰: claim-before-credit — 미사용+본인 일 때만 원자적 used 선점.
@@ -947,8 +946,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       ).bind(code, user.id).run()
       const claimed = (res.meta?.changes || 0) === 1
 
-      // 🛡️ 2026-07-11: 성공(방금 사용 확정) 시에만 rate limit 카운터 리셋 — 정당 사용자의 앞선
-      //   오타 시도가 남아 잠기지 않게. 실패(코드 불일치 403)는 리셋 안 됨 → 브루트포스 방어 불변.
+      // 🛡️ 2026-07-11: 성공 시에만 rate limit 리셋(앞선 오타로 잠기지 않게 · 403 은 리셋 안 됨 → 브루트포스 방어 불변).
       //   커스텀 키(voucher code)라 resetRateLimit(IP 키 전용) 대신 동일 키로 직접 DELETE(best-effort).
       if (claimed) {
         const rlResetJob = DB.prepare('DELETE FROM rate_limit_attempts WHERE key = ? AND action = ?')
@@ -973,6 +971,8 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
           const { recordVoucherRedemptionLocation } = await import('../../../worker/utils/voucher-redemption')
           await recordVoucherRedemptionLocation(DB, Number(row.id), body.lat, body.lng)
         } catch { /* best-effort */ }
+        // 🏷️ 2026-10-18 받은 지점 기록 — 다른 점주 지점이면 주간 정산이 그 지점으로(게이트 OFF 면 늘 판 지점) · 판 지점이면 옛 기록 삭제.
+        try { const { recordVoucherRedeemStore } = await import('../../../worker/utils/brand-cross-owner'); await recordVoucherRedeemStore(DB, { voucherId: Number(row.id), soldSellerId: pre.seller_id, storeSellerId: redeemStore ?? pre.seller_id }) } catch { /* 기록 실패 = 판 지점 정산 */ }
         // 🚪 2026-07-13 (데이터 감사 2단계): 방문 통합 이벤트 — 완결고리 '방문' 노드(멱등·best-effort).
         try {
           const { recordVoucherVisit } = await import('../../../worker/utils/voucher-visit')

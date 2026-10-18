@@ -53,7 +53,7 @@ export default [
   {
     name: '🏷️ 브랜드 전 지점: 셀프 게이트에 상품 id 를 안 넘긴다(잠금 파일)',
     file: 'src/features/group-buy/api/group-buy-public.routes.ts',
-    find: "checkSelfRedeemGate(DB, pre.seller_id, String(body.store_code || ''), pre.product_id)",
+    find: "checkSelfRedeemGate(DB, pre.seller_id, String(body.store_code || ''), pre.product_id, pre.id)",
     replace: "checkSelfRedeemGate(DB, pre.seller_id, String(body.store_code || ''))",
     test: TEST,
     why: '안 넘기면 손님이 다른 지점에서 그 지점 코드를 넣어도 막힌다 — 켜 둔 기능이 셀프 경로에서만 조용히 죽는다.',
