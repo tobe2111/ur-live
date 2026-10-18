@@ -19,7 +19,7 @@ import { withMeteredEnv, newMeter, type ReadMeter } from '@/worker/utils/d1-read
 import { lanesPaused } from './lane-pause'
 import { readBudgetState, reportReadUsage, handleBudgetRequest, budgetBlocked, laneCut, READ_BUDGET_PATH } from './read-budget'
 import { fetchAccountUsage } from './account-usage'
-import { staleGapMinutes } from './lane-cadence'
+import { alarmLaneGapMinutes } from './lane-cadence'
 import { summarizeLaneRun, appendRunHistory, serializeRunHistory, serializeLaneStamp, LANE_RUNS_KEY } from './lane-run-history'
 import type { LaneRunEntry } from './lane-run-history'
 import { adaptiveIntervalHours, RETRY_MAX_FAIL_STREAK, failStreakFromHistory } from './lane-adaptive-interval'
@@ -265,7 +265,7 @@ export class AdsLaneDurableObject extends DurableObject<Env> {
         //   ⚠️ 페이로드는 `buildCronBeatRow`(SSOT)를 쓴다 — 손으로 모양을 맞추면 두 벌이 갈린다.
         //   ⚠️ 같은 batch = **서브리퀘스트 1개**. 낱개로 쓰면 가장 빠듯한 지점에 하나를 더 얹는 셈이다.
         const hb = buildCronBeatRow(`ads:${this.lane}`, !error, Date.now() - t0, undefined, stats,
-          staleGapMinutes(Math.max(1, Math.round(60 / Math.max(1, cap)))), this.meter) // 📏 이 회차의 D1 읽기량
+          alarmLaneGapMinutes(Math.max(1, Math.round(60 / Math.max(1, cap)))), this.meter) // 📏 이 회차의 D1 읽기량 · 임계는 알람 배달 상한(62분)
         await DB.batch([
           // ⚠️ 자르지 않는다 — `.slice(0, 2000)` 은 라이브에서 실제로 JSON 을 중간에서 끊어
           //   두 레인의 스탬프를 파싱 불가로 만들었다(`serializeLaneStamp` docblock 의 실측).

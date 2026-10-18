@@ -306,3 +306,21 @@ describe('⑤ 숙소 문구 표가 가드 범위 안이다 — 거짓 주장을 
     } finally { fs.writeFileSync(target, orig) }
   })
 })
+
+// 🔓 2026-10-18 대표 결재 `2026-10-14-locked-emdash` 안 1 — 잠금 파일의 라이브 셋을 고치고 폴백을 한 벌로.
+import { ushopDescFallback } from '@/shared/ushop-share-card'
+describe('⑤ 유어샵 설명 폴백 한 벌 (결재 2026-10-14-locked-emdash)', () => {
+  const W = readCode('src/worker/index.ts')
+  it('폴백 문구에 줄표가 없다', () => {
+    expect(ushopDescFallback('현정')).toBe('현정님이 고른 교환권·이용권 모음')
+    expect(ushopDescFallback('현정')).not.toMatch(/—/)
+  })
+  it('워커 두 자리(서빙 메타 · 봇 셸)가 같은 함수를 쓴다 — 문구를 손으로 적지 않는다', () => {
+    expect(W.match(/ushopDescFallback\(/g)?.length).toBe(2)
+    expect(W).not.toMatch(/님의 추천 — /)
+  })
+  it('라이브 제목 둘에 줄표가 없다', () => {
+    expect(W).toMatch(/const adTitle = '유어애즈 UR Ads, /)
+    expect(W).toMatch(/const bt = '유어딜 블로그, /)
+  })
+})

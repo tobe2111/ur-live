@@ -759,7 +759,7 @@
 - `/u/me/manage`
 - `/user/affiliate`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (86개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (87개)
 
 
 **/api/admin-payouts/disputes**
@@ -788,6 +788,7 @@
 
 **/api/curator/:handle**
 - `GET /api/curator/:handle`
+- `POST /api/curator/:handle/p/:productId/click`
 - `GET /api/curator/:handle/p/:productId/redirect`
 
 **/api/curator/handle**
@@ -949,7 +950,7 @@
 - `GET /api/seller/donations/summary`
 
 
-> 마지막 생성: 2026-10-15T16:09:25.642Z
+> 마지막 생성: 2026-10-18T07:42:58.031Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

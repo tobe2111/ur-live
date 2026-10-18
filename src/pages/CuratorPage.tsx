@@ -433,6 +433,7 @@ export default function CuratorPage() {
                         key={pin.id}
                         pin={pin}
                         handle={curator.handle}
+                        curatorUserId={curator.id}
                         order={(orderOf.get(pin.id) ?? 0) + 1}
                         prefetch={() => prefetchPin(pin.product_id)}
                       />
