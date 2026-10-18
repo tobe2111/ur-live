@@ -84,12 +84,22 @@ describe('① 목록·지역 표면이 상세로 가는 링크를 낸다', () =>
 })
 
 describe('② 반대 방향 — 링크하면 안 되는 것', () => {
-  it('교환권(`deal_only=1`)은 링크 0 · 글은 남는다', () => {
+  it('교환권(`deal_only=1`) **상세**로는 링크 0 · 글은 남는다', () => {
+    /* 🔁 2026-10-18 재조준: 불변식은 그대로다 — *교환권 상세로 가는 링크가 0* 이다. 그런데 앵커가
+     *   `hrefs(s)` **전체**라, 같은 날 추가한 **카테고리 facet 링크**(index 대상이고 상세가 아니다)
+     *   까지 위반으로 집었다. 상세 주소만 세도록 좁히고, facet 링크가 **있어야 한다**는 방향을
+     *   아래 단언으로 함께 고정한다(둘은 다른 축이다 — `voucher-facet.ts` 머리말 참조). */
     const s = html('/vouchers')
     expect(lis(s), '`/vouchers` 가 읽을 거리를 잃으면 안 된다').toBeGreaterThanOrEqual(1)
-    expect(hrefs(s),
+    expect(hrefs(s).filter(h => /\/vouchers\/\d|\/pass\/|\/products\/|\/stays\//.test(h)),
       '교환권 상세는 2026-07-07 결정으로 noindex — 2,260건에 크롤 경로를 열면 색인 말라 한 URL 로 예산이 빠진다').toEqual([])
     expect(s).toContain('쥬시쿨')
+  })
+
+  it('그 대신 카테고리 facet 으로는 링크한다(발견 경로)', () => {
+    // 🔴 반대 방향 — 이 방향이 깨지면 facet 20개가 다시 sitemap 으로만 발견된다(2026-10-18 수리 전 상태).
+    const got = hrefs(html('/vouchers')).filter(h => h.startsWith('/vouchers?category='))
+    expect(got.length).toBeGreaterThanOrEqual(10)
   })
 
   it('교환권은 다른 표면에 섞여도 링크를 안 받는다', () => {

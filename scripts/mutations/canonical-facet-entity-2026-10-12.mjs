@@ -75,10 +75,11 @@ export default [
   {
     name: '🔗 sitemap 이 카테고리를 손으로 적는다 — canonical 과 갈린다',
     file: 'src/worker/routes/sitemap.routes.ts',
-    find: "const SITEMAP_VOUCHER_CATEGORIES: readonly string[] = ['편의점', '커피/음료', '베이커리/도넛']\n  .filter((c) => VOUCHER_FILTER_CATEGORIES.includes(c))",
-    replace: "const SITEMAP_VOUCHER_CATEGORIES: readonly string[] = ['편의점', '커피/음료', '베이커리/도넛']",
+    find: "const SITEMAP_VOUCHER_FALLBACK: readonly string[] = ['편의점', '커피/음료', '베이커리/도넛']\n  .filter((c) => VOUCHER_FILTER_CATEGORIES.includes(c))",
+    replace: "const SITEMAP_VOUCHER_FALLBACK: readonly string[] = ['편의점', '커피/음료', '베이커리/도넛']",
     test: TEST,
-    why: '제출분이 허용분의 부분집합이 아니면 *제출한 URL 의 정본이 딴 곳을 가리키는* 모순이 조용히 생긴다(2026-07-29 영문 슬러그 6건이 그 사고였다).',
+    why: '제출분이 허용분의 부분집합이 아니면 *제출한 URL 의 정본이 딴 곳을 가리키는* 모순이 조용히 생긴다(2026-07-29 영문 슬러그 6건이 그 사고였다). '
+       + '🔁 2026-10-18 재조준: 제출이 D1 재고 집계로 바뀌어 이 배열은 **집계 실패 폴백**이 됐다(이름만 바뀌었고 부분집합 불변식은 그대로 — 폴백도 제출이다).',
   },
   {
     name: '🔗 /products 가 다시 자기자신을 정본으로 — 상품 360건 색인 경쟁',
