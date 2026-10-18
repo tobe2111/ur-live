@@ -77,8 +77,9 @@ export default [
   {
     name: '[exec-cost] cn()/tailwind-merge 를 묶음기 보호에서 뺀다',
     file: 'scripts/surface-chunks.mjs',
-    find: "'codes', 'app-ui-utils'])",
-    replace: "'codes'])",
+    // 🔁 2026-10-18 재조준: 뒤에 'app-cross' 가 붙어 끝 괄호 앵커가 낡았다 — 결함은 그대로.
+    find: "'codes', 'app-ui-utils', ",
+    replace: "'codes', ",
     test: TEST,
     why: 'cn() 을 쓰는 화면 ~190개가 다시 지도 페이지 코드 전부를 받는다(대시보드 −24KB 가 되돌아간다).',
   },
