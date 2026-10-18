@@ -47,8 +47,12 @@ describe('걷어낸 것 — 카드를 두르던 테두리 4곳', () => {
     expect(STORE).toMatch(/gap: 11, padding: '13px 0 0' \}\}>/)
   })
 
-  it('③ 내 공구 CTA 는 테두리 대신 옅은 면', () => {
-    expect(DETAIL).toMatch(/padding: '13px 14px', background: 'var\(--gbd-chip\)', borderRadius: 14/)
+  it('③ 주인용 관리 자리는 테두리 상자가 아니다', () => {
+    // 🔀 2026-10-18: 페이지 중간의 '내 공구' 띠가 구매 자리의 `OwnerManagePanel` 로 옮겨갔다.
+    //   불변식(테두리 0)은 그대로 — 새 자리에서 본다. 상세엔 그 띠가 다시 생기지 않는다.
+    const OWNER = stripComments(readFileSync('src/pages/group-buy/OwnerManagePanel.tsx', 'utf-8'))
+    expect(OWNER).not.toMatch(/\bborder[\s'"]|border: '1px|1px solid/) // `border-0`(버튼 리셋)은 허용
+    expect(DETAIL).not.toMatch(/padding: '13px 14px', background: 'var\(--gbd-chip\)', borderRadius: 14/)
   })
 
   it('④ PC 히어로에 lg 테두리가 없다', () => {
