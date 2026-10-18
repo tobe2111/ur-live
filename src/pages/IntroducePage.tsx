@@ -9,6 +9,7 @@ import UrDealLogo from '@/components/brand/UrDealLogo'
 import api from '@/lib/api'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { priceDisplay } from '@/shared/price-display'
+import { loginPathFromHere } from '@/utils/login-return'
 
 // 📱 2026-09-28 (대표 확정 *"아직 앱은 하나도 없어"*): App Store·Google Play 배지를 **전부 삭제**했다.
 //   여기 있던 링크는 실재하지 않는 앱의 스토어 주소(`id6745051422` · `com.urdeal.app`)라, 누르면
@@ -369,7 +370,7 @@ export default function IntroducePage() {
                 입점 신청하기 →
               </button>
               <button
-                onClick={() => navigate('/login')}
+                onClick={() => navigate(loginPathFromHere('/user/profile'))} // 사장님 → 로그인 뒤 마이 '내 가게'
                 className="px-6 py-4 rounded-2xl text-[15px] font-extrabold text-white bg-[#1D1F29] hover:bg-[#222] transition-colors border border-[#2C2F35]"
               >
                 이미 가입했어요
