@@ -5,8 +5,8 @@
 ## 하는 일
 | 워크플로 | 언제 (KST) | 내용 |
 |---|---|---|
-| `SNS daily post` | 매일 09:00 / 12:30 / 19:30 중 하루 1슬롯 | Threads 글 1개 + 인스타 캡션 1개 작성·게시 (유용/공감 70% : 딜 홍보 30%, UTM 링크). 첫 2주는 슬롯을 돌아가며 테스트. 상품 이미지가 없으면 인스타는 건너뛰고 기록 |
-| `SNS comment replies` | 2시간마다 | 내 게시물 댓글에 운영자 톤으로 짧게 답글. 불만·환불·민감 댓글은 답글 없이 `needs-owner` 이슈 생성 |
+| `SNS daily post` | 매일 09:00 / 12:30 / 19:30 중 하루 1슬롯 | Threads 글 1개 + 인스타 캡션 1개 작성·게시 (사장님 입점 60% · 인플루언서/크리에이터 모집 25% · 소비자 딜 15%, `data/content-mix.json`. 입점 글은 urdeal.kr/partners, 크리에이터 글은 urdeal.kr/creators 로 UTM 링크). 첫 2주는 슬롯을 돌아가며 테스트. 상품 이미지가 없으면 인스타는 건너뛰고 기록 |
+| `SNS comment replies` | 2시간마다 | 내 게시물 댓글에 운영자 톤으로 짧게 답글 (입점 문의 → /partners, 크리에이터 문의 → /creators 안내, 레포에 없는 조건은 약속 안 함). 불만·환불·민감 댓글은 답글 없이 `needs-owner` 이슈 생성 |
 | `SNS weekly review` | 월요일 09:30 | 인사이트 수집 → 플랫폼별 최적 시간대를 `data/schedule.json` 에 반영 → 리포트 이슈 |
 | `SNS influencer drafts` | 월요일 10:00 | 인플루언서 후보 + DM 초안을 이슈로만 작성 (발송 안 함) |
 
@@ -35,3 +35,7 @@
 ```bash
 cd marketing-bot && npm test   # 문법 체크 + 4개 스크립트 DRY_RUN=1 실행
 ```
+
+## 콘텐츠 전략 (2026-10 변경)
+- 트랙 비율·주제·CTA: `data/content-mix.json` (`TRACK=merchant|creator|consumer` 로 강제 가능)
+- 봇이 쓸 수 있는 입점/크리에이터 조건: `src/lib.mjs` 의 `PARTNER_FACTS` (원본: `src/shared/partners-facts.ts`, `src/pages/partners/PartnerFaq.tsx`, `src/pages/CreatorsPage.tsx`). 원본 조건이 바뀌면 함께 고치세요.

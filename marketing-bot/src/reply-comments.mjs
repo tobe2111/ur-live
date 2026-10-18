@@ -1,5 +1,5 @@
 // 2시간마다: 내 게시물 댓글 수집 → 분류 → 일반 댓글은 짧게 답글, 민감/불만/환불은 답글 없이 needs-owner 이슈.
-import { DRY, log, readJson, writeJson, claude, threads, insta, createIssue, THREADS_USER_ID } from './lib.mjs';
+import { DRY, log, readJson, writeJson, claude, threads, insta, createIssue, THREADS_USER_ID, PARTNER_FACTS, PARTNER_LINKS } from './lib.mjs';
 
 const posts = readJson('data/posts.json', []);
 const state = readJson('data/comments.json', { replied: [], escalated: [] });
@@ -21,9 +21,17 @@ async function fetchComments() {
       }
     } catch (e) { log(`댓글 조회 실패 ${p.platform} ${p.id}: ${e.message}`); }
   }
-  if (DRY) out.push({ platform: 'threads', id: 'dry-c1', text: '여기 맛있어요?', user: 'sample', post: { id: 'x' } }, { platform: 'threads', id: 'dry-c2', text: '환불 어떻게 해요? 답변이 없네요', user: 'sample2', post: { id: 'x' } });
+  if (DRY) out.push({ platform: 'threads', id: 'dry-c1', text: '여기 맛있어요?', user: 'sample', post: { id: 'x' } }, { platform: 'threads', id: 'dry-c3', text: '저희 가게도 입점하려면 수수료가 얼마예요?', user: 'owner_sample', post: { id: 'x' } }, { platform: 'threads', id: 'dry-c2', text: '환불 어떻게 해요? 답변이 없네요', user: 'sample2', post: { id: 'x' } });
   return out;
 }
+
+const REPLY_SYSTEM = `너는 유어딜 운영자 본인이다. 내 게시물에 달린 댓글에 1~2문장으로 따뜻하고 짧게 답한다. 고객인 척 금지.
+- 사장님(가게 운영자)의 입점·수수료·정산·등록 문의: 아래 [확인된 사실] 범위에서만 짧게 답하고 입점 안내 ${PARTNER_LINKS.merchant} 를 안내한다. 사실에 없는 조건(특별 수수료, 노출 보장, 방문자 수, 계약 기간 등)은 약속하지 말고 "카카오 채널로 물어봐 주시면 정확히 안내드릴게요"로 넘긴다.
+- 인플루언서·크리에이터의 협업·소개 파트너 문의: 사실 범위에서 답하고 ${PARTNER_LINKS.creator} 를 안내한다. 수익 금액을 약속하지 않는다.
+- 손님 문의: 모르는 사실(재고, 가격 변경, 영업시간)은 지어내지 말고 상품 페이지 확인을 안내.
+
+[확인된 사실]
+${PARTNER_FACTS}`;
 
 async function classify(text) {
   if (SENSITIVE.test(text)) return 'sensitive';
@@ -44,7 +52,7 @@ async function main() {
       continue;
     }
     if (kind === 'spam') { state.replied.push(c.id); log(`스팸 무시 ${c.id}`); continue; }
-    const reply = (await claude('너는 유어딜 운영자 본인이다. 내 게시물에 달린 댓글에 1~2문장으로 따뜻하고 짧게 답한다. 모르는 사실(재고, 가격 변경, 영업시간)은 지어내지 말고 상품 페이지 확인을 안내. 고객인 척 금지.', `댓글: ${c.text}`, 200)).slice(0, 300);
+    const reply = (await claude(REPLY_SYSTEM, `댓글: ${c.text}`, 220)).slice(0, 300);
     log(`답글(${c.platform} ${c.id}): ${reply}`);
     if (c.platform === 'threads') {
       const cr = await threads('POST', `${THREADS_USER_ID}/threads`, { media_type: 'TEXT', text: reply, reply_to_id: c.id });
