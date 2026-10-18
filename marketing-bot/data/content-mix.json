@@ -1,5 +1,5 @@
 {
-  "_note": "게시 트랙 비율(20일 주기): merchant 12일(60%) · creator 5일(25%) · consumer 3일(15%). 사실 근거는 src/shared/partners-facts.ts · src/pages/partners/* · src/pages/CreatorsPage.tsx. 여기 없는 조건/수치는 봇이 쓰지 않는다. image_url 이 비면 target 페이지 og:image → 상품 이미지 순으로 시도.",
+  "_note": "게시 트랙 비율(20일 주기): merchant 12일(60%) · creator 5일(25%) · consumer 3일(15%). 사실 근거는 src/shared/partners-facts.ts · src/pages/partners/* · src/pages/CreatorsPage.tsx. 여기 없는 조건/수치는 봇이 쓰지 않는다. image_url(문자열 또는 배열=날짜별 순환)이 비면 target 페이지 og:image → 상품 이미지 순으로 시도.",
   "cycle": { "merchant": 12, "creator": 5, "consumer": 3 },
   "tracks": {
     "merchant": {
@@ -7,7 +7,7 @@
       "target": "https://urdeal.kr/partners",
       "campaign": "merchant-recruit",
       "cta": "입점 안내는 urdeal.kr/partners 에서, 궁금한 건 카카오 채널로 편하게 물어봐 주세요",
-      "image_url": "",
+      "image_url": ["https://urdeal.kr/marketing/b2b/owner-3-changes.jpg", "https://urdeal.kr/marketing/b2b/onboarding-steps.jpg"],
       "topics": [
         "먼저 나가는 돈이 없는 구조: 가입비·월 이용료·광고비 0원, 이용권이 팔리고 손님이 와서 쓴 뒤에만 수수료",
         "수수료를 숨기지 않고 말하기: 직접 입점 10%(사장님 몫 90%), 대행사 경유 5%, 카드 수수료는 유어딜 몫 안에서 부담(현재 약 2.75%, 카드사 정책에 따라 바뀔 수 있음)",
@@ -29,7 +29,7 @@
       "target": "https://urdeal.kr/creators",
       "campaign": "creator-recruit",
       "cta": "소개 파트너 신청은 urdeal.kr/creators 에서 할 수 있어요",
-      "image_url": "",
+      "image_url": "https://urdeal.kr/marketing/b2b/creator-partners.jpg",
       "topics": [
         "시작에 드는 돈 0원: 카카오 로그인 1분이면 내 유어샵이 자동으로 생긴다",
         "3단계로 시작: 가입 → 소개하고 싶은 동네 맛집·뷰티 딜을 내 유어샵에 담기 → 인스타·블로그·카톡에 링크 하나 공유",

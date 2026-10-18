@@ -91,7 +91,8 @@ async function main() {
   if (due('instagram') && !postedToday('instagram')) {
     const cid = `ig-${n('instagram')}`;
     const link = utmLink(isPromo ? product : target, 'instagram', T.campaign || track, cid, now);
-    const image = (T.image_url || null) || (!isPromo && await productImage(target)) || (product && await productImage(product));
+    const imgs = [].concat(T.image_url || []).filter(Boolean); // 문자열 또는 배열(날짜별 순환)
+    const image = (imgs.length ? imgs[dayIdx % imgs.length] : null) || (!isPromo && await productImage(target)) || (product && await productImage(product));
     if (!image) {
       log(`Instagram: ${track} 이미지 URL 없음 → 건너뜀`);
       posts.push({ platform: 'instagram', skipped: 'no_image', track, product_id: product?.id, posted_at: now.toISOString(), date_kst: today });
