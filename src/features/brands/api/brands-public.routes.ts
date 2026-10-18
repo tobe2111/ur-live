@@ -3,6 +3,7 @@
  *
  *   GET /api/brands/:slug              — 브랜드 + 지점(위치 포함) + 지점들의 이용권
  *   GET /api/brands/of-store/:sellerId — 그 지점이 속한 브랜드(이용권 상세의 "다른 지점 보기" 링크)
+ *     `?product=` 를 붙이면 그 이용권을 쓸 수 있는 지점 수(`usable_branches`)도 — 2026-10-18 브랜드 전 지점 사용
  *
  * ## 노출 규칙은 메인 피드와 **같은 술어**를 쓴다
  * 승인된 지점만(`approvedSellerProductSql`) · 도매 원본 제외(`consumerVisibleProductSql`) · 본진 몰 범위
@@ -17,6 +18,7 @@ import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { safeError } from '@/worker/utils/safe-error'
 import { ensureStoreBrands, brandOfStore, normalizeBrandSlug } from '@/worker/utils/store-brands'
+import { brandSiblingsOf, isBrandWideEnabled } from '@/worker/utils/brand-wide-redeem'
 import { getSellerMeta } from '@/worker/utils/seller-meta'
 import { allInChunks } from '@/worker/utils/d1-in-chunks'
 import { approvedSellerProductSql, consumerVisibleProductSql } from '@/shared/db/consumer-visible-product'
@@ -37,7 +39,21 @@ app.get('/of-store/:sellerId', async (c) => {
     if (!Number.isFinite(sellerId) || sellerId <= 0) return c.json({ success: true, data: null })
     const b = await brandOfStore(c.env.DB, sellerId).catch(() => null)
     // 지점이 하나뿐인 브랜드는 링크를 걸 이유가 없다 — 화면이 "다른 지점" 을 약속하지 않게.
-    return c.json({ success: true, data: b && Number(b.branch_count) > 1 ? b : null })
+    if (!b || Number(b.branch_count) <= 1) return c.json({ success: true, data: null })
+    // 🏷️ 2026-10-18 `?product=` 가 오면 그 이용권을 실제로 받아 주는 지점 수도 싣는다(사용 순간과 같은 판정).
+    //   0 이면 "전 지점 사용" 을 말하지 않는다 — 켜 두었어도 받아 줄 지점이 없으면 약속이 거짓이 된다.
+    const productId = Number(c.req.query('product'))
+    let usable_branches = 0
+    if (Number.isFinite(productId) && productId > 0 && await isBrandWideEnabled(c.env.DB, productId).catch(() => false)) {
+      const owner = await c.env.DB.prepare('SELECT seller_id FROM products WHERE id = ? LIMIT 1').bind(productId)
+        .first<{ seller_id: number | null }>().catch(() => null)
+      if (owner?.seller_id && Number(owner.seller_id) === sellerId) {
+        const { siblings } = await brandSiblingsOf(c.env.DB, sellerId)
+        const n = siblings.filter((s) => s.accepting).length
+        usable_branches = n > 0 ? n + 1 : 0 // 판 지점 자신 포함
+      }
+    }
+    return c.json({ success: true, data: { ...b, usable_branches } })
   } catch (err) {
     return safeError(c, err, '브랜드를 불러오지 못했습니다', '[brands]')
   }

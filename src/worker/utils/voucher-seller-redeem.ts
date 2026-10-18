@@ -17,6 +17,7 @@
  */
 
 import { GIFT_PENDING_USE_BLOCKED, noPendingGiftSql, voucherHasPendingGift } from './voucher-gift'
+import { canStoreRedeemProduct } from './brand-wide-redeem'
 
 export const SELLER_REDEEM_CODE_RE = /^[A-Za-z0-9-]{4,64}$/
 
@@ -68,7 +69,10 @@ export async function checkVoucherForStore(
      WHERE v.code = ?`
   ).bind(code).first<StoreRedeemVoucher>()
   if (!voucher) return { ok: false, status: 404, error: '바우처를 찾을 수 없습니다' }
-  if (actorSellerId !== null && Number(voucher.seller_id) !== Number(actorSellerId)) {
+  // 🏷️ 2026-10-18 브랜드 전 지점 사용 — 판 지점이 아니어도, 이용권이 켜져 있고 주인이 같은 형제 지점이면 받는다.
+  //   정산은 여기서도 판 지점(voucher.seller_id)으로 간다 — 아래 원장 블록은 그대로다.
+  if (actorSellerId !== null && Number(voucher.seller_id) !== Number(actorSellerId)
+      && !(await canStoreRedeemProduct(DB, Number(voucher.product_id), voucher.seller_id, Number(actorSellerId)))) {
     return { ok: false, status: 403, error: '본인 매장의 voucher 가 아닙니다' }
   }
   if (voucher.status === 'used') return { ok: false, status: 400, error: '이미 사용된 바우처입니다' }

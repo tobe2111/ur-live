@@ -10,9 +10,9 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 
-interface BrandRef { slug: string; name: string; branch_count: number }
+interface BrandRef { slug: string; name: string; branch_count: number; usable_branches?: number }
 
-export default function BrandBranchesLink({ sellerId }: { sellerId?: number | null }) {
+export default function BrandBranchesLink({ sellerId, productId }: { sellerId?: number | null; productId?: number | null }) {
   const ref = useRef<HTMLDivElement>(null)
   const [seen, setSeen] = useState(false)
   useEffect(() => {
@@ -23,15 +23,18 @@ export default function BrandBranchesLink({ sellerId }: { sellerId?: number | nu
     return () => io.disconnect()
   }, [seen])
   const { data } = useApiQuery<BrandRef | null>(
-    ['brand-of-store', sellerId],
-    `/api/brands/of-store/${sellerId}`,
+    ['brand-of-store', sellerId, productId ?? null],
+    `/api/brands/of-store/${sellerId}${productId ? `?product=${productId}` : ''}`,
     { enabled: seen && !!sellerId, staleTime: 5 * 60_000, select: (raw) => ((raw as { data?: BrandRef | null })?.data ?? null) },
   )
   return (
     <div ref={ref}>
       {data && (
         <Link to={`/brand/${data.slug}`} className="mt-3 flex items-center justify-between gap-2 py-2 text-[13px] font-semibold" style={{ color: 'var(--gbd-accent)' }}>
-          <span className="truncate">{data.name} 다른 지점 {Math.max(0, Number(data.branch_count) - 1)}곳 보기</span>
+          {/* 🏷️ 2026-10-18 이 이용권을 다른 지점에서도 쓸 수 있으면 그 사실을 먼저 말한다(서버가 사용 순간과 같은 판정으로 센 수). */}
+          <span className="truncate">{Number(data.usable_branches) > 1
+            ? `${data.name} ${Number(data.usable_branches)}곳 어디서나 사용 가능 · 지점 보기`
+            : `${data.name} 다른 지점 ${Math.max(0, Number(data.branch_count) - 1)}곳 보기`}</span>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M9 18l6-6-6-6" /></svg>
         </Link>
       )}

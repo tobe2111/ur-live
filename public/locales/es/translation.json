@@ -2554,7 +2554,13 @@
       "deletedSeg": "Eliminados",
       "restore": "Restaurar",
       "restored": "El cupón vuelve a estar a la venta",
-      "deletedNote": "Solo se detuvieron las nuevas ventas. Los cupones ya emitidos siguen siendo válidos."
+      "deletedNote": "Solo se detuvieron las nuevas ventas. Los cupones ya emitidos siguen siendo válidos.",
+      "brandWideOn": "Ahora se puede usar en tus otras sucursales",
+      "brandWideOff": "Solo se puede usar en esta sucursal",
+      "brandWideFail": "No se pudo cambiar el ajuste",
+      "brandWideTitle": "También válido en {{count}} de tus sucursales",
+      "brandWideTitleOff": "Válido en otras sucursales",
+      "brandWideNote": "Se canjea con el código o escaneo de esa sucursal. La liquidación queda en esta sucursal."
     },
     "ordersM3": {
       "today": "Hoy",
