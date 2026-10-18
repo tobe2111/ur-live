@@ -56,7 +56,7 @@ describe('① 이용권 사용 방식 — QR 은 항상, 셀프는 매장 확인
     expect(selfRedeem).not.toMatch(/if \(pre\.seller_id != null && pre\.status === 'unused'\)/)
     expect(selfRedeem).toMatch(/if \(pre\.status === 'unused'\)/)
     // 배선 — 판정을 부르고, 거절이면 **실제로 반환**한다(불러 놓고 무시하면 게이트가 없는 것과 같다).
-    expect(selfRedeem).toMatch(/checkSelfRedeemGate\(DB, pre\.seller_id, String\(body\.store_code \|\| ''\)\)/)
+    expect(selfRedeem).toMatch(/checkSelfRedeemGate\(DB, pre\.seller_id, String\(body\.store_code \|\| ''\)(, pre\.product_id)?\)/) // 🏷️ 2026-10-18 상품 id 는 브랜드 전 지점 판정용 — 조건은 여전히 unused 하나
     expect(selfRedeem).toMatch(/if \(!gate\.ok\) return c\.json\(/)
     // 매장이 없으면 셀프 불가 — 확인코드를 발급해 줄 주체가 없다.
     expect(gate).toMatch(/sellerId == null[\s\S]{0,300}'NO_STORE'/)

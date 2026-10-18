@@ -3235,7 +3235,13 @@
       "deletedSeg": "削除済み",
       "restore": "復元",
       "restored": "利用券の販売を再開しました",
-      "deletedNote": "新規販売のみ停止しました。発行済みの利用券はそのまま使えます。"
+      "deletedNote": "新規販売のみ停止しました。発行済みの利用券はそのまま使えます。",
+      "brandWideOn": "同じオーナーの他店舗でも使えます",
+      "brandWideOff": "この店舗のみで使えます",
+      "brandWideFail": "設定を変更できませんでした",
+      "brandWideTitle": "同じオーナーの{{count}}店舗でも利用可",
+      "brandWideTitleOff": "他店舗でも利用",
+      "brandWideNote": "その店舗の確認コード・スキャンで使用処理されます。精算はこの店舗に入ります。"
     },
     "ordersM3": {
       "today": "今日",

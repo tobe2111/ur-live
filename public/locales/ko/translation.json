@@ -3235,7 +3235,13 @@
       "deletedSeg": "삭제됨",
       "restore": "복구",
       "restored": "이용권을 다시 판매합니다",
-      "deletedNote": "새 판매만 멈췄어요. 이미 발급된 이용권은 그대로 쓸 수 있습니다."
+      "deletedNote": "새 판매만 멈췄어요. 이미 발급된 이용권은 그대로 쓸 수 있습니다.",
+      "brandWideOn": "같은 주인 지점에서도 쓸 수 있어요",
+      "brandWideOff": "이 지점에서만 쓸 수 있어요",
+      "brandWideFail": "설정을 바꾸지 못했어요",
+      "brandWideTitle": "같은 주인 지점 {{count}}곳에서도 사용",
+      "brandWideTitleOff": "다른 지점에서도 사용",
+      "brandWideNote": "그 지점의 확인코드·스캔으로 사용 처리돼요. 정산은 이 지점으로 들어와요."
     },
     "ordersM3": {
       "today": "오늘",

@@ -2554,7 +2554,13 @@
       "deletedSeg": "Supprimés",
       "restore": "Restaurer",
       "restored": "Le bon est de nouveau en vente",
-      "deletedNote": "Seules les nouvelles ventes sont arrêtées. Les bons déjà émis restent utilisables."
+      "deletedNote": "Seules les nouvelles ventes sont arrêtées. Les bons déjà émis restent utilisables.",
+      "brandWideOn": "Utilisable dans vos autres établissements",
+      "brandWideOff": "Utilisable dans cet établissement uniquement",
+      "brandWideFail": "Impossible de modifier le réglage",
+      "brandWideTitle": "Aussi valable dans {{count}} de vos établissements",
+      "brandWideTitleOff": "Valable dans d'autres établissements",
+      "brandWideNote": "Validé avec le code ou le scan de cet établissement. Le règlement reste à cet établissement."
     },
     "ordersM3": {
       "today": "Aujourd'hui",

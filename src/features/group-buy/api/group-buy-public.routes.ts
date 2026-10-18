@@ -927,8 +927,8 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       // 🎟️ 모드 게이트 — CAS 이전에 매장 설정 확인. scan_only=셀프 차단 / store_code=코드 일치 필수.
       //   미설정 매장 = self_free(기존 동작). 조회 실패도 fail-open(self_free).
       const pre = await DB.prepare(
-        'SELECT v.id, v.status, p.seller_id FROM vouchers v JOIN products p ON p.id = v.product_id WHERE v.code=? AND v.user_id=?'
-      ).bind(code, user.id).first<{ id: number; status: string; seller_id: number | null }>().catch(() => null)
+        'SELECT v.id, v.status, v.product_id, p.seller_id FROM vouchers v JOIN products p ON p.id = v.product_id WHERE v.code=? AND v.user_id=?'
+      ).bind(code, user.id).first<{ id: number; status: string; product_id: number; seller_id: number | null }>().catch(() => null)
       if (!pre) return c.json({ success: false, error: '이용권을 찾을 수 없습니다' }, 404)
       // 🔒 2026-09-03 (대표 — "우리는 QR 아니면 매장 확인코드야"): 셀프 사용은 **매장에 실제로
       //   있어야만** 된다. 판정은 `worker/utils/self-redeem-gate` SSOT — 매장 없음/설정 조회 실패/
@@ -937,7 +937,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       //   게이트를 통째로 건너뛰게** 만들어 데모 100개 전량을 무방비로 뒀다.
       if (pre.status === 'unused') {
         const { checkSelfRedeemGate } = await import('../../../worker/utils/self-redeem-gate')
-        const gate = await checkSelfRedeemGate(DB, pre.seller_id, String(body.store_code || ''))
+        const gate = await checkSelfRedeemGate(DB, pre.seller_id, String(body.store_code || ''), pre.product_id)
         if (!gate.ok) return c.json({ success: false, code: gate.code, error: gate.error }, gate.status)
         if (await voucherHasPendingGift(DB, { id: pre.id })) return c.json({ success: false, code: 'GIFT_PENDING', error: GIFT_PENDING_USE_BLOCKED }, 409) // 🎁 선물 중 잠금
       }

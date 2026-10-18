@@ -180,7 +180,7 @@ describe('③ 브랜드 — 지점 주인이 정한다', () => {
     await addStoreToBrand(DB, 10, aId, 1)
     expect((await brandOfStore(DB, 1))?.branch_count).toBe(1)
     const pub = readCode('src/features/brands/api/brands-public.routes.ts')
-    expect(pub).toMatch(/Number\(b\.branch_count\) > 1/)
+    expect(pub).toMatch(/Number\(b\.branch_count\) <= 1\) return c\.json\(\{ success: true, data: null \}\)/) // 2026-10-18 조기 반환 모양으로(불변식 같음)
   })
 })
 

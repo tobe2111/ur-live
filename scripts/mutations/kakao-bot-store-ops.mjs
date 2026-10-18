@@ -45,8 +45,8 @@ export default [
   {
     name: '💬 카카오봇 — 사용 처리 공유 함수가 매장 소유 검사를 잃는다',
     file: 'src/worker/utils/voucher-seller-redeem.ts',
-    find: `if (actorSellerId !== null && Number(voucher.seller_id) !== Number(actorSellerId)) {`,
-    replace: `if (false) {`,
+    find: `if (actorSellerId !== null && Number(voucher.seller_id) !== Number(actorSellerId)`, // 2026-10-18 형제 지점 예외가 둘째 줄로 붙었다 — 조건 전체를 끈다
+    replace: `if (false && actorSellerId !== null && Number(voucher.seller_id) !== Number(actorSellerId)`,
     test: TEST,
     why: '이 함수는 계산대 스캔과 챗봇이 함께 쓴다 — 여기가 뚫리면 코드만 알면 남의 매장 이용권을 우리 매장 정산으로 소각한다.',
   },
