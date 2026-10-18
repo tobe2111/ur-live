@@ -32,7 +32,8 @@ export default [
   {
     name: "🔢 한 곳(반대 방향): '내 교환권' 줄의 숫자까지 지운다",
     file: 'src/pages/user-profile/ShoppingGroup.tsx',
-    find: "count: counts.gifticon, path: '/my-gifticons' },",
+    // 🔁 2026-10-18 재조준: 0 이면 안 단다(`|| undefined`). 불변식(교환권 숫자의 유일한 자리)은 그대로.
+    find: "count: counts.gifticon || undefined, path: '/my-gifticons' },",
     replace: "path: '/my-gifticons' },",
     test: TEST,
     why: '교환권 숫자의 유일한 자리다 — 정리를 이유로 지우면 교환권이 몇 장인지 마이 어디에도 없다.',

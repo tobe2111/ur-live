@@ -185,14 +185,17 @@ export function AppVersionSection() {
    * ⚠️ 값을 `v1.4.2 (가운뎃점) …` 처럼 **띄어 쓴 가운뎃점으로 잇지 않는다**(`check-middle-dot-chain`).
    */
   return (
-    <div className="ur-content-medium px-4 lg:px-8 pt-5">
-      <p className="text-[12px] text-gray-400 dark:text-white/30 text-center tabular-nums" title={BUILD_HASH || undefined}>
+    /* 📐 2026-10-18 (대표 *"다 해줘"*): **왼쪽 정렬 + 자기 가로 여백 없음.** 이 부품은 마이 맨 아래 묶음 안에서만
+       쓰이고 그 묶음이 이미 `px-4` 를 갖는다 — 여기서 또 주면 왼쪽으로 맞췄을 때 16px 들여쓰인다. 종전엔
+       가운데 정렬이라 그 이중 여백이 안 보였을 뿐이다. 위의 고객센터 링크 줄(왼쪽)과 같은 선에 선다. */
+    <div className="pt-4">
+      <p className="text-[12px] text-gray-400 dark:text-white/30 tabular-nums" title={BUILD_HASH || undefined}>
         {t('accountSettings.appName', { defaultValue: '유어딜' })} v{APP_VERSION}
       </p>
 
       {hasUpdate && (
         <>
-          <p className="mt-1 text-[12px] font-semibold text-brand-text text-center">
+          <p className="mt-1 text-[12px] font-semibold text-brand-text">
             {t('accountSettings.updateAvailable', { defaultValue: '새 버전이 나왔어요' })}
           </p>
           <button
@@ -216,7 +219,7 @@ export function DeleteAccountLink() {
   return (
     <Link
       to="/account/delete-warning"
-      className="block w-full py-3 px-4 text-center text-[12px] text-gray-500 dark:text-white/40 hover:text-red-500 underline underline-offset-4 decoration-gray-300 dark:decoration-white/20 transition-colors"
+      className="inline-block py-2 text-[12px] text-gray-500 dark:text-white/40 hover:text-red-500 underline underline-offset-4 decoration-gray-300 dark:decoration-white/20 transition-colors"
     >
       {t('accountSettings.deleteAccount', { defaultValue: '회원 탈퇴' })}
     </Link>

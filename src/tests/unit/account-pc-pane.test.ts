@@ -21,7 +21,7 @@ describe('PC 마이 — 우측 칸은 메뉴가 아니라 내용', () => {
     expect(PAGE).toMatch(/\{isPc \? \([\s\S]{0,200}?<AccountPcPane \/>/)
     // 🔁 2026-09-29(안 C): 딜 잔액 카드가 상단 **숫자 한 줄**(`MyStats`)로 옮겨갔다 — 폰·PC 공통.
     expect(PAGE).toMatch(/<MyStats /)
-    expect(PAGE).toMatch(/<ShoppingGroup counts=\{counts\} \/>/)
+    expect(PAGE).toMatch(/<ShoppingGroup counts=\{counts\}[ />]/)  // 🔁 2026-10-18: `statusBar` prop 이 붙었다
   })
   it('보라 그라디언트 헤더 띠가 없다(표면 규칙 ⑥) — PC 에선 모바일 헤더를 숨긴다', () => {
     expect(PAGE).not.toContain('#171026')
@@ -76,7 +76,8 @@ describe('PC 마이 — 우측 칸은 메뉴가 아니라 내용', () => {
     expect(PANE, 'PC 칸에 자체 목적지 표가 생겼다').not.toMatch(/path: '/)
     // 그 목록은 분기 **밖**에 있어야 PC·폰이 함께 쓴다(분기 안으로 들어가면 한쪽만 그린다).
     const iBranch = PAGE.indexOf('{isPc ? (')
-    const iShop = PAGE.indexOf('<ShoppingGroup counts={counts} />')
+    // 🔁 2026-10-18: 호출부에 `statusBar={!isPc}` 가 붙었다 — 이름 앞부분으로 찾는다(불변식 그대로).
+    const iShop = PAGE.indexOf('<ShoppingGroup counts={counts}')
     const iEnd = PAGE.indexOf('</>\n      )}', iBranch)
     expect(iShop, 'ShoppingGroup 을 못 찾았다 — 이 검사가 헛돌고 있다').toBeGreaterThan(-1)
     expect(iEnd, '분기 끝을 못 찾았다 — 앵커가 낡았다').toBeGreaterThan(iBranch)

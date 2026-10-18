@@ -6932,7 +6932,7 @@
   },
   "voucherStatus": {
     "sectionTitle": "Mis Pases",
-    "bought": "Comprados",
+    "bought": "Total comprados",
     "usable": "Disponibles",
     "used": "Usados",
     "gone": "Vencidos/Reembolsados",
