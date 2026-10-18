@@ -19,4 +19,12 @@ export default [
     test: 'src/tests/unit/voucher-facet-copy-2026-10-18.test.ts',
     why: '2026-09-02 에 잠근 "브랜드가 카테고리보다 우선" — 브랜드 칩 딥링크(?brand=)의 제목이 카테고리로 바뀐다.',
   },
+  {
+    name: '🏷️ 교환권 클라 SEO 가 다시 정본을 /vouchers 로 박는다',
+    file: 'src/pages/VouchersPage.tsx',
+    find: "vouchersSeo = { title: vSeo.title, description: vSeo.description, url: vSeo.canonical }",
+    replace: "vouchersSeo = { title: vSeo.title, description: vSeo.description, url: '/vouchers' }",
+    test: 'src/tests/unit/voucher-facet-copy-2026-10-18.test.ts',
+    why: 'JS 를 렌더하는 구글이 facet 20개(?category=…)의 정본을 /vouchers 로 읽어 하나로 통합한다 — 서버는 각자를 정본으로 선언하는데 클라가 반대 신호를 낸다.',
+  },
 ]

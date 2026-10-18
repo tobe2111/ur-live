@@ -26,6 +26,10 @@
 3. **교환권 facet 20개 설명이 같은 브랜드 나열** — "편의점: 스타벅스·…" · 제목 중복. ⇒ `facetTitle/facetDescription` 틀.
    가드 `voucher-facet-copy-2026-10-18.test.ts` + 주입 2건.
 
+4. **VouchersPage(잠금표) 클라 SEO 두 벌** — facet 에서도 클라 `<SEO url="/vouchers">` · 제목 "교환권 - 유어딜" · 설명 "김밥천국 등".
+   JS 렌더 구글은 facet 20개를 `/vouchers` 로 통합할 수 있었다(#1901 효과 상쇄). 대표 `AskUserQuestion` 승인 "허가 — SEO 태그만" →
+   `resolveConsumerSurfaceSeo` 결과를 그대로. CLAUDE.md 로딩 audit log 기록. 주입이 가드 구멍(정본 값 미검사) 하나를 잡았다.
+
 ## 🩸 이번에 틀린 판단 / 사고
 - `check-guard-mutations.mjs` 는 **모르는 인자를 무시하고 전수를 돈다**(`--help` 도). `--only` 는 부분일치라
   `"a\|b"` 는 0건 → 전수. 백그라운드로 두 벌이 돌며 남의 파일에 주입한 채 남았다. **`pkill -f` 패턴이 내 셸을 같이 죽였고**,
@@ -34,8 +38,6 @@
 - 지역 데이터 쪽은 **안 고쳤다**: `/stays` 지역 필터는 여전히 칸을 쓴다(2887 이 "속초" 필터에 뜬다). 칸 값 교정은 데이터 쓰기라 별건.
 
 ## 남은 것 / 대표 판단
-- **VouchersPage(잠금표) 클라 SEO 두 벌**: 클라 `<SEO>` 가 facet 에서도 `url="/vouchers"`·제목 "교환권 - 유어딜"·설명 "김밥천국 등" —
-  JS 를 렌더하는 구글은 facet 20개의 정본을 `/vouchers` 로 읽을 수 있다(#1901 효과 상쇄). 잠금 파일이라 허가 필요.
 - 숙소 지역 칸 12건 데이터 교정(필터용).
 - `/products/2917` "프리미엄 무선아이폰"(user_40) 실상품인지.
 

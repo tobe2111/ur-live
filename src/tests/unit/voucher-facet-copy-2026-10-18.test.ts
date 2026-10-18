@@ -42,3 +42,16 @@ describe('교환권 facet 문구', () => {
     expect(seo('?category=' + encodeURIComponent('테스트123')).title).toBe('기프티콘 교환권 - 카페·편의점·치킨 할인 - 유어딜')
   })
 })
+
+describe('클라 SEO 가 서버와 같은 값을 낸다 (VouchersPage — [UNLOCK_LOADING] 2026-10-18 대표 승인)', () => {
+  it('두 <SEO> 가 resolveConsumerSurfaceSeo 결과를 쓰고, 정본을 /vouchers 로 박지 않는다', async () => {
+    const { readCode } = await import('../helpers/source-text')
+    const code = readCode('src/pages/VouchersPage.tsx')
+    expect(code).toMatch(/resolveConsumerSurfaceSeo\('\/vouchers', searchParams/)
+    expect((code.match(/<SEO \{\.\.\.vouchersSeo\} \/>/g) ?? []).length).toBe(2)
+    expect(code).not.toMatch(/url=\{brand \?/)
+    // 정본은 서버가 계산한 값 그대로 — 주입이 잡은 구멍(첫 판은 이 줄이 없어 '/vouchers' 를 박아도 통과했다)
+    expect(code).toMatch(/url: vSeo\.canonical/)
+    expect(code).not.toMatch(/김밥천국 등 인기 브랜드 교환권/)
+  })
+})
