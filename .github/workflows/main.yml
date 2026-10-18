@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: Deploy to Cloudflare Pages
     # 🛡️ 2026-05-28: 무한 hang 방어 — step 행 시 30분 후 실패 처리 (prerender hang 사고 재발 방지).
     timeout-minutes: 40
