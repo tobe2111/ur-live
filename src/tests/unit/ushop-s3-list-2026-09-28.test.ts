@@ -118,10 +118,11 @@ describe('④ 정렬은 보기만 바꾼다', () => {
   })
 })
 
-describe('⑤ 목적지는 귀속 경로', () => {
-  it('상세로 직행하지 않는다 — /u/:handle/p/:productId', () => {
-    // 그 경로가 클릭을 기록하고 소개비 귀속을 붙인다. 화면은 같은데 귀속만 조용히 사라지는 클래스.
-    expect(row).toMatch(/to=\{`\/u\/\$\{handle\}\/p\/\$\{pin\.product_id\}`\}/)
+describe('⑤ 목적지 — 누르는 순간 귀속 (2026-10-18 결재 안 1로 재조준)', () => {
+  it('상세로 가되 소개 값 저장·클릭 기록을 빼먹지 않는다', () => {
+    // 종전엔 서버 경로(`/u/:handle/p/:id`)가 이 일을 했다. 지금은 `onPinClick` 이 한다 — 빠지면 귀속만 조용히 사라진다.
+    expect(row).toMatch(/to=\{pinHref\(pin\)\}/)
+    expect(row).toMatch(/onClick=\{\(\) => onPinClick\(/)
     expect(row).not.toMatch(/`\/group-buy\/|`\/products\//)
   })
 })
