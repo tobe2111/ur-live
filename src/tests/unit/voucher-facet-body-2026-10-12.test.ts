@@ -12,7 +12,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readCode, readRaw } from '../helpers/source-text'
-import { VOUCHERS_SEED_PATH, voucherFacetSeedPath } from '@/shared/seo/voucher-facet'
+import { VOUCHERS_SEED_PATH, voucherFacetSeedPath, voucherFacetsByStock } from '@/shared/seo/voucher-facet'
 import { VOUCHER_FILTER_CATEGORIES } from '@/shared/seo/consumer-surfaces'
 import { buildStaticSurfaceNoscript } from '../../worker/utils/crawler-noscript'
 
@@ -97,10 +97,14 @@ describe('② 본문 — 시드를 먹여 **동작**으로 판정', () => {
     expect(buildStaticSurfaceNoscript('/vouchers', null)).toBe('')
   })
 
-  it('🔗 교환권 줄에는 링크를 달지 않는다 — 그 상세는 noindex 다', () => {
+  it('🔗 교환권 **상세** 줄에는 링크를 달지 않는다 — 그 상세는 noindex 다', () => {
+    /* 🔁 2026-10-18 재조준: 불변식은 그대로(상세로 링크하지 않는다). `<a ` 가 **한 개도 없다**로
+     *   앵커했는데, 같은 날 허브에 **카테고리 facet 링크**가 생겼다 — 그건 상세가 아니고 index
+     *   대상이다. 상세 주소만 세도록 좁힌다(`voucher-facet.ts` 머리말이 두 축을 가른다). */
     const h = buildStaticSurfaceNoscript('/vouchers', probe('커피/음료', [{ b: '메가MGC커피', n: '(HOT)아메리카노', p: 1700 }]))
     expect(h).not.toContain('href="/vouchers/')
-    expect(h).not.toContain('<a ')
+    expect(h).not.toContain('href="/pass/')
+    expect(h).not.toContain('href="/products/')
   })
 
   it('🧾 시드 값을 그대로 마크업에 넣지 않는다 — HTML 탈출', () => {
@@ -143,11 +147,20 @@ describe('③ 배선 — 워커가 facet 시드를 받고 **주입은 제외**�
   })
 
   it('sitemap 제출분은 **허용분의 부분집합**이다 — 본문을 줄 수 없는 URL 을 제출하지 않는다', () => {
-    const m = read(SITEMAP).match(/SITEMAP_VOUCHER_CATEGORIES[^=]*=\s*\[([^\]]*)\]/)
+    /* 🔁 2026-10-18 재조준: 불변식은 그대로이고 **더 강해졌다**. 종전엔 하드코딩 상수
+     *   `SITEMAP_VOUCHER_CATEGORIES` 의 값 셋을 읽어 각각 시드가 나오는지 봤는데, 그 상수가
+     *   **폴백 전용**으로 바뀌고 제출 목록은 재고 집계가 정하게 됐다. 그래서 ① 폴백 값 셋은
+     *   그대로 검사하고 ② 집계 경로가 허용목록 밖을 떨어뜨리는지는 **동작으로** 본다. */
+    const m = read(SITEMAP).match(/SITEMAP_VOUCHER_FALLBACK[^=]*=\s*\[([^\]]*)\]/)
     expect(m).not.toBeNull()
     const cats = [...String(m![1]).matchAll(/'([^']+)'/g)].map((x) => x[1])
     expect(cats.length).toBeGreaterThan(0)
     for (const c of cats) expect(voucherFacetSeedPath('?category=' + encodeURIComponent(c))).not.toBeNull()
+
+    // 집계 경로: 허용목록 밖 값은 재고가 아무리 많아도 제출 목록에 안 들어간다.
+    const picked = voucherFacetsByStock([{ category: '건강/식품/주방', n: 9999 }, { category: '치킨', n: 5 }])
+    expect(picked.map(x => x.category)).toEqual(['치킨'])
+    for (const f of picked) expect(voucherFacetSeedPath('?category=' + encodeURIComponent(f.category))).not.toBeNull()
   })
 
   it('📏 워커 파일 래칫(2672)을 넘기지 않았다', () => {

@@ -171,7 +171,17 @@ describe('⑤ 배선 — 허브가 요약을 받고, 마크업은 한 곳에서�
     expect(c.match(/regionChildLinks\(/g) || []).toHaveLength(1)
     expect(c.match(/childLinksHtml\(path, ssrPayload\)/g) || []).toHaveLength(2)
     // 라벨·주소 둘 다 탈출을 지난다(동작으로는 못 잰다 — 머리말의 "못 보는 것" 참조).
-    expect(c).toMatch(/href="\$\{esc\(k\.href\)\}">\$\{esc\(k\.label\)\}/)
+    //
+    // 🩸 2026-10-18 재조준 — 이 단언이 **파일 전체** 정규식이던 탓에 헛돌았다.
+    //    같은 파일에 교환권 facet 링크 빌더(`facetLinksHtml`)가 생기면서, 그쪽의
+    //    `esc(k.href)` 가 `childLinksHtml` 의 탈출을 지워도 매치를 만들어 줬다
+    //    (주입 `🔗🗺️ 자식 링크 마크업을 조립부에서 직접 쓴다` 가 **통과**했다).
+    //    ⇒ 링크 `<li>` 를 만드는 **모든 자리**를 세고 그 전부가 탈출을 지나는지 본다.
+    //    세 번째 빌더가 생겨도 자동으로 걸린다(지키려던 불변식은 그대로이고 범위만 넓어졌다).
+    const liBuilders = (c.match(/<li><a href=/g) || []).length
+    expect(liBuilders).toBeGreaterThanOrEqual(2) // childLinksHtml + facetLinksHtml
+    const escaped = (c.match(/<li><a href="\$\{esc\(k\.href\)\}">\$\{esc\(k\.label\)\}<\/a><\/li>/g) || []).length
+    expect(escaped, '링크 `<li>` 를 만드는 자리 전부가 라벨·주소를 `esc()` 로 지나야 한다').toBe(liBuilders)
   })
 
   it('시/도 페이지는 상품 목록 **뒤에** 자식을 붙인다 — 상품이 먼저다', () => {

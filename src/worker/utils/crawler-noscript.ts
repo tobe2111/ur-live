@@ -40,6 +40,7 @@ import { CONCEPT_FAQ, CONCEPT_ABOUT_LINES } from '../../shared/seo/concept-conte
 import { parseRegionPath, type RegionRef } from '../../shared/constants/region-slugs'
 import { REGION_PATH_RE } from '../../shared/seo/region-seed'
 import { regionChildLinks, REGION_NOSCRIPT_ROWS } from '../../shared/seo/region-digest'
+import { voucherFacetLinks } from '../../shared/seo/voucher-facet'
 import { CONSUMER_SURFACE_SEO } from '../../shared/seo/consumer-surfaces'
 import { REGION_HUB_CRUMB } from './surface-list-jsonld'
 import { buildUrshortsNoscript } from './urshorts-noscript'
@@ -532,7 +533,16 @@ export function buildStaticSurfaceNoscript(pathname: string, ssrPayload?: string
     if (!rows.length) return ''
     // 종전엔 같은 글자가 `<p>` 였다 — 단어는 그대로이고 요소만 `<h1>` 이 된다.
     const head = h1Of(CONSUMER_SURFACE_SEO[path]?.crumb)
-    return `<noscript>${head}<ul>${capRowImages(rows).map(liOf).join('')}</ul></noscript>`
+    /* 🎁 2026-10-18 (대표 착수 승인) — **교환권 허브만** 카테고리 facet 으로 가는 길을 낸다.
+     *   라이브 실측: 허브 본문 295자 · h1·h2 멀쩡 · **a태그 0개**. facet 20개 중 sitemap 제출이
+     *   3개뿐이라 **17개로 들어가는 내부 링크가 아예 없었다**(facet 자체는 2026-10-12 수리로 이미
+     *   제목·self-canonical·본문 275자를 낸다 — 비어 있던 것은 발견 경로뿐이다).
+     * 🔴 **상품 항목 링크는 여전히 0 이다** — 교환권 상세는 2026-07-07 결정으로 noindex 라
+     *   `rowLine` 이 a태그를 안 단다. 카테고리는 index 대상이므로 그 이유에 해당하지 않는다.
+     *   두 축이 다르고, 가드가 양방향을 고정한다(항목은 계속 0 · 카테고리는 20).
+     * 🔑 다른 세 표면(`/browse`·`/map`·`/stays`)은 facet 체계가 없어 **byte-동일**이다. */
+    const facetLinks = path === '/vouchers' ? facetLinksHtml() : ''
+    return `<noscript>${head}<ul>${capRowImages(rows).map(liOf).join('')}</ul>${facetLinks}</noscript>`
   }
 
   const ref = regionRefOfPath(path)
@@ -551,6 +561,16 @@ export function buildStaticSurfaceNoscript(pathname: string, ssrPayload?: string
   }
 
   return ''
+}
+
+/**
+ * 🎁 교환권 카테고리 링크 마크업. 목록은 `voucherFacetLinks()` SSOT(canonical·sitemap 과 같은 주소
+ * 조립 함수를 지난다)이고, 여기는 **감싸기만** 한다 — `childLinksHtml` 과 같은 규율이다.
+ */
+function facetLinksHtml(): string {
+  const links = voucherFacetLinks()
+  if (!links.length) return ''
+  return `<ul>${links.map(k => `<li><a href="${esc(k.href)}">${esc(k.label)}</a></li>`).join('')}</ul>`
 }
 
 /**

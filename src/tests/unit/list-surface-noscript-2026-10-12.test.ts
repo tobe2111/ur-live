@@ -45,8 +45,16 @@ const MIXED = JSON.stringify({
   ],
 })
 
+/**
+ * 🔁 2026-10-18 재조준: 불변식은 그대로다 — *술어가 그 표면의 항목만 고른다*. 그런데 같은 날
+ * `/vouchers` 허브에 **카테고리 facet 링크**가 `<li>` 로 붙어, 모든 `<li>` 를 "상품 줄" 로 세던
+ * 이 헬퍼가 그 20줄까지 항목으로 집었다. 항목 줄과 facet 줄을 **구조로** 가른다(facet 줄은
+ * 언제나 `?category=` 링크를 담는다 — 상품 줄은 그 표면에서 링크를 아예 안 단다).
+ */
 function rowsOf(path: string, seed = MIXED): string[] {
-  return [...buildStaticSurfaceNoscript(path, seed).matchAll(/<li>(.*?)<\/li>/g)].map((m) => m[1])
+  return [...buildStaticSurfaceNoscript(path, seed).matchAll(/<li>(.*?)<\/li>/g)]
+    .map((m) => m[1])
+    .filter((li) => !li.includes('?category='))
 }
 
 describe('① 네 표면의 술어가 각각 정확하다 (동작으로 잰다)', () => {

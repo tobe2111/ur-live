@@ -48,3 +48,80 @@ export function voucherFacetSeedPath(search: string): string | null {
   if (!cat || !VOUCHER_FILTER_CATEGORIES.includes(cat)) return null
   return `${VOUCHERS_SEED_PATH}&category=${encodeURIComponent(cat)}`
 }
+
+/**
+ * 🔢 facet 이 thin 이 되지 않는 최소 재고 (2026-10-18).
+ *
+ * **라이브 실측으로 정했다**(Googlebot UA 로 받아 `<noscript>` 를 파싱): 가장 작은 카테고리
+ * `마트상품권`(5건)도 본문 **159자 · 항목 5개 · 사진 4장**이고, `음악`(7건) 258자 ·
+ * `영화`(12건) 270자였다 — 8줄 상한에 걸리기 전까지는 건수가 곧 본문 길이다.
+ * 5건이 thin 이 아니므로 3을 쓴다(3건이면 ~100자 · 그 아래는 제출 가치가 없다).
+ *
+ * 🔴 `REGION_INDEX_MIN_DEALS` 와 **값이 같지만 다른 축이다** — 저쪽은 *매장*을 세고 이쪽은
+ *   *상품*을 센다. 한쪽을 고칠 때 다른 쪽이 따라가면 안 되므로 상수를 공유하지 않는다.
+ */
+export const VOUCHER_FACET_MIN_ITEMS = 3
+
+/**
+ * 🔗 facet 주소 조립 — **한 곳에서만** 한다. canonical(`consumer-surfaces`)·sitemap 제출·허브
+ * 내부 링크가 같은 함수를 지나므로 표기가 갈릴 수 없다(2026-10-12 에 `/pass`↔`/stays` 로
+ * 그 대가를 치렀고, 같은 해 sitemap 이 한글 URL 43건을 인코딩 없이 제출한 것도 이 클래스다).
+ */
+export function voucherFacetPath(category: string): string {
+  return `/vouchers?category=${encodeURIComponent(category)}`
+}
+
+/**
+ * 🧾 재고 집계 → **sitemap 이 제출할** facet 목록(건수 내림차순).
+ *
+ * 🔴 **제출은 "색인해 달라" 라서 엄격하다** — 허용목록(`VOUCHER_FILTER_CATEGORIES`, canonical 이
+ *   믿는 그 집합) ∩ 재고 `VOUCHER_FACET_MIN_ITEMS` 이상. 둘 중 하나라도 빠지면
+ *   *제출한 URL 의 정본이 다른 곳을 가리키거나*(허용목록 밖은 canonical 이 `/vouchers` 로
+ *   통합한다) *빈 목록을 색인 요청한다*(2026-07-29 영문 슬러그 6건 사고).
+ *
+ * ⚠️ **집계가 비면 빈 배열이고, 그때 sitemap 은 종전 3개로 폴백한다**(그 판단은 호출부에 있다 —
+ *    여기서 폴백을 넣으면 "집계 실패" 와 "재고 0" 이 구분되지 않는다).
+ */
+export function voucherFacetsByStock(
+  rows: ReadonlyArray<{ category?: string | null; n?: number | null }>,
+): Array<{ category: string; count: number }> {
+  const out: Array<{ category: string; count: number }> = []
+  for (const r of rows || []) {
+    const cat = typeof r?.category === 'string' ? r.category.trim() : ''
+    const n = Number(r?.n)
+    if (!cat || !VOUCHER_FILTER_CATEGORIES.includes(cat)) continue
+    if (!Number.isFinite(n) || n < VOUCHER_FACET_MIN_ITEMS) continue
+    out.push({ category: cat, count: n })
+  }
+  return out.sort((a, b) => b.count - a.count || a.category.localeCompare(b.category))
+}
+
+/**
+ * 🧭 허브(`/vouchers`)가 크롤러 문서에 낼 **카테고리 링크**.
+ *
+ * **왜 필요한가(라이브 실측 2026-10-18, Googlebot UA)**: 허브 본문은 295자에 h1·h2 까지 멀쩡한데
+ * **`<a href>` 가 0개**였다. 그래서 facet 20개는 sitemap 으로만 발견됐고 그중 **제출은 3개**뿐이라
+ * **17개로 들어가는 길이 아예 없었다**. facet 자체는 2026-10-12 수리로 **이미 멀쩡하다**(제출 안 된
+ * `?category=치킨` 도 제목·self-canonical·본문 275자를 낸다) — 비어 있던 것은 발견 경로뿐이다.
+ *
+ * 🔴 **상품 항목은 여전히 링크하지 않는다** — 교환권 상세는 2026-07-07 결정으로 noindex 이고,
+ *   색인 말라고 한 URL 로 크롤 예산을 보내지 않는다(`crawler-noscript.ts` 가 그 이유로 `/vouchers`
+ *   항목에 a태그를 안 단다). **카테고리는 그 이유에 해당하지 않는다** — facet 은 index 대상이다.
+ *   두 축이 다르고, 가드가 양방향을 고정한다.
+ *
+ * 🔑 **왜 재고 집계를 안 보나(= `/region` 과 다른 선택)**: 지역 44곳은 *주소에서 파싱*해야 알 수
+ *   있는 동적 값이라 요약이 없으면 링크를 **지어내게** 된다. 교환권 카테고리는 **코드에 선언된
+ *   고정 집합**이고 라이브와 정확히 일치한다(실측 2026-10-18: `/api/vouchers/categories` 20종 =
+ *   SSOT 20종, 전부 count ≥ 5). 그래서 지어내기가 아니다. 그리고 이 요약을 KV 로 읽으면
+ *   **사람 요청마다** 비용을 물리는데 그 값은 `<noscript>` 전용이라 사람에게는 렌더조차 안 된다.
+ *
+ * ⚠️ **대가**: 어떤 카테고리가 재고 0 이 되면 빈 facet 으로 가는 내부 링크가 하나 남는다.
+ *    색인 피해는 없다 — **sitemap 이 그 facet 을 제출하지 않는다**(위 `voucherFacetsByStock`).
+ *    즉 링크는 관대하고 제출은 엄격하다. 두 방향이 다른 것이 의도다.
+ * ⚠️ **이 함수가 못 보는 것**: SSOT 20종이 라이브와 어긋나는 순간(테스트는 라이브를 못 본다).
+ */
+export function voucherFacetLinks(): Array<{ label: string; href: string }> {
+  // 라벨은 **카테고리 이름 그대로** — `regionChildLinks` 가 `ref.sigungu || ref.sido` 를 쓰는 것과
+  // 같은 규율이다(허브 h1 이 "교환권" 이라 문맥이 이미 있고, 말을 덧붙이면 20줄이 같은 꼬리를 단다).
+  return VOUCHER_FILTER_CATEGORIES.map((c) => ({ label: c, href: voucherFacetPath(c) }))
+}
