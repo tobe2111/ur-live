@@ -11,6 +11,11 @@
 
 name = "ur-ads"
 main = "dist-ads/index.js"
+# 🖼️ 2026-10-17 소셜 카드 렌더 — wrangler 가 **다시 번들하지 않게** 한다. 번들은 [build] 의 esbuild 가 이미 끝냈다(외부는 cloudflare:* · node:* 뿐).
+#   다시 번들하면 wrangler@3 가 node:fs 를 unenv 껍데기로 바꿔 끼워 @cloudflare/playwright 가
+#   "[unenv] fs.mkdtemp is not implemented yet!" 로 죽었다(라이브 첫 실행). no_bundle 이면 런타임 진짜 node:fs
+#   (compatibility_date ≥ 2025-09-01 + nodejs_compat)를 쓴다 — 로컬 workerd 로 기동·mkdtempSync 확인.
+no_bundle = true
 # 🔒 2026-07-23 전수조사: workers.dev 라우트 비활성 — /__ads/*(무인증 수집 트리거·self-chain·시트 rewrite)가
 #   공개 도달 가능하던 표면 봉인. 접근은 Service Binding(메인 env.ADS·자기 SELF)으로만(바인딩은 라우트 불필요).
 workers_dev = false
@@ -68,6 +73,18 @@ binding = "ADS_COMPANY_DB"
 database_name = "urads-company-db"
 database_id = "0e9a8f82-32fb-4584-878c-cdaec6c0aff0"
 
+
+# 🖼️ 2026-10-17 소셜 카드 이미지(인스타 피드는 이미지 필수) — 카드 HTML 을 브라우저로 찍어 R2 에 올린다.
+#   BROWSER = Cloudflare Browser Rendering. 무료 플랜은 하루 10분·동시 3개이고 넘으면 과금이 아니라 실패한다.
+#   MEDIA_BUCKET = 메인과 같은 미디어 버킷(공개 도메인 media.ur-team.com). 키는 `social/` 접두라
+#   메인의 고아 정리 크론(`uploads/` 접두만 본다)이 건드리지 않는다.
+#   🔴 대시보드가 아니라 여기 선언한다 — 이 파일에 없으면 다음 배포가 바인딩을 지운다(위 ADS_DB 주석).
+[browser]
+binding = "BROWSER"
+
+[[r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "ur-live-media"
 
 # ⏰ **DO 알람 레인** (2026-08-02) — cron 부모의 CPU 천장을 우회하는 유일한 무료 경로.
 #   부모가 `SELF.fetch` 로 띄운 자식의 CPU 는 **호출자 몫에서 나가서**, 부모가 3.6초에 죽으며
