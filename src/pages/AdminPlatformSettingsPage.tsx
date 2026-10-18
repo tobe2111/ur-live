@@ -120,6 +120,25 @@ export const OPS_POLICY_FIELDS: Array<{ key: string; label: string; hint: string
     text: true,
   },
   {
+    // 📮 2026-10-18 (대표 "4,5,6번 하자"): 자동 안내 셋 — 전부 기본 꺼짐. ⚠️ `text: true`('true'/'false' 문자열).
+    key: 'seller_daily_report_enabled',
+    label: '사장님 일일 리포트 메일',
+    hint: "기본 꺼짐. 'true' 면 승인된 사장님 전원에게 어제 판매·사용·후기를 아침에 메일로(활동 0 인 날은 안 보냄). 켜기 전 S-NUDGES",
+    text: true,
+  },
+  {
+    key: 'review_request_enabled',
+    label: '이용권 사용 다음 날 후기 요청',
+    hint: "기본 꺼짐. 'true' 면 이용권을 쓴 다음 날 손님에게 앱 알림 1건(후기 안 쓴 경우만, 이용권당 1회). 켜기 전 S-NUDGES",
+    text: true,
+  },
+  {
+    key: 'seller_docs_nudge_enabled',
+    label: '서류 빠진 사장님 보완 안내',
+    hint: "기본 꺼짐. 'true' 면 심사 대기 중 서류가 빠진 매장에 가입 3일째·7일째 한 번씩 알림+메일. 켜기 전 S-NUDGES",
+    text: true,
+  },
+  {
     // 💬 2026-10-10: 카카오톡 채널 챗봇으로 매장 관리(연결·오늘 판매·사용 처리·판매 중지). 스킬 자체는
     //   `KAKAO_SKILL_SECRET` 가 따로 켠다 — 이 값은 그 위의 **매장 관리** 명령만 연다.
     //   ⚠️ `text: true` — 값이 'true'/'false' 문자열이라 숫자 검증 배열에 두면 저장이 거부된다.

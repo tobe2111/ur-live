@@ -425,6 +425,10 @@ const OPS_GATES: OpsGate[] = [
   //   ⚠️ 이 게이트만으로는 안 나간다 — 템플릿 `store_listed` 가 어드민 승인 목록(alimtalk_approved_templates)에
   //   함께 있어야 한다. 둘 중 하나라도 없으면 어드민 버튼이 비활성이고 이유가 화면에 뜬다.
   { key: 'store_owner_notice_enabled', kind: 'setting', label: '사장님 매장 등록 통보(알림톡)', default_value: 'false', staging_ref: 'S-OWNERNOTICE', turn_on_when: '카카오 템플릿(store_listed) 검수가 끝나 어드민 승인 목록에 적히고, 어드민에서 1건만 먼저 보내 실제 수신이 확인되면' },
+  // 📮 2026-10-18 (대표 "4,5,6번 하자"): 밖으로 나가는 자동 안내 셋 — 전부 기본 OFF(발송 = 등급 C).
+  { key: 'seller_daily_report_enabled', kind: 'setting', label: '사장님 일일 리포트 메일(승인 매장 전원)', default_value: 'false', staging_ref: 'S-NUDGES', turn_on_when: '테스트 매장 1곳 메일로 어제 숫자(판매·사용·후기)가 실제 기록과 같은지 확인한 뒤' },
+  { key: 'review_request_enabled', kind: 'setting', label: '이용권 사용 다음 날 후기 요청(앱 알림)', default_value: 'false', staging_ref: 'S-NUDGES', turn_on_when: '테스트 계정으로 이용권을 사용 처리하고 다음 날 알림이 1건만 오는지 확인한 뒤' },
+  { key: 'seller_docs_nudge_enabled', kind: 'setting', label: '서류 빠진 사장님 보완 안내', default_value: 'false', staging_ref: 'S-NUDGES', turn_on_when: '심사 대기 매장의 빠진 항목 목록을 어드민에서 확인하고 안내 문구가 맞는지 본 뒤' },
   // 💸 2026-08-25 (누락 발견): **플랫폼 take 율 자체를 정하는 게이트인데 이 명부에 없었다.**
   //   `channelPlatformRate` 가 이 값으로 직판 10% / 중개 5% 를 가른다(OFF 면 종전 `commission_rate`).
   //   CLAUDE.md 는 게이트 플래그를 여기 등록하라고 규정하는데 이것만 빠져 있어, 운영 화면에서
