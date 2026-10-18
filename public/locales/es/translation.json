@@ -6935,6 +6935,8 @@
     "bought": "Comprados",
     "usable": "Disponibles",
     "used": "Usados",
-    "gone": "Vencidos/Reembolsados"
+    "gone": "Vencidos/Reembolsados",
+    "empty": "Aún no has comprado pases",
+    "browse": "Ver pases"
   }
 }

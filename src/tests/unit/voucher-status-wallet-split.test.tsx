@@ -47,17 +47,22 @@ const STORE_UNUSED = { source: 'internal', id: 7, status: 'unused', expires_at: 
 beforeEach(() => vouchers.mockReset())
 
 describe('① 교환권은 이용권으로 세지 않는다 (대표 신고의 재현)', () => {
-  it('발송 실패한 KT 교환권만 가진 계정은 이용권 현황 자체가 안 뜬다', () => {
+  /* 📐 2026-10-18 — 종전엔 "바 자체가 안 뜬다(null)" 를 단언했다. 그 null 이 첫 방문의 밀림을 만들어
+     (응답 뒤에 바가 생기며 아래 목록이 100px 밀렸다) 자리는 늘 세우고 **숫자를 감추는** 쪽으로 바뀌었다.
+     지키려는 것은 그대로다 — 교환권 한 장이 '이용권 1장' 으로 둔갑하지 않는다. */
+  it('발송 실패한 KT 교환권만 가진 계정엔 이용권 숫자가 안 보이고 빈 안내가 뜬다', () => {
     vouchers.mockReturnValue([CEO_FAILED_GIFTICON])
     const { container } = render(<OrderStatusBar />)
-    // 이용권 0장 → 바를 그릴 이유가 없다. "내 이용권 0" 과 같은 답이 된다.
-    expect(container.firstChild).toBeNull()
+    expect(screen.getByText('아직 산 이용권이 없어요')).toBeTruthy()
+    const row = screen.getByText('구매완료').closest('div.flex') as HTMLElement
+    expect(row.className, '숫자 줄은 높이만 잡고 안 보여야 한다 — "내 이용권 0" 과 같은 답').toContain('invisible')
+    expect(container.firstChild).not.toBeNull()
   })
 
   it('`deal_only=1`(딜 전용 = 교환권)도 마찬가지로 빠진다 — 판정은 source 하나가 아니다', () => {
     vouchers.mockReturnValue([{ source: 'internal', id: 9, status: 'unused', deal_only: 1 }])
-    const { container } = render(<OrderStatusBar />)
-    expect(container.firstChild).toBeNull()
+    render(<OrderStatusBar />)
+    expect(screen.getByText('아직 산 이용권이 없어요')).toBeTruthy()
   })
 
   it('교환권과 이용권이 섞여 오면 이용권만 센다', () => {

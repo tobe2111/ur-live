@@ -14,6 +14,7 @@
 import { NavigateFunction } from 'react-router-dom'
 import { isSafeInternalPath } from './safe-internal-path'
 import { useAuthStore } from '@/client/stores/auth.store'
+import { clearAllUserCache } from '@/hooks/queries/localCache'
 
 // 🔥 2026-08-04 (대표 승인): Firebase 제거. GLOBAL 미런칭·폐기(#804) · 서버 수용 차단(#806).
 //   KR 은 카카오 세션 쿠키 인증이라 이 경로를 원래 안 탄다.
@@ -164,6 +165,10 @@ export function clearAuthData(type: 'seller' | 'admin' | 'user') {
     //   PinButton·App.tsx 자동핀이 읽는 *별도* 인증 뷰라, 안 지우면 로그아웃 후 새로고침해도
     //   persist 가 isAuthenticated=true 로 rehydrate → 핀 UI 가 "로그인됨"으로 오표시.
     try { useAuthStore.getState().clearAuth() } catch { /* SSR/비브라우저 */ }
+    // 🔐 2026-10-18 — 화면용 개인 캐시(`urq:` — 이용권·배송지·잔액·쿠폰·알림)도 지운다. 정의만 있고
+    //   호출 0 이라 로그아웃한 폰에 남았고, 같은 폰의 다음 사람 첫 화면이 그 값으로 그려졌다.
+    //   (사람이 바뀌면 `localCache` 가 읽기 전에도 스스로 지운다 — 여기는 남겨 두지 않는 쪽이다.)
+    try { clearAllUserCache() } catch { /* SSR/비브라우저 */ }
   }
 
   // 선택적 삭제

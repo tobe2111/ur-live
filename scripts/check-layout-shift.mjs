@@ -64,7 +64,10 @@ const ROUTES = [
   { name: '지도', args: ['--route=/map', '--deals'] },
   { name: '숙소', args: ['--route=/stays', '--deals'] },
   { name: '유어샵', args: ['--route=/u/jiwon1228'] },
-  { name: '마이(셀러)', args: ['--route=/user/profile', '--stores=1'] },
+  // 🎟️ 2026-10-18 — `--wallet` 없이 돌면 '이용권 현황' 이 아예 안 떠서 그 바가 아래를 미는 것을 못 봤다
+  //   (첫 방문에 '내가 산 것' 이 100px 밀렸다). 구매자 화면도 따로 잰다 — 판매 구역이 없으면 그 바가 화면 맨 위다.
+  { name: '마이(셀러)', args: ['--route=/user/profile', '--stores=1', '--wallet', '--auth=user'] },
+  { name: '마이(구매자)', args: ['--route=/user/profile', '--wallet', '--auth=user'] },
   { name: '지갑', args: ['--route=/my-vouchers', '--wallet', '--auth=user'] },
   { name: '장바구니', args: ['--route=/cart', '--cart', '--auth=user'] },
   { name: '주문내역', args: ['--route=/my-orders', '--auth=user'] },
