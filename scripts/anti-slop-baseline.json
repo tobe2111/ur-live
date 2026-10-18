@@ -1,10 +1,10 @@
 {
   "_comment": "anti-slop 문구·라벨 허용 상한(래칫). 줄이면 --rebaseline 으로 갱신.",
-  "_measured": "2026-10-14",
-  "_lockedEmDash": "🔒 worker/index.ts (로딩 잠금표 파일) 의 줄표 7곳 — **동결만** 한다. 비잠금(emDash)은 0 고정이고 둘을 더하면 '랜딩에 새로 생긴 줄표 한 개가 7 사이에 숨는다'(이 레포가 401건을 두고 배운 실패 모드). 내역: :790 유어애즈 제목 · :832 /blog 제목(라이브) · :902 /u 설명 폴백(라이브) · :1238 내부 헬스체크 문구 · :2403·2415·2459 app.get('*') 봇 OG 블록(라이브 실측 0건 = 죽은 코드). ⚠️ 줄이려면 대표 승인이 필요하다(문자열만 바꿔도 잠금 파일이다) — 줄인 뒤 --rebaseline.",
+  "_measured": "2026-10-18",
   "emDash": 0,
-  "lockedEmDash": 7,
+  "lockedEmDash": 3,
   "sectionNum": 0,
   "koUpper": 0,
-  "blogSeedBodyEmDash": 39
+  "blogSeedBodyEmDash": 39,
+  "_lockedEmDash": "🔒 worker/index.ts (로딩 잠금표 파일) 의 줄표 — **동결만** 한다. 2026-10-18 대표 결재 `2026-10-14-locked-emdash` 안 1 로 라이브 셋(유어애즈 제목 · /blog 제목 · /u 설명 폴백)을 고치고 폴백을 한 벌(`ushopDescFallback`)로 모아 7 → 3. 남은 셋: 내부 헬스체크 영문 문구 1 · app.get('*') 봇 OG 블록 2(라이브 실측 0건 = 죽은 코드). ⚠️ 더 줄이려면 다시 대표 승인이 필요하다(문자열만 바꿔도 잠금 파일이다) — 줄인 뒤 --rebaseline."
 }

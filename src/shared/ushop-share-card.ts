@@ -160,6 +160,15 @@ export function ushopOgImage(ssrPayload: string, origin: string, _handle: string
  * ⚠️ `kind` 를 되살리지 말 것: 유어샵 링크는 *가게*를 가리키는데 카드가 특정 물건을 말하면
  *    착지가 어긋나고, 그 물건을 고르는 순간 비활성·거짓가격·순서변동이 전부 따라온다.
  */
+/**
+ * 소개글이 없는 유어샵의 검색·공유 설명 — **한 벌**(2026-10-18 대표 결재 `2026-10-14-locked-emdash` 안 1).
+ * 종전엔 워커 두 자리가 따로 적어 문구가 갈려 있었다(`…교환권·이용권 모음` ↔ 죽은 봇 블록의 `…교환권·공구 모음`)
+ * 그리고 둘 다 줄표를 썼다. 서빙 메타(`applySurfaceMeta`)와 봇 셸이 이 함수 하나를 부른다.
+ */
+export function ushopDescFallback(name: string): string {
+  return `${name}님이 고른 교환권·이용권 모음`
+}
+
 export interface UShopShareCard {
   title: string
   description: string
