@@ -14,7 +14,7 @@ on:
 
 jobs:
   smoke:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: 배포 정착 대기 (push 트리거 시 새 배포가 끝나도록)
         if: github.event_name == 'push'
