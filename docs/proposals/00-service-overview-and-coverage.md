@@ -1603,7 +1603,7 @@
 
 
 
-> 마지막 생성: 2026-10-18T05:12:34.519Z
+> 마지막 생성: 2026-10-18T05:54:32.458Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->
