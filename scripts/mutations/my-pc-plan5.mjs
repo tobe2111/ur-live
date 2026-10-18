@@ -46,8 +46,9 @@ export default [
   {
     name: '🔢 PC 띠가 숫자를 폰과 다른 값으로 넘긴다',
     file: 'src/pages/user-profile/AccountPcBand.tsx',
-    find: '<MyStats inline voucher={counts.voucher} gifticon={counts.gifticon} coupon={counts.coupon} />',
-    replace: '<MyStats inline voucher={counts.voucher} gifticon={counts.wish} coupon={counts.coupon} />',
+    // 🔁 2026-10-18 재조준: 교환권 칸이 빠져 prop 이 둘이 됐다(같은 숫자 한 곳). 불변식은 그대로.
+    find: '<MyStats inline voucher={counts.voucher} coupon={counts.coupon} />',
+    replace: '<MyStats inline voucher={counts.voucher} coupon={counts.wish} />',
     test: TEST,
     why: '같은 화면이 두 숫자를 말한다 — 에러가 안 나서 아무도 신고하지 않는 클래스',
   },

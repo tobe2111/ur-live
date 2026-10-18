@@ -81,7 +81,7 @@ export default function AccountPcBand({ counts, userName, profileImage, onEditPr
       {/* 🔢 숫자는 오른쪽 끝에 붙는다 — 사람(왼쪽)과 자산(오른쪽)이 한 줄에서 갈린다.
           ⚠️ `min-w-0` 이 없으면 긴 숫자가 이름 칸을 밀어낸다. */}
       <div className="ml-auto min-w-0 pl-5 border-l border-rule">
-        <MyStats inline voucher={counts.voucher} gifticon={counts.gifticon} coupon={counts.coupon} />
+        <MyStats inline voucher={counts.voucher} coupon={counts.coupon} />
       </div>
       <button
         type="button"

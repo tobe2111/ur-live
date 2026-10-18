@@ -22,10 +22,13 @@ describe('유어쇼츠 레일 — 목록이 오기 전에 자리를 잡는다(�
   })
   it('영상이 0 이었던 기억이 있으면 예약하지 않는다(대표 확정 "없으면 섹션 자체를 안 보인다")', () => {
     expect(SRC).toMatch(/useState\(\(\) => readRailHint\(\) !== 0\)/)
-    expect(SRC).toMatch(/setItems\(r\.data\); writeRailHint\(r\.data\.length\)/)
+    // 🔁 2026-10-18 재조준: 목록이 모듈 단일 비행으로 옮겨가 변수 이름만 바뀌었다.
+    expect(SRC).toMatch(/setItems\(list\); writeRailHint\(list\.length\)/)
   })
   it('실패해도 예약을 거둔다(영원히 빈 패널 금지)', () => {
-    expect(SRC).toMatch(/\.catch\(\(\) => \{ if \(alive\) setSettled\(true\)/)
+    // 🔁 2026-10-18 재조준: 실패는 `loadRailList` 가 `null` 로 돌려주고, 받는 쪽은 성공·실패 무관하게 거둔다.
+    expect(SRC).toMatch(/if \(list\) \{ setItems\(list\); writeRailHint\(list\.length\) \}\s*\n\s*setSettled\(true\)/)
+    expect(SRC, '실패가 null 로 안 떨어지면 받는 쪽이 영원히 기다린다').toMatch(/\.catch\(\(\) => \{\s*\n\s*if \(railList === entry\) railList = null\s*\n\s*return null/)
   })
 })
 

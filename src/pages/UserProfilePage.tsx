@@ -303,7 +303,7 @@ export default function UserProfilePage() {
           sellerSeats={sellerSeats}
         />
       ) : (
-        <MyStats voucher={counts.voucher} gifticon={counts.gifticon} coupon={counts.coupon} />
+        <MyStats voucher={counts.voucher} coupon={counts.coupon} />
       )}
 
       <div className={sellerSeats.stores.length > 0 ? 'ur-account-cols ur-account-cols--split' : 'ur-account-cols'}>

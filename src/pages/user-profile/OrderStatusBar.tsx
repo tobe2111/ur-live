@@ -8,6 +8,7 @@
  * 정상이 된 지 오래였다는 뜻이다.
  *
  * ⇒ 이용권의 실제 생애로 바꾼다: **구매완료 → 사용가능 → 사용완료 → 만료·환불**.
+ *   🔢 2026-10-18: '사용가능' 은 맨 위 숫자 줄(`이용권 N`)로 옮겨갔다 — 이 바는 남은 셋을 말한다.
  *   숫자는 주문(orders)이 아니라 **이용권(vouchers)** 에서 센다 — 사람이 세는 단위가 그것이다
  *   ("내 이용권 몇 장 남았나"). 데이터는 `/my-vouchers` 지갑과 **같은 훅**을 쓰므로 두 화면이 갈릴 수 없다.
  *
@@ -60,7 +61,7 @@ export default function OrderStatusBar() {
   const known = data !== undefined
 
   const counts = useMemo(() => {
-    const c: Record<string, number> = { bought: 0, usable: 0, used: 0, gone: 0 }
+    const c: Record<string, number> = { bought: 0, used: 0, gone: 0 }
     const now = Date.now()
     for (const v of vouchersRaw as VoucherRow[]) {
       // 🎟️ 교환권(KT·딜 전용)은 여기서 세지 않는다 — 아래 '내 교환권' 행이 맡는다.
@@ -74,9 +75,11 @@ export default function OrderStatusBar() {
       //   (KT-알파 병합 경로 등)에서 `...ZZ` → NaN → `NaN < now` 가 **false** 라 만료된 이용권이
       //   조용히 '사용가능' 으로 세어진다. `parseUTCDate` 가 두 형태를 모두 받는다.
       if (v.expires_at && parseUTCDate(v.expires_at).getTime() < now) { c.gone++; continue }
-      // ✅ 허용목록 — `else c.usable++` 로 두면 **모르는 상태가 전부 '사용가능'** 이 된다(이번 사고).
-      //   `''` 는 컬럼 DEFAULT('unused')와 같은 뜻이라 함께 받는다. 그 밖은 어느 칸에도 안 넣는다.
-      if (st === 'unused' || st === '') c.usable++   // 미사용 + 기간 안 — 지금 쓸 수 있는 것
+      // 🔢 2026-10-18 — **'사용가능' 칸을 뺐다**(대표 *"같은 숫자 하나로 줄여줘"*). 지금 쓸 수 있는 장수는
+      //   맨 위 숫자 줄의 `이용권 N` 이 그 한 곳이다 — 거기는 지갑 첫 탭과 같은 술어(`isUsableWalletItem`)로
+      //   센다. 여기서 따로 세면 같은 화면에 같은 뜻의 숫자가 둘이 되고, 술어가 달라 **값까지** 갈릴 수 있었다
+      //   (이 바는 기간 지난 미사용을 빼고, 위 줄은 지갑과 같이 status 만 본다).
+      //   ✅ 2026-09-03 의 교훈(모르는 상태를 '사용가능' 으로 세지 않는다)은 그대로다 — 이제 그 칸 자체가 없다.
     }
     return c
   }, [vouchersRaw])
@@ -91,7 +94,6 @@ export default function OrderStatusBar() {
 
   const items = [
     { label: t('voucherStatus.bought', { defaultValue: '구매완료' }), key: 'bought', path: '/my-vouchers' },
-    { label: t('voucherStatus.usable', { defaultValue: '사용가능' }), key: 'usable', path: '/my-vouchers' },
     { label: t('voucherStatus.used', { defaultValue: '사용완료' }), key: 'used', path: '/my-vouchers' },
     { label: t('voucherStatus.gone', { defaultValue: '만료·환불' }), key: 'gone', path: '/my-vouchers' },
   ]

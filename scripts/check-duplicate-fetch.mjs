@@ -95,6 +95,20 @@ if (ONLY && targets.length === 0) {
 let bad = 0
 const report = []
 
+/**
+ * 🩸 2026-10-18 — 이 검사가 CI 에서 **간헐로** 빨간불이 났는데(3회) 이유를 읽을 수가 없었다.
+ *   잡 로그는 외부 저장소에서만 내려받을 수 있고 세션 환경은 그 호스트를 못 간다 — 남는 것은
+ *   check-run **annotation** 뿐이다. 그런데 이 스크립트는 실패 사유를 stdout/stderr 에만 찍어서
+ *   annotation 에는 "exit code 1" 한 줄만 남았다(같은 커밋을 로컬에서 돌리면 매번 통과).
+ *   ⇒ 빨간불의 근거(어느 화면 · 어느 경로 · 몇 번 · 몇 ms)를 annotation 으로도 남긴다.
+ *   GitHub 이 아닐 때는 아무것도 안 찍는다(로컬 출력 불변).
+ */
+const annotate = (title, msg) => {
+  if (!process.env.GITHUB_ACTIONS) return
+  const esc = (v) => String(v).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A')
+  console.log(`::error title=${esc(title).replace(/[:,]/g, ' ')}::${esc(msg)}`)
+}
+
 for (const r of targets) {
   const res = spawnSync(process.execPath, [
     path.join(ROOT, 'scripts/visual-preview.mjs'),
@@ -106,6 +120,7 @@ for (const r of targets) {
   if (!row) {
     console.error(`❌ ${r.name}: 측정 줄(FETCH_RESULT)을 못 읽었다 — 하네스가 죽었거나 형식이 바뀌었다`)
     console.error(`   ${String(res.stderr || '').split('\n').slice(0, 3).join(' / ')}`)
+    annotate(`duplicate-fetch ${r.name}`, `측정 줄(FETCH_RESULT)을 못 읽었다 (exit ${res.status ?? res.signal}) — ${String(res.stderr || '').split('\n').slice(0, 6).join(' / ').slice(0, 900)}`)
     bad++
     continue
   }
@@ -129,7 +144,12 @@ for (const r of targets) {
     report.push(`      ↻ ${p} ×${v.length}  (${v.map((c) => `+${c.at}ms`).join(' ')})`)
     for (const c of v) report.push(`          ${c.url}`)
   }
-  if (dupes.length > allow) bad++
+  if (dupes.length > allow) {
+    bad++
+    annotate(`duplicate-fetch ${r.name}`, `중복 경로 ${dupes.length}개 (허용 ${allow}) — ` + dupes
+      .map(([p, v]) => `${p} ×${v.length} [${v.map((c) => `+${c.at}ms ${String(c.url).slice(p.length, p.length + 80)}`).join(' | ')}]`)
+      .join(' ; ').slice(0, 1500))
+  }
 }
 
 console.log(report.join('\n'))
