@@ -81,7 +81,7 @@ describe('아이폰 웹앱 시작화면 — 선언·파일·크기·서빙', () 
  * 고르느냐에 따라 옛 파란 `ur` 이 다시 뜬다(에러 0) — 그래서 선언된 PNG 전부의 바탕을 대조한다.
  * ⚠️ 못 보는 것: favicon.ico 안쪽 그림 · 구글이 언제 다시 가져가는지(며칠~몇 주).
  */
-describe('파비콘 — 남색 + 유달이', () => {
+describe('파비콘 — 남색 + urdeal. 로고(2026-10-17)', () => {
   const INDEX = readFileSync('index.html', 'utf8')
   const pngs = [...INDEX.matchAll(/<link rel="icon" type="image\/png"[^>]*href="([^"]+)"/g)].map(m => m[1])
 
