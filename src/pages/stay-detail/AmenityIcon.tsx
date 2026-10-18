@@ -11,12 +11,20 @@ import {
 } from 'lucide-react'
 import type { AmenityKind } from './amenity-meta'
 
-const ICONS: Record<AmenityKind, typeof Check> = {
-  parking: Car, wifi: Wifi, breakfast: Coffee, pool: Waves, spa: Bath, fire: Flame,
-  kitchen: Utensils, air: Wind, gym: Dumbbell, pet: PawPrint, nosmoke: CigaretteOff, default: Check,
-}
-
+/* 종류마다 JSX 로 그린다(지도 객체로 모으면 `consumer-icon-system` 래칫이 이 아이콘들을 못 센다 — 세는 기준이 `<Icon` 이다). */
 export default function AmenityIcon({ kind, className }: { kind: AmenityKind; className: string }) {
-  const Icon = ICONS[kind] ?? Check
-  return <Icon className={className} />
+  switch (kind) {
+    case 'parking': return <Car className={className} />
+    case 'wifi': return <Wifi className={className} />
+    case 'breakfast': return <Coffee className={className} />
+    case 'pool': return <Waves className={className} />
+    case 'spa': return <Bath className={className} />
+    case 'fire': return <Flame className={className} />
+    case 'kitchen': return <Utensils className={className} />
+    case 'air': return <Wind className={className} />
+    case 'gym': return <Dumbbell className={className} />
+    case 'pet': return <PawPrint className={className} />
+    case 'nosmoke': return <CigaretteOff className={className} />
+    default: return <Check className={className} />
+  }
 }

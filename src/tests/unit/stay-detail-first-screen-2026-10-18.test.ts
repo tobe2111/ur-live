@@ -32,7 +32,7 @@ describe('① 편의시설 아이콘은 lazy 로만', () => {
   it('AmenityIcon 이 종류 열두 개를 전부 그림에 잇는다', () => {
     const src = code(ICON)
     for (const k of ['parking', 'wifi', 'breakfast', 'pool', 'spa', 'fire', 'kitchen', 'air', 'gym', 'pet', 'nosmoke', 'default']) {
-      expect(src).toMatch(new RegExp(`\\b${k}:`))
+      expect(src).toMatch(new RegExp(k === 'default' ? 'default:' : `case '${k}':`))
     }
   })
 })

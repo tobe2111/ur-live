@@ -67,3 +67,4 @@ critical-chunks 14 불변 · chunk-cycles 0 · exec-cost 10화면 예산 안(전
 - critical-chunks 14 불변 · 청크 순환 0 · 다른 화면 ±0.4 이하 감소. 가드 `stay-detail-first-screen-2026-10-18.test.ts` 19건 + 주입 4건(4/4 빨간불).
 
 **다음 후보**: `search` 223.6 (지도 봉투 `lz-map`·`app-kakao-sdk`·`lucide` 를 정적으로 받는다 — 검색 결과 지도 보기 때문인지 같은 방법으로).
+- 🩸 **이번에 틀린 것**: 첫 판에서 편의시설 아이콘을 객체 지도로 모았더니 `consumer-icon-system` 래칫이 154 → 141 로 "줄었다" — 래칫이 `<Icon` JSX 만 세서 **못 보게 된** 것이었다. 기준도 안 내려 CI 주입이 빨간불(여덟 번째). JSX `switch` 로 되돌려 정직한 값 152 로 잠갔다.
