@@ -290,10 +290,10 @@
 | 도메인 | 소개서 파일 | 페이지 | API 엔드포인트 |
 |---|---|---|---|
 | 도매몰 (유통스타트) | `wholesale-mall-brief.md` | 2 | 4 |
-| 오프라인 공구 / 동네딜 | `offline-groupbuy-brief.md` | 29 | 96 |
-| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 76 | 274 |
+| 오프라인 공구 / 동네딜 | `offline-groupbuy-brief.md` | 29 | 95 |
+| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 76 | 273 |
 | 유어샵 / 담기·소개 | `linkshop-brief.md` | 24 | 86 |
-| **합계** | — | **131** | **460** |
+| **합계** | — | **131** | **458** |
 
 ### 전체 커버리지 검증 (자동 — 빠진 기능 보증)
 
@@ -302,8 +302,8 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 331 | 1037 |
-| 도메인 버킷 (5개 소개서) | 131 | 460 |
+| 전체 | 331 | 1035 |
+| 도메인 버킷 (5개 소개서) | 131 | 458 |
 | 공통/인프라 (의도적 제외) | 153 | 488 |
 | **미커버 (점검 필요)** | **47** | **89** |
 
@@ -578,7 +578,7 @@
 - `/stays/:id`
 - `/stays/checkout-return`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (96개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (95개)
 
 
 **/api/admin/stays**
@@ -654,9 +654,6 @@
 
 **/api/group-buy/confirm-toss**
 - `POST /api/group-buy/confirm-toss`
-
-**/api/group-buy/join**
-- `POST /api/group-buy/join/:id`
 
 **/api/group-buy/live-ticker**
 - `GET /api/group-buy/live-ticker`
@@ -843,7 +840,7 @@
 - `/vouchers/:id`
 - `/wishlist`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (274개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (273개)
 
 
 **/api/admin-review-bonus/:id**
@@ -1352,9 +1349,6 @@
 **/api/vouchers/confirm-toss**
 - `POST /api/vouchers/confirm-toss`
 
-**/api/vouchers/join**
-- `POST /api/vouchers/join/:id`
-
 **/api/youtube-growth/:id**
 - `PUT /api/youtube-growth/:id`
 
@@ -1607,7 +1601,7 @@
 
 
 
-> 마지막 생성: 2026-10-18T03:22:13.807Z
+> 마지막 생성: 2026-10-18T04:08:51.109Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

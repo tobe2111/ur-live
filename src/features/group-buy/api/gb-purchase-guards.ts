@@ -57,18 +57,31 @@ export async function isSelfOwnedGroupBuy(
   const sid = Number(sellerId)
   const uid = String(userId ?? '').trim()
   if (!Number.isFinite(sid) || sid <= 0 || !uid) return false
-  try {
-    const row = await DB.prepare(
-      `SELECT 1 AS hit FROM sellers s
+  const base = `SELECT 1 AS hit FROM sellers s
         WHERE s.id = ?
           AND ( CAST(s.linked_user_id AS TEXT) = CAST(? AS TEXT)
              OR ( s.linked_user_id IS NULL AND s.email IS NOT NULL AND s.email != ''
-                  AND EXISTS (SELECT 1 FROM users u WHERE u.id = ? AND LOWER(u.email) = LOWER(s.email)) ) )
+                  AND EXISTS (SELECT 1 FROM users u WHERE u.id = ? AND LOWER(u.email) = LOWER(s.email)) )`
+  // 🪑 2026-10-18: `/store/new` 사장님은 `linked_user_id` 가 비어 있고 **주인 좌석**
+  //   (`seller_operators.role='owner'`)으로만 소유한다. 종전 판정이 그 좌석을 안 봐서, 직접 등록한
+  //   사장님은 자기 이용권을 살 수 있었고 화면도 그를 '주인' 으로 못 알아봤다. 중개(operator)는 넣지
+  //   않는다 — 맡은 가게이지 자기 가게가 아니다(`findOwnerSeatSellerId` 와 같은 규칙).
+  //   좌석 테이블이 없는 DB 면 종전 판정으로 내려간다(fail-open 이 통째로 꺼지지 않게).
+  try {
+    const row = await DB.prepare(
+      `${base}
+             OR EXISTS (SELECT 1 FROM seller_operators o WHERE o.seller_id = s.id
+                         AND CAST(o.user_id AS TEXT) = CAST(? AS TEXT) AND o.role = 'owner' AND o.revoked_at IS NULL) )
         LIMIT 1`,
-    ).bind(sid, uid, uid).first<{ hit: number }>()
+    ).bind(sid, uid, uid, uid).first<{ hit: number }>()
     return !!row
   } catch {
-    return false
+    try {
+      const row = await DB.prepare(`${base} ) LIMIT 1`).bind(sid, uid, uid).first<{ hit: number }>()
+      return !!row
+    } catch {
+      return false
+    }
   }
 }
 
