@@ -1786,8 +1786,8 @@ const MUTATIONS = [
   {
     name: '📏 DO 알람 레인의 D1 읽기량이 스탬프에서 빠진다',
     file: 'src/worker-ads/lane-alarm.ts',
-    find: 'staleGapMinutes(Math.max(1, Math.round(60 / Math.max(1, cap)))), this.meter)',
-    replace: 'staleGapMinutes(Math.max(1, Math.round(60 / Math.max(1, cap)))))',
+    find: 'alarmLaneGapMinutes(Math.max(1, Math.round(60 / Math.max(1, cap)))), this.meter)',
+    replace: 'alarmLaneGapMinutes(Math.max(1, Math.round(60 / Math.max(1, cap)))))',
     test: 'src/tests/unit/ads-lanes-pause.test.ts',
     why:
       '8/27 수리 뒤 아무도 재지 않았고, 잴 수단이 DB 총량뿐이라 "어느 레인이" 를 끝내 못 가렸다. ' +

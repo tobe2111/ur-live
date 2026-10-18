@@ -107,6 +107,6 @@ describe('📏 유어애즈 계량기 — 배선', () => {
     expect(SELF_BEAT).toMatch(/recordCronBeat\(env, `ads:\$\{beat\}`, ok, ms, undefined, ok \? undefined : failNote\(err\), gap, readEnvMeter\(env\)\)/)
     expect(ALARM).toMatch(/this\.env = withMeteredEnv\(env, \(\) => this\.meter\)/)
     expect(ALARM).toMatch(/this\.meter = newMeter\(\)/)
-    expect(ALARM).toMatch(/staleGapMinutes\(Math\.max\(1, Math\.round\(60 \/ Math\.max\(1, cap\)\)\)\), this\.meter\)/)
+    expect(ALARM).toMatch(/alarmLaneGapMinutes\(Math\.max\(1, Math\.round\(60 \/ Math\.max\(1, cap\)\)\)\), this\.meter\)/) // 2026-10-18: 임계 함수만 알람 상한판으로(결재 2026-10-15-ads-alarm-stall-alert)
   })
 })

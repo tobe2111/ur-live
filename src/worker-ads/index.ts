@@ -22,7 +22,7 @@ import { publicDataRoutes } from './public-data.routes'
 import { chainRoutes } from './chain.routes'
 import { createBeatBatch, makeBeatWriter } from './beat-batch'
 import { closeTick } from './tail-bound'
-import { runAutobidJob, runFollowupJob, runWeeklyJob, runDailySocialDraftJob } from './side-jobs'
+import { runAutobidJob, runFollowupJob, runWeeklyJob, runDailySocialDraftJob } from './side-jobs'; import { runMeasureVolumeWatch } from './measure-volume-watch'
 import { dispatchPendingLanes, type RunnableLane } from './lane-runner'
 import { laneUrl } from './self-beat'
 import { enrichRoutes } from './enrich.routes'
@@ -574,7 +574,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
 
   runFollowupJob(env, hourUTC, adsBeat, (p) => ctx.waitUntil(p), dailyGapMinutes())
   runWeeklyJob(env, hourUTC, dowUTC, adsBeat, (p) => ctx.waitUntil(p), staleGapMinutes(7 * 24 * 60))
-  runDailySocialDraftJob(env, hourUTC, adsBeat, (p) => ctx.waitUntil(p), staleGapMinutes(24 * 60))
+  runDailySocialDraftJob(env, hourUTC, adsBeat, (p) => ctx.waitUntil(p), staleGapMinutes(24 * 60)); runMeasureVolumeWatch(env, hourUTC, adsBeat, (p) => ctx.waitUntil(p), staleGapMinutes(24 * 60)) // 📏 측정량 경보(결재 2026-10-15-ads-alarm-stall-alert)
 
   // 🔭 이번 실행이 '알고 있는' 레인(게이트 ON)을 남긴다 — 하트비트와 대조해 '한 번도 안 돈 레인'을 판정.
   ctx.waitUntil(recordKnownLanes(env, laneReg.list()))
