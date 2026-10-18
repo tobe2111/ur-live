@@ -7,8 +7,9 @@ import { Link, useLocation } from 'react-router-dom'
 import SEO from '@/components/SEO'
 import UrAdsLogo from '@/components/brand/UrAdsLogo'
 import { useUrAdsFavicon } from '@/components/brand/useUrAdsFavicon'
+import { SUPPORT_EMAIL } from '@/shared/support-contact'
 
-const CONTACT = 'support@ur-team.com'
+const CONTACT = SUPPORT_EMAIL
 
 interface Section { h: string; body: string[] }
 

@@ -226,7 +226,7 @@ export default function SellerWaitingPage() {
           </Link>
           {isRejected && (
             <a
-              href="mailto:support@ur-team.com"
+              href="mailto:urteam.corp@gmail.com"
               className="w-full flex items-center justify-center gap-2 py-3 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 rounded-xl font-semibold text-sm"
             >
               {t('sellerWaiting.contactCS')}

@@ -124,7 +124,7 @@ export function buildSystemEmailHtml(opts: {
       <p style="font-size:11px;color:#999;line-height:1.5;text-align:center;">
         본 메일은 시스템 자동 발송 메일입니다.<br>
         <strong>리스터코퍼레이션</strong> | 사업자등록번호: 783-87-03224<br>
-        문의: <a href="mailto:contact@ur-team.com" style="color:#666;">contact@ur-team.com</a>
+        문의: <a href="mailto:urteam.corp@gmail.com" style="color:#666;">urteam.corp@gmail.com</a>
       </p>
     </div>
   `;
