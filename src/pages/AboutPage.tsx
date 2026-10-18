@@ -43,32 +43,32 @@ export default function AboutPage() {
             <div className="text-center max-w-4xl mx-auto">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-tint text-brand-text text-[12px] font-semibold mb-6">
                 <Sparkles className="w-3.5 h-3.5" />
-                우리 동네 공동구매
+                우리 동네 이용권
               </div>
               <h1 className="text-[34px] sm:text-[48px] lg:text-[60px] xl:text-[76px] font-extrabold tracking-tight leading-tight mb-6">
                 유어딜
-                <span className="block text-brand-text mt-2">함께라서 더 좋은 가격</span>
+                <span className="block text-brand-text mt-2">정가보다 싸게, 매장에서 바로</span>
               </h1>
               <p className="text-[15px] sm:text-[17px] lg:text-[17px] text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
-                우리 동네 맛집·뷰티·숙소를 그룹 특가로.
+                우리 동네 맛집·뷰티·숙소 이용권을 할인가로.
               </p>
               <p className="text-[15px] sm:text-[17px] lg:text-[17px] text-gray-600 dark:text-gray-300 leading-relaxed mb-10">
-                인원과 상관없이 처음부터 같은 가격, 교환권은 결제 즉시 발급.
+                인원과 상관없이 처음부터 같은 가격, 결제하면 이용권이 바로 들어와요.
               </p>
 
               <div className="flex flex-wrap gap-3 justify-center">
                 <Link
-                  to="/group-buy"
+                  to="/"
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-brand hover:bg-brand-dark text-white font-bold text-[15px] lg:text-[15px] transition-colors shadow-lg /20"
                 >
-                  동네 공구 둘러보기
+                  동네 이용권 둘러보기
                   <ArrowRight className="w-4 h-4" />
                 </Link>
                 <Link
-                  to="/seller/login"
+                  to="/store/new"
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-brand text-white hover:bg-gray-800 dark:hover:bg-gray-100 font-bold text-[15px] lg:text-[15px] transition-colors"
                 >
-                  셀러 입점
+                  매장 입점
                 </Link>
                 <button
                   onClick={handleDownloadPdf}
@@ -88,46 +88,46 @@ export default function AboutPage() {
             <ValueCard
               icon={<BagIcon className="w-6 h-6" />}
               tag="소비자"
-              title="동네를 그룹 특가로"
-              desc="맛집·뷰티·숙소를 처음부터 같은 그룹 특가로. 결제 즉시 교환권 발급, 친구 초대 보너스까지."
+              title="동네를 할인가로"
+              desc="맛집·뷰티·숙소 이용권을 처음부터 같은 할인가로. 결제하면 이용권이 바로 들어와요."
               color="amber"
             />
             <ValueCard
               icon={<PinIcon className="w-6 h-6" />}
               tag="사장님 / 매장"
-              title="입점 수수료 0원"
-              desc="카카오 로그인으로 바로 입점. 공구로 신규 손님 유치, 교환권 사용·정산까지 한 앱에서."
+              title="가입비·월 고정비 0원"
+              desc="카카오맵에서 가게를 찾아 바로 입점. 이용권 판매와 사용 처리, 정산까지 한 곳에서."
               color="brand"
             />
             <ValueCard
               icon={<Sparkles className="w-6 h-6" />}
               tag="소개"
-              title="유어샵으로 공구 홍보"
-              desc="내 유어샵에 공구·교환권을 핀하고 공유. 친구가 사면 보너스, 매장 영입 수익까지."
+              title="유어샵으로 소개"
+              desc="내 유어샵에 이용권을 담아 링크로 공유. 매장이 소개 몫을 건 이용권이면 그 몫이 쌓여요."
               color="purple"
             />
             <ValueCard
               icon={<PeopleIcon className="w-6 h-6" />}
               tag="에이전시"
               title="소속 관리 + 정산"
-              desc="담당 셀러·매장의 공구/주문/정산을 한 화면에서 통합 관리."
+              desc="담당 매장의 이용권/주문/정산을 한 화면에서 통합 관리."
               color="emerald"
             />
           </div>
         </Section>
 
         {/* ========== 차별점 ========== */}
-        <Section id="diff" title="유어딜은 무엇이 다른가" subtitle="동네 공동구매를 가장 정직하게">
+        <Section id="diff" title="유어딜은 무엇이 다른가" subtitle="동네 할인을 가장 정직하게">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FeatureCard
               icon={<BagIcon className="w-5 h-5" />}
-              title="정직한 단일 그룹가"
-              desc="인원에 따라 가격이 오르내리지 않아요. 처음부터 모두에게 같은 그룹 특가, 결제하면 바로 확정·발급됩니다."
+              title="정직한 단일가"
+              desc="인원에 따라 가격이 오르내리지 않아요. 처음부터 모두에게 같은 할인가, 결제하면 바로 확정·발급됩니다."
             />
             <FeatureCard
               icon={<PinIcon className="w-5 h-5" />}
               title="우리 동네 오프라인 중심"
-              desc="맛집·뷰티·숙소·헬스 등 지역 매장 공구. 종이 쿠폰 없이 앱 교환권을 매장에서 바로 사용해요."
+              desc="맛집·뷰티·숙소·헬스 등 지역 매장 이용권. 종이 쿠폰 없이 앱 이용권을 매장에서 바로 사용해요."
             />
             <FeatureCard
               icon={<Zap className="w-5 h-5" />}
@@ -147,9 +147,9 @@ export default function AboutPage() {
           <div className="space-y-10">
             <SubBlock title="2-1. 진입장벽 ZERO" icon={<Zap className="w-5 h-5" />}>
               <ul className="space-y-2 text-gray-700 dark:text-gray-300 text-[15px] lg:text-[15px]">
-                <li>· 카카오 로그인 → 5분 내 공구 등록</li>
-                <li>· 사업자 등록된 매장이면 누구나 입점 신청 (입점 수수료 0원)</li>
-                <li>· 브라우저만 있으면 시작합니다 (앱 설치 없음). 공구 등록과 주문, 정산이 한 곳에서</li>
+                <li>· 카카오맵에서 가게 찾기 → 5분 내 이용권 등록</li>
+                <li>· 사업자 등록된 매장이면 누구나 입점 신청 (가입비·월 고정비 0원)</li>
+                <li>· 브라우저만 있으면 시작합니다 (앱 설치 없음). 이용권 등록과 주문, 정산이 한 곳에서</li>
                 <li>· 자체 쇼핑몰 구축 비용 0원 (Shopify 월 $29 + 도메인 + PG 부담 X)</li>
               </ul>
               <p className="mt-3 p-3 rounded-lg bg-brand-tint text-brand-text text-[12px] lg:text-[15px]">
@@ -191,7 +191,7 @@ export default function AboutPage() {
             <SubBlock title="2-4. 에이전시 매칭 (영업 없이 협업)" icon={<Bot className="w-5 h-5" />}>
               <ul className="space-y-2 text-gray-700 dark:text-gray-300 text-[15px] lg:text-[15px]">
                 <li>· 카테고리/규모/지역 기반 에이전시 매칭 추천</li>
-                <li>· 공구 운영이 어려우면 검증된 에이전시가 등록·관리 대행</li>
+                <li>· 이용권 운영이 어려우면 검증된 에이전시가 등록·관리 대행</li>
               </ul>
             </SubBlock>
 
@@ -207,7 +207,7 @@ export default function AboutPage() {
               <SimpleTable
                 headers={['정산 항목', '유어딜', '업계 평균']}
                 rows={[
-                  ['동네 공구 (사용 후)', 'D+7일', 'D+30'],
+                  ['이용권 (사용 후)', 'D+7일', 'D+30'],
                   ['상품 (배송 확정 후)', 'D+5일', 'D+15~30'],
                 ]}
               />
@@ -224,12 +224,12 @@ export default function AboutPage() {
             <FeatureCard
               icon={<PeopleIcon className="w-5 h-5" />}
               title="멤버 셀러 통합 대시보드"
-              desc="모든 소속 셀러·매장의 매출/공구/주문/정산을 한 화면에서. KPI 비교 → 코칭 우선순위 자동 추출. 일/주/월 리포트 자동."
+              desc="모든 소속 셀러·매장의 매출/이용권/주문/정산을 한 화면에서. KPI 비교 → 코칭 우선순위 자동 추출. 일/주/월 리포트 자동."
             />
             <FeatureCard
               icon={<Trophy className="w-5 h-5" />}
-              title="공구 캠페인 운영"
-              desc="소속 셀러·매장의 공구를 시즌·테마로 묶어 운영. 노출 부스트로 신규 매장 데뷔를 가속해요."
+              title="이용권 캠페인 운영"
+              desc="소속 셀러·매장의 이용권을 시즌·테마로 묶어 운영. 노출 부스트로 신규 매장 데뷔를 가속해요."
             />
             <FeatureCard
               icon={<Rocket className="w-5 h-5" />}
@@ -259,22 +259,22 @@ export default function AboutPage() {
           <div className="space-y-8">
             <WowMoment
               icon={<PeopleIcon className="w-6 h-6" />}
-              title="4-1. 동네 공구, 함께라서 더 좋은 가격"
-              quote='"강남 한우 정가 5만원 → 공구가 3만 5천원, 지금 바로. 카카오톡으로 친구 초대하면 둘 다 보너스 딜."'
+              title="4-1. 동네 이용권, 처음부터 할인가"
+              quote='"강남 한우 정가 5만원 → 이용권 3만 5천원, 지금 바로."'
               points={[
-                '인원과 상관없이 처음부터 같은 그룹 특가 (단일가)',
-                '결제 즉시 교환권 발급 (목표 미달이어도 유효)',
-                '친구 카카오 공유 → 친구 초대 보너스',
+                '인원과 상관없이 처음부터 같은 할인가 (단일가)',
+                '결제 즉시 이용권 발급',
+                '카카오톡으로 친구에게 바로 공유',
                 '식당 가서 앱 화면 보여주기만 (종이/플라스틱 X), QR 스캔 자동 처리',
               ]}
-              tagline="더 모아야 싸지는 게 아니라, 처음부터 그룹 특가."
+              tagline="더 모아야 싸지는 게 아니라, 처음부터 할인가."
             />
             <WowMoment
               icon={<PinIcon className="w-6 h-6" />}
-              title="4-2. 교환권 디지털 사용, 종이 쿠폰 시대 종료"
+              title="4-2. 이용권 디지털 사용, 종이 쿠폰 시대 종료"
               quote=""
               points={[
-                '구매 즉시 앱에 디지털 교환권 발급',
+                '구매 즉시 앱에 디지털 이용권 발급',
                 '매장 가서 앱 보여주기 → 점원 "사용 완료" 버튼',
                 '사용 가능 매장 지도 (/map) 한눈에',
                 '쓰지 못하면 환불',
@@ -299,16 +299,15 @@ export default function AboutPage() {
         <Section id="features" title="핵심 기능 한눈에" subtitle="10가지 핵심 기능">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
             {[
-              { icon: <PeopleIcon className="w-5 h-5" />, title: '동네 공구 (공동구매)', desc: '인원 무관 단일 그룹 특가. 결제 즉시 교환권 발급. 맛집·뷰티·숙소 특화.' },
-              { icon: <PinIcon className="w-5 h-5" />, title: '교환권 · 매장 사용', desc: '디지털 교환권. 매장 지도. 미사용 환불. QR 없이 앱 화면만.' },
+              { icon: <PeopleIcon className="w-5 h-5" />, title: '동네 이용권', desc: '인원 무관 단일 할인가. 결제 즉시 이용권 발급. 맛집·뷰티·숙소 특화.' },
+              { icon: <PinIcon className="w-5 h-5" />, title: '이용권 · 매장 사용', desc: '디지털 이용권. 매장 지도. 미사용 시 자동 환불. 매장에서 QR 또는 PIN.' },
               { icon: <BagIcon className="w-5 h-5" />, title: '상품 / 주문', desc: '토스/가상계좌/카카오페이/딜 포인트. 배송 추적. 자동 D+5 정산.' },
-              { icon: <WalletIcon className="w-5 h-5" />, title: '딜 포인트', desc: '1원 = 1딜 (수수료 ZERO 충전). 결제·딜 모으기에 사용.' },
+              { icon: <WalletIcon className="w-5 h-5" />, title: '딜 포인트', desc: '1원 = 1딜. 기프티콘 교환권 결제에 사용.' },
               { icon: <UrShopIcon className="w-5 h-5" />, title: '유어샵', desc: '이용권·교환권을 담아 진열하고 소개. 매장과 맺은 딜만큼 커미션.' },
               { icon: <Trophy className="w-5 h-5" />, title: '셀러 등급 / 수수료', desc: '신규→브론즈→실버→골드→플래티넘. 진급 시 수수료 차감 + 노출 가중.' },
-              { icon: <PeopleIcon className="w-5 h-5" />, title: '에이전시 통합 관리', desc: '담당 셀러·매장의 공구/주문/정산 한 화면. 정산 자동 일괄.' },
-              { icon: <BagIcon className="w-5 h-5" />, title: '도매몰 (B2B)', desc: '제조사·판매사 도매 거래. 상품 일괄 등록·내보내기.' },
-              { icon: <PinIcon className="w-5 h-5" />, title: '지역 기반', desc: '내 동네 지역·카테고리별 공구 탐색. 당근 스타일 지역 필터.' },
-              { icon: <Bot className="w-5 h-5" />, title: 'AI 추천', desc: '셀러↔에이전시 매칭, 사용자↔공구 추천 피드.' },
+              { icon: <PeopleIcon className="w-5 h-5" />, title: '에이전시 통합 관리', desc: '담당 매장의 이용권/주문/정산 한 화면. 정산 자동 일괄.' },
+              { icon: <PinIcon className="w-5 h-5" />, title: '지역 기반', desc: '내 동네 지역·카테고리별 이용권 탐색. 지도로 가까운 순.' },
+              { icon: <Bot className="w-5 h-5" />, title: 'AI 추천', desc: '셀러↔에이전시 매칭, 사용자↔이용권 추천 피드.' },
             ].map((f, i) => (
               <div
                 key={i}
@@ -350,7 +349,7 @@ export default function AboutPage() {
               icon={<Zap className="w-5 h-5" />}
               items={[
                 '이용권·교환권 사용 매장 1000개 확장',
-                '지역 공구 카테고리 확대 (뷰티·숙소·헬스)',
+                '지역 이용권 카테고리 확대 (뷰티·숙소·헬스)',
                 '유어샵 고도화',
               ]}
             />
@@ -358,9 +357,8 @@ export default function AboutPage() {
               tag="중기 (Q3-Q4 2026)"
               icon={<Globe className="w-5 h-5" />}
               items={[
-                '글로벌 진출 (일본/동남아), Firebase Auth 베이스',
-                '도매몰 (B2B) 확대, 제조사와 판매사 연동',
-                '공구 추천 알고리즘 고도화',
+                '글로벌 진출 (일본/동남아)',
+                '이용권 추천 알고리즘 고도화',
               ]}
             />
             <RoadmapCard
@@ -416,16 +414,15 @@ export default function AboutPage() {
           <div className="ur-content-wide px-4 lg:px-8 text-center">
             <h2 className="text-[28px] sm:text-[34px] lg:text-[48px] font-extrabold mb-4">시작하기</h2>
             <p className="text-[15px] lg:text-[17px] text-white/90 mb-10 max-w-2xl mx-auto">
-              유어딜은 우리 동네를 그룹 특가로 잇습니다.
+              유어딜은 우리 동네 가게와 손님을 할인 이용권으로 잇습니다.
               <br />
-              5분 만에 시작할 자유, 함께라서 더 좋은 가격.
+              5분 만에 시작하고, 팔린 만큼만 냅니다.
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 max-w-3xl mx-auto mb-10">
-              <CTACard to="/seller/login" title="셀러 / 매장" subtitle="카카오 로그인 → 5분 후 공구 등록" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl mx-auto mb-10">
+              <CTACard to="/store/new" title="매장" subtitle="카카오맵으로 가게 찾기 → 이용권 등록" />
               {/* login-return-ok: 소개 랜딩의 시작 CTA — 돌아올 "보던 화면" 이 없다 */}
-              <CTACard to="/login" title="소비자" subtitle="카카오/이메일 → 동네 공구" />
-              <CTACard to="/admin/login" title="어드민" subtitle="운영팀 전용" />
+              <CTACard to="/login" title="소비자" subtitle="카카오 로그인 → 동네 이용권" />
             </div>
 
             <button

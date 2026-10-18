@@ -169,7 +169,7 @@ export default function AboutServicePage() {
         <section className="bg-warm">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28">
             <h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">사장님은 이렇게 진행해요</h2>
-            <p className="mt-3 lg:mt-5 text-[13px] lg:text-[17px] text-gray-500 dark:text-gray-400">가입부터 정산까지, 전부 셀러 대시보드 하나에서.</p>
+            <p className="mt-3 lg:mt-5 text-[13px] lg:text-[17px] text-gray-500 dark:text-gray-400">가입부터 정산까지, 마이 페이지의 내 가게 한 곳에서.</p>
 
             <ol className="mt-8 lg:mt-16 space-y-4 lg:space-y-0 lg:grid lg:grid-cols-4 lg:gap-10">
               {STEPS.map(([t, d], i) => (

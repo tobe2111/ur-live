@@ -51,10 +51,13 @@ export default [
       '잃고 있었다**(Yeti 는 받았다 — 한 URL 두 값). 지역 키워드는 로컬 질의의 핵심이다.',
   },
   {
-    name: '🏷️ 상세 제목 — 반대 방향: 숙소 지역을 주소 우선으로 (49건이 길어진다)',
+    // 🔁 2026-10-18 재조준 — 지역 공식이 `stayRegionShort` 로 옮겨갔다. 지키는 방향 둘은 그대로다:
+    //   긴 표기(`강원특별자치도`)로 새지 않는다 · 일치하는 37건은 byte-동일. 결함은 *원문 주소를 자르는*
+    //   쪽(긴 표기)으로 심는다.
+    name: '🏷️ 상세 제목 — 반대 방향: 숙소 지역을 주소 원문으로 (49건이 길어진다)',
     file: SSOT,
-    find: "  const r = cols || stayRegionLabel(null, null, region?.address)",
-    replace: "  const r = stayRegionLabel(region?.sido, region?.sigungu, region?.address)",
+    find: "  const r = stayRegionShort(region?.sido, region?.sigungu, region?.address)",
+    replace: "  const r = String(region?.address ?? '').trim().split(/\\s+/).slice(0, 2).join(' ') || [region?.sido, region?.sigungu].filter(Boolean).join(' ')",
     test: TEST,
     why:
       '**이 방향이 조용히 비싸다** — 주소에서 뽑으면 `강원` → `강원특별자치도` 가 되어 라이브 49건의 ' +

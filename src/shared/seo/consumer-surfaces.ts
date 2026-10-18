@@ -57,6 +57,18 @@ export interface ConsumerSurfaceSeo {
    */
   titleParams?: readonly string[]
   /**
+   * 🏷️ 필터 값이 붙은 페이지(`?category=편의점`)의 제목·설명 틀. `{v}` 자리에 그 값이 들어간다.
+   * 없으면 종전대로 `{v} ${title}` / `{v}: ${description}`.
+   *
+   * 🩸 2026-10-18 — 종전 방식은 기본 페이지의 문구에 값만 앞에 붙였다. 그래서 `/vouchers` 의
+   * 카테고리 20개가 전부 *"편의점: 스타벅스·메가MGC커피·GS25·투썸 등…"* 처럼 **같은 브랜드 나열**을
+   * 설명으로 냈고(편의점 페이지에 스타벅스), 제목은 *"편의점 기프티콘 교환권 - 카페·편의점·치킨 할인"*
+   * 으로 같은 말을 두 번 했다. 2026-10-18 에 그 20개를 sitemap·허브 링크에 실었으므로 이제 20개가
+   * 거의 같은 설명으로 색인 경쟁을 한다. 틀은 **그 값에 대한 문장**이어야 한다(브랜드를 지어 넣지 않는다).
+   */
+  facetTitle?: string
+  facetDescription?: string
+  /**
    * 서버에서도 `robots: noindex, follow` 를 낸다.
    * 클라 `<SEO noindex>` 는 JS 렌더 후라 비-JS 크롤러(네이버 Yeti)에겐 무효였다 — 실측으로
    * `/search`·`/gb-market` 이 클라에선 noindex 인데 **서빙 HTML 은 `index, follow`** 였다.
@@ -133,6 +145,8 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
     canonicalParams: ['category'],
     canonicalParamValues: { category: VOUCHER_FILTER_CATEGORIES },
     titleParams: ['brand', 'category'],
+    facetTitle: '{v} 기프티콘 교환권 할인',
+    facetDescription: '{v} 기프티콘 교환권을 할인가로 사세요. 결제하면 바로 발송되고, 유효기간 안에 매장에서 쓰면 됩니다.',
   },
   '/browse': {
     crumb: '쇼핑',
@@ -229,7 +243,9 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
   },
   '/introduce': {
     crumb: '유어딜 소개',
-    title: '유어딜 소개 - 우리 동네 이용권 공동구매',
+    /* 🩸 2026-10-18 — 여기 오래 "…우리 동네 이용권 **공동구매**" 가 있었다. 이 상품은 모여서 사는 게
+       아니다(2026-05-30 즉시판매 단일가 · 2026-10-15 `/pass` 310건 제목에서 같은 이유로 뺐다). */
+    title: '유어딜 소개 - 우리 동네 이용권 할인',
     description: '우리 동네 맛집·카페·뷰티·숙소 이용권을 할인가로 사서 매장에서 바로 쓰는 서비스. 기프티콘 교환권은 결제 즉시 발송됩니다.',
   },
   '/join': {
@@ -578,7 +594,11 @@ export function resolveConsumerSurfaceSeo(
     }
     const brand = allowed('brand', params?.get('brand')?.trim())
     const category = allowed('category', params?.get('category')?.trim())
-    if (brand) {
+    const facet = brand || category
+    if (facet && entry.facetTitle) {
+      title = entry.facetTitle.split('{v}').join(facet)
+      description = (entry.facetDescription ?? `{v}: ${entry.description}`).split('{v}').join(facet)
+    } else if (brand) {
       title = `${brand} ${entry.title}`
       description = `${brand} ${entry.description}`
     } else if (category) {

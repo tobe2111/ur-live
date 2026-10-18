@@ -35,6 +35,7 @@
  * - 길이를 늘리려고 같은 값을 변형해 반복하지 않는다.
  */
 import { priceDisplay } from '../../shared/price-display'
+import { stayRegionShort } from '../../shared/stay-address'
 import { canonicalDetailPath, FLOW_CONFIG } from '../../shared/product-flow'
 import { CONCEPT_FAQ, CONCEPT_ABOUT_LINES } from '../../shared/seo/concept-content'
 import { parseRegionPath, type RegionRef } from '../../shared/constants/region-slugs'
@@ -209,7 +210,8 @@ export function buildStayNoscript(
   if (!stay) return ''
   // 🔀 첫 화면이 제목·성급을 이미 그렸으면 반복하지 않는다(규율 ②). 지역은 첫 화면에 **없다** — 남긴다.
   const skip = !!opts.skipTitle
-  const region = [p.region_sido, p.region_sigungu].filter(Boolean).map(String).join(' ').trim()
+  // 📍 2026-10-18: 제목·검색 설명과 같은 함수 — 컬럼이 틀린 12건에서 다른 지역을 말하던 것.
+  const region = stayRegionShort(p.region_sido, p.region_sigungu, p.address)
   const prices = (seed?.rooms || [])
     .map((r) => Number(r?.base_price_weekday) || 0)
     .filter((v) => v > 0)
