@@ -7006,6 +7006,8 @@
     "bought": "Purchased",
     "usable": "Available",
     "used": "Used",
-    "gone": "Expired/Refunded"
+    "gone": "Expired/Refunded",
+    "empty": "You haven't bought a pass yet",
+    "browse": "Browse passes"
   }
 }

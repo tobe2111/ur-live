@@ -1282,8 +1282,8 @@ const MUTATIONS = [
   {
     name: '🧹 이용권 현황이 다시 주문 훅에서 센다 (지갑과 숫자가 갈린다)',
     file: 'src/pages/user-profile/OrderStatusBar.tsx',
-    find: "  const { data: vouchersRaw = [] } = useMyVouchers()",
-    replace: "  const { data: vouchersRaw = [] } = useMyOrders()",
+    find: "  const { data } = useMyVouchers()",
+    replace: "  const { data } = useMyOrders()",
     test: 'src/tests/unit/mypage-cleanup-2026-09-02.test.ts',
     why: '\uc0ac\ub78c\uc774 \uc138\ub294 \ub2e8\uc704\ub294 \uc774\uc6a9\uad8c \uc7a5\uc218\ub2e4 \u2014 \uc9c0\uac11\uacfc \uac19\uc740 \ud6c5\uc744 \uc368\uc57c \ub450 \ud654\uba74\uc774 \uc548 \uac08\ub9b0\ub2e4.',
   },

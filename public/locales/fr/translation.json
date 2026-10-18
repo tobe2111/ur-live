@@ -7006,6 +7006,8 @@
     "bought": "Achetés",
     "usable": "Disponibles",
     "used": "Utilisés",
-    "gone": "Expirés/Remboursés"
+    "gone": "Expirés/Remboursés",
+    "empty": "Vous n'avez pas encore acheté de pass",
+    "browse": "Voir les pass"
   }
 }
