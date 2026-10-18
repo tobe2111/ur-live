@@ -19,7 +19,7 @@ import { derivePricing } from './group-buy/pricing'
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { withMyReturn } from '@/lib/seller-return'
 import { useTranslation } from '@/lib/i18n-lite'
-import { Phone, Sparkles, Instagram, Youtube, Facebook, Music2, RefreshCcw } from 'lucide-react'
+import { Phone, Instagram, Youtube, Facebook, Music2, RefreshCcw } from 'lucide-react'
 import { resolveTossFlow } from '@/lib/toss-key-type'
 import { TOPUP_DISABLED } from '@/shared/feature-flags'
 import { appendPaySummary } from '@/shared/pay-summary'
@@ -55,6 +55,7 @@ import DeferUntilVisible from './group-buy/DeferUntilVisible'
 import DealPayButton, { useCanPayWithDeal } from './group-buy/DealPayButton'
 import DealUseChooser, { useDealPlan, defaultDealUse, coversAll } from './group-buy/DealUseChooser'
 import DealBottomBar from './group-buy/DealBottomBar'
+import { useViewerIsOwner } from './group-buy/useViewerIsOwner'
 import { handleDealJoinError } from './group-buy/deal-join-error'
 import { useProductViewBeacon } from '@/hooks/useProductViewBeacon'
 import { passShareCardUrl } from '@/shared/pass-share-card'
@@ -198,9 +199,9 @@ export default function GroupBuyDetailPage() {
   // 👁️ 홈 인기순의 클릭 신호 — 세션당 1회(훅이 가드).
   useProductViewBeacon(productId)
   const isLoggedIn = !!localStorage.getItem('user_id') || !!localStorage.getItem('uid')
-  // 🛡️ 2026-05-15: 본인 product 인 경우 "공구 관리" CTA 표시 (셀러 대시보드 진입점)
-  const sellerId = localStorage.getItem('seller_id')
-  const isOwnProduct = !!sellerId && detail?.seller_id != null && Number(detail.seller_id) === Number(sellerId)
+  // 👤 2026-10-18: 주인 판정은 서버(구매 차단과 같은 함수) — 종전 `localStorage.seller_id` 는 대시보드를 연 기기에만 있었다.
+  const isOwnProduct = useViewerIsOwner(productId, isLoggedIn)
+  const manageOwn = () => navigate(withMyReturn('/seller/group-buy'))
   // 🛡️ 2026-05-15: 본인 추천 링크 (친구 초대 시 양쪽 1% 보너스 딜)
   const myUserId = localStorage.getItem('user_id') || localStorage.getItem('uid') || ''
   const shareLink = myUserId
@@ -745,17 +746,7 @@ export default function GroupBuyDetailPage() {
           </>
         )}
 
-        {/* 본인 product CTA (셀러 대시보드 진입) */}
-        {isOwnProduct && (
-          <div style={{ margin: '0 18px 14px', display: 'flex', alignItems: 'center', gap: 11, padding: '13px 14px', background: 'var(--gbd-chip)', borderRadius: 14 }}>
-            <Sparkles style={{ width: 18, height: 18, flex: '0 0 auto', color: 'var(--gbd-ink)' }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-ink)', margin: 0 }}>내 공구</p>
-              <p style={{ fontSize: 11.5, color: 'var(--gbd-sub)', margin: '2px 0 0' }}>대시보드에서 통계 / 정산 확인</p>
-            </div>
-            <button onClick={() => navigate(withMyReturn('/seller/group-buy'))} style={{ padding: '8px 12px', background: 'var(--gbd-cta-bg)', color: 'var(--gbd-cta-fg)', border: 'none', borderRadius: 10, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flex: '0 0 auto' }}>공구 관리 →</button>
-          </div>
-        )}
+        {/* 👤 주인용 '관리하기' 는 구매 자리(PC 상자·모바일 바)로 옮겼다 — 2026-10-18 */}
 
         {/* 후기·평점 — 신뢰 레버 (디자이너 후속 제안). 기존 ProductReviews 재사용(lazy, 빈 상태/작성 폼 내장). */}
         <div id="gb-sec-reviews" className={PASS_CARD} style={{ padding: '24px 18px', scrollMarginTop: 116 }}>
@@ -813,6 +804,7 @@ export default function GroupBuyDetailPage() {
           onPrelaunchApply={() => document.getElementById('fcfs-apply-block')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
           dealSlot={<DealUseChooser plan={!isPrelaunch && isJoinable ? dealPlan : null} value={dealUse ?? defaultDealUse(dealPlan)} onChange={setDealUse} />}
           allDeal={canPayWithDeal && !isPrelaunch && isJoinable && coversAll(dealPlan, dealUse)}
+          isOwner={isOwnProduct} onManage={manageOwn}
         />
       </aside>
       </div>{/* /lg 그루폰식 그리드 */}
@@ -826,7 +818,7 @@ export default function GroupBuyDetailPage() {
         minReviewLevel={detail?.min_review_level}
         dealPlan={!isPrelaunch && isJoinable ? dealPlan : null} dealUse={dealUse} setDealUse={setDealUse}
         canPayWithDeal={canPayWithDeal} dealBalance={dealBalance}
-        productId={productId} onJoin={handleJoin}
+        productId={productId} onJoin={handleJoin} isOwner={isOwnProduct} onManage={manageOwn}
       />
     </div>
   )

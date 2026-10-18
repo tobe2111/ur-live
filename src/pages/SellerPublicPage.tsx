@@ -24,6 +24,8 @@ import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
 import { DEAL_GRID_GAP } from '@/shared/deal-card-grid'
 import InfoTab from './seller-public/InfoTab'
 import FeaturedCard from './seller-public/FeaturedCard'
+import { pickFeatured } from './seller-public/featured-pick'
+import { detailHref } from '@/shared/product-flow'
 import { getThemeTokens } from './seller-public/theme'
 import BrandLoader from '@/components/brand/BrandLoader'
 import type { Seller, Product } from './seller-public/types'
@@ -279,10 +281,8 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   //   유어샵의 주인공은 이용권이다 — 없을 때만 일반 상품이 그 자리를 대신한다.
   // 📊 2026-08-26 (대표 승인): 헤더 실적 한 줄 — 이 매장 상품들의 **실측** 평점/후기/판매.
   //   당근이 사진으로 만드는 신뢰를 우리는 실적으로 만든다. 값 없으면 헤더가 알아서 안 그린다(0 미표시).
-  const featured = vouchers[0] || shopProducts[0] || null
-  const featuredIsProduct = !vouchers[0] && !!shopProducts[0]
-  const gridProducts = featuredIsProduct ? shopProducts.slice(1) : shopProducts
-  const gridVouchers = (!featuredIsProduct && vouchers[0]) ? vouchers.slice(1) : vouchers
+  // 🖼️ 2026-10-18: 사진 있는 것만 히어로 · 칩은 두 목록이 다 그려질 때만 — 근거는 `featured-pick.ts` 머리말.
+  const { featured, gridVouchers, gridProducts, showChips } = pickFeatured(vouchers, shopProducts)
 
   return (
     <div className={`min-h-[100dvh] ${T.bg} pb-28`}>
@@ -332,7 +332,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
           순서: 내 상품 → 교환권 → 영상/라이브 → 정보. (추천 핀 섹션 제거 — 일반 유저 유어샵은 유지) */}
       <div className="ur-content-wide px-4 lg:px-8 py-5">
         {/* 🎨 2026-07-07 리디자인 3차: 컬렉션 칩 — 상품·이용권 둘 다 있을 때 섹션 점프(스크롤). */}
-        {shopProducts.length > 0 && vouchers.length > 0 && (
+        {showChips && (
           <div className="flex gap-2 mb-4 overflow-x-auto -mx-1 px-1 scrollbar-hide">
             {([
               { label: t('seller.publicPage.chipAll', { defaultValue: '전체' }), to: null as string | null },
@@ -354,7 +354,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
           <div className="mb-2">
             <FeaturedCard
               product={featured}
-              to={`/products/${featured.id}`}
+              to={detailHref(featured)}
               eyebrow={t('seller.publicPage.featuredPick', { defaultValue: '이번 주 픽' })}
             />
           </div>

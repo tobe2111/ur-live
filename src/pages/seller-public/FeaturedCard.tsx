@@ -10,26 +10,29 @@ import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'
 import { seededColor, cardGradient } from '@/utils/card-gradient'
 import type { Product } from './types'
 import { priceDisplay } from '@/shared/price-display'
+import { photoOf } from './featured-pick'
 
 export default function FeaturedCard({ product, to, eyebrow }: { product: Product; to?: string; eyebrow?: string }) {
   const navigate = useNavigate()
   // 💸 2026-10-14: 할인율 규칙 사본 제거 — SSOT 경유(`||` 폴백과 결과 동일, 갈릴 수가 없어진다).
   const disc = priceDisplay(product).discount
   const grad = cardGradient(product.dominant_color || seededColor(product.id))
+  // 🖼️ 2026-10-18: 대표 사진이 비면 갤러리 첫 장 — 남색 빈 판 방지(`featured-pick.ts`).
+  const photo = photoOf(product)
   return (
     <button
       onClick={() => navigate(to ?? `/products/${product.id}`)}
       className="relative w-full overflow-hidden rounded-[22px] text-left active:scale-[0.99] transition-transform shadow-[0_2px_4px_rgba(20,20,30,.05),0_22px_48px_-18px_rgba(20,20,30,.30)]"
       style={{ aspectRatio: '5 / 4', backgroundColor: grad.base }}
     >
-      {product.image_url && (
+      {photo && (
         <img
-          src={cfImage(product.image_url, { width: 640, format: 'auto' }) || product.image_url}
-          srcSet={cfSrcSet(product.image_url, 640) || undefined}
+          src={cfImage(photo, { width: 640, format: 'auto' }) || photo}
+          srcSet={cfSrcSet(photo, 640) || undefined}
           sizes="(max-width: 480px) 100vw, 430px"
           alt={product.name} loading="eager" decoding="async"
           className="absolute inset-0 w-full h-full object-cover object-[center_38%]"
-          onError={(e) => cfImageOnError(e.currentTarget, product.image_url)}
+          onError={(e) => cfImageOnError(e.currentTarget, photo)}
         />
       )}
       {/* 하단 어둡게 — 텍스트 가독(2단 그라데이션: 하단 짙게 + 중간 부드럽게 이어짐, 음식 중앙은 밝게 유지)

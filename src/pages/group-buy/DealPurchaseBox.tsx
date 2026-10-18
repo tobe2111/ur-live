@@ -10,6 +10,7 @@ import type { ReactNode } from 'react'
 import { BellIcon } from '@/components/icons/urdeal-icons'
 import { FieldCard, FieldRow } from '@/components/ticket/FieldCard'
 import { formatNumber } from '@/utils/format'
+import OwnerManagePanel from './OwnerManagePanel'
 
 interface Props {
   /** 2026-10-11 D안: '구매 옵션' 상자를 걷어 더는 안 쓴다(호출부 호환을 위해 남김). */
@@ -34,12 +35,16 @@ interface Props {
   dealSlot?: ReactNode
   /** 🪙 2026-10-06: 고른 딜이 총액을 다 덮는다 → 카드를 안 타는 흐름. 버튼이 "N딜로 결제하기" 라고 말한다. */
   allDeal?: boolean
+  /** 👤 2026-10-18: 보는 사람이 주인이면 수량·결제 대신 관리 버튼을 낸다(`OwnerManagePanel`). */
+  isOwner?: boolean
+  onManage?: () => void
 }
 
 export default function DealPurchaseBox({
   discountPct, unitPrice, refPrice, unitSaving, total,
   quantity, setQuantity, maxQty, maxPerPerson,
   buyable, isJoinable, isPrelaunch, joining, onBuy, onPrelaunchApply, dealSlot, allDeal = false,
+  isOwner = false, onManage,
 }: Props) {
   // 🎭 2026-10-12 (대표 *"데모인 것을 티내지마"*): 데모만 다른 라벨을 쓰던 분기를 **없앴다**.
   //   종전엔 데모 `결제하기`·`응모 불가` / 실상품 `구매하기`·`구매 불가` 라서 **라벨만 보고 데모를
@@ -78,6 +83,7 @@ export default function DealPurchaseBox({
         </div>
       )}
 
+      {isOwner && onManage ? <OwnerManagePanel onManage={onManage} /> : <>
       {/* 🎫 2026-09-14 대표 확정 *"두 상세가 같은 부품을 쓰도록 해줘"* — 수량 행이 **숙소 상세의 인원 행과
           같은 부품**(`components/ticket/FieldCard`)이 됐다. 종전엔 여기만 1px 테두리 상자였다(티켓 체계
           규칙 ①은 카드 테두리 0). 라벨·값 위계도 그쪽과 같아진다.
@@ -119,6 +125,7 @@ export default function DealPurchaseBox({
       {isPrelaunch && (
         <div className="mt-2 text-[12px] text-center" style={{ color: 'var(--gbd-sub)' }}>오픈 협의 중 매장 · 응모는 무료, 오픈 시 알림을 드려요</div>
       )}
+      </>}
     </div>
   )
 }

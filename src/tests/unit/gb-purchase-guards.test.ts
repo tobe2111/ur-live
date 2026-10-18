@@ -132,7 +132,7 @@ describe('② 자기 참여 판정 — sellers.linked_user_id', () => {
     await isSelfOwnedGroupBuy(DB, 7, '1234')
     expect(calls).toHaveLength(1)
     expect(calls[0].sql).toMatch(/linked_user_id/)
-    expect(calls[0].binds).toEqual([7, '1234', '1234'])
+    expect(calls[0].binds).toEqual([7, '1234', '1234', '1234']) // 2026-10-18: + 주인 좌석
   })
 
   it('셀러 없는 상품/빈 유저는 조회조차 하지 않는다', async () => {
