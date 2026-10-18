@@ -873,6 +873,13 @@
     "seoDesc": "查看您收藏的商品"
   },
   "seller": {
+    "crossOwner": {
+      "title": "接受其他店主的券",
+      "note": "同一品牌其他店主售出的券在本店使用时，该销售额结算到本店。带推荐费的券不予接受。",
+      "on": "已开始接受其他店主的券",
+      "off": "仅接受同一店主的券",
+      "fail": "无法更改设置"
+    },
     "relink": {
       "title": "更换了 Kakao 账号？",
       "desc": "卖家账号不会丢失。用新 Kakao 登录后，确认原卖家邮箱和密码即可继续使用。",
@@ -3241,7 +3248,9 @@
       "brandWideFail": "无法更改设置",
       "brandWideTitle": "也可在同一店主的 {{count}} 家门店使用",
       "brandWideTitleOff": "其他门店也可使用",
-      "brandWideNote": "用该门店的确认码或扫码核销。结算仍归本门店。"
+      "brandWideNote": "用该门店的确认码或扫码核销。结算仍归本门店。",
+      "brandWideTitleAll": "品牌{{count}}家门店也可使用",
+      "brandWideNoteCross": "在同一店主的门店使用则结算到本店，在其他店主的门店使用则结算到该门店。带推荐费的券仅可在同一店主的门店使用。"
     },
     "ordersM3": {
       "today": "今天",
@@ -3298,6 +3307,7 @@
     "voucherUnused": "미사용",
     "voucherNone": "아직 발급된 이용권이 없습니다.",
     "voucherUsedAt": "{{d}} 사용",
+    "voucherRedeemedElsewhere": "已在{{store}}使用 · 结算归该门店",
     "voucherUntil": "{{d}}까지",
     "voucherCodeHeader": "이용권 코드",
     "copyOrderNumber": "전체 주문번호 복사",

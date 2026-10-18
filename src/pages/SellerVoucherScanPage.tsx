@@ -14,6 +14,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import VoucherScanner from '@/components/voucher/VoucherScanner'
 import ScanDeviceManager from './seller-scan/ScanDeviceManager'
 import KakaoBotLinkCard from './seller-scan/KakaoBotLinkCard'
+import CrossOwnerAcceptCard from './seller-scan/CrossOwnerAcceptCard'
 import { VOUCHER_USAGE_PRESETS } from '@/shared/voucher-usage-conditions'
 
 export default function SellerVoucherScanPage() {
@@ -30,6 +31,7 @@ export default function SellerVoucherScanPage() {
 
         {/* 🎟️ 2026-07-02 (대표): 매장별 현지 사용 방식 선택 — 3모드 + 매장 확인코드 */}
         <RedemptionModeCard />
+        <CrossOwnerAcceptCard />{/* 🏷️ 2026-10-18 브랜드 3단계 — 받는 점주 동의(기능이 열렸을 때만 보인다) */}
 
         {/* 🎟️ 2026-07-06 (대표 "사용 조건도 선택하게"): 매장 사용조건 프리셋 선택 → 이용권 '이용 안내' 표시 */}
         <UsageConditionsCard />

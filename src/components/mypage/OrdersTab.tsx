@@ -12,6 +12,7 @@ import { orderItemLineTotal } from '@/types/order'
 import { formatNumber } from '@/utils/format'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { getOrderKind, type OrderKind } from '@/shared/order-type'
+import { SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
 
 interface OrdersTabProps {
   orders: Order[]
@@ -152,7 +153,9 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
 
   const KIND_TABS: { key: KindFilter; label: string }[] = [
     { key: 'all',      label: t('ordersTab.kindAll', { defaultValue: '전체' }) },
-    { key: 'product',  label: t('ordersTab.kindProduct', { defaultValue: '상품' }) },
+    /* 🛍️ 2026-10-18 — 쇼핑 탭이 숨겨진 동안 '상품' 칸은 늘 0건이라 감춘다. 단 **이 사람에게 상품 주문이
+       있으면 남긴다** — 예전에 산 배송 상품을 걸러 볼 길을 지우면 안 된다(전체에는 어차피 보인다). */
+    ...(SHOPPING_TAB_HIDDEN && counts.product === 0 ? [] : [{ key: 'product' as const, label: t('ordersTab.kindProduct', { defaultValue: '상품' }) }]),
     { key: 'voucher',  label: t('ordersTab.kindVoucher', { defaultValue: '교환권' }) },
     /* 🏷️ 2026-09-02 (대표 "주문내역에 이용권이 떠야하잖아"): 이 칸은 **voucher 카테고리 상품**
        (식사·미용·숙박·기타 매장 이용권)이다 — 2026-06-27 명칭 SSOT 가 "공구권 → 이용권" 으로 정한

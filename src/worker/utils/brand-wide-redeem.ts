@@ -8,8 +8,9 @@
  * 2. **주인이 같은 지점끼리만 받는다.** 받아 주는 지점의 주인이 **판 지점의 주인과 같은 사람**일 때만 —
  *    사실상 직영 체인. 그래서 **돈은 움직이지 않는다**: 정산은 지금처럼 판 지점(`products.seller_id`)에 남고,
  *    받아 준 지점과 판 지점이 같은 주인의 주머니라 남의 손님을 공짜로 받아 주는 일이 생기지 않는다.
- *    가맹점(주인이 다른 지점)이 섞이면 그 지점은 **받지 않는다** — 쓴 지점으로 정산을 옮기는 일은 머니 경로라
- *    결재 뒤 별도 단계다.
+ *    가맹점(주인이 다른 지점)이 섞이면 그 지점은 **받지 않는다** — 단, 3단계 게이트가 켜져 있으면 예외가 하나 있다:
+ *    ③ 아래 `brand-cross-owner.ts`(결재 2026-10-18 — 받는 점주 동의 · 판매 비용 없는 이용권만 · 정산은 쓴 지점).
+ *    게이트 OFF 면 이 규칙 2가 그대로다.
  *
  * ## 판정은 늘 **사용하는 그 순간**에 다시 한다
  * 설정할 때 한 번 보고 끝내지 않는다 — 그 사이 지점이 브랜드에서 빠지거나 주인이 바뀔 수 있다.
@@ -26,6 +27,8 @@ import { ensureSupplyMetaTable } from './product-supply-meta'
 import { ensureSellerOperators } from './seller-operators'
 import { ensureStoreBrands } from './store-brands'
 import { ensureRedemptionSettingsTable } from './redemption-settings'
+import { CROSS_OWNER_ACCEPT_META, isCrossOwnerRedeemEnabled, voucherHasSunkCost } from './brand-cross-owner'
+import { ensureSellerMetaTable } from './seller-meta'
 
 export const BRAND_WIDE_META_KEY = 'brand_wide_use'
 
@@ -47,7 +50,14 @@ export async function isBrandWideEnabled(DB: D1Database, productId: number): Pro
   return r?.value === '1'
 }
 
-export interface BrandSibling { seller_id: number; owner_id: number | null; accepting: boolean }
+export interface BrandSibling {
+  seller_id: number; owner_id: number | null; accepting: boolean
+  /**
+   * 🏷️ 3단계 — 주인이 **다른** 지점인데 받을 수 있는 후보: 게이트 ON + 그 지점 주인이 "다른 점주 이용권 받기"를 켬
+   * + 정산 가능 상태. 이용권마다 판매 비용(②)을 따로 봐야 하므로 이것만으로 받지 않는다 — `siblingAccepts` 가 마저 본다.
+   */
+  crossOwnerOk: boolean
+}
 
 /**
  * 같은 브랜드의 다른 지점과 그 주인. 브랜드가 없으면 빈 배열.
@@ -55,43 +65,59 @@ export interface BrandSibling { seller_id: number; owner_id: number | null; acce
  */
 export async function brandSiblingsOf(DB: D1Database, sellerId: number): Promise<{ ownerId: number | null; siblings: BrandSibling[] }> {
   if (!Number.isFinite(sellerId) || sellerId <= 0) return { ownerId: null, siblings: [] }
-  await Promise.all([ensureStoreBrands(DB), ensureSellerOperators(DB)])
+  await Promise.all([ensureStoreBrands(DB), ensureSellerOperators(DB), ensureSellerMetaTable(DB)])
+  const crossGate = await isCrossOwnerRedeemEnabled(DB)
   const self = await DB.prepare(`SELECT ${STORE_OWNER_SQL} AS owner_id FROM sellers s WHERE s.id = ? LIMIT 1`)
     .bind(sellerId).first<{ owner_id: number | null }>().catch(() => null)
   const ownerId = self?.owner_id ? Number(self.owner_id) : null
   const { results } = await DB.prepare(
-    `SELECT s.id AS seller_id, ${STORE_OWNER_SQL} AS owner_id, CASE WHEN ${ACCEPTING_STATUS} THEN 1 ELSE 0 END AS ok_status
+    `SELECT s.id AS seller_id, ${STORE_OWNER_SQL} AS owner_id, CASE WHEN ${ACCEPTING_STATUS} THEN 1 ELSE 0 END AS ok_status,
+            (SELECT sm.value FROM seller_meta sm WHERE sm.seller_id = s.id AND sm.key = ?) AS cross_accept
        FROM store_brand_members m1
        JOIN store_brands b ON b.id = m1.brand_id AND b.deleted_at IS NULL
        JOIN store_brand_members m2 ON m2.brand_id = m1.brand_id AND m2.seller_id <> m1.seller_id
        JOIN sellers s ON s.id = m2.seller_id
       WHERE m1.seller_id = ?
       ORDER BY s.id LIMIT 500`,
-  ).bind(sellerId).all<{ seller_id: number; owner_id: number | null; ok_status: number }>()
-    .catch(() => ({ results: [] as Array<{ seller_id: number; owner_id: number | null; ok_status: number }> }))
+  ).bind(CROSS_OWNER_ACCEPT_META, sellerId).all<{ seller_id: number; owner_id: number | null; ok_status: number; cross_accept: string | null }>()
+    .catch(() => ({ results: [] as Array<{ seller_id: number; owner_id: number | null; ok_status: number; cross_accept: string | null }> }))
   const siblings = (results || []).map((r) => {
     const sibOwner = r.owner_id ? Number(r.owner_id) : null
+    const okStatus = Number(r.ok_status) === 1
     return {
       seller_id: Number(r.seller_id),
       owner_id: sibOwner,
-      accepting: ownerId != null && sibOwner === ownerId && Number(r.ok_status) === 1,
+      accepting: ownerId != null && sibOwner === ownerId && okStatus,
+      crossOwnerOk: crossGate && ownerId != null && sibOwner != null && sibOwner !== ownerId && okStatus && r.cross_accept === '1',
     }
   })
   return { ownerId, siblings }
 }
 
 /**
- * 이 이용권을 `actorSellerId` 매장이 사용 처리해도 되나 — 사장님 스캔·카카오 챗봇 경로.
- * 판 지점 자신이면 늘 참(종전 그대로). 다른 지점이면 이용권이 켜져 있고 주인이 같을 때만.
+ * 형제 지점 하나가 이 이용권을 받나. 같은 주인이면 받는다(1·2단계). 주인이 다르면 3단계 조건 —
+ * 후보(`crossOwnerOk`)이고 **이용권을 알고(voucherId)** 판매 비용이 없을 때만(②). 이용권을 모르면 받지 않는다(fail-closed).
+ */
+async function siblingAccepts(DB: D1Database, s: BrandSibling, voucherId: number | null | undefined): Promise<boolean> {
+  if (s.accepting) return true
+  if (!s.crossOwnerOk || voucherId == null) return false
+  return !(await voucherHasSunkCost(DB, Number(voucherId)))
+}
+
+/**
+ * 이 이용권을 `actorSellerId` 매장이 사용 처리해도 되나 — 사장님 스캔·카카오 챗봇·/v 화면 경로.
+ * 판 지점 자신이면 늘 참(종전 그대로). 다른 지점이면 이용권이 켜져 있고 `siblingAccepts` 를 통과할 때만.
+ * `voucherId` 를 안 넘기면 다른 점주 지점은 늘 거절된다(같은 주인 지점은 종전대로 받는다).
  */
 export async function canStoreRedeemProduct(
-  DB: D1Database, productId: number, productSellerId: number | null, actorSellerId: number,
+  DB: D1Database, productId: number, productSellerId: number | null, actorSellerId: number, voucherId?: number | null,
 ): Promise<boolean> {
   if (productSellerId == null || !Number.isFinite(actorSellerId)) return false
   if (Number(productSellerId) === Number(actorSellerId)) return true
   if (!(await isBrandWideEnabled(DB, productId))) return false
   const { siblings } = await brandSiblingsOf(DB, Number(productSellerId))
-  return siblings.some((s) => s.accepting && s.seller_id === Number(actorSellerId))
+  const sib = siblings.find((s) => s.seller_id === Number(actorSellerId))
+  return sib ? siblingAccepts(DB, sib, voucherId) : false
 }
 
 /**
@@ -100,14 +126,15 @@ export async function canStoreRedeemProduct(
  * `scan_only` 지점은 셀프 사용을 막는 매장이라 `allowScanOnly=false` 면 제외한다.
  */
 export async function findBrandBranchByStoreCode(
-  DB: D1Database, productId: number, productSellerId: number | null, storeCode: string, opts: { allowScanOnly: boolean },
+  DB: D1Database, productId: number, productSellerId: number | null, storeCode: string,
+  opts: { allowScanOnly: boolean; voucherId?: number | null },
 ): Promise<number | null> {
   const input = String(storeCode || '').trim()
   if (productSellerId == null || !input) return null
   if (!(await isBrandWideEnabled(DB, productId))) return null
   const { siblings } = await brandSiblingsOf(DB, Number(productSellerId))
-  const accepting = new Set(siblings.filter((s) => s.accepting).map((s) => s.seller_id))
-  if (accepting.size === 0) return null
+  const candidates = new Map(siblings.filter((s) => s.accepting || s.crossOwnerOk).map((s) => [s.seller_id, s]))
+  if (candidates.size === 0) return null
   await ensureRedemptionSettingsTable(DB)
   // 코드로 먼저 좁힌다(대개 0~1행) — 형제 목록을 IN 에 넣지 않아 바인딩 한도와 무관하다.
   const { results } = await DB.prepare(
@@ -116,15 +143,17 @@ export async function findBrandBranchByStoreCode(
   ).bind(input).all<{ seller_id: number; mode: string | null }>()
     .catch(() => ({ results: [] as Array<{ seller_id: number; mode: string | null }> }))
   for (const r of results || []) {
-    if (!accepting.has(Number(r.seller_id))) continue
+    const sib = candidates.get(Number(r.seller_id))
+    if (!sib) continue
     if (!opts.allowScanOnly && r.mode === 'scan_only') continue
+    if (!(await siblingAccepts(DB, sib, opts.voucherId))) continue
     return Number(r.seller_id)
   }
   return null
 }
 
 export type BrandWideSettable =
-  | { ok: true; acceptingCount: number }
+  | { ok: true; acceptingCount: number; sameOwnerCount: number; crossOwnerCount: number }
   | { ok: false; code: 'NO_BRAND' | 'NOT_OWNER' | 'NO_SAME_OWNER_BRANCH' }
 
 /**
@@ -136,9 +165,12 @@ export async function checkBrandWideSettable(DB: D1Database, userId: number, pro
   const { ownerId, siblings } = await brandSiblingsOf(DB, productSellerId)
   if (ownerId == null || ownerId !== userId) return { ok: false, code: 'NOT_OWNER' }
   if (siblings.length === 0) return { ok: false, code: 'NO_BRAND' }
-  const acceptingCount = siblings.filter((s) => s.accepting).length
+  // 3단계: 게이트 ON 이고 "다른 점주 이용권 받기"를 켠 가맹점도 받아 줄 지점으로 센다.
+  const sameOwnerCount = siblings.filter((s) => s.accepting).length
+  const crossOwnerCount = siblings.filter((s) => !s.accepting && s.crossOwnerOk).length
+  const acceptingCount = sameOwnerCount + crossOwnerCount
   if (acceptingCount === 0) return { ok: false, code: 'NO_SAME_OWNER_BRANCH' }
-  return { ok: true, acceptingCount }
+  return { ok: true, acceptingCount, sameOwnerCount, crossOwnerCount }
 }
 
 /** 이용권 코드로 시작하는 판 — 카운터·셀프 경로가 쓴다. 이용권이 없으면 null. */
@@ -147,8 +179,8 @@ export async function findBrandBranchForVoucherCode(
 ): Promise<number | null> {
   if (!voucherCode || !String(storeCode || '').trim()) return null
   const v = await DB.prepare(
-    'SELECT v.product_id AS product_id, p.seller_id AS seller_id FROM vouchers v JOIN products p ON p.id = v.product_id WHERE v.code = ? LIMIT 1',
-  ).bind(voucherCode).first<{ product_id: number; seller_id: number | null }>().catch(() => null)
+    'SELECT v.id AS id, v.product_id AS product_id, p.seller_id AS seller_id FROM vouchers v JOIN products p ON p.id = v.product_id WHERE v.code = ? LIMIT 1',
+  ).bind(voucherCode).first<{ id: number; product_id: number; seller_id: number | null }>().catch(() => null)
   if (!v) return null
-  return findBrandBranchByStoreCode(DB, Number(v.product_id), v.seller_id, storeCode, opts)
+  return findBrandBranchByStoreCode(DB, Number(v.product_id), v.seller_id, storeCode, { ...opts, voucherId: Number(v.id) })
 }

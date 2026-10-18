@@ -37,7 +37,7 @@ import { X } from 'lucide-react'
 import { Z } from '@/constants/z-index'
 import api from '@/lib/api'
 import { curatorApi } from '@/features/curator/api/curator-api'
-import { cfImage, cfImageOnError } from '@/utils/cf-image'
+import { profileAvatarSrc, profileAvatarOnError, profileAvatarFitCls } from '@/pages/user-profile/profile-avatar'
 import { getUserProfileImage } from '@/utils/auth'
 import { formatPhone } from '@/utils/format-phone'
 import { toast } from '@/hooks/useToast'
@@ -256,10 +256,9 @@ export default function ProfileEditSheet({ onClose, initialName, onNameChange }:
           {/* 📸 사진 — 고르는 즉시 저장(위 머리말) */}
           <div className="flex items-center gap-4 px-4 py-4">
             <img
-              src={image ? cfImage(image, { width: 160 })
-                : `https://ui-avatars.com/api/?name=${encodeURIComponent(me?.name || initialName || ' ')}&background=111827&color=ffffff&size=160`}
-              alt="" className="w-[72px] h-[72px] rounded-full object-cover shrink-0 bg-gray-100 dark:bg-white/[0.06]"
-              onError={(e) => cfImageOnError(e.currentTarget, image)}
+              src={profileAvatarSrc(image, 160)}
+              alt="" className={`w-[72px] h-[72px] rounded-full shrink-0 bg-gray-100 dark:bg-white/[0.06] ${profileAvatarFitCls(image)}`}
+              onError={(e) => profileAvatarOnError(e.currentTarget, image)}
             />
             <div className="min-w-0">
               <label className="inline-flex items-center gap-2 px-3 h-9 rounded-full bg-wash text-[13px] font-semibold text-gray-700 dark:text-gray-200 cursor-pointer active:opacity-70">
