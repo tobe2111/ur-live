@@ -42,4 +42,20 @@ export default [
     test: TEST,
     why: '반대 방향 — 쿠폰은 라이브에 활성 쿠폰이 있어 살아 있다. 정리를 이유로 쓰이는 줄을 같이 지우면 안 된다.',
   },
+  {
+    name: '👤 마이 점검: PC "가게 열기" 가 다시 카드 밖으로',
+    file: 'src/pages/user-profile/RoleCtaGrid.tsx',
+    find: '    <section className="w-full min-w-0 ur-content-medium lg:px-4 ur-pc-card">',
+    replace: '    <section className="w-full min-w-0 ur-content-medium lg:px-4">',
+    test: TEST,
+    why: 'PC 마이 B 는 모든 블록이 카드다 — 이 구역만 바탕에 떠 있었다.',
+  },
+  {
+    name: "👤 마이 점검: 상품 주문이 있는 사람의 '상품' 칸까지 감춘다",
+    file: 'src/components/mypage/OrdersTab.tsx',
+    find: "    ...(SHOPPING_TAB_HIDDEN && counts.product === 0 ? [] : [{ key: 'product' as const,",
+    replace: "    ...(SHOPPING_TAB_HIDDEN ? [] : [{ key: 'product' as const,",
+    test: TEST,
+    why: '예전에 배송 상품을 산 사람은 그 주문만 걸러 볼 길을 잃는다 — 감추는 건 늘 0건일 때만.',
+  },
 ]
