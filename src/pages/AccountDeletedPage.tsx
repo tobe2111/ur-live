@@ -79,10 +79,10 @@ export default function AccountDeletedPage() {
             {t('accountDeleted.feedbackPrefix')}
             <br />
             <a
-              href="mailto:support@ur-team.com"
+              href="mailto:urteam.corp@gmail.com"
               className="text-purple-600 hover:text-purple-700 underline"
             >
-              support@ur-team.com
+              urteam.corp@gmail.com
             </a>
             {t('accountDeleted.feedbackSuffix')}
           </p>

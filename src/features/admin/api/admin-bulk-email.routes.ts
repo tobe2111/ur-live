@@ -159,8 +159,8 @@ function buildBulkHtml(subject: string, body: string): string {
     </div>
     <div style="padding:18px 28px;background:#fafafa;border-top:1px solid #eee;font-size:11px;color:#999;line-height:1.6;">
       본 메일은 유어딜(리스터코퍼레이션)이 회원님께 발송한 안내 메일입니다.<br>
-      <strong>리스터코퍼레이션</strong> · 사업자등록번호 783-87-03224 · 문의 <a href="mailto:contact@ur-team.com" style="color:#666;">contact@ur-team.com</a><br>
-      수신을 원치 않으시면 <a href="mailto:contact@ur-team.com?subject=수신거부" style="color:#666;">수신거부</a>를 신청해주세요.
+      <strong>리스터코퍼레이션</strong> · 사업자등록번호 783-87-03224 · 문의 <a href="mailto:urteam.corp@gmail.com" style="color:#666;">urteam.corp@gmail.com</a><br>
+      수신을 원치 않으시면 <a href="mailto:urteam.corp@gmail.com?subject=수신거부" style="color:#666;">수신거부</a>를 신청해주세요.
     </div>
   </div>
 </body></html>`;
