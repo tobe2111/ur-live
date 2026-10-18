@@ -128,4 +128,12 @@ export default [
     test: TEST,
     why: '바닥값은 가장 낮은 표본을 고르므로 이 하한이 없으면 깨진 렌더(실행 0KB)가 "개선"으로 읽힌다.',
   },
+  {
+    name: '[exec-cost] 잠금여유를 현장 아래 잡음보다 낮춘다',
+    why: '📡 2026-10-18 현장: 교환권 302.2/305.4/305.6 처럼 **아래로** 3.2KB 튀는 표본이 실재하고 바닥값은 그걸 채택한다. 잠금여유를 그 아래로 내리면 **코드가 안 바뀌어도** "개선 미잠금" 빨간불이 난다.',
+    file: 'scripts/check-exec-cost.mjs',
+    find: 'export const LOCK_SLACK_KB = 8',
+    replace: 'export const LOCK_SLACK_KB = 3',
+    test: 'src/tests/unit/exec-cost-2026-10-14.test.ts',
+  },
 ]
