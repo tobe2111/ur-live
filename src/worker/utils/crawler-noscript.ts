@@ -209,9 +209,7 @@ export function buildStayNoscript(
   const stay = String(p.restaurant_name || p.name || '').trim()
   if (!stay) return ''
   // 🔀 첫 화면이 제목·성급을 이미 그렸으면 반복하지 않는다(규율 ②). 지역은 첫 화면에 **없다** — 남긴다.
-  const skip = !!opts.skipTitle
-  // 📍 2026-10-18: 제목·검색 설명과 같은 함수 — 컬럼이 틀린 12건에서 다른 지역을 말하던 것.
-  const region = stayRegionShort(p.region_sido, p.region_sigungu, p.address)
+  const skip = !!opts.skipTitle, region = stayRegionShort(p.region_sido, p.region_sigungu, p.address) // 📍 제목과 같은 함수(2026-10-18)
   const prices = (seed?.rooms || [])
     .map((r) => Number(r?.base_price_weekday) || 0)
     .filter((v) => v > 0)

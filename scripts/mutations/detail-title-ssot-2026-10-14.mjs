@@ -126,8 +126,8 @@ export default [
   {
     name: '🏷️ 상세 제목 — 사이트 이름을 리터럴로 박는다',
     file: SSOT,
-    find: "  siteName: string = CONSUMER_SITE_NAME,\n): string {\n  const n = String(name ?? '').trim()\n  const cols",
-    replace: "  siteName: string = '유어딜',\n): string {\n  const n = String(name ?? '').trim()\n  const cols",
+    find: "  siteName: string = CONSUMER_SITE_NAME,\n): string {\n  const n = String(name ?? '').trim()\n  const r = stayRegionShort",
+    replace: "  siteName: string = '유어딜',\n): string {\n  const n = String(name ?? '').trim()\n  const r = stayRegionShort",
     test: TEST,
     why:
       '브랜드 이름은 `CONSUMER_SITE_NAME` 한 곳이다 — 리터럴로 박으면 이름이 바뀌는 날 제목만 옛 ' +
