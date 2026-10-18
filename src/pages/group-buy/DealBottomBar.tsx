@@ -26,6 +26,7 @@ import DealPayButton from './DealPayButton'
 import AddToCartButton from './AddToCartButton'
 import { VOUCHER_CART_UI_ENABLED } from '@/shared/feature-flags'
 import type { DealPlan } from './DealUseChooser'
+import OwnerManagePanel from './OwnerManagePanel'
 
 const arrow = <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
 
@@ -33,7 +34,7 @@ export default function DealBottomBar({
   isJoinable, isPrelaunch, buyable, joining,
   quantity, total, setQuantity, maxQty, maxPerPerson, unitPrice, refPrice, discountPct, minReviewLevel,
   dealPlan, dealUse, setDealUse, canPayWithDeal, dealBalance,
-  productId, onJoin,
+  productId, onJoin, isOwner = false, onManage,
 }: {
   isJoinable: boolean
   isPrelaunch: boolean
@@ -56,6 +57,9 @@ export default function DealBottomBar({
   /** 장바구니 담기에 쓴다. 사전 응모(prelaunch)나 구매 불가 상태에선 버튼이 안 뜬다. */
   productId: number
   onJoin: (withDeal?: boolean) => void
+  /** 👤 2026-10-18: 주인이면 바가 [구매하기] 대신 [관리하기] 를 낸다 — 누르면 혼나는 버튼을 안 보인다. */
+  isOwner?: boolean
+  onManage?: () => void
 }) {
   const [open, setOpen] = useState(false)
   // 구매가 불가능해지면(품절 등) 열린 창을 닫는다 — 누를 수 없는 결제 버튼만 남지 않게.
@@ -78,6 +82,7 @@ export default function DealBottomBar({
         {minReviewLevel && minReviewLevel > 1 ? (
           <div className="mb-2 text-[12px] font-bold whitespace-nowrap" style={{ color: 'var(--gbd-ink)' }}>동네 리뷰어 Lv.{minReviewLevel} 전용</div>
         ) : null}
+        {isOwner && onManage ? <OwnerManagePanel onManage={onManage} compact /> : (
         <div className="flex items-center gap-3">
           {!isPrelaunch && (
             <div className="shrink-0 min-w-0">
@@ -98,11 +103,12 @@ export default function DealBottomBar({
             {joining ? '처리 중…' : isPrelaunch ? '사전 응모하기' : !isJoinable ? '구매 불가' : verb}
           </button>
         </div>
+        )}
       </div>
     </footer>
 
     {/* 🧾 구매 창 — 수량 · 딜 사용 · 결제. 결제 버튼은 종전 바의 버튼과 같은 onJoin 을 부른다. */}
-    {open && !isPrelaunch && (
+    {open && !isPrelaunch && !isOwner && (
       <div className="fixed inset-0 lg:hidden" style={{ zIndex: Z.SHEET_BACKDROP }} role="dialog" aria-modal="true" aria-label="구매 옵션">
         <button type="button" aria-label="닫기" onClick={() => setOpen(false)} className="absolute inset-0 w-full h-full border-0 cursor-default" style={{ background: 'rgba(22,24,28,.45)' }} />
         <div className="absolute inset-x-0 bottom-0 rounded-t-3xl" style={{ zIndex: Z.SHEET_BODY, background: 'var(--gbd-bg)', padding: '12px 16px calc(16px + env(safe-area-inset-bottom))' }}>

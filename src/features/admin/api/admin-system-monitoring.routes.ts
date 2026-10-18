@@ -12,6 +12,7 @@ import { safeError } from '@/worker/utils/safe-error'
 import type { Env } from '@/worker/types/env'
 import { isDocumentedRegistered } from '@/lib/alimtalk-templates'
 import { listCronHeartbeats, getCronHealth, cpuDeathKey } from '@/worker/utils/cron-heartbeat'
+import { planBulkResolve, type BulkResolveInput } from '@/worker/utils/cron-failure-bulk'
 import { neverFiredLanes, orphanLaneBeats, KNOWN_LANES_KEY } from '@/worker-ads/lane-cadence'
 
 export const adminSystemMonitoringRoutes = new Hono<{ Bindings: Env }>()
@@ -136,6 +137,26 @@ adminSystemMonitoringRoutes.patch('/cron-failures/:id/resolve', async (c) => {
   try {
     await DB.prepare(`UPDATE cron_failures SET resolved = 1 WHERE id = ?`).bind(id).run()
     return c.json({ success: true })
+  } catch (err) {
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
+  }
+})
+
+// ── POST /cron-failures/bulk-resolve ── 조건으로 묶어 해결(super_admin · 기본은 세기만) ──
+adminSystemMonitoringRoutes.post('/cron-failures/bulk-resolve', async (c) => {
+  const { DB } = c.env
+  try {
+    const me = c.get('user' as never) as { id?: string | number } | undefined
+    const admin = await DB.prepare('SELECT role FROM admins WHERE id = ?').bind(me?.id ?? null).first<{ role: string }>()
+    if (admin?.role !== 'super_admin') return c.json({ success: false, error: 'super_admin 권한이 필요합니다' }, 403)
+    const plan = planBulkResolve(await c.req.json<BulkResolveInput>().catch(() => ({})))
+    if (!plan.ok) return c.json({ success: false, error: plan.error }, 400)
+    const row = await DB.prepare(`SELECT COUNT(*) AS n FROM cron_failures WHERE ${plan.where}`)
+      .bind(...plan.binds).first<{ n: number }>()
+    const matched = Number(row?.n ?? 0)
+    if (plan.dryRun) return c.json({ success: true, data: { dry_run: true, matched, resolved: 0 } })
+    const res = await DB.prepare(`UPDATE cron_failures SET resolved = 1 WHERE ${plan.where}`).bind(...plan.binds).run()
+    return c.json({ success: true, data: { dry_run: false, matched, resolved: Number(res.meta?.changes ?? 0) } })
   } catch (err) {
     return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }

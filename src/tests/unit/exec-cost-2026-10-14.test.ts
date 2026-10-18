@@ -121,6 +121,17 @@ describe('①-2 흔들림 — 세 번 재서 바닥값(최소)', () => {
     // 그 여섯의 폭은 허용오차의 두 배가 넘는다 ⇒ 중앙값 한 겹으로는 못 막는다
     expect(Math.min(...spreads.filter((x) => x > TOLERANCE_KB))).toBeGreaterThan(TOLERANCE_KB * 1.8)
   })
+  // 📡 2026-10-18 현장 관측 — `CI_RUN_NOTICE` 로 **초록 회차**의 3회 표본을 읽게 된 뒤 처음 잰 값이다.
+  //   아래 방향 잡음이 실재하고(교환권 302.2 / 305.4 / 305.6, run 39072017152) 바닥값이 그걸 채택한다.
+  //   ⇒ `LOCK_SLACK_KB` 는 그 잡음보다 커야 한다. 작아지면 **코드가 안 바뀌어도** 빨간불이 난다.
+  it('아래 방향 잡음(현장 3.2KB)이 거짓 "개선 미잠금"을 내지 않는다', () => {
+    const floor = pickFloor(asResults([302.2, 305.4, 305.6]))!
+    expect(floor.execKB).toBe(302.2) // 바닥값은 낮은 표본을 **채택한다**(중앙값이면 버린다)
+    const b305 = { pages: { 홈: { execKB: 305.2, top: [['a.js', 100]] as Array<[string, number]> } } }
+    expect(judge({ 홈: { execKB: floor.execKB, top: [] } }, b305)).toEqual([])
+    // 관측된 아래 잡음보다 잠금여유가 넉넉해야 한다 — 이 값을 내리려면 현장 분포를 다시 재라.
+    expect(LOCK_SLACK_KB).toBeGreaterThan(305.6 - 302.2)
+  })
   it('바닥값이어도 진짜 증가는 막는다(새 코드가 꼭 돌면 모든 표본에 들어 바닥도 오른다)', () => {
     const floor = pickFloor(asResults([310, 310.2, 318]))!
     expect(judge({ 홈: { execKB: floor.execKB, top: [] } }, base)[0].kind).toBe('grew')
