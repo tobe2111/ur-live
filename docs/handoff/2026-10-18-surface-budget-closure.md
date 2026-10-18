@@ -47,3 +47,10 @@ critical-chunks 14 불변 · chunk-cycles 0 · exec-cost 10화면 예산 안(전
 가드 `cross-envelope-2026-10-18.test.ts` + 주입 4건(되돌려-검증 4/4 빨간불).
 
 **다음 후보**: `guestMy` 197 · `stayDetail` 229.9 — stayDetail 의 `lz-home-homePc-vouchers` 5.8KB 를 누가 끌고 오는지 같은 방법(manifest imports 역추적)으로.
+
+### ✅ E4 판정 통과 (배포 후 라이브, 머지 `8f9fa8a75`)
+배포 전·후 같은 방법으로 라이브 `CartPage` 청크의 정적 import 를 셌다(배포 버전 `index-C4axmEgX` → `index-C3dGMd1A`).
+- 정적 import **29 → 17**. 사라진 것: `app-components` · `lz-gbDetail` · `embla` · `lz-product` · `lz-productL` · `radix-ui` · `app-ui-utils` · `lz-boot-*` 3 · `lz-gbDetail-*` 3 — 생긴 것: `app-cross`
+- 반대 방향(기능 유지): `app-components`(옵션 모달)·`lz-gbDetail`(결제 유틸)·`tosspayments` 는 **동적 import 로 남아 있다** — 쓰는 순간 받는다.
+- `/cart`·`/user/profile`·`/` 200. 헤드리스 렌더에서 장바구니가 받은 JS 17개 중 위 봉투 0개.
+- ⚠️ 못 잰 것: 이 컨테이너 브라우저는 라이브 자산을 간헐로 못 받아 청크 자가복구로 튄다(`/user/profile` 이 그랬다) — 화면 렌더 판정은 PR CI 의 render-smoke 에 기댄다. 옵션 변경·결제 버튼을 실제로 눌러 보는 것은 로그인·장바구니가 필요해 못 했다.
