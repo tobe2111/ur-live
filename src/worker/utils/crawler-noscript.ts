@@ -573,6 +573,11 @@ function facetLinksHtml(): string {
   return `<ul>${links.map(k => `<li><a href="${esc(k.href)}">${esc(k.label)}</a></li>`).join('')}</ul>`
 }
 
+/** 🎁 2026-10-18 첫 화면 경로에도 facet 링크(**상품 요약 제외** — 첫 화면이 이미 그렸다). 워커가 첫 화면 **또는** 요약 중 하나만 내서 따로 필요 — docs/handoff/2026-10-18-voucher-facet-firstscreen.md */
+export function voucherFacetNoscript(path: string): string {
+  const l = path === '/vouchers' ? facetLinksHtml() : ''; return l ? `<noscript>${l}</noscript>` : ''
+}
+
 /**
  * 🔗 자식 지역 링크 마크업. **조립은 한 곳에서만** 한다 — 두 자리에서 각자 쓰면 한쪽이 탈출을
  * 빠뜨린다(이 레포가 반복해 밟은 클래스). 링크가 없으면 `''` 라 종전 출력과 byte-동일이다.
