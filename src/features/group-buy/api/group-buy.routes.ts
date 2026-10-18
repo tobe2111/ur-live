@@ -54,6 +54,19 @@ const groupBuyRoutes = new Hono<{ Bindings: Env }>()
 
 // ── POST /api/group-buy/join/:id — 공동구매 참여 ────────────────────
 // 🛡️ 2026-05-15: rate limit 5/min per user — 동시 클릭 / 자동화 방어 (재고 + voucher 중복 발급 위험)
+// 👤 2026-10-18 — 보는 사람이 이 이용권의 **주인**인가. 상세 응답은 엣지 캐시라 사람마다 다른 답을
+//   넣을 수 없어 따로 묻는다(`/products/*` 아래에 두면 그 캐시에 걸린다 — 경로를 일부러 비켰다).
+//   판정은 구매 차단과 **같은 함수**다 — 두 벌이면 버튼은 숨겼는데 결제가 막히지 않는 날이 온다.
+groupBuyRoutes.get('/viewer/:id', requireAuth(), async (c) => {
+  const user = getCurrentUser(c)
+  const pid = Number(c.req.param('id'))
+  c.header('Cache-Control', 'private, no-store')
+  if (!user || !Number.isInteger(pid) || pid <= 0) return c.json({ success: true, data: { is_owner: false } })
+  const uid = await resolveUserIdString(c.env.DB, user.id, user.isDbId)
+  const p = await c.env.DB.prepare('SELECT seller_id FROM products WHERE id = ?').bind(pid).first<{ seller_id: number | null }>().catch(() => null)
+  return c.json({ success: true, data: { is_owner: await isSelfOwnedGroupBuy(c.env.DB, p?.seller_id, uid) } })
+})
+
 groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, windowSec: 60 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)

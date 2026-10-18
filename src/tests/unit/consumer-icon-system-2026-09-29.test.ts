@@ -88,7 +88,8 @@ const OPERATION = new Set([
  *       그 PR 의 `--changed` 범위에 이 검사가 안 걸려 PR CI 는 못 봤다 — 러너를 건드린 #1870 에서야 드러났다.
  *       🧭 이 자리에서 **여섯 번째**다. 위 다섯 줄을 읽을 수 있는 자리에 두고도 같은 자리를 밟았다.
  */
-const MEANING_BASELINE = 155
+/* 🔧 2026-10-18: 155 → **154**. 이용권 주인 [관리하기](#1895)가 상세의 옛 '내 공구' 띠를 걷으며 lucide 뜻 아이콘 1건이 빠졌다 — 같은 커밋에서 내린다(PR CI 주입이 잡았다, 일곱 번째). */
+const MEANING_BASELINE = 154
 
 const read = (f: string) => readFileSync(f, 'utf8')
 
