@@ -48,7 +48,8 @@ ${s.orders ? row('쇼핑 주문', `${s.orders}건 · ${won(s.orderAmount)}`) : '
 export async function handleSellerDailyReport(env: Env): Promise<{ sent: number; failed: number; targets: number }> {
   const DB = env.DB
   const out = { sent: 0, failed: 0, targets: 0 }
-  if (!DB || !transactionalMailReady(env)) return out
+  if (!DB) return out
+  if (!transactionalMailReady(env)) return out
 
   const gateOn = await settingOn(DB, SELLER_DAILY_REPORT_GATE)
   const where = gateOn
