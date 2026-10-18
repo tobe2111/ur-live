@@ -9,7 +9,8 @@ const posts = readJson('data/posts.json', []);
 const now = new Date();
 const k = kstNow(now);
 const today = k.toISOString().slice(0, 10);
-const dayIdx = Math.floor(now.getTime() / 86400e3);
+// KST 날짜 기준 일 인덱스 (UTC 기준이면 KST 09:00에 슬롯/트랙이 바뀜)
+const dayIdx = Math.floor(k.getTime() / 86400e3);
 
 // 오늘 게시할 슬롯 결정 (워크플로가 모든 슬롯 시각에 깨우고, 여기서 오늘 슬롯만 통과)
 function todaysSlot(platform) {
@@ -17,14 +18,17 @@ function todaysSlot(platform) {
   if (today > (schedule.rotation_until || '') && schedule.best?.[platform]) return schedule.best[platform];
   return slots[dayIdx % slots.length];
 }
-const nowHour = k.getUTCHours();
+const nowMin = k.getUTCHours() * 60 + k.getUTCMinutes();
 const force = process.env.FORCE === '1' || process.env.GITHUB_EVENT_NAME === 'workflow_dispatch';
+// GitHub schedule 은 수 시간씩 지연되므로 정확한 시각 일치 대신 "오늘 슬롯 시각이 지났고 아직 미게시"면 게시
 const due = (platform) => {
   if (force) return true;
-  const slotHour = Number(todaysSlot(platform).split(':')[0]);
-  return Math.abs(nowHour - slotHour) <= 1; // cron 지연 허용
+  const [h, m] = todaysSlot(platform).split(':').map(Number);
+  return nowMin >= h * 60 + (m || 0);
 };
 const postedToday = (platform) => posts.some((p) => p.platform === platform && p.date_kst === today && !p.skipped);
+const kstHM = `${String(k.getUTCHours()).padStart(2, '0')}:${String(k.getUTCMinutes()).padStart(2, '0')}`;
+const skipReason = (platform) => postedToday(platform) ? `오늘(${today}) 이미 게시함` : `오늘 슬롯 ${todaysSlot(platform)} KST 전 (현재 ${kstHM} KST)`;
 
 // 20일 주기에서 오늘의 트랙 결정 (기본 12:5:3 = 60/25/15)
 export function pickTrack(idx, cycle = mix.cycle) {
@@ -67,6 +71,7 @@ ${PARTNER_FACTS}
 
 async function main() {
   if (isPromo && !product) { log('상품 없음, 종료'); return; }
+  log(`event=${process.env.GITHUB_EVENT_NAME || 'local'} DRY=${DRY} force=${force} KST=${today} ${kstHM} slot(threads)=${todaysSlot('threads')} slot(ig)=${todaysSlot('instagram')}`);
   log(`오늘 트랙: ${track}${topic ? ` / 주제: ${topic.slice(0, 40)}` : ''}`);
   const info = isPromo ? `상품: ${product.name} (${product.url})` : `링크 대상: ${target.url}`;
 
@@ -80,7 +85,7 @@ async function main() {
     const c = await threads('POST', `${THREADS_USER_ID}/threads`, { media_type: 'TEXT', text });
     const r = await threads('POST', `${THREADS_USER_ID}/threads_publish`, { creation_id: c.id });
     posts.push({ platform: 'threads', id: r.id, content_id: cid, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('threads'), link, dry: DRY || undefined });
-  } else log('Threads: 지금은 게시 슬롯 아님 또는 이미 게시함');
+  } else log(`Threads: 건너뜀 — ${skipReason('threads')}`);
 
   // ---- Instagram (이미지 필수) ----
   if (due('instagram') && !postedToday('instagram')) {
@@ -105,7 +110,7 @@ async function main() {
         else posts.push({ platform: 'facebook', id: f.post_id || f.id, content_id: fcid, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('instagram'), link: flink, dry: DRY || undefined });
       } catch (e) { log(`Facebook 게시 실패: ${e.message}`); }
     }
-  } else log('Instagram: 지금은 게시 슬롯 아님 또는 이미 게시함');
+  } else log(`Instagram: 건너뜀 — ${skipReason('instagram')}`);
 
   if (!DRY) writeJson('data/posts.json', posts);
   else log('DRY: posts.json 미기록', JSON.stringify(posts.slice(-2)).slice(0, 300));
