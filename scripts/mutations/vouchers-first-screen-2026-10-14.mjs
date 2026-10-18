@@ -39,8 +39,10 @@ export default [
   {
     name: '🎟️ 교환권 첫 화면 폴백에서 크롤러 요약이 빠진다',
     file: 'src/worker/index.ts',
-    find: 'vouchersFirst || (buildStaticSurfaceNoscript(url.pathname, crawlerPayload) + urdealLoaderHtml)',
-    replace: 'vouchersFirst || urdealLoaderHtml',
+    // 🔁 2026-10-18 재조준: 배선이 삼항이 됐다(첫 화면과 facet 링크를 함께 낸다). 불변식은 그대로 —
+    //    첫 화면을 못 그리면 **크롤러 요약**이 나와야 한다. 결함은 한 글자도 안 바꿨다.
+    find: ' : (buildStaticSurfaceNoscript(url.pathname, crawlerPayload) + urdealLoaderHtml)',
+    replace: ' : urdealLoaderHtml',
     test: TEST,
     why: '첫 화면을 못 그리는 경우(시드 실패·PC) 크롤러 본문이 다시 8자가 된다.',
   },

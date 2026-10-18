@@ -194,9 +194,19 @@ describe('④ 폴백과 배선', () => {
     expect(html.indexOf('ur-first-screen')).toBeLessThan(html.indexOf('ur-loader'))
     expect(html).toContain('min-height:34dvh')
   })
+  // 🔁 2026-10-18 재조준: 성공 분기가 `vouchersFirst` 하나이던 것이 삼항이 됐다(첫 화면 + facet
+  //   `<noscript>`). 불변식 넷은 그대로라 **한 줄 전체를 정규식으로 박던 것**을 조각으로 나눈다 —
+  //   성공 분기에 무엇이 더 실리는지는 그 PR 의 가드가 보고, 여기서는 **게이트·호출·폴백**만 지킨다.
+  //   (한 줄 통째 앵커는 그 줄을 건드리는 모든 변경에 거짓 빨간불을 낸다 — 실제로 냈다.)
   it('워커 배선: /vouchers 하나 · 폰 UA · nonce · 폴백은 종전(크롤러 요약 + 로더)', () => {
     const w = code('src/worker/index.ts')
-    expect(w).toMatch(/ssrSlot === 'VOUCHERS' && ssrPayload && url\.pathname === '\/vouchers' && shouldRenderMobileFirstScreen\(c\.req\.header\('user-agent'\)\)\) \{ const vouchersFirst = buildVouchersFirstScreen\(ssrPayload, urdealLoaderHtml, nonce\); rb = rb\.on\('#root', \{ element\(el\) \{ el\.setInnerContent\(vouchersFirst \|\| \(buildStaticSurfaceNoscript\(url\.pathname, crawlerPayload\) \+ urdealLoaderHtml\)/)
+    const line = w.split('\n').find(l => l.includes("ssrSlot === 'VOUCHERS' && ssrPayload"))
+    expect(line, 'VOUCHERS 첫 화면 분기가 사라졌다').toBeTruthy()
+    expect(line!).toContain("url.pathname === '/vouchers' && shouldRenderMobileFirstScreen(c.req.header('user-agent'))")
+    expect(line!).toContain('const vouchersFirst = buildVouchersFirstScreen(ssrPayload, urdealLoaderHtml, nonce)')
+    expect(line!).toContain("rb = rb.on('#root', { element(el) { el.setInnerContent(vouchersFirst")
+    expect(line!, '🔴 첫 화면을 못 그리면 **크롤러 요약**이 나와야 한다(본문이 통째로 비는 것 차단)')
+      .toContain('buildStaticSurfaceNoscript(url.pathname, crawlerPayload) + urdealLoaderHtml')
   })
 })
 
