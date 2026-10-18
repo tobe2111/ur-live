@@ -209,7 +209,7 @@ describe('⑥ 배선 — 세 사용 경로 + 정산은 판 지점', () => {
   it('손님 셀프(잠금 파일): 상품 id 를 게이트에 넘긴다 — 승인된 두 줄', () => {
     const src = stripComments(readFileSync('src/features/group-buy/api/group-buy-public.routes.ts', 'utf8'))
     expect(src).toMatch(/SELECT v\.id, v\.status, v\.product_id, p\.seller_id FROM vouchers v/)
-    expect(src).toMatch(/checkSelfRedeemGate\(DB, pre\.seller_id, String\(body\.store_code \|\| ''\), pre\.product_id\)/)
+    expect(src).toMatch(/checkSelfRedeemGate\(DB, pre\.seller_id, String\(body\.store_code \|\| ''\), pre\.product_id, pre\.id\)/) // 🏷️ 2026-10-18 이용권 id 는 다른 점주 지점 판정용
   })
   it('원장 상인은 판 지점(voucher.seller_id)이 기본 — 다른 점주 지점 기록이 있을 때만 바뀐다(3단계)', () => {
     // 같은 주인 지점은 기록이 cross_owner=0 이라 settlementMerchantFor 가 이 기본값을 그대로 돌려준다(brand-cross-owner 시험).

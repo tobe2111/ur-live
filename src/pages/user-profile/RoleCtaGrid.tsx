@@ -89,8 +89,11 @@ export default function RoleCtaGrid() {
   )
 
   return (
-    /* 🧱 가로 패딩 없음 — 줄이 자기 `px-4` 를 갖는다. */
-    <section className="w-full min-w-0">
+    /* 🧱 가로 패딩 없음 — 줄이 자기 `px-4` 를 갖는다.
+       🗂️ 2026-10-18: PC 마이 B(2026-10-14 *"모든 블록을 카드에"*)에서 이 구역만 카드 밖에 떠 있었다 —
+       감싸는 div 에 `ur-pc-card` 가 없어서다. 카드 클래스를 **이 section 자신**에 준다:
+       ① 구역이 없으면(return null) 빈 카드도 안 남는다 ② `> h2:first-child` 여백 규칙이 제목에 닿는다. */
+    <section className="w-full min-w-0 ur-content-medium lg:px-4 ur-pc-card">
       {/* 🏷️ 2026-09-30: '내 바로가기' → '가게 열기'. 이 구역에 남은 줄은 **가게를 내는 것** 하나라
           (내 유어샵은 하단 탭과 겹쳐 빠졌다), 옛 이름은 무엇이 있는지 말해 주지 않았다.
           ⚠️ 코드 `defaultValue` 만 고치면 화면은 안 바뀐다 — `public/locales/ko` 값이 이긴다. */}

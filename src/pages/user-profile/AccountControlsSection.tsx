@@ -117,8 +117,6 @@ export function AppVersionSection() {
   const { t } = useTranslation()
   const [serverVersion, setServerVersion] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [checking, setChecking] = useState(false)
-  const checkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isMountedRef = useRef(true)
 
   const fetchVersion = async () => {
@@ -134,16 +132,8 @@ export function AppVersionSection() {
     fetchVersion().finally(() => { if (isMountedRef.current) setLoading(false) })
     return () => {
       isMountedRef.current = false
-      if (checkTimerRef.current) clearTimeout(checkTimerRef.current)
     }
   }, [])
-
-  const handleCheck = async () => {
-    setChecking(true)
-    await fetchVersion()
-    if (checkTimerRef.current) clearTimeout(checkTimerRef.current)
-    checkTimerRef.current = setTimeout(() => { if (isMountedRef.current) setChecking(false) }, 500)
-  }
 
   const handleUpdate = async () => {
     try {
@@ -160,7 +150,6 @@ export function AppVersionSection() {
   }
 
   const localBuildVersion = (typeof window !== 'undefined' ? localStorage.getItem('ur_build_version') : null)
-  const isLatest = !loading && serverVersion && localBuildVersion && serverVersion === localBuildVersion
   const hasUpdate = !loading && serverVersion && localBuildVersion && serverVersion !== localBuildVersion
 
   /**
@@ -183,18 +172,25 @@ export function AppVersionSection() {
    * ⚠️ 값을 `v1.4.2 (가운뎃점) 3f01ed7 (가운뎃점) 최신` 처럼 **띄어 쓴 가운뎃점으로 잇지 않는다** -
    *   `check-middle-dot-chain` 래칫이 막는 형태다. 괄호와 줄바꿈으로 나눈 이유가 그것이다.
    */
+  /**
+   * 🧹 2026-10-18 (대표 *"나머지 다 가장 이상적으로"*) — **개발자용 표시를 걷었다.**
+   *   종전 두 줄은 `유어딜 v1.0.676 (20261018.0940)` + `최신 버전인지 확인`(또는 `최신 버전이에요`)이었다.
+   *   ① 괄호 속 빌드 번호는 사람이 읽을 값이 아니다 — 고객센터가 물을 때는 `v1.0.676` 이면 충분하다.
+   *      (빌드 번호가 필요한 사람을 위해 `title` 로만 남긴다 — 눌러 길게 보면 나온다.)
+   *   ② "확인" 버튼은 **이미 자동으로 하는 일**을 사람에게 시켰다 — `version-check` 가 5분마다·탭 복귀마다
+   *      새 배포를 확인해 화면 위에 새로고침 배너를 띄운다(`NewVersionBanner`). 상태 문구도 같은 이유로 뺐다.
+   *   ⇒ 평소엔 **버전 한 줄**뿐이다. 새 버전이 확인됐을 때만 파란 버튼이 선다(종전 그대로 — 그때가 이
+   *     영역이 존재하는 유일한 순간이다).
+   *
+   * ⚠️ 값을 `v1.4.2 (가운뎃점) …` 처럼 **띄어 쓴 가운뎃점으로 잇지 않는다**(`check-middle-dot-chain`).
+   */
   return (
     <div className="ur-content-medium px-4 lg:px-8 pt-5">
-      <p className="text-[12px] text-gray-400 dark:text-white/30 text-center tabular-nums">
+      <p className="text-[12px] text-gray-400 dark:text-white/30 text-center tabular-nums" title={BUILD_HASH || undefined}>
         {t('accountSettings.appName', { defaultValue: '유어딜' })} v{APP_VERSION}
-        {BUILD_HASH && <span className="tabular-nums"> ({BUILD_HASH})</span>}
       </p>
 
-      {loading ? (
-        <p className="mt-1 text-[12px] text-gray-500 dark:text-white/40 text-center">
-          {t('accountSettings.checking', { defaultValue: '확인 중…' })}
-        </p>
-      ) : hasUpdate ? (
+      {hasUpdate && (
         <>
           <p className="mt-1 text-[12px] font-semibold text-brand-text text-center">
             {t('accountSettings.updateAvailable', { defaultValue: '새 버전이 나왔어요' })}
@@ -207,23 +203,6 @@ export function AppVersionSection() {
             {t('accountSettings.updateNow', { defaultValue: '지금 업데이트' })}
           </button>
         </>
-      ) : isLatest ? (
-        <p className="mt-1 text-[12px] text-gray-500 dark:text-white/40 text-center">
-          {t('accountSettings.isLatest', { defaultValue: '최신 버전이에요' })}
-        </p>
-      ) : (
-        /* 조회 실패이거나 로컬 빌드 기록이 아직 없다 - **"최신" 이라고 말하면 안 된다.** */
-        <p className="mt-1 text-center">
-          <button
-            type="button"
-            onClick={handleCheck}
-            className="text-[12px] text-gray-500 dark:text-white/40 underline underline-offset-4 decoration-gray-300 dark:decoration-white/20 active:text-gray-800 dark:active:text-white/75"
-          >
-            {checking
-              ? t('accountSettings.checking', { defaultValue: '확인 중…' })
-              : t('accountSettings.checkLatest', { defaultValue: '최신 버전인지 확인' })}
-          </button>
-        </p>
       )}
     </div>
   )

@@ -11,7 +11,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { surfacesFrom, judge, TOLERANCE_KB, LOCK_SLACK_KB } from '../../../scripts/check-surface-budgets.mjs'
+import { surfacesFrom, judge, routeSurfacesFrom, mapSubsetErrors, TOLERANCE_KB, LOCK_SLACK_KB } from '../../../scripts/check-surface-budgets.mjs'
 import { DASHBOARD_SURFACES } from '../../../scripts/dashboard-surfaces.mjs'
 
 const HTML = `<script type="module" crossorigin src="/assets/index-AAAAAAAA.js"></script>
@@ -85,5 +85,41 @@ describe('③ 배선', () => {
     expect(Object.keys(b.surfaces).sort()).toEqual(want)
     for (const v of Object.values(b.surfaces) as Array<{ totalKB: number }>) expect(v.totalKB).toBeGreaterThan(50)
     expect(b.toleranceKB).toBe(TOLERANCE_KB)
+  })
+})
+
+/**
+ * ④ 손님 화면은 정적 폐쇄로 잰다 (2026-10-18) — 미리받기 맵은 js 를 10개에서 잘라서, 11번째부터는 무게 예산에서도 안 보였다.
+ *    그 상한이 #1912 에서 '아무것도 안 늘었는데 +6.0' 착시를 만들었고, 정정하니 cart +33 · guestMy +26 · stayDetail +8 이
+ *    원래 받고 있던 무게로 드러났다. 반대 방향(11번째 뒤로 30KB 가 붙어도 초록)이 더 나빴다.
+ */
+describe('④ 손님 화면 = 정적 폐쇄(상한 없음)', () => {
+  const boot = ['/assets/index-AAAAAAAA.js']
+  const css = ['/assets/index-CCCCCCCC.css']
+  // 페이지 하나가 공유 청크 12개를 정적으로 끌고 온다 — 맵이라면 10개에서 잘린다
+  const manifest: Record<string, { file: string; imports?: string[]; isDynamicEntry?: boolean; css?: string[] }> = {
+    'src/pages/CartPage.tsx': { file: 'assets/CartPage-PPPPPPPP.js', isDynamicEntry: true, imports: Array.from({ length: 12 }, (_, i) => `_s${i}.js`) },
+  }
+  for (let i = 0; i < 12; i++) manifest[`_s${i}.js`] = { file: `assets/s${i}-${String(i).padStart(8, '0')}.js` }
+  const r = routeSurfacesFrom(manifest, boot, css, { cart: ['src/pages/CartPage.tsx'] })
+  it('10개를 넘는 정적 폐쇄를 전부 센다', () => {
+    const js = r.cart.filter((f: string) => f.endsWith('.js') && !boot.includes(f))
+    expect(js.length).toBe(13)
+    expect(r.cart).toContain('/assets/s11-00000011.js')
+  })
+  it('진입점이 매니페스트에 없으면 0 으로 재지 않고 던진다', () => {
+    expect(() => routeSurfacesFrom(manifest, boot, css, { gone: ['src/pages/Nope.tsx'] })).toThrow()
+  })
+  it('맵의 청크가 폐쇄에 없으면 어긋남으로 잡는다(둘 중 하나가 틀렸다)', () => {
+    expect(mapSubsetErrors({ __boot__: [], cart: ['/assets/s0-00000000.js'] }, r)).toEqual([])
+    expect(mapSubsetErrors({ __boot__: [], cart: ['/assets/ghost-ZZZZZZZZ.js'] }, r)[0]).toContain('ghost.js')
+    expect(mapSubsetErrors({ __boot__: [], other: [] }, r)[0]).toContain('other')
+  })
+  it('main 이 손님 화면을 맵이 아니라 폐쇄로 채운다', () => {
+    const src = readFileSync('scripts/check-surface-budgets.mjs', 'utf8')
+    const main = src.slice(src.indexOf('function main()'))
+    expect(main).toMatch(/routeSurfacesFrom\(manifest, bootFiles, bootCss, \{ \.\.\.ROUTES, \.\.\.PRELOAD_ONLY_ROUTES \}\)/)
+    expect(main).toMatch(/Object\.assign\(surfaces, routeSurfaces, /)
+    expect(main).toMatch(/mapSubsetErrors\(surfaces, routeSurfaces\)/)
   })
 })

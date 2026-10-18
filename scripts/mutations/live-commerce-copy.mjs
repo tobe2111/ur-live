@@ -20,8 +20,8 @@ export default [
   {
     name: '🎬 라이브 문구가 다른 언어로만 되살아난다 (zh 메타)',
     file: 'public/locales/zh/translation.json',
-    find: '"seoTitle": "UrDeal - 本地团购（美食·美容·住宿）"',
-    replace: '"seoTitle": "Ur-Deal - 直播电商美食团购"',
+    find: '"seoTitle": "美食地图",',
+    replace: '"seoTitle": "直播电商美食地图",',
     test: TEST,
     why:
       '한국어만 고치고 끝내는 것이 이 클래스의 전형이다 — 다른 언어 locale 이 **검색 결과에 그대로** 뜬다. ' +

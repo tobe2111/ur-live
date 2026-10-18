@@ -99,7 +99,9 @@ describe('① 🔴 SSOT 의 모든 줄이 그 페이지 소스에 실재한다 (
     '/creators/apply': 150,
     '/experience': 120,
     '/influencer': 230,
-    '/introduce': 200,
+    // 2026-10-18 — 화면 문구를 사실대로 고치며 205 → 220자. 래칫 규칙대로 바닥도 따라 올린다
+    //   (안 올리면 한 줄을 지워도 202자라 통과했다 — 주입이 잡았다).
+    '/introduce': 220,
     '/join': 120,
     '/new-openings': 150,
     '/partners': 230,

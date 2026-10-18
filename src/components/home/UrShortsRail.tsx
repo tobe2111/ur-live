@@ -31,6 +31,46 @@ import { priceDisplay } from '@/shared/price-display'
  *
  * ⚠️ 휠을 가로채지 않는다 — 레일 위에서 페이지가 안 내려가는 잘 알려진 짜증이 된다.
  */
+/**
+ * 🔁 2026-10-18 — **목록은 한 번만 받는다**(모듈 단위 단일 비행 + 5분 보관).
+ *
+ * `check-duplicate-fetch` 가 홈·쇼핑에서 **간헐로** `/api/urshorts ×2`(+395ms · +429ms)를 잡았다.
+ * 원인은 이 부품이 아니라 **놓이는 자리**다: `HomeSections` 는 편성 섹션이 오기 전엔 레일을 한 자리
+ * (자리표시 분기)에, 온 뒤엔 첫 섹션 안(`sIdx === 0`)에 그린다 — 트리의 다른 자리라 React 가
+ * **새로 마운트**하고, 새 인스턴스는 `nearData` 가 처음부터 다시 false 라 관측 → 요청을 또 낸다.
+ * 섹션 도착과 레일 관측 중 무엇이 먼저냐에 따라 갈려서 간헐이었다(같은 커밋 로컬 5회 중 1회).
+ *
+ * ⇒ 요청을 인스턴스가 아니라 **모듈**이 들고 있는다. 다시 마운트돼도 날아가는 요청을 이어받고,
+ *   이미 받았으면 첫 렌더에 그 목록으로 바로 그린다(자리표시 → 목록 깜빡임도 사라진다).
+ * ⚠️ 실패는 보관하지 않는다 — 다음 마운트가 다시 시도한다(fail-soft 는 그대로).
+ */
+const RAIL_LIST_TTL_MS = 5 * 60_000
+type RailList = { at: number; p: Promise<UrShortItem[] | null>; items?: UrShortItem[] | null }
+let railList: RailList | null = null
+
+function freshRailList(): RailList | null {
+  return railList && Date.now() - railList.at < RAIL_LIST_TTL_MS ? railList : null
+}
+
+function loadRailList(): Promise<UrShortItem[] | null> {
+  const cur = freshRailList()
+  if (cur) return cur.p
+  const entry: RailList = { at: Date.now(), p: Promise.resolve(null) }
+  entry.p = fetch('/api/urshorts')
+    .then((r) => r.json() as Promise<{ success?: boolean; data?: UrShortItem[] }>)
+    .then((r) => {
+      const v = r?.success && Array.isArray(r.data) ? r.data : null
+      entry.items = v
+      return v
+    })
+    .catch(() => {
+      if (railList === entry) railList = null
+      return null
+    })
+  railList = entry
+  return entry.p
+}
+
 function ShortCard({ item, load, onOpen }: { item: UrShortItem; load: boolean; onOpen: () => void }) {
   const thumb = item.thumb_url || item.product_image || ''
   // 💸 할인율·정가는 홈 딜 카드·구매 바와 **같은 규칙**(priceDisplay SSOT).
@@ -128,7 +168,9 @@ function writeRailHint(n: number) {
 }
 
 export default function UrShortsRail() {
-  const [items, setItems] = useState<UrShortItem[]>([])
+  // 🔁 이미 받아 둔 목록이 있으면(다시 마운트된 경우) 첫 렌더부터 그것으로 그린다.
+  const [cached] = useState(() => freshRailList()?.items)
+  const [items, setItems] = useState<UrShortItem[]>(() => cached ?? [])
   const [near, setNear] = useState(false)
   const [nearData, setNearData] = useState(false)
   const [edge, setEdge] = useState({ l: false, r: false })
@@ -143,7 +185,7 @@ export default function UrShortsRail() {
   //   처음이면) **같은 패널을 카드 자리만 비워** 먼저 세운다 — 높이가 같아 도착해도 안 민다.
   //   영상이 0 이었던 기억이 있으면 예약하지 않는다(대표 확정 "영상이 없으면 섹션 자체를 안 보인다").
   const [reserve] = useState(() => readRailHint() !== 0)
-  const [settled, setSettled] = useState(false)
+  const [settled, setSettled] = useState(() => cached !== undefined)
   const railRef = useRef<HTMLDivElement | null>(null)
 
   /**
@@ -185,14 +227,12 @@ export default function UrShortsRail() {
   useEffect(() => {
     if (!nearData) return
     let alive = true
-    fetch('/api/urshorts')
-      .then((r) => r.json() as Promise<{ success?: boolean; data?: UrShortItem[] }>)
-      .then((r) => {
-        if (!alive) return
-        if (r?.success && Array.isArray(r.data)) { setItems(r.data); writeRailHint(r.data.length) }
-        setSettled(true)
-      })
-      .catch(() => { if (alive) setSettled(true) /* fail-soft: 레일이 안 뜰 뿐 홈은 열린다 */ })
+    // fail-soft: 실패하면 `null` — 레일이 안 뜰 뿐 홈은 열린다.
+    loadRailList().then((list) => {
+      if (!alive) return
+      if (list) { setItems(list); writeRailHint(list.length) }
+      setSettled(true)
+    })
     return () => { alive = false }
   }, [nearData])
 

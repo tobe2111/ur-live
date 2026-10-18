@@ -83,3 +83,17 @@ describe('③④ 쇼핑이 숨겨진 동안 빈 화면 두 줄을 감춘다', ()
     }
   })
 })
+
+describe('⑤⑥ 남은 작은 것 둘(2026-10-18 대표 "남은 작은 것 둘도 정리해줘")', () => {
+  it('PC 마이 B — "가게 열기" 구역도 카드다(카드 클래스가 그 section 자신에 있다)', () => {
+    const grid = stripComments(readFileSync('src/pages/user-profile/RoleCtaGrid.tsx', 'utf8'))
+    expect(grid).toMatch(/<section className="[^"]*\bur-pc-card\b[^"]*">/)
+    // 감싸는 div 를 되살려 카드가 한 겹 안쪽으로 들어가지 않게(폭이 다른 카드와 갈린다)
+    const page = stripComments(readFileSync('src/pages/UserProfilePage.tsx', 'utf8'))
+    expect(page).not.toMatch(/<div className="ur-content-medium lg:px-4">\s*<RoleCtaGrid \/>/)
+  })
+  it("주문 내역 '상품' 칸은 쇼핑 숨김 동안 감추되, 상품 주문이 있는 사람에겐 남긴다", () => {
+    const s = stripComments(readFileSync('src/components/mypage/OrdersTab.tsx', 'utf8'))
+    expect(s).toMatch(/\.\.\.\(SHOPPING_TAB_HIDDEN && counts\.product === 0 \? \[\] : \[\{ key: 'product'/)
+  })
+})

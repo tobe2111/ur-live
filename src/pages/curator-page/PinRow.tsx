@@ -26,17 +26,22 @@
  *    는 흰 카드 위에서 아무것도 아니다. 확정 시안(s3)의 줄에도 하트가 없고, `DealRow` 를 쓰는
  *    다른 다섯 화면도 하트를 달지 않는다. ⇒ 찜은 상세 화면에 있다.
  *
- * 🔒 목적지는 반드시 `/u/:handle/p/:productId` — 그 경로가 클릭을 기록하고 소개비 귀속을 붙인다.
- *    상세로 직행시키면 화면은 같은데 귀속이 조용히 사라진다.
+ * 🔒 2026-10-18 (대표 결재 `2026-10-15-ushop-pin-spa-nav` 안 1): 목적지는 **정본 상세로 앱 안 이동**이다.
+ *    종전엔 `/u/:handle/p/:productId` 로 보내 서버가 클릭을 기록하고 귀속을 붙였다(전체 새로고침 약 2초).
+ *    지금은 누르는 순간 `onPinClick` 이 **같은 일**을 한다 — 소개 값 저장(`storeAffiliateRef`) + 클릭 비콘.
+ *    ⚠️ `onClick` 을 빼면 화면은 같은데 귀속이 조용히 사라진다(돈이 새는 쪽으로 깨진다 — 가드가 고정).
  */
 import { memo } from 'react'
 import DealRow from '@/components/deal/DealRow'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import type { CuratorPin } from '@/features/curator/api/curator-api'
+import { onPinClick, pinHref } from './pin-nav'
 
-export default memo(function PinRow({ pin, handle, order, prefetch }: {
+export default memo(function PinRow({ pin, handle, curatorUserId, order, prefetch }: {
   pin: CuratorPin
   handle: string
+  /** 이 유어샵 주인(user_id) — 소개 값으로 저장된다. */
+  curatorUserId: number
   /** 주인이 정한 순서(1부터). **화면 순서가 아니다** — 위 ① 참조. */
   order: number
   prefetch?: () => void
@@ -45,7 +50,8 @@ export default memo(function PinRow({ pin, handle, order, prefetch }: {
 
   return (
     <DealRow
-      to={`/u/${handle}/p/${pin.product_id}`}
+      to={pinHref(pin)}
+      onClick={() => onPinClick(handle, curatorUserId, pin.product_id)}
       prefetch={prefetch}
       thumbStyle={pin.dominant_color ? { background: pin.dominant_color } : undefined}
       thumb={

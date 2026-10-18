@@ -41,6 +41,17 @@ export const staleGapMinutes = (periodMinutes: number): number => {
 }
 
 /**
+ * ⏰ **알람이 모는 레인**의 침묵 임계(2026-10-18 대표 결재 `2026-10-15-ads-alarm-stall-alert` 안 2).
+ *   유휴 Durable Object 의 알람은 밀리면 **다음 정각에 쓸어서** 배달된다(실측 5표본: 간격 31~60분, 상한 약 62분).
+ *   그래서 1분 주기 레인에 `staleGapMinutes(1)` = 32분을 쓰면 정상 동작 중에도 시간대마다 울린다.
+ *   ⇒ 임계를 구조적 상한(62분)으로만 올린다. 측정이 하루치 일을 했는지는 `measure-volume-watch.ts` 가 주 신호로 본다.
+ *   ⚠️ 이 값을 더 올리지 말 것 — 62분을 넘는 침묵은 배달 지연으로 설명되지 않는다(진짜 멈춤이다).
+ */
+export const ALARM_SWEEP_GAP_MIN = 62
+export const alarmLaneGapMinutes = (periodMinutes: number): number =>
+  Math.max(staleGapMinutes(periodMinutes), ALARM_SWEEP_GAP_MIN)
+
+/**
  * 매시간 레인 — `kick` 이 `gap` 없이 호출될 때의 기본값.
  * ⚠️ 이걸 안 주면 그 레인은 `missing`(판정 불가)으로 분류돼 **침묵 검사에서 통째로 빠진다**
  *   (자식 하트비트는 cron 식을 안 싣는다 — 근거는 `index.ts` 의 `kick` 주석).

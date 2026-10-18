@@ -56,6 +56,8 @@ export interface ConsumerSurfaceSeo {
    * 생략하면 `canonicalParams` 를 쓴다(다른 표면의 종전 동작 보존).
    */
   titleParams?: readonly string[]
+  /** 🏷️ 필터 값 페이지(`?category=편의점`)의 제목·설명 틀 — `{v}` 자리에 값. 2026-10-18: 종전엔 카테고리 20개가 같은 브랜드 나열을 설명으로 냈다(편의점에 스타벅스). */
+  facetTitle?: string; facetDescription?: string
   /**
    * 서버에서도 `robots: noindex, follow` 를 낸다.
    * 클라 `<SEO noindex>` 는 JS 렌더 후라 비-JS 크롤러(네이버 Yeti)에겐 무효였다 — 실측으로
@@ -133,6 +135,8 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
     canonicalParams: ['category'],
     canonicalParamValues: { category: VOUCHER_FILTER_CATEGORIES },
     titleParams: ['brand', 'category'],
+    facetTitle: '{v} 기프티콘 교환권 할인',
+    facetDescription: '{v} 기프티콘 교환권을 할인가로 사세요. 결제하면 바로 발송되고, 유효기간 안에 매장에서 쓰면 됩니다.',
   },
   '/browse': {
     crumb: '쇼핑',
@@ -229,7 +233,7 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
   },
   '/introduce': {
     crumb: '유어딜 소개',
-    title: '유어딜 소개 - 우리 동네 이용권 공동구매',
+    title: '유어딜 소개 - 우리 동네 이용권 할인', // 🩸 2026-10-18 종전 "…공동구매" — 즉시판매라 모여 사지 않는다
     description: '우리 동네 맛집·카페·뷰티·숙소 이용권을 할인가로 사서 매장에서 바로 쓰는 서비스. 기프티콘 교환권은 결제 즉시 발송됩니다.',
   },
   '/join': {
@@ -578,12 +582,10 @@ export function resolveConsumerSurfaceSeo(
     }
     const brand = allowed('brand', params?.get('brand')?.trim())
     const category = allowed('category', params?.get('category')?.trim())
-    if (brand) {
-      title = `${brand} ${entry.title}`
-      description = `${brand} ${entry.description}`
-    } else if (category) {
-      title = `${category} ${entry.title}`
-      description = `${category}: ${entry.description}`
+    const facet = brand || category
+    if (facet) { // 틀이 없는 표면은 종전 그대로: 브랜드 `{v} 설명` · 카테고리 `{v}: 설명`.
+      const tpl = entry.facetTitle ? [entry.facetTitle, entry.facetDescription ?? `{v}: ${entry.description}`] : [`{v} ${entry.title}`, brand ? `{v} ${entry.description}` : `{v}: ${entry.description}`]
+      ;[title, description] = tpl.map((t) => t.split('{v}').join(facet))
     }
   }
 

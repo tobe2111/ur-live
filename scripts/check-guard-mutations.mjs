@@ -1274,7 +1274,8 @@ const MUTATIONS = [
   {
     name: '🧹 이용권 현황이 다시 배송 5단계로',
     file: 'src/pages/user-profile/OrderStatusBar.tsx',
-    find: "key: 'usable', path: '/my-vouchers' }",
+    // 🔁 2026-10-18 재조준: '사용가능' 칸이 위 숫자 줄로 옮겨가 앵커를 '사용완료' 칸으로. 불변식 그대로.
+    find: "key: 'used', path: '/my-vouchers' }",
     replace: "key: 'shipping', path: '/my-orders?status=shipping' }",
     test: 'src/tests/unit/mypage-cleanup-2026-09-02.test.ts',
     why: '\uc720\uc5b4\ub51c\uc740 \ubc30\uc1a1\uc774 \uc5c6\uc5b4 \uadf8 \uce78\uc774 \uc601\uc6d0\ud788 0\uc774\ub2e4.',
@@ -1282,8 +1283,8 @@ const MUTATIONS = [
   {
     name: '🧹 이용권 현황이 다시 주문 훅에서 센다 (지갑과 숫자가 갈린다)',
     file: 'src/pages/user-profile/OrderStatusBar.tsx',
-    find: "  const { data: vouchersRaw = [] } = useMyVouchers()",
-    replace: "  const { data: vouchersRaw = [] } = useMyOrders()",
+    find: "  const { data } = useMyVouchers()",
+    replace: "  const { data } = useMyOrders()",
     test: 'src/tests/unit/mypage-cleanup-2026-09-02.test.ts',
     why: '\uc0ac\ub78c\uc774 \uc138\ub294 \ub2e8\uc704\ub294 \uc774\uc6a9\uad8c \uc7a5\uc218\ub2e4 \u2014 \uc9c0\uac11\uacfc \uac19\uc740 \ud6c5\uc744 \uc368\uc57c \ub450 \ud654\uba74\uc774 \uc548 \uac08\ub9b0\ub2e4.',
   },
@@ -1786,8 +1787,8 @@ const MUTATIONS = [
   {
     name: '📏 DO 알람 레인의 D1 읽기량이 스탬프에서 빠진다',
     file: 'src/worker-ads/lane-alarm.ts',
-    find: 'staleGapMinutes(Math.max(1, Math.round(60 / Math.max(1, cap)))), this.meter)',
-    replace: 'staleGapMinutes(Math.max(1, Math.round(60 / Math.max(1, cap)))))',
+    find: 'alarmLaneGapMinutes(Math.max(1, Math.round(60 / Math.max(1, cap)))), this.meter)',
+    replace: 'alarmLaneGapMinutes(Math.max(1, Math.round(60 / Math.max(1, cap)))))',
     test: 'src/tests/unit/ads-lanes-pause.test.ts',
     why:
       '8/27 수리 뒤 아무도 재지 않았고, 잴 수단이 DB 총량뿐이라 "어느 레인이" 를 끝내 못 가렸다. ' +
@@ -9811,10 +9812,12 @@ canvas {
       '이 바만 통째로 세면 같은 화면이 서로 다른 답을 말한다.',
   },
   {
-    name: "🎟️ '사용가능' 이 다시 else 폴백 (모르는 상태를 전부 쓸 수 있다고 말한다)",
+    // 🔁 2026-10-18 재조준: '사용가능' 칸이 사라져(위 숫자 줄이 그 한 곳) 같은 클래스 — **모르는 상태를
+    //   아무 칸에나 넣는다** — 를 남은 칸(만료·환불)에서 지킨다. 낯선 status 가 '만료' 로 새면 안 된다.
+    name: "🎟️ 모르는 상태가 다시 아무 칸에나 들어간다 (else 폴백)",
     file: 'src/pages/user-profile/OrderStatusBar.tsx',
-    find: "      if (st === 'unused' || st === '') c.usable++",
-    replace: '      c.usable++',
+    find: "      if (st === 'refunded' || st === 'expired') { c.gone++; continue }",
+    replace: "      if (st !== 'unused' && st !== '') { c.gone++; continue }",
     test: 'src/tests/unit/voucher-status-wallet-split.test.tsx',
     why:
       'KT 병합은 **발송 실패**를 `status:\'unused\'` + `kt_status:\'failed\'` 로 실어 보낸다(카드가 실패 UI 를 ' +
@@ -9895,8 +9898,8 @@ canvas {
   {
     name: '🎟️ 판매자 없는 상품이 다시 셀프 사용 게이트를 통째로 건너뛴다',
     file: 'src/features/group-buy/api/group-buy-public.routes.ts',
-    find: "      if (pre.status === 'unused') {",
-    replace: "      if (pre.seller_id != null && pre.status === 'unused') {",
+    find: "; if (pre.status === 'unused') {",
+    replace: "; if (pre.seller_id != null && pre.status === 'unused') {",
     test: 'src/tests/unit/voucher-redeem-and-photos.test.ts',
     why:
       '`seller_id != null` 조건 하나가 데모 이용권 100개 전량을 무방비로 두고 있었다. 게이트가 ' +

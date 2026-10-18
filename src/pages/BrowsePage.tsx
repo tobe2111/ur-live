@@ -248,6 +248,8 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
   useEffect(() => { productsRef.current = products }, [products])
   // 🛡️ 2026-05-19: page-based cursor pagination (50개씩 누적 로드).
   //   /browse 는 일반 상품만 (deal_only=0). 교환권은 /vouchers 신규 페이지에서.
+  // 🔁 2026-10-18: `t` 는 번역 도착 때 새로 만들어진다 — 의존성에 두면 1페이지를 또 받는다(dup 간헐). ref 로 읽는다.
+  const tRef = useRef(t); tRef.current = t
   const loadProducts = useCallback((pageNum: number, reset: boolean) => {
     // 🏭 2026-06-05 (사용자 신고 — 정렬 뒤늦게 반영): 정렬/필터 변경 시 화면 비우지 않고(즉시 클라 정렬) 백그라운드 교체.
     if (reset) { if (productsRef.current.length === 0) setLoading(true) }
@@ -275,16 +277,16 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
           setHasMore(newItems.length === PAGE_SIZE)
           if (reset) setPage(1)
         } else if (reset) {
-          setError(t('browse.loadError'))
+          setError(tRef.current('browse.loadError'))
         }
       })
       .catch(() => {
-        if (reset) setError(t('browse.loadRetry'))
+        if (reset) setError(tRef.current('browse.loadRetry'))
       })
       .finally(() => {
         if (reset) setLoading(false); else setLoadingMore(false)
       })
-  }, [category, sortBy, priceRange, t])
+  }, [category, sortBy, priceRange])
 
   // 🔙 2026-09-14: 되살린 경우 **첫 실행만** 건너뛴다. 이 effect 는 마운트에서도 도는데 그대로 두면
   //   setProducts([]) 로 복원본을 지우고 1페이지만 다시 받아 목록이 도로 짧아진다(= 고치려던 증상).

@@ -303,7 +303,7 @@ export default function UserProfilePage() {
           sellerSeats={sellerSeats}
         />
       ) : (
-        <MyStats voucher={counts.voucher} gifticon={counts.gifticon} coupon={counts.coupon} />
+        <MyStats voucher={counts.voucher} coupon={counts.coupon} />
       )}
 
       <div className={sellerSeats.stores.length > 0 ? 'ur-account-cols ur-account-cols--split' : 'ur-account-cols'}>
@@ -416,9 +416,7 @@ export default function UserProfilePage() {
             ur-content-medium 부모 wrap — 다른 섹션과 동일 폭 정렬 (overflow 영구 fix). */}
       {/* 🧱 2026-09-29(안 C): 가로 패딩 없음 — 평면 줄이 자기 `px-4` 를 갖는다.
           여기서 또 주면 이 구역만 16px 들여쓰여 제목 줄이 옆 구역과 안 맞는다(첫 렌더에서 실제로 그랬다). */}
-      <div className="ur-content-medium lg:px-4">
-        <RoleCtaGrid />
-      </div>
+      <RoleCtaGrid />
 
       {/* 🧹 2026-06-22 (대표 — 도움말 비중 축소): 도움말/약관 InsetGroup 을 최하단 footer 로 이동(아래 로그아웃 다음). */}
 

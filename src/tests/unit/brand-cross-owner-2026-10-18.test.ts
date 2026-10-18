@@ -6,7 +6,7 @@
  *   ① 게이트 OFF 면 1·2단계와 같다(가맹점은 받지 않는다)
  *   ② 게이트 ON + 받는 점주 동의 + 판매 비용 없는 이용권 → 받는다. 이용권을 모르면(voucherId 없음) 받지 않는다
  *   ③ 판매 비용(소개비·추천 적립)이 붙은 이용권은 받지 않는다 — 회수·취소된 것은 비용이 아니다
- *   ④ 손님 셀프(잠금 파일이 이용권 id 를 안 넘긴다)는 가맹점을 받지 않는다(fail-closed)
+ *   ④ 손님 셀프 — 이용권 id 를 넘기면 받는 가맹점도 열고 그 지점을 기록한다(안 넘기면 fail-closed)
  *   ⑤ 쓴 지점 기록 → 정산 두 레일(원장 settlementMerchantFor · 주간 REDEEM_STORE_SETTLEMENT_SQL)이 같은 지점을 고른다
  *   ⑥ 배선 — 사용 경로 2곳이 원장보다 먼저 기록하고, 주간 정산이 같은 조각을 쓴다
  *
@@ -152,11 +152,43 @@ describe('③ 판매 비용이 붙은 이용권은 받지 않는다(②)', () =>
   })
 })
 
-describe('④ 손님 셀프는 가맹점을 받지 않는다(이용권 id 를 모른다)', () => {
-  it('게이트 ON + 동의여도 셀프 게이트는 가맹점 코드를 거절, 같은 주인 코드는 받는다', async () => {
+describe('④ 손님 셀프 — 이용권 id 를 넘기면 받는 가맹점도 열고, 열린 지점을 돌려준다(2026-10-18 결재 안 2 후속)', () => {
+  it('이용권 id 가 없으면 가맹점은 거절(fail-closed) · 같은 주인 지점은 받는다', async () => {
     const { DB } = fresh({ gate: true, accept: [3] })
     expect((await checkSelfRedeemGate(DB, 1, '333333', 100)).ok).toBe(false)
     expect((await checkSelfRedeemGate(DB, 1, '222222', 100)).ok).toBe(true)
+  })
+  it('게이트 ON + 동의 + 비용 없는 이용권 → 가맹점 코드로 열리고 그 지점을 돌려준다', async () => {
+    const { DB } = fresh({ gate: true, accept: [3] })
+    expect(await checkSelfRedeemGate(DB, 1, '333333', 100, 1)).toEqual({ ok: true, mode: 'store_code', branchSellerId: 3 })
+  })
+  it('소개비가 붙은 이용권은 가맹점에서 안 열린다(결재 ②-1)', async () => {
+    const { DB } = fresh({ gate: true, accept: [3] })
+    expect((await checkSelfRedeemGate(DB, 1, '333333', 100, 2)).ok).toBe(false)
+  })
+  it('게이트 OFF 면 이용권 id 를 넘겨도 가맹점은 안 열린다(1·2단계 그대로)', async () => {
+    const { DB } = fresh({ accept: [3] })
+    expect((await checkSelfRedeemGate(DB, 1, '333333', 100, 1)).ok).toBe(false)
+  })
+  it('같은 주인 지점 코드도 그 지점을 돌려주고(기록은 cross_owner=0), 판 지점 자신의 코드는 돌려주지 않는다', async () => {
+    const { DB } = fresh({ gate: true })
+    expect(await checkSelfRedeemGate(DB, 1, '222222', 100, 1)).toEqual({ ok: true, mode: 'store_code', branchSellerId: 2 })
+    const own = await checkSelfRedeemGate(DB, 1, '111111', 100, 1)
+    expect(own.ok).toBe(true)
+    expect(own.ok && own.branchSellerId).toBeFalsy()
+  })
+  it('배선(잠금 파일) — 이용권 id 를 넘기고, 사용이 확정된 뒤(CAS 다음) 열린 지점을 기록한다', () => {
+    const src = stripComments(readFileSync('src/features/group-buy/api/group-buy-public.routes.ts', 'utf8'))
+    const at = src.indexOf("'/vouchers/:code/self-redeem'")
+    const body = src.slice(at, src.indexOf('[self-redeem]', at))
+    expect(body).toMatch(/checkSelfRedeemGate\(DB, pre\.seller_id, String\(body\.store_code \|\| ''\), pre\.product_id, pre\.id\)/)
+    expect(body).toMatch(/redeemStore = gate\.branchSellerId \?\? null/)
+    const cas = body.indexOf("UPDATE vouchers SET status='used'")
+    const rec = body.indexOf('recordVoucherRedeemStore(DB, { voucherId: Number(row.id), soldSellerId: pre.seller_id, storeSellerId: redeemStore ?? pre.seller_id })')
+    expect(cas).toBeGreaterThan(0)
+    expect(rec).toBeGreaterThan(cas)
+    // 방금 사용한 건만 — 멱등 재호출(이미 used)에는 기록을 덮지 않는다
+    expect(body.slice(body.lastIndexOf('if (claimed && row.id != null)', rec), rec)).toContain('if (claimed && row.id != null)')
   })
 })
 

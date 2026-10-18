@@ -16,7 +16,7 @@ import { getRedemptionSettings, type RedemptionMode } from './redemption-setting
 import { findBrandBranchByStoreCode } from './brand-wide-redeem'
 
 export type SelfRedeemGate =
-  | { ok: true; mode: RedemptionMode }
+  | { ok: true; mode: RedemptionMode; /** 판 지점이 아닌 브랜드 지점 코드로 열렸으면 그 지점 — 호출부가 사용 직후 기록한다. */ branchSellerId?: number }
   | { ok: false; status: 403; code: string; error: string }
 
 /**
@@ -26,13 +26,17 @@ export type SelfRedeemGate =
  * @param storeCodeInput 손님이 입력한 매장 확인코드(공백 허용 — 여기서 trim).
  * @param productId 이용권의 상품(선택). 주면 **판 지점의 확인코드가 아닐 때** 같은 주인의 브랜드 지점
  *   확인코드도 받는다(2026-10-18 브랜드 전 지점 사용 — 이용권이 켜져 있을 때만, `scan_only` 지점 제외).
- *   정산은 그대로 판 지점이다(이 함수는 문만 연다 — 원장은 안 건드린다).
+ *   이 함수는 문만 연다 — 원장은 안 건드린다. 열린 지점을 `branchSellerId` 로 돌려주면 호출부가 사용 직후
+ *   `recordVoucherRedeemStore` 로 적고, 다른 점주 지점이면(3단계 게이트 ON) 정산이 그 지점으로 간다.
+ * @param voucherId 이용권 id(선택). 주어야 **다른 점주** 지점이 판정 대상이 된다(소개비 붙은 이용권 제외 — 결재 ②-1).
+ *   안 주면 같은 주인 지점만 받는다(종전).
  */
 export async function checkSelfRedeemGate(
   DB: D1Database,
   sellerId: number | null | undefined,
   storeCodeInput: string,
   productId?: number | null,
+  voucherId?: number | null,
 ): Promise<SelfRedeemGate> {
   if (sellerId == null) {
     return { ok: false, status: 403, code: 'NO_STORE', error: '이 이용권은 현장에서 직원 확인으로만 사용할 수 있어요.' }
@@ -48,9 +52,9 @@ export async function checkSelfRedeemGate(
   // 🏷️ 판 지점의 코드가 아니면 같은 주인의 브랜드 지점 코드인지 본다(이용권이 켜져 있을 때만 · fail-closed).
   //   판 지점이 scan_only 여도 손님이 서 있는 지점이 코드 방식이면 그 지점의 규칙을 따른다.
   if (productId != null && input && input !== s.store_code) {
-    const branch = await findBrandBranchByStoreCode(DB, Number(productId), Number(sellerId), input, { allowScanOnly: false })
+    const branch = await findBrandBranchByStoreCode(DB, Number(productId), Number(sellerId), input, { allowScanOnly: false, voucherId })
       .catch(() => null)
-    if (branch != null) return { ok: true, mode: 'store_code' }
+    if (branch != null) return { ok: true, mode: 'store_code', branchSellerId: branch }
   }
   if (s.mode === 'scan_only') {
     return { ok: false, status: 403, code: 'SCAN_ONLY_MODE', error: '이 매장은 직원 확인 방식이에요. 직원에게 QR 화면을 보여주세요.' }

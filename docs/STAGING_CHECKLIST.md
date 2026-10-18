@@ -394,8 +394,8 @@ S3 `order:N`(✅ `order-ledger-credit.ts` 와 일치) · S5 `voucher:{id}` · S6
 
 **S-BRANDX** — 결재 `docs/decisions/2026-10-18-franchise-cross-owner-redeem.md`(대표 "결재해줄게" + ①②③ 권장안).
 게이트 `platform_settings.brand_cross_owner_redeem_enabled`(기본 `false`) · 판정·기록 SSOT `src/worker/utils/brand-cross-owner.ts` ·
-사용 경로 2곳(카운터 `group-buy-voucher.routes /:code/use` · 사장님 스캔 `voucher-seller-redeem.ts`) · 정산 2레일(원장 `settlementMerchantFor` · 주간 `auto-settlement.ts`).
-⚠️ **손님 셀프 사용은 이 단계에서 다른 점주 지점을 받지 않는다**(잠금 파일 `group-buy-public.routes` 가 이용권 id 를 안 넘긴다 → fail-closed).
+사용 경로 3곳(카운터 `group-buy-voucher.routes /:code/use` · 사장님 스캔 `voucher-seller-redeem.ts` · 손님 셀프 `group-buy-public.routes /vouchers/:code/self-redeem`) · 정산 2레일(원장 `settlementMerchantFor` · 주간 `auto-settlement.ts`).
+✅ **손님 셀프 사용도 같은 규칙으로 받는다**(2026-10-18 후속 — 잠금 파일 `group-buy-public.routes` 가 이용권 id 를 넘기고, 사용 확정 직후 받은 지점을 기록한다).
 **켜는 것은 대표 판단.** 준비: 주인이 다른 두 지점 A(판 지점)·B(받는 지점)를 한 브랜드로 묶고, B 주인이 "다른 점주 이용권 받기"를 켠다.
 
 | ID | 시나리오 | 통과 기준 |
@@ -405,6 +405,8 @@ S3 `order:N`(✅ `order-ledger-credit.ts` 와 일치) · S5 `voucher:{id}` · S6
 | S-BRANDX-3 | 소개 링크(소개비 약정)로 산 A 이용권을 B 에서 사용 | **거절**(403/400) — 같은 주인 지점에서만 쓸 수 있다 |
 | S-BRANDX-4 | B 주인이 받기를 끈 뒤 같은 시도 | 거절 |
 | S-BRANDX-5 | 게이트 OFF 복귀 후 B 에서 시도 | 거절 — 1·2단계와 동일(같은 주인 지점만). 이미 쓴 S-BRANDX-1 의 정산은 B 그대로 |
+| S-BRANDX-6 | A 이용권을 손님이 **셀프 사용**(B 매장에서 B 확인코드 입력) | 사용 성공 · `voucher_redeem_stores` 1행(store=B, cross_owner=1) · 다음 주간 정산이 B 로 묶는다 |
+| S-BRANDX-7 | 소개비 붙은 A 이용권을 셀프로 B 코드 입력 | **거절**(403 `STORE_CODE_REQUIRED`) |
 
 상태: ⬜ 미검증 (2026-10-18 배선). 통과 전 프로덕션 ON 금지.
 
@@ -766,3 +768,14 @@ fail-closed 로 **설계된** 가드가 fail-open 이 된다 — 돈이 *안 보
 | S-NUDGES-2 | `seller_meta.daily_report_opt_out='1'` 매장 | 메일 **안 감** |
 | S-NUDGES-3 | `review_request_enabled` 켜고 이용권 1장 사용 처리 → 다음 날 | 손님 알림함에 후기 요청 **1건** · 누르면 그 상품 페이지 · 다음 날 또 안 옴 · 이미 후기를 썼으면 안 옴 |
 | S-NUDGES-4 | `seller_docs_nudge_enabled` 켜고 서류 빠진 대기 매장 | 가입 3일 넘은 곳에 대시보드 알림 + 메일 **1회** · 빠진 항목이 정확히 적힘 · 4일 지나 7일째 2회차 · 그 뒤 없음 |
+
+## 📌 S-PINNAV — 유어샵 진열 카드 앱 안 이동 (2026-10-18 결재 `2026-10-15-ushop-pin-spa-nav` 안 1)
+
+머니 접촉: **소개 귀속 경로를 옮겼다**(서버 리다이렉트 → 누르는 순간 `storeAffiliateRef`). 계산·원장은 무변경.
+
+| # | 할 일 | 기대 |
+|---|---|---|
+| S-PINNAV-1 | 🔴 다른 계정으로 남의 유어샵(`/u/{handle}`) → 이용권 카드 탭 → 카드 결제 | 상세가 로딩 화면 없이 뜬다 · 결제 뒤 그 주인에게 소개비 적립 1건(기존 서버 경유와 같은 금액) |
+| S-PINNAV-2 | 숙소 카드 탭 | `/stays/:id` 로 간다(종전 `/pass`) · 소개 값(`affiliate_ref`)이 주인 id |
+| S-PINNAV-3 | 카톡에 공유된 `/u/{handle}/p/{id}` 링크 열기 | 종전대로 서버 경유 → 상세 · 귀속 동일 |
+| S-PINNAV-4 | 카드 탭 뒤 주인 마이 '내 유어샵' 클릭 수 | 1 늘어난다(비콘) |

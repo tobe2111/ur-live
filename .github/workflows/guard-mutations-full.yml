@@ -45,7 +45,7 @@ jobs:
   # 🧩 조각 수를 **세어서** 정한다. `npm ci` 가 필요 없다 —
   #    러너는 node 내장 + 로컬 `.mjs` 만 import 하므로 `--count` 가 수초에 끝난다.
   plan:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: 조각 계획
     timeout-minutes: 5
     outputs:
@@ -64,7 +64,7 @@ jobs:
 
   full:
     needs: plan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: 전수 ${{ matrix.shard }}/${{ needs.plan.outputs.total }}
     strategy:
       # 🔴 한 조각이 빨간불이어도 나머지는 끝까지 돈다 — 전수의 목적이 "어디가 깨졌나" 를

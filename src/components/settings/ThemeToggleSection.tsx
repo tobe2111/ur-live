@@ -23,7 +23,6 @@ interface Props {
 export default function ThemeToggleSection({ variant, className }: Props) {
   const { t } = useTranslation()
   const mode = useTheme(s => s.mode)
-  const applied = useTheme(s => s.applied)
   const setMode = useTheme(s => s.setMode)
   const isDark = variant === 'dark'
 
@@ -40,7 +39,9 @@ export default function ThemeToggleSection({ variant, className }: Props) {
      *   `내가 산 것` 목록과 다른 문법으로 그려지는 게 드러났다 — 흰/회색 판 + 12px 라벨 + 13px 행.
      *   라벨은 다른 줄과 **같은 치수·같은 글자**로(`list-grammar`), 컨트롤은 그 아래 제자리에.
      * 🗑️ 설명 문장(*"시스템 / 라이트 / 다크 중 선택 …"*)도 뺐다 — 버튼 셋이 이미 그 말을 한다.
-     *   `현재 OS: …` 는 남긴다(시스템 모드에서만 알 수 있는 값이라 버튼이 대신 말해 주지 못한다).
+     * 🗑️ 2026-10-18 — `현재 OS: 라이트` 줄도 뺐다(대표 *"나머지 다 가장 이상적으로"* — 개발자용 표시).
+     *   그 값은 **지금 보고 있는 화면 자체**가 말한다(시스템을 고른 사람은 화면 색으로 이미 안다).
+     *   'OS' 라는 낱말은 이 서비스의 어느 화면에도 없는 개발자 말이었다.
      */
     <div className={className ?? 'ur-content-medium lg:px-4'}>
       <div className={ROW_GEOM_CLS}>
@@ -78,14 +79,6 @@ export default function ThemeToggleSection({ variant, className }: Props) {
             )
           })}
         </div>
-        {mode === 'system' && (
-          <p className={`text-[12px] mt-2 ${isDark ? 'text-white/30' : 'text-gray-400 dark:text-white/35'}`}>
-            {t('theme.currentlyFollowing', {
-              theme: applied === 'dark' ? t('theme.dark', { defaultValue: '다크' }) : t('theme.light', { defaultValue: '라이트' }),
-              defaultValue: applied === 'dark' ? '현재 OS: 다크' : '현재 OS: 라이트',
-            })}
-          </p>
-        )}
       </div>
     </div>
   )
