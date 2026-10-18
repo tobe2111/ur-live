@@ -9895,8 +9895,8 @@ canvas {
   {
     name: '🎟️ 판매자 없는 상품이 다시 셀프 사용 게이트를 통째로 건너뛴다',
     file: 'src/features/group-buy/api/group-buy-public.routes.ts',
-    find: "      if (pre.status === 'unused') {",
-    replace: "      if (pre.seller_id != null && pre.status === 'unused') {",
+    find: "; if (pre.status === 'unused') {",
+    replace: "; if (pre.seller_id != null && pre.status === 'unused') {",
     test: 'src/tests/unit/voucher-redeem-and-photos.test.ts',
     why:
       '`seller_id != null` 조건 하나가 데모 이용권 100개 전량을 무방비로 두고 있었다. 게이트가 ' +
