@@ -72,8 +72,8 @@ export default [
   {
     name: '🏷️ 지점이 하나뿐인데 "다른 지점 보기" 를 약속한다',
     file: 'src/features/brands/api/brands-public.routes.ts',
-    find: 'b && Number(b.branch_count) > 1 ? b : null',
-    replace: 'b ? b : null',
+    find: 'if (!b || Number(b.branch_count) <= 1) return c.json({ success: true, data: null })', // 2026-10-18 조기 반환 모양으로 재조준
+    replace: 'if (!b) return c.json({ success: true, data: null })',
     test: TEST,
     why: '눌러도 같은 가게 하나뿐인 링크 — 화면이 지키지 못할 약속이다.',
   },

@@ -2554,7 +2554,13 @@
       "deletedSeg": "Eliminados",
       "restore": "Restaurar",
       "restored": "El cupón vuelve a estar a la venta",
-      "deletedNote": "Solo se detuvieron las nuevas ventas. Los cupones ya emitidos siguen siendo válidos."
+      "deletedNote": "Solo se detuvieron las nuevas ventas. Los cupones ya emitidos siguen siendo válidos.",
+      "brandWideOn": "Ahora se puede usar en tus otras sucursales",
+      "brandWideOff": "Solo se puede usar en esta sucursal",
+      "brandWideFail": "No se pudo cambiar el ajuste",
+      "brandWideTitle": "También válido en {{count}} de tus sucursales",
+      "brandWideTitleOff": "Válido en otras sucursales",
+      "brandWideNote": "Se canjea con el código o escaneo de esa sucursal. La liquidación queda en esta sucursal."
     },
     "ordersM3": {
       "today": "Hoy",
@@ -5547,7 +5553,7 @@
     "supportEmail": "[TODO:es] 이메일",
     "supportPhoneValue": "[TODO:es] KakaoTalk channel",
     "supportHoursValue": "[TODO:es] 평일 09:00 - 18:00",
-    "supportEmailValue": "[TODO:es] support@ur-team.com",
+    "supportEmailValue": "urteam.corp@gmail.com",
     "seoTitle": "[TODO:es] 자주 묻는 질문 - 유어딜",
     "seoDesc": "[TODO:es] 유어딜 이용에 대한 자주 묻는 질문과 답변을 확인하세요.",
     "catOrder": "[TODO:es] 주문/결제",

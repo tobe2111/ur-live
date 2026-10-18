@@ -95,7 +95,7 @@ export default function StoreLocation({
         </a>
       </div>
       {/* 🏷️ 2026-10-17 프랜차이즈 — 브랜드에 묶인 지점이면 "다른 지점 N곳 보기". 없으면 아무것도 안 그린다. */}
-      <BrandBranchesLink sellerId={sellerId} />
+      <BrandBranchesLink sellerId={sellerId} productId={productId} />
       {/* 🚨 제보 입구 — 회색 작은 글씨 한 줄. 크게 그리면 멀쩡한 매장을 의심하게 만든다. */}
       <div style={{ paddingTop: 12 }}>
         <StoreReportLink sellerId={sellerId} productId={productId} storeName={name} />

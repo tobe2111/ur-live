@@ -25,6 +25,7 @@ import { checkStoreCodeRequired } from '../../../worker/utils/voucher-redeem-gua
 import { resolveSellerNotifyTarget } from '../../../worker/utils/seller-notify-phone'
 import { storeGoUrl } from '../../../shared/store-deep-link'
 import { redeemByCounterSecret } from '../../../worker/utils/counter-redeem'
+import { findBrandBranchForVoucherCode } from '../../../worker/utils/brand-wide-redeem'
 import { redeemVoucherForStore } from '../../../worker/utils/voucher-seller-redeem'
 import { GIFTED_REFUND_BLOCKED, GIFT_PENDING_REFUND_BLOCKED, GIFT_PENDING_USE_BLOCKED, noPendingGiftSql, voucherHasPendingGift } from '../../../worker/utils/voucher-gift'
 
@@ -57,7 +58,9 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
 
       // 🎟️ 2026-07-03 [부정사용 방어] 무인증 소각 갭 — 상품 PIN 이 없으면 제출 pin 이 무시돼
       //   코드만 알면 누구나 소각됐다. 판정은 voucher-redeem-guard 로 분리(SSOT + 파일크기 룰).
-      const guard = await checkStoreCodeRequired(DB, code, pin)
+      // 🏷️ 2026-10-18 브랜드 전 지점 사용 — 같은 주인 형제 지점의 확인코드면 그 지점 id(아니면 null → 종전 그대로).
+      const brandBranch = await findBrandBranchForVoucherCode(DB, code, pin, { allowScanOnly: true })
+      const guard = brandBranch ? null : await checkStoreCodeRequired(DB, code, pin)
       if (guard) {
         await codeGuard.recordUseFail(DB, pin, guardSalt) // 다른 매장의 번호를 맞힌 것도 '틀린 시도' 다
         return c.json({ success: false, ...guard }, 403)
@@ -78,7 +81,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
       // 🔒 2026-07-02 (감사 25③): PIN 미설정 매장은 이 경로 자체를 거부 — 기존 `IS NULL OR =?` 는
       //   PIN 안 만든 매장의 이용권을 코드 소지자가 아무 값으로나 태울 수 있는 구멍(남의 이용권
       //   griefing). PIN 미설정 매장은 사장님 스캔(use-by-seller)·셀프사용(모드별) 경로 사용.
-      const result = await redeemByCounterSecret(DB, code, pin) // 상품 PIN 또는 매장 확인코드 — counter-redeem.ts
+      const result = await redeemByCounterSecret(DB, code, pin, brandBranch) // 상품 PIN 또는 매장 확인코드 — counter-redeem.ts
 
       // 🛡️ 모든 사용 시도 로그 — 셀러가 사용 흐름 추적.
       //   PIN 정답 여부는 노출하지 않지만, 셀러 본인은 자기 가게의 PIN 오류 빈도 알 필요 있음.

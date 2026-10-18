@@ -5,6 +5,8 @@
  *   POST   /brands                      — 브랜드 만들기 { name, slug? }
  *   POST   /brands/:id/stores           — 지점 넣기 { seller_id }
  *   DELETE /brands/stores/:sellerId     — 지점 빼기(브랜드 만든 사람 또는 그 지점 주인)
+ *   GET    /products/:id/brand-wide     — 🏷️ 2026-10-18 이 이용권을 같은 주인 지점에서도 쓰게 할 수 있나 + 지금 값
+ *   PUT    /products/:id/brand-wide     — 켜기/끄기 { enabled } (판 지점 주인만)
  *
  * 규칙은 `store-brands.ts` 머리말(대표 확정 — 지점 단위, 그 지점 주인이 정한다). 이 파일은 배선뿐이다.
  * 💰 돈 안 움직임.
@@ -16,8 +18,24 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import {
   addStoreToBrand, createBrand, listMyBrands, normalizeBrandName, normalizeBrandSlug, randomBrandSlug, removeStoreFromBrand,
 } from '@/worker/utils/store-brands'
+import { BRAND_WIDE_META_KEY, checkBrandWideSettable, isBrandWideEnabled } from '@/worker/utils/brand-wide-redeem'
+import { setSupplyMeta } from '@/worker/utils/product-supply-meta'
 
 type Ctx = Context<{ Bindings: Env }>
+
+const BRAND_WIDE_ERRORS: Record<string, string> = {
+  NOT_OWNER: '이 지점의 주인만 바꿀 수 있어요',
+  NO_BRAND: '먼저 매장 관리에서 지점들을 한 브랜드로 묶어 주세요',
+  NO_SAME_OWNER_BRANCH: '받아 줄 지점이 없어요. 주인이 같은 지점끼리만 함께 쓸 수 있어요(가맹점은 아직 안 돼요)',
+}
+
+/** 이용권과 그 판 지점 — 없거나 지점이 없는 상품(플랫폼 상품)은 null. */
+async function voucherStore(db: D1Database, productId: number): Promise<number | null> {
+  if (!Number.isFinite(productId) || productId <= 0) return null
+  const r = await db.prepare('SELECT seller_id FROM products WHERE id = ? LIMIT 1').bind(productId)
+    .first<{ seller_id: number | null }>().catch(() => null)
+  return r?.seller_id ? Number(r.seller_id) : null
+}
 
 const ADD_ERRORS: Record<string, [number, string]> = {
   NO_BRAND: [404, '브랜드를 찾을 수 없습니다'],
@@ -91,6 +109,49 @@ export function registerBrandRoutes(app: Hono<{ Bindings: Env }>, resolveActorUs
       return c.json({ success: true })
     } catch (err) {
       return safeError(c, err, '지점을 빼지 못했습니다', '[seller-brands]')
+    }
+  })
+
+  app.get('/products/:id/brand-wide', async (c) => {
+    try {
+      const userId = await resolveActorUserId(c)
+      if (!userId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+      const productId = Number(c.req.param('id'))
+      const sellerId = await voucherStore(c.env.DB, productId)
+      if (!sellerId) return c.json({ success: false, error: '이용권을 찾을 수 없습니다' }, 404)
+      const [enabled, settable] = await Promise.all([
+        isBrandWideEnabled(c.env.DB, productId),
+        checkBrandWideSettable(c.env.DB, userId, sellerId),
+      ])
+      return c.json({
+        success: true,
+        data: settable.ok
+          ? { enabled, settable: true, accepting_count: settable.acceptingCount }
+          : { enabled, settable: false, code: settable.code, reason: BRAND_WIDE_ERRORS[settable.code] },
+      })
+    } catch (err) {
+      return safeError(c, err, '설정을 불러오지 못했습니다', '[seller-brands]')
+    }
+  })
+
+  app.put('/products/:id/brand-wide', rateLimit({ action: 'brand_wide_set', max: 60, windowSec: 3600 }), async (c) => {
+    try {
+      const userId = await resolveActorUserId(c)
+      if (!userId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+      const productId = Number(c.req.param('id'))
+      const sellerId = await voucherStore(c.env.DB, productId)
+      if (!sellerId) return c.json({ success: false, error: '이용권을 찾을 수 없습니다' }, 404)
+      const b = await c.req.json<{ enabled?: unknown }>().catch(() => ({} as { enabled?: unknown }))
+      if (typeof b.enabled !== 'boolean') return c.json({ success: false, error: '잘못된 요청입니다' }, 400)
+      const settable = await checkBrandWideSettable(c.env.DB, userId, sellerId)
+      // 끄는 것도 주인만 — 켜기와 같은 결정권(그 지점의 손님 약속을 바꾸는 일이다).
+      if (!settable.ok && (b.enabled || settable.code === 'NOT_OWNER')) {
+        return c.json({ success: false, code: settable.code, error: BRAND_WIDE_ERRORS[settable.code] }, settable.code === 'NOT_OWNER' ? 403 : 409)
+      }
+      await setSupplyMeta(c.env.DB, productId, { [BRAND_WIDE_META_KEY]: b.enabled ? '1' : '0' })
+      return c.json({ success: true, data: { enabled: b.enabled } })
+    } catch (err) {
+      return safeError(c, err, '설정을 바꾸지 못했습니다', '[seller-brands]')
     }
   })
 }

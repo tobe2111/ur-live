@@ -2554,7 +2554,13 @@
       "deletedSeg": "Supprimés",
       "restore": "Restaurer",
       "restored": "Le bon est de nouveau en vente",
-      "deletedNote": "Seules les nouvelles ventes sont arrêtées. Les bons déjà émis restent utilisables."
+      "deletedNote": "Seules les nouvelles ventes sont arrêtées. Les bons déjà émis restent utilisables.",
+      "brandWideOn": "Utilisable dans vos autres établissements",
+      "brandWideOff": "Utilisable dans cet établissement uniquement",
+      "brandWideFail": "Impossible de modifier le réglage",
+      "brandWideTitle": "Aussi valable dans {{count}} de vos établissements",
+      "brandWideTitleOff": "Valable dans d'autres établissements",
+      "brandWideNote": "Validé avec le code ou le scan de cet établissement. Le règlement reste à cet établissement."
     },
     "ordersM3": {
       "today": "Aujourd'hui",
@@ -5547,7 +5553,7 @@
     "supportEmail": "[TODO:fr] 이메일",
     "supportPhoneValue": "[TODO:fr] KakaoTalk channel",
     "supportHoursValue": "[TODO:fr] 평일 09:00 - 18:00",
-    "supportEmailValue": "[TODO:fr] support@ur-team.com",
+    "supportEmailValue": "urteam.corp@gmail.com",
     "seoTitle": "[TODO:fr] 자주 묻는 질문 - 유어딜",
     "seoDesc": "[TODO:fr] 유어딜 이용에 대한 자주 묻는 질문과 답변을 확인하세요.",
     "catOrder": "[TODO:fr] 주문/결제",

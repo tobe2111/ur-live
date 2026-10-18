@@ -94,7 +94,7 @@ describe('서버 — can_redeem 은 실제 처리와 같은 판정이다', () =>
     //   불변식은 그대로 — 셀러는 **자기 매장 id** 를 넘기고, 공유 함수가 그 id 로 403 을 낸다.
     expect(USE).toMatch(/actorSellerId: user\.type === 'seller' \? Number\(user\.id\) : null/)
     expect(readCode('src/worker/utils/voucher-seller-redeem.ts'))
-      .toMatch(/Number\(voucher\.seller_id\) !== Number\(actorSellerId\)[\s\S]{0,120}status: 403/)
+      .toMatch(/Number\(voucher\.seller_id\) !== Number\(actorSellerId\)[\s\S]{0,260}status: 403/) // 🏷️ 2026-10-18 같은 주인 형제 지점 예외(canStoreRedeemProduct)가 사이에 끼었다 — 403 자체는 그대로
   })
   it('use-by-seller 성공 문구에 이모지가 없다', () => {
     expect(USE).not.toMatch(/✅ 메뉴 제공/)

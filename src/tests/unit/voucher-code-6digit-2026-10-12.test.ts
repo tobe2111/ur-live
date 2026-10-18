@@ -103,7 +103,7 @@ describe('④ 사용은 같은 확인코드의 틀린 시도를 센다', () => {
   it('잠금 확인이 사용 처리보다 먼저', () => {
     const lock = h.indexOf('if (await codeGuard.useSecretLocked(DB, pin, guardSalt))')
     expect(lock).toBeGreaterThan(-1)
-    expect(lock).toBeLessThan(h.indexOf('redeemByCounterSecret(DB, code, pin)'))
+    expect(lock).toBeLessThan(h.indexOf('redeemByCounterSecret(DB, code, pin')) // 2026-10-18 형제 지점 인자가 붙어도 같은 호출
   })
   it('다른 매장 번호(403)와 없는 번호·틀린 비밀 모두 센다', () => {
     expect(h).toMatch(/if \(guard\) \{\s*await codeGuard\.recordUseFail\(DB, pin, guardSalt\)/)

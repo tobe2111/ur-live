@@ -84,7 +84,7 @@ describe('redeemByCounterSecret', () => {
 describe('배선', () => {
   it('카운터 경로가 이 함수를 쓴다(손으로 쓴 PIN 전용 UPDATE 로 되돌아가지 않는다)', () => {
     const src = readFileSync('src/features/group-buy/api/group-buy-voucher.routes.ts', 'utf8')
-    expect(src).toMatch(/const result = await redeemByCounterSecret\(DB, code, pin\)/)
+    expect(src).toMatch(/const result = await redeemByCounterSecret\(DB, code, pin(, brandBranch)?\)/) // 🏷️ 2026-10-18 형제 지점 id 를 덧붙일 뿐 — 손으로 쓴 UPDATE 가 아니다
   })
 })
 

@@ -52,8 +52,8 @@ export default [
   {
     name: 'QR인증 — 서버 판정이 매장을 안 본다',
     file: CAN,
-    find: "(u.type === 'seller' && productSellerId != null && Number(productSellerId) === Number(u.id))",
-    replace: "(u.type === 'seller')",
+    find: "    if (Number(productSellerId) === Number(u.id)) return true", // 2026-10-18 판정이 줄 단위로 풀렸다(형제 지점 분기 추가)
+    replace: "    return true",
     test: T,
     why: '아무 매장 사장님에게나 처리 버튼이 뜬다. 실제 처리는 403 으로 막히니 보안 사고는 아니지만 화면이 거짓말을 한다.',
   },

@@ -3235,7 +3235,13 @@
       "deletedSeg": "已删除",
       "restore": "恢复",
       "restored": "已重新开始销售该优惠券",
-      "deletedNote": "仅停止新的销售。已发放的优惠券仍可使用。"
+      "deletedNote": "仅停止新的销售。已发放的优惠券仍可使用。",
+      "brandWideOn": "现在可在同一店主的其他门店使用",
+      "brandWideOff": "仅限本门店使用",
+      "brandWideFail": "无法更改设置",
+      "brandWideTitle": "也可在同一店主的 {{count}} 家门店使用",
+      "brandWideTitleOff": "其他门店也可使用",
+      "brandWideNote": "用该门店的确认码或扫码核销。结算仍归本门店。"
     },
     "ordersM3": {
       "today": "今天",
@@ -5547,7 +5553,7 @@
     "supportEmail": "[TODO:zh] 이메일",
     "supportPhoneValue": "[TODO:zh] KakaoTalk channel",
     "supportHoursValue": "[TODO:zh] 평일 09:00 - 18:00",
-    "supportEmailValue": "[TODO:zh] support@ur-team.com",
+    "supportEmailValue": "urteam.corp@gmail.com",
     "seoTitle": "[TODO:zh] 자주 묻는 질문 - 유어딜",
     "seoDesc": "[TODO:zh] 유어딜 이용에 대한 자주 묻는 질문과 답변을 확인하세요.",
     "catOrder": "[TODO:zh] 주문/결제",

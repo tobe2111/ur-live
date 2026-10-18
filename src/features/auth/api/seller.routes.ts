@@ -129,7 +129,7 @@ function getPasswordResetEmailHTML(resetUrl: string): string {
       <p style="font-size:11px;color:#999;line-height:1.5;text-align:center;">
         본 메일은 비밀번호 재설정 요청에 의한 발송입니다.<br>
         <strong>리스터코퍼레이션</strong> | 사업자등록번호: 783-87-03224<br>
-        문의: <a href="mailto:contact@ur-team.com" style="color:#666;">contact@ur-team.com</a><br>
+        문의: <a href="mailto:urteam.corp@gmail.com" style="color:#666;">urteam.corp@gmail.com</a><br>
         <a href="https://urdeal.kr/account/notifications" style="color:#666;">알림 설정 변경</a>
       </p>
     </div>

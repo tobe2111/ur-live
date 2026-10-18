@@ -27,16 +27,33 @@ import { isIndexableImageUrl } from '../../shared/seo/indexable-image';
 import { canonicalDetailPath } from '../../shared/product-flow';
 // 🎁 교환권 필터 카테고리 SSOT — canonical 이 믿는 집합과 **같은 목록**을 읽는다.
 import { VOUCHER_FILTER_CATEGORIES } from '../../shared/seo/consumer-surfaces';
+// 🎁 facet 주소 조립 + 재고 문턱 SSOT — canonical·허브 내부 링크와 **같은 함수**를 지난다.
+import { voucherFacetPath, voucherFacetsByStock } from '../../shared/seo/voucher-facet';
 
 /**
- * 🎁 sitemap 이 **제출하는** 교환권 카테고리 — 재고가 많은 상위 3종.
+ * 🎁 교환권 facet 제출 — **집계가 비었을 때의 폴백**(2026-10-18 재규정).
+ *
+ * 2026-07-29 ~ 2026-10-17 에는 이 셋이 **제출 목록 그 자체**였다. 그런데 라이브 실측(2026-10-18)에서
+ * 교환권 **2,260건이 20종**으로 갈라져 있고 `VOUCHER_FILTER_CATEGORIES` 20종과 **정확히 일치**하며
+ * **전부 재고 5건 이상**이었다 ⇒ **17종이 발견 경로 0** 이었다(sitemap 미제출 + 허브 a태그 0).
+ * 게다가 이 셋은 **상위 3종도 아니었다** — 상위는 커피/음료 775 · 치킨 278 · 편의점 274 인데
+ * `베이커리/도넛`(202)은 6위이고 치킨·피자(222)·버거(206)가 더 많은데 빠져 있었다. 2026-07-29 주석이
+ * *"라이브 실측 상위 카테고리만 남긴 것"* 이라 적어 둔 그 실측이 **낡아 있었다.**
+ *
+ * ⇒ 이제 제출 목록은 **D1 집계**가 정한다(아래 facet 블록). 손으로 적은 목록은 *그 집계가 실패했을
+ *   때만* 쓰인다 — 집계 실패를 "재고 0" 으로 읽어 **이미 색인된 3건을 빼는 쪽이 더 나쁘기** 때문이다
+ *   (부재 ≠ 재고 0 — `region-digest.ts` 가 같은 규율을 지킨다).
  * 🔴 값은 `VOUCHER_FILTER_CATEGORIES`(canonical·제목 접두가 믿는 집합)에서 **골라 온다**. 손으로
  *   적으면 둘이 갈리고, 갈리면 *제출한 URL 의 정본이 다른 곳을 가리키는* 모순이 조용히 생긴다
- *   (2026-10-12 오전에 `/pass`↔`/stays` 로 그 대가를 치렀다). SSOT 에서 사라진 값은 `filter` 가
- *   떨어뜨려 제출되지 않는다 = 빈 목록을 색인 요청하지 않는다(2026-07-29 영문 슬러그 6건 사고).
+ *   (2026-10-12 오전에 `/pass`↔`/stays` 로 그 대가를 치렀다).
  */
-const SITEMAP_VOUCHER_CATEGORIES: readonly string[] = ['편의점', '커피/음료', '베이커리/도넛']
+const SITEMAP_VOUCHER_FALLBACK: readonly string[] = ['편의점', '커피/음료', '베이커리/도넛']
   .filter((c) => VOUCHER_FILTER_CATEGORIES.includes(c))
+
+/** 제출 facet 의 우선순위 — 재고 상위 3종에 가중, 나머지는 바닥값. */
+function facetPriority(rank: number): number {
+  return [0.75, 0.7, 0.65][rank] ?? 0.6
+}
 
 interface GroupBuyRow { id: number; category: string | null; deal_only: number | null; image_url: string | null; updated_at: string }
 
@@ -100,11 +117,7 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
     //      3개와 canonical 이 믿는 값이 따로였고, canonical 쪽은 **아무 값이나** 통과시켜
     //      `?category=테스트123` 이 자기 자신을 정본이라 선언했다(본문 43자). 이제 제출분이 허용분의
     //      **부분집합임을 구조로 보장**한다 — SSOT 에서 사라진 값은 아래 `filter` 가 떨어뜨린다.
-    ...SITEMAP_VOUCHER_CATEGORIES.map((c, i) => ({
-      loc: `/vouchers?category=${encodeURIComponent(c)}`,
-      priority: [0.75, 0.7, 0.65][i] ?? 0.6,
-      changefreq: 'weekly',
-    })),
+    // 🎁 facet 은 **아래 DB 블록**이 재고를 세어 제출한다(집계 실패 시 폴백) — 2026-10-18.
     { loc: '/map', priority: 0.7, changefreq: 'daily' },
     // 🔎 2026-08-26 (대표 "SEO 도 우리 서비스에 맞게") — **메타는 있는데 사이트맵에 없던 8개 표면.**
     //   `CONSUMER_SURFACE_SEO` 에 title/description 을 갖추고, 인증 게이트도 없고, robots 도 안 막는데
@@ -156,11 +169,41 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
     //   서비스 자체가 사라졌다. 그 네 URL 은 이제 410 Gone 이다(`isRetiredSurface`). 되살리지 말 것.
   ];
 
+  // 🎁 facet 집계가 실제로 제출한 개수. 0 이면 **집계 실패**로 보고 폴백한다 — "재고 0" 이 아니다.
+  let facetsEmitted = 0;
+
   if (DB) {
     try {
       // 🏠 본진 몰 격리 조건(운영자 몰 상품/셀러 제외). 컬럼 부재 환경이면 빈 문자열 — 그 경우 몰 자체가 없다.
       const productScope = await mainScopeFor(DB, 'products');
       const sellerScope = await mainScopeFor(DB, 'sellers', 's');
+
+      /* 🎁 교환권 facet 제출 — **재고를 세어 정한다**(2026-10-18, 대표 착수 승인).
+       *
+       * 🔑 **같은 WHERE 로 센다** — facet 본문은 `/api/products?deal_only=1&category=X`(워커 VOUCHERS
+       *   슬롯 시드, `voucherFacetSeedPath`)가 만들고, 그 쿼리의 술어가 `ProductRepository.findAll`
+       *   의 것이다. 여기서 다른 기준으로 세면 *제출했는데 본문이 비는* 짝 주장 위반이 생긴다
+       *   (2026-10-12 에 유어샵·쇼핑 상세에서 그 대가를 치렀다). 가시성 조각은 `consumerVisibleProductSql`
+       *   SSOT 를 그대로 쓴다(인라인으로 베끼면 두 벌이 된다).
+       * 🔴 **`gift_catalog` JOIN 으로 세지 않는다** — `/api/vouchers/categories`(화면 칩)는 그 JOIN 을
+       *   쓰는데, 실측에서 `건강/식품/주방` 3건이 거기엔 **안 걸리고** facet 에는 **걸렸다**(0 ↔ 3).
+       *   제출의 짝은 *본문*이므로 본문을 만드는 쪽 기준이 맞다(그 3건은 `VOUCHER_FILTER_CATEGORIES`
+       *   에 없어 canonical 이 `/vouchers` 로 통합한다 — 설계대로이고 제출되지 않는다).
+       * 💰 비용: `GROUP BY` 한 번. 이 라우트는 이미 products 500+500 · sellers · blog 를 읽고
+       *   `publicCache(3600)` 로 캐시된다(크롤러만 부른다). */
+      const facetRows = await DB.prepare(
+        `SELECT category, COUNT(*) AS n FROM products
+         WHERE is_active = 1 AND deal_only = 1
+           AND category IS NOT NULL AND category != ''
+           AND ${consumerVisibleProductSql('products')}${productScope}
+         GROUP BY category`
+      ).all<{ category: string | null; n: number | null }>()
+        .catch(() => ({ results: [] as Array<{ category: string | null; n: number | null }> }));
+      const facets = voucherFacetsByStock(facetRows.results || []);
+      facets.forEach((f, i) => {
+        urls.push({ loc: voucherFacetPath(f.category), priority: facetPriority(i), changefreq: 'weekly' });
+      });
+      facetsEmitted = facets.length;
 
       // 🛡️ 2026-05-15: 진행 중 공동구매 — 가장 높은 우선순위 (시간 민감)
       // 🏨 `category`·`deal_only` 는 `canonicalDetailPath` 가 정본 주소를 정하는 데 쓴다(아래).
@@ -349,6 +392,16 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
     } catch {
       // DB 쿼리 실패해도 정적 URL 은 응답
     }
+  }
+
+  // 🎁 **집계가 아무것도 못 냈을 때만** 폴백 3개. DB 부재·쿼리 실패·스키마 미적용이 여기로 온다.
+  //   🔴 이 방향이 중요하다 — 0 을 "재고 0" 으로 읽어 제출을 비우면 **이미 색인된 3건이 빠지고**
+  //      색인은 돌아오는 데 수주다. 반대로 facet 이 하나라도 집계됐으면 그 결과를 믿는다
+  //      (재고가 정말 줄어든 경우를 폴백으로 덮으면 빈 목록을 색인 요청하게 된다).
+  if (facetsEmitted === 0) {
+    SITEMAP_VOUCHER_FALLBACK.forEach((c, i) => {
+      urls.push({ loc: voucherFacetPath(c), priority: facetPriority(i), changefreq: 'weekly' });
+    });
   }
 
   // 🔎 2026-07-20 XML 이스케이프 — 상품 이미지 URL 의 `&`(예: ?width=836&height=607) 등이

@@ -162,7 +162,7 @@ export default function FAQPage() {
             <div className="flex items-center gap-2 text-[13px] text-gray-700 dark:text-gray-200">
               <MailIcon className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
               <span className="text-gray-500 dark:text-gray-400 w-16">{t('faq.supportEmail', { defaultValue: '이메일' })}</span>
-              <span className="font-medium text-gray-900 dark:text-white">{t('faq.supportEmailValue', { defaultValue: 'support@ur-team.com' })}</span>
+              <span className="font-medium text-gray-900 dark:text-white">{t('faq.supportEmailValue', { defaultValue: 'urteam.corp@gmail.com' })}</span>
             </div>
           </div>
         </div>

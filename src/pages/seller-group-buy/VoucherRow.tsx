@@ -17,6 +17,7 @@ import { formatNumber, formatWon, safeNum } from '@/utils/format'
 import { GB_ENGINE_ENABLED } from '@/shared/feature-flags'
 import type { HomeVoucher } from '../seller-page/useSellerHome'
 import GroupBuyOpenPanel from './GroupBuyOpenPanel'
+import BrandWideToggle from './BrandWideToggle'
 // 🏬 2026-10-17 프랜차이즈 — 지점이 둘 이상일 때만 쓰는 시트라 눌렀을 때 받는다.
 const BranchCopySheet = lazy(() => import('./BranchCopySheet'))
 
@@ -204,6 +205,8 @@ export default function VoucherRow({ v, stat, commissionRate, onChanged }: Props
               </button>
             )}
           </div>
+          {/* 🏷️ 2026-10-18 같은 주인 지점에서도 사용 — 브랜드가 없거나 주인이 아니면 아무것도 안 그린다 */}
+          <BrandWideToggle productId={v.id} />
           {/* 🎟️ 2026-07-06 (§2-A 방향 A): 매장이 공구 열기 — GB_ENGINE_ENABLED 게이트(기본 OFF). 숨기는 것과 없애는 것은 다르다. */}
           {GB_ENGINE_ENABLED && (
             <GroupBuyOpenPanel productId={v.id} listPrice={safeNum(v.price)} category={v.category || 'meal_voucher'} headers={headers} />

@@ -21,7 +21,12 @@
 import { ensureRedemptionSettingsTable } from './redemption-settings'
 import { ensureVoucherGiftTable, noPendingGiftSql } from './voucher-gift'
 
-export async function redeemByCounterSecret(DB: D1Database, code: string, secret: string) {
+/**
+ * @param brandBranchSellerId 🏷️ 2026-10-18 브랜드 전 지점 사용 — 판 지점이 아닌 **같은 주인 형제 지점**의 확인코드를
+ *   받아 줄 때, 호출부가 `findBrandBranchByStoreCode` 로 미리 찾은 그 지점 id. 넘기면 그 지점의 확인코드도
+ *   **이 문장 안에서** 다시 대조한다(비밀 대조는 여전히 원자적이다). 안 넘기면 문장은 종전과 byte-동일.
+ */
+export async function redeemByCounterSecret(DB: D1Database, code: string, secret: string, brandBranchSellerId?: number | null) {
   // 서브쿼리가 참조하는 표가 없으면 문장 자체가 실패한다(가지를 타지 않아도 SQLite 는 prepare 에서 해석한다).
   await ensureRedemptionSettingsTable(DB)
   await ensureVoucherGiftTable(DB) // 🎁 선물 중(받기 전) 잠금 술어가 그 표를 본다
@@ -41,8 +46,16 @@ export async function redeemByCounterSecret(DB: D1Database, code: string, secret
                SELECT 1 FROM seller_redemption_settings r
                 WHERE r.seller_id = products.seller_id
                   AND r.store_code IS NOT NULL AND r.store_code <> '' AND r.store_code = ?
-             ))
+             ))${brandBranchSellerId ? BRAND_BRANCH_CLAUSE : ''}
            )
        )`,
-  ).bind(code, secret, secret).run()
+  ).bind(code, secret, secret, ...(brandBranchSellerId ? [Number(brandBranchSellerId), secret] : [])).run()
 }
+
+/** 형제 지점의 확인코드 — 지점 id 와 비밀을 함께 대조한다(지점 id 만 믿고 비밀을 빼지 않는다). */
+const BRAND_BRANCH_CLAUSE = `
+             OR (seller_id IS NOT NULL AND EXISTS (
+               SELECT 1 FROM seller_redemption_settings rb
+                WHERE rb.seller_id = ?
+                  AND rb.store_code IS NOT NULL AND rb.store_code <> '' AND rb.store_code = ?
+             ))`
