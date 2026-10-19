@@ -16,8 +16,8 @@ export default [
   {
     name: '[cross-envelope] 묶음기가 app-cross 를 다시 가른다',
     file: 'scripts/surface-chunks.mjs',
-    find: "'app-ui-utils', 'app-cross', 'app-map-row', 'app-region-grid'])",
-    replace: "'app-ui-utils', 'app-map-row', 'app-region-grid'])",
+    find: "'app-ui-utils', 'app-cross', 'app-map-row', 'app-region-grid'",
+    replace: "'app-ui-utils', 'app-map-row', 'app-region-grid'",
     test: TEST,
     why: '묶음기가 app-cross 모듈을 쓰는 페이지 봉투로 옮겨 다시 남의 봉투를 끌고 온다.',
   },

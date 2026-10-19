@@ -12,8 +12,8 @@ export default [
   {
     name: '[region-first-screen] 보호 목록에서 빠진다',
     file: 'scripts/surface-chunks.mjs',
-    find: "'app-map-row', 'app-region-grid'])",
-    replace: "'app-map-row'])",
+    find: "'app-map-row', 'app-region-grid', 'app-owner-kit'",
+    replace: "'app-map-row', 'app-owner-kit'",
     test: T,
     why: '묶음기가 이름을 lz-homePc 로 덮어써 규칙이 헛돈다.',
   },
