@@ -93,7 +93,10 @@ export default function OrderStatusBar() {
   const state: 'unknown' | 'empty' | 'ready' = !known ? 'unknown' : counts.bought ? 'ready' : 'empty'
 
   const items = [
-    { label: t('voucherStatus.bought', { defaultValue: '구매완료' }), key: 'bought', path: '/my-vouchers' },
+    // 🏷️ 2026-10-18 (대표 *"다 해줘"*): '구매완료' → **'전체 구매'**. 이 칸은 *지금까지 산 전체*인데
+    //   옆의 '사용완료'·'만료·환불' 과 나란히 서면 "산 뒤 아직 안 쓴 것" 처럼 읽혀, 맨 위 `이용권 N`(지금 쓸 수
+    //   있는 장수)과 어긋나 보였다(실측: 위 3 ↔ 여기 5). 총계라는 것을 이름이 말하게 한다.
+    { label: t('voucherStatus.bought', { defaultValue: '전체 구매' }), key: 'bought', path: '/my-vouchers' },
     { label: t('voucherStatus.used', { defaultValue: '사용완료' }), key: 'used', path: '/my-vouchers' },
     { label: t('voucherStatus.gone', { defaultValue: '만료·환불' }), key: 'gone', path: '/my-vouchers' },
   ]

@@ -50,8 +50,9 @@ export default [
   {
     name: '레벨 카드 — 마이(폰)에 다시 렌더된다',
     file: 'src/pages/UserProfilePage.tsx',
-    find: '      <OrderStatusBar />\n',
-    replace: "      <OrderStatusBar />\n      <ReviewLevelCard />\n",
+    // 🔁 2026-10-18 재조준: 폰의 현황 바가 '내가 산 것' 안으로 옮겨가 앵커가 사라졌다. 같은 페이지의 그 구역 바로 앞.
+    find: '      <ShoppingGroup counts={counts} statusBar={!isPc} />',
+    replace: '      <ReviewLevelCard />\n      <ShoppingGroup counts={counts} statusBar={!isPc} />',
     test: 'src/tests/unit/my-stats-titles-2026-09-30.test.ts',
     why: '대표가 빼라고 한 카드다. 레벨 전용 혜택이 0개인 지금 이 카드는 없는 혜택을 향해 진행바를 채운다.',
   },
