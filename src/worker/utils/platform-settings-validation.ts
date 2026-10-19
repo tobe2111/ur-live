@@ -146,6 +146,7 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   seller_daily_report_enabled: boolStr,        // cron/seller-daily-report.ts (2026-10-18)
   review_request_enabled: boolStr,             // cron/review-request.ts (2026-10-18)
   seller_docs_nudge_enabled: boolStr,          // cron/seller-docs-nudge.ts (2026-10-18)
+  agent_search_enabled: boolStr,               // routes/agent-search.routes.ts (2026-10-19)
   // 🕐 2026-09-21: 노출 유예(시간). 읽는 쪽(`getExposureGraceHours`)이 0 이하를 '유예 없음' 으로,
   //   168 초과를 168 로 클램프하므로 검증도 같은 범위로 맞춘다 — 화면이 받은 값과 코드가 쓰는 값이 갈리면
   //   "넣었는데 안 걸린다" 가 된다.
