@@ -34,6 +34,7 @@
  *   - nonce 를 단다(CSP `strict-dynamic` — 이 스크립트가 만든 하위 스크립트는 그 신뢰를 물려받는다).
  */
 
+import { guestTabOf } from './guest-first-screen'
 import { shouldRenderMobileFirstScreen } from '../../shared/seo/crawler-ua'
 import { CRITICAL_CSS } from '../generated/critical-css'
 import { UDAL_LOADER_SRC } from '../../shared/udal-loader'
@@ -53,9 +54,10 @@ import { UDAL_LOADER_SRC } from '../../shared/udal-loader'
  *   ⚠️ 판정은 경로만 본다 — `/vouchers?category=…` 처럼 첫 화면이 안 그려지는 요청에도 걸린다(그땐 로더 + 조작 +0.3s).
  *   🔒 새 첫 화면을 서버에 붙이면 **이 목록도 같은 커밋에서** 고칠 것(시험 ⑤-2 가 ROOTS 와 대조한다).
  */
-export function cssFirstApplies(pathname: string, ua: string): boolean {
+export function cssFirstApplies(pathname: string, ua: string, authed = false): boolean {
   if (!shouldRenderMobileFirstScreen(ua)) return false
   return pathname === '/' || pathname === '/vouchers' || pathname === '/stays' // 🏨 2026-10-19 숙소 목록도 서버 첫 화면이 생겼다(stays-first-screen.ts)
+    || (!authed && guestTabOf(pathname) !== null) // 🚪 2026-10-19 로그인 전 탭 셋 — 세션 쿠키 없을 때만 서버가 그린다(guest-first-screen.ts)
     || /^\/blog(?:\/[^/]+)?\/?$/.test(pathname) // 📝 2026-10-19 블로그 목록·상세도 서버 첫 화면(blog-*-first-screen.ts)
     || /^\/(?:pass|group-buy|vouchers|stays)\/\d+\/?$/.test(pathname)
     || (/^\/u\/[^/]+\/?$/.test(pathname) && !/^\/u\/me\/?$/.test(pathname))

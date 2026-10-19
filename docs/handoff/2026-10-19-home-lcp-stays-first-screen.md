@@ -58,8 +58,14 @@ curl -sSI -A "$UA" https://urdeal.kr/pass/2919 | grep -i '^link:'   # 히어로
 9. **PC 교환권 인기 브랜드 줄 밀림 CLS 0.037 → 자리 예약** — 폰엔 `BrandStripReserve` 가 있었는데 PC(우측 그리드 위)는 없었다. 같은 클래스 상수 `PC_BRAND` 로 예약(`VouchersPage` 잠금 — 예약 한 줄 + 클래스 상수화). 가드 `top-chrome-reserve` ④ + 주입 2건.
    - 같은 실측에서 다른 주요 화면 11곳(폰)·6곳(PC) CLS 는 전부 0.002 이하 — 밀림은 이 둘뿐이었다.
 
+10. **로그인 전 탭 셋 서버 첫 화면** (`/my-vouchers`·`/u/me`·`/user/profile`) — 셋 다 고정 문구(제목·혜택·카카오 버튼)인데 앱 코드가 와야 그려져 첫 그림 2.0~2.5초였다. 워커가 위쪽(제목 + 첫 카드)을 React 와 같은 모양(`shared/guest-page.ts` 문구·클래스 SSOT)으로 그린다. 세션 쿠키가 있으면 안 그리고, 쿠키 없이 기기에 로그인 흔적(`user_id`·`session_login` — `isUserLoggedIn` 과 같은 키)이 있으면 인라인 스크립트가 걷어낸다. CSS 먼저 + 첫 화면 CSS ROOTS 추가.
+   - 박스 대조(아이폰13 라이트·다크): 이용권·마이 전부 일치, 유어샵은 그리는 제목·부제 일치.
+   - A/B(문서 로컬 제공·느린 4G·CPU 4배, 4회 중앙값): 제목이 보이는 시각 이용권 **2.11 → 0.15s** · 유어샵 **2.07 → 0.15s**(첫 화면 CSS 흉내 포함). 첫 화면 CSS 없이도 2.05 → 1.83s.
+   - 가드 `guest-first-screen-2026-10-19.test.tsx`(진짜 페이지를 렌더해 구조·문구 대조) + 주입 5건. `css-first-boot` 시험 재조준(세 경로는 비로그인 적용·로그인 미적용).
+
 ### 2차 E4 (배포 후)
 - `curl -A "$UA" https://urdeal.kr/blog/<slug> | grep -c ur-first-screen` → 1, `/blog` 도 1.
+- `curl -A "$UA" https://urdeal.kr/my-vouchers | grep -c ur-first-screen` → 1(쿠키 없이) · `-H 'Cookie: ur_session=x'` 면 0. `/u/me`·`/user/profile` 도 같다.
 - 폭포: `/map` 에서 `/api/group-buy/products` 가 타일 **뒤**에 한 번만 나가는지 · SiteFooter 류 청크가 HTML 직후 modulepreload 로 출발하는지.
 
 ## 남은 것

@@ -6,20 +6,21 @@
  *   혜택을 늘리기 전에 `docs/FEATURE_STATUS.md` 와 `docs/design/actor-benefit-map.md` 를 먼저 볼 것.
  */
 import type { ReactNode } from 'react'
+import { GUEST_CLS } from '@/shared/guest-page'
 
 export interface GuestBenefit { icon: ReactNode; title: string; desc: string }
 
 export default function GuestBenefits({ items }: { items: GuestBenefit[] }) {
   return (
-    <ul className="flex flex-col gap-4">
+    <ul className={GUEST_CLS.benefits}>
       {items.map((b) => (
-        <li key={b.title} className="flex items-start gap-3">
-          <span className="shrink-0 w-9 h-9 rounded-xl bg-brand-tint text-brand-text flex items-center justify-center">
+        <li key={b.title} className={GUEST_CLS.benefit}>
+          <span className={GUEST_CLS.benefitIcon}>
             {b.icon}
           </span>
-          <span className="min-w-0">
-            <span className="block text-[15px] font-bold text-gray-900 dark:text-white">{b.title}</span>
-            <span className="block mt-1 text-[13px] text-gray-500 dark:text-gray-400">{b.desc}</span>
+          <span className={GUEST_CLS.benefitText}>
+            <span className={GUEST_CLS.benefitTitle}>{b.title}</span>
+            <span className={GUEST_CLS.benefitDesc}>{b.desc}</span>
           </span>
         </li>
       ))}

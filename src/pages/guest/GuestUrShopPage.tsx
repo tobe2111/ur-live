@@ -22,6 +22,7 @@ import { canonicalDetailPath } from '@/shared/product-flow'
 import GuestKakaoButton from './GuestKakaoButton'
 import GuestBenefits from './GuestBenefits'
 import { usePopularPasses, type PassItem } from './usePopularPasses'
+import { GUEST_CLS, GUEST_COPY } from '@/shared/guest-page'
 
 const ICON = 20
 
@@ -62,19 +63,19 @@ export default function GuestUrShopPage() {
   const hide = waiting ? ' invisible' : ''
 
   return (
-    <div className="min-h-[100dvh] bg-warm pb-8">
+    <div className={GUEST_CLS.root}>
       <SEO title={t('guest.shop.seo', { defaultValue: '유어샵 - 유어딜' })} url="/u/me" noindex />
-      <h1 className="px-4 pt-4 pb-2 text-[17px] font-bold tracking-tight text-gray-900 dark:text-white">
-        {t('guest.shop.title', { defaultValue: '유어샵' })}
+      <h1 className={GUEST_CLS.title}>
+        {t('guest.shop.title', { defaultValue: GUEST_COPY.shop.title })}
       </h1>
 
-      <div className="px-4" data-guest="urshop">
-        <h2 className="mt-2 text-[24px] font-bold leading-tight tracking-tight text-gray-900 dark:text-white">
-          {t('guest.shop.headline1', { defaultValue: '좋아하는 가게 이용권,' })}<br />
-          {t('guest.shop.headline2', { defaultValue: '내 SNS 링크 하나에 모아요' })}
+      <div className={GUEST_CLS.shopBody} data-guest="urshop">
+        <h2 className={GUEST_CLS.shopHeadline}>
+          {t('guest.shop.headline1', { defaultValue: GUEST_COPY.shop.headline1 })}<br />
+          {t('guest.shop.headline2', { defaultValue: GUEST_COPY.shop.headline2 })}
         </h2>
-        <p className="mt-2 text-[15px] text-gray-500 dark:text-gray-400">
-          {t('guest.shop.sub', { defaultValue: '프로필에 걸어 두면 팔로워가 거기서 바로 사요' })}
+        <p className={GUEST_CLS.shopSub}>
+          {t('guest.shop.sub', { defaultValue: GUEST_COPY.shop.sub })}
         </p>
 
         {pins.length > 0 && (

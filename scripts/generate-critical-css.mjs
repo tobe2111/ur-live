@@ -41,6 +41,7 @@ export const ROOTS = [
   'src/worker/utils/stays-first-screen.ts',
   'src/worker/utils/blog-detail-first-screen.ts',
   'src/worker/utils/blog-list-first-screen.ts',
+  'src/worker/utils/guest-first-screen.ts',
 ]
 
 /** 원본 바이트 상한 — 넘으면 빌드 실패(첫 화면 CSS 가 앱 CSS 를 닮아 가면 이 일의 의미가 없다). */
