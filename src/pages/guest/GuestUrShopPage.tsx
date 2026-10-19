@@ -22,8 +22,12 @@ import { canonicalDetailPath } from '@/shared/product-flow'
 import GuestKakaoButton from './GuestKakaoButton'
 import GuestBenefits from './GuestBenefits'
 import { usePopularPasses, type PassItem } from './usePopularPasses'
+import { GUEST_CLS, GUEST_COPY } from '@/shared/guest-page'
 
 const ICON = 20
+
+/** 자리 잡기용 — 화면엔 안 보인다(`invisible`). 줄 높이를 정하는 칸(눈썹·한 줄 제목·가격)만 채운다. */
+const PLACEHOLDER_PINS = [1, 2, 3].map((i) => ({ id: -i, name: '\u00a0', restaurant_name: '\u00a0', price: 0, image_url: null })) as unknown as PassItem[]
 
 /**
  * 진열 한 줄 — 진짜 유어샵이 쓰는 **같은 줄 부품**(`DealRow`, 안 s3 의 평면 표면)이다.
@@ -49,27 +53,33 @@ function ExamplePin({ p, n }: { p: PassItem; n: number }) {
 
 export default function GuestUrShopPage() {
   const { t } = useTranslation()
-  const { data: items = [] } = usePopularPasses()
-  const pins = items.filter((p) => !!p.image_url).slice(0, 3)
+  const { data: items = [], isLoading } = usePopularPasses()
+  const real = items.filter((p) => !!p.image_url).slice(0, 3)
+  // 🧱 2026-10-19 — 예시 진열대는 인기 이용권 응답이 와야 그려지는데, 그 전엔 자리가 없어서
+  //   도착하는 순간 아래 혜택·가입 버튼이 통째로 425px 밀렸다(라이브 실측 CLS 0.39).
+  //   기다리는 동안 **같은 부품(DealRow)으로 같은 개수**를 안 보이게 세워 자리를 잡는다(숫자로 예약하지 않는다).
+  const waiting = isLoading && real.length === 0
+  const pins: PassItem[] = waiting ? PLACEHOLDER_PINS : real
+  const hide = waiting ? ' invisible' : ''
 
   return (
-    <div className="min-h-[100dvh] bg-warm pb-8">
+    <div className={GUEST_CLS.root}>
       <SEO title={t('guest.shop.seo', { defaultValue: '유어샵 - 유어딜' })} url="/u/me" noindex />
-      <h1 className="px-4 pt-4 pb-2 text-[17px] font-bold tracking-tight text-gray-900 dark:text-white">
-        {t('guest.shop.title', { defaultValue: '유어샵' })}
+      <h1 className={GUEST_CLS.title}>
+        {t('guest.shop.title', { defaultValue: GUEST_COPY.shop.title })}
       </h1>
 
-      <div className="px-4" data-guest="urshop">
-        <h2 className="mt-2 text-[24px] font-bold leading-tight tracking-tight text-gray-900 dark:text-white">
-          {t('guest.shop.headline1', { defaultValue: '좋아하는 가게 이용권,' })}<br />
-          {t('guest.shop.headline2', { defaultValue: '내 SNS 링크 하나에 모아요' })}
+      <div className={GUEST_CLS.shopBody} data-guest="urshop">
+        <h2 className={GUEST_CLS.shopHeadline}>
+          {t('guest.shop.headline1', { defaultValue: GUEST_COPY.shop.headline1 })}<br />
+          {t('guest.shop.headline2', { defaultValue: GUEST_COPY.shop.headline2 })}
         </h2>
-        <p className="mt-2 text-[15px] text-gray-500 dark:text-gray-400">
-          {t('guest.shop.sub', { defaultValue: '프로필에 걸어 두면 팔로워가 거기서 바로 사요' })}
+        <p className={GUEST_CLS.shopSub}>
+          {t('guest.shop.sub', { defaultValue: GUEST_COPY.shop.sub })}
         </p>
 
         {pins.length > 0 && (
-          <section className="mt-5 rounded-2xl bg-surface shadow-lift px-4 pt-4 pb-1" aria-label={t('guest.shop.example', { defaultValue: '예시' })}>
+          <section className={`mt-5 rounded-2xl bg-surface shadow-lift px-4 pt-4 pb-1${hide}`} aria-hidden={waiting || undefined} aria-label={t('guest.shop.example', { defaultValue: '예시' })}>
             <div className="flex items-center gap-3 pb-3 border-b border-rule">
               <span className="shrink-0 w-12 h-12 rounded-full overflow-hidden bg-brand-tint flex items-center justify-center">
                 <Udal mood="tip" size={48} />
@@ -87,7 +97,7 @@ export default function GuestUrShopPage() {
           </section>
         )}
         {pins.length > 0 && (
-          <p className="mt-3 flex items-center gap-2 px-1 text-[13px] text-gray-500 dark:text-gray-400">
+          <p className={`mt-3 flex items-center gap-2 px-1 text-[13px] text-gray-500 dark:text-gray-400${hide}`} aria-hidden={waiting || undefined}>
             <span>{t('guest.shop.linkLabel', { defaultValue: '프로필 링크' })}</span>
             <span className="font-semibold text-brand-text">urdeal.kr/u/udal</span>
           </p>

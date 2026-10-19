@@ -143,7 +143,10 @@ describe('⑤ 지갑 — 탭 + TicketCard', () => {
 describe('⑥ 아이콘 컨셉 — 채색 flat 타일 세트가 존재하고 윤곽선을 안 쓴다', () => {
   const src = R('src/components/icons/category-icons.tsx')
   it('팔레트 SSOT + 원 타일', () => {
-    expect(src).toMatch(/export const CATEGORY_PALETTE/)
+    // 2026-10-19 팔레트 값은 서버 첫 화면(블로그 커버)과 같이 쓰려고 `shared/category-palette.ts` 로 옮겼고,
+    //   이 파일은 그것을 다시 내보낸다 — SSOT 는 하나 그대로다.
+    expect(R('src/shared/category-palette.ts')).toMatch(/export const CATEGORY_PALETTE/)
+    expect(src).toMatch(/export \{ CATEGORY_PALETTE/)
     expect(src).toMatch(/export function CategoryTile/)
   })
   it('아이콘은 fill 로만 그린다(윤곽선 stroke 는 김·절취선 같은 장식 2곳 이하)', () => {

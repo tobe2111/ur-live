@@ -19,21 +19,11 @@
  *   - 다크/라이트에서 아이콘 색은 **같다**(시안: 다크 타일 위 원색). 타일 배경만 테마를 따른다.
  */
 import { forwardRef, type SVGProps, type ReactNode } from 'react'
+// 🎨 팔레트는 `shared/category-palette.ts` 한 곳(워커도 같은 값을 쓴다).
+import { CATEGORY_PALETTE, type CategoryHue } from '@/shared/category-palette'
+export { CATEGORY_PALETTE, type CategoryHue }
 
 type IconProps = Omit<SVGProps<SVGSVGElement>, 'size'> & { size?: number | string }
-
-/** 팔레트 — 코레일 서비스 줄 실측 계열. 새 아이콘은 여기서 고른다(새 색 추가 금지). */
-export const CATEGORY_PALETTE = {
-  red:    { main: '#E8433F', dark: '#A8262A' },
-  pink:   { main: '#F0607A', dark: '#B93A55' },
-  blue:   { main: '#3B82F6', dark: '#1F55B8' },
-  yellow: { main: '#F5B63B', dark: '#B97E14' },
-  orange: { main: '#F28C28', dark: '#B55F0F' },
-  green:  { main: '#3CB371', dark: '#22794A' },
-  teal:   { main: '#2BB3A3', dark: '#177A70' },
-  purple: { main: '#8B6CF6', dark: '#5B41B8' },
-} as const
-export type CategoryHue = keyof typeof CATEGORY_PALETTE
 
 const base = { viewBox: '0 0 32 32', 'aria-hidden': true, fill: 'none' as const }
 

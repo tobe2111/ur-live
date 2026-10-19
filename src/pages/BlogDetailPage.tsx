@@ -11,7 +11,8 @@ import BrandLoader from '@/components/brand/BrandLoader'
 import api from '@/lib/api'
 import { useBlogPost, type BlogPost } from '@/hooks/queries/useBlogPost'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
-import { parseUTCDate } from '@/utils/date'
+// 🧱 2026-10-19 골격 클래스·날짜·읽는 시간은 서버 첫 화면과 같은 SSOT(`shared/blog-page.ts`).
+import { BLOG_DETAIL, blogDateLabel, blogReadMin } from '@/shared/blog-page'
 
 // 📝 제목/요약 등 일반 텍스트에서 마크다운 볼드 표기(**) 제거 — 글자로 노출 방지(AI 생성/편집 글 방탄).
 const stripBold = (s?: string | null) => (s || '').replace(/\*\*/g, '')
@@ -88,7 +89,7 @@ export default function BlogDetailPage() {
   }
 
   const tags = parseTags(post.tags)
-  const readMin = Math.max(1, Math.round((post.content?.length || 0) / 500))
+  const readMin = blogReadMin(post.content)
 
   const related = (allPosts as BlogPost[])
     .filter((p) => p.slug !== post.slug)
@@ -129,7 +130,7 @@ export default function BlogDetailPage() {
   )
 
   return (
-    <div className="min-h-[100dvh] bg-white dark:bg-[#11141C]">
+    <div className={BLOG_DETAIL.root}>
       <SEO
         title={post.title}
         description={stripBold(post.summary)}
@@ -142,29 +143,28 @@ export default function BlogDetailPage() {
       />
 
       {/* 상단 네비 — 로고 | 검색·유어딜 홈·공유·CTA */}
-      <header className="sticky top-0 z-40 bg-white/90 dark:bg-[#11141C]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
-        <div className="max-w-7xl mx-auto flex items-center justify-between px-4 lg:px-8 h-14">
-          <Link to="/blog" className="flex items-center gap-2 text-[17px] font-extrabold text-gray-900 dark:text-white tracking-tight">
-            유어딜 <span className="text-gray-300 dark:text-[#333] font-light">|</span> <span className="text-gray-500 dark:text-gray-400 text-[15px] font-bold">Blog</span>
+      <header className={BLOG_DETAIL.header}>
+        <div className={BLOG_DETAIL.headerInner}>
+          <Link to="/blog" className={BLOG_DETAIL.logo}>
+            유어딜 <span className={BLOG_DETAIL.logoBar}>|</span> <span className={BLOG_DETAIL.logoBlog}>Blog</span>
           </Link>
-          <div className="flex items-center gap-1 sm:gap-2">
-            <Link to="/blog" aria-label="블로그 검색" className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1D1F29]">
+          <div className={BLOG_DETAIL.actions}>
+            <Link to="/blog" aria-label="블로그 검색" className={BLOG_DETAIL.iconBtn}>
               <Search className="w-4 h-4" />
             </Link>
             <button onClick={() => { void import('@/lib/native').then((m) => m.nativeShare({ title: post.title, url: `https://urdeal.kr/blog/${post.slug}` })) }}
-              aria-label="공유" className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1D1F29]">
+              aria-label="공유" className={BLOG_DETAIL.iconBtn}>
               <Share2 className="w-4 h-4" />
             </button>
-            <Link to="/" className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-lg text-[15px] font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1D1F29]">
+            <Link to="/" className={BLOG_DETAIL.homeLink}>
               <HomeIcon className="w-4 h-4" />유어딜 홈
             </Link>
-            <Link to="/store/new" className="px-4 py-2 bg-brand text-white rounded-lg text-[15px] font-bold hover:opacity-90">내 가게 등록</Link>
+            <Link to="/store/new" className={BLOG_DETAIL.cta}>내 가게 등록</Link>
           </div>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 lg:px-8 py-8 lg:py-12
- lg:grid lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)_260px] lg:gap-8 xl:gap-10">
+      <div className={BLOG_DETAIL.grid}>
 
         {/* ── 좌측: 목차 ── */}
         <aside className="hidden lg:block">
@@ -175,32 +175,32 @@ export default function BlogDetailPage() {
         </aside>
 
         {/* ── 중앙: 본문 ── */}
-        <article className="min-w-0">
+        <article className={BLOG_DETAIL.article}>
           {tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-4">
+            <div className={BLOG_DETAIL.tags}>
               {tags.map(tg => (
-                <span key={tg} className="text-[12px] bg-blue-50 dark:bg-blue-900/25 text-blue-600 dark:text-blue-300 px-2 py-1 rounded-md font-semibold">{tg}</span>
+                <span key={tg} className={BLOG_DETAIL.tag}>{tg}</span>
               ))}
             </div>
           )}
-          <h1 className="text-[24px] sm:text-[34px] font-extrabold text-gray-900 dark:text-white leading-tight">{stripBold(post.title)}</h1>
-          <p className="text-[15px] sm:text-[17px] text-gray-500 dark:text-gray-400 mt-3 leading-relaxed">{stripBold(post.summary)}</p>
-          <div className="flex items-center gap-3 mt-4 pb-6 text-[15px] text-gray-400 dark:text-gray-500">
+          <h1 className={BLOG_DETAIL.h1}>{stripBold(post.title)}</h1>
+          <p className={BLOG_DETAIL.summary}>{stripBold(post.summary)}</p>
+          <div className={BLOG_DETAIL.meta}>
             <span>{post.author}</span>
             <span>·</span>
-            <span>{parseUTCDate(post.published_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+            <span>{blogDateLabel(post.published_at)}</span>
             <span>·</span>
-            <span className="inline-flex items-center gap-1"><ClockIcon className="w-3.5 h-3.5" />{readMin}분 읽기</span>
+            <span className={BLOG_DETAIL.metaRead}><ClockIcon className="w-3.5 h-3.5" />{readMin}분 읽기</span>
           </div>
 
           {/* 히어로 배너 */}
-          <CoverImg post={post} variant="hero" className="w-full aspect-[16/7] rounded-2xl mb-8" />
+          <CoverImg post={post} variant="hero" className={BLOG_DETAIL.cover} />
 
           {/* 모바일 목차 (접이식) */}
           {toc.length > 0 && (
-            <div className="lg:hidden mb-8 border border-line rounded-xl overflow-hidden">
-              <button onClick={() => setTocOpen(o => !o)} className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-[#141414]">
-                <span className="flex items-center gap-2 text-[15px] font-bold text-gray-900 dark:text-white"><List className="w-4 h-4" />목차</span>
+            <div className={BLOG_DETAIL.tocBox}>
+              <button onClick={() => setTocOpen(o => !o)} className={BLOG_DETAIL.tocBtn}>
+                <span className={BLOG_DETAIL.tocLabel}><List className="w-4 h-4" />목차</span>
                 <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${tocOpen ? 'rotate-180' : ''}`} />
               </button>
               {tocOpen && <div className="px-4 py-3"><TocList onNav={() => setTocOpen(false)} /></div>}
@@ -210,7 +210,7 @@ export default function BlogDetailPage() {
           {/* 본문 — 공유 안전 렌더러(BlogMarkdown): 링크·이미지·인용구 지원, dangerouslySetInnerHTML 미사용 */}
           {/* 📏 2026-09-24: 본문 폭을 묶는다 — 3열 레이아웃에서 가운데 칸이 760px 라 한 줄이 너무 길었다.
               글자 크기는 `BlogMarkdown` 에서 함께 키웠다(둘은 짝). */}
-          <div className="max-w-[46rem]">
+          <div className={BLOG_DETAIL.body}>
             <BlogMarkdown content={post.content} />
           </div>
 

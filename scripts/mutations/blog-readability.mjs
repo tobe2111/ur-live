@@ -10,7 +10,7 @@ export default [
   {
     name: '블로그 커버에 이모지 스티커를 되살린다',
     file: 'src/features/blog/BlogCover.tsx',
-    find: "<Icon size={big ? 88 : 40} aria-hidden />",
+    find: "<Icon size={big ? BLOG_COVER.heroIcon : BLOG_COVER.thumbIcon} aria-hidden />",
     replace: "<span>✨</span>",
     test: 'src/tests/unit/blog-readability-2026-09-24.test.ts',
     why:
@@ -19,9 +19,9 @@ export default [
   },
   {
     name: '블로그 커버를 그라디언트로 되돌린다',
-    file: 'src/features/blog/BlogCover.tsx',
-    find: "className={`${className} relative overflow-hidden flex items-center justify-center`}",
-    replace: "className={`${className} relative overflow-hidden flex items-center justify-center bg-gradient-to-br from-rose-100 to-orange-100`}",
+    file: 'src/shared/blog-page.ts',
+    find: "box: 'relative overflow-hidden flex items-center justify-center',",
+    replace: "box: 'relative overflow-hidden flex items-center justify-center bg-gradient-to-br from-rose-100 to-orange-100',",
     test: 'src/tests/unit/blog-readability-2026-09-24.test.ts',
     why: '같은 SSOT 의 "그라디언트 0". 단색 면 + 아이콘이 우리 표면 문법이다.',
   },
@@ -37,9 +37,9 @@ export default [
   },
   {
     name: '본문 글자를 15px 로 되돌린다',
-    file: 'src/features/blog/BlogMarkdown.tsx',
-    find: "return <p key={i} className=\"text-[16.5px] text-gray-700 dark:text-gray-200 leading-[1.85] my-3\">",
-    replace: "return <p key={i} className=\"text-[15px] text-gray-700 dark:text-gray-200 leading-[1.8] my-3\">",
+    file: 'src/shared/blog-page.ts',
+    find: "p: 'text-[16.5px] text-gray-700 dark:text-gray-200 leading-[1.85] my-3',",
+    replace: "p: 'text-[15px] text-gray-700 dark:text-gray-200 leading-[1.8] my-3',",
     test: 'src/tests/unit/blog-readability-2026-09-24.test.ts',
     why:
       '3열 레이아웃에서 본문 칸이 760px 라 15px 한글이면 한 줄 95자다(편한 길이 40~50자). ' +
@@ -47,9 +47,9 @@ export default [
   },
   {
     name: '본문 폭 제한을 푼다(글자만 키운 반쪽이 된다)',
-    file: 'src/pages/BlogDetailPage.tsx',
-    find: '<div className="max-w-[46rem]">',
-    replace: '<div>',
+    file: 'src/shared/blog-page.ts',
+    find: "body: 'max-w-[46rem]',",
+    replace: "body: '',",
     test: 'src/tests/unit/blog-readability-2026-09-24.test.ts',
     why:
       '글자 크기와 폭은 **짝**이다. 폭을 안 묶으면 한 줄이 여전히 길어 키운 효과가 상쇄된다 — ' +

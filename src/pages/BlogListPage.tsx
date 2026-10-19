@@ -6,6 +6,8 @@ import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { CoverImg } from '@/features/blog/BlogCover'
+// 🧱 2026-10-19 클래스·규칙은 서버 첫 화면(`worker/utils/blog-list-first-screen.ts`)과 같은 SSOT.
+import { BLOG_LIST, BLOG_PER_PAGE, BLOG_FEATURED, BLOG_SEARCH_PLACEHOLDER, blogPageNums, blogAllTags } from '@/shared/blog-page'
 
 interface BlogPost {
   id: number; slug: string; title: string; summary: string; tags: string
@@ -31,21 +33,21 @@ function readBlogListSeed(): BlogPost[] | undefined {
 // 카테고리 칩(파란) + 작성자 칩(회색) — 토스 테크 스타일.
 function ChipRow({ tags, author }: { tags: string[]; author?: string }) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className={BLOG_LIST.chipRow}>
       {tags[0] && (
-        <span className="text-[12px] font-semibold bg-blue-50 dark:bg-blue-900/25 text-blue-600 dark:text-blue-300 px-2 py-1 rounded-md">{tags[0]}</span>
+        <span className={BLOG_LIST.tagChip}>{tags[0]}</span>
       )}
       {/* 🐛 2026-08-17 (UX 전수검사 P1): 첫 태그와 작성자가 같은 값이면(둘 다 "유어딜") 칩이
           "유어딜 · 유어딜" 로 중복돼 오타처럼 보였다 — 같으면 작성자 칩 생략. */}
       {author && author !== tags[0] && (
-        <span className="text-[12px] font-medium bg-gray-100 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400 px-2 py-1 rounded-md">{author}</span>
+        <span className={BLOG_LIST.authorChip}>{author}</span>
       )}
     </div>
   )
 }
 
 
-const PER_PAGE = 7
+const PER_PAGE = BLOG_PER_PAGE
 
 export default function BlogListPage() {
   const { t } = useTranslation()
@@ -68,7 +70,7 @@ export default function BlogListPage() {
   )
 
   // 태그 목록은 항상 전체 글에서 파생 → 필터 중에도 칩이 안정적으로 유지됨.
-  const allTags = [...new Set(allPosts.flatMap(p => parseTags(p.tags)))]
+  const allTags = blogAllTags(allPosts)
   // 클라이언트 필터 — 태그 + 검색어(제목/요약/태그). 전량 로드(limit=100)라 즉시 반영.
   //   ⚠️ 글이 수백 편으로 늘면 서버 페이지네이션/검색(엔드포인트 page/limit/tag/q 지원)으로 전환 권장.
   const q = query.trim().toLowerCase()
@@ -83,7 +85,7 @@ export default function BlogListPage() {
   })
 
   // 히어로 = 최신 글 상위 5개(태그·검색 없을 때만 노출).
-  const featured = allPosts.slice(0, 5)
+  const featured = allPosts.slice(0, BLOG_FEATURED)
   const hero = featured[heroIdx % (featured.length || 1)]
   const moveHero = (d: number) => setHeroIdx(i => (i + d + featured.length) % featured.length)
 
@@ -94,71 +96,66 @@ export default function BlogListPage() {
   const curPage = Math.min(page, totalPages)
   const pagePosts = filtered.slice((curPage - 1) * PER_PAGE, curPage * PER_PAGE)
   // 페이지 버튼 윈도우(최대 7개, 현재 중심).
-  const pageNums = (() => {
-    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1)
-    let s = Math.max(1, curPage - 3), e = Math.min(totalPages, s + 6)
-    s = Math.max(1, e - 6)
-    return Array.from({ length: e - s + 1 }, (_, i) => s + i)
-  })()
+  const pageNums = blogPageNums(totalPages, curPage)
 
   return (
-    <div className="min-h-[100dvh] bg-white dark:bg-[#11141C]">
+    <div className={BLOG_LIST.root}>
       <SEO title={t('blog.listSeoTitle', { defaultValue: '블로그' })} description={t('blog.listSeoDesc', { defaultValue: '유어딜 블로그. 이용권과 교환권, 동네딜, 유어샵 가이드와 서비스 소식' })} url="/blog" />
 
       {/* Header — 뒤로가기 제거, 유어딜 홈 버튼 추가, non-sticky(오버랩 방지) */}
-      <div className="bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35]">
-        <div className="max-w-6xl mx-auto flex items-center justify-between px-5 lg:px-8 h-14">
-          <Link to="/blog" className="text-[17px] font-extrabold text-gray-900 dark:text-white tracking-tight">유어딜 블로그</Link>
-          <div className="flex items-center gap-2 sm:gap-2">
-            <Link to="/" className="flex items-center gap-2 px-3 py-2 rounded-lg text-[15px] font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1D1F29]">
-              <HomeIcon className="w-4 h-4" /><span className="hidden sm:inline">유어딜 홈</span>
+      <div className={BLOG_LIST.bar}>
+        <div className={BLOG_LIST.barInner}>
+          <Link to="/blog" className={BLOG_LIST.logo}>유어딜 블로그</Link>
+          <div className={BLOG_LIST.actions}>
+            <Link to="/" className={BLOG_LIST.home}>
+              <HomeIcon className="w-4 h-4" /><span className={BLOG_LIST.homeText}>유어딜 홈</span>
             </Link>
-            <Link to="/store/new" className="px-4 py-2 bg-brand text-white rounded-lg text-[15px] font-bold hover:opacity-90">
+            <Link to="/store/new" className={BLOG_LIST.cta}>
               내 가게 등록
             </Link>
           </div>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-5 lg:px-8">
+      <div className={BLOG_LIST.wrap}>
         {/* ── 히어로 캐러셀 (태그·검색 없을 때) ── */}
         {!selectedTag && !searching && !loading && hero && (
-          <section className="pt-6 pb-8">
-            <Link to={`/blog/${hero.slug}`} className="group grid lg:grid-cols-2 gap-5 lg:gap-8 items-center">
-              <div className="order-2 lg:order-1">
+          <section className={BLOG_LIST.hero}>
+            <Link to={`/blog/${hero.slug}`} className={BLOG_LIST.heroLink}>
+              <div className={BLOG_LIST.heroText}>
                 <ChipRow tags={parseTags(hero.tags)} author={hero.author} />
-                <h2 className="mt-3 text-[24px] sm:text-[28px] leading-snug font-extrabold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
+                <h2 className={BLOG_LIST.heroTitle}>
                   {stripBold(hero.title)}
                 </h2>
-                <p className="mt-2 text-[15px] text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-2">{stripBold(hero.summary)}</p>
+                <p className={BLOG_LIST.heroSummary}>{stripBold(hero.summary)}</p>
               </div>
-              <div className="order-1 lg:order-2">
-                <CoverImg post={hero} variant="hero" className="w-full aspect-[16/9] rounded-2xl" />
+              <div className={BLOG_LIST.heroCoverWrap}>
+                <CoverImg post={hero} variant="hero" className={BLOG_LIST.heroCover} />
               </div>
             </Link>
             {featured.length > 1 && (
-              <div className="flex items-center gap-2 mt-6">
-                <button onClick={() => moveHero(-1)} aria-label="이전" className="w-10 h-10 rounded-full border border-line flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1D1F29]">
+              <div className={BLOG_LIST.heroNav}>
+                <button onClick={() => moveHero(-1)} aria-label="이전" className={BLOG_LIST.heroBtn}>
                   <ChevronLeft className="w-5 h-5" />
                 </button>
-                <button onClick={() => moveHero(1)} aria-label="다음" className="w-10 h-10 rounded-full border border-line flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1D1F29]">
+                <button onClick={() => moveHero(1)} aria-label="다음" className={BLOG_LIST.heroBtn}>
                   <ChevronRight className="w-5 h-5" />
                 </button>
-                <span className="ml-2 text-[12px] text-gray-400 dark:text-gray-500 tabular-nums">{(heroIdx % featured.length) + 1} / {featured.length}</span>
+                <span className={BLOG_LIST.heroCount}>{(heroIdx % featured.length) + 1} / {featured.length}</span>
               </div>
             )}
           </section>
         )}
 
         {/* ── 검색 ── */}
-        <div className="pt-6 pb-1">
+        <div className={BLOG_LIST.searchWrap}>
           <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500 pointer-events-none" />
+            <Search className={BLOG_LIST.searchIcon} />
             <input
               value={query}
               onChange={(e) => onSearch(e.target.value)}
-              placeholder="블로그 검색 (이용권, 유어샵, 정산…)"
-              className="w-full h-11 pl-10 pr-10 rounded-xl bg-gray-50 dark:bg-[#1D1F29] border border-line text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/10 focus:border-gray-300 dark:focus:border-[#3A3A3A]"
+              placeholder={BLOG_SEARCH_PLACEHOLDER}
+              className={BLOG_LIST.search}
             />
             {query && (
               <button onClick={() => onSearch('')} aria-label="검색어 지우기" className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-gray-400 dark:text-gray-500 hover:bg-gray-200 dark:hover:bg-[#2C2F35]">
@@ -169,22 +166,22 @@ export default function BlogListPage() {
         </div>
 
         {/* ── 태그 필터 ── */}
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide py-4">
+        <div className={BLOG_LIST.chips}>
           <button onClick={() => pickTag('')}
-            className={`px-4 py-2 rounded-full text-[15px] font-medium shrink-0 ${!selectedTag ? 'bg-brand text-white' : 'bg-gray-50 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2C2F35]'}`}>
+            className={`${BLOG_LIST.chip} ${!selectedTag ? BLOG_LIST.chipOn : BLOG_LIST.chipOff}`}>
             전체
           </button>
           {allTags.map((tag: string) => (
             <button key={tag} onClick={() => pickTag(tag)}
-              className={`px-4 py-2 rounded-full text-[15px] font-medium shrink-0 ${selectedTag === tag ? 'bg-brand text-white' : 'bg-gray-50 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2C2F35]'}`}>
+              className={`${BLOG_LIST.chip} ${selectedTag === tag ? BLOG_LIST.chipOn : BLOG_LIST.chipOff}`}>
               {tag}
             </button>
           ))}
         </div>
 
         {/* ── 전체 아티클 리스트 ── */}
-        <section className="py-8">
-          <h3 className="text-[24px] font-extrabold text-gray-900 dark:text-white mb-2">
+        <section className={BLOG_LIST.listSection}>
+          <h3 className={BLOG_LIST.listTitle}>
             {searching ? `‘${query.trim()}’ 검색 결과` : selectedTag ? `#${selectedTag}` : '전체 아티클'}
             {(searching || selectedTag) && <span className="ml-2 text-[15px] font-semibold text-gray-400 dark:text-gray-500">{filtered.length}</span>}
           </h3>
@@ -207,19 +204,19 @@ export default function BlogListPage() {
               {searching ? `‘${query.trim()}’에 대한 검색 결과가 없어요` : selectedTag ? '이 태그의 글이 아직 없어요' : '아직 작성된 글이 없습니다'}
             </div>
           ) : (
-            <div className="divide-y divide-gray-100 dark:divide-[#2C2F35]">
+            <div className={BLOG_LIST.rows}>
               {pagePosts.map(post => {
                 const tags = parseTags(post.tags)
                 return (
-                  <Link key={post.id} to={`/blog/${post.slug}`} className="group flex items-start justify-between gap-5 sm:gap-8 py-6">
-                    <div className="flex-1 min-w-0">
+                  <Link key={post.id} to={`/blog/${post.slug}`} className={BLOG_LIST.row}>
+                    <div className={BLOG_LIST.rowText}>
                       <ChipRow tags={tags} author={post.author} />
-                      <h4 className="mt-2 text-[17px] sm:text-[17px] font-bold text-gray-900 dark:text-white leading-snug line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                      <h4 className={BLOG_LIST.rowTitle}>
                         {stripBold(post.title)}
                       </h4>
-                      <p className="mt-2 text-[15px] text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-2">{stripBold(post.summary)}</p>
+                      <p className={BLOG_LIST.rowSummary}>{stripBold(post.summary)}</p>
                     </div>
-                    <CoverImg post={post} className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl shrink-0" />
+                    <CoverImg post={post} className={BLOG_LIST.rowCover} />
                   </Link>
                 )
               })}
@@ -228,19 +225,19 @@ export default function BlogListPage() {
 
           {/* ── 페이지네이션 ── */}
           {!loading && totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 mt-10">
+            <div className={BLOG_LIST.pager}>
               <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={curPage === 1} aria-label="이전 페이지"
-                className="w-9 h-9 rounded-lg flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1D1F29] disabled:opacity-30 disabled:hover:bg-transparent">
+                className={BLOG_LIST.pagerArrow}>
                 <ChevronLeft className="w-4 h-4" />
               </button>
               {pageNums.map(n => (
                 <button key={n} onClick={() => setPage(n)}
-                  className={`min-w-9 h-9 px-2 rounded-lg text-[15px] font-semibold tabular-nums ${n === curPage ? 'bg-brand text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1D1F29]'}`}>
+                  className={`${BLOG_LIST.pagerNum} ${n === curPage ? BLOG_LIST.pagerOn : BLOG_LIST.pagerOff}`}>
                   {n}
                 </button>
               ))}
               <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={curPage === totalPages} aria-label="다음 페이지"
-                className="w-9 h-9 rounded-lg flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1D1F29] disabled:opacity-30 disabled:hover:bg-transparent">
+                className={BLOG_LIST.pagerArrow}>
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>

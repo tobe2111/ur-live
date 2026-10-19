@@ -22,7 +22,7 @@ export default [
   {
     name: 'LCP헤더 — 외부 주소 차단을 지운다',
     file: 'src/worker/utils/lcp-image-link.ts',
-    find: "if (!href || !href.startsWith('/') || href.startsWith('//') || /[<>,;\\s]/.test(href)) return",
+    find: "if (!href || !href.startsWith('/') || href.startsWith('//') || /[<>;\\s]/.test(href)) return",
     replace: 'if (!href) return',
     test: T,
     why: '시드 값이 Link 헤더 문법을 깨거나 외부 주소를 미리 받게 만든다.',

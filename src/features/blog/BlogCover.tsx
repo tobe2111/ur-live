@@ -17,47 +17,36 @@
  */
 import type { ComponentType, SVGProps } from 'react'
 import {
-  CATEGORY_PALETTE, type CategoryHue,
   MealIcon, CafeIcon, BeautyIcon, StayIcon, GiftIcon, StoreIcon, LeisureIcon,
 } from '@/components/icons/category-icons'
+// 🧱 2026-10-19 주제 표·색·크기는 서버 첫 화면과 같은 SSOT(`shared/blog-page.ts`) — 여기엔 아이콘 그림만 남는다.
+import { BLOG_COVER, blogCoverTopic, blogCoverBg, blogCoverInk, parseBlogTags, type BlogCoverIcon } from '@/shared/blog-page'
 
 type CoverPost = { slug: string; tags: string; thumbnail_url: string | null }
 type Ico = ComponentType<SVGProps<SVGSVGElement> & { size?: number | string }>
 
-/** 주제 → 아이콘·색. 위에서부터 먼저 맞는 것. 새 주제는 여기 한 줄. */
-const COVER_TOPICS: Array<[RegExp, Ico, CategoryHue, string]> = [
-  [/exchange|교환권|기프티콘/, GiftIcon, 'yellow', '교환권'],
-  [/voucher|이용권/, MealIcon, 'red', '이용권'],
-  [/stay|숙소|펜션/, StayIcon, 'blue', '숙소'],
-  [/beauty|미용|뷰티/, BeautyIcon, 'pink', '뷰티'],
-  [/dongne|동네딜|지역/, StoreIcon, 'green', '동네딜'],
-  [/linkshop|유어샵|쇼핑몰|business|사업자|판매/, StoreIcon, 'teal', '유어샵'],
-  [/cafe|카페|커피/, CafeIcon, 'orange', '카페'],
-  [/experience|체험|액티비티/, LeisureIcon, 'purple', '체험'],
-]
-
-const parseTags = (raw: string): string[] => { try { return JSON.parse(raw) } catch { return [] } }
+const ICONS: Record<BlogCoverIcon, Ico> = {
+  gift: GiftIcon as Ico, meal: MealIcon as Ico, stay: StayIcon as Ico, beauty: BeautyIcon as Ico,
+  store: StoreIcon as Ico, cafe: CafeIcon as Ico, leisure: LeisureIcon as Ico,
+}
 
 export function blogCover(slug: string, tags: string[]) {
-  const hay = `${slug} ${tags.join(' ')}`.toLowerCase()
-  const hit = COVER_TOPICS.find(([re]) => re.test(hay))
-  const [, Icon, hue, label] = hit ?? [null, MealIcon, 'blue' as CategoryHue, '유어딜']
-  return { Icon: Icon as Ico, hue: hue as CategoryHue, label }
+  const { icon, hue, label } = blogCoverTopic(slug, tags)
+  return { Icon: ICONS[icon], hue, label }
 }
 
 export function CoverImg({ post, className, variant = 'thumb' }: { post: CoverPost; className: string; variant?: 'hero' | 'thumb' }) {
-  const tags = parseTags(post.tags)
+  const tags = parseBlogTags(post.tags)
   if (post.thumbnail_url) {
     return <img src={post.thumbnail_url} alt="" className={`${className} object-cover`} loading="lazy" />
   }
   const { Icon, hue, label } = blogCover(post.slug, tags)
   const big = variant === 'hero'
-  const c = CATEGORY_PALETTE[hue]
   return (
-    <div className={`${className} relative overflow-hidden flex items-center justify-center`} style={{ backgroundColor: `${c.main}14` }}>
-      <Icon size={big ? 88 : 40} aria-hidden />
+    <div className={`${className} ${BLOG_COVER.box}`} style={{ backgroundColor: blogCoverBg(hue) }}>
+      <Icon size={big ? BLOG_COVER.heroIcon : BLOG_COVER.thumbIcon} aria-hidden />
       {big && (
-        <span className="absolute bottom-3.5 left-4 text-[12px] font-extrabold" style={{ color: c.dark }}>유어딜 · {label}</span>
+        <span className={BLOG_COVER.label} style={{ color: blogCoverInk(hue) }}>유어딜 · {label}</span>
       )}
     </div>
   )

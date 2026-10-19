@@ -18,6 +18,7 @@ import { SectionTitle, ListRow } from '@/pages/user-profile/list-grammar'
 import { readRecentlyViewed } from '@/components/group-buy/RecentlyViewedStrip'
 import { useTheme, type ThemeMode } from '@/shared/stores/useTheme'
 import DealMiniCard from '@/components/deal/DealMiniCard'
+import { GUEST_CLS, GUEST_COPY, GUEST_MY_MASCOT } from '@/shared/guest-page'
 import GuestKakaoButton from './GuestKakaoButton'
 
 const ROW_ICON = 18
@@ -35,31 +36,31 @@ export default function GuestMyPage() {
   }[mode]
 
   const stats = [
-    t('guest.my.statDeal', { defaultValue: '보유 딜' }),
-    t('guest.my.statPass', { defaultValue: '내 이용권' }),
-    t('guest.my.statWish', { defaultValue: '찜한 가게' }),
+    t('guest.my.statDeal', { defaultValue: GUEST_COPY.my.stats[0] }),
+    t('guest.my.statPass', { defaultValue: GUEST_COPY.my.stats[1] }),
+    t('guest.my.statWish', { defaultValue: GUEST_COPY.my.stats[2] }),
   ]
 
   return (
-    <div className="min-h-[100dvh] bg-warm pb-8">
+    <div className={GUEST_CLS.root}>
       <SEO title={t('userProfile.docTitle')} description={t('userProfile.seoDesc')} url="/user/profile" noindex />
-      <h1 className="px-4 pt-4 pb-2 text-[17px] font-bold tracking-tight text-gray-900 dark:text-white">
-        {t('guest.my.title', { defaultValue: '마이' })}
+      <h1 className={GUEST_CLS.title}>
+        {t('guest.my.title', { defaultValue: GUEST_COPY.my.title })}
       </h1>
 
-      <section className="mx-4 mt-2 rounded-2xl bg-surface shadow-lift p-5" data-guest="my">
-        <div className="flex items-center gap-4">
-          <Udal mood="hello" size={56} />
-          <div className="min-w-0">
-            <p className="text-[17px] font-bold text-gray-900 dark:text-white">{t('guest.my.hello', { defaultValue: '반가워요!' })}</p>
-            <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{t('guest.my.helloSub', { defaultValue: '산 이용권·딜·찜한 가게를 한곳에서' })}</p>
+      <section className={GUEST_CLS.card} data-guest="my">
+        <div className={GUEST_CLS.myHead}>
+          <Udal mood="hello" size={GUEST_MY_MASCOT.width} />
+          <div className={GUEST_CLS.myHeadText}>
+            <p className={GUEST_CLS.myHello}>{t('guest.my.hello', { defaultValue: GUEST_COPY.my.hello })}</p>
+            <p className={GUEST_CLS.myHelloSub}>{t('guest.my.helloSub', { defaultValue: GUEST_COPY.my.helloSub })}</p>
           </div>
         </div>
-        <div className="mt-4 grid grid-cols-3 border-t border-rule pt-4 text-center">
+        <div className={GUEST_CLS.myStats}>
           {stats.map((label) => (
             <div key={label}>
-              <p className="text-[17px] font-bold text-gray-400 dark:text-gray-500" aria-hidden="true">-</p>
-              <p className="mt-1 text-[12px] text-gray-500 dark:text-gray-400">{label}</p>
+              <p className={GUEST_CLS.myStatValue} aria-hidden="true">-</p>
+              <p className={GUEST_CLS.myStatLabel}>{label}</p>
             </div>
           ))}
         </div>

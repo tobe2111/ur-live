@@ -108,10 +108,15 @@ describe('⑤ 적용 표면 — 서버가 첫 화면을 그리는 곳(폰)만', 
   it.each(['/', '/pass/2919', '/group-buy/2888', '/vouchers/2192', '/u/jiwon1228', '/vouchers', '/stays/2887', '/stays'])('적용: %s', (p) => {
     expect(cssFirstApplies(p, PHONE)).toBe(true)
   })
-  it.each(['/map', '/browse', '/u/me', '/u/jiwon1228/p/2887', '/user/profile', '/seller', '/admin'])(
+  it.each(['/map', '/browse', '/u/jiwon1228/p/2887', '/seller', '/admin'])(
     '미적용(첫 화면이 스크립트에 달림 — 실측상 나빠진다): %s', (p) => {
       expect(cssFirstApplies(p, PHONE)).toBe(false)
     })
+  // 🚪 2026-10-19 로그인 전 탭 셋은 서버가 그린다 — 단 세션 쿠키가 있으면(로그인) 그리지 않으므로 미적용.
+  it.each(['/u/me', '/user/profile', '/my-vouchers'])('로그인 전 탭: %s — 비로그인 적용 · 로그인 미적용', (p) => {
+    expect(cssFirstApplies(p, PHONE)).toBe(true)
+    expect(cssFirstApplies(p, PHONE, true)).toBe(false)
+  })
   it('PC 브라우저엔 걸지 않는다(서버가 PC 첫 화면을 안 그린다)', () => {
     expect(cssFirstApplies('/', PC)).toBe(false)
     expect(cssFirstApplies('/pass/2919', PC)).toBe(false)
@@ -122,7 +127,7 @@ describe('④ 워커 배선', () => {
   const worker = stripComments(readFileSync('src/worker/index.ts', 'utf-8'))
   const mod = stripComments(readFileSync('src/worker/utils/css-first-boot.ts', 'utf-8'))
   it('HTML 재작성기가 applyCssFirstBoot 로 시작하고, 적용 여부는 cssFirstApplies 한 곳이 정한다', () => {
-    expect(worker).toMatch(/const cssFirst = cssFirstApplies\(url\.pathname, c\.req\.header\('user-agent'\) \|\| ''\);/)
+    expect(worker).toMatch(/const cssFirst = cssFirstApplies\(url\.pathname, c\.req\.header\('user-agent'\) \|\| '', authed\);/)
     expect(worker).toMatch(/let rb = applyCssFirstBoot\(new HTMLRewriter\(\), nonce, cssFirst\)/)
   })
   it('워커가 넣는 라우트 청크도 같은 판정(cssFirst)으로 rel 을 고른다 — 갈리면 프리로드가 영영 안 풀리거나 CSS 와 다시 다툰다', () => {
@@ -235,6 +240,9 @@ describe('⑤-2 서버가 그리는 첫 화면 = CSS 먼저 적용 표면 (2026-
     'src/worker/utils/stay-detail-ssr-body.ts': '/stays/2887',
     'src/worker/utils/vouchers-first-screen.ts': '/vouchers',
     'src/worker/utils/stays-first-screen.ts': '/stays', // 2026-10-19 — 숙소 목록도 서버 첫 화면을 얻었다
+    'src/worker/utils/blog-detail-first-screen.ts': '/blog/what-is-urdeal', // 2026-10-19 — 블로그 상세도
+    'src/worker/utils/blog-list-first-screen.ts': '/blog',
+    'src/worker/utils/guest-first-screen.ts': '/my-vouchers', // 2026-10-19 — 로그인 전 탭 셋
   }
   it('ROOTS 의 모든 첫 화면 모듈에 대표 경로가 있다(새 첫 화면이 생기면 여기서 멈춘다)', async () => {
     // @ts-expect-error — .mjs 생성기(타입 없음)

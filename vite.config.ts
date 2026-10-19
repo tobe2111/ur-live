@@ -563,6 +563,10 @@ export default defineConfig({
           // 앱 유틸: src/utils/, src/hooks/, src/lib/ — App 전체에 공유되지만 별도 캐싱
           if (id.includes('/src/utils/') || id.includes('/src/hooks/') || id.includes('/src/lib/')) return 'app-utils'
           // 기능 모듈 API — seller/admin/agency/auth 기능 코드 (대시보드에서만 사용)
+          // 📝 2026-10-19: 블로그 본문 렌더러·커버(`features/blog/`)와 서버 첫 화면과 같이 쓰는 상수(`shared/blog-page`)는
+          //   블로그 화면만 쓴다 — `app-features` 에 섞이면 그 봉투를 받는 마이(dash:my)까지 블로그 코드를 받는다
+          //   (surface-budgets 가 잡았다: 상수 이전으로 app-features +1.6KB → 마이·블로그 상세 예산 초과).
+          if (id.includes('/src/features/blog/') || id.includes('/src/shared/blog-page')) return 'app-blog'
           if (id.includes('/src/features/')) return 'app-features'
           // 라우트 그룹 정의 파일 — seller/admin/agency 라우트 (큰 Route 트리)
           // ⚡ 2026-10-12 어드민 라우트 표는 App 이 `/admin/*` 에서 lazy 로 받는다 — 같은 봉투면 소비자 첫 방문이 받는다.

@@ -57,9 +57,14 @@ export function hrefOfPreloadTag(tag: string | null | undefined): string {
 
 /**
  * 응답 헤더에 싣는다. 같은 출처 경로만(`/` 로 시작, `//` 아님) — 외부 주소·이상한 값은 헤더를 깨므로 버린다.
- * `<` `>` `,` `;` 가 섞이면 Link 헤더 문법이 깨진다 → 그 경우도 버린다(cfImage 주소엔 원래 없다).
+ * `<` `>` `;` · 공백이 섞이면 Link 헤더 문법이 깨진다 → 그 경우 버린다.
+ *
+ * 🩸 2026-10-19 배포 후 실측 — 첫 판이 `,` 도 버려서 **한 번도 실리지 않았다.** cfImage 주소는 옵션을 쉼표로
+ *   잇는다(`/cdn-cgi/image/width=900,quality=85,…/`) — 즉 실제로 넘어오는 값은 **전부** 쉼표를 품는다.
+ *   시험 픽스처가 옵션 하나짜리(`width=1100`)라 초록이었다. `<…>` 안의 쉼표는 Link 문법상 정상이다(RFC 8288 —
+ *   URI-Reference 는 꺾쇠로 감싸므로 값 구분자 쉼표와 섞이지 않는다).
  */
 export function appendLcpLink(h: Headers, href: string): void {
-  if (!href || !href.startsWith('/') || href.startsWith('//') || /[<>,;\s]/.test(href)) return
+  if (!href || !href.startsWith('/') || href.startsWith('//') || /[<>;\s]/.test(href)) return
   h.append('Link', `<${href}>; rel=preload; as=image; fetchpriority=high`)
 }

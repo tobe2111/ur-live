@@ -18,6 +18,7 @@ import { HOME_CARD_IMG_WIDTH_BASE } from '@/shared/home-card-image'
 import GuestKakaoButton from './GuestKakaoButton'
 import GuestBenefits from './GuestBenefits'
 import { usePopularPasses } from './usePopularPasses'
+import { GUEST_CLS, GUEST_COPY } from '@/shared/guest-page'
 
 const ICON = 20
 
@@ -27,24 +28,24 @@ export default function GuestPassPage() {
   const picks = items.slice(0, 4)
 
   return (
-    <div className="min-h-[100dvh] bg-warm pb-8">
+    <div className={GUEST_CLS.root}>
       <SEO title={t('voucher.seoTitle')} description={t('voucher.seoDescription')} url="/my-vouchers" noindex />
-      <h1 className="px-4 pt-4 pb-2 text-[17px] font-bold tracking-tight text-gray-900 dark:text-white">
-        {t('guest.pass.title', { defaultValue: '내 이용권' })}
+      <h1 className={GUEST_CLS.title}>
+        {t('guest.pass.title', { defaultValue: GUEST_COPY.pass.title })}
       </h1>
 
-      <section className="mx-4 mt-2 rounded-2xl bg-surface shadow-lift p-5" data-guest="pass">
-        <h2 className="text-[24px] font-bold leading-tight tracking-tight text-gray-900 dark:text-white">
-          {t('guest.pass.headline1', { defaultValue: '동네 가게,' })}<br />
-          {t('guest.pass.headline2', { defaultValue: '미리 사면 더 싸요' })}
+      <section className={GUEST_CLS.card} data-guest="pass">
+        <h2 className={GUEST_CLS.headline}>
+          {t('guest.pass.headline1', { defaultValue: GUEST_COPY.pass.headline1 })}<br />
+          {t('guest.pass.headline2', { defaultValue: GUEST_COPY.pass.headline2 })}
         </h2>
         <div className="mt-5">
           <GuestBenefits
             items={[
-              { icon: <CouponIcon size={ICON} />, title: t('guest.pass.b1', { defaultValue: '정가보다 할인가로' }), desc: t('guest.pass.b1d', { defaultValue: '가게마다 정해 둔 할인가로 미리 사 둬요' }) },
-              { icon: <ScanIcon size={ICON} />, title: t('guest.pass.b2', { defaultValue: '매장에선 QR만 보여주면 끝' }), desc: t('guest.pass.b2d', { defaultValue: '산 이용권은 여기 지갑에 바로 들어와요' }) },
-              { icon: <WonCoinIcon size={ICON} />, title: t('guest.pass.b3', { defaultValue: '안 쓰면 100% 자동환불' }), desc: t('guest.pass.b3d', { defaultValue: '못 가게 돼도 걱정 없어요' }) },
-              { icon: <GiftBoxIcon size={ICON} />, title: t('guest.pass.b4', { defaultValue: '친구에게 선물하기' }), desc: t('guest.pass.b4d', { defaultValue: '산 이용권을 카톡으로 보낼 수 있어요' }) },
+              { icon: <CouponIcon size={ICON} />, title: t('guest.pass.b1', { defaultValue: GUEST_COPY.pass.benefits[0][0] }), desc: t('guest.pass.b1d', { defaultValue: GUEST_COPY.pass.benefits[0][1] }) },
+              { icon: <ScanIcon size={ICON} />, title: t('guest.pass.b2', { defaultValue: GUEST_COPY.pass.benefits[1][0] }), desc: t('guest.pass.b2d', { defaultValue: GUEST_COPY.pass.benefits[1][1] }) },
+              { icon: <WonCoinIcon size={ICON} />, title: t('guest.pass.b3', { defaultValue: GUEST_COPY.pass.benefits[2][0] }), desc: t('guest.pass.b3d', { defaultValue: GUEST_COPY.pass.benefits[2][1] }) },
+              { icon: <GiftBoxIcon size={ICON} />, title: t('guest.pass.b4', { defaultValue: GUEST_COPY.pass.benefits[3][0] }), desc: t('guest.pass.b4d', { defaultValue: GUEST_COPY.pass.benefits[3][1] }) },
             ]}
           />
         </div>

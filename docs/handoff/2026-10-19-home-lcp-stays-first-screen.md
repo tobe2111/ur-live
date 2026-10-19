@@ -36,12 +36,39 @@ curl -sSI -A "$UA" https://urdeal.kr/pass/2919 | grep -i '^link:'   # 히어로
 
 ## 이번에 틀렸던 판단
 
+- 🩸 **#1929 의 사진 Link 헤더가 배포 후 한 번도 실리지 않았다**(E4 에서 발견, 14:00 KST). `appendLcpLink` 가 `,` 를 금지했는데
+  cfImage 주소는 옵션을 쉼표로 잇는다 → 실제 값은 전부 버려졌다. 시험 픽스처가 옵션 하나짜리(`width=1100`)라 초록이었고,
+  심지어 `'/a,b.jpg'` 를 "버린다" 쪽에 넣어 결함을 고정하고 있었다. #1934 에서 쉼표 허용 + **진짜 빌더 출력**으로 시험
+  (Chromium 이 `<…,…>` 를 그대로 받는 것도 로컬 서버로 확인). ⇒ **값 검증 시험의 픽스처는 손으로 짓지 말고 실제 생성 함수로.**
+
 - 처음 A/B 를 "A 는 라우팅 안 함, B 는 라우팅" 으로 쟀다 — 라우팅(fulfill)된 응답은 회선 흉내를 안 탄다. 둘 다 라우팅하니 차이가 잡음이 됐다 ⇒ **판정은 폭포(출발 시각)로** 했다.
 - 숙소 상세 LCP ~3~4초를 "서버 히어로 ≠ 마운트 슬라이드" 로 의심했는데 같은 사진이었다 — React 마운트 때 LCP 가 재귀속되는 것(실제 지연 아님).
 - 숙소 목록 첫 화면을 catch-all `else` 안 삼항으로 넣었다가 `check-loader-continuity` 가 잡았다 → 별도 `else if` 로.
 - "대표색 POST 2회" 를 중복 호출로 봤는데 실제로는 **응답에 값이 없어서** 생긴 일이었다(보고 자체는 상품당 1회로 막혀 있다).
 
+## 2차 — 지도·블로그 (대표 "지도랑 블로그도 상세히 진행해줘")
+
+5. **블로그 상세·목록 서버 첫 화면** — 종전 서버 본문은 꾸밈 없는 크롤러용 HTML 이라 앱 CSS 를 기다렸다 그려지고 React 가 뜨면 통째로 바뀌었다. 이제 React 와 **같은 클래스 상수**(`shared/blog-page.ts`)로 그린다(`worker/utils/blog-detail-first-screen.ts`·`blog-list-first-screen.ts`, 폰 UA·크롤러만). 본문 마크다운은 `blogMarkdownHtml` 이 `BlogMarkdown` 과 같은 블록 규칙으로 문자열을 만든다(시험이 DOM 트리 대조). 목록은 첫 쪽 밖 글 링크를 `<noscript>` 로 유지. `/blog`·`/blog/:slug` 를 CSS 먼저 표면에 추가 + 첫 화면 CSS ROOTS 에 두 모듈. 박스 대조(라이트·다크, 아이폰13) 전부 일치.
+   - 가드 `blog-detail-first-screen-2026-10-19.test.tsx` + 주입 9건. 커밋 `241bd87`·`1d8035f`.
+6. **표면 청크 미리받기 상한 10 → 16** — 지도·이용권 상세·유어샵·검색·지역이 잘려 SiteFooter 등이 페이지 실행 뒤 직렬로 받아졌다(지도 실측 3.05s). 넘으면 빌드가 이름을 대며 경고.
+7. **지도 시드 새로고침을 타일 뒤로** — 시드로 목록을 그린 직후 같은 page1 을 다시 받아(3.6s) 지도 타일(4.0~7.8s)과 회선을 나눠 썼다. 시드가 있으면 지도는 `ur:map-tiles-loaded` 뒤(백스톱 8초), 그 밖은 load·한가할 때. 시드가 없으면 즉시.
+   - 가드 `map-seed-refresh-deferred-2026-10-19.test.ts` + 주입 3건, 옛 인라인 주입 1건 재조준.
+
+8. **로그인 전 유어샵 탭(`/u/me`) 밀림 CLS 0.39 → 자리 예약** — 예시 진열대가 인기 이용권 응답 뒤에 생기며 혜택·가입 버튼을 425px 밀었다. 같은 `DealRow` 3줄을 `invisible` 로 세운다. 가드 `guest-urshop-reserve-2026-10-19.test.tsx` + 주입 3건.
+9. **PC 교환권 인기 브랜드 줄 밀림 CLS 0.037 → 자리 예약** — 폰엔 `BrandStripReserve` 가 있었는데 PC(우측 그리드 위)는 없었다. 같은 클래스 상수 `PC_BRAND` 로 예약(`VouchersPage` 잠금 — 예약 한 줄 + 클래스 상수화). 가드 `top-chrome-reserve` ④ + 주입 2건.
+   - 같은 실측에서 다른 주요 화면 11곳(폰)·6곳(PC) CLS 는 전부 0.002 이하 — 밀림은 이 둘뿐이었다.
+
+10. **로그인 전 탭 셋 서버 첫 화면** (`/my-vouchers`·`/u/me`·`/user/profile`) — 셋 다 고정 문구(제목·혜택·카카오 버튼)인데 앱 코드가 와야 그려져 첫 그림 2.0~2.5초였다. 워커가 위쪽(제목 + 첫 카드)을 React 와 같은 모양(`shared/guest-page.ts` 문구·클래스 SSOT)으로 그린다. 세션 쿠키가 있으면 안 그리고, 쿠키 없이 기기에 로그인 흔적(`user_id`·`session_login` — `isUserLoggedIn` 과 같은 키)이 있으면 인라인 스크립트가 걷어낸다. CSS 먼저 + 첫 화면 CSS ROOTS 추가.
+   - 박스 대조(아이폰13 라이트·다크): 이용권·마이 전부 일치, 유어샵은 그리는 제목·부제 일치.
+   - A/B(문서 로컬 제공·느린 4G·CPU 4배, 4회 중앙값): 제목이 보이는 시각 이용권 **2.11 → 0.15s** · 유어샵 **2.07 → 0.15s**(첫 화면 CSS 흉내 포함). 첫 화면 CSS 없이도 2.05 → 1.83s.
+   - 가드 `guest-first-screen-2026-10-19.test.tsx`(진짜 페이지를 렌더해 구조·문구 대조) + 주입 5건. `css-first-boot` 시험 재조준(세 경로는 비로그인 적용·로그인 미적용).
+
+### 2차 E4 (배포 후)
+- `curl -A "$UA" https://urdeal.kr/blog/<slug> | grep -c ur-first-screen` → 1, `/blog` 도 1.
+- `curl -A "$UA" https://urdeal.kr/my-vouchers | grep -c ur-first-screen` → 1(쿠키 없이) · `-H 'Cookie: ur_session=x'` 면 0. `/u/me`·`/user/profile` 도 같다.
+- 폭포: `/map` 에서 `/api/group-buy/products` 가 타일 **뒤**에 한 번만 나가는지 · SiteFooter 류 청크가 HTML 직후 modulepreload 로 출발하는지.
+
 ## 남은 것
 
-- 지도(`/map`) 첫 화면 — 이번 범위 밖.
-- 블로그 상세 LCP — 이번 범위 밖.
+- 지도 시트 서버 첫 화면 — 안 했다. CSS 먼저는 첫 화면 없이 지도에 걸면 나빠졌다(10-12 실측)라 첫 화면과 짝으로만 가능. 별건.
+- 지도 타일 9장(41~73KB)이 LCP — 화질 유지 규칙상 줄이지 않는다.

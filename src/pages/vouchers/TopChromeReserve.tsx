@@ -47,12 +47,38 @@ export function BrandStripReserve() {
   return (
     <div className="ur-content-wide px-4 lg:px-8 pt-2 pb-3 invisible" aria-hidden="true">
       <div className="flex gap-2 overflow-x-auto scrollbar-hide py-1 -mx-1 px-1">
-        {/* `BrandChip` 과 같은 치수: w-12 h-12 타일 + gap-1 + text-[12px] 라벨 */}
-        <span className="flex flex-col items-center gap-1 shrink-0">
-          <span className="w-12 h-12 rounded-2xl block" />
-          <span className="text-[12px] max-w-[56px]">&nbsp;</span>
-        </span>
+        <BrandChipReserve />
       </div>
+    </div>
+  )
+}
+
+/** `BrandChip` 과 같은 치수: w-12 h-12 타일 + gap-1 + text-[12px] 라벨. */
+function BrandChipReserve() {
+  return (
+    <span className="flex flex-col items-center gap-1 shrink-0">
+      <span className="w-12 h-12 rounded-2xl block" />
+      <span className="text-[12px] max-w-[56px]">&nbsp;</span>
+    </span>
+  )
+}
+
+/**
+ * 🖥️ PC 인기 브랜드 줄(우측 그리드 위) — 클래스는 진짜 블록과 **같은 상수**다.
+ * 2026-10-19 라이브 실측(1440px, 첫 방문): 카테고리 응답이 오는 순간 이 줄(139px)이 끼어들며
+ * 상품 그리드가 통째로 내려갔다(CLS 0.037). 폰은 `BrandStripReserve` 로 막혀 있었고 PC 만 비어 있었다.
+ */
+export const PC_BRAND = {
+  wrap: 'mb-5 pb-4 border-b border-gray-100 dark:border-[#2C2F35]',
+  title: 'text-[12px] font-bold text-gray-400 dark:text-gray-500 mb-2',
+  row: 'flex gap-3 overflow-x-auto scrollbar-hide py-1',
+} as const
+
+export function PcBrandStripReserve() {
+  return (
+    <div className={`${PC_BRAND.wrap} invisible`} aria-hidden="true">
+      <h3 className={PC_BRAND.title}>&nbsp;</h3>
+      <div className={PC_BRAND.row}><BrandChipReserve /></div>
     </div>
   )
 }

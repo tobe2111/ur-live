@@ -79,8 +79,16 @@ describe('③ 헤더 값 검증', () => {
   it('같은 출처 경로는 preload 헤더가 된다', () => {
     expect(links('/cdn-cgi/image/width=1100/https://x/a.jpg')).toBe('</cdn-cgi/image/width=1100/https://x/a.jpg>; rel=preload; as=image; fetchpriority=high')
   })
-  it.each(['', 'https://evil.example/a.jpg', '//evil.example/a.jpg', '/a.jpg>; rel=preload', '/a b.jpg', '/a,b.jpg'])('버린다: %s', (v) => {
+  it.each(['', 'https://evil.example/a.jpg', '//evil.example/a.jpg', '/a.jpg>; rel=preload', '/a b.jpg', '/a;b.jpg'])('버린다: %s', (v) => {
     expect(links(v)).toBeNull()
+  })
+  it('🩸 실제 사진 주소(옵션을 쉼표로 잇는 cdn-cgi)가 헤더가 된다 — 첫 판은 이걸 전부 버렸다', () => {
+    // 픽스처를 손으로 짓지 않는다 — 진짜 빌더가 내는 주소로 잰다(옵션 하나짜리 픽스처라 첫 판이 초록이었다).
+    const seed = JSON.stringify({ success: true, strip_banners: [{ id: 1, title: 'x', image_url: 'https://media.ur-team.com/uploads/a.webp', banner_slot: 'strip' }] })
+    const href = homeLcpImage(seed)
+    expect(href, '빌더가 빈 값을 냈다 — 픽스처 모양을 확인할 것').not.toBe('')
+    expect(href).toContain(',')
+    expect(links(href)).toBe(`<${href}>; rel=preload; as=image; fetchpriority=high`)
   })
 })
 
