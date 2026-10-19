@@ -10,28 +10,28 @@ import { Hono } from 'hono'
 import { requireAuth, getCurrentUser } from '../middleware/auth'
 import { rateLimit } from '../middleware/rate-limit'
 import type { Env } from '../types/env'
-import { ensureAcquisitionTables, normalizeAcqSource } from '../utils/acquisition'
+import { ensureAcquisitionTables, normalizeAcqSource, loadUtmReport, reportTokenOk } from '../utils/acquisition'
 import { recordInflowClick, bindInflowClicksToUser, isValidAnonId, normalizeRefId } from '../utils/inflow-clicks'
 import { resolveUserIdString } from '../utils/resolve-user-id'
 
 export const acquisitionRoutes = new Hono<{ Bindings: Env }>()
 
 acquisitionRoutes.post('/landing', rateLimit({ action: 'acq_landing', max: 10, windowSec: 60 }), async (c) => {
-  const body = await c.req.json<{ src?: string; code?: string }>().catch(() => ({} as Record<string, never>))
+  const body = await c.req.json<{ src?: string; code?: string; campaign?: string; content?: string }>().catch(() => ({} as Record<string, never>))
   const src = normalizeAcqSource(body.src)
   if (!src) return c.json({ success: false, error: '소스 식별자는 소문자/숫자/하이픈 1~40자' }, 400)
   const code = /^\d{5,12}$/.test(String(body.code || '')) ? String(body.code) : null
   const { DB } = c.env
   await ensureAcquisitionTables(DB)
-  await DB.prepare('INSERT INTO acquisition_landings (src, region_code) VALUES (?, ?)')
-    .bind(src, code).run().catch(() => null)
+  await DB.prepare('INSERT INTO acquisition_landings (src, region_code, utm_campaign, utm_content) VALUES (?, ?, ?, ?)')
+    .bind(src, code, normalizeAcqSource(body.campaign), normalizeAcqSource(body.content)).run().catch(() => null)
   return c.json({ success: true })
 })
 
 acquisitionRoutes.post('/claim', rateLimit({ action: 'acq_claim', max: 10, windowSec: 300 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
-  const body = await c.req.json<{ src?: string; code?: string; landed_at?: string }>().catch(() => ({} as Record<string, never>))
+  const body = await c.req.json<{ src?: string; code?: string; landed_at?: string; campaign?: string; content?: string }>().catch(() => ({} as Record<string, never>))
   const src = normalizeAcqSource(body.src)
   if (!src) return c.json({ success: false, error: '소스 식별자는 소문자/숫자/하이픈 1~40자' }, 400)
   const code = /^\d{5,12}$/.test(String(body.code || '')) ? String(body.code) : null
@@ -41,9 +41,9 @@ acquisitionRoutes.post('/claim', rateLimit({ action: 'acq_claim', max: 10, windo
   const { DB } = c.env
   await ensureAcquisitionTables(DB)
   const r = await DB.prepare(
-    `INSERT OR IGNORE INTO user_acquisition (user_id, src, region_code, landed_at)
-     VALUES (?, ?, ?, COALESCE(?, datetime('now')))`,
-  ).bind(String(user.id), src, code, landedAt).run().catch(() => null)
+    `INSERT OR IGNORE INTO user_acquisition (user_id, src, region_code, landed_at, utm_campaign, utm_content)
+     VALUES (?, ?, ?, COALESCE(?, datetime('now')), ?, ?)`,
+  ).bind(String(user.id), src, code, landedAt, normalizeAcqSource(body.campaign), normalizeAcqSource(body.content)).run().catch(() => null)
   return c.json({ success: true, data: { claimed: (r?.meta?.changes ?? 0) > 0 } })
 })
 
@@ -71,4 +71,14 @@ acquisitionRoutes.post('/inflow/bind', rateLimit({ action: 'inflow_bind', max: 2
   const uid = await resolveUserIdString(c.env.DB, user.id, (user as { isDbId?: boolean }).isDbId)
   const bound = await bindInflowClicksToUser(c.env.DB, body.anon_id!, uid)
   return c.json({ success: true, data: { bound } })
+})
+
+// 📣 2026-10-19 주간 SNS 리포트 — GitHub Actions 마케팅 봇이 읽는 UTM 집계(숫자만, 개인정보 없음).
+//   인증: `Authorization: Bearer <MARKETING_REPORT_TOKEN>` (Worker 시크릿 = Actions 시크릿 같은 값). 미설정이면 닫혀 있다(503).
+acquisitionRoutes.get('/utm-report', rateLimit({ action: 'acq_utm_report', max: 10, windowSec: 300 }), async (c) => {
+  if (!c.env.MARKETING_REPORT_TOKEN) return c.json({ success: false, error: 'report token not configured' }, 503)
+  if (!reportTokenOk(c.env.MARKETING_REPORT_TOKEN, c.req.header('Authorization'))) return c.json({ success: false, error: 'unauthorized' }, 401)
+  const days = Number(c.req.query('days') || 7)
+  const rows = await loadUtmReport(c.env.DB, days)
+  return c.json({ success: true, data: { days, rows } })
 })

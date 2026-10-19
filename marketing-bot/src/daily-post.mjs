@@ -1,5 +1,6 @@
 // 매일 게시: Threads 텍스트 1개 + Instagram 이미지 캡션 1개.
-// 트랙 비율(data/content-mix.json): 사장님 입점 60% · 인플루언서/크리에이터 모집 25% · 소비자 딜 15%.
+// 트랙 비율: data/mix-state.json(주간 자동조정, 범위 내) → 없으면 data/content-mix.json 고정 60/25/15.
+import { pickTrackByWeights } from './attribution.mjs';
 import { DRY, log, readJson, writeJson, claude, threads, igPublish, fbPagePost, utmLink, productImage, kstNow, THREADS_USER_ID, PARTNER_FACTS } from './lib.mjs';
 
 const schedule = readJson('data/schedule.json', {});
@@ -38,7 +39,9 @@ export function pickTrack(idx, cycle = mix.cycle) {
   for (const [name, w] of order) { if (r < w) return name; r -= w; }
   return 'merchant';
 }
-const track = process.env.TRACK || pickTrack(dayIdx);
+// 주간 리뷰가 조정한 가중치(data/mix-state.json)가 있으면 그걸로, 없으면 고정 20일 주기
+const mixState = readJson('data/mix-state.json', null);
+const track = process.env.TRACK || (mixState?.weights ? pickTrackByWeights(dayIdx, mixState.weights) : pickTrack(dayIdx));
 const T = mix.tracks?.[track] || {};
 const isPromo = track === 'consumer';
 const product = products[dayIdx % Math.max(products.length, 1)];

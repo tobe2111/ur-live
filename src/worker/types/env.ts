@@ -111,6 +111,8 @@ export interface Env {
 
   // ---- Email (Resend) ----
   RESEND_API_KEY?: string;
+  /** 📣 2026-10-19 SNS 봇 주간 리포트가 /api/acquisition/utm-report 를 읽는 토큰(16자 이상). 미설정이면 엔드포인트 닫힘. */
+  MARKETING_REPORT_TOKEN?: string;
   RESEND_FROM?: string;
 
   // ---- Monitoring ----

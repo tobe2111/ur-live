@@ -50,7 +50,21 @@ export async function ensureAcquisitionTables(DB: D1Database): Promise<void> {
     `).run()
     await DB.prepare('CREATE INDEX IF NOT EXISTS idx_user_acq_src ON user_acquisition(src)').run().catch(() => {})
   } catch { /* exists */ }
+  await addUtmColumns(DB, 'acquisition_landings')
+  await addUtmColumns(DB, 'user_acquisition')
 }
+
+/**
+ * 📣 2026-10-19 SNS 봇 UTM 귀속 — src(=utm_source, 플랫폼)만으로는 "어느 카테고리 글이 데려왔나"를 못 센다.
+ * utm_campaign(카테고리)·utm_content(글 id) 두 칸을 덧붙인다. 이미 있으면 ALTER 가 실패하고 그대로 넘어간다(멱등).
+ */
+async function addUtmColumns(DB: D1Database, table: 'acquisition_landings' | 'user_acquisition' | 'acquisition_conversions'): Promise<void> {
+  for (const col of ['utm_campaign', 'utm_content']) {
+    await DB.prepare(`ALTER TABLE ${table} ADD COLUMN ${col} TEXT`).run().catch(() => { /* exists */ })
+  }
+}
+
+export interface AcqUtm { campaign?: unknown; content?: unknown }
 
 /**
  * 첫 구매 스냅샷 — 구매 확정 시 호출 (멱등: first_order_at IS NULL 인 첫 1회만 기록).
@@ -78,7 +92,7 @@ export async function markAcquisitionFirstPurchase(
 //   비로그인 공개 폼이라 그 사슬에 안 걸려서, 소셜 글이 신청을 몇 건 만들었는지 셀 방법이 없었다.
 //   ⇒ 전환 순간 first-touch 소스를 한 줄 남긴다. 개인정보는 싣지 않는다(소스·종류·시각뿐).
 
-export const CONVERSION_KINDS = ['creator_apply'] as const
+export const CONVERSION_KINDS = ['creator_apply', 'store_apply'] as const
 export type ConversionKind = typeof CONVERSION_KINDS[number]
 
 const _convEnsured = new WeakSet<D1Database>()
@@ -96,15 +110,17 @@ export async function ensureConversionTable(DB: D1Database): Promise<void> {
     `).run()
     await DB.prepare('CREATE INDEX IF NOT EXISTS idx_acq_conv_src ON acquisition_conversions(src, kind)').run().catch(() => {})
   } catch { /* exists */ }
+  await addUtmColumns(DB, 'acquisition_conversions')
 }
 
 /** fail-soft — 전환 기록이 실패해도 본 동작(신청 접수)은 절대 막지 않는다. 소스가 무효면 아무것도 안 한다. */
-export async function recordAcquisitionConversion(DB: D1Database, rawSrc: unknown, kind: ConversionKind): Promise<void> {
+export async function recordAcquisitionConversion(DB: D1Database, rawSrc: unknown, kind: ConversionKind, utm: AcqUtm = {}): Promise<void> {
   try {
     const src = normalizeAcqSource(rawSrc)
     if (!src || !(CONVERSION_KINDS as readonly string[]).includes(kind)) return
     await ensureConversionTable(DB)
-    await DB.prepare('INSERT INTO acquisition_conversions (src, kind) VALUES (?, ?)').bind(src, kind).run()
+    await DB.prepare('INSERT INTO acquisition_conversions (src, kind, utm_campaign, utm_content) VALUES (?, ?, ?, ?)')
+      .bind(src, kind, normalizeAcqSource(utm.campaign), normalizeAcqSource(utm.content)).run()
   } catch { /* fail-soft */ }
 }
 
@@ -113,6 +129,60 @@ export async function recordAcquisitionConversion(DB: D1Database, rawSrc: unknow
  * (`influencer-apply.routes`)가 `env.DB` 를 직접 만지지 않게 하려는 것이다(`ads-leads-db.test` R1 —
  * 리드 테이블을 만지는 파일에서 맨 `env.DB` 는 "리드 DB 를 잘못 고른 것" 과 구분이 안 된다).
  */
-export async function recordAcquisitionConversionMain(env: { DB: D1Database }, rawSrc: unknown, kind: ConversionKind): Promise<void> {
-  await recordAcquisitionConversion(env.DB, rawSrc, kind)
+export async function recordAcquisitionConversionMain(env: { DB: D1Database }, rawSrc: unknown, kind: ConversionKind, utm: AcqUtm = {}): Promise<void> {
+  await recordAcquisitionConversion(env.DB, rawSrc, kind, utm)
+}
+
+/**
+ * 📣 2026-10-19 주간 SNS 리포트용 UTM 집계 — 소스(플랫폼)×캠페인(카테고리) 별 랜딩·가입·입점 신청·크리에이터 신청.
+ * 집계 숫자만(개인정보 없음). utm_campaign 이 있는 행만 센다(봇 글이 아닌 유입은 빠진다).
+ */
+export const UTM_REPORT_SQL = {
+  landings: `SELECT src, utm_campaign AS campaign, COUNT(*) AS n FROM acquisition_landings
+              WHERE utm_campaign IS NOT NULL AND datetime(created_at) >= datetime('now', ?) GROUP BY src, utm_campaign`,
+  signups: `SELECT src, utm_campaign AS campaign, COUNT(*) AS n FROM user_acquisition
+             WHERE utm_campaign IS NOT NULL AND datetime(claimed_at) >= datetime('now', ?) GROUP BY src, utm_campaign`,
+  storeApplies: `SELECT src, utm_campaign AS campaign, COUNT(*) AS n FROM acquisition_conversions
+                  WHERE kind = 'store_apply' AND utm_campaign IS NOT NULL AND datetime(created_at) >= datetime('now', ?) GROUP BY src, utm_campaign`,
+  creatorApplies: `SELECT src, utm_campaign AS campaign, COUNT(*) AS n FROM acquisition_conversions
+                    WHERE kind = 'creator_apply' AND utm_campaign IS NOT NULL AND datetime(created_at) >= datetime('now', ?) GROUP BY src, utm_campaign`,
+} as const
+
+export interface UtmReportRow { source: string; campaign: string; landings: number; signups: number; store_applies: number; creator_applies: number }
+
+/** 순수 — 네 집계를 (source, campaign) 한 표로. */
+export function mergeUtmReport(parts: Record<keyof typeof UTM_REPORT_SQL, Array<{ src: string; campaign: string; n: number }>>): UtmReportRow[] {
+  const map = new Map<string, UtmReportRow>()
+  const field = { landings: 'landings', signups: 'signups', storeApplies: 'store_applies', creatorApplies: 'creator_applies' } as const
+  for (const [k, rows] of Object.entries(parts) as Array<[keyof typeof field, Array<{ src: string; campaign: string; n: number }>]>) {
+    for (const r of rows) {
+      const key = `${r.src}|${r.campaign}`
+      let row = map.get(key)
+      if (!row) { row = { source: r.src, campaign: r.campaign, landings: 0, signups: 0, store_applies: 0, creator_applies: 0 }; map.set(key, row) }
+      row[field[k]] += Number(r.n) || 0
+    }
+  }
+  return [...map.values()].sort((a, b) => a.campaign.localeCompare(b.campaign) || a.source.localeCompare(b.source))
+}
+
+export async function loadUtmReport(DB: D1Database, days: number): Promise<UtmReportRow[]> {
+  await ensureAcquisitionTables(DB)
+  await ensureConversionTable(DB)
+  const since = `-${Math.max(1, Math.min(90, Math.floor(days) || 7))} days`
+  const q = async (sql: string) =>
+    (await DB.prepare(sql).bind(since).all<{ src: string; campaign: string; n: number }>().catch(() => ({ results: [] as Array<{ src: string; campaign: string; n: number }> }))).results || []
+  const [landings, signups, storeApplies, creatorApplies] = await Promise.all([
+    q(UTM_REPORT_SQL.landings), q(UTM_REPORT_SQL.signups), q(UTM_REPORT_SQL.storeApplies), q(UTM_REPORT_SQL.creatorApplies),
+  ])
+  return mergeUtmReport({ landings, signups, storeApplies, creatorApplies })
+}
+
+/** 리포트 토큰 비교 — 길이 노출 외 상수 시간. 토큰 미설정이면 늘 false(엔드포인트 닫힘). */
+export function reportTokenOk(expected: string | undefined, header: string | undefined | null): boolean {
+  if (!expected || expected.length < 16) return false
+  const got = String(header || '').replace(/^Bearer\s+/i, '')
+  if (got.length !== expected.length) return false
+  let diff = 0
+  for (let i = 0; i < got.length; i++) diff |= got.charCodeAt(i) ^ expected.charCodeAt(i)
+  return diff === 0
 }

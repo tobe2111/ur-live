@@ -37,6 +37,7 @@ import { registerVoucherDraftRoutes } from './seller-voucher-draft.routes'
 import { pickStoreChannel, registerStoreChannelRoutes } from './seller-store-channel.routes'
 import { registerStoreClaimRoutes } from './seller-store-claims.routes'; import { registerStoreReportRoutes } from './seller-store-reports.routes'
 import { registerBrokerTermsRoutes, prepareBrokerTerms, finalizeBrokeredStore } from './seller-broker-terms.routes' // 💸🔑 2026-09-19 요율·승계 코드
+import { recordAcquisitionConversion } from '@/worker/utils/acquisition'
 import { storeTermsError, afterStoreCreated } from './store-signup-extras' // 📜🤝 2026-10-10 약관 동의 + 영입 귀속(유일한 가입 문)
 import { PERSONAL_BROKER_SIGNUP_DISABLED } from '@/shared/feature-flags'; import { BROKERED_VIA_AGENCY_MSG } from '@/shared/agency-copy'; import { normalizeKakaoPlaceUrl, kakaoPlaceUrlFromId } from '@/shared/kakao-place-url'
 
@@ -340,6 +341,7 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 60, windowSec: 36
       referrer_user_id?: string
       broker_share_pct?: unknown; influencer_pct_cap?: unknown // 💸 2026-09-19 중개 매장 두 요율(결재 2026-09-16)
       terms_agreed_version?: string // 📜 2026-10-10 판매자 이용약관 동의(옛 가입 문과 같은 검증)
+      acq?: { src?: unknown; campaign?: unknown; content?: unknown } // 📣 2026-10-19 SNS UTM first-touch(입점 신청 귀속)
     }>().catch(() => ({} as any))
 
     const name = String(b.name || '').trim()
@@ -536,6 +538,7 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 60, windowSec: 36
     await ensureStoreCode(c.env.DB, newSellerId) // 🧾 손님 셀프 사용에 맞출 확인코드 — 대시보드를 안 열어도 생긴다
     const ownerClaimCode = brokerTerms?.ok ? await finalizeBrokeredStore(c.env.DB, newSellerId, userId, brokerTerms) : null // 🔑 요율 저장 + 사장님 승계 코드(`/store/find?code=`)
     await afterStoreCreated(c.env.DB, { sellerId: newSellerId, userId, termsVersion: String(b.terms_agreed_version), managerPhone, ip: c.req.header('CF-Connecting-IP') || null })
+    if (b.acq?.src) await recordAcquisitionConversion(c.env.DB, b.acq.src, 'store_apply', { campaign: b.acq.campaign, content: b.acq.content }) // 📣 fail-soft — 등록 성공 뒤에만 1건
     return c.json({
       success: true,
       data: {
