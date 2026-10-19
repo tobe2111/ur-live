@@ -74,8 +74,12 @@ describe('② 치수를 정하는 클래스가 진짜 블록과 같다', () => {
 
 describe('③ 자리만 잡고 아무것도 보이지 않는다', () => {
   it('두 예약 다 invisible + aria-hidden', () => {
-    expect(RESERVE.match(/invisible/g)?.length ?? 0).toBeGreaterThanOrEqual(2)
-    expect(RESERVE.match(/aria-hidden="true"/g)?.length ?? 0).toBeGreaterThanOrEqual(2)
+    // 개수 하한이 아니라 **예약 루트마다** 판정한다 — 예약이 셋이 되자(PC 줄 추가) 하한 2 가
+    // 한 곳에서 invisible 이 빠져도 통과했다(2026-10-19 PR CI 주입이 잡았다).
+    const brand = RESERVE.slice(RESERVE.indexOf('export function BrandStripReserve'))
+    expect(brand).toMatch(/^[\s\S]*?return \(\s*<div className="[^"]*\binvisible\b[^"]*" aria-hidden="true">/)
+    expect(RESERVE).toMatch(/<div className=\{`\$\{PC_BRAND\.wrap\} invisible`\} aria-hidden="true">/)
+    expect(RESERVE.match(/aria-hidden="true"/g)?.length ?? 0).toBeGreaterThanOrEqual(3)
   })
 
   // 🔄 2026-10-14: 접힘이 없어졌다 — 예약도 로고 줄을 늘 잡는다(반대 방향 밀림이 생길 상태가 없다).
