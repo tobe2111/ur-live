@@ -561,7 +561,14 @@ export default defineConfig({
           if (id.includes('/src/components/seller/seller-tab-groups')) return 'app-seller-nav'
           if (id.includes('/src/components/seller/seller-primary-nav')) return 'app-seller-nav'
           if (id.includes('/src/components/seller-layout/useSellerNavModel')) return 'app-seller-nav'
-          if (id.includes('/src/shared/seller-approval')) return 'app-seller-nav'
+          // 🪪 2026-10-19 — 승인 상태 키(`seller-approval`, 1.6KB · import 0)는 **app-shared** 로.
+          //   마이 판매 구역의 안내문(`store-status-note`)이 상수 하나를 읽는데 그 파일이 이 색인 봉투에 있어서,
+          //   판매자 마이 첫 화면이 나브 색인 + lucide(10.2) + lucide-desktop 을 통째로 받았다(위 `seller-roles` 와 같은 함정).
+          if (id.includes('/src/shared/seller-approval')) return 'app-shared'
+          // 📜 같은 함정(2026-10-19): 약관 버전 상수(`pages/terms/terms-types`, 1.2KB · import 0)에 규칙이 없어
+          //   Rollup 이 판매자 가입 화면과 함께 `app-seller-components` 에 넣었다 → 에이전시 콘솔이 매장 등록 카드에서
+          //   `TERMS_CURRENT_VERSION` 하나를 읽느라 판매자 대시보드 봉투(+그 의존 전부)를 첫 화면에 받았다.
+          if (id.includes('/src/pages/terms/terms-types')) return 'app-shared'
           if (id.includes('/src/components/seller-layout/')) return 'app-seller-components'
           if (id.includes('/src/components/seller/')) return 'app-seller-components'
           if (id.includes('/src/components/SellerLayout')) return 'app-seller-components'

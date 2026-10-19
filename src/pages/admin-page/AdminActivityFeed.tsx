@@ -20,7 +20,7 @@ import api from '@/lib/api'
 import { formatNumber } from '@/utils/format'
 import { formatKSTShort } from '@/utils/date'
 import {
-  FileText, Landmark, Banknote, Package, Truck, CheckCircle2, XCircle, Undo2, AlertTriangle,
+  FileText, Landmark, Banknote, Package, Truck, CheckCircle, XCircle, Undo2, AlertTriangle,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -54,7 +54,7 @@ const STATUS_META: Record<string, { Icon: LucideIcon; label: string; dot: string
   DONE:             { Icon: Banknote,   label: '결제 완료',   dot: 'bg-blue-500',    text: 'text-blue-700' },
   PREPARING:        { Icon: Package,    label: '상품 준비',   dot: 'bg-indigo-500',  text: 'text-indigo-700' },
   SHIPPING:         { Icon: Truck,      label: '배송 중',     dot: 'bg-purple-500',  text: 'text-purple-700' },
-  DELIVERED:        { Icon: CheckCircle2, label: '배송 완료', dot: 'bg-emerald-500', text: 'text-emerald-700' },
+  DELIVERED:        { Icon: CheckCircle, label: '배송 완료', dot: 'bg-emerald-500', text: 'text-emerald-700' },
   CANCELLED:        { Icon: XCircle,    label: '취소',        dot: 'bg-gray-300',    text: 'text-gray-500' },
   REFUNDED:         { Icon: Undo2,      label: '환불',        dot: 'bg-gray-300',    text: 'text-gray-500' },
   FAILED:           { Icon: AlertTriangle, label: '결제 실패', dot: 'bg-red-400',    text: 'text-red-600' },
