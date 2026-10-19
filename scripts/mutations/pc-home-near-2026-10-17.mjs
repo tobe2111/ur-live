@@ -48,4 +48,12 @@ export default [
     test: 'src/tests/unit/home-near-empty-label-2026-10-17.test.ts',
     why: '동 이름 조회 전·실패 시 칸이 공백이 되고 제목이 " 근처 이용권" 이 된다.',
   },
+  {
+    name: "🏷️ 동 이름 없을 때 제목이 '내 주변 근처 이용권'",
+    file: 'src/pages/pc-home/home-location-label.ts',
+    find: 'o.located && o.dongLabel?.trim() ?',
+    replace: 'o.located ?',
+    test: 'src/tests/unit/home-near-empty-label-2026-10-17.test.ts',
+    why: '동 이름을 받기 전 제목이 같은 말을 두 번 한다.',
+  },
 ]

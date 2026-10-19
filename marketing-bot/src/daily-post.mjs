@@ -1,6 +1,6 @@
 // 매일 게시: Threads 텍스트 1개 + Instagram 이미지 캡션 1개.
 // 트랙 비율(data/content-mix.json): 사장님 입점 60% · 인플루언서/크리에이터 모집 25% · 소비자 딜 15%.
-import { DRY, log, readJson, writeJson, claude, threads, insta, fbPagePost, utmLink, productImage, kstNow, IG_USER_ID, THREADS_USER_ID, PARTNER_FACTS } from './lib.mjs';
+import { DRY, log, readJson, writeJson, claude, threads, igPublish, fbPagePost, utmLink, productImage, kstNow, THREADS_USER_ID, PARTNER_FACTS } from './lib.mjs';
 
 const schedule = readJson('data/schedule.json', {});
 const mix = readJson('data/content-mix.json', { cycle: {}, tracks: {} });
@@ -91,22 +91,28 @@ async function main() {
   if (due('instagram') && !postedToday('instagram')) {
     const cid = `ig-${n('instagram')}`;
     const link = utmLink(isPromo ? product : target, 'instagram', T.campaign || track, cid, now);
+    // 미디어 결정: tracks.<t>.media 배열(캐러셀 images / Reels video_url, 날짜별 순환) → image_url → og:image → 상품 이미지
+    const mediaList = (T.media || []).filter((m) => m && (m.video_url || m.images?.length));
+    let media = mediaList.length ? mediaList[(process.env.MEDIA_IDX ? Number(process.env.MEDIA_IDX) : dayIdx) % mediaList.length] : null;
     const imgs = [].concat(T.image_url || []).filter(Boolean); // 문자열 또는 배열(날짜별 순환)
-    const image = (imgs.length ? imgs[dayIdx % imgs.length] : null) || (!isPromo && await productImage(target)) || (product && await productImage(product));
+    const single = media ? null : (imgs.length ? imgs[dayIdx % imgs.length] : null) || (!isPromo && await productImage(target)) || (product && await productImage(product));
+    if (!media && single) media = { images: [single] };
+    const image = media?.video_url || media?.images?.[0];
     if (!image) {
       log(`Instagram: ${track} 이미지 URL 없음 → 건너뜀`);
       posts.push({ platform: 'instagram', skipped: 'no_image', track, product_id: product?.id, posted_at: now.toISOString(), date_kst: today });
     } else {
       const body = await claude(SYSTEM, `${info}\n인스타그램 캡션 1개(600자 이내, 해시태그 3~5개 끝에). 본문 링크는 클릭이 안 되니 '프로필 링크에서 확인' 식으로 안내.`, 800);
       log('IG 캡션:\n' + body + `\n(프로필 링크에 걸 UTM: ${link})`);
-      const c = await insta('POST', `${IG_USER_ID}/media`, { image_url: image, caption: body.slice(0, 2100) });
-      const r = await insta('POST', `${IG_USER_ID}/media_publish`, { creation_id: c.id });
-      posts.push({ platform: 'instagram', id: r.id, content_id: cid, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('instagram'), bio_link: link, dry: DRY || undefined });
-      // ---- Facebook 페이지 (IG 게시 시 같은 이미지/캡션 + 링크) ----
+      const kind = media.video_url ? `Reels ${media.video_url}` : `${media.images.length}장 ${media.images.length > 1 ? '캐러셀' : '이미지'}`;
+      log(`IG 미디어: ${kind}`);
+      const r = await igPublish(media, body.slice(0, 2100));
+      posts.push({ platform: 'instagram', id: r.id, media_type: r.media_type, media_set: media.set, content_id: cid, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('instagram'), bio_link: link, dry: DRY || undefined });
+      // ---- Facebook 페이지 (IG 게시 시 같은 미디어/캡션 + 링크; 멀티포토·영상 실패 시 단일 이미지) ----
       const fcid = `fb-${n('facebook')}`;
       const flink = utmLink(isPromo ? product : target, 'facebook', T.campaign || track, fcid, now);
       try {
-        const f = await fbPagePost(body.slice(0, 2100), flink, image);
+        const f = await fbPagePost(body.slice(0, 2100), flink, { ...media, fallback_image: imgs[0] });
         if (!f) log('Facebook: META_FB_PAGE_TOKEN 없음 → 건너뜀');
         else posts.push({ platform: 'facebook', id: f.post_id || f.id, content_id: fcid, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('instagram'), link: flink, dry: DRY || undefined });
       } catch (e) { log(`Facebook 게시 실패: ${e.message}`); }

@@ -24,5 +24,6 @@ export function homeLocationLabel(o: { located: boolean; dongLabel?: string | nu
 /** 목록 제목. 위치 칸과 **같은 이름**을 그대로 쓴다. */
 export function homeFeedTitle(o: { located: boolean; dongLabel?: string | null; region: HomeRegionRef }): string {
   const label = homeLocationLabel(o)
-  return o.located ? `${label} 근처 이용권` : `${label} 이용권`
+  // 동 이름이 있을 때만 '근처' — '내 주변 근처 이용권' 은 같은 말을 두 번 한다.
+  return o.located && o.dongLabel?.trim() ? `${label} 근처 이용권` : `${label} 이용권`
 }

@@ -98,7 +98,7 @@ const WishlistPage: React.FC = () => {
 
   return (
     <WalletPageWrapper theme={theme}>
-      <SEO title={t('wishlist.seoTitle', { defaultValue: '위시리스트 - 유어딜' })} description={t('wishlist.seoDesc', { defaultValue: '관심 상품을 모아보세요' })} url="/wishlist" noindex />
+      <SEO title={t('wishlist.seoTitle', { defaultValue: '찜한 상품 - 유어딜' })} description={t('wishlist.seoDesc', { defaultValue: '관심 상품을 모아보세요' })} url="/wishlist" noindex />
 
       {/* 상단 chrome — 뒤로가기.
           🖥️ 2026-09-03 (대표 "위시리스트 PC 도 봐야겠는데"): `lg:hidden`. PC 는 상단 네비가 이미
