@@ -108,3 +108,19 @@ critical-chunks 14 불변 · chunk-cycles 0 · exec-cost 10화면 예산 안(전
 - 🩸 마이(판매자, `dash:my`)는 이 처방이 안 먹는다 — `ThemeToggle` 이 아니라 `app-seller-nav` 청크가 `lucide` 를 import 한다.
   `SellerSection` 의 `Plus` 를 바꿔 봤는데 효과 0 이라 되돌렸다. 다음 후보는 그 청크의 어떤 모듈이 lucide 이름을 쓰는지 덤프로 찾는 것.
 - 가드 `lucide-drag-first-screen-2026-10-19.test.ts` 14건 + 주입 4건 빨간불 확인.
+
+## 7차 — 판매자 마이 215.5 → 202.7 (2026-10-19)
+
+- 원인: 마이 판매 구역 안내문 `store-status-note.ts` 가 `SELLER_STATUS_KEY` 상수 하나를 `shared/seller-approval` 에서 읽는데,
+  vite manualChunks 가 그 모듈을 `app-seller-nav`(나브 색인 · 메뉴 아이콘)로 보내고 있었다 → 그 봉투가 `lucide`·`lucide-desktop` 을 import.
+  6차에 `SellerSection` 의 `Plus` 를 바꿔 본 건 엉뚱한 곳이었다(그 청크의 소스맵 `sources` 를 보고서야 찾았다 — 다음엔 소스맵부터).
+- 처방: `seller-approval` → `app-shared`(1.6KB · import 0). 규칙 제거 0. 소비자 화면 ±0.1.
+- 가드 `seller-approval-shared-2026-10-19.test.ts` 3건 + 주입 3건 빨간불 확인. CLAUDE.md 로딩 audit log `[LOADING_ADDITIVE]`.
+- 같은 클래스 둘을 함께 고쳤다(소스맵 `sources` 로 찾음):
+  ② 에이전시: 매장 등록 카드의 `TERMS_CURRENT_VERSION` → `pages/terms/terms-types` 가 규칙 없이 `app-seller-components` 로 →
+     판매자 대시보드 봉투 + 의존 전부. 규칙 추가 `app-shared` → **dash:agency 294.5 → 180.3(−114)**.
+  ③ 어드민: 활동 피드 `CheckCircle2`(= `circle-check`, lz-gbDetail 에 산다) → `CheckCircle`(= `circle-check-big`, 이미 받는 `lucide`) → **dash:admin 292.9 → 274.0**.
+  🩸 처음엔 `AdminPage` 의 `CheckCircle` 을 바꿨는데 효과 0 — lucide 별칭이 반대였다(`CheckCircle`=big, `CheckCircle2`=circle-check). 별칭은 `node_modules/lucide-react/dist/esm/lucide-react.js` 로 확인할 것.
+- 가드 6건 + 주입 5건 빨간불 확인.
+- 남은 후보: 어드민 274 — `AdminLayout`(admin-nav-config)이 lucide `Play`·`Wrench`·`History`(소비자 봉투에 사는 아이콘)와
+  `lz-linkshop2`·`app-components` 의 부품을 import 한다. 지역 198.5(홈 봉투 재사용).
