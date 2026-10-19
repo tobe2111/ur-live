@@ -70,7 +70,13 @@ export const PRELOAD_ONLY_ROUTES = {
   guestPass: ['src/pages/guest/GuestPassPage.tsx'],
   guestUShop: ['src/pages/guest/GuestUrShopPage.tsx'],
 }
-const MAX_LINKS = 10 // head 링크 스팸 방지 캡(핵심 큰 청크 우선 — closure 순서 = 페이지 청크 → 공유 청크)
+// head 링크 스팸 방지 캡(핵심 큰 청크 우선 — closure 순서 = 페이지 청크 → 공유 청크).
+// 🗺️ 2026-10-19 (대표 *"지도랑 블로그도 상세히"*) 10 → 16: 이 목록은 그 페이지의 **정적 import 폐쇄**라 잘린 청크도
+//   렌더 전에 반드시 받는다. 다만 잘리면 페이지 청크가 실행된 **뒤에야** 발견돼 왕복 하나가 직렬로 붙는다(라이브 /map 실측:
+//   `SiteFooter`·`in-app-warning` 두 조각이 3.05초에 출발 → 지도 생성·타일이 그만큼 늦었다). 10 에서 잘리던 표면이
+//   다섯이었다(지도·이용권 상세·유어샵·검색·지역 — 지역은 **자기 페이지 청크**가 잘렸다). 16 이면 전부 들어간다.
+//   잘림이 다시 생기면 빌드 로그에 경고가 찍힌다(아래 `cut`).
+const MAX_LINKS = 16
 
 function emit(map, entryCssFiles = [], bootJs = []) {
   const body = `// ⚠️ AUTO-GENERATED — scripts/generate-route-chunk-map.mjs 가 빌드 시 재생성. 수동 편집 금지.
@@ -135,7 +141,9 @@ function main() {
       if (c.js.length) { pageJs.push(c.js[0]); sharedJs.push(...c.js.slice(1)) }
       css.push(...c.css)
     }
-    const jsOut = [...new Set([...pageJs, ...sharedJs])].filter((f) => !entryJs.has(f)).slice(0, MAX_LINKS)
+    const jsAll = [...new Set([...pageJs, ...sharedJs])].filter((f) => !entryJs.has(f))
+    if (jsAll.length > MAX_LINKS) console.warn(`[route-chunk-map] ${surface}: 정적 폐쇄 ${jsAll.length}개 중 ${jsAll.length - MAX_LINKS}개가 캡에 잘렸다 — 그 청크는 페이지가 실행된 뒤 직렬로 받는다:`, jsAll.slice(MAX_LINKS).join(' '))
+    const jsOut = jsAll.slice(0, MAX_LINKS)
     const cssOut = [...new Set(css)].filter((f) => !entryCss.has(f)).slice(0, 4)
     if (jsOut.length) out[surface] = { js: jsOut, css: cssOut }
   }

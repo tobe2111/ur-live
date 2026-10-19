@@ -91,3 +91,13 @@ describe('진입점이 여러 개인 표면은 페이지 청크가 캡에 안 �
     }
   })
 })
+
+describe('캡이 정적 폐쇄를 자르지 않는다 (2026-10-19 — 지도 실측)', () => {
+  it('캡은 16 이상이고, 잘리면 빌드 로그가 말한다', () => {
+    // 잘린 청크는 페이지가 실행된 뒤에야 발견돼 왕복 하나가 직렬로 붙는다(라이브 /map: 3.05초 출발 → 타일 지연).
+    const s = read(GEN)
+    const cap = Number(s.match(/const MAX_LINKS = (\d+)/)?.[1])
+    expect(cap).toBeGreaterThanOrEqual(16)
+    expect(s).toMatch(/if \(jsAll\.length > MAX_LINKS\) console\.warn\(/)
+  })
+})
