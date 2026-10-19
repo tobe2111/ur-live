@@ -15,6 +15,7 @@
  */
 import type { D1Database } from '@cloudflare/workers-types'
 import { isValidTermsVersion, recordTermsConsent } from '@/worker/utils/terms-consent'
+import { recordAcquisitionConversion } from '@/worker/utils/acquisition'
 import { matchProspectOnSignup } from '@/features/seller-prospects/api/seller-prospects.routes'
 
 /** 동의가 없으면 사람이 읽을 거절 문구, 있으면 null. 행이 생기기 **전에** 부른다. */
@@ -25,6 +26,8 @@ export function storeTermsError(version: unknown): string | null {
 /** 매장 행과 권한이 만들어진 **뒤**. 전부 fail-soft — 매장은 이미 존재한다. */
 export async function afterStoreCreated(DB: D1Database, p: {
   sellerId: number; userId: number; termsVersion: string; managerPhone: string; ip: string | null
+  /** 📣 2026-10-19 SNS UTM first-touch — 있으면 입점 신청 전환 1건(store_apply). 서버가 재검증. */
+  acq?: { src?: unknown; campaign?: unknown; content?: unknown }
 }): Promise<void> {
   await recordTermsConsent(DB, {
     subjectType: 'seller', subjectId: p.sellerId, userId: p.userId,
@@ -43,4 +46,5 @@ export async function afterStoreCreated(DB: D1Database, p: {
       ).bind(matched.introducerId, p.sellerId).run().catch(() => null)
     }
   } catch { /* 귀속 실패가 등록을 막지 않는다 */ }
+  if (p.acq?.src) await recordAcquisitionConversion(DB, p.acq.src, 'store_apply', { campaign: p.acq.campaign, content: p.acq.content }) // fail-soft
 }

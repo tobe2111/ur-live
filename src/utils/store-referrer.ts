@@ -32,3 +32,14 @@ export function readStoreReferrer(): string | null {
 export function clearStoreReferrer(): void {
   try { sessionStorage.removeItem(KEY) } catch { /* noop */ }
 }
+
+/**
+ * 📣 2026-10-19 SNS UTM 귀속(입점 신청) — `lib/acquisition` 이 저장한 first-touch 를 같은 키(ur_acq_src_v1)로 직접 읽는다.
+ * 그 모듈을 정적 import 하면 App 의 지연 청크가 공통 봉투로 끌려 나온다(chunks 게이트). 서버가 다시 검증한다.
+ */
+export function readAcqUtmInline(): { src?: unknown; campaign?: unknown; content?: unknown } | undefined {
+  try {
+    const v = JSON.parse(localStorage.getItem('ur_acq_src_v1') || 'null')
+    return v?.src ? { src: v.src, campaign: v.campaign ?? null, content: v.content ?? null } : undefined
+  } catch { return undefined }
+}
