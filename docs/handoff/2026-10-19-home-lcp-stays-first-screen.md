@@ -49,6 +49,10 @@ curl -sSI -A "$UA" https://urdeal.kr/pass/2919 | grep -i '^link:'   # 히어로
 7. **지도 시드 새로고침을 타일 뒤로** — 시드로 목록을 그린 직후 같은 page1 을 다시 받아(3.6s) 지도 타일(4.0~7.8s)과 회선을 나눠 썼다. 시드가 있으면 지도는 `ur:map-tiles-loaded` 뒤(백스톱 8초), 그 밖은 load·한가할 때. 시드가 없으면 즉시.
    - 가드 `map-seed-refresh-deferred-2026-10-19.test.ts` + 주입 3건, 옛 인라인 주입 1건 재조준.
 
+8. **로그인 전 유어샵 탭(`/u/me`) 밀림 CLS 0.39 → 자리 예약** — 예시 진열대가 인기 이용권 응답 뒤에 생기며 혜택·가입 버튼을 425px 밀었다. 같은 `DealRow` 3줄을 `invisible` 로 세운다. 가드 `guest-urshop-reserve-2026-10-19.test.tsx` + 주입 3건.
+9. **PC 교환권 인기 브랜드 줄 밀림 CLS 0.037 → 자리 예약** — 폰엔 `BrandStripReserve` 가 있었는데 PC(우측 그리드 위)는 없었다. 같은 클래스 상수 `PC_BRAND` 로 예약(`VouchersPage` 잠금 — 예약 한 줄 + 클래스 상수화). 가드 `top-chrome-reserve` ④ + 주입 2건.
+   - 같은 실측에서 다른 주요 화면 11곳(폰)·6곳(PC) CLS 는 전부 0.002 이하 — 밀림은 이 둘뿐이었다.
+
 ### 2차 E4 (배포 후)
 - `curl -A "$UA" https://urdeal.kr/blog/<slug> | grep -c ur-first-screen` → 1, `/blog` 도 1.
 - 폭포: `/map` 에서 `/api/group-buy/products` 가 타일 **뒤**에 한 번만 나가는지 · SiteFooter 류 청크가 HTML 직후 modulepreload 로 출발하는지.

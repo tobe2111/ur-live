@@ -30,7 +30,7 @@ import { getUserIdSync } from '@/utils/auth'
 // 🖥️ 2026-07-18 (교환권 PC 2단 분리): 카드/행 + VoucherProduct 타입은 ./vouchers/shared 로 추출(파일크기 래칫).
 import { VoucherCard, VoucherTile, BrandChip, CategoryIcon, type VoucherProduct } from './vouchers/shared'
 import { VOUCHER_TILE_CLASS, VOUCHER_TILE_ABOVE_FOLD } from '@/shared/voucher-tile'
-import { ChipRowReserve, BrandStripReserve } from './vouchers/TopChromeReserve'
+import { ChipRowReserve, BrandStripReserve, PcBrandStripReserve, PC_BRAND } from './vouchers/TopChromeReserve'
 import { VOUCHERS_DEFAULT_CATEGORY } from '@/shared/seo/voucher-facet'
 import { resolveConsumerSurfaceSeo } from '@/shared/seo/consumer-surfaces'
 import { GifticonBoxRailRow } from './vouchers/GifticonBoxEntry'
@@ -464,10 +464,11 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           <main>
             <div className="-mx-[14px]"><HomeBannerStrip variant="vouchers" /></div>{/* 🎟️ 2026-10-14 대표 확정 라안 — 배너 자체 거터 14 를 상쇄해 그리드와 맞춤. 없으면 0px */}
             {/* 인기 브랜드 — 상단 가로 스트립(대표 — 좌레일 하단은 불편 → 상품 바로 위로). */}
+            {currentBrands.length === 0 && !sectionsReady && !!category && <PcBrandStripReserve />}
             {currentBrands.length > 0 && (
-              <div className="mb-5 pb-4 border-b border-gray-100 dark:border-[#2C2F35]">
-                <h3 className="text-[12px] font-bold text-gray-400 dark:text-gray-500 mb-2">인기 브랜드</h3>
-                <div className="flex gap-3 overflow-x-auto scrollbar-hide py-1">
+              <div className={PC_BRAND.wrap}>
+                <h3 className={PC_BRAND.title}>인기 브랜드</h3>
+                <div className={PC_BRAND.row}>
                   {orderedBrands.map(b => (
                     <BrandChip
                       key={b.brand_name}

@@ -25,6 +25,9 @@ import { usePopularPasses, type PassItem } from './usePopularPasses'
 
 const ICON = 20
 
+/** 자리 잡기용 — 화면엔 안 보인다(`invisible`). 줄 높이를 정하는 칸(눈썹·한 줄 제목·가격)만 채운다. */
+const PLACEHOLDER_PINS = [1, 2, 3].map((i) => ({ id: -i, name: '\u00a0', restaurant_name: '\u00a0', price: 0, image_url: null })) as unknown as PassItem[]
+
 /**
  * 진열 한 줄 — 진짜 유어샵이 쓰는 **같은 줄 부품**(`DealRow`, 안 s3 의 평면 표면)이다.
  * 예시가 실제 유어샵과 다르게 생기면 "만들면 이렇게 된다" 가 거짓말이 된다.
@@ -49,8 +52,14 @@ function ExamplePin({ p, n }: { p: PassItem; n: number }) {
 
 export default function GuestUrShopPage() {
   const { t } = useTranslation()
-  const { data: items = [] } = usePopularPasses()
-  const pins = items.filter((p) => !!p.image_url).slice(0, 3)
+  const { data: items = [], isLoading } = usePopularPasses()
+  const real = items.filter((p) => !!p.image_url).slice(0, 3)
+  // 🧱 2026-10-19 — 예시 진열대는 인기 이용권 응답이 와야 그려지는데, 그 전엔 자리가 없어서
+  //   도착하는 순간 아래 혜택·가입 버튼이 통째로 425px 밀렸다(라이브 실측 CLS 0.39).
+  //   기다리는 동안 **같은 부품(DealRow)으로 같은 개수**를 안 보이게 세워 자리를 잡는다(숫자로 예약하지 않는다).
+  const waiting = isLoading && real.length === 0
+  const pins: PassItem[] = waiting ? PLACEHOLDER_PINS : real
+  const hide = waiting ? ' invisible' : ''
 
   return (
     <div className="min-h-[100dvh] bg-warm pb-8">
@@ -69,7 +78,7 @@ export default function GuestUrShopPage() {
         </p>
 
         {pins.length > 0 && (
-          <section className="mt-5 rounded-2xl bg-surface shadow-lift px-4 pt-4 pb-1" aria-label={t('guest.shop.example', { defaultValue: '예시' })}>
+          <section className={`mt-5 rounded-2xl bg-surface shadow-lift px-4 pt-4 pb-1${hide}`} aria-hidden={waiting || undefined} aria-label={t('guest.shop.example', { defaultValue: '예시' })}>
             <div className="flex items-center gap-3 pb-3 border-b border-rule">
               <span className="shrink-0 w-12 h-12 rounded-full overflow-hidden bg-brand-tint flex items-center justify-center">
                 <Udal mood="tip" size={48} />
@@ -87,7 +96,7 @@ export default function GuestUrShopPage() {
           </section>
         )}
         {pins.length > 0 && (
-          <p className="mt-3 flex items-center gap-2 px-1 text-[13px] text-gray-500 dark:text-gray-400">
+          <p className={`mt-3 flex items-center gap-2 px-1 text-[13px] text-gray-500 dark:text-gray-400${hide}`} aria-hidden={waiting || undefined}>
             <span>{t('guest.shop.linkLabel', { defaultValue: '프로필 링크' })}</span>
             <span className="font-semibold text-brand-text">urdeal.kr/u/udal</span>
           </p>

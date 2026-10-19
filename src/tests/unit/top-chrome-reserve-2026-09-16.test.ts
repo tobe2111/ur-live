@@ -84,3 +84,15 @@ describe('③ 자리만 잡고 아무것도 보이지 않는다', () => {
     expect(PAGE).toMatch(/<BrandStripReserve \/>/)
   })
 })
+
+describe('④ PC 인기 브랜드 줄도 자리를 잡는다 (2026-10-19 라이브 1440px CLS 0.037)', () => {
+  it('PC 블록과 예약이 같은 클래스 상수(PC_BRAND)를 쓴다', () => {
+    expect(PAGE).toMatch(/<div className=\{PC_BRAND\.wrap\}>\s*<h3 className=\{PC_BRAND\.title\}>인기 브랜드<\/h3>\s*<div className=\{PC_BRAND\.row\}>/)
+    expect(RESERVE).toMatch(/\$\{PC_BRAND\.wrap\} invisible/)
+    expect(RESERVE).toMatch(/<h3 className=\{PC_BRAND\.title\}>/)
+    expect(RESERVE).toMatch(/<div className=\{PC_BRAND\.row\}><BrandChipReserve \/>/)
+  })
+  it('PC 예약은 브랜드가 아직 안 왔을 때만 뜬다', () => {
+    expect(PAGE).toContain('{currentBrands.length === 0 && !sectionsReady && !!category && <PcBrandStripReserve />}')
+  })
+})
