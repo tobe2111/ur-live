@@ -27,22 +27,6 @@ export default [
     why: '로그아웃한 폰에 배송지·잔액이 남는다.',
   },
   {
-    name: '📐 이용권 현황: 모를 때 다시 null (첫 방문에 아래 목록을 민다)',
-    file: 'src/pages/user-profile/OrderStatusBar.tsx',
-    find: "  const state: 'unknown' | 'empty' | 'ready' =",
-    replace: "  if (!known) return null\n  const state: 'unknown' | 'empty' | 'ready' =",
-    test: TEST,
-    why: '응답 뒤에 바가 생기며 내가 산 것 목록이 100px 밀린다(보이는 줄 13~28개).',
-  },
-  {
-    name: '📐 이용권 현황: 0장이면 다시 접힌다 (위로 민다)',
-    file: 'src/pages/user-profile/OrderStatusBar.tsx',
-    find: "  const state: 'unknown' | 'empty' | 'ready' =",
-    replace: "  if (known && !counts.bought) return null\n  const state: 'unknown' | 'empty' | 'ready' =",
-    test: TEST,
-    why: '세워 둔 자리가 0장인 사람에게서 접히며 아래 목록이 위로 튄다.',
-  },
-  {
     name: '📐 밀림 가드: 마이(구매자) 경로가 이용권 시드 없이 돈다',
     file: 'scripts/check-layout-shift.mjs',
     find: "  { name: '마이(구매자)', args: ['--route=/user/profile', '--wallet', '--auth=user'] },",

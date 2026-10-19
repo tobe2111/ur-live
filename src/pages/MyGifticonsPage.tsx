@@ -19,6 +19,7 @@ import { useMyVouchers } from '@/hooks/queries'
 import { WalletPageWrapper } from '@/components/wallet/WalletAtoms'
 import BrandLoader from '@/components/brand/BrandLoader'
 import WalletHeader from './my-vouchers/WalletHeader'
+import SubPageHeader from '@/components/ui/sub-page-header'
 import WalletArchive from './my-vouchers/WalletArchive'
 import VoucherTicket from './my-vouchers/VoucherTicket'
 import { EmptyVouchers } from './my-vouchers/WalletEmpty'
@@ -63,18 +64,21 @@ export default function MyGifticonsPage() {
         noindex
       />
 
-      <WalletHeader
+      {/* ← 2026-10-19 (대표 *"다 이상적으로 진행해줘 모두"*): 마이 하위 화면과 같은 머리줄 한 벌.
+          금액은 아래에 한 번만 — 장수는 '사용 가능 N' 묶음 제목이 이미 말한다(같은 숫자 두 번 금지). */}
+      <SubPageHeader
         title={t('voucher.myGifticons', { defaultValue: '내 교환권' })}
-        amount={owned.length > 0 ? heroTotal : null}
-        unit={t('voucher.deal', { defaultValue: '딜' })}
-        /* 교환권은 만료일·할인율을 안 갖고 온다 → 지표는 '사용 가능' 하나뿐이고, 없으면 줄 자체를 안 그린다. */
-        stats={owned.length > 0 ? [
-          { label: t('voucher.heroUsable', { defaultValue: '사용 가능' }), value: `${usable.length}${t('voucher.heroCountUnit', { defaultValue: '장' })}` },
-          { label: t('voucher.totalCountLabel', { defaultValue: '전체' }), value: `${owned.length}${t('voucher.heroCountUnit', { defaultValue: '장' })}` },
-        ] : []}
         onBack={() => navigate('/vouchers')}
         backLabel={t('common.back', { defaultValue: '뒤로가기' })}
       />
+      {owned.length > 0 && (
+        <WalletHeader
+          title={t('voucher.myGifticons', { defaultValue: '내 교환권' })}
+          eyebrow={t('voucher.gifticonUsableTotal', { defaultValue: '쓸 수 있는 교환권' })}
+          amount={heroTotal}
+          unit={t('voucher.deal', { defaultValue: '딜' })}
+        />
+      )}
 
       <div className="ur-content-narrow px-4 lg:px-8 pb-2">
         {loading ? (

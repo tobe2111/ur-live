@@ -19,7 +19,6 @@ import {
 import { SectionTitle, ListRow, rowIcon } from './list-grammar'
 import type { MyCounts } from './types'
 import { SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
-import OrderStatusBar from './OrderStatusBar'
 
 /** 🖊️ 2026-08-30: `icon` 이모지 문자열 → lucide 컴포넌트.
  *  이 목록은 마이페이지의 주 메뉴다 — 11칸이 전부 이모지라 같은 행 오른쪽의
@@ -30,8 +29,13 @@ import OrderStatusBar from './OrderStatusBar'
  */
 type Item = { Icon: LucideIcon; label: string; sub?: string; count?: number | null; path: string }
 
-/** `statusBar` — 이용권 현황 바를 제목 아래에 그린다(폰). PC 는 '곧 쓸 이용권' 카드가 그 바를 갖는다. */
-export default function ShoppingGroup({ counts, statusBar = false }: { counts: MyCounts; statusBar?: boolean }) {
+/**
+ * 🧹 2026-10-19 (대표 *"다 이상적으로 진행해줘 모두"*) — '이용권 현황'(전체 구매·사용완료·만료·환불) 바를 걷었다.
+ *   맨 위 숫자 줄이 `이용권 N`(지금 쓸 수 있는 장수)을 이미 말하고, 나머지 셋은 '내 이용권' 화면의
+ *   탭이 그대로 갖는다. 같은 구역 안에서 제목 아래 숫자 줄·그 아래 메뉴 줄이 겹쳐 '내가 산 것' 이
+ *   제목 층 둘로 읽혔다. 되살리지 말 것 — 같은 화면에 이용권 숫자가 두 줄 선다.
+ */
+export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
 
@@ -76,7 +80,6 @@ export default function ShoppingGroup({ counts, statusBar = false }: { counts: M
        여기에 px-4 를 또 주면 글자가 32px 들어가 구역 제목과 왼쪽 끝이 어긋난다. */
     <div className="ur-content-medium lg:px-4 ur-pc-card">
       <SectionTitle>{t('shopping.sectionTitle', { defaultValue: '내가 산 것' })}</SectionTitle>
-      {statusBar && <div className="pb-2"><OrderStatusBar /></div>}
       <div>
         {items.map((item) => (
           <ListRow

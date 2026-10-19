@@ -57,7 +57,9 @@ export default function ThemeToggleSection({ variant, className }: Props) {
      *   그 값은 **지금 보고 있는 화면 자체**가 말한다(시스템을 고른 사람은 화면 색으로 이미 안다).
      *   'OS' 라는 낱말은 이 서비스의 어느 화면에도 없는 개발자 말이었다.
      */
-    <div className={className ?? 'ur-content-medium lg:px-4'}>
+    /* ➖ 2026-10-19 — 위·아래 hairline. 바로 위 알림 줄은 자기 묶음의 마지막이라(`last:border-b-0`)
+       선을 지워서, 이메일 알림과 화면 테마 사이에만 구분선이 없었다. */
+    <div className={`${className ?? 'ur-content-medium lg:px-4'} border-y border-rule`}>
       <div className={ROW_GEOM_CLS}>
         <span className={`shrink-0 ${isDark ? 'text-white/55' : 'text-gray-500 dark:text-gray-400'}`}>
           {/* 🎨 뜻 아이콘은 유어딜 세트에서 온다(CLAUDE.md 아이콘 규칙). 아래 세 알약의 화면·해·달은
@@ -72,12 +74,13 @@ export default function ThemeToggleSection({ variant, className }: Props) {
         <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label={t('theme.title', { defaultValue: '화면 테마 선택' })}>
           {options.map(o => {
             const active = mode === o.key
+            /* 🔵 2026-10-19 (대표 *"다 이상적으로 진행해줘 모두"*): 고른 것 = 브랜드 블루 **면**.
+               종전 옅은 블루 테두리는 이 화면에만 있던 선택 모양이었다 — 다른 선택 칩은 전부 면이다
+               (UI① 2026-09-29 "선택 칩 6가지 → 브랜드 면 하나"). 고르지 않은 것은 테두리 없는 옅은 면. */
             const baseInactive = isDark
-              ? 'bg-white/[0.06] border border-white/[0.08] text-white/65 hover:bg-white/[0.10]'
-              : 'bg-white dark:bg-white/[0.04] border border-gray-200 dark:border-white/[0.06] text-gray-700 dark:text-white/65 hover:bg-gray-50 dark:hover:bg-white/[0.08]'
-            const activeClass = isDark
-              ? 'bg-brand/20 border border-brand/40 text-brand-text'
-              : 'bg-brand/15 border border-brand/40 text-brand-text'
+              ? 'bg-white/[0.06] text-white/65 hover:bg-white/[0.10]'
+              : 'bg-wash text-gray-700 dark:text-gray-300'
+            const activeClass = 'bg-brand text-white'
             return (
               <button
                 key={o.key}

@@ -4065,7 +4065,8 @@
     "kindGroupbuy": "Pases",
     "emptyGroupbuyTitle": "Aún no hay compras de pases",
     "useInMyVouchers": "Úsalo en Mis Pases",
-    "useInMyGifticons": "Úsalo en Mis Vales"
+    "useInMyGifticons": "Úsalo en Mis Vales",
+    "statusFilter": "Estado del pedido"
   },
   "welcomeOnboarding": {
     "skip": "Omitir",
@@ -5069,7 +5070,8 @@
     "noExpiry": "Sin vencimiento",
     "mapShort": "Mapa",
     "recoTitle": "Quizá te interese",
-    "recoMore": "Ver más"
+    "recoMore": "Ver más",
+    "gifticonUsableTotal": "Vales disponibles"
   },
   "sellerWaiting": {
     "title": "Aprobación de Vendedor Pendiente",

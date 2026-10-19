@@ -4784,7 +4784,8 @@
     "kindGroupbuy": "이용권",
     "emptyGroupbuyTitle": "이용권 구매 내역이 없습니다",
     "useInMyVouchers": "'내 이용권'에서 사용하세요",
-    "useInMyGifticons": "'내 교환권'에서 사용하세요"
+    "useInMyGifticons": "'내 교환권'에서 사용하세요",
+    "statusFilter": "주문 상태"
   },
   "welcomeOnboarding": {
     "skip": "건너뛰기",
@@ -5069,7 +5070,8 @@
     "noExpiry": "기한 없음",
     "mapShort": "지도",
     "recoTitle": "이런 이용권은 어때요?",
-    "recoMore": "더보기"
+    "recoMore": "더보기",
+    "gifticonUsableTotal": "쓸 수 있는 교환권"
   },
   "sellerWaiting": {
     "title": "셀러 승인 대기",

@@ -4065,7 +4065,8 @@
     "kindGroupbuy": "Pass",
     "emptyGroupbuyTitle": "Aucun achat de pass",
     "useInMyVouchers": "Utilisez-le dans Mes Pass",
-    "useInMyGifticons": "Utilisez-le dans Mes Bons"
+    "useInMyGifticons": "Utilisez-le dans Mes Bons",
+    "statusFilter": "Statut de la commande"
   },
   "welcomeOnboarding": {
     "skip": "Passer",
@@ -5069,7 +5070,8 @@
     "noExpiry": "Sans date d'expiration",
     "mapShort": "Carte",
     "recoTitle": "Vous aimerez peut-être",
-    "recoMore": "Voir plus"
+    "recoMore": "Voir plus",
+    "gifticonUsableTotal": "Bons utilisables"
   },
   "sellerWaiting": {
     "title": "Approbation Vendeur en Attente",

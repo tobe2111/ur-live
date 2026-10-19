@@ -4784,7 +4784,8 @@
     "kindGroupbuy": "使用券",
     "emptyGroupbuyTitle": "暂无使用券购买记录",
     "useInMyVouchers": "请在\"我的使用券\"中使用",
-    "useInMyGifticons": "请在\"我的兑换券\"中使用"
+    "useInMyGifticons": "请在\"我的兑换券\"中使用",
+    "statusFilter": "订单状态"
   },
   "welcomeOnboarding": {
     "skip": "跳过",
@@ -5069,7 +5070,8 @@
     "noExpiry": "无期限",
     "mapShort": "地图",
     "recoTitle": "看看这些券？",
-    "recoMore": "更多"
+    "recoMore": "更多",
+    "gifticonUsableTotal": "可用兑换券"
   },
   "sellerWaiting": {
     "title": "卖家审核等待",

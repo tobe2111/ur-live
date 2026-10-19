@@ -14,11 +14,11 @@
  * ⚠️ 이 파일이 못 보는 것: 실제 픽셀 높이(jsdom 에 레이아웃이 없다 — 판정은 `check-layout-shift` 가 한다) ·
  *   서버 쪽 세션이 진짜로 바뀌었는지(여기서는 `user_id` 키로만 사람을 안다).
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, beforeEach } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
 import { readCacheOrNull, writeCache, cleanupExpiredCache } from '@/hooks/queries/localCache'
+import { readCode } from '../helpers/source-text'
 
 const ROOT = path.resolve(__dirname, '../../..')
 const read = (p: string) => fs.readFileSync(path.join(ROOT, p), 'utf8')
@@ -72,48 +72,28 @@ describe('① 개인 캐시에는 주인이 있다', () => {
   })
 })
 
-const vouchers = vi.fn()
-vi.mock('@/hooks/queries/useMyData', () => ({ useMyVouchers: () => ({ data: vouchers() }) }))
-vi.mock('react-router-dom', () => ({ useNavigate: () => vi.fn() }))
-vi.mock('@/lib/i18n-lite', () => ({
-  useTranslation: () => ({ t: (_k: string, o?: Record<string, unknown>) => String(o?.defaultValue ?? _k) }),
-}))
-const { default: OrderStatusBar } = await import('@/pages/user-profile/OrderStatusBar')
-
-/** 숫자 줄 — 세 상태가 같은 줄로 높이를 잡는다. */
-function numberRow(): HTMLElement {
-  return screen.getByText('전체 구매').closest('div.flex') as HTMLElement
-}
-
-describe('② 이용권 현황은 늘 같은 높이로 선다', () => {
-  beforeEach(() => vouchers.mockReset())
-
-  it('아직 모를 때(첫 방문) 자리를 세우되 숫자는 감춘다 — 0 을 적지 않는다', () => {
-    vouchers.mockReturnValue(undefined)
-    const { container } = render(<OrderStatusBar />)
-    expect(container.firstChild, 'null 이면 응답 뒤에 생겨나며 아래 목록을 민다').not.toBeNull()
-    expect(numberRow().className).toContain('invisible')
-    expect(screen.queryByText('아직 산 이용권이 없어요'), '모르는 것을 0장이라 말하지 않는다').toBeNull()
+/**
+ * 🧹 2026-10-19 — 이 바는 걷혔다(대표 *"다 이상적으로 진행해줘 모두"*). 맨 위 숫자 줄이 `이용권 N` 을
+ *   이미 말해, 같은 구역에 이용권 숫자가 두 줄 섰다. 높이 불변식은 지킬 대상이 없어졌으므로
+ *   **돌아오지 않는가**를 지킨다(가장 조용한 회귀는 같은 바를 다른 이름으로 다시 세우는 것이다).
+ */
+describe('② 이용권 현황 바는 돌아오지 않는다', () => {
+  it('부품 파일이 없다', () => {
+    expect(fs.existsSync(path.join(ROOT, 'src/pages/user-profile/OrderStatusBar.tsx'))).toBe(false)
   })
 
-  it('0장이면 같은 자리에 빈 안내 — 접히면 위로 민다', () => {
-    vouchers.mockReturnValue([])
-    render(<OrderStatusBar />)
-    expect(numberRow().className).toContain('invisible')
-    expect(screen.getByText('아직 산 이용권이 없어요')).toBeTruthy()
+  it("'내가 산 것' 구역과 PC 카드가 '전체 구매·사용완료·만료·환불' 숫자를 다시 안 그린다", () => {
+    for (const f of ['src/pages/user-profile/ShoppingGroup.tsx', 'src/pages/user-profile/AccountPcPane.tsx', 'src/pages/UserProfilePage.tsx']) {
+      const code = readCode(f)
+      expect(code, f).not.toMatch(/voucherStatus\.(bought|used|gone)/)
+      expect(code, f).not.toContain('OrderStatusBar')
+    }
   })
 
-  it('있으면 숫자가 보이고 빈 안내는 없다', () => {
-    vouchers.mockReturnValue([{ source: 'internal', id: 7, status: 'unused', deal_only: 0 }])
-    render(<OrderStatusBar />)
-    expect(numberRow().className).not.toContain('invisible')
-    expect(screen.queryByText('아직 산 이용권이 없어요')).toBeNull()
-  })
-
-  it('밀림 가드의 마이 경로가 이용권 시드(--wallet)를 실어 이 바를 실제로 띄운다', () => {
+  it('밀림 가드의 마이 경로는 여전히 이용권 시드(--wallet)를 싣는다 — 숫자 줄·곧 쓸 이용권이 실제로 뜬다', () => {
     const src = read('scripts/check-layout-shift.mjs')
     const rows = src.split('\n').filter((l) => l.includes("'--route=/user/profile'"))
-    expect(rows.length, '마이 경로가 사라지면 이 바의 밀림을 아무도 안 본다').toBeGreaterThan(0)
-    for (const r of rows) expect(r, '시드 없이 돌면 바가 안 떠서 밀릴 것이 없다').toContain("'--wallet'")
+    expect(rows.length).toBeGreaterThan(0)
+    for (const r of rows) expect(r).toContain("'--wallet'")
   })
 })

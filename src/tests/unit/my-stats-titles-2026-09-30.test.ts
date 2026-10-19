@@ -104,6 +104,7 @@ describe('🧪 이 시험이 헛돌지 않는다', () => {
     expect(STATS.length).toBeGreaterThan(2000)
     expect(GRAMMAR.length).toBeGreaterThan(2000)
     expect(PAGE.length).toBeGreaterThan(5000)
-    expect(PC.length).toBeGreaterThan(2000)
+    // 🔁 2026-10-19: PC 카드가 '이용권 현황' 을 잃어 코드가 1.9천 자로 줄었다(주석 제외). 하한은 '읽혔는가' 만 본다.
+    expect(PC.length).toBeGreaterThan(1200)
   })
 })

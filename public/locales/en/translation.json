@@ -4784,7 +4784,8 @@
     "kindGroupbuy": "Passes",
     "emptyGroupbuyTitle": "No pass purchases yet",
     "useInMyVouchers": "Use it in My Passes",
-    "useInMyGifticons": "Use it in My Gift Vouchers"
+    "useInMyGifticons": "Use it in My Gift Vouchers",
+    "statusFilter": "Order status"
   },
   "welcomeOnboarding": {
     "skip": "Skip",
@@ -5069,7 +5070,8 @@
     "noExpiry": "No expiry",
     "mapShort": "Map",
     "recoTitle": "You might also like",
-    "recoMore": "More"
+    "recoMore": "More",
+    "gifticonUsableTotal": "Usable gift vouchers"
   },
   "sellerWaiting": {
     "title": "Seller Approval Pending",

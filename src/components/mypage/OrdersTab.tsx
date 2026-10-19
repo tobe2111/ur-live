@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { BoxIcon, TruckIcon, MessageIcon, TicketStubIcon, PeopleIcon } from '@/components/icons/urdeal-icons'
 import { Link } from 'react-router-dom'
 import Udal from '@/components/mascot/Udal'
-import { ChevronRight, Search } from 'lucide-react'
+import { ChevronDown, ChevronRight, Search } from 'lucide-react'
 import { useTranslation } from '@/lib/i18n-lite'
 import type { TFunction } from '@/lib/i18n-lite'
 import { safeDate } from '@/utils/safe-date'
@@ -22,6 +22,11 @@ interface OrdersTabProps {
   // 🏁 2026-06-12 (전수조사 🔴 G6): 배송완료 주문 반품 신청 입구 + 진행 상태 표시.
   onRequestReturn?: (orderId: number | string, orderNumber: string) => void
   returnsByOrder?: Record<string, string>   // order_id → 반품 status (rejected/cancelled 제외)
+  /** 🧭 2026-10-19 — 상태 필터(결제완료·취소·환불…)는 종류 탭과 **같은 줄** 오른쪽에 선다.
+   *  종전엔 상태 칩 줄과 종류 탭 줄이 위아래로 둘이라 "어느 줄이 무엇을 거르는지" 를 읽어야 했다. */
+  statusOptions?: { key: string; label: string }[]
+  statusValue?: string
+  onStatusChange?: (key: string) => void
 }
 
 // ─── 택배사별 외부 추적 URL (OrderDetailModal 에서 import) ──────────────────────
@@ -123,7 +128,7 @@ function ItemThumb({ item }: { item: OrderItem }) {
 
 // ─── OrdersTab 메인 ───────────────────────────────────────────────────────────
 
-export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder, onRequestReturn, returnsByOrder }: OrdersTabProps) {
+export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder, onRequestReturn, returnsByOrder, statusOptions, statusValue = 'all', onStatusChange }: OrdersTabProps) {
   const { t } = useTranslation()
   const [kindFilter, setKindFilter] = useState<KindFilter>('all')
   const [search, setSearch] = useState('')
@@ -204,8 +209,9 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
         />
       </div>
 
-      {/* 종류 탭 — 텍스트+밑줄 (무신사 스타일) */}
-      <div className="flex gap-5 border-b border-gray-100 dark:border-[#2C2F35] -mx-4 px-4 overflow-x-auto scrollbar-hide">
+      {/* 종류 탭 — 텍스트+밑줄 · 오른쪽 끝에 상태 고르기(한 줄) */}
+      <div className="flex items-end gap-3 border-b border-rule -mx-4 px-4">
+      <div className="flex-1 min-w-0 flex gap-5 overflow-x-auto scrollbar-hide">
         {KIND_TABS.map(tab => {
           const active = kindFilter === tab.key
           return (
@@ -228,6 +234,22 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
             </button>
           )
         })}
+      </div>
+      {statusOptions && statusOptions.length > 1 && onStatusChange && (orders.length > 0 || statusValue !== 'all') && (
+        <label className="relative shrink-0 mb-2">
+          <span className="sr-only">{t('ordersTab.statusFilter', { defaultValue: '주문 상태' })}</span>
+          <select
+            value={statusValue}
+            onChange={(e) => onStatusChange(e.target.value)}
+            className={`h-8 pl-3 pr-7 rounded-full appearance-none text-[13px] font-semibold focus:outline-none ${
+              statusValue !== 'all' ? 'bg-brand text-white' : 'bg-wash text-gray-900 dark:text-white'
+            }`}
+          >
+            {statusOptions.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
+          </select>
+          <ChevronDown aria-hidden="true" className={`pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${statusValue !== 'all' ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`} />
+        </label>
+      )}
       </div>
 
       {/* 목록 */}
@@ -476,7 +498,7 @@ function EmptyState({ kindFilter, searching, t }: { kindFilter: KindFilter; sear
     desc = t('ordersTab.emptyDesc', { defaultValue: '마음에 드는 상품을 둘러보세요' })
   }
   return (
-    <div className="bg-surface rounded-2xl border border-gray-100 dark:border-[#2C2F35] p-12 text-center">
+    <div className="bg-surface rounded-2xl shadow-lift dark:shadow-none p-12 text-center">
       {/* 🦦 2026-10-10 (대표 "다 해줘"): 상자 아이콘 → 유달이. 검색해서 0건은 갸웃(notFound), 아직 산 게 없으면 빈 지갑(empty) */}
       <Udal mood={searching ? 'notFound' : 'empty'} size={96} className="block mx-auto mb-5" />
       <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">{title}</h2>
