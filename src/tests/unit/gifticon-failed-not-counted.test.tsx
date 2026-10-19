@@ -101,8 +101,10 @@ describe('② 교환권 지갑 — 실패는 보이되 안 센다', () => {
     const { container } = render(<MyGifticonsPage />)
     expect(groupCount(container, '발송 실패')).toBe(1)
     expect(groupCount(container, '사용 가능')).toBe(0)
-    // 🔑 소유분 0 → stats 자체가 빈 배열이라 '전체 N장' 줄이 없다.
-    expect(container.textContent).not.toContain('전체')
+    // 🔑 소유분 0 → 합계 머리(`쓸 수 있는 교환권 N딜`)를 아예 안 그린다.
+    //    2026-10-19 재조준: 머리의 '전체 N장' 지표가 빠지며(같은 숫자 두 번 금지) 그 문구를 찾던
+    //    단언이 늘 통과하게 됐다 — 실패분을 소유로 세면 이제는 0딜짜리 합계 머리가 뜬다.
+    expect(container.textContent).not.toContain('쓸 수 있는 교환권')
     // ⚠️ 카드 안 가격(4,500딜)은 남는다 — 실제로 결제한 금액이고, 그게 있어야 문의가 된다.
     //    이 테스트가 막는 것은 **합계·통계**에 섞이는 것이지 카드 표시가 아니다.
     //    (첫 판에서 이걸 헷갈려 카드 가격까지 없어야 한다고 단정했다가 빨간불이 났다.)

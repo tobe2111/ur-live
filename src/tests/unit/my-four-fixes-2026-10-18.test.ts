@@ -13,12 +13,10 @@
  *   다른 언어 번역의 자연스러움.
  */
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
 import { readCode } from '../helpers/source-text'
 
 const PAGE = readCode('src/pages/UserProfilePage.tsx')
 const SHOP = readCode('src/pages/user-profile/ShoppingGroup.tsx')
-const BAR = readCode('src/pages/user-profile/OrderStatusBar.tsx')
 const PANE = readCode('src/pages/user-profile/AccountPcPane.tsx')
 const CTRL = readCode('src/pages/user-profile/AccountControlsSection.tsx')
 
@@ -29,39 +27,13 @@ function fnBody(src: string, name: string): string {
   return src.slice(s, e === -1 ? undefined : e)
 }
 
-describe('① 총계는 총계라고 말한다', () => {
-  it("이름이 '전체 구매' 다", () => {
-    expect(BAR).toContain("defaultValue: '전체 구매' }), key: 'bought'")
-    expect(BAR, "'구매완료' 로 돌아가면 위 '이용권 N' 과 어긋나 보인다").not.toContain("defaultValue: '구매완료' }), key: 'bought'")
-  })
-
-  it('6개 언어가 같은 뜻으로 옮겨졌다', () => {
-    const want: Record<string, string> = { ko: '전체 구매', en: 'Total bought', ja: '購入合計', zh: '累计购买', es: 'Total comprados', fr: 'Total achetés' }
-    for (const [lang, v] of Object.entries(want)) {
-      const j = JSON.parse(readFileSync(`public/locales/${lang}/translation.json`, 'utf-8'))
-      expect(j.voucherStatus?.bought, `${lang} 번역이 옛 값이다 — 코드 기본값만 고치면 번역이 이긴다`).toBe(v)
-    }
-  })
-})
-
-describe('② 이용권 현황은 \'내가 산 것\' 안에 있다', () => {
-  it('폰: 제목 바로 아래에서 그린다', () => {
-    const title = SHOP.indexOf("defaultValue: '내가 산 것'")
-    const bar = SHOP.indexOf('<OrderStatusBar />')
-    const rows = SHOP.indexOf('<ListRow')
-    expect(bar, '구역 안에 현황 바가 없다').toBeGreaterThan(title)
-    expect(bar, '현황 바가 목록 줄 아래로 갔다').toBeLessThan(rows)
-    expect(SHOP, '폰에서만 그리는 게이트가 사라졌다').toMatch(/\{statusBar && <div[^>]*><OrderStatusBar \/><\/div>\}/)
-  })
-
-  it('페이지에 따로 서지 않는다 — 구역 사이에 떠 있던 자리', () => {
-    expect(PAGE).not.toContain('<OrderStatusBar />')
-    expect(PAGE).not.toMatch(/^import OrderStatusBar\b/m)
-  })
-
-  it('PC 에선 두 번 서지 않는다 — 카드가 이미 갖고 있다', () => {
-    expect(PAGE, '폰에서만 켜야 한다(PC 는 곧 쓸 이용권 카드 안에 있다)').toContain('<ShoppingGroup counts={counts} statusBar={!isPc} />')
-    expect(PANE).toContain('<OrderStatusBar />')
+// 🧹 2026-10-19 — ①②(이용권 현황 바의 이름·자리)는 바가 통째로 걷히면서 지킬 대상이 사라졌다.
+//   맨 위 숫자 줄이 `이용권 N` 을 말하고 나머지 셋은 '내 이용권' 화면 탭이 갖는다.
+//   돌아오지 않는가는 `my-cache-owner-and-status-height-2026-10-18.test.tsx` ② 가 지킨다.
+describe('①② 이용권 현황 바는 어느 구역에도 없다', () => {
+  it('폰 구역·페이지·PC 카드 어디에도 없다', () => {
+    for (const src of [SHOP, PAGE, PANE]) expect(src).not.toContain('OrderStatusBar')
+    expect(PAGE).toContain('<ShoppingGroup counts={counts} />')
   })
 })
 

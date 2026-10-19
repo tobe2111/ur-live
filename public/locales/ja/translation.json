@@ -4784,7 +4784,8 @@
     "kindGroupbuy": "利用券",
     "emptyGroupbuyTitle": "利用券の購入履歴がありません",
     "useInMyVouchers": "「マイ利用券」でご利用ください",
-    "useInMyGifticons": "「マイ交換券」でご利用ください"
+    "useInMyGifticons": "「マイ交換券」でご利用ください",
+    "statusFilter": "注文状況"
   },
   "welcomeOnboarding": {
     "skip": "スキップ",
@@ -5069,7 +5070,8 @@
     "noExpiry": "期限なし",
     "mapShort": "地図",
     "recoTitle": "こんなチケットはいかが？",
-    "recoMore": "もっと見る"
+    "recoMore": "もっと見る",
+    "gifticonUsableTotal": "使える引換券"
   },
   "sellerWaiting": {
     "title": "セラー承認待機",

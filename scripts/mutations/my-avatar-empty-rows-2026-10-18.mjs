@@ -21,7 +21,8 @@ export default [
   {
     name: '👤 마이 점검: PC 빈 카드 접기를 지운다',
     file: 'src/pages/user-profile/AccountPcPane.tsx',
-    find: "  if (vouchers !== undefined && !((vouchers ?? []) as MyVoucher[]).some(isStoreVoucher)) return null\n",
+    // 🔁 2026-10-19 재조준: 접는 판정이 '곧 쓸 이용권 0줄' 로 바뀌었다(이용권 현황 제거). 불변식 그대로.
+    find: "  if (soon.length === 0) return null\n",
     replace: "",
     test: TEST,
     why: '이용권을 안 산 사람(대부분)에게 PC 오른쪽 위에 내용 없는 흰 카드가 뜬다.',

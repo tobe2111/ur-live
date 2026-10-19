@@ -63,11 +63,12 @@ it('마이가 유어샵 공유 모듈을 끌어오지 않는다(첫 화면 무�
 })
 
 describe('② PC 오른쪽 위 빈 카드', () => {
-  it('응답이 온 뒤 매장 이용권이 0장이면 카드째 접는다(응답 전에는 접지 않는다)', () => {
+  // 🔁 2026-10-19 재조준: 카드 안 '이용권 현황' 이 걷혀 내용이 '곧 쓸 이용권' 하나뿐이다 → 그 줄이 0 이면 접는다.
+  it('곧 쓸 이용권이 0줄이면 카드째 접는다', () => {
     const s = stripComments(readFileSync('src/pages/user-profile/AccountPcPane.tsx', 'utf8'))
-    expect(s).toMatch(/if \(vouchers !== undefined && !\(\(vouchers \?\? \[\]\) as MyVoucher\[\]\)\.some\(isStoreVoucher\)\) return null/)
+    expect(s).toMatch(/if \(soon\.length === 0\) return null/)
     // 접는 판정이 카드 렌더보다 앞에 있다
-    expect(s.indexOf('.some(isStoreVoucher)) return null')).toBeLessThan(s.indexOf('className="ur-pc-card"'))
+    expect(s.indexOf('if (soon.length === 0) return null')).toBeLessThan(s.indexOf('className="ur-pc-card"'))
   })
 })
 

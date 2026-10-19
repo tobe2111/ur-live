@@ -12,7 +12,7 @@
  *     `shadow-lift` 판이라 안 C 의 *"판은 파는 쪽에만"* 을 정면으로 깼고, 게다가 **폰 목록의
  *     부분집합을 손으로 다시 적은 두 번째 목록**이었다 — 셋뿐이라 숙소·찜·단골만 닿고 쿠폰함·
  *     주문 내역·배송지·리뷰는 PC 에서 갈 길이 없었다. 같은 부품을 쓰면 그 둘이 구조적으로 사라진다.
- *   남은 것: ④ 곧 쓸 이용권(티켓 카드) · ③ 이용권 현황(`OrderStatusBar`).
+ *   남은 것: ④ 곧 쓸 이용권. (③ 이용권 현황은 2026-10-19 에 걷었다 — 맨 위 숫자 줄이 같은 말을 한다.)
  *   그 아래(역할·설정·로그아웃)는 페이지가 모바일과 **같은 컴포넌트**를 이어 그린다.
  *
  *   모바일(<lg)에서는 이 컴포넌트가 마운트되지 않는다(페이지의 `isPc` 분기) — 모바일은 손대지 않는다.
@@ -33,7 +33,6 @@ import { isStoreVoucher } from '@/shared/voucher-wallet'
 //    PC 마이에선 파란 밴드 티켓이면 한 서비스 안에서 두 모양이 된다. 부품을 공유하면 갈릴 수가 없다.
 import WalletRow from '@/pages/my-vouchers/WalletRow'
 import type { Voucher } from '@/pages/my-vouchers/types'
-import OrderStatusBar from './OrderStatusBar'
 import { SECTION_TITLE_CLS } from './list-grammar'
 
 type MyVoucher = NonNullable<ReturnType<typeof useMyVouchers>['data']>[number]
@@ -64,36 +63,27 @@ export default function AccountPcPane() {
   }, [vouchers])
 
   /* 🗂️ 2026-10-14 **PC 마이 B**(대표 *"PC 마이는 B"*) — 이 칸이 **카드 한 장**이 됐다.
-     [곧 쓸 이용권 · 전체 ›] → 줄 셋 → hairline → 이용권 현황. 종전엔 티켓 카드 셋과 현황 숫자가
+     [곧 쓸 이용권 · 전체 ›] → 줄 셋(2026-10-19 이용권 현황 제거). 종전엔 티켓 카드 셋과 현황 숫자가
      각자 떠 있어 왼쪽 선이 서로 안 맞았다(대표 스크린샷 실측: 제목 1070 ↔ 현황 1088).
      ⚠️ 카드 모양은 **`ur-pc-card` 클래스 한 곳**(index.css, lg 전용)에서 온다 — 손으로 `shadow-lift` 를
         적지 않는다. 같은 클래스를 판매·설정·내가 산 것 구역이 함께 쓴다(한 칸만 다른 그림자면 두 벌이다). */
-  /* 🫙 2026-10-18 — 이용권을 한 장도 안 산 사람에게 **빈 흰 카드**가 떠 있었다(하네스 1440 실측).
-     곧 쓸 이용권은 0줄, 아래 `OrderStatusBar` 는 산 적이 없으면 스스로 null 이라 카드 껍데기와
-     안쪽 여백만 남았다. 같은 판정(매장 이용권을 한 장이라도 샀는가 = `isStoreVoucher`)으로 카드째 접는다.
-     ⚠️ 응답 전(`vouchers === undefined`)에는 접지 않는다 — 산 사람에게 카드가 늦게 끼어들며 아래를 민다. */
-  if (vouchers !== undefined && !((vouchers ?? []) as MyVoucher[]).some(isStoreVoucher)) return null
+  // 🧹 2026-10-19 — 현황 숫자를 걷어 카드의 내용이 '곧 쓸 이용권' 하나뿐이다 → 쓸 것이 없으면 카드째 접는다.
+  //   ⚠️ 응답 전에도 접힌다 — 그 사이 빈 흰 판을 세우면 내용 없는 카드가 떠 있다. 이용권 목록은 기기 캐시
+  //   (`useMyVouchers` initialData)가 있어 다시 온 사람에겐 첫 렌더에 이미 값이 있다.
+  if (soon.length === 0) return null
 
   return (
     <div className="ur-pc-card">
-      {soon.length > 0 && (
-        <>
-          <div className="flex items-center justify-between px-4 pt-5 pb-1">
-            <h2 className={SECTION_TITLE_CLS}>{t('my.soonVouchers', { defaultValue: '곧 쓸 이용권' })}</h2>
-            <button type="button" onClick={() => navigate('/my-vouchers')} className="text-[13px] text-gray-500 dark:text-gray-400 active:opacity-70">
-              {t('common.seeAll', { defaultValue: '전체 보기' })} ›
-            </button>
-          </div>
-          <div className="divide-y divide-rule">
-            {soon.map(v => (
-              <WalletRow key={String(v.id)} v={v as unknown as Voucher} t={t} onOpen={() => navigate('/my-vouchers')} />
-            ))}
-          </div>
-        </>
-      )}
-      {/* ③ 이용권 현황 — 구체(지금 쓸 것) → 요약 순서는 안 5 그대로. 같은 카드 안에서 hairline 으로만 가른다. */}
-      <div className={soon.length > 0 ? 'border-t border-rule pt-4 pb-2' : 'pt-4 pb-2'}>
-        <OrderStatusBar />
+      <div className="flex items-center justify-between px-4 pt-5 pb-1">
+        <h2 className={SECTION_TITLE_CLS}>{t('my.soonVouchers', { defaultValue: '곧 쓸 이용권' })}</h2>
+        <button type="button" onClick={() => navigate('/my-vouchers')} className="text-[13px] text-gray-500 dark:text-gray-400 active:opacity-70">
+          {t('common.seeAll', { defaultValue: '전체 보기' })} ›
+        </button>
+      </div>
+      <div className="divide-y divide-rule">
+        {soon.map(v => (
+          <WalletRow key={String(v.id)} v={v as unknown as Voucher} t={t} onOpen={() => navigate('/my-vouchers')} />
+        ))}
       </div>
     </div>
   )

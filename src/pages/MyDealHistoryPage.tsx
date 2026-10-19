@@ -1,7 +1,7 @@
 /**
  * 🛡️ 2026-05-24 (사용자 요청): 딜 사용 히스토리 페이지.
  *   - 잔액 hero card
- *   - 필터: 전체 / 충전 / 사용 / 적립 / 환불
+ *   - 필터: 전체 / 충전 / 사용 / 환불 / 광고
  *   - 페이지네이션 (50건/페이지)
  *   - 항목 클릭 시 관련 페이지 (충전 → /points/charge, 주문 → /my-orders, 등)
  */
@@ -13,17 +13,20 @@ import { REFERRAL_GROUP_DISCOUNT_DISABLED, TOPUP_DISABLED } from '@/shared/featu
 import { useBalance } from '@/hooks/queries'
 import { useDealHistory, type Transaction } from '@/hooks/queries/useDealHistory'
 import { formatNumber } from '@/utils/format'
-import { ChevronLeft, Clapperboard, CreditCard, List, RotateCcw, Link as LinkIcon, Inbox, type LucideIcon } from 'lucide-react'
+import { Clapperboard, CreditCard, List, RotateCcw, Link as LinkIcon, type LucideIcon } from 'lucide-react'
+import SubPageHeader, { SUB_PAGE_CLS } from '@/components/ui/sub-page-header'
+import Udal from '@/components/mascot/Udal'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { parseUTCDate } from '@/utils/date'
-type FilterType = '' | 'charge' | 'donate' | 'refund' | 'referral_bonus' | 'ad_reward'
+type FilterType = '' | 'charge' | 'donate' | 'refund' | 'ad_reward'
 
 const FILTER_OPTIONS: { value: FilterType; label: string; Icon: LucideIcon }[] = [
+  // 🧹 2026-10-19: '추천' 칩 제거 — 유저 추천 보너스는 지급된 적이 없고(원장 0행) 2026-10-16 대표 확정으로
+  //   주지 않는다. 누르면 늘 빈 목록인 칩은 "있는 혜택" 처럼 읽힌다. 옛 행이 있어도 '전체'에 그대로 보인다.
   { value: '',                label: '전체',    Icon: List },
   { value: 'charge',          label: '충전',    Icon: CreditCard },
   { value: 'donate',          label: '사용',    Icon: BagIcon },
   { value: 'refund',          label: '환불',    Icon: RotateCcw },
-  { value: 'referral_bonus',  label: '추천',    Icon: PeopleIcon },
   { value: 'ad_reward',       label: '광고',    Icon: Clapperboard },
 ]
 
@@ -75,41 +78,29 @@ export default function MyDealHistoryPage() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#11141C] pb-20">
+    <div className={`${SUB_PAGE_CLS} pb-20`}>
       <SEO title="딜 사용 내역 - 유어딜" description="딜 충전, 사용, 적립, 환불 내역" url="/my-deal-history" noindex />
 
-      {/* Header */}
-      <div className="sticky top-0 md:top-14 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
-        <div className="ur-content-medium flex items-center px-4 lg:px-8 py-3">
-          <button onClick={() => navigate(-1)} aria-label="뒤로"
-            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/[0.06]">
-            <ChevronLeft className="w-5 h-5 text-gray-900 dark:text-white" />
-          </button>
-          <h1 className="ml-1 text-[15px] font-bold text-gray-900 dark:text-white">딜 사용 내역</h1>
-        </div>
-      </div>
+      <SubPageHeader title="딜 사용 내역" />
 
-      {/* Hero — 현재 잔액. 🎨 2026-06-10: 핑크 → 모노크롬 차콜 (B&W 디자인 정합, 유어샵과 동일 톤) */}
-      <div className="ur-content-medium px-4 lg:px-8 pt-5">
-        <div className="rounded-2xl p-5 text-white" style={{ background: 'linear-gradient(135deg, #2b2b2e 0%, #161618 60%, #0a0a0b 100%)' }}>
-          <p className="text-[12px] font-medium opacity-80">현재 딜 잔액</p>
-          <p className="text-[28px] font-extrabold mt-1">{formatNumber(balance)}<span className="text-[15px] ml-1 font-bold opacity-80">딜</span></p>
-          <div className="mt-3 flex gap-2">
+      {/* 🎫 2026-10-19 (대표 *"다 이상적으로 진행해줘 모두"*): 검정 그라디언트 판 → 흰 카드.
+          숫자가 주인공이고(규칙 ③) 행동은 브랜드 블루 하나(규칙 ②) — 검정 판은 이 화면에만 있던 모양이었다. */}
+      <div className="ur-content-medium px-4 lg:px-8 pt-2">
+        <div className="rounded-2xl bg-surface shadow-lift dark:shadow-none p-5">
+          <p className="text-[13px] font-semibold text-gray-500 dark:text-gray-400">현재 딜 잔액</p>
+          <p className="mt-1 flex items-baseline gap-1 leading-none">
+            <span className="text-[28px] font-extrabold tabular-nums tracking-[-0.02em] text-gray-900 dark:text-white">{formatNumber(balance)}</span>
+            <span className="text-[15px] font-bold text-gray-500 dark:text-gray-400">딜</span>
+          </p>
+          <div className="mt-4 flex gap-2">
             {/* 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 충전 버튼 → 딜 모으기(마이 리워드 카드) 유도 */}
-            {TOPUP_DISABLED ? (
-              <button onClick={() => navigate('/user/profile')}
-                className="flex-1 py-2 rounded-lg bg-white/15 hover:bg-white/25 text-[12px] font-bold transition-colors">
-                딜 모으기
-              </button>
-            ) : (
-            <button onClick={() => navigate('/points/charge')}
-              className="flex-1 py-2 rounded-lg bg-white/15 hover:bg-white/25 text-[12px] font-bold transition-colors">
-              충전
+            <button onClick={() => navigate(TOPUP_DISABLED ? '/user/profile' : '/points/charge')}
+              className="flex-1 h-11 rounded-xl bg-wash text-[15px] font-semibold text-gray-900 dark:text-white active:opacity-70">
+              {TOPUP_DISABLED ? '딜 모으기' : '충전'}
             </button>
-            )}
             {/* 🧭 2026-06-10: '쇼핑'(잠정 숨김 탭) → '교환권' — 딜의 실제 사용처로 유도 */}
             <button onClick={() => navigate('/vouchers')}
-              className="flex-1 py-2 rounded-lg bg-white/15 hover:bg-white/25 text-[12px] font-bold transition-colors">
+              className="flex-1 h-11 rounded-xl bg-brand text-[15px] font-semibold text-white active:opacity-80">
               교환권 쓰기
             </button>
           </div>
@@ -148,7 +139,7 @@ export default function MyDealHistoryPage() {
           </div>
         ) : items.length === 0 ? (
           <div className="py-16 text-center">
-            <Inbox className="w-9 h-9 mx-auto mb-3 text-gray-300 dark:text-gray-600" strokeWidth={1.5} aria-hidden />
+            <Udal mood="empty" size={96} className="mx-auto mb-3" />
             <p className="text-[15px] text-gray-500 dark:text-gray-400">거래 내역이 없어요</p>
             {filter && (
               <button onClick={() => { setFilter(''); setPage(0) }}
@@ -156,7 +147,7 @@ export default function MyDealHistoryPage() {
             )}
           </div>
         ) : (
-          <div className="rounded-2xl bg-gray-50 dark:bg-white/[0.03] overflow-hidden">
+          <div className="rounded-2xl bg-surface shadow-lift dark:shadow-none overflow-hidden">
             {items.map((tx, i) => {
               const TxIcon = TYPE_ICON[tx.type] || List
               const isPositive = tx.amount > 0 || tx.type === 'charge' || tx.type === 'refund' || tx.type === 'referral_bonus' || tx.type === 'ad_reward'
@@ -166,7 +157,7 @@ export default function MyDealHistoryPage() {
                 <button
                   key={tx.id}
                   onClick={() => onItemClick(tx)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 text-left active:bg-gray-100 dark:active:bg-white/[0.06] transition-colors ${i ? 'border-t border-gray-100 dark:border-[#2C2F35]' : ''}`}
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-left active:bg-gray-100 dark:active:bg-white/[0.06] transition-colors ${i ? 'border-t border-rule' : ''}`}
                 >
                   <TxIcon className="w-[18px] h-[18px] flex-shrink-0 text-gray-400 dark:text-gray-500" strokeWidth={1.8} aria-hidden />
                   <div className="flex-1 min-w-0">

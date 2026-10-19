@@ -14,7 +14,9 @@
 import { useNavigate } from 'react-router-dom'
 import { BellIcon } from '@/components/icons/urdeal-icons'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
-import { ArrowLeft, BellOff, Loader2, ChevronRight } from 'lucide-react'
+import { BellOff, Loader2, ChevronRight } from 'lucide-react'
+import SubPageHeader, { SUB_PAGE_CLS } from '@/components/ui/sub-page-header'
+import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
@@ -58,17 +60,10 @@ export default function MyFollowsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#1D1F29]">
+    <div className={SUB_PAGE_CLS}>
       <SEO title="내 단골 가게" description="단골 등록한 가게와 알림 설정" url="/my/follows" />
 
-      <div className="sticky top-0 z-30 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35]">
-        <div className="ur-content-narrow mx-auto px-4 lg:px-8 flex items-center gap-3 py-3">
-          <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-[#1D1F29]" aria-label="뒤로">
-            <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" />
-          </button>
-          <h1 className="text-[15px] font-extrabold text-gray-900 dark:text-white">내 단골 가게</h1>
-        </div>
-      </div>
+      <SubPageHeader title="내 단골 가게" />
 
       <div className="ur-content-narrow mx-auto px-4 lg:px-8 py-5">
         {loading ? (
@@ -92,7 +87,7 @@ export default function MyFollowsPage() {
             <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">단골 등록한 가게가 없어요</p>
             <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">관심 있는 가게 페이지에서 단골 등록하세요</p>
             <button
-              onClick={() => navigate('/group-buy')}
+              onClick={() => navigate('/')}
               className="px-5 py-2 bg-brand text-white rounded-full text-[15px] font-bold"
             >
               동네딜 둘러보기
@@ -100,9 +95,7 @@ export default function MyFollowsPage() {
           </div>
         ) : (
           <>
-            <div className="bg-gray-100 dark:bg-white/[0.06] border border-gray-200 dark:border-white/10 rounded-2xl p-4 mb-4 text-[12px] text-gray-700 dark:text-gray-300">
-              💡 가게별로 받을 알림 종류를 선택하세요. 너무 많이 받으면 OFF, 중요한 알림만 ON.
-            </div>
+            <p className="px-1 mb-3 text-[13px] text-gray-500 dark:text-gray-400">가게마다 받을 알림을 고를 수 있어요.</p>
 
             <div className="space-y-3">
               {follows.map(f => (
@@ -115,7 +108,7 @@ export default function MyFollowsPage() {
                     {f.seller_avatar ? (
                       <img src={f.seller_avatar} alt="" className="w-12 h-12 rounded-full object-cover shrink-0" loading="lazy" />
                     ) : (
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gray-300 to-gray-700 shrink-0" />
+                      <div className="w-12 h-12 rounded-full bg-wash shrink-0 flex items-center justify-center text-[15px] font-semibold text-gray-500 dark:text-gray-400">{(f.seller_name || '?').slice(0, 1)}</div>
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="text-[15px] font-bold text-gray-900 dark:text-white truncate">{f.seller_name}</p>
@@ -127,11 +120,12 @@ export default function MyFollowsPage() {
                   </button>
 
                   {/* 알림 매트릭스 토글 */}
-                  <div className="border-t border-gray-100 dark:border-[#2C2F35] p-3 space-y-2">
+                  <div className="border-t border-rule p-3 space-y-2">
                     {([
-                      { key: 'notify_live_start' as const, label: '📺 라이브 시작', desc: '셀러가 방송 시작 시 push' },
-                      { key: 'notify_group_buy' as const, label: '🔥 공구 시작', desc: '새 공구 등록 시 push' },
-                      { key: 'notify_new_product' as const, label: '🎁 신상품', desc: '신상품 / 이벤트 알림' },
+                      // 🧹 2026-10-19: 라이브 시작 토글 제거 — 라이브커머스는 영구 중단이라 켜도 오는 알림이 없다.
+                      ...(LIVE_COMMERCE_SUSPENDED ? [] : [{ key: 'notify_live_start' as const, label: '라이브 시작', desc: '가게가 방송을 시작하면 알려 드려요' }]),
+                      { key: 'notify_group_buy' as const, label: '새 이용권', desc: '새 이용권을 올리면 알려 드려요' },
+                      { key: 'notify_new_product' as const, label: '새 소식', desc: '새 상품·이벤트를 알려 드려요' },
                     ]).map(opt => (
                       <label key={opt.key} className="flex items-center justify-between cursor-pointer py-1">
                         <div className="flex items-start gap-2">

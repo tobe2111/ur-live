@@ -8,7 +8,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import MobileFooter from '@/components/MobileFooter'
 import { OrdersTab } from '@/components/mypage/OrdersTab'
-import { ArrowLeft } from 'lucide-react'
+import SubPageHeader, { SUB_PAGE_CLS } from '@/components/ui/sub-page-header'
 import { getUserIdSync, isLoggedInSync, requireLogin } from '@/utils/auth'
 import type { Order } from '@/types/order'
 import { isVoucherCategory } from '@/shared/constants/voucher-categories'
@@ -250,41 +250,13 @@ export default function MyOrdersPage() {
   }
 
 
-  // 🛡️ 2026-05-28 (사용자 요청 A): 헤더/레이아웃을 CartPage(/cart) 와 동일한 쇼핑 페이지 표준
-  //   스타일로 통일 — 화이트 테마 + 스티키 헤더(뒤로가기 + 가운데 제목). Wallet/LargeTitle chrome 제거.
+  // ← 2026-10-19 (대표 *"다 이상적으로 진행해줘 모두"*): 마이 하위 화면 공용 머리줄 · 필터는 한 줄
+  //   (종류 탭 + 오른쪽 상태 고르기 — 종전 상태 칩 줄과 종류 탭 줄이 위아래 둘이었다).
   return (
-    <div className="min-h-screen bg-white dark:bg-[#11141C] pb-safe-nav md:pb-20">
+    <div className={`${SUB_PAGE_CLS} pb-safe-nav md:pb-20`}>
       <SEO title={t('myOrders.docTitle')} description={t('myOrders.seoDesc')} url="/my-orders" noindex />
 
-      {/* 헤더 — 무신사 스타일: 뒤로가기 + 좌측 large title */}
-      <div className="sticky top-0 z-10 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35]">
-        <div className="ur-content-medium flex items-center gap-1 px-4 py-3">
-          <button type="button" onClick={() => navigate(-1)} aria-label={t('notifications.back', { defaultValue: '뒤로' })} className="w-9 h-9 -ml-2 flex items-center justify-center">
-            <ArrowLeft className="h-5 w-5 text-gray-900 dark:text-white" aria-hidden="true" />
-          </button>
-          <h1 className="text-[17px] font-extrabold text-gray-900 dark:text-white">{t('myOrders.title')}</h1>
-        </div>
-      </div>
-
-      {/* 🛡️ 2026-07-02: 상태 필터 칩 — 주문 현황 바(?status=)와 연동 */}
-      <div className="ur-content-medium px-4 sm:px-6 lg:px-8 pt-3">
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-          {STATUS_FILTERS.map(f => (
-            <button
-              key={f.key}
-              type="button"
-              onClick={() => setSearchParams(f.key === 'all' ? {} : { status: f.key }, { replace: true })}
-              className={`shrink-0 px-3 py-2 rounded-full text-[12px] font-semibold border transition-colors ${
-                statusFilter === f.key
-                  ? 'bg-brand text-white border-brand'
-                  : 'bg-white dark:bg-[#11141C] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35]'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <SubPageHeader title={t('myOrders.title')} backLabel={t('notifications.back', { defaultValue: '뒤로' })} />
 
       {/* Content */}
       {/* 📐 2026-10-01 — **본문이 최소 한 화면을 채운다.**
@@ -320,6 +292,9 @@ export default function MyOrdersPage() {
             onConfirmOrder={handleConfirmOrder}
             onRequestReturn={(orderId, orderNumber) => setReturnModal({ orderId, orderNumber })}
             returnsByOrder={returnsByOrder}
+            statusOptions={STATUS_FILTERS}
+            statusValue={activeFilter.key}
+            onStatusChange={(key) => setSearchParams(key === 'all' ? {} : { status: key }, { replace: true })}
           />
         )}
       </main>
