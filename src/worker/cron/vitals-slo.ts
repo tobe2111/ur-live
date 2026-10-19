@@ -13,6 +13,7 @@
  */
 import type { Env } from '../types/env'
 import { evaluateVitals, describeFinding, poolDays, MIN_SAMPLES, WINDOW_DAYS, VITALS_SLO } from '../utils/vitals-slo'
+import { summarizeLcpParts, describeLcpParts } from '../utils/lcp-parts'
 
 const DAY_MS = 86_400_000
 const ymd = (ms: number) => new Date(ms).toISOString().slice(0, 10)
@@ -45,6 +46,16 @@ async function readWindow(kv: KVNamespace, nowMs: number, from: number) {
   return poolDays(await Promise.all(offsets.map((d) => readDay(kv, ymd(nowMs - d * DAY_MS)))))
 }
 
+/** 🔬 2026-10-19: 경보가 난 화면의 LCP 쪼개기를 판정 창 그대로 모은다(없으면 빈 줄 — 경보를 막지 않는다). */
+async function lcpPartsLine(kv: KVNamespace, nowMs: number, page: string): Promise<string> {
+  try {
+    const days = Array.from({ length: WINDOW_DAYS }, (_, i) => ymd(nowMs - (1 + i) * DAY_MS))
+    const raws = await Promise.all(days.map((d) => kv.get(`vitals:${d}:LCPB:${page}`)))
+    const rows = raws.flatMap((r) => { try { return r ? (JSON.parse(r) as number[][]) : [] } catch { return [] } })
+    return describeLcpParts(summarizeLcpParts(rows))
+  } catch { return '' }
+}
+
 export async function runVitalsSlo(env: Env, nowMs = Date.now()): Promise<string> {
   const e = env as Env & { ANALYTICS_KV?: KVNamespace; SESSION_KV?: KVNamespace }
   const kv = e.ANALYTICS_KV || e.SESSION_KV
@@ -73,7 +84,12 @@ export async function runVitalsSlo(env: Env, nowMs = Date.now()): Promise<string
       : `실사용 성능 기준 ${findings.length}건 벗어남 (${span})`
     const bodyLines = judged === 0
       ? [blindReason, `창 ${WINDOW_DAYS}일 · 화면별 최소 표본 ${MIN_SAMPLES}`]
-      : findings.slice(0, 8).map(describeFinding).concat(findings.length > 8 ? [`…외 ${findings.length - 8}건`] : [])
+      : (await Promise.all(findings.slice(0, 8).map(async (f) => {
+          const line = describeFinding(f)
+          if (f.metric !== 'LCP') return [line]
+          const parts = await lcpPartsLine(kv, nowMs, f.page)
+          return parts ? [line, parts] : [line]
+        }))).flat().concat(findings.length > 8 ? [`…외 ${findings.length - 8}건`] : [])
     await createDashboardNotification(
       env.DB, 'admin', null, 'perf_slo', title, bodyLines.join('\n'), '/admin/system-monitoring',
     // intentional: 알림 실패가 판정 기록(하트비트 out)을 막으면 안 된다 — 결과는 아래 반환값에 남는다
