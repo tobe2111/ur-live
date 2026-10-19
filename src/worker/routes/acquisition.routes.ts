@@ -7,6 +7,7 @@
  *    UNIQUE(user_id) INSERT OR IGNORE — 첫 소스가 이기고 이후 재클레임은 무해한 no-op (first-touch 고정).
  */
 import { Hono } from 'hono'
+import { intParam } from '@/shared/pagination'
 import { requireAuth, getCurrentUser } from '../middleware/auth'
 import { rateLimit } from '../middleware/rate-limit'
 import type { Env } from '../types/env'
@@ -78,7 +79,7 @@ acquisitionRoutes.post('/inflow/bind', rateLimit({ action: 'inflow_bind', max: 2
 acquisitionRoutes.get('/utm-report', rateLimit({ action: 'acq_utm_report', max: 10, windowSec: 300 }), async (c) => {
   if (!c.env.MARKETING_REPORT_TOKEN) return c.json({ success: false, error: 'report token not configured' }, 503)
   if (!reportTokenOk(c.env.MARKETING_REPORT_TOKEN, c.req.header('Authorization'))) return c.json({ success: false, error: 'unauthorized' }, 401)
-  const days = Number(c.req.query('days') || 7)
+  const days = intParam(c.req.query('days'), 7)
   const rows = await loadUtmReport(c.env.DB, days)
   return c.json({ success: true, data: { days, rows } })
 })
