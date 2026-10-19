@@ -30,11 +30,13 @@ describe('① 실사용자 vitals 가 쌓인다', () => {
     const s = code('src/lib/web-vitals-report.ts')
     const at = s.indexOf("type: 'largest-contentful-paint'")
     expect(at).toBeGreaterThan(0)
-    const win = s.slice(at, at + 900)
+    // 2026-10-19: LCP 블록이 쪼개기·숨은 탭 규칙으로 길어졌다 — 거리 대신 다음 블록(CLS)까지를 본다.
+    const win = s.slice(at, s.indexOf('// CLS', at))
     expect(win).toMatch(/addEventListener\('pagehide', flush, \{ once: true \}\)/)
     expect(win).toMatch(/setTimeout\(flush, 10000\)/)
     expect(win).toMatch(/if \(sent \|\| lcpValue <= 0\) return/)
-    expect(win).toMatch(/send\('LCP', lcpValue, page\)/)
+    // 2026-10-19: 보내는 값은 prerender 를 뺀 `lcp`(= lcpValue − activation) 와 쪼개기다.
+    expect(win).toMatch(/send\('LCP', lcp, page/)
   })
 })
 

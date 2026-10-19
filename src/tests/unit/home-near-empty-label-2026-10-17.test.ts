@@ -48,6 +48,7 @@ describe('② 제목과 위치 칸이 같은 이름', () => {
     expect(homeLocationLabel(cases[0])).toBe('동탄5동')
     expect(homeFeedTitle(cases[0])).toBe('동탄5동 근처 이용권')
     expect(homeLocationLabel(cases[1])).toBe('내 주변')
+    expect(homeFeedTitle(cases[1]), "'내 주변 근처 이용권' 은 말이 겹친다").toBe('내 주변 이용권')
     expect(homeLocationLabel(cases[3])).toBe('전국')
   })
   it('두 화면이 같은 함수를 쓴다(손으로 조립 금지)', () => {

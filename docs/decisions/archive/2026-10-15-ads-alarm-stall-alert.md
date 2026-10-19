@@ -52,4 +52,6 @@
 
 ## 반영 커밋
 
+머지 `c94ad5b4` (#1913, main). 아래는 작업 브랜치의 원 커밋.
+
 00fa83ef9 (브랜치 claude/influencer-proposal-03yqmh — PR 은 이 커밋 뒤에 연다)
