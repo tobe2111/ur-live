@@ -39,7 +39,7 @@ import { readMallOrigin } from '@/shared/mall/origin'
 import { parseUTCDate } from '@/utils/date'
 import { storeAffiliateRef, arrivedViaSomeoneElsesRef } from '@/utils/affiliate-track'
 import { useProductViewBeacon } from '@/hooks/useProductViewBeacon'
-import { effectiveAffiliateRate } from '@/shared/affiliate-rate'; import { priceDisplay } from '@/shared/price-display'
+import { effectiveAffiliateRate } from '@/shared/affiliate-rate'; import { priceDisplay } from '@/shared/price-display'; import { useOwnerManage, OwnerManageBar } from '@/components/deal/useOwnerManage'
 
 // 🛡️ 2026-05-02: TD-018 분할 — ReviewForm/ProductReviews/ReferralSection/AccordionSection 을
 //   ./product-detail/ 로 추출. 미사용 imports (Separator, ProgressiveImage, SharePrompt, toast, Users, Clock, Product type, lucide 일부) 제거.
@@ -71,7 +71,7 @@ export default function ProductDetailPage() {
   // ✅ Selector로 필요한 상태만 구독
   const user = krUser // 🔥 2026-08-04: GLOBAL 스토어 제거(#804)
   const isLoggedIn = !!user || hasConsumerSession()
-  
+  const { isOwner: own, openManage, sheet: ownerSheet } = useOwnerManage(Number(id), isLoggedIn, 'product') // 🏪 2026-10-19 주인 → [관리하기]
   // 🔥 React Query로 데이터 fetching (자동 캐싱 + 재시도)
   const { data: product, isLoading, error } = useProduct(id)
   const { data: options = [] } = useProductOptions(id)
@@ -820,7 +820,7 @@ export default function ProductDetailPage() {
 
       {/* Floating Cart / Purchase Bar */}
       <Suspense fallback={<div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] h-16 bg-gray-100 dark:bg-[#1D1F29] animate-pulse" />}>
-        <FloatingActionBar
+        {own ? <OwnerManageBar kind="product" framed onManage={openManage} /> : <FloatingActionBar
           onAddToCart={handleAddToCart}
           onBuyNow={handleBuyNow}
           disabled={(product.stock ?? 0) <= 0 && (product.stock_quantity ?? 0) <= 0} /* 🚑 2026-07-02: null===0 갭 — 한쪽 컬럼만 쓰는 품절 상품이 구매 가능하던 버그 */
@@ -832,8 +832,8 @@ export default function ProductDetailPage() {
           variant={pickupProduct ? 'pickup' : 'default'}
           summaryLeft={pickupProduct ? pickupSummaryLine(quantity, product.pickup?.date) : undefined}
           summaryTotal={displayPrice * quantity}
-        />
-      </Suspense>
+        />}
+      </Suspense>{ownerSheet}
 
       {/* 🏭 2026-06-04 (사용자 요청 — 배치/디자인 정리): 선물·담기 보조 액션을 하나의 그룹으로 통합.
            기존: 분리된 floating 핑크 원 + 보라 pill 이 하단 바와 겹침(거의 겹쳐짐). 이모지 📌 아이콘.

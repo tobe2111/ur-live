@@ -104,8 +104,9 @@
         "lucide-desktop.js": 1.09,
         "lz-boot-gbDetail-linkshop1.js": 0.5,
         "lucide-home.js": 0.7,
+        "app-owner-ui.js": 1.28,
         "lz-gbDetail-map.js": 0.51,
-        "lz-boot-gbDetail.js": 0.92,
+        "lz-boot-gbDetail.js": 1.22,
         "lz-gbDetail-product.js": 1.56,
         "lz-common.js": 17.36,
         "lz-gbDetail-voucherDetail.js": 0.58,
@@ -156,6 +157,7 @@
         "index.css": 27.75,
         "ProductDetailPage.js": 7.42,
         "lz-gbDetail-linkshop1-product.js": 0.72,
+        "app-owner-ui.js": 1.28,
         "app-cross.js": 1.41,
         "lz-common.js": 17.36,
         "lucide-home.js": 0.7,
@@ -192,7 +194,7 @@
         "lz-linkshop1-vouchers.js": 0.96,
         "lz-boot-gbDetail-linkshop1.js": 0.5,
         "lz-gbDetail-linkshop1-product.js": 0.72,
-        "lz-linkshop1.js": 4.79
+        "lz-linkshop1.js": 4.77
       }
     },
     "vouchers": {
@@ -430,6 +432,7 @@
         "lz-boot-gbDetail-linkshop1.js": 0.5,
         "lz-gbDetail-linkshop1-product.js": 0.72,
         "lz-gbDetail-product.js": 1.56,
+        "app-owner-ui.js": 1.28,
         "lucide-home.js": 0.7,
         "StayCurations.js": 1.39,
         "lz-gbDetail-voucherDetail.js": 0.58,

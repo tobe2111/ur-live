@@ -168,6 +168,19 @@ export const MAP_ROW_MODULES = [
 ]
 
 /**
+ * 🏪 2026-10-19 [LOADING_ADDITIVE] 마이 목록 부품 — `app-owner-kit`.
+ *   주인 관리 시트(`components/deal/OwnerManageSheet`)는 상세에서 lazy 로 받는데, 그 시트가 마이의 목록 부품
+ *   (`list-grammar`)과 셀러 도착 주소(`seller-deep-link`)를 쓴다. 묶음기는 그 둘을 상세의 lazy 사용(`gbDetailL`)으로
+ *   세어 상세 봉투로 옮겼고, 그러면 그 둘을 첫 화면에 쓰는 마이·대시보드가 상세 봉투를 받았다(실측 dash:my +3.7 · admin +5.6).
+ *   ⇒ 둘만 작은 고정 묶음으로 둔다. 마이는 바이트가 같고(요청 하나), 상세는 [관리하기]를 누를 때만 받는다.
+ */
+export const OWNER_KIT_MODULES = ['/src/pages/user-profile/list-grammar', '/src/lib/seller-deep-link']
+/** 주인 판정·버튼(상세 첫 화면 — 손님에겐 판정 요청 하나와 숨은 버튼뿐)과 시트(누를 때만)도 각자의 봉투에 둔다 —
+ *  묶음기가 같은 사용자 집합의 공용 봉투(카카오 공유·사진 압축이 사는 곳)에 섞으면 그 공용 부품을 쓰는 어드민·마이가
+ *  주인 코드까지 받았다(실측 dash:admin +6.1). */
+export const OWNER_UI_MODULES = ['/src/components/deal/useOwnerManage', '/src/pages/group-buy/OwnerManagePanel', '/src/pages/group-buy/useViewerIsOwner']
+
+/**
  * 🗺️ 2026-10-19 [LOADING_ADDITIVE] 지역 링크 표 — `app-region-grid`.
  *   지역 페이지(`/region/*`, 색인 44개)는 `RegionLinkGrid` 하나를 PC 홈과 같이 쓴다. 그 부품이 PC 홈 전용 봉투
  *   (`lz-homePc` — 히어로 배너·앱 띠·지역 타일·사이드바, br 5.6KB)에 들어 있어서 지역 첫 화면이 그 봉투를 통째로 받았다.
@@ -295,6 +308,10 @@ export default defineConfig({
           if (id.includes('/src/components/ui/sub-page-header')) return 'app-subpage'
           // 🔎 2026-10-19 지도 목록 한 줄 — 근거는 위 MAP_ROW_MODULES 주석
           if (MAP_ROW_MODULES.some((p) => id.includes(p))) return 'app-map-row'
+          // 🏪 2026-10-19 마이 목록 부품 — 근거는 위 OWNER_KIT_MODULES 주석
+          if (OWNER_KIT_MODULES.some((p) => id.includes(p))) return 'app-owner-kit'
+          if (OWNER_UI_MODULES.some((p) => id.includes(p))) return 'app-owner-ui'
+          if (id.includes('/src/components/deal/OwnerManageSheet')) return 'app-owner-sheet'
           // 🗺️ 2026-10-19 지역 링크 표 — 근거는 위 REGION_GRID_MODULES 주석
           if (REGION_GRID_MODULES.some((p) => id.includes(p))) return 'app-region-grid'
           // Icons

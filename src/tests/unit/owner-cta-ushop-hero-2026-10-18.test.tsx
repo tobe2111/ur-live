@@ -86,12 +86,15 @@ describe('② 화면 — 주인에겐 [관리하기]', () => {
   it('배선: 상세가 localStorage 셀러 번호로 주인을 정하지 않고, 두 자리에 같은 값을 넘긴다', () => {
     const c = readCode('src/pages/GroupBuyDetailPage.tsx')
     expect(c).not.toMatch(/getItem\('seller_id'\)/)
-    expect(c).toMatch(/useViewerIsOwner\(productId, isLoggedIn\)/)
+    // 2026-10-19: 판정은 세 상세가 같이 쓰는 훅(`useOwnerManage` → `useOwnedView`)으로 옮겨갔다 — 불변식 그대로.
+    expect(c).toMatch(/useOwnerManage\(productId, isLoggedIn, 'pass'\)/)
     expect((c.match(/isOwner=\{isOwnProduct\}/g) ?? []).length).toBe(2)
   })
   it('배선: 판정 엔드포인트는 엣지 캐시 경로(/products/*) 밖이고 구매 차단과 같은 함수를 쓴다', () => {
-    const r = readCode('src/features/group-buy/api/group-buy.routes.ts')
-    const i = r.indexOf("groupBuyRoutes.get('/viewer/:id'")
+    // 2026-10-19: 판정 라우트가 `owner-viewer.routes.ts` 로 옮겨갔다(관리 시트의 숫자·판매 중지와 한 곳).
+    const r = readCode('src/features/group-buy/api/owner-viewer.routes.ts')
+    expect(readCode('src/features/group-buy/api/group-buy.routes.ts')).toMatch(/registerOwnerViewerEndpoints\(groupBuyRoutes\)/)
+    const i = r.indexOf("router.get('/viewer/:id'")
     expect(i).toBeGreaterThan(-1)
     const block = r.slice(i, r.indexOf('\n})', i))
     expect(block).toMatch(/requireAuth\(\)/)

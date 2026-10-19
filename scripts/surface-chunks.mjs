@@ -43,13 +43,13 @@ const NEVER_ENTRY = new Set(['app-utils-deferred'])
  *  🔀 2026-10-18 — `app-cross`: 라이브러리 봉투는 아니지만 같은 이유로 고정한다. 화면 밖 공용 묶음(app-components)과
  *   손님 페이지가 함께 쓰는 작은 유틸 묶음이다(vite.config.ts CROSS_MODULES). 묶음기가 페이지 묶음으로 옮기면
  *   app-components 가 그 페이지 묶음을 통째로 끌고 온다 — 그걸 막으려고 만든 봉투다. */
-export const LIBRARY_ENVELOPES = new Set(['sentry', 'capacitor', 'tosspayments', 'app-kakao-sdk', 'charts', 'codes', 'app-ui-utils', 'app-cross', 'app-map-row', 'app-region-grid', 'app-subpage'])
+export const LIBRARY_ENVELOPES = new Set(['sentry', 'capacitor', 'tosspayments', 'app-kakao-sdk', 'charts', 'codes', 'app-ui-utils', 'app-cross', 'app-map-row', 'app-region-grid', 'app-owner-kit', 'app-owner-ui', 'app-subpage'])
 
 /** 🔔 **누를 때만 받는 봉투** — 묶음기가 페이지 봉투로 옮기지 않는다(2026-10-18).
  *  알림 시트는 `lazy()` 인데 거의 모든 화면이 그 훅(`useNotificationSheet`)을 갖고 있어 묶음기가 `lz-common` 에 넣었다.
  *  `lz-common` 은 대부분의 첫 화면이 받으므로 **lazy 경계가 무의미**해지고, 시트가 끌고 오는 패널·아이콘 봉투까지
  *  폰 첫 화면에 실렸다(실측). 이름을 지키면 벨을 누를 때만 받는다. */
-export const LAZY_ENVELOPES = new Set(['app-notification-panel'])
+export const LAZY_ENVELOPES = new Set(['app-notification-panel', 'app-owner-sheet'])
 
 /** 🖥️ 엔트리가 **동적으로** 부르지만 첫 렌더 전에 기다려 받는 모듈 — 엔트리 폐쇄로 센다(2026-10-18).
  *  PC 상단 네비는 폰 첫 방문에서 빼려고 동적 import 로 바꿨다(`ConsumerTopChrome`). 그 모듈 자신은 vite 규칙의 이름
