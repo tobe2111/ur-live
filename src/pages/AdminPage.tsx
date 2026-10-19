@@ -7,7 +7,7 @@ import { parseUTCDate } from '@/utils/date'
 import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import { toast } from '@/hooks/useToast'
 import {
-  Users, Play, Package, TrendingUp, CheckCircle,
+  Users, Package, TrendingUp, CheckCircle,
   DollarSign, Eye, Ticket, Truck, RotateCcw, Banknote, Boxes, AlertTriangle
 } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
