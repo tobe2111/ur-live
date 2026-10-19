@@ -302,12 +302,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 331 | 1043 |
+| 전체 | 331 | 1044 |
 | 도메인 버킷 (5개 소개서) | 131 | 460 |
 | 공통/인프라 (의도적 제외) | 153 | 491 |
-| **미커버 (점검 필요)** | **47** | **92** |
+| **미커버 (점검 필요)** | **47** | **93** |
 
-⚠️ **미커버 139건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 140건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -430,6 +430,7 @@
 - `POST /kakao-bot/link-code` (`src/features/seller/api/seller-kakao-bot.routes.ts`)
 - `GET /kakao-bot/links` (`src/features/seller/api/seller-kakao-bot.routes.ts`)
 - `POST /kakao-bot/links/:key/revoke` (`src/features/seller/api/seller-kakao-bot.routes.ts`)
+- `GET /llms-full.txt` (`src/worker/routes/sitemap.routes.ts`)
 - `GET /llms.txt` (`src/worker/routes/sitemap.routes.ts`)
 - `GET /me/prefs/:key` (`src/features/auth/api/admin-prefs.routes.ts`)
 - `PUT /me/prefs/:key` (`src/features/auth/api/admin-prefs.routes.ts`)
@@ -1606,7 +1607,7 @@
 
 
 
-> 마지막 생성: 2026-10-19T04:09:06.255Z
+> 마지막 생성: 2026-10-19T05:07:56.468Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

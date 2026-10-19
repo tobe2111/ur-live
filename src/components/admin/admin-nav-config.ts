@@ -2,13 +2,17 @@
  * 🧱 2026-07-20 (AdminLayout god 파일 분해 + 즐겨찾기 기능 여유 확보): 어드민 좌측 nav 데이터/섹션/
  *   RBAC 경로 상수를 AdminLayout.tsx 에서 verbatim 추출. **데이터/배치/RBAC/collapse/active 전부 불변** —
  *   렌더 로직(AdminLayout)과 데이터(이 파일)를 분리했을 뿐. 아이콘/라벨/라우트/그룹 순서 byte-동일.
+ *
+ * 🪶 2026-10-19 — 아이콘은 어드민이 이미 받는 `lucide` 봉투 안에서만 고른다. `Wrench`·`MapPin`·`Play`·`History` 는
+ *   손님 화면 봉투(교환권·유어샵·쇼츠·지도)에 들어 있어서 아이콘 하나가 그 봉투를 통째로 끌고 왔다(어드민 첫 화면 274.0 → 256.4KB br).
+ *   새 아이콘을 넣으면 `check-surface-budgets` dash:admin 이 늘어난 청크 이름을 댄다.
  */
 import {
   LayoutDashboard, ShoppingBag, Package, DollarSign,
-  Bell, Image, Monitor, Store, ClipboardList, Gift, Ticket, Play, BookOpen, Building2, UserCheck, Settings, Send,
+  Bell, Image, Monitor, Store, ClipboardList, Gift, Ticket, BookOpen, Building2, UserCheck, Settings, Send,
   BarChart3, Shield, UserCog, Users, MessageSquare, Megaphone, Sparkles, AlertTriangle, TrendingUp, AlertOctagon, Wallet, Layers, Mail, Crown,
-  Wrench, RotateCcw, Upload, History, MapPin, Scale, FileText, Rocket, Share2, LayoutList,
-  Video,
+  RotateCcw, Upload, Scale, FileText, Rocket, Share2, LayoutList,
+  Video, Film, Gauge, Activity, Landmark, KeyRound,
   type LucideIcon, Inbox } from 'lucide-react'
 import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import { isUtongstart } from '@/utils/domain'
@@ -95,7 +99,7 @@ export const NAV_GROUPS: NavGroup[] = [
       //   전사 상황판에서 유어딜 밴드의 '상권/매장' 그룹으로 이동.
       //   ⚠️ 체리픽(2026-09-16): `/admin/proposals` 는 그 뒤 main 에 생긴 전사 항목이라 여기 남긴다.
       { path: '/admin/abuse',            label: '어뷰징 탐지',   icon: AlertOctagon },
-      { path: '/admin/env-readiness',    label: '환경 준비상태', icon: Wrench },
+      { path: '/admin/env-readiness',    label: '환경 준비상태', icon: Gauge },
     ],
   },
   {
@@ -161,8 +165,8 @@ export const NAV_GROUPS: NavGroup[] = [
     title: '🗺️ 유어딜 · 상권/매장',
     section: 'urdeal',
     items: [
-      { path: '/admin/region-density',   label: '동네별 딜 밀도', icon: MapPin },
-      { path: '/admin/visit-rewards',    label: '상권 방문 리워드', icon: MapPin },
+      { path: '/admin/region-density',   label: '동네별 딜 밀도', icon: Landmark },
+      { path: '/admin/visit-rewards',    label: '상권 방문 리워드', icon: Landmark },
       { path: '/admin/kakao-reviews',    label: '카카오맵 후기 검증', icon: MessageSquare },
       { path: '/admin/district-coupons', label: '상권 쿠폰(영수증 페이백)', icon: Ticket },
       { path: '/admin/district-report',  label: '상권 성과 리포트', icon: BarChart3 },
@@ -280,7 +284,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { path: '/admin/ad-slots',         label: '광고 슬롯',     icon: Megaphone },
       { path: '/admin/tiktok-discovery', label: 'TikTok 발굴',   icon: Sparkles },
-      { path: '/admin/replay',           label: '다시보기 관리', icon: Play },
+      { path: '/admin/replay',           label: '다시보기 관리', icon: Video },
     ],
   },
   {
@@ -288,7 +292,7 @@ export const NAV_GROUPS: NavGroup[] = [
     section: 'common',
     items: [
       { path: '/admin/accounts',          label: '관리자 계정',   icon: UserCog },
-      { path: '/admin/login-history',     label: '로그인 이력(IP)', icon: History },
+      { path: '/admin/login-history',     label: '로그인 이력(IP)', icon: KeyRound },
       { path: '/admin/audit-log',         label: '감사 로그',     icon: Shield },
       { path: '/admin/set-pin',           label: '로그인 PIN',    icon: Shield },
       { path: '/admin/platform-settings',      label: '플랫폼 설정',   icon: Settings },
@@ -309,10 +313,10 @@ export const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/health',            label: '헬스 체크',     icon: Shield },
       { path: '/admin/errors',            label: '에러 로그',     icon: AlertTriangle },
       { path: '/admin/env-check',         label: 'ENV 점검',      icon: Settings },
-      { path: '/admin/kakao-test',        label: '카카오 연동 테스트', icon: Wrench },
+      { path: '/admin/kakao-test',        label: '카카오 연동 테스트', icon: Activity },
       // 🧭 2026-08-16 (고아 라우트 등재): 카카오 로그인 진단(브라우저별 success/error)도 URL 전용이었다.
-      { path: '/admin/kakao-login-diag',  label: '카카오 로그인 진단', icon: Wrench },
-      { path: '/admin/youtube-quota',     label: 'YouTube 쿼터',  icon: Play },
+      { path: '/admin/kakao-login-diag',  label: '카카오 로그인 진단', icon: Activity },
+      { path: '/admin/youtube-quota',     label: 'YouTube 쿼터',  icon: Film },
       { path: '/admin/fee-breakdown',     label: '수수료 규칙 검증(개발)', icon: Scale },
     ],
   },

@@ -4,8 +4,8 @@
   "lockSlackKB": 8,
   "pages": {
     "홈": {
-      "execKB": 293.6,
-      "loadedKB": 613.7,
+      "execKB": 296,
+      "loadedKB": 616.4,
       "top": [
         [
           "react-core.js",
@@ -13,7 +13,7 @@
         ],
         [
           "locale-ko.js",
-          48.3
+          49.4
         ],
         [
           "index.js",
@@ -28,12 +28,12 @@
           21
         ],
         [
-          "tanstack-query.js",
-          14.1
+          "lz-home-homePc.js",
+          14.7
         ],
         [
-          "lz-home-homePc.js",
-          13.4
+          "tanstack-query.js",
+          14.1
         ],
         [
           "lz-home-homePc-map.js",
@@ -42,8 +42,8 @@
       ]
     },
     "홈(PC)": {
-      "execKB": 372.1,
-      "loadedKB": 745,
+      "execKB": 374.6,
+      "loadedKB": 748,
       "top": [
         [
           "react-core.js",
@@ -51,7 +51,7 @@
         ],
         [
           "locale-ko.js",
-          48.3
+          49.4
         ],
         [
           "codes.js",
@@ -70,18 +70,18 @@
           22.8
         ],
         [
-          "tanstack-query.js",
-          14.2
+          "lz-home-homePc.js",
+          14.7
         ],
         [
-          "lz-home-homePc.js",
-          13.6
+          "tanstack-query.js",
+          14.2
         ]
       ]
     },
     "교환권": {
-      "execKB": 279.7,
-      "loadedKB": 606.8,
+      "execKB": 281,
+      "loadedKB": 609.3,
       "top": [
         [
           "react-core.js",
@@ -89,7 +89,7 @@
         ],
         [
           "locale-ko.js",
-          48.3
+          49.4
         ],
         [
           "index.js",
@@ -118,16 +118,16 @@
       ]
     },
     "이용권 상세": {
-      "execKB": 315,
-      "loadedKB": 667.6,
+      "execKB": 317,
+      "loadedKB": 671.2,
       "top": [
         [
           "react-core.js",
-          66.2
+          66.4
         ],
         [
           "locale-ko.js",
-          48.3
+          49.4
         ],
         [
           "index.js",
@@ -135,7 +135,7 @@
         ],
         [
           "lz-gbDetail.js",
-          32.5
+          33.1
         ],
         [
           "app-utils.js",
@@ -156,8 +156,8 @@
       ]
     },
     "쇼핑": {
-      "execKB": 252.7,
-      "loadedKB": 570.5,
+      "execKB": 253.9,
+      "loadedKB": 572.8,
       "top": [
         [
           "react-core.js",
@@ -165,7 +165,7 @@
         ],
         [
           "locale-ko.js",
-          48.3
+          49.4
         ],
         [
           "index.js",
@@ -194,8 +194,8 @@
       ]
     },
     "지도": {
-      "execKB": 309.9,
-      "loadedKB": 688.5,
+      "execKB": 311.1,
+      "loadedKB": 690.7,
       "top": [
         [
           "react-core.js",
@@ -203,7 +203,7 @@
         ],
         [
           "locale-ko.js",
-          48.3
+          49.4
         ],
         [
           "index.js",
@@ -232,8 +232,8 @@
       ]
     },
     "유어샵": {
-      "execKB": 249.9,
-      "loadedKB": 588.8,
+      "execKB": 251.1,
+      "loadedKB": 591,
       "top": [
         [
           "react-core.js",
@@ -241,11 +241,11 @@
         ],
         [
           "locale-ko.js",
-          48.3
+          49.4
         ],
         [
           "index.js",
-          34.2
+          34.3
         ],
         [
           "app-utils.js",
@@ -270,8 +270,8 @@
       ]
     },
     "마이(판매 구역)": {
-      "execKB": 346.1,
-      "loadedKB": 851.3,
+      "execKB": 347.3,
+      "loadedKB": 854.3,
       "top": [
         [
           "react-core.js",
@@ -279,7 +279,7 @@
         ],
         [
           "locale-ko.js",
-          48.3
+          49.4
         ],
         [
           "lucide.js",
@@ -308,20 +308,20 @@
       ]
     },
     "어드민": {
-      "execKB": 483.8,
-      "loadedKB": 1035,
+      "execKB": 467.7,
+      "loadedKB": 986.3,
       "top": [
         [
           "locale-ko-dash.js",
-          121.8
+          122.1
         ],
         [
           "react-core.js",
-          65.7
+          65.9
         ],
         [
           "locale-ko.js",
-          48.3
+          49.4
         ],
         [
           "lucide.js",
@@ -337,7 +337,7 @@
         ],
         [
           "app-routes-admin.js",
-          19.1
+          19
         ],
         [
           "lz-common.js",
@@ -346,20 +346,20 @@
       ]
     },
     "에이전시 콘솔": {
-      "execKB": 369.1,
-      "loadedKB": 717.7,
+      "execKB": 370.8,
+      "loadedKB": 720.3,
       "top": [
         [
           "locale-ko-dash.js",
-          121.8
+          122.1
         ],
         [
           "react-core.js",
-          64.4
+          64.6
         ],
         [
           "locale-ko.js",
-          48.3
+          49.4
         ],
         [
           "index.js",
@@ -511,6 +511,13 @@
         "마이(판매 구역): 실행된 JS 357.4 → 346.1 KB 로 줄었다 — 개선을 잠그라(--rebaseline)",
         "어드민: 실행된 JS 494.1 → 483.8 KB 로 줄었다 — 개선을 잠그라(--rebaseline)",
         "에이전시 콘솔: 실행된 JS 437.8 → 369.1 KB 로 줄었다 — 개선을 잠그라(--rebaseline)"
+      ]
+    },
+    {
+      "date": "2026-10-19",
+      "reason": "어드민 메뉴 아이콘 넷이 손님 봉투를 끌던 것 제거(실행 483.8→466) · 지역 링크 표 고정 묶음",
+      "changes": [
+        "어드민: 실행된 JS 483.8 → 467.7 KB 로 줄었다 — 개선을 잠그라(--rebaseline)"
       ]
     }
   ]

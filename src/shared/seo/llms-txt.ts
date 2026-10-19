@@ -64,6 +64,9 @@ export function buildLlmsTxt(origin: string): string {
     '',
     ...CONCEPT_ABOUT_LINES.slice(1),
     '',
+    // 🗂️ 2026-10-19 — 소개만으로는 *무엇을 어디서 얼마에* 파는지 모른다. 실제 목록은 따로(매시 갱신).
+    `- 지금 살 수 있는 할인 이용권 전체 목록(지역·가게·가격·주소): ${base}/llms-full.txt`,
+    '',
     '## 주요 페이지',
     '',
     ...service.map(linkLine),
