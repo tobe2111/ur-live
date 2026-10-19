@@ -299,7 +299,8 @@ export async function handleCachePrewarm(env: PrewarmEnv, opts: PrewarmOpts = {}
       if (rows.length > 0) {
         const digest = buildRegionDigest(rows);
         if (digest.length < REGION_DIGEST_MAX_BYTES) {
-          await env.CACHE_KV.put(REGION_DIGEST_KV_KEY, digest, { expirationTtl: REGION_DIGEST_TTL_S });
+          // 🗂️ 2026-10-19: 만든 시각을 메타데이터로 — `/llms-full.txt` 가 '기준 시각' 으로 보여 준다(본문은 불변).
+          await env.CACHE_KV.put(REGION_DIGEST_KV_KEY, digest, { expirationTtl: REGION_DIGEST_TTL_S, metadata: { at: Date.now() } });
           logInfo(`[cron:cache-prewarm] region digest ${rows.length} rows -> ${digest.length}B`);
         } else {
           logError('[cron:cache-prewarm] region digest too large', { bytes: digest.length });

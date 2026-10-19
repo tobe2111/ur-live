@@ -16,8 +16,8 @@ export default [
   {
     name: '[search-first] 묶음기가 app-map-row 를 다시 가른다',
     file: 'scripts/surface-chunks.mjs',
-    find: "'app-cross', 'app-map-row', 'app-owner-kit'",
-    replace: "'app-cross', 'app-owner-kit'",
+    find: "'app-cross', 'app-map-row', 'app-region-grid'",
+    replace: "'app-cross', 'app-region-grid'",
     test: TEST,
     why: '묶음기가 그 넷을 쓰는 페이지 봉투로 옮겨 다시 지도 봉투를 끌고 온다.',
   },
