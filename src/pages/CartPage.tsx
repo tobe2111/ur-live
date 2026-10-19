@@ -10,7 +10,9 @@ import { CartGroupShippingRow } from '@/components/cart/CartGroupShippingRow'
 import { CartSummary } from '@/components/cart/CartSummary'
 import { EmptyCart } from '@/components/cart/EmptyCart'
 import { CartCtaButton } from '@/components/cart/CartCtaButton'
-import { ChevronRight, X, PackageCheck } from 'lucide-react'
+import { ChevronRight, X } from 'lucide-react'
+// 📦 2026-10-19 — 합배송 표시는 유어딜 상자(BoxIcon). lucide `PackageCheck` 하나가 아이콘 묶음(br 10KB)을 장바구니 첫 화면에 끌고 왔다.
+import { BoxIcon } from '@/components/icons/urdeal-icons'
 import type { CartItem } from '@/types/cart'
 import { getCartItemPrice } from '@/types/cart'
 import { getNoShippingKind, isNoShippingProduct } from '@/shared/product-flow'
@@ -489,7 +491,7 @@ function CartPageContent() {
                         const hasBundle = Array.from(bundlingMap.values()).some(v => v >= 2)
                         return hasBundle ? (
                           <span className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded text-[12px] font-bold bg-brand-tint text-brand-text ">
-                            <PackageCheck className="w-3 h-3" strokeWidth={2} aria-hidden />합배송
+                            <BoxIcon className="w-3 h-3" aria-hidden />합배송
                           </span>
                         ) : null
                       })()}

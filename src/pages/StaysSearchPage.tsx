@@ -9,7 +9,6 @@ import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
 import StayCurations from './stays/StayCurations'
 import { stayRegionLabel } from '@/shared/stay-address'
 import { DEAL_GRID_GAP } from '@/shared/deal-card-grid'
-import { CalendarDays } from 'lucide-react'
 import { TicketStubIcon, StayLineIcon, PinIcon, PeopleIcon } from '@/components/icons/urdeal-icons'
 import { MAP_VOUCHER_DEFS } from '@/pages/restaurant-map/voucher-types'
 import { useEffect, useState } from 'react'
@@ -17,9 +16,22 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from '@/lib/i18n-lite'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
-import { Search, Calendar, SlidersHorizontal, X } from 'lucide-react'
+import { Search, SlidersHorizontal, X } from 'lucide-react'
 import { useStaysSearch } from '@/hooks/queries/useStaysSearch'
 import { kstYmd } from '@/shared/stays-early'
+
+/**
+ * 📅 2026-10-19 — 달력은 이 파일 안에서 그린다(유어딜 세트와 같은 24 그리드 · 획 1.6 · 둥근 끝).
+ *   lucide `Calendar`·`CalendarDays` 둘이 숙소 목록 첫 화면에 아이콘 묶음(br 10KB)을 끌고 왔다.
+ *   공용 세트(urdeal-icons)에 넣으면 모든 화면 첫 페인트가 무거워지므로 여기만.
+ */
+function CalendarGlyph({ className }: { className: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <rect x="3.8" y="5.2" width="16.4" height="15" rx="2.4" /><path d="M3.8 9.8h16.4M8.2 3.2v3.6M15.8 3.2v3.6" />
+    </svg>
+  )
+}
 
 const PROPERTY_TYPE_LABELS: Record<string, string> = {
   hotel: '호텔', motel: '모텔', pension: '펜션', guesthouse: '게스트하우스',
@@ -130,7 +142,7 @@ export default function StaysSearchPage() {
         {/* Quick filters bar */}
         <div className="ur-content-wide px-4 lg:px-8 pb-3 flex gap-2 overflow-x-auto scrollbar-hide">
           <button onClick={() => setShowFilters(true)} className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-white/[0.06] rounded-full text-[12px] whitespace-nowrap">
-            <Calendar className="w-3 h-3" /> {filters.check_in.slice(5)} - {filters.check_out.slice(5)} ({nights}박)
+            <CalendarGlyph className="w-3 h-3" /> {filters.check_in.slice(5)} - {filters.check_out.slice(5)} ({nights}박)
           </button>
           <button onClick={() => setShowFilters(true)} className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-white/[0.06] rounded-full text-[12px] whitespace-nowrap">
             <PeopleIcon className="w-3 h-3" /> 성인 {filters.guests}명
@@ -276,7 +288,7 @@ export default function StaysSearchPage() {
                       아이콘 컨셉은 유어딜 아이콘 세트(선/면) — 유틸리티만 lucide. */}
                   {([
                     { v: '', l: '전체', Icon: null },
-                    { v: 'date', l: '날짜 지정', Icon: CalendarDays },
+                    { v: 'date', l: '날짜 지정', Icon: CalendarGlyph },
                     { v: 'voucher', l: '숙소 이용권', Icon: TicketStubIcon },
                   ] as const).map((m) => (
                     <button key={m.v} type="button"
