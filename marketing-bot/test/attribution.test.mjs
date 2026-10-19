@@ -1,3 +1,4 @@
+// 실행: node --test test/attribution.test.mjs  (marketing-bot 폴더에서)
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildUtmLink, pickTrackByWeights, adjustWeights, categoryPerformance, DEFAULT_BOUNDS, TRACKS } from '../src/attribution.mjs';
