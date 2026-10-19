@@ -10,7 +10,9 @@ import { toast } from '@/hooks/useToast'
 import { promptDialog } from '@/components/ui/confirm-dialog'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
-import { Building2, Calendar, X as XIcon, ChevronLeft } from 'lucide-react'
+import { Calendar, X as XIcon } from 'lucide-react'
+import Udal from '@/components/mascot/Udal'
+import SubPageHeader, { SUB_PAGE_CLS } from '@/components/ui/sub-page-header'
 import { formatNumber } from '@/utils/format'
 import { safeDate } from '@/utils/safe-date'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
@@ -65,15 +67,9 @@ export default function MyStaysPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#11141C] text-gray-900 dark:text-white pb-safe-nav">
-      <SEO title="내 숙소 예약 - 유어딜" description="숙소 예약 내역" url="/my-stays" />
-
-      <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]">
-        <div className="ur-content-wide px-4 lg:px-8 py-3 flex items-center gap-3">
-          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="p-1"><ChevronLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" /></button>
-          <h1 className="text-[15px] font-bold flex-1 text-gray-900 dark:text-white">내 숙소 예약</h1>
-        </div>
-      </div>
+    <div className={`${SUB_PAGE_CLS} text-gray-900 dark:text-white pb-safe-nav`}>
+      <SEO title="내 숙소 예약 - 유어딜" description="숙소 예약 내역" url="/my-stays" noindex />
+      <SubPageHeader title="내 숙소 예약" backLabel="뒤로 가기" />
 
       <div className="ur-content-wide px-4 lg:px-8 py-4">
         {loading ? (
@@ -88,11 +84,14 @@ export default function MyStaysPage() {
             </button>
           </div>
         ) : bookings.length === 0 ? (
-          <div className="text-center py-20">
-            <Building2 className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-            <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-4">예약 내역이 없습니다</p>
-            <Link to="/stays" className="inline-flex items-center gap-1 px-4 py-2 bg-brand text-white text-[15px] font-bold rounded-lg">
-              숙소 둘러보기 →
+          /* 🧹 2026-10-19: 다른 빈 화면과 같은 모양 — 유달이 + 들림 카드 + 브랜드 알약. 버튼 글자 안의 "→" 는 뺐다
+             (화살표를 글자로 쓰면 아이콘 체계 밖이다). */
+          <div className="bg-surface rounded-2xl shadow-lift dark:shadow-none px-6 py-10 text-center">
+            <Udal mood="empty" size={96} className="block mx-auto mb-4" />
+            <p className="text-[17px] font-bold text-gray-900 dark:text-white">예약 내역이 없어요</p>
+            <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">숙소 이용권을 사면 여기서 예약을 확인할 수 있어요</p>
+            <Link to="/stays" className="mt-5 inline-flex items-center h-11 px-6 rounded-full bg-brand text-white text-[15px] font-bold">
+              숙소 둘러보기
             </Link>
           </div>
         ) : (
@@ -115,7 +114,7 @@ export default function MyStaysPage() {
                       <p className="text-[12px] text-gray-500 dark:text-gray-400">
                         {b.room_name}
                         {b.sale_mode === 'voucher' && (
-                          <span className="ml-2 px-2 py-1 text-[12px] bg-gray-100 text-gray-700 dark:bg-white/15 dark:text-white rounded font-bold">🎫 숙소 이용권</span>
+                          <span className="ml-2 px-2 py-1 text-[12px] bg-gray-100 text-gray-700 dark:bg-white/15 dark:text-white rounded font-bold">숙소 이용권</span>
                         )}
                       </p>
                       {b.sale_mode === 'voucher' ? (
@@ -262,11 +261,11 @@ function VoucherInfo({ booking }: { booking: MyBooking }) {
     )
   }
   if (!booking.voucher_expires_at) {
-    return <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">🎫 {booking.voucher_type === 'weekend' ? '주말권' : '평일권'} × {booking.nights}박</p>
+    return <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{booking.voucher_type === 'weekend' ? '주말권' : '평일권'} × {booking.nights}박</p>
   }
   const expiresAt = safeDate(booking.voucher_expires_at)
   if (!expiresAt) {
-    return <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">🎫 {booking.voucher_type === 'weekend' ? '주말권' : '평일권'} × {booking.nights}박</p>
+    return <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{booking.voucher_type === 'weekend' ? '주말권' : '평일권'} × {booking.nights}박</p>
   }
   const daysLeft = Math.ceil((expiresAt.getTime() - Date.now()) / 86400000)
   const expired = daysLeft < 0
@@ -277,7 +276,7 @@ function VoucherInfo({ booking }: { booking: MyBooking }) {
 
   return (
     <div className={`text-[12px] mt-1 ${colorClass}`}>
-      🎫 {booking.voucher_type === 'weekend' ? '주말권' : '평일권'} × {booking.nights}박
+      {booking.voucher_type === 'weekend' ? '주말권' : '평일권'} × {booking.nights}박
       {' · '}
       {expired ? (
         <span className="font-bold">만료됨 ({expiresAt.toLocaleDateString('ko-KR')})</span>

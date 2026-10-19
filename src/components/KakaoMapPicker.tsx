@@ -71,7 +71,13 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey, on
   const [mapReady, setMapReady] = useState(false)
 
   // 🛡️ 2026-05-19: SDK 로드 — kakaoJsKey 없거나 SDK 로드 실패 시 graceful (페이지 크래시 X).
-  const [sdkError, setSdkError] = useState<string | null>(null)
+  // 🧹 2026-10-19: 원인 문장("운영자 환경변수 확인", "도메인 허용 설정")은 **사장님·손님 화면에** 떴다 —
+  //   그 사람이 할 수 있는 일이 아니다. 원인은 개발 콘솔로만 보내고 화면은 할 수 있는 일(검색)만 말한다.
+  const [sdkError, setSdkErrorRaw] = useState<string | null>(null)
+  const setSdkError = (cause: string) => {
+    if (import.meta.env.DEV) console.warn('[KakaoMapPicker] 지도 로드 실패:', cause)
+    setSdkErrorRaw(cause)
+  }
   useEffect(() => {
     if (!kakaoJsKey) {
       setSdkError('카카오 맵 API 키가 설정되지 않았습니다 (운영자 환경변수 확인 필요).')
@@ -309,9 +315,12 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey, on
         {sdkError ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 dark:bg-[#1D1F29] p-4 text-center">
             <PinIcon className="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2" />
-            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1">지도를 불러올 수 없습니다</p>
-            <p className="text-[12px] text-gray-400 dark:text-gray-500">{sdkError}</p>
-            <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-2">아래 검색은 그대로 사용 가능합니다.</p>
+            <p className="text-[13px] font-semibold text-gray-700 dark:text-gray-200">
+              {t('map.picker.loadFailed', { defaultValue: '지도를 불러오지 못했어요' })}
+            </p>
+            <p className="mt-1 text-[12px] text-gray-500 dark:text-gray-400">
+              {t('map.picker.searchStillWorks', { defaultValue: '위 검색창에서 가게 이름이나 주소로 찾을 수 있어요' })}
+            </p>
           </div>
         ) : !mapReady && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-[#1D1F29]">

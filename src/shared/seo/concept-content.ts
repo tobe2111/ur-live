@@ -35,6 +35,8 @@
  *    이 파일은 *실물이 늘어나는 순간 바로 인용되게* 준비해 두는 몫까지만 한다.
  */
 
+import { SHOPPING_TAB_HIDDEN } from '../feature-flags'
+
 export interface ConceptQa {
   /** `FAQPage.tsx` 의 i18n 키. 그 화면이 언어별 번역을 덮어쓸 수 있게 짝을 맞춘다. */
   key: string
@@ -52,7 +54,7 @@ export interface ConceptQa {
  * 찾는다던지"*. AI 가 받는 질문의 모양에 맞춰야 답변이 인용된다(기존 1~8 은 배송·환불·회원
  * 운영 질의라 그 자리에선 안 쓰인다).
  */
-export const CONCEPT_FAQ: ConceptQa[] = [
+export const CONCEPT_FAQ_ALL: ConceptQa[] = [
   { key: 'faq.q1', categoryKey: 'faq.catOrder', category: '주문/결제', question: '주문을 취소하고 싶어요', answer: '배송 전이라면 마이페이지 > 주문내역에서 직접 취소하실 수 있습니다. 배송이 시작된 경우 매장과 협의가 필요합니다.' },
   { key: 'faq.q2', categoryKey: 'faq.catOrder', category: '주문/결제', question: '결제가 완료되지 않았어요', answer: '결제 오류 시 카드사 또는 결제사로 문의해주세요. 토스페이먼츠 고객센터: 1544-7772' },
   { key: 'faq.q3', categoryKey: 'faq.catShipping', category: '배송', question: '배송 기간은 얼마나 걸리나요?', answer: '일반적으로 결제 완료 후 2-3일 이내 배송됩니다. 매장별로 차이가 있을 수 있으며, 상품 페이지에서 확인 가능합니다.' },
@@ -90,6 +92,19 @@ export const CONCEPT_FAQ: ConceptQa[] = [
   { key: 'faq.q15', categoryKey: 'faq.catExchange', category: '교환/환불', question: '이용권 유효기간이 지나면 어떻게 되나요?', answer: '유효기간 안에 쓰지 않은 이용권은 따로 신청하지 않아도 자동으로 환불되고, 알림으로 알려드립니다. 딜로 결제했으면 딜로, 카드로 결제했으면 카드로 돌아갑니다.' },
   { key: 'faq.q16', categoryKey: 'faq.catExchange', category: '교환/환불', question: '쓰기 전에 이용권을 환불할 수 있나요?', answer: "사용 전이라면 마이페이지 > 내 이용권에서 그 이용권을 열어 '환불 요청' 을 누르시면 됩니다. 접수 후 확인하여 처리해 드립니다." },
 ]
+
+/**
+ * 🧹 2026-10-19 (대표 *"모두 다 가장 이상적으로 개선해줘"*): 쇼핑 탭이 숨겨져 있는 동안(`SHOPPING_TAB_HIDDEN`)
+ * **택배 배송 상품** 질문은 빠진다. 지금 파는 것은 매장 이용권과 교환권이라 배송이 없는데, FAQ 에 '배송' 묶음이
+ * 따로 떠서 *"유어딜은 택배로 보내 주나?"* 로 읽혔다(그 답이 AI 검색에도 그대로 인용된다 — 이 배열이 FAQPage
+ * 구조화 데이터·크롤러 본문·llms.txt 의 단일 출처다). 지우지 않고 거르는 이유: 쇼핑이 돌아오면 플래그 하나로 복귀한다.
+ */
+export const SHOPPING_ONLY_FAQ_KEYS: ReadonlySet<string> = new Set(['faq.q3', 'faq.q4', 'faq.q5', 'faq.q6'])
+
+/** 화면·구조화 데이터·크롤러가 쓰는 FAQ — 이걸 쓴다(`CONCEPT_FAQ_ALL` 은 쇼핑 복귀 대비 원본). */
+export const CONCEPT_FAQ: ConceptQa[] = SHOPPING_TAB_HIDDEN
+  ? CONCEPT_FAQ_ALL.filter((f) => !SHOPPING_ONLY_FAQ_KEYS.has(f.key))
+  : CONCEPT_FAQ_ALL
 
 /**
  * `/about` 서버 본문 + `WebPage.about` 에 쓰는 소개 요약.

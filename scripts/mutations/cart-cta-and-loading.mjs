@@ -107,7 +107,7 @@ export default [
     name: '[지도] 모바일 시트에만 로딩 신호를 준다 (PC 와 갈린다)',
     file: MAP,
     // 두 시트가 거의 같은 줄을 쓴다 — 모바일 쪽 꼬리(`filtered.length`)로 구분한다.
-    find: 'filteredCount={loading && displayList.length === 0 ? null : (!needsAll && !search ? (feedTotal ?? displayList.length) : filtered.length)}',
+    find: 'filteredCount={(loading || stillHunting) && displayList.length === 0 ? null : (!needsAll && !search ? (feedTotal ?? displayList.length) : filtered.length)}',
     replace: 'filteredCount={!needsAll && !search ? (feedTotal ?? displayList.length) : filtered.length}',
     test: TEST,
     why: '한쪽만 고치면 두 화면이 서로 다른 숫자를 말한다 — 이 레포가 반복해 당한 자리.',

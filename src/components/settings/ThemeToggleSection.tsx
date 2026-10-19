@@ -8,11 +8,25 @@
  *   - /account/settings (계정 설정)
  *   - /user/profile (마이페이지) — 사용자가 자주 접근하는 곳
  */
-import { Monitor, Sun, Moon } from 'lucide-react'
 import { useTranslation } from '@/lib/i18n-lite'
 import { useTheme, type ThemeMode } from '@/shared/stores/useTheme'
 import { ROW_GEOM_CLS, ROW_LABEL_CLS } from '@/pages/user-profile/list-grammar'
 import { SettingsIcon } from '@/components/icons/urdeal-icons'
+
+/**
+ * 🌗 2026-10-19 — 세 선택지 표시(화면 · 해 · 달)는 이 파일 안에서 그린다(24 그리드 · 획 1.6 · 둥근 끝).
+ *   lucide `Monitor`·`Sun`·`Moon` 이 마이·로그아웃 마이 첫 화면에 아이콘 묶음(br 10KB)을 끌고 왔다.
+ */
+function Glyph({ children }: { children: React.ReactNode }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5" aria-hidden="true">
+      {children}
+    </svg>
+  )
+}
+const MonitorGlyph = () => <Glyph><rect x="3.4" y="4.4" width="17.2" height="11.6" rx="2" /><path d="M8.6 20h6.8M12 16v4" /></Glyph>
+const SunGlyph = () => <Glyph><circle cx="12" cy="12" r="3.8" /><path d="M12 3.2v1.8M12 19v1.8M3.2 12H5M19 12h1.8M5.8 5.8l1.3 1.3M16.9 16.9l1.3 1.3M5.8 18.2l1.3-1.3M16.9 7.1l1.3-1.3" /></Glyph>
+const MoonGlyph = () => <Glyph><path d="M19.6 14.4A8 8 0 0 1 9.6 4.4a8 8 0 1 0 10 10z" /></Glyph>
 
 interface Props {
   /** 'dark' — 강제 다크 스타일 (UserProfilePage 등 항상 어두운 배경에서 사용) */
@@ -27,9 +41,9 @@ export default function ThemeToggleSection({ variant, className }: Props) {
   const isDark = variant === 'dark'
 
   const options: { key: ThemeMode; label: string; icon: React.ReactNode }[] = [
-    { key: 'system', label: t('theme.system', { defaultValue: '시스템' }), icon: <Monitor className="w-3.5 h-3.5" aria-hidden="true" /> },
-    { key: 'light', label: t('theme.light', { defaultValue: '라이트' }), icon: <Sun className="w-3.5 h-3.5" aria-hidden="true" /> },
-    { key: 'dark', label: t('theme.dark', { defaultValue: '다크' }), icon: <Moon className="w-3.5 h-3.5" aria-hidden="true" /> },
+    { key: 'system', label: t('theme.system', { defaultValue: '시스템' }), icon: <MonitorGlyph /> },
+    { key: 'light', label: t('theme.light', { defaultValue: '라이트' }), icon: <SunGlyph /> },
+    { key: 'dark', label: t('theme.dark', { defaultValue: '다크' }), icon: <MoonGlyph /> },
   ]
 
   return (
@@ -46,8 +60,8 @@ export default function ThemeToggleSection({ variant, className }: Props) {
     <div className={className ?? 'ur-content-medium lg:px-4'}>
       <div className={ROW_GEOM_CLS}>
         <span className={`shrink-0 ${isDark ? 'text-white/55' : 'text-gray-500 dark:text-gray-400'}`}>
-          {/* 🎨 뜻 아이콘은 유어딜 세트에서 온다(CLAUDE.md 아이콘 규칙). lucide `Monitor` 는
-              아래 '시스템' 알약 **안**에서만 쓴다 — 그건 세 선택지를 구별하는 조작 표시다. */}
+          {/* 🎨 뜻 아이콘은 유어딜 세트에서 온다(CLAUDE.md 아이콘 규칙). 아래 세 알약의 화면·해·달은
+              선택지를 구별하는 조작 표시라 이 파일이 그린다(2026-10-19 — lucide 묶음 제거). */}
           <SettingsIcon className="w-[18px] h-[18px]" aria-hidden="true" />
         </span>
         <span className={isDark ? `${ROW_LABEL_CLS} !text-white` : ROW_LABEL_CLS}>

@@ -39,7 +39,9 @@ describe('① 문구가 한 벌 — SSOT 에서만 온다', () => {
   })
 
   it('컨셉 FAQ 질문·답변 전부가 들어간다', () => {
-    expect(CONCEPT_FAQ.length).toBeGreaterThanOrEqual(14)
+    // 🧹 2026-10-19: 쇼핑 탭이 숨겨진 동안 배송 질문 넷이 빠져 16 → 12 가 됐다(`SHOPPING_ONLY_FAQ_KEYS`).
+    //   하한의 일은 "배열이 통째로 비면 헛돈다" 를 막는 것이라 10 으로 둔다.
+    expect(CONCEPT_FAQ.length).toBeGreaterThanOrEqual(10)
     for (const f of CONCEPT_FAQ) {
       expect(txt, `질문 누락: ${f.question}`).toContain(f.question)
       // 답변은 한 줄로 눌러 담으므로 앞 40자로 대조한다(개행만 바뀌었는지 보려는 게 아니다).

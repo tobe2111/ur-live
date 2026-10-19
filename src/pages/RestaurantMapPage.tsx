@@ -86,7 +86,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   const [filterSheetOpen, setFilterSheetOpen] = useState(false)
   // 🚦 2026-09-03 [UNLOCK_LOADING] (대표 "가장 이상적으로"): 전량 순회 → **화면이 요구하는 만큼만**.
   //   정렬은 서버(sort)·거리순은 near, 서버가 못 거르는 필터가 켜질 때만 useFeedWindow 가 전체를 받는다.
-  const { data: baseRestaurants = [], isLoading: loading, total: feedTotal, loadMore, reachedEnd, needsAll } = useFeedWindow({
+  const { data: baseRestaurants = [], isLoading: loading, total: feedTotal, loadMore, reachedEnd, needsAll, stillHunting } = useFeedWindow({
     category: voucherType === 'all' ? 'all' : voucherType,
     userLoc, sortBy,
     // 필터 시트를 여는 순간도 포함 — 시트의 '이 조건이면 N곳' 미리보기가 로드된 50개만 세면 거짓말이 된다.
@@ -655,7 +655,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             requestNearMe={requestNearMe}
             voucherType={voucherType}
             setVoucherType={selectVoucherType}
-            filteredCount={loading && displayList.length === 0 ? null : (!needsAll && !search ? (feedTotal ?? displayList.length) : filtered.length)}
+            filteredCount={(loading || stillHunting) && displayList.length === 0 ? null : (!needsAll && !search ? (feedTotal ?? displayList.length) : filtered.length)}
             userLoc={userLoc}
             sortBy={sortBy}
             setSortBy={chooseSort}
@@ -669,7 +669,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
           {/* 🗺️ 2026-07-19 (대표 — 거리 표시 로직): 반경 5km 내 딜 0개 → 안내 배너 + 지역선택 유도. */}
           <NearbyEmptyBanner loading={loading} userLoc={userLoc} sortBy={sortBy} list={displayList} onOpenRegion={() => setFilterSheetOpen(true)} />
           <RestaurantList
-            loading={loading}
+            loading={loading || (stillHunting && displayList.length === 0)}
             filtered={displayList}
             selected={null}
             userLoc={userLoc}
@@ -833,7 +833,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             requestNearMe={requestNearMe}
             voucherType={voucherType}
             setVoucherType={setVoucherType}
-            filteredCount={loading && displayList.length === 0 ? null : (!needsAll && !search ? (feedTotal ?? displayList.length) : displayList.length)}
+            filteredCount={(loading || stillHunting) && displayList.length === 0 ? null : (!needsAll && !search ? (feedTotal ?? displayList.length) : displayList.length)}
             viewportCount={viewportInCount}
             regionLabel={viewportRegion}
             userLoc={userLoc}
@@ -868,7 +868,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
                    (같은 이름의 쇼핑/메인 '오늘의 핫딜'은 이미 2026-06-04 에 "불필요"로 제거됐다 — 그때
                     지도 쪽만 남아 있었고, 2026-09-03 재디자인으로 모양이 바뀌어 새것처럼 보였다.) */}
             <RestaurantList
-              loading={loading}
+              loading={loading || (stillHunting && viewportList.length === 0)}
               filtered={viewportList}
               selected={selected}
               userLoc={userLoc}

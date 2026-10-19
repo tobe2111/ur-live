@@ -137,7 +137,7 @@ export default function RestoreAccountModal() {
         {/* 안내 박스 */}
         <div className="mx-6 my-3 p-3 bg-warm border border-rule rounded-xl">
           <p className="text-[12px] text-gray-700 dark:text-gray-200 leading-relaxed">
-            <strong className="text-brand-text">{t('user.restoreWhenRestore', { defaultValue: '복원 시' })}</strong>: {t('user.restoreWhenRestoreDesc', { defaultValue: '이전 주문 내역, 쿠폰, 딜 포인트, 위시리스트 등 모든 데이터가 다시 살아나요.' })}
+            <strong className="text-brand-text">{t('user.restoreWhenRestore', { defaultValue: '복원 시' })}</strong>: {t('user.restoreWhenRestoreDesc', { defaultValue: '구매·이용권 기록과 리뷰가 돌아와요. 딜·쿠폰·찜은 탈퇴할 때 사라져 돌아오지 않아요.' })}
           </p>
           <p className="text-[12px] text-gray-700 dark:text-gray-200 leading-relaxed mt-2">
             <strong className="text-gray-500 dark:text-gray-400">{t('user.restoreWhenNew', { defaultValue: '신규 계정 선택 시' })}</strong>: {t('user.restoreWhenNewDesc', { defaultValue: '새로 시작합니다. 이전 데이터는 30일 후 영구 삭제돼요.' })}
