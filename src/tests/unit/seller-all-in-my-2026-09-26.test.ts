@@ -213,13 +213,21 @@ describe('🏠 대시보드를 쓸 필요 없게 — 보내는 문을 막는다 
    * 사라졌다**: 마이 맨 위 '내 가게' 섹션과 타일 여섯이 통째로 중복돼 `/my-store` 를 마이로 보내는
    * 리다이렉트로 바꿨다(라우트는 유지 — 옛 링크). 아래 `it` 이 그 부재를 따로 고정한다.
    */
-  it('소비자 화면에서 대시보드로 나갈 때는 귀환 표시를 단다', () => {
-    for (const f of ['src/pages/GroupBuyDetailPage.tsx']) {
+  /**
+   * 🎯 2026-10-19 재조준 — 상세의 [관리하기] 가 대시보드 목록 대신 **관리 시트**(`OwnerManageSheet`)를 연다(안 A).
+   *   소비자 화면 → 셀러 도구 이동은 이제 그 시트 한 곳이고, `sellerEntryPath` 로 **마이의 도구 시트에 곧장**
+   *   내린다(대시보드 주소를 아예 거치지 않는다) — 귀환 표시가 필요 없는 더 강한 형태다. 불변식 그대로:
+   *   소비자 화면이 표시·우회 없이 `/seller/*` 로 나가지 않는다.
+   */
+  it('소비자 화면에서 셀러 도구로 나갈 때는 마이로 곧장 간다(대시보드에 남지 않는다)', () => {
+    for (const f of ['src/pages/GroupBuyDetailPage.tsx', 'src/components/deal/OwnerManageSheet.tsx']) {
       const code = stripComments(readCode(f))
-      const bare = code.match(/navigate\('\/seller[^']*'\)/g) || []
+      const bare = code.match(/navigate\(\s*['"`]\/seller[^'"`]*['"`]\s*\)/g) || []
       expect(bare, `${f} 에 표시 없는 대시보드 이동: ${bare.join(', ')}`).toHaveLength(0)
-      expect(code, f).toContain('withMyReturn(')
     }
+    const sheet = stripComments(readCode('src/components/deal/OwnerManageSheet.tsx'))
+    expect(sheet).toMatch(/navigate\(sellerEntryPath\(path\)\)/)
+    expect(sheet).not.toMatch(/navigate\(path\)/)
   })
 
   it('🔴 `/my-store` 는 마이로 보내고 별도 페이지를 다시 만들지 않는다', () => {

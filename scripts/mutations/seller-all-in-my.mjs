@@ -136,10 +136,11 @@ export default [
     why: '가게를 얻은 그 순간이 가장 인상에 남는다 — 거기가 대시보드면 마이는 영영 부차적인 화면이 된다.',
   },
   {
+    // 🎯 2026-10-19 재조준: [관리하기] 의 셀러 이동이 상세 → 관리 시트로 옮겨갔다(불변식 그대로).
     name: '🏠 소비자 화면이 표시 없이 대시보드로 나간다 (돌아올 길 없음)',
-    file: 'src/pages/GroupBuyDetailPage.tsx',
-    find: "navigate(withMyReturn('/seller/group-buy'))",
-    replace: "navigate('/seller/group-buy')",
+    file: 'src/components/deal/OwnerManageSheet.tsx',
+    find: 'onClose(); navigate(sellerEntryPath(path))',
+    replace: 'onClose(); navigate(path)',
     test: TEST,
     why: '귀환 띠는 표시를 보고 뜬다 — 없으면 사장님이 대시보드 안에 남는다.',
   },
