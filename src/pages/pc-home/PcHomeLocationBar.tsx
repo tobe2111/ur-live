@@ -150,7 +150,9 @@ export default function PcHomeLocationBar({
         ? 'inline-flex items-stretch h-8 rounded-full overflow-hidden bg-white text-[#16181C]' // light-fixed: 잉크 히어로 위
                 // 🧱 2026-10-17 (대표 신고 "버튼이 튀어나가고"): `panel` 은 PC 왼쪽 필터 열(안쪽 216px) 하나만 쓴다.
         //   지역 칸과 '현 위치로 설정' 을 한 줄에 두면 그 폭을 넘어 열 밖으로 삐져나갔다 → 두 줄로 쌓는다.
-        : 'flex flex-col gap-2'}>
+        // 📱 2026-10-19 (대표 신고 — 모바일 홈 제목이 "공..." 으로 잘리고 현 위치 버튼이 아래 줄로 떨어짐):
+        //   위 처방이 `panel` 만이 아니라 **`title`(모바일 홈 제목)까지** 세로로 쌓았다. 제목은 한 줄이다.
+        : tone === 'panel' ? 'flex flex-col gap-2' : 'flex items-center gap-2'}>
         <button
           onClick={() => setOpen(o => !o)}
           className={title
