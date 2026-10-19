@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
+import { runAfterLoad } from '@/lib/after-load'
 import { resolveBannerLink, type BannerLink } from './banner-link'
 import { useHomeBanners, type HomeBanner } from './useHomeBanners'
 import type { BannerSlot } from '@/shared/constants/home-showcase'
@@ -175,6 +176,7 @@ export default function HomeBannerStrip({ variant }: { variant: Extract<BannerSl
  */
 /** 한 장에 머무는 시간(ms). */
 const AUTO_ADVANCE_MS = 4500
+const WARM_BEFORE_ADVANCE_MS = 1500  // 자동 넘김 이만큼 전에 다음 장 사진을 받기 시작한다
 /** 손가락을 뗀 뒤 다시 움직이기까지(ms). */
 const RESUME_AFTER_TOUCH_MS = 8000
 
@@ -219,6 +221,14 @@ function StripRail({ banners, single = false, hero = false }: { banners: HomeBan
   const [onScreen, setOnScreen] = useState(true)
   const [reduceMotion] = useState(prefersReducedMotion)
   const many = banners.length > 1
+  /**
+   * 🏁 2026-10-19 (대표 *"홈 부분 최대한 신경써서 우선적으로"*) — 첫 화면 밖 배너 사진은 페이지가 다 뜬 뒤에 받는다.
+   *   가로 캐러셀 안의 `loading="lazy"` 는 **가로로 옆에 있는** 2·3장을 "곧 보일 것" 으로 보고 첫 화면과 같이 받았다
+   *   (라이브 실측 — 장당 ~45KB, 첫 장(LCP)·카드 사진과 회선을 나눠 썼다). 넘기기 전엔 안 보이므로
+   *   `load` 뒤 + 한가할 때로 미룬다. 손이 닿거나 자동 넘김이 다가오면 그 즉시 받는다(빈 장이 보이지 않게).
+   */
+  const [warm, setWarm] = useState(false)
+  useEffect(() => (many ? runAfterLoad(() => setWarm(true)) : undefined), [many])
   const pcPerView = usePerView()
   const perView = single ? 1 : pcPerView  // 머리(hero)는 폰 전용이라 pcPerView 가 이미 1 이다
 
@@ -294,15 +304,16 @@ function StripRail({ banners, single = false, hero = false }: { banners: HomeBan
   useEffect(() => {
     if (!many || paused || reduceMotion || !onScreen) return
     const wait = Math.max(AUTO_ADVANCE_MS, heldUntil - Date.now())
+    const pre = window.setTimeout(() => setWarm(true), Math.max(0, wait - WARM_BEFORE_ADVANCE_MS))  // 넘기기 전에 다음 장을 받아 둔다
     const t = window.setTimeout(() => {
       if (document.visibilityState !== 'visible') return
       goTo(active + 1) // 마지막 장 다음은 복제(= 첫 장) — 도착하면 onScroll 이 진짜 첫 장으로 옮긴다
     }, wait)
-    return () => window.clearTimeout(t)
+    return () => { window.clearTimeout(t); window.clearTimeout(pre) }
   }, [many, paused, reduceMotion, onScreen, active, heldUntil, banners.length])
 
-  // ② 손가락이 닿으면 멈춘다.
-  const hold = () => setHeldUntil(Date.now() + RESUME_AFTER_TOUCH_MS)
+  // ② 손가락이 닿으면 멈춘다(그리고 옆 장 사진을 바로 받는다).
+  const hold = () => { setWarm(true); setHeldUntil(Date.now() + RESUME_AFTER_TOUCH_MS) }
 
   return (
     <div ref={rootRef} className={STRIP_CLS.root} aria-roledescription="carousel" aria-label="이벤트 배너">
@@ -315,7 +326,7 @@ function StripRail({ banners, single = false, hero = false }: { banners: HomeBan
           onWheel={many ? hold : undefined}
           className={`${STRIP_CLS.rail} ${many ? STRIP_CLS.railMany : ''} ${hero ? HERO_RAIL_CLS : ''}`}
         >
-          {slides.map((b, i) => <StripCard hero={hero} single={single} key={i >= banners.length ? `clone-${i}` : b.id} b={b} many={many} first={i < perView} clone={i >= banners.length} />)}
+          {slides.map((b, i) => <StripCard hero={hero} single={single} key={i >= banners.length ? `clone-${i}` : b.id} b={b} many={many} first={i < perView} clone={i >= banners.length} deferImg={!warm && i >= perView} />)}
         </div>
       {many && (
         <>
@@ -394,7 +405,7 @@ export function BannerHeroRail({ banners }: { banners: HomeBanner[] }) {
 const SINGLE_CARD_CLS = '!aspect-[4/1] lg:!w-full !py-3 [&>span]:hidden lg:[&>span]:block [&>strong]:!max-w-[54%] [&>strong]:!line-clamp-2 [&>strong]:!whitespace-pre-line [&>strong]:![word-break:keep-all] [&>strong]:!leading-snug [&>strong]:!text-[15px] lg:[&>strong]:!text-[24px] !justify-center [&>div]:hidden'
 
 /** 카드 한 장 — 흰 글자를 왼쪽 아래에(야놀자 문법). 카드 전체가 누르는 자리다. */
-function StripCard({ b, many, first, clone, single = false, hero = false }: { b: HomeBanner; many: boolean; first: boolean; clone?: boolean; single?: boolean; hero?: boolean }) {
+function StripCard({ b, many, first, clone, single = false, hero = false, deferImg = false }: { b: HomeBanner; many: boolean; first: boolean; clone?: boolean; single?: boolean; hero?: boolean; deferImg?: boolean }) {
   const link = bannerLink(b)
   const bg = stripBannerImageUrl(b.image_url, single || hero ? 'vouchers' : 'strip')  // 서버 첫 화면과 같은 URL(같은 함수) — 갈리면 사진을 두 번 받는다
   return (
@@ -409,7 +420,7 @@ function StripCard({ b, many, first, clone, single = false, hero = false }: { b:
       /* 🎨 사진이 없으면 **브랜드 면**(대표 확정 "E"). */
       style={bg ? undefined : { background: 'var(--brand-grad)' }}
     >
-      {bg && (
+      {bg && !deferImg && (
         <img
           src={bg} alt="" aria-hidden="true"
           loading={first ? 'eager' : 'lazy'}

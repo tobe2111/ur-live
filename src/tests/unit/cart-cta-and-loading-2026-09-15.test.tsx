@@ -158,6 +158,6 @@ describe('④ 지도가 받기 전에 "0곳"이라고 안 한다', () => {
 
   it('두 곳(모바일·PC 시트) **모두** 로딩 중엔 null 을 넘긴다 — 한쪽만이면 갈린다', () => {
     const page = readCode('src/pages/RestaurantMapPage.tsx')
-    expect((page.match(/filteredCount=\{loading && displayList\.length === 0 \? null :/g) || []).length).toBe(2)
+    expect((page.match(/filteredCount=\{\(loading \|\| stillHunting\) && displayList\.length === 0 \? null :/g) || []).length).toBe(2)
   })
 })

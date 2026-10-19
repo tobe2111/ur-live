@@ -82,3 +82,45 @@ critical-chunks 14 불변 · chunk-cycles 0 · exec-cost 10화면 예산 안(전
 - 처방: `stay-detail/AmenityIcon.tsx` 가 열두 그림을 **파일 안에서** 그린다(외부 import 0, 획 1.6). lazy 청크 gzip **1.0KB**,
   의존은 이미 받은 `react-core` 하나. 아이콘 래칫 152 → **141**(실제로 걷은 11건). 가드: 같은 시험 +1 · 주입 +1(5건 빨간불 확인).
 - E4(다음): 배포 후 `StayDetailPage-*.js` 의 `import("./AmenityIcon-…")` mapDeps 가 `react-core` 하나인지.
+
+## 5차 — 검색 216.9 → 172.6 (2026-10-19)
+
+- 원인(모듈 그래프 덤프 `edges4.tsv`): 검색은 지도의 결과 한 줄(`RestaurantRow`)·`prefetch-detail`·`utils`·`CatIcon`(5.2KB)만 쓰는데
+  그 넷이 `lz-map`(br 18.9)에 있어 지도 봉투 → `lz-home-homePc-map`·`app-ui-utils`·`app-kakao-sdk`·`lz-boot-gbDetailL-map-productL` 까지 받았다.
+  인기 검색어 머리 `TrendingUp`(0.4KB) 하나가 `lucide` 봉투(10.2)를 끌었다.
+- 처방: 넷을 고정 묶음 `app-map-row`(LIBRARY_ENVELOPES) — 넷의 의존이 전부 첫 화면에 이미 있는 청크라 남을 안 끈다(옮기기 전에 확인).
+  `TrendingUp` → `ChartIcon`. 아이콘 래칫 141 → 139. 지도 +0.8(요청 1개, 래칫 안).
+  🩸 그 요청 1개를 `surface-chunk-runtime`(PR 게이트 아님)이 잡았다 — 지도 28 → **29개**. 바이트 래칫은 안에 있었는데
+  개수 래칫은 따로 센다(두 래칫은 다른 이야기를 한다). 의도된 대가라 기준만 29 로 올렸다(다른 화면은 안 내렸다 — 로컬 측정이 CI 와 다를 수 있다).
+- 가드 `search-first-screen-2026-10-19.test.ts` 5건 + 주입 4건 빨간불 확인. `cross-envelope` 주입 앵커 재조준(보호 목록 문자열이 바뀜).
+- 남은 후보(정적 폐쇄 brotli): 지역 198.4(홈 봉투 넷 ~26KB — 홈 피드 재사용이라 정당성 먼저 볼 것) · 장바구니 187.6 · 숙소 목록 181.1 ·
+  로그아웃 마이 189.4 · 마이 216.0 의 `lucide` 10.2(아이콘 1~2개가 끄는지 같은 방법으로) · 대시보드 둘(293·295).
+- ✅ 머지 `ef79f1bf1`(#1926). E4(다음): 라이브 `/search` 하드로드의 modulepreload 에 `lz-map-*` 이 없고 `app-map-row-*` 가 있는지.
+
+## 6차 — 장바구니·숙소 목록·로그아웃 마이의 lucide 봉투 (2026-10-19)
+
+- 원인: 셸·홈·PC 목록 밖 lucide 아이콘을 **하나라도** 쓰면 `lucide` 봉투(br 10.2) 전체가 그 화면에 실린다.
+  장바구니 `PackageCheck`(합배송)·`ImageOff`(상품 사진 없음) · 숙소 목록 `Calendar`·`CalendarDays` · 로그아웃 마이 `Globe`(언어)·`Monitor`·`Sun`·`Moon`(테마) — 일곱이 전부였다.
+- 처방: 뜻 아이콘은 유어딜 세트(`BoxIcon`·`BagIcon`), 세트에 없는 넷(달력·지구본·모니터/해/달)은 **그 파일 안에서** 그렸다(24 그리드 · 획 1.6).
+  세트에 새로 넣지 않은 이유: 세트 모듈을 쓰는 다른 화면이 그 그림까지 받는다(4차 편의시설 아이콘과 같은 판단).
+- 실측(brotli 첫 화면): 장바구니 187.2 → **177.4** · 숙소 목록 180.6 → **171.0** · 로그아웃 마이 189.0 → **179.4**. 예산 재잠금, 청크 개수 래칫 6화면 통과(변화 0).
+  아이콘 래칫 139 → **132**.
+- 🩸 마이(판매자, `dash:my`)는 이 처방이 안 먹는다 — `ThemeToggle` 이 아니라 `app-seller-nav` 청크가 `lucide` 를 import 한다.
+  `SellerSection` 의 `Plus` 를 바꿔 봤는데 효과 0 이라 되돌렸다. 다음 후보는 그 청크의 어떤 모듈이 lucide 이름을 쓰는지 덤프로 찾는 것.
+- 가드 `lucide-drag-first-screen-2026-10-19.test.ts` 14건 + 주입 4건 빨간불 확인.
+
+## 7차 — 판매자 마이 215.5 → 202.7 (2026-10-19)
+
+- 원인: 마이 판매 구역 안내문 `store-status-note.ts` 가 `SELLER_STATUS_KEY` 상수 하나를 `shared/seller-approval` 에서 읽는데,
+  vite manualChunks 가 그 모듈을 `app-seller-nav`(나브 색인 · 메뉴 아이콘)로 보내고 있었다 → 그 봉투가 `lucide`·`lucide-desktop` 을 import.
+  6차에 `SellerSection` 의 `Plus` 를 바꿔 본 건 엉뚱한 곳이었다(그 청크의 소스맵 `sources` 를 보고서야 찾았다 — 다음엔 소스맵부터).
+- 처방: `seller-approval` → `app-shared`(1.6KB · import 0). 규칙 제거 0. 소비자 화면 ±0.1.
+- 가드 `seller-approval-shared-2026-10-19.test.ts` 3건 + 주입 3건 빨간불 확인. CLAUDE.md 로딩 audit log `[LOADING_ADDITIVE]`.
+- 같은 클래스 둘을 함께 고쳤다(소스맵 `sources` 로 찾음):
+  ② 에이전시: 매장 등록 카드의 `TERMS_CURRENT_VERSION` → `pages/terms/terms-types` 가 규칙 없이 `app-seller-components` 로 →
+     판매자 대시보드 봉투 + 의존 전부. 규칙 추가 `app-shared` → **dash:agency 294.5 → 180.3(−114)**.
+  ③ 어드민: 활동 피드 `CheckCircle2`(= `circle-check`, lz-gbDetail 에 산다) → `CheckCircle`(= `circle-check-big`, 이미 받는 `lucide`) → **dash:admin 292.9 → 274.0**.
+  🩸 처음엔 `AdminPage` 의 `CheckCircle` 을 바꿨는데 효과 0 — lucide 별칭이 반대였다(`CheckCircle`=big, `CheckCircle2`=circle-check). 별칭은 `node_modules/lucide-react/dist/esm/lucide-react.js` 로 확인할 것.
+- 가드 6건 + 주입 5건 빨간불 확인.
+- 남은 후보: 어드민 274 — `AdminLayout`(admin-nav-config)이 lucide `Play`·`Wrench`·`History`(소비자 봉투에 사는 아이콘)와
+  `lz-linkshop2`·`app-components` 의 부품을 import 한다. 지역 198.5(홈 봉투 재사용).

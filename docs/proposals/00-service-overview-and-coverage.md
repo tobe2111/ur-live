@@ -291,9 +291,9 @@
 |---|---|---|---|
 | 도매몰 (유통스타트) | `wholesale-mall-brief.md` | 2 | 4 |
 | 오프라인 공구 / 동네딜 | `offline-groupbuy-brief.md` | 29 | 95 |
-| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 76 | 273 |
+| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 76 | 274 |
 | 유어샵 / 담기·소개 | `linkshop-brief.md` | 24 | 87 |
-| **합계** | — | **131** | **459** |
+| **합계** | — | **131** | **460** |
 
 ### 전체 커버리지 검증 (자동 — 빠진 기능 보증)
 
@@ -302,12 +302,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 331 | 1041 |
-| 도메인 버킷 (5개 소개서) | 131 | 459 |
+| 전체 | 331 | 1043 |
+| 도메인 버킷 (5개 소개서) | 131 | 460 |
 | 공통/인프라 (의도적 제외) | 153 | 491 |
-| **미커버 (점검 필요)** | **47** | **91** |
+| **미커버 (점검 필요)** | **47** | **92** |
 
-⚠️ **미커버 138건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 139건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -439,6 +439,7 @@
 - `PUT /products/:id/brand-wide` (`src/features/seller/api/seller-brands.routes.ts`)
 - `POST /products/:id/copy-to/:sellerId` (`src/features/seller/api/seller-product-copy.routes.ts`)
 - `GET /recover` (`src/worker/routes/killer-sw.routes.ts`)
+- `GET /search` (`src/worker/routes/agent-search.routes.ts`)
 - `POST /store-claims` (`src/features/seller/api/seller-store-claims.routes.ts`)
 - `GET /store-claims/lookup-by-code` (`src/features/seller/api/seller-store-claims.routes.ts`)
 - `GET /store-claims/mine` (`src/features/seller/api/seller-store-claims.routes.ts`)
@@ -842,7 +843,7 @@
 - `/vouchers/:id`
 - `/wishlist`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (273개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (274개)
 
 
 **/api/admin-review-bonus/:id**
@@ -1042,6 +1043,7 @@
 - `DELETE /api/seller/analytics/coupons/:id`
 - `GET /api/seller/analytics/customers`
 - `GET /api/seller/analytics/detailed`
+- `GET /api/seller/analytics/idle-hours`
 - `POST /api/seller/analytics/orders/bulk-tracking`
 - `POST /api/seller/analytics/products/:id/duplicate`
 - `GET /api/seller/analytics/products/monthly-trend`
@@ -1604,7 +1606,7 @@
 
 
 
-> 마지막 생성: 2026-10-18T07:42:58.037Z
+> 마지막 생성: 2026-10-19T04:09:06.255Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

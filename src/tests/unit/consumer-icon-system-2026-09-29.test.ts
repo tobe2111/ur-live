@@ -94,7 +94,10 @@ const OPERATION = new Set([
       JSX 로 되돌려 정직한 값 152 로 잠갔다. 셀 수 없는 모양으로 옮기는 것은 개선이 아니라 래칫 우회다. */
 /* 🔧 2026-10-19: 152 → **141**. 숙소 편의시설 아이콘 열한 개를 lucide 에서 **그 파일 안의 그림**(stay-detail/AmenityIcon.tsx)으로 —
    lazy 청크가 교환권·홈 봉투(압축 ~28KB)를 의존으로 달고 있던 것(라이브 E4). 이번엔 **실제로 걷은** 11건이다(JSX 그대로 셀 수 있는 모양). */
-const MEANING_BASELINE = 141
+/* 🔧 2026-10-19: 141 → **139**. 검색 인기 검색어 머리 아이콘 `TrendingUp` 2곳을 유어딜 `ChartIcon` 으로 — 그 하나 때문에 검색 첫 화면이 lucide 봉투(br 10.2KB)를 받았다. */
+/* 🔧 2026-10-19: 139 → **132**. 장바구니(`PackageCheck`·`ImageOff`)·숙소 목록(`Calendar`)·마이 설정(`Monitor`·`Sun`·`Moon`·`Globe`) —
+   그 일곱 개가 세 화면에 lucide 봉투(br 10KB)를 끌고 왔다. 상자·가방은 유어딜 세트, 나머지는 쓰는 파일 안에서 그렸다. */
+const MEANING_BASELINE = 132
 
 const read = (f: string) => readFileSync(f, 'utf8')
 

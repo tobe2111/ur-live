@@ -25,44 +25,18 @@
 import { Link } from 'react-router-dom'
 import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
 import { stayRegionLabel } from '@/shared/stay-address'
-import type { StaySearchItem } from '@/hooks/queries/useStaysSearch'
+import { STAYS_LIST, buildStayCurations, stayCardHref, type StaySearchItem } from '@/shared/stays-list'
 
-/** 한 줄이 캐러셀일 자격 — 이보다 적으면 그리드가 더 낫다. */
-const MIN_PER_ROW = 3
-/** 한 줄에 몇 장까지 — 더 넣어도 아무도 끝까지 안 민다. */
-const MAX_PER_ROW = 10
+// 🏨 2026-10-19 큐레이션 규칙·치수 클래스는 `shared/stays-list.ts` 로 옮겼다 — 워커 첫 화면이 같은 것을 쓴다.
+export { buildStayCurations, type StayCurationRow } from '@/shared/stays-list'
 
-export interface StayCurationRow {
-  key: string
-  title: string
-  items: StaySearchItem[]
-}
-
-/** 참인 사실만으로 줄을 만든다. 순서 = 화면에 보일 순서. */
-export function buildStayCurations(items: StaySearchItem[]): StayCurationRow[] {
-  const rows: StayCurationRow[] = [
-    { key: 'under-100k', title: '10만원 아래로 떠나는 하룻밤', items: items.filter(s => (s.price_from ?? 0) > 0 && (s.price_from as number) < 100000) },
-    { key: 'gangwon', title: '강원, 바다와 산 사이', items: items.filter(s => s.region_sido === '강원') },
-    { key: 'city', title: '도심에서 묵기 — 서울·부산', items: items.filter(s => s.region_sido === '서울' || s.region_sido === '부산') },
-    { key: 'rated', title: '다녀온 사람들이 별을 많이 준 곳', items: items.filter(s => (s.review_count ?? 0) > 0 && (s.avg_rating ?? 0) >= 4.5) },
-  ]
-  return rows
-    .map(r => ({ ...r, items: r.items.slice(0, MAX_PER_ROW) }))
-    .filter(r => r.items.length >= MIN_PER_ROW)
-}
-
-/**
- * 숙소 카드 한 줄(가로 캐러셀). **여기 하나만 둔다** — 같은 캐러셀을 화면마다 새로 쓰면
- * 폭·간격·스냅이 갈린다(이 레포가 카드에서 네 번 겪은 클래스). 숙소 상세의 '이곳과 비슷한
- * 스테이'(`SimilarStays`)도 이 부품을 쓴다.
- */
 export function StayCardRow({
   items, checkIn, checkOut, guests, firstAboveFold = false,
 }: { items: StaySearchItem[]; checkIn: string; checkOut: string; guests: number; firstAboveFold?: boolean }) {
   return (
-    <div className="mt-3 flex gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory -mx-4 px-4 lg:mx-0 lg:px-0">
+    <div className={STAYS_LIST.row}>
       {items.map((s, i) => (
-        <div key={s.id} className="shrink-0 snap-start w-[68%] sm:w-[42%] lg:w-[28%] xl:w-[23%]">
+        <div key={s.id} className={STAYS_LIST.cell}>
           <GroupBuyFeedCard
             p={{
               id: s.id,
@@ -73,12 +47,13 @@ export function StayCardRow({
               restaurant_address: stayRegionLabel(s.region_sido, s.region_sigungu, s.address),
               avg_rating: s.avg_rating ?? undefined,
               review_count: s.review_count ?? undefined,
+              dominant_color: s.dominant_color ?? null,  // 🎨 없으면 카드가 모든 숙소 색을 다시 뽑아 서버로 보낸다(2026-10-19 실측 — 방문마다 POST 2회)
             } as never}
             /* ⚡ 2026-10-17 첫 화면 첫 줄의 첫 장만 먼저 받는다 — 전부 lazy 였을 때 느린 회선 lazy 여백이
                커서 사진 15장이 같은 순간에 출발했고, 맨 위 사진(LCP)이 회선을 나눠 쓰느라 ~5초에 떴다(라이브). */
             aboveFold={firstAboveFold && i === 0}
             /* 🔗 날짜·인원을 이어 보낸다 — 빠지면 상세가 오늘 날짜로 다시 잡아 요금이 달라진다. */
-            to={`/stays/${s.id}?check_in=${checkIn}&check_out=${checkOut}&guests=${guests}`}
+            to={stayCardHref(s.id, checkIn, checkOut, guests)}
           />
         </div>
       ))}
@@ -93,10 +68,10 @@ export default function StayCurations({
   if (rows.length === 0) return null
 
   return (
-    <div className="space-y-8 pb-2">
+    <div className={STAYS_LIST.curations}>
       {rows.map((row, ri) => (
         <section key={row.key}>
-          <h2 className="text-[17px] sm:text-[17px] font-extrabold tracking-tight text-gray-900 dark:text-white px-1">{row.title}</h2>
+          <h2 className={STAYS_LIST.rowTitle}>{row.title}</h2>
           {/* 가로 스크롤 — 한 장을 크게 보여 주는 것이 목적이라 폭을 % 로 잡는다(사진이 커진다). */}
           <StayCardRow items={row.items} checkIn={checkIn} checkOut={checkOut} guests={guests} firstAboveFold={ri === 0} />
         </section>

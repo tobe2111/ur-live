@@ -139,6 +139,12 @@ export const OPS_POLICY_FIELDS: Array<{ key: string; label: string; hint: string
     text: true,
   },
   {
+    key: 'agent_search_enabled',
+    label: 'AI 비서 검색 창구(찾기 전용)',
+    hint: "기본 꺼짐. 'true' 면 GET /api/agent/search 가 열려 AI 비서가 이용권을 찾아 우리 상세 주소를 건넬 수 있다(결제는 사람이 상세에서). 켜기 전 결재 2026-10-19-ai-agent-channel · S-AGENT",
+    text: true,
+  },
+  {
     // 💬 2026-10-10: 카카오톡 채널 챗봇으로 매장 관리(연결·오늘 판매·사용 처리·판매 중지). 스킬 자체는
     //   `KAKAO_SKILL_SECRET` 가 따로 켠다 — 이 값은 그 위의 **매장 관리** 명령만 연다.
     //   ⚠️ `text: true` — 값이 'true'/'false' 문자열이라 숫자 검증 배열에 두면 저장이 거부된다.

@@ -41,11 +41,14 @@ export function useFeedWindow(params: {
    */
   const near = eff === 'distance' ? userLoc : null
   const feed = useMapProducts(category, near, { sort })
-  const { loadAll } = feed
+  const { loadAll, isLoading, loadingMore, reachedEnd } = feed
 
+  // 📍 2026-10-17: 1페이지가 오기 전에 필터를 켜면 loadAll 이 no-op 이었다(page 0) — 1페이지 도착 뒤 다시 부른다.
   useEffect(() => {
-    if (needsAll) void loadAll()
-  }, [needsAll, loadAll])
+    if (needsAll && !isLoading) void loadAll()
+  }, [needsAll, loadAll, isLoading])
 
-  return { ...feed, needsAll }
+  /** 필터 결과를 아직 **단정할 수 없는가** — 전체를 받는 중이면 0건이어도 "없어요" 라고 하지 않는다. */
+  const stillHunting = needsAll && !reachedEnd && (isLoading || loadingMore)
+  return { ...feed, needsAll, stillHunting }
 }

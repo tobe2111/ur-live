@@ -153,6 +153,20 @@ export const CROSS_MODULES = [
   '/lucide-react/dist/esm/icons/minus.js',
 ]
 
+/**
+ * 🔎 2026-10-19 [LOADING_ADDITIVE] 지도 목록 한 줄 — `app-map-row`.
+ *   검색 화면은 결과 한 줄(`RestaurantRow`)과 상세 미리받기(`prefetch-detail`)를 지도에서 빌려 쓴다(그 둘과 의존 둘, 5.2KB).
+ *   그런데 그 넷이 지도 화면 봉투(`lz-map`, br 18.9KB)에 들어 있어서 검색 첫 화면이 지도 봉투를 통째로 받았고,
+ *   그 봉투가 다시 홈·지도 공용 봉투 · `app-ui-utils` · 카카오 SDK 로더를 끌고 왔다(실측: 검색 216.9KB).
+ *   ⇒ 그 넷만 작은 고정 묶음으로 뺀다. 넷의 의존(react·app-shared·app-utils·lz-common·tanstack)은 전부 첫 화면에 이미 있어서
+ *   이 묶음이 남의 봉투를 끌고 오지 않는다(🩸 2026-10-19 숙소 아이콘에서 배운 것: 옮길 때는 **옮긴 모듈의 의존**을 먼저 볼 것).
+ *   가드: `search-first-screen-2026-10-19.test.ts` + `check-surface-budgets`(search 무게 래칫).
+ */
+export const MAP_ROW_MODULES = [
+  '/src/pages/restaurant-map/RestaurantRow', '/src/pages/restaurant-map/prefetch-detail',
+  '/src/pages/restaurant-map/utils.ts', '/src/pages/restaurant-map/CatIcon',
+]
+
 // 🧩 2026-10-13 [LOADING_ADDITIVE] 손님 페이지 lazy 코드를 쓰는 페이지끼리 묶는다 — 근거·실측·규칙은 scripts/surface-chunks.mjs.
 const gateLazy = createSurfaceChunker({
   routes: SURFACE_ROUTES,
@@ -265,6 +279,8 @@ export default defineConfig({
           if (id.includes('recharts') || id.includes('d3-') || id.includes('/src/components/charts/')) return 'charts'
           // 🔀 2026-10-18 화면 밖 공용 유틸 — 근거는 위 CROSS_MODULES 주석
           if (CROSS_MODULES.some((p) => id.includes(p))) return 'app-cross'
+          // 🔎 2026-10-19 지도 목록 한 줄 — 근거는 위 MAP_ROW_MODULES 주석
+          if (MAP_ROW_MODULES.some((p) => id.includes(p))) return 'app-map-row'
           // Icons
           // 🩺 2026-09-16 [UNLOCK_LOADING] 아이콘 다이어트 — 셀이 쓰는 42개만 첫 화면으로.
           //   실측(번들러 모듈→청크 그래프): 트리쉐이킹은 멀정하다(1,534개 중 260개만 남는다).
@@ -545,7 +561,14 @@ export default defineConfig({
           if (id.includes('/src/components/seller/seller-tab-groups')) return 'app-seller-nav'
           if (id.includes('/src/components/seller/seller-primary-nav')) return 'app-seller-nav'
           if (id.includes('/src/components/seller-layout/useSellerNavModel')) return 'app-seller-nav'
-          if (id.includes('/src/shared/seller-approval')) return 'app-seller-nav'
+          // 🪪 2026-10-19 — 승인 상태 키(`seller-approval`, 1.6KB · import 0)는 **app-shared** 로.
+          //   마이 판매 구역의 안내문(`store-status-note`)이 상수 하나를 읽는데 그 파일이 이 색인 봉투에 있어서,
+          //   판매자 마이 첫 화면이 나브 색인 + lucide(10.2) + lucide-desktop 을 통째로 받았다(위 `seller-roles` 와 같은 함정).
+          if (id.includes('/src/shared/seller-approval')) return 'app-shared'
+          // 📜 같은 함정(2026-10-19): 약관 버전 상수(`pages/terms/terms-types`, 1.2KB · import 0)에 규칙이 없어
+          //   Rollup 이 판매자 가입 화면과 함께 `app-seller-components` 에 넣었다 → 에이전시 콘솔이 매장 등록 카드에서
+          //   `TERMS_CURRENT_VERSION` 하나를 읽느라 판매자 대시보드 봉투(+그 의존 전부)를 첫 화면에 받았다.
+          if (id.includes('/src/pages/terms/terms-types')) return 'app-shared'
           if (id.includes('/src/components/seller-layout/')) return 'app-seller-components'
           if (id.includes('/src/components/seller/')) return 'app-seller-components'
           if (id.includes('/src/components/SellerLayout')) return 'app-seller-components'
