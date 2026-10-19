@@ -47,9 +47,10 @@ export default [
   },
   {
     name: '📱 공개 가게 경로가 손님 Routes 에서 빠진다',
-    file: 'src/routes/seller.routes.tsx',
-    find: "      top.push(cloneElement(r, { key: path ?? `seller-top-${top.length}` }))",
-    replace: '      void r',
+    // ⚡ 2026-10-18 재조준 — 표 밖 경로가 `seller-public.routes.tsx` 로 옮겨갔다(불변식 그대로).
+    file: 'src/routes/seller-public.routes.tsx',
+    find: '    <Route path="/s/:sellerId" key="/s/:sellerId" element={<SellerPublicPage />} />,\n',
+    replace: '',
     test: 'src/tests/unit/seller-route-tree-2026-10-13.test.tsx',
     why: '/s/:id·/profile/:id 가 404 — 공유된 가게 링크가 전부 깨진다.',
   },

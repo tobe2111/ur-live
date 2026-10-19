@@ -441,19 +441,18 @@ const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
  * 하위 Routes 는 남은 경로로 맞추므로 `/seller` 접두를 뗀다(절대 경로 그대로면 하나도 안 맞는다).
  * ⚠️ 새 셀러 라우트는 종전처럼 `SellerRoutes()` 에 **절대 경로**로 추가하면 된다 — 여기서 자동으로 가른다.
  */
-function splitSellerRoutes(): { tree: ReactElement[]; top: ReactElement[] } {
+function splitSellerRoutes(): { tree: ReactElement[] } {
+  // ⚡ 2026-10-18 표 밖 경로(`/s`·`/profile`)는 `seller-public.routes.tsx` 로 옮겨 이 표엔 `/seller` 경로만 있다.
+  //   그 밖 경로를 여기 넣으면 어디에도 안 그려진다 — 시험 ② 가 "표 안엔 /seller 경로뿐" 을 잠근다.
   const tree: ReactElement[] = []
-  const top: ReactElement[] = []
   Children.forEach(SellerRoutes().props.children, (r) => {
     if (!isValidElement(r)) return
     const path = (r.props as { path?: string }).path
     if (typeof path === 'string' && (path === '/seller' || path.startsWith('/seller/'))) {
       tree.push(cloneElement(r as ReactElement<{ path: string }>, { path: path.slice('/seller'.length) || '/', key: path }))
-    } else {
-      top.push(cloneElement(r, { key: path ?? `seller-top-${top.length}` }))
     }
   })
-  return { tree, top }
+  return { tree }
 }
 
 /** 🔁 테스트·옛 호출 호환 — 실제 정의는 `seller-public.routes.tsx`(부팅 묶음). */
