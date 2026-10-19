@@ -6,6 +6,7 @@ import { formatNumber } from '@/utils/format'
 import {
   URSHORTS_CARD_W, URSHORTS_CARD_H, URSHORTS_VIEWER_PATH, URSHORTS_BROWSE_PATH, type UrShortItem,
 } from '@/shared/urshorts'
+import { shortDisplayTitle } from '@/shared/urshorts-display'
 import { priceDisplay } from '@/shared/price-display'
 
 /**
@@ -90,7 +91,7 @@ function ShortCard({ item, load, onOpen }: { item: UrShortItem; load: boolean; o
       onClick={onOpen}
       className="shrink-0 snap-start text-left"
       style={{ width: URSHORTS_CARD_W }}
-      aria-label={`${item.store_name || ''} ${item.title || '유어쇼츠 영상'}`}
+      aria-label={`${item.store_name || ''} ${shortDisplayTitle(item) || '유어쇼츠 영상'}`}
     >
       <span
         className="relative block overflow-hidden rounded-[10px] bg-media-slot"

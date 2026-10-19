@@ -10,6 +10,8 @@ import { priceDisplay } from '@/shared/price-display'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import NearbyPassesCard, { useNearbyFeed } from './videos/NearbyPassesCard'
+import SwipeHint from './videos/SwipeHint'
+import { YT_TITLE_CLIP_PX } from '@/shared/urshorts-display'
 
 /**
  * 🎬 `/videos` — 유어쇼츠 뷰어 (2026-09-07 대표 확정: 주소는 `/videos`).
@@ -227,7 +229,15 @@ export default function VideosPage() {
       {/* ▶️ **재생기 자리.** API 가 왔으면 이 껍데기 안에 우리가 만든 재생기 하나가 산다
           (`playerRef` — 영상 전환은 `loadVideoById`). React 는 이 div 만 알고, 안쪽 iframe 은
           유튜브가 만들고 우리가 destroy 한다. */}
-      {apiState === 'ready' && <div ref={hostRef} className="absolute inset-0 [&>iframe]:h-full [&>iframe]:w-full [&>iframe]:border-0" />}
+      {/* ✂️ 2026-10-19 — 재생기를 위로 `YT_TITLE_CLIP_PX` 만큼 늘려 유튜브가 맨 위에 띄우는
+          채널 로고·원제목 줄을 화면 밖으로 보낸다(루트가 overflow-hidden). 덮개를 그리지 않는다. */}
+      {apiState === 'ready' && (
+        <div
+          ref={hostRef}
+          style={{ top: -YT_TITLE_CLIP_PX }}
+          className="absolute inset-x-0 bottom-0 [&>iframe]:h-full [&>iframe]:w-full [&>iframe]:border-0"
+        />
+      )}
 
       {/* 🔴 폴백 — API 가 안 왔을 때만. 지우면 스크립트가 막힌 사용자에게 이 화면이 검게 죽는다.
           key 가 video_id 라 넘기면 이전 iframe 이 파기되고 새로 하나만 산다(여기선 전환이 곧 재부팅). */}
@@ -238,7 +248,8 @@ export default function VideosPage() {
           title={cur.title || '유어쇼츠'}
           allow="autoplay; encrypted-media; picture-in-picture"
           allowFullScreen
-          className="absolute inset-0 h-full w-full border-0"
+          style={{ top: -YT_TITLE_CLIP_PX, height: `calc(100% + ${YT_TITLE_CLIP_PX}px)` }}
+          className="absolute inset-x-0 w-full border-0"
         />
       )}
 
@@ -316,6 +327,10 @@ export default function VideosPage() {
           </div>
         </div>
       )}
+
+      {/* 👆 처음 온 사람에게 **한 번만** "위로 넘기면 다음 영상" — 숫자(1/10)는 대표가 걷어 낸
+          자리라(2026-09-08 *"번잡해"*) 다시 세우지 않고, 넘기는 법만 알려 준 뒤 사라진다. */}
+      {items.length > 1 && <SwipeHint idx={idx} />}
 
       {/* 위아래 이동 — 손가락은 스와이프, 마우스는 이 버튼 */}
       <div className="absolute right-3 top-1/2 z-20 hidden -translate-y-1/2 gap-2 [@media(hover:hover)_and_(pointer:fine)]:grid">
