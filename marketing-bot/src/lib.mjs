@@ -106,19 +106,75 @@ export function threads(method, p, params) {
 }
 export function insta(method, p, params) {
   const t = process.env.META_IG_ACCESS_TOKEN;
-  if (DRY) return Promise.resolve(method === 'GET' ? { data: [] } : { id: fakeId('ig') });
+  if (DRY) return Promise.resolve(method === 'GET' ? { data: [], status_code: 'FINISHED' } : { id: fakeId('ig') });
   if (!t) throw new Error('META_IG_ACCESS_TOKEN missing');
   return metaCall(IG, t, method, p, params);
 }
-// Facebook 페이지: META_FB_PAGE_TOKEN 없으면 null (호출측에서 건너뜀). 이미지 있으면 /photos, 없으면 /feed
-export async function fbPagePost(message, link, image) {
+// Instagram 게시: media = { images: [url...] } (1장=단일, 2~10장=캐러셀) 또는 { video_url } (Reels).
+// 컨테이너가 FINISHED 될 때까지 폴링 후 publish. 반환: { id, media_type }
+export async function igPublish(media, caption) {
+  const wait = async (id) => {
+    if (DRY) return;
+    for (let i = 0; i < 30; i++) {
+      const s = await insta('GET', id, { fields: 'status_code,status' });
+      if (s.status_code === 'FINISHED') return;
+      if (s.status_code === 'ERROR' || s.status_code === 'EXPIRED') throw new Error(`IG 컨테이너 ${id} ${s.status_code}: ${s.status || ''}`);
+      await new Promise((r) => setTimeout(r, 10000));
+    }
+    throw new Error(`IG 컨테이너 ${id} 처리 시간 초과`);
+  };
+  let id, media_type;
+  if (media.video_url) {
+    media_type = 'REELS';
+    id = (await insta('POST', `${IG_USER_ID}/media`, { media_type, video_url: media.video_url, caption, share_to_feed: 'true', ...(media.cover_url ? { cover_url: media.cover_url } : {}) })).id;
+  } else {
+    const imgs = (media.images || []).filter(Boolean).slice(0, 10);
+    if (!imgs.length) throw new Error('IG 이미지 없음');
+    if (imgs.length === 1) {
+      media_type = 'IMAGE';
+      id = (await insta('POST', `${IG_USER_ID}/media`, { image_url: imgs[0], caption })).id;
+    } else {
+      media_type = 'CAROUSEL';
+      const children = [];
+      for (const image_url of imgs) {
+        const c = await insta('POST', `${IG_USER_ID}/media`, { image_url, is_carousel_item: 'true' });
+        await wait(c.id);
+        children.push(c.id);
+      }
+      id = (await insta('POST', `${IG_USER_ID}/media`, { media_type, children: children.join(','), caption })).id;
+    }
+  }
+  await wait(id);
+  const r = await insta('POST', `${IG_USER_ID}/media_publish`, { creation_id: id });
+  return { id: r.id, media_type };
+}
+
+// Facebook 페이지: META_FB_PAGE_TOKEN 없으면 null (호출측에서 건너뜀).
+// media: { video_url } → /videos, { images: [2장+] } → 미게시 사진 업로드 후 /feed attached_media, 1장 → /photos, 없으면 /feed.
+// 멀티포토/영상이 실패하면 첫 이미지 단일 게시로 폴백.
+export async function fbPagePost(message, link, media = {}) {
   const t = process.env.META_FB_PAGE_TOKEN;
+  if (typeof media === 'string') media = { images: [media] };
+  media ||= {};
   if (DRY) return { id: fakeId('fb') };
   if (!t) return null;
   const FB = 'https://graph.facebook.com/v21.0';
   const me = await metaCall(FB, t, 'GET', 'me', { fields: 'id,name' });
+  const text = `${message}\n\n${link}`;
+  const imgs = (media.images || []).filter(Boolean).slice(0, 10);
+  try {
+    if (media.video_url) return await metaCall(FB, t, 'POST', `${me.id}/videos`, { file_url: media.video_url, description: text });
+    if (imgs.length > 1) {
+      const ids = [];
+      for (const url of imgs) ids.push((await metaCall(FB, t, 'POST', `${me.id}/photos`, { url, published: 'false' })).id);
+      const params = { message: text };
+      ids.forEach((id, i) => { params[`attached_media[${i}]`] = JSON.stringify({ media_fbid: id }); });
+      return await metaCall(FB, t, 'POST', `${me.id}/feed`, params);
+    }
+  } catch (e) { log(`Facebook 멀티미디어 실패 → 단일 이미지 폴백: ${e.message}`); }
+  const image = imgs[0] || media.fallback_image;
   return image
-    ? metaCall(FB, t, 'POST', `${me.id}/photos`, { url: image, caption: `${message}\n\n${link}` })
+    ? metaCall(FB, t, 'POST', `${me.id}/photos`, { url: image, caption: text })
     : metaCall(FB, t, 'POST', `${me.id}/feed`, { message, link });
 }
 
