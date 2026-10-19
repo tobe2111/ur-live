@@ -12,18 +12,6 @@ import { readFileSync } from 'node:fs'
 
 const read = (p: string) => readFileSync(p, 'utf8')
 
-/**
- * 주석을 걷어낸 **코드만** 본다. 설명 주석에 '배송준비' 같은 단어가 남아 있는 것은 정상이고
- * (왜 걷어냈는지를 적어 둔 자리다) 그걸 위반으로 세면 안 된다.
- * ⚠️ 과다 제거 방지: 걷어낸 뒤에도 `expectMarker` 가 남아 있는지 확인한다 —
- *   주석 안의 `/*` 하나가 실제 코드를 통째로 삼키는 사고를 이 레포가 이미 겪었다.
- */
-function codeOnly(src: string, expectMarker: string): string {
-  const out = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
-  if (!out.includes(expectMarker)) throw new Error(`주석 제거가 코드를 삼켰다 — '${expectMarker}' 가 사라졌다`)
-  return out
-}
-
 describe('① 에이전시 사업 진입 CTA 제거', () => {
   const SRC = read('src/pages/user-profile/RoleCtaGrid.tsx')
 
@@ -43,52 +31,8 @@ describe('① 에이전시 사업 진입 CTA 제거', () => {
   })
 })
 
-describe('② 주문 현황 → 이용권 현황 (배송 5단계 폐기)', () => {
-  const SRC = read('src/pages/user-profile/OrderStatusBar.tsx')
-
-  /**
-   * 이 바는 쇼핑몰의 배송 5단계였다. 유어딜은 배송이 없어 세 칸이 **영원히 0** 이었고,
-   * `hasAnyOrder` 가 "0이면 숨긴다" 로 그 사실을 가리고 있었다.
-   */
-  it('배송 단계 칩이 없다', () => {
-    const code = codeOnly(SRC, 'export default function OrderStatusBar')
-    for (const k of ['배송준비', '배송중', '배송완료', 'preparing', 'shipping', 'delivered']) {
-      expect(code, `${k} 이 남아 있으면 이용권 사용자에게 영원히 0인 칸이 보인다`).not.toContain(k)
-    }
-  })
-
-  // 🔁 2026-10-18 재조준: '사용가능'(usable) 은 위 숫자 줄로 옮겨갔다(같은 숫자 한 곳). 남은 셋이 이 바다.
-  it('이용권 생애 단계(구매완료·사용완료·만료환불)다', () => {
-    for (const k of ['bought', 'used', 'gone']) expect(SRC).toContain(`key: '${k}'`)
-    expect(SRC, "'사용가능' 이 돌아오면 위 숫자 줄과 같은 뜻의 숫자가 두 번 선다").not.toContain("key: 'usable'")
-    expect(SRC).toContain('voucherStatus.sectionTitle')
-  })
-
-  it('지갑과 같은 훅에서 센다 — 두 화면이 갈릴 수 없다', () => {
-    const code = codeOnly(SRC, 'export default function OrderStatusBar')
-    expect(code).toContain('useMyVouchers')
-    expect(code, '주문(orders)이 아니라 이용권(vouchers)이 사람이 세는 단위다').not.toContain('useMyOrders')
-  })
-
-  /**
-   * 🩸 처음엔 `String(v.expires_at).replace(' ','T') + 'Z'` 를 손으로 붙였다. 그러면 **이미 'Z' 가
-   * 붙어 온 값**(KT-알파 병합 경로 등)이 `...ZZ` → `Date.parse` NaN → `NaN < now` 가 **false** 라
-   * **만료된 이용권이 조용히 '사용가능' 으로** 세어진다. 실행으로 확인했다(naive OK / ISO-Z NaN).
-   * ⇒ 레포 SSOT `parseUTCDate` 만 쓴다 — 두 형태를 모두 받는다(`check-utc-date-parse` 가 요구하는 규약).
-   */
-  it('만료 판정이 날짜 SSOT 를 쓴다 (손수 조립 금지)', () => {
-    const code = codeOnly(SRC, 'export default function OrderStatusBar')
-    expect(code).toContain('parseUTCDate(v.expires_at)')
-    expect(code, "손으로 + 'Z' 를 붙이면 ISO-Z 값에서 NaN 이 나 만료를 못 잡는다")
-      .not.toMatch(/replace\(' ', 'T'\) \+ 'Z'/)
-  })
-
-  it('SSOT 가 두 형태를 실제로 같은 시각으로 읽는다', async () => {
-    const { parseUTCDate } = await import('@/utils/date')
-    expect(parseUTCDate('2026-01-01 00:00:00').toISOString()).toBe('2026-01-01T00:00:00.000Z')
-    expect(parseUTCDate('2026-01-01T00:00:00Z').toISOString()).toBe('2026-01-01T00:00:00.000Z')
-  })
-})
+// 🧹 2026-10-19 — 그 바(배송 5단계 → 이용권 현황)는 통째로 걷혔다(맨 위 숫자 줄과 겹쳤다).
+//   돌아오지 않는가는 `my-cache-owner-and-status-height-2026-10-18.test.tsx` ② 가 지킨다.
 
 describe('③ /my-orders 배송 칩이 배송 주문이 있을 때만', () => {
   const SRC = read('src/pages/MyOrdersPage.tsx')

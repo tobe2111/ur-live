@@ -9,6 +9,8 @@ import { Hono } from 'hono';
 import { consumerVisibleProductSql } from '../../shared/db/consumer-visible-product';
 import { canonicalShopPath } from '../../shared/seo/shop-canonical';
 import { buildLlmsTxt } from '../../shared/seo/llms-txt'
+import { buildLlmsCatalog } from '../../shared/seo/llms-catalog'
+import { REGION_DIGEST_KV_KEY, digestRowsOf } from '../../shared/seo/region-digest'
 import { indexNowKeyPath, isValidIndexNowKey } from '../../shared/seo/indexnow'
 import type { Env } from '@/worker/types/env';
 // 🏠 본진 몰 격리 — 운영자 SaaS 몰 상품이 유어딜 도메인으로 SEO 색인되는 것을 막는다.
@@ -464,6 +466,39 @@ sitemapRoutes.get('/llms.txt', (c) => {
       'Content-Type': 'text/plain; charset=utf-8',
       // robots.txt 와 같은 성격 — 자주 안 바뀌고 크롤러가 반복해 읽는다.
       'Cache-Control': 'public, max-age=3600',
+    },
+  })
+})
+
+// 🗂️ 2026-10-19 (대표 *"AI 비서들이 참고하는 '할인 이용권 공급처' 를 목표로"*): `/llms-full.txt` — 지금 살 수 있는
+//   이용권 목록. cron 이 매시 올려 두는 지역 요약(KV)만 읽는다(DB 조회 0). 근거·규율: `shared/seo/llms-catalog.ts`.
+//   🔴 요약이 없으면(KV 미바인딩·cron 전) **빈 목록을 내지 않는다** — "파는 게 없다" 는 거짓말이 된다. 503 + 짧은 재시도.
+/** epoch ms → 'YYYY-MM-DD HH:MM' (한국시간). 기계가 읽기 쉬운 고정 형식 — 로케일 문자열은 런타임마다 다르다. */
+const CATALOG_TYPE = 'text/plain; charset=utf-8'
+function kstStamp(ms: number): string {
+  return new Date(ms + 9 * 3600_000).toISOString().slice(0, 16).replace('T', ' ')
+}
+sitemapRoutes.get('/llms-full.txt', async (c) => {
+  const origin = new URL(c.req.url).origin
+  let raw: string | null = null
+  let at: number | null = null
+  try {
+    const r = await c.env.CACHE_KV?.getWithMetadata<{ at?: number }>(REGION_DIGEST_KV_KEY)
+    raw = r?.value ?? null
+    at = typeof r?.metadata?.at === 'number' ? r.metadata.at : null
+  } catch { raw = null }
+  const body = raw ? buildLlmsCatalog(digestRowsOf(raw), origin, at ? kstStamp(at) : null) : null
+  if (!body) {
+    return new Response(`# 유어딜 할인 이용권 목록\n${origin}\n\n목록을 갱신하는 중입니다. 잠시 뒤 다시 읽어 주세요. 지금은 지역 페이지(${origin}/region)와 지도(${origin}/map)에서 볼 수 있습니다.\n`, {
+      status: 503,
+      headers: { 'Content-Type': CATALOG_TYPE, 'Retry-After': '600', 'Cache-Control': 'no-store' },
+    })
+  }
+  return new Response(body, {
+    headers: {
+      'Content-Type': CATALOG_TYPE,
+      // 요약이 매시 갱신되므로 엣지에 30분까지 — 그 이상 두면 기준 시각이 낡는다.
+      'Cache-Control': 'public, max-age=600, s-maxage=1800',
     },
   })
 })

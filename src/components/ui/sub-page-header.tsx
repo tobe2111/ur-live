@@ -17,8 +17,10 @@ export const SUB_PAGE_CLS = 'min-h-[100dvh] bg-warm'
 
 export const SUB_PAGE_HEADER_CLS = 'sticky top-0 md:top-14 z-40 bg-warm'
 
-export default function SubPageHeader({ title, onBack, right, backLabel = '뒤로' }: {
+export default function SubPageHeader({ title, onBack, right, backLabel = '뒤로', wideSides = false }: {
   title: ReactNode
+  /** 오른쪽에 글자 버튼('모두 읽음' 등)을 둘 때 — 양쪽 칸을 같이 넓혀 제목이 정중앙에 남는다. */
+  wideSides?: boolean
   /** 기본은 브라우저 뒤로. 진입 기록이 없을 수 있는 화면은 목적지를 직접 준다. */
   onBack?: () => void
   right?: ReactNode
@@ -27,7 +29,7 @@ export default function SubPageHeader({ title, onBack, right, backLabel = '뒤�
   const navigate = useNavigate()
   return (
     <header className={SUB_PAGE_HEADER_CLS}>
-      <div className="ur-content-narrow grid grid-cols-[44px_1fr_44px] items-center h-[52px] px-1">
+      <div className={`ur-content-narrow grid ${wideSides ? 'grid-cols-[88px_1fr_88px]' : 'grid-cols-[44px_1fr_44px]'} items-center h-[52px] px-1`}>
         <button
           type="button"
           onClick={onBack ?? (() => navigate(-1))}
@@ -37,7 +39,7 @@ export default function SubPageHeader({ title, onBack, right, backLabel = '뒤�
           <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" strokeWidth={1.6} />
         </button>
         <h1 className="text-center text-[17px] font-semibold text-gray-900 dark:text-white truncate">{title}</h1>
-        <div className="w-11 h-11 flex items-center justify-center">{right}</div>
+        <div className={`h-11 flex items-center ${wideSides ? 'justify-end pr-3' : 'w-11 justify-center'}`}>{right}</div>
       </div>
     </header>
   )

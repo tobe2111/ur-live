@@ -1254,14 +1254,6 @@ const MUTATIONS = [
     why: 'linked_user_id 를 비워 두는 설계라 접근 경로가 seller_operators 하나뿐이다.',
   },
   {
-    name: '🧹 만료 판정을 다시 손으로 조립 — ISO-Z 값에서 만료가 사용가능으로 센다',
-    file: 'src/pages/user-profile/OrderStatusBar.tsx',
-    find: 'parseUTCDate(v.expires_at).getTime() < now',
-    replace: "Date.parse(String(v.expires_at).replace(' ', 'T') + 'Z') < now",
-    test: 'src/tests/unit/mypage-cleanup-2026-09-02.test.ts',
-    why: "이미 'Z' 가 붙어 온 값이 ...ZZ → NaN 이 되고 NaN < now 는 false 라 만료가 '사용가능' 으로 센다(실행 확인).",
-  },
-  {
     name: '🧹 마이페이지에 에이전시 모집 CTA 가 다시 들어온다',
     file: 'src/pages/user-profile/RoleCtaGrid.tsx',
     // 🔁 2026-09-28 재조준: `ShoppingBag` → `ShopPlusIcon`(장바구니는 '사는 행위'로 읽혔다).
@@ -1270,23 +1262,6 @@ const MUTATIONS = [
     replace: "      { Icon: ShopPlusIcon, title: t('roleCta.agencyBiz', { defaultValue: '\uc5d0\uc774\uc804\uc2dc \uc0ac\uc5c5' }), desc: '', to: '/agency/register/business', show: () => true },\n      { Icon: ShopPlusIcon, title: t('roleCta.openShop'",
     test: 'src/tests/unit/mypage-cleanup-2026-09-02.test.ts',
     why: '\uc5d0\uc774\uc804\uc2dc\ub294 B2B \uc870\uc9c1 \ubaa8\uc9d1\uc774\ub77c \uc18c\ube44\uc790 \ub9c8\uc774\ud398\uc774\uc9c0 \ub3d9\uc120\uc5d0 \uc11e\uc744 \uc790\ub9ac\uac00 \uc544\ub2c8\ub2e4(\ub300\ud45c \uc9c0\uc2dc).',
-  },
-  {
-    name: '🧹 이용권 현황이 다시 배송 5단계로',
-    file: 'src/pages/user-profile/OrderStatusBar.tsx',
-    // 🔁 2026-10-18 재조준: '사용가능' 칸이 위 숫자 줄로 옮겨가 앵커를 '사용완료' 칸으로. 불변식 그대로.
-    find: "key: 'used', path: '/my-vouchers' }",
-    replace: "key: 'shipping', path: '/my-orders?status=shipping' }",
-    test: 'src/tests/unit/mypage-cleanup-2026-09-02.test.ts',
-    why: '\uc720\uc5b4\ub51c\uc740 \ubc30\uc1a1\uc774 \uc5c6\uc5b4 \uadf8 \uce78\uc774 \uc601\uc6d0\ud788 0\uc774\ub2e4.',
-  },
-  {
-    name: '🧹 이용권 현황이 다시 주문 훅에서 센다 (지갑과 숫자가 갈린다)',
-    file: 'src/pages/user-profile/OrderStatusBar.tsx',
-    find: "  const { data } = useMyVouchers()",
-    replace: "  const { data } = useMyOrders()",
-    test: 'src/tests/unit/mypage-cleanup-2026-09-02.test.ts',
-    why: '\uc0ac\ub78c\uc774 \uc138\ub294 \ub2e8\uc704\ub294 \uc774\uc6a9\uad8c \uc7a5\uc218\ub2e4 \u2014 \uc9c0\uac11\uacfc \uac19\uc740 \ud6c5\uc744 \uc368\uc57c \ub450 \ud654\uba74\uc774 \uc548 \uac08\ub9b0\ub2e4.',
   },
   {
     name: '🧹 /my-orders 배송 칩이 다시 무조건 뜬다 (누르면 언제나 0건)',
@@ -9799,30 +9774,6 @@ canvas {
     why:
       "실패분이 '사용 가능 N장' 과 상단 딜 합계에 섞이면 쓸 수 없는 것을 자산으로 표시하는 것이다. " +
       '카드는 계속 보여야 하지만(문의 경로) 세면 안 된다.',
-  },
-  {
-    name: '🎟️ 이용권 현황이 교환권까지 센다 (마이가 자기 자신과 모순)',
-    file: 'src/pages/user-profile/OrderStatusBar.tsx',
-    find: '      if (!isStoreVoucher(v)) continue',
-    replace: '      if (false && !isStoreVoucher(v)) continue',
-    test: 'src/tests/unit/voucher-status-wallet-split.test.tsx',
-    why:
-      '대표 신고가 정확히 이 상태였다 — 위는 "이용권 현황 구매완료 1 · 사용가능 1", 아래 "내 이용권" 은 0. ' +
-      '한 배열로 오는 두 지갑을 아래 두 행(`useMyCounts`)만 `voucher-wallet` SSOT 로 갈라서, ' +
-      '이 바만 통째로 세면 같은 화면이 서로 다른 답을 말한다.',
-  },
-  {
-    // 🔁 2026-10-18 재조준: '사용가능' 칸이 사라져(위 숫자 줄이 그 한 곳) 같은 클래스 — **모르는 상태를
-    //   아무 칸에나 넣는다** — 를 남은 칸(만료·환불)에서 지킨다. 낯선 status 가 '만료' 로 새면 안 된다.
-    name: "🎟️ 모르는 상태가 다시 아무 칸에나 들어간다 (else 폴백)",
-    file: 'src/pages/user-profile/OrderStatusBar.tsx',
-    find: "      if (st === 'refunded' || st === 'expired') { c.gone++; continue }",
-    replace: "      if (st !== 'unused' && st !== '') { c.gone++; continue }",
-    test: 'src/tests/unit/voucher-status-wallet-split.test.tsx',
-    why:
-      'KT 병합은 **발송 실패**를 `status:\'unused\'` + `kt_status:\'failed\'` 로 실어 보낸다(카드가 실패 UI 를 ' +
-      '그리라고). else 폴백이면 문자조차 못 받은 교환권이 "지금 쓸 수 있음" 으로 집계된다 — 실측된 그 1건이다. ' +
-      '틀린 칸에 넣느니 안 세는 게 낫다.',
   },
   {
     name: '📝 리뷰 버튼이 다시 글자 수로 hard-disable (잠기면 아무도 이유를 모른다)',

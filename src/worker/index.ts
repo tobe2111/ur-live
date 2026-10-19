@@ -735,40 +735,28 @@ app.use('*', async (c, next) => {
             }
           }
           if (ssrPayload) {
-            // 🛡️ 2026-05-27: slot-prefixed script id — 클라이언트가 페이지별 inject 구별.
-            //   기존 __SSR_INITIAL_MAIN__ 호환 유지 (main slot 은 같은 id).
-            const scriptId = ssrSlot === 'MAIN' ? '__SSR_INITIAL_MAIN__' : `__SSR_INITIAL_${ssrSlot}__`;
-            el.append(
-              `<script id="${scriptId}" type="application/json">${ssrPayload}</script>`,
-              { html: true },
-            );
-            // 홈 보조 시드(섹션). 없으면 아무것도 안 넣는다 — 클라가 평소대로 fetch 한다(fail-soft).
-            if (ssrExtraPayload) {
-              el.append(
-                `<script id="__SSR_INITIAL_${ssrExtra?.slot ?? 'SECTIONS'}__" type="application/json">${ssrExtraPayload}</script>`, // 홈=SECTIONS · 교환권=BANNERS
-                { html: true },
-              );
-            }
-            // 🖼️ 2026-07-02 [UNLOCK_LOADING]: 상세 히어로는 프리로드 스캐너를 못 타 렌더 뒤에야
-            //   다운로드가 시작됐다. 표면별 URL 형태·함정은 헬퍼 주석에(불일치 시 이중 다운로드).
+            // 🖼️ 사진 preload 를 **시드보다 먼저** 둔다(2026-10-19 [UNLOCK_LOADING] 대표 "승인은 모두 해줄게") — 시드(홈 ~48KB)
+            //   뒤에 두면 그만큼을 받은 뒤에야 사진 요청이 나갔다. 표면별 URL 형태·함정은 헬퍼 주석에(불일치 시 이중 다운로드).
             if (ssrSlot === 'DETAIL') {
               const heroLink = buildDetailHeroPreloadLink(ssrPayload, url.pathname.startsWith('/vouchers/'), isMobileUserAgent(c.req.header('user-agent')));
               if (heroLink) el.append(heroLink, { html: true });
             }
-            // 🖼️ 2026-08-27 [UNLOCK_LOADING]: 홈 첫 화면 카드도 상세 히어로와 같은 병목이었다
-            //   (URL 은 이미 이 HTML 안에 있는데 React 가 <img> 를 만들 때까지 다운로드가 안 시작).
-            //   ⚠️ preload 는 URL 이 byte-일치할 때만 쓰인다 — 경위·함정은 헬퍼 주석에.
-            if (ssrSlot === 'MAIN' && ssrExtraPayload) {
-              for (const link of buildHomeCardPreloadLinks(ssrExtraPayload)) el.append(link, { html: true });
-            }
-            // 🏔️ 2026-08-29 (대표 — "히어로에 나올 사진이 가장 늦긴 해"): 카드는 위에서 preload 를 받는데
-            //   **그 위의 히어로만 못 받고 있었다.** 라이브 PC 3회 실측에서 카드보다 일관되게 ~630ms 늦게
-            //   시작했다. 히어로 사진은 MAIN 시드에서 고르므로(카드는 SECTIONS 시드) 여기서 따로 만든다.
-            if (ssrSlot === 'MAIN' && ssrPayload) {
-              const heroLink = buildHomeHeroPreloadLink(ssrPayload);
-              if (heroLink) el.append(heroLink, { html: true });
-            }
+            if (ssrSlot === 'MAIN' && ssrExtraPayload) for (const link of buildHomeCardPreloadLinks(ssrExtraPayload)) el.append(link, { html: true }); // 2026-08-27 홈 카드
+            if (ssrSlot === 'MAIN') { const heroLink = buildHomeHeroPreloadLink(ssrPayload); if (heroLink) el.append(heroLink, { html: true }) } // 2026-08-29 홈 히어로
           }
+        },
+      })
+      // 📦 2026-10-19 [UNLOCK_LOADING]: `__SSR_INITIAL_*` 시드를 `<head>` → **`</body>` 바로 앞**으로. 소비자는 전부 모듈 스크립트
+      //   (문서 파싱이 끝난 뒤 실행 — css-first 경로도 엔트리를 DOMContentLoaded 에 꽂는다)라 같은 값을 그대로 읽는다(0-RTT 불변).
+      //   head 에 두면 브라우저가 첫 화면(#root)에 닿기 전에 시드 전부를 받아야 했다(라이브 홈: 첫 화면이 144KB 중 132KB 지점).
+      .on('body', {
+        element(el) {
+          if (!ssrPayload) return
+          // 🛡️ 2026-05-27: slot-prefixed script id — 클라이언트가 페이지별 inject 구별(MAIN 은 기존 id 호환).
+          const scriptId = ssrSlot === 'MAIN' ? '__SSR_INITIAL_MAIN__' : `__SSR_INITIAL_${ssrSlot}__`;
+          el.append(`<script id="${scriptId}" type="application/json">${ssrPayload}</script>`, { html: true });
+          // 홈 보조 시드(섹션). 없으면 아무것도 안 넣는다 — 클라가 평소대로 fetch 한다(fail-soft).
+          if (ssrExtraPayload) el.append(`<script id="__SSR_INITIAL_${ssrExtra?.slot ?? 'SECTIONS'}__" type="application/json">${ssrExtraPayload}</script>`, { html: true }); // 홈=SECTIONS · 교환권=BANNERS
         },
       });
     // 🧨 2026-10-12 [UNLOCK_LOADING] 도매 surface 메타 주입 **제거**(대표 *"SEO 측면에서 … 모두 해줘"*).

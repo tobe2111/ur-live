@@ -39,14 +39,6 @@ export default [
     why: '교환권 숫자의 유일한 자리다 — 정리를 이유로 지우면 교환권이 몇 장인지 마이 어디에도 없다.',
   },
   {
-    name: "🔢 한 곳: 이용권 현황에 '사용가능' 칸이 돌아온다",
-    file: 'src/pages/user-profile/OrderStatusBar.tsx',
-    find: "    { label: t('voucherStatus.used', { defaultValue: '사용완료' }), key: 'used', path: '/my-vouchers' },",
-    replace: "    { label: t('voucherStatus.usable', { defaultValue: '사용가능' }), key: 'usable', path: '/my-vouchers' },\n    { label: t('voucherStatus.used', { defaultValue: '사용완료' }), key: 'used', path: '/my-vouchers' },",
-    test: TEST,
-    why: '위 숫자 줄의 이용권 장수와 같은 뜻의 숫자가 두 번 서고, 술어가 달라 값까지 갈릴 수 있다.',
-  },
-  {
     name: "🔢 개발자 표시: 설정에 '현재 OS' 줄이 돌아온다",
     file: 'src/components/settings/ThemeToggleSection.tsx',
     find: '          })}\n        </div>\n      </div>\n    </div>',

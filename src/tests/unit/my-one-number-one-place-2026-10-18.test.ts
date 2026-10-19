@@ -25,7 +25,6 @@ import { readCode } from '../helpers/source-text'
 
 const STATS = readCode('src/pages/user-profile/MyStats.tsx')
 const SHOP = readCode('src/pages/user-profile/ShoppingGroup.tsx')
-const BAR = readCode('src/pages/user-profile/OrderStatusBar.tsx')
 const PAGE = readCode('src/pages/UserProfilePage.tsx')
 const BAND = readCode('src/pages/user-profile/AccountPcBand.tsx')
 const THEME = readCode('src/components/settings/ThemeToggleSection.tsx')
@@ -66,11 +65,11 @@ describe('② 목록은 숫자 줄과 같은 숫자를 다시 안 단다', () =>
   })
 })
 
-describe('③ 이용권 현황은 숫자 줄과 겹치지 않는 셋', () => {
-  it("'사용가능' 칸이 없다", () => {
-    expect(BAR).not.toContain("key: 'usable'")
-    expect(BAR).not.toContain('c.usable')
-    for (const k of ['bought', 'used', 'gone']) expect(BAR).toContain(`key: '${k}'`)
+describe('③ 이용권 숫자는 숫자 줄 한 곳 (2026-10-19 — 이용권 현황 바를 걷었다)', () => {
+  it("'내가 산 것' 구역이 이용권 현황 바를 다시 안 그린다", () => {
+    expect(SHOP).not.toContain('OrderStatusBar')
+    expect(SHOP).not.toMatch(/voucherStatus\./)
+    expect(PAGE).not.toMatch(/statusBar=/)
   })
 })
 

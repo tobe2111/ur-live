@@ -162,7 +162,7 @@ export default function UserProfilePage() {
           할 것 같아"*). 종전엔 페이지 맨 아래 흰 판 버튼이었는데, ⓐ 로그아웃은 설정이지 독립 구역이
           아니고 ⓑ 안 C 에서 **흰 판은 "파는 쪽" 표시자**라 손님 구역에 판이 하나 떠 있으면 그 표시가
           무의미해진다(표면 규칙 ⑦). ⇒ 다른 줄과 같은 평면 줄로. */}
-      <div className="mt-4">
+      <div>
         <ListRow icon={rowIcon(LogOutIcon)} label={t('userProfile.logout')} onClick={handleLogout} />
       </div>
     </SettingsGroup>
@@ -400,7 +400,7 @@ export default function UserProfilePage() {
           종전엔 어느 구역에도 속하지 않은 채 떠 있었고, 사장님 화면에선 '내 가게' 판과 '내가 산 것' 제목
           사이에 끼어 있었다. 산 이용권의 기록이니 '내가 산 것' 이 그 집이다.
           PC 는 `AccountPcPane` 의 '곧 쓸 이용권' 카드 안에 이미 있어 여기서 또 그리지 않는다(두 번 서면 안 된다). */}
-      <ShoppingGroup counts={counts} statusBar={!isPc} />
+      <ShoppingGroup counts={counts} />
 
       {/* 🗑️ 2026-09-30 — **수익 · 추천 구역을 마이에서 뺐다** (대표 *"수익 추천은 지금은 아예
           마이에서 안보여도 될 것 같아"*).

@@ -174,9 +174,8 @@ describe('🧾 오른쪽 칸 — 판을 걷고 폰과 같은 목록을 쓴다', 
      * ⇒ 조건으로 감싸는 것 자체를 본다 — 줄머리에서 **조건 없이** 렌더돼야 한다.
      */
     expect(PAGE, 'ShoppingGroup 이 조건으로 감싸였다 — 한쪽 기기가 손님 목록을 통째로 잃는다')
-      .toMatch(/\n {6}<ShoppingGroup counts=\{counts\} statusBar=\{!isPc\} \/>/)
-    // 🔁 2026-10-18: `statusBar={!isPc}` 는 **목록을** 가르지 않는다 — 폰만 현황 바를 이 구역 안에 그린다
-    //   (PC 는 '곧 쓸 이용권' 카드가 그 바를 갖는다). 목록 자체는 여전히 조건 없이 두 기기 모두에 선다.
+      .toMatch(/\n {6}<ShoppingGroup counts=\{counts\} \/>/)
+    // 🔁 2026-10-19: 이용권 현황 바를 걷어 `statusBar` prop 이 사라졌다. 목록은 여전히 조건 없이 두 기기 모두에 선다.
   })
 })
 

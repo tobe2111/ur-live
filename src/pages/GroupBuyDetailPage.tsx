@@ -17,7 +17,6 @@ import { readCachedLoc, distanceKm } from './group-buy/detail-derived'
 import DetailFloatingHeader from '@/components/deal/DetailFloatingHeader'
 import { derivePricing } from './group-buy/pricing'
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
-import { withMyReturn } from '@/lib/seller-return'
 import { useTranslation } from '@/lib/i18n-lite'
 import { Phone, Instagram, Youtube, Facebook, Music2, RefreshCcw } from 'lucide-react'
 import { resolveTossFlow } from '@/lib/toss-key-type'
@@ -55,7 +54,7 @@ import DeferUntilVisible from './group-buy/DeferUntilVisible'
 import DealPayButton, { useCanPayWithDeal } from './group-buy/DealPayButton'
 import DealUseChooser, { useDealPlan, defaultDealUse, coversAll } from './group-buy/DealUseChooser'
 import DealBottomBar from './group-buy/DealBottomBar'
-import { useViewerIsOwner } from './group-buy/useViewerIsOwner'
+import { useOwnerManage } from '@/components/deal/useOwnerManage'
 import { handleDealJoinError } from './group-buy/deal-join-error'
 import { useProductViewBeacon } from '@/hooks/useProductViewBeacon'
 import { passShareCardUrl } from '@/shared/pass-share-card'
@@ -200,8 +199,8 @@ export default function GroupBuyDetailPage() {
   useProductViewBeacon(productId)
   const isLoggedIn = !!localStorage.getItem('user_id') || !!localStorage.getItem('uid')
   // 👤 2026-10-18: 주인 판정은 서버(구매 차단과 같은 함수) — 종전 `localStorage.seller_id` 는 대시보드를 연 기기에만 있었다.
-  const isOwnProduct = useViewerIsOwner(productId, isLoggedIn)
-  const manageOwn = () => navigate(withMyReturn('/seller/group-buy'))
+  //   2026-10-19 안 A: [관리하기] 는 셀러 목록이 아니라 **이 이용권의 관리 시트**를 연다(숙소·쇼핑과 같은 훅).
+  const { isOwner: isOwnProduct, openManage: manageOwn, sheet: ownerSheet } = useOwnerManage(productId, isLoggedIn, 'pass')
   // 🛡️ 2026-05-15: 본인 추천 링크 (친구 초대 시 양쪽 1% 보너스 딜)
   const myUserId = localStorage.getItem('user_id') || localStorage.getItem('uid') || ''
   const shareLink = myUserId
@@ -820,6 +819,7 @@ export default function GroupBuyDetailPage() {
         canPayWithDeal={canPayWithDeal} dealBalance={dealBalance}
         productId={productId} onJoin={handleJoin} isOwner={isOwnProduct} onManage={manageOwn}
       />
+      {ownerSheet}
     </div>
   )
 }

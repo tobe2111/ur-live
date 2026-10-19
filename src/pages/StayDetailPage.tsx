@@ -29,7 +29,7 @@ import { stayAddressLine, stayRegionLabel } from '@/shared/stay-address'
 // 🏨 첫 화면의 치수 클래스는 워커(`stay-detail-ssr-body`)와 **같은 상수**를 쓴다 — 두 벌이면 갈린다.
 import { STAY_HEAD, STAY_PAGE_ROOT, STAY_GRID } from '@/shared/stay-head'
 import StayBookingPanel, { cancellationLabel } from './stay-detail/StayBookingPanel'
-import BrandLoader from '@/components/brand/BrandLoader'
+import BrandLoader from '@/components/brand/BrandLoader'; import { useOwnerManage, OwnerManageBar, OwnerManageCard } from '@/components/deal/useOwnerManage'
 import { peekWarmStay, stayDetailRequest } from './stays/stay-detail-warm'
 
 // 🗺️ 2026-07-21 (대표 "숙소 카카오맵 연결 무조건 되게"): 딜 상세와 동일한 잠금 lazy 패턴 —
@@ -121,7 +121,8 @@ export default function StayDetailPage() {
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const productId = Number(id)
-
+  // 🏪 2026-10-19: 주인이 보면 예약 자리에 [관리하기](이용권·쇼핑과 같은 훅 — 판정은 구매 차단과 같은 서버 함수).
+  const { isOwner: own, openManage, sheet: ownerSheet } = useOwnerManage(productId, !!localStorage.getItem('user_id') || !!localStorage.getItem('uid'), 'stay')
   const heroRef = useRef<HTMLDivElement | null>(null)
   const [stay, setStay] = useState<StayDetail | null>(() => readStaySeed(productId))
   const [loading, setLoading] = useState(() => !readStaySeed(productId))
@@ -485,7 +486,7 @@ export default function StayDetailPage() {
                       <p className="text-[12px] text-gray-500 dark:text-gray-400">1박 평균 ₩{formatNumber(r.avg_per_night)}</p>
                     </div>
                   </div>
-                  {r.available && (
+                  {r.available && !own && (
                     <div className="flex items-stretch gap-2 mt-4">
                       <button
                         onClick={() => { setSelectedRoom(r); setBookingOpen(true) }}
@@ -556,7 +557,7 @@ export default function StayDetailPage() {
         {/* 🖥️ PC 우측 sticky 예약 패널 — B안(2026-09-02). `lg:z-20`: sticky 는 스택 컨텍스트를 만드는데
             z 가 없으면 지도 레이어 아래로 깔린다(달력이 지도에 가려지던 사고). */}
         <aside className="hidden lg:block lg:sticky lg:top-[116px] lg:z-20">
-          <StayBookingPanel
+          {own ? <OwnerManageCard kind="stay" onManage={openManage} /> : <StayBookingPanel
             modeTabs={modeTabs}
             selector={selectorBox}
             rooms={rooms}
@@ -567,7 +568,7 @@ export default function StayDetailPage() {
             nights={isVoucherMode ? voucherNights : nights}
             cancellation={cancellationLabel(stay.cancellation_policy)}
             onBook={() => setMultiBookingOpen(true)}
-          />
+          />}
         </aside>
       </div>
       </div>{/* /lg 컨테이너 */}
@@ -589,7 +590,7 @@ export default function StayDetailPage() {
       )}
 
       {/* 🏨 2026-09-14 (안 B): 하단 구매 바 — 담기 전에도 **가격이 보인다**(종전엔 담아야 떴다). */}
-      <StayStickyBar
+      {ownerSheet}{own ? <OwnerManageBar kind="stay" onManage={openManage} /> : <StayStickyBar
         minPrice={minRoomPrice}
         nightsLabel={roomsPriceLabel}
         cartCount={cartItems.length}
@@ -598,7 +599,7 @@ export default function StayDetailPage() {
         onClear={() => setCartQty({})}
         onBook={() => setMultiBookingOpen(true)}
         onPickRoom={() => document.getElementById('stay-sec-rooms')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-      />
+      />}
 
       {multiBookingOpen && (
         <MultiBookingModal

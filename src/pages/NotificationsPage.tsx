@@ -7,7 +7,7 @@ import { useTranslation } from '@/lib/i18n-lite'
 import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
 import Udal from '@/components/mascot/Udal'
-import { ChevronLeft } from 'lucide-react'
+import SubPageHeader, { SUB_PAGE_CLS } from '@/components/ui/sub-page-header'
 import { toast } from '@/hooks/useToast'
 import { safeInternalPath } from '@/utils/safe-internal-path'
 import { useNotifications, useMarkAllNotificationsRead, useMarkNotificationRead } from '@/hooks/queries/useNotifications'
@@ -45,18 +45,17 @@ export default function NotificationsPage() {
 
   // 🛡️ 2026-07-03: min-h-screen(100vh) → min-h-[100dvh] — 인앱/웹뷰 하단 네비 실종 방지(룰 #8, /vouchers 와 동일).
   return (
-    <div className="min-h-[100dvh] bg-white dark:bg-[#11141C] pb-safe-nav md:pb-20">
+    <div className={`${SUB_PAGE_CLS} pb-safe-nav md:pb-20`}>
       <SEO title={t('notifications.seoTitle', { defaultValue: '알림 - 유어딜' })} description={t('notifications.seoDesc', { defaultValue: '새로운 알림을 확인하세요' })} url="/notifications" noindex />
-      {/* Header */}
-      <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#11141C]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
-        <div className="ur-content-narrow flex items-center justify-between px-5 lg:px-8 py-3">
-          <button type="button" onClick={() => navigate(-1)} aria-label={t('notifications.back')} className="text-gray-900 dark:text-white">
-            <ChevronLeft className="w-6 h-6" aria-hidden="true" />
-          </button>
-          <h1 className="text-gray-900 dark:text-white font-bold text-[15px]">{t('notifications.title')}</h1>
-          <button type="button" onClick={markAllRead} className="text-[12px] text-brand-text font-medium">{t('notifications.markAllRead')}</button>
-        </div>
-      </div>
+      {/* ← 2026-10-19: 마이 하위 화면 공용 머리줄. '모두 읽음' 은 안 읽은 게 있을 때만(누를 것이 없으면 안 선다). */}
+      <SubPageHeader
+        title={t('notifications.title')}
+        backLabel={t('notifications.back')}
+        wideSides
+        right={notifications.some(n => !n.is_read) ? (
+          <button type="button" onClick={markAllRead} className="text-[13px] font-semibold text-brand-text whitespace-nowrap">{t('notifications.markAllRead')}</button>
+        ) : null}
+      />
 
       <div className="ur-content-narrow px-4 lg:px-8 py-2">
         {loading ? (
@@ -74,7 +73,7 @@ export default function NotificationsPage() {
             <Udal mood="notFound" size={128} className="mx-auto" />
             <p className="mt-5 text-[17px] text-gray-900 dark:text-white font-bold">{t('notifications.empty')}</p>
             <p className="text-[15px] leading-relaxed text-gray-600 dark:text-gray-400 mt-2">{t('notifications.emptyDesc')}</p>
-            <button type="button" onClick={() => navigate('/')} className="ur-btn ur-btn-md ur-btn-secondary mt-6">
+            <button type="button" onClick={() => navigate('/')} className="ur-btn ur-btn-md ur-btn-primary mt-6">
               {t('notifications.emptyCta', { defaultValue: '내 주변 이용권 보기' })}
             </button>
           </div>
@@ -87,7 +86,7 @@ export default function NotificationsPage() {
                   if (!n.is_read) markReadMut.mutate(n.id)
                   if (n.link) navigate(safeInternalPath(n.link, '/'))
                 }}
-                className={`w-full flex items-start gap-3 p-4 text-left border-b border-gray-100 dark:border-[#2C2F35] ${n.is_read ? 'opacity-50' : ''}`}
+                className={`w-full flex items-start gap-3 p-4 text-left border-b border-rule ${n.is_read ? 'opacity-50' : ''}`}
               >
                 <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${n.is_read ? 'bg-transparent' : 'bg-brand'}`} />
                 <div className="flex-1 min-w-0">

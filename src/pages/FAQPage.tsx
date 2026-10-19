@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { MailIcon, ClockIcon } from '@/components/icons/urdeal-icons'
-import { ChevronLeft, ChevronDown, Search, HelpCircle } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { ChevronDown, Search, HelpCircle } from 'lucide-react'
+import SubPageHeader, { SUB_PAGE_CLS } from '@/components/ui/sub-page-header'
 import { useTranslation } from '@/lib/i18n-lite'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
@@ -16,7 +16,6 @@ interface FAQ {
 
 export default function FAQPage() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState(t('faq.catAll', { defaultValue: '전체' }))
   const [expandedId, setExpandedId] = useState<number | null>(null)
@@ -57,18 +56,10 @@ export default function FAQPage() {
   })
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#11141C]">
+    <div className={SUB_PAGE_CLS}>
       <SEO title={t('faq.seoTitle', { defaultValue: CONSUMER_SURFACE_SEO['/faq'].title })} description={t('faq.seoDesc', { defaultValue: CONSUMER_SURFACE_SEO['/faq'].description })} url="/faq" jsonLd={faqJsonLd} />
 
-      {/* 상단 헤더 */}
-      <header className="sticky top-0 z-10 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35]">
-        <div className="ur-content-medium flex items-center px-4 lg:px-8 py-3">
-          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="p-1 -ml-1">
-            <ChevronLeft size={22} className="text-gray-700 dark:text-gray-200" />
-          </button>
-          <h1 className="text-[17px] font-bold text-gray-900 dark:text-white ml-2">{t('faq.title', { defaultValue: '자주 묻는 질문' })}</h1>
-        </div>
-      </header>
+      <SubPageHeader title={t('faq.title', { defaultValue: '자주 묻는 질문' })} backLabel={t('common.back', { defaultValue: '뒤로가기' })} />
 
       <div className="ur-content-medium px-4 lg:px-8 pt-4 pb-20">
         {/* Hero */}

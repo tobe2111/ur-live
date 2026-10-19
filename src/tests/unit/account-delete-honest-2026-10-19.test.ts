@@ -48,11 +48,12 @@ describe('① 탈퇴 안내 = 서버가 실제로 하는 일', () => {
     }
   })
 
-  it('그 사람의 실제 숫자를 마이와 같은 훅·같은 술어로 보여 준다', () => {
+  it('그 사람의 실제 숫자를 보여 준다 — 딜은 마이와 같은 훅, 이용권·충전 딜·가게는 서버 판정 한 곳', () => {
     const code = readCode(PAGE)
     expect(code).toMatch(/useBalance\(\{ fresh: true \}\)/)
-    expect(code).toMatch(/useMyVouchers\(\)/)
-    expect(code, '안 쓴 이용권을 지갑과 다른 기준으로 센다').toMatch(/isUsableWalletItem\(v\) && isStoreVoucher\(v\)/)
+    // 2026-10-19 결재 후: 안 쓴 이용권은 서버(`countAccountDeleteBlockers`)가 센다 — SQL 이 지갑과 같은 집합인지는
+    // `account-delete-blockers-2026-10-19.test.ts` 가 실제 SQLite 로 확인한다.
+    expect(code).toMatch(/\/api\/account\/delete-blockers/)
     // 잔액을 못 읽었을 때 0 으로 위장하지 않는다 — "소멸될 딜이 없어요" 는 거짓말이 된다.
     expect(code, '잔액 조회 실패를 0 으로 위장한다').toMatch(/balanceQ\.isError \? null/)
     // 서버 값을 받기 전(캐시 seed 0)에 "소멸될 딜이 없어요" 를 말하며 탈퇴를 열면 안 된다.
@@ -126,16 +127,49 @@ describe('⑤ 지도 피커 — 개발자 원인 문장을 화면에 그리지 �
 })
 
 describe('⑥ 마이 하위 화면 머리줄 한 벌', () => {
-  const PAGES = [
+  /**
+   * 🗺️ 2026-10-19 (2차 — 대표 *"응 다 이상적으로 진행해줘 모두"*): 손으로 적은 네 화면 → **마이의 줄 목록에서 파생**.
+   *   첫 판은 네 화면만 적어서, 같은 마이에서 들어가는 주문·딜 내역·단골·교환권·알림·FAQ 가 각자 다른
+   *   머리줄을 그린 채 초록이었다. 이제 '내가 산 것' 목록의 모든 목적지가 아래 표나 예외에 있어야 한다 —
+   *   줄을 하나 더하면서 표에 안 넣으면 빨간불이다(조용히 다른 머리줄로 새는 길을 막는다).
+   */
+  const ROUTE_FILE: Record<string, string> = {
+    '/my-gifticons': 'src/pages/MyGifticonsPage.tsx',
+    '/my-coupons': 'src/pages/MyCouponsPage.tsx',
+    '/my-stays': 'src/pages/MyStaysPage.tsx',
+    '/wishlist': 'src/pages/WishlistPage.tsx',
+    '/my/follows': 'src/pages/MyFollowsPage.tsx',
+    '/my-orders': 'src/pages/MyOrdersPage.tsx',
+    '/my-reviews': 'src/pages/MyReviewsPage.tsx',
+  }
+  /** 목록 밖에서 마이가 보내는 화면(숫자 줄의 딜 · 맨 아래 FAQ · 알림 · 탈퇴). */
+  const EXTRA = [
+    'src/pages/MyDealHistoryPage.tsx',
+    'src/pages/FAQPage.tsx',
+    'src/pages/NotificationsPage.tsx',
     'src/pages/AccountDeleteWarningPage.tsx',
-    'src/pages/MyReviewsPage.tsx',
-    'src/pages/MyCouponsPage.tsx',
-    'src/pages/MyStaysPage.tsx',
   ]
-  it.each(PAGES)('%s 는 SubPageHeader 를 쓰고 자기 뒤로 버튼을 그리지 않는다', (p) => {
+  /** 일부러 공용 머리줄을 안 쓰는 목적지와 그 이유. */
+  const EXEMPT: Record<string, string> = {
+    '/my-vouchers': '하단 탭의 뿌리 화면 — 뒤로 버튼이 없는 것이 맞다',
+    '/interest-list': '쇼핑 탭이 숨겨진 동안 마이에 안 뜬다(SHOPPING_TAB_HIDDEN)',
+    '/mypage/addresses': '쇼핑 탭이 숨겨진 동안 마이에 안 뜬다(SHOPPING_TAB_HIDDEN)',
+  }
+  const PAGES = [...Object.values(ROUTE_FILE), ...EXTRA]
+
+  it("'내가 산 것' 목록의 모든 목적지가 표나 예외에 있다", () => {
+    const shop = readCode('src/pages/user-profile/ShoppingGroup.tsx')
+    const paths = [...shop.matchAll(/path: '([^']+)'/g)].map((m) => m[1])
+    expect(paths.length, '목록 줄을 못 읽었다 — 이 검사가 헛돌고 있다').toBeGreaterThan(5)
+    for (const p of paths) expect(ROUTE_FILE[p] ?? EXEMPT[p], `${p} 가 머리줄 표에 없다`).toBeTruthy()
+  })
+
+  it.each(PAGES)('%s 는 SubPageHeader 를 쓰고 자기 머리줄을 그리지 않는다', (p) => {
     const c = readCode(p)
     expect(c).toMatch(/<SubPageHeader\b/)
-    expect(c).not.toMatch(/\b(ChevronLeft|ArrowLeft)\b/)
+    expect(c, '자기 뒤로 버튼(‹·←)을 따로 그린다').not.toMatch(/\b(ChevronLeft|ArrowLeft)\b/)
+    expect(c, '큰 제목 머리줄(LargeTitle)이 공용 머리줄과 함께 선다').not.toMatch(/<LargeTitle\b/)
+    expect(c, '지갑 머리줄이 자기 뒤로 버튼을 그린다').not.toMatch(/<WalletHeader[^>]*onBack=/)
   })
 
   it('쿠폰함 빈 화면이 같은 말을 두 번 하지 않는다', () => {

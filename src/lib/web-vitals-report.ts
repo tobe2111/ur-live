@@ -17,9 +17,9 @@ export function isAutomatedBrowser(): boolean {
   try { return typeof navigator !== 'undefined' && navigator.webdriver === true } catch { return false }
 }
 
-function send(name: string, value: number, page: string) {
+function send(name: string, value: number, page: string, extra?: Record<string, unknown>) {
   try {
-    const body = JSON.stringify({ name, value, page })
+    const body = JSON.stringify({ name, value, page, ...extra })
     if (navigator.sendBeacon) {
       navigator.sendBeacon('/api/analytics/vitals', new Blob([body], { type: 'application/json' }))
     } else {
@@ -43,6 +43,39 @@ export function createClsTracker() {
       if (cur > max) max = cur
     },
     value: () => max,
+  }
+}
+
+
+/**
+ * 🔬 2026-10-19 — LCP 를 **어디서 시간이 갔는지** 넷으로 쪼갠다(구글 web-vitals 의 attribution 과 같은 정의).
+ *
+ * 왜: 실사용 SLO 가 홈 LCP p75 3.5초를 사흘째 경보했는데 **고칠 곳을 고를 근거가 없었다** — 저장하는 것이
+ *   숫자 하나라서, 그게 서버가 늦은 탓인지(TTFB) · 사진을 늦게 알아챈 탓인지 · 사진이 무거운 탓인지 ·
+ *   그려 줄 코드가 늦은 탓인지 구분이 안 됐다. 라이브 실험실 측정(느린 4G·CPU 4배)은 1.2~1.4초라
+ *   실사용 3.5초와 거리가 멀다 ⇒ 추측으로 고치지 말고 실사용 표본에서 쪼개 본다.
+ *
+ *   ttfb = 첫 바이트 · lrd = 그 뒤 사진 요청을 시작하기까지 · ld = 사진 받는 시간 · erd = 받은 뒤 그리기까지
+ *   (글자가 LCP 면 lrd·ld 는 0 이고 erd 가 전부). 넷의 합 = LCP.
+ */
+export interface LcpBreakdown { ttfb: number; lrd: number; ld: number; erd: number; img: 0 | 1 }
+
+export function lcpBreakdown(
+  lcp: number,
+  ttfb: number,
+  resource: { requestStart?: number; startTime: number; responseEnd: number } | null,
+  isImage: boolean,
+): LcpBreakdown {
+  const t = Math.max(0, Math.min(ttfb, lcp))
+  if (!resource) return { ttfb: Math.round(t), lrd: 0, ld: 0, erd: Math.round(lcp - t), img: isImage ? 1 : 0 }
+  const reqStart = Math.min(lcp, Math.max(t, resource.requestStart || resource.startTime))
+  const resEnd = Math.min(lcp, Math.max(reqStart, resource.responseEnd))
+  return {
+    ttfb: Math.round(t),
+    lrd: Math.round(reqStart - t),
+    ld: Math.round(resEnd - reqStart),
+    erd: Math.round(lcp - resEnd),
+    img: isImage ? 1 : 0,
   }
 }
 
@@ -71,10 +104,20 @@ export function reportWebVitals(): void {
   // LCP — 가장 큰 paint 의 마지막 entry (페이지 떠날 때 확정)
   try {
     let lcpValue = 0
+    let lcpEntry: (PerformanceEntry & { url?: string; element?: Element | null }) | null = null
+    // 🧭 2026-10-19: 미리 그려 둔(prerender) 페이지는 **사용자가 연 순간**부터 잰다 — web-vitals 와 같은 정의.
+    //   빼지 않으면 백그라운드에서 그려 둔 시간이 LCP 에 얹혀 실제보다 늦게 집계된다.
+    const nav0 = performance.getEntriesByType('navigation')[0] as (PerformanceNavigationTiming & { activationStart?: number }) | undefined
+    const activation = Math.max(0, nav0?.activationStart || 0)
+    // 🙈 2026-10-19: **처음부터 숨은 채 열린 탭**(카톡 링크를 길게 눌러 새 탭 · 백그라운드 탭)은 그려지지 않으니
+    //   LCP 가 보는 사람과 무관하게 길어진다. web-vitals 는 이런 표본을 버린다 — 우리도 같은 규칙.
+    let hiddenAt = document.visibilityState === 'hidden' ? 0 : Infinity
+    addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') hiddenAt = Math.min(hiddenAt, performance.now()) }, { once: true })
     const lcpObs = new PerformanceObserver((list) => {
       const entries = list.getEntries()
-      const last = entries[entries.length - 1] as PerformanceEntry & { renderTime?: number; loadTime?: number }
+      const last = entries[entries.length - 1] as PerformanceEntry & { renderTime?: number; loadTime?: number; url?: string; element?: Element | null }
       lcpValue = last.renderTime || last.loadTime || last.startTime
+      lcpEntry = last
     })
     lcpObs.observe({ type: 'largest-contentful-paint', buffered: true })
     // 📈 2026-09-02: LCP 를 `visibilitychange→hidden` 에만 보내면 카카오 인앱/사파리처럼 그 이벤트가 안 오는
@@ -84,8 +127,23 @@ export function reportWebVitals(): void {
     const flush = () => {
       if (sent || lcpValue <= 0) return
       sent = true
-      send('LCP', lcpValue, page)
       lcpObs.disconnect()
+      if (hiddenAt <= lcpValue) return // 그려지기 전에 숨었다 — 보는 사람의 LCP 가 아니다
+      const lcp = Math.max(0, lcpValue - activation)
+      let parts: LcpBreakdown | undefined
+      try {
+        const ttfb = Math.max(0, (nav0?.responseStart || 0) - activation)
+        const url = lcpEntry?.url || ''
+        const res = url
+          ? (performance.getEntriesByName(url, 'resource')[0] as PerformanceResourceTiming | undefined)
+          : undefined
+        parts = lcpBreakdown(lcp, ttfb, res ? {
+          requestStart: Math.max(0, res.requestStart - activation),
+          startTime: Math.max(0, res.startTime - activation),
+          responseEnd: Math.max(0, res.responseEnd - activation),
+        } : null, !!url)
+      } catch { /* 쪼개기 실패는 LCP 보고를 막지 않는다 */ }
+      send('LCP', lcp, page, parts ? { parts } : undefined)
     }
     addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush() }, { once: true })
     addEventListener('pagehide', flush, { once: true })

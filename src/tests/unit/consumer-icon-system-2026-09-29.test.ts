@@ -97,8 +97,10 @@ const OPERATION = new Set([
 /* 🔧 2026-10-19: 141 → **139**. 검색 인기 검색어 머리 아이콘 `TrendingUp` 2곳을 유어딜 `ChartIcon` 으로 — 그 하나 때문에 검색 첫 화면이 lucide 봉투(br 10.2KB)를 받았다. */
 /* 🔧 2026-10-19: 139 → **132**. 장바구니(`PackageCheck`·`ImageOff`)·숙소 목록(`Calendar`)·마이 설정(`Monitor`·`Sun`·`Moon`·`Globe`) —
    그 일곱 개가 세 화면에 lucide 봉투(br 10KB)를 끌고 왔다. 상자·가방은 유어딜 세트, 나머지는 쓰는 파일 안에서 그렸다. */
-/* 🔧 2026-10-19: 132 → **130**. 첫 방문 다이어트(#1934)의 블로그·게스트 탭 첫 화면 정리로 2건이 빠졌다 — 같은 커밋에서 내린다(PR CI 주입이 잡았다, 아홉 번째). */
-const MEANING_BASELINE = 130
+/* 🔧 2026-10-19: 132 → **130**. 실측 130건 — 그 사이 머지된 정리분이 lucide 뜻 아이콘 2건을 걷고 기준을 안 내려,
+   main 전수 주입(`뜻 아이콘이 한 건 되돌아온다`)이 shard 10/16 에서 빨간불이 됐다(head 8e93b1a). 같은 규칙대로 내린다(아홉 번째). */
+/* 🔧 2026-10-19: 130 → **129**. 딜 내역 화면(MyDealHistoryPage)의 빈 상태 `Inbox` 를 걷었다(흰 카드 정리) — 같은 규칙대로 같은 PR 에서 내린다(열 번째). */
+const MEANING_BASELINE = 129
 
 const read = (f: string) => readFileSync(f, 'utf8')
 

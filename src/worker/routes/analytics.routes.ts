@@ -12,6 +12,7 @@
 import { Hono } from 'hono'
 import type { Env } from '../types/env'
 import { requireAdmin } from '../middleware/auth'
+import { type LcpPartsBody, lcpPartsTuple, summarizeLcpParts } from '../utils/lcp-parts'
 
 const analyticsRoutes = new Hono<{ Bindings: Env }>()
 
@@ -34,7 +35,10 @@ interface VitalsBody {
   name?: 'LCP' | 'FID' | 'CLS' | 'INP' | 'TTFB'
   value?: number
   page?: string
+  /** LCP 일 때만 — 어디서 시간이 갔나(web-vitals-report `lcpBreakdown`). */
+  parts?: LcpPartsBody
 }
+
 
 interface FunnelBody {
   event?: 'view' | 'click' | 'join' | 'success'
@@ -54,11 +58,11 @@ async function incrementCounter(kv: KVNamespace, key: string, increment: number 
   } catch { /* KV 미설정 / 한도 초과 시 silent */ }
 }
 
-async function appendSample(kv: KVNamespace, key: string, value: number, maxSamples: number = 100): Promise<void> {
+async function appendSample(kv: KVNamespace, key: string, value: number | number[], maxSamples: number = 100): Promise<void> {
   // 간단한 reservoir-ish: 기존 array (≤100) 에 push, 초과 시 무작위 교체
   try {
     const cur = await kv.get(key)
-    const arr: number[] = cur ? JSON.parse(cur) : []
+    const arr: Array<number | number[]> = cur ? JSON.parse(cur) : []
     if (arr.length < maxSamples) arr.push(value)
     else {
       const idx = Math.floor(Math.random() * (arr.length + 1))
@@ -99,6 +103,12 @@ analyticsRoutes.post('/vitals', async (c) => {
   const page = coloM ? `colo:${coloM[1]}` : ((body.page || '').replace(/\/\d+/g, '').slice(0, 60) || 'unknown')
   const sampleKey = `vitals:${day}:${body.name}:${page}`
   await appendSample(kv, sampleKey, Math.round(body.value))
+  // 🔬 2026-10-19: LCP 는 쪼갠 값도 **같은 표본**으로 남긴다(따로 보내면 표본이 따로 뽑혀 합이 안 맞는다).
+  //   키 이름이 `LCPB` 라 SLO 판정(`vitals:{날}:LCP:` 접두)과 안 섞인다. 쓰기는 LCP 표본당 1번 더.
+  if (body.name === 'LCP' && !coloM) {
+    const tuple = lcpPartsTuple(body.parts)
+    if (tuple) await appendSample(kv, `vitals:${day}:LCPB:${page}`, tuple)
+  }
   await incrementCounter(kv, `vitals_count:${day}:${body.name}`, 1)
   return c.json({ ok: true })
 })
@@ -159,7 +169,18 @@ analyticsRoutes.get('/summary', requireAdmin(), async (c) => {
     }
   } catch { /* skip */ }
 
-  return c.json({ success: true, data: { day, vitals, funnel } })
+  // 🔬 LCP 쪼개기 — 화면별 부분 p75(어디서 시간이 갔나).
+  const lcpParts: Record<string, ReturnType<typeof summarizeLcpParts>> = {}
+  try {
+    const list = await kv.list({ prefix: `vitals:${day}:LCPB:` })
+    for (const k of list.keys) {
+      const raw = await kv.get(k.name)
+      if (!raw) continue
+      lcpParts[k.name.slice(`vitals:${day}:LCPB:`.length)] = summarizeLcpParts(JSON.parse(raw) as number[][])
+    }
+  } catch { /* skip */ }
+
+  return c.json({ success: true, data: { day, vitals, funnel, lcp_parts: lcpParts } })
 })
 
 export { analyticsRoutes }
