@@ -36,6 +36,7 @@ const ROUTE_FILES = [
   'src/App.tsx',
   'src/routes/admin.routes.tsx',
   'src/routes/seller.routes.tsx',
+  'src/routes/seller-public.routes.tsx', // ⚡ 2026-10-18 공개 가게 두 줄이 표 밖으로 옮겨졌다
   'src/routes/agency-console.routes.tsx',
 ]
 

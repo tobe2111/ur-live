@@ -203,7 +203,7 @@ describe('④ 폴백과 배선', () => {
     const line = w.split('\n').find(l => l.includes("ssrSlot === 'VOUCHERS' && ssrPayload"))
     expect(line, 'VOUCHERS 첫 화면 분기가 사라졌다').toBeTruthy()
     expect(line!).toContain("url.pathname === '/vouchers' && shouldRenderMobileFirstScreen(c.req.header('user-agent'))")
-    expect(line!).toContain('const vouchersFirst = buildVouchersFirstScreen(ssrPayload, urdealLoaderHtml, nonce)')
+    expect(line!).toContain('const vouchersFirst = buildVouchersFirstScreen(ssrPayload, urdealLoaderHtml, nonce, ssrExtraPayload)') // 2026-10-18 머리 배너 보조 시드
     expect(line!).toContain("rb = rb.on('#root', { element(el) { el.setInnerContent(vouchersFirst")
     expect(line!, '🔴 첫 화면을 못 그리면 **크롤러 요약**이 나와야 한다(본문이 통째로 비는 것 차단)')
       .toContain('buildStaticSurfaceNoscript(url.pathname, crawlerPayload) + urdealLoaderHtml')

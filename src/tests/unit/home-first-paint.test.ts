@@ -69,7 +69,8 @@ describe('홈 섹션 0-RTT — 피드와 섹션이 같은 화면이면 시드도
   it('보조 시드는 fail-soft — 없으면 주입만 건너뛴다', () => {
     const s = read(WORKER)
     expect(s).toContain('if (ssrExtraPayload) {')
-    expect(s).toContain('__SSR_INITIAL_SECTIONS__')
+    // 2026-10-18: 보조 시드 id 가 슬롯 이름을 따른다(교환권은 BANNERS) — 홈은 종전 SECTIONS 그대로
+    expect(s).toContain("__SSR_INITIAL_${ssrExtra?.slot ?? 'SECTIONS'}__")
   })
 
   /**

@@ -6,6 +6,9 @@
  * (라이브 첫 방문 CLS 0.197). 서버 첫 화면·앱 첫 렌더·`/api/banners` 가 **같은 배너**를 봐야 안 튄다.
  */
 
+import { cfImage } from '../utils/cf-image'
+import { BANNER_SLOT_SPECS } from './constants/home-showcase'
+
 /** 상단 배너 최대 장수 — `HomeBannerStrip` 의 `StripRail` 이 `slice(0, 5)` 로 자른다. 같은 값이어야 한다. */
 export const STRIP_BANNER_MAX = 5
 
@@ -51,3 +54,40 @@ export const STRIP_CLS = {
   title: 'block max-w-[64%] text-[17px] font-bold leading-[1.25] tracking-[-.02em] whitespace-pre-line [word-break:keep-all] line-clamp-2 text-white dark:text-white [text-shadow:0_1px_8px_rgba(0,0,0,.25)]',
   desc: 'block max-w-[64%] mt-1 text-[12px] line-clamp-1 text-white/90 dark:text-white/90',
 } as const
+
+/**
+ * 🖼️ 배너 사진 주소 — 화면(`HomeBannerStrip`)·홈 서버 첫 화면·교환권 서버 첫 화면이 **같은 함수**를 쓴다.
+ *   주소가 한 글자라도 다르면 브라우저가 서버가 받아 둔 사진을 못 쓰고 다시 받는다.
+ */
+export function stripBannerImageUrl(imageUrl: string | null | undefined, slot: 'strip' | 'vouchers'): string {
+  return imageUrl ? cfImage(imageUrl, { width: BANNER_SLOT_SPECS[slot].requestWidth, quality: 76 }) : ''
+}
+
+/**
+ * 🎟️ 교환권 **머리 배너**(모바일, 2026-10-14 안 C)의 치수 클래스 — `StripCard`/`StripRail` 의 `hero` 덮어쓰기와
+ *   교환권 서버 첫 화면이 같은 상수를 쓴다. 196 은 `VOUCHERS_HERO_CLS.hero`(예약 판)와 같아야 한다(시험이 대조).
+ */
+export const HERO_CARD_CLS = '!aspect-auto !h-[196px] !rounded-none !justify-start !pt-[60px] [&>img]:object-right [&>div]:!h-full [&>div]:!bg-gradient-to-r [&>strong]:!max-w-[60%] [&>strong]:!leading-[1.35] [&>strong]:!whitespace-pre-line [&>strong]:![word-break:keep-all] [&>span]:hidden'
+export const HERO_RAIL_CLS = '!gap-0 !px-0 !scroll-px-0'
+
+/** `/api/banners` 응답 — 교환권 페이지 SSR 보조 시드(`__SSR_INITIAL_BANNERS__`)와 같은 키다(cron 예열 키). */
+export const BANNERS_SEED_PATH = '/api/banners'
+
+export interface SeededBanner {
+  id: number
+  title: string
+  image_url: string
+  link_url?: string | null
+  description?: string | null
+  banner_slot: string | null
+  display_order: number
+}
+
+/** `/api/banners` 응답(JSON 객체)에서 자리(`slot`)의 배너만. 모양이 이상한 행은 버린다. 화면과 같은 규칙: 자리를 안 고른 배너는 어디에도 안 뜬다. */
+export function bannersOfSlot(raw: unknown, slot: string): SeededBanner[] {
+  const r = raw as { success?: boolean; data?: unknown } | null | undefined
+  if (!r?.success || !Array.isArray(r.data)) return []
+  return (r.data as SeededBanner[])
+    .filter(b => !!b && typeof b.id === 'number' && typeof b.title === 'string' && b.banner_slot === slot)
+    .slice(0, STRIP_BANNER_MAX)
+}

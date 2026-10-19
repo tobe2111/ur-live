@@ -105,7 +105,7 @@ function homeOnlyIconFiles(): Set<string> {
   return new Set([...iconFilesIn(staticClosure(HOME_ENTRIES))].filter((i) => !shell.has(i)))
 }
 
-function listedIn(name: 'LUCIDE_SHELL_ICONS' | 'LUCIDE_HOME_ICONS'): string[] {
+function listedIn(name: 'LUCIDE_SHELL_ICONS' | 'LUCIDE_HOME_ICONS' | 'LUCIDE_DESKTOP_ICONS'): string[] {
   const cfg = readCode('vite.config.ts')
   const m = cfg.match(new RegExp(`const ${name} = new Set\\(\\[([\\s\\S]*?)\\]\\)`))
   expect(m, `vite.config.ts 의 ${name} 을 못 찾았다 — 이 시험이 낡았다`).toBeTruthy()
@@ -135,10 +135,16 @@ describe('① 목록이 소스와 일치한다', () => {
      *    지키려던 것은 그대로다 — **목록에 별칭이 있으면 그 구현 파일도 목록에 있어야 한다**.
      *    표본 세 개 대신 **전수**로 고정해, 셸이 쓰는 아이콘이 바뀌어도 앵커가 안 낡는다.
      */
-    const listed = new Set(listedIcons())
-    const chains = [...listed].filter((i) => withAliases(i).size > 1)
-    expect(chains.length, '별칭을 가진 아이콘이 목록에 하나도 없다 — 이 검사가 헛돌고 있다').toBeGreaterThan(0)
-    for (const i of chains) for (const real of withAliases(i)) expect(listed.has(real), `${i} → ${real}`).toBe(true)
+    // 🖥️ 2026-10-18: 셸 목록이 둘(refresh-cw · x)로 줄어 별칭이 그 안에 없다 — 별칭 쌍(HelpCircle)은 PC 네비
+    //    목록으로 갔다. 불변식은 그대로이고 **목록마다** 닫혀 있는지 본다(다른 봉투로 갈리면 분할이 새어 나간다).
+    let n = 0
+    for (const name of ['LUCIDE_SHELL_ICONS', 'LUCIDE_HOME_ICONS', 'LUCIDE_DESKTOP_ICONS'] as const) {
+      const listed = new Set(listedIn(name))
+      const chains = [...listed].filter((i) => withAliases(i).size > 1)
+      n += chains.length
+      for (const i of chains) for (const real of withAliases(i)) expect(listed.has(real), `${name}: ${i} → ${real}`).toBe(true)
+    }
+    expect(n, '별칭을 가진 아이콘이 목록에 하나도 없다 — 이 검사가 헛돌고 있다').toBeGreaterThan(0)
   })
 })
 
@@ -149,7 +155,8 @@ describe('② 규칙이 실제로 배선돼 있다', () => {
   //   지키려던 것은 그대로 — *아이콘 파일명으로 가른다* · *코어는 셸 쪽에 남는다*.
   it('🔴 아이콘 파일명으로 세 봉투를 가른다', () => {
     expect(cfg).toContain("if (!icon || LUCIDE_SHELL_ICONS.has(icon[1])) return 'lucide-shell'")
-    expect(cfg).toContain("return LUCIDE_HOME_ICONS.has(icon[1]) ? 'lucide-home' : 'lucide'")
+    expect(cfg).toContain("if (LUCIDE_HOME_ICONS.has(icon[1])) return 'lucide-home'")
+    expect(cfg).toContain("return LUCIDE_DESKTOP_ICONS.has(icon[1]) ? 'lucide-desktop' : 'lucide'")
   })
 
   it('아이콘이 아닌 코어(Icon/createLucideIcon/배럴)는 셸 쪽에 남는다', () => {
@@ -169,7 +176,9 @@ describe('② 규칙이 실제로 배선돼 있다', () => {
     // 🪒 2026-09-29: 하한 30 → 15. 실측 42 → **26** — UI④ 아이콘 이행으로 셸이 lucide 뜻 아이콘을
     //    17개 덜 쓴다(줄어든 것이 성과라 이 하한은 그 성과를 따라 내려간다). 이 하한의 일은
     //    "몇 개여야 한다"가 아니라 **폐쇄 계산이 통째로 비면 초록이 뜨는 것**을 막는 것이다.
-    expect(shellIconFiles().size).toBeGreaterThan(15)
+    // 🖥️ 2026-10-18: 하한 15 → 0. PC 상단 네비가 lazy 가 되며 실측 25 → **2**(refresh-cw · x).
+    //    그래도 0 이면 폐쇄 계산이 고장난 것이다.
+    expect(shellIconFiles().size).toBeGreaterThan(0)
   })
 })
 
@@ -220,5 +229,32 @@ describe('③ 홈 봉투(lucide-home)가 소스와 일치한다', () => {
   it('폐쇄 계산이 비어 있지 않다 (0개면 통과가 아니라 시험이 고장난 것)', () => {
     expect(staticClosure(HOME_ENTRIES).length, '홈 폐쇄가 비었다').toBeGreaterThan(60)
     expect(homeOnlyIconFiles().size, '홈 전용 아이콘이 0개로 읽힌다').toBeGreaterThan(3)
+  })
+})
+
+/**
+ * 🖥️ **네 번째 봉투 — PC 상단 네비 + PC 사이드바**(같은 `app-desktop-chrome` 청크) 〔2026-10-18〕
+ * 네비(`DesktopTopNav`)가 lazy 청크가 되면서 그 아이콘들이 셸 목록을 떠났다. 목록이 없으면 214개짜리
+ * `lucide` 봉투로 떨어져 PC 가 네비 하나 때문에 그 봉투를 통째로 받는다(에러 0, 느려질 뿐).
+ */
+describe('④ PC 네비 봉투(lucide-desktop)가 소스와 일치한다', () => {
+  const desktopOnly = () => {
+    const shell = shellIconFiles()
+    const home = new Set(listedIn('LUCIDE_HOME_ICONS'))
+    return new Set([...iconFilesIn(staticClosure(['src/components/main/DesktopTopNav.tsx', 'src/components/DesktopLiveSidebar.tsx']))].filter((i) => !shell.has(i) && !home.has(i)))
+  }
+  it('🔴 네비가 쓰는 (셸·홈 밖) 아이콘이 **전부** LUCIDE_DESKTOP_ICONS 에 있다', () => {
+    const listed = new Set(listedIn('LUCIDE_DESKTOP_ICONS'))
+    const need = desktopOnly()
+    expect(need.size, '네비 전용 아이콘이 0개로 읽힌다 — 이 검사가 헛돈다').toBeGreaterThan(3)
+    const missing = [...need].filter((i) => !listed.has(i)).sort()
+    expect(missing, `LUCIDE_DESKTOP_ICONS 에 추가할 것: ${JSON.stringify(missing)}`).toEqual([])
+  })
+  it('목록에 네비가 안 쓰는 아이콘이 없다 · 다른 목록과 겹치지 않는다', () => {
+    const need = desktopOnly()
+    const listed = listedIn('LUCIDE_DESKTOP_ICONS')
+    expect(listed.filter((i) => !need.has(i)).sort()).toEqual([])
+    const other = new Set([...listedIn('LUCIDE_SHELL_ICONS'), ...listedIn('LUCIDE_HOME_ICONS')])
+    expect(listed.filter((i) => other.has(i))).toEqual([])
   })
 })

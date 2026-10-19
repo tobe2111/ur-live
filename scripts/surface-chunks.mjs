@@ -45,6 +45,19 @@ const NEVER_ENTRY = new Set(['app-utils-deferred'])
  *   app-components 가 그 페이지 묶음을 통째로 끌고 온다 — 그걸 막으려고 만든 봉투다. */
 export const LIBRARY_ENVELOPES = new Set(['sentry', 'capacitor', 'tosspayments', 'app-kakao-sdk', 'charts', 'codes', 'app-ui-utils', 'app-cross'])
 
+/** 🔔 **누를 때만 받는 봉투** — 묶음기가 페이지 봉투로 옮기지 않는다(2026-10-18).
+ *  알림 시트는 `lazy()` 인데 거의 모든 화면이 그 훅(`useNotificationSheet`)을 갖고 있어 묶음기가 `lz-common` 에 넣었다.
+ *  `lz-common` 은 대부분의 첫 화면이 받으므로 **lazy 경계가 무의미**해지고, 시트가 끌고 오는 패널·아이콘 봉투까지
+ *  폰 첫 화면에 실렸다(실측). 이름을 지키면 벨을 누를 때만 받는다. */
+export const LAZY_ENVELOPES = new Set(['app-notification-panel'])
+
+/** 🖥️ 엔트리가 **동적으로** 부르지만 첫 렌더 전에 기다려 받는 모듈 — 엔트리 폐쇄로 센다(2026-10-18).
+ *  PC 상단 네비는 폰 첫 방문에서 빼려고 동적 import 로 바꿨다(`ConsumerTopChrome`). 그 모듈 자신은 vite 규칙의 이름
+ *  (`app-desktop-chrome`)으로 떨어져 나가고, **그것이 끌고 오던 공용 모듈은 종전 봉투에 그대로 둔다** — 안 그러면 auth·쿼리 훅
+ *  같은 공용 모듈이 페이지 봉투로 흩어지며 청크 순환이 줄줄이 생겼다(실측 셋: app-utils↔lz-common · lz-common↔lz-boot-homeL-mapL ·
+ *  lz-common↔lz-map). 폰이 덜 받는 것은 네비 모듈 넷(raw ~33KB)뿐이고 나머지 배치는 종전과 같다. */
+export const ENTRY_DYNAMIC = [/\/src\/components\/main\/DesktopTopNav\.tsx$/, /\/src\/routes\/seller\.routes\.tsx$/] // 셀러 표도 같은 이유(App.tsx lazy — 표 자신만 app-routes-seller 로)
+
 export function createSurfaceChunker({ routes, root, commonMin = 4, minGroupBytes = 2000 }) {
   /** 이 모듈을 import 하는 쪽이 전부 node_modules 인가 — 앱 코드가 직접 쓰지 않는 라이브러리 내부 의존. */
   function libraryOnly(id, meta) {
@@ -62,7 +75,9 @@ export function createSurfaceChunker({ routes, root, commonMin = 4, minGroupByte
         const m = stack.pop()
         if (entry.has(m)) continue
         entry.add(m)
-        for (const x of meta.getModuleInfo(m)?.importedIds ?? []) stack.push(x)
+        const info = meta.getModuleInfo(m)
+        for (const x of info?.importedIds ?? []) stack.push(x)
+        for (const d of info?.dynamicallyImportedIds ?? []) if (ENTRY_DYNAMIC.some((re) => re.test(norm(d)))) stack.push(d)
       }
     }
     return entry.has(id)
@@ -155,7 +170,7 @@ export function createSurfaceChunker({ routes, root, commonMin = 4, minGroupByte
   /** manualChunks 가 정한 이름(name)을 받아 최종 이름을 돌려준다. */
   return function gate(id, name, meta) {
     const groupable = norm(id).includes('/src/') || /\/lucide-react\/dist\/esm\/icons\//.test(norm(id)) || name === undefined
-    if (!groupable || LIBRARY_ENVELOPES.has(name)) return name
+    if (!groupable || LIBRARY_ENVELOPES.has(name) || LAZY_ENVELOPES.has(name)) return name
     // 🔁 이름 없는 라이브러리가 **라이브러리만** 쓰는 의존이면 건드리지 않는다(2026-10-13 실측 사고).
     //   `@stripe/react-stripe-js` 가 쓰는 `prop-types` 를 페이지 봉투(lz-…)로 빼자, `stripe` 봉투는 lz 를,
     //   lz 는 그 안의 앱 코드 때문에 `stripe` 를 import 하는 **청크 순환**이 생겼다 — ESM 은 순환에서 한쪽을

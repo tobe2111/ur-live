@@ -8,8 +8,8 @@ export default [
   {
     name: '📱 PC 상단 네비를 폰에서도 다시 렌더한다',
     file: 'src/components/main/ConsumerTopChrome.tsx',
-    find: '      {wide && <DesktopTopNav />}',
-    replace: '      <DesktopTopNav />',
+    find: "      {wide && <Suspense fallback={null}><DesktopTopNav /></Suspense>}",
+    replace: "      <Suspense fallback={null}><DesktopTopNav /></Suspense>",
     test: TEST,
     why: '안 보이는 헤더를 매 하드로드 렌더 — 폰 부팅 75ms(CPU 4배). 에러 없이 느려지기만 한다.',
   },
@@ -47,9 +47,10 @@ export default [
   },
   {
     name: '📱 공개 가게 경로가 손님 Routes 에서 빠진다',
-    file: 'src/routes/seller.routes.tsx',
-    find: "      top.push(cloneElement(r, { key: path ?? `seller-top-${top.length}` }))",
-    replace: '      void r',
+    // ⚡ 2026-10-18 재조준 — 표 밖 경로가 `seller-public.routes.tsx` 로 옮겨갔다(불변식 그대로).
+    file: 'src/routes/seller-public.routes.tsx',
+    find: '    <Route path="/s/:sellerId" key="/s/:sellerId" element={<SellerPublicPage />} />,\n',
+    replace: '',
     test: 'src/tests/unit/seller-route-tree-2026-10-13.test.tsx',
     why: '/s/:id·/profile/:id 가 404 — 공유된 가게 링크가 전부 깨진다.',
   },

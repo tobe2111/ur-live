@@ -23,7 +23,7 @@ export default [
   },
   {
     name: '🎟️ 배너 카드 높이가 예약 판과 갈린다',
-    file: 'src/components/home/HomeBannerStrip.tsx',
+    file: 'src/shared/home-strip-banners.ts',
     find: "export const HERO_CARD_CLS = '!aspect-auto !h-[196px]",
     replace: "export const HERO_CARD_CLS = '!aspect-auto !h-[180px]",
     test: 'src/tests/unit/vouchers-first-screen-2026-10-14.test.tsx',

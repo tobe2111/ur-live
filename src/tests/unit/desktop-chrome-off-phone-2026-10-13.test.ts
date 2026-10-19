@@ -13,7 +13,9 @@ const read = (p: string) => readFileSync(p, 'utf8')
 describe('프로모 바', () => {
   const s = read('src/components/main/ConsumerTopChrome.tsx')
   it('넓은 화면에서만 마운트한다(폰은 요청 0)', () => {
-    expect(s).toMatch(/const wide = useMediaQuery\('\(min-width: 768px\)'\)/)
+    // 2026-10-18: 폭은 상수로 — 부팅 준비(warmDesktopChrome)와 같은 값을 쓴다
+    expect(s).toMatch(/export const DESKTOP_CHROME_QUERY = '\(min-width: 768px\)'/)
+    expect(s).toMatch(/const wide = useMediaQuery\(DESKTOP_CHROME_QUERY\)/)
     expect(s).toMatch(/\{wide && <PromoBar \/>\}/)
     expect(s).not.toMatch(/<div className="hidden md:block"><PromoBar \/><\/div>/)
   })

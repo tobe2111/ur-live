@@ -15,3 +15,7 @@ declare module '*.json?i18n-dash' {
   const value: Record<string, unknown>
   export default value
 }
+declare module '*.json?i18n-rest' {
+  const value: Record<string, unknown>
+  export default value
+}

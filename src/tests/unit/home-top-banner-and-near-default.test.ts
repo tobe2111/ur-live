@@ -74,7 +74,9 @@ describe('① 상단 띠 배너 자리(strip)', () => {
   it('사진은 깨진 아이콘을 남기지 않는다 (cfImage + onError 폴백 쌍)', () => {
     const rail = read('src/components/home/HomeBannerStrip.tsx')
     const body = rail.slice(rail.indexOf('function StripRail('))
-    expect(body).toMatch(/cfImage\(/)
+    // 2026-10-18: 주소는 서버 첫 화면과 같은 함수(stripBannerImageUrl)가 만들고 그 함수가 cfImage 를 부른다
+    expect(body).toMatch(/stripBannerImageUrl\(/)
+    expect(read('src/shared/home-strip-banners.ts')).toMatch(/\? cfImage\(imageUrl/)
     expect(body).toMatch(/cfImageOnError\(/)
   })
 })

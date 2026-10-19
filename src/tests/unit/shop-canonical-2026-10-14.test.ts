@@ -95,7 +95,8 @@ describe('🏪 가게 유어샵 정본', () => {
 
   it('③-3 두 별칭 라우트가 둘 다 같은 컴포넌트를 렌더한다 (전제 확인)', () => {
     // 이 처방의 전제 — 하나가 사라지면 통합할 중복도 없다(그때 이 시험이 알려 준다).
-    const r = readCode('src/routes/seller.routes.tsx')
+    // 2026-10-18: 두 라우트는 셀러 표에서 `seller-public.routes.tsx` 로 옮겨갔다(셀러 표가 lazy 가 되며).
+    const r = readCode('src/routes/seller-public.routes.tsx')
     expect(r).toContain('path="/s/:sellerId"')
     expect(r).toContain('path="/profile/:sellerId"')
   })

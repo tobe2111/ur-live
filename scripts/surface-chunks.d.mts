@@ -10,3 +10,5 @@ export function createSurfaceChunker(opts: {
   minGroupBytes?: number
 }): (id: string, name: string | undefined, meta: ChunkMeta) => string | undefined
 export const LIBRARY_ENVELOPES: Set<string>
+export const ENTRY_DYNAMIC: RegExp[]
+export const LAZY_ENVELOPES: Set<string>

@@ -12,8 +12,8 @@ export default [
   {
     name: '🏠lucide 홈 봉투가 사라진다 (214개가 첫 페인트로 돌아온다)',
     file: 'vite.config.ts',
-    find: "            return LUCIDE_HOME_ICONS.has(icon[1]) ? 'lucide-home' : 'lucide'",
-    replace: "            return 'lucide'",
+    find: "            if (LUCIDE_HOME_ICONS.has(icon[1])) return 'lucide-home'\n",
+    replace: "",
     test: LUCIDE,
     why: '홈이 아이콘 11개 때문에 54.2KB raw 봉투를 통째로 받던 것으로 되돌아간다 — 빌드는 성공한다.',
   },

@@ -2,9 +2,8 @@
  * Seller routes — TD-006 분리 (2026-05-06)
  * 공개(register/login/forgot-password) + 보호(Protected) 셀러 페이지 라우트
  */
-import { SellerPublicPage } from '@/pages/seller-public/lazy-seller-public'
-import { registerBootPage } from '@/lib/boot-page'; import { isCuratorShopPath } from '@/shared/route-surface'
-import { registerRoutePreload } from '@/lib/route-preload'
+// ⚡ 2026-10-18 공개 가게 경로(`/s`·`/profile`)와 그 부팅 로더는 `seller-public.routes.tsx` 로 옮겼다 —
+//   이 표는 이제 셀러 경로에 들어갈 때만 받는다(App.tsx 의 lazy). 손님 첫 방문에서 raw 28KB 가 빠진다.
 import { lazy, Children, cloneElement, isValidElement, type ReactElement } from 'react'
 import { Route, Routes, Navigate, useLocation } from 'react-router-dom'
 import ErrorBoundary from '@/components/ErrorBoundary'
@@ -68,7 +67,6 @@ const SellerAppointmentsPage = lazy(() => import('@/pages/SellerAppointmentsPage
 const MyLedgerPage = lazy(() => import('@/pages/MyLedgerPage'))
 const StoreOwnerDashboardPage = lazy(() => import('@/pages/StoreOwnerDashboardPage'))
 const SellerProfileEditPage = lazy(() => import('@/pages/SellerProfileEditPage'))
-registerBootPage('linkshop', () => (isCuratorShopPath(location.pathname) ? Promise.resolve() : SellerPublicPage.load())); registerRoutePreload('sellerPublic', SellerPublicPage.load) // 🚀 2026-10-15 CuratorPage 와 같은 래퍼(lib/boot-page)
 const SellerSettlementsPage = lazy(() => import('@/pages/SellerSettlementsPage'))
 // 🏪 2026-08-19 매장 운영자 관리 (store-operator-model.md 2단계) — 소유자 전용, 서버가 최종 게이트.
 const SellerOperatorsPage = lazy(() => import('@/pages/SellerOperatorsPage'))
@@ -136,8 +134,7 @@ export function SellerRoutes() {
       <Route path="/seller/tiktok-callback" element={<ErrorBoundary><SellerTikTokCallbackPage /></ErrorBoundary>} />
       <Route path="/seller/forgot-password" element={<SellerLoginGone />} />
       <Route path="/seller/reset-password" element={<SellerLoginGone />} />
-      <Route path="/s/:sellerId" element={<SellerPublicPage />} />
-      <Route path="/profile/:sellerId" element={<SellerPublicPage />} />
+
 
       {/* Protected seller pages */}
       <Route path="/seller" element={<SellerHomeGone />} />
@@ -444,25 +441,22 @@ const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
  * 하위 Routes 는 남은 경로로 맞추므로 `/seller` 접두를 뗀다(절대 경로 그대로면 하나도 안 맞는다).
  * ⚠️ 새 셀러 라우트는 종전처럼 `SellerRoutes()` 에 **절대 경로**로 추가하면 된다 — 여기서 자동으로 가른다.
  */
-function splitSellerRoutes(): { tree: ReactElement[]; top: ReactElement[] } {
+function splitSellerRoutes(): { tree: ReactElement[] } {
+  // ⚡ 2026-10-18 표 밖 경로(`/s`·`/profile`)는 `seller-public.routes.tsx` 로 옮겨 이 표엔 `/seller` 경로만 있다.
+  //   그 밖 경로를 여기 넣으면 어디에도 안 그려진다 — 시험 ② 가 "표 안엔 /seller 경로뿐" 을 잠근다.
   const tree: ReactElement[] = []
-  const top: ReactElement[] = []
   Children.forEach(SellerRoutes().props.children, (r) => {
     if (!isValidElement(r)) return
     const path = (r.props as { path?: string }).path
     if (typeof path === 'string' && (path === '/seller' || path.startsWith('/seller/'))) {
       tree.push(cloneElement(r as ReactElement<{ path: string }>, { path: path.slice('/seller'.length) || '/', key: path }))
-    } else {
-      top.push(cloneElement(r, { key: path ?? `seller-top-${top.length}` }))
     }
   })
-  return { tree, top }
+  return { tree }
 }
 
-/** 손님 `<Routes>` 에 그대로 두는 셀러 표 밖 경로(공개 가게 `/s/:id`·`/profile/:id`). */
-export function sellerTopLevelRoutes(): ReactElement[] {
-  return splitSellerRoutes().top
-}
+/** 🔁 테스트·옛 호출 호환 — 실제 정의는 `seller-public.routes.tsx`(부팅 묶음). */
+export { sellerTopLevelRoutes } from './seller-public.routes'
 
 export function SellerRouteTree() {
   return (
@@ -472,3 +466,5 @@ export function SellerRouteTree() {
     </Routes>
   )
 }
+
+export default SellerRouteTree
