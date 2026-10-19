@@ -11,6 +11,8 @@ import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import { clearSessionCookie } from '@/worker/utils/session';
+import { safeError } from '@/worker/utils/safe-error';
+import { countAccountDeleteBlockers, isAccountDeleteBlocked } from '@/worker/utils/account-delete-blockers';
 import {
   deleteUserAccount,
   checkReregistrationRestriction,
@@ -97,6 +99,19 @@ accountRoutes.patch('/notification-prefs', requireAuth(), async (c) => {
 });
 
 /**
+ * GET /api/account/delete-blockers — 탈퇴를 막는 것(안 쓴 이용권 · 환급 가능한 충전 딜 · 처리 중 환급 · 주인인 가게).
+ * 2026-10-19 대표 결재 *"권장안대로 해줘"* — 화면이 먼저 보여 주고, 아래 DELETE 가 같은 함수로 최종 방어한다.
+ * 조회가 깨지면 503 — 화면은 "확인하지 못했어요" 를 말하고 탈퇴를 열지 않는다(0 으로 위장 금지).
+ */
+accountRoutes.get('/delete-blockers', requireAuth(), async (c) => {
+  const user = getCurrentUser(c);
+  if (!user) return c.json({ success: false, error: '인증이 필요합니다' }, 401);
+  const r = await countAccountDeleteBlockers(c.env.DB, user.id, user.isDbId);
+  if (!r.ok) return c.json({ success: false, error: '탈퇴 가능 여부를 확인하지 못했어요' }, 503);
+  return c.json({ success: true, data: { blockers: r.blockers, can_delete: !isAccountDeleteBlocked(r.blockers) } });
+});
+
+/**
  * DELETE /api/account/delete
  * 사용자 계정 탈퇴 처리
  * 
@@ -133,6 +148,21 @@ accountRoutes.delete('/delete', requireAuth(), async (c) => {
     // userId는 반드시 인증된 사용자 본인의 ID만 사용 — 요청 body userId 무시
     const userId = String(authenticatedUser.id);
 
+    // 🚪 2026-10-19 (대표 결재 "권장안대로 해줘"): 돈·가게가 걸려 있으면 탈퇴하지 않는다.
+    //   화면이 이미 막지만 서버가 최종 방어선이다. 못 세면 막는다(fail-closed — 충전 딜이 소리 없이 사라지지 않게).
+    const pre = await countAccountDeleteBlockers(c.env.DB, authenticatedUser.id, authenticatedUser.isDbId);
+    if (!pre.ok) {
+      return c.json({ success: false, code: 'BLOCKERS_UNKNOWN', message: '탈퇴 가능 여부를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.' }, 503);
+    }
+    if (isAccountDeleteBlocked(pre.blockers)) {
+      return c.json({
+        success: false,
+        code: 'DELETE_BLOCKED',
+        message: '먼저 정리할 것이 있어 탈퇴할 수 없어요.',
+        data: { blockers: pre.blockers },
+      }, 409);
+    }
+
     // 계정 삭제 처리
     const result = await deleteUserAccount({ userId, reason }, c.env.DB);
 
@@ -147,17 +177,9 @@ accountRoutes.delete('/delete', requireAuth(), async (c) => {
 
     return c.json(result, 200);
   } catch (error) {
-    const errMsg = (error as Error).message || 'unknown';
-    console.error('[Account Delete] Error:', errMsg);
-
-    // 🛡️ 2026-05-01: 진단 위해 detail 필드에 원본 메시지 노출.
-    //   message 는 사용자 친화 / detail 은 개발자 진단.
-    return c.json({
-      success: false,
-      message: '회원 탈퇴 처리 중 오류가 발생했습니다.',
-      error: errMsg,
-      detail: errMsg,
-    }, 500);
+    // 🛡️ 2026-10-19: 원본 메시지(detail)를 손님에게 내보내지 않는다 — DB 오류 문구는 내부 구조를 드러낸다.
+    //   진단은 서버 로그(safeError 가 남긴다)로 한다.
+    return safeError(c, error, '회원 탈퇴 처리 중 오류가 발생했습니다.', '[account-delete]');
   }
 });
 
