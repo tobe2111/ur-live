@@ -1,32 +1,62 @@
 /**
  * 회원 탈퇴 안내 페이지
  *
- * 🛡️ 2026-05-01: 디자인 시스템 정렬 + Option B 반영.
- *   - AccountSettingsPage 와 일관된 다크 테마 (bg-white dark:bg-[#11141C])
- *   - 카드 스타일: rounded-2xl bg-gray-100 dark:bg-white/[0.04], 미니멀 보더
- *   - 텍스트 정정: 30일 soft delete + 복원 가능 명시 (이전엔 "영구 삭제" 만 강조)
- *   - 이모지 과다 → 아이콘 시스템 통일
+ * 🩸 2026-10-19 (대표 *"모두 다 가장 이상적으로 개선해줘 · 탈퇴하면 어떻게 각각 하는게 좋을까?"*):
+ *   이 화면이 **서버가 실제로 하는 일과 다른 말**을 하고 있었다.
+ *     - *"30일 내 복원 시 모든 혜택이 회복됩니다"* — 거짓. 탈퇴 순간 딜 잔액은 0 으로 소멸하고
+ *       (`zeroOutUserPoints`), 쿠폰·찜·단골·알림 행은 **삭제**된다(`delete-account.service.ts`).
+ *       복원(`restoreUser`)은 users 한 행만 되살린다.
+ *     - 우리에게 없는 것(장바구니·최근 본 상품·멤버십 등급·1:1 상담·결제 수단)을 "삭제된다" 고 나열했다.
+ *     - 정작 사람이 잃는 **돈**(남은 딜 · 안 쓴 이용권)은 한 줄도 없었다.
+ *   ⇒ 문구를 실제 처리 순서에 맞추고, 그 사람의 **실제 숫자**(딜 잔액 · 안 쓴 이용권 장수)를 보여 준다.
+ *   🔑 숫자는 마이와 **같은 훅·같은 술어**로 센다(`useBalance` · `useMyVouchers` + `isUsableWalletItem`) —
+ *      두 화면이 다른 장수를 말하면 그건 에러가 아니라 거짓말이다(2026-10-07 지갑 사고).
+ *   ⚠️ 탈퇴 정책 자체(딜 소멸·이용권 처리·가게 처리)는 머니/삭제 경로라 **이 화면이 바꾸지 않는다** —
+ *      `docs/decisions/2026-10-19-account-deletion-assets.md` 에 대표 결재로 올렸다. 화면은 지금의 사실만 말한다.
+ *
+ * 하단 고정 버튼 바를 걷었다 — 이 경로엔 하단 탭이 떠 있어 그 위에 겹쳤고, 탈퇴는 **다 읽은 뒤** 누르는 버튼이라
+ * 본문 끝에 있는 것이 맞다.
  */
 import { useState, useEffect } from 'react'
-import { WarnIcon, OkIcon, WalletIcon, BoxIcon, ClockIcon, HeartIcon } from '@/components/icons/urdeal-icons'
+import { WarnIcon, OkIcon, WalletIcon, TicketStubIcon, ClockIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate, Link } from 'react-router-dom'
 import { useTranslation, Trans } from '@/lib/i18n-lite'
 import SEO from '@/components/SEO'
-import { ChevronLeft, Loader2, ShieldOff } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { getUserId, logout as authLogout } from '@/utils/auth'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { loginPathFromHere } from '@/utils/login-return'
+import { useBalance } from '@/hooks/queries/useBalance'
+import { useMyVouchers } from '@/hooks/queries/useMyData'
+import { isUsableWalletItem, isStoreVoucher } from '@/shared/voucher-wallet'
+import { formatNumber } from '@/utils/format'
+import SubPageHeader, { SUB_PAGE_CLS } from '@/components/ui/sub-page-header'
+
+/** 탈퇴하면 **바로** 지워지는 것 — `delete-account.service.ts` 의 DELETE/소멸 대상과 같아야 한다(가드가 대조). */
+export const GONE_ON_DELETE = ['deal', 'coupons', 'wishlist', 'follows', 'notifications'] as const
+
+const CARD = 'rounded-2xl bg-surface shadow-lift dark:shadow-none p-5'
 
 export default function AccountDeleteWarningPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(false)
-  const [agreedSoftDelete, setAgreedSoftDelete] = useState(false)
-  const [agreedLoseBenefits, setAgreedLoseBenefits] = useState(false)
-  const [agreedNoRefund, setAgreedNoRefund] = useState(false)
+  const [agreed, setAgreed] = useState(false)
   const [confirmText, setConfirmText] = useState('')
+
+  // 💸 그 사람이 실제로 잃는 것. fresh — 탈퇴 직전 화면이라 1분 묵은 잔액을 보여 주면 안 된다.
+  const balanceQ = useBalance({ fresh: true })
+  const vouchersQ = useMyVouchers()
+  //   ⚠️ 서버 값을 **받기 전**엔 숫자를 말하지 않는다 — 캐시 seed(없으면 0)를 그대로 쓰면 딜 보유자에게
+  //   "소멸될 딜이 없어요" 라고 말한 채 탈퇴 버튼이 열린다. 받기 전 = 확인 중, 실패 = 모름.
+  const dealKnown = balanceQ.isFetchedAfterMount && !balanceQ.isError
+  const deal = balanceQ.isError ? null : dealKnown ? Math.max(0, Number(balanceQ.data ?? 0)) : null
+  const dealChecking = !balanceQ.isError && !dealKnown
+  const unusedVouchers = vouchersQ.isError
+    ? null
+    : (vouchersQ.data ?? []).filter((v) => isUsableWalletItem(v) && isStoreVoucher(v)).length
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -39,11 +69,8 @@ export default function AccountDeleteWarningPage() {
     checkAuth()
   }, [navigate])
 
-  const canProceed =
-    agreedSoftDelete &&
-    agreedLoseBenefits &&
-    agreedNoRefund &&
-    confirmText === t('accountDeleteWarning.confirmText')
+  // 잃는 딜을 보여 주기 전에는 탈퇴를 열지 않는다(조회 실패는 화면이 따로 경고하므로 막지 않는다).
+  const canProceed = agreed && !dealChecking && confirmText === t('accountDeleteWarning.confirmText')
 
   const handleProceedToDelete = async () => {
     if (!canProceed) {
@@ -63,34 +90,18 @@ export default function AccountDeleteWarningPage() {
       if (!userId) throw new Error(t('accountDeleteWarning.userIdNotFound'))
 
       const response = await api.delete('/api/account/delete')
-      if (!response.data.success) {
-        throw new Error(response.data.error || response.data.message || t('accountDeleteWarning.deleteFailed'))
-      }
+      if (!response.data.success) throw new Error('delete_failed')
 
       await authLogout()
       navigate('/account/deleted', { replace: true })
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { error?: string; message?: string; detail?: string }; status?: number }; message?: string }
+      const err = error as { response?: { status?: number } }
       if (import.meta.env.DEV) console.error('[Account Delete] 탈퇴 실패:', error)
-
-      // 🛡️ 2026-05-01: 진단 위해 detail / error 우선 표시 (이전엔 일반 메시지만).
-      let errorMessage = t('accountDeleteWarning.deleteError')
-      if (err.response?.status === 401) {
-        errorMessage = t('accountDeleteWarning.authExpired')
-      } else if (err.response?.data?.detail) {
-        errorMessage = `탈퇴 실패: ${err.response.data.detail}`
-      } else if (err.response?.data?.error) {
-        errorMessage = err.response.data.error
-      } else if (err.response?.data?.message) {
-        errorMessage = err.response.data.message
-      } else if (err.message) {
-        errorMessage = err.message
-      }
-      toast.error(errorMessage)
-
+      // 🛡️ 서버 원문(`detail` — DB 에러 문장)은 손님에게 보여 주지 않는다(CLAUDE.md safe-error 룰).
+      toast.error(err.response?.status === 401 ? t('accountDeleteWarning.authExpired') : t('accountDeleteWarning.deleteError'))
       if (err.response?.status === 401) {
         // login-return-ok: 탈퇴 **직후**다 — 돌아갈 계정이 없다.
-    setTimeout(() => navigate('/login'), 1000)
+        setTimeout(() => navigate('/login'), 1000)
       }
     } finally {
       setIsLoading(false)
@@ -98,156 +109,124 @@ export default function AccountDeleteWarningPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#11141C] pb-32">
+    <div className={SUB_PAGE_CLS}>
       <SEO title={t('accountDeleteWarning.seoTitle')} description={t('accountDeleteWarning.seoDesc')} url="/account/delete-warning" noindex />
+      <SubPageHeader title={t('accountDeleteWarning.title')} backLabel={t('accountDeleteWarning.back')} />
 
-      {/* 헤더 — 라이트/다크 양쪽 대응 (이전: 인라인 고정 검정 → 라이트에서 본문과 불일치) */}
-      <div className="sticky top-0 md:top-14 z-40 flex items-center px-2 py-3 gap-1 bg-white/85 dark:bg-[#11141C]/85 backdrop-blur-xl backdrop-saturate-150 border-b border-gray-200 dark:border-white/10">
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          aria-label={t('accountDeleteWarning.back')}
-          className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-gray-100 dark:bg-white/[0.06]"
-        >
-          <ChevronLeft className="w-5 h-5 text-gray-700 dark:text-white/80" />
-        </button>
-        <h1 className="ml-2 text-[15px] font-semibold text-gray-900 dark:text-white">{t('accountDeleteWarning.title')}</h1>
-      </div>
+      <main className="ur-content-narrow px-4 pt-2 pb-safe-nav flex flex-col gap-3">
+        <div className="px-1 pt-2 pb-3">
+          <h2 className="text-[24px] font-bold text-gray-900 dark:text-white tracking-[-0.01em]">
+            {t('accountDeleteWarning.headline', { defaultValue: '탈퇴하기 전에 확인해 주세요' })}
+          </h2>
+          <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed">
+            {t('accountDeleteWarning.headlineSub', { defaultValue: '30일 안에 같은 카카오 계정으로 다시 로그인하면 계정을 되살릴 수 있어요. 다만 바로 사라지는 것은 되살아나지 않아요.' })}
+          </p>
+        </div>
 
-      <main className="px-4 pt-5">
-        {/* 경고 헤드라인 — 라이트: soft red 카드 / 다크: subtle (이전: 인라인 흰색 오버레이 → 라이트에서 안 보임) */}
-        <div className="rounded-2xl p-5 mb-5 bg-red-50 border border-red-100 dark:bg-white/[0.04] dark:border-transparent">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
-              <WarnIcon className="w-5 h-5 text-red-500 dark:text-red-400" />
-            </div>
-            <div className="flex-1">
-              <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mb-1">정말 탈퇴하시겠어요?</h2>
-              <p className="text-[13px] text-gray-600 dark:text-white/60 leading-relaxed">
-                30일 내에 같은 카카오 계정으로 재로그인하면 복원할 수 있어요.
-                <br />
-                30일이 지나면 모든 데이터가 영구 삭제됩니다.
+        {/* ① 바로 사라지는 것 — 되살려도 안 돌아온다 */}
+        <section className={CARD} data-testid="delete-gone">
+          <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white">
+            {t('accountDeleteWarning.goneTitle', { defaultValue: '탈퇴하면 바로 사라져요' })}
+          </h3>
+          <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">
+            {t('accountDeleteWarning.goneSub', { defaultValue: '계정을 되살려도 돌아오지 않아요' })}
+          </p>
+          <div className="mt-4 flex items-start gap-3">
+            <WalletIcon className="w-5 h-5 mt-1 shrink-0 text-gray-900 dark:text-white" />
+            <div className="flex-1 min-w-0">
+              <p className="text-[15px] font-semibold text-gray-900 dark:text-white">
+                {deal == null
+                  ? t('accountDeleteWarning.goneDealUnknown', { defaultValue: '남은 딜' })
+                  : t('accountDeleteWarning.goneDeal', { defaultValue: '남은 딜 {{amount}}딜', amount: formatNumber(deal) })}
+              </p>
+              <p className={`mt-1 text-[13px] leading-relaxed ${deal ? 'text-tone-bad' : 'text-gray-500 dark:text-gray-400'}`}>
+                {dealChecking
+                  ? t('accountDeleteWarning.dealChecking', { defaultValue: '남은 딜을 확인하는 중이에요…' })
+                  : deal == null
+                  ? t('accountDeleteWarning.dealLoadFailed', { defaultValue: '잔액을 불러오지 못했어요. 마이에서 확인한 뒤 탈퇴해 주세요.' })
+                  : deal > 0
+                    ? t('accountDeleteWarning.goneDealHint', { defaultValue: '남은 딜은 탈퇴 즉시 소멸돼요. 먼저 교환권을 사는 데 쓰세요.' })
+                    : t('accountDeleteWarning.goneDealZero', { defaultValue: '소멸될 딜이 없어요.' })}
               </p>
             </div>
           </div>
-        </div>
+          <p className="mt-4 pt-4 border-t border-rule text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed">
+            {t('accountDeleteWarning.goneOthers', { defaultValue: '쿠폰 · 찜한 상품 · 단골 가게 · 알림도 함께 지워져요.' })}
+          </p>
+        </section>
 
-        {/* 30일 복원 안내 (Option B) */}
-        <div className="rounded-2xl bg-gray-100 dark:bg-white/[0.04] p-5 mb-3">
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
-              <ClockIcon className="w-4 h-4 text-blue-400" />
+        {/* ② 30일 동안 보관되는 것 */}
+        <section className={CARD} data-testid="delete-kept">
+          <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white">
+            {t('accountDeleteWarning.keptTitle', { defaultValue: '30일 동안 보관돼요' })}
+          </h3>
+          <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">
+            {t('accountDeleteWarning.keptSub', { defaultValue: '30일 안에 같은 카카오 계정으로 로그인하면 돌아와요' })}
+          </p>
+          <div className="mt-4 flex items-start gap-3">
+            <TicketStubIcon className="w-5 h-5 mt-1 shrink-0 text-gray-900 dark:text-white" />
+            <div className="flex-1 min-w-0">
+              <p className="text-[15px] font-semibold text-gray-900 dark:text-white">
+                {unusedVouchers == null
+                  ? t('accountDeleteWarning.keptVouchersUnknown', { defaultValue: '안 쓴 이용권' })
+                  : t('accountDeleteWarning.keptVouchers', { defaultValue: '안 쓴 이용권 {{count}}장', count: unusedVouchers })}
+              </p>
+              <p className={`mt-1 text-[13px] leading-relaxed ${unusedVouchers ? 'text-tone-bad' : 'text-gray-500 dark:text-gray-400'}`}>
+                {unusedVouchers
+                  ? t('accountDeleteWarning.keptVouchersHint', { defaultValue: '탈퇴한 동안은 매장에서 쓸 수 없어요. 먼저 쓰거나 환불을 요청해 주세요.' })
+                  : t('accountDeleteWarning.keptVouchersZero', { defaultValue: '쓰지 않은 이용권이 없어요.' })}
+              </p>
+              {!!unusedVouchers && (
+                <Link to="/my-vouchers" className="mt-2 inline-flex text-[13px] font-semibold text-brand-text">
+                  {t('accountDeleteWarning.goVouchers', { defaultValue: '내 이용권 보기' })}
+                </Link>
+              )}
             </div>
-            <div className="flex-1">
-              <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white mb-1">30일 복원 가능 기간</h3>
-              <p className="text-[12px] text-gray-600 dark:text-white/55 leading-relaxed">
-                탈퇴 후 30일 내에 같은 카카오 계정으로 다시 로그인하면 모든 데이터를 복원할 수 있어요.
-                30일 후엔 영구 삭제되며 복구 불가합니다.
+          </div>
+          <p className="mt-4 pt-4 border-t border-rule text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed">
+            {t('accountDeleteWarning.keptOthers', { defaultValue: '구매·이용 기록과 작성한 리뷰도 그대로 있어요. 리뷰의 이름은 탈퇴회원으로 바뀌어요.' })}
+          </p>
+        </section>
+
+        {/* ③ 30일 뒤 · 알아 둘 것 */}
+        <section className={CARD}>
+          <div className="flex items-start gap-3">
+            <ClockIcon className="w-5 h-5 mt-1 shrink-0 text-gray-900 dark:text-white" />
+            <div className="flex-1 min-w-0">
+              <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white">
+                {t('accountDeleteWarning.afterTitle', { defaultValue: '30일이 지나면' })}
+              </h3>
+              <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed">
+                {t('accountDeleteWarning.afterBody', { defaultValue: '계정을 되살릴 수 없어요. 거래 기록은 법에 따라 이름과 연락처 없이 보관돼요.' })}
               </p>
             </div>
           </div>
-        </div>
-
-        {/* 삭제되는 정보 */}
-        <div className="rounded-2xl bg-gray-100 dark:bg-white/[0.04] p-5 mb-3">
-          <div className="flex items-start gap-3 mb-4">
-            <div className="w-9 h-9 rounded-xl bg-orange-500/10 flex items-center justify-center shrink-0">
-              <BoxIcon className="w-4 h-4 text-orange-400" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white">삭제되는 정보</h3>
-              <p className="text-[12px] text-gray-500 dark:text-white/45 mt-1">30일 후 영구 삭제됩니다</p>
-            </div>
-          </div>
-          <ul className="space-y-2 text-[12px] text-gray-600 dark:text-white/55 ml-12">
-            <li>• 모든 주문 내역 및 배송 정보</li>
-            <li>• 찜한 상품, 장바구니, 최근 본 상품</li>
-            <li>• 적립 포인트 및 사용 가능한 쿠폰</li>
-            <li>• 멤버십 등급 및 누적 구매 혜택</li>
-            <li>• 작성한 리뷰, 문의, 1:1 상담 내역</li>
-            <li>• 등록한 배송지 및 결제 수단 정보</li>
+          <ul className="mt-4 pt-4 border-t border-rule flex flex-col gap-2 text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed">
+            <li>{t('accountDeleteWarning.noteRefund', { defaultValue: '진행 중인 환불이 있다면 끝난 뒤에 탈퇴해 주세요.' })}</li>
+            <li>{t('accountDeleteWarning.noteStore', { defaultValue: '가게를 운영 중이라면 가게 탈퇴를 먼저 해 주세요. 회원 탈퇴는 가게를 닫지 않아요.' })}</li>
           </ul>
-        </div>
+        </section>
 
-        {/* 환불 / 취소 안내 */}
-        <div className="rounded-2xl bg-gray-100 dark:bg-white/[0.04] p-5 mb-3">
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
-              <WalletIcon className="w-4 h-4 text-red-400" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white mb-1">환불 / 취소 불가</h3>
-              <p className="text-[12px] text-gray-600 dark:text-white/55 leading-relaxed">
-                탈퇴 후엔 진행 중인 주문의 취소 및 환불이 불가능합니다.
-                배송 중이거나 완료된 상품의 반품/교환도 어려울 수 있어요.
-              </p>
-            </div>
-          </div>
-        </div>
+        {/* 동의 + 최종 확인 */}
+        <section className={CARD}>
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={agreed}
+              onChange={(e) => setAgreed(e.target.checked)}
+              className="w-5 h-5 mt-1 rounded accent-brand shrink-0"
+            />
+            <span className="text-[15px] text-gray-900 dark:text-white leading-relaxed">
+              {deal
+                ? t('accountDeleteWarning.agreeDeal', { defaultValue: '위 내용과 딜 {{amount}}딜이 소멸되는 것을 확인했어요', amount: formatNumber(deal) })
+                : t('accountDeleteWarning.agree', { defaultValue: '위 내용을 확인했어요' })}
+            </span>
+          </label>
 
-        {/* 혜택 / 등급 손실 */}
-        <div className="rounded-2xl bg-gray-100 dark:bg-white/[0.04] p-5 mb-5">
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-yellow-500/10 flex items-center justify-center shrink-0">
-              <ShieldOff className="w-4 h-4 text-yellow-400" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white mb-1">혜택 / 등급 손실</h3>
-              <p className="text-[12px] text-gray-600 dark:text-white/55 leading-relaxed">
-                30일 내 복원 시 모든 혜택이 회복됩니다.
-                30일이 지나면 포인트, 쿠폰, 등급, 누적 혜택 모두 복구되지 않아요.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* 동의 체크 */}
-        <div className="rounded-2xl bg-gray-100 dark:bg-white/[0.04] p-5 mb-3">
-          <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white mb-4">아래 사항을 확인하고 동의합니다</h3>
-          <div className="space-y-4">
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={agreedSoftDelete}
-                onChange={(e) => setAgreedSoftDelete(e.target.checked)}
-                className="w-[18px] h-[18px] mt-1 rounded accent-brand shrink-0"
-              />
-              <span className="text-[12px] text-gray-700 dark:text-white/70 leading-relaxed">
-                탈퇴 후 <strong className="text-gray-900 dark:text-white">30일이 지나면 모든 데이터가 영구 삭제</strong>됨을 이해했습니다.
-              </span>
-            </label>
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={agreedLoseBenefits}
-                onChange={(e) => setAgreedLoseBenefits(e.target.checked)}
-                className="w-[18px] h-[18px] mt-1 rounded accent-brand shrink-0"
-              />
-              <span className="text-[12px] text-gray-700 dark:text-white/70 leading-relaxed">
-                30일 이후엔 <strong className="text-gray-900 dark:text-white">포인트, 쿠폰, 등급 등 모든 혜택이 복구되지 않음</strong>을 이해했습니다.
-              </span>
-            </label>
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={agreedNoRefund}
-                onChange={(e) => setAgreedNoRefund(e.target.checked)}
-                className="w-[18px] h-[18px] mt-1 rounded accent-brand shrink-0"
-              />
-              <span className="text-[12px] text-gray-700 dark:text-white/70 leading-relaxed">
-                탈퇴 후엔 <strong className="text-gray-900 dark:text-white">진행 중인 주문의 취소/환불이 어려울 수 있음</strong>을 이해했습니다.
-              </span>
-            </label>
-          </div>
-        </div>
-
-        {/* 최종 확인 입력 */}
-        <div className="rounded-2xl bg-gray-100 dark:bg-white/[0.04] p-5 mb-5">
-          <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white mb-2">최종 확인</h3>
-          <p className="text-[12px] text-gray-600 dark:text-white/55 mb-3 leading-relaxed">
+          <p className="mt-5 text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed">
             <Trans
               i18nKey="accountDeleteWarning.confirmInputLabel"
-              components={[<strong key="0" className="text-red-400" />]}
+              components={[<strong key="0" className="text-gray-900 dark:text-white" />]}
             />
           </p>
           <input
@@ -255,42 +234,37 @@ export default function AccountDeleteWarningPage() {
             value={confirmText}
             onChange={(e) => setConfirmText(e.target.value)}
             placeholder={t('accountDeleteWarning.confirmPlaceholder')}
-            className="w-full px-4 py-3 rounded-xl bg-gray-100 dark:bg-white/[0.06] border border-gray-200 dark:border-white/10 text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/30 focus:outline-none focus:border-brand/50 focus:bg-white dark:focus:bg-white/[0.08]"
+            className="mt-2 w-full h-12 px-4 rounded-xl bg-warm border border-rule-strong text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:border-brand"
           />
           {confirmText && confirmText !== t('accountDeleteWarning.confirmText') && (
-            <p className="text-[12px] text-red-400 mt-2 flex items-center gap-1">
-              <WarnIcon className="w-3.5 h-3.5" />
+            <p className="text-[13px] text-tone-bad mt-2 flex items-center gap-1">
+              <WarnIcon className="w-4 h-4" />
               {t('accountDeleteWarning.confirmMismatch')}
             </p>
           )}
           {confirmText === t('accountDeleteWarning.confirmText') && (
-            <p className="text-[12px] text-green-400 mt-2 flex items-center gap-1">
-              <OkIcon className="w-3.5 h-3.5" />
-              확인되었습니다.
+            <p className="text-[13px] text-tone-ok mt-2 flex items-center gap-1">
+              <OkIcon className="w-4 h-4" />
+              {t('accountDeleteWarning.confirmOk', { defaultValue: '확인됐어요' })}
             </p>
           )}
-        </div>
+        </section>
 
-        {/* 머무름 안내 */}
-        <div className="text-center mb-2">
-          <p className="text-[12px] text-gray-500 dark:text-white/40 leading-relaxed flex items-center justify-center gap-2">
-            <HeartIcon className="w-3.5 h-3.5 text-brand-text opacity-60" />
-            언제든지 돌아올 수 있어요
-          </p>
-        </div>
-      </main>
-
-      {/* 하단 고정 버튼 — 라이트/다크 양쪽 대응 (이전: 인라인 고정 검정 그라데이션 → 라이트 본문과 불일치) */}
-      <div className="fixed bottom-0 left-0 right-0 xl:left-56 app-frame-bar z-40 px-4 py-4 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur-xl border-t border-gray-200 dark:border-white/10">
-        <div className="ur-content-narrow space-y-2">
+        <div className="pt-2 flex flex-col gap-2">
+          <Link
+            to="/user/profile"
+            className="w-full h-12 flex items-center justify-center rounded-2xl bg-brand text-white text-[15px] font-semibold"
+          >
+            {t('accountDeleteWarning.cancel')}
+          </Link>
           <button
             type="button"
             onClick={handleProceedToDelete}
             disabled={!canProceed || isLoading}
-            className={`w-full h-[52px] rounded-2xl font-semibold text-[15px] transition-all ${
+            className={`w-full h-12 rounded-2xl text-[15px] font-semibold transition-colors ${
               canProceed && !isLoading
-                ? 'bg-red-500 text-white active:scale-[0.98] hover:bg-red-600'
-                : 'bg-gray-100 dark:bg-white/[0.06] text-gray-900 dark:text-white/30 cursor-not-allowed'
+                ? 'text-tone-bad active:bg-wash'
+                : 'text-gray-400 dark:text-gray-500 cursor-not-allowed'
             }`}
           >
             {isLoading ? (
@@ -302,14 +276,8 @@ export default function AccountDeleteWarningPage() {
               t('accountDeleteWarning.submit')
             )}
           </button>
-          <Link
-            to="/user/profile"
-            className="w-full h-[44px] flex items-center justify-center rounded-2xl bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-white/70 text-[13px] font-medium hover:bg-gray-200 dark:hover:bg-white/[0.08] transition-colors"
-          >
-            {t('accountDeleteWarning.cancel')}
-          </Link>
         </div>
-      </div>
+      </main>
     </div>
   )
 }
