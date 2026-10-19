@@ -6,6 +6,7 @@ import { formatNumber } from '@/utils/format'
 import { priceDisplay } from '@/shared/price-display'
 import { shortsRegionLabel } from '@/shared/urshorts-regions'
 import { URSHORTS_VIEWER_PATH, type UrShortItem } from '@/shared/urshorts'
+import { shortDisplayTitle } from '@/shared/urshorts-display'
 
 /**
  * 🎬 전체 보기 그리드의 카드 한 장 (2026-09-21).
@@ -24,12 +25,14 @@ function Card({ item, eager }: { item: UrShortItem; eager: boolean }) {
   // 📍 도시 줄은 **생활권을 먼저** 쓴다(`기장` 이 `부산` 보다 많은 것을 말해 준다).
   //    둘 다 없으면 줄 자체를 안 그린다 — 레일 카드와 같은 약속.
   const place = item.region_area || shortsRegionLabel(item.region_si)
+  // 🧹 원제목의 해시태그·이모지를 뗀 제목(2026-10-19). 원제목이 없으면 붙은 상품명.
+  const title = shortDisplayTitle(item)
 
   return (
     <Link
       to={`${URSHORTS_VIEWER_PATH}?v=${item.video_id}`}
       className="group block text-left"
-      aria-label={`${item.store_name || ''} ${item.title || '유어쇼츠 영상'}`}
+      aria-label={`${item.store_name || ''} ${title || '유어쇼츠 영상'}`}
     >
       <span className="relative block aspect-[9/16] overflow-hidden rounded-[10px] bg-media-slot">
         {thumb ? (
@@ -76,9 +79,9 @@ function Card({ item, eager }: { item: UrShortItem; eager: boolean }) {
         )}
       </span>
       {/* 사진 밖 두 줄 — 제목은 두 줄까지, 그 아래 채널·동네. 목록에서는 무엇인지 읽고 고른다. */}
-      {item.title && (
+      {title && (
         <span className="mt-2 block line-clamp-2 text-[12px] font-semibold leading-snug text-gray-900 dark:text-gray-100">
-          {item.title}
+          {title}
         </span>
       )}
       {(item.channel || place) && (

@@ -32,6 +32,7 @@ import {
 import { classifyShort, REGION_SI } from '@/shared/urshorts-tags'
 import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories'
 import type { Env } from '@/worker/types/env'
+import { spreadSameProduct } from '@/shared/urshorts-display'
 
 const urshortsRoutes = new Hono<{ Bindings: Env }>()
 const adminUrshortsRoutes = new Hono<{ Bindings: Env }>()
@@ -135,7 +136,8 @@ urshortsRoutes.get('/', edgeCache(300), async (c) => {
     const { results } = await DB.prepare(PUBLIC_SQL)
       .bind(Math.max(1, Math.min(100, limit)))
       .all()
-    return c.json({ success: true, data: results ?? [] })
+    // 🔀 같은 이용권 영상이 붙어 나오지 않게(레일·전체 보기·뷰어가 모두 이 순서를 받는다).
+    return c.json({ success: true, data: spreadSameProduct((results ?? []) as Array<{ product_id?: number | null }>) })
   } catch (err) {
     // fail-soft: 유어쇼츠가 죽어도 홈은 열려야 한다. 레일은 빈 배열이면 스스로 숨는다.
     if (c.env.ENVIRONMENT === 'development') console.error('[urshorts]', err)
