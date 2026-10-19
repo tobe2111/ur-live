@@ -29,6 +29,13 @@ describe('① 편의시설 아이콘은 lazy 로만', () => {
   it('fallback 이 아이콘과 같은 크기 자리를 잡는다(늦게 와도 글자가 안 밀린다)', () => {
     expect(code(META)).toMatch(/fallback=\{<span className=\{`\$\{AMENITY_ICON_CLS\} inline-block/)
   })
+  it('AmenityIcon 은 바깥 모듈을 부르지 않는다 — lazy 청크가 남의 봉투를 끌지 않게(2026-10-19 라이브 E4)', () => {
+    // 🩸 1차는 lucide 를 썼고, 그 아이콘 파일이 교환권·홈 봉투에 살아서 lazy 청크가 그 봉투들(~28KB)을 달고 왔다.
+    //    타입 import 는 런타임 의존이 아니라 허용한다.
+    const imports = [...code(ICON).matchAll(/^import\s+(?!type\b)[^\n]*from\s+['"]([^'"]+)['"]/gm)].map((m) => m[1])
+    expect(imports, `AmenityIcon 의 런타임 import: ${imports.join(' · ')}`).toEqual([])
+    expect(code(ICON)).toMatch(/strokeWidth=\{1\.6\}/)
+  })
   it('AmenityIcon 이 종류 열두 개를 전부 그림에 잇는다', () => {
     const src = code(ICON)
     for (const k of ['parking', 'wifi', 'breakfast', 'pool', 'spa', 'fire', 'kitchen', 'air', 'gym', 'pet', 'nosmoke', 'default']) {

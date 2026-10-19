@@ -92,7 +92,9 @@ const OPERATION = new Set([
 /* 🔧 2026-10-18: 154 → **152**. 숙소 상세의 `Hotel`·`TicketPercent` 를 유어딜 세트(StayLineIcon·CouponIcon)로 바꿨다 — 같은 커밋에서 내린다(PR CI 주입이 잡았다, 여덟 번째).
    ↳ ⚠️ 그 PR 의 첫 판은 편의시설 아이콘을 **객체 지도**로 모아 141 이 나왔다 — 11건이 줄어든 게 아니라 이 래칫이 `<Icon` 만 세서 **못 보게 된** 것이다.
       JSX 로 되돌려 정직한 값 152 로 잠갔다. 셀 수 없는 모양으로 옮기는 것은 개선이 아니라 래칫 우회다. */
-const MEANING_BASELINE = 152
+/* 🔧 2026-10-19: 152 → **141**. 숙소 편의시설 아이콘 열한 개를 lucide 에서 **그 파일 안의 그림**(stay-detail/AmenityIcon.tsx)으로 —
+   lazy 청크가 교환권·홈 봉투(압축 ~28KB)를 의존으로 달고 있던 것(라이브 E4). 이번엔 **실제로 걷은** 11건이다(JSX 그대로 셀 수 있는 모양). */
+const MEANING_BASELINE = 141
 
 const read = (f: string) => readFileSync(f, 'utf8')
 
