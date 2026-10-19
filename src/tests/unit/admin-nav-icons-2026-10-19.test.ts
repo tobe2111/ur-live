@@ -13,6 +13,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
+import { stripComments } from '../helpers/source-text'
 
 const lucideNames = (file: string) => {
   const src = readFileSync(file, 'utf8')
@@ -41,7 +42,7 @@ describe('어드민 첫 화면은 손님 봉투의 아이콘을 쓰지 않는다
       const hit = lucideNames(f).filter((n) => IN_CONSUMER_ENVELOPES.includes(n))
       expect(hit, `${f} 가 손님 화면 봉투의 아이콘을 import 한다 — 그 봉투를 통째로 받는다`).toEqual([])
       // import 밖에서 쓰는 자리도 본다(`icon: Wrench` · `<Play`) — import 를 고치고 사용처를 남기면 다음 사람이 import 를 되살린다.
-      const body = readFileSync(f, 'utf8').replace(/import\s+\{[^}]*\}\s*from\s*'lucide-react'/g, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+      const body = stripComments(readFileSync(f, 'utf8')).replace(/import\s+\{[^}]*\}\s*from\s*'lucide-react'/g, '')
       const used = IN_CONSUMER_ENVELOPES.filter((n) => new RegExp(`(icon:\\s*${n}\\b|<${n}[\\s/>]|Icon:\\s*${n}\\b)`).test(body))
       expect(used, `${f} 가 손님 봉투 아이콘을 쓴다`).toEqual([])
     })
