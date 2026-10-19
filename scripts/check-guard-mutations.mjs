@@ -9619,8 +9619,8 @@ canvas {
   },
   {
     name: '숙소 카드 — 날짜·인원을 잃는다(상세가 오늘 날짜로 다시 잡아 요금이 달라짐)',
-    file: 'src/pages/StaysSearchPage.tsx',
-    find: '?check_in=${filters.check_in}&check_out=${filters.check_out}&guests=${filters.guests}',
+    file: 'src/shared/stays-list.ts',
+    find: '?check_in=${checkIn}&check_out=${checkOut}&guests=${guests}',
     replace: '',
     test: 'src/tests/unit/urshop-card-unify.test.ts',
     why:
@@ -9690,8 +9690,8 @@ canvas {
   {
     name: 'PC 홈 히어로 — 위치 컨트롤이 다시 칩 둘로 쪼개진다',
     file: 'src/pages/pc-home/PcHomeLocationBar.tsx',
-    find: "? 'inline-flex items-stretch h-8 rounded-full overflow-hidden bg-white text-[#16181C]'",
-    replace: "? 'flex items-center gap-2'",
+    find: "row: 'inline-flex items-stretch h-8 rounded-full overflow-hidden bg-white text-[#16181C]'",
+    replace: "row: 'flex items-center gap-2'",
     test: 'src/tests/unit/pc-home-hero-controls.test.ts',
     why:
       '2026-09-03 대표 "AI 느낌" 의 정체는 위계 부재였다. "어디를 볼까" 하나의 일이 같은 무게 알약 ' +

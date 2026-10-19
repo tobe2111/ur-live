@@ -20,6 +20,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
+import { LOCATION_BAR_TONES } from '@/pages/pc-home/PcHomeLocationBar'
 
 const BAR = readFileSync('src/pages/pc-home/PcHomeLocationBar.tsx', 'utf8')
 const HERO = readFileSync('src/components/home/HomeHeroDefault.tsx', 'utf8')
@@ -27,13 +28,15 @@ const HERO = readFileSync('src/components/home/HomeHeroDefault.tsx', 'utf8')
 describe('PC 홈 히어로 컨트롤 위계 (2026-09-03 대표 확정)', () => {
   it('① 히어로 tone 의 위치 컨트롤은 한 알약 안 두 칸이다 (칩 둘로 쪼개지 않는다)', () => {
     // 감싼 컨테이너가 hero 일 때 하나의 알약: items-stretch + rounded-full + overflow-hidden.
-    expect(BAR).toMatch(/hero\s*\n?\s*\?\s*'inline-flex items-stretch h-8 rounded-full overflow-hidden bg-white/)
+    // 🧱 2026-10-19: 톤별 모양이 표(LOCATION_BAR_TONES) 하나로 모였다 — 소스 모양이 아니라 그 값을 본다.
+    expect(LOCATION_BAR_TONES.hero.row).toMatch(/^inline-flex items-stretch h-8 rounded-full overflow-hidden bg-white/)
     // 두 칸을 가르는 실선이 있어야 "다른 일"임이 보인다.
-    expect(BAR).toMatch(/\{hero && <span className="w-px [^"]*bg-\[rgb\(22_24_28\/0\.13\)\]"/)
+    expect(LOCATION_BAR_TONES.hero.divider).toBe(true)
+    expect(BAR).toMatch(/\{t\.divider && <span className="w-px [^"]*bg-\[rgb\(22_24_28\/0\.13\)\]"/)
   })
 
   it('② 흰 면이다 — 반투명 유리 칩(bg-white/10 류)으로 되돌아가지 않는다', () => {
-    const heroContainer = BAR.match(/hero\s*\n?\s*\?\s*'inline-flex items-stretch[^']*'/)?.[0] || ''
+    const heroContainer = LOCATION_BAR_TONES.hero.row
     expect(heroContainer).toContain('bg-white')
     expect(heroContainer).not.toMatch(/bg-white\/\d/)
     expect(heroContainer).not.toContain('backdrop-blur')
@@ -91,7 +94,7 @@ describe('PC 홈 히어로 컨트롤 위계 (2026-09-03 대표 확정)', () => {
     // title tone(모바일 홈 상단)의 큰 지역명 트리거가 그대로 있어야 한다.
     expect(BAR).toContain("text-[24px] font-black tracking-[-0.02em]")
     // panel tone 의 테두리 칩 규약 유지.
-    expect(BAR).toMatch(/rounded-xl border transition-colors \$\{chip\}/)
+    expect(LOCATION_BAR_TONES.panel.pick).toMatch(/rounded-xl border transition-colors border-gray-200/)
     // 라벨 문자열은 소스에 남는다 — aria-label 과 panel tone 이 함께 쓴다.
     expect(BAR).toContain('현 위치로 설정')
   })

@@ -1,8 +1,7 @@
 {
-  "total": 1939,
+  "total": 1937,
   "files": {
-    "src/features/social-media/api/social-image-card.ts": 10,
-    "src/pages/AboutPage.tsx": 25,
+    "src/pages/AboutPage.tsx": 24,
     "src/pages/AboutServicePage.tsx": 1,
     "src/pages/AccountDeleteWarningPage.tsx": 3,
     "src/pages/AccountDeletedPage.tsx": 1,
@@ -82,7 +81,7 @@
     "src/pages/SearchPage.tsx": 5,
     "src/pages/ServerErrorPage.tsx": 11,
     "src/pages/StayDetailPage.tsx": 12,
-    "src/pages/StaysSearchPage.tsx": 14,
+    "src/pages/StaysSearchPage.tsx": 10,
     "src/pages/StoreScanPage.tsx": 4,
     "src/pages/StoreStatsPage.tsx": 9,
     "src/pages/TossWidgetPayPage.tsx": 7,
@@ -92,7 +91,7 @@
     "src/pages/VideosPage.tsx": 2,
     "src/pages/VoucherDetailPage.tsx": 29,
     "src/pages/VoucherVerifyPage.tsx": 3,
-    "src/pages/VouchersPage.tsx": 20,
+    "src/pages/VouchersPage.tsx": 19,
     "src/pages/WishlistPage.tsx": 2,
     "src/pages/YouTubeCallbackPage.tsx": 12,
     "src/pages/browse/BrowseProductCard.tsx": 1,
@@ -261,10 +260,12 @@
     "src/features/group-buy/api/group-buy.routes.ts": 36,
     "src/features/guides/api/guide-seed-admin.ts": 1,
     "src/features/notifications/api/email.routes.ts": 9,
+    "src/features/social-media/api/social-image-card.ts": 10,
     "src/features/social-media/api/social-video-render.ts": 7,
     "src/shared/mall/branding.ts": 4,
     "src/shared/og-share-image.ts": 1,
     "src/shared/stay-head.ts": 2,
+    "src/shared/stays-list.ts": 4,
     "src/shared/stores/useTheme.ts": 2,
     "src/shared/ushop-share-card.ts": 1
   }

@@ -35,3 +35,22 @@ export function takeStaysEarly(qs: string): Promise<unknown> | null {
   w.__urStaysEarly = undefined
   return e.p
 }
+
+/** 서버가 `/stays` 첫 화면과 함께 실어 보낸 검색 결과의 script id(워커 보조 시드 슬롯 이름에서 온다). */
+export const STAYS_SEED_ID = '__SSR_INITIAL_STAYS__'
+
+/**
+ * 🏨 2026-10-19 서버 첫 화면이 그린 검색 결과를 **첫 렌더에** 쓴다 — 없으면 화면이 '검색 중...' 을 그렸다가
+ * 다시 그려 서버가 그린 카드가 한 번 사라진다. 기본 질의(`defaultStaysQs`)일 때만, **한 번만** 가져간다
+ * (SPA 로 다시 들어오면 일반 경로). 실패·모양 불일치는 undefined(일반 경로).
+ */
+export function readStaysSeed<T = unknown>(qs: string, now: number = Date.now()): T[] | undefined {
+  if (typeof document === 'undefined' || qs !== defaultStaysQs(now)) return undefined
+  const el = document.getElementById(STAYS_SEED_ID)
+  if (!el) return undefined
+  el.remove()
+  try {
+    const j = JSON.parse(el.textContent || '') as { success?: boolean; data?: T[] }
+    return j?.success && Array.isArray(j.data) ? j.data : undefined
+  } catch { return undefined }
+}
