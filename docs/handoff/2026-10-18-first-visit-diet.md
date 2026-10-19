@@ -11,6 +11,22 @@
 3. 폰 UA 로 `/vouchers` 를 브라우저로 열어(하네스 `visual-preview --trace-api` 방식) **`locale-ko-rest`·`app-desktop-chrome`·`app-routes-seller`·`app-notification-panel` 이 0** 인지.
 4. 다음 날 09:25 KST SLO(`perf_slo`) — `/vouchers` LCP p75 가 내려갔는지(창이 7일이라 며칠 걸린다).
 
+## ✅ E4 판정 통과 (배포 후 라이브, 머지 `e8e4555` · #1909 · 10:09 KST)
+배포 전 기준점을 먼저 잡고 양방향으로 쟀다(0 만 보면 "지워졌다"와 "원래 없었다"를 구분 못 한다). 엔트리 `index-DtBdZqZc` → `index-D_R6nPQR`.
+- **A 배너 시드**: `/vouchers`(iPhone UA) `__SSR_INITIAL_BANNERS__` **0 → 1** · 판 안 `<img loading="eager" fetchpriority="high">` 실재.
+  사진은 `quality=76` — 배너 전용 명시값(`stripBannerImageUrl`, 서버·앱 같은 함수)이라 기본값 75 변경과 무관(결함 아님).
+- **B 화질**: 홈 카드 `quality=85` **21 → 0** · `quality=75` **0 → 21**.
+- **C 폰 첫 화면**: 폰 `/` · `/vouchers` · `/pass/2919` · `/u/jiwon1228` 전부 `locale-ko-rest`·`app-desktop-chrome`·`app-notification-panel` **0**.
+  대조군 PC `/` · `/vouchers` 는 `app-desktop-chrome`·`app-notification-panel` 을 **받는다**(청크가 실재한다 → 폰의 0 은 측정 실패가 아니다).
+- 📌 폰 JS 요청 총수가 많아 보이는 것(홈 56)은 **load 뒤** 미리받기(카드 상세·탭 예열·지도 예열·게스트 탭)다 — load 전은 홈 25 · 교환권 24.
+  배포 전 측정은 load 전후를 안 갈라서 직접 비교는 못 한다. 첫 화면 판정은 load 전 수로 할 것.
+- 남은 판정: 09:25 KST SLO 의 `/vouchers` LCP p75(7일 창이라 며칠).
+
+### 머지까지의 커밋
+`8c7200d`(main 재머지 1) · `327b3eb`(셀러 표 죽은 분기 제거 + 주입 재조준) · `48c0993`(main 재머지 2) → 스쿼시 `e8e4555`.
+- 🩸 주입 러너를 중간에 끊었더니 `check-guard-mutations.mjs` 에 주입본(`|| true`)이 남아 있었다 — 끊은 뒤엔 `git status` 로 확인하고 되돌릴 것.
+- 🩸 `chunks`(런타임 청크 수) 가 한 번 교환권 27 > 25 로 빨간불 → 로컬 4회 25, 다음 회차 초록. 간헐로 판정(재발하면 늘어난 청크 이름부터 볼 것 — 기준을 올리지 말 것).
+
 ## 완료분 (한 PR)
 ### ① 교환권 머리 배너를 서버 첫 화면에 (잠금 `worker/index.ts`)
 - 원인(라이브 실측, 느린 4G·CPU 4배): LCP 가 배너 사진인데 요청이 **3.8초**에 출발(화면 코드 → `/api/banners` 응답 뒤에야 `<img>`). LCP 4.3s.
