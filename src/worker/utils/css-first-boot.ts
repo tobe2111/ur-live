@@ -56,6 +56,7 @@ import { UDAL_LOADER_SRC } from '../../shared/udal-loader'
 export function cssFirstApplies(pathname: string, ua: string): boolean {
   if (!shouldRenderMobileFirstScreen(ua)) return false
   return pathname === '/' || pathname === '/vouchers' || pathname === '/stays' // 🏨 2026-10-19 숙소 목록도 서버 첫 화면이 생겼다(stays-first-screen.ts)
+    || /^\/blog\/[^/]+\/?$/.test(pathname) // 📝 2026-10-19 블로그 상세도 서버 첫 화면(blog-detail-first-screen.ts)
     || /^\/(?:pass|group-buy|vouchers|stays)\/\d+\/?$/.test(pathname)
     || (/^\/u\/[^/]+\/?$/.test(pathname) && !/^\/u\/me\/?$/.test(pathname))
 }

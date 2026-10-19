@@ -15,6 +15,8 @@
  *         인라인 **굵게** · [링크](url) · ![이미지](url). 짝 안 맞는 ** 는 제거(글자 노출 방지).
  */
 import { ReactNode } from 'react'
+// 🧱 2026-10-19 클래스는 서버 첫 화면(`worker/utils/blog-detail-first-screen.ts`)과 같은 상수 — 두 벌이면 마운트 때 본문이 튄다.
+import { BLOG_MD } from '@/shared/blog-page'
 
 const SAFE_HREF = /^(https?:\/\/|\/(?!\/)|mailto:|tel:)/i
 
@@ -32,7 +34,7 @@ function renderInline(text: string, keyBase: string): ReactNode[] {
     if (m[1] !== undefined && m[2] !== undefined) {
       // 이미지
       nodes.push(SAFE_HREF.test(m[2])
-        ? <img key={`${keyBase}-img${i}`} src={m[2]} alt={m[1]} loading="lazy" className="block max-w-full rounded-lg my-3" />
+        ? <img key={`${keyBase}-img${i}`} src={m[2]} alt={m[1]} loading="lazy" className={BLOG_MD.img} />
         : m[1])
     } else if (m[3] !== undefined && m[4] !== undefined) {
       // 링크
@@ -40,11 +42,11 @@ function renderInline(text: string, keyBase: string): ReactNode[] {
         const ext = /^https?:/i.test(m[4])
         nodes.push(
           <a key={`${keyBase}-a${i}`} href={m[4]} {...(ext ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-            className="text-blue-600 dark:text-blue-400 underline underline-offset-2 hover:opacity-80">{m[3]}</a>,
+            className={BLOG_MD.a}>{m[3]}</a>,
         )
       } else nodes.push(m[3])
     } else if (m[5] !== undefined) {
-      nodes.push(<strong key={`${keyBase}-b${i}`} className="font-bold text-gray-900 dark:text-white">{m[5]}</strong>)
+      nodes.push(<strong key={`${keyBase}-b${i}`} className={BLOG_MD.strong}>{m[5]}</strong>)
     }
     last = re.lastIndex
     i++
@@ -81,14 +83,14 @@ export function BlogMarkdown({ content }: { content: string }) {
         const headers = lines[0].split('|').filter(Boolean).map(h => h.trim())
         const rows = lines.slice(1).map(l => l.split('|').filter(Boolean).map(c => c.trim()))
         return (
-          <div key={i} className="overflow-x-auto my-4">
-            <table className="w-full text-sm border-collapse">
+          <div key={i} className={BLOG_MD.tableWrap}>
+            <table className={BLOG_MD.table}>
               <thead>
-                <tr>{headers.map((h, j) => <th key={j} className="text-left px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border-b border-line font-semibold text-gray-700 dark:text-gray-200">{renderInline(h, `t${i}h${j}`)}</th>)}</tr>
+                <tr>{headers.map((h, j) => <th key={j} className={BLOG_MD.th}>{renderInline(h, `t${i}h${j}`)}</th>)}</tr>
               </thead>
               <tbody>
                 {rows.map((row, ri) => (
-                  <tr key={ri}>{row.map((cell, ci) => <td key={ci} className="px-3 py-2 border-b border-gray-100 dark:border-[#2C2F35] text-gray-600 dark:text-gray-300">{renderInline(cell, `t${i}r${ri}c${ci}`)}</td>)}</tr>
+                  <tr key={ri}>{row.map((cell, ci) => <td key={ci} className={BLOG_MD.td}>{renderInline(cell, `t${i}r${ri}c${ci}`)}</td>)}</tr>
                 ))}
               </tbody>
             </table>
@@ -98,17 +100,17 @@ export function BlogMarkdown({ content }: { content: string }) {
     }
 
     // 헤딩 (이미 굵게 — ** 제거) + 목차 앵커 id · sticky 헤더 대응 scroll-mt
-    if (trimmed.startsWith('## ')) return <h2 id={`sec-${hIdx++}`} key={i} className="scroll-mt-24 text-xl font-bold text-gray-900 dark:text-white mt-8 mb-3">{stripBold(trimmed.slice(3))}</h2>
-    if (trimmed.startsWith('### ')) return <h3 id={`sec-${hIdx++}`} key={i} className="scroll-mt-24 text-lg font-bold text-gray-900 dark:text-white mt-6 mb-2">{stripBold(trimmed.slice(4))}</h3>
+    if (trimmed.startsWith('## ')) return <h2 id={`sec-${hIdx++}`} key={i} className={BLOG_MD.h2}>{stripBold(trimmed.slice(3))}</h2>
+    if (trimmed.startsWith('### ')) return <h3 id={`sec-${hIdx++}`} key={i} className={BLOG_MD.h3}>{stripBold(trimmed.slice(4))}</h3>
 
     // 불릿 리스트
     if (trimmed.startsWith('- ')) {
       const items = trimmed.split('\n').filter(l => l.trim().startsWith('- '))
       return (
-        <ul key={i} className="my-3 space-y-1.5">
+        <ul key={i} className={BLOG_MD.ul}>
           {items.map((item, j) => (
-            <li key={j} className="flex items-start gap-2 text-[16.5px] text-gray-700 dark:text-gray-200 leading-[1.85]">
-              <span className="text-brand-text mt-1 shrink-0">•</span>
+            <li key={j} className={BLOG_MD.li}>
+              <span className={BLOG_MD.bullet}>•</span>
               <span>{renderInline(item.trim().slice(2), `u${i}i${j}`)}</span>
             </li>
           ))}
@@ -120,12 +122,12 @@ export function BlogMarkdown({ content }: { content: string }) {
     if (/^\d+\.\s/.test(trimmed)) {
       const items = trimmed.split('\n').filter(l => /^\d+\.\s/.test(l.trim()))
       return (
-        <ol key={i} className="my-3 space-y-1.5 list-none">
+        <ol key={i} className={BLOG_MD.ol}>
           {items.map((item, j) => {
             const mm = item.trim().match(/^(\d+)\.\s+(.*)$/)
             return (
-              <li key={j} className="flex items-start gap-2 text-[16.5px] text-gray-700 dark:text-gray-200 leading-[1.85]">
-                <span className="text-brand-text font-semibold mt-0.5 shrink-0 tabular-nums">{mm?.[1] ?? j + 1}.</span>
+              <li key={j} className={BLOG_MD.li}>
+                <span className={BLOG_MD.num}>{mm?.[1] ?? j + 1}.</span>
                 <span>{renderInline(mm?.[2] ?? item, `o${i}i${j}`)}</span>
               </li>
             )
@@ -138,17 +140,17 @@ export function BlogMarkdown({ content }: { content: string }) {
     if (trimmed.startsWith('> ')) {
       const body = trimmed.split('\n').map(l => l.replace(/^>\s?/, '')).join(' ')
       return (
-        <blockquote key={i} className="my-4 pl-4 border-l-4 border-line text-gray-600 dark:text-gray-300 italic">
+        <blockquote key={i} className={BLOG_MD.quote}>
           {renderInline(body, `q${i}`)}
         </blockquote>
       )
     }
 
     // 구분선
-    if (trimmed === '---') return <hr key={i} className="my-8 border-line" />
+    if (trimmed === '---') return <hr key={i} className={BLOG_MD.hr} />
 
     // 일반 단락
-    return <p key={i} className="text-[16.5px] text-gray-700 dark:text-gray-200 leading-[1.85] my-3">{renderInline(trimmed, `p${i}`)}</p>
+    return <p key={i} className={BLOG_MD.p}>{renderInline(trimmed, `p${i}`)}</p>
   }).filter(Boolean)
 
   return <>{blocks}</>

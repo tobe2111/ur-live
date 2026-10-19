@@ -36,11 +36,16 @@ describe('블로그 커버 폴백이 디자인 SSOT 를 지킨다', () => {
 
   it('그라디언트가 없다', () => {
     expect(cover).not.toMatch(/bg-gradient-to-|from-[a-z]+-\d{2,3}/)
+    // 2026-10-19 커버 면 클래스는 서버 첫 화면과 같은 상수(`BLOG_COVER`)로 옮겨갔다 — 거기도 본다.
+    const shared = readCode('src/shared/blog-page.ts')
+    expect(shared.slice(shared.indexOf('export const BLOG_COVER'), shared.indexOf('/** 읽는 시간'))).not.toMatch(/bg-gradient-to-|from-[a-z]+-\d{2,3}/)
   })
 
   it('우리 아이콘 세트를 쓴다', () => {
     expect(cover).toContain("@/components/icons/category-icons")
-    expect(cover).toContain('CATEGORY_PALETTE')
+    // 2026-10-19 색은 서버 첫 화면과 같은 SSOT(`shared/blog-page.ts` → `shared/category-palette.ts`)에서 받는다.
+    expect(cover).toContain('blogCoverBg(hue)')
+    expect(readCode('src/shared/blog-page.ts')).toContain('CATEGORY_PALETTE')
   })
 
   it('사진이 있으면 폴백은 물러난다 — 커버는 사진의 대체재가 아니다', () => {
@@ -55,13 +60,17 @@ describe('블로그 커버 폴백이 디자인 SSOT 를 지킨다', () => {
 
 describe('본문 가독성 — 글자 크기와 폭은 짝이다', () => {
   it('본문 글자가 16.5px 다', () => {
-    const md = readCode(MD)
+    // 2026-10-19 클래스는 서버 첫 화면과 같은 상수(`shared/blog-page.ts` BLOG_MD)로 옮겨갔다.
+    const shared = readCode('src/shared/blog-page.ts')
+    const md = readCode(MD) + shared.slice(shared.indexOf('export const BLOG_MD'), shared.indexOf('export const BLOG_DETAIL'))
     expect(md).toContain('text-[16.5px]')
     expect(md, '15px 본문이 남아 있다').not.toMatch(/text-\[15px\][^\n]*leading-/)
   })
 
   it('본문 폭이 묶여 있다', () => {
     // 폭을 안 묶으면 글자만 키운 꼴이라 한 줄이 여전히 길다(3열 레이아웃의 가운데 칸 760px).
-    expect(readCode(DETAIL)).toMatch(/max-w-\[46rem\][\s\S]{0,200}<BlogMarkdown/)
+    // 2026-10-19 폭 클래스는 `BLOG_DETAIL.body`(서버 첫 화면과 같은 상수).
+    expect(readCode('src/shared/blog-page.ts')).toContain("body: 'max-w-[46rem]'")
+    expect(readCode(DETAIL)).toMatch(/BLOG_DETAIL\.body\}>[\s\S]{0,200}<BlogMarkdown/)
   })
 })
