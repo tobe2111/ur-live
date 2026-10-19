@@ -5,17 +5,19 @@
  * 세 상세가 각자 이 셋을 짜면 한 곳만 판정을 바꾸는 날이 온다. 종류는 **서버가 정한 것**을 먼저 쓴다
  * (주소가 `/products/:id` 라도 그 행이 이용권이면 이용권 시트가 맞다).
  */
-import { useState } from 'react'
-import OwnerManageSheet from './OwnerManageSheet'
+import { lazy, Suspense, useState } from 'react'
 import OwnerManagePanel from '@/pages/group-buy/OwnerManagePanel'
 import { useOwnedView, type OwnedKind } from '@/pages/group-buy/useViewerIsOwner'
+
+// 시트는 주인이 [관리하기]를 누를 때만 받는다 — 손님 첫 화면(상세·마이)에 실리면 화면 무게 예산을 넘긴다.
+const OwnerManageSheet = lazy(() => import('./OwnerManageSheet'))
 
 export function useOwnerManage(productId: number, loggedIn: boolean, kind: OwnedKind) {
   const q = useOwnedView(productId, loggedIn)
   const [open, setOpen] = useState(false)
   const isOwner = q.data?.is_owner === true
   const sheet = open && isOwner
-    ? <OwnerManageSheet productId={productId} kind={q.data?.kind ?? kind} view={q.data} onClose={() => setOpen(false)} />
+    ? <Suspense fallback={null}><OwnerManageSheet productId={productId} kind={q.data?.kind ?? kind} view={q.data} onClose={() => setOpen(false)} /></Suspense>
     : null
   return { isOwner, openManage: () => setOpen(true), sheet }
 }

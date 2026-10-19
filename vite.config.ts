@@ -167,6 +167,19 @@ export const MAP_ROW_MODULES = [
   '/src/pages/restaurant-map/utils.ts', '/src/pages/restaurant-map/CatIcon',
 ]
 
+/**
+ * 🏪 2026-10-19 [LOADING_ADDITIVE] 마이 목록 부품 — `app-owner-kit`.
+ *   주인 관리 시트(`components/deal/OwnerManageSheet`)는 상세에서 lazy 로 받는데, 그 시트가 마이의 목록 부품
+ *   (`list-grammar`)과 셀러 도착 주소(`seller-deep-link`)를 쓴다. 묶음기는 그 둘을 상세의 lazy 사용(`gbDetailL`)으로
+ *   세어 상세 봉투로 옮겼고, 그러면 그 둘을 첫 화면에 쓰는 마이·대시보드가 상세 봉투를 받았다(실측 dash:my +3.7 · admin +5.6).
+ *   ⇒ 둘만 작은 고정 묶음으로 둔다. 마이는 바이트가 같고(요청 하나), 상세는 [관리하기]를 누를 때만 받는다.
+ */
+export const OWNER_KIT_MODULES = ['/src/pages/user-profile/list-grammar', '/src/lib/seller-deep-link']
+/** 주인 판정·버튼(상세 첫 화면 — 손님에겐 판정 요청 하나와 숨은 버튼뿐)과 시트(누를 때만)도 각자의 봉투에 둔다 —
+ *  묶음기가 같은 사용자 집합의 공용 봉투(카카오 공유·사진 압축이 사는 곳)에 섞으면 그 공용 부품을 쓰는 어드민·마이가
+ *  주인 코드까지 받았다(실측 dash:admin +6.1). */
+export const OWNER_UI_MODULES = ['/src/components/deal/useOwnerManage', '/src/pages/group-buy/OwnerManagePanel', '/src/pages/group-buy/useViewerIsOwner']
+
 // 🧩 2026-10-13 [LOADING_ADDITIVE] 손님 페이지 lazy 코드를 쓰는 페이지끼리 묶는다 — 근거·실측·규칙은 scripts/surface-chunks.mjs.
 const gateLazy = createSurfaceChunker({
   routes: SURFACE_ROUTES,
@@ -281,6 +294,10 @@ export default defineConfig({
           if (CROSS_MODULES.some((p) => id.includes(p))) return 'app-cross'
           // 🔎 2026-10-19 지도 목록 한 줄 — 근거는 위 MAP_ROW_MODULES 주석
           if (MAP_ROW_MODULES.some((p) => id.includes(p))) return 'app-map-row'
+          // 🏪 2026-10-19 마이 목록 부품 — 근거는 위 OWNER_KIT_MODULES 주석
+          if (OWNER_KIT_MODULES.some((p) => id.includes(p))) return 'app-owner-kit'
+          if (OWNER_UI_MODULES.some((p) => id.includes(p))) return 'app-owner-ui'
+          if (id.includes('/src/components/deal/OwnerManageSheet')) return 'app-owner-sheet'
           // Icons
           // 🩺 2026-09-16 [UNLOCK_LOADING] 아이콘 다이어트 — 셀이 쓰는 42개만 첫 화면으로.
           //   실측(번들러 모듈→청크 그래프): 트리쉐이킹은 멀정하다(1,534개 중 260개만 남는다).

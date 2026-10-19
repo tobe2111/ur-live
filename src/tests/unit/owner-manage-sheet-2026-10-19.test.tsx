@@ -171,3 +171,21 @@ describe('③ 패널 문구 · 배선', () => {
     expect(act).toMatch(/COALESCE\(status,''\) <> 'DELETED'/)
   })
 })
+
+describe('④ 첫 화면 무게 — 시트는 누를 때만, 주인 코드는 남의 봉투에 섞이지 않는다', () => {
+  it('상세 훅은 시트를 lazy 로 부른다(정적 import 0)', () => {
+    const h = readCode('src/components/deal/useOwnerManage.tsx')
+    expect(h).toMatch(/lazy\(\(\) => import\('\.\/OwnerManageSheet'\)\)/)
+    expect(h).not.toMatch(/import OwnerManageSheet from/)
+  })
+  it('시트·주인 코드·목록 부품이 고정 봉투로 간다(묶음기가 안 옮긴다)', () => {
+    const v = readCode('vite.config.ts')
+    expect(v).toMatch(/OWNER_KIT_MODULES\.some\(\(p\) => id\.includes\(p\)\)\) return 'app-owner-kit'/)
+    expect(v).toMatch(/OWNER_UI_MODULES\.some\(\(p\) => id\.includes\(p\)\)\) return 'app-owner-ui'/)
+    expect(v).toMatch(/OwnerManageSheet'\)\) return 'app-owner-sheet'/)
+    const c = readCode('scripts/surface-chunks.mjs')
+    expect(c).toMatch(/LAZY_ENVELOPES = new Set\(\[[^\]]*'app-owner-sheet'/)
+    expect(c).toMatch(/LIBRARY_ENVELOPES = new Set\(\[[^\]]*'app-owner-kit', 'app-owner-ui'/)
+  })
+})
+
