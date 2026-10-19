@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { ClockIcon } from '@/components/icons/urdeal-icons'
+import { ChartIcon, ClockIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
-import { X, TrendingUp } from 'lucide-react'
+import { X } from 'lucide-react'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { usePopularSearches } from '@/hooks/queries/usePopularSearches'
 import Udal from '@/components/mascot/Udal'
@@ -147,7 +147,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
         {popular.length > 0 && (
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <TrendingUp className="w-4 h-4 text-rose-500" />
+              <ChartIcon className="w-4 h-4 text-rose-500" />
               <h3 className="text-[13px] font-bold text-gray-900 dark:text-white">인기 검색어</h3>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -198,7 +198,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
         {popular.length > 0 && (
           <div className="mx-auto max-w-md">
             <div className="flex items-center gap-2 mb-3 justify-center">
-              <TrendingUp className="w-4 h-4 text-rose-500" />
+              <ChartIcon className="w-4 h-4 text-rose-500" />
               <h3 className="text-[13px] font-bold text-gray-900 dark:text-white">지금 인기 검색어</h3>
             </div>
             <div className="flex flex-wrap gap-2 justify-center">
