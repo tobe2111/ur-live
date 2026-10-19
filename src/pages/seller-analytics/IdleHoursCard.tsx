@@ -57,7 +57,7 @@ export default function IdleHoursCard() {
             {t('seller.idleHours.suggest', { defaultValue: '이 시간에만 쓰는 이용권을 내면 빈 자리를 채울 수 있어요.' })}
           </p>
           <button type="button" onClick={() => navigate('/seller/meal-voucher/new')}
-            className="mt-3 inline-flex h-10 items-center rounded-xl bg-brand px-4 text-[13px] font-bold text-white">
+            className="mt-3 ur-btn ur-btn-md ur-btn-primary">
             {t('seller.idleHours.cta', { defaultValue: '시간 한정 이용권 만들기' })}
           </button>
         </>
