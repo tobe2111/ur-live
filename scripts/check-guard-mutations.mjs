@@ -9619,8 +9619,8 @@ canvas {
   },
   {
     name: '숙소 카드 — 날짜·인원을 잃는다(상세가 오늘 날짜로 다시 잡아 요금이 달라짐)',
-    file: 'src/pages/StaysSearchPage.tsx',
-    find: '?check_in=${filters.check_in}&check_out=${filters.check_out}&guests=${filters.guests}',
+    file: 'src/shared/stays-list.ts',
+    find: '?check_in=${checkIn}&check_out=${checkOut}&guests=${guests}',
     replace: '',
     test: 'src/tests/unit/urshop-card-unify.test.ts',
     why:

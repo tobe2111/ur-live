@@ -70,7 +70,9 @@ describe('카드는 한 벌이다 (2026-09-03 통일 결정 승계)', () => {
 
   it('캐러셀 한 장이 4열 그리드보다 넓다 — "사진 크게"의 실체', () => {
     // 그리드는 lg:grid-cols-4(≈25%). 캐러셀은 모바일 68% · lg 28%.
-    expect(readCode(CUR)).toContain('w-[68%]')
+    // 2026-10-19 — 클래스는 화면·서버 첫 화면이 같이 쓰는 SSOT 로 옮겨갔다. 화면은 그 상수를 쓴다.
+    expect(readCode('src/shared/stays-list.ts')).toContain('w-[68%]')
+    expect(readCode(CUR)).toContain('STAYS_LIST.cell')
     expect(readCode(LIST)).toContain('lg:grid-cols-4')
   })
 })

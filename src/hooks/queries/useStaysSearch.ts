@@ -6,25 +6,11 @@
 import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from './queryKeys'
-import { takeStaysEarly } from '@/shared/stays-early'
+import { takeStaysEarly, readStaysSeed } from '@/shared/stays-early'
 
-export interface StaySearchItem {
-  id: number
-  name: string
-  image_url?: string
-  property_type?: string
-  star_rating?: number | null
-  region_sido?: string
-  region_sigungu?: string
-  /** 📍 서버가 이미 내려주고 있었는데 타입에만 없었다(2026-09-14). 카드 지역 표기의 진실은 이쪽이다 —
-   *  라이브 50건 중 12건은 `region_*` 과 주소가 서로 다르다. 판정은 `shared/stay-address.ts`. */
-  address?: string | null
-  amenities?: string | null
-  price_from?: number | null
-  max_guests?: number | null
-  avg_rating?: number | null
-  review_count?: number
-}
+// 🏨 2026-10-19 타입은 `shared/stays-list.ts` 한 곳 — 워커 첫 화면이 같은 모양을 읽는다.
+export type { StaySearchItem } from '@/shared/stays-list'
+import type { StaySearchItem } from '@/shared/stays-list'
 
 export function useStaysSearch(qs: string) {
   return useQuery<StaySearchItem[]>({
@@ -43,6 +29,10 @@ export function useStaysSearch(qs: string) {
         .then((j) => { const d = j as { success?: boolean; data?: StaySearchItem[] }; if (!d?.success) throw new Error('early'); return d.data || [] })
         .catch(viaApi)
     },
+    // 🏨 2026-10-19 서버 첫 화면이 그린 결과로 **첫 렌더**를 한다(카드가 사라졌다 다시 나타나지 않게).
+    //   `initialDataUpdatedAt: 0` — 시드는 엣지 캐시 값이라 마운트 뒤 한 번 새로 받는다(그 요청은 위 미리 출발분을 이어받는다).
+    initialData: () => readStaysSeed<StaySearchItem>(qs),
+    initialDataUpdatedAt: 0,
     staleTime: 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,

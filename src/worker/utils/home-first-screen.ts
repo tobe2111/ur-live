@@ -62,10 +62,10 @@ import { formatNumber } from '../../utils/format'
 import { STRIP_CLS, stripBannersOf, stripBannerImageUrl, type SeededStripBanner } from '../../shared/home-strip-banners'
 import { resolveBannerLink } from '../../components/home/banner-link'
 
-function escAttr(s: string): string {
+export function escAttr(s: string): string {
   return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
-function escText(s: string): string {
+export function escText(s: string): string {
   return escAttr(s).replace(/'/g, '&#39;')
 }
 
@@ -127,7 +127,7 @@ export function starFillPct(value: number): number {
 }
 
 /** 시드에서 읽는 최소 모양 — 서버 `CARD_COLS`(section-rules.ts)의 부분집합. */
-interface SeedProduct {
+export interface SeedProduct {
   id: number | string
   name?: string | null
   image_url?: string | null
@@ -159,8 +159,9 @@ function starHtml(value: number): string {
   )
 }
 
-function cardHtml(p: SeedProduct, eager: boolean): string {
-  const href = canonicalDetailPath(p) ?? `/pass/${p.id}`
+/** 🏨 2026-10-19 숙소 목록 첫 화면도 이 카드를 쓴다(`stays-first-screen.ts`) — 카드는 한 벌이다. `href` 는 숙소의 날짜·인원 링크. */
+export function cardHtml(p: SeedProduct, eager: boolean, hrefOverride?: string): string {
+  const href = hrefOverride ?? canonicalDetailPath(p) ?? `/pass/${p.id}`
   const brandName = p.brand_name || p.gc_brand_name || null
   const merchant = p.restaurant_name || brandName
   const onnuri = !!p.onnuri_merchant
