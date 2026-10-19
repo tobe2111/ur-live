@@ -47,7 +47,14 @@ import { toast } from '@/hooks/useToast'
 import { Loader2, MapPin, CheckCircle2, XCircle, BadgeCheck, FileImage, ArrowLeft, X } from 'lucide-react'
 import ManualPlaceForm from './ManualPlaceForm'; import BrokeredViaAgencyNote, { PERSONAL_BROKER_SIGNUP_DISABLED, BROKERED_VIA_AGENCY_MSG } from './BrokeredViaAgencyNote' // 🏢 2026-10-11
 import { TERMS_CURRENT_VERSION } from '@/pages/terms/terms-types'; import { kakaoPlaceUrlFromId } from '@/shared/kakao-place-url'
-import { readAcquisitionUtm } from '@/lib/acquisition' // 📣 2026-10-19 SNS UTM 귀속
+// 📣 2026-10-19 SNS UTM 귀속 — lib/acquisition 을 정적 import 하면 App 의 지연 청크가 공통 봉투로 끌려 나온다(chunks 게이트).
+//   같은 저장소 키(ur_acq_src_v1)를 직접 읽는다. 서버(normalizeAcqSource)가 다시 검증하고, TTL 도 서버 귀속엔 무관.
+function readAcqUtmInline(): { src?: unknown; campaign?: unknown; content?: unknown } | undefined {
+  try {
+    const v = JSON.parse(localStorage.getItem('ur_acq_src_v1') || 'null')
+    return v?.src ? { src: v.src, campaign: v.campaign ?? null, content: v.content ?? null } : undefined
+  } catch { return undefined }
+}
 
 export interface RegisterPlace {
   id?: string
@@ -242,7 +249,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
         //   ⚠️ sessionStorage 를 거치는 이유 — 로그인이 필요한 페이지라 카카오를 다녀오면
         //   쿼리스트링이 날아간다. 그 사이 ref 를 잃으면 소개자가 보상을 못 받는다.
         referrer_user_id: readStoreReferrer() || undefined,
-        acq: readAcquisitionUtm() || undefined, // 📣 2026-10-19 SNS UTM 귀속(입점 신청 1건) — 서버가 재검증, 실패해도 등록은 진행
+        acq: readAcqUtmInline(), // 📣 2026-10-19 SNS UTM 귀속(입점 신청 1건) — 서버가 재검증, 실패해도 등록은 진행
       })
       if (!r.data?.success) throw new Error(r.data?.error)
       clearStoreReferrer()
