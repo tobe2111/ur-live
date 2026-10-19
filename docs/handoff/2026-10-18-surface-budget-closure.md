@@ -68,3 +68,17 @@ critical-chunks 14 불변 · chunk-cycles 0 · exec-cost 10화면 예산 안(전
 
 **다음 후보**: `search` 223.6 (지도 봉투 `lz-map`·`app-kakao-sdk`·`lucide` 를 정적으로 받는다 — 검색 결과 지도 보기 때문인지 같은 방법으로).
 - 🩸 **이번에 틀린 것**: 첫 판에서 편의시설 아이콘을 객체 지도로 모았더니 `consumer-icon-system` 래칫이 154 → 141 로 "줄었다" — 래칫이 `<Icon` JSX 만 세서 **못 보게 된** 것이었다. 기준도 안 내려 CI 주입이 빨간불(여덟 번째). JSX `switch` 로 되돌려 정직한 값 152 로 잠갔다.
+
+## 4차 — #1920 E4 와 그 뒤처리 (2026-10-19)
+
+- **E4 (머지 `2873d5a36`, 배포 후 라이브)**: `/stays/2887` 의 `StayDetailPage-BB3n8vOC.js` 정적 import 에서
+  `lucide`(일반)·`lz-vouchers`·`lz-home-homePc-vouchers` **0건**, `AmenityIcon` 은 동적 import. 페이지·아이콘 청크 200.
+- 🩸 **그런데 절반만 끝났었다**: Vite 미리받기 지도(`__vite__mapDeps`)를 보니 그 lazy 청크가
+  `lucide-BxP95RIU`·`lz-vouchers`·`lz-browse-vouchers`·`lz-linkshop1-vouchers`·`lz-home-homePc-vouchers`(gzip ~28KB)를
+  의존으로 달고 있었다 — 첫 화면에서 빠졌을 뿐 **아이콘이 그려지는 순간 뒤에서 받는다**. 첫 화면 예산 래칫은 정적 폐쇄만
+  보므로 이걸 못 본다. ⇒ **lazy 로 뗐으면 그 청크의 `__vite__mapDeps` 까지 볼 것.**
+- 버린 길: 아이콘 일곱을 고정 묶음(`app-stay-amenity`)으로 빼 봤더니 `lz-vouchers` 가 그 묶음을 정적으로 끌고 오고,
+  묶음은 다시 `lz-home-homePc-vouchers`(Flame)를 끌고 왔다. 남이 쓰는 모듈을 옮기면 남이 따라온다.
+- 처방: `stay-detail/AmenityIcon.tsx` 가 열두 그림을 **파일 안에서** 그린다(외부 import 0, 획 1.6). lazy 청크 gzip **1.0KB**,
+  의존은 이미 받은 `react-core` 하나. 아이콘 래칫 152 → **141**(실제로 걷은 11건). 가드: 같은 시험 +1 · 주입 +1(5건 빨간불 확인).
+- E4(다음): 배포 후 `StayDetailPage-*.js` 의 `import("./AmenityIcon-…")` mapDeps 가 `react-core` 하나인지.

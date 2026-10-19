@@ -37,4 +37,12 @@ export default [
     test: TEST,
     why: 'Hotel 하나 때문에 공용 lucide 봉투(10KB br)가 숙소 상세 첫 화면에 다시 실린다.',
   },
+  {
+    name: '[stay-first] 편의시설 아이콘이 다시 lucide 를 부른다',
+    file: 'src/pages/stay-detail/AmenityIcon.tsx',
+    find: "import type { ReactNode } from 'react'",
+    replace: "import type { ReactNode } from 'react'\nimport { Car } from 'lucide-react'",
+    test: TEST,
+    why: 'lazy 아이콘 청크가 교환권·홈 봉투(압축 ~28KB)를 다시 의존으로 단다 — 첫 화면 예산엔 안 잡혀 조용하다.',
+  },
 ]
