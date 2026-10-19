@@ -25,7 +25,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readCode, readRaw } from '../helpers/source-text'
-import { CONCEPT_FAQ } from '@/shared/seo/concept-content'
+import { CONCEPT_FAQ, CONCEPT_FAQ_ALL } from '@/shared/seo/concept-content'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import { buildSurfaceListJsonLd } from '@/worker/utils/surface-list-jsonld'
 import { buildStaticSurfaceNoscript } from '@/worker/utils/crawler-noscript'
@@ -64,8 +64,9 @@ describe('① 메타가 약속한 답이 실재한다 — 양방향', () => {
 describe('② 이용권 답과 배송 답이 섞이지 않는다', () => {
   it('배송 절차를 답하는 두 질문은 **배송 상품**으로 스코프돼 있다', () => {
     // 🩸 답변은 byte-불변으로 두고 **질문만** 좁혔다 — 정책을 바꾼 게 아니라 범위를 밝힌 것이다.
-    const q5 = CONCEPT_FAQ.find((f) => f.key === 'faq.q5')!
-    const q6 = CONCEPT_FAQ.find((f) => f.key === 'faq.q6')!
+    // 🧹 2026-10-19: 쇼핑 탭이 숨겨진 동안 배송 질문은 화면에서 빠진다(`SHOPPING_ONLY_FAQ_KEYS`) — 원본에서 본다.
+    const q5 = CONCEPT_FAQ_ALL.find((f) => f.key === 'faq.q5')!
+    const q6 = CONCEPT_FAQ_ALL.find((f) => f.key === 'faq.q6')!
     expect(q5.question, '배송 교환/반품 질문이 다시 전체를 가리킨다').toContain('배송 상품')
     expect(q6.question, '배송 환불 질문이 다시 전체를 가리킨다').toContain('배송 상품')
     // 그 답변은 원래 운영 안내 그대로여야 한다(이 변경이 정책을 건드리지 않았다는 증거).

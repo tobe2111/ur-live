@@ -78,7 +78,7 @@ const panesOf = () => Array.from(document.querySelectorAll<HTMLElement>(RESTORE_
 const paneKey = (entryKey: string, el: HTMLElement) => `${entryKey}#${el.dataset.scrollRestore || ''}`
 
 export default function ScrollToTop() {
-  const { pathname, search, state, key } = useLocation()
+  const { pathname, search, hash, state, key } = useLocation()
   const navType = useNavigationType()
   const preserveScroll = !!(state as PreserveScrollState)?.preserveScroll
 
@@ -154,7 +154,30 @@ export default function ScrollToTop() {
     }
     // 새 페이지(PUSH/REPLACE) 또는 저장된 자리 없음 — 상단으로
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior })
-  }, [entryKey, navType, preserveScroll])
+
+    // 🧭 2026-10-19 `#앵커` 로 들어오면 그 구역까지 내려 준다(예: 내 리뷰 → 이용권 상세 `#gb-sec-reviews`).
+    //   종전엔 해시를 아무도 안 읽어서 "리뷰 쓰기" 가 상세 **맨 위**를 열고 끝났다(에러 0).
+    //   상세는 비동기로 그려지므로 그 요소가 나타날 때까지 프레임마다 찾고, 사람이 먼저 스크롤하면 손을 뗀다.
+    //   id 문법만 허용 — 해시는 외부 입력이라 selector 로 쓰지 않고 `getElementById` 로만 찾는다.
+    if (/^#[A-Za-z][\w-]{0,63}$/.test(hash)) {
+      const id = hash.slice(1)
+      let raf = 0
+      let done = false
+      const started = performance.now()
+      const stop = () => { done = true; cancelAnimationFrame(raf); window.removeEventListener('wheel', stop); window.removeEventListener('touchstart', stop) }
+      window.addEventListener('wheel', stop, { passive: true, once: true })
+      window.addEventListener('touchstart', stop, { passive: true, once: true })
+      const tryAnchor = () => {
+        if (done) return
+        const el = document.getElementById(id)
+        if (el) { el.scrollIntoView({ block: 'start', behavior: 'instant' as ScrollBehavior }); stop(); return }
+        if (performance.now() - started < 3000) raf = requestAnimationFrame(tryAnchor)
+        else stop()
+      }
+      raf = requestAnimationFrame(tryAnchor)
+      return stop
+    }
+  }, [entryKey, navType, preserveScroll, hash])
 
   return null
 }
