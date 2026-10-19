@@ -110,9 +110,27 @@ export function insta(method, p, params) {
   if (!t) throw new Error('META_IG_ACCESS_TOKEN missing');
   return metaCall(IG, t, method, p, params);
 }
+// urdeal.kr 는 /marketing/* 정적 파일을 서빙하지 않음(404) → Meta 가 이미지/영상을 못 받음.
+// repo 에 커밋된 public/marketing/* 를 직접 이미지 URL 로 치환:
+//  이미지 → raw.githubusercontent (image/jpeg), 영상 → jsDelivr (raw 는 mp4 를 octet-stream 으로 줌 → video/mp4 필요).
+const IMG_BASE = process.env.MEDIA_IMG_BASE || 'https://raw.githubusercontent.com/tobe2111/ur-live/main/public';
+const VID_BASE = process.env.MEDIA_VID_BASE || 'https://cdn.jsdelivr.net/gh/tobe2111/ur-live@main/public';
+export function publicMediaUrl(u) {
+  if (typeof u !== 'string') return u;
+  const m = u.match(/^https?:\/\/(?:www\.)?urdeal\.kr(\/marketing\/.+)$/);
+  return m ? (/\.(mp4|mov)$/i.test(m[1]) ? VID_BASE : IMG_BASE) + m[1] : u;
+}
+export function publicMedia(media) {
+  if (!media || typeof media !== 'object') return media;
+  const out = { ...media };
+  for (const k of ['video_url', 'cover_url', 'fallback_image']) if (out[k]) out[k] = publicMediaUrl(out[k]);
+  if (Array.isArray(out.images)) out.images = out.images.map(publicMediaUrl);
+  return out;
+}
 // Instagram 게시: media = { images: [url...] } (1장=단일, 2~10장=캐러셀) 또는 { video_url } (Reels).
 // 컨테이너가 FINISHED 될 때까지 폴링 후 publish. 반환: { id, media_type }
 export async function igPublish(media, caption) {
+  media = publicMedia(typeof media === 'string' ? { images: [media] } : media);
   const wait = async (id) => {
     if (DRY) return;
     for (let i = 0; i < 30; i++) {
@@ -155,7 +173,7 @@ export async function igPublish(media, caption) {
 export async function fbPagePost(message, link, media = {}) {
   const t = process.env.META_FB_PAGE_TOKEN;
   if (typeof media === 'string') media = { images: [media] };
-  media ||= {};
+  media = publicMedia(media || {});
   if (DRY) return { id: fakeId('fb') };
   if (!t) return null;
   const FB = 'https://graph.facebook.com/v21.0';
