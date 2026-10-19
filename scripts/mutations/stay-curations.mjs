@@ -9,7 +9,7 @@
 export default [
   {
     name: '큐레이션 제목이 약속한 조건을 안 거른다(10만원 아래에 20만원이 섞인다)',
-    file: 'src/pages/stays/StayCurations.tsx',
+    file: 'src/shared/stays-list.ts',
     find: "items: items.filter(s => (s.price_from ?? 0) > 0 && (s.price_from as number) < 100000) }",
     replace: "items }",
     test: 'src/tests/unit/stay-curations-2026-09-24.test.ts',
@@ -19,7 +19,7 @@ export default [
   },
   {
     name: '두 장짜리 줄도 캐러셀로 내보낸다',
-    file: 'src/pages/stays/StayCurations.tsx',
+    file: 'src/shared/stays-list.ts',
     find: 'const MIN_PER_ROW = 3',
     replace: 'const MIN_PER_ROW = 1',
     test: 'src/tests/unit/stay-curations-2026-09-24.test.ts',
