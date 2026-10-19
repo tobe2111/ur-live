@@ -19,6 +19,7 @@ import {
 import { SectionTitle, ListRow, rowIcon } from './list-grammar'
 import type { MyCounts } from './types'
 import { SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
+import OrderStatusBar from './OrderStatusBar'
 
 /** 🖊️ 2026-08-30: `icon` 이모지 문자열 → lucide 컴포넌트.
  *  이 목록은 마이페이지의 주 메뉴다 — 11칸이 전부 이모지라 같은 행 오른쪽의
@@ -29,7 +30,8 @@ import { SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
  */
 type Item = { Icon: LucideIcon; label: string; sub?: string; count?: number | null; path: string }
 
-export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
+/** `statusBar` — 이용권 현황 바를 제목 아래에 그린다(폰). PC 는 '곧 쓸 이용권' 카드가 그 바를 갖는다. */
+export default function ShoppingGroup({ counts, statusBar = false }: { counts: MyCounts; statusBar?: boolean }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
 
@@ -48,13 +50,16 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
     // 🔢 2026-10-18 (대표 *"같은 숫자 하나로 줄여줘"*): 이용권·쿠폰 장수는 **맨 위 숫자 줄(`MyStats`)이
     //   그 한 곳**이라 이 두 줄엔 숫자를 안 단다(종전엔 같은 값이 세 번·두 번 나왔다). 교환권은 반대로
     //   숫자 줄에 칸이 없으므로(폰·PC 같은 세 칸) **이 줄이 그 한 곳**이다 — 그래서 숫자가 남는다.
+    // 🫥 2026-10-18 (대표 *"다 해줘"*): 줄 숫자는 **1 이상일 때만** 단다. 종전엔 '내 교환권 0'·'찜한 상품 0' 이
+    //   0 을 적고, 숫자가 없는 '내 이용권'·'쿠폰함' 은 아무것도 안 적어 한 목록이 두 규칙으로 그려졌다.
+    //   0 은 들어가 보면 아는 정보라 줄마다 적을 값이 아니다. 조회 실패(null)도 그대로 안 그린다.
     { Icon: TicketStubIcon, label: t('shopping.voucher', { defaultValue: '내 이용권' }), path: '/my-vouchers' },
-    { Icon: GiftBoxIcon, label: t('shopping.gifticon', { defaultValue: '내 교환권' }), count: counts.gifticon, path: '/my-gifticons' },
+    { Icon: GiftBoxIcon, label: t('shopping.gifticon', { defaultValue: '내 교환권' }), count: counts.gifticon || undefined, path: '/my-gifticons' },
     { Icon: CouponIcon, label: t('shopping.coupons', { defaultValue: '쿠폰함' }), path: '/my-coupons' },
     { Icon: StayLineIcon, label: t('shopping.myStays', { defaultValue: '내 숙소 예약' }), path: '/my-stays' },
     // 🧹 2026-09-02 (대표 "디지털 보관함도 필요없고"): 전자책·강의는 지금 파는 물건이 아니다.
     //   라우트(/my/digital)와 페이지는 남긴다 — 되살릴 때 이 줄만 되돌리면 된다.
-    { Icon: HeartIcon, label: t('shopping.wishlist', { defaultValue: '찜한 상품' }), count: counts.wish, path: '/wishlist' },
+    { Icon: HeartIcon, label: t('shopping.wishlist', { defaultValue: '찜한 상품' }), count: counts.wish || undefined, path: '/wishlist' },
     { Icon: StarIcon, label: t('shopping.myFollows', { defaultValue: '내 단골 가게' }), path: '/my/follows' },
     /* 🛍️ 2026-10-18 — '관심 맛집'·'배송지 관리' 는 **쇼핑 탭이 숨겨진 동안** 감춘다.
        관심 등록 버튼은 쇼핑 목록(`/browse`)에만 남아 있고(가게·이용권 화면엔 없다 — 라이브 누적 1건),
@@ -71,6 +76,7 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
        여기에 px-4 를 또 주면 글자가 32px 들어가 구역 제목과 왼쪽 끝이 어긋난다. */
     <div className="ur-content-medium lg:px-4 ur-pc-card">
       <SectionTitle>{t('shopping.sectionTitle', { defaultValue: '내가 산 것' })}</SectionTitle>
+      {statusBar && <div className="pb-2"><OrderStatusBar /></div>}
       <div>
         {items.map((item) => (
           <ListRow

@@ -181,11 +181,12 @@ describe('⑦ 매장 계산대는 셀러 계정이면 위에', () => {
   /** 손님 앞에서 QR 을 찍는, 하루에 가장 많이 누르는 버튼인데 로그아웃·탈퇴 바로 위에 있었다. */
   it('이용권 현황·쇼핑 그룹보다 위에 있다', () => {
     const scan = SRC.indexOf("navigate('/store/scan')")
-    const statusBar = SRC.indexOf('<OrderStatusBar />')
+    // 🔁 2026-10-18 재조준: 폰의 현황 바가 '내가 산 것'(`ShoppingGroup`) **안**으로 들어갔다 — 그 구역보다
+    //   위면 현황 바보다도 위다. 불변식(계산대가 손님 블록보다 위)은 그대로다.
     const shopping = SRC.indexOf('<ShoppingGroup')
     expect(scan).toBeGreaterThan(-1)
-    expect(scan, '현황 바보다 아래면 여전히 스크롤해야 한다').toBeLessThan(statusBar)
-    expect(scan).toBeLessThan(shopping)
+    expect(SRC, '현황 바가 페이지에 따로 서면 두 번 그려진다(ShoppingGroup 안에 있다)').not.toContain('<OrderStatusBar />')
+    expect(scan, '현황 바·쇼핑 그룹보다 아래면 여전히 스크롤해야 한다').toBeLessThan(shopping)
   })
 
   /**

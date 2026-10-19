@@ -63,7 +63,13 @@ describe('마이페이지 앱 정보 — 줄글 (안 2)', () => {
     //   사라졌다(스케일 바닥은 12). 지키려던 것은 *잔글씨 한 줄*이지 `11` 이라는 숫자가 아니다 —
     //   앵커만 스케일 바닥으로 옮긴다. 가드: `my-type-scale-2026-09-28`.
     expect(tag, '버전 줄이 스케일 바닥(12px) 잔글씨가 아니다').toContain('text-[12px]')
-    expect(tag, '버전 줄이 가운데 정렬이 아니다 — 위의 링크 줄과 어긋난다').toContain('text-center')
+    // 🔁 2026-10-18 재조준: 지키려던 것은 *위의 링크 줄과 같은 정렬* 이다. 그 링크 줄이 2026-09-30 에 왼쪽
+    //   정렬(가운뎃점 제거)로 바뀌면서 이 단언이 오히려 **두 정렬이 섞인 상태**를 고정하고 있었다(실측:
+    //   링크 왼쪽 ↔ 버전·탈퇴 가운데). 이제 둘 다 왼쪽이고, 링크 줄 쪽도 함께 대조한다.
+    expect(tag, '버전 줄만 가운데 정렬이다 — 위의 링크 줄(왼쪽)과 어긋난다').not.toContain('text-center')
+    const page = readFileSync('src/pages/UserProfilePage.tsx', 'utf-8')
+    const linkRow = page.slice(page.indexOf("userProfile.kakaoConsult'") - 400, page.indexOf("userProfile.kakaoConsult'"))
+    expect(linkRow, '링크 줄이 가운데로 바뀌었다면 버전 줄도 같이 옮길 것').not.toContain('justify-center')
   })
 
   it('④ 업데이트 버튼은 새 버전이 있을 때만 선다', () => {

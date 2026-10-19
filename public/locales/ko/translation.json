@@ -6928,7 +6928,7 @@
   },
   "voucherStatus": {
     "sectionTitle": "이용권 현황",
-    "bought": "구매완료",
+    "bought": "전체 구매",
     "usable": "사용가능",
     "used": "사용완료",
     "gone": "만료·환불",

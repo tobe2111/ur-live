@@ -18,7 +18,6 @@ import MyStats from './user-profile/MyStats'
 import AccountPcBand from './user-profile/AccountPcBand'
 import RoleCtaGrid from './user-profile/RoleCtaGrid'
 import ShoppingGroup from './user-profile/ShoppingGroup'
-import OrderStatusBar from './user-profile/OrderStatusBar'
 import SellerSwitchInline from './user-profile/SellerSwitchInline'
 import SellerSection from './user-profile/SellerSectionLazy'
 import { useToolDeepLinkFallback } from './user-profile/seller-section/useToolDeepLink'
@@ -379,8 +378,6 @@ export default function UserProfilePage() {
         )}
       </div>
 
-      <OrderStatusBar />
-
       {/* 🗑️ 2026-09-30 — **동네 리뷰어 레벨 카드를 마이에서 뺐다** (대표 *"동네 리뷰어 lv.1 이건
           지금 없어도 되지 않나? 마이에서?"* → *"동네 리뷰어 lv.1 은 빼줘"*).
           ⚠️ **기능을 지운 게 아니다** — 후기 미션의 진짜 문은 `/my-vouchers` 의 *사용한* 이용권에
@@ -399,7 +396,11 @@ export default function UserProfilePage() {
           ② 셋뿐이라 **쿠폰함·주문 내역·배송지·내 리뷰는 PC 에서 갈 길이 아예 없었다**
              (상단 숫자 줄이 쿠폰을 들고 있을 뿐 나머지 셋은 고아였다).
           같은 부품을 쓰면 그 둘이 **구조적으로** 사라진다 — 목록이 하나니까 갈릴 수가 없다. */}
-      <ShoppingGroup counts={counts} />
+      {/* 📍 2026-10-18 (대표 *"다 해줘"*): 폰의 '이용권 현황' 바는 이 구역 **안**(제목 아래)으로 옮겼다 —
+          종전엔 어느 구역에도 속하지 않은 채 떠 있었고, 사장님 화면에선 '내 가게' 판과 '내가 산 것' 제목
+          사이에 끼어 있었다. 산 이용권의 기록이니 '내가 산 것' 이 그 집이다.
+          PC 는 `AccountPcPane` 의 '곧 쓸 이용권' 카드 안에 이미 있어 여기서 또 그리지 않는다(두 번 서면 안 된다). */}
+      <ShoppingGroup counts={counts} statusBar={!isPc} />
 
       {/* 🗑️ 2026-09-30 — **수익 · 추천 구역을 마이에서 뺐다** (대표 *"수익 추천은 지금은 아예
           마이에서 안보여도 될 것 같아"*).
@@ -475,7 +476,8 @@ export default function UserProfilePage() {
             ⇒ 조용한 텍스트 링크로 격하. 라우트·경고 화면(/account/delete-warning)은 그대로다.
             🧹 2026-09-30: 로그아웃이 설정 구역으로 올라가면서, 탈퇴는 **페이지의 마지막 줄**이 됐다.
                찾을 수 있는 자리이면서 어떤 동선에도 안 걸린다. */}
-        <div className="mt-6">
+        {/* 📐 2026-10-18: 링크·버전과 같은 왼쪽 선. 종전엔 이것과 버전만 가운데라 맨 아래가 두 정렬로 갈렸다. */}
+        <div className="mt-4">
           <DeleteAccountLink />
         </div>
       </div>

@@ -54,3 +54,17 @@ critical-chunks 14 불변 · chunk-cycles 0 · exec-cost 10화면 예산 안(전
 - 반대 방향(기능 유지): `app-components`(옵션 모달)·`lz-gbDetail`(결제 유틸)·`tosspayments` 는 **동적 import 로 남아 있다** — 쓰는 순간 받는다.
 - `/cart`·`/user/profile`·`/` 200. 헤드리스 렌더에서 장바구니가 받은 JS 17개 중 위 봉투 0개.
 - ⚠️ 못 잰 것: 이 컨테이너 브라우저는 라이브 자산을 간헐로 못 받아 청크 자가복구로 튄다(`/user/profile` 이 그랬다) — 화면 렌더 판정은 PR CI 의 render-smoke 에 기댄다. 옵션 변경·결제 버튼을 실제로 눌러 보는 것은 로그인·장바구니가 필요해 못 했다.
+
+---
+
+## 3차 (같은 날) — 숙소 상세 230.2 → 205.8KB (−24.4)
+**원인**: `stay-detail/amenity-meta.tsx` 가 편의시설 아이콘 열한 개(lucide)를 정적으로 불렀고, 그 아이콘 파일들이
+교환권(`lz-vouchers` 6.0)·홈(`lz-home-homePc-vouchers` 5.8)·공용 `lucide`(10.4) 봉투에 흩어져 있어서 **셋을 통째로** 받았다.
+본문의 `Hotel`(사진 대체)·`TicketPercent`(추천 할인)도 공용 lucide 를 끌었다.
+- 판정(키워드 → 종류)은 `amenityKind()` 로 그대로 두고(순서 불변), 그림만 `AmenityIcon` lazy + 같은 크기 fallback
+- `Hotel` → `StayLineIcon`, `TicketPercent` → `CouponIcon`(유어딜 세트 — 디자인 규칙과도 맞다)
+- 렌더 확인(하네스 + 라이브 응답 스텁): 시설 아이콘 6종 정상, 사진 없을 때 침대 아이콘.
+- critical-chunks 14 불변 · 청크 순환 0 · 다른 화면 ±0.4 이하 감소. 가드 `stay-detail-first-screen-2026-10-18.test.ts` 19건 + 주입 4건(4/4 빨간불).
+
+**다음 후보**: `search` 223.6 (지도 봉투 `lz-map`·`app-kakao-sdk`·`lucide` 를 정적으로 받는다 — 검색 결과 지도 보기 때문인지 같은 방법으로).
+- 🩸 **이번에 틀린 것**: 첫 판에서 편의시설 아이콘을 객체 지도로 모았더니 `consumer-icon-system` 래칫이 154 → 141 로 "줄었다" — 래칫이 `<Icon` JSX 만 세서 **못 보게 된** 것이었다. 기준도 안 내려 CI 주입이 빨간불(여덟 번째). JSX `switch` 로 되돌려 정직한 값 152 로 잠갔다.

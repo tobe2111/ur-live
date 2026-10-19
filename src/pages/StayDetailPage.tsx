@@ -7,12 +7,12 @@
  */
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { stayDetailTitle } from '@/shared/seo/detail-title'
-import { PinIcon, PeopleIcon, StarIcon } from '@/components/icons/urdeal-icons'
+import { PinIcon, PeopleIcon, StarIcon, StayLineIcon, CouponIcon } from '@/components/icons/urdeal-icons'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
-import { Calendar, Sparkles, Hotel, TicketPercent } from 'lucide-react'
+import { Calendar, Sparkles } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import StayStickyBar from './stay-detail/StayStickyBar'
 import GuestIdentityFields, { type GuestIdentity } from './stay-detail/GuestIdentityFields'
@@ -373,7 +373,7 @@ export default function StayDetailPage() {
           <DetailGallery
             images={galleryImages}
             alt={stay.restaurant_name || stay.name}
-            fallback={<Hotel className="w-14 h-14 text-gray-300 dark:text-gray-600" strokeWidth={1.4} aria-hidden />}
+            fallback={<StayLineIcon className="w-14 h-14 text-gray-300 dark:text-gray-600" aria-hidden />}
           />
         </div>
 
@@ -407,7 +407,7 @@ export default function StayDetailPage() {
         {/* 🛡️ 2026-05-18: 인플 referral 배너 — ref 진입 시 표시. */}
         {referrerId && stay.referral_enabled === 1 && (stay.influencer_discount_pct || 0) > 0 && (
           <div className="bg-brand-tint dark:bg-gray-800/[0.15] border border-rule rounded-xl p-3 mb-3 flex items-center gap-2">
-            <TicketPercent className="w-5 h-5 shrink-0 text-brand-text " strokeWidth={1.8} aria-hidden />
+            <CouponIcon className="w-5 h-5 shrink-0 text-brand-text" aria-hidden />
             <div className="flex-1 min-w-0">
               <p className="text-[12px] font-bold text-brand-text ">추천 할인 {stay.influencer_discount_pct}% 적용</p>
               <p className="text-[12px] text-brand-text opacity-80 mt-1">결제 시 자동 적용됩니다</p>

@@ -6932,7 +6932,7 @@
   },
   "voucherStatus": {
     "sectionTitle": "使用券状态",
-    "bought": "已购买",
+    "bought": "累计购买",
     "usable": "可使用",
     "used": "已使用",
     "gone": "过期/退款",

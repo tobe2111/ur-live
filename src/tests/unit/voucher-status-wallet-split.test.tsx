@@ -54,7 +54,7 @@ describe('① 교환권은 이용권으로 세지 않는다 (대표 신고의 �
     vouchers.mockReturnValue([CEO_FAILED_GIFTICON])
     const { container } = render(<OrderStatusBar />)
     expect(screen.getByText('아직 산 이용권이 없어요')).toBeTruthy()
-    const row = screen.getByText('구매완료').closest('div.flex') as HTMLElement
+    const row = screen.getByText('전체 구매').closest('div.flex') as HTMLElement
     expect(row.className, '숫자 줄은 높이만 잡고 안 보여야 한다 — "내 이용권 0" 과 같은 답').toContain('invisible')
     expect(container.firstChild).not.toBeNull()
   })
@@ -68,7 +68,7 @@ describe('① 교환권은 이용권으로 세지 않는다 (대표 신고의 �
   it('교환권과 이용권이 섞여 오면 이용권만 센다', () => {
     vouchers.mockReturnValue([CEO_FAILED_GIFTICON, STORE_UNUSED])
     render(<OrderStatusBar />)
-    expect(countOf('구매완료')).toBe(1)
+    expect(countOf('전체 구매')).toBe(1)
   })
 })
 
@@ -79,7 +79,7 @@ describe('② 모르는 상태를 아무 칸에나 넣지 않는다', () => {
   it("낯선 상태는 총계에만 남고 '사용완료'·'만료·환불' 어느 칸에도 안 들어간다", () => {
     vouchers.mockReturnValue([{ source: 'internal', id: 11, status: 'processing', deal_only: 0 }])
     render(<OrderStatusBar />)
-    expect(countOf('구매완료')).toBe(1)   // 산 것은 맞으니 총계에는 남는다
+    expect(countOf('전체 구매')).toBe(1)   // 산 것은 맞으니 총계에는 남는다
     expect(countOf('사용완료')).toBe(0)
     expect(countOf('만료·환불')).toBe(0)   // 🔑 else 폴백이면 1 이 된다
   })
@@ -100,7 +100,7 @@ describe('③ 기존 분류는 그대로다 (회귀 방지)', () => {
       STORE_UNUSED,
     ])
     render(<OrderStatusBar />)
-    expect(countOf('구매완료')).toBe(4)
+    expect(countOf('전체 구매')).toBe(4)
     expect(countOf('사용완료')).toBe(1)
     expect(countOf('만료·환불')).toBe(2)
   })

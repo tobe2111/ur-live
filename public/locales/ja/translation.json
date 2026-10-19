@@ -6932,7 +6932,7 @@
   },
   "voucherStatus": {
     "sectionTitle": "利用券の状況",
-    "bought": "購入済み",
+    "bought": "購入合計",
     "usable": "利用可能",
     "used": "利用済み",
     "gone": "期限切れ・返金",

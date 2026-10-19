@@ -82,7 +82,7 @@ const { default: OrderStatusBar } = await import('@/pages/user-profile/OrderStat
 
 /** 숫자 줄 — 세 상태가 같은 줄로 높이를 잡는다. */
 function numberRow(): HTMLElement {
-  return screen.getByText('구매완료').closest('div.flex') as HTMLElement
+  return screen.getByText('전체 구매').closest('div.flex') as HTMLElement
 }
 
 describe('② 이용권 현황은 늘 같은 높이로 선다', () => {
