@@ -279,6 +279,10 @@ export default defineConfig({
           if (id.includes('recharts') || id.includes('d3-') || id.includes('/src/components/charts/')) return 'charts'
           // 🔀 2026-10-18 화면 밖 공용 유틸 — 근거는 위 CROSS_MODULES 주석
           if (CROSS_MODULES.some((p) => id.includes(p))) return 'app-cross'
+          // ← 2026-10-19 하위 화면 머리줄 한 벌(마이 하위 화면 + FAQ). catch-all(app-components)로 떨어지면 FAQ 첫 화면이
+          //   그 묶음 + embla·lucide 를 끌고 와 171 → 230KB 가 됐다(surface-budgets). app-cross 에 넣으면 몰·딜카드까지 +1.8KB.
+          //   의존이 react-router·화살표 하나뿐인 부품이라 자기 봉투를 준다(묶음기 고정 목록 LIBRARY_ENVELOPES 에도 등록).
+          if (id.includes('/src/components/ui/sub-page-header')) return 'app-subpage'
           // 🔎 2026-10-19 지도 목록 한 줄 — 근거는 위 MAP_ROW_MODULES 주석
           if (MAP_ROW_MODULES.some((p) => id.includes(p))) return 'app-map-row'
           // Icons
