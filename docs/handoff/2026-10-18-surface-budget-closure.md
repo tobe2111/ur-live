@@ -82,3 +82,14 @@ critical-chunks 14 불변 · chunk-cycles 0 · exec-cost 10화면 예산 안(전
 - 처방: `stay-detail/AmenityIcon.tsx` 가 열두 그림을 **파일 안에서** 그린다(외부 import 0, 획 1.6). lazy 청크 gzip **1.0KB**,
   의존은 이미 받은 `react-core` 하나. 아이콘 래칫 152 → **141**(실제로 걷은 11건). 가드: 같은 시험 +1 · 주입 +1(5건 빨간불 확인).
 - E4(다음): 배포 후 `StayDetailPage-*.js` 의 `import("./AmenityIcon-…")` mapDeps 가 `react-core` 하나인지.
+
+## 5차 — 검색 216.9 → 172.6 (2026-10-19)
+
+- 원인(모듈 그래프 덤프 `edges4.tsv`): 검색은 지도의 결과 한 줄(`RestaurantRow`)·`prefetch-detail`·`utils`·`CatIcon`(5.2KB)만 쓰는데
+  그 넷이 `lz-map`(br 18.9)에 있어 지도 봉투 → `lz-home-homePc-map`·`app-ui-utils`·`app-kakao-sdk`·`lz-boot-gbDetailL-map-productL` 까지 받았다.
+  인기 검색어 머리 `TrendingUp`(0.4KB) 하나가 `lucide` 봉투(10.2)를 끌었다.
+- 처방: 넷을 고정 묶음 `app-map-row`(LIBRARY_ENVELOPES) — 넷의 의존이 전부 첫 화면에 이미 있는 청크라 남을 안 끈다(옮기기 전에 확인).
+  `TrendingUp` → `ChartIcon`. 아이콘 래칫 141 → 139. 지도 +0.8(요청 1개, 래칫 안).
+- 가드 `search-first-screen-2026-10-19.test.ts` 5건 + 주입 4건 빨간불 확인. `cross-envelope` 주입 앵커 재조준(보호 목록 문자열이 바뀜).
+- 남은 후보(정적 폐쇄 brotli): 지역 198.4(홈 봉투 넷 ~26KB — 홈 피드 재사용이라 정당성 먼저 볼 것) · 장바구니 187.6 · 숙소 목록 181.1 ·
+  로그아웃 마이 189.4 · 마이 216.0 의 `lucide` 10.2(아이콘 1~2개가 끄는지 같은 방법으로) · 대시보드 둘(293·295).
