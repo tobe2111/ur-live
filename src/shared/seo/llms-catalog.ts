@@ -28,6 +28,10 @@ import { priceDisplay } from '../price-display'
 import { canonicalDetailPath, detailHref } from '../product-flow'
 import { REGION_DIGEST_PER_BUCKET, type DigestRow } from './region-digest'
 
+/** 목록 주소와 `llms.txt` 가 그 목록을 가리키는 문구 — 문구 SSOT(`llms-txt.ts` 는 한글 문장을 직접 적지 않는다). */
+export const LLMS_CATALOG_PATH = '/llms-full.txt'
+export const LLMS_CATALOG_LINK_LABEL = '지금 살 수 있는 할인 이용권 전체 목록(지역·가게·가격·주소)'
+
 /** 한 줄 안에서 마크다운 링크를 깨뜨리는 글자를 걷는다. */
 function clean(v: unknown): string {
   return String(v ?? '').replace(/[\r\n\t]+/g, ' ').replace(/[[\]()]/g, ' ').replace(/\s+/g, ' ').trim()

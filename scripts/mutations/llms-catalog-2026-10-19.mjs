@@ -36,7 +36,7 @@ export default [
   {
     name: '[llms-catalog] llms.txt 가 목록을 안 가리킨다',
     file: 'src/shared/seo/llms-txt.ts',
-    find: "    `- 지금 살 수 있는 할인 이용권 전체 목록(지역·가게·가격·주소): ${base}/llms-full.txt`,\n",
+    find: "    `- ${LLMS_CATALOG_LINK_LABEL}: ${base}${LLMS_CATALOG_PATH}`,\n",
     replace: '',
     test: T,
     why: 'AI 가 처음 찾는 입구에서 목록으로 가는 길이 끊긴다.',
