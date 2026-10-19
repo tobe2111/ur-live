@@ -3328,6 +3328,20 @@
       "lastUsed": "Last used",
       "revoke": "Disconnect",
       "utterance": "연결 {{code}}"
+    },
+    "idleHours": {
+      "title": "Quiet hours",
+      "quietHeadline": "{{block}} is your quietest time",
+      "quietDetail": "{{n}} uses per day on average · busiest {{busy}}: {{m}}",
+      "suggest": "A pass valid only in this window can fill empty seats.",
+      "cta": "Create a time-limited pass",
+      "notEnough": "Once {{min}} passes have been used we'll show your quietest time. (Now {{n}})",
+      "basis": "Based on pass redemptions in the last 90 days",
+      "weekday": "Weekdays",
+      "weekend": "Weekends",
+      "am": "AM",
+      "pm": "PM",
+      "hour": "{{n}}"
     }
   },
   "admin": {

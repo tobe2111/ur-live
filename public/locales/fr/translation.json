@@ -2647,6 +2647,20 @@
       "lastUsed": "Dernière utilisation",
       "revoke": "Déconnecter",
       "utterance": "연결 {{code}}"
+    },
+    "idleHours": {
+      "title": "Heures creuses",
+      "quietHeadline": "{{block}} est votre créneau le plus calme",
+      "quietDetail": "{{n}} utilisations par jour en moyenne · le plus chargé {{busy}} : {{m}}",
+      "suggest": "Un bon valable uniquement sur ce créneau peut remplir les places vides.",
+      "cta": "Créer un bon à horaire limité",
+      "notEnough": "Après {{min}} utilisations, nous afficherons votre créneau le plus calme. (Actuellement {{n}})",
+      "basis": "Basé sur les utilisations des 90 derniers jours",
+      "weekday": "En semaine",
+      "weekend": "Week-end",
+      "am": "matin",
+      "pm": "après-midi",
+      "hour": "{{n}}h"
     }
   },
   "admin": {

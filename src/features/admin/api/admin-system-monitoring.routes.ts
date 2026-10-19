@@ -429,6 +429,7 @@ const OPS_GATES: OpsGate[] = [
   { key: 'seller_daily_report_enabled', kind: 'setting', label: '사장님 일일 리포트 메일(승인 매장 전원)', default_value: 'false', staging_ref: 'S-NUDGES', turn_on_when: '테스트 매장 1곳 메일로 어제 숫자(판매·사용·후기)가 실제 기록과 같은지 확인한 뒤' },
   { key: 'review_request_enabled', kind: 'setting', label: '이용권 사용 다음 날 후기 요청(앱 알림)', default_value: 'false', staging_ref: 'S-NUDGES', turn_on_when: '테스트 계정으로 이용권을 사용 처리하고 다음 날 알림이 1건만 오는지 확인한 뒤' },
   { key: 'seller_docs_nudge_enabled', kind: 'setting', label: '서류 빠진 사장님 보완 안내', default_value: 'false', staging_ref: 'S-NUDGES', turn_on_when: '심사 대기 매장의 빠진 항목 목록을 어드민에서 확인하고 안내 문구가 맞는지 본 뒤' },
+  { key: 'agent_search_enabled', kind: 'setting', label: 'AI 비서 검색 창구(찾기 전용)', default_value: 'false', staging_ref: 'S-AGENT', turn_on_when: '결재 2026-10-19-ai-agent-channel 승인 뒤, /api/agent/search 응답에 데모가 없고 주소가 우리 상세인지 확인한 다음' },
   // 💸 2026-08-25 (누락 발견): **플랫폼 take 율 자체를 정하는 게이트인데 이 명부에 없었다.**
   //   `channelPlatformRate` 가 이 값으로 직판 10% / 중개 5% 를 가른다(OFF 면 종전 `commission_rate`).
   //   CLAUDE.md 는 게이트 플래그를 여기 등록하라고 규정하는데 이것만 빠져 있어, 운영 화면에서

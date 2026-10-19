@@ -13,8 +13,12 @@
 import { Hono } from 'hono'
 import { publicCache } from '../middleware/edge-cache'
 import type { Env } from '../types/env'
+import { agentSearchRoutes } from './agent-search.routes'
 
 export const publicUtilityRoutes = new Hono<{ Bindings: Env }>()
+
+// 🤖 2026-10-19 AI 비서 검색 창구(찾기 전용 · 게이트 기본 OFF) — `agent-search.routes.ts`.
+publicUtilityRoutes.route('/api/agent', agentSearchRoutes)
 
 // 모듈 스코프 캐시 (60초)
 let _cachedBuildVersion: { version: string; fetchedAt: number } | null = null

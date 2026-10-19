@@ -22,6 +22,7 @@ import { ChevronLeft } from 'lucide-react'
 import { formatNumber, formatWon } from '@/utils/format'
 import AnalyticsOverview, { type RevenuePoint, type SubView } from './seller-analytics/AnalyticsOverview'
 import { NoSalesEver } from './seller-analytics/NoSalesYet'
+import IdleHoursCard from './seller-analytics/IdleHoursCard'
 
 export default function SellerAnalyticsPage() {
   const { t } = useTranslation()
@@ -84,6 +85,7 @@ export default function SellerAnalyticsPage() {
                 />
               )
             )}
+            {tab === 'revenue' && everSold && <IdleHoursCard />}
 
             {tab === 'customers' && data && (
               <div className="space-y-4">

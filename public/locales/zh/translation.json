@@ -3328,6 +3328,20 @@
       "lastUsed": "最近使用",
       "revoke": "解除绑定",
       "utterance": "연결 {{code}}"
+    },
+    "idleHours": {
+      "title": "空闲时段",
+      "quietHeadline": "{{block}}最空闲",
+      "quietDetail": "日均使用{{n}}次 · 最忙的{{busy}}为{{m}}次",
+      "suggest": "推出仅限该时段使用的券，可以填补空位。",
+      "cta": "创建限时使用券",
+      "notEnough": "使用满{{min}}次后将告诉您最空闲的时段。（目前{{n}}次）",
+      "basis": "基于最近90天的使用券核销时间",
+      "weekday": "工作日",
+      "weekend": "周末",
+      "am": "上午",
+      "pm": "下午",
+      "hour": "{{n}}点"
     }
   },
   "admin": {

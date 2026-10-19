@@ -3328,6 +3328,20 @@
       "lastUsed": "最終利用",
       "revoke": "連携解除",
       "utterance": "연결 {{code}}"
+    },
+    "idleHours": {
+      "title": "空き時間帯",
+      "quietHeadline": "{{block}}が最も空いています",
+      "quietDetail": "1日平均{{n}}件利用 · 最も混む{{busy}}は{{m}}件",
+      "suggest": "この時間だけ使える利用券を出すと空席を埋められます。",
+      "cta": "時間限定の利用券を作る",
+      "notEnough": "利用が{{min}}件たまると最も空いている時間をお知らせします。（現在{{n}}件）",
+      "basis": "直近90日間の利用券使用時刻に基づく",
+      "weekday": "平日",
+      "weekend": "週末",
+      "am": "午前",
+      "pm": "午後",
+      "hour": "{{n}}時"
     }
   },
   "admin": {

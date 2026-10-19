@@ -2647,6 +2647,20 @@
       "lastUsed": "Último uso",
       "revoke": "Desconectar",
       "utterance": "연결 {{code}}"
+    },
+    "idleHours": {
+      "title": "Horas tranquilas",
+      "quietHeadline": "{{block}} es tu horario más tranquilo",
+      "quietDetail": "{{n}} usos al día de media · el más concurrido {{busy}}: {{m}}",
+      "suggest": "Un pase válido solo en esta franja puede llenar mesas vacías.",
+      "cta": "Crear un pase por horario",
+      "notEnough": "Cuando se usen {{min}} pases te mostraremos tu horario más tranquilo. (Ahora {{n}})",
+      "basis": "Según los canjes de los últimos 90 días",
+      "weekday": "Entre semana",
+      "weekend": "Fin de semana",
+      "am": "a. m.",
+      "pm": "p. m.",
+      "hour": "{{n}}h"
     }
   },
   "admin": {
