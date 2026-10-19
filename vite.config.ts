@@ -167,6 +167,16 @@ export const MAP_ROW_MODULES = [
   '/src/pages/restaurant-map/utils.ts', '/src/pages/restaurant-map/CatIcon',
 ]
 
+/**
+ * 🗺️ 2026-10-19 [LOADING_ADDITIVE] 지역 링크 표 — `app-region-grid`.
+ *   지역 페이지(`/region/*`, 색인 44개)는 `RegionLinkGrid` 하나를 PC 홈과 같이 쓴다. 그 부품이 PC 홈 전용 봉투
+ *   (`lz-homePc` — 히어로 배너·앱 띠·지역 타일·사이드바, br 5.6KB)에 들어 있어서 지역 첫 화면이 그 봉투를 통째로 받았다.
+ *   지역은 묶음용 ROUTES 밖(PRELOAD_ONLY — 순환 때문)이라 묶음기가 '사용자'로 세지 못한다. ⇒ 그 부품만 작은 고정 묶음으로.
+ *   의존(react·react-router·useApiQuery·region-slugs)은 둘 다 이미 받는다 — 이 묶음이 남의 봉투를 끌고 오지 않는다.
+ *   가드: `region-first-screen-2026-10-19.test.ts` + `check-surface-budgets`(region 무게 래칫).
+ */
+export const REGION_GRID_MODULES = ['/src/components/region/RegionLinkGrid']
+
 // 🧩 2026-10-13 [LOADING_ADDITIVE] 손님 페이지 lazy 코드를 쓰는 페이지끼리 묶는다 — 근거·실측·규칙은 scripts/surface-chunks.mjs.
 const gateLazy = createSurfaceChunker({
   routes: SURFACE_ROUTES,
@@ -285,6 +295,8 @@ export default defineConfig({
           if (id.includes('/src/components/ui/sub-page-header')) return 'app-subpage'
           // 🔎 2026-10-19 지도 목록 한 줄 — 근거는 위 MAP_ROW_MODULES 주석
           if (MAP_ROW_MODULES.some((p) => id.includes(p))) return 'app-map-row'
+          // 🗺️ 2026-10-19 지역 링크 표 — 근거는 위 REGION_GRID_MODULES 주석
+          if (REGION_GRID_MODULES.some((p) => id.includes(p))) return 'app-region-grid'
           // Icons
           // 🩺 2026-09-16 [UNLOCK_LOADING] 아이콘 다이어트 — 셀이 쓰는 42개만 첫 화면으로.
           //   실측(번들러 모듈→청크 그래프): 트리쉐이킹은 멀정하다(1,534개 중 260개만 남는다).
