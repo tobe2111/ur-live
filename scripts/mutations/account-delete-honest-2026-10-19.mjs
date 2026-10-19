@@ -31,19 +31,13 @@ export default [
   {
     name: '탈퇴정직 — 잔액을 받기 전에 탈퇴 버튼이 열린다',
     file: 'src/pages/AccountDeleteWarningPage.tsx',
-    find: 'const canProceed = agreed && !dealChecking && confirmText',
-    replace: 'const canProceed = agreed && confirmText',
+    find: 'const canProceed = agreed && !dealChecking && blockersClear',
+    replace: 'const canProceed = agreed && blockersClear',
     test: T,
     why: '캐시 seed(0)로 "소멸될 딜이 없어요" 를 보인 채 탈퇴하면 딜 보유자가 모르고 딜을 잃는다.',
   },
-  {
-    name: '탈퇴정직 — 안 쓴 이용권을 지갑과 다른 기준으로 센다(다 쓴 것까지)',
-    file: 'src/pages/AccountDeleteWarningPage.tsx',
-    find: 'isUsableWalletItem(v) && isStoreVoucher(v)',
-    replace: 'isStoreVoucher(v)',
-    test: T,
-    why: '마이·지갑과 다른 장수를 말하면 에러가 아니라 거짓말이다(2026-10-07 지갑 사고).',
-  },
+  // ↪ '안 쓴 이용권을 지갑과 다른 기준으로 센다' 는 2026-10-19 결재 뒤 서버 SQL 로 옮겨갔다 —
+  //   `account-delete-blockers-2026-10-19.mjs` 의 '쓴 이용권까지 센다' 가 같은 불변식을 실제 SQLite 로 지킨다.
   {
     name: '탈퇴정직 — 복원 문구가 다시 쿠폰·딜이 살아난다고 한다',
     file: 'public/locales/ko/translation.json',

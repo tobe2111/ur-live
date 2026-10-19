@@ -1,6 +1,6 @@
 # 회원 탈퇴 때 남은 딜·안 쓴 이용권·가게를 어떻게 처리할까?
 
-상태: open
+상태: approved
 등급: C
 역할: planning
 올린 날: 2026-10-19
@@ -38,7 +38,12 @@
 안 2 는 서버 preflight 한 함수 + 화면 버튼 조건이라, 그 검사를 지우면 지금 동작으로 돌아간다.
 
 ## 결정 (대표가 한 말 그대로)
+> 권장안대로 해줘
 
+→ 안 2 (2026-10-19). 돈·가게가 남아 있으면 탈퇴를 막는다 — 안 쓴 매장 이용권 · 환급 가능한 충전 딜 · 처리 중인 딜 환급 · 주인인 가게.
+무상 딜은 고지 후 소멸, 쿠폰·찜·단골 즉시 삭제, 복원 범위는 지금대로.
 
 ## 반영 커밋
+- 브랜치 `claude/influencer-proposal-03yqmh` — `src/worker/utils/account-delete-blockers.ts` · `DELETE /api/account/delete` 409 preflight · `GET /api/account/delete-blockers` · `src/pages/account-delete/DeleteBlockers.tsx` (가드 `account-delete-blockers-2026-10-19.test.ts` + 주입 9건)
+- ⚠️ 남은 확인: 만료 자동환불 cron 이 딜 결제분을 탈퇴 계정 잔액으로 넣는지 — 이번 차단으로 안 쓴 이용권을 가진 채 탈퇴하는 길은 닫혔지만, 탈퇴 **뒤** 만료되는 경우는 이제 생기지 않는다(안 쓴 이용권이 있으면 탈퇴 불가).
 

@@ -35,3 +35,27 @@
 
 ## 남은 결정
 - 결재 `2026-10-19-account-deletion-assets.md`(딜·이용권·가게 처리) — 대표.
+
+---
+
+## 2차 — 대표 결재 "권장안대로 해줘" 반영 (탈퇴 차단, 안 2)
+
+**한 것**
+- 서버 판정 SSOT `src/worker/utils/account-delete-blockers.ts` — 안 쓴 매장 이용권(지갑 '사용 가능'과 같은 집합 · user_id 이중키) ·
+  환급 가능한 충전 딜(`getDealRefundState` = 환급 화면과 같은 숫자) · 처리 중인 딜 환급 · 주인인 운영 중 가게(linked_user_id ∪ 주인 좌석, 정지·반려 제외).
+  **못 세면 막는다**(fail-closed).
+- `DELETE /api/account/delete` — 탈퇴 실행 전에 같은 함수로 409(`DELETE_BLOCKED`) / 503(`BLOCKERS_UNKNOWN`). 오류 응답의 `detail`(서버 원문) 제거 → `safeError`.
+- `GET /api/account/delete-blockers` — 화면용. 화면은 서버의 `can_delete` 로만 버튼을 연다(이용권을 따로 세지 않는다).
+- 화면: 맨 위 '먼저 정리해 주세요' (`src/pages/account-delete/DeleteBlockers.tsx`) — 내 이용권 · 환급 시트(같은 화면에서 `RefundSheet`) · 가게 관리(`sellerEntryPath('/seller/stores')` → 가게 탈퇴).
+  '바로 사라져요' 의 딜은 이제 **환급되지 않는 딜**(남은 딜 − 환급 가능액)만 말한다. 6개 언어.
+- 가드 `account-delete-blockers-2026-10-19.test.ts`(실제 SQLite 16건) + 주입 9건 전부 빨간불 확인. 옛 주입 2건 재조준(하나는 서버 SQL 로 이관).
+
+**이번에 틀렸던 판단**
+- 주입 '딜을 못 읽어도 연다' 첫 판은 `if (!deal.ok)` 줄을 지우는 것이었는데, 그러면 `deal.state` 접근이 던져 catch 가 **똑같이 막는다** — 결함이 아니었다.
+  진짜 fail-open(ok:true + 0) 을 심도록 바꿨다. ⇒ 주입은 "그 줄이 없으면" 이 아니라 "**반대로 동작하면**" 을 심어야 한다.
+- 배선 단언 `isAccountDeleteBlocked(...)[\s\S]*409` 는 `if (false && …)` 로 중성화해도 통과했다 — 조건문 모양까지 앵커.
+
+**다음 세션 첫 액션**
+- 배포 후 E4: 테스트 계정(안 쓴 이용권 보유)으로 `/account/delete-warning` → '먼저 정리해 주세요' 에 장수가 뜨고 탈퇴 버튼이 잠기는지,
+  `curl -X DELETE /api/account/delete` 가 409 인지(로그인 세션 필요 — 대표 계정으로는 하지 말 것: 실제 탈퇴 위험).
+- 남은 결정 없음. 만료 환불 cron 의 탈퇴 계정 처리는 이번 차단으로 경로가 닫혔다(안 쓴 이용권이 있으면 탈퇴 불가).

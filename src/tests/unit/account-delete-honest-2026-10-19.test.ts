@@ -48,11 +48,12 @@ describe('① 탈퇴 안내 = 서버가 실제로 하는 일', () => {
     }
   })
 
-  it('그 사람의 실제 숫자를 마이와 같은 훅·같은 술어로 보여 준다', () => {
+  it('그 사람의 실제 숫자를 보여 준다 — 딜은 마이와 같은 훅, 이용권·충전 딜·가게는 서버 판정 한 곳', () => {
     const code = readCode(PAGE)
     expect(code).toMatch(/useBalance\(\{ fresh: true \}\)/)
-    expect(code).toMatch(/useMyVouchers\(\)/)
-    expect(code, '안 쓴 이용권을 지갑과 다른 기준으로 센다').toMatch(/isUsableWalletItem\(v\) && isStoreVoucher\(v\)/)
+    // 2026-10-19 결재 후: 안 쓴 이용권은 서버(`countAccountDeleteBlockers`)가 센다 — SQL 이 지갑과 같은 집합인지는
+    // `account-delete-blockers-2026-10-19.test.ts` 가 실제 SQLite 로 확인한다.
+    expect(code).toMatch(/\/api\/account\/delete-blockers/)
     // 잔액을 못 읽었을 때 0 으로 위장하지 않는다 — "소멸될 딜이 없어요" 는 거짓말이 된다.
     expect(code, '잔액 조회 실패를 0 으로 위장한다').toMatch(/balanceQ\.isError \? null/)
     // 서버 값을 받기 전(캐시 seed 0)에 "소멸될 딜이 없어요" 를 말하며 탈퇴를 열면 안 된다.
