@@ -48,3 +48,9 @@ A/B(HTML 즉시 응답): 시드를 body 끝으로 FCP −116ms · 배너 preload
 ## ③ 결재함 정리
 16건 전부 답이 나 있었다. 반영 커밋이 main 에 있는 5건을 `archive/` 로(rejected 1 · 반영 끝 4 —
 브랜치 해시였던 3건은 main 머지 `c94ad5b4` #1913 을 덧붙임). 남은 11건은 `승인 · 구현 중`(남은 단계 있음).
+
+## 3부 — 대표 "승인은 모두 해줄게" → 잠금 파일 변경 실행
+`worker/index.ts`: SSR 시드를 `</body>` 앞으로, 사진 preload 를 시드보다 먼저(실험실 첫 그림 728→612ms).
+가드 `ssr-seed-body-end-2026-10-19` + 주입 2건. CLAUDE.md 로딩 잠금 audit log 기록.
+E4(배포 후): 라이브 홈 HTML 에서 `__SSR_INITIAL_MAIN__` 위치가 `ur-first-screen` 뒤인지.
+배너 사진 화질(1100px→2x 상한)은 화질 판단이라 하지 않았다 — 쪼개기 데이터로 "사진 받기" 칸이 크면 그때 제안.
