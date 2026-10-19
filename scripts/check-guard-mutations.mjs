@@ -1142,8 +1142,8 @@ const MUTATIONS = [
   {
     name: '🚦 목록이 다시 전량을 걷는다 — 진입마다 338건·요청 7회',
     file: 'src/hooks/queries/useMapProducts.ts',
-    find: '    let cancelled = false\n    ;(async () => {\n      const res = await fetchPage(category, 1, near, sort)',
-    replace: '    let cancelled = false\n    ;(async () => {\n      for (let page = 1; page < 99; page++) { await fetchPage(category, page, near, sort) }\n      const res = await fetchPage(category, 1, near, sort)',
+    find: '    const refresh = async () => {\n      const res = await fetchPage(category, 1, near, sort)',
+    replace: '    const refresh = async () => {\n      for (let page = 1; page < 99; page++) { await fetchPage(category, page, near, sort) }\n      const res = await fetchPage(category, 1, near, sort)',
     test: 'src/tests/unit/map-feed-demand-loading.test.ts',
     why: '2026-09-03 실측: 활성 338건을 진입할 때마다 7회·66KB 로 전부 받았다. 화면엔 10~20장 뜨는데.',
   },

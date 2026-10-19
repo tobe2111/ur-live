@@ -22,6 +22,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import api from '@/lib/api'
 import type { Restaurant } from '@/pages/restaurant-map/types'
 import { mapFeedParams, isMapSeedRequest } from '@/shared/map-feed-seed'
+import { runAfterLoad } from '@/lib/after-load'
 
 const PAGE = 50
 /** `loadAll()` 안전 상한 — 무한 루프/폭주 차단용이지 "여기서 끊는다"는 뜻이 아니다(도달 시 로그 없이 멈춘다). */
@@ -170,14 +171,38 @@ export function useMapProducts(category: string, near?: Near, opts?: { sort?: st
     }
 
     let cancelled = false
-    ;(async () => {
+    const refresh = async () => {
       const res = await fetchPage(category, 1, near, sort)
       if (cancelled || ref.current.key !== cacheKey) return
       if (res == null) { setIsLoading(false); return }   // 실패 — 시드가 있으면 그대로 보여 준다
       commit(cacheKey, { items: res.items, total: res.total, page: 1, done: res.items.length < PAGE, ts: Date.now() })
       setIsLoading(false)
-    })()
-    return () => { cancelled = true }
+    }
+    // 🗺️ 2026-10-19 (대표 "지도랑 블로그도 상세히") — 시드로 이미 그렸으면 새로고침은 **첫 화면 뒤로**.
+    //   실측(/map 하드로드): 시드로 목록을 그린 직후 같은 page1 을 다시 받아(3.6s) 지도 타일(9장, 4.0~7.8s)과
+    //   회선을 나눠 썼다. 이미 보이는 데이터의 갱신이라 급하지 않다 — 지도면 첫 타일 신호 뒤, 아니면 load·한가할 때.
+    //   (시드 없음 = 화면이 비어 있음 → 지금 바로 받는다.)
+    if (!seeded) { void refresh(); return () => { cancelled = true } }
+    let cancelIdle = () => {}
+    let fallback: ReturnType<typeof setTimeout> | undefined
+    let started = false
+    const go = () => {
+      if (cancelled || started) return
+      started = true
+      if (fallback !== undefined) clearTimeout(fallback)
+      cancelIdle = runAfterLoad(() => { void refresh() }, 3000)
+    }
+    const onMap = typeof window !== 'undefined' && window.location.pathname.startsWith('/map')
+    if (onMap) {
+      window.addEventListener('ur:map-tiles-loaded', go, { once: true })
+      fallback = setTimeout(go, 8000)   // 타일 신호가 안 오면(SDK 실패 등) 그래도 한 번은 갱신
+    } else go()
+    return () => {
+      cancelled = true
+      cancelIdle()
+      if (fallback !== undefined) clearTimeout(fallback)
+      if (onMap) window.removeEventListener('ur:map-tiles-loaded', go)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cacheKey])
 

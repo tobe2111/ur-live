@@ -41,7 +41,19 @@ curl -sSI -A "$UA" https://urdeal.kr/pass/2919 | grep -i '^link:'   # 히어로
 - 숙소 목록 첫 화면을 catch-all `else` 안 삼항으로 넣었다가 `check-loader-continuity` 가 잡았다 → 별도 `else if` 로.
 - "대표색 POST 2회" 를 중복 호출로 봤는데 실제로는 **응답에 값이 없어서** 생긴 일이었다(보고 자체는 상품당 1회로 막혀 있다).
 
+## 2차 — 지도·블로그 (대표 "지도랑 블로그도 상세히 진행해줘")
+
+5. **블로그 상세·목록 서버 첫 화면** — 종전 서버 본문은 꾸밈 없는 크롤러용 HTML 이라 앱 CSS 를 기다렸다 그려지고 React 가 뜨면 통째로 바뀌었다. 이제 React 와 **같은 클래스 상수**(`shared/blog-page.ts`)로 그린다(`worker/utils/blog-detail-first-screen.ts`·`blog-list-first-screen.ts`, 폰 UA·크롤러만). 본문 마크다운은 `blogMarkdownHtml` 이 `BlogMarkdown` 과 같은 블록 규칙으로 문자열을 만든다(시험이 DOM 트리 대조). 목록은 첫 쪽 밖 글 링크를 `<noscript>` 로 유지. `/blog`·`/blog/:slug` 를 CSS 먼저 표면에 추가 + 첫 화면 CSS ROOTS 에 두 모듈. 박스 대조(라이트·다크, 아이폰13) 전부 일치.
+   - 가드 `blog-detail-first-screen-2026-10-19.test.tsx` + 주입 9건. 커밋 `241bd87`·`1d8035f`.
+6. **표면 청크 미리받기 상한 10 → 16** — 지도·이용권 상세·유어샵·검색·지역이 잘려 SiteFooter 등이 페이지 실행 뒤 직렬로 받아졌다(지도 실측 3.05s). 넘으면 빌드가 이름을 대며 경고.
+7. **지도 시드 새로고침을 타일 뒤로** — 시드로 목록을 그린 직후 같은 page1 을 다시 받아(3.6s) 지도 타일(4.0~7.8s)과 회선을 나눠 썼다. 시드가 있으면 지도는 `ur:map-tiles-loaded` 뒤(백스톱 8초), 그 밖은 load·한가할 때. 시드가 없으면 즉시.
+   - 가드 `map-seed-refresh-deferred-2026-10-19.test.ts` + 주입 3건, 옛 인라인 주입 1건 재조준.
+
+### 2차 E4 (배포 후)
+- `curl -A "$UA" https://urdeal.kr/blog/<slug> | grep -c ur-first-screen` → 1, `/blog` 도 1.
+- 폭포: `/map` 에서 `/api/group-buy/products` 가 타일 **뒤**에 한 번만 나가는지 · SiteFooter 류 청크가 HTML 직후 modulepreload 로 출발하는지.
+
 ## 남은 것
 
-- 지도(`/map`) 첫 화면 — 이번 범위 밖.
-- 블로그 상세 LCP — 이번 범위 밖.
+- 지도 시트 서버 첫 화면 — 안 했다. CSS 먼저는 첫 화면 없이 지도에 걸면 나빠졌다(10-12 실측)라 첫 화면과 짝으로만 가능. 별건.
+- 지도 타일 9장(41~73KB)이 LCP — 화질 유지 규칙상 줄이지 않는다.
