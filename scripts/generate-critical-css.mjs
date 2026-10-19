@@ -38,6 +38,7 @@ export const ROOTS = [
   'src/worker/utils/curator-ssr-body.ts',
   'src/worker/utils/stay-detail-ssr-body.ts',
   'src/worker/utils/vouchers-first-screen.ts',
+  'src/worker/utils/stays-first-screen.ts',
 ]
 
 /** 원본 바이트 상한 — 넘으면 빌드 실패(첫 화면 CSS 가 앱 CSS 를 닮아 가면 이 일의 의미가 없다). */

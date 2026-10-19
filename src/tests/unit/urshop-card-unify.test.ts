@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { stayCardHref } from '@/shared/stays-list'
 import { readFileSync } from 'node:fs'
 // 🩸 2026-08-27: 자체 codeOnly 가 **라인 주석 속 `/*`** 에 걸려 파일 절반을 삼켰다(실측 4곳).
 //   공용 스캐너로 통일 — 경위는 `helpers/source-text.ts`.
@@ -152,9 +153,9 @@ describe('④ 숙소 카드는 날짜·인원을 잃지 않는다 (요금이 달
     expect(at, '숙소 카드를 못 찾았다').toBeGreaterThan(0)
     const call = src.slice(at, at + 1600)
     // 이 파라미터가 빠지면 상세가 **오늘 날짜**로 다시 잡아 화면과 다른 요금을 보여준다.
-    expect(call).toMatch(/check_in=\$\{filters\.check_in\}/)
-    expect(call).toMatch(/check_out=\$\{filters\.check_out\}/)
-    expect(call).toMatch(/guests=\$\{filters\.guests\}/)
+    // 2026-10-19 — 주소 조립은 서버 첫 화면과 같이 쓰는 SSOT(`stayCardHref`)로 옮겨갔다.
+    expect(call).toMatch(/stayCardHref\(s\.id, filters\.check_in, filters\.check_out, filters\.guests\)/)
+    expect(stayCardHref(7, '2026-10-19', '2026-10-20', 3)).toBe('/stays/7?check_in=2026-10-19&check_out=2026-10-20&guests=3')
   })
 
   it("`/1박~` 단위가 유지된다 (단위가 빠지면 총액으로 읽힌다)", () => {

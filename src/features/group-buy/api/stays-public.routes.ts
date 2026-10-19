@@ -63,7 +63,7 @@ staysPublicRoutes.get('/stays/search', cors(), async (c) => {
     const sort = c.req.query('sort') || 'recent' // recent / price_asc / price_desc / rating
 
     let sql = `
-      SELECT p.id, p.name, p.image_url, p.seller_id,
+      SELECT p.id, p.name, p.image_url, p.seller_id, p.dominant_color,
              psi.property_type, psi.star_rating, psi.region_sido, psi.region_sigungu,
              psi.address, psi.latitude, psi.longitude, psi.amenities,
              (SELECT MIN(base_price_weekday) FROM product_stay_rooms r WHERE r.product_id = p.id AND r.is_active = 1) as price_from,

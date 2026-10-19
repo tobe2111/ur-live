@@ -19,6 +19,7 @@ import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import { Search, SlidersHorizontal, X } from 'lucide-react'
 import { useStaysSearch } from '@/hooks/queries/useStaysSearch'
 import { kstYmd } from '@/shared/stays-early'
+import { STAYS_LIST, stayCardHref, stayDateChipLabel } from '@/shared/stays-list'
 
 /**
  * 📅 2026-10-19 — 달력은 이 파일 안에서 그린다(유어딜 세트와 같은 24 그리드 · 획 1.6 · 둥근 끝).
@@ -89,24 +90,23 @@ export default function StaysSearchPage() {
     setQueryQs(buildQs(filters))
   }
 
-  const nights = Math.max(1, Math.round((new Date(filters.check_out).getTime() - new Date(filters.check_in).getTime()) / 86400000))
 
   return (
-    <div className="min-h-[100dvh] bg-white dark:bg-[#11141C] text-gray-900 dark:text-white pb-safe-nav">
+    <div className={STAYS_LIST.root}>
       {/* 🏷️ 2026-07-20 (대표 — "숙소 공구 표현 맞나?"): '공구' 프레이밍 폐기(즉시판매 전환·명칭 SSOT) → '숙소'. */}
       <SEO title={CONSUMER_SURFACE_SEO['/stays'].title} description={CONSUMER_SURFACE_SEO['/stays'].description} url="/stays" />
 
       {/* Sticky Top Bar */}
-      <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]">
-        <div className="ur-content-wide px-4 lg:px-8 py-3 flex items-center gap-3">
-          <Link to="/" className="text-[15px] font-bold">←</Link>
-          <h1 className="text-[15px] font-bold flex-1 flex items-center gap-2">
+      <div className={STAYS_LIST.bar}>
+        <div className={STAYS_LIST.titleRow}>
+          <Link to="/" className={STAYS_LIST.back}>←</Link>
+          <h1 className={STAYS_LIST.h1}>
             <StayLineIcon size={17} />
             {t('map.voucher.stay', { defaultValue: '숙소' })}
           </h1>
           <button
             onClick={() => setShowFilters(true)}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/[0.06]"
+            className={STAYS_LIST.filterBtn}
             aria-label="필터"
           >
             <SlidersHorizontal className="w-4 h-4" />
@@ -117,7 +117,7 @@ export default function StaysSearchPage() {
             칩을 /map?category= 로 보냈는데, 홈 칩과 똑같이 생긴 칩이 동네딜 **지도**로 점프해 "저절로 동네딜"
             체감의 원인이 됨 → 홈 카테고리 필터(`/?category=`) 복귀로 정정(PC PcHomePage·모바일 지도 홈 둘 다
             ?category 초기화 지원). 라벨은 홈 카테고리와 SSOT 정합. 지도는 명시적 '지도에서 보기' 링크만. */}
-        <div className="ur-content-wide px-4 lg:px-8 pb-2 flex gap-2 overflow-x-auto scrollbar-hide">
+        <div className={STAYS_LIST.chipRow}>
           {MAP_VOUCHER_DEFS.map((v) => {
             const active = v.key === 'stay_voucher'
             const Icon = v.icon
@@ -126,11 +126,7 @@ export default function StaysSearchPage() {
                 key={v.key}
                 to={v.key === 'stay_voucher' ? '/stays' : v.key === 'all' ? '/' : `/?category=${v.key}`}
                 aria-current={active ? 'page' : undefined}
-                className={`shrink-0 flex items-center gap-1 px-4 py-2 rounded-full text-[12px] font-semibold whitespace-nowrap transition-all ${
-                  active
-                    ? 'bg-brand text-white'
-                    : 'bg-white dark:bg-[#1D1F29] text-brand-text shadow-lift'
-                }`}
+                className={`${STAYS_LIST.chip} ${active ? STAYS_LIST.chipOn : STAYS_LIST.chipOff}`}
               >
                 <Icon size={15} />
                 {t(v.labelKey, { defaultValue: v.defaultLabel })}
@@ -140,11 +136,11 @@ export default function StaysSearchPage() {
         </div>
 
         {/* Quick filters bar */}
-        <div className="ur-content-wide px-4 lg:px-8 pb-3 flex gap-2 overflow-x-auto scrollbar-hide">
-          <button onClick={() => setShowFilters(true)} className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-white/[0.06] rounded-full text-[12px] whitespace-nowrap">
-            <CalendarGlyph className="w-3 h-3" /> {filters.check_in.slice(5)} - {filters.check_out.slice(5)} ({nights}박)
+        <div className={STAYS_LIST.quickRow}>
+          <button onClick={() => setShowFilters(true)} className={STAYS_LIST.quick}>
+            <CalendarGlyph className="w-3 h-3" /> {stayDateChipLabel(filters.check_in, filters.check_out)}
           </button>
-          <button onClick={() => setShowFilters(true)} className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-white/[0.06] rounded-full text-[12px] whitespace-nowrap">
+          <button onClick={() => setShowFilters(true)} className={STAYS_LIST.quick}>
             <PeopleIcon className="w-3 h-3" /> 성인 {filters.guests}명
           </button>
           {filters.region && (
@@ -161,7 +157,7 @@ export default function StaysSearchPage() {
       </div>
 
       {/* Results */}
-      <div className="ur-content-wide px-4 lg:px-8 py-4">
+      <div className={STAYS_LIST.results}>
         {loading ? (
           <div className="text-center py-20 text-gray-500 dark:text-gray-400 text-[15px]">검색 중...</div>
         ) : isError ? (
@@ -213,6 +209,7 @@ export default function StaysSearchPage() {
                     restaurant_address: stayRegionLabel(s.region_sido, s.region_sigungu, s.address),
                     avg_rating: s.avg_rating ?? undefined,
                     review_count: s.review_count ?? undefined,
+                    dominant_color: s.dominant_color ?? null,  // 🎨 없으면 카드가 모든 숙소 색을 다시 뽑아 서버로 보낸다(2026-10-19 실측 — 방문마다 POST 2회)
                   } as never}
                   /* ⚡ 2026-10-17 큐레이션 줄이 없을 때(필터 적용)만 격자 첫 줄 두 장이 첫 화면이다. */
                   aboveFold={!curated && i < 2}
@@ -224,7 +221,7 @@ export default function StaysSearchPage() {
                     ) : null
                   }
                   /* 🔗 날짜·인원을 반드시 이어 보낸다 — 빠지면 상세가 오늘 날짜로 다시 잡아 요금이 달라진다. */
-                  to={`/stays/${s.id}?check_in=${filters.check_in}&check_out=${filters.check_out}&guests=${filters.guests}`}
+                  to={stayCardHref(s.id, filters.check_in, filters.check_out, filters.guests)}
                 />
               )
             })}
