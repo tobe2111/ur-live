@@ -3328,6 +3328,20 @@
       "lastUsed": "마지막 사용",
       "revoke": "연결 끊기",
       "utterance": "연결 {{code}}"
+    },
+    "idleHours": {
+      "title": "빈 시간대",
+      "quietHeadline": "{{block}}이 가장 한가해요",
+      "quietDetail": "하루 평균 {{n}}건 사용 · 가장 바쁜 {{busy}}은 {{m}}건",
+      "suggest": "이 시간에만 쓰는 이용권을 내면 빈 자리를 채울 수 있어요.",
+      "cta": "시간 한정 이용권 만들기",
+      "notEnough": "이용권 사용이 {{min}}건 쌓이면 가장 한가한 시간을 알려 드려요. (지금 {{n}}건)",
+      "basis": "최근 90일 이용권 사용 시각 기준",
+      "weekday": "평일",
+      "weekend": "주말",
+      "am": "오전",
+      "pm": "오후",
+      "hour": "{{n}}시"
     }
   },
   "admin": {

@@ -12,6 +12,7 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import { safeError } from '@/worker/utils/safe-error';
 import type { Env } from '@/worker/types/env'
 import { intParam } from '@/shared/pagination'
+import { buildIdleHoursReport, normalizeCells } from '@/shared/idle-hours'
 
 // 🛡️ 2026-06-11 감사: per-request ALTER → isolate 당 1회 메모이즈 (DDL 라운드트립 절감).
 const _done_ensureReviewReplyCols = new WeakSet<object>()
@@ -324,6 +325,29 @@ sellerAnalyticsRoutes.get('/voucher-usage', requireAuth(), async (c) => {
       by_product: byProduct || [],
     },
   })
+})
+
+// ── 빈 시간대 (2026-10-19) — 최근 90일 이용권 사용 시각을 KST 요일 × 시로 모은다.
+//    판정·문구는 `shared/idle-hours.ts`(순수 함수). 결제·가격 무접촉.
+sellerAnalyticsRoutes.get('/idle-hours', requireAuth(), async (c) => {
+  const sellerId = await getSellerId(c)
+  if (!sellerId) return c.json({ success: false, error: '셀러 정보 없음' }, 403)
+  try {
+    const { results } = await c.env.DB.prepare(`
+      SELECT CAST(strftime('%w', v.used_at, '+9 hours') AS INTEGER) AS dow,
+             CAST(strftime('%H', v.used_at, '+9 hours') AS INTEGER) AS hour,
+             COUNT(*) AS n
+      FROM vouchers v
+      JOIN products p ON v.product_id = p.id
+      WHERE p.seller_id = ? AND v.status = 'used' AND v.used_at IS NOT NULL
+        AND v.used_at > datetime('now', '-90 days')
+      GROUP BY dow, hour
+    `).bind(sellerId).all()
+    const cells = normalizeCells((results || []) as Array<Record<string, unknown>>)
+    return c.json({ success: true, data: { ...buildIdleHoursReport(cells), cells } })
+  } catch (err) {
+    return safeError(c, err, '빈 시간대를 불러오지 못했습니다', '[seller-idle-hours]')
+  }
 })
 
 // ── 상세 분석 (전환율, 재구매율 등) ──
