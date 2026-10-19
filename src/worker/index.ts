@@ -168,7 +168,7 @@ import { csrfProtection, csrfTokenHandler } from '../lib/csrf';
 import { blogRoutes } from '../features/blog/api/blog.routes';
 import { blogSeoRoutes } from '../features/blog/api/blog-seo.routes';
 import { buildBlogPostMeta, buildBlogListJsonLd } from '../features/blog/api/blog-ssr-meta';
-import { buildBlogPostBody, buildBlogListBody } from '../features/blog/api/blog-ssr-body'; import { buildBlogDetailFirstScreen } from './utils/blog-detail-first-screen';
+import { buildBlogPostBody, buildBlogListBody } from '../features/blog/api/blog-ssr-body'; import { buildBlogDetailFirstScreen } from './utils/blog-detail-first-screen'; import { buildBlogListFirstScreen } from './utils/blog-list-first-screen';
 import { resolveRenamedBlogPath } from '../features/blog/api/blog-slug-redirects';
 import { buildDetailMeta, buildStayDetailMeta, buildProductMeta } from './utils/detail-ssr-meta';
 // 🔎 2026-07-29 정적 소비자 표면 메타 SSOT(워커·클라 공용). ⚠️ 워커 값 import 는 alias 금지 — 상대경로.
@@ -1007,7 +1007,7 @@ app.use('*', async (c, next) => {
     } else if (isBlogSurface) {
       // 📝 블로그 #root = 서버렌더 본문 HTML — JS 미실행 크롤러(네이버 Yeti·AI 크롤러)가 읽을 텍스트 확보.
       //   사유/렌더러 SSOT: features/blog/api/blog-ssr-body.ts. 실패 시 '' → 기존 '빈 #root'(무회귀).
-      const blogFirst = ssrSlot === 'BLOGPOST' && ssrPayload && shouldRenderMobileFirstScreen(c.req.header('user-agent')) ? buildBlogDetailFirstScreen(ssrPayload) : ''; // 📝 2026-10-19 폰은 React 와 같은 모양(utils/blog-detail-first-screen.ts)
+      const blogPhone = shouldRenderMobileFirstScreen(c.req.header('user-agent')); const blogFirst = !blogPhone ? '' : ssrSlot === 'BLOGPOST' && ssrPayload ? buildBlogDetailFirstScreen(ssrPayload) : ssrSlot === 'BLOG' ? buildBlogListFirstScreen(ssrPayload) : ''; // 📝 2026-10-19 폰은 React 와 같은 모양(utils/blog-detail-first-screen.ts)
       const blogBody = blogFirst ? blogFirst : ssrSlot === 'BLOGPOST' && ssrPayload ? buildBlogPostBody(ssrPayload)
         : ssrSlot === 'BLOG' ? buildBlogListBody(ssrPayload) : '';
       rb = rb.on('#root', {

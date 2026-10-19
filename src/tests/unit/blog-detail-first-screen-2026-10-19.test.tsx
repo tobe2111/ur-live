@@ -112,12 +112,55 @@ describe('③ 첫 화면 — 본문 전부 · 탈출', () => {
 describe('④ 배선', () => {
   it('워커는 폰(+크롤러)에서만, 없으면 종전 본문', () => {
     const w = stripComments(fs.readFileSync('src/worker/index.ts', 'utf8'))
-    expect(w).toMatch(/const blogFirst = ssrSlot === 'BLOGPOST' && ssrPayload && shouldRenderMobileFirstScreen\(c\.req\.header\('user-agent'\)\) \? buildBlogDetailFirstScreen\(ssrPayload\) : ''/)
+    expect(w).toMatch(/const blogPhone = shouldRenderMobileFirstScreen\(c\.req\.header\('user-agent'\)\); const blogFirst = !blogPhone \? '' :/)
     expect(w).toMatch(/const blogBody = blogFirst \? blogFirst : ssrSlot === 'BLOGPOST' && ssrPayload \? buildBlogPostBody\(ssrPayload\)/)
   })
   it('CSS 먼저 적용 — /blog/:slug 폰에서만(목록 /blog 는 아니다)', () => {
     const PHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148'
     expect(cssFirstApplies('/blog/voucher-guide', PHONE)).toBe(true)
     expect(cssFirstApplies('/blog/voucher-guide', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)')).toBe(false)
+  })
+})
+
+// ── 블로그 목록 ────────────────────────────────────────────────────────────────────────────
+import { buildBlogListFirstScreen } from '@/worker/utils/blog-list-first-screen'
+import { BLOG_LIST, BLOG_PER_PAGE, blogPageNums } from '@/shared/blog-page'
+
+describe('⑤ 블로그 목록 첫 화면', () => {
+  const posts = Array.from({ length: 10 }, (_, i) => ({ slug: `post-${i}`, title: `글 ${i} **굵게**`, summary: `요약 ${i} <x>`, tags: i % 2 ? '["이용권","유어딜"]' : '["교환권"]', author: '유어딜 팀', thumbnail_url: null }))
+  const seed = JSON.stringify({ success: true, data: posts })
+  const html = buildBlogListFirstScreen(seed)
+  it('히어로 = 최신 글 · 첫 쪽 7편 · 쪽 번호 · 칩 = 전체 + 태그(처음 나온 순)', () => {
+    expect(html).toContain(`<h2 class="${BLOG_LIST.heroTitle}">글 0 굵게</h2>`)
+    expect(html.match(new RegExp(`class="${BLOG_LIST.row}"`, 'g'))?.length).toBe(BLOG_PER_PAGE)
+    expect(html).toContain('1 / 5')
+    const re = (s: string) => s.replace(/[[\]().*+?^$|{}]/g, '\\$&')
+    expect(html.match(new RegExp(`class="${re(BLOG_LIST.pagerNum)} `, 'g'))?.length).toBe(blogPageNums(2, 1).length)
+    const chipText = [...html.matchAll(new RegExp(`class="${re(BLOG_LIST.chip)} [^"]*">([^<]+)<`, 'g'))].map(m => m[1])
+    expect(chipText).toEqual(['전체', '교환권', '이용권', '유어딜'])
+  })
+  it('크롤러용 전체 목록 링크는 noscript 로 남는다(첫 쪽 밖 글도)', () => {
+    const ns = html.slice(html.indexOf('<noscript>'))
+    expect(ns).toContain('href="/blog/post-9"')
+  })
+  it('원문 탈출 · 깨진 시드는 ""', () => {
+    expect(html).not.toContain('<x>')
+    expect(buildBlogListFirstScreen('{')).toBe('')
+    expect(buildBlogListFirstScreen(JSON.stringify({ success: true, data: [] }))).toBe('')
+  })
+  it('목록 화면이 같은 상수를 쓴다', () => {
+    const page = stripComments(fs.readFileSync('src/pages/BlogListPage.tsx', 'utf8'))
+    for (const k of ['bar', 'barInner', 'hero', 'heroLink', 'heroTitle', 'heroCover', 'search', 'chips', 'chip', 'listTitle', 'rows', 'row', 'rowTitle', 'rowCover', 'pager'] as const) {
+      expect(page, k).toContain(`BLOG_LIST.${k}`)
+    }
+    expect(page).toContain('blogPageNums(totalPages, curPage)')
+    expect(page).toContain('blogAllTags(allPosts)')
+  })
+  it('워커 배선 — 폰에서만, BLOG 슬롯이면 목록 첫 화면', () => {
+    const w = stripComments(fs.readFileSync('src/worker/index.ts', 'utf8'))
+    expect(w).toMatch(/const blogFirst = !blogPhone \? '' : ssrSlot === 'BLOGPOST' && ssrPayload \? buildBlogDetailFirstScreen\(ssrPayload\) : ssrSlot === 'BLOG' \? buildBlogListFirstScreen\(ssrPayload\) : ''/)
+    const PHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148'
+    expect(cssFirstApplies('/blog', PHONE)).toBe(true)
+    expect(cssFirstApplies('/blog/rss/x', PHONE)).toBe(false)
   })
 })

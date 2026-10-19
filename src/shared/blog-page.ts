@@ -189,3 +189,65 @@ export function blogMarkdownHtml(content: string | null | undefined): string {
     return `<p class="${BLOG_MD.p}">${inlineHtml(t)}</p>`
   }).join('')
 }
+
+// ── 블로그 목록(`/blog`) — 화면(`BlogListPage`)과 워커(`worker/utils/blog-list-first-screen.ts`)가 같은 상수 ───────
+export const BLOG_LIST = {
+  root: 'min-h-[100dvh] bg-white dark:bg-[#11141C]',
+  bar: 'bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35]',
+  barInner: 'max-w-6xl mx-auto flex items-center justify-between px-5 lg:px-8 h-14',
+  logo: 'text-[17px] font-extrabold text-gray-900 dark:text-white tracking-tight',
+  actions: 'flex items-center gap-2 sm:gap-2',
+  home: 'flex items-center gap-2 px-3 py-2 rounded-lg text-[15px] font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1D1F29]',
+  homeText: 'hidden sm:inline',
+  cta: 'px-4 py-2 bg-brand text-white rounded-lg text-[15px] font-bold hover:opacity-90',
+  wrap: 'max-w-6xl mx-auto px-5 lg:px-8',
+  hero: 'pt-6 pb-8',
+  heroLink: 'group grid lg:grid-cols-2 gap-5 lg:gap-8 items-center',
+  heroText: 'order-2 lg:order-1',
+  heroTitle: 'mt-3 text-[24px] sm:text-[28px] leading-snug font-extrabold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2',
+  heroSummary: 'mt-2 text-[15px] text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-2',
+  heroCoverWrap: 'order-1 lg:order-2',
+  heroCover: 'w-full aspect-[16/9] rounded-2xl',
+  heroNav: 'flex items-center gap-2 mt-6',
+  heroBtn: 'w-10 h-10 rounded-full border border-line flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1D1F29]',
+  heroCount: 'ml-2 text-[12px] text-gray-400 dark:text-gray-500 tabular-nums',
+  searchWrap: 'pt-6 pb-1',
+  searchIcon: 'absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500 pointer-events-none',
+  search: 'w-full h-11 pl-10 pr-10 rounded-xl bg-gray-50 dark:bg-[#1D1F29] border border-line text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/10 focus:border-gray-300 dark:focus:border-[#3A3A3A]',
+  chips: 'flex gap-2 overflow-x-auto scrollbar-hide py-4',
+  chip: 'px-4 py-2 rounded-full text-[15px] font-medium shrink-0',
+  chipOn: 'bg-brand text-white',
+  chipOff: 'bg-gray-50 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2C2F35]',
+  listSection: 'py-8',
+  listTitle: 'text-[24px] font-extrabold text-gray-900 dark:text-white mb-2',
+  rows: 'divide-y divide-gray-100 dark:divide-[#2C2F35]',
+  row: 'group flex items-start justify-between gap-5 sm:gap-8 py-6',
+  rowText: 'flex-1 min-w-0',
+  rowTitle: 'mt-2 text-[17px] sm:text-[17px] font-bold text-gray-900 dark:text-white leading-snug line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors',
+  rowSummary: 'mt-2 text-[15px] text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-2',
+  rowCover: 'w-24 h-24 sm:w-28 sm:h-28 rounded-xl shrink-0',
+  chipRow: 'flex flex-wrap items-center gap-2',
+  tagChip: 'text-[12px] font-semibold bg-blue-50 dark:bg-blue-900/25 text-blue-600 dark:text-blue-300 px-2 py-1 rounded-md',
+  authorChip: 'text-[12px] font-medium bg-gray-100 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400 px-2 py-1 rounded-md',
+  pager: 'flex items-center justify-center gap-2 mt-10',
+  pagerArrow: 'w-9 h-9 rounded-lg flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1D1F29] disabled:opacity-30 disabled:hover:bg-transparent',
+  pagerNum: 'min-w-9 h-9 px-2 rounded-lg text-[15px] font-semibold tabular-nums',
+  pagerOn: 'bg-brand text-white',
+  pagerOff: 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1D1F29]',
+} as const
+
+/** 목록 규칙 — 한 쪽 7편 · 히어로 = 최신 5편 · 검색창 안내 · 쪽 번호 창(최대 7). */
+export const BLOG_PER_PAGE = 7
+export const BLOG_FEATURED = 5
+export const BLOG_SEARCH_PLACEHOLDER = '블로그 검색 (이용권, 유어샵, 정산…)'
+export function blogPageNums(totalPages: number, curPage: number): number[] {
+  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1)
+  let s = Math.max(1, curPage - 3)
+  const e = Math.min(totalPages, s + 6)
+  s = Math.max(1, e - 6)
+  return Array.from({ length: e - s + 1 }, (_, i) => s + i)
+}
+/** 전체 태그 — 글 순서대로 처음 나온 순(화면의 `new Set(flatMap)` 과 같다). */
+export function blogAllTags(posts: Array<{ tags?: unknown }>): string[] {
+  return [...new Set(posts.flatMap(p => parseBlogTags(p.tags)))]
+}
