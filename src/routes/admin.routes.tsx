@@ -2,7 +2,7 @@
  * Admin routes — TD-006 분리 (2026-05-06)
  */
 import { lazy, Children, cloneElement, isValidElement, type ReactElement } from 'react'
-import { Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { ProtectedRoute, PublicRoute } from '@/components/auth/RouteGuards'
 
@@ -68,7 +68,6 @@ const AdminVoucherTransactionsPage = lazy(() => import('@/pages/AdminVoucherTran
 const AdminCafe24Page = lazy(() => import('@/pages/admin/AdminCafe24Page'))
 const AdminKakaoTestPage = lazy(() => import('@/pages/admin/AdminKakaoTestPage'))
 const AdminKakaoTestCallbackPage = lazy(() => import('@/pages/admin/AdminKakaoTestCallbackPage'))
-const AdminSampleRequestsPage = lazy(() => import('@/pages/admin/AdminSampleRequestsPage'))
 const AdminOperationsGuidePage = lazy(() => import('@/pages/admin/AdminOperationsGuidePage'))
 const AdminPlatformModelPage = lazy(() => import('@/pages/admin/AdminPlatformModelPage')); const AdminProposalsPage = lazy(() => import('@/pages/admin/AdminProposalsPage')); const AdminDecisionsPage = lazy(() => import('@/pages/admin/AdminDecisionsPage')) // 📥 2026-09-08 결재함(docs/decisions ?raw)
 // 🏭 2026-06-07: 도매몰(유통스타트 B2B) 전용 운영 가이드.
@@ -96,7 +95,8 @@ const AdminKakaoReviewsPage = lazy(() => import('@/pages/AdminKakaoReviewsPage')
 const AdminDistrictCouponsPage = lazy(() => import('@/pages/AdminDistrictCouponsPage'))
 // 📣 2026-08-09 캠페인 인플루언서 모집 신청자(코드 필터 + CSV)
 const AdminCampaignApplicationsPage = lazy(() => import('@/pages/admin/AdminCampaignApplicationsPage'))
-const AdminGbCockpitPage = lazy(() => import('@/pages/AdminGbCockpitPage'))
+// 🎟️ 2026-10-20 (대표 "이용권 페이지 역할이 모호해"): 이용권은 '이용권 관리' 한 곳. 옛 조종석·이용권 공구 주소는 그리로 보낸다.
+const AdminVouchersPage = lazy(() => import('@/pages/AdminVouchersPage'))
 const AdminRevenueAnalyticsPage = lazy(() => import('@/pages/AdminRevenueAnalyticsPage'))
 const AdminAccountsPage = lazy(() => import('@/pages/AdminAccountsPage'))
 // 🛡️ 2026-05-18: 숙소 공구 어드민 — PR 5/6.
@@ -128,6 +128,13 @@ const AdminPayoutCenterPage = lazy(() => import('@/pages/AdminPayoutCenterPage')
 const AdminPayoutsPage = lazy(() => import('@/pages/AdminPayoutsPage'))
 // 📧 2026-06-09 Wave 3b: 어드민 단체메일 (filtered bulk email)
 const AdminBulkEmailPage = lazy(() => import('@/pages/AdminBulkEmailPage'))
+
+/** 옛 '/admin/group-buy' — 몰 스코프(`?mall=mall|all`)일 때만 그 화면, 아니면 '이용권 관리'. */
+function GroupBuyMallOnly() {
+  const { search } = useLocation()
+  const mall = new URLSearchParams(search).get('mall')
+  return mall === 'mall' || mall === 'all' ? <AdminGroupBuyPage /> : <Navigate to="/admin/vouchers" replace />
+}
 
 export function AdminRoutes() {
   return (
@@ -420,11 +427,6 @@ export function AdminRoutes() {
           <ErrorBoundary><AdminSystemMonitoringPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
-      <Route path="/admin/sample-requests" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminSampleRequestsPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
       <Route path="/admin/operations-guide" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminOperationsGuidePage /></ErrorBoundary>
@@ -465,9 +467,15 @@ export function AdminRoutes() {
         </ProtectedRoute>
       } />
       {/* 🛡️ 2026-05-15: 공동구매 모니터링 + 강제 환불 */}
+      {/* 🎟️ 2026-10-20: 유어딜 본진(`?mall` 없음)은 '이용권 관리'로. 운영자 몰(`?mall=`)만 이 화면을 쓴다. */}
       <Route path="/admin/group-buy" element={
         <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminGroupBuyPage /></ErrorBoundary>
+          <ErrorBoundary><GroupBuyMallOnly /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/vouchers" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminVouchersPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       {/* 🛡️ 2026-05-15: 분쟁 큐 (AI 자동 분류 + escalation) */}
@@ -585,11 +593,7 @@ export function AdminRoutes() {
           <ErrorBoundary><AdminCampaignApplicationsPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
-      <Route path="/admin/gb-cockpit" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminGbCockpitPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
+      <Route path="/admin/gb-cockpit" element={<Navigate to="/admin/vouchers" replace />} />
       <Route path="/admin/audit-log" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminAuditLogPage /></ErrorBoundary>

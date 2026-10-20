@@ -1,29 +1,28 @@
 /**
- * 🎟️ 2026-07-14 공구 엔진 조종석 — 어드민 (STEP 2 선결, gap A1 해소).
- *   상품별 공구 세션(gb_mode·특가·마감·소개비율·링크전용) 설정. 저장은 product_supply_meta(gb_* 키).
- *   ⚠️ 값 저장만 — 실제 공구가/소개비 적용은 platform_settings.gb_engine_enabled 게이트 뒤(엔진).
- *   백엔드: features/group-buy/api/gb-cockpit.routes.ts (/api/admin/gb-cockpit).
+ * 🎟️ 이용권 판매 설정(공구 세션) 편집기 — 상태·특가·마감·소개비율·링크전용.
+ *   〔2026-10-20 옛 '공구 엔진 조종석'(AdminGbCockpitPage)에서 그대로 추출 — 그 화면은 '이용권 관리' 의
+ *    줄마다 [판매 설정] 으로 흡수됐다(대표 *"상품관리 + 이용권 공구 … 역할이 모호해"*). 저장 로직 불변.〕
+ *   저장: PUT /api/admin/gb-cockpit/products/:id → product_supply_meta(gb_* 키).
+ *   ⚠️ 값 저장만 — 실제 적용은 platform_settings.gb_engine_enabled 게이트 뒤(엔진).
  */
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import api from '@/lib/api'
-import AdminLayout from '@/components/AdminLayout'
-import { DashboardPageHeader } from '@/components/dashboard'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
-import { Rocket, RefreshCw, Search, Link2, AlertTriangle } from 'lucide-react'
+import { Link2 } from 'lucide-react'
 
-type GbMode = 'off' | 'scheduled' | 'live' | 'ended'
-interface GbSession {
+export type GbMode = 'off' | 'scheduled' | 'live' | 'ended'
+export interface GbSession {
   mode: GbMode; startAt?: string | null; deadline?: string | null; target?: number | null
   price?: number | null; promoPct?: number | null; linkOnly?: boolean
 }
-interface Row {
+export interface GbRow {
   id: number; name: string; price: number; original_price?: number | null; category?: string
   seller_id?: number | null; restaurant_name?: string | null; gb: GbSession; gb_effective_status: GbMode
 }
 
-const MODE_LABEL: Record<GbMode, string> = { off: '없음', scheduled: '예약', live: '진행중', ended: '종료' }
-const MODE_BADGE: Record<GbMode, string> = {
+export const MODE_LABEL: Record<GbMode, string> = { off: '없음', scheduled: '예약', live: '진행중', ended: '종료' }
+export const MODE_BADGE: Record<GbMode, string> = {
   off: 'bg-gray-100 text-gray-500', scheduled: 'border border-rule bg-white text-tone-warn',
   live: 'bg-tone-ok-bg text-tone-ok', ended: 'bg-gray-100 text-gray-400',
 }
@@ -35,7 +34,7 @@ function isoToLocal(iso?: string | null): string {
   return d.length >= 16 ? d.slice(0, 16) : d
 }
 
-function EditForm({ row, onSaved }: { row: Row; onSaved: () => void }) {
+export function GbSessionEditor({ row, onSaved }: { row: GbRow; onSaved: () => void }) {
   const g = row.gb || { mode: 'off' as GbMode }
   const [mode, setMode] = useState<GbMode>(g.mode || 'off')
   const [price, setPrice] = useState(String(g.price ?? ''))
@@ -101,64 +100,5 @@ function EditForm({ row, onSaved }: { row: Row; onSaved: () => void }) {
         <button type="button" disabled={busy} onClick={save} className="ur-btn ur-btn-md ur-btn-primary text-[13px] disabled:opacity-50">저장</button>
       </div>
     </div>
-  )
-}
-
-export default function AdminGbCockpitPage() {
-  const [rows, setRows] = useState<Row[]>([])
-  const [q, setQ] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [gbEngine, setGbEngine] = useState<boolean | null>(null)
-  const [expanded, setExpanded] = useState<number | null>(null)
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const r = await api.get(`/api/admin/gb-cockpit/products${q ? `?q=${encodeURIComponent(q)}` : ''}`)
-      if (r.data?.success) { setRows(r.data.data || []); setGbEngine(!!r.data.gb_engine) }
-    } catch { toast.error('불러오기 실패') } finally { setLoading(false) }
-  }, [q])
-  useEffect(() => { void load() }, [load])
-
-  return (
-    <AdminLayout title="공구 엔진 조종석">
-      <DashboardPageHeader icon={<Rocket className="w-5 h-5" />} title="공구 엔진 조종석" subtitle="상품별 공구(gb_mode) 설정 — 진행 상태·특가·마감·소개비율" />
-
-      {gbEngine === false && (
-        <div className="mb-3 flex items-start gap-2 rounded-xl border border-rule bg-white p-3 text-[12px] text-tone-warn">
-          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-          <span>공구 엔진 게이트가 <b>OFF</b>입니다(<code>gb_engine_enabled</code>). 지금 설정은 저장되지만 소비자/결제엔 <b>미적용</b> — 파일럿 검증 후 플랫폼 설정에서 켜면 활성화됩니다.</span>
-        </div>
-      )}
-
-      <div className="mb-3 flex items-center gap-2">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="상품명·매장명 검색" className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-[13px] text-gray-900" />
-        </div>
-        <button type="button" onClick={() => void load()} className="px-3 py-2 rounded-xl border border-gray-200 text-[13px] text-gray-700 flex items-center gap-1"><RefreshCw className="w-3.5 h-3.5" />새로고침</button>
-      </div>
-
-      {loading ? (
-        <p className="text-[13px] text-gray-400 py-8 text-center">불러오는 중…</p>
-      ) : rows.length === 0 ? (
-        <p className="text-[13px] text-gray-400 py-8 text-center">상품이 없습니다.</p>
-      ) : (
-        <div className="space-y-1.5">
-          {rows.map((r) => (
-            <div key={r.id} className="rounded-xl border border-gray-200 bg-white p-3">
-              <button type="button" onClick={() => setExpanded(expanded === r.id ? null : r.id)} className="w-full flex items-center gap-2 text-left">
-                <span className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-bold ${MODE_BADGE[r.gb_effective_status] || MODE_BADGE.off}`}>{MODE_LABEL[r.gb_effective_status] || '없음'}</span>
-                <span className="flex-1 truncate text-[13px] font-semibold text-gray-900">{r.name}</span>
-                {r.restaurant_name && <span className="shrink-0 text-[11px] text-gray-400 truncate max-w-[120px]">{r.restaurant_name}</span>}
-                <span className="shrink-0 text-[12px] text-gray-500">{formatWon(r.price)}</span>
-                {r.gb?.mode !== 'off' && r.gb?.price ? <span className="shrink-0 text-[11px] text-tone-ok font-bold">공구 {formatWon(r.gb.price)}</span> : null}
-              </button>
-              {expanded === r.id && <EditForm row={r} onSaved={() => void load()} />}
-            </div>
-          ))}
-        </div>
-      )}
-    </AdminLayout>
   )
 }

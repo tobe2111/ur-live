@@ -45,7 +45,7 @@ describe('🔴 R1 — 소비자 도메인에선 도매 밴드가 안 보인다',
     setHost(CONSUMER)
     const kept = withoutWholesaleOnConsumer(VISIBLE_NAV_GROUPS)
     expect(kept.length).toBeGreaterThan(3)
-    expect(kept.some((g) => g.title === '🏪 오프라인 공구')).toBe(true)
+    expect(kept.some((g) => g.title === '🎟️ 이용권')).toBe(true) // 2026-10-20 '🏪 오프라인 공구' → '🎟️ 이용권'
   })
 })
 

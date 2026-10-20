@@ -23,6 +23,9 @@ export interface DealRow {
   prelaunch?: number
   /** 🖼️ 현재 갤러리(images+detail_images 병합, 서버 동봉) — 수정 폼 프리필용. */
   gallery?: string[] | null
+  /** 🎟️ 2026-10-20 판매(환불 제외)·사용 장수 — 서버가 못 셌으면 null(모름, 0 아님). */
+  sold?: number | null
+  used?: number | null
 }
 
 export const CAT_LABEL: Record<string, string> = {
