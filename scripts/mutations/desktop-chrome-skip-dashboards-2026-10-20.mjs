@@ -40,4 +40,12 @@ export default [
     why: '규칙이 빠지면 묶음기가 훅을 쇼핑 상세 사용처를 따라 lz-productL 에 넣고, app-components 를 받는 어드민·셀러가 그 봉투와 embla(합쳐 ~31KB raw)를 받는다. 에러 0.',
     test: 'src/tests/unit/admin-focus-trap-chunk-2026-10-20.test.ts',
   },
+  {
+    name: '🖥️ 사이드바 미리받기가 다시 폭만 본다 — 어드민이 PC 사이드바·홈 PC 봉투를 어드민 코드보다 먼저 받는다',
+    file: 'src/components/MobileAppLayout.tsx',
+    find: " && !consumerChromeHiddenByPath(window.location.pathname)) void loadSidebar()",
+    replace: ") void loadSidebar()",
+    why: '모듈 실행 때 넓은 화면이면 경로 무관하게 app-desktop-chrome(+홈 PC 봉투 18개)를 받는다. 첫 렌더는 안 막지만 라이브 /admin 에서 어드민 코드와 회선을 나눴다(555ms vs 597ms). 에러 0.',
+    test: 'src/tests/unit/desktop-chrome-skip-dashboards-2026-10-20.test.ts',
+  },
 ]

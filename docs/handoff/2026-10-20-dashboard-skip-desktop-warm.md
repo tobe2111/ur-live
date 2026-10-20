@@ -37,3 +37,42 @@
 - 어드민이 아직 작은 봉투 셋을 더 받는다: `lz-boot-productL`(로그인 복귀·auth-api 3.6KB) · `lz-gbDetailL-productL`(이미지 압축 2.2KB) · `lz-boot-gbDetailL-map-productL`(인앱 안내 2.7KB). app-components 의 다른 모듈이 정적으로 쓴다 — 합쳐 ~8.5KB raw, 효과 대비 위험을 보고 판단.
 - 서버 미리 렌더(`prerender:main`)가 `window is not defined` 로 실패한다 — **main 에서도 같다**(이번 변경과 무관, 빌드는 graceful skip). 2026-07-07 결정으로 그 산출물은 쓰지 않아 영향은 없지만 별건으로 정리 대상.
 - 이전 세션 인계의 GEO 후보 ②(`priceValidUntil`)는 **할 수 없다** — 판매 마감 날짜는 2026-09-04 이후 구매를 막지 않아 그 값을 쓰면 지어내기다. `seller` 는 이미 낸다.
+
+## 2026-10-20 오후 — E4 실패 → 두 번째 자리 수리
+
+### E4(배포 `d2804cc61`, #1952 포함) 결과: **통과 아님**
+- 라이브 `/admin` 1440px 어드민 로그인(`scratchpad/admin-chunks.mjs`) — 여전히 `app-desktop-chrome`(555ms) ·
+  `lz-home-homePc` 4개 · `lucide-desktop` · `lucide-home` 를 받고, `app-routes-admin`(597ms) · `AdminPage`(707ms)보다 **먼저** 출발.
+- 배포 번들에 #1952 수리는 **실재**했다(`warmDesktopChrome` 의 숨김 분기). 즉 그 수리는 맞았고 **같은 봉투를 부르는 자리가 하나 더** 있었다.
+- 원인: `MobileAppLayout.tsx` 모듈 최상단 `if (matchMedia(768+).matches) void loadSidebar()` — 경로를 안 본다.
+  기다리지는 않지만(첫 렌더 안 막음) 어드민 코드와 회선을 나눈다.
+- 🩸 **교훈**: "기다리는 자리" 하나만 고치고 판정을 소스로 했다. 판정은 **받은 청크 목록**으로 할 것 — 같은 봉투를 부르는 import() 자리를 전부 찾을 것(`grep -rn "DesktopLiveSidebar\|DesktopTopNav" src`).
+
+### 수리(이 PR)
+- `MobileAppLayout` 의 모듈 실행 미리받기에 `!consumerChromeHiddenByPath(window.location.pathname)` — 부팅 준비·App.tsx 와 같은 함수.
+- 시험 ③ 3건(어드민·셀러·에이전시 0 · 홈·교환권 1 · 배선) + 주입 1건 — 되돌려-검증 빨간불 확인.
+- critical-chunks 14 · 순환 0 · surface-budgets 25 예산 안 · role-leak 0.
+- ⚠️ **E4 다시**: 배포 뒤 같은 하네스로 `/admin` 에서 `app-desktop-chrome`·`lz-home-homePc*` **0건** + `/` 1440px 는 여전히 받는지.
+
+## 2026-10-20 후속 — 성능 경보 둘의 실체 (실측)
+
+### 1. 홈 CLS p75 0.20 경보 = 오염된 옛 표본 (지금 화면 결함 아님)
+- 경보 원문(10-20 09:20 KST): `/ CLS p75 0.20 > 기준 0.10 (직전 7일 0.03) · 표본 36`
+- 일별 분해(×1000): 10-13 p75 109(9건) · 10-14 199(13건) · 10-15 0(9) · 10-16 0(4) · 10-19 0(1).
+  창 36건 중 22건이 10-13/14 — 자동화 브라우저 오염은 10-14 16:01 KST #1790 에서 이미 차단.
+- 라이브 재측정(iPhone 390, 수리 후 빌드): 첫 화면 3회 0 · API 1.5초 지연 2회 0 · 25회 스크롤 2회 0.010/0.
+  측정기: scratchpad `cls-live.mjs` (렌더 확인 — 사진 70~133장).
+- ⇒ 10-22(창 10-15~21) 회차부터 빠진다. 그 전 경보는 무시. 기준선(직전 7일)도 10-14 이전은 오염이라 ~10-29 까지 회귀 판정이 흔들린다.
+
+### 2. 홈 LCP p75 3,160ms — 서버는 빠르고 경로가 길다
+- 워커 Server-Timing total 48~148ms(`MAIN:kv-hit`).
+- 국가 KR 표본의 데이터센터(colo:) — **ICN 0건**, HKG·NRT·LAX·SEA:
+  HKG p50 370~609ms · NRT 400~737 · LAX 900~1,136 · SEA 2,824(1건).
+- zone 요금제 = **Free Website**(CF API 실측). 무료 요금제 라우팅 우선순위 가설 — 공식 근거 못 찾음(개인 사례 1건).
+  표본 20건 남짓이라 결재 안 올림. 표본이 쌓이면 colo 별 TTFB 로 다시 판정할 것.
+- LCP 분해(LCPB)는 10-19 신설이라 홈 표본 1건(TTFB 978 · 렌더 대기 407).
+
+### 3. `prerender:main` 실패는 무해 — 출력이 사용자에게 안 닿는다
+- 실패 원인: `ReferenceError: window is not defined`(entry-server 렌더 중).
+- 그러나 워커 `#root` catch-all(2026-07-07)이 모든 HTML 경로의 #root 를 서버 첫 화면/로더로 덮어쓴다 ⇒ 구운 셸은 사용처 0.
+- 제거 후보(build:ssr + prerender:main): vite.config.ts 535 주석이 그 chars 를 신호로 쓰므로 함께 정리. 빌드 파이프라인 변경이라 별건.
