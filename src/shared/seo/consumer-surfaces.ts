@@ -184,6 +184,11 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
     description: `광고는 클릭에 돈이 나가지만 유어딜은 손님이 매장에 온 뒤에만 수수료 ${PARTNER_FACTS.feeDirect}`
       + `(대행사를 통하면 ${PARTNER_FACTS.feeBrokered})가 붙습니다. 카카오맵에서 우리 가게를 찾아 등록하면 바로 이용권을 올릴 수 있어요.`,
   },
+  '/store/new': {
+    crumb: '입점 신청',
+    title: '사장님 입점 신청 - 유어딜',
+    description: '사장님이 이용권을 올려 동네 손님을 모으는 무료 입점입니다. 가입하면 바로 가게를 열고 할인 이용권을 팔 수 있어요.',
+  },
 
   // ── 🗺️ 소비자 콘텐츠 표면 ─────────────────────────────────────────────
   //   전부 실측에서 **홈 메타 + `index, follow` + canonical 없음** 으로 나왔다(라우트 30개 전수).
