@@ -97,6 +97,20 @@ export async function claude(system, user, maxTokens = 800) {
   return text;
 }
 
+// Threads 는 500자 제한. 종전 `${body.slice(0,430)}\n\n${link}`.slice(0,500) 은 본문이 길면
+// **링크 끝을 잘랐다**(링크 ~125자 + 430 > 500) — 깨진 UTM 링크가 게시되고 유입 귀속도 사라진다.
+// 링크는 절대 자르지 않고, 본문을 남은 자리에 맞춰 문장 끝에서 자른다.
+export function threadsText(body, link, limit = 500) {
+  const room = limit - link.length - 2;
+  let b = body.trim();
+  if (b.length > room) {
+    const cut = b.slice(0, room);
+    const end = Math.max(cut.lastIndexOf('.'), cut.lastIndexOf('!'), cut.lastIndexOf('?'), cut.lastIndexOf('\n'));
+    b = (end > room * 0.5 ? cut.slice(0, end + 1) : cut.slice(0, room - 1) + '…').trim();
+  }
+  return `${b}\n\n${link}`;
+}
+
 // ---------- Meta (Threads / Instagram) ----------
 async function metaCall(base, token, method, p, params = {}) {
   const u = new URL(`${base}/${p}`);

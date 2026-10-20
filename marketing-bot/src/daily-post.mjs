@@ -1,7 +1,7 @@
 // 매일 게시: Threads 텍스트 1개 + Instagram 이미지 캡션 1개.
 // 트랙 비율: data/mix-state.json(주간 자동조정, 범위 내) → 없으면 data/content-mix.json 고정 60/25/15.
 import { pickTrackByWeights } from './attribution.mjs';
-import { DRY, log, readJson, writeJson, claude, threads, igPublish, fbPagePost, utmLink, productImage, kstNow, THREADS_USER_ID, PARTNER_FACTS } from './lib.mjs';
+import { DRY, log, readJson, writeJson, claude, threads, threadsText, igPublish, fbPagePost, utmLink, productImage, kstNow, THREADS_USER_ID, PARTNER_FACTS } from './lib.mjs';
 
 const schedule = readJson('data/schedule.json', {});
 const mix = readJson('data/content-mix.json', { cycle: {}, tracks: {} });
@@ -84,7 +84,7 @@ async function main() {
     const cid = `th-${n('threads')}`;
     const link = utmLink(isPromo ? product : target, 'threads', T.campaign || track, cid, now);
     const body = await claude(SYSTEM, `${info}\nThreads 글 1개를 400자 이내로 써줘. 링크는 내가 끝에 붙일게.`, 600);
-    const text = `${body.slice(0, 430)}\n\n${link}`.slice(0, 500);
+    const text = threadsText(body, link);
     log('Threads 본문:\n' + text);
     const c = await threads('POST', `${THREADS_USER_ID}/threads`, { media_type: 'TEXT', text });
     const r = await threads('POST', `${THREADS_USER_ID}/threads_publish`, { creation_id: c.id });
