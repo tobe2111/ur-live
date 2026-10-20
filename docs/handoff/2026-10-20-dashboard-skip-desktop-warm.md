@@ -76,3 +76,10 @@
 - 실패 원인: `ReferenceError: window is not defined`(entry-server 렌더 중).
 - 그러나 워커 `#root` catch-all(2026-07-07)이 모든 HTML 경로의 #root 를 서버 첫 화면/로더로 덮어쓴다 ⇒ 구운 셸은 사용처 0.
 - 제거 후보(build:ssr + prerender:main): vite.config.ts 535 주석이 그 chars 를 신호로 쓰므로 함께 정리. 빌드 파이프라인 변경이라 별건.
+
+## ✅ E4 통과 (배포 `8bda917f9` — #1964 포함, 진입 `index-CBHEKY5c`)
+- 라이브 `/admin` 1440px 어드민 로그인, 2회: `app-desktop-chrome` **0** · `lz-home-homePc*` **0**(종전 각 1 · 4).
+  같은 조건 두 번째 회차 비교 — `app-routes-admin` 692 → **461ms** · `AdminPage` 870 → **574ms**(망 편차가 커서 ms 는 참고, 판정은 청크 유무).
+- 반대 방향: PC 홈 `/` 1440px 는 `app-desktop-chrome`(731ms) + `lz-home-homePc` 계열을 **그대로** 받는다.
+- 남은 것(종전 판단 유지): 어드민이 `lz-boot-productL`·`lz-gbDetailL-productL`·`lz-boot-gbDetailL-map-productL`(~8.5KB raw)과
+  `lucide-desktop`·`lucide-home`·`lz-common` 을 받는다 — `app-components` 의 정적 의존이라 끊으려면 묶음 규칙을 건드려야 한다(별건).
