@@ -28,12 +28,12 @@ describe('① 기본 화질 75', () => {
   })
 })
 
-describe('② 상세 히어로는 85', () => {
+describe('② 상세 히어로는 명시한 75 (2026-10-20 85 → 75)', () => {
   it('크롭·평면 둘 다', async () => {
     const { detailHeroMobileUrl, detailPlainUrl, DETAIL_HERO_QUALITY } = await import('@/shared/detail-hero-image')
-    expect(DETAIL_HERO_QUALITY).toBe(85)
-    expect(detailHeroMobileUrl(MEDIA)).toContain('quality=85')
-    expect(detailPlainUrl(MEDIA, 1200)).toContain('quality=85')
+    expect(DETAIL_HERO_QUALITY).toBe(75)
+    expect(detailHeroMobileUrl(MEDIA)).toContain('quality=75')
+    expect(detailPlainUrl(MEDIA, 1200)).toContain('quality=75')
   })
 })
 
@@ -44,7 +44,7 @@ describe('③ 데이터 절약 모드', () => {
     const { cfImage } = await import('@/utils/cf-image')
     const { detailHeroMobileUrl } = await import('@/shared/detail-hero-image')
     expect(cfImage(MEDIA, { width: 400 })).toContain('quality=65')
-    expect(detailHeroMobileUrl(MEDIA), '히어로 85 가 데이터 절약을 우회한다').toContain('quality=65')
+    expect(detailHeroMobileUrl(MEDIA), '명시한 히어로 화질이 데이터 절약을 우회한다').toContain('quality=65')
     expect(cfImage(MEDIA, { width: 400, quality: 50 })).toContain('quality=50')
   })
 })

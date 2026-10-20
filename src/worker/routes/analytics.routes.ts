@@ -13,6 +13,7 @@ import { Hono } from 'hono'
 import type { Env } from '../types/env'
 import { requireAdmin } from '../middleware/auth'
 import { type LcpPartsBody, lcpPartsTuple, summarizeLcpParts } from '../utils/lcp-parts'
+import { CLS_SOURCE_MIN, sanitizeClsSource, topClsSources } from '../../shared/cls-source'
 
 const analyticsRoutes = new Hono<{ Bindings: Env }>()
 
@@ -37,6 +38,8 @@ interface VitalsBody {
   page?: string
   /** LCP 일 때만 — 어디서 시간이 갔나(web-vitals-report `lcpBreakdown`). */
   parts?: LcpPartsBody
+  /** CLS 일 때만 — 가장 큰 밀림의 요소(`shared/cls-source`). */
+  src?: unknown
 }
 
 
@@ -58,11 +61,11 @@ async function incrementCounter(kv: KVNamespace, key: string, increment: number 
   } catch { /* KV 미설정 / 한도 초과 시 silent */ }
 }
 
-async function appendSample(kv: KVNamespace, key: string, value: number | number[], maxSamples: number = 100): Promise<void> {
+async function appendSample(kv: KVNamespace, key: string, value: number | number[] | string, maxSamples: number = 100): Promise<void> {
   // 간단한 reservoir-ish: 기존 array (≤100) 에 push, 초과 시 무작위 교체
   try {
     const cur = await kv.get(key)
-    const arr: Array<number | number[]> = cur ? JSON.parse(cur) : []
+    const arr: Array<number | number[] | string> = cur ? JSON.parse(cur) : []
     if (arr.length < maxSamples) arr.push(value)
     else {
       const idx = Math.floor(Math.random() * (arr.length + 1))
@@ -108,6 +111,12 @@ analyticsRoutes.post('/vitals', async (c) => {
   if (body.name === 'LCP' && !coloM) {
     const tuple = lcpPartsTuple(body.parts)
     if (tuple) await appendSample(kv, `vitals:${day}:LCPB:${page}`, tuple)
+  }
+  // 🔬 2026-10-20: 큰 CLS 표본(≥0.05)은 **무엇이 밀렸는지**도 남긴다(`shared/cls-source`). 키 `CLSS` 는 SLO 판정
+  //   접두(`vitals:{날}:CLS:`)와 안 섞이고, 0.0x 표본은 원인을 안 보내므로 쓰기는 큰 표본에만 1번 더.
+  if (body.name === 'CLS' && !coloM && body.value >= CLS_SOURCE_MIN) {
+    const src = sanitizeClsSource(body.src)
+    if (src) await appendSample(kv, `vitals:${day}:CLSS:${page}`, src)
   }
   await incrementCounter(kv, `vitals_count:${day}:${body.name}`, 1)
   return c.json({ ok: true })
@@ -180,7 +189,18 @@ analyticsRoutes.get('/summary', requireAdmin(), async (c) => {
     }
   } catch { /* skip */ }
 
-  return c.json({ success: true, data: { day, vitals, funnel, lcp_parts: lcpParts } })
+  // 🔬 CLS 원인 — 화면별로 자주 밀린 요소(2026-10-20).
+  const clsSources: Record<string, ReturnType<typeof topClsSources>> = {}
+  try {
+    const list = await kv.list({ prefix: `vitals:${day}:CLSS:` })
+    for (const k of list.keys) {
+      const raw = await kv.get(k.name)
+      if (!raw) continue
+      clsSources[k.name.slice(`vitals:${day}:CLSS:`.length)] = topClsSources(JSON.parse(raw) as string[], 5)
+    }
+  } catch { /* skip */ }
+
+  return c.json({ success: true, data: { day, vitals, funnel, lcp_parts: lcpParts, cls_sources: clsSources } })
 })
 
 export { analyticsRoutes }

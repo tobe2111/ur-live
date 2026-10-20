@@ -67,3 +67,18 @@ describe('③ 다른 preload 는 건드리지 않는다', () => {
     expect(run(true, 'link', { rel: 'preload', as: 'image', href: '/cdn-cgi/image/w=400/x.jpg' }).removed).toBe(false)
   })
 })
+
+describe('④ 첫 화면 아래 로더 그림은 낮은 우선순위(2026-10-20)', () => {
+  it('on → 로더 <img> 에 fetchpriority=low', () => {
+    expect(run(true, 'img', { src: UDAL_LOADER_SRC }).getAttribute('fetchpriority'), '로더가 LCP 사진보다 먼저 받아진다').toBe('low')
+  })
+  it('off(로더가 첫 화면) → 건드리지 않는다', () => {
+    expect(run(false, 'img', { src: UDAL_LOADER_SRC }).getAttribute('fetchpriority')).toBe(null)
+  })
+  it('다른 그림은 건드리지 않는다', () => {
+    expect(run(true, 'img', { src: '/cdn-cgi/image/w=400/x.jpg' }).getAttribute('fetchpriority')).toBe(null)
+  })
+  it('워커 로더 마크업의 src 가 같은 상수다(셀렉터가 실제로 맞는다)', () => {
+    expect(readFileSync('src/worker/index.ts', 'utf8')).toMatch(/<img src="\$\{UDAL_LOADER_SRC\}"/)
+  })
+})

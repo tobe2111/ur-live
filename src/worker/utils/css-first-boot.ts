@@ -131,6 +131,10 @@ export function applyCssFirstBoot(rw: HTMLRewriter, nonce: string, on: boolean, 
     //   최우선으로 받아 첫 화면 CSS 와 회선을 나눠 썼다 — 라이브 느린 4G 8회 교차: 홈 첫 그림 1,104 → 1,040ms.
     //   그림 자체는 로더 `<img>` 가 보통 우선순위로 그대로 받는다(로더가 첫 화면인 표면은 이 함수가 안 걸려 preload 유지).
     .on(`link[rel="preload"][href="${UDAL_LOADER_SRC}"]`, { element(el) { el.remove() } })
+    // 🦦 2026-10-20: preload 를 지워도 로더 `<img>` 자신이 **보통 우선순위로 첫 사진 요청**이 됐다 — 라이브 실측
+    //   `/vouchers`·`/pass/:id` 에서 받은 첫 이미지가 유달이(12.5KB)였고 LCP 사진은 그 뒤였다. 첫 화면 아래 로더는
+    //   내용보다 급하지 않으므로 낮춘다(받기는 받는다 — 로더가 늦게 튀어나오는 표면은 이 함수가 안 걸린다).
+    .on(`img[src="${UDAL_LOADER_SRC}"]`, { element(el) { el.setAttribute('fetchpriority', 'low') } })
     .on('link[rel="modulepreload"]', { element(el) { el.setAttribute('rel', DEFERRED_PRELOAD_REL) } })
     .on('script[type="module"]', {
       element(el) {
