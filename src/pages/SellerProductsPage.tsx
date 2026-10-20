@@ -1,0 +1,511 @@
+import { useEffect, useState } from 'react'
+import { useTranslation } from '@/lib/i18n-lite'
+import { useNavigate } from 'react-router-dom'
+import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
+import { isVoucherCategory } from '@/shared/constants/voucher-categories'
+import { toast } from '@/hooks/useToast'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import SellerLayout from '@/components/SellerLayout'
+import SellerProductTabs from '@/components/seller/SellerProductTabs'
+import { DashboardPageHeader, DashboardActions, DashboardEmptyState, DashboardLoading } from '@/components/dashboard'
+import { getSellerId } from '@/lib/seller-auth'
+import { Box, DollarSign, Download, Edit, Eye, EyeOff, Image as ImageIcon, Loader2, Package, Plus, ShoppingBag, Ticket, Trash2, Upload, Zap } from 'lucide-react'
+import { downloadSellerTemplate } from '@/utils/product-template'
+import BulkUploadModal from '@/components/BulkUploadModal'
+import { formatNumber } from '@/utils/format'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
+
+interface Product {
+  id: number
+  name: string
+  description: string
+  price: number
+  stock: number
+  image_url: string
+  is_active: boolean
+  live_stream_title?: string
+  category?: string
+  created_at: string
+}
+
+export default function SellerProductsPage() {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const [deleting, setDeleting] = useState<number | null>(null)
+  const [showBulkUpload, setShowBulkUpload] = useState(false)
+  const [activeTab, setActiveTab] = useState<'my' | 'supply'>('my')
+  // 🔗 2026-07-02 (대표 #2 — 온라인 상품 판매 ↔ 이용권 철저 분리): '내 상품' 안에서 종류 구분.
+  const [myKind, setMyKind] = useState<'product' | 'voucher'>('product')
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 Promise.allSettled → useApiQuery 2개(transform 은 select 에서).
+  const productsQ = useApiQuery<Product[]>(['seller', 'products-mine'], '/api/seller/products', {
+    select: (r: any) => (r?.success ? (r.data || []).filter((p: Product & { is_supply_product?: boolean }) => !p.is_supply_product) : []),
+  })
+  const supplyQ = useApiQuery<Product[]>(['seller', 'products-supply'], '/api/supply/products', {
+    select: (r: any) => {
+      if (!r?.success) return []
+      const d = r.data
+      const items = Array.isArray(d) ? d : d?.items || []
+      return items.filter((p: Record<string, unknown>) => String(p.request_status || '').toUpperCase() === 'APPROVED')
+        .map((p: Record<string, unknown>) => ({
+          id: p.id, name: p.name, description: p.description || '',
+          price: p.retail_price || p.price, stock: p.stock || 0,
+          image_url: p.image_url || '', is_active: 1, category: p.category || '',
+        } as unknown as Product))
+    },
+  })
+  const products = productsQ.data ?? []
+  const supplyProducts = supplyQ.data ?? []
+  // 🔗 2026-07-02 (#2): 온라인 상품(쇼핑몰) vs 이용권(오프라인 카테고리) 분리 — SSOT isVoucherCategory.
+  const myOnline = products.filter(p => !isVoucherCategory(p.category || ''))
+  const myVouchers = products.filter(p => isVoucherCategory(p.category || ''))
+  const displayList = activeTab === 'supply' ? supplyProducts : (myKind === 'voucher' ? myVouchers : myOnline)
+  const loading = productsQ.isLoading || supplyQ.isLoading
+  const error = productsQ.isError ? t('seller.productListLoadFailed') : ''
+  const loadProducts = () => { productsQ.refetch(); supplyQ.refetch() }
+
+  useEffect(() => {
+    if (!localStorage.getItem('seller_token')) navigate('/seller/login')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function handleToggleActive(productId: number, currentStatus: boolean) {
+    if (!(await confirmDialog(t('seller.confirmToggleActive', { status: currentStatus ? t('seller.toggleDeactivate') : t('seller.toggleActivate') })))) {
+      return
+    }
+
+    try {
+      const sessionToken = localStorage.getItem('seller_token')
+      
+
+      // 🛡️ 2026-07-02 (쇼핑 전수조사): 서버 허용 status 는 ACTIVE/SOLD_OUT/HIDDEN/DELETED — 'PAUSED'
+      //   는 400 이었음. 비활성화 = HIDDEN(일시중지, 재활성화 가능), 활성화 = ACTIVE.
+      const response = await api.put(
+        `/api/seller/products/${productId}`,
+        { is_active: !currentStatus, status: !currentStatus ? 'ACTIVE' : 'HIDDEN' },
+        { headers: { 'Authorization': `Bearer ${sessionToken}` } }
+      )
+
+      if (response.data.success) {
+        toast.success(t('seller.productStatusChanged'))
+        loadProducts()
+      }
+    } catch (error: unknown) {
+      if (import.meta.env.DEV) console.error('Failed to toggle product:', error)
+      const axiosErr = error as { response?: { data?: { error?: string } } }
+      toast.error(axiosErr.response?.data?.error || t('seller.productStatusChangeFailed'))
+    }
+  }
+
+  async function handleDelete(productId: number) {
+    if (!(await confirmDialog({ message: t('seller.confirmDeleteProduct'), danger: true }))) {
+      return
+    }
+
+    setDeleting(productId)
+
+    try {
+      const sessionToken = localStorage.getItem('seller_token')
+      
+
+      const response = await api.delete(`/api/seller/products/${productId}`, {
+        headers: { 'Authorization': `Bearer ${sessionToken}` }
+      })
+
+      if (response.data.success) {
+        toast.success(t('seller.productDeleted'))
+        loadProducts()
+      }
+    } catch (error: unknown) {
+      if (import.meta.env.DEV) console.error('Failed to delete product:', error)
+      const axiosErr = error as { response?: { data?: { error?: string } } }
+      toast.error(axiosErr.response?.data?.error || t('seller.productDeleteFailed'))
+    } finally {
+      setDeleting(null)
+    }
+  }
+
+  function formatPrice(price: number) {
+    return formatNumber(price)
+  }
+
+  return (
+    <SellerLayout title={t('seller.nav.products')}>
+      <SellerProductTabs />
+      <div className="mx-auto max-w-5xl">
+        {/* 🛡️ 2026-04-22 배치 127: 디자인 시스템 적용 */}
+        {/* 🎛️ 2026-08-31 (대표 — "버튼 배치가 중구난방이고 체계적이지 않다"): 액션 체계 적용.
+            이전: [대량등록 양식 다운로드(에메랄드 아웃라인)] [대량등록(오렌지 아웃라인)]
+                  [빠른 공구(검정 solid)] [상품 등록(검정 solid)] — 넷이 두 줄로 흩어져 있었다.
+              ⓐ 에메랄드·오렌지는 **아무 뜻도 없다**(성공도 경고도 아닌 장식색).
+                 색을 장식으로 쓰면 진짜 신호(빨강=위험)가 안 보인다.
+              ⓑ **검정이 둘**이라 무엇이 주 행동인지 화면이 말하지 못했다.
+            ⇒ 주 1개(상품 등록) · 보조 1개(빠른 공구) · 나머지는 ⋯ 로 접는다.
+               대량등록은 쓰는 사람만 쓴다 — 늘 보일 이유가 없다.
+            제목도 뺐다: 상단바 "상품 관리" · 탭 "상품 관리" · 제목 "상품 관리" 로 **세 번**이었다. */}
+        <DashboardPageHeader
+          actions={
+            <DashboardActions
+              primary={
+                <Button
+                  onClick={() => navigate('/seller/products/new')}
+                  className="ur-btn ur-btn-md ur-btn-secondary"
+                >
+                  <Plus className="mr-1.5 h-4 w-4" />
+                  <span>{t('seller.addProduct')}</span>
+                </Button>
+              }
+              secondary={
+                /* ⚡ 2026-08-01 — 3분 등록 진입점.
+                   이 버튼이 없으면 `/seller/products/quick` 은 **아무도 못 찾는 죽은 페이지**다
+                      (라우트만 있고 링크 0 — 이 레포가 반복해 만난 "조용한 부재" 클래스).
+                      내부-링크 가드는 링크→라우트 방향만 보므로 이 방향은 안 잡아 준다. */
+                <Button
+                  onClick={() => navigate('/seller/products/quick')}
+                  variant="outline"
+                  className="ur-btn ur-btn-md border-gray-200 px-4 text-gray-700 hover:bg-gray-50"
+                >
+                  <Zap className="mr-1.5 h-4 w-4" />
+                  <span>빠른 공구</span>
+                </Button>
+              }
+              overflow={[
+                { label: t('seller.bulkUpload'), onClick: () => setShowBulkUpload(true), icon: <Upload className="h-4 w-4" /> },
+                { label: t('seller.bulkTemplateDownload'), onClick: downloadSellerTemplate, icon: <Download className="h-4 w-4" /> },
+              ]}
+            />
+          }
+        />
+
+        {/* 🗑️ 2026-06-26 (대표 — '의미 없음'): 셀러 트래킹 링크(/browse?seller=) 제거 — 쇼핑 숨김 + 유어샵(/u/{handle})이 정식 공유 경로. */}
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4">
+            <div className="flex items-center gap-2 text-tone-bad">
+              <Trash2 className="h-5 w-5" />
+              <p className="text-sm font-medium">{error}</p>
+            </div>
+            <button onClick={() => window.location.reload()} className="ur-btn ur-btn-md ur-btn-primary mt-3">
+              {t('seller.retryButton')}
+            </button>
+          </div>
+        )}
+
+        {/* 탭: 내 상품 / 공급 상품 */}
+        <div className="mb-4 inline-flex gap-1 rounded-xl border border-gray-200 bg-white p-1">
+          <button
+            onClick={() => setActiveTab('my')}
+            className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+              activeTab === 'my' ? 'bg-brand-tint text-brand-text' : 'text-gray-500 hover:text-gray-900'
+            }`}
+          >
+            {t('seller.myProducts')} <span className="ml-1 opacity-70">{products.length}</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('supply')}
+            className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+              activeTab === 'supply' ? 'bg-brand-tint text-brand-text' : 'text-gray-500 hover:text-gray-900'
+            }`}
+          >
+            {t('seller.supplyProductsTab')} <span className="ml-1 opacity-70">{supplyProducts.length}</span>
+          </button>
+        </div>
+
+        {/* 🔗 2026-07-02 (대표 #2 — 온라인 상품 ↔ 이용권 철저 분리): '내 상품' 종류 서브탭.
+            온라인 상품(쇼핑몰)이 주인공, 이용권은 부가 채널로 명확히 구분. */}
+        {activeTab === 'my' && (
+          <div className="mb-4 inline-flex gap-1 rounded-xl border border-gray-200 bg-white p-1">
+            <button
+              onClick={() => setMyKind('product')}
+              className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                myKind === 'product' ? 'bg-brand-tint text-brand-text' : 'text-gray-500 hover:text-gray-900'
+              }`}
+            >
+              <ShoppingBag className="w-4 h-4 inline-block align-[-3px] mr-1" aria-hidden="true" />{t('seller.onlineProductsTab', { defaultValue: '온라인 상품' })} <span className="ml-1 opacity-70">{myOnline.length}</span>
+            </button>
+            <button
+              onClick={() => setMyKind('voucher')}
+              className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                myKind === 'voucher' ? 'bg-brand-tint text-brand-text' : 'text-gray-500 hover:text-gray-900'
+              }`}
+            >
+              <Ticket className="w-4 h-4 inline-block align-[-3px] mr-1" aria-hidden="true" />{t('seller.vouchersTab', { defaultValue: '이용권' })} <span className="ml-1 opacity-70">{myVouchers.length}</span>
+            </button>
+          </div>
+        )}
+
+        {/* Loading */}
+        {loading ? (
+          <DashboardLoading variant="skeleton" rows={4} />
+        ) : (
+          /* Products List */
+          <div>
+            {displayList.length === 0 ? (
+              <DashboardEmptyState
+                icon={<Package className="h-7 w-7" />}
+                title={t('seller.noProductsRegistered')}
+                action={
+                  <Button
+                    onClick={() => navigate('/seller/products/new')}
+                    className="ur-btn ur-btn-md ur-btn-primary"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    {t('seller.firstProductRegister')}
+                  </Button>
+                }
+              />
+            ) : (
+              <>
+                {/* Desktop Table View - Hidden on mobile */}
+                <div className="hidden lg:block rounded-[var(--dash-radius,16px)] border border-rule bg-white border overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 border-b">
+                      <tr>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">{t('common.image')}</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">{t('seller.productName')}</th>
+            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500">{t('common.price')}</th>
+            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500">{t('common.stock')}</th>
+            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500">{t('common.status')}</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">{t('seller.liveStreamColumn')}</th>
+            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500">{t('seller.actionColumn')}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {displayList.map((product) => (
+                        <tr key={product.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4">
+                            <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
+                              {product.image_url && product.image_url.trim() !== '' ? (
+                                <img
+                                  src={product.image_url}
+                                  alt={product.name}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = 'none'
+                                  }}
+                                />
+                              ) : null}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">{product.name}</p>
+                              <p className="text-xs text-gray-500 line-clamp-1 mt-1">{product.description || t('seller.noDescription')}</p>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-right text-gray-900 font-medium">
+                            {formatPrice(product.price)}{t('common.won')}
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <Badge className={product.stock > 0 ? 'bg-white text-tone-ok border-rule' : 'bg-white text-tone-bad border-rule'}>
+                              {product.stock > 0 ? `${product.stock}${t('common.count')}` : t('seller.soldOut')}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <button
+                              onClick={() => handleToggleActive(product.id, product.is_active)}
+                              className="inline-flex items-center gap-1"
+                            >
+                              {product.is_active ? (
+                                <Badge className="bg-white text-gray-700 border-rule cursor-pointer hover:bg-gray-100">
+                                  <Eye className="w-3 h-3 mr-1" />
+                                  {t('seller.onSale')}
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-gray-100 text-gray-800 border-gray-200 cursor-pointer hover:bg-gray-200">
+                                  <EyeOff className="w-3 h-3 mr-1" />
+                                  {t('seller.inactiveStatus')}
+                                </Badge>
+                              )}
+                            </button>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600">
+                            {product.live_stream_title || '-'}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                onClick={() => navigate(`/seller/products/${product.id}/edit`)}
+                                className="text-gray-700 hover:text-gray-700 transition-colors p-1"
+                                title={t('common.edit')}
+                              >
+                                <Edit className="w-5 h-5" />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(product.id)}
+                                disabled={deleting === product.id}
+                                className="text-tone-bad hover:text-tone-bad transition-colors p-1 disabled:opacity-50"
+                                title={t('common.delete')}
+                              >
+                                {deleting === product.id ? (
+                                  <Loader2 className="w-5 h-5 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-5 h-5" />
+                                )}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Card View - Shown on mobile/tablet */}
+                <div className="lg:hidden space-y-3 sm:space-y-4">
+                  {displayList.map((product) => (
+                    <div key={product.id} className="rounded-[var(--dash-radius,16px)] border border-rule bg-white border p-3 sm:p-4">
+                      <div className="flex gap-3 sm:gap-4">
+                        {/* Product Image */}
+                        <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0">
+                          {product.image_url && product.image_url.trim() !== '' ? (
+                            <img
+                              src={product.image_url}
+                              alt={product.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = 'none'
+                              }}
+                            />
+                          ) : null}
+                        </div>
+
+                        {/* Product Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <h3 className="text-sm sm:text-base font-semibold text-gray-900 line-clamp-2">
+                              {product.name}
+                            </h3>
+                            <button
+                              onClick={() => handleToggleActive(product.id, product.is_active)}
+                              className="flex-shrink-0"
+                            >
+                              {product.is_active ? (
+                                <Badge className="bg-white text-gray-700 border-rule cursor-pointer hover:bg-gray-100 text-xs">
+                                  <Eye className="w-3 h-3 mr-1" />
+                                  {t('seller.onSale')}
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-gray-100 text-gray-800 border-gray-200 cursor-pointer hover:bg-gray-200 text-xs">
+                                  <EyeOff className="w-3 h-3 mr-1" />
+                                  {t('seller.inactiveStatus')}
+                                </Badge>
+                              )}
+                            </button>
+                          </div>
+
+                          {product.description && (
+                            <p className="text-xs sm:text-sm text-gray-500 line-clamp-1 mb-2">
+                              {product.description}
+                            </p>
+                          )}
+
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="flex items-center gap-1 text-gray-900">
+                              <DollarSign className="w-4 h-4 text-tone-ok" />
+                              <span className="text-base sm:text-lg font-bold">
+                                {formatPrice(product.price)}{t('common.won')}
+                              </span>
+                            </div>
+                            <Badge className={product.stock > 0 ? 'bg-white text-tone-ok border-rule' : 'bg-white text-tone-bad border-rule'}>
+                              <Box className="w-3 h-3 mr-1" />
+                              {product.stock > 0 ? `${product.stock}${t('common.count')}` : t('seller.soldOut')}
+                            </Badge>
+                          </div>
+
+                          {product.live_stream_title && (
+                            <p className="text-xs text-gray-500 mb-2">
+                              {product.live_stream_title}
+                            </p>
+                          )}
+
+                          {/* Action Buttons */}
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => navigate(`/seller/products/${product.id}/edit`)}
+                              className="ur-btn ur-btn-sm ur-btn-primary flex-1 sm:flex-none transition-colors flex items-center justify-center gap-1.5"
+                            >
+                              <Edit className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                              {t('common.edit')}
+                            </button>
+                            <button
+                              onClick={() => handleDelete(product.id)}
+                              disabled={deleting === product.id}
+                              className="ur-btn ur-btn-sm ur-btn-danger flex-1 sm:flex-none gap-1.5"
+                            >
+                              {deleting === product.id ? (
+                                <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
+                              ) : (
+                                <>
+                                  <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                  {t('common.delete')}
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Stats Card */}
+        {products.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+            <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white border p-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                  <Package className="w-5 h-5 text-gray-700" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">{t('common.product')}</p>
+                  <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">{products.length}{t('common.count')}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white border p-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                  <Eye className="w-5 h-5 text-tone-ok" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">{t('seller.onSale')}</p>
+                  <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">
+                    {products.filter(p => p.is_active).length}{t('common.count')}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white border p-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                  <Box className="w-5 h-5 text-tone-warn" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">{t('common.stock')}</p>
+                  <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">
+                    {products.reduce((sum, p) => sum + p.stock, 0)}{t('common.count')}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+      <BulkUploadModal
+        open={showBulkUpload}
+        onClose={() => setShowBulkUpload(false)}
+        tokenKey="seller_token"
+        onSuccess={loadProducts}
+      />
+    </SellerLayout>
+  )
+}

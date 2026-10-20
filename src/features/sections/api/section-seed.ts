@@ -1,0 +1,120 @@
+import type { Env } from '@/worker/types/env'
+import { SECTION_DEFAULT_LIMIT } from '@/shared/constants/home-showcase'
+import { dbKey } from '@/worker/utils/d1-read-replica'
+
+/**
+ * 🏠 홈 섹션 기본 시드 (2026-08-04 대표 신고 *"너가 줬던 시안이랑 완전 다르잖아"*).
+ *
+ * ## 왜 필요한가
+ * #1046 은 섹션 **기능**만 넣고 섹션을 하나도 만들지 않았다. 그래서 라이브 홈은
+ * *"틀은 있는데 안이 빈"* 상태였고, 승인받은 시안(인기 / 마감 임박 / 숙소 세 줄)과 전혀 달랐다.
+ * 어드민이 손으로 만들어야만 보이는 구조는 **"기본이 빈 화면"** 이라는 뜻이고, 그건 시안이 아니다.
+ *
+ * ## 규칙 섹션만 시드한다
+ * 전부 `source` 가 규칙(popular/deadline/category)이라 **상품이 들고 나는 대로 저절로 맞는다.**
+ * 수동 큐레이션을 시드하면 담긴 상품이 없어 어차피 홈에서 빠진다(빈 줄은 서버가 뺀다).
+ *
+ * ## 대표의 편집을 절대 덮지 않는다
+ * 블로그·가이드 시드와 같은 철학: **제목이 같은 섹션이 이미 있으면 건드리지 않는다.**
+ * 지운 섹션도 되살리지 않는다(버전을 올릴 때만 없는 것을 새로 넣는다).
+ * ⇒ 마음에 안 들면 어드민에서 지우거나 고치면 되고, 그 선택이 유지된다.
+ */
+
+/** 올릴 때마다 "아직 없는 시드 섹션"만 추가된다. 기존 행은 건드리지 않는다.
+ *  v2 (2026-08-17 대표 신고 — "더보기 누르면 이상한 페이지가 잠깐 보였다 사라짐"): '지금 인기 이용권'의
+ *  more_href 가 `/group-buy` 였는데 그 경로는 **라우트가 아니라 홈으로 가는 별칭**(`<Navigate to="/">`
+ *  + 서버 301)이다 — 클릭하면 홈이 통째로 리마운트되며 옛 프레임이 플래시한 뒤 제자리로 돌아오는
+ *  죽은 버튼이었다. `/?sort=popular`(홈 인기순 그리드 — 쿼리 전용 이동이라 리마운트 0)로 교체.
+ *  기존 행도 값이 정확히 `/group-buy` 면 아래 heal 이 고쳐 준다(별칭은 어떤 의도로도 옳을 수 없는 값). */
+export const SECTION_SEED_VERSION = 2
+
+interface SeedSection {
+  title: string
+  subtitle: string
+  source: 'popular' | 'deadline' | 'category'
+  source_value: string | null
+  limit_count: number
+  more_href: string
+}
+
+/**
+ * 기본 노출 줄.
+ * ⚠️ 2026-08-04 대표 지시로 **'오늘 마감 임박' 은 뺐다**("아예 필요없어").
+ * ⚠️ 2026-10-14 대표 지시 *"주말에 떠나는 숙소 이건 빼줘 아예. 모바일도 마찬가지고"* — 시드에서도 뺐다
+ *   (라이브 행은 비활성으로 돌렸다 — 지우지 않아 어드민에서 되살릴 수 있다). 숙소는 홈 필터의 '숙소' 가 맡는다.
+ *   규칙(`deadline`) 자체는 살아 있어 어드민에서 언제든 다시 만들 수 있다.
+ */
+export const HOME_SECTION_SEED: SeedSection[] = [
+  {
+    title: '지금 인기 이용권',
+    subtitle: '많이 팔린 순으로 모았어요',
+    source: 'popular',
+    source_value: null,
+    limit_count: SECTION_DEFAULT_LIMIT,
+    more_href: '/?sort=popular',
+  },
+]
+
+const SETTING_KEY = 'home_sections_seed_version'
+
+async function readSeededVersion(DB: D1Database): Promise<number> {
+  try {
+    const row = await DB.prepare(
+      `SELECT value FROM platform_settings WHERE key = ?`
+    ).bind(SETTING_KEY).first<{ value: string }>()
+    const n = Number(row?.value)
+    return Number.isFinite(n) ? n : 0
+  } catch {
+    // 테이블/행이 없으면 "아직 안 함" — 시드가 도는 게 맞다.
+    return 0
+  }
+}
+
+/**
+ * 버전이 올랐을 때만 실행. **제목이 같은 섹션이 이미 있으면 건너뛴다**(대표 편집 보존).
+ * 실패는 통째로 삼킨다 — 시드가 홈 조회를 깨뜨리면 안 된다.
+ */
+/**
+ * ⚡ 2026-10-15 (대표 *"첫 접속 시 2~3배 느려 · 이런 이용권은 어떠세요? 도 너무 늦게 떠"*): 버전 확인을
+ *   **isolate 당 한 번만** 한다. 종전엔 섹션 캐시가 빌 때마다 `platform_settings` 를 한 번 더 물었고,
+ *   D1 이 미국 동부(ENAM)라 한국 콜로에서 그 한 번이 왕복 ~170ms 를 HTML 앞에 붙였다.
+ *   버전은 배포 때만 오르므로(상수) 한 isolate 안에서 "이미 됐다" 는 바뀌지 않는다.
+ */
+const _seedConfirmed = new WeakSet<D1Database>()
+
+export async function maybeSeedHomeSections(env: Env): Promise<void> {
+  const DB = env.DB
+  if (_seedConfirmed.has(dbKey(DB))) return
+  try {
+    if (await readSeededVersion(DB) >= SECTION_SEED_VERSION) { _seedConfirmed.add(dbKey(DB)); return }
+
+    const { results } = await DB.prepare('SELECT title FROM homepage_sections').all<{ title: string }>()
+    const existing = new Set((results ?? []).map(r => String(r.title)))
+
+    const maxRow = await DB.prepare('SELECT MAX(sort_order) AS m FROM homepage_sections').first<{ m: number | null }>()
+    let order = (maxRow?.m ?? 0) + 1
+
+    // 🚑 v2 heal — 라이브에 v1 으로 이미 들어간 `/group-buy` 더보기를 정정한다. 대표가 편집한
+    // 다른 값은 건드리지 않는다(정확히 별칭 값일 때만 — 별칭은 홈 리다이렉트라 항상 잘못된 값).
+    await DB.prepare(
+      `UPDATE homepage_sections SET more_href = '/?sort=popular' WHERE more_href = '/group-buy'`
+    ).run().catch(() => {})
+
+    for (const s of HOME_SECTION_SEED) {
+      if (existing.has(s.title)) continue
+      await DB.prepare(
+        `INSERT INTO homepage_sections
+           (title, subtitle, layout, sort_order, is_active, source, source_value, limit_count, more_href)
+         VALUES (?, ?, 'grid3', ?, 1, ?, ?, ?, ?)`
+      ).bind(s.title, s.subtitle, order++, s.source, s.source_value, s.limit_count, s.more_href).run()
+    }
+
+    await DB.prepare(
+      `INSERT INTO platform_settings (key, value, updated_at) VALUES (?, ?, datetime('now'))
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`
+    ).bind(SETTING_KEY, String(SECTION_SEED_VERSION)).run()
+    _seedConfirmed.add(dbKey(DB))
+  } catch {
+    /* 시드 실패가 홈을 깨뜨리지 않는다 — 다음 요청에서 다시 시도된다. */
+  }
+}

@@ -1,0 +1,49 @@
+<!doctype html><meta charset=utf-8><style>
+html,body{margin:0;font-family:sans-serif}
+.b{position:relative;width:1600px;height:800px;overflow:hidden}
+.abs{position:absolute}
+.disc{position:absolute;border-radius:50%}
+.u{position:absolute;bottom:150px;height:600px;filter:drop-shadow(0 22px 22px rgba(0,0,0,.25));z-index:5}
+/* 받침대: 윗면 타원 + 옆면 */
+.ped{position:absolute;width:520px;height:150px;z-index:2}
+.ped .side{position:absolute;left:0;right:0;top:46px;height:84px;border-radius:0 0 260px 260px/0 0 60px 60px}
+.ped .top{position:absolute;left:0;right:0;top:0;height:96px;border-radius:50%;box-shadow:inset 0 -6px 14px rgba(0,0,0,.08)}
+.pshadow{position:absolute;height:60px;border-radius:50%;filter:blur(18px);z-index:1}
+/* 쿠폰 티켓 */
+.tk{position:absolute;width:200px;height:110px;border-radius:18px;z-index:4;
+ box-shadow:0 18px 30px rgba(0,0,0,.22), inset 0 2px 0 rgba(255,255,255,.7), inset 0 -4px 8px rgba(0,0,0,.08);
+ -webkit-mask:radial-gradient(circle 16px at 0 50%,#0000 98%,#000) left/51% 100% no-repeat,radial-gradient(circle 16px at 100% 50%,#0000 98%,#000) right/51% 100% no-repeat}
+.tk .band{position:absolute;right:0;top:0;bottom:0;width:62px;border-radius:0 18px 18px 0}
+.tk .perf{position:absolute;right:62px;top:12px;bottom:12px;border-left:3px dotted rgba(0,0,0,.18)}
+.tk .l1{position:absolute;left:30px;top:30px;width:80px;height:14px;border-radius:7px;opacity:.55}
+.tk .l2{position:absolute;left:30px;top:56px;width:52px;height:14px;border-radius:7px;opacity:.35}
+.coin{position:absolute;border-radius:50%;z-index:4;
+ background:radial-gradient(circle at 35% 30%,#FFF6C9 0 12%,#FFD54A 35%,#E9A514 70%,#B97806 100%);
+ box-shadow:0 14px 22px rgba(0,0,0,.22), inset 0 0 0 6px rgba(255,236,150,.6), inset 0 -6px 10px rgba(150,90,0,.35)}
+.coin:after{content:'';position:absolute;inset:22%;border-radius:50%;box-shadow:inset 0 3px 4px rgba(150,90,0,.35),0 2px 0 rgba(255,250,210,.7)}
+svg.s{position:absolute;z-index:6}
+</style><body><div class=b id=B></div>
+<script>
+const P={
+ wave:{u:'../../mascot/poses-2026-10-11/v6-cut-1.png',bg:'linear-gradient(115deg,#0E3796 0%,#1C69EF 52%,#6AAAFF 100%)',glow:'#A9CBFF',top:'linear-gradient(#F4F8FF,#D7E5FF)',side:'linear-gradient(#B9CFF7,#8FB0EC)',band:'#1C69EF',paper:'#FFFFFF',ink:'#1C69EF',sh:'rgba(5,25,80,.5)',spark:'#FFFFFF'},
+ gift:{u:'../../mascot/poses-2026-10-11/v6-cut-2.png',bg:'linear-gradient(115deg,#08514A 0%,#139080 52%,#62D6BC 100%)',glow:'#C8F7EA',top:'linear-gradient(#F5FFFC,#D3F1E8)',side:'linear-gradient(#A9DDCF,#7CC4B1)',band:'#FF7A59',paper:'#FFFFFF',ink:'#0F8F7E',sh:'rgba(2,40,34,.5)',spark:'#FFEAA5'},
+ find:{u:'../../mascot/poses-2026-10-11/v6-cut-3.png',bg:'linear-gradient(115deg,#A8341A 0%,#E85E3A 52%,#FFA781 100%)',glow:'#FFD8C6',top:'linear-gradient(#FFF8F4,#FBE0D4)',side:'linear-gradient(#F3BFA8,#E39B7E)',band:'#1C69EF',paper:'#FFFFFF',ink:'#E85E3A',sh:'rgba(80,18,6,.45)',spark:'#FFF0BF'},
+ qr:{u:'../../mascot/poses-2026-10-11/v6-cut-6.png',bg:'linear-gradient(115deg,#35208A 0%,#6847D6 52%,#B9A0FF 100%)',glow:'#E6DCFF',top:'linear-gradient(#FAF8FF,#E5DDFF)',side:'linear-gradient(#C8B8F6,#A592EA)',band:'#FFB627',paper:'#FFFFFF',ink:'#6847D6',sh:'rgba(25,10,70,.5)',spark:'#FFFFFF'},
+}
+const k=location.hash.slice(1),p=P[k],B=document.getElementById('B'),cx=1210
+B.style.background=p.bg
+const tk=(x,y,r,s)=>`<div class=tk style="left:${x}px;top:${y}px;transform:rotate(${r}deg) scale(${s});background:${p.paper}"><div class=band style="background:${p.band}"></div><div class=perf></div><div class=l1 style="background:${p.ink}"></div><div class=l2 style="background:${p.ink}"></div></div>`
+const coin=(x,y,d,r)=>`<div class=coin style="left:${x}px;top:${y}px;width:${d}px;height:${d}px;transform:rotate(${r}deg) scaleX(.86)"></div>`
+const star=(x,y,s)=>`<svg class=s style="left:${x}px;top:${y}px" width="${s}" height="${s}" viewBox="0 0 24 24"><path d="M12 0C13 8 16 11 24 12C16 13 13 16 12 24C11 16 8 13 0 12C8 11 11 8 12 0Z" fill="${p.spark}"/></svg>`
+B.innerHTML=`
+<div class=disc style="width:1100px;height:1100px;left:${cx-360}px;top:-420px;background:rgba(255,255,255,.08)"></div>
+<div class=disc style="width:640px;height:640px;left:${cx-200}px;top:-40px;background:${p.glow};opacity:.35;filter:blur(50px)"></div>
+<div class=pshadow style="width:560px;left:${cx-280}px;top:690px;background:${p.sh}"></div>
+<div class=ped style="left:${cx-260}px;top:590px"><div class=side style="background:${p.side}"></div><div class=top style="background:${p.top}"></div></div>
+<img class=u src="${p.u}" id=U>
+${tk(cx+150,160,14,.9)}${tk(cx-235,505,-10,.62)}
+${coin(cx+230,430,90,-10)}${coin(cx+185,545,58,18)}${coin(cx-205,120,54,-20)}
+${star(cx+150,110,40)}${star(cx+320,330,26)}${star(cx-215,330,20)}
+`
+const U=document.getElementById('U');U.onload=()=>{U.style.left=(cx-U.width/2)+'px'}
+</script>

@@ -1,0 +1,116 @@
+/* ── 유어딜 브랜드 컬러 ── */
+:root {
+  --ifm-color-primary: #e8284a;
+  --ifm-color-primary-dark: #d11e3f;
+  --ifm-color-primary-darker: #c51c3c;
+  --ifm-color-primary-darkest: #a31631;
+  --ifm-color-primary-light: #eb3e5d;
+  --ifm-color-primary-lighter: #ed4a67;
+  --ifm-color-primary-lightest: #f27189;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+  --ifm-font-family-base: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --ifm-heading-font-weight: 700;
+  --ifm-navbar-height: 60px;
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #ff6b85;
+  --ifm-color-primary-dark: #ff4f6d;
+  --ifm-color-primary-darker: #ff4162;
+  --ifm-color-primary-darkest: #ff1440;
+  --ifm-color-primary-light: #ff879e;
+  --ifm-color-primary-lighter: #ff95aa;
+  --ifm-color-primary-lightest: #ffbec8;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+  --ifm-background-color: #0f0f0f;
+  --ifm-navbar-background-color: #1a1a1a;
+  --ifm-footer-background-color: #111;
+}
+
+/* ── Pretendard 폰트 ── */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
+
+/* ── 네비 ── */
+.navbar {
+  box-shadow: 0 1px 0 rgba(0,0,0,0.08);
+}
+.navbar__title {
+  font-weight: 800;
+  font-size: 1.1rem;
+  background: linear-gradient(135deg, #e8284a, #ff6b35);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.navbar__link--active {
+  color: var(--ifm-color-primary) !important;
+}
+
+/* ── 히어로 ── */
+.hero-gradient {
+  background: linear-gradient(135deg, #e8284a 0%, #ff6b35 50%, #ff9a56 100%);
+}
+.hero--primary {
+  background: linear-gradient(135deg, #e8284a 0%, #c31432 100%);
+}
+
+/* ── 블로그 카드 ── */
+.blog-post-item {
+  border-radius: 12px;
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.blog-post-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+
+/* ── 태그 ── */
+.tag {
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* ── 버튼 ── */
+.button--primary {
+  background: linear-gradient(135deg, #e8284a, #ff6b35);
+  border: none;
+  font-weight: 700;
+  border-radius: 8px;
+}
+.button--primary:hover {
+  background: linear-gradient(135deg, #c31432, #e55a28);
+  color: white;
+}
+.button--secondary {
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+/* ── 목차 ── */
+.table-of-contents__link--active {
+  color: var(--ifm-color-primary);
+  font-weight: 600;
+}
+
+/* ── 코드블록 ── */
+.prism-code {
+  border-radius: 10px;
+}
+
+/* ── 홈페이지 feature 카드 ── */
+.feature-card {
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  height: 100%;
+  transition: box-shadow 0.2s;
+}
+.feature-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}
+.feature-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+}

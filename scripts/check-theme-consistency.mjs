@@ -1,0 +1,176 @@
+#!/usr/bin/env node
+/**
+ * 🛡️ 2026-05-31: 다크/라이트 테마 일관성 검사.
+ *
+ * 룰 (CLAUDE.md 테마 정책):
+ *   - 유저 대면 화이트-토글 페이지(쇼핑/상세/마이 등)는 라이트 색상에 dark: variant 필수.
+ *     bg-white → dark:bg-..., text-gray-900/800/700 → dark:text-... 등.
+ *   - 라이트 색상인데 같은 element 에 dark: counterpart 없으면 다크 모드에서 흰 박스/검은 텍스트.
+ *
+ * 제외:
+ *   - seller/admin/agency 대시보드 → dark: variant 금지 (check-dashboard-theme.sh 가 별도 강제).
+ *   - 순수 다크 페이지(bg-[#020202] 등) → 애초에 라이트 클래스 없어 자동 무시.
+ *   - 콜백/디버그/embed → 테마 무관.
+ *
+ * 동작: 기본 warn-only. CI strict 는 `-s` 또는 STRICT_THEME=1 (exit 1).
+ *
+ * 미래 페이지 자동 적용: pre-commit hook + verify.yml CI 에 등록됨.
+ */
+import fs from 'fs'
+import path from 'path'
+import { execSync } from 'child_process'
+
+const STRICT = process.argv.includes('-s') || process.env.STRICT_THEME === '1'
+const ROOT = process.cwd()
+
+// 대시보드(dark 금지) + 콜백/디버그/embed/소개 = 제외
+//   - seller/admin/agency: 라이트 고정 대시보드 (check-dashboard-theme.sh 별도 강제)
+//   - streaming/: 셀러 방송 셋업(SellerLiveBroadcast 하위) — 대시보드 컨텍스트
+//   - guide/: SellerGuide/AgencyGuide/AdminOperationsGuide 전용
+//   - dashboard/: 대시보드 통계 카드 등 셀러/어드민 전용
+//   (usage 추적으로 확인 — 2026-05-31. 라이트 고정이라 dark: 추가 금지)
+const EXCLUDE = /(seller|admin|agency|supplier|[Ww]holesale)|components\/(streaming|guide|dashboard)\//i
+const EXCLUDE_FILE = /(Callback|Debug|Embed|Introduce|Login|Register)/i
+// 최상위 컴포넌트지만 대시보드 전용(Admin/SellerProducts 에서만 사용) — 라이트 고정.
+const DASHBOARD_ONLY = /(ProductOptionForm|BulkUploadModal)\.tsx$/
+
+// 라이트 색 → 필요한 dark: prefix (같은 className 에 존재해야)
+// 🛡️ variant-aware: `hover:bg-gray-100` 은 `dark:hover:bg-...` 로 대응 (오탐 방지).
+//   util 의 variant 체인(hover:/focus:/group-hover:/lg: 등)을 추출해 dark:<variant>prop 존재 검사.
+const LIGHT_TOKENS = [
+  { re: /((?:[\w-]+:)*)bg-white\b(?!\/)/g, prop: 'bg', label: 'bg-white' },
+  { re: /((?:[\w-]+:)*)bg-gray-50\b/g, prop: 'bg', label: 'bg-gray-50' },
+  { re: /((?:[\w-]+:)*)bg-gray-100\b/g, prop: 'bg', label: 'bg-gray-100' },
+  { re: /((?:[\w-]+:)*)text-gray-900\b/g, prop: 'text', label: 'text-gray-900' },
+  { re: /((?:[\w-]+:)*)text-gray-800\b/g, prop: 'text', label: 'text-gray-800' },
+  { re: /((?:[\w-]+:)*)text-gray-700\b/g, prop: 'text', label: 'text-gray-700' },
+]
+
+function listTsx(dir) {
+  const out = []
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, e.name)
+    if (e.isDirectory()) out.push(...listTsx(p))
+    else if (e.name.endsWith('.tsx')) out.push(p)
+  }
+  return out
+}
+
+// 변경된 파일만 검사(있으면) — pre-commit 속도. 없으면 전체.
+let targetFiles = []
+try {
+  const staged = execSync('git diff --cached --name-only --diff-filter=ACM', { encoding: 'utf8' })
+    .split('\n').filter(f => /^src\/(pages|components)\/.*\.tsx$/.test(f))
+  targetFiles = staged.length ? staged.map(f => path.join(ROOT, f)) : []
+} catch { /* not a git context */ }
+if (targetFiles.length === 0) {
+  targetFiles = [...listTsx('src/pages'), ...listTsx('src/components')]
+}
+
+// 강제 다크 페이지(라이트 토글 무관) — light 버튼이 섞여도 다크 고정.
+//   LiveDonation: live 뷰어 위 화이트 바텀시트(의도된 흰색, Toss/Kakao 결제시트 패턴) — 다크 고정.
+const FORCED_DARK_FILE = /(Shorts|LiveList|LivePage|live\/|Reel|ShortsPage|LiveDonation)/i
+const violations = []
+for (const f of targetFiles) {
+  if (!fs.existsSync(f)) continue
+  const rel = f.replace(ROOT + '/', '')
+  if (EXCLUDE.test(rel) || EXCLUDE_FILE.test(rel) || FORCED_DARK_FILE.test(rel) || DASHBOARD_ONLY.test(rel)) continue
+  const src = fs.readFileSync(f, 'utf8')
+  // 🛡️ 정밀: "토글 의도" 신호 — dark: variant 가 이미 하나라도 있어야 partial-dark 로 판정.
+  //   (dark: 0 = 순수 다크/강제 화이트로 모호 → 플래그 X, 오탐 방지)
+  //   bg-[#020202] = 강제 다크 페이지 → 제외.
+  if (!/dark:(bg|text|border)/.test(src)) continue
+  // 🖤 2026-08-30 잉크 검정 전환: 다크 배경이 #0F151D → #11141C. 구 값도 남겨 둔다
+  //    (외부 브랜치·미이행 파일이 옛 hex 로 들어와도 순수 다크 판정이 유지되도록).
+  //
+  // 🩸 2026-09-15 수리 — 이 판정이 **가장 큰 사각지대**였다.
+  //    종전 정규식은 `dark:bg-[#11141C]`(올바른 **다크 variant**)와 bare `bg-[#11141C]`
+  //    (순수 다크 페이지)를 구분하지 않았다. 결과가 정확히 거꾸로였다:
+  //    **다크 대응을 제대로 한 파일일수록 이 검사에서 통째로 면제**됐다.
+  //    실측: 면제받던 150파일 중 **143개가 순수 다크 페이지가 아니었다** —
+  //    /vouchers · /checkout · /search · ProductDetailPage · CuratorPage · BottomNav …
+  //    대표가 반복해 신고한 "글자가 안 보여" 가 바로 이 검사의 관할인데 그 화면들을 한 번도 안 봤다.
+  //    ⇒ bare(= `dark:` 접두사 없는) 형태일 때만 순수 다크로 본다.
+  if (/(?<!dark:)bg-\[#020202\]|(?<!dark:)bg-\[#0F151D\]|(?<!dark:)bg-\[#11141C\]|data-mobile-only/.test(src)) continue
+  const lines = src.split('\n')
+  // 🩸 2026-09-15 수리 — 주석 판정이 **줄 단위**라 여러 줄 주석의 **가운데 줄**을 코드로 오인했다.
+  //    이 레포가 반복해 당한 클래스다(CLAUDE.md 「텍스트 가드가 자기 주석 제거기를 만듦」).
+  //    실측 오탐 4건: 색 이름을 설명하는 주석 줄이 그대로 위반으로 잡혔다
+  //    (BusinessLandingPage:117 · CuratorPage:265 · UserProfilePage:140 · MapTopBar:88).
+  //    ⇒ `{/*` · `/*` 로 열린 블록이 닫힐 때까지 **전부 주석으로 본다**.
+  //    ⚠️ 문자열 안의 `/*` 는 안 센다 — className 값에 그런 게 없어서 이 근사로 충분하다.
+  const inBlockComment = new Array(lines.length).fill(false)
+  {
+    let open = false
+    for (let i = 0; i < lines.length; i++) {
+      const t = lines[i]
+      const opensHere = !open && /\{?\/\*/.test(t)
+      if (open) inBlockComment[i] = true
+      if (opensHere && !/\*\/|\*\/\}/.test(t.slice(t.search(/\{?\/\*/) + 2))) open = true
+      else if (open && /\*\//.test(t)) open = false
+    }
+  }
+  lines.forEach((line, i) => {
+    // 주석 줄(// 또는 * 로 시작)은 className 아님 → 스킵 (오탐 방지)
+    const trimmed = line.trim()
+    if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*') || trimmed.startsWith('{/*')) return
+    if (inBlockComment[i]) return
+    // 🗺️ 2026-09-02 `light-fixed` — **배경이 테마와 무관하게 늘 밝은 자리**(카카오 지도 타일 위 오버레이).
+    //    거기서 dark: 로 남색을 주면 파스텔 지도 위에 검은 덩어리가 된다(대표 신고 "색깔이 눈에 잘 안 들어와").
+    //    🎫 2026-09-03 추가: **PC 홈 잉크 히어로 색면**(`--home-field`)도 같은 부류다 — 라이트/다크 어느
+    //    쪽이든 늘 잉크라, 그 위 흰 알약에 `dark:` 를 달면 다크에서 검은 알약이 되어 안 보인다.
+    //    줄에 `light-fixed` 주석이 있으면 그 줄의 라이트 토큰은 의도된 고정으로 본다.
+    //    남용 금지 — **배경이 테마와 무관하게 늘 정해진 자리**(지도 타일 위 · 잉크 히어로 위)만.
+    // 🏝️ 2026-09-15 추가: `light-island` 는 **클래스**로 늘 밝은 표면을 선언한다(토스 결제 위젯 ·
+    //    지도 위 딜 카드). `light-fixed`(주석 부표)와 같은 부류인데 가드가 몰라서 오탐 3건이 났다.
+    //    차이는 이쪽이 **런타임에도 실제로 동작한다**는 것이다(tailwind darkMode variant 가 안쪽 `dark:` 를 끈다).
+    if (line.includes('light-fixed') || line.includes('light-island')) return
+    for (const tok of LIGHT_TOKENS) {
+      tok.re.lastIndex = 0
+      let m
+      while ((m = tok.re.exec(line)) !== null) {
+        const variant = m[1] || '' // e.g. "hover:" / "group-hover:" / "" — dark: 뒤 동일 variant 필요
+        // 🛡️ 이미 dark: 유틸(예: `dark:bg-white` = 반전 버튼의 다크 variant)은 라이트 토큰 아님 → 스킵
+        if (variant.includes('dark:')) continue
+        // dark:<variant>bg- 또는 (variant 없는 base 라이트면) dark:(...:)bg- 아무 곳이나 허용
+        const needle = variant ? `dark:${variant}${tok.prop}-` : `dark:${tok.prop}-`
+        if (!line.includes(needle)) {
+          violations.push(`${rel}:${i + 1}  ${variant}${tok.label} (${needle} 누락)`)
+        }
+      }
+    }
+    // 🛡️ 2026-06-11 역방향 규칙 (이번 사고 2건 패턴 — 사용자 신고로 발견):
+    //   (A) 다크 하드코딩에 라이트 누락: 토글 페이지에서 bare `bg-[#121212]` 등 다크 팔레트 hex 를
+    //       dark: 없이 쓰면 라이트 모드에서 검정 박스. → `bg-<라이트> dark:bg-[#…]` 로 써야 함.
+    //       의도적 양모드 다크 요소는 줄에 `theme-dual` 주석으로 면제.
+    if (!line.includes('theme-dual')) {
+      const darkHex = /((?:[\w-]+:)*)bg-\[#(0A0A0A|121212|1A1A1A|2A2A2A|0F151D|1A2334|2A3446|0D0F12|1A1C21|11141C|1D1F29|2C2F35)\]/g
+      let dm
+      while ((dm = darkHex.exec(line)) !== null) {
+        const variant = dm[1] || ''
+        if (variant.includes('dark:')) continue
+        violations.push(`${rel}:${i + 1}  bare bg-[#${dm[2]}] — 라이트 모드 검정박스 (dark: prefix 또는 라이트 쌍 필요)`)
+      }
+      //   (B) 흰배경+흰글자: `dark:bg-white` 가 있는데 bare `text-white` 만 있고 `dark:text-` 가 없으면
+      //       다크 모드에서 흰 버튼 위 흰 글자 (보이지 않음).
+      if (line.includes('dark:bg-white') && /(?<![\w-:])text-white\b/.test(line) && !line.includes('dark:text-')) {
+        violations.push(`${rel}:${i + 1}  dark:bg-white + bare text-white — 다크 모드 흰배경 흰글자 (dark:text-gray-900 등 필요)`)
+      }
+    }
+  })
+}
+
+if (violations.length === 0) {
+  console.log('✅ 테마 일관성 — 라이트 색상에 dark: variant 누락 없음')
+  process.exit(0)
+}
+
+console.log(`${STRICT ? '❌' : '⚠️ '} 다크/라이트 테마 일관성 — dark: variant 누락 ${violations.length}건`)
+const byFile = {}
+for (const v of violations) { const fn = v.split(':')[0]; byFile[fn] = (byFile[fn] || 0) + 1 }
+Object.entries(byFile).sort((a, b) => b[1] - a[1]).slice(0, 40).forEach(([fn, c]) => console.log(`   ${fn}  (${c})`))
+console.log(`\n   수정: 라이트 클래스에 dark: 추가 (bg-white→dark:bg-[#0A0A0A], text-gray-900→dark:text-white 등 — CLAUDE.md 매핑)`)
+console.log('   대시보드(seller/admin/agency)는 dark: 금지(제외), 순수 다크 페이지는 자동 무시.')
+if (STRICT) { console.log('\n   [STRICT] 차단됨. 우회: commit 메시지에 [SKIP_THEME_CHECK].'); process.exit(1) }
+console.log('\n   (warn-only. CI strict: STRICT_THEME=1)')
+process.exit(0)

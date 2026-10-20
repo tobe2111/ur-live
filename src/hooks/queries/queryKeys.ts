@@ -1,0 +1,87 @@
+/**
+ * 🛡️ 2026-05-22 사용자 명령 (이상적 + 영구 + 서버 부담 ↓):
+ *   모든 query key 의 단일 진실원천. 한 곳에서 변경하면 전체 invalidation 자동.
+ *
+ * 사용:
+ *   - useQuery({ queryKey: queryKeys.balance(), ... })
+ *   - queryClient.invalidateQueries({ queryKey: queryKeys.balance() })
+ *   - queryClient.setQueryData(queryKeys.balance(), 100)
+ *
+ * 룰:
+ *   - queryKey 는 **항상** queryKeys 객체에서 import (직접 array literal 금지)
+ *   - hierarchical: invalidate(queryKeys.user()) → user.* 전체 무효화
+ */
+
+export const queryKeys = {
+  // 사용자 자기 데이터
+  user: () => ['user'] as const,
+  userProfile: () => ['user', 'profile'] as const,
+
+  // 딜 / 결제
+  points: () => ['points'] as const,
+  balance: () => ['points', 'balance'] as const,
+  chargeOptions: () => ['points', 'charge-options'] as const,
+  dealHistory: (page: number, filter: string) => ['points', 'history', page, filter] as const,
+
+  // 장바구니 + 알림
+  cart: () => ['cart'] as const,
+  cartCount: () => ['cart', 'count'] as const,
+  cartItems: () => ['cart', 'items'] as const,
+  notifications: () => ['notifications'] as const,
+  unreadCount: () => ['notifications', 'unread-count'] as const,
+
+  // 상품
+  products: () => ['products'] as const,
+  productList: (filters?: Record<string, unknown>) => ['products', 'list', filters ?? {}] as const,
+  product: (id: number | string) => ['products', 'detail', String(id)] as const,
+
+  // 공구 상품
+  groupBuy: () => ['group-buy'] as const,
+  // 🚦 2026-09-03: 정렬이 **서버에서** 적용되므로 캐시도 정렬별로 갈라야 한다(같은 키에 다른 순서를 덮어쓰면
+  //   정렬을 바꿨다 되돌릴 때 옛 순서가 남는다). 미전달이면 종전 키와 byte-동일 → 기존 호출부 무영향.
+  groupBuyList: (status: string, category: string, sort?: string) =>
+    (sort ? (['group-buy', 'list', status, category, sort] as const) : (['group-buy', 'list', status, category] as const)),
+  groupBuyProduct: (id: number | string) => ['group-buy', 'detail', String(id)] as const,
+
+  // 셀러
+  seller: () => ['seller'] as const,
+  sellerPublic: (id: number | string) => ['seller', 'public', String(id)] as const,
+
+  // 내 자산
+  myVouchers: () => ['my', 'vouchers'] as const,
+  myOrders: (filters?: Record<string, unknown>) => ['my', 'orders', filters ?? {}] as const,
+  myAppointments: () => ['my', 'appointments'] as const,
+  myFollows: () => ['my', 'follows'] as const,
+  myInterests: () => ['my', 'interests'] as const,
+  myCoupons: () => ['my', 'coupons'] as const,
+  myReturns: () => ['my', 'returns'] as const,
+  wishlist: () => ['my', 'wishlist'] as const,
+  digitalLibrary: () => ['my', 'digital-library'] as const,
+  myStays: () => ['my', 'stays'] as const,
+  myGroupBuys: () => ['my', 'group-buys'] as const,
+  addresses: () => ['my', 'shipping-addresses'] as const,
+  myCommissions: () => ['my', 'commissions'] as const,
+  following: () => ['social', 'following'] as const,
+
+  // 카테고리 / 메타
+  meta: () => ['meta'] as const,
+  voucherCategories: () => ['meta', 'voucher-categories'] as const,
+
+  // 라이브
+  liveStreams: (filters?: Record<string, unknown>) => ['live', 'streams', filters ?? {}] as const,
+  liveStream: (id: number | string) => ['live', 'stream', String(id)] as const,
+  liveRecap: (id: number | string) => ['live', 'recap', String(id)] as const,
+
+  // 콘텐츠 / 어필리에이트 / 검색
+  blogPost: (slug: string) => ['blog', 'post', slug] as const,
+  affiliate: (section: string) => ['affiliate', section] as const,
+  staysSearch: (qs: string) => ['stays', 'search', qs] as const,
+
+  // 유통스타트(도매) B2B
+  wholesale: (section: string, param = '') => ['wholesale', section, param] as const,
+
+  // 추천 그룹 / 지도
+  referral: (code: string) => ['referral', 'group', code] as const,
+  mapStreams: () => ['map', 'streams'] as const,
+  mapProducts: (category: string) => ['map', 'products', category] as const,
+} as const

@@ -1,0 +1,139 @@
+/**
+ * 🖥️ 2026-07-16 (대표 시안 — 당근 스타일 PC): 소비자 페이지 중 lg+(≥1024)에서 430 액자(프레임)를
+ *   벗고 풀너비로 렌더할 경로 집합. 여기 등재된 경로는:
+ *   - 프레임(app-framed)/앱 사이드바(DesktopLiveSidebar)/거터 레일 제외 → 풀너비
+ *   - 하단 모바일 네비(BottomNav)를 lg+ 에서 숨김(index.css `body.pc-fullbleed`)
+ *   모바일/태블릿(<lg)은 프레임 CSS 자체가 lg+ 전용이라 영향 0(기존 레이아웃 그대로).
+ *
+ * 상단 네비 처리 차이:
+ *   - `/` (홈): 전역 DesktopTopNav 를 콘텐츠 폭 모드로 표시(자체 헤더 없음 — PcHomePage).
+ *   - `/vouchers` (교환권): 페이지 자체 헤더(교환권 타이틀/검색/잔액/카테고리)를 그대로 쓰므로
+ *     전역 DesktopTopNav 는 숨김(중복 방지) → `OWN_HEADER_PC_PATHS`.
+ */
+const FULLBLEED_PC_PATHS = new Set<string>([
+  '/', '/vouchers', '/stays',
+  // 🗺️ 2026-07-16 (대표 — 지도뷰 PC 분할, 여기어때식): /map 은 lg+ 에서 풀너비 좌 리스트 + 우 지도 분할.
+  //   자체 상단바(MapTopBar 검색/카테고리)를 쓰므로 own-header. 모바일(<lg)은 기존 풀스크린 지도 그대로.
+  '/map',
+  // 마이/계정(자체 서브헤더 + 전역 상단바 유지 — own-header 아님). ur-content-medium/narrow 중앙정렬.
+  '/user/profile', '/my-vouchers', '/my-gifticons', '/my-orders',
+  // 검색/찜(브라우징 그리드 — 전역 상단바 유지). ur-content-wide 중앙정렬.
+  '/search', '/wishlist',
+  /**
+   * 🖥️ 2026-08-19 (대표 — "PC 친화적이지 않은 페이지들 확인해서 PC 버전의 페이지도 완벽히 구사해줘").
+   *
+   * 실측(1440px, 소비자 라우트 15개): **9개가 430px 모바일 액자**에 갇혀 있었다.
+   * 특히 `/cart` 는 **PC 2단 코드(좌 목록 + 우 sticky 요약)를 이미 갖고 있었는데**, 액자 폭이
+   * 430px 이라 `lg:grid` 가 발현될 자리가 없어 죽은 코드였다 — 만들어 놓고 못 쓰고 있었다.
+   *
+   * ⚠️ 등재 조건(이 파일 위 주석): 하단 고정바가 `app-frame-bar` 를 쓰면 pc-fullbleed 가 그 바를
+   *   숨기므로 안 된다. 아래 경로는 전부 확인했다 —
+   *   `/cart` 는 `app-frame-bar` 를 쓰지만 **`lg:hidden` 이 함께 붙어** PC 에선 우측 요약이 대신한다.
+   *   `/notifications`·`/browse` 는 고정바 자체가 없다.
+   *   (`/account/settings` 는 `/user/profile` 로 가는 리다이렉트 스텁이라 등재 대상이 아니다 —
+   *    도착지가 이미 등재돼 있다. 넣어 봐야 아무 효과가 없고 목록만 헷갈린다.)
+   *   `/referral/:code`(`ReferralPage`)는 `lg:hidden` 없는 `app-frame-bar` 를 써서 **일부러 제외**
+   *   했다(CTA 가 사라진다). ⚠️ 2026-09-21 정정 — 이 줄은 원래 `/referral` 이라고 적고 있었는데
+   *   **경로를 잘못 짚은 것**이었다(그쪽은 바가 없는 `ReferralIndexPage`). 아래 C 묶음 참조.
+   */
+  '/cart', '/notifications', '/browse',
+  /**
+   * 🗺️ 2026-09-21 (대표 — 라이브 신고 *"하단에 지역으로 누르니까 … PC 버전 원래쓰던 것처럼 떠야지"*).
+   *
+   * 푸터 '지역별 동네딜' 은 **풀너비 PC 홈**에 떠 있는데, 거기서 시/도를 누르면 도착하는 지역
+   * 페이지가 430px 액자였다. 같은 흐름 안에서 폭이 1440 → 430 으로 접힌다.
+   *
+   * 그리고 이건 디자인 취향이 아니라 **죽은 코드** 문제다 — `RegionPage`·`RegionIndexPage` 는
+   * 이미 `max-w-[1600px] px-4 lg:px-10` 와 `lg:grid-cols-3`·`GroupBuyFeed pc` 로 **PC 를 전제로**
+   * 짜여 있는데, 액자 폭이 430px 이라 그 `lg:` 가 발현될 자리가 없었다(위 `/cart` 와 같은 클래스).
+   * 실측 1440px: `/region`·`/region/부산`·`/region/서울/중구` 셋 다 `framed` · 본문 430 · 거터 레일 1.
+   *
+   * 등재 조건 확인: 지역 페이지와 그 부품(`GroupBuyFeed`·`SiteFooter`·`RegionLinkGrid`)에
+   * `app-frame-bar` 가 **0건**이라 pc-fullbleed 가 숨길 하단 고정바가 없다.
+   * `App.tsx` 의 `fullScreenPrefixes` 에는 **일부러 넣지 않는다** — 지역 페이지는 랜딩이 아니라
+   * 소비자 탐색 화면이라 전역 상단 네비를 `/browse`·`/search` 처럼 그대로 써야 한다.
+   */
+  '/region',
+  /**
+   * 🖥️ 2026-09-21 (대표 확정 — 액자 전수조사 후 "A·B·C 전부"): 1440px 실측에서 430px 액자에
+   * 갇혀 있던 소비자 표면 24곳. 셋으로 갈라 대표에게 올렸고 셋 다 승인됐다.
+   *
+   * ⚠️ **액자 자체는 폐기가 아니다** — 2026-06-20 확정한 "PC 소비자 = 중앙 액자"는 그대로이고,
+   *   여기 등재하는 것은 *그 정체성이 맞지 않는* 화면들이다. 판단 기준은 셋:
+   *   ① 풀너비 표면(푸터·PC 홈)에서 바로 링크되는가 — 같은 흐름에서 1440 → 430 으로 접힌다
+   *   ② 긴 글/폼이라 액자가 읽기를 방해하는가
+   *   ③ 소비자가 아닌 사람(사장님·파트너)이 보는 화면인가 — 빈 거터를 소비자 앱 설치 QR 이 채운다
+   *
+   * A. 정책·약관 — 푸터가 링크하는 긴 문서. `TermsDocument`·각 페이지가 `ur-content-medium`(1024px)
+   *    으로 이미 중앙 정렬하므로 풀너비에서 퍼지지 않는다(블로그 선례와 같다).
+   */
+  '/terms', '/privacy', '/refund', '/faq', '/gdpr',
+  /**
+   * B. 사장님·파트너 유입 — `/partners`·`/about`·`/creators`(2026-09-16)와 **같은 클래스**다.
+   *    입점을 검토하러 온 사장님 화면의 좌우가 전부 소비자 앱 광고였다.
+   *    ⚠️ `/influencer` 는 **접두사로 넣지 않는다** — `/influencer/dashboard`·`/settlement`·
+   *       `/discover`·`/analytics` 는 폰 폭으로 만든 도구 화면이라 액자에 남아야 한다.
+   *       대표가 고른 것은 랜딩(`/influencer`)과 랭킹(`/influencer/rankings`) 둘뿐이다.
+   */
+  '/partnership', '/store/new', '/store/find', '/host', '/host/new', '/my-store',
+  '/influencer', '/influencer/rankings',
+  /**
+   * C. 소비자 탐색 — 대표가 "앱 같은 화면이라 액자가 맞을 수 있다"는 설명을 듣고도 포함을 택했다.
+   *    🩸 `/referral` — 이 파일이 오래 적어 둔 *"`app-frame-bar` 를 써서 일부러 제외"* 는
+   *       **경로를 잘못 짚고 있었다.** 그 바를 가진 것은 `ReferralPage`(App.tsx:998 `/referral/:code`,
+   *       그 파일 206줄)이고, `/referral` 은 바가 **없는** `ReferralIndexPage`(App.tsx:950) 다.
+   *       둘은 이름만 닮은 **다른 페이지**다. 그래서 `/referral` 은 풀어도 안전하고,
+   *       **`/referral/` 는 접두사로 넣으면 안 된다**(넣는 순간 착지 페이지의 CTA 가 사라진다).
+   *       ⚠️ 이 착각을 두 번 했다 — 선재 가드가 문자열 `'/referral'` 을 금지하고 있어서 CI 가 잡았고,
+   *       그 가드도 같은 착각 위에 있었다. 지금은 `isFullBleedPcPath('/referral/ABC123')` 로 본다
+   *       (`groupon-detail-map.test.ts`). **여기 아래 접두사 목록에 `/referral/` 을 넣지 말 것.**
+   */
+  '/experience', '/new-openings', '/gb-market', '/area-report',
+  '/interest-list', '/following', '/community-group-buy/new', '/referral',
+  /**
+   * 🧾 2026-09-28 (대표 신고 — *"QR로 찍으려니 별도 이 페이지가 뜨네? 이게 가장 이상적이야?"*,
+   *    PC 스크린샷 첨부): 매장 계산대(`/store/scan`)는 **손님 앞 카운터 화면**인데 1440px 에서
+   *    430 액자에 갇혀 있었다. 좌우 거터를 채운 것이 하필 *소비자 앱 광고*다 —
+   *    `유어딜 안전결제` · `매일 새로운 동네 딜` · **`모바일로 보기` QR**.
+   *    가게 PC 로 계산을 하는 사장님에게 "모바일로 보라" 는 QR 을 띄우고 있었다.
+   *    위 B 묶음(`/store/new`·`/store/find`·`/my-store`)과 **같은 기준 ③**(소비자가 아닌 사람이
+   *    보는 화면)이고, 그 형제들은 이미 등재돼 있었는데 계산대만 빠져 있었다.
+   *    등재 조건 확인: `StoreScanPage`·`VoucherScanner` 에 `app-frame-bar` **0건**(숨길 고정바 없음).
+   *    ⚠️ `App.tsx` 의 `fullScreenPrefixes` 에는 이미 있다 — 그래서 상/하단 네비는 원래 안 뜬다.
+   *      남아 있던 것이 **액자와 거터 레일**이고, 그걸 벗기는 스위치가 여기다.
+   */
+  '/store/scan',
+])
+
+// 🖥️ 2026-07-16 (대표 — 상세 PC 2단): 상세 라우트(동적 :id)는 prefix 로 풀너비화 → 좌 이미지 + 우 정보 2단.
+//   ⚠️ 여기 등재하려면 그 페이지의 하단 구매바가 `.app-frame-bar` 를 쓰지 않아야 함(pc-fullbleed 가 숨김).
+//   교환권 상세(VoucherDetailPage)는 구매바가 app-frame-bar 미사용(ur-content-narrow lg:max-w) → 안전.
+//   숙소 상세(StayDetailPage)는 2026-07-20 하단 묶음바에서 app-frame-bar 제거 + lg:hidden(아사이드 대체) → 안전.
+const FULLBLEED_PC_PREFIXES = ['/vouchers/', '/pass/', '/stays/', '/region/',
+  // 약관 하위 3종(`/terms/seller`·`/terms/group-buy`·`/terms/influencer`)은 같은 `TermsDocument` 다.
+  '/terms/',
+  // `/area-report/:region` 도 같은 `AreaReportPage` 다.
+  '/area-report/',
+]
+
+// 🛍️ 2026-09-02 (대표 확정 — 유어샵 안P1 "왼쪽 프로필 고정 + 오른쪽 3열 진열대"): 유어샵 진열대만
+//   액자를 벗는다. **정확히 한 세그먼트**(`/u/{handle}` · `/profile/{x}` · `/s/{x}`)만 — `/u/me/add`(핀 고르기)·
+//   `/u/me/earnings`(수익 콘솔)는 폰 폭으로 만든 도구 화면이라 액자에 남긴다(startsWith 로 잡으면 같이 벗겨진다).
+//   ⚠️ 2026-06-18 "유어샵은 사이드바 없는 액자 + 우하단 QR" 결정을 이 경로에 한해 대체한다 — QR 은
+//   PC 좌측 프로필 열(`UShopQrCard`)로 옮겼다.
+const USHOP_PC_RE = /^\/(?:u|profile|s)\/[^/]+$/
+
+/** 이 경로는 lg+ 에서 풀너비(프레임/사이드바/거터 제외 + 하단네비 숨김). */
+export function isFullBleedPcPath(pathname: string): boolean {
+  return FULLBLEED_PC_PATHS.has(pathname) || FULLBLEED_PC_PREFIXES.some((p) => pathname.startsWith(p)) || USHOP_PC_RE.test(pathname)
+}
+
+/** 풀너비지만 페이지 자체 상단 헤더를 쓰는 경로 → 전역 DesktopTopNav 숨김.
+ *  🖥️ 2026-07-19 (대표 — "상단은 어느 페이지든 공통, /map 도"): 예외 전부 제거 — 전역 상단 네비
+ *  (로고+검색+앱/판매+카테고리 바)가 PC(lg+) 전 소비자 페이지 공통. 지도(/map)도 여기어때식으로
+ *  [전역 네비 위 + 지도 분할 아래]. lg 미만(모바일/태블릿)의 자체 헤더 유지는 DesktopTopNav 내부
+ *  LEGACY_OWN_HEADER 게이트가 담당(이중 헤더 방지). */
+const OWN_HEADER_PC_PATHS: string[] = []
+export function hasOwnHeaderPc(pathname: string): boolean {
+  return OWN_HEADER_PC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))
+}

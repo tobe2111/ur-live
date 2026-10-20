@@ -1,0 +1,115 @@
+import { useNavigate, Link } from 'react-router-dom'
+import { HomeIcon, GiftBoxIcon, PinIcon } from '@/components/icons/urdeal-icons'
+import { useTranslation } from '@/lib/i18n-lite'
+import { ArrowLeft } from 'lucide-react'
+import SEO from '@/components/SEO'
+import Udal from '@/components/mascot/Udal'
+
+export default function NotFoundPage() {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+
+  // 🧭 2026-08-11 (AB 스윕): 세 칩이 전부 낡아 있었다 —
+  //   ① `라이브` 는 **영구 중단된 라이브커머스**(LIVE_COMMERCE_SUSPENDED) 라벨
+  //   ② `맛집딜` 은 폐기 명칭(현재 SSOT: 동네딜 / 이용권 / 교환권)
+  //   ③ `공동구매` 칩이 **`/referral`(추천 수익)** 으로 갔다 — 라벨과 목적지가 아예 다르다.
+  //   길 잃은 사람을 다시 태우는 자리라 하단바 5탭과 같은 곳을 가리키게 맞춘다.
+  const popularLinks = [
+    { to: '/', label: t('notFound.linkHome', { defaultValue: '홈' }), Icon: HomeIcon },
+    { to: '/vouchers', label: t('notFound.linkVouchers', { defaultValue: '교환권' }), Icon: GiftBoxIcon },
+    { to: '/map', label: t('notFound.linkMap', { defaultValue: '내 주변 동네딜' }), Icon: PinIcon },
+  ]
+
+  return (
+    <>
+      <SEO
+        title={t('notFound.title')}
+        description={t('notFound.seoDescription')}
+        url="/404"
+        noindex
+      />
+
+      <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#fbfbfd] via-white to-[#f5f5f7] dark:from-[#11141C] dark:via-[#11141C] dark:to-[#1D1F29] flex items-center justify-center px-4 py-12">
+        {/* Decorative floating orbs */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-24 -left-24 h-[360px] w-[360px] rounded-full bg-gradient-to-br from-[#6b7280]/20 to-[#6b7280]/10 blur-3xl animate-pulse"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -bottom-32 -right-24 h-[420px] w-[420px] rounded-full bg-gradient-to-br from-[#6b7280]/15 to-[#6b7280]/10 blur-3xl animate-pulse"
+          style={{ animationDelay: '1.2s' }}
+        />
+
+        {/* Grid dot pattern */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-[0.25]"
+          style={{
+            backgroundImage:
+              'radial-gradient(circle, rgba(0,0,0,0.12) 1px, transparent 1px)',
+            backgroundSize: '24px 24px',
+            maskImage:
+              'radial-gradient(ellipse at center, black 40%, transparent 75%)',
+            WebkitMaskImage:
+              'radial-gradient(ellipse at center, black 40%, transparent 75%)',
+          }}
+        />
+
+        {/* 🛡️ 2026-05-20: PC 에서도 너무 좁지 않도록 lg:padding 추가 */}
+        <div className="relative z-10 max-w-xl w-full text-center px-4 lg:px-8 animate-fade-in">
+          {/* 🦦 2026-10-07 유달이 — 거대한 '404' 글자 대신 길 잃은(놀란) 얼굴.
+              숫자는 작게 남긴다(무슨 일인지 아는 사람에겐 그게 가장 빠른 신호다). */}
+          <Udal mood="lost" size={128} motion priority className="mx-auto" />
+          <p className="mt-4 text-[13px] font-bold tracking-[0.2em] text-gray-400 dark:text-gray-500" aria-hidden="true">404</p>
+
+          <h1 className="mt-1 text-[24px] font-bold text-gray-900 dark:text-white">
+            {t('notFound.title')}
+          </h1>
+
+          {/* Description */}
+          <p className="mt-3 text-[15px] text-gray-500 dark:text-gray-400">
+            {t('notFound.description')}
+          </p>
+
+          {/* Action Buttons */}
+          <div className="mt-10 grid grid-cols-2 gap-3">
+            <Link
+              to="/"
+              className="inline-flex items-center justify-center gap-2 h-12 rounded-2xl bg-brand text-white font-bold text-[15px] shadow-sm hover:bg-brand-dark hover:shadow-md transition-all duration-200 active:scale-[0.98]"
+            >
+              <HomeIcon className="h-4 w-4" />
+              {t('notFound.goHome')}
+            </Link>
+            <button
+              type="button" onClick={() => navigate(-1)} aria-label="뒤로 가기"
+              className="inline-flex items-center justify-center gap-2 h-12 rounded-2xl border border-line bg-surface text-gray-700 dark:text-gray-300 font-bold text-[15px] hover:bg-gray-50 dark:hover:bg-[#2C2F35] hover:border-gray-300 dark:hover:border-[#3A3A3A] transition-all duration-200 active:scale-[0.98]"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              {t('notFound.goBack')}
+            </button>
+          </div>
+
+          {/* Popular Links */}
+          <div className="mt-12 pt-8 border-t border-gray-200/70 dark:border-[#2C2F35]">
+            <p className="mb-4 text-[15px] font-medium text-gray-500 dark:text-gray-400">
+              {t('notFound.popularPages')}
+            </p>
+            <div className="flex flex-wrap justify-center gap-2">
+              {popularLinks.map(({ to, label, Icon }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-surface border border-line text-[15px] font-semibold text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-[#3A3A3A] hover:bg-gray-50 dark:hover:bg-[#2C2F35] hover:text-gray-900 dark:hover:text-white transition-all duration-200 active:scale-[0.98] shadow-sm"
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}

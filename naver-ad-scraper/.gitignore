@@ -1,0 +1,6 @@
+node_modules/
+data/
+*.db
+*.csv
+*.json.export
+.env

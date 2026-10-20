@@ -1,0 +1,457 @@
+// ============================================================
+// Cloudflare Worker — Environment Bindings (Unified)
+// All bindings used across worker + feature modules
+// ============================================================
+
+import type { D1Database, KVNamespace, DurableObjectNamespace } from '@cloudflare/workers-types';
+
+export interface Env {
+  // ---- D1 Database ----
+  DB: D1Database;
+  /**
+   * 📣 유어애즈 **발굴 리드 전용** D1 (2026-08-19 신설). 미바인딩이면 전부 `DB` 로 간다 —
+   *   즉 **없어도 동작이 오늘과 같다**(`shared/ads/leads-db.ts` 의 `adsLeadsDb`).
+   *
+   * 왜 나눴나: `ur-ads` 는 워커만 분리돼 있었고 DB 는 `DB` 와 같은 uuid 였다. 수집 리드가
+   *   결제와 같은 파일에 쌓여 494 MB(무료 한도 500 MB의 99%)까지 자랐고, 실데이터의 **92%**
+   *   가 수집분이었다. 한도에 닿으면 주문·결제 쓰기까지 같이 죽는다.
+   *
+   * ⚠️ 이 바인딩을 **`ur-live`(Pages·워커)와 `ur-ads` 양쪽에** 붙여야 한다 — 어드민 화면
+   *   (`/api/admin/partner-pool` 등)은 메인 워커에서 이 테이블들을 읽는다.
+   */
+  ADS_DB?: D1Database;
+  // 🏢 2026-08-23: 업체 계열(ad_company_leads·ad_company_keywords) 전용. 유어애즈 DB 가 94% 에
+  //    닿아 한 칸 더 나눴다. 미바인딩이면 라우터가 ADS_DB 로 폴백한다(`shared/ads/leads-db.ts`).
+  ADS_COMPANY_DB?: D1Database;
+
+  // ---- KV Namespaces ----
+  RATE_LIMIT_KV?: KVNamespace;
+  SESSION_KV?: KVNamespace;
+  /**
+   * 🛡️ 2026-05-23 (Task 2): public API 응답 second-layer cache.
+   *   Edge cache 는 PoP 별 격리 — 한국 PoP cache ≠ 일본 PoP cache. KV 는 전역 공유.
+   *   PoP cold start 시 D1 hit 대신 KV hit → D1 부하 감소 + region 간 일관성.
+   *   미등록 시 publicCache 는 edge cache 만 사용 (기존 동작).
+   */
+  CACHE_KV?: KVNamespace;
+
+  // ---- Durable Objects ----
+  LIVE_STREAM?: DurableObjectNamespace;
+
+  // ---- Toss Payments ----
+  TOSS_SECRET_KEY: string;
+  TOSS_WEBHOOK_SECRET: string;
+  TOSS_CLIENT_KEY: string;
+
+  // ---- Stripe (Global region) ----
+  STRIPE_SECRET_KEY?: string;
+
+  // ---- Auth ----
+  JWT_SECRET: string;
+  // 🛡️ 2026-05-03: Cloudflare Turnstile (CAPTCHA) — 봇/분산 brute-force 방어.
+  //   Dashboard → Turnstile → site key 발급. secret 은 server-only.
+  //   미설정 시 verifyTurnstile() 가 fail-open (검증 skip).
+  TURNSTILE_SECRET?: string;
+  // 🛒 2026-06-12: 네이버 검색 오픈API (developers.naver.com — 쇼핑 검색, 일 25,000회 무료).
+  //   제조사 상품 등록 시 시중(네이버쇼핑) 최저가 자동 대조. 미설정 시 기능 자동 숨김(fail-soft).
+  NAVER_SEARCH_CLIENT_ID?: string;
+  NAVER_SEARCH_CLIENT_SECRET?: string;
+
+  // ---- Firebase ----
+  FIREBASE_PROJECT_ID?: string;
+  FIREBASE_PRIVATE_KEY?: string;
+  FIREBASE_CLIENT_EMAIL?: string;
+  FIREBASE_DATABASE_URL?: string;
+
+  // ---- Kakao ----
+  KAKAO_REST_API_KEY?: string;
+  /** 📅 이용권 만료일 톡캘린더 버튼 게이트 — 카카오 콘솔 톡캘린더 권한·동의항목 설정 후 'true'. */
+  KAKAO_TALK_CALENDAR_ENABLED?: string;
+
+  // ---- Cafe24 ----
+  CAFE24_CLIENT_ID?: string;
+  CAFE24_CLIENT_SECRET?: string;
+  CAFE24_MALL_ID?: string;
+  CAFE24_WEBHOOK_SECRET?: string;
+
+  // ---- 네이버 클라우드 SENS (알림톡, 2026-10-12 — 고정 IP 불필요. 넷 다 있어야 보낸다. 알리고는 제거됨) ----
+  NCP_ACCESS_KEY?: string;
+  NCP_SECRET_KEY?: string;               // 시크릿으로 저장
+  NCP_SENS_ALIMTALK_SERVICE_ID?: string; // SENS 프로젝트(Biz Message)의 서비스 ID
+  NCP_KAKAO_CHANNEL_ID?: string;         // 카카오톡 채널 검색용 ID (예: @유어딜)
+  NCP_MAIL_SENDER?: string;              // ✉️ SENS 메일 발신 주소(예: no-reply@urdeal.kr) — 있으면 거래성 메일이 SENS 로(없으면 Resend)
+  NCP_MAIL_SENDER_NAME?: string;         // SENS 메일 발신자 이름(기본 '유어딜')
+  NCP_SENS_MAIL_SERVICE_ID?: string;     // ✉️ SENS 프로젝트의 메일 서비스 ID(NRN, ncp:mail:kr:…) — 2026-10-12 v2 API 전환. 없으면 메일은 SENS 로 안 간다
+
+  ADS_ALERT_ALIMTALK_TPL?: string;       // 🎯 유어애즈 광고 알림 알림톡 템플릿 코드(미설정 시 이메일만 · SENS 발송)
+
+  // ---- YouTube ----
+  YOUTUBE_CLIENT_ID?: string;
+  YOUTUBE_CLIENT_SECRET?: string;
+  YOUTUBE_REDIRECT_URI?: string;
+  YOUTUBE_API_KEY?: string;  // public videos.list API (no OAuth required) — 인플루언서 발굴에도 사용
+  INFLUENCER_PROVIDER?: string;      // 인스타/틱톡 수집 제공사 이름(apify/ensembledata/modash 등)
+  INFLUENCER_PROVIDER_KEY?: string;  // 제공사 API 키 — 없으면 인스타/틱톡 직접 발굴 비활성(유튜브는 무관)
+
+  // ---- 자체 미디어 서버 (OvenMediaEngine) ----
+  // 셀러 브라우저 → 우리 OME → YouTube RTMP 릴레이용.
+  // OME 인스턴스: stream.ur-team.com (Oracle Cloud Always Free).
+  OME_HOST?: string;            // ex: 'stream.ur-team.com'
+  OME_API_TOKEN?: string;       // OME REST API access (push 동적 등록)
+  OME_WEBHOOK_SECRET?: string;  // OME → Worker admission webhook HMAC 서명
+
+  // ---- TikTok (2026-04-26 T1 통합) ----
+  TIKTOK_CLIENT_KEY?: string;
+  TIKTOK_CLIENT_SECRET?: string;
+
+  // ---- Push Notifications ----
+  VAPID_PUBLIC_KEY?: string;
+  VAPID_PRIVATE_KEY?: string;
+  VAPID_SUBJECT?: string;
+
+  // ---- Email (Resend) ----
+  RESEND_API_KEY?: string;
+  /** 📣 2026-10-19 SNS 봇 주간 리포트가 /api/acquisition/utm-report 를 읽는 토큰(16자 이상). 미설정이면 엔드포인트 닫힘. */
+  MARKETING_REPORT_TOKEN?: string;
+  RESEND_FROM?: string;
+
+  // ---- Monitoring ----
+  DISCORD_WEBHOOK_URL?: string;
+  SENTRY_DSN?: string;
+
+  // ---- Security ----
+  ADMIN_IP_WHITELIST?: string; // comma-separated IPs/CIDRs, e.g. "1.2.3.4,10.0.0.0/8"
+  INTERNAL_API_TOKEN?: string; // shared secret for internal-only endpoints (cron, commission calc)
+  // 🛡️ 2026-04-22: DB at-rest 암호화용 KEK (Cafe24/Push subscription 토큰 보호)
+  // 32자 이상의 random string. Cloudflare Dashboard → Variables and Secrets 에서 설정.
+  DATA_ENCRYPTION_KEY?: string;
+
+  // 🔒 2026-07-13 (데이터 감사 3단계): PII 컬럼 at-rest 암호화 마스터 스위치.
+  //   'true' 일 때만 신규 쓰기가 PII 를 암호화(+blind index) 로 저장. 기본 미설정=OFF=현행 평문(무변화).
+  //   ⚠️ 활성화 전 staging 필수: 조회(blind index)·표시(복호화) 배선 검증 후에만 ON.
+  PII_ENCRYPTION_ENABLED?: string;
+  // blind index(조회용 결정적 HMAC) 전용 키. 미설정 시 DATA_ENCRYPTION_KEY 파생값 사용.
+  PII_BLIND_INDEX_KEY?: string;
+
+  // ---- Naver Ad Scraper ----
+  // ⚠️ [LEGAL/PIPA] 크롤러로 수집한 이메일/연락처를 마케팅 목적으로 사용하려면
+  // 정보주체의 명시적 동의가 선행되어야 합니다(개인정보 보호법 제15·22조).
+  // SCRAPER_ENABLED 플래그가 'true'가 아니면 라우트는 503을 반환합니다.
+  SCRAPER_ENABLED?: string; // 'true'일 때만 네이버 광고주 크롤러 활성화
+  SCRAPER_URL?: string; // 스크래퍼 서버 URL (dev: http://localhost:3456)
+  GITHUB_TOKEN?: string; // GitHub workflow dispatch용 (prod에서 스크래퍼 실행)
+  GITHUB_REPO?: string;  // owner/repo 형식 (예: tobe2111/ur-live)
+
+  // ---- Naver Search API (식당 이미지 등) ----
+  NAVER_CLIENT_ID?: string;
+  NAVER_CLIENT_SECRET?: string;
+
+  // ---- 유어애즈(UR Ads) — 네이버 검색광고 API (searchad.naver.com) ----
+  //   연관키워드 추천(RelKwdStat)·자동입찰 추정(Estimate)·실적(StatReport) 용. 고정IP 불필요(HMAC 서명 인증).
+  //   CUSTOMER_ID = 라이선스 발급 계정(관리/대행 계정 가능, 멀티테넌트 허브). 미설정 시 연관키워드 기능 자동 숨김(fail-soft).
+  //   값은 Cloudflare Secrets 에만 — 코드/채팅 노출 금지. 비밀키는 1회만 표시되므로 별도 안전 보관.
+  NAVER_SEARCHAD_CUSTOMER_ID?: string;
+  NAVER_SEARCHAD_ACCESS_LICENSE?: string;
+  NAVER_SEARCHAD_SECRET_KEY?: string;
+
+  // ---- Anthropic (AI 마케터 / AI 리뷰 생성) ----
+  //   유어애즈 AI마케터 진단·추천 + admin-review-generator. 미설정 시 해당 기능 자동 비활성(fail-soft).
+  ANTHROPIC_API_KEY?: string;
+
+  // ---- 유어애즈 자동입찰 자율 엔진 글로벌 킬스위치 ----
+  //   'true' 일 때만 cron 이 활성 규칙의 입찰가를 자동 조정. 미설정/기타값이면 cron 전체 skip(기본 OFF).
+  //   ⚠️ 실 계정 1회 검증(estimate 응답·bid PUT 동작) 후에만 'true' 로.
+  ADS_AUTOBID_ENABLED?: string;
+
+  // ---- 유어애즈 인플루언서 자동 수집 cron 킬스위치 (2026-07-20, Phase E) ----
+  //   'true' 일 때만 ur-ads 일일 cron 이 무료 공식 API(YouTube·네이버)로 카테고리 시드 키워드를
+  //   순환 발굴해 공용 풀(ad_influencer_leads.account_id=0)에 누적. 기본 OFF(미설정) = no-op.
+  //   공개 데이터·공식 API 만 사용(수집 ≠ 발송 — 마케팅 발송은 정보통신망법상 사전동의 별도).
+  ADS_AUTO_COLLECT_ENABLED?: string;
+  ADS_AUTOCOLLECT_BATCH?: string; // 1회 실행당 키워드 수(기본 4) — 공유 YouTube 일일 한도 보호용.
+  // 🌙 야간 자동 정비(중복통합→연락처 재추출→재분류 / 재보정→재조회) — 기본 ON. 'false' 로만 끔.
+  ADS_AUTO_MAINTENANCE_ENABLED?: string;
+  // 🔁 동의 리드 리마인드 시퀀스(1차 발송 N일 후 무회신 시 1회) — 기본 OFF. ⚖️ 동의 리드 한정·야간 금지.
+  ADS_REMINDER_ENABLED?: string;
+  // 🎓 신청자 온보딩 안내(신청 익일 1회) — 기본 ON(접수 메일이 약속한 안내 이행). 'true' 로만 끔.
+  ADS_ONBOARDING_DISABLED?: string;
+  // 💳 유어애즈 서비스몰 토스 결제 게이트(기본 OFF) — ⚠️ staging 실결제 검증 후에만 'true'.
+  //   OFF = 계좌이체 흐름 그대로(버튼 미노출). 메인 워커 전용(/api/ads-pay — TOSS 키가 메인에 있음).
+  ADS_TOSS_ENABLED?: string;
+  // ---- 🤝 B2B 파트너(업체) 자동 수집 (레인 A 네이버 지역검색, 2026-07-21) ----
+  ADS_COMPANY_COLLECT_ENABLED?: string; // ur-ads 홀수시 크론 게이트(기본 OFF). 수동 '지금 수집'은 게이트 무관.
+  ADS_COMPANY_BATCH?: string;           // 1회 실행당 키워드 수(기본 8).
+  ADS_COMPANY_SUBREQUEST_BUDGET?: string; // 1회 실행 외부 fetch 상한(기본 60) — 지역검색+이메일 크롤 합산.
+  ADS_COMPANY_WEB_PAGES?: string;       // tier1(대행사) 웹문서 검색 페이지 수(기본 2, 최대 5) — 30건/페이지.
+                                        //   이메일 수율이 가장 높은 레인이라 깊이가 곧 이메일 보유 대행사 수.
+  ADS_COMPANY_WEB_TIER_MAX?: string;    // 웹문서 레인을 붙일 최대 tier(기본 2 = 대행사+간판 계열).
+                                        //   1 이면 대행사 전용(구 동작), 올리면 세무·POS 까지 웹 발굴.
+  // ---- 🏠 홈페이지 출처 전용 레인 `collect-webkr` (2026-08-22) ----
+  //   웹문서 검색만 도는 별도 알람 레인. 이유: 위 레인은 12초 벽시계에 걸려 웹문서(줄의 맨 끝)가
+  //   가장 먼저 잘린다(실측 `keywords: 3 · deadline_hit: true`). 게이트는 ADS_COMPANY_COLLECT_ENABLED 공유.
+  ADS_WEBKR_LANE_DISABLED?: string;     // 'true' 면 이 레인만 정지(롤백 스위치). 기본 미설정 = 동작.
+  ADS_WEBKR_BATCH?: string;             // 1회 실행당 키워드 수(기본 12).
+  ADS_WEBKR_SUBREQUEST_BUDGET?: string; // 1회 실행 외부 fetch 상한(기본 40) — 웹문서 검색 + 저장 배치.
+  ADS_ENRICH_BUDGET?: string;             // 연락처 보강 전용 예산(기본 300) — 수집과 분리, 백로그 대량 소진용.
+  ADS_ENRICH_DEADLINE_MS?: string;        // 보강 1라운드 벽시계 상한(기본 7000 — 부모 수명 ≈10.5s, 5000~120000). 가드가 너무 일찍/늦게 끊으면 무배포 재조정.
+  // 🧱 서브리퀘스트 **플랫폼 천장**(기본 60 — 잘 도는 레인의 관측 생존선 55~65 에서 역산). 학습 상한이 이걸 못 넘는다.
+  //   무료 플랜에선 건드릴 필요 없다. 유료 전환 시에만 올린다(예: 900) — 추측으로 올리지 말고 레인 학습값이
+  //   그 근처에서 수렴하는지 확인하고 판단할 것(2026-07-29 company_enrich=172 드리프트 사고).
+  ADS_SUBREQ_PLATFORM_CAP?: string;
+  // 💳 **요금제 노브 — 이 한 줄이 수집 능력 전체를 올린다** (2026-08-02).
+  //   `paid` 로 두면 세 조임쇠가 **함께** 풀린다: ① 회차당 레인 수 8→64 ② 서브리퀘스트 천장 60→900
+  //   ③ 보강 라운드 벽시계 7s→20s. 셋 다 무료 기준으로 *실측해 박은* 값이라, 하나만 올리면
+  //   나머지가 병목으로 남는다(유료로 바꿔도 레인 수만 늘고 레인당 처리는 60 에 묶이던 상태).
+  //   ⚠️ 개별 env(`ADS_LANES_PER_TICK`·`ADS_SUBREQ_PLATFORM_CAP`·`ADS_ENRICH_DEADLINE_MS`)를 명시하면
+  //     그쪽이 이깁니다 — 요금제는 **기본값만** 정한다.
+  //   ⚠️ 유료 기본값 셋은 전부 **추정**이다. 전환 후 `cron-heartbeats` 의 성공 max ↔ 실패 min 경계로
+  //     다시 재고 조정할 것(무료 값 60·7s 를 정한 방법과 동일).
+  ADS_PLAN?: string;
+  ADS_LANES_PER_TICK?: string;            // 회차당 레인 수 직접 지정(요금제 기본값보다 우선). 중간값 튜닝용.
+  // 🔁 카카오 전화 스윕 self-chain 깊이(기본 6, 1~24). 한 인보케이션 ≈55건 × 깊이 = 시간당 처리량.
+  //   ⚠️ 올리기 전에 스윕 stats 의 `day_lookups`(KST 일 조회량)로 카카오 쿼터 소비를 **실측**할 것 —
+  //   같은 키를 보강 레인도 쓰므로 쿼터를 태우면 그쪽까지 같이 죽는다.
+  ADS_KAKAO_SWEEP_CHAIN?: string;
+  // 🔁 인허가(매장 후보) 수집 self-chain 깊이(기본 6, 1~24). 업종 16개를 하루 1회로는 못 훑어
+  //   음식점·카페·미용·숙박이 0건이던 원인 — 체인이 같은 날의 남은 업종을 이어 훑는다.
+  ADS_LOCALDATA_CHAIN?: string;
+  ADS_ENRICH_PHONE_CAP?: string;          // 보강 레인 Phase1(전화) **절대 건수** 상한(기본 0 — 전용 스윕이 전담).
+                                          //   ⚠️ 비율(예산÷N) 금지 — 예산이 커지면 시간을 다 먹어 이메일이 굶는다(2026-07-28 실사고).
+  ADS_MAINT_OPS_BUDGET?: string;          // 🌙 정비 1단계당 D1 연산 예산(기본 60) — 학습 상한(ads_subreq_cap)과 min 으로 적용.
+                                          //   ⚠️ D1 쿼리도 서브리퀘스트 한도를 쓴다(2026-07-28 확증) → 이 값이 실효 상한을 넘으면 학습이 자동으로 내린다.
+                                          //   ⚠️ 이 값은 **희망 상한**일 뿐 실제 플랫폼 서브리퀘스트 한도가 아니다(2026-07-28 실측: 800 으로
+                                          //   두면 한도 초과 후 전 fetch 가 throw → 크롤 전멸). 실효 상한은 관측 학습값(platform_settings
+                                          //   `ads_subreq_cap_company_enrich` — 레인별 키, collect-budget.ts)과 min 으로 결정되므로
+                                          //   올려도 안전하지만 효과는 학습값이 정한다.
+  ADS_COMPANY_REQUIRE_CONTACT?: string;   // '연락처 필수'(기본 ON) — 전화/이메일 없는 리드는 active=0 보류. 'false' 로 해제.
+  // 소스 ① 소상공인 상가정보(data.go.kr 15090955) — tier 2~5 통째 발굴. 기본 OFF, 활용신청+검증 후 ON.
+  ADS_STOREINFO_ENABLED?: string;         // ur-ads 짝수시 크론 게이트(기본 OFF). 수동 트리거는 무관.
+  ADS_STORE_KAKAO_ENABLED?: string;       // 🏪 무인매장(아이스크림 할인점·무인판매점) 카카오 키워드 수집 게이트(기본 OFF).
+  ADS_STORE_KAKAO_BUDGET?: string;        // 위 레인 서브리퀘스트 예산(기본 30, 5~80). 학습 상한과 더 작은 쪽 적용.
+  ADS_STOREINFO_BATCH?: string;           // 1회 실행당 (업종×지역) 페어 수(기본 3).
+  PUBLIC_DATA_SERVICE_KEY?: string;       // data.go.kr 일반 인증키. 미설정 시 NTS_API_KEY(동일 계정 serviceKey) 폴백.
+  // 🏪 매장 후보 — 지방행정 인허가정보(store_prospects). 기본 OFF, 활용신청 후 ON.
+  ADS_LOCALDATA_ENABLED?: string;         // ur-ads 일1회 크론 게이트(기본 OFF). 수동 트리거는 무관.
+  ADS_LOCALDATA_SERVICE_KEY?: string;     // 인허가 전용 인증키. 미설정 시 PUBLIC_DATA_SERVICE_KEY 폴백(같은 계정이면 공유).
+  ADS_LOCALDATA_ENDPOINT?: string;        // 공통 베이스 override(기본 https://apis.data.go.kr/1741000). 업종 슬러그는 뒤에 append.
+  ADS_LOCALDATA_ENDPOINTS?: string;       // 업종 슬러그→카테고리 JSON 병합(무배포 추가). 예: {"beauty_shops":"미용업","lodging":"숙박업"}
+  ADS_LOCALDATA_MAX_PAGES?: string;       // 업종당 페이지 상한(기본 6, 페이지당 500).
+  ADS_LOCALDATA_BACKFILL_DAYS?: string;   // 과거 백필 일수(기본 0=OFF, 예: 180) — 시간당 2일씩 역방향 소급 수집(수량 확대).
+  NEIS_API_KEY?: string;                  // 🎓 나이스(open.neis.go.kr) 학원·교습소 인증키 — 인허가에 없는 학원 갭 커버.
+  ADS_NEIS_ENABLED?: string;              // 학원 매시간 소량 수집 게이트(기본 OFF). 수동 트리거는 무관.
+  ADS_HIRA_ENABLED?: string;              // 🏥 심평원 병원정보 매시간 소량 수집 게이트(기본 OFF) — 전화+홈페이지 직접.
+  ADS_NARA_CONTRACT_ENABLED?: string;     // 🏛️ 나라장터 계약정보(상권 용역) 일1회 — **기본 ON**(opt-out). 끄려면 'false'.
+  ADS_NPS_ENABLED?: string;               // 👥 국민연금 사업장 규모 검증(직원수) 일1회 게이트(기본 OFF). 수동 트리거 무관.
+  ADS_KAKAO_SWEEP_CAP?: string;           // ☎️ 카카오 전화 스윕 시간당 건수(기본 600, 상한 600 클램프 — 무료 10만/일 대비 여유).
+  // 🏭 도매몰 제조사(브랜드사)·판매사 후보 수집 게이트(기본 OFF). 수동 버튼은 게이트 무관.
+  SUPPLY_MAKER_COLLECT_ENABLED?: string;
+  SUPPLY_ENRICH_BUDGET?: string;          // 📧 도매 이메일 보강 1라운드 fetch 상한(기본 120, 상한 400). 실효 상한은
+                                          //   관측 학습값(platform_settings `supply_subreq_cap`)과 min — 유어애즈와 별개 워커라 별도 학습.
+  ADS_ENRICH_ROUNDS?: string;             // 📧 이메일 보강 시간당 라운드 수(기본 8, 상한 20). 각 라운드 = 독립 인보케이션 =
+                                          //   새 서브리퀘스트 예산. 2026-07-28 실측: 실효 상한 29 → 라운드당 11건이 천장이라
+                                          //   **라운드 수가 처리량의 유일한 정직한 레버**(백로그 12만+).
+  ADS_ENRICH_DISABLED?: string;           // 📧 연락처 보강+소급정리 매시간 킬스위치('true'=끔). 수집 게이트와 분리(2026-07-27).
+  ADS_COLLECT_ROUNDS?: string;            // 🎯 인플루언서 **발굴** 시간당 라운드(기본 4, 상한 12). 보강 레인과 같은 이유 —
+                                          //   라운드 = 독립 인보케이션 = 새 서브리퀘스트 예산. 2026-07-29 실측: 1라운드가
+                                          //   키워드 3개에서 예산 소진 → 활성 210개 한 바퀴에 70시간(124개가 이틀째 굶음).
+  ADS_INFLUENCER_ENRICH_ROUNDS?: string;  // 📝 인플루언서 풀 보강(블로거 활동성·링크인바이오) 시간당 라운드(기본 12, 상한 20).
+                                          //   라운드 = 독립 인보케이션 = 새 서브리퀘스트 예산 → 처리량의 정직한 레버.
+  ADS_INFLUENCER_ENRICH_DISABLED?: string; // 📝 같은 레인 킬스위치('true'=끔). 기본 ON — 수집 게이트와 무관.
+  ADS_INFLUENCER_ENRICH_BUDGET?: string;  // 📝 그 레인 1라운드 fetch 상한(기본 45, 10~400). 실효값은 학습 상한
+                                          //   (`ads_subreq_cap_influencer_enrich`)과 min. 블로거 1건=fetch 2.
+  ADS_YT_PERF_UNITS?: string;             // 📈 유튜브 **성과 보강**의 일일 units 상한(기본 2000, 상한 9000).
+                                          //   발굴 검색(ADS_YT_SEARCH_BUDGET×100 units)과 같은 10,000 풀을 나눠 쓴다 —
+                                          //   검색 예산을 크게 올리면 이 값을 함께 낮출 것(2026-07-28 실측: 검색 22회=2,200).
+  ADS_FRANCHISE_PAGES?: string;           // 🏢 프랜차이즈 1회 수집 페이지 수(기본 8, 상한 30) — 커서로 여러 번 나눠 순회.
+                                          //   ⚠️ 이전엔 ADS_ENRICH_BUDGET(800)을 빌려 써 서브리퀘스트 한도에 부딪히는 구조였음(2026-07-28 수리).
+  ADS_NARA_CONTRACT_ENDPOINT?: string;    // 🏛️ 계약정보 base override(기본 1230000/ao/PubDataOpnStdService).
+  ADS_NARA_CONTRACT_OP?: string;          // 오퍼레이션 override(기본 getDataSetOpnStdCntrctInfo).
+  ADS_NARA_CONTRACT_DAYS?: string;        // 날짜 창 일수(기본 7) — 창 파라미터가 먹히는 경우에만 의미(param_mode 참조).
+  ADS_NARA_CONTRACT_ROWS?: string;        // 페이지당 행 수(무료 200/유료 400, 상한 500) — 계약 1건 ~1.9KB 라 크게 잡으면 CPU 로 죽는다.
+  ADS_NARA_CONTRACT_PAGES?: string;       // 1회 페이지 수(기본 20, 상한 40) — 요청 수 = 포털 일 쿼터라 요금제와 무관(plan-knobs external).
+  ADS_NARA_CONTRACT_DEADLINE_MS?: string; // 벽시계 마감선(무료 20s/유료 45s) — 커서 저장에 도달 못 하면 '조용한 전진 0'.
+  // 🛒 통신판매사업자 · 🏢 공정위 가맹정보 · 📢 공고 스캐너(나라장터+기업마당). 전부 기본 OFF, 키=PUBLIC_DATA_SERVICE_KEY.
+  ADS_COMMERCE_OP?: string;               // 통신판매 operation override(기본 getMllBsInfoDetail_3 = MllBsDtl_3Service).
+  ADS_COMMERCE_ENABLED?: string;          // 통신판매사업자 크론 게이트. ADS_COMMERCE_ENDPOINT override.
+  ADS_COMMERCE_ENDPOINT?: string;
+  ADS_FRANCHISE_ENABLED?: string;         // 공정위 가맹정보 크론 게이트. ADS_FRANCHISE_ENDPOINT override.
+  ADS_FRANCHISE_ENDPOINT?: string;
+  ADS_FRANCHISE_OP?: string;              // 가맹 operation override(기본 getBrandList = FftcBrandRlsInfo2_Service).
+  ADS_FRANCHISE_YEAR?: string;            // 브랜드 기준년도(yr) — API 가 필수 요구 시 설정(예: 2024). 미설정 시 생략.
+  ADS_NOTICE_ENABLED?: string;            // 공고 스캐너 크론 게이트. ADS_NARA_ENDPOINT / ADS_BIZINFO_ENDPOINT override.
+  ADS_NARA_ENDPOINT?: string;
+  ADS_BIZINFO_ENDPOINT?: string;
+
+  // ---- 🌐 해외 수출 바이어 자동 수집 (유통스타트 B2B, 2026-07-20) ----
+  //   유어딜과 무관 — 유통스타트(도매/수출) 소관. features/supply 자립 엔진(mount-wholesale 마운트 =
+  //   소비자 워커 DCE). 한국 상품 사입 해외 수입상·유통사·리테일러를 격리 풀(overseas_buyer_leads)에 매칭 누적.
+  //   ⭐ 최대한 무료 — 유료 provider 없음. [PIPA/GDPR/CAN-SPAM] 공개된 *비즈니스* 컨택만 — 수집 ≠ 발송.
+  BUYER_AUTO_COLLECT_ENABLED?: string; // 'true' 일 때만 자동/수동 수집 동작(기본 OFF).
+  BUYER_AUTOCOLLECT_BATCH?: string;    // 1회 실행당 타깃(카테고리×시장) 수(기본 3).
+  BUYER_SUBREQUEST_BUDGET?: string;    // 1회 실행 외부 fetch 총량 상한(기본 60) — subrequest 방어.
+  // 무료 피드/오픈API: 대표가 합법 수집분(KOTRA BuyKorea·TradeKorea 구매리드·전시회 공개명단·data.go.kr
+  //   무료 serviceKey URL)을 JSON 으로 게시/직결하고 URL 등록. JSON 배열/NDJSON/오픈API 응답 자동 파싱.
+  //   미설정이면 수집 no-op(found:0). 임의 스크래핑 없음 — 수집 근거를 대표가 통제.
+  BUYER_FEED_URLS?: string;            // 쉼표구분 무료 피드/오픈API URL 목록.
+  // 무료 API 키 헤더(예: 미국 ITA api.trade.gov 는 `subscription-key: XXX` 헤더 필요). "이름: 값" 형식,
+  //   세미콜론(;)으로 여러 개. 모든 피드 요청에 적용. URL 파라미터로 키를 넣는 API(UN Comtrade)는 불필요.
+  BUYER_FEED_HEADER?: string;          // 예: "subscription-key: abc123" 또는 "Authorization: Bearer xxx"
+  // ⚠️ [위험] 상세 페이지 서버 자동 수집(대표 명시 "위험 감수하고 하자", 2026-07-21). 로그인 게이트 상세를
+  //   대표 세션 쿠키로 서버가 직접 fetch — 각 사이트 약관상 자동수집 금지·계정정지 위험. 기본 OFF(의도적 무장).
+  //   방어: 게이트 + 소량 배치 캡 + 요청 간 지연 + 쿠키 미저장(요청당 1회). buyKorea/tradeKorea/EC21/ECPlaza/GoBizKorea 겸용.
+  BUYER_AUTO_FETCH_ENABLED?: string;   // 'true' 일 때만 상세 자동 fetch 동작(기본 OFF).
+  ADS_YT_PAGES?: string;          // YT 검색 키워드당 페이지 수(기본 1, 1~5) — 깊이 확장(page2=51~100위). 쿼터 여유 시 상향. quotaHit 가드 관리.
+  ADS_YT_SEARCH_BUDGET?: string;  // 🎯 YT Search Queries/day 예산(기본 100 — 실측 병목). 구글 콘솔 증설 승인 시 함께 상향.
+
+  // ---- 📊 인플루언서 풀 → 구글 스프레드시트 자동 동기화 (2026-07-21, ur-ads Variables) ----
+  //   서비스계정 JWT 직접 호출(제3자 없음). 미설정 시 조용히 skip(fail-soft). 시트는 SA 이메일에 편집자 공유 필수.
+  GSHEETS_SA_EMAIL?: string;         // 서비스계정 이메일(...@...iam.gserviceaccount.com)
+  GSHEETS_SA_KEY?: string;           // 서비스계정 JSON 의 private_key(PEM, \n 이스케이프 허용) — Secret 타입 권장
+  GSHEETS_SHEET_ID?: string;         // 스프레드시트 ID(URL /d/{이것}/edit)
+  ADS_SHEETS_SYNC_ENABLED?: string;  // 'true' 면 매시간 cron 이 시트 미러(수동 버튼은 게이트 무관)
+  ADS_SUBREQUEST_BUDGET?: string;  // 1회 cron 실행의 외부 fetch 총량 상한(기본 300) — "Too many subrequests" 방어. 소진 시 조기 종료(커서 이어받음).
+  ADS_NAVER_EXTRA?: string;        // YT 배정(batch) 위에 추가로 도는 네이버 전용 키워드 수(기본 12 → 틱당 네이버 총 batch+12). 네이버 25k/day 헤드룸 활용. 서브리퀘스트 예산 안에서 클램프(max 40).
+
+  // ---- 유어애즈 AI 콘텐츠 스튜디오 — 미디어 생성(이미지/음성/영상) provider 게이트웨이 ----
+  //   전부 외부 유료 API. 킬스위치 ADS_MEDIA_ENABLED='true' + 해당 provider 키가 있어야 동작(둘 다 없으면
+  //   NOT_CONFIGURED/DISABLED — 기능 자동 숨김). ⚠️ 이 환경 egress 차단으로 실호출 미검증(docs 기준 배선).
+  ADS_MEDIA_ENABLED?: string;          // 'true' 아니면 미디어 생성 전면 OFF(비용 방어)
+  OPENAI_API_KEY?: string;             // 이미지 생성(OpenAI Images) — image provider
+  ELEVENLABS_API_KEY?: string;         // AI 음성(TTS) — voice provider
+  REPLICATE_API_TOKEN?: string;        // 숏폼 영상 생성(Replicate 모델) — video provider
+  HEYGEN_API_KEY?: string;             // 아바타 영상(HeyGen) — video(avatar) provider
+  ADS_IMAGE_PROVIDER?: string;         // 선택: 'openai'(기본) 등
+  ADS_VIDEO_PROVIDER?: string;         // 선택: 'replicate'(기본) | 'heygen'
+  // 유어애즈 서비스몰 수기 결제(계좌이체) 안내문 — 예: "국민은행 123-45-678 (주)유어팀". 미설정 시 안내 생략.
+  ADS_BANK_INFO?: string;
+
+  // ---- 블로그 AI 홍보 초안 주간 cron 킬스위치 ----
+  //   'true' 일 때만 주간 cron 이 홍보 초안(비공개)을 생성. 미설정/기타값이면 skip(기본 OFF).
+  //   초안은 항상 관리자 검토 후 발행. ANTHROPIC_API_KEY 필요.
+  BLOG_AI_DRAFTS_ENABLED?: string;
+
+  // ---- 소셜 미디어 자동화(유어딜 자체 홍보 — 스레드/인스타/유튜브) ----
+  //   전부 기본 OFF. 발행은 [게이트 ON + 연결 계정 + 관리자 승인] 3중 조건. 자동 발행 없음.
+  //   설계: docs/design/social-media-automation.md. 공식 API 만 사용(봇/스크래핑 없음).
+  SOCIAL_THREADS_ENABLED?: string;      // 'true' 면 스레드 발행 허용
+  SOCIAL_INSTAGRAM_ENABLED?: string;    // 'true' 면 인스타 발행 허용
+  SOCIAL_YOUTUBE_ENABLED?: string;      // 'true' 면 유튜브 업로드 허용
+  SOCIAL_AUTO_DRAFT_ENABLED?: string;   // 'true' 면 주간 초안 cron 동작(비공개 초안만)
+  //   예약 발행 — 관리자가 승인+예약(scheduled_at)한 글을 매시간 cron 이 발행. 기본 OFF.
+  //   발행은 여전히 플랫폼 게이트+계정+approved 3중 조건 재확인(사람이 승인한 건만).
+  SOCIAL_AUTO_PUBLISH_ENABLED?: string;
+  //   자격증명(Cloudflare Secrets). Meta(스레드/인스타)·Google(유튜브)은 기존 youtube 기능과 공유.
+  META_APP_ID?: string;
+  META_APP_SECRET?: string;
+  THREADS_APP_ID?: string;
+  THREADS_APP_SECRET?: string;
+  //   릴스/쇼츠 영상 렌더(스토리보드 → mp4). Worker 는 렌더 불가 → 외부 템플릿 렌더 API 위임.
+  //   기본 OFF. 켜려면 SOCIAL_VIDEO_ENABLED='true' + provider 키. (기획/대본은 ANTHROPIC 로 항상 생성 가능)
+  SOCIAL_VIDEO_ENABLED?: string;        // 'true' 면 영상 렌더 허용
+  SOCIAL_VIDEO_PROVIDER?: string;       // 'creatomate'(기본)
+  SOCIAL_VIDEO_RENDER_KEY?: string;     // 렌더 provider API 키
+  SOCIAL_VIDEO_TEMPLATE_ID?: string;    // (선택) 디자인된 템플릿 ID — 자막만 주입해 품질↑
+
+  // ---- fee-resolver 그림자 배선 스위치 (상품 소유 모델 새 수수료 규칙) ----
+  //   'true' 면 결제 확정 시 새 규칙 분배를 **계산만 해서 order_fee_breakdown 에 기록**(실제 정산 무변경).
+  //   목적: 스테이징/운영에서 새 규칙 vs 현행 정산 비교 검증. 검증 후 authoritative 전환은 *별도* 작업.
+  //   기본 OFF — 미설정/기타값이면 그림자 기록도 안 함(현행과 100% 동일).
+  FEE_RESOLVER_ENABLED?: string;
+
+  // ---- 쇼핑 주문 원장 배선 스위치 (정산 자동화 완성) ----
+  //   'true' 면 결제 확정 시 일반 쇼핑 주문 셀러 매출을 이중원장에 net 크레딧 → 주간 자동 payout 포함.
+  //   기본 OFF — 미설정/기타값이면 원장 기록 안 함(현행과 100% 동일). staging 검증 후 활성.
+  //   이용권/공구 주문은 skip(각자 경로에서 이미 원장 기록). 역전은 order-refund 에 배선(게이트 무관).
+  SHOPPING_LEDGER_ENABLED?: string;
+  /** 🔔 IndexNow(네이버·Bing 즉시 색인 요청) — 기본 OFF. 켜는 것은 대표의 일(게이트 ON = 결재). */
+  INDEXNOW_ENABLED?: string;
+  /** 🔔 IndexNow 소유 증명 키. **비밀이 아니다** — `/{key}.txt` 로 공개되는 것이 규격이다. */
+  INDEXNOW_KEY?: string;
+
+  // ---- 인플루언서↔업체 성과기반 매칭 정산 스위치 (2026-07-14) ----
+  //   매칭 자체는 **어드민 전용 읽기 도구**(requireAdmin — env 게이트 불필요). 아래는 **정산(머니)** 전용:
+  //   MATCHING_SETTLEMENT_ENABLED='true' 면 매칭 성사 수수료 적립(머니 경로) 활성 — #496 규율:
+  //   promo 재원(5% 밖), 인플루언서 딜 레일 재사용, staging 축별 실결제 검증 전 미설정 유지.
+  //   (라이브 적립 배선은 SSOT 아비터 경유 — 단독 flip 세션. 이 커밋엔 순수 계산·불변식만.)
+  MATCHING_SETTLEMENT_ENABLED?: string;
+
+  // ---- 상권 쿠폰 경로 B: 온라인 결제 자동발급 마스터 스위치 (2026-07-13) ----
+  //   'true' 면 유어딜 결제 확정 시 참여 매장(district_stores.seller_id 연결)의 auto_issue 캠페인에서
+  //   기준액 이상이면 상권 쿠폰 자동 발급(waitUntil 후처리, 완전 fail-soft — 결제 성공 경로 영향 0).
+  //   기본 OFF — 미설정/기타값이면 /confirm byte-동일. 캠페인별 auto_issue_enabled + 기간 게이트가 2차.
+  //   staging 실결제 검증(계약 후) 전까지 미설정 유지.
+  DISTRICT_AUTO_ISSUE_ENABLED?: string;
+
+  // ---- 상권 쿠폰 알림톡 마스터 스위치 (2026-07-13) ----
+  //   'true' 면 쿠폰 지급/반려/만료임박 시 알림톡(dispatchNotification) 시도. 기본 OFF — 인앱 알림만(현행 동일).
+  //   활성 절차: ① SENS 콘솔에 district_coupon_issued/rejected/expiring 템플릿 등록·승인(+어드민 승인 목록)
+  //             ② 어드민 채널설정(notification_channel_settings)에서 해당 type alimtalk 켜기
+  //             ③ env DISTRICT_ALIMTALK_ENABLED=true. (③ OFF 면 ①②와 무관하게 알림톡 미발송.)
+  DISTRICT_ALIMTALK_ENABLED?: string;
+
+  // ---- 운영 자동화 백로그 (2026-07-19 — ①일일 다이제스트 ②알림톡 시퀀스 ③CS FAQ 봇) ----
+  //   전부 기본 OFF/미설정 = 라이브 무접촉. 어드민 수신처는 platform_settings
+  //   `ops_digest_email`/`ops_digest_phone` 키(미설정 = 벨+Discord 만).
+  /** 'true' 면 소비자 대상 시퀀스 2종(드랍 D-1 예고·체험단 게시 리마인드) 발송. 기본 OFF. */
+  OPS_SEQUENCES_ENABLED?: string;
+  /** 'true' + ops_digest_phone 설정 시 일일 다이제스트 알림톡 발송. 기본 OFF(벨/메일만). */
+  OPS_DIGEST_ALIMTALK_ENABLED?: string;
+  /** 카카오 오픈빌더 스킬(CS FAQ 봇) 공유 시크릿 — 미설정 = 봇 endpoint 404(비활성). */
+  KAKAO_SKILL_SECRET?: string;
+
+  // ---- 전자세금계산서 (Bill36524 / Popbill / 바로빌) ----
+  // 🏭 2026-06-09 Wave 3c: 도매 세금계산서 자동발행 stub(admin-tax.routes.issueTaxInvoice).
+  //   미설정 시 provider 발행 silent skip(cost-0) — 레코드는 'draft' 로 남아 후속 발행 가능.
+  //   실제 국세청(NTS) 발행은 두 값 모두 설정 + 계약 후 활성화.
+  TAX_INVOICE_API_KEY?: string;
+  TAX_INVOICE_API_URL?: string;
+  TAX_INVOICE_SENDER_BIZ_NO?: string; // 플랫폼(공급자) 사업자등록번호 (123-45-67890)
+
+  // ---- 정산 역발행(매입세금계산서) — 소비자 셀러 정산 (2026-07-01) ----
+  //   유어딜(공급받는자)이 사업자 유저 셀러(공급자)에게 지급한 정산액에 대해 매입세금계산서를
+  //   역발행(초안 자동작성 → 셀러 승인 → NTS 발행). 카카오 애드핏 = 유니포스트 역발행과 동일 모델.
+  //   미설정(기본) → provider='none' → draft 로만 남음(cost-0, 실 발행 없음). tax-invoice-gateway.ts 참조.
+  REVERSE_INVOICE_PROVIDER?: string; // 'unipost' | 'stub' | 미설정('none')
+  UNIPOST_API_URL?: string;
+  UNIPOST_API_KEY?: string;
+  UNIPOST_CORP_NUM?: string; // 유어딜(공급받는자) 사업자등록번호. 미설정 시 TAX_INVOICE_SENDER_BIZ_NO fallback.
+
+  // ---- App Config ----
+  ENVIRONMENT: string;
+  FRONTEND_URL: string;
+  REGION?: string;
+
+  // ---- Cloudflare Specific ----
+  // Note: env.ASSETS is automatically available when [assets] is configured
+  // No explicit binding needed in wrangler.toml
+  ASSETS?: { fetch: (req: Request) => Promise<Response> };
+
+  // ---- 🎯 유어애즈 독립 Worker(ur-ads) Service Binding (2026-07-14) ----
+  //   설계 SSOT: docs/design/urads-worker-split.md. 메인 Pages(ur-live) → Settings → Functions →
+  //   Service bindings 에서 Variable name `ADS` → Service `ur-ads` 로 바인딩(대표 Cloudflare 셋업).
+  //   ⚠️ ur-ads 에는 Custom Domain 을 붙이지 않는다(2026-04-22 사고) — 오직 이 바인딩으로만 접근.
+  //   미바인딩 시 아래 게이트가 자동 폴백(로컬 마운트가 처리) → 라이브 영향 0.
+  ADS?: { fetch: (req: Request) => Promise<Response> };
+  // 🔁 ur-ads 자기참조 서비스바인딩(wrangler-ads.toml [[services]] SELF→ur-ads) — YT 예산 버스트 self-chain 용.
+  //   각 수집 인보케이션이 다음 인보케이션(fresh 서브리퀘스트 예산)을 던지고 즉시 종료 → 오케스트레이터 시간제한 없이
+  //   하루 예산을 백그라운드에서 끝까지 소진. 미바인딩 시 chained=false → 메인 오케스트레이터가 시간예산 내 폴백.
+  SELF?: { fetch: (req: Request) => Promise<Response> };
+  // 'true' 일 때만 /api/ads/* · /l/* 를 env.ADS(ur-ads)로 위임(프록시). 미설정/기타값 = 메인이 직접 처리(현행 동일).
+  //   컷오버: staging 에서 ur-ads 위임 검증 후 이 값을 'true' 로. /api/admin/ads/* 는 항상 메인 유지(메인 admin JWT).
+  ADS_WORKER_ENABLED?: string;
+
+  // ---- 🔍 Workers AI (2026-09-16 대표가 Pages `ur-live` production 에 바인딩) ----
+  //   용도: 서류(사업자등록증·영업신고증) OCR 추출 — `worker/utils/ocr-license.ts`.
+  //
+  //   ⚠️ **반드시 optional 로 둔다.** Pages 는 production / preview 바인딩이 따로인데
+  //   preview 에는 안 붙어 있다(2026-09-16 API 실측 `ai_bindings: production={"AI":{}} · preview=없음`).
+  //   필수로 만들면 PR 프리뷰에서 타입은 통과하고 **런타임에 터진다**. 호출부는 전부
+  //   `if (!ai) return { ok: false … }` 로 조용히 건너뛴다 — 없으면 사람이 눈으로 보는 현행 동작.
+  //
+  //   💰 preview 에 안 붙은 것은 결함이 아니라 이득이다: 프리뷰 배포가 추론 비용을 안 태운다.
+  AI?: { run: (model: string, input: Record<string, unknown>) => Promise<unknown> };
+  // 🖼️ 2026-10-10 Cloudflare Images 바인딩 — OG 카드에 박을 사진을 서버 안에서 줄인다.
+  //   Pages 서버 안에서는 같은 존의 cdn-cgi 리사이저도, fetch 의 cf.image 도 안 걸린다(2026-06-11·10-09 실측).
+  //   대시보드에서 바인딩(이름 IMAGES)을 붙여야 생긴다 — 없으면 종전 경로(cdn-cgi → 실패 시 원본 302).
+  IMAGES?: import('../utils/og-inline-image').ImagesBindingLike;
+}

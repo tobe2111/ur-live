@@ -1,0 +1,239 @@
+# 대외 제안서
+
+소개서의 집은 **여기(`docs/business/proposals/`)** 입니다 — 생성기 `*.build.mjs` + `.pptx` + `.pdf`.
+어드민 **`/admin/proposals`** 가 그 PDF 다섯을 그대로 띄우고 내려받게 합니다
+(배포 때 `scripts/build-prepare.mjs` 가 `dist/client/static/proposals/` 로 **복사만** 합니다 —
+`public/` 에 사본을 두지 않는 이유는 아래 "어드민은 어떻게 이 PDF 를 띄우나" 참조).
+
+| 문서 | 파일 | 어드민 |
+|---|---|---|
+| 대행사 제휴 제안 (16:9, 30장 v8 — **09-19 확정 플로우**: 매장 코드·두 요율·코드 링크 매칭·귀사 몫 유어딜 직접 송금. PART 구분 장 4·직접 vs 경유 표·플라이휠·페르소나·목표별 설계·인출선·절차 3열, PowerPoint, 매장 모집 실행서) | `urdeal-agency-proposal.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-agency-proposal.build.mjs`) | `/admin/proposals` |
+| 매장 사장님 소개 (16:9, 15장 v7 — 대표 최종 구성안 9장 + 손님 흐름 + 페르소나·목표별 설계·쌓이는 자산·절차 3열, PowerPoint. 상세판 17장은 `urdeal-store-owner-deck-detail.*`) | `urdeal-store-owner-deck.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-store-owner-deck.build.mjs`, 공통 모듈 `deck-common.mjs`) | `/admin/proposals` (상세판 포함) |
+| 상인회 서비스 소개 + 입점 요청 (16:9, 20장 v1 — **2026-10-06 대표 지시**. 상인회 설명회 자리용. 공동 사업(전단·축제·쿠폰)과의 비교 · 세 가지 길(직접 10% / 유어딜 대행 10% / 상인회 중개 5%) · 상인회 몫의 구조와 상한 · 마지막 장이 **입점 요청 3가지**) | `urdeal-merchant-association-deck.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-merchant-association-deck.build.mjs`, 공통 모듈 `deck-common.mjs`) | `/admin/proposals` |
+| 인플루언서 제휴 소개 (16:9, 20장 v4 — **중개사 계정 · 유어딜 5% 흐름 + 09-19 확정 플로우**(코드 링크 한 탭 매칭·매장 단위 링크·매장 코드), 영입 2% 제거, 정산은 "이용권 사용 후", 유어쇼츠·이용권 지갑·QR 화면, SNS 로고, https 하이퍼링크. PART 구분 장 3·플라이휠·페르소나·인출선·절차 3열, PowerPoint) | `urdeal-influencer-deck.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-influencer-deck.build.mjs`, 공통 모듈 `deck-common.mjs`). **2026-10-12: 어드민이 띄우던 9장 HTML 구판(`public/static/proposals/influencer-proposal.html`)을 삭제하고 이 덱으로 교체했다** — 구판은 폐지된 영입 2% 를 계속 팔고 있었다 | `/admin/proposals` |
+| 소개서 3종 기획서 | `docs/business/proposals/three-decks-plan-2026-09.md` | 없음 |
+
+## 숫자는 FACTS 한 곳에서만 (2026-10-12)
+
+다섯 덱이 쓰는 모든 실측값은 `deck-common.mjs` 의 `FACTS` 가 단일 출처입니다. **덱 파일에 숫자를
+베껴 적지 마세요.** 베껴 적으면 "바꿀 때 같이 고친다" 는 주석에 기대게 되고, 그 주석은 실제로 안 지켜집니다.
+
+2026-10-12 갱신에서 실제로 드러난 세 가지:
+
+- 🩸 **상세판 덱이 "지금 팔리고 있는 실제 상품 (치즈돈가스 2인 세트)" 라면서 다른 상품의 가격을
+  보여 주고 있었습니다.** 10-06 에 숫자만 고치고 **이름을 안 고쳤기 때문**입니다. 이름·숫자가 어긋나면
+  받는 사람이 확인할 수 없고, 확인하려 들면 거짓이 드러납니다 ⇒ 이름도 `FACTS.sampleName` 에서 읽습니다.
+- 🩸 **상세판 덱이 카테고리 평균을 자기 파일에 베껴 적어** 식사 평균이 32,409 에 굳어 있었습니다
+  ⇒ `FACTS.avgNums` 로 단일화. 평균의 정의는 **판매가 평균**이지 정가 평균이 아닙니다(정가로 재면
+  40,757 이 나와 전혀 다른 값이 됩니다 — 이번에 한 번 헷갈렸습니다).
+- 🩸 **중개 몫의 최소 지급액을 "1만원" 이라고 쓸 뻔했습니다.** 1만원은 *매장(셀러) 레일*이고
+  중개 몫은 *인플루언서 레일*이라 **10만원**입니다(`cron/influencer-payout.ts` `DEFAULT_PAYOUT_MIN`).
+  파트너에게 돈 얘기를 틀리게 하는 자리이므로 코드를 보고 고쳤습니다.
+
+### 슬라이드에 쓰지 않기로 한 숫자
+
+**승인 매장 수.** 10-12 실측 10곳 중 2곳이 명시적 테스트 계정이고 중복 등록과 장소명도 섞여 있어,
+"그 10곳이 어디냐" 는 질문에 답이 궁색합니다. 방어할 수 있는 숫자(`realStores`)만 씁니다.
+
+## 어드민은 어떻게 이 PDF 를 띄우나 (2026-10-12)
+
+어드민 `/admin/proposals` 는 **PDF 파일 그대로**를 iframe 으로 띄우고 내려받게 합니다.
+브라우저 기본 PDF 뷰어가 확대·페이지 이동·인쇄를 전부 갖고 있어 우리가 배율을 계산하지 않습니다.
+
+```
+docs/business/proposals/*.pdf        ← 유일한 원본 (여기만 있습니다)
+   ├─ 배포: scripts/build-prepare.mjs → dist/client/static/proposals/*.pdf
+   └─ dev : vite.config.ts  proposalPdfDevPlugin → 같은 주소를 원본으로 이어 줌
+어드민 화면: /static/proposals/<이름>.pdf   ← 배포·dev 주소가 같습니다
+```
+
+🔴 **`public/` 에 PDF 사본을 만들지 마세요.** 사본이 생기면 덱을 다시 뽑을 때 한쪽만 갱신되고,
+**어드민이 옛 소개서를 조용히 서빙합니다** — 에러도 빌드 실패도 없습니다. 2026-10-12 에 실제로
+그 일이 드러났습니다: 어드민이 2026-08-30 에 만든 **9장 HTML 구판**을 띄우고 있었고, 그 구판은
+**2026-09-16 에 폐지된 영입 커미션 2%**("내가 데려온 매장은 1년간 매출의 2%")를 그대로 팔고 있었습니다.
+거기서 열어 보내면 **없는 커미션을 약속하는 문서**가 나갑니다.
+
+⚠️ **경로는 `/static/` 아래여야 합니다.** `public/_routes.json` 이 그 접두사만 워커에서
+제외하고 있어 Pages 가 파일을 직접 서빙합니다. 다른 경로로 옮기면 워커가 SPA 셸을 돌려주고
+미리보기가 빈 화면이 됩니다.
+
+⚠️ **`?raw` import 로 되돌리지 마세요.** 처음에는 docs/ 원본을 `?raw` 로 가져왔는데, 소개서에
+**라이브 화면 캡처를 base64 로 심자** 그 문자열이 그대로 JS 청크가 되어 `AdminProposalsPage` 청크가
+**254KB** 로 불었고 `check-bundle-size --budget`(총 raw JS 8.6MB)이 CI 를 세웠습니다.
+
+🔓 `/static/` 아래라 **로그인 없이도 주소를 알면 받을 수 있습니다.** 소개서는 애초에 파트너에게
+건네는 문서이고 PDF 자체가 공개 저장소에 커밋돼 있어 추가 노출은 없습니다. 검색 노출은
+`public/robots.txt` 의 `Disallow: /static/proposals/` 가 막습니다.
+
+위 다섯 가지는 `src/tests/unit/admin-proposals-asset.test.ts` 가 강제합니다(되돌려-검증 완료) —
+사본 금지 · `/static/` 접두 · 원본 실재 · **장수 표기와 실제 PDF 페이지 수 일치** · 구판 HTML 부활 금지.
+
+## 화면 캡처를 다시 찍으려면
+
+```bash
+NODE_USE_ENV_PROXY=1 node scripts/capture-proposal-shots.mjs /tmp/shots
+```
+
+- 캡처에 **매장 전화번호가 그대로 나옵니다.** 상세 화면은 `a[href^="tel:"]` 를 블러 처리하도록
+  잡아 뒀습니다. 대상 화면을 바꾸면 가릴 것이 또 있는지 먼저 보세요. 문서는 돌아다닙니다.
+- 유어샵은 `/u/jiwon1228`(대표 계정)을 씁니다. 남의 유어샵을 대외 문서에 넣지 마세요.
+- 색은 `src/index.css` 의 `--ink` / `--ink-soft` 를 **복사해 쓰는 구조**라 자동으로 안 따라옵니다.
+  서비스 테마가 바뀌면 제안서도 같이 고쳐야 합니다.
+
+## 참고 덱에서 가져온 장치 (2026-09-15)
+
+대표가 보낸 두 번째 참고 덱(히로인스 소셜 마케팅 상품 소개서 36장)에서 **구조를 보여주는 장치**만 가져와 `deck-common.mjs` 헬퍼로 넣었다.
+세 덱이 같은 헬퍼를 쓴다: `section`(브랜드 블루 구분 장 + 이후 장 우상단 "PART n · …" 라벨) · `takeaway`(하단 한 줄 결론 바) ·
+`callouts`(화면 인출선, 폰 프레임 안 비율 좌표) · `personas`(말풍선 페르소나 행, 다크) · `procedureColumns`(트랙별 절차 N열) ·
+`flywheel`(링 + 노드 + 화살표) · `table({ hiCol, leftAlign })`(강조 열). **안 가져온 것**: 규모 지표 타일·ROAS·만족도 도넛(대응 숫자가 없고
+"매출 O%" 금지) · 로고 월 · 3D 광택 아이콘(아이콘 규칙 위반) · 경쟁 채널 시장가 표(출처 없는 남의 가격).
+🩸 LibreOffice PDF 변환에서 `transparency` 가 걸린 텍스트 런의 **숫자가 사라진다**(`PART 1` → `PART`). 투명도 대신 옅은 색(`CFE0FD`)을 쓴다.
+
+## 인플루언서 덱 v3 — 중개사 흐름 (2026-09-19)
+
+대표 20장 전수 지시. **인플루언서는 셀러 대시보드에 중개사 계정으로 가입**하므로 덱은 직접 10% 가 아니라 **중개 5%** 흐름으로 말한다.
+**영입 2%(직접 입점 1년) 규정은 폐지** — 이 덱에서 전부 뺐다(⚠️ 사장님 덱은 원래 0건, **대행사 덱 비교표 1행**(`urdeal-agency-proposal.build.mjs:170`)과
+코드 `influencer_store_intro_pct=2` · `actor-benefit-map.md` 는 아직 2% 를 말한다 — 대표 확인 뒤 정리). 카드 수수료 2.75% 는 이 덱에서 말하지 않는다.
+정산 시점은 대표 지시대로 **"팔로워가 이용권을 사용한 뒤"** 로 적었다(⚠️ 코드는 결제+7일 `available_at` — 문구와 다르다, 대표 확인 필요).
+화면: 유어샵 재캡처 · 유어쇼츠 `/videos?v=jHPacJoCEt8`(이용권이 붙은 라이브 영상 — 재생 자리는 이 환경에서 유튜브가 막혀 어둡게 나온다) ·
+이용권 지갑·QR(`/my-vouchers`, 예시 데이터). 캡처 하네스는 `capture-seller-shots.mjs` 를 복제해 `vouchers/my` mock + "사용하기" 클릭 + 바텀시트를 위로 올리는 style 을 더한 것.
+SNS 로고는 `react-icons/si`(`icon()` 이 Fi → Si 순으로 찾고, `icons` 항목을 `['SiNaver','03C75A']` 처럼 색과 함께 넘긴다). 연락처는 `https://` 전체 주소 + `hyperlink`(PDF 에서 눌린다).
+⚠️ **07 경로 A(13페이지)는 대표가 "실제 플로우를 다시 봐야 한다 · 마지막에 재작업"** — 자격(인플루언서/대행사/중개사) 선택 가입은 라이브에 없다(`/seller/register/supplier` 는 사업자 정보 폼). 지금은 URL 만 빼고 문구만 바꿔 둔 상태.
+
+## 인플루언서 덱 v4 · 대행사 덱 v8 — 대표 확정 플로우 (2026-09-19)
+
+SSOT 는 `docs/decisions/archive/2026-09-19-broker-matching-flow.md`(대표 말 그대로 11단계 + 불변식 9개 + 구현 순서). 두 덱이 같은 플로우를 각자 시점에서 말한다:
+- **매칭은 "제안·수락" 이 아니라 매장 코드다.** 대행사가 매장을 등록하면 코드가 자동 생성되고 **중개사 몫 % · 인플루언서 소개비 %** 를 그때 정한다.
+  인플루언서에게는 **코드가 담긴 링크 한 탭**(가입 + 즉시 매칭). 직접 온 사람은 마이페이지에서 코드 입력. 마이페이지에 **매장 단위 고유 링크**(복사·카톡 공유, 이용권이 바뀌어도 그대로).
+- **사장님이 가입하며 코드를 입력해 주인이 된다**(원안의 "대행사가 코드 입력"을 대표가 뒤집음 — 권한을 내주는 쪽이 입력해야 동의). 등록증 확인 그대로, 첫 정산 전까지만, 판매는 안 막는다.
+- **대행사 몫은 유어딜이 직접 송금**(09-16 결재) — 대행사 덱의 "보수·청구·매장과 직접" 문구를 전부 걷어냈다(PDF 텍스트에서 `보수` 0 · `청구` 0). 영입 2% 행 삭제.
+- ✅ **코드는 같은 날 PR #1499(`e3e182c2`) 로 main 에 있다** — 승계 코드(`/store/find?code=`) · 협업 코드(`/i/join/:code`, 마이페이지 입력) · 매장 링크(`/s/{id}?ref=`) · 딜 % 조정 · `/seller/operating` 인플루언서별 성과. **귀사 몫 직접 송금(`broker-share.ts`)만 게이트 `broker_share_enabled` OFF**(S-BROKER 뒤 대표가 켠다) — 대행사 덱 §14 가 그 사실을 문장으로 밝힌다. 인플루언서 경로 A 는 아직 카드(배포 후 `/i/join` 과 마이페이지를 캡처해 교체).
+- 소개비 %의 정확한 모델: 매장 등록 때 **중개사 몫 % · 인플루언서 상한 %** → 개별 소개비는 **협업 코드의 기본 %** + 딜별 조정(이후 판매분부터), 상한을 못 넘는다. 두 덱의 "소개비" 문구는 이 모델로 맞췄다("등록 때 정한 소개비" 라고 쓰면 틀린다).
+- 인플루언서 덱 `shotKeys` 에서 `influencer-offer` 제거(제안 화면은 더 이상 안 쓴다 — 파일은 남겨 둠).
+
+## 공통 모듈 `deck-common.mjs` (2026-09-13)
+
+색·글꼴·헬퍼(chrome/title/card/phone/kv/table)와 **네 덱**이 글자 그대로 공유하는 사실(`FACTS`: 요율, 카드비 문구, 실측 숫자,
+연락처, 셈법에 쓰는 라이브 상품)이 여기 있다. **요율이나 실측 숫자가 바뀌면 이 파일 한 곳만 고친다.** 카드 수수료는 "현재 약 2.75%, 카드사 정책에
+따라 바뀔 수 있음" 으로 적는다(대표 2026-09-13). 덱들이 공유하는 블록: `customerSteps`(손님 4단계 폰 4장) · `honesty`(정직 고지).
+
+**실측값은 2026-10-06 에 갱신했다**(활성 이용권 359 · 식사 평균 32,409 · 숙박 155,693 · 인플루언서 DB 282,818 · 연락 가능 61,512).
+🩸 같은 날 **셈법에 쓰던 상품 2888(치즈돈가스 25,000 → 16,500)이 `is_active=0` 이 된 것**을 발견했다. 사장님 덱은 그 숫자를
+*"지금 팔리는 실제 상품"* 이라고 소개하고 있었으므로 **문장이 거짓이 된 상태**였다. 라이브에서 지금 팔리는 유일한 실제 매장
+이용권(2915 · 홍대돈까스 · 14,500 → 7,500)으로 바꾸고, 값을 `FACTS.sample*` 한 곳에 모아 세 덱이 같이 쓰게 했다.
+⇒ **덱을 다시 만들기 전에 그 상품이 아직 팔리고 있는지부터 확인할 것.**
+대행사 v4 생성기는 아직 자기 헬퍼를 쓴다(v5 에서 이 모듈로 옮긴다).
+
+## 매장 사장님 안내 (.pptx) 다시 만들려면
+
+```bash
+mkdir -p /tmp/deck && cd /tmp/deck && npm init -y && npm i pptxgenjs sharp react react-dom react-icons
+ln -sfn /tmp/deck/node_modules /path/to/ur-live/docs/business/proposals/node_modules   # ESM import 는 NODE_PATH 를 안 본다
+cd /path/to/ur-live/docs/business/proposals && node urdeal-store-owner-deck.build.mjs out.pptx
+```
+
+- 12장 구성과 근거는 `three-decks-plan-2026-09.md` §2. 5장의 셈법은 라이브 유일의 실제 매장 이용권(id **2915**, 14,500 → 7,500원 · `FACTS.sample*`)을 쓴다.
+  (2026-10-06 이전에는 id 2888(25,000 → 16,500)이었는데 그 상품이 내려갔다.)
+  재료비 35% 는 가정이고 슬라이드에도 그렇게 적혀 있다.
+- 셀러 화면은 `capture-seller-shots.mjs` 로 계정 없이 찍는다. 2026-09-13 에 `/seller/settlements`(정산) · `/store/new`(등록 마법사 1단계·3단계) 를 추가했다.
+  🩸 정산 화면은 처음에 에러 경계가 떴다: `DealBalanceCard` 가 `balance.total.toLocaleString()` 을 부르는데 예시 응답에 `total` 이 없었다.
+  프로덕션 React 는 에러 경계가 잡은 오류를 콘솔에 남기지 않으므로 **컴포넌트가 읽는 필드를 코드에서 확인해 예시 응답을 맞춰야 한다.**
+  🩸 등록 마법사는 소비자 로그인(`user_id`)이 필요한데, 그 신호를 넣으면 화면 장식이 `/api/curator/me/*`·`/api/wishlists`·`/api/auth/session/health` 를 부르고
+  401 이 나면 소비자 클라이언트가 로그아웃시켜 `/login` 으로 튕긴다. 그 셋을 성공 응답으로 모킹해야 한다.
+
+## 대행사 제안서 (.pptx) 다시 만들려면
+
+```bash
+mkdir -p /tmp/deck && cd /tmp/deck && npm init -y && npm i pptxgenjs sharp react react-dom react-icons
+node /path/to/ur-live/docs/business/proposals/urdeal-agency-proposal.build.mjs ./urdeal-agency-proposal.pptx
+```
+
+- 요율(직접 10% / 중개 5%)과 "유어딜은 중개사에게 지급하지 않는다"는 2026-09-04 대표 확정입니다.
+  `docs/design/store-operator-model.md` §7 이 SSOT 이고, 바뀌면 1·2·4·5·6·16 장을 같이 고쳐야 합니다.
+- 라이브 실측 숫자(2026-09-07): 활성 이용권 338건 중 식사 평균가 32,339원(242개)·숙박 155,824원(51개)·실제 매장 등록 1개(나머지는 데모),
+  인플루언서 DB 198,704명·연락 가능 45,725명(`/api/admin/ads/influencer-pool/stats`). 전달 전에 다시 재서 3·5·10·14 장을 갱신하세요.
+- **v4 (2026-09-07)**: 대표가 보낸 참고 PDF("유어딜 중개사 파트너 제안" 5장, A4)를 반영했습니다. 표지 "5%만 가져갑니다"와 5% / 95% / 0원,
+  돈 흐름도(손님→카드사→유어딜→매장→귀사 보수)와 "흔한 오해 / 실제", 규모별 표(10·30·100·300곳, 귀사 3% 예시), 운영자 권한 가능/차단 표,
+  정직 고지 장(운영자별 귀속 미추적·초기 상태·대표 인용), 시작하는 방법 3단계. 단위 경제는 참고 PDF 와 같은 기준(평균가 32,339원, 하루 1건, 보수 3% 예시)으로 통일했습니다.
+  ⚠️ 참고 PDF 의 "채널은 나중에 어드민에서만 바꿀 수 있다"는 코드와 다릅니다 — 매장 소유자도 `POST /api/seller/stores/:id/channel` 로 바꿀 수 있어 "매장 주인이나 유어딜만"으로 적었습니다.
+- 5·6 장의 단위 경제(판매가 2만원, 월 60건, 보수 10%, 재료비 35%)와 14 장의 파일럿 목표는 **가정·제안**입니다. 슬라이드에도 그렇게 적혀 있습니다.
+- 글꼴은 **Pretendard** 입니다(v3, 대표 지시). PowerPoint 로 여는 PC 에 Pretendard 가 없으면 대체 글꼴로 보이므로
+  **대외 전달은 PDF 로** 하세요. 리눅스에서 뽑으려면 `~/.fonts` 에 Pretendard OTF 를 넣고 `fc-cache -f`.
+- **폰 프레임은 `phone-frame.mjs` 가 PNG 로 미리 굽습니다**(둥근 화면 + 베젤 + 그림자). pptxgenjs 는 이미지를
+  둥글게 못 자릅니다(`rounding:true` 는 원형 크롭). 스타일 4종 시안은 `phone-frame-styles.png`, 선택은
+  `PHONE_STYLE=minimal|island|card|light`(기본 minimal, 대표 확정 대기).
+- **라이브 모바일 캡처**(`shots/home·detail·use·shop.jpg`, 390×844)가 1·3·7·9·15 장에, 셀러 화면 4장(`shots/seller-*.jpg`)이 8·10·11·12 장에 들어갑니다.
+  다시 찍으려면 아래 캡처 절차 그대로. 캡처 폴더를 `SHOTS_DIR` 로 넘기면 되고, 없으면 빈 슬롯으로 그립니다.
+- **셀러 대시보드 화면(8·10·11·12 장)은 셀러 계정 없이 찍었습니다.** `capture-seller-shots.mjs` 가 실제 urdeal.kr
+  프론트를 띄우되 `/api/seller/*` 응답만 예시 데이터로 대체합니다(Playwright `route`). 로그인도, 프로덕션 쓰기도 없습니다.
+  클라이언트 가드가 토큰의 `exp` 만 보므로 서명 없는 JWT 를 localStorage 에 넣어 화면을 엽니다. 슬라이드에는
+  "예시 데이터로 렌더한 실제 화면"이라고 적혀 있습니다. 화면 UI 가 바뀌면 다시 찍으세요:
+  ```bash
+  NODE_USE_ENV_PROXY=1 NODE_PATH=/opt/node22/lib/node_modules/playwright/node_modules:/opt/node22/lib/node_modules:/tmp/deck/node_modules \
+    node docs/business/proposals/capture-seller-shots.mjs /tmp/shots
+  ```
+  🩸 처음엔 `/seller/stores` 가 에러 경계로 떴습니다. 알림 벨(`/api/dashboard-notifications`)·유입 바인딩이 401 을 내면
+  소비자용 클라이언트가 throw 하고, `ReviewBonusCard` 가 `/api/seller/stores/review-bonus` 의 빈 배열에 `.toLocaleString()` 을
+  부릅니다. 그 엔드포인트들을 이름을 밝혀 명시적으로 모킹한 것이 해결책입니다(무차별 401→200 치환은 하지 않습니다).
+
+### PDF 로 뽑으려면 (리눅스)
+`libreoffice-impress` + `fonts-nanum` + `python3-uno` 가 있어야 합니다. 맑은 고딕을 나눔고딕으로
+매핑하는 fontconfig alias 를 두고, `export-pptx-to-pdf.py <in.pptx> <out.pdf>` 를 돌립니다.
+이 스크립트가 LibreOffice 의 "아시아/비아시아 문자 간 자동 여백" 문단 속성을 꺼서 "월 12 만원" 처럼
+벌어지는 표시를 없앱니다(PowerPoint 원본엔 없는 현상). 차트 안 글자는 별도 객체라 여백이 남고, **pptx 표(addTable) 셀도 보정이 안 먹습니다** —
+그래서 5 장의 규모별 표는 표 객체가 아니라 텍스트 상자로 그립니다.
+
+## 상인회 소개서 (.pptx) 다시 만들려면
+
+```bash
+mkdir -p /tmp/deck && cd /tmp/deck && npm init -y && npm i pptxgenjs sharp react react-dom react-icons
+ln -sfn /tmp/deck/node_modules /path/to/ur-live/docs/business/proposals/node_modules
+cd /path/to/ur-live/docs/business/proposals && node urdeal-merchant-association-deck.build.mjs urdeal-merchant-association-deck.pptx
+python3 export-pptx-to-pdf.py "$PWD/urdeal-merchant-association-deck.pptx" "$PWD/urdeal-merchant-association-deck.pdf"
+```
+
+- **누구에게**: 전통시장·골목형상점가·상가 상인회의 **회원 매장 사장님들**. 읽는 자리가 1:1 상담이 아니라
+  **설명회**라서 사장님 덱과 내용이 갈린다. 회장·사무국·회원이 같이 보고, 마지막 장이 상인회에 드리는 요청이다.
+- **사장님 덱과 다른 점 셋**: ① 비교 대상이 개별 가게 광고가 아니라 **회비로 모아 쓴 공동 사업**(전단·축제·쿠폰·체험단)
+  ② 사무국이 대신 등록·운영하는 길(중개 5% + 매장 몫 안의 상인회 몫) ③ 입점 요청 장.
+  반대로 **기대수익 시나리오는 넣지 않았다** — 단체 자리에서 수익 표를 띄우면 약속으로 읽힌다.
+- 캡처는 기존 `shots/` 를 그대로 쓰고, 인플루언서 풀만 2026-10-06 에 다시 찍어 `shots/admin-pool-rows.jpg`(머리글+3행 크롭)로 넣었다.
+  🩸 **집계 막대 캡처(`admin-influencer-pool-stats.jpg`)는 쓰지 않는다** — 2026-09-14 것이라 슬라이드의 갱신된 숫자(282,818)와
+  캡처 속 숫자(201,471)가 **같은 장에서 어긋났다**. 그리고 다시 찍어 보니 어드민 화면 구조가 바뀌어 그 선택자가
+  **다른 요소(최신화 내역 바)** 를 잡는다. ⇒ `capture-admin-shots.mjs` 의 stats 선택자는 손봐야 쓸 수 있다(미수리).
+  ⚠️ 같은 이유로 `shots/admin-influencer-pool-table.jpg` 도 **덮어쓰지 않았다** — 새 캡처는 세로가 2.6배(1120 → 2920)라
+  그 파일을 쓰는 사장님·대행사 덱의 레이아웃이 깨진다.
+
+### 🩸 이 덱에서 값을 치르고 배운 레이아웃 규칙
+
+- **본문은 y = 6.70 안에서 끝나야 한다.** 꼬리말이 `H − 0.62 = 6.88` 에 있고 `takeaway` 기본값이 `y 6.18 + h 0.52` 다.
+  처음 판에서 **일곱 장**이 이 선을 넘어 결론 바가 본문을 덮거나 캡션이 꼬리말에 깔렸다.
+  ⚠️ PDF 로 바꿔 **그림으로 보기 전에는 안 보인다** — pptxgenjs 는 넘쳐도 아무 말을 하지 않는다.
+- **`section()` 의 제목은 한 줄로 쓴다.** 제목 상자가 `h 1.2` 로 고정이라 40pt 두 줄이면 바로 아래 `sub` 를 덮는다.
+- **`customerSteps` 와 `takeaway` 는 한 장에 같이 못 둔다.** 폰 캡션이 결론 바 자리에 온다. 하나를 고른다.
+- **가로로 긴 캡처(13:1 같은)를 옆 칸에 세우지 말 것.** 글자가 안 읽힌다. 아래에 넓게 깔거나 읽히는 크기로 잘라 쓴다.
+
+## 인플루언서 제휴 소개 (.pptx) 다시 만들려면
+
+사장님 덱과 같은 절차다. 캡처는 `capture-seller-shots.mjs` 의 `influencer-offer`(제안 수락, 예시 데이터) ·
+`influencer-settlement`(내 정산, 예시 데이터) · `ushop`(라이브 `/u/jiwon1228`) · `creators-apply`(라이브 신청 폼) 네 장.
+
+```bash
+cd /path/to/ur-live/docs/business/proposals && node urdeal-influencer-deck.build.mjs out.pptx
+python3 export-pptx-to-pdf.py "$PWD/out.pptx" "$PWD/out.pdf"   # 절대경로만 받는다
+```
+
+정산 문구는 `src/worker/cron/influencer-payout.ts` 실값이다(T+7 확정, 매월 1일 집계, 현금 10만원부터, 딜은 하한 없음,
+지급은 어드민이 처리). `/videos`(유어쇼츠) 캡처는 이 환경이 유튜브를 막아 재생기 자리가 비므로 덱에 넣지 않았다.
+
+## 어드민 화면 캡처 (`capture-admin-shots.mjs`)
+
+자동화 어드민 계정(환경변수 `URDEAL_ADMIN_EMAIL` / `URDEAL_ADMIN_PASSWORD`)으로 `/admin/influencer-pool` 을 데스크톱으로 열어
+연락처(이메일 · 인스타/틱톡 핸들)만 블러 처리한 뒤 통계 카드 줄과 목록 표를 잘라 저장한다. 사장님 덱 4장이 `shots/admin-influencer-pool-table.jpg` 를 쓴다.
+토큰은 메모리에만 두고 파일로 남기지 않는다. 브라우저 이그레스가 막힌 환경이라 요청을 node fetch 로 대신 보낸다(캡처 스크립트들과 같은 방식).
+아바타는 외부 CDN 이라 못 받아 중립 원으로 바꿔 그린다.
+
+```bash
+NODE_USE_ENV_PROXY=1 NODE_PATH=/opt/node22/lib/node_modules/playwright/node_modules:/opt/node22/lib/node_modules:/tmp/deck/node_modules \
+  node docs/business/proposals/capture-admin-shots.mjs <출력 폴더>
+```

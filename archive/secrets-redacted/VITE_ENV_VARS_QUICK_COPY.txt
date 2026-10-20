@@ -1,0 +1,102 @@
+=================================================================
+ur-live-working 프론트엔드 환경변수 (VITE_* 추가 필요)
+=================================================================
+
+⚠️ 중요: 이전에 제공한 14개 변수는 **백엔드(Worker)** 전용이었습니다!
+프론트엔드(빌드 시)에 필요한 **VITE_* 접두사 환경변수**도 추가해야 합니다!
+
+📍 위치: https://dash.cloudflare.com/ → Workers & Pages → ur-live-working 
+        → Settings → Environment variables → Production
+
+-----------------------------------------------------------------
+프론트엔드 환경변수 (VITE_* 접두사) - 17개 추가
+-----------------------------------------------------------------
+
+1. VITE_FIREBASE_API_KEY
+AIzaSyDGy6Wh2FbRQFYGKzP5Y31V3jO6YHzKzgM
+
+2. VITE_FIREBASE_AUTH_DOMAIN
+toss-live-commerce.firebaseapp.com
+
+3. VITE_FIREBASE_DATABASE_URL
+https://urteam-live-commerce-5b284-default-rtdb.asia-southeast1.firebasedatabase.app
+
+4. VITE_FIREBASE_PROJECT_ID
+toss-live-commerce
+
+5. VITE_FIREBASE_STORAGE_BUCKET
+toss-live-commerce.firebasestorage.app
+
+6. VITE_FIREBASE_MESSAGING_SENDER_ID
+408717649003
+
+7. VITE_FIREBASE_APP_ID
+1:408717649003:web:29aa3cb5f92056dd1ec4f4
+
+8. VITE_FIREBASE_MEASUREMENT_ID
+G-78M73BGT77
+
+9. VITE_KAKAO_APP_KEY
+975a2e7f97254b08f15dba4d177a2865
+
+10. VITE_KAKAO_JAVASCRIPT_KEY
+975a2e7f97254b08f15dba4d177a2865
+
+11. VITE_KAKAO_REST_API_KEY
+5dd74bccb797640b0efd070467f3bafd
+
+12. VITE_KAKAO_AUTH_URL
+https://kauth.kakao.com/oauth/authorize
+
+13. VITE_TOSS_CLIENT_KEY
+test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN
+
+14. VITE_REGION
+KR
+
+15. VITE_DEFAULT_LANGUAGE
+ko
+
+16. VITE_API_BASE_URL
+https://live.ur-team.com
+
+17. VITE_SENTRY_DSN
+https://08caf64e8e7955f09acc2b0551fdb049@o4510992097935360.ingest.us.sentry.io/4510992127295488
+
+18. VITE_SENTRY_ENVIRONMENT
+production
+
+-----------------------------------------------------------------
+전체 환경변수 요약
+-----------------------------------------------------------------
+
+ur-live-working에 필요한 **총 31개** 환경변수:
+- 백엔드(Worker) 변수: 14개 (이전에 제공)
+- 프론트엔드(VITE_*) 변수: 17개 (위에 나열)
+
+=================================================================
+빠른 설정 방법
+=================================================================
+
+Step 1: Cloudflare Dashboard 접속
+https://dash.cloudflare.com/
+→ Workers & Pages
+→ ur-live-working
+→ Settings
+→ Environment variables
+→ Production
+
+Step 2: 위의 17개 VITE_* 변수 추가
+(이미 추가한 14개 백엔드 변수는 유지)
+
+Step 3: Save & Redeploy
+- Save 버튼 클릭
+- Deployments → Retry deployment
+- 3분 대기
+
+Step 4: 테스트
+https://live.ur-team.com/login
+→ 카카오 로그인 버튼 클릭
+→ "auth/api-key-not-valid" 에러 해결 확인
+
+=================================================================

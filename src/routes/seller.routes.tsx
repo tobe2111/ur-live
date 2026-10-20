@@ -1,0 +1,470 @@
+/**
+ * Seller routes — TD-006 분리 (2026-05-06)
+ * 공개(register/login/forgot-password) + 보호(Protected) 셀러 페이지 라우트
+ */
+// ⚡ 2026-10-18 공개 가게 경로(`/s`·`/profile`)와 그 부팅 로더는 `seller-public.routes.tsx` 로 옮겼다 —
+//   이 표는 이제 셀러 경로에 들어갈 때만 받는다(App.tsx 의 lazy). 손님 첫 방문에서 raw 28KB 가 빠진다.
+import { lazy, Children, cloneElement, isValidElement, type ReactElement } from 'react'
+import { Route, Routes, Navigate, useLocation } from 'react-router-dom'
+import ErrorBoundary from '@/components/ErrorBoundary'
+import { ProtectedRoute } from '@/components/auth/RouteGuards'
+import { isAgencyWorker, sellerEntryRedirect } from '@/lib/seller-deep-link'
+import { MY_PATH } from '@/lib/seller-return'
+
+const SellerRelinkPage = lazy(() => import('@/pages/SellerRelinkPage')) // 🔁 카카오 재연결
+
+/**
+ * 🧭 **옛 대시보드 홈·더보기 주소** (`/seller` · `/seller/dashboard` · `/seller/more`) — 화면은 지웠다(2026-10-12
+ *   대표 *"대시보드는 완전히 지워줘"*). 주소창으로 오면 마이(사장님)·콘솔(직원) 첫 화면으로 보낸다.
+ *   ⚠️ 시트 안에서는 여기 오지 않는다 — `ToolPageSheet` 가 이 셋을 **먼저** 잡아 시트를 닫는다(같은 경로는 먼저 선언한 쪽이 이긴다).
+ */
+function SellerHomeGone() {
+  const location = useLocation()
+  return <Navigate to={sellerEntryRedirect(location.pathname, location.search) ?? MY_PATH} replace />
+}
+
+/**
+ * 🔑 **셀러 이메일 로그인 화면도 지웠다** (2026-10-12). 사장님은 카카오로 들어와 마이에서, 에이전시 직원은 콘솔에서 일한다.
+ *   주소(`/seller/login` · 비밀번호 찾기·재설정)는 별칭으로 남긴다 — 401 처리·좌석 만료·멀티탭 동기화가 이 주소로 보낸다.
+ *   보호 라우트가 넘긴 `state.from`(원래 열려던 셀러 화면)은 로그인 뒤 돌아올 곳으로 잇는다.
+ */
+function SellerLoginGone() {
+  const location = useLocation()
+  if (isAgencyWorker()) return <Navigate to="/agency/login?returnUrl=%2Fagency" replace />
+  const from = (location.state as { from?: string } | null)?.from
+  // `from` 은 경로 + 검색어다(보호 라우트가 함께 싣는다) — 나눠서 넘겨야 `?status=PAID` 같은 필터가 시트까지 간다.
+  const q = from ? from.indexOf('?') : -1
+  const back = (from && sellerEntryRedirect(q < 0 ? from : from.slice(0, q), q < 0 ? '' : from.slice(q))) || MY_PATH
+  return <Navigate to={`/login?returnUrl=${encodeURIComponent(back)}`} replace />
+}
+// 🚪 셀러 가입 관문 = `/store/new` 하나(2026-10-10). 옛 가입 주소는 전부 아래 리다이렉트로 그리 간다.
+
+/**
+ * 레거시 셀러 가입 경로 → **유일한 가입 문 `/store/new`** (쿼리 보존 — 영입자 초대 `?prospect=&pt=`).
+ * 🚪 2026-10-10 (대표 "1,2,5번은 해주고"): 문이 둘이었다 — 옛 폼(`/seller/register/supplier`)은 대표자명·
+ *   개업일을 필수로 받고(그 값을 쓰는 자동 승인은 0회 실측) 영입 링크도 거기로 갔다. 이제 `/store/new` 하나다.
+ *   옛 폼이 하던 일(약관 동의 · 영입 귀속 · 지도에 없는 가게)은 새 문이 넘겨받았다(`store-signup-extras.ts`).
+ */
+function LegacySellerRegisterRedirect() {
+  const location = useLocation()
+  return <Navigate to={{ pathname: '/store/new', search: location.search }} replace />
+}
+const SellerWaitingPage = lazy(() => import('@/pages/SellerWaitingPage'))
+const SellerTikTokCallbackPage = lazy(() => import('@/pages/SellerTikTokCallbackPage'))
+const SellerBusinessInfoPage = lazy(() => import('@/pages/SellerBusinessInfoPage'))
+const SellerTierPage = lazy(() => import('@/pages/SellerTierPage'))
+const SellerOrdersPage = lazy(() => import('@/pages/SellerOrdersPage'))
+const SellerProductsPage = lazy(() => import('@/pages/SellerProductsPage'))
+const SellerInventoryPage = lazy(() => import('@/pages/SellerInventoryPage'))
+const SellerProductNewPage = lazy(() => import('@/pages/SellerProductNewPage'))
+// ⚡ 2026-08-01 세션 ③-b — 3분 등록(사진·가격·마감만). 풀 폼(위)은 그대로 둔다.
+const SellerQuickGbPage = lazy(() => import('@/pages/SellerQuickGbPage'))
+// ↩️ 2026-08-01 세션 ⑤ — 반품 큐(API 는 있었는데 화면이 0건이었다)
+const SellerReturnsPage = lazy(() => import('@/pages/SellerReturnsPage'))
+const SellerProductEditPage = lazy(() => import('@/pages/SellerProductEditPage'))
+const SellerBookingSlotsPage = lazy(() => import('@/pages/SellerBookingSlotsPage'))
+const SellerAppointmentsPage = lazy(() => import('@/pages/SellerAppointmentsPage'))
+const MyLedgerPage = lazy(() => import('@/pages/MyLedgerPage'))
+const StoreOwnerDashboardPage = lazy(() => import('@/pages/StoreOwnerDashboardPage'))
+const SellerProfileEditPage = lazy(() => import('@/pages/SellerProfileEditPage'))
+const SellerSettlementsPage = lazy(() => import('@/pages/SellerSettlementsPage'))
+// 🏪 2026-08-19 매장 운영자 관리 (store-operator-model.md 2단계) — 소유자 전용, 서버가 최종 게이트.
+const SellerOperatorsPage = lazy(() => import('@/pages/SellerOperatorsPage'))
+// 🏪📣 2026-08-20 seller-dashboard-v2: 매장 관리(카카오맵 등록·삭제·위임) · 인플루언서 탐색/제안
+const SellerStoresPage = lazy(() => import('@/pages/SellerStoresPage'))
+// 🏪 2026-09-16 (대표 — "업체 정보 입력하는 페이지는 하나로 통일"): 모달·유어샵 설정·프로필이 한 장으로.
+const SellerStoreInfoPage = lazy(() => import('@/pages/SellerStoreInfoPage'))
+// 🏪 2026-09-04 (대표 확정 '운영 매장 요약 대시보드'): 중개사가 매장에 청구할 근거를 보는 화면.
+const SellerOperatingSummaryPage = lazy(() => import('@/pages/SellerOperatingSummaryPage'))
+const SellerInfluencersPage = lazy(() => import('@/pages/SellerInfluencersPage'))
+const SellerAlimtalkPage = lazy(() => import('@/pages/SellerAlimtalkPage'))
+const SellerInstagramDmPage = lazy(() => import('@/pages/SellerInstagramDmPage'))
+const SellerTransfersPage = lazy(() => import('@/pages/SellerTransfersPage'))
+const SellerAnalyticsPage = lazy(() => import('@/pages/SellerAnalyticsPage'))
+const SellerReviewsPage = lazy(() => import('@/pages/SellerReviewsPage'))
+const SellerCouponsPage = lazy(() => import('@/pages/SellerCouponsPage'))
+const SellerSupplyPage = lazy(() => import('@/pages/SellerSupplyPage'))
+const SellerGroupBuyPage = lazy(() => import('@/pages/SellerGroupBuyPage'))
+const SellerReviewVerificationsPage = lazy(() => import('@/pages/SellerReviewVerificationsPage'))
+const SellerVoucherScanPage = lazy(() => import('@/pages/SellerVoucherScanPage'))
+const SellerBundlesPage = lazy(() => import('@/pages/SellerBundlesPage'))
+const SellerGuidePage = lazy(() => import('@/pages/SellerGuidePage'))
+const SellerAdSlotsPage = lazy(() => import('@/pages/SellerAdSlotsPage'))
+// 🕳️ 2026-09-27: 아래 셋은 **`App.tsx` 에 홀로 떨어져 있었다.** 그래서 마이 시트가 열 수 없었다 —
+//   시트는 `SellerRoutes()` 를 렌더하므로 이 표에 없는 주소는 `*`(Escape)로 떨어져 **마이를 통째로 튕겨낸다.**
+//   `/seller/prospects` 는 '전체 도구' 색인이 실제로 내주는 주소였고(`seller-nav.ts:123`),
+//   `/seller/proxy-products` 는 시트 **안의 탭**(`seller-tab-groups.ts:55`), `/seller/plus-friend-guide` 는
+//   온보딩 체크리스트의 CTA 다. 셋 다 "열리는 줄 알았는데 마이에서 쫓겨나는" 모양이었고 에러는 안 났다.
+//   ⚠️ 옮기기만 했다 — 경로·element·가드 전부 그대로다(`App.tsx` 도 같은 `<Routes>` 안이라 대시보드 동작 불변).
+const SellerProspectsPage = lazy(() => import('@/pages/SellerProspectsPage'))
+const SellerProxyProductsPage = lazy(() => import('@/pages/SellerProxyProductsPage'))
+const SellerPlusFriendGuidePage = lazy(() => import('@/pages/SellerPlusFriendGuidePage'))
+const SellerMarketingPage = lazy(() => import('@/pages/SellerMarketingPage'))
+const SellerRealtimeDashboardPage = lazy(() => import('@/pages/SellerRealtimeDashboardPage'))
+const SellerMealVoucherNewPage = lazy(() => import('@/pages/SellerMealVoucherNewPage'))
+// 🛡️ 2026-05-18: 숙소 공구 (stay_voucher) 셀러 페이지 — PR 2/6.
+const SellerStaysPage = lazy(() => import('@/pages/SellerStaysPage'))
+const SellerStayNewPage = lazy(() => import('@/pages/SellerStayNewPage'))
+const SellerStayDetailPage = lazy(() => import('@/pages/SellerStayDetailPage'))
+const SellerStaysBookingsPage = lazy(() => import('@/pages/SellerStaysBookingsPage'))
+// 🛡️ 2026-05-19: 발송된 교환권 (KT Alpha) 이력.
+const SellerVoucherOrdersPage = lazy(() => import('@/pages/SellerVoucherOrdersPage'))
+const Seller2FASetupPage = lazy(() => import('@/pages/Seller2FASetupPage'))
+const SellerNotifyFollowersPage = lazy(() => import('@/pages/SellerNotifyFollowersPage'))
+const SellerPromoCodesPage = lazy(() => import('@/pages/SellerPromoCodesPage'))
+const SellerFollowersPage = lazy(() => import('@/pages/SellerFollowersPage'))
+const YouTubeCallbackPage = lazy(() => import('@/pages/YouTubeCallbackPage'))
+// 🤝 2026-07-10: 3단 위임/promo 투명성 모델 (docs/design/vendor-commission-passthrough.md §4.3)
+const SellerPromoSpendPage = lazy(() => import('@/pages/SellerPromoSpendPage'))
+const SellerInfluencerDealsPage = lazy(() => import('@/pages/SellerInfluencerDealsPage'))
+const SellerExperienceCampaignsPage = lazy(() => import('@/pages/SellerExperienceCampaignsPage'))
+
+export function SellerRoutes() {
+  return (
+    <>
+      {/* Public seller pages */}
+      <Route path="/seller/login" element={<SellerLoginGone />} />
+      <Route path="/seller/relink" element={<ErrorBoundary><SellerRelinkPage /></ErrorBoundary>} />{/* 🔁 카카오 계정 교체 재연결(비보호) */}
+      {/* 🚪 2026-10-10 가입 문 하나: 레거시 가입 경로 전부 → /store/new (쿼리 보존) */}
+      <Route path="/seller/register" element={<LegacySellerRegisterRedirect />} />
+      <Route path="/seller/signup" element={<LegacySellerRegisterRedirect />} />
+      <Route path="/seller/register/business" element={<LegacySellerRegisterRedirect />} />
+      <Route path="/seller/register/supplier" element={<LegacySellerRegisterRedirect />} />
+      <Route path="/seller/waiting" element={<ErrorBoundary><SellerWaitingPage /></ErrorBoundary>} />
+      <Route path="/seller/tiktok-callback" element={<ErrorBoundary><SellerTikTokCallbackPage /></ErrorBoundary>} />
+      <Route path="/seller/forgot-password" element={<SellerLoginGone />} />
+      <Route path="/seller/reset-password" element={<SellerLoginGone />} />
+
+
+      {/* Protected seller pages */}
+      <Route path="/seller" element={<SellerHomeGone />} />
+      <Route path="/seller/dashboard" element={<SellerHomeGone />} />
+      <Route path="/seller/more" element={<SellerHomeGone />} />
+      <Route path="/seller/tier" element={
+        <ProtectedRoute requireSeller>
+          <SellerTierPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/business-info" element={
+        <ProtectedRoute requireSeller>
+          <SellerBusinessInfoPage />
+        </ProtectedRoute>
+      } />
+      {/* 🌇 2026-09-04 에이전시 일몰 — `/seller/promote-boosts` 삭제. 이 쿠폰은 **에이전시만** 발급할 수
+          있었고(발급 API 가 에이전시 인증), 쓰는 곳은 라이브 방송(영구 중단)이었다. 라이브 실측
+          `promote_boost_coupons` 0행 — 발급도 사용도 된 적이 없다. */}
+      <Route path="/seller/orders" element={
+        <ProtectedRoute requireSeller>
+          <SellerOrdersPage />
+        </ProtectedRoute>
+      } />
+      {/**
+        * 🪦 2026-09-28 — **깨진 화면을 안 보여 준다.** (2026-04-28 MD 위탁 판매, 셀러간 협업)
+        *
+        * 라이브 D1 에 `consignment_partnerships` **테이블이 없다**(마이그레이션 `0236` 은 레포에
+        * 있으나 D1 마이그레이션이 CI 에서 안 돈다 — `TECHNICAL_DEBT.md` 의 알려진 부채이고
+        * `repair-schema` 에도 없다). ⇒ 페이지를 열면 API 일곱 개가 전부 `no such table` 로 죽는다.
+        * 진입점이 0이라 아무도 신고하지 않았을 뿐이다(사이드바·전체 도구 색인 어디에도 없다).
+        *
+        * ⚠️ **기능을 없앤 게 아니라 문만 닫았다.** API 5개·`checkout.ts` 의 자동 매핑·정비 cron·
+        *   어드민 모니터링·운영 가이드 두 절은 **그대로 둔다** — 살릴지 없앨지는 대표 판단이고
+        *   (`docs/decisions/archive/2026-09-28-dead-seller-screens.md`) 위탁 정산은 머니 경로다.
+        *   `checkout.ts` 는 이미 테이블 부재를 `catch` 로 허용하므로 **오늘 결제엔 영향이 없다**(실측).
+        * ⚠️ 화면 파일(`SellerConsignmentPage`)은 2026-10-12 지웠다(셀러 대시보드 틀과 함께) —
+        *   되살리려면 그 커밋을 revert 한다. 다만 그때 **테이블부터 만들어야 한다** — 안 만들면
+        *   지금과 똑같이 일곱 개가 죽는다.
+        */}
+      <Route path="/seller/consignment" element={<Navigate to="/seller" replace />} />
+      <Route path="/seller/products" element={
+        <ProtectedRoute requireSeller>
+          <SellerProductsPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/inventory" element={
+        <ProtectedRoute requireSeller>
+          <SellerInventoryPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/analytics" element={
+        <ProtectedRoute requireSeller>
+          <SellerAnalyticsPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/reviews" element={
+        <ProtectedRoute requireSeller>
+          <SellerReviewsPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/coupons" element={
+        <ProtectedRoute requireSeller>
+          <SellerCouponsPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/products/new" element={
+        <ProtectedRoute requireSeller>
+          <SellerProductNewPage />
+        </ProtectedRoute>
+      } />
+      {/* ⚡ 3분 등록 — `/new` 보다 **뒤**에 둘 필요는 없다(정적 경로라 겹치지 않는다). */}
+      <Route path="/seller/products/quick" element={
+        <ProtectedRoute requireSeller>
+          <SellerQuickGbPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/returns" element={
+        <ProtectedRoute requireSeller>
+          <SellerReturnsPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/products/:id/edit" element={
+        <ProtectedRoute requireSeller>
+          <SellerProductEditPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/products/:id/booking-slots" element={
+        <ProtectedRoute requireSeller>
+          <SellerBookingSlotsPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/appointments" element={
+        <ProtectedRoute requireSeller>
+          <SellerAppointmentsPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/ledger" element={
+        <ProtectedRoute requireSeller>
+          <MyLedgerPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/store-dashboard" element={
+        <ProtectedRoute requireSeller>
+          <StoreOwnerDashboardPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/profile" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerProfileEditPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/settlements" element={
+        <ProtectedRoute requireSeller>
+          <SellerSettlementsPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/operators" element={
+        <ProtectedRoute requireSeller>
+          <SellerOperatorsPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/stores" element={
+        <ProtectedRoute requireSeller>
+          <SellerStoresPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/store" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerStoreInfoPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/operating" element={
+        <ProtectedRoute requireSeller>
+          <SellerOperatingSummaryPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/influencers" element={
+        <ProtectedRoute requireSeller>
+          <SellerInfluencersPage />
+        </ProtectedRoute>
+      } />
+      {/* 🪦 2026-09-28 (같은 결재): **유튜브 성장 지원 은퇴.** 코드는 멀쩡했지만 라이브 주문 **0건 ·
+          매출 0원**이고, 들어갈 문이 **자기 성공 페이지뿐**이었다(전체 도구 목록에 없었다).
+          ⚠️ 이건 **결제가 붙은 유료 기능**이라(100명 20,000원 ~ 10,000명 850,000원, Toss) 은퇴 =
+             파는 문을 닫는 것이다. 매출 0원이라 잃는 돈은 없다. 되살리려면 이 커밋을 revert.
+          🔒 API(`/api/youtube-growth`)는 안 건드린다 — 결제 경로다. */}
+      <Route path="/seller/youtube-growth" element={<Navigate to="/seller/more" replace />} />
+      <Route path="/seller/youtube-growth/success" element={<Navigate to="/seller/more" replace />} />
+      <Route path="/seller/alimtalk" element={
+        <ProtectedRoute requireSeller>
+          <SellerAlimtalkPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/instagram-dm" element={<ProtectedRoute requireSeller><ErrorBoundary><SellerInstagramDmPage /></ErrorBoundary></ProtectedRoute>} />
+      <Route path="/seller/transfers" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerTransfersPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/group-buy" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerGroupBuyPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🧭 2026-06-10: 계산대용 바우처 스캔 — 현장 1탭 사용처리 */}
+      <Route path="/seller/scan" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerVoucherScanPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🗺️ 2026-07-02: 카카오맵 리뷰 확인 큐 — 매장에서 확인(게이미피케이션) */}
+      <Route path="/seller/review-verifications" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerReviewVerificationsPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🛡️ 2026-05-18: 숙소 공구 — PR 2/6 */}
+      <Route path="/seller/stays" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerStaysPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/stays/bookings" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerStaysBookingsPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/voucher-orders" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerVoucherOrdersPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/stays/new" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerStayNewPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/stays/:id" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerStayDetailPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/bundles" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerBundlesPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/guide" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerGuidePage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/ad-slots" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerAdSlotsPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/marketing" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerMarketingPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/realtime" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerRealtimeDashboardPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/meal-voucher/new" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerMealVoucherNewPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🛡️ 2026-05-15: 셀러 2FA TOTP 설정 */}
+      <Route path="/seller/2fa" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><Seller2FASetupPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🛡️ 2026-05-15 (PRISM 따라잡기): 단골에게 push 알림 발송 */}
+      <Route path="/seller/notify-followers" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerNotifyFollowersPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🏪 2026-09-16: 유어샵 설정 → 업체 정보로 흡수(배너·브랜드 컬러가 거기로 갔다).
+          라우트는 남긴다 — 북마크·안내 문구에 이 주소가 이미 퍼져 있어 지우면 404 가 된다. */}
+      <Route path="/seller/mini-shop" element={<Navigate to="/seller/store" replace />} />
+      {/* 🛡️ 2026-05-15: 셀러 promo 코드 (단골 전용 할인) */}
+      <Route path="/seller/promo-codes" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerPromoCodesPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🛡️ 2026-05-15: 단골 분석 (수 추이 + 알림 ON 비율) */}
+      <Route path="/seller/followers" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerFollowersPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/supply" element={
+        <ProtectedRoute requireSeller>
+          <SellerSupplyPage />
+        </ProtectedRoute>
+      } />
+      {/* 🌇 2026-09-04 에이전시 일몰 — `/seller/agency-delegation` 제거. 매장↔중개사 위임은
+          에이전시가 아니라 `seller_operators`(owner/operator)로 다시 만든다(설계 대기).
+          docs/design/store-operator-model.md */}
+      <Route path="/seller/promo-spend" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerPromoSpendPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/influencer-deals" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerInfluencerDealsPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/experience-campaigns" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerExperienceCampaignsPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/youtube/callback" element={
+        <ProtectedRoute requireSeller>
+          <YouTubeCallbackPage />
+        </ProtectedRoute>
+      } />
+      {/* 🕳️ 2026-09-27 App.tsx 에서 이사 — 위 머리말 참조. 가드를 새로 씌우지 않는다(옮기기만). */}
+      <Route path="/seller/prospects" element={<SellerProspectsPage />} />
+      <Route path="/seller/proxy-products" element={<SellerProxyProductsPage />} />
+      <Route path="/seller/plus-friend-guide" element={<SellerPlusFriendGuidePage />} />
+    </>
+  )
+}
+
+const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
+
+/**
+ * ⚡ 2026-10-13 셀러 표를 **`/seller/*` 아래에서만** 맞춘다 (어드민 표 2026-10-12 와 같은 처방).
+ *
+ * 종전엔 App.tsx 가 `{SellerRoutes()}` 로 이 표 71줄을 손님 `<Routes>` 에 펼쳐, 손님 화면의 **매 이동마다**
+ * 라우터가 셀러 경로까지 같이 맞춰 봤다(재생 프로파일 — 홈 첫 렌더에서 `matchPath` 자체 시간 28ms + 라우터
+ * 익명 22ms, CPU 4배). 이제 App 은 `/seller/*` 한 줄과 손님 경로 둘(`/s/:id`·`/profile/:id`)만 둔다.
+ * 하위 Routes 는 남은 경로로 맞추므로 `/seller` 접두를 뗀다(절대 경로 그대로면 하나도 안 맞는다).
+ * ⚠️ 새 셀러 라우트는 종전처럼 `SellerRoutes()` 에 **절대 경로**로 추가하면 된다 — 여기서 자동으로 가른다.
+ */
+function splitSellerRoutes(): { tree: ReactElement[] } {
+  // ⚡ 2026-10-18 표 밖 경로(`/s`·`/profile`)는 `seller-public.routes.tsx` 로 옮겨 이 표엔 `/seller` 경로만 있다.
+  //   그 밖 경로를 여기 넣으면 어디에도 안 그려진다 — 시험 ② 가 "표 안엔 /seller 경로뿐" 을 잠근다.
+  const tree: ReactElement[] = []
+  Children.forEach(SellerRoutes().props.children, (r) => {
+    if (!isValidElement(r)) return
+    const path = (r.props as { path?: string }).path
+    if (typeof path === 'string' && (path === '/seller' || path.startsWith('/seller/'))) {
+      tree.push(cloneElement(r as ReactElement<{ path: string }>, { path: path.slice('/seller'.length) || '/', key: path }))
+    }
+  })
+  return { tree }
+}
+
+/** 🔁 테스트·옛 호출 호환 — 실제 정의는 `seller-public.routes.tsx`(부팅 묶음). */
+export { sellerTopLevelRoutes } from './seller-public.routes'
+
+export function SellerRouteTree() {
+  return (
+    <Routes>
+      {splitSellerRoutes().tree}
+      <Route path="*" element={<NotFoundPage />} />
+    </Routes>
+  )
+}
+
+export default SellerRouteTree

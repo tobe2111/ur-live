@@ -1,0 +1,554 @@
+// 🛡️ 2026-04-28: 카카오톡 인앱 강제 외부 브라우저 redirect (흰화면 + 무한 reload 회피)
+//   *반드시* React/i18n/sentry 등 import 보다 먼저 실행 (모듈 로딩 자체 차단 위해).
+import { autoRedirectKakaoToExternal, detectInAppBrowser } from '@/lib/in-app-browser'
+import { isChunkLoadError, isAppChunkUrl, recoverFromChunkError, reloadWithCacheBust } from '@/utils/chunk-error'
+// 🛡️ 2026-07-20 (대표 신고 전수조사): 엔트리 번들 실행 신호. ES 모듈은 import 가 전부 resolve 된 뒤에야
+//   모듈 본문이 실행되므로, 엔트리(또는 그 정적 의존 청크)가 404/CSP/네트워크로 못 뜨면 이 줄이 아예 안 돈다.
+//   index.html 부트가드 워치독/진단이 '엔트리가 아예 안 돌았나(=stale/404/차단) vs 돌았는데 마운트가
+//   느리거나 막혔나(무거운 렌더/행/에러)'를 구분 → 진짜 원인 특정(캐시버스트로 못 고치는 부류 판별).
+try { (window as unknown as { __urBootStarted?: number }).__urBootStarted = Date.now() } catch { /* window 차단 환경 — 무시 */ }
+const _kakaoRedirected = autoRedirectKakaoToExternal()
+
+// 🛡️ 2026-05-07: Safari Date 파싱 글로벌 정상화.
+//   원인: SQLite datetime() / CURRENT_TIMESTAMP 가 'YYYY-MM-DD HH:MM:SS' (공백) 반환.
+//     - Chrome/Firefox: 로컬 TZ 로 관대하게 파싱
+//     - Safari (iOS/macOS): **Invalid Date** → toLocaleString() = "Invalid Date" 표시,
+//       getTime() = NaN → 카운트다운/정렬/시간 비교 모두 깨짐.
+//   코드 95곳이 가드 없이 `new Date(백엔드_문자열)` 직접 호출 → mass migration 위험.
+//   해결: Date 생성자 wrap 으로 SQLite 형식 입력만 자동 ISO 변환 (T + Z 추가).
+//   다른 입력 (number / ISO / no args / Date) 은 변환 없이 통과 — side effect 0.
+try {
+  const _OrigDate = Date
+  function PatchedDate(this: unknown, ...args: unknown[]) {
+    if (args.length === 1 && typeof args[0] === 'string') {
+      const s = args[0]
+      // 'YYYY-MM-DD HH:MM[:SS][.sss]' (공백) → ISO 'T...Z'. 이미 T 또는 timezone 있으면 패스.
+      if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(s) && !/Z$|[+-]\d{2}:?\d{2}$/.test(s)) {
+        args[0] = s.replace(' ', 'T') + 'Z'
+      }
+    }
+    if (!(this instanceof PatchedDate)) {
+      // Date(...) called as function (without `new`) — 원본 동작 그대로
+      return (_OrigDate as unknown as (...a: unknown[]) => string)(...args)
+    }
+    // @ts-ignore — Reflect.construct preserves prototype chain
+    return Reflect.construct(_OrigDate, args, PatchedDate)
+  }
+  PatchedDate.prototype = _OrigDate.prototype
+  PatchedDate.now = _OrigDate.now
+  PatchedDate.parse = _OrigDate.parse
+  PatchedDate.UTC = _OrigDate.UTC
+  // @ts-ignore — global override
+  globalThis.Date = PatchedDate as unknown as DateConstructor
+} catch { /* Date 패치 실패해도 앱은 계속 — 기존 코드 그대로 동작 */ }
+
+// 🛡️ 2026-05-06: localStorage / sessionStorage throw-safe 글로벌 가드.
+//   원인: Safari private mode (iOS<14), 카카오/네이버 인앱 webview, sandboxed iframe,
+//   ITP 차단, quota 초과 시 setItem/getItem 이 SecurityError/QuotaExceededError throw.
+//   코드 395곳이 가드 없이 직접 `localStorage.xxx` 호출 → 한 곳만 throw 해도
+//   React tree 전체 unmount → 흰화면 사고. Storage.prototype 한 번만 패치해
+//   모든 호출지점이 자동 보호됨 (코드 변경 0건).
+//   getItem 실패 → null 반환 (정상 미존재 시와 동일). setItem/removeItem 실패 → 무시.
+try {
+  const wrap = (proto: Storage | null) => {
+    if (!proto) return
+    const origGet = proto.getItem
+    const origSet = proto.setItem
+    const origRemove = proto.removeItem
+    proto.getItem = function (k) { try { return origGet.call(this, k) } catch { return null } }
+    proto.setItem = function (k, v) { try { origSet.call(this, k, v) } catch { /* quota/security — silent */ } }
+    proto.removeItem = function (k) { try { origRemove.call(this, k) } catch { /* silent */ } }
+  }
+  wrap(window.localStorage)
+  wrap(window.sessionStorage)
+} catch { /* Storage 자체가 없는 환경 — 무시 */ }
+
+
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App'
+import ThemeProvider from '@/components/ThemeProvider'
+import './index.css'
+import './i18n' // ✅ i18n 초기화
+// 🛡️ 2026-05-23 Frontend 에러 telemetry — window.onerror + unhandledrejection 캐치 → /api/_errors/log
+import { installErrorTelemetry, reportError } from '@/lib/error-telemetry'
+installErrorTelemetry()
+import { logRegionInfo, isKorea } from '@/shared/config/region'
+// 🛡️ 2026-05-27 (loading P1): env-validator (zod ~52KB) dynamic import — critical path 제거.
+//   이전: eager import → validation chunk preload (52KB).
+//   변경: idle 시점 비동기 검증. production 에서 env 정상이면 사용자 영향 0.
+import { isNativeShell } from '@/lib/native-platform' // 📱 2026-10-12 Capacitor 는 앱 안에서만 받는다
+import { isKeyboardOpen, isEditableElementFocused } from '@/lib/keyboard-viewport'
+import { swallow } from '@/shared/utils/swallow'
+import { installImageProtection } from '@/lib/image-protect'
+import { captureBootFirstScreen } from '@/lib/boot-first-screen'
+import { warmDesktopChrome } from '@/components/main/ConsumerTopChrome'
+import { preloadBootPage, bootSurface } from '@/lib/boot-page' // 🚀 2026-10-15 하드로드 페이지 준비(폴백 단계 제거)
+import { hasSessionPersistProbe, clearSessionPersistProbe } from '@/shared/session-persist-probe'
+import { processAuthCallbackParams } from '@/utils/auth-callback-bootstrap'
+import { runAfterLoad } from '@/lib/after-load'
+
+declare global {
+  interface Window {
+    gtag?: (...args: unknown[]) => void;
+  }
+}
+
+// 🛡️ 2026-05-01 (D fix): 카카오 OAuth callback URL 파라미터 → localStorage.
+//   React mount 전 동기 처리로 ProtectedRoute 첫 render 통과 보장.
+//   try-catch 로 감싸서 처리 실패해도 React 마운트는 진행 (흰화면 방지).
+try {
+  processAuthCallbackParams()
+} catch (err) {
+  if (import.meta.env.DEV) console.error('[main] auth callback bootstrap failed:', err)
+}
+
+// 다른 인앱(네이버/페북/IG/라인 등) 감지 → App 단 배너로 안내 (강제 redirect 안 함)
+;(window as { __urInAppBrowser?: string | null }).__urInAppBrowser = detectInAppBrowser()
+
+// 🛡️ 2026-06-25: 청크-에러 복구용 캐시버스트 파라미터(`__cb`) 정리 — 복구 성공 후 주소창/공유 URL 오염 방지.
+//   reloadOnceForChunk 가 붙인 1회성 토큰. 라우팅엔 영향 없으나 깔끔하게 제거(replaceState — 네비게이션 X).
+try {
+  const _u = new URL(window.location.href)
+  if (_u.searchParams.has('__cb')) {
+    _u.searchParams.delete('__cb')
+    window.history.replaceState(window.history.state, '', _u.pathname + _u.search + _u.hash)
+  }
+} catch { /* URL/history 차단 환경 — silent */ }
+
+// 🛡️ 2026-05-07: dynamic import (lazy chunk) 로드 실패 자동 복구.
+//   원인: 새 배포 후 사용자 브라우저는 옛 HTML 가지고 있음 → 옛 HTML 이 참조하는 옛 chunk
+//   해시 (e.g. SellerPage-Dnxck7Qn.js) 가 새 빌드에 없어 404 → SPA HTML 폴백(text/html) →
+//   React lazy() throw / modulepreload MIME 에러.
+//   처리: 같은 세션에서 1회만 자동 reload (무한 reload 차단 sessionStorage 가드).
+//   🛡️ 2026-06-16 (사용자 신고 — VoucherDetailPage MIME 에러): isChunkLoadError SSOT 로 변종 전부 감지
+//     (Chrome MIME "Expected a JavaScript-or-Wasm module script ..." 포함) + modulepreload 리소스 실패도 capture.
+//   🛡️ 2026-06-25 (사용자 신고 — /admin/wholesale-overview 일부 사용자 흰화면 영구 고착):
+//     기존 plain reload() 는 (1) bfcache/heuristic/edge 가 옛 HTML 을 그대로 재서빙하면 같은 옛 청크 → 또 404,
+//     (2) 가드가 "세션당 1회 영구" 라 그 1회가 stale 재서빙을 만나면 더 이상 재시도 안 함 → 영구 흰화면.
+//     수정: ① `__cb` 캐시버스트 파라미터 + location.replace 로 옛 문서 재서빙 우회(항상 새 HTML→새 청크 해시),
+//           ② 가드를 60초 윈도 내 2회로 — 그 안에서 못 고치면 진짜 에러로 보고 멈춤(무한 reload 차단),
+//              60초 지나면 카운트 리셋(나중에 또 배포되면 다음 stale 도 재시도 허용).
+// 🛡️ 단일 SSOT(recoverFromChunkError) 위임 — 가드 키/포맷/윈도(90초 3회·유예)·캐시버스트 reload 를
+//   ErrorBoundary·인라인 부트가드와 공유(이중 카운트·무한 reload 0). 로직 중복 제거.
+//   복구 한도(60초 내 2회) 초과 = stale 고착(예: 잔존 캐시-우선 SW) → 무한 reload/무한로딩 대신 인라인
+//   부트가드의 정적 복구 UI(캐시 완전삭제 후 새로고침 버튼)를 띄운다. React ErrorBoundary 밖(window
+//   리스너·unhandledrejection)에서 난 청크 실패도 "응답 없는 페이지"/무한 스피너에 갇히지 않게 함.
+const reloadOnceForChunk = () => {
+  if (!recoverFromChunkError()) {
+    try { (window as { __urShowStuckUI?: () => void }).__urShowStuckUI?.() } catch { /* silent */ }
+  }
+}
+window.addEventListener('error', (e) => {
+  if (isChunkLoadError(e.message)) { reloadOnceForChunk(); return }
+  // modulepreload/script 리소스 로드 실패 (message 없음 — target 검사). 우리 청크(/assets/*.js)만.
+  const t = e.target as (HTMLScriptElement & HTMLLinkElement) | null
+  const src = t && (t.src || t.href)
+  if (src && isAppChunkUrl(src)) reloadOnceForChunk()
+}, true) // capture: 리소스 에러는 버블 안 함 → capture 로 window 에서 포착
+window.addEventListener('unhandledrejection', (e) => {
+  if (isChunkLoadError((e.reason as { message?: string })?.message)) reloadOnceForChunk()
+})
+
+// 카카오 외부브라우저 redirect 시도했으면 React 마운트 skip (이미 외부 브라우저로 이동 중)
+if (!_kakaoRedirected) {
+
+// ✅ 런타임 환경 변수 검증 — 비동기 (zod chunk lazy). throw 해도 React 마운트는 진행.
+// 🩸 2026-10-13 (대표 *"유어샵이 왜 이렇게 늦게 뜨지?"* — 느린 4G 재생 실측): 엔트리 실행 직후 바로 부르면
+//   zod(11KB br)가 **화면에 필요한 번역·페이지 청크와 같은 순간에** 회선을 나눠 쓴다(유어샵 4.09초에 동시 출발).
+//   화면을 그리는 데 아무 몫이 없으므로 `load` 뒤로 미룬다(검증 결과는 콘솔 경고뿐이다). 백스톱 12초.
+const runEnvValidation = () => import('@/shared/config/env-validator').then(m => {
+  try {
+    m.validateEnvForRuntime(isKorea() ? 'KR' : 'GLOBAL')
+  } catch (err) {
+    console.error('[main] env validation failed:', err)
+  }
+}).catch(swallow('main:env-validator-load'))
+// 🎲 2026-10-15 (대표 *"다른 로딩 개선점도 찾아줘"* — /stays 폭포 실측): SPA 에선 `load` 직후가 곧 화면 데이터·사진을
+//   받는 순간이라, 미뤄도 zod 15KB 가 그 자리에서 회선을 나눠 썼다. 검사 대상은 **빌드 때 정해지는 값**이라 모든
+//   방문자에게 같다 — 운영에선 1% 표본이면 설정 누락을 충분히 잡는다(개발 환경은 매번).
+const envSampled = import.meta.env.DEV || Math.random() < 0.01
+if (!envSampled) { /* 표본 밖 — 받지 않는다 */ }
+else if (typeof window === 'undefined' || document.readyState === 'complete') runEnvValidation()
+else {
+  let envRan = false
+  const once = () => { if (!envRan) { envRan = true; runEnvValidation() } }
+  window.addEventListener('load', () => setTimeout(once, 0), { once: true })
+  setTimeout(once, 12000)
+}
+
+// 🛡️ 2026-05-24 (loading P0): Sentry 진짜 lazy — critical path 완전 제외.
+//   이전: import().then() 즉시 시작 → 441KB 다운로드가 main 과 경쟁 → LCP 1~2s 지연.
+//   이후: requestIdleCallback (or 3s setTimeout) → FCP 완료 후 idle 시점에 fetch.
+//   효과: 첫 진입 critical path -441KB. 첫 에러 보고 지연 최대 3s (사용자 영향 0).
+if (typeof window !== 'undefined') {
+  const initSentryDeferred = () => {
+    import('./lib/sentry').then(m => m.initSentry()).catch(swallow('main:sentry-init'))
+  }
+  /**
+   * 🩸 2026-10-12 (대표 *"각 페이지마다도 로딩속도 개선이 필요해"* — 라이브 실측):
+   *   **`requestIdleCallback` 은 "콘텐츠가 뜬 뒤" 가 아니다.** 메인스레드가 **잠깐이라도 한가하면**
+   *   부른다 — 그런데 부팅 중엔 네트워크를 기다리느라 한가한 구간이 계속 생긴다. 그래서 이 블록이
+   *   "FCP/LCP 후 5초" 를 의도했는데도 실제로는 **페이지가 자기 데이터를 요청하기도 전에** 떴다:
+   *
+   *     /vouchers 라이브 실측 — 센트리 envelope POST **1,004ms** · 화면 본문 도착 **1,151ms**
+   *
+   *   비용은 작지 않다(로컬 4× CPU 스로틀 실측, 센트리 유무 비교):
+   *     longtask 합계  /vouchers 1,741ms → 389ms · /urshorts 1,569ms → 440ms
+   *   ⇒ **일(총량)을 줄이는 게 아니라, 사람이 기다리는 창 밖으로 옮긴다.** `load` 뒤 + idle.
+   *
+   *   🔒 **에러 보고에 구멍이 나지 않는다** — 이 파일 맨 위 `installErrorTelemetry()` 가
+   *     `window.onerror`·`unhandledrejection` 을 **센트리와 무관하게** 처음부터 잡아
+   *     `/api/_errors/log` 로 보낸다. 센트리는 그 위에 그룹핑·스택을 얹는 층이다.
+   *   ⚠️ 백스톱이 반드시 있어야 한다 — `load` 가 영영 안 오는 화면(장기 연결·숨은 탭)에서
+   *     센트리가 **통째로 안 켜지는** 것이 이 변경의 유일한 실패 모드다.
+   */
+  const ric = (window as Window & { requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => void }).requestIdleCallback
+  let sentryStarted = false
+  const startSentry = () => { if (sentryStarted) return; sentryStarted = true; initSentryDeferred() }
+  const afterPaint = () => { if (ric) ric(startSentry, { timeout: 4000 }); else setTimeout(startSentry, 2000) }
+  /**
+   * 📡 2026-10-15 (폰 CPU 4배 프로파일 — 홈 첫 4초에 센트리 실행 50KB · CPU 144ms): 미리 켜는 것은
+   *   **성능 표본 세션(1%, `tracesSampleRate` 와 같은 비율)뿐**이다. 나머지 99% 는 **오류가 실제로 났을 때만**
+   *   켜고 그 오류를 직접 보낸다(SDK 의 전역 핸들러는 켜진 뒤의 오류만 본다). 오류 기록 자체는 위
+   *   `installErrorTelemetry()` 가 처음부터 따로 남기므로 구멍이 없다.
+   *   ⚠️ 잃는 것: 센트리 '세션(크래시 없는 비율)' 지표 — 오류 없는 세션이 센트리에 안 잡힌다.
+   */
+  const SENTRY_PRELOAD_RATE = 0.01
+  const SENTRY_ON_ERROR_DELAY_MS = 5000
+  if (Math.random() < SENTRY_PRELOAD_RATE) {
+    if (document.readyState === 'complete') afterPaint()
+    else {
+      window.addEventListener('load', afterPaint, { once: true })
+      setTimeout(startSentry, 12000)  // 백스톱: load 가 안 와도 켜진다
+    }
+  } else {
+    // 켜지기 **전**의 오류만 직접 보낸다 — 켜진 뒤엔 SDK 의 전역 핸들러가 잡으므로 여기서 또 보내면 두 번이다.
+    const early: unknown[] = []
+    let starting = false
+    const onEarlyError = (err: unknown) => {
+      if (!err) return
+      early.push(err)
+      if (starting) return
+      starting = true
+      // 5초 뒤에 켠다 — 부팅 중 난 오류 하나 때문에 화면을 그리는 CPU 를 센트리가 나눠 쓰지 않게(지도 실측:
+      //   카카오 SDK 실패 한 건이 부팅 한가운데 SDK 실행 67KB 를 끌고 왔다). 오류 기록 자체는
+      //   installErrorTelemetry 가 이미 즉시 남겼고, 그 사이 난 오류는 `early` 에 쌓였다가 함께 간다.
+      setTimeout(() => import('./lib/sentry').then((m) => m.ensureSentry()).then((S) => {
+        window.removeEventListener('error', onErrorEvent)
+        window.removeEventListener('unhandledrejection', onRejection)
+        for (const e of early.splice(0)) S.captureException(e)
+      }).catch(swallow('main:sentry-on-error')), SENTRY_ON_ERROR_DELAY_MS)
+    }
+    const onErrorEvent = (e: Event) => onEarlyError((e as ErrorEvent).error ?? (e as ErrorEvent).message)
+    const onRejection = (e: Event) => onEarlyError((e as PromiseRejectionEvent).reason)
+    window.addEventListener('error', onErrorEvent)
+    window.addEventListener('unhandledrejection', onRejection)
+  }
+}
+
+// 🛡️ 2026-05-22 Phase 2: localStorage cache LRU cleanup — 30일+ 안 본 entry 삭제.
+//   앱 진입 시 1회 (idle 시점). quota 초과 방지 + 메모리 효율.
+if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+  (window as Window & { requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => void }).requestIdleCallback?.(() => {
+    import('./hooks/queries/localCache').then(m => m.cleanupExpiredCache()).catch(() => null)
+  }, { timeout: 5000 })
+} else {
+  setTimeout(() => {
+    import('./hooks/queries/localCache').then(m => m.cleanupExpiredCache()).catch(() => null)
+  }, 3000)
+}
+
+// Region 정보 (개발 환경)
+if (import.meta.env.DEV) {
+  try { logRegionInfo() } catch { /* ignore */ }
+}
+
+// 🖼️ 사진 저장 억제(우클릭/드래그) — 소비자 표면만, 대시보드 제외.
+//   문서 레벨 리스너 1쌍뿐이라 번들·런타임 비용이 사실상 0 이라 eager 로 둔다
+//   (lazy 로 미루면 첫 화면 카드에서 잠깐 우클릭이 열린다).
+installImageProtection()
+
+// 빌드 버전 자동 감지 & 자동 리로드
+import('@/lib/version-check').then(({ startVersionCheck }) => startVersionCheck()).catch(swallow('main:version-check'))
+
+// 🛡️ 2026-04-29: Web Vitals (LCP/CLS/INP) Sentry 추적 — 프로덕션만, lazy.
+//   sentry init 후 (1초 deferred) PerformanceMonitor 시작 — 초기 LCP 측정 누락 방지.
+if (import.meta.env.PROD) {
+  setTimeout(() => {
+    import('@/lib/performance-monitor').then(({ PerformanceMonitor }) => {
+      PerformanceMonitor.trackPageLoad('app')
+    }).catch(swallow('main:perf-monitor'))
+  }, 1000)
+}
+
+// 🛡️ iOS Safari web: visualViewport API 로 키보드 감지 → body.keyboard-open 클래스 토글.
+//   기존 Capacitor 핸들러는 native 앱 전용. 웹 Safari/Chrome 모바일 에서도 동일 동작 필요.
+//   100px threshold = 키보드 외 다른 viewport 변화(주소창 등) 와 구분.
+try {
+  if (typeof window !== 'undefined' && 'visualViewport' in window) {
+    const vv = window.visualViewport!
+    let isOpen = false
+    let watchdog: ReturnType<typeof setInterval> | null = null
+    // 🛡️ 2026-06-22 (대표 신고 — 모바일 하단 네비 사라짐, 영구 방어): 판정은 keyboard-viewport.ts
+    //   순수함수(불변식: 편집요소 포커스 없으면 절대 열림 아님) + 워치독으로 stuck 구조적 차단.
+    const update = () => {
+      const opened = isKeyboardOpen(vv.height, window.innerHeight, isEditableElementFocused())
+      if (opened !== isOpen) {
+        isOpen = opened
+        document.body.classList.toggle('keyboard-open', opened)
+        document.documentElement.style.setProperty(
+          '--keyboard-height',
+          opened ? `${window.innerHeight - vv.height}px` : '0px'
+        )
+        // 워치독: 열린 동안만 1s 주기 재평가 → resize/blur 이벤트가 누락돼도 닫히면 즉시 해제(stuck 불가).
+        if (opened && watchdog == null) watchdog = setInterval(update, 1000)
+        if (!opened && watchdog != null) { clearInterval(watchdog); watchdog = null }
+      }
+    }
+    vv.addEventListener('resize', update)
+    vv.addEventListener('scroll', update)
+    window.addEventListener('focusin', update)
+    // 블러 직후 activeElement 갱신을 기다렸다 재평가 → 키보드 닫힘 누락에도 네비 복구.
+    window.addEventListener('focusout', () => setTimeout(update, 0))
+    window.addEventListener('pageshow', update)
+  }
+} catch { /* noop */ }
+
+// 🛡️ 2026-05-04 (perf): GTM lazy load — React mount 후 idle 시점에 로드해
+//   초기 페이로드 ~100KB 차단 회피 (iPhone Safari freeze 완화).
+if (import.meta.env.PROD) {
+  const loadGTM = () => {
+    const s = document.createElement('script')
+    s.async = true
+    s.src = 'https://www.googletagmanager.com/gtag/js?id=G-B1ST2L37CM'
+    s.onload = () => { try { window.gtag?.('config', 'G-B1ST2L37CM') } catch { /* */ } }
+    document.head.appendChild(s)
+  }
+  // 🗺️ 2026-10-15 (대표 "지도 속도"): idle 만으로는 첫 화면 *뒤* 가 아니었다 — `/map` 실측(느린 4G)에서 GTM
+  //   153KB 가 지도 타일을 받는 한복판(5.0초, 타일 4.3~9초)에 출발해 회선을 나눠 썼다(2026-10-12 센트리와 같은
+  //   클래스). 다른 화면은 load 뒤 한가할 때로. load·신호가 영영 안 와도 20초 백스톱.
+  //   🩸 같은 날 라이브 재측정으로 정정: `/map` 은 load(4.3~4.6초)가 타일 요청(4.5초)보다 **먼저** 온다 —
+  //   load 만 기다리면 GTM 이 4.8초에 출발해 여전히 타일과 겹쳤다. 그래서 `/map` 으로 들어온 경우엔 지도가
+  //   첫 타일을 다 받았다는 신호(`ur:map-tiles-loaded`, useKakaoMap)를 기다린 뒤 load·한가할 때로.
+  let gtmStarted = false
+  const startGTM = () => { if (gtmStarted) return; gtmStarted = true; loadGTM() }
+  if (/^\/map\/?$/.test(location.pathname)) {
+    window.addEventListener('ur:map-tiles-loaded', () => runAfterLoad(startGTM, 10000), { once: true })
+  } else {
+    runAfterLoad(startGTM, 10000)
+  }
+  setTimeout(startGTM, 20000)
+}
+
+// 🚨 2026-04-27 (긴급 롤백): PWA SW 가 OAuth redirect 차단 → 모든 페이지 ERR_FAILED.
+// 🛡️ 2026-04-28: push-sw.js (push-only, fetch 핸들러 없음) 는 보호.
+// 🛡️ 2026-05-16 영구 fix: pwa-sw.js 도 unregister 대상 추가.
+//   원인: pwa-sw.js v1 (cache-first) 가 사용자 폰에 old chunk 캐시 → 새 빌드 후
+//   무한 로딩 / 콘솔 empty / MIME type 오류 사고 (2026-05-16).
+//   해결: pwa-sw.js 도 강제 unregister + 모든 ur-pwa-* 캐시 삭제.
+//        PWA 설치 가능성보다 안정성이 우선. push-sw.js 만 보호.
+try {
+  if ('serviceWorker' in navigator) {
+    // 🛡️ 2026-06-30 (대표 신고 — /admin 회색 빈화면, 시크릿창은 정상 = 평소 브라우저에 잔존한 stale SW):
+    //   옛 캐시-우선 SW(pwa-sw/sw.js)가 현재 페이지를 '제어(controller)' 중이면, 이미 stale index.html/청크를
+    //   서빙해 blank #root / 무한로딩(콘솔 무에러 — 2026-05-16 사고와 동일 증상)을 만든다. 기존 코드는
+    //   unregister 만 하고 reload 를 안 해 → 그 stale 페이지가 그대로 남아 사용자가 수동 새로고침해야 복구
+    //   ("수차례" 반복 신고의 원인). 수정: unregister+cache clear 를 *기다린 뒤*, stale SW 가 제어 중이었으면
+    //   세션당 1회 캐시버스트 reload → SW 제어 해제된 clean 페이지를 자동 수신(무중단 자가복구).
+    //   push-sw.js 는 fetch 핸들러가 없어(요청 미가로챔) 무해 → controller 여도 트리거 제외(루프 방지).
+    const _ctrl = navigator.serviceWorker.controller
+    const _staleControlling = !!_ctrl && !((_ctrl.scriptURL || '').includes('push-sw.js'))
+    const _unreg = navigator.serviceWorker.getRegistrations().then(regs =>
+      Promise.all(regs.map(r => {
+        const scriptUrl = r.active?.scriptURL || r.installing?.scriptURL || r.waiting?.scriptURL || ''
+        // push-sw.js 만 보호 (push 알림 전용, fetch handler 없음)
+        if (scriptUrl.includes('push-sw.js')) return Promise.resolve()
+        return r.unregister().catch(swallow('main:sw-unregister'))
+      }))
+    ).catch(swallow('main:sw-getRegistrations'))
+    const _cacheClear = ('caches' in window)
+      ? caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).catch(swallow('main:caches-clear'))
+      : Promise.resolve()
+    if (_staleControlling) {
+      // stale SW 가 이 페이지를 서빙 중 → 제거 완료 후 1회만 clean reload (SW 제어 해제 반영).
+      Promise.all([_unreg, _cacheClear]).then(() => {
+        try {
+          const K = '__ur_sw_killed_reload__'
+          if (!sessionStorage.getItem(K)) { sessionStorage.setItem(K, '1'); reloadWithCacheBust() }
+        } catch { /* sessionStorage 차단 — silent */ }
+      })
+    }
+  }
+} catch { /* ignore */ }
+
+// 🛡️ 2026-06-20 (A 방식 — iOS 로그인 근본수정): 로그인 직후면 렌더 전에 same-origin 으로
+//   httpOnly 세션을 발급받는다. 카카오 콜백이 fragment(#st=)로 넘긴 단명(120초) 세션 티켓을
+//   processAuthCallbackParams 가 window.__urEstablishTicket 에 stash → 여기서
+//   POST /api/auth/session/establish 로 교환 → 서버가 first-party 200 응답에 ur_session 을 set
+//   (cross-site 302 와 달리 iOS Safari/WebKit 에서 영속) → 이후 모든 API 가 쿠키로 인증.
+//   토큰을 localStorage 에 두지 않음(OWASP — XSS 면역). 실패해도(타임아웃/네트워크) 앱은 렌더.
+async function bootApp() {
+  try {
+    const w = window as unknown as { __urEstablishTicket?: string }
+    const ticket = w.__urEstablishTicket
+    // 🚀 2026-10-10 (대표 "남은 비효율 둘 해결해줘") — 302 쿠키가 남은 브라우저는 렌더를 안 기다린다.
+    //   아래 교환은 iOS/WebKit 이 cross-site 302 의 쿠키를 유실하는 것을 고치려고 **첫 렌더 앞에서**
+    //   기다리게 만든 것이다(2026-06-20). 그런데 크롬·안드로이드는 그 쿠키를 잘 받는다 —
+    //   라이브 7일 실측에서 establish 성공 6건이 **전부 비-iOS**(android/desktop chrome)였고,
+    //   그 기다림(실측 왕복 0.7~1.0s)은 전부 이미 가진 세션을 또 받는 데 쓰였다.
+    //   세션 쿠키는 HttpOnly 라 앱이 못 보므로, 콜백이 같은 응답에 심은 **표식**으로 판정한다.
+    //   표식이 있으면 = 그 응답의 쿠키가 살아남았으면 → 기다리지 않고 그리고, 교환은 배경에서 돈다
+    //   (진단 행 `establish_ok` 과 first-party 재발급은 그대로 남는다).
+    //   ⚠️ 배경 실행에는 재시도·reload 를 **배선하지 않는다** — 쿠키가 이미 있는데 reload 하면
+    //      그게 곧 회귀다(아래 차단 경로의 reload 는 '쿠키가 없다' 가 전제다).
+    //   🔒 iOS 는 이 표식도 함께 유실되므로 아래 차단 경로를 그대로 탄다 — 처방 무접촉.
+    if (ticket && hasSessionPersistProbe(document.cookie)) {
+      try { document.cookie = clearSessionPersistProbe() } catch { /* */ }
+      try { delete w.__urEstablishTicket } catch { /* */ }
+      void fetch('/api/auth/session/establish', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticket }),
+      }).catch(() => { /* 쿠키는 이미 있다 — 실패해도 로그인 상태에 영향 없음 */ })
+    } else if (ticket) {
+      const ctrl = new AbortController()
+      const timer = setTimeout(() => ctrl.abort(), 4000)
+      let established = false
+      // 🕰️ 2026-10-11: 서버가 티켓 자체를 거절(400/401 — 만료·위조)하면 다시 던져도 같다. 재시도는 일시 실패에만.
+      let rejected = false
+      try {
+        const res = await fetch('/api/auth/session/establish', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ticket }),
+          signal: ctrl.signal,
+        })
+        established = res.ok
+        rejected = res.status === 400 || res.status === 401
+      } catch { /* establish 실패해도 앱은 뜸 — 302-set 쿠키(Chrome) 또는 아래 재시도 */ }
+      clearTimeout(timer)
+      if (established) {
+        // 성공: 티켓 소비 (기존 동작 그대로).
+        try { delete w.__urEstablishTicket } catch { /* */ }
+      } else {
+        // 🛡️ 2026-06-26 (대표 승인 "모두 해줘" — 소비자 감사 E): establish 실패 분기 보강.
+        //   기존엔 결과 무관 티켓 삭제 → 타임아웃/5xx/네트워크 블립 한 번이면 단명 티켓이 소진돼
+        //   사파리/카톡 신규 로그인이 '재로그인'밖에 답 없었음. 수정: ① res.ok 검사(위) ② 실패 시
+        //   티켓 보존 + 렌더 후 non-blocking 재시도 1회 → 성공하면 ticket-scoped 가드로 단 1회만
+        //   reload 해 늦게 도착한 ur_session 쿠키를 픽업. happy-path(established=true)는 위 분기로
+        //   기존과 byte-동일 — 이 분기는 원래 '티켓 삭제'뿐이라 순개선(최악=재시도 실패=기존과 동일 재로그인).
+        //   reload 는 ticket-scoped 가드(prefix)로 같은 티켓당 최대 1회 → 루프 불가, 새 로그인은 새 티켓이라 재시도 허용.
+        const guard = String(ticket).slice(0, 16)
+        const retryEstablishOnce = () => {
+          try { if (sessionStorage.getItem('ur_establish_retry') === guard) return } catch { /* */ }
+          const rc = new AbortController()
+          const rt = setTimeout(() => rc.abort(), 4000)
+          fetch('/api/auth/session/establish', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticket }),
+            signal: rc.signal,
+          }).then((res) => {
+            clearTimeout(rt)
+            if (res.ok) {
+              try { sessionStorage.setItem('ur_establish_retry', guard) } catch { /* */ }
+              try { delete w.__urEstablishTicket } catch { /* */ }
+              try { window.location.reload() } catch { /* */ }
+            }
+          }).catch(() => { clearTimeout(rt) })
+        }
+        if (rejected) { try { delete w.__urEstablishTicket } catch { /* */ } }
+        else { try { setTimeout(retryEstablishOnce, 1500) } catch { /* */ } }
+      }
+    }
+  } catch { /* establish 단계 실패 무시 — 렌더 진행 */ }
+
+  const rootElement = document.getElementById('root')
+  if (!rootElement) {
+    console.error('[App] ❌ Root element not found!')
+    document.body.innerHTML = `
+      <div style="display: flex; align-items: center; justify-content: center; min-height: 100dvh; background: #fbfbfd;">
+        <div style="text-align: center; padding: 2rem;">
+          <h1 style="color: #dc2626; margin-bottom: 1rem;">앱 초기화 실패</h1>
+          <p style="color: #6e6e73;">Root element를 찾을 수 없습니다.</p>
+          <button onclick="window.location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #1C69EF; color: white; border: none; border-radius: 8px; cursor: pointer;">새로고침</button>
+        </div>
+      </div>
+    `
+  } else {
+    try {
+      // ✅ Capacitor 네이티브 앱 감지 → html class 추가
+      if (isNativeShell()) {
+        document.documentElement.classList.add('native-app')
+      }
+      // ✅ 네이티브 기능 초기화 (스플래시, 상태바, 푸시, 딥링크)
+      if (isNativeShell()) import('@/lib/native').then((m) => m.initNativeFeatures()).catch((e) => console.error('[main] native init failed:', e))
+
+      // 🖼️ 2026-09-16: 서버가 그린 첫 화면(`#ur-first-screen`) 노드를 **createRoot 전에** 참조로 잡는다.
+      //   React 가 컨테이너를 비워도 노드는 살아 있고, Suspense 폴백이 같은 노드를 도로 붙인다
+      //   (불투명 풀스크린 로더가 방금 도착한 히어로를 덮던 것 제거 — `lib/boot-first-screen.ts`).
+      captureBootFirstScreen()
+      // 🚀 2026-10-15: 이 주소의 페이지 모듈을 첫 렌더 전에 준비 — '페이지 로딩 중' 단계와 React 의 0.5초 공개 지연을 건너뛴다(lib/boot-page).
+      await Promise.all([preloadBootPage(bootSurface()), warmDesktopChrome()]) // 🖥️ 2026-10-18 넓은 화면이면 PC 상단 네비도 같이(ConsumerTopChrome 머리말)
+      // ✅ React StrictMode 제거 (중복 마운트 방지)
+      ReactDOM.createRoot(rootElement).render(
+        <ThemeProvider>
+          <App />
+        </ThemeProvider>
+      )
+
+      // 🛡️ 2026-07-16 (대표 신고 복구): 부팅 성공 신호 — index.html 부트가드 워치독(12s)이 '앱 안 뜸'으로
+      //   판단해 복구 오버레이(#ur-stuck-recover)를 띄웠다면 제거(느린 회선 false-positive 자동 해제).
+      //   청크404/stale-SW 로 엔트리 번들이 아예 안 돌면 이 라인에 도달 못함 → 워치독이 1클릭 복구 UI 제공.
+      try {
+        ;(window as unknown as { __urMounted?: number }).__urMounted = 1
+        document.getElementById('ur-stuck-recover')?.remove()
+        // 🛡️ 2026-07-20: 정상 마운트 → 이 세션의 '복구 UI 본 적 있음' 플래그 해제(다음 느린 로드는
+        //   다시 부드러운 1단계부터 안내). 부트가드 showStuckUI 의 에스컬레이션 상태와 짝.
+        sessionStorage.removeItem('__ur_stuck_shown__')
+      } catch { /* silent */ }
+
+      // 🛡️ 2026-05-15: Web Vitals 자동 수집 (1% sampling, KV 카운터로 0원 운영)
+      import('./lib/web-vitals-report').then(m => m.reportWebVitals()).catch(() => { /* silent */ })
+
+      // 🏭 2026-06-04: 청크-실패 자동 reload 가드를 부팅 성공 후 해제 → "세션당 1회"가 아니라
+      //   "장애 1건당 1회". 5초 후에도 앱이 살아있으면 청크 정상 로드된 것 → 다음 배포에서 또 복구 가능.
+      setTimeout(() => { try { sessionStorage.removeItem('__ur_chunk_reload__') } catch { /* silent */ } }, 5000)
+    } catch (error) {
+      console.error('[App] ❌ React 렌더링 실패:', error)
+      // 🛡️ 2026-07-20 (대표 신고 "새로고침 버튼 눌러도 계속 안됨" 전수조사): 렌더 실패는 *캐시 문제가 아니라*
+      //   결정적(deterministic) 에러다. __urMounted 를 안 세우면 index.html 부트가드의 12초 워치독이 '앱 미마운트'
+      //   로 오판해 "저장된 옛 버전이 남아 있어요" 복구 오버레이(z-index max)를 이 실제 에러 화면 위에 덮어씌운다
+      //   → 사용자는 진짜 원인 대신 캐시-복구 안내만 보고, __cb 캐시버스트로는 못 고치는 에러라 무한 새로고침
+      //   루프에 갇힌다. 마운트 신호를 세워 워치독을 잠재우고(진짜 에러 화면 노출) + 진단 beacon 을 남긴다.
+      try {
+        ;(window as unknown as { __urMounted?: number }).__urMounted = 1
+        document.getElementById('ur-stuck-recover')?.remove()
+      } catch { /* silent */ }
+      try {
+        reportError('React render failed: ' + String((error as Error)?.message || error), {
+          stack: (error as Error)?.stack, tag: 'boot-render',
+        })
+      } catch { /* telemetry 실패 무시 */ }
+      rootElement.innerHTML = `
+        <div style="display: flex; align-items: center; justify-content: center; min-height: 100dvh; background: #fbfbfd;">
+          <div style="text-align: center; padding: 2rem;">
+            <h1 style="color: #dc2626; margin-bottom: 1rem;">앱을 표시할 수 없어요</h1>
+            <p style="color: #6e6e73; font-size: 14px; margin-bottom: 12px;">브라우저 환경이 호환되지 않을 수 있습니다.</p>
+            <p style="color: #8e8e93; font-size: 12px; word-break: break-all;">${String(error)}</p>
+            <button id="ur-render-fail-reload" type="button" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #1C69EF; color: white; border: none; border-radius: 8px; cursor: pointer;">새로고침</button>
+          </div>
+        </div>
+      `
+      // 🛡️ 2026-07-16: 인라인 onclick 은 CSP 차단 가능 + plain reload 는 stale HTML 재서빙 → 캐시버스트 복구로.
+      try { document.getElementById('ur-render-fail-reload')?.addEventListener('click', () => reloadWithCacheBust()) } catch { /* silent */ }
+    }
+  }
+}
+void bootApp()
+
+} // end if (!_kakaoRedirected)

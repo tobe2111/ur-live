@@ -1,0 +1,151 @@
+import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
+// 🩸 2026-08-27: 자체 codeOnly(정규식판)는 **라인 주석 안의 `/*`** 를 블록 주석 시작으로 읽어
+//   그 뒤 수천 자를 삼킨다(실측 5,911자). 삼켜도 예외가 없어 부정 단언이 조용히 늘 통과한다.
+//   공용 스캐너로 통일 — 경위는 `helpers/source-text.ts`.
+import { stripComments as codeOnly } from '../helpers/source-text'
+
+/**
+ * 🪜 2026-08-27 — 유어샵 수익 사다리 + 딜 우선 정렬 (대표 확정 "일단 그렇게 하자").
+ *
+ * ## 이 가드가 지키는 것
+ *   ① 딜 조건을 **또 베끼지 않는다** — 호출부는 SSOT(`findActiveDealPctsBySeller`)를 부른다
+ *   ② 유어샵 핀에 `deal_pct` 가 실려 온다(안 실리면 화면이 영원히 한 덩어리)
+ *   ③ 딜 있는 핀이 **맨 위 섹션**이고, 각 덩어리 안의 **주인 순서(position)는 안 덮는다**
+ *   ④ 사다리가 `pins.length` 로 막히지 않는다 — 빈 유어샵일수록 필요하다
+ *   ⑤ 검색 모수 = 담은 사람 ∪ 공개켬, 명시 옵트아웃 제외. **가입자 전원은 아니다**
+ *
+ * ## 못 막는 것
+ *   - 실제 렌더/정렬 결과(소스 검사다). 시각 확인은 사람이 한다.
+ *   - 요율 값 자체(어드민이 바꾼다 — 화면은 서버/정책 기본값을 읽을 뿐).
+ */
+const SSOT = 'src/worker/utils/influencer-deal.ts'
+const CURATOR_ROUTE = 'src/worker/routes/curator.routes.ts'
+const DISCOVERY = 'src/features/group-buy/api/marketing/discovery.ts'
+const PAGE = 'src/pages/CuratorPage.tsx'
+const LADDER = 'src/pages/curator-page/EarnLadder.tsx'
+const read = (f: string) => readFileSync(f, 'utf-8')
+/** 부정 단언은 주석을 걷어내고 — 주석 속 옛 코드 인용에 걸리는 사고가 이 레포에서 반복됐다. */
+
+
+describe('① 딜 조건은 SSOT 한 곳에만 있다', () => {
+  it('SSOT 가 배치 조회를 제공한다', () => {
+    const ssot = read(SSOT)
+    expect(ssot).toContain('export async function findActiveDealPctsBySeller')
+    // 세 조건이 SSOT 안에 있어야 한다 — 여기가 무너지면 아래 위임이 의미 없다.
+    for (const cond of ["status = 'active'", 'ends_at IS NULL OR ends_at', 'requires_content_proof']) {
+      expect(ssot, `SSOT 조건 붕괴: ${cond}`).toContain(cond)
+    }
+  })
+
+  for (const [label, f] of [['소개자 카탈로그', DISCOVERY], ['유어샵 핀', CURATOR_ROUTE]] as const) {
+    it(`${label} — 조건을 베끼지 않고 SSOT 를 부른다`, () => {
+      const src = read(f)
+      expect(src, 'SSOT 위임이 사라졌다').toContain('findActiveDealPctsBySeller(')
+      // 🩸 복사본은 결국 갈린다. WHERE 절이 호출부에 다시 나타나면 그게 드리프트의 시작이다.
+      expect(codeOnly(src), '딜 WHERE 절이 호출부에 다시 복사됐다')
+        .not.toContain('requires_content_proof')
+    })
+  }
+})
+
+describe('② 유어샵 핀이 딜 정보를 싣고 온다', () => {
+  const src = read(CURATOR_ROUTE)
+  it('핀 SELECT 컬럼 목록에 seller_id 가 있다 (딜 매칭 키)', () => {
+    // ⚠️ 파일 전체 검색은 다른 쿼리의 seller_id 에 걸린다 — 핀 SELECT 의 컬럼 목록만 잘라 본다.
+    const i = src.indexOf('SELECT pp.id, pp.product_id')
+    expect(i, '핀 쿼리가 사라졌다').toBeGreaterThan(-1)
+    const cols = src.slice(i, src.indexOf('FROM product_pins', i))
+    expect(cols, 'seller_id 가 없으면 딜 매칭이 항상 실패한다(무음)').toContain('p.seller_id')
+  })
+  it('응답 핀마다 deal_pct 를 붙인다', () => {
+    expect(src).toContain('deal_pct:')
+  })
+})
+
+describe('③ 딜 있는 핀이 맨 위 · 주인 순서는 안 덮는다', () => {
+  const page = read(PAGE)
+  // 🔧 2026-09-28 재조준 (대표 확정 **s3 밀도형**): 섹션 3개(`<PinGrid pins={applyQ(dealPins)}/>` …)가
+  //   **목록 하나**로 합쳐졌다. 그래서 "딜이 맨 위" 를 정하던 자리가 섹션 배치 → `homePins` 의
+  //   이어붙이는 순서로 옮겨 갔다. **불변식은 그대로**(딜 → 교환권 → 상품)이므로 검사 대상만 옮긴다.
+  // 🩸 2026-10-09 재조준: 이 가르기가 `shared/curator-pin-order.ts` 로 **행동 불변으로** 옮겨갔다
+  //   (워커가 첫 화면의 줄 4개를 같은 순서·같은 번호로 그려야 하는데 두 벌이면 순번 배지가 다른
+  //   상품을 가리킨다 — 소개비가 샌다). **불변식은 그대로**이므로 검사 대상만 그 파일로 옮긴다.
+  const order = read('src/shared/curator-pin-order.ts')
+
+  it('딜 → 교환권 → 상품 순으로 이어붙인다(SSOT 한 곳에서)', () => {
+    const m = order.match(/return \[([\s\S]*?)\]/)
+    expect(m, '핀 이어붙이기를 못 찾았다 — 검사가 무의미해진다').toBeTruthy()
+    const body = m![1]
+    const iDeal = body.indexOf('pins.filter(hasDealPin)')
+    const iVoucher = body.indexOf('rest.filter(isVoucherPin)')
+    const iShop = body.indexOf('!isVoucherPin(p)')
+    expect(iDeal, '딜 그룹이 없다').toBeGreaterThan(-1)
+    expect(iVoucher, '교환권 그룹이 없다').toBeGreaterThan(-1)
+    expect(iShop, '상품 그룹이 없다').toBeGreaterThan(-1)
+    expect(iDeal, '딜이 맨 앞이 아니다').toBeLessThan(iVoucher)
+    expect(iVoucher, '교환권이 상품보다 뒤에 있다').toBeLessThan(iShop)
+  })
+
+  it('페이지와 워커가 **같은** SSOT 를 쓴다(두 벌 금지)', () => {
+    expect(page, '페이지가 SSOT 를 쓴다').toContain('curatorHomePins(data.pins)')
+    expect(read('src/worker/utils/curator-ssr-body.ts'), '워커가 같은 SSOT 를 쓴다').toContain('curatorHomePins(pins)')
+    // 목록이 그 순서를 그대로 쓴다(딴 배열을 그리면 위 순서가 무의미해진다).
+    expect(page).toMatch(/cat === 'all' \? homePins :/)
+  })
+
+  it('정렬이 아니라 filter 로 가른다 — position 을 덮지 않는다', () => {
+    // 🔑 주인이 드래그로 맞춘 순서(position)가 사라지면 재정렬 기능이 무의미해진다.
+    //    filter 는 원래 순서를 보존한다. sort 가 등장하면 그 계약이 깨진 것이다.
+    expect(order).toContain('.filter(hasDealPin)')
+    expect(codeOnly(order), '핀을 sort 로 재배열하면 주인이 정한 순서가 사라진다').not.toContain('.sort(')
+  })
+})
+
+describe('④ 사다리는 빈 유어샵에서도 보인다', () => {
+  // 🔧 2026-09-28 재조준(e3): 사다리가 유어샵 → `/u/me/manage` 로 이사했다.
+  //   지키는 것은 그대로다 — **빈 유어샵일수록 뭘 해야 하는지가 필요**하므로 pins 로 막지 않는다.
+  it('pins.length 로 막지 않는다', () => {
+    const page = read('src/pages/UShopManagePage.tsx')
+    const i = page.indexOf('<EarnLadder')
+    expect(i, '사다리가 배치되지 않았다').toBeGreaterThan(-1)
+    // 사다리 **앞 200자**를 본다 — 거기에 pins 게이트가 있으면 빈 샵에서 숨는다.
+    //   (종전엔 `{ownerView` 를 앵커로 잘랐는데 e3 로 그 상태가 사라졌다. 앵커가 없으면
+    //    `lastIndexOf` 가 -1 → slice(-1, i) 가 **엉뚱한 구간**을 집어 늘 통과했을 것이다.)
+    const guard = page.slice(Math.max(0, i - 200), i)
+    expect(guard, '빈 유어샵에서 사다리가 숨으면, 그때 보이는 건 "적립 ₩0" 뿐이다')
+      .not.toMatch(/pins\.length\s*[><=]/)
+  })
+  /**
+   * 🛑 2026-09-16 — 이 검사는 **재조준**됐다(삭제가 아니다).
+   *
+   *   원래는 1단(영입 2%)·2단(딜)·3단(담기) 셋을 요구했는데, 대표 확정으로 영입 2% 가 폐지되면서
+   *   1단이 사라졌다(*"매장 데려온 사람 2%는 이제 아예 없는거야"*). 그런데 그 2% 는 애초에
+   *   **적립 호출부가 0** 이라 아무도 받은 적이 없었다 — 즉 이 가드는 **거짓 약속을 지키고 있었다.**
+   *
+   *   그래서 요구를 뒤집는다: 셋이 있는지가 아니라 **없어진 것이 안 돌아오는지**를 본다.
+   *   폐지 자체의 전수 검사는 `store-intro-abolished-2026-09-16.test.ts` 가 한다.
+   */
+  it('사다리가 딜 → 담기 두 단이고, 폐지된 영입 단이 돌아오지 않는다', () => {
+    const l = read(LADDER)
+    expect(l).toContain('소개비를 정하세요')
+    expect(l).toContain('담아서 파세요')
+    const code = codeOnly(l)
+    expect(code, '폐지된 영입 단이 돌아왔다').not.toContain('가게를 데려오세요')
+    expect(code, '영입 초대 링크가 돌아왔다 — 보상이 없는 링크다').not.toContain('/store/new?ref=')
+    expect(code, '폐지된 요율 상수가 화면에 돌아왔다').not.toContain('INFLUENCER_STORE_INTRO_PCT')
+  })
+})
+
+describe('⑤ 검색 모수 — 담은 사람은 자동, 가입자 전원은 아니다', () => {
+  const src = read(DISCOVERY)
+  it('핀을 담았거나 공개를 켠 사람', () => {
+    expect(src).toContain('pin.n > 0 OR COALESCE(p.is_open, 0) = 1')
+  })
+  it('명시적으로 공개를 끈 사람은 제외 (옵트아웃 보존)', () => {
+    expect(src).toContain('COALESCE(p.is_open, 1) = 1')
+  })
+  it('유어샵 주소가 없으면 넣지 않는다', () => {
+    expect(src).toContain("u.handle IS NOT NULL AND u.handle != ''")
+  })
+})

@@ -1,0 +1,341 @@
+import { useState, useEffect } from 'react'
+import { useNavigate, Link } from 'react-router-dom'
+import { useTranslation } from '@/lib/i18n-lite'
+import SEO from '@/components/SEO'
+import { useAuthKR } from '@/shared/stores/useAuthKR'
+import { isKorea } from '@/config/region'
+import { toast } from '@/hooks/useToast'
+import { hasConsumerSession } from '@/utils/auth'
+import { validatePasswordComplexity, passwordRuleChecklist, PASSWORD_MIN_LENGTH } from '@/shared/password-policy'
+import { Eye, EyeOff } from 'lucide-react'
+import BrandLoader from '@/components/brand/BrandLoader'
+import UrDealLogo from '@/components/brand/UrDealLogo'
+
+export default function RegisterPage() {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+
+  const isKR = isKorea()
+  const krUser = useAuthKR(state => state.user)
+  const krIsAuthReady = useAuthKR(state => state.isAuthReady)
+  const krSignupWithEmail = useAuthKR(state => state.signupWithEmail)
+
+  const user = krUser
+  const isAuthReady = krIsAuthReady
+  const signupWithEmailAction = krSignupWithEmail
+
+  const isLoggedIn = !!user || hasConsumerSession()
+
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: ''
+  })
+  // 법적 동의 분리 (PIPA): 이용약관 / 개인정보처리방침은 필수, 마케팅은 선택
+  const [termsAgreed, setTermsAgreed] = useState(false)
+  const [privacyAgreed, setPrivacyAgreed] = useState(false)
+  const [marketingAgreed, setMarketingAgreed] = useState(false)
+  // 만 14세 이상 자기신고 (미성년 차단 기본선)
+  const [ageConfirmed, setAgeConfirmed] = useState(false)
+
+  useEffect(() => {
+    if (isAuthReady && isLoggedIn) {
+      navigate('/', { replace: true })
+    }
+  }, [isAuthReady, isLoggedIn, navigate])
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+
+    if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
+      setError(t('register.errorAllFields', { defaultValue: '모든 필드를 입력해주세요.' }))
+      return
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setError(t('register.errorPasswordMismatch', { defaultValue: '비밀번호가 일치하지 않습니다.' }))
+      return
+    }
+
+    /**
+     * 🩸 2026-10-01 (대표 "이메일 계정 가입 및 로그인도 되게끔 해줘"): 여기는 `length < 8` **하나만**
+     *   봤는데 서버(`/api/auth/register`)는 10자 + 대/소/숫자/특수 4종 전부를 요구한다. 그래서
+     *   `password1` 같은 값이 폼을 통과해 전송되고 서버가 처음 보는 규칙으로 400 을 돌려줬다 —
+     *   사용자에겐 "폼은 괜찮다는데 가입이 안 되는" 화면이다.
+     *   ⇒ 서버와 **같은 함수**(`shared/password-policy`)로 판정한다. 두 벌이면 반드시 또 갈린다.
+     */
+    const pw = validatePasswordComplexity(formData.password)
+    if (!pw.ok) {
+      setError(pw.error)
+      return
+    }
+
+    if (!termsAgreed || !privacyAgreed) {
+      setError(t('register.errorAgreements', { defaultValue: '이용약관과 개인정보처리방침에 동의해주세요.' }))
+      return
+    }
+
+    if (!ageConfirmed) {
+      setError(t('register.errorAgeConfirm', { defaultValue: '만 14세 이상만 가입 가능합니다.' }))
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      await signupWithEmailAction(formData.email, formData.password, formData.name, {
+        terms_agreed: true,
+        privacy_agreed: true,
+        marketing_agreed: marketingAgreed,
+        age_confirmed: true,
+      })
+      toast.success(t('register.successMessage', { defaultValue: '회원가입이 완료되었습니다! 로그인해주세요.' }))
+      // login-return-ok: 가입 완료 → 로그인. 가입 전 보던 화면으로 돌아갈 맥락이 없다.
+      navigate('/login')
+    } catch (err: unknown) {
+      /**
+       * 🩸 2026-10-01: 여기는 Firebase 에러코드(`email-already-in-use` 등)를 찾고 있었는데
+       *   Firebase 는 2026-08-04 에 제거됐고(#804) 서버는 **한국어 문장**을 돌려준다
+       *   (`이미 사용 중인 이메일입니다` · `비밀번호는 10자 이상이어야 합니다.`). 즉 어떤 가지도
+       *   매치되지 않아 **서버가 알려준 진짜 이유를 버리고** 늘 "회원가입에 실패했습니다" 만 떴다.
+       *   ⇒ 서버 문장을 그대로 보여 준다(사용자가 고칠 수 있는 유일한 정보다).
+       */
+      const errMsg = err instanceof Error ? err.message : String(err)
+      setError(errMsg || t('register.errorDefault', { defaultValue: '회원가입에 실패했습니다.' }))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): ad-hoc 스피너 → BrandLoader.
+  if (!isAuthReady) {
+    return (
+      <div className="min-h-[100dvh] bg-white dark:bg-[#11141C]">
+        <BrandLoader fullScreen />
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-white dark:bg-[#11141C] flex flex-col items-center justify-center px-5 py-12">
+      <SEO title={t('register.seoTitle', { defaultValue: '회원가입 - 유어딜' })} description={t('register.seoDesc', { defaultValue: '유어딜에 가입하고 동네 가게 이용권을 할인가로 만나보세요' })} url="/register" noindex />
+      <div className="w-full max-w-[360px] md:max-w-[420px]">
+
+        {/* Logo */}
+        <div className="text-center mb-12">
+          {/* 🏷️ 2026-09-03 (QA 1라운드): 폐기된 브랜드명 "UR LIVE" 가 소비자 화면에 이 한 곳만 남아 있었다.
+              로그인 화면과 같은 워드마크 SSOT(UrDealLogo)로 — 문자열을 다시 박으면 또 갈린다. */}
+          <div className="flex justify-center"><UrDealLogo size={34} /></div>
+          <p className="text-[15px] text-gray-500 dark:text-gray-400 mt-3 font-light">
+            {t('register.title', { defaultValue: '회원가입' })}
+          </p>
+        </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-5 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/40 rounded-xl text-[13px] text-red-600 dark:text-red-400 text-center">
+            {error}
+          </div>
+        )}
+
+        {/* Register Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Name */}
+          <div>
+            <label className="block text-[12px] font-medium text-gray-600 dark:text-gray-400 mb-2">
+              {t('register.nameLabel', { defaultValue: '이름' })}
+            </label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder={t('register.namePlaceholder', { defaultValue: '홍길동' })}
+              required
+              className="w-full h-[48px] px-4 border border-line rounded-xl bg-surface text-[15px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500"
+            />
+          </div>
+
+          {/* Email */}
+          <div>
+            <label className="block text-[12px] font-medium text-gray-600 dark:text-gray-400 mb-2">
+              {t('register.emailLabel', { defaultValue: '이메일' })}
+            </label>
+            <input
+              type="email"
+              autoComplete="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              placeholder="example@email.com"
+              required
+              className="w-full h-[48px] px-4 border border-line rounded-xl bg-surface text-[15px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500"
+            />
+          </div>
+
+          {/* Password */}
+          <div>
+            <label className="block text-[12px] font-medium text-gray-600 dark:text-gray-400 mb-2">
+              {t('register.passwordLabel', { defaultValue: '비밀번호' })}
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="new-password"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                placeholder={t('register.passwordPlaceholder', { defaultValue: `${PASSWORD_MIN_LENGTH}자 이상, 대·소문자와 숫자·특수문자` })}
+                required
+                minLength={PASSWORD_MIN_LENGTH}
+                className="w-full h-[48px] px-4 pr-12 border border-line rounded-xl bg-surface text-[15px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? t('register.hidePassword', { defaultValue: '비밀번호 숨기기' }) : t('register.showPassword', { defaultValue: '비밀번호 표시' })}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 hover:dark:text-gray-400"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+            {/*
+              📋 규칙을 **입력 전에** 보여 준다. "비밀번호가 조건에 안 맞습니다" 한 줄은 무엇을 고쳐야
+                 할지 안 알려 주고, 네 가지 중 어디가 빠졌는지는 사용자가 추측할 수 없다.
+                 판정은 제출 검사와 같은 모듈(`shared/password-policy`)에서 나온다 — 화면과 게이트가 갈리지 않는다.
+            */}
+            <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1" aria-live="polite">
+              {passwordRuleChecklist(formData.password).map(({ label, ok }) => (
+                <li
+                  key={label}
+                  className={`text-[12px] ${ok ? 'text-brand-text' : 'text-gray-500 dark:text-gray-400'}`}
+                >
+                  {ok ? '✓' : '·'} {label}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Confirm Password */}
+          <div>
+            <label className="block text-[12px] font-medium text-gray-600 dark:text-gray-400 mb-2">
+              {t('register.confirmPasswordLabel', { defaultValue: '비밀번호 확인' })}
+            </label>
+            <div className="relative">
+              <input
+                type={showConfirmPassword ? 'text' : 'password'}
+                autoComplete="new-password"
+                value={formData.confirmPassword}
+                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                placeholder={t('register.confirmPasswordPlaceholder', { defaultValue: '비밀번호를 다시 입력해주세요' })}
+                required
+                minLength={PASSWORD_MIN_LENGTH}
+                className="w-full h-[48px] px-4 pr-12 border border-line rounded-xl bg-surface text-[15px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                aria-label={showConfirmPassword ? t('register.hideConfirmPassword', { defaultValue: '비밀번호 확인 숨기기' }) : t('register.showConfirmPassword', { defaultValue: '비밀번호 확인 표시' })}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 hover:dark:text-gray-400"
+              >
+                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Legal Agreements (PIPA: 필수 동의 분리 + 만 14세 이상) */}
+          <div className="pt-1 space-y-2">
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={termsAgreed}
+                onChange={(e) => setTermsAgreed(e.target.checked)}
+                className="mt-1 w-4 h-4 rounded border-[#E0E0E0] text-[#111] focus:ring-[#111] cursor-pointer accent-[#111]"
+              />
+              <span className="text-[12px] text-gray-500 dark:text-gray-400 leading-relaxed group-hover:text-gray-600 group-hover:dark:text-gray-400 transition-colors">
+                <span className="font-medium text-gray-600 dark:text-gray-400">{t('register.requiredLabel', { defaultValue: '[필수]' })}</span>{' '}
+                <Link
+                  to="/terms"
+                  className="text-gray-900 dark:text-white underline underline-offset-4 decoration-1 hover:text-gray-600 hover:dark:text-gray-400"
+                  target="_blank" rel="noopener noreferrer"
+                >
+                  {t('register.agreeTerms', { defaultValue: '서비스 이용약관' })}
+                </Link>
+                {t('register.agreeTermsSuffix', { defaultValue: '에 동의합니다.' })}
+              </span>
+            </label>
+
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={privacyAgreed}
+                onChange={(e) => setPrivacyAgreed(e.target.checked)}
+                className="mt-1 w-4 h-4 rounded border-[#E0E0E0] text-[#111] focus:ring-[#111] cursor-pointer accent-[#111]"
+              />
+              <span className="text-[12px] text-gray-500 dark:text-gray-400 leading-relaxed group-hover:text-gray-600 group-hover:dark:text-gray-400 transition-colors">
+                <span className="font-medium text-gray-600 dark:text-gray-400">{t('register.requiredLabel', { defaultValue: '[필수]' })}</span>{' '}
+                <Link
+                  to="/privacy"
+                  className="text-gray-900 dark:text-white underline underline-offset-4 decoration-1 hover:text-gray-600 hover:dark:text-gray-400"
+                  target="_blank" rel="noopener noreferrer"
+                >
+                  {t('register.agreePrivacy', { defaultValue: '개인정보처리방침' })}
+                </Link>
+                {t('register.agreePrivacySuffix', { defaultValue: '에 동의합니다.' })}
+              </span>
+            </label>
+
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={ageConfirmed}
+                onChange={(e) => setAgeConfirmed(e.target.checked)}
+                className="mt-1 w-4 h-4 rounded border-[#E0E0E0] text-[#111] focus:ring-[#111] cursor-pointer accent-[#111]"
+              />
+              <span className="text-[12px] text-gray-500 dark:text-gray-400 leading-relaxed group-hover:text-gray-600 group-hover:dark:text-gray-400 transition-colors">
+                <span className="font-medium text-gray-600 dark:text-gray-400">{t('register.requiredLabel', { defaultValue: '[필수]' })}</span>{' '}
+                {t('register.agreeAge', { defaultValue: '본인은 만 14세 이상입니다.' })}
+              </span>
+            </label>
+
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={marketingAgreed}
+                onChange={(e) => setMarketingAgreed(e.target.checked)}
+                className="mt-1 w-4 h-4 rounded border-[#E0E0E0] text-[#111] focus:ring-[#111] cursor-pointer accent-[#111]"
+              />
+              <span className="text-[12px] text-gray-500 dark:text-gray-400 leading-relaxed group-hover:text-gray-600 group-hover:dark:text-gray-400 transition-colors">
+                <span className="text-gray-400 dark:text-gray-500">{t('register.optionalLabel', { defaultValue: '[선택]' })}</span>{' '}
+                {t('register.agreeMarketing', { defaultValue: '마케팅 정보 수신에 동의합니다.' })}
+              </span>
+            </label>
+          </div>
+
+          {/* Submit Button */}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full h-[48px] bg-brand hover:bg-brand-dark text-white rounded-xl text-[15px] font-semibold tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+          >
+            {loading ? t('register.submitLoading', { defaultValue: '가입 중...' }) : t('register.submit', { defaultValue: '가입하기' })}
+          </button>
+        </form>
+
+        {/* Login Link — login-return-ok: 가입 화면 하단의 "로그인" 안내 링크(가입 흐름 안) */}
+        <div className="text-center text-[13px] text-gray-400 dark:text-gray-500 mt-8 font-light">
+          {t('register.alreadyHaveAccount', { defaultValue: '이미 계정이 있으신가요?' })}{' '}
+          <Link
+            to="/login"
+            className="text-gray-900 dark:text-white font-medium hover:underline underline-offset-4 decoration-1"
+          >
+            {t('register.loginLink', { defaultValue: '로그인' })}
+          </Link>
+        </div>
+      </div>
+    </div>
+  )
+}

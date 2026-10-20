@@ -1,0 +1,332 @@
+#!/usr/bin/env node
+/**
+ * 🎨 anti-slop 문구·라벨 가드 (2026-09-01 — 대표 *"AI 스럽지 않은 디자인으로 마무리"*)
+ *
+ * ■ 왜 만들었나
+ *   CLAUDE.md "🎨 anti-slop 디자인 스킬" 절이 *"가장 자주 걸리는 것 다섯 개(이 레포에서 실제로
+ *   전부 위반했었다)"* 를 적어 두고도 **강제하는 검사가 하나도 없었다.** 이 레포의 규칙
+ *   ("규율은 문서가 아니라 테스트로")대로라면 기계가 지켜야 한다. 실제로 2026-09-01 에 재 보니
+ *   대외 랜딩 `/about` 이 그 다섯 개를 **전부** 위반하고 있었다.
+ *
+ * ■ 무엇을 보는가 (기계로 판정 가능한 셋만)
+ *   R1 em-dash `—` 가 **사용자에게 보이는 문구**에 있는가 (주석·문서는 대상 아님)
+ *   R2 `01` `02` 같은 **섹션번호 뱃지**를 라벨 배열에 넣었는가
+ *   R3 한글 라벨에 `uppercase` 를 걸었는가 — 한글엔 아무 효과가 없고(=죽은 스타일),
+ *      남는 `tracking-wider` 만 자간을 벌려 가독성을 떨어뜨린다. 영문 편집 디자인의
+ *      small-caps eyebrow 를 그대로 옮겨 붙인 자국이다.
+ *
+ * ■ 이 가드가 **못 잡는 것** (사람이 봐야 한다)
+ *   · eyebrow 예산(섹션수/3) · 같은 레이아웃 계열 반복 · 가운뎃점 밀도 —
+ *     셋 다 "무엇이 한 섹션인가" 를 정적으로 못 정한다. 렌더해서 눈으로 볼 것.
+ *   · `<input>` 의 `uppercase` 는 **기능**(입력 글자를 대문자로)이라 R3 대상이 아니다.
+ *
+ * 래칫: scripts/anti-slop-baseline.json. 줄이면 --rebaseline.
+ * 예외: 그 줄에 `anti-slop-ok` 주석.
+ */
+import fs from 'node:fs'
+import path from 'node:path'
+import { stripCommentsLines } from './comment-strip.mjs'
+
+const ROOT = process.cwd()
+const BASELINE = path.join(ROOT, 'scripts/anti-slop-baseline.json')
+/** 어드민은 대표가 이 과업 범위에서 명시적으로 뺐다(내부 운영 도구). */
+const SKIP = /[Aa]dmin|\/tests?\/|node_modules/
+/**
+ * R1(em-dash)만 **대외·마케팅 표면**으로 좁힌다.
+ * CLAUDE.md "🎨 anti-slop 디자인 스킬" 이 적용 대상을 *"제안서·랜딩·소비자 마케팅 표면"* 으로
+ * 규정하고 **어드민/셀러 대시보드는 대상 아님**(스킬 자신이 dashboard 제외를 명시)이라고 못박는다.
+ * 전 범위로 재면 401건이 나오는데(대부분 대시보드 토스트·aria-label), 그 값을 래칫으로 삼으면
+ * **랜딩에 새로 생긴 em-dash 한 개가 401건 사이에 숨는다.** 범위를 좁혀야 0 이 의미를 갖는다.
+ * ⚠️ 여기 없는 대외 페이지를 새로 만들면 이 목록에 추가할 것 — 안 그러면 그 페이지는 무검사다.
+ */
+const MARKETING = new RegExp([
+  'src/pages/(AboutServicePage|AboutPage|PartnersPage|CreatorsPage|CreatorApplyPage',
+  '|InfluencerLandingPage|BusinessPage|IntroducePage|JoinPage|BlogListPage|BlogDetailPage)\\.tsx$',
+  '|src/components/(SEO|ConsumerFrameRails)\\.tsx$',
+  '|src/components/main/SiteFooter\\.tsx$',
+  // 🔁 2026-10-13 — **문구 SSOT 는 `.tsx` 가 아니다.** `src/shared/seo/*.ts` 가 소비자 표면의
+  //   `<title>`·description·크롤러 본문·`/llms.txt` 문구를 들고 있는데(`consumer-surfaces.ts`
+  //   `surface-copy.ts` `concept-content.ts` `llms-txt.ts`), 이 가드는 `.tsx` 만 훑어
+  //   **그 문구 전체가 무검사**였다. 블로그 시드에서 밟은 "낡은 지도" 와 같은 클래스다
+  //   (가드가 가리키는 페이지엔 문구가 없고, 문구가 있는 파일은 범위 밖).
+  //   🔑 파일 목록이 아니라 **디렉터리 규칙**으로 둔다 — 새 문구 파일이 조용히 새지 않는다.
+  '|src/shared/seo/[A-Za-z0-9-]+\\.ts$',
+  // 🌐 2026-10-14 — **메타 description·title 을 실제로 만드는 곳은 워커다.** 위 두 규칙은
+  //   `.tsx` 페이지와 `src/shared/seo/*.ts` 만 보는데, 검색결과에 그대로 뜨는 줄
+  //   (`/pass` 310 · `/stays` 49 · `/products` · `/u` · `/region` · 크롤러 본문)은
+  //   `src/worker/utils/*-ssr-meta.ts`·`*-noscript*.ts`·`*-first-screen.ts` 가 만든다.
+  //   실측(2026-10-14, Googlebot UA · sitemap 32모양 72표본): 그 생성기들에 줄표가 **11곳**
+  //   있었고 가드는 `em-dash 0` 을 보고하고 있었다 — 2026-10-13 블로그 시드에서 밟은
+  //   **"낡은 지도"** 와 같은 클래스다(가드가 가리키는 파일엔 문구가 없고, 문구가 있는 파일은 범위 밖).
+  //   🔑 **접미사 규칙**으로 둔다 — 이 레포의 문구 생성기는 전부 그 접미사를 쓰므로
+  //   새 생성기가 조용히 새지 않는다(아래 `COPY_BUILDER_FLOOR` 가 경로 낡음을 잡는다).
+  '|src/worker/utils/[A-Za-z0-9-]*(ssr-meta|noscript|first-screen|ssr-body|list-jsonld)\\.ts$',
+  // 🏨 숙소 유형 소개 문구 — **색인 49건의 meta description 꼬리**가 이 표에서 온다.
+  //   🩸 그 파일 머리말이 *"`check-anti-slop-copy` 는 이 파일을 본다"* 고 적어 뒀는데
+  //   **사실이 아니었다**(줄표를 주입해도 가드가 통과했다 — 2026-10-14 실측). 거짓 주장은
+  //   다음 세션이 없는 가드를 믿게 만든다 ⇒ 범위에 넣고 그 머리말도 고쳤다.
+  '|src/shared/stay-property-type\\.ts$',
+].join(''))
+
+/**
+ * 🔒 **잠금 파일은 따로 센다** (2026-10-14).
+ *
+ * `src/worker/index.ts` 는 로딩 잠금표 파일이라 문자열 한 줄도 대표 승인이 필요하고, 그 안에
+ * 줄표가 **7곳** 있다(`/blog` 제목 · `/u` 설명 폴백 · 유어애즈 제목 · 내부 헬스체크 문구 ·
+ * 그리고 실측으로 **죽은 것 3곳**: `app.get('*')` 의 봇 OG 블록은 라이브에서 0건이다).
+ *
+ * 🔴 **총합 하나로 재면 안 된다.** 비잠금 0 과 잠금 7 을 더해 `emDash ≤ 7` 로 두면
+ * *"랜딩에 새로 생긴 줄표 한 개가 7 사이에 숨는다"* — 이 가드 머리말이 401건을 두고 경고한
+ * 바로 그 실패 모드다. ⇒ 카운터를 **둘로 나눈다**: 비잠금은 **0 고정**, 잠금은 **동결만**.
+ */
+// ⚠️ `^` 로 앵커하지 않는다 — 이 가드의 자기검사는 **임시 디렉터리**에 픽스처를 쓰고
+//    `path.relative(ROOT, …)` 가 `../../tmp/…/src/worker/index.ts` 를 주므로 앵커하면 자기검사가
+//    픽스처를 못 잡는다(실제로 그렇게 한 번 터졌다). 위 MARKETING 규칙들도 같은 이유로 앵커가 없다.
+const LOCKED_COPY = /src\/worker\/index\.ts$/
+const KO = /[가-힣]/
+
+function walk(d, out = []) {
+  for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+    const p = path.join(d, e.name)
+    if (e.isDirectory()) { if (!/node_modules|\.git|dist/.test(p)) walk(p, out) }
+    else if (/\.tsx$/.test(e.name)) out.push(p)
+  }
+  return out
+}
+
+/* 🔧 주석 제거기는 `scripts/comment-strip.mjs` 가 SSOT 다 (2026-10-13 추출 — 여기 있던 사본을
+   옮겼다). 왜 상태 기계인지·무엇을 못 하는지는 그 파일 머리말에 있다.
+   🔴 여기에 사본을 다시 만들지 말 것 — 이 레포가 다섯 번 넘어진 클래스다. */
+function stripComments(src) {
+  return stripCommentsLines(src).filter(([, t]) => t.trim() && !t.includes('anti-slop-ok'))
+}
+
+export function scan(files) {
+  const hits = { emDash: [], lockedEmDash: [], sectionNum: [], koUpper: [] }
+  for (const f of files) {
+    const rel = path.relative(ROOT, f)
+    if (SKIP.test(rel)) continue
+    const src = fs.readFileSync(f, 'utf-8')
+    const lines = src.split('\n')
+    const posix = rel.replace(/\\/g, '/')
+    for (const [n, ln] of stripComments(src)) {
+      if (ln.includes('—') && LOCKED_COPY.test(posix)) hits.lockedEmDash.push(`${rel}:${n}`)
+      else if (ln.includes('—') && MARKETING.test(posix)) hits.emDash.push(`${rel}:${n}`)
+      // 라벨 배열의 섹션번호: ['01', '제목', …] 형태
+      if (/\[\s*'0[1-9]'\s*,|\[\s*"0[1-9]"\s*,/.test(ln)) hits.sectionNum.push(`${rel}:${n}`)
+      if (/\buppercase\b/.test(ln)) {
+        // 입력창은 기능이다 — 같은 요소 안에 input/textarea/placeholder 가 있으면 제외
+        const ctx = lines.slice(Math.max(0, n - 6), n + 3).join(' ')
+        if (/<input|<textarea|placeholder=/.test(ctx)) continue
+        // 라벨이 한글인가: 같은 줄 + 뒤 2줄 (주석 제거 후)
+        const label = [ln, lines[n] || '', lines[n + 1] || ''].map(x => x.replace(/\/\/.*$/, '')).join(' ')
+        if (KO.test(label)) hits.koUpper.push(`${rel}:${n}`)
+      }
+    }
+  }
+  return hits
+}
+
+/* 🧪 합성 픽스처 — **매 실행마다** 스스로를 검사한다.
+   래칫 기준이 0 이면 `hits > 0` 만으로는 "정규식이 죽었는지" 를 못 가린다.
+   (이 레포가 반복해 당한 "검사가 실패할 수 없음" 클래스.) */
+const FIXTURE_BAD = `export const A = () => (
+  <div>
+    <p className="text-xs uppercase tracking-widest">카테고리</p>
+    <p>공동구매 수수료 5% — 판매되는 만큼만</p>
+    {[['01', '매장 등록', '설명']].map(x => x)}
+  </div>
+)
+`
+/* ⚠️ OK 픽스처에는 **여러 줄 JSX 주석**이 반드시 들어 있어야 한다.
+   주석 제거기(stripComments)가 망가지면 이 픽스처가 오탐으로 잡혀야 하는데,
+   주석이 없으면 제거기를 통째로 부숴도 자기검사가 통과한다(실제로 그랬다). */
+const FIXTURE_OK = `/**
+ * JSDoc 블록 주석 — 여기 em-dash 가 있어도 사용자에게는 안 보인다.
+ * \`{/*\` 와 \`/*\` 는 stripComments 의 **서로 다른 분기**라 픽스처도 둘 다 있어야 한다
+ * (하나만 두면 나머지 분기를 통째로 부숴도 자기검사가 통과한다 — 실제로 그랬다).
+ */
+export const A = () => (
+  <div>
+    {/* 여러 줄 주석 — 이 안의 em-dash 와 '카테고리 uppercase' 는
+        사용자에게 보이지 않으므로 세면 안 된다.
+        <p className="uppercase">카테고리</p> 같은 예시도 여기 들어간다. */}
+    <p className="text-xs uppercase tracking-widest">MENU</p>
+    <p>공동구매 수수료 5%, 판매되는 만큼만</p>
+    <input className="uppercase" placeholder="AG-A8K3F1" />
+  </div>
+)
+`
+/* 📄 문구 SSOT(`.ts`) 픽스처 — `.tsx` 만 훑던 시절로 **조용히** 돌아가는 것을 막는다.
+   범위가 좁아지면 hits 가 0 이 되어 래칫은 초록이고, 그게 2026-10-13 까지의 상태였다. */
+const FIXTURE_TS_BAD = `export const COPY = {
+  '/partners': '매장 등록은 무료 — 판매되는 만큼만 수수료를 냅니다.',
+}
+`
+/* 🌐 워커 문구 생성기 픽스처 (2026-10-14) — 접미사 규칙이 좁아지면 **검색결과에 뜨는 줄**이
+   무검사로 돌아간다. 2026-10-14 까지가 그 상태였고 가드는 `em-dash 0` 을 보고하고 있었다. */
+const FIXTURE_WORKER_BAD = `export function buildDetailMeta(d) {
+  return { description: \`\${d.name} — \${d.price}원, 유어딜에서 할인가로 바로 구매\` }
+}
+`
+/* 🔒 잠금 파일 픽스처 — **비잠금 카운터로 새면 안 된다**(0 고정이 깨진다).
+   반대로 잠금 카운터에 안 담기면 동결이 풀린다. 둘 다 본다. */
+const FIXTURE_LOCKED_BAD = `const bt = '유어딜 블로그 — 이용권 가이드';
+export default bt
+`
+function selfTest() {
+  const dir = fs.mkdtempSync(path.join(process.env.TMPDIR || '/tmp', 'slopcopy-'))
+  try {
+    fs.mkdirSync(path.join(dir, 'src/pages'), { recursive: true })
+    fs.mkdirSync(path.join(dir, 'src/shared/seo'), { recursive: true })
+    const bad = path.join(dir, 'src/pages/AboutPage.tsx'); fs.writeFileSync(bad, FIXTURE_BAD)
+    const ok = path.join(dir, 'src/pages/PartnersPage.tsx'); fs.writeFileSync(ok, FIXTURE_OK)
+    const tsBad = path.join(dir, 'src/shared/seo/surface-copy.ts'); fs.writeFileSync(tsBad, FIXTURE_TS_BAD)
+    fs.mkdirSync(path.join(dir, 'src/worker/utils'), { recursive: true })
+    const wBad = path.join(dir, 'src/worker/utils/detail-ssr-meta.ts'); fs.writeFileSync(wBad, FIXTURE_WORKER_BAD)
+    const lBad = path.join(dir, 'src/worker/index.ts'); fs.writeFileSync(lBad, FIXTURE_LOCKED_BAD)
+    const b = scan([bad]), o = scan([ok]), t = scan([tsBad])
+    const w = scan([wBad]), l = scan([lBad])
+    const fail = []
+    if (!b.emDash.length) fail.push('em-dash 를 못 잡는다')
+    if (!b.sectionNum.length) fail.push('섹션번호를 못 잡는다')
+    if (!b.koUpper.length) fail.push('한글 uppercase 를 못 잡는다')
+    if (o.emDash.length || o.sectionNum.length || o.koUpper.length) fail.push('정상 코드를 오탐한다')
+    if (!t.emDash.length) fail.push('문구 SSOT(.ts) 의 em-dash 를 못 잡는다')
+    if (!w.emDash.length) fail.push('워커 문구 생성기(*-ssr-meta.ts)의 em-dash 를 못 잡는다')
+    if (l.emDash.length) fail.push('잠금 파일이 **비잠금** 카운터로 샌다 (0 고정이 무의미해진다)')
+    if (!l.lockedEmDash.length) fail.push('잠금 파일의 em-dash 를 잠금 카운터에 안 담는다 (동결이 풀린다)')
+    return fail
+  } finally { fs.rmSync(dir, { recursive: true, force: true }) }
+}
+
+const selfFail = selfTest()
+if (selfFail.length) {
+  console.error('❌ anti-slop: **가드 자신이 고장났다** — ' + selfFail.join(' · '))
+  process.exit(1)
+}
+
+const tsxFiles = walk(path.join(ROOT, 'src'))
+if (tsxFiles.length < 300) {
+  console.error(`❌ anti-slop: .tsx 를 ${tsxFiles.length}개밖에 못 찾았다 — 스캔 경로가 낡았다.`)
+  process.exit(1)
+}
+/* 📄 문구 SSOT(`src/shared/seo/*.ts`)를 함께 훑는다. 위 MARKETING 주석의 이유.
+   ⚠️ **0건이면 통과가 아니라 고장이다** — 디렉터리가 옮겨지면 조용히 무검사로 돌아간다. */
+const SEO_COPY_DIR = path.join(ROOT, 'src/shared/seo')
+const seoCopyFiles = fs.existsSync(SEO_COPY_DIR)
+  ? fs.readdirSync(SEO_COPY_DIR).filter((f) => /\.ts$/.test(f) && !/\.test\.ts$/.test(f))
+      .map((f) => path.join(SEO_COPY_DIR, f))
+  : []
+if (seoCopyFiles.length < 8) {
+  console.error(`❌ anti-slop: 문구 SSOT 를 ${seoCopyFiles.length}개만 찾았다 — src/shared/seo 가 옮겨졌다.`)
+  console.error('   (경로를 같이 옮길 것 — 안 그러면 소비자 표면 문구 전체가 무검사로 돌아간다)')
+  process.exit(1)
+}
+/* 🌐 2026-10-14 — 워커 문구 생성기 + 잠금 파일 + 숙소 문구 표.
+   `walk()` 는 `.tsx` 만 담으므로(위) 이 `.ts` 들은 **직접 넣어야** 스캔된다.
+   ⚠️ **바닥을 둔다**: 접미사 규칙에 걸리는 파일이 갑자기 적어지면 경로가 낡은 것이고,
+   그러면 0 건은 "깨끗하다" 가 아니라 "안 봤다" 다(이 레포가 반복해 당한 헛도는 가드). */
+const COPY_BUILDER_DIR = path.join(ROOT, 'src/worker/utils')
+const COPY_BUILDER_RE = /[A-Za-z0-9-]*(ssr-meta|noscript|first-screen|ssr-body|list-jsonld)\.ts$/
+const COPY_BUILDER_FLOOR = 8
+const copyBuilders = fs.existsSync(COPY_BUILDER_DIR)
+  ? fs.readdirSync(COPY_BUILDER_DIR).filter((f) => COPY_BUILDER_RE.test(f) && !/\.test\.ts$/.test(f))
+      .map((f) => path.join(COPY_BUILDER_DIR, f))
+  : []
+if (copyBuilders.length < COPY_BUILDER_FLOOR) {
+  console.error(`❌ anti-slop: 워커 문구 생성기를 ${copyBuilders.length}개만 찾았다 (바닥 ${COPY_BUILDER_FLOOR})`)
+  console.error('   src/worker/utils 가 옮겨졌거나 접미사 규칙이 낡았다 — 경로를 같이 옮길 것.')
+  console.error('   (안 그러면 검색결과에 뜨는 메타 문구 전체가 무검사로 돌아간다)')
+  process.exit(1)
+}
+const EXTRA_COPY = [
+  'src/worker/index.ts',            // 🔒 잠금 파일 — lockedEmDash 로 따로 센다
+  'src/shared/stay-property-type.ts', // 숙소 49건 meta description 의 꼬리 문구
+]
+for (const rel of EXTRA_COPY) {
+  if (!fs.existsSync(path.join(ROOT, rel))) {
+    console.error(`❌ anti-slop: ${rel} 가 없다 — 옮겼으면 이 목록도 같이 옮길 것(조용히 무검사가 된다).`)
+    process.exit(1)
+  }
+}
+const files = [...tsxFiles, ...seoCopyFiles, ...copyBuilders, ...EXTRA_COPY.map((r) => path.join(ROOT, r))]
+const hits = scan(files)
+/* ───────────────────────────────────────────────────────────────────────────
+ * 📰 2026-10-13 — **블로그 시드 제목**은 이 가드가 구조적으로 못 보던 자리다.
+ *
+ * 위 `MARKETING` 은 `BlogListPage|BlogDetailPage` 를 담고 있고 `walk()` 는 `.tsx` 만 훑는데,
+ * 블로그 **문구는 그 페이지가 아니라 `src/features/blog/api/blog-seed.ts`(`.ts`)** 에 있다.
+ * 즉 가드가 가리키는 페이지엔 검사할 문구가 없고, 문구가 있는 파일은 범위 밖이었다 —
+ * 이 레포가 반복해 당한 **"낡은 지도"**(가드는 초록인데 지키는 게 없다).
+ *
+ * 실측(2026-10-13): 시드 제목 **21편 중 14편**이 `주제 — 설명` 이었다. 그 제목은 `/blog/:slug` 의
+ * `<title>` 이자 **검색결과에 그대로 뜨는 줄**이고, 열넷이 같은 틀이라는 것 자체가 AI 티다.
+ *
+ * 🔑 **제목만 0 으로 잠근다.** 본문(content)의 43건은 래칫으로 동결만 한다 —
+ *   ① 제목은 검색결과에 서고 본문은 글 안에 있어 값이 다르다
+ *   ② 본문 43건을 한 번에 고치면 문장 품질이 더 나빠질 위험이 크다(산문을 기계로 못 고친다)
+ *   ⇒ 줄이는 건 자유이고 **늘리는 것만 막는다**. 줄인 뒤 `--rebaseline`.
+ * ─────────────────────────────────────────────────────────────────────────── */
+const BLOG_SEED = path.join(ROOT, 'src/features/blog/api/blog-seed.ts')
+function blogSeedCounts() {
+  if (!fs.existsSync(BLOG_SEED)) return null   // 파일이 사라지면 "통과" 가 아니라 아래에서 실패시킨다
+  // ⚠️ 이 파일의 `stripComments` 는 **[줄번호, 코드] 배열**을 돌려준다(위 스캐너가 줄을 찍어야
+  //   하기 때문). 문자열이 필요하므로 합친다 — 2026-10-13 에 그걸 혼동해 `matchAll` 로 터졌다.
+  const code = stripCommentsLines(fs.readFileSync(BLOG_SEED, 'utf-8'))
+    .filter(([, t]) => !t.includes('anti-slop-ok'))
+    .map(([, t]) => t)
+    .join('\n')
+  const titles = [...code.matchAll(/\btitle:\s*'((?:[^'\\]|\\.)*)'/g)].map((m) => m[1])
+  const titleEm = titles.filter((t) => t.includes('\u2014'))
+  const total = (code.match(/\u2014/g) || []).length
+  return { titles: titles.length, titleEm, bodyEm: total - titleEm.reduce((n, t) => n + (t.match(/\u2014/g) || []).length, 0) }
+}
+const seed = blogSeedCounts()
+if (!seed || seed.titles < 10) {
+  console.error(`❌ anti-slop: 블로그 시드 제목을 ${seed ? seed.titles : 0}개만 읽었다 — 0건이면 통과가 아니라 고장이다`)
+  console.error('   (파일이 옮겨졌으면 이 가드의 BLOG_SEED 경로를 같이 옮길 것 — 안 그러면 제목이 무검사로 돌아간다)')
+  process.exit(1)
+}
+
+const cur = { emDash: hits.emDash.length, lockedEmDash: hits.lockedEmDash.length, sectionNum: hits.sectionNum.length, koUpper: hits.koUpper.length, blogSeedBodyEmDash: seed.bodyEm }
+
+if (process.argv.includes('--rebaseline')) {
+  fs.writeFileSync(BASELINE, JSON.stringify({
+    _comment: 'anti-slop 문구·라벨 허용 상한(래칫). 줄이면 --rebaseline 으로 갱신.',
+    _measured: new Date().toISOString().slice(0, 10), ...cur,
+  }, null, 2) + '\n')
+  console.log(`✅ anti-slop: 기준 갱신 — em-dash ${cur.emDash} · 잠금파일 em-dash ${cur.lockedEmDash} · 섹션번호 ${cur.sectionNum} · 한글 uppercase ${cur.koUpper} · 블로그 본문 em-dash ${cur.blogSeedBodyEmDash}`)
+  process.exit(0)
+}
+
+if (!fs.existsSync(BASELINE)) {
+  console.error('❌ anti-slop: 기준 파일이 없다 — 없으면 첫 실행이 무조건 통과해 검사가 무의미해진다.')
+  console.error('   `node scripts/check-anti-slop-copy.mjs --rebaseline` 로 만들 것.')
+  process.exit(1)
+}
+const base = JSON.parse(fs.readFileSync(BASELINE, 'utf-8'))
+let bad = false
+if (seed.titleEm.length > 0) {
+  bad = true
+  console.error(`❌ anti-slop: 블로그 시드 **제목**에 em-dash ${seed.titleEm.length}건 (0 이어야 한다 — 검색결과에 그대로 뜨는 줄이다)`)
+  seed.titleEm.slice(0, 14).forEach((t) => console.error('   ' + t))
+}
+if (seed.bodyEm > (base.blogSeedBodyEmDash ?? 0)) {
+  bad = true
+  console.error(`❌ anti-slop: 블로그 시드 본문 em-dash 가 늘었다 → ${seed.bodyEm}건 (줄이는 건 자유, 늘리는 건 막는다)`)
+}
+for (const [k, ko] of [['emDash', 'em-dash(—) 사용자 문구'], ['lockedEmDash', 'em-dash(—) 잠금 파일(worker/index.ts)'], ['sectionNum', '섹션번호 뱃지(01/02…)'], ['koUpper', '한글 라벨에 uppercase']]) {
+  if (cur[k] > (base[k] ?? 0)) {
+    bad = true
+    console.error(`❌ anti-slop: ${ko} ${base[k] ?? 0} → ${cur[k]} (신규 ${cur[k] - (base[k] ?? 0)}건)`)
+    hits[k].slice(0, 12).forEach((h) => console.error('   ' + h))
+  }
+}
+if (bad) {
+  console.error('\n   고치는 법: em-dash 는 쉼표·마침표·괄호로 · 순서는 목록이 말하게(번호 뱃지 금지)')
+  console.error('   · 한글 라벨의 uppercase 는 효과가 없으니 제거(tracking 도 함께).')
+  console.error('   의도적이면 그 줄에 `anti-slop-ok` 주석.')
+  process.exit(1)
+}
+console.log(`✅ anti-slop: em-dash ${cur.emDash}(≤${base.emDash}) · 잠금파일 ${cur.lockedEmDash}(≤${base.lockedEmDash ?? 0}) · 섹션번호 ${cur.sectionNum}(≤${base.sectionNum}) · 한글 uppercase ${cur.koUpper}(≤${base.koUpper}) · 블로그 제목 em-dash ${seed.titleEm.length}(=0) · 블로그 본문 ${seed.bodyEm}(≤${base.blogSeedBodyEmDash ?? 0})`)

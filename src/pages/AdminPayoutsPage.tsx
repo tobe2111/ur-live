@@ -1,0 +1,529 @@
+/**
+ * 🛡️ 2026-05-21 Phase C: 어드민 통합 정산 페이지.
+ *   /admin/payouts
+ *
+ * - pending 잔액 조회 (ledger credit - 이미 처리된 payouts)
+ * - "정산 일괄 생성" 버튼 → pending payouts row 생성
+ * - 각 payout: 승인 → 송금 완료 (transaction_id 입력) → audit
+ */
+import { useEffect, useState } from 'react'
+import { formatKSTDate } from '@/utils/date'
+import { useNavigate } from 'react-router-dom'
+import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
+import BulkPayoutBar from './admin-payouts/BulkPayoutBar'
+import { toast } from '@/hooks/useToast'
+import AdminLayout from '@/components/AdminLayout'
+import AdminFinanceTabs from '@/components/admin/AdminFinanceTabs'
+import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
+import { Wallet, CheckCircle, Send, XCircle } from 'lucide-react'
+import { formatWon } from '@/utils/format'
+import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
+
+interface Payout {
+  id: number
+  payee_type: 'store_owner' | 'seller' | 'agency' | 'user'
+  payee_id: string
+  amount: number
+  period_start: string
+  period_end: string
+  status: 'pending' | 'approved' | 'sent' | 'failed' | 'cancelled'
+  bank_name: string | null
+  account_number: string | null
+  account_holder: string | null
+  transaction_id: string | null
+  admin_memo: string | null
+  error_message: string | null
+  created_at: string
+  approved_at: string | null
+  sent_at: string | null
+  // 💸 2026-07-01 정산 정합: 서버가 pending 건에 부착(정정 전 gross 식별).
+  _stale?: boolean
+  _available?: number
+}
+
+interface PendingRow {
+  account: string
+  pending_amount: number
+  total_credited: number
+  total_paid: number
+}
+
+const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
+  pending: { label: '검토 대기', cls: 'bg-tone-warn-bg text-tone-warn' },
+  approved: { label: '승인됨', cls: 'bg-tone-info-bg text-tone-info' },
+  sent: { label: '송금 완료', cls: 'bg-tone-ok-bg text-tone-ok' },
+  failed: { label: '실패', cls: 'bg-tone-bad-bg text-tone-bad' },
+  cancelled: { label: '취소', cls: 'bg-gray-100 text-gray-600' },
+}
+
+export default function AdminPayoutsPage() {
+  const navigate = useNavigate()
+  const [tab, setTab] = useState<'pending_ledger' | 'payouts' | 'rates' | 'annual'>('pending_ledger')
+  const [filter, setFilter] = useState<'pending' | 'approved' | 'sent' | 'all'>('pending')
+  // 🏦 2026-08-27: 일괄 처리 선택. 필터를 바꾸면 비운다 — 안 보이는 행이 선택된 채로 남으면
+  //   화면엔 3건인데 실제로는 30건이 처리되는 사고가 난다.
+  const [picked, setPicked] = useState<Set<number>>(new Set())
+  // 🛡️ 2026-05-21 Phase D: commission rates + 연말 리포트.
+  const [rates, setRates] = useState({ platform_fee_pct: '5', seller_commission_pct: '10' }) // 🛑 영입 셰어 % 입력은 2026-10-10 폐지(ledger.ts 묘비)
+  const [savingRates, setSavingRates] = useState(false)
+  const [annualYear, setAnnualYear] = useState(String(new Date().getFullYear() - 1))
+  const [annualType, setAnnualType] = useState<'all' | 'store_owner' | 'seller' | 'agency'>('all')
+
+  useEffect(() => {
+    if (!localStorage.getItem('admin_token')) navigate('/admin/login')
+  }, [navigate])
+
+  // 🛡️ 2026-06-03 Tier2(대시보드): 탭별 수동 페칭 → useApiQuery (pending/payouts 리스트 + rates 폼 시드).
+  const pendingQ = useApiQuery<PendingRow[]>(['admin', 'payouts-pending'], '/api/admin/payouts/pending', { enabled: tab === 'pending_ledger', select: (r: any) => (r?.success ? r.data || [] : []) })
+  const payoutsQ = useApiQuery<Payout[]>(['admin', 'payouts-list', filter], '/api/admin/payouts', { params: { status: filter }, enabled: tab === 'payouts', select: (r: any) => (r?.success ? r.data || [] : []) })
+  const ratesQ = useApiQuery<typeof rates | null>(['admin', 'payouts-rates'], '/api/admin/payouts/commission-rates', { enabled: tab === 'rates', select: (r: any) => (r?.success ? r.data : null) })
+  const pending = pendingQ.data ?? []
+  const payouts = payoutsQ.data ?? []
+  useEffect(() => { setPicked(new Set()) }, [filter])
+  const loading = tab === 'pending_ledger' ? pendingQ.isLoading : tab === 'payouts' ? payoutsQ.isLoading : false
+  // rates 탭은 편집형 폼 → 쿼리 데이터 도착 시 로컬 state 시드.
+  useEffect(() => { if (ratesQ.data) setRates(ratesQ.data) }, [ratesQ.data])
+
+  const load = () => { if (tab === 'pending_ledger') pendingQ.refetch(); else if (tab === 'payouts') payoutsQ.refetch() }
+
+  async function generate() {
+    if (!(await confirmDialog('지난주 정산 일괄 생성 (10,000원 이상 잔액만)?'))) return
+    try {
+      const res = await api.post('/api/admin/payouts/generate', {})
+      if (res.data?.success) {
+        toast.success(`${res.data.data.created}건 생성됨`)
+        setTab('payouts')
+      } else toast.error(res.data?.error || '실패')
+    } catch (e: unknown) {
+      const ax = e as { response?: { data?: { error?: string } } }
+      toast.error(ax.response?.data?.error || '실패')
+    }
+  }
+
+  async function approve(p: Payout) {
+    if (!(await confirmDialog(`${formatWon(p.amount)} 송금 승인하시겠습니까?`))) return
+    try {
+      const res = await api.patch(`/api/admin/payouts/${p.id}/approve`)
+      if (res.data?.success) { toast.success('승인됨'); load() }
+      else toast.error(res.data?.error || '실패')
+    } catch (e: unknown) {
+      // 409 사유(계좌 미재확인·옛 계좌·잔액 초과)를 그대로 보여 준다 — '실패' 만 띄우면 운영자가 무엇을 할지 모른다.
+      const ax = e as { response?: { data?: { error?: string } } }
+      toast.error(ax.response?.data?.error || '실패')
+    }
+  }
+
+  async function markSent(p: Payout) {
+    const txId = window.prompt(`송금 transaction_id 입력 (은행 거래번호 또는 토스 ID):\n계좌: ${p.bank_name || ''} ${p.account_number || ''} (${p.account_holder || ''})\n금액: ${formatWon(p.amount)}`)
+    if (!txId) return
+    try {
+      const res = await api.patch(`/api/admin/payouts/${p.id}/sent`, { transaction_id: txId.trim() })
+      if (res.data?.success) { toast.success('송금 완료 마킹'); load() }
+      else toast.error(res.data?.error || '실패')
+    } catch (e: unknown) {
+      const ax = e as { response?: { data?: { error?: string } } }
+      toast.error(ax.response?.data?.error || '실패')
+    }
+  }
+
+  async function cancel(p: Payout) {
+    const reason = window.prompt('취소 사유:')
+    if (!reason) return
+    try {
+      const res = await api.patch(`/api/admin/payouts/${p.id}/cancel`, { reason })
+      if (res.data?.success) { toast.success('취소됨'); load() }
+      else toast.error(res.data?.error || '실패')
+    } catch (e: unknown) {
+      // 🤝 손바뀜 마감 행인데 이미 주인이 바뀌었다 — 취소하면 돈의 방향이 바뀐다.
+      //   서버가 막지 않고 알려 주므로, 무슨 일이 일어나는지 보여 주고 한 번 더 받는다.
+      const ax = e as { response?: { data?: { code?: string; error?: string } } }
+      if (ax.response?.data?.code === 'HANDOVER_CLOSEOUT_RELEASE') {
+        const ok = await confirmDialog({
+          title: '이 돈이 새 소유자 몫으로 돌아갑니다',
+          message: (ax.response.data.error || '') + '\n\n정말 취소할까요?',
+          confirmText: '알겠습니다, 취소',
+          danger: true,
+        })
+        if (!ok) return
+        try {
+          const res2 = await api.patch(`/api/admin/payouts/${p.id}/cancel`, { reason, confirm_release: true })
+          if (res2.data?.success) { toast.success('취소됨'); load() }
+          else toast.error(res2.data?.error || '실패')
+        } catch { toast.error('실패') }
+        return
+      }
+      toast.error(ax.response?.data?.error || '실패')
+    }
+  }
+
+  /**
+   * 🤝 손바뀜 마감 — 주인이 바뀌기 **전에** 지금 주인 몫을 떼어 배정한다 (대표 확정 2026-09-08).
+   *   송금은 안 한다. `pending` 행을 만들 뿐이고, 그 행이 **지금 계좌를 스냅샷**해서 들고 있으므로
+   *   나중에 주인이 바뀌어도 그 돈은 이전 주인에게 간다.
+   */
+  async function closeout(row: PendingRow) {
+    const sellerId = Number(row.account.split(':')[1])
+    if (!Number.isFinite(sellerId)) { toast.error('매장 계정이 아닙니다'); return }
+    const ok = await confirmDialog({
+      title: '손바뀜 마감',
+      message: `${row.account} 의 미정산 ${formatWon(row.pending_amount)} 을 **지금 소유자** 몫으로 배정합니다.\n`
+        + '송금은 하지 않습니다 — 정산 목록에 검토 대기로 올라가고, 승인·송금은 종전대로 진행합니다.\n'
+        + '배정이 끝나면 이 매장의 소유자를 변경할 수 있게 됩니다.',
+      confirmText: '마감하기',
+    })
+    if (!ok) return
+    const reason = await promptDialog({
+      title: '마감 사유',
+      message: '왜 지금 마감하는지 남겨주세요. 감사로그에 그대로 기록됩니다.',
+      prompt: { placeholder: '예: 홍대돈까스 사장님께 매장 이관 예정', required: true },
+    })
+    if (!reason || reason.trim().length < 5) { toast.error('사유를 5자 이상 적어주세요'); return }
+    try {
+      const res = await api.post('/api/admin/payouts/handover-closeout', { seller_id: sellerId, reason })
+      const d = res.data?.data
+      if (res.data?.success && d?.closed) {
+        toast.success(`${formatWon(d.amount)} 을 ${d.account_holder || '지금 소유자'} 몫으로 배정했습니다`)
+        load()
+      } else if (res.data?.success) {
+        toast.success(d?.note || '마감할 잔액이 없습니다')
+      } else toast.error(res.data?.error || '실패')
+    } catch (e: unknown) {
+      const ax = e as { response?: { data?: { error?: string } } }
+      toast.error(ax.response?.data?.error || '실패')
+    }
+  }
+
+  return (
+    <AdminLayout title="통합 정산">
+      <AdminFinanceTabs />
+      <DashboardPageHeader
+        icon={<Wallet className="w-5 h-5" />}
+        title="통합 정산 (Payouts)"
+        subtitle="ledger 잔액 확인 + 주 1회 정산 일괄 생성 + 송금 처리"
+      />
+
+      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 flex items-center gap-2 flex-wrap">
+        <button
+          onClick={() => setTab('pending_ledger')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${tab === 'pending_ledger' ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700'}`}
+        >
+          ledger 잔액
+        </button>
+        <button
+          onClick={() => setTab('payouts')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${tab === 'payouts' ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700'}`}
+        >
+          payouts 목록
+        </button>
+        <button
+          onClick={() => setTab('rates')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${tab === 'rates' ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700'}`}
+        >
+          수수료율
+        </button>
+        <button
+          onClick={() => setTab('annual')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${tab === 'annual' ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700'}`}
+        >
+          연말 리포트
+        </button>
+        {(tab === 'pending_ledger' || tab === 'payouts') && (
+          <button
+            onClick={generate}
+            className="ur-btn ur-btn-sm ur-btn-primary ml-auto"
+          >
+            + 지난주 정산 생성
+          </button>
+        )}
+      </div>
+
+      {/* 🛡️ 2026-07-01 (어드민 라이브 감사): 5xx/401/403 을 "정산 대기 잔액 없음" 으로 위장하지 않도록 표면화 */}
+      {((tab === 'pending_ledger' && pendingQ.isError) || (tab === 'payouts' && payoutsQ.isError)) && (
+        <div className="mb-4">
+          <DashboardLoadError
+            error={tab === 'pending_ledger' ? pendingQ.error : payoutsQ.error}
+            onRetry={() => (tab === 'pending_ledger' ? pendingQ.refetch() : payoutsQ.refetch())}
+            loginPath="/admin/login"
+            label={tab === 'pending_ledger' ? 'ledger 잔액' : 'payouts 목록'}
+          />
+        </div>
+      )}
+
+      {tab === 'pending_ledger' ? (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          {loading ? (
+            <p className="p-12 text-center text-sm text-gray-400">불러오는 중...</p>
+          ) : pending.length === 0 ? (
+            <p className="p-12 text-center text-sm text-gray-400">정산 대기 잔액 없음.</p>
+          ) : (
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr className="text-xs text-gray-500">
+                  <th className="px-4 py-3 text-left">계정</th>
+                  <th className="px-4 py-3 text-right">총 발생액</th>
+                  <th className="px-4 py-3 text-right">이미 송금</th>
+                  <th className="px-4 py-3 text-right">미정산 잔액</th>
+                  <th className="px-4 py-3 text-right">손바뀜</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pending.map((p, i) => (
+                  <tr key={i} className="border-t border-gray-100 text-xs">
+                    <td className="px-4 py-3 font-mono">{p.account}</td>
+                    <td className="px-4 py-3 text-right text-gray-700">{formatWon(p.total_credited)}</td>
+                    <td className="px-4 py-3 text-right text-gray-500">{formatWon(p.total_paid)}</td>
+                    <td className="px-4 py-3 text-right font-bold text-tone-warn">{formatWon(p.pending_amount)}</td>
+                    <td className="px-4 py-3 text-right">
+                      {/* 매장 계정만 — 소유자가 바뀔 수 있는 건 매장뿐이다. */}
+                      {p.account.startsWith('seller:') && p.pending_amount > 0 ? (
+                        <button
+                          onClick={() => closeout(p)}
+                          className="px-2 py-1 rounded-md border border-gray-300 text-[11px] font-bold text-gray-700 hover:bg-gray-50"
+                          title="주인이 바뀌기 전에 지금 소유자 몫을 떼어 배정합니다 (송금 아님)"
+                        >
+                          마감
+                        </button>
+                      ) : <span className="text-gray-300">-</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      ) : (
+        <>
+          <div className="bg-white rounded-xl border border-gray-200 p-3 mb-3 flex items-center gap-2">
+            {(['pending', 'approved', 'sent', 'all'] as const).map(s => (
+              <button
+                key={s}
+                onClick={() => setFilter(s)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium ${filter === s ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700'}`}
+              >
+                {s === 'pending' ? '검토 대기' : s === 'approved' ? '승인됨' : s === 'sent' ? '송금 완료' : '전체'}
+              </button>
+            ))}
+          </div>
+          {/* 🏦 2026-08-27: 일괄 처리 — 승인 → 이체 파일 → 은행 1회 업로드 → 일괄 송금완료.
+              그 전엔 수취인 30명이면 매주 90번을 클릭·이체해야 했다. */}
+          <BulkPayoutBar
+            selected={payouts.filter(p => picked.has(p.id)).map(p => ({ id: p.id, amount: p.amount, status: p.status }))}
+            onDone={load}
+            onClear={() => setPicked(new Set())}
+          />
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            {loading ? (
+              <p className="p-12 text-center text-sm text-gray-400">불러오는 중...</p>
+            ) : payouts.length === 0 ? (
+              <p className="p-12 text-center text-sm text-gray-400">해당 상태의 payouts 없음.</p>
+            ) : (
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr className="text-xs text-gray-500">
+                    <th className="px-3 py-3 text-center w-10">
+                      <input
+                        type="checkbox"
+                        aria-label="전체 선택"
+                        checked={payouts.length > 0 && picked.size === payouts.length}
+                        onChange={(e) => setPicked(e.target.checked ? new Set(payouts.map(p => p.id)) : new Set())}
+                        className="h-3.5 w-3.5 accent-gray-900"
+                      />
+                    </th>
+                    <th className="px-4 py-3 text-left">생성일</th>
+                    <th className="px-4 py-3 text-left">수령자</th>
+                    <th className="px-4 py-3 text-right">금액</th>
+                    <th className="px-4 py-3 text-left">계좌</th>
+                    <th className="px-4 py-3 text-center">상태</th>
+                    <th className="px-4 py-3 text-center">액션</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {payouts.map(p => {
+                    const meta = STATUS_LABEL[p.status]
+                    return (
+                      <tr key={p.id} className="border-t border-gray-100 text-xs">
+                        <td className="px-3 py-3 text-center">
+                          <input
+                            type="checkbox"
+                            aria-label={`정산 ${p.id} 선택`}
+                            checked={picked.has(p.id)}
+                            onChange={(e) => setPicked(prev => {
+                              const next = new Set(prev)
+                              if (e.target.checked) next.add(p.id); else next.delete(p.id)
+                              return next
+                            })}
+                            className="h-3.5 w-3.5 accent-gray-900"
+                          />
+                        </td>
+                        <td className="px-4 py-3 text-gray-700">{formatKSTDate(p.created_at)}</td>
+                        <td className="px-4 py-3">
+                          <div className="font-mono">{p.payee_type}:{p.payee_id}</div>
+                          <div className="text-[10px] text-gray-400">{p.period_start} ~ {p.period_end}</div>
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold">
+                          {formatWon(p.amount)}
+                          {p._stale && (
+                            <div className="mt-0.5 text-[10px] font-medium text-tone-bad" title="정산식 정정 이전에 생성된 금액입니다. 현재 정산 가능액과 다릅니다 — 취소 후 재생성 권장(승인 시 자동 차단).">
+                              확인 필요 · 현재 {formatWon(p._available ?? 0)}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-gray-700">
+                          {p.account_holder || '-'}
+                          {p.account_number && <div className="font-mono text-[10px]">{p.account_number}</div>}
+                          {p.transaction_id && <div className="text-[10px] text-tone-ok">TX: {p.transaction_id}</div>}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium ${meta.cls}`}>{meta.label}</span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {p.status === 'pending' && (
+                            <div className="flex items-center justify-center gap-1">
+                              <button onClick={() => approve(p)} className="ur-btn ur-btn-sm ur-btn-primary rounded text-[10px] flex items-center gap-1">
+                                <CheckCircle className="w-3 h-3" /> 승인
+                              </button>
+                              <button onClick={() => cancel(p)} className="px-2 py-1 bg-gray-500 text-white rounded text-[10px] flex items-center gap-1">
+                                <XCircle className="w-3 h-3" /> 취소
+                              </button>
+                            </div>
+                          )}
+                          {p.status === 'approved' && (
+                            <button onClick={() => markSent(p)} className="ur-btn ur-btn-sm ur-btn-primary rounded text-[10px] flex items-center gap-1 mx-auto">
+                              <Send className="w-3 h-3" /> 송금완료
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* ⚙️ 수수료율 조정 (어드민) — 변경 시 다음 voucher 부터 자동 적용 */}
+      {tab === 'rates' && (
+        <div className="bg-white rounded-xl border border-gray-200 p-6 max-w-xl">
+          <h2 className="text-sm font-bold text-gray-900 mb-4">수수료율 조정</h2>
+          <p className="text-xs text-gray-500 mb-4 leading-relaxed">
+            • voucher 사용 시점에 자동으로 ledger entry 생성 시 적용됨<br />
+            • 변경 즉시 다음 voucher 부터 새 비율 사용 (기존 entry 영향 X)<br />
+            • 모든 비율은 % 단위 (0 ~ 100)
+          </p>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">플랫폼 fee % <span className="text-gray-400">(default 5)</span></label>
+              <input
+                type="number" min={0} max={30} step={0.5}
+                value={rates.platform_fee_pct}
+                onChange={e => setRates(r => ({ ...r, platform_fee_pct: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-brand"
+              />
+              <p className="text-[10px] text-gray-400 mt-1">전체 매출에서 플랫폼이 가져가는 비율</p>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">셀러 위탁 판매 commission % <span className="text-gray-400">(default 10)</span></label>
+              <input
+                type="number" min={0} max={50} step={0.5}
+                value={rates.seller_commission_pct}
+                onChange={e => setRates(r => ({ ...r, seller_commission_pct: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-brand"
+              />
+              <p className="text-[10px] text-gray-400 mt-1">위탁 판매 (consignment) 시 셀러 commission</p>
+            </div>
+          </div>
+          <button
+            onClick={async () => {
+              if (!(await confirmDialog('수수료율을 저장하시겠습니까? (즉시 적용)'))) return
+              setSavingRates(true)
+              try {
+                const res = await api.patch('/api/admin/payouts/commission-rates', {
+                  platform_fee_pct: Number(rates.platform_fee_pct),
+                  seller_commission_pct: Number(rates.seller_commission_pct),
+                })
+                if (res.data?.success) toast.success('저장됨 — 다음 voucher 부터 적용')
+                else toast.error(res.data?.error || '저장 실패')
+              } catch (e: unknown) {
+                const ax = e as { response?: { data?: { error?: string } } }
+                toast.error(ax.response?.data?.error || '저장 실패')
+              } finally { setSavingRates(false) }
+            }}
+            disabled={savingRates}
+            className="mt-6 w-full py-2.5 bg-gray-900 text-white rounded-lg text-sm font-bold disabled:opacity-50"
+          >
+            {savingRates ? '저장 중...' : '저장'}
+          </button>
+        </div>
+      )}
+
+      {/* 📄 연말 정산 리포트 — CSV download */}
+      {tab === 'annual' && (
+        <div className="bg-white rounded-xl border border-gray-200 p-6 max-w-xl">
+          <h2 className="text-sm font-bold text-gray-900 mb-4">연말 정산 리포트</h2>
+          <p className="text-xs text-gray-500 mb-4 leading-relaxed">
+            • payouts.sent + ledger 합산 → payee 별 연간 수입 CSV<br />
+            • 사업자등록번호 / 계좌 / 입금 횟수 / 첫·마지막 입금일 포함<br />
+            • 세무사 제공용 — UTF-8 BOM (Excel 한글 안 깨짐)
+          </p>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">연도</label>
+              <input
+                type="number" min={2024} max={2100}
+                value={annualYear}
+                onChange={e => setAnnualYear(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">수령자 유형</label>
+              <select
+                value={annualType}
+                onChange={e => setAnnualType(e.target.value as 'all' | 'store_owner' | 'seller' | 'agency')}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white"
+              >
+                <option value="all">전체</option>
+                <option value="store_owner">사장님 (store_owner)</option>
+                <option value="seller">셀러 (seller)</option>
+                <option value="agency">에이전시 (agency)</option>
+              </select>
+            </div>
+          </div>
+          <button
+            onClick={async () => {
+              const token = localStorage.getItem('admin_token')
+              const url = `/api/admin/tax/annual-report?year=${annualYear}&payee_type=${annualType}&format=csv`
+              try {
+                const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+                if (!res.ok) { toast.error(`다운로드 실패 (${res.status})`); return }
+                const blob = await res.blob()
+                const link = document.createElement('a')
+                link.href = URL.createObjectURL(blob)
+                link.download = `urdeal-annual-${annualYear}-${annualType}.csv`
+                link.click()
+                URL.revokeObjectURL(link.href)
+                toast.success('CSV 다운로드 완료')
+              } catch {
+                toast.error('다운로드 실패')
+              }
+            }}
+            className="mt-6 w-full py-2.5 bg-gray-900 text-white rounded-lg text-sm font-bold"
+          >
+            CSV 다운로드
+          </button>
+          <a
+            href={`/api/admin/tax/annual-report?year=${annualYear}&payee_type=${annualType}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block mt-2 text-center py-2 text-xs text-brand-text hover:underline"
+          >
+            JSON 미리보기 →
+          </a>
+        </div>
+      )}
+    </AdminLayout>
+  )
+}

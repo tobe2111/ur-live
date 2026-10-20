@@ -1,0 +1,181 @@
+import { useNavigate } from 'react-router-dom'
+import { HeartIcon, TicketStubIcon, GiftBoxIcon, BoxIcon, SettingsIcon, BellIcon, StoreIcon, LogOutIcon } from '@/components/icons/urdeal-icons'
+import { useTranslation } from '@/lib/i18n-lite'
+import { X, ChevronRight, Coins, HelpCircle, Smartphone, LogIn, UserPlus } from 'lucide-react'
+import { getUserNameSync, getUserEmail } from '@/utils/auth'
+import { sellerEntryPath } from '@/utils/seller-entry'
+
+/**
+ * 👤 계정 드롭다운 패널 (2026-08-19 — 대표가 공유한 그루폰 계정 패널 시안).
+ *
+ * 그루폰 구조를 그대로 따른다: `Hi, 이름!` + 닫기 → 계정 행(이름·이메일) → 메뉴 리스트
+ * (우측에 값/카운트) → 앱 블록 → 판매하세요 / 로그아웃.
+ *
+ * 🚫 **여기서 데이터를 새로 부르지 않는다.** 카운트는 헤더가 이미 갖고 있는 값(`useWishlist`/
+ *    `useUnreadCount`)을 prop 으로 받는다 — 패널을 열 때마다 네트워크가 튀면 안 된다.
+ *
+ * 🔗 목적지는 전부 실재하는 라우트다(App.tsx 확인). 없는 기능(그루폰 Bucks·기프트카드 등)은
+ *    흉내내지 않고 뺀다 — 눌렀는데 아무 데도 안 가는 항목이 제일 나쁘다.
+ */
+
+type Row = { icon: typeof HeartIcon; label: string; path: string; badge?: string }
+
+export default function AccountMenu({
+  loggedIn,
+  unreadCount,
+  wishCount,
+  onClose,
+  onOpenApp,
+}: {
+  loggedIn: boolean
+  unreadCount: number
+  wishCount: number
+  onClose: () => void
+  onOpenApp: () => void
+}) {
+  const navigate = useNavigate()
+  const { t } = useTranslation()
+  const name = getUserNameSync() || ''
+  const email = getUserEmail() || ''
+
+  const go = (path: string) => { onClose(); navigate(path) }
+
+  const rows: Row[] = loggedIn
+    ? [
+        { icon: HeartIcon,      label: t('nav.myWishlist', { defaultValue: '찜한 이용권' }), path: '/wishlist', badge: wishCount > 0 ? String(wishCount) : undefined },
+        { icon: TicketStubIcon,     label: t('nav.myVouchers', { defaultValue: '내 이용권' }), path: '/my-vouchers' },
+        // 🎟️ 2026-08-31 (지갑 분리): 교환권(문자로 받는 기프티콘)은 별도 보관함.
+        { icon: GiftBoxIcon,       label: t('nav.myGifticons', { defaultValue: '내 교환권' }), path: '/my-gifticons' },
+        { icon: BoxIcon,    label: t('nav.myOrders', { defaultValue: '주문 내역' }), path: '/my-orders' },
+        { icon: Coins,      label: t('nav.myDeal', { defaultValue: '딜 내역' }), path: '/my-deal-history' },
+        { icon: BellIcon,       label: t('nav.notifications', { defaultValue: '알림' }), path: '/notifications', badge: unreadCount > 0 ? String(unreadCount) : undefined },
+        { icon: SettingsIcon,   label: t('nav.settings', { defaultValue: '설정' }), path: '/account/settings' },
+        { icon: HelpCircle, label: t('nav.support', { defaultValue: '고객센터' }), path: '/faq' },
+      ]
+    : [
+        { icon: LogIn,      label: t('auth.login', { defaultValue: '로그인' }), path: '/login' },
+        { icon: UserPlus,   label: t('auth.signup', { defaultValue: '회원가입' }), path: '/register' },
+        { icon: HelpCircle, label: t('nav.support', { defaultValue: '고객센터' }), path: '/faq' },
+      ]
+
+  /**
+   * 🔑 명시적 로그아웃 = **전 역할 종료**(2026-07-07 대표 확정 "전부 로그아웃", `logoutAll`).
+   *
+   * 🩸 2026-10-01 (대표 신고 — "로그아웃했는데 로그아웃하라는 UI 가 뜬다"): 여기는 그 확정 **이후**
+   *   만들어진 입구(08-19 그루폰식 헤더)인데 옛 방식(`clearAuthData('user')` = 소비자만 정리)을
+   *   쓰고 있었다. 그래서 다중역할 계정은 로그아웃을 눌러도 `seller_token`/`admin_token` 이 남아
+   *   헤더가 계속 로그인 상태로 보였다 — 같은 버그가 **새 문으로 다시 들어온** 것이다.
+   *   마이페이지는 이미 `logoutAll()` 을 쓴다. 두 입구가 다른 로그아웃을 하면 안 된다.
+   *
+   * ⚠️ `logoutAll()` 이 서버 세션쿠키 삭제를 **await 한 뒤** 스스로 홈으로 하드 리로드까지 한다
+   *   (여기서 `window.location.href` 를 또 부르면 쿠키 삭제가 끝나기 전에 떠나 재인증 레이스가 난다).
+   */
+  async function signOut() {
+    onClose()
+    try {
+      const { logoutAll } = await import('@/features/auth/login-flow.service')
+      await logoutAll()
+    } catch {
+      // 모듈 로드/네트워크 실패 — 최소한 홈으로는 보낸다(다음 진입에서 재시도).
+      window.location.href = '/'
+    }
+  }
+
+  return (
+    <div
+      role="menu"
+      aria-label={t('nav.my', { defaultValue: '마이' })}
+      className="absolute right-0 top-[calc(100%+10px)] w-[300px] max-h-[min(78vh,680px)] overflow-y-auto rounded-2xl bg-white dark:bg-[#141C27] border border-gray-100 dark:border-[#2C2F35] shadow-[0_16px_40px_-14px_rgba(10,20,40,.45)] z-50"
+    >
+      {/* 인사 + 닫기 */}
+      <div className="flex items-start justify-between gap-3 px-5 pt-4 pb-1">
+        <p className="text-[17px] font-black tracking-tight text-gray-900 dark:text-white">
+          {loggedIn && name
+            ? t('nav.greeting', { defaultValue: '안녕하세요, {{name}}님!', name })
+            : t('nav.greetingGuest', { defaultValue: '유어딜에 오신 걸 환영해요' })}
+        </p>
+        <button
+          onClick={onClose}
+          aria-label={t('common.close', { defaultValue: '닫기' })}
+          className="shrink-0 w-7 h-7 -mt-0.5 rounded-full border border-line flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.05]"
+        >
+          <X className="w-3.5 h-3.5" strokeWidth={2.4} />
+        </button>
+      </div>
+
+      {/* 계정 행 — 누르면 내 계정으로 */}
+      {loggedIn && (
+        <button
+          role="menuitem"
+          onClick={() => go('/user/profile')}
+          className="w-full flex items-center gap-3 px-5 py-3 mt-1 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors text-left"
+        >
+          <span className="shrink-0 w-9 h-9 rounded-full bg-gray-100 dark:bg-white/[0.10] flex items-center justify-center text-[15px] font-black text-gray-500 dark:text-gray-300">
+            {(name || '유').slice(0, 1)}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[13px] font-bold text-gray-900 dark:text-white truncate">{name || t('nav.my', { defaultValue: '마이' })}</span>
+            {email && <span className="block text-[12px] text-gray-400 dark:text-gray-500 truncate">{email}</span>}
+          </span>
+          <ChevronRight className="shrink-0 w-4 h-4 text-gray-300 dark:text-gray-600" strokeWidth={2} />
+        </button>
+      )}
+
+      <div className="mx-5 h-px bg-gray-100 dark:bg-[#2C2F35]" />
+
+      {/* 메뉴 */}
+      <div className="py-2">
+        {rows.map(({ icon: Icon, label, path, badge }) => (
+          <button
+            key={path}
+            role="menuitem"
+            onClick={() => go(path)}
+            className="w-full flex items-center gap-3 px-5 py-2 text-[13px] font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors"
+          >
+            <Icon className="shrink-0 w-[18px] h-[18px] text-gray-400 dark:text-gray-500" strokeWidth={1.9} />
+            <span className="flex-1 text-left">{label}</span>
+            {badge && <span className="shrink-0 text-[12px] font-bold text-brand">{badge}</span>}
+          </button>
+        ))}
+      </div>
+
+      {/* 앱 — 그루폰의 QR 블록 자리. 우리는 기존 앱 모달(QR)을 그대로 연다. */}
+      <div className="mx-5 h-px bg-gray-100 dark:bg-[#2C2F35]" />
+      <button
+        role="menuitem"
+        onClick={onOpenApp}
+        className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors"
+      >
+        <Smartphone className="shrink-0 w-[18px] h-[18px] text-gray-400 dark:text-gray-500" strokeWidth={1.9} />
+        <span className="min-w-0">
+          <span className="block text-[13px] font-bold text-gray-900 dark:text-white">
+            {t('nav.getApp', { defaultValue: '앱으로 보기' })}
+          </span>
+          <span className="block text-[12px] text-gray-400 dark:text-gray-500">
+            {t('nav.getAppHint', { defaultValue: 'QR 찍고 폰에서 이어서' })}
+          </span>
+        </span>
+      </button>
+
+      <div className="mx-5 h-px bg-gray-100 dark:bg-[#2C2F35]" />
+      <button
+        role="menuitem"
+        onClick={() => go(sellerEntryPath())}
+        className="w-full flex items-center gap-3 px-5 py-2 text-[13px] font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors"
+      >
+        <StoreIcon className="shrink-0 w-[17px] h-[17px]" />
+        {t('nav.sellOnUrdeal', { defaultValue: '유어딜에서 판매하세요' })}
+      </button>
+      {loggedIn && (
+        <button
+          role="menuitem"
+          onClick={() => void signOut()}
+          className="w-full flex items-center gap-3 px-5 py-2 mb-2 text-[13px] font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors"
+        >
+          <LogOutIcon className="shrink-0 w-[17px] h-[17px]" />
+          {t('auth.logout', { defaultValue: '로그아웃' })}
+        </button>
+      )}
+    </div>
+  )
+}

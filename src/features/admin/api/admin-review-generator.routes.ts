@@ -1,0 +1,749 @@
+/**
+ * Admin Review Generator Routes — 리뷰 자동 생성 (어드민 전용)
+ *
+ * 🛡️ 2026-04-22 배치 156 (TD-006 부분): admin-management.routes.ts 에서 분리.
+ * AI (Claude Haiku) + 템플릿 모드 지원.
+ *
+ * 엔드포인트:
+ * - POST   /reviews/generate                  — 리뷰 자동 생성 (template|ai)
+ * - GET    /reviews/product/:productId        — 상품별 리뷰 목록
+ * - DELETE /reviews/generated/:productId      — 생성된 리뷰 일괄 삭제
+ */
+import { Hono } from 'hono';
+import { safeError } from '@/worker/utils/safe-error'
+import { cors } from 'hono/cors';
+import type { Env } from '@/worker/types/env';
+import { writeAuditLog } from '@/worker/middleware/admin-security';
+import { KOREAN_NAMES, REVIEW_TEMPLATES } from './review-templates';
+import { isVoucherCategory } from '@/shared/constants/voucher-categories';
+import { buildStoreReviews } from '@/worker/utils/demo-review-generator';
+export const adminReviewGeneratorRoutes = new Hono<{ Bindings: Env }>();
+
+function safeAdminError(err: unknown, _env: Env): string {
+  // 🛡️ 2026-05-21: admin endpoint 는 admin auth 통과한 호출만 도달 — production 에서도
+  //   에러 message 노출 안전 (어드민 디버깅 우선). stack 은 미노출.
+  const msg = err instanceof Error ? err.message : String(err);
+  return msg.slice(0, 300);
+}
+
+// 📝 2026-07-04 (대표 "API 키 말고 지금 쓰는 토큰(Claude Code 세션)으로 생성 못해?"): **리뷰 import** —
+//   외부(운영 Claude 세션·수기)에서 작성한 리뷰를 그대로 삽입. 서버 LLM 키 불필요, 생성 주체는 세션.
+//   운영 플로우: 세션이 매장별로 사람처럼 다양하게 작성 → 이 엔드포인트로 저장(is_generated=1 → 일괄삭제 호환).
+adminReviewGeneratorRoutes.post('/reviews/import', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const body = await c.req.json<{ product_id?: number; reviews?: Array<{ rating?: number; content?: string; days_ago?: number }> }>().catch(() => ({} as never));
+    const productId = Number(body?.product_id);
+    const list = Array.isArray(body?.reviews) ? body.reviews : [];
+    if (!Number.isFinite(productId) || productId <= 0) return c.json({ success: false, error: 'product_id 필요' }, 400);
+    if (list.length < 1 || list.length > 200) return c.json({ success: false, error: 'reviews 1~200개 필요' }, 400);
+    const rows: Array<{ rating: number; content: string | null; daysAgo: number }> = [];
+    for (const r of list) {
+      const rating = Math.round(Number(r?.rating));
+      if (!Number.isFinite(rating) || rating < 1 || rating > 5) return c.json({ success: false, error: 'rating 은 1~5 정수' }, 400);
+      const content = typeof r?.content === 'string' ? r.content.slice(0, 500).trim() : '';
+      const daysAgo = Number.isFinite(Number(r?.days_ago)) ? Math.max(0, Math.min(365, Math.round(Number(r?.days_ago)))) : Math.floor(Math.random() * 75);
+      rows.push({ rating, content: content || null, daysAgo });
+    }
+    const prod = await DB.prepare('SELECT id FROM products WHERE id = ?').bind(productId).first().catch(() => null);
+    if (!prod) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
+    const stmts = rows.map((r) => {
+      const nm = KOREAN_NAMES[Math.floor(Math.random() * KOREAN_NAMES.length)];
+      const masked = nm[0] + '*' + nm[nm.length - 1];
+      return DB.prepare(
+        `INSERT INTO product_reviews (product_id, user_id, user_name, rating, content, is_generated, created_at)
+         VALUES (?, 'system-generated', ?, ?, ?, 1, datetime('now', '-' || ? || ' days'))`,
+      ).bind(productId, masked, r.rating, r.content, r.daysAgo);
+    });
+    for (let i = 0; i < stmts.length; i += 50) await DB.batch(stmts.slice(i, i + 50));
+    await DB.prepare(`
+      UPDATE products SET
+        review_count = COALESCE((SELECT COUNT(*) FROM product_reviews WHERE product_id = ?), 0),
+        avg_rating = COALESCE((SELECT ROUND(AVG(rating), 1) FROM product_reviews WHERE product_id = ?), 0),
+        sold_count = MAX(COALESCE(sold_count,0), (SELECT COUNT(*) FROM product_reviews WHERE product_id = ?) * 3),
+        updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(productId, productId, productId, productId).run().catch(() => {});
+    await writeAuditLog(c, { action: 'import_reviews', targetType: 'product', targetId: String(productId), after: { count: rows.length } }).catch(() => {});
+    return c.json({ success: true, data: { imported: rows.length } });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+adminReviewGeneratorRoutes.post('/reviews/generate', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const { product_id, product_name, product_price, product_category, count, avg_rating, options, mode } = await c.req.json<{
+      product_id: number; product_name?: string; product_price?: number; product_category?: string;
+      count: number; avg_rating: number; options?: string[]; mode?: 'template' | 'ai';
+    }>();
+
+    if (!product_id || !count || count < 1 || count > 20000) {
+      return c.json({ success: false, error: '상품 ID와 개수(1-20000)가 필요합니다' }, 400);
+    }
+
+    await writeAuditLog(c, {
+      action: 'generate_fake_reviews',
+      targetType: 'product',
+      targetId: String(product_id),
+      after: { count, avg_rating: avg_rating ?? 4.5, mode: mode ?? 'template' },
+    });
+
+    try {
+      await DB.prepare(`
+        CREATE TABLE IF NOT EXISTS product_reviews (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          product_id INTEGER NOT NULL,
+          user_id TEXT,
+          user_name TEXT NOT NULL,
+          rating INTEGER NOT NULL,
+          content TEXT,
+          selected_option TEXT,
+          is_generated INTEGER DEFAULT 0,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `).run();
+    } catch { /* exists */ }
+
+    let generated = 0;
+    const targetRating = avg_rating || 4.5;
+    const now = Date.now();
+    const BATCH_SIZE = 50;
+
+    // 🎯 2026-07-03 (대표 "AI 없이는 안되려나?"): 이용권(오프라인) 카테고리는 **모드 무관** 매장/업종 grounding
+    //   생성기 사용. buildStoreReviews 가 키 있으면 Claude, 없으면 **업종별 결정론 composer**(AI 없이 동작 · 배송어 금지).
+    //   → 템플릿/AI 어느 버튼이든 이용권은 매장 특색 리뷰가 나오고, 키 없어도 실패하지 않음. (쇼핑 상품만 아래 기존 분기.)
+    if (isVoucherCategory(product_category)) {
+      const meta = await DB.prepare('SELECT restaurant_name FROM products WHERE id = ?')
+        .bind(product_id).first<{ restaurant_name?: string }>().catch(() => null);
+      const reviews = await buildStoreReviews(c.env, {
+        name: product_name || '이용권',
+        category: product_category || 'etc_voucher',
+        storeName: meta?.restaurant_name || null,
+        price: product_price,
+      }, Math.min(count, 2000));
+      const nowV = Date.now();
+      const stmts = reviews.map((r) => {
+        const nm = KOREAN_NAMES[Math.floor(Math.random() * KOREAN_NAMES.length)];
+        const masked = nm[0] + '*' + nm[nm.length - 1];
+        const daysAgo = Math.floor(Math.random() * 90);
+        return DB.prepare(
+          'INSERT INTO product_reviews (product_id, user_id, user_name, rating, content, is_generated, created_at) VALUES (?, ?, ?, ?, ?, 1, ?)'
+        ).bind(product_id, 'system-generated', masked, r.rating, r.content || null, new Date(nowV - daysAgo * 86400000).toISOString());
+      });
+      for (let i = 0; i < stmts.length; i += 50) await DB.batch(stmts.slice(i, i + 50));
+      generated = stmts.length;
+      const soldInc = generated * (2 + Math.round(Math.random()));
+      await DB.prepare(`
+        UPDATE products SET
+          sold_count = COALESCE(sold_count, 0) + ?,
+          review_count = COALESCE((SELECT COUNT(*) FROM product_reviews WHERE product_id = ?), 0),
+          avg_rating = COALESCE((SELECT ROUND(AVG(rating), 1) FROM product_reviews WHERE product_id = ?), 0),
+          updated_at = datetime('now')
+        WHERE id = ?
+      `).bind(soldInc, product_id, product_id, product_id).run().catch(() => {});
+      const usedAi = !!(c.env as any).ANTHROPIC_API_KEY;
+      return c.json({ success: true, data: { generated }, message: `매장 특색 리뷰 ${generated}개 생성${usedAi ? '' : ' (AI 없이 업종별 생성)'}` });
+    }
+
+    // ── AI 모드 (쇼핑 상품) ──
+    if (mode === 'ai') {
+      const apiKey = (c.env as any).ANTHROPIC_API_KEY;
+      if (!apiKey) return c.json({ success: false, error: 'ANTHROPIC_API_KEY가 설정되지 않았습니다. Cloudflare 환경변수에 추가해주세요.' }, 400);
+
+      const aiCount = Math.min(count, 500);
+      const batchSize = 50;
+
+      for (let batchStart = 0; batchStart < aiCount; batchStart += batchSize) {
+        const batchCount = Math.min(batchSize, aiCount - batchStart);
+        const ratingsForBatch = Array.from({ length: batchCount }, () =>
+          Math.min(5, Math.max(1, Math.round(targetRating + (Math.random() - 0.5))))
+        );
+
+        try {
+          const prompt = `한국 온라인 쇼핑몰의 상품 리뷰를 ${batchCount}개 작성해주세요.
+
+상품 정보:
+- 상품명: ${product_name || '상품'}
+- 가격: ${product_price ? Number(product_price ?? 0).toLocaleString('ko-KR') + '원' : '미정'}
+- 카테고리: ${product_category || '일반'}
+${options?.length ? '- 옵션: ' + options.join(', ') : ''}
+
+각 리뷰의 별점: ${ratingsForBatch.join(', ')}
+
+규칙:
+- 실제 구매자가 쓴 것처럼 자연스럽고 다양하게
+- 1~3문장 길이, 구어체
+- 별점 4-5점은 긍정, 3점은 보통, 1-2점은 부정
+- 약 20%는 텍스트 없이 빈 문자열("")만 (별점만 매기는 사람)
+- 이모지 가끔 사용 (30% 확률)
+- 반복되는 표현 최소화
+
+JSON 배열로만 응답. 각 항목: {"content": "리뷰 내용", "rating": 별점}
+빈 리뷰는 {"content": "", "rating": 별점}`;
+
+          const res = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'x-api-key': apiKey,
+              'anthropic-version': '2023-06-01',
+              'content-type': 'application/json',
+            },
+            signal: AbortSignal.timeout(30_000),
+            body: JSON.stringify({
+              model: 'claude-haiku-4-5-20251001',
+              max_tokens: 4096,
+              messages: [{ role: 'user', content: prompt }],
+            }),
+          });
+
+          const data: any = await res.json();
+          const text = data?.content?.[0]?.text || '[]';
+
+          const jsonStr = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+          const parsed: unknown = JSON.parse(jsonStr);
+          if (!Array.isArray(parsed)) {
+            throw new Error('Expected array response from Claude');
+          }
+          for (const r of parsed) {
+            if (
+              typeof r !== 'object' || r === null ||
+              typeof (r as any).rating !== 'number' ||
+              typeof (r as any).content !== 'string'
+            ) {
+              throw new Error('Invalid review schema');
+            }
+          }
+          const reviews = parsed as { content: string; rating: number }[];
+
+          const stmts = reviews.map((r) => {
+            const name = KOREAN_NAMES[Math.floor(Math.random() * KOREAN_NAMES.length)];
+            const maskedName = name[0] + '*' + name[name.length - 1];
+            const daysAgo = Math.floor(Math.random() * 90);
+            const reviewDate = new Date(now - daysAgo * 86400000).toISOString();
+            const option = options?.length ? options[Math.floor(Math.random() * options.length)] : null;
+
+            return DB.prepare(
+              'INSERT INTO product_reviews (product_id, user_id, user_name, rating, content, selected_option, is_generated, created_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?)'
+            // 🛡️ 2026-05-18: NOT NULL user_id 충족 — 'system-generated' 마커 (이력 추적 + 진짜 user 와 구분).
+            ).bind(product_id, 'system-generated', maskedName, r.rating, r.content || null, option, reviewDate);
+          });
+
+          await DB.batch(stmts);
+          generated += stmts.length;
+        } catch (e) {
+          if (import.meta.env.DEV) console.error('[AI Review] Batch error:', e);
+        }
+      }
+
+      const soldIncrement = generated * (2 + Math.round(Math.random()));
+      // 🛡️ 2026-05-23: avg_rating + review_count 도 함께 갱신 — 안 하면 카드 UI 에 별점 표시 X.
+      try {
+        await DB.prepare(`
+          UPDATE products SET
+            sold_count = COALESCE(sold_count, 0) + ?,
+            review_count = COALESCE((SELECT COUNT(*) FROM product_reviews WHERE product_id = ?), 0),
+            avg_rating = COALESCE((SELECT ROUND(AVG(rating), 1) FROM product_reviews WHERE product_id = ?), 0),
+            updated_at = datetime('now')
+          WHERE id = ?
+        `).bind(soldIncrement, product_id, product_id, product_id).run()
+      } catch {}
+
+      return c.json({ success: true, data: { generated }, message: `AI로 ${generated}개 리뷰가 생성되었습니다` });
+    }
+
+    // ── 템플릿 모드 ──
+    for (let batchStart = 0; batchStart < count; batchStart += BATCH_SIZE) {
+      const batchEnd = Math.min(batchStart + BATCH_SIZE, count);
+      const stmts = [];
+
+      for (let i = batchStart; i < batchEnd; i++) {
+        const rating = Math.min(5, Math.max(1, Math.round(targetRating + (Math.random() - 0.5))));
+        const name = KOREAN_NAMES[Math.floor(Math.random() * KOREAN_NAMES.length)];
+        const maskedName = name[0] + '*' + name[name.length - 1];
+        const content = REVIEW_TEMPLATES[Math.floor(Math.random() * REVIEW_TEMPLATES.length)] || null;
+        const option = options && options.length > 0 ? options[Math.floor(Math.random() * options.length)] : null;
+        const daysAgo = Math.floor(Math.random() * 90);
+        const reviewDate = new Date(now - daysAgo * 86400000).toISOString();
+
+        stmts.push(
+          DB.prepare(`INSERT INTO product_reviews (product_id, user_id, user_name, rating, content, selected_option, is_generated, created_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?)`)
+            .bind(product_id, 'system-generated', maskedName, rating, content, option, reviewDate)
+        );
+      }
+
+      try {
+        await DB.batch(stmts);
+        generated += stmts.length;
+      } catch { /* partial batch fail */ }
+    }
+
+    const soldIncrement = generated * (2 + Math.round(Math.random()));
+    try { await DB.prepare('UPDATE products SET sold_count = COALESCE(sold_count, 0) + ? WHERE id = ?').bind(soldIncrement, product_id).run() } catch {}
+
+    return c.json({ success: true, data: { generated, sold_increment: soldIncrement }, message: `${generated}개 리뷰 + ${soldIncrement}명 구매 수 반영` });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+adminReviewGeneratorRoutes.get('/reviews/product/:productId', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const productId = c.req.param('productId');
+    const { results } = await DB.prepare('SELECT * FROM product_reviews WHERE product_id = ? ORDER BY created_at DESC LIMIT 100').bind(productId).all();
+    return c.json({ success: true, data: results ?? [] });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+adminReviewGeneratorRoutes.delete('/reviews/generated/:productId', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const productId = c.req.param('productId');
+    const result = await DB.prepare('DELETE FROM product_reviews WHERE product_id = ? AND is_generated = 1').bind(productId).run();
+    // 🧮 2026-07-05: 삭제 후 집계 재계산 — 유령 review_count(행 0인데 카운트 잔존)로 상세가 "리뷰 N개" 오표시하던 것 차단.
+    await DB.prepare(`
+      UPDATE products SET
+        review_count = COALESCE((SELECT COUNT(*) FROM product_reviews WHERE product_id = ?), 0),
+        avg_rating = COALESCE((SELECT ROUND(AVG(rating), 1) FROM product_reviews WHERE product_id = ?), 0),
+        updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(productId, productId, productId).run().catch(() => {});
+    return c.json({ success: true, message: `${result.meta.changes}개 생성 리뷰 삭제됨` });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// 🛡️ 2026-05-19: 교환권 (KT Alpha deal_only=1) 전체에 리뷰 대량 생성.
+//   사용자 요청 — "모든 교환권에 리뷰 최대한 많이 쓰고 싶어".
+//   per-product 5~25개 랜덤 (평균 ~15개), avg_rating 4.3~4.8 랜덤.
+//   is_generated=1 플래그로 영구 추적 → 일괄 삭제 가능 (DELETE /reviews/generated/:productId).
+//
+// Body: { reviews_per_product?: number (5-50, default 15) }
+// 응답: { products_processed, total_reviews_inserted, ... }
+//
+// ⚠️ 법적 고지: 한국 전자상거래법 / 공정거래법상 "허위 후기" 는 사업주 책임 영역.
+//   서비스 운영자가 자기 책임으로 사용. 모든 생성 리뷰는 is_generated=1 으로 표시되어
+//   향후 일괄 삭제 / 감사 추적 가능.
+adminReviewGeneratorRoutes.post('/reviews/generate-bulk-vouchers', cors(), async (c) => {
+  // 🛡️ 2026-05-21: 사용자 신고 — 여전히 "생성 실패" 토스트.
+  //   근본 진단: 각 단계마다 명시적 try/catch + step 라벨 + 항상 JSON 응답.
+  //   배포 후 사용자가 다시 시도하면 정확한 어느 step 에서 실패했는지 알 수 있음.
+  let currentStep = 'init';
+  try {
+    currentStep = 'parse_body';
+    const DB = c.env.DB;
+    // 🛡️ 2026-05-21: scope param 추가 (사용자 요청 — "기프티쇼 교환권 뿐 아니라 어드민이 올리는 상품도").
+    //   'vouchers' (KT Alpha deal_only=1) / 'admin' (deal_only=0) / 'all' (default — 전체 활성 상품).
+    //   각 상품마다 minReviews ~ maxReviews 사이 랜덤 개수.
+    type Body = { reviews_per_product?: number; scope?: 'vouchers' | 'admin' | 'all' }
+    const body = await c.req.json<Body>().catch(() => ({} as Body));
+    const minReviews = Math.max(1, Math.min(50, Math.floor((body.reviews_per_product ?? 15) - 5)));
+    const maxReviews = Math.max(minReviews + 1, Math.min(50, Math.floor((body.reviews_per_product ?? 15) + 10)));
+    const scope: 'vouchers' | 'admin' | 'all' = body.scope === 'vouchers' || body.scope === 'admin' ? body.scope : 'all';
+
+    await writeAuditLog(c, {
+      action: 'generate_fake_reviews_bulk',
+      targetType: 'products',
+      targetId: `scope=${scope}`,
+      after: { reviews_per_product_range: [minReviews, maxReviews], scope },
+    });
+
+    // 1) scope 별 상품 조회:
+    //    vouchers: deal_only=1 (KT Alpha 교환권만)
+    //    admin:    deal_only=0 (어드민 등록 일반 상품만)
+    //    all:      deal_only 무관 (활성 전체)
+    currentStep = 'select_products';
+    const dealOnlyWhere = scope === 'vouchers'
+      ? 'AND deal_only = 1'
+      : scope === 'admin'
+      ? 'AND (deal_only = 0 OR deal_only IS NULL)'
+      : ''
+    const products = await DB.prepare(
+      `SELECT id, name FROM products WHERE is_active = 1 ${dealOnlyWhere}`
+    ).all<{ id: number; name: string }>();
+
+    const productList = products.results ?? [];
+    if (productList.length === 0) {
+      return c.json({
+        success: false,
+        error: scope === 'vouchers'
+          ? '교환권 (deal_only=1) 상품이 없습니다'
+          : scope === 'admin'
+          ? '어드민 등록 상품 (deal_only=0) 이 없습니다'
+          : '활성 상품이 없습니다',
+      }, 400);
+    }
+
+    // 2) product_reviews 테이블 멱등 생성 + 누락 컬럼 ALTER.
+    //    기존 0132 마이그레이션은 user_name/selected_option/is_generated 없음 → INSERT 실패 사고.
+    //    ALTER 는 idempotent (catch 처리) — 영구 fix.
+    currentStep = 'ensure_table';
+    await DB.prepare(`
+      CREATE TABLE IF NOT EXISTS product_reviews (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_id INTEGER NOT NULL,
+        user_id TEXT,
+        user_name TEXT,
+        rating INTEGER NOT NULL,
+        content TEXT,
+        selected_option TEXT,
+        is_generated INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run().catch(() => { /* exists */ });
+    // 🛡️ 2026-05-21: 기존 0132 schema 에 누락된 컬럼 ALTER 추가.
+    currentStep = 'alter_user_name';
+    await DB.prepare(`ALTER TABLE product_reviews ADD COLUMN user_name TEXT`).run().catch(() => { /* exists */ });
+    currentStep = 'alter_selected_option';
+    await DB.prepare(`ALTER TABLE product_reviews ADD COLUMN selected_option TEXT`).run().catch(() => { /* exists */ });
+    currentStep = 'alter_is_generated';
+    await DB.prepare(`ALTER TABLE product_reviews ADD COLUMN is_generated INTEGER DEFAULT 0`).run().catch(() => { /* exists */ });
+    // 🛡️ 2026-05-21: NOT NULL 제약 있을 수 있음 (구 schema 0132 의 user_id NOT NULL).
+    //   D1 SQLite 는 ALTER COLUMN 미지원 — 우회: NULL 대신 placeholder 사용 (이미 'system-generated').
+    //   하지만 user_id 가 NOT NULL 이고 다른 INSERT 에서 비웠을 가능성 검증.
+    currentStep = 'check_constraints';
+    // 빠른 INSERT smoke test — 한 row 만 test product 로 시도 → 실패하면 명확한 에러.
+    const testProductId = productList[0].id;
+    try {
+      await DB.prepare(
+        `INSERT INTO product_reviews (product_id, user_id, user_name, rating, content, selected_option, is_generated, created_at) VALUES (?, ?, ?, ?, ?, NULL, 1, ?)`
+      ).bind(testProductId, 'system-generated', 'T*T', 5, '[smoke test]', new Date().toISOString()).run();
+      // smoke test 성공 → 즉시 삭제 (실제 데이터 오염 방지).
+      await DB.prepare(
+        `DELETE FROM product_reviews WHERE product_id = ? AND content = '[smoke test]' AND user_id = 'system-generated'`
+      ).bind(testProductId).run().catch(() => null);
+    } catch (smokeErr) {
+      // smoke test 실패 → 정확한 스키마 에러 즉시 반환.
+      return c.json({
+        success: false,
+        error: `INSERT smoke test 실패 — schema issue: ${(smokeErr as Error).message}`,
+        error_step: currentStep,
+        error_detail: '컬럼 누락 또는 NOT NULL 제약 위반. /api/_internal/repair-schema POST 호출 권장.',
+      }, 500);
+    }
+
+    const now = Date.now();
+    const BATCH_SIZE = 50;
+    let totalInserted = 0;
+    let productsProcessed = 0;
+    const errors: Array<{ product_id: number; error: string }> = [];
+
+    currentStep = 'generate_loop';
+    // 3) 각 상품마다 5~25개 (랜덤) 리뷰 생성. 배치 50개 단위로 D1.batch().
+    for (const product of productList) {
+      // 상품별 리뷰 개수 + 평균 별점 랜덤.
+      const reviewCount = Math.floor(minReviews + Math.random() * (maxReviews - minReviews))
+      const targetRating = 4.3 + Math.random() * 0.5  // 4.3 ~ 4.8
+
+      const stmts: D1PreparedStatement[] = [];
+      for (let i = 0; i < reviewCount; i++) {
+        const rating = Math.min(5, Math.max(3, Math.round(targetRating + (Math.random() - 0.5))));
+        const name = KOREAN_NAMES[Math.floor(Math.random() * KOREAN_NAMES.length)];
+        const maskedName = name[0] + '*' + name[name.length - 1];
+        const content = REVIEW_TEMPLATES[Math.floor(Math.random() * REVIEW_TEMPLATES.length)] || null;
+        const daysAgo = Math.floor(Math.random() * 180);  // 0-180일 분산
+        const reviewDate = new Date(now - daysAgo * 86400000).toISOString();
+
+        stmts.push(
+          DB.prepare(`INSERT INTO product_reviews (product_id, user_id, user_name, rating, content, selected_option, is_generated, created_at) VALUES (?, ?, ?, ?, ?, NULL, 1, ?)`)
+            .bind(product.id, 'system-generated', maskedName, rating, content, reviewDate)
+        );
+
+        // 50개 단위로 flush.
+        if (stmts.length >= BATCH_SIZE) {
+          try {
+            await DB.batch(stmts);
+            totalInserted += stmts.length;
+          } catch (e) {
+            errors.push({ product_id: product.id, error: (e as Error).message });
+          }
+          stmts.length = 0;
+        }
+      }
+      // 남은 batch flush.
+      if (stmts.length > 0) {
+        try {
+          await DB.batch(stmts);
+          totalInserted += stmts.length;
+        } catch (e) {
+          errors.push({ product_id: product.id, error: (e as Error).message });
+        }
+      }
+      productsProcessed++;
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        scope,
+        products_processed: productsProcessed,
+        total_reviews_inserted: totalInserted,
+        avg_reviews_per_product: productsProcessed > 0 ? Math.round(totalInserted / productsProcessed) : 0,
+        reviews_per_product_range: [minReviews, maxReviews],
+        errors_count: errors.length,
+        errors: errors.slice(0, 10),  // 처음 10개만 (응답 size 제한)
+      },
+    });
+  } catch (err) {
+    if (import.meta.env?.DEV) console.error('[admin:reviews:bulk]', err, 'step:', currentStep);
+    // 🛡️ 2026-05-21: stack + step 노출 — 어떤 단계 실패 즉시 식별.
+    const msg = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error && err.stack ? err.stack.split('\n').slice(0, 3).join(' | ') : '';
+    return c.json({
+      success: false,
+      error: `[${currentStep}] ${msg.slice(0, 200)}`,
+      error_step: currentStep,
+      error_detail: stack.slice(0, 300) || undefined,
+    }, 500);
+  }
+});
+
+// 🛡️ 2026-05-21: 사용자 요청 — 각 상품 당 리뷰 개별 생성.
+//   POST /admin/reviews/generate-for-product/:productId
+//   Body: { count?: number (1-100, default 15), rating_min?: number (1-5), rating_max?: number (1-5) }
+//   대량 생성 endpoint 와 동일한 stmts/templates 사용 — 단일 상품에만 적용.
+adminReviewGeneratorRoutes.post('/reviews/generate-for-product/:productId', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const productIdRaw = c.req.param('productId');
+    const productId = Number(productIdRaw);
+    if (!Number.isFinite(productId) || productId <= 0) {
+      return c.json({ success: false, error: '잘못된 상품 ID' }, 400);
+    }
+
+    type Body = { count?: number; rating_min?: number; rating_max?: number };
+    const body = await c.req.json<Body>().catch(() => ({} as Body));
+    const count = Math.max(1, Math.min(100, Math.floor(body.count ?? 15)));
+    const ratingMin = Math.max(1, Math.min(5, Math.floor(body.rating_min ?? 4)));
+    const ratingMax = Math.max(ratingMin, Math.min(5, Math.floor(body.rating_max ?? 5)));
+
+    // 상품 존재 확인.
+    const product = await DB.prepare(
+      `SELECT id, name FROM products WHERE id = ? LIMIT 1`
+    ).bind(productId).first<{ id: number; name: string }>();
+    if (!product) {
+      return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
+    }
+
+    await writeAuditLog(c, {
+      action: 'generate_fake_reviews_per_product',
+      targetType: 'products',
+      targetId: String(productId),
+      after: { count, rating_range: [ratingMin, ratingMax] },
+    });
+
+    // 테이블 ensure + 누락 컬럼 ALTER (대량 endpoint 와 동일).
+    await DB.prepare(`
+      CREATE TABLE IF NOT EXISTS product_reviews (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_id INTEGER NOT NULL,
+        user_id TEXT,
+        user_name TEXT,
+        rating INTEGER NOT NULL,
+        content TEXT,
+        selected_option TEXT,
+        is_generated INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run().catch(() => { /* exists */ });
+    await DB.prepare(`ALTER TABLE product_reviews ADD COLUMN user_name TEXT`).run().catch(() => { /* exists */ });
+    await DB.prepare(`ALTER TABLE product_reviews ADD COLUMN selected_option TEXT`).run().catch(() => { /* exists */ });
+    await DB.prepare(`ALTER TABLE product_reviews ADD COLUMN is_generated INTEGER DEFAULT 0`).run().catch(() => { /* exists */ });
+
+    const now = Date.now();
+    const stmts: D1PreparedStatement[] = [];
+    for (let i = 0; i < count; i++) {
+      const rating = Math.min(5, Math.max(1, Math.floor(ratingMin + Math.random() * (ratingMax - ratingMin + 1))));
+      const name = KOREAN_NAMES[Math.floor(Math.random() * KOREAN_NAMES.length)];
+      const maskedName = name[0] + '*' + name[name.length - 1];
+      const content = REVIEW_TEMPLATES[Math.floor(Math.random() * REVIEW_TEMPLATES.length)] || null;
+      const daysAgo = Math.floor(Math.random() * 180);
+      const reviewDate = new Date(now - daysAgo * 86400000).toISOString();
+      stmts.push(
+        DB.prepare(`INSERT INTO product_reviews (product_id, user_id, user_name, rating, content, selected_option, is_generated, created_at) VALUES (?, ?, ?, ?, ?, NULL, 1, ?)`)
+          .bind(productId, 'system-generated', maskedName, rating, content, reviewDate)
+      );
+    }
+
+    // batch (50개씩).
+    const BATCH = 50;
+    let inserted = 0;
+    for (let i = 0; i < stmts.length; i += BATCH) {
+      const chunk = stmts.slice(i, i + BATCH);
+      try {
+        await DB.batch(chunk);
+        inserted += chunk.length;
+      } catch (e) {
+        if (import.meta.env?.DEV) console.warn('[admin:reviews:per-product] batch failed', e);
+      }
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        product_id: productId,
+        product_name: product.name,
+        reviews_inserted: inserted,
+        rating_range: [ratingMin, ratingMax],
+      },
+    });
+  } catch (err) {
+    if (import.meta.env?.DEV) console.error('[admin:reviews:per-product]', err);
+    const msg = err instanceof Error ? err.message : String(err);
+    return c.json({
+      success: false,
+      error: `per-product 실패: ${msg.slice(0, 200)}`,
+      error_detail: err instanceof Error && err.stack ? err.stack.split('\n').slice(0, 3).join(' | ').slice(0, 300) : undefined,
+    }, 500);
+  }
+});
+
+// 🛡️ 2026-05-19: 교환권 전체 생성 리뷰 일괄 삭제 (롤백용).
+adminReviewGeneratorRoutes.delete('/reviews/generated-bulk-vouchers', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    // 🛡️ 2026-05-21: query scope 추가 (생성 endpoint 와 대칭).
+    //   vouchers / admin / all (default all — 모든 is_generated=1 삭제).
+    const scopeRaw = c.req.query('scope') || 'all';
+    const scope = scopeRaw === 'vouchers' || scopeRaw === 'admin' ? scopeRaw : 'all';
+
+    const dealOnlyClause = scope === 'vouchers'
+      ? 'AND product_id IN (SELECT id FROM products WHERE deal_only = 1)'
+      : scope === 'admin'
+      ? 'AND product_id IN (SELECT id FROM products WHERE deal_only = 0 OR deal_only IS NULL)'
+      : '';
+
+    const result = await DB.prepare(
+      `DELETE FROM product_reviews WHERE is_generated = 1 ${dealOnlyClause}`
+    ).run();
+    return c.json({ success: true, scope, deleted: result.meta.changes });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// 🛡️ 2026-05-21: 기존 리뷰의 user_name backfill (사용자 요청 — "이미 생성된 리뷰들 이름도 바꿔줄거야?").
+//   대상: product_reviews.user_name IS NULL AND user_id 가 users 테이블 매칭 가능.
+//   동작: users.name 을 한국어 마스킹 후 UPDATE.
+//     1글자: 그대로 / 2글자: 첫+* / 3+글자: 첫+*+끝.
+//   idempotent — user_name 이미 있으면 skip. 반복 호출 안전.
+//   매일 18 UTC repair-schema cron 에 통합 (사용자가 수동 호출 안 해도 자동 fix).
+adminReviewGeneratorRoutes.post('/reviews/backfill-user-names', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    // user_name 컬럼 ensure (혹시 모를 환경 대비).
+    await DB.prepare(`ALTER TABLE product_reviews ADD COLUMN user_name TEXT`).run().catch(() => null);
+
+    // 사전 카운트.
+    const beforeNull = await DB.prepare(
+      `SELECT COUNT(*) as cnt FROM product_reviews WHERE user_name IS NULL OR user_name = ''`
+    ).first<{ cnt: number }>().catch(() => null);
+
+    // 핵심 UPDATE — users 테이블 JOIN 으로 name 가져와서 마스킹.
+    //   D1 SQLite UPDATE FROM 미지원 → subquery 패턴.
+    const result = await DB.prepare(`
+      UPDATE product_reviews
+         SET user_name = (
+           SELECT CASE
+             WHEN name IS NULL OR name = '' THEN NULL
+             WHEN LENGTH(name) = 1 THEN name
+             WHEN LENGTH(name) = 2 THEN SUBSTR(name, 1, 1) || '*'
+             ELSE SUBSTR(name, 1, 1) || '*' || SUBSTR(name, -1, 1)
+           END
+           FROM users WHERE id = product_reviews.user_id
+         )
+       WHERE (user_name IS NULL OR user_name = '')
+         AND EXISTS (
+           SELECT 1 FROM users WHERE id = product_reviews.user_id AND name IS NOT NULL AND name != ''
+         )
+    `).run();
+
+    const afterNull = await DB.prepare(
+      `SELECT COUNT(*) as cnt FROM product_reviews WHERE user_name IS NULL OR user_name = ''`
+    ).first<{ cnt: number }>().catch(() => null);
+
+    return c.json({
+      success: true,
+      data: {
+        before_null: beforeNull?.cnt ?? 0,
+        after_null: afterNull?.cnt ?? 0,
+        updated: result.meta.changes,
+        note: '리뷰 user_name 백필 완료. user_name IS NULL 인 row 는 user_id ↔ users.name 매칭 안 됨 (탈퇴/시스템 등) — 기존 SUBSTR fallback 사용.',
+      },
+    });
+  } catch (err) {
+    return c.json({
+      success: false,
+      error: `backfill 실패: ${(err as Error).message.slice(0, 200)}`,
+    }, 500);
+  }
+});
+
+// 🛡️ 2026-05-23: 기존 (이미 쌓인) 리뷰들의 products.avg_rating / review_count 일괄 backfill.
+//   admin only. POST /admin/reviews/backfill-aggregate
+//   product_reviews 가 이전엔 products 테이블에 sync 안 됐던 케이스 일회 보정.
+adminReviewGeneratorRoutes.post('/reviews/backfill-aggregate', cors(), async (c) => {
+  try {
+    const r = await c.env.DB.prepare(`
+      UPDATE products SET
+        review_count = COALESCE((SELECT COUNT(*) FROM product_reviews WHERE product_id = products.id), 0),
+        avg_rating   = COALESCE((SELECT ROUND(AVG(rating), 1) FROM product_reviews WHERE product_id = products.id), 0),
+        updated_at = datetime('now')
+      WHERE EXISTS (SELECT 1 FROM product_reviews WHERE product_id = products.id)
+    `).run();
+    return c.json({ success: true, data: { updated: r.meta?.changes ?? 0 } });
+  } catch (e) {
+    return safeError(c, e, '요청 처리 중 오류가 발생했습니다', '[admin]');
+  }
+});
+
+// 🛡️ 2026-05-24 (universal auto-seed): 모든 활성 상품 (공구/쇼핑/교환권) review_count=0
+//   인 것 즉시 시드. 정책 B: is_active=1 만. cron 안 기다리고 즉시 백필할 때.
+//   POST /admin/reviews/auto-seed-missing  body: { max_batch?: number, seed_min?, seed_max?, rating_min?, rating_max? }
+adminReviewGeneratorRoutes.post('/reviews/auto-seed-missing', cors(), async (c) => {
+  try {
+    const { autoSeedMissingReviews } = await import('../../../worker/utils/auto-seed-fake-reviews')
+    type Body = { max_batch?: number; seed_min?: number; seed_max?: number; rating_min?: number; rating_max?: number }
+    const body = await c.req.json<Body>().catch(() => ({} as Body))
+    // 🛡️ 2026-05-24: 사전 진단 — review_count=0 + is_active=1 인 상품 수 먼저 카운트.
+    //   0개면 "시드 실패" 가 아닌 "대상 없음" 알림 (사용자 confusion 차단).
+    const targetCount = await c.env.DB.prepare(
+      `SELECT COUNT(*) AS c FROM products WHERE is_active = 1 AND (review_count IS NULL OR review_count = 0)`
+    ).first<{ c: number }>().catch(() => ({ c: 0 }))
+    const tc = Number(targetCount?.c) || 0
+    if (tc === 0) {
+      return c.json({
+        success: true,
+        data: { scanned: 0, seeded_products: 0, seeded_reviews: 0, failed_products: [] },
+        message: '시드 대상 상품 없음 (is_active=1 + review_count=0 인 상품 0개) — 이미 모두 시드됐거나 비활성 상품만 있음.',
+      });
+    }
+    const result = await autoSeedMissingReviews(c.env, {
+      maxBatch: Math.max(1, Math.min(2000, Number(body?.max_batch) || 500)),
+      seedMin: Number(body?.seed_min) || 5,
+      seedMax: Number(body?.seed_max) || 25,
+      seedRatingMin: Number(body?.rating_min) || 4.3,
+      seedRatingMax: Number(body?.rating_max) || 4.8,
+    })
+    return c.json({
+      success: true,
+      data: result,
+      message: `대상 ${tc}개 중 ${result.seeded_products}개 시드 완료 (실패 ${result.failed_products.length}개)`,
+    });
+  } catch (e) {
+    const errMsg = (e as Error).message || String(e)
+    if (typeof console !== 'undefined') console.error('[auto-seed-missing] failed:', errMsg, (e as Error).stack)
+    return c.json({
+      success: false,
+      error: '시드 실패',
+      _debug: { message: errMsg.slice(0, 300) },
+    }, 500);
+  }
+});
+
+export default adminReviewGeneratorRoutes;

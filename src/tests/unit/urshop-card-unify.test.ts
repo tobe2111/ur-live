@@ -1,0 +1,167 @@
+import { describe, it, expect } from 'vitest'
+import { stayCardHref } from '@/shared/stays-list'
+import { readFileSync } from 'node:fs'
+// 🩸 2026-08-27: 자체 codeOnly 가 **라인 주석 속 `/*`** 에 걸려 파일 절반을 삼켰다(실측 4곳).
+//   공용 스캐너로 통일 — 경위는 `helpers/source-text.ts`.
+import { stripComments as codeOnly } from '../helpers/source-text'
+
+/**
+ * 🏪 2026-08-27 — **유어샵 카드 통일 + 소개비 귀속 보존** (대표 신고 2건).
+ *
+ * ## ① 카드가 두 세대로 갈려 있었다
+ * 2026-08-19 에 카드를 한 벌(`GroupBuyFeedCard` + `DealCardMedia`)로 합쳤는데 **홈만** 갈아 끼웠고
+ * 유어샵은 7월에 통일했던 `BrowseProductCard` 그대로였다. 대표가 화면을 보고 알았다 —
+ * 각각은 멀쩡해 보여서 **나란히 놓고 봐야만** 드러나는 클래스다(8/19 통일과 같은 함정).
+ *
+ * ## ② ⚠️ 이 통일이 돈을 조용히 새게 할 수 있었다
+ * 유어샵의 **담은 핀**은 반드시 `/u/{handle}/p/{productId}` 로 가야 한다 — 그 경로가 클릭을
+ * 기록하고 `?aff=` 귀속을 붙인다(`curator.routes.ts` 의 redirect). 그런데 `GroupBuyFeedCard` 는
+ * 목적지를 **스스로**(`canonicalDetailPath`) 정한다. 그대로 갈아 끼우면 화면은 똑같은데
+ * **소개비 귀속이 사라진다** — 에러도 안 나고 아무도 모른다.
+ * 그래서 `to` prop 을 additive 로 열고, 핀 호출부 2곳이 그걸 **반드시 넘기는지** 여기서 고정한다.
+ *
+ * ## 못 막는 것
+ *   - 실제 렌더 결과(여긴 소스 검사다). 시각 회귀는 사람이 본다.
+ *   - `curator.routes.ts` 의 redirect 가 `?aff=` 를 실제로 붙이는지 — 그건 별개 경로다.
+ */
+const CARD = 'src/pages/main-home/GroupBuyFeedCard.tsx'
+const VOUCHERS = 'src/pages/seller-public/VouchersTab.tsx'
+const PINS = 'src/pages/seller-public/CuratorPinsSection.tsx'
+const CURATOR = 'src/pages/CuratorPage.tsx'
+/**
+ * 🏪 2026-09-03 — **"내 상품" 그리드가 이 통일에서 빠져 있었다** (대표 "홈 카드로 동일해야지 — 안 A").
+ *   8-27 에 이용권 그리드와 담은 핀은 합쳤는데 사업자 유어샵의 *자기 상품* 그리드만 옛
+ *   `BrowseProductCard` 로 남아, 같은 상품이 홈에서는 사진+맨 텍스트 / 유어샵에서는 대표색 색면
+ *   카드로 나왔다. 위 ①의 함정("나란히 놓고 봐야만 드러난다")을 **같은 페이지 안에서** 또 겪은 것.
+ */
+const SHOP = 'src/pages/SellerPublicPage.tsx'
+/**
+ * 🏨 2026-09-03 — **숙소 목록은 네 번째 카드 세대였다** (대표 "여기 UI도 통일화 해야지").
+ *   테두리 카드 + hover 그림자 + 사진 위 배지 2개 + 편의시설 pill + 구분선 가격.
+ *   각 세대는 따로 보면 멀쩡해서, 나란히 놓고 봐야만 드러난다 — 이 레포가 네 번째로 겪은 자리.
+ */
+const STAYS = 'src/pages/StaysSearchPage.tsx'
+const read = (f: string) => readFileSync(f, 'utf-8')
+
+
+/**
+ * 🔧 2026-09-28 재조준 (대표 확정 **s3 밀도형**): 일반유저 유어샵(`CuratorPage`)의 본문이
+ *   **2열 격자 → 한 줄 목록**으로 바뀌었다. 그래서 그 화면은 격자 카드 SSOT(`GroupBuyFeedCard`)가
+ *   아니라 **줄 카드 SSOT(`DealRow`, 2026-09-03)** 를 쓴다.
+ *   ⚠️ **이 파일이 지키려는 불변식은 그대로다** — "화면이 자기 카드를 새로 그리지 않는다".
+ *      바뀐 것은 *어느 SSOT 인가* 뿐이라, 느슨하게 푸는 대신 검사 대상을 `PinRow` 로 옮긴다.
+ *      귀속 경로(②)도 같은 이유로 `PinRow` 에서 본다.
+ */
+const PIN_ROW = 'src/pages/curator-page/PinRow.tsx'
+
+describe('① 유어샵이 홈과 같은 카드를 쓴다', () => {
+  for (const [label, f] of [['이용권 그리드', VOUCHERS], ['담은 핀(사업자)', PINS], ['내 상품 그리드', SHOP], ['숙소 목록', STAYS]] as const) {
+    it(`${label} — GroupBuyFeedCard 를 렌더한다`, () => {
+      const src = read(f)
+      // ⚠️ import 줄만 보면 `<div>` 로 바꿔도 통과한다(2026-08-19 에 실제로 그렇게 헛돌았다).
+      //    JSX 여는 태그로 앵커한다.
+      expect(src).toMatch(/<GroupBuyFeedCard\b/)
+    })
+    it(`${label} — 옛 카드(BrowseProductCard)를 더는 렌더하지 않는다`, () => {
+      expect(codeOnly(read(f))).not.toMatch(/<BrowseProductCard\b/)
+    })
+  }
+
+  it('담은 핀(일반유저) — 줄 SSOT(DealRow)를 쓰고 자기 카드를 그리지 않는다', () => {
+    const row = codeOnly(read(PIN_ROW))
+    expect(row).toContain("from '@/components/deal/DealRow'")
+    expect(row, 'import 만으로는 부족 — JSX 로 실제 렌더').toMatch(/<DealRow\b/)
+    const page = codeOnly(read(CURATOR))
+    expect(page, '목록은 PinRow 한 부품으로만').toMatch(/<PinRow\b/)
+    expect(page, '옛 격자 카드 잔존 금지').not.toMatch(/<(BrowseProductCard|PinCard|PinGrid)\b/)
+  })
+})
+
+describe('② 담은 핀은 귀속 경로를 잃지 않는다 (돈이 새는 회귀)', () => {
+  it('카드가 `to` 를 받아 기본 목적지보다 우선한다', () => {
+    const src = read(CARD)
+    expect(src).toContain('to?: string')
+    // 기본값은 SSOT 유지 — `to` 는 덮어쓰기일 뿐 SSOT 를 대체하지 않는다.
+    expect(src).toContain('to={to ?? canonicalDetailPath(p)')
+  })
+
+  it('사업자 유어샵 — 핀 카드에 /u/{handle}/p/{id} 를 넘긴다', () => {
+    const src = read(PINS)
+    // 카드 호출부에 그 형태의 to 가 실제로 붙어 있는지 (문자열이 파일 어딘가 있는 것으로는 부족)
+    const call = src.slice(src.indexOf('<GroupBuyFeedCard'), src.indexOf('<GroupBuyFeedCard') + 400)
+    expect(call).toMatch(/to=\{`\/u\/\$\{handle\}\/p\/\$\{pin\.product_id\}`\}/)
+  })
+
+  // 🔧 2026-09-28 재조준(s3): 일반유저 쪽은 줄 카드라 `to` 가 아니라 `DealRow` 의 `to` 로 간다.
+  //   **같은 돈 불변식**이다 — 상세로 직행시키면 화면은 같은데 귀속만 조용히 사라진다.
+  // 🔄 2026-10-18 재조준(결재 `2026-10-15-ushop-pin-spa-nav` 안 1): 서버 경유 → **앱 안 이동 + 누르는 순간 귀속**.
+  //   불변식은 그대로다 — 줄 카드를 눌러 상세로 가면 **소개 값이 저장돼야 한다**. 이제 그 일은 `onPinClick` 이 한다.
+  it('일반유저 유어샵 — 줄 카드는 누르는 순간 귀속(onPinClick)을 붙이고 정본 상세로 간다', () => {
+    const src = read(PIN_ROW)
+    const at = src.indexOf('<DealRow')
+    expect(at, '줄 카드 호출부를 못 찾았다 — 마크업이 바뀌었다(검사가 무의미해진다)').toBeGreaterThan(0)
+    const call = src.slice(at, at + 400)
+    expect(call).toMatch(/to=\{pinHref\(pin\)\}/)
+    expect(call).toMatch(/onClick=\{\(\) => onPinClick\(handle, curatorUserId, pin\.product_id\)\}/)
+    expect(codeOnly(src), '목적지를 손으로 적지 않는다(정본 SSOT)').not.toMatch(/`\/group-buy\/|`\/products\/|`\/pass\//)
+  })
+
+  it('매장 자기 이용권 그리드는 `to` 를 넘기지 않는다 (귀속 대상이 아니다)', () => {
+    // 여기에 핀 경로를 넘기면 남의 귀속이 붙는다 — 반대 방향의 사고.
+    expect(codeOnly(read(VOUCHERS))).not.toMatch(/to=\{/)
+  })
+})
+
+describe('③ 이용권이 쇼핑 상세를 거쳐 튕기지 않는다', () => {
+  it('유어샵 이용권 그리드가 /products/:id 로 보내지 않는다', () => {
+    // 종전 `to={/products/:id}` 는 canonicalDetailPath 가 /group-buy 로 되돌릴 때까지
+    // 페이지 한 장을 헛로드했다.
+    expect(codeOnly(read(VOUCHERS))).not.toContain('/products/${')
+  })
+})
+
+describe('④ 소개자 카탈로그는 비로그인도 둘러볼 수 있다', () => {
+  const ROUTES = 'src/features/group-buy/api/marketing.routes.ts'
+  it('discoverApp 은 라우터 레벨에서 optionalAuth 다', () => {
+    const src = read(ROUTES)
+    expect(src).toMatch(/discoverApp\.use\('\*',\s*optionalAuth\(\)\)/)
+    // 🩸 라우트에 optionalAuth 를 덧붙이는 것으로는 상위 requireAuth 를 못 푼다(2026-08-27 실사고).
+    expect(codeOnly(src)).not.toMatch(/discoverApp\.use\('\*',\s*requireAuth\(\)\)/)
+  })
+  it('응답이 로그인 여부를 실어 보낸다 (비로그인이 "내 딜 없음"으로 오해하지 않게)', () => {
+    expect(read('src/features/group-buy/api/marketing/discovery.ts')).toContain('authed: !!me?.id')
+  })
+})
+
+describe('③ 유어샵 격자는 딜 카드 간격 SSOT 를 쓴다 (화면마다 간격이 갈리지 않게)', () => {
+  it('내 상품 그리드가 DEAL_GRID_GAP 을 쓴다', () => {
+    const src = read(SHOP)
+    expect(src).toContain('DEAL_GRID_GAP')
+    // 손으로 적은 간격이 남아 있으면 홈과 다시 갈린다.
+    const grid = src.match(/className=\{?[`"'][^`"']*grid-cols-2[^`"']*[`"']/g) || []
+    expect(grid.length, '내 상품 그리드를 못 찾았다 — 마크업이 바뀌었다(검사가 무의미해진다)').toBeGreaterThan(0)
+    for (const g of grid) {
+      if (/\bgap[-xy]*-\d/.test(g)) expect(g, `간격을 손으로 적었다: ${g}`).toContain('DEAL_GRID_GAP')
+    }
+  })
+})
+
+describe('④ 숙소 카드는 날짜·인원을 잃지 않는다 (요금이 달라지는 회귀)', () => {
+  it('카드 목적지에 check_in·check_out·guests 가 붙는다', () => {
+    const src = read(STAYS)
+    const at = src.indexOf('<GroupBuyFeedCard')
+    expect(at, '숙소 카드를 못 찾았다').toBeGreaterThan(0)
+    const call = src.slice(at, at + 1600)
+    // 이 파라미터가 빠지면 상세가 **오늘 날짜**로 다시 잡아 화면과 다른 요금을 보여준다.
+    // 2026-10-19 — 주소 조립은 서버 첫 화면과 같이 쓰는 SSOT(`stayCardHref`)로 옮겨갔다.
+    expect(call).toMatch(/stayCardHref\(s\.id, filters\.check_in, filters\.check_out, filters\.guests\)/)
+    expect(stayCardHref(7, '2026-10-19', '2026-10-20', 3)).toBe('/stays/7?check_in=2026-10-19&check_out=2026-10-20&guests=3')
+  })
+
+  it("`/1박~` 단위가 유지된다 (단위가 빠지면 총액으로 읽힌다)", () => {
+    // 카드가 `stay_voucher` 카테고리로 단위를 붙인다 — 그래서 숙소는 그 카테고리로 넘겨야 한다.
+    expect(read(STAYS)).toMatch(/category: 'stay_voucher'/)
+    expect(read(CARD)).toMatch(/p\.category === 'stay_voucher'[\s\S]{0,120}1박/)
+  })
+})
+

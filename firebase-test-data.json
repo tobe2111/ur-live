@@ -1,0 +1,24 @@
+{
+  "streams": {
+    "stream1": {
+      "id": 1,
+      "title": "프로덕션 테스트 라이브",
+      "status": "live",
+      "current_product_id": 101,
+      "viewer_count": 30,
+      "updated_at": 1740637000000
+    }
+  },
+  "products": {
+    "product101": {
+      "id": 101,
+      "name": "테스트 상품",
+      "price": 29900,
+      "original_price": 39900,
+      "discount_rate": 25,
+      "stock": 50,
+      "image_url": "https://via.placeholder.com/300",
+      "updated_at": 1740637000000
+    }
+  }
+}

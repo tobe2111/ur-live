@@ -1,0 +1,149 @@
+# 🕐 Workers(cron) 프로젝트 배포 — scheduled.ts / cron 코드 동기화 전용.
+#
+# 배경 (2026-07-05): main.yml 은 Pages(_worker.js)만 배포 — cron(scheduled handler)은
+#   별도 Workers 프로젝트(`wrangler deploy`)라 **수동 배포 없이는 cron 코드가 낡은 채 돌았음**
+#   (실사고: auto-seed 리뷰 cron 이 옛 게이트로 오픈예정 데모에 generic 리뷰 재주입,
+#    신설 demo-fcfs-renew cron 미탑재). 이 워크플로가 그 수동 단계를 버튼/자동으로 만든다.
+#
+# 트리거:
+#   - workflow_dispatch: 어드민/에이전트가 수동 실행 (Actions 탭 → Run workflow)
+#   - push(main) 중 cron/scheduled 파일 변경 시 자동
+#
+# 요구 secret: CLOUDFLARE_API_TOKEN (Workers Scripts:Edit 권한 포함), CLOUDFLARE_ACCOUNT_ID
+#   — main.yml Pages 배포와 동일 secret 재사용. 권한 부족 시 이 워크플로만 실패(안내 로그).
+name: Deploy Worker (cron sync)
+
+on:
+  workflow_dispatch:
+    inputs:
+      allow_schedule_drift:
+        description: '스케줄 동기화 실패를 경고로 낮춘다(비상용). 기본 false = 실패하면 워크플로도 실패.'
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    # ⚠️ 2026-08-01: 이 목록이 **세 줄뿐이었고, 그래서 cron 워커가 조용히 낡았다.**
+    #
+    #   실사고: #914 가 `src/worker/utils/cron-heartbeat.ts` 를 고쳤는데 이 목록에 없어서
+    #   **worker-deploy 가 아예 트리거되지 않았다.** Pages 는 배포됐고 머지도 초록불이라
+    #   반영된 것처럼 보였지만, cron 워커는 옛 코드로 계속 돌았다. 라이브에서 그 수정의 효과가
+    #   안 나타나는 걸 보고서야 알았다 — 에러도 경고도 없다.
+    #
+    #   근본 원인: cron 워커는 `src/worker/index.ts` 를 **통째로 번들**한다. 즉 scheduled.ts →
+    #   cron/** → utils/** → features/*/api/** 까지 전부 그 번들에 들어간다. 그런데 트리거는
+    #   그중 **두 경로만** 보고 있었다. 나머지를 고치면 Pages 에만 가고 cron 은 안 간다.
+    #
+    #   ⇒ **번들에 들어가는 것과 트리거가 보는 것을 일치**시킨다. 넓게 잡는 비용은 2분짜리 job 이
+    #   더 자주 도는 것뿐이고(멱등), 좁게 잡는 비용은 **머니 cron 이 낡은 코드로 도는 것**이다.
+    paths:
+      - 'src/**'
+      - '!src/tests/**'          # 테스트만 바뀌면 런타임 동작이 같다
+      - 'wrangler.toml'
+      - 'package.json'           # 의존성/빌드 체인 변경
+      - '.github/workflows/worker-deploy.yml'
+
+concurrency:
+  group: worker-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy-worker:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Deploy Workers (cron)
+        run: |
+          if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN 미설정 — Workers 배포 불가"
+            exit 1
+          fi
+          # 🎯 두 가지를 배포한다: cron *스크립트 코드* + cron *스케줄*(triggers).
+          #
+          # 🔴 2026-07-29 (실행 증거 감사): 이 스텝은 원래 "스크립트만 올라가면 성공"으로 처리했다.
+          #   그 결과 **스케줄 PUT 이 매번 거부되는데도 30 run 연속 초록불**이었고
+          #   (`invalid cron string: 0 20 * * 0 [code: 10100]`), `wrangler.toml` 의 crons 가
+          #   **한 번도 반영된 적 없다는 사실이 아무 신호 없이 숨어 있었다.**
+          #   실제 등록은 대시보드의 옛 상태 그대로였고, 69개 cron 작업 중 9개만 돌고 있었다.
+          #   ⇒ 근본 원인은 잘못된 cron 문자열이 아니라 **그 실패를 삼킨 것**이다. 이제 실패시킨다.
+          #
+          # ⚠️ 스케줄 PUT 은 **전체 교체**다(부분 갱신 아님). 그래서 실패는 두 방향 모두 위험하다:
+          #   - 실패를 삼키면 → 선언과 현실이 조용히 갈라진다(위 사고).
+          #   - 성공하면 → wrangler.toml 의 목록이 **현재 등록분을 통째로 대체**한다.
+          #     목록에서 빠진 트리거는 그 순간 사라진다. crons 를 줄일 때는 그게 의도인지 확인할 것.
+          #
+          # 비상 탈출구: workflow_dispatch 의 `allow_schedule_drift=true`.
+          #   파일을 고치지 않고 1회만 경고로 낮춘다(스케줄 API 간헐 장애 때 배포를 풀기 위한 것).
+          ALLOW_DRIFT="${{ inputs.allow_schedule_drift }}"
+          MAX_RETRY=4
+          SCHED_ERR=""
+          for i in $(seq 1 $MAX_RETRY); do
+            echo "=== wrangler deploy attempt $i/$MAX_RETRY ==="
+            OUT=$(npx wrangler@3 deploy 2>&1) && RC=0 || RC=$?
+            echo "$OUT"
+            if [ $RC -eq 0 ]; then
+              echo "✅ Workers(cron) deploy 완전 성공 (스크립트 + 스케줄) — attempt $i"
+              exit 0
+            fi
+            if echo "$OUT" | grep -q "Uploaded ur-live"; then
+              # 스크립트는 올라갔고 스케줄만 실패 — 간헐 장애일 수 있으니 재시도 대상에 포함한다.
+              SCHED_ERR=$(echo "$OUT" | grep -iE "invalid cron string|/schedules" | head -3)
+              echo "⚠️ Attempt $i — 스크립트 업로드 성공, 스케줄 동기화 실패."
+            else
+              echo "⚠️ Attempt $i 실패(스크립트 미업로드)."
+            fi
+            if [ $i -lt $MAX_RETRY ]; then
+              # ⏱️ 10429(레이트 리밋)는 초 단위로 안 풀린다 — 근거는 main.yml 의 같은 블록 주석 참조.
+              if echo "$OUT" | grep -qE '10429|Rate limited'; then
+                SLEEP=$(( i == 1 ? 60 : (i == 2 ? 150 : 300) ))
+                echo "⏳ Cloudflare 레이트 리밋(10429) — ${SLEEP}s 후 재시도"
+              else
+                SLEEP=$((i * 10))
+                echo "${SLEEP}s 후 재시도..."
+              fi
+              sleep $SLEEP
+            fi
+          done
+
+          if [ -n "$SCHED_ERR" ]; then
+            echo "::error::스케줄 동기화가 ${MAX_RETRY}회 실패했다. wrangler.toml 의 crons 가 반영되지 않았다."
+            echo "::error::$SCHED_ERR"
+            echo "::error::스케줄 PUT 은 원자적이라 **거부된 문자열 하나가 전체 목록을 막는다**."
+            echo "::error::확인: Cloudflare 대시보드 → Workers & Pages → ur-live → Settings → Trigger Events."
+            echo "::error::비상 우회가 필요하면 workflow_dispatch 에서 allow_schedule_drift=true 로 재실행."
+            if [ "$ALLOW_DRIFT" = "true" ]; then
+              echo "::warning::allow_schedule_drift=true — 실패를 경고로 낮춘다. 스크립트는 배포됨, 스케줄은 옛 상태 그대로."
+              exit 0
+            fi
+            exit 1
+          fi
+
+          echo "::error::스크립트 업로드 자체가 ${MAX_RETRY}회 실패 (토큰 Workers Scripts:Edit 권한 확인)"
+          exit 1
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      # 🚨 **실패를 대표가 보는 곳에 남긴다** (2026-08-03 신설 — 근거는 scripts/report-deploy-failure.sh).
+      #   배포 실패는 Actions 탭 안에만 있었고 아무도 안 봤다. 그 사이 라이브는 4개 머지만큼 뒤처졌다.
+      #   ⚠️ `continue-on-error` — 관측이 배포 결과를 바꾸면 본말전도다.
+      - name: 배포 실패를 어드민에 기록 (조용한 실패 차단)
+        if: failure()
+        continue-on-error: true
+        run: bash scripts/report-deploy-failure.sh "ur-live (cron Worker)" "${{ github.sha }}" "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

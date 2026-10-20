@@ -1,0 +1,185 @@
+/**
+ * KakaoLinkButton — 이메일/비번으로 로그인한 셀러/에이전시가
+ * 자신의 계정을 카카오에 연동하는 재사용 버튼.
+ *
+ * 동작:
+ *  1. 현재 연동 상태 조회 (GET .../kakao-link-status)
+ *  2. 미연동: "카카오 계정 연동하기" 버튼 → 팝업으로 카카오 OAuth 진행
+ *  3. 팝업 콜백에서 code 받으면 POST .../link-kakao 호출
+ *  4. 성공 시 "연동됨" 상태로 전환 (user 정보 표시 + 해제 버튼)
+ */
+
+import { useEffect, useState, useCallback } from 'react'
+import { AlertIcon } from '@/components/icons/urdeal-icons'
+import { useTranslation } from '@/lib/i18n-lite'
+import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
+import { Loader2, Unlink } from 'lucide-react'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
+
+interface Props {
+  /** 🌇 2026-09-04 에이전시 일몰 — 'agency' 제거. 셀러 전용이다. */
+  role: 'seller'
+}
+
+interface LinkStatus {
+  linked: boolean
+  user?: { id: number; name?: string; email?: string; profile_image?: string }
+}
+
+export function KakaoLinkButton({ role }: Props) {
+  const { t } = useTranslation()
+  const [status, setStatus] = useState<LinkStatus | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [working, setWorking] = useState(false)
+  const basePath = '/api/seller'
+
+  const refresh = useCallback(async () => {
+    try {
+      const res = await api.get(`${basePath}/kakao-link-status`)
+      if (res.data?.success) setStatus(res.data.data)
+    } catch { /* silent */ }
+    finally { setLoading(false) }
+  }, [basePath])
+
+  useEffect(() => { refresh() }, [refresh])
+
+  async function startLink() {
+    // 플로우:
+    //  1) 팝업에서 /auth/kakao/start 호출 → 카카오 OAuth → 서버 sync/callback
+    //     (code 소비 + users upsert + 세션 쿠키 세팅)
+    //  2) 서버가 /auth/kakao/link/callback?login=success&userId=... 로 리다이렉트
+    //  3) 팝업의 KakaoLinkCallbackPage 가 opener 에게 postMessage 전송
+    //  4) 부모가 POST /link-kakao (body 비움) → 서버는 세션 쿠키의 userId 로 연동
+    const w = 500, h = 700
+    const left = Math.floor((window.screen.availWidth - w) / 2)
+    const top = Math.floor((window.screen.availHeight - h) / 2)
+
+    const popupUrl = `/auth/kakao/start?redirect=${encodeURIComponent('/auth/kakao/link/callback')}`
+    const popup = window.open(
+      popupUrl,
+      'ur-kakao-link',
+      `popup=yes,width=${w},height=${h},left=${left},top=${top}`
+    )
+
+    if (!popup) {
+      toast.error(t('auth.kakao.popupBlocked'))
+      return
+    }
+
+    const origin = window.location.origin
+    const handler = async (ev: MessageEvent) => {
+      if (ev.origin !== origin) return
+      const { type, success, error } = (ev.data || {}) as { type?: string; success?: boolean; error?: string }
+      if (type !== 'kakao_link_result') return
+      window.removeEventListener('message', handler)
+      try { popup.close() } catch { /* ignore */ }
+
+      if (error || !success) {
+        toast.error(error ? `${t('kakaoLink.authFailed')}: ${error}` : t('kakaoLink.authCancelled'))
+        return
+      }
+
+      // 서버에 link 요청 (session 모드 — body 비움)
+      setWorking(true)
+      try {
+        const res = await api.post(`${basePath}/link-kakao`, {})
+        if (res.data?.success) {
+          toast.success(t('auth.kakao.linked'))
+          await refresh()
+        } else {
+          toast.error(res.data?.error || t('auth.pin.verifyFailed'))
+        }
+      } catch (e: unknown) {
+        const err = e as { response?: { data?: { error?: string } } }
+        toast.error(err.response?.data?.error || t('kakaoLink.linkFailed'))
+      } finally { setWorking(false) }
+    }
+    window.addEventListener('message', handler)
+
+    // 팝업 강제 닫힘 감지 (30초 후 listener 제거)
+    setTimeout(() => window.removeEventListener('message', handler), 30000)
+  }
+
+  async function unlink() {
+    if (!(await confirmDialog(t('kakaoLink.unlinkConfirm')))) return
+    const pw = prompt(t('kakaoLink.unlinkPasswordPrompt', { defaultValue: '본인 확인을 위해 비밀번호를 입력해주세요.\n(카카오로만 가입하셨다면 먼저 "비밀번호 찾기" 로 설정하세요)' }))
+    if (!pw) return
+    setWorking(true)
+    try {
+      const res = await api.post(`${basePath}/unlink-kakao`, { current_password: pw })
+      if (res.data?.success) {
+        toast.success(t('auth.kakao.unlinked'))
+        await refresh()
+      } else {
+        toast.error(res.data?.error || t('auth.pin.verifyFailed'))
+      }
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { error?: string; code?: string } } }
+      if (err.response?.data?.code === 'PASSWORD_REQUIRED') {
+        toast.error(t('auth.kakao.passwordRequired'))
+      } else {
+        toast.error(err.response?.data?.error || t('auth.pin.verifyFailed'))
+      }
+    } finally { setWorking(false) }
+  }
+
+  if (loading) {
+    return (
+      <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-4 flex items-center gap-2 text-[15px] text-gray-500 dark:text-gray-400">
+        <Loader2 className="w-4 h-4 animate-spin" /> {t('kakaoLink.checkingStatus', { defaultValue: '연동 상태 확인 중...' })}
+      </div>
+    )
+  }
+
+  if (status?.linked && status.user) {
+    return (
+      <div className="bg-tone-ok-bg rounded-xl p-4 flex items-center gap-3">
+        {status.user.profile_image ? (
+          <img src={status.user.profile_image} alt="" className="w-10 h-10 rounded-full" loading="lazy" />
+        ) : (
+          <div className="w-10 h-10 rounded-full bg-yellow-300 flex items-center justify-center text-[17px]">💬</div>
+        )}
+        <div className="flex-1 min-w-0">
+          <p className="text-[12px] text-tone-ok font-bold">{t('kakaoLink.linkedStatus', { defaultValue: '✓ 카카오 계정 연동됨' })}</p>
+          <p className="text-[15px] text-gray-900 dark:text-white font-semibold truncate">{status.user.name}</p>
+          {status.user.email && <p className="text-[12px] text-gray-500 truncate">{status.user.email}</p>}
+        </div>
+        <button onClick={unlink} disabled={working}
+          className="text-[12px] text-red-600 hover:text-red-800 flex items-center gap-1 px-2 py-1">
+          {working ? <Loader2 className="w-3 h-3 animate-spin" /> : <Unlink className="w-3 h-3" />}
+          {t('kakaoLink.unlinkBtn', { defaultValue: '해제' })}
+        </button>
+      </div>
+    )
+  }
+
+  // 미연동 상태
+  return (
+    <div className="bg-gray-50 dark:bg-[#1D1F29] border border-line rounded-xl p-4 space-y-3">
+      <div className="flex items-start gap-2">
+        <div className="w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center text-[17px] shrink-0">💬</div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t('kakaoLink.title')}</p>
+          <p className="text-[12px] text-gray-600 mt-1 leading-relaxed">
+            {t('kakaoLink.benefit', { defaultValue: '연동하면 카카오 로그인만으로 접근 가능해요. 비밀번호 관리 부담 ↓ · 보안 ↑' })}
+          </p>
+        </div>
+      </div>
+
+      <button onClick={startLink} disabled={working}
+        className="w-full py-2 bg-[#FEE500] hover:bg-[#FDD800] disabled:opacity-50 text-[#3C1E1E] font-bold text-[15px] rounded-xl flex items-center justify-center gap-2">
+        {working ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>💬</span>}
+        {working ? t('kakaoLink.processing') : t('kakaoLink.connectCta')}
+      </button>
+
+      <div className="flex items-start gap-2 text-[12px] text-gray-500">
+        <AlertIcon className="w-3 h-3 shrink-0 mt-1" />
+        <span>
+          {t('kakaoLink.emailStillUsable', { defaultValue: '기존 이메일/비밀번호 로그인도 계속 사용 가능합니다.' })}
+          {t('kakaoLink.unlinkHint')}
+        </span>
+      </div>
+    </div>
+  )
+}

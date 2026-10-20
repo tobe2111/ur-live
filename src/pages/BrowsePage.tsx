@@ -1,0 +1,600 @@
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
+import { GiftBoxIcon, BoxIcon, BagIcon, TruckIcon } from '@/components/icons/urdeal-icons'
+import { saveListView } from '@/lib/list-view-cache'
+import { browseViewKey, useBrowseRestore, type BrowseViewState } from './browse/list-restore'
+import BrandLoader from '@/components/brand/BrandLoader'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from '@/lib/i18n-lite'
+import { ChevronDown, ChevronLeft, List, Map, Search, Shirt, SlidersHorizontal, Smartphone, Sofa, Soup, Sparkle, X } from 'lucide-react'
+import { captureTrackingFromUrl } from '@/lib/seller-tracking'
+import api from '@/lib/api'
+import SEO, { itemListJsonLd } from '@/components/SEO'
+import { toast } from '@/hooks/useToast'
+import { formatNumber } from '@/utils/format'
+import { usePrefetchProduct } from '@/hooks/usePrefetchProduct'
+import { SORT_LABELS, ITEMS_PER_PAGE } from './browse/types'
+import type { Product, SortOption } from './browse/types'
+import BrowseProductCard from './browse/BrowseProductCard'
+import { priceDisplay } from '@/shared/price-display'
+
+// 🛡️ 2026-05-02: TD-018 분할 — types/RecentlyViewedSection 을 ./browse/ 로 추출.
+//   미사용 lucide 아이콘 (Clock — RecentlyViewed 내부로 이동) 정리.
+
+interface BrowsePageProps {
+  defaultCategory?: string
+}
+
+// 🛡️ 2026-06-01 (loading): 상품 카드 React.memo — 2026-06-10 ./browse/BrowseProductCard 로 추출
+//   (홈 상품 레일과 카드 공유 — 사용자 요청 "쇼핑 페이지에서 썼던 그대로"). 코드/렌더 결과 불변.
+
+// 🚑 2026-07-10 [UNLOCK_LOADING] (로딩 전수조사): SSR 시드(__SSR_INITIAL_BROWSE__)를 useState 초기값에서
+//   동기 소비 — 기존엔 useEffect(페인트 후) 소비라 시드가 있어도 풀스크린 로더 1프레임이 떴음
+//   (VouchersPage/GroupBuyListPage 동기 패턴과 비대칭). 기본 상태(category=all·sort=popular)에서만 유효.
+//   기존 effect 의 소비 로직은 그대로(hasMore 세팅·파라미터 변경 대응) — 초기 페인트만 앞당김.
+function readBrowseSeed(defaultCategory?: string): Product[] | null {
+  if (typeof document === 'undefined') return null
+  try {
+    const sp = new URLSearchParams(window.location.search)
+    const cat = defaultCategory || sp.get('category') || 'all'
+    const sort = sp.get('sort') || 'popular'
+    if (cat !== 'all' || sort !== 'popular') return null
+    const el = document.getElementById('__SSR_INITIAL_BROWSE__')
+    if (!el?.textContent) return null
+    const parsed = JSON.parse(el.textContent)
+    if (parsed?.success && Array.isArray(parsed.data)) return parsed.data as Product[]
+  } catch { /* 손상된 inject — fetch fallback */ }
+  return null
+}
+
+export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  // 🛡️ 2026-05-24 (loading P0): 카드 hover/touch 시 상품 상세 prefetch.
+  const prefetchProduct = usePrefetchProduct()
+  // 🛡️ 2026-05-21 Phase D: 셀러 트래킹 (URL ?seller=ID) sessionStorage 저장.
+  useEffect(() => { captureTrackingFromUrl() }, [])
+  // 🚑 2026-07-10: SSR 시드 동기 소비 — 시드 있으면 로더 프레임 0 (위 readBrowseSeed 주석 참조).
+  const [initialSeed] = useState<Product[] | null>(() => readBrowseSeed(defaultCategory))
+  // 🔙 2026-09-14: 뒤로(POP) 면 직전 목록을 돌려준다. 근거·한계: `./browse/list-restore`
+  const restored = useBrowseRestore(defaultCategory)
+  const [products, setProducts] = useState<Product[]>(restored?.products ?? initialSeed ?? [])
+  const [loading, setLoading] = useState(restored == null && initialSeed == null)
+  // ✅ UX M17 FIX: 에러 상태 + 재시도 버튼
+  const [error, setError] = useState<string | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const category = defaultCategory || searchParams.get('category') || 'all'
+
+  // v37 FIX: sortBy를 URL 파라미터로 양방향 동기화
+  // - 뒤로가기 시 URL의 sort 값으로 자동 복원
+  // - 공유 URL에 sort 포함
+  const sortBy = (searchParams.get('sort') as SortOption) || 'popular'
+  const setSortBy = (next: SortOption) => {
+    setSearchParams((prev) => {
+      const n = new URLSearchParams(prev)
+      if (next === 'popular') n.delete('sort')
+      else n.set('sort', next)
+      return n
+    }, { replace: true })
+  }
+  const [showSortDropdown, setShowSortDropdown] = useState(false)
+  // 🏭 2026-06-05 (사용자 요청): 카테고리 scroll-up reveal — 동네딜/교환권처럼 위로 살짝 올리면 카테고리 재노출.
+  //   아래로 스크롤 시 숨김(콘텐츠 공간 최대화), 위로 살짝 올리면 다시 내려옴.
+  const [revealTop, setRevealTop] = useState(true)
+  const lastScrollYRef = useRef(0)
+  useEffect(() => {
+    let ticking = false
+    const onScroll = () => {
+      if (ticking) return
+      ticking = true
+      requestAnimationFrame(() => {
+        const y = window.scrollY
+        const last = lastScrollYRef.current
+        if (y < 120) setRevealTop(true)            // 상단 근처는 항상 표시
+        else if (y > last + 6) setRevealTop(false) // 아래로 스크롤 → 숨김
+        else if (y < last - 6) setRevealTop(true)  // 위로 스크롤 → 표시
+        lastScrollYRef.current = y
+        ticking = false
+      })
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+  // 🛡️ 2026-05-19: 진짜 cursor-based 무한스크롤 (이전: client-side slice 만).
+  //   2260+ 개 상품에서도 메모리 효율 + 백엔드 1페이지씩 가져옴.
+  // 🛡️ 2026-05-24 (loading P0): PAGE_SIZE 50 → 20.
+  //   첫 화면 이미지 다운로드 -60% (50개 카드 평균 200~500KB 이미지 = 10-25MB → 4-10MB).
+  //   IntersectionObserver 가 sentinel 도달 시 자동으로 다음 페이지 fetch — UX 동일.
+  const [page, setPage] = useState(() => restored?.page ?? 1)
+  const [hasMore, setHasMore] = useState(() => restored?.hasMore ?? false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const PAGE_SIZE = 20
+  const [showCount, setShowCount] = useState(() => restored?.showCount ?? ITEMS_PER_PAGE)
+  const [priceRange, setPriceRange] = useState<'all' | 'under10' | 'under30' | 'under50' | 'over50'>('all')
+  const [freeShipOnly, setFreeShipOnly] = useState(false)
+  const [showFilter, setShowFilter] = useState(false)
+  const [mapView, setMapView] = useState(false)
+  const mapContainerRef = useRef<HTMLDivElement>(null)
+  const loadMoreRef = useRef<HTMLDivElement>(null)
+
+  // IntersectionObserver — sentinel에 닿으면 자동으로 더 로드 (클릭 없이 무한 스크롤)
+  useEffect(() => {
+    if (!loadMoreRef.current) return
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) setShowCount(c => c + ITEMS_PER_PAGE)
+    }, { threshold: 0.1 })
+    observer.observe(loadMoreRef.current)
+    return () => observer.disconnect()
+  }, [products])
+  // Kakao Maps SDK refs — no TS definitions available for this external SDK
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mapInstanceRef = useRef<any>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const markersRef = useRef<any[]>([])
+
+  const isMealVoucher = category === 'meal_voucher'
+  const [interestedIds, setInterestedIds] = useState<Set<number>>(new Set())
+
+  // 🛡️ 2026-06-01 (loading): currentlyInterested 를 인자로 받아 interestedIds 클로저 제거 → useCallback 안정화
+  //   (memo 카드가 stable 콜백 받도록). 동작 동일.
+  const toggleInterest = useCallback((e: React.MouseEvent, productId: number, productName: string | undefined, currentlyInterested: boolean) => {
+    e.stopPropagation()
+    e.preventDefault()
+    const isAdding = !currentlyInterested
+    setInterestedIds(prev => {
+      const next = new Set(prev)
+      if (isAdding) next.add(productId)
+      else next.delete(productId)
+      return next
+    })
+    if (isAdding) {
+      api.post('/api/interest/add', {
+        restaurant_name: productName || '',
+        product_id: productId,
+        type: 'meal_voucher',
+      }).catch(() => {
+        setInterestedIds(prev => { const next = new Set(prev); next.delete(productId); return next })
+      })
+      toast.success(t('common.interestAdded'))
+    } else {
+      api.post('/api/interest/remove', { product_id: productId, type: 'meal_voucher' }).catch(() => {
+        setInterestedIds(prev => { const next = new Set(prev); next.add(productId); return next })
+      })
+      toast.info(t('common.interestRemoved'))
+    }
+  }, [t])
+
+  // 카카오맵 초기화 (이용권 + 지도 모드일 때만)
+  useEffect(() => {
+    if (!isMealVoucher || !mapView || !mapContainerRef.current) return
+    if (mapInstanceRef.current) {
+      updateMapMarkers()
+      return
+    }
+
+    const KAKAO_JS_KEY = import.meta.env?.VITE_KAKAO_JAVASCRIPT_KEY || ''
+
+    const initMap = () => {
+      if (!mapContainerRef.current) return
+      const center = new window.kakao.maps.LatLng(35.2340, 129.0843) // 부산 기본
+      mapInstanceRef.current = new window.kakao.maps.Map(mapContainerRef.current, { center, level: 8 })
+      updateMapMarkers()
+    }
+
+    if (window.kakao?.maps) {
+      initMap()
+    } else {
+      // 🛡️ 2026-04-22: 중복 로드 방지 — 이미 로드된 script 재사용
+      const SCRIPT_ID = 'kakao-maps-sdk'
+      const existingScript = document.getElementById(SCRIPT_ID) as HTMLScriptElement | null
+      if (existingScript) {
+        // 다른 곳에서 이미 추가됨 — onload 등록만 하거나 즉시 init 시도
+        if (window.kakao?.maps) {
+          window.kakao.maps.load(initMap)
+        } else {
+          existingScript.addEventListener('load', () => window.kakao.maps.load(initMap), { once: true })
+        }
+      } else {
+        const script = document.createElement('script')
+        script.id = SCRIPT_ID
+        script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_JS_KEY}&autoload=false`
+        script.onload = () => window.kakao.maps.load(initMap)
+        document.head.appendChild(script)
+        // cleanup 은 안 함 — 다른 페이지(RestaurantMap 등)도 사용 → singleton SDK 유지
+      }
+    }
+  }, [mapView, isMealVoucher, products])
+
+  function updateMapMarkers() {
+    if (!mapInstanceRef.current) return
+    markersRef.current.forEach(m => m.setMap(null))
+    markersRef.current = []
+
+    const bounds = new window.kakao.maps.LatLngBounds()
+    let hasMarkers = false
+
+    sorted.forEach(p => {
+      const lat = p.restaurant_lat
+      const lng = p.restaurant_lng
+      if (!lat || !lng) return
+
+      hasMarkers = true
+      const pos = new window.kakao.maps.LatLng(Number(lat), Number(lng))
+      bounds.extend(pos)
+
+      const marker = new window.kakao.maps.Marker({ position: pos, map: mapInstanceRef.current })
+      const infoWindow = new window.kakao.maps.InfoWindow({
+        content: `<div style="padding:8px 12px;min-width:150px">
+          <div style="font-weight:700;font-size:13px;color:#111">${p.restaurant_name || p.name}</div>
+          <div style="font-size:12px;color:#ef4444;font-weight:700;margin-top:4px">${formatNumber(p.price || 0)}${Number(p.deal_only) === 1 ? ' 딜' : '원'}</div>
+          <a href="/products/${p.id}" style="display:inline-block;margin-top:6px;padding:4px 10px;background:#111;color:#fff;border-radius:4px;font-size:11px;font-weight:600;text-decoration:none">상세보기</a>
+        </div>`
+      })
+
+      window.kakao.maps.event.addListener(marker, 'click', () => {
+        markersRef.current.forEach(m => m.__infoWindow?.close())
+        infoWindow.open(mapInstanceRef.current, marker)
+        marker.__infoWindow = infoWindow
+      })
+
+      marker.__infoWindow = infoWindow
+      markersRef.current.push(marker)
+    })
+
+    if (hasMarkers) mapInstanceRef.current.setBounds(bounds)
+  }
+
+  // 🏭 2026-06-05: 정렬/필터 변경 refetch 시 화면 비우지 않으려고 현재 products 길이를 ref 로 추적.
+  const productsRef = useRef<Product[]>([])
+  useEffect(() => { productsRef.current = products }, [products])
+  // 🛡️ 2026-05-19: page-based cursor pagination (50개씩 누적 로드).
+  //   /browse 는 일반 상품만 (deal_only=0). 교환권은 /vouchers 신규 페이지에서.
+  // 🔁 2026-10-18: `t` 는 번역 도착 때 새로 만들어진다 — 의존성에 두면 1페이지를 또 받는다(dup 간헐). ref 로 읽는다.
+  const tRef = useRef(t); tRef.current = t
+  const loadProducts = useCallback((pageNum: number, reset: boolean) => {
+    // 🏭 2026-06-05 (사용자 신고 — 정렬 뒤늦게 반영): 정렬/필터 변경 시 화면 비우지 않고(즉시 클라 정렬) 백그라운드 교체.
+    if (reset) { if (productsRef.current.length === 0) setLoading(true) }
+    else setLoadingMore(true)
+    if (reset) setError(null)
+    // 🏭 2026-06-05 (감사 — 정렬/가격 서버사이드화): 클라 정렬키(price_asc/desc) → 서버키(price_low/high) 매핑.
+    const SORT_MAP: Record<SortOption, string> = { popular: 'popular', newest: 'newest', price_asc: 'price_low', price_desc: 'price_high', discount: 'discount' }
+    const params = new URLSearchParams({
+      page: String(pageNum),
+      limit: String(PAGE_SIZE),
+      exclude_deal_only: '1',  // 🛡️ 2026-05-19: /browse = 쇼핑만, 교환권 제외.
+      sort: SORT_MAP[sortBy] || 'popular',
+    })
+    if (category !== 'all') params.set('category', category)
+    // 🏭 2026-06-05 (감사): 가격범위도 서버에서 — 로드된 일부가 아닌 "전체 상품" 기준 필터.
+    if (priceRange === 'under10') params.set('max_price', '10000')
+    else if (priceRange === 'under30') params.set('max_price', '30000')
+    else if (priceRange === 'under50') params.set('max_price', '50000')
+    else if (priceRange === 'over50') params.set('min_price', '50000')
+    api.get(`/api/products?${params.toString()}`)
+      .then(r => {
+        if (r.data.success) {
+          const newItems: Product[] = r.data.data || []
+          setProducts(prev => reset ? newItems : [...prev, ...newItems])
+          setHasMore(newItems.length === PAGE_SIZE)
+          if (reset) setPage(1)
+        } else if (reset) {
+          setError(tRef.current('browse.loadError'))
+        }
+      })
+      .catch(() => {
+        if (reset) setError(tRef.current('browse.loadRetry'))
+      })
+      .finally(() => {
+        if (reset) setLoading(false); else setLoadingMore(false)
+      })
+  }, [category, sortBy, priceRange])
+
+  // 🔙 2026-09-14: 되살린 경우 **첫 실행만** 건너뛴다. 이 effect 는 마운트에서도 도는데 그대로 두면
+  //   setProducts([]) 로 복원본을 지우고 1페이지만 다시 받아 목록이 도로 짧아진다(= 고치려던 증상).
+  //   이후 카테고리·정렬·가격 변경은 정상적으로 리셋된다.
+  const browseSkipFirstRef = useRef(restored != null)
+  useEffect(() => {
+    if (browseSkipFirstRef.current) { browseSkipFirstRef.current = false; return }
+    setProducts([])
+    // 🛡️ 2026-05-27 (loading P0): SSR inject first-paint — category=all 초기 진입 즉시 표시.
+    // 🏭 2026-06-05: SSR(__SSR_INITIAL_BROWSE__)은 기본(popular/전체가격)일 때만 소비 — 정렬/가격 변경 시 서버 refetch.
+    if (category === 'all' && sortBy === 'popular' && priceRange === 'all') {
+      try {
+        if (typeof document !== 'undefined') {
+          const el = document.getElementById('__SSR_INITIAL_BROWSE__')
+          if (el?.textContent) {
+            const parsed = JSON.parse(el.textContent)
+            if (parsed?.success && Array.isArray(parsed?.data)) {
+              setProducts(parsed.data)
+              setHasMore(parsed.data.length === PAGE_SIZE)
+              setLoading(false)
+              return
+            }
+          }
+        }
+      } catch { /* SSR 누락 — fallback */ }
+    }
+    loadProducts(1, true)
+  }, [category, loadProducts])
+
+  // IntersectionObserver — sentinel 닿으면 다음 페이지 자동 fetch.
+  useEffect(() => {
+    if (!loadMoreRef.current || !hasMore || loadingMore) return
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && hasMore && !loadingMore) {
+        const next = page + 1
+        setPage(next)
+        loadProducts(next, false)
+      }
+    }, { threshold: 0.1 })
+    observer.observe(loadMoreRef.current)
+    return () => observer.disconnect()
+  }, [hasMore, loadingMore, page, loadProducts])
+
+  // 🔙 2026-09-14: 현재 목록을 보관 — 뒤로 오면 첫 렌더에 되살아난다. 근거: `./browse/list-restore`
+  //   ⚠️ 이 effect 는 showCount·page·hasMore **선언 뒤**여야 한다(위로 올리면 TDZ 로 빈 화면).
+  useEffect(() => {
+    if (loading || products.length === 0 || priceRange !== 'all') return
+    saveListView<BrowseViewState>(browseViewKey(category, sortBy), { products, page, hasMore, showCount })
+  }, [category, sortBy, priceRange, products, page, hasMore, showCount, loading])
+
+  useEffect(() => {
+    const handler = () => setShowSortDropdown(false)
+    if (showSortDropdown) {
+      document.addEventListener('click', handler)
+      return () => document.removeEventListener('click', handler)
+    }
+  }, [showSortDropdown])
+
+  const sorted = useMemo(() => {
+    // 🏭 2026-06-05 (사용자 신고 — 정렬이 화면에 반영 안 됨): 서버 정렬/가격필터에 더해 로드된 상품을 클라에서도
+    //   한 번 더 정렬·필터 → 캐시/배포 지연과 무관하게 선택이 "즉시 보이게"(belt-and-suspenders).
+    //   서버는 전체 상품 기준 정확성(페이지 경계) 담당, 클라는 즉시 시각 반영.
+    const pr = (p: Product) => (p.current_price || p.price) || 0
+    let result = [...products]
+    if (priceRange === 'under10') result = result.filter(p => pr(p) < 10000)
+    else if (priceRange === 'under30') result = result.filter(p => pr(p) < 30000)
+    else if (priceRange === 'under50') result = result.filter(p => pr(p) < 50000)
+    else if (priceRange === 'over50') result = result.filter(p => pr(p) >= 50000)
+    if (freeShipOnly) result = result.filter(p => pr(p) >= 50000)
+    switch (sortBy) {
+      case 'price_asc': result.sort((a, b) => pr(a) - pr(b)); break
+      case 'price_desc': result.sort((a, b) => pr(b) - pr(a)); break
+      case 'popular': result.sort((a, b) => (Number(b.sold_count) || 0) - (Number(a.sold_count) || 0)); break
+      // 🐛 2026-10-14: 생값은 라이브에서 전부 0 이라 정렬이 죽는다(유어샵과 같은 자리). SSOT 경유.
+      case 'discount': result.sort((a, b) => priceDisplay(b).discount - priceDisplay(a).discount); break
+      case 'newest': result.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0)); break
+    }
+    return result
+  }, [products, sortBy, priceRange, freeShipOnly])
+
+  const displayed = sorted.slice(0, showCount)
+  // showCount < 로드된 항목 OR 백엔드에 더 있음 → "더 있다" 표시.
+  const canShowMore = showCount < sorted.length || hasMore
+
+  // 🎨 2026-07-01 (대표 "2번 로딩 근본 해결" — urdeal 로더 유지): 로딩 중 전체화면 BrandLoader early-return
+  //   → 청크 로더와 끊김 없이 이어져 '한 번'으로 보임(헤더가 중간에 안 뜸).
+  if (loading) return <BrandLoader fullScreen />
+  return (
+    <div className="bg-white dark:bg-[#11141C] min-h-screen">
+      <SEO
+        title={t('browse.title')}
+        description={t('browse.seoDesc', { defaultValue: '유어딜 인기 상품, 동네 가게 이용권, 교환권을 할인가로 만나보세요' })}
+        url="/browse"
+        jsonLd={products.length > 0 ? itemListJsonLd(
+          products.slice(0, 20).map((p, i) => ({
+            position: i + 1,
+            name: p.name,
+            url: `/products/${p.id}`,
+            image: p.image_url || undefined,
+          }))
+        ) : undefined}
+      />
+      {/* 상단 헤더: 검색바 + 아이콘 — 모바일 전용. md+ 는 DesktopTopNav 가 동일 기능 제공. */}
+      <div className="md:hidden sticky top-0 z-50 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35]">
+        <div className="ur-content-wide px-4 py-2 lg:px-8">
+          <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate('/search')}
+            className="flex-1 flex items-center gap-2 bg-gray-100 dark:bg-[#1D1F29] rounded-full px-4 py-2 cursor-pointer"
+            aria-label={t('browse.searchAria')}
+          >
+            <Search className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+            <span className="text-[15px] text-gray-400 dark:text-gray-500">상품명, 브랜드명</span>
+          </button>
+          <button onClick={() => navigate('/cart')} aria-label="장바구니" className="p-1 relative">
+            <BagIcon className="w-6 h-6 text-gray-800 dark:text-gray-100" />
+          </button>
+          </div>
+        </div>
+      </div>
+
+      {/* 🛡️ 2026-05-21: 카테고리 가로 스크롤 아이콘 (당근/쿠팡 패턴 — 옵션 A).
+            기존 칩 → 이모지 아이콘 + 라벨 세로 배치 + 가로 스크롤.
+            한 화면 4-5개씩 표시, 손가락으로 swipe. */}
+      {/* 🏭 2026-06-05 (사용자 요청): 카테고리 scroll-up reveal — 위로 조금 올리면 재노출 (동네딜/교환권 패턴).
+            sticky top-[60px](모바일 헤더 아래)/md:top-14(데스크톱 탑네비 아래) + revealTop 따라 translateY. */}
+      <div
+        className="sticky top-[60px] md:top-14 z-30 bg-white dark:bg-[#11141C]"
+        style={{ transform: revealTop ? 'translateY(0)' : 'translateY(-110%)', transition: 'transform 0.25s ease', willChange: 'transform' }}
+      >
+      <div className="border-b border-gray-100 dark:border-[#2C2F35] overflow-x-auto scrollbar-hide">
+        <div className="ur-content-wide flex px-4 lg:px-8 gap-3 py-3">
+          {[
+            { key: 'all',          label: t('browse.categoryAll', { defaultValue: '전체' }),       Icon: BagIcon },
+            // 🏭 2026-06-04 (사용자 지적): 이용권/교환권은 쇼핑(/browse=실물상품)이 아닌 동네딜·교환권 영역 → 칩 제거.
+            { key: 'food',         label: t('browse.categoryFood', { defaultValue: '식품' }),      Icon: Soup },
+            { key: 'fashion',      label: t('browse.categoryFashion', { defaultValue: '패션' }),   Icon: Shirt },
+            { key: 'beauty',       label: t('browse.categoryBeauty', { defaultValue: '뷰티' }),    Icon: Sparkle },
+            // 🛒 2026-06-23 (대표 '카테고리별로 잘 나뉘어졌어?'): key 는 products.category 실제 저장값.
+            //   '리빙'='lifestyle' / '디지털'='electronics' (이전 'living'/'digital' 은 저장값과 불일치 → 0개였음).
+            { key: 'lifestyle',    label: t('browse.categoryLiving', { defaultValue: '리빙' }),    Icon: Sofa },
+            { key: 'electronics',  label: t('browse.categoryDigital', { defaultValue: '디지털' }), Icon: Smartphone },
+          ].map(c => {
+            const active = category === c.key || (c.key === 'all' && category === 'all')
+            return (
+              <button key={c.key}
+                onClick={() => { navigate(c.key === 'all' ? '/browse' : `/browse?category=${c.key}`); setShowCount(ITEMS_PER_PAGE) }}
+                className="shrink-0 flex flex-col items-center gap-2 active:scale-95 transition-transform min-w-[56px]"
+              >
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-[24px] transition-colors ${
+                  active
+                    ? 'bg-brand text-white shadow-md'
+                    : 'bg-gray-100 dark:bg-[#1D1F29]'
+                }`}>
+                  {c.Icon && <c.Icon className="w-3.5 h-3.5" aria-hidden="true" />}
+                </div>
+                <span className={`text-[12px] font-bold ${
+                  active ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'
+                }`}>
+                  {c.label}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+      </div>
+
+      <div className="ur-content-wide px-4 py-5 lg:px-8">
+        {/* 섹션 헤더 — 🏭 2026-06-04: 기본('전체')에선 '오늘의 핫딜' 타이틀 숨김(핫딜 섹션 제거). 카테고리 선택 시엔 라벨 표시. */}
+        {category !== 'all' && (
+          <div className="flex items-center justify-between mb-3">
+            <h1 className="text-[17px] lg:text-[28px] font-extrabold text-gray-900 dark:text-white">{(({'fashion':t('browse.categoryFashion'),'beauty':t('browse.categoryBeauty'),'food':t('browse.categoryFood'),'lifestyle':t('browse.categoryLiving'),'electronics':t('browse.categoryDigital'),'living':t('browse.categoryLiving'),'digital':t('browse.categoryDigital'),'meal_voucher':'식사','beauty_voucher':'뷰티 교환권','health_voucher':'건강 교환권','pet_voucher':'반려 교환권','stay_voucher':'숙박 교환권','activity_voucher':'액티비티 교환권','etc_voucher':'기타 교환권'} as Record<string, string>)[category] || category)}</h1>
+          </div>
+        )}
+
+        {/* 🏭 2026-06-04 (사용자 요청): '오늘의 핫딜'(TODAY'S DEAL) 프로모 배너 제거 — 불필요. */}
+
+        {/* 필터 + 정렬 */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowFilter(v => !v)}
+              className={`flex items-center gap-1 px-3 py-2 rounded-full text-[12px] font-bold ${showFilter ? 'bg-brand text-white' : 'bg-white dark:bg-[#11141C] text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-[#2C2F35]'}`}>
+              <SlidersHorizontal className="w-3 h-3" /> 필터
+            </button>
+            <span className="text-[12px] text-gray-500 dark:text-gray-400">{sorted.length}개</span>
+            {isMealVoucher && (
+              <button onClick={() => setMapView(!mapView)}
+                className={`flex items-center gap-1 px-3 py-2 rounded-full text-[12px] font-medium border ${mapView ? 'bg-brand text-white border-brand' : 'bg-white dark:bg-[#11141C] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2C2F35]'}`}>
+                {mapView ? <><List className="w-3 h-3" /> {t('browse.viewList')}</> : <><Map className="w-3 h-3" /> {t('browse.viewMap')}</>}
+              </button>
+            )}
+          </div>
+          <div className="relative" onClick={e => e.stopPropagation()}>
+            <button
+              onClick={() => setShowSortDropdown(v => !v)}
+              className="flex items-center gap-1 text-[15px] text-gray-700 dark:text-gray-200 font-medium"
+            >
+              {SORT_LABELS[sortBy]}
+              <ChevronDown className={`w-4 h-4 transition-transform ${showSortDropdown ? 'rotate-180' : ''}`} />
+            </button>
+            {showSortDropdown && (
+              <div className="absolute top-full right-0 mt-1 w-32 bg-surface border border-line rounded-xl shadow-lg z-30 overflow-hidden">
+                {(Object.keys(SORT_LABELS) as SortOption[]).map(opt => (
+                  <button
+                    key={opt}
+                    onClick={() => { setSortBy(opt); setShowSortDropdown(false) }}
+                    className={`w-full text-left px-3 py-2 text-[15px] ${
+                      sortBy === opt ? 'bg-red-50 text-red-500 font-semibold' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1D1F29]'
+                    }`}
+                  >
+                    {SORT_LABELS[opt]}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 필터 패널 */}
+        {showFilter && (
+          <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-3 mb-4 space-y-3">
+            <div>
+              <p className="text-[12px] font-medium text-gray-700 dark:text-gray-200 mb-2">가격대</p>
+              <div className="flex flex-wrap gap-2">
+                {([['all', t('browse.priceAll')],['under10', t('browse.priceUnder10')],['under30', t('browse.priceUnder30')],['under50', t('browse.priceUnder50')],['over50', t('browse.priceOver50')]] as const).map(([v, l]) => (
+                  <button key={v} onClick={() => { setPriceRange(v); setShowCount(ITEMS_PER_PAGE) }}
+                    className={`px-3 py-2 rounded-full text-[12px] font-medium ${priceRange === v ? 'bg-brand text-white' : 'bg-white dark:bg-[#11141C] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2C2F35]'}`}>{l}</button>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={() => { setFreeShipOnly(!freeShipOnly); setShowCount(ITEMS_PER_PAGE) }}
+                className={`flex items-center gap-1 px-3 py-2 rounded-full text-[12px] font-medium ${freeShipOnly ? 'bg-brand text-white' : 'bg-white dark:bg-[#11141C] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2C2F35]'}`}>
+                <TruckIcon className="w-3 h-3" /> 무료배송만
+              </button>
+              {(priceRange !== 'all' || freeShipOnly) && (
+                <button onClick={() => { setPriceRange('all'); setFreeShipOnly(false) }} className="text-[12px] text-red-500 font-medium flex items-center gap-1">
+                  <X className="w-3 h-3" /> 초기화
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 지도 뷰 (이용권 카테고리일 때) */}
+        {isMealVoucher && mapView && (
+          <div className="mb-4 rounded-xl overflow-hidden border border-line">
+            <div ref={mapContainerRef} className="w-full h-[400px] bg-gray-100 dark:bg-[#1D1F29]" />
+          </div>
+        )}
+
+        {/* 🏭 2026-06-04 (사용자 요청): '최근 본 상품' 섹션 제거. */}
+
+        {/* v4 Editorial Grid — hero + 2열 */}
+        {loading ? (
+          <BrandLoader />
+        ) : error ? (
+          /* ✅ UX M17 FIX: 에러 상태 + 재시도 버튼 */
+          <div className="text-center py-16">
+            <p className="text-gray-900 dark:text-white mb-4">{error}</p>
+            <button
+              onClick={() => loadProducts(1, true)}
+              className="px-6 py-2 bg-brand hover:bg-brand-dark text-white rounded-xl font-semibold transition-colors"
+            >
+              다시 시도
+            </button>
+          </div>
+        ) : sorted.length === 0 ? (
+          <div className="text-center py-16">
+            <p className="text-gray-400 dark:text-gray-500">상품이 없습니다</p>
+          </div>
+        ) : (
+          <>
+            {/* 🛡️ 2026-05-19: 사용자 요청 — hero 제거, 처음부터 2열 그리드 균등 표시. */}
+            {/* 🛡️ 2026-05-21: 카드 높이 불일치 (삐뚤어짐) 영구 fix.
+                  원인: original_price/discount 가 조건부 렌더 → 카드마다 높이 다름.
+                  해결: items-stretch flex-col + 슬롯 명시 placeholder (모든 카드 동일 구조).
+                  디자인: 첨부 이미지 (참외 카드) 스타일 — 원가 strike → 제목 → 할인%+가격 → ⭐+무료 */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-2 gap-y-2 lg:gap-4 items-stretch">
+              {displayed.map((product, idx) => (
+                <BrowseProductCard
+                  key={product.id}
+                  product={product}
+                  aboveFold={idx < 4}
+                  isMealVoucher={isMealVoucher}
+                  interested={interestedIds.has(product.id)}
+                  onToggleInterest={toggleInterest}
+                />
+              ))}
+            </div>
+
+            {/* 더보기 — sentinel div: observer가 보이면 자동 로드 + 버튼 fallback */}
+            {canShowMore && (
+              <div ref={loadMoreRef} className="flex justify-center mt-6 pb-20">
+                <button onClick={() => {
+                  if (showCount < sorted.length) setShowCount(c => c + ITEMS_PER_PAGE)
+                  else if (hasMore && !loadingMore) { const n = page + 1; setPage(n); loadProducts(n, false) }
+                }}
+                  className="px-8 py-3 border border-line rounded-full text-[15px] font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1D1F29]">
+                  더보기 ({sorted.length - showCount}개 남음)
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}

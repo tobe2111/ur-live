@@ -1,0 +1,589 @@
+import { useEffect, useState } from 'react'
+import { AlertIcon, TicketStubIcon } from '@/components/icons/urdeal-icons'
+import { useShippingQuote } from './checkout/useShippingQuote'
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
+import { useTranslation } from '@/lib/i18n-lite'
+import type { CartItem } from '@/types/cart'
+import type { ShippingAddress, GroupBuyTier, SellerGroup } from './checkout/types'
+import SEO from '@/components/SEO'
+import BrandLoader from '@/components/brand/BrandLoader'
+import { trackFunnel } from '@/lib/funnel'
+import api from '@/lib/api'
+import { handleApiError, getUserFriendlyError } from '@/lib/errorHandler'
+import { Button } from '@/components/ui/button'
+import { Smartphone } from 'lucide-react'
+import { getUserIdSync, hasConsumerSession } from '@/utils/auth'
+import { useAuthKR } from '@/shared/stores/useAuthKR'
+import { isKorea } from '@/config/region'
+import { captureError } from '@/lib/sentry'
+import { toast } from '@/hooks/useToast'
+import { useForceLightTheme } from '@/hooks/useForceLightTheme'
+import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags'
+// 🛡️ 2026-05-01: TD-018 점진 분할 — sub-components.
+import CheckoutHeader from './checkout/CheckoutHeader'
+import OrderItemsList from './checkout/OrderItemsList'
+import CheckoutCouponSection from './checkout/CheckoutCouponSection'
+import CheckoutOrderSummary from './checkout/CheckoutOrderSummary'
+import PaymentSection from './checkout/PaymentSection'
+// TD-018 final pass: 배송지 복합 컴포넌트 (ShippingSection + modals)
+import CheckoutAddressSection from './checkout/CheckoutAddressSection'
+import { useBeforePayment } from './checkout/useBeforePayment'
+
+// 🛡️ 2026-05-23 토스 SDK preload — 모듈 evaluate 즉시 CDN download 시작.
+//   import 만 해도 startPreload() 자동 실행 (src/lib/toss-preload.ts).
+import { getTossClientKey } from '@/lib/toss-preload'
+// 🛡️ 2026-06-12 (전수조사 4차 B-1): 숙소 예약 결제 분기 — /checkout?order_id=N&stay=1.
+import StayCheckout from './checkout/StayCheckout'
+import { isNoShippingProduct } from '@/shared/product-flow'
+import MallOriginBanner from '@/components/mall/MallOriginBanner'
+import { loginPathFromHere } from '@/utils/login-return'
+
+const clientKey = getTossClientKey()
+
+// 🛡️ 2026-06-12 (전수조사 4차 B-1): StayDetailPage 가 예약 생성 후 /checkout?order_id=N&stay=1 로
+//   보냈지만 기존엔 stay 쿼리를 무시하고 카트만 로드 → 빈카트 에러/타상품 결제 (결제 관문 단절).
+//   숙소 주문이면 카트 흐름 대신 StayCheckout (서버 주문 요약 + Toss 위젯 /pay/widget 경유).
+//   훅 순서 보호를 위해 분기는 래퍼에서 — 두 하위 트리는 독립 컴포넌트.
+export default function CheckoutPage() {
+  const [searchParams] = useSearchParams()
+  const isStay = searchParams.get('stay') === '1'
+  const stayOrderId = Number(searchParams.get('order_id'))
+  if (isStay && Number.isFinite(stayOrderId) && stayOrderId > 0) {
+    return <StayCheckout orderId={stayOrderId} />
+  }
+  return <CartCheckout />
+}
+
+function CartCheckout() {
+  // 🛡️ 2026-05-19: 결제 페이지는 라이트 테마 고정 (사용자 요청 + 가독성).
+  //   영수증 / 금액 / 카드 입력 정보의 명료성이 최우선.
+  useForceLightTheme()
+  const { t } = useTranslation()
+  // ✅ Region 기반 Store 선택
+  const isKR = isKorea()
+  const krUser = useAuthKR(state => state.user)
+  const krAuthLoading = useAuthKR(state => state.isLoading)
+  const krIsAuthReady = useAuthKR(state => state.isAuthReady)
+
+  // ✅ Selector로 필요한 상태만 구독
+  const user = krUser
+  const authLoading = krAuthLoading
+  const isAuthReady = krIsAuthReady
+
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [searchParams] = useSearchParams()
+  const [cartItems, setCartItems] = useState<CartItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [userId, setUserId] = useState<string | null>(null)
+  const [urlParamsProcessed, setUrlParamsProcessed] = useState(false)
+  const [tokenRefreshing] = useState(false)
+
+  // 바로구매 모드: navigate state로 전달된 상품만 결제
+  const directPurchaseItems = (location.state as { directPurchase?: CartItem[] } | null)?.directPurchase
+  const isDirectPurchase = !!directPurchaseItems?.length
+
+  // 결제 수단 선택
+  const [paymentMethod, setPaymentMethod] = useState<'toss' | 'deal'>('toss')
+  // 🛡️ 2026-05-21: 사용자 지적 — 교환권 (deal_only=1) 만 담겼으면 토스 결제 불요.
+  //   모든 item 이 deal_only=1 → 강제 'deal' 모드 + 토스 옵션 숨김 + 결제 수단 선택 단계 생략.
+  //   별도 useState 가 아닌 derived state: cartItems 변경 시 자동 재계산.
+  const [couponCode, setCouponCode] = useState('')
+  const [couponDiscount, setCouponDiscount] = useState(0)
+  const [couponId, setCouponId] = useState<number | null>(null)
+  const [autoCoupon, setAutoCoupon] = useState<{ type: string; value: number; max_discount: number } | null>(null)
+  const [dealBalance, setDealBalance] = useState(0)
+  const [dealToUse, setDealToUse] = useState(0)
+  const [payingWithDeals, setPayingWithDeals] = useState(false)
+  const [groupBuyDiscounts, setGroupBuyDiscounts] = useState<Record<number, { percent: number; tier: GroupBuyTier | null }>>({})
+
+  // 배송지 — CheckoutAddressSection 이 관리, 부모는 selectedAddress 만 보관
+  const [selectedAddress, setSelectedAddress] = useState<ShippingAddress | null>(null)
+
+  // 🛡️ 결제 금액 정합 — 배송비·현재가는 서버 권위 견적(useShippingQuote). 클라 자체 계산이
+  //   서버 총액과 어긋나 Toss confirm 이 '금액 불일치' 400 을 내던 클래스를 제거한다.
+  const quotedFees = useShippingQuote(cartItems, selectedAddress?.postal_code, setCartItems, t)
+
+  // 🛡️ 2026-05-23 v2 (revert + 회귀 방어): server clientKey 다시 fetch — env 미스매치 영구 차단.
+  //   배경: 이전 commit (eb29a060) 에서 VITE env 만 사용으로 바꿨는데, 운영자가 빌드 env 미설정 시
+  //         클라이언트가 빈/잘못된 키로 SDK 호출 → "결제위젯 연동 키는 지원하지 않습니다" 등 에러 회귀.
+  //   복원: server `TOSS_CLIENT_KEY` 단일 진실원천. server env 만 갱신해도 즉시 반영.
+  //   회귀 방어: clientKey 가 비어있으면 TossPaymentWidget 자체를 렌더 안 함 (race condition 차단).
+  //   SDK preload 는 그대로 유지 (toss-preload.ts 가 VITE env 로 미리 로드 — 서버 키와 같으면 cache hit).
+  // 🛡️ 2026-05-23 v3 (race condition 영구 fix): server 응답 받기 전엔 PaymentSection 렌더 X.
+  //   v2 버그: VITE 키로 즉시 mount → server key 도착 → key prop 변경 → useEffect cleanup →
+  //   hasInitialized.current==true 라 재초기화 안 됨 → 영원히 loading.
+  //   v3: clientKeyLoaded 초기 false 강제 → server fetch 끝나고 한 번만 mount.
+  const [serverClientKey, setServerClientKey] = useState<string>('')
+  const [serverVariantPayment, setServerVariantPayment] = useState<string>('')
+  const [serverVariantAgreement, setServerVariantAgreement] = useState<string>('')
+  const [clientKeyLoaded, setClientKeyLoaded] = useState<boolean>(false)
+  // 🆕 2026-06-29 퍼널 계측: 결제 시작(체크아웃 진입) — 결제 완료와 대비해 결제 이탈률 산출.
+  useEffect(() => { trackFunnel('checkout_started') }, [])
+
+  useEffect(() => {
+    // 🛡️ 2026-06-26 늦은 로딩 fix (대표 신고 — 체크아웃 결제수단 UI 늦게 뜸):
+    //   빌드타임 VITE 키(getTossClientKey)가 있으면(정상 운영 케이스 — SDK 도 이 키로 preload 됨)
+    //   서버 client-key fetch 를 '직렬로 기다리지 않고' 즉시 마운트 → 첫 결제수단 표시 ~100~400ms 단축.
+    //   ⚠️ v2 회귀(키 prop 변경 → 위젯 재init → 무한로딩) 영구방지: 마운트 후 clientKey 를 절대
+    //     바꾸지 않음(빌드 키로 고정). 서버 fetch 는 변종키 반영 + 미스매치 telemetry 용 백그라운드.
+    //   빌드 키가 비어있을 때만(운영자 VITE 미설정) 기존처럼 서버 응답을 기다려 마운트(빈 키 init 회귀 방어).
+    if (clientKey) {
+      setServerClientKey(clientKey)
+      setClientKeyLoaded(true)
+    }
+    api.get('/api/payments/client-key', { params: { _ts: Date.now() } })  // cache-bust
+      .then(r => {
+        const data = r.data?.data || {}
+        const key = data.clientKey || r.data?.clientKey
+        // variant 는 위젯 init 을 재트리거하지 않음(TossPaymentWidget deps=[userId,clientKey]) →
+        //   이미 마운트됐어도 안전하게 반영 시도, 빌드 VITE_TOSS_VARIANT_* fallback 과 공존.
+        if (typeof data.variant_payment === 'string') setServerVariantPayment(data.variant_payment)
+        if (typeof data.variant_agreement === 'string') setServerVariantAgreement(data.variant_agreement)
+        if (import.meta.env.DEV) console.log('[Checkout] server config:', { key_type: data.key_type, variant_payment: data.variant_payment, variant_agreement: data.variant_agreement })
+        if (!clientKey) {
+          // 빌드 키 없음 — 서버 키로만 마운트(기존 fallback 동작 유지).
+          if (key && typeof key === 'string') setServerClientKey(key)
+          setClientKeyLoaded(true)
+        } else if (key && typeof key === 'string' && key !== clientKey && import.meta.env.DEV) {
+          console.warn('[Checkout] server clientKey ≠ build-time key — toss-preload 미스매치 telemetry 가 보고함')
+        }
+      })
+      .catch((err) => {
+        if (import.meta.env.DEV) console.warn('[Checkout] server clientKey 로드 실패, env fallback:', err)
+        if (!clientKey) setClientKeyLoaded(true)
+      })
+  }, [])
+
+  useEffect(() => {
+    api.get('/api/points/balance')
+      .then(r => { if (r.data.success) setDealBalance(r.data.data.balance) })
+      .catch(err => { if (import.meta.env.DEV) console.warn('[Checkout] 딜 잔액 로드 실패:', err) })
+    api.get('/api/coupons/my')
+      .then(r => {
+        if (r.data.success && r.data.data?.length > 0) {
+          const best = r.data.data.reduce((a: Record<string, unknown>, b: Record<string, unknown>) =>
+            ((a.value as number) || 0) > ((b.value as number) || 0) ? a : b
+          )
+          if (best) {
+            setCouponCode(best.code as string)
+            setCouponId(best.id as number)
+            setAutoCoupon({
+              type: best.type as string,
+              value: best.value as number,
+              max_discount: best.max_discount as number || 0,
+            })
+          }
+        }
+      })
+      .catch(err => { if (import.meta.env.DEV) console.warn('[Checkout] 쿠폰 로드 실패:', err) })
+  }, [])
+
+  // Recalculate auto-applied coupon discount when cart items load
+  useEffect(() => {
+    if (!autoCoupon || cartItems.length === 0) return
+    const currentSubtotal = cartItems.reduce((sum, item) => sum + (item.price_snapshot ?? item.price ?? 0) * item.quantity, 0)
+    if (currentSubtotal <= 0) return
+    const discount = autoCoupon.type === 'percent'
+      ? Math.round(currentSubtotal * autoCoupon.value / 100)
+      : autoCoupon.value
+    setCouponDiscount(Math.min(discount, autoCoupon.max_discount || discount))
+  }, [autoCoupon, cartItems])
+
+  // 셀러별 장바구니 그룹화 및 배송비 계산
+  const sellerGroups = cartItems.reduce((groups, item) => {
+    const sellerId = Number(item.seller_id) || 0
+    if (!groups[sellerId]) {
+      groups[sellerId] = {
+        seller_id: sellerId,
+        seller_name: item.seller_name || t('checkoutPage.fallbackSeller'),
+        items: [],
+        subtotal: 0,
+        // `||` 는 셀러가 명시한 0(비배송·무료)을 3,000 으로 되돌린다 — `??` 여야 한다.
+        shipping_fee: item.shipping_fee ?? 3000,
+        free_shipping_threshold: item.free_shipping_threshold || 0,
+      }
+    }
+    groups[sellerId].items.push(item)
+    groups[sellerId].subtotal += (item.price_snapshot ?? item.price ?? 0) * item.quantity
+    return groups
+  }, {} as Record<number, SellerGroup>)
+  // 📦 2026-09-01: 그룹 전체가 비배송인지는 **모든 아이템을 담은 뒤에야** 알 수 있다.
+  //   (첫 아이템으로 정하면 배송/비배송이 섞인 셀러에서 틀린다.)
+  for (const g of Object.values(sellerGroups)) g.no_shipping = g.items.length > 0 && g.items.every(isNoShippingProduct)
+
+  // 소계 및 배송비 계산
+  const subtotal = cartItems.reduce((sum, item) => sum + (item.price_snapshot ?? item.price ?? 0) * item.quantity, 0)
+  const totalShippingFee = Object.values(sellerGroups).reduce((total, group) => {
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): 서버 견적 우선 — 비배송/무료배송/지역비(제주·도서산간)가
+    //   전부 반영된 권위 값(주문 생성과 동일 계산). 견적 미도착/실패 시에만 아래 클라 계산 fallback.
+    const quoted = quotedFees?.[String(group.seller_id)]
+    if (quoted != null) return total + quoted
+    // 🛡️ 2026-05-19 (사용자 신고: 교환권 배송비 치명적 버그):
+    //   KT Alpha 교환권 (deal_only=1) 은 휴대폰 MMS 발송이라 배송비 불요.
+    //   그룹의 모든 item 이 deal_only=1 이면 shipping_fee 무시.
+    // 🛡️ 2026-06-22: 비배송(교환권 deal_only OR 동네딜 공구 카테고리)이면 배송비 0.
+    if (group.no_shipping) return total
+    if (group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold) return total
+    return total + group.shipping_fee
+  }, 0)
+
+  // 🛡️ 2026-05-21: 교환권만 담긴 주문 — 토스 결제 옵션 자체 숨김 + 'deal' 강제 + dealToUse 자동 채움.
+  // no-shipping-ssot-ok: 이건 **배송** 판정이 아니라 **결제 수단** 판정이다(교환권만이면 토스 숨김).
+  //   이용권은 비배송이지만 카드로 결제하므로 여기 섞으면 안 된다 — 일부러 따로 둔다.
+  const isAllDealOnly = cartItems.length > 0
+    && cartItems.every(i => Number((i as { deal_only?: number }).deal_only) === 1)  // no-shipping-ssot-ok
+  // 🛡️ 2026-06-22 (대표 — 공구 상품은 배송 주소 불요): "배송 필요 여부" SSOT (order-type 와 동일 신호).
+  //   deal_only=1(기프티콘 교환권) OR isVoucherCategory(동네딜 공구 — 매장 사용) = 비배송. 결제수단(deal/Toss)과
+  //   무관 — 주소/배송 UI 에만 영향(동네딜 공구는 Toss 결제이되 주소는 불요). 일반 온라인 상품만 배송지 필요.
+  const noShipping = cartItems.length > 0 && cartItems.every(isNoShippingProduct)
+  const needsShipping = !noShipping
+
+  // 공동구매 할인 계산
+  const totalGroupBuyDiscount = cartItems.reduce((sum, item) => {
+    const pid = Number(item.product_id)
+    const discount = groupBuyDiscounts[pid]
+    if (!discount || !discount.percent) return sum
+    const itemPrice = item.price_snapshot ?? item.price ?? 0
+    return sum + Math.floor(itemPrice * item.quantity * discount.percent / 100)
+  }, 0)
+
+  const totalBeforeDeal = subtotal + totalShippingFee - couponDiscount - totalGroupBuyDiscount
+  const totalAmount = totalBeforeDeal - dealToUse
+
+  // 🛡️ 2026-05-21: 교환권만 담겼으면 paymentMethod='deal' 강제 + dealToUse 자동 풀충전.
+  //   잔액 부족하면 충전 CTA 가 PaymentSection 에서 별도 노출.
+  useEffect(() => {
+    if (!isAllDealOnly) return
+    if (paymentMethod !== 'deal') setPaymentMethod('deal')
+    const needed = Math.min(dealBalance, totalBeforeDeal)
+    if (needed > 0 && dealToUse !== needed) setDealToUse(needed)
+  }, [isAllDealOnly, paymentMethod, dealBalance, totalBeforeDeal, dealToUse])
+
+  useEffect(() => { document.title = t('checkoutPage.docTitle') }, [t])
+
+  // v36 FIX: 결제 진행 중 페이지 이탈 경고 (isSubmittingRef는 useBeforePayment 훅에서 반환)
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isSubmittingRef.current) {
+        e.preventDefault()
+        e.returnValue = t('payment.errors.leaveConfirm')
+        return e.returnValue
+      }
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [])
+
+  // 공동구매 할인 조회 (cartItems 로드 후)
+  useEffect(() => {
+    // 🗑️ 2026-07-07 (로딩 낭비 감사): 친구초대 동적할인 종료(REFERRAL_GROUP_DISCOUNT_DISABLED) —
+    //   /api/referral/discount 는 항상 null 반환. 결제 크리티컬 패스에서 상품 수만큼 무의미한 왕복을
+    //   하던 것을 조기 차단(ReferralSection 은 이미 같은 플래그로 단락). 재개 시 배치 엔드포인트 권장.
+    if (REFERRAL_GROUP_DISCOUNT_DISABLED) return
+    if (cartItems.length === 0) return
+    const uniqueProductIds = Array.from(new Set(cartItems.map(item => Number(item.product_id)).filter(Boolean)))
+    if (uniqueProductIds.length === 0) return
+    Promise.allSettled(
+      uniqueProductIds.map(pid =>
+        api.get(`/api/referral/discount/${pid}`)
+          .then(r => {
+            if (r.data?.success && r.data.data?.discount_percent > 0) {
+              return { pid, percent: r.data.data.discount_percent, tier: r.data.data.unlocked_tier }
+            }
+            return null
+          })
+      )
+    ).then(results => {
+      const map: Record<number, { percent: number; tier: GroupBuyTier | null }> = {}
+      results.forEach(r => {
+        if (r.status === 'fulfilled' && r.value) map[r.value.pid] = { percent: r.value.percent, tier: r.value.tier }
+      })
+      setGroupBuyDiscounts(map)
+    })
+  }, [cartItems])
+
+  // ✅ BUG #18 FIX: URL 파라미터 정리 (레거시 토큰 제거)
+  useEffect(() => {
+    const paramsToClean = ['access_token', 'refresh_token', 'userId', 'userEmail', 'firebase_token', 'userName', 'login', 'session']
+    if (paramsToClean.some(param => searchParams.has(param))) {
+      if (import.meta.env.DEV) console.warn('[CheckoutPage] 🧹 URL 파라미터 정리 중...')
+      window.history.replaceState({}, '', window.location.pathname)
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+    }
+    setUrlParamsProcessed(true)
+  }, [searchParams])
+
+  // 초기 데이터 로드
+  useEffect(() => {
+    if (!urlParamsProcessed) return
+    const uid = getUserIdSync()
+    if (!uid) {
+      captureError(new Error('CheckoutPage: userId 없음'), { context: 'CheckoutPage.loadData' })
+      setError(t('payment.errors.invalidUser'))
+      setLoading(false)
+      return
+    }
+    setUserId(uid)
+
+    const fromCart = (location.state as { fromCart?: boolean } | null)?.fromCart
+    const cartItemsFromState = (location.state as { cartItems?: CartItem[] } | null)?.cartItems
+
+    const loadData = async () => {
+      try {
+        if (fromCart && Array.isArray(cartItemsFromState) && cartItemsFromState.length > 0) {
+          setCartItems(cartItemsFromState)
+        } else if (isDirectPurchase && directPurchaseItems) {
+          setCartItems(directPurchaseItems)
+        } else {
+          const cartResponse = await api.get('/api/cart')
+          let cartItemsData: CartItem[] = []
+          if (cartResponse.data?.success) {
+            const resData = cartResponse.data.data
+            if (resData?.items && Array.isArray(resData.items)) cartItemsData = resData.items
+            else if (Array.isArray(resData)) cartItemsData = resData
+          } else if (Array.isArray(cartResponse.data)) {
+            cartItemsData = cartResponse.data
+          }
+          if (cartItemsData.length > 0) setCartItems(cartItemsData)
+          else setError(t('payment.errors.emptyCart'))
+        }
+      } catch (err) {
+        if (import.meta.env.DEV) console.error('[CheckoutPage] ❌ API 에러:', err)
+        captureError(err as Error, { context: 'CheckoutPage.loadData', userId: uid })
+        handleApiError(err)
+        setError(t('payment.errors.loadDataFailed'))
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadData()
+  }, [navigate, urlParamsProcessed])
+
+  // 이용권 여부 확인 (참고용 — 비배송 판별은 noShipping SSOT 사용).
+  const isMealVoucher = cartItems.some(item => (item as CartItem & { category?: string }).category === 'meal_voucher')
+
+  // 결제 전 주문 생성 훅 (TD-018 final pass 분리)
+  // 🛡️ 2026-06-22 (대표 — 공구 주소 불요): Toss 경로의 주소 가드/플레이스홀더를 noShipping(교환권+동네딜 공구
+  //   전부)로 — 기존 isMealVoucher(meal_voucher .some)는 다른 공구 카테고리(뷰티/숙소 등)를 놓쳐 주소 강요했음.
+  const { handleBeforePayment, isSubmittingRef } = useBeforePayment({
+    isMealVoucher: noShipping,
+    isDirectPurchase,
+    selectedAddress,
+    sellerGroups,
+    groupBuyDiscounts,
+    couponId,
+    couponDiscount,
+    totalGroupBuyDiscount,
+    dealToUse,
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): 서버 배송비 견적 + Σ(서버 총액) 검증용 청구 예정액.
+    quotedFees,
+    expectedTotal: totalAmount,
+  })
+
+  const handlePayWithDeals = async () => {
+    // 🛡️ 2026-05-21: 교환권만 담긴 주문은 휴대폰 MMS 발송 — 배송지 불필요.
+    //   백엔드 KT Alpha 자동 발송이 users.phone 으로 직접 발송. 클라이언트 주소 입력 skip.
+    if (needsShipping && !selectedAddress) { toast.error(t('common.addressRequired')); return }
+    setPayingWithDeals(true)
+    try {
+      const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
+      if (isDirectPurchase) sessionStorage.setItem('directPurchase', 'true')
+      const shippingPayload = noShipping
+        ? { name: '', phone: '', postal_code: '', address1: isAllDealOnly ? '교환권 — 휴대폰 MMS 발송' : '동네딜 이용권 — 매장에서 사용', address2: '' }
+        : {
+            name: selectedAddress!.recipient_name, phone: selectedAddress!.phone,
+            postal_code: selectedAddress!.postal_code, address1: selectedAddress!.address,
+            address2: selectedAddress!.address_detail || '',
+          }
+      const res = await api.post('/api/points/pay', {
+        order_number: orderNumber, total_amount: totalAmount,
+        items: cartItems.map(item => ({
+          product_id: String(item.product_id), product_name: item.product_name || t('checkoutPage.fallbackProduct'),
+          quantity: item.quantity, price: item.price_snapshot ?? item.price ?? 0,
+          seller_id: item.seller_id ? String(item.seller_id) : undefined,
+          option_value: (item as CartItem & { option_value?: string }).option_value || undefined,
+        })),
+        shipping: shippingPayload,
+        // 🏁 2026-06-12 (G3): 쿠폰은 서버가 검증·차감·소진까지 원자 처리 — 별도 /coupons/use 호출 폐지
+        coupon_id: (!isAllDealOnly && couponId && couponDiscount > 0) ? couponId : undefined,
+      })
+      if (res.data.success) {
+        const paid = Number(res.data.data?.amount_paid)
+        navigate(`/payment/success?orderId=${orderNumber}&method=deal&amount=${Number.isFinite(paid) && paid >= 0 ? paid : totalAmount}`)
+      } else {
+        toast.error(res.data.error || t('payment.errors.paymentFailed'))
+      }
+    } catch (err: unknown) {
+      toast.error(getUserFriendlyError(err, t('payment.errors.dealPaymentFailed')))
+    } finally { setPayingWithDeals(false) }
+  }
+
+  // ✅ BUG #3 FIX: Auth/loading guards (all hooks called above this line)
+  const isSessionUser = hasConsumerSession()
+  if (!isSessionUser && (!isAuthReady || authLoading))
+    return <BrandLoader fullScreen label={t('common.loading', { defaultValue: '로딩 중...' })} />
+  if (!user && !isSessionUser) return null
+  if (loading || tokenRefreshing)
+    return <BrandLoader fullScreen label={tokenRefreshing ? t('payment.errors.securityAuthInProgress') : t('payment.errors.loading')} />
+  if (error) return (
+    <div className="w-full p-4 sm:p-6">
+      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-lg p-4">
+        <div className="flex items-center gap-2"><AlertIcon className="w-5 h-5 text-red-600" /><p className="text-red-800 dark:text-red-400">{error}</p></div>
+        <div className="flex gap-2 mt-4">
+          <button onClick={() => window.location.reload()} className="px-4 py-2 bg-brand text-white text-[15px] rounded-lg">{t('common.retry', { defaultValue: '다시 시도' })}</button>
+          <Button onClick={() => navigate('/cart', { replace: true })} variant="outline">{t('checkout.backToCart', { defaultValue: '장바구니로 돌아가기' })}</Button>
+        </div>
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="min-h-[100dvh] bg-[#f4f4f4] overflow-x-hidden">
+      <SEO title={t('checkoutPage.seoTitle')} description={t('checkoutPage.seoDesc')} url="/checkout" noindex />
+      {/* 🛡️ 2026-05-21: 뒤로가기 무한 루프 영구 fix.
+            기존: navigate('/cart') → new history entry → [prev, /cart, /checkout, /cart].
+            결과: /cart 에서 뒤로 → /checkout (사용자 의도와 반대).
+            영구: navigate(-1) → browser back → history stack 안 늘어남.
+            예외: 첫 진입 (history.length<=1) 이면 /cart 로 명시 (외부 링크 진입 대응). */}
+      <CheckoutHeader onBack={() => {
+        if (window.history.length > 1) navigate(-1)
+        else navigate('/cart', { replace: true })
+      }} />
+
+      <main className="ur-content-narrow pb-52" style={{ background: '#F4F4F4' }}>
+        {/* 🛡️ 2026-05-21: cartItems 로드 전엔 결제 섹션 자체 렌더 금지 — race condition 영구 fix.
+              로딩 도중 paymentMethod 가 'toss' 기본값이면 일반 상품 흐름으로 잠깐 보였다가
+              isAllDealOnly 로 전환되며 깜빡임 발생. 로딩 중엔 빈 화면 + 스피너만 노출. */}
+        {cartItems.length === 0 ? (
+          <div className="flex items-center justify-center py-24">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+          </div>
+        ) : (
+          <div className="flex flex-col">
+            <div className="flex flex-1 flex-col lg:rounded-3xl">
+              {/* 🏪 2026-08-12: 몰 손님이면 결제 화면에도 **가게 간판**을 남긴다(흔적 없으면 미렌더). */}
+              <MallOriginBanner className="mx-5 mt-4" />
+              {/* 🛡️ 2026-05-21: 교환권만 담긴 주문 — 배송지/쿠폰 섹션 숨김.
+                    KT Alpha 자동 발송이 users.phone 으로 직접 처리 → 사용자 주소 입력 불요.
+                    쿠폰도 deal_only 상품엔 적용 안 됨 (백엔드 차단). */}
+              {/* 🛡️ 2026-06-22 (대표 — 공구 상품 주소 불요): 배송 필요(일반 온라인 상품)일 때만 배송지 입력. */}
+              {needsShipping && (
+                <>
+                  <CheckoutAddressSection
+                    userId={userId}
+                    navigateToLogin={() => navigate(loginPathFromHere())}
+                    selectedAddress={selectedAddress}
+                    onAddressSelected={setSelectedAddress}
+                  />
+                  <div className="h-[6px] bg-gray-100 dark:bg-[#1D1F29]" />
+                </>
+              )}
+
+              {/* 비배송 안내 — 기프티콘 교환권(MMS) vs 동네딜 공구(매장 사용) 구분. */}
+              {isAllDealOnly && (
+                <section className="bg-white dark:bg-[#11141C] px-5 py-4">
+                  <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">발송 방법</h2>
+                  <div className="rounded-xl border border-line bg-gray-50 dark:bg-[#141414] p-3 flex items-start gap-3">
+                    <Smartphone className="w-6 h-6 shrink-0 text-gray-400 dark:text-gray-500" strokeWidth={1.6} aria-hidden />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[13px] font-bold text-gray-900 dark:text-white">휴대폰 MMS 즉시 발송</p>
+                      <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                        결제 완료 즉시 가입하신 휴대폰 번호로 교환권이 발송됩니다. 배송지 입력은 필요 없습니다.
+                      </p>
+                    </div>
+                  </div>
+                </section>
+              )}
+              {noShipping && !isAllDealOnly && (
+                <section className="bg-white dark:bg-[#11141C] px-5 py-4">
+                  <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">사용 방법</h2>
+                  <div className="rounded-xl border border-line bg-gray-50 dark:bg-[#141414] p-3 flex items-start gap-3">
+                    <TicketStubIcon className="w-6 h-6 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[13px] font-bold text-gray-900 dark:text-white">매장에서 바로 사용</p>
+                      <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                        결제 후 내 지갑에 이용권이 발급돼요. 매장에서 “현장에서 사용하기”로 쓰면 됩니다. 배송지 입력이 필요 없어요.
+                      </p>
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {/* 주문 상품 정보 */}
+              <OrderItemsList sellerGroups={sellerGroups} totalItemCount={cartItems.length} />
+
+              {/* 쿠폰 — 교환권 전용은 적용 불가 */}
+              {!isAllDealOnly && (
+                <CheckoutCouponSection
+                  couponCode={couponCode}
+                  setCouponCode={setCouponCode}
+                  couponDiscount={couponDiscount}
+                  totalAmount={totalAmount}
+                  onApplied={(discount, id) => { setCouponDiscount(discount); setCouponId(id) }}
+                />
+              )}
+
+              <div className="h-[6px] bg-gray-100 dark:bg-[#1D1F29]" />
+
+              {/* 결제 수단 — 교환권만 담겼으면 토스 옵션 숨김 (강제 'deal').
+                  🛡️ 2026-05-23 v2: clientKey 로드 끝나기 전엔 스피너만 — TossPaymentWidget 이
+                  빈/잘못된 키로 init 시도해 에러 토스트 띄우는 회귀 영구 차단. */}
+              {!isAllDealOnly && !clientKeyLoaded ? (
+                <section className="bg-white dark:bg-[#11141C] px-5 py-8 flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
+                  <span className="ml-3 text-[15px] text-gray-500">결제 시스템 준비 중...</span>
+                </section>
+              ) : (
+              <PaymentSection
+                paymentMethod={paymentMethod}
+                setPaymentMethod={setPaymentMethod}
+                dealOnly={isAllDealOnly}
+                dealBalance={dealBalance}
+                dealToUse={dealToUse}
+                setDealToUse={setDealToUse}
+                totalBeforeDeal={totalBeforeDeal}
+                totalAmount={totalAmount}
+                payingWithDeals={payingWithDeals}
+                onPayWithDeals={handlePayWithDeals}
+                userId={userId || ''}
+                cartItems={cartItems}
+                totalShippingFee={totalShippingFee}
+                clientKey={serverClientKey}
+                variantPayment={serverVariantPayment}
+                variantAgreement={serverVariantAgreement}
+                customerEmail={localStorage.getItem('user_email') || undefined}
+                customerName={selectedAddress?.recipient_name || localStorage.getItem('user_name') || undefined}
+                customerMobilePhone={selectedAddress?.phone || undefined}
+                selectedAddressOk={noShipping || !!selectedAddress}
+                onBeforePayment={handleBeforePayment}
+                onTossPaymentSuccess={(orderId, paymentKey, amount) => {
+                  navigate(`/payment/success?orderId=${orderId}&paymentKey=${paymentKey}&amount=${amount}`)
+                }}
+                onStripePaymentSuccess={(orderId, paymentIntentId, amount) => {
+                  navigate(`/payment/success?orderId=${orderId}&paymentIntentId=${paymentIntentId}&amount=${amount}`)
+                }}
+              />
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 결제 예정금액 요약 — 교환권은 배송비/쿠폰 제거된 단순 요약 */}
+        {cartItems.length > 0 && (
+          <CheckoutOrderSummary
+            subtotal={subtotal}
+            totalShippingFee={noShipping ? 0 : totalShippingFee}
+            couponDiscount={isAllDealOnly ? 0 : couponDiscount}
+            totalGroupBuyDiscount={totalGroupBuyDiscount}
+            dealToUse={dealToUse}
+            totalAmount={totalAmount}
+            noShipping={noShipping}
+          />
+        )}
+      </main>
+    </div>
+  )
+}

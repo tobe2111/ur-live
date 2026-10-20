@@ -1,0 +1,976 @@
+name: PR Verification
+
+# PR 단위 빠른 검증 — 빌드 + 정적 분석 + 번들 예산 체크.
+# 배포는 main.yml 이 담당하므로 여기는 검증만.
+#
+# 🛡️ 2026-05-13: push trigger 복원 (public repo 라 Actions 무제한 무료).
+#   pre-commit hook 우회 (-n) 해도 PR 에서 반드시 통과해야 main 머지 가능.
+#
+# 🛡️ 2026-07-28: 같은 커밋에 pull_request + push 두 이벤트가 각각 run 을 만들어 **Verify 가 매번 2번**
+#   돌고 있었다(실측: 커밋 f5c2093f7 에 run 30351104564 / 30351136667 두 개, 각 ~7분). 아래 concurrency 가
+#   두 이벤트를 **같은 group** 으로 묶어 나중 것이 앞 것을 취소 → 커밋당 1회로 수렴(연속 푸시도 최신만).
+#
+# 🔴 2026-09-15: **push 트리거 제거.** 위 concurrency 가 취소한 push-run 도 이름이 `Verify` 인 **check run 으로
+#   남는다**(conclusion=cancelled). 이날 main 에 "Verify 필수" 룰셋(rulesets 23392011)이 켜지자 GitHub 가 그
+#   취소본을 **실패한 필수 검사**로 세어, pull_request-run 이 58분 걸려 초록이 돼도 머지가 `blocked` 였다.
+#   PR #1429·#1239 모두 대표가 취소본을 손으로 Re-run 해야 auto-merge 가 발동했다(각 +50분).
+#   ⇒ PR 브랜치 푸시는 pull_request 이벤트 하나만 run 을 만든다. 잃는 것: PR 을 안 연 브랜치의 CI 피드백
+#   (그 브랜치는 어차피 main 에 못 들어가고, 로컬은 pre-push 게이트 94개가 막는다). 얻는 것: 취소본 0 ·
+#   Verify 부하 절반 · auto-merge 가 첫 초록에 발동. main push 는 종전대로 main.yml 이 처리.
+#   ⚠️ group 키의 `|| github.ref_name` 은 workflow_dispatch(브랜치 수동 실행) 때 head_ref 가 비어 있어 남긴다.
+on:
+  # 🔴 **pull_request 에는 paths-ignore 를 두지 않는다** (2026-08-03 실사고).
+  #
+  #   두었을 때 이런 상태가 만들어졌다: 코드 커밋(b326fc7)을 밀어 Verify 가 돌던 중,
+  #   **문서 전용 커밋(5de7b35)을 뒤에 밀자** concurrency 가 앞 run 을 **취소**했고,
+  #   뒤 커밋은 paths-ignore 라 **자기 run 을 만들지 않았다.**
+  #   결과: PR 에 **실패한 체크가 하나도 없는데 그 코드는 한 번도 검증되지 않은 상태.**
+  #   (당시 push 이벤트는 그 푸시의 파일만 봐서 문서 커밋 하나는 문서 커밋일 뿐이었다. 2026-09-15 에
+  #    push 트리거 자체를 뺐지만 pull_request 에 paths-ignore 를 두면 안 되는 이유는 그대로다.)
+  #
+  #   ⇒ PR 은 **항상** 검증한다. 비용은 문서 PR 도 ~10분 도는 것이고(이 레포는 public 이라 Actions 무료),
+  #     얻는 건 "머지되는 코드는 반드시 한 번은 검증됐다"는 보장이다. 그 비대칭이 명백하다.
+  pull_request:
+    branches: [main]
+  # 🔴 `push:` 를 여기 다시 두지 말 것 — 취소된 push-run 이 필수 검사 `Verify` 의 실패본으로 남아 머지를 막는다
+  #   (상단 2026-09-15 주석). 가드: src/tests/unit/ci-verify-coverage.test.ts
+  workflow_dispatch:
+
+concurrency:
+  group: verify-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    name: Verify
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      # fetch-depth: 0 — file-size ratchet 의 --changed-only 가 origin/main 과의 merge-base 를
+      # 계산해야 함 (기본 shallow(depth 1) clone 엔 main 이력이 없어 merge-base 불가 → 전수 폴백돼
+      # main 드리프트로 무관한 PR 이 실패하는 원래 문제가 재발). pull_request·workflow_dispatch 모두 커버.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # 🛡️ 2026-07-25: 유닛테스트를 PR 단계에서 실행 — 그간 main.yml(배포)에서만 돌아 PR CI 는 green 인데
+      #   병합 후 배포가 테스트 실패로 죽는 사고 실발생(전수조사 #729 → #730 복구). PR 에서 먼저 발각되게.
+      - name: Run unit tests
+        run: npm test -- --run
+
+      # ── 1. 영구 안티패턴 검사 (사고 재발 방지) ──
+      - name: Hono v4 라우터 안티패턴 (wildcard cors)
+        run: |
+          # 모든 features/*.routes.ts 검사 — 2026-05-12/13 405 사고 패턴
+          violations=$(grep -rnE "\.use\s*\(\s*['\"]\*['\"][^)]*cors\s*\(" \
+            src/features/ --include='*.routes.ts' 2>/dev/null || true)
+          if [ -n "$violations" ]; then
+            echo "❌ Wildcard cors() 발견 — 405 사고 재발 위험:"
+            echo "$violations"
+            echo "해결: worker/index.ts:244 글로벌 cors 가 처리. sub-router cors() 제거."
+            exit 1
+          fi
+          echo "✅ 라우터 안티패턴 없음"
+
+      - name: "'vite build' 단독 사용 차단"
+        run: |
+          # 검사 대상: scripts/ 내 실제 실행 가능한 sh / ps1 / mjs / cjs / js / ts
+          # 제외: 문서 (md), 검사 스크립트 자체, install-hooks 의 에러메시지, workflow yml
+          EXCLUDE='check-build-command\.sh|install-git-hooks\.sh|\.github/workflows/'
+          violations=$(find scripts -type f \( -name '*.sh' -o -name '*.ps1' -o -name '*.mjs' -o -name '*.cjs' -o -name '*.js' -o -name '*.ts' \) 2>/dev/null \
+            | grep -vE "$EXCLUDE" \
+            | xargs grep -nE "(^|[^a-zA-Z_:-])(npx +)?vite +build([^a-zA-Z_]|$)" 2>/dev/null \
+            | grep -v "npm run build" \
+            | grep -v "build:client" \
+            | grep -vE "^[^:]*:[0-9]*:[[:space:]]*[#/]" \
+            | grep -vE 'echo .*vite build|console\.|# ' \
+            || true)
+          if [ -n "$violations" ]; then
+            echo "❌ 'vite build' 단독 사용 — _worker.js 미갱신 사고 패턴:"
+            echo "$violations"
+            echo ""
+            echo "  🔧 해결: 'npm run build' 사용 (client + worker + prepare 전체)"
+            exit 1
+          fi
+          echo "✅ 빌드 명령 안전"
+
+      - name: Hardcoded secret 검출
+        run: |
+          # 실제 secret (AWS / Stripe) 만 검출. PEM 마커는 false-positive 많아서 제외:
+          #   - firebase-admin.ts 등이 env PEM 파싱하기 위해 string literal 로 사용
+          #   - 실제 PEM 키 body 가 commit 됐는지 검증하려면 multi-line 분석 필요
+          violations=""
+          for f in $(find src/ -type f \( -name "*.ts" -o -name "*.tsx" \) | grep -vE "\.test\.|\.spec\.|/tests/|/__tests__/"); do
+            # Stripe live key (sk_live_ + 20+ char) — 정규식/검증 코드 제외
+            m=$(grep -nE "sk_live_[A-Za-z0-9]{20,}" "$f" 2>/dev/null \
+              | grep -vE "regex|\.test\(|\.match\(|\.includes\(|\.replace\(|// |/\\*" \
+              || true)
+            [ -n "$m" ] && violations="$violations\n[$f] Stripe live secret:\n$m"
+
+            # AWS access key
+            m=$(grep -nE "AKIA[0-9A-Z]{16}" "$f" 2>/dev/null \
+              | grep -vE "// |/\\*" \
+              || true)
+            [ -n "$m" ] && violations="$violations\n[$f] AWS access key:\n$m"
+
+            # 실제 PEM key body (BEGIN + base64 + END 의 multi-line 블록)
+            # awk 로 BEGIN ~ END 사이에 base64 문자열 있는지 확인
+            m=$(awk '
+              /BEGIN (RSA )?PRIVATE KEY/ {found_begin=NR; key_body=""}
+              found_begin && /^[A-Za-z0-9+\/=]{20,}$/ {key_body=$0}
+              found_begin && /END (RSA )?PRIVATE KEY/ {
+                if (key_body) print FILENAME":"found_begin": (actual PEM key body detected)"
+                found_begin=0
+              }
+            ' "$f" 2>/dev/null || true)
+            [ -n "$m" ] && violations="$violations\n$m"
+          done
+          if [ -n "$violations" ]; then
+            echo "❌ Secret 누출 의심 — public repo 영구 노출 위험:"
+            echo -e "$violations"
+            exit 1
+          fi
+          echo "✅ Secret 없음"
+
+      # 🛡️ 2026-07-28: 위 검사는 **src/ 아래 .ts/.tsx 만** 본다. 실제로는 archive/ 의 **19개 .md/.txt**
+      #   에 Google 서비스계정 개인키·Toss live 시크릿·Stripe 시크릿이 **추적된 채** 남아 있었고
+      #   (public 레포 · 3월부터) 이 검사도 check-no-secrets.sh 도 통과시켰다.
+      #   → 확장자·경로 무관 전수 스캔. 작업트리만 보고 history 는 안 본다(과거분은 *회전*으로만 해결).
+      - name: 시크릿 자재 전수 스캔 (strict)
+        run: node scripts/check-secret-material.mjs
+        continue-on-error: false
+
+      # 🛡️ 2026-07-28: Firebase 토큰 인증 수용 금지. 유출된 서비스계정 개인키로
+      #   [커스텀 토큰 → ID 토큰 교환 → Bearer 제출] 하면 임의 uid 로그인이 됐다(#798 후속).
+      #   키 폐기와 별개로 '수용 경로' 자체를 닫았고, 이 가드가 재개방을 막는다.
+      - name: Firebase 인증 수용 경로 금지 (strict)
+        run: node scripts/check-no-firebase-auth.mjs
+        continue-on-error: false
+
+      # 💓 2026-07-28: cron 하트비트 커버리지. safeCron 은 '예외가 날 때만' 기록했는데 실제로 아픈
+      #   정지는 예외가 없다(미발화/게이트 OFF/내부 .catch 로 삼킴 — #793 이 그 사례).
+      - name: cron 하트비트 커버리지 (strict)
+        run: node scripts/check-cron-heartbeat.mjs
+        continue-on-error: false
+
+      # 🪦 2026-08-25: 그 **짝**. 위는 "감쌌는가"를 보고, 이건 **이름이 사라졌는데 그냥 갔는가**를 본다.
+      #   하트비트 행은 코드보다 오래 살아, 사라진 이름은 영원히 빨갛고 그 하나가 경보 채널을 침묵시킨다
+      #   (#1056 이 21일 — 그 사이 08-24 정산 16개 누락이 신호 0 이었다). 하루에 두 번 난 사고다.
+      - name: 하트비트 이름 은퇴 (strict)
+        run: node scripts/check-beat-name-retirement.mjs -s
+        continue-on-error: false
+
+      # ⏰ 2026-08-03: 하트비트 가드의 **짝**. 저건 "safeCron 으로 감쌌는가"를 보는데, 감싼 것이
+      #   **안 불리는** 경우는 못 본다 — `if (cron === '0 * * * *')` 블록이 wrangler crons 에 없어
+      #   메인 워커에서 한 번도 발화하지 않았고, 거기 든 cron 32개가 조용히 죽어 있었다.
+      - name: cron 슬롯 등록 — 안 도는 cron 차단 (strict)
+        run: node scripts/check-cron-slot-registered.mjs -s
+        continue-on-error: false
+
+      # 🩹 2026-08-02: 머지 충돌 마커가 커밋되는 것을 막는다. 이 레포에서 두 번 났다
+      #   (07-11 CLAUDE.md · 08-02 세션이 `git add -A` 로 마커째 푸시). `git add -A` 는 충돌 파일도
+      #   '해결됨'으로 표시하므로 git 은 막아 주지 않는다.
+      - name: 머지 충돌 마커 (strict)
+        run: node scripts/check-conflict-markers.mjs -s
+        continue-on-error: false
+
+      # 🧭 2026-08-26: 같은 클래스의 사고 — `check-guard-mutations` 가 **의도적으로 심어 둔 결함**이
+      #   워킹트리에 있는 동안 `git add -A` 가 그것을 집어 커밋했다(주입본 6건). 충돌 마커와 마찬가지로
+      #   git 이 막아 주지 않고, 에러도 안 난다 — CI 가 다른 테스트로 넘어져야 알게 된다.
+      - name: 브랜치에 가드 주입본이 섞였는지 (strict)
+        run: node scripts/check-branch-scope.mjs
+        continue-on-error: false
+
+      # ⏰ 2026-08-02: `0 20 * * 0` 한 줄이 배열 **전체**를 거부시켜 주간 D1 백업이 몇 달간
+      #   등록조차 안 됐다(재해복구 0). CF 의 day-of-week 는 1-7 또는 MON-SUN — 0 이 없다.
+      - name: cron 표현식 문법 (strict)
+        env:
+          STRICT_CRON_SYNTAX: 1
+        run: node scripts/check-cron-syntax.mjs
+        continue-on-error: false
+
+      # 🚦 2026-08-02: 레인이 예산을 우회하는 것을 막는다(인플루언서·B2B 공통).
+      #   생 `ctx.waitUntil(await import(…))` 은 **부모 CPU 를 직접 태우면서 예산 분산엔 안 잡힌다**.
+      #   `kick` 은 SELF.fetch = 자식 인보케이션 = 자기 예산이라 성격이 정반대다.
+      - name: 유어애즈 예산 우회 래칫 (strict)
+        run: node scripts/check-ads-dispatch-bypass.mjs -s
+        continue-on-error: false
+
+      # 🧱 2026-08-27 대표 지시 *"유어애즈 때문에 유어딜이 부정적인 영향을 받는 일이 없도록 해"*.
+      #   이 경계는 이미 한 번 무너져 유어딜 DB 를 99% 채웠다(주문·결제가 같이 죽을 뻔했다).
+      #   테이블은 그때 옮겼지만 **경계를 지키는 장치가 없었다** — 여기서 만든다.
+      - name: 🧱 유어애즈↔유어딜 경계 (유어딜 업무테이블 쓰기·공유테이블·유어딜 cron 래칫)
+        run: node scripts/check-ads-urdeal-isolation.mjs -s
+        continue-on-error: false
+
+      # 🧬 2026-08-02: **가드가 실제로 실패할 수 있는지** 기계가 확인한다(되돌려-검증 자동화).
+      #   이 레포의 반복 사고는 "검사가 실패한다"가 아니라 **"검사가 실패할 수 없다"** 이고,
+      #   하루에 세 번 났다(reverse 픽스처 · phase 이름 가설 · 일1회 레인 누락 픽스처).
+      #   셋 다 손으로 주입해 보고서야 알았다 — 손으로 하면 다음 세션은 안 한다.
+      #   ⚠️ 소스를 잠깐 고쳤다 되돌리므로 **다른 스텝과 병렬로 돌리지 말 것**.
+      # ⏱️ 2026-09-08: PR 에서는 **이 브랜치가 건드린 주입만** 돈다(48분 → 수 분).
+      #   실측으로 이 스텝이 Verify 의 77%(37분 24초)였고, 그 길이가 머지 충돌을 만들고 있었다.
+      #   🔴 전수는 `guard-mutations-full.yml`(main push + 야간)이 돈다 — **그걸 지우면 검사가 꺼진다.**
+      #   애매하면 전수로 폴백한다(base 못 구함 · scripts/** · package.json · verify.yml 변경 시).
+      - name: 가드 주입 검증 (변경분, strict)
+        run: node scripts/check-guard-mutations.mjs --changed -s
+        continue-on-error: false
+
+      # 🧭 2026-09-26: 위 스텝이 잡는 두 가지 중 **낡은 지도**(`find` 가 소스에 없다)는
+      #   테스트를 돌릴 필요가 없다 — 문자열이 파일에 있는지만 보면 된다. 그런데 그 긴 스텝에
+      #   묶여 있어서 PR 에서는 `--changed` 범위 밖이면 못 잡고 **main 에서야** 빨간불이 났다.
+      #   📏 실측(2026-09-26 job 108341703677): 위 스텝은 전수 폴백 시 **77.4분(전체 91분의 85%)**,
+      #      이 스텝은 **0초**(주입 1,963건 · 637파일). 같은 판정을 떼어 내니 무료가 됐다.
+      #   실제로 그날 두 건이 그렇게 났다(`pinReturn` 도입 · 등록의 마이 이전). ⇒ 전수로, 1초에.
+      #   ⚠️ 헛도는 가드(결함을 심었는데 통과)는 여전히 위 스텝의 몫이다 — 이건 앵커만 본다.
+      - name: 주입 앵커 실재 (전수, strict)
+        run: node scripts/check-stale-mutation-anchors.mjs
+        continue-on-error: false
+
+      # 🧾 2026-07-30: 예산 루프가 **자기 기록을 쓸 몫**을 남기는가. 루프 뒤에는 반드시 D1 쓰기가 있다
+      #   (커서·학습상한·자기 스탬프). 예산을 0까지 쓰면 그 쓰기들이 조용히 사라져 **돌았는데 "안 돈 것"**
+      #   처럼 보인다. 하루에 세 번 만난 실패 양식이라 래칫으로 고정한다(기존 2건 동결).
+      - name: 예산 루프 부기 몫 (strict)
+        run: node scripts/check-budget-bookkeeping.mjs -s
+        continue-on-error: false
+
+      # 🧮 2026-07-29: 유어애즈 수집 레인 격리. 인라인 ctx.waitUntil 로 붙은 레인은 한 인보케이션의
+      #   서브리퀘스트 예산을 다른 레인과 다퉈 **조용히 0건**이 된다(localdata·nara 가 실제로 total_saved:0).
+      # 🕳️ 2026-07-29: 포털은 '값 없음'을 문자열 "N/A" 로 준다 — truthy 라 별칭 폴백이 앞 필드의 "N/A" 를
+      #   채택하고 뒤의 진짜 값을 건너뛴다. 실측: 통신판매 리드의 31.7% 가 주소 "N/A" + region null 이었고,
+      #   카카오 스윕은 `address != ''` 로 걸러 그 행들을 없는 주소로 조회했다(47건 시도 → 0건 발견).
+      #   ⚠️ 이 가드는 `a || b` 형태의 2항 폴백은 못 잡는다(구문이 흔해 오탐 없이 특정 불가).
+      - name: 공공데이터 '값 없음' 자리표시자 판정 (strict)
+        run: node scripts/check-public-data-sentinel.mjs -s
+        continue-on-error: false
+
+      - name: 유어애즈 레인 격리 (strict)
+        run: node scripts/check-ads-lane-isolation.mjs
+      # 🔢 2026-07-29: 시드 버전(가이드/블로그)은 이미 쓴 번호를 다시 쓰면 재시드가 **에러 없이**
+      #   그냥 안 돈다 — 배포는 성공하고 라이브 문서만 옛날 것으로 남는다(무음 정지).
+      #   이 레포에서 이미 두 번 났다(v8 중복 → v11 주석이 그 수습을 기록 / v4 중복).
+      #   세션이 동시에 여러 개 도는 한 계속 난다 → main 히스토리 대비 단조증가를 강제한다.
+      - name: 시드 버전 단조증가 (strict)
+        run: node scripts/check-seed-version-monotonic.mjs -s
+        continue-on-error: false
+
+      # 🔁 2026-07-29: 유어애즈 리드 파이프라인은 행마다 "어느 버전 규칙으로 처리됐나"를 스탬프하고
+      #   재처리를 `COALESCE(v,0) < 상수` 로 고른다. 규칙만 고치고 상수를 안 올리면 **에러 없이**
+      #   옛 판정이 굳는다. 특히 classify 는 시간 폴백이 없어 **영구**다(2026-07-27 사고의 수습이
+      #   바로 이 classified_v 방식이라, 메커니즘 전체가 "상수 올리기"에 걸려 있다).
+      - name: 규칙 버전 bump (strict)
+        run: node scripts/check-rules-version-bump.mjs -s
+        continue-on-error: false
+
+      # 🛡️ 2026-07-29: 가드를 지키는 가드. 이 레포의 반복 사고는 "검사가 실패" 가 아니라
+      #   **"검사가 아예 안 도는 것"** 이었다 — 같은 날 실측 3건:
+      #     ① 번들 gzip 예산: `.gz` 사이드카를 읽는데 vite 는 안 만듦 → 측정 항상 0 → 영원히 통과
+      #     ② check-input-text-color: `dark:text-white` 오탐으로 켤 수 없어 **어디에도 미등록**
+      #     ③ check-linkshop-ownership: 대상 파일 부재를 조용히 `continue`
+      #   R1(모든 가드가 실제로 실행되는가) + R2(가드가 지목한 고정 경로가 존재하는가) 를 강제한다.
+      #   ⚠️ 못 막는 것: 등록은 됐는데 판정 로직이 틀려 늘 통과하는 경우(①) — 그건 각 가드가
+      #   "측정 0건이면 실패" 를 스스로 선언해야 한다. 예외는 `guard-registry-ok` 주석.
+      - name: 가드 레지스트리 — 안 도는 가드 차단 (strict)
+        run: node scripts/check-guard-registry.mjs -s
+        continue-on-error: false
+
+      # 🛡️ 2026-07-29: 같은 경로에 라우트를 두 번 달면 먼저 선언된 것만 렌더되고 나머지는
+      #   **에러 없이 조용히 죽는다**. 실측: `/influencer` 가 두 번 등록돼(대시보드 + B2B 영입 랜딩)
+      #   2026-05-15 에 만든 랜딩이 두 달 넘게 한 번도 렌더된 적이 없었다. 예외 `duplicate-route-ok`.
+      - name: 라우트 경로 중복 차단 (strict)
+        run: node scripts/check-duplicate-routes.mjs -s
+      - name: 서버 라우트 중복 검사 (한 번도 안 도는 핸들러)
+        run: node scripts/check-duplicate-hono-routes.mjs -s
+        continue-on-error: false
+
+      # 🧾 2026-09-13 (대표 "결제의 다른 부분은?"): 토스가 승인 뒤 돌려보내는 주소가 실재하는
+      #   라우트인지. 문자열이라 빌드·타입체크·테스트가 전부 못 본다 — 결제가 끝나고 아무 데도
+      #   아닌 곳으로 돌아와도 초록불이다. 예외 `payment-redirect-ok`.
+      - name: 결제 복귀 주소가 실재 라우트인지 (strict)
+        run: node scripts/check-payment-redirect-routes.mjs
+
+      # 🎛️ 2026-09-07: **게이트를 만들고 표에 안 넣으면 `ops-gate-reachable` 의 검사 밖으로 나간다.**
+      #   그래서 담기 적립의 주 스위치가 한 달 넘게 손잡이 없이 남았다(읽는 곳 둘 · 쓰는 화면 0).
+      #   등재가 곧 검사 범위다 — 이 가드가 등재 자체를 강제한다. 첫 실행에서 미등재 5개를 찾았다.
+      - name: 게이트 미등재 차단 (strict)
+        run: node scripts/check-gate-registry.mjs -s
+        continue-on-error: false
+      # 🪙 2026-09-07: 꺼진 적립을 화면이 약속하던 사고(#1372)의 **클래스**를 닫는다.
+      #   새 목록 API 가 referral_enabled 를 실으면 같은 사고가 그대로 재현된다 — 에러가 없다.
+      - name: 적립 표시 게이트 래칫 (strict)
+        run: node scripts/check-affiliate-display-gate.mjs -s
+        continue-on-error: false
+
+      # 🕳️ 2026-09-02: 위 가드는 **같은 경로 문자열**만 본다. Hono 는 등록 순서로 매칭하므로
+      #   `/:id` 가 먼저면 그 뒤의 `/support-contact` 는 id="support-contact" 로 잡혀 **영원히 400**.
+      #   문자열이 달라 중복 가드가 못 잡는다. 라이브 실측으로 3곳이 죽어 있었다 —
+      #   `/api/group-buy/stays/my-bookings`(내 숙소 예약 화면이 통째로 실패) ·
+      #   `/api/curator/recommendations` · `/api/seller/gb/support-contact`. 예외 `route-shadow-ok`.
+      - name: 라우트 그림자 차단 (strict)
+        run: node scripts/check-route-shadowing.mjs
+        continue-on-error: false
+
+      # 🛡️ 2026-08-01: 라우트를 달아도 **누를 데가 없으면 없는 것과 같다.** 같은 클래스로
+      #   이미 세 번 났다(랜딩 가려짐 / `GET /api/returns/seller` 소비화면 0건 / O9 구현 0).
+      #   실측: 정적 라우트 361 중 21개가 소스 어디에도 문자열로 안 나온다 —
+      #   `/account/settings`(사용자 테마·언어 화면)가 **주석에만** 있었다.
+      #   래칫: 기존 21개는 동결, **새 고아만** 차단. 앱 밖 진입(OAuth·PG 리턴)은 동결이 정답이다.
+      - name: 도달 불가 라우트 래칫 (strict)
+        run: node scripts/check-orphan-routes.mjs -s
+        continue-on-error: false
+
+      # 🛡️ 2026-07-29: CLAUDE.md 잠금표가 **사라진 심볼**을 지키면 표가 틀린 지도가 된다.
+      #   실측 2건: `linkUserExtraRoles`(→`issueLinkedRoleTokens` 리네임) · `MainHomePage`(참조 0인 죽은 파일인데
+      #   "eager import 유지" 를 요구 — 따르면 죽은 컴포넌트를 되살리게 된다).
+      #   ⚠️ 한계: 문자열 존재만 본다 — 주석에만 남은 심볼은 통과한다(위 MainHomePage 가 그 경우였다).
+      - name: 잠금표 심볼 실재 (strict)
+        run: node scripts/check-lock-table-symbols.mjs -s
+        continue-on-error: false
+
+      # 🔎 2026-07-29: sitemap 이 죽은 URL 을 검색엔진에 제출하는 것 차단(**네 번째 재발**).
+      #   실측: `/group-buy`(실제로는 <Navigate> 리다이렉트인데 priority 0.95·hourly) ·
+      #   `/vouchers?category=` 영문 슬러그 6개(필터는 한글 카테고리라 전부 0건 = soft-404) ·
+      #   `/live/{id}` ×100(라이브커머스 영구중단으로 라우트 자체가 없는데 hourly 로 발행).
+      #   ⚠️ catch-all(`*`) 라우트는 매칭에서 제외한다 — 포함하면 모든 URL 이 통과해 검사가 무의미해진다.
+      - name: sitemap 죽은 URL 차단 (strict)
+        run: node scripts/check-sitemap-routes.mjs -s
+        continue-on-error: false
+
+      # 🔒 2026-07-29: 로그인 필요한 경로가 크롤에 열려 있으면 크롤러가 로그인 벽을 받아 soft-404 로
+      #   집계되고, 그만큼 크롤 예산이 실제 상품 페이지에서 빠진다. 실측 71건(셀러 대시보드만 ~40개) —
+      #   `/admin`·`/supplier` 는 전면 차단인데 셀러/에이전시는 login·register 두 개만 막혀 있었다.
+      #   ⚠️ prefix 추가 시 공개 경로를 삼키지 않는지 확인할 것(`/creator`→`/creators`, `/u/me`→`/u/melon`).
+      - name: 비공개 라우트 크롤 노출 차단 (strict)
+        run: node scripts/check-robots-private-routes.mjs -s
+        continue-on-error: false
+
+      # 🛡️ 2026-07-29: tsconfig 가 타입체크를 통째로 중단시키는 설정을 갖지 않게 한다.
+      #   `baseUrl` 은 TS 6 에서 **에러(TS5101)** 라 설정 로드 단계에서 tsc 가 즉시 멈춘다 — 파일 0개 검사.
+      #   실측: baseUrl 있을 때 출력 2줄 / 없앤 뒤 전량 검사. 짧은 출력이 "에러 없음"과 구분되지 않아
+      #   이 레포는 몇 세션 동안 "로컬 tsc 는 죽어 있다"고 적어둔 채 지나갔다.
+      #   ⚠️ ignoreDeprecations 로 막지 말 것 — 고정 TS(5.5)가 그 값을 거부해 CI 가 깨진다(버전 결합).
+      - name: tsconfig 타입체크 무력화 차단 (strict)
+        run: node scripts/check-tsconfig-resolution.mjs -s
+        continue-on-error: false
+
+      # 🌐 2026-07-29: 정본은 urdeal.kr(07-20 이전 완료). 구 도메인은 전 경로 301 이라
+      #   링크가 도착하고 에러도 안 나서, 사용자에게 보이는 낡은 문자열이 조용히 남는다
+      #   (실측: 결제 완료 넛지가 소비자에게 live.ur-team.com/u/{handle} 을 보여주고 있었다).
+      - name: 구 도메인 사용자 노출 차단 (strict)
+        run: node scripts/check-legacy-domain.mjs -s
+        continue-on-error: false
+
+      # 🔵 2026-09-28: 주 버튼은 2026-09-02 에 브랜드 블루 #1C69EF 로 확정됐는데(.ur-btn-primary),
+      #   소비자 화면 224곳이 아직 bg-gray-900 을 손으로 적고 있었다. 똑같은 역할의 버튼이
+      #   화면마다 검정이거나 파랑 — 빌드는 초록이고 아무도 신고하지 않는다.
+      - name: 주 버튼 손색(검정) 차단 (strict)
+        run: node scripts/check-primary-button-color.mjs -s
+        continue-on-error: false
+
+      # 📋 2026-07-29: AUDIT_INVARIANTS.md 는 "무엇을 손으로 재감사하지 않아도 되는가" 의 목록이다.
+      #   빠진 가드는 이미 기계가 지키는 영역을 사람이 또 파게 만든다(실측: 문서 49 vs 실제 72).
+      - name: 감사 레지스트리 동기화 (strict)
+        run: node scripts/check-audit-registry-sync.mjs -s
+        continue-on-error: false
+
+      # 🔬 2026-07-29: 새 가드가 "대상이 비어도 초록" 인 채로 태어나는 것 차단(래칫).
+      #   오늘 실측 3건이 정확히 그 상태였다(번들 gzip 예산 · 도매 어드민 nav/api 가드).
+      - name: 가드 자기검증 — 측정 0 = 실패 (strict)
+        run: node scripts/check-guard-selfcheck.mjs -s
+        continue-on-error: false
+
+      # 🛡️ 2026-06-22: npm audit high/critical 게이트 — production 트리에 미허용 high/critical
+      #   유입 차단. .audit-allowlist.json 에 등재된 GHSA(dev/빌드툴 전용·도달불가)만 제외.
+      #   pre-commit 에만 있고 CI 부재라 high 2건(form-data/@grpc) 슬립했던 것 재발 방지.
+      - name: npm audit (high/critical gate)
+        run: bash scripts/check-npm-audit.sh
+        continue-on-error: false
+
+      # ── 2. 정적 검사 (빠름, 의존성 없음) ──
+      - name: Schema references check
+        run: bash scripts/check-schema-refs.sh
+        continue-on-error: false
+
+      # 🛡️ 2026-06-10: products star-select 차단 — D1 결과셋 컬럼 한도(100) 초과로
+      #   교환권/공구 상세 전체 500 났던 사고 재발 방지. strict.
+      - name: No SELECT * on products
+        run: bash scripts/check-no-select-star-products.sh
+        continue-on-error: false
+
+      # 🛡️ 2026-06-10: products 컬럼 예산제 — 새 ALTER 는 baseline 등록(의식적 결정) 또는
+      #   product_supply_meta 사이드테이블 사용 강제. god-table 증식 차단.
+      - name: Products column budget
+        run: node scripts/check-products-column-budget.mjs
+        continue-on-error: false
+
+      # 🛡️ 2026-06-10 (전수조사): PRODUCT_DETAIL_FIELDS 의 모든 컬럼이 프로덕션에서 복구 가능
+      #   (base CREATE TABLE ∪ repair-schema ALTER) 함을 강제 — 'no such column' 상세 500 의
+      #   구조적 차단 (자가치유 prune 은 응급, 이 검사가 수렴 보장). strict.
+      - name: Product detail fields repairable
+        run: node scripts/check-product-detail-fields-repairable.mjs
+        continue-on-error: false
+
+      - name: API auth check
+        run: bash scripts/check-api-auth.sh
+        # 기존 워닝 있어 fail 하지 않음
+        continue-on-error: true
+
+      - name: Guide sync check
+        run: bash scripts/check-guide-sync.sh
+        continue-on-error: true
+
+      # 📖 2026-08-31 (대표 지시): 운영백서의 숫자는 코드에서 생성된다. 여기가 **유일한 보장**이다 —
+      #   pre-commit 훅은 원격 세션(컨테이너 신규 생성)에 없을 수 있어 믿을 수 없다.
+      #   ① 표가 policy.ts/feature-flags 와 어긋났는가 ② 표가 바뀌었는데 GUIDE_SEED_VERSION 을 안 올렸는가
+      #   ②가 빨간불이면 배포돼도 라이브 문서는 옛 숫자 그대로다(재시드 조건이 거짓이라 조용히 통과).
+      - name: 운영백서 숫자표 동기 (strict)
+        run: node scripts/generate-ops-handbook.mjs --check
+        continue-on-error: false
+
+      - name: Naming conflicts
+        run: bash scripts/check-naming-conflicts.sh
+        continue-on-error: true
+
+      # 🛡️ 2026-05-31: 다크/라이트 테마 일관성 — 유저 대면 화이트-토글 페이지의
+      #   라이트 색상(bg-white/text-gray-900 등)에 dark: variant 누락 검출.
+      #   기존 backlog(공유 컴포넌트 다수) 존재 → warn-only. backlog 정리 후 STRICT_THEME=1 승격 예정.
+      # 🛡️ 2026-06-10: 백로그 0 달성 → strict 승격 (2026-05-31 예고대로). 위반 = 머지 차단.
+      - name: Dark/Light theme consistency (strict)
+        run: node scripts/check-theme-consistency.mjs
+        env:
+          STRICT_THEME: '1'
+        continue-on-error: false
+
+      # 🎨 2026-08-30 (대표 "AI로 디자인을 한 티가 절대 없어야 해"): 두 기계 흔적을 래칫으로 막는다.
+      #   ① 평면 그라디언트 — from/to 가 같은 색이라 **그라데이션이 안 되는** 그라디언트.
+      #      마크업은 "여긴 그라디언트" 라고 선언하는데 단색이 렌더된다(2026-06-19 흑백 리매핑 잔재,
+      #      발견 당시 85곳). ② UI 자리 이모지 — 아이콘·칩·제목. OS 마다 다른 그림이 나오고
+      #      같은 줄의 lucide 와 언어가 갈린다.
+      #   둘 다 **에러를 내지 않는다** — 화면만 조용히 밋밋해지고 배포는 초록불이다.
+      - name: AI design slop ratchet (flat gradients / emoji-as-icon)
+        run: node scripts/check-design-slop.mjs
+
+      - name: AI 디자인 흔적 — 문구·라벨 (em-dash · 섹션번호 · 한글 uppercase)
+        run: node scripts/check-anti-slop-copy.mjs
+
+      - name: 할인율이 사진 위에 없다 (전 카드 구현 · 인라인 스타일 포함)
+        run: node scripts/check-discount-not-on-photo.mjs
+
+      # 📦 2026-09-01: 같은 장바구니가 `/cart` 에선 배송비 6,000원, `/checkout` 에선 0원이었다.
+      #   판정이 두 파일에 따로 적혀 갈라진 결과 — 이제 한 SSOT 만 쓴다.
+      - name: 배송비 판정 SSOT (장바구니 ↔ 결제)
+        run: node scripts/check-no-shipping-ssot.mjs
+
+      # 🔴 2026-09-01 디자인 방향 PR A — 흔적 두 가지를 래칫으로 동결.
+      #   붙여 쓴 가운뎃점(맛집·카페)은 한국어 표준이라 놔두고, **띄어 쓴 사슬**(a · b · c)만 잡는다.
+      - name: 띄어 쓴 가운뎃점 사슬 (래칫)
+        run: node scripts/check-middle-dot-chain.mjs
+      - name: 모양 잠금 — 체계 밖 모서리 (래칫)
+        run: node scripts/check-shape-lock.mjs
+      # 📏 2026-09-16 (대표 "버튼 크기도 세로길이가 짧고"): 세로 스택에서 `flex-1` 은 주축이 높이라
+      #   `flex-basis: 0` 이 `h-[52px]` 를 이긴다. PC(가로 배치)는 멀쩡해서 **리뷰로는 절대 안 보인다.**
+      - name: 세로 스택 버튼 높이 뭉개짐
+        run: node scripts/check-flex-col-fixed-height.mjs
+      - name: Dashboard button system ratchet (strict)
+        env:
+          STRICT_DASHBOARD_BUTTON: '1'
+        run: node scripts/check-dashboard-button-system.mjs
+        continue-on-error: false
+
+      # 🎨 2026-09-15 (대표 "색 정리도 진행해줘"): 소비자 화면 806파일에서 hex 색이 2,875회 나왔다
+      #   (선언된 토큰은 65개). 그중 1,927회는 토큰과 **값이 같은데** hex 로 다시 적은 것이었다.
+      #   화면마다 색이 조금씩 갈리던 정체가 이것이라, 줄이는 건 자유·늘리는 건 차단으로 동결한다.
+      - name: 소비자 화면 hex 색 래칫 (색 정리 — 늘어나지 못하게)
+        run: node scripts/check-consumer-hex-ratchet.mjs
+
+      # 🖼️ 2026-08-31: cfImage <img> 에 onError 가 없으면 리사이저/원본이 죽는 순간 **깨진 이미지
+      #   아이콘**이 그대로 보인다. SSOT `cfImageOnError` 는 [원본 1회 재시도 → 숨김] 으로 처리한다.
+      #   배선 전 실측: cfImage <img> 92개 중 47개가 무방비. 배선은 눈에 안 보여 계속 새로 빠진다.
+      - name: Image fallback ratchet (broken-image icon) (strict)
+        env:
+          STRICT_IMAGE_FALLBACK: '1'
+        run: node scripts/check-image-fallback.mjs
+        continue-on-error: false
+
+      # 🫥 2026-09-16 (대표 "유어쇼츠 왜이래?"): `bg-white/97` 처럼 슬래시 뒤 숫자가 불투명도
+      #   스케일 밖이면 그 클래스는 **생성되지 않는다** — 빌드·타입·테스트 전부 초록인데 화면에서만
+      #   배경이 사라진다. 유어쇼츠 구매 바가 첫 판부터 그 상태였고(흰 카드가 아예 없었다),
+      #   같은 전수조사에서 배너 스크림·상세 플로팅 헤더까지 9곳이 같이 나왔다.
+      - name: Tailwind opacity scale (silently transparent) (strict)
+        env:
+          STRICT_OPACITY_SCALE: '1'
+        run: node scripts/check-tailwind-opacity-scale.mjs
+        continue-on-error: false
+
+      # 🃏 2026-09-03 (대표 "이런 이용권들 디자인이 왜 통합적으로 관리가 안되는거지?"): 딜 카드는 한 벌.
+      #   그간 통일을 **화면 단위**로 했고, 그걸 지키는 검사가 "이미 고친 화면 목록"이라 아무도 안 본
+      #   화면은 영원히 안 걸렸다 — 네 번 다 대표가 눈으로 찾았다. 이제 소비자 표면 전체를 훑는다.
+      - name: Deal card unification ratchet (strict)
+        env:
+          STRICT_DEAL_CARD: '1'
+        run: node scripts/check-deal-card-unify.mjs
+        continue-on-error: false
+
+      # 🚦 2026-09-03: 대시보드 상태 배지가 **전부 같은 회색**이었다. tailwind.config 가 장식 색조를
+      #   MONO 로 중화하는데(2026-06-19 대표 "아예 흑백, 기능 빨강만 유지") 상태 배지가 하필 그 색조로
+      #   상태를 구분하고 있었다 — 라이브 실측: `bg-rose-50` == `bg-emerald-50` == rgb(248 247 252).
+      #   반려와 승인이 픽셀 단위로 같았고, 에러가 안 나서 몇 달간 안 드러났다.
+      - name: Status tone ratchet (strict)
+        env:
+          STRICT_STATUS_TONE: '1'
+        run: node scripts/check-status-tone.mjs
+        continue-on-error: false
+
+      # 🍎 2026-06-20: 카카오 OAuth iOS 쿠키 미영속 안티패턴 (strict). iOS Safari/WebKit 은
+      #   cross-site 콜백 302 Set-Cookie 미영속 → 역할토큰 transfer 쿠키(ur_pending_*)/세션 302 의존 시
+      #   iOS 만 조용히 깨짐(Chrome 정상). 역할토큰=fragment(pending-auth.ts), 세션=establish.
+      #   우회: 커밋 메시지 [SKIP_AUTH_COOKIE_CHECK]. 규칙: CLAUDE.md '🍎 iOS 쿠키 영속 룰'.
+      - name: Kakao OAuth iOS cookie pattern (strict)
+        run: bash scripts/check-auth-cookie-pattern.sh
+        env:
+          STRICT_AUTH_COOKIE: '1'
+        continue-on-error: false
+
+      # 🛡️ 2026-06-17: React Query "stale initialData" 버그 클래스 방어.
+      #   useQuery/useApiQuery 의 initialData(localStorage/SSR seed)가 initialDataUpdatedAt 또는
+      #   refetchOnMount:'always' 없이 fresh 로 간주돼 cold mount 에서 refetch 안 되던 사고
+      #   (잔액 '딜 부족' 오표시) 재발 방지. 현재 위반 0 → strict.
+      - name: React Query initialData freshness guard (strict)
+        run: node scripts/check-query-initialdata.mjs -s
+        continue-on-error: false
+
+      # 🛡️ 2026-06-29: god 파일 재발 방지 래칫 (strict). 신규 파일 600줄 초과 또는 baseline 동결
+      #   대형 파일이 더 커지면 차단 → 줄이는 건 OK, 키우는 건 금지(god 파일이 다시 못 자람).
+      #   대형 파일을 더 줄였으면 `node scripts/check-file-size.mjs --rebaseline` 로 동결값 갱신.
+      #   우회: 파일 상단 `file-size-ok` 주석 또는 커밋 메시지 [SKIP_SIZE]. 규칙: CLAUDE.md 영구 방어선.
+      # 🛡️ 2026-07-11: `-a`(전수) → `--changed-only`(merge-base(origin/main, HEAD)..HEAD 변경분만).
+      #   main 자체 머지로 baseline 동결 파일이 자라면(RestaurantMapPage 714→768→769) 전수 모드는
+      #   **무관한 PR 을 건드리지도 않은 파일로 실패**시켜 baseline 정렬 잡일 커밋이 반복됨(당일 3회).
+      #   PR 은 자기 변경 파일만 책임 — repo 전체 드리프트는 audit-gate(-a)/rebaseline 담당.
+      #   merge-base 는 위 checkout fetch-depth: 0 이 보장 (실패 시 스크립트가 전수 폴백 + 안내).
+      - name: File-size ratchet (god file guard, strict)
+        run: node scripts/check-file-size.mjs --changed-only -s
+        continue-on-error: false
+
+      # 🛡️ 2026-06-17: 듀얼 로그인(소비자↔대시보드) 재발 방지 — 현재 위반 0 → strict.
+      #   localStorage user_type === 'user' 로그인 게이트(세션 풀림 사고 근본원인) 신규 추가 차단.
+      - name: Dual-login regression guard (strict)
+        run: STRICT_DUAL_LOGIN=1 node scripts/check-dual-login-guard.mjs
+        continue-on-error: false
+
+      # 🛡️ 2026-06-18: group_buy_status 로 상품 종류 판별/라우팅 금지 — 현재 위반 0 → strict.
+      #   group_buy_status 는 모든 상품 DEFAULT 'active' 라 종류 판별에 쓰면 쇼핑 상품이 교환권으로
+      #   오분류(핀 /group-buy 오라우팅 사고). 종류는 deal_only + isVoucherCategory SSOT 만.
+      - name: group_buy_status classify guard (strict)
+        run: node scripts/check-groupbuy-status-classify.mjs -s
+        continue-on-error: false
+
+      # 🛡️ 2026-07-02: 동네딜↔쇼핑 완전 분리(대표 확정) — 동네딜 표면/도구에 배송형(general) 유입 차단.
+      - name: dongnedeal separation guard (strict)
+        run: node scripts/check-dongnedeal-separation.mjs
+
+      # 🧨 2026-09-19: 없는 컬럼을 가리키는 외래키는 SQLite 가 malformed 로 보고 **부모/자식 양쪽
+      #   DML 을 전부 거부**한다. `payments`/`tax_invoices` 의 `orders(order_no)`(진짜 이름
+      #   `order_number`)가 `INSERT INTO orders ... RETURNING` 을 막아 결제가 통째로 멎어 있었다.
+      - name: foreign key sanity guard (strict)
+        run: node scripts/check-foreign-key-sanity.mjs
+
+      # 🎟️🏪 2026-08-14 (대표 "지금 공동구매 정의도 잘 된거야?"): 라이브 두 공구는 인원과 무관하다
+      #   (유어딜=즉시 단일가 · 공구 서비스=기간 특가). "모이면 할인" 문구는 거짓 표시가 된다.
+      #   2026-06-16 에 정직화해 놓고 가드가 없어, 한 줄이면 조용히 되돌아갈 수 있었다.
+      - name: 공구 인원조건 할인 약속 금지 (strict)
+        run: node scripts/check-groupbuy-headcount-claim.mjs --strict
+        continue-on-error: false
+
+      # 🛡️ 2026-07-01: pagination parseInt/Number NaN 크래시 방어 — 현재 위반 0 → strict.
+      #   도매몰 라이브 전수조사에서 GET /api/wholesale/catalog?page=abc&limit=xyz → HTTP 500 발견.
+      #   비숫자 query 가 NaN → SQL .bind(NaN) → 크래시(봇/스크래퍼/오염 링크가 목록을 500).
+      #   page/limit/offset 등은 `parseInt(...) || <기본값>` 로 NaN 폴백 필수. 예외 `pagination-nan-ok`.
+      - name: Pagination NaN crash guard (strict)
+        run: node scripts/check-pagination-nan.mjs -s
+        continue-on-error: false
+
+      # 🛡️ 2026-07-01: 도매 공급가 모델 드리프트 방지 — 폐기 distributorPriceFromRetail/distributorPrice
+      #   직접호출 금지(공급가는 resolveDistributorPrice SSOT). 내보내기가 실결제가와 다른 등급가를 냈던 사고.
+      - name: Deprecated pricing model guard (strict)
+        run: node scripts/check-deprecated-pricing.mjs -s
+        continue-on-error: false
+
+      # 🛡️ 2026-07-01: 잔액 컬럼 절대값 write(비원자 read-modify-write) 금지 — 동시 갱신 시 금액 유실/과대계상.
+      #   원자 증감(x=x±?) 또는 CAS(WHERE x=?)만. 미수금 상환 race 사고(머니 룰 #1).
+      - name: Balance absolute-write guard (strict)
+        run: node scripts/check-balance-absolute-write.mjs -s
+
+      - name: 잔액↑ 원장기록 삼킴 (strict)
+        env:
+          STRICT_BALANCE_LEDGER: '1'
+        run: node scripts/check-balance-without-ledger.mjs
+        continue-on-error: false
+
+      # 🛡️ 2026-07-04 [INV-CB]: 커미션 예산 아비터 우회 금지 — 플랫폼 부담 성장 커미션(어필리에이트/
+      #   멀티티어/영입자/에이전시)은 creditOrderCommissions(오케스트레이터) 경유해야 3P 주문당
+      #   예산(수수료−PG준비금) 캡이 적용됨. 직접 호출/신규 적립 INSERT 경로가 생기면 캡에 구멍.
+      #   설계: docs/design/commission-funding-restructure.md
+      - name: Commission budget arbiter guard (strict)
+        run: node scripts/check-commission-budget.mjs
+        continue-on-error: false
+
+      # 🛡️ 2026-07-21: KV delete 무료한도(1천/일) 초과 방지 — cacheInvalidate 의 KV.delete 는
+      #   L2_KV_ENABLED 게이트 뒤에 있어야(쓰기 OFF 면 삭제도 skip) + fan-out KV.delete 무방비 금지.
+      #   cacheGet L2 OFF 인데 삭제만 살아 존재않는 키를 28/호출 지워 한도 폭식한 사고(대표 신고).
+      - name: KV delete budget guard (strict)
+        run: node scripts/check-kv-delete-budget.mjs -s
+      # 🛡️ 2026-07-28: 서브리퀘스트 학습 상한 키를 레인끼리 공유 금지 — 건당 비용이 다른 레인이 한 키를
+      #   같이 쓰면 서로의 관측을 덮어써 어느 레인도 자기 한도를 학습 못 한다(보강 레인이 남의 백오프로
+      #   env 300 → 실제 37 로 굶던 사고). 유어애즈는 subreqCapKey(lane) 경유 + 키 값 중복 금지.
+      - name: Subrequest cap lane-isolation guard (strict)
+        run: node scripts/check-subreq-cap-lane.mjs -s
+        continue-on-error: false
+
+      - name: Subrequest platform-ceiling guard (strict)
+        run: node scripts/check-subreq-platform-cap.mjs -s
+        continue-on-error: false
+
+      # 🧾 2026-07-29: 스키마 DDL(회사 35 / 매장 9) 비용이 어느 레인 예산에도 안 잡혀, 우리 계수와
+      #   플랫폼 계수가 갈라진 만큼 라운드가 **잡을 예외도 없이** 죽었다(인허가 total_saved:0, 보강 partial:true).
+      - name: 부기 비용 예산 차감 (strict)
+        run: node scripts/check-schema-cost-counted.mjs -s
+        continue-on-error: false
+
+      # 🔁 2026-07-28: 연락처 크롤 대상 SELECT 는 재시도 쿨다운(enrich_checked_at)이 필수.
+      #   없으면 이메일이 안 나온 리드가 `email IS NULL` 이라 다음 회차에도 또 선두 → 매시간 같은 앞줄만
+      #   재크롤하고 백로그는 영영 미도달(에러도 로그도 안 남는다). 같은 사고가 보강 레인·수집 레인에서
+      #   두 번 났다 — 세 번째를 막는다.
+      - name: Crawl retry-cooldown guard (strict)
+        run: node scripts/check-crawl-cooldown.mjs -s
+        continue-on-error: false
+
+      # 🧭 2026-06-24: 도매(wholesale) 권한 어드민이 보는 화면의 /admin 링크가 그 역할 RBAC 로 도달
+      #   불가하면 클릭 시 wholesale-overview 로 바운스(="안 넘어가요") — 슈퍼 어드민엔 안 보이는 역할-한정
+      #   버그. 대표 신고("상품 승인 클릭해도 안 넘어감") 후 전체 도매 화면 정적 검사로 클래스 고정.
+      - name: Wholesale admin nav reachability (strict)
+        run: STRICT_NAV_REACH=1 node scripts/check-wholesale-admin-nav-reachability.mjs
+        continue-on-error: false
+
+      # 🔗 2026-06-24: 내부 링크 도달성 — 정의되지 않은 라우트로 가는 <Link>/navigate/href 를 빌드 때 차단.
+      #   "클릭해도 NotFound" 죽은 링크는 모든 역할·화면에서 발생 가능하고 슈퍼/소유자 테스트로는 잘 안 보임.
+      #   대표 요청("애초에 없도록 / 다른 사람이 썼을 때도") → 전 앱 정적 검사로 클래스 고정. 현재 위반 0.
+      - name: Internal link reachability (strict)
+        run: STRICT_LINKS=1 node scripts/check-internal-links.mjs
+        continue-on-error: false
+
+      # 🔐 2026-06-24: 도매 어드민이 도달하는 화면이 호출하는 /api/admin 경로가 wholesale RBAC 스코프
+      #   안인지 단언. 카운트는 in-scope 로 세는데 목적지 데이터는 out-of-scope(403)면 "대시보드엔 N명,
+      #   클릭하면 0명" 미스매치(대표 신고). 슈퍼 어드민엔 안 보임. 현재 위반 0.
+      - name: Wholesale admin API scope (strict)
+        run: STRICT_API_SCOPE=1 node scripts/check-wholesale-admin-api-scope.mjs
+        continue-on-error: false
+
+      # 🔀 2026-06-24: 교차-역할 API 호출 차단 — 한 대시보드(제조사/에이전시/판매사/어드민)가 다른 역할
+      #   전용 토큰-게이트 네임스페이스를 부르면 그 역할 사용자에겐 403 → 먹통(소유자=슈퍼는 안 보임).
+      #   대표 "다른 사람들이 썼을 때도/전역". 현재 위반 0.
+      - name: Dashboard cross-role API (strict)
+        run: STRICT_CROSSROLE=1 node scripts/check-dashboard-api-crossrole.mjs
+        continue-on-error: false
+
+      # 🔐 2026-06-26: 유저↔어드민/셀러 상호 로그아웃 재발 방지 — 대시보드 로그인이 무조건
+      #   clearAuthData('user') 하면 KR httpOnly ur_session 쿠키까지 날아가 소비자 강제 로그아웃
+      #   (대표 신고). KR 소비자=쿠키 세션, 대시보드=Bearer 라 공존 가능 → user 정리는 !isKorea()
+      #   게이트 안에서만. 현재 위반 0 → strict.
+      - name: Dashboard login session coexist (strict)
+        run: STRICT_LOGIN_COEXIST=1 node scripts/check-dashboard-login-session-coexist.mjs
+        continue-on-error: false
+
+      # 🧱 2026-06-26: 서비스 분리(도매↔유어딜) — 소비자 단건 상품 조회가 도매 원본(is_supply_product=1·
+      #   supply_source_id 없음)을 격리하는지 회귀 잠금. 리스트는 기존 격리, 단건 ID 경로(상세/카트/공구확정)
+      #   누수를 닫고 영구 가드. 현재 위반 0 → strict.
+      - name: Consumer product supply isolation (strict)
+        run: STRICT_SUPPLY_ISOLATION=1 node scripts/check-consumer-product-supply-isolation.mjs
+        continue-on-error: false
+      - name: Dashboard cross-service redirect guard (strict)
+        run: STRICT_SELLER_WHS_REDIRECT=1 node scripts/check-seller-wholesale-redirect.mjs
+        continue-on-error: false
+
+      # 🏭 2026-06-29: 도매 "로그아웃이 전혀 안돼" 재발 방지 — 자동 재로그인 probe(become-distributor/
+      #   supplier-become)는 명시 로그아웃 억제 게이트(wholesaleAutoLoginSuppressed) 필수. 현재 위반 0 → strict.
+      - name: Wholesale edge-cache auth leak (strict)
+        run: STRICT_CACHE_AUTH=1 node scripts/check-wholesale-cache-auth-leak.mjs
+        continue-on-error: false
+
+      # 🛡️ 2026-06-20: 로그인/가입 입력 글자 흰색(다크모드) 재발 방지 — 현재 위반 0 → strict.
+      #   standalone 라이트 auth 페이지가 force-light-theme/레이아웃 없이 input 렌더 시 다크모드 글자
+      #   안 보임 사고(전역 .dark input 규칙이 text-gray-900 을 특이도로 이김) 신규 추가 차단.
+      - name: Light-input visibility guard (strict)
+        run: STRICT_LIGHT_INPUT=1 node scripts/check-light-input-guard.mjs
+        continue-on-error: false
+
+      # 🛡️ 2026-07-29: 위 가드의 짝 — input **자기 className** 이 base 토큰으로 text-white + bg-white
+      #   를 동시에 갖는 경우(라이트 모드에서 글자 안 보임). 2026-05-19 에 만들어졌지만 `dark:text-white`
+      #   를 오탐해 정상 코드에 빨간불을 내는 바람에 **한 번도 등록되지 못했다**(실측 6건 전부 오탐).
+      #   variant-aware 로 고쳐 위반 0 확인 → strict 등록.
+      - name: Input text color guard (strict)
+        run: STRICT_INPUT_TEXT=1 node scripts/check-input-text-color.mjs
+        continue-on-error: false
+
+      # 🔬 2026-09-13: 텍스트 가드가 **자기 주석 제거기를 새로 쓰는 것**을 동결한다.
+      #   `.replace(/\/\*[\s\S]*?\*\//g,'')` 는 문자열 안의 `/*` 에 물려 소스를 통째로 먹는다
+      #   (실측: worker/index.ts 코드의 76% 증발 → not.toContain 류가 무조건 통과).
+      #   SSOT 는 helpers/source-text 의 stripComments. 남은 98개는 동결만(줄이는 건 자유).
+      - name: Comment stripper ratchet (strict)
+        run: STRICT_COMMENT_STRIPPER=1 node scripts/check-comment-stripper.mjs
+
+      # 🛡️ 2026-09-14: "CI 가 막는 것은 로컬도 막는다" — 실측 91개 가드가 CI strict 인데
+      #   로컬은 무방비였다(합쳐 20초인데도). 위반 하나가 CI 57분을 태우던 원인.
+      #   새 strict 가드는 pre-push 게이트가 돌리거나 EXCLUDE 에 사유를 적어야 한다.
+      - name: 로컬↔CI 차단 동등성 (pre-push 게이트 누수)
+        run: node scripts/check-local-ci-parity.mjs
+        continue-on-error: false
+
+      # 🛡️ 2026-06-30: 배포-청크 자가복구(흰화면/무한로딩) 시스템 회귀 방지 — 현재 위반 0 → strict.
+      #   인라인 부트가드 + chunk-error SSOT(__cb 캐시버스트) + main.tsx 배선 + worker SPA no-cache
+      #   4불변식 중 하나라도 빠지면 새 배포 후 대시보드 안 켜짐(4번+ 재발). 신규 약화 차단.
+      - name: Deploy chunk self-recovery guard (strict)
+        run: STRICT_CHUNK_RECOVERY=1 node scripts/check-chunk-recovery-guard.mjs
+        continue-on-error: false
+
+      # 🛡️ 2026-07-02: 로더 연속성(로딩 2번 나뉨/블링크) 회귀 방지 — 대표 신고 클래스(세션 내 4회+).
+      #   BrandLoader 위상동기(performance.now 음수 delay) + 상세 정적 로더 + seed/fetchQuery dedupe +
+      #   주기 상수(css↔tsx) 동기 — 4불변식 중 하나라도 빠지면 "떴다 안떴다" 이중 로딩 재발.
+      - name: Loader continuity guard (strict)
+        run: STRICT_LOADER_CONTINUITY=1 node scripts/check-loader-continuity.mjs
+        continue-on-error: false
+
+      # 🛡️ 2026-07-07: 링크샵 소유권 단일화 — "내 링크샵인데 방문자로 보임/편집 사라짐" 회귀 방지(대표 신고 클래스).
+      #   /u/{handle} 주인 = 로그인 소비자 유저(단일 신호). seller_token 은 셀러 대시보드 전용 — 링크샵 뷰를 안 가름.
+      #   ① CuratorPage→SellerPublicPage ownerOverride 전달 ② isOwner 가 ownerOverride 포함(seller_token 단독 금지)
+      #   ③ 순수 뷰 자식은 prop 구동(seller_token 직접 read 금지). 예외 `linkshop-ownership-ok`.
+      - name: Linkshop ownership unification guard (strict)
+        run: STRICT_LINKSHOP_OWNERSHIP=1 node scripts/check-linkshop-ownership.mjs
+
+      - name: 결제수단 판정 SSOT (카테고리로 결제수단 정하기 금지)
+        run: STRICT_PAYMENT_FLOW=1 node scripts/check-payment-flow-ssot.mjs
+
+      - name: 기능 현황판 동기 (꺼진 기능을 산 것으로 오독 방지)
+        run: node scripts/generate-feature-status.mjs --check
+        continue-on-error: false
+
+      # 🛡️ 2026-07-27: UTC-naive DB 타임스탬프의 순진한 `new Date()` 파싱 — 9시간 어긋남 클래스.
+      #   D1 `CURRENT_TIMESTAMP`/`datetime('now')` 는 'YYYY-MM-DD HH:MM:SS'(UTC, Z 없음) →
+      #   브라우저는 로컬(KST)로 오해석, 워커는 `.toLocaleString('ko-KR')` 이 UTC 시각을 한국어로 표기.
+      #   실사고: 연속 주문 감지 영구 미발동 · 알림톡 주문일시 9h 이름 · 주문 날짜필터 경계 누락 ·
+      #   교환권 만료일 안내 하루 이름. SSOT = src/utils/date.ts (parseUTCDate/formatKST*/kstDay*Ms).
+      #   래칫(scripts/utc-date-baseline.json): 신규/증가만 차단, 잔여분은 점진 정리. 예외 `utc-date-ok`.
+      - name: UTC timestamp parse guard (strict)
+        run: STRICT_UTC_DATE=1 node scripts/check-utc-date-parse.mjs
+        continue-on-error: false
+
+      # 🛡️ 2026-06-26: 모달/시트가 하단 네비 뒤로 가려짐 재발 방지 (대표 "계속 발생 — 근본적으로").
+      #   풀스크린 오버레이(fixed inset-0 z-[N])가 네비(9999)보다 낮은 z 면 네비가 덮음. 현재 위반 0 → strict.
+      #   표준: 모달 10500 / 시트 10600 (src/constants/z-index.ts). 예외는 `modal-zindex-ok` 주석.
+      - name: 커서 저장이 무한 루프 뒤 — 조용한 전진 0 차단 (strict)
+        run: node scripts/check-cursor-after-loop.mjs --strict
+
+      - name: Modal/sheet z-index above nav (strict)
+        run: STRICT_MODAL_Z=1 node scripts/check-modal-zindex.mjs
+        continue-on-error: false
+
+      # 🎯 2026-07-18: 로딩 단일화 — 소비자 페이지 로딩은 유어딜 BrandLoader 로 통일(대표 "로딩 중엔 무조건
+      #   하나로 통일, 도매몰 제외"). 소비자 파일에 풀페이지 스피너(min-h-screen + animate-spin/Loader2)가
+      #   BrandLoader 없이 새로 생기면 차단. 도매몰/대시보드 자동 제외. 예외 `consumer-loader-ok`.
+      - name: Consumer loader unify guard (strict)
+        run: STRICT_CONSUMER_LOADER=1 node scripts/check-consumer-loader-unify.mjs
+        continue-on-error: false
+
+      # 🛡️ 2026-05-17: CHECK 제약 위반 — admin live-monitor delete 500 사고 재발 방지.
+      #   리터럴 'UPDATE <t> SET <c> = ...' 패턴이 마이그레이션의 CHECK(IN (...)) 허용값과
+      #   불일치하면 보고. SQL 실행 시 SqlError → 500. strict 모드.
+      - name: CHECK constraint violations
+        run: node scripts/check-status-constraints.mjs -s
+
+      # 🛡️ 2026-05-17: SQL bind param mismatch — 'wrong number of bindings' SqlError 방지.
+      #   prepare(...).bind(...) 쌍의 ? 개수와 인자 개수가 일치하는지 검증.
+      - name: SQL bind param mismatch
+        run: node scripts/check-sql-bind-params.mjs -s
+
+      # 🛡️ 2026-05-17: NOT NULL INSERT — 'NOT NULL constraint failed' 방지.
+      #   INSERT 시 마이그레이션의 NOT NULL (no DEFAULT) 컬럼이 빠졌는지 검증.
+      #   현재 잔여 5건 unclear (product_reviews/settlements/live_streams) — strict 보류, warn-only.
+      - name: NOT NULL INSERT (warn)
+        run: node scripts/check-sql-not-null-insert.mjs
+        continue-on-error: true
+
+      # 🛡️ 2026-05-17: 존재하지 않는 컬럼 참조 — 'no such column' SqlError 방지.
+      #   INSERT/UPDATE 컬럼이 마이그레이션 + 런타임 inline DDL 의 스키마에 있는지 검증.
+      # 🛡️ 2026-05-23: strict mode 활성화 — 23건 일괄 fix 완료 (commit bcdd8990) 후 CI 차단 가능.
+      #   새 SQL 컬럼 mismatch commit 자체 차단 → "no such column" 500 사고 영구 차단.
+      - name: Column existence (strict)
+        run: node scripts/check-sql-column-exists.mjs -s
+
+      # 🛡️ 2026-07-01: 존재하지 않는 '테이블' 참조 — 'no such table' SqlError 방지.
+      #   admin 리뷰관리가 없는 'reviews'(실제=product_reviews) 조회 → 항상 500 사고(대표 신고) 후 strict.
+      #   FROM/JOIN/INTO/UPDATE/DELETE 테이블이 CREATE TABLE(마이그레이션+repair-schema+inline) 또는
+      #   KNOWN_TABLES_EXTRA 에 있는지 검증. 오타 테이블 commit 자체 차단.
+      - name: Table existence (strict)
+        run: node scripts/check-sql-table-exists.mjs -s
+
+      # 🛡️ 2026-06-26: CSV/엑셀 수식 인젝션 재발 방지 — csvEscape 류 함수가 = + - @ 탭/CR 선행 셀을
+      #   무력화 안 하면 셀러 free-text(상품명/회사명)가 =cmd.../=HYPERLINK 로 실행되던 사고. 현재 위반 0 → strict.
+      - name: CSV formula-injection guard (strict)
+        run: node scripts/check-csv-injection.mjs -s
+        continue-on-error: false
+
+      # 🛡️ 2026-06-26: "fetch 실패가 빈화면/₩0 으로 위장" 재발 방지 — 도매/제조사/도매-어드민 surface 의
+      #   data 소비 페이지가 isError 분기 없이 렌더하면 일시 5xx 가 '데이터 0건'·'예치금 ₩0'·'승인 없음'
+      #   으로 오표시(판매사 재무 오인·승인큐 self-undo). 현재 위반 0 → strict.
+      - name: Query isError consumption guard (strict)
+        run: node scripts/check-query-iserror.mjs -s
+        continue-on-error: false
+
+      # 🛡️ 2026-07-01: 블로그 시드 최신성 — 소비자 블로그 시드가 폐기 명칭/기능(식사권·공구권·라이브커머스)
+      #   또는 도매몰 내용으로 되돌아가면 라이브 블로그가 다시 낡아짐. 명칭 SSOT 위반 0 → strict.
+      - name: Blog seed currency guard (strict)
+        run: node scripts/check-blog-seed-currency.mjs -s
+        continue-on-error: false
+
+      # 🛡️ 2026-06-27: "로그인했는데 '로그인하세요'" 재발 방지 — 도매 surface 가 가격(*_price) null/0 을
+      #   로그인 신호로 오용해 로그인 유도(goLogin)하면 위반. 로그인 판정은 토큰으로만. 현재 위반 0 → strict.
+      - name: Wholesale order-status integrity guard (strict)
+        run: node scripts/check-wholesale-order-status.mjs -s
+        continue-on-error: false
+
+      # ── 2. 스키마 일관성 (TS interface ↔ migrations) ──
+      - name: Schema verification (drift detection)
+        run: node scripts/verify-schema.mjs --json
+        continue-on-error: true   # drift 가 있어도 fail 하지 않음 (정보 용도)
+
+      # ── 3. 타입 체크 ──
+      # 🛡️ 2026-07-12: frontend tsc 를 strict 로 (이전 warn-only → BrandLoader import 누락이
+      #   Verify 를 통과하고 배포까지 가 블로그 상세 전면 크래시). 현재 에러 0 — 유지 강제.
+      # 🛡️ 2026-07-29: **"0개 파일 검사 → 0 에러"** 를 성공으로 읽지 않는다.
+      #   실측: `tsconfig.json` 의 `baseUrl` 이 TS 6 에서 TS5101(에러)로 승격돼, 최신 tsc 는
+      #   설정 로드 단계에서 **즉시 중단** — 파일을 하나도 안 보고 끝났다. 그린 신호와 구분이 안 된다.
+      #   (이 세션이 실제로 그 상태의 tsc 를 "에러 0" 으로 오독했다.) 검사 대상 수를 하한으로 못 박는다.
+      - name: Type check — 검사 대상 수 확인 (0개 통과 방지)
+        run: |
+          COUNT=$(npx tsc --noEmit --skipLibCheck --listFilesOnly 2>/dev/null | grep -c '^' || true)
+          echo "typecheck 대상 파일: $COUNT"
+          if [ "$COUNT" -lt 500 ]; then
+            echo "❌ 검사 대상이 $COUNT 개뿐 — tsconfig 로드가 중단됐거나 include 가 깨졌다."
+            echo "   (0 에러가 '통과'가 아니라 '아무것도 안 봤다' 일 수 있다)"
+            npx tsc --noEmit --skipLibCheck --listFilesOnly 2>&1 | head -20
+            exit 1
+          fi
+        continue-on-error: false
+
+      - name: Type check (frontend)
+        run: npx tsc --noEmit --skipLibCheck
+        continue-on-error: false
+
+      # worker 전용 tsconfig 는 선재 에러(env 타입/Buffer 등) 정리 전까지 warn 유지 — 별도 세션에서 정리.
+      - name: Type check (worker)
+        run: npx tsc --noEmit --skipLibCheck --project tsconfig.worker.json
+        continue-on-error: true
+
+      # ── 4. 빌드 ──
+      - name: Build client
+        env:
+          # PR 검증용 더미 — production 배포 아님
+          VITE_FIREBASE_API_KEY: 'pr-verify-dummy'
+          VITE_FIREBASE_AUTH_DOMAIN: 'pr.example.com'
+          VITE_FIREBASE_PROJECT_ID: 'pr-verify'
+          VITE_FIREBASE_STORAGE_BUCKET: 'pr.example.com'
+          VITE_FIREBASE_MESSAGING_SENDER_ID: '0'
+          VITE_FIREBASE_APP_ID: '0'
+          VITE_KAKAO_APP_KEY: 'pr-verify'
+          VITE_TOSS_CLIENT_KEY: 'pr-verify'
+        run: npm run build:client
+
+      - name: Build worker
+        run: npm run build:worker
+
+      # ── 5. 번들 예산 ──
+      - name: Bundle size budget
+        run: node scripts/ci-run.mjs npm run check:bundle:budget
+
+      # 🛡️ 2026-07-29: 총합 예산은 **후행** 감지기라(임계값을 넘어야 울림) "청크 하나가 통째로
+      #   크리티컬 패스에 새로 들어온" 구조 변화를 여유가 있는 동안 놓친다 — 이 레포에서 세 번 재발했다.
+      #   이 가드는 총합이 아니라 **구성**(청크 이름 집합)을 동결해 신규 진입을 즉시 이름으로 알려준다.
+      #   반드시 build 뒤에 둘 것(산출물 필요).
+      - name: Critical path chunk composition (strict)
+        run: node scripts/check-critical-chunks.mjs
+
+      # 📏 2026-10-14 (대표 "대기업 수준 — 기능이 늘어나도 최적화된 상태"): 화면별 **첫 화면 무게**
+      #   (엔트리 + CSS + 그 화면 봉투, brotli) 래칫. 위 두 예산은 헐겁거나(critical 240KB 선 vs 실측 ~175)
+      #   이름만 본다 — 상세·지도 봉투의 바이트는 어떤 PR 게이트도 안 쟀다. 늘면 실패, 줄면 잠그라고 실패.
+      #   반드시 build:worker 뒤(route-chunk-map 필요).
+      - name: Per-surface first-screen weight budget (strict)
+        run: node scripts/ci-run.mjs node scripts/check-surface-budgets.mjs
+
+      # ⚙️ 2026-10-14 (대표 "대시보드랑 실행비용도 최적화 해줘"): 위 예산은 **받는 바이트**만 본다.
+      #   같은 바이트라도 첫 화면에서 **실제로 도는 코드**가 늘면 폰이 바빠진다 — 그걸 미리 막는 장치가 없었다
+      #   (실사용 SLO 는 배포 다음 날에야 안다). 손님 7 + 마이·어드민·에이전시 3 화면을 실제로 렌더해
+      #   V8 커버리지로 '실행된 JS' 를 래칫으로 잠근다(결정적 — 같은 빌드 반복 0.3KB 안). 시간은 기록만.
+      - name: Install chromium (execution cost)
+        run: npx playwright install --with-deps chromium
+      - name: First-screen execution cost budget (strict)
+        run: node scripts/ci-run.mjs node scripts/check-exec-cost.mjs
+
+      # 🔁 2026-10-13: 청크끼리 서로 import 하면(순환) 평가 순서에 따라 화면이 통째로 오류가 된다 —
+      #   묶음기가 prop-types 를 페이지 봉투로 옮겨 stripe ↔ lz-… 순환이 생기자 /checkout 전체가 오류 화면이었다
+      #   (빌드·타입·단위시험 전부 초록). 반드시 build 뒤에 둘 것(산출물 필요).
+      - name: Chunk import cycles (strict)
+        run: node scripts/check-chunk-cycles.mjs
+
+      # 👻 2026-09-16 (대표 "유어쇼츠 왜이래?"): Tailwind 는 **스케일 밖 값이면 클래스를 안 만든다.**
+      #   빌드·타입·테스트 전부 초록인데 화면에서만 효과가 사라진다. 불투명도 축은
+      #   check-tailwind-opacity-scale 이 빌드 없이 잡지만, 그건 한 축뿐이다 — 여기서는
+      #   **번들러가 실제로 낸 CSS** 와 소스를 통째로 대조한다(오타·스케일 밖 크기·정의 없는
+      #   애니메이션·var 색의 알파까지). 실측 첫 판에서 모달 6개가 배경 없이 떠 있었다.
+      #   ⚠️ 반드시 build 뒤에 둘 것(산출물 필요) — 없으면 가드가 스스로 실패한다.
+      - name: Ghost classes (in source, absent from CSS) (strict)
+        env:
+          STRICT_GHOST_CLASSES: '1'
+        run: node scripts/check-ghost-classes.mjs
+        continue-on-error: false
+
+      # 🛡️ 2026-08-27: 위 가드는 **index.html** 만 본다. 그런데 2026-07-12 부터 워커가 표면별로
+      #   modulepreload 를 **추가 주입**한다(route-chunk-map) — 홈의 실제 첫 페인트는 둘의 합이고,
+      #   후자는 어느 가드도 안 보고 있었다. 그 사각지대로 홈에 셀러 대시보드 65KB, /browse 에 또 65KB 가
+      #   조용히 나가고 있었다(에러 없음·화면 정상·바이트만 샘). 이름으로 잡는다.
+      - name: Consumer surface role-chunk leak (strict)
+        run: node scripts/check-surface-role-leak.mjs
+
+      # 🛡️ 2026-08-31 (대표 지시): 빌드 산출 CSS 에 `.ur-btn*` 이 살아 있는지 — Tailwind 트리셰이킹
+      #   방어. 이 판정은 원래 유닛테스트(button-system.test.ts)에 있었는데 유닛테스트가 build 보다
+      #   **앞**이라 `dist/` 가 없었고, 없으면 조용히 return 해서 **CI 에서 실패할 수 없었다**.
+      #   빌드 뒤로 옮기고 "산출물 없음 = 실패" 로 바꿨다. 반드시 build 뒤에 둘 것.
+      - name: Built CSS survives tree-shaking (strict)
+        run: node scripts/check-built-css.mjs
+
+      # ── 6. 결과 요약 (artifact) — build 가 성공한 경우만 ──
+      - name: Bundle size report
+        if: success()
+        continue-on-error: true
+        run: |
+          npm run check:bundle 2>&1 | tee bundle-report.txt
+          node scripts/check-bundle-size.mjs --json > bundle-report.json
+
+      - name: Upload bundle artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-report
+          path: |
+            bundle-report.txt
+            bundle-report.json
+          retention-days: 14

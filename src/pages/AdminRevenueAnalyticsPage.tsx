@@ -1,0 +1,270 @@
+import { useState, useEffect, lazy, Suspense } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useTranslation } from '@/lib/i18n-lite'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
+import AdminLayout from '@/components/AdminLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
+import { TrendingUp, DollarSign, ShoppingCart, BarChart2, Loader2 } from 'lucide-react'
+import { formatNumber } from '@/utils/format'
+
+// Recharts lazy load (377KB → 차트 영역만 지연 로드)
+const RevenueBarChart = lazy(() => import('@/components/charts/AdminRevenueCharts').then(m => ({ default: m.RevenueBarChart })))
+const OrderCountLineChart = lazy(() => import('@/components/charts/AdminRevenueCharts').then(m => ({ default: m.OrderCountLineChart })))
+const CategoryPieChart = lazy(() => import('@/components/charts/AdminRevenueCharts').then(m => ({ default: m.CategoryPieChart })))
+
+const ChartFallback = ({ height }: { height: number }) => (
+  <div className="flex items-center justify-center" style={{ height }}>
+    <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+  </div>
+)
+
+interface RevenueSummary {
+  total_revenue: number
+  average_daily: number
+  order_count: number
+  average_order_value: number
+}
+
+interface RevenueDataPoint {
+  date: string
+  revenue: number
+  order_count: number
+}
+
+interface TopSeller {
+  seller_id: number
+  seller_name: string
+  business_name?: string
+  total_revenue: number
+  order_count: number
+}
+
+interface TopProduct {
+  product_id: number
+  product_name: string
+  image_url?: string
+  total_revenue: number
+  sold_count: number
+}
+
+interface CategoryData {
+  category: string
+  revenue: number
+  order_count: number
+}
+
+type Period = '7d' | '30d' | '90d' | '1y'
+
+const PERIOD_OPTIONS: { value: Period; label: string }[] = [
+  { value: '7d', label: '7일' },
+  { value: '30d', label: '30일' },
+  { value: '90d', label: '90일' },
+  { value: '1y', label: '1년' },
+]
+
+const PIE_COLORS = ['#374151', '#6b7280', '#9ca3af', '#EF4444', '#4b5563', '#6b7280', '#6b7280', '#6b7280', '#6b7280', '#4b5563']
+
+function fmt(n: number | null | undefined): string {
+  return formatNumber(n ?? 0)
+}
+
+export default function AdminRevenueAnalyticsPage() {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const [period, setPeriod] = useState<Period>('30d')
+
+  useEffect(() => {
+    if (!localStorage.getItem('admin_token')) navigate('/admin/login')
+  }, [navigate])
+
+  // 🛡️ 2026-06-03 Tier2(대시보드): Promise.all 4 → useApiQuery 4개 (revenue 만 period 의존).
+  const revenueQ = useApiQuery<{ summary: RevenueSummary | null; chart: RevenueDataPoint[] }>(['admin', 'analytics-revenue', period], '/api/admin/analytics/revenue', {
+    params: { period },
+    select: (r: any) => (r?.success ? { summary: r.data.summary || r.data, chart: r.data.chart || r.data.daily || [] } : { summary: null, chart: [] }),
+  })
+  const topSellersQ = useApiQuery<TopSeller[]>(['admin', 'analytics-top-sellers'], '/api/admin/analytics/top-sellers', { params: { limit: 10 }, select: (r: any) => (r?.success ? r.data || [] : []) })
+  const topProductsQ = useApiQuery<TopProduct[]>(['admin', 'analytics-top-products'], '/api/admin/analytics/top-products', { params: { limit: 10 }, select: (r: any) => (r?.success ? r.data || [] : []) })
+  const categoriesQ = useApiQuery<CategoryData[]>(['admin', 'analytics-category'], '/api/admin/analytics/category', { select: (r: any) => (r?.success ? r.data || [] : []) })
+  const summary = revenueQ.data?.summary ?? null
+  const chartData = revenueQ.data?.chart ?? []
+  const topSellers = topSellersQ.data ?? []
+  const topProducts = topProductsQ.data ?? []
+  const categories = categoriesQ.data ?? []
+  const loading = revenueQ.isLoading || topSellersQ.isLoading || topProductsQ.isLoading || categoriesQ.isLoading
+
+  const summaryCards = [
+    { label: '총 매출', value: `${fmt(summary?.total_revenue)}원`, icon: DollarSign, color: 'text-tone-ok', bg: 'border border-rule bg-white' },
+    { label: '일 평균 매출', value: `${fmt(summary?.average_daily)}원`, icon: TrendingUp, color: 'text-gray-700', bg: 'border border-rule bg-white' },
+    { label: '주문 건수', value: `${fmt(summary?.order_count)}건`, icon: ShoppingCart, color: 'text-gray-700', bg: 'border border-rule bg-white' },
+    { label: '평균 주문 금액', value: `${fmt(summary?.average_order_value)}원`, icon: BarChart2, color: 'text-tone-warn', bg: 'border border-rule bg-white' },
+  ]
+
+  return (
+    <AdminLayout title={t('admin.pages.revenue')}>
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+        <DashboardPageHeader
+          title={t('admin.pages.revenue')}
+          subtitle="기간별 매출·주문·고객 분석"
+          icon={<BarChart2 className="h-5 w-5" />}
+        />
+      {/* Period Selector */}
+      <div className="flex gap-2">
+        {PERIOD_OPTIONS.map(opt => (
+          <button
+            key={opt.value}
+            onClick={() => setPeriod(opt.value)}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+              period === opt.value
+                ? 'bg-brand text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-100 shadow-sm'
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+        </div>
+      ) : (
+        <>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {summaryCards.map(card => (
+              <div key={card.label} className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-5">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-lg ${card.bg} flex items-center justify-center`}>
+                    <card.icon className={`w-5 h-5 ${card.color}`} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">{card.label}</p>
+                    <p className="text-lg font-bold text-gray-900">{card.value}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Revenue Chart */}
+          <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-5">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">매출 추이</h3>
+            {chartData.length > 0 ? (
+              <Suspense fallback={<ChartFallback height={320} />}>
+                <RevenueBarChart chartData={chartData} />
+              </Suspense>
+            ) : (
+              <p className="text-center text-gray-400 py-10 text-sm">데이터가 없습니다</p>
+            )}
+          </div>
+
+          {/* Order Count Line Chart */}
+          {chartData.length > 0 && (
+            <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-5">
+              <h3 className="text-sm font-semibold text-gray-900 mb-4">주문 건수 추이</h3>
+              <Suspense fallback={<ChartFallback height={280} />}>
+                <OrderCountLineChart chartData={chartData} />
+              </Suspense>
+            </div>
+          )}
+
+          {/* Two column: Top Sellers + Category Pie */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Top Sellers */}
+            <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-5">
+              <h3 className="text-sm font-semibold text-gray-900 mb-4">TOP 10 셀러</h3>
+              {topSellers.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-100">
+                        <th className="text-left pb-2 font-medium text-gray-500">#</th>
+                        <th className="text-left pb-2 font-medium text-gray-500">셀러</th>
+                        <th className="text-right pb-2 font-medium text-gray-500">매출</th>
+                        <th className="text-right pb-2 font-medium text-gray-500">주문</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {topSellers.map((s, i) => (
+                        <tr key={s.seller_id} className="border-b border-gray-50">
+                          <td className="py-2 text-gray-500">{i + 1}</td>
+                          <td className="py-2 text-gray-900 font-medium">{s.business_name || s.seller_name}</td>
+                          <td className="py-2 text-right text-gray-700">{fmt(s.total_revenue)}원</td>
+                          <td className="py-2 text-right text-gray-500">{fmt(s.order_count)}건</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-center text-gray-400 py-6 text-sm">데이터가 없습니다</p>
+              )}
+            </div>
+
+            {/* Category Pie Chart */}
+            <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-5">
+              <h3 className="text-sm font-semibold text-gray-900 mb-4">카테고리별 매출</h3>
+              {categories.length > 0 ? (
+                <div className="flex flex-col items-center">
+                  <Suspense fallback={<ChartFallback height={250} />}>
+                    <CategoryPieChart categories={categories} colors={PIE_COLORS} />
+                  </Suspense>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {categories.map((c, i) => (
+                      <span key={c.category} className="flex items-center gap-1 text-xs text-gray-600">
+                        <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+                        {c.category}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-center text-gray-400 py-6 text-sm">데이터가 없습니다</p>
+              )}
+            </div>
+          </div>
+
+          {/* Top Products */}
+          <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-5">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">TOP 10 상품</h3>
+            {topProducts.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-100">
+                      <th className="text-left pb-2 font-medium text-gray-500">#</th>
+                      <th className="text-left pb-2 font-medium text-gray-500">상품</th>
+                      <th className="text-right pb-2 font-medium text-gray-500">매출</th>
+                      <th className="text-right pb-2 font-medium text-gray-500">판매수</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {topProducts.map((p, i) => (
+                      <tr key={p.product_id} className="border-b border-gray-50">
+                        <td className="py-2.5 text-gray-500">{i + 1}</td>
+                        <td className="py-2.5">
+                          <div className="flex items-center gap-3">
+                            {p.image_url && (
+                              <img src={p.image_url} alt="" className="w-8 h-8 rounded object-cover bg-gray-100" loading="lazy" />
+                            )}
+                            <span className="text-gray-900 font-medium truncate max-w-xs">{p.product_name}</span>
+                          </div>
+                        </td>
+                        <td className="py-2.5 text-right text-gray-700">{fmt(p.total_revenue)}원</td>
+                        <td className="py-2.5 text-right text-gray-500">{fmt(p.sold_count)}개</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-center text-gray-400 py-6 text-sm">데이터가 없습니다</p>
+            )}
+          </div>
+        </>
+      )}
+      </div>
+    </AdminLayout>
+  )
+}

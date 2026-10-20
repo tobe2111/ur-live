@@ -1,0 +1,255 @@
+/**
+ * SellerPinPrompt — 민감 액션 수행 전 PIN 인증 모달.
+ *
+ * 사용법:
+ *   const [pinPrompt, setPinPrompt] = useState(false)
+ *   const handleSubmit = async () => {
+ *     try { await api.post('/api/seller/settlements/request', ...) }
+ *     catch (e) {
+ *       if (e.response?.data?.code === 'PIN_REQUIRED') setPinPrompt(true)
+ *       else if (e.response?.data?.code === 'PIN_NOT_SET') navigate('/seller/profile?setup_pin=1')
+ *     }
+ *   }
+ *   ...
+ *   {pinPrompt && <SellerPinPrompt onVerified={() => { setPinPrompt(false); handleSubmit() }} onCancel={() => setPinPrompt(false)} />}
+ */
+
+import { useEffect, useState } from 'react'
+import { useTranslation } from '@/lib/i18n-lite'
+import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
+import { swallow } from '@/shared/utils/swallow'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
+import { Loader2, X, ShieldCheck } from 'lucide-react'
+
+interface Props {
+  onVerified: () => void
+  onCancel: () => void
+  role?: 'seller'  // 🌇 2026-09-04 에이전시 일몰 — 'agency' 제거
+}
+
+export function SellerPinPrompt({ onVerified, onCancel, role = 'seller' }: Props) {
+  const { t } = useTranslation()
+  const [pin, setPin] = useState('')
+  const [loading, setLoading] = useState(false)
+  const basePath = '/api/seller'
+  useEscapeKey(onCancel)
+
+  async function submit() {
+    if (!/^\d{4,6}$/.test(pin)) {
+      toast.error(t('auth.pin.invalidFormat'))
+      return
+    }
+    setLoading(true)
+    try {
+      const res = await api.post(`${basePath}/verify-pin`, { pin })
+      if (res.data?.success) {
+        toast.success(t('auth.pin.verified'))
+        onVerified()
+      } else {
+        toast.error(res.data?.error || t('auth.pin.verifyFailed'))
+      }
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { error?: string; code?: string } } }
+      if (err.response?.data?.code === 'PIN_NOT_SET') {
+        toast.error(t('auth.pin.notSet'))
+        onCancel()
+        return
+      }
+      toast.error(err.response?.data?.error || t('auth.pin.verifyFailed'))
+    } finally { setLoading(false) }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={onCancel} role="presentation">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="seller-pin-prompt-title"
+        className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5 text-green-600" aria-hidden="true" />
+            <h3 id="seller-pin-prompt-title" className="text-lg font-bold text-gray-900">{t('sellerPin.confirmTitle')}</h3>
+          </div>
+          <button type="button" onClick={onCancel} aria-label="PIN 입력 취소" className="text-gray-400 hover:text-gray-700 p-1">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <p className="text-xs text-gray-500 leading-relaxed">
+          민감 액션 수행 시 추가 확인이 필요해요.<br />
+          PIN 입력 후 15분간 재확인 없이 진행 가능합니다.
+        </p>
+        <input
+          type="password"
+          inputMode="numeric"
+          pattern="\d*"
+          maxLength={6}
+          value={pin}
+          onChange={e => setPin(e.target.value.replace(/\D/g, ''))}
+          placeholder="PIN 입력 (4~6자리)"
+          autoFocus
+          onKeyDown={e => { if (e.key === 'Enter') submit() }}
+          className="w-full px-4 py-3 border border-gray-300 rounded-xl text-lg text-center font-mono tracking-widest text-gray-900"
+        />
+        <div className="flex gap-2">
+          <button onClick={onCancel}
+            className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-semibold">
+            취소
+          </button>
+          <button onClick={submit} disabled={loading || !pin}
+            className="flex-1 py-2.5 bg-gray-900 hover:bg-gray-900 disabled:opacity-50 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5">
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            {loading ? t('sellerPin.checking') : t('sellerPin.confirm')}
+          </button>
+        </div>
+
+        {/* 카카오 재인증 대안 (카카오 연동된 경우) */}
+        <div className="pt-3 border-t border-gray-100 dark:border-[#2C2F35] text-center">
+          <p className="text-[11px] text-gray-400 mb-2">PIN 대신 카카오로 재인증</p>
+          <button
+            onClick={async () => {
+              try {
+                const res = await api.post(`${basePath}/request-kakao-stepup`)
+                if (res.data?.success) {
+                  toast.success(t('auth.pin.kakaoReverified'))
+                  onVerified()
+                } else {
+                  toast.error(res.data?.error || t('auth.pin.kakaoReverifyFailed'))
+                }
+              } catch (e: unknown) {
+                const err = e as { response?: { data?: { error?: string } } }
+                toast.error(err.response?.data?.error || t('auth.pin.kakaoReverifyFailedGeneric'))
+              }
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FEE500] hover:bg-[#FDD800] text-[#3C1E1E] text-xs font-semibold rounded-lg">
+            💬 카카오로 재인증
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * SellerPinSetup — 셀러/에이전시 프로필에서 PIN 최초 설정
+ */
+export function SellerPinSetup({ linkedToKakao, role = 'seller' }: { linkedToKakao: boolean; role?: 'seller' }) {
+  const { t } = useTranslation()
+  const basePath = '/api/seller'
+  const [pinSet, setPinSet] = useState<boolean | null>(null)
+  const [showForm, setShowForm] = useState(false)
+  const [form, setForm] = useState({ current_password: '', pin: '', pin_confirm: '' })
+  const [loading, setLoading] = useState(false)
+
+  // PIN 설정 상태 조회
+  useEffect(() => {
+    api.get(`${basePath}/pin-status`).then(res => {
+      if (res.data?.success) setPinSet(res.data.data.pin_set)
+    }).catch(swallow('pin:status-load'))
+  }, [basePath])
+
+  async function save() {
+    if (form.pin !== form.pin_confirm) {
+      toast.error(t('auth.pin.mismatch'))
+      return
+    }
+    if (!/^\d{4,6}$/.test(form.pin)) {
+      toast.error(t('auth.pin.invalidFormat'))
+      return
+    }
+    setLoading(true)
+    try {
+      const body: Record<string, string> = { pin: form.pin }
+      if (!linkedToKakao) body.current_password = form.current_password
+      const res = await api.post(`${basePath}/set-pin`, body)
+      if (res.data?.success) {
+        toast.success(t('auth.pin.set'))
+        setPinSet(true)
+        setShowForm(false)
+        setForm({ current_password: '', pin: '', pin_confirm: '' })
+      } else {
+        toast.error(res.data?.error || t('auth.pin.setFailed'))
+      }
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { error?: string } } }
+      toast.error(err.response?.data?.error || t('auth.pin.setFailed'))
+    } finally { setLoading(false) }
+  }
+
+  if (pinSet === null) return null
+
+  if (pinSet && !showForm) {
+    return (
+      <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="w-5 h-5 text-green-600" />
+          <p className="text-sm font-semibold text-green-800">{t('sellerPin.setupDone')}</p>
+        </div>
+        <button onClick={() => setShowForm(true)}
+          className="text-xs text-green-700 hover:text-green-900 font-medium">
+          재설정
+        </button>
+      </div>
+    )
+  }
+
+  if (!showForm) {
+    return (
+      <button onClick={() => setShowForm(true)}
+        className="w-full py-3 bg-white border border-gray-200 dark:border-[#2C2F35] hover:border-blue-300 rounded-xl flex items-center gap-3 px-4 text-left">
+        <ShieldCheck className="w-5 h-5 text-blue-600 shrink-0" />
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-gray-900">{t('sellerPin.setupCta')}</p>
+          <p className="text-[11px] text-gray-500 mt-0.5">{t('sellerPin.setupDesc')}</p>
+        </div>
+        <span className="text-xs text-blue-600 font-medium">{t('sellerPin.setupAction')} →</span>
+      </button>
+    )
+  }
+
+  return (
+    <div className="bg-white border border-gray-200 dark:border-[#2C2F35] rounded-xl p-4 space-y-3">
+      <p className="text-sm font-bold text-gray-900">보안 PIN {pinSet ? t('sellerPin.reset') : t('sellerPin.set')}</p>
+
+      {!linkedToKakao && (
+        <div>
+          <label className="block text-xs text-gray-600 mb-1">{t('sellerPin.currentPassword')}</label>
+          <input type="password" value={form.current_password}
+            onChange={e => setForm(f => ({ ...f, current_password: e.target.value }))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
+        </div>
+      )}
+
+      <div>
+        <label className="block text-xs text-gray-600 mb-1">{t('sellerPin.newPin')}</label>
+        <input type="password" inputMode="numeric" maxLength={6}
+          value={form.pin}
+          onChange={e => setForm(f => ({ ...f, pin: e.target.value.replace(/\D/g, '') }))}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 font-mono tracking-widest" />
+      </div>
+
+      <div>
+        <label className="block text-xs text-gray-600 mb-1">PIN 재입력</label>
+        <input type="password" inputMode="numeric" maxLength={6}
+          value={form.pin_confirm}
+          onChange={e => setForm(f => ({ ...f, pin_confirm: e.target.value.replace(/\D/g, '') }))}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 font-mono tracking-widest" />
+      </div>
+
+      <div className="flex gap-2">
+        <button onClick={() => setShowForm(false)}
+          className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-semibold">
+          취소
+        </button>
+        <button onClick={save} disabled={loading}
+          className="flex-1 py-2 bg-gray-900 hover:bg-gray-900 disabled:opacity-50 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1">
+          {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+          {loading ? t('sellerPin.saving') : t('sellerPin.save')}
+        </button>
+      </div>
+    </div>
+  )
+}

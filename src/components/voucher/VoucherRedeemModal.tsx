@@ -1,0 +1,225 @@
+/**
+ * 🔘 2026-08-30 버튼 체계 적용 (index.css `.ur-btn`).
+ *   이전엔 여섯 버튼이 전부 `rounded-2xl` 이었다 — 시트/모달용 곡률을 버튼에 쓴 것이라
+ *   버튼이 담긴 카드와 같은 둥글기로 보였다(중첩 규칙 위반: 안쪽 ≤ 바깥쪽).
+ *   높이·모서리·글자·굵기는 체계가 정하고, 색/비율(flex-[2] 등)만 여기서 준다.
+ *   `active:scale`/`transition` 은 전역 button 규칙이 이미 준다(중복 제거).
+ */
+import { useState, useEffect, useRef } from 'react'
+import { X, Loader2 } from 'lucide-react'
+import Udal from '@/components/mascot/Udal'
+import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
+// 🔗 2026-07-03 매장 사용 직후(또 하나의 뜨거운 순간) 셀러 전환 넛지 재사용 — 자기완결·자기게이트
+import SellerConversionNudge from '@/pages/payment-success/SellerConversionNudge'
+import RedeemReviewCard from './RedeemReviewCard'
+
+/**
+ * 🎟️ 2026-06-20 (대표 — 사용처리 "카운터는 신뢰로 통과"): 소비자 셀프 사용처리 + 라이브 사용완료 화면.
+ *   확인 → POST self-redeem(CAS) → 라이브 화면(실시간 시계·매장명·움직임 = 캡처 위조 방지) + 60초 취소.
+ *   풀스크린 모달 규칙: z-[10000](하단 네비 z-[9999] 위).
+ */
+/** 🛰️ 사용 위치 소프트 증거: 권한 있으면만 best-effort 수집(게이트 X). 실패/거부/타임아웃 → null. */
+function getGeo(timeoutMs = 3000): Promise<{ lat: number; lng: number } | null> {
+  return new Promise((resolve) => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return resolve(null)
+    let done = false
+    const finish = (v: { lat: number; lng: number } | null) => { if (!done) { done = true; resolve(v) } }
+    const t = setTimeout(() => finish(null), timeoutMs)
+    try {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => { clearTimeout(t); finish({ lat: pos.coords.latitude, lng: pos.coords.longitude }) },
+        () => { clearTimeout(t); finish(null) },
+        { enableHighAccuracy: false, timeout: timeoutMs, maximumAge: 60_000 },
+      )
+    } catch { clearTimeout(t); finish(null) }
+  })
+}
+
+export default function VoucherRedeemModal({
+  code,
+  storeName,
+  storeAddress,
+  onClose,
+  onRedeemed,
+  productId,
+}: {
+  code: string
+  storeName?: string
+  storeAddress?: string
+  onClose: () => void
+  onRedeemed?: () => void
+  /** 있으면 취소 시간이 끝난 뒤 "어떠셨어요?" 별점이 뜬다(셀러 쪽 사용처리는 안 넘긴다). */
+  productId?: number
+}) {
+  const [phase, setPhase] = useState<'confirm' | 'loading' | 'done'>('confirm')
+  const [usedAt, setUsedAt] = useState<string | null>(null)
+  const [cancelableUntil, setCancelableUntil] = useState<number>(0)
+  const [now, setNow] = useState<number>(Date.now())
+  const [store, setStore] = useState(storeName || '매장')
+  // 🎟️ 2026-07-02 (매장별 사용 방식): store_code 매장이면 확인코드 입력 표시 / scan_only 면 직원확인 안내.
+  const [needCode, setNeedCode] = useState(false)
+  const [storeCode, setStoreCode] = useState('')
+  const [scanOnly, setScanOnly] = useState(false)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // 라이브 시계 (캡처 위조 방지 — 초가 움직임)
+  useEffect(() => {
+    if (phase !== 'done') return
+    timerRef.current = setInterval(() => setNow(Date.now()), 1000)
+    return () => { if (timerRef.current) clearInterval(timerRef.current) }
+  }, [phase])
+
+  const cancelLeft = Math.max(0, Math.ceil((cancelableUntil - now) / 1000))
+
+  async function redeem() {
+    if (needCode && storeCode.trim().length < 4) { toast.error('매장 확인코드를 입력해주세요'); return }
+    setPhase('loading')
+    try {
+      const geo = await getGeo() // 소프트 — 없어도 진행(게이트 X)
+      const payload: Record<string, unknown> = geo ? { lat: geo.lat, lng: geo.lng } : {}
+      if (storeCode.trim()) payload.store_code = storeCode.trim()
+      const res = await api.post(`/api/group-buy/vouchers/${encodeURIComponent(code)}/self-redeem`, payload)
+      const d = res.data?.data
+      if (!res.data?.success) throw new Error(res.data?.error || 'fail')
+      setStore(d?.storeName || store)
+      setUsedAt(d?.usedAt || null)
+      setCancelableUntil(d?.cancelableUntil ?? Date.now())
+      setNow(Date.now())
+      setPhase('done')
+      onRedeemed?.()
+    } catch (e) {
+      // 🎟️ 매장 모드 응답 처리: STORE_CODE_REQUIRED → 코드 입력칸 노출 / SCAN_ONLY_MODE → 직원확인 안내.
+      const err = e as { response?: { data?: { error?: string; code?: string } } }
+      const codeName = err.response?.data?.code
+      if (codeName === 'STORE_CODE_REQUIRED') {
+        setNeedCode(true)
+        if (storeCode.trim()) toast.error('확인코드가 일치하지 않아요 — 카운터의 코드를 다시 확인해주세요')
+        setPhase('confirm')
+        return
+      }
+      if (codeName === 'SCAN_ONLY_MODE') {
+        setScanOnly(true)
+        setPhase('confirm')
+        return
+      }
+      toast.error(err.response?.data?.error || '사용 처리에 실패했어요')
+      setPhase('confirm')
+    }
+  }
+
+  async function cancel() {
+    try {
+      await api.post(`/api/group-buy/vouchers/${encodeURIComponent(code)}/cancel-redeem`)
+      toast.success('사용을 취소했어요')
+      onRedeemed?.()
+      onClose()
+    } catch {
+      toast.error('취소 가능 시간이 지났어요')
+    }
+  }
+
+  const clock = new Date(now).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
+
+  return (
+    <div className="fixed inset-0 z-[10000] bg-black/60 flex items-end sm:items-center justify-center" onClick={phase === 'confirm' ? onClose : undefined} role="presentation">
+      <div
+        className="relative bg-surface rounded-t-3xl sm:rounded-3xl w-full max-w-[430px] max-h-[92dvh] overflow-y-auto p-6"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+      >
+        {phase === 'confirm' && scanOnly && (
+          <>
+            <p className="text-[17px] font-extrabold text-gray-900 dark:text-white">직원에게 QR 화면을 보여주세요</p>
+            <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-2">
+              <b className="text-gray-900 dark:text-white">{store}</b> 은(는) 직원이 QR 을 스캔해 사용 처리하는 매장이에요.
+            </p>
+            <button onClick={onClose} className="ur-btn ur-btn-lg ur-btn-block mt-5 ur-btn-primary">QR 화면으로 돌아가기</button>
+          </>
+        )}
+
+        {phase === 'confirm' && !scanOnly && (
+          <>
+            <p className="text-[17px] font-extrabold text-gray-900 dark:text-white">이 이용권을 사용할까요?</p>
+            <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-2">
+              <b className="text-gray-900 dark:text-white">{store}</b> 에서 지금 사용합니다.<br />
+              {needCode
+                ? '카운터에 비치된 매장 확인코드를 입력해주세요.'
+                : '사용 후 환불은 불가하며, 실수 시 60초 내 취소할 수 있어요.'}
+            </p>
+            {needCode && (
+              <input
+                value={storeCode}
+                onChange={(e) => setStoreCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="매장 확인코드"
+                className="mt-4 w-full text-center tracking-[0.5em] text-[24px] font-black py-3 rounded-2xl border-2 border-gray-300 dark:border-[#2C2F35] bg-surface text-gray-900 dark:text-white"
+                autoFocus
+              />
+            )}
+            <div className="flex gap-2 mt-5">
+              <button onClick={onClose} className="ur-btn ur-btn-lg flex-1 border border-line text-gray-700 dark:text-gray-200">닫기</button>
+              <button onClick={redeem} className="ur-btn ur-btn-lg ur-btn-primary flex-[2]">사용하기</button>
+            </div>
+          </>
+        )}
+
+        {phase === 'loading' && (
+          <div className="py-12 flex flex-col items-center gap-3">
+            <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
+            <p className="text-[15px] text-gray-500 dark:text-gray-400">처리 중…</p>
+          </div>
+        )}
+
+        {phase === 'done' && (
+          <div className="text-center">
+            {/* 라이브 사용완료 — 움직이는 유달이 + 실시간 시계 (스크린샷 위조 방지).
+                🦦 2026-10-07: 검정 체크 원 → 웃는 유달이(둥실). 움직임이 위조 방지의 한 축이라
+                motion 을 끄지 않는다(움직임 줄이기 사용자는 CSS 가 멈추고, 그때도 시계가 남는다). */}
+            <div className="mx-auto w-fit animate-bounce-in">
+              <Udal mood="done" size={112} motion priority />
+            </div>
+            <p className="text-[24px] font-black text-gray-900 dark:text-white mt-4">사용 완료</p>
+            <p className="text-[15px] font-bold text-gray-700 dark:text-gray-200 mt-1">{store}</p>
+            <p className="text-[28px] font-black text-gray-900 dark:text-white tabular-nums mt-2 tracking-tight">{clock}</p>
+            <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-1">직원에게 이 화면을 보여주세요</p>
+
+            {cancelLeft > 0 ? (
+              <button onClick={cancel} className="ur-btn ur-btn-md ur-btn-block mt-5 bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300">
+                잘못 눌렀어요 · 취소 ({cancelLeft}초)
+              </button>
+            ) : (
+              <button onClick={onClose} className="ur-btn ur-btn-lg ur-btn-block mt-5 ur-btn-primary">완료</button>
+            )}
+
+            {/* 🦦 2026-10-09 (대표 확정 시안 ①): 직원 확인(첫 60초)이 끝난 뒤에만 별점 — 그 전엔 확인 화면을 흐리지 않는다. */}
+            {cancelLeft === 0 && productId ? <RedeemReviewCard productId={productId} /> : null}
+
+            {/* 🗺️ 2026-06-23 카카오맵 후기 유도(아웃링크) — 리뷰는 가져올 수 없으니 작성을 유도(가게 평판↑). */}
+            <a
+              href={`https://map.kakao.com/?q=${encodeURIComponent(storeAddress ? `${store} ${storeAddress}` : store)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ur-btn ur-btn-md ur-btn-block mt-2 border border-line text-gray-600 dark:text-gray-300"
+            >
+              🗺️ 카카오맵에 후기 남기기
+            </a>
+
+            {/* 🔗 2026-07-03 매장에서 방금 잘 쓴 직후 = 전환 최적 순간. 결제완료 화면과 동일 넛지 재사용
+                (자기게이트: 셀러/데모/비로그인/이미 닫음 미노출 — 같은 DISMISS_KEY 공유). */}
+            <div className="text-left">
+              <SellerConversionNudge />
+            </div>
+          </div>
+        )}
+
+        {phase === 'confirm' && (
+          <button onClick={onClose} aria-label="닫기" className="absolute top-3 right-3 p-2 rounded-full bg-gray-100 dark:bg-[#1D1F29]"><X className="w-4 h-4 text-gray-500" /></button>
+        )}
+      </div>
+    </div>
+  )
+}

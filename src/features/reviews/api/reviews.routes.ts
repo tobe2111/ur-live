@@ -1,0 +1,585 @@
+/**
+ * 상품 리뷰 API
+ *
+ * GET  /api/reviews/product/:productId  - 상품 리뷰 목록 (공개)
+ * GET  /api/reviews/product/:productId/summary - 평점 요약
+ * POST /api/reviews                     - 리뷰 작성 (인증)
+ * PUT  /api/reviews/:id                 - 리뷰 수정 (본인만)
+ * DELETE /api/reviews/:id               - 리뷰 삭제 (본인만)
+ * GET  /api/reviews/my                  - 내 리뷰 목록
+ */
+
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
+import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
+import { rateLimit } from '@/worker/middleware/rate-limit';
+import { getFeatureFlags } from '@/worker/utils/feature-flags';
+import type { Env } from '@/worker/types/env';
+import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
+import {
+  MAX_REVIEW_LENGTH,
+  validateInteger,
+  validateString,
+  sanitizeString,
+} from '@/worker/utils/validation';
+import { ensurePointsTables } from '@/worker/utils/ensure-tables';
+
+import { swallow } from '@/worker/utils/swallow';
+import { intParam } from '@/shared/pagination'
+import { checkReviewEligibility } from './review-eligibility'
+const reviewsRoutes = new Hono<{ Bindings: Env }>();
+
+// 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
+
+// 테이블 자동 생성
+async function ensureTable(DB: D1Database) {
+  if (_done_ensureTable.has(DB)) return
+  _done_ensureTable.add(DB)
+  try {
+    await DB.prepare(`
+      CREATE TABLE IF NOT EXISTS product_reviews (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_id INTEGER NOT NULL,
+        user_id TEXT NOT NULL,
+        order_id INTEGER,
+        rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+        content TEXT,
+        images TEXT DEFAULT '[]',
+        is_visible INTEGER DEFAULT 1,
+        created_at DATETIME DEFAULT (datetime('now')),
+        updated_at DATETIME DEFAULT (datetime('now')),
+        FOREIGN KEY (product_id) REFERENCES products(id)
+      )
+    `).run();
+  } catch { /* 이미 존재 */ }
+  // 🛡️ 2026-05-21: 누락 컬럼 ALTER — user_name (real user 리뷰 시 카카오 이름 masked 저장).
+  //   기존 0132 마이그레이션엔 없음. ALTER IF NOT EXISTS 미지원 → catch.
+  try { await DB.prepare(`ALTER TABLE product_reviews ADD COLUMN user_name TEXT`).run() } catch { /* exists */ }
+  // 🎁 2026-07-05: 체험단(FCFS) 참여 리뷰 자동 표시 — 표시광고법 의무(경제적 대가 표시).
+  //   작성 API 가 fcfs_applications(selected/paid) 자동 판정으로 세팅 — 작성자가 끌 수 없음.
+  try { await DB.prepare(`ALTER TABLE product_reviews ADD COLUMN is_sponsored INTEGER DEFAULT 0`).run() } catch { /* exists */ }
+}
+
+// GET /api/reviews/product/:productId — 상품 리뷰 목록
+reviewsRoutes.get('/product/:productId', async (c) => {
+  const { DB } = c.env;
+  await ensureTable(DB);
+  const productId = c.req.param('productId');
+  // v31 FIX: page 파라미터 범위 제한 (offset 폭발 방지)
+  const rawPage = intParam(c.req.query('page'), 1);
+  const page = Math.min(Math.max(rawPage, 1), 100);
+  const limit = Math.min(intParam(c.req.query('limit'), 20), 50);
+  const offset = (page - 1) * limit;
+
+  // 🛡️ 2026-05-21: 사용자 신고 — 리뷰 이름이 모두 "sys***".
+  //   원인: SUBSTR(user_id, 1, 3) || '***' 가 user_id 첫 3자만 사용했는데
+  //   admin 생성 리뷰는 user_id='system-generated' → "sys***" 항상.
+  //   영구 fix: product_reviews.user_name 컬럼 (생성 시 김*수 등 한국어 masked
+  //   저장됨) 우선 사용, 없으면 기존 SUBSTR fallback (호환성 보존).
+  // 🏁 2026-06-12 (전수조사 🟡 — 셀러 리뷰답글 비노출): seller_reply / seller_reply_at 동봉.
+  //   컬럼은 셀러 첫 답글 시 ALTER 로 생성(seller-analytics.routes) — 미존재 환경은 fallback.
+  let results: Record<string, unknown>[];
+  try {
+    const r = await DB.prepare(`
+      SELECT r.id, r.rating, r.content, r.images, r.created_at,
+             r.seller_reply, r.seller_reply_at,
+             COALESCE(r.is_sponsored, 0) AS is_sponsored,
+             COALESCE(r.user_name, SUBSTR(r.user_id, 1, 3) || '***') AS user_name
+      FROM product_reviews r
+      WHERE r.product_id = ? AND r.is_visible = 1
+      ORDER BY r.created_at DESC
+      LIMIT ? OFFSET ?
+    `).bind(productId, limit, offset).all();
+    results = (r.results ?? []) as Record<string, unknown>[];
+  } catch {
+    const r = await DB.prepare(`
+      SELECT r.id, r.rating, r.content, r.images, r.created_at,
+             NULL AS seller_reply, NULL AS seller_reply_at,
+             0 AS is_sponsored,
+             COALESCE(r.user_name, SUBSTR(r.user_id, 1, 3) || '***') AS user_name
+      FROM product_reviews r
+      WHERE r.product_id = ? AND r.is_visible = 1
+      ORDER BY r.created_at DESC
+      LIMIT ? OFFSET ?
+    `).bind(productId, limit, offset).all();
+    results = (r.results ?? []) as Record<string, unknown>[];
+  }
+
+  const total = await DB.prepare(
+    'SELECT COUNT(*) as cnt FROM product_reviews WHERE product_id = ? AND is_visible = 1'
+  ).bind(productId).first<{ cnt: number }>();
+
+  return c.json({
+    success: true,
+    data: {
+      reviews: (results ?? []).map((r) => ({
+        ...r,
+        images: (() => {
+        try { return JSON.parse((r as Record<string, unknown>).images as string || '[]'); }
+        catch { return []; }
+      })(),
+      })),
+      total: total?.cnt ?? 0,
+      page,
+      limit,
+    },
+  });
+});
+
+// GET /api/reviews/product/:productId/summary — 평점 요약
+reviewsRoutes.get('/product/:productId/summary', async (c) => {
+  const { DB } = c.env;
+  await ensureTable(DB);
+  const productId = c.req.param('productId');
+
+  const summary = await DB.prepare(`
+    SELECT
+      COUNT(*) as total_count,
+      ROUND(AVG(rating), 1) as avg_rating,
+      SUM(CASE WHEN rating = 5 THEN 1 ELSE 0 END) as star_5,
+      SUM(CASE WHEN rating = 4 THEN 1 ELSE 0 END) as star_4,
+      SUM(CASE WHEN rating = 3 THEN 1 ELSE 0 END) as star_3,
+      SUM(CASE WHEN rating = 2 THEN 1 ELSE 0 END) as star_2,
+      SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END) as star_1
+    FROM product_reviews
+    WHERE product_id = ? AND is_visible = 1
+  `).bind(productId).first();
+
+  return c.json({ success: true, data: summary });
+});
+
+// GET /api/reviews/reward-config — 리뷰 리워드 금액 (공개)
+// 🏁 2026-06-12 (전수조사 🔴 G5): 안내 문구(클라 하드코딩 50/100/200)와 실지급
+//   (platform_settings, default 100/300/500)이 불일치하던 갭 — 서버 설정값을 단일 출처로 노출.
+reviewsRoutes.get('/reward-config', async (c) => {
+  const { DB } = c.env;
+  const defaults = { text: 100, image: 300, video: 500 };
+  try {
+    const { results } = await DB.prepare(
+      "SELECT key, value FROM platform_settings WHERE key IN ('review_reward_text', 'review_reward_image', 'review_reward_video')"
+    ).all<{ key: string; value: string }>();
+    for (const row of results ?? []) {
+      const n = parseInt(row.value);
+      if (!Number.isFinite(n) || n < 0) continue;
+      if (row.key === 'review_reward_text') defaults.text = n;
+      else if (row.key === 'review_reward_image') defaults.image = n;
+      else if (row.key === 'review_reward_video') defaults.video = n;
+    }
+  } catch { /* platform_settings 미존재 — defaults 반환 */ }
+  return c.json({ success: true, data: defaults });
+});
+
+// GET /api/reviews/product/:productId/eligibility — 내가 이 상품에 리뷰를 쓸 수 있나 (로그인 필요)
+// 🎫 2026-09-03 (대표 — "이용권 사용해야 리뷰 쓸 수 있게 해야지"): 종전엔 **다 쓰고 누른 뒤에야**
+//   자격을 알려 줬다. 사용자는 별점 고르고 사진 붙이고 열 줄 써서 누른 다음에 "안 된다" 를 듣는다.
+//   미리 물어볼 수 있게 **POST 와 같은 판정 함수**를 그대로 노출한다 — 두 답이 갈릴 수 없다(SSOT).
+//   ⚠️ 판정 자체는 여기서 하지 않는다. 여기가 판정을 다시 쓰면 POST 와 어긋나는 순간이 온다.
+reviewsRoutes.get('/product/:productId/eligibility', requireAuth(), async (c) => {
+  const { DB } = c.env;
+  const user = getCurrentUser(c);
+  if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  const productId = intParam(c.req.param('productId'), 0);
+  if (!productId) return c.json({ success: false, error: '잘못된 요청입니다' }, 400);
+  // admin 은 POST 에서도 자격 검사를 건너뛴다(테스트/생성 목적) — 같은 예외를 여기서도.
+  if (user.type === 'admin') return c.json({ success: true, data: { ok: true } });
+  const verdict = await checkReviewEligibility(
+    DB, productId, user.id, (user as { isDbId?: boolean }).isDbId,
+  );
+  return c.json({
+    success: true,
+    data: verdict.ok
+      ? { ok: true }
+      : { ok: false, reason: verdict.error, code: verdict.error_code },
+  });
+});
+
+// POST /api/reviews — 리뷰 작성
+reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 300 }), requireAuth(), async (c) => {
+  // Kill switch: disable review submission during traffic spikes
+  const flags = await getFeatureFlags((c.env as Env).SESSION_KV, (c.env as Env).DB);
+  if (!flags.enable_reviews) {
+    c.header('Retry-After', '300');
+    return c.json(
+      { success: false, error: '리뷰 기능이 일시 중단되었습니다.', retry_after: 300 },
+      503,
+    );
+  }
+
+  const user = getCurrentUser(c);
+  if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+
+  const { DB } = c.env;
+  await ensureTable(DB);
+
+  const body = await c.req.json<{
+    product_id: number;
+    order_id?: number;
+    rating: number;
+    content?: string;
+    images?: string[];
+  }>();
+
+  if (!body.product_id || !body.rating || body.rating < 1 || body.rating > 5) {
+    return c.json({ success: false, error: '상품 ID와 평점(1-5)은 필수입니다' }, 400);
+  }
+
+  // Defensive: reject oversized review text (DoS prevention) and strip
+  // control characters that could break downstream displays.
+  if (body.content !== undefined && body.content !== null && body.content !== '') {
+    const err = validateString(body.content, MAX_REVIEW_LENGTH, '리뷰 내용');
+    if (err) return c.json({ success: false, error: err }, 400);
+    body.content = sanitizeString(body.content);
+  }
+  // ── 이미지 URL 검증 (XSS / 파밍 방지) ─────────────────────────────
+  if (body.images !== undefined && body.images !== null) {
+    if (!Array.isArray(body.images)) {
+      return c.json({ success: false, error: '이미지 필드는 배열이어야 합니다' }, 400);
+    }
+    if (body.images.length > 10) {
+      return c.json({ success: false, error: '이미지는 최대 10개까지 첨부할 수 있습니다' }, 400);
+    }
+    for (const img of body.images) {
+      if (typeof img !== 'string' || img.length === 0 || img.length > 2048) {
+        return c.json({ success: false, error: '이미지 URL이 유효하지 않습니다' }, 400);
+      }
+      try {
+        const u = new URL(img);
+        if (!['http:', 'https:'].includes(u.protocol)) {
+          return c.json({ success: false, error: '이미지 URL 프로토콜 오류' }, 400);
+        }
+      } catch {
+        return c.json({ success: false, error: '이미지 URL 형식 오류' }, 400);
+      }
+    }
+  }
+
+  // 중복 리뷰 체크
+  const existing = await DB.prepare(
+    'SELECT id FROM product_reviews WHERE product_id = ? AND user_id = ?'
+  ).bind(body.product_id, user.id).first();
+
+  if (existing) {
+    return c.json({ success: false, error: '이미 리뷰를 작성하셨습니다' }, 409);
+  }
+
+  // 🎫 리뷰 자격 — 이용권은 "사용한 사람", 그 외는 "구매한 사람". admin 은 예외(테스트/생성 목적).
+  //   판정 본체·근거는 `review-eligibility.ts` 로 분리했다(이 파일 600줄 래칫 + 판정만 따로 읽히게).
+  let usedVoucherOrderId: number | null = null
+  if (user.type !== 'admin') {
+    const verdict = await checkReviewEligibility(
+      DB, body.product_id, user.id, (user as { isDbId?: boolean }).isDbId,
+    )
+    if (!verdict.ok) {
+      return c.json({ success: false, error: verdict.error, error_code: verdict.error_code }, verdict.status);
+    }
+    usedVoucherOrderId = verdict.rewardOrderId
+  }
+
+  // 🛡️ 2026-04-22: 셀러 자기 상품 self-review 차단 — 평점 조작 방어
+  // user 가 해당 상품의 셀러 본인이면 차단. admin 은 허용 (테스트 목적).
+  if (user.type === 'seller') {
+    const ownsProduct = await DB.prepare(
+      'SELECT 1 FROM products WHERE id = ? AND seller_id = ?'
+    ).bind(body.product_id, user.id).first().catch(() => null);
+    if (ownsProduct) {
+      return c.json({ success: false, error: '본인이 판매하는 상품에는 리뷰를 작성할 수 없습니다' }, 403);
+    }
+  }
+
+  // 구매 확인 — 보상 지급 여부는 order_id 소유/배송 상태에 따라 결정
+  // order_id가 없어도 리뷰 자체는 저장되지만 보상은 지급되지 않음 (HIGH-3)
+  let canGetReward = !!body.order_id;
+  let rewardOrderId: number | null = body.order_id ?? null;
+  if (body.order_id) {
+    const order = await DB.prepare(
+      'SELECT id FROM orders WHERE id = ? AND user_id = ? AND status IN (?, ?)'
+    ).bind(body.order_id, user.id, 'DONE', 'DELIVERED').first();
+
+    if (!order) {
+      // order_id가 제공되었으나 본인 소유/배송완료가 아닐 경우 보상 거부
+      canGetReward = false;
+    }
+  } else if (usedVoucherOrderId) {
+    // 🎫 2026-09-02: 이용권은 '사용한 그 장'의 주문이 리워드 근거 — 사용 전엔 위 게이트에서 이미 막혔다.
+    canGetReward = true;
+    rewardOrderId = usedVoucherOrderId;
+  } else {
+    // 🏁 2026-06-12 (전수조사 🔴 G5): 클라이언트(ProductReviews 폼)가 order_id 를 안 보내
+    //   canGetReward 가 항상 false → 리뷰 리워드 약속 미지급이던 갭.
+    //   서버가 본인 소유 + 배송완료(DONE/DELIVERED) 주문을 자동 매칭 — 게이트 의미는 동일
+    //   (본인/배송완료 검증 그대로), order_id 전달 누락만 치유. 멱등은 기존
+    //   point_transactions (product:N) dedup 이 그대로 담당.
+    const autoOrder = await DB.prepare(`
+      SELECT o.id FROM orders o
+      INNER JOIN order_items oi ON oi.order_id = o.id
+      WHERE oi.product_id = ? AND o.user_id = ? AND o.status IN ('DONE', 'DELIVERED')
+      ORDER BY o.id DESC LIMIT 1
+    `).bind(body.product_id, user.id).first<{ id: number }>().catch(() => null);
+    if (autoOrder?.id) {
+      canGetReward = true;
+      rewardOrderId = autoOrder.id;
+    }
+  }
+
+  // 🛡️ 2026-05-21: 사용자 요청 — 실제 리뷰는 카카오 로그인 이름으로 저장 (영구).
+  //   user.name (Kakao 로그인 시 받은 별명/실명) 을 masked 형식으로 user_name 컬럼에 저장.
+  //   마스킹 규칙: 2글자면 첫+'*' / 3글자 이상이면 첫+'*'+끝 (한국어 패턴).
+  //   user.name 없으면 (드물게 익명) DB users 테이블 fallback → 그것도 없으면 user_id substring.
+  const maskKoreanName = (n: string | null | undefined): string | null => {
+    if (!n || !n.trim()) return null
+    const s = n.trim()
+    if (s.length === 1) return s
+    if (s.length === 2) return s[0] + '*'
+    return s[0] + '*'.repeat(Math.min(s.length - 2, 2)) + s[s.length - 1]
+  }
+  let userNameForReview = maskKoreanName((user as { name?: string }).name)
+  if (!userNameForReview) {
+    // Fallback: users 테이블에서 name 조회 (가입은 했지만 토큰 payload 에 name 없는 경우).
+    try {
+      const u = await DB.prepare(`SELECT name FROM users WHERE id = ? LIMIT 1`)
+        .bind(user.id).first<{ name: string | null }>()
+      userNameForReview = maskKoreanName(u?.name)
+    } catch { /* noop */ }
+  }
+
+  // 🎁 2026-07-05 표시광고법: 작성자가 이 상품 체험단(FCFS) 참여 확정자(selected/paid)면
+  //   is_sponsored=1 자동 부착 — 서버 판정(클라 입력 무시)이라 작성자가 끌 수 없음. 수동 누락 0.
+  let isSponsored = 0;
+  try {
+    const fcfs = await DB.prepare(
+      "SELECT 1 AS x FROM fcfs_applications WHERE product_id = ? AND user_id = ? AND status IN ('selected', 'paid') LIMIT 1"
+    ).bind(body.product_id, String(user.id)).first<{ x: number }>();
+    if (fcfs) isSponsored = 1;
+  } catch { /* fcfs 테이블 부재 환경 — 일반 리뷰로 저장 */ }
+
+  await DB.prepare(`
+    INSERT INTO product_reviews (product_id, user_id, user_name, order_id, rating, content, images, is_sponsored)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    body.product_id, user.id, userNameForReview,
+    rewardOrderId, body.rating, body.content ?? '', JSON.stringify(body.images ?? []), isSponsored
+  ).run();
+
+  // 리뷰 등록 → 셀러 알림
+  const productInfo = await DB.prepare('SELECT seller_id, name FROM products WHERE id = ?').bind(body.product_id).first<{seller_id: number|null, name: string}>();
+  if (productInfo?.seller_id) {
+    createDashboardNotification(DB, 'seller', String(productInfo.seller_id), 'new_review', '새 리뷰', `${productInfo.name}: ★${body.rating}`, '/seller/products').catch(swallow('reviews:api:reviews'));
+  }
+
+  // ── 리뷰 리워드: 딜 포인트 지급 (platform_settings 기반) ──
+  // HIGH-3: 구매 확인이 되지 않은 리뷰(order_id 없음/불일치)는 보상 지급 금지
+  try {
+    if (!canGetReward) {
+      // skip reward logic entirely
+      throw new Error('__skip_reward__');
+    }
+    // ✅ BUG #32 FIX: Prevent review reward farming (POST → DELETE → POST again).
+    // 🛡️ 2026-04-22: 정확한 매칭 — 이전 `%${product_id}%` 는 product_id=1 이 11, 21, 111 에도 매칭
+    // (product:${id}) 형식 완전 구간 매칭으로 수정.
+    const existingProductReward = await DB.prepare(
+      "SELECT 1 FROM point_transactions WHERE user_id = ? AND description LIKE ? AND description LIKE ?"
+    ).bind(String(user.id), `%리뷰리워드%`, `%(product:${body.product_id})%`).first().catch(() => null);
+
+    if (existingProductReward) {
+      // Skip reward — already earned for this product (even if review was deleted & re-posted)
+    } else {
+      // Reward logic
+      const hasImages = body.images && body.images.length > 0;
+      const hasVideo = body.images?.some((img: string) => /\.(mp4|webm|mov)$/i.test(img));
+
+    // platform_settings에서 리뷰 보상 금액 조회
+    const rewardKey = hasVideo ? 'review_reward_video' : hasImages ? 'review_reward_image' : 'review_reward_text';
+    const defaultReward = hasVideo ? 500 : hasImages ? 300 : 100;
+    const settingsRow = await DB.prepare("SELECT value FROM platform_settings WHERE key = ?").bind(rewardKey).first<{ value: string }>().catch(() => null);
+    const rewardAmount = settingsRow?.value ? parseInt(settingsRow.value) : defaultReward;
+
+    const rewardDesc = hasVideo ? `[리뷰리워드] 영상 리뷰 작성 (product:${body.product_id})` : hasImages ? `[리뷰리워드] 사진 리뷰 작성 (product:${body.product_id})` : `[리뷰리워드] 텍스트 리뷰 작성 (product:${body.product_id})`;
+
+    // user_points / point_transactions 테이블 보장 (마이그레이션 미적용 환경 대비)
+    await ensurePointsTables(DB);
+
+    // H8: user_points.user_id는 TEXT — 항상 String(user.id)로 통일
+    const ptsUserId = String(user.id);
+
+    // v24 FIX: lost-update 방지. SELECT-then-UPDATE 패턴은 동시 리뷰 작성 시 잔액 덮어쓰기 발생.
+    // 원자적 UPSERT + balance = balance + ? 패턴으로 전환.
+    // 💸 2026-07-05 버킷: 리뷰 리워드 = 무상 딜 (free_balance 동시 증가 — 출금 제외·우선 차감).
+    await DB.prepare(`
+      INSERT INTO user_points (user_id, balance, free_balance, total_charged)
+      VALUES (?, ?, ?, 0)
+      ON CONFLICT(user_id) DO UPDATE SET
+        balance = balance + excluded.balance,
+        free_balance = COALESCE(free_balance, 0) + excluded.free_balance,
+        updated_at = datetime('now')
+    `).bind(ptsUserId, rewardAmount, rewardAmount).run();
+
+    // 트랜잭션 기록용 최신 잔액 조회 (원자성 보장 후)
+    const updatedRow = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
+      .bind(ptsUserId).first<{ balance: number }>();
+    const newBalance = updatedRow?.balance ?? rewardAmount;
+
+    await DB.prepare('INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, free_delta) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .bind(ptsUserId, 'charge', rewardAmount, rewardAmount, newBalance, rewardDesc, rewardAmount).run();
+
+    // deal_balance도 동기화 (users 테이블)
+    await DB.prepare('UPDATE users SET deal_balance = COALESCE(deal_balance, 0) + ? WHERE id = ?')
+      .bind(rewardAmount, user.id).run().catch(swallow('reviews:api:reviews'));
+
+    // 유저에게 알림 생성
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS user_notifications (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, type TEXT NOT NULL, title TEXT NOT NULL, message TEXT, link TEXT, is_read INTEGER DEFAULT 0, created_at DATETIME DEFAULT (datetime('now')))`).run().catch(swallow('reviews:api:reviews'));
+    await DB.prepare(
+      "INSERT INTO user_notifications (user_id, type, title, message, link) VALUES (?, ?, ?, ?, ?)"
+    ).bind(
+      user.id,
+      'review_reward',
+      '리뷰 작성 보상',
+      `🎁 리뷰 작성 보상으로 ${rewardAmount}딜이 지급되었습니다!`,
+      '/user/profile'
+    ).run().catch(swallow('reviews:api:reviews'));
+    } // end else (no existingProductReward)
+  } catch { /* 포인트 지급 실패해도 리뷰는 성공 */ }
+
+  // 실제 유저 리뷰 → sold_count 2~3 증가 + avg_rating / review_count 갱신
+  // 🛡️ 2026-05-23: avg_rating / review_count 안 갱신하면 /api/products 카드 UI 에 별점 안 보임.
+  try {
+    const inc = 2 + Math.round(Math.random());
+    await DB.prepare(`
+      UPDATE products SET
+        sold_count = COALESCE(sold_count, 0) + ?,
+        review_count = COALESCE((SELECT COUNT(*) FROM product_reviews WHERE product_id = ?), 0),
+        avg_rating = COALESCE((SELECT ROUND(AVG(rating), 1) FROM product_reviews WHERE product_id = ?), 0),
+        updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(inc, body.product_id, body.product_id, body.product_id).run();
+  } catch {}
+
+  return c.json({
+    success: true,
+    message: canGetReward ? '리뷰가 등록되었습니다' : '리뷰가 등록되었습니다 (구매 확인되지 않아 보상은 지급되지 않았습니다)',
+    reward: canGetReward,
+  }, 201);
+});
+
+// PUT /api/reviews/:id — 리뷰 수정
+reviewsRoutes.put('/:id', rateLimit({ action: 'review_mutation', max: 10, windowSec: 60 }), requireAuth(), async (c) => {
+  const user = getCurrentUser(c);
+  if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+
+  const { DB } = c.env;
+  const reviewId = c.req.param('id');
+  const body = await c.req.json<{ rating?: number; content?: string; images?: string[] }>();
+
+  const review = await DB.prepare(
+    "SELECT id, user_id, created_at FROM product_reviews WHERE id = ?"
+  ).bind(reviewId).first<{ id: number; user_id: string; created_at: string }>();
+
+  if (!review) return c.json({ success: false, error: '리뷰를 찾을 수 없습니다' }, 404);
+  if (review.user_id !== user.id) return c.json({ success: false, error: '본인의 리뷰만 수정할 수 있습니다' }, 403);
+
+  // 🛡️ 2026-04-22: 리뷰 edit window 30일 — 구매 직후 고평점 쓰고 장기간 후 1점으로 바꾸는 조작 방어
+  try {
+    const createdAt = new Date(review.created_at.replace(' ', 'T') + (review.created_at.includes('Z') ? '' : 'Z')).getTime();
+    if (Number.isFinite(createdAt) && Date.now() - createdAt > 30 * 24 * 60 * 60 * 1000) {
+      return c.json({ success: false, error: '리뷰 작성 후 30일이 지나 수정할 수 없습니다' }, 400);
+    }
+  } catch { /* parse 실패 시 수정 허용 (legacy) */ }
+
+  // Defensive: validate rating/content size before writing
+  if (body.rating !== undefined) {
+    const rErr = validateInteger(body.rating, 1, 5, '평점');
+    if (rErr) return c.json({ success: false, error: rErr }, 400);
+  }
+  if (body.content !== undefined && body.content !== null && body.content !== '') {
+    const cErr = validateString(body.content, MAX_REVIEW_LENGTH, '리뷰 내용');
+    if (cErr) return c.json({ success: false, error: cErr }, 400);
+    body.content = sanitizeString(body.content);
+  }
+  if (body.images !== undefined && body.images !== null) {
+    if (!Array.isArray(body.images)) {
+      return c.json({ success: false, error: '이미지 필드는 배열이어야 합니다' }, 400);
+    }
+    if (body.images.length > 10) {
+      return c.json({ success: false, error: '이미지는 최대 10개까지 첨부할 수 있습니다' }, 400);
+    }
+    for (const img of body.images) {
+      if (typeof img !== 'string' || img.length === 0 || img.length > 2048) {
+        return c.json({ success: false, error: '이미지 URL이 유효하지 않습니다' }, 400);
+      }
+      try {
+        const u = new URL(img);
+        if (!['http:', 'https:'].includes(u.protocol)) {
+          return c.json({ success: false, error: '이미지 URL 프로토콜 오류' }, 400);
+        }
+      } catch {
+        return c.json({ success: false, error: '이미지 URL 형식 오류' }, 400);
+      }
+    }
+  }
+
+  const updates: string[] = ['updated_at = datetime(\'now\')'];
+  const params: (string | number)[] = [];
+
+  if (body.rating && body.rating >= 1 && body.rating <= 5) { updates.push('rating = ?'); params.push(body.rating); }
+  if (body.content !== undefined) { updates.push('content = ?'); params.push(body.content); }
+  if (body.images) { updates.push('images = ?'); params.push(JSON.stringify(body.images)); }
+
+  params.push(reviewId!);
+  await DB.prepare(`UPDATE product_reviews SET ${updates.join(', ')} WHERE id = ?`).bind(...params).run();
+
+  return c.json({ success: true, message: '리뷰가 수정되었습니다' });
+});
+
+// DELETE /api/reviews/:id — 리뷰 삭제
+reviewsRoutes.delete('/:id', rateLimit({ action: 'review_mutation', max: 10, windowSec: 60 }), requireAuth(), async (c) => {
+  const user = getCurrentUser(c);
+  if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+
+  const { DB } = c.env;
+  const reviewId = c.req.param('id');
+
+  const review = await DB.prepare(
+    'SELECT id, user_id FROM product_reviews WHERE id = ?'
+  ).bind(reviewId).first<{ id: number; user_id: string }>();
+
+  if (!review) return c.json({ success: false, error: '리뷰를 찾을 수 없습니다' }, 404);
+  if (review.user_id !== user.id) return c.json({ success: false, error: '본인의 리뷰만 삭제할 수 있습니다' }, 403);
+
+  await DB.prepare('DELETE FROM product_reviews WHERE id = ?').bind(reviewId).run();
+
+  return c.json({ success: true, message: '리뷰가 삭제되었습니다' });
+});
+
+// GET /api/reviews/my — 내 리뷰 목록
+reviewsRoutes.get('/my', requireAuth(), async (c) => {
+  const user = getCurrentUser(c);
+  if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+
+  const { DB } = c.env;
+  await ensureTable(DB);
+
+  const { results } = await DB.prepare(`
+    SELECT r.id, r.product_id, r.rating, r.content, r.images, r.created_at,
+           p.name as product_name, p.image_url as product_image
+    FROM product_reviews r
+    LEFT JOIN products p ON r.product_id = p.id
+    WHERE r.user_id = ?
+    ORDER BY r.created_at DESC
+  `).bind(user.id).all();
+
+  return c.json({
+    success: true,
+    data: (results ?? []).map((r) => ({
+      ...r,
+      images: (() => {
+        try { return JSON.parse((r as Record<string, unknown>).images as string || '[]'); }
+        catch { return []; }
+      })(),
+    })),
+  });
+});
+
+export { reviewsRoutes };
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+const _done_ensureTable = new WeakSet<object>()

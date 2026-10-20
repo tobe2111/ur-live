@@ -1,0 +1,117 @@
+name: Image Pipeline Diag
+
+# 🔬 2026-06-11 일회성 진단 (사용자 신고 — "상품 카드 로딩 아직 느려"):
+#   CF 이미지 리사이저(/cdn-cgi/image)가 실제로 작동하는지 ground truth 수집.
+#   작동 X 면 모든 카드가 원본(수 MB)을 받는 것 — 그게 느림의 진짜 원인.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/image-diag.yml']
+
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Probe image pipeline
+        run: |
+          set -e
+          PROD="https://urdeal.kr"
+          echo "=== 1) 실상품 이미지 URL 추출 ==="
+          IMG=$(curl -s --max-time 15 "$PROD/api/products?limit=5" | python3 -c "
+          import sys, json
+          d = json.load(sys.stdin)
+          for p in (d.get('data') or []):
+              u = p.get('image_url') or ''
+              if u.startswith('http'):
+                  print(u); break
+          ")
+          echo "원본 URL: $IMG"
+          [ -n "$IMG" ] || { echo '이미지 URL 추출 실패'; exit 1; }
+
+          echo ""
+          echo "=== 2) 원본 직접 다운로드 (크기/시간) ==="
+          curl -s -o /dev/null -w "원본: status=%{http_code} size=%{size_download}B time=%{time_total}s type=%{content_type}\n" --max-time 30 "$IMG"
+
+          echo ""
+          echo "=== 3) cdn-cgi 리사이저 경유 (핵심 — cf-resized 헤더가 있어야 작동 중) ==="
+          RESIZED="$PROD/cdn-cgi/image/width=300,format=auto/$IMG"
+          curl -s -D /tmp/h -o /dev/null -w "리사이즈: status=%{http_code} size=%{size_download}B time=%{time_total}s type=%{content_type}\n" --max-time 30 "$RESIZED"
+          echo "--- 응답 헤더 중 진단 키 ---"
+          grep -i "cf-resized\|content-type\|content-length\|cf-cache-status" /tmp/h || true
+
+          echo ""
+          echo "=== 4) 워커 프록시 (/api/image/resize) ==="
+          ENC=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote('$IMG',safe=''))")
+          curl -s -D /tmp/h2 -o /dev/null -w "프록시: status=%{http_code} size=%{size_download}B time=%{time_total}s type=%{content_type}\n" --max-time 30 "$PROD/api/image/resize?url=$ENC&width=300"
+          grep -i "cf-resized\|content-type\|content-length" /tmp/h2 || true
+
+          echo ""
+          echo "=== 5) 도매 카탈로그 API (사용자 신고 — /wholesale 상품 안 뜸) ==="
+          curl -s -D /tmp/h3 --max-time 20 "$PROD/api/wholesale/catalog" -o /tmp/cat.json -w "guest 카탈로그: status=%{http_code} time=%{time_total}s\n"
+          python3 -c "
+          import json
+          d = json.load(open('/tmp/cat.json'))
+          print('success:', d.get('success'), '| items:', len(d.get('items') or []), '| error:', d.get('error'))
+          " || head -c 300 /tmp/cat.json
+          grep -i "x-grade-cache\|cf-cache-status" /tmp/h3 || true
+
+          echo ""
+          echo "=== 6) /wholesale HTML — SSR 슬롯 주입 확인 ==="
+          curl -s --max-time 20 "$PROD/wholesale" -o /tmp/ws.html -w "HTML: status=%{http_code} size=%{size_download}B\n"
+          grep -c "__SSR_INITIAL_WHOLESALE__" /tmp/ws.html && echo "SSR 슬롯 존재" || echo "SSR 슬롯 없음"
+
+          echo ""
+          echo "=== 7) 공동구매 리스트 API ==="
+          curl -s --max-time 20 "$PROD/api/group-buy/products?status=active" -o /tmp/gb.json -w "동네딜: status=%{http_code} time=%{time_total}s\n"
+          python3 -c "
+          import json
+          d = json.load(open('/tmp/gb.json'))
+          print('success:', d.get('success'), '| items:', len(d.get('data') or []))
+          " || head -c 300 /tmp/gb.json
+
+          echo ""
+          echo "=== 8) 링크샵 /u/user24 — SSR 주입/타이밍 실측 (사용자 신고 — 느림) ==="
+          curl -s -D /tmp/h4 -o /tmp/u24.html --max-time 20 "$PROD/u/user24" -w "HTML: status=%{http_code} ttfb=%{time_starttransfer}s total=%{time_total}s size=%{size_download}B\n"
+          grep -i "x-ssr-status\|server-timing\|cf-cache-status" /tmp/h4 || true
+          grep -c "__SSR_INITIAL_CURATOR__" /tmp/u24.html && echo "CURATOR 데이터 동봉됨" || echo "CURATOR 데이터 없음(클라 fetch 워터폴)"
+          echo "--- API 직접 ---"
+          curl -s -o /dev/null --max-time 20 "$PROD/api/curator/user24" -w "curator API: status=%{http_code} ttfb=%{time_starttransfer}s\n"
+
+          echo ""
+          echo "=== 9) [Reality Audit] cron 프리웜 실작동 — HOT path 엣지캐시 상태 ==="
+          for u in "/api/group-buy/products?status=active" "/api/products?limit=20" "/api/wholesale/catalog"; do
+            curl -s -D /tmp/hp -o /dev/null --max-time 15 "$PROD$u"
+            CCS=$(grep -i "^cf-cache-status" /tmp/hp | tr -d '\r' | awk '{print $2}')
+            AGE=$(grep -i "^age:" /tmp/hp | tr -d '\r' | awk '{print $2}')
+            echo "$u → cf-cache-status=$CCS age=${AGE:-0}"
+          done
+          echo "(HIT+age>0 = 프리웜 cron 살아있음 / 전부 MISS·EXPIRED = cron Workers 프로젝트 죽었거나 미배포)"
+
+          echo ""
+          echo "=== 10) [Reality Audit] SSR 주입 엣지 적중률 — 홈/동네딜 ==="
+          for u in "/" "/group-buy"; do
+            curl -s -D /tmp/hs -o /dev/null --max-time 15 "$PROD$u"
+            grep -i "x-ssr-status\|server-timing" /tmp/hs | tr -d '\r' | sed "s|^|$u → |"
+          done
+          echo "(edge-hit = 이상적 / self-fetch-hit 반복 = 프리웜 키 불일치)"
+
+          echo ""
+          echo "=== 11) [Reality Audit] 검색 실작동 (FTS vs 폴백 — 결과 유무) ==="
+          curl -s --max-time 15 "$PROD/api/products?search=%EC%95%84%EB%A9%94%EB%A6%AC%EC%B9%B4%EB%85%B8" -o /tmp/sr.json -w "검색 status=%{http_code} time=%{time_total}s\n"
+          python3 -c "
+          import json
+          d = json.load(open('/tmp/sr.json'))
+          print('success:', d.get('success'), '| 결과:', len(d.get('data') or []), '| 오타보정:', d.get('suggested_query'))
+          " || head -c 200 /tmp/sr.json
+
+          echo ""
+          echo "=== 12) [Reality Audit] beta SSR 정식 도메인 ==="
+          curl -s -o /dev/null --max-time 15 "https://beta.ur-team.com/wholesale" -w "beta/wholesale → status=%{http_code} ttfb=%{time_starttransfer}s\n" || true
+
+          echo ""
+          echo "=== 판정 가이드 ==="
+          echo "- 3)에 cf-resized 헤더 있음 + size 수십 KB → 리사이저 정상 (느림 원인은 다른 곳)"
+          echo "- 3)이 원본과 같은 size / cf-resized 없음 → 리사이저 미작동 → Dashboard > Images > Transformations 에서 zone 활성화 필요 (무료)"
+
+# re-run: 2026-06-11 Enable 후 검증

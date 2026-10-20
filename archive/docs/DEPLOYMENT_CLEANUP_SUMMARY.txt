@@ -1,0 +1,85 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║       Cloudflare Pages 배포 히스토리 삭제 가이드                        ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+⚠️  문제: 배포가 너무 많아서 프로젝트 삭제 불가
+
+"Your project has too many deployments to be deleted"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 해결 방법: 자동화 스크립트 실행
+
+cd /home/user/webapp
+./cleanup-cloudflare-deployments.sh
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔧 스크립트가 하는 일
+
+1. Wrangler 로그인 확인
+2. 3개 프로젝트의 모든 배포 조회:
+   - ur-live (No Git connection)
+   - ur-live-global (No Git connection)
+   - toss-live-commerce
+3. 각 배포를 하나씩 자동 삭제
+4. 진행률 표시 (10개마다)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⏱️  예상 소요 시간
+
+- 배포 50개 미만:      2~3분
+- 배포 50~200개:       5~10분
+- 배포 200개 이상:     10~20분
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 스크립트 실행 후 할 일
+
+1. Cloudflare Dashboard 접속
+   https://dash.cloudflare.com/
+
+2. Workers & Pages
+
+3. 프로젝트 삭제 (3개):
+   ❌ ur-live (No Git connection)
+   ❌ ur-live-global (No Git connection)
+   ❌ toss-live-commerce
+   
+   Settings → Delete project → 이름 입력 → 삭제
+
+⚠️  절대 삭제 금지:
+   ✅ ur-live (GitHub 연결) - live.ur-team.com
+   ✅ ur-live-global (GitHub 연결) - world.ur-team.com
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔍 문제 해결
+
+"Project not found" 오류:
+  npx wrangler pages list  # 프로젝트 목록 확인
+
+"Unauthorized" 오류:
+  npx wrangler logout
+  npx wrangler login
+
+수동 삭제가 필요한 경우:
+  cat /home/user/webapp/DELETE_DEPLOYMENTS_GUIDE.md
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📁 관련 파일
+
+- cleanup-cloudflare-deployments.sh  ← 자동화 스크립트
+- DELETE_DEPLOYMENTS_GUIDE.md        ← 상세 가이드
+- CLOUDFLARE_PROJECT_CLEANUP_GUIDE.md
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚀 지금 실행하세요!
+
+cd /home/user/webapp
+./cleanup-cloudflare-deployments.sh
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

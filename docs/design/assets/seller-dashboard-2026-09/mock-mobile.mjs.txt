@@ -1,0 +1,190 @@
+import { createRequire } from 'node:module'
+import { writeFileSync } from 'node:fs'
+const require = createRequire('/home/user/ur-live/package.json')
+const { chromium } = require('playwright-core')
+const OUT = '/tmp/claude-0/-home-user-ur-live/3f48ebd5-3b52-5f8a-846d-cad65cac2cd1/scratchpad/mock'
+
+const CSS = `
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#F8F7FC}
+body{font:15px/1.45 -apple-system,'Pretendard','Apple SD Gothic Neo',sans-serif;color:#111827;-webkit-font-smoothing:antialiased;width:430px;min-height:932px;position:relative;padding-bottom:84px}
+.status{height:44px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 22px 6px;font-size:14px;font-weight:700}
+.top{height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 20px}
+.top .store{display:flex;align-items:center;gap:6px;font-size:17px;font-weight:800}
+.top .store i{width:8px;height:8px;border-left:2px solid #111;border-bottom:2px solid #111;transform:rotate(-45deg);margin-left:4px;margin-top:-4px}
+.bell{width:36px;height:36px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;position:relative}
+.bell:after{content:"";position:absolute;top:8px;right:8px;width:7px;height:7px;border-radius:50%;background:#1C69EF}
+.pad{padding:0 20px}
+.big{font-size:36px;font-weight:800;letter-spacing:-.03em;line-height:1.1}
+.lbl{font-size:13px;color:#6B7280;font-weight:600}
+.sub{font-size:13px;color:#9CA3AF}
+.up{color:#1C69EF;font-weight:700}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;background:#1C69EF;color:#fff;border-radius:14px;height:54px;font-size:16px;font-weight:800}
+.btn.ghost{background:#fff;color:#111827}
+.row{display:flex;align-items:center;gap:14px;padding:16px 0;border-bottom:1px solid rgba(17,24,39,.08)}
+.row:last-child{border-bottom:0}
+.row .ic{width:40px;height:40px;border-radius:12px;background:#EAF1FE;flex:0 0 40px;display:flex;align-items:center;justify-content:center;color:#1C69EF;font-weight:800;font-size:13px}
+.row .ic.g{background:#F3F4F6;color:#6B7280}
+.row b{display:block;font-size:15px}
+.row s{display:block;text-decoration:none;font-size:12.5px;color:#9CA3AF;margin-top:2px}
+.row .cnt{margin-left:auto;background:#1C69EF;color:#fff;border-radius:999px;min-width:22px;height:22px;padding:0 7px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800}
+.row .chev{margin-left:auto;width:8px;height:8px;border-right:1.8px solid #C6C9D2;border-top:1.8px solid #C6C9D2;transform:rotate(45deg)}
+.row .cnt+.chev{margin-left:10px}
+.sec{font-size:13px;font-weight:800;color:#111827;margin:26px 0 4px;display:flex;justify-content:space-between;align-items:baseline}
+.sec a{font-size:12.5px;color:#1C69EF;font-weight:700}
+.white{background:#fff;border-radius:18px;padding:4px 18px}
+.ticket{background:#fff;border-radius:18px;overflow:hidden}
+.ticket .band{background:#1C69EF;color:#fff;padding:12px 18px;display:flex;justify-content:space-between;font-size:14px;font-weight:800}
+.ticket .band span:last-child{font-weight:600;opacity:.9}
+.ticket .body{padding:18px}
+.trio{display:grid;grid-template-columns:1fr 1fr 1fr}
+.trio div{padding:0 6px}
+.trio div+div{border-left:1px solid rgba(17,24,39,.08)}
+.trio b{display:block;font-size:22px;font-weight:800;letter-spacing:-.02em}
+.trio s{display:block;text-decoration:none;font-size:12px;color:#9CA3AF;margin-top:3px}
+.hscroll{display:flex;gap:10px;overflow:hidden;margin:0 -20px;padding:0 20px}
+.vc{flex:0 0 150px;background:#fff;border-radius:16px;overflow:hidden}
+.vc .th{height:96px;background:linear-gradient(135deg,#DCE7FB,#EAF1FE)}
+.vc .t{padding:10px 12px}
+.vc b{display:block;font-size:13.5px;line-height:1.3}
+.vc s{display:block;text-decoration:none;font-size:12px;color:#9CA3AF;margin-top:4px}
+.vc em{font-style:normal;color:#1C69EF;font-weight:800}
+.tab{position:fixed;left:0;right:0;bottom:0;width:430px;height:84px;background:#fff;border-top:1px solid rgba(17,24,39,.08);display:flex;padding:8px 8px 18px}
+.tab div{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#9CA3AF}
+.tab div i{width:24px;height:24px;border-radius:7px;border:1.6px solid #9CA3AF}
+.tab div.on{color:#111827;font-weight:800}
+.tab div.on i{background:#1C69EF;border-color:#1C69EF}
+.feed{position:relative;padding-left:26px}
+.feed:before{content:"";position:absolute;left:8px;top:8px;bottom:8px;width:2px;background:rgba(17,24,39,.08)}
+.ev{position:relative;padding:12px 0}
+.ev:before{content:"";position:absolute;left:-23px;top:18px;width:10px;height:10px;border-radius:50%;background:#C6C9D2;border:2px solid #F8F7FC}
+.ev.hot:before{background:#1C69EF}
+.ev .t{font-size:11.5px;color:#9CA3AF;font-weight:600}
+.ev b{display:block;font-size:15px;margin-top:2px}
+.ev s{display:block;text-decoration:none;font-size:13px;color:#6B7280;margin-top:2px}
+.ev .act{display:inline-block;margin-top:8px;background:#EAF1FE;color:#1C69EF;font-weight:800;font-size:12.5px;padding:7px 12px;border-radius:9px}
+.seg{display:flex;background:#fff;border-radius:12px;padding:4px;margin-top:14px}
+.seg div{flex:1;text-align:center;padding:9px;border-radius:9px;font-size:13.5px;font-weight:700;color:#9CA3AF}
+.seg div.on{background:#1C69EF;color:#fff}
+.vrow{display:flex;gap:12px;align-items:center;padding:14px 0;border-bottom:1px solid rgba(17,24,39,.08)}
+.vrow:last-child{border-bottom:0}
+.vrow .th{width:64px;height:64px;border-radius:12px;background:linear-gradient(135deg,#DCE7FB,#EAF1FE);flex:0 0 64px}
+.vrow b{display:block;font-size:15px}
+.vrow .p{font-size:13px;color:#6B7280;margin-top:2px}
+.vrow .m{font-size:13px;margin-top:4px}
+.vrow .m em{font-style:normal;color:#1C69EF;font-weight:800}
+.sw{margin-left:auto;width:44px;height:26px;border-radius:13px;background:#1C69EF;position:relative;flex:0 0 44px}
+.sw:after{content:"";position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:#fff}
+.sw.off{background:#D1D5DB}.sw.off:after{right:auto;left:3px}
+.sticky{position:fixed;left:0;right:0;bottom:84px;width:430px;padding:10px 20px 12px;background:linear-gradient(180deg,rgba(248,247,252,0),#F8F7FC 40%)}
+.note{position:absolute;right:12px;top:6px;background:#111827;color:#fff;font-size:10px;font-weight:700;padding:4px 8px;border-radius:7px;opacity:.85;z-index:9}
+.alert{display:flex;gap:12px;align-items:center;background:#fff;border-radius:14px;padding:14px 16px;margin-top:12px}
+.alert .dot{width:8px;height:8px;border-radius:50%;background:#1C69EF;flex:0 0 8px}
+.alert b{font-size:14.5px}
+.alert s{display:block;text-decoration:none;font-size:12.5px;color:#9CA3AF}
+.alert .chev{margin-left:auto;width:8px;height:8px;border-right:1.8px solid #C6C9D2;border-top:1.8px solid #C6C9D2;transform:rotate(45deg)}
+`
+
+const TAB = (on) => `<div class="tab">${['홈','주문','이용권','정산','더보기'].map(n=>`<div class="${n===on?'on':''}"><i></i>${n}</div>`).join('')}</div>`
+const HEAD = `<div class="status"><span>9:41</span><span>●●● ▲ ▮</span></div>
+<div class="top"><div class="store">홍대돈까스 <i></i></div><div class="bell"></div></div>`
+const page = (label, inner, tab) => `<!doctype html><meta charset="utf-8"><style>${CSS}</style><div class="note">${label}</div>${HEAD}${inner}${TAB(tab)}`
+
+// ── M1 · 토스 사장님식: 숫자 하나 + 행 목록 (카드 0) ──
+const M1 = `
+<div class="pad" style="margin-top:6px">
+  <div class="lbl">오늘 매출</div>
+  <div class="big" style="margin-top:4px">₩248,000</div>
+  <div class="sub" style="margin-top:6px">주문 7건 · <span class="up">어제보다 +12%</span></div>
+  <div class="btn" style="margin-top:22px">＋ 이용권 등록</div>
+</div>
+<div class="pad"><div class="sec">할 일 <a>전체</a></div></div>
+<div class="pad"><div class="white">
+  <div class="row"><div class="ic">주</div><div><b>주문 확인</b><s>새 주문 3건이 기다려요</s></div><span class="cnt">3</span><i class="chev"></i></div>
+  <div class="row"><div class="ic">정</div><div><b>정산</b><s>₩412,000 출금 가능</s></div><i class="chev"></i></div>
+  <div class="row"><div class="ic">리</div><div><b>리뷰 답글</b><s>답글 안 단 리뷰 2건</s></div><span class="cnt">2</span><i class="chev"></i></div>
+</div></div>
+<div class="pad"><div class="sec">관리</div></div>
+<div class="pad"><div class="white">
+  <div class="row"><div class="ic g">권</div><div><b>이용권 관리</b><s>판매 중 5 · 중지 2</s></div><i class="chev"></i></div>
+  <div class="row"><div class="ic g">매</div><div><b>내 매장</b><s>홍대돈까스 · 운영 중</s></div><i class="chev"></i></div>
+  <div class="row"><div class="ic g">소</div><div><b>소개 파트너</b><s>제안 보내기</s></div><i class="chev"></i></div>
+</div></div>`
+
+// ── M2 · 배민사장님식: 오늘 티켓 + 할 일 + 이용권 가로 스크롤 ──
+const M2 = `
+<div class="pad" style="margin-top:4px">
+  <div class="ticket">
+    <div class="band"><span>오늘 · 9월 14일 (월)</span><span>운영 중</span></div>
+    <div class="body"><div class="trio">
+      <div><b>₩248,000</b><s>매출</s></div>
+      <div><b>7</b><s>주문</s></div>
+      <div><b>3</b><s>처리 대기</s></div>
+    </div></div>
+  </div>
+  <div class="alert"><i class="dot"></i><div><b>새 주문 3건</b><s>확인하고 준비를 시작하세요</s></div><i class="chev"></i></div>
+  <div class="alert"><i class="dot" style="background:#10B981"></i><div><b>정산 가능 ₩412,000</b><s>지금 출금 신청할 수 있어요</s></div><i class="chev"></i></div>
+  <div class="sec">내 이용권 <a>관리</a></div>
+  <div class="hscroll">
+    ${[['치즈돈까스 2인','12건 · ','₩420,000'],['점심 정식','9건 · ','₩288,000'],['저녁 세트','4건 · ','₩160,000']].map(([n,c,m])=>`<div class="vc"><div class="th"></div><div class="t"><b>${n}</b><s>${c}<em>${m}</em></s></div></div>`).join('')}
+    <div class="vc" style="display:flex;align-items:center;justify-content:center;background:#EAF1FE;color:#1C69EF;font-weight:800;font-size:14px">＋ 등록</div>
+  </div>
+  <div class="sec">이번 주 <a>성과 보기</a></div>
+  <div class="white"><div class="row"><div><b>₩1,284,000</b><s>주문 37건 · 지난주보다 +18%</s></div><i class="chev"></i></div></div>
+</div>`
+
+// ── M3 · 타임라인: 오늘 있었던 일 순서대로 ──
+const M3 = `
+<div class="pad" style="margin-top:4px;display:flex;justify-content:space-between;align-items:flex-end">
+  <div><div class="lbl">오늘</div><div class="big" style="font-size:30px">₩248,000</div></div>
+  <div class="sub" style="padding-bottom:6px">주문 7 · 대기 <span class="up">3</span></div>
+</div>
+<div class="pad"><div class="sec">지금</div></div>
+<div class="pad"><div class="feed">
+  <div class="ev hot"><div class="t">방금</div><b>새 주문 · 치즈돈까스 2인</b><s>김○○ · ₩35,000 · 카드</s><span class="act">주문 확인</span></div>
+  <div class="ev hot"><div class="t">12분 전</div><b>새 주문 · 점심 정식</b><s>이○○ · ₩32,000</s><span class="act">주문 확인</span></div>
+  <div class="ev"><div class="t">1시간 전</div><b>리뷰가 달렸어요 ★5</b><s>"돈까스가 바삭하고 양이 많아요"</s><span class="act" style="background:#F3F4F6;color:#374151">답글</span></div>
+  <div class="ev"><div class="t">오전 10:00</div><b>정산 가능 금액 ₩412,000</b><s>지난주 매출이 정산됐어요</s></div>
+  <div class="ev"><div class="t">어제</div><b>이용권 '저녁 세트' 판매 시작</b><s>첫 주문을 기다리는 중</s></div>
+</div></div>
+<div class="sticky"><div class="btn">＋ 이용권 등록</div></div>`
+
+// ── M4 · 이용권이 주인공: 홈 = 내 이용권 목록 + 매출 ──
+const M4 = `
+<div class="pad" style="margin-top:2px">
+  <div class="sub">이번 달</div>
+  <div style="display:flex;align-items:baseline;gap:10px"><div class="big" style="font-size:30px">₩1,284,000</div><span class="up">+18%</span></div>
+  <div class="sub" style="margin-top:4px">주문 37건 · 정산 가능 <b style="color:#111827">₩412,000</b></div>
+  <div class="seg"><div class="on">판매 중 5</div><div>판매 중지 2</div><div>초안 1</div></div>
+</div>
+<div class="pad" style="margin-top:8px"><div class="white">
+  ${[['치즈돈까스 2인','₩35,000 → ₩28,000','12건','₩420,000',''],['점심 정식','₩12,000 → ₩9,900','9건','₩288,000',''],['저녁 세트','₩48,000 → ₩39,000','4건','₩160,000',''],['커플 세트','₩60,000 → ₩49,000','2건','₩98,000',''],['런치 음료 포함','₩14,000 → ₩11,000','0건','₩0','off']]
+  .map(([n,p,c,m,off])=>`<div class="vrow"><div class="th"></div><div style="min-width:0"><b>${n}</b><div class="p">${p}</div><div class="m">${c} · <em>${m}</em></div></div><div class="sw ${off}"></div></div>`).join('')}
+</div></div>
+<div class="sticky"><div class="btn">＋ 이용권 등록</div></div>`
+
+const V = [
+  ['M1','M1 — 숫자 하나 + 행 목록 (카드 0)', M1, '홈'],
+  ['M2','M2 — 오늘 티켓 + 할 일 + 내 이용권', M2, '홈'],
+  ['M3','M3 — 타임라인 (오늘 일어난 일)', M3, '홈'],
+  ['M4','M4 — 이용권이 주인공 (등록·관리·매출 한 화면)', M4, '이용권'],
+]
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox'] })
+const ctx = await browser.newContext({ viewport: { width: 430, height: 932 }, deviceScaleFactor: 2 })
+const pg = await ctx.newPage()
+for (const [k, label, inner, tab] of V) {
+  const f = `${OUT}/${k}.html`
+  writeFileSync(f, page(label, inner, tab))
+  await pg.goto('file://' + f); await pg.waitForTimeout(200)
+  await pg.screenshot({ path: `${OUT}/seller-mobile-${k}.png`, fullPage: false })
+  console.log('ok', k)
+}
+// contact sheet
+const sheet = `<!doctype html><meta charset="utf-8"><style>body{margin:0;background:#E9E8EF;display:flex;gap:24px;padding:24px;font-family:-apple-system,sans-serif}
+.c{display:flex;flex-direction:column;gap:10px;align-items:center}.c img{width:430px;border-radius:28px;box-shadow:0 10px 30px rgba(0,0,0,.15)}.c b{font-size:15px;color:#111827}</style>
+${V.map(([k,l])=>`<div class="c"><b>${l}</b><img src="seller-mobile-${k}.png"></div>`).join('')}`
+writeFileSync(`${OUT}/sheet.html`, sheet)
+const pg2 = await ctx.newPage(); await pg2.setViewportSize({ width: 430*4+24*5, height: 1010 })
+await pg2.goto('file://' + `${OUT}/sheet.html`); await pg2.waitForTimeout(300)
+await pg2.screenshot({ path: `${OUT}/seller-mobile-sheet.png`, fullPage: true })
+await browser.close(); console.log('sheet ok')

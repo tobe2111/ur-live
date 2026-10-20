@@ -1,0 +1,71 @@
+import BusinessCertUpload from '@/components/BusinessCertUpload' // 🪪 2026-10-10 등록증 전용 업로드(가입 폼과 같은 자리)
+
+// 🛡️ 2026-06-10: SellerSettlementsPage 분해 — 순수 이동 (동작 변화 0).
+// 🛡️ 2026-05-18: 사업자등록증 제출 모달.
+export default function BizRegSubmitModal({ submitting, imageUrl, businessNumber, onImageChange, onBusinessNumberChange, onClose, onSubmit }: {
+  submitting: boolean
+  imageUrl: string
+  businessNumber: string
+  onImageChange: (url: string) => void
+  onBusinessNumberChange: (value: string) => void
+  onClose: () => void
+  onSubmit: () => void
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[10500] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      onClick={() => !submitting && onClose()}
+      role="presentation"
+    >
+      <div
+        className="bg-white rounded-[var(--dash-radius,16px)] w-full max-w-md p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+      >
+        <h3 className="text-lg font-bold text-gray-900 mb-1">사업자등록증 등록</h3>
+        <p className="text-xs text-gray-500 mb-4">
+          매장 심사와 딜 환급에 쓰입니다 (확인 1-3 영업일). 판매 대금은 매장 승인 + 정산 계좌 등록 후 지급돼요
+        </p>
+        <div className="space-y-3">
+          <BusinessCertUpload
+            required
+            value={imageUrl}
+            onChange={(url) => onImageChange(url)}
+          />
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+              사업자등록번호 (선택)
+            </label>
+            <input
+              type="text"
+              value={businessNumber}
+              onChange={(e) => onBusinessNumberChange(e.target.value)}
+              placeholder="123-45-67890"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              disabled={submitting}
+            />
+          </div>
+        </div>
+        <div className="flex gap-2 mt-5">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 disabled:opacity-50"
+          >
+            취소
+          </button>
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={submitting || !imageUrl.trim()}
+            className="flex-1 px-4 py-2 bg-brand-tint text-brand-text text-sm font-semibold rounded-lg hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {submitting ? '제출 중...' : '제출하기'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}

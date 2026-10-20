@@ -1,0 +1,224 @@
+/** @type {import('tailwindcss').Config} */
+
+// 🖤 2026-06-19 (대표 — "아예 흑백. 기능 빨강만 유지"): 모든 브랜드/장식 색조를 동일 명도의
+//   그레이로 치환(파일 수정 0, 가역 — 이 블록만 지우면 원복). 소스 클래스명(blue-500 등)은
+//   그대로라 대비 회귀 0 + 테마검사 영향 0. 유일 예외 = `red`(에러/삭제/마감임박/안읽음 = 기능 신호).
+//   값 = Tailwind gray 스케일 hex(동일 shade = 동일 명도).
+// 🎨 2026-07-19 브랜드 컬러 전면 적용 (대표 개발지시서 — 웜로즈 #1C69EF + 잉크):
+// 🖤 2026-08-30 (대표 "완전 검정이면 좋겠어") — 잉크의 딥네이비(#1A2C42)를 **차콜 블랙 #16181C** 로.
+//   그 값은 대표가 8/23 에 홈 색면으로 직접 고른 것이고, 이제 색면과 글자가 같은 검정을 쓴다.
+//   500~950 의 파랑기를 뺀 중성 램프로 함께 옮겼다(명도 순서·대비 순서는 그대로 승계).
+//   INK = Tailwind gray 스케일을 "웜 화이트~잉크 블랙" 스케일로 리매핑하는 단일 지점.
+//   소스 클래스명(text-gray-900 등)은 불변 → 테마 가드(check-theme-consistency) 영향 0, 대비 순서 보존.
+//   스펙 앵커(2026-09-30 갱신): 50=--bg(#F8F7FC) · 200=--line(#E2E5E9) · 400=--ink-faint(#81868C) ·
+//   500=--ink-soft(#666C72 보조텍스트) · 900=--ink(#16181C 제목/본문/가격 = --home-field 와 동일).
+//   ⚠️ 이 앵커는 `src/index.css` 의 같은 이름 변수와 **쌍이다** — 한쪽만 고치면 접힌 유틸(gray-200)과
+//     변수(--line)가 갈려 같은 선이 두 색으로 그려진다(`surface-tokens-2026-09-15.test.ts` 가 고정).
+//   MONO(과거 흑백 정체성의 16색계열 중화)도 같은 스케일 사용 → 전 장식색이 잉크 계열로 정렬.
+// 🩸 2026-09-30 (대표 *"뭔가 지저분하다는 느낌이 드는건 왜지..? 전문성도 없어보이고"* → **"전체 적용하자"**)
+//   **램프가 중간에서 온도를 뒤집고 있었다.** 라이브 첫 화면 실측 R−B 값:
+//   50 = −4(차갑다) → 100~700 = +3…+12(따뜻한 베이지) → 800 = −1 → 900 = −6 → 950 = −11(차갑다).
+//   즉 양 끝(바탕·잉크)은 확정 토큰의 남색 기운인데 **가운데 본문·보조·선만 크림/베이지**였다.
+//   원인: 2026-09-02 로즈→블루 전환이 **양 끝만** 새 토큰으로 갈고 가운데를 그대로 뒀다(로즈·크림 유산).
+//   한 화면에 온도가 둘이면 사람은 "칠이 안 맞는다"로 읽는다 — 그게 지저분함의 실체였다(글자색 8종 중 3종이 웜).
+//   ⇒ 온도만 차갑게 재계산한다. **대비는 ±0.10 안에서 보존**(명도 순서·굵기·크기는 한 글자도 안 건드린다):
+//     100 1.15→1.15 · 200 1.26→1.26 · 300 1.50→1.50 · 400 3.65→3.67 · 500 5.30→5.31 ·
+//     600 7.67→7.64 · 700 11.02→10.97 · 800 14.34→14.44 (전부 흰 바탕 기준)
+//   R−B 를 −6 → −12 로 완만히 벌려(가운데가 가장 차갑고 양 끝이 순하게) 램프가 한 방향으로 흐르게 했다.
+const INK = {
+  50: '#F8F7FC', 100: '#EDEFF3', 200: '#E2E5E9', 300: '#CFD3D8', 400: '#81868C',
+  500: '#666C72', 600: '#4F545A', 700: '#383D42', 800: '#262A2F', 900: '#16181C', 950: '#11141C',
+}
+const MONO = INK
+
+export default {
+  // 🛡️ 2026-05-02: 화이트 테마 페이지 사용자 토글 다크 모드 (CLAUDE.md A안).
+  //   `dark` 클래스는 useTheme 스토어에서 <html> 에 적용. 시스템 기본값 = system 모드.
+  // 🌗 2026-09-02 (대표 확정 "안A · 다크에서도 패널은 흰색"): `dark:` 유틸은 **.light-island 안에서는 꺼진다**.
+  //   배경이 늘 정해진 자리(잉크 색면 위 홈 패널, 지도 타일 위 오버레이)는 테마를 따르면 안 되는데,
+  //   그동안은 그런 자리마다 `dark:` 를 손으로 빼거나 !important 로 덮었다. 이제 섬(island) 한 클래스로 끝난다.
+  //   기존 동작: `.dark\:x:is(.dark *)` → 이제 `:not(.light-island *)` 만 붙는다(섬 밖은 byte-동일).
+  //
+  // 🩸 2026-09-02 (대표 신고 "글자도 잘 안보이네 흰색 글자라서" — 이용권 등록 1단계 매장 검색 결과):
+  //   대시보드(셀러/어드민/에이전시)는 **화이트 고정**인데(CLAUDE.md "🚨 절대 규칙"), 그 안에서 렌더되는
+  //   *공용* 컴포넌트는 소비자 화면에서도 쓰이므로 `dark:` 를 정상적으로 달고 있다. html.dark 가 켜지면
+  //   그 `dark:` 가 흰 카드 위에서 그대로 살아나 **흰 글자 on 흰 배경**이 된다(`KakaoMapPicker` 의
+  //   `text-gray-900 dark:text-white` 매장명이 실제 사례 — 그 자체는 올바른 코드다).
+  //   `check-dashboard-theme.sh` 는 `src/pages/Seller*` 만 보고 `.force-light-theme` 는 **입력 글자만** 지켜
+  //   둘 다 이 클래스를 못 막았다. ⇒ 라이트 고정 래퍼를 `.light-island` 와 같은 자리에 넣어
+  //   **그 안의 모든 `dark:` 유틸을 끈다**. 개별 컴포넌트를 손대지 않고 클래스 전체가 닫힌다.
+  //   ⚠️ 도매몰은 자체 다크 팔레트를 쓰므로 넣지 않는다(`wholesale-theme`).
+  // 🎬 2026-09-16: `animate-fade-in`·`animate-slide-up`·`animate-overlay-in` 이 소스에 쓰이는데
+  //   keyframes 도 animation 도 **어디에도 없었다** — 클래스가 안 만들어지니 그 요소들은 스르륵
+  //   나타나는 대신 툭 튀어나왔다. 에러가 안 나서 아무도 몰랐다(NotFoundPage 는 설치도 안 된
+  //   tailwindcss-animate 문법을 쓰고 있었다). 의도를 실제로 실행되게 정의한다.
+  darkMode: ['variant', '&:is(.dark *):not(.light-island *):not(.seller-light-theme *):not(.admin-light-theme *):not(.agency-light-theme *):not(.force-light-theme *)'],
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+    // 🧹 2026-10-14: 시험 파일의 클래스 문자열(픽스처·단언)로 유틸을 만들지 않는다 — 앱이 안 쓰는 CSS 가
+    //   모든 화면의 렌더 차단 CSS 에 실렸다(실측 −3.4KB raw · −0.36KB br). 워커(src/worker)는 **빼지 않는다**:
+    //   서버가 그리는 첫 화면 HTML 이 그 클래스를 쓴다.
+    "!./src/tests/**",
+  ],
+  theme: {
+    extend: {
+      fontFamily: {
+        // 🔤 2026-10-15 (대표 *"쿠팡, 네이버처럼 하자"*): 손님 화면 본문은 **기기 기본 글꼴**이다 — 웹폰트를
+        //   받지 않는다. 이 목록은 index.css body 규칙과 **같아야** 한다(`font-sans` 를 명시한 자리와 본문이 갈린다).
+        sans: ['UrDigits', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'Roboto', 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'sans-serif'],
+      },
+      colors: {
+        border: 'hsl(var(--border))',
+        input: 'hsl(var(--input))',
+        ring: 'hsl(var(--ring))',
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
+        primary: {
+          DEFAULT: 'hsl(var(--primary))',
+          foreground: 'hsl(var(--primary-foreground))',
+        },
+        secondary: {
+          DEFAULT: 'hsl(var(--secondary))',
+          foreground: 'hsl(var(--secondary-foreground))',
+        },
+        destructive: {
+          DEFAULT: 'hsl(var(--destructive))',
+          foreground: 'hsl(var(--destructive-foreground))',
+        },
+        muted: {
+          DEFAULT: 'hsl(var(--muted))',
+          foreground: 'hsl(var(--muted-foreground))',
+        },
+        accent: {
+          DEFAULT: 'hsl(var(--accent))',
+          foreground: 'hsl(var(--accent-foreground))',
+        },
+        popover: {
+          DEFAULT: 'hsl(var(--popover))',
+          foreground: 'hsl(var(--popover-foreground))',
+        },
+        card: {
+          DEFAULT: 'hsl(var(--card))',
+          foreground: 'hsl(var(--card-foreground))',
+        },
+        // 🎨 브랜드 토큰 (2026-07-19 지시서) — 로즈는 "행동과 강조" 10% 이하에만.
+        brand: {
+          DEFAULT: '#1C69EF',        // 브랜드 블루 (2026-09-02 대표 확정, 시안 실측) — '면'(버튼·밴드)일 때. 라이트/다크 동일 + 흰 글자. 구 로즈 #E0526B
+          dark: '#1557CC',           // hover/pressed
+          tint: 'var(--brand-tint)', // 옅은 로즈 배경 — 라이트 #EAF1FE / 다크 #16243D (index.css)
+          text: 'var(--brand-text)', // 로즈 '글자·뱃지' — 라이트 #1C69EF / 다크 #4D8DF5 (§6 보정값)
+        },
+        /* 🏷️ 2026-09-07 (대표 — "할인율도 빨강으로 유지"): 할인 강조 **전용** 색.
+           블루는 '행동'(버튼·선택), 이 빨강은 '가격 이득'이다 — 역할이 다르므로 색이 둘이어도
+           규칙이 흐려지지 않는다. 값은 index.css 의 `--sale` 이 정한다(라이트/다크 자동 전환).
+           ⚠️ 경고·오류(destructive)와는 다른 토큰이다. 할인율 외에 쓰지 말 것. */
+        sale: 'var(--sale)',
+        /* 📷 2026-09-21 사진 위 전용(테마 불변) — 값·이유는 index.css 의 `--media-slot` 주석. */
+        'media-slot': 'var(--media-slot)',
+        'sale-on-media': 'var(--sale-on-media)',
+        /* 🩸 2026-09-16 (대표 신고 "글자들 개선해. 색깔이 뭐야 이게" — 다크 `/partners` 캡처):
+           이 셋만 **고정 hex 로 남아 있었다.** 9-15 '색 정리' 가 `surface`·`line`·`warm`·`rule` 을
+           테마 변수로 돌리면서 잉크는 빠뜨렸고, 그래서 `bg-warm`(= var(--bg), 다크 #11141C)은 어두워지는데
+           그 위 `text-ink` 는 #16181C 로 **고정** — 다크에서 대비 1.05:1, 글자가 배경에 잠긴다.
+           `--ink*` 는 index.css 가 이미 라이트/다크 양쪽 값을 갖고 있고, 라이트 고정 스코프
+           (`.light-island`/`.force-light-theme`/대시보드 3종)가 같은 파일에서 라이트 값으로 되박는다
+           — 즉 변수를 가리키는 순간 전 표면이 자동으로 맞는다.
+           ⚠️ 값을 여기 다시 적지 말 것(그 순간 두 벌이 갈린다). SSOT 는 index.css 의 `--ink*`. */
+        ink: {
+          DEFAULT: 'var(--ink)',       // 제목/본문/가격 — 라이트 #16181C / 다크 #F8F7FC
+          soft: 'var(--ink-soft)',     // 보조 텍스트
+          faint: 'var(--ink-faint)',   // 비활성/플레이스홀더
+        },
+        /* 🎨 2026-09-15 (대표 "색 정리도 진행해줘") — 표면·구분선·바탕을 **테마 변수**로.
+           그전엔 고정 hex 라 다크 값을 화면마다 `dark:bg-[#1D1F29]` 처럼 손으로 적어야 했고,
+           실측 결과 소비자 화면에 그 hex 가 **1,868 짝**으로 흩어져 있었다(같은 값을 1,776번 재입력).
+           변수를 가리키면 `bg-surface` 한 클래스가 두 테마를 다 덮는다.
+           ⚠️ 라이트 고정 스코프(대시보드·light-island)는 index.css 에서 이 셋을 라이트 값으로
+              되박는다 — 그 목록에 `.seller-light-theme` 를 같은 커밋에서 추가했다. */
+        surface: 'var(--surface)',
+        /* 🚦 2026-09-03 상태 색 — 아래 MONO 중화를 **통과하지 않는** 유일한 의미 색 집합.
+           대시보드 상태 배지(대기/완료/반려)가 중화 뒤 같은 회색이 되던 실측 결함의 수리.
+           값·이유·라이트 되박기는 `src/index.css` 의 `--tone-*` 주석 참조.
+           ⚠️ 장식으로 쓰지 말 것 — 이건 "지금 어떤 상태인가" 를 말하는 자리 전용이다. */
+        tone: {
+          ok: { DEFAULT: 'var(--tone-ok)', bg: 'var(--tone-ok-bg)' },
+          warn: { DEFAULT: 'var(--tone-warn)', bg: 'var(--tone-warn-bg)' },
+          bad: { DEFAULT: 'var(--tone-bad)', bg: 'var(--tone-bad-bg)' },
+          info: { DEFAULT: 'var(--tone-info)', bg: 'var(--tone-info-bg)' },
+        },
+        line: 'var(--line)',
+        // 🩶 2026-09-16: `--wash`(아주 옅은 잉크 면 — 스켈레톤·비활성 칸)는 index.css 에 **있었는데
+        //   이 표에 없어서** `bg-wash` 가 클래스로 만들어지지 않았다(딜 잔액 스켈레톤이 투명했다).
+        //   값에 알파가 이미 들어 있으므로 `/NN` 을 붙이면 안 된다 — 붙이면 또 사라진다.
+        wash: 'var(--wash)',
+        // 🎫 2026-09-02 표면 체계 — 카드 안 구분선·outline 테두리는 이 둘로만(테마별 값은 index.css).
+        rule: { DEFAULT: 'var(--rule)', strong: 'var(--rule-strong)' },
+        warm: 'var(--bg)',     // 페이지 배경 — 라이트 #F8F7FC / 다크 #11141C (index.css)
+        // 🎨 gray → 잉크 스케일 리매핑(위 INK 주석 참조). 클래스명 무변 — 값만 브랜드 정렬.
+        gray: INK,
+        // 🖤 전 장식 색조 → 잉크 스케일 중화. `red` 만 제외(기능 빨강). (2026-06-19 흑백 결정의 웜 승계)
+        pink: MONO, rose: MONO, fuchsia: MONO,
+        orange: MONO, amber: MONO, yellow: MONO, lime: MONO,
+        green: MONO, emerald: MONO, teal: MONO, cyan: MONO,
+        sky: MONO, blue: MONO, indigo: MONO, violet: MONO, purple: MONO,
+      },
+      // 📐 모서리 = **위계** (2026-08-30 — 대표 "테두리가 정말 AI스럽다")
+      //
+      //   실측하니 `rounded-lg`(2,217곳)와 `rounded-xl`(1,499곳)이 **둘 다 12px** 이었다.
+      //   `--radius: 0.75rem` 이 lg 를 12px 로 올려 Tailwind 기본 xl(12px)과 겹친 것이다.
+      //   즉 화면의 3,716개 요소가 **완전히 같은 곡률**로 그려지고 있었다 — 작은 칩도,
+      //   버튼도, 카드도, 시트도. 사람이 만든 화면에는 위계가 있다(작은 것은 조이고 큰 것은
+      //   푼다). 전부 같은 값이면 "기계가 한 번에 찍어낸" 인상이 된다. 그게 대표가 본 것이다.
+      //
+      //   ⚠️ **클래스 이름은 하나도 안 바뀐다** — 값만 다시 매긴다.
+      //      2026-07-19 브랜드 컬러 롤아웃에서 검증된 단일지점 리매핑과 같은 방식이라
+      //      가드·테스트·레이아웃에 영향이 없다(border-radius 는 박스 크기를 안 바꾼다).
+      //      롤백도 `--radius` 를 0.75rem 으로 되돌리고 xl/2xl 두 줄을 지우면 끝이다.
+      //
+      //   sm 6 · md 8 · lg 10(컨트롤) · xl 14(카드) · 2xl 18(시트/모달) · 3xl 24(히어로)
+      //   버튼(.ur-btn 12/10/8)은 컨트롤과 카드 사이에 놓인다 — 카드 안에 들어가는 요소가
+      //   카드보다 더 둥글면 안 되기 때문이다(중첩 규칙: 안쪽 ≤ 바깥쪽).
+      keyframes: {
+        'ur-fade-in': { from: { opacity: '0', transform: 'translateY(6px)' }, to: { opacity: '1', transform: 'none' } },
+        'ur-slide-up': { from: { transform: 'translateY(100%)' }, to: { transform: 'none' } },
+        'ur-overlay-in': { from: { opacity: '0' }, to: { opacity: '1' } },
+      },
+      animation: {
+        'fade-in': 'ur-fade-in .28s ease-out both',
+        'slide-up': 'ur-slide-up .24s cubic-bezier(.22,1,.36,1) both',
+        'overlay-in': 'ur-overlay-in .18s ease-out both',
+      },
+      borderRadius: {
+        lg: 'var(--radius)',
+        md: 'calc(var(--radius) - 2px)',
+        sm: 'calc(var(--radius) - 4px)',
+        xl: '0.875rem',
+        '2xl': '1.125rem',
+      },
+      // 🌑 그림자 = 잉크 색조 (2026-08-30)
+      // 그간 커스텀 정의가 없어 368곳이 전부 Tailwind 기본 '순수 검정'이었다.
+      // 웜 화이트(#F8F7FC) 바탕에 아무 색조 없는 검정을 얹으면 회색 때처럼 읽혀
+      // 값싸 보인다 — **그림자는 잉크를 따라간다**(위 INK 900).
+      // 처음엔 잉크가 딥네이비(#1A2C42 = 26 44 66)라 그 값이었는데, 같은 날 대표
+      // 지시로 잉크가 차콜 블랙(#16181C = 22 24 28)이 되면서 여기도 따라왔다.
+      // 잉크와 따로 놀면 검정 글자 옆에 네이비 그림자가 남는다.
+      // 색조는 여전히 중성 — 웜 브라운으로 틀면 대시보드 쿨 그레이(#F4F5F7)에서 어긋난다.
+      // ⚠️ 클래스명 불변 — `shadow-sm/md/lg/xl/2xl` 그대로. 값만 리매핑이라
+      // 마크업 0줄 수정이고 테마 가드 영향 0 (브랜드 컬러 롤아웃과 동일 방식).
+      boxShadow: {
+        // 🎫 2026-09-02 표면 체계 — 소비자 카드 들림은 이 한 값(화이트 옅은 확산 · 다크 none). 새 카드에 sm~2xl 금지.
+        lift: 'var(--lift)',
+        sm: '0 1px 2px 0 rgb(22 24 28 / 0.06)',
+        DEFAULT: '0 1px 3px 0 rgb(22 24 28 / 0.10), 0 1px 2px -1px rgb(22 24 28 / 0.08)',
+        md: '0 4px 6px -1px rgb(22 24 28 / 0.09), 0 2px 4px -2px rgb(22 24 28 / 0.07)',
+        lg: '0 10px 15px -3px rgb(22 24 28 / 0.09), 0 4px 6px -4px rgb(22 24 28 / 0.06)',
+        xl: '0 20px 25px -5px rgb(22 24 28 / 0.10), 0 8px 10px -6px rgb(22 24 28 / 0.05)',
+        '2xl': '0 25px 50px -12px rgb(22 24 28 / 0.22)',
+        inner: 'inset 0 2px 4px 0 rgb(22 24 28 / 0.05)',
+        none: 'none',
+      },
+    },
+  },
+  plugins: [],
+};

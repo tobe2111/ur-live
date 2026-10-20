@@ -1,0 +1,594 @@
+import { useState, useEffect, useMemo } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from '@/lib/i18n-lite'
+import api from '@/lib/api'
+import { sellerCertView, SELLER_CERT_LABEL } from '@/shared/seller-cert-badge'
+import { safeHttpHref } from '@/utils/safe-external-url'
+import FoodPermitBlock from './admin-seller-approval/FoodPermitBlock'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
+import AdminLayout from '@/components/AdminLayout'
+import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
+import { UserCheck, UserX, Loader2, Search, Pause, Play, ChevronDown, ChevronUp, FileCheck, FileX, ExternalLink, Trash2 } from 'lucide-react'
+import { makePurgeSeller } from './admin-seller-approval/purge-seller-action'
+import { toast } from '@/hooks/useToast'
+import { confirmDialog, alertDialog } from '@/components/ui/confirm-dialog'
+import { formatKSTDate } from '@/utils/date'
+import { errorCode } from '@/utils/api-error-code'
+
+/**
+ * 🛡️ 2026-04-28: 셀러 관리 통합 페이지
+ *  - 이전: 대기 셀러 승인/거절만 가능
+ *  - 변경: 전체 셀러 (대기/활성/정지/거부) 조회 + 검색 + 상태 변경 통합
+ */
+type BizRegStatus = 'pending' | 'verified' | 'rejected' | null
+type Seller = {
+  id: number
+  email: string
+  name: string | null
+  phone: string | null
+  business_name: string | null
+  business_number: string | null
+  status: 'pending' | 'active' | 'suspended' | 'rejected' | string
+  commission_rate?: number
+  created_at: string
+  // 🛡️ 2026-05-20: 정산 계좌 + 사업자등록증 (어드민 검증용)
+  bank_name?: string | null
+  bank_account?: string | null
+  account_holder?: string | null
+  business_registration_image_url?: string | null
+  // 🍽️ 2026-09-21 — 서버가 seller_meta 에서 얹어 준다(`seller-permit-flag.ts`). 표시용이고 승인을 막지 않는다.
+  food_permit_url?: string | null
+  needs_food_permit?: boolean
+  business_registration_status?: BizRegStatus | string | null
+  business_registration_reject_reason?: string | null
+  // 🧱 2026-06-30 (서비스 분리 — 도매 판매사 구분): is_distributor=1 이면 도매(유통스타트) 판매사.
+  is_distributor?: number
+  distributor_grade?: string | null
+  // 🏭 2026-06-09 Wave 1: 대표자/담당자 인적사항
+  representative_name?: string | null
+  representative_phone?: string | null
+  manager_name?: string | null
+  manager_phone?: string | null
+  manager_email?: string | null
+}
+
+const STATUS_OPTIONS = [
+  { key: 'all', label: '전체' },
+  { key: 'pending', label: '승인 대기' },
+  { key: 'active', label: '활성' },
+  { key: 'suspended', label: '정지' },
+  { key: 'rejected', label: '거부' },
+] as const
+
+const STATUS_BADGE: Record<string, string> = {
+  pending: 'bg-white text-tone-warn border-rule',
+  active: 'bg-white text-tone-ok border-rule',
+  approved: 'bg-white text-tone-ok border-rule', // 🛡️ 2026-06-25: 승인 액션이 status='approved' 로 세팅 → '활성'과 동일 취급
+  suspended: 'bg-gray-200 text-gray-600 border-gray-300',
+  rejected: 'bg-white text-tone-bad border-rule',
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  pending: '승인 대기',
+  active: '활성',
+  approved: '활성',
+  suspended: '정지',
+  rejected: '거부',
+}
+
+// 🛡️ 2026-06-25: 승인은 status 를 'approved' 로 만드는데 UI 탭/카운트는 'active' 기준 → 정규화로 통일.
+//   (승인했는데 '활성' 탭에서 사라지고 raw 'approved' 배지 + 재승인 시 400 나던 불일치 수정)
+const normStatus = (s: string) => (s === 'approved' ? 'active' : s)
+
+export default function AdminSellerApprovalPage() {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [actingId, setActingId] = useState<number | null>(null)
+  const [filter, setFilter] = useState<typeof STATUS_OPTIONS[number]['key']>(
+    (searchParams.get('status') as typeof STATUS_OPTIONS[number]['key']) || 'pending'
+  )
+  const [search, setSearch] = useState(searchParams.get('q') || '')
+  // 🧱 2026-06-30 (서비스 분리 — 대표 "구분 표시"): 도매 판매사(is_distributor=1) 목록에서 숨김 토글.
+  //   기본 false = 배지로 구분만. true = 유어딜 소비자 셀러만(도매 전용/겸업 판매사 숨김).
+  const [hideDistributor, setHideDistributor] = useState(false)
+  const [expandedId, setExpandedId] = useState<number | null>(null)
+  const [bizActingId, setBizActingId] = useState<number | null>(null)
+  const h = useMemo(() => ({
+    headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
+  }), [])
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (필터/검색은 클라 적용).
+  const { data: sellers = [], isLoading: loading, isError, error, refetch } = useApiQuery<Seller[]>(
+    ['admin', 'sellers-approval'], '/api/admin/sellers',
+    { params: { limit: 200 }, select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
+  const load = () => refetch()
+
+  useEffect(() => {
+    if (!localStorage.getItem('admin_token')) navigate('/admin/login', { replace: true })
+  }, [navigate])
+
+  // 필터 + 검색 적용
+  const filtered = useMemo(() => {
+    return sellers.filter(s => {
+      if (filter !== 'all' && normStatus(s.status) !== filter) return false
+      if (hideDistributor && Number(s.is_distributor) === 1) return false  // 🧱 도매 판매사 숨김 토글
+      if (search.trim()) {
+        const q = search.toLowerCase().trim()
+        const text = `${s.name || ''} ${s.email || ''} ${s.business_name || ''} ${s.business_number || ''} ${s.phone || ''}`.toLowerCase()
+        if (!text.includes(q)) return false
+      }
+      return true
+    })
+  }, [sellers, filter, search, hideDistributor])
+
+  /**
+   * 🔁 2026-09-23 (대표 콘솔 실측 — `PATCH /sellers/24/approve` 400): 실패했을 때 **목록을 다시 불러온다**.
+   *
+   * 종전엔 성공에서만 `load()` 를 했다. 그래서 이미 승인된 매장(다른 탭·다른 관리자·방금 내가 누른 것)을
+   * 누르면 400 만 뜨고 **그 줄이 화면에 그대로 남아** 또 누르게 된다 — 돌아오는 건 같은 400 뿐이다.
+   * 화면이 서버와 어긋난 것이 원인이므로, 실패야말로 다시 맞출 신호다.
+   *
+   * 그리고 '이미 승인됨'은 **실패가 아니라 결과가 같은 일**이라 빨간 토스트로 겁줄 이유가 없다 →
+   * 서버가 주는 안정적인 `code` 로만 판정한다(문구는 바뀌므로 문자열 매칭 금지).
+   */
+  const approve = async (id: number) => {
+    setActingId(id)
+    try {
+      // 🛡️ 2026-06-12 (감사 1단계): 알림 없는 admin-tools approve → 알림톡+벨+이력 있는
+      //   PATCH /api/admin/sellers/:id/approve (admin-sellers.routes.ts) 로 교체.
+      await api.patch(`/api/admin/sellers/${id}/approve`, {}, h)
+      toast.success('승인 완료')
+    } catch (err) {
+      if (errorCode(err) === 'ALREADY_APPROVED') toast.info('이미 승인된 매장이에요 — 목록을 새로 불러옵니다')
+      else toast.error('승인 실패')
+    } finally { setActingId(null); load() }
+  }
+
+  const reject = async (id: number) => {
+    const reason = prompt('거절 사유 (선택)')
+    setActingId(id)
+    try {
+      await api.put(`/api/admin/tools/sellers/${id}/reject`, { reason }, h)
+      toast.info('거절됨')
+    } catch { toast.error('거절 실패') } finally { setActingId(null); load() }
+  }
+
+  // 🛡️ 2026-05-19: 공급자 (가게 사장님) 빠른 등록 — D 공동구매 3자 분배 위함.
+  //   가게는 라이브 송출 X. 상품만 등록 + 정산. 인플루언서 셀러가 위탁 판매.
+  //   prompt 기반 가벼운 UX (별도 모달 페이지 안 만듦). 어드민용이라 충분.
+  const handleStoreOwnerQuickAdd = async () => {
+    const business_name = prompt('가게명 (예: 홍대 매운돈까스)')?.trim()
+    if (!business_name) return
+    const contact_name = prompt('담당자명 (예: 김사장)')?.trim()
+    if (!contact_name) return
+    const phoneRaw = prompt('휴대폰 번호 (010-1234-5678 또는 01012345678)')?.trim()
+    if (!phoneRaw) return
+    const phone = phoneRaw.replace(/-/g, '')
+    if (!/^01\d{8,9}$/.test(phone)) { toast.error('휴대폰 번호 형식 오류'); return }
+    const email = prompt('이메일 (선택 — 비워두면 가짜 도메인 자동 생성)')?.trim() || undefined
+    const business_number = prompt('사업자번호 (선택, 예: 123-45-67890)')?.trim() || undefined
+    const commissionInput = prompt('수수료율 (%, 기본 5)', '5')?.trim()
+    const commission_rate = commissionInput ? Number(commissionInput) : 5
+    if (!Number.isFinite(commission_rate) || commission_rate < 0 || commission_rate > 100) {
+      toast.error('수수료율 0~100 범위'); return
+    }
+    try {
+      const res = await api.post(
+        '/api/admin/sellers/store-owner',
+        { business_name, contact_name, phone, email, business_number, commission_rate },
+        h,
+      )
+      if (res.data?.success) {
+        const d = res.data.data
+        // 자격증명을 한번에 노출 — 어드민이 가게에 전달.
+        await alertDialog(
+          `공급자 등록 완료\n\n` +
+          `가게: ${d.business_name}\n담당자: ${d.contact_name}\n수수료율: ${d.commission_rate}%\n\n` +
+          `[로그인 정보 — 가게에 전달]\n` +
+          `URL: https://urdeal.kr${d.login_url}\n` +
+          `Username: ${d.username}\n` +
+          `Password: ${d.temp_password}\n\n` +
+          `* 가게가 로그인 후 비밀번호 변경 권장.`
+        )
+        toast.success('공급자 등록 완료')
+        load()
+      } else {
+        toast.error(res.data?.error || '등록 실패')
+      }
+    } catch (e: unknown) {
+      const ax = e as { response?: { data?: { error?: string } } }
+      toast.error(ax.response?.data?.error || '등록 실패')
+    }
+  }
+
+  const toggleSuspend = async (s: Seller) => {
+    const isActivating = s.status === 'suspended'
+    const action = isActivating ? '재활성' : '정지'
+    if (!(await confirmDialog(`${s.name || s.email} 셀러를 ${action} 처리할까요?`))) return
+    setActingId(s.id)
+    try {
+      if (isActivating) {
+        // 재활성: PATCH /sellers/:id/approve (status='approved'로 변경)
+        await api.patch(`/api/admin/sellers/${s.id}/approve`, {}, h)
+      } else {
+        // 정지: DELETE /sellers/:id (status='suspended')
+        await api.delete(`/api/admin/sellers/${s.id}`, h)
+      }
+      toast.success(`${action} 완료`); load()
+    } catch { toast.error(`${action} 실패`) } finally { setActingId(null) }
+  }
+
+  // 🗑️ 빈 매장 완전 삭제 — 액션은 `admin-seller-approval/purge-seller-action.ts` (파일 크기 래칫).
+  const purgeSeller = makePurgeSeller({ h, setActingId, load })
+
+  // 🛡️ 2026-05-20: 사업자등록증 검증/반려 — migration 0257 PATCH /sellers/:id/business-registration/verify
+  const verifyBizReg = async (id: number) => {
+    if (!(await confirmDialog('사업자등록증을 승인할까요? (현금 정산 가능 상태로 전환)'))) return
+    setBizActingId(id)
+    try {
+      await api.patch(`/api/admin/sellers/${id}/business-registration/verify`, { action: 'verify' }, h)
+      toast.success('사업자등록 승인 완료'); load()
+    } catch (e: unknown) {
+      const ax = e as { response?: { data?: { error?: string } } }
+      toast.error(ax.response?.data?.error || '승인 실패')
+    } finally { setBizActingId(null) }
+  }
+  const rejectBizReg = async (id: number) => {
+    const reason = prompt('반려 사유 (셀러에게 전달됨)')?.trim()
+    if (!reason) return
+    setBizActingId(id)
+    try {
+      await api.patch(`/api/admin/sellers/${id}/business-registration/verify`, { action: 'reject', reason }, h)
+      toast.info('반려 완료'); load()
+    } catch (e: unknown) {
+      const ax = e as { response?: { data?: { error?: string } } }
+      toast.error(ax.response?.data?.error || '반려 실패')
+    } finally { setBizActingId(null) }
+  }
+
+  const onFilterChange = (key: typeof STATUS_OPTIONS[number]['key']) => {
+    setFilter(key)
+    const next = new URLSearchParams(searchParams)
+    if (key === 'pending') next.delete('status')
+    else next.set('status', key)
+    setSearchParams(next, { replace: true })
+  }
+
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { all: sellers.length }
+    for (const s of sellers) { const k = normStatus(s.status); c[k] = (c[k] || 0) + 1 }
+    return c
+  }, [sellers])
+
+  return (
+    <AdminLayout title="셀러 관리">
+      <div className="mx-auto max-w-5xl space-y-4 p-4 sm:p-6 lg:p-8">
+        <DashboardPageHeader
+          title="셀러 관리"
+          subtitle="가입 승인/거절 + 활성 셀러 정지/재활성 + 검색"
+          icon={<UserCheck className="h-5 w-5" />}
+          actions={
+            <button
+              type="button"
+              onClick={handleStoreOwnerQuickAdd}
+              className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-1.5 transition-colors"
+            >
+              공급자 빠른 등록
+            </button>
+          }
+        />
+
+        {/* 검색 */}
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="relative mb-3">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="이름 / 이메일 / 사업자번호 / 전화번호 검색"
+              className="w-full pl-9 pr-9 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            />
+            {search && (
+              <button onClick={() => setSearch('')} aria-label="검색어 지우기"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">×</button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {STATUS_OPTIONS.map(opt => (
+              <button
+                key={opt.key}
+                onClick={() => onFilterChange(opt.key)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                  filter === opt.key
+                    ? 'bg-brand text-white border-gray-900'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
+                }`}
+              >
+                {opt.label}
+                <span className="ml-1.5 text-[10px] opacity-70">{counts[opt.key] ?? 0}</span>
+              </button>
+            ))}
+            {/* 🧱 2026-06-30 (서비스 분리): 도매 판매사 숨김 토글 — 유어딜 소비자 셀러만 보기. */}
+            <button
+              onClick={() => setHideDistributor(v => !v)}
+              title="도매(유통스타트) 판매사를 목록에서 숨깁니다. 겸업(소비자+도매)도 함께 숨겨집니다."
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                hideDistributor
+                  ? 'bg-amber-500 text-white border-brand'
+                  : 'bg-white text-tone-warn border-transparent hover:border-amber-400'
+              }`}
+            >
+              {hideDistributor ? '도매 숨김 ON' : '도매 제외'}
+            </button>
+          </div>
+        </div>
+
+        {/* 목록 */}
+        {loading ? <DashboardLoading /> : isError ? (
+          /* 🛡️ 2026-06-25: 로드 실패를 '셀러 없음'과 구분 — 기존엔 401/500 도 빈 목록으로 보여 데이터 0 처럼 오인.
+             서버 오류/세션만료 시 명시 안내 + 재시도 + 재로그인 경로. (HTTP 상태 노출 = 진단용) */
+          <div className="rounded-xl border border-rule bg-white p-6 text-center">
+            <p className="text-sm font-bold text-tone-bad">셀러 목록을 불러오지 못했습니다</p>
+            {(() => {
+              const st = (error as { response?: { status?: number } } | undefined)?.response?.status
+              // 🛡️ 2026-06-25: 상태별 정확 안내 — 403(IP 화이트리스트/권한)이 가장 흔한 원인. '세션만료'는 401 에만.
+              const msg = st === 403 ? '관리자 허용 IP 또는 권한이 아닙니다 — 운영자에게 ADMIN_IP_WHITELIST(허용 IP) 확인을 요청하세요'
+                : st === 401 ? '로그인 세션이 만료되었습니다 — 다시 로그인해주세요'
+                : st === 500 ? '서버 오류가 발생했습니다 — 잠시 후 다시 시도해주세요'
+                : '목록을 불러오지 못했습니다 — 네트워크/서버 상태를 확인해주세요'
+              return <p className="mt-1 text-xs text-tone-bad">{msg}{st ? ` (HTTP ${st})` : ''}</p>
+            })()}
+            <div className="mt-4 flex items-center justify-center gap-2">
+              <button onClick={() => load()} className="ur-btn ur-btn-md ur-btn-primary">다시 시도</button>
+              <button onClick={() => navigate('/admin/login', { replace: true })} className="px-4 py-2 rounded-lg text-sm font-semibold bg-white border border-gray-300 text-gray-700 hover:bg-gray-50">다시 로그인</button>
+            </div>
+          </div>
+        ) : filtered.length === 0 ? (
+          <DashboardEmptyState
+            icon={<UserCheck className="h-7 w-7" />}
+            title={search ? `'${search}' 검색 결과 없음` : `${STATUS_LABEL[filter] || '해당'} 셀러 없음`}
+          />
+        ) : (
+          <div className="space-y-2">
+            {filtered.map(s => {
+              const isExpanded = expandedId === s.id
+              // 아래 상세 패널의 승인·반려 버튼은 **원래 상태**를 그대로 봐야 한다(파일 유무로 갈리면 안 된다).
+              const bizStatus = (s.business_registration_status || 'none') as string
+              // 🧾 2026-09-21: 등록증이 **선택**이 되면서 "아예 없음" 이 흔한 상태가 됐다.
+              //   판정은 `shared/seller-cert-badge.ts`(순수 함수 — 시험이 동작을 잰다).
+              const bizView = sellerCertView(s.business_registration_status, s.business_registration_image_url)
+              const bizBadge =
+                bizView === 'verified' ? 'bg-white text-tone-ok border-rule' :
+                bizView === 'pending' || bizView === 'submitted' ? 'bg-white text-tone-warn border-rule' :
+                bizView === 'rejected' ? 'bg-white text-tone-bad border-rule' :
+                'bg-gray-100 text-gray-500 border-gray-200'
+              const bizLabel = SELLER_CERT_LABEL[bizView]
+              return (
+              <div key={s.id} className="bg-white rounded-xl border border-gray-200 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <p className="text-sm font-bold text-gray-900 truncate">
+                      {s.name || s.email} {s.business_name && <span className="text-gray-500 font-normal">({s.business_name})</span>}
+                    </p>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${STATUS_BADGE[s.status] || 'bg-gray-100 text-gray-600'}`}>
+                      {STATUS_LABEL[s.status] || s.status}
+                    </span>
+                    {/* 🧱 2026-06-30 (서비스 분리): 도매 판매사 구분 배지 — 유어딜 셀러 목록에 섞인 도매 회원 식별. */}
+                    {Number(s.is_distributor) === 1 && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-tone-warn-bg text-tone-warn border-transparent"
+                        title={`도매(유통스타트) 판매사${s.distributor_grade ? ` · 등급 ${s.distributor_grade}` : ''} — 도매 관리는 '판매사 관리'`}>
+                        도매 판매사
+                      </span>
+                    )}
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${bizBadge}`}>
+                      {bizLabel}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 truncate">{s.email} · {s.phone || '-'} · 사업자 {s.business_number || '-'}</p>
+                  {(s.representative_name || s.manager_name) && (
+                    <p className="text-[11px] text-gray-500 mt-0.5 truncate">
+                      {s.representative_name && <>대표자 {s.representative_name}{s.representative_phone ? ` (${s.representative_phone})` : ''}</>}
+                      {s.representative_name && s.manager_name && <span className="text-gray-300"> · </span>}
+                      {s.manager_name && <>담당자 {s.manager_name}{s.manager_phone ? ` (${s.manager_phone})` : ''}</>}
+                    </p>
+                  )}
+                  <p className="text-[10px] text-gray-400 mt-0.5">가입일: {formatKSTDate(s.created_at)}</p>
+                </div>
+                <div className="flex flex-col gap-1.5 shrink-0">
+                  {s.status === 'pending' && (
+                    <>
+                      <button onClick={() => approve(s.id)} disabled={actingId === s.id}
+                        className="ur-btn ur-btn-sm ur-btn-primary text-[11px] flex items-center gap-1 disabled:opacity-50">
+                        {actingId === s.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserCheck className="w-3 h-3" />} 승인
+                      </button>
+                      <button onClick={() => reject(s.id)} disabled={actingId === s.id}
+                        className="px-3 py-1.5 bg-tone-bad-bg text-tone-bad rounded-md text-[11px] font-bold flex items-center gap-1 disabled:opacity-50">
+                        <UserX className="w-3 h-3" /> 거절
+                      </button>
+                    </>
+                  )}
+                  {/* 🛡️ 2026-05-07: status 값 표준 분기 — 'active' / 'approved' 둘 다 활성으로 인식.
+                      코드베이스 일부가 'approved' 사용 → 정지 버튼이 안 보이는 사고 방지. */}
+                  {(s.status === 'active' || s.status === 'approved' || s.status === 'suspended') && (
+                    <button onClick={() => toggleSuspend(s)} disabled={actingId === s.id}
+                      className={`px-3 py-1.5 rounded-md text-[11px] font-bold flex items-center gap-1 disabled:opacity-50 ${
+                        s.status === 'suspended'
+                          ? 'bg-tone-info-bg text-tone-info'
+                          : 'bg-gray-100 text-gray-700'
+                      }`}>
+                      {s.status === 'suspended' ? <><Play className="w-3 h-3" /> 재활성</> : <><Pause className="w-3 h-3" /> 정지</>}
+                    </button>
+                  )}
+                  {/* 🗑️ 2026-09-04: 빈 매장 완전 삭제 — 정지된 껍데기가 목록에 쌓이는 것을 끝낸다.
+                      상품·주문이 있으면 서버가 409 로 거부하므로 버튼은 항상 보여도 안전하다. */}
+                  <button onClick={() => purgeSeller(s)} disabled={actingId === s.id}
+                    className="px-3 py-1.5 bg-tone-bad-bg text-tone-bad rounded-md text-[11px] font-bold flex items-center gap-1 disabled:opacity-50">
+                    <Trash2 className="w-3 h-3" /> 삭제
+                  </button>
+                  {/* 🛡️ rejected 셀러도 다시 활성화 가능 — 잘못 거절된 케이스 복구 */}
+                  {s.status === 'rejected' && (
+                    <button onClick={() => approve(s.id)} disabled={actingId === s.id}
+                      className="px-3 py-1.5 bg-tone-ok-bg text-tone-ok rounded-md text-[11px] font-bold flex items-center gap-1 disabled:opacity-50">
+                      <UserCheck className="w-3 h-3" /> 활성화
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setExpandedId(isExpanded ? null : s.id)}
+                    className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md text-[11px] font-bold flex items-center gap-1"
+                  >
+                    {isExpanded
+                      ? <><ChevronUp className="w-3 h-3" /> 접기</>
+                      : <><ChevronDown className="w-3 h-3" /> 상세</>}
+                  </button>
+                </div>
+              </div>
+
+              {/* 🛡️ 2026-05-20: 상세 — 정산 계좌 + 사업자등록증 (어드민 검증) */}
+              {isExpanded && (
+                <div className="mt-4 pt-4 border-t border-gray-100 grid gap-4 md:grid-cols-2">
+                  {/* 🏭 2026-06-09 Wave 1: 대표자 / 담당자 인적사항 */}
+                  <div className="bg-gray-50 rounded-lg p-3 md:col-span-2">
+                    <p className="text-xs font-bold text-gray-700 mb-2">대표자 / 담당자</p>
+                    {(s.representative_name || s.representative_phone || s.manager_name || s.manager_phone || s.manager_email) ? (
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <dl className="text-xs text-gray-700 space-y-1">
+                          <p className="text-[11px] font-semibold text-gray-500 mb-1">대표자</p>
+                          <div className="flex justify-between gap-2">
+                            <dt className="text-gray-500">성명</dt>
+                            <dd className="font-medium text-gray-900">{s.representative_name || '-'}</dd>
+                          </div>
+                          <div className="flex justify-between gap-2">
+                            <dt className="text-gray-500">연락처</dt>
+                            <dd className="font-medium text-gray-900">{s.representative_phone || '-'}</dd>
+                          </div>
+                        </dl>
+                        <dl className="text-xs text-gray-700 space-y-1">
+                          <p className="text-[11px] font-semibold text-gray-500 mb-1">담당자</p>
+                          <div className="flex justify-between gap-2">
+                            <dt className="text-gray-500">성명</dt>
+                            <dd className="font-medium text-gray-900">{s.manager_name || '-'}</dd>
+                          </div>
+                          <div className="flex justify-between gap-2">
+                            <dt className="text-gray-500">연락처</dt>
+                            <dd className="font-medium text-gray-900">{s.manager_phone || '-'}</dd>
+                          </div>
+                          <div className="flex justify-between gap-2">
+                            <dt className="text-gray-500">이메일</dt>
+                            <dd className="font-medium text-gray-900 break-all">{s.manager_email || '-'}</dd>
+                          </div>
+                        </dl>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-400">대표자/담당자 인적사항이 입력되지 않았습니다.</p>
+                    )}
+                  </div>
+                  {/* 정산 계좌 */}
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <p className="text-xs font-bold text-gray-700 mb-2">정산 계좌 정보</p>
+                    {s.bank_name || s.bank_account || s.account_holder ? (
+                      <dl className="text-xs text-gray-700 space-y-1">
+                        <div className="flex justify-between gap-2">
+                          <dt className="text-gray-500">은행</dt>
+                          <dd className="font-medium text-gray-900">{s.bank_name || '-'}</dd>
+                        </div>
+                        <div className="flex justify-between gap-2">
+                          <dt className="text-gray-500">계좌번호</dt>
+                          <dd className="font-mono font-medium text-gray-900 break-all">{s.bank_account || '-'}</dd>
+                        </div>
+                        <div className="flex justify-between gap-2">
+                          <dt className="text-gray-500">예금주</dt>
+                          <dd className="font-medium text-gray-900">{s.account_holder || '-'}</dd>
+                        </div>
+                      </dl>
+                    ) : (
+                      <p className="text-xs text-gray-400">셀러가 아직 정산 계좌를 입력하지 않았습니다.</p>
+                    )}
+                    <p className="mt-2 text-[10px] text-gray-400">
+                      셀러가 /seller/business-info 에서 직접 수정. 어드민은 조회만 가능합니다.
+                    </p>
+                  </div>
+
+                  {/* 사업자등록증 */}
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-bold text-gray-700">사업자등록증</p>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${bizBadge}`}>
+                        {bizLabel}
+                      </span>
+                    </div>
+                    {s.business_registration_image_url ? (
+                      <>
+                        <a
+                          href={safeHttpHref(s.business_registration_image_url)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block mb-2"
+                        >
+                          <img
+                            src={s.business_registration_image_url}
+                            alt="사업자등록증"
+                            className="w-full max-h-56 object-contain rounded-md border border-gray-200 bg-white"
+                          />
+                          <p className="text-[10px] text-gray-700 mt-1 inline-flex items-center gap-1">
+                            <ExternalLink className="w-3 h-3" /> 원본 보기
+                          </p>
+                        </a>
+                        {bizStatus === 'rejected' && s.business_registration_reject_reason && (
+                          <p className="text-[11px] text-tone-bad bg-white border border-rule rounded p-2 mb-2">
+                            <strong>반려 사유:</strong> {s.business_registration_reject_reason}
+                          </p>
+                        )}
+                        {(bizStatus === 'pending' || bizStatus === 'rejected') && (
+                          <div className="flex gap-1.5">
+                            <button
+                              onClick={() => verifyBizReg(s.id)}
+                              disabled={bizActingId === s.id}
+                              className="ur-btn ur-btn-sm ur-btn-primary flex-1 text-[11px] flex items-center justify-center gap-1 disabled:opacity-50"
+                            >
+                              {bizActingId === s.id
+                                ? <Loader2 className="w-3 h-3 animate-spin" />
+                                : <FileCheck className="w-3 h-3" />} 승인
+                            </button>
+                            <button
+                              onClick={() => rejectBizReg(s.id)}
+                              disabled={bizActingId === s.id}
+                              className="flex-1 px-3 py-1.5 bg-tone-bad-bg text-tone-bad rounded-md text-[11px] font-bold flex items-center justify-center gap-1 disabled:opacity-50"
+                            >
+                              <FileX className="w-3 h-3" /> 반려
+                            </button>
+                          </div>
+                        )}
+                        {bizStatus === 'verified' && (
+                          <button
+                            onClick={() => rejectBizReg(s.id)}
+                            disabled={bizActingId === s.id}
+                            className="w-full px-3 py-1.5 bg-tone-bad-bg text-tone-bad rounded-md text-[11px] font-bold flex items-center justify-center gap-1 disabled:opacity-50"
+                          >
+                            <FileX className="w-3 h-3" /> 검증 취소 (반려 사유 입력)
+                          </button>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-xs text-gray-400">
+                        셀러가 아직 사업자등록증을 업로드하지 않았습니다.
+                        <br />
+                        <span className="text-[10px]">/seller/business-info 에서 업로드 가능</span>
+                      </p>
+                    )}
+                  </div>
+
+                  {/* 🍽️ 영업신고증 — **판매 전에 본다**(2026-09-21 대표). 보여 주기만 하고 승인을 막지 않는다. */}
+                  <FoodPermitBlock url={s.food_permit_url} needed={s.needs_food_permit} />
+                </div>
+              )}
+              </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </AdminLayout>
+  )
+}

@@ -1,0 +1,380 @@
+/**
+ * Cache Pre-warm Cron
+ *
+ * 🛡️ 2026-05-23 (Task 3): 배포 후 / cache expire 후 첫 사용자의 cold-start 제거.
+ *
+ * 문제:
+ *   - 새 배포 시 모든 cache 비어있음 → 첫 사용자가 D1 hit (수백 ms 대기).
+ *   - Hot endpoint (홈 / 상품 목록 / 공구) 의 TTL 이 expire 되면 같은 문제 재발.
+ *
+ * 해결:
+ *   5분 cron 에서 hot endpoint 들을 fetch → publicCache 가 자동으로 edge + KV 채움.
+ *   결과: 항상 cache 가 warm 상태 → 사용자는 절대 D1 cold-start 안 만남.
+ *
+ * 비용:
+ *   - 5분마다 10개 GET = 일 2880 req → KV write 일 ~2880 회 (무료 한도 1000/day 초과 가능).
+ *   - publicCache 의 KV TTL = edge TTL × 6. 5분 주기 prewarm 이면
+ *     edge TTL 5분+ 인 endpoint 는 자연스럽게 다음 prewarm 까지 hit.
+ *   - 너무 빈번하면 KV write 한도 초과 — endpoint 수와 빈도 균형 필요.
+ *
+ * 향후 튜닝:
+ *   - 새 페이지 추가 시 HOT_PATHS 에 가장 트래픽 많은 endpoint 추가
+ *   - KV write 한도 도달 시 prewarm 주기 줄이거나 (10-15분) endpoint 수 줄임
+ */
+
+import type { KVNamespace } from '@cloudflare/workers-types';
+import { logInfo, logError } from '../utils/logger';
+import { normalizeSupplyProductData } from '../../features/supply/api/supply-visibility';
+import {
+  REGION_DIGEST_KV_KEY, REGION_DIGEST_MAX_BYTES, REGION_DIGEST_TTL_S,
+  buildRegionDigest, digestRowsOf,
+} from '../../shared/seo/region-digest';
+import { MAIN_SEED_PATH } from '../../shared/seo/region-seed';
+
+interface PrewarmEnv {
+  FRONTEND_URL?: string;
+  DB?: D1Database;
+  /** 🌍 2026-07-12: SSR 페이로드 전역(KV) 워밍 — 미바인딩이면 KV 단계 전부 skip(현행 동일). */
+  CACHE_KV?: KVNamespace;
+}
+
+/**
+ * 핵심 hot endpoint 목록 — 5분마다 fetch 해서 cache warm 유지.
+ *
+ * 선정 기준:
+ *   1) 메인 페이지에서 즉시 호출되는 endpoint
+ *   2) D1 query 부하 큰 endpoint (multiple JOIN, COUNT)
+ *   3) edge cache TTL ≥ 60s 인 endpoint (5분 prewarm 주기와 정합)
+ */
+const HOT_PATHS: readonly string[] = [
+  '/api/home/bundle',
+  // 🔁 2026-10-11 [UNLOCK_LOADING]: `/api/home/categories` → 홈 피드 기본 요청으로 교체. 화면이 그 주소를
+  //   **한 번도** 부르지 않는다(호출자 0 — 워커 라우트만 남았다). 홈 피드(GroupBuyFeed)는 기본 정렬이 인기순이라
+  //   첫 요청이 정확히 아래 주소다(`status=active&category=all&sort=popular`) — 그게 예열 밖이었다.
+  '/api/group-buy/products?status=active&category=all&sort=popular',
+  '/api/products?limit=20',
+  // 🚫 2026-07-29: `/api/streams` 3종 제거 — **라이브 실측 404**(라이브커머스 영구중단
+  //   `LIVE_COMMERCE_SUSPENDED`로 라우트 자체가 없다). 예열은 실패해도 조용히 넘어가므로
+  //   몇 달간 매 5분마다 404 를 세 번씩 받아오고 있었다. 아래 예산 주석이 말하듯 이 cron 은
+  //   서브리퀘스트 상한(50)에 붙어 있어(≈49), 그 낭비가 곧 다른 경로의 예열 실패다.
+  '/api/banners',
+  // 🏠 2026-08-19 (대표 신고 — 홈에서 '지금 인기 이용권'이 늦게 뜬다): 어드민 편성 섹션.
+  //   edgeCache(120) 를 붙였으니 여기서 미리 데워 두면 **첫 사용자도** 캐시 히트로 받는다
+  //   (안 데우면 콜드 콜로의 첫 방문자가 그 0.6~1.2초를 그대로 맞는다).
+  '/api/sections',
+  // 🗺️ 2026-10-11: 무파라미터 `/api/group-buy/products` 를 지도 첫 화면 시드로 맞바꿨다 — 화면은 그 경로를
+  //   **한 번도** 그대로 요청하지 않는다(axios 가 늘 `?category=…` 를 붙인다). 예산(50) 안에서 1:1 교체.
+  //   ⚠️ `shared/map-feed-seed.ts` MAP_SEED_PATH 와 byte-일치(시험이 대조).
+  '/api/group-buy/products?category=all&sort=discount',
+  // 🛡️ 2026-05-27 (loading P0): SSR inject key 와 정확히 일치 (path+query).
+  //   이 key 를 cron 이 warm 하지 않으면 readKvCacheForSSR miss → 첫 사용자 skeleton.
+  '/api/group-buy/products?status=active&category=all',
+  // 🛡️ 2026-06-04 [LOADING_ADDITIVE]: 동네딜(/group-buy) SSR 슬롯 key — 클라 요청과 정확히 일치.
+  '/api/group-buy/products?status=active',
+  // 🏭 2026-06-10 [LOADING_ADDITIVE]: SPA 진입(하단바 탭) 시 클라가 쏘는 실제 key — limit=200 라이브쿼리.
+  //   SSR 미주입 경로(대부분의 탭 진입)가 이 key 로 fetch → cron warm 으로 cold D1 제거.
+  '/api/group-buy/products?status=active&limit=200',
+  // 🏭 2026-06-04 [LOADING_ADDITIVE]: 동네딜 '유저 공구'(community) 탭 — 클라 요청과 정확히 일치.
+  //   30s 엣지캐시라 organic 방문 사이 만료 → cold D1. 5분 cron warm 으로 탭 전환 즉시 응답.
+  '/api/community-group-buy/list?status=proposed&sort=popular&limit=20',
+  // 🚫 2026-07-29: 도매 5종을 **이 목록에서** 제거 — 여기는 FRONTEND_URL(소비자) 오리진으로 요청하는데
+  //   도매 라우트는 소비자 번들에 없다(`__INCLUDE_WHOLESALE__`). 라이브 실측 결과 5개 전부 **404** 였다.
+  //   즉 2026-06-10 에 의도한 "guest 카탈로그 warm" 은 이 경로로는 한 번도 이뤄지지 않았다.
+  //   🧨 2026-10-12: 그 자리를 메우던 "아래 utongstart 오리진 블록" 도 제거됐다(도매몰 철거 #1710).
+  //   즉 도매 예열은 이제 **어디에도 없다** — 서비스가 없으므로 데울 것이 없다.
+  // 🛡️ 2026-05-27 (loading P1): 메인 카테고리 칩 4개 prewarm — 칩 클릭 시 cold D1 회피.
+  //   카테고리 정의: GroupBuyFeed.tsx CATEGORIES (meal/stay/beauty/etc).
+  // 🔁 2026-10-11 [UNLOCK_LOADING]: 칩 4종 예열은 **유지**하되 주소를 화면이 실제로 부르는 것으로 바꿨다.
+  //   2026-09-03 부터 GroupBuyFeed 가 정렬을 서버로 넘겨(`&sort=popular` — 기본 정렬) 칩을 누르면
+  //   이 주소로 간다. 정렬 없는 옛 주소는 아무도 안 불러서 예열이 늘 헛돌았다(캐시 키가 곧 주소다).
+  '/api/group-buy/products?status=active&category=meal_voucher&sort=popular',
+  '/api/group-buy/products?status=active&category=stay_voucher&sort=popular',
+  '/api/group-buy/products?status=active&category=beauty_voucher&sort=popular',
+  '/api/group-buy/products?status=active&category=etc_voucher&sort=popular',
+  // 🏠 2026-10-20: '생활'(이사·청소) 칩 — 같은 규칙(칩 = 화면이 부르는 첫 주소 그대로)
+  '/api/group-buy/products?status=active&category=home_voucher&sort=popular',
+  // VouchersPage / BrowsePage SSR inject 대응 — first-paint warm 유지.
+  '/api/products?page=1&limit=20&deal_only=1&sort=price_low',
+  '/api/products?page=1&limit=20&exclude_deal_only=1',
+  // 🏭 2026-06-04 [LOADING_ADDITIVE]: 홈(MAIN 슬롯) 기본 카테고리 = '커피/음료' SSR key.
+  //   worker/index.ts MAIN 슬롯 path + 클라(URLSearchParams) 인코딩과 1:1 일치 (%2F/%EC..).
+  //   이 key 를 warm 하지 않으면 홈 첫 사용자 SSR miss → skeleton.
+  '/api/products?page=1&limit=20&deal_only=1&sort=price_low&category=%EC%BB%A4%ED%94%BC%2F%EC%9D%8C%EB%A3%8C',
+  // 🛡️ 2026-05-27: VouchersPage 카테고리 칩 — 2번째 endpoint warm 유지.
+  '/api/vouchers/categories',
+  '/api/group-buy/live-ticker',
+  // 🎬 2026-10-12 (대표 "메인에서 유어쇼츠가 늦게 로딩되네?"): 홈 레일이 쓰는 주소.
+  //   `edgeCache(300)` 은 이미 있는데 예열 밖이라 **콜드 콜로에서 478ms** 가 나왔다(같은 날 실측 —
+  //   따뜻하면 99ms). 레일은 React 마운트 뒤에야 부르므로 그 지연이 통째로 사람이 기다리는 시간이다.
+  //   💰 예산: HOT 22→23 + 동적 12 + D1 3 + KV 4 ≈ 42 < 50(도매 4칸이 10-12 에 비어 자리가 있다).
+  '/api/urshorts',
+  // 🧩 2026-10-12 (같은 실측): 소비자 **모든 페이지**가 여는 크롬 2종. 페이지마다 콜드로 맞으면
+  //   `/api/side-banners` 388ms · `/api/consumer-settings` 368ms 가 그대로 대기 시간이 된다.
+  '/api/side-banners',
+  '/api/consumer-settings',
+  // 🚫 2026-08-23: 여기 있던 `/api/sections` 중복 제거 — 위(56행)에 이미 있다. 같은 URL 을
+  //   두 번 fetch 하면 예열 결과는 같고 **서브리퀘스트만 한 칸 더** 쓴다. 이 cron 은 상한(50)에
+  //   붙어 있어서 그 한 칸이 곧 뒤쪽 경로의 예열 실패다.
+  // 🚫 2026-07-29: '/api/shorts' 제거 — 라이브 실측 404(쇼츠도 중단). 위 streams 와 같은 이유.
+  '/api/currency/rates',
+  // 📝 2026-07-01: 블로그 공개 목록 — 이 fetch 가 maybeSyncBlogSeed() 를 트리거해 배포 후
+  //   버전 재시드를 cron 이 먼저 수행(첫 방문자 콜드 동기화 제거) + 공개 목록 캐시 warm.
+  '/api/blog/public',
+  //   목록 SSR(__SSR_INITIAL_BLOG__) + BlogListPage 클라가 쓰는 정확한 edge 키(limit=100) — 0-RTT 보장.
+  '/api/blog/public?limit=100',
+] as const;
+
+/**
+ * 모든 hot endpoint 를 fetch 하여 publicCache 가 edge + KV 를 채우게 함.
+ *
+ * 5분 cron 의 일부로 호출. 에러 발생해도 다른 cron 작업에 영향 없도록 try-catch.
+ *
+ * fetch 는 자기 자신 (FRONTEND_URL) 을 호출 — Cloudflare Worker 의 sub-request 로 카운트.
+ * 무료 plan 의 sub-request 한도 (50 req/invocation) 안에 안전히 들어옴.
+ */
+// 🌍 2026-07-12 [UNLOCK_LOADING] (대표 "계속, 이상적으로" — 콜드 콜로 TTFB 마감): SSR 슬롯 페이로드의
+//   **전역(KV) 워밍**. caches.default 는 콜로별이라 cron prewarm 이 다른 지역 콜로에 안 미쳐, 콜드 콜로
+//   하드로드는 워커가 self-fetch(콜드 D1, 0.5~1.5s)를 기다린 뒤에야 HTML 을 보냈다(TTFB 실측 1.1~1.9s).
+//   KV 는 전역 복제라 어느 콜로든 ~수십 ms 에 페이로드 확보 → worker/index.ts SSR 읽기 경로가
+//   [edge miss → KV read → self-fetch] 순으로 소비.
+//   💰 비용 가드(무료 1K writes/day, CLAUDE.md KV 잠금 철학): **쓰기는 cron 전용 + 15분 표본화** —
+//   4키 × (5분 cron 중 매시 0/15/30/45분 창만) 96회/day = 384 writes/day < 1K. 읽기는 콜드-콜로
+//   edge-miss 시에만(무료 100K/day 대비 미미). CACHE_KV 미바인딩이면 전부 skip = 현행 100% 동일.
+// 🔑 2026-10-11 [UNLOCK_LOADING]: export — `ssr-payload.ts` 가 **이 목록에 있는 키만** KV 를 읽는다.
+//   종전엔 모든 슬롯이 KV 를 읽었는데 여기 없는 키(상세·유어샵·셀러…)는 **아무도 쓰지 않으므로 늘 miss** 였다
+//   (라이브 실측 `DETAIL:self-fetch-hit` 에 `kv;dur=95~104ms` — 순수 대기). 쓰는 쪽과 읽는 쪽이 같은 목록을 본다.
+export const SSR_KV_PATHS: readonly string[] = [
+  '/api/group-buy/products?status=active&category=all',            // MAIN(홈)
+  // ☕ 2026-10-14: /vouchers 첫 화면이 커피/음료로 열린다 — 시드 경로 = VOUCHERS_DEFAULT_SEED_PATH(byte-일치).
+  '/api/products?page=1&limit=20&deal_only=1&sort=price_low&category=%EC%BB%A4%ED%94%BC%2F%EC%9D%8C%EB%A3%8C', // VOUCHERS
+  '/api/products?page=1&limit=20&exclude_deal_only=1',             // BROWSE
+  // 🚫 2026-07-29: LIVE(/api/streams) · WHOLESALE(/api/wholesale/catalog) 제거 — 소비자 오리진에서
+  //   둘 다 404 라 `if (res.ok)` 를 통과한 적이 없다(KV 기록 0). 남은 4키가 실제로 쓰이는 슬롯이다.
+  '/api/blog/public?limit=100',                                    // BLOG
+  // 🏠 2026-08-27 (대표 신고 "지금 인기 이용권·숙소 섹션이 안 보인다"): 홈은 시드가 **둘**인데
+  //   (MAIN·SECTIONS) 섹션만 전역 KV 계층이 없었다. 그래서 콜로 엣지가 cold 면 곧바로 self-fetch 로
+  //   떨어지고, 콜드 D1 이 타임아웃되면 시드 없이 내려가 **그 섹션만 스켈레톤 + 클라 왕복**이 됐다.
+  //   (피드는 세 계층이 다 있어 멀쩡했다 — 같은 화면에서 한쪽만 늦는 이유가 정확히 이것.)
+  //   ⚠️ 경로는 워커의 `ssrExtra.path`(`/api/sections`)와 **byte-일치**해야 한다 — 캐시 키가 곧 경로다.
+  '/api/sections',                                                 // SECTIONS(홈 편성 섹션)
+  // 🗺️ 2026-10-11 지도 첫 화면(MAP 슬롯) — MAP_SEED_PATH 와 byte-일치. 6키 × 96창 = 576 writes/day < 1K.
+  '/api/group-buy/products?category=all&sort=discount',            // MAP(지도)
+];
+const SSR_KV_TTL_S = 1800; // 15분 표본화 × TTL 30분 — 항상 커버(최대 stale ~30분, edge 900s 와 동급)
+
+/**
+ * 🧮 동적 예열 1회분 상한 (2026-08-23 — 라이브 실측으로 규명한 **예산 초과** 수리).
+ *
+ * 무료 플랜의 서브리퀘스트 상한은 **인보케이션당 50** 이고 `fetch` 뿐 아니라 **KV·D1 도 포함**된다.
+ * 이 cron 의 실제 소비는 아래와 같아 오래전부터 상한을 넘고 있었다:
+ *
+ *   normalize D1 3 + HOT_PATHS 22 + KV put ≤4 + 도매 4 + 동적 D1 3 = 36
+ *   → 동적 fetch 에 남는 몫은 **14** 인데 실제로는 **40개**(셀러 10×2 + 상품 10 + 큐레이터 10)를 쐈다.
+ *
+ * ⚠️ 아래 주석이 "dynamic 20" 이라고 적어 둔 것은 **낡았다** — 2026-06-04 에 셀러당 sub-data 를
+ *    한 줄 더 넣고 큐레이터 10개가 붙으면서 두 배가 됐는데 주석만 그대로였다. 그래서 아무도
+ *    예산 초과를 눈치채지 못했다(초과분은 조용히 실패한다 — `catch { dynFailed++ }`).
+ *
+ * 🩸 그 결과가 실제로 관측된다: `CACHE_KV`(ur-cashe) 의 `ssr:` 키가 **0개**다. 즉 2026-07-12 에
+ *    넣은 전역 워밍은 **한 번도 기록된 적이 없고**, 읽기 쪽만 살아서 `/vouchers` `kv;dur=128ms`
+ *    `/browse` `kv;dur=145ms` 를 **100% miss 로 지불**하고 있었다(self-fetch 는 25~30ms 다).
+ *
+ * 자르는 대신 **회전**시킨다 — 상한을 넘겨 매번 같은 뒷부분이 영영 안 데워지는 것보다,
+ * 매 회차 다른 12개를 데워 5분 × 12슬롯 = 한 시간에 전체를 여러 번 도는 편이 낫다.
+ */
+export const DYNAMIC_PREWARM_BUDGET = 12;
+
+/** 회전 창 — 5분 cron 이므로 슬롯은 0..11. 순수함수(테스트가 이 계약을 고정한다). */
+export function rotateForBudget<T>(items: readonly T[], minute: number, budget = DYNAMIC_PREWARM_BUDGET): T[] {
+  if (items.length <= budget) return [...items];
+  const slot = Math.floor(((minute % 60) + 60) % 60 / 5); // 0..11
+  const start = (slot * budget) % items.length;
+  return [...items.slice(start), ...items.slice(0, start)].slice(0, budget);
+}
+
+/**
+ * ⏱️ 읽기 다이어트 옵션(2026-09-02). 인자 없이 부르면 종전과 같이 전부 돈다(롤백 = 호출부에서 옵션 제거).
+ *   · `dynamic`  — 셀러/상품/큐레이터 동적 워밍(틱당 상세 렌더 12개 = 5분마다 콜드 D1 12건). 30분 주기면 충분
+ *   · `normalize` — products 정규화 UPDATE 2개(products 전수 ×2, 수렴 후에도 매 틱 스캔). 하루 1회
+ *   HOT_PATHS(SSR 슬롯 키)는 이 옵션과 무관하게 매 틱 돈다 — 잠금표 항목이라 제거·약화하지 않는다.
+ */
+export interface PrewarmOpts {
+  dynamic?: boolean
+  normalize?: boolean
+  /**
+   * 🗺️ 2026-10-12: 지역 요약(`ssr:region-digest`) 재빌드. 기본 **OFF** — 켜는 회차만 4 fetch 를 쓴다.
+   *   호출부는 `:15` 한 슬롯만 연다(동적 워밍이 쓰는 `:00`·`:30` 과 **겹치지 않는 위상**).
+   */
+  regionDigest?: boolean
+}
+
+export async function handleCachePrewarm(env: PrewarmEnv, opts: PrewarmOpts = {}): Promise<void> {
+  const baseUrl = env.FRONTEND_URL || 'https://urdeal.kr';
+  const doDynamic = opts.dynamic ?? true;
+  const doNormalize = opts.normalize ?? true;
+  // 🌍 2026-07-12: KV 쓰기 표본화 창 — 5분 cron 중 매시 0/15/30/45분대 실행만 기록(576 writes/day < 1K 한도).
+  const kvWriteWindow = new Date().getMinutes() % 15 < 5;
+
+  // 🏎️ 2026-06-19 (A: 카탈로그 행 근본수정): products 정규화를 읽기 경로에서 빼 cron 으로 이전.
+  //   self-fetch(아래 HOT_PATHS) 보다 먼저 실행 → 정규화된 데이터로 캐시/ KV 워밍. 멱등·실패 무시.
+  if (env.DB && doNormalize) {
+    await normalizeSupplyProductData(env.DB).catch(() => { /* best-effort */ });
+  }
+
+  let success = 0;
+  let failed = 0;
+
+  // 병렬 fetch — 5분 cron 안에서 충분히 처리
+  await Promise.all(
+    HOT_PATHS.map(async (path) => {
+      try {
+        const url = `${baseUrl}${path}`;
+        const res = await fetch(url, {
+          method: 'GET',
+          headers: {
+            // 'cf-cache-prewarm' header 는 analytics 에서 prewarm 트래픽 구분용
+            'User-Agent': 'ur-live-cache-prewarm/1.0',
+            'x-prewarm': '1',
+          },
+          // 같은 worker 가 응답해도 OK — publicCache 가 자동으로 edge + KV 채움
+          cf: {
+            // 새 응답을 받기 위해 cache 우회 X — 오히려 cache 채우기가 목적
+            cacheTtl: 0,
+            cacheEverything: false,
+          },
+        } as RequestInit & { cf?: Record<string, unknown> });
+        if (res.ok) {
+          success++;
+          // 🌍 2026-07-12: SSR 슬롯 키만 전역(KV) 기록 — 15분 표본화(비용 가드, 위 SSR_KV_PATHS 주석).
+          if (kvWriteWindow && env.CACHE_KV && SSR_KV_PATHS.includes(path)) {
+            try {
+              const body = await res.text();
+              // JSON 성공 응답만 기록(에러/HTML 오염 방지) + 500KB 캡(KV value 한도/비용 방어)
+              if (body.startsWith('{') && body.includes('"success":true') && body.length < 500_000) {
+                await env.CACHE_KV.put(`ssr:${path}`, body, { expirationTtl: SSR_KV_TTL_S });
+              }
+            } catch { /* KV 실패 — edge/self-fetch 경로가 그대로 커버 */ }
+          }
+        } else {
+          failed++;
+        }
+      } catch {
+        failed++;
+      }
+    }),
+  );
+
+  if (failed > 0) {
+    logError(`[cron:cache-prewarm] partial failure`, { success, failed, total: HOT_PATHS.length });
+  } else {
+    logInfo(`[cron:cache-prewarm] warmed ${success}/${HOT_PATHS.length} paths`);
+  }
+
+  // 🧨 2026-10-12 [UNLOCK_LOADING] 도매(utongstart) origin 예열 **제거** — 대표 *"SEO 측면에서 … 모두 해줘"*.
+  //   2026-06-18 에 `caches.default` 키가 origin 별로 갈리는 문제를 풀려고 도매 4경로를 utongstart origin
+  //   으로 한 번 더 데웠다(`/catalog?`·`/catalog`·`/banners`·`/mall`). 2026-10-11 철거(#1710)로 그 라우트가
+  //   사라졌고, 그 도메인은 Cloudflare 실측으로 **어느 Pages 프로젝트에도 연결돼 있지 않다** → 5분마다
+  //   죽은 주소를 네 번 두드리며 **서브리퀘스트 예산(무료 50/인보케이션, 실측 ~49)에서 4칸**을 먹고 있었다.
+  //   그 블록 자신의 주석이 예산을 `HOT 24 + dynamic≈20 + WS 5 ≈ 49 < 50` 이라 적어 둔 그 자리다.
+  //   (도매가 되살아나면 이 블록 + worker 의 WHOLESALE 슬롯 + `timeoutFor` 3000ms 를 함께 복원할 것.)
+
+  // 🗺️ 2026-10-12 [UNLOCK_LOADING] **지역 요약 재빌드** — 색인 대상 지역 43개 중 6개 시/도가
+  //   본문 0자로 나가던 것(근거·버린 길은 `shared/seo/region-digest.ts` 머리말).
+  //   활성 딜 전량(`limit=100` 4페이지 = 400행 ≥ 실측 359)을 받아 (시/도, 시군구) 묶음마다
+  //   10행까지 접어 **한 키**에 넣는다. 워커는 그 키를 **크롤러 본문·ItemList 를 만들 때만** 읽고
+  //   주입(`__SSR_INITIAL_MAIN__`)은 종전 MAIN 시드 그대로다(필드를 깎았으므로 React 가 먹으면 깨진다).
+  //   💰 비용: 이 회차만 fetch 4 + KV put 1. 호출부가 `:15` 한 슬롯만 열어 하루 24 writes
+  //   (기존 576 + 24 = 600 < 무료 1,000)이고, 동적 워밍(`:00`·`:30`)과 위상이 달라 예산이 겹치지 않는다.
+  //   실패는 전부 fail-soft — 요약이 없으면 워커가 종전처럼 MAIN 시드로 떨어진다(회귀 0).
+  if (env.CACHE_KV && opts.regionDigest) {
+    try {
+      const pages = await Promise.all([1, 2, 3, 4].map(async (page) => {
+        const r = await fetch(`${baseUrl}${MAIN_SEED_PATH}&limit=100&page=${page}`, {
+          method: 'GET',
+          headers: { 'User-Agent': 'ur-live-cache-prewarm/1.0', 'x-prewarm': '1' },
+        });
+        return r.ok ? await r.text() : null;
+      }));
+      const rows = pages.flatMap(digestRowsOf);
+      // 🔴 **0행이면 쓰지 않는다** — 네 페이지가 전부 실패한 날 빈 요약으로 덮으면 지역 페이지가
+      //   "있던 본문이 사라진" 상태가 된다(기존 요약을 들고 있다가 TTL 로 자연 만료되는 편이 낫다).
+      if (rows.length > 0) {
+        const digest = buildRegionDigest(rows);
+        if (digest.length < REGION_DIGEST_MAX_BYTES) {
+          // 🗂️ 2026-10-19: 만든 시각을 메타데이터로 — `/llms-full.txt` 가 '기준 시각' 으로 보여 준다(본문은 불변).
+          await env.CACHE_KV.put(REGION_DIGEST_KV_KEY, digest, { expirationTtl: REGION_DIGEST_TTL_S, metadata: { at: Date.now() } });
+          logInfo(`[cron:cache-prewarm] region digest ${rows.length} rows -> ${digest.length}B`);
+        } else {
+          logError('[cron:cache-prewarm] region digest too large', { bytes: digest.length });
+        }
+      }
+    } catch (e) {
+      logError('[cron:cache-prewarm] region digest failed', { error: String(e) });
+    }
+  }
+
+  // 🛡️ 2026-05-27 (loading P0): 인기 셀러 + 인기 상품 detail dynamic prewarm.
+  //   메인/카테고리 페이지에서 가장 많이 클릭되는 detail / 셀러 페이지 미리 채움.
+  //   첫 사용자도 SSR inject hit 보장 → 0 RTT first paint.
+  //   ⚠️ 2026-08-23 정정: 여기 있던 "HOT 13 + dynamic 20 = 33" 은 **틀린 계산이었다**.
+  //     HOT 은 22, 동적은 40(셀러 10×2 + 상품 10 + 큐레이터 10)이고 KV·D1 도 서브리퀘스트다.
+  //     실제 소비는 76 이상 — 상한 50 을 한참 넘겨 뒤쪽이 매번 조용히 실패하고 있었다.
+  //     이제 `rotateForBudget` 이 회차당 12개만 쏘고 회전한다(위 상수 주석 참조).
+  if (env.DB && doDynamic) {
+    try {
+      // Top 10 인기 셀러 (recent 30일 매출 기준 — 없으면 sellers.id 최신순 fallback)
+      const sellersResult = await env.DB.prepare(
+        `SELECT id, username FROM sellers
+          WHERE status = 'approved' AND username IS NOT NULL AND username != ''
+          ORDER BY id DESC LIMIT 10`
+      ).all<{ id: number; username: string }>().catch(() => ({ results: [] as { id: number; username: string }[] }))
+      // 🛡️ 2026-05-27: Top 10 큐레이터 (핀 가진 user) — /u/:handle 페이지 warm.
+      const curatorsResult = await env.DB.prepare(
+        `SELECT u.handle FROM users u
+          WHERE u.handle IS NOT NULL AND u.handle != ''
+            AND EXISTS (SELECT 1 FROM product_pins pp WHERE pp.user_id = u.id)
+          ORDER BY u.id DESC LIMIT 10`
+      ).all<{ handle: string }>().catch(() => ({ results: [] as { handle: string }[] }))
+      // Top 10 활성 공구 (group_buy_status='active' + sold_count DESC)
+      const productsResult = await env.DB.prepare(
+        `SELECT id FROM products
+          WHERE is_active = 1 AND (group_buy_status = 'active' OR deal_only = 1)
+          ORDER BY COALESCE(sold_count, 0) DESC, created_at DESC LIMIT 10`
+      ).all<{ id: number }>().catch(() => ({ results: [] as { id: number }[] }))
+
+      const dynamicPaths: string[] = []
+      for (const s of sellersResult.results ?? []) {
+        if (s.username) dynamicPaths.push(`/api/sellers/${s.username}/public`)
+        // 🛡️ 2026-06-04 [LOADING_ADDITIVE]: 유어샵 기본탭(상품) sub-data warm — SellerPublicPage 첫 진입 cold D1 제거.
+        if (Number.isFinite(s.id)) dynamicPaths.push(`/api/products?seller_id=${s.id}&limit=20`)
+      }
+      for (const p of productsResult.results ?? []) {
+        if (Number.isFinite(p.id)) dynamicPaths.push(`/api/group-buy/products/${p.id}`)
+      }
+      for (const c of curatorsResult.results ?? []) {
+        if (c.handle) dynamicPaths.push(`/api/curator/${c.handle}`)
+      }
+
+      // 🧮 2026-08-23: 서브리퀘스트 예산 안으로 — 자르지 말고 회전(위 DYNAMIC_PREWARM_BUDGET 주석).
+      const dynamicThisRun = rotateForBudget(dynamicPaths, new Date().getMinutes())
+
+      let dynSuccess = 0, dynFailed = 0
+      await Promise.all(
+        dynamicThisRun.map(async (path) => {
+          try {
+            const r = await fetch(`${baseUrl}${path}`, {
+              method: 'GET',
+              headers: { 'User-Agent': 'ur-live-cache-prewarm/1.0', 'x-prewarm': '1' },
+            })
+            if (r.ok) dynSuccess++; else dynFailed++
+          } catch { dynFailed++ }
+        })
+      )
+      if (dynamicThisRun.length > 0) {
+        logInfo(`[cron:cache-prewarm] dynamic warmed ${dynSuccess}/${dynamicThisRun.length} of ${dynamicPaths.length} (rotating window)`)
+      }
+    } catch (e) {
+      logError('[cron:cache-prewarm] dynamic prewarm failed', { error: String(e) })
+    }
+  }
+}

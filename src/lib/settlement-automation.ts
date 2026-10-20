@@ -1,0 +1,685 @@
+/**
+ * 정산 자동화 라이브러리
+ * 
+ * 기능:
+ * - 자동 정산 계산
+ * - 정산 보고서 생성
+ * - 셀러별 수수료 정산
+ * - 배송비 정산
+ * - Cron Triggers 연동
+ */
+
+// 🔒 2026-06-27 (결제 정확성 감사 ⑤ — 대표 "5% 로 통일"): 플랫폼 기본 수수료율 단일 소스.
+//   이전엔 이 파일이 10%(0.10/10.0)를, 셀러 스키마·policy 는 5% 를 써 NULL-rate 주문이 10% 로 정산됐음.
+//   policy.ts COMMISSION_DEFAULTS.PLATFORM_FEE_PCT(=5) 로 통일 → 기본 수수료 변경은 policy.ts 한 곳에서.
+import { COMMISSION_DEFAULTS } from '../shared/constants/policy'
+
+interface Env {
+  DB: D1Database
+}
+
+interface SettlementPeriod {
+  startDate: string // YYYY-MM-DD
+  endDate: string // YYYY-MM-DD
+}
+
+interface SellerSettlement {
+  seller_id: number
+  seller_name: string
+  total_sales: number // 총 매출
+  total_orders: number // 총 주문 건수
+  platform_fee: number // 플랫폼 수수료
+  shipping_fee: number // 배송비 수입
+  refund_amount: number // 환불 금액
+  settlement_amount: number // 정산 금액 (매출 - 수수료 - 환불)
+  // 🛡️ 2026-04-28: MD 위탁 통합. 셀러가 host 일 때 받은 수수료, owner 일 때 빼낸 분배.
+  consignment_host_credit?: number   // 내가 host 로 받은 분배 합계 (+)
+  consignment_owner_debit?: number   // 내가 owner 인데 host 가 가져간 분배 합계 (-)
+  orders: SettlementOrder[]
+}
+
+interface SettlementOrder {
+  order_id: number
+  order_number: string
+  order_date: string
+  product_name: string
+  quantity: number
+  price: number
+  shipping_fee: number
+  platform_fee: number
+  status: string
+}
+
+interface SettlementReport {
+  period: SettlementPeriod
+  generated_at: string
+  total_sales: number
+  total_platform_fee: number
+  total_settlement: number
+  sellers: SellerSettlement[]
+}
+
+/**
+ * 플랫폼 수수료 계산 (기본 10%)
+ *
+ * CRIT-2: standardized to Math.round() across all settlement calculations
+ * (was Math.floor) — matches auto-settlement.ts and restaurant-settlement.routes.ts
+ * to avoid accumulated drift from mixing rounding modes.
+ *
+ * HIGH-1 NOTE: feeRate here is a RATIO (e.g., 0.10 = 10%). Most other places store
+ * commission_rate as PERCENTAGE (e.g., 10 = 10%). Callers of this function must
+ * divide percentage values by 100 first. Exception: donations.commission_rate
+ * is stored as RATIO.
+ */
+function calculatePlatformFee(amount: number, feeRate: number = COMMISSION_DEFAULTS.PLATFORM_FEE_PCT / 100): number {
+  return Math.round(amount * feeRate)
+}
+
+// 🇰🇷 KST 기준 (UTC+9) — Cloudflare Workers 는 UTC 로 실행되므로 명시적 변환 필요.
+// 한국 셀러 입장에서 "이번 달" 은 KST 자정 기준으로 시작해야 정확한 정산 경계 얻음.
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+
+function nowKST(): Date {
+  return new Date(Date.now() + KST_OFFSET_MS);
+}
+
+/**
+ * 정산 기간 생성 (이번 달, KST 기준)
+ */
+export function getCurrentSettlementPeriod(): SettlementPeriod {
+  const now = nowKST()
+  const year = now.getUTCFullYear()
+  const month = String(now.getUTCMonth() + 1).padStart(2, '0')
+  const lastDay = new Date(Date.UTC(year, now.getUTCMonth() + 1, 0)).getUTCDate()
+
+  return {
+    startDate: `${year}-${month}-01`,
+    endDate: `${year}-${month}-${String(lastDay).padStart(2, '0')}`
+  }
+}
+
+/**
+ * 정산 기간 생성 (지난 달, KST 기준)
+ */
+export function getLastMonthSettlementPeriod(): SettlementPeriod {
+  const now = nowKST()
+  // KST 이번 달 1일 0시의 이전 월 1일
+  const lastMonthDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1))
+  const year = lastMonthDate.getUTCFullYear()
+  const month = String(lastMonthDate.getUTCMonth() + 1).padStart(2, '0')
+  const lastDay = new Date(Date.UTC(year, lastMonthDate.getUTCMonth() + 1, 0)).getUTCDate()
+
+  return {
+    startDate: `${year}-${month}-01`,
+    endDate: `${year}-${month}-${String(lastDay).padStart(2, '0')}`
+  }
+}
+
+/**
+ * 셀러별 정산 계산
+ */
+async function calculateSellerSettlement(
+  DB: D1Database,
+  sellerId: number,
+  period: SettlementPeriod
+): Promise<SellerSettlement | null> {
+  try {
+    // 셀러 정보 조회 (수수료율 포함 — fallback 용)
+    const seller = await DB.prepare(`
+      SELECT id, business_name, COALESCE(commission_rate, ${COMMISSION_DEFAULTS.PLATFORM_FEE_PCT}) AS commission_rate FROM sellers WHERE id = ?
+    `).bind(sellerId).first<{ id: number; business_name: string; commission_rate: number }>()
+
+    if (!seller) {
+      return null
+    }
+
+    // 🛡️ 2026-05-22 P1 영구 fix (commission 변경 소급 적용 방지):
+    //   이전: settlement 시점에 sellers.commission_rate 현재값 사용 → admin 이 변경하면 과거 주문에도 소급.
+    //   영구 해결: orders.commission_rate (order 생성 시 snapshot — 이미 컬럼 존재) 우선 사용.
+    //   o.commission_rate IS NULL 인 legacy order 만 seller fallback.
+    const orders = await DB.prepare(`
+      SELECT
+        o.id,
+        o.order_number,
+        o.created_at,
+        o.total_amount,
+        o.shipping_fee,
+        o.status,
+        COALESCE(o.commission_rate, ?) AS effective_commission_rate,
+        GROUP_CONCAT(p.name, ', ') as product_names,
+        SUM(oi.quantity) as total_quantity
+      FROM orders o
+      LEFT JOIN order_items oi ON o.id = oi.order_id
+      LEFT JOIN products p ON oi.product_id = p.id
+      WHERE o.seller_id = ?
+        AND DATE(o.created_at) BETWEEN ? AND ?
+        AND o.status IN ('delivered', 'confirmed')
+      GROUP BY o.id
+      ORDER BY o.created_at DESC
+    `).bind(seller.commission_rate, sellerId, period.startDate, period.endDate).all()
+
+    if (!orders.results || orders.results.length === 0) {
+      return {
+        seller_id: sellerId,
+        seller_name: seller.business_name,
+        total_sales: 0,
+        total_orders: 0,
+        platform_fee: 0,
+        shipping_fee: 0,
+        refund_amount: 0,
+        settlement_amount: 0,
+        orders: []
+      }
+    }
+
+    // 주문별 정산 계산
+    const settlementOrders: SettlementOrder[] = []
+    let totalSales = 0
+    let totalShippingFee = 0
+    let totalPlatformFee = 0
+
+    for (const order of orders.results as any[]) {
+      // CRIT-3: use order.total_amount (includes shipping) as the fee base.
+      // Shipping is included in totalSales and flows back to the seller after fee.
+      const orderAmount = order.total_amount
+      // 🛡️ 2026-05-22: order 의 effective_commission_rate (snapshot) 사용 → admin 변경 소급 안 됨.
+      const effectiveRate = Number(order.effective_commission_rate ?? seller.commission_rate)
+      const platformFee = calculatePlatformFee(orderAmount, effectiveRate / 100)
+
+      settlementOrders.push({
+        order_id: order.id,
+        order_number: order.order_number,
+        order_date: order.created_at,
+        product_name: order.product_names || '',
+        quantity: order.total_quantity || 1,
+        price: orderAmount,
+        shipping_fee: order.shipping_fee || 0,
+        platform_fee: platformFee,
+        status: order.status
+      })
+
+      totalSales += orderAmount
+      totalShippingFee += order.shipping_fee || 0
+      totalPlatformFee += platformFee
+    }
+
+    // 환불 금액 조회
+    const refunds = await DB.prepare(`
+      SELECT COALESCE(SUM(total_amount), 0) as refund_amount
+      FROM orders
+      WHERE seller_id = ?
+        AND DATE(created_at) BETWEEN ? AND ?
+        AND status = 'refunded'
+    `).bind(sellerId, period.startDate, period.endDate).first<{ refund_amount: number }>()
+
+    const refundAmount = refunds?.refund_amount || 0
+
+    // CRIT-3: 배송비 이중 계산 방지
+    // Previous buggy formula was: totalSales - totalPlatformFee - refundAmount + totalShippingFee
+    // Problem: when totalSales already included shipping, adding shipping again
+    // double-credited the seller. We now treat order.total_amount (which includes
+    // shipping) as both the fee base and totalSales, so:
+    //   - Platform keeps commission on full amount (incl. shipping)
+    //   - Seller receives (totalSales - platformFee - refund)
+    //   - Shipping is implicitly in totalSales and flows to seller
+    // Option B from audit: simpler, less breaking.
+    const rawSettlementAmount = totalSales - totalPlatformFee - refundAmount
+    // 🛡️ 2026-04-22: 음수 정산 금액 방어 — 환불이 판매보다 큰 경우
+    // 셀러에게 음수로 지급되지 않도록 0 으로 하한선. 실제 손실은 review_required 플래그로 수동 처리.
+    const settlementAmount = Math.max(0, rawSettlementAmount)
+    if (rawSettlementAmount < 0) {
+      console.warn('[Settlement] Negative amount detected — clamped to 0 for manual review', {
+        seller_id: sellerId,
+        totalSales,
+        totalPlatformFee,
+        refundAmount,
+        rawSettlementAmount,
+      })
+    }
+
+    // 🛡️ 2026-04-28: consignment 분배 통합. host 입장 + owner 입장 모두 합산.
+    let consignmentHostCredit = 0
+    let consignmentOwnerDebit = 0
+    let adjustedSettlement = settlementAmount
+    try {
+      const { getConsignmentSettlementsForSeller } = await import('./consignment-settlement')
+      const cs = await getConsignmentSettlementsForSeller(DB, sellerId, period.startDate, period.endDate)
+      consignmentHostCredit = cs.host_total
+      // owner 입장: 내가 owner 인 위탁건은 원래 settlement_amount 에 포함됐으나
+      //            host 분배 + 플랫폼 수수료 만큼 차감 필요 (= total - owner_amount).
+      consignmentOwnerDebit = cs.as_owner.reduce((sum, item) => sum + (item.host_amount + item.platform_amount), 0)
+      adjustedSettlement = settlementAmount + consignmentHostCredit - consignmentOwnerDebit
+    } catch { /* table missing or query failure — ignore (정산 분배 없이 진행) */ }
+
+    return {
+      seller_id: sellerId,
+      seller_name: seller.business_name,
+      total_sales: totalSales,
+      total_orders: settlementOrders.length,
+      platform_fee: totalPlatformFee,
+      shipping_fee: totalShippingFee,
+      refund_amount: refundAmount,
+      settlement_amount: adjustedSettlement,
+      consignment_host_credit: consignmentHostCredit,
+      consignment_owner_debit: consignmentOwnerDebit,
+      orders: settlementOrders
+    }
+  } catch (error) {
+    console.error(`Failed to calculate settlement for seller ${sellerId}:`, error)
+    return null
+  }
+}
+
+/**
+ * 전체 정산 보고서 생성
+ */
+export async function generateSettlementReport(
+  DB: D1Database,
+  period: SettlementPeriod
+): Promise<SettlementReport> {
+  // 정산 대상 셀러 목록 조회
+  const sellers = await DB.prepare(`
+    SELECT DISTINCT s.id
+    FROM sellers s
+    JOIN orders o ON s.id = o.seller_id
+    WHERE DATE(o.created_at) BETWEEN ? AND ?
+      AND o.status IN ('delivered', 'confirmed', 'refunded')
+  `).bind(period.startDate, period.endDate).all()
+
+  // 셀러별 정산 계산
+  const sellerSettlements: SellerSettlement[] = []
+  let totalSales = 0
+  let totalPlatformFee = 0
+  let totalSettlement = 0
+
+  for (const seller of (sellers.results as any[])) {
+    const settlement = await calculateSellerSettlement(DB, seller.id, period)
+    
+    if (settlement) {
+      sellerSettlements.push(settlement)
+      totalSales += settlement.total_sales
+      totalPlatformFee += settlement.platform_fee
+      totalSettlement += settlement.settlement_amount
+    }
+  }
+
+  const report: SettlementReport = {
+    period,
+    generated_at: new Date().toISOString(),
+    total_sales: totalSales,
+    total_platform_fee: totalPlatformFee,
+    total_settlement: totalSettlement,
+    sellers: sellerSettlements
+  }
+
+  return report
+}
+
+/**
+ * 정산 보고서 저장
+ */
+export async function saveSettlementReport(
+  DB: D1Database,
+  report: SettlementReport
+): Promise<void> {
+  // 정산 마스터 저장.
+  // 🛡️ 2026-05-18: seller_id NOT NULL — 본 row 는 '전체 집계' 마스터 행 (셀러별 row 는 별도).
+  //   seller_id = 0 을 시스템 집계 마커로 사용. 인덱스 충돌 없음 (sellers.id 는 1+).
+  const result = await DB.prepare(`
+    INSERT INTO settlements
+    (seller_id, period_start, period_end, total_sales, total_platform_fee, total_settlement, generated_at, status)
+    VALUES (0, ?, ?, ?, ?, ?, ?, 'pending')
+  `).bind(
+    report.period.startDate,
+    report.period.endDate,
+    report.total_sales,
+    report.total_platform_fee,
+    report.total_settlement,
+    report.generated_at
+  ).run()
+
+  const settlementId = result.meta.last_row_id
+
+  // 셀러별 정산 세부 저장
+  for (const seller of report.sellers) {
+    await DB.prepare(`
+      INSERT INTO settlement_details 
+      (settlement_id, seller_id, total_sales, total_orders, platform_fee, shipping_fee, refund_amount, settlement_amount)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      settlementId,
+      seller.seller_id,
+      seller.total_sales,
+      seller.total_orders,
+      seller.platform_fee,
+      seller.shipping_fee,
+      seller.refund_amount,
+      seller.settlement_amount
+    ).run()
+  }
+
+  // Report saved
+}
+
+/**
+ * 정산 보고서 조회
+ */
+export async function getSettlementReport(
+  DB: D1Database,
+  settlementId: number
+): Promise<SettlementReport | null> {
+  const settlement = await DB.prepare(`
+    SELECT * FROM settlements WHERE id = ?
+  `).bind(settlementId).first<any>()
+
+  if (!settlement) {
+    return null
+  }
+
+  const details = await DB.prepare(`
+    SELECT 
+      sd.*,
+      s.business_name as seller_name
+    FROM settlement_details sd
+    JOIN sellers s ON sd.seller_id = s.id
+    WHERE sd.settlement_id = ?
+  `).bind(settlementId).all()
+
+  const sellers: SellerSettlement[] = (details.results as any[]).map(d => ({
+    seller_id: d.seller_id,
+    seller_name: d.seller_name,
+    total_sales: d.total_sales,
+    total_orders: d.total_orders,
+    platform_fee: d.platform_fee,
+    shipping_fee: d.shipping_fee,
+    refund_amount: d.refund_amount,
+    settlement_amount: d.settlement_amount,
+    orders: []
+  }))
+
+  return {
+    period: {
+      startDate: settlement.period_start,
+      endDate: settlement.period_end
+    },
+    generated_at: settlement.generated_at,
+    total_sales: settlement.total_sales,
+    total_platform_fee: settlement.total_platform_fee,
+    total_settlement: settlement.total_settlement,
+    sellers
+  }
+}
+
+/**
+ * Cron Trigger: 매월 1일 자동 정산
+ */
+export async function runMonthlySettlement(env: Env): Promise<void> {
+  try {
+    // Monthly settlement starting
+
+    // 지난 달 정산
+    const period = getLastMonthSettlementPeriod()
+
+    // 정산 보고서 생성
+    const report = await generateSettlementReport(env.DB, period)
+
+    // 저장
+    await saveSettlementReport(env.DB, report)
+
+    // Monthly settlement completed
+  } catch (error) {
+    console.error('[Settlement Cron] Failed:', error)
+    throw error
+  }
+}
+
+// ─── Auto-settlement calculation (uses actual orders table columns) ───────────
+
+export interface SellerSettlementCalc {
+  seller_id: number
+  seller_name: string
+  business_name: string
+  commission_rate: number
+  total_sales: number
+  total_orders: number
+  commission_amount: number
+  settlement_amount: number
+}
+
+export interface SettlementExecutionResult {
+  batch_id: string
+  executed_at: string
+  period_start: string
+  period_end: string
+  sellers: SellerSettlementCalc[]
+  total_orders_settled: number
+  total_sales: number
+  total_commission: number
+  total_settlement: number
+}
+
+/**
+ * Calculate unsettled amounts per seller for orders with status DONE/DELIVERED.
+ * Uses the actual columns: settlement_status, settled_at, total_amount,
+ * commission_rate (on orders), commission_amount, seller_amount.
+ */
+export async function calculateAutoSettlement(
+  DB: D1Database,
+  periodStart?: string,
+  periodEnd?: string,
+  defaultCommissionRate: number = COMMISSION_DEFAULTS.PLATFORM_FEE_PCT
+): Promise<SellerSettlementCalc[]> {
+  let dateFilter = ''
+  const params: (string | number)[] = []
+
+  if (periodStart && periodEnd) {
+    dateFilter = 'AND DATE(o.created_at) BETWEEN ? AND ?'
+    params.push(periodStart, periodEnd)
+  }
+
+  // 원래 구현 유지: sellers.commission_rate (어드민이 셀러별로 조정 가능)
+  // 라이브 수수료, 후원 수수료 등은 platform_settings 테이블 + 각 기능별 라우트에서 별도 관리:
+  //   - 후원: points.routes.ts 가 commission_rate_donation 참조
+  //   - 이용권: auto-settlement.ts 가 commission_rate_meal_voucher 참조
+  //   - 라이브/일반 상품 정산: sellers.commission_rate (이 쿼리)
+  const rows = await DB.prepare(`
+    SELECT
+      COALESCE(o.seller_id, 0) as seller_id,
+      COALESCE(s.name, '미지정') as seller_name,
+      COALESCE(s.business_name, '') as business_name,
+      COALESCE(s.commission_rate, ${defaultCommissionRate}) as commission_rate,
+      COUNT(o.id) as total_orders,
+      COALESCE(SUM(o.total_amount), 0) as total_sales,
+      -- 🛡️ 2026-04-22: 라이브 판매(live_stream_id 존재) 는 5%, 외엔 sellers.commission_rate or default
+      COALESCE(SUM(
+        ROUND(o.total_amount * CASE WHEN o.live_stream_id IS NOT NULL THEN 5.0
+                                    ELSE COALESCE(s.commission_rate, ${defaultCommissionRate}) END / 100)
+      ), 0) as commission_amount,
+      COALESCE(SUM(
+        o.total_amount - ROUND(o.total_amount * CASE WHEN o.live_stream_id IS NOT NULL THEN 5.0
+                                                     ELSE COALESCE(s.commission_rate, ${defaultCommissionRate}) END / 100)
+      ), 0) as settlement_amount
+    FROM orders o
+    LEFT JOIN sellers s ON o.seller_id = s.id
+    WHERE o.status IN ('DONE', 'DELIVERED')
+      AND COALESCE(o.settlement_status, 'pending') = 'pending'
+      ${dateFilter}
+    GROUP BY o.seller_id
+    ORDER BY total_sales DESC
+  `).bind(...params).all()
+
+  return (rows.results as unknown as SellerSettlementCalc[]) || []
+}
+
+/**
+ * Execute settlement: mark matching orders as settled and return a batch summary.
+ * Updates settlement_status, settled_at, commission_rate, commission_amount, seller_amount
+ * on the orders table.
+ */
+export async function executeSettlement(
+  DB: D1Database,
+  periodStart?: string,
+  periodEnd?: string,
+  defaultCommissionRate: number = COMMISSION_DEFAULTS.PLATFORM_FEE_PCT
+): Promise<SettlementExecutionResult> {
+  const now = new Date().toISOString()
+  const batchId = `SETTLE-${Date.now()}`
+
+  // First, calculate the summary before marking
+  const sellers = await calculateAutoSettlement(DB, periodStart, periodEnd, defaultCommissionRate)
+
+  let totalOrdersSettled = 0
+  let totalSales = 0
+  let totalCommission = 0
+  let totalSettlement = 0
+
+  for (const seller of sellers) {
+    totalOrdersSettled += seller.total_orders
+    totalSales += seller.total_sales
+    totalCommission += seller.commission_amount
+    totalSettlement += seller.settlement_amount
+  }
+
+  // Build the date filter for the UPDATE
+  let dateFilter = ''
+  const updateParams: (string | number)[] = [now, defaultCommissionRate, defaultCommissionRate, defaultCommissionRate]
+
+  if (periodStart && periodEnd) {
+    dateFilter = 'AND DATE(created_at) BETWEEN ? AND ?'
+    updateParams.push(periodStart, periodEnd)
+  }
+
+  // 🛡️ 2026-04-22: 라이브 판매 5% 분기 (CLAUDE.md 정책)
+  // orders.live_stream_id IS NOT NULL 이면 platform_settings.commission_rate_live (기본 5%) 적용.
+  // 그 외엔 기존 로직 (sellers.commission_rate 또는 defaultCommissionRate).
+  let liveRate = 5.0;
+  try {
+    const liveRow = await DB.prepare(
+      "SELECT value FROM platform_settings WHERE key = 'commission_rate_live'"
+    ).first<{ value: string }>();
+    if (liveRow) liveRate = Number(liveRow.value);
+  } catch {}
+
+  // Build the SET clause with CASE WHEN for live vs regular
+  const rateCase = `CASE WHEN orders.live_stream_id IS NOT NULL THEN ${liveRate}
+                         ELSE COALESCE((SELECT s.commission_rate FROM sellers s WHERE s.id = orders.seller_id), ?) END`;
+  const updateParamsFixed: (string | number)[] = [now, defaultCommissionRate, defaultCommissionRate, defaultCommissionRate];
+  if (periodStart && periodEnd) updateParamsFixed.push(periodStart, periodEnd);
+
+  // Update all matching orders in one statement
+  await DB.prepare(`
+    UPDATE orders
+    SET settlement_status = 'completed',
+        settled_at = ?,
+        commission_rate = ${rateCase},
+        commission_amount = ROUND(total_amount * (${rateCase}) / 100),
+        seller_amount = total_amount - ROUND(total_amount * (${rateCase}) / 100)
+    WHERE status IN ('DONE', 'DELIVERED')
+      AND COALESCE(settlement_status, 'pending') = 'pending'
+      ${dateFilter}
+  `).bind(...updateParamsFixed).run()
+
+  return {
+    batch_id: batchId,
+    executed_at: now,
+    period_start: periodStart || 'all',
+    period_end: periodEnd || 'all',
+    sellers,
+    total_orders_settled: totalOrdersSettled,
+    total_sales: totalSales,
+    total_commission: totalCommission,
+    total_settlement: totalSettlement,
+  }
+}
+
+/**
+ * Get seller settlement summary: unsettled amount, last settlement, lifetime total.
+ * Reads directly from orders table columns.
+ */
+export async function getSellerSettlementSummary(
+  DB: D1Database,
+  sellerId: number,
+  // 🔒 2026-07-01 (정산 감사 — 대표 "5% 로 통일"): 기본 플랫폼 take 를 10.0 → policy SSOT(5%).
+  //   NULL-rate 셀러의 미정산 요약이 fee-resolver/auto-settlement 와 달리 10% 로 과대 계산돼
+  //   셀러가 보는 미정산액이 실제보다 작게 표시되던 문제 정정.
+  defaultCommissionRate: number = COMMISSION_DEFAULTS.PLATFORM_FEE_PCT
+): Promise<{
+  unsettled_amount: number
+  unsettled_orders: number
+  unsettled_commission: number
+  last_settlement_date: string | null
+  last_settlement_amount: number
+  last_settlement_orders: number
+  lifetime_settled_amount: number
+  lifetime_settled_orders: number
+  lifetime_commission: number
+}> {
+  // Current period unsettled
+  const unsettled = await DB.prepare(`
+    SELECT
+      COUNT(o.id) as order_count,
+      COALESCE(SUM(o.total_amount), 0) as total_sales,
+      COALESCE(SUM(
+        ROUND(o.total_amount * COALESCE(s.commission_rate, ${defaultCommissionRate}) / 100)
+      ), 0) as commission_amount,
+      COALESCE(SUM(
+        o.total_amount - ROUND(o.total_amount * COALESCE(s.commission_rate, ${defaultCommissionRate}) / 100)
+      ), 0) as seller_amount
+    FROM orders o
+    LEFT JOIN sellers s ON o.seller_id = s.id
+    WHERE o.seller_id = ?
+      AND o.status IN ('DONE', 'DELIVERED')
+      AND COALESCE(o.settlement_status, 'pending') = 'pending'
+  `).bind(sellerId).first<{
+    order_count: number
+    total_sales: number
+    commission_amount: number
+    seller_amount: number
+  }>()
+
+  // Last settlement batch (most recent settled_at)
+  const lastSettlement = await DB.prepare(`
+    SELECT
+      MAX(o.settled_at) as last_date,
+      COUNT(o.id) as order_count,
+      COALESCE(SUM(o.seller_amount), 0) as seller_amount
+    FROM orders o
+    WHERE o.seller_id = ?
+      AND o.settlement_status = 'completed'
+      AND o.settled_at = (
+        SELECT MAX(o2.settled_at) FROM orders o2
+        WHERE o2.seller_id = ? AND o2.settlement_status = 'completed'
+      )
+  `).bind(sellerId, sellerId).first<{
+    last_date: string | null
+    order_count: number
+    seller_amount: number
+  }>()
+
+  // Lifetime totals
+  const lifetime = await DB.prepare(`
+    SELECT
+      COUNT(o.id) as order_count,
+      COALESCE(SUM(o.seller_amount), 0) as seller_amount,
+      COALESCE(SUM(o.commission_amount), 0) as commission_amount
+    FROM orders o
+    WHERE o.seller_id = ?
+      AND o.settlement_status = 'completed'
+  `).bind(sellerId).first<{
+    order_count: number
+    seller_amount: number
+    commission_amount: number
+  }>()
+
+  return {
+    unsettled_amount: unsettled?.seller_amount ?? 0,
+    unsettled_orders: unsettled?.order_count ?? 0,
+    unsettled_commission: unsettled?.commission_amount ?? 0,
+    last_settlement_date: lastSettlement?.last_date ?? null,
+    last_settlement_amount: lastSettlement?.seller_amount ?? 0,
+    last_settlement_orders: lastSettlement?.order_count ?? 0,
+    lifetime_settled_amount: lifetime?.seller_amount ?? 0,
+    lifetime_settled_orders: lifetime?.order_count ?? 0,
+    lifetime_commission: lifetime?.commission_amount ?? 0,
+  }
+}

@@ -1,0 +1,444 @@
+/**
+ * 🛡️ 2026-04-28 TD-006 (split): Seller Profile + Business-Info (4 endpoints)
+ *
+ * 원본: seller-management.routes.ts (185-553).
+ *
+ * - GET            /profile         — 셀러 프로필 조회
+ * - PUT/PATCH      /profile         — 프로필 수정
+ * - GET            /business-info   — 사업자 정보 조회
+ * - POST/PUT/PATCH /business-info   — 사업자 정보 등록/수정
+ */
+import { Hono } from 'hono'
+import { cors } from 'hono/cors'
+import { verify } from 'hono/jwt'
+import { safeError } from '../../../worker/utils/safe-error'
+import type { JWTPayload } from 'hono/utils/jwt/types'
+import { getSellerIdFromToken, type SellerJWTPayload } from '@/lib/seller-shared'
+import { swallow } from '@/worker/utils/swallow'
+import { isPinVerified } from './seller-pin.routes'
+import { registerBusinessInfoRoutes } from './seller-profile/business-info'
+// 🏪 2026-09-04 (대표 확정 "주인만, 단 마스킹해서 보여줌"): 위임받은 운영자(중개사)에게는
+//   정산계좌·사업자정보를 **가려서 보여주고 수정은 막는다**. 판별 SSOT: worker/utils/store-actor.
+import { resolveStoreActor, OWNER_ONLY_MESSAGE } from '../../../worker/utils/store-actor'
+
+type Bindings = { DB: D1Database; JWT_SECRET: string }
+interface SellerProfileUpdate {
+  name?: string
+  business_name?: string
+  phone?: string
+  address?: string
+  description?: string
+  bank_account?: string
+  bank_name?: string
+  account_holder?: string
+}
+
+interface BusinessInfoUpdate {
+  business_number?: string
+  business_registration_file?: string
+  tax_email?: string
+  representative_name?: string
+  business_address?: string
+}
+
+export const sellerProfileRoutes = new Hono<{ Bindings: Bindings }>()
+
+// 🛡️ 2026-06-12 (감사 1단계 — 계좌번호 마스킹): 조회 응답엔 끝 4자리만 노출 (****1234).
+//   저장값은 전체 유지 (정산용) — 응답 직전 가공만.
+function maskBankAccount(v: unknown): string | null {
+  if (v === null || v === undefined) return null
+  const s = String(v)
+  if (!s) return null
+  return `****${s.slice(-4)}`
+}
+function maskSellerRow<T extends Record<string, unknown> | null>(row: T): T {
+  if (row && 'bank_account' in row && row.bank_account) {
+    (row as Record<string, unknown>).bank_account = maskBankAccount(row.bank_account)
+  }
+  return row
+}
+
+sellerProfileRoutes.get('/profile', async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
+    if (!sellerId) {
+      return c.json({
+        success: false,
+        error: '로그인이 필요합니다'
+      }, 401);
+    }
+
+    const db = c.env.DB;
+    const seller = await db.prepare(`
+      SELECT
+        id, username, email, name, business_name, phone, address, description,
+        bank_account, bank_name, account_holder, status, commission_rate,
+        profile_image, bio, sns_instagram, sns_youtube, sns_facebook, sns_twitter,
+        website_url, kakao_chat_url AS kakao_chat_link,
+        created_at, updated_at
+      FROM sellers
+      WHERE id = ?
+    `).bind(sellerId).first();
+
+    if (!seller) {
+      return c.json({
+        success: false,
+        error: 'Seller not found'
+      }, 404);
+    }
+
+    // 🚚 2026-06-18 (셀러 배송비 설정): base_shipping_fee 가 없는 구 스키마 env 에서도 위 메인 SELECT 가
+    //   안 깨지게 분리 best-effort 조회. 미설정/구스키마면 기본 3000원·임계 없음(order.routes 기본값과 동일).
+    let base_shipping_fee = 3000;
+    let free_shipping_threshold: number | null = null;
+    try {
+      const ship = await db.prepare('SELECT base_shipping_fee, free_shipping_threshold FROM sellers WHERE id = ? LIMIT 1')
+        .bind(sellerId).first<{ base_shipping_fee: number | null; free_shipping_threshold: number | null }>();
+      if (ship) {
+        base_shipping_fee = ship.base_shipping_fee ?? 3000;
+        free_shipping_threshold = ship.free_shipping_threshold ?? null;
+      }
+    } catch {
+      // base_shipping_fee 컬럼이 없는 구 스키마(한도 도달) — shipping_fee 폴백(order.routes 와 동일).
+      try {
+        const ship = await db.prepare('SELECT shipping_fee, free_shipping_threshold FROM sellers WHERE id = ? LIMIT 1')
+          .bind(sellerId).first<{ shipping_fee: number | null; free_shipping_threshold: number | null }>();
+        if (ship) {
+          base_shipping_fee = ship.shipping_fee ?? 3000;
+          free_shipping_threshold = ship.free_shipping_threshold ?? null;
+        }
+      } catch { /* 둘 다 없음 — 기본값 유지 */ }
+    }
+
+    return c.json({
+      success: true,
+      data: { ...maskSellerRow(seller as Record<string, unknown>), base_shipping_fee, free_shipping_threshold }
+    });
+
+  } catch (error: unknown) {
+    console.error('Get seller profile error:', error);
+    return c.json({
+      success: false,
+      error: '셀러 프로필을 불러오지 못했습니다'
+    }, 500);
+  }
+});
+
+/**
+ * PUT /api/seller/profile
+ * 셀러 프로필 수정
+ */
+sellerProfileRoutes.on(['PUT', 'PATCH'], '/profile', async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
+    if (!sellerId) {
+      return c.json({ success: false, error: 'Unauthorized' }, 401);
+    }
+
+    const body = await c.req.json<SellerProfileUpdate & Record<string, unknown>>();
+
+    // 🛡️ 2026-06-12 (감사 1단계): GET 이 마스킹 값(****1234)을 반환하므로 — 클라가 prefill 된
+    //   마스킹 값을 그대로 재전송해 실계좌가 '****1234' 로 덮이는 사고 방지. '*' 포함 시 변경 무시.
+    if (typeof body.bank_account === 'string' && body.bank_account.includes('*')) {
+      delete (body as Record<string, unknown>).bank_account;
+    }
+
+    const updates: string[] = [];
+    const values: (string | number | null)[] = [];
+
+    const fieldMap: Record<string, string> = {
+      name: 'name', business_name: 'business_name', phone: 'phone',
+      address: 'address', description: 'description',
+      bank_account: 'bank_account', bank_name: 'bank_name', account_holder: 'account_holder',
+      profile_image: 'profile_image', bio: 'bio',
+      sns_instagram: 'sns_instagram', sns_youtube: 'sns_youtube',
+      sns_facebook: 'sns_facebook', sns_twitter: 'sns_twitter',
+      website_url: 'website_url', kakao_chat_link: 'kakao_chat_url',
+      // 🚚 2026-06-18 (셀러 배송비): fieldMap 미포함 — sellers 컬럼 한도 도달 가능성 때문에
+      //   아래에서 base_shipping_fee→shipping_fee 폴백으로 별도 robust 기록(메인 UPDATE 와 분리).
+      // 🛡️ 2026-05-15 (PRISM 따라잡기): 셀러 미니샵 커스터마이징
+      banner_url: 'banner_url',           // 셀러 페이지 상단 헤더 이미지 (1280x320 권장)
+      brand_color: 'brand_color',         // 메인 컬러 (#RRGGBB)
+      external_live_tiktok: 'external_live_tiktok',     // TikTok Live URL (다채널 송출 시)
+      external_live_instagram: 'external_live_instagram',
+      external_live_facebook: 'external_live_facebook',
+    };
+
+    // 🛡️ 2026-04-22: 정산 계좌 변경 시 is_verified=0 강제 → 어드민 재인증 전까지 출금 차단.
+    // 이전: 셀러가 이메일/UI 만 뚫리면 은행 계좌 변경 후 정산 받아감.
+    const bankChangeKeys = ['bank_account', 'bank_name', 'account_holder'] as const;
+    const bankChanged = bankChangeKeys.some(k => body[k] !== undefined);
+
+    // 🏪 2026-09-04 (대표 확정): **정산 목적지는 소유자만 바꾼다.** 위임받은 운영자(중개사)가
+    //   계좌를 갈아끼우면 그 매장의 돈이 통째로 다른 곳으로 간다 — PIN 을 요구해도 그 PIN 은
+    //   *운영자 자신의* 것이라 막지 못한다. 그래서 권한 자체로 끊는다.
+    if (bankChanged) {
+      const actor = await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET, c.env.DB);
+      if (!actor.isOwner) {
+        return c.json({ success: false, error: `정산 계좌는 ${OWNER_ONLY_MESSAGE}` }, 403);
+      }
+    }
+
+    // 🛡️ 계좌 변경은 민감 액션 — 최근 15분 내 PIN 인증 필수
+    if (bankChanged) {
+      const pinOk = await isPinVerified(c.req.header('Cookie'), sellerId, c.env.JWT_SECRET);
+      if (!pinOk) {
+        return c.json({ success: false, error: '계좌 변경은 PIN 인증이 필요합니다', code: 'PIN_REQUIRED' }, 412);
+      }
+    }
+
+    // URL 필드: https:// 또는 http:// 로 시작해야 함
+    const urlFields = ['profile_image', 'website_url', 'kakao_chat_link', 'banner_url',
+      'external_live_tiktok', 'external_live_instagram', 'external_live_facebook'];
+    for (const key of urlFields) {
+      const val = body[key as keyof typeof body];
+      if (val !== undefined && val !== null && val !== '') {
+        const str = String(val);
+        if (!/^https?:\/\//i.test(str)) {
+          return c.json({ success: false, error: `${key} must start with http:// or https://` }, 400);
+        }
+        if (str.length > 2048) {
+          return c.json({ success: false, error: `${key} is too long` }, 400);
+        }
+      }
+    }
+
+    // 🛡️ 2026-05-15: brand_color 검증 — '#RRGGBB' 6자리 hex
+    if (body.brand_color !== undefined && body.brand_color !== null && body.brand_color !== '') {
+      const c2 = String(body.brand_color);
+      if (!/^#[0-9A-Fa-f]{6}$/.test(c2)) {
+        return c.json({ success: false, error: 'brand_color 는 #RRGGBB 형식' }, 400);
+      }
+    }
+
+    // 🚚 2026-06-18 (셀러 배송비 설정): 결제 금액에 직접 영향 → 음수/비정상 차단 + 정수화.
+    //   빈값/null = 배송비 0 / 무료배송 임계 해제(null). free_shipping_threshold>0 일 때만 무료배송 적용.
+    const bk = body as Record<string, unknown>;
+    for (const k of ['base_shipping_fee', 'free_shipping_threshold'] as const) {
+      if (bk[k] === undefined) continue;
+      if (bk[k] === null || bk[k] === '') { bk[k] = k === 'free_shipping_threshold' ? null : 0; continue; }
+      const n = Number(bk[k]);
+      if (!Number.isFinite(n) || n < 0 || n > 10_000_000) {
+        return c.json({ success: false, error: `${k === 'base_shipping_fee' ? '배송비' : '무료배송 기준액'}는 0 이상 1천만원 이하여야 합니다` }, 400);
+      }
+      bk[k] = Math.floor(n);
+    }
+
+    // 🛡️ 2026-05-15: 신규 컬럼 자동 ALTER (마이그레이션 fallback)
+    const newCols = [
+      'banner_url TEXT', 'brand_color TEXT',
+      'external_live_tiktok TEXT', 'external_live_instagram TEXT', 'external_live_facebook TEXT',
+    ];
+    for (const col of newCols) {
+      try { await c.env.DB.prepare(`ALTER TABLE sellers ADD COLUMN ${col}`).run() } catch { /* exists */ }
+    }
+
+    for (const [bodyKey, dbCol] of Object.entries(fieldMap)) {
+      if (body[bodyKey] !== undefined) {
+        updates.push(`${dbCol} = ?`);
+        values.push(body[bodyKey] as string | number | null);
+      }
+    }
+
+    if (bankChanged) {
+      updates.push('is_verified = 0');
+      // 감사 로그 (실패해도 업데이트는 진행)
+      try {
+        await c.env.DB.prepare(
+          `INSERT INTO admin_audit_logs (admin_id, admin_email, action, target_type, target_id, after_value)
+           VALUES (?, ?, 'seller_bank_change', 'seller', ?, ?)`
+        ).bind(String(sellerId), 'system', String(sellerId), JSON.stringify({
+          reason: 'seller-self-bank-change',
+          bank_name: body.bank_name ?? null,
+          account_holder: body.account_holder ?? null,
+        })).run();
+      } catch {}
+    }
+
+    // 🚚 2026-06-18 (배송비 robust): sellers 컬럼 한도 도달 가능 → 존재하는 컬럼에만 별도 기록.
+    //   base_shipping_fee 우선(없으면 구스키마 shipping_fee). order.routes 읽기 우선순위와 동일 → 정합.
+    const db = c.env.DB;
+    const shipWrites: Array<{ cands: string[]; value: number | null }> = [];
+    if (bk.base_shipping_fee !== undefined) shipWrites.push({ cands: ['base_shipping_fee', 'shipping_fee'], value: bk.base_shipping_fee as number });
+    if (bk.free_shipping_threshold !== undefined) shipWrites.push({ cands: ['free_shipping_threshold'], value: (bk.free_shipping_threshold as number | null) });
+
+    if (updates.length === 0 && shipWrites.length === 0) {
+      return c.json({ success: false, error: 'No fields to update' }, 400);
+    }
+
+    if (updates.length > 0) {
+      updates.push("updated_at = datetime('now')");
+      values.push(sellerId);
+      await db.prepare(`UPDATE sellers SET ${updates.join(', ')} WHERE id = ?`).bind(...values).run();
+    }
+
+    // 🛡️ 2026-07-11 (런칭 前 보안감사 R4 — 계좌 탈취 변경 조기 감지): 계좌 변경이 실제로 저장된 뒤
+    //   셀러 본인에게 즉시 통지 (대시보드 알림 + 알림톡, 둘 다 fail-soft — 알림 실패가 저장을 안 막음).
+    //   본인이 아닌 변경(세션/이메일 탈취)을 셀러가 조기 발견 → 어드민 재검증 전 신고 가능.
+    //   ⚠️ NON-MONEY: 알림만 — is_verified=0 차단/재검증 흐름·정산 로직 무변경.
+    if (bankChanged && updates.length > 0) {
+      try {
+        const { createDashboardNotification } = await import('../../notifications/api/dashboard-notifications.routes');
+        await createDashboardNotification(db, 'seller', String(sellerId), 'bank_account_changed',
+          '⚠️ 정산 계좌 변경 알림',
+          '정산 계좌 정보가 방금 변경되었습니다. 본인이 변경하지 않았다면 즉시 비밀번호·PIN을 변경하고 문의해주세요. 보안을 위해 관리자 재확인 전까지 출금이 일시 제한됩니다.',
+          '/seller/profile');
+      } catch { /* fail-soft */ }
+      try {
+        const sRow = await db.prepare('SELECT name, phone FROM sellers WHERE id = ?')
+          .bind(sellerId).first<{ name: string | null; phone: string | null }>();
+        const phone = (sRow?.phone || '').replace(/\D/g, '');
+        if (/^01\d{8,9}$/.test(phone)) {
+          const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk');
+          await sendSystemAlimtalk(c.env, phone, 'seller_bank_changed',
+            `[유어딜] ${sRow?.name || '셀러'}님, 정산 계좌 정보가 방금 변경되었습니다.\n본인이 변경하지 않았다면 즉시 비밀번호를 변경하고 고객센터에 문의해주세요.\n(보안: 관리자 재확인 전까지 출금이 일시 제한됩니다)`,
+            { sellerId }); // 🔘 [정산 계좌 확인] 버튼(lib/alimtalk-buttons)
+        }
+      } catch { /* fail-soft — 알림톡(SENS) env 미설정/발송 실패 무시 */ }
+    }
+
+    // 배송비 — 후보 컬럼 순서대로 시도, 첫 성공 시 중단(컬럼 없음/한도면 다음 후보).
+    for (const w of shipWrites) {
+      for (const col of w.cands) {
+        try { await db.prepare(`UPDATE sellers SET ${col} = ? WHERE id = ?`).bind(w.value, sellerId).run(); break; }
+        catch { /* 컬럼 없음/한도 — 다음 후보 */ }
+      }
+    }
+
+    const updatedSeller = await db.prepare(`
+      SELECT
+        id, username, email, name, business_name, phone, address, description,
+        bank_account, bank_name, account_holder, status, commission_rate,
+        profile_image, bio, sns_instagram, sns_youtube, sns_facebook, sns_twitter,
+        website_url, kakao_chat_url AS kakao_chat_link,
+        created_at, updated_at
+      FROM sellers WHERE id = ?
+    `).bind(sellerId).first();
+
+    return c.json({ success: true, data: maskSellerRow(updatedSeller as Record<string, unknown> | null) });
+
+  } catch (error: unknown) {
+    console.error('Update seller profile error:', error);
+    return safeError(c, error, '셀러 프로필 수정 중 오류가 발생했습니다', '[seller-profile]');
+  }
+});
+
+
+// 🧱 2026-09-04: 사업자 정보 3핸들러는 `seller-profile/business-info.ts` 로 분리(파일 크기 래칫).
+registerBusinessInfoRoutes(sellerProfileRoutes)
+
+
+// 🛡️ 2026-05-27 (사용자 결정 — 투명성): 셀러 본인 영입자 + commission 분배 정보.
+//   sellers.introduced_by_X_id 가 있으면 영입자 정보 + commission % 반환.
+//   매장 dashboard 의 SellerReferralInfoCard 에서 사용.
+sellerProfileRoutes.get("/referral-info", async (c) => {
+  // 🌇 2026-09-04 에이전시 완전 일몰 — `introduced_by_agency_id` / `agencies` 조회 / `agency_commission_pct`
+  //    를 전부 걷어냈다. 영입자는 이제 **사람(인플루언서)** 하나뿐이다.
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header("Authorization"), c.env.JWT_SECRET);
+    if (!sellerId) return c.json({ success: false, error: "로그인 필요" }, 401);
+
+    const seller = await c.env.DB.prepare(
+      "SELECT introduced_by_influencer_id, introduced_at, referral_bonus_until FROM sellers WHERE id = ?"
+    ).bind(sellerId).first<{
+      introduced_by_influencer_id: string | null;
+      introduced_at: string | null;
+      referral_bonus_until: string | null;
+    }>().catch(() => null);
+
+    if (!seller || !seller.introduced_by_influencer_id) {
+      return c.json({ success: true, data: null });
+    }
+
+    const i = await c.env.DB.prepare("SELECT handle FROM users WHERE id = ?")
+      .bind(seller.introduced_by_influencer_id).first<{ handle: string | null }>().catch(() => null);
+    const influencer_handle = i?.handle || undefined;
+
+    // platform_settings 에서 commission % 조회 (default)
+    const { results: settings } = await c.env.DB.prepare(
+      "SELECT key, value FROM platform_settings WHERE key IN (?, ?)"
+    ).bind("influencer_commission_pct", "seller_referral_bonus_pct").all<{ key: string; value: string }>()
+      .catch(() => ({ results: [] as { key: string; value: string }[] }));
+    const sMap = (settings || []).reduce((acc: Record<string, string>, r) => ({ ...acc, [r.key]: r.value }), {});
+
+    return c.json({
+      success: true,
+      data: {
+        ...seller,
+        influencer_handle,
+        influencer_commission_pct: Number(sMap.influencer_commission_pct) || 0.5,
+        bonus_pct: Number(sMap.seller_referral_bonus_pct) || 1,
+      },
+    });
+  } catch {
+    return c.json({ success: false, error: "referral-info 조회 실패" }, 500);
+  }
+});
+
+
+// 🛡️ 2026-05-27 (사용자 결정 — 무료 marginal): 사업자등록증 OCR 자동 검증.
+//   Cloudflare Workers AI Vision (무료 일 10K Neurons) 호출 → 추출 + DB 비교 → 자동 verified.
+//   사용자 액션: wrangler.toml 에 AI binding 추가 (사용자 결정 시 수동).
+//   graceful: env.AI 없으면 skip (기존 admin 수동 검토).
+sellerProfileRoutes.post('/business-registration/ocr-verify', async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
+    if (!sellerId) return c.json({ success: false, error: '로그인 필요' }, 401);
+
+    const formData = await c.req.formData().catch(() => null);
+    const file = formData?.get('file') as File | null;
+    if (!file) return c.json({ success: false, error: 'file 필수' }, 400);
+
+    const buffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+
+    // OCR 호출 (graceful)
+    const { ocrBusinessRegistration, compareOcrWithDb } = await import('../../../worker/utils/ocr-business-registration');
+    const { isOcrAutoVerifyEnabled } = await import('../../../worker/utils/ocr-license');
+    const ai = (c.env as { AI?: { run: (m: string, i: Record<string, unknown>) => Promise<unknown> } }).AI;
+    const ocrResult = await ocrBusinessRegistration(ai, bytes);
+
+    // DB 값 조회
+    const seller = await c.env.DB.prepare(
+      'SELECT business_number, representative_name, business_start_date FROM sellers WHERE id = ?'
+    ).bind(sellerId).first<{ business_number: string; representative_name: string | null; business_start_date: string | null }>();
+    if (!seller) return c.json({ success: false, error: 'seller 없음' }, 404);
+
+    const cmp = compareOcrWithDb(ocrResult, {
+      businessNumber: seller.business_number,
+      representativeName: seller.representative_name,
+      businessStartDate: seller.business_start_date,
+    });
+
+    // 🚧 2026-09-16 — 자동 승인을 **게이트 뒤로** (결재 `2026-09-16-ocr-license-automation.md` §안전 레일 ①).
+    //   이 블록은 2026-05-27 에 쓰였지만 AI 바인딩이 없어 **한 번도 돈 적이 없다**. 바인딩이 켜진
+    //   2026-09-16 그 순간부터 살아나는데, 그대로 두면 **게이트 없이 승인이 자동으로 나간다**.
+    //
+    //   그리고 이 비교는 애초에 승인 근거로 약하다: 대조 대상이 *사장님이 직접 타이핑한 값* 이라
+    //   "사진이 본인이 적은 것과 같다" 만 증명한다. 남의 가게 이름으로 낸 위조는 그대로 통과한다.
+    //   진짜 방어는 **서류 소재지 ↔ 카카오맵에서 고른 매장 주소** 대조다(`shared/korean-address.ts`).
+    //
+    //   ⚠️ 기본 OFF. 켜는 것은 대표 판단(등급 C)이고, 켜기 전 staging 검증이 붙는다.
+    const autoVerifyOn = await isOcrAutoVerifyEnabled(c.env.DB);
+    const willAutoVerify = autoVerifyOn && cmp.autoVerified;
+    if (willAutoVerify) {
+      await c.env.DB.prepare(
+        `UPDATE sellers SET business_registration_status = 'verified', updated_at = datetime('now') WHERE id = ?`
+      ).bind(sellerId).run().catch(() => null);
+    }
+
+    return c.json({
+      success: true,
+      ocr: ocrResult,
+      mismatch: cmp.mismatch,
+      // 게이트가 꺼져 있으면 "자동 승인됐다" 고 말하지 않는다 — 화면이 거짓말을 하면 아무도 안 본다
+      autoVerified: willAutoVerify,
+      gateEnabled: autoVerifyOn,
+      message: willAutoVerify
+        ? '사업자등록증 자동 검증 완료'
+        : '추출했습니다 — 관리자가 확인합니다',
+    });
+  } catch (err) {
+    return c.json({ success: false, error: 'OCR 처리 실패' }, 500);
+  }
+});

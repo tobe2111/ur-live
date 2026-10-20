@@ -1,0 +1,372 @@
+import { useTranslation } from '@/lib/i18n-lite'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
+import {
+  MessageSquare, Loader2, Zap,
+  CreditCard, History, CheckCircle2, XCircle,
+  Package
+} from 'lucide-react'
+import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
+import { formatKST } from '@/utils/date'
+import SellerLayout from '@/components/SellerLayout'
+import BrandLoader from '@/components/brand/BrandLoader'
+import { formatNumber } from '@/utils/format'
+import { getTossPayments } from '@/lib/toss-preload'
+import { resolveTossFlow } from '@/lib/toss-key-type'
+
+interface DbPackage {
+  id: number
+  label: string
+  credits: number
+  price: number
+  is_active: number
+  sort_order: number
+}
+
+interface CreditHistory {
+  id: number
+  type: 'charge' | 'deduct' | 'refund'
+  amount: number
+  price_paid: number | null
+  description: string | null
+  created_at: string
+}
+
+interface AlimtalkLog {
+  id: number
+  receiver: string
+  template_code: string
+  order_id: string | null
+  success: number
+  error_msg: string | null
+  created_at: string
+}
+
+export default function SellerAlimtalkPage() {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const [activeTab, setActiveTab] = useState<'overview' | 'history' | 'logs'>('overview')
+  const [chargeModal, setChargeModal] = useState(false)
+  const [selectedPkgId, setSelectedPkgId] = useState<number | null>(null)
+  const [paying, setPaying] = useState(false)
+
+  useEffect(() => {
+    if (!isSellerAuthenticated()) redirectToLogin(navigate)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigate])
+
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (credits + logs[enabled]).
+  const creditsQ = useApiQuery<{ balance: number; history: CreditHistory[]; packages: DbPackage[] }>(['seller', 'alimtalk-credits'], '/api/seller/alimtalk/credits', {
+    select: (r: any) => (r?.success ? { balance: r.data.balance ?? 0, history: r.data.history ?? [], packages: r.data.packages ?? [] } : { balance: 0, history: [], packages: [] }),
+  })
+  const logsQ = useApiQuery<AlimtalkLog[]>(['seller', 'alimtalk-logs'], '/api/seller/alimtalk/logs', { enabled: activeTab === 'logs', select: (r: any) => (r?.success ? r.data ?? [] : []) })
+  const balance = creditsQ.data?.balance ?? 0
+  const creditHistory = creditsQ.data?.history ?? []
+  const packages = creditsQ.data?.packages ?? []
+  const logs = logsQ.data ?? []
+  const loading = creditsQ.isLoading
+  const logsLoading = logsQ.isLoading
+  const loadCredits = () => creditsQ.refetch()
+
+  // packages 도착 시 기본 선택(중간 패키지) — 1회만.
+  useEffect(() => {
+    if (packages.length > 0 && selectedPkgId === null) {
+      setSelectedPkgId(packages[Math.floor(packages.length / 2)]?.id ?? packages[0].id)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [packages])
+
+  // 🛡️ 2026-05-20: Toss V1 widget API → V2 payment API 마이그레이션.
+  //   기존: window.TossPayments!(key).requestPayment('카드', { amount: number })
+  //         → customerKey 누락 + amount 형식 오류 → apigw 400 (px-payment-parameters).
+  //   변경: PointsChargePage 와 동일한 패턴 — loadTossPayments + payment({customerKey}).requestPayment.
+  //   영구 해결 — variant 콘솔 설정 의존성 ZERO.
+
+  async function handleCharge() {
+    if (!selectedPkgId) { toast.error(t('seller.selectPackageError')); return }
+    setPaying(true)
+    try {
+      const res = await api.post('/api/seller/alimtalk/credits/charge',
+        { package_id: selectedPkgId },
+        { headers: { Authorization: `Bearer ${getSellerToken()}` } }
+      )
+      if (!res.data.success) { toast.error(res.data.error); return }
+
+      const { orderId, amount, orderName, clientKey, flow: serverFlow } = res.data.data as {
+        orderId: string; amount: number; orderName: string; clientKey?: string; flow?: 'redirect' | 'widget' | 'invalid'
+      }
+
+      if (!clientKey) {
+        toast.error(t('seller.paymentSettingError'))
+        return
+      }
+
+      // 🛡️ 2026-05-23 belt-and-suspenders: 클라이언트도 키 형식 직접 감지 → server 응답 우회.
+      const flow = resolveTossFlow(serverFlow, clientKey)
+      if (flow === 'invalid') {
+        toast.error(t('seller.paymentSettingError'))
+        return
+      }
+
+      // 🛡️ 2026-05-23 v7: 모든 키 widgets() API 경로 (payment V2 폐기).
+      const params = new URLSearchParams({
+        orderId,
+        amount: String(amount),
+        orderName,
+        clientKey,
+        successUrl: `/seller/alimtalk?charge=success&orderId=${orderId}`,
+        failUrl: `/seller/alimtalk?charge=fail`,
+      })
+      window.location.href = `/pay/widget?${params.toString()}`
+      return
+    } catch (err: unknown) {
+      const err_ = err as { message?: string; code?: string }
+      if (err_.code !== 'USER_CANCEL') {
+        toast.error(err_.message || t('seller.paymentError'))
+      }
+    } finally { setPaying(false) }
+  }
+
+  // Handle redirect after payment
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const charge = params.get('charge')
+    const paymentKey = params.get('paymentKey')
+    const orderId = params.get('orderId')
+    const amount = params.get('amount')
+
+    if (charge === 'success' && paymentKey && orderId && amount) {
+      window.history.replaceState({}, '', '/seller/alimtalk')
+      api.post('/api/seller/alimtalk/credits/confirm',
+        { paymentKey, orderId, amount: Number(amount) },
+        { headers: { Authorization: `Bearer ${getSellerToken()}` } }
+      ).then(res => {
+        if (res.data.success) {
+          toast.success(res.data.message || t('seller.chargeComplete'))
+          loadCredits()
+        } else {
+          toast.error(res.data.error || t('seller.chargeFailed'))
+        }
+      }).catch(() => toast.error(t('seller.chargeFailed')))
+    } else if (charge === 'fail') {
+      window.history.replaceState({}, '', '/seller/alimtalk')
+      toast.error(t('seller.paymentCancelled'))
+    }
+  }, [])
+
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#F4F5F7] flex items-center justify-center">
+        <BrandLoader />
+      </div>
+    )
+  }
+
+  const headerRight = (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-gray-400">{t('seller.remainingCredits')}</span>
+      <span className={`text-sm font-bold ${balance > 0 ? 'text-gray-700' : 'text-tone-bad'}`}>
+        {formatNumber(balance)}{t('seller.creditsUnit')}
+      </span>
+      <button
+        onClick={() => setChargeModal(true)}
+        className="ur-btn ur-btn-sm ur-btn-primary flex items-center gap-1"
+      >
+        <CreditCard className="w-3.5 h-3.5" /> {t('seller.chargeBtn')}
+      </button>
+    </div>
+  )
+
+  return (
+    <SellerLayout title={t('seller.brandMessage')} headerRight={headerRight}>
+      <div className="mx-auto max-w-5xl space-y-5">
+        {/* 🛡️ 2026-04-22 배치 129: 리디자인 */}
+        {/* 🎫 2026-09-14 (모바일 우선 재설계 ④ — 검은 면·그라디언트 0): 검정 그라디언트 잔액 카드 → 티켓(파란 밴드 + 흰 본문).
+            숫자가 주인공이고 장식 원 두 개는 뜻이 없어 뺐다. */}
+        <div className="overflow-hidden rounded-[var(--dash-radius,16px)] border border-rule bg-white">
+          <div className="flex h-11 items-center px-4 text-[13px] font-bold text-white bg-brand">{t('seller.brandMessageCredits')}</div>
+          <div className="p-5">
+            <p className="text-[30px] font-extrabold leading-tight tracking-tight text-gray-900 sm:text-[34px]">
+              {formatNumber(balance)}
+              <span className="ml-1 text-[15px] font-semibold text-gray-500">{t('seller.creditsUnit')}</span>
+            </p>
+            <p className="mt-2 text-[12.5px] text-gray-500">{t('seller.brandMessageDesc')}</p>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1 mb-5 border-b border-gray-200">
+          {([
+            { id: 'overview', label: t('seller.autoSendList'), icon: Zap },
+            { id: 'history', label: t('seller.chargeHistory'), icon: CreditCard },
+            { id: 'logs', label: t('seller.sendHistory'), icon: History },
+          ] as const).map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${activeTab === id ? 'border-brand text-brand-text' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            >
+              <Icon className="w-4 h-4" /> {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Auto Send List Tab */}
+        {activeTab === 'overview' && (
+          <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white divide-y divide-gray-50">
+            {[
+              { trigger: t('seller.orderReceivedTrigger'),   desc: t('seller.orderReceivedDesc'),     active: true },
+              { trigger: t('seller.deliveryStartedTrigger'),  desc: t('seller.deliveryStartedDesc'),   active: true },
+              { trigger: t('seller.deliveryCompletedTrigger'), desc: t('seller.deliveryCompletedDesc'), active: false },
+              { trigger: t('seller.liveBefore10min'),         desc: t('seller.liveBefore10minDesc'),   active: false },
+              { trigger: t('seller.orderCancelledTrigger'),   desc: t('seller.orderCancelledDesc'),    active: true },
+            ].map(item => (
+              <div key={item.trigger} className="flex items-center justify-between p-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{item.trigger}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{item.desc}</p>
+                </div>
+                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${item.active ? 'bg-tone-ok-bg text-tone-ok' : 'bg-gray-100 text-gray-400'}`}>
+                  {item.active ? t('seller.activeStatus') : t('seller.preparingStatus')}
+                </span>
+              </div>
+            ))}
+            <div className="p-4 border border-rule bg-white">
+              <p className="text-xs text-tone-warn">
+                {t('seller.kakaoTemplateNote')}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Charge History Tab */}
+        {activeTab === 'history' && (
+          <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white">
+            {creditHistory.length === 0 ? (
+              <div className="py-16 text-center">
+                <CreditCard className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+                <p className="text-sm text-gray-400">{t('seller.noChargeHistory')}</p>
+                <button onClick={() => setChargeModal(true)} className="ur-btn ur-btn-md ur-btn-primary mt-3">
+                  {t('seller.firstCharge')}
+                </button>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {creditHistory.map(tx => (
+                  <div key={tx.id} className="flex items-center justify-between px-4 py-3">
+                    <div>
+                      <p className="text-sm text-gray-800">{tx.description ?? (tx.type === 'charge' ? t('seller.creditChargeLabel') : t('seller.creditDeductLabel'))}</p>
+                      <p className="text-xs text-gray-400">{formatKST(tx.created_at)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className={`text-sm font-semibold ${tx.amount > 0 ? 'text-gray-700' : 'text-gray-500'}`}>
+                        {tx.amount > 0 ? '+' : ''}{formatNumber(tx.amount)}{t('seller.creditsUnit')}
+                      </p>
+                      {tx.price_paid && (
+                        <p className="text-xs text-gray-400">{formatNumber(tx.price_paid)}{t('common.won')}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Send History Tab */}
+        {activeTab === 'logs' && (
+          <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white">
+            {logsLoading ? (
+              <div className="py-12 text-center"><Loader2 className="w-6 h-6 animate-spin text-brand-text mx-auto" /></div>
+            ) : logs.length === 0 ? (
+              <div className="py-16 text-center">
+                <History className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+                <p className="text-sm text-gray-400">{t('seller.noSendHistory')}</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {logs.map(log => (
+                  <div key={log.id} className="flex items-start gap-3 px-4 py-3">
+                    {log.success
+                      ? <CheckCircle2 className="w-4 h-4 text-tone-ok mt-0.5 flex-shrink-0" />
+                      : <XCircle className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                    }
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-800">
+                        {log.receiver.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3')}
+                        {log.order_id && <span className="text-xs text-gray-400 ml-2">{t('seller.orderLabelPrefix')} {log.order_id}</span>}
+                      </p>
+                      {log.error_msg && <p className="text-xs text-gray-400">{log.error_msg}</p>}
+                      <p className="text-xs text-gray-400">{formatKST(log.created_at)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Charge Modal */}
+      {chargeModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 pb-4">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setChargeModal(false)} />
+          <div className="relative rounded-[var(--dash-radius,16px)] border border-rule bg-white shadow-xl w-full max-w-sm max-h-[85dvh] overflow-y-auto p-5">
+            <h3 className="text-sm font-semibold text-gray-900 mb-1">{t('seller.creditChargeTitle')}</h3>
+            <p className="text-xs text-gray-400 mb-4">{t('seller.creditChargeDesc')}</p>
+
+            <div className="space-y-2 mb-5">
+              {packages.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-4">{t('seller.loadingPackages')}</p>
+              ) : packages.map(pkg => {
+                const unitPrice = pkg.credits > 0 ? (pkg.price / pkg.credits).toFixed(1) : '0'
+                const isSelected = selectedPkgId === pkg.id
+                return (
+                  <button
+                    key={pkg.id}
+                    onClick={() => setSelectedPkgId(pkg.id)}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-colors ${isSelected ? 'border-brand bg-brand-tint' : 'border-gray-100 hover:border-gray-200'}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Package className={`w-4 h-4 ${isSelected ? 'text-gray-700' : 'text-gray-400'}`} />
+                      <div className="text-left">
+                        <p className={`text-sm font-semibold ${isSelected ? 'text-gray-700' : 'text-gray-800'}`}>{pkg.label}</p>
+                        <p className="text-xs text-gray-400">{t('seller.perUnit', { price: unitPrice })}</p>
+                      </div>
+                    </div>
+                    <p className={`text-sm font-bold ${isSelected ? 'text-gray-700' : 'text-gray-700'}`}>
+                      {formatNumber(pkg.price)}{t('common.won')}
+                    </p>
+                  </button>
+                )
+              })}
+            </div>
+
+            {(() => {
+              const selectedPkg = packages.find(p => p.id === selectedPkgId)
+              return (
+                <div className="flex gap-3">
+                  <button onClick={() => setChargeModal(false)} className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">
+                    {t('common.cancel')}
+                  </button>
+                  <button
+                    onClick={handleCharge}
+                    disabled={paying || !selectedPkg}
+                    className="ur-btn ur-btn-md ur-btn-primary flex-1 flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    {paying ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+                    {selectedPkg ? t('seller.payAmount', { amount: formatNumber(selectedPkg.price) }) : t('seller.selectPackage')}
+                  </button>
+                </div>
+              )
+            })()}
+          </div>
+        </div>
+      )}
+    </SellerLayout>
+  )
+}

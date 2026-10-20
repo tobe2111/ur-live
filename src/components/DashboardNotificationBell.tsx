@@ -1,0 +1,226 @@
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { BellIcon } from '@/components/icons/urdeal-icons'
+import api from '@/lib/api'
+import { useTranslation } from '@/lib/i18n-lite'
+import { safeInternalPath } from '@/utils/safe-internal-path'
+
+interface Notification {
+  id: number
+  type: string
+  title: string
+  message: string | null
+  link: string | null
+  is_read: number
+  created_at: string
+}
+
+interface Props {
+  tokenKey: 'admin_token' | 'seller_token' | 'agency_token'
+  // 🔔 2026-06-30: 다크 배경(도매 유틸바)용 색 오버라이드 — 미지정이면 기존 라이트 대시보드 스타일 유지(additive).
+  iconClassName?: string
+  buttonClassName?: string
+}
+
+function timeAgo(dateStr: string): string {
+  const now = Date.now()
+  const then = new Date(dateStr + 'Z').getTime()
+  const diff = Math.max(0, now - then)
+  const minutes = Math.floor(diff / 60000)
+  if (minutes < 1) return '방금 전'
+  if (minutes < 60) return `${minutes}분 전`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}시간 전`
+  const days = Math.floor(hours / 24)
+  return `${days}일 전`
+}
+
+export default function DashboardNotificationBell({ tokenKey, iconClassName, buttonClassName }: Props) {
+  const { t } = useTranslation()
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  // 지수 백오프 — 연속 실패 시 폴링 간격을 30s → 60s → 120s → 240s 최대로 증가
+  // 성공하면 즉시 30s 로 복귀. 백엔드 장애 시 클라이언트 대량 호출로 인한 D1 quota 소진 방지.
+  const fetchNotifications = useCallback(async (): Promise<boolean> => {
+    // 🛡️ 2026-06-08: 벨의 컨텍스트 토큰(tokenKey)을 명시적으로 첨부 — 인터셉터의 agency>admin>seller
+    //   우선순위가 다른 역할 토큰을 붙여 '어드민 알림이 안 옴'(다른 역할로 인증)하던 버그 수정.
+    const tk = localStorage.getItem(tokenKey)
+    if (!tk) return true
+    try {
+      const res = await api.get('/api/dashboard-notifications?unread_only=false&limit=10', { headers: { Authorization: `Bearer ${tk}` } })
+      if (res.data?.notifications) {
+        setNotifications(res.data.notifications)
+        setUnreadCount(res.data.unread_count || 0)
+      }
+      return true
+    } catch (e) {
+      if (import.meta.env.DEV) console.warn('[DashboardBell] fetch failed:', e)
+      return false
+    }
+  }, [tokenKey])
+
+  useEffect(() => {
+    let cancelled = false
+    let currentInterval = 30_000
+    const BASE = 30_000
+    const MAX = 240_000
+    let timerId: ReturnType<typeof setTimeout> | null = null
+
+    const scheduleNext = () => {
+      if (cancelled) return
+      timerId = setTimeout(async () => {
+        if (cancelled) return
+        if (!document.hidden) {
+          const ok = await fetchNotifications()
+          currentInterval = ok ? BASE : Math.min(currentInterval * 2, MAX)
+        }
+        scheduleNext()
+      }, currentInterval)
+    }
+
+    fetchNotifications().then(ok => { if (!ok) currentInterval = 60_000 })
+    scheduleNext()
+
+    const onVisible = () => {
+      if (!document.hidden) {
+        fetchNotifications().then(ok => { if (ok) currentInterval = BASE })
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      cancelled = true
+      if (timerId) clearTimeout(timerId)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [fetchNotifications])
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  async function markAllRead() {
+    const tk = localStorage.getItem(tokenKey)
+    if (!tk) return
+    try {
+      await api.put('/api/dashboard-notifications/read-all', null, { headers: { Authorization: `Bearer ${tk}` } })
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: 1 })))
+      setUnreadCount(0)
+    } catch { /* ignore */ }
+  }
+
+  async function markRead(id: number) {
+    const tk = localStorage.getItem(tokenKey)
+    if (!tk) return
+    try {
+      await api.put(`/api/dashboard-notifications/${id}/read`, null, { headers: { Authorization: `Bearer ${tk}` } })
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: 1 } : n))
+      setUnreadCount(prev => Math.max(0, prev - 1))
+    } catch { /* ignore */ }
+  }
+
+  function handleNotificationClick(n: Notification) {
+    if (!n.is_read) markRead(n.id)
+    if (n.link) {
+      // 🛡️ 2026-05-19: safeInternalPath 통합 — login/auth/oauth blacklist + backslash + 제어문자 차단.
+      //   이전 inline 정규식은 forbidden prefix 누락. 알림 생성자 (어드민) 가 /login 으로 보내면 무한 루프 가능.
+      const safe = safeInternalPath(String(n.link), '')
+      if (safe) {
+        window.location.href = safe
+      } else if (import.meta.env.DEV) {
+        console.warn('[Notification] blocked unsafe link:', n.link)
+      }
+    }
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      {/**
+        * 👆 2026-10-01 — 눌리는 크기 36 → **40px**(`ur-btn-md` 눈금). 셀러·어드민·에이전시가
+        *   **같은 부품**을 쓰므로 한 줄이 세 대시보드의 헤더를 좌우한다.
+        *   ⚠️ `p-2.5`(10px)로 키웠다가 되돌렸다 — **4px 격자 규칙**(🎫 ⑧)의 반쪽 간격이라
+        *     `consumer-type-scale` 가드가 빨간불을 냈다. 패딩이 아니라 **박스**로 40px 을 만든다
+        *     (헤더 페이지검색 버튼과 같은 패턴). 아이콘 20px 은 그대로 가운데 온다.
+        *   🔖 뱃지의 `-top-0.5`·`-right-0.5` 는 **음수 광학 보정**이라 그 규칙의 예외다(그대로).
+        */}
+      <button
+        onClick={() => setOpen(!open)}
+        className={`relative flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${buttonClassName || 'hover:bg-gray-100'}`}
+        aria-label={unreadCount > 0 ? `알림 ${unreadCount}개 있음` : '알림 열기'}
+        aria-haspopup="true"
+        aria-expanded={open}
+      >
+        <BellIcon className={`w-5 h-5 ${iconClassName || 'text-gray-600'}`} />
+        {unreadCount > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[12px] font-bold px-1">
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden" role="dialog" aria-label={t('notifications.listAria', { defaultValue: '알림 목록' })}>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+            <span className="text-[15px] font-semibold text-gray-900">알림</span>
+            {unreadCount > 0 && (
+              <button
+                onClick={markAllRead}
+                className="text-[12px] text-blue-600 hover:text-blue-800 font-medium"
+              >
+                모두 읽음
+              </button>
+            )}
+          </div>
+
+          <div className="max-h-80 overflow-y-auto">
+            {notifications.length === 0 ? (
+              <div className="px-4 py-8 text-center text-[15px] text-gray-400">
+                알림이 없습니다
+              </div>
+            ) : (
+              notifications.map(n => (
+                <div
+                  key={n.id}
+                  onClick={() => handleNotificationClick(n)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      handleNotificationClick(n)
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${n.title}${n.message ? ' — ' + n.message : ''} (${timeAgo(n.created_at)})${!n.is_read ? ' — 읽지 않음' : ''}`}
+                  className={`px-4 py-3 border-b border-gray-50 cursor-pointer hover:bg-gray-50 focus:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-inset transition-colors ${
+                    !n.is_read ? 'bg-blue-50/50' : ''
+                  }`}
+                >
+                  <div className="flex items-start gap-2">
+                    {!n.is_read && (
+                      <span className="mt-2 w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" aria-hidden="true" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[15px] font-medium text-gray-900 truncate">{n.title}</p>
+                      {n.message && (
+                        <p className="text-[12px] text-gray-500 mt-1 line-clamp-2">{n.message}</p>
+                      )}
+                      <p className="text-[12px] text-gray-400 mt-1">{timeAgo(n.created_at)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

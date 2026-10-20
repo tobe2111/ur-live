@@ -1,0 +1,313 @@
+import { useEffect, useRef, useState } from 'react'
+import { detailHref } from '@/shared/product-flow'
+import { usePrefetchMapDetail } from './restaurant-map/prefetch-detail'
+import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useTranslation } from '@/lib/i18n-lite'
+import SEO from '@/components/SEO'
+import { usePopularSearches } from '@/hooks/queries/usePopularSearches'
+import api from '@/lib/api'
+import { useSearchInfinite } from '@/hooks/useSearch'
+import { isVoucherCategory } from '@/shared/constants/voucher-categories'
+import SearchHeader from '@/components/search/SearchHeader'
+import SearchStates, { addRecentSearch } from '@/components/search/SearchStates'
+import SearchSuggestPanel from '@/components/search/SearchSuggestPanel'
+import RestaurantRow from '@/pages/restaurant-map/RestaurantRow'
+import SortFilterBar from '@/components/search/SortFilterBar'
+import { priceDisplay } from '@/shared/price-display'
+
+interface Product {
+  id: number
+  name: string
+  description: string
+  price: number
+  original_price: number
+  discount_rate: number
+  image_url: string
+  stock: number
+  seller_name: string
+  seller_username: string
+  // 🛡️ 2026-05-19: 검색 결과 탭 (전체/교환권/쇼핑) 분리용.
+  deal_only?: number
+  // 🖥️ 2026-07-16: 이용권(voucher 카테고리) 판별용 — 검색을 이용권만으로 필터.
+  category?: string
+  // 🎫 2026-09-03: 이용권 행(RestaurantRow)이 그리는 매장 정보 — 서버 응답에 이미 실려 온다(실측).
+  restaurant_name?: string
+  restaurant_address?: string
+  restaurant_phone?: string
+  restaurant_lat?: number
+  restaurant_lng?: number
+  avg_rating?: number
+}
+
+
+interface SearchSuggestion {
+  type: 'product' | 'seller'
+  text: string
+}
+
+export default function SearchPage() {
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const prefetchDetail = usePrefetchMapDetail() // 🧭 2026-10-15: 손가락이 닿은 순간 상세를 데운다(지도와 같은 훅)
+  const { t } = useTranslation()
+  const query = searchParams.get('q') || ''
+  /** 🎟️ 검색 범위 — 'exchange'(교환권 전용, `/vouchers` 에서 진입) / 그 외 = 이용권만(기본). */
+  const scope = searchParams.get('scope') || ''
+
+  // 🛡️ 2026-05-19: 무한 스크롤 — useInfiniteQuery 로 페이지 누적.
+  const {
+    data: infiniteData,
+    isLoading: loading,
+    isError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useSearchInfinite(query)
+  const loadMoreRef = useRef<HTMLDivElement>(null)
+  // 모든 페이지의 products 합치기 + total 은 첫 페이지 값.
+  const searchResult = infiniteData
+    ? {
+        products: infiniteData.pages.flatMap(p => p.products),
+        total: infiniteData.pages[0]?.total ?? 0,
+        page: 1, limit: 50,
+      }
+    : undefined
+
+  // IntersectionObserver — sentinel 닿으면 다음 페이지 자동 fetch.
+  useEffect(() => {
+    if (!loadMoreRef.current || !hasNextPage || isFetchingNextPage) return
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) fetchNextPage()
+    }, { threshold: 0.1 })
+    observer.observe(loadMoreRef.current)
+    return () => observer.disconnect()
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
+
+  const [error, setError] = useState('')
+  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([])
+  /**
+   * 🔎 2026-09-30 (대표 *"연관검색? 처럼 나오는거 별로야"*) — 제안은 결과 **위에 뜨지 않고**
+   *   결과 **자리**에 들어선다. 헤더는 열림 신호만 올리고, 그리는 건 `SearchSuggestPanel` 이다.
+   */
+  const [panel, setPanel] = useState<{ open: boolean; value: string }>({ open: false, value: '' })
+  const [sortBy, setSortBy] = useState<'relevance' | 'price_low' | 'price_high' | 'newest'>('relevance')
+  const [priceRange] = useState<{ min: number; max: number }>({ min: 0, max: 1000000 })
+  // 🛡️ 2026-05-19: 검색 결과 타입 탭 (전체/교환권/쇼핑) — 사용자가 결과 안에서 분류 가능.
+
+  useEffect(() => { document.title = t('search.pageTitle', { defaultValue: '검색 - 유어딜' }) }, [t])
+
+  useEffect(() => {
+    if (isError) {
+      setError(t('search.errorMsg', { defaultValue: '검색 중 오류가 발생했습니다' }))
+    }
+  }, [isError])
+
+  // 🐛 2026-10-14: 여기 있던 `getDiscountedPrice(price, rate)` 는 `price × (1−rate/100)` 로
+  //   **판매가를 한 번 더 깎고 있었다**. 이 API 의 `price` 는 이미 파는 값이고, 정가는
+  //   `original_price` 다 — 라이브에선 `discount_rate` 가 전부 0 이라 우연히 맞아떨어졌을 뿐,
+  //   그 컬럼이 채워지는 날(KT 기프티콘 동기화가 채운다) 필터·정렬이 **이중 할인** 값을 쓴다.
+  //   SSOT `priceDisplay().price` = 실제로 파는 값.
+  const sellingPrice = (p: { price: number; original_price?: number | null; discount_rate?: number | null }) =>
+    priceDisplay(p).price
+
+  const handleSearch = (searchQuery: string) => {
+    // 🛡️ 2026-05-19: 최근 검색어 저장 (사용자 요청).
+    addRecentSearch(searchQuery)
+    navigate(`/search?q=${encodeURIComponent(searchQuery)}`)
+  }
+
+  const loadSuggestions = async (value: string) => {
+    if (!value || value.length < 2) {
+      setSuggestions([])
+      return
+    }
+
+    try {
+      // 🔎 2026-07-20 (대표 — 검색 자동완성 수리): `/api/search/suggestions` 는 { data: string[] } 를 반환.
+      //   기존 코드는 `data.suggestions`(존재 X)를 읽어 자동완성이 항상 비어 있었음. string[] → {type,text} 매핑.
+      const scopeQs = scope ? `&scope=${encodeURIComponent(scope)}` : ''
+      const response = await api.get(`/api/search/suggestions?q=${encodeURIComponent(value)}${scopeQs}`)
+      const list = response.data?.data
+      if (Array.isArray(list)) {
+        setSuggestions(list.filter((s: unknown): s is string => typeof s === 'string' && !!s)
+          .map((text: string) => ({ type: 'product' as const, text })))
+      } else {
+        setSuggestions([])
+      }
+    } catch (error) {
+      if (import.meta.env.DEV) console.error('Failed to load suggestions:', error)
+    }
+  }
+
+  const getSortedAndFilteredProducts = () => {
+    if (!searchResult?.products) return []
+
+    let filtered = (searchResult.products as Product[]).filter(product => {
+      const price = sellingPrice(product)
+      if (price < priceRange.min || price > priceRange.max) return false
+      // 🎟️ 2026-08-08 (대표 — "교환권 페이지에선 교환권만 검색되게"): 검색 범위가 **어디서 왔는지**에
+      //   따라 정반대다. 그래서 `?scope=` 로 가른다 — 없으면 종전(이용권만) 그대로.
+      //     · scope=exchange : 교환권(deal_only=1)만 — `/vouchers` 의 검색 버튼이 붙여 보낸다
+      //     · 그 외(기본)     : 이용권만 (2026-07-16 대표 "검색은 무조건 이용권만")
+      //   ⚠️ 기본값을 바꾸지 않는다 — 홈·지도에서 온 검색은 지금 동작이 맞다.
+      if (scope === 'exchange') return Number(product.deal_only) === 1
+      // category 누락 응답에도 결과가 비지 않도록 deal_only 를 1차 가드로 사용(robust).
+      if (Number(product.deal_only) === 1) return false
+      if (product.category && !isVoucherCategory(product.category)) return false
+      return true
+    })
+
+    switch (sortBy) {
+      case 'price_low':
+        return filtered.sort((a, b) =>
+          sellingPrice(a) - sellingPrice(b)
+        )
+      case 'price_high':
+        return filtered.sort((a, b) =>
+          sellingPrice(b) - sellingPrice(a)
+        )
+      case 'newest':
+        return filtered.sort((a, b) => b.id - a.id)
+      default:
+        return filtered
+    }
+  }
+
+  const products = getSortedAndFilteredProducts()
+  // 🧹 2026-07-20 (소비자 감사): 결과 유무는 서버 total(교환권·쇼핑 포함 전체)이 아니라 **필터 후(이용권 전용)
+  //   products.length** 기준. 서버 매칭이 전부 비-이용권이면 total>0 이라 빈 그리드에 "N개 결과"만 뜨던 버그.
+  const hasResults = products.length > 0
+  // 현재 로드분이 전부 필터로 걸러졌지만 다음 페이지가 남았으면 자동으로 더 불러와 '결과 없음' 오표시 방지.
+  useEffect(() => {
+    if (query.length >= 2 && products.length === 0 && hasNextPage && !isFetchingNextPage && !loading) {
+      fetchNextPage()
+    }
+  }, [query, products.length, hasNextPage, isFetchingNextPage, loading, fetchNextPage])
+  // 아직 필터 통과 결과가 0건인데 더 불러올 게 남아 있으면 '없음' 대신 로딩 유지(자동 페치 중).
+  const stillLoadingResults = loading || (query.length >= 2 && products.length === 0 && (isFetchingNextPage || hasNextPage))
+  const showResults = !stillLoadingResults && !error && query && hasResults
+  // 제안이 하나도 없으면 패널을 열지 않는다 — 빈 화면이 결과를 가리는 게 제일 나쁘다.
+  const showPanel = panel.open && suggestions.length > 0
+
+  /**
+   * 🔎 2026-09-04: 여기 있던 **하드코딩 6개**(인기상품·신상품·할인특가·무료배송·베스트셀러·한정판)를
+   *   실제 인기 검색어로 교체했다. 그 여섯은 검색어와 무관했고 **누르면 0건**이었으며,
+   *   `무료배송` 은 이용권 서비스에 개념 자체가 없었다. 지금 보고 있는 검색어는 뺀다(자기 자신 제안 금지).
+   */
+  const popularSearches = usePopularSearches(8)
+  const relatedKeywords = popularSearches.filter((k) => k !== query)
+
+  // 🛡️ 2026-07-03: min-h-screen(100vh) → min-h-[100dvh] — 인앱/웹뷰 하단 네비 실종 방지(룰 #8, /vouchers 와 동일).
+  return (
+    <div className="bg-white dark:bg-[#11141C] pb-safe-nav md:pb-20 min-h-[100dvh]">
+      <SEO title={query ? t('search.seoTitleQuery', { query, defaultValue: `${query} 검색결과 - 유어딜` }) : t('search.pageTitle', { defaultValue: '검색 - 유어딜' })} description={t('search.seoDesc', { defaultValue: '유어딜에서 원하는 이용권을 검색하세요. 동네 가게 할인 이용권을 만나보세요.' })} url="/search" noindex />
+      {/* Header */}
+      <SearchHeader
+        query={query}
+        totalResults={searchResult?.total}
+        onSearch={handleSearch}
+        onLoadSuggestions={loadSuggestions}
+        onPanelChange={(open, value) => setPanel({ open, value })}
+      />
+
+      {/* 🔎 제안 — 결과를 덮지 않고 **대신한다**. 하나라도 있을 때만(없으면 종전 화면 그대로). */}
+      {showPanel ? (
+        <SearchSuggestPanel
+          query={panel.value}
+          suggestions={suggestions.map((s) => s.text)}
+          onPick={(text) => { setPanel({ open: false, value: text }); handleSearch(text) }}
+        />
+      ) : (
+      /* Content */
+      <div className="ur-content-wide px-4 lg:px-8 py-4">
+        {/* States: Loading, Error, No Query, No Results */}
+        <SearchStates
+          loading={stillLoadingResults}
+          error={error}
+          query={query}
+          hasResults={hasResults}
+          suggestedQuery={infiniteData?.pages?.[0]?.suggested_query ?? null}
+        />
+
+        {/* Results Grid */}
+        {showResults && (
+          <>
+            {/* 🖥️ 2026-07-16 (대표 — 검색은 이용권만): 교환권/쇼핑 타입 탭 제거(이용권 단일). */}
+
+            {/* Sort and Filter Bar with chips */}
+            <SortFilterBar
+              totalResults={products.length}
+              sortBy={sortBy}
+              onSortChange={setSortBy}
+            />
+
+            {/* 🎫 2026-09-03 (대표 — "이용권 UI 가 원래 쓰는 것대로 안 나오네. 5줄짜리 말이야"):
+                결과는 **이용권만**인데(위 필터) 그리는 옷이 쇼핑용 2열 카드였다 — 장바구니 ➕ 와
+                무료배송 칩이 붙는, 배송 상품의 UI. 홈(지도 목록)이 쓰는 **같은 행 컴포넌트**로 통일한다.
+                검색엔 위치가 없으므로 `userLoc=null`(거리 미표시), 선택 개념도 없어 `isSelected=false`. */}
+            <div className="flex flex-col divide-y divide-rule">
+              {products.map((product) => (
+                <RestaurantRow
+                  key={product.id}
+                  r={{
+                    id: product.id,
+                    name: product.name,
+                    restaurant_name: product.restaurant_name || '',
+                    restaurant_address: product.restaurant_address || '',
+                    restaurant_phone: product.restaurant_phone || '',
+                    restaurant_lat: product.restaurant_lat ?? 0,
+                    restaurant_lng: product.restaurant_lng ?? 0,
+                    price: product.price,
+                    original_price: product.original_price,
+                    image_url: product.image_url,
+                    discount_rate: product.discount_rate ?? null,
+                    rating: product.avg_rating ?? 0,
+                    category: product.category,
+                  }}
+                  isSelected={false}
+                  userLoc={null}
+                  onSelect={(r) => navigate(detailHref(r))}
+                  onIntent={prefetchDetail}
+                />
+              ))}
+            </div>
+
+            {/* 🛡️ 2026-05-19: 무한 스크롤 sentinel + 로딩/더보기 UI */}
+            {hasNextPage && (
+              <div ref={loadMoreRef} className="flex justify-center mt-6 pb-6">
+                <button
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                  className="px-6 py-2 text-[15px] text-gray-500 dark:text-gray-400 disabled:opacity-50"
+                >
+                  {isFetchingNextPage ? '로딩 중...' : '더보기'}
+                </button>
+              </div>
+            )}
+
+            {/* 🔎 인기 검색어 — 값이 없으면 **섹션 자체를 안 그린다**(빈 제목만 남기지 않는다).
+                ⚠️ 라벨은 '함께 검색된' 이 아니라 '인기 검색어' 다 — 연관검색어가 아니므로 그렇게 부르면 거짓이다. */}
+            {relatedKeywords.length > 0 && (
+            <div className="mt-10 pt-8 border-t border-gray-100 dark:border-[#2C2F35]">
+              <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">{t('search.popularKeywords', { defaultValue: '인기 검색어' })}</h3>
+              <div className="flex flex-wrap gap-2">
+                {relatedKeywords.map((keyword) => (
+                  <button
+                    key={keyword}
+                    onClick={() => handleSearch(keyword)}
+                    className="px-4 py-2 rounded-full border border-line text-[13px] text-gray-600 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-[#1D1F29] active:bg-gray-100 dark:bg-[#1D1F29] dark:active:bg-[#1D1F29] transition-colors"
+                  >
+                    {keyword}
+                  </button>
+                ))}
+              </div>
+            </div>
+            )}
+          </>
+        )}
+      </div>
+      )}
+
+    </div>
+  )
+}

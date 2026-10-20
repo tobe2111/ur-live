@@ -1,0 +1,66 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║         Cloudflare Pages 프로젝트 정리 요약                            ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+🔍 현재 상황: 5개 프로젝트 존재 (2개만 필요)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 유지할 프로젝트 (2개)
+
+1. ur-live (GitHub 연결) 🎯
+   └─ live.ur-team.com
+   └─ KR 버전 (Kakao + Toss)
+   └─ 환경 변수 20개 필요
+
+2. ur-live-global (GitHub 연결) 🎯
+   └─ world.ur-team.com
+   └─ GLOBAL 버전 (Google + Stripe)
+   └─ 환경 변수 13개 필요
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+❌ 삭제할 프로젝트 (3개)
+
+1. ur-live (No Git connection) ❌
+   └─ 중복 프로젝트
+   └─ pages.dev 도메인만 있음
+
+2. ur-live-global (No Git connection) ❌
+   └─ 중복 프로젝트
+   └─ pages.dev 도메인만 있음
+
+3. toss-live-commerce ❌
+   └─ 6일 전 마지막 활동
+   └─ 구버전 프로젝트
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🗑️  삭제 방법 (5분)
+
+1. https://dash.cloudflare.com/ 접속
+2. Workers & Pages 클릭
+3. 각 프로젝트 클릭 → Settings → Delete project
+4. 프로젝트 이름 입력하여 확인
+
+⚠️  주의: "No Git connection" 또는 "toss-live-commerce"만 삭제!
+         GitHub 연결된 ur-live, ur-live-global은 유지!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔧 삭제 후 해야 할 작업
+
+1. 환경 변수 설정 (20분)
+   cat /home/user/webapp/CLOUDFLARE_ENV_VARS_COPY_PASTE.md
+   
+2. 재배포 (5-10분)
+   Deployments → Retry deployment
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⏱️  예상 소요 시간: 30-35분
+
+📁 상세 가이드: 
+   cat /home/user/webapp/CLOUDFLARE_PROJECT_CLEANUP_GUIDE.md
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

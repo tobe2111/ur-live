@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{font-family:"Pretendard Variable",Pretendard,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  .mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+  .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:#2A3450;border-radius:6px;border:3px solid transparent;background-clip:content-box}
+</style>
+</helmet>
+
+<div ref="{{ rootRef }}" style="--bg:#06080F;--surface:#0A0E1A;--panel:#0E1322;--ink:#F5F7FA;--ink2:#9AA6BE;--ink3:#6E7A95;--border:#1B2233;--border2:#26304A;--brand:#3B6EF5;--brand-soft:#16224A;--brand-ink:#9BB0FF;--up:#34D399;--up-soft:#0E2A22;--down:#FB7185;--down-soft:#2A1620;--warn:#FBBF24;--warn-soft:#2A2210;--sidebar:#090C16;--track:#1B2233;min-height:100vh;background:var(--bg);color:var(--ink);display:flex">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside style="width:236px;flex-shrink:0;background:var(--sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;position:sticky;top:0">
+    <div style="padding:18px 18px 14px;display:flex;align-items:center;gap:9px;border-bottom:1px solid var(--border)">
+      <svg width="26" height="26" viewBox="0 0 56 56" fill="none"><defs><linearGradient id="lgmark" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#3B6EF5"/><stop offset=".55" stop-color="#8B5CF6"/><stop offset="1" stop-color="#EC4899"/></linearGradient></defs><path d="M28 8 C28 20 30 24 36 27 C42 30 48 28 48 28 C48 28 42 26 36 29 C30 32 28 36 28 48 C28 36 26 32 20 29 C14 26 8 28 8 28 C8 28 14 30 20 27 C26 24 28 20 28 8 Z" fill="url(#lgmark)"/></svg>
+      <span style="font-size:17px;font-weight:800;letter-spacing:-.03em">UR<span style="color:var(--brand)">Ads</span></span>
+    </div>
+
+    <!-- tenant selector -->
+    <div style="padding:14px 14px 6px">
+      <div class="mono" style="font-size:10px;letter-spacing:.1em;color:var(--ink3);padding:0 4px 7px">고객사 전환</div>
+      <button onClick="{{ toggleTenant }}" style="width:100%;display:flex;align-items:center;gap:9px;background:var(--surface);border:1px solid var(--border2);border-radius:9px;padding:9px 11px;cursor:pointer;color:var(--ink)">
+        <span style="width:24px;height:24px;border-radius:6px;background:#D9D4F8;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#5A45D8">루</span>
+        <span style="flex:1;text-align:left;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">루미스토어</span>
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style="stroke:var(--ink3);stroke-width:1.8"><path d="M4 6l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <sc-if value="{{ tenantOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:6px;background:var(--panel);border:1px solid var(--border2);border-radius:9px;padding:5px;box-shadow:0 8px 24px -12px rgba(0,0,0,.25)">
+          <div style="display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:7px;font-size:13px;font-weight:600;background:var(--brand-soft);color:var(--brand-ink)"><span style="width:22px;height:22px;border-radius:6px;background:#D9D4F8;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#5A45D8">루</span>루미스토어</div>
+          <div style="display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:7px;font-size:13px;color:var(--ink2)"><span style="width:22px;height:22px;border-radius:6px;background:#C3DCEF;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#2A6F9E">N</span>Nova Living</div>
+          <div style="display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:7px;font-size:13px;color:var(--ink2)"><span style="width:22px;height:22px;border-radius:6px;background:#E7D2B8;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#8A6224">데</span>데일리핏</div>
+          <div style="border-top:1px solid var(--border);margin:5px 0"></div>
+          <div style="padding:8px 9px;font-size:13px;color:var(--brand);font-weight:600">+ 고객사 추가</div>
+        </div>
+      </sc-if>
+    </div>
+
+    <!-- nav -->
+    <nav style="padding:10px 14px;display:flex;flex-direction:column;gap:3px;flex:1;overflow-y:auto">
+      <div class="mono" style="font-size:10px;letter-spacing:.1em;color:var(--ink3);padding:8px 4px 5px">메뉴</div>
+      <div onClick="{{ setPerf }}" style="{{ navPerfStyle }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><rect x="5" y="11" width="3.4" height="7" rx="1"/><rect x="10.3" y="6" width="3.4" height="12" rx="1"/><rect x="15.6" y="9" width="3.4" height="9" rx="1"/></svg>통합 실적</div>
+      <div onClick="{{ setBid }}" style="{{ navBidStyle }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5v14M8 5l-3 3M8 5l3 3M16 19V5M16 19l-3-3M16 19l3-3"/></svg>자동입찰</div>
+      <div onClick="{{ setKw }}" style="{{ navKwStyle }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/><path d="M11 8.2v5.6M8.2 11h5.6"/></svg>키워드 확장</div>
+      <div onClick="{{ setFraud }}" style="{{ navFraudStyle }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>부정클릭 방어</div>
+      <div onClick="{{ setOrder }}" style="{{ navOrderStyle }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>발주 수집</div>
+      <div onClick="{{ setAi }}" style="{{ navAiStyle }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.6L19.5 10l-5.6 1.4L12 17l-1.9-5.6L4.5 10l5.6-1.4L12 3z"/></svg>AI 마케터</div>
+    </nav>
+
+    <div style="padding:14px;border-top:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:10px"><span style="width:30px;height:30px;border-radius:50%;background:#0B0E14;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">김</span><div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">김도현</div><div style="font-size:11px;color:var(--ink3)">프로 플랜</div></div></div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column;height:100vh;overflow:hidden">
+    <!-- topbar -->
+    <header style="height:60px;flex-shrink:0;border-bottom:1px solid var(--border);background:var(--topbar);backdrop-filter:saturate(160%) blur(12px);display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:20">
+      <div style="font-size:17px;font-weight:800;letter-spacing:-.02em;white-space:nowrap">{{ title }}</div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:7px 11px;width:200px"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" style="stroke:var(--ink3);stroke-width:1.8"><circle cx="7" cy="7" r="4.5"/><path d="M14 14l-3.5-3.5" stroke-linecap="round"/></svg><span style="font-size:12.5px;color:var(--ink3);white-space:nowrap">검색…</span></div>
+        <button onClick="{{ toggleTheme }}" title="테마" style="width:36px;height:36px;border:1px solid var(--border2);background:var(--panel);border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink2)">
+          <sc-if value="{{ isDark }}" hint-placeholder-val="{{ false }}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg></sc-if>
+          <sc-if value="{{ isLight }}" hint-placeholder-val="{{ true }}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></sc-if>
+        </button>
+        <button style="width:36px;height:36px;border:1px solid var(--border2);background:var(--panel);border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink2);position:relative"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.5 21a2 2 0 0 1-3 0"/></svg><span style="position:absolute;top:7px;right:8px;width:7px;height:7px;border-radius:50%;background:var(--down);border:1.5px solid var(--panel)"></span></button>
+        <a href="UR Ads Landing v2.dc.html" style="font-size:13px;font-weight:600;color:#fff;background:var(--brand);padding:9px 15px;border-radius:8px;text-decoration:none;white-space:nowrap">랜딩 보기</a>
+      </div>
+    </header>
+
+    <!-- scroll body -->
+    <main style="flex:1;overflow-y:auto;padding:24px 28px 60px">
+
+      <!-- ===== SCREEN: 통합 실적 ===== -->
+      <sc-if value="{{ showPerf }}" hint-placeholder-val="{{ true }}">
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="display:flex;background:var(--panel);border:1px solid var(--border2);border-radius:8px;overflow:hidden">
+              <span style="font-size:12.5px;font-weight:600;padding:8px 13px;color:var(--ink3)">오늘</span>
+              <span style="font-size:12.5px;font-weight:600;padding:8px 13px;color:var(--ink3);border-left:1px solid var(--border)">7일</span>
+              <span style="font-size:12.5px;font-weight:700;padding:8px 13px;background:var(--brand-soft);color:var(--brand-ink)">30일</span>
+            </div>
+            <span style="font-size:12.5px;color:var(--ink3)" class="mono">5.29 – 6.27</span>
+          </div>
+          <div style="display:flex;gap:8px">
+            <span style="display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--ink2);background:var(--panel);border:1px solid var(--border2);padding:8px 13px;border-radius:8px"><span style="width:30px;height:16px;border-radius:999px;background:var(--brand);position:relative"><span style="position:absolute;top:2px;right:2px;width:12px;height:12px;border-radius:50%;background:#fff"></span></span>전기간 비교</span>
+            <span style="font-size:12.5px;font-weight:600;color:var(--ink2);background:var(--panel);border:1px solid var(--border2);padding:8px 13px;border-radius:8px">내보내기</span>
+          </div>
+        </div>
+
+        <!-- KPI row -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px">
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:12.5px;color:var(--ink2);white-space:nowrap">통합 ROAS</span><span style="font-size:11.5px;font-weight:700;color:var(--up)">▲ 18.4%</span></div><div class="num" style="font-size:30px;font-weight:800;letter-spacing:-.03em;margin-top:7px">412.8<span style="font-size:17px;color:var(--ink3)">%</span></div></div>
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:12.5px;color:var(--ink2);white-space:nowrap">광고비</span><span style="font-size:11.5px;font-weight:700;color:var(--ink3)">▲ 4.1%</span></div><div class="num" style="font-size:30px;font-weight:800;letter-spacing:-.03em;margin-top:7px">₩12.4<span style="font-size:17px;color:var(--ink3)">M</span></div></div>
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:12.5px;color:var(--ink2);white-space:nowrap">매출</span><span style="font-size:11.5px;font-weight:700;color:var(--up)">▲ 22.6%</span></div><div class="num" style="font-size:30px;font-weight:800;letter-spacing:-.03em;margin-top:7px">₩51.2<span style="font-size:17px;color:var(--ink3)">M</span></div></div>
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:12.5px;color:var(--ink2);white-space:nowrap">평균 CPC</span><span style="font-size:11.5px;font-weight:700;color:var(--up)">▼ 15.2%</span></div><div class="num" style="font-size:30px;font-weight:800;letter-spacing:-.03em;margin-top:7px">₩248</div></div>
+        </div>
+
+        <!-- chart + funnel -->
+        <div style="display:grid;grid-template-columns:1.7fr 1fr;gap:14px;margin-top:14px">
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:20px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="font-size:14px;font-weight:700;white-space:nowrap">매출 vs 광고비</span><div style="display:flex;gap:14px;font-size:11.5px;color:var(--ink2)"><span style="display:inline-flex;align-items:center;gap:6px"><span style="width:9px;height:9px;border-radius:2px;background:var(--brand)"></span>매출</span><span style="display:inline-flex;align-items:center;gap:6px"><span style="width:9px;height:2px;background:var(--ink3)"></span>광고비</span><span style="display:inline-flex;align-items:center;gap:6px"><span style="width:9px;height:2px;background:var(--ink3);opacity:.4"></span>전기간</span></div></div>
+            <svg width="100%" height="210" viewBox="0 0 640 210" preserveAspectRatio="none" style="margin-top:8px">
+              <g style="stroke:var(--border)"><line x1="0" y1="40" x2="640" y2="40"/><line x1="0" y1="90" x2="640" y2="90"/><line x1="0" y1="140" x2="640" y2="140"/><line x1="0" y1="190" x2="640" y2="190"/></g>
+              <polyline points="0,150 70,140 140,148 210,120 280,128 350,96 420,104 490,70 560,78 640,40" fill="none" style="stroke:var(--brand);stroke-width:2.6;stroke-linejoin:round"/>
+              <polyline points="0,178 70,174 140,176 210,170 280,172 350,166 420,168 490,160 560,162 640,156" fill="none" style="stroke:var(--ink3);stroke-width:2;stroke-dasharray:1 0"/>
+              <polyline points="0,166 70,170 140,168 210,158 280,162 350,150 420,156 490,146 560,150 640,138" fill="none" style="stroke:var(--ink3);stroke-width:1.6;opacity:.4;stroke-dasharray:4 4"/>
+            </svg>
+            <div class="mono" style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--ink3);margin-top:6px"><span>5/29</span><span>6/5</span><span>6/12</span><span>6/19</span><span>6/27</span></div>
+          </div>
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:20px">
+            <span style="font-size:14px;font-weight:700">전환 퍼널</span>
+            <div style="display:flex;flex-direction:column;gap:9px;margin-top:14px">
+              <div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><span style="color:var(--ink2)">광고비</span><span class="num" style="font-weight:600">₩12.4M</span></div><div style="height:26px;border-radius:6px;background:var(--brand);width:100%"></div></div>
+              <div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><span style="color:var(--ink2)">클릭</span><span class="num" style="font-weight:600">50,120</span></div><div style="height:26px;border-radius:6px;background:var(--brand);opacity:.78;width:80%"></div></div>
+              <div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><span style="color:var(--ink2)">주문</span><span class="num" style="font-weight:600">2,840</span></div><div style="height:26px;border-radius:6px;background:var(--brand);opacity:.55;width:52%"></div></div>
+              <div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><span style="color:var(--ink2)">매출</span><span class="num" style="font-weight:700;color:var(--up)">₩51.2M</span></div><div style="height:26px;border-radius:6px;background:var(--up);width:40%"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- channel table -->
+        <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;margin-top:14px;overflow:hidden">
+          <div style="padding:16px 20px;font-size:14px;font-weight:700;border-bottom:1px solid var(--border)">채널별 성과</div>
+          <div class="mono" style="display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr 1fr .8fr;padding:11px 20px;font-size:10.5px;font-weight:600;color:var(--ink3);background:var(--surface)"><div>채널</div><div style="text-align:right">광고비</div><div style="text-align:right">클릭</div><div style="text-align:right">주문</div><div style="text-align:right">매출</div><div style="text-align:right">ROAS</div></div>
+          <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr 1fr .8fr;padding:13px 20px;font-size:13px;border-top:1px solid var(--border);align-items:center"><div style="font-weight:600"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--brand);margin-right:8px"></span>파워링크</div><div class="num" style="text-align:right">₩7.9M</div><div class="num" style="text-align:right">32,080</div><div class="num" style="text-align:right">1,920</div><div class="num" style="text-align:right">₩34.6M</div><div class="num" style="text-align:right;font-weight:700;color:var(--up)">438%</div></div>
+          <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr 1fr .8fr;padding:13px 20px;font-size:13px;border-top:1px solid var(--border);align-items:center"><div style="font-weight:600"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#C9C1F8;margin-right:8px"></span>쇼핑검색</div><div class="num" style="text-align:right">₩4.5M</div><div class="num" style="text-align:right">18,040</div><div class="num" style="text-align:right">920</div><div class="num" style="text-align:right">₩16.6M</div><div class="num" style="text-align:right;font-weight:700;color:var(--up)">369%</div></div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ===== SCREEN: 자동입찰 ===== -->
+      <sc-if value="{{ showBid }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--up);background:var(--up-soft);padding:8px 13px;border-radius:8px;white-space:nowrap"><span style="width:7px;height:7px;border-radius:50%;background:var(--up)"></span>자동입찰 가동 중 · 142개</span>
+            <span class="mono" style="font-size:12px;color:var(--ink3)">마지막 입찰 12초 전</span>
+          </div>
+          <div style="display:flex;gap:8px">
+            <span style="font-size:12.5px;font-weight:600;color:var(--ink2);background:var(--panel);border:1px solid var(--border2);padding:8px 13px;border-radius:8px">CSV 일괄 등록</span>
+            <span style="font-size:12.5px;font-weight:600;color:#fff;background:var(--brand);padding:8px 14px;border-radius:8px;white-space:nowrap">+ 키워드 추가</span>
+          </div>
+        </div>
+
+        <!-- strategy cards -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-bottom:14px">
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px">
+            <div style="font-size:12.5px;color:var(--ink2);margin-bottom:12px">시간대 입찰 강도</div>
+            <div style="display:flex;align-items:flex-end;gap:3px;height:46px">
+              <span style="flex:1;height:30%;background:var(--track);border-radius:2px"></span><span style="flex:1;height:24%;background:var(--track);border-radius:2px"></span><span style="flex:1;height:20%;background:var(--track);border-radius:2px"></span><span style="flex:1;height:28%;background:var(--track);border-radius:2px"></span><span style="flex:1;height:50%;background:var(--brand);opacity:.5;border-radius:2px"></span><span style="flex:1;height:70%;background:var(--brand);opacity:.7;border-radius:2px"></span><span style="flex:1;height:100%;background:var(--brand);border-radius:2px"></span><span style="flex:1;height:90%;background:var(--brand);border-radius:2px"></span><span style="flex:1;height:64%;background:var(--brand);opacity:.7;border-radius:2px"></span><span style="flex:1;height:80%;background:var(--brand);border-radius:2px"></span><span style="flex:1;height:54%;background:var(--brand);opacity:.6;border-radius:2px"></span><span style="flex:1;height:34%;background:var(--track);border-radius:2px"></span>
+            </div>
+            <div class="mono" style="display:flex;justify-content:space-between;font-size:10px;color:var(--ink3);margin-top:6px"><span>0시</span><span>12시</span><span>23시</span></div>
+          </div>
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px">
+            <div style="font-size:12.5px;color:var(--ink2);margin-bottom:12px">요일 전략</div>
+            <div style="display:flex;gap:6px">
+              <span style="flex:1;text-align:center;font-size:12px;font-weight:600;padding:9px 0;border-radius:7px;background:var(--brand-soft);color:var(--brand-ink)">월</span><span style="flex:1;text-align:center;font-size:12px;font-weight:600;padding:9px 0;border-radius:7px;background:var(--brand-soft);color:var(--brand-ink)">화</span><span style="flex:1;text-align:center;font-size:12px;font-weight:600;padding:9px 0;border-radius:7px;background:var(--surface);color:var(--ink3)">수</span><span style="flex:1;text-align:center;font-size:12px;font-weight:600;padding:9px 0;border-radius:7px;background:var(--brand-soft);color:var(--brand-ink)">목</span><span style="flex:1;text-align:center;font-size:12px;font-weight:600;padding:9px 0;border-radius:7px;background:var(--brand);color:#fff">금</span><span style="flex:1;text-align:center;font-size:12px;font-weight:600;padding:9px 0;border-radius:7px;background:var(--brand);color:#fff">토</span><span style="flex:1;text-align:center;font-size:12px;font-weight:600;padding:9px 0;border-radius:7px;background:var(--surface);color:var(--ink3)">일</span>
+            </div>
+            <div style="font-size:11.5px;color:var(--ink3);margin-top:12px">주말·금요일 입찰가 +20% 자동 가산</div>
+          </div>
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px">
+            <div style="font-size:12.5px;color:var(--ink2);margin-bottom:6px">예산 안전장치</div>
+            <div class="num" style="font-size:22px;font-weight:800;letter-spacing:-.02em">₩420K <span style="font-size:13px;color:var(--ink3);font-weight:500">/ ₩500K</span></div>
+            <div style="height:8px;border-radius:4px;background:var(--track);margin-top:12px;overflow:hidden"><span style="display:block;height:100%;width:84%;background:var(--brand);border-radius:4px"></span></div>
+            <div style="font-size:11.5px;color:var(--ink3);margin-top:8px">일 예산 84% 소진 · 한도 초과 시 자동 정지</div>
+          </div>
+        </div>
+
+        <!-- keyword table -->
+        <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:15px 20px;border-bottom:1px solid var(--border)"><span style="font-size:14px;font-weight:700;white-space:nowrap">자동입찰 키워드</span><span class="mono" style="font-size:11.5px;color:var(--ink3)">142개 · 입찰 진행 중</span></div>
+          <div class="mono" style="display:grid;grid-template-columns:1.8fr .9fr .9fr .9fr .8fr .9fr;padding:11px 20px;font-size:10.5px;font-weight:600;color:var(--ink3);background:var(--surface)"><div>키워드</div><div style="text-align:right">목표/현재</div><div style="text-align:right">입찰가</div><div style="text-align:right">일예산</div><div style="text-align:right">CPC</div><div style="text-align:right">상태</div></div>
+          <div style="display:grid;grid-template-columns:1.8fr .9fr .9fr .9fr .8fr .9fr;padding:14px 20px;font-size:13px;border-top:1px solid var(--border);align-items:center"><div style="font-weight:600">무선 이어폰</div><div class="num" style="text-align:right"><span style="color:var(--ink3)">2위</span>/<span style="color:var(--up);font-weight:700">2위</span></div><div class="num" style="text-align:right">₩320</div><div class="num" style="text-align:right">₩50K</div><div class="num" style="text-align:right;font-weight:700">₩214</div><div style="text-align:right"><span style="width:30px;height:16px;border-radius:999px;background:var(--brand);position:relative;display:inline-block"><span style="position:absolute;top:2px;right:2px;width:12px;height:12px;border-radius:50%;background:#fff"></span></span></div></div>
+          <div style="display:grid;grid-template-columns:1.8fr .9fr .9fr .9fr .8fr .9fr;padding:14px 20px;font-size:13px;border-top:1px solid var(--border);align-items:center"><div style="font-weight:600">블루투스 스피커</div><div class="num" style="text-align:right"><span style="color:var(--ink3)">1위</span>/<span style="color:var(--warn);font-weight:700">3위</span></div><div class="num" style="text-align:right">₩480</div><div class="num" style="text-align:right">₩60K</div><div class="num" style="text-align:right;font-weight:700">₩390</div><div style="text-align:right"><span style="width:30px;height:16px;border-radius:999px;background:var(--brand);position:relative;display:inline-block"><span style="position:absolute;top:2px;right:2px;width:12px;height:12px;border-radius:50%;background:#fff"></span></span></div></div>
+          <div style="display:grid;grid-template-columns:1.8fr .9fr .9fr .9fr .8fr .9fr;padding:14px 20px;font-size:13px;border-top:1px solid var(--border);align-items:center"><div style="font-weight:600">노이즈캔슬링 헤드폰</div><div class="num" style="text-align:right"><span style="color:var(--ink3)">3위</span>/<span style="color:var(--up);font-weight:700">2위</span></div><div class="num" style="text-align:right">₩540</div><div class="num" style="text-align:right">₩70K</div><div class="num" style="text-align:right;font-weight:700">₩468</div><div style="text-align:right"><span style="width:30px;height:16px;border-radius:999px;background:var(--brand);position:relative;display:inline-block"><span style="position:absolute;top:2px;right:2px;width:12px;height:12px;border-radius:50%;background:#fff"></span></span></div></div>
+          <div style="display:grid;grid-template-columns:1.8fr .9fr .9fr .9fr .8fr .9fr;padding:14px 20px;font-size:13px;border-top:1px solid var(--border);align-items:center"><div style="font-weight:600">가습기</div><div class="num" style="text-align:right"><span style="color:var(--ink3)">5위</span>/<span style="color:var(--up);font-weight:700">4위</span></div><div class="num" style="text-align:right">₩210</div><div class="num" style="text-align:right">₩30K</div><div class="num" style="text-align:right;font-weight:700">₩171</div><div style="text-align:right"><span style="width:30px;height:16px;border-radius:999px;background:var(--brand);position:relative;display:inline-block"><span style="position:absolute;top:2px;right:2px;width:12px;height:12px;border-radius:50%;background:#fff"></span></span></div></div>
+          <div style="display:grid;grid-template-columns:1.8fr .9fr .9fr .9fr .8fr .9fr;padding:14px 20px;font-size:13px;border-top:1px solid var(--border);align-items:center"><div style="font-weight:600">캠핑 의자</div><div class="num" style="text-align:right"><span style="color:var(--ink3)">3위</span>/<span style="color:var(--ink3);font-weight:700">6위</span></div><div class="num" style="text-align:right">₩280</div><div class="num" style="text-align:right">₩40K</div><div class="num" style="text-align:right;font-weight:700">₩—</div><div style="text-align:right"><span style="width:30px;height:16px;border-radius:999px;background:var(--track);position:relative;display:inline-block"><span style="position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2)"></span></span></div></div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ===== SCREEN: 키워드 확장 ===== -->
+      <sc-if value="{{ showKw }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--ink2);background:var(--panel);border:1px solid var(--border2);padding:8px 13px;border-radius:8px;white-space:nowrap">기준 상품 · 무선 이어폰</span>
+            <span class="mono" style="font-size:12px;color:var(--ink3)">연관 키워드 38개 발굴</span>
+          </div>
+          <div style="display:flex;gap:8px">
+            <span style="font-size:12.5px;font-weight:600;color:var(--ink2);background:var(--panel);border:1px solid var(--border2);padding:8px 13px;border-radius:8px;white-space:nowrap">제외어 관리</span>
+            <span style="font-size:12.5px;font-weight:600;color:#fff;background:var(--brand);padding:8px 14px;border-radius:8px;white-space:nowrap">선택 키워드 추가</span>
+          </div>
+        </div>
+
+        <!-- summary cards -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:14px">
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px"><div style="font-size:12.5px;color:var(--ink2);white-space:nowrap">추천 키워드</div><div class="num" style="font-size:26px;font-weight:800;letter-spacing:-.02em;margin-top:5px">38<span style="font-size:14px;color:var(--ink3)">개</span></div></div>
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px"><div style="font-size:12.5px;color:var(--ink2);white-space:nowrap">추가 예정</div><div class="num" style="font-size:26px;font-weight:800;letter-spacing:-.02em;margin-top:5px;color:var(--brand)">12<span style="font-size:14px;color:var(--ink3)">개</span></div></div>
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px"><div style="font-size:12.5px;color:var(--ink2);white-space:nowrap">월 검색량 합계</div><div class="num" style="font-size:26px;font-weight:800;letter-spacing:-.02em;margin-top:5px">82.4K</div></div>
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px"><div style="font-size:12.5px;color:var(--ink2);white-space:nowrap">평균 경쟁도</div><div class="num" style="font-size:26px;font-weight:800;letter-spacing:-.02em;margin-top:5px">중간</div></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:14px">
+          <!-- recommend table -->
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden">
+            <div style="padding:15px 20px;font-size:14px;font-weight:700;border-bottom:1px solid var(--border)">연관 키워드 추천</div>
+            <div class="mono" style="display:grid;grid-template-columns:1.6fr 1fr 1fr .7fr;padding:11px 20px;font-size:10.5px;font-weight:600;color:var(--ink3);background:var(--surface)"><div>키워드</div><div>검색량</div><div>경쟁도</div><div style="text-align:right"></div></div>
+            <div style="display:grid;grid-template-columns:1.6fr 1fr 1fr .7fr;padding:13px 20px;font-size:13px;border-top:1px solid var(--border);align-items:center"><div style="font-weight:600">무선 이어폰 추천</div><div class="num">14,200</div><div><div style="height:5px;width:82%;background:var(--brand);border-radius:3px"></div></div><div style="text-align:right"><span style="font-size:11px;font-weight:600;color:var(--brand-ink);background:var(--brand-soft);padding:4px 9px;border-radius:6px">추가</span></div></div>
+            <div style="display:grid;grid-template-columns:1.6fr 1fr 1fr .7fr;padding:13px 20px;font-size:13px;border-top:1px solid var(--border);align-items:center"><div style="font-weight:600">블루투스 이어폰</div><div class="num">21,300</div><div><div style="height:5px;width:94%;background:var(--brand);border-radius:3px"></div></div><div style="text-align:right"><span style="font-size:11px;font-weight:600;color:var(--brand-ink);background:var(--brand-soft);padding:4px 9px;border-radius:6px">추가</span></div></div>
+            <div style="display:grid;grid-template-columns:1.6fr 1fr 1fr .7fr;padding:13px 20px;font-size:13px;border-top:1px solid var(--border);align-items:center"><div style="font-weight:600">가성비 이어폰</div><div class="num">9,810</div><div><div style="height:5px;width:58%;background:var(--brand);border-radius:3px"></div></div><div style="text-align:right"><span style="font-size:11px;font-weight:600;color:var(--brand-ink);background:var(--brand-soft);padding:4px 9px;border-radius:6px">추가</span></div></div>
+            <div style="display:grid;grid-template-columns:1.6fr 1fr 1fr .7fr;padding:13px 20px;font-size:13px;border-top:1px solid var(--border);align-items:center"><div style="font-weight:600">운동용 이어폰</div><div class="num">6,540</div><div><div style="height:5px;width:42%;background:#C9C1F8;border-radius:3px"></div></div><div style="text-align:right"><span style="font-size:11px;font-weight:600;color:var(--ink3);background:var(--track);padding:4px 9px;border-radius:6px">제외</span></div></div>
+            <div style="display:grid;grid-template-columns:1.6fr 1fr 1fr .7fr;padding:13px 20px;font-size:13px;border-top:1px solid var(--border);align-items:center"><div style="font-weight:600">노이즈캔슬링 이어폰</div><div class="num">11,070</div><div><div style="height:5px;width:70%;background:var(--brand);border-radius:3px"></div></div><div style="text-align:right"><span style="font-size:11px;font-weight:600;color:var(--brand-ink);background:var(--brand-soft);padding:4px 9px;border-radius:6px">추가</span></div></div>
+            <div style="display:grid;grid-template-columns:1.6fr 1fr 1fr .7fr;padding:13px 20px;font-size:13px;border-top:1px solid var(--border);align-items:center"><div style="font-weight:600">방수 이어폰</div><div class="num">4,920</div><div><div style="height:5px;width:34%;background:#C9C1F8;border-radius:3px"></div></div><div style="text-align:right"><span style="font-size:11px;font-weight:600;color:var(--brand-ink);background:var(--brand-soft);padding:4px 9px;border-radius:6px">추가</span></div></div>
+          </div>
+          <!-- trend -->
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:20px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="font-size:14px;font-weight:700;white-space:nowrap">검색량 트렌드</span><span class="mono" style="font-size:11px;color:var(--ink3);white-space:nowrap">최근 90일</span></div>
+              <div style="font-size:12px;color:var(--ink2);margin-bottom:8px">'블루투스 이어폰'</div>
+              <svg width="100%" height="120" viewBox="0 0 320 120" preserveAspectRatio="none"><g style="stroke:var(--border)"><line x1="0" y1="30" x2="320" y2="30"/><line x1="0" y1="60" x2="320" y2="60"/><line x1="0" y1="90" x2="320" y2="90"/></g><polyline points="0,92 40,88 80,94 120,78 160,82 200,60 240,52 280,40 320,28" fill="none" style="stroke:var(--brand);stroke-width:2.4;stroke-linejoin:round"/></svg>
+              <div style="font-size:12px;color:var(--up);font-weight:600;margin-top:8px">▲ 검색량 32% 상승 추세</div>
+            </div>
+            <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:20px">
+              <div style="font-size:14px;font-weight:700;margin-bottom:12px">발굴 현황</div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0"><span style="color:var(--ink2)">추가됨</span><span class="num" style="font-weight:700;color:var(--brand)">+12</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-top:1px solid var(--border)"><span style="color:var(--ink2)">제외됨</span><span class="num" style="font-weight:700;color:var(--ink3)">8</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-top:1px solid var(--border)"><span style="color:var(--ink2)">검토 대기</span><span class="num" style="font-weight:700">18</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ===== SCREEN: 부정클릭 방어 ===== -->
+      <sc-if value="{{ showFraud }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--up);background:var(--up-soft);padding:8px 13px;border-radius:8px;white-space:nowrap"><span style="width:7px;height:7px;border-radius:50%;background:var(--up)"></span>실시간 방어 작동 중</span>
+          </div>
+          <span style="font-size:12.5px;font-weight:600;color:var(--ink2);background:var(--panel);border:1px solid var(--border2);padding:8px 13px;border-radius:8px;white-space:nowrap">차단 규칙 설정</span>
+        </div>
+
+        <!-- KPI -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px">
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px"><div style="font-size:12.5px;color:var(--ink2);white-space:nowrap">오늘 차단</div><div class="num" style="font-size:28px;font-weight:800;letter-spacing:-.02em;margin-top:5px">312<span style="font-size:15px;color:var(--ink3)">건</span></div></div>
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px"><div style="font-size:12.5px;color:var(--ink2);white-space:nowrap">절감 추정</div><div class="num" style="font-size:28px;font-weight:800;letter-spacing:-.02em;margin-top:5px;color:var(--up)">₩78K</div></div>
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px"><div style="font-size:12.5px;color:var(--ink2);white-space:nowrap">의심 IP</div><div class="num" style="font-size:28px;font-weight:800;letter-spacing:-.02em;margin-top:5px;color:var(--down)">12</div></div>
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px"><div style="font-size:12.5px;color:var(--ink2);white-space:nowrap">이번 달 누적</div><div class="num" style="font-size:28px;font-weight:800;letter-spacing:-.02em;margin-top:5px">₩1.2<span style="font-size:15px;color:var(--ink3)">M</span></div></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:14px;margin-top:14px">
+          <!-- timeline -->
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:20px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-size:14px;font-weight:700;white-space:nowrap">시간대별 의심 클릭</span><span class="mono" style="font-size:11px;color:var(--ink3);white-space:nowrap">오늘</span></div>
+            <svg width="100%" height="150" viewBox="0 0 560 150" preserveAspectRatio="none"><g style="stroke:var(--border)"><line x1="0" y1="40" x2="560" y2="40"/><line x1="0" y1="80" x2="560" y2="80"/><line x1="0" y1="120" x2="560" y2="120"/></g><g style="fill:var(--down)"><rect x="14" y="120" width="20" height="22" rx="3"/><rect x="60" y="108" width="20" height="34" rx="3"/><rect x="106" y="96" width="20" height="46" rx="3"/><rect x="152" y="70" width="20" height="72" rx="3"/><rect x="198" y="58" width="20" height="84" rx="3"/><rect x="244" y="86" width="20" height="56" rx="3"/><rect x="290" y="64" width="20" height="78" rx="3"/><rect x="336" y="44" width="20" height="98" rx="3"/><rect x="382" y="78" width="20" height="64" rx="3"/><rect x="428" y="100" width="20" height="42" rx="3"/><rect x="474" y="114" width="20" height="28" rx="3"/><rect x="520" y="124" width="20" height="18" rx="3"/></g></svg>
+            <div class="mono" style="display:flex;justify-content:space-between;font-size:10px;color:var(--ink3);margin-top:4px"><span>0시</span><span>6시</span><span>12시</span><span>18시</span><span>23시</span></div>
+          </div>
+          <!-- savings -->
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:20px">
+            <span style="font-size:14px;font-weight:700;white-space:nowrap">절감 추정 (30일)</span>
+            <svg width="100%" height="120" viewBox="0 0 280 120" preserveAspectRatio="none" style="margin-top:12px"><polyline points="0,100 35,96 70,90 105,82 140,74 175,60 210,50 245,38 280,24" fill="none" style="stroke:var(--up);stroke-width:2.4;stroke-linejoin:round"/></svg>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)"><span style="font-size:13px;color:var(--ink2)">누적 절감</span><span class="num" style="font-size:20px;font-weight:800;color:var(--up)">₩1.2M</span></div>
+          </div>
+        </div>
+
+        <!-- IP block list -->
+        <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;margin-top:14px;overflow:hidden">
+          <div style="padding:15px 20px;font-size:14px;font-weight:700;border-bottom:1px solid var(--border)">IP 차단 목록</div>
+          <div class="mono" style="display:grid;grid-template-columns:1.3fr .8fr 1.6fr 1fr;padding:11px 20px;font-size:10.5px;font-weight:600;color:var(--ink3);background:var(--surface)"><div>IP 주소</div><div style="text-align:right">클릭</div><div>패턴</div><div style="text-align:right">상태</div></div>
+          <div style="display:grid;grid-template-columns:1.3fr .8fr 1.6fr 1fr;padding:13px 20px;font-size:13px;border-top:1px solid var(--border);align-items:center"><div class="num mono" style="font-weight:600">211.45.x.18</div><div class="num" style="text-align:right">84</div><div style="color:var(--ink2);font-size:12.5px">1초 내 반복 클릭</div><div style="text-align:right"><span style="font-size:11px;font-weight:600;color:var(--down);background:var(--down-soft);padding:4px 9px;border-radius:6px">차단됨</span></div></div>
+          <div style="display:grid;grid-template-columns:1.3fr .8fr 1.6fr 1fr;padding:13px 20px;font-size:13px;border-top:1px solid var(--border);align-items:center"><div class="num mono" style="font-weight:600">203.88.x.9</div><div class="num" style="text-align:right">61</div><div style="color:var(--ink2);font-size:12.5px">동일 IP 과다 클릭</div><div style="text-align:right"><span style="font-size:11px;font-weight:600;color:var(--down);background:var(--down-soft);padding:4px 9px;border-radius:6px">차단됨</span></div></div>
+          <div style="display:grid;grid-template-columns:1.3fr .8fr 1.6fr 1fr;padding:13px 20px;font-size:13px;border-top:1px solid var(--border);align-items:center"><div class="num mono" style="font-weight:600">175.12.x.2</div><div class="num" style="text-align:right">29</div><div style="color:var(--ink2);font-size:12.5px">비정상 시간대 집중</div><div style="text-align:right"><span style="font-size:11px;font-weight:600;color:var(--warn);background:var(--warn-soft);padding:4px 9px;border-radius:6px">감시 중</span></div></div>
+          <div style="display:grid;grid-template-columns:1.3fr .8fr 1.6fr 1fr;padding:13px 20px;font-size:13px;border-top:1px solid var(--border);align-items:center"><div class="num mono" style="font-weight:600">59.27.x.7</div><div class="num" style="text-align:right">47</div><div style="color:var(--ink2);font-size:12.5px">전환 없는 연속 클릭</div><div style="text-align:right"><span style="font-size:11px;font-weight:600;color:var(--down);background:var(--down-soft);padding:4px 9px;border-radius:6px">차단됨</span></div></div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ===== SCREEN: 발주 수집 ===== -->
+      <sc-if value="{{ showOrder }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px">
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--ink2);background:var(--panel);border:1px solid var(--border2);padding:7px 11px;border-radius:8px"><span style="width:7px;height:7px;border-radius:50%;background:var(--up)"></span>루미스토어</span>
+            <span style="display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--ink2);background:var(--panel);border:1px solid var(--border2);padding:7px 11px;border-radius:8px"><span style="width:7px;height:7px;border-radius:50%;background:var(--up)"></span>Nova Living</span>
+            <span style="display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--ink3);background:var(--panel);border:1px solid var(--border2);padding:7px 11px;border-radius:8px"><span style="width:7px;height:7px;border-radius:50%;background:var(--warn)"></span>데일리핏 연동 대기</span>
+          </div>
+          <span style="font-size:12.5px;font-weight:600;color:#fff;background:var(--brand);padding:8px 14px;border-radius:8px;white-space:nowrap">+ 스토어 연동</span>
+        </div>
+
+        <!-- tabs + bulk -->
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px">
+          <div style="display:flex;gap:6px">
+            <span style="font-size:13px;font-weight:700;padding:7px 13px;border-radius:8px;background:var(--brand-soft);color:var(--brand-ink)">전체 <span class="num">48</span></span>
+            <span style="font-size:13px;font-weight:600;padding:7px 13px;border-radius:8px;color:var(--ink2)">신규 <span class="num">12</span></span>
+            <span style="font-size:13px;font-weight:600;padding:7px 13px;border-radius:8px;color:var(--ink2)">처리중 <span class="num">9</span></span>
+            <span style="font-size:13px;font-weight:600;padding:7px 13px;border-radius:8px;color:var(--ink2)">발송완료 <span class="num">27</span></span>
+          </div>
+          <div style="display:flex;gap:8px">
+            <span style="font-size:12.5px;font-weight:600;color:#fff;background:var(--brand);padding:8px 14px;border-radius:8px;white-space:nowrap">선택 발송처리</span>
+            <span style="font-size:12.5px;font-weight:600;color:var(--ink2);background:var(--panel);border:1px solid var(--border2);padding:8px 13px;border-radius:8px">엑셀 다운로드</span>
+          </div>
+        </div>
+
+        <!-- order table -->
+        <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden">
+          <div class="mono" style="display:grid;grid-template-columns:36px 1.1fr 1.8fr 1.1fr .6fr 1fr .9fr;padding:11px 20px;font-size:10.5px;font-weight:600;color:var(--ink3);background:var(--surface)"><div></div><div>주문번호</div><div>상품</div><div>스토어</div><div style="text-align:center">수량</div><div style="text-align:right">금액</div><div style="text-align:right">상태</div></div>
+          <div style="display:grid;grid-template-columns:36px 1.1fr 1.8fr 1.1fr .6fr 1fr .9fr;padding:14px 20px;font-size:13px;border-top:1px solid var(--border);align-items:center"><div><span style="width:16px;height:16px;border-radius:5px;border:1.5px solid var(--brand);background:var(--brand);display:inline-flex;align-items:center;justify-content:center"><svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="#fff" stroke-width="2"><path d="M2.5 6l2.5 2.5 4.5-5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div><div class="num mono" style="font-size:12px;color:var(--ink2)">#A-20614</div><div style="font-weight:600">무선 이어폰 화이트</div><div style="color:var(--ink2)">루미스토어</div><div class="num" style="text-align:center">2</div><div class="num" style="text-align:right;font-weight:600">₩78,000</div><div style="text-align:right"><span style="font-size:11px;font-weight:600;color:var(--warn);background:var(--warn-soft);padding:4px 9px;border-radius:6px">신규</span></div></div>
+          <div style="display:grid;grid-template-columns:36px 1.1fr 1.8fr 1.1fr .6fr 1fr .9fr;padding:14px 20px;font-size:13px;border-top:1px solid var(--border);align-items:center"><div><span style="width:16px;height:16px;border-radius:5px;border:1.5px solid var(--brand);background:var(--brand);display:inline-flex;align-items:center;justify-content:center"><svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="#fff" stroke-width="2"><path d="M2.5 6l2.5 2.5 4.5-5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div><div class="num mono" style="font-size:12px;color:var(--ink2)">#N-88231</div><div style="font-weight:600">초음파 가습기 4L</div><div style="color:var(--ink2)">Nova Living</div><div class="num" style="text-align:center">1</div><div class="num" style="text-align:right;font-weight:600">₩42,000</div><div style="text-align:right"><span style="font-size:11px;font-weight:600;color:var(--warn);background:var(--warn-soft);padding:4px 9px;border-radius:6px">신규</span></div></div>
+          <div style="display:grid;grid-template-columns:36px 1.1fr 1.8fr 1.1fr .6fr 1fr .9fr;padding:14px 20px;font-size:13px;border-top:1px solid var(--border);align-items:center"><div><span style="width:16px;height:16px;border-radius:5px;border:1.5px solid var(--border2);display:inline-block"></span></div><div class="num mono" style="font-size:12px;color:var(--ink2)">#D-10925</div><div style="font-weight:600">블루투스 스피커 미니</div><div style="color:var(--ink2)">데일리핏</div><div class="num" style="text-align:center">1</div><div class="num" style="text-align:right;font-weight:600">₩55,000</div><div style="text-align:right"><span style="font-size:11px;font-weight:600;color:var(--brand-ink);background:var(--brand-soft);padding:4px 9px;border-radius:6px">처리중</span></div></div>
+          <div style="display:grid;grid-template-columns:36px 1.1fr 1.8fr 1.1fr .6fr 1fr .9fr;padding:14px 20px;font-size:13px;border-top:1px solid var(--border);align-items:center"><div><span style="width:16px;height:16px;border-radius:5px;border:1.5px solid var(--border2);display:inline-block"></span></div><div class="num mono" style="font-size:12px;color:var(--ink2)">#A-20598</div><div style="font-weight:600">노캔 헤드폰 블랙</div><div style="color:var(--ink2)">루미스토어</div><div class="num" style="text-align:center">1</div><div class="num" style="text-align:right;font-weight:600">₩129,000</div><div style="text-align:right"><span style="font-size:11px;font-weight:600;color:var(--up);background:var(--up-soft);padding:4px 9px;border-radius:6px">발송완료</span></div></div>
+          <div style="display:grid;grid-template-columns:36px 1.1fr 1.8fr 1.1fr .6fr 1fr .9fr;padding:14px 20px;font-size:13px;border-top:1px solid var(--border);align-items:center"><div><span style="width:16px;height:16px;border-radius:5px;border:1.5px solid var(--border2);display:inline-block"></span></div><div class="num mono" style="font-size:12px;color:var(--ink2)">#N-88204</div><div style="font-weight:600">캠핑 의자 2인</div><div style="color:var(--ink2)">Nova Living</div><div class="num" style="text-align:center">2</div><div class="num" style="text-align:right;font-weight:600">₩96,000</div><div style="text-align:right"><span style="font-size:11px;font-weight:600;color:var(--up);background:var(--up-soft);padding:4px 9px;border-radius:6px">발송완료</span></div></div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ===== SCREEN: AI 마케터 ===== -->
+      <sc-if value="{{ showAi }}" hint-placeholder-val="{{ false }}">
+      <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:14px;align-items:start">
+        <!-- chat -->
+        <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;display:flex;flex-direction:column;height:calc(100vh - 168px);overflow:hidden">
+          <div style="display:flex;align-items:center;gap:10px;padding:15px 20px;border-bottom:1px solid var(--border)"><span style="width:30px;height:30px;border-radius:9px;background:var(--brand-soft);display:flex;align-items:center;justify-content:center"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6E56F0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.6L19.5 10l-5.6 1.4L12 17l-1.9-5.6L4.5 10l5.6-1.4L12 3z"/></svg></span><div><div style="font-size:14px;font-weight:700">AI 마케터</div><div style="font-size:11px;color:var(--ink3)">루미스토어 데이터 분석 중</div></div></div>
+          <div style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px;background:var(--surface)">
+            <div style="align-self:flex-end;max-width:72%;background:var(--ink);color:var(--bg);font-size:13.5px;line-height:1.5;padding:11px 15px;border-radius:14px 14px 4px 14px">이번 주 광고 성과 어때? 개선할 부분 알려줘.</div>
+            <div style="max-width:86%;background:var(--panel);border:1px solid var(--border);font-size:13.5px;line-height:1.6;padding:14px 16px;border-radius:14px 14px 14px 4px">
+              <div style="color:var(--ink)">이번 주 ROAS는 <b>412.8%</b>로 전주 대비 18.4% 상승했어요. 개선 포인트 2가지를 찾았습니다 👇</div>
+            </div>
+            <div style="max-width:86%;background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px">
+              <div style="display:flex;align-items:center;gap:7px;margin-bottom:9px"><span style="font-size:10.5px;font-weight:700;color:var(--brand-ink);background:var(--brand-soft);padding:3px 8px;border-radius:5px" class="mono">제안 1</span><span style="font-size:11.5px;color:var(--ink3)">입찰가 상향</span></div>
+              <div style="font-size:13.5px;line-height:1.6;color:var(--ink)">'블루투스 스피커'는 전환율이 높은데 현재 <b>3위</b>예요. 입찰가를 <b style="color:var(--brand)">₩480 → ₩540</b>로 올리면 1~2위 복귀가 예상됩니다. (예상 주문 +14%)</div>
+              <div style="display:flex;gap:8px;margin-top:13px"><span style="font-size:12.5px;font-weight:600;color:#fff;background:var(--brand);padding:8px 15px;border-radius:8px">적용하기</span><span style="font-size:12.5px;font-weight:600;color:var(--ink2);background:var(--surface);border:1px solid var(--border2);padding:8px 15px;border-radius:8px">나중에</span></div>
+            </div>
+            <div style="max-width:86%;background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px">
+              <div style="display:flex;align-items:center;gap:7px;margin-bottom:9px"><span style="font-size:10.5px;font-weight:700;color:var(--down);background:var(--down-soft);padding:3px 8px;border-radius:5px" class="mono">제안 2</span><span style="font-size:11.5px;color:var(--ink3)">입찰 하향</span></div>
+              <div style="font-size:13.5px;line-height:1.6;color:var(--ink)">'운동용 이어폰'은 클릭은 많지만 주문이 적어 ROAS가 낮습니다. 입찰가를 <b style="color:var(--down)">−15%</b> 조정하길 추천해요.</div>
+              <div style="display:flex;gap:8px;margin-top:13px"><span style="font-size:12.5px;font-weight:600;color:#fff;background:var(--brand);padding:8px 15px;border-radius:8px">적용하기</span><span style="font-size:12.5px;font-weight:600;color:var(--ink2);background:var(--surface);border:1px solid var(--border2);padding:8px 15px;border-radius:8px">나중에</span></div>
+            </div>
+          </div>
+          <div style="padding:14px 18px;border-top:1px solid var(--border);display:flex;gap:10px;align-items:center"><div style="flex:1;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:11px 14px;font-size:13px;color:var(--ink3)">무엇이든 물어보세요…</div><span style="width:38px;height:38px;border-radius:10px;background:var(--brand);display:flex;align-items:center;justify-content:center"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
+        </div>
+
+        <!-- right column -->
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px">
+            <div style="font-size:14px;font-weight:700;margin-bottom:14px">이번 주 액션 요약</div>
+            <div style="display:flex;flex-direction:column;gap:11px">
+              <div style="display:flex;align-items:center;gap:11px"><span style="width:32px;height:32px;border-radius:8px;background:var(--up-soft);display:flex;align-items:center;justify-content:center;color:var(--up);font-weight:800;font-size:13px" class="num">3</span><div style="font-size:13px;color:var(--ink2);white-space:nowrap">입찰가 상향 제안</div></div>
+              <div style="display:flex;align-items:center;gap:11px"><span style="width:32px;height:32px;border-radius:8px;background:var(--down-soft);display:flex;align-items:center;justify-content:center;color:var(--down);font-weight:800;font-size:13px" class="num">2</span><div style="font-size:13px;color:var(--ink2);white-space:nowrap">입찰가 하향 제안</div></div>
+              <div style="display:flex;align-items:center;gap:11px"><span style="width:32px;height:32px;border-radius:8px;background:var(--brand-soft);display:flex;align-items:center;justify-content:center;color:var(--brand-ink);font-weight:800;font-size:13px" class="num">8</span><div style="font-size:13px;color:var(--ink2);white-space:nowrap">신규 키워드 추천</div></div>
+            </div>
+          </div>
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="font-size:14px;font-weight:700;white-space:nowrap">자동 주간 리포트</span><span class="mono" style="font-size:11px;color:var(--ink3)">매주 월 09:00</span></div>
+            <div style="font-size:12.5px;color:var(--ink2);line-height:1.55;margin:8px 0 14px">지난주 성과 요약과 다음 주 전략을 자동으로 정리해 메일로 보내드립니다.</div>
+            <div style="border:1px solid var(--border);border-radius:11px;padding:14px;background:var(--surface)">
+              <div class="mono" style="font-size:10.5px;color:var(--ink3);margin-bottom:8px">6월 4주차 리포트 (미리보기)</div>
+              <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:5px 0"><span style="color:var(--ink2)">매출</span><span class="num" style="font-weight:600;color:var(--up)">₩51.2M ▲22.6%</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:5px 0;border-top:1px solid var(--border)"><span style="color:var(--ink2);white-space:nowrap">광고비 절감</span><span class="num" style="font-weight:600">₩1.2M</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:5px 0;border-top:1px solid var(--border)"><span style="color:var(--ink2);white-space:nowrap">부정클릭 차단</span><span class="num" style="font-weight:600">312건</span></div>
+            </div>
+            <div style="text-align:center;margin-top:12px;font-size:12.5px;font-weight:600;color:var(--brand)">전체 리포트 보기 →</div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { screen: 'perf', theme: 'dark', tenantOpen: false };
+
+  componentDidMount() { this.applyTheme(); }
+  componentDidUpdate() { this.applyTheme(); }
+
+  applyTheme() {
+    if (!this.rootEl) return;
+    const dark = {
+      '--bg':'#06080F','--surface':'#0A0E1A','--panel':'#0E1322','--ink':'#F5F7FA','--ink2':'#9AA6BE','--ink3':'#6E7A95','--border':'#1B2233','--border2':'#26304A','--brand':'#3B6EF5','--brand-soft':'#16224A','--brand-ink':'#9BB0FF','--up':'#34D399','--up-soft':'#0E2A22','--down':'#FB7185','--down-soft':'#2A1620','--warn':'#FBBF24','--warn-soft':'#2A2210','--sidebar':'#090C16','--track':'#1B2233'
+    };
+    const light = {
+      '--bg':'#F6F7F9','--surface':'#FAFAFB','--panel':'#FFFFFF','--ink':'#0B0E14','--ink2':'#565E6C','--ink3':'#8B94A3','--border':'#ECEDF1','--border2':'#E5E8EC','--brand':'#3B6EF5','--brand-soft':'#E6EEFF','--brand-ink':'#2A56D4','--up':'#16A36B','--up-soft':'#E3F6EE','--down':'#E5484D','--down-soft':'#FCE9EA','--warn':'#9A6700','--warn-soft':'#FCF3E1','--sidebar':'#FFFFFF','--track':'#F0F1F4'
+    };
+    const t = this.state.theme === 'dark' ? dark : light;
+    for (const k in t) this.rootEl.style.setProperty(k, t[k]);
+  }
+
+  navStyle(active) {
+    return 'display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:9px;font-size:13.5px;cursor:pointer;'
+      + (active
+        ? 'font-weight:600;color:var(--brand-ink);background:var(--brand-soft)'
+        : 'font-weight:500;color:var(--ink2);background:transparent');
+  }
+
+  renderVals() {
+    const s = this.state.screen;
+    const titles = { perf:'통합 실적', bid:'자동입찰', kw:'키워드 확장', fraud:'부정클릭 방어', order:'발주 수집', ai:'AI 마케터' };
+    return {
+      rootRef: (el) => { this.rootEl = el; },
+      isDark: this.state.theme === 'dark',
+      isLight: this.state.theme !== 'dark',
+      toggleTheme: () => this.setState(st => ({ theme: st.theme === 'dark' ? 'light' : 'dark' })),
+      tenantOpen: this.state.tenantOpen,
+      toggleTenant: () => this.setState(st => ({ tenantOpen: !st.tenantOpen })),
+      setPerf: () => this.setState({ screen:'perf', tenantOpen:false }),
+      setBid: () => this.setState({ screen:'bid', tenantOpen:false }),
+      setKw: () => this.setState({ screen:'kw', tenantOpen:false }),
+      setFraud: () => this.setState({ screen:'fraud', tenantOpen:false }),
+      setOrder: () => this.setState({ screen:'order', tenantOpen:false }),
+      setAi: () => this.setState({ screen:'ai', tenantOpen:false }),
+      showPerf: s === 'perf', showBid: s === 'bid', showKw: s === 'kw', showFraud: s === 'fraud', showOrder: s === 'order', showAi: s === 'ai',
+      title: titles[s],
+      navPerfStyle: this.navStyle(s === 'perf'),
+      navBidStyle: this.navStyle(s === 'bid'),
+      navKwStyle: this.navStyle(s === 'kw'),
+      navFraudStyle: this.navStyle(s === 'fraud'),
+      navOrderStyle: this.navStyle(s === 'order'),
+      navAiStyle: this.navStyle(s === 'ai'),
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,1810 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@700;800&display=swap">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#EFECED;color:#1A1719;font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,system-ui,sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+a{color:#E0526B;text-decoration:none}
+a:hover{color:#C43D55}
+input,button,select{font-family:inherit;font-size:inherit}
+input:focus{outline:none}
+</style>
+<script src="./image-slot.js"></script>
+</helmet>
+
+<div style="padding:72px 80px 120px;display:flex;flex-direction:column;gap:64px;width:max-content">
+
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:80px;padding-bottom:26px;border-bottom:1px solid #DCD6D9">
+<div>
+<div style="display:flex;align-items:baseline;gap:2px;margin-bottom:18px"><span style="font-family:Poppins,sans-serif;font-weight:800;font-size:30px;letter-spacing:-0.03em;color:#1A1719">urdeal</span><span style="width:8px;height:8px;border-radius:50%;background:#E0526B;display:inline-block"></span></div>
+<div style="font-size:26px;font-weight:800;letter-spacing:-0.035em;line-height:1.25">운영자 몰 파일럿 · 화면 시안</div>
+<div style="font-size:14px;color:#6B6469;margin-top:8px;letter-spacing:-0.01em">화면 A 손님 가게 홈 (라이트·다크) / 화면 A-2 상품 상세 / 화면 B 빠른 공구 등록 / 화면 C 주문 / 화면 D 반품 / 재사용 요소</div>
+</div>
+<div style="display:flex;gap:10px;align-items:center">
+<span style="font-size:11px;font-weight:700;letter-spacing:0.02em;color:#8A8288;border:1px solid #DCD6D9;border-radius:999px;padding:6px 12px">2026.08.02</span>
+<span style="font-size:11px;font-weight:700;letter-spacing:0.02em;color:#fff;background:#1A1719;border-radius:999px;padding:7px 12px">1a</span>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:22px">
+<div style="display:flex;align-items:center;gap:12px">
+<span style="font-size:11px;font-weight:800;letter-spacing:0.06em;color:#E0526B">색 검토</span>
+<span style="font-size:19px;font-weight:800;letter-spacing:-0.03em">주색 후보 5안</span>
+<span style="font-size:13px;color:#8A8288;letter-spacing:-0.01em">같은 카드·같은 버튼을 색만 바꿔 그렸습니다</span>
+</div>
+<div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap">
+
+<div style="width:288px;flex:none;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:center;gap:8px">
+<span style="font-size:11px;font-weight:800;color:#fff;background:#1A1719;border-radius:999px;padding:5px 9px;letter-spacing:0.02em">2a</span>
+<span style="font-size:13.5px;font-weight:800;letter-spacing:-0.03em">로즈 · 현재안</span>
+<span style="font-size:11px;color:#9A9298">#E0526B</span>
+</div>
+<div style="background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 14px 30px -20px rgba(26,23,25,.32)">
+<div style="display:flex;align-items:center;gap:10px;padding:16px 16px 12px">
+<div style="width:38px;height:38px;border-radius:12px;background:#E0526B;color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;flex:none">행</div>
+<div><div style="font-size:15px;font-weight:800;letter-spacing:-0.035em">행복반찬</div><div style="font-size:11.5px;color:#776F74;letter-spacing:-0.02em;margin-top:2px">매일 아침 만드는 집반찬</div></div>
+</div>
+<div style="display:flex;align-items:center;gap:6px;padding:9px 16px;background:#FBEDF0;color:#A8455A">
+<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"></rect><path d="M8 10.5V7.6a4 4 0 0 1 8 0v2.9"></path></svg>
+<span style="font-size:11.5px;font-weight:600;letter-spacing:-0.02em">결제는 유어딜이 안전하게 처리해요</span>
+</div>
+<div style="padding:16px">
+<div style="display:flex;gap:12px">
+<div style="width:100px;height:100px;border-radius:12px;background:#EDE9EA;position:relative;flex:none">
+<span style="position:absolute;left:6px;top:6px;background:rgba(20,17,19,.78);color:#fff;font-size:10px;font-weight:700;padding:4px 6px;border-radius:999px;letter-spacing:-0.02em">2일 남음</span>
+</div>
+<div style="min-width:0;flex:1">
+<div style="font-size:13px;font-weight:600;line-height:1.4;letter-spacing:-0.025em;color:#251F22">수제 사과잼 250g 2병 세트</div>
+<div style="display:flex;align-items:baseline;gap:4px;margin-top:6px">
+<span style="font-size:14.5px;font-weight:800;color:#E0526B;letter-spacing:-0.03em">30%</span>
+<span style="font-size:14.5px;font-weight:800;letter-spacing:-0.03em">7,000원</span>
+</div>
+<div style="display:flex;align-items:center;gap:5px;margin-top:8px;background:#F5F2F3;border-radius:8px;padding:5px 7px">
+<span style="font-size:11px;font-weight:700;color:#3F383C;letter-spacing:-0.02em">8월 10일 픽업</span>
+<span style="margin-left:auto;font-size:10px;font-weight:700;color:#E0526B;background:#FBEDF0;border-radius:5px;padding:2px 5px">3개</span>
+</div>
+</div>
+</div>
+<div style="display:grid;gap:8px;margin-top:16px">
+<button style="height:48px;border-radius:12px;border:none;background:#E0526B;color:#fff;font-size:15px;font-weight:800;letter-spacing:-0.03em;cursor:pointer" style-hover="background:#C43D55">공구 열기</button>
+<button style="height:48px;border-radius:12px;border:none;background:#F1EDEF;color:#3F383C;font-size:15px;font-weight:700;letter-spacing:-0.03em;cursor:pointer">보조 버튼</button>
+</div>
+</div>
+</div>
+<div style="font-size:11.5px;line-height:1.65;color:#6B6469;letter-spacing:-0.02em">버튼도 붉고 마감 경고도 붉어서 "급하다"가 눈에 안 박힙니다. 반찬·정육보다 디저트·뷰티에 가까운 색입니다.</div>
+</div>
+
+<div style="width:288px;flex:none;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:center;gap:8px">
+<span style="font-size:11px;font-weight:800;color:#fff;background:#1A1719;border-radius:999px;padding:5px 9px;letter-spacing:0.02em">2b</span>
+<span style="font-size:13.5px;font-weight:800;letter-spacing:-0.03em">차콜 + 주황</span>
+<span style="font-size:11px;color:#9A9298">#1A1719 · #E8590C</span>
+</div>
+<div style="background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 14px 30px -20px rgba(26,23,25,.32)">
+<div style="display:flex;align-items:center;gap:10px;padding:16px 16px 12px">
+<div style="width:38px;height:38px;border-radius:12px;background:#1A1719;color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;flex:none">행</div>
+<div><div style="font-size:15px;font-weight:800;letter-spacing:-0.035em">행복반찬</div><div style="font-size:11.5px;color:#776F74;letter-spacing:-0.02em;margin-top:2px">매일 아침 만드는 집반찬</div></div>
+</div>
+<div style="display:flex;align-items:center;gap:6px;padding:9px 16px;background:#FFF3EA;color:#A85410">
+<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"></rect><path d="M8 10.5V7.6a4 4 0 0 1 8 0v2.9"></path></svg>
+<span style="font-size:11.5px;font-weight:600;letter-spacing:-0.02em">결제는 유어딜이 안전하게 처리해요</span>
+</div>
+<div style="padding:16px">
+<div style="display:flex;gap:12px">
+<div style="width:100px;height:100px;border-radius:12px;background:#EDE9EA;position:relative;flex:none">
+<span style="position:absolute;left:6px;top:6px;background:rgba(20,17,19,.78);color:#fff;font-size:10px;font-weight:700;padding:4px 6px;border-radius:999px;letter-spacing:-0.02em">2일 남음</span>
+</div>
+<div style="min-width:0;flex:1">
+<div style="font-size:13px;font-weight:600;line-height:1.4;letter-spacing:-0.025em;color:#251F22">수제 사과잼 250g 2병 세트</div>
+<div style="display:flex;align-items:baseline;gap:4px;margin-top:6px">
+<span style="font-size:14.5px;font-weight:800;color:#E8590C;letter-spacing:-0.03em">30%</span>
+<span style="font-size:14.5px;font-weight:800;letter-spacing:-0.03em">7,000원</span>
+</div>
+<div style="display:flex;align-items:center;gap:5px;margin-top:8px;background:#F5F2F3;border-radius:8px;padding:5px 7px">
+<span style="font-size:11px;font-weight:700;color:#3F383C;letter-spacing:-0.02em">8월 10일 픽업</span>
+<span style="margin-left:auto;font-size:10px;font-weight:700;color:#C2410C;background:#FFF3EA;border-radius:5px;padding:2px 5px">3개</span>
+</div>
+</div>
+</div>
+<div style="display:grid;gap:8px;margin-top:16px">
+<button style="height:48px;border-radius:12px;border:none;background:#1A1719;color:#fff;font-size:15px;font-weight:800;letter-spacing:-0.03em;cursor:pointer" style-hover="background:#000000">공구 열기</button>
+<button style="height:48px;border-radius:12px;border:none;background:#F1EFEF;color:#3F383C;font-size:15px;font-weight:700;letter-spacing:-0.03em;cursor:pointer">보조 버튼</button>
+</div>
+</div>
+</div>
+<div style="font-size:11.5px;line-height:1.65;color:#6B6469;letter-spacing:-0.02em">버튼은 검정, 주황은 가격·할인에만. 어떤 상품 사진 위에서도 버튼이 안 죽고 마감 경고와 역할이 갈립니다. <span style="font-weight:800;color:#1A1719">제 추천</span></div>
+</div>
+
+<div style="width:288px;flex:none;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:center;gap:8px">
+<span style="font-size:11px;font-weight:800;color:#fff;background:#1A1719;border-radius:999px;padding:5px 9px;letter-spacing:0.02em">2c</span>
+<span style="font-size:13.5px;font-weight:800;letter-spacing:-0.03em">딥 그린</span>
+<span style="font-size:11px;color:#9A9298">#1F7A4D</span>
+</div>
+<div style="background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 14px 30px -20px rgba(26,23,25,.32)">
+<div style="display:flex;align-items:center;gap:10px;padding:16px 16px 12px">
+<div style="width:38px;height:38px;border-radius:12px;background:#1F7A4D;color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;flex:none">행</div>
+<div><div style="font-size:15px;font-weight:800;letter-spacing:-0.035em">행복반찬</div><div style="font-size:11.5px;color:#776F74;letter-spacing:-0.02em;margin-top:2px">매일 아침 만드는 집반찬</div></div>
+</div>
+<div style="display:flex;align-items:center;gap:6px;padding:9px 16px;background:#E8F4EE;color:#1B6B45">
+<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"></rect><path d="M8 10.5V7.6a4 4 0 0 1 8 0v2.9"></path></svg>
+<span style="font-size:11.5px;font-weight:600;letter-spacing:-0.02em">결제는 유어딜이 안전하게 처리해요</span>
+</div>
+<div style="padding:16px">
+<div style="display:flex;gap:12px">
+<div style="width:100px;height:100px;border-radius:12px;background:#EDE9EA;position:relative;flex:none">
+<span style="position:absolute;left:6px;top:6px;background:rgba(20,17,19,.78);color:#fff;font-size:10px;font-weight:700;padding:4px 6px;border-radius:999px;letter-spacing:-0.02em">2일 남음</span>
+</div>
+<div style="min-width:0;flex:1">
+<div style="font-size:13px;font-weight:600;line-height:1.4;letter-spacing:-0.025em;color:#251F22">수제 사과잼 250g 2병 세트</div>
+<div style="display:flex;align-items:baseline;gap:4px;margin-top:6px">
+<span style="font-size:14.5px;font-weight:800;color:#1F7A4D;letter-spacing:-0.03em">30%</span>
+<span style="font-size:14.5px;font-weight:800;letter-spacing:-0.03em">7,000원</span>
+</div>
+<div style="display:flex;align-items:center;gap:5px;margin-top:8px;background:#F5F2F3;border-radius:8px;padding:5px 7px">
+<span style="font-size:11px;font-weight:700;color:#3F383C;letter-spacing:-0.02em">8월 10일 픽업</span>
+<span style="margin-left:auto;font-size:10px;font-weight:700;color:#1B6B45;background:#E8F4EE;border-radius:5px;padding:2px 5px">3개</span>
+</div>
+</div>
+</div>
+<div style="display:grid;gap:8px;margin-top:16px">
+<button style="height:48px;border-radius:12px;border:none;background:#1F7A4D;color:#fff;font-size:15px;font-weight:800;letter-spacing:-0.03em;cursor:pointer" style-hover="background:#17603C">공구 열기</button>
+<button style="height:48px;border-radius:12px;border:none;background:#EFF1F0;color:#3F383C;font-size:15px;font-weight:700;letter-spacing:-0.03em;cursor:pointer">보조 버튼</button>
+</div>
+</div>
+</div>
+<div style="font-size:11.5px;line-height:1.65;color:#6B6469;letter-spacing:-0.02em">신선식품에 가장 안전한 색이고 마감 빨강과 완전히 분리됩니다. 다만 다이클로가 이미 초록이라 따라간 인상이 남습니다.</div>
+</div>
+
+<div style="width:288px;flex:none;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:center;gap:8px">
+<span style="font-size:11px;font-weight:800;color:#fff;background:#1A1719;border-radius:999px;padding:5px 9px;letter-spacing:0.02em">2d</span>
+<span style="font-size:13.5px;font-weight:800;letter-spacing:-0.03em">딥 오렌지</span>
+<span style="font-size:11px;color:#9A9298">#E8590C</span>
+</div>
+<div style="background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 14px 30px -20px rgba(26,23,25,.32)">
+<div style="display:flex;align-items:center;gap:10px;padding:16px 16px 12px">
+<div style="width:38px;height:38px;border-radius:12px;background:#E8590C;color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;flex:none">행</div>
+<div><div style="font-size:15px;font-weight:800;letter-spacing:-0.035em">행복반찬</div><div style="font-size:11.5px;color:#776F74;letter-spacing:-0.02em;margin-top:2px">매일 아침 만드는 집반찬</div></div>
+</div>
+<div style="display:flex;align-items:center;gap:6px;padding:9px 16px;background:#FFF1E7;color:#B4530F">
+<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"></rect><path d="M8 10.5V7.6a4 4 0 0 1 8 0v2.9"></path></svg>
+<span style="font-size:11.5px;font-weight:600;letter-spacing:-0.02em">결제는 유어딜이 안전하게 처리해요</span>
+</div>
+<div style="padding:16px">
+<div style="display:flex;gap:12px">
+<div style="width:100px;height:100px;border-radius:12px;background:#EDE9EA;position:relative;flex:none">
+<span style="position:absolute;left:6px;top:6px;background:rgba(20,17,19,.78);color:#fff;font-size:10px;font-weight:700;padding:4px 6px;border-radius:999px;letter-spacing:-0.02em">2일 남음</span>
+</div>
+<div style="min-width:0;flex:1">
+<div style="font-size:13px;font-weight:600;line-height:1.4;letter-spacing:-0.025em;color:#251F22">수제 사과잼 250g 2병 세트</div>
+<div style="display:flex;align-items:baseline;gap:4px;margin-top:6px">
+<span style="font-size:14.5px;font-weight:800;color:#C2410C;letter-spacing:-0.03em">30%</span>
+<span style="font-size:14.5px;font-weight:800;letter-spacing:-0.03em">7,000원</span>
+</div>
+<div style="display:flex;align-items:center;gap:5px;margin-top:8px;background:#F5F2F3;border-radius:8px;padding:5px 7px">
+<span style="font-size:11px;font-weight:700;color:#3F383C;letter-spacing:-0.02em">8월 10일 픽업</span>
+<span style="margin-left:auto;font-size:10px;font-weight:700;color:#C2410C;background:#FFF1E7;border-radius:5px;padding:2px 5px">3개</span>
+</div>
+</div>
+</div>
+<div style="display:grid;gap:8px;margin-top:16px">
+<button style="height:48px;border-radius:12px;border:none;background:#E8590C;color:#fff;font-size:15px;font-weight:800;letter-spacing:-0.03em;cursor:pointer" style-hover="background:#C64A08">공구 열기</button>
+<button style="height:48px;border-radius:12px;border:none;background:#F2EFEE;color:#3F383C;font-size:15px;font-weight:700;letter-spacing:-0.03em;cursor:pointer">보조 버튼</button>
+</div>
+</div>
+</div>
+<div style="font-size:11.5px;line-height:1.65;color:#6B6469;letter-spacing:-0.02em">음식이 가장 맛있어 보이는 색이고 동네 상권 특유의 친근함이 있습니다. 다만 마감 빨강과 계열이 붙어서 2a와 같은 문제가 조금 남습니다.</div>
+</div>
+
+<div style="width:288px;flex:none;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:center;gap:8px">
+<span style="font-size:11px;font-weight:800;color:#fff;background:#E0526B;border-radius:999px;padding:5px 9px;letter-spacing:0.02em">2e</span>
+<span style="font-size:13.5px;font-weight:800;letter-spacing:-0.03em">차콜 + 유어딜 로즈</span>
+<span style="font-size:11px;color:#9A9298">#1A1719 · #E0526B</span>
+</div>
+<div style="background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 18px 36px -20px rgba(224,82,107,.34);outline:2px solid #E0526B;outline-offset:-1px">
+<div style="display:flex;align-items:center;gap:10px;padding:16px 16px 12px">
+<div style="width:38px;height:38px;border-radius:12px;background:#E0526B;color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;flex:none">행</div>
+<div><div style="font-size:15px;font-weight:800;letter-spacing:-0.035em">행복반찬</div><div style="font-size:11.5px;color:#776F74;letter-spacing:-0.02em;margin-top:2px">매일 아침 만드는 집반찬</div></div>
+</div>
+<div style="display:flex;align-items:center;gap:6px;padding:9px 16px;background:#FBEDF0;color:#A8455A">
+<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"></rect><path d="M8 10.5V7.6a4 4 0 0 1 8 0v2.9"></path></svg>
+<span style="font-size:11.5px;font-weight:600;letter-spacing:-0.02em">결제는 유어딜이 안전하게 처리해요</span>
+</div>
+<div style="padding:16px">
+<div style="display:flex;gap:12px">
+<div style="width:100px;height:100px;border-radius:12px;background:#EDE9EA;position:relative;flex:none">
+<span style="position:absolute;left:6px;top:6px;background:#E0526B;color:#fff;font-size:10px;font-weight:700;padding:4px 6px;border-radius:999px;letter-spacing:-0.02em">2일 남음</span>
+</div>
+<div style="min-width:0;flex:1">
+<div style="font-size:13px;font-weight:600;line-height:1.4;letter-spacing:-0.025em;color:#251F22">수제 사과잼 250g 2병 세트</div>
+<div style="display:flex;align-items:baseline;gap:4px;margin-top:6px">
+<span style="font-size:14.5px;font-weight:800;color:#E0526B;letter-spacing:-0.03em">30%</span>
+<span style="font-size:14.5px;font-weight:800;letter-spacing:-0.03em">7,000원</span>
+</div>
+<div style="display:flex;align-items:center;gap:5px;margin-top:8px;background:#F5F2F3;border-radius:8px;padding:5px 7px">
+<span style="font-size:11px;font-weight:700;color:#3F383C;letter-spacing:-0.02em">8월 10일 픽업</span>
+<span style="margin-left:auto;font-size:10px;font-weight:700;color:#A8455A;background:#FBEDF0;border-radius:5px;padding:2px 5px">3개</span>
+</div>
+</div>
+</div>
+<div style="display:grid;gap:8px;margin-top:16px">
+<button style="height:48px;border-radius:12px;border:none;background:#1A1719;color:#fff;font-size:15px;font-weight:800;letter-spacing:-0.03em;cursor:pointer" style-hover="background:#000000">공구 열기</button>
+<button style="height:48px;border-radius:12px;border:none;background:#F1EDEF;color:#3F383C;font-size:15px;font-weight:700;letter-spacing:-0.03em;cursor:pointer">보조 버튼</button>
+</div>
+</div>
+</div>
+<div style="font-size:11.5px;line-height:1.65;color:#6B6469;letter-spacing:-0.02em">2b의 구조에 주황 대신 유어딜 로즈를 넣은 안. 버튼이 차콜로 내려가니 로즈가 마감·할인·재고만 맡습니다. <span style="font-weight:800;color:#1A1719">브랜드 색 그대로라 승인이 필요 없습니다</span></div>
+</div>
+
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:22px">
+<div style="display:flex;align-items:center;gap:12px">
+<span style="font-size:11px;font-weight:800;letter-spacing:0.06em;color:#E0526B">화면 A</span>
+<span style="font-size:19px;font-weight:800;letter-spacing:-0.03em">손님이 보는 가게 홈</span>
+<span style="font-size:13px;color:#8A8288;letter-spacing:-0.01em">urdeal.kr/{가게이름} · 라이트/다크 2벌</span>
+</div>
+<div style="display:flex;gap:44px;align-items:flex-start">
+
+<div style="display:flex;flex-direction:column;gap:12px;flex:none">
+<div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:12.5px;font-weight:800;letter-spacing:-0.01em">A-1 라이트</span><span style="font-size:11.5px;color:#9A9298;display:{{ noteD }}">마감·가격이 첫 시선, 픽업은 카드마다 한 줄</span></div>
+<div style="max-width:430px;width:{{ fw }};border-radius:40px;background:#fff;border:1px solid #E2DDDF;box-shadow:0 24px 48px -28px rgba(26,23,25,.35);overflow:hidden">
+<div style="height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 26px 0 30px;background:#fff">
+<span style="font-size:14px;font-weight:700;letter-spacing:-0.01em">9:41</span>
+<span style="display:flex;align-items:center;gap:6px;color:#1A1719">
+<svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect x="0" y="7.5" width="3" height="3.5" rx="1"></rect><rect x="4.6" y="5.2" width="3" height="5.8" rx="1"></rect><rect x="9.2" y="2.6" width="3" height="8.4" rx="1"></rect><rect x="13.8" y="0" width="3" height="11" rx="1"></rect></svg>
+<svg width="15" height="11" viewBox="0 0 15 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 3.6a9 9 0 0 1 13 0"></path><path d="M3.6 6.4a5.4 5.4 0 0 1 7.8 0"></path><circle cx="7.5" cy="9.3" r="1.1" fill="currentColor" stroke="none"></circle></svg>
+<svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x="0.6" y="0.6" width="19" height="9.8" rx="3" stroke="currentColor" stroke-opacity="0.35"></rect><rect x="2.2" y="2.2" width="14.5" height="6.6" rx="1.8" fill="currentColor"></rect><path d="M21.4 4v3a2 2 0 0 0 0-3z" fill="currentColor" fill-opacity="0.4"></path></svg>
+</span>
+</div>
+<div style="display:{{ chromeD }};align-items:center;gap:10px;height:44px;padding:0 16px;background:#F6F3F4;border-bottom:1px solid #EAE5E7">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B6469" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+<span style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;font-size:12.5px;color:#6B6469;letter-spacing:-0.01em"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"></rect><path d="M8 10.5V7.6a4 4 0 0 1 8 0v2.9"></path></svg>urdeal.kr/happybanchan</span>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="#6B6469"><circle cx="12" cy="5" r="1.7"></circle><circle cx="12" cy="12" r="1.7"></circle><circle cx="12" cy="19" r="1.7"></circle></svg>
+</div>
+<div style="display:flex;align-items:center;gap:13px;padding:22px 20px 16px">
+<div style="width:50px;height:50px;border-radius:15px;background:#E0526B;color:#fff;display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:800;letter-spacing:-0.02em;flex:none">행</div>
+<div style="min-width:0">
+<div style="font-size:18.5px;font-weight:800;letter-spacing:-0.035em;line-height:1.2">행복반찬</div>
+<div style="font-size:13px;color:#776F74;letter-spacing:-0.015em;margin-top:4px">매일 아침 직접 만드는 집반찬</div>
+</div>
+</div>
+<div style="display:flex;align-items:center;gap:7px;padding:10px 20px;background:#FBEDF0;color:#A8455A">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"></rect><path d="M8 10.5V7.6a4 4 0 0 1 8 0v2.9"></path></svg>
+<span style="font-size:12.5px;font-weight:600;letter-spacing:-0.02em">결제는 유어딜이 안전하게 처리해요</span>
+</div>
+<div style="display:flex;align-items:baseline;justify-content:space-between;padding:24px 20px 14px">
+<span style="font-size:15.5px;font-weight:800;letter-spacing:-0.03em">진행 중인 공동구매</span>
+<span style="font-size:12px;font-weight:600;color:#9A9298">6</span>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:22px 14px;padding:0 20px">
+
+<div>
+<div style="position:relative;width:100%;aspect-ratio:1;border-radius:14px;overflow:hidden;background:#F1EDEF">
+<image-slot id="a1p1" shape="rect" placeholder="상품 사진 1:1"></image-slot>
+<span style="position:absolute;left:8px;top:8px;display:flex;align-items:center;gap:4px;background:#E0526B;color:#fff;font-size:11.5px;font-weight:700;letter-spacing:-0.02em;padding:5px 8px;border-radius:999px;pointer-events:none"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5.2l3.2 2"></path></svg>2일 남음</span>
+<span style="position:absolute;right:8px;top:8px;background:rgba(20,17,19,.74);backdrop-filter:blur(6px);color:#fff;font-size:11.5px;font-weight:700;letter-spacing:-0.02em;padding:5px 8px;border-radius:999px;pointer-events:none">3개 남음</span>
+</div>
+<div style="font-size:13.5px;font-weight:600;line-height:1.4;letter-spacing:-0.025em;color:#251F22;margin-top:11px;min-height:38px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">수제 사과잼 250g 2병 세트</div>
+<div style="display:flex;align-items:baseline;gap:5px;margin-top:5px">
+<span style="font-size:15px;font-weight:800;color:#E0526B;letter-spacing:-0.03em">30%</span>
+<span style="font-size:15px;font-weight:800;letter-spacing:-0.03em">7,000원</span>
+<span style="font-size:11.5px;color:#A9A2A6;text-decoration:line-through">10,000원</span>
+</div>
+<div style="display:flex;align-items:center;gap:6px;margin-top:9px;background:#F5F2F3;border-radius:8px;padding:6px 8px">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5C5459" stroke-width="1.9" stroke-linejoin="round"><path d="M3 8.2 12 3.5l9 4.7v7.6L12 20.5 3 15.8z"></path><path d="M3 8.2 12 13l9-4.8M12 13v7.5"></path></svg>
+<span style="font-size:11.5px;font-weight:700;color:#3F383C;letter-spacing:-0.02em">8월 10일 픽업</span>
+<span style="margin-left:auto;font-size:10.5px;font-weight:700;color:#3C6E8F;background:#E7F0F6;border-radius:5px;padding:3px 5px;letter-spacing:-0.02em">냉장</span>
+</div>
+</div>
+
+<div>
+<div style="position:relative;width:100%;aspect-ratio:1;border-radius:14px;overflow:hidden;background:#F1EDEF">
+<image-slot id="a1p2" shape="rect" placeholder="상품 사진 1:1"></image-slot>
+<span style="position:absolute;left:8px;top:8px;display:flex;align-items:center;gap:4px;background:#E0526B;color:#fff;font-size:11.5px;font-weight:700;letter-spacing:-0.02em;padding:5px 8px;border-radius:999px;pointer-events:none"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5.2l3.2 2"></path></svg>5일 남음</span>
+</div>
+<div style="font-size:13.5px;font-weight:600;line-height:1.4;letter-spacing:-0.025em;color:#251F22;margin-top:11px;min-height:38px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">모둠 밑반찬 4종 (2인 기준)</div>
+<div style="display:flex;align-items:baseline;gap:5px;margin-top:5px">
+<span style="font-size:15px;font-weight:800;color:#E0526B;letter-spacing:-0.03em">25%</span>
+<span style="font-size:15px;font-weight:800;letter-spacing:-0.03em">12,000원</span>
+<span style="font-size:11.5px;color:#A9A2A6;text-decoration:line-through">16,000원</span>
+</div>
+<div style="display:flex;align-items:center;gap:6px;margin-top:9px;background:#F5F2F3;border-radius:8px;padding:6px 8px">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5C5459" stroke-width="1.9" stroke-linejoin="round"><path d="M3 8.2 12 3.5l9 4.7v7.6L12 20.5 3 15.8z"></path><path d="M3 8.2 12 13l9-4.8M12 13v7.5"></path></svg>
+<span style="font-size:11.5px;font-weight:700;color:#3F383C;letter-spacing:-0.02em">8월 12일 픽업</span>
+<span style="margin-left:auto;font-size:10.5px;font-weight:700;color:#3C6E8F;background:#E7F0F6;border-radius:5px;padding:3px 5px;letter-spacing:-0.02em">냉장</span>
+</div>
+</div>
+
+<div>
+<div style="position:relative;width:100%;aspect-ratio:1;border-radius:14px;overflow:hidden;background:#F1EDEF">
+<image-slot id="a1p3" shape="rect" placeholder="상품 사진 1:1"></image-slot>
+<span style="position:absolute;left:8px;top:8px;display:flex;align-items:center;gap:4px;background:#E0526B;color:#fff;font-size:11.5px;font-weight:700;letter-spacing:-0.02em;padding:5px 8px;border-radius:999px;pointer-events:none"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5.2l3.2 2"></path></svg>1일 남음</span>
+<span style="position:absolute;right:8px;top:8px;background:rgba(20,17,19,.74);backdrop-filter:blur(6px);color:#fff;font-size:11.5px;font-weight:700;letter-spacing:-0.02em;padding:5px 8px;border-radius:999px;pointer-events:none">2개 남음</span>
+</div>
+<div style="font-size:13.5px;font-weight:600;line-height:1.4;letter-spacing:-0.025em;color:#251F22;margin-top:11px;min-height:38px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">직접 담근 열무김치 1kg</div>
+<div style="display:flex;align-items:baseline;gap:5px;margin-top:5px">
+<span style="font-size:15px;font-weight:800;color:#E0526B;letter-spacing:-0.03em">20%</span>
+<span style="font-size:15px;font-weight:800;letter-spacing:-0.03em">9,600원</span>
+<span style="font-size:11.5px;color:#A9A2A6;text-decoration:line-through">12,000원</span>
+</div>
+<div style="display:flex;align-items:center;gap:6px;margin-top:9px;background:#F5F2F3;border-radius:8px;padding:6px 8px">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5C5459" stroke-width="1.9" stroke-linejoin="round"><path d="M3 8.2 12 3.5l9 4.7v7.6L12 20.5 3 15.8z"></path><path d="M3 8.2 12 13l9-4.8M12 13v7.5"></path></svg>
+<span style="font-size:11.5px;font-weight:700;color:#3F383C;letter-spacing:-0.02em">8월 9일 픽업</span>
+<span style="margin-left:auto;font-size:10.5px;font-weight:700;color:#3C6E8F;background:#E7F0F6;border-radius:5px;padding:3px 5px;letter-spacing:-0.02em">냉장</span>
+</div>
+</div>
+
+<div>
+<div style="position:relative;width:100%;aspect-ratio:1;border-radius:14px;overflow:hidden;background:#F1EDEF">
+<image-slot id="a1p4" shape="rect" placeholder="상품 사진 1:1"></image-slot>
+<span style="position:absolute;left:8px;top:8px;display:flex;align-items:center;gap:4px;background:#E0526B;color:#fff;font-size:11.5px;font-weight:700;letter-spacing:-0.02em;padding:5px 8px;border-radius:999px;pointer-events:none"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5.2l3.2 2"></path></svg>6일 남음</span>
+</div>
+<div style="font-size:13.5px;font-weight:600;line-height:1.4;letter-spacing:-0.025em;color:#251F22;margin-top:11px;min-height:38px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">한우 국거리 300g</div>
+<div style="display:flex;align-items:baseline;gap:5px;margin-top:5px">
+<span style="font-size:15px;font-weight:800;color:#E0526B;letter-spacing:-0.03em">15%</span>
+<span style="font-size:15px;font-weight:800;letter-spacing:-0.03em">17,000원</span>
+<span style="font-size:11.5px;color:#A9A2A6;text-decoration:line-through">20,000원</span>
+</div>
+<div style="display:flex;align-items:center;gap:6px;margin-top:9px;background:#F5F2F3;border-radius:8px;padding:6px 8px">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5C5459" stroke-width="1.9" stroke-linejoin="round"><path d="M3 8.2 12 3.5l9 4.7v7.6L12 20.5 3 15.8z"></path><path d="M3 8.2 12 13l9-4.8M12 13v7.5"></path></svg>
+<span style="font-size:11.5px;font-weight:700;color:#3F383C;letter-spacing:-0.02em">8월 13일 픽업</span>
+<span style="margin-left:auto;font-size:10.5px;font-weight:700;color:#3C6E8F;background:#E7F0F6;border-radius:5px;padding:3px 5px;letter-spacing:-0.02em">냉동</span>
+</div>
+</div>
+
+<div>
+<div style="position:relative;width:100%;aspect-ratio:1;border-radius:14px;overflow:hidden;background:#F1EDEF">
+<image-slot id="a1p5" shape="rect" placeholder="상품 사진 1:1"></image-slot>
+<span style="position:absolute;left:8px;top:8px;display:flex;align-items:center;gap:4px;background:#E0526B;color:#fff;font-size:11.5px;font-weight:700;letter-spacing:-0.02em;padding:5px 8px;border-radius:999px;pointer-events:none"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5.2l3.2 2"></path></svg>3일 남음</span>
+<span style="position:absolute;right:8px;top:8px;background:rgba(20,17,19,.74);backdrop-filter:blur(6px);color:#fff;font-size:11.5px;font-weight:700;letter-spacing:-0.02em;padding:5px 8px;border-radius:999px;pointer-events:none">8개 남음</span>
+</div>
+<div style="font-size:13.5px;font-weight:600;line-height:1.4;letter-spacing:-0.025em;color:#251F22;margin-top:11px;min-height:38px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">잡곡 찰떡 10개입</div>
+<div style="display:flex;align-items:baseline;gap:5px;margin-top:5px">
+<span style="font-size:15px;font-weight:800;color:#E0526B;letter-spacing:-0.03em">33%</span>
+<span style="font-size:15px;font-weight:800;letter-spacing:-0.03em">8,000원</span>
+<span style="font-size:11.5px;color:#A9A2A6;text-decoration:line-through">12,000원</span>
+</div>
+<div style="display:flex;align-items:center;gap:6px;margin-top:9px;background:#F5F2F3;border-radius:8px;padding:6px 8px">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5C5459" stroke-width="1.9" stroke-linejoin="round"><path d="M3 8.2 12 3.5l9 4.7v7.6L12 20.5 3 15.8z"></path><path d="M3 8.2 12 13l9-4.8M12 13v7.5"></path></svg>
+<span style="font-size:11.5px;font-weight:700;color:#3F383C;letter-spacing:-0.02em">8월 11일 픽업</span>
+<span style="margin-left:auto;font-size:10.5px;font-weight:700;color:#3C6E8F;background:#E7F0F6;border-radius:5px;padding:3px 5px;letter-spacing:-0.02em">냉동</span>
+</div>
+</div>
+
+<div>
+<div style="position:relative;width:100%;aspect-ratio:1;border-radius:14px;overflow:hidden;background:#F1EDEF">
+<image-slot id="a1p6" shape="rect" placeholder="상품 사진 1:1"></image-slot>
+<span style="position:absolute;left:8px;top:8px;display:flex;align-items:center;gap:4px;background:#E0526B;color:#fff;font-size:11.5px;font-weight:700;letter-spacing:-0.02em;padding:5px 8px;border-radius:999px;pointer-events:none"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5.2l3.2 2"></path></svg>9일 남음</span>
+</div>
+<div style="font-size:13.5px;font-weight:600;line-height:1.4;letter-spacing:-0.025em;color:#251F22;margin-top:11px;min-height:38px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">담백한 통밀 식빵 1봉</div>
+<div style="display:flex;align-items:baseline;gap:5px;margin-top:5px">
+<span style="font-size:15px;font-weight:800;color:#E0526B;letter-spacing:-0.03em">18%</span>
+<span style="font-size:15px;font-weight:800;letter-spacing:-0.03em">4,500원</span>
+<span style="font-size:11.5px;color:#A9A2A6;text-decoration:line-through">5,500원</span>
+</div>
+<div style="display:flex;align-items:center;gap:6px;margin-top:9px;background:#F5F2F3;border-radius:8px;padding:6px 8px">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5C5459" stroke-width="1.9" stroke-linejoin="round"><path d="M3 8.2 12 3.5l9 4.7v7.6L12 20.5 3 15.8z"></path><path d="M3 8.2 12 13l9-4.8M12 13v7.5"></path></svg>
+<span style="font-size:11.5px;font-weight:700;color:#3F383C;letter-spacing:-0.02em">8월 16일 픽업</span>
+<span style="margin-left:auto;font-size:10.5px;font-weight:700;color:#6B6469;background:#F0EDEE;border-radius:5px;padding:3px 5px;letter-spacing:-0.02em">실온</span>
+</div>
+</div>
+
+</div>
+<div style="margin:24px 20px 0;display:flex;gap:9px;background:#F7F5F6;border:1px solid #EDE9EB;border-radius:12px;padding:13px 14px">
+<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8A8288" stroke-width="2" stroke-linecap="round" style="flex:none;margin-top:1px"><circle cx="12" cy="12" r="9.2"></circle><path d="M12 11v5.5M12 7.6v.1"></path></svg>
+<span style="font-size:12px;line-height:1.6;color:#6B6469;letter-spacing:-0.02em">냉장·냉동 상품이에요. 픽업일에 찾아가지 않으면 환불이 어려울 수 있어요.</span>
+</div>
+<div style="margin-top:28px;border-top:1px solid #F1EDEF;padding:20px 20px 28px">
+<div style="font-size:10.5px;line-height:1.9;color:#A9A2A6;letter-spacing:-0.01em">행복반찬 · 대표 김행복 · 사업자등록번호 123-45-67890<br>서울시 마포구 월드컵로 123 · 02-123-4567</div>
+<div style="margin-top:14px;font-size:10.5px;font-weight:600;letter-spacing:0.06em;color:#BCB5B9;user-select:none;cursor:default">powered by 유어딜</div>
+</div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px;flex:none">
+<div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:12.5px;font-weight:800;letter-spacing:-0.01em">A-2 다크</span><span style="font-size:11.5px;color:#9A9298;display:{{ noteD }}">손님 화면만 2벌 · 옅은 로즈는 #3A2530</span></div>
+<div style="max-width:430px;width:{{ fw }};border-radius:40px;background:#141013;border:1px solid #2A2429;box-shadow:0 24px 48px -28px rgba(26,23,25,.45);overflow:hidden">
+<div style="height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 26px 0 30px;color:#F3EFF1">
+<span style="font-size:14px;font-weight:700;letter-spacing:-0.01em">9:41</span>
+<span style="display:flex;align-items:center;gap:6px">
+<svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect x="0" y="7.5" width="3" height="3.5" rx="1"></rect><rect x="4.6" y="5.2" width="3" height="5.8" rx="1"></rect><rect x="9.2" y="2.6" width="3" height="8.4" rx="1"></rect><rect x="13.8" y="0" width="3" height="11" rx="1"></rect></svg>
+<svg width="15" height="11" viewBox="0 0 15 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 3.6a9 9 0 0 1 13 0"></path><path d="M3.6 6.4a5.4 5.4 0 0 1 7.8 0"></path><circle cx="7.5" cy="9.3" r="1.1" fill="currentColor" stroke="none"></circle></svg>
+<svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x="0.6" y="0.6" width="19" height="9.8" rx="3" stroke="currentColor" stroke-opacity="0.35"></rect><rect x="2.2" y="2.2" width="14.5" height="6.6" rx="1.8" fill="currentColor"></rect><path d="M21.4 4v3a2 2 0 0 0 0-3z" fill="currentColor" fill-opacity="0.4"></path></svg>
+</span>
+</div>
+<div style="display:{{ chromeD }};align-items:center;gap:10px;height:44px;padding:0 16px;background:#1C181B;border-bottom:1px solid #292327">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9A9298" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+<span style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;font-size:12.5px;color:#9A9298;letter-spacing:-0.01em"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"></rect><path d="M8 10.5V7.6a4 4 0 0 1 8 0v2.9"></path></svg>urdeal.kr/happybanchan</span>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="#9A9298"><circle cx="12" cy="5" r="1.7"></circle><circle cx="12" cy="12" r="1.7"></circle><circle cx="12" cy="19" r="1.7"></circle></svg>
+</div>
+<div style="display:flex;align-items:center;gap:13px;padding:22px 20px 16px">
+<div style="width:50px;height:50px;border-radius:15px;background:#E0526B;color:#fff;display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:800;letter-spacing:-0.02em;flex:none">행</div>
+<div style="min-width:0">
+<div style="font-size:18.5px;font-weight:800;letter-spacing:-0.035em;line-height:1.2;color:#F3EFF1">행복반찬</div>
+<div style="font-size:13px;color:#9C9398;letter-spacing:-0.015em;margin-top:4px">매일 아침 직접 만드는 집반찬</div>
+</div>
+</div>
+<div style="display:flex;align-items:center;gap:7px;padding:10px 20px;background:#3A2530;color:#F0AFBD">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"></rect><path d="M8 10.5V7.6a4 4 0 0 1 8 0v2.9"></path></svg>
+<span style="font-size:12.5px;font-weight:600;letter-spacing:-0.02em">결제는 유어딜이 안전하게 처리해요</span>
+</div>
+<div style="display:flex;align-items:baseline;justify-content:space-between;padding:24px 20px 14px">
+<span style="font-size:15.5px;font-weight:800;letter-spacing:-0.03em;color:#F3EFF1">진행 중인 공동구매</span>
+<span style="font-size:12px;font-weight:600;color:#7C7479">6</span>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:22px 14px;padding:0 20px">
+
+<div>
+<div style="position:relative;width:100%;aspect-ratio:1;border-radius:14px;overflow:hidden;background:#221D20">
+<image-slot id="a2p1" shape="rect" placeholder="상품 사진 1:1"></image-slot>
+<span style="position:absolute;left:8px;top:8px;display:flex;align-items:center;gap:4px;background:#E0526B;color:#fff;font-size:11.5px;font-weight:700;letter-spacing:-0.02em;padding:5px 8px;border-radius:999px;pointer-events:none"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5.2l3.2 2"></path></svg>2일 남음</span>
+<span style="position:absolute;right:8px;top:8px;background:rgba(20,17,19,.74);backdrop-filter:blur(6px);color:#fff;font-size:11.5px;font-weight:700;letter-spacing:-0.02em;padding:5px 8px;border-radius:999px;pointer-events:none">3개 남음</span>
+</div>
+<div style="font-size:13.5px;font-weight:600;line-height:1.4;letter-spacing:-0.025em;color:#ECE7E9;margin-top:11px;min-height:38px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">수제 사과잼 250g 2병 세트</div>
+<div style="display:flex;align-items:baseline;gap:5px;margin-top:5px">
+<span style="font-size:15px;font-weight:800;color:#FF7C90;letter-spacing:-0.03em">30%</span>
+<span style="font-size:15px;font-weight:800;letter-spacing:-0.03em;color:#F3EFF1">7,000원</span>
+<span style="font-size:11.5px;color:#7C7479;text-decoration:line-through">10,000원</span>
+</div>
+<div style="display:flex;align-items:center;gap:6px;margin-top:9px;background:#211C1F;border-radius:8px;padding:6px 8px">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#A69EA3" stroke-width="1.9" stroke-linejoin="round"><path d="M3 8.2 12 3.5l9 4.7v7.6L12 20.5 3 15.8z"></path><path d="M3 8.2 12 13l9-4.8M12 13v7.5"></path></svg>
+<span style="font-size:11.5px;font-weight:700;color:#DAD4D7;letter-spacing:-0.02em">8월 10일 픽업</span>
+<span style="margin-left:auto;font-size:10.5px;font-weight:700;color:#8FBDDA;background:#1B2A34;border-radius:5px;padding:3px 5px;letter-spacing:-0.02em">냉장</span>
+</div>
+</div>
+
+<div>
+<div style="position:relative;width:100%;aspect-ratio:1;border-radius:14px;overflow:hidden;background:#221D20">
+<image-slot id="a2p2" shape="rect" placeholder="상품 사진 1:1"></image-slot>
+<span style="position:absolute;left:8px;top:8px;display:flex;align-items:center;gap:4px;background:#E0526B;color:#fff;font-size:11.5px;font-weight:700;letter-spacing:-0.02em;padding:5px 8px;border-radius:999px;pointer-events:none"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5.2l3.2 2"></path></svg>5일 남음</span>
+</div>
+<div style="font-size:13.5px;font-weight:600;line-height:1.4;letter-spacing:-0.025em;color:#ECE7E9;margin-top:11px;min-height:38px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">모둠 밑반찬 4종 (2인 기준)</div>
+<div style="display:flex;align-items:baseline;gap:5px;margin-top:5px">
+<span style="font-size:15px;font-weight:800;color:#FF7C90;letter-spacing:-0.03em">25%</span>
+<span style="font-size:15px;font-weight:800;letter-spacing:-0.03em;color:#F3EFF1">12,000원</span>
+<span style="font-size:11.5px;color:#7C7479;text-decoration:line-through">16,000원</span>
+</div>
+<div style="display:flex;align-items:center;gap:6px;margin-top:9px;background:#211C1F;border-radius:8px;padding:6px 8px">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#A69EA3" stroke-width="1.9" stroke-linejoin="round"><path d="M3 8.2 12 3.5l9 4.7v7.6L12 20.5 3 15.8z"></path><path d="M3 8.2 12 13l9-4.8M12 13v7.5"></path></svg>
+<span style="font-size:11.5px;font-weight:700;color:#DAD4D7;letter-spacing:-0.02em">8월 12일 픽업</span>
+<span style="margin-left:auto;font-size:10.5px;font-weight:700;color:#8FBDDA;background:#1B2A34;border-radius:5px;padding:3px 5px;letter-spacing:-0.02em">냉장</span>
+</div>
+</div>
+
+<div>
+<div style="position:relative;width:100%;aspect-ratio:1;border-radius:14px;overflow:hidden;background:#221D20">
+<image-slot id="a2p3" shape="rect" placeholder="상품 사진 1:1"></image-slot>
+<span style="position:absolute;left:8px;top:8px;display:flex;align-items:center;gap:4px;background:#E0526B;color:#fff;font-size:11.5px;font-weight:700;letter-spacing:-0.02em;padding:5px 8px;border-radius:999px;pointer-events:none"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5.2l3.2 2"></path></svg>1일 남음</span>
+<span style="position:absolute;right:8px;top:8px;background:rgba(20,17,19,.74);backdrop-filter:blur(6px);color:#fff;font-size:11.5px;font-weight:700;letter-spacing:-0.02em;padding:5px 8px;border-radius:999px;pointer-events:none">2개 남음</span>
+</div>
+<div style="font-size:13.5px;font-weight:600;line-height:1.4;letter-spacing:-0.025em;color:#ECE7E9;margin-top:11px;min-height:38px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">직접 담근 열무김치 1kg</div>
+<div style="display:flex;align-items:baseline;gap:5px;margin-top:5px">
+<span style="font-size:15px;font-weight:800;color:#FF7C90;letter-spacing:-0.03em">20%</span>
+<span style="font-size:15px;font-weight:800;letter-spacing:-0.03em;color:#F3EFF1">9,600원</span>
+<span style="font-size:11.5px;color:#7C7479;text-decoration:line-through">12,000원</span>
+</div>
+<div style="display:flex;align-items:center;gap:6px;margin-top:9px;background:#211C1F;border-radius:8px;padding:6px 8px">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#A69EA3" stroke-width="1.9" stroke-linejoin="round"><path d="M3 8.2 12 3.5l9 4.7v7.6L12 20.5 3 15.8z"></path><path d="M3 8.2 12 13l9-4.8M12 13v7.5"></path></svg>
+<span style="font-size:11.5px;font-weight:700;color:#DAD4D7;letter-spacing:-0.02em">8월 9일 픽업</span>
+<span style="margin-left:auto;font-size:10.5px;font-weight:700;color:#8FBDDA;background:#1B2A34;border-radius:5px;padding:3px 5px;letter-spacing:-0.02em">냉장</span>
+</div>
+</div>
+
+<div>
+<div style="position:relative;width:100%;aspect-ratio:1;border-radius:14px;overflow:hidden;background:#221D20">
+<image-slot id="a2p4" shape="rect" placeholder="상품 사진 1:1"></image-slot>
+<span style="position:absolute;left:8px;top:8px;display:flex;align-items:center;gap:4px;background:#E0526B;color:#fff;font-size:11.5px;font-weight:700;letter-spacing:-0.02em;padding:5px 8px;border-radius:999px;pointer-events:none"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5.2l3.2 2"></path></svg>6일 남음</span>
+</div>
+<div style="font-size:13.5px;font-weight:600;line-height:1.4;letter-spacing:-0.025em;color:#ECE7E9;margin-top:11px;min-height:38px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">한우 국거리 300g</div>
+<div style="display:flex;align-items:baseline;gap:5px;margin-top:5px">
+<span style="font-size:15px;font-weight:800;color:#FF7C90;letter-spacing:-0.03em">15%</span>
+<span style="font-size:15px;font-weight:800;letter-spacing:-0.03em;color:#F3EFF1">17,000원</span>
+<span style="font-size:11.5px;color:#7C7479;text-decoration:line-through">20,000원</span>
+</div>
+<div style="display:flex;align-items:center;gap:6px;margin-top:9px;background:#211C1F;border-radius:8px;padding:6px 8px">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#A69EA3" stroke-width="1.9" stroke-linejoin="round"><path d="M3 8.2 12 3.5l9 4.7v7.6L12 20.5 3 15.8z"></path><path d="M3 8.2 12 13l9-4.8M12 13v7.5"></path></svg>
+<span style="font-size:11.5px;font-weight:700;color:#DAD4D7;letter-spacing:-0.02em">8월 13일 픽업</span>
+<span style="margin-left:auto;font-size:10.5px;font-weight:700;color:#8FBDDA;background:#1B2A34;border-radius:5px;padding:3px 5px;letter-spacing:-0.02em">냉동</span>
+</div>
+</div>
+
+</div>
+<div style="margin:24px 20px 0;display:flex;gap:9px;background:#1C181B;border:1px solid #292327;border-radius:12px;padding:13px 14px">
+<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8A8288" stroke-width="2" stroke-linecap="round" style="flex:none;margin-top:1px"><circle cx="12" cy="12" r="9.2"></circle><path d="M12 11v5.5M12 7.6v.1"></path></svg>
+<span style="font-size:12px;line-height:1.6;color:#A29A9F;letter-spacing:-0.02em">냉장·냉동 상품이에요. 픽업일에 찾아가지 않으면 환불이 어려울 수 있어요.</span>
+</div>
+<div style="margin-top:28px;border-top:1px solid #262023;padding:20px 20px 28px">
+<div style="font-size:10.5px;line-height:1.9;color:#6A6266;letter-spacing:-0.01em">행복반찬 · 대표 김행복 · 사업자등록번호 123-45-67890<br>서울시 마포구 월드컵로 123 · 02-123-4567</div>
+<div style="margin-top:14px;font-size:10.5px;font-weight:600;letter-spacing:0.06em;color:#5E5559;user-select:none;cursor:default">powered by 유어딜</div>
+</div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px;flex:none">
+<div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:12.5px;font-weight:800;letter-spacing:-0.01em">A-3 빈 상태</span><span style="font-size:11.5px;color:#9A9298;display:{{ noteD }}">가게 정보와 안전결제 안내는 그대로 유지</span></div>
+<div style="max-width:430px;width:{{ fw }};border-radius:40px;background:#fff;border:1px solid #E2DDDF;box-shadow:0 24px 48px -28px rgba(26,23,25,.35);overflow:hidden">
+<div style="height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 26px 0 30px">
+<span style="font-size:14px;font-weight:700;letter-spacing:-0.01em">9:41</span>
+<span style="display:flex;align-items:center;gap:6px;color:#1A1719">
+<svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect x="0" y="7.5" width="3" height="3.5" rx="1"></rect><rect x="4.6" y="5.2" width="3" height="5.8" rx="1"></rect><rect x="9.2" y="2.6" width="3" height="8.4" rx="1"></rect><rect x="13.8" y="0" width="3" height="11" rx="1"></rect></svg>
+<svg width="15" height="11" viewBox="0 0 15 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 3.6a9 9 0 0 1 13 0"></path><path d="M3.6 6.4a5.4 5.4 0 0 1 7.8 0"></path><circle cx="7.5" cy="9.3" r="1.1" fill="currentColor" stroke="none"></circle></svg>
+<svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x="0.6" y="0.6" width="19" height="9.8" rx="3" stroke="currentColor" stroke-opacity="0.35"></rect><rect x="2.2" y="2.2" width="14.5" height="6.6" rx="1.8" fill="currentColor"></rect><path d="M21.4 4v3a2 2 0 0 0 0-3z" fill="currentColor" fill-opacity="0.4"></path></svg>
+</span>
+</div>
+<div style="display:{{ chromeD }};align-items:center;gap:10px;height:44px;padding:0 16px;background:#F6F3F4;border-bottom:1px solid #EAE5E7">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B6469" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+<span style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;font-size:12.5px;color:#6B6469;letter-spacing:-0.01em"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"></rect><path d="M8 10.5V7.6a4 4 0 0 1 8 0v2.9"></path></svg>urdeal.kr/happybanchan</span>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="#6B6469"><circle cx="12" cy="5" r="1.7"></circle><circle cx="12" cy="12" r="1.7"></circle><circle cx="12" cy="19" r="1.7"></circle></svg>
+</div>
+<div style="display:flex;align-items:center;gap:13px;padding:22px 20px 16px">
+<div style="width:50px;height:50px;border-radius:15px;background:#E0526B;color:#fff;display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:800;letter-spacing:-0.02em;flex:none">행</div>
+<div style="min-width:0">
+<div style="font-size:18.5px;font-weight:800;letter-spacing:-0.035em;line-height:1.2">행복반찬</div>
+<div style="font-size:13px;color:#776F74;letter-spacing:-0.015em;margin-top:4px">매일 아침 직접 만드는 집반찬</div>
+</div>
+</div>
+<div style="display:flex;align-items:center;gap:7px;padding:10px 20px;background:#FBEDF0;color:#A8455A">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"></rect><path d="M8 10.5V7.6a4 4 0 0 1 8 0v2.9"></path></svg>
+<span style="font-size:12.5px;font-weight:600;letter-spacing:-0.02em">결제는 유어딜이 안전하게 처리해요</span>
+</div>
+<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:96px 40px 104px;text-align:center">
+<div style="width:62px;height:62px;border-radius:20px;background:#F5F2F3;display:flex;align-items:center;justify-content:center;margin-bottom:18px">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#B7B0B4" stroke-width="1.8" stroke-linejoin="round"><path d="M3 8.2 12 3.5l9 4.7v7.6L12 20.5 3 15.8z"></path><path d="M3 8.2 12 13l9-4.8M12 13v7.5"></path></svg>
+</div>
+<div style="font-size:14.5px;font-weight:700;letter-spacing:-0.03em;color:#3F383C">진행 중인 공동구매가 없어요</div>
+</div>
+<div style="margin-top:28px;border-top:1px solid #F1EDEF;padding:20px 20px 28px">
+<div style="font-size:10.5px;line-height:1.9;color:#A9A2A6;letter-spacing:-0.01em">행복반찬 · 대표 김행복 · 사업자등록번호 123-45-67890<br>서울시 마포구 월드컵로 123 · 02-123-4567</div>
+<div style="margin-top:14px;font-size:10.5px;font-weight:600;letter-spacing:0.06em;color:#BCB5B9;user-select:none;cursor:default">powered by 유어딜</div>
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:22px">
+<div style="display:flex;align-items:center;gap:12px">
+<span style="font-size:11px;font-weight:800;letter-spacing:0.06em;color:#E0526B">화면 A-2</span>
+<span style="font-size:19px;font-weight:800;letter-spacing:-0.03em">손님이 보는 상품 상세</span>
+<span style="font-size:13px;color:#8A8288;letter-spacing:-0.01em">옵션 있음 · 다크 · 옵션 없음+리뷰 0건 · 품절 · 배송 표시 없음</span>
+</div>
+<div style="display:flex;gap:44px;align-items:flex-start;flex-wrap:wrap">
+
+<div style="display:flex;flex-direction:column;gap:12px;flex:none">
+<div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:12.5px;font-weight:800;letter-spacing:-0.01em">A-2-1 라이트 · 옵션 있음</span><span style="font-size:11.5px;color:#9A9298;display:{{ noteD }}">픽업 안내를 가격 바로 아래 로즈 면으로</span></div>
+<div style="max-width:430px;width:{{ fw }};border-radius:40px;background:#fff;border:1px solid #E2DDDF;box-shadow:0 24px 48px -28px rgba(26,23,25,.35);overflow:hidden">
+<div style="height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 26px 0 30px;background:#fff">
+<span style="font-size:14px;font-weight:700;letter-spacing:-0.01em">9:41</span>
+<span style="display:flex;align-items:center;gap:6px;color:#1A1719">
+<svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect x="0" y="7.5" width="3" height="3.5" rx="1"></rect><rect x="4.6" y="5.2" width="3" height="5.8" rx="1"></rect><rect x="9.2" y="2.6" width="3" height="8.4" rx="1"></rect><rect x="13.8" y="0" width="3" height="11" rx="1"></rect></svg>
+<svg width="15" height="11" viewBox="0 0 15 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 3.6a9 9 0 0 1 13 0"></path><path d="M3.6 6.4a5.4 5.4 0 0 1 7.8 0"></path><circle cx="7.5" cy="9.3" r="1.1" fill="currentColor" stroke="none"></circle></svg>
+<svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x="0.6" y="0.6" width="19" height="9.8" rx="3" stroke="currentColor" stroke-opacity="0.35"></rect><rect x="2.2" y="2.2" width="14.5" height="6.6" rx="1.8" fill="currentColor"></rect><path d="M21.4 4v3a2 2 0 0 0 0-3z" fill="currentColor" fill-opacity="0.4"></path></svg>
+</span>
+</div>
+<div style="display:{{ chromeD }};align-items:center;gap:10px;height:44px;padding:0 16px;background:#F6F3F4;border-bottom:1px solid #EAE5E7">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B6469" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+<span style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;font-size:12.5px;color:#6B6469;letter-spacing:-0.01em"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"></rect><path d="M8 10.5V7.6a4 4 0 0 1 8 0v2.9"></path></svg>urdeal.kr/happybanchan</span>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="#6B6469"><circle cx="12" cy="5" r="1.7"></circle><circle cx="12" cy="12" r="1.7"></circle><circle cx="12" cy="19" r="1.7"></circle></svg>
+</div>
+
+<div style="position:relative;width:100%;aspect-ratio:1;background:#F1EDEF">
+<image-slot id="a2d1img" shape="rect" placeholder="상품 사진 1:1"></image-slot>
+<span style="position:absolute;left:14px;top:14px;width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(26,23,25,.14)">
+<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#1A1719" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg>
+</span>
+<span style="position:absolute;left:14px;bottom:14px;display:flex;align-items:center;gap:4px;background:#E0526B;color:#fff;font-size:11.5px;font-weight:700;padding:5px 8px;border-radius:999px;letter-spacing:-0.02em;pointer-events:none"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5.2l3.2 2"></path></svg>2일 남음</span>
+<span style="position:absolute;right:14px;bottom:14px;display:flex;gap:4px;pointer-events:none">
+<span style="width:6px;height:6px;border-radius:50%;background:#fff"></span>
+<span style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.45)"></span>
+<span style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.45)"></span>
+</span>
+</div>
+
+<div style="padding:20px 20px 0">
+<div style="font-size:19px;font-weight:800;letter-spacing:-0.035em;line-height:1.35;color:#1A1719">수제 사과잼 250g 2병 세트</div>
+<div style="display:flex;align-items:baseline;gap:7px;margin-top:11px">
+<span style="font-size:22px;font-weight:800;color:#E0526B;letter-spacing:-0.04em">30%</span>
+<span style="font-size:22px;font-weight:800;letter-spacing:-0.04em">7,000원</span>
+<span style="font-size:13.5px;color:#A9A2A6;text-decoration:line-through">10,000원</span>
+</div>
+</div>
+
+<div style="margin:16px 20px 0;border-radius:16px;background:#FBEDF0;overflow:hidden">
+<div style="display:flex;align-items:center;gap:7px;padding:12px 16px;background:#E0526B;color:#fff">
+<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round" style="flex:none"><path d="M3 8.2 12 3.5l9 4.7v7.6L12 20.5 3 15.8z"></path><path d="M3 8.2 12 13l9-4.8M12 13v7.5"></path></svg>
+<span style="font-size:13.5px;font-weight:800;letter-spacing:-0.03em">가게에 직접 찾으러 오는 상품이에요</span>
+</div>
+<div style="padding:15px 16px">
+<div style="display:flex;align-items:baseline;gap:12px">
+<span style="font-size:12px;font-weight:700;color:#B0576A;letter-spacing:-0.02em;width:48px;flex:none">받는 날</span>
+<span style="font-size:17px;font-weight:800;color:#1A1719;letter-spacing:-0.035em">8월 10일 (월)</span>
+</div>
+<div style="display:flex;align-items:baseline;gap:12px;margin-top:10px">
+<span style="font-size:12px;font-weight:700;color:#B0576A;letter-spacing:-0.02em;width:48px;flex:none">받는 곳</span>
+<span style="font-size:13.5px;font-weight:600;color:#3F383C;letter-spacing:-0.025em;line-height:1.5">서울 성동구 성수이로 12길 34<br>행복반찬</span>
+</div>
+<div style="display:flex;align-items:center;gap:7px;margin-top:13px;padding-top:13px;border-top:1px solid #F2DDE2">
+<span style="font-size:10.5px;font-weight:700;color:#3C6E8F;background:#E7F0F6;border-radius:5px;padding:3px 6px;letter-spacing:-0.02em;flex:none">냉장</span>
+<span style="font-size:12px;font-weight:600;color:#8E4356;letter-spacing:-0.025em;line-height:1.5">받는 날에 찾아가지 않으면 환불이 어려워요</span>
+</div>
+</div>
+</div>
+
+<div style="padding:24px 20px 0">
+<div style="font-size:13px;font-weight:800;letter-spacing:-0.03em;margin-bottom:10px">옵션</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;align-items:center;justify-content:space-between;height:52px;padding:0 15px;border-radius:12px;background:#1A1719;color:#fff">
+<span style="font-size:14.5px;font-weight:700;letter-spacing:-0.025em">사과잼 2병</span>
+<span style="font-size:13.5px;font-weight:700;letter-spacing:-0.02em">+0원</span>
+</div>
+<div style="display:flex;align-items:center;justify-content:space-between;height:52px;padding:0 15px;border-radius:12px;background:#F1EDEF;color:#3F383C">
+<span style="font-size:14.5px;font-weight:600;letter-spacing:-0.025em">사과잼 1병 + 유자청 1병</span>
+<span style="font-size:13.5px;font-weight:700;letter-spacing:-0.02em">+1,500원</span>
+</div>
+<div style="display:flex;align-items:center;justify-content:space-between;height:52px;padding:0 15px;border-radius:12px;background:#F7F5F6;color:#A9A2A6">
+<span style="font-size:14.5px;font-weight:600;letter-spacing:-0.025em">유자청 2병</span>
+<span style="font-size:12.5px;font-weight:700;letter-spacing:-0.02em">품절</span>
+</div>
+</div>
+</div>
+
+<div style="display:flex;align-items:center;justify-content:space-between;padding:22px 20px 0">
+<span style="font-size:13px;font-weight:800;letter-spacing:-0.03em">수량</span>
+<div style="display:flex;align-items:center;gap:2px;background:#F1EDEF;border-radius:12px;padding:3px">
+<button style="width:44px;height:44px;border:none;background:transparent;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:#E8E3E5">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B6469" stroke-width="2.4" stroke-linecap="round"><path d="M6 12h12"></path></svg>
+</button>
+<span style="min-width:40px;text-align:center;font-size:16px;font-weight:800;letter-spacing:-0.03em">1</span>
+<button style="width:44px;height:44px;border:none;background:transparent;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:#E8E3E5">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1719" stroke-width="2.4" stroke-linecap="round"><path d="M12 6v12M6 12h12"></path></svg>
+</button>
+</div>
+</div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px 0">
+<span style="font-size:12px;color:#9A9298;letter-spacing:-0.02em">부가세 포함</span>
+<span style="font-size:12px;color:#9A9298;letter-spacing:-0.02em">구매 확정 시 210원 적립</span>
+</div>
+
+<div style="margin:24px 20px 0;height:1px;background:#EFEBED"></div>
+
+<div style="padding:24px 20px 0">
+<div style="font-size:13px;font-weight:800;letter-spacing:-0.03em;margin-bottom:12px">상세정보</div>
+<div style="font-size:13.5px;line-height:1.75;color:#4A4448;letter-spacing:-0.025em">국내산 사과만 골라 설탕을 적게 넣고 오래 졸였습니다. 방부제를 넣지 않아 개봉 후에는 냉장 보관하고 2주 안에 드시는 걸 권합니다.</div>
+<div style="width:100%;aspect-ratio:1;border-radius:14px;overflow:hidden;background:#F1EDEF;margin-top:14px">
+<image-slot id="a2d1det" shape="rect" placeholder="상세 사진 1:1"></image-slot>
+</div>
+<button style="width:100%;height:50px;margin-top:12px;border-radius:12px;border:none;background:#F1EDEF;color:#3F383C;font-size:14px;font-weight:700;letter-spacing:-0.025em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px" style-hover="background:#E8E3E5">
+상세정보 펼쳐보기
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l7 7 7-7"></path></svg>
+</button>
+</div>
+
+<div style="padding:22px 20px 0">
+<button style="width:100%;height:52px;border-radius:12px;border:none;background:#FEE500;color:#1A1719;font-size:14.5px;font-weight:700;letter-spacing:-0.025em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px" style-hover="background:#F2DB00">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="#1A1719"><path d="M12 3.6c-4.8 0-8.7 3-8.7 6.7 0 2.4 1.6 4.5 4 5.7l-1 3.6c-.1.3.3.6.5.4l4.3-2.8c.3 0 .6.1.9.1 4.8 0 8.7-3 8.7-6.7S16.8 3.6 12 3.6z"></path></svg>
+카카오톡으로 공유
+</button>
+</div>
+
+<div style="margin:24px 20px 0;height:1px;background:#EFEBED"></div>
+
+<div style="padding:22px 20px 0">
+<div style="display:flex;align-items:center;gap:7px;margin-bottom:14px">
+<span style="font-size:13px;font-weight:800;letter-spacing:-0.03em">리뷰</span>
+<span style="font-size:13px;font-weight:800;color:#E0526B;letter-spacing:-0.03em">4</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:16px">
+<div>
+<div style="display:flex;align-items:center;gap:8px">
+<span style="display:flex;gap:1px;color:#E0526B">
+<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z"></path></svg>
+<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z"></path></svg>
+<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z"></path></svg>
+<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z"></path></svg>
+<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z"></path></svg>
+</span>
+<span style="font-size:13px;font-weight:700;letter-spacing:-0.025em">김민서</span>
+<span style="font-size:11.5px;color:#A9A2A6;margin-left:auto">8월 1일</span>
+</div>
+<div style="font-size:13px;line-height:1.7;color:#4A4448;letter-spacing:-0.025em;margin-top:7px">단맛이 세지 않아서 애들이 잘 먹어요. 지난번보다 사과 알갱이가 더 많았습니다.</div>
+</div>
+<div>
+<div style="display:flex;align-items:center;gap:8px">
+<span style="display:flex;gap:1px;color:#E0526B">
+<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z"></path></svg>
+<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z"></path></svg>
+<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z"></path></svg>
+<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z"></path></svg>
+<svg width="12" height="12" viewBox="0 0 24 24" fill="#E4DFE1"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z"></path></svg>
+</span>
+<span style="font-size:13px;font-weight:700;letter-spacing:-0.025em">박지훈</span>
+<span style="font-size:11.5px;color:#A9A2A6;margin-left:auto">7월 28일</span>
+</div>
+<div style="font-size:13px;line-height:1.7;color:#4A4448;letter-spacing:-0.025em;margin-top:7px">병이 생각보다 작았어요. 맛은 좋습니다.</div>
+</div>
+</div>
+<button style="width:100%;height:50px;margin-top:16px;border-radius:12px;border:none;background:#F1EDEF;color:#3F383C;font-size:14px;font-weight:700;letter-spacing:-0.025em;cursor:pointer" style-hover="background:#E8E3E5">리뷰 4개 모두 보기</button>
+</div>
+
+<div style="margin:24px 20px 0;height:1px;background:#EFEBED"></div>
+
+<div style="padding:8px 20px 0">
+<div style="display:flex;align-items:center;justify-content:space-between;height:56px;cursor:pointer">
+<span style="font-size:13.5px;font-weight:700;letter-spacing:-0.03em">상품정보</span>
+<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9A9298" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+<div style="height:1px;background:#F3EFF1"></div>
+<div style="display:flex;align-items:center;justify-content:space-between;height:56px;cursor:pointer">
+<span style="font-size:13.5px;font-weight:700;letter-spacing:-0.03em">교환·반품·환불 안내</span>
+<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9A9298" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+<div style="height:1px;background:#F3EFF1"></div>
+<div style="display:flex;align-items:center;justify-content:space-between;height:56px;cursor:pointer">
+<span style="font-size:13.5px;font-weight:700;letter-spacing:-0.03em">유의사항</span>
+<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9A9298" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+</div>
+
+<div style="text-align:center;padding:26px 0 30px;font-size:10.5px;font-weight:600;letter-spacing:0.06em;color:#BCB5B9;user-select:none;cursor:default">powered by 유어딜</div>
+
+<div style="position:sticky;bottom:0;background:#fff;border-top:1px solid #EAE5E7;padding:12px 16px 28px">
+<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:11px">
+<span style="font-size:12.5px;font-weight:700;color:#6B6469;letter-spacing:-0.025em">1개 · 8월 10일 픽업</span>
+<span style="font-size:19px;font-weight:800;letter-spacing:-0.04em">7,000원</span>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1.6fr;gap:8px">
+<button style="height:56px;border-radius:14px;border:none;background:#F1EDEF;color:#3F383C;font-size:15.5px;font-weight:700;letter-spacing:-0.03em;cursor:pointer" style-hover="background:#E8E3E5">장바구니</button>
+<button style="height:56px;border-radius:14px;border:none;background:#1A1719;color:#fff;font-size:16.5px;font-weight:800;letter-spacing:-0.03em;cursor:pointer" style-hover="background:#000000">바로구매</button>
+</div>
+</div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px;flex:none">
+<div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:12.5px;font-weight:800;letter-spacing:-0.01em">A-2-2 다크</span><span style="font-size:11.5px;color:#9A9298;display:{{ noteD }}">로즈 면은 #3A2530, 로즈 글자는 #F0AFBD</span></div>
+<div style="max-width:430px;width:{{ fw }};border-radius:40px;background:#141013;border:1px solid #2A2429;box-shadow:0 24px 48px -28px rgba(26,23,25,.45);overflow:hidden">
+<div style="height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 26px 0 30px;color:#F3EFF1">
+<span style="font-size:14px;font-weight:700;letter-spacing:-0.01em">9:41</span>
+<span style="display:flex;align-items:center;gap:6px">
+<svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect x="0" y="7.5" width="3" height="3.5" rx="1"></rect><rect x="4.6" y="5.2" width="3" height="5.8" rx="1"></rect><rect x="9.2" y="2.6" width="3" height="8.4" rx="1"></rect><rect x="13.8" y="0" width="3" height="11" rx="1"></rect></svg>
+<svg width="15" height="11" viewBox="0 0 15 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 3.6a9 9 0 0 1 13 0"></path><path d="M3.6 6.4a5.4 5.4 0 0 1 7.8 0"></path><circle cx="7.5" cy="9.3" r="1.1" fill="currentColor" stroke="none"></circle></svg>
+<svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x="0.6" y="0.6" width="19" height="9.8" rx="3" stroke="currentColor" stroke-opacity="0.35"></rect><rect x="2.2" y="2.2" width="14.5" height="6.6" rx="1.8" fill="currentColor"></rect><path d="M21.4 4v3a2 2 0 0 0 0-3z" fill="currentColor" fill-opacity="0.4"></path></svg>
+</span>
+</div>
+<div style="display:{{ chromeD }};align-items:center;gap:10px;height:44px;padding:0 16px;background:#1C181B;border-bottom:1px solid #292327">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9A9298" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+<span style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;font-size:12.5px;color:#9A9298;letter-spacing:-0.01em"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"></rect><path d="M8 10.5V7.6a4 4 0 0 1 8 0v2.9"></path></svg>urdeal.kr/happybanchan</span>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="#9A9298"><circle cx="12" cy="5" r="1.7"></circle><circle cx="12" cy="12" r="1.7"></circle><circle cx="12" cy="19" r="1.7"></circle></svg>
+</div>
+
+<div style="position:relative;width:100%;aspect-ratio:1;background:#221D20">
+<image-slot id="a2d2img" shape="rect" placeholder="상품 사진 1:1"></image-slot>
+<span style="position:absolute;left:14px;top:14px;width:38px;height:38px;border-radius:50%;background:rgba(20,17,19,.78);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center">
+<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#F3EFF1" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg>
+</span>
+<span style="position:absolute;left:14px;bottom:14px;display:flex;align-items:center;gap:4px;background:#E0526B;color:#fff;font-size:11.5px;font-weight:700;padding:5px 8px;border-radius:999px;letter-spacing:-0.02em;pointer-events:none"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5.2l3.2 2"></path></svg>2일 남음</span>
+<span style="position:absolute;right:14px;bottom:14px;display:flex;gap:4px;pointer-events:none">
+<span style="width:6px;height:6px;border-radius:50%;background:#fff"></span>
+<span style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.4)"></span>
+<span style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.4)"></span>
+</span>
+</div>
+
+<div style="padding:20px 20px 0">
+<div style="font-size:19px;font-weight:800;letter-spacing:-0.035em;line-height:1.35;color:#F3EFF1">수제 사과잼 250g 2병 세트</div>
+<div style="display:flex;align-items:baseline;gap:7px;margin-top:11px">
+<span style="font-size:22px;font-weight:800;color:#FF7C90;letter-spacing:-0.04em">30%</span>
+<span style="font-size:22px;font-weight:800;letter-spacing:-0.04em;color:#F3EFF1">7,000원</span>
+<span style="font-size:13.5px;color:#7C7479;text-decoration:line-through">10,000원</span>
+</div>
+</div>
+
+<div style="margin:16px 20px 0;border-radius:16px;background:#3A2530;overflow:hidden">
+<div style="display:flex;align-items:center;gap:7px;padding:12px 16px;background:#E0526B;color:#fff">
+<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round" style="flex:none"><path d="M3 8.2 12 3.5l9 4.7v7.6L12 20.5 3 15.8z"></path><path d="M3 8.2 12 13l9-4.8M12 13v7.5"></path></svg>
+<span style="font-size:13.5px;font-weight:800;letter-spacing:-0.03em">가게에 직접 찾으러 오는 상품이에요</span>
+</div>
+<div style="padding:15px 16px">
+<div style="display:flex;align-items:baseline;gap:12px">
+<span style="font-size:12px;font-weight:700;color:#E39CAC;letter-spacing:-0.02em;width:48px;flex:none">받는 날</span>
+<span style="font-size:17px;font-weight:800;color:#F8F4F5;letter-spacing:-0.035em">8월 10일 (월)</span>
+</div>
+<div style="display:flex;align-items:baseline;gap:12px;margin-top:10px">
+<span style="font-size:12px;font-weight:700;color:#E39CAC;letter-spacing:-0.02em;width:48px;flex:none">받는 곳</span>
+<span style="font-size:13.5px;font-weight:600;color:#DFD6DA;letter-spacing:-0.025em;line-height:1.5">서울 성동구 성수이로 12길 34<br>행복반찬</span>
+</div>
+<div style="display:flex;align-items:center;gap:7px;margin-top:13px;padding-top:13px;border-top:1px solid #4A3340">
+<span style="font-size:10.5px;font-weight:700;color:#8FBDDA;background:#1B2A34;border-radius:5px;padding:3px 6px;letter-spacing:-0.02em;flex:none">냉장</span>
+<span style="font-size:12px;font-weight:600;color:#F0AFBD;letter-spacing:-0.025em;line-height:1.5">받는 날에 찾아가지 않으면 환불이 어려워요</span>
+</div>
+</div>
+</div>
+
+<div style="padding:24px 20px 0">
+<div style="font-size:13px;font-weight:800;letter-spacing:-0.03em;margin-bottom:10px;color:#F3EFF1">옵션</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;align-items:center;justify-content:space-between;height:52px;padding:0 15px;border-radius:12px;background:#F3EFF1;color:#1A1719">
+<span style="font-size:14.5px;font-weight:700;letter-spacing:-0.025em">사과잼 2병</span>
+<span style="font-size:13.5px;font-weight:700;letter-spacing:-0.02em">+0원</span>
+</div>
+<div style="display:flex;align-items:center;justify-content:space-between;height:52px;padding:0 15px;border-radius:12px;background:#221D20;color:#DAD4D7">
+<span style="font-size:14.5px;font-weight:600;letter-spacing:-0.025em">사과잼 1병 + 유자청 1병</span>
+<span style="font-size:13.5px;font-weight:700;letter-spacing:-0.02em">+1,500원</span>
+</div>
+<div style="display:flex;align-items:center;justify-content:space-between;height:52px;padding:0 15px;border-radius:12px;background:#1C181B;color:#6E666B">
+<span style="font-size:14.5px;font-weight:600;letter-spacing:-0.025em">유자청 2병</span>
+<span style="font-size:12.5px;font-weight:700;letter-spacing:-0.02em">품절</span>
+</div>
+</div>
+</div>
+
+<div style="display:flex;align-items:center;justify-content:space-between;padding:22px 20px 0">
+<span style="font-size:13px;font-weight:800;letter-spacing:-0.03em;color:#F3EFF1">수량</span>
+<div style="display:flex;align-items:center;gap:2px;background:#221D20;border-radius:12px;padding:3px">
+<button style="width:44px;height:44px;border:none;background:transparent;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7C7479" stroke-width="2.4" stroke-linecap="round"><path d="M6 12h12"></path></svg>
+</button>
+<span style="min-width:40px;text-align:center;font-size:16px;font-weight:800;letter-spacing:-0.03em;color:#F3EFF1">1</span>
+<button style="width:44px;height:44px;border:none;background:transparent;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F3EFF1" stroke-width="2.4" stroke-linecap="round"><path d="M12 6v12M6 12h12"></path></svg>
+</button>
+</div>
+</div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px 0">
+<span style="font-size:12px;color:#7C7479;letter-spacing:-0.02em">부가세 포함</span>
+<span style="font-size:12px;color:#7C7479;letter-spacing:-0.02em">구매 확정 시 210원 적립</span>
+</div>
+
+<div style="margin:24px 20px 0;height:1px;background:#262023"></div>
+
+<div style="padding:24px 20px 0">
+<div style="font-size:13px;font-weight:800;letter-spacing:-0.03em;margin-bottom:12px;color:#F3EFF1">상세정보</div>
+<div style="font-size:13.5px;line-height:1.75;color:#B5ADB1;letter-spacing:-0.025em">국내산 사과만 골라 설탕을 적게 넣고 오래 졸였습니다. 방부제를 넣지 않아 개봉 후에는 냉장 보관하고 2주 안에 드시는 걸 권합니다.</div>
+<div style="width:100%;aspect-ratio:1;border-radius:14px;overflow:hidden;background:#221D20;margin-top:14px">
+<image-slot id="a2d2det" shape="rect" placeholder="상세 사진 1:1"></image-slot>
+</div>
+<button style="width:100%;height:50px;margin-top:12px;border-radius:12px;border:none;background:#221D20;color:#DAD4D7;font-size:14px;font-weight:700;letter-spacing:-0.025em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+상세정보 펼쳐보기
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l7 7 7-7"></path></svg>
+</button>
+</div>
+
+<div style="padding:22px 20px 0">
+<button style="width:100%;height:52px;border-radius:12px;border:none;background:#FEE500;color:#1A1719;font-size:14.5px;font-weight:700;letter-spacing:-0.025em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="#1A1719"><path d="M12 3.6c-4.8 0-8.7 3-8.7 6.7 0 2.4 1.6 4.5 4 5.7l-1 3.6c-.1.3.3.6.5.4l4.3-2.8c.3 0 .6.1.9.1 4.8 0 8.7-3 8.7-6.7S16.8 3.6 12 3.6z"></path></svg>
+카카오톡으로 공유
+</button>
+</div>
+
+<div style="margin:24px 20px 0;height:1px;background:#262023"></div>
+
+<div style="padding:22px 20px 0">
+<div style="display:flex;align-items:center;gap:7px;margin-bottom:14px">
+<span style="font-size:13px;font-weight:800;letter-spacing:-0.03em;color:#F3EFF1">리뷰</span>
+<span style="font-size:13px;font-weight:800;color:#FF7C90;letter-spacing:-0.03em">4</span>
+</div>
+<div>
+<div style="display:flex;align-items:center;gap:8px">
+<span style="display:flex;gap:1px;color:#FF7C90">
+<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z"></path></svg>
+<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z"></path></svg>
+<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z"></path></svg>
+<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z"></path></svg>
+<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9z"></path></svg>
+</span>
+<span style="font-size:13px;font-weight:700;letter-spacing:-0.025em;color:#ECE7E9">김민서</span>
+<span style="font-size:11.5px;color:#6E666B;margin-left:auto">8월 1일</span>
+</div>
+<div style="font-size:13px;line-height:1.7;color:#B5ADB1;letter-spacing:-0.025em;margin-top:7px">단맛이 세지 않아서 애들이 잘 먹어요. 지난번보다 사과 알갱이가 더 많았습니다.</div>
+</div>
+<button style="width:100%;height:50px;margin-top:16px;border-radius:12px;border:none;background:#221D20;color:#DAD4D7;font-size:14px;font-weight:700;letter-spacing:-0.025em;cursor:pointer">리뷰 4개 모두 보기</button>
+</div>
+
+<div style="margin:24px 20px 0;height:1px;background:#262023"></div>
+
+<div style="padding:8px 20px 0">
+<div style="display:flex;align-items:center;justify-content:space-between;height:56px;cursor:pointer">
+<span style="font-size:13.5px;font-weight:700;letter-spacing:-0.03em;color:#ECE7E9">상품정보</span>
+<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6E666B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+<div style="height:1px;background:#221D20"></div>
+<div style="display:flex;align-items:center;justify-content:space-between;height:56px;cursor:pointer">
+<span style="font-size:13.5px;font-weight:700;letter-spacing:-0.03em;color:#ECE7E9">교환·반품·환불 안내</span>
+<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6E666B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+<div style="height:1px;background:#221D20"></div>
+<div style="display:flex;align-items:center;justify-content:space-between;height:56px;cursor:pointer">
+<span style="font-size:13.5px;font-weight:700;letter-spacing:-0.03em;color:#ECE7E9">유의사항</span>
+<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6E666B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+</div>
+
+<div style="text-align:center;padding:26px 0 30px;font-size:10.5px;font-weight:600;letter-spacing:0.06em;color:#5E5559;user-select:none;cursor:default">powered by 유어딜</div>
+
+<div style="position:sticky;bottom:0;background:#141013;border-top:1px solid #292327;padding:12px 16px 28px">
+<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:11px">
+<span style="font-size:12.5px;font-weight:700;color:#A29A9F;letter-spacing:-0.025em">1개 · 8월 10일 픽업</span>
+<span style="font-size:19px;font-weight:800;letter-spacing:-0.04em;color:#F3EFF1">7,000원</span>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1.6fr;gap:8px">
+<button style="height:56px;border-radius:14px;border:none;background:#2A2429;color:#DAD4D7;font-size:15.5px;font-weight:700;letter-spacing:-0.03em;cursor:pointer">장바구니</button>
+<button style="height:56px;border-radius:14px;border:none;background:#F3EFF1;color:#1A1719;font-size:16.5px;font-weight:800;letter-spacing:-0.03em;cursor:pointer">바로구매</button>
+</div>
+</div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px;flex:none">
+<div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:12.5px;font-weight:800;letter-spacing:-0.01em">A-2-3 옵션 없음 · 리뷰 0건</span><span style="font-size:11.5px;color:#9A9298;display:{{ noteD }}">옵션 자리는 회색 안내줄 하나</span></div>
+<div style="max-width:430px;width:{{ fw }};border-radius:40px;background:#fff;border:1px solid #E2DDDF;box-shadow:0 24px 48px -28px rgba(26,23,25,.35);overflow:hidden">
+<div style="height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 26px 0 30px;background:#fff">
+<span style="font-size:14px;font-weight:700;letter-spacing:-0.01em">9:41</span>
+<span style="display:flex;align-items:center;gap:6px;color:#1A1719">
+<svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect x="0" y="7.5" width="3" height="3.5" rx="1"></rect><rect x="4.6" y="5.2" width="3" height="5.8" rx="1"></rect><rect x="9.2" y="2.6" width="3" height="8.4" rx="1"></rect><rect x="13.8" y="0" width="3" height="11" rx="1"></rect></svg>
+<svg width="15" height="11" viewBox="0 0 15 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 3.6a9 9 0 0 1 13 0"></path><path d="M3.6 6.4a5.4 5.4 0 0 1 7.8 0"></path><circle cx="7.5" cy="9.3" r="1.1" fill="currentColor" stroke="none"></circle></svg>
+<svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x="0.6" y="0.6" width="19" height="9.8" rx="3" stroke="currentColor" stroke-opacity="0.35"></rect><rect x="2.2" y="2.2" width="14.5" height="6.6" rx="1.8" fill="currentColor"></rect><path d="M21.4 4v3a2 2 0 0 0 0-3z" fill="currentColor" fill-opacity="0.4"></path></svg>
+</span>
+</div>
+<div style="display:{{ chromeD }};align-items:center;gap:10px;height:44px;padding:0 16px;background:#F6F3F4;border-bottom:1px solid #EAE5E7">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B6469" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+<span style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;font-size:12.5px;color:#6B6469;letter-spacing:-0.01em"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"></rect><path d="M8 10.5V7.6a4 4 0 0 1 8 0v2.9"></path></svg>urdeal.kr/happybanchan</span>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="#6B6469"><circle cx="12" cy="5" r="1.7"></circle><circle cx="12" cy="12" r="1.7"></circle><circle cx="12" cy="19" r="1.7"></circle></svg>
+</div>
+
+<div style="position:relative;width:100%;aspect-ratio:1;background:#F1EDEF">
+<image-slot id="a2d3img" shape="rect" placeholder="상품 사진 1:1"></image-slot>
+<span style="position:absolute;left:14px;top:14px;width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(26,23,25,.14)">
+<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#1A1719" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg>
+</span>
+<span style="position:absolute;left:14px;bottom:14px;display:flex;align-items:center;gap:4px;background:#E0526B;color:#fff;font-size:11.5px;font-weight:700;padding:5px 8px;border-radius:999px;letter-spacing:-0.02em;pointer-events:none"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5.2l3.2 2"></path></svg>6일 남음</span>
+</div>
+
+<div style="padding:20px 20px 0">
+<div style="font-size:19px;font-weight:800;letter-spacing:-0.035em;line-height:1.35">담백한 통밀 식빵 1봉</div>
+<div style="display:flex;align-items:baseline;gap:7px;margin-top:11px">
+<span style="font-size:22px;font-weight:800;color:#E0526B;letter-spacing:-0.04em">18%</span>
+<span style="font-size:22px;font-weight:800;letter-spacing:-0.04em">4,500원</span>
+<span style="font-size:13.5px;color:#A9A2A6;text-decoration:line-through">5,500원</span>
+</div>
+</div>
+
+<div style="margin:16px 20px 0;border-radius:16px;background:#FBEDF0;overflow:hidden">
+<div style="display:flex;align-items:center;gap:7px;padding:12px 16px;background:#E0526B;color:#fff">
+<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round" style="flex:none"><path d="M3 8.2 12 3.5l9 4.7v7.6L12 20.5 3 15.8z"></path><path d="M3 8.2 12 13l9-4.8M12 13v7.5"></path></svg>
+<span style="font-size:13.5px;font-weight:800;letter-spacing:-0.03em">가게에 직접 찾으러 오는 상품이에요</span>
+</div>
+<div style="padding:15px 16px">
+<div style="display:flex;align-items:baseline;gap:12px">
+<span style="font-size:12px;font-weight:700;color:#B0576A;letter-spacing:-0.02em;width:48px;flex:none">받는 날</span>
+<span style="font-size:17px;font-weight:800;color:#1A1719;letter-spacing:-0.035em">8월 16일 (일)</span>
+</div>
+<div style="display:flex;align-items:baseline;gap:12px;margin-top:10px">
+<span style="font-size:12px;font-weight:700;color:#B0576A;letter-spacing:-0.02em;width:48px;flex:none">받는 곳</span>
+<span style="font-size:13.5px;font-weight:600;color:#3F383C;letter-spacing:-0.025em;line-height:1.5">서울 성동구 성수이로 12길 34<br>행복반찬</span>
+</div>
+<div style="display:flex;align-items:center;gap:7px;margin-top:13px;padding-top:13px;border-top:1px solid #F2DDE2">
+<span style="font-size:10.5px;font-weight:700;color:#6B6469;background:#F0EDEE;border-radius:5px;padding:3px 6px;letter-spacing:-0.02em;flex:none">실온</span>
+<span style="font-size:12px;font-weight:600;color:#8E4356;letter-spacing:-0.025em;line-height:1.5">받는 날에 가게에서 받아가세요</span>
+</div>
+</div>
+</div>
+
+<div style="padding:24px 20px 0">
+<div style="display:flex;align-items:center;gap:8px;height:48px;padding:0 15px;border-radius:12px;background:#F5F2F3">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9A9298" stroke-width="2" stroke-linecap="round" style="flex:none"><circle cx="12" cy="12" r="9.2"></circle><path d="M12 11v5.5M12 7.6v.1"></path></svg>
+<span style="font-size:13px;font-weight:600;color:#776F74;letter-spacing:-0.025em">선택할 옵션이 없는 상품이에요</span>
+</div>
+</div>
+
+<div style="display:flex;align-items:center;justify-content:space-between;padding:22px 20px 0">
+<span style="font-size:13px;font-weight:800;letter-spacing:-0.03em">수량</span>
+<div style="display:flex;align-items:center;gap:2px;background:#F1EDEF;border-radius:12px;padding:3px">
+<button style="width:44px;height:44px;border:none;background:transparent;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:#E8E3E5">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B6469" stroke-width="2.4" stroke-linecap="round"><path d="M6 12h12"></path></svg>
+</button>
+<span style="min-width:40px;text-align:center;font-size:16px;font-weight:800;letter-spacing:-0.03em">2</span>
+<button style="width:44px;height:44px;border:none;background:transparent;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:#E8E3E5">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1719" stroke-width="2.4" stroke-linecap="round"><path d="M12 6v12M6 12h12"></path></svg>
+</button>
+</div>
+</div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px 0">
+<span style="font-size:12px;color:#9A9298;letter-spacing:-0.02em">부가세 포함</span>
+<span style="font-size:12px;color:#9A9298;letter-spacing:-0.02em">구매 확정 시 270원 적립</span>
+</div>
+
+<div style="margin:24px 20px 0;height:1px;background:#EFEBED"></div>
+
+<div style="padding:24px 20px 0">
+<div style="font-size:13px;font-weight:800;letter-spacing:-0.03em;margin-bottom:12px">상세정보</div>
+<div style="font-size:13.5px;line-height:1.75;color:#4A4448;letter-spacing:-0.025em">통밀 60%로 굽습니다. 당일 아침에 구워 그날 나가는 빵이라 재고를 많이 두지 않습니다.</div>
+</div>
+
+<div style="padding:22px 20px 0">
+<button style="width:100%;height:52px;border-radius:12px;border:none;background:#FEE500;color:#1A1719;font-size:14.5px;font-weight:700;letter-spacing:-0.025em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px" style-hover="background:#F2DB00">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="#1A1719"><path d="M12 3.6c-4.8 0-8.7 3-8.7 6.7 0 2.4 1.6 4.5 4 5.7l-1 3.6c-.1.3.3.6.5.4l4.3-2.8c.3 0 .6.1.9.1 4.8 0 8.7-3 8.7-6.7S16.8 3.6 12 3.6z"></path></svg>
+카카오톡으로 공유
+</button>
+</div>
+
+<div style="margin:24px 20px 0;height:1px;background:#EFEBED"></div>
+
+<div style="padding:22px 20px 0">
+<div style="display:flex;align-items:center;gap:7px;margin-bottom:6px">
+<span style="font-size:13px;font-weight:800;letter-spacing:-0.03em">리뷰</span>
+<span style="font-size:13px;font-weight:800;color:#C4BDC0;letter-spacing:-0.03em">0</span>
+</div>
+<div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:34px 20px 30px">
+<div style="width:52px;height:52px;border-radius:17px;background:#F5F2F3;display:flex;align-items:center;justify-content:center;margin-bottom:14px">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B7B0B4" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3.8l2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"></path></svg>
+</div>
+<div style="font-size:14px;font-weight:700;letter-spacing:-0.03em;color:#3F383C">아직 리뷰가 없어요</div>
+<div style="font-size:12.5px;color:#8A8288;letter-spacing:-0.025em;margin-top:6px">첫 리뷰를 남겨주세요</div>
+</div>
+</div>
+
+<div style="margin:0 20px;height:1px;background:#EFEBED"></div>
+
+<div style="padding:8px 20px 0">
+<div style="display:flex;align-items:center;justify-content:space-between;height:56px;cursor:pointer">
+<span style="font-size:13.5px;font-weight:700;letter-spacing:-0.03em">상품정보</span>
+<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9A9298" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+<div style="height:1px;background:#F3EFF1"></div>
+<div style="display:flex;align-items:center;justify-content:space-between;height:56px;cursor:pointer">
+<span style="font-size:13.5px;font-weight:700;letter-spacing:-0.03em">교환·반품·환불 안내</span>
+<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9A9298" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+<div style="height:1px;background:#F3EFF1"></div>
+<div style="display:flex;align-items:center;justify-content:space-between;height:56px;cursor:pointer">
+<span style="font-size:13.5px;font-weight:700;letter-spacing:-0.03em">유의사항</span>
+<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9A9298" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+</div>
+
+<div style="text-align:center;padding:26px 0 30px;font-size:10.5px;font-weight:600;letter-spacing:0.06em;color:#BCB5B9;user-select:none;cursor:default">powered by 유어딜</div>
+
+<div style="position:sticky;bottom:0;background:#fff;border-top:1px solid #EAE5E7;padding:12px 16px 28px">
+<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:11px">
+<span style="font-size:12.5px;font-weight:700;color:#6B6469;letter-spacing:-0.025em">2개 · 8월 16일 픽업</span>
+<span style="font-size:19px;font-weight:800;letter-spacing:-0.04em">9,000원</span>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1.6fr;gap:8px">
+<button style="height:56px;border-radius:14px;border:none;background:#F1EDEF;color:#3F383C;font-size:15.5px;font-weight:700;letter-spacing:-0.03em;cursor:pointer" style-hover="background:#E8E3E5">장바구니</button>
+<button style="height:56px;border-radius:14px;border:none;background:#1A1719;color:#fff;font-size:16.5px;font-weight:800;letter-spacing:-0.03em;cursor:pointer" style-hover="background:#000000">바로구매</button>
+</div>
+</div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px;flex:none">
+<div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:12.5px;font-weight:800;letter-spacing:-0.01em">A-2-4 품절</span><span style="font-size:11.5px;color:#9A9298;display:{{ noteD }}">픽업 안내는 회색으로 내리고 마감 배지는 뺍니다</span></div>
+<div style="max-width:430px;width:{{ fw }};border-radius:40px;background:#fff;border:1px solid #E2DDDF;box-shadow:0 24px 48px -28px rgba(26,23,25,.35);overflow:hidden">
+<div style="height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 26px 0 30px;background:#fff">
+<span style="font-size:14px;font-weight:700;letter-spacing:-0.01em">9:41</span>
+<span style="display:flex;align-items:center;gap:6px;color:#1A1719">
+<svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect x="0" y="7.5" width="3" height="3.5" rx="1"></rect><rect x="4.6" y="5.2" width="3" height="5.8" rx="1"></rect><rect x="9.2" y="2.6" width="3" height="8.4" rx="1"></rect><rect x="13.8" y="0" width="3" height="11" rx="1"></rect></svg>
+<svg width="15" height="11" viewBox="0 0 15 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 3.6a9 9 0 0 1 13 0"></path><path d="M3.6 6.4a5.4 5.4 0 0 1 7.8 0"></path><circle cx="7.5" cy="9.3" r="1.1" fill="currentColor" stroke="none"></circle></svg>
+<svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x="0.6" y="0.6" width="19" height="9.8" rx="3" stroke="currentColor" stroke-opacity="0.35"></rect><rect x="2.2" y="2.2" width="14.5" height="6.6" rx="1.8" fill="currentColor"></rect><path d="M21.4 4v3a2 2 0 0 0 0-3z" fill="currentColor" fill-opacity="0.4"></path></svg>
+</span>
+</div>
+<div style="display:{{ chromeD }};align-items:center;gap:10px;height:44px;padding:0 16px;background:#F6F3F4;border-bottom:1px solid #EAE5E7">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B6469" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+<span style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;font-size:12.5px;color:#6B6469;letter-spacing:-0.01em"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"></rect><path d="M8 10.5V7.6a4 4 0 0 1 8 0v2.9"></path></svg>urdeal.kr/happybanchan</span>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="#6B6469"><circle cx="12" cy="5" r="1.7"></circle><circle cx="12" cy="12" r="1.7"></circle><circle cx="12" cy="19" r="1.7"></circle></svg>
+</div>
+
+<div style="position:relative;width:100%;aspect-ratio:1;background:#F1EDEF">
+<image-slot id="a2d4img" shape="rect" placeholder="상품 사진 1:1"></image-slot>
+<span style="position:absolute;inset:0;background:rgba(20,17,19,.52);display:flex;align-items:center;justify-content:center;pointer-events:none">
+<span style="font-size:19px;font-weight:800;color:#fff;letter-spacing:-0.035em">품절되었어요</span>
+</span>
+<span style="position:absolute;left:14px;top:14px;width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(26,23,25,.14)">
+<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#1A1719" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg>
+</span>
+</div>
+
+<div style="padding:20px 20px 0">
+<div style="font-size:19px;font-weight:800;letter-spacing:-0.035em;line-height:1.35;color:#776F74">직접 담근 열무김치 1kg</div>
+<div style="display:flex;align-items:baseline;gap:7px;margin-top:11px">
+<span style="font-size:22px;font-weight:800;color:#A9A2A6;letter-spacing:-0.04em">20%</span>
+<span style="font-size:22px;font-weight:800;letter-spacing:-0.04em;color:#776F74">9,600원</span>
+<span style="font-size:13.5px;color:#C4BDC0;text-decoration:line-through">12,000원</span>
+</div>
+</div>
+
+<div style="margin:16px 20px 0;border-radius:16px;background:#F5F2F3;overflow:hidden">
+<div style="display:flex;align-items:center;gap:7px;padding:12px 16px;background:#DDD8DA;color:#4A4448">
+<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round" style="flex:none"><path d="M3 8.2 12 3.5l9 4.7v7.6L12 20.5 3 15.8z"></path><path d="M3 8.2 12 13l9-4.8M12 13v7.5"></path></svg>
+<span style="font-size:13.5px;font-weight:800;letter-spacing:-0.03em">가게에 직접 찾으러 오는 상품이에요</span>
+</div>
+<div style="padding:15px 16px">
+<div style="display:flex;align-items:baseline;gap:12px">
+<span style="font-size:12px;font-weight:700;color:#8A8288;letter-spacing:-0.02em;width:48px;flex:none">받는 날</span>
+<span style="font-size:17px;font-weight:800;color:#776F74;letter-spacing:-0.035em">8월 9일 (일)</span>
+</div>
+<div style="display:flex;align-items:baseline;gap:12px;margin-top:10px">
+<span style="font-size:12px;font-weight:700;color:#8A8288;letter-spacing:-0.02em;width:48px;flex:none">받는 곳</span>
+<span style="font-size:13.5px;font-weight:600;color:#776F74;letter-spacing:-0.025em;line-height:1.5">서울 성동구 성수이로 12길 34<br>행복반찬</span>
+</div>
+</div>
+</div>
+
+<div style="padding:24px 20px 0">
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;align-items:center;justify-content:space-between;height:52px;padding:0 15px;border-radius:12px;background:#F7F5F6;color:#A9A2A6">
+<span style="font-size:14.5px;font-weight:600;letter-spacing:-0.025em">열무김치 1kg</span>
+<span style="font-size:12.5px;font-weight:700;letter-spacing:-0.02em">품절</span>
+</div>
+</div>
+</div>
+
+<div style="margin:24px 20px 0;height:1px;background:#EFEBED"></div>
+
+<div style="padding:24px 20px 0">
+<div style="font-size:13px;font-weight:800;letter-spacing:-0.03em;margin-bottom:12px">상세정보</div>
+<div style="font-size:13.5px;line-height:1.75;color:#4A4448;letter-spacing:-0.025em">여름 열무로만 담급니다. 젓갈을 적게 써서 익어도 군내가 덜합니다.</div>
+</div>
+
+<div style="padding:22px 20px 0">
+<button style="width:100%;height:52px;border-radius:12px;border:none;background:#FEE500;color:#1A1719;font-size:14.5px;font-weight:700;letter-spacing:-0.025em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px" style-hover="background:#F2DB00">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="#1A1719"><path d="M12 3.6c-4.8 0-8.7 3-8.7 6.7 0 2.4 1.6 4.5 4 5.7l-1 3.6c-.1.3.3.6.5.4l4.3-2.8c.3 0 .6.1.9.1 4.8 0 8.7-3 8.7-6.7S16.8 3.6 12 3.6z"></path></svg>
+카카오톡으로 공유
+</button>
+</div>
+
+<div style="margin:24px 20px 0;height:1px;background:#EFEBED"></div>
+
+<div style="padding:8px 20px 0">
+<div style="display:flex;align-items:center;justify-content:space-between;height:56px;cursor:pointer">
+<span style="font-size:13.5px;font-weight:700;letter-spacing:-0.03em">상품정보</span>
+<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9A9298" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+<div style="height:1px;background:#F3EFF1"></div>
+<div style="display:flex;align-items:center;justify-content:space-between;height:56px;cursor:pointer">
+<span style="font-size:13.5px;font-weight:700;letter-spacing:-0.03em">교환·반품·환불 안내</span>
+<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9A9298" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+<div style="height:1px;background:#F3EFF1"></div>
+<div style="display:flex;align-items:center;justify-content:space-between;height:56px;cursor:pointer">
+<span style="font-size:13.5px;font-weight:700;letter-spacing:-0.03em">유의사항</span>
+<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9A9298" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+</div>
+
+<div style="text-align:center;padding:26px 0 30px;font-size:10.5px;font-weight:600;letter-spacing:0.06em;color:#BCB5B9;user-select:none;cursor:default">powered by 유어딜</div>
+
+<div style="position:sticky;bottom:0;background:#fff;border-top:1px solid #EAE5E7;padding:12px 16px 28px">
+<button style="width:100%;height:56px;border-radius:14px;border:none;background:#F1EDEF;color:#A9A2A6;font-size:16.5px;font-weight:800;letter-spacing:-0.03em;cursor:not-allowed">품절되었어요</button>
+</div>
+</div>
+</div>
+
+</div>
+
+<div style="background:#fff;border-radius:20px;padding:26px 28px;max-width:920px;display:flex;flex-direction:column;gap:16px">
+<div style="font-size:13.5px;font-weight:800;letter-spacing:-0.03em">판단을 부탁하신 두 가지</div>
+<div style="display:flex;gap:14px">
+<span style="width:5px;height:5px;border-radius:50%;background:#E0526B;flex:none;margin-top:9px"></span>
+<div style="font-size:13px;line-height:1.75;color:#4A4448;letter-spacing:-0.025em"><span style="font-weight:800;color:#1A1719">최대 210딜 적립 → "구매 확정 시 210원 적립"</span>으로 바꿔 부가세 줄 옆에 작게 뒀습니다. 딜은 손님이 모르는 단위라 지웠고, 금액으로 쓰면 설명 없이 읽힙니다. 실제로 적립되는 것이니 아주 지우는 건 과해 보였습니다. 강조하지 않은 건 이 화면의 결론이 "받는 날에 가게로 간다"여야 하기 때문입니다.</div>
+</div>
+<div style="display:flex;gap:14px">
+<span style="width:5px;height:5px;border-radius:50%;background:#E0526B;flex:none;margin-top:9px"></span>
+<div style="font-size:13px;line-height:1.75;color:#4A4448;letter-spacing:-0.025em"><span style="font-weight:800;color:#1A1719">배송·교환·반품 → "교환·반품·환불 안내"</span>로 제목만 바꿨습니다. 안쪽 법정 고지 문구는 그대로 두는 전제입니다. 제목에서 배송을 빼야 이 화면 어디에도 택배를 암시하는 낱말이 남지 않습니다. 법무 검토가 필요하면 "교환·반품·배송 안내" 순서만 바꾸는 안도 가능합니다.</div>
+</div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:22px">
+<div style="display:flex;align-items:center;gap:12px">
+<span style="font-size:11px;font-weight:800;letter-spacing:0.06em;color:#E0526B">화면 B</span>
+<span style="font-size:19px;font-weight:800;letter-spacing:-0.03em">빠른 공구 등록</span>
+<span style="font-size:13px;color:#8A8288;letter-spacing:-0.01em">카운터에서 서서 한 손으로 3분 · 라이트 1벌 · 눌러볼 수 있습니다</span>
+</div>
+<div style="display:flex;gap:44px;align-items:flex-start">
+
+<div style="display:flex;flex-direction:column;gap:12px;flex:none">
+<div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:12.5px;font-weight:800;letter-spacing:-0.01em">B-1 입력 중</span><span style="font-size:11.5px;color:#9A9298;display:{{ noteD }}">필수/선택 그룹 분리 · 마감은 버튼 3개</span></div>
+<div style="max-width:430px;width:{{ fw }};border-radius:40px;background:#F7F5F6;border:1px solid #E2DDDF;box-shadow:0 24px 48px -28px rgba(26,23,25,.35);overflow:hidden">
+<div style="height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 26px 0 30px;background:#fff">
+<span style="font-size:14px;font-weight:700;letter-spacing:-0.01em">9:41</span>
+<span style="display:flex;align-items:center;gap:6px;color:#1A1719">
+<svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect x="0" y="7.5" width="3" height="3.5" rx="1"></rect><rect x="4.6" y="5.2" width="3" height="5.8" rx="1"></rect><rect x="9.2" y="2.6" width="3" height="8.4" rx="1"></rect><rect x="13.8" y="0" width="3" height="11" rx="1"></rect></svg>
+<svg width="15" height="11" viewBox="0 0 15 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 3.6a9 9 0 0 1 13 0"></path><path d="M3.6 6.4a5.4 5.4 0 0 1 7.8 0"></path><circle cx="7.5" cy="9.3" r="1.1" fill="currentColor" stroke="none"></circle></svg>
+<svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x="0.6" y="0.6" width="19" height="9.8" rx="3" stroke="currentColor" stroke-opacity="0.35"></rect><rect x="2.2" y="2.2" width="14.5" height="6.6" rx="1.8" fill="currentColor"></rect><path d="M21.4 4v3a2 2 0 0 0 0-3z" fill="currentColor" fill-opacity="0.4"></path></svg>
+</span>
+</div>
+<div style="background:#fff;padding:6px 20px 20px;border-bottom:1px solid #EDE9EB">
+<div style="height:38px;display:flex;align-items:center">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1A1719" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg>
+</div>
+<div style="font-size:23px;font-weight:800;letter-spacing:-0.04em;line-height:1.25;margin-top:4px">빠른 공구 등록</div>
+<div style="font-size:13.5px;color:#776F74;letter-spacing:-0.02em;margin-top:7px">사진·가격·마감만 정하면 바로 열려요</div>
+</div>
+
+<div style="padding:20px 16px 0">
+<div style="display:flex;align-items:center;gap:7px;margin:0 4px 9px">
+<span style="font-size:12px;font-weight:800;letter-spacing:-0.02em;color:#E0526B">필수</span>
+<span style="font-size:12px;font-weight:700;letter-spacing:-0.02em;color:#3F383C">사진 · 상품명 · 가격 · 마감</span>
+</div>
+<div style="background:#fff;border:1px solid #EAE5E7;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:18px">
+
+<div style="display:flex;gap:14px;align-items:center">
+<div style="width:92px;height:92px;border-radius:14px;overflow:hidden;flex:none;position:relative;background:#F5F2F3;border:1px solid #EAE5E7">
+<image-slot id="b1photo" shape="rect" placeholder="사진"></image-slot>
+</div>
+<div style="min-width:0">
+<div style="font-size:13px;font-weight:700;letter-spacing:-0.02em">상품 사진 1장</div>
+<div style="font-size:12px;color:#8A8288;letter-spacing:-0.02em;line-height:1.55;margin-top:5px">정사각형으로 잘려요.<br>밝은 곳에서 위에서 찍으면 잘 나와요</div>
+</div>
+</div>
+
+<div>
+<div style="font-size:12.5px;font-weight:700;color:#4A4448;letter-spacing:-0.02em;margin-bottom:8px">상품명</div>
+<input type="text" value="{{ name }}" onChange="{{ onName }}" placeholder="예: 수제 사과잼 250g" style="width:100%;height:56px;border-radius:12px;border:1px solid #DFD9DC;background:#fff;color:#1A1719;padding:0 15px;font-size:15.5px;font-weight:600;letter-spacing:-0.02em">
+</div>
+
+<div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+<div>
+<div style="font-size:12.5px;font-weight:700;color:#4A4448;letter-spacing:-0.02em;margin-bottom:8px">정가</div>
+<div style="position:relative">
+<input type="text" inputmode="numeric" value="{{ regular }}" onChange="{{ onRegular }}" placeholder="10,000" style="width:100%;height:56px;border-radius:12px;border:1px solid #DFD9DC;background:#fff;color:#1A1719;padding:0 34px 0 15px;font-size:16px;font-weight:700;letter-spacing:-0.02em;text-align:right">
+<span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:14px;font-weight:600;color:#8A8288;pointer-events:none">원</span>
+</div>
+</div>
+<div>
+<div style="font-size:12.5px;font-weight:700;color:#4A4448;letter-spacing:-0.02em;margin-bottom:8px">공구가</div>
+<div style="position:relative">
+<input type="text" inputmode="numeric" value="{{ deal }}" onChange="{{ onDeal }}" placeholder="7,000" style="width:100%;height:56px;border-radius:12px;border:1px solid #DFD9DC;background:#fff;color:#1A1719;padding:0 34px 0 15px;font-size:16px;font-weight:700;letter-spacing:-0.02em;text-align:right">
+<span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:14px;font-weight:600;color:#8A8288;pointer-events:none">원</span>
+</div>
+</div>
+</div>
+<div style="display:flex;align-items:center;gap:6px;margin-top:10px;color:{{ feedbackColor }}">
+<span style="width:15px;height:15px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:currentColor;flex:none">
+<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="{{ feedbackPath }}"></path></svg>
+</span>
+<span style="font-size:12.5px;font-weight:700;letter-spacing:-0.025em">{{ feedbackText }}</span>
+</div>
+</div>
+
+<div>
+<div style="font-size:12.5px;font-weight:700;color:#4A4448;letter-spacing:-0.02em;margin-bottom:8px">마감</div>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+<button onClick="{{ setD3 }}" style="height:56px;border-radius:12px;border:1.5px solid {{ d3bd }};background:{{ d3bg }};color:{{ d3fg }};font-size:15.5px;font-weight:700;letter-spacing:-0.02em;cursor:pointer;transition:background .12s ease">3일</button>
+<button onClick="{{ setD7 }}" style="height:56px;border-radius:12px;border:1.5px solid {{ d7bd }};background:{{ d7bg }};color:{{ d7fg }};font-size:15.5px;font-weight:700;letter-spacing:-0.02em;cursor:pointer;transition:background .12s ease">7일</button>
+<button onClick="{{ setD14 }}" style="height:56px;border-radius:12px;border:1.5px solid {{ d14bd }};background:{{ d14bg }};color:{{ d14fg }};font-size:15.5px;font-weight:700;letter-spacing:-0.02em;cursor:pointer;transition:background .12s ease">14일</button>
+</div>
+<div style="font-size:12px;color:#776F74;letter-spacing:-0.02em;margin-top:10px">{{ deadlineText }}</div>
+</div>
+
+</div>
+
+<div style="display:flex;align-items:center;gap:7px;margin:22px 4px 9px">
+<span style="font-size:12px;font-weight:800;letter-spacing:-0.02em;color:#8A8288">선택</span>
+<span style="font-size:12px;font-weight:600;letter-spacing:-0.02em;color:#8A8288">나중에 바꿀 수 있어요</span>
+</div>
+<div style="background:#fff;border:1px solid #EAE5E7;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:18px">
+<div>
+<div style="font-size:12.5px;font-weight:700;color:#4A4448;letter-spacing:-0.02em;margin-bottom:8px">픽업일</div>
+<div style="position:relative">
+<input type="text" value="2026. 08. 10. (월)" readonly style="width:100%;height:56px;border-radius:12px;border:1px solid #DFD9DC;background:#fff;color:#1A1719;padding:0 44px 0 15px;font-size:15.5px;font-weight:600;letter-spacing:-0.02em">
+<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#8A8288" stroke-width="1.9" stroke-linecap="round" style="position:absolute;right:14px;top:50%;transform:translateY(-50%)"><rect x="3.5" y="5" width="17" height="15.5" rx="3"></rect><path d="M3.5 10h17M8.5 3v4M15.5 3v4"></path></svg>
+</div>
+</div>
+<div>
+<div style="font-size:12.5px;font-weight:700;color:#4A4448;letter-spacing:-0.02em;margin-bottom:8px">보관구분</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+<button onClick="{{ setRoom }}" style="height:56px;border-radius:12px;border:1.5px solid {{ roomBd }};background:{{ roomBg }};color:{{ roomFg }};font-size:15.5px;font-weight:700;letter-spacing:-0.02em;cursor:pointer">실온</button>
+<button onClick="{{ setCold }}" style="height:56px;border-radius:12px;border:1.5px solid {{ coldBd }};background:{{ coldBg }};color:{{ coldFg }};font-size:15.5px;font-weight:700;letter-spacing:-0.02em;cursor:pointer">냉장·냉동</button>
+</div>
+<div style="margin-top:10px;background:#FBEDF0;border-radius:10px;padding:11px 12px">
+<div style="font-size:10.5px;font-weight:800;letter-spacing:0.03em;color:#C4657A;margin-bottom:4px">손님에게 이렇게 보여요</div>
+<div style="font-size:12px;line-height:1.6;color:#8E4356;letter-spacing:-0.02em">{{ storageNotice }}</div>
+</div>
+</div>
+</div>
+<div style="height:24px"></div>
+</div>
+
+<div style="position:sticky;bottom:0;background:#fff;border-top:1px solid #EAE5E7;padding:12px 16px 28px">
+<button style="width:100%;height:56px;border-radius:14px;border:none;background:#1A1719;color:#fff;font-size:16.5px;font-weight:800;letter-spacing:-0.03em;cursor:pointer" style-hover="background:#000000">공구 열기</button>
+</div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px;flex:none">
+<div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:12.5px;font-weight:800;letter-spacing:-0.01em">B-2 오류</span><span style="font-size:11.5px;color:#9A9298;display:{{ noteD }}">"저장 실패" 대신 고칠 항목을 지목</span></div>
+<div style="max-width:430px;width:{{ fw }};border-radius:40px;background:#F7F5F6;border:1px solid #E2DDDF;box-shadow:0 24px 48px -28px rgba(26,23,25,.35);overflow:hidden">
+<div style="height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 26px 0 30px;background:#fff">
+<span style="font-size:14px;font-weight:700;letter-spacing:-0.01em">9:41</span>
+<span style="display:flex;align-items:center;gap:6px;color:#1A1719">
+<svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect x="0" y="7.5" width="3" height="3.5" rx="1"></rect><rect x="4.6" y="5.2" width="3" height="5.8" rx="1"></rect><rect x="9.2" y="2.6" width="3" height="8.4" rx="1"></rect><rect x="13.8" y="0" width="3" height="11" rx="1"></rect></svg>
+<svg width="15" height="11" viewBox="0 0 15 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 3.6a9 9 0 0 1 13 0"></path><path d="M3.6 6.4a5.4 5.4 0 0 1 7.8 0"></path><circle cx="7.5" cy="9.3" r="1.1" fill="currentColor" stroke="none"></circle></svg>
+<svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x="0.6" y="0.6" width="19" height="9.8" rx="3" stroke="currentColor" stroke-opacity="0.35"></rect><rect x="2.2" y="2.2" width="14.5" height="6.6" rx="1.8" fill="currentColor"></rect><path d="M21.4 4v3a2 2 0 0 0 0-3z" fill="currentColor" fill-opacity="0.4"></path></svg>
+</span>
+</div>
+<div style="background:#fff;padding:6px 20px 20px;border-bottom:1px solid #EDE9EB">
+<div style="height:38px;display:flex;align-items:center">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1A1719" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg>
+</div>
+<div style="font-size:23px;font-weight:800;letter-spacing:-0.04em;line-height:1.25;margin-top:4px">빠른 공구 등록</div>
+<div style="font-size:13.5px;color:#776F74;letter-spacing:-0.02em;margin-top:7px">사진·가격·마감만 정하면 바로 열려요</div>
+</div>
+<div style="padding:20px 16px 0">
+<div style="background:#FDEEEE;border:1px solid #F3C9C9;border-radius:14px;padding:15px 16px;display:flex;gap:10px">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C0392F" stroke-width="2.1" stroke-linecap="round" style="flex:none;margin-top:1px"><circle cx="12" cy="12" r="9.2"></circle><path d="M12 7.2v5.6M12 16.4v.1"></path></svg>
+<div>
+<div style="font-size:13.5px;font-weight:800;letter-spacing:-0.03em;color:#B3352B">2가지만 고치면 바로 열려요</div>
+<div style="font-size:12.5px;line-height:1.75;color:#8E3A32;letter-spacing:-0.02em;margin-top:6px">· 공구가는 정가보다 낮아야 해요<br>· 상품 사진을 1장 올려주세요</div>
+</div>
+</div>
+<div style="display:flex;align-items:center;gap:7px;margin:22px 4px 9px">
+<span style="font-size:12px;font-weight:800;letter-spacing:-0.02em;color:#E0526B">필수</span>
+<span style="font-size:12px;font-weight:700;letter-spacing:-0.02em;color:#3F383C">사진 · 상품명 · 가격 · 마감</span>
+</div>
+<div style="background:#fff;border:1px solid #EAE5E7;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:18px">
+<div style="display:flex;gap:14px;align-items:center">
+<div style="width:92px;height:92px;border-radius:14px;flex:none;background:#FDEEEE;border:1.5px dashed #E9A9A2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D0685E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.2" y="5" width="17.6" height="14.5" rx="3"></rect><path d="M3.8 16.2 8.6 11.6l3.4 3.1 3-2.6 5 4.4"></path><circle cx="9" cy="9.4" r="1.3"></circle></svg>
+<span style="font-size:11px;font-weight:700;color:#C0554B;letter-spacing:-0.02em">사진 필요</span>
+</div>
+<div style="min-width:0">
+<div style="font-size:13px;font-weight:700;letter-spacing:-0.02em;color:#B3352B">상품 사진 1장</div>
+<div style="font-size:12px;color:#8A8288;letter-spacing:-0.02em;line-height:1.55;margin-top:5px">정사각형으로 잘려요.<br>밝은 곳에서 위에서 찍으면 잘 나와요</div>
+</div>
+</div>
+<div>
+<div style="font-size:12.5px;font-weight:700;color:#4A4448;letter-spacing:-0.02em;margin-bottom:8px">상품명</div>
+<input type="text" value="수제 사과잼 250g" readonly style="width:100%;height:56px;border-radius:12px;border:1px solid #DFD9DC;background:#fff;color:#1A1719;padding:0 15px;font-size:15.5px;font-weight:600;letter-spacing:-0.02em">
+</div>
+<div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+<div>
+<div style="font-size:12.5px;font-weight:700;color:#4A4448;letter-spacing:-0.02em;margin-bottom:8px">정가</div>
+<div style="position:relative">
+<input type="text" value="10,000" readonly style="width:100%;height:56px;border-radius:12px;border:1px solid #DFD9DC;background:#fff;color:#1A1719;padding:0 34px 0 15px;font-size:16px;font-weight:700;text-align:right;letter-spacing:-0.02em">
+<span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:14px;font-weight:600;color:#8A8288">원</span>
+</div>
+</div>
+<div>
+<div style="font-size:12.5px;font-weight:700;color:#B3352B;letter-spacing:-0.02em;margin-bottom:8px">공구가</div>
+<div style="position:relative">
+<input type="text" value="12,000" readonly style="width:100%;height:56px;border-radius:12px;border:1.5px solid #D9534A;background:#fff;color:#1A1719;padding:0 34px 0 15px;font-size:16px;font-weight:700;text-align:right;letter-spacing:-0.02em" data-om-keep="error">
+<span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:14px;font-weight:600;color:#8A8288">원</span>
+</div>
+</div>
+</div>
+<div style="display:flex;align-items:center;gap:6px;margin-top:10px;color:#C0392F">
+<span style="width:15px;height:15px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:currentColor;flex:none">
+<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+</span>
+<span style="font-size:12.5px;font-weight:700;letter-spacing:-0.025em">공구가는 정가보다 낮아야 해요</span>
+</div>
+</div>
+<div>
+<div style="font-size:12.5px;font-weight:700;color:#4A4448;letter-spacing:-0.02em;margin-bottom:8px">마감</div>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+<div style="height:56px;border-radius:12px;background:#F1EDEF;color:#4A4448;font-size:15.5px;font-weight:700;display:flex;align-items:center;justify-content:center">3일</div>
+<div style="height:56px;border-radius:12px;background:#1A1719;color:#fff;font-size:15.5px;font-weight:700;display:flex;align-items:center;justify-content:center">7일</div>
+<div style="height:56px;border-radius:12px;background:#F1EDEF;color:#4A4448;font-size:15.5px;font-weight:700;display:flex;align-items:center;justify-content:center">14일</div>
+</div>
+<div style="font-size:12px;color:#776F74;letter-spacing:-0.02em;margin-top:10px">8월 9일 (일) 밤 11시 59분에 마감돼요</div>
+</div>
+</div>
+<div style="height:26px"></div>
+</div>
+<div style="background:#fff;border-top:1px solid #EAE5E7;padding:12px 16px 28px">
+<button style="width:100%;height:56px;border-radius:14px;border:none;background:#F1EDEF;color:#A9A2A6;font-size:16.5px;font-weight:800;letter-spacing:-0.03em;cursor:not-allowed">공구 열기</button>
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:22px">
+<div style="display:flex;align-items:center;gap:12px">
+<span style="font-size:11px;font-weight:800;letter-spacing:0.06em;color:#E0526B">화면 C · D</span>
+<span style="font-size:19px;font-weight:800;letter-spacing:-0.03em">주문 목록 · 반품 요청</span>
+<span style="font-size:13px;color:#8A8288;letter-spacing:-0.01em">재설계가 아닌 정돈 · 라이트 1벌</span>
+</div>
+<div style="display:flex;gap:44px;align-items:flex-start;flex-wrap:wrap">
+
+<div style="display:flex;flex-direction:column;gap:12px;flex:none">
+<div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:12.5px;font-weight:800;letter-spacing:-0.01em">C 주문 목록</span><span style="font-size:11.5px;color:#9A9298;display:{{ noteD }}">"오늘 누가 뭘 가져가나"를 훑는 화면</span></div>
+<div style="max-width:430px;width:{{ fw }};border-radius:40px;background:#F7F5F6;border:1px solid #E2DDDF;box-shadow:0 24px 48px -28px rgba(26,23,25,.35);overflow:hidden">
+<div style="height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 26px 0 30px;background:#fff">
+<span style="font-size:14px;font-weight:700;letter-spacing:-0.01em">9:41</span>
+<span style="display:flex;align-items:center;gap:6px;color:#1A1719">
+<svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect x="0" y="7.5" width="3" height="3.5" rx="1"></rect><rect x="4.6" y="5.2" width="3" height="5.8" rx="1"></rect><rect x="9.2" y="2.6" width="3" height="8.4" rx="1"></rect><rect x="13.8" y="0" width="3" height="11" rx="1"></rect></svg>
+<svg width="15" height="11" viewBox="0 0 15 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 3.6a9 9 0 0 1 13 0"></path><path d="M3.6 6.4a5.4 5.4 0 0 1 7.8 0"></path><circle cx="7.5" cy="9.3" r="1.1" fill="currentColor" stroke="none"></circle></svg>
+<svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x="0.6" y="0.6" width="19" height="9.8" rx="3" stroke="currentColor" stroke-opacity="0.35"></rect><rect x="2.2" y="2.2" width="14.5" height="6.6" rx="1.8" fill="currentColor"></rect><path d="M21.4 4v3a2 2 0 0 0 0-3z" fill="currentColor" fill-opacity="0.4"></path></svg>
+</span>
+</div>
+<div style="background:#fff">
+<div style="position:relative;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid #EDE9EB">
+<svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#1A1719" stroke-width="2" stroke-linecap="round"><path d="M3.5 6.5h17M3.5 12h17M3.5 17.5h17"></path></svg>
+<span style="position:absolute;left:0;right:0;text-align:center;font-size:16.5px;font-weight:800;letter-spacing:-0.035em;pointer-events:none">주문</span>
+<div style="text-align:right;position:relative">
+<div style="display:flex;align-items:baseline;gap:1px;justify-content:flex-end"><span style="font-family:Poppins,sans-serif;font-weight:800;font-size:14px;letter-spacing:-0.03em;color:#1A1719">urdeal</span><span style="width:4px;height:4px;border-radius:50%;background:#E0526B;display:inline-block"></span></div>
+<div style="font-size:10.5px;color:#8A8288;letter-spacing:-0.03em;margin-top:2px">행복반찬</div>
+</div>
+</div>
+<div style="padding:16px 20px 0">
+<div style="display:flex;gap:8px">
+<div style="flex:1;background:#FBEDF0;border-radius:12px;padding:12px 13px">
+<div style="font-size:11.5px;font-weight:700;color:#B0576A;letter-spacing:-0.02em">오늘 픽업</div>
+<div style="font-size:21px;font-weight:800;color:#C43D55;letter-spacing:-0.04em;margin-top:3px">7건</div>
+</div>
+<div style="flex:1;background:#F5F2F3;border-radius:12px;padding:12px 13px">
+<div style="font-size:11.5px;font-weight:700;color:#776F74;letter-spacing:-0.02em">전달 완료</div>
+<div style="font-size:21px;font-weight:800;color:#3F383C;letter-spacing:-0.04em;margin-top:3px">3건</div>
+</div>
+</div>
+<div style="display:flex;background:#F1EDEF;border-radius:13px;padding:4px;margin-top:16px">
+<div style="flex:1;height:44px;border-radius:10px;background:#fff;box-shadow:0 1px 3px rgba(26,23,25,.12);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;letter-spacing:-0.03em;color:#1A1719">픽업 대기</div>
+<div style="flex:1;height:44px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;letter-spacing:-0.03em;color:#8A8288">전달 완료</div>
+<div style="flex:1;height:44px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;letter-spacing:-0.03em;color:#8A8288">전체</div>
+</div>
+<div style="height:18px"></div>
+</div>
+</div>
+<div style="border-top:1px solid #EAE5E7"></div>
+
+<div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 10px">
+<span style="font-size:13px;font-weight:800;letter-spacing:-0.03em">8월 10일 (월) · 오늘</span>
+<span style="font-size:12px;font-weight:700;color:#9A9298">4건</span>
+</div>
+<div style="padding:0 16px;display:flex;flex-direction:column;gap:10px">
+
+<div style="background:#fff;border:1px solid #EAE5E7;border-radius:14px;padding:14px 15px">
+<div style="display:flex;align-items:center;justify-content:space-between">
+<span style="font-size:15px;font-weight:800;letter-spacing:-0.03em">김민서</span>
+<span style="font-size:10.5px;font-weight:800;color:#B0576A;background:#FBEDF0;border-radius:6px;padding:4px 7px;letter-spacing:-0.02em">픽업 대기</span>
+</div>
+<div style="font-size:13px;color:#4A4448;letter-spacing:-0.025em;margin-top:9px;line-height:1.5">수제 사과잼 250g 2병 세트 <span style="font-weight:800">× 2</span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px solid #F1EDEF">
+<span style="font-size:11.5px;color:#9A9298;letter-spacing:-0.01em">#260810-0031 · 8/7 주문</span>
+<span style="font-size:15px;font-weight:800;letter-spacing:-0.03em">14,000원</span>
+</div>
+</div>
+
+<div style="background:#fff;border:1px solid #EAE5E7;border-radius:14px;padding:14px 15px">
+<div style="display:flex;align-items:center;justify-content:space-between">
+<span style="font-size:15px;font-weight:800;letter-spacing:-0.03em">박지훈</span>
+<span style="font-size:10.5px;font-weight:800;color:#B0576A;background:#FBEDF0;border-radius:6px;padding:4px 7px;letter-spacing:-0.02em">픽업 대기</span>
+</div>
+<div style="font-size:13px;color:#4A4448;letter-spacing:-0.025em;margin-top:9px;line-height:1.5">모둠 밑반찬 4종 (2인 기준) <span style="font-weight:800">× 1</span><br>직접 담근 열무김치 1kg <span style="font-weight:800">× 1</span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px solid #F1EDEF">
+<span style="font-size:11.5px;color:#9A9298;letter-spacing:-0.01em">#260810-0030 · 8/7 주문</span>
+<span style="font-size:15px;font-weight:800;letter-spacing:-0.03em">21,600원</span>
+</div>
+</div>
+
+<div style="background:#fff;border:1px solid #EAE5E7;border-radius:14px;padding:14px 15px">
+<div style="display:flex;align-items:center;justify-content:space-between">
+<span style="font-size:15px;font-weight:800;letter-spacing:-0.03em">이수정</span>
+<span style="font-size:10.5px;font-weight:800;color:#B0576A;background:#FBEDF0;border-radius:6px;padding:4px 7px;letter-spacing:-0.02em">픽업 대기</span>
+</div>
+<div style="font-size:13px;color:#4A4448;letter-spacing:-0.025em;margin-top:9px;line-height:1.5">잡곡 찰떡 10개입 <span style="font-weight:800">× 3</span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px solid #F1EDEF">
+<span style="font-size:11.5px;color:#9A9298;letter-spacing:-0.01em">#260810-0028 · 8/6 주문</span>
+<span style="font-size:15px;font-weight:800;letter-spacing:-0.03em">24,000원</span>
+</div>
+</div>
+
+<div style="background:#fff;border:1px solid #EAE5E7;border-radius:14px;padding:14px 15px;opacity:.62">
+<div style="display:flex;align-items:center;justify-content:space-between">
+<span style="font-size:15px;font-weight:800;letter-spacing:-0.03em">최윤아</span>
+<span style="font-size:10.5px;font-weight:800;color:#6B6469;background:#F1EDEF;border-radius:6px;padding:4px 7px;letter-spacing:-0.02em">전달 완료</span>
+</div>
+<div style="font-size:13px;color:#4A4448;letter-spacing:-0.025em;margin-top:9px;line-height:1.5">담백한 통밀 식빵 1봉 <span style="font-weight:800">× 2</span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px solid #F1EDEF">
+<span style="font-size:11.5px;color:#9A9298;letter-spacing:-0.01em">#260810-0026 · 8/5 주문</span>
+<span style="font-size:15px;font-weight:800;letter-spacing:-0.03em">9,000원</span>
+</div>
+</div>
+
+</div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:22px 20px 10px">
+<span style="font-size:13px;font-weight:800;letter-spacing:-0.03em">8월 12일 (수)</span>
+<span style="font-size:12px;font-weight:700;color:#9A9298">3건</span>
+</div>
+<div style="padding:0 16px 34px;display:flex;flex-direction:column;gap:10px">
+<div style="background:#fff;border:1px solid #EAE5E7;border-radius:14px;padding:14px 15px">
+<div style="display:flex;align-items:center;justify-content:space-between">
+<span style="font-size:15px;font-weight:800;letter-spacing:-0.03em">정하늘</span>
+<span style="font-size:10.5px;font-weight:800;color:#B0576A;background:#FBEDF0;border-radius:6px;padding:4px 7px;letter-spacing:-0.02em">픽업 대기</span>
+</div>
+<div style="font-size:13px;color:#4A4448;letter-spacing:-0.025em;margin-top:9px;line-height:1.5">한우 국거리 300g <span style="font-weight:800">× 1</span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px solid #F1EDEF">
+<span style="font-size:11.5px;color:#9A9298;letter-spacing:-0.01em">#260812-0034 · 8/8 주문</span>
+<span style="font-size:15px;font-weight:800;letter-spacing:-0.03em">17,000원</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px;flex:none">
+<div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:12.5px;font-weight:800;letter-spacing:-0.01em">D 반품 요청</span><span style="font-size:11.5px;color:#9A9298;display:{{ noteD }}">환불 버튼 없음 · 승인/거절만</span></div>
+<div style="max-width:430px;width:{{ fw }};border-radius:40px;background:#F7F5F6;border:1px solid #E2DDDF;box-shadow:0 24px 48px -28px rgba(26,23,25,.35);overflow:hidden">
+<div style="height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 26px 0 30px;background:#fff">
+<span style="font-size:14px;font-weight:700;letter-spacing:-0.01em">9:41</span>
+<span style="display:flex;align-items:center;gap:6px;color:#1A1719">
+<svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect x="0" y="7.5" width="3" height="3.5" rx="1"></rect><rect x="4.6" y="5.2" width="3" height="5.8" rx="1"></rect><rect x="9.2" y="2.6" width="3" height="8.4" rx="1"></rect><rect x="13.8" y="0" width="3" height="11" rx="1"></rect></svg>
+<svg width="15" height="11" viewBox="0 0 15 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 3.6a9 9 0 0 1 13 0"></path><path d="M3.6 6.4a5.4 5.4 0 0 1 7.8 0"></path><circle cx="7.5" cy="9.3" r="1.1" fill="currentColor" stroke="none"></circle></svg>
+<svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x="0.6" y="0.6" width="19" height="9.8" rx="3" stroke="currentColor" stroke-opacity="0.35"></rect><rect x="2.2" y="2.2" width="14.5" height="6.6" rx="1.8" fill="currentColor"></rect><path d="M21.4 4v3a2 2 0 0 0 0-3z" fill="currentColor" fill-opacity="0.4"></path></svg>
+</span>
+</div>
+<div style="background:#fff;border-bottom:1px solid #EAE5E7">
+<div style="position:relative;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid #EDE9EB">
+<svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#1A1719" stroke-width="2" stroke-linecap="round"><path d="M3.5 6.5h17M3.5 12h17M3.5 17.5h17"></path></svg>
+<span style="position:absolute;left:0;right:0;text-align:center;font-size:16.5px;font-weight:800;letter-spacing:-0.035em;pointer-events:none">반품 요청</span>
+<div style="text-align:right;position:relative">
+<div style="display:flex;align-items:baseline;gap:1px;justify-content:flex-end"><span style="font-family:Poppins,sans-serif;font-weight:800;font-size:14px;letter-spacing:-0.03em;color:#1A1719">urdeal</span><span style="width:4px;height:4px;border-radius:50%;background:#E0526B;display:inline-block"></span></div>
+<div style="font-size:10.5px;color:#8A8288;letter-spacing:-0.03em;margin-top:2px">행복반찬</div>
+</div>
+</div>
+<div style="padding:16px 20px 18px">
+<div style="display:flex;gap:8px;background:#F5F2F3;border-radius:10px;padding:11px 12px">
+<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8A8288" stroke-width="2" stroke-linecap="round" style="flex:none;margin-top:1px"><circle cx="12" cy="12" r="9.2"></circle><path d="M12 11v5.5M12 7.6v.1"></path></svg>
+<span style="font-size:12px;line-height:1.6;color:#6B6469;letter-spacing:-0.02em">내 상품에 들어온 반품 요청이에요. 환불 실행은 관리자가 처리해요.</span>
+</div>
+</div>
+</div>
+<div style="padding:16px 16px 34px;display:flex;flex-direction:column;gap:12px">
+
+<div style="background:#fff;border:1px solid #EAE5E7;border-radius:16px;padding:16px">
+<div style="display:flex;align-items:center;justify-content:space-between">
+<span style="font-size:11.5px;font-weight:700;color:#8A8288;letter-spacing:0.01em">#260810-0031</span>
+<span style="font-size:10.5px;font-weight:800;color:#B0576A;background:#FBEDF0;border-radius:6px;padding:4px 7px;letter-spacing:-0.02em">대기</span>
+</div>
+<div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:10px">
+<span style="font-size:16px;font-weight:800;letter-spacing:-0.03em">김민서</span>
+<span style="font-size:16px;font-weight:800;letter-spacing:-0.03em">14,000원</span>
+</div>
+<div style="font-size:12px;color:#9A9298;letter-spacing:-0.02em;margin-top:4px">2026. 8. 10. 접수</div>
+<div style="background:#F7F5F6;border-radius:10px;padding:11px 12px;margin-top:12px">
+<div style="font-size:10.5px;font-weight:800;color:#9A9298;letter-spacing:0.03em;margin-bottom:4px">사유</div>
+<div style="font-size:12.5px;line-height:1.6;color:#4A4448;letter-spacing:-0.02em">픽업일에 방문이 어려워졌어요. 다음 공구 때 다시 주문할게요.</div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px">
+<button style="height:50px;border-radius:12px;border:none;background:#F1EDEF;color:#3F383C;font-size:14.5px;font-weight:700;letter-spacing:-0.02em;cursor:pointer" style-hover="background:#E8E3E5">거절</button>
+<button style="height:50px;border-radius:12px;border:none;background:#1A1719;color:#fff;font-size:14.5px;font-weight:800;letter-spacing:-0.02em;cursor:pointer" style-hover="background:#000000">승인</button>
+</div>
+</div>
+
+<div style="background:#fff;border:1px solid #EAE5E7;border-radius:16px;padding:16px">
+<div style="display:flex;align-items:center;justify-content:space-between">
+<span style="font-size:11.5px;font-weight:700;color:#8A8288;letter-spacing:0.01em">#260808-0019</span>
+<span style="font-size:10.5px;font-weight:800;color:#2E7D5B;background:#E6F3EC;border-radius:6px;padding:4px 7px;letter-spacing:-0.02em">승인함</span>
+</div>
+<div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:10px">
+<span style="font-size:16px;font-weight:800;letter-spacing:-0.03em">박지훈</span>
+<span style="font-size:16px;font-weight:800;letter-spacing:-0.03em">9,600원</span>
+</div>
+<div style="font-size:12px;color:#9A9298;letter-spacing:-0.02em;margin-top:4px">2026. 8. 8. 접수</div>
+<div style="background:#F7F5F6;border-radius:10px;padding:11px 12px;margin-top:12px">
+<div style="font-size:10.5px;font-weight:800;color:#9A9298;letter-spacing:0.03em;margin-bottom:4px">사유</div>
+<div style="font-size:12.5px;line-height:1.6;color:#4A4448;letter-spacing:-0.02em">수량을 잘못 눌렀어요.</div>
+</div>
+<div style="display:flex;align-items:center;gap:6px;margin-top:12px;color:#8A8288">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5.2l3.2 2"></path></svg>
+<span style="font-size:11.5px;font-weight:600;letter-spacing:-0.02em">환불은 관리자가 처리 중이에요</span>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:26px;flex:none;padding-top:34px">
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font-size:12.5px;font-weight:800;letter-spacing:-0.01em">D 빈 상태</div>
+<div style="width:340px;background:#fff;border:1px solid #E2DDDF;border-radius:20px;padding:56px 32px;display:flex;flex-direction:column;align-items:center;text-align:center">
+<div style="width:58px;height:58px;border-radius:18px;background:#F5F2F3;display:flex;align-items:center;justify-content:center;margin-bottom:16px">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B7B0B4" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5h13.5a3 3 0 0 1 0 6H8.5"></path><path d="M7 5.5 4 8.5l3 3"></path></svg>
+</div>
+<div style="font-size:14.5px;font-weight:700;letter-spacing:-0.03em;color:#3F383C">반품 요청이 없어요</div>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font-size:12.5px;font-weight:800;letter-spacing:-0.01em">D 오류 상태</div>
+<div style="width:340px;background:#fff;border:1px solid #E2DDDF;border-radius:20px;padding:48px 32px;display:flex;flex-direction:column;align-items:center;text-align:center">
+<div style="width:58px;height:58px;border-radius:18px;background:#FDEEEE;display:flex;align-items:center;justify-content:center;margin-bottom:16px">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D0685E" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9.2"></circle><path d="M12 7.2v5.6M12 16.4v.1"></path></svg>
+</div>
+<div style="font-size:14.5px;font-weight:700;letter-spacing:-0.03em;color:#3F383C">목록을 불러오지 못했어요</div>
+<div style="font-size:12.5px;color:#8A8288;letter-spacing:-0.02em;margin-top:7px;line-height:1.6">잠시 후 다시 시도해 주세요.</div>
+<button style="margin-top:18px;height:48px;padding:0 26px;border-radius:12px;border:none;background:#F1EDEF;color:#3F383C;font-size:14.5px;font-weight:700;letter-spacing:-0.02em;cursor:pointer" style-hover="background:#E8E3E5">다시 시도</button>
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:22px">
+<div style="display:flex;align-items:center;gap:12px">
+<span style="font-size:11px;font-weight:800;letter-spacing:0.06em;color:#E0526B">공통</span>
+<span style="font-size:19px;font-weight:800;letter-spacing:-0.03em">재사용 요소</span>
+<span style="font-size:13px;color:#8A8288;letter-spacing:-0.01em">버튼 · 입력칸 · 배지 · 카드 · 빈 상태 · 오류 상태</span>
+</div>
+<div style="background:#fff;border:1px solid #E2DDDF;border-radius:24px;padding:38px 40px;display:grid;grid-template-columns:repeat(3,300px);gap:44px 48px;width:max-content">
+
+<div>
+<div style="font-size:12px;font-weight:800;letter-spacing:0.04em;color:#9A9298;padding-bottom:11px;border-bottom:1px solid #EDE9EB;margin-bottom:18px">색</div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;align-items:center;gap:12px"><span style="width:40px;height:40px;border-radius:11px;background:#1A1719"></span><span><span style="display:block;font-size:12.5px;font-weight:700;letter-spacing:-0.02em">주 버튼</span><span style="display:block;font-size:11.5px;color:#9A9298;margin-top:2px">#1A1719 · 누를 때 #000000</span></span></div>
+<div style="display:flex;align-items:center;gap:12px"><span style="width:40px;height:40px;border-radius:11px;background:#E0526B"></span><span><span style="display:block;font-size:12.5px;font-weight:700;letter-spacing:-0.02em">마감 · 할인 · 재고</span><span style="display:block;font-size:11.5px;color:#9A9298;margin-top:2px">#E0526B — 급한 것에만</span></span></div>
+<div style="display:flex;align-items:center;gap:12px"><span style="width:40px;height:40px;border-radius:11px;background:#C43D55"></span><span><span style="display:block;font-size:12.5px;font-weight:700;letter-spacing:-0.02em">로즈 진한 것</span><span style="display:block;font-size:11.5px;color:#9A9298;margin-top:2px">#C43D55</span></span></div>
+<div style="display:flex;align-items:center;gap:12px"><span style="width:40px;height:40px;border-radius:11px;background:#FBEDF0;border:1px solid #F1DDE2"></span><span><span style="display:block;font-size:12.5px;font-weight:700;letter-spacing:-0.02em">옅은 로즈</span><span style="display:block;font-size:11.5px;color:#9A9298;margin-top:2px">#FBEDF0</span></span></div>
+<div style="display:flex;align-items:center;gap:12px"><span style="width:40px;height:40px;border-radius:11px;background:#3A2530"></span><span><span style="display:block;font-size:12.5px;font-weight:700;letter-spacing:-0.02em">옅은 로즈 (다크)</span><span style="display:block;font-size:11.5px;color:#9A9298;margin-top:2px">#3A2530</span></span></div>
+<div style="display:flex;align-items:center;gap:12px;margin-top:6px"><span style="width:40px;height:40px;border-radius:11px;background:#1A1719"></span><span><span style="display:block;font-size:12.5px;font-weight:700;letter-spacing:-0.02em">본문</span><span style="display:block;font-size:11.5px;color:#9A9298;margin-top:2px">#1A1719 / #6B6469 / #9A9298</span></span></div>
+<div style="display:flex;align-items:center;gap:12px"><span style="width:40px;height:40px;border-radius:11px;background:#F7F5F6;border:1px solid #EAE5E7"></span><span><span style="display:block;font-size:12.5px;font-weight:700;letter-spacing:-0.02em">면 · 선</span><span style="display:block;font-size:11.5px;color:#9A9298;margin-top:2px">#F7F5F6 / #EAE5E7</span></span></div>
+</div>
+</div>
+
+<div>
+<div style="font-size:12px;font-weight:800;letter-spacing:0.04em;color:#9A9298;padding-bottom:11px;border-bottom:1px solid #EDE9EB;margin-bottom:18px">버튼 · 높이 56</div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<button style="height:56px;border-radius:14px;border:none;background:#1A1719;color:#fff;font-size:16.5px;font-weight:800;letter-spacing:-0.03em;cursor:pointer" style-hover="background:#000000">기본</button>
+<button style="height:56px;border-radius:14px;border:none;background:#000000;color:#fff;font-size:16.5px;font-weight:800;letter-spacing:-0.03em;cursor:pointer">눌렀을 때</button>
+<button style="height:56px;border-radius:14px;border:none;background:#F1EDEF;color:#A9A2A6;font-size:16.5px;font-weight:800;letter-spacing:-0.03em;cursor:not-allowed">비활성</button>
+<button style="height:56px;border-radius:14px;border:none;background:#F1EDEF;color:#3F383C;font-size:16px;font-weight:700;letter-spacing:-0.03em;cursor:pointer" style-hover="background:#E8E3E5">보조</button>
+<button style="height:56px;border-radius:14px;border:none;background:transparent;color:#6B6469;font-size:15px;font-weight:700;letter-spacing:-0.03em;cursor:pointer" style-hover="color:#1A1719">텍스트 버튼</button>
+</div>
+</div>
+
+<div>
+<div style="font-size:12px;font-weight:800;letter-spacing:0.04em;color:#9A9298;padding-bottom:11px;border-bottom:1px solid #EDE9EB;margin-bottom:18px">입력칸 · 높이 56</div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<input type="text" placeholder="예: 수제 사과잼 250g" style="width:100%;height:56px;border-radius:12px;border:1px solid #DFD9DC;background:#fff;color:#1A1719;padding:0 15px;font-size:15.5px;font-weight:600;letter-spacing:-0.02em">
+<input type="text" value="수제 사과잼 250g" readonly style="width:100%;height:56px;border-radius:12px;border:1.5px solid #1A1719;background:#fff;color:#1A1719;padding:0 15px;font-size:15.5px;font-weight:600;letter-spacing:-0.02em">
+<div>
+<input type="text" value="12,000" readonly style="width:100%;height:56px;border-radius:12px;border:1.5px solid #D9534A;background:#fff;color:#1A1719;padding:0 15px;font-size:15.5px;font-weight:600;letter-spacing:-0.02em">
+<div style="font-size:12px;font-weight:700;color:#C0392F;letter-spacing:-0.025em;margin-top:7px">공구가는 정가보다 낮아야 해요</div>
+</div>
+<div style="font-size:11.5px;color:#9A9298;letter-spacing:-0.02em;line-height:1.6">기본 / 포커스 / 오류. 테두리를 두르는 건 입력칸뿐입니다 — 1px #DFD9DC, 포커스만 1.5px로 굵어집니다. 입력 글자색은 항상 #1A1719.</div>
+</div>
+</div>
+
+<div>
+<div style="font-size:12px;font-weight:800;letter-spacing:0.04em;color:#9A9298;padding-bottom:11px;border-bottom:1px solid #EDE9EB;margin-bottom:18px">배지</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+<span style="display:flex;align-items:center;gap:4px;background:#E0526B;color:#fff;font-size:11.5px;font-weight:700;padding:5px 8px;border-radius:999px;letter-spacing:-0.02em"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5.2l3.2 2"></path></svg>2일 남음</span>
+<span style="background:rgba(20,17,19,.82);color:#fff;font-size:11.5px;font-weight:700;padding:5px 8px;border-radius:999px;letter-spacing:-0.02em">3개 남음</span>
+<span style="color:#3C6E8F;background:#E7F0F6;font-size:10.5px;font-weight:700;padding:4px 6px;border-radius:5px;letter-spacing:-0.02em">냉장</span>
+<span style="color:#3C6E8F;background:#E7F0F6;font-size:10.5px;font-weight:700;padding:4px 6px;border-radius:5px;letter-spacing:-0.02em">냉동</span>
+<span style="color:#6B6469;background:#F0EDEE;font-size:10.5px;font-weight:700;padding:4px 6px;border-radius:5px;letter-spacing:-0.02em">실온</span>
+<span style="color:#B0576A;background:#FBEDF0;font-size:10.5px;font-weight:800;padding:4px 7px;border-radius:6px;letter-spacing:-0.02em">픽업 대기</span>
+<span style="color:#6B6469;background:#F1EDEF;font-size:10.5px;font-weight:800;padding:4px 7px;border-radius:6px;letter-spacing:-0.02em">전달 완료</span>
+<span style="color:#B0576A;background:#FBEDF0;font-size:10.5px;font-weight:800;padding:4px 7px;border-radius:6px;letter-spacing:-0.02em">대기</span>
+<span style="color:#2E7D5B;background:#E6F3EC;font-size:10.5px;font-weight:800;padding:4px 7px;border-radius:6px;letter-spacing:-0.02em">승인함</span>
+<span style="color:#8A8288;background:#F1EDEF;font-size:10.5px;font-weight:800;padding:4px 7px;border-radius:6px;letter-spacing:-0.02em">거절함</span>
+</div>
+</div>
+
+<div>
+<div style="font-size:12px;font-weight:800;letter-spacing:0.04em;color:#9A9298;padding-bottom:11px;border-bottom:1px solid #EDE9EB;margin-bottom:18px">타이포 · Pretendard</div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:baseline;justify-content:space-between"><span style="font-size:23px;font-weight:800;letter-spacing:-0.04em">화면 제목</span><span style="font-size:11px;color:#9A9298">23 / 800</span></div>
+<div style="display:flex;align-items:baseline;justify-content:space-between"><span style="font-size:18.5px;font-weight:800;letter-spacing:-0.035em">가게 이름</span><span style="font-size:11px;color:#9A9298">18.5 / 800</span></div>
+<div style="display:flex;align-items:baseline;justify-content:space-between"><span style="font-size:15px;font-weight:800;letter-spacing:-0.03em">가격 · 강조</span><span style="font-size:11px;color:#9A9298">15 / 800</span></div>
+<div style="display:flex;align-items:baseline;justify-content:space-between"><span style="font-size:13.5px;font-weight:600;letter-spacing:-0.025em">상품명 · 본문</span><span style="font-size:11px;color:#9A9298">13.5 / 600</span></div>
+<div style="display:flex;align-items:baseline;justify-content:space-between"><span style="font-size:12px;color:#6B6469;letter-spacing:-0.02em">보조 설명</span><span style="font-size:11px;color:#9A9298">12 / 400</span></div>
+</div>
+</div>
+
+<div>
+<div style="font-size:12px;font-weight:800;letter-spacing:0.04em;color:#9A9298;padding-bottom:11px;border-bottom:1px solid #EDE9EB;margin-bottom:18px">규칙</div>
+<div style="display:flex;flex-direction:column;gap:11px;font-size:12.5px;line-height:1.65;color:#4A4448;letter-spacing:-0.025em">
+<div style="display:flex;gap:8px"><span style="width:5px;height:5px;border-radius:50%;background:#E0526B;flex:none;margin-top:8px"></span><span>버튼은 차콜(#1A1719). 로즈는 마감·할인·재고에만 씁니다.</span></div>
+<div style="display:flex;gap:8px"><span style="width:5px;height:5px;border-radius:50%;background:#E0526B;flex:none;margin-top:8px"></span><span>테두리는 입력칸에만. 버튼은 면으로 만듭니다.</span></div>
+<div style="display:flex;gap:8px"><span style="width:5px;height:5px;border-radius:50%;background:#E0526B;flex:none;margin-top:8px"></span><span>손님 화면만 라이트·다크 2벌. 사장님 화면은 라이트 1벌.</span></div>
+<div style="display:flex;gap:8px"><span style="width:5px;height:5px;border-radius:50%;background:#E0526B;flex:none;margin-top:8px"></span><span>사장님 화면의 입력칸·버튼 높이는 56px 고정.</span></div>
+<div style="display:flex;gap:8px"><span style="width:5px;height:5px;border-radius:50%;background:#E0526B;flex:none;margin-top:8px"></span><span>하단 고정 버튼은 아래 28px 여백을 두어 주소창에 잘리지 않게.</span></div>
+<div style="display:flex;gap:8px"><span style="width:5px;height:5px;border-radius:50%;background:#E0526B;flex:none;margin-top:8px"></span><span>상품 이미지는 항상 1:1.</span></div>
+<div style="display:flex;gap:8px"><span style="width:5px;height:5px;border-radius:50%;background:#E0526B;flex:none;margin-top:8px"></span><span>powered by 유어딜은 링크가 아닌 글자.</span></div>
+<div style="display:flex;gap:8px"><span style="width:5px;height:5px;border-radius:50%;background:#E0526B;flex:none;margin-top:8px"></span><span>보관 안내는 목록 아래 한 번만.</span></div>
+</div>
+</div>
+
+</div>
+</div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;frameWidth&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;360&quot;,&quot;430&quot;],&quot;default&quot;:&quot;430&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;시안 보기&quot;},&quot;showSpecNotes&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;시안 보기&quot;},&quot;showBrowserChrome&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;시안 보기&quot;}}">
+const ROSE = '#E0526B', PALE = '#FBEDF0';
+const WON = n => n.toLocaleString('ko-KR');
+
+class Component extends DCLogic {
+  state = { name: '수제 사과잼 250g', regular: '10,000', deal: '7,000', deadline: 7, storage: 'cold' };
+
+  digits(v) { const d = (v || '').replace(/[^0-9]/g, '').slice(0, 9); return d ? WON(parseInt(d, 10)) : ''; }
+  num(v) { const d = (v || '').replace(/[^0-9]/g, ''); return d ? parseInt(d, 10) : 0; }
+
+  chip(active) {
+    return active
+      ? { bg: '#1A1719', fg: '#ffffff', bd: '#1A1719' }
+      : { bg: '#F1EDEF', fg: '#4A4448', bd: '#F1EDEF' };
+  }
+  softChip(active) {
+    return active
+      ? { bg: '#1A1719', fg: '#ffffff', bd: '#1A1719' }
+      : { bg: '#F1EDEF', fg: '#4A4448', bd: '#F1EDEF' };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const r = this.num(s.regular), d = this.num(s.deal);
+    const ok = r > 0 && d > 0 && d < r;
+    const rate = ok ? Math.round((1 - d / r) * 100) : 0;
+
+    const base = new Date(2026, 7, 2);
+    const end = new Date(base.getTime() + s.deadline * 86400000);
+    const dow = ['일', '월', '화', '수', '목', '금', '토'][end.getDay()];
+
+    const c3 = this.chip(s.deadline === 3), c7 = this.chip(s.deadline === 7), c14 = this.chip(s.deadline === 14);
+    const room = this.softChip(s.storage === 'room'), cold = this.softChip(s.storage === 'cold');
+
+    return {
+      fw: (this.props.frameWidth ?? '430') + 'px',
+      noteD: (this.props.showSpecNotes ?? true) ? 'inline' : 'none',
+      chromeD: (this.props.showBrowserChrome ?? true) ? 'flex' : 'none',
+
+      name: s.name,
+      regular: s.regular,
+      deal: s.deal,
+      onName: e => this.setState({ name: e.target.value }),
+      onRegular: e => this.setState({ regular: this.digits(e.target.value) }),
+      onDeal: e => this.setState({ deal: this.digits(e.target.value) }),
+
+      feedbackText: ok ? rate + '% 할인으로 열려요' : '공구가는 정가보다 낮아야 해요',
+      feedbackColor: ok ? '#2E7D5B' : '#C0392F',
+      feedbackPath: ok ? 'M5 12.6l4.6 4.6L19 7.4' : 'M6 6l12 12M18 6L6 18',
+
+      d3bg: c3.bg, d3fg: c3.fg, d3bd: c3.bd,
+      d7bg: c7.bg, d7fg: c7.fg, d7bd: c7.bd,
+      d14bg: c14.bg, d14fg: c14.fg, d14bd: c14.bd,
+      setD3: () => this.setState({ deadline: 3 }),
+      setD7: () => this.setState({ deadline: 7 }),
+      setD14: () => this.setState({ deadline: 14 }),
+      deadlineText: (end.getMonth() + 1) + '월 ' + end.getDate() + '일 (' + dow + ') 밤 11시 59분에 마감돼요',
+
+      roomBg: room.bg, roomFg: room.fg, roomBd: room.bd,
+      coldBg: cold.bg, coldFg: cold.fg, coldBd: cold.bd,
+      setRoom: () => this.setState({ storage: 'room' }),
+      setCold: () => this.setState({ storage: 'cold' }),
+      storageNotice: s.storage === 'cold'
+        ? '냉장·냉동 상품이에요. 픽업일에 찾아가지 않으면 환불이 어려울 수 있어요.'
+        : '실온 보관 상품이에요. 픽업일에 가게에서 받아가세요.'
+    };
+  }
+}
+
+</script>
+</body>
+</html>

@@ -1,0 +1,210 @@
+import { ReactNode, lazy, Suspense, CSSProperties, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
+import { useTheme } from '@/shared/stores/useTheme'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { isFullBleedPcPath } from '@/shared/pc-fullbleed'
+import { isMallSurfacePath } from '@/shared/mall/resolve'
+import { consumerChromeHiddenByPath } from '@/lib/consumer-chrome'
+
+/**
+ * 🖥️ 2026-10-13: 사이드바는 `hidden md:flex` 라 폰에선 안 보이는데 정적 import 라 폰도 그 코드를 받았다.
+ *   넓은 화면에서만 마운트하고 코드는 따로 받는다. 넓은 화면이면 모듈 평가 즉시 받기 시작해 페이지 청크와
+ *   나란히 도착한다. 사이드바는 `fixed` 라 늦게 와도 본문을 밀지 않는다(본문 여백은 `showSidebar` 로 이미 잡혀 있다).
+ */
+const loadSidebar = () => import('./DesktopLiveSidebar')
+const DesktopLiveSidebar = lazy(loadSidebar)
+// 🖥️ 2026-10-20: 상단 네비·사이드바가 둘 다 안 뜨는 화면(어드민·셀러·에이전시 등)에선 미리 받지 않는다 —
+//   폭만 보고 받던 탓에 라이브 `/admin` 이 어드민 코드보다 먼저 이 봉투와 홈 PC 봉투 18개를 받았다(실측).
+//   판정은 부팅 준비(`warmDesktopChrome`)·App.tsx 와 같은 함수다. 거기서도 사이드바가 마운트되면 Suspense 가 받는다.
+if (typeof window !== 'undefined' && window.matchMedia?.('(min-width: 768px)').matches && !consumerChromeHiddenByPath(window.location.pathname)) void loadSidebar()
+
+// 🗑️ 2026-07-07 라이브커머스 제거: DesktopLiveLeft/RightPanel 제거.
+const ConsumerFrameRails = lazy(() => import('./ConsumerFrameRails'))
+
+interface MobileAppLayoutProps {
+  children: ReactNode
+}
+
+/**
+ * MobileAppLayout
+ * 📐 2026-05-02: PC 풀 너비 활성화 (옵션 B).
+ * 📐 2026-05-03: 사이드바 패턴 전체 페이지 확장 — `/live` 디자인을 모든 PC 페이지로 확장.
+ * 📐 2026-06-16: PC 컨슈머 프레임 (docs/design 미관 결정) — 모바일 완성도를 PC 로 그대로.
+ *   - app-framed 페이지: PC(lg+) 에서 가운데 430px 프레임 + 배경 (모바일 디자인 그대로 액자화)
+ *   - data-mobile-only (라이브/쇼츠 9:16): 기존 430px 액자 + 좌우 패널 유지
+ *   - 대시보드(셀러/어드민/에이전시) + 도매몰/공급자(B2B): 풀 PC 너비 (HIDE_SIDEBAR_PREFIXES → 프레임 제외)
+ *   - 모바일(<lg): 전부 풀 너비 (영향 없음)
+ *
+ * 🛡️ 2026-05-03 hotfix: data-mobile-only 페이지에 xl:pl-56 적용 시 컬럼 압축 사고 → mobile-only 는 padding 0.
+ */
+
+// 🗑️ 2026-07-07 라이브커머스 제거: 라이브/쇼츠 9:16 전용 페이지가 없어져 빈 목록(mobileOnly 항상 false).
+const MOBILE_ONLY_PREFIXES: string[] = []
+
+// 풀 PC 너비 (프레임/사이드바 제외): 대시보드 + 도매몰/공급자(B2B) + 결제리턴/임베드.
+// 🏭 2026-06-04 도매몰(/wholesale)·제조사(/supplier) = B2B 서피스 — 자체 카테고리 UI 사용.
+// 📐 2026-06-16 (사용자 확인): 도매몰 관련은 풀 PC 프레임이어야 함 → 여기 등재되어 app-framed 에서 자동 제외됨.
+const HIDE_SIDEBAR_PREFIXES = [
+  '/seller', '/admin', '/supplier', '/wholesale', '/embed', '/checkout/return', '/introduce',
+  '/ads', // 🆕 유어애즈(UR Ads) — 도매몰처럼 PC 풀너비(액자/사이드바/거터 제외)
+  '/mall-admin', // 🏬 2026-08-10 몰 운영자 콘솔 — 대시보드 성격(소비자 액자 부적합)
+  // 🏢 2026-10-12 (대표 *"A안으로 해줘. 이건 PC버전도 중요해"*): 에이전시 콘솔이 PC 에서 430 소비자 액자에
+  //   갇혀 있었다(하네스 실측 — 가운데 좁은 칸, 좌우는 소비자 앱 바로가기·설치 QR). 안 A 의 PC 는
+  //   [맡은 매장 목록 | 판] 두 칸이라 액자 안에서는 성립하지 않는다. App.tsx 가 이미 /agency 를
+  //   fullScreen 으로 처리하므로 프레임만 푼다. 판정은 정확일치·'/agency/' 접두사라 '/agency-partner' 는 안 걸린다.
+  '/agency',
+  // 📝 2026-07-01 [UNLOCK_LOADING] (대표 요청 — "블로그는 PC 전체 폭을 써야 함, 액자에 갇힘"):
+  //   블로그(/blog·/blog/:slug)를 430 액자에서 제외 → PC 풀너비. App.tsx 가 이미 /blog 를
+  //   fullScreen 으로 처리(상/하단 네비·사이드배너 숨김)라, 프레임만 풀면 깔끔한 풀폭 읽기 화면.
+  //   콘텐츠는 각 페이지의 max-w-6xl/4xl 로 중앙 정렬(가독성 유지). 모바일(<lg) 영향 0.
+  '/blog',
+  // 🎨 2026-09-15 (대표 "시안 라우트 만들어줘"): 시안 갤러리(/design/variants)는 **여러 안을 나란히**
+  //   놓는 화면이라 430 액자 안에서는 목적 자체가 성립하지 않는다(실측: 액자에 갇혀 세로로 쌓였다).
+  //   App.tsx 가 이미 /design 을 fullScreen 으로 처리하므로 프레임만 풀면 된다. 모바일(<lg) 영향 0.
+  '/design',
+  // 🏪 2026-09-16 (대표 — 라이브 화면 신고 *"PC 버전은 따로 없어. 프레임에 갇혀있고"*):
+  //   `/partners` 는 **매장 사장님이 유어딜에 들어오는 첫 화면**인데(`utils/seller-entry.ts` 가
+  //   PC 상단 네비 "판매하세요" 를 여기로 보낸다) 이 목록에 없어 430px 소비자 액자에 갇혔다.
+  //   그리고 액자가 만든 빈 거터를 `ConsumerFrameRails` 가 채운다 — 홈·교환권·이용권·유어샵 바로가기와
+  //   앱 설치 QR. ⇒ **입점을 검토하러 온 사장님 화면의 좌우가 전부 소비자 앱 광고였다.**
+  //   `App.tsx` 가 이미 `/partners` 를 fullScreen 으로 처리하므로(상·하단 네비 없음) 프레임만 풀면 된다.
+  //   페이지 자체가 `ur-content-wide` 로 중앙 정렬하므로 풀너비에서 퍼지지 않는다(블로그 선례와 동일).
+  //   ⚠️ `/partnership`(입점 문의 폼)은 다른 페이지다. 이 목록의 판정은 정확일치 또는 `'/partners/'`
+  //      접두사라 `/partnership` 은 걸리지 않는다 — 접두사를 `'/partner'` 로 줄이지 말 것.
+  '/partners',
+  // 🧭 2026-09-16 (대표 *"PC를 같은 수준으로 만들어주고"* — `/partners` 를 PC 로 세운 직후):
+  //   형제 랜딩 둘도 같은 이유로 갇혀 있었다. `/about` 은 서비스를 알아보러 온 제휴처가,
+  //   `/creators` 는 소개로 돈을 벌러 온 사람이 보는 화면인데, 430px 액자가 만든 빈 거터를
+  //   `ConsumerFrameRails`(소비자 앱 바로가기 + 설치 QR)가 채우고 있었다.
+  //   `App.tsx` 가 이미 둘 다 fullScreen 으로 처리하므로(상·하단 네비 없음) 프레임만 풀면 된다.
+  //   ⚠️ 접두사가 하위 경로까지 먹는다 — `/about/print`(인쇄용 상세 소개서)와
+  //      `/creators/apply`·`/creators/start`(신청 폼)가 함께 풀린다. **셋 다 그게 맞다**:
+  //      상세 소개서는 원래 `ur-content-wide` 로 짜여 있고, 폼 둘은 자기 `max-w-lg`·`max-w-md` 로
+  //      가운데 정렬하므로 풀너비에서 퍼지지 않는다.
+  '/about', '/creators',
+]
+
+// 🎨 2026-06-18 (사용자 시안): 유어샵 진입 시 PC 좌측 카테고리 사이드바 숨김 → 깔끔한 액자.
+//   프레임(중앙 정렬)은 유지(HIDE_SIDEBAR_PREFIXES 와 달리 풀너비로 안 만듦) + 우하단 QR 표시.
+//   /u(유어샵), /profile/(레거시 유어샵), /s/(셀러 공개) 모두 유어샵 서피스.
+// 🐛 2026-08-17 (대표 신고 — /user/profile 위에 유어샵 방문자 팝업 2개 겹침): 목록의 bare `'/u'` 가
+//   `startsWith` 로 검사돼 **`/user/*`(마이페이지) 전부가 유어샵 방문자로 오판** → QR·"나도 유어샵"
+//   레일이 마이페이지 콘텐츠 위에 떴다. `/u` 단독은 아래 isLinkshop 의 exact 비교가 이미 처리하므로
+//   접두사는 **세그먼트 경계(`/u/`)** 만 남긴다.
+const LINKSHOP_PREFIXES = ['/u/', '/profile/', '/s/']
+
+// 🛡️ 2026-06-18 (사용자 정정 — "유어샵 주인은 왼쪽 카테고리가 보여야지"): 사이드바 숨김/QR 은
+//   "공유 링크로 들어온 방문자"에게만. 주인이 자기 유어샵을 보면 평소 앱(사이드바) 그대로.
+//   주인 판별 = URL 핸들 ↔ localStorage 핸들(useLinkshopPath 우선순위: seller_username →
+//   linked_seller_username → user_handle, /u/me·/u 는 항상 주인). SSR(window 없음)=방문자로 간주
+//   → 익명 액자 우선, 주인 하드로드 시 첫 client 렌더에서 사이드바 자기치유(createRoot 비-hydrate).
+// 🖥️ 2026-06-18 (대표 결정 — PC 전면 반응형 단계적 롤아웃): 풀너비 데스크탑 레이아웃을 쓸 경로.
+//   여기 등재된 경로만 프레임(430 액자) 해제 + 상단 네비 + 풀너비. 단계별로 확장(홈부터).
+// 🖥️ 2026-06-20 (대표 시안 — 에버랜드 PC): 모든 컨슈머를 '중앙 모바일 액자 + 데코 거터 레일 +
+//   하단 네비' 단일 정체성으로. 홈도 액자로 되돌림(여기서 제거) → 좌측 사이드바 대신 거터 레일.
+const DESKTOP_RESPONSIVE_PATHS = new Set<string>([])
+
+function isOwnLinkshopPath(pathname: string): boolean {
+  if (typeof window === 'undefined') return false
+  if (pathname === '/u' || pathname === '/u/me') return true
+  const m = pathname.match(/^\/(?:u|profile|s)\/([^/]+)/)
+  if (!m) return false
+  const handle = decodeURIComponent(m[1] || '').toLowerCase().replace(/^@/, '')
+  if (!handle) return false
+  if (handle === 'me') return true
+  try {
+    return [
+      localStorage.getItem('seller_username'),
+      localStorage.getItem('linked_seller_username'),
+      localStorage.getItem('user_handle'),
+    ].some((v) => v && v.toLowerCase().replace(/^@/, '') === handle)
+  } catch { return false }
+}
+
+// 📐 2026-06-16: PC 컨슈머 프레임 적용 경로 (단계적 롤아웃).
+//   전체 컨슈머 롤아웃 (2026-06-17): 대시보드/도매몰/비디오 제외 모든 컨슈머 페이지에 프레임.
+//   각 페이지의 fixed 하단/상단 바는 `.app-frame-bar` 클래스로 프레임 폭에 정렬 (index.css).
+// 📐 2026-06-17 (사용자 요청 — 액자 폭 통일): 모든 컨슈머 페이지를 폰 폭(430) 단일 액자로.
+//   기존엔 그리드/리스트·상품상세만 720 이라 페이지 이동 시 액자 폭이 튀었음. 그리드(2-3열)·상품상세(2단)는
+//   프레임 안에서 '폰처럼' 보이도록 index.css `.app-framed` 오버라이드(≥1024)가 모바일 레이아웃으로 되돌린다.
+
+export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
+  const location = useLocation()
+  const applied = useTheme(s => s.applied)
+  const mobileOnly = MOBILE_ONLY_PREFIXES.some(p => location.pathname.startsWith(p))
+  const hideSidebar = HIDE_SIDEBAR_PREFIXES.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
+  // 🎨 2026-06-18 유어샵 서피스 — 좌측바 숨김 + 우하단 QR (프레임은 유지).
+  //   단, 주인이 자기 유어샵을 볼 땐 평소 앱(사이드바 표시) — 방문자(공유링크 진입)에게만 액자+QR.
+  const isLinkshop = location.pathname === '/u' || LINKSHOP_PREFIXES.some(p => location.pathname.startsWith(p))
+  const linkshopVisitor = isLinkshop && !isOwnLinkshopPath(location.pathname)
+  // 🖥️ 2026-06-18 (대표 결정 — PC 전면 반응형): 데스크탑 풀너비 페이지(단계적 롤아웃).
+  //   프레임(430 액자) 대신 상단 네비 + 풀너비 반응형. 좌측 카테고리 사이드바는 숨김(사용자 "사이드바 위주 X").
+  //   페이지의 기존 lg: 레이아웃이 그대로 살아남(프레임 CSS 덮기 미적용). 모바일(<lg)은 영향 0.
+  const isDesktopResponsive = !mobileOnly && DESKTOP_RESPONSIVE_PATHS.has(location.pathname)
+  // 🖥️ 2026-07-15~16 [UNLOCK_LOADING] (대표 시안 — 당근 스타일 PC): 홈·카탈로그(교환권 등)를 lg+ 풀너비
+  //   (액자/사이드바/거터 제외)로. SSOT = `shared/pc-fullbleed.ts`. 모바일(<lg)은 프레임 CSS 가 lg+ 전용이라
+  //   영향 0. 2026-06-20 "PC 단일 액자 정체성" 잠금을 이 경로들에 한해 해제.
+  const isFullBleedHome = isFullBleedPcPath(location.pathname)
+  // 🏬 2026-08-12 (대표 — 라이브 화면 신고 "왜 지금 이 형태인거야?"): **운영자 몰은 유어딜 셸을 안 입는다.**
+  //   `App.tsx` 는 2026-08-02 에 몰 표면에서 하단바/상단 네비를 이미 껐는데(`hideBottomNav`), **이 파일은
+  //   몰을 몰랐다**(`mall` 이라는 단어가 0건이었다) → `framed=true` 로 몰이 430px 유어딜 액자에 갇히고,
+  //   비어 버린 좌우 거터를 `ConsumerFrameRails`(urdeal 로고·"내 손안의 동네 딜"·홈/쇼핑/이용권/유어샵/마이
+  //   바로가기·"지도로 동네딜 보기")가 채웠다. **몰 화면인데 사방이 유어딜 광고였다.**
+  //   ⇒ 판정은 `App.tsx` 와 **같은 SSOT**(`isMallSurfacePath`) 하나로 — 둘이 갈리면 한쪽만 새는 게 이 사고다.
+  //   🔴 `framed` 만 끄면 `showSidebar` 가 대신 켜져 유어딜 사이드바가 뜬다 → 아래에서 함께 막는다.
+  //   `MallHomePage` 는 이미 `ur-content-wide mx-auto`(1280) 라 액자를 벗으면 제 폭을 쓴다(블로그 선례와 동일).
+  const mallSurface = isMallSurfacePath(location.pathname)
+  // 컨슈머 프레임 — 대시보드/도매몰/비디오 + 데스크탑 반응형 + 풀블리드 홈 + **운영자 몰**은 제외(풀너비).
+  const framed = !mobileOnly && !hideSidebar && !isDesktopResponsive && !isFullBleedHome && !mallSurface
+  // 🖥️ 2026-06-20 (대표 시안 — PC 단일 정체성): 액자 컨슈머 페이지는 좌측 사이드바 대신 거터 레일 +
+  //   프레임 내부 하단 네비를 쓴다 → framed 면 사이드바 숨김. live/shorts(mobileOnly)·풀너비 반응형
+  //   페이지는 종전처럼 사이드바 유지. 데코 거터 레일은 framed 이고 유어샵 방문자가 아닐 때만.
+  // 🖥️ 풀블리드 홈은 앱 사이드바(DesktopLiveSidebar)도 숨김 — PcHomePage 자체 레일이 좌측을 담당.
+  //   🏬 `!mallSurface` — 위 주석의 함정. 액자만 벗기면 그 자리를 유어딜 사이드바가 차지한다.
+  const showSidebar = !hideSidebar && !linkshopVisitor && !framed && !isFullBleedHome && !mallSurface
+  const showFrameRails = framed && !linkshopVisitor
+  // 📱 2026-09-02 (유어샵 워터폴 실측): 두 레일은 안에서 `hidden xl:flex` 라 모바일에선 안 보이는데, 마운트는
+  //   되므로 lazy 청크 + 그 안의 QR 라이브러리(codes 82KB)를 **폰에서도** 내려받고 있었다. 뷰포트가 xl 일 때만 마운트.
+  const isXl = useMediaQuery('(min-width: 1280px)')
+  const wideForSidebar = useMediaQuery('(min-width: 768px)')
+  // 📐 2026-06-17: 단일 폰 폭(430) — 페이지별 폭 분기 제거(액자가 페이지마다 안 튐).
+  const frameWidth = '430px'
+
+  // 📐 2026-06-17: PC 프레임 양옆 배경(바탕)을 현재 테마에 직접 연동 (사용자 신고
+  //   "다크 테마인데 PC 바탕이 흰색"). 기존엔 `body:has(.app-framed)` CSS 로만 처리했는데
+  //   `:has()` 미지원/캐시 등 엣지에서 라이트 바탕이 남을 수 있어, 테마 store 의 applied 값으로
+  //   <body> 클래스를 직접 토글해 결정적으로 적용. CSS 규칙은 index.css `body.app-frame-host`.
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const body = document.body
+    if (framed) {
+      body.classList.add('app-frame-host')
+      body.classList.toggle('app-frame-dark', applied === 'dark')
+    } else {
+      body.classList.remove('app-frame-host', 'app-frame-dark')
+    }
+    // 🖥️ 2026-07-15~16: 풀블리드 마커 — index.css 가 lg+ 에서 하단 네비(app-frame-bar) 를 숨김(PC 자체 네비/레일).
+    body.classList.toggle('pc-fullbleed', isFullBleedHome)
+    return () => { body.classList.remove('app-frame-host', 'app-frame-dark', 'pc-fullbleed') }
+  }, [framed, applied, isFullBleedHome])
+
+  return (
+    <>
+      {/* PC (xl+) 좌측 사이드바 — 일반 페이지 + 라이브/쇼츠 (fixed). */}
+      {showSidebar && wideForSidebar && <Suspense fallback={null}><DesktopLiveSidebar /></Suspense>}
+      {/* 🗑️ 2026-07-07 라이브커머스 제거: DesktopLiveLeft/RightPanel 렌더 제거 */}
+      {/* 🗑️ 2026-09-02 (대표 확정 — 유어샵 안P1): 방문자 PC 거터 레일(`LinkshopVisitorRails`) 삭제.
+          유어샵은 이제 lg+ 에서 액자를 벗어 진짜 PC 페이지(좌 프로필 열 + 우 3열 진열대)라 거터가 없다.
+          QR 은 프로필 열(`UShopQrCard`)로 이동. */}
+      {/* 🖥️ 2026-06-20 컨슈머 PC 액자 거터 레일 (브랜드/QR/바로가기) — xl+ 에서만 보임(컴포넌트 내부 게이트). */}
+      {showFrameRails && isXl && <Suspense fallback={null}><ConsumerFrameRails /></Suspense>}
+      <div
+        className={`mobile-app-container ${framed ? 'app-framed' : (showSidebar && !mobileOnly ? 'md:pl-[60px] xl:pl-56' : '')}`}
+        data-mobile-only={mobileOnly ? 'true' : 'false'}
+        style={framed ? ({ '--app-frame': frameWidth } as CSSProperties) : undefined}
+      >
+        {children}
+      </div>
+    </>
+  )
+}

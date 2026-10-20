@@ -1,0 +1,134 @@
+import { useState, useMemo } from 'react'
+import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
+import { formatNumber } from '@/utils/format'
+
+/**
+ * 🔑 수집 키워드 관리 — 인플루언서 풀 페이지에서 추출(600줄 캡 준수).
+ *   활성/후보 칩 토글 + 우선 카테고리 태깅 추가. 변경 시 onChanged(부모 loadMeta)로 재조회.
+ *   ⚡ 2026-07-27 렉 수리(대표 신고 "열면 심한 렉"): 후보 키워드(해시태그 자동확장)가 수백~1,000개로
+ *   자라 칩 전부를 한 번에 렌더 → 열 때 프리즈 + 수집 폴링(12s)마다 재렌더. 3중 수리:
+ *   ① 닫혀 있으면 본문 미렌더(details onToggle 게이트 — 폴링 재렌더 비용 0)
+ *   ② 후보는 상위 60개만 기본 표시 + 검색 필터 + '모두 보기' 옵트인(활성은 ≤200이라 전체 표시)
+ *   ③ 렌더 목록을 useMemo — 폴링으로 같은 내용이 와도 재계산 최소화.
+ */
+export interface Keyword { id: number; keyword: string; category: string | null; active: number; hits: number; source: string; found_total?: number; saved_total?: number; last_saved?: number; last_run_at?: string | null }
+
+// ⭐ 우선 커서(배치의 3/4)를 타는 카테고리 — influencer-auto-collect PRIORITY_CATEGORIES 와 동일해야 함.
+// 🔗 우선 카테고리는 **서버 SSOT 를 그대로 쓴다**(`influencer-keyword-rotation.ts` — import 0 인 순수 모듈).
+//   여기 목록을 손으로 복제해 두면 서버가 축을 추가해도 UI 는 모른 채 갈라진다 — 실제로 그랬다:
+//   2026-07-29 서버에 '공동구매'를 넣었는데 이 사본은 6개 그대로라 우선 태깅이 화면에서 불가능했다.
+//   (서버 모듈 주석도 "두 벌로 두면 조용히 갈라진다"고 이미 경고하고 있었다.)
+export { PRIORITY_CATEGORIES as PRIORITY_CATS } from '@/features/marketing/api/influencer-keyword-rotation'
+import { PRIORITY_CATEGORIES as PRIORITY_CATS, YIELD_EVIDENCE_MIN, YIELD_OK_RATE } from '@/features/marketing/api/influencer-keyword-rotation'
+
+/**
+ * 🌾 수확률 표시 판정 — **서버 점수 함수와 같은 상수**를 쓴다(두 벌로 두면 조용히 갈라진다 — 위 ⭐ 사고 참조).
+ *   `💤0` 은 `saved_total` 만 봐서 'found 2 saved 0'(거의 안 해봄)과 'found 117 saved 0'(진짜 낭비)을
+ *   구분하지 못했고, `방배 카페`(154건 → 1명, 0.6%) 처럼 **0 이 아닌 저수확**은 아예 안 보였다.
+ */
+function lowYield(k: Keyword): { pct: number; found: number } | null {
+  const found = k.found_total || 0
+  if (found < YIELD_EVIDENCE_MIN) return null
+  const rate = (k.saved_total || 0) / found
+  return rate < YIELD_OK_RATE ? { pct: Math.round(rate * 1000) / 10, found } : null
+}
+
+const CAND_PREVIEW = 60 // 후보 기본 표시 상한 — 성과순 정렬이라 상위가 곧 유의미한 것들
+
+function Chip({ k, onToggle }: { k: Keyword; onToggle: (k: Keyword) => void | Promise<void> }) {
+  const ly = lowYield(k)
+  return (
+    <button onClick={() => onToggle(k)} title={`${k.category || '일반'} · ${k.source}${k.saved_total ? ` · 누적 ${k.saved_total}명(직전 ${k.last_saved || 0})` : ''}${k.last_run_at ? ` · ${k.last_run_at.slice(5, 16)}` : ''}${k.hits ? ` · ${k.hits}회 등장` : ''}`}
+      className={`px-2.5 py-1 rounded-full text-xs border ${k.active ? 'bg-brand text-white border-gray-900' : 'bg-white text-gray-400 border-gray-300 line-through'}`}>
+      {PRIORITY_CATS.includes(k.category || '') ? '★ ' : ''}{k.keyword}{k.source === 'auto' ? ' (자동)' : ''}{k.saved_total ? <span className={k.active ? 'text-gray-400' : 'text-gray-400'}> · {formatNumber(k.saved_total)}</span> : (k.last_run_at ? <span className="text-gray-400" title="이 키워드로 여러 번 수집했지만 신규 0명 — 비활성 검토">{' · 0'}</span> : '')}
+      {ly && <span className="text-gray-400" title={`${formatNumber(ly.found)}건 찾아 ${formatNumber(k.saved_total || 0)}명 저장 (수확률 ${ly.pct}%) — 검색 슬롯을 쓰지만 리드가 거의 안 남습니다. 이미 다 모았거나(고갈) 키워드가 안 맞는 경우입니다. 점수에서 자동 감점되지만, 확실하면 눌러서 비활성.`}>{ly.pct}%</span>}
+    </button>
+  )
+}
+
+/**
+ * ⚡ **키워드는 이 패널을 열 때만 받는다** (2026-08-05 대표 *"로딩이 너무 느린데"*).
+ *
+ *   라이브 실측: 풀 페이지 첫 로딩 3콜 중 `/keywords` 가 **224KB** 로 전체 310KB 의 **72%** 였다.
+ *   그런데 이 컴포넌트는 **접힌 `<details>`** 라 열기 전엔 본문도 안 그린다(아래 `open` 게이트) —
+ *   대부분의 방문에서 그 224KB 를 받아 **파싱만 하고 버렸다**. 서버 SELECT 가 `LIMIT 1000` 이라
+ *   비활성 키워드까지 전부 온다.
+ *
+ *   ⇒ 부모는 마운트에서 **통계만** 받고(`loadStats`), 키워드는 여기서 **처음 펼칠 때** `onFirstOpen` 으로
+ *     가져온다. 편집 뒤(`onChanged`)엔 분류 통계도 바뀌므로 둘 다 갱신한다.
+ *   ⚠️ 받기 전에는 요약줄에서 **개수를 숨긴다** — "활성 0" 으로 보이면 *키워드가 사라진 걸로* 읽힌다.
+ *   ⚠️ 정비 폴링(10초)도 통계만 부를 것 — 아니면 보고 있는 내내 224KB 를 다시 받는다.
+ */
+export default function KeywordManager({ keywords, onChanged, onFirstOpen }: { keywords: Keyword[]; onChanged: () => Promise<void>; onFirstOpen?: () => Promise<void> }) {
+  const [open, setOpen] = useState(false)         // ⚡ 닫힘 상태에선 본문(칩 수백 개) 미렌더
+  // ⚡ 데이터도 열 때 받는다(224KB) — 페이지 첫 페인트를 막지 않게. 근거는 부모의 `loadKeywords` docblock.
+  const [fetched, setFetched] = useState(false)
+  const [newKw, setNewKw] = useState('')
+  const [newKwCat, setNewKwCat] = useState('맛집') // 신규 키워드 카테고리(우선 커서 태깅)
+  const [q, setQ] = useState('')                   // 칩 검색 필터
+  const [showAllCand, setShowAllCand] = useState(false)
+  const activeCount = useMemo(() => keywords.reduce((n, k) => n + (k.active ? 1 : 0), 0), [keywords])
+  const candidateCount = keywords.length - activeCount
+  const { activeKw, candShown, candHidden } = useMemo(() => {
+    const needle = q.trim().toLowerCase()
+    const match = (k: Keyword) => !needle || k.keyword.toLowerCase().includes(needle) || (k.category || '').toLowerCase().includes(needle)
+    const act = keywords.filter(k => k.active && match(k))
+    const cand = keywords.filter(k => !k.active && match(k))
+    const shown = (showAllCand || needle) ? cand : cand.slice(0, CAND_PREVIEW) // 검색 중엔 매칭 전부(이미 좁혀짐)
+    return { activeKw: act, candShown: shown, candHidden: cand.length - shown.length }
+  }, [keywords, q, showAllCand])
+
+  async function addKeyword() {
+    const kw = newKw.trim()
+    if (kw.length < 2) { toast.error('키워드는 2자 이상'); return }
+    try {
+      // category 를 우선 카테고리로 보내면 우선 커서(배치 3/4)를 탐 — 지역+업종 시딩용.
+      const r = await api.post('/api/admin/ads/influencer-pool/keywords', { keyword: kw, category: newKwCat })
+      if (r.data?.success) { setNewKw(''); toast.success(`키워드 추가 (${newKwCat})`); await onChanged() }
+      else toast.error(r.data?.error || '추가 실패')
+    } catch { toast.error('추가 실패') }
+  }
+  async function toggleKeyword(k: Keyword) {
+    try { await api.patch(`/api/admin/ads/influencer-pool/keywords/${k.id}`, { active: k.active ? 0 : 1 }); await onChanged(); toast.success(k.active ? `⏸ '${k.keyword}' 수집 중지` : `▶'${k.keyword}' 수집 재개`) }
+    catch { toast.error('변경 실패') }
+  }
+
+  return (
+    <details className="mb-4 rounded-lg border border-gray-200 bg-white" onToggle={e => { const o = (e.currentTarget as HTMLDetailsElement).open; setOpen(o); if (o && !fetched) { setFetched(true); void onFirstOpen?.() } }}>
+      <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-gray-900">
+        수집 키워드 관리{fetched ? ` (활성 ${activeCount} · 후보 ${candidateCount})` : ''}
+      </summary>
+      {open && (
+        <div className="px-4 pb-4">
+          <div className="flex flex-wrap gap-2 mb-3">
+            <select value={newKwCat} onChange={e => setNewKwCat(e.target.value)} className="px-2 py-2 rounded-lg border border-gray-300 text-sm text-gray-900" title="우선 카테고리로 태깅하면 우선 커서(배치 3/4)를 탑니다">
+              {PRIORITY_CATS.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+              <option value="일반">일반</option>
+            </select>
+            <input value={newKw} onChange={e => setNewKw(e.target.value)} onKeyDown={e => e.key === 'Enter' && addKeyword()} placeholder="키워드 추가 (예: 방배 맛집)" className="flex-1 min-w-[160px] px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900" />
+            <button onClick={addKeyword} className="ur-btn ur-btn-md ur-btn-primary">추가</button>
+            <input value={q} onChange={e => setQ(e.target.value)} placeholder="칩 검색 (키워드·카테고리)" className="w-[180px] px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900" />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {activeKw.map(k => <Chip key={k.id} k={k} onToggle={toggleKeyword} />)}
+          </div>
+          {candShown.length > 0 && (
+            <>
+              <div className="mt-3 mb-1 text-[11px] text-gray-400">후보(비활성) — 성과·등장순 상위{!showAllCand && !q.trim() && candidateCount > CAND_PREVIEW ? ` ${CAND_PREVIEW}개` : ''}</div>
+              <div className="flex flex-wrap gap-2">
+                {candShown.map(k => <Chip key={k.id} k={k} onToggle={toggleKeyword} />)}
+              </div>
+            </>
+          )}
+          {candHidden > 0 && (
+            <button onClick={() => setShowAllCand(true)} className="mt-2 px-3 py-1.5 rounded-lg border border-gray-300 text-xs text-gray-500">
+              후보 {formatNumber(candHidden)}개 더 보기 (많으면 느려질 수 있어요)
+            </button>
+          )}
+          <p className="mt-2 text-xs text-gray-400">칩을 눌러 활성/비활성. ★ = 우선 카테고리(우선 커서 3/4). (자동) = 해시태그 자동확장. 숫자 = 이 키워드로 모은 누적 인원(성과순 정렬 — 잘 무는 키워드가 위로). 0 = 수집했지만 0명(죽은 키워드 — 눌러서 비활성 권장). N% = 충분히 찾았는데 거의 안 남는 키워드(수확률) — 점수에서 자동 감점되며, 확실하면 비활성.</p>
+        </div>
+      )}
+    </details>
+  )
+}

@@ -1,0 +1,38 @@
+// 🧱 2026-06-29 TD: MyVouchersPage god 파일 분해 — 공유 타입(Voucher/ViewMode). verbatim.
+export interface Voucher {
+  id: number | string  // KT Alpha 는 'kt-{voId}' 형식
+  code: string
+  status: 'unused' | 'used' | 'expired' | 'refunded' | 'processing' | 'gifted'  // gifted = 내가 보낸 선물을 친구가 받은 기록(코드 없음)
+  product_name: string
+  restaurant_name?: string
+  restaurant_address?: string
+  restaurant_phone?: string  // 🎟️ 2026-07-06 이용 안내 — 매장 전화(/vouchers/my 가 p.restaurant_phone 반환)
+  restaurant_lat?: number
+  restaurant_lng?: number
+  product_image?: string
+  expires_at?: string
+  used_at?: string
+  created_at: string
+  applied_price?: number  // 🛡️ 2026-05-16: voucher 액면가 (차감 금액 안내용)
+  product_price?: number
+  usage_guide?: string    // 매장이 등록한 사용 가이드 (예: "평일 점심만")
+  // 🛡️ 2026-05-25 (A 옵션): KT Alpha 통합 표시
+  source?: 'internal' | 'kt_alpha'
+  /** 🎟️ 2026-08-31 지갑 분리: 딜 전용 상품(교환권) 여부 — 어느 보관함 소속인지 판정에 쓴다. */
+  deal_only?: number
+  kt_alpha_voucher_order_id?: number
+  kt_recipient_phone?: string
+  kt_status?: string  // 'sent' | 'processing'
+  kt_pin?: string | null  // 🔢 #4: PIN 모드 발급분의 쿠폰 PIN/바코드 (인앱 표시용)
+  order_id?: number
+  product_id?: number  // 🛡️ /api/vouchers/my 가 v.product_id 반환 — 재구매 딥링크용
+  /** 🎁 2026-10-11 선물로 받은 이용권이면 보낸 사람 id — 셀프 취소·환불 버튼을 숨긴다(서버도 막는다). */
+  gift_from_user_id?: string | null
+  /** 🎁 2026-10-12 내가 보낸 선물 링크가 아직 안 받힌 상태 — 그동안은 쓸 수 없다(서버가 막는다). */
+  gift_pending?: boolean
+  /** 🎁 status='gifted' 기록의 받은 사람 이름 */
+  gift_to_name?: string | null
+  applied_discount_pct?: number  // 🛡️ 할인율(%) — '아낀 돈' 계산용 (product_price 미반환이므로 이걸로)
+}
+
+export type ViewMode = 'list' | 'map'

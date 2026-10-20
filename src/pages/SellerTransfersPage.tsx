@@ -1,0 +1,181 @@
+import { useState } from 'react'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { useTranslation } from '@/lib/i18n-lite'
+import SellerLayout from '@/components/SellerLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
+import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
+import { toast } from '@/hooks/useToast'
+import { ArrowRightLeft, Check, X, ArrowRight, Building2 } from 'lucide-react'
+import { formatKSTDate } from '@/utils/date'
+
+/**
+ * 🛡️ 2026-04-30 TD-016 CRITICAL: 셀러 본인이 직접 동의/거부하는 페이지.
+ *   기존엔 from_agency 가 셀러 동의를 대행하던 위험 endpoint 였는데
+ *   /api/seller/transfers/:id/respond 로 셀러 본인 토큰 인증 후 응답.
+ */
+
+interface Transfer {
+  id: number
+  seller_id: number
+  from_agency_id: number
+  from_agency_name: string | null
+  to_agency_id: number
+  to_agency_name: string | null
+  reason: string | null
+  status: string
+  rejection_reason: string | null
+  created_at: string
+  to_response_at: string | null
+  seller_response_at: string | null
+  completed_at: string | null
+}
+
+export default function SellerTransfersPage() {
+  const { t } = useTranslation()
+  const [submitting, setSubmitting] = useState<number | null>(null)
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
+  const { data: items = [], isLoading: loading, isError, refetch } = useApiQuery<Transfer[]>(
+    ['seller', 'transfers'], '/api/seller/transfers',
+    { select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
+  const fetchAll = () => refetch()
+
+  async function respond(id: number, approved: boolean) {
+    const msg = approved
+      ? t('seller.transfers.approveConfirm', { defaultValue: '본 에이전시 이전에 동의하시겠습니까? 동의 시 즉시 매핑이 변경되며, 30일간 재이전이 제한됩니다.' })
+      : t('seller.transfers.rejectConfirm', { defaultValue: '이전을 거부하시겠습니까?' })
+    if (!(await confirmDialog(msg))) return
+    const reason = approved ? undefined : prompt(t('seller.transfers.rejectReasonPrompt', { defaultValue: '거부 사유 (선택):' })) || ''
+    setSubmitting(id)
+    try {
+      await api.post(`/api/seller/transfers/${id}/respond`, { approved, reason })
+      toast.success(approved ? t('seller.transfers.completed', { defaultValue: '이전이 완료됐습니다.' }) : t('seller.transfers.rejected', { defaultValue: '거부 완료' }))
+      fetchAll()
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || t('seller.transfers.actionFailed', { defaultValue: '실패' }))
+    } finally { setSubmitting(null) }
+  }
+
+  const pending = items.filter(t => t.status === 'accepted_by_to')
+  const others = items.filter(t => t.status !== 'accepted_by_to')
+
+  return (
+    <SellerLayout title={t('seller.transfers.title', { defaultValue: '에이전시 이전' })}>
+      <div className="p-6 space-y-6">
+        <DashboardPageHeader
+          title={t('seller.transfers.title', { defaultValue: '에이전시 이전 요청' })}
+          subtitle={t('seller.transfers.subtitle', { defaultValue: '본인 동의가 필요한 에이전시 이전 요청을 확인하고 응답하세요.' })}
+          icon={<ArrowRightLeft className="h-5 w-5" />}
+        />
+
+        <div className="bg-white border border-rule rounded-xl p-4 text-xs text-tone-warn">
+          ⓘ {t('seller.transfers.notice', { defaultValue: '보내는 에이전시 → 받는 에이전시 → 본인 동의 3단계 후 매핑이 변경됩니다. 본인 동의 없이는 어떤 에이전시도 임의로 이전할 수 없습니다 (보안). 이전 후 30일 cooldown.' })}
+        </div>
+
+        {loading ? (
+          <div className="text-center text-sm text-gray-400 py-12">{t('seller.transfers.loading', { defaultValue: '불러오는 중...' })}</div>
+        ) : isError ? (
+          <div className="text-center text-sm text-gray-500 py-12 bg-white rounded-xl border border-gray-100">
+            {t('seller.transfers.loadError', { defaultValue: '이전 요청을 불러오지 못했습니다.' })}{' '}
+            <button onClick={() => refetch()} className="underline text-gray-700">{t('common.retry', { defaultValue: '다시 시도' })}</button>
+          </div>
+        ) : items.length === 0 ? (
+          <div className="text-center text-sm text-gray-400 py-12 bg-white rounded-xl border border-gray-100">
+            {t('seller.transfers.noTransfers', { defaultValue: '아직 이전 요청이 없습니다.' })}
+          </div>
+        ) : (
+          <>
+            {pending.length > 0 && (
+              <Section title={`${t('seller.transfers.needsApproval', { defaultValue: '동의 필요' })} (${pending.length})`} highlight>
+                {pending.map(t => (
+                  <TransferCard
+                    key={t.id} t={t} actionable
+                    submitting={submitting === t.id}
+                    onApprove={() => respond(t.id, true)}
+                    onReject={() => respond(t.id, false)}
+                  />
+                ))}
+              </Section>
+            )}
+            <Section title={t('seller.transfers.allHistory', { defaultValue: '전체 내역' })}>
+              {others.length === 0 ? (
+                <div className="text-xs text-gray-400 text-center py-4">{t('seller.transfers.none', { defaultValue: '없음' })}</div>
+              ) : others.map(t => (
+                <TransferCard key={t.id} t={t} />
+              ))}
+            </Section>
+          </>
+        )}
+      </div>
+    </SellerLayout>
+  )
+}
+
+function Section({ title, children, highlight }: { title: string; children: React.ReactNode; highlight?: boolean }) {
+  return (
+    <div className={`rounded-xl border overflow-hidden ${
+      highlight ? 'bg-white border-rule' : 'bg-white border-gray-100'
+    }`}>
+      <div className={`px-5 py-3 border-b ${highlight ? 'border-rule' : 'border-gray-100'}`}>
+        <h3 className="text-sm font-bold text-gray-900">{title}</h3>
+      </div>
+      <div className="divide-y divide-gray-100">{children}</div>
+    </div>
+  )
+}
+
+function TransferCard({
+  t: transfer, actionable, submitting, onApprove, onReject,
+}: {
+  t: Transfer
+  actionable?: boolean
+  submitting?: boolean
+  onApprove?: () => void
+  onReject?: () => void
+}) {
+  const { t } = useTranslation()
+  const statusMap: Record<string, { label: string; cls: string }> = {
+    pending: { label: t('seller.transfers.statusPending', { defaultValue: '받는 에이전시 응답 대기' }), cls: 'bg-tone-warn-bg text-tone-warn' },
+    accepted_by_to: { label: t('seller.transfers.statusAcceptedByTo', { defaultValue: '본인 동의 필요' }), cls: 'bg-tone-info-bg text-tone-info' },
+    completed: { label: t('seller.transfers.statusCompleted', { defaultValue: '이전 완료' }), cls: 'bg-tone-ok-bg text-tone-ok' },
+    rejected: { label: t('seller.transfers.statusRejected', { defaultValue: '거절' }), cls: 'bg-tone-bad-bg text-tone-bad' },
+    cancelled: { label: t('seller.transfers.statusCancelled', { defaultValue: '취소' }), cls: 'bg-gray-100 text-gray-500' },
+  }
+  const status = statusMap[transfer.status] || statusMap.pending
+  return (
+    <div className="p-4">
+      <div className="flex items-center justify-between mb-2">
+        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${status.cls}`}>
+          {status.label}
+        </span>
+        <span className="text-xs text-gray-500">
+          {formatKSTDate(transfer.created_at)}
+        </span>
+      </div>
+      <div className="flex items-center gap-2 text-sm">
+        <Building2 className="w-4 h-4 text-gray-400" />
+        <span className="font-medium text-gray-900">{transfer.from_agency_name || '?'}</span>
+        <ArrowRight className="w-4 h-4 text-gray-400" />
+        <span className="font-medium text-gray-900">{transfer.to_agency_name || '?'}</span>
+      </div>
+      {transfer.reason && <div className="text-xs text-gray-500 mt-1 italic">"{transfer.reason}"</div>}
+      {transfer.rejection_reason && (
+        <div className="text-xs text-tone-bad mt-1">{t('seller.transfers.rejectionReason', { defaultValue: '거절 사유' })}: {transfer.rejection_reason}</div>
+      )}
+
+      {actionable && (
+        <div className="mt-3 flex gap-2">
+          <button onClick={onApprove} disabled={submitting}
+            className="ur-btn ur-btn-md ur-btn-primary flex-1 flex items-center justify-center gap-1.5 disabled:opacity-50">
+            <Check className="w-3.5 h-3.5" /> {t('seller.transfers.approveBtn', { defaultValue: '동의' })}
+          </button>
+          <button onClick={onReject} disabled={submitting}
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-lg disabled:opacity-50">
+            <X className="w-3.5 h-3.5" /> {t('seller.transfers.rejectBtn', { defaultValue: '거부' })}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}

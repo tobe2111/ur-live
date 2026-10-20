@@ -1,0 +1,107 @@
+/**
+ * 🛡️ 2026-05-21 v4: 마이페이지 역할 진입 CTA — 영구 디자인.
+ *
+ * v4 (2026-05-21): 보유한 role 의 "대시보드 바로가기" 단축 카드 추가.
+ *   - 셀러 토큰 있으면: 📊 셀러 대시보드 → /seller
+ *   - 둘 다 있는 사용자도 양쪽 진입 가능 (셀러+에이전시 겸업).
+ *
+ * v3 영구 디자인:
+ *   - 단일 화이트 카드 컨테이너 안에 list 형식 (당근 마이페이지 "내 메뉴" 패턴).
+ *   - 각 항목: emoji + 제목 + 설명 + ›
+ *   - 깔끔한 divider, 색은 emoji 자체 색만 사용 (시각 노이즈 zero).
+ *   - 로그인 상태로 자동 필터.
+ */
+
+import { useMemo } from 'react'
+import { useTranslation } from '@/lib/i18n-lite'
+import type { LucideIcon } from 'lucide-react'
+// 🎨 2026-09-28: 셋 다 '무엇을 하는 곳' 이라 유어딜 아이콘. 특히 '내 가게 등록' 은
+//    장바구니(ShoppingBag)였는데 **사는 행위**로 읽혔다 — 실제 뜻은 가게를 내는 것이다.
+import { ProposeIcon, ShopPlusIcon } from '@/components/icons/urdeal-icons'
+import { SectionTitle, ListRow, rowIcon } from './list-grammar'
+import { COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
+
+interface Cta {
+  /** 🖊️ 2026-08-30: 이모지 문자열 → lucide 컴포넌트.
+   *  이모지는 OS 마다 다른 그림이 나오고(애플 컬러 / 노토 / Segoe) 메뉴 아이콘 자리에서는
+   *  "임시로 채워 둔 것" 으로 읽힌다. 같은 화면의 `ChevronRight` 와도 언어가 갈렸다. */
+  Icon: LucideIcon
+  title: string
+  desc: string
+  to: string
+  show: () => boolean
+  accent?: boolean // 보유 role 의 대시보드 단축 — 시각적 강조
+}
+
+export default function RoleCtaGrid() {
+  const { t } = useTranslation()
+  const { dashboardItems, signupItems } = useMemo(() => {
+    const hasSellerToken = typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
+    // 내 바로가기 (모든 유저가 가진 유어샵 + 보유 role 의 대시보드 단축)
+    const dash: Cta[] = [
+      // 🗑️ 2026-09-30 (대표 *"내 바로가기도 필요없잖아"*) — **'내 유어샵' 줄을 뺐다.**
+      //   하단 탭에 **유어샵 탭이 있다**(`BottomNav` 다섯 탭 중 넷째, `linkshopPath`). 같은 곳으로
+      //   가는 문이 한 화면에 둘이었고, 그 한 줄을 위해 구역 제목(`바로 가기`)이 하나 더 서 있었다.
+      //   ⇒ 셀러에게는 이 구역이 통째로 사라진다(아래 `signup` 도 `!hasSellerToken` 이라 비어 있다).
+      //   ⚠️ **비셀러에게는 남는다** — `내 가게 등록`(`/store/new`)이 여기 있고, 2026-09-28 에
+      //      이름 옆 알약을 지우면서 *"둘 중 남길 것은 타일"* 이라고 정한 **유일한 가게 등록 문**이다.
+      //      이 구역을 통째로 지우면 그 퍼널이 같이 죽는다.
+      // 🚪 2026-09-28 (대표 확정 — 판매로 가는 문이 넷이고 셋이 복제였다): '셀러 대시보드' 타일 제거.
+      //   이 타일과 페이지 최하단 '판매자 모드로 전환' 버튼은 **목적지가 같다**(`/seller`). 같은 일을
+      //   하는 문이 둘이면 한쪽만 고쳐지는 날이 오고, 실제로 그렇게 됐다(타일은 `<Link>` 인데
+      //   전환 버튼은 `active_role` 을 심고 하드 내비게이션한다 — 같은 곳에 가면서 하는 일이 달랐다).
+      //   ⇒ 넓은 화면 대시보드로 가는 문은 **최하단 전환 버튼 하나**로. 매일 쓰는 판매 도구는
+      //   페이지 맨 위 '내 가게' 섹션이 맡는다(2026-09-25 §18 — 앉아서 하는 일만 대시보드).
+    ]
+    // 신규 가입 CTA (보유 안 한 role 만)
+    const signup: Cta[] = [
+      // 🧭 2026-06-10 (전략 정합 — 라이브 영구 중단·동네딜 집중): 라이브 셀러 CTA 제거,
+      //   동네 공구 제안 + 역할 전환(사업자/에이전시) 중심으로 재구성.
+      { Icon: ProposeIcon, title: t('roleCta.proposeGb', { defaultValue: '동네 공구 제안' }), desc: t('roleCta.proposeGbDesc', { defaultValue: '원하는 가게 제안하면 모아서 열어드려요' }), to: '/community-group-buy/new', show: () => !COMMUNITY_PROPOSAL_HIDDEN },
+      // 🏷️ 2026-08-26: '내 쇼핑몰 열기' → '내 가게 등록'. 유어샵은 가입하면 **이미 있다** — 여기서
+      //   새로 만드는 건 매장이다. 목적지도 매장 등록(/store/new)으로(대표 확정 '매장 등록이 선행').
+      { Icon: ShopPlusIcon, title: t('roleCta.openShop', { defaultValue: '내 가게 등록' }), desc: t('roleCta.openShopDesc', { defaultValue: '카카오맵에서 내 가게를 찾아 이용권을 팔아요' }), to: '/store/new', show: () => !hasSellerToken },
+      // 🌇 2026-09-04 에이전시 완전 일몰(대표 확정) — 09-02 에 신규 가입 CTA 만 뺐고 "이미 에이전시인
+      //   사람의 대시보드 바로가기는 유지" 했는데, 그 대시보드 자체가 사라졌다. 바로가기도 함께 제거.
+    ]
+    return {
+      dashboardItems: dash.filter(c => c.show()),
+      signupItems: signup.filter(c => c.show()),
+    }
+  }, [t])
+
+  if (dashboardItems.length === 0 && signupItems.length === 0) return null
+
+  /**
+   * 🧾 2026-09-28: 이 목록은 **자기 문법을 갖고 있었다** — 테두리(`border border-line`) · 13px 행 ·
+   *   11px 설명 · 흐린 화살표(`text-gray-300`). 같은 화면의 판매 묶음·`내가 산 것` 과 셋이 갈려 있었고,
+   *   테두리는 표면 규칙 ①(*"카드 테두리 0"*) 위반이었다. ⇒ `list-grammar` 한 벌로.
+   *   경로가 실재하는 줄이라 `to` 로 준다(우클릭·새 탭이 그대로 된다).
+   */
+  /**
+   * 🔵 2026-09-29 (안 C): 판·그룹 라벨을 걷고 **한 구역 · 평면 줄**로.
+   * ⚠️ `desc` 를 안 넘긴다 — 안 C 의 `hint` 는 오른쪽 **짧은 값**(여덟 자 안팎)이라 설명 문장을
+   *   넣으면 잘린다(`이용권을 담아 진열하고…`). 잘린 설명은 없느니만 못하다.
+   *   제목이 혼자 서도 읽힌다: *내 유어샵 · 동네 공구 제안 · 내 가게 등록.*
+   */
+  const Row = (c: Cta) => (
+    <ListRow key={c.to} to={c.to} icon={rowIcon(c.Icon)} label={c.title} />
+  )
+
+  return (
+    /* 🧱 가로 패딩 없음 — 줄이 자기 `px-4` 를 갖는다.
+       🗂️ 2026-10-18: PC 마이 B(2026-10-14 *"모든 블록을 카드에"*)에서 이 구역만 카드 밖에 떠 있었다 —
+       감싸는 div 에 `ur-pc-card` 가 없어서다. 카드 클래스를 **이 section 자신**에 준다:
+       ① 구역이 없으면(return null) 빈 카드도 안 남는다 ② `> h2:first-child` 여백 규칙이 제목에 닿는다. */
+    <section className="w-full min-w-0 ur-content-medium lg:px-4 ur-pc-card">
+      {/* 🏷️ 2026-09-30: '내 바로가기' → '가게 열기'. 이 구역에 남은 줄은 **가게를 내는 것** 하나라
+          (내 유어샵은 하단 탭과 겹쳐 빠졌다), 옛 이름은 무엇이 있는지 말해 주지 않았다.
+          ⚠️ 코드 `defaultValue` 만 고치면 화면은 안 바뀐다 — `public/locales/ko` 값이 이긴다. */}
+      <SectionTitle>{t('roleCta.myShortcuts', { defaultValue: '가게 열기' })}</SectionTitle>
+      <div>
+        {dashboardItems.map(Row)}
+        {signupItems.map(Row)}
+      </div>
+    </section>
+  )
+}

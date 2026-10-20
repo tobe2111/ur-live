@@ -1,0 +1,37 @@
+# 🛡️ 2026-07-18 앱 출시 대비: iOS 앱 빌드 파이프라인 (Capacitor 래퍼).
+#
+# 트리거: 수동(workflow_dispatch)만 — macOS 러너는 분당 과금 배수가 커서 자동 트리거 안 함.
+# 현 단계: 서명 없는 컴파일 검증(CODE_SIGNING_ALLOWED=NO) — iOS 프로젝트가 빌드되는지 CI 로 확인.
+# 실기기/TestFlight 배포는 Apple Developer 계정 + 인증서 등록 후 (docs/APP_STORE_LAUNCH_RUNBOOK.md).
+name: App iOS Build (unsigned check)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  ios:
+    runs-on: macos-14
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build web (client + worker)
+        run: npm run build
+
+      - name: Capacitor sync
+        run: npx cap sync ios
+
+      - name: Build (unsigned — compile check)
+        working-directory: ios/App
+        run: |
+          xcodebuild -project App.xcodeproj -scheme App -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build | tail -50

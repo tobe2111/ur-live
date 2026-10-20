@@ -1,0 +1,320 @@
+import { useEffect } from 'react'
+import { PeopleIcon, GiftBoxIcon } from '@/components/icons/urdeal-icons'
+import { useNavigate } from 'react-router-dom'
+import { useTranslation, Trans } from '@/lib/i18n-lite'
+import SEO from '@/components/SEO'
+import { ArrowLeft, Copy, TrendingUp, Loader2, Share2, ChevronRight } from 'lucide-react'
+import { toast } from '@/hooks/useToast'
+import { formatNumber } from '@/utils/format'
+import { useAffiliateStats, useAffiliateTopGroups, useAffiliateFunnel } from '@/hooks/queries/useAffiliate'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
+import { parseUTCDate } from '@/utils/date'
+
+export default function AffiliatePage() {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  // 🛡️ 2026-06-01 Tier2: 수동 페칭 → React Query.
+  const { data = null, isLoading: loading, isError } = useAffiliateStats()
+  useEffect(() => { if (isError) toast.error(t('affiliate.loginRequired')) }, [isError, t])
+
+  const copyLink = (url: string) => {
+    navigator.clipboard.writeText(url)
+    toast.success(t('affiliate.linkCopied'))
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-[#1D1F29]">
+      <SEO title={t('affiliate.seoTitle')} description={t('affiliate.seoDescription')} url="/user/affiliate" />
+      {/* 헤더 */}
+      <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#11141C]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
+        <div className="ur-content-narrow flex items-center gap-3 px-4 lg:px-8 py-3">
+          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-[#1D1F29]">
+            <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" />
+          </button>
+          <h1 className="text-[17px] font-bold text-gray-900 dark:text-white">{t('affiliate.title')}</h1>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-gray-400 dark:text-gray-500" /></div>
+      ) : !data ? (
+        <div className="text-center py-20 text-gray-500 dark:text-gray-400">{t('affiliate.loginPrompt')}</div>
+      ) : (
+        <div className="ur-content-narrow px-4 lg:px-8 py-5 space-y-4">
+
+          {/* 히어로 카드 */}
+          <div className="bg-gray-900 rounded-2xl p-5 text-white">
+            <div className="flex items-center gap-2 mb-4">
+              <GiftBoxIcon className="w-5 h-5" />
+              <span className="text-[15px] font-bold opacity-90">{t('affiliate.earnHero')}</span>
+            </div>
+            <p className="text-[28px] font-extrabold mb-1">{formatNumber(data.total_earned)}<span className="text-[17px] ml-1">딜</span></p>
+            <p className="text-[12px] opacity-70">{t('affiliate.totalEarned')}</p>
+
+            <div className="grid grid-cols-2 gap-3 mt-4">
+              <div className="bg-white/15 dark:bg-[#11141C]/15 rounded-xl px-3 py-2 text-center">
+                <p className="text-[17px] font-bold">{data.total_referrals}</p>
+                <p className="text-[12px] opacity-70">{t('affiliate.totalReferrals')}</p>
+              </div>
+              <div className="bg-white/15 dark:bg-[#11141C]/15 rounded-xl px-3 py-2 text-center">
+                <p className="text-[17px] font-bold">{formatNumber(data.monthly_earned || 0)}</p>
+                <p className="text-[12px] opacity-70">{t('affiliate.monthlyEarned')}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* 🆕 내 성과(잔존 장치 ⓑ) — 클릭·전환율·적립예정·정산예정일 (본인 ref 한정 읽기전용) */}
+          <div className="bg-surface rounded-2xl p-4 shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingUp className="w-4 h-4 text-violet-600" />
+              <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t('affiliate.perfTitle', { defaultValue: '내 성과' })}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-gray-50 dark:bg-[#1D1F29] px-3 py-2">
+                <p className="text-[12px] text-gray-500 dark:text-gray-400">{t('affiliate.perfClicks', { defaultValue: '링크 클릭' })}</p>
+                <p className="text-[17px] font-bold text-gray-900 dark:text-white">{formatNumber(data.clicks || 0)}</p>
+              </div>
+              <div className="rounded-xl bg-gray-50 dark:bg-[#1D1F29] px-3 py-2">
+                <p className="text-[12px] text-gray-500 dark:text-gray-400">{t('affiliate.perfCvr', { defaultValue: '전환율' })}</p>
+                <p className="text-[17px] font-bold text-gray-900 dark:text-white">{data.conversion_rate != null ? `${data.conversion_rate}%` : '—'}</p>
+              </div>
+              <div className="rounded-xl bg-gray-50 dark:bg-[#1D1F29] px-3 py-2">
+                <p className="text-[12px] text-gray-500 dark:text-gray-400">{t('affiliate.perfPending', { defaultValue: '적립 예정' })}</p>
+                <p className="text-[17px] font-bold text-amber-600">{formatNumber(data.pending_amount || 0)}<span className="text-[12px] ml-1">딜</span></p>
+              </div>
+              <div className="rounded-xl bg-gray-50 dark:bg-[#1D1F29] px-3 py-2">
+                <p className="text-[12px] text-gray-500 dark:text-gray-400">{t('affiliate.perfSettle', { defaultValue: '정산 예정일' })}</p>
+                <p className="text-[15px] font-bold text-gray-900 dark:text-white mt-1">{data.next_settlement_date || (data.pending_count ? '—' : t('affiliate.perfSettleNone', { defaultValue: '대기 없음' }))}</p>
+              </div>
+            </div>
+            <p className="mt-2 text-[12px] text-gray-400 dark:text-gray-500">{t('affiliate.perfHint', { defaultValue: '적립 예정은 구매 확정(교환권 사용 또는 영업일 경과) 후 정산됩니다.' })}</p>
+          </div>
+
+          {/* 추천 링크 */}
+          <div className="bg-surface rounded-2xl p-4 shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <Share2 className="w-4 h-4 text-violet-600" />
+              <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t('affiliate.myLinkTitle')}</p>
+            </div>
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-3">
+              <Trans
+                i18nKey="affiliate.myLinkDesc"
+                values={{ rate: data.commission_rate }}
+                components={[<strong key="0" className="text-violet-600" />]}
+              />
+            </p>
+            <div className="flex gap-2">
+              <div className="flex-1 px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border border-line rounded-xl text-[12px] text-gray-600 dark:text-gray-300 truncate">
+                {data.share_url}
+              </div>
+              <button onClick={() => copyLink(data.share_url)}
+                className="px-5 py-2 bg-brand text-white rounded-xl text-[12px] font-bold flex items-center gap-2 shrink-0 active:scale-95">
+                <Copy className="w-3.5 h-3.5" /> {t('affiliate.copy')}
+              </button>
+            </div>
+          </div>
+
+          {/* 이용 방법 */}
+          <div className="bg-surface rounded-2xl p-4 shadow-sm">
+            <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">{t('affiliate.howToTitle')}</p>
+            <div className="space-y-3">
+              {[
+                { step: '1', text: t('affiliate.howToStep1'), color: 'bg-tone-info-bg text-tone-info' },
+                { step: '2', text: t('affiliate.howToStep2'), color: 'bg-tone-info-bg text-tone-info' },
+                { step: '3', text: t('affiliate.howToStep3'), color: 'bg-tone-ok-bg text-tone-ok' },
+              ].map(s => (
+                <div key={s.step} className="flex items-center gap-3">
+                  <span className={`w-7 h-7 rounded-full ${s.color} text-[12px] font-bold flex items-center justify-center shrink-0`}>{s.step}</span>
+                  <p className="text-[15px] text-gray-700 dark:text-gray-200">{s.text}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 수수료 안내 */}
+          <div className="bg-surface rounded-2xl overflow-hidden shadow-sm">
+            <div className="px-4 py-3 border-b border-gray-100 dark:border-[#2C2F35]">
+              <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t('affiliate.feeTitle')}</p>
+            </div>
+            <div className="divide-y divide-gray-50">
+              {[
+                { label: t('affiliate.feeRate'), value: `${data.commission_rate}%` },
+                { label: t('affiliate.feeMethodLabel'), value: t('affiliate.feeMethodValue') },
+                { label: t('affiliate.feeUsageLabel'), value: t('affiliate.feeUsageValue') },
+                { label: t('affiliate.feeValidLabel'), value: t('affiliate.feeValidValue') },
+              ].map(item => (
+                <div key={item.label} className="flex items-center justify-between px-4 py-3">
+                  <span className="text-[15px] text-gray-500 dark:text-gray-400">{item.label}</span>
+                  <span className="text-[15px] font-medium text-gray-900 dark:text-white">{item.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 🛡️ 2026-05-15: 인플루언서 funnel — 카테고리별 분포 + 일별 추이 */}
+          <FunnelStats />
+
+          {/* 🛡️ 2026-05-15: 인플루언서 추천 — share 하면 좋을 핫 공구 */}
+          <TopGroupsToShare />
+
+          {/* 최근 내역 */}
+          <div className="bg-surface rounded-2xl overflow-hidden shadow-sm">
+            <div className="px-4 py-3 border-b border-gray-100 dark:border-[#2C2F35] flex items-center justify-between">
+              <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t('affiliate.historyTitle')}</p>
+              <span className="text-[12px] text-gray-400 dark:text-gray-500">{t('affiliate.historyCount', { count: (data.recent || []).length })}</span>
+            </div>
+            {(data.recent || []).length === 0 ? (
+              <div className="py-12 text-center">
+                <TrendingUp className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+                <p className="text-[15px] text-gray-400 dark:text-gray-500">{t('affiliate.historyEmpty')}</p>
+                <p className="text-[12px] text-gray-300 dark:text-gray-600 mt-1">{t('affiliate.historyEmptyHint')}</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {(data.recent || []).map((r: { product_name?: string; created_at: string; commission: number; order_amount: number }, i: number) => (
+                  <div key={i} className="flex items-center justify-between px-4 py-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[15px] font-medium text-gray-900 dark:text-white truncate">{r.product_name || t('affiliate.productFallback')}</p>
+                      <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-1">{parseUTCDate(r.created_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                    </div>
+                    <div className="text-right ml-3">
+                      <p className="text-[15px] font-bold text-green-600">{t('affiliate.earnedDeal', { amount: formatNumber(r.commission) })}</p>
+                      <p className="text-[12px] text-gray-400 dark:text-gray-500">{t('affiliate.purchaseAmount', { amount: formatNumber(r.order_amount) })}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 쇼핑하러 가기 */}
+          <button onClick={() => navigate('/browse')}
+            className="w-full py-4 bg-brand text-white rounded-2xl text-[15px] font-bold flex items-center justify-center gap-2 active:scale-[0.98]">
+            {t('affiliate.browseProducts')} <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// 🛡️ 2026-05-15: 인플루언서 추천 — 지금 share 하기 좋은 공구 (마감임박 + 진행률 60%+)
+function TopGroupsToShare() {
+  const navigate = useNavigate()
+  const { t } = useTranslation()
+  const { data: groups = [], isLoading: loading } = useAffiliateTopGroups()
+
+  if (loading) return null
+  if (groups.length === 0) return null
+
+  return (
+    <div className="bg-surface rounded-2xl overflow-hidden shadow-sm">
+      <div className="px-4 py-3 border-b border-gray-100 dark:border-[#2C2F35]">
+        <p className="text-[15px] font-bold text-gray-900 dark:text-white">🔥 지금 share 하기 좋은 공구</p>
+        <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">마감임박 + 진행률 높음 = 친구 가입 가능성 높음</p>
+      </div>
+      <div className="divide-y divide-gray-50 dark:divide-[#2C2F35]">
+        {groups.slice(0, 6).map(g => (
+          <div key={g.id} className="px-4 py-3 flex items-center gap-3">
+            {g.image_url ? (
+              <img src={cfImage(g.image_url, { width: 200, quality: 82, format: 'auto' }) || g.image_url} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, g.image_url)} />
+            ) : (
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-gray-200 to-gray-300 shrink-0" />
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-[12px] font-bold text-gray-900 dark:text-white truncate">{g.name}</p>
+              <p className="text-[12px] text-gray-500 truncate">{g.restaurant_name || ''} · {g.progress_pct}% · {g.group_buy_current}/{g.group_buy_target}명</p>
+              {/* 💸 2026-10-06: 0 이면 **아무 말도 하지 않는다** — 라이브 `user_referral_bonus_pct` 가 0 인데
+                  "친구 가입 시 +0딜 보너스" 를 적으면 없는 보상을 있는 것처럼 말하는 꼴이다. */}
+              {(g.my_potential_bonus ?? 0) > 0 && (
+                <p className="text-[12px] text-brand-text font-bold mt-1">친구 가입 시 +{(g.my_potential_bonus ?? 0).toLocaleString()}딜 보너스</p>
+              )}
+            </div>
+            <button
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(g.share_url)
+                  toast.success('링크 복사됨')
+                } catch { toast.error('복사 실패') }
+              }}
+              className="px-3 py-2 bg-brand-tint text-brand-text rounded-lg text-[12px] font-bold shrink-0 active:scale-95"
+            >
+              <Copy className="w-3 h-3 inline mr-1" /> 복사
+            </button>
+            <button
+              onClick={() => navigate(`/pass/${g.id}`)}
+              className="px-2 py-2 bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 rounded-lg text-[12px] font-bold shrink-0"
+              aria-label="상세 보기"
+            >
+              <ChevronRight className="w-3 h-3" />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// 🛡️ 2026-05-15: 인플루언서 funnel — 카테고리별 / 일별 추이
+function FunnelStats() {
+  const { data, isLoading: loading } = useAffiliateFunnel()
+
+  if (loading || !data || data.total_referrals === 0) return null
+
+  const CATEGORY_LABEL: Record<string, string> = {
+    meal: '🍽️ 식사', beauty: '💇 뷰티', health: '💪 헬스',
+    pet: '🐶 펫', stay: '🏨 숙박', activity: '🎯 액티비티', other: '기타',
+  }
+  const maxDailyCount = Math.max(...data.daily.map(d => d.count), 1)
+
+  return (
+    <div className="bg-surface rounded-2xl overflow-hidden shadow-sm">
+      <div className="px-4 py-3 border-b border-gray-100 dark:border-[#2C2F35]">
+        <p className="text-[15px] font-bold text-gray-900 dark:text-white">📊 내 share 성과</p>
+        <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">친구 가입 → 보상 받은 횟수 + 카테고리별 / 일별 추이</p>
+      </div>
+
+      {/* 카테고리별 */}
+      {data.by_category.length > 0 && (
+        <div className="p-4 border-b border-gray-100 dark:border-[#2C2F35]">
+          <p className="text-[12px] font-bold text-gray-500 dark:text-gray-400 mb-2">카테고리별</p>
+          <div className="space-y-2">
+            {data.by_category.map(c => (
+              <div key={c.category} className="flex items-center justify-between text-[12px]">
+                <span className="text-gray-700 dark:text-gray-300">{CATEGORY_LABEL[c.category] || c.category}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-500">{c.count}회</span>
+                  <span className="font-bold text-violet-600 w-16 text-right">{formatNumber(c.earned)}딜</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 일별 mini chart (간단한 bar) */}
+      {data.daily.length > 0 && (
+        <div className="p-4">
+          <p className="text-[12px] font-bold text-gray-500 dark:text-gray-400 mb-2">최근 14일</p>
+          <div className="flex items-end gap-1 h-20">
+            {data.daily.slice(0, 14).reverse().map((d, i) => {
+              const h = Math.max(2, (d.count / maxDailyCount) * 80)
+              return (
+                <div
+                  key={i}
+                  className="flex-1 bg-gradient-to-t from-gray-800 to-gray-700 rounded-t transition-all"
+                  style={{ height: h }}
+                  title={`${d.day}: ${d.count}회 / ${d.earned}딜`}
+                />
+              )
+            })}
+          </div>
+          <div className="flex items-center justify-between mt-2 text-[12px] text-gray-400">
+            <span>{data.daily[Math.min(13, data.daily.length - 1)]?.day || ''}</span>
+            <span>{data.daily[0]?.day || ''}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

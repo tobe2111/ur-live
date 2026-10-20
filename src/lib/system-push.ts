@@ -1,0 +1,146 @@
+/**
+ * 🛡️ 2026-04-28 Phase 2: 시스템 Web Push 실제 발송.
+ *
+ * push_subscriptions 테이블에서 endpoint 조회 → VAPID JWT (ES256) 서명 →
+ * Push Service 에 POST → "tickle" 알림 (empty body) 발송.
+ * 410 Gone 응답 시 만료된 구독 자동 삭제.
+ *
+ * 환경변수: VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT (mailto:contact@)
+ * 미설정 시 silent skip (sendPushNotification 가 'transient' 반환 → 구독 유지).
+ *
+ * agency 는 Web Push 구독 미지원 (DB user_type CHECK: user/seller/admin).
+ * dispatcher 가 agency push 호출 시 silent skip.
+ */
+
+import { getPushSubscriptions, sendPushNotification, deletePushSubscription } from './push-notification';
+
+export interface PushPayload {
+  title: string;
+  body: string;
+  url?: string;       // 클릭 시 이동
+  icon?: string;
+  tag?: string;       // 같은 tag 면 중복 알림 X
+}
+
+interface PushEnv {
+  DB?: D1Database;
+  VAPID_PUBLIC_KEY?: string;
+  VAPID_PRIVATE_KEY?: string;
+  VAPID_SUBJECT?: string;
+  DATA_ENCRYPTION_KEY?: string;
+}
+
+export async function sendSystemPush(
+  env: unknown,
+  userType: 'user' | 'seller' | 'admin' | 'agency',
+  userId: string | number,
+  payload: PushPayload,
+): Promise<{
+  success: boolean;
+  skipped?: boolean;
+  subscription_count?: number;
+  delivered?: number;
+  expired?: number;
+  error?: string;
+}> {
+  const e = env as PushEnv;
+  const db = e?.DB;
+  if (!db) return { success: false, skipped: true };
+
+  // VAPID 키 미설정 → silent skip (구독 유지)
+  if (!e.VAPID_PUBLIC_KEY || !e.VAPID_PRIVATE_KEY || !e.VAPID_SUBJECT) {
+    return { success: false, skipped: true };
+  }
+
+  // agency 는 push_subscriptions CHECK 제약에서 미지원
+  if (userType === 'agency') return { success: false, skipped: true };
+
+  try {
+    const numId = typeof userId === 'string' ? parseInt(userId, 10) : userId;
+    if (!Number.isFinite(numId)) return { success: false, skipped: true };
+
+    // 🛡️ 2026-06-12 (감사 1단계 — 알림 토글 실동작화): 유저가 push 알림을 끈 경우 발송 skip.
+    //   컬럼 없거나 조회 실패 시 fail-open (발송 진행) — 기존 동작 보존.
+    if (userType === 'user') {
+      try {
+        const pref = await db.prepare('SELECT COALESCE(push_enabled, 1) AS enabled FROM users WHERE id = ?')
+          .bind(numId).first<{ enabled: number }>();
+        if (pref && Number(pref.enabled) === 0) return { success: false, skipped: true };
+      } catch { /* push_enabled 컬럼 미존재 등 — fail-open */ }
+    }
+
+    // 🔔 2026-07-01: 네이티브 푸시(FCM) 발송 — 웹푸시와 독립 경로(앱 iOS/Android 토큰).
+    //   FIREBASE_* 자격 미설정/토큰 없음 → skip. 실패해도 아래 웹푸시 흐름에 영향 0.
+    let nativeDelivered = 0;
+    try {
+      const { sendNativePush } = await import('./native-push');
+      const nr = await sendNativePush(env, userType, numId, { title: payload.title, body: payload.body, url: payload.url });
+      nativeDelivered = nr.delivered ?? 0;
+    } catch { /* best-effort — 웹푸시 무영향 */ }
+
+    const subs = await getPushSubscriptions(db, numId, userType, e.DATA_ENCRYPTION_KEY);
+    if (subs.length === 0) {
+      return { success: nativeDelivered > 0, subscription_count: 0, delivered: nativeDelivered, expired: 0 };
+    }
+
+    let delivered = 0;
+    let expired = 0;
+    let transientFailed = 0;
+
+    for (const sub of subs) {
+      const result = await sendPushNotification(
+        sub,
+        {
+          title: payload.title,
+          body: payload.body,
+          data: payload.url ? { url: payload.url } : undefined,
+        },
+        e.VAPID_PUBLIC_KEY,
+        e.VAPID_PRIVATE_KEY,
+        e.VAPID_SUBJECT,
+      );
+      if (result === 'ok') delivered++;
+      else if (result === 'gone') {
+        expired++;
+        await deletePushSubscription(db, sub.endpoint);
+      } else {
+        transientFailed++;
+      }
+    }
+
+    // 🛡️ 2026-05-12: 모든 구독이 transient 실패 시 dead-letter 기록 → ops 가 재시도 가능.
+    //   핵심 알림 (정산/주문/선물) 이 단일 push 사이클에서 영원히 사라지는 것 방지.
+    if (delivered === 0 && transientFailed > 0 && subs.length > 0) {
+      try {
+        await db.prepare(`
+          CREATE TABLE IF NOT EXISTS push_failures (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_type TEXT NOT NULL, user_id INTEGER NOT NULL,
+            title TEXT NOT NULL, body TEXT NOT NULL, url TEXT,
+            subscription_count INTEGER NOT NULL,
+            retry_count INTEGER DEFAULT 0, max_retries INTEGER DEFAULT 3,
+            next_retry_at DATETIME DEFAULT (datetime('now', '+5 minutes')),
+            resolved INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `).run();
+        await db.prepare(`
+          INSERT INTO push_failures (user_type, user_id, title, body, url, subscription_count)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `).bind(userType, numId, payload.title.slice(0, 200), payload.body.slice(0, 1000), payload.url || null, subs.length).run();
+      } catch { /* queue 실패해도 원본 결과 반환 */ }
+    }
+
+    return {
+      success: (delivered + nativeDelivered) > 0,
+      subscription_count: subs.length,
+      delivered: delivered + nativeDelivered,
+      expired,
+    };
+  } catch (err) {
+    if ((err as Error).message?.includes('no such table')) {
+      return { success: false, skipped: true };
+    }
+    return { success: false, error: (err as Error).message };
+  }
+}

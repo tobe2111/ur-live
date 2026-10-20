@@ -1,0 +1,301 @@
+import { useTranslation } from '@/lib/i18n-lite'
+import { Button } from '@/components/ui/button'
+import { Loader2, FileText, Search } from 'lucide-react'
+import type { BusinessInfo, BusinessFormData } from './types'
+
+// 🛡️ 2026-06-10: SellerBusinessInfoPage 탭화 분해 — 사업자 정보 폼 (동작 변화 0, 순수 이동).
+export default function BusinessInfoForm({
+  businessInfo,
+  formData,
+  editMode,
+  submitting,
+  onSubmit,
+  onChange,
+  onAddressSearch,
+  onEnterEditMode,
+  onCancelEdit,
+  onToggleOnnuri,
+}: {
+  businessInfo: BusinessInfo | null
+  formData: BusinessFormData
+  editMode: boolean
+  submitting: boolean
+  onSubmit: (e: React.FormEvent) => void
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void
+  onAddressSearch: () => void
+  onEnterEditMode: () => void
+  onCancelEdit: () => void
+  onToggleOnnuri: (v: boolean) => void
+}) {
+  const { t } = useTranslation()
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-6 rounded-[var(--dash-radius,16px)] border border-gray-200 bg-white p-6">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          {t('seller.businessNumber')} <span className="text-tone-bad">*</span>
+        </label>
+        <input
+          type="text"
+          name="business_number"
+          value={formData.business_number}
+          onChange={onChange}
+          placeholder="000-00-00000"
+          maxLength={12}
+          required
+          disabled={businessInfo?.is_verified && !editMode}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand disabled:bg-gray-100 disabled:cursor-not-allowed"
+        />
+        <p className="text-xs text-gray-500 mt-1">{t('seller.businessNumberHint')}</p>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          {t('seller.businessName')} <span className="text-tone-bad">*</span>
+        </label>
+        <input
+          type="text"
+          name="business_name"
+          value={formData.business_name}
+          onChange={onChange}
+          placeholder={t('seller.businessNamePlaceholder')}
+          required
+          disabled={businessInfo?.is_verified && !editMode}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand disabled:bg-gray-100 disabled:cursor-not-allowed"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          {t('seller.representative')} <span className="text-tone-bad">*</span>
+        </label>
+        <input
+          type="text"
+          name="ceo_name"
+          value={formData.ceo_name}
+          onChange={onChange}
+          placeholder={t('seller.representativePlaceholder')}
+          required
+          disabled={businessInfo?.is_verified && !editMode}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand disabled:bg-gray-100 disabled:cursor-not-allowed"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            {t('seller.businessType')}
+          </label>
+          <input
+            type="text"
+            name="business_type"
+            value={formData.business_type}
+            onChange={onChange}
+            placeholder={t('seller.businessTypePlaceholder')}
+            disabled={businessInfo?.is_verified && !editMode}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand disabled:bg-gray-100 disabled:cursor-not-allowed"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            {t('seller.businessCategory')}
+          </label>
+          <input
+            type="text"
+            name="business_category"
+            value={formData.business_category}
+            onChange={onChange}
+            placeholder={t('seller.businessCategoryPlaceholder')}
+            disabled={businessInfo?.is_verified && !editMode}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand disabled:bg-gray-100 disabled:cursor-not-allowed"
+          />
+        </div>
+      </div>
+
+      {/* 🖼️ 2026-07-01 (대표 — 유어샵 판매자 정보): 통신판매업신고번호 — 전자상거래법 표시 항목.
+          유어샵(/u/·/profile) 판매자 정보 카드에 공개 표시됨. */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          {t('seller.mailOrderNumber', { defaultValue: '통신판매업신고번호' })}
+        </label>
+        <input
+          type="text"
+          name="mail_order_number"
+          value={formData.mail_order_number}
+          onChange={onChange}
+          placeholder={t('seller.mailOrderNumberPlaceholder', { defaultValue: '예: 2026-서울강남-01234' })}
+          disabled={businessInfo?.is_verified && !editMode}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand disabled:bg-gray-100 disabled:cursor-not-allowed"
+        />
+        <p className="text-xs text-gray-500 mt-1">{t('seller.mailOrderNumberHint', { defaultValue: '유어샵 판매자 정보에 공개 표시됩니다 (전자상거래법 표시 항목)' })}</p>
+      </div>
+
+      {/* 🏪 2026-07-05: 온누리상품권 가맹 여부 — 동네딜 카드/상세·상권관에 뱃지로 공개 표시. */}
+      <div className="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+        <input
+          type="checkbox"
+          id="onnuri_merchant"
+          checked={!!formData.onnuri_merchant}
+          onChange={(e) => onToggleOnnuri(e.target.checked)}
+          disabled={businessInfo?.is_verified && !editMode}
+          className="mt-0.5 w-4 h-4 accent-blue-600 disabled:cursor-not-allowed"
+        />
+        <label htmlFor="onnuri_merchant" className="cursor-pointer">
+          <span className="block text-sm font-medium text-gray-700">
+            {t('seller.onnuriMerchant', { defaultValue: '온누리상품권 가맹점입니다' })}
+          </span>
+          <span className="block text-xs text-gray-500 mt-0.5">
+            {t('seller.onnuriMerchantHint', { defaultValue: '체크하면 내 매장의 동네딜 카드와 상세에 "온누리 사용 가능" 뱃지가 표시됩니다' })}
+          </span>
+        </label>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          {t('seller.businessAddress')} <span className="text-tone-bad">*</span>
+        </label>
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              name="postal_code"
+              value={formData.postal_code}
+              onChange={onChange}
+              placeholder={t('seller.postalCode')}
+              required
+              readOnly
+              disabled={businessInfo?.is_verified && !editMode}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand disabled:bg-gray-100 disabled:cursor-not-allowed"
+            />
+            {(!businessInfo?.is_verified || editMode) && (
+              <Button
+                type="button"
+                onClick={onAddressSearch}
+                className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg flex items-center gap-2"
+              >
+                <Search className="w-4 h-4" />
+                {t('seller.addressSearch')}
+              </Button>
+            )}
+          </div>
+          <input
+            type="text"
+            name="address"
+            value={formData.address}
+            onChange={onChange}
+            placeholder={t('seller.baseAddress')}
+            required
+            readOnly
+            disabled={businessInfo?.is_verified && !editMode}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand disabled:bg-gray-100 disabled:cursor-not-allowed"
+          />
+          <input
+            type="text"
+            name="address_detail"
+            value={formData.address_detail}
+            onChange={onChange}
+            placeholder={t('seller.detailAddress')}
+            disabled={businessInfo?.is_verified && !editMode}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand disabled:bg-gray-100 disabled:cursor-not-allowed"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            {t('seller.phoneNumber')} <span className="text-tone-bad">*</span>
+          </label>
+          <input
+            type="tel"
+            name="phone"
+            value={formData.phone}
+            onChange={onChange}
+            placeholder="02-1234-5678"
+            maxLength={13}
+            required
+            disabled={businessInfo?.is_verified && !editMode}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand disabled:bg-gray-100 disabled:cursor-not-allowed"
+          />
+          <p className="text-xs text-gray-500 mt-1">{t('seller.phoneNumberHint')}</p>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            {t('seller.emailLabel')} <span className="text-tone-bad">*</span>
+          </label>
+          <input
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={onChange}
+            placeholder="business@example.com"
+            required
+            disabled={businessInfo?.is_verified && !editMode}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand disabled:bg-gray-100 disabled:cursor-not-allowed"
+          />
+        </div>
+      </div>
+
+      {(!businessInfo?.is_verified || editMode) ? (
+        <div className="pt-4 space-y-3">
+          <Button
+            type="submit"
+            disabled={submitting}
+            className="w-full py-3 bg-gray-900 hover:bg-brand-tint text-brand-text font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {submitting ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                {t('seller.savingInfo')}
+              </span>
+            ) : editMode ? (
+              t('seller.requestEdit')
+            ) : businessInfo ? (
+              t('seller.editInfo')
+            ) : (
+              t('seller.registerBusinessInfo')
+            )}
+          </Button>
+          {editMode && (
+            <Button
+              type="button"
+              onClick={onCancelEdit}
+              className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors"
+            >
+              {t('common.cancel')}
+            </Button>
+          )}
+        </div>
+      ) : (
+        <div className="pt-4">
+          <Button
+            type="button"
+            onClick={onEnterEditMode}
+            className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors"
+          >
+            {t('seller.requestInfoEdit')}
+          </Button>
+          <p className="text-xs text-gray-500 mt-2 text-center">
+            {t('seller.requestInfoEditNote')}
+          </p>
+        </div>
+      )}
+
+      {/* Help Text */}
+      <div className="pt-4 border-t">
+        <div className="flex items-start gap-2 text-sm text-gray-600">
+          <FileText className="w-4 h-4 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="font-medium mb-1">{t('seller.infoNotice')}</p>
+            <ul className="list-disc list-inside space-y-1 text-xs">
+              <li>{t('seller.infoNotice1')}</li>
+              <li>{t('seller.infoNotice2')}</li>
+              <li>{t('seller.infoNotice3')}</li>
+              <li>{t('seller.infoNotice4')}</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </form>
+  )
+}

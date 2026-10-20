@@ -1,0 +1,221 @@
+/**
+ * 🛡️ 2026-05-16: 인플루언서 매월 정산 cron — 매월 1일 KST 18시.
+ *
+ * 1) influencer_attributions 중 status='pending' AND available_at <= now → status='available'
+ *    + balance pending → available 전환
+ * 2) influencer_balances 중 available_amount >= influencer_payout_min (default 10만원)
+ *    인플루언서에게 송금:
+ *    - 사업자번호 있음 → 사업소득 3.3% 원천징수
+ *    - 사업자번호 없음 → 기타소득 8.8% 원천징수
+ *    - 무신고 (수동 등록) → 원천징수 X, dashboard alert
+ *
+ * NOTE: 실제 송금은 외부 PG (Toss / 페이올드 등) 연동 필요. 이 cron 은 status 전환 + alert 만.
+ *       실제 송금 트리거는 어드민 페이지에서 [송금 처리] 수동 클릭 또는 PG 연동 후.
+ */
+
+import type { Env } from '../types/env'
+import { logInfo, logError } from '../utils/logger'
+import { swallow } from '../utils/swallow'
+// 🛡️ 2026-06-26 원천징수율 SSOT — 3.3/8.8 literal 하드코딩 금지(CLAUDE.md). 마스터 상수만 사용.
+import { computeCashPayout, resolveCashFeePct } from '../../shared/influencer-payout-math'
+import { resolvePayoutUseGate } from '../utils/payout-use-gate'
+
+interface InfluencerToPayout {
+  influencer_id: string
+  available_amount: number
+  tax_type: string | null
+  business_number: string | null
+  bank_name: string | null
+  bank_account: string | null
+  account_holder: string | null
+  /** 'cash'(기본) | 'deal' — 소개자가 `/influencer/settlement` 에서 고른 수령 방식. */
+  payout_method: string | null
+}
+
+const DEFAULT_PAYOUT_MIN = 100_000  // 10만원
+
+export async function handleInfluencerPayout(env: Env): Promise<void> {
+  const DB = env.DB
+  if (!DB) return
+
+  try {
+    // 1) Pending → Available 전환 (T+7 이상)
+    //
+    // 🔒 2026-09-16 대표 확정 — **사용 확인 뒤에 익는다**(`utils/payout-use-gate.ts`).
+    //   종전엔 시간(T+7)만 봤다: 가짜 매장을 등록해 이용권을 팔고 **아무도 그 가게에 안 가도**
+    //   소개 커미션이 송금 대기에 올랐다. 매장 몫은 이미 사용 시점에만 붙는데(ledger.ts)
+    //   소개 몫만 시간으로 익던 비대칭을 없앤다.
+    //   기본 OFF(`platform_settings.payout_requires_voucher_use`) = 아래 SQL 이 빈 문자열이라
+    //   **종전과 byte-동일**. 켜는 것은 등급 C(대표 판단 · staging 뒤).
+    const useGate = await resolvePayoutUseGate(DB)
+    const pendingToAvail = await DB.prepare(`
+      UPDATE influencer_attributions
+         SET status = 'available'
+       WHERE status = 'pending'
+         AND available_at IS NOT NULL
+         AND available_at <= datetime('now')
+         ${useGate.sql}
+    `).run().catch(() => ({ meta: { changes: 0 } }))
+
+    let transitioned = pendingToAvail.meta?.changes ?? 0
+
+    // balance 도 동기화 — 각 인플루언서별 pending 분 중 위에서 available 된 액수만큼 이동
+    //   정확히 하려면 위 UPDATE 의 attribution row 별 amount 합산 필요. 간단화: 다시 집계.
+    const balanceUpdates = await DB.prepare(`
+      SELECT influencer_id, SUM(commission_amount) AS amt
+      FROM influencer_attributions
+      WHERE status = 'available' AND paid_at IS NULL
+      GROUP BY influencer_id
+    `).all<{ influencer_id: string; amt: number }>().catch(() => ({ results: [] as any[] }))
+
+    for (const row of balanceUpdates.results || []) {
+      // 정확한 동기: available_amount 를 모든 'available' 의 SUM 으로 다시 설정
+      // (pending → available 이동이 누적되므로 누적 보정)
+      await DB.prepare(`
+        INSERT INTO influencer_balances (influencer_id, available_amount, pending_amount, updated_at)
+        VALUES (?, ?, COALESCE((SELECT SUM(commission_amount) FROM influencer_attributions WHERE influencer_id = ? AND status = 'pending'), 0), datetime('now'))
+        ON CONFLICT(influencer_id) DO UPDATE SET
+          available_amount = ?,
+          pending_amount = COALESCE((SELECT SUM(commission_amount) FROM influencer_attributions WHERE influencer_id = ? AND status = 'pending'), 0),
+          updated_at = datetime('now')
+      `).bind(row.influencer_id, row.amt, row.influencer_id, row.amt, row.influencer_id).run().catch(swallow('cron:influencer-payout:balance-upsert'))
+    }
+
+    // 2) 송금 대상 인플루언서 추출
+    const minRow = await DB.prepare(
+      "SELECT value FROM platform_settings WHERE key = 'influencer_payout_min'"
+    ).first<{ value: string }>().catch(() => null)
+    const payoutMin = Number(minRow?.value ?? DEFAULT_PAYOUT_MIN) || DEFAULT_PAYOUT_MIN
+    // 💰 현금 정산 수수료 (기본 0 = 안 걷음). 딜 수령엔 적용하지 않는다.
+    const feeRow = await DB.prepare(
+      "SELECT value FROM platform_settings WHERE key = 'influencer_payout_cash_fee_pct'"
+    ).first<{ value: string }>().catch(() => null)
+    const cashFeePct = resolveCashFeePct(feeRow?.value)
+
+    // 💎 2026-08-31 대표 *"정산 최소 10만원은 딜 사용은 상관없이 쓰게 해줘"* —
+    //   **최소 금액은 현금 송금에만 적용한다.**
+    //
+    //   그 문턱은 은행 송금 비용·수수료를 감당하려고 있는 것인데, 딜은 우리 안에서 숫자를
+    //   더하는 일이라 비용이 0 이다. 문턱을 씌우면 **아무 이유 없이 못 쓰게 막는 것**이 된다.
+    //   2% 보상이 10만원을 넘으려면 그 매장이 500만원을 팔아야 하고, 그전까지 소개자는
+    //   자기가 번 것을 한 푼도 못 만진다 — 시작 단계에서 이건 사실상 "안 주는 것"이다.
+    //
+    //   그래서 딜 수령자는 1원부터 지급 대기에 뜬다(`available_amount > 0`).
+    const toPayout = await DB.prepare(`
+      SELECT influencer_id, available_amount, tax_type, business_number,
+             bank_name, bank_account, account_holder, payout_method
+      FROM influencer_balances
+      WHERE available_amount > 0
+        AND (payout_method = 'deal' OR available_amount >= ?)
+      ORDER BY available_amount DESC
+      LIMIT 100
+    `).bind(payoutMin).all<InfluencerToPayout>().catch(() => ({ results: [] as InfluencerToPayout[] }))
+
+    let payoutCount = 0
+    let payoutTotal = 0
+    let dealCount = 0
+    const missingBank: string[] = []
+
+    for (const inf of toPayout.results || []) {
+      // 💎 딜 수령자 — 계좌를 요구하지 않는다.
+      //
+      //   `influencer_balances.payout_method` 는 소개자가 `/influencer/settlement` 에서 직접 고르고
+      //   어드민이 `/admin/influencer-payouts` 에서 그 방식대로 처리한다(딜은 `creditFreePoints`
+      //   +보너스%, 현금은 원천징수 후 송금 — `marketing.routes` `/payouts/process`).
+      //
+      //   ⚠️ 그런데 이 cron 은 그 선택을 **한 번도 읽지 않았다.** 계좌 정보가 없다는 이유로
+      //   딜 수령자를 `missingBank` 로 보내 버려서, 어드민 송금대기 알림에 **영영 안 뜬다**
+      //   (어드민이 그 페이지를 직접 열어야만 보인다). 딜을 고른 사람일수록 계좌를 안 넣으므로
+      //   "딜로 받겠다"를 고르는 순간 알림에서 사라지는 구조였다.
+      //
+      //   여기서는 계좌 검사를 건너뛰고 **딜 전용 알림**을 넣는다. 실제 적립은 종전대로
+      //   어드민의 [송금 처리]가 한다 — 이 cron 은 돈을 옮기지 않는다(현금 경로와 동일한 역할).
+      const wantsDeal = inf.payout_method === 'deal'
+      if (!wantsDeal && (!inf.bank_name || !inf.bank_account || !inf.account_holder)) {
+        // 계좌 정보 누락 → 송금 보류 + alert
+        missingBank.push(inf.influencer_id)
+        continue
+      }
+      if (wantsDeal) {
+        const dupDeal = await DB.prepare(
+          `SELECT 1 FROM dashboard_notifications
+            WHERE type = 'influencer_payout_pending' AND title = ?
+              AND created_at >= datetime('now', 'start of month') LIMIT 1`
+        ).bind(`💎 인플 딜 지급 대기: ${inf.influencer_id}`).first().catch(() => null)
+        if (dupDeal) continue
+        await DB.prepare(
+          `INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link, created_at)
+           VALUES ('admin', 'all', 'influencer_payout_pending', ?, ?, '/admin/influencer-payouts', datetime('now'))`
+        ).bind(
+          `💎 인플 딜 지급 대기: ${inf.influencer_id}`,
+          `${inf.available_amount.toLocaleString()}원 상당 — 딜 수령 선택(계좌 불필요). 보너스는 지급 시점에 적용됩니다.`,
+        ).run().catch(swallow('cron:influencer-payout:deal-notify'))
+        dealCount++
+        continue
+      }
+      // 💰 2026-08-31: 현금 정산 내역을 `computeCashPayout` SSOT 로 (수수료 → 원천징수 순).
+      //   그전엔 이 분기와 `marketing.routes`, `AdminInfluencerPayoutsPage` 가 **각자** 계산해
+      //   알림·화면·실지급이 갈릴 수 있었다. 수수료는 기본 0 이라 설정 전에는 결과가 종전과 동일.
+      const cash = computeCashPayout({
+        gross: inf.available_amount,
+        taxType: inf.tax_type,
+        businessNumber: inf.business_number,
+        feePct: cashFeePct,
+      })
+      const withholdingPct = cash.withholdingPct
+      const withholding = cash.withholding
+      const netAmount = cash.net
+
+      // 실제 송금은 PG 연동 필요 — 여기선 어드민 dashboard 에 송금 대기 notification
+      // 🛡️ 2026-05-31 H2: 당월 동일 인플 송금대기 알림 중복 방지 — cron 재실행/재트리거 시
+      //   available_amount 가 재집계되며 같은 잔액을 매번 재큐잉 → admin 중복 알림 → 이중송금 오인.
+      //   실제 지급은 수동 paid_at 이라 돈 손실은 아니나 ops 노이즈/오인 차단.
+      const dupNotif = await DB.prepare(
+        `SELECT 1 FROM dashboard_notifications
+          WHERE type = 'influencer_payout_pending' AND title = ?
+            AND created_at >= datetime('now', 'start of month') LIMIT 1`
+      ).bind(`💰 인플 송금 대기: ${inf.influencer_id}`).first().catch(() => null)
+      if (dupNotif) continue
+      // ⚠️ 수수료 표기를 bind 인자 **안에서** 중첩 템플릿 리터럴로 만들지 말 것.
+      //   그 안의 콤마 때문에 `check-sql-bind-params` 가 인자를 하나 더 세어 CI 가 막는다
+      //   (2026-08-31 실제로 걸렸다). 문자열은 밖에서 만들고 bind 는 단순하게 둔다.
+      const feeNote = cash.fee > 0 ? `정산수수료 ${cash.feePct}% = ${cash.fee.toLocaleString()}원, ` : ''
+      const payoutNote = `${inf.available_amount.toLocaleString()}원 (${feeNote}원천징수 ${withholdingPct}% = ${withholding.toLocaleString()}, 실송금 ${netAmount.toLocaleString()})`
+      try {
+        await DB.prepare(
+          `INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link, created_at)
+           VALUES ('admin', 'all', 'influencer_payout_pending', ?, ?, '/admin/influencer-payouts', datetime('now'))`
+        ).bind(
+          `💰 인플 송금 대기: ${inf.influencer_id}`,
+          payoutNote,
+        ).run().catch(swallow('cron:influencer-payout:admin-notify'))
+        payoutCount++
+        payoutTotal += netAmount
+      } catch { /* notification 실패는 무시 */ }
+    }
+
+    // 누락 계좌 alert
+    if (missingBank.length > 0) {
+      const webhookUrl = (env as Env & { DISCORD_WEBHOOK_URL?: string }).DISCORD_WEBHOOK_URL
+      if (webhookUrl) {
+        try {
+          await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              content: `⚠️ 인플루언서 ${missingBank.length}명 계좌정보 누락 → 송금 보류:\n${missingBank.slice(0, 10).join(', ')}`,
+            }),
+            signal: AbortSignal.timeout(5000),
+          }).catch(swallow('cron:influencer-payout:missing-bank-alert'))
+        } catch { /* silent */ }
+      }
+    }
+
+    logInfo(`[cron:influencer-payout] transitioned=${transitioned} payouts_queued=${payoutCount} deal_queued=${dealCount} total_net=${payoutTotal} missing_bank=${missingBank.length}`)
+  } catch (e) {
+    // 🔔 2026-07-08 (무인운영 감사): 이전엔 삼켜 safeCron 실패 알림에 안 닿았음(성숙 전환/송금대기
+    //   집계가 조용히 실패해도 경보 0). 재throw → safeCron → notifyCronFailure(Discord + cron_failures + 벨).
+    logError('[cron:influencer-payout] failed', { error: String(e) })
+    throw e
+  }
+}

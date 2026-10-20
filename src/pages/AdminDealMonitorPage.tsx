@@ -1,0 +1,419 @@
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useTranslation } from '@/lib/i18n-lite'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
+import AdminLayout from '@/components/AdminLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
+import { Gift, TrendingUp, Users, Zap, Search, ChevronLeft, ChevronRight, Scale } from 'lucide-react'
+import { formatKST } from '@/utils/date'
+import { formatNumber, formatWon } from '@/utils/format'
+
+interface DealStats {
+  totals: {
+    total_transactions: number
+    total_charged_amount: number
+    total_commission: number
+    total_points_issued: number
+    unique_users: number
+  }
+  today: { count: number; amount: number; commission: number }
+  thisMonth: { count: number; amount: number; commission: number }
+  donations: { total_donations: number; total_donated: number }
+  // 전금법 모니터링 (additive — 서버 개별 쿼리 실패 시 null → '—' 표시)
+  outstanding_balance?: number | null
+  outstanding_free_balance?: number | null
+  outstanding_paid_balance?: number | null
+  charged_this_year?: number | null
+  charged_by_year?: { year: string; count: number; total: number }[] | null
+}
+
+interface ChargeRecord {
+  id: number
+  user_id: string
+  amount: number
+  commission_amount: number
+  points_amount: number
+  balance_after: number
+  description: string
+  payment_key: string
+  order_id: string
+  created_at: string
+  current_balance: number
+  user_total_charged: number
+  user_total_donated: number
+  user_name: string | null
+  user_email: string | null
+  user_profile_image: string | null
+}
+
+interface UserSummary {
+  user_id: string
+  balance: number
+  total_charged: number
+  total_donated: number
+  first_charge_date: string
+  last_activity: string
+  charge_count: number
+  last_charged: string
+  user_name: string | null
+  user_email: string | null
+  user_profile_image: string | null
+}
+
+type Tab = 'charges' | 'users'
+
+function fmt(n: number | null | undefined): string {
+  return formatNumber(n ?? 0)
+}
+
+// 전금법 카드: 집계 실패(null)·미도착(undefined)은 0 으로 위장하지 않고 '—' (silent 0 금지)
+function wonOrDash(n: number | null | undefined): string {
+  return n == null ? '—' : formatWon(n)
+}
+
+export default function AdminDealMonitorPage() {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const [tab, setTab] = useState<Tab>('charges')
+  const [page, setPage] = useState(1)
+  const [search, setSearch] = useState('')
+  const [searchInput, setSearchInput] = useState('')
+  const [sort, setSort] = useState('total_charged')
+
+  useEffect(() => {
+    if (!localStorage.getItem('admin_token')) navigate('/admin/login')
+  }, [navigate])
+
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (stats + charges/users 탭별, 필터 key 반응형).
+  const statsQ = useApiQuery<DealStats | null>(['admin', 'deals-stats'], '/api/admin/deals/stats', { select: (r: any) => (r?.success ? r.data : null) })
+  const stats = statsQ.data ?? null
+
+  const chargesQ = useApiQuery<{ rows: ChargeRecord[]; totalPages: number }>(['admin', 'deals-charges', page, search], '/api/admin/deals/charges', {
+    params: { page, limit: 20, ...(search ? { search } : {}) },
+    enabled: tab === 'charges',
+    select: (r: any) => ({ rows: r?.success ? (r.data || []) : [], totalPages: r?.pagination?.totalPages || 1 }),
+  })
+  const usersQ = useApiQuery<{ rows: UserSummary[]; totalPages: number }>(['admin', 'deals-users', page, sort], '/api/admin/deals/users', {
+    params: { page, limit: 20, sort },
+    enabled: tab === 'users',
+    select: (r: any) => ({ rows: r?.success ? (r.data || []) : [], totalPages: r?.pagination?.totalPages || 1 }),
+  })
+  const charges = chargesQ.data?.rows ?? []
+  const users = usersQ.data?.rows ?? []
+  const loading = tab === 'charges' ? chargesQ.isLoading : usersQ.isLoading
+  const totalPages = (tab === 'charges' ? chargesQ.data?.totalPages : usersQ.data?.totalPages) ?? 1
+
+  function handleSearch(e: React.FormEvent) {
+    e.preventDefault()
+    setPage(1)
+    setSearch(searchInput)
+  }
+
+  function switchTab(t: Tab) {
+    setTab(t)
+    setPage(1)
+    setSearch('')
+    setSearchInput('')
+  }
+
+  const s = stats
+
+  return (
+    <AdminLayout title={t('admin.pages.deals')}>
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+        <DashboardPageHeader
+          title={t('admin.pages.deals')}
+          subtitle={t('admin.dealMonitor.k001', { defaultValue: "유저 포인트 충전 및 소비 현황" })}
+          icon={<Gift className="h-5 w-5" />}
+        />
+      {/* 전금법(선불업) 모니터링 — 발행잔액/연간 발행 집계 (docs/design/pre-flip-risk-audit-2026-07.md §①) */}
+      <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5">
+        <div className="flex items-center gap-2">
+          <Scale className="w-4 h-4 text-gray-700" />
+          <h2 className="text-sm font-semibold text-gray-900">전금법 모니터링 — 선불전자지급수단 발행 집계</h2>
+        </div>
+        <p className="text-xs text-gray-500 mt-1 mb-4">
+          선불업 등록 기준은 법무 확인 후 이 카드에 임계 경보 추가 예정 — 현재는 수치 모니터링만
+        </p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <MiniStat
+            label="발행잔액 (총)"
+            value={wonOrDash(s?.outstanding_balance)}
+            sub="전 유저 미상환 딜 잔액 합계"
+          />
+          <MiniStat
+            label="발행잔액 (유상)"
+            value={wonOrDash(s?.outstanding_paid_balance)}
+            sub="충전분 (총 − 무상)"
+          />
+          <MiniStat
+            label="발행잔액 (무상)"
+            value={wonOrDash(s?.outstanding_free_balance)}
+            sub="리워드·이벤트 지급분"
+          />
+          <MiniStat
+            label="올해 발행액 (충전)"
+            value={wonOrDash(s?.charged_this_year)}
+            sub={`${new Date().getFullYear()}년 1월 1일 이후 충전 총액`}
+          />
+        </div>
+        <div className="mt-4">
+          <p className="text-xs font-medium text-gray-600 mb-2">연도별 충전(발행) 총액 — 최근 3년</p>
+          {s?.charged_by_year == null ? (
+            <p className="text-sm text-gray-400">—</p>
+          ) : s.charged_by_year.length === 0 ? (
+            <p className="text-sm text-gray-400">충전 데이터가 없습니다</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm max-w-md">
+                <thead className="bg-gray-50 text-gray-600">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium">연도</th>
+                    <th className="px-3 py-2 text-right font-medium">충전 건수</th>
+                    <th className="px-3 py-2 text-right font-medium">발행(충전) 총액</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {s.charged_by_year.map(y => (
+                    <tr key={y.year}>
+                      <td className="px-3 py-2 text-gray-900 font-medium">{y.year}년</td>
+                      <td className="px-3 py-2 text-right text-gray-600">{fmt(y.count)}건</td>
+                      <td className="px-3 py-2 text-right text-gray-900 font-medium">{formatWon(y.total)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          icon={<Gift className="w-5 h-5 text-brand-text" />}
+          label={t('admin.dealMonitor.k002', { defaultValue: "총 충전액" })}
+          value={`${fmt(s?.totals.total_charged_amount)}원`}
+          sub={`수수료 ${fmt(s?.totals.total_commission)}원`}
+          bg="bg-brand-tint"
+        />
+        <StatCard
+          icon={<Zap className="w-5 h-5 text-tone-warn" />}
+          label={t('admin.dealMonitor.k003', { defaultValue: "발급 딜" })}
+          value={`${fmt(s?.totals.total_points_issued)}딜`}
+          sub={`후원 ${fmt(s?.donations.total_donated)}딜`}
+          bg="border border-rule bg-white"
+        />
+        <StatCard
+          icon={<TrendingUp className="w-5 h-5 text-gray-700" />}
+          label={t('admin.dealMonitor.k004', { defaultValue: "오늘" })}
+          value={`${fmt(s?.today.amount)}원`}
+          sub={`${fmt(s?.today.count)}건`}
+          bg="border border-rule bg-white"
+        />
+        <StatCard
+          icon={<Users className="w-5 h-5 text-tone-ok" />}
+          label={t('admin.dealMonitor.k005', { defaultValue: "충전 유저" })}
+          value={`${fmt(s?.totals.unique_users)}명`}
+          sub={`이번 달 ${fmt(s?.thisMonth.amount)}원`}
+          bg="border border-rule bg-white"
+        />
+      </div>
+
+      {/* Tabs & Search */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="flex items-center justify-between border-b px-4 py-3">
+          <div className="flex gap-1">
+            <button
+              onClick={() => switchTab('charges')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                tab === 'charges' ? 'bg-brand text-white' : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              충전 내역
+            </button>
+            <button
+              onClick={() => switchTab('users')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                tab === 'users' ? 'bg-brand text-white' : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              유저별 요약
+            </button>
+          </div>
+          {tab === 'charges' && (
+            <form onSubmit={handleSearch} className="flex gap-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  value={searchInput}
+                  onChange={e => setSearchInput(e.target.value)}
+                  placeholder={t('admin.dealMonitor.k006', { defaultValue: "이름 / 이메일 / 주문번호" })}
+                  className="pl-9 pr-3 py-2 text-sm text-gray-900 border rounded-lg w-56 focus:ring-2 focus:ring-blue-500 focus:border-brand"
+                />
+              </div>
+              <button type="submit" className="px-3 py-2 bg-gray-100 text-sm rounded-lg hover:bg-gray-200">
+                검색
+              </button>
+            </form>
+          )}
+          {tab === 'users' && (
+            <select
+              value={sort}
+              onChange={e => { setSort(e.target.value); setPage(1) }}
+              className="text-sm text-gray-900 border rounded-lg px-3 py-2"
+            >
+              <option value="total_charged">{t('admin.dealMonitor.k007', { defaultValue: '충전액순' })}</option>
+              <option value="total_donated">{t('admin.dealMonitor.k008', { defaultValue: '후원액순' })}</option>
+              <option value="balance">{t('admin.dealMonitor.k009', { defaultValue: '잔액순' })}</option>
+              <option value="last_charged">{t('admin.dealMonitor.k010', { defaultValue: '최근충전순' })}</option>
+            </select>
+          )}
+        </div>
+
+        {/* Table */}
+        <div className="overflow-x-auto">
+          {loading ? (
+            <div className="flex justify-center py-16">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand" />
+            </div>
+          ) : tab === 'charges' ? (
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 text-gray-600">
+                <tr>
+                  <th className="px-4 py-3 text-left font-medium">{t('admin.dealMonitor.k011', { defaultValue: '일시' })}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('admin.dealMonitor.k012', { defaultValue: '유저' })}</th>
+                  <th className="px-4 py-3 text-right font-medium">{t('admin.dealMonitor.k013', { defaultValue: '결제액' })}</th>
+                  <th className="px-4 py-3 text-right font-medium">{t('admin.dealMonitor.k014', { defaultValue: '수수료' })}</th>
+                  <th className="px-4 py-3 text-right font-medium">{t('admin.dealMonitor.k015', { defaultValue: '충전 딜' })}</th>
+                  <th className="px-4 py-3 text-right font-medium">{t('admin.dealMonitor.k016', { defaultValue: '현재 잔액' })}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('admin.dealMonitor.k017', { defaultValue: '주문번호' })}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {charges.length === 0 ? (
+                  <tr><td colSpan={7} className="text-center py-12 text-gray-400">{t('admin.dealMonitor.k018', { defaultValue: '충전 내역이 없습니다' })}</td></tr>
+                ) : charges.map(c => (
+                  <tr key={c.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formatKST(c.created_at)}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        {c.user_profile_image ? (
+                          <img src={c.user_profile_image} alt="" className="w-6 h-6 rounded-full flex-shrink-0" loading="lazy" />
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-500 flex-shrink-0">
+                            {(c.user_name || '?').charAt(0)}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{c.user_name || `유저#${c.user_id}`}</p>
+                          {c.user_email && <p className="text-xs text-gray-400 truncate">{c.user_email}</p>}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-right font-medium">{fmt(c.amount)}원</td>
+                    <td className="px-4 py-3 text-right text-gray-500">{fmt(c.commission_amount)}원</td>
+                    <td className="px-4 py-3 text-right text-brand-text font-medium">{fmt(c.points_amount)}딜</td>
+                    <td className="px-4 py-3 text-right">{fmt(c.current_balance)}딜</td>
+                    <td className="px-4 py-3 font-mono text-xs text-gray-500 truncate max-w-[160px]" title={c.order_id}>{c.order_id}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 text-gray-600">
+                <tr>
+                  <th className="px-4 py-3 text-left font-medium">{t('admin.dealMonitor.k012', { defaultValue: '유저' })}</th>
+                  <th className="px-4 py-3 text-right font-medium">{t('admin.dealMonitor.k019', { defaultValue: '충전 횟수' })}</th>
+                  <th className="px-4 py-3 text-right font-medium">{t('admin.dealMonitor.k002', { defaultValue: '총 충전액' })}</th>
+                  <th className="px-4 py-3 text-right font-medium">{t('admin.dealMonitor.k020', { defaultValue: '총 후원액' })}</th>
+                  <th className="px-4 py-3 text-right font-medium">{t('admin.dealMonitor.k016', { defaultValue: '현재 잔액' })}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('admin.dealMonitor.k021', { defaultValue: '최근 충전' })}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('admin.dealMonitor.k022', { defaultValue: '가입일' })}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {users.length === 0 ? (
+                  <tr><td colSpan={7} className="text-center py-12 text-gray-400">{t('admin.dealMonitor.k023', { defaultValue: '충전 유저가 없습니다' })}</td></tr>
+                ) : users.map(u => (
+                  <tr key={u.user_id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        {u.user_profile_image ? (
+                          <img src={u.user_profile_image} alt="" className="w-6 h-6 rounded-full flex-shrink-0" loading="lazy" />
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-500 flex-shrink-0">
+                            {(u.user_name || '?').charAt(0)}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{u.user_name || `유저#${u.user_id}`}</p>
+                          {u.user_email && <p className="text-xs text-gray-400 truncate">{u.user_email}</p>}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-right">{fmt(u.charge_count)}회</td>
+                    <td className="px-4 py-3 text-right font-medium">{fmt(u.total_charged)}딜</td>
+                    <td className="px-4 py-3 text-right text-tone-warn">{fmt(u.total_donated)}딜</td>
+                    <td className="px-4 py-3 text-right text-brand-text font-medium">{fmt(u.balance)}딜</td>
+                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{u.last_charged ? formatKST(u.last_charged) : '-'}</td>
+                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{u.first_charge_date ? formatKST(u.first_charge_date) : '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 py-4 border-t">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="p-2 rounded-lg hover:bg-gray-100 disabled:opacity-30"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="text-sm text-gray-600">{page} / {totalPages}</span>
+            <button
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              className="p-2 rounded-lg hover:bg-gray-100 disabled:opacity-30"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+      </div>
+      </div>
+    </AdminLayout>
+  )
+}
+
+function MiniStat({ label, value, sub }: { label: string; value: string; sub: string }) {
+  return (
+    <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+      <p className="text-xs text-gray-600 font-medium">{label}</p>
+      <p className="text-lg font-bold text-gray-900 mt-1">{value}</p>
+      <p className="text-[11px] text-gray-500 mt-0.5">{sub}</p>
+    </div>
+  )
+}
+
+function StatCard({ icon, label, value, sub, bg }: {
+  icon: React.ReactNode; label: string; value: string; sub: string; bg: string
+}) {
+  return (
+    <div className={`${bg} rounded-xl p-4 border border-gray-100`}>
+      <div className="flex items-center gap-2 mb-2">
+        {icon}
+        <span className="text-sm text-gray-600 font-medium">{label}</span>
+      </div>
+      <p className="text-xl font-bold text-gray-900">{value}</p>
+      <p className="text-xs text-gray-500 mt-1">{sub}</p>
+    </div>
+  )
+}

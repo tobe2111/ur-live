@@ -1,0 +1,481 @@
+/**
+ * 홈페이지 섹션 관리 API
+ *
+ * 공개:
+ *   GET /api/sections              - 활성 섹션 + 상품 목록 (메인페이지용)
+ *
+ * 어드민:
+ *   GET    /api/sections/admin      - 전체 섹션 목록 (비활성 포함)
+ *   POST   /api/sections            - 섹션 생성
+ *   PUT    /api/sections/:id        - 섹션 수정
+ *   DELETE /api/sections/:id        - 섹션 삭제
+ *   POST   /api/sections/:id/products - 섹션에 상품 추가/교체
+ *   DELETE /api/sections/:id/products/:productId - 섹션에서 상품 제거
+ *   POST   /api/sections/reorder    - 섹션 순서 변경
+ */
+
+import { Hono } from 'hono';
+import { edgeCache } from '../../../worker/middleware/edge-cache';
+import { cors } from 'hono/cors';
+import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
+import { cacheGet, cacheInvalidate } from '@/worker/utils/cache';
+import type { Env } from '@/worker/types/env';
+import type { KVNamespace } from '@cloudflare/workers-types';
+// 🏠 2026-08-04 (대표 시안 승인): 규칙 기반 섹션. 기존 수동 큐레이션은 기본값으로 그대로 유지.
+import {
+  DEFAULT_SECTION_SOURCE,
+  SECTION_DEFAULT_LIMIT,
+  clampSectionLimit,
+  normalizeSectionSource,
+} from '@/shared/constants/home-showcase';
+import { resolveSectionProducts, resolvePopularWeights, takeUnclaimed, CARD_COLS } from './section-rules';
+import { capRowGalleries } from '../../group-buy/api/card-gallery';
+import { maybeSeedHomeSections } from './section-seed';
+import { mainScopeFor } from '@/worker/utils/consumer-scope';
+import { nearKeyOf, parseNearKey } from '@/shared/home-near';
+import { listActiveBanners } from '../../banners/api/banners.routes';
+import { STRIP_BANNER_MAX } from '@/shared/home-strip-banners';
+import { publicReadDb, dbKey, d1ServedLabel } from '@/worker/utils/d1-read-replica';
+const sectionsRoutes = new Hono<{ Bindings: Env }>();
+
+/**
+ * 공개 홈 섹션 캐시(`sections:public`, 120초) 무효화.
+ * 어드민이 무엇을 바꾸든 홈이 바로 따라오게 — 기다리는 동안은 "안 된다"로 보인다.
+ * `cacheInvalidate` 는 L1 을 비우고 KV 삭제는 L2 게이트가 OFF 면 건너뛴다(무료한도 보호).
+ */
+async function invalidateSectionsCache(env: Env): Promise<void> {
+  const { SESSION_KV } = env as Env & { SESSION_KV?: KVNamespace };
+  await cacheInvalidate(SESSION_KV, 'sections:public').catch(() => {});
+}
+
+// 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
+
+async function ensureTables(DB: D1Database) {
+  if (_done_ensureTables.has(dbKey(DB))) return
+  _done_ensureTables.add(dbKey(DB))
+  try {
+    await DB.prepare(`
+      CREATE TABLE IF NOT EXISTS homepage_sections (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        subtitle TEXT,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        is_active INTEGER DEFAULT 1,
+        layout TEXT DEFAULT 'grid3' CHECK (layout IN ('grid3', 'grid2', 'scroll')),
+        created_at DATETIME DEFAULT (datetime('now')),
+        updated_at DATETIME DEFAULT (datetime('now'))
+      )
+    `).run();
+  } catch { /* exists */ }
+  try {
+    await DB.prepare(`
+      CREATE TABLE IF NOT EXISTS section_products (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        section_id INTEGER NOT NULL,
+        product_id INTEGER NOT NULL,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        FOREIGN KEY (section_id) REFERENCES homepage_sections(id) ON DELETE CASCADE,
+        UNIQUE(section_id, product_id)
+      )
+    `).run();
+  } catch { /* exists */ }
+  // 🏠 2026-08-04 (대표 시안 승인): 규칙 기반 섹션 컬럼. 전부 기본값이 있어
+  //   **기존 행은 `source='manual'` 로 읽혀 동작이 그대로다**(추가일 뿐 변경 아님).
+  for (const sql of [
+    `ALTER TABLE homepage_sections ADD COLUMN source TEXT DEFAULT '${DEFAULT_SECTION_SOURCE}'`,
+    `ALTER TABLE homepage_sections ADD COLUMN source_value TEXT`,
+    `ALTER TABLE homepage_sections ADD COLUMN limit_count INTEGER DEFAULT ${SECTION_DEFAULT_LIMIT}`,
+    `ALTER TABLE homepage_sections ADD COLUMN more_href TEXT`,
+  ]) {
+    try { await DB.prepare(sql).run(); } catch { /* 이미 있음 */ }
+  }
+}
+
+// GET /api/sections — 메인페이지용 (활성 섹션 + 상품)
+/**
+ * 🐢 2026-08-19 (대표 신고 — "첫 접속하면 지금 인기 이용권이 먼저 안뜨고 가까운 동네딜이 먼저 보여.
+ *   시간 지나면 … 지금 인기 이용권과 주말에 떠나는 숙소가 보여"): **엣지 캐시가 아예 없었다.**
+ *
+ *   실측: `cf-cache-status: DYNAMIC` · 응답 0.6~1.2s. 위 주석은 "on top of edge cache" 라고 적고
+ *   있었지만 그런 미들웨어가 이 라우트에 **붙어 있지 않았다**(cacheGet 의 L2 KV 는 2026-06-04 에
+ *   무료한도 보호로 꺼져 있어 사실상 매 요청 D1). 반면 동네딜 피드는 SSR 시드로 0-RTT 라,
+ *   같은 화면에서 **한쪽만 늦게 끼어드는** 것처럼 보였다.
+ *   ⇒ `edgeCache(120)` — 응답 뒤 `caches.default` 에 저장, 다음 요청은 ~5ms.
+ *   ⚠️ 120s 인 이유: 어드민이 편성을 바꾸면 최대 그만큼 늦게 반영된다(5분은 편집 확인이 답답하다).
+ *      `bypassIfAuthed` 라 어드민 자신은 항상 최신을 본다.
+ */
+sectionsRoutes.get('/', edgeCache(120), async (c) => {
+  const { SESSION_KV } = c.env as Env & { SESSION_KV?: KVNamespace };
+  // 🌏 2026-10-15 결재(D1 읽기 복제): 공개 편성 읽기는 가까운 사본에서 — 근거·금지 경로는 `d1-read-replica.ts`.
+  const DB = publicReadDb((c.env as Env).DB);
+  const readEnv = { ...(c.env as Env), DB } as Env;
+  /**
+   * 📍 2026-10-13 (대표 — 위치를 정하면 맨 위가 그 지역에서 가까운 이용권): `?near=lat,lng`.
+   *   서버가 **다시 격자(0.02°)에 맞춘다** — 클라가 정밀 좌표를 보내도 캐시가 쪼개지지 않게.
+   *   L1 키에도 그 격자를 넣는다(안 넣으면 한 위치의 결과가 다른 위치·위치 없음에 그대로 나간다).
+   *   위치가 없으면 키·쿼리·응답이 **종전과 byte-동일**이다(SSR 예열 키 `/api/sections` 불변).
+   */
+  const near = parseNearKey(c.req.query('near'));
+  let d1Served: string | null = null; // 🔎 어느 사본이 답했나 — `X-D1-Served` 로 내보낸다(E4 판정용)
+  const nearKey = nearKeyOf(near);
+  try {
+    /**
+     * ⚡ 2026-10-15 (대표 *"첫 접속 시 2~3배 다른 사이트에 비해 느려 · 이런 이용권은 어떠세요? 도 너무 늦게 떠"*):
+     *   **질의를 차례로 기다리지 않는다.** D1 은 미국 동부(ENAM, 읽기 복제 꺼짐 — CF API 실측)이고 홈 HTML 은
+     *   이 응답을 SSR 시드로 기다린다. 한국 콜로에서 질의 하나가 왕복 ~170ms 인데 이 핸들러는 캐시가 비면
+     *   [DDL 6 → 시드 버전 → 섹션 → 수동 상품 → 규칙 섹션 1 → 규칙 섹션 2 … → 배너] 를 **한 줄로** 돌았다
+     *   (새 isolate 면 12왕복 안팎 ≈ 2초 — SSR 타임아웃 2000ms 에 걸려 시드가 빠지면 첫 화면이 섹션을 못 그린다).
+     *   ① DDL 은 실패할 때만(아래 `loadSections`) ② 시드 버전은 isolate 당 한 번(`maybeSeedHomeSections`)
+     *   ③ 배너·인기 가중치는 처음부터 병렬 ④ 규칙 섹션은 **동시에** 묻고 위에서 쓴 것을 나중에 뺀다(`overfetch`).
+     *   결과는 종전과 같다 — 같은 SQL·같은 순서 규칙이고, 바뀐 것은 기다리는 모양뿐이다.
+     */
+    const bannersP = cacheGet(SESSION_KV, 'home:strip_banners', async () => {
+      try {
+        return (await listActiveBanners(DB, 'strip')).slice(0, STRIP_BANNER_MAX).map(b => ({
+          id: b.id, title: b.title, image_url: b.image_url, link_url: b.link_url ?? null,
+          description: b.description ?? null, banner_slot: 'strip', display_order: b.display_order,
+        }));
+      } catch {
+        return [];
+      }
+    }, { ttl: 120 }).catch(() => [] as unknown[]);
+    const result = await cacheGet(
+      SESSION_KV,
+      nearKey ? `sections:public:n${nearKey}` : 'sections:public',
+      async () => {
+        // 🏠 2026-08-04: 승인된 시안의 세 줄을 기본으로 넣는다 — 아무도 안 만들면 홈이
+        //   "틀만 있고 안이 빈" 화면이 되고, 그건 시안이 아니다(대표 신고). 편집·삭제는 보존.
+        await maybeSeedHomeSections(readEnv);
+        const weightsP = resolvePopularWeights(DB);
+        weightsP.catch(() => {});
+
+        const selectSections = () => DB.prepare(`
+          SELECT id, title, subtitle, layout,
+                 COALESCE(source, '${DEFAULT_SECTION_SOURCE}') AS source,
+                 source_value, limit_count, more_href
+          FROM homepage_sections WHERE is_active = 1 ORDER BY sort_order ASC
+        `).all();
+        // 테이블·컬럼이 없을 때만 만든다(새 DB · 옛 스키마) — 정상 경로에서 DDL 6왕복을 안 기다린다.
+        const sectionsRes = await selectSections().catch(async () => {
+          await ensureTables(DB);
+          await maybeSeedHomeSections(readEnv);
+          return selectSections();
+        });
+        d1Served = d1ServedLabel(sectionsRes);
+        const sections = sectionsRes.results;
+
+        const sectionList = (sections ?? []) as Array<Record<string, unknown>>;
+
+        const sectionIds = sectionList
+          .filter(s => normalizeSectionSource(s.source) === 'manual')
+          .map(s => s.id as number);
+        const productsBySection = new Map<number, unknown[]>();
+        if (sectionIds.length > 0) {
+          const ph = sectionIds.map(() => '?').join(',');
+          // 🏠 2026-08-04: 규칙 섹션과 **같은 컬럼**(CARD_COLS)을 싣는다 — 카드 링크가
+          //   `getProductFlow`(deal_only·group_buy_status) SSOT 로 결정되기 때문.
+          //   + 본진 몰 격리(운영자 SaaS 몰 상품이 유어딜 홈에 섞이지 않게).
+          const productScope = await mainScopeFor(DB, 'products', 'p');
+          const { results: rows } = await DB.prepare(`
+            SELECT sp.section_id, sp.sort_order, ${CARD_COLS}
+            FROM section_products sp
+            JOIN products p ON sp.product_id = p.id AND p.is_active = 1
+            WHERE sp.section_id IN (${ph})${productScope}
+            ORDER BY sp.section_id ASC, sp.sort_order ASC
+          `).bind(...sectionIds).all<{ section_id: number; sort_order: number } & Record<string, unknown>>();
+
+          for (const row of rows ?? []) {
+            const sid = row.section_id;
+            const arr = productsBySection.get(sid) ?? [];
+            if (arr.length < 12) {
+              const { section_id: _sid, sort_order: _so, ...product } = row;
+              arr.push(product);
+              productsBySection.set(sid, arr);
+            }
+          }
+        }
+
+        /**
+         * 🖼️ 2026-09-06 (대표 *"메인에서 보면 이용권의 똑같은 사진이 두번 나오는 경우가 있는데"*):
+         *   **한 상품은 한 화면에 한 번.** 섹션은 그동안 각자 독립으로 채워졌고 서로 겹치는지
+         *   아무도 안 봤다 — 라이브 실측에서 '지금 인기 이용권' 4개 중 **3개**가 바로 아래
+         *   '주말에 떠나는 숙소'에 그대로 다시 나왔다(인기 상위가 대부분 숙소라 두 규칙이
+         *   거의 같은 목록을 냈다). 사용자에겐 같은 사진이 위아래로 두 번이다.
+         *
+         * ## 누가 먼저 가져가는가
+         * **수동 큐레이션이 규칙을 이긴다.** 어드민이 그 줄에 그 상품을 직접 골라 넣었는데
+         * 위 규칙 섹션이 먼저 집어갔다고 사라지면, 사람이 내린 결정이 질의에 밀리는 것이다.
+         * ⇒ manual 이 자기 몫을 **먼저 확정**하고, 규칙 섹션이 그 바깥에서 렌더 순서대로 채운다.
+         * 규칙 섹션은 `LIMIT` 이 그대로라 **줄 길이가 줄지 않는다** — 다음 후보가 자리를 메운다
+         * (라이브 실측: 숙소 후보 51개라 4자리 채우는 데 여유가 충분하다).
+         *
+         * ⚠️ 아래 딜 피드(`/api/group-buy/products`)와는 겹쳐도 **빼지 않는다.** 그건 "전체 목록"이라
+         *   거기서 상품을 빼면 목록이 거짓말이 된다(큐레이션한 것이 전체에도 있는 건 정상이다).
+         */
+        const claimed = new Set<number>();
+        for (const s of sectionList) {
+          if (normalizeSectionSource(s.source) !== 'manual') continue;
+          const kept: unknown[] = [];
+          for (const p of productsBySection.get(s.id as number) ?? []) {
+            const id = (p as { id?: number }).id;
+            if (typeof id === 'number' && claimed.has(id)) continue;
+            if (typeof id === 'number') claimed.add(id);
+            kept.push(p);
+          }
+          productsBySection.set(s.id as number, kept);
+        }
+
+        // ⚡ 규칙 섹션 후보는 **동시에** 묻는다 — 수동 몫만 빼고, 위 섹션들이 가져갈 수 있는 만큼 더 받는다.
+        const pending = new Map<number, Promise<Record<string, unknown>[]>>();
+        let ahead = 0;
+        for (const s of sectionList) {
+          if (normalizeSectionSource(s.source) === 'manual') continue;
+          pending.set(s.id as number, resolveSectionProducts(readEnv, {
+            source: normalizeSectionSource(s.source),
+            sourceValue: (s.source_value as string) ?? null,
+            limit: (s.limit_count as number) ?? null,
+            excludeIds: [...claimed],
+            near,
+            overfetch: ahead,
+            weights: weightsP,
+          }));
+          ahead += clampSectionLimit(s.limit_count as number);
+        }
+
+        // 규칙 섹션은 **렌더 순서대로** — 위에 나온 것을 빼고 다음 후보로 채운다.
+        const ruleProducts = new Map<number, unknown[]>();
+        for (const s of sectionList) {
+          if (normalizeSectionSource(s.source) === 'manual') continue;
+          const rows = takeUnclaimed(
+            (await pending.get(s.id as number)) ?? [],
+            claimed,
+            clampSectionLimit(s.limit_count as number),
+          );
+          for (const p of rows) {
+            const id = (p as { id?: number }).id;
+            if (typeof id === 'number') claimed.add(id);
+          }
+          ruleProducts.set(s.id as number, rows);
+        }
+
+        return sectionList
+          .map(s => ({
+            ...s,
+            // 📍 이 줄이 위치로 정렬됐는지 — 화면이 소제목을 "동탄5동에서 가까운 순" 으로 바꾼다.
+            //   수동 섹션은 위치와 무관하므로 false(어드민이 쓴 소제목 그대로).
+            ...(nearKey ? { near: normalizeSectionSource(s.source) !== 'manual' } : {}),
+            // 🖼️ 2026-10-12 갤러리는 카드 SSOT(`CARD_GALLERY_MAX`)로 자른다 — 딜 피드·상품 목록은 이미 자르는데
+            //   섹션만 원본 전량을 싣고 있었다(홈 SSR 시드·엣지 캐시에 그대로 올라탄다).
+            products: capRowGalleries(normalizeSectionSource(s.source) === 'manual'
+              ? (productsBySection.get(s.id as number) ?? [])
+              : (ruleProducts.get(s.id as number) ?? [])),
+          }))
+          // 🚫 상품이 하나도 없는 줄은 아예 내리지 않는다 — 홈에 제목만 있고 아래가 빈
+          //    섹션이 남으면 "빈손을 광고"하게 된다(대표가 배너에 정한 원칙과 같은 이유).
+          .filter(s => (s.products as unknown[]).length > 0);
+      },
+      { ttl: 120 }
+    );
+
+    /**
+     * 🎫 2026-10-14 — **상단 배너(strip)를 같은 응답에 싣는다.** 그 배너는 첫 섹션 **위**에 오는데
+     *   서버 첫 화면(`home-first-screen.ts`)이 이 응답만 시드로 받는다. 배너가 따로 오면 마운트 뒤에
+     *   끼어들어 첫 섹션을 197px 아래로 민다 — 라이브 실측 첫 방문 CLS **0.197**(위치 유무와 무관, 매번).
+     *   조회는 `/api/banners` 와 **같은 함수**(`listActiveBanners`)다. 실패하면 빈 배열(섹션은 그대로 나간다).
+     *   배너가 없으면 필드 자체를 안 싣는다 — 종전 응답과 byte-동일.
+     */
+    const stripBanners = await bannersP; // ⚡ 위에서 섹션과 **함께** 시작했다
+    const extra = Array.isArray(stripBanners) && stripBanners.length > 0 ? { strip_banners: stripBanners } : {};
+
+    if (d1Served) c.header('X-D1-Served', d1Served);
+    // 📍 어느 위치로 만든 응답인지 — 화면이 SSR 시드를 쓸지(같은 격자인지) 판정한다.
+    return c.json(nearKey ? { success: true, data: result, near: nearKey, ...extra } : { success: true, data: result, ...extra });
+  } catch (err) {
+    console.error('[sections] GET / failed:', err);
+    return c.json({ success: true, data: [] });
+  }
+});
+
+// GET /api/sections/admin — 어드민용 전체 목록
+sectionsRoutes.get('/admin', requireAuth(), async (c) => {
+  const user = getCurrentUser(c);
+  if (!user || user.type !== 'admin') return c.json({ success: false, error: '관리자만 접근 가능' }, 403);
+
+  const { DB } = c.env;
+  await ensureTables(DB);
+  await maybeSeedHomeSections(c.env as Env);
+
+  const { results: sections } = await DB.prepare(
+    'SELECT * FROM homepage_sections ORDER BY sort_order ASC'
+  ).all();
+
+  // ✅ PERF: per-section product SELECT 제거 — 단일 IN-query
+  const sectionList = (sections ?? []) as Array<Record<string, unknown>>;
+  const sectionIds = sectionList.map(s => s.id as number);
+  const productsBySection = new Map<number, unknown[]>();
+  if (sectionIds.length > 0) {
+    const ph = sectionIds.map(() => '?').join(',');
+    const { results: rows } = await DB.prepare(`
+      SELECT sp.section_id, sp.id as sp_id, sp.sort_order, p.id, p.name, p.price, p.image_url, p.restaurant_name
+      FROM section_products sp
+      JOIN products p ON sp.product_id = p.id
+      WHERE sp.section_id IN (${ph})
+      ORDER BY sp.section_id ASC, sp.sort_order ASC
+    `).bind(...sectionIds).all<{ section_id: number } & Record<string, unknown>>();
+
+    for (const row of rows ?? []) {
+      const sid = row.section_id;
+      const arr = productsBySection.get(sid) ?? [];
+      const { section_id: _sid, ...product } = row;
+      arr.push(product);
+      productsBySection.set(sid, arr);
+    }
+  }
+
+  const result = sectionList.map(s => ({
+    ...s,
+    products: productsBySection.get(s.id as number) ?? [],
+  }));
+
+  return c.json({ success: true, data: result });
+});
+
+// POST /api/sections — 섹션 생성
+sectionsRoutes.post('/', requireAuth(), async (c) => {
+  const user = getCurrentUser(c);
+  if (!user || user.type !== 'admin') return c.json({ success: false, error: '관리자만 접근 가능' }, 403);
+
+  const { DB } = c.env;
+  await ensureTables(DB);
+  const { title, subtitle, layout, source, source_value, limit_count, more_href } = await c.req.json<{
+    title: string; subtitle?: string; layout?: string;
+    source?: string; source_value?: string; limit_count?: number; more_href?: string;
+  }>();
+
+  if (!title) return c.json({ success: false, error: '섹션 제목은 필수입니다' }, 400);
+
+  const maxOrder = await DB.prepare('SELECT MAX(sort_order) as max_order FROM homepage_sections').first<{ max_order: number }>();
+
+  // 🏠 2026-08-04: source/limit 은 화이트리스트·클램프를 거친 값만 저장한다(어드민 입력이라도
+  //   ORDER BY·LIMIT 에 닿는 값은 SSOT 를 통과시킨다).
+  await DB.prepare(
+    `INSERT INTO homepage_sections (title, subtitle, layout, sort_order, source, source_value, limit_count, more_href)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(
+    title, subtitle ?? null, layout ?? 'grid3', (maxOrder?.max_order ?? 0) + 1,
+    normalizeSectionSource(source), source_value ?? null, clampSectionLimit(limit_count), more_href ?? null,
+  ).run();
+
+  await invalidateSectionsCache(c.env as Env);
+  return c.json({ success: true, message: '섹션이 생성되었습니다' }, 201);
+});
+
+// PUT /api/sections/:id — 섹션 수정
+sectionsRoutes.put('/:id', requireAuth(), async (c) => {
+  const user = getCurrentUser(c);
+  if (!user || user.type !== 'admin') return c.json({ success: false, error: '관리자만 접근 가능' }, 403);
+
+  const { DB } = c.env;
+  const sectionId = c.req.param('id');
+  const { title, subtitle, layout, is_active, source, source_value, limit_count, more_href } = await c.req.json<{
+    title?: string; subtitle?: string; layout?: string; is_active?: number;
+    source?: string; source_value?: string | null; limit_count?: number; more_href?: string | null;
+  }>();
+
+  await ensureTables(DB);
+  const updates: string[] = ['updated_at = datetime(\'now\')'];
+  const params: (string | number | null)[] = [];
+
+  if (title !== undefined) { updates.push('title = ?'); params.push(title); }
+  if (subtitle !== undefined) { updates.push('subtitle = ?'); params.push(subtitle); }
+  if (layout !== undefined) { updates.push('layout = ?'); params.push(layout); }
+  if (is_active !== undefined) { updates.push('is_active = ?'); params.push(is_active); }
+  // 🏠 2026-08-04 — 생성 경로와 동일하게 SSOT 통과분만 저장.
+  if (source !== undefined) { updates.push('source = ?'); params.push(normalizeSectionSource(source)); }
+  if (source_value !== undefined) { updates.push('source_value = ?'); params.push(source_value ?? null); }
+  if (limit_count !== undefined) { updates.push('limit_count = ?'); params.push(clampSectionLimit(limit_count)); }
+  if (more_href !== undefined) { updates.push('more_href = ?'); params.push(more_href ?? null); }
+
+  params.push(sectionId!);
+  await DB.prepare(`UPDATE homepage_sections SET ${updates.join(', ')} WHERE id = ?`).bind(...params).run();
+
+  await invalidateSectionsCache(c.env as Env);
+  return c.json({ success: true, message: '섹션이 수정되었습니다' });
+});
+
+// DELETE /api/sections/:id — 섹션 삭제
+sectionsRoutes.delete('/:id', requireAuth(), async (c) => {
+  const user = getCurrentUser(c);
+  if (!user || user.type !== 'admin') return c.json({ success: false, error: '관리자만 접근 가능' }, 403);
+
+  const { DB } = c.env;
+  const sectionId = c.req.param('id');
+
+  await DB.prepare('DELETE FROM section_products WHERE section_id = ?').bind(sectionId).run();
+  await DB.prepare('DELETE FROM homepage_sections WHERE id = ?').bind(sectionId).run();
+
+  await invalidateSectionsCache(c.env as Env);
+  return c.json({ success: true, message: '섹션이 삭제되었습니다' });
+});
+
+// POST /api/sections/:id/products — 섹션에 상품 추가 (배열)
+sectionsRoutes.post('/:id/products', requireAuth(), async (c) => {
+  const user = getCurrentUser(c);
+  if (!user || user.type !== 'admin') return c.json({ success: false, error: '관리자만 접근 가능' }, 403);
+
+  const { DB } = c.env;
+  const sectionId = c.req.param('id');
+  const { product_ids } = await c.req.json<{ product_ids: number[] }>();
+
+  if (!product_ids?.length) return c.json({ success: false, error: '상품 ID를 입력해주세요' }, 400);
+
+  // 기존 상품 제거 후 재삽입
+  await DB.prepare('DELETE FROM section_products WHERE section_id = ?').bind(sectionId).run();
+
+  for (let i = 0; i < product_ids.length; i++) {
+    await DB.prepare(
+      'INSERT OR IGNORE INTO section_products (section_id, product_id, sort_order) VALUES (?, ?, ?)'
+    ).bind(sectionId, product_ids[i], i).run();
+  }
+
+  // 🏠 2026-08-04: 담자마자 홈에 반영되게 공개 캐시를 비운다 — 안 그러면 최대 120초 동안
+  //   "담았는데 홈에 없다" 가 되고, 그건 고장과 구분되지 않는다.
+  await invalidateSectionsCache(c.env as Env);
+  return c.json({ success: true, message: `${product_ids.length}개 상품이 설정되었습니다` });
+});
+
+// DELETE /api/sections/:id/products/:productId — 상품 제거
+sectionsRoutes.delete('/:id/products/:productId', requireAuth(), async (c) => {
+  const user = getCurrentUser(c);
+  if (!user || user.type !== 'admin') return c.json({ success: false, error: '관리자만 접근 가능' }, 403);
+
+  const { DB } = c.env;
+  await DB.prepare('DELETE FROM section_products WHERE section_id = ? AND product_id = ?')
+    .bind(c.req.param('id'), c.req.param('productId')).run();
+
+  await invalidateSectionsCache(c.env as Env);
+  return c.json({ success: true, message: '상품이 제거되었습니다' });
+});
+
+// POST /api/sections/reorder — 순서 변경
+sectionsRoutes.post('/reorder', requireAuth(), async (c) => {
+  const user = getCurrentUser(c);
+  if (!user || user.type !== 'admin') return c.json({ success: false, error: '관리자만 접근 가능' }, 403);
+
+  const { DB } = c.env;
+  const { section_ids } = await c.req.json<{ section_ids: number[] }>();
+
+  for (let i = 0; i < section_ids.length; i++) {
+    await DB.prepare('UPDATE homepage_sections SET sort_order = ? WHERE id = ?')
+      .bind(i, section_ids[i]).run();
+  }
+
+  await invalidateSectionsCache(c.env as Env);
+  return c.json({ success: true, message: '순서가 변경되었습니다' });
+});
+
+export { sectionsRoutes };
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+const _done_ensureTables = new WeakSet<object>()

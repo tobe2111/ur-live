@@ -1,0 +1,189 @@
+/**
+ * Push Notifications API Routes
+ *
+ * Endpoints:
+ * - POST /api/push/subscribe         - Push 알림 구독 등록
+ * - POST /api/push/unsubscribe       - Push 알림 구독 해제
+ * - GET  /api/push/vapid-public-key  - VAPID 공개 키 조회
+ */
+
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
+import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
+import { getFeatureFlags } from '@/worker/utils/feature-flags';
+import type { KVNamespace } from '@cloudflare/workers-types';
+import { encryptAtRest } from '@/worker/utils/data-crypto';
+
+type Bindings = {
+  DB: D1Database;
+  VAPID_PUBLIC_KEY?: string;
+  JWT_SECRET?: string;
+  FIREBASE_PROJECT_ID?: string;
+  SESSION_KV?: KVNamespace;
+  DATA_ENCRYPTION_KEY?: string;
+};
+
+// Push subscription helpers (inline to avoid circular imports)
+async function savePushSubscription(
+  db: D1Database,
+  userId: number,
+  userType: 'user' | 'seller' | 'admin',
+  subscription: { endpoint: string; keys: { p256dh: string; auth: string } },
+  kek: string | undefined,
+): Promise<void> {
+  // 🛡️ 2026-04-22: p256dh / auth key 암호화 — DB 탈취 시 푸시 복호화 방어
+  const encP256dh = await encryptAtRest(subscription.keys.p256dh, kek);
+  const encAuth = await encryptAtRest(subscription.keys.auth, kek);
+  await db
+    .prepare(`
+      INSERT INTO push_subscriptions (user_id, user_type, endpoint, p256dh, auth, created_at)
+      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(endpoint) DO UPDATE SET
+        user_id = excluded.user_id,
+        user_type = excluded.user_type,
+        p256dh = excluded.p256dh,
+        auth = excluded.auth,
+        updated_at = CURRENT_TIMESTAMP
+    `)
+    .bind(userId, userType, subscription.endpoint, encP256dh, encAuth)
+    .run();
+}
+
+async function deletePushSubscription(db: D1Database, endpoint: string): Promise<void> {
+  await db.prepare('DELETE FROM push_subscriptions WHERE endpoint = ?').bind(endpoint).run();
+}
+
+export const pushRoutes = new Hono<{ Bindings: Bindings }>();
+// 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
+
+// Push 알림 구독 등록 — JWT 인증 필수 (X-User-ID 헤더는 스푸핑 가능하여 제거)
+pushRoutes.post('/api/push/subscribe', requireAuth(), async (c) => {
+  try {
+    // Kill switch: skip enrolling new push subscriptions during overload.
+    // We ACK success so the client doesn't retry-loop on 503.
+    const flags = await getFeatureFlags(c.env.SESSION_KV, c.env.DB);
+    if (!flags.enable_push_notifications) {
+      return c.json({ success: true, skipped: true, reason: 'push_disabled' });
+    }
+
+    const authUser = getCurrentUser(c);
+    if (!authUser) return c.json({ success: false, error: 'Unauthorized' }, 401);
+
+    const userId = parseInt(String(authUser.id), 10);
+    const userType = authUser.type as 'user' | 'seller' | 'admin';
+    const subscription = await c.req.json();
+    await savePushSubscription(c.env.DB, userId, userType, subscription, (c.env as any).DATA_ENCRYPTION_KEY);
+
+    return c.json({ success: true });
+  } catch (error: any) {
+    console.error('[Push Subscribe] Error:', error.message);
+    return c.json({ success: false, error: '구독 등록에 실패했습니다.' }, 500);
+  }
+});
+
+// 네이티브 (Capacitor) 푸시 토큰 등록 — FCM/APNS 토큰
+pushRoutes.post('/api/push/register', requireAuth(), async (c) => {
+  try {
+    const flags = await getFeatureFlags(c.env.SESSION_KV, c.env.DB);
+    if (!flags.enable_push_notifications) {
+      return c.json({ success: true, skipped: true, reason: 'push_disabled' });
+    }
+
+    const authUser = getCurrentUser(c);
+    if (!authUser) return c.json({ success: false, error: 'Unauthorized' }, 401);
+
+    const { token, platform } = await c.req.json<{ token?: string; platform?: string }>();
+    if (!token || typeof token !== 'string' || token.length < 10 || token.length > 4096) {
+      return c.json({ success: false, error: 'Invalid token' }, 400);
+    }
+    const plat = platform === 'ios' || platform === 'android' ? platform : 'unknown';
+
+    try {
+      await c.env.DB.prepare(`
+        CREATE TABLE IF NOT EXISTS native_push_tokens (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          user_type TEXT NOT NULL,
+          token TEXT NOT NULL UNIQUE,
+          platform TEXT NOT NULL,
+          created_at TEXT DEFAULT (datetime('now')),
+          updated_at TEXT
+        )
+      `).run();
+    } catch {}
+
+    const userId = parseInt(String(authUser.id), 10);
+    const userType = authUser.type as 'user' | 'seller' | 'admin';
+    await c.env.DB.prepare(`
+      INSERT INTO native_push_tokens (user_id, user_type, token, platform)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(token) DO UPDATE SET
+        user_id = excluded.user_id,
+        user_type = excluded.user_type,
+        platform = excluded.platform,
+        updated_at = CURRENT_TIMESTAMP
+    `).bind(userId, userType, token, plat).run();
+
+    return c.json({ success: true });
+  } catch (error: any) {
+    if (typeof console !== 'undefined') console.error('[Push Register] Error:', error?.message);
+    return c.json({ success: false, error: '토큰 등록에 실패했습니다.' }, 500);
+  }
+});
+
+// Push 알림 구독 해제
+// 🛡️ 2026-04-22: 인증 필수. 이전엔 인증 없어서 누구나 타 유저 endpoint 로 구독 해제 가능 (DoS).
+// 수정: requireAuth() + 본인 endpoint 만 삭제 가능.
+pushRoutes.post('/api/push/unsubscribe', requireAuth(), async (c) => {
+  try {
+    const user = getCurrentUser(c);
+    if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401);
+
+    const { endpoint } = await c.req.json();
+    if (!endpoint) {
+      return c.json({ success: false, error: 'Endpoint required' }, 400);
+    }
+
+    // 본인 user_id 에 속한 endpoint 인지 확인 후 삭제 (helper 가 이미 체크하지 않으면)
+    await c.env.DB.prepare(
+      'DELETE FROM push_subscriptions WHERE endpoint = ? AND user_id = ?'
+    ).bind(endpoint, user.id).run();
+
+    return c.json({ success: true });
+  } catch (error: any) {
+    console.error('[Push Unsubscribe] Error:', error.message);
+    return c.json({ success: false, error: '구독 해제에 실패했습니다.' }, 500);
+  }
+});
+
+// VAPID 공개 키 조회
+pushRoutes.get('/api/push/vapid-public-key', cors(), async (c) => {
+  try {
+    const publicKey = c.env.VAPID_PUBLIC_KEY || '';
+    return c.json({ success: true, publicKey });
+  } catch (error: any) {
+    console.error('[Push VAPID Key] Error:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+// 🔔 2026-07-01: 셀프 테스트 푸시 — 호출자 **본인 구독**에만 발송(임의 대상 지정 불가 → 안전).
+//   VAPID 설정 후 실제 전달을 E2E 확인할 유일한 수단. 반환값(skipped/subscription_count/
+//   delivered/expired)으로 왜 안 오는지(키 미설정·구독 0·push_enabled off·만료)까지 진단 가능.
+pushRoutes.post('/api/push/test', requireAuth(), async (c) => {
+  try {
+    const authUser = getCurrentUser(c);
+    if (!authUser) return c.json({ success: false, error: 'Unauthorized' }, 401);
+    const userType = authUser.type as 'user' | 'seller' | 'admin' | 'agency';
+    const { sendSystemPush } = await import('../../../lib/system-push');
+    const result = await sendSystemPush(c.env, userType, authUser.id, {
+      title: '유어딜 테스트 알림 🔔',
+      body: '웹푸시가 정상 작동합니다. 이 알림이 보이면 설정 완료!',
+      url: '/notifications',
+    });
+    return c.json({ success: true, result });
+  } catch (error: any) {
+    console.error('[Push Test] Error:', error?.message);
+    return c.json({ success: false, error: '테스트 발송에 실패했습니다.' }, 500);
+  }
+});

@@ -1,0 +1,170 @@
+/**
+ * 🛡️ 2026-05-15: 내 단골 셀러 + 알림 매트릭스 설정 페이지.
+ *
+ * URL: /my/follows
+ *
+ * 단골 등록한 셀러별로 알림 종류 토글:
+ *   - 신상품 알림
+ *   - 라이브 시작 알림
+ *   - 공구 시작 알림
+ *
+ * 사용자 retention 핵심 — 셀러별 / 알림 종류별 세밀 컨트롤.
+ */
+
+import { useNavigate } from 'react-router-dom'
+import { BellIcon } from '@/components/icons/urdeal-icons'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { BellOff, Loader2, ChevronRight } from 'lucide-react'
+import SubPageHeader, { SUB_PAGE_CLS } from '@/components/ui/sub-page-header'
+import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
+import { toast } from '@/hooks/useToast'
+import SEO from '@/components/SEO'
+import BrandLoader from '@/components/brand/BrandLoader'
+import Udal from '@/components/mascot/Udal'
+import {
+  useMyFollows,
+  useToggleFollowNotify,
+  useUnfollowSeller,
+  type FollowNotifyKey,
+} from '@/hooks/queries/useMyFollows'
+import { formatKSTDate } from '@/utils/date'
+
+export default function MyFollowsPage() {
+  const navigate = useNavigate()
+  // 🛡️ 2026-06-01 Tier2: 수동 useState+useEffect+fetch → React Query 이전.
+  //   재방문 시 캐시 즉시 표시 + optimistic 토글/해제는 useMyFollows 훅이 롤백까지 처리.
+  // 🛡️ 2026-07-02: isError 분기 — 훅이 캐시 없는 실패를 throw 하게 바뀜(빈 목록 위장 방지).
+  const { data: follows = [], isLoading: loading, isError, refetch } = useMyFollows()
+  const toggleMut = useToggleFollowNotify()
+  const unfollowMut = useUnfollowSeller()
+  const savingId = toggleMut.isPending ? (toggleMut.variables?.sellerId ?? null) : null
+
+  function toggle(sellerId: number, key: FollowNotifyKey) {
+    const current = follows.find(f => f.seller_id === sellerId)
+    if (!current) return
+    toggleMut.mutate(
+      { sellerId, key, value: !current[key] },
+      { onError: (err) => {
+        const e = err as { response?: { data?: { error?: string } }; message?: string }
+        toast.error(e?.response?.data?.error || e?.message || '변경 실패')
+      } },
+    )
+  }
+
+  async function unfollow(sellerId: number) {
+    if (!(await confirmDialog('단골을 해제하시겠습니까?'))) return
+    unfollowMut.mutate(sellerId, {
+      onSuccess: () => toast.info('단골 해제'),
+      onError: () => toast.error('해제 실패'),
+    })
+  }
+
+  return (
+    <div className={SUB_PAGE_CLS}>
+      <SEO title="내 단골 가게" description="단골 등록한 가게와 알림 설정" url="/my/follows" />
+
+      <SubPageHeader title="내 단골 가게" />
+
+      <div className="ur-content-narrow mx-auto px-4 lg:px-8 py-5">
+        {loading ? (
+          /* 🚑 2026-07-10 로더 통일: Loader2 → BrandLoader */
+          <BrandLoader />
+        ) : isError ? (
+          <div className="text-center py-20">
+            <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">목록을 불러오지 못했어요</p>
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">네트워크 상태를 확인한 뒤 다시 시도해주세요</p>
+            <button
+              onClick={() => refetch()}
+              className="px-5 py-2 bg-brand text-white rounded-full text-[15px] font-bold"
+            >
+              다시 시도
+            </button>
+          </div>
+        ) : follows.length === 0 ? (
+          <div className="text-center py-20">
+            {/* 🦦 2026-10-10 (대표 "다 해줘"): 빈 단골 → 갸웃 유달이(아직 찾는 중) */}
+            <Udal mood="notFound" size={96} className="block mx-auto mb-3" />
+            <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">단골 등록한 가게가 없어요</p>
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">관심 있는 가게 페이지에서 단골 등록하세요</p>
+            <button
+              onClick={() => navigate('/')}
+              className="px-5 py-2 bg-brand text-white rounded-full text-[15px] font-bold"
+            >
+              동네딜 둘러보기
+            </button>
+          </div>
+        ) : (
+          <>
+            <p className="px-1 mb-3 text-[13px] text-gray-500 dark:text-gray-400">가게마다 받을 알림을 고를 수 있어요.</p>
+
+            <div className="space-y-3">
+              {follows.map(f => (
+                <div key={f.seller_id} className="bg-surface rounded-2xl overflow-hidden shadow-lift">
+                  {/* 셀러 정보 */}
+                  <button
+                    onClick={() => navigate(`/profile/${f.seller_username || f.seller_id}`)}
+                    className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-[#1D1F29] text-left transition-colors"
+                  >
+                    {f.seller_avatar ? (
+                      <img src={f.seller_avatar} alt="" className="w-12 h-12 rounded-full object-cover shrink-0" loading="lazy" />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-wash shrink-0 flex items-center justify-center text-[15px] font-semibold text-gray-500 dark:text-gray-400">{(f.seller_name || '?').slice(0, 1)}</div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[15px] font-bold text-gray-900 dark:text-white truncate">{f.seller_name}</p>
+                      <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">
+                        {formatKSTDate(f.created_at)} 부터 단골
+                      </p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
+                  </button>
+
+                  {/* 알림 매트릭스 토글 */}
+                  <div className="border-t border-rule p-3 space-y-2">
+                    {([
+                      // 🧹 2026-10-19: 라이브 시작 토글 제거 — 라이브커머스는 영구 중단이라 켜도 오는 알림이 없다.
+                      ...(LIVE_COMMERCE_SUSPENDED ? [] : [{ key: 'notify_live_start' as const, label: '라이브 시작', desc: '가게가 방송을 시작하면 알려 드려요' }]),
+                      { key: 'notify_group_buy' as const, label: '새 이용권', desc: '새 이용권을 올리면 알려 드려요' },
+                      { key: 'notify_new_product' as const, label: '새 소식', desc: '새 상품·이벤트를 알려 드려요' },
+                    ]).map(opt => (
+                      <label key={opt.key} className="flex items-center justify-between cursor-pointer py-1">
+                        <div className="flex items-start gap-2">
+                          {f[opt.key] ? (
+                            <BellIcon className="w-4 h-4 text-gray-900 dark:text-white mt-1" />
+                          ) : (
+                            <BellOff className="w-4 h-4 text-gray-300 dark:text-gray-600 mt-1" />
+                          )}
+                          <div>
+                            <p className="text-[12px] font-bold text-gray-900 dark:text-white">{opt.label}</p>
+                            <p className="text-[12px] text-gray-500 dark:text-gray-400">{opt.desc}</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => toggle(f.seller_id, opt.key)}
+                          disabled={savingId === f.seller_id}
+                          className={`relative w-10 h-6 rounded-full transition-colors ${f[opt.key] ? 'bg-brand' : 'bg-gray-300 dark:bg-gray-600'} disabled:opacity-50`}
+                          aria-label={`${opt.label} 알림 ${f[opt.key] ? '끄기' : '켜기'}`}
+                          aria-pressed={f[opt.key]}
+                        >
+                          <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white dark:bg-[#11141C] shadow transition-transform ${f[opt.key] ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
+                        </button>
+                      </label>
+                    ))}
+
+                    <button
+                      onClick={() => unfollow(f.seller_id)}
+                      className="w-full mt-2 px-3 py-2 text-[12px] text-gray-500 dark:text-gray-400 hover:text-red-500 transition-colors"
+                    >
+                      단골 해제
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}

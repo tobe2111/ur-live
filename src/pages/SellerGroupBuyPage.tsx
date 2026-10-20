@@ -1,0 +1,147 @@
+/**
+ * 🎟️ **이용권 탭 = M4** (2026-09-14 대표 승인 — 모바일 우선 재설계). 시안: `docs/design/seller-dashboard-mobile-first-2026-09.md`.
+ *   [이번 달 매출 한 줄] → [판매 중 / 판매 중지 / 종료 세그먼트] → [내 이용권 행(판매수·매출·스위치)] → [하단 고정 등록 버튼].
+ *   대표가 꼽은 셋(등록·관리·매출)을 한 화면에 직접 놓는다. PC 는 같은 행이 표로 늘어나고 등록 버튼은 헤더로 간다.
+ *
+ *   지운 것: 검은 그라디언트 '예상 정산' 카드(표면 규칙 ⑥ 그라디언트 0 · 검은 면) → 각 행의 펼침 안으로. 요약 카드 셋 → 세그먼트 숫자로.
+ *   '최근 7일 사용 시도' 카드 → PIN 오류가 성공보다 많을 때만 한 줄 경고(그때만 의미가 있는 정보다).
+ *   공구 엔진 패널(`GB_ENGINE_ENABLED`, 기본 OFF)은 그대로 게이트 뒤에 둔다.
+ */
+import { useMemo, useState } from 'react'
+import { useTranslation } from '@/lib/i18n-lite'
+import SegmentedTabs from '@/components/ui/segmented-tabs'
+import { useNavigate } from 'react-router-dom'
+import { AlertCircle, Plus, Ticket } from 'lucide-react'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
+import SellerLayout from '@/components/SellerLayout'
+import BrandLoader from '@/components/brand/BrandLoader'
+import SellerBottomBar from '@/components/seller-layout/SellerBottomBar'
+import { GB_ENGINE_ENABLED } from '@/shared/feature-flags'
+import { formatNumber, formatWon, safeNum } from '@/utils/format'
+import { useSellerStats, useSellerVouchers, useSellerDeletedVouchers, useSellerWithdrawable, monthRevenue } from './seller-page/useSellerHome'
+import VoucherRow, { type VoucherStat } from './seller-group-buy/VoucherRow'
+import GbProposalsPanel from './seller-group-buy/GbProposalsPanel'
+
+type Seg = 'on' | 'off' | 'ended' | 'deleted'
+interface VoucherLogSummary { total: number; success_count: number; pin_errors: number; expired_errors: number; already_used_errors: number }
+
+export default function SellerGroupBuyPage() {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const headers = { Authorization: `Bearer ${localStorage.getItem('seller_token')}` }
+
+  const vouchersQ = useSellerVouchers()
+  // 🗑️ 2026-09-15: 같은 queryKey 를 select 만 달리해 읽는다 — 요청·캐시는 한 벌이다.
+  const deletedQ = useSellerDeletedVouchers()
+  const statsQ = useSellerStats()
+  const balanceQ = useSellerWithdrawable()
+  const products = vouchersQ.data ?? []
+  const productIds = products.map((p) => p.id).join(',')
+  const statsByIdQ = useApiQuery<Record<number, VoucherStat>>(['seller', 'gb-voucher-stats', productIds], '/api/group-buy/seller-voucher-stats', {
+    params: { product_ids: productIds }, headers, enabled: products.length > 0,
+    select: (r: any) => { const map: Record<number, VoucherStat> = {}; if (r?.success) for (const s of (r.data || [])) map[s.product_id] = s; return map },
+  })
+  const voucherLogsQ = useApiQuery<VoucherLogSummary | null>(['seller', 'gb-voucher-logs'], '/api/group-buy/voucher-logs', { headers, select: (r: any) => (r?.data?.summary ?? null) })
+  const commissionQ = useApiQuery<number>(['seller', 'gb-commission-rate'], '/api/group-buy/commission-rate', { select: (r: any) => (r?.rate ? Number(r.rate) : 0.05) })
+  const commissionRate = commissionQ.data ?? 0.05
+  const logs = voucherLogsQ.data
+
+  const [seg, setSeg] = useState<Seg>('on')
+  const deletedProducts = deletedQ.data ?? []
+  const buckets = useMemo(() => {
+    const ended = products.filter((p) => p.group_buy_status === 'closed' || p.group_buy_status === 'achieved')
+    const endedIds = new Set(ended.map((p) => p.id))
+    const on = products.filter((p) => p.is_active && !endedIds.has(p.id))
+    const off = products.filter((p) => !p.is_active && !endedIds.has(p.id))
+    return { on, off, ended, deleted: deletedProducts }
+  }, [products, deletedProducts])
+  const rows = buckets[seg]
+  const totalSold = products.reduce((s, p) => s + safeNum(p.sold), 0)
+  const month = monthRevenue(statsQ.data?.daily ?? [])
+
+  if (vouchersQ.isLoading) {
+    return <SellerLayout title={t('seller.nav.voucherManage', { defaultValue: '이용권 관리' })}><BrandLoader /></SellerLayout>
+  }
+
+  const registerBtn = (cls: string) => (
+    <button type="button" onClick={() => navigate('/seller/meal-voucher/new')} className={cls}>
+      <Plus className="h-4 w-4" /> {t('seller.registerVoucher', { defaultValue: '이용권 등록' })}
+    </button>
+  )
+
+  return (
+    <SellerLayout title={t('seller.nav.voucherManage', { defaultValue: '이용권 관리' })}>
+      <div className="mx-auto max-w-5xl space-y-4">
+        {/* ── 이번 달 한 줄 — 숫자가 주인공. PC 는 오른쪽에 등록 버튼. ── */}
+        <div className="flex items-end justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[12.5px] font-semibold text-gray-400">{t('seller.vouchers.thisMonth', { defaultValue: '이번 달' })}</p>
+            <p className="text-[28px] font-extrabold leading-tight tracking-tight text-gray-900 lg:text-[32px]">{formatWon(month)}</p>
+            <p className="mt-1 text-[12.5px] text-gray-500">
+              {t('seller.vouchers.soldTotal', { defaultValue: '판매 {{count}}건', count: totalSold })} · {t('seller.home.settleAvail', { defaultValue: '정산 가능' })} <b className="text-gray-900">{formatWon(balanceQ.data ?? 0)}</b>
+            </p>
+          </div>
+          {registerBtn('ur-btn ur-btn-md ur-btn-primary hidden md:inline-flex')}
+        </div>
+
+        {/* ── 세그먼트 — 안 고른 것도 흰 면 위 글자다(테두리 박스로 그리지 않는다). ── */}
+        {/* 🧭 2026-10-06 (대표 "판매 중지 0 이 2줄로 나뉜다"): 줄바꿈 금지·글자 길이만큼 자리는 `SegmentedTabs` 가 지킨다. */}
+        <SegmentedTabs<Seg>
+          className="md:w-fit"
+          value={seg}
+          onChange={setSeg}
+          items={[
+            { id: 'on', label: t('seller.vouchers.onSale', { defaultValue: '판매 중' }), count: buckets.on.length },
+            { id: 'off', label: t('seller.vouchers.paused', { defaultValue: '판매 중지' }), count: buckets.off.length },
+            { id: 'ended', label: t('seller.vouchers.ended', { defaultValue: '종료' }), count: buckets.ended.length },
+            // 🗑️ 삭제분이 있을 때만 칸을 만든다 — 늘 비어 있는 탭은 자리만 먹는다.
+            ...(buckets.deleted.length > 0 ? [{ id: 'deleted' as Seg, label: t('seller.vouchers.deletedSeg', { defaultValue: '삭제됨' }), count: buckets.deleted.length }] : []),
+          ]}
+        />
+
+        {logs && logs.total > 5 && logs.pin_errors > logs.success_count && (
+          <p className="flex items-center gap-1.5 rounded-lg bg-tone-warn-bg px-3 py-2 text-[12px] font-semibold text-tone-warn">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" /> {t('seller.vouchers.pinWarn', { defaultValue: '최근 7일 PIN 오류 {{errors}}건이 성공 {{ok}}건보다 많아요. 가게에 안내된 PIN 을 확인해 주세요.', errors: logs.pin_errors, ok: logs.success_count })}
+          </p>
+        )}
+
+        {/* 🎟️ 2026-07-06 (§2-B): 공구 제안 인박스 — 게이트 OFF */}
+        {GB_ENGINE_ENABLED && products.length > 0 && (
+          <GbProposalsPanel products={products.map((p) => ({ id: p.id, name: p.name, price: safeNum(p.price) }))} headers={headers} />
+        )}
+
+        {/* ── 행 목록 ── */}
+        <div className="overflow-hidden rounded-[var(--dash-radius,16px)] border border-rule bg-white">
+          {/* 삭제분 행은 [사진 · 이름 · 복구] 한 줄이라 이 표 머리와 칸이 안 맞는다 — 그 세그먼트에선 안 그린다. */}
+          <div className={`${seg === 'deleted' ? 'hidden' : 'hidden md:grid'} grid-cols-[56px_minmax(0,1.6fr)_1fr_.7fr_1fr_60px_90px] gap-4 border-b border-rule px-5 py-2.5 text-[11.5px] font-bold text-gray-400`}>
+            <span /><span>{t('seller.tab.vouchers', { defaultValue: '이용권' })}</span><span>{t('seller.vouchers.price', { defaultValue: '가격' })}</span><span>{t('seller.vouchers.sold', { defaultValue: '판매' })}</span><span>{t('seller.sales')}</span><span>{t('seller.vouchers.onSaleShort', { defaultValue: '판매' })}</span><span />
+          </div>
+          {rows.length === 0 ? (
+            <div className="px-6 py-12 text-center">
+              <Ticket className="mx-auto mb-3 h-10 w-10 text-gray-300" />
+              {products.length === 0 ? (
+                <>
+                  <p className="font-bold text-gray-900">{t('seller.groupBuy.noVouchers')}</p>
+                  <p className="mt-1 text-[13px] text-gray-500">{t('seller.groupBuy.noVouchersDesc')}</p>
+                  <div className="mt-4 flex justify-center">{registerBtn('ur-btn ur-btn-md ur-btn-primary')}</div>
+                </>
+              ) : (
+                <p className="text-[13px] text-gray-500">{t('seller.vouchers.segEmpty', { defaultValue: '이 상태의 이용권이 없어요' })}</p>
+              )}
+            </div>
+          ) : rows.map((v) => (
+            <VoucherRow key={v.id} v={v} stat={statsByIdQ.data?.[v.id]} commissionRate={commissionRate} onChanged={() => { vouchersQ.refetch(); statsByIdQ.refetch() }} />
+          ))}
+        </div>
+
+        {/* 📱 폰: 하단 탭 바로 위에 고정 등록 버튼 — 스크롤 어디서든 한 번에.
+            ⚠️ 이용권이 **한 장도 없을 때는 안 그린다**(2026-09-15 대표 신고 "버튼들이 겹치는 경우도 있고"):
+            그때는 빈 상태 카드가 이미 가운데에 같은 버튼을 세우고 있어, 한 화면에 [이용권 등록]이 둘이 된다.
+            고정 바의 쓸모는 "목록이 길어도 스크롤 없이 누른다" 인데 목록이 비면 그 쓸모 자체가 없다. */}
+        {products.length > 0 && (
+          <SellerBottomBar>{registerBtn('ur-btn ur-btn-lg ur-btn-primary w-full')}</SellerBottomBar>
+        )}
+      </div>
+    </SellerLayout>
+  )
+}

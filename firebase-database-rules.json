@@ -1,0 +1,30 @@
+{
+  "rules": {
+    "chats": {
+      "$streamId": {
+        // 누구나 채팅 읽기 가능
+        ".read": true,
+        
+        // 인증된 사용자만 채팅 쓰기 가능
+        ".write": "auth != null",
+        
+        // 메시지 구조 검증
+        "$messageId": {
+          ".validate": "newData.hasChildren(['username', 'text', 'timestamp'])",
+          "username": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 50"
+          },
+          "text": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 200"
+          },
+          "timestamp": {
+            ".validate": "newData.isNumber()"
+          }
+        },
+        
+        // 인덱싱 (타임스탬프 기준 정렬)
+        ".indexOn": ["timestamp"]
+      }
+    }
+  }
+}

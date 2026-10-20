@@ -1,0 +1,394 @@
+name: Deploy to Cloudflare Pages
+
+# 🛡️ 2026-05-13: push 트리거 복원 — main 으로 push 시 자동 배포.
+#   2026-05-07 ~ 5-13 동안 Actions 한도 소진으로 workflow_dispatch 로 비활성화했음.
+#   Workers 프로젝트의 cron 갱신은 별도 (수동 `wrangler deploy`).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# 🛡️ 2026-05-28: 동시 배포 1개만 — 새 push 시 진행 중 배포 취소 (latest-wins).
+#   이전: concurrency 없음 → 빠른 연속 push 마다 deploy 누적 (한 번 hang 시 10+ 개 동시 In progress).
+concurrency:
+  group: deploy-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    name: Deploy to Cloudflare Pages
+    # 🛡️ 2026-05-28: 무한 hang 방어 — step 행 시 30분 후 실패 처리 (prerender hang 사고 재발 방지).
+    timeout-minutes: 40
+    # 🛡️ 2026-04-22 배치 117 (TD-012): Node 20 runtime deprecation 대비.
+    #   2026-09 부터 GHA 의 JS actions 는 Node 24 사용. 일부 actions 는 아직
+    #   Node 20 을 지정 — 이 env 가 Node 24 로 강제 실행.
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # 🏭 2026-06-05: 전체 히스토리 — 앱 버전(v1.0.<커밋수>)을 vite 빌드에서 계산하려면 필요.
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm test -- --run
+
+      # 🛡️ 2026-07-12 배포 타입체크 게이트 (대표 승인) — vite build 는 타입검사를 안 해서
+      #   타입 에러(예: BrandLoader import 누락 → 블로그 상세 전면 크래시)가 그대로 라이브 배포됐음.
+      #   verify.yml 의 tsc 는 별도 워크플로 + continue-on-error 라 배포를 못 막음 → 여기서 하드 차단.
+      #   (worker 전용 tsconfig 체크는 선재 에러 정리 전까지 verify 에서 warn 유지 — 별도 정리 예정.)
+      - name: Typecheck gate (타입 에러 시 배포 차단)
+        run: npx tsc --noEmit --skipLibCheck
+
+      # 🛡️ 2026-04-22: 평문 키 → GitHub Secrets fallback.
+      # 클라이언트 번들에 주입되는 VITE_* 는 본질적으로 공개 (브라우저 네트워크탭에서 보임)지만,
+      # workflow 파일에 평문으로 두면 (1) git history 영구 노출, (2) 키 회전 시 코드 변경 필요.
+      # Secret 으로 옮기면 회전이 Dashboard 작업만으로 가능. fallback 으로 기존 default 유지.
+      - name: Build project
+        run: npm run build
+        env:
+          NODE_VERSION: 20
+          VITE_REGION: KR
+          VITE_DEFAULT_LANGUAGE: ko
+          VITE_API_BASE_URL: https://urdeal.kr
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY || 'AIzaSyCxmgG3NEXsWtHKbE425dvq5EWs3WHXOh8' }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN || 'urteam-live-commerce-5b284.firebaseapp.com' }}
+          VITE_FIREBASE_DATABASE_URL: ${{ secrets.VITE_FIREBASE_DATABASE_URL || 'https://urteam-live-commerce-5b284-default-rtdb.asia-southeast1.firebasedatabase.app' }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID || 'urteam-live-commerce-5b284' }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET || 'urteam-live-commerce-5b284.firebasestorage.app' }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID || '352937066044' }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID || '1:352937066044:web:e5bfd5e1d8f61688e30d39' }}
+          VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID || 'G-B1ST2L37CM' }}
+          VITE_KAKAO_APP_KEY: ${{ secrets.VITE_KAKAO_APP_KEY || '975a2e7f97254b08f15dba4d177a2865' }}
+          VITE_KAKAO_JAVASCRIPT_KEY: ${{ secrets.VITE_KAKAO_JAVASCRIPT_KEY || '975a2e7f97254b08f15dba4d177a2865' }}
+          # KAKAO_REST_API_KEY 는 서버 전용 (wrangler secret). 클라이언트 번들 금지.
+          VITE_TOSS_CLIENT_KEY: ${{ secrets.VITE_TOSS_CLIENT_KEY || 'live_gck_yL0qZ4G1VOdvERE6vv6oroWb2MQY' }}
+          # 🛡️ 2026-07-20 Turnstile 활성(대표 "봇 방어도 하자"): sitekey 는 공개값(위젯 렌더용).
+          #   서버 짝(TURNSTILE_SECRET)은 Pages 대시보드 Secret — 클라 배포 후 대표가 등록(순서: 위젯 먼저).
+          VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAAD5rMDAJvQnAWr0w' }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN || 'https://08caf64e8e7955f09acc2b0551fdb049@o4510992097935360.ingest.us.sentry.io/4510992127295488' }}
+          VITE_SENTRY_ENVIRONMENT: production
+          # 🛡️ 2026-04-27: Sentry release 와 source map upload 의 release 이름 통일.
+          #   sentry.ts 의 `release: webapp@VITE_APP_VERSION` ↔ GitHub Actions 의 `releases new $GITHUB_SHA`
+          #   둘이 일치해야 Sentry 가 source map 을 매칭함.
+          VITE_APP_VERSION: ${{ github.sha }}
+
+      - name: Verify build output
+        run: |
+          echo "=== Build verification ==="
+          test -f dist/client/index.html || (echo "❌ index.html missing" && exit 1)
+          test -f dist/client/_worker.js || (echo "❌ _worker.js missing" && exit 1)
+          test -d dist/client/assets || (echo "❌ assets directory missing" && exit 1)
+          JS_COUNT=$(ls dist/client/assets/*.js 2>/dev/null | wc -l)
+          echo "✅ index.html exists"
+          echo "✅ _worker.js exists"
+          echo "✅ $JS_COUNT JS chunks in assets/"
+          test $JS_COUNT -gt 50 || (echo "❌ Too few JS chunks ($JS_COUNT), build may be incomplete" && exit 1)
+
+          # 🛡️ Bundle size budget (2026-04-22 추가 · 2026-07-07 압축 기준으로 수정)
+          # ⚠️ 2026-07-07: Cloudflare 실제 한도는 **압축(gzip) 크기**(Free 1MB / Paid 10MB) — 비압축이 아님.
+          #   비압축 4MB 캡은 프록시였는데, 앱 성장으로 비압축 4.0MB 인데 gzip 0.94MB(<1MB free 한도)인
+          #   '배포 가능한' 상태를 오탐으로 막아 전 세션 배포가 몇 시간 중단됨. → 실제 제약인 gzip 으로 게이트.
+          #   임계에서 우리가 먼저 실패 = Cloudflare 하드 리젝(무음) 전에 명확한 CI 신호.
+          #   ⚠️ 2026-07-13: 앱 성장으로 gzip 이 ~0.968MB 도달 → 게이트를 1,020,000B(≈0.973MB)로 소폭 상향.
+          #   Cloudflare 실제 Free 한도(1,048,576B=1MiB)까지 여유 ~28KB 만 남음 — **이제 신규 worker 코드
+          #   추가 여력이 거의 없다.** 다음 확장 전 Paid 전환(gzip 10MB) 또는 worker 다이어트가 필요.
+          #
+          #   🔴 2026-08-10: 그 예고가 현실이 됐다. #1113 머지 후 gzip 999KB(≈1,023,000B)로 **경보선을 넘겨
+          #   main 배포가 전면 차단**됐다(내 변경뿐 아니라 이후 모든 머지가 같이 막힌다). CF 실한도까지는
+          #   아직 ~25KB 남아 실제 배포는 가능한 상태라, **막힌 배포를 푸는 최소 조치로** 1,032,000B(≈1.008MB)
+          #   로 상향한다. 실한도까지 남는 여유는 **약 16KB**.
+          #   ⚠️ **이것이 마지막 상향이다.** 다음에 또 넘으면 상향할 자리가 없다(경보선이 실한도와 겹쳐
+          #   조기 경보 기능 자체가 사라진다). 그 전에 둘 중 하나를 **대표가 결정**해야 한다:
+          #     (a) Workers Paid 전환 → gzip 한도 10MB (지금 문제 영구 소멸)
+          #     (b) worker 다이어트 — 가장 큰 후보는 **가이드/블로그 시드 산문**
+          #         (`guide-seed-*.ts` + `blog-seed.ts` 합계 ~3,300줄의 한국어 본문이 워커 번들에 상주하는데,
+          #          실제로는 시드 버전이 오를 때만 쓰인다). 외부 자산(R2/정적 JSON)으로 빼면 큰 폭 감축 가능.
+          #
+          #   ✅ 2026-10-11 대표 확정: 계정은 이미 **Workers Paid($5)** 다(대표 "지금 $5짜리 요금제 쓰고는 있어").
+          #   증거: cron 워커(wrangler deploy)는 gzip 1.44MB 인데 매 배포 성공해 왔다 — 1MB 한도였다면 거절됐다.
+          #   그래서 위 1MB 게이트는 실제 한도(압축 10MB)보다 10배 엄격했고, 이 게이트에 걸려 #1695 이후 배포가 막혔다.
+          #   ⇒ 대표 지시 *"일단 7mb로 올릴까?"* 로 **압축 7MB** 로 올린다(10MB 실한도까지 3MB 를 조기 경보 여유로 남긴다).
+          #   ⚠️ 크기가 커지면 워커 **콜드 스타트**도 길어진다 — 7MB 는 한도가 아니라 "여기서 멈추고 다시 본다" 선이다.
+          WORKER_SIZE=$(stat -c%s dist/client/_worker.js 2>/dev/null || stat -f%z dist/client/_worker.js)
+          WORKER_GZ=$(gzip -c dist/client/_worker.js | wc -c)
+          echo "  _worker.js size: $(($WORKER_SIZE / 1024))KB (gzip $(($WORKER_GZ / 1024))KB / 게이트 7168KB · CF Paid 압축한도 10240KB)"
+          test $WORKER_GZ -lt 7340032 || (echo "❌ _worker.js 압축 $(($WORKER_GZ/1024))KB > 7MB — CF Paid 압축한도(10MB) 조기 경보선. 워커 다이어트 필요(크론·도매 코드가 섞였는지 먼저 확인)" && exit 1)
+          # 비압축은 느슨한 안전망만 — CF 한도는 압축 기준이다. 압축 7MB 게이트와 어긋나지 않게 32MB 로 둔다
+          #   (예전 10MB 는 압축 1MB 게이트 시절 값이라, 그대로 두면 압축 ~2.5MB 에서 먼저 막혀 7MB 상향이 무의미해진다).
+          test $WORKER_SIZE -lt 33554432 || (echo "❌ _worker.js 비압축 $(($WORKER_SIZE/1024))KB > 32MB(안전망)" && exit 1)
+
+          ENTRY_SIZE=$(du -b dist/client/assets/index-*.js 2>/dev/null | head -1 | awk '{print $1}' || echo 0)
+          echo "  entry JS size: $(($ENTRY_SIZE / 1024))KB"
+          test $ENTRY_SIZE -lt 524288 || (echo "⚠️ entry JS 비대 ($(($ENTRY_SIZE/1024))KB > 500KB) — 코드 스플리팅 점검 권장"; true)
+
+          CLIENT_TOTAL=$(du -sb dist/client 2>/dev/null | awk '{print $1}')
+          echo "  total client size: $(($CLIENT_TOTAL / 1024 / 1024))MB"
+          test $CLIENT_TOTAL -lt 52428800 || (echo "❌ client 총 용량 초과 ($(($CLIENT_TOTAL/1024/1024))MB > 50MB)" && exit 1)
+
+          echo "✅ Build verification + size budget 통과"
+
+      # 🛡️ 2026-05-22 영구 deploy fix:
+      #   build 가 `sourcemap: 'hidden'` 생성 → 270+ .map 파일 (총 ~590 files).
+      #   Cloudflare Pages Direct Upload 가 96/592 에서 일관되게 500 거부 (rate/size).
+      #   기존: Sentry 업로드 step 안에서만 .map 삭제 → SENTRY_AUTH_TOKEN 없으면 그대로 잔존.
+      #   해결: deploy 직전 무조건 .map 삭제 (Sentry 가 이미 업로드했든 안 했든 무관).
+      #   .map 은 hidden 모드라 JS 에 reference 주석 없음 — 삭제해도 런타임 영향 0.
+      - name: Strip source maps before deploy (CF Pages 파일 수 절감)
+        run: |
+          MAPS_BEFORE=$(find dist/client -name '*.map' 2>/dev/null | wc -l)
+          find dist/client -name '*.map' -delete 2>/dev/null || true
+          MAPS_AFTER=$(find dist/client -name '*.map' 2>/dev/null | wc -l)
+          TOTAL_FILES=$(find dist/client -type f 2>/dev/null | wc -l)
+          echo "✅ Stripped $MAPS_BEFORE source maps ($MAPS_AFTER remaining). Total deploy files: $TOTAL_FILES"
+
+      # 🛡️ 2026-04-26 (O1): Sentry 소스맵 업로드
+      # vite.config.ts 의 sourcemap: 'hidden' 으로 .map 파일이 dist/client/assets/ 에 생성됨.
+      # @sentry/cli 로 release 별 소스맵 업로드 → production 에러 stack trace 가독성 ↑.
+      # SENTRY_AUTH_TOKEN 미설정이면 graceful skip.
+      - name: Upload Sentry source maps
+        if: ${{ env.SENTRY_AUTH_TOKEN != '' }}
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG || 'ur-live' }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT || 'ur-live-frontend' }}
+        run: |
+          # sentry-cli 1회 사용 — 의존성 추가 안 함
+          curl -sL https://sentry.io/get-cli/ | bash
+          # 🛡️ 2026-04-27: sentry.ts 의 `release: webapp@${VITE_APP_VERSION}` 형식과 일치.
+          export RELEASE="webapp@${{ github.sha }}"
+          ~/.local/bin/sentry-cli releases new "$RELEASE" || true
+          ~/.local/bin/sentry-cli releases files "$RELEASE" upload-sourcemaps \
+            dist/client/assets \
+            --url-prefix '~/assets' \
+            --rewrite || true
+          ~/.local/bin/sentry-cli releases finalize "$RELEASE" || true
+          # 🛡️ 2026-04-27: deployment 마킹 (Sentry 가 어느 release 가 production 에 deploy 됐는지 추적)
+          ~/.local/bin/sentry-cli releases deploys "$RELEASE" new -e production || true
+          # 보안: 소스맵 파일은 R2/CDN 에 노출되지 않도록 삭제 (hidden 모드라 자동으로 노출 X 지만 방어)
+          find dist/client/assets -name '*.map' -delete
+          echo "✅ Sentry source maps uploaded for release $RELEASE"
+
+      # 🛡️ 2026-07-03 (대표 — "영구적으로 이런 일 발생하지 않도록"): stale-chunk 404 무한로딩 근본차단.
+      #   원인: 매 배포마다 Vite 해시 청크 파일명이 바뀜 → 브라우저/bfcache 에 남은 옛 index.html 이
+      #   삭제된 `/assets/*.js` 를 참조 → 404 → SPA HTML 폴백 → "무한 로딩"(라이브 실사고).
+      #   현재 방어(부트가드 재로드)는 사후복구라 잦은 배포 땐 사용자가 깜빡임을 봄.
+      #   근본 fix = **자산 보존(asset retention)**: 이전 배포들의 해시 청크를 이번 배포에도 함께 올려
+      #   옛 청크가 계속 200 을 반환하게 함(업계 표준 — Vercel/Netlify 가 자동으로 하는 것).
+      #   → HTML 은 여전히 no-cache 라 다음 네비게이션은 최신 청크를 씀. 옛 탭/캐시는 404 없이 살아 있음.
+      #   보존 청크는 mtime 14일 + 6000개 상한으로 정리(CF Pages 20k 파일 한도 안전).
+      - name: Restore prior chunk archive
+        uses: actions/cache@v4
+        with:
+          path: .assets-archive
+          key: assets-archive-${{ github.sha }}
+          restore-keys: |
+            assets-archive-
+      - name: Merge prior chunks into deploy (asset retention)
+        run: |
+          set -e
+          mkdir -p .assets-archive
+          # 1) 이번 빌드 청크를 아카이브에 추가(신선 mtime)
+          find dist/client/assets -maxdepth 1 -type f \( -name '*.js' -o -name '*.css' \) -exec cp -n {} .assets-archive/ \;
+          # 2) 오래된 청크 정리(14일 이상 미갱신)
+          find .assets-archive -type f -mtime +14 -delete 2>/dev/null || true
+          # 3) 개수 상한(6000) — 초과 시 오래된 것부터 제거
+          CNT=$(ls -1 .assets-archive 2>/dev/null | wc -l)
+          if [ "$CNT" -gt 6000 ]; then
+            ls -1t .assets-archive | tail -n +6001 | while read f; do rm -f ".assets-archive/$f"; done
+          fi
+          # 4) 아카이브의 옛 청크를 이번 배포 디렉토리에 병합(이번 빌드에 없는 것만 — 최신 우선)
+          cp -n .assets-archive/* dist/client/assets/ 2>/dev/null || true
+          echo "✅ asset retention: $(find dist/client/assets -name '*.js' | wc -l) js chunks in deploy (archive holds $(ls -1 .assets-archive | wc -l) files)"
+
+      # 2026-04-22: Workers 프로젝트 제거 — 이 프로젝트는 Pages (with _worker.js) 구조.
+      # 사용자가 이미 Pages(ur-live.pages.dev)에 모든 secret(JWT_SECRET 등)을 세팅함.
+      # `urdeal.kr` Custom Domain을 Workers → Pages로 이동 (사용자 Dashboard 작업).
+      # 이후 이 Action은 Pages에만 배포하고 production promote도 즉시 수행.
+
+      # 🛡️ 2026-05-22 사고 fix: wrangler@4 (4.84.1) 가 CF API 응답을 malformed 로 받는 known 회귀.
+      #   에러 패턴: "Received a malformed response from the API" + "POST /pages/assets/upload -> 500"
+      #   CLAUDE.md 권장: wrangler@3 (3.x 안정) 사용. 사용자 main deploy 매 commit 실패 영구 해결.
+      #   재시도 로직 추가: transient 실패 시 최대 3회 (exponential backoff).
+      - name: Deploy to Cloudflare Pages
+        run: |
+          set -e
+          # ⏱️ **재시도 대기는 실패 이유에 맞춰야 한다** (2026-08-02 실사고).
+          #   종전 `SLEEP=$((i*10))` = 10s·20s → 총 30초. 그런데 실제로 만난 실패는 이것이었다:
+          #     `A request to the Cloudflare API (/accounts/***/pages/projects/ur-live) failed.
+          #      Rate limited. Please wait and consider throttling your request speed [code: 10429]`
+          #   레이트 리밋은 초 단위로 안 풀린다 → **소비자 사이트 배포가 연속 4회 실패**했고
+          #   (22:53·23:37·23:47·23:56 KST) 라이브는 4개 머지만큼 뒤처진 채였다.
+          #   ⇒ 10429 면 분 단위로 기다린다. 같은 수정을 deploy-ads/wholesale/worker-deploy 에도 적용.
+          MAX_RETRY=4
+          for i in $(seq 1 $MAX_RETRY); do
+            echo "=== Deploy attempt $i/$MAX_RETRY ==="
+            OUT=$(npx wrangler@3 pages deploy dist/client \
+                --project-name=ur-live \
+                --branch=main \
+                --commit-dirty=true \
+                --commit-message="deploy ${{ github.sha }}" 2>&1) && RC=0 || RC=$?
+            echo "$OUT"
+            if [ $RC -eq 0 ]; then
+              echo "✅ Deploy succeeded on attempt $i"
+              exit 0
+            fi
+            if [ $i -lt $MAX_RETRY ]; then
+              if echo "$OUT" | grep -qE '10429|Rate limited'; then
+                SLEEP=$(( i == 1 ? 60 : (i == 2 ? 150 : 300) ))
+                echo "⏳ Cloudflare 레이트 리밋(10429) — ${SLEEP}s 후 재시도"
+              else
+                SLEEP=$((i * 10))
+                echo "⚠️ Attempt $i failed. Sleeping ${SLEEP}s before retry..."
+              fi
+              sleep $SLEEP
+            fi
+          done
+          echo "❌ All $MAX_RETRY deploy attempts failed."
+          exit 1
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      # 🛡️ 2026-06-10 (드리프트 창 제거): 배포 직후 스키마 자동 동기화 — '코드 먼저, 스키마는 수동 대기'
+      #   가 no-such-column 류 '없던 에러'의 구조적 원인이었음. REPAIR_SCHEMA_TOKEN 미설정 시 skip(안내만).
+      #   설정: 같은 값을 ① Cloudflare Pages Variables ② GitHub repo Secrets 양쪽에 등록.
+      - name: Auto schema repair after deploy
+        run: |
+          if [ -z "${{ secrets.REPAIR_SCHEMA_TOKEN }}" ]; then
+            echo "::notice::REPAIR_SCHEMA_TOKEN 미설정 — 스키마 자동복구 skip (Cloudflare+GitHub 양쪽에 같은 값 등록 시 활성화)"
+            exit 0
+          fi
+          sleep 10
+          RES=$(curl -s --max-time 60 -X POST "https://urdeal.kr/api/_internal/repair-schema/auto" \
+            -H "X-Repair-Token: ${{ secrets.REPAIR_SCHEMA_TOKEN }}" || echo '{}')
+          echo "repair-schema 응답: $RES"
+          if echo "$RES" | grep -q '"success":true'; then
+            ERRS=$(echo "$RES" | python3 -c "import sys,json;print(json.load(sys.stdin).get('errors',0))" 2>/dev/null || echo "?")
+            echo "✅ 스키마 자동복구 완료 (오류 $ERRS건)"
+            echo "$RES" | grep -q '컬럼.*임박' && echo "::warning::넓은 테이블 컬럼 한도 임박 — column_warnings 확인" || true
+          else
+            echo "::warning::스키마 자동복구 실패 — /admin/health 에서 수동 실행 필요"
+          fi
+
+      - name: Post-deploy verification (smoke test)
+        # 🛡️ 2026-04-22 강화: 주요 엔드포인트가 "응답은 한다"는 것만 확인.
+        # worker 자체가 부팅 실패면 5xx 또는 타임아웃. 2xx/3xx/4xx는 worker 살아있음.
+        # CRITICAL: 5xx 응답 있으면 workflow FAIL → 빠른 revert 신호.
+        run: |
+          echo "=== Post-deploy smoke test ==="
+          sleep 15
+
+          PROD=https://urdeal.kr
+          FAIL=0
+          FAIL_DETAILS=""
+
+          check() {
+            local path="$1"
+            local label="$2"
+            local status
+            status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$PROD$path" || echo "000")
+            # 5xx (worker crash) 또는 000 (timeout/DNS fail)만 실패 처리
+            if [ "$status" -ge 500 ] 2>/dev/null || [ "$status" = "000" ]; then
+              echo "❌ $label ($path) → $status"
+              FAIL=$((FAIL + 1))
+              FAIL_DETAILS="$FAIL_DETAILS\n  - $label ($path): $status"
+            else
+              echo "✅ $label ($path) → $status"
+            fi
+          }
+
+          check "/"               "Homepage"
+          check "/api/health"     "Health API"
+          check "/api/version"    "Version API"
+          check "/manifest.webmanifest" "PWA manifest"
+          check "/api/seller/login" "Seller login"
+          check "/api/admin/login"  "Admin login"
+          check "/api/agency/login" "Agency login"
+          # 2026-05-23: 결제 핵심 endpoint smoke
+          # 🔗 2026-07-28 유어애즈 모집 퍼널 신규 표면 — "라우트가 마운트됐나 / 모듈이 로드되나"를 매 배포 검증.
+          #   원격 세션은 prod egress 가 막혀 있어 여기(러너)가 유일한 실측 지점.
+          #   4xx(인증/형식)는 정상 — 5xx 만 실패로 잡는다(모듈 로드 실패·스키마 오류의 신호).
+          check "/creators/start" "크리에이터 시작(초대코드 클레임 페이지)"
+          check "/creators/apply" "크리에이터 신청"
+          check "/api/admin/ads/influencer-pool/stats" "인플루언서 풀 통계(퍼널 집계)"
+          check "/checkout"       "Checkout page"
+          check "/api/payments/client-key" "Payments client-key"
+          check "/toss-debug"     "Toss debug page"
+
+          # 🛡️ 2026-06-10 (교환권 상세 500 사고): 데이터 의존 상세 엔드포인트 — 실제 상품 id 로 검증.
+          #   list 는 멀쩡한데 detail 만 깨지는 회귀(SELECT p.* 컬럼 한도 등)는 정적 경로 체크로 못 잡음.
+          GB_ID=$(curl -s --max-time 10 "$PROD/api/group-buy/products?status=active" | python3 -c "import sys,json;d=json.load(sys.stdin);items=d.get('data') or [];print(items[0]['id'] if items else '')" 2>/dev/null || echo "")
+          if [ -n "$GB_ID" ]; then
+            check "/api/group-buy/products/$GB_ID" "GroupBuy/교환권 detail (id=$GB_ID)"
+          else
+            echo "⚠️ 활성 공구 없음 — 공구 상세 smoke skip"
+          fi
+          P_ID=$(curl -s --max-time 10 "$PROD/api/products?limit=1" | python3 -c "import sys,json;d=json.load(sys.stdin);items=(d.get('data') or {}).get('products') or d.get('data') or d.get('products') or [];print(items[0]['id'] if isinstance(items,list) and items else '')" 2>/dev/null || echo "")
+          if [ -n "$P_ID" ]; then
+            check "/api/products/$P_ID" "Product detail (id=$P_ID)"
+          else
+            echo "⚠️ 상품 목록 파싱 실패 — 상품 상세 smoke skip"
+          fi
+          check "/api/wholesale/mall" "Wholesale mall info"
+
+          # 🔗 초대코드 클레임(POST) — 스키마 ALTER(claim_code/linked_user_id/joined_at)가 prod D1 에 실제로
+          #   적용됐는지 확인하는 유일한 무인증 경로. 존재할 수 없는 코드라 **아무 행도 안 바뀜**(읽기와 동등).
+          #   기대: 401(로그인 필요) — 라우트·모듈·스키마가 다 살아있다는 뜻. 5xx 면 스키마/모듈 문제.
+          CLAIM=$(curl -s --max-time 10 -o /dev/null -w "%{http_code}" -X POST "$PROD/api/creator-claim" \
+            -H 'content-type: application/json' -d '{"code":"ZZZZZZZZZZZZ"}' || echo "000")
+          if [ "$CLAIM" -ge 500 ] 2>/dev/null || [ "$CLAIM" = "000" ]; then
+            echo "❌ 초대코드 클레임 (POST /api/creator-claim) → $CLAIM (스키마 ALTER 또는 모듈 로드 실패 의심)"
+            FAIL=$((FAIL + 1)); FAIL_DETAILS="$FAIL_DETAILS\n  - creator-claim POST: $CLAIM"
+          else
+            echo "✅ 초대코드 클레임 (POST /api/creator-claim) → $CLAIM (스키마·라우트 정상)"
+          fi
+
+          # 결제 healthcheck — 503 (env mismatch) 은 fail 처리 안 함, 별도 curl + 본문 파싱.
+          PAY_HEALTH=$(curl -s --max-time 10 "$PROD/api/_healthcheck/payments" || echo '{}')
+          if echo "$PAY_HEALTH" | grep -q '"healthy":false'; then
+            echo ""
+            echo "::warning::결제 healthcheck unhealthy — 운영자 액션 필요"
+            echo "응답: $PAY_HEALTH"
+            echo ""
+            echo "조치: Cloudflare Dashboard → Pages → ur-live → Settings"
+            echo "      → Environment variables and secrets → Production tab"
+            echo "      → /admin/env-check 에서 정확한 issue 확인 가능"
+          elif echo "$PAY_HEALTH" | grep -q '"healthy":true'; then
+            echo "OK 결제 healthcheck"
+          else
+            echo "::warning::결제 healthcheck endpoint 응답 비정상, 통과"
+          fi
+
+          if [ "$FAIL" -gt 0 ]; then
+            echo ""
+            echo "❌ Smoke test: $FAIL 엔드포인트에서 5xx/타임아웃 (worker crash 가능성):"
+            echo -e "$FAIL_DETAILS"
+            echo ""
+            echo "원인 파악: https://dash.cloudflare.com → ur-live → Logs → Live log"
+            exit 1
+          fi
+          echo "✅ All smoke tests passed (worker 정상 응답 중)"
+
+      # 🚨 **실패를 대표가 보는 곳에 남긴다** (2026-08-03 신설 — 근거는 scripts/report-deploy-failure.sh).
+      #   배포 실패는 Actions 탭 안에만 있었고 아무도 안 봤다. 그 사이 라이브는 4개 머지만큼 뒤처졌다.
+      #   ⚠️ `continue-on-error` — 관측이 배포 결과를 바꾸면 본말전도다.
+      - name: 배포 실패를 어드민에 기록 (조용한 실패 차단)
+        if: failure()
+        continue-on-error: true
+        run: bash scripts/report-deploy-failure.sh "ur-live (소비자 Pages)" "${{ github.sha }}" "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

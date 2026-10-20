@@ -1,0 +1,118 @@
+# ===================================
+# Cloudflare 환경변수 복사용
+# ur-live 프로젝트 - Production 환경
+# ===================================
+
+# ===================================
+# Frontend 변수 (17개) - Type: Plaintext
+# ===================================
+
+# --- Firebase (8개) ---
+VITE_FIREBASE_API_KEY=AIzaSyA8Lsr6o9gRjMARI-mWaFGrciRs9z2CH7s
+VITE_FIREBASE_AUTH_DOMAIN=urteam-live-commerce.firebaseapp.com
+VITE_FIREBASE_DATABASE_URL=https://urteam-live-commerce-default-rtdb.asia-southeast1.firebasedatabase.app
+VITE_FIREBASE_PROJECT_ID=urteam-live-commerce
+VITE_FIREBASE_STORAGE_BUCKET=urteam-live-commerce.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=1098157020294
+VITE_FIREBASE_APP_ID=1:1098157020294:web:5f527d8e3e9f941cedad07
+VITE_FIREBASE_MEASUREMENT_ID=G-B1ST2L37CM
+
+# --- Kakao (4개) ---
+VITE_KAKAO_APP_KEY=975a2e7f97254b08f15dba4d177a2865
+VITE_KAKAO_JAVASCRIPT_KEY=975a2e7f97254b08f15dba4d177a2865
+VITE_KAKAO_REST_API_KEY=5dd74bccb797640b0efd070467f3bafd
+VITE_KAKAO_AUTH_URL=https://kauth.kakao.com/oauth/authorize
+
+# --- Toss (1개) ---
+VITE_TOSS_CLIENT_KEY=test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN
+
+# --- 기타 (4개) ---
+VITE_REGION=KR
+VITE_DEFAULT_LANGUAGE=ko
+VITE_API_BASE_URL=https://live.ur-team.com
+VITE_SENTRY_DSN=https://08caf64e8e7955f09acc2b0551fdb049@o4510992097935360.ingest.us.sentry.io/4510992127295488
+VITE_SENTRY_ENVIRONMENT=production
+
+# ===================================
+# Backend 변수 (14개) - Type: Secret
+# ===================================
+
+# --- Firebase Admin (3개 - 바로 설정 가능) ---
+FIREBASE_API_KEY=AIzaSyA8Lsr6o9gRjMARI-mWaFGrciRs9z2CH7s
+FIREBASE_PROJECT_ID=urteam-live-commerce
+FIREBASE_DATABASE_URL=https://urteam-live-commerce-default-rtdb.asia-southeast1.firebasedatabase.app
+
+# --- Firebase Service Account (3개 - Firebase Console에서 생성 필요) ---
+# ⚠️ Service Account JSON 파일 다운로드 후 설정:
+# https://console.firebase.google.com/ → 프로젝트 설정 → 서비스 계정 → 새 비공개 키 생성
+# 
+# FIREBASE_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n
+# FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxxx@urteam-live-commerce.iam.gserviceaccount.com
+# FIREBASE_SERVICE_ACCOUNT_KEY={"type":"service_account","project_id":"urteam-live-commerce",...}
+
+# --- JWT (2개) ---
+JWT_SECRET=3Y4MyekQ4D+GFVY6p6bJEScOMSyFFkbtSX76YyT9uk4=
+REFRESH_TOKEN_SECRET=zetvg/v05J+O6M99ndq4UFliUwvw2Gvvi8dPXXZ3+z0=
+
+# --- 기타 Backend (5개) ---
+ENVIRONMENT=production
+FRONTEND_URL=https://live.ur-team.com
+REGION=KR
+KAKAO_REST_API_KEY=5dd74bccb797640b0efd070467f3bafd
+TOSS_SECRET_KEY=test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY
+
+# ===================================
+# 설정 순서
+# ===================================
+# 1. Frontend 17개 변수 추가 (Plaintext)
+# 2. Backend 11개 변수 추가 (Secret) - Service Account 제외
+# 3. Firebase Service Account 생성
+# 4. Service Account 3개 변수 추가
+# 5. Save → Retry deployment (3-5분 대기)
+# 6. 브라우저 캐시 클리어 (Ctrl+Shift+R)
+# 7. 로그인 테스트: https://live.ur-team.com/login
+
+# ===================================
+# 체크리스트
+# ===================================
+# Frontend (Plaintext):
+# [ ] VITE_FIREBASE_API_KEY
+# [ ] VITE_FIREBASE_AUTH_DOMAIN
+# [ ] VITE_FIREBASE_DATABASE_URL
+# [ ] VITE_FIREBASE_PROJECT_ID
+# [ ] VITE_FIREBASE_STORAGE_BUCKET
+# [ ] VITE_FIREBASE_MESSAGING_SENDER_ID
+# [ ] VITE_FIREBASE_APP_ID
+# [ ] VITE_FIREBASE_MEASUREMENT_ID
+# [ ] VITE_KAKAO_APP_KEY
+# [ ] VITE_KAKAO_JAVASCRIPT_KEY
+# [ ] VITE_KAKAO_REST_API_KEY
+# [ ] VITE_KAKAO_AUTH_URL
+# [ ] VITE_TOSS_CLIENT_KEY
+# [ ] VITE_REGION
+# [ ] VITE_DEFAULT_LANGUAGE
+# [ ] VITE_API_BASE_URL
+# [ ] VITE_SENTRY_DSN
+# [ ] VITE_SENTRY_ENVIRONMENT
+
+# Backend (Secret):
+# [ ] FIREBASE_API_KEY
+# [ ] FIREBASE_PROJECT_ID
+# [ ] FIREBASE_DATABASE_URL
+# [ ] FIREBASE_PRIVATE_KEY (Service Account)
+# [ ] FIREBASE_CLIENT_EMAIL (Service Account)
+# [ ] FIREBASE_SERVICE_ACCOUNT_KEY (Service Account)
+# [ ] JWT_SECRET
+# [ ] REFRESH_TOKEN_SECRET
+# [ ] ENVIRONMENT
+# [ ] FRONTEND_URL
+# [ ] REGION
+# [ ] KAKAO_REST_API_KEY
+# [ ] TOSS_SECRET_KEY
+
+# 배포:
+# [ ] Save
+# [ ] Retry deployment
+# [ ] 배포 완료 대기
+# [ ] 캐시 클리어
+# [ ] 로그인 테스트

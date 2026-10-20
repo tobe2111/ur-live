@@ -1,0 +1,554 @@
+/**
+ * 🛡️ 2026-05-07: 시스템 운영 모니터링 (admin 전용).
+ *
+ * - GET /api/admin/cron-heartbeats    — cron 마지막 실행 시각(오래된 순) — '안 돌았다' 탐지
+ * - GET /api/admin/cron-failures      — Cron job 실패 목록 + 미해결 카운트
+ * - PATCH /api/admin/cron-failures/:id/resolve  — 실패 해결 처리
+ * - GET /api/admin/alimtalk-failures  — 알림톡 발송 실패 목록 + retry 상태
+ * - POST /api/admin/alimtalk-failures/:id/retry — 즉시 재시도
+ */
+import { Hono } from 'hono'
+import { safeError } from '@/worker/utils/safe-error'
+import type { Env } from '@/worker/types/env'
+import { isDocumentedRegistered } from '@/lib/alimtalk-templates'
+import { listCronHeartbeats, getCronHealth, cpuDeathKey } from '@/worker/utils/cron-heartbeat'
+import { planBulkResolve, type BulkResolveInput } from '@/worker/utils/cron-failure-bulk'
+import { listUnanswered } from '@/worker/utils/cs-unanswered'
+import { intParam } from '@/shared/pagination'
+import { neverFiredLanes, orphanLaneBeats, KNOWN_LANES_KEY } from '@/worker-ads/lane-cadence'
+
+export const adminSystemMonitoringRoutes = new Hono<{ Bindings: Env }>()
+
+// ── GET /cron-failures ──────────────────────────────────────────
+// 🔎 2026-10-15 — **심각도로 걸러서 본다.** 종전엔 `resolved` 하나로 `created_at DESC LIMIT 100`
+//   이라, 미해결 1,331건(critical 11 · error 621 · warning 699) 중 **최신 100건만** 보였고
+//   그 창의 81%가 `blocked:*` 소음이어서 **error 는 한 건도 화면에 없었다**(실측: warning 94 ·
+//   critical 6 · error 0). 집계(`unresolved_counts`)는 원래 내려가고 있었으니 보이지 않은 것은
+//   **숫자가 아니라 행**이다 — 그래서 더하는 것은 `severity` 필터 하나다(기본 동작 byte-동일).
+//   🔴 정렬은 바꾸지 않는다: severity 우선으로 바꾸면 100칸이 critical·error 로 차고
+//   최근 warning 이 영영 안 보인다(가리는 쪽만 바뀐다).
+adminSystemMonitoringRoutes.get('/cron-failures', async (c) => {
+  const { DB } = c.env
+  const resolved = c.req.query('resolved') === '1'
+  // 화이트리스트 밖(오타·주입)은 필터 없음으로 — 빈 목록을 '이상 없음' 으로 읽게 하지 않는다.
+  const sevRaw = (c.req.query('severity') || '').trim().toLowerCase()
+  const severity = ['critical', 'error', 'warning'].includes(sevRaw) ? sevRaw : null
+  try {
+    const { results } = await DB.prepare(`
+      SELECT id, job_name, error_message, severity, resolved, created_at
+      FROM cron_failures
+      WHERE resolved = ?${severity ? ' AND severity = ?' : ''}
+      ORDER BY created_at DESC LIMIT 100
+    `).bind(...(severity ? [resolved ? 1 : 0, severity] : [resolved ? 1 : 0])).all()
+
+    const counts = await DB.prepare(`
+      SELECT severity, COUNT(*) as cnt FROM cron_failures
+      WHERE resolved = 0 GROUP BY severity
+    `).all<{ severity: string; cnt: number }>().catch(() => ({ results: [] }))
+
+    return c.json({
+      success: true,
+      data: {
+        items: results || [],
+        unresolved_counts: counts.results || [],
+        // 화면이 "거르지 않은 100건" 과 "critical 만 100건" 을 구분할 수 있게 그대로 돌려준다.
+        severity: severity,
+      },
+    })
+  } catch {
+    // 테이블 없으면 빈 결과
+    return c.json({ success: true, data: { items: [], unresolved_counts: [], severity } })
+  }
+})
+
+// ── GET /cron-heartbeats ────────────────────────────────────────
+// 💓 2026-07-28: cron_failures 는 **예외가 났을 때만** 남는다. 예외 없이 멈춘 경우
+//   (미발화 / 게이트 OFF / 내부 .catch 로 삼킴)는 여기서만 보인다 — 오래된 순 정렬이라
+//   맨 위가 곧 '멈췄을 가능성이 가장 높은 작업'이다. 상세 배경: worker/utils/cron-heartbeat.ts
+adminSystemMonitoringRoutes.get('/cron-heartbeats', async (c) => {
+  const items = await listCronHeartbeats(c.env.DB)
+  // 🪦 **유령은 뺀다** — 개명·승계된 옛 이름은 아무도 갱신하지 않아 영원히 나이를 먹는다.
+  //   게이트(`getCronHealth`)와 경보(`cron-stale-watch`)는 이미 같은 판정으로 걸러서 조용한데
+  //   이 목록만 안 걸러, 화면엔 12건이 뜨고 실제 알림은 2건인 상태였다. 그 격차가 오진을 만들었다:
+  //   2026-08-08 에 두 세션이 이 목록을 읽고 "레인 4개 침묵"으로 보고했지만 진짜는 하나뿐이었다.
+  //   ⚠️ 목록(`items`)에서 지우진 않는다 — 각 행에 `verdict` 가 실려 있어 화면이 라벨로 구분한다.
+  // 🔴 2026-10-14 — **임계값도 행에 맡긴다.** 종전엔 여기서 `age > 60 * 24`(고정 하루)를 따로 재서,
+  //   허용 간격이 7일인 주간 작업이 **7일 중 6일 상시 경보**였다(라이브 실측: 허용 7일+ judge 작업
+  //   6개가 **전부** 거짓 — `payouts-generate`·`weekly-*`·`blog-ai-draft`·`user-id-backfill-sweep`,
+  //   나이 2.6일 < 허용 7.2일). 그 6건이 목록을 채워 **진짜 침묵을 묻는다** — 2026-08-08 오진과
+  //   같은 클래스이고, 2026-10-14 에 한 세션이 그대로 재현했다(6건을 침묵으로 보고 + 승계된
+  //   `d1-backup`(72.8일, 실제로는 `d1-backup-chunked` 로 정상 승계)을 결함으로 올릴 뻔했다).
+  //   🔑 판정 재료는 **이미 행에 있다** — `max_gap_min`(작업이 신고한 주기, 없으면 cron 식에서 유도)과
+  //   그것으로 계산된 `stale`. 게이트(`getCronHealth`)·어드민 카드(`HeartbeatCards`)는 그걸 쓰는데
+  //   이 한 줄만 안 썼다. `cron-heartbeat.ts` 의 `listCronHeartbeats` 주석이 적어 둔 의도가
+  //   *"게이트·경보·어드민이 같은 판정을 쓰고 화면과 알림이 갈라지지 않는다"* 이고, 이 줄이 그 예외였다.
+  //   ⚠️ 여기서 임계값을 다시 재지 말 것 — 규칙이 두 벌이면 **에러 없이** 갈라진다(그게 이 결함이었다).
+  const stale = items.filter(i => i.stale === true && (i.verdict ?? 'judge') === 'judge').map(i => i.name)
+
+  // 🔭 2026-07-29: 하트비트는 **기록된 행**만 본다 — 게이트는 켜져 있는데 한 번도 안 돈 레인은
+  //   목록에 아예 없어서 `stale` 판정 대상조차 아니다("안 도는 건지 원래 없는 건지" 구분 불가).
+  //   ur-ads 스케줄러가 매 실행 남기는 '알고 있는 레인' 목록과 대조해 그 구멍을 메운다.
+  //   실사례: `ads:collect-nps` — 게이트 ON 인데 기록이 없어 세션 여러 개가 같은 질문을 반복했다.
+  let never_fired: string[] = []
+  let orphan_lanes: string[] = []
+  let known_lanes_at: string | null = null
+  try {
+    const row = await c.env.DB.prepare('SELECT value FROM platform_settings WHERE key = ?')
+      .bind(KNOWN_LANES_KEY).first<{ value: string }>()
+    if (row?.value) {
+      const v = JSON.parse(row.value) as { at?: string; lanes?: string[] }
+      known_lanes_at = v.at ?? null
+      const lanes = Array.isArray(v.lanes) ? v.lanes : []
+      never_fired = neverFiredLanes(lanes, items.map(i => i.name))
+      // 🪦 반대 방향 — 기록은 있는데 지금 아무도 안 부르는 이름(이름 변경/삭제/게이트 OFF).
+      //   그런 행은 아무도 갱신하지 않으니 **영원히 stale** 이다. 실측: `ads:sweep-kakao-phone`
+      //   (레인이 `sweep-kakao-chain` 으로 개명됐는데 옛 행이 남아 계속 경보).
+      // 🔴 **나이를 함께 넘긴다** — 안 넘기면 DO 알람·우회로 도는 멀쩡한 레인이 전부 고아로 찍혀
+      //   (실측 16건 중 대부분) 진짜 하나를 묻는다. 근거: `orphanLaneBeats` 헤더.
+      orphan_lanes = orphanLaneBeats(lanes, items.map(i => ({ name: i.name, age_minutes: i.age_minutes })))
+    }
+  } catch { /* 관측 보조 — 실패해도 본 목록은 그대로 준다 */ }
+
+  return c.json({ success: true, data: { items, stale, count: items.length, never_fired, orphan_lanes, known_lanes_at } })
+})
+
+// ── POST /cron-heartbeats/delete ────────────────────────────────
+// 🪦 고아 하트비트 행 삭제(2026-08-09) — 개명/철거된 레인의 옛 행은 아무도 갱신하지 않아 **영원히
+//   '멈춤 의심'** 으로 남고, 침묵 경보(silence digest)도 은퇴 임계까지 계속 울린다(실측: nara-vendor
+//   유령이 ~08-19 까지 울릴 예정이었다). 지금까지는 D1 콘솔에서 손으로 지워야 했다 — 어드민 화면의
+//   '고아 기록' 카드에서 지울 수 있게 한다. ⚠️ path param 이 아니라 body 인 이유: 레인 이름에
+//   `?`(`ads:maintenance?phase=quality`)와 `:` 가 들어가 URL 세그먼트로 안전하게 못 싣는다.
+adminSystemMonitoringRoutes.post('/cron-heartbeats/delete', async (c) => {
+  const body = await c.req.json().catch(() => null) as { name?: string } | null
+  const name = typeof body?.name === 'string' ? body.name.trim() : ''
+  if (!name || name.length > 120) return c.json({ success: false, error: 'invalid name' }, 400)
+  // 하트비트 본행 + CPU 사망 기록(별도 키 — 성공이 못 덮는 카운터)을 짝으로 지운다. 레인이 살아
+  //   있는데 실수로 지워도 다음 실행이 행을 다시 만드므로 파괴적이지 않다(사망 카운터만 리셋됨).
+  await c.env.DB.batch([
+    // 키 조립은 기록 쪽과 같은 규칙(slice 80)을 써야 한다 — cpuDeathKey 는 SSOT 헬퍼, hb 는 그 미러.
+    c.env.DB.prepare('DELETE FROM platform_settings WHERE key = ?').bind(`cron_hb:${name.slice(0, 80)}`),
+    c.env.DB.prepare('DELETE FROM platform_settings WHERE key = ?').bind(cpuDeathKey(name)),
+  ]).catch(() => null)
+  return c.json({ success: true })
+})
+
+adminSystemMonitoringRoutes.patch('/cron-failures/:id/resolve', async (c) => {
+  const { DB } = c.env
+  const id = Number(c.req.param('id'))
+  if (!Number.isFinite(id)) return c.json({ success: false, error: 'invalid id' }, 400)
+  try {
+    await DB.prepare(`UPDATE cron_failures SET resolved = 1 WHERE id = ?`).bind(id).run()
+    return c.json({ success: true })
+  } catch (err) {
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
+  }
+})
+
+// ── POST /cron-failures/bulk-resolve ── 조건으로 묶어 해결(super_admin · 기본은 세기만) ──
+adminSystemMonitoringRoutes.post('/cron-failures/bulk-resolve', async (c) => {
+  const { DB } = c.env
+  try {
+    const me = c.get('user' as never) as { id?: string | number } | undefined
+    const admin = await DB.prepare('SELECT role FROM admins WHERE id = ?').bind(me?.id ?? null).first<{ role: string }>()
+    if (admin?.role !== 'super_admin') return c.json({ success: false, error: 'super_admin 권한이 필요합니다' }, 403)
+    const plan = planBulkResolve(await c.req.json<BulkResolveInput>().catch(() => ({})))
+    if (!plan.ok) return c.json({ success: false, error: plan.error }, 400)
+    const row = await DB.prepare(`SELECT COUNT(*) AS n FROM cron_failures WHERE ${plan.where}`)
+      .bind(...plan.binds).first<{ n: number }>()
+    const matched = Number(row?.n ?? 0)
+    if (plan.dryRun) return c.json({ success: true, data: { dry_run: true, matched, resolved: 0 } })
+    const res = await DB.prepare(`UPDATE cron_failures SET resolved = 1 WHERE ${plan.where}`).bind(...plan.binds).run()
+    return c.json({ success: true, data: { dry_run: false, matched, resolved: Number(res.meta?.changes ?? 0) } })
+  } catch (err) {
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
+  }
+})
+
+// ── GET /cs-unanswered ── 카카오 봇이 답하지 못한 질문(개인정보 가림 · 많이 물은 순) ──
+adminSystemMonitoringRoutes.get('/cs-unanswered', async (c) => {
+  try {
+    const rows = await listUnanswered(c.env.DB, intParam(c.req.query('days'), 7), intParam(c.req.query('limit'), 50))
+    return c.json({ success: true, data: rows })
+  } catch (err) {
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
+  }
+})
+
+// ── GET /alimtalk-failures ──────────────────────────────────────
+adminSystemMonitoringRoutes.get('/alimtalk-failures', async (c) => {
+  const { DB } = c.env
+  const resolved = c.req.query('resolved') === '1'
+  try {
+    const { results } = await DB.prepare(`
+      SELECT id, phone, template_code, message, error, retry_count, max_retries,
+             next_retry_at, resolved, created_at, updated_at
+      FROM alimtalk_failures
+      WHERE resolved = ?
+      ORDER BY created_at DESC LIMIT 100
+    `).bind(resolved ? 1 : 0).all()
+
+    const stats = await DB.prepare(`
+      SELECT
+        COUNT(*) FILTER (WHERE resolved = 0 AND retry_count >= max_retries) AS abandoned,
+        COUNT(*) FILTER (WHERE resolved = 0 AND retry_count < max_retries) AS pending,
+        COUNT(*) FILTER (WHERE resolved = 1) AS succeeded
+      FROM alimtalk_failures
+      WHERE created_at >= datetime('now', '-7 days')
+    `).first<{ abandoned: number; pending: number; succeeded: number }>().catch(() => null)
+
+    // 🔔 2026-07-01: 진단 — 미해결 실패를 template_code 별로 그룹핑 + 저장소 등록 여부 주석.
+    //   registered:false 가 반복 실패하면 = SENS 콘솔에 미등록/불일치 템플릿(운영자가 등록해야 함).
+    //   (SMS 폴백이 없어 그동안 해당 알림톡은 전달 0 — 인앱/푸시로만 도달.)
+    let byTemplate: Array<{ template_code: string; unresolved: number; abandoned: number; registered: boolean; last_error: string | null }> = []
+    try {
+      const { results: grp } = await DB.prepare(`
+        SELECT template_code,
+               COUNT(*) AS unresolved,
+               SUM(CASE WHEN retry_count >= max_retries THEN 1 ELSE 0 END) AS abandoned,
+               MAX(error) AS last_error
+        FROM alimtalk_failures
+        WHERE resolved = 0
+        GROUP BY template_code
+        ORDER BY unresolved DESC
+      `).all<{ template_code: string; unresolved: number; abandoned: number; last_error: string | null }>()
+      byTemplate = (grp || []).map(r => ({
+        template_code: r.template_code,
+        unresolved: Number(r.unresolved || 0),
+        abandoned: Number(r.abandoned || 0),
+        registered: isDocumentedRegistered(r.template_code),
+        last_error: r.last_error ?? null,
+      }))
+    } catch { /* 그룹 쿼리 실패 — by_template 생략 */ }
+
+    return c.json({
+      success: true,
+      data: {
+        items: results || [],
+        stats: stats ?? { abandoned: 0, pending: 0, succeeded: 0 },
+        by_template: byTemplate,
+      },
+    })
+  } catch {
+    return c.json({ success: true, data: { items: [], stats: { abandoned: 0, pending: 0, succeeded: 0 } } })
+  }
+})
+
+// ── GET /delivery-failures ──────────────────────────────────────
+// 🔔 2026-07-01: push_failures / email_failures dead-letter 가시성.
+//   재시도 크론(retry-notifications, 5분)은 있었지만 어드민이 볼 UI/API 가 0 이라
+//   웹푸시·이메일 실패 누적이 아무 데도 안 보였음. 알림톡 진단과 동형으로 노출.
+adminSystemMonitoringRoutes.get('/delivery-failures', async (c) => {
+  const { DB } = c.env
+  const resolved = c.req.query('resolved') === '1'
+  const empty = { items: [], stats: { abandoned: 0, pending: 0, succeeded: 0 } }
+  const statsSql = (table: string) => `
+    SELECT
+      COUNT(*) FILTER (WHERE resolved = 0 AND retry_count >= max_retries) AS abandoned,
+      COUNT(*) FILTER (WHERE resolved = 0 AND retry_count < max_retries) AS pending,
+      COUNT(*) FILTER (WHERE resolved = 1) AS succeeded
+    FROM ${table}
+    WHERE created_at >= datetime('now', '-7 days')
+  `
+  try {
+    const push = await (async () => {
+      try {
+        const { results } = await DB.prepare(`
+          SELECT id, user_type, user_id, title, body, url, subscription_count,
+                 retry_count, max_retries, next_retry_at, resolved, created_at
+          FROM push_failures WHERE resolved = ?
+          ORDER BY created_at DESC LIMIT 100
+        `).bind(resolved ? 1 : 0).all()
+        const stats = await DB.prepare(statsSql('push_failures'))
+          .first<{ abandoned: number; pending: number; succeeded: number }>().catch(() => null)
+        return { items: results || [], stats: stats ?? empty.stats }
+      } catch { return empty } // 테이블 미존재 — 빈 결과
+    })()
+    const email = await (async () => {
+      try {
+        const { results } = await DB.prepare(`
+          SELECT id, recipient, subject, error, retry_count, max_retries,
+                 next_retry_at, resolved, created_at
+          FROM email_failures WHERE resolved = ?
+          ORDER BY created_at DESC LIMIT 100
+        `).bind(resolved ? 1 : 0).all()
+        const stats = await DB.prepare(statsSql('email_failures'))
+          .first<{ abandoned: number; pending: number; succeeded: number }>().catch(() => null)
+        return { items: results || [], stats: stats ?? empty.stats }
+      } catch { return empty }
+    })()
+    return c.json({ success: true, data: { push, email } })
+  } catch {
+    return c.json({ success: true, data: { push: empty, email: empty } })
+  }
+})
+
+// 즉시 재시도 — next_retry_at 을 지금으로 당겨 다음 5분 크론이 집어가게 (알림톡 retry 와 동형)
+adminSystemMonitoringRoutes.post('/delivery-failures/:kind/:id/retry', async (c) => {
+  const { DB } = c.env
+  const kind = c.req.param('kind')
+  const id = Number(c.req.param('id'))
+  if (!Number.isFinite(id)) return c.json({ success: false, error: 'invalid id' }, 400)
+  if (kind !== 'push' && kind !== 'email') return c.json({ success: false, error: 'invalid kind' }, 400)
+  const table = kind === 'push' ? 'push_failures' : 'email_failures'
+  try {
+    await DB.prepare(`
+      UPDATE ${table}
+      SET next_retry_at = datetime('now'), retry_count = MIN(retry_count, max_retries - 1)
+      WHERE id = ? AND resolved = 0
+    `).bind(id).run()
+    return c.json({ success: true, message: '5분 이내 자동 재시도됩니다' })
+  } catch (err) {
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
+  }
+})
+
+adminSystemMonitoringRoutes.post('/alimtalk-failures/:id/retry', async (c) => {
+  const { DB } = c.env
+  const id = Number(c.req.param('id'))
+  if (!Number.isFinite(id)) return c.json({ success: false, error: 'invalid id' }, 400)
+  try {
+    // next_retry_at 을 즉시로 변경 → 다음 cron tick (5분 이내) 에서 자동 retry
+    await DB.prepare(`
+      UPDATE alimtalk_failures
+      SET next_retry_at = datetime('now'), updated_at = datetime('now')
+      WHERE id = ? AND resolved = 0
+    `).bind(id).run()
+    return c.json({ success: true, message: '5분 이내 자동 재시도됩니다' })
+  } catch (err) {
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
+  }
+})
+
+/**
+ * 📨 2026-10-11 알림 발송 시험 — 대표 "응 보내봐". 실제 발송 경로(`sendTextNotice`)를 그대로 타서
+ * 네이버 클라우드 SENS 가 받아 주는지 **오늘** 판정한다(실제 판매를 기다리지 않게). 결과에 SENS 오류 원문을 싣는다 —
+ * 서명(키)·채널 연결·템플릿 미검수·잔액 부족을 그 자리에서 가린다. super_admin 만, 가입된 유저 번호로만 보낸다.
+ * (2026-10-12 발송처 알리고 → SENS)
+ */
+adminSystemMonitoringRoutes.post('/alimtalk-test-send', async (c) => {
+  const { DB } = c.env
+  try {
+    const me = c.get('user' as never) as { id?: string | number } | undefined
+    const admin = await DB.prepare('SELECT role FROM admins WHERE id = ?').bind(me?.id ?? null).first<{ role: string }>()
+    if (admin?.role !== 'super_admin') return c.json({ success: false, error: 'super_admin 권한이 필요합니다' }, 403)
+    const body = await c.req.json<{ user_id?: unknown; tpl?: unknown }>().catch(() => ({} as { user_id?: unknown; tpl?: unknown }))
+    // 📵 카톡만 쓴다(대표 2026-10-11) — 시험도 알림톡으로. 템플릿 코드를 주면 그 템플릿으로(승인 확인용),
+    //   없으면 `admin_test_send` 로 보낸다 — SENS 에 그 이름으로 템플릿을 먼저 등록해 두면 시험이 끝까지 간다.
+    const tpl = /^[A-Za-z0-9_]{1,40}$/.test(String(body.tpl ?? '')) ? String(body.tpl) : 'admin_test_send'
+    const userId = Number(body.user_id)
+    if (!Number.isInteger(userId) || userId <= 0) return c.json({ success: false, error: 'user_id 가 필요합니다' }, 400)
+    const user = await DB.prepare('SELECT phone FROM users WHERE id = ?').bind(userId).first<{ phone: string | null }>()
+    if (!user) return c.json({ success: false, error: '유저를 찾을 수 없습니다' }, 404)
+    const { sendTextNotice } = await import('../../../lib/text-notice')
+    const at = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul' })
+    const r = await sendTextNotice(c.env, user.phone, {
+      tpl, title: '유어딜 알림 시험', forceAlimtalk: true,
+      text: `[유어딜] 알림 발송 시험입니다 (${at}). 이 메시지가 보이면 사장님·손님 알림이 정상으로 나갑니다.`,
+    })
+    const tail = String(user.phone ?? '').replace(/[^0-9]/g, '').slice(-4)
+    return c.json({ success: r.ok, result: r, phone_tail: tail || null })
+  } catch (err) {
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
+  }
+})
+
+/**
+ * ✉️ 2026-10-12 메일 발송 시험 — 대표 urdeal.kr 메일 도메인 인증(소유·SPF·DKIM·DMARC) 뒤.
+ * 거래성 메일이 실제로 타는 경로(`sendSystemEmail` → `sendEmail` → SENS 우선)를 그대로 타서, 네이버 클라우드가
+ * 받아 주는지와 그 오류 원문을 **오늘** 본다(실제 구매·비밀번호 찾기를 기다리지 않게). 받은편지함/스팸함 판정은
+ * 받는 사람이 한다. super_admin 만, 가입된 유저의 등록 이메일로만 보낸다(임의 주소 금지 — 발송 남용 차단).
+ */
+adminSystemMonitoringRoutes.post('/mail-test-send', async (c) => {
+  const { DB } = c.env
+  try {
+    const me = c.get('user' as never) as { id?: string | number } | undefined
+    const admin = await DB.prepare('SELECT role FROM admins WHERE id = ?').bind(me?.id ?? null).first<{ role: string }>()
+    if (admin?.role !== 'super_admin') return c.json({ success: false, error: 'super_admin 권한이 필요합니다' }, 403)
+    const body = await c.req.json<{ user_id?: unknown }>().catch(() => ({} as { user_id?: unknown }))
+    const userId = Number(body.user_id)
+    if (!Number.isInteger(userId) || userId <= 0) return c.json({ success: false, error: 'user_id 가 필요합니다' }, 400)
+    const user = await DB.prepare('SELECT email FROM users WHERE id = ?').bind(userId).first<{ email: string | null }>()
+    if (!user) return c.json({ success: false, error: '유저를 찾을 수 없습니다' }, 404)
+    if (!user.email) return c.json({ success: false, error: '그 유저에 등록된 이메일이 없습니다' }, 400)
+    const { sendSystemEmail } = await import('../../../lib/system-email')
+    const at = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul' })
+    const r = await sendSystemEmail(c.env, user.email, {
+      subject: `[유어딜] 메일 발송 시험 (${at})`,
+      html: `<p>유어딜 메일 발송 시험입니다 (${at}).</p><p>이 메일이 받은편지함에 보이면 영수증·비밀번호 찾기 같은 안내 메일이 정상으로 나갑니다.</p>`,
+    }, { ignorePreference: true })
+    const [local = '', domain = ''] = user.email.split('@')
+    // 🔎 발신 주소는 시크릿이라 다시 볼 수 없다 — 모양만 싣는다(값 노출 0). 2026-10-12 `Sender address is invalid format` 진단.
+    const { describeSenderAddress } = await import('../../../lib/ncp-sens-mail')
+    const from = describeSenderAddress((c.env as { NCP_MAIL_SENDER?: string }).NCP_MAIL_SENDER)
+    return c.json({ success: r.success, result: r, to: `${local.slice(0, 1)}***@${domain}`, from })
+  } catch (err) {
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
+  }
+})
+
+// ── 🚦 2026-07-05: 운영 게이트 플래그 현황판 + cron heartbeat ──────────────
+//   배경(1인 운영 관측 보강): 검증 대기 게이트(커미션 예산/쇼핑 원장/fee-resolver 등)가
+//   env·platform_settings 에 흩어져 있어 "뭐가 켜져 있고 뭐가 staging 미검증인지" 볼 곳이 없었음.
+//   staging 검증 전 실수 활성화 방지 + cron 침묵을 어드민에서 한눈에.
+//   게이트 자체의 SSOT 는 각 소비처(코드) — 여기는 *열람 전용 레지스트리* (값 변경 없음).
+//   staging 시나리오 상세: docs/STAGING_CHECKLIST.md
+
+interface OpsGate {
+  key: string
+  kind: 'env' | 'setting'
+  label: string
+  default_value: string
+  /** docs/STAGING_CHECKLIST.md 의 항목 ID — null 이면 staging 실결제 검증 불필요 */
+  staging_ref: string | null
+  /**
+   * 🔴 **무엇이 확인되면 켜는가** (2026-08-02 대표 확정 ⑤).
+   *
+   * 점등 조건이 없는 게이트는 **영원히 안 켜진다** — 아무도 "지금이 그때인가"를 판단할 수 없기 때문이다.
+   * 실제로 이 명부의 게이트 13개가 **전부 미설정**인 채로 있었다(라이브 실측).
+   * 새 게이트를 추가할 때 이 줄을 비우지 말 것.
+   */
+  turn_on_when: string
+}
+
+const OPS_GATES: OpsGate[] = [
+  { key: 'commission_budget_enabled', kind: 'setting', label: '커미션 예산 아비터 [INV-CB]', default_value: 'false', staging_ref: 'S1', turn_on_when: '영입+트리가 겹친 주문 1건을 `GET /api/admin/promo-ledger/order/:orderNumber` 로 보고 verdict.within_budget=true 면(S1 절차)' },
+  { key: 'promo_funding_source', kind: 'setting', label: '프로모 owner-펀딩', default_value: 'platform', staging_ref: 'S2', turn_on_when: '이용권 구매→사용→환불에서 매장 원장 promo debit 1회가 확인되면(S2)' },
+  { key: 'SHOPPING_LEDGER_ENABLED', kind: 'env', label: '쇼핑 주문 원장 크레딧', default_value: 'false', staging_ref: 'S3', turn_on_when: '쇼핑탭 재오픈이 결정되고 S3 실결제로 net 크레딧 1회가 확인되면' },
+  { key: 'FEE_RESOLVER_ENABLED', kind: 'env', label: 'fee-resolver 그림자 기록', default_value: 'false', staging_ref: 'S4', turn_on_when: '그림자 기록(order_fee_breakdown) vs 현행 정산 비교가 일치하면(S4)' },
+  // 🔍 2026-09-16 (결재 `2026-09-16-ocr-license-automation.md` §안전 레일 ①):
+  //   서류 OCR 추출값으로 **자동 승인**을 낼지. 기본 OFF = 추출만 하고 어드민에 나란히 띄운다.
+  //   ⚠️ 이 게이트가 없던 동안(2026-05-27~09-16) 코드는 게이트 없이 승인을 냈다 — AI 바인딩이
+  //   없어 안 돌았을 뿐이고, 대표가 바인딩을 켠 2026-09-16 그날부터 살아날 상태였다.
+  { key: 'ocr_auto_verify_enabled', kind: 'setting', label: '서류 OCR 자동 승인', default_value: 'false', staging_ref: 'S-OCR', turn_on_when: '실사진으로 추출 정확도를 재고(어드민 OCR 버튼의 fill·addressCheck), 오탐 0 을 확인한 뒤 대표 판단으로' },
+  // 📩 2026-09-21 (대표 승인 "010 으로, 되면 보내주는걸로"): 사장님에게 "당신 가게가 유어딜에
+  //   올라갔습니다" 를 보낸다. 줄은 승인 순간 자동으로 서지만 **발송은 사람이 누른다**(등급 C).
+  //   ⚠️ 이 게이트만으로는 안 나간다 — 템플릿 `store_listed` 가 어드민 승인 목록(alimtalk_approved_templates)에
+  //   함께 있어야 한다. 둘 중 하나라도 없으면 어드민 버튼이 비활성이고 이유가 화면에 뜬다.
+  { key: 'store_owner_notice_enabled', kind: 'setting', label: '사장님 매장 등록 통보(알림톡)', default_value: 'false', staging_ref: 'S-OWNERNOTICE', turn_on_when: '카카오 템플릿(store_listed) 검수가 끝나 어드민 승인 목록에 적히고, 어드민에서 1건만 먼저 보내 실제 수신이 확인되면' },
+  // 📮 2026-10-18 (대표 "4,5,6번 하자"): 밖으로 나가는 자동 안내 셋 — 전부 기본 OFF(발송 = 등급 C).
+  { key: 'seller_daily_report_enabled', kind: 'setting', label: '사장님 일일 리포트 메일(승인 매장 전원)', default_value: 'false', staging_ref: 'S-NUDGES', turn_on_when: '테스트 매장 1곳 메일로 어제 숫자(판매·사용·후기)가 실제 기록과 같은지 확인한 뒤' },
+  { key: 'review_request_enabled', kind: 'setting', label: '이용권 사용 다음 날 후기 요청(앱 알림)', default_value: 'false', staging_ref: 'S-NUDGES', turn_on_when: '테스트 계정으로 이용권을 사용 처리하고 다음 날 알림이 1건만 오는지 확인한 뒤' },
+  { key: 'seller_docs_nudge_enabled', kind: 'setting', label: '서류 빠진 사장님 보완 안내', default_value: 'false', staging_ref: 'S-NUDGES', turn_on_when: '심사 대기 매장의 빠진 항목 목록을 어드민에서 확인하고 안내 문구가 맞는지 본 뒤' },
+  { key: 'agent_search_enabled', kind: 'setting', label: 'AI 비서 검색 창구(찾기 전용)', default_value: 'false', staging_ref: 'S-AGENT', turn_on_when: '결재 2026-10-19-ai-agent-channel 승인 뒤, /api/agent/search 응답에 데모가 없고 주소가 우리 상세인지 확인한 다음' },
+  { key: 'agent_checkout_enabled', kind: 'setting', label: 'AI 비서 결제 링크(손님이 확인 후 결제)', default_value: 'false', staging_ref: 'S-AGENT', turn_on_when: '대표 2026-10-20 "4번도 일단은 하자" — /api/agent/checkout 이 금액·한도를 맞게 돌려주고 링크로 열면 구매 창이 그 수량으로 열리는지 확인한 다음' },
+  // 💸 2026-08-25 (누락 발견): **플랫폼 take 율 자체를 정하는 게이트인데 이 명부에 없었다.**
+  //   `channelPlatformRate` 가 이 값으로 직판 10% / 중개 5% 를 가른다(OFF 면 종전 `commission_rate`).
+  //   CLAUDE.md 는 게이트 플래그를 여기 등록하라고 규정하는데 이것만 빠져 있어, 운영 화면에서
+  //   **켜져 있는지조차 볼 수 없었다** — 머니 경로에서 가장 보여야 할 값이다.
+  { key: 'fee_channel_rates_enabled', kind: 'setting', label: '채널별 플랫폼 요율(직판 10% / 중개 5%)', default_value: 'false', staging_ref: 'S7', turn_on_when: '직판·중개 주문 각 1건의 원장 fee 가 의도한 요율로 찍히는 것이 staging 실결제로 확인되면' },
+  // 🔒 2026-09-16 (사기 방어 ①): 소개 커미션 성숙을 **사용 확인 뒤로**. 켜지기 전엔 서비스가
+  //   한 번도 안 일어나도 T+7 이면 송금 대기에 올랐다(가짜 매장이 돈을 가져가는 경로).
+  { key: 'payout_requires_voucher_use', kind: 'setting', label: '소개 커미션 사용 확인 게이트', default_value: 'false', staging_ref: 'S-USEGATE', turn_on_when: 'S-USEGATE 8건 통과 시 — 특히 ②(미사용은 pending 유지) ③(1장 사용 즉시 성숙) ⑦(무기한 이용권이 천장일에 풀림)이 확인되면. 라이브 attribution 0건이라 켜도 오늘 영향 0' },
+  // 💸 2026-09-19 (결재 `2026-09-16-broker-payout-model.md` 안 1): 중개사 몫을 유어딜이 직접 송금.
+  //   OFF 면 종전(중개사는 매장과 장부 밖 거래). 켜면 중개 매장 결제마다 `broker_share_pct` 가 매장 몫에서
+  //   중개사(유저)에게 적립되고 인플루언서와 같은 성숙·원천징수·지급센터를 탄다.
+  { key: 'broker_share_enabled', kind: 'setting', label: '중개사 몫 직접 송금', default_value: 'false', staging_ref: 'S-BROKER', turn_on_when: 'S-BROKER 5건 통과 시 — 특히 ①(주문당 1행) ③(환불 시 회수) ⑤(OFF 복귀 시 종전과 동일). 라이브 중개 매장 1곳·주문 0건이라 켜도 오늘 영향 0' },
+  { key: 'brand_cross_owner_redeem_enabled', kind: 'setting', label: '가맹점 간 이용권 사용 + 쓴 지점 정산', default_value: 'false', staging_ref: 'S-BRANDX', turn_on_when: 'S-BRANDX 5건 통과 시 — 특히 ②(정산이 쓴 지점 merchant 로 1회) ③(소개비 붙은 이용권은 거절) ⑤(OFF 복귀 시 1·2단계와 동일). 라이브 가맹점 0곳이라 켜도 오늘 영향 0' },
+  // 💬 2026-10-10 (대표 "카카오톡으로 유어딜 세팅도 가능해? 이용권 관리같은거"): 채널 챗봇 매장 관리.
+  //   둘 중 하나가 'true' 면 켜진다(env 는 배포 단위, setting 은 어드민 손잡이). 스킬 자체 게이트 KAKAO_SKILL_SECRET 와 별개.
+  { key: 'kakao_bot_store_ops_enabled', kind: 'setting', label: '카카오톡 매장 관리(챗봇)', default_value: 'false', staging_ref: 'S-KAKAOBOT', turn_on_when: 'S-KAKAOBOT 절차(연결 1회 · 오늘/정산 조회 · 이용권 1장 사용 처리 후 원장 기록 · 판매 중지/재개 · 좌석 회수 시 연결 끊김) 통과 후 대표 판단으로' },
+  { key: 'KAKAO_BOT_STORE_OPS_ENABLED', kind: 'env', label: '카카오톡 매장 관리(챗봇) — env 겹', default_value: 'false', staging_ref: 'S-KAKAOBOT', turn_on_when: '어드민 설정(kakao_bot_store_ops_enabled) 대신 배포 단위로 켤 때. 둘 중 하나만 true 면 켜진다' },
+  { key: 'BLOG_AI_DRAFTS_ENABLED', kind: 'env', label: '블로그 AI 초안 주간 cron', default_value: 'false', staging_ref: null, turn_on_when: '주간 AI 초안이 필요해지고 ANTHROPIC_API_KEY 가 ur-live 에 설정되면' },
+  { key: 'ADS_AUTOBID_ENABLED', kind: 'env', label: '유어애즈 자동입찰', default_value: 'false', staging_ref: null, turn_on_when: '유어애즈 광고주가 실제로 입찰을 시작하면(현재 인플루언서 DB 수집 단계라 미해당)' },
+  { key: 'wholesale_auto_grade_enabled', kind: 'setting', label: '도매 등급 자동평가', default_value: '0', staging_ref: null, turn_on_when: '🔴 켜지 않는다 — 도매몰은 철거 대상(2026-08-02 대표 확정 ⑦)' },
+  // 🎟️ 2026-07-29 (실행 증거 감사): 공구 엔진 게이트가 **두 겹**인데 어느 명부에도 없었다.
+  //   서버 `platform_settings.gb_engine_enabled`(현재 키 자체 부재 = false) +
+  //   클라 `src/shared/feature-flags.ts` `GB_ENGINE_ENABLED`(현재 하드코딩 false).
+  //   ⇒ 공구 특가를 결제에 배선해도(#844) **둘 다 켜지기 전에는 어디에도 적용되지 않는다.**
+  //   여기 등재는 서버 겹만 값으로 보여준다 — 클라 겹은 배포가 필요하므로 라벨에 함께 적는다.
+  { key: 'gb_engine_enabled', kind: 'setting', label: '공구 엔진 (⚠️ 2겹 — 클라 GB_ENGINE_ENABLED 도 함께 켜야 적용)', default_value: 'false', staging_ref: null, turn_on_when: 'P9 실결제 통과 시(⑤ 1순위). ⚠️ 클라 GB_ENGINE_ENABLED 도 함께 켜야 적용. ⚠️ 공구가 청구는 이 키가 아니라 gb_pricing_enabled 가 지배한다(2026-08-11 정정)' },
+  { key: 'voucher_deal_payment_enabled', kind: 'setting', label: '이용권 딜 결제 (⚠️ 2겹 — 클라 VOUCHER_DEAL_PAYMENT_ENABLED 도 함께)', default_value: 'false', staging_ref: 'S9', turn_on_when: '🔴 선행 필수: influencer_deal_bonus_pct=0. 보너스 20% 가 이용권 마진(5~10%)보다 커서 켜면 팔릴수록 건당 8~14원 적자(2026-08-31 실측). 순서: ① 교환권 마진 0+재계산 ② 딜 보너스 0 + 현금 정산 수수료 ③ 이 키 + 클라 플래그' },
+  // 🔌 2026-08-11 — **끄는 스위치**(기본 ON). 다른 게이트와 방향이 반대라 라벨에 명시한다:
+  //   미설정/조회실패 = 공구가 적용(현행). `'false'` 를 저장한 순간에만 상시가로 되돌아간다.
+  { key: 'gb_pricing_enabled', kind: 'setting', label: '공구가 청구 (🔴 킬스위치 — 기본 ON, false 로 저장해야 꺼짐)', default_value: 'true', staging_ref: null, turn_on_when: '항상 ON 이 정상. 잘못 설정된 공구가로 과소청구가 날 때 `false` 로 저장해 즉시 상시가로 되돌린다' },
+  // 8월 promo flip 스코프 스위치 — 값이 비어 있지 않으면 그 매장만 flip 경로.
+  { key: 'flip_pilot_seller_ids', kind: 'setting', label: '8월 flip 파일럿 매장 스코프', default_value: '', staging_ref: null, turn_on_when: '8월 promo flip 파일럿 매장이 정해지면 그 seller_id 를 넣는다' },
+  { key: 'seller_promo_field_enabled', kind: 'setting', label: '셀러 promo% 입력 UI', default_value: 'false', staging_ref: null, turn_on_when: 'flip 파일럿 매장이 스스로 promo% 를 입력할 단계가 되면' },
+  // 🪙 2026-09-07 — **한 달 넘게 이 표에 없었다.** 그래서 `ops-gate-reachable`(등재된 게이트만 본다)이
+  //   "켤 화면이 없다"를 잡지 못했고, 어드민에 손잡이가 없는 채로 남았다. 등재가 곧 검사 범위다.
+  //   2026-09-06 에 표시 게이트(affiliate-program.ts)가 같은 키를 읽게 되면서 이 스위치 하나가
+  //   **지급과 화면 배지를 동시에** 가른다 — 끄면 배지도 사라지고 켜면 함께 돌아온다.
+  { key: 'affiliate_program_enabled', kind: 'setting', label: '담기 적립(어필리에이트) — 지급 + 화면 배지', default_value: 'false', staging_ref: null, turn_on_when: "🔴 **promo_funding_source='owner' 를 먼저** 켤 것. 'platform' 인 채로 켜면 매장이 건 소개비를 유어딜이 문다. 그리고 담을 남의 가게(매장)가 있어야 의미가 생긴다 — 대표 권고 기준선은 매장 10곳" },
+  // 🪙 2026-09-01 — 이용권을 "딜 일부 + 카드 나머지" 로 살 수 있게 하는 스위치(대표 "포인트 차감처럼").
+  //   OFF 면 딜 사용액이 항상 0 이고 총액과 다른 청구액은 종전처럼 AMOUNT_MISMATCH 로 막힌다.
+  { key: 'voucher_partial_deal_enabled', kind: 'setting', label: '이용권 부분결제(딜+카드)', default_value: 'false', staging_ref: 'S12', turn_on_when: '🔴 **먼저 influencer_deal_bonus_pct = 0** — 딜 보너스 20%가 살아 있으면 딜은 액면가보다 비싸고(1,000딜 = 유어딜 부채 1,200원), 마진 5~10%인 이용권에 쓰이면 팔릴수록 적자다(교환권은 소비자 마크업 20%가 상쇄하지만 이용권엔 그 상쇄가 없다). 그다음 S12 실결제로 카드+딜=총액·매장 정산 총액 불변·환불 복원 확인' },
+  { key: 'voucher_partial_refund_enabled', kind: 'setting', label: '이용권 일부 환불(장 단위)', default_value: 'false', staging_ref: 'P17', turn_on_when: '🔴 P17 실결제로 ① 3장 중 1장 환불 → 금액이 **장수에서 계산**되고(임의 금액 입력 불가) ② 무른 1장만 `refunded`, 남은 2장은 `unused` ③ 이미 쓴 장은 대상 제외 ④ 동시 요청에도 `refunded_amount` 이중 가산 0 ⑤ 토스 거절 시 예약 롤백 확인. ⚠️ 어필리에이트·영입 커미션은 비례 역전이 없어 무른 장의 몫이 남는다(적게 회수하는 쪽 — 감수)' },
+  // 🧾 2026-09-01 — 후기 보너스를 **매장 부담**으로 돌리는 스위치(대표 "매장 사장님이 부담하게끔").
+  //   OFF 면 판정이 항상 `platform` 이라 차감 경로에 아무것도 안 들어온다(= 오늘과 동일).
+  { key: 'review_bonus_owner_funded', kind: 'setting', label: '후기 보너스 매장 부담(정산 차감)', default_value: 'false', staging_ref: 'S11', turn_on_when: '매장이 셀러 대시보드에서 금액을 직접 넣기 시작하고, S11 로 원장 debit 1회·재승인 이중차감 0 이 확인되면' },
+  { key: 'DISTRICT_AUTO_ISSUE_ENABLED', kind: 'env', label: '상권 쿠폰 온라인 자동발급(경로 B)', default_value: 'false', staging_ref: null, turn_on_when: '상권 캠페인 파일럿 매장이 확정되고 재원(예산 풀)이 배정되면' },
+  // 💸 2026-08-01 ④-b: 미수령(픽업 안 찾아감) 환불을 보관구분에 따라 가른다.
+  //   🔴 **이미 흐르는 환불의 방향을 바꾼다** — 안 돌던 걸 켜는 게 아니다(cron `0 18` 실행 확인됨).
+  //   OFF 면 현행 전액 환불. 켜도 비율값(기본 100)을 안 바꾸면 동작 불변 — 안전판이 두 겹이다.
+  { key: 'pickup_unclaimed_policy_enabled', kind: 'setting', label: '미수령 환불 정책(보관구분별) ④-b', default_value: 'false', staging_ref: 'P10', turn_on_when: '**첫 픽업 공구 개설과 동시**(⑤ 3순위). 런칭값: 냉장 0% · 실온 유예 3일' },
+  // 💸 2026-08-01 ④-c: 부분환불 **금액을 정할 입구**. 그간 `returns.refund_amount` 를 바꾸는 경로가
+  //   아예 없어 실질적으로 전액 환불만 가능했다. OFF 면 금액 설정 API 가 403 → 현행(전액) 그대로.
+  { key: 'partial_refund_enabled', kind: 'setting', label: '부분환불 금액 설정 ④-c', default_value: 'false', staging_ref: 'P11', turn_on_when: '**첫 픽업 공구 개설과 동시**(⑤ 3순위) — ④-b 와 같이 켠다' },
+  // 🎛️ 2026-09-07 — `check-gate-registry` 가 찾아낸 **미등재 strict-true 게이트 5개**.
+  //   전부 read-site 가 `=== 'true'` 인데 이 표에 없어서 `ops-gate-reachable` 의 사각지대였다.
+  //   등재가 곧 검사 범위다 — 넣는 순간 "켤 화면이 있나"를 기계가 묻기 시작한다.
+  { key: 'settlement_skip_ledgered', kind: 'setting', label: '자동정산에서 원장 기록분 제외', default_value: 'false', staging_ref: null, turn_on_when: '🔴 머니 경로. 지금이 가장 안전하다 — 양쪽 레일의 정산행이 아직 0이라 켜도 아무 일이 안 일어나고, 이용권이 팔린 뒤엔 이미 양쪽에 적힌 것을 손으로 맞춰야 한다. ⚠️ 2026-09-29 정정: 여기 오래 "그전엔 켜면 정산이 통째로 빠진다"고 적혀 있었는데 사실이 아니다 — skip 절이 NOT EXISTS 라서 원장에 없으면 건너뛸 것도 없고(자동정산 그대로 진행), 원장 기록(recordVoucherUsedLedger)은 이용권 사용 시점에 게이트 없이 항상 돈다. 그 오기를 믿고 두 레일을 켜 둔 채로 두면 오히려 이중 지급 위험' },
+  { key: 'outreach_auto_send', kind: 'setting', label: '인플루언서 제휴 제안 자동 발송', default_value: 'false', staging_ref: null, turn_on_when: '📮 콜드 발송은 법·평판 문제라 **대표가 직접 판단**한다. 세션이 켜지 않는다' },
+  { key: 'promo_bar_enabled', kind: 'setting', label: '소비자 홈 프로모 바', default_value: 'false', staging_ref: null, turn_on_when: '홍보 문구가 정해지면 (문구·버튼·색은 같은 화면의 프로모 바 섹션에서)' },
+  // 🧺 2026-09-15 — 이용권 **장바구니 결제** 레일. 만들 때 이 표에 안 넣어서 어드민에 손잡이가
+  //   없었다(`check-gate-registry` 도 못 봤다 — read-site 가 `=== 'true'` 가 아니라 helper 안에 있다).
+  //   ⚠️ **두 겹이다**: 이 서버 키가 보안 경계이고, 담기 버튼은 클라 `VOUCHER_CART_UI_ENABLED` 가 가른다.
+  //   서버만 켜면 기존 장바구니에 이용권이 든 사람은 결제까지 갈 수 있다(담기 버튼은 안 보여도).
+  { key: 'voucher_cart_enabled', kind: 'setting', label: '이용권 장바구니 결제 (⚠️ 2겹 — 클라 VOUCHER_CART_UI_ENABLED 도 함께)', default_value: 'false', staging_ref: 'S-CART', turn_on_when: '🔴 머니 경로. S-CART 15항목(특히 S-CART-2 서로 다른 매장 2종 발급 · S-CART-3 셀러별 정산 · S-CART-13 교환권 거절)을 staging 실결제로 통과한 뒤. 끄면 두 엔드포인트가 즉시 403 이라 되돌리기는 1초다' },
+  // 아래 둘은 **되살리지 않기로 한** 축이다(2026-08-23 종료, 다단계 성격). 화면이 없는 게 정상.
+  { key: 'invite_reward_enabled', kind: 'setting', label: '초대 보상 (2026-08-23 종료)', default_value: 'false', staging_ref: null, turn_on_when: '켜지 않는다 — 심플 모델로 정리하며 종료한 축이다' },
+  { key: 'multi_tier_enabled', kind: 'setting', label: '멀티티어 추천 (2026-08-23 종료)', default_value: 'false', staging_ref: null, turn_on_when: '켜지 않는다 — 다단계 성격이라 되살릴 이유가 없다' },
+]
+
+adminSystemMonitoringRoutes.get('/ops-status', async (c) => {
+  const { DB } = c.env
+  try {
+    // platform_settings 게이트 값
+    const settingKeys = OPS_GATES.filter(g => g.kind === 'setting').map(g => g.key)
+    const settingRows = await DB.prepare(
+      `SELECT key, value FROM platform_settings WHERE key IN (${settingKeys.map(() => '?').join(',')})`,
+    ).bind(...settingKeys).all<{ key: string; value: string }>().catch(() => ({ results: [] as Array<{ key: string; value: string }> }))
+    const settingMap = new Map((settingRows.results || []).map(r => [r.key, r.value]))
+
+    const envRecord = c.env as unknown as Record<string, unknown>
+    const gates = OPS_GATES.map(g => {
+      const raw = g.kind === 'env' ? envRecord[g.key] : settingMap.get(g.key)
+      const value = raw === undefined || raw === null ? null : String(raw)
+      return {
+        ...g,
+        value,
+        // 미설정(null)은 기본값과 동일 취급 — "기본값에서 벗어남" = 활성 배지 대상
+        is_default: value === null || value === g.default_value,
+      }
+    })
+
+    // cron heartbeat 전체 + 핵심 stale 판정
+    const health = await getCronHealth(DB)
+    // 🫀 하트비트 저장소는 `platform_settings.cron_hb:*` 다(별도 테이블 아님 —
+    //   이 레포는 D1 마이그레이션이 CI 에서 안 돌아 새 테이블은 생성 보장이 없다).
+    //   OpsStatusTab 이 기대하는 모양으로만 변환한다. run_count 는 저장하지 않으므로 null.
+    const beats = await listCronHeartbeats(DB)
+    const hb = {
+      results: beats.map(b => ({
+        cron_name: b.name,
+        last_status: b.ok === null ? 'unknown' : b.ok ? 'ok' : 'fail',
+        last_finished_at: b.at,
+        last_duration_ms: b.ms,
+        last_error: null as string | null,
+        run_count: null as number | null,
+      })),
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        gates,
+        cron_health: health,
+        heartbeats: hb.results || [],
+        checklist_doc: 'docs/STAGING_CHECKLIST.md',
+      },
+    })
+  } catch (err) {
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
+  }
+})

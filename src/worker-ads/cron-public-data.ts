@@ -1,0 +1,59 @@
+/**
+ * 🏛️ **공공데이터 계열 cron 게이트** — `index.ts` 에서 분리 (2026-08-03, 600줄 래칫).
+ *
+ *   왜 이 넷이 한 묶음인가: 전부 **data.go.kr 원부**를 훑는 레인이고, 성격이 같다 —
+ *   원부는 정적에 가깝고(자주 안 바뀜), 요청 한도가 있으며, 실패해도 다른 축에 영향이 없다.
+ *   그래서 주기가 **일 1회 / 짝수시** 로 성기고, 시각을 서로 겹치지 않게 흩뿌려 둔다.
+ *
+ *   ⚠️ **동작은 옮기기 전과 같다** — 게이트 조건·시각·경로·import 경로 전부 그대로다(위치만 이동).
+ *     여기서 시각을 바꾸면 `dispatch-budget` 의 회차 예산 계산과 어긋날 수 있으니, 바꿀 땐
+ *     그쪽 시험(`ads-lane-cadence`·`ads-dispatch-budget`)을 같이 볼 것.
+ */
+import type { Env } from '@/worker/types/env'
+import type { makeHourGates } from './lane-cadence'
+import { laneAlarmDrivesEnrich } from './lane-alarm-boot'
+
+type Gates = ReturnType<typeof makeHourGates>
+
+/** 게이트 env 키 — 전부 기본 OFF(명시적으로 켜야 돈다). */
+interface PublicDataEnv {
+  ADS_COMMERCE_ENABLED?: string
+  ADS_FRANCHISE_ENABLED?: string
+  ADS_MARKET_ENABLED?: string
+  ADS_NOTICE_ENABLED?: string
+}
+
+/**
+ * 공공데이터 레인 4종의 시각 게이트를 등록한다.
+ * @param gates `makeHourGates(hourUTC, kick, registry)` 결과 — 발화하지 않는 시각에도 주기를 신고한다.
+ */
+export function registerPublicDataCrons(env: Env, gates: Gates): void {
+  const e = env as unknown as PublicDataEnv
+  // 🛒 통신판매사업자 — 짝수시(상가정보와 같은 창이나 별도 커서·예산). 최대 공급원이라 가장 잦다.
+  //   ⏰ 2026-08-09 알람 이관(3차) — 08-08 23:00 KST 회차 CPU 사망. 알람이 몰면 cron 은 손 뗌
+  //   (판단은 index.ts 와 같은 헬퍼 한 곳 — 두 군데서 각자 판단하면 한쪽만 고쳐져 두 경로가 겹친다).
+  if (!laneAlarmDrivesEnrich(env) && e.ADS_COMMERCE_ENABLED === 'true') {
+    gates.everyNHours(2, 0, '/__ads/collect-commerce', async () => { const { runCommerceCollect } = await import('@/features/marketing/api/commerce-notify-collect'); return runCommerceCollect(env) })
+  }
+  // 🏢 공정위 가맹 — 일 1회(주 1회 성격이지만 매일 소량 페이지로 커서를 흘린다).
+  //   ⏰ 2026-08-12 알람 이관(5차) — 08-11 22:00 회차가 `ran=8` + `p:1`(부모가 꼬리 전에 사망) →
+  //     이 레인의 자식이 아예 시작되지 않았다(`ads_franchise_stats.last_run` 이 08-10 그대로).
+  //     판단 헬퍼는 commerce·scan-notices 와 동일한 한 곳.
+  if (!laneAlarmDrivesEnrich(env) && e.ADS_FRANCHISE_ENABLED === 'true') {
+    gates.dailyAt(22, '/__ads/collect-franchise', async () => { const { runFranchiseCollect } = await import('@/features/marketing/api/franchise-collect'); return runFranchiseCollect(env) })
+  }
+  // 🏪 상권 축(전통시장 상인회) — 일 1회. 원부가 1,393건이라 회당 몇 페이지면 전량이 금방 돌고,
+  //   표준데이터는 **개발계정 월 1,000요청**이라 매시간 돌리면 낭비다(정적에 가까운 원부).
+  if (e.ADS_MARKET_ENABLED === 'true') {
+    gates.dailyAt(20, '/__ads/collect-market', async () => { const { runMarketCollect } = await import('@/features/marketing/api/market-collect'); return runMarketCollect(env) })
+  }
+  // 📢 공고 스캐너 — 일 1회(hourUTC===21 = KST 06시).
+  //   ⏰ 2026-08-09 알람 이관(4차) — 08-08 21:00 UTC 잠정 회차(부모 사망)에 발화 실종. 판단 헬퍼는 commerce 와 동일.
+  if (!laneAlarmDrivesEnrich(env) && e.ADS_NOTICE_ENABLED === 'true') {
+    // 📢 공고 스캔 — 일 1회 → **4시간마다**(2026-08-10 대표 "셋 다 해줘").
+    //   ⚠️ 매시간이 아니라 4시간인 이유: 대표가 *"실시간까진 필요없어"* 라고 못박았고, 지금 다른 레인들이
+    //   **CPU 한도 사망**을 겪는 중이라(08-08 에 B2B 3개 동시 사망) 24배 증설은 그쪽 예산을 뺏는다.
+    //   입찰공고·지원사업은 마감이 보통 1~2주라 4시간이면 놓치는 건 사실상 없다(6배 증설로 충분).
+    gates.everyNHours(4, 1, '/__ads/scan-notices', async () => { const { runNoticeScan } = await import('@/features/marketing/api/notice-scan'); return runNoticeScan(env) })
+  }
+}

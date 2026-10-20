@@ -1,0 +1,146 @@
+import { createRequire } from 'node:module'
+import { writeFileSync } from 'node:fs'
+const require = createRequire('/home/user/ur-live/package.json')
+const { chromium } = require('playwright-core')
+const OUT = '/tmp/claude-0/-home-user-ur-live/3f48ebd5-3b52-5f8a-846d-cad65cac2cd1/scratchpad/mock'
+
+const CSS = `
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:14px/1.45 -apple-system,'Pretendard','Apple SD Gothic Neo',sans-serif;background:#F8F7FC;color:#111827;-webkit-font-smoothing:antialiased}
+.wrap{display:flex;min-height:100vh}
+.side{width:260px;flex:0 0 260px;background:#fff;border-right:1px solid #E8E9EE;padding:14px 12px}
+.ws{border:1px solid #E8E9EE;border-radius:12px;padding:10px;display:flex;gap:9px;align-items:center;margin-bottom:10px}
+.ws .av{width:32px;height:32px;border-radius:9px;background:#EAF1FE;color:#1C69EF;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
+.ws b{display:block;font-size:13px}.ws s{display:block;font-size:11px;color:#9CA3AF;text-decoration:none}
+.cta{display:flex;align-items:center;justify-content:center;gap:6px;background:#1C69EF;color:#fff;border-radius:10px;padding:10px;font-weight:700;font-size:13px;margin-bottom:10px}
+.nav a{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;font-size:13px;color:#6B7280;font-weight:500;text-decoration:none}
+.nav a.on{background:#EAF1FE;color:#111827;font-weight:700}
+.nav .dot{width:15px;height:15px;border-radius:4px;background:#E5E7EB;flex:0 0 15px}
+.nav a.on .dot{background:#1C69EF}
+.sep{border-top:1px solid #E8E9EE;margin:8px 2px;padding-top:8px}
+.main{flex:1;min-width:0}
+.top{height:60px;background:#fff;border-bottom:1px solid #E8E9EE;display:flex;align-items:center;padding:0 22px;gap:10px}
+.top b{font-size:15px}
+.body{padding:20px 22px 40px}
+.card{background:#fff;border:1px solid #E8E9EE;border-radius:16px;padding:16px}
+.g{display:grid;gap:12px}
+h3.sec{font-size:12px;font-weight:800;color:#9CA3AF;letter-spacing:.02em;margin:2px 0 2px}
+h4{font-size:13.5px;font-weight:800;margin-bottom:9px}
+.mut{color:#9CA3AF;font-size:12px}
+.stat b{display:block;font-size:23px;font-weight:800;letter-spacing:-.02em;margin-top:5px}
+.stat .lbl{font-size:12px;color:#6B7280;display:flex;align-items:center;gap:6px}
+.pip{width:6px;height:6px;border-radius:50%;background:#D1D5DB}
+.pip.b{background:#1C69EF}.pip.a{background:#F59E0B}.pip.g{background:#10B981}
+.tile{display:flex;align-items:center;gap:9px;border:1px solid #E8E9EE;border-radius:12px;padding:10px 12px;background:#fff}
+.tile .ic{width:30px;height:30px;border-radius:9px;background:#F3F4F6;flex:0 0 30px}
+.tile.hot{border-color:#1C69EF;background:#EAF1FE}
+.tile.hot .ic{background:#fff}
+.tile b{font-size:12.5px;display:block}.tile s{font-size:11px;color:#9CA3AF;text-decoration:none;display:block}
+.chip{display:inline-flex;gap:6px;align-items:center;background:#EAF1FE;color:#1C69EF;font-weight:700;font-size:12px;padding:7px 11px;border-radius:9px}
+.chart{height:150px;border-radius:10px;background:linear-gradient(180deg,#EAF1FE,#fff);border:1px solid #EEF0F4;position:relative;overflow:hidden}
+.chart:after{content:"";position:absolute;left:0;right:0;bottom:0;height:64%;background:
+ repeating-linear-gradient(90deg,#1C69EF 0 12px,transparent 12px 34px);opacity:.25}
+.rowline{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #F1F2F5;font-size:12px}
+.badge{font-size:10.5px;font-weight:800;color:#1C69EF;background:#EAF1FE;border-radius:6px;padding:2px 7px}
+.ghost{border:1px dashed #D9DCE3;border-radius:14px;padding:14px;color:#9CA3AF;font-size:12px;background:#fff}
+.tabs{display:flex;gap:4px;border-bottom:1px solid #E8E9EE;margin-bottom:14px}
+.tabs span{padding:9px 13px;font-size:13px;font-weight:700;color:#9CA3AF}
+.tabs span.on{color:#111827;box-shadow:inset 0 -2px 0 #1C69EF}
+.note{position:fixed;right:14px;top:14px;background:#111827;color:#fff;font-size:11px;font-weight:700;padding:6px 10px;border-radius:8px;opacity:.85}
+.sticky{position:sticky;top:12px}
+`
+
+const SIDE = (active = '대시보드') => `
+<div class="side">
+  <div class="ws"><div class="av">홍</div><div><b>홍대돈까스</b><s>매장 1곳 · 운영 중</s></div></div>
+  <div class="cta">+ 이용권 등록</div>
+  <div class="nav">
+    ${['대시보드','주문','이용권·공구','정산'].map(n=>`<a class="${n===active?'on':''}"><i class="dot"></i>${n}</a>`).join('')}
+    <div class="sep"></div>
+    ${['상품','예약','재고','리뷰'].map(n=>`<a><i class="dot"></i>${n}</a>`).join('')}
+    <div class="sep"></div>
+    ${['소개 파트너','마케팅','설정'].map(n=>`<a><i class="dot"></i>${n}</a>`).join('')}
+  </div>
+</div>`
+
+const page = (label, inner, active) => `<!doctype html><meta charset="utf-8"><style>${CSS}</style>
+<div class="wrap">${SIDE(active)}<div class="main">
+<div class="top"><b>대시보드</b><span class="mut">· 매장 업주</span></div>
+<div class="body">${inner}</div></div></div><div class="note">${label}</div>`
+
+const STORE = `<div class="card"><h4>🏪 내 매장 <span class="mut">1</span></h4>
+<div style="border:1px solid #1C69EF;background:#EAF1FE;border-radius:12px;padding:12px">
+<b style="font-size:13px">홍대돈까스</b><div class="mut" style="margin:3px 0 9px">전북 전주시 덕진구 가리내10길 10 · 운영 중</div>
+<div style="display:flex;gap:7px"><div style="flex:1;background:#1C69EF;color:#fff;border-radius:9px;padding:8px;text-align:center;font-size:12px;font-weight:800">이용권 등록</div>
+<div style="border:1px solid #E8E9EE;background:#fff;border-radius:9px;padding:8px 14px;font-size:12px;font-weight:700">정보</div></div></div></div>`
+
+const TODO = (empty) => `<div class="card"><h4>오늘 처리할 일</h4>${empty
+ ? `<p class="mut" style="line-height:1.6">지금 처리할 일이 없어요.<br>이용권을 등록하면 주문과 정산이 여기에 모입니다.</p>`
+ : `<div style="display:flex;gap:8px;flex-wrap:wrap"><span class="chip">미처리 주문 3건</span><span class="chip">정산 가능 ₩412,000</span><span class="chip">리뷰 답글 2건</span></div>`}</div>`
+
+const TILES = `<div class="g" style="grid-template-columns:repeat(4,1fr)">
+${[['주문 확인','신규·배송',1],['이용권 관리','판매 현황',0],['정산','딜/현금 출금',0],['소개 파트너','협업 제안',0]]
+.map(([a,b,hot])=>`<div class="tile ${hot?'hot':''}"><i class="ic"></i><div><b>${a}</b><s>${b}</s></div></div>`).join('')}</div>`
+
+const STATS = (cols) => `<div class="g" style="grid-template-columns:repeat(${cols},1fr)">
+${[['총 매출','₩1,284,000','b'],['총 주문','37','' ],['대기 주문','3','a'],['정산 예정','₩412,000','g']]
+.map(([l,v,p])=>`<div class="card stat"><span class="lbl"><i class="pip ${p}"></i>${l}</span><b>${v}</b></div>`).join('')}</div>`
+
+const CHART = `<div class="card"><h4>일별 매출 추이 <span class="mut" style="font-weight:500">최근 7일</span></h4><div class="chart"></div></div>`
+const TOPP = `<div class="card"><h4>인기 이용권</h4>
+${['치즈돈까스 2인','점심 정식','저녁 세트'].map((n,i)=>`<div class="rowline"><span>${i+1}. ${n}</span><span style="font-weight:700">₩${420-i*60},000</span></div>`).join('')}</div>`
+const KPI = `<div class="card"><h4>KPI</h4><div class="g" style="grid-template-columns:repeat(4,1fr)">
+${['단골','공구','매출','분쟁'].map(n=>`<div style="border:1px solid #EEF0F4;border-radius:10px;padding:10px"><span class="mut">${n}</span><b style="display:block;font-size:17px;font-weight:800;margin-top:3px">—</b></div>`).join('')}</div></div>`
+const PUB = `<div class="card"><div style="display:flex;align-items:center;gap:12px">
+<div style="width:44px;height:44px;border-radius:10px;background:#EAF1FE"></div>
+<div style="flex:1;min-width:0"><b style="font-size:13px">내 공개 페이지</b><div class="mut">urdeal.kr/u/jiwon1228 · 팔로워 24</div></div>
+<div style="border:1px solid #E8E9EE;border-radius:9px;padding:7px 12px;font-size:12px;font-weight:700">링크 복사</div>
+<div style="background:#1C69EF;color:#fff;border-radius:9px;padding:7px 12px;font-size:12px;font-weight:800">프로필 편집</div></div></div>`
+const GROW = `<div class="card"><h4>소개 파트너</h4><p class="mut">내 이용권을 소개해 줄 사람을 찾아 제안을 보냅니다.</p></div>`
+
+// ── 안 A: 메인 다이어트 (성과는 '성과' 메뉴로 이사) ──
+const A = `<div class="g">${STORE}${TODO(false)}${TILES}${PUB}
+<div class="ghost">📊 숫자 · 차트 · KPI 는 사이드바 <b style="color:#6B7280">성과</b> 메뉴로 옮겼습니다 — 메인은 “지금 할 일”만.</div></div>`
+
+// ── 안 B: 3덩어리 + 섹션 제목 (한 페이지 유지) ──
+const B = `<div class="g">
+<h3 class="sec">1 · 내 매장</h3>${STORE}
+<h3 class="sec" style="margin-top:8px">2 · 오늘 할 일</h3>${TODO(false)}${TILES}
+<h3 class="sec" style="margin-top:8px">3 · 성과 <span style="font-weight:600;color:#C6C9D2">▾ 접기</span></h3>${STATS(4)}
+<div class="g" style="grid-template-columns:1.4fr 1fr">${CHART}${TOPP}</div>${KPI}
+<h3 class="sec" style="margin-top:8px">4 · 성장</h3>${PUB}${GROW}</div>`
+
+// ── 안 C: 좌우 2열 (하는 것 ↔ 보는 것, 우측 sticky) ──
+const C = `<div class="g" style="grid-template-columns:1.55fr 1fr;align-items:start">
+<div class="g">${STORE}${TODO(false)}${TILES}${PUB}${GROW}</div>
+<div class="g sticky">${STATS(2)}${CHART}${TOPP}</div></div>`
+
+// ── 안 D: 단계형 — 신규 셀러가 보는 화면(0 을 띄우지 않는다) ──
+const D = `<div class="g">
+<div class="card" style="padding:0;overflow:hidden">
+ <div style="background:#1C69EF;color:#fff;padding:11px 16px;display:flex;justify-content:space-between;font-size:13px;font-weight:800"><span>STEP 2 · 이용권 등록</span><span style="font-weight:600">2 / 4</span></div>
+ <div style="padding:16px"><b style="font-size:16px">이제 팔 것을 만들 차례예요</b>
+ <p class="mut" style="margin:6px 0 12px;line-height:1.6">매장 등록이 끝났습니다. 이용권을 하나 등록하면 주문·정산·소개 협업이 한 번에 열립니다.</p>
+ <div style="display:inline-block;background:#1C69EF;color:#fff;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:800">이용권 등록하기</div></div></div>
+${STORE}${TODO(true)}
+<div class="ghost">🔒 <b style="color:#6B7280">매출 · 차트 · KPI</b> 는 첫 주문이 들어오면 이 자리에 나타납니다. 지금은 0 만 보여 주지 않습니다.</div></div>`
+
+const VARIANTS = [
+  ['A', '안 A — 메인 다이어트 (성과는 별도 메뉴)', A, '대시보드'],
+  ['B', '안 B — 한 페이지 · 4덩어리 + 섹션 제목', B, '대시보드'],
+  ['C', '안 C — 좌우 2열 (하는 것 ↔ 보는 것)', C, '대시보드'],
+  ['D', '안 D — 단계형 (신규 셀러 화면 · 0 을 안 띄운다)', D, '대시보드'],
+]
+
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox'] })
+const ctx = await browser.newContext({ viewport: { width: 1380, height: 1000 }, deviceScaleFactor: 2 })
+const pg = await ctx.newPage()
+for (const [k, label, inner, active] of VARIANTS) {
+  const f = `${OUT}/${k}.html`
+  writeFileSync(f, page(label, inner, active))
+  await pg.goto('file://' + f)
+  await pg.waitForTimeout(250)
+  await pg.screenshot({ path: `${OUT}/seller-main-${k}.png`, fullPage: true })
+  console.log('ok', k)
+}
+await browser.close()

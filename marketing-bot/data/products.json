@@ -1,0 +1,7 @@
+{
+  "_note": "현재 판매 중인 실상품만. id 는 레포(src/shared/partners-facts.ts, demo-products.ts) 기준. image_url 이 비어 있으면 상품 페이지 og:image 를 사용하고, 그것도 없으면 인스타는 건너뜀.",
+  "products": [
+    { "id": 2919, "name": "달빛한스푼 닭도리탕", "slug": "dalbit", "url": "https://urdeal.kr/pass/2919", "image_url": "" },
+    { "id": 2915, "name": "홍대돈까스 세트", "slug": "hongdae-donkatsu", "url": "https://urdeal.kr/pass/2915", "image_url": "" }
+  ]
+}

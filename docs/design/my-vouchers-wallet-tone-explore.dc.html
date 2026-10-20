@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&family=Jua&family=Noto+Sans+KR:wght@400;500;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  body{margin:0;background:#E7E5DF;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+  *{box-sizing:border-box;}
+  @keyframes pulseDot{0%{box-shadow:0 0 0 0 rgba(76,123,82,.5)}70%{box-shadow:0 0 0 6px rgba(76,123,82,0)}100%{box-shadow:0 0 0 0 rgba(76,123,82,0)}}
+</style>
+<script src="image-slot.js"></script>
+</helmet>
+
+<div style="width:max-content;min-width:100%;min-height:100vh;background:#E7E5DF;padding:48px;box-sizing:border-box;font-family:'Noto Sans KR',sans-serif">
+  <div style="display:flex;flex-direction:column;gap:34px;width:max-content">
+
+    <div style="max-width:1064px;display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+        <div style="font:800 26px 'Noto Sans KR';color:#2c2620;letter-spacing:-.5px">선결제 지갑 · 비주얼 톤 탐색</div>
+        <div style="font:600 13px 'Noto Sans KR';color:#8a8073">이미 결제해 받아둔 식사권·교환권을 모아 매장에서 꺼내 쓰는 지갑</div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:9px;background:#fff;border-radius:10px;padding:9px 13px;box-shadow:0 1px 2px rgba(0,0,0,.05)">
+          <span style="display:flex;gap:3px"><span style="width:13px;height:13px;border-radius:3px;background:#C2562F"></span><span style="width:13px;height:13px;border-radius:3px;background:#F7F1E7;border:1px solid #EADFCB"></span><span style="width:13px;height:13px;border-radius:3px;background:#3A2E22"></span></span>
+          <span style="font:700 13px 'Noto Sans KR';color:#3A2E22">① 장날</span>
+          <span style="font:500 12px 'Noto Sans KR';color:#9a9183">크라프트·서체 따뜻</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:9px;background:#fff;border-radius:10px;padding:9px 13px;box-shadow:0 1px 2px rgba(0,0,0,.05)">
+          <span style="display:flex;gap:3px"><span style="width:13px;height:13px;border-radius:3px;background:#F4541E"></span><span style="width:13px;height:13px;border-radius:3px;background:#FFB13C"></span><span style="width:13px;height:13px;border-radius:3px;background:#FFF6EE;border:1px solid #FFE3CE"></span></span>
+          <span style="font:700 13px 'Noto Sans KR';color:#2B2118">② 동네 한바퀴</span>
+          <span style="font:500 12px 'Noto Sans KR';color:#9a9183">생기·둥근 친근</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:9px;background:#fff;border-radius:10px;padding:9px 13px;box-shadow:0 1px 2px rgba(0,0,0,.05)">
+          <span style="display:flex;gap:3px"><span style="width:13px;height:13px;border-radius:3px;background:#5C7355"></span><span style="width:13px;height:13px;border-radius:3px;background:#B07B4F"></span><span style="width:13px;height:13px;border-radius:3px;background:#F2F1EA;border:1px solid #E3E2D6"></span></span>
+          <span style="font:700 13px 'Noto Sans KR';color:#2C2E27">③ 단골</span>
+          <span style="font:500 12px 'Noto Sans KR';color:#9a9183">세이지·우드 차분</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:40px;align-items:flex-start">
+
+      <div style="display:flex;flex-direction:column;gap:22px;flex:none">
+        <div style="width:328px;background:#FFFDF8;border:1px solid #EADFCB;border-radius:16px;padding:15px 17px">
+          <div style="display:flex;align-items:center;gap:8px"><span style="font:700 17px 'Gowun Batang';color:#3A2E22">① 장날</span><span style="font:700 10px 'Noto Sans KR';color:#C2562F;background:#FBEAD9;padding:2px 7px;border-radius:6px">KRAFT</span></div>
+          <div style="font:400 12px 'Gowun Dodum';color:#8B7B66;margin-top:7px;line-height:1.6">크라프트 종이 질감 · 따뜻한 명조. 오래된 단골집 영수증 같은 신뢰감.</div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:9px;flex:none">
+          <div style="font:600 12px 'Noto Sans KR';color:#6b6257">메인 · 공구권</div>
+          <div style="width:328px;background:#F7F1E7;border-radius:34px;padding:7px;box-shadow:0 10px 34px rgba(50,35,20,.14);border:1px solid rgba(0,0,0,.05)">
+            <div style="background:#F7F1E7;border-radius:28px;overflow:hidden">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 22px 4px;font:700 13px 'Gowun Dodum';color:#3A2E22"><span>12:47</span><span style="display:flex;gap:5px;align-items:center;color:#3A2E22">{{ signal }}{{ wifi }}{{ batt }}</span></div>
+              <div style="background:#FFFDF8;padding:6px 17px 12px">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+                  <span style="color:#3A2E22;display:flex">{{ back }}</span>
+                  <div style="flex:1;font:700 18px 'Gowun Batang';color:#3A2E22">내 선결제 지갑</div>
+                  <span style="color:#8B7B66;display:flex">{{ share }}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;background:#FBEAD9;border-radius:12px;padding:10px 13px">
+                  <span style="font:800 13px 'Noto Sans KR';color:#C2562F">8장 사용 가능</span>
+                  <span style="width:3px;height:3px;border-radius:2px;background:#C2562F;opacity:.5"></span>
+                  <span style="font:600 12px 'Noto Sans KR';color:#5E4B36">가장 가까운 만료 <b style="color:#C23B2F">D-2</b></span>
+                </div>
+              </div>
+              <div style="display:flex;padding:0 17px;background:#FFFDF8;border-bottom:1px solid #EADFCB">
+                <div style="padding:11px 3px;margin-right:20px;border-bottom:2px solid #C2562F;color:#3A2E22;font:700 14px 'Noto Sans KR';display:flex;gap:6px;align-items:center">공구권<span style="font:700 10px 'Noto Sans KR';color:#fff;background:#C2562F;padding:1px 6px;border-radius:8px">5</span></div>
+                <div style="padding:11px 3px;color:#A4937C;font:600 14px 'Noto Sans KR';display:flex;gap:6px;align-items:center">교환권<span style="font:700 10px 'Noto Sans KR';color:#8B7B66;background:#F3ECDD;padding:1px 6px;border-radius:8px">4</span></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:13px 17px 9px;background:#F7F1E7">
+                <span style="font:700 12px 'Noto Sans KR';color:#8B7B66">사용 가능 3</span>
+                <div style="display:flex;background:#EFE6D5;border-radius:9px;padding:2px">
+                  <span style="display:flex;gap:4px;align-items:center;font:700 11px 'Noto Sans KR';color:#3A2E22;background:#FFFDF8;padding:5px 10px;border-radius:7px">{{ listIcon }}리스트</span>
+                  <span style="display:flex;gap:4px;align-items:center;font:600 11px 'Noto Sans KR';color:#A4937C;padding:5px 10px">{{ map }}지도</span>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:9px;padding:0 14px;background:#F7F1E7">
+                <div style="background:#FFFDF8;border:1px solid #EADFCB;border-radius:14px;padding:11px;display:flex;gap:11px;box-shadow:0 1px 2px rgba(50,35,20,.04)">
+                  <image-slot id="v1-g1" shape="rounded" radius="10" placeholder="음식" style="width:62px;height:62px;flex:none"></image-slot>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                    <div style="display:flex;align-items:center;gap:6px"><span style="font:700 10px 'Noto Sans KR';color:#C2562F;background:#FBEAD9;padding:2px 7px;border-radius:6px">사용 가능</span><span style="font:800 11px 'Noto Sans KR';color:#C23B2F">D-2</span></div>
+                    <div style="font:700 15px 'Gowun Batang';color:#3A2E22;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">마라탕 2인 세트</div>
+                    <div style="display:flex;align-items:center;gap:3px;color:#8B7B66;min-width:0"><span style="display:flex;color:#C2562F">{{ pin }}</span><span style="font:500 12px 'Noto Sans KR';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">탕화쿵푸 양꼬치거리점</span></div>
+                    <span style="font:600 11px ui-monospace,monospace;letter-spacing:.3px;color:#5E4B36;background:#F3ECDD;padding:3px 7px;border-radius:6px;display:inline-flex;gap:5px;align-items:center;align-self:flex-start;margin-top:1px">TXG-4471<span style="display:flex;color:#B6A88F">{{ copy }}</span></span>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;flex:none">
+                    <div style="font:800 15px 'Noto Sans KR';color:#3A2E22;white-space:nowrap">24,000<span style="font-weight:600;font-size:11px;color:#8B7B66">원</span></div>
+                    <button style="border:none;cursor:pointer;width:54px;height:48px;border-radius:12px;background:#C2562F;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">{{ qrSmall }}<span style="font:700 10px 'Noto Sans KR'">사용</span></button>
+                  </div>
+                </div>
+                <div style="background:#FFFDF8;border:1px solid #EADFCB;border-radius:14px;padding:11px;display:flex;gap:11px;box-shadow:0 1px 2px rgba(50,35,20,.04)">
+                  <image-slot id="v1-g2" shape="rounded" radius="10" placeholder="음식" style="width:62px;height:62px;flex:none"></image-slot>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                    <div style="display:flex;align-items:center;gap:6px"><span style="font:700 10px 'Noto Sans KR';color:#C2562F;background:#FBEAD9;padding:2px 7px;border-radius:6px">사용 가능</span><span style="font:800 11px 'Noto Sans KR';color:#8B7B66">D-5</span></div>
+                    <div style="font:700 15px 'Gowun Batang';color:#3A2E22;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">평양냉면 식사권</div>
+                    <div style="display:flex;align-items:center;gap:3px;color:#8B7B66;min-width:0"><span style="display:flex;color:#C2562F">{{ pin }}</span><span style="font:500 12px 'Noto Sans KR';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">을지면옥 을지로3가</span></div>
+                    <span style="font:600 11px ui-monospace,monospace;letter-spacing:.3px;color:#5E4B36;background:#F3ECDD;padding:3px 7px;border-radius:6px;display:inline-flex;gap:5px;align-items:center;align-self:flex-start;margin-top:1px">EUL-2093<span style="display:flex;color:#B6A88F">{{ copy }}</span></span>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;flex:none">
+                    <div style="font:800 15px 'Noto Sans KR';color:#3A2E22;white-space:nowrap">13,000<span style="font-weight:600;font-size:11px;color:#8B7B66">원</span></div>
+                    <button style="border:none;cursor:pointer;width:54px;height:48px;border-radius:12px;background:#C2562F;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">{{ qrSmall }}<span style="font:700 10px 'Noto Sans KR'">사용</span></button>
+                  </div>
+                </div>
+                <div style="background:#FFFDF8;border:1px solid #EADFCB;border-radius:14px;padding:11px;display:flex;gap:11px;box-shadow:0 1px 2px rgba(50,35,20,.04)">
+                  <image-slot id="v1-g3" shape="rounded" radius="10" placeholder="음식" style="width:62px;height:62px;flex:none"></image-slot>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                    <div style="display:flex;align-items:center;gap:6px"><span style="font:700 10px 'Noto Sans KR';color:#C2562F;background:#FBEAD9;padding:2px 7px;border-radius:6px">사용 가능</span><span style="font:800 11px 'Noto Sans KR';color:#8B7B66">D-8</span></div>
+                    <div style="font:700 15px 'Gowun Batang';color:#3A2E22;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">브런치 식사권</div>
+                    <div style="display:flex;align-items:center;gap:3px;color:#8B7B66;min-width:0"><span style="display:flex;color:#C2562F">{{ pin }}</span><span style="font:500 12px 'Noto Sans KR';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">오월의종 한남동</span></div>
+                    <span style="font:600 11px ui-monospace,monospace;letter-spacing:.3px;color:#5E4B36;background:#F3ECDD;padding:3px 7px;border-radius:6px;display:inline-flex;gap:5px;align-items:center;align-self:flex-start;margin-top:1px">MAY-7782<span style="display:flex;color:#B6A88F">{{ copy }}</span></span>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;flex:none">
+                    <div style="font:800 15px 'Noto Sans KR';color:#3A2E22;white-space:nowrap">12,000<span style="font-weight:600;font-size:11px;color:#8B7B66">원</span></div>
+                    <button style="border:none;cursor:pointer;width:54px;height:48px;border-radius:12px;background:#C2562F;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">{{ qrSmall }}<span style="font:700 10px 'Noto Sans KR'">사용</span></button>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 4px 3px"><div style="display:flex;align-items:center;gap:8px"><span style="font:700 13px 'Noto Sans KR';color:#8B7B66">사용 완료</span><span style="font:700 11px 'Noto Sans KR';color:#A4937C;background:#F3ECDD;padding:1px 7px;border-radius:8px">1</span></div><span style="display:flex;color:#B6A88F">{{ chev }}</span></div>
+                <div style="height:1px;background:#EADFCB"></div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 4px 14px"><div style="display:flex;align-items:center;gap:8px"><span style="font:700 13px 'Noto Sans KR';color:#A4937C">만료 · 환불</span><span style="font:700 11px 'Noto Sans KR';color:#A4937C;background:#F3ECDD;padding:1px 7px;border-radius:8px">2</span></div><span style="display:flex;color:#B6A88F">{{ chev }}</span></div>
+              </div>
+              <div style="display:flex;justify-content:center;padding:6px 0 9px;background:#F7F1E7"><div style="width:120px;height:4px;border-radius:3px;background:#3A2E22;opacity:.16"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:9px;flex:none">
+          <div style="font:600 12px 'Noto Sans KR';color:#6b6257">사용 모달 · 매장에서 꺼내기</div>
+          <div style="width:328px;background:#F7F1E7;border-radius:34px;padding:7px;box-shadow:0 10px 34px rgba(50,35,20,.14);border:1px solid rgba(0,0,0,.05)">
+            <div style="background:rgba(28,18,10,.58);border-radius:28px;overflow:hidden">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 22px 4px;font:700 13px 'Gowun Dodum';color:#fff"><span>12:47</span><span style="display:flex;gap:5px;align-items:center;color:#fff">{{ signal }}{{ wifi }}{{ batt }}</span></div>
+              <div style="height:30px"></div>
+              <div style="background:#FFFDF8;border-radius:26px 26px 28px 28px;padding:8px 19px 14px">
+                <div style="display:flex;justify-content:center;padding:2px 0 4px"><div style="width:38px;height:4px;border-radius:3px;background:#E0D4BF"></div></div>
+                <div style="display:flex;justify-content:flex-end"><span style="display:flex;color:#A4937C">{{ close }}</span></div>
+                <div style="text-align:center;margin-top:-6px">
+                  <div style="font:700 19px 'Gowun Batang';color:#3A2E22">마라탕 2인 세트</div>
+                  <div style="display:flex;gap:4px;justify-content:center;align-items:center;margin-top:3px"><span style="display:flex;color:#C2562F">{{ pin }}</span><span style="font:500 13px 'Noto Sans KR';color:#8B7B66">탕화쿵푸 양꼬치거리점</span></div>
+                </div>
+                <div style="display:flex;justify-content:center;margin-top:14px"><div style="background:#fff;border:1px solid #EADFCB;border-radius:18px;padding:15px;box-shadow:0 6px 22px rgba(50,35,20,.09)">{{ qrA }}</div></div>
+                <button style="display:flex;gap:7px;align-items:center;margin:13px auto 0;background:#F3ECDD;border:none;border-radius:10px;padding:9px 15px;cursor:pointer"><span style="font:700 15px ui-monospace,monospace;letter-spacing:1px;color:#3A2E22">TXG-4471</span><span style="display:flex;color:#C2562F">{{ copy }}</span><span style="font:600 12px 'Noto Sans KR';color:#8B7B66">복사</span></button>
+                <div style="display:flex;justify-content:center;align-items:center;gap:6px;margin-top:12px"><span style="width:7px;height:7px;border-radius:4px;background:#4B7B52;animation:pulseDot 1.6s infinite"></span><span style="font:600 12px 'Noto Sans KR';color:#8B7B66">실시간 · {{ clock }}</span></div>
+                <div style="display:flex;gap:9px;background:#E6EFDF;border-radius:12px;padding:11px 12px;margin-top:14px;align-items:flex-start"><span style="display:flex;color:#4B7B52;margin-top:1px">{{ check }}</span><div><div style="font:700 12px 'Noto Sans KR';color:#3A2E22">이미 결제 완료된 식사권이에요</div><div style="font-weight:500;font-size:11px;font-family:'Noto Sans KR';color:#8B7B66;margin-top:2px;line-height:1.5">매장에서 추가 결제 없이 이 화면만 보여주세요</div></div></div>
+                <div style="display:flex;gap:8px;align-items:center;margin-top:10px;padding:0 2px"><span style="font:700 11px 'Noto Sans KR';color:#C2562F;background:#FBEAD9;padding:2px 7px;border-radius:6px">매장 안내</span><span style="font:500 12px 'Noto Sans KR';color:#8B7B66">평일 점심(11:30~14:00)만 사용 가능</span></div>
+                <div style="display:flex;gap:8px;margin-top:15px">
+                  <button style="flex:1;display:flex;gap:6px;justify-content:center;align-items:center;background:#FFFDF8;border:1px solid #EADFCB;border-radius:12px;padding:12px;font:700 13px 'Noto Sans KR';color:#3A2E22;cursor:pointer">{{ share }}공유</button>
+                  <button style="flex:1;display:flex;gap:6px;justify-content:center;align-items:center;background:#FFFDF8;border:1px solid #EADFCB;border-radius:12px;padding:12px;font:700 13px 'Noto Sans KR';color:#8B7B66;cursor:pointer">구매 취소·환불</button>
+                </div>
+                <div style="font:500 11px 'Noto Sans KR';color:#B6A88F;text-align:center;margin-top:8px">미사용 · 결제 후 7일 이내에만 환불할 수 있어요</div>
+                <div style="display:flex;justify-content:center;padding:9px 0 2px"><div style="width:120px;height:4px;border-radius:3px;background:#3A2E22;opacity:.16"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:9px;flex:none">
+          <div style="font:600 12px 'Noto Sans KR';color:#6b6257">메인 · 교환권 (브랜드 바코드)</div>
+          <div style="width:328px;background:#F7F1E7;border-radius:34px;padding:7px;box-shadow:0 10px 34px rgba(50,35,20,.14);border:1px solid rgba(0,0,0,.05)">
+            <div style="background:#F7F1E7;border-radius:28px;overflow:hidden">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 22px 4px;font:700 13px 'Gowun Dodum';color:#3A2E22"><span>12:47</span><span style="display:flex;gap:5px;align-items:center;color:#3A2E22">{{ signal }}{{ wifi }}{{ batt }}</span></div>
+              <div style="background:#FFFDF8;padding:6px 17px 0">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><span style="color:#3A2E22;display:flex">{{ back }}</span><div style="flex:1;font:700 18px 'Gowun Batang';color:#3A2E22">내 선결제 지갑</div><span style="color:#8B7B66;display:flex">{{ share }}</span></div>
+              </div>
+              <div style="display:flex;padding:0 17px;background:#FFFDF8;border-bottom:1px solid #EADFCB">
+                <div style="padding:11px 3px;margin-right:20px;color:#A4937C;font:600 14px 'Noto Sans KR';display:flex;gap:6px;align-items:center">공구권<span style="font:700 10px 'Noto Sans KR';color:#8B7B66;background:#F3ECDD;padding:1px 6px;border-radius:8px">5</span></div>
+                <div style="padding:11px 3px;border-bottom:2px solid #C2562F;color:#3A2E22;font:700 14px 'Noto Sans KR';display:flex;gap:6px;align-items:center">교환권<span style="font:700 10px 'Noto Sans KR';color:#fff;background:#C2562F;padding:1px 6px;border-radius:8px">4</span></div>
+              </div>
+              <div style="padding:12px 14px 0;background:#F7F1E7">
+                <div style="display:flex;gap:10px;align-items:center;background:#FBEAD9;border:1px solid #F0D8BE;border-radius:12px;padding:11px 12px">
+                  <span style="display:flex;color:#C2562F">{{ phone }}</span>
+                  <div style="flex:1"><div style="font:700 12px 'Noto Sans KR';color:#3A2E22">전화번호를 등록하세요</div><div style="font:500 11px 'Noto Sans KR';color:#8B7B66;margin-top:1px">교환권을 문자(MMS)로 자동 발송해 드려요</div></div>
+                  <button style="background:#C2562F;color:#fff;border:none;border-radius:8px;padding:7px 14px;font:700 12px 'Noto Sans KR';cursor:pointer;white-space:nowrap">등록</button>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:9px;padding:11px 14px 0;background:#F7F1E7">
+                <div style="background:#FFFDF8;border:1px solid #EADFCB;border-radius:14px;padding:11px;display:flex;gap:11px;box-shadow:0 1px 2px rgba(50,35,20,.04)">
+                  <image-slot id="v1-x1" shape="rounded" radius="10" placeholder="로고" style="width:62px;height:62px;flex:none"></image-slot>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                    <div style="display:flex;align-items:center;gap:6px"><span style="font:700 10px 'Noto Sans KR';color:#C2562F;background:#FBEAD9;padding:2px 7px;border-radius:6px">사용 가능</span><span style="font:800 11px 'Noto Sans KR';color:#8B7B66">D-30</span></div>
+                    <div style="font:700 14px 'Gowun Batang';color:#3A2E22;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">아이스 카페 아메리카노 T</div>
+                    <div style="font:600 11px 'Noto Sans KR';color:#8B7B66">스타벅스</div>
+                    <div style="height:20px;border-radius:3px;margin-top:2px;background:repeating-linear-gradient(90deg,#3A2E22 0 1px,transparent 1px 3px,#3A2E22 3px 4px,transparent 4px 7px,#3A2E22 7px 9px,transparent 9px 11px);opacity:.8"></div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;flex:none">
+                    <div style="font:800 15px 'Noto Sans KR';color:#3A2E22;white-space:nowrap">4,500<span style="font-weight:600;font-size:11px;color:#8B7B66">원</span></div>
+                    <button style="border:none;cursor:pointer;width:54px;height:48px;border-radius:12px;background:#3A2E22;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">{{ barIcon }}<span style="font:700 9px 'Noto Sans KR'">바코드</span></button>
+                  </div>
+                </div>
+                <div style="background:#FFFDF8;border:1px solid #EADFCB;border-radius:14px;padding:11px;display:flex;gap:11px;box-shadow:0 1px 2px rgba(50,35,20,.04)">
+                  <image-slot id="v1-x2" shape="rounded" radius="10" placeholder="로고" style="width:62px;height:62px;flex:none"></image-slot>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                    <div style="display:flex;align-items:center;gap:6px"><span style="font:700 10px 'Noto Sans KR';color:#C2562F;background:#FBEAD9;padding:2px 7px;border-radius:6px">사용 가능</span><span style="font:800 11px 'Noto Sans KR';color:#8B7B66">D-12</span></div>
+                    <div style="font:700 14px 'Gowun Batang';color:#3A2E22;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">모바일 금액권 5,000원</div>
+                    <div style="font:600 11px 'Noto Sans KR';color:#8B7B66">GS25 편의점</div>
+                    <div style="height:20px;border-radius:3px;margin-top:2px;background:repeating-linear-gradient(90deg,#3A2E22 0 2px,transparent 2px 4px,#3A2E22 4px 5px,transparent 5px 8px,#3A2E22 8px 9px,transparent 9px 11px);opacity:.8"></div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;flex:none">
+                    <div style="font:800 15px 'Noto Sans KR';color:#3A2E22;white-space:nowrap">5,000<span style="font-weight:600;font-size:11px;color:#8B7B66">원</span></div>
+                    <button style="border:none;cursor:pointer;width:54px;height:48px;border-radius:12px;background:#3A2E22;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">{{ barIcon }}<span style="font:700 9px 'Noto Sans KR'">바코드</span></button>
+                  </div>
+                </div>
+                <div style="background:#FFFDF8;border:1px solid #F0D0C9;border-radius:14px;padding:11px;display:flex;gap:11px;box-shadow:0 1px 2px rgba(50,35,20,.04)">
+                  <image-slot id="v1-x3" shape="rounded" radius="10" placeholder="로고" style="width:62px;height:62px;flex:none"></image-slot>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                    <div style="display:flex;align-items:center;gap:6px"><span style="font:700 10px 'Noto Sans KR';color:#C23B2F;background:#FBE3DF;padding:2px 7px;border-radius:6px">발송 실패</span></div>
+                    <div style="font:700 14px 'Gowun Batang';color:#3A2E22;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">파인트 아이스크림</div>
+                    <div style="font:600 11px 'Noto Sans KR';color:#8B7B66">배스킨라빈스</div>
+                    <div style="font:500 11px 'Noto Sans KR';color:#C23B2F;margin-top:1px">전화번호 확인 후 재발송하세요</div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;flex:none">
+                    <div style="font:800 15px 'Noto Sans KR';color:#3A2E22;white-space:nowrap">8,200<span style="font-weight:600;font-size:11px;color:#8B7B66">원</span></div>
+                    <button style="border:1px solid #C23B2F;cursor:pointer;width:54px;height:48px;border-radius:12px;background:#FBE3DF;color:#C23B2F;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">{{ refresh }}<span style="font:700 9px 'Noto Sans KR'">재발송</span></button>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 4px 14px"><div style="display:flex;align-items:center;gap:8px"><span style="font:700 13px 'Noto Sans KR';color:#8B7B66">사용 완료</span><span style="font:700 11px 'Noto Sans KR';color:#A4937C;background:#F3ECDD;padding:1px 7px;border-radius:8px">1</span></div><span style="display:flex;color:#B6A88F">{{ chev }}</span></div>
+              </div>
+              <div style="display:flex;justify-content:center;padding:4px 0 9px;background:#F7F1E7"><div style="width:120px;height:4px;border-radius:3px;background:#3A2E22;opacity:.16"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:9px;flex:none">
+          <div style="font:600 12px 'Noto Sans KR';color:#6b6257">빈 상태 · 공구권</div>
+          <div style="width:328px;background:#F7F1E7;border-radius:34px;padding:7px;box-shadow:0 10px 34px rgba(50,35,20,.14);border:1px solid rgba(0,0,0,.05)">
+            <div style="background:#FFFDF8;border-radius:28px;overflow:hidden">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 22px 4px;font:700 13px 'Gowun Dodum';color:#3A2E22"><span>12:47</span><span style="display:flex;gap:5px;align-items:center;color:#3A2E22">{{ signal }}{{ wifi }}{{ batt }}</span></div>
+              <div style="display:flex;align-items:center;gap:8px;padding:6px 17px 0"><span style="color:#3A2E22;display:flex">{{ back }}</span><div style="flex:1;font:700 18px 'Gowun Batang';color:#3A2E22">내 선결제 지갑</div></div>
+              <div style="display:flex;padding:14px 17px 0;gap:20px;border-bottom:1px solid #EADFCB">
+                <div style="padding-bottom:11px;border-bottom:2px solid #C2562F;color:#3A2E22;font:700 14px 'Noto Sans KR'">공구권</div>
+                <div style="padding-bottom:11px;color:#A4937C;font:600 14px 'Noto Sans KR'">교환권</div>
+              </div>
+              <div style="padding:34px 26px 26px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px">
+                <image-slot id="v1-empty" shape="rounded" radius="20" placeholder="일러스트" style="width:132px;height:132px"></image-slot>
+                <div>
+                  <div style="font:700 18px 'Gowun Batang';color:#3A2E22">아직 받아둔 식사권이 없어요</div>
+                  <div style="font-weight:400;font-size:13px;font-family:'Gowun Dodum';color:#8B7B66;margin-top:7px;line-height:1.7">동네 맛집 공동구매에 참여하면<br>선결제 식사권이 여기에 쌓여요</div>
+                </div>
+                <div style="display:flex;gap:7px;width:100%;margin-top:2px">
+                  <div style="flex:1;background:#F7F1E7;border-radius:12px;padding:11px 7px;text-align:center"><div style="font:800 13px 'Noto Sans KR';color:#C2562F">1</div><div style="font:600 10px 'Noto Sans KR';color:#5E4B36;margin-top:4px;line-height:1.4">공구<br>참여</div></div>
+                  <div style="flex:1;background:#F7F1E7;border-radius:12px;padding:11px 7px;text-align:center"><div style="font:800 13px 'Noto Sans KR';color:#C2562F">2</div><div style="font:600 10px 'Noto Sans KR';color:#5E4B36;margin-top:4px;line-height:1.4">지갑에<br>식사권</div></div>
+                  <div style="flex:1;background:#F7F1E7;border-radius:12px;padding:11px 7px;text-align:center"><div style="font:800 13px 'Noto Sans KR';color:#C2562F">3</div><div style="font:600 10px 'Noto Sans KR';color:#5E4B36;margin-top:4px;line-height:1.4">매장에서<br>QR 제시</div></div>
+                </div>
+                <button style="width:100%;border:none;cursor:pointer;background:#C2562F;color:#fff;border-radius:13px;padding:14px;font:700 15px 'Noto Sans KR';margin-top:4px">공구 보러가기</button>
+              </div>
+              <div style="display:flex;justify-content:center;padding:6px 0 9px"><div style="width:120px;height:4px;border-radius:3px;background:#3A2E22;opacity:.16"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:9px;flex:none">
+          <div style="font:600 12px 'Noto Sans KR';color:#6b6257">설정 · 교환권 받을 번호</div>
+          <div style="width:328px;background:#F7F1E7;border-radius:34px;padding:7px;box-shadow:0 10px 34px rgba(50,35,20,.14);border:1px solid rgba(0,0,0,.05)">
+            <div style="background:#FFFDF8;border-radius:28px;overflow:hidden">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 22px 4px;font:700 13px 'Gowun Dodum';color:#3A2E22"><span>12:47</span><span style="display:flex;gap:5px;align-items:center;color:#3A2E22">{{ signal }}{{ wifi }}{{ batt }}</span></div>
+              <div style="display:flex;align-items:center;gap:8px;padding:6px 17px 16px;border-bottom:1px solid #EADFCB"><span style="color:#3A2E22;display:flex">{{ back }}</span><div style="flex:1;font:700 17px 'Gowun Batang';color:#3A2E22">교환권 받을 번호</div></div>
+              <div style="padding:18px 18px 24px">
+                <div style="display:flex;gap:9px;background:#E6EFDF;border-radius:12px;padding:12px;align-items:flex-start"><span style="display:flex;color:#4B7B52;margin-top:1px">{{ check }}</span><div style="font-weight:500;font-size:12px;font-family:'Noto Sans KR';color:#5E4B36;line-height:1.6">교환권(기프티콘)은 등록한 번호로 <b style="color:#3A2E22;font-weight:700">문자(MMS) 자동 발송</b>돼요. 공구권은 번호 없이 앱에서 바로 사용해요.</div></div>
+                <div style="font:700 12px 'Noto Sans KR';color:#5E4B36;margin:20px 0 8px">휴대폰 번호</div>
+                <div style="display:flex;align-items:center;gap:9px;background:#FFFDF8;border:1.5px solid #C2562F;border-radius:12px;padding:13px 14px"><span style="display:flex;color:#C2562F">{{ phone }}</span><span style="font:600 16px 'Noto Sans KR';color:#3A2E22;letter-spacing:.5px">010-1234-5678</span><span style="margin-left:auto;width:8px;height:18px;background:#C2562F;border-radius:1px"></span></div>
+                <div style="font:500 11px 'Noto Sans KR';color:#8B7B66;margin-top:8px;line-height:1.6">이 번호는 교환권 발송에만 사용돼요. 발송 실패 시 여기서 번호를 바꿔 재발송할 수 있어요.</div>
+                <button style="width:100%;border:none;cursor:pointer;background:#C2562F;color:#fff;border-radius:13px;padding:15px;font:700 15px 'Noto Sans KR';margin-top:22px">이 번호로 등록</button>
+              </div>
+              <div style="display:flex;justify-content:center;padding:30px 0 9px"><div style="width:120px;height:4px;border-radius:3px;background:#3A2E22;opacity:.16"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:22px;flex:none">
+        <div style="width:328px;background:#FFFFFF;border:1px solid #FFE3CE;border-radius:16px;padding:15px 17px">
+          <div style="display:flex;align-items:center;gap:8px"><span style="font:700 17px 'Jua';color:#2B2118">② 동네 한바퀴</span><span style="font:700 10px 'Noto Sans KR';color:#F4541E;background:#FFE7D8;padding:2px 7px;border-radius:6px">TANGERINE</span></div>
+          <div style="font:400 12px 'Noto Sans KR';color:#9A8C7E;margin-top:7px;line-height:1.6">크라프트 종이 질감 · 따뜻한 명조. 오래된 단골집 영수증 같은 신뢰감.</div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:9px;flex:none">
+          <div style="font:600 12px 'Noto Sans KR';color:#6b6257">메인 · 공구권</div>
+          <div style="width:328px;background:#FFF6EE;border-radius:34px;padding:7px;box-shadow:0 10px 34px rgba(50,35,20,.14);border:1px solid rgba(0,0,0,.05)">
+            <div style="background:#FFF6EE;border-radius:28px;overflow:hidden">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 22px 4px;font:700 13px 'Noto Sans KR';color:#2B2118"><span>12:47</span><span style="display:flex;gap:5px;align-items:center;color:#2B2118">{{ signal }}{{ wifi }}{{ batt }}</span></div>
+              <div style="background:#FFFFFF;padding:6px 17px 12px">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+                  <span style="color:#2B2118;display:flex">{{ back }}</span>
+                  <div style="flex:1;font:700 18px 'Jua';color:#2B2118">내 선결제 지갑</div>
+                  <span style="color:#9A8C7E;display:flex">{{ share }}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;background:#FFE7D8;border-radius:12px;padding:10px 13px">
+                  <span style="font:800 13px 'Noto Sans KR';color:#F4541E">8장 사용 가능</span>
+                  <span style="width:3px;height:3px;border-radius:2px;background:#F4541E;opacity:.5"></span>
+                  <span style="font:600 12px 'Noto Sans KR';color:#5A4D40">가장 가까운 만료 <b style="color:#E0341C">D-2</b></span>
+                </div>
+              </div>
+              <div style="display:flex;padding:0 17px;background:#FFFFFF;border-bottom:1px solid #FFE3CE">
+                <div style="padding:11px 3px;margin-right:20px;border-bottom:2px solid #F4541E;color:#2B2118;font:700 14px 'Noto Sans KR';display:flex;gap:6px;align-items:center">공구권<span style="font:700 10px 'Noto Sans KR';color:#fff;background:#F4541E;padding:1px 6px;border-radius:8px">5</span></div>
+                <div style="padding:11px 3px;color:#B0A293;font:600 14px 'Noto Sans KR';display:flex;gap:6px;align-items:center">교환권<span style="font:700 10px 'Noto Sans KR';color:#9A8C7E;background:#FFF0E4;padding:1px 6px;border-radius:8px">4</span></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:13px 17px 9px;background:#FFF6EE">
+                <span style="font:700 12px 'Noto Sans KR';color:#9A8C7E">사용 가능 3</span>
+                <div style="display:flex;background:#FFE9D6;border-radius:9px;padding:2px">
+                  <span style="display:flex;gap:4px;align-items:center;font:700 11px 'Noto Sans KR';color:#2B2118;background:#FFFFFF;padding:5px 10px;border-radius:7px">{{ listIcon }}리스트</span>
+                  <span style="display:flex;gap:4px;align-items:center;font:600 11px 'Noto Sans KR';color:#B0A293;padding:5px 10px">{{ map }}지도</span>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:9px;padding:0 14px;background:#FFF6EE">
+                <div style="background:#FFFFFF;border:1px solid #FFE3CE;border-radius:18px;padding:11px;display:flex;gap:11px;box-shadow:0 1px 2px rgba(50,35,20,.04)">
+                  <image-slot id="v2-g1" shape="rounded" radius="10" placeholder="음식" style="width:62px;height:62px;flex:none"></image-slot>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                    <div style="display:flex;align-items:center;gap:6px"><span style="font:700 10px 'Noto Sans KR';color:#F4541E;background:#FFE7D8;padding:2px 7px;border-radius:6px">사용 가능</span><span style="font:800 11px 'Noto Sans KR';color:#E0341C">D-2</span></div>
+                    <div style="font:700 15px 'Jua';color:#2B2118;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">마라탕 2인 세트</div>
+                    <div style="display:flex;align-items:center;gap:3px;color:#9A8C7E;min-width:0"><span style="display:flex;color:#F4541E">{{ pin }}</span><span style="font:500 12px 'Noto Sans KR';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">탕화쿵푸 양꼬치거리점</span></div>
+                    <span style="font:600 11px ui-monospace,monospace;letter-spacing:.3px;color:#5A4D40;background:#FFF0E4;padding:3px 7px;border-radius:6px;display:inline-flex;gap:5px;align-items:center;align-self:flex-start;margin-top:1px">TXG-4471<span style="display:flex;color:#C2B4A6">{{ copy }}</span></span>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;flex:none">
+                    <div style="font:800 15px 'Noto Sans KR';color:#2B2118;white-space:nowrap">24,000<span style="font-weight:600;font-size:11px;color:#9A8C7E">원</span></div>
+                    <button style="border:none;cursor:pointer;width:54px;height:48px;border-radius:12px;background:#F4541E;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">{{ qrSmall }}<span style="font:700 10px 'Noto Sans KR'">사용</span></button>
+                  </div>
+                </div>
+                <div style="background:#FFFFFF;border:1px solid #FFE3CE;border-radius:18px;padding:11px;display:flex;gap:11px;box-shadow:0 1px 2px rgba(50,35,20,.04)">
+                  <image-slot id="v2-g2" shape="rounded" radius="10" placeholder="음식" style="width:62px;height:62px;flex:none"></image-slot>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                    <div style="display:flex;align-items:center;gap:6px"><span style="font:700 10px 'Noto Sans KR';color:#F4541E;background:#FFE7D8;padding:2px 7px;border-radius:6px">사용 가능</span><span style="font:800 11px 'Noto Sans KR';color:#9A8C7E">D-5</span></div>
+                    <div style="font:700 15px 'Jua';color:#2B2118;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">평양냉면 식사권</div>
+                    <div style="display:flex;align-items:center;gap:3px;color:#9A8C7E;min-width:0"><span style="display:flex;color:#F4541E">{{ pin }}</span><span style="font:500 12px 'Noto Sans KR';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">을지면옥 을지로3가</span></div>
+                    <span style="font:600 11px ui-monospace,monospace;letter-spacing:.3px;color:#5A4D40;background:#FFF0E4;padding:3px 7px;border-radius:6px;display:inline-flex;gap:5px;align-items:center;align-self:flex-start;margin-top:1px">EUL-2093<span style="display:flex;color:#C2B4A6">{{ copy }}</span></span>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;flex:none">
+                    <div style="font:800 15px 'Noto Sans KR';color:#2B2118;white-space:nowrap">13,000<span style="font-weight:600;font-size:11px;color:#9A8C7E">원</span></div>
+                    <button style="border:none;cursor:pointer;width:54px;height:48px;border-radius:12px;background:#F4541E;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">{{ qrSmall }}<span style="font:700 10px 'Noto Sans KR'">사용</span></button>
+                  </div>
+                </div>
+                <div style="background:#FFFFFF;border:1px solid #FFE3CE;border-radius:18px;padding:11px;display:flex;gap:11px;box-shadow:0 1px 2px rgba(50,35,20,.04)">
+                  <image-slot id="v2-g3" shape="rounded" radius="10" placeholder="음식" style="width:62px;height:62px;flex:none"></image-slot>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                    <div style="display:flex;align-items:center;gap:6px"><span style="font:700 10px 'Noto Sans KR';color:#F4541E;background:#FFE7D8;padding:2px 7px;border-radius:6px">사용 가능</span><span style="font:800 11px 'Noto Sans KR';color:#9A8C7E">D-8</span></div>
+                    <div style="font:700 15px 'Jua';color:#2B2118;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">브런치 식사권</div>
+                    <div style="display:flex;align-items:center;gap:3px;color:#9A8C7E;min-width:0"><span style="display:flex;color:#F4541E">{{ pin }}</span><span style="font:500 12px 'Noto Sans KR';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">오월의종 한남동</span></div>
+                    <span style="font:600 11px ui-monospace,monospace;letter-spacing:.3px;color:#5A4D40;background:#FFF0E4;padding:3px 7px;border-radius:6px;display:inline-flex;gap:5px;align-items:center;align-self:flex-start;margin-top:1px">MAY-7782<span style="display:flex;color:#C2B4A6">{{ copy }}</span></span>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;flex:none">
+                    <div style="font:800 15px 'Noto Sans KR';color:#2B2118;white-space:nowrap">12,000<span style="font-weight:600;font-size:11px;color:#9A8C7E">원</span></div>
+                    <button style="border:none;cursor:pointer;width:54px;height:48px;border-radius:12px;background:#F4541E;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">{{ qrSmall }}<span style="font:700 10px 'Noto Sans KR'">사용</span></button>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 4px 3px"><div style="display:flex;align-items:center;gap:8px"><span style="font:700 13px 'Noto Sans KR';color:#9A8C7E">사용 완료</span><span style="font:700 11px 'Noto Sans KR';color:#B0A293;background:#FFF0E4;padding:1px 7px;border-radius:8px">1</span></div><span style="display:flex;color:#C2B4A6">{{ chev }}</span></div>
+                <div style="height:1px;background:#FFE3CE"></div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 4px 14px"><div style="display:flex;align-items:center;gap:8px"><span style="font:700 13px 'Noto Sans KR';color:#B0A293">만료 · 환불</span><span style="font:700 11px 'Noto Sans KR';color:#B0A293;background:#FFF0E4;padding:1px 7px;border-radius:8px">2</span></div><span style="display:flex;color:#C2B4A6">{{ chev }}</span></div>
+              </div>
+              <div style="display:flex;justify-content:center;padding:6px 0 9px;background:#FFF6EE"><div style="width:120px;height:4px;border-radius:3px;background:#2B2118;opacity:.16"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:9px;flex:none">
+          <div style="font:600 12px 'Noto Sans KR';color:#6b6257">사용 모달 · 매장에서 꺼내기</div>
+          <div style="width:328px;background:#FFF6EE;border-radius:34px;padding:7px;box-shadow:0 10px 34px rgba(50,35,20,.14);border:1px solid rgba(0,0,0,.05)">
+            <div style="background:rgba(28,18,10,.58);border-radius:28px;overflow:hidden">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 22px 4px;font:700 13px 'Noto Sans KR';color:#fff"><span>12:47</span><span style="display:flex;gap:5px;align-items:center;color:#fff">{{ signal }}{{ wifi }}{{ batt }}</span></div>
+              <div style="height:30px"></div>
+              <div style="background:#FFFFFF;border-radius:26px 26px 28px 28px;padding:8px 19px 14px">
+                <div style="display:flex;justify-content:center;padding:2px 0 4px"><div style="width:38px;height:4px;border-radius:3px;background:#FFD9BF"></div></div>
+                <div style="display:flex;justify-content:flex-end"><span style="display:flex;color:#B0A293">{{ close }}</span></div>
+                <div style="text-align:center;margin-top:-6px">
+                  <div style="font:700 19px 'Jua';color:#2B2118">마라탕 2인 세트</div>
+                  <div style="display:flex;gap:4px;justify-content:center;align-items:center;margin-top:3px"><span style="display:flex;color:#F4541E">{{ pin }}</span><span style="font:500 13px 'Noto Sans KR';color:#9A8C7E">탕화쿵푸 양꼬치거리점</span></div>
+                </div>
+                <div style="display:flex;justify-content:center;margin-top:14px"><div style="background:#fff;border:1px solid #FFE3CE;border-radius:18px;padding:15px;box-shadow:0 6px 22px rgba(50,35,20,.09)">{{ qrB }}</div></div>
+                <button style="display:flex;gap:7px;align-items:center;margin:13px auto 0;background:#FFF0E4;border:none;border-radius:10px;padding:9px 15px;cursor:pointer"><span style="font:700 15px ui-monospace,monospace;letter-spacing:1px;color:#2B2118">TXG-4471</span><span style="display:flex;color:#F4541E">{{ copy }}</span><span style="font:600 12px 'Noto Sans KR';color:#9A8C7E">복사</span></button>
+                <div style="display:flex;justify-content:center;align-items:center;gap:6px;margin-top:12px"><span style="width:7px;height:7px;border-radius:4px;background:#2E9E6B;animation:pulseDot 1.6s infinite"></span><span style="font:600 12px 'Noto Sans KR';color:#9A8C7E">실시간 · {{ clock }}</span></div>
+                <div style="display:flex;gap:9px;background:#E2F4EC;border-radius:12px;padding:11px 12px;margin-top:14px;align-items:flex-start"><span style="display:flex;color:#2E9E6B;margin-top:1px">{{ check }}</span><div><div style="font:700 12px 'Noto Sans KR';color:#2B2118">이미 결제 완료된 식사권이에요</div><div style="font-weight:500;font-size:11px;font-family:'Noto Sans KR';color:#9A8C7E;margin-top:2px;line-height:1.5">매장에서 추가 결제 없이 이 화면만 보여주세요</div></div></div>
+                <div style="display:flex;gap:8px;align-items:center;margin-top:10px;padding:0 2px"><span style="font:700 11px 'Noto Sans KR';color:#F4541E;background:#FFE7D8;padding:2px 7px;border-radius:6px">매장 안내</span><span style="font:500 12px 'Noto Sans KR';color:#9A8C7E">평일 점심(11:30~14:00)만 사용 가능</span></div>
+                <div style="display:flex;gap:8px;margin-top:15px">
+                  <button style="flex:1;display:flex;gap:6px;justify-content:center;align-items:center;background:#FFFFFF;border:1px solid #FFE3CE;border-radius:12px;padding:12px;font:700 13px 'Noto Sans KR';color:#2B2118;cursor:pointer">{{ share }}공유</button>
+                  <button style="flex:1;display:flex;gap:6px;justify-content:center;align-items:center;background:#FFFFFF;border:1px solid #FFE3CE;border-radius:12px;padding:12px;font:700 13px 'Noto Sans KR';color:#9A8C7E;cursor:pointer">구매 취소·환불</button>
+                </div>
+                <div style="font:500 11px 'Noto Sans KR';color:#C2B4A6;text-align:center;margin-top:8px">미사용 · 결제 후 7일 이내에만 환불할 수 있어요</div>
+                <div style="display:flex;justify-content:center;padding:9px 0 2px"><div style="width:120px;height:4px;border-radius:3px;background:#2B2118;opacity:.16"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:9px;flex:none">
+          <div style="font:600 12px 'Noto Sans KR';color:#6b6257">메인 · 교환권 (브랜드 바코드)</div>
+          <div style="width:328px;background:#FFF6EE;border-radius:34px;padding:7px;box-shadow:0 10px 34px rgba(50,35,20,.14);border:1px solid rgba(0,0,0,.05)">
+            <div style="background:#FFF6EE;border-radius:28px;overflow:hidden">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 22px 4px;font:700 13px 'Noto Sans KR';color:#2B2118"><span>12:47</span><span style="display:flex;gap:5px;align-items:center;color:#2B2118">{{ signal }}{{ wifi }}{{ batt }}</span></div>
+              <div style="background:#FFFFFF;padding:6px 17px 0">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><span style="color:#2B2118;display:flex">{{ back }}</span><div style="flex:1;font:700 18px 'Jua';color:#2B2118">내 선결제 지갑</div><span style="color:#9A8C7E;display:flex">{{ share }}</span></div>
+              </div>
+              <div style="display:flex;padding:0 17px;background:#FFFFFF;border-bottom:1px solid #FFE3CE">
+                <div style="padding:11px 3px;margin-right:20px;color:#B0A293;font:600 14px 'Noto Sans KR';display:flex;gap:6px;align-items:center">공구권<span style="font:700 10px 'Noto Sans KR';color:#9A8C7E;background:#FFF0E4;padding:1px 6px;border-radius:8px">5</span></div>
+                <div style="padding:11px 3px;border-bottom:2px solid #F4541E;color:#2B2118;font:700 14px 'Noto Sans KR';display:flex;gap:6px;align-items:center">교환권<span style="font:700 10px 'Noto Sans KR';color:#fff;background:#F4541E;padding:1px 6px;border-radius:8px">4</span></div>
+              </div>
+              <div style="padding:12px 14px 0;background:#FFF6EE">
+                <div style="display:flex;gap:10px;align-items:center;background:#FFE7D8;border:1px solid #FFD8B8;border-radius:12px;padding:11px 12px">
+                  <span style="display:flex;color:#F4541E">{{ phone }}</span>
+                  <div style="flex:1"><div style="font:700 12px 'Noto Sans KR';color:#2B2118">전화번호를 등록하세요</div><div style="font:500 11px 'Noto Sans KR';color:#9A8C7E;margin-top:1px">교환권을 문자(MMS)로 자동 발송해 드려요</div></div>
+                  <button style="background:#F4541E;color:#fff;border:none;border-radius:8px;padding:7px 14px;font:700 12px 'Noto Sans KR';cursor:pointer;white-space:nowrap">등록</button>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:9px;padding:11px 14px 0;background:#FFF6EE">
+                <div style="background:#FFFFFF;border:1px solid #FFE3CE;border-radius:18px;padding:11px;display:flex;gap:11px;box-shadow:0 1px 2px rgba(50,35,20,.04)">
+                  <image-slot id="v2-x1" shape="rounded" radius="10" placeholder="로고" style="width:62px;height:62px;flex:none"></image-slot>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                    <div style="display:flex;align-items:center;gap:6px"><span style="font:700 10px 'Noto Sans KR';color:#F4541E;background:#FFE7D8;padding:2px 7px;border-radius:6px">사용 가능</span><span style="font:800 11px 'Noto Sans KR';color:#9A8C7E">D-30</span></div>
+                    <div style="font:700 14px 'Jua';color:#2B2118;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">아이스 카페 아메리카노 T</div>
+                    <div style="font:600 11px 'Noto Sans KR';color:#9A8C7E">스타벅스</div>
+                    <div style="height:20px;border-radius:3px;margin-top:2px;background:repeating-linear-gradient(90deg,#2B2118 0 1px,transparent 1px 3px,#2B2118 3px 4px,transparent 4px 7px,#2B2118 7px 9px,transparent 9px 11px);opacity:.8"></div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;flex:none">
+                    <div style="font:800 15px 'Noto Sans KR';color:#2B2118;white-space:nowrap">4,500<span style="font-weight:600;font-size:11px;color:#9A8C7E">원</span></div>
+                    <button style="border:none;cursor:pointer;width:54px;height:48px;border-radius:12px;background:#2B2118;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">{{ barIcon }}<span style="font:700 9px 'Noto Sans KR'">바코드</span></button>
+                  </div>
+                </div>
+                <div style="background:#FFFFFF;border:1px solid #FFE3CE;border-radius:18px;padding:11px;display:flex;gap:11px;box-shadow:0 1px 2px rgba(50,35,20,.04)">
+                  <image-slot id="v2-x2" shape="rounded" radius="10" placeholder="로고" style="width:62px;height:62px;flex:none"></image-slot>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                    <div style="display:flex;align-items:center;gap:6px"><span style="font:700 10px 'Noto Sans KR';color:#F4541E;background:#FFE7D8;padding:2px 7px;border-radius:6px">사용 가능</span><span style="font:800 11px 'Noto Sans KR';color:#9A8C7E">D-12</span></div>
+                    <div style="font:700 14px 'Jua';color:#2B2118;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">모바일 금액권 5,000원</div>
+                    <div style="font:600 11px 'Noto Sans KR';color:#9A8C7E">GS25 편의점</div>
+                    <div style="height:20px;border-radius:3px;margin-top:2px;background:repeating-linear-gradient(90deg,#2B2118 0 2px,transparent 2px 4px,#2B2118 4px 5px,transparent 5px 8px,#2B2118 8px 9px,transparent 9px 11px);opacity:.8"></div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;flex:none">
+                    <div style="font:800 15px 'Noto Sans KR';color:#2B2118;white-space:nowrap">5,000<span style="font-weight:600;font-size:11px;color:#9A8C7E">원</span></div>
+                    <button style="border:none;cursor:pointer;width:54px;height:48px;border-radius:12px;background:#2B2118;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">{{ barIcon }}<span style="font:700 9px 'Noto Sans KR'">바코드</span></button>
+                  </div>
+                </div>
+                <div style="background:#FFFFFF;border:1px solid #F7CFC6;border-radius:18px;padding:11px;display:flex;gap:11px;box-shadow:0 1px 2px rgba(50,35,20,.04)">
+                  <image-slot id="v2-x3" shape="rounded" radius="10" placeholder="로고" style="width:62px;height:62px;flex:none"></image-slot>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                    <div style="display:flex;align-items:center;gap:6px"><span style="font:700 10px 'Noto Sans KR';color:#E0341C;background:#FFE2DA;padding:2px 7px;border-radius:6px">발송 실패</span></div>
+                    <div style="font:700 14px 'Jua';color:#2B2118;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">파인트 아이스크림</div>
+                    <div style="font:600 11px 'Noto Sans KR';color:#9A8C7E">배스킨라빈스</div>
+                    <div style="font:500 11px 'Noto Sans KR';color:#E0341C;margin-top:1px">전화번호 확인 후 재발송하세요</div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;flex:none">
+                    <div style="font:800 15px 'Noto Sans KR';color:#2B2118;white-space:nowrap">8,200<span style="font-weight:600;font-size:11px;color:#9A8C7E">원</span></div>
+                    <button style="border:1px solid #E0341C;cursor:pointer;width:54px;height:48px;border-radius:12px;background:#FFE2DA;color:#E0341C;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">{{ refresh }}<span style="font:700 9px 'Noto Sans KR'">재발송</span></button>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 4px 14px"><div style="display:flex;align-items:center;gap:8px"><span style="font:700 13px 'Noto Sans KR';color:#9A8C7E">사용 완료</span><span style="font:700 11px 'Noto Sans KR';color:#B0A293;background:#FFF0E4;padding:1px 7px;border-radius:8px">1</span></div><span style="display:flex;color:#C2B4A6">{{ chev }}</span></div>
+              </div>
+              <div style="display:flex;justify-content:center;padding:4px 0 9px;background:#FFF6EE"><div style="width:120px;height:4px;border-radius:3px;background:#2B2118;opacity:.16"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:9px;flex:none">
+          <div style="font:600 12px 'Noto Sans KR';color:#6b6257">빈 상태 · 공구권</div>
+          <div style="width:328px;background:#FFF6EE;border-radius:34px;padding:7px;box-shadow:0 10px 34px rgba(50,35,20,.14);border:1px solid rgba(0,0,0,.05)">
+            <div style="background:#FFFFFF;border-radius:28px;overflow:hidden">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 22px 4px;font:700 13px 'Noto Sans KR';color:#2B2118"><span>12:47</span><span style="display:flex;gap:5px;align-items:center;color:#2B2118">{{ signal }}{{ wifi }}{{ batt }}</span></div>
+              <div style="display:flex;align-items:center;gap:8px;padding:6px 17px 0"><span style="color:#2B2118;display:flex">{{ back }}</span><div style="flex:1;font:700 18px 'Jua';color:#2B2118">내 선결제 지갑</div></div>
+              <div style="display:flex;padding:14px 17px 0;gap:20px;border-bottom:1px solid #FFE3CE">
+                <div style="padding-bottom:11px;border-bottom:2px solid #F4541E;color:#2B2118;font:700 14px 'Noto Sans KR'">공구권</div>
+                <div style="padding-bottom:11px;color:#B0A293;font:600 14px 'Noto Sans KR'">교환권</div>
+              </div>
+              <div style="padding:34px 26px 26px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px">
+                <image-slot id="v2-empty" shape="rounded" radius="20" placeholder="일러스트" style="width:132px;height:132px"></image-slot>
+                <div>
+                  <div style="font:700 18px 'Jua';color:#2B2118">아직 받아둔 식사권이 없어요</div>
+                  <div style="font-weight:400;font-size:13px;font-family:'Noto Sans KR';color:#9A8C7E;margin-top:7px;line-height:1.7">동네 맛집 공동구매에 참여하면<br>선결제 식사권이 여기에 쌓여요</div>
+                </div>
+                <div style="display:flex;gap:7px;width:100%;margin-top:2px">
+                  <div style="flex:1;background:#FFF6EE;border-radius:12px;padding:11px 7px;text-align:center"><div style="font:800 13px 'Noto Sans KR';color:#F4541E">1</div><div style="font:600 10px 'Noto Sans KR';color:#5A4D40;margin-top:4px;line-height:1.4">공구<br>참여</div></div>
+                  <div style="flex:1;background:#FFF6EE;border-radius:12px;padding:11px 7px;text-align:center"><div style="font:800 13px 'Noto Sans KR';color:#F4541E">2</div><div style="font:600 10px 'Noto Sans KR';color:#5A4D40;margin-top:4px;line-height:1.4">지갑에<br>식사권</div></div>
+                  <div style="flex:1;background:#FFF6EE;border-radius:12px;padding:11px 7px;text-align:center"><div style="font:800 13px 'Noto Sans KR';color:#F4541E">3</div><div style="font:600 10px 'Noto Sans KR';color:#5A4D40;margin-top:4px;line-height:1.4">매장에서<br>QR 제시</div></div>
+                </div>
+                <button style="width:100%;border:none;cursor:pointer;background:#F4541E;color:#fff;border-radius:13px;padding:14px;font:700 15px 'Noto Sans KR';margin-top:4px">공구 보러가기</button>
+              </div>
+              <div style="display:flex;justify-content:center;padding:6px 0 9px"><div style="width:120px;height:4px;border-radius:3px;background:#2B2118;opacity:.16"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:9px;flex:none">
+          <div style="font:600 12px 'Noto Sans KR';color:#6b6257">설정 · 교환권 받을 번호</div>
+          <div style="width:328px;background:#FFF6EE;border-radius:34px;padding:7px;box-shadow:0 10px 34px rgba(50,35,20,.14);border:1px solid rgba(0,0,0,.05)">
+            <div style="background:#FFFFFF;border-radius:28px;overflow:hidden">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 22px 4px;font:700 13px 'Noto Sans KR';color:#2B2118"><span>12:47</span><span style="display:flex;gap:5px;align-items:center;color:#2B2118">{{ signal }}{{ wifi }}{{ batt }}</span></div>
+              <div style="display:flex;align-items:center;gap:8px;padding:6px 17px 16px;border-bottom:1px solid #FFE3CE"><span style="color:#2B2118;display:flex">{{ back }}</span><div style="flex:1;font:700 17px 'Jua';color:#2B2118">교환권 받을 번호</div></div>
+              <div style="padding:18px 18px 24px">
+                <div style="display:flex;gap:9px;background:#E2F4EC;border-radius:12px;padding:12px;align-items:flex-start"><span style="display:flex;color:#2E9E6B;margin-top:1px">{{ check }}</span><div style="font-weight:500;font-size:12px;font-family:'Noto Sans KR';color:#5A4D40;line-height:1.6">교환권(기프티콘)은 등록한 번호로 <b style="color:#2B2118;font-weight:700">문자(MMS) 자동 발송</b>돼요. 공구권은 번호 없이 앱에서 바로 사용해요.</div></div>
+                <div style="font:700 12px 'Noto Sans KR';color:#5A4D40;margin:20px 0 8px">휴대폰 번호</div>
+                <div style="display:flex;align-items:center;gap:9px;background:#FFFFFF;border:1.5px solid #F4541E;border-radius:12px;padding:13px 14px"><span style="display:flex;color:#F4541E">{{ phone }}</span><span style="font:600 16px 'Noto Sans KR';color:#2B2118;letter-spacing:.5px">010-1234-5678</span><span style="margin-left:auto;width:8px;height:18px;background:#F4541E;border-radius:1px"></span></div>
+                <div style="font:500 11px 'Noto Sans KR';color:#9A8C7E;margin-top:8px;line-height:1.6">이 번호는 교환권 발송에만 사용돼요. 발송 실패 시 여기서 번호를 바꿔 재발송할 수 있어요.</div>
+                <button style="width:100%;border:none;cursor:pointer;background:#F4541E;color:#fff;border-radius:13px;padding:15px;font:700 15px 'Noto Sans KR';margin-top:22px">이 번호로 등록</button>
+              </div>
+              <div style="display:flex;justify-content:center;padding:30px 0 9px"><div style="width:120px;height:4px;border-radius:3px;background:#2B2118;opacity:.16"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <div style="display:flex;flex-direction:column;gap:22px;flex:none">
+        <div style="width:328px;background:#FFFFFF;border:1px solid #E3E2D6;border-radius:16px;padding:15px 17px">
+          <div style="display:flex;align-items:center;gap:8px"><span style="font:700 17px 'IBM Plex Sans KR';color:#2C2E27">③ 단골</span><span style="font:700 10px 'Noto Sans KR';color:#5C7355;background:#E6EBE1;padding:2px 7px;border-radius:6px">SAGE</span></div>
+          <div style="font:400 12px 'IBM Plex Sans KR';color:#82826F;margin-top:7px;line-height:1.6">크라프트 종이 질감 · 따뜻한 명조. 오래된 단골집 영수증 같은 신뢰감.</div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:9px;flex:none">
+          <div style="font:600 12px 'Noto Sans KR';color:#6b6257">메인 · 공구권</div>
+          <div style="width:328px;background:#F2F1EA;border-radius:34px;padding:7px;box-shadow:0 10px 34px rgba(50,35,20,.14);border:1px solid rgba(0,0,0,.05)">
+            <div style="background:#F2F1EA;border-radius:28px;overflow:hidden">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 22px 4px;font:700 13px 'IBM Plex Sans KR';color:#2C2E27"><span>12:47</span><span style="display:flex;gap:5px;align-items:center;color:#2C2E27">{{ signal }}{{ wifi }}{{ batt }}</span></div>
+              <div style="background:#FFFFFF;padding:6px 17px 12px">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+                  <span style="color:#2C2E27;display:flex">{{ back }}</span>
+                  <div style="flex:1;font:700 18px 'IBM Plex Sans KR';color:#2C2E27">내 선결제 지갑</div>
+                  <span style="color:#82826F;display:flex">{{ share }}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;background:#E6EBE1;border-radius:12px;padding:10px 13px">
+                  <span style="font:800 13px 'Noto Sans KR';color:#5C7355">8장 사용 가능</span>
+                  <span style="width:3px;height:3px;border-radius:2px;background:#5C7355;opacity:.5"></span>
+                  <span style="font:600 12px 'Noto Sans KR';color:#4A4C40">가장 가까운 만료 <b style="color:#B5503C">D-2</b></span>
+                </div>
+              </div>
+              <div style="display:flex;padding:0 17px;background:#FFFFFF;border-bottom:1px solid #E3E2D6">
+                <div style="padding:11px 3px;margin-right:20px;border-bottom:2px solid #5C7355;color:#2C2E27;font:700 14px 'Noto Sans KR';display:flex;gap:6px;align-items:center">공구권<span style="font:700 10px 'Noto Sans KR';color:#fff;background:#5C7355;padding:1px 6px;border-radius:8px">5</span></div>
+                <div style="padding:11px 3px;color:#A0A091;font:600 14px 'Noto Sans KR';display:flex;gap:6px;align-items:center">교환권<span style="font:700 10px 'Noto Sans KR';color:#82826F;background:#EFEEE4;padding:1px 6px;border-radius:8px">4</span></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:13px 17px 9px;background:#F2F1EA">
+                <span style="font:700 12px 'Noto Sans KR';color:#82826F">사용 가능 3</span>
+                <div style="display:flex;background:#E6E5DA;border-radius:9px;padding:2px">
+                  <span style="display:flex;gap:4px;align-items:center;font:700 11px 'Noto Sans KR';color:#2C2E27;background:#FFFFFF;padding:5px 10px;border-radius:7px">{{ listIcon }}리스트</span>
+                  <span style="display:flex;gap:4px;align-items:center;font:600 11px 'Noto Sans KR';color:#A0A091;padding:5px 10px">{{ map }}지도</span>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:9px;padding:0 14px;background:#F2F1EA">
+                <div style="background:#FFFFFF;border:1px solid #E3E2D6;border-radius:12px;padding:11px;display:flex;gap:11px;box-shadow:0 1px 2px rgba(50,35,20,.04)">
+                  <image-slot id="v3-g1" shape="rounded" radius="10" placeholder="음식" style="width:62px;height:62px;flex:none"></image-slot>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                    <div style="display:flex;align-items:center;gap:6px"><span style="font:700 10px 'Noto Sans KR';color:#5C7355;background:#E6EBE1;padding:2px 7px;border-radius:6px">사용 가능</span><span style="font:800 11px 'Noto Sans KR';color:#B5503C">D-2</span></div>
+                    <div style="font:700 15px 'IBM Plex Sans KR';color:#2C2E27;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">마라탕 2인 세트</div>
+                    <div style="display:flex;align-items:center;gap:3px;color:#82826F;min-width:0"><span style="display:flex;color:#5C7355">{{ pin }}</span><span style="font:500 12px 'Noto Sans KR';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">탕화쿵푸 양꼬치거리점</span></div>
+                    <span style="font:600 11px ui-monospace,monospace;letter-spacing:.3px;color:#4A4C40;background:#EFEEE4;padding:3px 7px;border-radius:6px;display:inline-flex;gap:5px;align-items:center;align-self:flex-start;margin-top:1px">TXG-4471<span style="display:flex;color:#B4B4A6">{{ copy }}</span></span>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;flex:none">
+                    <div style="font:800 15px 'Noto Sans KR';color:#2C2E27;white-space:nowrap">24,000<span style="font-weight:600;font-size:11px;color:#82826F">원</span></div>
+                    <button style="border:none;cursor:pointer;width:54px;height:48px;border-radius:12px;background:#5C7355;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">{{ qrSmall }}<span style="font:700 10px 'Noto Sans KR'">사용</span></button>
+                  </div>
+                </div>
+                <div style="background:#FFFFFF;border:1px solid #E3E2D6;border-radius:12px;padding:11px;display:flex;gap:11px;box-shadow:0 1px 2px rgba(50,35,20,.04)">
+                  <image-slot id="v3-g2" shape="rounded" radius="10" placeholder="음식" style="width:62px;height:62px;flex:none"></image-slot>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                    <div style="display:flex;align-items:center;gap:6px"><span style="font:700 10px 'Noto Sans KR';color:#5C7355;background:#E6EBE1;padding:2px 7px;border-radius:6px">사용 가능</span><span style="font:800 11px 'Noto Sans KR';color:#82826F">D-5</span></div>
+                    <div style="font:700 15px 'IBM Plex Sans KR';color:#2C2E27;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">평양냉면 식사권</div>
+                    <div style="display:flex;align-items:center;gap:3px;color:#82826F;min-width:0"><span style="display:flex;color:#5C7355">{{ pin }}</span><span style="font:500 12px 'Noto Sans KR';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">을지면옥 을지로3가</span></div>
+                    <span style="font:600 11px ui-monospace,monospace;letter-spacing:.3px;color:#4A4C40;background:#EFEEE4;padding:3px 7px;border-radius:6px;display:inline-flex;gap:5px;align-items:center;align-self:flex-start;margin-top:1px">EUL-2093<span style="display:flex;color:#B4B4A6">{{ copy }}</span></span>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;flex:none">
+                    <div style="font:800 15px 'Noto Sans KR';color:#2C2E27;white-space:nowrap">13,000<span style="font-weight:600;font-size:11px;color:#82826F">원</span></div>
+                    <button style="border:none;cursor:pointer;width:54px;height:48px;border-radius:12px;background:#5C7355;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">{{ qrSmall }}<span style="font:700 10px 'Noto Sans KR'">사용</span></button>
+                  </div>
+                </div>
+                <div style="background:#FFFFFF;border:1px solid #E3E2D6;border-radius:12px;padding:11px;display:flex;gap:11px;box-shadow:0 1px 2px rgba(50,35,20,.04)">
+                  <image-slot id="v3-g3" shape="rounded" radius="10" placeholder="음식" style="width:62px;height:62px;flex:none"></image-slot>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                    <div style="display:flex;align-items:center;gap:6px"><span style="font:700 10px 'Noto Sans KR';color:#5C7355;background:#E6EBE1;padding:2px 7px;border-radius:6px">사용 가능</span><span style="font:800 11px 'Noto Sans KR';color:#82826F">D-8</span></div>
+                    <div style="font:700 15px 'IBM Plex Sans KR';color:#2C2E27;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">브런치 식사권</div>
+                    <div style="display:flex;align-items:center;gap:3px;color:#82826F;min-width:0"><span style="display:flex;color:#5C7355">{{ pin }}</span><span style="font:500 12px 'Noto Sans KR';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">오월의종 한남동</span></div>
+                    <span style="font:600 11px ui-monospace,monospace;letter-spacing:.3px;color:#4A4C40;background:#EFEEE4;padding:3px 7px;border-radius:6px;display:inline-flex;gap:5px;align-items:center;align-self:flex-start;margin-top:1px">MAY-7782<span style="display:flex;color:#B4B4A6">{{ copy }}</span></span>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;flex:none">
+                    <div style="font:800 15px 'Noto Sans KR';color:#2C2E27;white-space:nowrap">12,000<span style="font-weight:600;font-size:11px;color:#82826F">원</span></div>
+                    <button style="border:none;cursor:pointer;width:54px;height:48px;border-radius:12px;background:#5C7355;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">{{ qrSmall }}<span style="font:700 10px 'Noto Sans KR'">사용</span></button>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 4px 3px"><div style="display:flex;align-items:center;gap:8px"><span style="font:700 13px 'Noto Sans KR';color:#82826F">사용 완료</span><span style="font:700 11px 'Noto Sans KR';color:#A0A091;background:#EFEEE4;padding:1px 7px;border-radius:8px">1</span></div><span style="display:flex;color:#B4B4A6">{{ chev }}</span></div>
+                <div style="height:1px;background:#E3E2D6"></div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 4px 14px"><div style="display:flex;align-items:center;gap:8px"><span style="font:700 13px 'Noto Sans KR';color:#A0A091">만료 · 환불</span><span style="font:700 11px 'Noto Sans KR';color:#A0A091;background:#EFEEE4;padding:1px 7px;border-radius:8px">2</span></div><span style="display:flex;color:#B4B4A6">{{ chev }}</span></div>
+              </div>
+              <div style="display:flex;justify-content:center;padding:6px 0 9px;background:#F2F1EA"><div style="width:120px;height:4px;border-radius:3px;background:#2C2E27;opacity:.16"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:9px;flex:none">
+          <div style="font:600 12px 'Noto Sans KR';color:#6b6257">사용 모달 · 매장에서 꺼내기</div>
+          <div style="width:328px;background:#F2F1EA;border-radius:34px;padding:7px;box-shadow:0 10px 34px rgba(50,35,20,.14);border:1px solid rgba(0,0,0,.05)">
+            <div style="background:rgba(28,18,10,.58);border-radius:28px;overflow:hidden">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 22px 4px;font:700 13px 'IBM Plex Sans KR';color:#fff"><span>12:47</span><span style="display:flex;gap:5px;align-items:center;color:#fff">{{ signal }}{{ wifi }}{{ batt }}</span></div>
+              <div style="height:30px"></div>
+              <div style="background:#FFFFFF;border-radius:26px 26px 28px 28px;padding:8px 19px 14px">
+                <div style="display:flex;justify-content:center;padding:2px 0 4px"><div style="width:38px;height:4px;border-radius:3px;background:#D9D8C8"></div></div>
+                <div style="display:flex;justify-content:flex-end"><span style="display:flex;color:#A0A091">{{ close }}</span></div>
+                <div style="text-align:center;margin-top:-6px">
+                  <div style="font:700 19px 'IBM Plex Sans KR';color:#2C2E27">마라탕 2인 세트</div>
+                  <div style="display:flex;gap:4px;justify-content:center;align-items:center;margin-top:3px"><span style="display:flex;color:#5C7355">{{ pin }}</span><span style="font:500 13px 'Noto Sans KR';color:#82826F">탕화쿵푸 양꼬치거리점</span></div>
+                </div>
+                <div style="display:flex;justify-content:center;margin-top:14px"><div style="background:#fff;border:1px solid #E3E2D6;border-radius:18px;padding:15px;box-shadow:0 6px 22px rgba(50,35,20,.09)">{{ qrC }}</div></div>
+                <button style="display:flex;gap:7px;align-items:center;margin:13px auto 0;background:#EFEEE4;border:none;border-radius:10px;padding:9px 15px;cursor:pointer"><span style="font:700 15px ui-monospace,monospace;letter-spacing:1px;color:#2C2E27">TXG-4471</span><span style="display:flex;color:#5C7355">{{ copy }}</span><span style="font:600 12px 'Noto Sans KR';color:#82826F">복사</span></button>
+                <div style="display:flex;justify-content:center;align-items:center;gap:6px;margin-top:12px"><span style="width:7px;height:7px;border-radius:4px;background:#5C7355;animation:pulseDot 1.6s infinite"></span><span style="font:600 12px 'Noto Sans KR';color:#82826F">실시간 · {{ clock }}</span></div>
+                <div style="display:flex;gap:9px;background:#E6EBE1;border-radius:12px;padding:11px 12px;margin-top:14px;align-items:flex-start"><span style="display:flex;color:#5C7355;margin-top:1px">{{ check }}</span><div><div style="font:700 12px 'Noto Sans KR';color:#2C2E27">이미 결제 완료된 식사권이에요</div><div style="font-weight:500;font-size:11px;font-family:'Noto Sans KR';color:#82826F;margin-top:2px;line-height:1.5">매장에서 추가 결제 없이 이 화면만 보여주세요</div></div></div>
+                <div style="display:flex;gap:8px;align-items:center;margin-top:10px;padding:0 2px"><span style="font:700 11px 'Noto Sans KR';color:#5C7355;background:#E6EBE1;padding:2px 7px;border-radius:6px">매장 안내</span><span style="font:500 12px 'Noto Sans KR';color:#82826F">평일 점심(11:30~14:00)만 사용 가능</span></div>
+                <div style="display:flex;gap:8px;margin-top:15px">
+                  <button style="flex:1;display:flex;gap:6px;justify-content:center;align-items:center;background:#FFFFFF;border:1px solid #E3E2D6;border-radius:12px;padding:12px;font:700 13px 'Noto Sans KR';color:#2C2E27;cursor:pointer">{{ share }}공유</button>
+                  <button style="flex:1;display:flex;gap:6px;justify-content:center;align-items:center;background:#FFFFFF;border:1px solid #E3E2D6;border-radius:12px;padding:12px;font:700 13px 'Noto Sans KR';color:#82826F;cursor:pointer">구매 취소·환불</button>
+                </div>
+                <div style="font:500 11px 'Noto Sans KR';color:#B4B4A6;text-align:center;margin-top:8px">미사용 · 결제 후 7일 이내에만 환불할 수 있어요</div>
+                <div style="display:flex;justify-content:center;padding:9px 0 2px"><div style="width:120px;height:4px;border-radius:3px;background:#2C2E27;opacity:.16"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:9px;flex:none">
+          <div style="font:600 12px 'Noto Sans KR';color:#6b6257">메인 · 교환권 (브랜드 바코드)</div>
+          <div style="width:328px;background:#F2F1EA;border-radius:34px;padding:7px;box-shadow:0 10px 34px rgba(50,35,20,.14);border:1px solid rgba(0,0,0,.05)">
+            <div style="background:#F2F1EA;border-radius:28px;overflow:hidden">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 22px 4px;font:700 13px 'IBM Plex Sans KR';color:#2C2E27"><span>12:47</span><span style="display:flex;gap:5px;align-items:center;color:#2C2E27">{{ signal }}{{ wifi }}{{ batt }}</span></div>
+              <div style="background:#FFFFFF;padding:6px 17px 0">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><span style="color:#2C2E27;display:flex">{{ back }}</span><div style="flex:1;font:700 18px 'IBM Plex Sans KR';color:#2C2E27">내 선결제 지갑</div><span style="color:#82826F;display:flex">{{ share }}</span></div>
+              </div>
+              <div style="display:flex;padding:0 17px;background:#FFFFFF;border-bottom:1px solid #E3E2D6">
+                <div style="padding:11px 3px;margin-right:20px;color:#A0A091;font:600 14px 'Noto Sans KR';display:flex;gap:6px;align-items:center">공구권<span style="font:700 10px 'Noto Sans KR';color:#82826F;background:#EFEEE4;padding:1px 6px;border-radius:8px">5</span></div>
+                <div style="padding:11px 3px;border-bottom:2px solid #5C7355;color:#2C2E27;font:700 14px 'Noto Sans KR';display:flex;gap:6px;align-items:center">교환권<span style="font:700 10px 'Noto Sans KR';color:#fff;background:#5C7355;padding:1px 6px;border-radius:8px">4</span></div>
+              </div>
+              <div style="padding:12px 14px 0;background:#F2F1EA">
+                <div style="display:flex;gap:10px;align-items:center;background:#E6EBE1;border:1px solid #D9D8C8;border-radius:12px;padding:11px 12px">
+                  <span style="display:flex;color:#5C7355">{{ phone }}</span>
+                  <div style="flex:1"><div style="font:700 12px 'Noto Sans KR';color:#2C2E27">전화번호를 등록하세요</div><div style="font:500 11px 'Noto Sans KR';color:#82826F;margin-top:1px">교환권을 문자(MMS)로 자동 발송해 드려요</div></div>
+                  <button style="background:#5C7355;color:#fff;border:none;border-radius:8px;padding:7px 14px;font:700 12px 'Noto Sans KR';cursor:pointer;white-space:nowrap">등록</button>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:9px;padding:11px 14px 0;background:#F2F1EA">
+                <div style="background:#FFFFFF;border:1px solid #E3E2D6;border-radius:12px;padding:11px;display:flex;gap:11px;box-shadow:0 1px 2px rgba(50,35,20,.04)">
+                  <image-slot id="v3-x1" shape="rounded" radius="10" placeholder="로고" style="width:62px;height:62px;flex:none"></image-slot>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                    <div style="display:flex;align-items:center;gap:6px"><span style="font:700 10px 'Noto Sans KR';color:#5C7355;background:#E6EBE1;padding:2px 7px;border-radius:6px">사용 가능</span><span style="font:800 11px 'Noto Sans KR';color:#82826F">D-30</span></div>
+                    <div style="font:700 14px 'IBM Plex Sans KR';color:#2C2E27;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">아이스 카페 아메리카노 T</div>
+                    <div style="font:600 11px 'Noto Sans KR';color:#82826F">스타벅스</div>
+                    <div style="height:20px;border-radius:3px;margin-top:2px;background:repeating-linear-gradient(90deg,#2C2E27 0 1px,transparent 1px 3px,#2C2E27 3px 4px,transparent 4px 7px,#2C2E27 7px 9px,transparent 9px 11px);opacity:.8"></div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;flex:none">
+                    <div style="font:800 15px 'Noto Sans KR';color:#2C2E27;white-space:nowrap">4,500<span style="font-weight:600;font-size:11px;color:#82826F">원</span></div>
+                    <button style="border:none;cursor:pointer;width:54px;height:48px;border-radius:12px;background:#2C2E27;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">{{ barIcon }}<span style="font:700 9px 'Noto Sans KR'">바코드</span></button>
+                  </div>
+                </div>
+                <div style="background:#FFFFFF;border:1px solid #E3E2D6;border-radius:12px;padding:11px;display:flex;gap:11px;box-shadow:0 1px 2px rgba(50,35,20,.04)">
+                  <image-slot id="v3-x2" shape="rounded" radius="10" placeholder="로고" style="width:62px;height:62px;flex:none"></image-slot>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                    <div style="display:flex;align-items:center;gap:6px"><span style="font:700 10px 'Noto Sans KR';color:#5C7355;background:#E6EBE1;padding:2px 7px;border-radius:6px">사용 가능</span><span style="font:800 11px 'Noto Sans KR';color:#82826F">D-12</span></div>
+                    <div style="font:700 14px 'IBM Plex Sans KR';color:#2C2E27;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">모바일 금액권 5,000원</div>
+                    <div style="font:600 11px 'Noto Sans KR';color:#82826F">GS25 편의점</div>
+                    <div style="height:20px;border-radius:3px;margin-top:2px;background:repeating-linear-gradient(90deg,#2C2E27 0 2px,transparent 2px 4px,#2C2E27 4px 5px,transparent 5px 8px,#2C2E27 8px 9px,transparent 9px 11px);opacity:.8"></div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;flex:none">
+                    <div style="font:800 15px 'Noto Sans KR';color:#2C2E27;white-space:nowrap">5,000<span style="font-weight:600;font-size:11px;color:#82826F">원</span></div>
+                    <button style="border:none;cursor:pointer;width:54px;height:48px;border-radius:12px;background:#2C2E27;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">{{ barIcon }}<span style="font:700 9px 'Noto Sans KR'">바코드</span></button>
+                  </div>
+                </div>
+                <div style="background:#FFFFFF;border:1px solid #E2C9C0;border-radius:12px;padding:11px;display:flex;gap:11px;box-shadow:0 1px 2px rgba(50,35,20,.04)">
+                  <image-slot id="v3-x3" shape="rounded" radius="10" placeholder="로고" style="width:62px;height:62px;flex:none"></image-slot>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                    <div style="display:flex;align-items:center;gap:6px"><span style="font:700 10px 'Noto Sans KR';color:#B5503C;background:#F2E2DC;padding:2px 7px;border-radius:6px">발송 실패</span></div>
+                    <div style="font:700 14px 'IBM Plex Sans KR';color:#2C2E27;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">파인트 아이스크림</div>
+                    <div style="font:600 11px 'Noto Sans KR';color:#82826F">배스킨라빈스</div>
+                    <div style="font:500 11px 'Noto Sans KR';color:#B5503C;margin-top:1px">전화번호 확인 후 재발송하세요</div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;flex:none">
+                    <div style="font:800 15px 'Noto Sans KR';color:#2C2E27;white-space:nowrap">8,200<span style="font-weight:600;font-size:11px;color:#82826F">원</span></div>
+                    <button style="border:1px solid #B5503C;cursor:pointer;width:54px;height:48px;border-radius:12px;background:#F2E2DC;color:#B5503C;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">{{ refresh }}<span style="font:700 9px 'Noto Sans KR'">재발송</span></button>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 4px 14px"><div style="display:flex;align-items:center;gap:8px"><span style="font:700 13px 'Noto Sans KR';color:#82826F">사용 완료</span><span style="font:700 11px 'Noto Sans KR';color:#A0A091;background:#EFEEE4;padding:1px 7px;border-radius:8px">1</span></div><span style="display:flex;color:#B4B4A6">{{ chev }}</span></div>
+              </div>
+              <div style="display:flex;justify-content:center;padding:4px 0 9px;background:#F2F1EA"><div style="width:120px;height:4px;border-radius:3px;background:#2C2E27;opacity:.16"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:9px;flex:none">
+          <div style="font:600 12px 'Noto Sans KR';color:#6b6257">빈 상태 · 공구권</div>
+          <div style="width:328px;background:#F2F1EA;border-radius:34px;padding:7px;box-shadow:0 10px 34px rgba(50,35,20,.14);border:1px solid rgba(0,0,0,.05)">
+            <div style="background:#FFFFFF;border-radius:28px;overflow:hidden">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 22px 4px;font:700 13px 'IBM Plex Sans KR';color:#2C2E27"><span>12:47</span><span style="display:flex;gap:5px;align-items:center;color:#2C2E27">{{ signal }}{{ wifi }}{{ batt }}</span></div>
+              <div style="display:flex;align-items:center;gap:8px;padding:6px 17px 0"><span style="color:#2C2E27;display:flex">{{ back }}</span><div style="flex:1;font:700 18px 'IBM Plex Sans KR';color:#2C2E27">내 선결제 지갑</div></div>
+              <div style="display:flex;padding:14px 17px 0;gap:20px;border-bottom:1px solid #E3E2D6">
+                <div style="padding-bottom:11px;border-bottom:2px solid #5C7355;color:#2C2E27;font:700 14px 'Noto Sans KR'">공구권</div>
+                <div style="padding-bottom:11px;color:#A0A091;font:600 14px 'Noto Sans KR'">교환권</div>
+              </div>
+              <div style="padding:34px 26px 26px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px">
+                <image-slot id="v3-empty" shape="rounded" radius="20" placeholder="일러스트" style="width:132px;height:132px"></image-slot>
+                <div>
+                  <div style="font:700 18px 'IBM Plex Sans KR';color:#2C2E27">아직 받아둔 식사권이 없어요</div>
+                  <div style="font-weight:400;font-size:13px;font-family:'IBM Plex Sans KR';color:#82826F;margin-top:7px;line-height:1.7">동네 맛집 공동구매에 참여하면<br>선결제 식사권이 여기에 쌓여요</div>
+                </div>
+                <div style="display:flex;gap:7px;width:100%;margin-top:2px">
+                  <div style="flex:1;background:#F2F1EA;border-radius:12px;padding:11px 7px;text-align:center"><div style="font:800 13px 'Noto Sans KR';color:#5C7355">1</div><div style="font:600 10px 'Noto Sans KR';color:#4A4C40;margin-top:4px;line-height:1.4">공구<br>참여</div></div>
+                  <div style="flex:1;background:#F2F1EA;border-radius:12px;padding:11px 7px;text-align:center"><div style="font:800 13px 'Noto Sans KR';color:#5C7355">2</div><div style="font:600 10px 'Noto Sans KR';color:#4A4C40;margin-top:4px;line-height:1.4">지갑에<br>식사권</div></div>
+                  <div style="flex:1;background:#F2F1EA;border-radius:12px;padding:11px 7px;text-align:center"><div style="font:800 13px 'Noto Sans KR';color:#5C7355">3</div><div style="font:600 10px 'Noto Sans KR';color:#4A4C40;margin-top:4px;line-height:1.4">매장에서<br>QR 제시</div></div>
+                </div>
+                <button style="width:100%;border:none;cursor:pointer;background:#5C7355;color:#fff;border-radius:13px;padding:14px;font:700 15px 'Noto Sans KR';margin-top:4px">공구 보러가기</button>
+              </div>
+              <div style="display:flex;justify-content:center;padding:6px 0 9px"><div style="width:120px;height:4px;border-radius:3px;background:#2C2E27;opacity:.16"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:9px;flex:none">
+          <div style="font:600 12px 'Noto Sans KR';color:#6b6257">설정 · 교환권 받을 번호</div>
+          <div style="width:328px;background:#F2F1EA;border-radius:34px;padding:7px;box-shadow:0 10px 34px rgba(50,35,20,.14);border:1px solid rgba(0,0,0,.05)">
+            <div style="background:#FFFFFF;border-radius:28px;overflow:hidden">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 22px 4px;font:700 13px 'IBM Plex Sans KR';color:#2C2E27"><span>12:47</span><span style="display:flex;gap:5px;align-items:center;color:#2C2E27">{{ signal }}{{ wifi }}{{ batt }}</span></div>
+              <div style="display:flex;align-items:center;gap:8px;padding:6px 17px 16px;border-bottom:1px solid #E3E2D6"><span style="color:#2C2E27;display:flex">{{ back }}</span><div style="flex:1;font:700 17px 'IBM Plex Sans KR';color:#2C2E27">교환권 받을 번호</div></div>
+              <div style="padding:18px 18px 24px">
+                <div style="display:flex;gap:9px;background:#E6EBE1;border-radius:12px;padding:12px;align-items:flex-start"><span style="display:flex;color:#5C7355;margin-top:1px">{{ check }}</span><div style="font-weight:500;font-size:12px;font-family:'Noto Sans KR';color:#4A4C40;line-height:1.6">교환권(기프티콘)은 등록한 번호로 <b style="color:#2C2E27;font-weight:700">문자(MMS) 자동 발송</b>돼요. 공구권은 번호 없이 앱에서 바로 사용해요.</div></div>
+                <div style="font:700 12px 'Noto Sans KR';color:#4A4C40;margin:20px 0 8px">휴대폰 번호</div>
+                <div style="display:flex;align-items:center;gap:9px;background:#FFFFFF;border:1.5px solid #5C7355;border-radius:12px;padding:13px 14px"><span style="display:flex;color:#5C7355">{{ phone }}</span><span style="font:600 16px 'Noto Sans KR';color:#2C2E27;letter-spacing:.5px">010-1234-5678</span><span style="margin-left:auto;width:8px;height:18px;background:#5C7355;border-radius:1px"></span></div>
+                <div style="font:500 11px 'Noto Sans KR';color:#82826F;margin-top:8px;line-height:1.6">이 번호는 교환권 발송에만 사용돼요. 발송 실패 시 여기서 번호를 바꿔 재발송할 수 있어요.</div>
+                <button style="width:100%;border:none;cursor:pointer;background:#5C7355;color:#fff;border-radius:13px;padding:15px;font:700 15px 'Noto Sans KR';margin-top:22px">이 번호로 등록</button>
+              </div>
+              <div style="display:flex;justify-content:center;padding:30px 0 9px"><div style="width:120px;height:4px;border-radius:3px;background:#2C2E27;opacity:.16"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!--BOARDEND-->
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  constructor(props){ super(props); this.state = { clock: this.fmt(new Date()) }; }
+  componentDidMount(){ this._t = setInterval(()=>this.setState({clock:this.fmt(new Date())}), 1000); }
+  componentWillUnmount(){ clearInterval(this._t); }
+  fmt(d){ const p=n=>String(n).padStart(2,'0'); let h=d.getHours(); const ap=h<12?'오전':'오후'; h=h%12||12; return ap+' '+p(h)+':'+p(d.getMinutes())+':'+p(d.getSeconds()); }
+
+  svg(s, kids, opts){ opts=opts||{}; return React.createElement('svg',{width:s,height:s,viewBox:'0 0 24 24',fill:opts.fill||'none',stroke:opts.fill?'none':'currentColor',strokeWidth:opts.sw||1.9,strokeLinecap:'round',strokeLinejoin:'round',style:{display:'block',flex:'none'}}, kids); }
+  P(d,k){ return React.createElement('path',{key:k||d.slice(0,5),d:d}); }
+  C(cx,cy,r,k){ return React.createElement('circle',{key:k||'c'+cx+'_'+cy,cx:cx,cy:cy,r:r}); }
+  L(a,b,c,d,k){ return React.createElement('line',{key:k||'l'+a+'_'+b,x1:a,y1:b,x2:c,y2:d}); }
+  R(x,y,w,h,k,extra){ return React.createElement('rect', Object.assign({key:k||'r'+x+'_'+y,x:x,y:y,width:w,height:h}, extra||{})); }
+
+  qr(seed,fg,px){ const N=25,c=8; let r=seed*9301+49297;
+    const rnd=()=>{ r=(r*9301+49297)%233280; return r/233280; };
+    const fin=(x,y)=>{ const t=(ox,oy)=>{ const xx=x-ox,yy=y-oy; if(xx<0||yy<0||xx>6||yy>6) return null; if(xx===0||xx===6||yy===0||yy===6) return true; if(xx>=2&&xx<=4&&yy>=2&&yy<=4) return true; return false; }; let v=t(0,0); if(v!==null)return v; v=t(N-7,0); if(v!==null)return v; v=t(0,N-7); if(v!==null)return v; return null; };
+    const rects=[]; for(let y=0;y<N;y++){ for(let x=0;x<N;x++){ let v=fin(x,y); if(v===null){ const near=(x<8&&y<8)||(x>=N-7&&y<8)||(x<8&&y>=N-7); v= near?false:(rnd()>0.55); } if(v) rects.push(React.createElement('rect',{key:x+'_'+y,x:x*c,y:y*c,width:c,height:c})); } }
+    return React.createElement('svg',{width:px,height:px,viewBox:'0 0 '+(N*c)+' '+(N*c),fill:fg,style:{display:'block'}}, rects);
+  }
+
+  renderVals(){
+    const S=this.svg.bind(this), P=this.P.bind(this), C=this.C.bind(this), L=this.L.bind(this), R=this.R.bind(this);
+    const back = S(22,[P('M15 5l-7 7 7 7')],{sw:2});
+    const share = S(16,[C(7,12,2.3,'a'),C(17,6,2.3,'b'),C(17,18,2.3,'c'),L(9.1,11,14.9,7.2,'d'),L(9.1,13,14.9,16.8,'e')]);
+    const pin = S(13,[P('M12 21s6-5.2 6-10A6 6 0 0 0 6 11c0 4.8 6 10 6 10z'),C(12,11,2.1,'p')]);
+    const copy = S(13,[R(8,8,11,11,'r',{rx:2}),P('M5 15.4V6a1 1 0 0 1 1-1h9.4')]);
+    const chev = S(18,[P('M6 9.5l6 6 6-6')]);
+    const map = S(15,[P('M9 4 3 6.5v13L9 17l6 2.5 6-2.5v-13L15 6.5 9 4z'),L(9,4,9,17,'a'),L(15,6.5,15,19.5,'b')]);
+    const listIcon = S(14,[L(8,7,19,7,'a'),L(8,12,19,12,'b'),L(8,17,19,17,'c'),C(5,7,1.1,'d'),C(5,12,1.1,'e'),C(5,17,1.1,'f')]);
+    const phone = S(16,[P('M5 4h3.4l1.7 4.2-2.3 1.6a12 12 0 0 0 5.3 5.3l1.6-2.3 4.2 1.7V18a2 2 0 0 1-2 2A14 14 0 0 1 4 6a2 2 0 0 1 1-2z')]);
+    const check = S(15,[P('M5 12.5l4.4 4.4L19 7')]);
+    const close = S(20,[P('M7 7l10 10'),P('M17 7L7 17')]);
+    const refresh = S(14,[P('M21 12a9 9 0 1 1-2.6-6.4'),P('M21 4v5h-5')]);
+    const qrSmall = S(20,[R(3,3,7,7,'a',{rx:1}),R(14,3,7,7,'b',{rx:1}),R(3,14,7,7,'c',{rx:1}),R(14,14,3,3,'d'),R(18,14,3,3,'e'),R(14,18,3,3,'f'),R(18,18,3,3,'g')],{fill:true});
+    const barIcon = S(20,[L(4,6,4,18,'a'),L(7,6,7,18,'b'),L(10,6,10,18,'c'),L(13.5,6,13.5,18,'d'),L(17,6,17,18,'e'),L(20,6,20,18,'f')],{sw:1.4});
+    const signal = React.createElement('svg',{width:17,height:11,viewBox:'0 0 17 11',fill:'currentColor',style:{display:'block'}},[R(0,7,3,4,'a',{rx:.5}),R(4.5,5,3,6,'b',{rx:.5}),R(9,2.5,3,8.5,'c',{rx:.5}),R(13.5,0,3,11,'d',{rx:.5})]);
+    const wifi = S(15,[P('M4.5 8.5a11 11 0 0 1 15 0'),P('M7.5 11.7a6.5 6.5 0 0 1 9 0'),C(12,15,1.1,'d')],{sw:1.5});
+    const batt = React.createElement('svg',{width:24,height:12,viewBox:'0 0 24 12',fill:'none',style:{display:'block'}},[R(1,1,19,10,'o',{rx:2.5,stroke:'currentColor','strokeWidth':1.2}),R(3,3,15,6,'f',{rx:1,fill:'currentColor'}),React.createElement('path',{key:'t',d:'M22 4v4',stroke:'currentColor','strokeWidth':1.6,strokeLinecap:'round'})]);
+    return {
+      clock:this.state.clock,
+      qrA:this.qr(7,'#3A2E22',182), qrB:this.qr(13,'#2B2118',182), qrC:this.qr(21,'#2C2E27',182),
+      back, share, pin, copy, chev, map, listIcon, phone, check, close, refresh, qrSmall, barIcon, signal, wifi, batt
+    };
+  }
+}
+</script>
+</body>
+</html>

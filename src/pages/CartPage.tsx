@@ -1,0 +1,600 @@
+import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react'
+import { BagIcon, StoreIcon } from '@/components/icons/urdeal-icons'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from '@/lib/i18n-lite'
+import SEO from '@/components/SEO'
+import { useCart, useUpdateCartQuantity, useRemoveFromCart, useUpdateCartOption } from '@/hooks/useCart'
+import { CartHeader } from '@/components/cart/CartHeader'
+import { CartItemComponent } from '@/components/cart/CartItem'
+import { CartGroupShippingRow } from '@/components/cart/CartGroupShippingRow'
+import { CartSummary } from '@/components/cart/CartSummary'
+import { EmptyCart } from '@/components/cart/EmptyCart'
+import { CartCtaButton } from '@/components/cart/CartCtaButton'
+import { ChevronRight, X } from 'lucide-react'
+// 📦 2026-10-19 — 합배송 표시는 유어딜 상자(BoxIcon). lucide `PackageCheck` 하나가 아이콘 묶음(br 10KB)을 장바구니 첫 화면에 끌고 왔다.
+import { BoxIcon } from '@/components/icons/urdeal-icons'
+import type { CartItem } from '@/types/cart'
+import { getCartItemPrice } from '@/types/cart'
+import { getNoShippingKind, isNoShippingProduct } from '@/shared/product-flow'
+import { routeCartCheckout } from './cart/voucher-checkout'
+import { computeCartTotals } from './cart/cart-totals'
+import { cartCta } from './cart/cart-cta'
+import { formatNumber } from '@/utils/format'
+import { hasConsumerSession } from '@/utils/auth'
+import CustomModal from './cart/CustomModal'
+import BrandLoader from '@/components/brand/BrandLoader'
+import ContinueShoppingLink from '@/components/mall/ContinueShoppingLink'
+// ⚡ 2026-10-18: 옵션 변경 창은 열 때만 받는다(정적이면 첫 화면이 상품 봉투·embla 까지 받았다). 가드: cross-envelope-2026-10-18.test.ts
+const OptionSelectModal = lazy(() => import('@/components/OptionSelectModal'))
+
+// 🛡️ 2026-05-02: TD-018 분할 — CustomModal 을 ./cart/CustomModal 로 추출(그 아이콘도 그 파일로).
+
+/** 📦 2026-09-01: 배송비 판정은 SSOT 하나로 — 여기와 결제 화면이 갈려 총액이 달랐다(product-flow.ts). */
+function isNoShippingItem(item: CartItem): boolean {
+  return isNoShippingProduct({ deal_only: item.deal_only, category: item.category })
+}
+
+/** 로그인 여부를 localStorage로 동기 확인 — user_type 비의존 (듀얼 로그인 충돌 방지) */
+function isUserLoggedIn(): boolean {
+  return hasConsumerSession()
+}
+
+export default function CartPage() {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const loggedIn = isUserLoggedIn()
+
+  // 비로그인 상태: v4 clean white design
+  if (!loggedIn) {
+    return (
+      <div className="flex flex-col min-h-screen bg-white dark:bg-[#11141C]">
+        <SEO title={t('cart.seoTitle')} description={t('cart.seoDesc')} url="/cart" noindex />
+        <div className="sticky top-0 z-10 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35]">
+          <div className="ur-content-narrow flex items-center justify-between px-4 py-3">
+            <button type="button" onClick={() => navigate(-1)} aria-label={t('notifications.back')} className="w-9 h-9 flex items-center justify-center">
+              <X className="h-5 w-5 text-gray-900 dark:text-white" aria-hidden="true" />
+            </button>
+            <h1 className="text-[17px] font-extrabold text-gray-900 dark:text-white">{t('cart.title')}</h1>
+            <div className="w-9" />
+          </div>
+        </div>
+        <div className="flex flex-1 flex-col items-center justify-center gap-5 p-8 text-center">
+          <div className="w-20 h-20 bg-gray-50 dark:bg-[#1D1F29] rounded-full flex items-center justify-center">
+            <BagIcon className="h-10 w-10 text-gray-300 dark:text-gray-600" aria-hidden="true" />
+          </div>
+          <div>
+            <p className="text-[17px] font-bold text-gray-900 dark:text-white">{t('common.loginRequired')}</p>
+            <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400">{t('cart.loginRequired')}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate(`/login?returnUrl=${encodeURIComponent('/cart')}`)}
+            className="w-full max-w-xs rounded-xl bg-brand py-4 text-[15px] font-bold text-white hover:bg-brand-dark active:scale-[0.98] transition-all"
+          >
+            {t('common.loginButton')}
+          </button>
+          {/* 🏪 2026-08-12: 몰을 거쳐 온 손님은 유어딜 홈이 아니라 **그 가게로** (근거는 컴포넌트 주석) */}
+          <ContinueShoppingLink onFallback={() => navigate('/')} />
+        </div>
+      </div>
+    )
+  }
+
+  // 로그인된 경우: 기존 장바구니 렌더링
+  return <CartPageContent />
+}
+
+function CartPageContent() {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  // 🎯 React Query 훅 사용 (refetchOnMount로 항상 최신 데이터 가져오기)
+  const { data: cartData, isLoading: loading } = useCart()
+  const updateQuantityMutation = useUpdateCartQuantity()
+  const removeItemMutation = useRemoveFromCart()
+  const updateOptionMutation = useUpdateCartOption()
+
+  const cartItems = cartData?.items || []
+  const [updating, setUpdating] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string | number>>(new Set())
+
+  const [optionModal, setOptionModal] = useState<{
+    isOpen: boolean
+    cartItemId?: string | number
+    productId?: string | number
+    productName?: string
+    currentOptionId?: number | string
+    currentOptionValue?: string
+  }>({
+    isOpen: false,
+  })
+
+  const [modal, setModal] = useState<{
+    isOpen: boolean
+    title?: string
+    message: string
+    type?: 'alert' | 'confirm' | 'error' | 'success'
+    onConfirm?: () => void
+  }>({
+    isOpen: false,
+    message: '',
+  })
+
+  const showAlert = (message: string, type: 'alert' | 'error' | 'success' = 'alert', title?: string) => {
+    setModal({ isOpen: true, title, message, type })
+  }
+
+  const showConfirm = (message: string, onConfirm: () => void, title?: string) => {
+    setModal({ isOpen: true, title, message, type: 'confirm', onConfirm })
+  }
+
+  const closeModal = () => {
+    setModal({ isOpen: false, message: '' })
+  }
+
+  useEffect(() => { document.title = t('cart.docTitle') }, [t])
+
+  useEffect(() => {
+    // 🧹 JWT/레거시 토큰 URL 파라미터 자동 정리
+    const jwtParams = ['access_token', 'refresh_token', 'userId', 'userEmail', 'userName', 'firebase_token']
+    const hasJwtTokens = jwtParams.some(param => searchParams.has(param))
+
+    if (hasJwtTokens) {
+      if (import.meta.env.DEV) console.warn('[CartPage] ⚠️ JWT 토큰 URL 파라미터 감지 - 자동 정리')
+      setSearchParams(new URLSearchParams(), { replace: true })
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      localStorage.removeItem('userId')
+      localStorage.removeItem('userEmail')
+    }
+
+    // ✅ ProtectedRoute가 /cart를 이미 보호함 → 여기서 requireLogin 불필요 (중복 리다이렉트 방지)
+    // 🗑️ 2026-07-07 (로딩 낭비 감사): 수동 refetch() 제거 — useCart 가 이미 refetchOnMount:true 라
+    //   콜드 마운트에서 /api/cart 를 2번 치던 중복 요청. React Query 가 자동 로딩.
+  }, [])
+
+  // 🔄 장바구니 데이터 로딩 시 선택 상태 초기화
+  // 🛡️ 2026-07-02 (쇼핑 전수조사): 첫 로드에만 전체선택, 이후 refetch(수량변경/삭제 등)에서는 기존 선택
+  //   보존(사라진 항목만 제거). 이전엔 매 mutation 마다 전체선택으로 리셋 → 부분선택이 초기화돼
+  //   의도 안 한 상품까지 주문에 포함되던 버그.
+  const selectionInitedRef = useRef(false)
+  useEffect(() => {
+    if (cartItems.length === 0) { selectionInitedRef.current = false; return }
+    setSelectedIds(prev => {
+      if (!selectionInitedRef.current) {
+        selectionInitedRef.current = true
+        return new Set(cartItems.map((item: CartItem) => item.id as string | number))
+      }
+      // 기존 선택 중 여전히 존재하는 항목만 유지.
+      const alive = new Set(cartItems.map(i => String(i.id)))
+      const next = new Set<string | number>()
+      prev.forEach(id => { if (alive.has(String(id))) next.add(id) })
+      return next
+    })
+  }, [cartItems])
+
+  const allSelected = cartItems.length > 0 && selectedIds.size === cartItems.length
+
+  const toggleSelectAll = useCallback(() => {
+    if (allSelected) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(cartItems.map((item) => item.id as string | number)))
+    }
+  }, [allSelected, cartItems])
+
+  const toggleSelect = useCallback((id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }, [])
+
+  // 🎯 React Query mutation으로 수량 변경
+  const updateQuantity = useCallback(async (cartItemId: number | string, delta: number) => {
+    const item = cartItems.find(i => String(i.id) === String(cartItemId))
+    if (!item) return
+
+    const newQuantity = item.quantity + delta
+    if (newQuantity < 1) return
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): 재고 초과는 '증가(delta>0)'일 때만 차단 — 이전엔 감소도 막혀서
+    //   (예: 담은 뒤 재고가 줄어 qty10>stock3) 수량을 재고 이하로 줄일 수 없고 삭제만 가능했음.
+    const stock = item.product_stock
+    if (delta > 0 && stock !== undefined && stock !== null && newQuantity > stock) return
+    if (updating) return
+
+    setUpdating(true)
+    try {
+      await updateQuantityMutation.mutateAsync({
+        itemId: String(cartItemId),
+        quantity: newQuantity
+      })
+    } catch (error: unknown) {
+      if (import.meta.env.DEV) console.error('Failed to update quantity:', error)
+      const msg = error instanceof Error ? error.message : t('cart.quantityChangeFailed')
+      showAlert(msg, 'error', t('cart.qtyChangeFailedTitle'))
+    } finally {
+      setUpdating(false)
+    }
+  }, [cartItems, updating, updateQuantityMutation])
+
+  // 🎯 React Query mutation으로 아이템 삭제
+  const removeItem = useCallback(async (cartItemId: number | string) => {
+    if (updating) return
+
+    showConfirm(
+      t('cart.deleteConfirmMsg'),
+      async () => {
+        setUpdating(true)
+        try {
+          await removeItemMutation.mutateAsync(String(cartItemId))
+          showAlert(t('cart.deleteConfirmTitle'), 'success', t('cart.deleteConfirmTitle'))
+        } catch (error: unknown) {
+          if (import.meta.env.DEV) console.error('Failed to remove item:', error)
+          const msg = error instanceof Error ? error.message : t('cart.deleteFailed')
+          showAlert(msg, 'error', t('cart.deleteFailed'))
+        } finally {
+          setUpdating(false)
+        }
+      },
+      t('cart.deleteConfirmTitle')
+    )
+  }, [updating, removeItemMutation, t, showAlert, showConfirm])
+
+  const openOptionModal = (item: CartItem) => {
+    setOptionModal({
+      isOpen: true,
+      cartItemId: item.id,
+      productId: item.product_id,
+      productName: item.product_name,
+      currentOptionId: item.option_id,
+      currentOptionValue: item.option_value,
+    })
+  }
+
+  const closeOptionModal = () => {
+    setOptionModal({ isOpen: false })
+  }
+
+  // 🎯 React Query mutation으로 옵션 변경
+  const handleOptionChange = async (optionId: number, optionValue: string) => {
+    if (!optionModal.cartItemId || updating) return
+
+    setUpdating(true)
+    try {
+      await updateOptionMutation.mutateAsync({
+        itemId: String(optionModal.cartItemId),
+        optionId
+      })
+      showAlert(t('cart.optionChangedMsg'), 'success', t('cart.changeCompleteTitle'))
+    } catch (error: unknown) {
+      if (import.meta.env.DEV) console.error('Failed to change option:', error)
+      const msg = error instanceof Error ? error.message : t('cart.optionChangeFailed')
+      showAlert(msg, 'error', t('cart.changeFailedTitle'))
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  const handleDeleteSelected = useCallback(() => {
+    if (selectedIds.size === 0) return
+
+    showConfirm(
+      `선택한 ${selectedIds.size}개의 상품을 삭제하시겠습니까?`,
+      async () => {
+        setUpdating(true)
+        try {
+          // 🎯 병렬 삭제로 성능 개선
+          await Promise.all(
+            Array.from(selectedIds).map(id =>
+              removeItemMutation.mutateAsync(String(id))
+            )
+          )
+          showAlert(t('cart.deleteSelected'), 'success', t('cart.deleteSelected'))
+        } catch (error: unknown) {
+          if (import.meta.env.DEV) console.error('Failed to delete selected:', error)
+          const msg = error instanceof Error ? error.message : t('cart.deleteFailed')
+          showAlert(msg, 'error', t('cart.deleteFailed'))
+        } finally {
+          setUpdating(false)
+        }
+      },
+      t('cart.deleteSelected')
+    )
+  }, [selectedIds, removeItemMutation, showAlert, showConfirm, t])
+
+  // 🛡️ 2026-05-20: 판매종료 (product_is_active === 0) 항목만 일괄 삭제. 사용자 신고:
+  // "만료된 상품들 하나씩 삭제하기 번거롭다". 자동 제외만으로는 cart 가 깔끔하지 않음.
+  const inactiveIds = useMemo(() => {
+    return cartItems
+      .filter((it: CartItem) => it.product_is_active !== undefined && Number(it.product_is_active) !== 1)
+      .map((it: CartItem) => it.id)
+  }, [cartItems])
+
+  const handleDeleteInactive = useCallback(() => {
+    if (inactiveIds.length === 0) return
+    showConfirm(
+      t('cart.deleteInactiveConfirm', {
+        defaultValue: `판매가 종료된 ${inactiveIds.length}개 상품을 모두 삭제할까요?`,
+        count: inactiveIds.length,
+      }),
+      async () => {
+        setUpdating(true)
+        try {
+          await Promise.all(inactiveIds.map(id => removeItemMutation.mutateAsync(String(id))))
+          showAlert(
+            t('cart.deleteInactiveDone', { defaultValue: '판매종료 상품을 삭제했습니다', count: inactiveIds.length }),
+            'success',
+            t('cart.deleteInactive', { defaultValue: '판매종료 삭제' }),
+          )
+        } catch (error: unknown) {
+          if (import.meta.env.DEV) console.error('Failed to delete inactive:', error)
+          const msg = error instanceof Error ? error.message : t('cart.deleteFailed')
+          showAlert(msg, 'error', t('cart.deleteFailed'))
+        } finally {
+          setUpdating(false)
+        }
+      },
+      t('cart.deleteInactive', { defaultValue: '판매종료 삭제' }),
+    )
+  }, [inactiveIds, removeItemMutation, showAlert, showConfirm, t])
+
+  // 셀러별 그룹화 (v4 seller grouped style)
+  const sellerGroups = useMemo(() => {
+    return cartItems.reduce((groups, item) => {
+      const sellerId = Number(item.seller_id) || 0
+      if (!groups[sellerId]) {
+        groups[sellerId] = {
+          seller_id: sellerId,
+          seller_name: item.seller_name || t('cart.fallbackSeller'),
+          items: [] as CartItem[],
+          subtotal: 0,
+          shipping_fee: item.shipping_fee ?? 3000,  // `||` 는 명시한 0 을 3,000 으로 되돌린다
+          free_shipping_threshold: item.free_shipping_threshold || 0,
+        }
+      }
+      groups[sellerId].items.push(item)
+      groups[sellerId].subtotal += (getCartItemPrice(item) * item.quantity)
+      return groups
+    }, {} as Record<number, {
+      seller_id: number
+      seller_name: string
+      items: CartItem[]
+      subtotal: number
+      shipping_fee: number
+      free_shipping_threshold: number
+    }>)
+  }, [cartItems])
+
+  // 🏷️ 합계는 **순수 함수**가 낸다(`cart/cart-totals.ts`) — 통화가 둘이라 실행해서 재야 하고,
+  //    페이지 안에 두면 렌더 없이는 못 잰다.
+  const { totalItems, dealItems, subtotal, shippingFee, dealAmount, savedAmount, cartKind } =
+    useMemo(() => computeCartTotals(cartItems, selectedIds), [cartItems, selectedIds])
+
+  /** 카드로 청구될 금액. 딜은 여기 안 들어간다(통화가 다르다). */
+  const total = subtotal + shippingFee
+
+  // 🔘 버튼이 **무엇을 결제할지까지** 정한다(`cart/cart-cta.ts` 순수 함수).
+  //    섞여 있으면 잠그는 대신 한 종류를 골라 주고 나머지는 장바구니에 남긴다 —
+  //    체크박스를 푸는 노동을 사용자한테 떠넘기지 않는다(대표 "따로 골라서 결제할 필요 없지 않나").
+  const selectedItems = useMemo(
+    () => cartItems.filter(item => selectedIds.has(item.id)),
+    [cartItems, selectedIds],
+  )
+  const cta = cartCta({ selected: selectedItems, cardTotal: total, dealAmount, updating, fmt: formatNumber, t })
+
+  const handleCheckout = async () => {
+    if (cta.payItems.length === 0) {
+      showAlert(t('cart.selectProductsFirst'), 'alert', t('cart.alertTitle'))
+      return
+    }
+    // 섞여 있었다면 버튼이 고른 종류만 남기고 선택을 좁힌다 — 돌아왔을 때 나머지가 이어서 보인다.
+    if (cta.payItems.length !== selectedItems.length) {
+      setSelectedIds(new Set(cta.payItems.map(i => i.id as string | number)))
+    }
+    // 🧺 어디로 보낼지는 `cart/voucher-checkout` 한 곳이 정한다(이용권=발급 있는 공구 레일,
+    //    교환권·배송=종전 `/checkout`). 상태 반영을 기다리지 않고 **고른 배열을 그대로** 넘긴다.
+    const err = await routeCartCheckout(cta.payItems, navigate)
+    if (err) showAlert(err, 'alert', t('cart.alertTitle'))
+  }
+
+  // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): ad-hoc 스피너 → BrandLoader (라우트 청크 로더와 위상 연속).
+  if (loading) {
+    return (
+      <div className="min-h-[100dvh] bg-white dark:bg-[#11141C]">
+        <BrandLoader fullScreen label={t('cart.loading')} />
+      </div>
+    )
+  }
+
+  return (
+    // 🩸 2026-09-02 (대표 "장바구니 페이지도 심각하다"): 이 래퍼만 dark: 없이 라이트 회색이라 다크에서 아래 절반이 회색으로 남았다.
+    <div className="flex flex-col min-h-[100dvh] bg-warm">
+      <SEO title={t('cart.seoTitle')} description={t('cart.seoDesc')} url="/cart" noindex />
+
+      {/* v4 Header + Select All */}
+      <CartHeader
+        itemCount={cartItems.length}
+        allSelected={allSelected}
+        selectedCount={selectedIds.size}
+        inactiveCount={inactiveIds.length}
+        onToggleSelectAll={toggleSelectAll}
+        onDeleteSelected={handleDeleteSelected}
+        onDeleteInactive={handleDeleteInactive}
+      />
+
+      {/* Empty State or Cart Items */}
+      {cartItems.length === 0 ? (
+        <EmptyCart />
+      ) : (
+        <>
+          {/* 🖥️ 2026-07-20 장바구니 PC 2단 — 좌 아이템 + 우 sticky 요약/CTA. 모바일(<lg) 1열+하단바 불변. */}
+          <main className="ur-content-narrow w-full flex-1 pb-32 lg:max-w-[1020px] lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6 lg:items-start lg:pb-12">
+            <div className="lg:min-w-0">
+            {/* v4 Seller Group Cards */}
+            {Object.values(sellerGroups).map((group) => {
+              const groupAllSelected = group.items.every(item => selectedIds.has(item.id))
+              // 비배송 그룹엔 '무료배송까지 N원' 이 말이 안 된다 — 원래 배송이 없다.
+              const groupNoShip = group.items.length > 0 && group.items.every(isNoShippingItem)
+              const freeShipThreshold = groupNoShip ? 0 : group.free_shipping_threshold
+              const remaining = freeShipThreshold > 0 ? freeShipThreshold - group.subtotal : 0
+              const shippingProgress = freeShipThreshold > 0
+                ? Math.min(100, (group.subtotal / freeShipThreshold) * 100)
+                : 0
+
+              return (
+                <div key={group.seller_id} className="mt-2 bg-surface lg:rounded-2xl lg:shadow-lift lg:overflow-hidden">
+                  {/* Seller header with checkbox + badge + name + chevron */}
+                  <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-50 dark:border-[#2C2F35]">
+                    <span
+                      onClick={() => {
+                        const ids = group.items.map(i => i.id as string | number)
+                        setSelectedIds(prev => {
+                          const next = new Set(prev)
+                          if (groupAllSelected) {
+                            ids.forEach(id => next.delete(id))
+                          } else {
+                            ids.forEach(id => next.add(id))
+                          }
+                          return next
+                        })
+                      }}
+                      className={`w-5 h-5 rounded-md flex items-center justify-center border-2 shrink-0 cursor-pointer transition-colors ${
+                        groupAllSelected
+                          ? 'bg-brand border-brand'
+                          : 'bg-white dark:bg-[#1D1F29] border-rule-strong'
+                      }`}
+                    >
+                      {groupAllSelected && (
+                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </span>
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <StoreIcon size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />
+                      <span className="text-[15px] font-bold text-gray-900 dark:text-white truncate">
+                        {group.seller_name}
+                      </span>
+                      {/* 🛡️ 2026-05-25 (Phase 6 합배송): 같은 bundling_key 2+ 아이템 묶음 표시 */}
+                      {(() => {
+                        const bundlingMap = new Map<string, number>()
+                        for (const it of group.items) {
+                          const k = (it as CartItem).bundling_key
+                          if (k) bundlingMap.set(k, (bundlingMap.get(k) || 0) + 1)
+                        }
+                        const hasBundle = Array.from(bundlingMap.values()).some(v => v >= 2)
+                        return hasBundle ? (
+                          <span className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded text-[12px] font-bold bg-brand-tint text-brand-text ">
+                            <BoxIcon className="w-3 h-3" aria-hidden />합배송
+                          </span>
+                        ) : null
+                      })()}
+                    </div>
+                    <ChevronRight size={16} className="text-gray-300 dark:text-gray-600 shrink-0" />
+                  </div>
+
+                  {freeShipThreshold > 0 && remaining > 0 && (
+                    <div className="mx-4 mt-3">
+                      <p className="text-[12px] text-gray-600 dark:text-gray-300 font-medium mb-2">
+                        <span className="text-brand-text font-bold tabular-nums">{formatNumber(remaining)}원</span> 더 담으면 무료배송
+                      </p>
+                      <div className="w-full h-1.5 bg-gray-100 dark:bg-white/10 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-brand rounded-full transition-all"
+                          style={{ width: `${shippingProgress}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  {freeShipThreshold > 0 && remaining <= 0 && (
+                    <div className="mx-4 mt-3">
+                      <p className="text-[12px] text-brand-text font-semibold">{t('cart.freeShipping')}</p>
+                    </div>
+                  )}
+
+                  {/* Product items */}
+                  <div className="px-4 py-3 space-y-4">
+                    {group.items.map((item) => (
+                      <CartItemComponent
+                        key={item.id}
+                        item={{
+                          ...item,
+                          id: Number(item.id),
+                          product_id: Number(item.product_id),
+                          price_snapshot: item.price_snapshot ?? item.price ?? 0,
+                          option_id: item.option_id != null ? Number(item.option_id) : undefined,
+                        }}
+                        isSelected={selectedIds.has(item.id)}
+                        onToggleSelect={toggleSelect}
+                        onUpdateQuantity={updateQuantity}
+                        onRemove={removeItem}
+                        onOpenOption={openOptionModal}
+                        isUpdating={updating}
+                      />
+                    ))}
+                  </div>
+
+                  <CartGroupShippingRow
+                    items={group.items}
+                    subtotal={group.subtotal}
+                    shippingFee={group.shipping_fee}
+                    freeShipThreshold={freeShipThreshold}
+                    noShipping={groupNoShip}
+                  />
+                </div>
+              )
+            })}
+
+            </div>{/* /좌측 아이템 컬럼 */}
+            <aside className="mt-2 bg-surface px-4 py-4 lg:sticky lg:top-[64px] lg:rounded-2xl lg:shadow-lift">
+              <CartSummary
+                totalItems={totalItems - dealItems}
+                subtotal={subtotal}
+                shippingFee={shippingFee}
+                total={total}
+                dealAmount={dealAmount}
+                cartKind={cartKind}
+                savedAmount={savedAmount}
+                mixedHint={cta.hint}
+                noShipping={cartItems.length > 0 && cartItems.every(isNoShippingItem)}
+              />
+              <CartCtaButton onClick={handleCheckout} disabled={cta.disabled} className="hidden lg:block mt-4" label={cta.label} />
+            </aside>
+          </main>
+
+          {/* v4 Bottom fixed CTA: "N원 주문하기" (bg-gray-900 text-white rounded-xl) */}
+          {/* 🛡️ 2026-05-04: PC xl+ 사이드바 (224px) 우측부터 시작하도록 xl:left-56 추가. */}
+          <div className="fixed bottom-0 left-0 right-0 xl:left-56 app-frame-bar z-20 bg-white dark:bg-[#11141C] border-t border-gray-100 dark:border-[#2C2F35] safe-bottom lg:hidden">
+            <div className="ur-content-narrow px-4 py-3">
+              <CartCtaButton onClick={handleCheckout} disabled={cta.disabled} label={cta.label} />
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Modals */}
+      <CustomModal
+        isOpen={modal.isOpen}
+        onClose={closeModal}
+        onConfirm={modal.onConfirm}
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
+      />
+
+      {optionModal.isOpen && (
+        <Suspense fallback={null}>
+          <OptionSelectModal isOpen={optionModal.isOpen} onClose={closeOptionModal} onOptionSelected={handleOptionChange}
+            productId={optionModal.productId as number} productName={optionModal.productName as string}
+            currentOptionId={optionModal.currentOptionId as number | undefined} currentOptionValue={optionModal.currentOptionValue} />
+        </Suspense>
+      )}
+    </div>
+  )
+}

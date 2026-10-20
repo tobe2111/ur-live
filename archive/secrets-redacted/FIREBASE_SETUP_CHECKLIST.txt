@@ -1,0 +1,177 @@
+# ========================================
+# 🔥 Firebase 완전 새로 세팅 - 간단 체크리스트
+# ========================================
+
+## ✅ Phase 1: Firebase Console (15분)
+
+### 1-1. 프로젝트 확인
+[ ] https://console.firebase.google.com/ 접속
+[ ] urteam-live-commerce 프로젝트 선택
+
+### 1-2. Authentication
+[ ] Authentication → Sign-in method
+[ ] Custom 활성화
+[ ] Settings → Authorized domains에 live.ur-team.com 추가
+
+### 1-3. Realtime Database
+[ ] Realtime Database 클릭
+[ ] Database URL 확인: https://urteam-live-commerce-default-rtdb.asia-southeast1.firebasedatabase.app
+
+### 1-4. Web App 설정
+[ ] 프로젝트 설정 → 일반 → 내 앱
+[ ] 웹 앱 확인 (없으면 생성)
+[ ] SDK 구성 코드 확인 (아래 값과 동일한지)
+
+```
+apiKey: AIzaSyA8Lsr6o9gRjMARI-mWaFGrciRs9z2CH7s
+projectId: urteam-live-commerce
+databaseURL: https://urteam-live-commerce-default-rtdb.asia-southeast1.firebasedatabase.app
+messagingSenderId: 1098157020294
+appId: 1:1098157020294:web:5f527d8e3e9f941cedad07
+```
+
+### 1-5. Service Account 생성 ⭐ 중요!
+[ ] 프로젝트 설정 → 서비스 계정
+[ ] "새 비공개 키 생성" 클릭
+[ ] JSON 다운로드
+[ ] JSON 파일 안전한 곳에 보관 (Git에 절대 커밋 X)
+
+---
+
+## ✅ Phase 2: 로컬 프로젝트 (5분)
+
+### 2-1. .env 파일
+[✓] .env 파일 이미 업데이트됨!
+
+### 2-2. Firebase 코드
+[ ] src/lib/firebase-config.ts 확인
+[ ] src/lib/firebase-admin.ts 확인
+
+---
+
+## ✅ Phase 3: Cloudflare 환경변수 (20분)
+
+👉 https://dash.cloudflare.com/
+→ Workers & Pages → ur-live → Settings → Environment variables → Production (Current)
+
+### 3-1. Frontend 변수 (17개 - Type: Plaintext)
+
+#### Firebase (8개)
+[ ] VITE_FIREBASE_API_KEY = AIzaSyA8Lsr6o9gRjMARI-mWaFGrciRs9z2CH7s
+[ ] VITE_FIREBASE_AUTH_DOMAIN = urteam-live-commerce.firebaseapp.com
+[ ] VITE_FIREBASE_DATABASE_URL = https://urteam-live-commerce-default-rtdb.asia-southeast1.firebasedatabase.app
+[ ] VITE_FIREBASE_PROJECT_ID = urteam-live-commerce
+[ ] VITE_FIREBASE_STORAGE_BUCKET = urteam-live-commerce.firebasestorage.app
+[ ] VITE_FIREBASE_MESSAGING_SENDER_ID = 1098157020294
+[ ] VITE_FIREBASE_APP_ID = 1:1098157020294:web:5f527d8e3e9f941cedad07
+[ ] VITE_FIREBASE_MEASUREMENT_ID = G-B1ST2L37CM
+
+#### Kakao (4개)
+[ ] VITE_KAKAO_APP_KEY = 975a2e7f97254b08f15dba4d177a2865
+[ ] VITE_KAKAO_JAVASCRIPT_KEY = 975a2e7f97254b08f15dba4d177a2865
+[ ] VITE_KAKAO_REST_API_KEY = 5dd74bccb797640b0efd070467f3bafd
+[ ] VITE_KAKAO_AUTH_URL = https://kauth.kakao.com/oauth/authorize
+
+#### Toss (1개)
+[ ] VITE_TOSS_CLIENT_KEY = test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN
+
+#### 기타 (4개)
+[ ] VITE_REGION = KR
+[ ] VITE_DEFAULT_LANGUAGE = ko
+[ ] VITE_API_BASE_URL = https://live.ur-team.com
+[ ] VITE_SENTRY_DSN = https://08caf64e8e7955f09acc2b0551fdb049@o4510992097935360.ingest.us.sentry.io/4510992127295488
+[ ] VITE_SENTRY_ENVIRONMENT = production
+
+---
+
+### 3-2. Backend 변수 (14개 - Type: Secret)
+
+#### Firebase Admin (3개)
+[ ] FIREBASE_API_KEY = AIzaSyA8Lsr6o9gRjMARI-mWaFGrciRs9z2CH7s
+[ ] FIREBASE_PROJECT_ID = urteam-live-commerce
+[ ] FIREBASE_DATABASE_URL = https://urteam-live-commerce-default-rtdb.asia-southeast1.firebasedatabase.app
+
+#### Service Account (3개) ⭐ JSON 파일에서 복사
+[ ] FIREBASE_PRIVATE_KEY = (JSON의 private_key - 여러 줄 포함)
+[ ] FIREBASE_CLIENT_EMAIL = (JSON의 client_email)
+[ ] FIREBASE_SERVICE_ACCOUNT_KEY = (JSON 전체를 한 줄로)
+
+#### JWT (2개)
+[ ] JWT_SECRET = 3Y4MyekQ4D+GFVY6p6bJEScOMSyFFkbtSX76YyT9uk4=
+[ ] REFRESH_TOKEN_SECRET = zetvg/v05J+O6M99ndq4UFliUwvw2Gvvi8dPXXZ3+z0=
+
+#### 기타 (6개)
+[ ] ENVIRONMENT = production
+[ ] FRONTEND_URL = https://live.ur-team.com
+[ ] REGION = KR
+[ ] KAKAO_REST_API_KEY = 5dd74bccb797640b0efd070467f3bafd
+[ ] TOSS_SECRET_KEY = test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY
+
+---
+
+### 3-3. 저장 및 배포
+[ ] Save 버튼 클릭 (우측 상단)
+[ ] Deployments 탭으로 이동
+[ ] 최신 배포의 ⋮ → Retry deployment 클릭
+[ ] Status = Success 될 때까지 대기 (3-5분)
+
+---
+
+## ✅ Phase 4: 테스트 (5분)
+
+### 4-1. 캐시 클리어
+[ ] 브라우저에서 Ctrl + Shift + R (Windows/Linux)
+[ ] 또는 Cmd + Shift + R (Mac)
+[ ] 또는 시크릿 모드 (Ctrl + Shift + N)
+
+### 4-2. 로그인 테스트
+[ ] https://live.ur-team.com/login 접속
+[ ] F12 → Console 탭 열기
+[ ] "Kakao로 로그인" 버튼 클릭
+
+### 4-3. 성공 확인
+[ ] Console에 "✅ Firebase App initialized" 보임
+[ ] Console에 "❌ auth/api-key-not-valid" 없음
+[ ] 로그인 후 프로필 페이지로 리다이렉트
+[ ] Firebase Console → Authentication → Users에 사용자 표시
+
+---
+
+## 🎯 최종 완료 기준
+
+✅ 모두 OK면 성공:
+[ ] Kakao 로그인 정상 작동
+[ ] Firebase Console에 사용자 표시
+[ ] 브라우저 콘솔에 에러 없음
+[ ] 프로필 페이지 정상 표시
+[ ] Realtime Database 연결 확인
+
+---
+
+## 🚨 문제 발생 시
+
+❌ "Missing Firebase environment variables"
+→ Cloudflare 환경변수 재확인 → Retry deployment
+
+❌ "auth/api-key-not-valid"
+→ API 키 재확인 → Cloudflare에서 수정 → Retry deployment
+
+❌ "Custom token creation failed"
+→ Service Account 재생성 → 3개 변수 추가 → Retry deployment
+
+❌ 여전히 같은 에러
+→ 시크릿 모드 테스트 → Cloudflare 캐시 삭제 → 5-10분 대기
+
+---
+
+## 📂 참고 문서
+
+- FIREBASE_FRESH_SETUP.md - 상세 가이드
+- CLOUDFLARE_ENV_SETUP_CORRECT.md - Cloudflare 환경변수 상세 설명
+- CLOUDFLARE_ENV_COPY_PASTE.txt - 복사-붙여넣기용 변수 목록
+
+---
+
+**작성일**: 2026-03-18
+**예상 소요 시간**: 약 45분
+**현재 상태**: Phase 2 완료, Phase 3 진행 필요

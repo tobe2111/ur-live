@@ -1,0 +1,8 @@
+{
+  "src/features/group-buy/api/stays-public.routes.ts": {
+    "carriers": 3,
+    "reason": "숙박 추천 링크(?ref=) 경로. 이 필드를 소비자 응답으로 내보내 '적립됩니다' 를 약속하는 게 아니라, 서버가 읽어서 할인·커미션을 직접 계산한다. 즉 표시가 아니라 동작이라 게이트를 걸면 머니 경로가 바뀐다(별도 세션 + staging).",
+    "live": "2026-09-07 실측: product_stay_info 79행 중 referral_enabled=1 이 0행, influencer_discount_pct>0 도 0행 — 지금은 잠들어 있다.",
+    "open": "프로그램이 꺼져 있는데 이 경로만 살아나면 손님은 할인을 받고 소개한 사람은 한 푼도 못 받는다(매장만 부담). 어필리에이트를 다시 켤 때 함께 판단할 것."
+  }
+}

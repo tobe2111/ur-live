@@ -1,0 +1,169 @@
+import { cfImage, cfSrcSet } from '../../utils/cf-image'
+import { DETAIL_HERO_DESKTOP_WIDTH, DETAIL_PC_HERO_RATIO_MULTI, DETAIL_PC_HERO_RATIO_SINGLE, detailCropUrl, detailGalleryImages, detailHeroMobileUrl } from '../../shared/detail-hero-image'
+import {
+  HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE,
+  HOME_CARD_LG_QUERY, HOME_CARD_BASE_QUERY, HOME_CARD_ABOVE_FOLD, HOME_CARD_MAX_DPR,
+} from '../../shared/home-card-image'
+import { HERO_STRIP_PRELOAD, heroTileUrl, pickHeroStripFromSeedJson } from '../../shared/home-hero-strip'
+import { HOME_HERO_MEDIA_QUERY } from '../../shared/home-hero-image'
+
+/**
+ * 🖼️ 홈 첫 화면 카드 사진 preload 링크 생성 (2026-08-27 대표 "메인페이지 로딩 자체도 느려").
+ *
+ * ## 무엇을 고치는가
+ * 사진 URL 은 **이미 HTML 안**(SECTIONS 시드)에 있는데 `<img>` 를 React 가 만들기 때문에
+ * **JS 마운트 뒤에야** 다운로드가 시작됐다. 실측(모바일): 마운트 1341ms → 첫 사진 표시 2221ms.
+ * `<link rel="preload" as="image">` 를 head 에 넣으면 HTML 파싱 즉시 JS 와 **병렬로** 받는다.
+ * (상세 히어로가 2026-07-02 에 고친 것과 같은 병목 — 그쪽 패턴을 홈으로 옮긴 것.)
+ *
+ * ## ⚠️ 이 코드의 함정 — 조용한 이중 다운로드
+ * preload 는 **URL 이 byte-일치할 때만** 쓰인다. 한 글자만 달라도 브라우저는 그걸 버리고 같은
+ * 사진을 다시 받는다 — **에러도 없고 화면도 멀쩡한데 더 느려지고 트래픽만 두 배**다.
+ * 그래서 ① 카드와 **같은 함수**(`cfImage`/`cfSrcSet`)로 만들고 ② 폭·중단점·개수를
+ * `shared/home-card-image` SSOT 에서 읽으며 ③ 뷰포트로 갈리는 폭은 `media=` 로 나눈다
+ * (2·3열 200 ↔ 4열 400. 하나로 합치면 한쪽이 반드시 어긋난다).
+ *
+ * ## 왜 별도 파일인가
+ * `worker/index.ts` 는 파일 크기 래칫(god 파일 가드)에 동결돼 있다. 이 블록을 인라인으로 두면
+ * 그 한도를 넘는다 — 그리고 여기 있는 편이 **직접 테스트하기도 쉽다**(HTMLRewriter 없이 문자열만 본다).
+ */
+
+/** 시드에서 읽는 최소 모양 — 서버 `CARD_COLS`(section-rules.ts)의 부분집합. */
+interface SeedShape {
+  data?: Array<{ products?: Array<{ image_url?: string }> }>
+}
+
+const escAttr = (s: string) => s.replace(/"/g, '&quot;')
+
+/**
+ * SECTIONS 시드(JSON 문자열)에서 첫 섹션의 above-fold 카드 사진 preload 링크들을 만든다.
+ *
+ * @returns `<link …>` 문자열 배열. 시드가 깨졌거나 사진이 없으면 **빈 배열**(fail-soft —
+ *   preload 가 없다고 홈이 안 뜨면 안 된다).
+ */
+export function buildHomeCardPreloadLinks(ssrExtraPayload: string): string[] {
+  let first: Array<{ image_url?: string }>
+  try {
+    first = (JSON.parse(ssrExtraPayload) as SeedShape)?.data?.[0]?.products ?? []
+  } catch {
+    return [] // 시드 파싱 실패 — preload 생략(치명 아님)
+  }
+
+  const links: string[] = []
+  for (const p of first.slice(0, HOME_CARD_ABOVE_FOLD)) {
+    const src = p?.image_url
+    if (!src) continue
+    for (const [q, w] of [
+      [HOME_CARD_BASE_QUERY, HOME_CARD_IMG_WIDTH_BASE],
+      [HOME_CARD_LG_QUERY, HOME_CARD_IMG_WIDTH_LG],
+    ] as const) {
+      const href = cfImage(src, { width: w, format: 'auto' })
+      // data: URI 는 이미 문서 안에 있다 — preload 할 것이 없다.
+      if (!href || href.startsWith('data:')) continue
+      const set = cfSrcSet(src, w, HOME_CARD_MAX_DPR)
+      links.push(
+        `<link rel="preload" as="image" fetchpriority="high" media="${q}" href="${escAttr(href)}"${
+          set ? ` imagesrcset="${escAttr(set)}"` : ''
+        }>`,
+      )
+    }
+  }
+  return links
+}
+
+/**
+ * 🖼️ 공구/교환권 **상세 히어로** preload 링크 (2026-07-02 [UNLOCK_LOADING] 대표 "사진이 빠르게 안 나타남").
+ *
+ * 상세 히어로는 프리로드 스캐너를 못 탄다(공구=CSS background-image, 교환권=React 렌더 후 `<img>`)
+ * → [엔트리→페이지 청크→렌더] 뒤에야 다운로드가 시작돼 사진이 늦게 떴다.
+ * seed 의 `image_url` 로 클라와 **동일 함수**로 URL 을 만들어 주입하면 HTML 파싱 즉시 병렬로 받고,
+ * 렌더 시점엔 캐시에 적중한다(byte-일치 보장).
+ *
+ * ⚠️ **표면별 정합**: `/pass/:id` 히어로 = `cfImage(900)` 단일 URL ↔ `/vouchers/:id` 히어로 =
+ *   `cfImage(800)` + `cfSrcSet(800)` 밀도 srcSet. 형태가 다르면 **이중 다운로드**가 된다.
+ * ⚠️ Save-Data 사용자만 quality 65 라 URL 이 달라 미적중 — 히어로 1장 한정 허용 트레이드오프.
+ *
+ * 🔁 2026-08-27: `worker/index.ts` 인라인이던 것을 **출력 불변**으로 여기 옮겼다(파일 크기 래칫 +
+ *   홈 카드 preload 와 같은 성격이라 한곳에 모으는 편이 다음 사람이 찾기 쉽다).
+ *
+ * @returns `<link …>` 문자열, 만들 수 없으면 `null`(fail-soft).
+ */
+export function buildDetailHeroPreloadLink(ssrPayload: string, isVoucherSurface: boolean, isMobile = true): string | null {
+  try {
+    const data = (JSON.parse(ssrPayload) as {
+      data?: { image_url?: string; images?: string | null; image_urls?: string | null; detail_images?: string | null }
+    })?.data
+    const heroSrc = data?.image_url
+    if (!heroSrc) return null
+    // 🖥️ PC 대형은 **사진 장수**에 따라 4:3(여러 장) / 16:9(한 장)로 갈린다. 갤러리와 같은 함수로 센다
+    //    (`detailGalleryImages`) — 두 벌로 세면 경계에서 갈려 preload 가 버려진다.
+    const pcRatio = detailGalleryImages(data).length > 1 ? DETAIL_PC_HERO_RATIO_MULTI : DETAIL_PC_HERO_RATIO_SINGLE
+    // 🧵 2026-09-02: 이용권 상세는 `DetailGallery` 와 **같은 SSOT 함수**로 만든다. 이전의 `width: 900` 은
+    //    08-31 크롭 도입 뒤 갤러리가 그리는 어떤 URL 과도 안 맞아 **preload 가 통째로 버려지고** 있었다
+    //    (라이브 실측: 111KB 를 받고 안 쓴 뒤 같은 사진을 다시 받았다). 폰/PC 는 그리는 폭이 달라 UA 로 가른다.
+    const heroUrl = isVoucherSurface
+      ? cfImage(heroSrc, { width: 800, format: 'auto' })
+      : isMobile ? detailHeroMobileUrl(heroSrc) : detailCropUrl(heroSrc, DETAIL_HERO_DESKTOP_WIDTH, pcRatio)
+    if (!heroUrl || heroUrl.startsWith('data:')) return null
+    const heroSrcSet = isVoucherSurface ? cfSrcSet(heroSrc, 800) : ''
+    return `<link rel="preload" as="image" fetchpriority="high" href="${escAttr(heroUrl)}"${
+      heroSrcSet ? ` imagesrcset="${escAttr(heroSrcSet)}"` : ''
+    }>`
+  } catch {
+    return null // seed 파싱 실패 — preload 생략(치명 아님)
+  }
+}
+
+/**
+ * 🏔️ 홈 **히어로** 사진 preload (2026-08-29 대표 — "히어로에 나올 사진이 가장 늦긴 해").
+ *
+ * ## 실측한 문제
+ * 카드 4장은 위(`buildHomeCardPreloadLinks`)에서 preload 를 받는데 **정작 그 위에 있는 히어로는
+ * 못 받고 있었다.** 라이브 PC 3회 측정에서 히어로 다운로드가 카드보다 **일관되게 ~630ms 늦게
+ * 시작**했다(631/648/632ms). 화면 맨 위 사진이 가장 늦게 시작하는 셈이다.
+ *   히어로는 이미 `loading="eager" fetchPriority="high"` 다 — 그건 **발견된 뒤**의 우선순위이고,
+ *   발견 자체가 React 렌더 뒤라서 늦었다. preload 만이 그 앞을 당긴다.
+ *
+ * ## 🎞️ 2026-09-28 — 당기는 대상이 **큰 사진 한 장 → 띠의 첫 타일 둘**로 바뀌었다
+ * 대표 확정(시안 ②)으로 히어로 기본 미디어가 흐르는 이용권 띠가 됐다. 예전처럼 1280px 사진을
+ * 당기면 **아무도 안 쓰는 55KB** 를 매 하드로드마다 받는다(에러도 없고 화면도 멀쩡한, 이 파일이
+ * 경고하는 바로 그 클래스). ⇒ `HeroDealStrip` 이 실제로 그리는 앞 두 장을 당긴다(각 ~13KB).
+ *
+ * ## ⚠️ byte-일치
+ * 클라이언트(`HeroDealStrip`)와 **같은 함수**(`heroTileUrl`)·**같은 고르기**(`pickHeroStripFromSeedJson`)를
+ * 쓴다. 한 글자만 달라도 preload 가 버려지고 같은 사진을 두 번 받는다(에러 없이 더 느려진다).
+ *
+ * ## ⚠️ 중단점
+ * 띠는 `hidden md:block` 이라 **768px 미만에서는 보이지 않는다.** `media=` 로 막지 않으면
+ * 폰이 안 쓰는 바이트를 받는다 — 고치려던 것보다 더 나쁜 회귀다.
+ *
+ * ## 어드민 배너가 있으면?
+ * 그때는 클라이언트가 배너 사진을 쓰고 이 preload 는 버려진다(워커는 배너 유무를 모른다).
+ * 라이브 히어로 배너는 0건이고, 버려져도 26KB 라 예전(55KB)보다 손해가 작다.
+ *
+ * @returns `<link …>` 문자열(여러 줄이면 이어 붙인 하나), 없으면 null(fail-soft).
+ */
+/** 🧩 2026-10-14: PC 홈 히어로 띠 은퇴(시안 4). */
+export const HERO_STRIP_RETIRED = true
+
+export function buildHomeHeroPreloadLink(mainSeedPayload: string): string | null {
+  /**
+   * 🧩 2026-10-14 (대표 확정 "시안 4"): PC 홈이 이 히어로(사진 띠)를 **더 이상 그리지 않는다** — 맨 위는
+   *   어드민 배너(큰 1 + 작은 2)다. 띠는 768px 미만에선 원래 `hidden` 이라 이제 **어떤 화면도** 이 사진을 안 쓴다.
+   *   그대로 두면 PC 하드로드마다 아무도 안 쓰는 두 장(~26KB)을 최우선으로 받는다 — 위 '어드민 배너가 있으면?'
+   *   이 경고한 그 손해가 이제 상시다. ⇒ 아무것도 내지 않는다(워커 호출부는 null 을 그냥 건너뛴다 — 잠금 파일 무접촉).
+   *   PC 히어로 띠를 되살리면 이 return 을 지운다.
+   */
+  return HERO_STRIP_RETIRED ? null : heroStripPreloadLinks(mainSeedPayload)
+}
+
+/** 띠가 다시 쓰일 때의 preload — 클라이언트 `HeroDealStrip` 과 byte-일치(시험이 대조). */
+export function heroStripPreloadLinks(mainSeedPayload: string): string | null {
+  const links: string[] = []
+  for (const tile of pickHeroStripFromSeedJson(mainSeedPayload).slice(0, HERO_STRIP_PRELOAD)) {
+    const href = heroTileUrl(tile.src)
+    if (!href || href.startsWith('data:')) continue
+    links.push(`<link rel="preload" as="image" fetchpriority="high" media="${HOME_HERO_MEDIA_QUERY}" href="${escAttr(href)}">`)
+  }
+  return links.length ? links.join('') : null
+}

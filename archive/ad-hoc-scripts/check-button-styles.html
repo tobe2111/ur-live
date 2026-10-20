@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Kakao Button Style Checker</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .result {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #333;
+        }
+        .error {
+            border-left-color: #f44336;
+        }
+        .success {
+            border-left-color: #4caf50;
+        }
+        pre {
+            background: #f9f9f9;
+            padding: 10px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Kakao Button Style Inspector</h1>
+    <div id="output"></div>
+    
+    <script>
+        async function checkKakaoButton() {
+            const output = document.getElementById('output');
+            
+            try {
+                // Load the actual login page in an iframe
+                const iframe = document.createElement('iframe');
+                iframe.src = 'https://live.ur-team.com/login';
+                iframe.style.cssText = 'position:absolute;left:-9999px;width:1000px;height:800px;';
+                document.body.appendChild(iframe);
+                
+                await new Promise(resolve => {
+                    iframe.onload = () => setTimeout(resolve, 3000);
+                });
+                
+                const doc = iframe.contentDocument || iframe.contentWindow.document;
+                const buttons = doc.querySelectorAll('button');
+                
+                let kakaoButton = null;
+                buttons.forEach(btn => {
+                    if (btn.textContent.includes('카카오')) {
+                        kakaoButton = btn;
+                    }
+                });
+                
+                if (!kakaoButton) {
+                    output.innerHTML = '<div class="result error"><strong>❌ Kakao button not found</strong></div>';
+                    return;
+                }
+                
+                const computed = iframe.contentWindow.getComputedStyle(kakaoButton);
+                const parent = kakaoButton.parentElement;
+                const parentComputed = iframe.contentWindow.getComputedStyle(parent);
+                
+                const results = {
+                    'Button Computed Styles': {
+                        'pointer-events': computed.pointerEvents,
+                        'cursor': computed.cursor,
+                        'z-index': computed.zIndex,
+                        'position': computed.position,
+                        'display': computed.display,
+                        'opacity': computed.opacity,
+                        'visibility': computed.visibility
+                    },
+                    'Parent Container Styles': {
+                        'pointer-events': parentComputed.pointerEvents,
+                        'z-index': parentComputed.zIndex,
+                        'position': parentComputed.position,
+                        'overflow': parentComputed.overflow
+                    },
+                    'Button HTML': {
+                        'tagName': kakaoButton.tagName,
+                        'disabled': kakaoButton.disabled,
+                        'type': kakaoButton.type,
+                        'className': kakaoButton.className
+                    }
+                };
+                
+                let html = '';
+                for (const [section, data] of Object.entries(results)) {
+                    const hasIssue = 
+                        (section.includes('Button') && data['pointer-events'] === 'none') ||
+                        (section.includes('Parent') && data['pointer-events'] === 'none');
+                    
+                    html += `<div class="result ${hasIssue ? 'error' : 'success'}">`;
+                    html += `<strong>${section}</strong>`;
+                    html += '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                    html += '</div>';
+                }
+                
+                output.innerHTML = html;
+                
+                // Clean up
+                setTimeout(() => document.body.removeChild(iframe), 1000);
+                
+            } catch (error) {
+                output.innerHTML = `<div class="result error"><strong>❌ Error:</strong> ${error.message}</div>`;
+            }
+        }
+        
+        checkKakaoButton();
+    </script>
+</body>
+</html>

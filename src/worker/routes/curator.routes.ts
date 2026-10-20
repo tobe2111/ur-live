@@ -1,0 +1,1362 @@
+/**
+ * 🛡️ 2026-05-25 (migration 0278): 큐레이터 유어샵 API SSOT.
+ *
+ * 모든 유저가 본인 공개 페이지(/u/:handle)에서 상품 핀 큐레이션.
+ * 핀 클릭 → 상품 페이지 ?ref={user_id} → 기존 affiliate_ref 시스템 재활용.
+ * 결제 시 affiliate_earnings 자동 적립 → 큐레이터 정산.
+ *
+ * 영구 룰:
+ *   - 알리아스(@/) import 금지 → 상대경로
+ *   - 모든 mutation 은 requireAuth() / requireAuth() 검증
+ *   - safeError() 로 에러 reply (DB 메시지 누출 X)
+ *   - rate limit 은 KV 미구성 시 fail-open (CLAUDE.md 룰)
+ *   - 핸들 정책은 policy.ts CURATOR_DEFAULTS SSOT
+ */
+
+import { Hono } from 'hono'
+import { curatorAdminDiagnostic } from './curator/admin-diagnostic.routes'; import { findPin, logPinClick } from '../utils/pin-click-log'
+import { findActiveDealPctsBySeller } from '@/worker/utils/influencer-deal'
+import type { Env } from '../types/env'
+import { requireAuth, optionalAuth, requireAdmin } from '../middleware/auth'
+import { rateLimit } from '../middleware/rate-limit'
+import { safeError } from '../utils/safe-error'
+import {
+  generateUniqueHandle,
+  isHandleAvailable,
+  isValidHandleFormat,
+} from '../utils/handle-generator'
+import { CURATOR_DEFAULTS, WITHDRAWAL_DEFAULTS, TAX_POLICY, COMMISSION_DEFAULTS } from '../../shared/constants/policy'
+import { isVoucherCategory, voucherMinPriceError } from '../../shared/constants/voucher-categories'
+import { getPolicy } from '../utils/dynamic-policy'
+import { intParam } from '@/shared/pagination'; import { loadLinkedSellerProducts } from '../utils/linkshop-seller-products' // 한 줄: 래칫 1397
+import { consumerVisibleProductSql } from '../../shared/db/consumer-visible-product'
+import { isAffiliateProgramEnabled, gateAffiliateRows } from '../utils/affiliate-program'
+import { findOwnedApprovedSeller, OWNED_STORE_WHERE_SQL } from '../utils/seller-operators'; import { countUShopSales } from '../utils/ushop-sales'; import { publicReadDb } from '../utils/d1-read-replica' // 한 줄: 래칫
+
+const curatorRoutes = new Hono<{ Bindings: Env }>()
+
+// ── 유틸: 인증된 user_id (number) 추출 ──
+// 🛡️ 2026-05-25 fix: auth middleware 는 c.set('user', { id, ... }) 패턴.
+//   이전 c.get('userId') 는 항상 null → 401. 'user' 객체에서 id 추출.
+function getAuthUserId(c: any): number | null {
+  const user = c.get?.('user')
+  const raw = user?.id ?? c.get?.('userId') ?? c.get?.('userIdNumber')
+  const n = Number(raw)
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
+// ── 유틸: 핀 개수 상한 검사 ──
+async function getPinCount(DB: D1Database, userId: number): Promise<number> {
+  const row = await DB.prepare('SELECT COUNT(*) as cnt FROM product_pins WHERE user_id = ?')
+    .bind(userId)
+    .first<{ cnt: number }>()
+    .catch(() => null)
+  return row?.cnt ?? 0
+}
+
+/**
+ * 🛡️ 2026-05-25: 큐레이터 테이블 lazy CREATE — D1 migration 미적용 환경 graceful.
+ *   TD-001 (D1 CI 권한 부재) 로 migration 0278 자동 적용 안 될 때 첫 호출 시 보장.
+ */
+// 🛡️ 2026-05-31 (유어샵 로딩): 모듈 레벨 1회 메모이제이션 — 매 요청 6개 DDL(CREATE/ALTER) 실행 제거.
+//   edge-MISS(cold/SSR self-fetch) 경로가 데이터 쿼리 전에 6 라운드트립으로 느려지던 것 해소.
+//   스키마는 migration 0278 + repair-schema(daily cron) 가 보장 — 워커당 첫 호출만 안전망으로 실행.
+let _curatorTablesReady = false
+// 🏭 2026-06-04 (perf 전수조사): users.banner_url 컬럼 존재 여부 모듈 캐시 (group-buy 의 _dominantColorCol 패턴).
+//   null=미확정, true=존재, false=없음. 컬럼 없는 환경에서 매 요청 2회 user 쿼리 도는 것 방지.
+let _bannerUrlCol: boolean | null = null
+// 🏭 2026-06-05 (사용자 신고 — 배경/프로필 사진 저장 500): users 프로필 편집 컬럼 자가치유.
+//   PATCH /me/profile 의 UPDATE 가 banner_url/profile_image/updated_at 컬럼을 직접 쓰는데,
+//   migration 미적용 DB 면 'no such column' → 500. 스키마 복구 버튼/cron 을 기다리지 않도록
+//   첫 저장 시 1회 idempotent ALTER(이미 있으면 throw → swallow). repair-schema 와 동일 컬럼.
+let _userProfileColsReady = false
+async function ensureUserProfileCols(DB: D1Database): Promise<void> {
+  if (_userProfileColsReady) return
+  for (const sql of [
+    'ALTER TABLE users ADD COLUMN banner_url TEXT',
+    'ALTER TABLE users ADD COLUMN profile_image TEXT',
+    'ALTER TABLE users ADD COLUMN updated_at TEXT',
+    // 🎨 2026-06-16 유어샵 시안: 크리에이터 SNS 링크 (유튜브/인스타/틱톡).
+    'ALTER TABLE users ADD COLUMN youtube_url TEXT',
+    'ALTER TABLE users ADD COLUMN instagram_url TEXT',
+    'ALTER TABLE users ADD COLUMN tiktok_url TEXT',
+    // 🎨 2026-06-17 유어샵 랜딩 리디자인: 상단 마퀴(흐르는 헤드라인) 텍스트.
+    'ALTER TABLE users ADD COLUMN linkshop_headline TEXT',
+    // 🎨 2026-06-19 마퀴 액센트 색(#RRGGBB) — 소유자 조정. 비면 기본 주황.
+    'ALTER TABLE users ADD COLUMN linkshop_accent TEXT',
+    // ✨ 2026-07-04 유어샵 1단계(linkshop-role-model §5): 매장(스토어프론트) 유어샵 하단
+    //   "추천(핀)" 섹션 opt-in — 0(기본 off)/1. sellers 는 컬럼 한도(100) 도달이라 users 에.
+    'ALTER TABLE users ADD COLUMN linkshop_show_recommend INTEGER DEFAULT 0',
+  ]) {
+    await DB.prepare(sql).run().catch(() => { /* 이미 존재 → 정상 */ })
+  }
+  _userProfileColsReady = true
+  _bannerUrlCol = true // 컬럼 보장됨 — GET 경로 캐시도 갱신
+}
+async function ensureCuratorTables(DB: D1Database): Promise<void> {
+  if (_curatorTablesReady) return
+  try {
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS product_pins (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      product_id INTEGER NOT NULL,
+      position INTEGER NOT NULL DEFAULT 0,
+      note TEXT,
+      click_count INTEGER NOT NULL DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, product_id)
+    )`).run()
+    await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_product_pins_user_pos ON product_pins(user_id, position)`).run().catch(() => null)
+    // users.handle / bio 컬럼 (idempotent ALTER — 이미 있으면 throw → swallow)
+    // 🔗 2026-07-01 (대표 결정 — 유어샵 전수조사): linkshop_theme 필드 제거. 유어샵은 방문자 전역 테마
+    //   (useTheme, /account/settings 토글)를 따르므로 큐레이터별 theme 은 안 쓰이던 죽은 필드였음.
+    //   기존 DB 컬럼은 D1 DROP 위험이라 그대로 방치(무해) — 읽기/반환/신규 ALTER 만 제거.
+    for (const sql of [
+      "ALTER TABLE users ADD COLUMN handle TEXT",
+      "ALTER TABLE users ADD COLUMN bio TEXT",
+    ]) {
+      await DB.prepare(sql).run().catch(() => null)
+    }
+    await DB.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_handle_unique ON users(handle) WHERE handle IS NOT NULL`).run().catch(() => null)
+    // 🏁 2026-06-17 (핸들 변경 리다이렉트): 옛 핸들 → user_id 매핑. /u/{옛핸들} → /u/{현재핸들} 자동 이동.
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS user_handle_aliases (
+      alias TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    )`).run().catch(() => null)
+    _curatorTablesReady = true  // 성공 시에만 — 실패하면 다음 요청 재시도
+  } catch { /* graceful */ }
+}
+
+// GET /api/curator/:handle (public) — 큐레이터 공개 페이지: user + pins (product 메타)
+// ⚠️ 정적 경로(/recommendations)는 아래 /:handle 보다 **먼저** — Hono 는 등록 순서로 매칭한다.
+//   뒤에 두면 handle="recommendations" 로 잡혀 404. 지키는 가드: check-route-shadowing.
+curatorRoutes.get('/recommendations', requireAuth(), async (c) => {
+  try {
+    const userId = getAuthUserId(c)
+    const DB = c.env.DB
+
+    // 본인이 이미 핀한 상품은 제외
+    const { results: pinned } = userId
+      ? await DB.prepare('SELECT product_id FROM product_pins WHERE user_id = ?')
+          .bind(userId)
+          .all<{ product_id: number }>()
+      : { results: [] as { product_id: number }[] }
+    const excludeIds = (pinned ?? []).map(p => p.product_id)
+
+    const limit = Math.max(5, Math.min(50, intParam(c.req.query('limit'), 20)))
+    const exclusion = excludeIds.length
+      ? ` AND p.id NOT IN (${excludeIds.map(() => '?').join(',')})`
+      : ''
+    const { results } = await DB.prepare(
+      `SELECT p.id, p.name, p.price, p.original_price, p.category, p.image_url, p.thumbnail,
+              p.referral_commission_rate AS commission_rate, COALESCE(p.referral_enabled, 0) AS referral_enabled,
+              COALESCE(p.sold_count, 0) AS sold_count
+       FROM products p
+       WHERE p.is_active = 1
+         AND COALESCE(p.referral_enabled, 0) = 1 AND ${consumerVisibleProductSql('p')}
+         ${exclusion}
+       ORDER BY p.sold_count DESC, p.id DESC
+       LIMIT ?`,
+    ).bind(...excludeIds, limit).all()
+
+    return c.json({ success: true, recommendations: gateAffiliateRows(results ?? [], await isAffiliateProgramEnabled(DB)) })
+  } catch (err) {
+    return safeError(c, err, '추천 핀 조회 중 오류가 발생했습니다', '[curator:recommend]')
+  }
+})
+
+curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
+  try {
+    const handle = c.req.param('handle')?.toLowerCase().trim()
+    // 🧭 2026-10-12 형식 위반도 **404** — 400 은 `shouldNoindexMissingEntity` 그물을 빠져나가 soft-404 가 된다(`/u/my-shop` 라이브 200·index 실측). 술어를 넓히지 않고 여기서 404 를 준다. 쓰기 검증은 400 그대로. 사유·양방향 불변식: `ushop-malformed-handle-404-2026-10-12.test.ts`
+    if (!handle || !isValidHandleFormat(handle)) {
+      return c.json({ success: false, error: '큐레이터를 찾을 수 없습니다' }, 404)
+    }
+    const DB = getAuthUserId(c) == null ? publicReadDb(c.env.DB) : c.env.DB // 🌏 2026-10-15 D1 읽기 복제 — 익명만 사본(로그인=주인일 수 있어 편집 직후 옛 값 금지)
+    // 🏭 2026-06-04 (perf 전수조사): DDL 6종을 응답 경로에서 분리 — 테이블은 0278 + repair cron 이 보장.
+    try { c.executionCtx?.waitUntil?.(ensureCuratorTables(DB).catch(() => {})) } catch { /* no ctx — skip */ }
+
+    // 🛡️ 2026-05-27 (사용자 요청): banner_url 도 반환 — 큐레이터 배경 사진.
+    //   🏭 2026-06-04: 컬럼 존재 여부 모듈 캐시(_bannerUrlCol) — 없는 환경에서 매 요청 2회 user 쿼리 방지.
+    type CuratorUser = {
+      id: number; handle: string; name: string; bio: string | null;
+      profile_image: string | null; banner_url?: string | null;
+      youtube_url?: string | null; instagram_url?: string | null; tiktok_url?: string | null
+    }
+    // 🎨 2026-06-16: banner_url + SNS 포함 전체 SELECT 우선 — 컬럼 없는 레거시 DB 면 throw → undefined →
+    //   최소 컬럼 폴백(과거 _bannerUrlCol 분기 대체, 같은 1-query 정상상태 + 컬럼 부재시 graceful).
+    let user = await DB.prepare(
+      `SELECT id, handle, name, bio, profile_image, banner_url, youtube_url, instagram_url, tiktok_url
+       FROM users WHERE handle = ? LIMIT 1`,
+    ).bind(handle).first<CuratorUser>().catch(() => undefined)
+    if (user === undefined) {
+      user = await DB.prepare(
+        `SELECT id, handle, name, bio, profile_image
+         FROM users WHERE handle = ? LIMIT 1`,
+      ).bind(handle).first<CuratorUser>().catch(() => null) ?? null
+    }
+
+    if (!user) {
+      // 🏁 2026-06-17 (핸들 변경 리다이렉트): 옛 핸들이면 현재 핸들을 알려줘 클라가 /u/{현재} 로 이동.
+      //   404 가 아니라 200 + code 로 반환(axios throw 회피 → 클라가 new_handle 읽음).
+      try {
+        await ensureCuratorTables(DB)
+        const alias = await DB.prepare('SELECT user_id FROM user_handle_aliases WHERE alias = ? LIMIT 1')
+          .bind(handle).first<{ user_id: number }>()
+        if (alias?.user_id) {
+          const cur = await DB.prepare('SELECT handle FROM users WHERE id = ? AND handle IS NOT NULL AND handle != \'\' LIMIT 1')
+            .bind(alias.user_id).first<{ handle: string }>()
+          if (cur?.handle && cur.handle !== handle) {
+            return c.json({ success: false, code: 'HANDLE_MOVED', new_handle: cur.handle }, 200)
+          }
+        }
+      } catch { /* alias 테이블 없거나 조회 실패 — 일반 404 로 */ }
+      return c.json({ success: false, error: '큐레이터를 찾을 수 없습니다' }, 404)
+    }
+
+    // 🛡️ 2026-05-25 linked seller + pins 병렬 1 RTT · 🛍️ 2026-10-10 내 가게 = 연결 계정 **또는 주인 좌석**(`OWNED_STORE_WHERE_SQL`)
+    const userId = user.id
+    const [linkedSeller, pinsResult] = await Promise.all([
+      DB.prepare(`SELECT s.id, s.username, s.name, s.status FROM sellers s WHERE ${OWNED_STORE_WHERE_SQL} LIMIT 1`).bind(userId, userId, userId)
+        .first<{ id: number; username: string; name: string; status: string }>()
+        .catch(() => DB.prepare("SELECT id, username, name, status FROM sellers WHERE linked_user_id = ? AND status = 'approved' LIMIT 1").bind(userId).first<{ id: number; username: string; name: string; status: string }>().catch(() => null)),
+      DB.prepare(
+        `SELECT pp.id, pp.product_id, pp.position, pp.note, pp.click_count,
+                p.name AS product_name, p.image_url, p.thumbnail, p.price, p.original_price, p.discount_rate,
+                p.category, p.is_active, p.dominant_color, p.avg_rating, p.review_count, p.sold_count,
+                p.restaurant_name, p.restaurant_address,
+                p.seller_id, COALESCE(p.deal_only, 0) AS deal_only, -- deal_only: 담은 교환권 분류 근거(클라가 본다)
+                p.referral_commission_rate AS commission_rate, COALESCE(p.referral_enabled, 0) AS referral_enabled
+         FROM product_pins pp
+         JOIN products p ON p.id = pp.product_id
+         WHERE pp.user_id = ? AND p.is_active = 1 AND ${consumerVisibleProductSql('p')}
+         ORDER BY pp.position ASC, pp.created_at DESC
+         LIMIT ?`,
+      ).bind(userId, CURATOR_DEFAULTS.PIN_MAX_PER_USER).all().catch(() => ({ results: [] as Record<string, unknown>[] })),
+    ])
+    // 🤝 2026-08-27 (대표 "직접 매장과 매칭이 되어진 이용권이 위에 노출"):
+    //   핀마다 **이 유어샵 주인이 그 매장과 맺은 활성 딜의 %** 를 실어 보낸다.
+    //   조건은 SSOT(`findActiveDealPctsBySeller`)가 갖는다 — 여기서 WHERE 를 베끼면 결제와 갈린다.
+    //
+    //   ⚠️ 딜은 **유어샵 주인** 기준(보는 사람 무관 — 익명 엣지 캐시에 실려도 정확). 💸 왕복 1회.
+    //   🛍️ 2026-10-15 대표 *"바꾸자"*: 누적 구매 = **이 유어샵을 거쳐** 팔린 수(`ushop-sales.ts`) — 같은 왕복에 실린다.
+    const [dealBySeller, ushopSold] = await Promise.all([findActiveDealPctsBySeller(DB, String(userId)), countUShopSales(DB, userId)])
+    const pins = gateAffiliateRows((pinsResult.results as Record<string, unknown>[]).map((r) => ({
+      ...r,
+      // null = 이 매장과 딜이 없음 → 팔려도 소개비 0. 화면이 두 덩어리로 가르는 근거.
+      deal_pct: dealBySeller.get(Number(r.seller_id)) ?? null,
+    })), await isAffiliateProgramEnabled(DB))
+
+    // 🎨 2026-06-17 (유어샵 랜딩 리디자인): 마퀴 헤드라인 — 별도 best-effort 조회(컬럼 없는 env 에서
+    //   메인 SELECT 의 banner/sns 가 폴백으로 사라지지 않도록 분리). 컬럼 없으면 null.
+    let headline: string | null = null
+    let accent: string | null = null
+    let showRecommend = 0
+    try {
+      const h = await DB.prepare('SELECT linkshop_headline, linkshop_accent, COALESCE(linkshop_show_recommend, 0) AS show_recommend FROM users WHERE id = ? LIMIT 1')
+        .bind(userId).first<{ linkshop_headline: string | null; linkshop_accent: string | null; show_recommend: number }>()
+      headline = h?.linkshop_headline ?? null
+      accent = h?.linkshop_accent ?? null
+      showRecommend = Number(h?.show_recommend) === 1 ? 1 : 0
+    } catch {
+      // linkshop_accent 컬럼 없는 env — headline 만이라도.
+      try {
+        const h = await DB.prepare('SELECT linkshop_headline FROM users WHERE id = ? LIMIT 1')
+          .bind(userId).first<{ linkshop_headline: string | null }>()
+        headline = h?.linkshop_headline ?? null
+      } catch { /* 둘 다 없음 — null */ }
+    }
+
+    // 🛡️ 2026-05-31 (유어샵 로딩): group-buy-public 과 동일 edge 캐시 — 이전엔 캐시 헤더가 없어
+    //   (1) 매 요청 D1 3쿼리 cold, (2) worker SSR inject 가 caches.default 에서 못 찾아 매번 self-fetch cold
+    //   → /u/:handle 첫 paint 200-500ms+ 지연. 공개 데이터(본인 dashboard 는 /me/* 별도)라 공개 캐시 안전.
+    //   브라우저 60s / edge 900s + SWR — 소유자 편집은 CuratorPage 낙관적 업데이트로 즉시 반영.
+    // 🏁 2026-06-13 (사용자 신고 — 프로필 사진 저장 후 새로고침하면 사라짐):
+    //   본인(인증된 소유자)이 자기 페이지를 보면 edge 900s 캐시 대신 항상 신선본 반환.
+    //   업로드→저장 직후 새로고침해도 stale(예전 null) 대신 최신 이미지가 보이게 함.
+    //   익명/타 방문자는 기존 공개 캐시 그대로(잠금 TTL 불변) — owner 만 우회.
+    const viewerId = getAuthUserId(c)
+    const isOwnerView = viewerId != null && Number(viewerId) === Number(user.id)
+    if (isOwnerView) {
+      c.header('Cache-Control', 'private, no-store')
+    } else {
+      c.header('Cache-Control', 'public, max-age=60, stale-while-revalidate=120')
+      c.header('CDN-Cache-Control', 'public, max-age=900, stale-while-revalidate=120')
+    }
+
+    // 🚀 2026-07-11 (로딩 전수조사 후속 — 대표 "남은 개선 여지, 가장 이상적으로"): 사업자 유어샵 1-RTT 화.
+    //   linked seller 가 있으면 셀러 공개 페이로드를 **이 응답에 동봉**(additive) — 기존엔 클라가
+    //   [curator fetch → SellerPublicPage 마운트 → seller /public fetch] 직렬 2-RTT 였음.
+    //   buildSellerPublicPayload = seller.routes `GET /:id/public` 와 같은 SSOT(쿼리/KV캐시/enrich 공유,
+    //   드리프트 0) + KV 300s 캐시라 콜드 비용도 낮음. 실패 시 조용히 생략(클라가 기존 fetch 폴백).
+    //   SSR CURATOR 슬롯/edge 캐시에 그대로 실리므로 하드로드는 셀러 데이터까지 0-RTT.
+    let linkedSellerPublic: Record<string, unknown> | null = null
+    if (linkedSeller?.username) {
+      try {
+        const { buildSellerPublicPayload } = await import('../utils/seller-public-payload')
+        linkedSellerPublic = await buildSellerPublicPayload(c.env, linkedSeller.username)
+      } catch { /* additive — 생략 시 클라 폴백 fetch */ }
+    }
+
+    return c.json({
+      success: true,
+      curator: {
+        id: user.id,
+        handle: user.handle,
+        name: user.name,
+        bio: user.bio,
+        profile_image: user.profile_image?.startsWith('r2://') ? `/api/media/${user.profile_image.slice(5)}` : user.profile_image,
+        // 🛡️ 2026-06-10 (사용자 신고 — 배경이미지 저장 안 됨): SELECT 는 하면서 응답에서 누락되던 핵심 버그.
+        //   CuratorHeader 가 curator.banner_url 을 읽는데 항상 undefined → 저장돼도 절대 표시 안 됐음.
+        // 레거시 'r2://key' 저장분(2026-06-05 이전 버그) 읽기측 정규화 — 모든 소비처 동시 치유.
+        banner_url: user.banner_url?.startsWith('r2://') ? `/api/media/${user.banner_url.slice(5)}` : (user.banner_url ?? null),
+        // 🎨 2026-06-16 유어샵 시안: 크리에이터 SNS 링크.
+        youtube_url: user.youtube_url ?? null,
+        instagram_url: user.instagram_url ?? null,
+        tiktok_url: user.tiktok_url ?? null,
+        // 🎨 2026-06-17 유어샵 랜딩 리디자인: 상단 마퀴 헤드라인 + 액센트 색.
+        headline,
+        accent,
+        // ✨ 2026-07-04 유어샵 1단계: 매장 유어샵 하단 추천(핀) 섹션 opt-in (기본 0=off).
+        linkshop_show_recommend: showRecommend,
+        ushop_sold: ushopSold, // 🛍️ 이 유어샵을 거쳐 팔린 수(머리의 '누적 구매')
+      },
+      pins: pins ?? [],
+      // 🛡️ 2026-05-25 신모델: linked seller 있으면 셀러 공개페이지로 자연 흡수.
+      linked_seller: linkedSeller ? {
+        id: linkedSeller.id,
+        username: linkedSeller.username,
+        name: linkedSeller.name,
+      } : null,
+      // 🚀 2026-07-11: 셀러 공개 페이로드 동봉(1-RTT) — 없으면(비사업자/조회실패) null, 클라 폴백 fetch.
+      linked_seller_public: linkedSellerPublic, linked_seller_products: linkedSeller?.id ? await loadLinkedSellerProducts(c.env.DB, Number(linkedSeller.id)) : null, // 🚀 2026-09-02 셀러 상품 100개 동봉(없으면 null → 클라 폴백) · 한 줄: 래칫 1397
+    })
+  } catch (err) {
+    return safeError(c, err, '큐레이터 정보 조회 중 오류가 발생했습니다', '[curator:get]')
+  }
+})
+
+// ============================================================
+// GET /api/curator/:handle/p/:productId/redirect  (public)
+// 핀 클릭 → 클릭 로그 + count 증가 + 302 redirect with ?ref=
+// ============================================================
+curatorRoutes.get('/:handle/p/:productId/redirect', async (c) => {
+  try {
+    const handle = c.req.param('handle')?.toLowerCase().trim()
+    const productId = Number(c.req.param('productId'))
+    if (!handle || !isValidHandleFormat(handle) || !Number.isFinite(productId)) {
+      return c.json({ success: false, error: 'invalid' }, 400)
+    }
+    const DB = c.env.DB
+
+    const pin = await findPin(DB, handle, productId)
+    // 핀 없어도 상품 페이지로는 안전하게 redirect (404 보다 UX 우월)
+    if (!pin) return c.redirect(`/products/${productId}`, 302)
+    c.executionCtx.waitUntil(logPinClick(DB, pin, c.req.raw)) // 클릭 로그 + count (best-effort — 통계 전용)
+
+    // 🧭 2026-06-10 (유어샵×교환권 적립 루프 단절 fix): 교환권/공구 상품 핀은 공구 상세로 —
+    //   기존엔 무조건 /products(물리상품 레일)로 보내 교환권 핀 구매가 적립 0 이었음.
+    //   ?aff= 는 GroupBuy/Voucher 상세가 localStorage.affiliate_ref 로 저장(물리 ?ref= 와 동일 키).
+    try {
+      const prod = await DB.prepare(
+        "SELECT deal_only, category, group_buy_status FROM products WHERE id = ? LIMIT 1"
+      ).bind(productId).first<{ deal_only: number | null; category: string | null; group_buy_status: string | null }>()
+      // 🛡️ 2026-06-18 (대표 신고 — 쇼핑 상품이 /group-buy 로 가 교환권으로 오표시): 분류 SSOT 정합.
+      //   기존 `group_buy_status === 'active'` 는 migration 0146 에서 모든 상품 DEFAULT 'active' 라
+      //   일반 쇼핑 상품까지 voucher 흐름으로 오분류 → /group-buy 교환권 chrome 으로 떨어짐.
+      //   order-type.ts SSOT 와 동일하게 deal_only=1(교환권) 또는 voucher 카테고리(오프라인 공구)만 voucher 흐름.
+      const isVoucherFlow = !!prod && (Number(prod.deal_only) === 1 || isVoucherCategory(prod.category))
+      if (isVoucherFlow) return c.redirect(`${Number(prod!.deal_only) === 1 ? '/vouchers' : '/pass'}/${productId}?aff=${pin.user_id}`, 302) // 🧭 2026-10-15 교환권은 /vouchers(숙소는 /pass — /stays 는 ?aff 를 안 읽는다)
+    } catch { /* 판별 실패 — 기존 경로 */ }
+    // 물리상품 — ProductDetailPage 가 localStorage.affiliate_ref 저장 (기존 시스템 재활용)
+    return c.redirect(`/products/${productId}?ref=${pin.user_id}`, 302)
+  } catch (err) {
+    return safeError(c, err, '리다이렉트 처리 중 오류가 발생했습니다', '[curator:redirect]')
+  }
+})
+
+// POST /api/curator/:handle/p/:productId/click (public · 비콘) — 유어샵 화면 안에서 카드를 눌렀을 때 클릭만 기록.
+//   2026-10-18 대표 결재 `2026-10-15-ushop-pin-spa-nav` 안 1: 앱 안 이동으로 바꾸며 리다이렉트가 하던 기록을 여기로. 통계 전용(귀속 무관).
+curatorRoutes.post('/:handle/p/:productId/click', async (c) => { // 제한 없음 — 같은 기록을 하는 GET 리다이렉트와 같은 조건(통계 전용)
+  const handle = c.req.param('handle')?.toLowerCase().trim(); const productId = Number(c.req.param('productId'))
+  if (!handle || !isValidHandleFormat(handle) || !Number.isFinite(productId)) return c.body(null, 204)
+  try { const pin = await findPin(c.env.DB, handle, productId); if (pin) c.executionCtx.waitUntil(logPinClick(c.env.DB, pin, c.req.raw)) } catch { /* 통계 — 무시 */ }
+  return c.body(null, 204)
+})
+
+// ============================================================
+// GET /api/curator/handle/check?q=foo  (public)
+// 핸들 사용 가능 여부 + 추천 alternatives
+// ============================================================
+curatorRoutes.get('/handle/check', async (c) => {
+  try {
+    const q = String(c.req.query('q') || '').toLowerCase().trim()
+    if (!q) return c.json({ success: false, available: false, error: '핸들을 입력해주세요' }, 400)
+    if (!isValidHandleFormat(q)) {
+      return c.json({
+        success: true,
+        available: false,
+        reason: 'invalid_format',
+        message: `${CURATOR_DEFAULTS.HANDLE_MIN_LEN}-${CURATOR_DEFAULTS.HANDLE_MAX_LEN}자, 소문자/숫자/_ 만 가능합니다`,
+      })
+    }
+    const available = await isHandleAvailable(c.env.DB, q)
+    return c.json({ success: true, available, handle: q })
+  } catch (err) {
+    return safeError(c, err, '핸들 확인 중 오류가 발생했습니다', '[curator:check]')
+  }
+})
+
+// ============================================================
+// POST /api/curator/me/pins  (requireUser)
+// 핀 추가 — 첫 핀이면 handle 자동 생성.
+// Body: { product_id: number, note?: string }
+// ============================================================
+curatorRoutes.post('/me/pins', requireAuth(), async (c) => {
+  try {
+    const userId = getAuthUserId(c)
+    if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
+    await ensureCuratorTables(c.env.DB)
+
+    const body = await c.req.json<{ product_id?: number; note?: string }>().catch(() => ({} as any))
+    const productId = Number(body.product_id)
+    if (!Number.isFinite(productId) || productId <= 0) {
+      return c.json({ success: false, error: '상품 ID 가 잘못되었습니다' }, 400)
+    }
+    const note = body.note ? String(body.note).slice(0, CURATOR_DEFAULTS.PIN_NOTE_MAX_LEN) : null
+    const DB = c.env.DB
+
+    // 상품 존재 + 활성 검증
+    const product = await DB.prepare('SELECT id, is_active, COALESCE(is_supply_product,0) AS is_supply_product, COALESCE(supply_source_id,0) AS supply_source_id FROM products WHERE id = ? LIMIT 1')
+      .bind(productId)
+      .first<{ id: number; is_active: number; is_supply_product: number; supply_source_id: number }>()
+    if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
+    if (!product.is_active) return c.json({ success: false, error: '비활성 상품은 핀할 수 없습니다' }, 400)
+    // 🛡️ 2026-06-26 분리 감사: 도매 카탈로그 마스터(공급상품)는 소비자 유어샵에 핀 불가.
+    if (product.is_supply_product === 1 && product.supply_source_id === 0) {
+      return c.json({ success: false, error: '도매 전용 상품은 핀할 수 없습니다' }, 400)
+    }
+
+    // 핀 상한 검증
+    const cnt = await getPinCount(DB, userId)
+    if (cnt >= CURATOR_DEFAULTS.PIN_MAX_PER_USER) {
+      return c.json({
+        success: false,
+        error: `핀은 최대 ${CURATOR_DEFAULTS.PIN_MAX_PER_USER}개까지 가능합니다`,
+      }, 400)
+    }
+
+    // 첫 핀: handle 자동 생성
+    const user = await DB.prepare('SELECT id, handle, name FROM users WHERE id = ? LIMIT 1')
+      .bind(userId)
+      .first<{ id: number; handle: string | null; name: string }>()
+    if (!user) return c.json({ success: false, error: '사용자를 찾을 수 없습니다' }, 404)
+
+    let handleJustCreated = false
+    let handle = user.handle
+    if (!handle) {
+      handle = await generateUniqueHandle(DB, user.name, undefined, userId)
+      await DB.prepare('UPDATE users SET handle = ? WHERE id = ?')
+        .bind(handle, userId)
+        .run()
+      handleJustCreated = true
+    }
+
+    // 다음 position
+    const posRow = await DB.prepare('SELECT COALESCE(MAX(position), -1) + 1 AS next_pos FROM product_pins WHERE user_id = ?')
+      .bind(userId)
+      .first<{ next_pos: number }>()
+    const nextPos = posRow?.next_pos ?? 0
+
+    // INSERT — UNIQUE(user_id, product_id) 충돌 시 toggle 로 안내
+    try {
+      const result = await DB.prepare(
+        `INSERT INTO product_pins (user_id, product_id, position, note)
+         VALUES (?, ?, ?, ?)`,
+      )
+        .bind(userId, productId, nextPos, note)
+        .run()
+      // 🛡️ 2026-06-12 (감사 1단계): 본인 공개 유어샵 colo 캐시 purge — 핀이 즉시 반영되도록.
+      //   me/profile (:572) 의 기존 purge 블록 패턴 복제 (best-effort, 실패해도 핀 저장 완료).
+      try {
+        const url = new URL(c.req.url)
+        // @ts-expect-error — Cloudflare Workers 전역 caches (edge-cache.ts:110 와 동일 패턴)
+        const purge = caches.default.delete(new Request(`${url.origin}/api/curator/${encodeURIComponent(handle)}`)) as Promise<boolean>
+        c.executionCtx.waitUntil(purge.then(() => undefined))
+      } catch { /* best-effort */ }
+      return c.json({
+        success: true,
+        pin: {
+          id: result.meta.last_row_id,
+          user_id: userId,
+          product_id: productId,
+          position: nextPos,
+          note,
+        },
+        handle,
+        handle_just_created: handleJustCreated,
+      })
+    } catch (e: any) {
+      const msg = String(e?.message || e)
+      if (msg.includes('UNIQUE')) {
+        return c.json({ success: false, error: '이미 핀에 추가된 상품입니다', code: 'ALREADY_PINNED' }, 409)
+      }
+      throw e
+    }
+  } catch (err) {
+    return safeError(c, err, '핀 추가 중 오류가 발생했습니다', '[curator:pin-add]')
+  }
+})
+
+// ============================================================
+// DELETE /api/curator/me/pins/:id  (requireUser)
+// ============================================================
+curatorRoutes.delete('/me/pins/:id', requireAuth(), async (c) => {
+  try {
+    const userId = getAuthUserId(c)
+    if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
+    const pinId = Number(c.req.param('id'))
+    if (!Number.isFinite(pinId)) return c.json({ success: false, error: 'invalid' }, 400)
+
+    // 🐛 2026-06-22 (대표 신고 — 핀 삭제 500): pin_click_logs.pin_id 가 product_pins(id) 를
+    //   ON DELETE CASCADE 없이 FK 참조 → 클릭된 적 있는 핀(자식 로그 존재)을 바로 DELETE 하면
+    //   D1 가 FOREIGN KEY constraint 로 throw → 500. (클릭 0 인 새 핀만 삭제되던 이유.)
+    //   자식 로그(본인 것만)를 먼저 지우고 핀을 지우는 batch(단일 트랜잭션·순서보장)로 FK 충족.
+    //   click 분석만 사라지고 적립(affiliate_earnings: referrer_id+product_id 키)은 무관하게 보존.
+    const batch = await c.env.DB.batch([
+      c.env.DB.prepare('DELETE FROM pin_click_logs WHERE pin_id = ? AND curator_user_id = ?').bind(pinId, userId),
+      c.env.DB.prepare('DELETE FROM product_pins WHERE id = ? AND user_id = ?').bind(pinId, userId),
+    ])
+    const result = batch[1]
+
+    if (!result.meta.changes) return c.json({ success: false, error: '핀을 찾을 수 없습니다' }, 404)
+    // 🛡️ 2026-06-12 (감사 1단계): 본인 공개 유어샵 colo 캐시 purge (me/profile :572 패턴 복제, best-effort).
+    try {
+      const me = await c.env.DB.prepare('SELECT handle FROM users WHERE id = ? LIMIT 1')
+        .bind(userId).first<{ handle: string | null }>()
+      if (me?.handle) {
+        const url = new URL(c.req.url)
+        // @ts-expect-error — Cloudflare Workers 전역 caches (edge-cache.ts:110 와 동일 패턴)
+        const purge = caches.default.delete(new Request(`${url.origin}/api/curator/${encodeURIComponent(me.handle)}`)) as Promise<boolean>
+        c.executionCtx.waitUntil(purge.then(() => undefined))
+      }
+    } catch { /* best-effort — purge 실패해도 삭제 완료 */ }
+    return c.json({ success: true })
+  } catch (err) {
+    return safeError(c, err, '핀 삭제 중 오류가 발생했습니다', '[curator:pin-del]')
+  }
+})
+
+// ============================================================
+// PATCH /api/curator/me/pins/reorder  (requireUser)
+// Body: { pin_ids: number[] } — 순서대로 position 부여
+// ============================================================
+curatorRoutes.patch('/me/pins/reorder', requireAuth(), async (c) => {
+  try {
+    const userId = getAuthUserId(c)
+    if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
+
+    const body = await c.req.json<{ pin_ids?: number[] }>().catch(() => ({} as any))
+    const ids = Array.isArray(body.pin_ids) ? body.pin_ids.filter(Number.isFinite).slice(0, 500) : []
+    if (!ids.length) return c.json({ success: false, error: 'pin_ids 필요' }, 400)
+
+    // 모든 ID 가 본인 소유인지 검증
+    const placeholders = ids.map(() => '?').join(',')
+    const { results: owned } = await c.env.DB
+      .prepare(`SELECT id FROM product_pins WHERE user_id = ? AND id IN (${placeholders})`)
+      .bind(userId, ...ids)
+      .all<{ id: number }>()
+    const ownedSet = new Set((owned ?? []).map(r => r.id))
+    if (ownedSet.size !== ids.length) {
+      return c.json({ success: false, error: '본인 핀만 정렬할 수 있습니다' }, 403)
+    }
+
+    // batch UPDATE
+    const stmts = ids.map((id: number, i: number) =>
+      c.env.DB.prepare('UPDATE product_pins SET position = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?')
+        .bind(i, id, userId),
+    )
+    await c.env.DB.batch(stmts)
+
+    return c.json({ success: true, count: ids.length })
+  } catch (err) {
+    return safeError(c, err, '핀 순서 변경 중 오류가 발생했습니다', '[curator:reorder]')
+  }
+})
+
+// ============================================================
+// PATCH /api/curator/me/pins/:id  (requireUser) — note 수정
+// ============================================================
+curatorRoutes.patch('/me/pins/:id', requireAuth(), async (c) => {
+  try {
+    const userId = getAuthUserId(c)
+    if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
+    const pinId = Number(c.req.param('id'))
+    if (!Number.isFinite(pinId)) return c.json({ success: false, error: 'invalid' }, 400)
+    const body = await c.req.json<{ note?: string }>().catch(() => ({} as any))
+    const note = body.note ? String(body.note).slice(0, CURATOR_DEFAULTS.PIN_NOTE_MAX_LEN) : null
+
+    const result = await c.env.DB.prepare(
+      `UPDATE product_pins SET note = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ? AND user_id = ?`,
+    ).bind(note, pinId, userId).run()
+
+    if (!result.meta.changes) return c.json({ success: false, error: '핀을 찾을 수 없습니다' }, 404)
+    return c.json({ success: true })
+  } catch (err) {
+    return safeError(c, err, '핀 수정 중 오류가 발생했습니다', '[curator:pin-patch]')
+  }
+})
+
+// ============================================================
+// PATCH /api/curator/me/handle  (requireUser)
+// Body: { handle: string }
+// 30일 cooldown (CURATOR_DEFAULTS.HANDLE_CHANGE_COOLDOWN_DAYS)
+// ============================================================
+curatorRoutes.patch('/me/handle', requireAuth(), async (c) => {
+  try {
+    const userId = getAuthUserId(c)
+    if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
+    const body = await c.req.json<{ handle?: string }>().catch(() => ({} as any))
+    const newHandle = String(body.handle || '').toLowerCase().trim()
+
+    if (!isValidHandleFormat(newHandle)) {
+      return c.json({
+        success: false,
+        error: `핸들은 ${CURATOR_DEFAULTS.HANDLE_MIN_LEN}-${CURATOR_DEFAULTS.HANDLE_MAX_LEN}자, 소문자/숫자/_ 만 가능합니다`,
+        code: 'INVALID_FORMAT',
+      }, 400)
+    }
+    const DB = c.env.DB
+
+    // 본인 현재 handle 조회 (변경 cooldown 검증)
+    const user = await DB.prepare('SELECT handle, updated_at FROM users WHERE id = ? LIMIT 1')
+      .bind(userId)
+      .first<{ handle: string | null; updated_at: string | null }>()
+    if (!user) return c.json({ success: false, error: '사용자 없음' }, 404)
+
+    // 이미 동일 handle 이면 noop
+    if (user.handle === newHandle) return c.json({ success: true, handle: newHandle, noop: true })
+
+    // UNIQUE 검증 (excludeUserId 본인은 통과)
+    const available = await isHandleAvailable(DB, newHandle, userId)
+    if (!available) {
+      return c.json({ success: false, error: '이미 사용중인 핸들입니다', code: 'TAKEN' }, 409)
+    }
+
+    await DB.prepare('UPDATE users SET handle = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+      .bind(newHandle, userId)
+      .run()
+
+    // 🏁 2026-06-17 (핸들 변경 리다이렉트): 옛 핸들 → 본인 user_id 기록 → /u/{옛핸들} 자동 이동.
+    //   + 새 핸들이 과거 누군가의 alias 였다면 제거(라이브 핸들이 우선이라 무해하지만 정리).
+    try {
+      await ensureCuratorTables(DB)
+      if (user.handle) {
+        await DB.prepare("INSERT OR REPLACE INTO user_handle_aliases (alias, user_id, created_at) VALUES (?, ?, datetime('now'))")
+          .bind(user.handle, userId).run()
+      }
+      await DB.prepare('DELETE FROM user_handle_aliases WHERE alias = ?').bind(newHandle).run()
+    } catch { /* best-effort — 리다이렉트 기록 실패해도 핸들 변경은 성공 */ }
+
+    return c.json({ success: true, handle: newHandle })
+  } catch (err) {
+    return safeError(c, err, '핸들 변경 중 오류가 발생했습니다', '[curator:handle-patch]')
+  }
+})
+
+// ============================================================
+// PATCH /api/curator/me/profile  (requireUser)
+// 🛡️ 2026-05-27 (옵션 C): 큐레이터 인라인 편집 — name / bio / profile_image.
+// 다른 컬럼 (handle) 은 별도 endpoint (cooldown 룰 분리).
+// ============================================================
+curatorRoutes.patch('/me/profile', requireAuth(), async (c) => {
+  try {
+    const userId = getAuthUserId(c)
+    if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
+    type ProfileBody = { name?: string; bio?: string; profile_image?: string; banner_url?: string; youtube_url?: string; instagram_url?: string; tiktok_url?: string; headline?: string; accent?: string; show_recommend?: boolean }
+    const body = await c.req.json<ProfileBody>().catch(() => ({} as ProfileBody))
+
+    const updates: string[] = []
+    const binds: (string | number)[] = []
+    // 🏭 2026-06-05 (사용자 신고 — 배경/프로필 사진 저장 400): 업로드 응답이 PUBLIC_R2_URL 미설정 시
+    //   same-origin 상대경로 '/api/media/...' 를 돌려줌(워커 서빙). http(s) 만 허용하던 검증이 이를 거부 → 400.
+    //   → http(s) URL 또는 '/api/media/<key>' 상대경로 허용.
+    const isAllowedImg = (v: string) => /^https?:\/\//i.test(v) || /^\/api\/media\/[A-Za-z0-9._/-]+$/.test(v)
+    if (typeof body.name === 'string') {
+      const v = body.name.trim().slice(0, 40)
+      if (!v) return c.json({ success: false, error: '이름은 최소 1자 필요' }, 400)
+      updates.push('name = ?')
+      binds.push(v)
+    }
+    if (typeof body.bio === 'string') {
+      updates.push('bio = ?')
+      binds.push(body.bio.trim().slice(0, 500))
+    }
+    if (typeof body.profile_image === 'string') {
+      const v = body.profile_image.trim()
+      if (v && !isAllowedImg(v)) return c.json({ success: false, error: 'URL 형식 오류' }, 400)
+      updates.push('profile_image = ?')
+      binds.push(v)
+    }
+    if (typeof body.banner_url === 'string') {
+      const v = body.banner_url.trim()
+      // 🏭 2026-06-05: banner_url 은 http(s) URL / '/api/media/...' 상대경로 / 'gradient:<id>' 토큰 허용.
+      if (v && !isAllowedImg(v) && !/^gradient:[a-z0-9_-]{1,24}$/i.test(v)) {
+        return c.json({ success: false, error: 'URL 형식 오류' }, 400)
+      }
+      updates.push('banner_url = ?')
+      binds.push(v)
+    }
+    // 🎨 2026-06-16 유어샵 시안: SNS 링크 — 핸들/@핸들/http(s) URL 허용, 빈 문자열=해제. (표시 시 정규화)
+    const isAllowedSns = (v: string) => v === '' || /^https?:\/\//i.test(v) || /^@?[A-Za-z0-9._-]{1,60}$/.test(v)
+    for (const key of ['youtube_url', 'instagram_url', 'tiktok_url'] as const) {
+      if (typeof body[key] === 'string') {
+        const v = (body[key] as string).trim().slice(0, 200)
+        if (v && !isAllowedSns(v)) return c.json({ success: false, error: 'SNS 링크 형식 오류' }, 400)
+        updates.push(`${key} = ?`)
+        binds.push(v)
+      }
+    }
+    // 🎨 2026-06-17 (유어샵 랜딩 리디자인): 상단 마퀴 헤드라인 (빈 문자열=해제).
+    if (typeof body.headline === 'string') {
+      updates.push('linkshop_headline = ?')
+      binds.push(body.headline.trim().slice(0, 80))
+    }
+    // 🎨 2026-06-19 마퀴 액센트 색 — #RRGGBB 만 허용, 빈 문자열=기본색(해제).
+    if (typeof body.accent === 'string') {
+      const v = body.accent.trim()
+      if (v && !/^#[0-9A-Fa-f]{6}$/.test(v)) return c.json({ success: false, error: '색상은 #RRGGBB 형식' }, 400)
+      updates.push('linkshop_accent = ?')
+      binds.push(v)
+    }
+    // ✨ 2026-07-04 유어샵 1단계: 하단 추천 섹션 opt-in 토글 (boolean → 0/1).
+    if (typeof body.show_recommend === 'boolean') {
+      updates.push('linkshop_show_recommend = ?')
+      binds.push(body.show_recommend ? 1 : 0)
+    }
+    if (updates.length === 0) return c.json({ success: false, error: '변경할 필드 없음' }, 400)
+
+    // 🏭 2026-06-05: migration 미적용 DB 에서도 저장되도록 컬럼 자가치유(1회).
+    await ensureUserProfileCols(c.env.DB)
+
+    binds.push(userId)
+    await c.env.DB.prepare(
+      `UPDATE users SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+    ).bind(...binds).run()
+
+    // 🛡️ 2026-06-10 (사용자 신고 — 저장 후 새로고침하면 옛 모습): GET /api/curator/:handle 은
+    //   edge 900s 캐시(로딩 잠금 — TTL 약화 금지). 대신 저장 성공 시 본인 공개 응답을 현재 colo 에서
+    //   purge(best-effort) → 같은 지역 재방문/SSR inject 이 즉시 신선본. 실패해도 저장은 이미 완료.
+    // 🏎️ 2026-06-17 (유어샵 데이터 변경 속도 감사): handle 조회 + colo purge 를 응답 경로에서 분리해
+    //   waitUntil 로 이동 — 저장 응답이 'SELECT handle' 1 RTT 만큼 빨라짐(purge 는 본래 best-effort).
+    try {
+      const origin = new URL(c.req.url).origin
+      const purgeTask = (async () => {
+        try {
+          const me = await c.env.DB.prepare('SELECT handle FROM users WHERE id = ? LIMIT 1')
+            .bind(userId).first<{ handle: string | null }>()
+          if (me?.handle) {
+            // @ts-expect-error — Cloudflare Workers 전역 caches (edge-cache.ts:110 와 동일 패턴)
+            await (caches.default.delete(new Request(`${origin}/api/curator/${encodeURIComponent(me.handle)}`)) as Promise<boolean>)
+          }
+        } catch { /* best-effort — purge 실패해도 저장 완료 */ }
+      })()
+      c.executionCtx?.waitUntil?.(purgeTask)
+    } catch { /* no ctx — purge skip */ }
+
+    return c.json({ success: true })
+  } catch (err) {
+    return safeError(c, err, '프로필 변경 중 오류가 발생했습니다', '[curator:profile-patch]')
+  }
+})
+
+// ============================================================
+// GET /api/curator/me/dashboard  (requireUser)
+// 큐레이터 대시보드: 30일 적립 / 클릭 / 구매 / top pins / 일별 차트
+// ============================================================
+curatorRoutes.get('/me/dashboard', requireAuth(), async (c) => {
+  try {
+    const userId = getAuthUserId(c)
+    if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
+    const DB = c.env.DB
+    // 🏁 2026-06-11 (사용자 — earnings 로딩 김): DDL 을 응답 경로에서 분리 (public /:handle 과 동일 패턴).
+    try { c.executionCtx?.waitUntil?.(ensureCuratorTables(DB).catch(() => {})) } catch { /* no ctx */ }
+
+    // 🛡️ 2026-05-25: handle 반환 — /u/me redirect / 마이페이지 카드용
+    // 🛡️ 2026-05-27 (영구 fix — 큐레이터 모델): 모든 user 가 공개 페이지 보유.
+    //   handle NULL 인 사용자도 자동 생성 → /host/new fall through 영구 차단.
+    //   user.name 기반 slug → 충돌 시 user2/3..99 → random hex.
+    // 🏁 2026-06-11: meRow/linkedSeller/통계 6종 — 전부 userId 만 의존 → 한 번에 병렬 (3 RTT → 1 RTT).
+    const [meRow0, linkedSeller0, earnings30, pending30, clicks30, purchases30, topPinsR, dailyR, recentR] = await Promise.all([
+      DB.prepare('SELECT handle, name FROM users WHERE id = ? LIMIT 1')
+        .bind(userId).first<{ handle: string | null; name: string | null }>().catch(() => null),
+      DB.prepare(`SELECT s.id, s.username FROM sellers s WHERE ${OWNED_STORE_WHERE_SQL} LIMIT 1`).bind(userId, userId, userId).first<{ id: number; username: string }>() // 🛍️ 위와 같은 규칙
+        .catch(() => DB.prepare("SELECT id, username FROM sellers WHERE linked_user_id = ? AND status = 'approved' LIMIT 1").bind(userId).first<{ id: number; username: string }>().catch(() => null)),
+      // 확정(granted/legacy) 적립만 — holding(미성숙)은 pending_earnings 로 분리 표시.
+      DB.prepare(
+        `SELECT COALESCE(SUM(commission), 0) AS total FROM affiliate_earnings
+         WHERE referrer_id = ? AND COALESCE(status, 'pending') NOT IN ('refunded', 'holding') AND created_at >= datetime('now', '-30 days')`,
+      ).bind(userId).first<{ total: number }>().catch(() => null),
+      // ⏳ 적립 예정 (holding) — T+7 확정 대기분 (기간 제한 없음, 짧으므로 전체).
+      DB.prepare(
+        `SELECT COALESCE(SUM(commission), 0) AS total FROM affiliate_earnings
+         WHERE referrer_id = ? AND COALESCE(status, 'pending') = 'holding'`,
+      ).bind(userId).first<{ total: number }>().catch(() => null),
+      // 전체 클릭 + 순클릭(ip+ua+일자 dedup) — raw click_count 는 새로고침/봇 부풀림 포함.
+      DB.prepare(
+        `SELECT COUNT(*) AS cnt,
+                COUNT(DISTINCT ip_hash || '|' || user_agent_hash || '|' || date(created_at)) AS uniq
+         FROM pin_click_logs
+         WHERE curator_user_id = ? AND created_at >= datetime('now', '-30 days')`,
+      ).bind(userId).first<{ cnt: number; uniq: number }>().catch(() => null),
+      // 🛡️ 2026-06-12 (감사 1단계 — 수익 표시 정합): month_earnings 와 동일하게 환불 제외.
+      DB.prepare(
+        `SELECT COUNT(*) AS cnt FROM affiliate_earnings
+         WHERE referrer_id = ? AND COALESCE(status, 'pending') != 'refunded' AND created_at >= datetime('now', '-30 days')`,
+      ).bind(userId).first<{ cnt: number }>().catch(() => null),
+      DB.prepare(
+        `SELECT pp.id, pp.product_id, pp.click_count, p.name AS product_name, p.thumbnail, p.image_url
+         FROM product_pins pp JOIN products p ON p.id = pp.product_id
+         WHERE pp.user_id = ? ORDER BY pp.click_count DESC LIMIT 3`,
+      ).bind(userId).all().catch(() => ({ results: [] as any[] })),
+      DB.prepare(
+        `SELECT date(created_at) AS date, COALESCE(SUM(commission), 0) AS amount
+         FROM affiliate_earnings WHERE referrer_id = ? AND created_at >= datetime('now', '-30 days')
+         GROUP BY date(created_at) ORDER BY date ASC`,
+      ).bind(userId).all().catch(() => ({ results: [] as any[] })),
+      // 🛡️ 2026-06-12 (감사 1단계 — 수익 표시 정합): 환불 적립이 내역에 남아 합계와 불일치 → 동일 필터.
+      DB.prepare(
+        `SELECT id, product_id, product_name, commission, order_amount, created_at,
+                COALESCE(status, 'pending') AS status
+         FROM affiliate_earnings WHERE referrer_id = ? AND COALESCE(status, 'pending') != 'refunded'
+         ORDER BY created_at DESC LIMIT 30`,
+      ).bind(userId).all().catch(() => ({ results: [] as any[] })),
+    ])
+    let meRow = meRow0
+    if (meRow && !meRow.handle) {
+      try {
+        const newHandle = await generateUniqueHandle(DB, meRow.name, userId, userId)
+        await DB.prepare('UPDATE users SET handle = ? WHERE id = ?')
+          .bind(newHandle, userId).run()
+        meRow = { ...meRow, handle: newHandle }
+      } catch { /* generation 실패 — graceful, 다음 호출 재시도 */ }
+    }
+
+    // 🛡️ 2026-05-25 (loading P0): linked seller 도 같이 반환 → /u/me 가 한 번에 redirect target 결정.
+    //   이전: /u/me → /u/{handle} → /profile/{username} (3-step 직렬). 이후: /u/me → /profile/{username} 직행.
+    // 🛡️ 2026-05-27 (영구 fix — 사용자 보고): linked_user_id 매핑 없으면 email 매칭 fallback + 즉시 backfill.
+    //   사용자 보고: 카카오 로그인 (linked_user_id NULL 상태) → dashboard 가 linked_seller 못 찾아
+    //   /host/new fall through. backfill cron / KakaoAuthService auto-link 가 production 에서 아직 실행 안 된 환경 graceful.
+    let linkedSeller = linkedSeller0
+
+    if (!linkedSeller) {
+      // Email 매칭 fallback — auto-link 가 아직 안 된 사용자
+      const u = await DB.prepare('SELECT email FROM users WHERE id = ?').bind(userId).first<{ email: string }>().catch(() => null)
+      if (u?.email) {
+        linkedSeller = await DB.prepare(
+          `SELECT id, username FROM sellers WHERE email = ? AND status = 'approved' AND (linked_user_id IS NULL OR linked_user_id = ?) LIMIT 1`
+        ).bind(u.email, userId).first<{ id: number; username: string }>().catch(() => null)
+        // 발견 시 즉시 backfill — 다음 호출은 1차 query 에서 hit
+        if (linkedSeller) {
+          await DB.prepare(`UPDATE sellers SET linked_user_id = ?, updated_at = datetime('now') WHERE id = ?`)
+            .bind(userId, linkedSeller.id).run().catch(() => null)
+        }
+      }
+    }
+
+
+    return c.json({
+      success: true,
+      handle: meRow?.handle ?? null,
+      // 🛡️ 2026-05-25: linked_seller 동봉 → /u/me 가 직접 /profile/{username} navigate
+      linked_seller: linkedSeller ? { id: linkedSeller.id, username: linkedSeller.username } : null,
+      stats: {
+        month_earnings: earnings30?.total ?? 0,
+        pending_earnings: pending30?.total ?? 0,
+        clicks_30d: clicks30?.cnt ?? 0,
+        unique_clicks_30d: clicks30?.uniq ?? 0,
+        conversion_rate_30d: (clicks30?.uniq ?? 0) > 0
+          ? Math.round(((purchases30?.cnt ?? 0) / (clicks30!.uniq)) * 1000) / 10
+          : 0,
+        purchases_30d: purchases30?.cnt ?? 0,
+        top_pins: topPinsR.results ?? [],
+        earnings_daily_30d: dailyR.results ?? [],
+        // 원천별 수익 내역 (상품명 + 커미션 + 주문액 + 일시)
+        recent_earnings: recentR.results ?? [],
+      },
+    })
+  } catch (err) {
+    return safeError(c, err, '대시보드 조회 중 오류가 발생했습니다', '[curator:dashboard]')
+  }
+})
+
+// ============================================================
+// GET /api/curator/me/pins/stats?range=7  (requireUser)
+// 각 핀별 N일 클릭/구매/적립
+// ============================================================
+curatorRoutes.get('/me/pins/stats', requireAuth(), async (c) => {
+  try {
+    const userId = getAuthUserId(c)
+    if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
+    const range = Math.max(1, Math.min(90, Number(c.req.query('range')) || CURATOR_DEFAULTS.STATS_DEFAULT_RANGE_DAYS))
+    const since = `-${range} days`
+
+    const { results } = await c.env.DB.prepare(
+      `SELECT pp.id, pp.product_id, pp.click_count AS lifetime_clicks,
+              (SELECT COUNT(*) FROM pin_click_logs WHERE pin_id = pp.id AND created_at >= datetime('now', ?)) AS clicks,
+              (SELECT COUNT(DISTINCT ip_hash || '|' || user_agent_hash || '|' || date(created_at)) FROM pin_click_logs WHERE pin_id = pp.id AND created_at >= datetime('now', ?)) AS unique_clicks,
+              (SELECT COUNT(*) FROM affiliate_earnings ae WHERE ae.referrer_id = pp.user_id AND ae.product_id = pp.product_id AND COALESCE(ae.status,'pending') != 'refunded' AND ae.created_at >= datetime('now', ?)) AS purchases,
+              (SELECT COALESCE(SUM(commission), 0) FROM affiliate_earnings ae WHERE ae.referrer_id = pp.user_id AND ae.product_id = pp.product_id AND COALESCE(ae.status,'pending') != 'refunded' AND ae.created_at >= datetime('now', ?)) AS earnings
+       FROM product_pins pp
+       WHERE pp.user_id = ?
+       ORDER BY pp.position ASC
+       LIMIT ?`,
+    ).bind(since, since, since, since, userId, CURATOR_DEFAULTS.PIN_MAX_PER_USER).all()
+
+    return c.json({ success: true, range, stats: results ?? [] })
+  } catch (err) {
+    return safeError(c, err, '핀 통계 조회 중 오류가 발생했습니다', '[curator:pin-stats]')
+  }
+})
+
+// ============================================================
+// GET /api/curator/recommendations  (requireAuth optional)
+// 핀 후보 추천 — 인기 + 카테고리 + 최근본 (단순)
+// ============================================================
+
+// ============================================================
+// POST /api/curator/me/withdrawal (requireUser) — Phase 4 출금
+// Body: { amount, bank_name, bank_account, account_holder }
+// 기존 user_withdrawals 테이블 재활용 (mig 0274) — 검증 + 원천징수 계산만 SSOT.
+// ============================================================
+curatorRoutes.post('/me/withdrawal', rateLimit({ action: 'curator_withdrawal', max: 5, windowSec: 3600 }), requireAuth(), async (c) => {
+  try {
+    const userId = getAuthUserId(c)
+    if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
+    const body = await c.req.json<{ amount?: number; bank_name?: string; bank_account?: string; account_holder?: string }>().catch(() => ({} as any))
+    const amount = Number(body.amount)
+    const bankName = String(body.bank_name || '').trim()
+    const bankAccount = String(body.bank_account || '').trim()
+    const accountHolder = String(body.account_holder || '').trim()
+
+    // 🛡️ 2026-05-25: 동적 정책 — 어드민이 platform_settings 로 조정 가능 (fallback=policy.ts 상수)
+    const minAmount = await getPolicy(c.env.DB, 'curator_min_withdrawal', WITHDRAWAL_DEFAULTS.MIN_AMOUNT)
+    if (!Number.isFinite(amount) || amount < minAmount) {
+      return c.json({
+        success: false,
+        error: `최소 출금 금액은 ${minAmount.toLocaleString()}원입니다`,
+      }, 400)
+    }
+    if (!bankName || !bankAccount || !accountHolder) {
+      return c.json({ success: false, error: '은행/계좌/예금주 모두 필요합니다' }, 400)
+    }
+
+    // 🛡️ 2026-05-25 신모델 정산 분기:
+    //   사업자 셀러 (sellers.linked_user_id = userId) — 실제 돈 출금 (user_withdrawals)
+    //   일반 user — 딜로만 적립 (user_points). 출금 거부.
+    // 🪑 2026-09-09: `linked_user_id` 만 보면 `/store/new` 로 직접 등록한 사장님이 전부 빠진다
+    //   (그 칸은 설계상 비어 있고 소유권은 `seller_operators.role='owner'` 에 있다).
+    //   ⇒ 자기 매장 매출인데 "사업자 셀러만 가능합니다" 로 막히던 것. 중개(operator)는 여전히 불가.
+    const sellerRow = await findOwnedApprovedSeller(c.env.DB, userId)
+    if (!sellerRow) {
+      return c.json({
+        success: false,
+        error: '실제 돈 출금은 사업자 셀러만 가능합니다. 일반 회원은 딜로 적립되어 쇼핑/공구에 사용 가능합니다.',
+        code: 'NOT_SELLER',
+      }, 403)
+    }
+    if (bankAccount.length < 8 || bankAccount.length > 30) {
+      return c.json({ success: false, error: '계좌번호가 유효하지 않습니다' }, 400)
+    }
+
+    const DB = c.env.DB
+
+    // 잔액 검증 — affiliate_earnings SUM - 이미 출금 신청한 금액
+    //   🛡️ 2026-05-31: 환불(status='refunded') 커미션 제외 — 환불 매출 출금 누수 차단.
+    // 🏁 2026-06-12 (P2 사용자 결정 — 딜 단일화): 현금 환급 = "딜을 현금으로 바꾸는 것".
+    //   가용액 = MIN(적립 잔여분[충전 딜 현금화 차단 — 카드깡 방지], 현재 딜 잔액[이미 쓴 딜 제외]).
+    //   신청 시 딜을 즉시 차감(아래) → 딜+현금 이중지급이 구조적으로 소멸.
+    const balance = await DB.prepare(
+      `SELECT
+         MIN(
+           COALESCE((SELECT SUM(commission) FROM affiliate_earnings WHERE referrer_id = ? AND COALESCE(status, 'pending') NOT IN ('refunded', 'holding')), 0)
+           - COALESCE((SELECT SUM(amount) FROM user_withdrawals WHERE user_id = ? AND status IN ('requested','approved','paid')), 0),
+           COALESCE((SELECT balance FROM user_points WHERE user_id = ?), 0)
+         ) AS available`,
+    ).bind(String(userId), String(userId), String(userId)).first<{ available: number }>()
+    const available = balance?.available ?? 0
+    if (amount > available) {
+      return c.json({
+        success: false,
+        error: `출금 가능 금액 초과 (가능: ${available.toLocaleString()}원)`,
+        available,
+      }, 400)
+    }
+
+    // 원천징수 — 동적 정책 (curator_withholding_rate, 백분율). fallback=TAX_POLICY.BUSINESS_INCOME_RATE (3.3%).
+    const withholdingPct = await getPolicy(c.env.DB, 'curator_withholding_rate', TAX_POLICY.BUSINESS_INCOME_RATE * 100)
+    const withholdingTax = Math.floor(amount * withholdingPct / 100)
+    const netAmount = amount - withholdingTax
+
+    try {
+      // 🛡️ 2026-06-04: 잔액검증+INSERT 원자화 — 동시/중복 신청이 둘 다 available 을 읽고 둘 다
+      //   신청 → 관리자 이중승인 시 초과지급. 조건부 INSERT(가용액 재평가 시점=삽입)로 차단:
+      //   두 번째 동시요청은 첫 신청분(requested)이 available 에서 차감돼 0 rows → 거부.
+      // deal_deducted 컬럼 보장 (지급센터 ensure 와 동일 — 멱등)
+      await DB.prepare('ALTER TABLE user_withdrawals ADD COLUMN deal_deducted INTEGER DEFAULT 0').run().catch(() => {})
+      const result = await DB.prepare(
+        `INSERT INTO user_withdrawals (user_id, amount, withholding_tax, net_amount, bank_name, bank_account, account_holder, status, deal_deducted)
+         SELECT ?, ?, ?, ?, ?, ?, ?, 'requested', 1
+         WHERE (
+           COALESCE((SELECT SUM(commission) FROM affiliate_earnings WHERE referrer_id = ? AND COALESCE(status, 'pending') NOT IN ('refunded', 'holding')), 0)
+           - COALESCE((SELECT SUM(amount) FROM user_withdrawals WHERE user_id = ? AND status IN ('requested','approved','paid')), 0)
+         ) >= ?`,
+      ).bind(String(userId), amount, withholdingTax, netAmount, bankName, bankAccount, accountHolder, String(userId), String(userId), amount).run()
+      if ((result.meta?.changes ?? 0) === 0) {
+        return c.json({ success: false, error: '출금 가능 금액이 부족하거나 처리 중인 신청이 있습니다. 새로고침 후 다시 시도하세요.', available }, 409)
+      }
+      // 🏁 P2: 딜 즉시 차감 (CAS — 잔액 부족이면 신청 롤백). 반려 시 지급센터가 deal_deducted=1 만 복원.
+      // 💸 2026-07-05 버킷 (약관 강제): 현금 환급은 유상(balance - free_balance) 한도로만 —
+      //   무상(리워드) 딜의 현금 인출 차단. free_balance 무변경 (출금은 유상에서만 나감).
+      const { ensureDealBuckets, PAID_BALANCE_SQL } = await import('../utils/point-buckets')
+      await ensureDealBuckets(DB)
+      const dealDeduct = await DB.prepare(
+        `UPDATE user_points SET balance = balance - ?, updated_at = datetime('now') WHERE user_id = ? AND ${PAID_BALANCE_SQL} >= ?`
+      ).bind(amount, String(userId), amount).run().catch(() => null)
+      if (!dealDeduct?.meta?.changes) {
+        await DB.prepare('DELETE FROM user_withdrawals WHERE id = ?').bind(result.meta.last_row_id).run().catch(() => {})
+        return c.json({ success: false, error: '출금 가능한 유상 딜이 부족합니다 (무상 리워드 딜은 환급 대상이 아닙니다)', available }, 409)
+      }
+      await DB.prepare(
+        `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description)
+         VALUES (?, 'cash_withdraw', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)`
+      ).bind(String(userId), amount, amount, String(userId), `현금 환급 신청 — 딜 차감 (#${result.meta.last_row_id})`).run().catch(async () => (await import('../utils/point-ledger')).recordPointTxMinimal(DB, userId, 'cash_withdraw', amount, '현금 환급 신청 — 딜 차감')) // 삼키면 `잔액 < 거래합`
+
+      return c.json({
+        success: true,
+        withdrawal: {
+          id: result.meta.last_row_id,
+          amount,
+          withholding_tax: withholdingTax,
+          net_amount: netAmount,
+          status: 'requested',
+        },
+      })
+    } catch (e: any) {
+      return safeError(c, e, '출금 신청 중 오류가 발생했습니다', '[curator:withdrawal]')
+    }
+  } catch (err) {
+    return safeError(c, err, '출금 신청 중 오류가 발생했습니다', '[curator:withdrawal]')
+  }
+})
+
+// ============================================================
+// GET /api/curator/me/withdrawal (requireUser) — 출금 가능 잔액 + 이력
+// ============================================================
+curatorRoutes.get('/me/withdrawal', requireAuth(), async (c) => {
+  try {
+    const userId = getAuthUserId(c)
+    if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
+    const DB = c.env.DB
+
+    // 🛡️ 2026-05-25: 테이블 미존재 시 graceful — 0 fallback.
+    //   🛡️ 2026-05-31: 환불 커미션 제외 (출금 잔액 정합).
+    const earnings = await DB.prepare(
+      `SELECT COALESCE(SUM(commission), 0) AS total FROM affiliate_earnings WHERE referrer_id = ? AND COALESCE(status, 'pending') NOT IN ('refunded', 'holding')`,
+    ).bind(String(userId)).first<{ total: number }>().catch(() => null)
+
+    const withdrawn = await DB.prepare(
+      `SELECT COALESCE(SUM(amount), 0) AS total FROM user_withdrawals
+       WHERE user_id = ? AND status IN ('requested','approved','paid')`,
+    ).bind(String(userId)).first<{ total: number }>().catch(() => null)
+
+    const lifetimeEarnings = earnings?.total ?? 0
+    const totalWithdrawn = withdrawn?.total ?? 0
+    const available = Math.max(0, lifetimeEarnings - totalWithdrawn)
+
+    const { results: history } = await DB.prepare(
+      `SELECT id, amount, withholding_tax, net_amount, bank_name, status, requested_at
+       FROM user_withdrawals WHERE user_id = ?
+       ORDER BY requested_at DESC LIMIT 20`,
+    ).bind(String(userId)).all().catch(() => ({ results: [] as any[] }))
+
+    // 🛡️ 동적 정책 — platform_settings 우선, fallback=policy.ts
+    const upgradeThreshold = await getPolicy(c.env.DB, 'seller_upgrade_threshold', WITHDRAWAL_DEFAULTS.SELLER_UPGRADE_THRESHOLD)
+    const minWithdrawal = await getPolicy(c.env.DB, 'curator_min_withdrawal', WITHDRAWAL_DEFAULTS.MIN_AMOUNT)
+    const withholdingPct = await getPolicy(c.env.DB, 'curator_withholding_rate', TAX_POLICY.BUSINESS_INCOME_RATE * 100)
+
+    // 셀러 승급 안내 여부
+    let upgradeOffered = false
+    let upgradeEligible = false
+    try {
+      const u = await DB.prepare(
+        `SELECT seller_upgrade_offered_at, user_type FROM users WHERE id = ? LIMIT 1`,
+      ).bind(userId).first<{ seller_upgrade_offered_at: string | null; user_type: string }>()
+      upgradeOffered = !!u?.seller_upgrade_offered_at
+      if (u?.user_type === 'user' && lifetimeEarnings >= upgradeThreshold) {
+        // cooldown 검사
+        const cooldownMs = WITHDRAWAL_DEFAULTS.UPGRADE_REOFFER_DAYS * 86400_000
+        const lastMs = u?.seller_upgrade_offered_at ? Date.parse(u.seller_upgrade_offered_at) : 0
+        upgradeEligible = !lastMs || (Date.now() - lastMs > cooldownMs)
+      }
+    } catch { /* ignore */ }
+
+    // 🛡️ 2026-05-25 신모델: 사업자 셀러 여부 — 출금 UI 분기
+    const sellerRow = await findOwnedApprovedSeller(DB, userId)   // 🪑 2026-09-09 — 게이트와 같은 판정
+    const isBusinessSeller = !!sellerRow
+
+    // user_points 의 현재 딜 잔액 (일반 user 용 표시)
+    const pointsBalance = await DB.prepare(
+      `SELECT COALESCE(balance, 0) AS balance FROM user_points WHERE user_id = ? LIMIT 1`,
+    ).bind(String(userId)).first<{ balance: number }>().catch(() => null)
+
+    return c.json({
+      success: true,
+      lifetime_earnings: lifetimeEarnings,
+      total_withdrawn: totalWithdrawn,
+      available,
+      min_withdrawal: minWithdrawal,
+      withholding_rate: withholdingPct / 100,
+      history: history ?? [],
+      // 신모델: 정산 분기 정보
+      payout_mode: isBusinessSeller ? 'cash' : 'deal',
+      is_business_seller: isBusinessSeller,
+      deal_balance: pointsBalance?.balance ?? 0,
+      seller_upgrade: {
+        threshold: upgradeThreshold,
+        eligible: upgradeEligible,
+        offered: upgradeOffered,
+      },
+    })
+  } catch (err) {
+    return safeError(c, err, '출금 정보 조회 중 오류가 발생했습니다', '[curator:withdrawal-info]')
+  }
+})
+
+// ============================================================
+// POST /api/curator/me/seller-upgrade-acknowledge (requireUser)
+// 사용자가 셀러 승급 안내를 봤다고 mark — 30일 동안 재안내 X
+// ============================================================
+curatorRoutes.post('/me/seller-upgrade-acknowledge', requireAuth(), async (c) => {
+  try {
+    const userId = getAuthUserId(c)
+    if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
+    await c.env.DB.prepare(
+      `UPDATE users SET seller_upgrade_offered_at = CURRENT_TIMESTAMP WHERE id = ?`,
+    ).bind(userId).run()
+    return c.json({ success: true })
+  } catch (err) {
+    return safeError(c, err, '확인 처리 중 오류가 발생했습니다', '[curator:upgrade-ack]')
+  }
+})
+
+// ============================================================
+// 유저 사업자 등록 — 영입/추천 commission 현금 정산 분기 (docs/SERVICE_MODEL.md §4).
+//   사업자(verified) → user: ledger 현금 정산 + 원천징수 / 비사업자 → 딜.
+//   인플루언서=유저 모델 유지 (셀러 계정 안 만듦).
+// ============================================================
+
+// GET — 내 사업자 등록 상태 조회
+curatorRoutes.get('/me/business', requireAuth(), async (c) => {
+  try {
+    const userId = getAuthUserId(c)
+    if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
+    const row = await c.env.DB.prepare(
+      `SELECT business_number, business_name, business_status, business_verified_at,
+              tax_type, bank_name, bank_account, account_holder
+         FROM users WHERE id = ?`,
+    ).bind(userId).first<Record<string, unknown>>().catch(() => null)
+    // 🏁 2026-06-17 (사업자등록 일원화 — 사용자 결정 "진짜 일원화"): 승인된 연결 매장(셀러)이 있으면
+    //   = 검증된 사업자 → 현금정산 자격. 출금 게이트(line 861-870)·payout_mode(line 1015)가 이미
+    //   'linked approved seller' 기준이라, 본 조회만 정합 맞춰 콘솔이 "매장 등록 = 현금정산 활성"을
+    //   인식(중복 '사업자 등록' 프롬프트 제거). **read-only — 머니 쓰기 0**, 출금 게이트 무변경.
+    const storeSeller = await findOwnedApprovedSeller(c.env.DB, userId)   // 🪑 2026-09-09 — 게이트와 같은 판정
+    if (storeSeller) {
+      const r = (row || {}) as Record<string, unknown>
+      return c.json({
+        success: true,
+        data: {
+          ...r,
+          business_status: 'verified',
+          business_name: (r.business_name as string | undefined) || storeSeller.business_name || null,
+          business_number: (r.business_number as string | undefined) || storeSeller.business_number || null,
+          is_store_seller: true,
+        },
+      })
+    }
+    return c.json({
+      success: true,
+      data: row || { business_status: 'none' },
+    })
+  } catch (err) {
+    return safeError(c, err, '사업자 정보 조회 중 오류가 발생했습니다', '[curator:business:get]')
+  }
+})
+
+// POST — 사업자 등록 / 갱신 (국세청 진위확인 자동)
+curatorRoutes.post('/me/business', requireAuth(), async (c) => {
+  try {
+    const userId = getAuthUserId(c)
+    if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
+    const body = await c.req.json<{
+      business_number?: string; business_name?: string; representative?: string;
+      start_date?: string; tax_type?: string;
+      bank_name?: string; bank_account?: string; account_holder?: string;
+    }>().catch(() => ({} as Record<string, string>))
+
+    const bizNo = String(body.business_number || '').replace(/-/g, '').trim()
+    const bizName = String(body.business_name || '').trim()
+    const representative = String(body.representative || '').trim()
+    const startDate = String(body.start_date || '').replace(/-/g, '').trim()
+    const taxType = body.tax_type === 'other_income' ? 'other_income' : 'business_income'
+    const bankName = String(body.bank_name || '').trim()
+    const bankAccount = String(body.bank_account || '').trim()
+    const accountHolder = String(body.account_holder || '').trim()
+
+    if (!/^\d{10}$/.test(bizNo)) {
+      return c.json({ success: false, error: '사업자번호는 10자리 숫자입니다' }, 400)
+    }
+    if (!bizName || !representative) {
+      return c.json({ success: false, error: '상호명/대표자명이 필요합니다' }, 400)
+    }
+    if (!bankName || bankAccount.length < 8 || bankAccount.length > 30 || !accountHolder) {
+      return c.json({ success: false, error: '은행/계좌(8~30자)/예금주가 필요합니다' }, 400)
+    }
+
+    // 국세청 진위확인 (key 없으면 pending — 어드민 수동 검수).
+    let status = 'pending'
+    let verifiedAt: string | null = null
+    const ntsKey = (c.env as { NTS_API_KEY?: string }).NTS_API_KEY
+    if (ntsKey && startDate) {
+      const { ntsValidateBusiness } = await import('../utils/nts-business-verify')
+      const r = await ntsValidateBusiness(ntsKey, { businessNumber: bizNo, startDate, representative })
+      if (r.ok && r.valid === '02') {
+        return c.json({ success: false, error: '사업자번호·대표자명·개업일이 일치하지 않습니다', code: 'NTS_MISMATCH' }, 400)
+      }
+      if (r.autoApprovable) { status = 'verified'; verifiedAt = new Date().toISOString() }
+    }
+
+    await c.env.DB.prepare(
+      `UPDATE users SET
+         business_number = ?, business_name = ?, business_status = ?,
+         business_verified_at = ?, tax_type = ?,
+         bank_name = ?, bank_account = ?, account_holder = ?,
+         updated_at = datetime('now')
+       WHERE id = ?`,
+    ).bind(bizNo, bizName, status, verifiedAt, taxType, bankName, bankAccount, accountHolder, userId).run()
+
+    return c.json({
+      success: true,
+      data: { business_status: status },
+      message: status === 'verified'
+        ? '사업자 인증 완료 — 이후 영입/추천 수익은 현금으로 정산됩니다'
+        : '등록 접수 — 관리자 검수 후 현금 정산이 활성화됩니다',
+    })
+  } catch (err) {
+    return safeError(c, err, '사업자 등록 중 오류가 발생했습니다', '[curator:business:post]')
+  }
+})
+
+// ============================================================
+// GET /me/introduced-stores — 내가 영입한 매장 + commission (Creator 대칭).
+//   에이전시 AgencyIntroducedStoresPage 의 유저 버전. introduced_by_influencer_id = 본인 users.id.
+// ============================================================
+curatorRoutes.get('/me/introduced-stores', requireAuth(), async (c) => {
+  try {
+    const userId = getAuthUserId(c)
+    if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
+    const DB = c.env.DB
+
+    const stores = await DB.prepare(
+      `SELECT s.id, s.business_name, s.status, s.introduced_at, s.referral_bonus_until,
+              COALESCE((SELECT COUNT(*) FROM orders o WHERE o.seller_id = s.id AND o.status IN ('PAID','DONE','SHIPPING','COMPLETED')), 0) AS total_orders,
+              COALESCE((SELECT SUM(o.total_amount) FROM orders o WHERE o.seller_id = s.id AND o.status IN ('PAID','DONE','SHIPPING','COMPLETED')), 0) AS total_sales
+         FROM sellers s
+        WHERE s.introduced_by_influencer_id = ?
+        ORDER BY s.introduced_at DESC, s.id DESC
+        LIMIT 200`
+    ).bind(userId).all<{ id: number; business_name: string | null; status: string | null; introduced_at: string | null; referral_bonus_until: string | null; total_orders: number; total_sales: number }>().catch(() => ({ results: [] as any[] }))
+
+    // 영입 commission 누적 — ledger 기준 (user:N 현금 + userdeal:N 딜 모두 포함).
+    //   point_transactions 만 보면 사업자(현금) 케이스가 0 으로 누락됨.
+    const commission = await DB.prepare(
+      `SELECT COALESCE(SUM(amount), 0) AS total
+         FROM ledger_entries
+        WHERE event_type IN ('introduction_commission', 'introduction_commission_reconcile')
+          AND credit_account IN (?, ?)`
+    ).bind(`user:${userId}`, `userdeal:${userId}`).first<{ total: number }>().catch(() => ({ total: 0 }))
+
+    return c.json({
+      success: true,
+      total_commission: commission?.total || 0,
+      stores: stores.results || [],
+    })
+  } catch (err) {
+    return safeError(c, err, '영입 매장 조회 중 오류가 발생했습니다', '[curator:introduced-stores]')
+  }
+})
+
+// ============================================================
+// 대행 등록 (docs/SERVICE_MODEL.md §6) — Creator/Agency 가 영입한 매장 공구를 대신 등록.
+//   원칙: products.seller_id = 항상 매장. 등록자만 registered_by_*. is_active=0 (매장 승인 전 비노출).
+//   IDOR: 호출자가 그 매장의 introduced_by_influencer_id 여야 함.
+// ============================================================
+curatorRoutes.post('/me/proxy-product', requireAuth(), async (c) => {
+  try {
+    const userId = getAuthUserId(c)
+    if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
+    const body = await c.req.json<{
+      merchant_seller_id?: number; name?: string; description?: string;
+      price?: number; stock?: number; category?: string; image_url?: string;
+    }>().catch(() => ({} as Record<string, unknown>))
+
+    const merchantId = Number(body.merchant_seller_id)
+    const name = String(body.name || '').trim()
+    const price = Number(body.price)
+    const stock = Number.isFinite(Number(body.stock)) ? Number(body.stock) : 0
+    if (!Number.isFinite(merchantId) || merchantId <= 0) return c.json({ success: false, error: '매장 id 필요' }, 400)
+    if (!name || name.length > 200) return c.json({ success: false, error: '상품명(1~200자) 필요' }, 400)
+    if (!Number.isFinite(price) || price < 0) return c.json({ success: false, error: '가격 오류' }, 400)
+    const minErr = voucherMinPriceError(String(body.category || ''), price) // 💸 대행 등록도 이용권 최소가
+    if (minErr) return c.json({ success: false, error: minErr }, 400)
+
+    // IDOR: 호출자가 이 매장의 영입자여야 대행 가능.
+    const seller = await c.env.DB.prepare(
+      'SELECT introduced_by_influencer_id FROM sellers WHERE id = ?',
+    ).bind(merchantId).first<{ introduced_by_influencer_id: number | null }>().catch(() => null)
+    if (!seller) return c.json({ success: false, error: '매장 없음' }, 404)
+    if (Number(seller.introduced_by_influencer_id) !== userId) {
+      return c.json({ success: false, error: '본인이 영입한 매장만 대행 등록할 수 있습니다', code: 'NOT_INTRODUCER' }, 403)
+    }
+
+    const images = body.image_url ? JSON.stringify([String(body.image_url)]) : null
+    const res = await c.env.DB.prepare(
+      `INSERT INTO products
+         (seller_id, name, description, price, stock, category, images, image_url,
+          is_active, registered_by_user_id, registration_approved, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 0, datetime('now'), datetime('now'))`,
+    ).bind(
+      merchantId, name, String(body.description || '') || null, Math.floor(price), stock,
+      String(body.category || '') || null, images, body.image_url ? String(body.image_url) : null, userId,
+    ).run()
+
+    return c.json({
+      success: true,
+      product_id: res.meta?.last_row_id,
+      message: '대행 등록 완료 — 매장 승인 후 공개됩니다',
+    })
+  } catch (err) {
+    return safeError(c, err, '대행 등록 중 오류가 발생했습니다', '[curator:proxy-product]')
+  }
+})
+
+
+// 🔬 어드민 진단(read-only)은 별도 파일 — 2026-08-27 파일크기 래칫에 걸려 **분리**했다
+//   (rebaseline 이 아니라 추출. 이 파일이 god 파일로 자라는 걸 막는 게 그 래칫의 목적이다).
+//   어드민 전용 · 읽기 전용이라 소비자 경로와 섞일 이유가 없다.
+curatorRoutes.route('/', curatorAdminDiagnostic)
+
+export { curatorRoutes }

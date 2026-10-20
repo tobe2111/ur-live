@@ -1,0 +1,534 @@
+/**
+ * Admin Accounts Routes — 관리자 계정 CRUD
+ *
+ * 🛡️ 2026-04-22 배치 151 (TD-006 부분): admin-management.routes.ts 에서 분리.
+ *
+ * 엔드포인트:
+ * - GET    /admins                   — 관리자 목록
+ * - POST   /admins                   — 관리자 생성 (super_admin 전용)
+ * - PATCH  /admins/:id               — 관리자 수정 (super_admin 전용)
+ * - DELETE /admins/:id               — 관리자 삭제 (super_admin 전용, 자기 삭제 금지, 마지막 super_admin 보호)
+ * - POST   /admins/:id/reset-password — 비밀번호 재설정
+ */
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
+import type { Env } from '@/worker/types/env';
+import { executeQuery, executeRun } from '@/worker/utils/database';
+import { writeAuditLog } from '@/worker/middleware/admin-security';
+import { hashPassword, validatePasswordComplexity } from '@/lib/password';
+import { rateLimit } from '@/worker/middleware/rate-limit';
+import { ensureAdminsRoleUnconstrained } from '@/worker/utils/ensure-admins-role';
+import { startDashboardSession, ensureDashboardSessionsTable } from '@/worker/utils/dashboard-session';
+
+export const adminAccountsRoutes = new Hono<{ Bindings: Env }>();
+
+// 🛡️ 2026-07-05: 소프트 삭제 컬럼 보장 — per-request DDL 방지(WeakSet 메모이즈).
+//   is_active/status/deleted_at 미존재 DB 에서 목록·로그인 필터가 'no such column' 나지 않게 1회 ALTER.
+const _softDelEnsured = new WeakSet<object>();
+async function ensureAdminSoftDeleteColumns(DB: D1Database): Promise<void> {
+  if (_softDelEnsured.has(DB)) return;
+  _softDelEnsured.add(DB);
+  for (const sql of [
+    `ALTER TABLE admins ADD COLUMN is_active INTEGER DEFAULT 1`,
+    `ALTER TABLE admins ADD COLUMN status TEXT DEFAULT 'active'`,
+    `ALTER TABLE admins ADD COLUMN deleted_at DATETIME`,
+  ]) {
+    try { await DB.prepare(sql).run(); } catch { /* 이미 존재 */ }
+  }
+}
+
+// 🛡️ 2026-06-14: 관리자 역할 — 전권 + 제한 권한 세분화 (사용자 요구: 제한된 접근 권한 분리).
+//   super_admin: 전체 권한 / admin: 일반 운영 / ops: 주문·상품·배송 / cs: 고객 응대(주문 조회/반품) /
+//   finance: 정산·출금·세금 / viewer: 읽기 전용. ops/cs/finance 는 worker auth.ts requireAdminRole 게이트와 정합.
+//   wholesale: 🆕 도매(유통스타트) 전용 — 도매 도메인만 읽기·쓰기, 그 외 어드민 전부 차단(외부 동업자).
+const VALID_ADMIN_ROLES = ['super_admin', 'admin', 'ops', 'cs', 'finance', 'viewer', 'wholesale'];
+
+function safeAdminError(err: unknown, env: Env): string {
+  const isProd = (env as Env & { ENVIRONMENT?: string }).ENVIRONMENT === 'production';
+  if (isProd) return 'Internal server error';
+  return err instanceof Error ? err.message : String(err);
+}
+
+interface AdminRow {
+  id: number;
+  username: string;
+  email: string;
+  name: string;
+  role: string;
+  created_at: string;
+}
+interface CountRow { count: number }
+
+adminAccountsRoutes.get('/admins', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    await ensureAdminSoftDeleteColumns(DB);
+    // 🛡️ 2026-07-05 (대표 신고 — 삭제해도 목록에 남아 재삭제 시 _deleted_ 이중 접미사):
+    //   소프트 삭제(is_active=0 / status='deleted') 계정은 목록에서 제외. COALESCE 로 컬럼
+    //   미존재(레거시 DB)여도 안전 — 그 경우 전부 활성 취급(기존 동작 보존).
+    const admins = await executeQuery<AdminRow>(DB,
+      `SELECT id, username, email, name, role, created_at
+       FROM admins
+       WHERE COALESCE(is_active, 1) = 1 AND COALESCE(status, 'active') != 'deleted'
+       ORDER BY created_at DESC`
+    );
+    return c.json({ success: true, data: admins });
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[Admin] list admins error:', err);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+adminAccountsRoutes.post('/admins', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+
+    // SECURITY: only super_admin can create admins
+    {
+      const currentUser = c.get('user' as never) as { id?: string | number; role?: string } | undefined;
+      const currentAdminId = currentUser?.id;
+      const currentAdmin = await DB.prepare(
+        'SELECT role FROM admins WHERE id = ?'
+      ).bind(currentAdminId).first<{ role: string }>();
+      if (!currentAdmin || currentAdmin.role !== 'super_admin') {
+        return c.json({ success: false, error: 'super_admin 권한이 필요합니다' }, 403);
+      }
+    }
+
+    const { email, password, name, role, username } = await c.req.json<{
+      email: string; password: string; name: string; role: string; username?: string;
+    }>();
+
+    // 🆕 2026-06-17 (대표 신고 — 새 관리자 추가 400): name 은 프런트 폼에서 선택 입력이라
+    //   비워도 400 안 나게 이메일 local part 로 fallback (username 과 동일 정책). 필수는 email/password/role.
+    if (!email || !password || !role) {
+      return c.json({ success: false, error: '필수 항목이 누락되었습니다 (email, password, role)' }, 400);
+    }
+    if (!VALID_ADMIN_ROLES.includes(role)) {
+      return c.json({ success: false, error: `유효하지 않은 역할입니다. ${VALID_ADMIN_ROLES.join(', ')} 중 선택하세요` }, 400);
+    }
+    const resolvedName = (name && name.trim()) || email.split('@')[0];
+
+    // 🆕 2026-06-17 (대표 요청): 새 관리자 추가는 완화 규칙(8자+ / 영문·숫자·특수 2종+) — 대문자 강제 X.
+    const complexity = validatePasswordComplexity(password, { relaxed: true });
+    if (!complexity.ok) {
+      return c.json({ success: false, error: complexity.error ?? '비밀번호 복잡도 부족' }, 400);
+    }
+
+    const existing = await executeQuery<{ id: number }>(DB,
+      `SELECT id FROM admins WHERE email = ?`, [email]
+    );
+    if (existing.length > 0) {
+      return c.json({ success: false, error: '이미 존재하는 이메일입니다' }, 409);
+    }
+
+    const resolvedUsername = (username && username.trim()) || email.split('@')[0];
+
+    // 🛠️ 2026-06-17: 옛 admins.role CHECK 가 제한역할(ops/cs/finance/viewer/wholesale) INSERT 를
+    //   막아 500 나던 것 자가치유 — 제약 있으면 안전 재빌드(멱등, isolate 당 1회).
+    await ensureAdminsRoleUnconstrained(DB);
+
+    const passwordHash = await hashPassword(password);
+    await executeRun(DB,
+      `INSERT INTO admins (username, email, password_hash, name, role, created_at)
+       VALUES (?, ?, ?, ?, ?, datetime('now'))`,
+      [resolvedUsername, email, passwordHash, resolvedName, role]
+    );
+
+    await writeAuditLog(c, {
+      action: 'create_admin',
+      targetType: 'admin',
+      targetId: email,
+      after: { email, name: resolvedName, role }
+    });
+
+    return c.json({ success: true, message: '관리자가 생성되었습니다' });
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[Admin] create admin error:', err);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+adminAccountsRoutes.patch('/admins/:id', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+
+    {
+      const currentUser = c.get('user' as never) as { id?: string | number; role?: string } | undefined;
+      const currentAdminId = currentUser?.id;
+      const currentAdmin = await DB.prepare(
+        'SELECT role FROM admins WHERE id = ?'
+      ).bind(currentAdminId).first<{ role: string }>();
+      if (!currentAdmin || currentAdmin.role !== 'super_admin') {
+        return c.json({ success: false, error: 'super_admin 권한이 필요합니다' }, 403);
+      }
+    }
+
+    const adminId = c.req.param('id');
+    const { name, role, email } = await c.req.json<{
+      name?: string; role?: string; email?: string;
+    }>();
+
+    const rows = await executeQuery<AdminRow>(DB,
+      `SELECT id, username, email, name, role, created_at FROM admins WHERE id = ?`, [adminId]
+    );
+    if (rows.length === 0) {
+      return c.json({ success: false, error: '관리자를 찾을 수 없습니다' }, 404);
+    }
+
+    const current = rows[0];
+
+    if (role && role !== current.role) {
+      const currentUser = c.get('user' as never) as { id?: string | number; role?: string } | undefined;
+      const currentAdminId = currentUser?.id;
+      if (String(currentAdminId) === String(adminId) && current.role === 'super_admin') {
+        return c.json({ success: false, error: 'super_admin은 자신의 역할을 변경할 수 없습니다' }, 403);
+      }
+      if (!VALID_ADMIN_ROLES.includes(role)) {
+        return c.json({ success: false, error: '유효하지 않은 역할입니다' }, 400);
+      }
+    }
+
+    const updates: string[] = [];
+    const params: unknown[] = [];
+    const before: Record<string, unknown> = {};
+    const after: Record<string, unknown> = {};
+
+    if (name !== undefined) { updates.push('name = ?'); params.push(name); before.name = current.name; after.name = name; }
+    if (role !== undefined) { updates.push('role = ?'); params.push(role); before.role = current.role; after.role = role; }
+    if (email !== undefined) { updates.push('email = ?'); params.push(email); before.email = current.email; after.email = email; }
+
+    if (updates.length === 0) {
+      return c.json({ success: false, error: '변경할 항목이 없습니다' }, 400);
+    }
+
+    // 🛠️ 2026-06-17: 역할 변경도 옛 CHECK 에 걸릴 수 있어 동일 자가치유(제약 있을 때만 재빌드).
+    if (role !== undefined) await ensureAdminsRoleUnconstrained(DB);
+
+    params.push(adminId);
+    await executeRun(DB, `UPDATE admins SET ${updates.join(', ')} WHERE id = ?`, params);
+
+    await writeAuditLog(c, {
+      action: 'update_admin',
+      targetType: 'admin',
+      targetId: adminId,
+      before, after
+    });
+
+    return c.json({ success: true, message: '관리자 정보가 업데이트되었습니다' });
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[Admin] update admin error:', err);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+adminAccountsRoutes.delete('/admins/:id', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+
+    {
+      const currentUser = c.get('user' as never) as { id?: string | number; role?: string } | undefined;
+      const currentAdminId = currentUser?.id;
+      const currentAdmin = await DB.prepare(
+        'SELECT role FROM admins WHERE id = ?'
+      ).bind(currentAdminId).first<{ role: string }>();
+      if (!currentAdmin || currentAdmin.role !== 'super_admin') {
+        return c.json({ success: false, error: 'super_admin 권한이 필요합니다' }, 403);
+      }
+    }
+
+    const adminId = c.req.param('id');
+
+    const selfUser = c.get('user' as never) as { id?: string | number } | undefined;
+    const selfAdminId = selfUser?.id;
+    if (String(selfAdminId) === String(adminId)) {
+      return c.json({ success: false, error: '자기 자신을 삭제할 수 없습니다' }, 403);
+    }
+
+    await ensureAdminSoftDeleteColumns(DB);
+    const rows = await executeQuery<AdminRow & { is_active?: number; status?: string }>(DB,
+      `SELECT id, username, email, name, role, created_at, is_active, status FROM admins WHERE id = ?`, [adminId]
+    );
+    if (rows.length === 0) {
+      return c.json({ success: false, error: '관리자를 찾을 수 없습니다' }, 404);
+    }
+
+    // 🛡️ 2026-07-05: 이미 삭제된 계정이면 멱등 반환 — _deleted_ 접미사 이중부착 방지(대표 신고).
+    if (Number(rows[0].is_active) === 0 || String(rows[0].status) === 'deleted') {
+      return c.json({ success: true, message: '이미 삭제된 관리자입니다', already: true });
+    }
+
+    if (rows[0].role === 'super_admin') {
+      const superAdminCount = await executeQuery<CountRow>(DB,
+        `SELECT COUNT(*) as count FROM admins WHERE role = 'super_admin' AND COALESCE(is_active, 1) = 1 AND COALESCE(status, 'active') != 'deleted'`
+      );
+      if ((superAdminCount[0]?.count || 0) <= 1) {
+        return c.json({ success: false, error: '마지막 super_admin은 삭제할 수 없습니다' }, 403);
+      }
+    }
+
+    // 🛡️ 2026-05-07: HARD DELETE → SOFT DELETE 변경.
+    //   영구 데이터 분실 방지. audit log / 결제 / 분쟁 대응 위해 admin row 자체는 보존.
+    //   is_active=0 + status='deleted' 로 비활성화 (재사용 시 같은 이메일 재가입 충돌 방지).
+    //   email 에 _deleted_<timestamp> 접미사로 unique constraint 회피.
+    //   🛡️ 2026-07-05: 이미 _deleted_ 접미사가 있으면(방어적) 재부착 안 함 — status 게이트로 도달 안 하지만 안전판.
+    const ts = Date.now();
+    const emailExpr = String(rows[0].email).includes('_deleted_') ? 'email' : `email || '_deleted_' || ?`;
+    const userExpr = String(rows[0].username || '').includes('_deleted_') ? 'username' : `username || '_deleted_' || ?`;
+    const suffixParams: (string | number)[] = [];
+    if (emailExpr !== 'email') suffixParams.push(ts);
+    if (userExpr !== 'username') suffixParams.push(ts);
+    await executeRun(DB,
+      `UPDATE admins SET is_active = 0, status = 'deleted', deleted_at = datetime('now'),
+       email = ${emailExpr}, username = ${userExpr}
+       WHERE id = ?`,
+      [...suffixParams, adminId]
+    );
+
+    // 🔐 2026-07-05 (대표 지시 — "삭제하면 로그인 못하게 막아야"): 삭제 즉시 세션·토큰 전면 무효화.
+    //   ① 저장된 refresh 토큰 삭제 → 롤링 세션 재발급 차단.
+    //   ② dashboard_sessions.min_valid_iat 를 현재 시각으로 bump → 이미 발급된 access 토큰/세션쿠키가
+    //      requireAuth 의 단일세션 검사(isDashboardSessionCurrent)에서 거부 → 즉시 로그아웃(최대 24h 잔존 제거).
+    //   삭제 계정은 로그인·리프레시 쿼리의 is_active/status 게이트로 재로그인 불가라 영구 차단.
+    await executeRun(DB, `DELETE FROM auth_refresh_tokens WHERE user_type = 'admin' AND user_id = ?`, [adminId])
+      .catch(() => { /* best-effort */ });
+    try {
+      await startDashboardSession(DB, 'admin', Number(adminId), Math.floor(Date.now() / 1000));
+    } catch { /* best-effort — 로그인/리프레시 게이트가 백스톱 */ }
+
+    await writeAuditLog(c, {
+      action: 'delete_admin',
+      targetType: 'admin',
+      targetId: adminId,
+      before: { email: rows[0].email, name: rows[0].name, role: rows[0].role }
+    });
+
+    return c.json({ success: true, message: '관리자가 삭제되었습니다' });
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[Admin] delete admin error:', err);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+adminAccountsRoutes.post('/admins/:id/reset-password', cors(), rateLimit({ action: 'admin_reset_admin_password', max: 10, windowSec: 3600 }), async (c) => {
+  try {
+    const DB = c.env.DB;
+
+    {
+      const currentUser = c.get('user' as never) as { id?: string | number; role?: string } | undefined;
+      const currentAdminId = currentUser?.id;
+      const currentAdmin = await DB.prepare(
+        'SELECT role FROM admins WHERE id = ?'
+      ).bind(currentAdminId).first<{ role: string }>();
+      if (!currentAdmin || currentAdmin.role !== 'super_admin') {
+        return c.json({ success: false, error: 'super_admin 권한이 필요합니다' }, 403);
+      }
+    }
+
+    const adminId = c.req.param('id');
+    const { newPassword } = await c.req.json<{ newPassword: string }>();
+
+    // 🆕 2026-06-17: 생성 경로와 동일한 완화 규칙(8자+/2종+, 대문자 강제 X) — 슈퍼가 파트너 임시비번을
+    //   만들 때 빡센 규칙(대문자+특수문자+10자)에 막히던 불일치 해소. 생성(line 92)과 정합.
+    const complexity = validatePasswordComplexity(newPassword ?? '', { relaxed: true });
+    if (!complexity.ok) {
+      return c.json({ success: false, error: complexity.error ?? '비밀번호 복잡도 부족' }, 400);
+    }
+
+    const rows = await executeQuery<{ id: number }>(DB,
+      `SELECT id FROM admins WHERE id = ?`, [adminId]
+    );
+    if (rows.length === 0) {
+      return c.json({ success: false, error: '관리자를 찾을 수 없습니다' }, 404);
+    }
+
+    const passwordHash = await hashPassword(newPassword);
+    await executeRun(DB, `UPDATE admins SET password_hash = ? WHERE id = ?`, [passwordHash, adminId]);
+
+    await DB.prepare(
+      "DELETE FROM auth_refresh_tokens WHERE user_type = 'admin' AND user_id = ?"
+    ).bind(Number(adminId)).run().catch((_e) => { if (import.meta.env.DEV) console.warn(_e) });
+
+    await writeAuditLog(c, {
+      action: 'reset_admin_password',
+      targetType: 'admin',
+      targetId: adminId,
+      after: { password_reset: true }
+    });
+
+    return c.json({ success: true, message: '비밀번호가 재설정되었습니다' });
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[Admin] reset password error:', err);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// 🆕 2026-06-17: 로그인 보안 PIN 초기화 (super_admin 전용) — 도매 파트너 등이 6자리 PIN 분실 시 복구.
+//   login_pin_hash = NULL → 다음 로그인 때 비밀번호만으로 통과하고, 강제 대상 역할(도매/슈퍼)은
+//   must_set_pin 으로 다시 PIN 설정 화면에 유도됨(서버 login 핸들러가 재평가). 본인 PIN 은 본인 화면에서 변경.
+adminAccountsRoutes.post('/admins/:id/reset-pin', cors(), rateLimit({ action: 'admin_reset_admin_pin', max: 20, windowSec: 3600 }), async (c) => {
+  try {
+    const DB = c.env.DB;
+
+    {
+      const currentUser = c.get('user' as never) as { id?: string | number; role?: string } | undefined;
+      const currentAdminId = currentUser?.id;
+      const currentAdmin = await DB.prepare(
+        'SELECT role FROM admins WHERE id = ?'
+      ).bind(currentAdminId).first<{ role: string }>();
+      if (!currentAdmin || currentAdmin.role !== 'super_admin') {
+        return c.json({ success: false, error: 'super_admin 권한이 필요합니다' }, 403);
+      }
+    }
+
+    const adminId = c.req.param('id');
+    const rows = await executeQuery<{ id: number; email: string }>(DB,
+      `SELECT id, email FROM admins WHERE id = ?`, [adminId]
+    );
+    if (rows.length === 0) {
+      return c.json({ success: false, error: '관리자를 찾을 수 없습니다' }, 404);
+    }
+
+    // login_pin_hash 컬럼 미존재(레거시 DB)면 초기화할 PIN 자체가 없음 → 멱등 성공.
+    await DB.prepare(`UPDATE admins SET login_pin_hash = NULL WHERE id = ?`)
+      .bind(adminId).run()
+      .catch((_e) => { if (import.meta.env.DEV) console.warn('[Admin] reset-pin (no column?)', _e); });
+
+    await writeAuditLog(c, {
+      action: 'reset_admin_pin',
+      targetType: 'admin',
+      targetId: adminId,
+      after: { pin_reset: true }
+    });
+
+    return c.json({ success: true, message: '보안 PIN이 초기화되었습니다. 해당 관리자는 다음 로그인 시 새 PIN을 설정합니다.' });
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[Admin] reset pin error:', err);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+/**
+ * 🤝 PATCH /admins/:id/multi-session { enabled: boolean } — 동시 로그인 허용 토글 (super_admin 전용).
+ *
+ * 배경(2026-07-28 대표 "동시 로그인되게 하고"): 대시보드는 시트별 **단일 세션**이라 같은 계정으로 다른
+ *   곳에서 로그인하면 기존 세션이 즉시 무효(SESSION_SUPERSEDED). 자동화 계정(claude@…)은 여러 세션이
+ *   동시에 쓰도록 문서화돼 있어 서로를 계속 밀어냈고, 대표가 브라우저로 들어오면 자동화가 끊겼다.
+ *
+ * ⚠️ 보안 트레이드오프: 단일 세션은 계정 공유·도용의 **탐지 신호**이기도 하다(남이 쓰면 내가 튕긴다).
+ *   그래서 **계정별 opt-in**(기본 0)이며, 사람이 쓰는 운영 계정에는 켜지 말 것 — 자동화 계정 전용.
+ */
+adminAccountsRoutes.patch('/admins/:id/multi-session', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const currentUser = c.get('user' as never) as { id?: string | number } | undefined;
+    const me = await DB.prepare('SELECT role FROM admins WHERE id = ?').bind(currentUser?.id).first<{ role: string }>();
+    if (!me || me.role !== 'super_admin') {
+      return c.json({ success: false, error: 'super_admin 권한이 필요합니다' }, 403);
+    }
+    const adminId = Number(c.req.param('id'));
+    if (!Number.isFinite(adminId) || adminId <= 0) return c.json({ success: false, error: '유효하지 않은 id 입니다' }, 400);
+    const body = await c.req.json<{ enabled?: boolean }>().catch(() => ({} as { enabled?: boolean }));
+    const enabled = body.enabled === true ? 1 : 0;
+
+    const target = await DB.prepare('SELECT id, email FROM admins WHERE id = ?').bind(adminId).first<{ id: number; email: string }>();
+    if (!target) return c.json({ success: false, error: '관리자를 찾을 수 없습니다' }, 404);
+
+    // 세션 추적행이 아직 없을 수 있다(그 계정이 아직 로그인한 적 없음) → 행을 만들되 **플래그만** 건드린다.
+    //   ⚠️ min_valid_iat 은 절대 덮어쓰지 않는다 — 0 으로 되돌리면 이전에 무효화됐던 옛 토큰이 되살아난다.
+    await ensureDashboardSessionsTable(DB);
+    const r = await DB.prepare(
+      `INSERT INTO dashboard_sessions (account_type, account_id, min_valid_iat, updated_at, multi_session)
+       VALUES ('admin', ?, 0, datetime('now'), ?)
+       ON CONFLICT(account_type, account_id) DO UPDATE SET
+         multi_session = excluded.multi_session,
+         updated_at    = excluded.updated_at`,
+    ).bind(adminId, enabled).run().catch(() => null);
+
+    return c.json({
+      success: true,
+      data: { admin_id: adminId, email: target.email, multi_session: enabled === 1 },
+      changed: (r as { meta?: { changes?: number } } | null)?.meta?.changes ?? 0,
+    });
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[Admin] multi-session toggle error:', err);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+/**
+ * 📱 대시보드 세션(기기) 관리 — 2026-08-12 대표 지시 "제대로 만들기".
+ *
+ * 배경: 단일 세션은 불편한 대신 **도용 탐지 신호**였다(남이 내 계정으로 들어오면 내가 튕겨서 안다).
+ *   동시 로그인을 허용하면 그 신호가 사라지므로, **대체 장치**로 이 두 API 를 둔다 —
+ *   "지금 어디서 들어와 있나"를 보고, 낯선 기기를 **개별로** 끊을 수 있어야 한다.
+ *
+ * 세션 키는 토큰의 `iat` 다(payload 변경 0). 상세는 `worker/utils/dashboard-session.ts` 주석.
+ * 권한: **본인 세션은 본인이**, 남의 것은 super_admin 만. (자기 기기를 못 끊으면 장치가 무용하다.)
+ */
+async function canManageSessions(DB: D1Database, meId: unknown, targetId: number): Promise<boolean> {
+  if (Number(meId) === targetId) return true
+  const me = await DB.prepare('SELECT role FROM admins WHERE id = ?').bind(meId).first<{ role: string }>()
+  return me?.role === 'super_admin'
+}
+
+adminAccountsRoutes.get('/admins/:id/sessions', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const currentUser = c.get('user' as never) as { id?: string | number } | undefined;
+    const adminId = Number(c.req.param('id'));
+    if (!Number.isFinite(adminId) || adminId <= 0) return c.json({ success: false, error: '유효하지 않은 id 입니다' }, 400);
+    if (!(await canManageSessions(DB, currentUser?.id, adminId))) {
+      return c.json({ success: false, error: '본인 세션이거나 super_admin 만 조회할 수 있습니다' }, 403);
+    }
+    await ensureDashboardSessionsTable(DB);
+    const rows = await DB.prepare(
+      `SELECT d.iat, d.first_seen, d.user_agent, d.ip, d.revoked,
+              COALESCE(s.multi_session, 0) AS multi_session, COALESCE(s.min_valid_iat, 0) AS min_valid_iat
+         FROM dashboard_session_devices d
+         LEFT JOIN dashboard_sessions s
+                ON s.account_type = d.account_type AND s.account_id = d.account_id
+        WHERE d.account_type = 'admin' AND d.account_id = ?
+        ORDER BY d.iat DESC LIMIT 50`,
+    ).bind(adminId).all<{ iat: number; first_seen: string; user_agent: string; ip: string; revoked: number; multi_session: number; min_valid_iat: number }>()
+      .catch(() => ({ results: [] as never[] }));
+    const list = (rows.results ?? []).map((r) => ({
+      ...r,
+      // 🔎 "살아 있는 세션"의 정의는 두 가지를 **함께** 봐야 한다: 개별 종료(revoked)와 전체 경계(min_valid_iat).
+      //   둘 중 하나만 보면 이미 끊긴 기기를 접속 중으로 표시한다.
+      active: Number(r.revoked) !== 1 && Number(r.iat) >= Number(r.min_valid_iat) - 1,
+    }));
+    return c.json({ success: true, data: { sessions: list, count: list.length } });
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[Admin] list sessions error:', err);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+adminAccountsRoutes.post('/admins/:id/sessions/:iat/revoke', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const currentUser = c.get('user' as never) as { id?: string | number } | undefined;
+    const adminId = Number(c.req.param('id'));
+    const iat = Number(c.req.param('iat'));
+    if (!Number.isFinite(adminId) || adminId <= 0 || !Number.isFinite(iat) || iat <= 0) {
+      return c.json({ success: false, error: '유효하지 않은 파라미터입니다' }, 400);
+    }
+    if (!(await canManageSessions(DB, currentUser?.id, adminId))) {
+      return c.json({ success: false, error: '본인 세션이거나 super_admin 만 종료할 수 있습니다' }, 403);
+    }
+    await ensureDashboardSessionsTable(DB);
+    const r = await DB.prepare(
+      `UPDATE dashboard_session_devices SET revoked = 1
+        WHERE account_type = 'admin' AND account_id = ? AND iat = ?`,
+    ).bind(adminId, Math.floor(iat)).run().catch(() => null);
+    const changed = (r as { meta?: { changes?: number } } | null)?.meta?.changes ?? 0;
+    if (changed === 0) return c.json({ success: false, error: '해당 세션을 찾을 수 없습니다' }, 404);
+    return c.json({ success: true, data: { admin_id: adminId, iat: Math.floor(iat), revoked: true } });
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[Admin] revoke session error:', err);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+export default adminAccountsRoutes;

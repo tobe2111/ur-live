@@ -1,0 +1,810 @@
+/**
+ * Seller Login API Routes
+ * 
+ * Endpoints:
+ * - POST /api/seller/login - 셀러 로그인
+ * - POST /api/seller/refresh - Access Token 갱신
+ */
+
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
+import { sign, verify } from 'hono/jwt';
+import { rateLimit, resetRateLimit } from '@/worker/middleware/rate-limit';
+import { verifyTurnstile } from '@/worker/utils/turnstile';
+import { verifyPassword, hashPassword, hashToken, validatePasswordComplexity } from '@/lib/password';
+import { sendEmail } from '@/services/email';
+import type { AuthResponse } from '../types';
+import {
+  successResponse,
+  badRequestResponse,
+  unauthorizedResponse,
+  forbiddenResponse,
+  internalServerErrorResponse
+} from '@/worker/utils/response';
+import { maskEmail } from '@/lib/mask';
+import { checkLockout, recordFailure, clearFailures } from '@/worker/utils/account-lockout';
+
+import { swallow } from '@/worker/utils/swallow';
+import { startDashboardSession, isDashboardSessionCurrent, deriveDashboardSeat } from '@/worker/utils/dashboard-session';
+import { filterAliveRefreshRows, rotationGraceExpiryIso } from '@/worker/utils/refresh-rotation';
+import { computeWholesaleOnly } from '@/features/supply/api/wholesale-helpers';
+import { isSeatShapedToken } from '@/worker/utils/store-seat-guard'; import { transactionalMailReady } from '@/lib/ncp-sens-mail'; // 📮 메일 수단 판정
+type Bindings = {
+  DB: D1Database;
+  JWT_SECRET: string;
+  RESEND_API_KEY?: string;
+  RESEND_FROM?: string;
+  FRONTEND_URL?: string;
+  TURNSTILE_SECRET?: string;
+};
+
+/**
+ * refresh_tokens 보조 테이블 (admin/seller용) 생성.
+ * admin.routes.ts의 동명 함수와 동일 스키마. 멱등(IF NOT EXISTS).
+ */
+async function ensureAuthRefreshTokensTable(DB: D1Database) {
+  if (_done_ensureAuthRefreshTokensTable.has(DB)) return
+  _done_ensureAuthRefreshTokensTable.add(DB)
+  await DB.prepare(`
+    CREATE TABLE IF NOT EXISTS auth_refresh_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_type TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
+      token_hash TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `).run().catch(swallow('auth:api:seller'));
+  await DB.prepare(
+    'CREATE INDEX IF NOT EXISTS idx_auth_refresh_tokens_user ON auth_refresh_tokens(user_type, user_id)'
+  ).run().catch(swallow('auth:api:seller'));
+}
+
+// ── 비밀번호 재설정 토큰 테이블 보장 ─────────────────────────
+async function ensurePasswordResetTable(DB: D1Database) {
+  if (_done_ensurePasswordResetTable.has(DB)) return
+  _done_ensurePasswordResetTable.add(DB)
+  await DB.prepare(`
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_type TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
+      token TEXT NOT NULL UNIQUE,
+      expires_at DATETIME NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run().catch(swallow('auth:api:seller'));
+  await DB.prepare(
+    'CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token ON password_reset_tokens(token)'
+  ).run().catch(swallow('auth:api:seller'));
+}
+
+// 🛡️ 2026-06-11 감사: 셀러 로그인/리프레시마다 7개 ALTER 를 매 요청 실행하던 것을 isolate 당
+//   1회로 메모이즈 (기존 테이블 보장 헬퍼와 동일 WeakSet 패턴). DDL 라운드트립/무료 write 예산 절감.
+async function ensureSellerColumns(DB: D1Database) {
+  if (_done_ensureSellerColumns.has(DB)) return
+  _done_ensureSellerColumns.add(DB)
+  const alters = [
+    "ALTER TABLE sellers ADD COLUMN seller_type TEXT DEFAULT 'influencer'",
+    "ALTER TABLE sellers ADD COLUMN commission_rate REAL DEFAULT 5.00",
+    "ALTER TABLE sellers ADD COLUMN business_number TEXT",
+    "ALTER TABLE sellers ADD COLUMN phone TEXT",
+    "ALTER TABLE sellers ADD COLUMN business_name TEXT",
+    "ALTER TABLE sellers ADD COLUMN distributor_grade TEXT",
+    "ALTER TABLE sellers ADD COLUMN is_distributor INTEGER DEFAULT 0",
+  ]
+  for (const sql of alters) {
+    try { await DB.prepare(sql).run() } catch { /* already exists */ }
+  }
+}
+
+/** 32자 hex 토큰 생성 (Web Crypto) */
+function generateResetToken(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/** 비밀번호 재설정 이메일 HTML */
+function getPasswordResetEmailHTML(resetUrl: string): string {
+  // 🛡️ 2026-04-22: GDPR/반스팸법 준수 — 모든 마케팅/시스템 이메일에 unsubscribe 링크 + 발신자 정보 포함.
+  // 비밀번호 재설정은 거래성(transactional)이라 unsubscribe 의무는 약하나 footer 표준화.
+  return `
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1d1d1f;">
+      <h2 style="font-size:20px;margin:0 0 16px;">유어딜 비밀번호 재설정</h2>
+      <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">
+        아래 링크를 클릭하여 새 비밀번호를 설정하세요. (1시간 유효)
+      </p>
+      <p style="margin:24px 0;">
+        <a href="${resetUrl}" style="display:inline-block;background:#1f2937;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;">
+          비밀번호 재설정하기
+        </a>
+      </p>
+      <p style="font-size:13px;color:#666;line-height:1.6;margin-top:24px;">
+        요청하지 않았다면 이 이메일을 무시하세요.<br>
+        링크가 동작하지 않을 경우 아래 URL을 복사해 주소창에 붙여넣으세요:<br>
+        <span style="word-break:break-all;color:#1f2937;">${resetUrl}</span>
+      </p>
+      <hr style="border:none;border-top:1px solid #e5e5e7;margin:32px 0 16px;">
+      <p style="font-size:11px;color:#999;line-height:1.5;text-align:center;">
+        본 메일은 비밀번호 재설정 요청에 의한 발송입니다.<br>
+        <strong>리스터코퍼레이션</strong> | 사업자등록번호: 783-87-03224<br>
+        문의: <a href="mailto:urteam.corp@gmail.com" style="color:#666;">urteam.corp@gmail.com</a><br>
+        <a href="https://urdeal.kr/account/notifications" style="color:#666;">알림 설정 변경</a>
+      </p>
+    </div>
+  `;
+}
+
+type SellerLoginRequest = {
+  email: string;
+  password: string;
+};
+
+type SellerLoginResponse = {
+  token: string;
+  seller: {
+    id: number;
+    username: string;
+    email: string;
+    name: string;
+    business_name: string;
+    status: string;
+    commission_rate: number;
+    seller_type: string;
+  };
+};
+
+export const sellerRoutes = new Hono<{ Bindings: Bindings }>();
+
+/**
+ * POST /api/seller/login
+ * 셀러 로그인
+ * 
+ * Request body:
+ * - email: 이메일
+ * - password: 비밀번호
+ * 
+ * Response:
+ * - token: JWT access token
+ * - seller: 셀러 정보
+ */
+sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10, windowSec: 300 }), async (c) => {
+  const { DB, JWT_SECRET } = c.env;
+  
+  try {
+    // JWT_SECRET 확인
+    if (!JWT_SECRET) {
+      console.error('[Seller Login] JWT_SECRET not configured');
+      return c.json<AuthResponse>({ 
+        success: false, 
+        error: 'Server configuration error',
+        code: 'MISSING_JWT_SECRET'
+      }, 500);
+    }
+
+    // Request body 파싱
+    const body = await c.req.json<SellerLoginRequest & { turnstile_token?: string }>();
+    const { email, password } = body;
+
+    // Validation
+    if (!email || !password) {
+      return c.json<AuthResponse>({
+        success: false,
+        error: '이메일과 비밀번호를 입력해주세요.'
+      }, 400);
+    }
+
+    const TURNSTILE_LOGIN_ENABLED = false; // 🔕 2026-07-21 대표 지시 "봇 검증 없애줘" — sitekey↔secret/도메인 불일치 잠금 해소(재도입=true; rate-limit+비번 방어).
+    if (TURNSTILE_LOGIN_ENABLED) {
+      const ip = c.req.header('cf-connecting-ip') || undefined;
+      const ok = await verifyTurnstile(c.env.TURNSTILE_SECRET, body.turnstile_token, ip);
+      if (!ok) {
+        return c.json<AuthResponse>({
+          success: false,
+          error: '봇 검증 실패. 페이지를 새로고침 후 다시 시도해주세요.'
+        }, 403);
+      }
+    }
+    
+    // 누락 가능한 컬럼 자동 추가 (idempotent, isolate 당 1회 메모이즈)
+    await ensureSellerColumns(DB)
+
+    // 1. 이메일로 셀러 조회
+    const seller = await DB.prepare(`
+      SELECT
+        id, username, email, password_hash, name,
+        business_name, business_number, phone, status, commission_rate,
+        seller_type, is_distributor, created_at, updated_at
+      FROM sellers
+      WHERE email = ?
+    `).bind(email).first<Record<string, any>>();
+    
+    if (!seller) {
+      if (import.meta.env.DEV) console.warn('[Seller Login] Seller not found:', maskEmail(email));
+      // 🛡️ 2026-04-22: 타이밍 공격 방어 — 존재하지 않는 계정에도 verifyPassword 실행
+      await verifyPassword(password, '$2b$10$CwTycUXWue0Thq9StjUM0uJ8mS8bL7JmJg0jVRjyZj3X5kQKqRHqO').catch(swallow('auth:api:seller'));
+      return c.json<AuthResponse>({
+        success: false,
+        error: '이메일 또는 비밀번호가 올바르지 않습니다.'
+      }, 401);
+    }
+
+    // 2. 계정 상태 확인
+    if (seller.status === 'suspended') {
+      if (import.meta.env.DEV) console.warn('[Seller Login] Account suspended:', maskEmail(email));
+      return c.json<AuthResponse>({
+        success: false,
+        error: '정지된 계정입니다. 관리자에게 문의하세요.',
+        code: 'ACCOUNT_SUSPENDED'
+      }, 403);
+    }
+
+    if (seller.status === 'pending') {
+      if (import.meta.env.DEV) console.warn('[Seller Login] Account pending approval:', maskEmail(email));
+      return c.json<AuthResponse>({
+        success: false,
+        error: '승인 대기 중인 계정입니다. 관리자 승인 후 이용 가능합니다.',
+        code: 'ACCOUNT_PENDING'
+      }, 403);
+    }
+
+    // 🛡️ 2026-04-22: 계정 잠금 확인 (brute force 방어)
+    const lockStatus = await checkLockout(DB, 'seller', String(seller.id));
+    if (lockStatus.locked) {
+      return c.json<AuthResponse>({
+        success: false,
+        error: lockStatus.reason || '계정이 일시 잠금되었습니다.',
+        code: 'ACCOUNT_LOCKED',
+      }, 423); // 423 Locked
+    }
+
+    // 3. 비밀번호 검증
+    const passwordHash = seller.password_hash as string;
+    const { valid } = await verifyPassword(password, passwordHash);
+
+    if (!valid) {
+      if (import.meta.env.DEV) console.warn('[Seller Login] Invalid password for:', maskEmail(email));
+      // 🛡️ 실패 카운터 증가
+      await recordFailure(DB, 'seller', String(seller.id));
+      return c.json<AuthResponse>({
+        success: false,
+        error: '이메일 또는 비밀번호가 올바르지 않습니다.'
+      }, 401);
+    }
+
+    // 🛡️ 성공 시 실패 카운터 초기화
+    await clearFailures(DB, 'seller', String(seller.id));
+    // 🛡️ 2026-06-24: 성공 로그인 → 이 IP 의 seller_login rate-limit 카운터 비움
+    //   (본인이 5분에 10번 로그인하면 전부 성공이어도 잠기던 문제 방지). 실패는 위에서
+    //   반환되어 누적 유지 → brute-force 방어 불변. 응답 후 실행(waitUntil).
+    if (c.executionCtx) c.executionCtx.waitUntil(resetRateLimit(c, 'seller_login'));
+    else await resetRateLimit(c, 'seller_login');
+
+    // 4. JWT 생성
+    const payload = {
+      sub: seller.id.toString(),
+      seller_id: seller.id as number, // ✅ Added for compatibility with seller-management routes
+      email: seller.email,
+      name: seller.name,
+      username: seller.username,
+      type: 'seller',
+      status: seller.status,
+      seller_type: (seller.seller_type as string) || 'influencer',
+      is_distributor: seller.is_distributor ? 1 : 0,
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60) // 🛡️ 2026-04-30: 7일 → 30일 (모바일 사용자 빈번한 만료 호소 대응)
+    };
+    
+    const token = await sign(payload, JWT_SECRET);
+
+    // ✅ Generate refresh token (longer expiry: 30 days)
+    const nowSec = Math.floor(Date.now() / 1000);
+    const refreshPayload = {
+      ...payload,
+      exp: nowSec + (90 * 24 * 60 * 60) // 🛡️ 2026-04-30: 30일 → 90일 refresh 도 함께 연장
+    };
+    const refreshToken = await sign(refreshPayload, JWT_SECRET);
+
+    // 🔐 단일 세션 강제 — 이 로그인(iat) 이전 발급된 seller 토큰 전부 무효화.
+    await startDashboardSession(DB, 'seller', seller.id, payload.iat, { userAgent: c.req.header('User-Agent'), ip: c.req.header('CF-Connecting-IP') });
+
+    // ── refresh token 해시 저장 (rotation 기반) ─────────────
+    try {
+      await ensureAuthRefreshTokensTable(DB);
+      // 🏭 2026-06-29 (로그인 속도): refresh 토큰 = 고엔트로피 → 빠른 SHA-256 해시(verifyPassword 가 s256$ 인식).
+      const refreshHash = await hashToken(refreshToken);
+      await DB.prepare(
+        `INSERT INTO auth_refresh_tokens (user_type, user_id, token_hash, expires_at)
+         VALUES (?, ?, ?, ?)`
+      ).bind(
+        'seller',
+        seller.id,
+        refreshHash,
+        new Date((nowSec + 30 * 24 * 3600) * 1000).toISOString()
+      ).run();
+    } catch (e) {
+      console.error('[Seller Login] refresh token persist failed:', e);
+    }
+    
+    // 🛡️ 2026-04-22 Phase 1: httpOnly 쿠키 추가 발급 (기존 Bearer 병행)
+    // 클라이언트 변경 없이 쿠키가 자동으로 브라우저에 저장됨.
+    // Phase 2 에서 클라이언트가 localStorage 대신 쿠키 의존으로 전환 예정.
+    let sellerCookie = '';
+    try {
+      const { createSessionCookie } = await import('../../../worker/utils/session');
+      sellerCookie = await createSessionCookie(
+        seller.id as number,
+        seller.name as string,
+        seller.email as string,
+        null,
+        JWT_SECRET,
+        'seller',
+      );
+    } catch {}
+
+    // 🔐 2026-06-11 SSR Phase 2: httpOnly 쿠키 dual-write (docs/SSR_PHASE2_AUTH.md §3.2)
+    //   응답 바디/localStorage 흐름 불변 — beta(SSR) 개인화용 쿠키만 추가 발급.
+    try {
+      const { authTokenSetCookie } = await import('../../../worker/utils/auth-cookies')
+      c.header('Set-Cookie', authTokenSetCookie('ud_seller_token', token, new URL(c.req.url).hostname), { append: true })
+    } catch { /* 쿠키 발급 실패해도 로그인은 정상 (dual-write) */ }
+
+    // 🏭 2026-06-30 [서비스 분리] 도매 전용(순수 판매사) 여부 — 로그인 직후 라우팅(/seller vs /wholesale) 결정용.
+    //   겸업(소비자 셀러 + 판매사)은 false → 셀러 대시보드로. is_distributor 면에서만 계산(SSOT: computeWholesaleOnly).
+    const wholesaleOnly = seller.is_distributor
+      ? await computeWholesaleOnly(DB, seller.id as number).catch(() => false)
+      : false
+
+    // 5. 응답 반환 (frontend expects accessToken & refreshToken)
+    const res = c.json({
+      success: true,
+      data: {
+        accessToken: token,
+        refreshToken: refreshToken,
+        token, // backward compatibility
+        seller: {
+          id: seller.id as number,
+          username: seller.username as string,
+          email: seller.email as string,
+          name: seller.name as string,
+          business_name: seller.business_name as string,
+          status: seller.status as string,
+          commission_rate: seller.commission_rate as number,
+          seller_type: (seller.seller_type as string) || 'influencer',
+          is_distributor: seller.is_distributor ? 1 : 0,
+          wholesale_only: wholesaleOnly ? 1 : 0
+        }
+      }
+    });
+    if (sellerCookie) res.headers.append('Set-Cookie', sellerCookie);
+    return res;
+    
+  } catch (error) {
+    console.error('[Seller Login] Error:', error);
+
+    const errorMsg = (error as Error).message || 'Unknown error';
+    const statusCode = errorMsg.includes('Database') ? 500 : 500;
+
+    return c.json<AuthResponse>({
+      success: false,
+      error: '로그인 중 오류가 발생했습니다.',
+      code: 'SELLER_LOGIN_FAILED'
+    }, statusCode);
+  }
+});
+
+// 🪦 2026-10-12: GET /api/seller/surface 삭제 — 그 응답을 읽던 대시보드 틀(SellerLayout 의 도매 판정·
+//   SellerApprovalBanner)이 지워져 부르는 곳이 0이었다. 판정 SSOT computeWholesaleOnly 는 로그인 응답이 계속 쓴다.
+
+/**
+ * POST /api/seller/refresh
+ * Refresh Token으로 새 Access Token 발급
+ * 
+ * Request body:
+ * - refreshToken: Refresh Token (JWT)
+ * 
+ * Response:
+ * - accessToken: 새 Access Token (7일)
+ * - refreshToken: 새 Refresh Token (30일, 선택사항)
+ */
+sellerRoutes.post('/refresh', cors(), rateLimit({ action: 'seller_refresh', max: 20, windowSec: 300 }), async (c) => {
+  const { DB, JWT_SECRET } = c.env;
+  
+  try {
+    // JWT_SECRET 확인
+    if (!JWT_SECRET) {
+      console.error('[Seller Refresh] JWT_SECRET not configured');
+      return c.json<AuthResponse>({ 
+        success: false, 
+        error: 'Server configuration error',
+        code: 'MISSING_JWT_SECRET'
+      }, 500);
+    }
+
+    // Request body 파싱
+    const body = await c.req.json<{ refreshToken: string }>();
+    const { refreshToken } = body;
+    
+    if (!refreshToken) {
+      return c.json<AuthResponse>({ 
+        success: false, 
+        error: 'Refresh Token이 필요합니다.' 
+      }, 400);
+    }
+    
+    // 1. Refresh Token 검증
+    let payload: any;
+    try {
+      payload = await verify(refreshToken, JWT_SECRET, 'HS256');
+    } catch (error) {
+      console.warn('[Seller Refresh] Invalid refresh token:', error);
+      return c.json<AuthResponse>({ 
+        success: false, 
+        error: 'Refresh Token이 유효하지 않거나 만료되었습니다.',
+        code: 'INVALID_REFRESH_TOKEN'
+      }, 401);
+    }
+    
+    // 2. Refresh Token 타입 확인
+    if (payload.type !== 'seller') {
+      console.warn('[Seller Refresh] Invalid token type:', payload.type);
+      return c.json<AuthResponse>({ 
+        success: false, 
+        error: 'Seller Refresh Token이 아닙니다.',
+        code: 'INVALID_TOKEN_TYPE'
+      }, 401);
+    }
+    
+    // 🔐 2026-10-10 좌석 토큰은 refresh 불가 — refresh 행 없는 매장은 해시 대조를 건너뛰어, 회수된 운영자 좌석이 claim 빠진 매장 계정 토큰으로 갈아타는 문이었다(store-seat-guard).
+    if (isSeatShapedToken(payload)) return c.json<AuthResponse>({ success: false, error: '매장 좌석 토큰은 갱신할 수 없습니다. 매장을 다시 선택해 주세요.', code: 'INVALID_TOKEN_TYPE' }, 401);
+    // seller 컬럼 존재 보장 (isolate 당 1회 메모이즈)
+    await ensureSellerColumns(DB)
+
+    // 3. DB에서 셀러 정보 조회 (계정 상태 확인)
+    const sellerId = payload.seller_id || payload.sub;
+    // 🔐 단일 세션 강제 — 옛 기기 refresh 우회 차단 (시트별: 도매 서브계정은 sub_account_id 시트).
+    const refreshSeat = deriveDashboardSeat(payload);
+    if (refreshSeat && !(await isDashboardSessionCurrent(DB, refreshSeat.role, refreshSeat.id, payload.iat))) {
+      return c.json<AuthResponse>({ success: false, error: '다른 기기에서 로그인되어 세션이 만료되었습니다. 다시 로그인해주세요.', code: 'SESSION_SUPERSEDED' }, 401);
+    }
+    const seller = await DB.prepare(`
+      SELECT id, email, name, username, status, business_name, commission_rate, seller_type
+      FROM sellers
+      WHERE id = ?
+    `).bind(sellerId).first<Record<string, any>>();
+    
+    if (!seller) {
+      console.warn('[Seller Refresh] Seller not found:', sellerId);
+      return c.json<AuthResponse>({ 
+        success: false, 
+        error: '계정을 찾을 수 없습니다.',
+        code: 'SELLER_NOT_FOUND'
+      }, 401);
+    }
+    
+    // 4. 계정 상태 확인
+    if (seller.status === 'suspended') {
+      console.warn('[Seller Refresh] Account suspended:', sellerId);
+      return c.json<AuthResponse>({ 
+        success: false, 
+        error: '정지된 계정입니다.',
+        code: 'ACCOUNT_SUSPENDED'
+      }, 403);
+    }
+    
+    if (seller.status !== 'approved' && seller.status !== 'active') {
+      console.warn('[Seller Refresh] Account not approved:', sellerId, seller.status);
+      return c.json<AuthResponse>({
+        success: false,
+        error: '활성화되지 않은 계정입니다.',
+        code: 'ACCOUNT_NOT_ACTIVE'
+      }, 403);
+    }
+
+    // 4.5 저장된 refresh 해시 검증 + rotation
+    try {
+      await ensureAuthRefreshTokensTable(DB);
+      const rows = await DB.prepare(
+        `SELECT id, token_hash, expires_at
+         FROM auth_refresh_tokens
+         WHERE user_type = 'seller' AND user_id = ?`
+      ).bind(Number(sellerId)).all<{ id: number; token_hash: string; expires_at: string }>();
+
+      const candidates = rows.results || [];
+      if (candidates.length > 0) {
+        // 🛡️ 2026-07-04: 행 단위 만료 강제(유예 지난 행 차단) — admin refresh 와 동일 패턴.
+        const nowMs = Date.now();
+        const alive = filterAliveRefreshRows(candidates, nowMs);
+        let matchedId: number | null = null;
+        for (const row of alive) {
+          const { valid } = await verifyPassword(refreshToken, row.token_hash);
+          if (valid) {
+            matchedId = row.id;
+            break;
+          }
+        }
+        if (matchedId === null) {
+          console.warn('[Seller Refresh] refresh token not recognized (revoked or reused)');
+          return c.json<AuthResponse>({
+            success: false,
+            error: 'Refresh Token이 유효하지 않습니다.',
+            code: 'INVALID_REFRESH_TOKEN'
+          }, 401);
+        }
+        // 🛡️ 2026-07-04 (대표 "수시로 로그아웃" — admin 과 동일 클래스): rotate 즉시삭제 →
+        //   **60초 유예**. 즉시 삭제는 다중 탭 동시 갱신에서 진 쪽 401 → 강제 로그아웃 +
+        //   이긴 탭 새 토큰까지 삭제(연쇄 로그아웃). 유예 내 재사용 허용, 유예 후 alive 필터 차단.
+        //   (v27 의 '구+신 동시 유효 방지' 의도는 60초로 한정 유지 — 탈취-재사용 탐지는 유예 후 동일.)
+        await DB.prepare(
+          `UPDATE auth_refresh_tokens SET expires_at = ? WHERE id = ? AND expires_at > ?`,
+        ).bind(
+          rotationGraceExpiryIso(nowMs), matchedId, rotationGraceExpiryIso(nowMs),
+        ).run().catch(() => { /* best-effort — 유예 미설정이어도 갱신은 진행 */ });
+        // 유예 지난 행 정리 (best-effort)
+        await DB.prepare(
+          `DELETE FROM auth_refresh_tokens WHERE user_type = 'seller' AND user_id = ? AND expires_at <= ?`,
+        ).bind(Number(sellerId), new Date(nowMs).toISOString()).run().catch(() => { /* best-effort */ });
+      }
+    } catch (e) {
+      console.error('[Seller Refresh] token store verify failed:', e);
+      return c.json<AuthResponse>({
+        success: false,
+        error: '토큰 검증에 실패했습니다.',
+        code: 'TOKEN_VERIFY_FAILED'
+      }, 500);
+    }
+
+    // 5. 새 Access Token 생성
+    const newPayload = {
+      sub: seller.id.toString(),
+      seller_id: seller.id as number,
+      email: seller.email,
+      name: seller.name,
+      username: seller.username,
+      type: 'seller',
+      status: seller.status,
+      seller_type: (seller.seller_type as string) || 'influencer',
+      is_distributor: seller.is_distributor ? 1 : 0,
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60) // 🛡️ 2026-04-30: 7일 → 30일 (모바일 사용자 빈번한 만료 호소 대응)
+    };
+    
+    const newAccessToken = await sign(newPayload, JWT_SECRET);
+    
+    // 6. 새 Refresh Token 생성 (선택사항, 보안 강화)
+    const nowSec2 = Math.floor(Date.now() / 1000);
+    const newRefreshPayload = {
+      ...newPayload,
+      exp: nowSec2 + (90 * 24 * 60 * 60) // 🛡️ 2026-04-30: 30일 → 90일 refresh 연장
+    };
+    const newRefreshToken = await sign(newRefreshPayload, JWT_SECRET);
+
+    // 새 refresh 해시 저장
+    try {
+      const newHash = await hashToken(newRefreshToken); // 🏭 2026-06-29: 고엔트로피 토큰 → 빠른 SHA-256
+      await DB.prepare(
+        `INSERT INTO auth_refresh_tokens (user_type, user_id, token_hash, expires_at)
+         VALUES (?, ?, ?, ?)`
+      ).bind(
+        'seller',
+        seller.id,
+        newHash,
+        new Date((nowSec2 + 30 * 24 * 3600) * 1000).toISOString()
+      ).run();
+    } catch (e) {
+      console.error('[Seller Refresh] new refresh persist failed:', e);
+    }
+    
+    // 7. 응답 반환
+    // 🔐 2026-06-11 SSR Phase 2: ud_seller_token dual-write — 갱신 시 쿠키도 재발급 (docs/SSR_PHASE2_AUTH.md §3.2-3).
+    //   누락 시 30일 후 쿠키만 만료 → beta(SSR) 개인화가 재로그인 전까지 조용히 꺼짐. 응답 바디 불변(additive).
+    try {
+      const { authTokenSetCookie } = await import('../../../worker/utils/auth-cookies')
+      c.header('Set-Cookie', authTokenSetCookie('ud_seller_token', newAccessToken, new URL(c.req.url).hostname), { append: true })
+    } catch { /* 쿠키 발급 실패해도 기존 localStorage 흐름 무영향 */ }
+    return c.json<AuthResponse>({
+      success: true,
+      data: {
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken, // 새 Refresh Token 제공
+        seller: {
+          id: seller.id as number,
+          username: seller.username as string,
+          email: seller.email as string,
+          name: seller.name as string,
+          business_name: seller.business_name as string,
+          status: seller.status as string,
+          commission_rate: seller.commission_rate as number,
+          seller_type: (seller.seller_type as string) || 'influencer'
+        }
+      }
+    });
+    
+  } catch (error) {
+    console.error('[Seller Refresh] Error:', error);
+    
+    return c.json<AuthResponse>({
+      success: false,
+      error: '토큰 갱신 중 오류가 발생했습니다.',
+      code: 'SELLER_REFRESH_FAILED'
+    }, 500);
+  }
+});
+
+/**
+ * POST /api/seller/forgot-password
+ * 비밀번호 재설정 이메일 발송 요청
+ *
+ * Request body:
+ * - email: 이메일
+ *
+ * Response:
+ * - 항상 success: true (이메일 존재 여부 노출 방지)
+ */
+sellerRoutes.post('/forgot-password', cors(), rateLimit({ action: 'seller_forgot_password', max: 2, windowSec: 3600 }), async (c) => {
+  const { DB, RESEND_API_KEY, RESEND_FROM, FRONTEND_URL } = c.env;
+
+  try {
+    const body = await c.req.json<{ email: string }>();
+    const email = (body?.email || '').trim();
+
+    if (!email) {
+      return c.json<AuthResponse>({
+        success: false,
+        error: '이메일을 입력해주세요.'
+      }, 400);
+    }
+
+    await ensurePasswordResetTable(DB);
+
+    // 이메일로 셀러 조회 (존재 여부는 응답에서 숨김)
+    const seller = await DB.prepare('SELECT id, email, name FROM sellers WHERE email = ?')
+      .bind(email).first<{ id: number; email: string; name: string }>();
+
+    if (seller) {
+      // 토큰 생성 및 저장 (1시간 유효)
+      const token = generateResetToken();
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+
+      await DB.prepare(`
+        INSERT INTO password_reset_tokens (user_type, user_id, token, expires_at)
+        VALUES ('seller', ?, ?, ?)
+      `).bind(seller.id, token, expiresAt).run();
+
+      const baseUrl = FRONTEND_URL || 'https://urdeal.kr';
+      // 🛡️ token URL-encode (URL 특수문자 방어) + baseUrl 검증
+      const resetUrl = `${baseUrl.replace(/\/+$/, '')}/seller/reset-password?token=${encodeURIComponent(token)}`;
+
+      if (transactionalMailReady(c.env)) { // 📮 Resend 또는 SENS 메일(2026-10-12)
+        await sendEmail(
+          {
+            to: seller.email,
+            subject: '[유어딜] 셀러 비밀번호 재설정 안내',
+            html: getPasswordResetEmailHTML(resetUrl),
+          },
+          RESEND_API_KEY || '',
+          RESEND_FROM
+        ).catch((e) => console.error('[Seller ForgotPassword] Email send failed:', e));
+      } else {
+        // 🛡️ 2026-06-03: resetUrl(비번재설정 토큰) DEV 로그 제거 — agency 와 동일 PII 룰.
+        if (import.meta.env.DEV) console.warn('[Seller ForgotPassword] RESEND_API_KEY not configured; notification not sent.');
+      }
+    } else {
+      if (import.meta.env.DEV) console.info('[Seller ForgotPassword] Unknown email (silent):', maskEmail(email));
+    }
+
+    // 이메일 존재 여부와 무관하게 동일 응답
+    return c.json({
+      success: true,
+      message: '입력하신 이메일로 비밀번호 재설정 링크를 발송했습니다. 이메일을 확인해주세요.'
+    });
+  } catch (error) {
+    console.error('[Seller ForgotPassword] Error:', error);
+    // 에러도 동일 메시지로 반환하여 이메일 노출 방지
+    return c.json({
+      success: true,
+      message: '입력하신 이메일로 비밀번호 재설정 링크를 발송했습니다. 이메일을 확인해주세요.'
+    });
+  }
+});
+
+/**
+ * POST /api/seller/reset-password
+ * 토큰 기반 비밀번호 재설정
+ *
+ * Request body:
+ * - token: 재설정 토큰
+ * - newPassword: 새 비밀번호
+ */
+sellerRoutes.post('/reset-password', cors(), rateLimit({ action: 'seller_reset_password', max: 10, windowSec: 600 }), async (c) => {
+  const { DB } = c.env;
+
+  try {
+    const body = await c.req.json<{ token: string; newPassword: string }>();
+    const token = (body?.token || '').trim();
+    const newPassword = body?.newPassword || '';
+
+    if (!token || !newPassword) {
+      return c.json<AuthResponse>({
+        success: false,
+        error: '토큰과 새 비밀번호를 입력해주세요.'
+      }, 400);
+    }
+
+    const pwCheck = validatePasswordComplexity(newPassword);
+    if (!pwCheck.ok) {
+      return c.json<AuthResponse>({
+        success: false,
+        error: pwCheck.error
+      }, 400);
+    }
+
+    await ensurePasswordResetTable(DB);
+
+    // 토큰 조회
+    const row = await DB.prepare(`
+      SELECT id, user_id, expires_at
+      FROM password_reset_tokens
+      WHERE token = ? AND user_type = 'seller'
+    `).bind(token).first<{ id: number; user_id: number; expires_at: string }>();
+
+    if (!row) {
+      return c.json<AuthResponse>({
+        success: false,
+        error: '유효하지 않은 토큰입니다. 비밀번호 재설정을 다시 요청해주세요.',
+        code: 'INVALID_RESET_TOKEN'
+      }, 400);
+    }
+
+    // 만료 체크
+    const expiresAt = new Date(row.expires_at).getTime();
+    if (isNaN(expiresAt) || Date.now() > expiresAt) {
+      await DB.prepare('DELETE FROM password_reset_tokens WHERE id = ?').bind(row.id).run().catch(swallow('auth:api:seller'));
+      return c.json<AuthResponse>({
+        success: false,
+        error: '토큰이 만료되었습니다. 비밀번호 재설정을 다시 요청해주세요.',
+        code: 'EXPIRED_RESET_TOKEN'
+      }, 400);
+    }
+
+    // 비밀번호 해싱 및 업데이트
+    const hash = await hashPassword(newPassword);
+    await DB.prepare(`
+      UPDATE sellers SET password_hash = ?, updated_at = datetime('now') WHERE id = ?
+    `).bind(hash, row.user_id).run();
+
+    // 토큰 삭제 (단일 사용)
+    await DB.prepare('DELETE FROM password_reset_tokens WHERE id = ?').bind(row.id).run().catch(swallow('auth:api:seller'));
+
+    // 🛡️ 2026-04-22: 비번 변경 시 기존 refresh token 전부 revoke.
+    // 탈취된 토큰 유지 문제 방지 — 비번을 바꿨는데도 공격자가 기존 토큰으로 접근 가능하던 버그.
+    await DB.prepare(
+      "DELETE FROM auth_refresh_tokens WHERE user_type = 'seller' AND user_id = ?"
+    ).bind(row.user_id).run().catch(swallow('auth:api:seller'));
+
+    // 🔒 2026-06-22 (보안 감사 H2): refresh 만 지우면 탈취된 access 토큰(최대 30일 TTL)이 비번 재설정 후에도
+    //   만료까지 유효. min_valid_iat 를 현재로 올려 이전 발급 seller access 토큰 전부 무효화(단일세션 경계).
+    await startDashboardSession(DB, 'seller', row.user_id, Math.floor(Date.now() / 1000)).catch(swallow('auth:api:seller'));
+
+    return c.json({
+      success: true,
+      message: '비밀번호가 성공적으로 변경되었습니다. 새 비밀번호로 로그인해주세요.'
+    });
+  } catch (error) {
+    console.error('[Seller ResetPassword] Error:', error);
+    return c.json<AuthResponse>({
+      success: false,
+      error: '비밀번호 재설정 중 오류가 발생했습니다.',
+      code: 'SELLER_RESET_PASSWORD_FAILED'
+    }, 500);
+  }
+});
+
+export default sellerRoutes;
+
+
+// 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
+const _done_ensurePasswordResetTable = new WeakSet<object>()
+const _done_ensureAuthRefreshTokensTable = new WeakSet<object>()
+const _done_ensureSellerColumns = new WeakSet<object>()

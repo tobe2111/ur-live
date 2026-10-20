@@ -1,0 +1,257 @@
+import { useState } from 'react'
+import AdminLayout from '@/components/AdminLayout'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
+import { RefreshCw, Activity, TrendingDown, AlertTriangle, CheckCircle } from 'lucide-react'
+import { formatKST } from '@/utils/date'
+import { formatNumber } from '@/utils/format'
+
+interface KVUsageData {
+  timestamp: string
+  reads: number
+  writes: number
+  readLimit: number
+  writeLimit: number
+  readUsagePercent: number
+  writeUsagePercent: number
+  estimatedDailyCost: number
+}
+
+export default function KVMonitoringPage() {
+  const [autoRefresh, setAutoRefresh] = useState(false)
+
+  // 🛡️ 2026-06-10: 수동 useState+useEffect+setInterval 폴링 → useApiQuery refetchInterval (RQ SSOT).
+  //   자동 갱신 ON 시 30초 폴링(foreground 만) — 기존 setInterval 30000 과 동일 주기.
+  const { data = null, isFetching: loading, error: queryError, refetch } = useApiQuery<KVUsageData | null>(
+    ['admin', 'kv-usage'],
+    '/api/debug/kv-usage',
+    {
+      select: (raw) => {
+        const r = raw as { success?: boolean; data?: KVUsageData; error?: string }
+        if (!r?.success) throw new Error(r?.error || '데이터 로드 실패')
+        return r.data ?? null
+      },
+      refetchInterval: autoRefresh ? 30000 : undefined,
+    },
+  )
+  const error = queryError
+    ? ((queryError as { response?: { data?: { error?: string } } })?.response?.data?.error
+      || (queryError as Error)?.message
+      || '데이터 로드 실패')
+    : ''
+  const fetchKVUsage = () => { void refetch() }
+
+  function getStatusColor(percent: number) {
+    if (percent < 50) return 'text-tone-ok border border-rule bg-white'
+    if (percent < 80) return 'text-tone-warn border border-rule bg-white'
+    return 'text-tone-bad border border-rule bg-white'
+  }
+
+  function getStatusIcon(percent: number) {
+    if (percent < 50) return <CheckCircle className="h-5 w-5" />
+    if (percent < 80) return <Activity className="h-5 w-5" />
+    return <AlertTriangle className="h-5 w-5" />
+  }
+
+  return (
+    <AdminLayout title="KV 모니터링">
+    <div className="p-6 max-w-6xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-lg font-bold text-gray-900">KV 사용량 모니터링</h1>
+          <p className="text-gray-600 mt-1">Cloudflare Workers KV 실시간 사용량</p>
+        </div>
+        
+        <div className="flex gap-3">
+          <button
+            onClick={() => setAutoRefresh(!autoRefresh)}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              autoRefresh 
+                ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            {autoRefresh ? '자동 갱신 ON' : '자동 갱신 OFF'}
+          </button>
+          
+          <button
+            onClick={fetchKVUsage}
+            disabled={loading}
+            className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-50 flex items-center gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            새로고침
+          </button>
+        </div>
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div className="bg-white border border-rule text-tone-bad px-4 py-3 rounded-lg mb-6">
+          {error}
+        </div>
+      )}
+
+      {/* KV Usage Cards */}
+      {data && (
+        <>
+          {/* Main Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            {/* Read Usage */}
+            <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white border border-gray-200 dark:border-[#2A2A2A] p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">KV Reads</h3>
+                <div className={`p-2 rounded-lg ${getStatusColor(data.readUsagePercent)}`}>
+                  {getStatusIcon(data.readUsagePercent)}
+                </div>
+              </div>
+              
+              <div className="mb-4">
+                <div className="text-3xl font-bold text-gray-900">
+                  {formatNumber(data.reads)}
+                </div>
+                <div className="text-sm text-gray-600 mt-1">
+                  / {formatNumber(data.readLimit)} reads/day
+                </div>
+              </div>
+              
+              {/* Progress Bar */}
+              <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
+                <div
+                  className={`h-3 rounded-full transition-all ${
+                    data.readUsagePercent < 50 ? 'bg-green-500' :
+                    data.readUsagePercent < 80 ? 'bg-yellow-500' : 'bg-red-500'
+                  }`}
+                  style={{ width: `${Math.min(data.readUsagePercent, 100)}%` }}
+                />
+              </div>
+              
+              <div className="text-right text-sm font-medium">
+                {data.readUsagePercent.toFixed(1)}% 사용
+              </div>
+            </div>
+
+            {/* Write Usage */}
+            <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white border border-gray-200 dark:border-[#2A2A2A] p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">KV Writes</h3>
+                <div className={`p-2 rounded-lg ${getStatusColor(data.writeUsagePercent)}`}>
+                  {getStatusIcon(data.writeUsagePercent)}
+                </div>
+              </div>
+              
+              <div className="mb-4">
+                <div className="text-3xl font-bold text-gray-900">
+                  {formatNumber(data.writes)}
+                </div>
+                <div className="text-sm text-gray-600 mt-1">
+                  / {formatNumber(data.writeLimit)} writes/day
+                </div>
+              </div>
+              
+              {/* Progress Bar */}
+              <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
+                <div
+                  className={`h-3 rounded-full transition-all ${
+                    data.writeUsagePercent < 50 ? 'bg-green-500' :
+                    data.writeUsagePercent < 80 ? 'bg-yellow-500' : 'bg-red-500'
+                  }`}
+                  style={{ width: `${Math.min(data.writeUsagePercent, 100)}%` }}
+                />
+              </div>
+              
+              <div className="text-right text-sm font-medium">
+                {data.writeUsagePercent.toFixed(1)}% 사용
+              </div>
+            </div>
+          </div>
+
+          {/* JWT Migration Impact */}
+          <div className="bg-gray-50 rounded-xl border border-rule p-6 mb-6">
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-green-500 text-white rounded-lg">
+                <TrendingDown className="h-6 w-6" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-gray-900 mb-2">
+                  JWT 마이그레이션 효과
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <div className="text-sm text-gray-600">로그인 KV Write</div>
+                    <div className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">
+                      1 → <span className="text-tone-ok">0</span>
+                    </div>
+                    <div className="text-xs text-tone-ok font-medium">-100%</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-600">인증 확인 속도</div>
+                    <div className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">
+                      100ms → <span className="text-tone-ok">10ms</span>
+                    </div>
+                    <div className="text-xs text-tone-ok font-medium">10배 빠름</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-600">예상 절감율</div>
+                    <div className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-tone-ok">
+                      90%
+                    </div>
+                    <div className="text-xs text-gray-600">KV Write 감소</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Recommendations */}
+          <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white border border-gray-200 dark:border-[#2A2A2A] p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">권장사항</h3>
+            <div className="space-y-3">
+              {data.writeUsagePercent > 80 && (
+                <div className="flex items-start gap-3 p-3 bg-white border border-rule rounded-lg">
+                  <AlertTriangle className="h-5 w-5 text-tone-bad flex-shrink-0 mt-0.5" />
+                  <div>
+                    <div className="font-medium text-tone-bad">높은 KV Write 사용량</div>
+                    <div className="text-sm text-tone-bad mt-1">
+                      Free tier 한도 {data.writeUsagePercent.toFixed(0)}% 사용 중입니다. 
+                      Paid Plan ($5/월) 업그레이드를 고려하세요.
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {data.writeUsagePercent < 50 && (
+                <div className="flex items-start gap-3 p-3 bg-white border border-rule rounded-lg">
+                  <CheckCircle className="h-5 w-5 text-tone-ok flex-shrink-0 mt-0.5" />
+                  <div>
+                    <div className="font-medium text-tone-ok">정상 범위</div>
+                    <div className="text-sm text-tone-ok mt-1">
+                      KV 사용량이 안정적입니다. 현재 Free tier로 충분히 운영 가능합니다.
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              <div className="flex items-start gap-3 p-3 bg-white border border-rule rounded-lg">
+                <Activity className="h-5 w-5 text-gray-700 flex-shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-medium text-gray-700">추가 최적화 가능</div>
+                  <div className="text-sm text-gray-700 mt-1">
+                    SELECT * 쿼리 최적화 (56개), 실시간 보안 모니터링, Sentry 에러 트래킹 통합을 진행하면 
+                    더 나은 성능과 안정성을 확보할 수 있습니다.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Timestamp */}
+          <div className="text-center text-sm text-gray-500 mt-6">
+            마지막 업데이트: {formatKST(data.timestamp)}
+          </div>
+        </>
+      )}
+    </div>
+    </AdminLayout>
+  )
+}

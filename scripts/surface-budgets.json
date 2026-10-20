@@ -1,0 +1,926 @@
+{
+  "_doc": "화면별 첫 화면 무게 예산(brotli KB). 손으로 고치지 말 것 — scripts/check-surface-budgets.mjs --rebaseline [--reason ...]",
+  "toleranceKB": 1.5,
+  "lockSlackKB": 3,
+  "surfaces": {
+    "__boot__": {
+      "totalKB": 148.62,
+      "chunks": {
+        "index.js": 14.98,
+        "react-core.js": 38.39,
+        "app-shared.js": 6.46,
+        "tanstack-query.js": 9.5,
+        "zustand.js": 2.5,
+        "app-utils.js": 20.56,
+        "react-router.js": 7.2,
+        "helmet.js": 4.88,
+        "lucide-shell.js": 0.7,
+        "app-stores.js": 2.1,
+        "app-shell.js": 7.95,
+        "app-auth.js": 1.29,
+        "app-layout.js": 3.37,
+        "app-routes.js": 0.86,
+        "index.css": 27.88
+      }
+    },
+    "home": {
+      "totalKB": 190.46,
+      "chunks": {
+        "index.js": 14.98,
+        "react-core.js": 38.39,
+        "app-shared.js": 6.46,
+        "tanstack-query.js": 9.5,
+        "zustand.js": 2.5,
+        "app-utils.js": 20.56,
+        "react-router.js": 7.2,
+        "helmet.js": 4.88,
+        "lucide-shell.js": 0.7,
+        "app-stores.js": 2.1,
+        "app-shell.js": 7.95,
+        "app-auth.js": 1.29,
+        "app-layout.js": 3.37,
+        "app-routes.js": 0.86,
+        "index.css": 27.88,
+        "MobileHomePage.js": 1.57,
+        "lz-home-homePc-urshorts.js": 0.39,
+        "lz-home-homePc-map.js": 5.52,
+        "lz-home-homePc-vouchers.js": 5.91,
+        "lz-common.js": 17.42,
+        "lucide-home.js": 0.7,
+        "lz-home.js": 1.02,
+        "lz-home-homePc.js": 9.31
+      }
+    },
+    "homePc": {
+      "totalKB": 196.94,
+      "chunks": {
+        "index.js": 14.98,
+        "react-core.js": 38.39,
+        "app-shared.js": 6.46,
+        "tanstack-query.js": 9.5,
+        "zustand.js": 2.5,
+        "app-utils.js": 20.56,
+        "react-router.js": 7.2,
+        "helmet.js": 4.88,
+        "lucide-shell.js": 0.7,
+        "app-stores.js": 2.1,
+        "app-shell.js": 7.95,
+        "app-auth.js": 1.29,
+        "app-layout.js": 3.37,
+        "app-routes.js": 0.86,
+        "index.css": 27.88,
+        "PcHomePage.js": 1.8,
+        "lz-home-homePc-urshorts.js": 0.39,
+        "lz-home-homePc-vouchers.js": 5.91,
+        "lz-common.js": 17.42,
+        "lucide-home.js": 0.7,
+        "app-region-grid.js": 0.96,
+        "lz-homePc.js": 5.09,
+        "lz-home-homePc.js": 9.31,
+        "lz-home-homePc-map.js": 5.52,
+        "lz-homePc-map.js": 1.22
+      }
+    },
+    "gbDetail": {
+      "totalKB": 196.6,
+      "chunks": {
+        "index.js": 14.98,
+        "react-core.js": 38.39,
+        "app-shared.js": 6.46,
+        "tanstack-query.js": 9.5,
+        "zustand.js": 2.5,
+        "app-utils.js": 20.56,
+        "react-router.js": 7.2,
+        "helmet.js": 4.88,
+        "lucide-shell.js": 0.7,
+        "app-stores.js": 2.1,
+        "app-shell.js": 7.95,
+        "app-auth.js": 1.29,
+        "app-layout.js": 3.37,
+        "app-routes.js": 0.86,
+        "index.css": 27.88,
+        "GroupBuyDetailPage.js": 5.69,
+        "lz-gbDetail-linkshop1-product.js": 0.72,
+        "lucide-desktop.js": 1.09,
+        "lz-boot-gbDetail-linkshop1.js": 0.5,
+        "lucide-home.js": 0.7,
+        "app-owner-ui.js": 1.29,
+        "lz-gbDetail-map.js": 0.51,
+        "lz-boot-gbDetail.js": 1.57,
+        "lz-gbDetail-product.js": 1.56,
+        "lz-common.js": 17.42,
+        "lz-gbDetail-voucherDetail.js": 0.58,
+        "lz-gbDetail.js": 16.35
+      }
+    },
+    "voucherDetail": {
+      "totalKB": 171.94,
+      "chunks": {
+        "index.js": 14.98,
+        "react-core.js": 38.39,
+        "app-shared.js": 6.46,
+        "tanstack-query.js": 9.5,
+        "zustand.js": 2.5,
+        "app-utils.js": 20.56,
+        "react-router.js": 7.2,
+        "helmet.js": 4.88,
+        "lucide-shell.js": 0.7,
+        "app-stores.js": 2.1,
+        "app-shell.js": 7.95,
+        "app-auth.js": 1.29,
+        "app-layout.js": 3.37,
+        "app-routes.js": 0.86,
+        "index.css": 27.88,
+        "VoucherDetailPage.js": 4.62,
+        "lucide-home.js": 0.7,
+        "lz-common.js": 17.42,
+        "lz-gbDetail-voucherDetail.js": 0.58
+      }
+    },
+    "product": {
+      "totalKB": 188.77,
+      "chunks": {
+        "index.js": 14.98,
+        "react-core.js": 38.39,
+        "app-shared.js": 6.46,
+        "tanstack-query.js": 9.5,
+        "zustand.js": 2.5,
+        "app-utils.js": 20.56,
+        "react-router.js": 7.2,
+        "helmet.js": 4.88,
+        "lucide-shell.js": 0.7,
+        "app-stores.js": 2.1,
+        "app-shell.js": 7.95,
+        "app-auth.js": 1.29,
+        "app-layout.js": 3.37,
+        "app-routes.js": 0.86,
+        "index.css": 27.88,
+        "ProductDetailPage.js": 7.49,
+        "lz-gbDetail-linkshop1-product.js": 0.72,
+        "app-owner-ui.js": 1.29,
+        "app-cross.js": 1.41,
+        "lz-common.js": 17.42,
+        "lucide-home.js": 0.7,
+        "lz-gbDetailL-product.js": 4.17,
+        "lz-gbDetail-product.js": 1.56,
+        "lz-product.js": 5.39
+      }
+    },
+    "linkshop": {
+      "totalKB": 187.36,
+      "chunks": {
+        "index.js": 14.98,
+        "react-core.js": 38.39,
+        "app-shared.js": 6.46,
+        "tanstack-query.js": 9.5,
+        "zustand.js": 2.5,
+        "app-utils.js": 20.56,
+        "react-router.js": 7.2,
+        "helmet.js": 4.88,
+        "lucide-shell.js": 0.7,
+        "app-stores.js": 2.1,
+        "app-shell.js": 7.95,
+        "app-auth.js": 1.29,
+        "app-layout.js": 3.37,
+        "app-routes.js": 0.86,
+        "index.css": 27.88,
+        "SellerPublicPage.js": 3.25,
+        "lucide-desktop.js": 1.09,
+        "lz-linkshop1-linkshop2.js": 3.34,
+        "lz-common.js": 17.42,
+        "lucide-home.js": 0.7,
+        "lz-linkshop2.js": 3.1,
+        "CuratorPage.js": 2.88,
+        "lz-linkshop1-vouchers.js": 0.97,
+        "lz-boot-gbDetail-linkshop1.js": 0.5,
+        "lz-gbDetail-linkshop1-product.js": 0.72,
+        "lz-linkshop1.js": 4.77
+      }
+    },
+    "vouchers": {
+      "totalKB": 186.07,
+      "chunks": {
+        "index.js": 14.98,
+        "react-core.js": 38.39,
+        "app-shared.js": 6.46,
+        "tanstack-query.js": 9.5,
+        "zustand.js": 2.5,
+        "app-utils.js": 20.56,
+        "react-router.js": 7.2,
+        "helmet.js": 4.88,
+        "lucide-shell.js": 0.7,
+        "app-stores.js": 2.1,
+        "app-shell.js": 7.95,
+        "app-auth.js": 1.29,
+        "app-layout.js": 3.37,
+        "app-routes.js": 0.86,
+        "index.css": 27.88,
+        "VouchersPage.js": 4.29,
+        "lz-linkshop1-vouchers.js": 0.97,
+        "lz-common.js": 17.42,
+        "lucide-home.js": 0.7,
+        "lucide-desktop.js": 1.09,
+        "lz-home-homePc-vouchers.js": 5.91,
+        "lz-vouchers.js": 6.14,
+        "lz-browse-vouchers.js": 0.93
+      }
+    },
+    "browse": {
+      "totalKB": 174.12,
+      "chunks": {
+        "index.js": 14.98,
+        "react-core.js": 38.39,
+        "app-shared.js": 6.46,
+        "tanstack-query.js": 9.5,
+        "zustand.js": 2.5,
+        "app-utils.js": 20.56,
+        "react-router.js": 7.2,
+        "helmet.js": 4.88,
+        "lucide-shell.js": 0.7,
+        "app-stores.js": 2.1,
+        "app-shell.js": 7.95,
+        "app-auth.js": 1.29,
+        "app-layout.js": 3.37,
+        "app-routes.js": 0.86,
+        "index.css": 27.88,
+        "BrowsePage.js": 4.53,
+        "lucide-desktop.js": 1.09,
+        "lz-common.js": 17.42,
+        "lucide-home.js": 0.7,
+        "lz-browse.js": 0.83,
+        "lz-browse-vouchers.js": 0.93
+      }
+    },
+    "map": {
+      "totalKB": 210.76,
+      "chunks": {
+        "index.js": 14.98,
+        "react-core.js": 38.39,
+        "app-shared.js": 6.46,
+        "tanstack-query.js": 9.5,
+        "zustand.js": 2.5,
+        "app-utils.js": 20.56,
+        "react-router.js": 7.2,
+        "helmet.js": 4.88,
+        "lucide-shell.js": 0.7,
+        "app-stores.js": 2.1,
+        "app-shell.js": 7.95,
+        "app-auth.js": 1.29,
+        "app-layout.js": 3.37,
+        "app-routes.js": 0.86,
+        "index.css": 27.88,
+        "RestaurantMapPage.js": 6.2,
+        "app-kakao-sdk.js": 1.28,
+        "lz-gbDetail-map.js": 0.51,
+        "app-ui-utils.js": 7.36,
+        "lucide-desktop.js": 1.09,
+        "lz-boot-gbDetailL-map-productL.js": 1.07,
+        "lz-homePc-map.js": 1.22,
+        "lz-map.js": 18.41,
+        "lucide-home.js": 0.7,
+        "app-map-row.js": 1.36,
+        "lz-common.js": 17.42,
+        "lz-home-homePc-map.js": 5.52
+      }
+    },
+    "urshorts": {
+      "totalKB": 170.11,
+      "chunks": {
+        "index.js": 14.98,
+        "react-core.js": 38.39,
+        "app-shared.js": 6.46,
+        "tanstack-query.js": 9.5,
+        "zustand.js": 2.5,
+        "app-utils.js": 20.56,
+        "react-router.js": 7.2,
+        "helmet.js": 4.88,
+        "lucide-shell.js": 0.7,
+        "app-stores.js": 2.1,
+        "app-shell.js": 7.95,
+        "app-auth.js": 1.29,
+        "app-layout.js": 3.37,
+        "app-routes.js": 0.86,
+        "index.css": 27.88,
+        "UrShortsBrowsePage.js": 1.57,
+        "lz-home-homePc-urshorts.js": 0.39,
+        "lucide-home.js": 0.7,
+        "lz-urshorts.js": 1.41,
+        "lz-common.js": 17.42
+      }
+    },
+    "cart": {
+      "totalKB": 177.7,
+      "chunks": {
+        "index.js": 14.98,
+        "react-core.js": 38.39,
+        "app-shared.js": 6.46,
+        "tanstack-query.js": 9.5,
+        "zustand.js": 2.5,
+        "app-utils.js": 20.56,
+        "react-router.js": 7.2,
+        "helmet.js": 4.88,
+        "lucide-shell.js": 0.7,
+        "app-stores.js": 2.1,
+        "app-shell.js": 7.95,
+        "app-auth.js": 1.29,
+        "app-layout.js": 3.37,
+        "app-routes.js": 0.86,
+        "index.css": 27.88,
+        "CartPage.js": 5.79,
+        "app-cross.js": 1.41,
+        "lz-common.js": 17.42,
+        "lucide-home.js": 0.7,
+        "app-misc.js": 0.13,
+        "app-cart.js": 3.63
+      }
+    },
+    "search": {
+      "totalKB": 172.94,
+      "chunks": {
+        "index.js": 14.98,
+        "react-core.js": 38.39,
+        "app-shared.js": 6.46,
+        "tanstack-query.js": 9.5,
+        "zustand.js": 2.5,
+        "app-utils.js": 20.56,
+        "react-router.js": 7.2,
+        "helmet.js": 4.88,
+        "lucide-shell.js": 0.7,
+        "app-stores.js": 2.1,
+        "app-shell.js": 7.95,
+        "app-auth.js": 1.29,
+        "app-layout.js": 3.37,
+        "app-routes.js": 0.86,
+        "index.css": 27.88,
+        "SearchPage.js": 2.03,
+        "lucide-home.js": 0.7,
+        "app-search.js": 2.81,
+        "lz-common.js": 17.42,
+        "app-map-row.js": 1.36
+      }
+    },
+    "faq": {
+      "totalKB": 171.82,
+      "chunks": {
+        "index.js": 14.98,
+        "react-core.js": 38.39,
+        "app-shared.js": 6.46,
+        "tanstack-query.js": 9.5,
+        "zustand.js": 2.5,
+        "app-utils.js": 20.56,
+        "react-router.js": 7.2,
+        "helmet.js": 4.88,
+        "lucide-shell.js": 0.7,
+        "app-stores.js": 2.1,
+        "app-shell.js": 7.95,
+        "app-auth.js": 1.29,
+        "app-layout.js": 3.37,
+        "app-routes.js": 0.86,
+        "index.css": 27.88,
+        "FAQPage.js": 1.78,
+        "app-home.js": 1.72,
+        "lz-common.js": 17.42,
+        "lucide-home.js": 0.7,
+        "app-subpage.js": 0.49,
+        "lucide-desktop.js": 1.09
+      }
+    },
+    "stays": {
+      "totalKB": 171.63,
+      "chunks": {
+        "index.js": 14.98,
+        "react-core.js": 38.39,
+        "app-shared.js": 6.46,
+        "tanstack-query.js": 9.5,
+        "zustand.js": 2.5,
+        "app-utils.js": 20.56,
+        "react-router.js": 7.2,
+        "helmet.js": 4.88,
+        "lucide-shell.js": 0.7,
+        "app-stores.js": 2.1,
+        "app-shell.js": 7.95,
+        "app-auth.js": 1.29,
+        "app-layout.js": 3.37,
+        "app-routes.js": 0.86,
+        "index.css": 27.88,
+        "StaysSearchPage.js": 2.92,
+        "lucide-home.js": 0.7,
+        "lz-gbDetail-voucherDetail.js": 0.58,
+        "lz-common.js": 17.42,
+        "StayCurations.js": 1.39
+      }
+    },
+    "stayDetail": {
+      "totalKB": 201.59,
+      "chunks": {
+        "index.js": 14.98,
+        "react-core.js": 38.39,
+        "app-shared.js": 6.46,
+        "tanstack-query.js": 9.5,
+        "zustand.js": 2.5,
+        "app-utils.js": 20.56,
+        "react-router.js": 7.2,
+        "helmet.js": 4.88,
+        "lucide-shell.js": 0.7,
+        "app-stores.js": 2.1,
+        "app-shell.js": 7.95,
+        "app-auth.js": 1.29,
+        "app-layout.js": 3.37,
+        "app-routes.js": 0.86,
+        "index.css": 27.88,
+        "StayDetailPage.js": 11.37,
+        "lucide-desktop.js": 1.09,
+        "lz-boot-gbDetail-linkshop1.js": 0.5,
+        "lz-gbDetail-linkshop1-product.js": 0.72,
+        "lz-gbDetail-product.js": 1.56,
+        "app-owner-ui.js": 1.29,
+        "lucide-home.js": 0.7,
+        "StayCurations.js": 1.39,
+        "lz-gbDetail-voucherDetail.js": 0.58,
+        "lz-common.js": 17.42,
+        "lz-gbDetail.js": 16.35
+      }
+    },
+    "blog": {
+      "totalKB": 172.38,
+      "chunks": {
+        "index.js": 14.98,
+        "react-core.js": 38.39,
+        "app-shared.js": 6.46,
+        "tanstack-query.js": 9.5,
+        "zustand.js": 2.5,
+        "app-utils.js": 20.56,
+        "react-router.js": 7.2,
+        "helmet.js": 4.88,
+        "lucide-shell.js": 0.7,
+        "app-stores.js": 2.1,
+        "app-shell.js": 7.95,
+        "app-auth.js": 1.29,
+        "app-layout.js": 3.37,
+        "app-routes.js": 0.86,
+        "index.css": 27.88,
+        "BlogListPage.js": 2.04,
+        "app-blog.js": 3.6,
+        "lucide-home.js": 0.7,
+        "lz-common.js": 17.42
+      }
+    },
+    "blogPost": {
+      "totalKB": 183.39,
+      "chunks": {
+        "index.js": 14.98,
+        "react-core.js": 38.39,
+        "app-shared.js": 6.46,
+        "tanstack-query.js": 9.5,
+        "zustand.js": 2.5,
+        "app-utils.js": 20.56,
+        "react-router.js": 7.2,
+        "helmet.js": 4.88,
+        "lucide-shell.js": 0.7,
+        "app-stores.js": 2.1,
+        "app-shell.js": 7.95,
+        "app-auth.js": 1.29,
+        "app-layout.js": 3.37,
+        "app-routes.js": 0.86,
+        "index.css": 27.88,
+        "BlogDetailPage.js": 2.59,
+        "lz-gbDetail-linkshop1-product.js": 0.72,
+        "lz-browse-vouchers.js": 0.93,
+        "lz-common.js": 17.42,
+        "lucide-home.js": 0.7,
+        "app-utils-deferred.js": 6.42,
+        "app-blog.js": 3.6,
+        "lz-gbDetail-product.js": 1.56,
+        "lz-browse.js": 0.83
+      }
+    },
+    "region": {
+      "totalKB": 194.54,
+      "chunks": {
+        "index.js": 14.98,
+        "react-core.js": 38.39,
+        "app-shared.js": 6.46,
+        "tanstack-query.js": 9.5,
+        "zustand.js": 2.5,
+        "app-utils.js": 20.56,
+        "react-router.js": 7.2,
+        "helmet.js": 4.88,
+        "lucide-shell.js": 0.7,
+        "app-stores.js": 2.1,
+        "app-shell.js": 7.95,
+        "app-auth.js": 1.29,
+        "app-layout.js": 3.37,
+        "app-routes.js": 0.86,
+        "index.css": 27.88,
+        "RegionIndexPage.js": 1.44,
+        "lz-homePc-map.js": 1.22,
+        "lz-common.js": 17.42,
+        "lucide-home.js": 0.7,
+        "RegionPage.js": 1.71,
+        "lz-home-homePc-urshorts.js": 0.39,
+        "lz-home-homePc-map.js": 5.52,
+        "lz-home-homePc-vouchers.js": 5.91,
+        "NotFoundPage.js": 1.34,
+        "app-region-grid.js": 0.96,
+        "lz-home-homePc.js": 9.31
+      }
+    },
+    "guestMy": {
+      "totalKB": 180.11,
+      "chunks": {
+        "index.js": 14.98,
+        "react-core.js": 38.39,
+        "app-shared.js": 6.46,
+        "tanstack-query.js": 9.5,
+        "zustand.js": 2.5,
+        "app-utils.js": 20.56,
+        "react-router.js": 7.2,
+        "helmet.js": 4.88,
+        "lucide-shell.js": 0.7,
+        "app-stores.js": 2.1,
+        "app-shell.js": 7.95,
+        "app-auth.js": 1.29,
+        "app-layout.js": 3.37,
+        "app-routes.js": 0.86,
+        "index.css": 27.88,
+        "GuestMyPage.js": 1.23,
+        "app-kakao-sdk.js": 1.28,
+        "app-utils-deferred.js": 6.42,
+        "lz-common.js": 17.42,
+        "lucide-home.js": 0.7,
+        "GuestKakaoButton.js": 1.38,
+        "app-cross.js": 1.41,
+        "lz-gbDetail-map.js": 0.51,
+        "app-owner-kit.js": 1.14
+      }
+    },
+    "guestPass": {
+      "totalKB": 177.24,
+      "chunks": {
+        "index.js": 14.98,
+        "react-core.js": 38.39,
+        "app-shared.js": 6.46,
+        "tanstack-query.js": 9.5,
+        "zustand.js": 2.5,
+        "app-utils.js": 20.56,
+        "react-router.js": 7.2,
+        "helmet.js": 4.88,
+        "lucide-shell.js": 0.7,
+        "app-stores.js": 2.1,
+        "app-shell.js": 7.95,
+        "app-auth.js": 1.29,
+        "app-layout.js": 3.37,
+        "app-routes.js": 0.86,
+        "index.css": 27.88,
+        "GuestPassPage.js": 0.91,
+        "app-kakao-sdk.js": 1.28,
+        "app-utils-deferred.js": 6.42,
+        "lz-common.js": 17.42,
+        "lucide-home.js": 0.7,
+        "usePopularPasses.js": 0.3,
+        "GuestBenefits.js": 0.21,
+        "GuestKakaoButton.js": 1.38
+      }
+    },
+    "guestUShop": {
+      "totalKB": 179.02,
+      "chunks": {
+        "index.js": 14.98,
+        "react-core.js": 38.39,
+        "app-shared.js": 6.46,
+        "tanstack-query.js": 9.5,
+        "zustand.js": 2.5,
+        "app-utils.js": 20.56,
+        "react-router.js": 7.2,
+        "helmet.js": 4.88,
+        "lucide-shell.js": 0.7,
+        "app-stores.js": 2.1,
+        "app-shell.js": 7.95,
+        "app-auth.js": 1.29,
+        "app-layout.js": 3.37,
+        "app-routes.js": 0.86,
+        "index.css": 27.88,
+        "GuestUrShopPage.js": 1.72,
+        "app-kakao-sdk.js": 1.28,
+        "app-utils-deferred.js": 6.42,
+        "lz-common.js": 17.42,
+        "lucide-home.js": 0.7,
+        "usePopularPasses.js": 0.3,
+        "GuestBenefits.js": 0.21,
+        "GuestKakaoButton.js": 1.38,
+        "lz-linkshop1-vouchers.js": 0.97
+      }
+    },
+    "dash:my": {
+      "totalKB": 201.89,
+      "chunks": {
+        "index.js": 14.98,
+        "react-core.js": 38.39,
+        "app-shared.js": 6.46,
+        "tanstack-query.js": 9.5,
+        "zustand.js": 2.5,
+        "app-utils.js": 20.56,
+        "react-router.js": 7.2,
+        "helmet.js": 4.88,
+        "lucide-shell.js": 0.7,
+        "app-stores.js": 2.1,
+        "app-shell.js": 7.95,
+        "app-auth.js": 1.29,
+        "app-layout.js": 3.37,
+        "app-routes.js": 0.86,
+        "index.css": 27.88,
+        "SellerSection.js": 5.83,
+        "order-kind.js": 0.27,
+        "lz-common.js": 17.42,
+        "lucide-home.js": 0.7,
+        "lz-boot-productL.js": 1.37,
+        "WalletRow.js": 0.83,
+        "lz-gbDetail-product.js": 1.56,
+        "lz-gbDetail-linkshop1-product.js": 0.72,
+        "app-settings.js": 0.98,
+        "app-owner-kit.js": 1.14,
+        "voucher-wallet.js": 0.13,
+        "app-utils-deferred.js": 6.42,
+        "app-misc.js": 0.13,
+        "lz-home-homePc-urshorts.js": 0.39,
+        "app-mypage.js": 5.47,
+        "app-features.js": 1.91,
+        "profile-avatar.js": 0.26,
+        "order-stage.js": 0.35,
+        "UserProfilePage.js": 7.39
+      }
+    },
+    "dash:admin": {
+      "totalKB": 247.33,
+      "chunks": {
+        "index.js": 14.98,
+        "react-core.js": 38.39,
+        "app-shared.js": 6.46,
+        "tanstack-query.js": 9.5,
+        "zustand.js": 2.5,
+        "app-utils.js": 20.56,
+        "react-router.js": 7.2,
+        "helmet.js": 4.88,
+        "lucide-shell.js": 0.7,
+        "app-stores.js": 2.1,
+        "app-shell.js": 7.95,
+        "app-auth.js": 1.29,
+        "app-layout.js": 3.37,
+        "app-routes.js": 0.86,
+        "index.css": 27.88,
+        "AdminPage.js": 8.28,
+        "app-cross.js": 1.41,
+        "lz-common.js": 17.42,
+        "lucide-home.js": 0.7,
+        "lz-gbDetailL-productL.js": 0.96,
+        "app-ui-utils.js": 7.36,
+        "radix-ui.js": 0.85,
+        "lz-boot-productL.js": 1.37,
+        "lz-boot-gbDetailL-map-productL.js": 1.07,
+        "lucide-desktop.js": 1.09,
+        "app-components.js": 26.02,
+        "lucide.js": 9.38,
+        "app-utils-deferred.js": 6.42,
+        "app-dashboard.js": 3.09,
+        "app-admin-components.js": 8.6,
+        "app-routes-admin.js": 4.69
+      }
+    },
+    "dash:agency": {
+      "totalKB": 180.32,
+      "chunks": {
+        "index.js": 14.98,
+        "react-core.js": 38.39,
+        "app-shared.js": 6.46,
+        "tanstack-query.js": 9.5,
+        "zustand.js": 2.5,
+        "app-utils.js": 20.56,
+        "react-router.js": 7.2,
+        "helmet.js": 4.88,
+        "lucide-shell.js": 0.7,
+        "app-stores.js": 2.1,
+        "app-shell.js": 7.95,
+        "app-auth.js": 1.29,
+        "app-layout.js": 3.37,
+        "app-routes.js": 0.86,
+        "index.css": 27.88,
+        "AgencyHomePage.js": 9.55,
+        "app-owner-kit.js": 1.14,
+        "lucide-home.js": 0.7,
+        "Sheet.js": 1.12,
+        "lz-common.js": 17.42,
+        "agency-api.js": 1.77
+      }
+    }
+  },
+  "history": [
+    {
+      "date": "2026-10-14",
+      "reason": "최초 등록 — 2026-10-14 i18n-lite 머지 직후 실측",
+      "changes": [
+        "__boot__: 기준에 없는 화면 (156.0 KB) — 예산을 갖고 들어와야 한다",
+        "home: 기준에 없는 화면 (192.2 KB) — 예산을 갖고 들어와야 한다",
+        "homePc: 기준에 없는 화면 (199.2 KB) — 예산을 갖고 들어와야 한다",
+        "gbDetail: 기준에 없는 화면 (198.0 KB) — 예산을 갖고 들어와야 한다",
+        "voucherDetail: 기준에 없는 화면 (176.8 KB) — 예산을 갖고 들어와야 한다",
+        "product: 기준에 없는 화면 (191.4 KB) — 예산을 갖고 들어와야 한다",
+        "linkshop: 기준에 없는 화면 (190.9 KB) — 예산을 갖고 들어와야 한다",
+        "vouchers: 기준에 없는 화면 (183.6 KB) — 예산을 갖고 들어와야 한다",
+        "browse: 기준에 없는 화면 (178.2 KB) — 예산을 갖고 들어와야 한다",
+        "map: 기준에 없는 화면 (212.5 KB) — 예산을 갖고 들어와야 한다",
+        "urshorts: 기준에 없는 화면 (175.1 KB) — 예산을 갖고 들어와야 한다"
+      ]
+    },
+    {
+      "date": "2026-10-14",
+      "reason": "대시보드·마이 3화면 편입(dash:my/admin/agency) — cn()/tailwind-merge 를 app-ui-utils 로 되돌려 각 −24~25KB 뒤의 값으로 잠근다",
+      "changes": [
+        "dash:my: 기준에 없는 화면 (278.5 KB) — 예산을 갖고 들어와야 한다",
+        "dash:admin: 기준에 없는 화면 (296.0 KB) — 예산을 갖고 들어와야 한다",
+        "dash:agency: 기준에 없는 화면 (305.1 KB) — 예산을 갖고 들어와야 한다"
+      ]
+    },
+    {
+      "date": "2026-10-14",
+      "reason": "main 에 먼저 들어간 기능(#1794 교환권 배너·위시리스트·지도 칩 등)으로 늘어난 값 — 이 가드를 들이는 PR 이 그 시점 main 을 기준으로 잠근다",
+      "changes": [
+        "home: 192.3 → 194.2 KB (+2.0, 허용 1.5) · 늘어난 것: lz-home-homePc-vouchers.js +5.5, app-layout.js +0.3",
+        "homePc: 199.2 → 201.1 KB (+1.9, 허용 1.5) · 늘어난 것: lz-home-homePc-vouchers.js +5.5, app-layout.js +0.3",
+        "vouchers: 183.7 → 189.4 KB (+5.7, 허용 1.5) · 늘어난 것: lz-home-homePc-vouchers.js +5.5, app-layout.js +0.3",
+        "dash:admin: 296.0 → 302.4 KB (+6.4, 허용 1.5) · 늘어난 것: lz-home-homePc-vouchers.js +5.5, lz-gbDetailL-productL.js +0.5, app-layout.js +0.3",
+        "dash:agency: 305.1 → 306.7 KB (+1.6, 허용 1.5) · 늘어난 것: lz-voucherDetail.js +0.7, lz-gbDetailL-productL.js +0.5, app-layout.js +0.3"
+      ]
+    },
+    {
+      "date": "2026-10-14",
+      "reason": "main 머지 반영 — 마이 첫 화면이 공용 컴포넌트·상품 페이지 봉투·embla·app-ui-utils 를 더 이상 정적으로 끌지 않는다(#1811 이후 마이 구조 변경): dash:my 279.4→228.0KB",
+      "changes": [
+        "dash:my: 279.4 → 228.0 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다"
+      ]
+    },
+    {
+      "date": "2026-10-15",
+      "reason": "설명 SSOT(shared/seo/detail-description.ts)가 상세 표면에 들어왔다 — region-slugs(+0.7) 포함 +1.8KB. 서버·클라 두 벌이던 메타 설명을 한 함수로 모은 비용이고, <SEO> 가 즉시 렌더하므로 lazy 로 못 내린다.",
+      "changes": [
+        "gbDetail: 198.8 → 200.6 KB (+1.8, 허용 1.5) · 늘어난 것: lz-gbDetail-home-homePc.js +0.7, lz-gbDetail-voucherDetail.js +0.4, lz-gbDetail.js +0.3"
+      ]
+    },
+    {
+      "date": "2026-10-15",
+      "reason": "로딩 화면 뜨던 9곳(장바구니·검색·FAQ·숙소·숙소상세·지역·로그인 전 마이/이용권/유어샵) preload 전용 표면 등재 — 청크 구성 불변, 기존 화면 동일",
+      "changes": [
+        "cart: 기준에 없는 화면 (232.4 KB) — 예산을 갖고 들어와야 한다",
+        "search: 기준에 없는 화면 (222.1 KB) — 예산을 갖고 들어와야 한다",
+        "faq: 기준에 없는 화면 (176.6 KB) — 예산을 갖고 들어와야 한다",
+        "stays: 기준에 없는 화면 (187.9 KB) — 예산을 갖고 들어와야 한다",
+        "stayDetail: 기준에 없는 화면 (215.5 KB) — 예산을 갖고 들어와야 한다",
+        "region: 기준에 없는 화면 (203.8 KB) — 예산을 갖고 들어와야 한다",
+        "guestMy: 기준에 없는 화면 (227.9 KB) — 예산을 갖고 들어와야 한다",
+        "guestPass: 기준에 없는 화면 (183.4 KB) — 예산을 갖고 들어와야 한다",
+        "guestUShop: 기준에 없는 화면 (184.9 KB) — 예산을 갖고 들어와야 한다"
+      ]
+    },
+    {
+      "date": "2026-10-15",
+      "reason": "2026-10-15 하단 탭·홈 카드 미리받기를 loadRoute 로(직접 import 제거) — 묶음기 lazy 라벨이 줄어 장바구니·로그인 전 마이 봉투가 작아졌다",
+      "changes": [
+        "cart: 232.4 → 228.0 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다",
+        "guestMy: 227.9 → 223.1 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다"
+      ]
+    },
+    {
+      "date": "2026-10-15",
+      "reason": "main 병합 — 블로그 목록·글 미리받기 표면 편입, dash:my 감소 잠금",
+      "changes": [
+        "blog: 기준에 없는 화면 (179.7 KB) — 예산을 갖고 들어와야 한다",
+        "blogPost: 기준에 없는 화면 (190.5 KB) — 예산을 갖고 들어와야 한다",
+        "dash:my: 228.4 → 223.3 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다"
+      ]
+    },
+    {
+      "date": "2026-10-18",
+      "reason": "cart: 미리받기 10개 상한 안의 청크 구성만 바뀜(lz-boot-gbDetail 3.3→2.5KB로 줄며 lz-product 가 10번째 자리에 진입). 장바구니 정적 의존 전체는 219.4→218.4KB br 로 오히려 감소(31→30파일, 같은 빌드 비교 실측)",
+      "changes": [
+        "cart: 228.4 → 232.7 KB (+4.3, 허용 1.5) · 늘어난 것: lz-product.js +5.6"
+      ]
+    },
+    {
+      "date": "2026-10-18",
+      "reason": "stayDetail +6.0 은 측정 착시 — route-chunk-map 의 js 10개 상한 때문에 main 에선 lz-vouchers(6.0KB)가 11번째라 안 세였고, 이번에 lz-gbDetail-home-homePc 봉투가 사라져 상한 안으로 들어왔다. 매니페스트 정적 폐쇄 실측은 main 73.4KB → 이 브랜치 73.2KB(-0.2). 나머지 +0.5~0.7 은 consumer-surfaces 를 VouchersPage 가 import 해 lz-common 으로 옮겨간 몫(허용 안).",
+      "changes": [
+        "stayDetail: 216.0 → 222.0 KB (+6.0, 허용 1.5) · 늘어난 것: lz-vouchers.js +6.0, lz-common.js +0.5"
+      ]
+    },
+    {
+      "date": "2026-10-18",
+      "reason": "측정 정정(코드 변화 0) — 손님 화면을 미리받기 맵(js 10개 상한) 대신 매니페스트 정적 폐쇄로 잰다. 상한 밖에 숨어 있던 무게가 드러났다: cart +33.2(lz-gbDetail 16.2 · embla 6.5 · lz-productL 3.7 · app-cart 3.7) · guestMy +25.7(embla 6.5 · app-utils-deferred 6.4 · lz-product 5.6) · stayDetail +7.9(lz-home-homePc-vouchers 5.8). 이 바이트는 원래 받고 있었다 — 줄이는 것은 별건.",
+      "changes": [
+        "cart: 233.3 → 266.4 KB (+33.2, 허용 1.5) · 늘어난 것: lz-gbDetail.js +16.2, embla.js +6.5, lz-productL.js +3.7, app-cart.js +3.7, lz-gbDetail-product.js +1.6, lz-gbDetail-linkshop1-product.js +0.7",
+        "stayDetail: 222.0 → 229.9 KB (+7.9, 허용 1.5) · 늘어난 것: lz-home-homePc-vouchers.js +5.8, lz-linkshop1-vouchers.js +1.0, lz-browse-vouchers.js +0.9",
+        "guestMy: 224.1 → 249.7 KB (+25.7, 허용 1.5) · 늘어난 것: embla.js +6.5, app-utils-deferred.js +6.4, lz-product.js +5.6, lz-productL.js +3.7, lz-boot-productL.js +1.4, app-kakao-sdk.js +1.3"
+      ]
+    },
+    {
+      "date": "2026-10-18",
+      "reason": "app-cross 봉투 + 장바구니 옵션모달 lazy: 장바구니 266.4→195.5 · 로그아웃 마이 249.7→197.3 · 어드민 −4.6 · 에이전시 −4.7",
+      "changes": [
+        "cart: 266.4 → 195.5 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다",
+        "guestMy: 249.7 → 197.3 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다",
+        "dash:admin: 304.9 → 300.3 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다",
+        "dash:agency: 306.5 → 301.8 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다"
+      ]
+    },
+    {
+      "date": "2026-10-18",
+      "reason": "숙소 상세: 편의시설 아이콘 lazy + 대체 아이콘 2개를 유어딜 세트로 — 230.2→205.8 (lucide·lz-vouchers·lz-home-homePc-vouchers 봉투 3개 제거)",
+      "changes": [
+        "stayDetail: 230.2 → 205.8 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다"
+      ]
+    },
+    {
+      "date": "2026-10-19",
+      "reason": "첫 방문 다이어트(PR #1909) — main 재머지 후 재측정",
+      "changes": [
+        "__boot__: 156.3 → 148.3 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다",
+        "home: 197.2 → 189.8 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다",
+        "homePc: 203.1 → 195.8 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다",
+        "gbDetail: 200.6 → 194.3 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다",
+        "voucherDetail: 179.1 → 171.6 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다",
+        "product: 194.6 → 187.0 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다",
+        "linkshop: 193.3 → 187.0 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다",
+        "vouchers: 191.9 → 185.5 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다",
+        "browse: 180.2 → 173.8 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다",
+        "map: 215.4 → 209.2 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다",
+        "urshorts: 177.1 → 169.6 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다",
+        "cart: 195.2 → 187.6 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다",
+        "search: 223.3 → 216.9 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다",
+        "faq: 177.4 → 171.0 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다",
+        "stays: 188.7 → 181.1 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다",
+        "stayDetail: 205.8 → 199.5 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다",
+        "blog: 180.2 → 172.7 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다",
+        "blogPost: 190.9 → 183.4 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다",
+        "region: 205.8 → 198.4 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다",
+        "guestMy: 197.0 → 189.4 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다",
+        "guestPass: 183.9 → 176.4 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다",
+        "guestUShop: 185.4 → 177.9 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다",
+        "dash:my: 222.5 → 216.0 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다",
+        "dash:admin: 300.0 → 293.7 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다",
+        "dash:agency: 301.4 → 295.1 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다"
+      ]
+    },
+    {
+      "date": "2026-10-19",
+      "reason": "2026-10-19 검색: 지도 목록 한 줄 4모듈을 app-map-row 로 분리 + 인기 검색어 TrendingUp→ChartIcon — 216.9→172.6 (지도 봉투·홈 지도 봉투·app-ui-utils·카카오·lucide 이탈). map +0.8(요청 1개)",
+      "changes": [
+        "search: 216.9 → 172.6 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다"
+      ]
+    },
+    {
+      "date": "2026-10-19",
+      "reason": "2026-10-19 장바구니·숙소 목록·로그아웃 마이 — lucide 봉투(br 10.2)를 끌던 아이콘 7개를 유어딜 세트·파일 내 그림으로",
+      "changes": [
+        "cart: 187.2 → 177.4 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다",
+        "stays: 180.6 → 171.0 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다",
+        "guestMy: 189.0 → 179.4 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다"
+      ]
+    },
+    {
+      "date": "2026-10-19",
+      "reason": "2026-10-19 판매자 마이 — 승인 상태 키(seller-approval)를 나브 색인 봉투에서 app-shared 로. 상수 하나 때문에 lucide·lucide-desktop·나브 색인을 받던 것",
+      "changes": [
+        "dash:my: 215.5 → 202.7 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다"
+      ]
+    },
+    {
+      "date": "2026-10-19",
+      "reason": "2026-10-19 대시보드 셋 — 상수 모듈 둘(seller-approval·terms-types)을 app-shared 로, 어드민 활동 피드 CheckCircle2→CheckCircle. 마이 202.6 · 에이전시 180.3 · 어드민 274.0",
+      "changes": [
+        "dash:admin: 292.9 → 274.0 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다",
+        "dash:agency: 294.5 → 180.3 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다"
+      ]
+    },
+    {
+      "date": "2026-10-19",
+      "reason": "어드민 메뉴 아이콘 넷(Wrench·MapPin·Play·History)이 손님 봉투(교환권·유어샵·쇼츠·지도)를 끌던 것 → 이미 받는 lucide 봉투 아이콘으로(dash:admin 274.0→256.3) · 지역 링크 표를 app-region-grid 로(region 198.5→194.2)",
+      "changes": [
+        "region: 198.5 → 194.2 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다",
+        "dash:admin: 274.0 → 256.4 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다"
+      ]
+    },
+    {
+      "date": "2026-10-20",
+      "reason": "useFocusTrap 을 app-ui-utils 로 — 어드민이 정적으로 받는 app-components 가 쇼핑 상세 봉투(lz-productL 12.5KB + embla 18.7KB raw)를 끌고 오던 것 제거(dash:admin 256.4→246.4). dash:admin 만 갱신 — 나머지 화면은 로컬 측정 편차(+0.3)라 기준을 건드리지 않았다",
+      "changes": [
+        "dash:admin: 256.4 → 246.4 KB"
+      ]
+    },
+    {
+      "date": "2026-10-20",
+      "reason": "2026-10-20 main 머지 후 재잠금 — CLS 원인 표본(cls-source)이 이용권 상세 봉투에 +0.3KB, 나머지 gbDetail·product 증가는 main 에 이미 쌓인 것(이 PR 이전 실측 gbDetail 196.1)",
+      "changes": [
+        "gbDetail: 194.7 → 196.6 KB (+1.9, 허용 1.5) · 늘어난 것: lz-boot-gbDetail.js +0.4",
+        "product: 187.2 → 188.8 KB (+1.6, 허용 1.5) · 늘어난 것: (새 청크 없음 — 기존 청크 내부)"
+      ]
+    }
+  ]
+}

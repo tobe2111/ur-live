@@ -1,0 +1,492 @@
+import { useTranslation } from '@/lib/i18n-lite'
+/**
+ * SellerSupplyPage - 셀러 공급가 시스템
+ *
+ * Tab 1: 어드민 공급 상품 목록 (샘플 신청 가능)
+ * Tab 2: 내 샘플 신청 목록 (승인된 상품 등록 가능)
+ */
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import api from '@/lib/api'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
+import { toast } from '@/hooks/useToast'
+import SellerLayout from '@/components/SellerLayout'
+import { DashboardPageHeader } from '@/components/dashboard'
+import {
+  Truck, Package, Loader2,
+  Search, CheckCircle, XCircle, Clock,
+  ShoppingBag, Tag, Plus
+} from 'lucide-react'
+import { formatKSTDate } from '@/utils/date'
+import { formatNumber } from '@/utils/format'
+
+interface SupplyProduct {
+  id: number
+  name: string
+  description: string | null
+  retail_price: number
+  supply_price: number
+  image_url: string | null
+  stock: number
+  category: string | null
+  product_type: string | null
+  request_id: number | null
+  request_status: 'PENDING' | 'APPROVED' | 'REJECTED' | null
+  seller_memo: string | null
+  admin_memo: string | null
+  request_created_at: string | null
+  approved_at: string | null
+}
+
+interface SampleRequest {
+  id: number
+  product_id: number
+  product_name: string
+  retail_price: number
+  supply_price: number
+  product_image: string | null
+  category: string | null
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  seller_memo: string | null
+  admin_memo: string | null
+  created_at: string
+  approved_at: string | null
+}
+
+export default function SellerSupplyPage() {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const [activeTab, setActiveTab] = useState<'catalog' | 'my-requests'>('catalog')
+
+  // Catalog
+  const [search, setSearch] = useState('')
+  const [searchInput, setSearchInput] = useState('')
+  // 🛡️ 2026-05-21: 매장 수만 개 대응 — 카테고리/지역/정렬 필터 추가.
+  //   INDEX (region_si, region_gu, category) + (is_active, category, sold_count DESC) 활용.
+  const [filterCategory, setFilterCategory] = useState('')
+  const [filterRegion, setFilterRegion] = useState('')
+  const [sortBy, setSortBy] = useState<'popular' | 'newest' | 'price_low' | 'price_high'>('popular')
+
+  // Sample request modal
+  const [requestModal, setRequestModal] = useState<SupplyProduct | null>(null)
+  const [sellerMemo, setSellerMemo] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  // Register modal
+  const [registerModal, setRegisterModal] = useState<SampleRequest | null>(null)
+  const [sellerPrice, setSellerPrice] = useState('')
+  const [registering, setRegistering] = useState(false)
+
+  const token = () => localStorage.getItem('seller_token')
+
+  useEffect(() => {
+    if (!token()) navigate('/seller/login')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery. /api/supply prefix 라 수동 헤더.
+  const authHeaders = { Authorization: `Bearer ${token()}` }
+  const catalogQ = useApiQuery<SupplyProduct[]>(['seller', 'supply-catalog', search, filterCategory, filterRegion, sortBy], '/api/supply/products', {
+    params: { limit: 50, ...(search ? { search } : {}), ...(filterCategory ? { category: filterCategory } : {}), ...(filterRegion ? { region_si: filterRegion } : {}), ...(sortBy ? { sort: sortBy } : {}) },
+    headers: authHeaders,
+    select: (r: any) => (r?.success ? (r.data?.items ?? []) : []),
+  })
+  const requestsQ = useApiQuery<SampleRequest[]>(['seller', 'supply-requests'], '/api/supply/sample-requests', {
+    enabled: activeTab === 'my-requests',
+    headers: authHeaders,
+    select: (r: any) => (r?.success ? (r.data ?? []) : []),
+  })
+  const products = catalogQ.data ?? []
+  const catalogLoading = catalogQ.isLoading
+  const requests = requestsQ.data ?? []
+  const reqLoading = requestsQ.isLoading
+  const loadCatalog = () => catalogQ.refetch()
+  const loadMyRequests = () => requestsQ.refetch()
+
+  async function handleSampleRequest() {
+    if (!requestModal) return
+    setSubmitting(true)
+    try {
+      await api.post('/api/supply/sample-requests', {
+        product_id: requestModal.id,
+        seller_memo: sellerMemo || undefined,
+      }, { headers: { Authorization: `Bearer ${token()}` } })
+      toast.success(t('seller.sampleRequestSuccess'))
+      setRequestModal(null); setSellerMemo('')
+      loadCatalog()
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
+      toast.error(err_.response?.data?.error || t('seller.sampleRequestFailed'))
+    } finally { setSubmitting(false) }
+  }
+
+  async function handleRegister() {
+    if (!registerModal || !sellerPrice) return
+    const price = Number(sellerPrice)
+    if (price <= 0) { toast.error(t('seller.enterSellerPriceError')); return }
+    setRegistering(true)
+    try {
+      await api.post('/api/supply/register', {
+        product_id: registerModal.product_id,
+        seller_price: price,
+      }, { headers: { Authorization: `Bearer ${token()}` } })
+      toast.success(t('seller.productRegisteredSuccess'))
+      setRegisterModal(null); setSellerPrice('')
+      loadMyRequests()
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string }; status?: number } }
+      toast.error(err_.response?.data?.error || t('seller.productRegisterFailedMsg'))
+    } finally { setRegistering(false) }
+  }
+
+  const approvedCount = requests.filter(r => r.status === 'APPROVED').length
+
+  return (
+    <SellerLayout title={t('seller.supplyProducts')}>
+      <div className="mx-auto max-w-5xl space-y-6">
+        {/* 🛡️ 2026-04-22 배치 131: 디자인 시스템 적용 */}
+        <DashboardPageHeader
+          title={t('seller.supplyProducts')}
+          subtitle={t('seller.supplySubtitle', { defaultValue: '공급 상품 요청 및 관리' })}
+          icon={<ShoppingBag className="h-5 w-5" />}
+        />
+        {/* Tabs */}
+        <div className="flex gap-1 mb-5 border-b border-gray-200">
+          <button
+            onClick={() => setActiveTab('catalog')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'catalog' ? 'border-brand text-brand-text' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          >
+            <span className="flex items-center gap-1.5"><ShoppingBag className="w-4 h-4" /> {t('seller.supplyProductList')}</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('my-requests')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'my-requests' ? 'border-brand text-brand-text' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          >
+            <span className="flex items-center gap-1.5">
+              <Package className="w-4 h-4" /> {t('seller.myRequestList')}
+              {approvedCount > 0 && (
+                <span className="ml-1 px-1.5 py-0.5 bg-brand-tint text-brand-text text-xs rounded-full">{approvedCount}</span>
+              )}
+            </span>
+          </button>
+        </div>
+
+        {/* ── 공급 상품 목록 ── */}
+        {activeTab === 'catalog' && (
+          <>
+            {/* Search */}
+            <div className="flex gap-2 mb-3">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  value={searchInput}
+                  onChange={e => setSearchInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') setSearch(searchInput) }}
+                  placeholder={t('seller.searchProductName')}
+                  className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-purple-500 focus:outline-none bg-white"
+                />
+              </div>
+              <button
+                onClick={() => setSearch(searchInput)}
+                className="ur-btn ur-btn-md ur-btn-primary"
+              >
+                {t('common.search')}
+              </button>
+            </div>
+
+            {/* 🛡️ 2026-05-21: 카테고리/지역/정렬 필터 — 매장 수만 개 대응. INDEX 활용. */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              <select
+                value={filterCategory}
+                onChange={e => setFilterCategory(e.target.value)}
+                className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-700 bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
+              >
+                <option value="">전체 카테고리</option>
+                <option value="meal_voucher">이용권</option>
+                <option value="beauty_voucher">뷰티</option>
+                <option value="stay_voucher">숙박</option>
+                <option value="health_voucher">건강</option>
+                <option value="pet_voucher">반려</option>
+                <option value="activity_voucher">액티비티</option>
+                <option value="etc_voucher">기타</option>
+              </select>
+              <select
+                value={filterRegion}
+                onChange={e => setFilterRegion(e.target.value)}
+                className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-700 bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
+              >
+                <option value="">전체 지역</option>
+                <option value="서울">서울</option>
+                <option value="경기">경기</option>
+                <option value="인천">인천</option>
+                <option value="부산">부산</option>
+                <option value="대구">대구</option>
+                <option value="대전">대전</option>
+                <option value="광주">광주</option>
+                <option value="울산">울산</option>
+                <option value="세종">세종</option>
+                <option value="강원">강원</option>
+                <option value="충북">충북</option>
+                <option value="충남">충남</option>
+                <option value="전북">전북</option>
+                <option value="전남">전남</option>
+                <option value="경북">경북</option>
+                <option value="경남">경남</option>
+                <option value="제주">제주</option>
+              </select>
+              <select
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value as typeof sortBy)}
+                className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-700 bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none ml-auto"
+              >
+                <option value="popular">인기순</option>
+                <option value="newest">신상품</option>
+                <option value="price_low">낮은 가격순</option>
+                <option value="price_high">높은 가격순</option>
+              </select>
+            </div>
+
+            {catalogLoading ? (
+              <div className="py-16 text-center"><Loader2 className="w-8 h-8 animate-spin text-brand-text mx-auto" /></div>
+            ) : products.length === 0 ? (
+              <div className="py-20 text-center">
+                <Truck className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+                <p className="text-sm text-gray-400">{t('seller.noSupplyProductsEmpty')}</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {products.map(product => (
+                  <div key={product.id} className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4 flex gap-4 items-start">
+                    {/* Image */}
+                    <div className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
+                      {product.image_url
+                        ? <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" loading="lazy" />
+                        : <Package className="w-8 h-8 text-gray-300" />
+                      }
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 line-clamp-1">{product.name}</p>
+                      {product.description && (
+                        <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{product.description}</p>
+                      )}
+                      <div className="flex items-center gap-3 mt-2">
+                        <span className="flex items-center gap-1 text-xs text-gray-600">
+                          <Tag className="w-3 h-3" /> {t('seller.retailPrice')} <strong>{formatNumber(product.retail_price)}{t('common.won')}</strong>
+                        </span>
+                        <span className="flex items-center gap-1 text-xs text-gray-700 font-medium">
+                          {t('seller.supplyPrice')} <strong>{formatNumber(product.supply_price)}{t('common.won')}</strong>
+                        </span>
+                      </div>
+                      {/* 🛡️ 2026-06-01 INC-7: 마진 표시 — 셀러가 한눈에 수익성 판단. */}
+                      {product.retail_price > product.supply_price && (
+                        <div className="mt-1.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-tone-ok-bg border border-transparent">
+                          <span className="text-[11px] font-bold text-tone-ok">
+                            {t('seller.marginLabel', { defaultValue: '마진' })} {formatNumber(product.retail_price - product.supply_price)}{t('common.won')}
+                          </span>
+                          <span className="text-[10px] text-tone-ok">
+                            ({Math.round(((product.retail_price - product.supply_price) / product.retail_price) * 100)}%)
+                          </span>
+                        </div>
+                      )}
+                      <p className="text-xs text-gray-400 mt-0.5">{t('seller.stockCount', { count: product.stock })}</p>
+                    </div>
+
+                    {/* CTA */}
+                    <div className="flex-shrink-0">
+                      {product.request_status === null && (
+                        <button
+                          onClick={() => { setRequestModal(product); setSellerMemo('') }}
+                          className="ur-btn ur-btn-sm ur-btn-primary flex items-center gap-1"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> {t('seller.sampleRequest')}
+                        </button>
+                      )}
+                      {product.request_status === 'PENDING' && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-tone-warn-bg text-tone-warn border border-transparent">
+                          <Clock className="w-3 h-3" /> {t('seller.reviewing')}
+                        </span>
+                      )}
+                      {product.request_status === 'APPROVED' && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-tone-ok-bg text-tone-ok border border-transparent">
+                          <CheckCircle className="w-3 h-3" /> {t('seller.approved')}
+                        </span>
+                      )}
+                      {product.request_status === 'REJECTED' && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-tone-bad-bg text-tone-bad border border-transparent">
+                          <XCircle className="w-3 h-3" /> {t('seller.rejected')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── 내 샘플 신청 목록 ── */}
+        {activeTab === 'my-requests' && (
+          <>
+            {reqLoading ? (
+              <div className="py-16 text-center"><Loader2 className="w-8 h-8 animate-spin text-brand-text mx-auto" /></div>
+            ) : requests.length === 0 ? (
+              <div className="py-20 text-center">
+                <Package className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+                <p className="text-sm text-gray-400 mb-4">{t('seller.noSampleRequests')}</p>
+                <button
+                  onClick={() => setActiveTab('catalog')}
+                  className="ur-btn ur-btn-md ur-btn-primary flex items-center gap-1.5 mx-auto"
+                >
+                  <Truck className="w-4 h-4" /> {t('seller.browseSupplyProducts')}
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {requests.map(req => (
+                  <div key={req.id} className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4 flex gap-4 items-start">
+                    {/* Image */}
+                    <div className="w-16 h-16 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
+                      {req.product_image
+                        ? <img src={req.product_image} alt={req.product_name} className="w-full h-full object-cover" loading="lazy" />
+                        : <Package className="w-6 h-6 text-gray-300" />
+                      }
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        {req.status === 'PENDING' && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs font-medium rounded-full bg-tone-warn-bg text-tone-warn"><Clock className="w-3 h-3" /> {t('seller.reviewing')}</span>}
+                        {req.status === 'APPROVED' && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs font-medium rounded-full bg-tone-ok-bg text-tone-ok"><CheckCircle className="w-3 h-3" /> {t('seller.approved')}</span>}
+                        {req.status === 'REJECTED' && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs font-medium rounded-full bg-tone-bad-bg text-tone-bad"><XCircle className="w-3 h-3" /> {t('seller.rejected')}</span>}
+                        <span className="text-xs text-gray-400">{formatKSTDate(req.created_at)}</span>
+                      </div>
+                      <p className="text-sm font-semibold text-gray-900">{req.product_name}</p>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="text-xs text-gray-500">{t('seller.retailPrice')} {formatNumber(req.retail_price)}{t('common.won')}</span>
+                        <span className="text-xs text-gray-700 font-medium">{t('seller.supplyPrice')} {formatNumber(req.supply_price)}{t('common.won')}</span>
+                      </div>
+                      {req.seller_memo && (
+                        <p className="mt-1 text-xs text-gray-500 bg-gray-50 rounded px-2 py-1">{t('seller.requestMemo')}: {req.seller_memo}</p>
+                      )}
+                      {req.admin_memo && (
+                        <p className="mt-1 text-xs text-tone-info bg-tone-info-bg rounded px-2 py-1">{t('seller.adminMemo')}: {req.admin_memo}</p>
+                      )}
+                    </div>
+
+                    {/* CTA */}
+                    {req.status === 'APPROVED' && (
+                      <div className="flex-shrink-0">
+                        <button
+                          onClick={() => { setRegisterModal(req); setSellerPrice(req.retail_price?.toString() || '') }}
+                          className="ur-btn ur-btn-sm ur-btn-primary flex items-center gap-1"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> {t('seller.storeRegister')}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* ── 샘플 신청 모달 ── */}
+      {requestModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 pb-4">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setRequestModal(null)} />
+          <div className="relative rounded-[var(--dash-radius,16px)] border border-rule bg-white shadow-xl w-full max-w-sm p-5">
+            <h3 className="text-sm font-semibold text-gray-900 mb-1">{t('seller.sampleRequestTitle')}</h3>
+            <p className="text-xs text-gray-500 mb-4">{requestModal.name}</p>
+
+            <div className="border border-rule bg-white rounded-lg p-3 mb-4 space-y-1">
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-500">{t('seller.retailPriceLabel')}</span>
+                <span className="font-medium">{formatNumber(requestModal.retail_price)}{t('common.won')}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-700 font-medium">{t('seller.supplyPriceLabel')}</span>
+                <span className="text-gray-700 font-semibold">{formatNumber(requestModal.supply_price)}{t('common.won')}</span>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('seller.requestMemoOptional')}</label>
+              <textarea
+                value={sellerMemo}
+                onChange={e => setSellerMemo(e.target.value)}
+                rows={3}
+                placeholder={t('seller.requestMemoPlaceholder')}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-purple-500 focus:outline-none resize-none"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button onClick={() => setRequestModal(null)} className="flex-1 ur-btn ur-btn-md ur-btn-secondary">{t('common.cancel')}</button>
+              <button
+                onClick={handleSampleRequest}
+                disabled={submitting}
+                className="ur-btn ur-btn-md ur-btn-primary flex-1 flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Truck className="w-4 h-4" />}
+                {t('seller.submitRequest')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 상품 등록 모달 ── */}
+      {registerModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 pb-4">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setRegisterModal(null)} />
+          <div className="relative rounded-[var(--dash-radius,16px)] border border-rule bg-white shadow-xl w-full max-w-sm p-5">
+            <h3 className="text-sm font-semibold text-gray-900 mb-1">{t('seller.storeRegisterTitle')}</h3>
+            <p className="text-xs text-gray-500 mb-4">{registerModal.product_name}</p>
+
+            <div className="border border-rule bg-white rounded-lg p-3 mb-4 space-y-1">
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-500">{t('seller.supplyPriceCost')}</span>
+                <span className="font-medium text-gray-700">{formatNumber(registerModal.supply_price)}{t('common.won')}</span>
+              </div>
+              <p className="text-xs text-tone-ok mt-1">{t('seller.profitExplain')}</p>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('seller.setSellerPrice')} <span className="text-tone-bad">*</span></label>
+              <input
+                type="number"
+                value={sellerPrice}
+                onChange={e => setSellerPrice(e.target.value)}
+                min={registerModal.supply_price || 1}
+                placeholder={t('seller.enterSellerPrice')}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-green-500 focus:outline-none"
+              />
+              {sellerPrice && Number(sellerPrice) > (registerModal.supply_price || 0) && (
+                <p className="text-xs text-tone-ok mt-1 font-medium">
+                  {t('seller.expectedMargin', { amount: (Number(sellerPrice) - (registerModal.supply_price || 0)).toLocaleString() })}
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <button onClick={() => setRegisterModal(null)} className="flex-1 ur-btn ur-btn-md ur-btn-secondary">{t('common.cancel')}</button>
+              <button
+                onClick={handleRegister}
+                disabled={registering || !sellerPrice || Number(sellerPrice) <= 0}
+                className="flex-1 ur-btn ur-btn-md ur-btn-primary"
+              >
+                {registering ? <Loader2 className="w-4 h-4 animate-spin" /> : <Package className="w-4 h-4" />}
+                {t('seller.registerProductBtn')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </SellerLayout>
+  )
+}

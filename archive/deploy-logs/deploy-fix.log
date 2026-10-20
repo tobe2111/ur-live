@@ -1,0 +1,21 @@
+
+ ⛅️ wrangler 4.70.0
+───────────────────
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mWarning: Your working directory is a git repo and has uncommitted changes[0m
+
+  To silence this warning, pass in --commit-dirty=true
+
+
+Uploading... (26/160)
+Uploading... (71/160)
+Uploading... (115/160)
+Uploading... (160/160)
+✨ Success! Uploaded 134 files (26 already uploaded) (3.28 sec)
+
+✨ Uploading _headers
+✨ Uploading _redirects
+✨ Compiled Worker successfully
+✨ Uploading Worker bundle
+✨ Uploading _routes.json
+🌎 Deploying...
+✨ Deployment complete! Take a peek over at https://001d71dd.ur-live.pages.dev

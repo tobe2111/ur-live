@@ -1,0 +1,101 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║                  live.ur-team.com 404 오류 수정 요약                   ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+📋 문제: KAKAO_REST_API_KEY is required → 404 오류
+✅ 해결: Cloudflare Pages 환경 변수 20개 식별 및 문서화 완료
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 즉시 실행 (10분)
+
+1. https://dash.cloudflare.com/ 접속
+2. Workers & Pages → 프로젝트 선택 (ur-live 또는 ur-live-kr)
+3. Settings → Environment variables → Production
+4. 아래 파일 열기:
+   
+   cat CLOUDFLARE_ENV_VARS_COPY_PASTE.md
+   
+5. 20개 변수 복사-붙여넣기 (Add variable 버튼)
+6. Deployments → Retry deployment
+7. 3~5분 후 https://live.ur-team.com 확인
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 환경 변수 (20개)
+
+┌─────────────────────────┬────────────────────────────────────┬──────────┐
+│ 카테고리                 │ 변수명                              │ 상태     │
+├─────────────────────────┼────────────────────────────────────┼──────────┤
+│ Firebase (8개)          │ VITE_FIREBASE_API_KEY              │ ✅ 실제  │
+│                         │ VITE_FIREBASE_AUTH_DOMAIN          │ ✅ 실제  │
+│                         │ VITE_FIREBASE_PROJECT_ID           │ ✅ 실제  │
+│                         │ VITE_FIREBASE_STORAGE_BUCKET       │ ✅ 실제  │
+│                         │ VITE_FIREBASE_MESSAGING_SENDER_ID  │ ✅ 실제  │
+│                         │ VITE_FIREBASE_APP_ID               │ ✅ 실제  │
+│                         │ VITE_FIREBASE_MEASUREMENT_ID       │ ✅ 실제  │
+│                         │ VITE_FIREBASE_DATABASE_URL         │ ✅ 실제  │
+├─────────────────────────┼────────────────────────────────────┼──────────┤
+│ Kakao (3개)             │ VITE_KAKAO_REST_API_KEY            │ ✅ 실제  │
+│                         │ VITE_KAKAO_JAVASCRIPT_KEY          │ ✅ 실제  │
+│                         │ VITE_KAKAO_AUTH_URL                │ ✅ 실제  │
+├─────────────────────────┼────────────────────────────────────┼──────────┤
+│ Toss (1개)              │ VITE_TOSS_CLIENT_KEY               │ ⚠️ 테스트│
+├─────────────────────────┼────────────────────────────────────┼──────────┤
+│ 기타 (3개)              │ VITE_REGION                        │ ✅ 설정  │
+│                         │ VITE_DEFAULT_LANGUAGE              │ ✅ 설정  │
+│                         │ VITE_API_BASE_URL                  │ ✅ 설정  │
+├─────────────────────────┼────────────────────────────────────┼──────────┤
+│ Backend (5개)           │ KAKAO_REST_API_KEY                 │ ✅ 실제  │
+│                         │ JWT_SECRET                         │ ⚠️ 생성  │
+│                         │ EMAIL_FROM                         │ ✅ 설정  │
+│                         │ RESEND_API_KEY                     │ ⚠️ 발급  │
+│                         │ TOSS_SECRET_KEY                    │ ⚠️ 발급  │
+└─────────────────────────┴────────────────────────────────────┴──────────┘
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📁 생성된 가이드 문서
+
+✅ CLOUDFLARE_ENV_VARS_COPY_PASTE.md   복사-붙여넣기 형식 (3 KB)
+✅ CLOUDFLARE_ENV_VARS_SETUP.md        전체 가이드 (7.4 KB)
+✅ setup-cloudflare-env.sh             자동화 스크립트 (2.8 KB)
+✅ FIX_404_COMPLETE_REPORT.md          완료 보고서 (6 KB)
+
+GitHub:
+https://github.com/tobe2111/ur-live/commit/73930f6
+https://github.com/tobe2111/ur-live/commit/0ed642e
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⏱️  예상 소요 시간
+
+환경 변수 추가:       10분 (Dashboard UI)
+재배포:               3~5분
+합계:                 13~15분
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️  주의사항
+
+1. Cloudflare 프로젝트 이름 확인 (ur-live? ur-live-kr?)
+2. Toss 키는 테스트용 (프로덕션 배포 전 교체)
+3. Backend 변수 3개는 나중에 설정 가능:
+   - JWT_SECRET: openssl rand -base64 32
+   - RESEND_API_KEY: https://resend.com/api-keys
+   - TOSS_SECRET_KEY: https://dashboard.tosspayments.com/
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📞 빠른 명령어
+
+# 가이드 열기
+cat CLOUDFLARE_ENV_VARS_COPY_PASTE.md
+
+# 자동화 스크립트 (Wrangler CLI)
+./setup-cloudflare-env.sh ur-live-kr
+
+# 전체 보고서
+cat FIX_404_COMPLETE_REPORT.md
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

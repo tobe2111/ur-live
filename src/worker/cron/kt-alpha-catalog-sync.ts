@@ -1,0 +1,254 @@
+/**
+ * 🛡️ 2026-05-19: KT Alpha (기프티쇼) 상품 카탈로그 sync.
+ *
+ *   매일 03:00 UTC (KST 12:00) 실행:
+ *     - GET 0101 listGoods 전체 페이지 순회
+ *     - gift_catalog 테이블에 UPSERT (gift_code PK 기준)
+ *     - 더 이상 SALE 아닌 상품은 is_active=0 처리
+ *     - platform_settings 의 sync 통계 갱신
+ *
+ *   추가로 0301 비즈머니 잔액도 1회 호출 → 어드민 모니터링.
+ *
+ *   안전:
+ *     - KT_ALPHA_AUTH_CODE 미설정 시 skip
+ *     - API 오류 시 catch + 마지막 sync 시각 유지
+ *     - 1회 sync 최대 50 페이지 (5000개) — 한도
+ */
+type Env = {
+  DB: D1Database
+  KT_ALPHA_AUTH_CODE?: string
+  KT_ALPHA_TOKEN_KEY?: string
+  KT_ALPHA_AUTH_TOKEN?: string
+  KT_ALPHA_DEV_MODE?: string
+}
+
+export async function runKtAlphaCatalogSync(env: Env): Promise<{
+  synced: number; deactivated: number; balance: number | null; recategorized?: number; error?: string;
+}> {
+  if (!env.KT_ALPHA_AUTH_CODE) {
+    return { synced: 0, deactivated: 0, balance: null, error: 'KT_ALPHA_AUTH_CODE 미설정 — skip' }
+  }
+
+  try {
+    const { fetchAllGoods, goodsItemToCatalogRow, getBizMoneyBalance } = await import('../utils/giftishow-api')
+
+    // 1. 전체 상품 fetch.
+    const allItems = await fetchAllGoods(env, { pageSize: 100, maxPages: 50 })
+    const fetchedCodes = new Set<string>()
+    let synced = 0
+
+    // 🛡️ 2026-05-19: D1 batch INSERT 로 변경 (24개 페이지/2260개 상품 sync 시 30초 timeout 회피).
+    //   sequential await 5-10ms × 2260 = 11-23초 → batch 50개씩 chunk = 약 2-3초.
+    const upsertSql = `INSERT INTO gift_catalog (
+       gift_code, goods_no, name, brand_code, brand_name, brand_icon_url,
+       sale_price, discount_price, real_price, discount_rate,
+       image_url_small, image_url_large, desc_image_url,
+       goods_type_name, goods_type_detail, category_seq, affiliate_id, affiliate_name,
+       valid_period_type, valid_period_days, valid_period_until,
+       goods_state, is_active, search_keywords, content, content_add_desc, popular,
+       sync_at, updated_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+              datetime('now'), datetime('now'))
+     ON CONFLICT(gift_code) DO UPDATE SET
+       name = excluded.name, brand_code = excluded.brand_code, brand_name = excluded.brand_name,
+       brand_icon_url = excluded.brand_icon_url, sale_price = excluded.sale_price,
+       discount_price = excluded.discount_price, real_price = excluded.real_price,
+       discount_rate = excluded.discount_rate, image_url_small = excluded.image_url_small,
+       image_url_large = excluded.image_url_large, desc_image_url = excluded.desc_image_url,
+       goods_type_name = excluded.goods_type_name, goods_type_detail = excluded.goods_type_detail,
+       category_seq = excluded.category_seq, affiliate_id = excluded.affiliate_id,
+       affiliate_name = excluded.affiliate_name, valid_period_type = excluded.valid_period_type,
+       valid_period_days = excluded.valid_period_days, valid_period_until = excluded.valid_period_until,
+       goods_state = excluded.goods_state, is_active = excluded.is_active,
+       search_keywords = excluded.search_keywords, content = excluded.content,
+       content_add_desc = excluded.content_add_desc, popular = excluded.popular,
+       sync_at = datetime('now'), updated_at = datetime('now')`
+
+    const BATCH_SIZE = 50
+    for (let i = 0; i < allItems.length; i += BATCH_SIZE) {
+      const chunk = allItems.slice(i, i + BATCH_SIZE)
+      const statements = chunk.map((item) => {
+        const row = goodsItemToCatalogRow(item)
+        fetchedCodes.add(String(row.gift_code))
+        return env.DB.prepare(upsertSql).bind(
+          row.gift_code, row.goods_no, row.name, row.brand_code, row.brand_name, row.brand_icon_url,
+          row.sale_price, row.discount_price, row.real_price, row.discount_rate,
+          row.image_url_small, row.image_url_large, row.desc_image_url,
+          row.goods_type_name, row.goods_type_detail, row.category_seq, row.affiliate_id, row.affiliate_name,
+          row.valid_period_type, row.valid_period_days, row.valid_period_until,
+          row.goods_state, row.is_active, row.search_keywords, row.content, row.content_add_desc, row.popular,
+        )
+      })
+      try {
+        await env.DB.batch(statements)
+        synced += chunk.length
+      } catch (e) {
+        // batch 실패 시 개별 시도 (fail-soft).
+        for (const stmt of statements) {
+          try { await stmt.run(); synced++ } catch { /* skip */ }
+        }
+        console.error('[kt-alpha sync] batch failed, fell back to individual:', String(e).slice(0, 200))
+      }
+    }
+
+    // 2. fetch 안 된 row 들은 is_active=0 (단종/일시 중지).
+    let deactivated = 0
+    if (fetchedCodes.size > 0) {
+      // 안전: 한 번에 너무 많은 placeholders 회피 — chunk.
+      const allCurrent = await env.DB.prepare(
+        'SELECT gift_code FROM gift_catalog WHERE is_active = 1'
+      ).all<{ gift_code: string }>().catch(() => ({ results: [] }))
+
+      const toDeactivate = (allCurrent.results || []).filter((r) => !fetchedCodes.has(r.gift_code))
+      for (const r of toDeactivate) {
+        await env.DB.prepare(
+          `UPDATE gift_catalog SET is_active = 0, goods_state = 'SUS', updated_at = datetime('now') WHERE gift_code = ?`
+        ).bind(r.gift_code).run().catch(() => { /* noop */ })
+        deactivated++
+      }
+    }
+
+    // 3. 비즈머니 잔액 조회 + 저장.
+    let balance: number | null = null
+    try {
+      const userIdRow = await env.DB.prepare(
+        "SELECT value FROM platform_settings WHERE key = 'kt_alpha_user_id'"
+      ).first<{ value: string }>()
+      if (userIdRow?.value) {
+        const bal = await getBizMoneyBalance(env, userIdRow.value)
+        balance = bal.balance
+        // 🛡️ 2026-05-21: UPSERT — UPDATE 만 쓰면 row 없을 때 silent no-op (사용자 신고 원인).
+        await env.DB.prepare(
+          `INSERT INTO platform_settings (key, value, updated_at)
+           VALUES ('kt_alpha_biz_money_balance', ?, datetime('now'))
+           ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`
+        ).bind(String(balance)).run().catch(() => { /* noop */ })
+        await env.DB.prepare(
+          `INSERT INTO platform_settings (key, value, updated_at)
+           VALUES ('kt_alpha_biz_money_check_at', datetime('now'), datetime('now'))
+           ON CONFLICT(key) DO UPDATE SET value = datetime('now'), updated_at = datetime('now')`
+        ).run().catch(() => { /* noop */ })
+
+        // 🛡️ 2026-05-19: 잔액 부족 알림 — 10만 원 이하 시 어드민에게 dashboard 알림.
+        //   중복 방지: 24시간 내 같은 type 발송 안 함.
+        if (balance < 100_000) {
+          const recentAlert = await env.DB.prepare(
+            `SELECT id FROM dashboard_notifications
+              WHERE type = 'kt_alpha_balance_low' AND created_at > datetime('now', '-24 hours') LIMIT 1`
+          ).first().catch(() => null)
+          if (!recentAlert) {
+            await env.DB.prepare(
+              `INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link, created_at)
+               VALUES ('admin', NULL, 'kt_alpha_balance_low', ?, ?, '/admin/kt-alpha', datetime('now'))`
+            ).bind(
+              `⚠️ KT Alpha 비즈머니 잔액 부족 ₩${balance.toLocaleString()}`,
+              `교환권 발송 차단 위험 — 기프티쇼 콘솔에서 충전 필요${balance === 0 ? ' (현재 0원, 즉시 차단됨)' : ''}`,
+            ).run().catch(() => { /* table 없으면 silent */ })
+          }
+        }
+      }
+    } catch (e) {
+      console.error('[kt-alpha balance check]', String(e).slice(0, 200))
+    }
+
+    // 4. sync 통계 저장.
+    await env.DB.prepare(
+      `UPDATE platform_settings SET value = datetime('now'), updated_at = datetime('now') WHERE key = 'kt_alpha_last_sync_at'`
+    ).run().catch(() => { /* noop */ })
+    await env.DB.prepare(
+      `UPDATE platform_settings SET value = ?, updated_at = datetime('now') WHERE key = 'kt_alpha_last_sync_count'`
+    ).bind(String(synced)).run().catch(() => { /* noop */ })
+
+    // 🛡️ 2026-05-20: gift_catalog → products.category 자동 동기화 (운영자 액션 자동화).
+    //   사용자 요청: "운영자 액션 권장 이거 그냥 너가 해주면 안돼?"
+    //   기존: 어드민이 /admin/kt-alpha "카테고리 자동 재분류" 버튼 수동 클릭 필요.
+    //   변경: cron 매 sync 시 자동 — UPDATE products SET category = gift_catalog.goods_type_detail
+    //         WHERE products.gift_code = gift_catalog.gift_code AND products.category IN ('voucher', '', NULL).
+    //   기존 명시 분류 (category != 'voucher') 는 건드리지 않음.
+    // 🛡️ 2026-05-21 v2: 진단 발견 — products 컬럼명은 `kt_alpha_gift_code` (gift_code 아님).
+    //   진단 결과: gift_catalog 2260개 + JOIN 100% 매칭이지만 products.category 'voucher' 유지.
+    //   원인: 이전 SQL 의 `gift_code IS NOT NULL` 이 존재하지 않는 컬럼 참조 → catch silent.
+    //   영구 fix: kt_alpha_gift_code 로 정확히 매칭 + brand_name/brand_icon_url 도 함께 backfill.
+    let recategorized = 0
+    let brandFilled = 0
+    try {
+      // 1. category 자동 분류 (products.category = gift_catalog.goods_type_detail)
+      const r = await env.DB.prepare(
+        `UPDATE products
+            SET category = (
+              SELECT goods_type_detail FROM gift_catalog gc
+              WHERE gc.gift_code = products.kt_alpha_gift_code
+                AND gc.goods_type_detail IS NOT NULL
+                AND gc.goods_type_detail != ''
+            ),
+            updated_at = datetime('now')
+          WHERE deal_only = 1
+            AND COALESCE(category, '') IN ('', 'voucher')
+            AND kt_alpha_gift_code IS NOT NULL
+            AND kt_alpha_gift_code IN (SELECT gift_code FROM gift_catalog WHERE goods_type_detail IS NOT NULL AND goods_type_detail != '')`
+      ).run().catch(() => null)
+      recategorized = (r?.meta?.changes ?? 0) as number
+
+      // 2. 진단 발견 — products.brand_name 도 모두 NULL → gift_catalog 에서 backfill (영구).
+      //    brand_icon_url 도 같이 갱신 — UI 에 브랜드 아이콘 표시 가능.
+      const r2 = await env.DB.prepare(
+        `UPDATE products
+            SET brand_name = (SELECT brand_name FROM gift_catalog WHERE gift_code = products.kt_alpha_gift_code),
+                brand_icon_url = (SELECT brand_icon_url FROM gift_catalog WHERE gift_code = products.kt_alpha_gift_code),
+                updated_at = datetime('now')
+          WHERE deal_only = 1
+            AND (brand_name IS NULL OR brand_name = '')
+            AND kt_alpha_gift_code IS NOT NULL
+            AND kt_alpha_gift_code IN (SELECT gift_code FROM gift_catalog WHERE brand_name IS NOT NULL AND brand_name != '')`
+      ).run().catch(() => null)
+      brandFilled = (r2?.meta?.changes ?? 0) as number
+    } catch { /* noop */ }
+
+    if (recategorized > 0 || brandFilled > 0) {
+      console.info(`[kt-alpha sync] auto-recategorized ${recategorized} products / brand_name backfilled ${brandFilled}`)
+    }
+
+    // 5. 🧹 2026-06-17 (사용자 요청 — 자동 1회): 과거 sync 가 description 에 박은
+    //    "(KT Alpha B2B 정책)" 괄호를 일괄 제거. one-time 플래그(platform_settings)로 단 1회만
+    //    실행 → 이후 sync 는 skip (멱등이지만 매일 UPDATE 부하 회피). 운영자 수동 버튼과 독립.
+    try {
+      const flagKey = 'kt_alpha_desc_policy_cleanup_v1'
+      const done = await env.DB.prepare(
+        `SELECT value FROM platform_settings WHERE key = ?`
+      ).bind(flagKey).first<{ value: string }>().catch(() => null)
+      if (!done) {
+        const { cleanupKtAlphaDescriptions } = await import('../utils/kt-alpha-cleanup')
+        const cleaned = await cleanupKtAlphaDescriptions(env.DB)
+        await env.DB.prepare(
+          `INSERT INTO platform_settings (key, value, updated_at)
+           VALUES (?, ?, datetime('now'))
+           ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`
+        ).bind(flagKey, `done:${cleaned}@${new Date().toISOString()}`).run().catch(() => { /* noop */ })
+        console.info(`[kt-alpha sync] one-time desc policy cleanup removed parenthetical from ${cleaned} products`)
+      }
+    } catch (e) {
+      console.error('[kt-alpha desc cleanup]', String(e).slice(0, 200))
+    }
+
+    return { synced, deactivated, balance, recategorized }
+  } catch (err) {
+    // 🛡️ 2026-05-19: sync 실패 → 어드민 알림 (24h 중복 방지).
+    const errMsg = (err as Error).message.slice(0, 200)
+    try {
+      const recent = await env.DB.prepare(
+        `SELECT id FROM dashboard_notifications
+          WHERE type = 'kt_alpha_sync_failed' AND created_at > datetime('now', '-24 hours') LIMIT 1`
+      ).first().catch(() => null)
+      if (!recent) {
+        await env.DB.prepare(
+          `INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link, created_at)
+           VALUES ('admin', NULL, 'kt_alpha_sync_failed', ?, ?, '/admin/kt-alpha', datetime('now'))`
+        ).bind(
+          '⚠️ KT Alpha 카탈로그 sync 실패',
+          `${errMsg} — 어드민 페이지에서 수동 sync 시도 필요`,
+        ).run().catch(() => { /* noop */ })
+      }
+    } catch { /* noop */ }
+    return { synced: 0, deactivated: 0, balance: null, error: errMsg }
+  }
+}
