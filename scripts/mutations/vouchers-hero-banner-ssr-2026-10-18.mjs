@@ -33,12 +33,12 @@ export default [
     why: '마운트 때 판이 빈 채로 응답을 기다린다 — 서버가 그린 사진이 지워졌다가 다시 그려진다.',
   },
   {
-    name: '🖼️ 상세 히어로까지 화질이 내려간다',
+    name: '🖼️ 상세 히어로 화질이 다시 85',
     file: 'src/shared/detail-hero-image.ts',
-    find: "gravity: 'auto', format: 'auto', quality: DETAIL_HERO_QUALITY })",
-    replace: "gravity: 'auto', format: 'auto' })",
+    find: 'export const DETAIL_HERO_QUALITY = 75',
+    replace: 'export const DETAIL_HERO_QUALITY = 85',
     test: 'src/tests/unit/image-quality-2026-10-18.test.ts',
-    why: '기본값을 75 로 낮춘 것은 카드처럼 작은 사진 이야기다. 사람이 확대해 보는 상품의 큰 사진은 85 를 지킨다.',
+    why: '2026-10-20 대표 승인으로 75 — 85 로 돌아가면 상세의 LCP 사진이 20% 무거워진다(숙소 105 → 132KB).',
   },
   {
     name: '🖼️ 기본 화질이 다시 85',
