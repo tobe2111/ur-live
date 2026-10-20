@@ -112,7 +112,7 @@ export default function AdminVouchersPage() {
 
       {settings && (
         <div className="fixed inset-0 z-[10500] bg-black/50 overflow-y-auto overscroll-contain p-4" onClick={() => setSettings(null)} role="dialog" aria-modal="true" aria-label="판매 설정">
-          <div className="max-w-2xl mx-auto my-10 bg-white rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
+          <div className="max-w-2xl mx-auto my-10 bg-white rounded-[var(--dash-radius,16px)] p-5" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-[15px] font-bold text-gray-900">판매 설정</p>
