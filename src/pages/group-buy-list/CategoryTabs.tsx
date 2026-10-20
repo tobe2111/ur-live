@@ -23,6 +23,7 @@ export default function CategoryTabs({ category, setCategory, navigate, searchPa
               { key: 'meal_voucher', label: t('groupBuy.categoryMealVoucher', { defaultValue: '🍽️ 이용권' }) },
               { key: 'beauty_voucher', label: t('groupBuy.categoryBeauty', { defaultValue: '💇 미용' }) },
               { key: 'stay_voucher', label: t('groupBuy.categoryStay', { defaultValue: '🏨 숙소' }) },
+              { key: 'home_voucher', label: t('groupBuy.categoryHome', { defaultValue: '생활' }) },
               { key: 'etc_voucher', label: t('groupBuy.categoryEtc', { defaultValue: '🎯 기타' }) },
               { key: 'general', label: t('groupBuy.categoryGeneral', { defaultValue: '🛍️ 온라인 (배송)' }) },
             ] as const).map((tab) => (

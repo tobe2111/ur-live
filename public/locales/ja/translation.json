@@ -2298,7 +2298,9 @@
       "categoryActivity": "Activity voucher",
       "categoryActivityDesc": "Escape room, bowling, class",
       "categoryEtc": "その他の券",
-      "categoryEtcDesc": "ペット·アクティビティ·クラス"
+      "categoryEtcDesc": "ペット·アクティビティ·クラス",
+      "categoryHome": "生活チケット",
+      "categoryHomeDesc": "引越し・入居清掃・エアコン清掃"
     },
     "gift": {
       "title": "ギフトを送る",
@@ -5928,6 +5930,7 @@
       "health": "ヘルス",
       "pet": "ペット",
       "stay": "宿泊",
+      "home": "生活",
       "activity": "アクティビティ",
       "etc": "その他"
     },

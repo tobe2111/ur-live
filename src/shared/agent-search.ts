@@ -26,6 +26,7 @@ export const AGENT_CATEGORY: Record<string, { key: string; label: string }> = {
   meal: { key: 'meal_voucher', label: '식사' },
   beauty: { key: 'beauty_voucher', label: '뷰티' },
   stay: { key: 'stay_voucher', label: '숙소' },
+  home: { key: 'home_voucher', label: '생활' },
   etc: { key: 'etc_voucher', label: '기타' },
 }
 

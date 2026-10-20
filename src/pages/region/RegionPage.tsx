@@ -42,6 +42,7 @@ const CATEGORY_CHIPS = [
   { key: 'meal_voucher', label: '식사' },
   { key: 'beauty_voucher', label: '뷰티' },
   { key: 'stay_voucher', label: '숙소' },
+  { key: 'home_voucher', label: '생활' },
   { key: 'etc_voucher', label: '기타' },
 ] as const
 type CategoryKey = typeof CATEGORY_CHIPS[number]['key']

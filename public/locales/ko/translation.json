@@ -2329,7 +2329,9 @@
       "categoryActivity": "액티비티 이용권",
       "categoryActivityDesc": "방탈출·볼링·클래스",
       "categoryEtc": "기타 이용권",
-      "categoryEtcDesc": "반려·액티비티·클래스"
+      "categoryEtcDesc": "반려·액티비티·클래스",
+      "categoryHome": "생활 이용권",
+      "categoryHomeDesc": "이사·입주청소·에어컨 청소"
     },
     "gift": {
       "title": "선물하기",
@@ -6175,6 +6177,7 @@
       "health": "헬스",
       "pet": "반려",
       "stay": "숙소",
+      "home": "생활",
       "activity": "액티비티",
       "etc": "기타"
     },

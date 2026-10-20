@@ -13,6 +13,7 @@ import { safeError } from '@/worker/utils/safe-error';
 import type { Env } from '@/worker/types/env'
 import { intParam } from '@/shared/pagination'
 import { buildIdleHoursReport, normalizeCells } from '@/shared/idle-hours'
+import { VOUCHER_CATEGORY_SQL_IN } from '@/shared/constants/voucher-categories'
 
 // 🛡️ 2026-06-11 감사: per-request ALTER → isolate 당 1회 메모이즈 (DDL 라운드트립 절감).
 const _done_ensureReviewReplyCols = new WeakSet<object>()
@@ -497,7 +498,7 @@ sellerAnalyticsRoutes.get('/products/monthly-trend', requireAuth(), async (c) =>
   const { results } = await c.env.DB.prepare(`
     SELECT strftime('%Y-%m', created_at) AS month,
            COUNT(*) AS new_products,
-           COUNT(CASE WHEN category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher') THEN 1 END) AS new_vouchers
+           COUNT(CASE WHEN category IN (${VOUCHER_CATEGORY_SQL_IN}) THEN 1 END) AS new_vouchers
       FROM products
      WHERE seller_id = ?
        AND created_at >= datetime('now', '-12 months')

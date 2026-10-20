@@ -29,5 +29,5 @@ export interface DealRow {
 }
 
 export const CAT_LABEL: Record<string, string> = {
-  meal_voucher: '식사', beauty_voucher: '미용', etc_voucher: '기타', general: '일반', stay_voucher: '숙소',
+  meal_voucher: '식사', beauty_voucher: '미용', etc_voucher: '기타', general: '일반', stay_voucher: '숙소', home_voucher: '생활',
 }

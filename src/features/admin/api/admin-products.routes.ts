@@ -779,6 +779,8 @@ const DEAL_CATEGORY_ALIAS: Record<string, string> = {
   '기타': 'etc_voucher', 'etc': 'etc_voucher', 'etc_voucher': 'etc_voucher',
   // ❌ 2026-07-02 (대표 확정 "완전 분리"): general(배송형) alias 제거 — 동네딜 도구로 배송형 등록 불가.
   '숙소': 'stay_voucher', 'stay': 'stay_voucher', 'stay_voucher': 'stay_voucher',
+  // 🏠 2026-10-20: 생활(이사·입주청소·에어컨 청소) — 방문형 이용권
+  '생활': 'home_voucher', '이사': 'home_voucher', '청소': 'home_voucher', 'home': 'home_voucher', 'home_voucher': 'home_voucher',
 };
 function mapDealCategory(raw: string): string | null {
   const t = (raw || '').trim();
@@ -822,7 +824,9 @@ function parseDealCsv(text: string): Record<string, string>[] {
 //   방향 역전: 상품을 정해놓고 매장을 찾는 게 아니라, 카카오에서 그 업종 실매장을 **랜덤으로 뽑고**
 //   그 매장에 맞는 오퍼(구성·가격·할인)를 조합 생성. 업종(28) × 패턴(2~3) × 가격밴드 × 할인 25~45%
 //   × 실매장(지역별 수십 곳 랜덤) × 실사진(매장명 검색) = 사실상 무한 조합, 같은 상품 반복 소멸.
-interface DemoOfferPattern { n: string; d: string; min: number; max: number }
+// `fixed` = 할인 없이 판매가 그대로(정가=판매가). 이사 할인권처럼 '견적에서 깎아 주는 권'은 정가가 없어
+//   할인율을 지어내면 거짓이 된다(2026-10-20 — 10만원 할인권을 1,000원에 팔며 '99% 할인'이라 쓰지 않는다).
+interface DemoOfferPattern { n: string; d: string; min: number; max: number; fixed?: boolean }
 interface DemoBiz { pq: string; cat: string; iq?: string; pat: DemoOfferPattern[] }
 const DEMO_BIZ: DemoBiz[] = [
   { pq: '삼겹살', cat: 'meal_voucher', pat: [
@@ -939,6 +943,19 @@ const DEMO_BIZ: DemoBiz[] = [
   { pq: '만화카페', cat: 'etc_voucher', iq: '만화카페 내부', pat: [
     { n: '만화카페 4시간 + 음료 2잔', d: '프라이빗 룸 4시간 + 음료 2잔. 신간 매주 입고.', min: 12000, max: 19000 },
     { n: '커플석 3시간 + 음료 2잔', d: '커플 좌석 3시간 + 음료 2잔. 담요 제공.', min: 16000, max: 24000 } ] },
+  // 🏠 2026-10-20 대표 확정 — 생활(방문형). 청소·에어컨은 평수·대수별 정찰가라 정식 이용권으로,
+  //   이사는 짐 양마다 값이 달라 '할인권'(견적에서 차감, 업체가 견적)으로만 판다.
+  { pq: '입주청소', cat: 'home_voucher', iq: '입주청소 현장', pat: [
+    { n: '입주청소 20평대 (베란다·창틀 포함)', d: '20평대 아파트 입주청소. 베란다·창틀·주방 후드까지. 기사 2인 방문, 예약일 조율.', min: 280000, max: 360000 },
+    { n: '입주청소 30평대 (새집증후군 케어)', d: '30평대 입주청소 + 피톤치드 새집증후군 케어. 기사 3인 방문, 예약일 조율.', min: 380000, max: 480000 },
+    { n: '이사청소 10평대 원룸', d: '원룸·오피스텔 이사청소. 화장실·주방 집중, 약 3시간 소요.', min: 140000, max: 190000 } ] },
+  { pq: '에어컨청소', cat: 'home_voucher', iq: '에어컨 분해 청소', pat: [
+    { n: '벽걸이 에어컨 완전분해 세척', d: '벽걸이 1대 완전분해 고압 세척 + 살균. 약 1시간 30분.', min: 70000, max: 95000 },
+    { n: '스탠드 에어컨 완전분해 세척', d: '스탠드 1대 분해 세척 + 냄새 제거. 실외기 점검 포함.', min: 120000, max: 160000 },
+    { n: '2in1 (스탠드+벽걸이) 세척', d: '스탠드 1대 + 벽걸이 1대 분해 세척 세트. 이사 전후 인기.', min: 170000, max: 230000 } ] },
+  { pq: '포장이사', cat: 'home_voucher', iq: '포장이사 작업', pat: [
+    { n: '포장이사 10만원 할인권', d: '견적 금액에서 10만원을 할인해 드려요. 실제 견적은 업체가 방문·전화로 산정하며, 예약 확정 때 기사님이 코드를 확인합니다.', min: 1000, max: 1000, fixed: true },
+    { n: '원룸 이사 5만원 할인권', d: '원룸·소형 이사 견적에서 5만원 할인. 견적은 업체가 산정하고, 이사 당일 기사님이 코드를 확인합니다.', min: 1000, max: 1000, fixed: true } ] },
   { pq: '도자기공방', cat: 'etc_voucher', iq: '도자기 공방 클래스', pat: [
     { n: '도자기 원데이 클래스 2인', d: '물레 체험 + 소품 1개 제작. 완성품은 2주 후 수령.', min: 34000, max: 55000 },
     { n: '핸드페인팅 머그 클래스', d: '초벌 머그에 핸드페인팅. 1시간 30분, 2주 후 수령.', min: 25000, max: 40000 } ] },
@@ -952,6 +969,7 @@ const DEMO_GUS = ['강남구', '서초구', '송파구', '마포구', '성동구
 function demoDiscountRange(cat: string): [number, number] {
   if (cat === 'meal_voucher') return [0.12, 0.28];
   if (cat === 'beauty_voucher') return [0.3, 0.5];
+  if (cat === 'home_voucher') return [0.12, 0.25];  // 🏠 방문 서비스 — 인건비 비중 커 할인 폭이 작다
   return [0.18, 0.38];
 }
 // mult = 업종별 시세 보정 배율(어드민 편집, platform_settings.demo_price_multipliers) — 물가 드리프트 대응.
@@ -963,10 +981,10 @@ function buildDemoOffer(t: DemoBiz, mult = 1, avoid?: Set<string>): { name: stri
   if (avoid && t.pat.length > 1) {
     for (let tries = 0; tries < 8 && avoid.has(p.n); tries++) p = t.pat[Math.floor(Math.random() * t.pat.length)];
   }
-  const price = Math.max(1000, Math.round((p.min + Math.random() * (p.max - p.min)) * mult / 100) * 100);
-  const [dMin, dMax] = demoDiscountRange(t.cat);
+  const price = Math.max(1000, Math.round((p.min + Math.random() * (p.max - p.min)) * (p.fixed ? 1 : mult) / 100) * 100);
+  const [dMin, dMax] = p.fixed ? [0, 0] : demoDiscountRange(t.cat);
   const disc = dMin + Math.random() * (dMax - dMin);
-  const orig = Math.round(price / (1 - disc) / 1000) * 1000;
+  const orig = p.fixed ? price : Math.round(price / (1 - disc) / 1000) * 1000;
   return { name: p.n, desc: p.d, price, orig, q: t.iq || t.pq };
 }
 
@@ -1143,7 +1161,7 @@ export async function kakaoPlaceLookup(
 // GET /dongnedeal/stats — 동네딜 상품 현황(전체/노출/데모/카테고리별)
 adminProductsRoutes.get('/dongnedeal/stats', cors(), async (c) => {
   try {
-    const cats = ['meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher', 'general'];
+    const cats = ['meal_voucher', 'beauty_voucher', 'stay_voucher', 'home_voucher', 'etc_voucher', 'general'];
     const ph = cats.map(() => '?').join(',');
     const row = await c.env.DB.prepare(
       `SELECT COUNT(*) AS total, SUM(CASE WHEN COALESCE(is_active,1)=1 AND group_buy_status='active' THEN 1 ELSE 0 END) AS active FROM products WHERE category IN (${ph})`
@@ -1740,7 +1758,7 @@ adminProductsRoutes.post('/dongnedeal/create', cors(), async (c) => {
 // GET /dongnedeal/list — 등록된 동네딜 목록(최근순). 수정/삭제 관리용.
 adminProductsRoutes.get('/dongnedeal/list', cors(), async (c) => {
   try {
-    const cats = ['meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher', 'general'];
+    const cats = ['meal_voucher', 'beauty_voucher', 'stay_voucher', 'home_voucher', 'etc_voucher', 'general'];
     const limRaw = Number(c.req.query('limit'));
     const lim = Number.isFinite(limRaw) && limRaw > 0 && limRaw <= 200 ? Math.floor(limRaw) : 50;
     // 🔢 2026-07-06 (대표 "모든 동네딜이 다 나오나?" — 100개 cap 확인): offset 페이지네이션 + total 반환.
