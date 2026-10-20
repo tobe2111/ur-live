@@ -1579,7 +1579,9 @@
       "categoryActivity": "Activity voucher",
       "categoryActivityDesc": "Escape room, bowling, class",
       "categoryEtc": "Autre Bon",
-      "categoryEtcDesc": "Animaux·Activités·Cours"
+      "categoryEtcDesc": "Animaux·Activités·Cours",
+      "categoryHome": "Bon maison",
+      "categoryHomeDesc": "Déménagement, ménage, climatisation"
     },
     "gift": {
       "title": "Envoyer un Cadeau",
@@ -5928,6 +5930,7 @@
       "health": "Santé",
       "pet": "Animal",
       "stay": "Hébergement",
+      "home": "Maison",
       "activity": "Activité",
       "etc": "Autres"
     },
@@ -6231,6 +6234,7 @@
     "coupons": "Coupons",
     "orders": "[TODO:fr] 주문 내역",
     "ordersSub": "[TODO:fr] 최근 3개월",
+    "paymentHistory": "Historique des paiements",
     "myStays": "Mes Réservations",
     "myStaysSub": "Code check-in / expiration",
     "interestList": "Restaurants favoris",

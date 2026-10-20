@@ -118,6 +118,8 @@ const LUCIDE_HOME_ICONS = new Set([
   'party-popper', 'paw-print', 'play', 'tag', 'ticket',
   // 🖥️ 2026-10-18: 셸(PC 네비)에서 넘어온 홈 아이콘 — 카테고리 줄·정렬·검색
   'bed-double', 'chevron-down', 'chevron-right', 'layout-grid', 'scissors', 'search', 'shapes', 'utensils',
+  // 🏠 2026-10-20: '생활'(이사·청소) 카테고리 — 홈 칩·카드 카테고리 표(deal-category-icon)가 쓴다
+  'house',
 ])
 
 /**

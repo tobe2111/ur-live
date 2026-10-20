@@ -91,6 +91,8 @@ const HOT_PATHS: readonly string[] = [
   '/api/group-buy/products?status=active&category=stay_voucher&sort=popular',
   '/api/group-buy/products?status=active&category=beauty_voucher&sort=popular',
   '/api/group-buy/products?status=active&category=etc_voucher&sort=popular',
+  // 🏠 2026-10-20: '생활'(이사·청소) 칩 — 같은 규칙(칩 = 화면이 부르는 첫 주소 그대로)
+  '/api/group-buy/products?status=active&category=home_voucher&sort=popular',
   // VouchersPage / BrowsePage SSR inject 대응 — first-paint warm 유지.
   '/api/products?page=1&limit=20&deal_only=1&sort=price_low',
   '/api/products?page=1&limit=20&exclude_deal_only=1',

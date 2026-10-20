@@ -392,7 +392,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
             등록 줄과 같은 줄 문법이면 "다르더라도 티가 나야" 하는 둘이 안 갈린다 ⇒ 생김새부터 다르게
             (홈 둘 + 점선 + QR 꼬리 = 손님이 내미는 그 이용권). 면은 옅은 블루 — 진한 블루는 등록 줄 하나다.
             ⚠️ **어느 가게로 소각되는지는 좌석이 정한다** — 먼저 이 가게 좌석에 앉히고 보낸다(되돌릴 수 없다). */}
-        <div className="p-3 border-b border-rule">
+        <div className="px-3 pt-3">
           <button
             type="button"
             disabled={entering}
@@ -415,12 +415,15 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           </button>
         </div>
 
-        {/* 🔵 이용권 등록 · 관리 — 판의 **유일한 진한 블루 면**(안 3). 오른쪽 값은 모르면 안 그린다. */}
+        {/* 🔵 이용권 등록 · 관리 — 판의 **유일한 진한 블루 면**(안 3). 오른쪽 값은 모르면 안 그린다.
+            📐 2026-10-20 (대표 "2,3,4 모두 다 고쳐줘"): 위 사용처리 티켓과 **같은 폭**으로 — 티켓은 좌우 12px 안쪽에
+            서는데 이 줄만 판 끝까지 꽉 차서 두 칸의 폭이 갈렸다. 같은 여백 · 같은 모서리(10px)로 맞추고 구분선은 이 아래 하나. */}
+        <div className="p-3 border-b border-rule">
         <button
           type="button"
           disabled={entering}
           onClick={() => openPage('/seller/group-buy', '이용권')}
-          className="w-full flex items-center gap-3 px-4 min-h-[52px] py-2 bg-brand text-white text-left active:opacity-90 disabled:opacity-60"
+          className="w-full flex items-center gap-3 px-4 min-h-[52px] py-2 rounded-[10px] bg-brand text-white text-left active:opacity-90 disabled:opacity-60"
         >
           <Plus className="w-[18px] h-[18px] shrink-0" aria-hidden="true" />
           <span className="flex-1 min-w-0 text-[15px] font-extrabold truncate">이용권 등록 · 관리</span>
@@ -433,6 +436,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
             ? <Loader2 className="w-4 h-4 shrink-0 animate-spin" aria-hidden="true" />
             : <ChevronRight className="w-4 h-4 shrink-0 text-white/70" aria-hidden="true" />}
         </button>
+        </div>
 
         {/* 🧰 바로가기 셋(주문 · 정산 · 전체 도구) — `이용권` 은 위 진한 블루 줄이 됐다(안 3). */}
         <ToolRow

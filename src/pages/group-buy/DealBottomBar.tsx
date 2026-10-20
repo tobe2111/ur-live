@@ -27,6 +27,7 @@ import AddToCartButton from './AddToCartButton'
 import { VOUCHER_CART_UI_ENABLED } from '@/shared/feature-flags'
 import type { DealPlan } from './DealUseChooser'
 import OwnerManagePanel from './OwnerManagePanel'
+import { useAgentHandoff } from './useAgentHandoff'
 
 const arrow = <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
 
@@ -64,6 +65,8 @@ export default function DealBottomBar({
   const [open, setOpen] = useState(false)
   // 구매가 불가능해지면(품절 등) 열린 창을 닫는다 — 누를 수 없는 결제 버튼만 남지 않게.
   useEffect(() => { if (!isJoinable) setOpen(false) }, [isJoinable])
+  // 🛒 2026-10-20: AI 비서가 건넨 결제 링크면 그 수량으로 창을 연다(결제는 손님이 누른다).
+  const fromAgent = useAgentHandoff({ ready: isJoinable && buyable && !isPrelaunch && !isOwner, maxQty, setQuantity, setOpen })
   // 🪙 2026-10-06: 딜이 총액을 다 덮으면 카드를 안 탄다 — 버튼도 그렇게 말한다("N딜로 결제하기").
   const allDeal = canPayWithDeal && coversAll(dealPlan, dealUse)
   // 🎭 2026-10-12 (대표 "데모인 것을 티내지마"): 데모만 '결제하기'·'결제 불가' 를 쓰던 분기 제거 —
@@ -113,6 +116,7 @@ export default function DealBottomBar({
         <button type="button" aria-label="닫기" onClick={() => setOpen(false)} className="absolute inset-0 w-full h-full border-0 cursor-default" style={{ background: 'rgba(22,24,28,.45)' }} />
         <div className="absolute inset-x-0 bottom-0 rounded-t-3xl" style={{ zIndex: Z.SHEET_BODY, background: 'var(--gbd-bg)', padding: '12px 16px calc(16px + env(safe-area-inset-bottom))' }}>
           <div aria-hidden className="mx-auto mb-4 w-9 h-1 rounded-full" style={{ background: 'var(--gbd-line2)' }} />
+          {fromAgent && <p className="mb-3 px-1 text-[13px]" style={{ color: 'var(--gbd-sub)' }}>AI 비서가 고른 수량이에요. 확인하고 결제해 주세요.</p>}
           <FieldCard>
             <FieldRow
               label="수량"

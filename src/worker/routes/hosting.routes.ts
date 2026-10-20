@@ -25,6 +25,7 @@ import { requireAuth } from '../middleware/auth'
 import { safeError } from '../utils/safe-error'
 import { HOSTING_DEFAULTS } from '../../shared/constants/policy'
 import { intParam } from '@/shared/pagination'
+import { ALL_VOUCHER_CATEGORY_KEYS } from '../../shared/constants/voucher-categories'
 
 const hostingRoutes = new Hono<{ Bindings: Env }>()
 
@@ -106,7 +107,7 @@ hostingRoutes.get('/catalog', requireAuth(), async (c) => {
     await ensureHostingTables(c.env.DB)
 
     // voucher 카테고리만 (`marketing.routes.ts:698` 의 validCats 와 일치)
-    const validCats = ['meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher']
+    const validCats: readonly string[] = ALL_VOUCHER_CATEGORY_KEYS
     const catFilter = validCats.includes(category) ? ' AND p.category = ?' : ''
     const params: any[] = []
     if (catFilter) params.push(category)

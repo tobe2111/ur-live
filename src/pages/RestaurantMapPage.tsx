@@ -70,7 +70,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   const [voucherType, setVoucherType] = useState<MapVoucherType>(() => {
     try {
       const q = new URLSearchParams(window.location.search).get('category')
-      return q && ['meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher'].includes(q) ? (q as MapVoucherType) : 'all'
+      return q && ['meal_voucher', 'beauty_voucher', 'stay_voucher', 'home_voucher', 'etc_voucher'].includes(q) ? (q as MapVoucherType) : 'all'
     } catch { return 'all' }
   })
   // 🩸 2026-09-03: 위치가 캐시되면 `useNearMeAuto` 가 '가까운 순'으로 바꿔 **두 번째 요청**이 생긴다 → 처음부터 거기서 시작.

@@ -145,6 +145,12 @@ export const OPS_POLICY_FIELDS: Array<{ key: string; label: string; hint: string
     text: true,
   },
   {
+    key: 'agent_checkout_enabled',
+    label: 'AI 비서 결제 링크(손님이 확인 후 결제)',
+    hint: "기본 꺼짐. 'true' 면 GET /api/agent/checkout 이 금액과 결제 링크를 준다 — 손님이 링크를 열면 구매 창이 그 수량으로 열리고 직접 결제한다(AI 는 결제 안 함). 검색 창구도 켜져 있어야 동작. 켜기 전 S-AGENT-5·6",
+    text: true,
+  },
+  {
     // 💬 2026-10-10: 카카오톡 채널 챗봇으로 매장 관리(연결·오늘 판매·사용 처리·판매 중지). 스킬 자체는
     //   `KAKAO_SKILL_SECRET` 가 따로 켠다 — 이 값은 그 위의 **매장 관리** 명령만 연다.
     //   ⚠️ `text: true` — 값이 'true'/'false' 문자열이라 숫자 검증 배열에 두면 저장이 거부된다.

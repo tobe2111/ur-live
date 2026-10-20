@@ -13,10 +13,10 @@
  *   유어딜 선 아이콘(24 그리드·1.6). 이모지는 색이 제각각이라 지도 위에서 지도색과 섞였고,
  *   표면 규칙 ⑥(이모지 0)에도 어긋났다.
  */
-import { GridIcon, MealLineIcon, BeautyLineIcon, StayLineIcon, TicketStubIcon } from '@/components/icons/urdeal-icons'
+import { GridIcon, MealLineIcon, BeautyLineIcon, StayLineIcon, HomeServiceLineIcon, TicketStubIcon } from '@/components/icons/urdeal-icons'
 
 /** 'all'(전체) + 실제 4종 카테고리. VOUCHER_CATEGORIES 와 1:1. */
-export type MapVoucherType = 'all' | 'meal_voucher' | 'beauty_voucher' | 'stay_voucher' | 'etc_voucher'
+export type MapVoucherType = 'all' | 'meal_voucher' | 'beauty_voucher' | 'stay_voucher' | 'home_voucher' | 'etc_voucher'
 
 export interface MapVoucherDef {
   key: MapVoucherType
@@ -39,6 +39,7 @@ export const MAP_VOUCHER_DEFS: MapVoucherDef[] = [
   { key: 'meal_voucher', labelKey: 'map.voucher.meal', defaultLabel: '식사', icon: MealLineIcon },
   { key: 'beauty_voucher', labelKey: 'map.voucher.beauty', defaultLabel: '뷰티·헬스', icon: BeautyLineIcon, shortLabel: '뷰티' },
   { key: 'stay_voucher', labelKey: 'map.voucher.stay', defaultLabel: '숙소', icon: StayLineIcon },
+  { key: 'home_voucher', labelKey: 'map.voucher.home', defaultLabel: '생활', icon: HomeServiceLineIcon },
   { key: 'etc_voucher', labelKey: 'map.voucher.etc', defaultLabel: '기타', icon: TicketStubIcon },
 ]
 
@@ -48,5 +49,6 @@ export const MAP_EMPTY_MSG: Record<MapVoucherType, string> = {
   meal_voucher: '맛집을 찾지 못했어요',
   beauty_voucher: '뷰티·헬스를 찾지 못했어요',
   stay_voucher: '숙소를 찾지 못했어요',
+  home_voucher: '이사·청소 업체를 찾지 못했어요',
   etc_voucher: '해당 딜을 찾지 못했어요',
 }

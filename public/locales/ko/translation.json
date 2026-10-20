@@ -2329,7 +2329,9 @@
       "categoryActivity": "액티비티 이용권",
       "categoryActivityDesc": "방탈출·볼링·클래스",
       "categoryEtc": "기타 이용권",
-      "categoryEtcDesc": "반려·액티비티·클래스"
+      "categoryEtcDesc": "반려·액티비티·클래스",
+      "categoryHome": "생활 이용권",
+      "categoryHomeDesc": "이사·입주청소·에어컨 청소"
     },
     "gift": {
       "title": "선물하기",
@@ -5838,6 +5840,7 @@
     "coupons": "쿠폰함",
     "orders": "주문 내역",
     "ordersSub": "최근 3개월",
+    "paymentHistory": "결제 내역",
     "myStays": "내 숙소 예약",
     "myStaysSub": "체크인 코드 / voucher 유효기간",
     "interestList": "관심 맛집",
@@ -6175,6 +6178,7 @@
       "health": "헬스",
       "pet": "반려",
       "stay": "숙소",
+      "home": "생활",
       "activity": "액티비티",
       "etc": "기타"
     },

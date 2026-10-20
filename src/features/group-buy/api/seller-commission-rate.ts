@@ -10,6 +10,7 @@
  */
 
 import type { D1Database } from '@cloudflare/workers-types'
+import { VOUCHER_CATEGORY_SQL_IN } from '@/shared/constants/voucher-categories'
 
 const DEFAULT_MEAL_VOUCHER_COMMISSION_RATE = 0.05 // 이용권 기본 수수료 5%
 
@@ -69,7 +70,7 @@ export async function getSellerCommissionRate(DB: D1Database, sellerId: number):
       FROM products p
       WHERE p.seller_id = ?
         AND p.updated_at >= datetime('now', '-30 days')
-        AND p.category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
+        AND p.category IN (${VOUCHER_CATEGORY_SQL_IN})
     `).bind(sellerId).first<{ gmv: number }>()
     const gmv = Number(gmvRow?.gmv ?? 0)
     for (const tier of TIER_COMMISSION) {

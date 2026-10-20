@@ -34,8 +34,9 @@ export default [
     file: 'src/pages/user-profile/ShoppingGroup.tsx',
     // 🔁 2026-09-29 재조준(안 C): 경계선을 걷었다 — 아래 구역이 **자기 24px 제목**으로 시작하므로
     //   선이 할 일이 없다. 그래서 이제 지킬 것은 **그 제목이 있다** 는 것이다.
-    find: '      <SectionTitle>{t(\'shopping.sectionTitle\', { defaultValue: \'내가 산 것\' })}</SectionTitle>',
-    replace: '',
+    // 🔁 2026-10-20: 제목 오른쪽에 '결제 내역 ›' 링크가 붙어 여는 태그가 action prop 을 갖는다(불변식 그대로).
+    find: "        {t('shopping.sectionTitle', { defaultValue: '내가 산 것' })}\n      </SectionTitle>",
+    replace: '      </SectionTitle>',
     test: TEST,
     why: '손님 구역이 제목 없이 시작하면 판매 도구 목록과 손님 목록이 한 덩어리로 읽힌다(경계가 통째로 사라진다).',
   },

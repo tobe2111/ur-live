@@ -11,12 +11,13 @@
  *   이 레포가 반복해 겪은 대로 두 벌이 갈린다(홈 섹션↔피드 카드가 정확히 그랬다).
  *   ⇒ 표를 여기로 옮기고 **둘 다 여기서 읽는다.**
  */
-import { Utensils, Scissors, BedDouble, Ticket, Dumbbell, PawPrint, PartyPopper, Gift, type LucideIcon } from 'lucide-react'
+import { Utensils, Scissors, BedDouble, Ticket, House, Dumbbell, PawPrint, PartyPopper, Gift, type LucideIcon } from 'lucide-react'
 
 export const CATEGORY_META: Record<string, { Icon: LucideIcon; label: string }> = {
   meal_voucher:     { Icon: Utensils,     label: '식사' },
   beauty_voucher:   { Icon: Scissors,     label: '뷰티' },
   stay_voucher:     { Icon: BedDouble,    label: '숙소' },
+  home_voucher:     { Icon: House,        label: '생활' },
   etc_voucher:      { Icon: Ticket,       label: '기타' },
   health_voucher:   { Icon: Dumbbell,     label: '건강' },
   pet_voucher:      { Icon: PawPrint,     label: '반려' },

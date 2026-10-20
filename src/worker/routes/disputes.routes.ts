@@ -23,6 +23,7 @@ import { rateLimit } from '../middleware/rate-limit'
 import { auditLog } from '../middleware/audit-log'
 import { require2FA } from '../middleware/require-2fa'
 import { swallow } from '../utils/swallow'
+import { VOUCHER_CATEGORY_SQL_IN } from '../../shared/constants/voucher-categories'
 
 interface AIEnv {
   AI?: {
@@ -434,7 +435,7 @@ disputesRoutes.get('/agency-overview', requireAuth(), async (c) => {
         FROM products p
         JOIN sellers s ON s.id = p.seller_id
         WHERE p.group_buy_status = 'active'
-          AND p.category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
+          AND p.category IN (${VOUCHER_CATEGORY_SQL_IN})
           AND (
             s.introduced_by_agency_id = ?
             OR EXISTS (SELECT 1 FROM agency_sellers ag WHERE ag.seller_id = p.seller_id AND ag.agency_id = ?)

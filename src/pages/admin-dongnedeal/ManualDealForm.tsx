@@ -23,6 +23,7 @@ interface KakaoPlace {
 const CATS = [
   { v: 'meal_voucher', label: '식사' },
   { v: 'beauty_voucher', label: '미용' },
+  { v: 'home_voucher', label: '생활(이사·청소)' },
   { v: 'etc_voucher', label: '기타' },
 ]
 

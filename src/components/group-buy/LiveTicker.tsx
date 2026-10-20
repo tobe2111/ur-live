@@ -10,7 +10,7 @@
  *   - 페이지 hidden 시 polling/rotation 일시정지 (배터리)
  */
 import { useEffect, useState } from 'react'
-import { BagIcon, TicketStubIcon } from '@/components/icons/urdeal-icons'
+import { BagIcon, HomeServiceLineIcon, TicketStubIcon } from '@/components/icons/urdeal-icons'
 import { BedDouble, Dumbbell, PartyPopper, PawPrint, Scissors, Utensils, type LucideIcon } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import api from '@/lib/api'
@@ -32,7 +32,7 @@ interface TickerEntry {
 const CATEGORY_ICON: Record<string, LucideIcon> = {
   meal_voucher: Utensils, beauty_voucher: Scissors, health_voucher: Dumbbell,
   pet_voucher: PawPrint, stay_voucher: BedDouble, activity_voucher: PartyPopper,
-  etc_voucher: TicketStubIcon, general: BagIcon,
+  home_voucher: HomeServiceLineIcon, etc_voucher: TicketStubIcon, general: BagIcon,
 }
 
 function timeAgo(iso: string): string {

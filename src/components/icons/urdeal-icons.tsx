@@ -201,6 +201,7 @@ export const StayLineIcon = forwardRef<SVGSVGElement, IconProps>(function StayLi
     </svg>
   )
 })
+/** 생활(이사·청소) — 집 + 반짝임 (2026-10-20). 트럭(이사만)이 아니라 집이다. */ export const HomeServiceLineIcon = forwardRef<SVGSVGElement, IconProps>(function HomeServiceLineIcon({ size = 24, filled: _f, ...props }, ref) { return <svg ref={ref} {...base} width={size} height={size} {...props}><path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z" /><path d="M12 10.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z" /></svg> })
 
 /**
  * 유어쇼츠 — **세로 화면 + 재생**. (2026-09-09 대표 확정 "아이콘 1")

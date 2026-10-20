@@ -13,7 +13,7 @@ import {
 
 /** 카테고리 한글 라벨 — 명칭 SSOT(2026-06-29): 카테고리 칩은 '식사/미용/숙소/기타'. */
 const CATEGORY_LABELS: Record<string, string> = {
-  meal_voucher: '식사', beauty_voucher: '미용', stay_voucher: '숙소', etc_voucher: '기타',
+  meal_voucher: '식사', beauty_voucher: '미용', stay_voucher: '숙소', home_voucher: '생활', etc_voucher: '기타',
 }
 
 /**

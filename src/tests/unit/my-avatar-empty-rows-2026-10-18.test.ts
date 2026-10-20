@@ -78,10 +78,12 @@ describe('③④ 쇼핑이 숨겨진 동안 빈 화면 두 줄을 감춘다', ()
     expect(s).toMatch(/\.\.\.\(SHOPPING_TAB_HIDDEN \? \[\] : \[\{[^\]]*'\/interest-list' \}\]\)/)
     expect(s).toMatch(/\.\.\.\(SHOPPING_TAB_HIDDEN \? \[\] : \[\{[^\]]*'\/mypage\/addresses' \}\]\)/)
   })
-  it('반대 방향 — 쓰이는 줄(이용권·교환권·쿠폰·숙소·찜·단골·주문·리뷰)은 조건 없이 그대로 있다', () => {
-    for (const p of ['/my-vouchers', '/my-gifticons', '/my-coupons', '/my-stays', '/wishlist', '/my/follows', '/my-orders', '/my-reviews']) {
+  it('반대 방향 — 쓰이는 줄(이용권·교환권·쿠폰·숙소·찜·단골·리뷰)과 결제 내역 길은 조건 없이 그대로 있다', () => {
+    for (const p of ['/my-vouchers', '/my-gifticons', '/my-coupons', '/my-stays', '/wishlist', '/my/follows', '/my-reviews']) {
       expect(s, p).toMatch(new RegExp(`^\\s*\\{ Icon: \\w+, label: [^\\n]*path: '${p.replace(/\//g, '\\/')}' \\},`, 'm'))
     }
+    // 🧾 2026-10-20: '주문 내역' 은 줄이 아니라 구역 제목 오른쪽 '결제 내역 ›' 로 옮겼다 — 갈 길은 조건 없이 남는다.
+    expect(s).toMatch(/<SectionTitle action=\{\{ label: [^\n]*onClick: \(\) => navigate\('\/my-orders'\) \}\}>/)
   })
 })
 

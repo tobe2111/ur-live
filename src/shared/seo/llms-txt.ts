@@ -26,6 +26,7 @@ import { CONSUMER_SURFACE_SEO } from './consumer-surfaces'
 import { CONCEPT_ABOUT_LINES, CONCEPT_FAQ } from './concept-content'
 import { LLMS_CATALOG_LINK_LABEL, LLMS_CATALOG_PATH } from './llms-catalog'
 import { agentSearchLines } from '../agent-search'
+import { agentCheckoutLines } from '../agent-checkout'
 
 /** 법적·정책 표면 — 서비스 설명과 섞으면 "무엇을 파는 곳인가" 가 묻힌다. */
 const POLICY_PREFIXES = ['/terms', '/privacy', '/refund', '/gdpr'] as const
@@ -44,7 +45,7 @@ function oneLine(text: string): string {
   return text.replace(/\s+/g, ' ').trim()
 }
 
-export function buildLlmsTxt(origin: string, opts: { agentSearch?: boolean } = {}): string {
+export function buildLlmsTxt(origin: string, opts: { agentSearch?: boolean; agentCheckout?: boolean } = {}): string {
   const base = origin.replace(/\/+$/, '')
   // 루트는 제목 줄이 이미 가리킨다 — 링크 목록에 다시 넣지 않는다.
   const paths = Object.keys(CONSUMER_SURFACE_SEO).filter(
@@ -70,6 +71,8 @@ export function buildLlmsTxt(origin: string, opts: { agentSearch?: boolean } = {
     `- ${LLMS_CATALOG_LINK_LABEL}: ${base}${LLMS_CATALOG_PATH}`,
     '',
     ...(opts.agentSearch ? agentSearchLines(base) : []),
+    // 결제 링크는 검색 결과의 id 를 쓰므로 검색 창구가 함께 켜져 있을 때만 싣는다.
+    ...(opts.agentSearch && opts.agentCheckout ? agentCheckoutLines(base) : []),
     '## 주요 페이지',
     '',
     ...service.map(linkLine),

@@ -408,6 +408,7 @@ export default function SellerProductEditPage() {
               <option value="meal_voucher">식사 이용권</option>
               <option value="beauty_voucher">뷰티 이용권</option>
               <option value="stay_voucher">숙박 이용권</option>
+              <option value="home_voucher">생활 이용권 (이사·청소)</option>
               <option value="etc_voucher">기타 이용권</option>
               {/* 레거시 카테고리 — 기존 상품이 갖고 있으면 그대로 보이게(정규화는 서버 SSOT 담당). */}
               {LEGACY_VOUCHER_OPTIONS.filter((o) => o.value === formData.category).map((o) => (

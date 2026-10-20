@@ -2298,7 +2298,9 @@
       "categoryActivity": "Activity voucher",
       "categoryActivityDesc": "Escape room, bowling, class",
       "categoryEtc": "其他使用券",
-      "categoryEtcDesc": "宠物·活动·课程"
+      "categoryEtcDesc": "宠物·活动·课程",
+      "categoryHome": "生活服务券",
+      "categoryHomeDesc": "搬家·入住清洁·空调清洗"
     },
     "gift": {
       "title": "送礼物",
@@ -5928,6 +5930,7 @@
       "health": "健身",
       "pet": "宠物",
       "stay": "住宿",
+      "home": "生活",
       "activity": "活动",
       "etc": "其他"
     },
@@ -6231,6 +6234,7 @@
     "coupons": "优惠券",
     "orders": "[TODO:zh] 주문 내역",
     "ordersSub": "[TODO:zh] 최근 3개월",
+    "paymentHistory": "支付记录",
     "myStays": "我的住宿预订",
     "myStaysSub": "入住码 / 有效期",
     "interestList": "收藏的餐厅",

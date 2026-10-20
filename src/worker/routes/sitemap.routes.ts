@@ -10,6 +10,7 @@ import { consumerVisibleProductSql } from '../../shared/db/consumer-visible-prod
 import { canonicalShopPath } from '../../shared/seo/shop-canonical';
 import { buildLlmsTxt } from '../../shared/seo/llms-txt'
 import { AGENT_SEARCH_GATE } from '../../shared/agent-search'
+import { AGENT_CHECKOUT_GATE } from '../../shared/agent-checkout'
 import { settingOn } from '../utils/owner-nudges'
 import { buildLlmsCatalog } from '../../shared/seo/llms-catalog'
 import { REGION_DIGEST_KV_KEY, digestRowsOf } from '../../shared/seo/region-digest'
@@ -33,6 +34,7 @@ import { canonicalDetailPath } from '../../shared/product-flow';
 import { VOUCHER_FILTER_CATEGORIES } from '../../shared/seo/consumer-surfaces';
 // 🎁 facet 주소 조립 + 재고 문턱 SSOT — canonical·허브 내부 링크와 **같은 함수**를 지난다.
 import { voucherFacetPath, voucherFacetsByStock } from '../../shared/seo/voucher-facet';
+import { VOUCHER_CATEGORY_SQL_IN } from '../../shared/constants/voucher-categories';
 
 /**
  * 🎁 교환권 facet 제출 — **집계가 비었을 때의 폴백**(2026-10-18 재규정).
@@ -213,7 +215,7 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
       // 🏨 `category`·`deal_only` 는 `canonicalDetailPath` 가 정본 주소를 정하는 데 쓴다(아래).
       const groupBuys = await DB.prepare(
         `SELECT id, category, deal_only, image_url, updated_at FROM products
-         WHERE category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
+         WHERE category IN (${VOUCHER_CATEGORY_SQL_IN})
            AND is_active = 1
            AND group_buy_status IN ('active','achieved')
            AND ${consumerVisibleProductSql('products')}${productScope}
@@ -248,7 +250,7 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
         `SELECT id FROM products
          WHERE is_active = 1
            AND COALESCE(deal_only, 0) = 0
-           AND category NOT IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
+           AND category NOT IN (${VOUCHER_CATEGORY_SQL_IN})
            AND ${consumerVisibleProductSql('products')}${productScope}
          ORDER BY id DESC LIMIT 500`
       ).all<{ id: number }>();
@@ -463,8 +465,11 @@ export { sitemapRoutes };
 //   `sitemapRoutes` 에 얹은 이유: `app.route('/', sitemapRoutes)` 라 `worker/index.ts` 무접촉이다.
 sitemapRoutes.get('/llms.txt', async (c) => {
   // 🤖 2026-10-20 — AI 비서 검색 창구가 켜져 있으면 그 주소도 적는다(꺼지면 안 적는다 — 404 를 가리키지 않는다).
-  const agentSearch = c.env.DB ? await settingOn(c.env.DB, AGENT_SEARCH_GATE).catch(() => false) : false
-  const body = buildLlmsTxt(new URL(c.req.url).origin, { agentSearch })
+  const DB = c.env.DB
+  const [agentSearch, agentCheckout] = DB
+    ? await Promise.all([AGENT_SEARCH_GATE, AGENT_CHECKOUT_GATE].map(k => settingOn(DB, k).catch(() => false)))
+    : [false, false]
+  const body = buildLlmsTxt(new URL(c.req.url).origin, { agentSearch, agentCheckout })
   return new Response(body, {
     headers: {
       'Content-Type': 'text/plain; charset=utf-8',

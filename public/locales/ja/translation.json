@@ -2298,7 +2298,9 @@
       "categoryActivity": "Activity voucher",
       "categoryActivityDesc": "Escape room, bowling, class",
       "categoryEtc": "その他の券",
-      "categoryEtcDesc": "ペット·アクティビティ·クラス"
+      "categoryEtcDesc": "ペット·アクティビティ·クラス",
+      "categoryHome": "生活チケット",
+      "categoryHomeDesc": "引越し・入居清掃・エアコン清掃"
     },
     "gift": {
       "title": "ギフトを送る",
@@ -5928,6 +5930,7 @@
       "health": "ヘルス",
       "pet": "ペット",
       "stay": "宿泊",
+      "home": "生活",
       "activity": "アクティビティ",
       "etc": "その他"
     },
@@ -6231,6 +6234,7 @@
     "coupons": "クーポン",
     "orders": "[TODO:ja] 주문 내역",
     "ordersSub": "[TODO:ja] 최근 3개월",
+    "paymentHistory": "決済履歴",
     "myStays": "宿泊予約",
     "myStaysSub": "チェックインコード / 有効期限",
     "interestList": "お気に入り店舗",
