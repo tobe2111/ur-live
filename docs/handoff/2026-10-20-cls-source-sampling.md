@@ -43,3 +43,9 @@
 - 로더 그림 우선순위: `/stays`·`/vouchers/:id` 도 `cssFirstApplies` 안이라 이번 `fetchpriority=low` 가 함께 걸린다(실측은 배포 전 값이었다).
   `/map` 은 로더가 첫 화면이라 그대로 둔다.
 - ❌ 교환권 상세 사진은 줄이지 않았다 — 기프티쇼 원본이 작아 1600·1200·800 요청이 전부 31,097B 로 같다.
+
+## 후속 — 머지 후 E4 (2026-10-20 16:50 KST)
+- #1950 머지 `8bda917` · 배포 성공. 라이브(iPhone UA): 홈 배너 `width=760` ✅ · `/stays/2887` 히어로 `quality=75` ✅.
+- ❌ 유달이 로더 `fetchpriority=low` 미반영 → 원인: 재작성기 규칙이 워커가 `#root` 에 **삽입한** 마크업에 안 걸린다(HTMLRewriter 는 삽입분을 재파싱하지 않음). 마크업에 직접 붙이도록 수리(후속 PR).
+- 🩸 교훈: 워커 재작성기 셀렉터로 **우리가 setInnerContent 로 넣는 요소**를 고치려 하지 말 것. 단위 시험은 재작성기를 단독으로 돌려 이걸 못 본다.
+- 다음 첫 액션: 배포 후 `curl -A '<iPhone UA>' https://urdeal.kr/ | grep -o '<img[^>]*udal-loader[^>]*>'` 에 `fetchpriority="low"` 확인 · 내일 09:25 SLO 의 "↳ 무엇이 밀렸나" 줄.
