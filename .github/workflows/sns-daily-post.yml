@@ -56,3 +56,11 @@ jobs:
             echo "push failed (attempt $i), retrying"; sleep $((i*5))
           done
           echo "::error::could not push data after 5 attempts"; exit 1
+      - name: Kakao failure alert
+        if: failure()
+        env:
+          KAKAO_TOKEN: ${{ secrets.KAKAO_MEMO_ACCESS_TOKEN }}
+        run: |
+          [ -z "$KAKAO_TOKEN" ] && exit 0
+          URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          curl -sS -X POST https://kapi.kakao.com/v2/api/talk/memo/default/send -H "Authorization: Bearer $KAKAO_TOKEN" --data-urlencode "template_object={\"object_type\":\"text\",\"text\":\"[유어딜 마케팅] ${{ github.workflow }} 실패\",\"link\":{\"web_url\":\"$URL\",\"mobile_web_url\":\"$URL\"}}" || true
