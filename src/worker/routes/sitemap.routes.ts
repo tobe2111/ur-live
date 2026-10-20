@@ -9,6 +9,8 @@ import { Hono } from 'hono';
 import { consumerVisibleProductSql } from '../../shared/db/consumer-visible-product';
 import { canonicalShopPath } from '../../shared/seo/shop-canonical';
 import { buildLlmsTxt } from '../../shared/seo/llms-txt'
+import { AGENT_SEARCH_GATE } from '../../shared/agent-search'
+import { settingOn } from '../utils/owner-nudges'
 import { buildLlmsCatalog } from '../../shared/seo/llms-catalog'
 import { REGION_DIGEST_KV_KEY, digestRowsOf } from '../../shared/seo/region-digest'
 import { indexNowKeyPath, isValidIndexNowKey } from '../../shared/seo/indexnow'
@@ -459,8 +461,10 @@ export { sitemapRoutes };
 //   종전 404. 내용은 전부 SSOT(`CONCEPT_ABOUT_LINES`·`CONCEPT_FAQ`·`CONSUMER_SURFACE_SEO`)에서
 //   생성한다 — 손으로 적으면 화면·구조화 데이터와 어긋나는 네 번째 사본이 된다.
 //   `sitemapRoutes` 에 얹은 이유: `app.route('/', sitemapRoutes)` 라 `worker/index.ts` 무접촉이다.
-sitemapRoutes.get('/llms.txt', (c) => {
-  const body = buildLlmsTxt(new URL(c.req.url).origin)
+sitemapRoutes.get('/llms.txt', async (c) => {
+  // 🤖 2026-10-20 — AI 비서 검색 창구가 켜져 있으면 그 주소도 적는다(꺼지면 안 적는다 — 404 를 가리키지 않는다).
+  const agentSearch = c.env.DB ? await settingOn(c.env.DB, AGENT_SEARCH_GATE).catch(() => false) : false
+  const body = buildLlmsTxt(new URL(c.req.url).origin, { agentSearch })
   return new Response(body, {
     headers: {
       'Content-Type': 'text/plain; charset=utf-8',

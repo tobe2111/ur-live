@@ -81,7 +81,10 @@ export async function claude(system, user, maxTokens = 800) {
   });
   if (!res.ok) throw new Error(`Claude API ${res.status}: ${(await res.text()).slice(0, 300)}`);
   const j = await res.json();
-  return j.content.filter((c) => c.type === 'text').map((c) => c.text).join('').trim();
+  const text = (j.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('').trim();
+  // 빈 본문으로 링크만 게시되는 사고 방지
+  if (!text) throw new Error(`Claude 응답이 비어 있음 (stop_reason=${j.stop_reason}, model=${j.model})`);
+  return text;
 }
 
 // ---------- Meta (Threads / Instagram) ----------
