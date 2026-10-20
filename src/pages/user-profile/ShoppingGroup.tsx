@@ -14,7 +14,7 @@ import type { LucideIcon } from 'lucide-react'
 //    lucide 로 남는 건 화살표·닫기 같은 **조작** 뿐이고, 이 목록엔 그런 게 없어 0개가 됐다.
 import {
   TicketStubIcon, CouponIcon, GiftBoxIcon, StayLineIcon, HeartIcon, StarIcon,
-  BellIcon, BoxIcon, PinIcon, ReviewIcon,
+  BellIcon, PinIcon, ReviewIcon,
 } from '@/components/icons/urdeal-icons'
 import { SectionTitle, ListRow, rowIcon } from './list-grammar'
 import type { MyCounts } from './types'
@@ -70,7 +70,9 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
        배송지는 배송 상품에만 쓰인다(이용권·교환권은 배송이 없다). 둘 다 들어가면 빈 화면이다.
        라우트·페이지는 남긴다 — 쇼핑을 다시 열면(`SHOPPING_TAB_HIDDEN=false`) 이 두 줄이 저절로 돌아온다. */
     ...(SHOPPING_TAB_HIDDEN ? [] : [{ Icon: BellIcon, label: t('shopping.interestList', { defaultValue: '관심 맛집' }), path: '/interest-list' }]),
-    { Icon: BoxIcon, label: t('shopping.orders', { defaultValue: '주문 내역' }), sub: t('shopping.ordersSub', { defaultValue: '최근 3개월' }), path: '/my-orders' },
+    /* 🧾 2026-10-20 (대표 "2,3,4 모두 다 고쳐줘") — '주문 내역' 줄을 목록에서 뺐다. 쇼핑 탭이 숨겨진 지금
+       거기 들어 있는 건 이용권·교환권·숙소를 산 **결제 기록**이라, 바로 위 세 줄과 같은 물건을 한 번 더 가리켰다.
+       갈 길은 지우지 않는다 — 구역 제목 오른쪽 '결제 내역 ›' 가 같은 화면(/my-orders)으로 간다(영수증·환불 확인). */
     ...(SHOPPING_TAB_HIDDEN ? [] : [{ Icon: PinIcon, label: t('userProfile.addressManage', { defaultValue: '배송지 관리' }), path: '/mypage/addresses' }]),
     { Icon: ReviewIcon, label: t('userProfile.myReviews', { defaultValue: '내 리뷰' }), path: '/my-reviews' },
   ]
@@ -79,7 +81,9 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
     /* 🧱 가로 패딩을 **주지 않는다** — 평면 행이 자기 `px-4` 를 갖는다(문법 머리말 참조).
        여기에 px-4 를 또 주면 글자가 32px 들어가 구역 제목과 왼쪽 끝이 어긋난다. */
     <div className="ur-content-medium lg:px-4 ur-pc-card">
-      <SectionTitle>{t('shopping.sectionTitle', { defaultValue: '내가 산 것' })}</SectionTitle>
+      <SectionTitle action={{ label: t('shopping.paymentHistory', { defaultValue: '결제 내역' }), onClick: () => navigate('/my-orders') }}>
+        {t('shopping.sectionTitle', { defaultValue: '내가 산 것' })}
+      </SectionTitle>
       <div>
         {items.map((item) => (
           <ListRow

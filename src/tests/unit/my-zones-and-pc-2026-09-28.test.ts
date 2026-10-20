@@ -114,7 +114,7 @@ describe('구역 2 — 큰 제목 없이 그룹 라벨 셋', () => {
   it('🔵 모든 구역이 같은 부품으로 제목을 단다 (손으로 적지 않는다)', () => {
     for (const f of ['ShoppingGroup', 'EarningsGroup', 'SettingsGroup', 'RoleCtaGrid']) {
       const src = readCode(`src/pages/user-profile/${f}.tsx`)
-      expect(src, `${f} 에 구역 제목이 없다`).toContain('<SectionTitle>')
+      expect(src, `${f} 에 구역 제목이 없다`).toMatch(/<SectionTitle[\s>]/)
       expect(src, `${f} 이 제목 크기를 손으로 적었다`).not.toMatch(/text-\[2[0-9]px\]/)
     }
     // 판매 구역은 제목 옆에 가게 전환 버튼이 붙어 한 줄을 이루므로 `SectionTitle` 대신
