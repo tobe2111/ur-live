@@ -1,7 +1,7 @@
 // 매일 게시: Threads 텍스트 1개 + Instagram 이미지 캡션 1개.
 // 트랙 비율: data/mix-state.json(주간 자동조정, 범위 내) → 없으면 data/content-mix.json 고정 60/25/15.
 import { pickTrackByWeights } from './attribution.mjs';
-import { DRY, log, readJson, writeJson, claude, threads, igPublish, fbPagePost, utmLink, productImage, kstNow, THREADS_USER_ID, PARTNER_FACTS } from './lib.mjs';
+import { DRY, log, readJson, writeJson, claude, humanize, HUMAN_STYLE, threads, igPublish, fbPagePost, utmLink, productImage, kstNow, THREADS_USER_ID, PARTNER_FACTS } from './lib.mjs';
 
 const schedule = readJson('data/schedule.json', {});
 const mix = readJson('data/content-mix.json', { cycle: {}, tracks: {} });
@@ -64,8 +64,10 @@ const TRACK_GUIDE = {
   consumer: `오늘은 소비자 딜 글: 아래 상품을 운영자 입장에서 솔직하게 소개한다(왜 골랐는지, 어떤 상황에 좋은지). 주어진 상품 정보 외 가격/할인율은 쓰지 않는다.`,
 }[track];
 
-const SYSTEM = `너는 로컬 맛집·뷰티 이용권 서비스 '유어딜'(@urdeal_official)을 직접 운영하는 사람이다. 1인칭 운영자 목소리로, 담백하고 자연스러운 존댓말로 쓴다. 광고 카피 말투(느낌표 남발, "지금 바로!", "놓치지 마세요") 대신 사장님/크리에이터에게 직접 설명하듯 쓴다.
+const SYSTEM = `너는 로컬 맛집·뷰티 이용권 서비스 '유어딜'(@urdeal_official)을 직접 운영하는 사람이다. 광고 카피가 아니라 사장님/크리에이터에게 직접 설명하듯 쓴다.
 ${TRACK_GUIDE}
+
+${HUMAN_STYLE}
 
 [확인된 사실 — 이 범위 밖의 조건·숫자는 쓰지 않는다]
 ${PARTNER_FACTS}
@@ -83,7 +85,8 @@ async function main() {
   if (due('threads') && !postedToday('threads')) {
     const cid = `th-${n('threads')}`;
     const link = utmLink(isPromo ? product : target, 'threads', T.campaign || track, cid, now);
-    const body = await claude(SYSTEM, `${info}\nThreads 글 1개를 400자 이내로 써줘. 링크는 내가 끝에 붙일게.`, 600);
+    const len = ['150~200자', '250~300자', '350~400자'][dayIdx % 3];
+    const body = await humanize(await claude(SYSTEM, `${info}\nThreads 글 1개를 ${len} 정도로 써줘. 링크는 내가 끝에 붙일게.`, 600), 'Threads 글');
     const text = `${body.slice(0, 430)}\n\n${link}`.slice(0, 500);
     log('Threads 본문:\n' + text);
     const c = await threads('POST', `${THREADS_USER_ID}/threads`, { media_type: 'TEXT', text });
@@ -106,7 +109,7 @@ async function main() {
       log(`Instagram: ${track} 이미지 URL 없음 → 건너뜀`);
       posts.push({ platform: 'instagram', skipped: 'no_image', track, product_id: product?.id, posted_at: now.toISOString(), date_kst: today });
     } else {
-      const body = await claude(SYSTEM, `${info}\n인스타그램 캡션 1개(600자 이내, 해시태그 3~5개 끝에). 본문 링크는 클릭이 안 되니 '프로필 링크에서 확인' 식으로 안내.`, 800);
+      const body = await humanize(await claude(SYSTEM, `${info}\n인스타그램 캡션 1개(600자 이내, 해시태그 2~4개만 끝에). 본문 링크는 클릭이 안 되니 '프로필 링크에서 확인' 식으로 안내.`, 800), '인스타그램 캡션');
       log('IG 캡션:\n' + body + `\n(프로필 링크에 걸 UTM: ${link})`);
       const kind = media.video_url ? `Reels ${media.video_url}` : `${media.images.length}장 ${media.images.length > 1 ? '캐러셀' : '이미지'}`;
       log(`IG 미디어: ${kind}`);
