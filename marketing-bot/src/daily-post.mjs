@@ -77,6 +77,7 @@ ${PARTNER_FACTS}
 
 let igError = null;
 let qualityError = null;
+let threadsError = null;
 // 같은 플랫폼 최근 글 10개 — 거의 같은 글 반복 방지
 const recentTexts = (platform) => posts.filter((p) => p.platform === platform && p.text).slice(-10).map((p) => p.text);
 
@@ -93,6 +94,26 @@ async function writeVetted(prompt, maxTokens, platform, info, kind) {
     problems = vetPost(body, ctx);
   }
   return { body, problems };
+}
+
+// Threads 컨테이너는 생성 직후 바로 publish 하면 'Media Not Found'(code 24 / 4279009)가 난다.
+// FINISHED 까지 폴링한 뒤 publish 하고, 그래도 Media Not Found 면 잠시 후 재시도한다.
+async function threadsPublishText(text) {
+  const c = await threads('POST', `${THREADS_USER_ID}/threads`, { media_type: 'TEXT', text });
+  for (let i = 0; i < 10 && !DRY; i++) {
+    await new Promise((res) => setTimeout(res, 3000));
+    const st = await threads('GET', c.id, { fields: 'status,error_message' }).catch(() => ({}));
+    if (st.status === 'FINISHED' || st.status === 'PUBLISHED') break;
+    if (st.status === 'ERROR' || st.status === 'EXPIRED') throw new Error(`Threads 컨테이너 ${c.id} ${st.status}: ${st.error_message || ''}`);
+  }
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await threads('POST', `${THREADS_USER_ID}/threads_publish`, { creation_id: c.id });
+    } catch (e) {
+      if (attempt >= 3 || !/4279009|Media Not Found/.test(e.message)) throw e;
+      await new Promise((res) => setTimeout(res, 10000 * attempt));
+    }
+  }
 }
 
 async function main() {
@@ -115,9 +136,16 @@ async function main() {
     } else {
     const text = threadsText(body, link);
     log('Threads 본문:\n' + text);
-    const c = await threads('POST', `${THREADS_USER_ID}/threads`, { media_type: 'TEXT', text });
-    const r = await threads('POST', `${THREADS_USER_ID}/threads_publish`, { creation_id: c.id });
-    posts.push({ platform: 'threads', id: r.id, content_id: cid, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('threads'), link, text: body, dry: DRY || undefined });
+    let r;
+    try {
+      r = await threadsPublishText(text);
+    } catch (e) {
+      // Threads 실패가 Instagram 게시까지 막지 않도록 기록만 하고 계속 진행
+      threadsError = e;
+      console.log(`::error title=Threads 게시 실패::${e.message.slice(0, 300)}`);
+      posts.push({ platform: 'threads', skipped: 'error', error: e.message.slice(0, 300), track, posted_at: now.toISOString(), date_kst: today });
+    }
+    if (r) posts.push({ platform: 'threads', id: r.id, content_id: cid, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('threads'), link, text: body, dry: DRY || undefined });
     }
   } else log(`Threads: 건너뜀 — ${skipReason('threads')}`);
 
@@ -171,6 +199,7 @@ async function main() {
 
   if (!DRY) writeJson('data/posts.json', posts);
   else log('DRY: posts.json 미기록', JSON.stringify(posts.slice(-2)).slice(0, 300));
+  if (threadsError) throw new Error(`Threads 게시 실패: ${threadsError.message}`);
   if (igError) throw new Error(`Instagram 게시 실패: ${igError.message}`);
   if (qualityError) throw qualityError; // 기록은 저장했다. 다음 회차가 같은 날 다시 시도한다(skipped 는 미게시로 센다)
 }

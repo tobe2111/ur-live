@@ -5,6 +5,9 @@ on:
     - cron: '0 0 * * *'
     - cron: '30 3 * * *'
     - cron: '30 10 * * *'
+    # 백업 회차: GitHub 가 정시 cron 을 종종 누락/지연(2026-10-20 03:30 UTC 회차 미실행) — 이미 게시했으면 스크립트가 건너뜀
+    - cron: '17 5 * * *'
+    - cron: '17 12 * * *'
   workflow_dispatch:
     inputs:
       dry_run:
