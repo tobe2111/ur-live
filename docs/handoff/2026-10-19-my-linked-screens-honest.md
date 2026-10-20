@@ -95,3 +95,20 @@
   (문구 SSOT `shared/agent-search.ts` `agentSearchLines` · 배선 `sitemap.routes.ts` · 가드 `llms-agent-search-2026-10-20.test.ts` 5건 + 주입 3건 빨간불 확인).
 - 다음 세션 첫 액션: 배포 뒤 `curl -A 'OAI-SearchBot/1.0' https://urdeal.kr/llms.txt | grep -n '/api/agent/search'` → 1줄(캐시 1시간).
 - 결재 ②(에이전트 대신 결제)는 대표 질문에 답한 뒤 다시 판단.
+- ✅ #1954 머지·배포 후 라이브 확인: llms.txt 15행에 창구 주소 실림. Notion 기록 완료.
+
+## 5차 — AI 비서 결제 넘겨받기 (대표 *"4번도 일단은 하자. 가장 이상적으로."*, 2026-10-20)
+- "대신 결제"가 아니라 **결제 직전까지 넘겨주기**로 설계했다(근거는 결재 파일 ② · `shared/agent-checkout.ts` 머리말).
+- `GET /api/agent/checkout?id=&qty=` — 검색과 같은 조건의 상품만, 수량은 1인당 한도로 자름, 금액 + `checkout_url`.
+  숙소는 수량 없이 상세 링크만. 오픈 예정형은 409.
+- 상세 `DealBottomBar` 가 `?via=agent&qty=N` 이면 구매 창을 그 수량으로 연다(`useAgentHandoff` — 결제를 스스로 시작하지 않음, 주인·판매 전·품절이면 안 염, 처리 뒤 주소에서 표식 삭제).
+- llms.txt 는 두 게이트가 다 켜져 있을 때만 결제 링크 안내를 싣는다.
+- 게이트 `agent_checkout_enabled` 기본 꺼짐 → **다음 첫 액션: 배포 뒤 S-AGENT-5(꺼진 채 404) 확인 → 켜고 S-AGENT-6 확인.** S-AGENT-7(폰으로 열어 결제)은 대표.
+- 가드 `agent-checkout-2026-10-20.test.tsx` 11건 + 주입 6건 전부 빨간불 확인. 기존 `llms-agent-search` ⑤ 와 그 주입 앵커를 두 게이트 배선으로 재조준.
+
+## 6차 — 마이 세 가지 (대표 *"2,3,4 모두 다 고쳐줘"*, 2026-10-20)
+- ② '내 가게' 옆 종 → 알약 글자 **'판매 알림'**(+안 읽은 수). 맨 위 종(내 알림)과 종이 둘이었다. 첫 판은 맨 글자라 가게 이름과 붙어 한 덩어리로 읽혀(하네스 렌더) 알약으로 뗐다.
+- ③ 파란 '이용권 등록 · 관리' 줄을 사용처리 티켓과 같은 폭(좌우 12px 안쪽·모서리 10px)으로 — 마이·에이전시 판 둘 다(두 판 같은 클래스 시험이 있다).
+- ④ '주문 내역' 줄을 '내가 산 것' 목록에서 빼고 구역 제목 오른쪽 **'결제 내역 ›'**(→ /my-orders)로. `SectionTitle` 에 `action` prop. 6개 언어 `shopping.paymentHistory`.
+- 가드 `my-three-fixes-2026-10-20.test.tsx` 8건 + 주입 3건 빨간불 확인. 재조준: `my-avatar-empty-rows`(목록 경로 → 제목 링크) · `my-zones-and-pc`(`<SectionTitle[\s>]`) · 주입 `my-type-scale` 앵커.
+- 하네스 렌더(셀러·폰): 밀림 0 · 오류 0. ⚠️ 실데이터·실기기는 대표 확인.

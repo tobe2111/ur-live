@@ -91,11 +91,27 @@ export const LIST_PLATE_CLS = 'rounded-2xl bg-surface shadow-lift overflow-hidde
  */
 export const SECTION_TITLE_CLS = 'text-[17px] font-semibold tracking-[-0.01em] text-gray-500 dark:text-white/45'
 
-export function SectionTitle({ children, as: Tag = 'h2' }: { children: React.ReactNode; as?: 'h2' | 'h3' }) {
+export function SectionTitle({ children, as: Tag = 'h2', action }: {
+  children: React.ReactNode
+  as?: 'h2' | 'h3'
+  /** 🔗 2026-10-20 — 제목 오른쪽 짧은 링크 하나(예: '결제 내역 ›'). 줄을 하나 더 세우지 않고 갈 길을 남길 때만. */
+  action?: { label: string; onClick: () => void }
+}) {
+  if (!action) {
+    return (
+      <Tag className={`mt-8 mb-1 px-4 ${SECTION_TITLE_CLS}`}>
+        {children}
+      </Tag>
+    )
+  }
   return (
-    <Tag className={`mt-8 mb-1 px-4 ${SECTION_TITLE_CLS}`}>
-      {children}
-    </Tag>
+    <div className="mt-8 mb-1 px-4 flex items-center justify-between gap-3">
+      <Tag className={SECTION_TITLE_CLS}>{children}</Tag>
+      <button type="button" onClick={action.onClick} className="shrink-0 inline-flex items-center gap-1 h-9 -my-2 text-[13px] font-semibold text-gray-500 dark:text-gray-400 active:opacity-70">
+        {action.label}
+        <ChevronRight className="w-4 h-4" aria-hidden="true" />
+      </button>
+    </div>
   )
 }
 

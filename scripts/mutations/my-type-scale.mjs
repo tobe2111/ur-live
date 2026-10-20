@@ -49,7 +49,7 @@ export default [
   {
     name: '🎨 유일한 브랜드 면(사용처리)이 회색으로 죽는다',
     file: 'src/pages/user-profile/SellerSection.tsx',
-    find: 'min-h-[52px] py-2 bg-brand text-white text-left',
+    find: 'min-h-[52px] py-2 rounded-[10px] bg-brand text-white text-left',
     replace: 'h-[60px] rounded-2xl bg-wash text-gray-900 text-left',
     test: TEST,
     why: '면을 하나로 줄인 뒤라 이것까지 죽으면 화면에 강조가 **아예 없어진다** — 하루에 가장 많이 누르는 버튼이다.',

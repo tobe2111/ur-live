@@ -10,6 +10,7 @@ import { consumerVisibleProductSql } from '../../shared/db/consumer-visible-prod
 import { canonicalShopPath } from '../../shared/seo/shop-canonical';
 import { buildLlmsTxt } from '../../shared/seo/llms-txt'
 import { AGENT_SEARCH_GATE } from '../../shared/agent-search'
+import { AGENT_CHECKOUT_GATE } from '../../shared/agent-checkout'
 import { settingOn } from '../utils/owner-nudges'
 import { buildLlmsCatalog } from '../../shared/seo/llms-catalog'
 import { REGION_DIGEST_KV_KEY, digestRowsOf } from '../../shared/seo/region-digest'
@@ -464,8 +465,11 @@ export { sitemapRoutes };
 //   `sitemapRoutes` 에 얹은 이유: `app.route('/', sitemapRoutes)` 라 `worker/index.ts` 무접촉이다.
 sitemapRoutes.get('/llms.txt', async (c) => {
   // 🤖 2026-10-20 — AI 비서 검색 창구가 켜져 있으면 그 주소도 적는다(꺼지면 안 적는다 — 404 를 가리키지 않는다).
-  const agentSearch = c.env.DB ? await settingOn(c.env.DB, AGENT_SEARCH_GATE).catch(() => false) : false
-  const body = buildLlmsTxt(new URL(c.req.url).origin, { agentSearch })
+  const DB = c.env.DB
+  const [agentSearch, agentCheckout] = DB
+    ? await Promise.all([AGENT_SEARCH_GATE, AGENT_CHECKOUT_GATE].map(k => settingOn(DB, k).catch(() => false)))
+    : [false, false]
+  const body = buildLlmsTxt(new URL(c.req.url).origin, { agentSearch, agentCheckout })
   return new Response(body, {
     headers: {
       'Content-Type': 'text/plain; charset=utf-8',

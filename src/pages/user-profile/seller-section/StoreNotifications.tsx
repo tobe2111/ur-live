@@ -10,7 +10,6 @@
  * 그 화면은 **지금 가게의 데이터**를 보여 준다(좌석 토큰이 매장을 정한다). 다른 가게 알림은 가게를 바꾸라고 말한다.
  */
 import { Suspense, lazy, useCallback, useEffect, useState } from 'react'
-import { BellIcon } from '@/components/icons/urdeal-icons'
 import api from '@/lib/api'
 import { formatKSTShort } from '@/utils/date'
 import { toast } from '@/hooks/useToast'
@@ -81,11 +80,14 @@ export default function StoreNotifButton({ currentSellerId, onOpenPage }: {
         type="button"
         onClick={() => setOpen(true)}
         aria-label={unread > 0 ? `판매 알림 ${unread}건` : '판매 알림'}
-        className="relative w-9 h-9 -my-2 flex items-center justify-center rounded-full text-gray-500 dark:text-gray-400 active:opacity-70"
+        className="shrink-0 inline-flex items-center gap-1 h-7 px-3 -my-1 rounded-full bg-gray-100 dark:bg-white/10 text-[12px] font-semibold text-gray-600 dark:text-gray-300 active:opacity-70"
       >
-        <BellIcon className="w-[18px] h-[18px]" filled={unread > 0} aria-hidden="true" />
+        {/* 🔤 2026-10-20 (대표 "2,3,4 모두 다 고쳐줘"): 종 아이콘 → **글자**. 맨 위 머리줄의 종(내 알림)과
+            이 종(가게 알림)이 한 화면에 둘이라 처음 보는 사람은 어느 쪽이 무엇인지 몰랐다. 글자는 시트 제목과 같다.
+            알약 모양인 이유: 바로 옆 가게 이름과 붙어 "판매 알림 합정 살롱…" 한 덩어리로 읽혔다(하네스 렌더). */}
+        <span>판매 알림</span>
         {unread > 0 && (
-          <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-brand text-white text-[12px] leading-4 font-bold tabular-nums text-center">
+          <span className="min-w-[16px] h-4 px-1 rounded-full bg-brand text-white text-[12px] leading-4 font-bold tabular-nums text-center">
             {unread > 99 ? '99+' : unread}
           </span>
         )}

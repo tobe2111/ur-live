@@ -780,6 +780,9 @@ fail-closed 로 **설계된** 가드가 fail-open 이 된다 — 돈이 *안 보
 | S-AGENT-2 | 켜고 `?region=서초구` | 실제 매장 이용권만(데모 0건) · 최대 10건 · `url` 이 `/pass/`·`/stays/` 우리 상세 |
 | S-AGENT-3 | 켜고 검색어·지역 없이 호출 | **400**(전체 목록을 내주지 않는다) |
 | S-AGENT-4 | `url` 을 열어 결제 | 평소와 같은 결제 흐름(이 창구는 결제를 안 건드린다) |
+| S-AGENT-5 | 🛒 결제 링크 게이트 `agent_checkout_enabled` 꺼진 채 `GET /api/agent/checkout?id=2919&qty=2` | **404** · llms.txt 에 결제 링크 안내 없음 |
+| S-AGENT-6 | 켜고 같은 호출 | `total = unit_price × quantity` · `checkout_url` 이 `/pass/2919?qty=2&via=agent` · `qty=99` 면 1인당 한도로 줄어 있음 · 데모·교환권 id 는 **404** |
+| S-AGENT-7 | 🔴 폰으로 `checkout_url` 열기 → 구매 창이 그 수량으로 열려 있는지 → 결제 1건 | 창 위 *"AI 비서가 고른 수량이에요"* · 결제는 평소 토스 흐름 · 주소에서 `qty`·`via` 가 지워져 뒤로 왔다 가도 창이 다시 저절로 안 열림 |
 
 ## 📌 S-PINNAV — 유어샵 진열 카드 앱 안 이동 (2026-10-18 결재 `2026-10-15-ushop-pin-spa-nav` 안 1)
 

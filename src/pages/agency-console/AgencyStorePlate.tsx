@@ -153,11 +153,13 @@ export default function AgencyStorePlate({ store, staffId, initialPath }: {
           </div>
         </div>
         {note && <p className="text-[13px] leading-[1.55] text-gray-500 px-4 py-3 border-b border-rule lg:px-5">{note}</p>}
+        {/* 📐 2026-10-20: 마이 판과 같이 사용처리 티켓과 같은 폭(좌우 12px 안쪽 · 모서리 10px). */}
+        <div className="p-3 border-b border-rule">
         <button
           type="button"
           disabled={busy}
           onClick={() => openPage('/seller/group-buy', '이용권')}
-          className="w-full flex items-center gap-3 px-4 lg:px-5 min-h-[52px] py-2 bg-brand text-white text-left active:opacity-90 disabled:opacity-60"
+          className="w-full flex items-center gap-3 px-4 lg:px-5 min-h-[52px] py-2 rounded-[10px] bg-brand text-white text-left active:opacity-90 disabled:opacity-60"
         >
           <Plus className="w-[18px] h-[18px] shrink-0" aria-hidden="true" />
           <span className="flex-1 min-w-0 text-[15px] font-extrabold truncate">이용권 등록 · 관리</span>
@@ -168,6 +170,7 @@ export default function AgencyStorePlate({ store, staffId, initialPath }: {
           )}
           <ChevronRight className="w-4 h-4 shrink-0 text-white/70" aria-hidden="true" />
         </button>
+        </div>
         {/* 🖥️ PC 는 세 줄을 한 줄 세 칸으로 — 넓은 칸에 48px 줄 셋이 세로로 서면 오른쪽이 텅 빈다.
             ⚠️ 칸이 좁아 오른쪽 값은 짧게만(여덟 자 안팎). 길면 제목이 0px 로 눌려 **'정산' 글자가 사라졌다**(하네스 실측).
             출금이 사장님 몫이라는 말은 정산 화면이 직접 한다(서버가 주인만 받는다). */}

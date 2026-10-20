@@ -61,6 +61,8 @@ export interface AgentRow {
 }
 
 export interface AgentItem {
+  /** 결제 링크(`/api/agent/checkout?id=`)에 넘기는 상품 번호. */
+  id: number
   name: string
   store: string | null
   area: string | null
@@ -80,6 +82,7 @@ export function toAgentItem(row: AgentRow, origin: string): AgentItem | null {
   const ref = parseRegionFromAddress(row.restaurant_address)
   const label = Object.values(AGENT_CATEGORY).find(c => c.key === row.category)?.label ?? '이용권'
   return {
+    id: Number(row.id),
     name: String(row.name || '').trim(),
     store: row.restaurant_name ? String(row.restaurant_name).trim() : null,
     area: ref ? regionLabel(ref) : null,
