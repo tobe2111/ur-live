@@ -32,4 +32,12 @@ export default [
     why: '/partnership(입점 문의) 같은 형제 경로가 전체화면으로 분류돼 네비가 사라진다 — 접두 판정은 경계까지 본다.',
     test: 'src/tests/unit/desktop-chrome-skip-dashboards-2026-10-20.test.ts',
   },
+  {
+    name: '🪝 useFocusTrap 이 다시 쇼핑 상세 봉투로 — 어드민이 lz-productL + embla 를 받는다',
+    file: 'vite.config.ts',
+    find: "if (id.includes('/src/hooks/useFocusTrap')) return 'app-ui-utils'",
+    replace: "if (id.includes('/src/hooks/useFocusTrapX')) return 'app-ui-utils'",
+    why: '규칙이 빠지면 묶음기가 훅을 쇼핑 상세 사용처를 따라 lz-productL 에 넣고, app-components 를 받는 어드민·셀러가 그 봉투와 embla(합쳐 ~31KB raw)를 받는다. 에러 0.',
+    test: 'src/tests/unit/admin-focus-trap-chunk-2026-10-20.test.ts',
+  },
 ]

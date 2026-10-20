@@ -27,6 +27,13 @@
   `lz-home-homePc*` 가 **0건**이고 `AdminPage` 가 앞당겨졌는지.
 - 반대 방향: `/` 를 1440px 로 열어 `app-desktop-chrome` 이 **첫 렌더 전**에 받아지는지.
 
+## 같은 PR 의 두 번째 수리 — 어드민이 쇼핑 상세 봉투를 받던 것
+- 어드민이 정적으로 받는 `app-components` 가 `lz-productL`(사진 캐러셀·선물 모달) → `embla` 를 끌고 왔다(~31KB raw).
+  빌드 산출물의 import 문을 보니 app-components 가 그 봉투에서 가져가는 것은 `useFocusTrap` **하나**(장바구니 옵션 모달).
+- 처방: manualChunks 규칙 한 줄 `useFocusTrap → app-ui-utils`(app-components 가 이미 받는 leaf 봉투 — 요청 수 불변).
+  dash:admin 256.4 → 246.4KB br. 기준 파일은 dash:admin 만 갱신(`--rebaseline` 은 25화면 전부를 로컬 측정값으로 다시 써서 다른 화면 기준을 +0.3~1.4 느슨하게 만든다 — 쓰지 말고 그 항목만 고칠 것).
+
 ## 남은 것 (안 한 것)
-- 어드민에서 `lz-boot-gbDetail` · `lz-*productL` · `embla` 도 받는다(어드민 정적 의존 쪽 — 별건).
+- 어드민이 아직 작은 봉투 셋을 더 받는다: `lz-boot-productL`(로그인 복귀·auth-api 3.6KB) · `lz-gbDetailL-productL`(이미지 압축 2.2KB) · `lz-boot-gbDetailL-map-productL`(인앱 안내 2.7KB). app-components 의 다른 모듈이 정적으로 쓴다 — 합쳐 ~8.5KB raw, 효과 대비 위험을 보고 판단.
+- 서버 미리 렌더(`prerender:main`)가 `window is not defined` 로 실패한다 — **main 에서도 같다**(이번 변경과 무관, 빌드는 graceful skip). 2026-07-07 결정으로 그 산출물은 쓰지 않아 영향은 없지만 별건으로 정리 대상.
 - 이전 세션 인계의 GEO 후보 ②(`priceValidUntil`)는 **할 수 없다** — 판매 마감 날짜는 2026-09-04 이후 구매를 막지 않아 그 값을 쓰면 지어내기다. `seller` 는 이미 낸다.
