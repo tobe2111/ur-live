@@ -33,6 +33,7 @@ jobs:
           META_IG_ACCESS_TOKEN: ${{ secrets.META_IG_ACCESS_TOKEN }}
           META_THREADS_ACCESS_TOKEN: ${{ secrets.META_THREADS_ACCESS_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MARKETING_REPORT_TOKEN: ${{ secrets.MARKETING_REPORT_TOKEN }}
         run: node src/weekly-review.mjs
       - name: Commit data
         if: always()

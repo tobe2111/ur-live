@@ -71,7 +71,7 @@ app.post('/', rateLimit({ action: 'creator-apply', max: 10, windowSec: 3600 }), 
   const claimCode = leadRow ? await getOrCreateClaimCode(adsLeadsDb(c.env), leadRow.id).catch(() => null) : null
   // 🎯 2026-10-15 유입 귀속 — 소셜 글(?src=sns-…)에서 왔으면 신청 1건을 그 소스에 센다(메인 D1, 개인정보 없음).
   //   접수 성공 뒤에만 남긴다(검증 실패 요청은 위에서 이미 반환). fail-soft.
-  if (b.acq_src) await recordAcquisitionConversionMain(c.env, b.acq_src, 'creator_apply')
+  if (b.acq_src) await recordAcquisitionConversionMain(c.env, b.acq_src, 'creator_apply', { campaign: b.acq_campaign, content: b.acq_content })
   // 📨 접수 확인 메일(거래성 — 신청 행위에 대한 확인, 신청 = 사전동의라 발송 적법). fail-soft: 발송 실패가 접수를 안 막음.
   if (email && c.env.RESEND_API_KEY) {
     const send = async () => {

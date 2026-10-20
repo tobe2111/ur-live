@@ -337,7 +337,7 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 60, windowSec: 36
       business_number?: string; representative?: string; business_start_date?: string
       business_cert_url?: string
       /** 🤝 2026-08-27: 소개자 초대 링크(`/store/new?ref=`)로 들어온 경우의 소개자 user id. */
-      referrer_user_id?: string
+      referrer_user_id?: string; acq?: { src?: unknown; campaign?: unknown; content?: unknown } // 📣 SNS UTM first-touch
       broker_share_pct?: unknown; influencer_pct_cap?: unknown // 💸 2026-09-19 중개 매장 두 요율(결재 2026-09-16)
       terms_agreed_version?: string // 📜 2026-10-10 판매자 이용약관 동의(옛 가입 문과 같은 검증)
     }>().catch(() => ({} as any))
@@ -535,7 +535,7 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 60, windowSec: 36
 
     await ensureStoreCode(c.env.DB, newSellerId) // 🧾 손님 셀프 사용에 맞출 확인코드 — 대시보드를 안 열어도 생긴다
     const ownerClaimCode = brokerTerms?.ok ? await finalizeBrokeredStore(c.env.DB, newSellerId, userId, brokerTerms) : null // 🔑 요율 저장 + 사장님 승계 코드(`/store/find?code=`)
-    await afterStoreCreated(c.env.DB, { sellerId: newSellerId, userId, termsVersion: String(b.terms_agreed_version), managerPhone, ip: c.req.header('CF-Connecting-IP') || null })
+    await afterStoreCreated(c.env.DB, { sellerId: newSellerId, userId, termsVersion: String(b.terms_agreed_version), managerPhone, ip: c.req.header('CF-Connecting-IP') || null, acq: b.acq })
     return c.json({
       success: true,
       data: {

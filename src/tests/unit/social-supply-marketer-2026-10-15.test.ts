@@ -265,7 +265,7 @@ describe('④ 배선', () => {
   })
   it('소개 파트너 신청이 유입 소스를 남긴다 (화면 → 서버)', () => {
     expect(readCode('src/pages/CreatorApplyPage.tsx')).toMatch(/acq_src: readAcquisitionSource\(\)/)
-    expect(readCode('src/features/marketing/api/influencer-apply.routes.ts')).toMatch(/recordAcquisitionConversionMain\(c\.env, b\.acq_src, 'creator_apply'\)/)
+    expect(readCode('src/features/marketing/api/influencer-apply.routes.ts')).toMatch(/recordAcquisitionConversionMain\(c\.env, b\.acq_src, 'creator_apply'(, \{[^)]*\})?\)/)
   })
   it('발행은 여전히 사람이 승인한 것만 (자동 발행 경로를 만들지 않았다)', () => {
     const d = readCode('src/features/social-media/api/social-draft.ts')

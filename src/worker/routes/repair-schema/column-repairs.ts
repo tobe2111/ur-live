@@ -725,6 +725,12 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
       created_at TEXT DEFAULT (datetime('now'))
     )` },
     { desc: 'idx_acq_conv_src', sql: "CREATE INDEX IF NOT EXISTS idx_acq_conv_src ON acquisition_conversions(src, kind)" },
+    { desc: 'acquisition_landings.utm_campaign', sql: "ALTER TABLE acquisition_landings ADD COLUMN utm_campaign TEXT" }, // 📣 2026-10-19 SNS UTM 귀속
+    { desc: 'acquisition_landings.utm_content', sql: "ALTER TABLE acquisition_landings ADD COLUMN utm_content TEXT" }, // 📣 2026-10-19 SNS UTM 귀속
+    { desc: 'user_acquisition.utm_campaign', sql: "ALTER TABLE user_acquisition ADD COLUMN utm_campaign TEXT" }, // 📣 2026-10-19 SNS UTM 귀속
+    { desc: 'user_acquisition.utm_content', sql: "ALTER TABLE user_acquisition ADD COLUMN utm_content TEXT" }, // 📣 2026-10-19 SNS UTM 귀속
+    { desc: 'acquisition_conversions.utm_campaign', sql: "ALTER TABLE acquisition_conversions ADD COLUMN utm_campaign TEXT" }, // 📣 2026-10-19 SNS UTM 귀속
+    { desc: 'acquisition_conversions.utm_content', sql: "ALTER TABLE acquisition_conversions ADD COLUMN utm_content TEXT" }, // 📣 2026-10-19 SNS UTM 귀속
     { desc: 'idx_wholesale_chat_threads_dist', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_chat_threads_dist ON wholesale_chat_threads(distributor_seller_id, last_message_at DESC)" },
     { desc: 'idx_wholesale_chat_threads_sup', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_chat_threads_sup ON wholesale_chat_threads(supplier_id, last_message_at DESC)" },
     { desc: 'idx_wholesale_chat_messages_thread', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_chat_messages_thread ON wholesale_chat_messages(thread_id, id)" },

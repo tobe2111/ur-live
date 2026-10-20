@@ -1,5 +1,21 @@
 // 매주 월요일: 최근 게시물 인사이트 → 플랫폼별 최적 시간대 → schedule.json 갱신 → 리포트 이슈.
 import { DRY, log, readJson, writeJson, threads, insta, createIssue, claude, THREADS_USER_ID } from './lib.mjs';
+import { TRACKS, DEFAULT_WEIGHTS, DEFAULT_CAMPAIGNS, categoryPerformance, adjustWeights } from './attribution.mjs';
+
+const mixCfg = readJson('data/content-mix.json', {});
+const CAMPAIGNS = { ...DEFAULT_CAMPAIGNS, ...Object.fromEntries(TRACKS.map((t) => [t, mixCfg.tracks?.[t]?.campaign]).filter(([, v]) => v)) };
+
+// 앱(D1) UTM 귀속 집계: /api/acquisition/utm-report (MARKETING_REPORT_TOKEN 필요). 없으면 null → '확인 불가'.
+async function fetchUtmReport(days = 7) {
+  const token = process.env.MARKETING_REPORT_TOKEN;
+  const base = process.env.URDEAL_API_BASE || 'https://urdeal.kr';
+  if (!token) { log('MARKETING_REPORT_TOKEN 없음 → 가입 귀속 확인 불가'); return null; }
+  try {
+    const r = await fetch(`${base}/api/acquisition/utm-report?days=${days}`, { headers: { Authorization: `Bearer ${token}` } });
+    const j = await r.json();
+    return j?.success ? j.data.rows : null;
+  } catch (e) { log(`UTM 리포트 실패: ${e.message}`); return null; }
+}
 
 const posts = readJson('data/posts.json', []);
 const schedule = readJson('data/schedule.json', {});
@@ -31,8 +47,7 @@ async function threadsLinkClicks() {
     return Object.fromEntries((d.link_total_values || []).map((v) => [v.link_url, v.value]));
   } catch (e) { log(`Threads clicks 실패: ${e.message}`); return null; }
 }
-async function recruitSection(rows) {
-  const clicks = await threadsLinkClicks();
+async function recruitSection(rows, clicks, utmRows) {
   const g = {};
   for (const p of rows) {
     const key = `${p.track || '?'} / ${campaignOf(p)}`;
@@ -46,10 +61,18 @@ async function recruitSection(rows) {
     if (p.media_type === 'CAROUSEL') a.carousels++;
   }
   const out = ['### 모집 성과 (트랙 / UTM 캠페인)', '| 트랙 / 캠페인 | 게시 | IG 도달 | Threads 조회 | Threads 링크 클릭 | 릴스/캐러셀 | 가입·신청 |', '|---|---|---|---|---|---|---|'];
-  for (const [k, a] of Object.entries(g)) out.push(`| ${k} | ${a.posts} | ${a.ig_reach} | ${a.th_views} | ${a.th_clicks ?? 'n/a'} | ${a.reels}/${a.carousels} | 확인 불가 |`);
+  for (const [k, a] of Object.entries(g)) out.push(`| ${k} | ${a.posts} | ${a.ig_reach} | ${a.th_views} | ${a.th_clicks ?? 'n/a'} | ${a.reels}/${a.carousels} | ${utmRows ? '아래 표' : '확인 불가'} |`);
   if (!Object.keys(g).length) out.push('| (데이터 없음) | 0 | - | - | - | - | 확인 불가 |');
-  out.push('', '- IG 게시물 링크 클릭은 Graph API 미제공(프로필 링크 클릭은 계정 단위만) → 표기 안 함.',
-    '- 가입·신청 수(/store/new 입점 신청, /creators/apply 크리에이터 신청)는 Cloudflare D1 에만 있고 Actions 에서 읽을 수 있는 API/시크릿이 없어 **확인 불가**. 어드민 유입 리포트(utm_source → user_acquisition)에서 캠페인별로 확인하세요.');
+  out.push('', '- IG 게시물 링크 클릭은 Graph API 미제공 → 표기 안 함.');
+  out.push('', '### 가입 귀속 (UTM, 최근 7일)');
+  if (!utmRows) out.push('- **확인 불가**: Actions 시크릿 MARKETING_REPORT_TOKEN(=Worker 시크릿 같은 값)이 없거나 API 응답 실패. 앱은 이제 가입·입점 신청·크리에이터 신청 때 utm_campaign/utm_content 를 저장합니다.');
+  else {
+    const sum = (k) => utmRows.reduce((a, r) => a + (r[k] || 0), 0);
+    out.push(`- 사장님 입점 신청: **${sum('store_applies')}** · 크리에이터 신청: **${sum('creator_applies')}** · 회원가입: ${sum('signups')} · 랜딩: ${sum('landings')}`);
+    out.push('', '| 소스 | 캠페인 | 랜딩 | 가입 | 입점 신청 | 크리에이터 신청 |', '|---|---|---|---|---|---|');
+    for (const r of utmRows) out.push(`| ${r.source} | ${r.campaign} | ${r.landings} | ${r.signups} | ${r.store_applies} | ${r.creator_applies} |`);
+    if (!utmRows.length) out.push('| (없음) | - | 0 | 0 | 0 | 0 |');
+  }
   return out.join('\n');
 }
 
@@ -66,9 +89,21 @@ async function main() {
   }
   const top = rows.sort((a, b) => b.metrics.score - a.metrics.score).slice(0, 3).map((p) => `- ${p.platform} ${p.content_id} (${p.track || (p.promo ? '홍보' : '유용')}) 점수 ${p.metrics.score}`).join('\n') || '- 없음';
   const advice = rows.length ? await claude('너는 유어딜 운영자를 돕는 마케팅 분석가다. 3줄 이내 한국어로 다음 주 개선점만. 광고비 집행 제안 금지.', JSON.stringify(rows.map((r) => ({ p: r.platform, slot: r.slot_kst, track: r.track, promo: r.promo, m: r.metrics }))).slice(0, 6000), 300) : '데이터가 쌓이면 제안합니다.';
-  const recruit = await recruitSection(rows);
-  const body = `최근 4주 게시물 ${rows.length}개 기준 (점수 = 노출 + 10×반응)\n\n${lines.join('\n')}\n\n### 상위 게시물\n${top}\n\n${recruit}\n\n### 다음 주 제안\n${advice}\n\n클릭/구매는 UTM(utm_content) 기준으로 어드민에서 함께 확인하세요.`;
-  if (!DRY) { writeJson('data/schedule.json', schedule); writeJson('data/posts.json', posts); }
+  const clicks = await threadsLinkClicks();
+  const utmRows = await fetchUtmReport(7);
+  const recruit = await recruitSection(rows, clicks, utmRows);
+  // 주간 비율 자기조정(최근 7일 글 기준) → data/mix-state.json
+  const weekAgo = Date.now() - 7 * 86400e3;
+  const state = readJson('data/mix-state.json', null) || { weights: { ...DEFAULT_WEIGHTS }, history: [] };
+  const perf = categoryPerformance({ posts: posts.filter((p) => p.id && !p.dry && !p.skipped && Date.parse(p.posted_at) > weekAgo), threadsClicks: clicks, utmRows, campaigns: CAMPAIGNS });
+  const adj = adjustWeights(state.weights, perf);
+  const fmtW = (w) => TRACKS.map((t) => `${t} ${w[t]}%`).join(' / ');
+  const mixLines = ['### 카테고리 비율 자동조정 (범위: 사장님 45-70 · 인플루언서 15-35 · 딜 10-25)',
+    `- 지난주: ${fmtW(state.weights)}`, `- 이번주: **${fmtW(adj.weights)}** (${adj.reason})`,
+    ...TRACKS.map((t) => `- ${t}: 글 ${perf[t].posts} · 클릭 ${perf[t].clicks} · 전환 ${perf[t].signups}`)].join('\n');
+  const newState = { weights: adj.weights, updated_at: new Date().toISOString(), history: [...(state.history || []), { at: new Date().toISOString(), from: state.weights, to: adj.weights, reason: adj.reason }].slice(-26) };
+  const body = `최근 4주 게시물 ${rows.length}개 기준 (점수 = 노출 + 10×반응)\n\n${lines.join('\n')}\n\n### 상위 게시물\n${top}\n\n${recruit}\n\n${mixLines}\n\n### 다음 주 제안\n${advice}\n\n클릭/구매는 UTM(utm_content) 기준으로 어드민에서 함께 확인하세요.`;
+  if (!DRY) { writeJson('data/schedule.json', schedule); writeJson('data/posts.json', posts); writeJson('data/mix-state.json', newState); }
   await createIssue(`[주간 SNS 리포트] ${new Date().toISOString().slice(0, 10)}`, body, ['marketing-report']);
 }
 main().catch((e) => { console.error(e.message); process.exit(1); });

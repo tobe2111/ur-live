@@ -41,7 +41,7 @@ import KakaoMapPicker, { type KakaoPlace } from '@/components/KakaoMapPicker'
 import { formatBusinessNumber } from '@/pages/seller-register/RegisterFields'
 import { formatPhone, isValidMobilePhone, digitsOnly } from '@/utils/format-phone'
 import { compressForDocument } from '@/lib/image-compress'; import { BUSINESS_CERT_MAX_FILE_BYTES } from '@/shared/upload-limits'
-import { readStoreReferrer, clearStoreReferrer } from '@/utils/store-referrer'
+import { readStoreReferrer, clearStoreReferrer, readAcqUtmInline } from '@/utils/store-referrer'
 import { enterStoreSeat } from '@/utils/enter-store'
 import { toast } from '@/hooks/useToast'
 import { Loader2, MapPin, CheckCircle2, XCircle, BadgeCheck, FileImage, ArrowLeft, X } from 'lucide-react'
@@ -240,7 +240,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
         // 🤝 2026-08-27: 소개자 초대 링크(`/store/new?ref=`)로 들어왔으면 그 사람에게 귀속된다.
         //   ⚠️ sessionStorage 를 거치는 이유 — 로그인이 필요한 페이지라 카카오를 다녀오면
         //   쿼리스트링이 날아간다. 그 사이 ref 를 잃으면 소개자가 보상을 못 받는다.
-        referrer_user_id: readStoreReferrer() || undefined,
+        referrer_user_id: readStoreReferrer() || undefined, acq: readAcqUtmInline(), // 📣 SNS UTM 귀속(입점 신청)
       })
       if (!r.data?.success) throw new Error(r.data?.error)
       clearStoreReferrer()

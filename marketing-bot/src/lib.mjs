@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { buildUtmLink } from './attribution.mjs';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const DRY = process.env.DRY_RUN === '1';
@@ -61,13 +62,10 @@ export const log = (...a) => console.log(`[${new Date().toISOString()}]${DRY ? '
 export function kstNow(d = new Date()) { return new Date(d.getTime() + 9 * 3600e3); }
 export function kstDateStr(d = new Date()) { return kstNow(d).toISOString().slice(0, 10).replace(/-/g, ''); }
 
+// 게시물마다 고유 UTM: source=플랫폼 · medium=social · campaign=카테고리 · content=<글id>-<YYYYMMDD>
+// (규칙 SSOT: src/attribution.mjs buildUtmLink — 앱 가입 귀속이 campaign 으로 카테고리를 센다)
 export function utmLink(product, source, campaignSlug, contentId, d = new Date()) {
-  const u = new URL(product.url);
-  u.searchParams.set('utm_source', source);
-  u.searchParams.set('utm_medium', 'social');
-  u.searchParams.set('utm_campaign', `${kstDateStr(d)}-${campaignSlug}`);
-  u.searchParams.set('utm_content', contentId);
-  return u.toString();
+  return buildUtmLink(product.url, { platform: source, campaign: campaignSlug, contentId, date: kstDateStr(d) });
 }
 
 // ---------- Claude ----------

@@ -22,6 +22,9 @@ interface StoredAcq {
   src: string
   code: string | null
   at: string // ISO landed_at
+  /** 📣 2026-10-19 SNS 봇 UTM — 어떤 카테고리(utm_campaign)·어떤 글(utm_content)이 데려왔나. 없으면 생략. */
+  campaign?: string | null
+  content?: string | null
   landed_sent?: boolean
   claimed?: boolean
 }
@@ -60,11 +63,14 @@ export function captureAcquisitionSource(): void {
     if (!src) return
     const existing = readStored()
     if (existing) return // first-touch 고정 — 30일 내 새 소스는 무시
-    const stored: StoredAcq = { src, code: regionCodeFromPath(window.location.pathname), at: new Date().toISOString() }
+    const stored: StoredAcq = {
+      src, code: regionCodeFromPath(window.location.pathname), at: new Date().toISOString(),
+      campaign: validSrc(params.get('utm_campaign')), content: validSrc(params.get('utm_content')),
+    }
     writeStored(stored)
     // 새 first-touch 캡처 시점에만 랜딩 이벤트 1회 (fail-soft)
     import('@/lib/api').then(({ default: api }) =>
-      api.post('/api/acquisition/landing', { src: stored.src, code: stored.code }).then(() => {
+      api.post('/api/acquisition/landing', { src: stored.src, code: stored.code, campaign: stored.campaign, content: stored.content }).then(() => {
         writeStored({ ...stored, landed_sent: true })
       }).catch(() => { /* 다음 세션 재시도 없음 — 분모 1건 손실 허용 */ }),
     ).catch(() => {})
@@ -78,7 +84,7 @@ export function claimAcquisitionIfLoggedIn(isLoggedIn: boolean): void {
     const stored = readStored()
     if (!stored || stored.claimed) return
     import('@/lib/api').then(({ default: api }) =>
-      api.post('/api/acquisition/claim', { src: stored.src, code: stored.code, landed_at: stored.at }).then((r) => {
+      api.post('/api/acquisition/claim', { src: stored.src, code: stored.code, landed_at: stored.at, campaign: stored.campaign, content: stored.content }).then((r) => {
         if (r?.data?.success) writeStored({ ...stored, claimed: true })
       }).catch(() => { /* 다음 로그인/방문에서 재시도 (멱등) */ }),
     ).catch(() => {})
@@ -91,4 +97,15 @@ export function claimAcquisitionIfLoggedIn(isLoggedIn: boolean): void {
  */
 export function readAcquisitionSource(): string | null {
   try { return readStored()?.src ?? null } catch { return null }
+}
+
+/**
+ * 📣 2026-10-19 — 전환(입점 신청·소개 파트너 신청)에 실어 보낼 first-touch UTM 전부. 없거나 만료면 null.
+ * 서버가 다시 검증한다(`normalizeAcqSource`).
+ */
+export function readAcquisitionUtm(): { src: string; campaign: string | null; content: string | null } | null {
+  try {
+    const v = readStored()
+    return v ? { src: v.src, campaign: v.campaign ?? null, content: v.content ?? null } : null
+  } catch { return null }
 }
