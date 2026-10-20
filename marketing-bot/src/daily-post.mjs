@@ -1,6 +1,7 @@
 // 매일 게시: Threads 텍스트 1개 + Instagram 이미지 캡션 1개.
 // 트랙 비율: data/mix-state.json(주간 자동조정, 범위 내) → 없으면 data/content-mix.json 고정 60/25/15.
 import { pickTrackByWeights } from './attribution.mjs';
+import { vetPost } from './vet.mjs';
 import { DRY, log, readJson, writeJson, claude, humanize, HUMAN_STYLE, threads, threadsText, igPublish, fbPagePost, utmLink, productImage, kstNow, THREADS_USER_ID, PARTNER_FACTS } from './lib.mjs';
 
 const schedule = readJson('data/schedule.json', {});
@@ -75,6 +76,25 @@ ${PARTNER_FACTS}
 본문만 출력하고 따옴표, 머리말, 해시태그 설명 같은 메타 문장은 쓰지 않는다.`;
 
 let igError = null;
+let qualityError = null;
+// 같은 플랫폼 최근 글 10개 — 거의 같은 글 반복 방지
+const recentTexts = (platform) => posts.filter((p) => p.platform === platform && p.text).slice(-10).map((p) => p.text);
+
+// 쓰기 → 검수 → (걸리면 문제를 알려 주고 한 번 다시 쓰기) → 그래도 걸리면 올리지 않는다
+async function writeVetted(prompt, maxTokens, platform, info, kind) {
+  const ctx = { facts: `${PARTNER_FACTS}\n${info}`, recent: recentTexts(platform) };
+  // 사람 말투로 다듬은 *최종본*을 검수한다 — 다듬기가 숫자·표현을 바꿀 수 있어서다
+  let body = await humanize(await claude(SYSTEM, prompt, maxTokens), kind);
+  if (DRY) return { body, problems: [] }; // DRY 샘플 응답은 검수 대상이 아니다
+  let problems = vetPost(body, ctx);
+  if (problems.length) {
+    log(`${platform} 검수 걸림 → 다시 쓰기: ${problems.join(' / ')}`);
+    body = await humanize(await claude(SYSTEM, `${prompt}\n\n방금 쓴 글이 아래 문제로 반려됐다. 고쳐서 다시 써라:\n- ${problems.join('\n- ')}`, maxTokens), kind);
+    problems = vetPost(body, ctx);
+  }
+  return { body, problems };
+}
+
 async function main() {
   if (isPromo && !product) { log('상품 없음, 종료'); return; }
   log(`event=${process.env.GITHUB_EVENT_NAME || 'local'} DRY=${DRY} force=${force} KST=${today} ${kstHM} slot(threads)=${todaysSlot('threads')} slot(ig)=${todaysSlot('instagram')}`);
@@ -86,12 +106,19 @@ async function main() {
     const cid = `th-${n('threads')}`;
     const link = utmLink(isPromo ? product : target, 'threads', T.campaign || track, cid, now);
     const len = ['150~200자', '250~300자', '350~400자'][dayIdx % 3];
-    const body = await humanize(await claude(SYSTEM, `${info}\nThreads 글 1개를 ${len} 정도로 써줘. 링크는 내가 끝에 붙일게.`, 600), 'Threads 글');
+    const { body, problems } = await writeVetted(`${info}\nThreads 글 1개를 ${len} 정도로 써줘. 링크는 내가 끝에 붙일게.`, 600, 'threads', info, 'Threads 글');
+    if (problems.length) {
+      qualityError = qualityError || new Error(`Threads 검수 실패: ${problems.join(' / ')}`);
+      console.log(`::error title=Threads 검수 실패 — 게시 안 함::${problems.join(' / ')}`);
+      log('반려된 본문:\n' + body);
+      posts.push({ platform: 'threads', skipped: 'quality_failed', problems, track, posted_at: now.toISOString(), date_kst: today });
+    } else {
     const text = threadsText(body, link);
     log('Threads 본문:\n' + text);
     const c = await threads('POST', `${THREADS_USER_ID}/threads`, { media_type: 'TEXT', text });
     const r = await threads('POST', `${THREADS_USER_ID}/threads_publish`, { creation_id: c.id });
-    posts.push({ platform: 'threads', id: r.id, content_id: cid, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('threads'), link, dry: DRY || undefined });
+    posts.push({ platform: 'threads', id: r.id, content_id: cid, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('threads'), link, text: body, dry: DRY || undefined });
+    }
   } else log(`Threads: 건너뜀 — ${skipReason('threads')}`);
 
   // ---- Instagram (이미지 필수) ----
@@ -109,7 +136,13 @@ async function main() {
       log(`Instagram: ${track} 이미지 URL 없음 → 건너뜀`);
       posts.push({ platform: 'instagram', skipped: 'no_image', track, product_id: product?.id, posted_at: now.toISOString(), date_kst: today });
     } else {
-      const body = await humanize(await claude(SYSTEM, `${info}\n인스타그램 캡션 1개(600자 이내, 해시태그 2~4개만 끝에). 본문 링크는 클릭이 안 되니 '프로필 링크에서 확인' 식으로 안내.`, 800), '인스타그램 캡션');
+      const { body, problems } = await writeVetted(`${info}\n인스타그램 캡션 1개(600자 이내, 해시태그 2~4개만 끝에). 본문 링크는 클릭이 안 되니 '프로필 링크에서 확인' 식으로 안내.`, 800, 'instagram', info, '인스타그램 캡션');
+      if (problems.length) {
+        qualityError = qualityError || new Error(`Instagram 검수 실패: ${problems.join(' / ')}`);
+        console.log(`::error title=Instagram 검수 실패 — 게시 안 함::${problems.join(' / ')}`);
+        log('반려된 캡션:\n' + body);
+        posts.push({ platform: 'instagram', skipped: 'quality_failed', problems, track, posted_at: now.toISOString(), date_kst: today });
+      } else {
       log('IG 캡션:\n' + body + `\n(프로필 링크에 걸 UTM: ${link})`);
       const kind = media.video_url ? `Reels ${media.video_url}` : `${media.images.length}장 ${media.images.length > 1 ? '캐러셀' : '이미지'}`;
       log(`IG 미디어: ${kind}`);
@@ -122,7 +155,7 @@ async function main() {
         posts.push({ platform: 'instagram', skipped: 'error', error: e.message.slice(0, 300), track, posted_at: now.toISOString(), date_kst: today });
       }
       if (r) {
-      posts.push({ platform: 'instagram', id: r.id, media_type: r.media_type, media_set: media.set, content_id: cid, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('instagram'), bio_link: link, dry: DRY || undefined });
+      posts.push({ platform: 'instagram', id: r.id, media_type: r.media_type, media_set: media.set, content_id: cid, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('instagram'), bio_link: link, text: body, dry: DRY || undefined });
       // ---- Facebook 페이지 (IG 게시 시 같은 미디어/캡션 + 링크; 멀티포토·영상 실패 시 단일 이미지) ----
       const fcid = `fb-${n('facebook')}`;
       const flink = utmLink(isPromo ? product : target, 'facebook', T.campaign || track, fcid, now);
@@ -132,11 +165,13 @@ async function main() {
         else posts.push({ platform: 'facebook', id: f.post_id || f.id, content_id: fcid, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('instagram'), link: flink, dry: DRY || undefined });
       } catch (e) { log(`Facebook 게시 실패: ${e.message}`); }
       }
+      }
     }
   } else log(`Instagram: 건너뜀 — ${skipReason('instagram')}`);
 
   if (!DRY) writeJson('data/posts.json', posts);
   else log('DRY: posts.json 미기록', JSON.stringify(posts.slice(-2)).slice(0, 300));
   if (igError) throw new Error(`Instagram 게시 실패: ${igError.message}`);
+  if (qualityError) throw qualityError; // 기록은 저장했다. 다음 회차가 같은 날 다시 시도한다(skipped 는 미게시로 센다)
 }
 main().catch((e) => { console.log(`::error::${e.message}`); console.error(e.message); process.exit(1); });
