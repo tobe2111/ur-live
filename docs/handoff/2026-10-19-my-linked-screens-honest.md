@@ -84,3 +84,14 @@
 
 **다음 세션 첫 액션**
 - 배포 후 E4: 라이브 `/my-orders`(주문 있는 계정)에서 상태 고르기가 탭 줄 오른쪽에 서는지 · 마이에 '이용권 현황' 이 없는지 · `/my-deal-history` 흰 카드.
+
+**머지**: 3차 #1942 → `d292e3a2f`(아이콘 래칫 130→129 수리 포함). E3(번들 대조: 마이 '이용권 현황' 1→0 · 딜 내역 그라디언트 1→0 · 주문 상태 고르기 0→1). 로그인 화면 E4 는 대표 확인 대기.
+
+---
+
+## 4차 — AI 비서 검색 창구 켬 (대표 *"통로 열어줘"*, 2026-10-20)
+- `agent_search_enabled = true` 저장. 라이브: 서초구 200·1건 · 빈 질의 400 · 데모 0 · AI 봇 UA 4종 200.
+- 그런데 `llms.txt` 에 창구가 안 적혀 AI 가 주소를 알 길이 없었다 → 게이트가 켜져 있을 때만 안내 6줄을 싣는다
+  (문구 SSOT `shared/agent-search.ts` `agentSearchLines` · 배선 `sitemap.routes.ts` · 가드 `llms-agent-search-2026-10-20.test.ts` 5건 + 주입 3건 빨간불 확인).
+- 다음 세션 첫 액션: 배포 뒤 `curl -A 'OAI-SearchBot/1.0' https://urdeal.kr/llms.txt | grep -n '/api/agent/search'` → 1줄(캐시 1시간).
+- 결재 ②(에이전트 대신 결제)는 대표 질문에 답한 뒤 다시 판단.
