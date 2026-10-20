@@ -51,7 +51,9 @@ describe('llms.txt — AI 비서 검색 창구 안내', () => {
 
   it('⑤ 라우트가 게이트를 읽어 빌더에 넘긴다', () => {
     const src = readCode('src/worker/routes/sitemap.routes.ts')
-    expect(src).toMatch(/settingOn\(c\.env\.DB,\s*AGENT_SEARCH_GATE\)/)
-    expect(src).toMatch(/buildLlmsTxt\(new URL\(c\.req\.url\)\.origin,\s*\{\s*agentSearch\s*\}\)/)
+    // 2026-10-20: 결제 링크 게이트와 함께 읽는다 — 두 게이트를 한 번에 읽어 넘긴다.
+    expect(src).toMatch(/\[AGENT_SEARCH_GATE,\s*AGENT_CHECKOUT_GATE\]\.map\(k\s*=>\s*settingOn\(DB,\s*k\)/)
+    expect(src).toMatch(/const \[agentSearch, agentCheckout\]/)
+    expect(src).toMatch(/buildLlmsTxt\(new URL\(c\.req\.url\)\.origin,\s*\{\s*agentSearch,\s*agentCheckout\s*\}\)/)
   })
 })

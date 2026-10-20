@@ -95,3 +95,13 @@
   (문구 SSOT `shared/agent-search.ts` `agentSearchLines` · 배선 `sitemap.routes.ts` · 가드 `llms-agent-search-2026-10-20.test.ts` 5건 + 주입 3건 빨간불 확인).
 - 다음 세션 첫 액션: 배포 뒤 `curl -A 'OAI-SearchBot/1.0' https://urdeal.kr/llms.txt | grep -n '/api/agent/search'` → 1줄(캐시 1시간).
 - 결재 ②(에이전트 대신 결제)는 대표 질문에 답한 뒤 다시 판단.
+- ✅ #1954 머지·배포 후 라이브 확인: llms.txt 15행에 창구 주소 실림. Notion 기록 완료.
+
+## 5차 — AI 비서 결제 넘겨받기 (대표 *"4번도 일단은 하자. 가장 이상적으로."*, 2026-10-20)
+- "대신 결제"가 아니라 **결제 직전까지 넘겨주기**로 설계했다(근거는 결재 파일 ② · `shared/agent-checkout.ts` 머리말).
+- `GET /api/agent/checkout?id=&qty=` — 검색과 같은 조건의 상품만, 수량은 1인당 한도로 자름, 금액 + `checkout_url`.
+  숙소는 수량 없이 상세 링크만. 오픈 예정형은 409.
+- 상세 `DealBottomBar` 가 `?via=agent&qty=N` 이면 구매 창을 그 수량으로 연다(`useAgentHandoff` — 결제를 스스로 시작하지 않음, 주인·판매 전·품절이면 안 염, 처리 뒤 주소에서 표식 삭제).
+- llms.txt 는 두 게이트가 다 켜져 있을 때만 결제 링크 안내를 싣는다.
+- 게이트 `agent_checkout_enabled` 기본 꺼짐 → **다음 첫 액션: 배포 뒤 S-AGENT-5(꺼진 채 404) 확인 → 켜고 S-AGENT-6 확인.** S-AGENT-7(폰으로 열어 결제)은 대표.
+- 가드 `agent-checkout-2026-10-20.test.tsx` 11건 + 주입 6건 전부 빨간불 확인. 기존 `llms-agent-search` ⑤ 와 그 주입 앵커를 두 게이트 배선으로 재조준.
