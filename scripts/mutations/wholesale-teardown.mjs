@@ -16,8 +16,8 @@ export default [
   {
     name: '🧨 철거 — 워커가 도매 라우트를 다시 마운트한다',
     file: 'src/worker/index.ts',
-    find: "app.route('/api/admin/maker-pool', makerPoolRoutes);",
-    replace: "app.route('/api/wholesale', makerPoolRoutes);",
+    find: "app.route('/api/admin/wholesale-malls', adminWholesaleMallRoutes);",
+    replace: "app.route('/api/wholesale', adminWholesaleMallRoutes);",
     test: TEST,
     why: '도매 네임스페이스가 되살아나면 서비스 분리가 다시 흐려진다.',
   },
@@ -54,14 +54,6 @@ export default [
     replace: "const computeWholesaleOnly = async () => false;",
     test: TEST,
     why: '이름에 wholesale 이 들어갔지만 이건 셀러↔도매 겸업이 서로 튕기지 않게 하는 서버 권위 신호다.',
-  },
-  {
-    name: '🔴 잔류 — maker-pool 마운트를 뺀다 (유어애즈가 모은 리드를 볼 화면이 사라진다)',
-    file: 'src/worker/index.ts',
-    find: "app.route('/api/admin/maker-pool', makerPoolRoutes);",
-    replace: '// 제거됨',
-    test: TEST,
-    why: 'worker-ads 가 ad_company_leads 를 계속 수집하는데 보는 곳이 없어진다 — 수집은 돌고 아무도 모른다.',
   },
   {
     name: '🔴 잔류 — 공구 서비스 몰 관리 API 마운트를 뺀다',

@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { pickNearbyPasses, type FeedPass } from './nearby-picks'
@@ -11,11 +12,11 @@ export { usePopularPassFeed as useNearbyFeed } from '@/hooks/usePopularPassFeed'
  * 고를 이용권이 없으면 `null` — 빈 흰 카드는 "안내" 가 아니라 결함으로 보인다.
  */
 
-export default function NearbyPassesCard({ feed, regionSi }: { feed: FeedPass[]; regionSi?: string | null }) {
+export default function NearbyPassesCard({ feed, regionSi, style }: { feed: FeedPass[]; regionSi?: string | null; style?: CSSProperties }) {
   const picks = pickNearbyPasses(feed, regionSi)
   if (picks.items.length === 0) return null
   return (
-    <div className="absolute inset-x-[10px] bottom-[10px] z-20 flex items-center gap-2 rounded-2xl bg-white/95 p-2 shadow-2xl">
+    <div style={style} className="absolute inset-x-[10px] bottom-[10px] z-20 flex items-center gap-2 rounded-2xl bg-white/95 p-2 shadow-2xl">
       <div className="min-w-0 flex-1 text-gray-900">
         <div className="truncate text-[12px] font-semibold">{picks.label}</div>
         <div className="mt-1 flex gap-2">

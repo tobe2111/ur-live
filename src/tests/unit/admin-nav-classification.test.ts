@@ -157,7 +157,8 @@ describe('R4 — 단일 서비스 화면이 공통 서랍에 눌러앉지 않는
     //   사라졌고, 이 풀이 실제로 읽는 것은 **유어애즈의 `ad_company_leads`**(worker-ads 가 수집)다.
     //   ⚠️ 테이블은 여전히 격리돼 있다(`supply_maker_leads`) — 밴드가 같아졌다고 데이터가 섞이는 게
     //   아니다. 그 격리는 `supply-teardown-safety` 와 서버 RBAC 가 지킨다.
-    for (const p of ['/admin/maker-pool', '/admin/partner-pool', '/admin/buyer-pool']) {
+    // 🧨 2026-10-20 maker-pool · buyer-pool 은 대표 지시로 삭제 — 남은 리드 풀만 본다.
+    for (const p of ['/admin/partner-pool']) {
       expect(bandOf(p), p).toBe('ads')
     }
   })
@@ -182,12 +183,11 @@ describe('R4 — 단일 서비스 화면이 공통 서랍에 눌러앉지 않는
     expect(bandOf('/admin/influencer-payouts')).toBe('common')
   })
 
-  it('🔴 …그리고 **슈퍼 전용**이다 — 밴드만 옮기면 도매 파트너에게 403 빈화면이 된다', () => {
-    // 짝으로 성립하는 결정이다: 도매 밴드(데이터 소속) + super-only(리드 DB 는 내부 자산 · API 가
-    // 도매 RBAC 스코프 밖). 한쪽만 되돌리면 조용히 깨지므로 여기서 함께 고정한다.
+  it('🧨 2026-10-20 제조사·판매사 후보 풀은 삭제됐다 — 슈퍼 전용 목록에도 남지 않는다', () => {
     const layout = read('src/components/AdminLayout.tsx')
     const set = layout.match(/SUPER_ONLY_NAV\s*=\s*new Set\(\[([^\]]*)\]/)
     expect(set, 'SUPER_ONLY_NAV 를 못 찾았다 — 이름이 바뀌었으면 이 테스트도 함께 고칠 것').toBeTruthy()
-    expect(set![1]).toContain('/admin/maker-pool')
+    expect(set![1]).not.toContain('/admin/maker-pool')
   })
+
 })

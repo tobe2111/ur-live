@@ -66,7 +66,8 @@ describe('R1 — /partners 는 PC 소비자 액자를 쓰지 않는다', () => {
   })
 
   it('App.tsx 가 /partners 를 fullScreen 으로 유지한다 (상·하단 소비자 네비 제외)', () => {
-    expect(visible('src/App.tsx')).toMatch(/fullScreenPrefixes[\s\S]{0,400}'\/partners'/)
+    expect(visible('src/lib/consumer-chrome.ts')).toMatch(/fullScreenPrefixes[\s\S]{0,400}'\/partners'/)
+    expect(visible('src/App.tsx')).toMatch(/isFullScreenPath\(location\.pathname\)/)
   })
 
   it('페이지가 풀너비에서 퍼지지 않게 ur-content-wide 로 중앙 정렬한다', () => {

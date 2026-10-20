@@ -543,7 +543,6 @@ function findRouteFiles() {
     'src/features/timedeal/api',
     'src/features/auction/api',
     'src/features/multi-platform/api',
-    'src/features/cafe24/api',
     'src/features/curator/api',
     'src/features/seller-public/api',
     'src/features/referral/api',

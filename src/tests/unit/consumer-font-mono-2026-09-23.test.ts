@@ -94,7 +94,7 @@ describe('소비자 화면에 터미널 고정폭이 없다 (2026-09-23)', () =>
   it('제외 규칙이 대시보드를 실제로 걸러낸다 — 그리고 소비자를 안 삼킨다', () => {
     expect(files).not.toContain('pages/AdminUsersPage.tsx')
     expect(files).not.toContain('pages/seller-orders/OrderNumber.tsx')
-    expect(files).not.toContain('pages/admin/AdminBuyerPoolPage.tsx')
+    expect(files).not.toContain('pages/admin/AdminPartnerPoolPage.tsx') // 2026-10-20 BuyerPool 삭제로 표본 교체
     expect(files).toContain('pages/PaymentSuccessPage.tsx')
     expect(files).toContain('pages/MyLedgerPage.tsx')
   })
