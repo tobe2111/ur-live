@@ -1,5 +1,5 @@
 // 매주 월요일: 최근 게시물 인사이트 → 플랫폼별 최적 시간대 → schedule.json 갱신 → 리포트 이슈.
-import { DRY, log, readJson, writeJson, threads, insta, createIssue, claude, THREADS_USER_ID } from './lib.mjs';
+import { DRY, log, readJson, writeJson, threads, insta, createIssue, claude, THREADS_USER_ID , opsAlert } from './lib.mjs';
 import { TRACKS, DEFAULT_WEIGHTS, DEFAULT_CAMPAIGNS, categoryPerformance, adjustWeights } from './attribution.mjs';
 
 const mixCfg = readJson('data/content-mix.json', {});
@@ -106,4 +106,4 @@ async function main() {
   if (!DRY) { writeJson('data/schedule.json', schedule); writeJson('data/posts.json', posts); writeJson('data/mix-state.json', newState); }
   await createIssue(`[주간 SNS 리포트] ${new Date().toISOString().slice(0, 10)}`, body, ['marketing-report']);
 }
-main().catch((e) => { console.error(e.message); process.exit(1); });
+main().catch(async (e) => { console.error(e.message); await opsAlert('마케팅 봇 주간 리뷰 실패', e.message); process.exit(1); });

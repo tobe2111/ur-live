@@ -1,7 +1,7 @@
 // 매주: 인플루언서 후보 + DM 초안을 GitHub 이슈로만 작성. 절대 아무것도 발송하지 않는다.
 import fs from 'node:fs';
 import path from 'node:path';
-import { ROOT, readJson, claude, createIssue, PARTNER_FACTS, PARTNER_LINKS } from './lib.mjs';
+import { ROOT, readJson, claude, createIssue, PARTNER_FACTS, PARTNER_LINKS , opsAlert } from './lib.mjs';
 
 const { products } = readJson('data/products.json', { products: [] });
 let candidates = '';
@@ -14,4 +14,4 @@ async function main() {
   await createIssue(`[인플루언서 후보·DM 초안] ${new Date().toISOString().slice(0, 10)}`,
     `> 이 이슈는 초안입니다. 봇은 DM 을 보내지 않습니다. 사장님이 검토 후 직접 보내세요.\n\n${out}`, ['marketing-influencer']);
 }
-main().catch((e) => { console.error(e.message); process.exit(1); });
+main().catch(async (e) => { console.error(e.message); await opsAlert('마케팅 봇 인플루언서 초안 실패', e.message); process.exit(1); });

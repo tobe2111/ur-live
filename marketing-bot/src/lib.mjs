@@ -138,6 +138,34 @@ export async function humanize(text, kind = '게시글') {
   return out || text;
 }
 
+// ---------- 실패 알림 → 대표 카톡 "나에게 보내기" ----------
+// 서버(/api/ops/alert)가 대표 카카오 토큰으로 보낸다. 봇은 GitHub OIDC 토큰으로 신원만 증명한다(비밀 0).
+// 알림이 실패해도 원래 오류를 가리지 않는다(fail-soft) — 그때는 GitHub 의 실패 메일이 예비다.
+export const OPS_ALERT_URL = 'https://urdeal.kr/api/ops/alert';
+export function runUrl(env = process.env) {
+  return env.GITHUB_RUN_ID ? `${env.GITHUB_SERVER_URL || 'https://github.com'}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}` : undefined;
+}
+export async function opsAlert(title, text, env = process.env, fetchImpl = fetch) {
+  if (DRY) { log(`DRY: 카톡 알림 생략 — ${title}: ${text}`); return { skipped: 'dry' }; }
+  const reqUrl = env.ACTIONS_ID_TOKEN_REQUEST_URL, reqTok = env.ACTIONS_ID_TOKEN_REQUEST_TOKEN;
+  if (!reqUrl || !reqTok) { log('카톡 알림 생략 — OIDC 없음(id-token: write 권한 확인)'); return { skipped: 'no_oidc' }; }
+  try {
+    const t = await fetchImpl(`${reqUrl}&audience=urdeal-ops-alert`, { headers: { Authorization: `bearer ${reqTok}` } }).then((r) => r.json());
+    const res = await fetchImpl(OPS_ALERT_URL, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${t.value}`, 'Content-Type': 'application/json', 'User-Agent': 'urdeal-marketing-bot/1.0' },
+      body: JSON.stringify({ title, text, url: runUrl(env) }),
+      signal: AbortSignal.timeout(10000),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) console.log(`::warning title=카톡 알림 실패::${res.status} ${j.code || j.error || ''}${j.consent_url ? ` — 권한 동의: ${j.consent_url}` : ''}`);
+    return { status: res.status, ...j };
+  } catch (e) {
+    console.log(`::warning title=카톡 알림 실패::${e.message}`);
+    return { error: e.message };
+  }
+}
+
 // ---------- Meta (Threads / Instagram) ----------
 async function metaCall(base, token, method, p, params = {}) {
   const u = new URL(`${base}/${p}`);

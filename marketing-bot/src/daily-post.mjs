@@ -2,7 +2,7 @@
 // 트랙 비율: data/mix-state.json(주간 자동조정, 범위 내) → 없으면 data/content-mix.json 고정 60/25/15.
 import { pickTrackByWeights } from './attribution.mjs';
 import { vetPost } from './vet.mjs';
-import { DRY, log, readJson, writeJson, claude, humanize, HUMAN_STYLE, threads, threadsText, igPublish, fbPagePost, utmLink, productImage, kstNow, THREADS_USER_ID, PARTNER_FACTS } from './lib.mjs';
+import { DRY, log, readJson, writeJson, claude, humanize, HUMAN_STYLE, threads, threadsText, igPublish, fbPagePost, utmLink, productImage, kstNow, THREADS_USER_ID, PARTNER_FACTS , opsAlert } from './lib.mjs';
 
 const schedule = readJson('data/schedule.json', {});
 const mix = readJson('data/content-mix.json', { cycle: {}, tracks: {} });
@@ -174,4 +174,4 @@ async function main() {
   if (igError) throw new Error(`Instagram 게시 실패: ${igError.message}`);
   if (qualityError) throw qualityError; // 기록은 저장했다. 다음 회차가 같은 날 다시 시도한다(skipped 는 미게시로 센다)
 }
-main().catch((e) => { console.log(`::error::${e.message}`); console.error(e.message); process.exit(1); });
+main().catch(async (e) => { console.log(`::error::${e.message}`); console.error(e.message); await opsAlert('마케팅 봇 SNS 게시 실패', e.message); process.exit(1); });

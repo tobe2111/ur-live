@@ -42,3 +42,18 @@ test('긴 본문은 문장 끝에서 자른다', () => {
 test('짧은 본문은 그대로 둔다', () => {
   assert.equal(threadsText('짧은 글', LINK), `짧은 글\n\n${LINK}`);
 });
+
+import { opsAlert } from '../src/lib.mjs';
+test('실패 알림은 OIDC 토큰을 받아 서버에 Bearer 로 보낸다', async () => {
+  const calls = [];
+  const fake = async (url, opt = {}) => { calls.push({ url, opt }); return new Response(JSON.stringify(calls.length === 1 ? { value: 'jwt.x.y' } : { success: true }), { status: 200 }); };
+  const r = await opsAlert('제목', '본문', { ACTIONS_ID_TOKEN_REQUEST_URL: 'https://gh/token?x=1', ACTIONS_ID_TOKEN_REQUEST_TOKEN: 't', GITHUB_RUN_ID: '9', GITHUB_REPOSITORY: 'tobe2111/ur-live' }, fake);
+  assert.equal(r.success, true);
+  assert.match(calls[0].url, /audience=urdeal-ops-alert/);
+  assert.equal(calls[1].url, 'https://urdeal.kr/api/ops/alert');
+  assert.equal(calls[1].opt.headers.Authorization, 'Bearer jwt.x.y');
+  assert.match(JSON.parse(calls[1].opt.body).url, /actions\/runs\/9$/);
+});
+test('OIDC 가 없으면 조용히 건너뛴다(원래 오류를 가리지 않는다)', async () => {
+  assert.deepEqual(await opsAlert('a', 'b', {}, async () => { throw new Error('호출되면 안 됨'); }), { skipped: 'no_oidc' });
+});

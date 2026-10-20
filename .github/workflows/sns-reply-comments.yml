@@ -10,6 +10,7 @@ on:
 permissions:
   contents: write
   issues: write
+  id-token: write   # 실패 시 대표 카톡 알림 — GitHub OIDC 로 서버에 신원 증명(공유 비밀 0)
 concurrency:
   group: marketing-bot-data
   cancel-in-progress: false
