@@ -151,7 +151,6 @@ import { restaurantSuggestionsRoutes } from '../features/restaurant-suggestions/
 // import { sellerDonationsRoutes } from '../features/donations/api/seller-donations.routes';
 // import youtubeRoutes from '../features/youtube/api/youtube.routes';
 // import { multiPlatformRoutes } from '../features/multi-platform/api/multi-platform.routes';
-import { cafe24Routes } from '../features/cafe24/api/cafe24.routes';
 
 import { ALLOWED_ORIGINS, FIREBASE_RTDB_URL, FIREBASE_APP_URL } from '../shared/constants';
 import { requireAdmin, requireAuth, requireSeller } from './middleware/auth';
@@ -203,9 +202,6 @@ import { creatorClaimRoutes } from '../features/marketing/api/lead-claim'; // �
 import { campaignApplyRoutes } from '../features/marketing/api/campaign-apply.routes';
 import { adminCampaignApplicationsRoutes } from '../features/admin/api/admin-campaign-applications.routes'; import { mallAdminRoutes } from '../features/mall/api/mall-admin.routes'; // 🏬 몰 운영자 콘솔(공구 서비스) — 한 줄: 파일크기 래칫(2638) 안
 // ⏳ [TEMP-TEST] 도매 워커 배포 전 라이브 검증용 임시 마운트(아래 app.route 참조) — ur-wholesale 배포 시 제거.
-import { buyerPoolRoutes as buyerPoolTestRoutes } from '../features/supply/api/buyer-pool.routes';
-import { makerPoolRoutes } from '../features/supply/api/maker-pool.routes'; // 🧨 2026-10-11 도매 철거 — 종전엔 mount-wholesale(도매 번들)에만 있어 소비자 배포에선 죽은 링크였다. 읽는 것은 유어애즈 `ad_company_leads`(worker-ads 가 계속 수집)라 여기로 옮긴다.
-import { buyerIngestRoutes } from '../features/supply/api/buyer-ingest.routes';
 import { payoutCenterRoutes } from '../features/admin/api/admin-payout-center.routes';
 import { proxyRoutes } from './routes/proxy.routes';
 import { debugRoutes } from './routes/debug.routes';
@@ -386,12 +382,11 @@ adminApp.use('*', adminAuditMiddleware());
 app.use('*', timing());
 app.use('*', logger());
 // 📤 /api/* 본문 천장 — 기본 1MB, 경로별 예외는 `shared/upload-limits.ts` `API_BODY_LIMIT_OVERRIDES` 한 곳
-//   (buyer-ingest 1.5MB · 등록증 2.2MB · 히어로 영상 10MB — 2026-10-13 대표 승인, 결재 2026-10-11-upload-body-limit).
+//   (등록증 2.2MB · 히어로 영상 10MB — 2026-10-13 대표 승인, 결재 2026-10-11-upload-body-limit).
 //   업로드 라우트보다 **먼저** 등록돼 있어 여기서 자른 것이 실제 천장이다. 접두 일치로 넓히지 말 것.
 app.use('/api/*', bodyLimitByPath(apiBodyLimitFor));
 app.use('/api/*', i18nMiddleware);
-// 인제스트는 토큰 인증 + 크로스오리진 → 전역 IP 레이트리밋 제외(429 가 CORS 없이 나가 북마클릿 배치 실패 방지). /known 서브경로 포함.
-app.use('/api/*', (c, next) => c.req.path.startsWith('/api/buyer-ingest') || c.req.path === '/api/instagram/webhook' ? next() : (rateLimiterMiddleware as any)(c, next));
+app.use('/api/*', (c, next) => c.req.path === '/api/instagram/webhook' ? next() : (rateLimiterMiddleware as any)(c, next));
 
 // CORS — multi-region support
 const _globalCors = cors({
@@ -416,8 +411,7 @@ const _globalCors = cors({
   credentials: true,
   maxAge: 86400,
 });
-// 🔖 북마클릿 인제스트(/api/buyer-ingest[/known])는 토큰 인증 + 자체 CORS(외부 B2B 오리진 허용) — 전역 cors(오리진 화이트리스트) 우회.
-app.use('*', (c, next) => c.req.path.startsWith('/api/buyer-ingest') ? next() : _globalCors(c, next));
+app.use('*', _globalCors);
 
 // ============================================================
 // Security Headers (CSP etc.)
@@ -1668,16 +1662,7 @@ app.route('/api/admin/store-prospects', storeProspectsRoutes); // 🏪 매장 �
 app.route('/api/public/new-openings', newOpeningsPublicRoutes); // 🎉 소비자 공개: 우리 동네 새 가게(연락처 미노출, CDN 캐시)
 app.route('/api/public/area-report', areaReportPublicRoutes); // 📊 소비자 공개: 상권 리포트(이메일 아웃리치 미끼, CDN 캐시)
 app.route('/api/admin/gov-notices', govNoticesRoutes); // 📢 공고 스캐너 — 나라장터+기업마당(gov_notices 격리), 메인 어드민 JWT
-// 🌐 해외 수출 바이어 풀 정규 마운트는 유통스타트(도매) 워커 → mount-wholesale.ts(소비자 번들 DCE·유어딜 무관).
-// ⏳ [TEMP-TEST 2026-07-20] 도매 워커가 아직 미배포라, 대표가 라이브 어드민(/admin/buyer-pool)에서 무료 소스
-//   수집을 검증할 수 있게 소비자 워커에 임시 마운트. admin 전용(requireAdmin)+격리 테이블+게이트라 유어딜 데이터
-//   무접촉. ur-wholesale 배포 시 이 3줄(import+mount) 제거 예정.
-app.route('/api/admin/buyer-pool', buyerPoolTestRoutes);
-app.route('/api/admin/maker-pool', makerPoolRoutes); // 🏭 제조사·판매사 후보 풀(격리 테이블 `supply_maker_leads` + 유어애즈 리드 읽기)
-// 📦 2026-10-11 대표 "유통 스타트는 다 필요없어": 제조사·판매사 후보 풀(유통스타트 밴드)의 [TEMP-TEST] 소비자 마운트 제거 —
-//   유통스타트 워커(mount-wholesale.ts)에만 남는다. 바이어 풀(위·아래)은 도매와 무관한 별개 사업이라 그대로 둔다.
-// 🔖 바이어 풀 북마클릿 인제스트 — requireAdmin 밖(크로스오리진, 토큰 인증+CORS). buyKorea 등에서 원클릭 전송.
-app.route('/api/buyer-ingest', buyerIngestRoutes);
+// 🧨 2026-10-20 대표 "지워줘": 해외 바이어 풀 · 제조사·판매사 후보 풀 · 북마클릿 인제스트 마운트 삭제(유어딜 무관).
 // app.route('/api/seller/castings', sellerCastingRoutes);
 // 🥗 2026-07-15 워커 다이어트: 라이브 후원 부스터(쓰는 컴포넌트 0) 마운트 분리.
 // app.route('/api/donation-boosters', donationBoosterRoutes);
@@ -1812,7 +1797,6 @@ adminApp.route('/banners', adminBannersRoutes);
 adminApp.route('/urshorts', adminUrshortsRoutes);
 // Feature flags / kill-switch (graceful degradation for traffic spikes)
 adminApp.route('/flags', adminFlagsRoutes);
-adminApp.route('/cafe24', cafe24Routes);
 // Blog admin — mounted INSIDE adminApp (requireAdmin + IP whitelist + audit log)
 adminApp.route('/blog', adminBlogRoutes);
 adminApp.route('/instagram-autodm', instagramAutoDmAdminRoutes); // 💬 인스타 자동 DM 설정·규칙·발송 기록
@@ -1827,7 +1811,7 @@ adminApp.route('/restaurant-settlement', restaurantSettlementRoutes);
 // 🧨 [도매몰 철거 2026-10-11 대표 "도매몰 잔해들은 아예 다 삭제해줘"] 도매(B2B) 라우트 마운트 제거.
 //   종전: `if (__INCLUDE_WHOLESALE__) { mountWholesale(app, adminApp) }` — `WHOLESALE_BUNDLE=1` 빌드에서만
 //   포함됐으므로 **소비자 배포는 이 블록을 원래 안 탔다**(DCE). 즉 이 삭제로 urdeal.kr 동작은 변하지 않는다.
-//   잔류: 정산 엔진(supply-settlement 등 4파일 — 소비자 주문확정·환불·cron 이 직접 부른다) · buyer/maker 풀 ·
+//   잔류: 정산 엔진(supply-settlement 등 4파일 — 소비자 주문확정·환불·cron 이 직접 부른다) ·
 //   몰 인프라(아래 `wholesale-malls`). 계획·경계: docs/design/wholesale-teardown-plan.md §1~§3.
 /**
  * 🏬 **몰 관리 CRUD 는 도매 게이트 밖이다** 〔2026-08-03 — 대표 실측 404〕
@@ -1846,8 +1830,6 @@ adminApp.route('/restaurant-settlement', restaurantSettlementRoutes);
  */
 app.route('/api/admin/wholesale-malls', adminWholesaleMallRoutes);
 app.route('/api/admin', adminApp);
-// Cafe24 public callback (no admin auth needed for OAuth redirect)
-app.route('/admin/cafe24/callback', cafe24Routes);
 
 // Push notifications
 app.route('/', pushRoutes);  // pushRoutes already uses full path /api/push/*
@@ -2178,7 +2160,6 @@ app.get('/api/side-banners', edgeCache(600), async (c) => {
   }
 });
 
-// (Cafe24 is registered under adminApp above)
 
 
 // ============================================================

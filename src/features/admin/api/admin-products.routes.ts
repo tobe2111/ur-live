@@ -9,8 +9,6 @@
  * - PUT    /products/:id               — 상품 전체 수정
  * - PATCH  /products/:id               — 상품 부분 수정 (is_active, sold_count, stock)
  * - DELETE /products/:id               — 상품 삭제 (soft/hard)
- * - GET    /sample-requests            — 샘플 신청 목록
- * - PATCH  /sample-requests/:id        — 샘플 신청 승인/거부 + 알림톡
  */
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
@@ -18,15 +16,13 @@ import type { Env } from '@/worker/types/env';
 import { executeQuery, executeRun } from '@/worker/utils/database';
 import { writeAuditLog } from '@/worker/middleware/admin-security';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
-import { buildSampleApprovalMessage } from '../../alimtalk/messages';
-import { sendSystemAlimtalk } from '@/lib/system-alimtalk';
 import { ensureSupplyVisibilitySchema, recordSupplyPriceChange } from '../../supply/api/supply-visibility';
 import { getSupplyMeta, setSupplyMeta } from '@/worker/utils/product-supply-meta';
 import { loadPlatformCommissionPct } from '../../supply/api/wholesale-settlement';
 import { distributorPriceFromCost } from '@/lib/distributor-pricing';
 import { invalidateGroupBuyProductsCache } from '../../group-buy/api/cache-keys';
-import { parseAdminMallScope, productScopeSql } from '@/worker/utils/admin-mall-scope';
-import { fetchProductCounts } from './admin-products-counts';
+import { parseAdminMallScope, productScopeSql } from '@/worker/utils/admin-mall-scope'; import { voucherSalesByProduct } from '@/worker/utils/voucher-sales-counts';
+import { fetchProductCounts, goodsOnlySql } from './admin-products-counts';
 import { isValidKakaoPlaceUrl, normalizeKakaoPlaceUrl, kakaoPlaceUrlFromId } from '@/shared/kakao-place-url';
 import { intParam } from '@/shared/pagination'
 import { dongnedealTextFilters } from './dongnedeal-search';
@@ -95,8 +91,8 @@ adminProductsRoutes.get('/products', cors(), async (c) => {
     const order = String(c.req.query('order') || 'desc').toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
     // 🏪 2026-08-16: 몰 조건이 없어 운영자 가게 상품이 목록·탭·카테고리 카운트에 섞였다. 기본 `main`.
     const scope = parseAdminMallScope(c.req.query('mall'));
-    const scopeP = await productScopeSql(DB, scope, 'p');
-    const scopeBare = await productScopeSql(DB, scope);
+    const scopeP = await productScopeSql(DB, scope, 'p') + goodsOnlySql(c.req.query('kind'), 'p');
+    const scopeBare = await productScopeSql(DB, scope) + goodsOnlySql(c.req.query('kind'));
 
     const where: string[] = [];
     const params: unknown[] = [];
@@ -489,131 +485,8 @@ adminProductsRoutes.patch('/products/:id', cors(), async (c) => {
   }
 });
 
-// ─── 샘플 신청 관리 (Sample Requests) ────────────────────────────────────────
-
-adminProductsRoutes.get('/sample-requests', cors(), async (c) => {
-  try {
-    const { DB } = c.env;
-    const status = c.req.query('status') || '';
-    const page = intParam(c.req.query('page'), 1);
-    const limit = Math.min(intParam(c.req.query('limit'), 20), 100);
-    const offset = (page - 1) * limit;
-
-    let where = '1=1';
-    const params: (string | number)[] = [];
-    if (status) { where += ' AND sr.status = ?'; params.push(status); }
-
-    let rows: { results: any[] } = { results: [] };
-    let total: { count: number } | null = { count: 0 };
-    try {
-      rows = await DB.prepare(`
-        SELECT
-          sr.id, sr.seller_id, sr.product_id, sr.status,
-          sr.seller_memo, sr.admin_memo, sr.created_at, sr.approved_at,
-          s.name AS seller_name,
-          COALESCE(s.business_name, s.name) AS business_name,
-          COALESCE(s.email, '') AS seller_email,
-          p.name AS product_name,
-          p.price AS retail_price,
-          COALESCE(p.supply_price, 0) AS supply_price,
-          p.image_url AS product_image
-        FROM sample_requests sr
-        JOIN sellers  s ON sr.seller_id  = s.id
-        JOIN products p ON sr.product_id = p.id
-        WHERE ${where}
-        ORDER BY sr.created_at DESC
-        LIMIT ? OFFSET ?
-      `).bind(...params, limit, offset).all();
-
-      total = await DB.prepare(
-        `SELECT COUNT(*) as count FROM sample_requests sr WHERE ${where}`
-      ).bind(...params).first<{ count: number }>();
-    } catch (tableErr) {
-      if (import.meta.env.DEV) console.warn('[Admin] sample_requests table not ready:', (tableErr as Error).message);
-    }
-
-    return c.json({
-      success: true,
-      data: { items: rows.results ?? [], total: total?.count ?? 0, page, limit },
-    });
-  } catch (err) {
-    if (import.meta.env.DEV) console.error('[Admin] GET /sample-requests error:', err);
-    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
-  }
-});
-
-adminProductsRoutes.patch('/sample-requests/:id', cors(), async (c) => {
-  try {
-    const { DB } = c.env;
-    const reqId = c.req.param('id');
-    if (!reqId || !/^\d+$/.test(String(reqId))) return c.json({ success: false, error: 'Invalid ID' }, 400);
-    const body = await c.req.json<{ action: 'approve' | 'reject'; admin_memo?: string }>();
-
-    if (!body.action || !['approve', 'reject'].includes(body.action)) {
-      return c.json({ success: false, error: 'action은 approve 또는 reject이어야 합니다' }, 400);
-    }
-
-    const existing = await DB.prepare(
-      'SELECT id, status FROM sample_requests WHERE id = ?'
-    ).bind(reqId).first<{ id: number; status: string }>();
-
-    if (!existing) return c.json({ success: false, error: '신청을 찾을 수 없습니다' }, 404);
-    if (existing.status !== 'PENDING') {
-      return c.json({ success: false, error: `이미 처리된 신청입니다 (${existing.status})` }, 409);
-    }
-
-    const newStatus = body.action === 'approve' ? 'APPROVED' : 'REJECTED';
-    const approvedAt = body.action === 'approve' ? `datetime('now')` : 'NULL';
-
-    const reqInfo = await DB.prepare(`
-      SELECT sr.seller_id, s.phone AS seller_phone, s.name AS seller_name, p.name AS product_name
-      FROM sample_requests sr
-      JOIN sellers s ON sr.seller_id = s.id
-      JOIN products p ON sr.product_id = p.id
-      WHERE sr.id = ?
-    `).bind(reqId).first<{ seller_id: number; seller_phone: string | null; seller_name: string; product_name: string }>()
-      .catch(() => null);
-
-    // 🛡️ 2026-06-25: claim-before-credit CAS — 사전 SELECT 만으론 동시 승인 못 막음(둘 다 통과 → 알림톡 2회).
-    //   PENDING 원자 선점 후 changes===0 이면 멱등 409 (side-effect 미실행).
-    const upd = await DB.prepare(`
-      UPDATE sample_requests
-      SET status = ?, admin_memo = ?, updated_at = datetime('now'),
-          approved_at = ${approvedAt}
-      WHERE id = ? AND status = 'PENDING'
-    `).bind(newStatus, body.admin_memo || null, reqId).run();
-    if ((upd.meta?.changes ?? 0) === 0) {
-      return c.json({ success: false, error: '이미 처리된 신청입니다' }, 409);
-    }
-
-    // 📨 2026-10-12 — 네이버 클라우드 SENS(공용 sendSystemAlimtalk). 키·승인 템플릿 없으면 조용히 건너뛴다.
-    if (reqInfo?.seller_phone) {
-      const { message } = buildSampleApprovalMessage({
-        sellerName: reqInfo.seller_name,
-        productName: reqInfo.product_name,
-        approved: body.action === 'approve',
-        adminMemo: body.admin_memo,
-      });
-      sendSystemAlimtalk(c.env, reqInfo.seller_phone, 'sample_approved', message)
-        .catch(e => { if (import.meta.env.DEV) console.warn('[Alimtalk] 샘플 승인 알림 실패:', e) });
-    }
-
-    if (reqInfo?.seller_id) {
-      const notifType = body.action === 'approve' ? 'supply_approved' : 'supply_rejected';
-      const notifTitle = body.action === 'approve' ? '공급 상품 승인' : '공급 상품 거부';
-      createDashboardNotification(DB, 'seller', String(reqInfo.seller_id), notifType, notifTitle, `상품: ${reqInfo.product_name}`, '/seller/supply').catch((_e) => { if (import.meta.env.DEV) console.warn(_e) });
-    }
-
-    return c.json({
-      success: true,
-      data: { id: reqId, status: newStatus },
-      message: body.action === 'approve' ? '샘플 신청이 승인되었습니다.' : '샘플 신청이 거부되었습니다.',
-    });
-  } catch (err) {
-    if (import.meta.env.DEV) console.error('[Admin] PATCH /sample-requests/:id error:', err);
-    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
-  }
-});
+// 🧨 2026-10-20 '샘플 신청'(GET/PATCH /sample-requests) 제거 — 도매 잔재. 신청을 만드는 셀러 API(`/api/supply`)가
+//   2026-10-11 도매 철거로 사라져 이 큐는 영원히 비어 있었다(어드민 nav·화면도 함께 제거).
 
 // ── 🛡️ 2026-06-01 도매몰 INC-4: 공급자 self-serve 등록 상품 승인 큐 ──────────────
 //   GET  /supplier-products            — 공급자가 직접 등록한 상품 목록 (status 필터)
@@ -1906,7 +1779,8 @@ adminProductsRoutes.get('/dongnedeal/list', cors(), async (c) => {
     if (mode === 'prelaunch') where.push(`EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id = products.id AND m.key = 'prelaunch' AND m.value = '1')`);
     else if (mode === 'live') where.push(`NOT EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id = products.id AND m.key = 'prelaunch' AND m.value = '1')`);
 
-    const whereClause = where.join(' AND ');
+    // 🏪 2026-10-20: 유어딜 '이용권 관리' 화면 — 운영자 몰 상품이 섞이지 않게 기본 `main`(`?mall=` 로만 넓힌다).
+    const whereClause = where.join(' AND ') + await productScopeSql(c.env.DB, parseAdminMallScope(c.req.query('mall')));
     // 🔃 2026-07-20 (대표 — "최신순으로도 보고 싶다"): 정렬 화이트리스트. 기본 최신순은 기존과 동일하되
     //   **id DESC tie-break 추가** — 한 배치로 시드된 데모는 created_at(초 단위)이 동일해 동순위 순서가
     //   임의였음(최신순처럼 안 보이던 원인). id 는 단조증가라 배치 내에서도 진짜 등록순 보장.
@@ -1961,6 +1835,8 @@ adminProductsRoutes.get('/dongnedeal/list', cors(), async (c) => {
         }
       }
     } catch { /* fail-soft */ }
+    const sales = await voucherSalesByProduct(c.env.DB, rows.map((r) => Number(r.id))); // 🎟️ 판매·사용 장수(모르면 null)
+    for (const r of rows) { const v = sales.get(Number(r.id)); r.sold = v ? v.sold : null; r.used = v ? v.used : null; }
     return c.json({ success: true, data: rows, total, offset: off, limit: lim });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env), data: [], total: 0 }, 500);

@@ -77,10 +77,10 @@ describe('① 천장은 클라가 지어내지 않는다 — 워커가 SSOT 를 
  * 1GB/10분이 된다(결재 파일이 기각한 안 2). 그래서 "열린 곳" 과 "닫힌 곳" 을 함께 본다.
  */
 describe('①-2 경로별 천장 — 승인된 두 자리만 열린다', () => {
-  it('등록증 2.2MB · 히어로 영상 10MB(+경계) · 인제스트 1.5MB', () => {
+  it('등록증 2.2MB · 히어로 영상 10MB(+경계) — 인제스트(바이어 풀)는 2026-10-20 삭제', () => {
     expect(apiBodyLimitFor('/api/upload/business-cert')).toBe(2_200_000)
     expect(apiBodyLimitFor('/api/upload/banner-video')).toBe(10 * 1024 * 1024 + MULTIPART_OVERHEAD_BYTES)
-    expect(apiBodyLimitFor('/api/buyer-ingest')).toBe(1_500_000)
+    expect(apiBodyLimitFor('/api/buyer-ingest')).toBe(API_BODY_LIMIT_BYTES)
   })
 
   it('나머지는 전부 1MB — 이미지 업로드·접두·꼬리 슬래시·프로토타입 키까지', () => {
@@ -90,9 +90,9 @@ describe('①-2 경로별 천장 — 승인된 두 자리만 열린다', () => {
     ]) expect(apiBodyLimitFor(p), p).toBe(API_BODY_LIMIT_BYTES)
   })
 
-  it('표에 승인된 세 경로 말고는 없다 (조용히 늘지 않게)', () => {
+  it('표에 승인된 두 경로 말고는 없다 (조용히 늘지 않게)', () => {
     expect([...API_BODY_LIMIT_OVERRIDES.keys()].sort()).toEqual(
-      ['/api/buyer-ingest', '/api/upload/banner-video', '/api/upload/business-cert'])
+      ['/api/upload/banner-video', '/api/upload/business-cert'])
   })
 
   it('파일 천장이 압축 목표를 담는다 — 등록증 2MB 목표가 들어간다', () => {
