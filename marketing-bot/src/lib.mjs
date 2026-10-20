@@ -81,7 +81,10 @@ export async function claude(system, user, maxTokens = 800) {
   });
   if (!res.ok) throw new Error(`Claude API ${res.status}: ${(await res.text()).slice(0, 300)}`);
   const j = await res.json();
-  return j.content.filter((c) => c.type === 'text').map((c) => c.text).join('').trim();
+  const text = (j.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('').trim();
+  // 🩸 2026-10-20: 빈 응답을 그대로 돌려줘 링크만 있는 글이 게시될 뻔했다(10-19 18:13 KST 회차 로그). 빈 글은 절대 올리지 않는다.
+  if (!text) throw new Error(`Claude 빈 응답 (stop_reason=${j.stop_reason}, model=${j.model}, blocks=${(j.content || []).map((c) => c.type).join(',') || 'none'})`);
+  return text;
 }
 
 // ---------- Meta (Threads / Instagram) ----------

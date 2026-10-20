@@ -73,6 +73,7 @@ ${PARTNER_FACTS}
 본문만 출력하고 따옴표, 머리말, 해시태그 설명 같은 메타 문장은 쓰지 않는다.`;
 
 async function main() {
+  let failed = null;
   if (isPromo && !product) { log('상품 없음, 종료'); return; }
   log(`event=${process.env.GITHUB_EVENT_NAME || 'local'} DRY=${DRY} force=${force} KST=${today} ${kstHM} slot(threads)=${todaysSlot('threads')} slot(ig)=${todaysSlot('instagram')}`);
   log(`오늘 트랙: ${track}${topic ? ` / 주제: ${topic.slice(0, 40)}` : ''}`);
@@ -109,7 +110,16 @@ async function main() {
       log('IG 캡션:\n' + body + `\n(프로필 링크에 걸 UTM: ${link})`);
       const kind = media.video_url ? `Reels ${media.video_url}` : `${media.images.length}장 ${media.images.length > 1 ? '캐러셀' : '이미지'}`;
       log(`IG 미디어: ${kind}`);
-      const r = await igPublish(media, body.slice(0, 2100));
+      // 🩸 2026-10-20: 여기서 던지면 아래 writeJson 전에 종료돼, 직전에 이미 올라간 Threads 글이 기록되지 않았다
+      //    (같은 날 재실행 시 중복 게시). 실패는 skipped 로 남기고(재시도 허용) 기록을 저장한 뒤 실패로 끝낸다.
+      let r;
+      try { r = await igPublish(media, body.slice(0, 2100)); }
+      catch (e) {
+        failed = e;
+        log(`Instagram 게시 실패: ${e.message}`);
+        posts.push({ platform: 'instagram', skipped: 'publish_failed', error: String(e.message).slice(0, 300), media_set: media.set, track, posted_at: now.toISOString(), date_kst: today });
+      }
+      if (r) {
       posts.push({ platform: 'instagram', id: r.id, media_type: r.media_type, media_set: media.set, content_id: cid, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('instagram'), bio_link: link, dry: DRY || undefined });
       // ---- Facebook 페이지 (IG 게시 시 같은 미디어/캡션 + 링크; 멀티포토·영상 실패 시 단일 이미지) ----
       const fcid = `fb-${n('facebook')}`;
@@ -119,10 +129,12 @@ async function main() {
         if (!f) log('Facebook: META_FB_PAGE_TOKEN 없음 → 건너뜀');
         else posts.push({ platform: 'facebook', id: f.post_id || f.id, content_id: fcid, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('instagram'), link: flink, dry: DRY || undefined });
       } catch (e) { log(`Facebook 게시 실패: ${e.message}`); }
+      }
     }
   } else log(`Instagram: 건너뜀 — ${skipReason('instagram')}`);
 
   if (!DRY) writeJson('data/posts.json', posts);
   else log('DRY: posts.json 미기록', JSON.stringify(posts.slice(-2)).slice(0, 300));
+  if (failed) throw failed; // 기록은 저장했고, 워크플로는 빨간불로 남긴다
 }
 main().catch((e) => { console.error(e.message); process.exit(1); });
