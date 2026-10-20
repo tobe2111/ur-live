@@ -52,7 +52,9 @@ describe('① PC 에서 액자를 벗는다', () => {
 
   it('App.tsx 가 셋 다 fullScreen 으로 처리한다 (액자만 풀고 네비가 남으면 이중 크롬)', () => {
     // ⚠️ 바로 윗줄 주석도 이 이름을 말한다 — **선언 줄**(`= [`)로 좁히지 않으면 주석을 집는다.
-    const line = APP.split('\n').find((l) => /fullScreenPrefixes\s*=\s*\[/.test(l)) ?? ''
+    //   2026-10-20: 목록은 lib/consumer-chrome.ts(SSOT) — App.tsx 는 isFullScreenPath 로 그 목록을 쓴다.
+    expect(APP).toMatch(/isFullScreenPath\(location\.pathname\)/)
+    const line = readFileSync('src/lib/consumer-chrome.ts', 'utf8').split('\n').find((l) => /fullScreenPrefixes\s*=\s*\[/.test(l)) ?? ''
     for (const r of ['/partners', '/about', '/creators']) expect(line, r).toContain(`'${r}'`)
   })
 })

@@ -1,0 +1,35 @@
+// 🧢 2026-10-20 — 상단 네비가 안 뜨는 화면에서 PC 네비 코드를 기다리던 것(라이브 /admin 실측).
+export default [
+  {
+    name: '🧢 부팅 PC 네비 준비가 숨김 주소를 모른다(어드민도 기다린다)',
+    file: 'src/components/main/ConsumerTopChrome.tsx',
+    find: "if (typeof location !== 'undefined' && consumerChromeHiddenByPath(location.pathname)) return Promise.resolve()",
+    replace: "if (typeof location !== 'undefined' && false && consumerChromeHiddenByPath(location.pathname)) return Promise.resolve()",
+    why: '어드민·셀러·에이전시가 쓰지도 않는 PC 네비+홈 봉투 넷을 받는 동안 첫 렌더를 미룬다(라이브 /admin 실측). 에러 0.',
+    test: 'src/tests/unit/desktop-chrome-skip-dashboards-2026-10-20.test.ts',
+  },
+  {
+    name: '🧢 반대 방향 — 소비자 화면에서도 PC 네비를 안 받는다(PC 밀림)',
+    file: 'src/components/main/ConsumerTopChrome.tsx',
+    find: "if (typeof location !== 'undefined' && consumerChromeHiddenByPath(location.pathname)) return Promise.resolve()",
+    replace: "if (typeof location !== 'undefined') return Promise.resolve()",
+    why: '넓은 소비자 화면에서 PC 네비가 첫 렌더에 없고 늦게 끼어들어 본문을 민다(2026-10-13 lazy 를 피한 이유).',
+    test: 'src/tests/unit/desktop-chrome-skip-dashboards-2026-10-20.test.ts',
+  },
+  {
+    name: '🧢 App.tsx 숨김 계산에서 몰 표면이 빠진다(몰에 유어딜 네비가 붙는다)',
+    file: 'src/App.tsx',
+    find: '|| embedHideNav\n    || mallSurface',
+    replace: '|| embedHideNav',
+    why: '운영자 몰 화면에 유어딜 상·하단 네비가 붙는다 — 본진 입구 금지(2026-08-02)가 셸에서 샌다.',
+    test: 'src/tests/unit/mall-surface-boundary.test.ts',
+  },
+  {
+    name: '🧢 접두사 판정이 경계를 안 본다(/partnership 이 전체화면이 된다)',
+    file: 'src/lib/consumer-chrome.ts',
+    find: "pathname === p || pathname.startsWith(p + '/')",
+    replace: 'pathname.startsWith(p)',
+    why: '/partnership(입점 문의) 같은 형제 경로가 전체화면으로 분류돼 네비가 사라진다 — 접두 판정은 경계까지 본다.',
+    test: 'src/tests/unit/desktop-chrome-skip-dashboards-2026-10-20.test.ts',
+  },
+]

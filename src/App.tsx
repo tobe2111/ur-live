@@ -23,6 +23,7 @@ import BrandLoader, { BootFirstScreenLoader } from '@/components/brand/BrandLoad
 import { trackFunnel } from '@/lib/funnel'
 import { registerRoutePreload } from '@/lib/route-preload'; import { lazyPage, registerBootPage } from '@/lib/boot-page'; import { isCuratorShopPath } from '@/shared/route-surface'
 import ConsumerTopChrome from '@/components/main/ConsumerTopChrome'
+import { isFullScreenPath, consumerChromeHiddenByPath } from '@/lib/consumer-chrome'
 import { swallow } from '@/shared/utils/swallow'
 import KakaoConsultButton from '@/components/KakaoConsultButton'
 import { featureFlags } from '@/shared/config/feature-flags'
@@ -522,11 +523,8 @@ function AppContent() {
     return () => { cancelled = true }
   }, [])
 
-  // 🛡️ 2026-05-24 (regression fix): /pay/widget 누락 → BottomNav 가 결제 버튼 가림.
-  //   결제 위젯 마운트하는 모든 경로는 반드시 여기 등록. 신규 추가 시 tests/unit/toss-fullscreen-routes.test.ts
-  //   가 자동 검증 (App.tsx 의 fullScreenPrefixes 와 TossPaymentWidget 마운트 라우트 일치 확인).
-  const fullScreenPrefixes = ['/cart', '/checkout', '/payment', '/pay', '/points', '/seller', '/admin', '/login', '/register', '/auth', '/embed', '/introduce', '/blog', '/about', '/partners', '/creators', '/my-orders', '/store/scan', '/videos', '/design', '/mall-admin', '/agency']
-  const fullScreen = fullScreenPrefixes.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
+  // 🧢 전체 화면 주소 목록·판정은 lib/consumer-chrome.ts(SSOT) — 부팅 전 PC 네비 준비(warmDesktopChrome)도 같은 함수를 쓴다.
+  const fullScreen = isFullScreenPath(location.pathname)
   // 🏭 유통스타트 B2B(도매몰/제조사)는 소비자 BottomNav/TopNav 미표시 — 별도 도메인·업태.
   //   컴포넌트가 자기-차단에도 사용 → 1차(여기서 마운트 차단) + 2차(컴포넌트 self-guard) 이중 방어.
   // 🏁 2026-06-26 [UNLOCK_LOADING] (대표 결정 — "특정 링크로 들어온 방문자는 네비 숨김"):
@@ -547,8 +545,7 @@ function AppContent() {
   //   PC 에선 상단 네비와 사이드배너까지 붙고 있었다. 페이지가 아무리 조심해도 **셸이 새고 있었다.**
   //   ⇒ 판정은 `isMallSurfacePath`(shared SSOT, 워커와 같은 규칙) 하나로.
   const mallSurface = isMallSurfacePath(location.pathname)
-  const hideBottomNav = fullScreen || location.pathname.startsWith('/products/')
-    || isMarketingSurface(location.pathname) || embedHideNav
+  const hideBottomNav = consumerChromeHiddenByPath(location.pathname) || embedHideNav
     || mallSurface
   // 🗺️ 2026-06-20 (대표 — 홈=리스트 / 지도는 버튼 이동): 지도 페이지(/restaurant-map)만 h-screen 자체관리
   //   풀스크린(바텀시트가 하단 담당) → main 하단 네비 여백 제외. 홈(/)=리스트는 일반 페이지(여백 필요).
