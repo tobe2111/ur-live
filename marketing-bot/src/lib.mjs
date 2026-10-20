@@ -69,6 +69,16 @@ export function utmLink(product, source, campaignSlug, contentId, d = new Date()
 }
 
 // ---------- Claude ----------
+// 🩸 2026-10-20: 10-19 18:13 KST 회차가 빈 글을 받았다. 원인은 모델이 기본으로 먼저 '생각'을 하고
+//    그 생각이 max_tokens(600~800)를 다 써 본문이 0자가 된 것(4.8s·14s 걸리고 텍스트 블록 없음).
+//    ① Sonnet 5.5 는 thinking 을 between_tools 로 꺼 둔다(disabled 는 400) ② 그 밖의 모델은 끌 수 없으니
+//    글자 한도를 넉넉히 둔다 — 글 길이는 프롬프트(400자·600자)가 정하고 max_tokens 는 잘림 방지용 천장이다.
+export function claudeBody(system, user, maxTokens) {
+  const model = process.env.CLAUDE_MODEL || 'claude-sonnet-5-5';
+  const body = { model, max_tokens: Math.max(maxTokens, 4000), system: `${system}\n\n${HARD_RULES}`, messages: [{ role: 'user', content: user }] };
+  if (model === 'claude-sonnet-5-5') body.thinking = { type: 'between_tools' };
+  return body;
+}
 export async function claude(system, user, maxTokens = 800) {
   if (DRY || !process.env.ANTHROPIC_API_KEY) {
     if (!DRY) throw new Error('ANTHROPIC_API_KEY missing');
@@ -77,7 +87,7 @@ export async function claude(system, user, maxTokens = 800) {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-    body: JSON.stringify({ model: process.env.CLAUDE_MODEL || 'claude-sonnet-5-5', max_tokens: maxTokens, system: `${system}\n\n${HARD_RULES}`, messages: [{ role: 'user', content: user }] }),
+    body: JSON.stringify(claudeBody(system, user, maxTokens)),
   });
   if (!res.ok) throw new Error(`Claude API ${res.status}: ${(await res.text()).slice(0, 300)}`);
   const j = await res.json();
