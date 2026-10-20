@@ -25,6 +25,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Restore mutable data from marketing-data branch
+        # main 은 ruleset(필수 status check) 때문에 Actions 가 push 못 함 → 가변 데이터는 marketing-data 브랜치에 보관
+        run: |
+          if git fetch --depth=1 origin marketing-data 2>/dev/null; then
+            for f in data/posts.json data/comments.json data/schedule.json data/mix-state.json; do
+              if git cat-file -e "FETCH_HEAD:marketing-bot/$f" 2>/dev/null; then
+                git show "FETCH_HEAD:marketing-bot/$f" > "$f"; echo "restored $f"
+              fi
+            done
+          else
+            echo "marketing-data branch not found; using main's data (branch will be created on first save)"
+          fi
       - name: Run
         env:
           DRY_RUN: ${{ inputs.dry_run || '0' }}
@@ -33,21 +45,34 @@ jobs:
           META_THREADS_ACCESS_TOKEN: ${{ secrets.META_THREADS_ACCESS_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node src/reply-comments.mjs
-      - name: Commit data
+      - name: Save mutable data to marketing-data branch
         if: always()
         run: |
-          git config user.name "urdeal-marketing-bot"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          if [ -z "$(git status --porcelain -- data/)" ]; then echo "no data changes"; exit 0; fi
-          BR="${GITHUB_REF_NAME}"
-          SNAP="$(mktemp -d)"; cp -a data/. "$SNAP/"
+          set -u
+          BR=marketing-data
+          SNAP="$(mktemp -d)"
+          for f in data/posts.json data/comments.json data/schedule.json data/mix-state.json; do [ -f "$f" ] && cp "$f" "$SNAP/$(basename "$f")"; done
+          [ -n "$(ls -A "$SNAP")" ] || { echo "no data files"; exit 0; }
+          WT="$RUNNER_TEMP/marketing-data-wt"
+          git config --global user.name "urdeal-marketing-bot"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           for i in 1 2 3 4 5; do
-            git fetch --depth=1 origin "$BR" && git reset -q --hard FETCH_HEAD || { sleep $((i*5)); continue; }
-            cp -a "$SNAP/." data/
-            git add data/
-            if git diff --cached --quiet; then echo "already up to date"; exit 0; fi
-            git commit -q -m "chore(marketing-bot): update data [skip ci]"
-            if git push origin "HEAD:$BR"; then exit 0; fi
+            rm -rf "$WT"; git worktree prune
+            if git fetch --depth=1 origin "$BR" 2>/dev/null; then
+              git worktree add -q --detach "$WT" FETCH_HEAD
+            else
+              # 최초 1회: main 기준으로 브랜치 생성
+              git worktree add -q --detach "$WT" HEAD
+            fi
+            mkdir -p "$WT/marketing-bot/data"
+            cp -r "$SNAP/." "$WT/marketing-bot/data/"
+            git -C "$WT" add marketing-bot/data
+            if git -C "$WT" diff --cached --quiet; then
+              if git ls-remote --exit-code --heads origin "$BR" >/dev/null; then echo "no data changes"; exit 0; fi
+            else
+              git -C "$WT" commit -q -m "chore(marketing-bot): update data [skip ci]"
+            fi
+            if git -C "$WT" push origin "HEAD:refs/heads/$BR"; then exit 0; fi
             echo "push failed (attempt $i), retrying"; sleep $((i*5))
           done
           echo "::error::could not push data after 5 attempts"; exit 1
