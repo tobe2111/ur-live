@@ -1,5 +1,5 @@
 // 2시간마다: 내 게시물 댓글 수집 → 분류 → 일반 댓글은 짧게 답글, 민감/불만/환불은 답글 없이 needs-owner 이슈.
-import { DRY, log, readJson, writeJson, claude, humanize, threads, insta, createIssue, THREADS_USER_ID, PARTNER_FACTS, PARTNER_LINKS } from './lib.mjs';
+import { DRY, log, readJson, writeJson, claude, humanize, threads, insta, createIssue, THREADS_USER_ID, PARTNER_FACTS, PARTNER_LINKS , opsAlert } from './lib.mjs';
 
 const posts = readJson('data/posts.json', []);
 const state = readJson('data/comments.json', { replied: [], escalated: [] });
@@ -70,4 +70,4 @@ async function main() {
   }
   if (!DRY) writeJson('data/comments.json', state);
 }
-main().catch((e) => { console.error(e.message); process.exit(1); });
+main().catch(async (e) => { console.error(e.message); await opsAlert('마케팅 봇 댓글 응답 실패', e.message); process.exit(1); });

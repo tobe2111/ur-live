@@ -537,6 +537,11 @@ export default defineConfig({
           //   조용히 지나갈 뻔했다. 전용 leaf 청크로 두면 25,718 chars 그대로 + 같은 이득(216 KB).
           //   ⇒ 청크를 옮길 때는 **번들 크기만 보지 말고 `prerender:main` 의 chars 도 같이 볼 것.**
           if (id.includes('/src/lib/utils')) return 'app-ui-utils'
+          // 🪝 2026-10-20: 포커스 가두기 훅(react 만 import). 공용 묶음(app-components)의 장바구니 옵션 모달이 이것 하나를
+          //   쓰는데, 규칙이 없어 쇼핑 상세 봉투(lz-productL — 사진 캐러셀·선물 모달 + embla 18.7KB)에 들어가 있었다 →
+          //   app-components 를 정적으로 받는 어드민·셀러가 그 봉투를 통째로 받았다(라이브 /admin 실측).
+          //   app-components 가 이미 받는 leaf 봉투로 옮겨 요청 수를 늘리지 않는다.
+          if (id.includes('/src/hooks/useFocusTrap')) return 'app-ui-utils'
           // 🛡️ 2026-07-29 (서비스 분리 + critical path): 도매(B2B) 훅을 소비자 크리티컬 패스에서 제거.
           //   useWholesale(12.0 KB) · useWholesaleChat(3.7 KB) 이 `/src/hooks/` catch-all 로 app-utils 에
           //   들어가 **도매몰을 한 번도 안 여는 소비자도 매번 받고 있었다.** 엔트리 폐쇄집합에 없다(=lazy 전용).

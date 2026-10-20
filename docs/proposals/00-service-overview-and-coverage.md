@@ -302,12 +302,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 327 | 1009 |
+| 전체 | 327 | 1010 |
 | 도메인 버킷 (5개 소개서) | 131 | 462 |
 | 공통/인프라 (의도적 제외) | 149 | 453 |
-| **미커버 (점검 필요)** | **47** | **94** |
+| **미커버 (점검 필요)** | **47** | **95** |
 
-⚠️ **미커버 141건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 142건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -397,6 +397,7 @@
 - `POST /api/gb-proposals/seller` (`src/features/group-buy/api/gb-proposals.routes.ts`)
 - `POST /api/gb-proposals/seller/:id/respond` (`src/features/group-buy/api/gb-proposals.routes.ts`)
 - `GET /api/gb-proposals/seller/list` (`src/features/group-buy/api/gb-proposals.routes.ts`)
+- `POST /api/ops/alert` (`src/worker/routes/ops-alert.routes.ts`)
 - `POST /api/partnership/inquiry` (`src/worker/routes/partnership.routes.ts`)
 - `GET /api/promo-bar` (`src/worker/routes/public-utility.routes.ts`)
 - `GET /api/regions/` (`src/features/group-buy/api/regions.routes.ts`)
@@ -1614,7 +1615,7 @@
 
 
 
-> 마지막 생성: 2026-10-20T03:42:42.481Z
+> 마지막 생성: 2026-10-20T04:01:05.200Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

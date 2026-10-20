@@ -12,6 +12,7 @@ import { timing } from 'hono/timing';
 import { ROUTE_CHUNK_MAP, ENTRY_CSS, BOOT_JS } from './generated/route-chunk-map'; // 🚀 2026-07-12 라우트 청크 modulepreload(빌드 시 자동 생성)
 import { docsRoutes } from './routes/docs.routes'; // 2026-04-27 TD-006 split (openapi/swagger)
 import { internalDiagnosticsRoutes } from './routes/internal-diagnostics.routes'; // 2026-04-27 TD-006 split
+import { opsAlertRoutes } from './routes/ops-alert.routes'; // 2026-10-20 봇 실패 → 대표 카톡
 import { internalAdminToolsRoutes } from './routes/internal-admin-tools.routes'; // 2026-04-27 TD-006 Phase C
 import { smokeTestRoutes } from './routes/smoke-test.routes'; // 2026-04-27 TD-006 Phase D
 import { repairSchemaRoutes } from './routes/repair-schema.routes'; // 2026-04-27 TD-006 Phase E
@@ -1160,6 +1161,7 @@ app.get('/naverd3ccc68d1f14dc53e76aa95f4a02bb68.html', (c) => serveNaverVerify(c
 app.get('/naverd3ccc68d1f14dc53e76aa95f4a02bb68', (c) => serveNaverVerify(c));
 app.route('/', docsRoutes);
 app.route('/', internalDiagnosticsRoutes);
+app.route('/', opsAlertRoutes);
 app.route('/', internalAdminToolsRoutes);
 app.route('/', smokeTestRoutes);
 app.route('/', kakaoSkillWebhookRoutes); // 💬 CS FAQ 봇 — read-only, 시크릿 게이트(기본 404)
