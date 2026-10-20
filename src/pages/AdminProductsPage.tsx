@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from '@/lib/i18n-lite'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
@@ -346,7 +346,7 @@ export default function AdminProductsPage() {
       {/* 🏪 2026-08-16: "누구 가게인가"는 "무엇인가"(아래 교환권/쇼핑)보다 상위 질문이라 위에 둔다. */}
       {/* 🎟️ 2026-10-20: 이용권(식사·미용·숙소·기타)은 이 화면에서 뺐다(`kind=goods`) — '이용권 관리'가 맡는다. */}
       {activeTab === 'products' && (
-        <p className="mb-3 text-[12px] text-gray-500">교환권(기프티콘)과 쇼핑 상품만 보입니다. 식사·미용·숙소 이용권은 <Link to="/admin/vouchers" className="font-semibold text-brand-text hover:underline">이용권 관리</Link>에서 다룹니다.</p>
+        <p className="mb-3 text-[12px] text-gray-500">교환권(기프티콘)과 쇼핑 상품만 보입니다. 식사·미용·숙소 이용권은 왼쪽 메뉴 <b className="text-gray-700">이용권 › 이용권 관리</b>에서 다룹니다.</p>
       )}
       {activeTab === 'products' && (
         <AdminServiceScopeTabs scope={mallScope} setScope={pickScope} className="mb-3"
