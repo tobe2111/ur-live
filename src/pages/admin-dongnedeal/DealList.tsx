@@ -228,6 +228,7 @@ export default function DealList({ nonce, onEdit, onChanged, onSettings, onRefun
           <option value="">전체 카테고리</option>
           <option value="meal_voucher">식사</option>
           <option value="beauty_voucher">미용</option>
+          <option value="home_voucher">생활</option>
           <option value="etc_voucher">기타</option>
           <option value="general">일반</option>
           <option value="stay_voucher">숙소</option>

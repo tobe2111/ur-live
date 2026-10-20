@@ -21,6 +21,7 @@ const FEED_EDGE_PATHS: readonly string[] = [
   '/api/group-buy/products?status=active&category=meal_voucher',
   '/api/group-buy/products?status=active&category=stay_voucher',
   '/api/group-buy/products?status=active&category=beauty_voucher',
+  '/api/group-buy/products?status=active&category=home_voucher',
   '/api/group-buy/products?status=active&category=etc_voucher',
 ]
 

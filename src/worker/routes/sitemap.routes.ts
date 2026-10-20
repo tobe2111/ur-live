@@ -33,6 +33,7 @@ import { canonicalDetailPath } from '../../shared/product-flow';
 import { VOUCHER_FILTER_CATEGORIES } from '../../shared/seo/consumer-surfaces';
 // 🎁 facet 주소 조립 + 재고 문턱 SSOT — canonical·허브 내부 링크와 **같은 함수**를 지난다.
 import { voucherFacetPath, voucherFacetsByStock } from '../../shared/seo/voucher-facet';
+import { VOUCHER_CATEGORY_SQL_IN } from '../../shared/constants/voucher-categories';
 
 /**
  * 🎁 교환권 facet 제출 — **집계가 비었을 때의 폴백**(2026-10-18 재규정).
@@ -213,7 +214,7 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
       // 🏨 `category`·`deal_only` 는 `canonicalDetailPath` 가 정본 주소를 정하는 데 쓴다(아래).
       const groupBuys = await DB.prepare(
         `SELECT id, category, deal_only, image_url, updated_at FROM products
-         WHERE category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
+         WHERE category IN (${VOUCHER_CATEGORY_SQL_IN})
            AND is_active = 1
            AND group_buy_status IN ('active','achieved')
            AND ${consumerVisibleProductSql('products')}${productScope}
@@ -248,7 +249,7 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
         `SELECT id FROM products
          WHERE is_active = 1
            AND COALESCE(deal_only, 0) = 0
-           AND category NOT IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
+           AND category NOT IN (${VOUCHER_CATEGORY_SQL_IN})
            AND ${consumerVisibleProductSql('products')}${productScope}
          ORDER BY id DESC LIMIT 500`
       ).all<{ id: number }>();

@@ -63,6 +63,7 @@ export const STAYS_CHIPS: ReadonlyArray<{ key: string; label: string }> = [
   { key: 'meal_voucher', label: '식사' },
   { key: 'beauty_voucher', label: '뷰티·헬스' },
   { key: 'stay_voucher', label: '숙소' },
+  { key: 'home_voucher', label: '생활' },
   { key: 'etc_voucher', label: '기타' },
 ]
 

@@ -20,10 +20,25 @@ export const VOUCHER_CATEGORIES = [
   'meal_voucher',
   'beauty_voucher',
   'stay_voucher',
+  // 🏠 2026-10-20 대표 확정 — 생활 서비스(이사·입주청소·에어컨 청소·인테리어). 매장 방문이 아니라
+  //   업체가 집으로 오는 **방문형**이다: 기사가 현장에서 사장님 앱으로 손님 QR 을 스캔해 사용 처리.
+  //   이사는 값이 짐 양마다 달라 **할인권**(예 "포장이사 10만원 할인권")으로만 팔고 견적은 업체가 낸다.
+  'home_voucher',
   'etc_voucher',
 ] as const
 
 export type VoucherCategory = typeof VOUCHER_CATEGORIES[number]
+
+/**
+ * 🧾 SQL `category IN (…)` 에 박는 이용권 카테고리 목록 — 현행 + 레거시(마이그레이션 사이 행).
+ * 2026-10-20: 이 목록이 SQL 열네 곳에 **손으로** 적혀 있어 카테고리를 하나 더하면 그중 한 곳만 빠져도
+ * 그 카테고리 상품이 구매·정산·통계에서 조용히 빠졌다. 이제 전부 이 문자열을 쓴다(값은 상수 — 사용자 입력 아님).
+ */
+export const ALL_VOUCHER_CATEGORY_KEYS: readonly string[] = [
+  ...VOUCHER_CATEGORIES,
+  'health_voucher', 'pet_voucher', 'activity_voucher',
+]
+export const VOUCHER_CATEGORY_SQL_IN: string = ALL_VOUCHER_CATEGORY_KEYS.map((c) => `'${c}'`).join(',')
 
 export const VOUCHER_CATEGORY_SET: ReadonlySet<string> = new Set(VOUCHER_CATEGORIES)
 
@@ -99,6 +114,7 @@ export const VOUCHER_CATEGORY_LABEL: Record<string, { emoji: string; label: stri
   meal_voucher:   { emoji: '🍽️', label: '식사 (음식점/카페)', short: '식사' },
   beauty_voucher: { emoji: '💇', label: '미용 (헬스/뷰티)',     short: '미용' },
   stay_voucher:   { emoji: '🏨', label: '숙소',                  short: '숙소' },
+  home_voucher:   { emoji: '🏠', label: '생활 (이사/청소)',      short: '생활' },
   etc_voucher:    { emoji: '🎯', label: '기타',                  short: '기타' },
   // 레거시 (마이그레이션 사이 graceful 표시용 — 새 라벨로 매핑)
   health_voucher:   { emoji: '💇', label: '미용 (헬스/뷰티)', short: '미용' },

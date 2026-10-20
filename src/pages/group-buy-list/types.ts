@@ -47,6 +47,7 @@ export type CategoryFilter =
   | 'meal_voucher'
   | 'beauty_voucher'
   | 'stay_voucher'
+  | 'home_voucher'
   | 'etc_voucher'
   // 레거시 (마이그레이션 완료 후 제거 가능)
   | 'health_voucher'

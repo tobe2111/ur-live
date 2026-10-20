@@ -1,4 +1,4 @@
-import { LayoutGrid, Utensils, Scissors, BedDouble, Shapes } from 'lucide-react'
+import { LayoutGrid, Utensils, Scissors, BedDouble, House, Shapes } from 'lucide-react'
 import { DEAL_CAT_LABELS, type DealCategory } from '@/shared/deal-cats'
 
 /**
@@ -25,6 +25,7 @@ const CAT_ICON: Record<DealCategory, typeof LayoutGrid> = {
   meal_voucher: Utensils,
   beauty_voucher: Scissors,
   stay_voucher: BedDouble,
+  home_voucher: House,
   etc_voucher: Shapes,
 }
 export const DEAL_CATS: { key: DealCategory; label: string; icon: typeof LayoutGrid }[] =

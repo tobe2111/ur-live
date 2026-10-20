@@ -19,7 +19,7 @@ const TEMPLATE_HEADERS = ['상품명', '카테고리', '판매가', '정가', '�
 const TEMPLATE_SAMPLE = '[강남] 한우 오마카세 2인,이용권,89000,140000,한우공방 강남점,서울 강남구 봉은사로,https://images.unsplash.com/photo-1,2인 한우 코스'
 
 const CAT_LABEL: Record<string, string> = {
-  meal_voucher: '맛집 이용권', beauty_voucher: '미용', etc_voucher: '기타', general: '일반 상품', stay_voucher: '숙소',
+  meal_voucher: '맛집 이용권', beauty_voucher: '미용', etc_voucher: '기타', general: '일반 상품', stay_voucher: '숙소', home_voucher: '생활',
 }
 
 // 🎯 2026-07-03 (대표 "지역은 홈 필터 그대로 — 1차/2차로 세팅"): cleanSido/buildRegionParam 은
@@ -379,6 +379,7 @@ export default function AdminDongnedealImportPage() {
                   <option value="">전체 카테고리</option>
                   <option value="meal_voucher">맛집 이용권</option>
                   <option value="beauty_voucher">미용</option>
+                  <option value="home_voucher">생활 (이사·청소)</option>
                   <option value="etc_voucher">기타</option>
                   {/* 🏨 2026-07-20 (대표 — "데모 채우기 카테고리에서 숙소도"): 숙소는 별도 시드(/stays 검색용
                       객실·좌표 포함 생성형)로 분기 — seedDemo() 가 카테고리 보고 라우팅. */}
@@ -427,7 +428,7 @@ export default function AdminDongnedealImportPage() {
               </div>
             </div>
             <div className="flex items-center gap-3 flex-wrap mt-3">
-              {['meal_voucher', 'beauty_voucher', 'etc_voucher', 'general'].map(cat => {
+              {['meal_voucher', 'beauty_voucher', 'home_voucher', 'etc_voucher', 'general'].map(cat => {
                 const found = stats.by_category.find(b => b.category === cat)
                 return <span key={cat} className="text-[12px] text-gray-500">{CAT_LABEL[cat]} <b className="text-gray-800">{found?.c ?? 0}</b></span>
               })}

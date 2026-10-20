@@ -2299,7 +2299,9 @@
       "categoryActivity": "Activity voucher",
       "categoryActivityDesc": "Escape room, bowling, class",
       "categoryEtc": "Other Voucher",
-      "categoryEtcDesc": "Pets·Activities·Classes"
+      "categoryEtcDesc": "Pets·Activities·Classes",
+      "categoryHome": "Home Service Voucher",
+      "categoryHomeDesc": "Moving, move-in cleaning, AC cleaning"
     },
     "gift": {
       "title": "Send a Gift",
@@ -5981,6 +5983,7 @@
       "health": "Health",
       "pet": "Pet",
       "stay": "Stay",
+      "home": "Home",
       "activity": "Activity",
       "etc": "Other"
     },

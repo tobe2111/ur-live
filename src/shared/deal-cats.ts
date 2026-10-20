@@ -14,7 +14,7 @@
  *   붙이고, 워커(`home-first-screen.ts`)가 같은 표로 첫 화면을 그린다.
  */
 
-export type DealCategory = 'all' | 'meal_voucher' | 'beauty_voucher' | 'stay_voucher' | 'etc_voucher'
+export type DealCategory = 'all' | 'meal_voucher' | 'beauty_voucher' | 'stay_voucher' | 'home_voucher' | 'etc_voucher'
 
 /** 홈 카테고리 탭의 키·라벨(표시 순서 그대로). */
 export const DEAL_CAT_LABELS: ReadonlyArray<{ key: DealCategory; label: string }> = [
@@ -22,5 +22,6 @@ export const DEAL_CAT_LABELS: ReadonlyArray<{ key: DealCategory; label: string }
   { key: 'meal_voucher',   label: '식사' },
   { key: 'beauty_voucher', label: '미용' },
   { key: 'stay_voucher',   label: '숙소' },
+  { key: 'home_voucher',   label: '생활' },
   { key: 'etc_voucher',    label: '기타' },
 ]

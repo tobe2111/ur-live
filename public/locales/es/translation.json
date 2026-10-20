@@ -1579,7 +1579,9 @@
       "categoryActivity": "Activity voucher",
       "categoryActivityDesc": "Escape room, bowling, class",
       "categoryEtc": "Otro Vale",
-      "categoryEtcDesc": "Mascotas·Actividades·Clases"
+      "categoryEtcDesc": "Mascotas·Actividades·Clases",
+      "categoryHome": "Vale de hogar",
+      "categoryHomeDesc": "Mudanza, limpieza, aire acondicionado"
     },
     "gift": {
       "title": "Enviar Regalo",
@@ -5928,6 +5930,7 @@
       "health": "Salud",
       "pet": "Mascota",
       "stay": "Alojamiento",
+      "home": "Hogar",
       "activity": "Actividad",
       "etc": "Otros"
     },
