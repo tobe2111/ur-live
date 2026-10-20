@@ -37,4 +37,20 @@ export default [
     test: T,
     why: '문자열 표본이 CLS 숫자 표본에 섞이면 매일 판정의 p75 가 망가진다.',
   },
+  {
+    name: 'LCP사진 — 홈 배너를 다시 3배 폭으로',
+    file: 'src/shared/constants/home-showcase.ts',
+    find: '    requestWidth: 760,',
+    replace: '    requestWidth: 1100,',
+    test: 'src/tests/unit/strip-banner-2x-2026-10-20.test.ts',
+    why: '폰 홈의 LCP 사진이 362px 칸에 1,100px(27KB)를 받는다 — 2배면 16KB.',
+  },
+  {
+    name: 'LCP사진 — 첫 화면 아래 유달이 로더가 보통 우선순위',
+    file: 'src/worker/utils/css-first-boot.ts',
+    find: "el.setAttribute('fetchpriority', 'low')",
+    replace: "el.setAttribute('data-x', 'low')",
+    test: 'src/tests/unit/mascot-preload-first-screen-2026-10-15.test.ts',
+    why: '로더 그림이 첫 이미지 요청이 되어 LCP 사진과 회선을 나눠 쓴다.',
+  },
 ]
