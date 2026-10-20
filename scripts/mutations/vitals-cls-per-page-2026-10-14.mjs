@@ -33,8 +33,8 @@ export default [
   {
     name: '📏 입력 직후 밀림도 센다',
     file: FILE,
-    find: 'if (!e.hadRecentInput) cls.add(e.value || 0, e.startTime)',
-    replace: 'cls.add(e.value || 0, e.startTime)',
+    find: '        if (e.hadRecentInput) continue\n',
+    replace: '',
     test: TEST,
     why: '누른 뒤 열리는 시트·펼침까지 밀림으로 잡혀 점수가 부풀려진다(표준 정의 위반).',
   },

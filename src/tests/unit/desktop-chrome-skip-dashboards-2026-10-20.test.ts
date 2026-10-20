@@ -66,3 +66,31 @@ describe('② 받는가', () => {
     for (const p of ['/', '/pass/2919', '/vouchers']) expect(await warmAt(p), p).toBe(1)
   })
 })
+
+/**
+ * ③ 〔2026-10-20 E4 후속〕 같은 봉투를 부르는 **두 번째 자리** — `MobileAppLayout` 이 모듈이 실행되는 순간
+ *   넓은 화면이면 사이드바를 미리 받았다. 기다리지는 않지만(첫 렌더를 안 막는다) 배포 뒤 라이브 `/admin` 에서
+ *   `app-desktop-chrome`(555ms)이 `app-routes-admin`(597ms)·`AdminPage`(707ms)보다 먼저 출발하는 것이 그대로였다.
+ *   ①②만 보고 "끝났다" 고 했으면 놓쳤다 — 판정은 받은 청크 목록으로 한다.
+ */
+async function sidebarPrefetchAt(path: string): Promise<number> {
+  vi.stubGlobal('location', { ...window.location, pathname: path })
+  vi.stubGlobal('matchMedia', (q: string) => ({ matches: true, media: q, addEventListener() {}, removeEventListener() {} }))
+  vi.resetModules(); loads.n = 0
+  vi.doMock('@/components/DesktopLiveSidebar', () => { loads.n++; return { default: () => null } })
+  await import('@/components/MobileAppLayout')
+  await new Promise((r) => setTimeout(r, 0))
+  return loads.n
+}
+
+describe('③ 사이드바 미리받기도 같은 판정', () => {
+  it('어드민·셀러·에이전시에선 모듈 실행 때 받지 않는다', async () => {
+    for (const p of ['/admin', '/seller/orders', '/agency']) expect(await sidebarPrefetchAt(p), p).toBe(0)
+  })
+  it('소비자 화면에선 종전대로 받는다 (반대 방향)', async () => {
+    for (const p of ['/', '/vouchers']) expect(await sidebarPrefetchAt(p), p).toBe(1)
+  })
+  it('배선: 폭 조건과 숨김 판정이 함께 있다', () => {
+    expect(code('src/components/MobileAppLayout.tsx')).toMatch(/matchMedia\?\.\('\(min-width: 768px\)'\)\.matches && !consumerChromeHiddenByPath\(window\.location\.pathname\)\) void loadSidebar\(\)/)
+  })
+})
