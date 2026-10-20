@@ -32,6 +32,9 @@
 `/admin/platform-settings` 에서 `agent_search_enabled` 를 `false` 로(즉시 404). 코드 제거는 `publicUtilityRoutes.route('/api/agent', …)` 한 줄.
 
 ## 결정 (대표가 한 말 그대로)
+"AI 창구 켜줘. 2번은 일단은 보류"
+
+→ 2026-10-20 `agent_search_enabled=true` 설정. 라이브 실측: `?region=서초구` → 달빛한스푼 1건(`/pass/2919`) · `?q=돈가스` → 홍대돈까스 1건(`/pass/2915`) · 검색어 없음/`%` → 400 · AI 검색봇(OAI-SearchBot) 200. ② 에이전트 결제 설계는 보류.
 2026-10-20 대표: *"질문 1번. 통로 열어줘. 질문 2번은 유어딜 안에서 가능하다는거야?"*
 - ① **켬** — 2026-10-20 20시대(KST) `agent_search_enabled = true` 저장(어드민 설정 API). 라이브 확인: `?region=서초구` → 200 · 1건(달빛한스푼, `/pass/2919`) · 검색어·지역 없으면 400 · 데모 0건(원본 DB 대조 — 나온 상품 둘 다 승인 매장 실상품) · OAI-SearchBot·ChatGPT-User·Claude-SearchBot·PerplexityBot UA 전부 200.
 - ② **보류** — 대표 질문(유어딜 안에서 되는 것인지)에 답한 뒤, 같은 날 대표: *"2번 너가 원래 하려는거 해줘"* → 기본안(안 1) 그대로 **보류 확정**. AI 비서가 대신 결제하는 설계는 시작하지 않는다(머니 경로 — 다시 올릴 때는 새 결재).
