@@ -2,9 +2,11 @@ name: SNS daily post
 on:
   schedule:
     # 슬롯 09:00 / 12:30 / 19:30 KST (스크립트가 오늘 슬롯만 게시)
+    # GitHub cron 은 지연/누락이 잦아 09~23시 KST 매시 깨움. 스크립트가 슬롯 시각 경과 + 미게시일 때만 게시(하루 1회)
     - cron: '0 0 * * *'
     - cron: '30 3 * * *'
     - cron: '30 10 * * *'
+    - cron: '17 0-14 * * *'
   workflow_dispatch:
     inputs:
       dry_run:

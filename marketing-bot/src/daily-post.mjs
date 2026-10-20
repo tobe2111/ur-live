@@ -22,8 +22,12 @@ function todaysSlot(platform) {
 const nowMin = k.getUTCHours() * 60 + k.getUTCMinutes();
 const force = process.env.FORCE === '1' || process.env.GITHUB_EVENT_NAME === 'workflow_dispatch';
 // GitHub schedule 은 수 시간씩 지연되므로 정확한 시각 일치 대신 "오늘 슬롯 시각이 지났고 아직 미게시"면 게시
+// 전날 슬롯을 놓쳤으면(크론 지연/실패) 오늘 슬롯 전이라도 바로 게시 — postedToday 로 하루 1회는 유지
+const yesterday = new Date(k.getTime() - 86400e3).toISOString().slice(0, 10);
+const missedYesterday = (platform) => posts.some((p) => p.platform === platform && !p.skipped && p.date_kst < yesterday)
+  && !posts.some((p) => p.platform === platform && !p.skipped && p.date_kst === yesterday);
 const due = (platform) => {
-  if (force) return true;
+  if (force || missedYesterday(platform)) return true;
   const [h, m] = todaysSlot(platform).split(':').map(Number);
   return nowMin >= h * 60 + (m || 0);
 };
@@ -72,7 +76,17 @@ ${PARTNER_FACTS}
 
 본문만 출력하고 따옴표, 머리말, 해시태그 설명 같은 메타 문장은 쓰지 않는다.`;
 
-let igError = null;
+const failures = [];
+async function step(name, fn) {
+  try { await fn(); }
+  catch (e) {
+    // 한 플랫폼 실패가 다른 플랫폼/기록을 막지 않게: 기록 후 계속, run 은 마지막에 실패
+    failures.push(`${name}: ${e.message}`);
+    console.log(`::error title=${name} 게시 실패::${e.message.slice(0, 500)}`);
+    posts.push({ platform: name.toLowerCase().replace('-prep', ''), skipped: 'error', error: e.message.slice(0, 300), track, posted_at: now.toISOString(), date_kst: today });
+  }
+}
+
 async function main() {
   if (isPromo && !product) { log('상품 없음, 종료'); return; }
   log(`event=${process.env.GITHUB_EVENT_NAME || 'local'} DRY=${DRY} force=${force} KST=${today} ${kstHM} slot(threads)=${todaysSlot('threads')} slot(ig)=${todaysSlot('instagram')}`);
@@ -80,7 +94,7 @@ async function main() {
   const info = isPromo ? `상품: ${product.name} (${product.url})` : `링크 대상: ${target.url}`;
 
   // ---- Threads ----
-  if (due('threads') && !postedToday('threads')) {
+  if (due('threads') && !postedToday('threads')) await step('Threads', async () => {
     const cid = `th-${n('threads')}`;
     const link = utmLink(isPromo ? product : target, 'threads', T.campaign || track, cid, now);
     const body = await claude(SYSTEM, `${info}\nThreads 글 1개를 400자 이내로 써줘. 링크는 내가 끝에 붙일게.`, 600);
@@ -89,51 +103,60 @@ async function main() {
     const c = await threads('POST', `${THREADS_USER_ID}/threads`, { media_type: 'TEXT', text });
     const r = await threads('POST', `${THREADS_USER_ID}/threads_publish`, { creation_id: c.id });
     posts.push({ platform: 'threads', id: r.id, content_id: cid, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('threads'), link, dry: DRY || undefined });
-  } else log(`Threads: 건너뜀 — ${skipReason('threads')}`);
+  });
+  else log(`Threads: 건너뜀 — ${skipReason('threads')}`);
 
-  // ---- Instagram (이미지 필수) ----
-  if (due('instagram') && !postedToday('instagram')) {
-    const cid = `ig-${n('instagram')}`;
-    const link = utmLink(isPromo ? product : target, 'instagram', T.campaign || track, cid, now);
+  // ---- Instagram + Facebook (같은 미디어/캡션, FB 는 IG 성공 여부와 무관하게 독립 게시) ----
+  const needIg = due('instagram') && !postedToday('instagram');
+  const needFb = due('instagram') && !postedToday('facebook');
+  if (!needIg) log(`Instagram: 건너뜀 — ${skipReason('instagram')}`);
+  if (!needFb) log(`Facebook: 건너뜀 — ${postedToday('facebook') ? `오늘(${today}) 이미 게시함` : skipReason('instagram')}`);
+  if (!needIg && !needFb) return;
+
+  let media = null, imgs = [], body = null;
+  await step('Instagram-prep', async () => {
     // 미디어 결정: tracks.<t>.media 배열(캐러셀 images / Reels video_url, 날짜별 순환) → image_url → og:image → 상품 이미지
     const mediaList = (T.media || []).filter((m) => m && (m.video_url || m.images?.length));
-    let media = mediaList.length ? mediaList[(process.env.MEDIA_IDX ? Number(process.env.MEDIA_IDX) : dayIdx) % mediaList.length] : null;
-    const imgs = [].concat(T.image_url || []).filter(Boolean); // 문자열 또는 배열(날짜별 순환)
+    media = mediaList.length ? mediaList[(process.env.MEDIA_IDX ? Number(process.env.MEDIA_IDX) : dayIdx) % mediaList.length] : null;
+    imgs = [].concat(T.image_url || []).filter(Boolean); // 문자열 또는 배열(날짜별 순환)
     const single = media ? null : (imgs.length ? imgs[dayIdx % imgs.length] : null) || (!isPromo && await productImage(target)) || (product && await productImage(product));
     if (!media && single) media = { images: [single] };
-    const image = media?.video_url || media?.images?.[0];
-    if (!image) {
-      log(`Instagram: ${track} 이미지 URL 없음 → 건너뜀`);
-      posts.push({ platform: 'instagram', skipped: 'no_image', track, product_id: product?.id, posted_at: now.toISOString(), date_kst: today });
-    } else {
-      const body = await claude(SYSTEM, `${info}\n인스타그램 캡션 1개(600자 이내, 해시태그 3~5개 끝에). 본문 링크는 클릭이 안 되니 '프로필 링크에서 확인' 식으로 안내.`, 800);
-      log('IG 캡션:\n' + body + `\n(프로필 링크에 걸 UTM: ${link})`);
-      const kind = media.video_url ? `Reels ${media.video_url}` : `${media.images.length}장 ${media.images.length > 1 ? '캐러셀' : '이미지'}`;
-      log(`IG 미디어: ${kind}`);
-      let r;
-      try { r = await igPublish(media, body.slice(0, 2100)); }
-      catch (e) {
-        // 실패해도 Threads 기록은 남기고(중복 게시 방지) 마지막에 run 을 실패시킴
-        igError = e;
-        console.log(`::error title=Instagram 게시 실패::${e.message}`);
-        posts.push({ platform: 'instagram', skipped: 'error', error: e.message.slice(0, 300), track, posted_at: now.toISOString(), date_kst: today });
-      }
-      if (r) {
-      posts.push({ platform: 'instagram', id: r.id, media_type: r.media_type, media_set: media.set, content_id: cid, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('instagram'), bio_link: link, dry: DRY || undefined });
-      // ---- Facebook 페이지 (IG 게시 시 같은 미디어/캡션 + 링크; 멀티포토·영상 실패 시 단일 이미지) ----
-      const fcid = `fb-${n('facebook')}`;
-      const flink = utmLink(isPromo ? product : target, 'facebook', T.campaign || track, fcid, now);
-      try {
-        const f = await fbPagePost(body.slice(0, 2100), flink, { ...media, fallback_image: imgs[0] });
-        if (!f) log('Facebook: META_FB_PAGE_TOKEN 없음 → 건너뜀');
-        else posts.push({ platform: 'facebook', id: f.post_id || f.id, content_id: fcid, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('instagram'), link: flink, dry: DRY || undefined });
-      } catch (e) { log(`Facebook 게시 실패: ${e.message}`); }
-      }
+    if (!(media?.video_url || media?.images?.[0])) {
+      log(`Instagram/Facebook: ${track} 이미지 URL 없음 → 건너뜀`);
+      for (const platform of ['instagram', 'facebook']) posts.push({ platform, skipped: 'no_image', track, product_id: product?.id, posted_at: now.toISOString(), date_kst: today });
+      media = null; return;
     }
-  } else log(`Instagram: 건너뜀 — ${skipReason('instagram')}`);
+    body = await claude(SYSTEM, `${info}\n인스타그램 캡션 1개(600자 이내, 해시태그 3~5개 끝에). 본문 링크는 클릭이 안 되니 '프로필 링크에서 확인' 식으로 안내.`, 800);
+    log('IG/FB 캡션:\n' + body);
+    log(`미디어: ${media.video_url ? `Reels ${media.video_url}` : `${media.images.length}장 ${media.images.length > 1 ? '캐러셀' : '이미지'}`}`);
+  });
+  if (!media || !body) return;
 
-  if (!DRY) writeJson('data/posts.json', posts);
-  else log('DRY: posts.json 미기록', JSON.stringify(posts.slice(-2)).slice(0, 300));
-  if (igError) throw new Error(`Instagram 게시 실패: ${igError.message}`);
+  if (needIg) await step('Instagram', async () => {
+    const cid = `ig-${n('instagram')}`;
+    const link = utmLink(isPromo ? product : target, 'instagram', T.campaign || track, cid, now);
+    log(`(IG 프로필 링크에 걸 UTM: ${link})`);
+    const r = await igPublish(media, body.slice(0, 2100));
+    posts.push({ platform: 'instagram', id: r.id, media_type: r.media_type, media_set: media.set, content_id: cid, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('instagram'), bio_link: link, dry: DRY || undefined });
+  });
+
+  // ---- Facebook 페이지 (멀티포토·영상 실패 시 단일 이미지) ----
+  if (needFb) await step('Facebook', async () => {
+    const fcid = `fb-${n('facebook')}`;
+    const flink = utmLink(isPromo ? product : target, 'facebook', T.campaign || track, fcid, now);
+    const f = await fbPagePost(body.slice(0, 2100), flink, { ...media, fallback_image: imgs[0] });
+    if (!f) { log('Facebook: META_FB_PAGE_TOKEN 없음 → 건너뜀'); return; }
+    posts.push({ platform: 'facebook', id: f.post_id || f.id, content_id: fcid, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('instagram'), link: flink, dry: DRY || undefined });
+  });
 }
-main().catch((e) => { console.log(`::error::${e.message}`); console.error(e.message); process.exit(1); });
+
+function save() {
+  if (!DRY) writeJson('data/posts.json', posts);
+  else log('DRY: posts.json 미기록', JSON.stringify(posts.slice(-3)).slice(0, 400));
+}
+main()
+  .catch((e) => { failures.push(`unexpected: ${e.message}`); console.log(`::error::${e.message}`); })
+  .finally(() => {
+    save(); // 실패해도 항상 기록 (성공한 플랫폼 중복 게시 방지)
+    if (failures.length) { console.log(`::error::게시 실패 ${failures.length}건 — ${failures.join(' | ').slice(0, 800)}`); process.exitCode = 1; }
+  });

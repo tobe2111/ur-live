@@ -74,17 +74,23 @@ export async function claude(system, user, maxTokens = 800) {
     if (!DRY) throw new Error('ANTHROPIC_API_KEY missing');
     return `[DRY 샘플 응답] ${user.slice(0, 60)}`;
   }
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-    body: JSON.stringify({ model: process.env.CLAUDE_MODEL || 'claude-sonnet-5-5', max_tokens: maxTokens, system: `${system}\n\n${HARD_RULES}`, messages: [{ role: 'user', content: user }] }),
-  });
-  if (!res.ok) throw new Error(`Claude API ${res.status}: ${(await res.text()).slice(0, 300)}`);
-  const j = await res.json();
-  const text = (j.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('').trim();
-  // 빈 본문으로 링크만 게시되는 사고 방지
-  if (!text) throw new Error(`Claude 응답이 비어 있음 (stop_reason=${j.stop_reason}, model=${j.model})`);
-  return text;
+  let last = '';
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+      body: JSON.stringify({ model: process.env.CLAUDE_MODEL || 'claude-sonnet-5-5', max_tokens: maxTokens, system: `${system}\n\n${HARD_RULES}`, messages: [{ role: 'user', content: user }] }),
+    });
+    if (!res.ok) throw new Error(`Claude API ${res.status}: ${(await res.text()).slice(0, 300)}`);
+    const j = await res.json();
+    const text = (j.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('').trim();
+    // 빈 본문 / 거절 / 잘림으로 링크만 게시되는 사고 방지: 1회 재시도 후 실패
+    const bad = !text ? 'empty' : j.stop_reason === 'refusal' ? 'refusal' : null;
+    if (!bad) return text;
+    last = `Claude 응답 불가 (${bad}, stop_reason=${j.stop_reason}, model=${j.model})`;
+    console.log(`::warning::${last} — attempt ${attempt}/2`);
+  }
+  throw new Error(last);
 }
 
 // ---------- Meta (Threads / Instagram) ----------
