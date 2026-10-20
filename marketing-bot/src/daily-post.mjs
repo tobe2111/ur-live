@@ -1,7 +1,7 @@
 // 매일 게시: Threads 텍스트 1개 + Instagram 이미지 캡션 1개.
 // 트랙 비율: data/mix-state.json(주간 자동조정, 범위 내) → 없으면 data/content-mix.json 고정 60/25/15.
 import { pickTrackByWeights } from './attribution.mjs';
-import { DRY, log, readJson, writeJson, claude, threads, igPublish, fbPagePost, utmLink, productImage, kstNow, THREADS_USER_ID, PARTNER_FACTS } from './lib.mjs';
+import { DRY, log, readJson, writeJson, claude, humanize, HUMAN_STYLE, threads, igPublish, fbPagePost, utmLink, productImage, kstNow, THREADS_USER_ID, PARTNER_FACTS } from './lib.mjs';
 
 const schedule = readJson('data/schedule.json', {});
 const mix = readJson('data/content-mix.json', { cycle: {}, tracks: {} });
@@ -64,14 +64,17 @@ const TRACK_GUIDE = {
   consumer: `오늘은 소비자 딜 글: 아래 상품을 운영자 입장에서 솔직하게 소개한다(왜 골랐는지, 어떤 상황에 좋은지). 주어진 상품 정보 외 가격/할인율은 쓰지 않는다.`,
 }[track];
 
-const SYSTEM = `너는 로컬 맛집·뷰티 이용권 서비스 '유어딜'(@urdeal_official)을 직접 운영하는 사람이다. 1인칭 운영자 목소리로, 담백하고 자연스러운 존댓말로 쓴다. 광고 카피 말투(느낌표 남발, "지금 바로!", "놓치지 마세요") 대신 사장님/크리에이터에게 직접 설명하듯 쓴다.
+const SYSTEM = `너는 로컬 맛집·뷰티 이용권 서비스 '유어딜'(@urdeal_official)을 직접 운영하는 사람이다. 광고 카피가 아니라 사장님/크리에이터에게 직접 설명하듯 쓴다.
 ${TRACK_GUIDE}
+
+${HUMAN_STYLE}
 
 [확인된 사실 — 이 범위 밖의 조건·숫자는 쓰지 않는다]
 ${PARTNER_FACTS}
 
 본문만 출력하고 따옴표, 머리말, 해시태그 설명 같은 메타 문장은 쓰지 않는다.`;
 
+let igError = null;
 async function main() {
   if (isPromo && !product) { log('상품 없음, 종료'); return; }
   log(`event=${process.env.GITHUB_EVENT_NAME || 'local'} DRY=${DRY} force=${force} KST=${today} ${kstHM} slot(threads)=${todaysSlot('threads')} slot(ig)=${todaysSlot('instagram')}`);
@@ -82,7 +85,8 @@ async function main() {
   if (due('threads') && !postedToday('threads')) {
     const cid = `th-${n('threads')}`;
     const link = utmLink(isPromo ? product : target, 'threads', T.campaign || track, cid, now);
-    const body = await claude(SYSTEM, `${info}\nThreads 글 1개를 400자 이내로 써줘. 링크는 내가 끝에 붙일게.`, 600);
+    const len = ['150~200자', '250~300자', '350~400자'][dayIdx % 3];
+    const body = await humanize(await claude(SYSTEM, `${info}\nThreads 글 1개를 ${len} 정도로 써줘. 링크는 내가 끝에 붙일게.`, 600), 'Threads 글');
     const text = `${body.slice(0, 430)}\n\n${link}`.slice(0, 500);
     log('Threads 본문:\n' + text);
     const c = await threads('POST', `${THREADS_USER_ID}/threads`, { media_type: 'TEXT', text });
@@ -105,11 +109,19 @@ async function main() {
       log(`Instagram: ${track} 이미지 URL 없음 → 건너뜀`);
       posts.push({ platform: 'instagram', skipped: 'no_image', track, product_id: product?.id, posted_at: now.toISOString(), date_kst: today });
     } else {
-      const body = await claude(SYSTEM, `${info}\n인스타그램 캡션 1개(600자 이내, 해시태그 3~5개 끝에). 본문 링크는 클릭이 안 되니 '프로필 링크에서 확인' 식으로 안내.`, 800);
+      const body = await humanize(await claude(SYSTEM, `${info}\n인스타그램 캡션 1개(600자 이내, 해시태그 2~4개만 끝에). 본문 링크는 클릭이 안 되니 '프로필 링크에서 확인' 식으로 안내.`, 800), '인스타그램 캡션');
       log('IG 캡션:\n' + body + `\n(프로필 링크에 걸 UTM: ${link})`);
       const kind = media.video_url ? `Reels ${media.video_url}` : `${media.images.length}장 ${media.images.length > 1 ? '캐러셀' : '이미지'}`;
       log(`IG 미디어: ${kind}`);
-      const r = await igPublish(media, body.slice(0, 2100));
+      let r;
+      try { r = await igPublish(media, body.slice(0, 2100)); }
+      catch (e) {
+        // 실패해도 Threads 기록은 남기고(중복 게시 방지) 마지막에 run 을 실패시킴
+        igError = e;
+        console.log(`::error title=Instagram 게시 실패::${e.message}`);
+        posts.push({ platform: 'instagram', skipped: 'error', error: e.message.slice(0, 300), track, posted_at: now.toISOString(), date_kst: today });
+      }
+      if (r) {
       posts.push({ platform: 'instagram', id: r.id, media_type: r.media_type, media_set: media.set, content_id: cid, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('instagram'), bio_link: link, dry: DRY || undefined });
       // ---- Facebook 페이지 (IG 게시 시 같은 미디어/캡션 + 링크; 멀티포토·영상 실패 시 단일 이미지) ----
       const fcid = `fb-${n('facebook')}`;
@@ -119,10 +131,12 @@ async function main() {
         if (!f) log('Facebook: META_FB_PAGE_TOKEN 없음 → 건너뜀');
         else posts.push({ platform: 'facebook', id: f.post_id || f.id, content_id: fcid, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('instagram'), link: flink, dry: DRY || undefined });
       } catch (e) { log(`Facebook 게시 실패: ${e.message}`); }
+      }
     }
   } else log(`Instagram: 건너뜀 — ${skipReason('instagram')}`);
 
   if (!DRY) writeJson('data/posts.json', posts);
   else log('DRY: posts.json 미기록', JSON.stringify(posts.slice(-2)).slice(0, 300));
+  if (igError) throw new Error(`Instagram 게시 실패: ${igError.message}`);
 }
-main().catch((e) => { console.error(e.message); process.exit(1); });
+main().catch((e) => { console.log(`::error::${e.message}`); console.error(e.message); process.exit(1); });

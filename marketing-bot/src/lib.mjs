@@ -81,7 +81,37 @@ export async function claude(system, user, maxTokens = 800) {
   });
   if (!res.ok) throw new Error(`Claude API ${res.status}: ${(await res.text()).slice(0, 300)}`);
   const j = await res.json();
-  return j.content.filter((c) => c.type === 'text').map((c) => c.text).join('').trim();
+  const text = (j.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('').trim();
+  // 빈 본문으로 링크만 게시되는 사고 방지
+  if (!text) throw new Error(`Claude 응답이 비어 있음 (stop_reason=${j.stop_reason}, model=${j.model})`);
+  return text;
+}
+
+// ---------- 사람 말투 (AI 티 제거) ----------
+export const HUMAN_STYLE = `말투 규칙 (운영자가 폰으로 직접 쓰는 느낌):
+- 1인칭 운영자("저", "제가", "저희"). 담백한 존댓말, 짧은 문장 위주. 문장 길이를 섞는다.
+- 금지 표현: "여러분", "안녕하세요 여러분", "~하시나요?"로 시작하는 질문 오프너, "결론적으로", "요약하자면", "~에 대해 알아보겠습니다", "꿀팁", "놓치지 마세요", "지금 바로", "다양한", "특별한 경험", "완벽한".
+- 번호·불릿 목록, 소제목, 굵은 글씨 구조 쓰지 않는다. 그냥 말하듯 문단 1~3개.
+- 이모지는 0~1개(안 써도 됨). 느낌표 최대 1개. 해시태그는 요청받은 경우에만.
+- 매번 다른 방식으로 시작한다: 오늘 있었던 일, 사장님께 들은 말, 제가 고민한 점, 상품 하나 얘기 등. 정해진 틀 반복 금지.
+- 구체적으로: 주어진 상품명·조건·링크 대상 같은 실제 정보만 콕 집어 쓴다. 숫자·후기·사례는 지어내지 않는다.
+예시 톤 (그대로 베끼지 말 것):
+"요즘 입점 문의 주시는 사장님들이 제일 많이 물어보시는 게 수수료예요. 저희는 팔린 만큼만 받는 구조라 등록만 해두셔도 손해 볼 건 없어요."
+"오늘은 제가 직접 골라본 딜 하나. 퇴근길에 들르기 좋은 위치라 넣어봤어요."`;
+
+const AI_TELLS = /여러분|결론적으로|요약하자면|알아보겠습니다|놓치지 마세요|지금 바로|^\s*(\d+\.|[-•✅✔️])\s|[!]{2,}|^[^\n]{0,40}하시나요\?/m;
+export function looksAi(text) {
+  const emoji = (text.match(/\p{Extended_Pictographic}/gu) || []).length;
+  return AI_TELLS.test(text) || emoji > 2;
+}
+
+// 2차 패스: "사람이 쓴 것 같은가" 검사 후 아니면 다시 씀. 사실/링크/해시태그 개수는 유지.
+export async function humanize(text, kind = '게시글') {
+  if (DRY) return text;
+  const verdict = await claude(`너는 SNS 글 검수자다. 아래 ${kind}이 소규모 서비스 운영자가 직접 쓴 글처럼 자연스러운지 판단한다. AI가 쓴 티(뻔한 오프너, 목록 구조, 과한 이모지/해시태그, 홍보 문구, 딱딱한 마무리)가 나면 FAIL. 출력은 PASS 또는 FAIL 한 단어.`, text, 5).catch(() => 'PASS');
+  if (!looksAi(text) && /PASS/i.test(verdict)) return text;
+  const out = await claude(`아래 ${kind}을 운영자가 직접 쓴 것처럼 다시 써라. 내용·사실·조건은 그대로 두고 새 사실이나 숫자를 더하지 않는다. 길이는 비슷하게, 해시태그가 있으면 같은 개수만 끝에 유지. 결과 본문만 출력.\n\n${HUMAN_STYLE}`, text, 900);
+  return out || text;
 }
 
 // ---------- Meta (Threads / Instagram) ----------

@@ -25,6 +25,7 @@
 import { CONSUMER_SURFACE_SEO } from './consumer-surfaces'
 import { CONCEPT_ABOUT_LINES, CONCEPT_FAQ } from './concept-content'
 import { LLMS_CATALOG_LINK_LABEL, LLMS_CATALOG_PATH } from './llms-catalog'
+import { agentSearchLines } from '../agent-search'
 
 /** 법적·정책 표면 — 서비스 설명과 섞으면 "무엇을 파는 곳인가" 가 묻힌다. */
 const POLICY_PREFIXES = ['/terms', '/privacy', '/refund', '/gdpr'] as const
@@ -43,7 +44,7 @@ function oneLine(text: string): string {
   return text.replace(/\s+/g, ' ').trim()
 }
 
-export function buildLlmsTxt(origin: string): string {
+export function buildLlmsTxt(origin: string, opts: { agentSearch?: boolean } = {}): string {
   const base = origin.replace(/\/+$/, '')
   // 루트는 제목 줄이 이미 가리킨다 — 링크 목록에 다시 넣지 않는다.
   const paths = Object.keys(CONSUMER_SURFACE_SEO).filter(
@@ -68,6 +69,7 @@ export function buildLlmsTxt(origin: string): string {
     // 🗂️ 2026-10-19 — 소개만으로는 *무엇을 어디서 얼마에* 파는지 모른다. 실제 목록은 따로(매시 갱신).
     `- ${LLMS_CATALOG_LINK_LABEL}: ${base}${LLMS_CATALOG_PATH}`,
     '',
+    ...(opts.agentSearch ? agentSearchLines(base) : []),
     '## 주요 페이지',
     '',
     ...service.map(linkLine),
