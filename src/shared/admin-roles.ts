@@ -71,7 +71,7 @@ export function adminPathSegment(pathname: string): string {
 const WRITE_DOMAINS: Record<'ops' | 'cs' | 'finance', readonly string[]> = {
   ops: [
     'orders', 'products', 'suppliers', 'sellers', 'seller', 'stays', 'streams', 'stream',
-    'kt-alpha', 'cafe24', 'banners', 'side-banners', 'wholesale-banners', 'wholesale-board',
+    'kt-alpha', 'banners', 'side-banners', 'wholesale-banners', 'wholesale-board',
     'wholesale-products', 'wholesale-malls', 'flags', 'blog', 'youtube-growth', 'coupons', 'tools',
   ],
   cs: [

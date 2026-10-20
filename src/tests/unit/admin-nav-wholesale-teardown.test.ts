@@ -45,7 +45,7 @@ describe('🔴 R1 — 소비자 도메인에선 도매 밴드가 안 보인다',
     setHost(CONSUMER)
     const kept = withoutWholesaleOnConsumer(VISIBLE_NAV_GROUPS)
     expect(kept.length).toBeGreaterThan(3)
-    expect(kept.some((g) => g.title === '🏪 오프라인 공구')).toBe(true)
+    expect(kept.some((g) => g.title === '🎟️ 이용권')).toBe(true) // 2026-10-20 '🏪 오프라인 공구' → '🎟️ 이용권'
   })
 })
 
@@ -109,7 +109,7 @@ describe('🔴 R4 — 도매가 아닌 별개 사업은 도매 밴드에 넣지 
   it('해외 바이어 풀이 도매 밴드 밖이다', () => {
     const inWholesale = wholesaleGroups(NAV_GROUPS).flatMap((g) => g.items.map((i) => i.path))
     expect(inWholesale).not.toContain('/admin/buyer-pool')
-    // 그리고 어딘가에는 있어야 한다(조용히 사라지지 않았는가).
-    expect(NAV_GROUPS.flatMap((g) => g.items.map((i) => i.path))).toContain('/admin/buyer-pool')
+    // 🧨 2026-10-20 대표 "지워줘" — 해외 바이어 풀은 메뉴에서도 사라졌다(되살아나지 않는다).
+    expect(NAV_GROUPS.flatMap((g) => g.items.map((i) => i.path))).not.toContain('/admin/buyer-pool')
   })
 })

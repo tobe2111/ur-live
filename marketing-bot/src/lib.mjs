@@ -69,6 +69,16 @@ export function utmLink(product, source, campaignSlug, contentId, d = new Date()
 }
 
 // ---------- Claude ----------
+// 🩸 2026-10-20: 10-19 18:13 KST 회차가 빈 글을 받았다. 원인은 모델이 기본으로 먼저 '생각'을 하고
+//    그 생각이 max_tokens(600~800)를 다 써 본문이 0자가 된 것(4.8s·14s 걸리고 텍스트 블록 없음).
+//    ① Sonnet 5.5 는 thinking 을 between_tools 로 꺼 둔다(disabled 는 400) ② 그 밖의 모델은 끌 수 없으니
+//    글자 한도를 넉넉히 둔다 — 글 길이는 프롬프트(400자·600자)가 정하고 max_tokens 는 잘림 방지용 천장이다.
+export function claudeBody(system, user, maxTokens) {
+  const model = process.env.CLAUDE_MODEL || 'claude-sonnet-5-5';
+  const body = { model, max_tokens: Math.max(maxTokens, 4000), system: `${system}\n\n${HARD_RULES}`, messages: [{ role: 'user', content: user }] };
+  if (model === 'claude-sonnet-5-5') body.thinking = { type: 'between_tools' };
+  return body;
+}
 export async function claude(system, user, maxTokens = 800) {
   if (DRY || !process.env.ANTHROPIC_API_KEY) {
     if (!DRY) throw new Error('ANTHROPIC_API_KEY missing');
@@ -77,7 +87,7 @@ export async function claude(system, user, maxTokens = 800) {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-    body: JSON.stringify({ model: process.env.CLAUDE_MODEL || 'claude-sonnet-5-5', max_tokens: maxTokens, system: `${system}\n\n${HARD_RULES}`, messages: [{ role: 'user', content: user }] }),
+    body: JSON.stringify(claudeBody(system, user, maxTokens)),
   });
   if (!res.ok) throw new Error(`Claude API ${res.status}: ${(await res.text()).slice(0, 300)}`);
   const j = await res.json();
@@ -85,6 +95,75 @@ export async function claude(system, user, maxTokens = 800) {
   // 빈 본문으로 링크만 게시되는 사고 방지
   if (!text) throw new Error(`Claude 응답이 비어 있음 (stop_reason=${j.stop_reason}, model=${j.model})`);
   return text;
+}
+
+// Threads 는 500자 제한. 종전 `${body.slice(0,430)}\n\n${link}`.slice(0,500) 은 본문이 길면
+// **링크 끝을 잘랐다**(링크 ~125자 + 430 > 500) — 깨진 UTM 링크가 게시되고 유입 귀속도 사라진다.
+// 링크는 절대 자르지 않고, 본문을 남은 자리에 맞춰 문장 끝에서 자른다.
+export function threadsText(body, link, limit = 500) {
+  const room = limit - link.length - 2;
+  let b = body.trim();
+  if (b.length > room) {
+    const cut = b.slice(0, room);
+    const end = Math.max(cut.lastIndexOf('.'), cut.lastIndexOf('!'), cut.lastIndexOf('?'), cut.lastIndexOf('\n'));
+    b = (end > room * 0.5 ? cut.slice(0, end + 1) : cut.slice(0, room - 1) + '…').trim();
+  }
+  return `${b}\n\n${link}`;
+}
+
+// ---------- 사람 말투 (AI 티 제거) ----------
+export const HUMAN_STYLE = `말투 규칙 (운영자가 폰으로 직접 쓰는 느낌):
+- 1인칭 운영자("저", "제가", "저희"). 담백한 존댓말, 짧은 문장 위주. 문장 길이를 섞는다.
+- 금지 표현: "여러분", "안녕하세요 여러분", "~하시나요?"로 시작하는 질문 오프너, "결론적으로", "요약하자면", "~에 대해 알아보겠습니다", "꿀팁", "놓치지 마세요", "지금 바로", "다양한", "특별한 경험", "완벽한".
+- 번호·불릿 목록, 소제목, 굵은 글씨 구조 쓰지 않는다. 그냥 말하듯 문단 1~3개.
+- 이모지는 0~1개(안 써도 됨). 느낌표 최대 1개. 해시태그는 요청받은 경우에만.
+- 매번 다른 방식으로 시작한다: 오늘 있었던 일, 사장님께 들은 말, 제가 고민한 점, 상품 하나 얘기 등. 정해진 틀 반복 금지.
+- 구체적으로: 주어진 상품명·조건·링크 대상 같은 실제 정보만 콕 집어 쓴다. 숫자·후기·사례는 지어내지 않는다.
+예시 톤 (그대로 베끼지 말 것):
+"요즘 입점 문의 주시는 사장님들이 제일 많이 물어보시는 게 수수료예요. 저희는 팔린 만큼만 받는 구조라 등록만 해두셔도 손해 볼 건 없어요."
+"오늘은 제가 직접 골라본 딜 하나. 퇴근길에 들르기 좋은 위치라 넣어봤어요."`;
+
+const AI_TELLS = /여러분|결론적으로|요약하자면|알아보겠습니다|놓치지 마세요|지금 바로|^\s*(\d+\.|[-•✅✔️])\s|[!]{2,}|^[^\n]{0,40}하시나요\?/m;
+export function looksAi(text) {
+  const emoji = (text.match(/\p{Extended_Pictographic}/gu) || []).length;
+  return AI_TELLS.test(text) || emoji > 2;
+}
+
+// 2차 패스: "사람이 쓴 것 같은가" 검사 후 아니면 다시 씀. 사실/링크/해시태그 개수는 유지.
+export async function humanize(text, kind = '게시글') {
+  if (DRY) return text;
+  const verdict = await claude(`너는 SNS 글 검수자다. 아래 ${kind}이 소규모 서비스 운영자가 직접 쓴 글처럼 자연스러운지 판단한다. AI가 쓴 티(뻔한 오프너, 목록 구조, 과한 이모지/해시태그, 홍보 문구, 딱딱한 마무리)가 나면 FAIL. 출력은 PASS 또는 FAIL 한 단어.`, text, 5).catch(() => 'PASS');
+  if (!looksAi(text) && /PASS/i.test(verdict)) return text;
+  const out = await claude(`아래 ${kind}을 운영자가 직접 쓴 것처럼 다시 써라. 내용·사실·조건은 그대로 두고 새 사실이나 숫자를 더하지 않는다. 길이는 비슷하게, 해시태그가 있으면 같은 개수만 끝에 유지. 결과 본문만 출력.\n\n${HUMAN_STYLE}`, text, 900);
+  return out || text;
+}
+
+// ---------- 실패 알림 → 대표 카톡 "나에게 보내기" ----------
+// 서버(/api/ops/alert)가 대표 카카오 토큰으로 보낸다. 봇은 GitHub OIDC 토큰으로 신원만 증명한다(비밀 0).
+// 알림이 실패해도 원래 오류를 가리지 않는다(fail-soft) — 그때는 GitHub 의 실패 메일이 예비다.
+export const OPS_ALERT_URL = 'https://urdeal.kr/api/ops/alert';
+export function runUrl(env = process.env) {
+  return env.GITHUB_RUN_ID ? `${env.GITHUB_SERVER_URL || 'https://github.com'}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}` : undefined;
+}
+export async function opsAlert(title, text, env = process.env, fetchImpl = fetch) {
+  if (DRY) { log(`DRY: 카톡 알림 생략 — ${title}: ${text}`); return { skipped: 'dry' }; }
+  const reqUrl = env.ACTIONS_ID_TOKEN_REQUEST_URL, reqTok = env.ACTIONS_ID_TOKEN_REQUEST_TOKEN;
+  if (!reqUrl || !reqTok) { log('카톡 알림 생략 — OIDC 없음(id-token: write 권한 확인)'); return { skipped: 'no_oidc' }; }
+  try {
+    const t = await fetchImpl(`${reqUrl}&audience=urdeal-ops-alert`, { headers: { Authorization: `bearer ${reqTok}` } }).then((r) => r.json());
+    const res = await fetchImpl(OPS_ALERT_URL, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${t.value}`, 'Content-Type': 'application/json', 'User-Agent': 'urdeal-marketing-bot/1.0' },
+      body: JSON.stringify({ title, text, url: runUrl(env) }),
+      signal: AbortSignal.timeout(10000),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) console.log(`::warning title=카톡 알림 실패::${res.status} ${j.code || j.error || ''}${j.consent_url ? ` — 권한 동의: ${j.consent_url}` : ''}`);
+    return { status: res.status, ...j };
+  } catch (e) {
+    console.log(`::warning title=카톡 알림 실패::${e.message}`);
+    return { error: e.message };
+  }
 }
 
 // ---------- Meta (Threads / Instagram) ----------

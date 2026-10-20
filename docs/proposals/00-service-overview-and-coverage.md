@@ -302,12 +302,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 331 | 1050 |
+| 전체 | 327 | 1011 |
 | 도메인 버킷 (5개 소개서) | 131 | 462 |
-| 공통/인프라 (의도적 제외) | 153 | 491 |
-| **미커버 (점검 필요)** | **47** | **97** |
+| 공통/인프라 (의도적 제외) | 149 | 453 |
+| **미커버 (점검 필요)** | **47** | **96** |
 
-⚠️ **미커버 144건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 143건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -378,8 +378,6 @@
 - `POST /api/acquisition/inflow/bind` (`src/worker/routes/acquisition.routes.ts`)
 - `POST /api/acquisition/landing` (`src/worker/routes/acquisition.routes.ts`)
 - `GET /api/acquisition/utm-report` (`src/worker/routes/acquisition.routes.ts`)
-- `POST /api/buyer-ingest/` (`src/features/supply/api/buyer-ingest.routes.ts`)
-- `POST /api/buyer-ingest/known` (`src/features/supply/api/buyer-ingest.routes.ts`)
 - `GET /api/consumer-settings` (`src/worker/routes/public-utility.routes.ts`)
 - `POST /api/cs/kakao-skill` (`src/worker/routes/kakao-skill-webhook.routes.ts`)
 - `GET /api/experience-campaigns/` (`src/features/group-buy/api/experience-campaign.routes.ts`)
@@ -399,6 +397,7 @@
 - `POST /api/gb-proposals/seller` (`src/features/group-buy/api/gb-proposals.routes.ts`)
 - `POST /api/gb-proposals/seller/:id/respond` (`src/features/group-buy/api/gb-proposals.routes.ts`)
 - `GET /api/gb-proposals/seller/list` (`src/features/group-buy/api/gb-proposals.routes.ts`)
+- `POST /api/ops/alert` (`src/worker/routes/ops-alert.routes.ts`)
 - `POST /api/partnership/inquiry` (`src/worker/routes/partnership.routes.ts`)
 - `GET /api/promo-bar` (`src/worker/routes/public-utility.routes.ts`)
 - `GET /api/regions/` (`src/features/group-buy/api/regions.routes.ts`)
@@ -1617,7 +1616,7 @@
 
 
 
-> 마지막 생성: 2026-10-20T03:14:24.792Z
+> 마지막 생성: 2026-10-20T07:04:55.843Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->
