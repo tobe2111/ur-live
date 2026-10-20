@@ -96,16 +96,14 @@ describe('② 남긴 것이 함께 지워지지 않는다 (여기가 본문)', (
       .toMatch(/import \{ loadPlatformCommissionPct \} from '[^']*supply\/api\/wholesale-settlement'/)
   })
 
-  it('별개 사업(해외 바이어 · 제조사 후보 풀)이 남아 있다 — 계획서 §1(b)', () => {
+  it('🧨 2026-10-20 별개 사업(해외 바이어 · 제조사 후보 풀)도 대표 지시로 삭제됐다 — 되살아나지 않는다', () => {
+    // 종전엔 "남아 있어야 한다"(계획서 §1(b))였다. 대표 *"1,2,3번은 지워줘"* 로 결정이 바뀌었다.
     const files = readdirSync('src/features/supply/api')
-    expect(files.filter((f) => f.startsWith('buyer-')).length).toBeGreaterThanOrEqual(5)
-    expect(files.filter((f) => f.startsWith('maker-')).length).toBeGreaterThanOrEqual(4)
-    // maker-pool 은 유어애즈 워커가 쓴다 — 도매와 함께 지우면 그 레일이 깨진다.
-    expect(read('src/worker-ads/index.ts')).toContain('maker-collect')
-    // 🧨 철거로 종전 마운트(mount-wholesale)가 사라졌으므로 소비자 워커가 대신 마운트해야 한다.
+    expect(files.filter((f) => f.startsWith('buyer-') || f.startsWith('maker-'))).toEqual([])
+    expect(read('src/worker-ads/index.ts')).not.toContain("'/__ads/collect-maker'")
     const idx = read('src/worker/index.ts')
-    expect(idx).toContain("app.route('/api/admin/buyer-pool'")
-    expect(idx).toContain("app.route('/api/admin/maker-pool'")
+    expect(idx).not.toContain("app.route('/api/admin/buyer-pool'")
+    expect(idx).not.toContain("app.route('/api/admin/maker-pool'")
   })
 
   it('🏬 공구 서비스(운영자 몰) 인프라가 남아 있다 — 계획서 §1(c)', () => {

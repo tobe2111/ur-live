@@ -65,8 +65,6 @@ export const BANNER_VIDEO_BODY_LIMIT_BYTES = BANNER_VIDEO_MAX_FILE_BYTES + MULTI
  * 비교가 늘 거짓 = **천장 없음**이 된다. 경로는 늘 `/api/` 로 시작해 지금은 안 걸리지만 구조로 막는다.
  */
 export const API_BODY_LIMIT_OVERRIDES: ReadonlyMap<string, number> = new Map([
-  // 🔖 바이어 풀 북마클릿 인제스트 — 상세 HTML 배치. 무토큰 파싱 증폭을 줄이려 일부러 낮게(1.2MB 마다 flush).
-  ['/api/buyer-ingest', 1_500_000],
   ['/api/upload/business-cert', BUSINESS_CERT_BODY_LIMIT_BYTES],
   ['/api/upload/banner-video', BANNER_VIDEO_BODY_LIMIT_BYTES],
 ])

@@ -10,7 +10,7 @@
 import {
   LayoutDashboard, ShoppingBag, Package, DollarSign,
   Bell, Image, Monitor, Store, Gift, Ticket, BookOpen, Building2, UserCheck, Settings, Send,
-  BarChart3, Shield, UserCog, Users, MessageSquare, Megaphone, Sparkles, AlertTriangle, TrendingUp, AlertOctagon, Wallet, Layers, Mail, Crown,
+  BarChart3, Shield, UserCog, Users, MessageSquare, Megaphone, Sparkles, AlertTriangle, TrendingUp, AlertOctagon, Wallet, Mail, Crown,
   RotateCcw, Upload, Scale, FileText, Share2, LayoutList,
   Video, Film, Gauge, Activity, Landmark, KeyRound,
   type LucideIcon, Inbox } from 'lucide-react'
@@ -112,9 +112,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/ads-services',     label: '서비스몰 주문', icon: Megaphone },
       { path: '/admin/influencer-pool',  label: '인플루언서 풀', icon: Megaphone },
       { path: '/admin/campaign-applications', label: '캠페인 신청자', icon: Megaphone }, // 캠페인 모집(/campaign/:code) 접수분 — 코드 필터+CSV
-      { path: '/admin/buyer-pool',       label: '해외 바이어 풀', icon: Megaphone }, // 도매 RBAC 스코프 밖 → 여기(전-어드민)
       { path: '/admin/partnership',      label: '광고·제휴 문의', icon: Mail }, // 🧨 2026-10-11 도매 밴드와 함께 사라질 뻔한 **도매 아닌** 접수함(광고/제휴 공개 문의) — 유어애즈 밴드가 제자리다
-      { path: '/admin/maker-pool',       label: '제조사·판매사 후보 풀', icon: Layers }, // 🧨 2026-10-11 도매 철거로 이 밴드로 이사 — 읽는 것은 유어애즈 `ad_company_leads`(worker-ads 가 계속 수집)
       { path: '/admin/partner-pool',     label: '파트너 풀', icon: Megaphone }, // B2B 파트너(업체) 수집 — 매장 입점 영업
       { path: '/admin/store-prospects',  label: '매장 후보', icon: Megaphone }, // 인허가 발굴 — 유어딜 입점 대상 매장(store_prospects)
       { path: '/admin/gov-notices',      label: '공고 스캐너', icon: Megaphone }, // 나라장터+기업마당 공고(gov_notices)
@@ -301,7 +299,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/notification-settings',  label: '알림 채널 설정', icon: Bell },
       { path: '/admin/alimtalk',               label: '브랜드메시지',  icon: Bell },
       // 🧨 2026-10-20 '샘플 신청' 제거 — 도매(공급가) 잔재. 새 신청을 만드는 셀러 API(`/api/supply`)가 도매 철거로 사라져 영원히 빈 큐였다.
-      { path: '/admin/cafe24',            label: 'Cafe24 연동',   icon: Store },
+      // 🧨 2026-10-20 대표 "1,2,3번은 지워줘": 해외 바이어 풀 · 제조사·판매사 후보 풀 · Cafe24 연동 삭제(유어딜 무관).
     ],
   },
   {

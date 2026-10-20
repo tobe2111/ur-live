@@ -110,7 +110,6 @@ smokeTestRoutes.get('/api/_internal/smoke-test', requireAdmin(), async (c) => {
     // ── 기타 ────────────────────────────────────────────
     { cat: 'misc', path: '/api/push/vapid-public-key', method: 'GET' },
     { cat: 'misc', path: '/api/affiliate/balance', method: 'GET' },
-    { cat: 'misc', path: '/api/cafe24/auth-url', method: 'GET' },
     { cat: 'misc', path: '/api/shortcuts', method: 'GET' },
     { cat: 'misc', path: '/api/csrf-token', method: 'GET' },
   ];

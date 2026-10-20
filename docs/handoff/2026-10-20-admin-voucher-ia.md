@@ -37,3 +37,18 @@
 
 ## 다음 세션 첫 액션
 배포 후 어드민 `/admin/vouchers` 를 열어 ① 목록에 판매/사용 장수가 뜨는지 ② [판매 설정] 모달이 저장되는지 ③ `/admin/products` 의 "쇼핑 상품" 이 25개 안팎인지.
+
+## 🧨 2차 — 유어딜과 무관한 화면 셋 삭제 (대표 "1,2,3번은 지워줘")
+
+| 지운 것 | 무엇이었나 |
+|---|---|
+| 해외 바이어 풀 `/admin/buyer-pool` | 해외 바이어 리드 수집·자동 수집 cron(buyer-autofetch)·`/api/buyer-ingest` |
+| 제조사·판매사 후보 풀 `/admin/maker-pool` | 도매 공급자 리드 화면 + 유어애즈 `collect-maker` 레인 킥 |
+| Cafe24 연동 `/admin/cafe24` | Cafe24 OAuth·상품 연동(`features/cafe24` 통째) |
+
+- 화면·라우트·API 마운트·cron·레인 킥·nav 항목·역할 권한(`cafe24`)·업로드 한도 예외 전부 제거.
+- 🔒 **DB 테이블은 안 지웠다**(데이터 삭제 = 결재 C). 노출과 코드만 끊었다.
+- 시험은 "되살아나지 않는다" 방향으로 재조준(`supply-teardown-safety` · `wholesale-teardown-2026-10-11` · `admin-nav-*` · `upload-body-limit`).
+- 주입 앵커 2건 정리: maker-pool 마운트를 앵커로 쓰던 도매 부활 주입은 `wholesale-malls` 마운트로 재조준, "maker-pool 잔류" 주입은 삭제(지킬 대상이 없다).
+- 남은 후보(대표 판단 대기): ④ 리뷰 자동 생성 `/admin/reviews` ⑤ 도매 흔적 코드(supplier-products API·도매 RBAC·공급가 입력·`/seller/supply`).
+- ⚠️ 유어애즈 하트비트에 `ads:collect-maker` 가 남아 있으면 은퇴 판정(`cron-beat-retirement`)이 디스패처 미호출로 곧 정리한다 — 침묵 경보로 오진하지 말 것.

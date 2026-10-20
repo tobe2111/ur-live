@@ -53,8 +53,6 @@ const AdminAdsAccountsPage = lazy(() => import('@/pages/admin/AdminAdsAccountsPa
 // 🎯 2026-07-02: 유어애즈 마케팅 서비스몰 운영(주문 접수함·상품 관리).
 const AdminAdsServicesPage = lazy(() => import('@/pages/admin/AdminAdsServicesPage'))
 const AdminInfluencerPoolPage = lazy(() => import('@/pages/admin/AdminInfluencerPoolPage')); const AdminInfluencerOutreachPage = lazy(() => import('@/pages/admin/AdminInfluencerOutreachPage'))
-const AdminBuyerPoolPage = lazy(() => import('@/pages/admin/AdminBuyerPoolPage'))
-const AdminMakerPoolPage = lazy(() => import('@/pages/admin/AdminMakerPoolPage'))
 const AdminPartnerPoolPage = lazy(() => import('@/pages/admin/AdminPartnerPoolPage'))
 const AdminStoreProspectsPage = lazy(() => import('@/pages/admin/AdminStoreProspectsPage'))
 const AdminGovNoticesPage = lazy(() => import('@/pages/admin/AdminGovNoticesPage'))
@@ -65,7 +63,6 @@ const AdminKakaoLoginDiagPage = lazy(() => import('@/pages/AdminKakaoLoginDiagPa
 const AdminVoucherOrdersPage = lazy(() => import('@/pages/AdminVoucherOrdersPage'))
 // 🛡️ 2026-05-24 Q1: 교환권 거래 분리 표시 (누가 / 언제 / 어떤 교환권)
 const AdminVoucherTransactionsPage = lazy(() => import('@/pages/AdminVoucherTransactionsPage'))
-const AdminCafe24Page = lazy(() => import('@/pages/admin/AdminCafe24Page'))
 const AdminKakaoTestPage = lazy(() => import('@/pages/admin/AdminKakaoTestPage'))
 const AdminKakaoTestCallbackPage = lazy(() => import('@/pages/admin/AdminKakaoTestCallbackPage'))
 const AdminOperationsGuidePage = lazy(() => import('@/pages/admin/AdminOperationsGuidePage'))
@@ -201,16 +198,6 @@ export function AdminRoutes() {
           <ErrorBoundary><AdminInfluencerPoolPage /></ErrorBoundary>
         </ProtectedRoute>
       } /><Route path="/admin/influencer-outreach" element={<ProtectedRoute requireAdmin><ErrorBoundary><AdminInfluencerOutreachPage /></ErrorBoundary></ProtectedRoute>} />
-      <Route path="/admin/buyer-pool" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminBuyerPoolPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
-      <Route path="/admin/maker-pool" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminMakerPoolPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
       <Route path="/admin/partner-pool" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminPartnerPoolPage /></ErrorBoundary>
@@ -433,16 +420,6 @@ export function AdminRoutes() {
         </ProtectedRoute>
       } />
       {/* 🌐 2026-07-02 (대표 요청): 유어딜 플랫폼 모델 SSOT 문서 뷰어 (docs/design/*.md ?raw 자동동기화) */}
-      <Route path="/admin/cafe24" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminCafe24Page /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
-      <Route path="/admin/cafe24/callback" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminCafe24Page /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
       <Route path="/admin/blog" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminBlogPage /></ErrorBoundary>

@@ -316,11 +316,7 @@ export async function handleCronScheduled(
       const { runKtAlphaCatalogSync } = await import('./cron/kt-alpha-catalog-sync')
       await runKtAlphaCatalogSync(env as { DB: D1Database })
     }))
-    // 🌐 바이어 풀 완전 무인 — 저장 소스 자동 수집 + 웹사이트 이메일 보강(이중 게이트).
-    ctx.waitUntil(slotCron('30 3 * * *')('buyer-autofetch', async () => {
-      const { handleBuyerAutofetchCron } = await import('./cron/buyer-autofetch')
-      await handleBuyerAutofetchCron(env)
-    }))
+    // 🧨 2026-10-20 '바이어 풀 자동 수집'(buyer-autofetch) 삭제 — 대표 "지워줘"(해외 바이어 풀 · 유어딜 무관).
   }
 
   // 🛡️ 이용권 주소 → 좌표 일괄 변환. 페이지 진입마다 Kakao 호출하던 것을 여기로 모았다(일 1만 → ~10).
