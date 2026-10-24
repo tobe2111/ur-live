@@ -149,7 +149,27 @@ export function isNewOpen(apvPermYmd?: string | null, todayYmd?: string, withinD
   return diff >= 0 && diff <= withinDays
 }
 
-/** 멱등 upsert(복합키) — 인허가 변동분 재수신 시 상태/주소/전화 갱신 + active/개업 재계산. todayYmd 주입. */
+/**
+ * 멱등 upsert(복합키) — 인허가 변동분 재수신 시 상태/주소/전화 갱신 + active/개업 재계산. todayYmd 주입.
+ *
+ * 💸 **조건부 UPDATE** (2026-10-24 — 쓰기 예산의 35% 를 돌려받은 수리).
+ *   종전 `DO UPDATE` 는 **조건이 없어** 값이 한 글자도 안 바뀌어도 매 회차 행을 다시 썼다. 게다가
+ *   `last_verified_at = datetime('now')` 는 **항상** 바뀌므로 건너뛸 수가 없는 구조였다.
+ *   공공 원부 레인들은 전국을 **영원히 순회**하는 설계라(수집이 끝나면 '갱신 순환') 그 재기록이 영구적이다.
+ *
+ *   라이브 실측(2026-10-24): `collect-neis` 가 시간당 8,000행 × 행당 5쓰기 = **40,004 쓰기/회차**,
+ *   하루 **328,794**(그날 유어애즈 쓰기 938,996 의 **35%**)를 태우면서 **신규 리드는 0건**이었다
+ *   (140,635행을 32번째 다시 쓰는 중). 쓰기 예산은 대표 확정 *"$5 이상 넘으면 절대 안돼"* 에 묶여
+ *   월 포함분에서 역산되므로, 그 35% 는 **이메일 보강 같은 값 있는 레인의 몫을 빼앗은 것**이다.
+ *
+ *   ⇒ SET 되는 값이 **실제로 달라질 때만** UPDATE 한다. `last_verified_at` 은 **하루 1회**만 도장을
+ *   찍는다(그 컬럼은 필터·정렬·판정 어디서도 읽지 않는다 — 전수 확인. `is_new_open` 이 날짜 기준이라
+ *   하루 1회는 필요하다).
+ *
+ * 🔒 **WHERE 는 SET 을 전부 덮어야 한다** — 한 컬럼이라도 빠지면 그 변화가 **조용히 반영되지 않는다**
+ *   (에러도 안 난다). SET 에 컬럼을 추가할 때 WHERE 도 함께 늘릴 것. 가드가 그 짝을 고정한다:
+ *   `src/tests/unit/prospect-upsert-conditional-2026-10-24.test.ts`.
+ */
 export async function saveProspects(DB: D1Database, rows: StoreProspect[], todayYmd?: string): Promise<number> {
   if (!rows.length) return 0
   await ensureProspectSchema(DB)
@@ -181,7 +201,21 @@ export async function saveProspects(DB: D1Database, rows: StoreProspect[], today
            last_mod_ts = excluded.last_mod_ts,
            active = excluded.active,
            is_new_open = excluded.is_new_open,
-           last_verified_at = datetime('now')`
+           last_verified_at = datetime('now')
+         WHERE store_prospects.biz_name IS NOT excluded.biz_name
+            OR store_prospects.trd_state IS NOT excluded.trd_state
+            OR store_prospects.trd_state_nm IS NOT excluded.trd_state_nm
+            OR store_prospects.last_mod_ts IS NOT excluded.last_mod_ts
+            OR store_prospects.active IS NOT excluded.active
+            OR store_prospects.is_new_open IS NOT excluded.is_new_open
+            OR (excluded.addr_road IS NOT NULL AND store_prospects.addr_road IS NOT excluded.addr_road)
+            OR (excluded.addr_lot IS NOT NULL AND store_prospects.addr_lot IS NOT excluded.addr_lot)
+            OR (excluded.phone IS NOT NULL AND store_prospects.phone IS NOT excluded.phone)
+            OR (excluded.region IS NOT NULL AND store_prospects.region IS NOT excluded.region)
+            OR (store_prospects.website IS NULL AND excluded.website IS NOT NULL)
+            OR (store_prospects.contact_source IS NULL AND excluded.contact_source IS NOT NULL)
+            OR store_prospects.last_verified_at IS NULL
+            OR store_prospects.last_verified_at < datetime('now', '-1 day')`
       ).bind(
         clamp(r.opn_svc_id, 40), clamp(r.opn_sf_team_code, 40), clamp(r.mgt_no, 60), (r.biz_name || '').slice(0, 120),
         clamp(r.category, 40), clamp(r.uptae, 60), clamp(r.addr_road, 300), clamp(r.addr_lot, 300), phone, clamp(r.website, 200), phone ? 'govreg' : null,
@@ -190,7 +224,13 @@ export async function saveProspects(DB: D1Database, rows: StoreProspect[], today
       )
     })
     const res = await DB.batch(stmts).catch(() => null)
-    if (res) saved += slice.length
+    // 🔢 **`slice.length` 가 아니라 실제 변경 행 수**(2026-10-24). 종전엔 "보낸 개수" 를 세서
+    //   `total_saved` 가 실제 행의 **32배**까지 부풀었다(실측 neis: 누적 4,549,277 vs 실제 140,635).
+    //   그 숫자는 거짓말을 두 번 한다 — ① 수집이 잘 되는 것처럼 보이고 ② **신규 0건이 안 보인다**
+    //   (오늘 쓰기 328,794 를 태우고 새 리드가 0건인 것을 아무도 못 봤다). 위 조건부 UPDATE 와 짝이다:
+    //   건너뛴 행은 `changes = 0` 이므로 이 합계가 곧 "실제로 달라진 행" 이다(실측 7/7 확인).
+    //   ⚠️ 호출부 5곳은 이 값을 통계 표시에만 쓴다(성패 판정에 안 쓴다 — 전수 확인).
+    if (res) saved += res.reduce((n, r) => n + (r?.meta?.changes ?? 0), 0)
   }
   return saved
 }

@@ -130,6 +130,22 @@ export async function enrichProspectContacts(env: Env): Promise<ProspectEnrichRe
   // ── Pass 1: 홈페이지 보유 + 이메일 없음 → 크롤(가장 저렴·수율 높음) ──
   //   🚰 상한 = 예산 비례(2026-07-27 — 예산 800 인데 40+25 고정이라 매장 10만 순회가 수십 일 걸리던 병목).
   const cap1 = Math.min(120, Math.max(40, Math.floor(budget.left / 6)))
+  // 📉 **매장 이메일은 구조적으로 거의 없다 — 이것은 고장이 아니다** (2026-10-24 라이브 실측).
+  //
+  //     전체 353,228  ·  홈페이지 보유 6,784(1.9%)  ·  이메일 547(0.15%)
+  //     이메일 547건은 **전부** 홈페이지가 있는 행이다(547/547) — 크롤이 유일한 경로니 당연하다.
+  //     1단계 대상(홈페이지 보유)은 6,119건이 이미 시도됐고 수율은 **8.9%**(547/6,119).
+  //     ⇒ 기대 상한 ≈ 1.9% × 8.9% = **0.17%**. 지금 0.15% 는 그 천장에 거의 닿은 값이다.
+  //
+  //   ⚠️ 그래서 "이메일 보강이 고장났다" 로 읽지 말 것 — 동네 식당·학원·병원은 홈페이지가 없다.
+  //     카카오 플레이스에도 이메일은 없다(149,938건 중 **2건**). **매장은 전화로 접촉하는 것이 맞다**
+  //     (전화 보유 249,458 = 71%). 이메일을 늘리는 유일한 길은 아래 2단계(네이버로 홈페이지 발굴)이고,
+  //     그건 쿼터가 아니라 **D1 쓰기 예산**에 묶여 있다(2026-10-24 `saveProspects` 조건부화가 그 35% 를
+  //     돌려줬다 — 근거는 `store-prospects.ts` `saveProspects` docblock).
+  //
+  // 🔒 **1단계는 홈페이지가 있는 행만 본다** — 이 조건이 빠지면 홈페이지 없는 **34.7만 건**을 크롤하려
+  //   들어 회차 예산이 통째로 날아간다(크롤할 대상이 애초에 없다). 가드가 그 조건을 고정한다:
+  //   `src/tests/unit/prospect-upsert-conditional-2026-10-24.test.ts` ⑤.
   const withSite = (await DB.prepare(
     `SELECT id, biz_name, region, addr_road, addr_lot, website, phone FROM store_prospects WHERE active = 1 AND website IS NOT NULL AND website != '' AND (email IS NULL OR email = '') ${COOL} AND ${platformNot} ORDER BY ${PRIORITY_UPJONG_SQL}, is_new_open DESC, id DESC LIMIT ${cap1}`
   ).bind(...PLATFORM_URL_SQL_EXCLUDE).all<{ id: number; biz_name: string; region: string | null; addr_road: string | null; addr_lot: string | null; website: string; phone: string | null }>().catch(() => null))?.results || []
