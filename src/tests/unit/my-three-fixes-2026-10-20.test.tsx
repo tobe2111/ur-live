@@ -20,12 +20,15 @@ describe('② 판매 알림은 글자다', () => {
 })
 
 describe('③ 등록 줄은 사용처리 티켓과 같은 폭', () => {
-  for (const f of ['src/pages/user-profile/SellerSection.tsx', 'src/pages/agency-console/AgencyStorePlate.tsx']) {
-    it(f, () => {
-      const src = readCode(f)
-      expect(src).toMatch(/<div className="p-3 border-b border-rule">\s*<button[^>]*?onClick=\{\(\) => openPage\('\/seller\/group-buy', '이용권'\)\}\s*className="[^"]*rounded-\[10px\] bg-brand text-white/)
-    })
-  }
+  it('src/pages/user-profile/SellerSection.tsx', () => {
+    const src = readCode('src/pages/user-profile/SellerSection.tsx')
+    expect(src).toMatch(/<div className="p-3 border-b border-rule">\s*<button[^>]*?onClick=\{\(\) => openPage\('\/seller\/group-buy', '이용권'\)\}\s*className="[^"]*rounded-\[10px\] bg-brand text-white/)
+  })
+  // 🤝 2026-10-24 — 에이전시 판엔 사용처리 티켓이 없다(자기 이용권만). 같은 폭(좌우 12px 안쪽 · 모서리 10px)은 지킨다.
+  it('src/pages/agency-console/AgencyStorePlate.tsx', () => {
+    const src = readCode('src/pages/agency-console/AgencyStorePlate.tsx')
+    expect(src).toMatch(/<div className="p-3">\s*<button[^>]*?onClick=\{\(\) => openPage\('\/seller\/group-buy', '우리 이용권'\)\}\s*className="[^"]*rounded-\[10px\] bg-brand text-white/)
+  })
   it('마이 판의 사용처리 칸은 아래 구분선을 등록 줄에 넘긴다(구분선은 둘 아래 하나)', () => {
     const src = readCode('src/pages/user-profile/SellerSection.tsx')
     expect(src).toMatch(/<div className="px-3 pt-3">\s*<button[^>]*?onClick=\{\(\) => enterSeat\('\/store\/scan'\)\}/)

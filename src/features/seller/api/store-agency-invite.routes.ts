@@ -24,6 +24,7 @@ import { buildSystemEmailHtml, sendSystemEmail } from '@/lib/system-email'
 import { isStoreOwner } from '../../../worker/utils/seller-operators'
 import { ensureAgencyConsoleTables } from '../../agency-console/api/agency-schema'
 import { frontendBase } from '../../agency-console/api/agency-auth.routes'
+import { AGENCY_LINKS_PER_STORE_MAX } from './seller-agency-link.routes'
 
 export const storeAgencyInviteRoutes = new Hono<{ Bindings: Env }>()
 
@@ -73,30 +74,31 @@ storeAgencyInviteRoutes.post('/accept', cors(), rateLimit({ action: 'store_agenc
       return c.json({ success: false, code: 'NOT_OWNER', error: '이 매장의 사장님만 맡길 수 있어요.' }, 403)
     }
 
+    const openCount = await DB.prepare("SELECT COUNT(*) AS n FROM agency_store_links WHERE seller_id = ? AND agency_id <> ? AND status IN ('pending','active')")
+      .bind(sellerId, inv.agency_id).first<{ n: number }>()
+    if ((Number(openCount?.n) || 0) >= AGENCY_LINKS_PER_STORE_MAX) {
+      return c.json({ success: false, code: 'TOO_MANY_AGENCIES', error: `한 매장은 에이전시 ${AGENCY_LINKS_PER_STORE_MAX}곳까지 함께 할 수 있어요.` }, 409)
+    }
     // 링크를 만든 것이 에이전시의 수락 — 바로 active. 같은 에이전시에 보낸 요청이 대기 중이면 그걸 수락으로 올린다.
     const ins = await DB.prepare(
       `INSERT OR IGNORE INTO agency_store_links (agency_id, seller_id, status, requested_by_user_id, decided_by_staff_id, accepted_at)
        VALUES (?, ?, 'active', ?, ?, datetime('now'))`,
     ).bind(inv.agency_id, sellerId, userId, inv.created_by_staff_id).run()
     if ((ins.meta?.changes ?? 0) === 0) {
+      // 🤝 2026-10-24 — 한 매장이 여러 에이전시와 함께 한다. 막히는 건 **같은 에이전시**에 이미 열린 맡김뿐이다
+      //   (부분 UNIQUE (매장, 에이전시)). 그게 요청 대기면 링크가 곧 수락이므로 올린다.
       const open = await DB.prepare(
-        `SELECT l.id, l.agency_id, l.status, a.name AS agency_name FROM agency_store_links l
-           JOIN agency_accounts a ON a.id = l.agency_id
-          WHERE l.seller_id = ? AND l.status IN ('pending','active') LIMIT 1`,
-      ).bind(sellerId).first<{ id: number; agency_id: number; status: string; agency_name: string }>()
-      if (open && open.agency_id === inv.agency_id) {
-        if (open.status === 'pending') {
-          await DB.prepare(
-            `UPDATE agency_store_links SET status = 'active', accepted_at = datetime('now'), decided_by_staff_id = ?, updated_at = datetime('now')
-              WHERE id = ? AND status = 'pending'`,
-          ).bind(inv.created_by_staff_id, open.id).run()
-        }
-        return c.json({ success: true, agencyName: inv.agency_name, already: open.status === 'active' })
+        `SELECT id, status FROM agency_store_links
+          WHERE seller_id = ? AND agency_id = ? AND status IN ('pending','active') LIMIT 1`,
+      ).bind(sellerId, inv.agency_id).first<{ id: number; status: string }>()
+      if (open?.status === 'pending') {
+        await DB.prepare(
+          `UPDATE agency_store_links SET status = 'active', accepted_at = datetime('now'), decided_by_staff_id = ?, updated_at = datetime('now')
+            WHERE id = ? AND status = 'pending'`,
+        ).bind(inv.created_by_staff_id, open.id).run()
       }
-      return c.json({
-        success: false, code: 'ALREADY_LINKED',
-        error: `이 매장은 이미 ${open?.agency_name || '다른'} 에이전시에 맡겨져 있어요. 셀러 화면의 운영자 관리에서 먼저 끊어 주세요.`,
-      }, 409)
+      if (open) return c.json({ success: true, agencyName: inv.agency_name, already: open.status === 'active' })
+      return c.json({ success: false, error: '맡기지 못했어요. 잠시 뒤 다시 시도해 주세요.' }, 409)
     }
     await DB.prepare('UPDATE agency_store_invites SET use_count = use_count + 1 WHERE id = ?').bind(inv.id).run().catch(() => {})
 

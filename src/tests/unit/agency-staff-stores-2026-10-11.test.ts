@@ -85,8 +85,9 @@ function app(DB: D1Database) {
 function guard(DB: D1Database) {
   const a = new Hono<{ Bindings: { DB: D1Database; JWT_SECRET: string } }>()
   a.use('/api/*', storeSeatGuard())
-  a.get('/api/seller/orders', (c) => c.json({ ok: true }))
-  return (seat: string) => a.request('/api/seller/orders', { headers: { Authorization: `Bearer ${seat}` } }, { DB, JWT_SECRET: SECRET })
+  // 🤝 2026-10-24 — 에이전시 좌석은 기본 차단이라 매장 전체 주문(`/orders`)은 403 이다. 좌석 생사 탐침은 열린 길로.
+  a.get('/api/seller/products', (c) => c.json({ ok: true }))
+  return (seat: string) => a.request('/api/seller/products', { headers: { Authorization: `Bearer ${seat}` } }, { DB, JWT_SECRET: SECRET })
 }
 
 const storeIds = async (r: Response) => ((await r.json()) as { stores: Array<{ sellerId: number }> }).stores.map((s) => s.sellerId).sort()
