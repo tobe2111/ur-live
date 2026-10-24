@@ -1,1 +1,0 @@
-export function withUtm(url,{source,campaign}={}){try{const u=new URL(url);if(!/(^|\.)urdeal\.kr$/.test(u.hostname))return url;if(source)u.searchParams.set('utm_source',source);u.searchParams.set('utm_medium','social');if(campaign)u.searchParams.set('utm_campaign',campaign);return u.toString()}catch{return url}}
