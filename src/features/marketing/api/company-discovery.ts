@@ -13,6 +13,7 @@ import { companyInflowByDay, type CompanyDayInflow, type CompanySegments } from 
 import { COMPANY_CUBE_SQL, foldCube, type CubeRow } from './company-stats-cube'
 import type { Env } from '@/worker/types/env'
 import { classifyLead, suspectCompanyName, REGISTRY_CATEGORY_SOURCES, CLASSIFY_RULES_VERSION } from './company-classify'
+import { refineRegistryLabel } from './company-taxonomy'
 import { hygieneStatements } from './company-lead-hygiene'
 import { emptyDelta, tallyVerdict, verdictChanged, writeReclassifyStats } from './reclassify-verdict-delta'
 import { advanceRegistryFastPath } from './reclassify-registry-fastpath'
@@ -270,45 +271,10 @@ export function companyKey(lead: Pick<CompanyLead, 'company_name' | 'website' | 
 //   requireContact=true: 연락처(전화/이메일) 없는 리드는 active=0(액션풀 제외·보류) 로 저장 →
 //   이후 보강 UPDATE 가 연락처를 채우면 active=1 로 승격("연락처 필수" 정책). 수동/명부는 false(항상 활성).
 
-/* ── 붙여넣기 임포트(레인 B 공정위 정보공개서 · C 상인회 명부 등) ─────────────────── */
-//   헤더 행이 있는 표(CSV/TSV)를 붙여넣으면 컬럼을 한글/영문 헤더로 매핑 → CompanyLead[]. source='registry'.
-const IMPORT_HEADER_MAP: { keys: string[]; field: keyof CompanyLead }[] = [
-  { keys: ['회사명', '상호', '업체명', '브랜드', '영업표지', 'company', 'name'], field: 'company_name' },
-  { keys: ['전화', '연락처', '대표번호', '전화번호', 'tel', 'phone'], field: 'phone' },
-  { keys: ['이메일', '메일', 'email', 'e-mail'], field: 'email' },
-  { keys: ['홈페이지', '사이트', 'website', 'url', 'homepage'], field: 'website' },
-  { keys: ['주소', '소재지', 'address'], field: 'address' },
-  { keys: ['지역', 'region'], field: 'region' },
-  { keys: ['업종', '카테고리', 'category'], field: 'category' },
-  { keys: ['세부', 'subcategory'], field: 'subcategory' },
-]
-export function parsePartnerPaste(text: string): CompanyLead[] {
-  const lines = String(text || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean)
-  if (lines.length < 2) return []
-  const delim = (lines[0].match(/\t/g) || []).length >= (lines[0].match(/,/g) || []).length ? '\t' : ','
-  const header = lines[0].split(delim).map(h => h.trim().toLowerCase())
-  const col: Partial<Record<keyof CompanyLead, number>> = {}
-  header.forEach((h, i) => {
-    for (const m of IMPORT_HEADER_MAP) if (col[m.field] === undefined && m.keys.some(k => h.includes(k.toLowerCase()))) col[m.field] = i
-  })
-  if (col.company_name === undefined) return []
-  const out: CompanyLead[] = []
-  for (const line of lines.slice(1)) {
-    const cells = line.split(delim)
-    const get = (f: keyof CompanyLead): string => col[f] !== undefined ? String(cells[col[f] as number] || '').trim() : ''
-    const name = get('company_name')
-    if (name.length < 2) continue
-    out.push({
-      company_name: name,
-      phone: get('phone') || null, email: get('email') || null, website: get('website') || null,
-      address: get('address') || null, region: get('region') || null,
-      category: get('category') || null, subcategory: get('subcategory') || null,
-      source: 'registry', source_keyword: 'import',
-    })
-    if (out.length >= 2000) break
-  }
-  return out
-}
+/* ── 붙여넣기 임포트 ─────────────────────────────────────────────────────── */
+//   🧱 2026-10-24: 600줄 캡(god 파일 래칫)으로 `company-paste-import.ts` 로 이관 — 로직 byte-불변.
+//   재수출이라 호출부는 종전처럼 이 모듈에서 받는다(import 경로 변경 0).
+export { parsePartnerPaste } from './company-paste-import'
 
 /* ── 목록/필터 ─────────────────────────────────────────────────────────────── */
 export interface CompanyLeadFilter {
@@ -424,8 +390,13 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housek
     const registry = REGISTRY_CATEGORY_SOURCES.has(r.source || '') && !!r.category
     // 🔬 **기록값을 한 번만 계산해 UPDATE 와 변화율 비교가 같은 값을 쓰게 한다.**
     //   v1 계측이 `classifyLead` 날것을 비교해 등록부 98% 라는 거짓값을 쌓았다(unknown→partner 매핑 누락).
+    // 🧭 2026-10-24: 등록부 행은 **상호의 국가자격 표기로 업종을 정밀화**한다(`company-taxonomy`).
+    //   등록부 코드가 우리보다 거칠어 `M10307`='노무' 안에 법조계가, `M10402`='세무사' 안에 행정사가
+    //   섞여 있었다(법조계 상호 433건 중 87% 오분류). 덮는 게 아니라 더 구체적인 근거로 좁히는 것이고,
+    //   `온라인판매`(통신판매 신고)는 손대지 않는다.
+    const ref = registry ? refineRegistryLabel(r) : null
     const written = {
-      category: c.category, subcategory: c.subcategory, tier: c.tier,
+      category: ref ? ref.category : c.category, subcategory: ref ? ref.subcategory : c.subcategory, tier: ref ? ref.tier : c.tier,
       lead_type: registry && c.lead_type === 'unknown' && !suspect ? 'partner' : c.lead_type,
       confidence: registry ? 'registry' : conf,
     }
@@ -449,8 +420,10 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housek
     if (!changed) {
       if (r.classified_v !== CLASSIFY_RULES_VERSION) stampOnly.push(r.id)
     } else if (registry) {
-      stmts.push(DB.prepare("UPDATE ad_company_leads SET lead_type = ?, classify_confidence = 'registry', classified_v = ? WHERE id = ?")
-        .bind(written.lead_type, CLASSIFY_RULES_VERSION, r.id))
+      // 업종(category·subcategory)도 쓴다 — 자격 정밀화가 라이브에 닿는 유일한 자리다.
+      //   ⚠️ `verdictChanged` 의 registry 분기도 업종을 비교해야 한다(안 하면 여기 도달하지 못한다).
+      stmts.push(DB.prepare("UPDATE ad_company_leads SET category = ?, subcategory = ?, tier = COALESCE(tier, ?), lead_type = ?, classify_confidence = 'registry', classified_v = ? WHERE id = ?")
+        .bind(written.category, written.subcategory, written.tier, written.lead_type, CLASSIFY_RULES_VERSION, r.id))
     } else if (c.confidence === 'evidence') {
       // 업종은 근거(evidence) 있을 때만 덮어쓰고, 그 외엔 기존 값 유지(대표 수동 분류 보존).
       stmts.push(DB.prepare('UPDATE ad_company_leads SET category = ?, subcategory = ?, tier = COALESCE(tier, ?), lead_type = ?, classify_confidence = ?, classified_v = ? WHERE id = ?')

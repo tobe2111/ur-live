@@ -17,7 +17,7 @@
  *   설계 SSOT: docs/design/partner-company-collection.md §12.
  */
 import type { Env } from '@/worker/types/env'
-import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
+import { saveCompanyLeadsCounted, ensureCompanySchema, type CompanyLead } from './company-discovery'
 import { describePublicDataFailure, serviceKeyParam, laneShouldSkip, updateLaneHealth, laneHealthNote, type LaneHealth, isNoValue } from './public-data-diag'
 import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
@@ -84,7 +84,7 @@ type RawFranchise = Record<string, unknown>
 const g = (it: RawFranchise, ...keys: string[]): string => { for (const k of keys) { const v = it[k]; if (!isNoValue(v)) return stripTag(v) } return '' }
 
 /** 브랜드 1페이지 조회 → RawFranchise[]. 봉투 다형태 방어 + header resultMsg 회수. */
-async function fetchBrandPage(base: string, op: string, key: string, page: number, yr: string, budget: { left: number }): Promise<{ items: RawFranchise[]; count: number; msg?: string }> {
+async function fetchBrandPage(base: string, op: string, key: string, page: number, yr: string, budget: { left: number }): Promise<{ items: RawFranchise[]; count: number; msg?: string; endOfRegistry?: boolean }> {
   if (budget.left <= 0) return { items: [], count: 0 }
   budget.left -= 1
   const url = `${base}/${op}?serviceKey=${serviceKeyParam(key)}&pageNo=${page}&numOfRows=100&resultType=json${yr ? `&${FRANCHISE_YR_PARAM}=${encodeURIComponent(yr)}` : ''}`
@@ -123,10 +123,16 @@ async function fetchBrandPage(base: string, op: string, key: string, page: numbe
   const total = codeSrc.totalCount ?? body?.totalCount
   const msg = !ok ? `${rc} ${rm}`.trim()
     : (arr.length === 0 ? `응답은 정상(rc=${rc || '없음'})인데 items 0 — totalCount=${total ?? '없음'} · 키=${Object.keys(resp).slice(0, 8).join(',')}` : undefined)
-  return { items: arr, count: arr.length, msg }
+  // 🏁 **'완주' 와 '고장' 을 가른다** (2026-10-24 라이브 실측).
+  //   라이브: `page 113` · `totalCount 11175` · `numOfRows 100` ⇒ 마지막 유효 페이지는 112 다.
+  //   커서가 **끝을 넘어 113 에 주차**해 있어서 매 회차 "items 0" 을 내고, 그게 `diag.error` 로 올라가
+  //   레인 건강 화면에 `86회 실행했는데 저장이 0건` = **사망**으로 떴다. 둘 다 사실이 아니다 —
+  //   원부(1만 건대)를 다 훑은 것이고, 커서를 되돌리지 않아 **새로 등록된 가맹본부가 영영 안 들어온다.**
+  const endOfRegistry = arr.length === 0 && (!rc || rc === '00' || /^0+$/.test(rc)) && Number(total) > 0
+  return { items: arr, count: arr.length, msg, endOfRegistry }
 }
 
-export interface FranchiseStats { last_run: string; found: number; saved: number; page: number; total_runs: number; total_saved: number; diag: { configured: boolean; error?: string; sample?: unknown }; health?: LaneHealth }
+export interface FranchiseStats { last_run: string; found: number; saved: number; upserted: number; completed?: boolean; page: number; total_runs: number; total_saved: number; total_upserted?: number; diag: { configured: boolean; error?: string; sample?: unknown }; health?: LaneHealth }
 const STATS_KEY = 'ads_franchise_stats'
 const CURSOR_KEY = 'ads_franchise_cursor'
 
@@ -147,14 +153,14 @@ export async function runFranchiseCollect(env: Env): Promise<FranchiseStats> {
   let prev: FranchiseStats | null = null
   try { prev = prevRaw?.value ? JSON.parse(prevRaw.value) as FranchiseStats : null } catch { prev = null }
   const persist = async (s: FranchiseStats) => { await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(STATS_KEY, JSON.stringify(s)).run().catch(() => null) }
-  if (!key) { const s: FranchiseStats = { last_run: stamp, found: 0, saved: 0, page: 0, total_runs: (prev?.total_runs || 0) + 1, total_saved: prev?.total_saved || 0, diag: { configured: false, error: 'NOT_CONFIGURED: PUBLIC_DATA_SERVICE_KEY 미설정' } }; await persist(s); return s }
+  if (!key) { const s: FranchiseStats = { last_run: stamp, found: 0, saved: 0, upserted: 0, page: 0, total_runs: (prev?.total_runs || 0) + 1, total_saved: prev?.total_saved || 0, diag: { configured: false, error: 'NOT_CONFIGURED: PUBLIC_DATA_SERVICE_KEY 미설정' } }; await persist(s); return s }
 
   // 🩹 하드 실패 백오프(2026-07-29) — 재시도로 낫지 않는 실패(404·활용신청·회원등급)를 두 시간마다 다시
   //   쏘면, 인보케이션당 45~50 뿐인 서브리퀘스트를 **잘 도는 레인에서 빼앗는다**. 물러나되 주기적으로 찔러
   //   대표가 설정을 고치면 배포 없이 스스로 살아난다(public-data-diag SSOT).
   const now = Date.now()
   if (laneShouldSkip(prev?.health, now)) {
-    const s: FranchiseStats = { last_run: stamp, found: 0, saved: 0, page: prev?.page || 0, total_runs: (prev?.total_runs || 0) + 1, total_saved: prev?.total_saved || 0, diag: { configured: true, error: `대기: ${laneHealthNote(prev?.health, now)}` }, health: prev?.health }
+    const s: FranchiseStats = { last_run: stamp, found: 0, saved: 0, upserted: 0, page: prev?.page || 0, total_runs: (prev?.total_runs || 0) + 1, total_saved: prev?.total_saved || 0, diag: { configured: true, error: `대기: ${laneHealthNote(prev?.health, now)}` }, health: prev?.health }
     await persist(s); return s
   }
   const curRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(CURSOR_KEY).first<{ value: string }>().catch(() => null)
@@ -164,7 +170,7 @@ export async function runFranchiseCollect(env: Env): Promise<FranchiseStats> {
   //   죽인 것과 같은 결함). 브랜드 원부는 총 1만 건대라 회당 소량씩 커서로 순회하면 충분하다.
   const pagesPerRun = Math.min(30, Math.max(3, parseInt((env as unknown as { ADS_FRANCHISE_PAGES?: string }).ADS_FRANCHISE_PAGES || '', 10) || 8))
   const budget = { left: pagesPerRun }
-  let found = 0, saved = 0, sample: unknown, lastMsg: string | undefined
+  let found = 0, saved = 0, upserted = 0, completed = false, sample: unknown, lastMsg: string | undefined
   let useOp = op, useYr = yr
   // 🧾 **자기 기록 몫을 남긴다** — 이 루프는 이제 안에서 D1 을 쓸 수 있고(오퍼레이션 학습), 뒤에도 쓴다
   //   (통계·커서). D1 도 서브리퀘스트라, 0까지 태우면 그 쓰기들이 던지고 호출부가 전부 `.catch(() => null)`
@@ -173,7 +179,7 @@ export async function runFranchiseCollect(env: Env): Promise<FranchiseStats> {
   //   한 페이지를 양보하는 값이 스탬프를 잃는 값보다 훨씬 싸다.
   const runDeadline = now + FRANCHISE_RUN_MS
   for (let i = 0; i < budget.left + 3 && budget.left > BOOKKEEPING_RESERVE && Date.now() < runDeadline; i++) {
-    let { items, count, msg } = await fetchBrandPage(base, useOp, key, page, useYr, budget)
+    let { items, count, msg, endOfRegistry } = await fetchBrandPage(base, useOp, key, page, useYr, budget)
     // 🔁 **주소 부재일 때만** 다음 후보로 — 첫 페이지에서 한 번만 시도한다(예산 낭비 방지).
     //   맞는 이름을 찾으면 저장해 다음 회차부터 재시도 0. 근거: `FRANCHISE_OP_FALLBACKS` 주석.
     if (i === 0 && !count && msg && /NO_OPENAPI_SERVICE_ERROR/i.test(msg)) {
@@ -197,7 +203,11 @@ export async function runFranchiseCollect(env: Env): Promise<FranchiseStats> {
     }
     if (msg) lastMsg = msg
     if (!sample && items[0]) sample = items[0]
-    if (!count) break
+    if (!count) {
+      // 🏁 원부 끝 → **커서를 1로** (안 되돌리면 새 가맹본부가 영영 안 들어온다). 에러로 끝난 0건은 그대로 둔다.
+      if (endOfRegistry) { completed = true; page = 1 }
+      break
+    }
     const leads: CompanyLead[] = items.map(it => {
       const brand = g(it, 'brandNm', 'brand', 'brandName')
       const corp = g(it, 'corpNm', 'jnghdCorpNm', 'coNm')
@@ -214,15 +224,20 @@ export async function runFranchiseCollect(env: Env): Promise<FranchiseStats> {
       }
     }).filter(l => l.company_name.length >= 2)
     found += leads.length
-    saved += await saveCompanyLeads(DB, leads, { requireContact: true }).catch(() => 0) // 보류 → enrichHeldLeads 가 홈페이지 검색으로 연락처 채움
+    // 📊 **신규/재확인 분리** — 원부를 다 훑으면 신규는 0 에 수렴한다. 그건 '죽음'이 아니라 '완주'다
+    //   (commerce 레인이 2026-07-29 에 같은 이유로 분리했다). 이 수가 없으면 레인 건강이 완주를 사망으로 읽는다.
+    const c = await saveCompanyLeadsCounted(DB, leads, { requireContact: true }).catch(() => ({ inserted: 0, upserted: 0 })) // 보류 → enrichHeldLeads 가 홈페이지 검색으로 연락처 채움
+    saved += c.inserted; upserted += c.upserted
     page++
   }
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(CURSOR_KEY, String(page)).run().catch(() => null)
   // 404 는 키 문제가 아니라 **경로/오퍼레이션명 문제**다 — 그 사실과 무배포 교정 방법을 오류에 박아둔다
   //   (2026-07-28: 11회 연속 `API: HTTP 404` 만 뜨는데 무엇을 고쳐야 하는지 화면에 안 나와 방치됐다).
   const hint = lastMsg === 'HTTP 404' ? ` — 경로/오퍼레이션명 불일치. 공공데이터포털의 '가맹정보 브랜드 목록' 스펙 확인 후 ADS_FRANCHISE_ENDPOINT/ADS_FRANCHISE_OP env 로 무배포 교정(현재: ${base}/${op})` : ''
-  const error = found === 0 && lastMsg ? `API: ${lastMsg}${hint}` : undefined
-  const s: FranchiseStats = { last_run: stamp, found, saved, page, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, diag: { configured: true, error, sample }, health: updateLaneHealth(prev?.health, error || null, now) }
+  // 🏁 **완주는 오류가 아니다** — 원부 끝에 닿은 회차의 "items 0" 을 `diag.error` 로 올리면
+  //   레인 건강 화면이 그것을 사망으로 읽는다(라이브에서 86회 연속 그랬다). 커서는 1로 되돌려 뒀다.
+  const error = found === 0 && lastMsg && !completed ? `API: ${lastMsg}${hint}` : undefined
+  const s: FranchiseStats = { last_run: stamp, found, saved, upserted, completed: completed || undefined, page, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, total_upserted: (prev?.total_upserted || 0) + upserted, diag: { configured: true, error, sample }, health: updateLaneHealth(prev?.health, error || null, now) }
   await persist(s)
   return s
 }
