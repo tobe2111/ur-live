@@ -55,7 +55,7 @@ export default [
   {
     name: '한톤 — 페이지 바탕이 다시 웜으로 갈린다 (톤이 둘)',
     file: PAGE,
-    find: '      <div className="min-h-[100dvh] bg-surface text-gray-900 dark:text-white pb-28">',
+    find: '      <div className="min-h-[100dvh] bg-surface dark:bg-warm text-gray-900 dark:text-white pb-28">',
     replace: '      <div className="min-h-[100dvh] bg-warm dark:bg-[#11141C] text-gray-900 dark:text-white pb-28">',
     test: T_LIST,
     why:

@@ -6,7 +6,7 @@ import { resolveBannerLink, type BannerLink } from './banner-link'
 import { useHomeBanners, type HomeBanner } from './useHomeBanners'
 import type { BannerSlot } from '@/shared/constants/home-showcase'
 import { BANNER_SLOT_SPECS } from '@/shared/constants/home-showcase'
-import { STRIP_BANNER_MAX, STRIP_CLS, HERO_CARD_CLS, HERO_RAIL_CLS, stripBannerImageUrl } from '@/shared/home-strip-banners'
+import { STRIP_BANNER_MAX, STRIP_CLS, HERO_CARD_CLS, HERO_RAIL_CLS, stripBannerImageUrl, heroEdgeFillStyle } from '@/shared/home-strip-banners'
 
 /**
  * 🏠 ③ 중간 배너 (2026-08-04 대표 시안 승인).
@@ -418,7 +418,7 @@ function StripCard({ b, many, first, clone, single = false, hero = false, deferI
       /* shape-lock-ok — 14px 는 임의값이 아니라 `.ur-home-panel`(모바일) 의 radius 와 **같은 값**이다. */
       className={`relative ${many ? STRIP_CLS.cardMany : STRIP_CLS.cardOne} ${many ? PC_CARD_W : ''} ${STRIP_CLS.card} ${single ? SINGLE_CARD_CLS : ''} ${hero ? HERO_CARD_CLS : ''}`}
       /* 🎨 사진이 없으면 **브랜드 면**(대표 확정 "E"). */
-      style={bg ? undefined : { background: 'var(--brand-grad)' }}
+      style={bg ? (hero ? heroEdgeFillStyle(bg) : undefined) : { background: 'var(--brand-grad)' }}
     >
       {bg && !deferImg && (
         <img

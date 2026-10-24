@@ -143,7 +143,7 @@ export default function CuratorHeader({ curator, canEdit, counts, soldTotal, acc
   ) : null
 
   return (
-    <header className="bg-surface">
+    <header className="bg-surface dark:bg-warm">
       <div className="max-w-3xl mx-auto">
         {/* ① 브랜드 바 — 로고 = 홈. 표시로 꾸미지 않는다(로고=홈은 웹 관례라 밑줄·화살표가 군더더기다).
             🖥️ 2026-09-28 (대표 *"둘 다 고치고"*): **PC 에서는 안 그린다.** lg+ 에서는 화면 맨 위에
