@@ -28,7 +28,7 @@ import { matchAddress, matchRegionCoords } from '@/shared/constants/korea-region
 import { addressInRegion, type RegionRef } from '@/shared/constants/region-slugs'
 import { parseUTCDate } from '@/utils/date'
 import { passesFeedFilters, feedFiltersKey, type FeedFilters } from '@/shared/home-feed-filters'
-import { priceDisplay } from '@/shared/price-display'
+import { priceDisplay } from '@/shared/price-display'; import LifeQuoteBanner from './LifeQuoteBanner'
 
 interface FeedProduct extends Product {
   group_buy_current?: number
@@ -421,7 +421,7 @@ export default function GroupBuyFeed({
       </div>
       )}
 
-      {/* 피드 — 2열 그리드 (당근식) */}
+      {category === 'home_voucher' && <LifeQuoteBanner />}{/* 피드 — 2열 그리드 (당근식) · 🏠 생활 칩이면 견적 받기 한 줄(2026-10-24) */}
       {loading ? (
         <div className={gridCls}>
           {/* 🛡️ 2026-05-27 (사용자 요청): 카드 모양 shimmer skeleton — 이미지 + 텍스트 2줄 + 가격. */}
