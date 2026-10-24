@@ -79,5 +79,11 @@ test('워크플로는 main 이 아니라 marketing-data 브랜치에만 저장�
       assert.match(m[0], /\$BR|marketing-data/, `${w} 의 push 대상이 marketing-data 가 아니다`);
     }
     if (/git push/.test(y)) assert.match(y, /BR="marketing-data"/, `${w} 의 저장 브랜치가 marketing-data 가 아니다`);
+    // 🩸 2026-10-24: 첫 orphan 커밋이 레포 전체(7,654파일)를 담았다 — 인덱스 비우기가 작업 디렉터리(marketing-bot)
+    //   기준이라 실패해도 `|| true` 가 삼켰다. cwd 무관한 read-tree --empty 로, 실패를 삼키지 않게.
+    if (/--orphan/.test(y)) {
+      assert.match(y, /--orphan[^\n]*&& git read-tree --empty/, `${w} 의 orphan 생성이 인덱스를 비우지 않는다`);
+      assert.doesNotMatch(y, /git rm -rq --cached/, `${w} 에 옛 인덱스 비우기가 남았다`);
+    }
   }
 });
