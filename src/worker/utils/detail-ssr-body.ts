@@ -64,7 +64,7 @@ import {
   detailHeroMobileUrl,
 } from '../../shared/detail-hero-image'
 import { getVoucherShortLabel, normalizeCategory } from '../../shared/constants/voucher-categories'
-import { PASS_HEAD, PASS_PAGE_BG } from '../../shared/pass-head'
+import { PASS_HEAD, PASS_PAGE_BG, passSubLine } from '../../shared/pass-head'
 import { buildDetailNoscript } from './crawler-noscript'
 
 function escAttr(s: string): string {
@@ -137,15 +137,16 @@ const HERO_SCRIMS =
 export const DETAIL_ONNURI_CLASS = PASS_HEAD.onnuri
 
 function titleHtml(d: DetailSeed): string {
-  const merchant = (d.restaurant_name || '').trim()
+  // 🛍️ 2026-10-24 그루폰식: 제목이 맨 위, 그 아래 [가게 · 종류 · 지역] 한 줄(`passSubLine` — 클라와 같은 함수).
+  const sub = passSubLine(d)
   const onnuri = d.onnuri_merchant
     ? `<span class="${DETAIL_ONNURI_CLASS}">온누리 사용 가능</span>`
     : ''
   return (
     `<div class="${PASS_HEAD.card}">` +
-      (merchant ? `<div class="${PASS_HEAD.merchant}">${escText(merchant)}${onnuri}</div>` : '') +
-      (d.prelaunch ? `<span class="${PASS_HEAD.prelaunch}">오픈 예정 · 사전 응모 받는 중</span>` : '') +
       `<h1 class="${PASS_HEAD.h1}">${escText(d.name || '')}</h1>` +
+      (sub ? `<div class="${PASS_HEAD.merchant}">${escText(sub)}${onnuri}</div>` : '') +
+      (d.prelaunch ? `<span class="${PASS_HEAD.prelaunch}">오픈 예정 · 사전 응모 받는 중</span>` : '') +
     '</div>'
   )
 }
