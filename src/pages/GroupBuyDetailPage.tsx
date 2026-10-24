@@ -7,6 +7,7 @@ import UsageGuide from './group-buy/UsageGuide'
 import SellerCard from './group-buy/SellerCard'
 import StoreIntro, { hasStoreIntro } from './group-buy/StoreIntro'
 import PassHeadCard from './group-buy/PassHeadCard'
+import PassOptionCard from './group-buy/PassOptionCard'
 import { PASS_CARD, PASS_PAGE_BG } from '@/shared/pass-head'
 // 🏷️ 2026-10-15 (대표 승인): 제목은 서버와 **같은 SSOT** — 두 벌이면 Googlebot(JS 렌더)과 Yeti(서버 HTML)가 다른 제목을 본다.
 import { passDetailTitle } from '@/shared/seo/detail-title'
@@ -185,6 +186,7 @@ export default function GroupBuyDetailPage() {
   const [loading, setLoading] = useState<boolean>(seedDetail == null)
   const [joining, setJoining] = useState(false)
   const [quantity, setQuantity] = useState(1)
+  const [buyOpen, setBuyOpen] = useState(0) // 🛍️ 옵션 카드 → 하단 바의 같은 구매 창
   const [showPropose, setShowPropose] = useState(false)
   // 🎨 2026-06-16 리디자인: 스와이프 갤러리 활성 인덱스 + 이 셀러의 다른 공구
   const [otherDeals, setOtherDeals] = useState<Array<{ id: number; name: string; price: number; original_price?: number | null; image_url?: string | null; discount_pct?: number | null }>>([])
@@ -679,12 +681,13 @@ export default function GroupBuyDetailPage() {
             결제 때 `getPurchaseRef()` 로 실려 간다(살아 있는 레일 = 매장이 제안한 딜 소개비).
             되살리려면 배너를 새로 쓸 것: 비율·수령자가 2026-08 이후 정책과 다르다. */}
 
-        {/* 🎟️ 2026-10-11 (대표 확정 "D안"): 모바일 제목·가격·수량 → 사진 위로 겹치는 머리 카드 하나.
-            주소·"결제 즉시 교환권 발급"·수량 카드를 걷었다(수량은 구매 창으로 — `DealBottomBar`).
-            서버가 먼저 그리는 첫 화면(`detail-ssr-body.ts`)과 같은 클래스(`PASS_HEAD`)를 쓴다. */}
-        <PassHeadCard merchant={detail.restaurant_name} onnuri={(detail as { onnuri_merchant?: boolean }).onnuri_merchant}
-          isPrelaunch={isPrelaunch} name={detail.name} distKm={distKm} buyers={Number(detail.group_buy_current) || 0}
-          unitPrice={unitPrice} refPrice={refPrice} discountPct={displayDiscountPct} unitSaving={unitSaving} />
+        {/* 🛍️ 2026-10-24 (대표 승인 "그루폰식"): 제목 → [가게 · 종류 · 지역] → 주소·거리 → 별점·리뷰·구매 수.
+            가격은 아래 '옵션 선택' 카드로. 서버 첫 화면(`detail-ssr-body.ts`)과 같은 클래스(`PASS_HEAD`)를 쓴다. */}
+        <PassHeadCard merchant={detail.restaurant_name} category={detail.category} address={detail.restaurant_address}
+          onnuri={(detail as { onnuri_merchant?: boolean }).onnuri_merchant} isPrelaunch={isPrelaunch} name={detail.name} distKm={distKm}
+          buyers={Number((detail as { sold_count?: number }).sold_count ?? detail.group_buy_current) || 0} rating={detail.avg_rating} reviewCount={detail.review_count} />
+        {!isOwnProduct && !isPrelaunch && <PassOptionCard name={detail.name} unitPrice={unitPrice} refPrice={refPrice} discountPct={displayDiscountPct}
+          quantity={quantity} setQuantity={setQuantity} maxQty={maxQty} buyable={buyable} isJoinable={isJoinable} joining={joining} onOpen={() => setBuyOpen(n => n + 1)} />}
 
         {/* 🎁 딜 보유자에게만(없으면 null·`empty:hidden`). 머리 카드 **아래**라 위가 안 밀린다(`detail-ssr-body.ts` 참조). */}
         <div className="px-[18px] pb-4 empty:hidden"><ShareRewardBanner sellerId={detail.seller_id as number | null} productId={detail.id} /></div>
@@ -817,7 +820,7 @@ export default function GroupBuyDetailPage() {
         minReviewLevel={detail?.min_review_level}
         dealPlan={!isPrelaunch && isJoinable ? dealPlan : null} dealUse={dealUse} setDealUse={setDealUse}
         canPayWithDeal={canPayWithDeal} dealBalance={dealBalance}
-        productId={productId} onJoin={handleJoin} isOwner={isOwnProduct} onManage={manageOwn}
+        productId={productId} onJoin={handleJoin} isOwner={isOwnProduct} onManage={manageOwn} openRequest={buyOpen}
       />
       {ownerSheet}
     </div>
