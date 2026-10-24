@@ -31,7 +31,15 @@ const INJECTION_SIGNATURES = [
   { re: /^\+.*=>\s*p\s*$/m,                            what: '함수 본문을 항등으로 대체' },
   { re: /^\+\s*\/\/ \([^)]*(?:제거|무력화|삭제)\)\s*$/m, what: '"(… 제거)" 주석으로 로직 대체' },
   { re: /^\+.*__probe-[a-z]/m,                          what: '존재하지 않는 __probe 모듈 import' },
-  { re: /^\+\s*const mk = \(/m,                         what: '가짜 헬퍼(mk) 주입' },
+  // 🩸 2026-10-24: 종전엔 `const mk = (` 전부를 잡아 **정상 테스트를 차단했다**(CI 실패 1건 실측 —
+  //   신규 `company-taxonomy-2026-10-24.test.ts` 의 가짜 D1 스텁). 이 레포의 가짜 D1 테스트는
+  //   `const mk = (sql: string) => {` 로 쓴다(`company-save-count.test.ts` 가 main 에 이미 그렇게 있다).
+  //   실제 주입문은 **타입이 없는** 한 줄이다(`column-repairs.ts` — 매니페스트 '스키마 매니페스트에 로직 유입'):
+  //       const mk = (t) => ({ desc: t, sql: `ALTER TABLE ${t} ADD x TEXT` })
+  //   타입 주석 없는 매개변수 하나 + 객체 리터럴 즉시 반환 = TS 레포에서 사람이 안 쓰는 모양이다
+  //   (tsc 가 implicit any 를 내므로). ⚠️ `src/tests/` 를 통째로 빼는 방식은 쓰지 않았다 —
+  //   주입 대상 931개 중 **9개가 실제로 테스트 파일**이라 그 9개가 통째로 눈먼다.
+  { re: /^\+\s*const mk = \([A-Za-z_$][\w$]*\)\s*=>\s*\(\{/m, what: '가짜 헬퍼(mk) 주입' },
   { re: /^\+.*VALUES \(\?, 'x',/m,                      what: "식별자를 'x' 로 바꿔치기" },
 ]
 
