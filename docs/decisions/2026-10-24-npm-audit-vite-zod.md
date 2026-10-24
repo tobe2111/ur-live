@@ -1,33 +1,34 @@
-# 새 취약점 2건(vite·zod)을 허용목록에 올려 PR 차단을 풀까?
+# 새 보안 경보 2건(vite·zod)을 업그레이드할지, 예외로 둘지
 
 상태: approved
 등급: C
 역할: dev
 올린 날: 2026-10-24
-기한: 2026-10-27
+기한: 2026-10-31
 
 ## 질문
-고칠 수 있는 5건은 올렸고, 남은 2건(vite 개발서버 · zod)을 허용목록에 등재해 모든 PR 차단을 풀까요?
+모든 PR 을 막고 있는 보안 경보 2건 중 vite 는 예외로 두고, zod 는 4로 올릴까요(1·2·3 중 선택)?
 
 ## 근거 (실측)
-- 2026-10-24 npm audit 이 새 high/critical 7건을 내서 Verify 가 **열린 PR 전부**에서 빨간불이다(#1973 job 120890019532).
-- 이 커밋에서 패치 버전으로 고친 것: dompurify 3.4.13 → 3.4.17(critical 1·high 1), follow-redirects → 1.16.1(high 2), undici → 7.30.1(high 1).
+- 2026-10-20 이후 새로 공개된 high/critical 경보 7건 때문에 `scripts/check-npm-audit.sh` 가 **모든 PR** 을 막는다(PR #1981 Verify 실패 · job 120903826739).
+- 패치 버전으로 해결한 5건: `dompurify` 3.4.13 → 3.4.17(critical 1 · high 1) · `follow-redirects` → 1.16.1(override, high 2) · `undici` override `^7.30.1`(high 1). PR #1981 에 함께 들어간다.
 - 남은 2건:
-  - **vite GHSA-587h-7wmj-h5pm** — vite 안에 들어 있는 launch-editor 의 Windows 경로 검사 우회. **개발 서버 전용**이고 배포 산출물(_worker.js·dist)에 안 들어간다. 패치는 vite 6.4.4+ / 8.1.6+ 뿐이고 우리는 5.x(메이저 2단계). 같은 이유의 vite 항목(GHSA-fx2h)이 이미 허용목록에 있다.
-  - **zod GHSA-mrhx-c7xc-m3w5** — 길이 제한 걸린 큰 배열 검증 시 메모리 소진. 패치는 zod 4.6.6+ 뿐(우리는 3.25.76, 3.x 패치 없음). 서버에서 zod 를 쓰는 곳은 로그인·주문·결제 라우트 3곳이고, 주문 `items` 배열엔 길이 제한(`.max`)이 없어 그 경로가 문제의 모양이 아니다. 다만 결제 라우트는 Toss 잠금 파일이라 zod 4 로 올리려면 그 파일 import 를 바꿔야 한다.
+  - **vite** GHSA-587h-7wmj-h5pm(high). 개발 서버(launch-editor) 경로 검사 우회이고 Windows 전용이다. 빌드·개발 도구라 배포 산출물에 없다. 고치려면 vite 6.4.4+ 메이저 업그레이드가 필요하다. 같은 사유의 GHSA-fx2h-pf6j-xcff 는 이미 2026-06-22 에 대표 승인으로 면제돼 있다.
+  - **zod** GHSA-mrhx-c7xc-m3w5(high). 제한이 걸린 큰 배열을 검증할 때 메모리를 소진한다. 패치는 zod 4(메이저)뿐이다. 워커의 주문·결제·인증 요청 검증이 zod 3 을 쓰고, 잠금 파일 `payment.routes.ts` 도 import 한다. 완화 요소: 모든 `/api/*` 요청은 `bodyLimitByPath` 로 본문 크기가 제한된다.
 
 ## 선택지
-1. 둘 다 허용목록 등재(사유·재검토 조건 기록) — 즉시 PR 차단 해제 / 위험은 개발서버(vite)·이론상 DoS(zod) / 머니 접촉 없음
-2. vite 만 등재, zod 는 4 로 올림 — zod 4 는 API 가 바뀌어 7파일 수정 + 결제 잠금 파일 수정 승인 필요 / 하루 이상
-3. 둘 다 올림 — vite 5→8 은 빌드 전체 회귀 위험이 큼
+1. **vite 예외 + zod 예외(2주 시한)** — 오늘 바로 PR 이 풀린다. zod 위험은 본문 크기 제한으로 묶인다. 머니 접촉 없음.
+2. **vite 예외 + zod 4 업그레이드** — zod 위험이 사라진다. 대신 잠금 파일(`payment.routes.ts`)을 import 하는 검증 코드가 바뀌므로 잠금 해제 승인과 staging 실결제 1회가 필요하다. 하루 이상 걸린다.
+3. **둘 다 업그레이드(vite 6 + zod 4)** — 가장 깨끗하다. 빌드 체인 전체 회귀 위험이 있어 가장 오래 걸린다.
 
 ## 기본안 (답이 없을 때 권하는 것 — 자동 실행되지 않는다)
-1번. 두 건 다 운영 경로 도달이 없거나 낮고, 지금 모든 PR 이 막혀 있다. zod 4 이행은 별건으로 잡는다.
+1번. 지금 모든 PR 이 막혀 있다. 예외는 기한을 걸어 두고, zod 4 이행은 별도 작업으로 한다.
 
 ## 롤백
-.audit-allowlist.json 에서 두 항목 삭제.
+`.audit-allowlist.json` 에서 해당 GHSA 두 줄 삭제.
 
 ## 결정 (대표가 한 말 그대로)
-"응 모두 반영해줘" (2026-10-24) — 기본안 1번.
+"1번 승인할게." (2026-10-24)
 
 ## 반영 커밋
+main 에 다른 세션이 같은 두 면제(대표 2026-10-21·10-24 AskUserQuestion 승인)를 먼저 넣어, PR #1981 은 머지 때 main 쪽 허용목록을 그대로 썼다. 패치 3종(dompurify·follow-redirects·undici)도 main 과 같다.

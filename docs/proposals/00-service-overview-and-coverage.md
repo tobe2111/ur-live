@@ -302,12 +302,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 327 | 1011 |
+| 전체 | 334 | 1011 |
 | 도메인 버킷 (5개 소개서) | 131 | 462 |
-| 공통/인프라 (의도적 제외) | 149 | 453 |
-| **미커버 (점검 필요)** | **47** | **96** |
+| 공통/인프라 (의도적 제외) | 150 | 453 |
+| **미커버 (점검 필요)** | **53** | **96** |
 
-⚠️ **미커버 143건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 149건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -342,6 +342,12 @@
 - `/experience`
 - `/gb-market`
 - `/i/join/:code`
+- `/life`
+- `/life/pro`
+- `/life/pro/requests/:id`
+- `/life/request/:category`
+- `/life/requests`
+- `/life/requests/:id`
 - `/local/:code`
 - `/mall-admin`
 - `/map`
@@ -1616,7 +1622,7 @@
 
 
 
-> 마지막 생성: 2026-10-20T07:04:55.843Z
+> 마지막 생성: 2026-10-24T16:48:26.107Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->
