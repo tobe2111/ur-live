@@ -88,6 +88,14 @@ export const HS_TABLES_SQL = [
   `CREATE INDEX IF NOT EXISTS idx_hs_requests_user ON home_service_requests(user_id, status)`,
   `CREATE INDEX IF NOT EXISTS idx_hs_requests_open ON home_service_requests(status, category, sido)`,
   `CREATE INDEX IF NOT EXISTS idx_hs_pro_areas_match ON home_service_pro_areas(sido, sigungu)`,
+  // 🧾 운영팀 대리 접수(2026-10-24 대표 — 영업으로 찾은 **실제 손님**의 요청을 운영팀이 대신 올린다).
+  //   source = 'customer'(손님이 직접) | 'admin'(운영팀 대리). 손님 동의를 받았다는 기록이 consent_note.
+  `ALTER TABLE home_service_requests ADD COLUMN source TEXT NOT NULL DEFAULT 'customer'`,
+  `ALTER TABLE home_service_requests ADD COLUMN created_by_admin INTEGER`,
+  `ALTER TABLE home_service_requests ADD COLUMN consent_note TEXT`,
+  // 🏠 유어딜 직영 견적(2026-10-24 대표) — 유어딜(또는 협력 업체)이 다른 사장님처럼 견적을 낸다.
+  //   손님 화면에 "유어딜 직영" 으로 표시하고, 참여권을 쓰지 않으며 반환도 없다.
+  `ALTER TABLE home_service_quotes ADD COLUMN is_house INTEGER NOT NULL DEFAULT 0`,
 ] as const
 
 export async function ensureHomeServiceTables(DB: D1Database): Promise<void> {
@@ -170,6 +178,60 @@ export async function sendQuoteAtomic(
   return { ok: false, reason: 'no_credit' }
 }
 
+/**
+ * 🏠 유어딜 직영 견적 — 자리 확보 + 견적 줄을 **한 트랜잭션**으로. 참여권은 쓰지 않는다.
+ * 선착순 자리는 다른 사장님과 똑같이 하나 차지한다(손님이 비교하는 견적 수는 그대로 5개 이하).
+ */
+export async function sendHouseQuoteAtomic(
+  DB: D1Database, requestId: number, sellerId: number, price: number | null, message: string,
+): Promise<{ ok: true; quoteId: number } | { ok: false; reason: 'closed' | 'full' | 'already' }> {
+  const res = await DB.batch([
+    DB.prepare(
+      `UPDATE home_service_requests
+          SET quote_count = quote_count + 1, first_quote_at = COALESCE(first_quote_at, datetime('now')),
+              updated_at = datetime('now')
+        WHERE id = ? AND status = 'open' AND quote_count < max_quotes
+          AND NOT EXISTS (SELECT 1 FROM home_service_quotes WHERE request_id = ? AND seller_id = ?)`,
+    ).bind(requestId, requestId, sellerId),
+    DB.prepare(
+      `INSERT OR IGNORE INTO home_service_quotes (request_id, seller_id, price, message, status, is_house)
+       SELECT ?, ?, ?, ?, 'sent', 1 WHERE changes() > 0`,
+    ).bind(requestId, sellerId, price, message),
+  ])
+  if (res[1]?.meta?.changes) {
+    const q = await DB.prepare(`SELECT id FROM home_service_quotes WHERE request_id = ? AND seller_id = ?`)
+      .bind(requestId, sellerId).first<{ id: number }>()
+    return { ok: true, quoteId: Number(q?.id) }
+  }
+  const mine = await DB.prepare(`SELECT 1 AS x FROM home_service_quotes WHERE request_id = ? AND seller_id = ?`)
+    .bind(requestId, sellerId).first()
+  if (mine) return { ok: false, reason: 'already' }
+  const r = await DB.prepare(`SELECT status FROM home_service_requests WHERE id = ?`).bind(requestId).first<{ status: string }>()
+  if (!r || r.status !== 'open') return { ok: false, reason: 'closed' }
+  return { ok: false, reason: 'full' }
+}
+
+/**
+ * 손님이 견적 하나를 고른다(CAS — 열린 요청의 보낸 견적일 때만, 한 번만).
+ * byAdmin=true 는 **운영팀이 대리 접수한 요청**(source='admin')에서만 통한다 — 손님이 전화로 고른 것을 대신 누른다.
+ * 앱에서 손님이 직접 올린 요청은 운영팀이 대신 고를 수 없다.
+ */
+export async function chooseQuoteAtomic(
+  DB: D1Database, requestId: number, quoteId: number, userId: number, byAdmin: boolean,
+): Promise<boolean> {
+  const [upd] = await DB.batch([
+    DB.prepare(
+      `UPDATE home_service_requests SET status = 'chosen', chosen_quote_id = ?, updated_at = datetime('now')
+        WHERE id = ? AND status = 'open'
+          AND (user_id = ? OR (? = 1 AND source = 'admin'))
+          AND EXISTS (SELECT 1 FROM home_service_quotes WHERE id = ? AND request_id = ? AND status = 'sent')`,
+    ).bind(quoteId, requestId, userId, byAdmin ? 1 : 0, quoteId, requestId),
+    DB.prepare(`UPDATE home_service_quotes SET status = 'chosen' WHERE id = ? AND request_id = ? AND changes() > 0`)
+      .bind(quoteId, requestId),
+  ])
+  return !!upd?.meta?.changes
+}
+
 export async function creditBalance(DB: D1Database, sellerId: number): Promise<number> {
   const r = await DB.prepare(`SELECT balance FROM home_service_credit_balance WHERE seller_id = ?`)
     .bind(sellerId).first<{ balance: number }>()
@@ -182,7 +244,7 @@ export async function creditBalance(DB: D1Database, sellerId: number): Promise<n
  */
 export async function refundQuote(DB: D1Database, quoteId: number, sellerId: number, why: string): Promise<boolean> {
   const [upd] = await DB.batch([
-    DB.prepare(`UPDATE home_service_quotes SET status = 'refunded' WHERE id = ? AND status = 'sent'`).bind(quoteId),
+    DB.prepare(`UPDATE home_service_quotes SET status = 'refunded' WHERE id = ? AND status = 'sent' AND is_house = 0`).bind(quoteId),
     DB.prepare(
       `INSERT OR IGNORE INTO home_service_credit_tx (seller_id, kind, amount, ref, note)
        SELECT ?, 'refund', 1, ?, ? WHERE changes() > 0`,
@@ -199,7 +261,7 @@ export async function refundQuote(DB: D1Database, quoteId: number, sellerId: num
 /** 요청 하나의 보낸 견적 전부 반환. */
 export async function refundAllQuotes(DB: D1Database, requestId: number, why: string): Promise<number> {
   const { results } = await DB.prepare(
-    `SELECT id, seller_id FROM home_service_quotes WHERE request_id = ? AND status = 'sent'`,
+    `SELECT id, seller_id FROM home_service_quotes WHERE request_id = ? AND status = 'sent' AND is_house = 0`,
   ).bind(requestId).all<{ id: number; seller_id: number }>()
   let n = 0
   for (const q of results ?? []) if (await refundQuote(DB, q.id, q.seller_id, why)) n++

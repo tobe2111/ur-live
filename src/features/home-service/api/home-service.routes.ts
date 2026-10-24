@@ -23,7 +23,7 @@ import {
   categoryDef, msgQuoteChosen, requestSummary, validateRequest, type HomeServiceCategory,
 } from '@/shared/home-service'
 import { sendSystemAlimtalk } from '../../../lib/system-alimtalk'
-import { ensureHomeServiceTables, refundAllQuotes } from './home-service-db'
+import { chooseQuoteAtomic, ensureHomeServiceTables, refundAllQuotes } from './home-service-db'
 import { dispatchRequest } from './home-service-notify'
 
 export const homeServiceRoutes = new Hono<{ Bindings: Env }>()
@@ -42,6 +42,30 @@ function waitUntil(c: { executionCtx?: { waitUntil(p: Promise<unknown>): void } 
 function idParam(raw: string | undefined): number | null {
   const n = Number(raw)
   return Number.isInteger(n) && n > 0 ? n : null
+}
+
+/** 고른 뒤 — 사장님에게 손님 연락처 알림톡. 손님 화면과 운영팀 대리 선택이 같이 쓴다. */
+export async function notifyChosen(
+  env: unknown, DB: D1Database, requestId: number, defer: (p: Promise<unknown>) => void,
+): Promise<{ pro_phone: string | null } | null> {
+  const row = await DB.prepare(
+    `SELECT r.category, r.summary, r.contact_name, r.contact_phone,
+            COALESCE(NULLIF(p.phone, ''), s.phone) AS pro_phone, q.seller_id
+       FROM home_service_requests r
+       JOIN home_service_quotes q ON q.id = r.chosen_quote_id
+       JOIN sellers s ON s.id = q.seller_id
+       LEFT JOIN home_service_pros p ON p.seller_id = q.seller_id
+      WHERE r.id = ?`,
+  ).bind(requestId).first<{ category: HomeServiceCategory; summary: string; contact_name: string | null; contact_phone: string; pro_phone: string | null }>()
+  if (row?.pro_phone) {
+    const label = categoryDef(row.category)?.label || '생활'
+    defer(sendSystemAlimtalk(
+      env, row.pro_phone, HOME_TPL.quoteChosen,
+      msgQuoteChosen(label, row.summary, row.contact_name || '손님', row.contact_phone),
+      { dedupKey: `chosen:${requestId}` },
+    ).catch(() => null))
+  }
+  return row ? { pro_phone: row.pro_phone } : null
 }
 
 homeServiceRoutes.get('/config', async (c) => {
@@ -132,7 +156,7 @@ homeServiceRoutes.get('/requests/:id', requireAuth(), async (c) => {
     }
     const { results: quotes } = await DB.prepare(
       `SELECT q.id, q.seller_id, q.price, q.message, q.status, q.created_at,
-              COALESCE(NULLIF(s.business_name, ''), s.name) AS pro_name,
+              COALESCE(NULLIF(s.business_name, ''), s.name) AS pro_name, q.is_house,
               CASE WHEN q.status = 'chosen' THEN COALESCE(NULLIF(p.phone, ''), s.phone) END AS pro_phone
          FROM home_service_quotes q
          JOIN sellers s ON s.id = q.seller_id
@@ -172,34 +196,10 @@ homeServiceRoutes.post('/requests/:id/choose', requireAuth(), async (c) => {
     if (!id || !Number.isInteger(quoteId) || quoteId <= 0) return c.json({ success: false, error: '잘못된 요청입니다' }, 400)
 
     // 🔒 CAS — 열린 내 요청이고 그 요청의 보낸 견적일 때만, 한 번만.
-    const [upd] = await DB.batch([
-      DB.prepare(
-        `UPDATE home_service_requests SET status = 'chosen', chosen_quote_id = ?, updated_at = datetime('now')
-          WHERE id = ? AND user_id = ? AND status = 'open'
-            AND EXISTS (SELECT 1 FROM home_service_quotes WHERE id = ? AND request_id = ? AND status = 'sent')`,
-      ).bind(quoteId, id, userId, quoteId, id),
-      DB.prepare(`UPDATE home_service_quotes SET status = 'chosen' WHERE id = ? AND request_id = ? AND changes() > 0`)
-        .bind(quoteId, id),
-    ])
-    if (!upd?.meta?.changes) return c.json({ success: false, error: '이미 고른 요청이거나 고를 수 없는 견적입니다' }, 409)
+    const chosen = await chooseQuoteAtomic(DB, id, quoteId, userId, false)
+    if (!chosen) return c.json({ success: false, error: '이미 고른 요청이거나 고를 수 없는 견적입니다' }, 409)
 
-    const row = await DB.prepare(
-      `SELECT r.category, r.summary, r.contact_name, r.contact_phone,
-              COALESCE(NULLIF(p.phone, ''), s.phone) AS pro_phone, q.seller_id
-         FROM home_service_requests r
-         JOIN home_service_quotes q ON q.id = r.chosen_quote_id
-         JOIN sellers s ON s.id = q.seller_id
-         LEFT JOIN home_service_pros p ON p.seller_id = q.seller_id
-        WHERE r.id = ?`,
-    ).bind(id).first<{ category: HomeServiceCategory; summary: string; contact_name: string | null; contact_phone: string; pro_phone: string | null }>()
-    if (row?.pro_phone) {
-      const label = categoryDef(row.category)?.label || '생활'
-      waitUntil(c, sendSystemAlimtalk(
-        c.env, row.pro_phone, HOME_TPL.quoteChosen,
-        msgQuoteChosen(label, row.summary, row.contact_name || '손님', row.contact_phone),
-        { dedupKey: `chosen:${id}` },
-      ).catch(() => null))
-    }
+    const row = await notifyChosen(c.env, DB, id, (p) => waitUntil(c, p))
     return c.json({ success: true, data: { pro_phone: row?.pro_phone ?? null } })
   } catch (err) {
     return safeError(c, err, '선택을 처리하지 못했습니다', '[home-service:choose]')

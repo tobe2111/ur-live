@@ -17,6 +17,13 @@
 - 충전 승인은 `confirmTossPayment` 만. 주문번호 `HSC-<매장>-<묶음>-<시각>` 의 매장 = 요청자, 금액 = 서버 묶음 가격.
 - 충전 게이트 `home_service_charge_enabled` **기본 OFF**. 켜기 전 `docs/STAGING_CHECKLIST.md` **S-HOME** 실결제.
 
+## 대리 접수 · 유어딜 직영 견적 (2026-10-24 대표 "실제 손님 있어. 두 기능 모두 만들어줘")
+- 어드민 `/admin/home-service`(메뉴 '생활 견적'): 직영 견적 매장 지정(`platform_settings.home_service_house_seller_id`) · 대리 접수(동의 기록 필수, `source='admin'`) · 요청별 견적 보기 · 직영 견적 보내기 · 손님이 고른 견적 대신 누르기 · 손님 취소.
+- 서버 `home-service-admin.routes.ts`(`requireAdmin`). DB: `sendHouseQuoteAtomic`(자리 1개 · 참여권 0) · `chooseQuoteAtomic(byAdmin)` · 반환은 `is_house=0` 만.
+- 운영팀이 대리 접수 건을 열면 `customer_viewed_at` 을 찍는다(48시간 미열람 반환이 거짓으로 돌지 않게).
+- 가드 3 + 주입 3 추가(직영 반환 금지 · 대리 선택은 admin 건만 · 직영도 선착순 자리를 본다).
+- ⚠️ 직영 견적을 내려면 먼저 그 매장 번호(sellers.id)를 어드민에서 지정해야 한다.
+
 ## 다음 세션의 첫 액션
 1. 머지·배포 뒤 라이브: `curl -sS https://urdeal.kr/api/home-service/config` → `open:true` · `https://urdeal.kr/life` 200.
 2. 대표에게: 알림톡 3종 SENS 등록 + 승인 목록(`alimtalk_approved_templates`)에 `home_request_new=homerequestnew, home_quote_arrived=homequotearrived, home_quote_chosen=homequotechosen` 추가.

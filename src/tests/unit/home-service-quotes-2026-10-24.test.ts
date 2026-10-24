@@ -23,7 +23,7 @@ const { DatabaseSync } = await import(/* @vite-ignore */ ('node:' + 'sqlite')) a
   }
 }
 import {
-  HS_TABLES_SQL, MATCH_PROS_SQL, OPEN_REQUESTS_FOR_PRO_SQL, creditAdd, creditBalance, refundAllQuotes, refundQuote, sendQuoteAtomic,
+  HS_TABLES_SQL, MATCH_PROS_SQL, OPEN_REQUESTS_FOR_PRO_SQL, chooseQuoteAtomic, creditAdd, creditBalance, refundAllQuotes, refundQuote, sendHouseQuoteAtomic, sendQuoteAtomic,
 } from '@/features/home-service/api/home-service-db'
 import { validateRequest, MAX_QUOTES_PER_REQUEST, parseCreditPackages, DEFAULT_CREDIT_PACKAGES } from '@/shared/home-service'
 import { parseRegionFromAddress } from '@/shared/constants/region-slugs'
@@ -150,6 +150,57 @@ describe('↩️ 반환', () => {
     // 목록 반환만 보면 'sent' 만 고르는 SELECT 가 막아 줘서, 반환 함수 자체가 chosen 을 돌려줘도 모른다.
     expect(await refundQuote(DB, r.quoteId, 1, '직접 호출')).toBe(false)
     expect(await creditBalance(DB, 1)).toBe(2)
+  })
+})
+
+describe('🏢 유어딜 직영 견적 · 대리 접수 (2026-10-24 대표 "실제 손님 있어. 두 기능 모두 만들어줘")', () => {
+  const HOUSE = 900
+  it('직영 견적은 참여권 없이 자리 하나를 차지하고 is_house=1 로 남는다', async () => {
+    const rid = addRequest(raw)
+    const r = await sendHouseQuoteAtomic(DB, rid, HOUSE, 390000, '유어딜이 직접 해 드립니다')
+    expect(r.ok).toBe(true)
+    expect((raw.prepare(`SELECT quote_count FROM home_service_requests WHERE id = ?`).get(...([rid] as never[])) as { quote_count: number }).quote_count).toBe(1)
+    expect((raw.prepare(`SELECT is_house FROM home_service_quotes`).get() as { is_house: number }).is_house).toBe(1)
+    expect((raw.prepare(`SELECT COUNT(*) n FROM home_service_credit_tx`).get() as { n: number }).n).toBe(0)
+  })
+  it('두 번 보내면 already · 다 찼으면 full · 닫혔으면 closed', async () => {
+    const rid = addRequest(raw)
+    await sendHouseQuoteAtomic(DB, rid, HOUSE, null, '첫 견적입니다')
+    expect(await sendHouseQuoteAtomic(DB, rid, HOUSE, null, '또 보냄')).toEqual({ ok: false, reason: 'already' })
+    const full = addRequest(raw, { max: 1 })
+    addPro(raw, 1); await creditAdd(DB, 1, 'grant', 3, 'signup:1')
+    expect((await sendQuoteAtomic(DB, full, 1, null, '견적입니다')).ok).toBe(true)
+    expect(await sendHouseQuoteAtomic(DB, full, HOUSE, null, '늦은 직영')).toEqual({ ok: false, reason: 'full' })
+    const closed = addRequest(raw); raw.prepare(`UPDATE home_service_requests SET status='cancelled' WHERE id = ?`).run(...([closed] as never[]))
+    expect(await sendHouseQuoteAtomic(DB, closed, HOUSE, null, '닫힌 요청')).toEqual({ ok: false, reason: 'closed' })
+  })
+  it('반환은 직영 견적을 건너뛴다 — 쓴 적 없는 참여권을 만들지 않는다', async () => {
+    const rid = addRequest(raw)
+    const h = await sendHouseQuoteAtomic(DB, rid, HOUSE, null, '직영 견적입니다'); if (!h.ok) throw new Error('x')
+    expect(await refundQuote(DB, h.quoteId, HOUSE, '직접 호출')).toBe(false)
+    expect(await refundAllQuotes(DB, rid, '취소')).toBe(0)
+    expect(await creditBalance(DB, HOUSE)).toBe(0)
+  })
+  it('운영팀 대리 선택은 source=admin 요청에서만 통한다', async () => {
+    addPro(raw, 1); await creditAdd(DB, 1, 'grant', 3, 'signup:1')
+    const mine = addRequest(raw, { user: 5 })
+    const q1 = await sendQuoteAtomic(DB, mine, 1, null, '견적입니다'); if (!q1.ok) throw new Error('x')
+    expect(await chooseQuoteAtomic(DB, mine, q1.quoteId, 0, true)).toBe(false)
+    expect(await chooseQuoteAtomic(DB, mine, q1.quoteId, 99, false)).toBe(false)
+    expect(await chooseQuoteAtomic(DB, mine, q1.quoteId, 5, false)).toBe(true)
+    expect(await chooseQuoteAtomic(DB, mine, q1.quoteId, 5, false)).toBe(false)
+
+    const proxy = addRequest(raw, { user: 0 })
+    raw.prepare(`UPDATE home_service_requests SET source='admin' WHERE id = ?`).run(...([proxy] as never[]))
+    const h = await sendHouseQuoteAtomic(DB, proxy, HOUSE, 380000, '직영'); if (!h.ok) throw new Error('x')
+    expect(await chooseQuoteAtomic(DB, proxy, h.quoteId, 0, true)).toBe(true)
+    expect((raw.prepare(`SELECT status FROM home_service_quotes WHERE id = ?`).get(...([h.quoteId] as never[])) as { status: string }).status).toBe('chosen')
+  })
+  it('대리 접수 라우트는 운영팀 인증 + 손님 동의 기록이 필수다', () => {
+    const src = readCode('src/features/home-service/api/home-service-admin.routes.ts')
+    expect(src).toMatch(/homeServiceAdminRoutes\.use\('\*', requireAdmin\(\)\)/)
+    expect(src).toMatch(/consent_note/)
+    expect(src).toMatch(/source, created_by_admin, consent_note|'admin'/)
   })
 })
 
