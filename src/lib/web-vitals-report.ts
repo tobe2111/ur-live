@@ -179,7 +179,7 @@ export function reportWebVitals(): void {
         cls.add(e.value || 0, e.startTime)
         if ((e.value || 0) > worst) {
           worst = e.value || 0
-          try { worstSrc = clsSourceString(e.sources, e.startTime, window.innerWidth) } catch { /* 원인 기록 실패는 CLS 보고를 막지 않는다 */ }
+          try { worstSrc = clsSourceString(e.sources, e.startTime, window.innerWidth, window.scrollY) } catch { /* 원인 기록 실패는 CLS 보고를 막지 않는다 */ }
         }
       }
     })
