@@ -53,7 +53,7 @@ export const KNOWN_SINGLE_ROUTES: ReadonlySet<string> = new Set([
   '500', 'about', 'admin', 'ads', 'agency', 'area-report', 'blog', 'browse',
   'business', 'cart', 'checkout', 'creator', 'creators', 'experience', 'fail', 'faq',
   'following', 'gb-market', 'gdpr', 'group-buy', 'host', 'influencer', 'interest-list', 'introduce',
-  'join', 'kakao-debug', 'login', 'mall-admin', 'map', 'meal-vouchers', 'my-appointments', 'my-commissions',
+  'join', 'kakao-debug', 'life', 'login', 'mall-admin', 'map', 'meal-vouchers', 'my-appointments', 'my-commissions',
   'my-coupons', 'my-deal-history', 'my-gifticons', 'my-orders', 'my-returns', 'my-reviews', 'my-stays', 'my-store',
   'my-vouchers', 'mypage', 'new-openings', 'notifications', 'orders', 'partners', 'partnership', 'privacy',
   'privacy-policy', 'referral', 'refund', 'refund-policy', 'region', 'register', 'restaurant-map', 'search',
@@ -90,7 +90,7 @@ export const KNOWN_SINGLE_ROUTES: ReadonlySet<string> = new Set([
 export const KNOWN_PARENT_SEGMENTS: ReadonlySet<string> = new Set([
   'about', 'account', 'admin', 'ads', 'agency', 'area-report', 'auth', 'blog', 'brand',
   'campaign', 'community-group-buy', 'coupon', 'creators', 'design', 'district', 'g', 'gift',
-  'group-buy', 'host', 'i', 'influencer', 'local', 'my', 'mypage', 'pass',
+  'group-buy', 'host', 'i', 'influencer', 'life', 'local', 'my', 'mypage', 'pass',
   'pay', 'payment', 'points', 'product', 'products', 'profile', 'referral', 'region',
   's', 'seller', 'stays', 'store', 'terms', 'u', 'user', 'v', 'vouchers',
 ])
