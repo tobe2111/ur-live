@@ -37,8 +37,8 @@ export default [
   {
     name: '🔓 허용목록이 승인자 없이 통과한다 (내가 임의로 면제할 수 있게 된다)',
     file: '.audit-allowlist.json',
-    find: '"accepted_by": "대표(urteam.corp) 승인 — 2026-10-06 \\"승인\\"',
-    replace: '"accepted_by": "TODO — 2026-10-06 \\"승인\\"',
+    find: '"accepted_by": "대표(urteam.corp) 승인 — 기술부채 점검 2026-06-22"',
+    replace: '"accepted_by": "TODO — 기술부채 점검 2026-06-22"',
     test: TEST,
     why: '이 파일의 `accepted_by` 는 "대표가 그 위험을 받기로 했다" 는 **기록**이다. 비어 있거나 TODO 면 세션이 스스로 보안 예외를 만들 수 있게 되고, 그 기록은 거짓이 된다.',
   },
