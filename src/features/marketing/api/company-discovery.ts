@@ -13,6 +13,7 @@ import { companyInflowByDay, type CompanyDayInflow, type CompanySegments } from 
 import { COMPANY_CUBE_SQL, foldCube, type CubeRow } from './company-stats-cube'
 import type { Env } from '@/worker/types/env'
 import { classifyLead, suspectCompanyName, REGISTRY_CATEGORY_SOURCES, CLASSIFY_RULES_VERSION } from './company-classify'
+import { refineRegistryLabel } from './company-taxonomy'
 import { hygieneStatements } from './company-lead-hygiene'
 import { emptyDelta, tallyVerdict, verdictChanged, writeReclassifyStats } from './reclassify-verdict-delta'
 import { advanceRegistryFastPath } from './reclassify-registry-fastpath'
@@ -424,8 +425,13 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housek
     const registry = REGISTRY_CATEGORY_SOURCES.has(r.source || '') && !!r.category
     // 🔬 **기록값을 한 번만 계산해 UPDATE 와 변화율 비교가 같은 값을 쓰게 한다.**
     //   v1 계측이 `classifyLead` 날것을 비교해 등록부 98% 라는 거짓값을 쌓았다(unknown→partner 매핑 누락).
+    // 🧭 2026-10-24: 등록부 행은 **상호의 국가자격 표기로 업종을 정밀화**한다(`company-taxonomy`).
+    //   등록부 코드가 우리보다 거칠어 `M10307`='노무' 안에 법조계가, `M10402`='세무사' 안에 행정사가
+    //   섞여 있었다(법조계 상호 433건 중 87% 오분류). 덮는 게 아니라 더 구체적인 근거로 좁히는 것이고,
+    //   `온라인판매`(통신판매 신고)는 손대지 않는다.
+    const ref = registry ? refineRegistryLabel(r) : null
     const written = {
-      category: c.category, subcategory: c.subcategory, tier: c.tier,
+      category: ref ? ref.category : c.category, subcategory: ref ? ref.subcategory : c.subcategory, tier: ref ? ref.tier : c.tier,
       lead_type: registry && c.lead_type === 'unknown' && !suspect ? 'partner' : c.lead_type,
       confidence: registry ? 'registry' : conf,
     }
@@ -449,8 +455,10 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housek
     if (!changed) {
       if (r.classified_v !== CLASSIFY_RULES_VERSION) stampOnly.push(r.id)
     } else if (registry) {
-      stmts.push(DB.prepare("UPDATE ad_company_leads SET lead_type = ?, classify_confidence = 'registry', classified_v = ? WHERE id = ?")
-        .bind(written.lead_type, CLASSIFY_RULES_VERSION, r.id))
+      // 업종(category·subcategory)도 쓴다 — 자격 정밀화가 라이브에 닿는 유일한 자리다.
+      //   ⚠️ `verdictChanged` 의 registry 분기도 업종을 비교해야 한다(안 하면 여기 도달하지 못한다).
+      stmts.push(DB.prepare("UPDATE ad_company_leads SET category = ?, subcategory = ?, tier = COALESCE(tier, ?), lead_type = ?, classify_confidence = 'registry', classified_v = ? WHERE id = ?")
+        .bind(written.category, written.subcategory, written.tier, written.lead_type, CLASSIFY_RULES_VERSION, r.id))
     } else if (c.confidence === 'evidence') {
       // 업종은 근거(evidence) 있을 때만 덮어쓰고, 그 외엔 기존 값 유지(대표 수동 분류 보존).
       stmts.push(DB.prepare('UPDATE ad_company_leads SET category = ?, subcategory = ?, tier = COALESCE(tier, ?), lead_type = ?, classify_confidence = ?, classified_v = ? WHERE id = ?')
