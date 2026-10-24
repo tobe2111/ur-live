@@ -57,7 +57,7 @@ jobs:
               git reset -q --hard FETCH_HEAD
             else
               # 브랜치가 없으면 data 만 담은 orphan 브랜치로 생성
-              git checkout -q --orphan "tmp-$BR-$i" && git rm -rq --cached .. >/dev/null 2>&1 || true
+              git checkout -q --orphan "tmp-$BR-$i" && git read-tree --empty  # 인덱스를 통째로 비운다(cwd 무관) — data 만 담는다
             fi
             rm -rf data && mkdir -p data && cp -a "$SNAP/." data/
             git add data/
