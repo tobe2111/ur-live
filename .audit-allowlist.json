@@ -16,6 +16,22 @@
       "accepted_by": "대표(urteam.corp) 승인 — 2026-10-06 \"승인\" (결재 docs/decisions/archive/2026-10-06-npm-audit-three-new-advisories.md 기본안 1번). 같은 커밋에서 고칠 수 있는 둘(@capacitor critical · source-map-js/postcss)은 패치 버전으로 실제 상향.",
       "date": "2026-10-06",
       "review": "tailwindcss 4 이행 시 제거 — 그때 braces 체인 자체가 사라진다. 또는 braces 3.0.4+ 가 나오면 상향 후 제거."
+    },
+    {
+      "ghsa": "GHSA-587h-7wmj-h5pm",
+      "pkg": "vite",
+      "reason": "vite 안 launch-editor 의 Windows 경로 검사 우회. 개발 서버 전용 — 배포 산출물(_worker.js·dist)에 포함되지 않아 production 도달 불가. 패치는 vite 6.4.4+/8.1.6+ 뿐(우리는 5.x, 메이저 2단계). 같은 이유의 GHSA-fx2h 가 이미 등재돼 있다.",
+      "accepted_by": "대표(urteam.corp) 승인 — 2026-10-24 \"응 모두 반영해줘\" (결재 docs/decisions/2026-10-24-npm-audit-vite-zod.md 기본안 1번). 같은 커밋 직전에 고칠 수 있는 5건(dompurify·follow-redirects·undici)은 패치 버전으로 실제 상향.",
+      "date": "2026-10-24",
+      "review": "vite 6+ 이행 시 제거."
+    },
+    {
+      "ghsa": "GHSA-mrhx-c7xc-m3w5",
+      "pkg": "zod",
+      "reason": "길이 제한(.max) 걸린 큰 배열 검증 시 메모리 소진(DoS). 패치는 zod 4.6.6+ 뿐(우리는 3.25.76, 3.x 패치 없음). 서버 zod 사용은 로그인·주문·결제 라우트이고 주문 items 배열엔 .max 가 없어 해당 모양이 아니다. zod 4 이행은 결제 잠금 파일 import 변경이 필요해 별건.",
+      "accepted_by": "대표(urteam.corp) 승인 — 2026-10-24 \"응 모두 반영해줘\" (결재 docs/decisions/2026-10-24-npm-audit-vite-zod.md 기본안 1번). 같은 커밋 직전에 고칠 수 있는 5건(dompurify·follow-redirects·undici)은 패치 버전으로 실제 상향.",
+      "date": "2026-10-24",
+      "review": "zod 4 이행 시 제거(별건 — 결제 잠금 파일 승인 필요)."
     }
   ]
 }
