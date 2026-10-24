@@ -24,14 +24,6 @@
       "accepted_by": "대표(urteam.corp) 승인 — 2026-10-24 \"1번으로 해줘\" (결재 docs/decisions/2026-10-24-npm-audit-vite-zod.md 안 1)",
       "date": "2026-10-24",
       "review": "vite 6+ 이행 시 제거."
-    },
-    {
-      "ghsa": "GHSA-mrhx-c7xc-m3w5",
-      "pkg": "zod",
-      "reason": "큰 constrained collection 검증 시 메모리 소진. 런타임 노출은 주문 생성(order.routes items z.array) 하나 — requireAuth + rateLimit create_order 10/분 + 쇼핑 탭 숨김 + CF 요청 본문 상한 뒤. zod 3.x 에는 패치 버전이 없다(고친 버전은 4.6.6+ 메이저).",
-      "accepted_by": "대표(urteam.corp) 승인 — 2026-10-24 \"1번으로 해줘\" (결재 docs/decisions/2026-10-24-npm-audit-vite-zod.md 안 1)",
-      "date": "2026-10-24",
-      "review": "zod 4 이행 시 제거(별건 작업)."
     }
   ]
 }
