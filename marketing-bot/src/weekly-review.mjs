@@ -1,5 +1,5 @@
 // 매주 월요일: 최근 게시물 인사이트 → 플랫폼별 최적 시간대 → schedule.json 갱신 → 리포트 이슈.
-import { DRY, log, readJson, threads, insta, createIssue, claude, THREADS_USER_ID , opsAlert } from './lib.mjs';
+import { DRY, log, readJson, writeJson, threads, insta, createIssue, claude, THREADS_USER_ID , opsAlert } from './lib.mjs';
 import { TRACKS, DEFAULT_WEIGHTS, DEFAULT_CAMPAIGNS, categoryPerformance, adjustWeights, campaignToTrack } from './attribution.mjs';
 import { myRecentPosts, utmFromText } from './live.mjs';
 
@@ -121,7 +121,8 @@ async function main() {
   const body = `최근 4주 게시물 ${rows.length}개 기준 (점수 = 노출 + 10×반응)\n\n${lines.join('\n')}\n\n### 상위 게시물\n${top}\n\n${recruit}\n\n${mixLines}\n\n### 다음 주 제안\n${advice}\n\n클릭/구매는 UTM(utm_content) 기준으로 어드민에서 함께 확인하세요.`;
   // ⚠️ 최적 시간대·비율 조정을 저장할 곳이 아직 없다 — main 직접 push 는 룰셋이 막는다(live.mjs 머리말).
   //    이번 주 계산값은 리포트 이슈에만 남고 다음 게시에는 반영되지 않는다(후속: 상태 저장 경로).
-  if (!DRY) log('저장 생략(경로 없음):', JSON.stringify({ best: schedule.best, weights: newState.weights }));
+  // marketing-data 브랜치에 저장된다(워크플로가 data/ 를 그 브랜치로 push). 게시물 자체는 실물 조회로 읽는다.
+  if (!DRY) { writeJson('data/schedule.json', schedule); writeJson('data/mix-state.json', newState); }
   await createIssue(`[주간 SNS 리포트] ${new Date().toISOString().slice(0, 10)}`, body, ['marketing-report']);
 }
 main().catch(async (e) => { console.error(e.message); await opsAlert('마케팅 봇 주간 리뷰 실패', e.message); process.exit(1); });

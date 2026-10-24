@@ -43,12 +43,21 @@ test('Threads 글 끝 UTM 에서 캠페인을 되찾는다', () => {
 });
 
 test('봇이 저장 파일로 중복을 판정하지 않는다(배선)', () => {
-  for (const f of ['src/daily-post.mjs', 'src/reply-comments.mjs', 'src/weekly-review.mjs']) {
+  // 저장(marketing-data 브랜치, #1969)은 로그·학습값만이다. 판정은 실물 조회로 한다 — 저장이 실패해도 중복이 안 나게.
+  for (const f of ['src/reply-comments.mjs', 'src/weekly-review.mjs']) {
     const src = read(f);
     assert.doesNotMatch(src, /data\/posts\.json/, `${f} 가 posts.json 을 다시 읽는다`);
     assert.doesNotMatch(src, /data\/comments\.json/, `${f} 가 comments.json 을 다시 읽는다`);
-    assert.doesNotMatch(src, /writeJson\(/, `${f} 가 저장 파일을 쓴다(push 할 수 없다)`);
   }
+  assert.doesNotMatch(read('src/reply-comments.mjs'), /writeJson\(/, '댓글 응답이 다시 상태 파일을 쓴다');
+  const weeklyWrites = [...read('src/weekly-review.mjs').matchAll(/writeJson\('([^']+)'/g)].map((m) => m[1]).sort();
+  assert.deepEqual(weeklyWrites, ['data/mix-state.json', 'data/schedule.json'], '주간 리뷰는 학습값만 저장한다');
+  // 일일 게시: posts.json 은 맨 끝에서 덧붙이기만 한다. 그 밖의 자리에서 읽으면 판정에 쓰는 것이다.
+  const daily = read('src/daily-post.mjs').split('\n').filter((l) => !l.trim().startsWith('//')).join('\n');
+  const reads = daily.match(/data\/posts\.json/g) || [];
+  assert.equal(reads.length, 2, 'posts.json 참조는 덧붙이는 한 줄(읽기+쓰기)뿐이어야 한다');
+  assert.match(daily, /if \(!DRY && runLog\.length\) writeJson\('data\/posts\.json', \[\.\.\.readJson\('data\/posts\.json', \[\]\), \.\.\.runLog\]/);
+  assert.match(daily, /const postedToday = \(platform\) => postedOn\(live, platform, today\)/, '오늘 게시 여부는 실물로 판정해야 한다');
   assert.match(read('src/daily-post.mjs'), /live = await myRecentPosts\(/, '게시 전에 실물을 조회해야 한다');
   assert.match(read('src/reply-comments.mjs'), /findMyReplies\(await repliesOf\(/, '답글 전에 그 댓글의 답글을 확인해야 한다');
   assert.match(read('src/reply-comments.mjs'), /if \(mine\.replied\) \{ skipped\+\+; continue; \}/, '내 답글이 있으면 건너뛰어야 한다');
@@ -62,10 +71,13 @@ test('조회 실패는 "안 올렸다" 로 넘기지 않는다', () => {
   assert.doesNotMatch(read('src/live.mjs'), /escalatedIdsFromIssues\(\[\]\)/);
 });
 
-test('워크플로가 main 에 push 하지 않는다(룰셋이 막는다)', () => {
+test('워크플로는 main 이 아니라 marketing-data 브랜치에만 저장한다(main 은 룰셋이 막는다)', () => {
   for (const w of ['sns-daily-post', 'sns-reply-comments', 'sns-weekly-review', 'sns-influencer']) {
     const y = fs.readFileSync(new URL(`../../.github/workflows/${w}.yml`, import.meta.url), 'utf8');
-    assert.doesNotMatch(y, /git push/, `${w} 가 다시 push 한다`);
-    assert.doesNotMatch(y, /contents:\s*write/, `${w} 에 쓰기 권한이 남아 있다`);
+    for (const m of y.matchAll(/git push[^\n]*/g)) {
+      assert.doesNotMatch(m[0], /\bmain\b/, `${w} 가 main 에 push 한다`);
+      assert.match(m[0], /\$BR|marketing-data/, `${w} 의 push 대상이 marketing-data 가 아니다`);
+    }
+    if (/git push/.test(y)) assert.match(y, /BR="marketing-data"/, `${w} 의 저장 브랜치가 marketing-data 가 아니다`);
   }
 });

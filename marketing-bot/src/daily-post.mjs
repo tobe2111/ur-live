@@ -2,7 +2,7 @@
 // 트랙 비율: data/mix-state.json(주간 자동조정, 범위 내) → 없으면 data/content-mix.json 고정 60/25/15.
 import { pickTrackByWeights } from './attribution.mjs';
 import { vetPost } from './vet.mjs';
-import { DRY, log, readJson, claude, humanize, HUMAN_STYLE, threadsText, threadsPublish, igPublish, fbPagePost, utmLink, productImage, kstNow, PARTNER_FACTS , opsAlert } from './lib.mjs';
+import { DRY, log, readJson, writeJson, claude, humanize, HUMAN_STYLE, threadsText, threadsPublish, igPublish, fbPagePost, utmLink, productImage, kstNow, PARTNER_FACTS , opsAlert } from './lib.mjs';
 import { myRecentPosts, postedOn } from './live.mjs';
 
 const schedule = readJson('data/schedule.json', {});
@@ -185,8 +185,10 @@ async function main() {
     }
   } else log(`Instagram: 건너뜀 — ${skipReason('instagram')}`);
 
-  // 기록은 로그로만 남긴다 — 다음 회차는 Threads·인스타에 직접 물어 판정한다(저장 파일 없음)
+  // 기록은 marketing-data 브랜치의 data/posts.json 에 남긴다(주간 리뷰가 트랙·슬롯을 복원하는 로그).
+  // ⚠️ 중복 판정에는 쓰지 않는다 — 다음 회차는 Threads·인스타에 직접 물어 판정한다(저장 실패와 무관).
   log('이번 회차 결과:', JSON.stringify(runLog.map(({ text, ...r }) => r)));
+  if (!DRY && runLog.length) writeJson('data/posts.json', [...readJson('data/posts.json', []), ...runLog].slice(-300));
   if (threadsError) throw new Error(`Threads 게시 실패: ${threadsError.message}`);
   if (igError) throw new Error(`Instagram 게시 실패: ${igError.message}`);
   if (qualityError) throw qualityError; // 기록은 저장했다. 다음 회차가 같은 날 다시 시도한다(skipped 는 미게시로 센다)

@@ -14,7 +14,7 @@ on:
         description: 'DRY_RUN (1=실제 게시/발송 안 함)'
         default: '0'
 permissions:
-  contents: read
+  contents: write
   issues: write
   id-token: write   # 실패 시 대표 카톡 알림 — GitHub OIDC 로 서버에 신원 증명(공유 비밀 0)
 concurrency:
@@ -32,6 +32,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Load bot data from marketing-data branch
+        # 봇 데이터(게시 로그/중복 방지)는 main 이 아닌 marketing-data 브랜치에 저장됨 (main 은 보호 브랜치)
+        run: |
+          if git fetch --depth=1 origin marketing-data 2>/dev/null; then
+            git checkout FETCH_HEAD -- data/ 2>/dev/null && echo "loaded data/ from marketing-data" || echo "::warning::marketing-data has no marketing-bot/data yet"
+          else
+            echo "::warning::marketing-data branch not found; using data/ from main"
+          fi
+          git reset -q -- data/ || true
       - name: Run
         env:
           DRY_RUN: ${{ inputs.dry_run || '0' }}
@@ -41,6 +50,30 @@ jobs:
           META_FB_PAGE_TOKEN: ${{ secrets.META_FB_PAGE_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node src/daily-post.mjs
+      - name: Commit data
+        if: always()
+        continue-on-error: true
+        run: |
+          git config user.name "urdeal-marketing-bot"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [ -z "$(git status --porcelain -- data/)" ]; then echo "no data changes"; exit 0; fi
+          BR="marketing-data"
+          SNAP="$(mktemp -d)"; cp -a data/. "$SNAP/"
+          for i in 1 2 3 4 5; do
+            if git fetch --depth=1 origin "$BR" 2>/dev/null; then
+              git reset -q --hard FETCH_HEAD
+            else
+              # 브랜치가 없으면 data 만 담은 orphan 브랜치로 생성
+              git checkout -q --orphan "tmp-$BR-$i" && git rm -rq --cached .. >/dev/null 2>&1 || true
+            fi
+            rm -rf data && mkdir -p data && cp -a "$SNAP/." data/
+            git add data/
+            if git diff --cached --quiet; then echo "already up to date"; exit 0; fi
+            git commit -q -m "chore(marketing-bot): update data [skip ci]"
+            if git push origin "HEAD:refs/heads/$BR"; then exit 0; fi
+            echo "push failed (attempt $i), retrying"; sleep $((i*5))
+          done
+          echo "::warning::could not push bot data to $BR after 5 attempts (non-fatal)"; exit 0
       - name: Kakao failure alert
         if: failure()
         env:
