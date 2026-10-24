@@ -71,8 +71,14 @@ export async function ensureAgencyConsoleTables(DB: D1Database): Promise<void> {
       ended_at TEXT,
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`),
-    // 한 매장은 한 번에 한 에이전시에만 맡긴다(요청 중 포함) — 몫·책임이 둘로 갈리지 않게.
-    DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_agency_store_links_open ON agency_store_links(seller_id) WHERE status IN ('pending','active')"),
+    // 🤝 2026-10-24 대표 확정 — **한 매장이 여러 에이전시와 함께 한다**(사장님 직접 관리와도 동시에).
+    //   대표: *"한 매장이 여러 에이전시와 함께 할 수 있는거지. 성과나 이런건 분리가 철저히 되고."*
+    //   그래서 열린 맡김은 (매장, 에이전시) 쌍마다 하나다. 몫이 섞이지 않는 것은 인덱스가 아니라
+    //   `agency_products`(이용권마다 맡은 에이전시) + 에이전시 좌석의 기본 차단(`agency-product-scope`)이 지킨다.
+    //   옛 인덱스(매장당 하나)는 지운다 — 남아 있으면 두 번째 에이전시가 **에러 없이** 막힌다.
+    DB.prepare('DROP INDEX IF EXISTS idx_agency_store_links_open'),
+    DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_agency_store_links_open_pair ON agency_store_links(seller_id, agency_id) WHERE status IN ('pending','active')"),
+    DB.prepare('CREATE INDEX IF NOT EXISTS idx_agency_store_links_store ON agency_store_links(seller_id, status)'),
     DB.prepare('CREATE INDEX IF NOT EXISTS idx_agency_store_links_agency ON agency_store_links(agency_id, status)'),
     // 🔗 에이전시가 사장님께 보내는 **매장 초대 링크** — 사장님이 누르고 [맡기기] 한 번이면 바로 운영 시작.
     //   ⚠️ 토큰을 해시하지 않고 그대로 둔다: 이 링크는 들고 있는 사람에게 아무 권한도 주지 않는다(자기 매장을
@@ -113,6 +119,17 @@ export async function ensureAgencyConsoleTables(DB: D1Database): Promise<void> {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`),
     DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_agency_staff_stores_pair ON agency_staff_stores(staff_id, seller_id)'),
+    // 🎟️ 2026-10-24 — **이용권마다 맡은 에이전시**(성과 분리의 단위). 행이 없으면 사장님 이용권이다.
+    //   에이전시 좌석으로 만든 이용권에 찍히고, 그 에이전시는 이 표에 있는 자기 이용권만 보고 고친다.
+    //   product_id 가 PK 라 한 이용권은 한 에이전시에만 속한다(몫이 둘로 갈리지 않는다).
+    DB.prepare(`CREATE TABLE IF NOT EXISTS agency_products (
+      product_id INTEGER PRIMARY KEY,
+      seller_id INTEGER NOT NULL,
+      agency_id INTEGER NOT NULL,
+      created_by_staff_id INTEGER,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`),
+    DB.prepare('CREATE INDEX IF NOT EXISTS idx_agency_products_agency ON agency_products(agency_id, seller_id)'),
   ])
   // 🏛️ 사업자 진위확인 결과(국세청 상태 문자열 · 'unverified'). 이미 만들어진 테이블에 붙이는 열이라 ALTER 로 —
   //   batch 안에 두면 '이미 있음' 오류가 위 생성문까지 되돌린다. 실패(=이미 있음)는 조용히 넘어간다.

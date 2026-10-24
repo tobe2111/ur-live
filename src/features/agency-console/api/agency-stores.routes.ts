@@ -67,7 +67,7 @@ agencyStoresRoutes.get('/stores', requireAgencyStaff(), async (c) => {
       business_name: string | null; seller_name: string | null; username: string | null; store_status: string | null
     }>()
     // 🔢 판 머리의 오늘 숫자 — 운영 중인 매장만 센다(맡김 요청 단계는 아직 우리 매장이 아니다).
-    const today = await agencyStoreToday(c.env.DB, (results || []).filter((r) => r.status === 'active').map((r) => r.seller_id))
+    const today = await agencyStoreToday(c.env.DB, (results || []).filter((r) => r.status === 'active').map((r) => r.seller_id), me.agencyId)
     return c.json({
       success: true,
       stores: (results || []).map((r) => ({

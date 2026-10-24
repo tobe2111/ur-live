@@ -2571,7 +2571,8 @@
       "brandWideTitleOff": "Válido en otras sucursales",
       "brandWideNote": "Se canjea con el código o escaneo de esa sucursal. La liquidación queda en esta sucursal.",
       "brandWideTitleAll": "También se puede usar en {{count}} sucursales de la marca",
-      "brandWideNoteCross": "Si se usa en una sucursal del mismo dueño, se liquida aquí; si se usa en la de otro dueño, se liquida allí. Los cupones con comisión de referido solo se usan en sucursales del mismo dueño."
+      "brandWideNoteCross": "Si se usa en una sucursal del mismo dueño, se liquida aquí; si se usa en la de otro dueño, se liquida allí. Los cupones con comisión de referido solo se usan en sucursales del mismo dueño.",
+      "agencyMine": "Bonos que gestionamos"
     },
     "ordersM3": {
       "today": "Hoy",

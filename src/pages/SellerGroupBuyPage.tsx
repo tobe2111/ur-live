@@ -20,6 +20,7 @@ import { GB_ENGINE_ENABLED } from '@/shared/feature-flags'
 import { formatNumber, formatWon, safeNum } from '@/utils/format'
 import { useSellerStats, useSellerVouchers, useSellerDeletedVouchers, useSellerWithdrawable, monthRevenue } from './seller-page/useSellerHome'
 import VoucherRow, { type VoucherStat } from './seller-group-buy/VoucherRow'
+import { isAgencySeatToken } from '@/shared/agency-seat-token'
 import GbProposalsPanel from './seller-group-buy/GbProposalsPanel'
 
 type Seg = 'on' | 'off' | 'ended' | 'deleted'
@@ -29,6 +30,9 @@ export default function SellerGroupBuyPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const headers = { Authorization: `Bearer ${localStorage.getItem('seller_token')}` }
+  // 🤝 2026-10-24 에이전시 좌석은 **자기 이용권만** 본다 — 매장 전체 숫자(이번 달 매출·정산 가능·사용 로그)는 서버가 막으므로
+  //   부르지도 그리지도 않는다(막힌 응답을 0 으로 그리면 '이번 달 0원' 이라는 거짓말이 된다).
+  const agencySeat = isAgencySeatToken(localStorage.getItem('seller_token'))
 
   const vouchersQ = useSellerVouchers()
   // 🗑️ 2026-09-15: 같은 queryKey 를 select 만 달리해 읽는다 — 요청·캐시는 한 벌이다.
@@ -38,10 +42,10 @@ export default function SellerGroupBuyPage() {
   const products = vouchersQ.data ?? []
   const productIds = products.map((p) => p.id).join(',')
   const statsByIdQ = useApiQuery<Record<number, VoucherStat>>(['seller', 'gb-voucher-stats', productIds], '/api/group-buy/seller-voucher-stats', {
-    params: { product_ids: productIds }, headers, enabled: products.length > 0,
+    params: { product_ids: productIds }, headers, enabled: products.length > 0 && !agencySeat,
     select: (r: any) => { const map: Record<number, VoucherStat> = {}; if (r?.success) for (const s of (r.data || [])) map[s.product_id] = s; return map },
   })
-  const voucherLogsQ = useApiQuery<VoucherLogSummary | null>(['seller', 'gb-voucher-logs'], '/api/group-buy/voucher-logs', { headers, select: (r: any) => (r?.data?.summary ?? null) })
+  const voucherLogsQ = useApiQuery<VoucherLogSummary | null>(['seller', 'gb-voucher-logs'], '/api/group-buy/voucher-logs', { headers, enabled: !agencySeat, select: (r: any) => (r?.data?.summary ?? null) })
   const commissionQ = useApiQuery<number>(['seller', 'gb-commission-rate'], '/api/group-buy/commission-rate', { select: (r: any) => (r?.rate ? Number(r.rate) : 0.05) })
   const commissionRate = commissionQ.data ?? 0.05
   const logs = voucherLogsQ.data
@@ -74,6 +78,12 @@ export default function SellerGroupBuyPage() {
       <div className="mx-auto max-w-5xl space-y-4">
         {/* ── 이번 달 한 줄 — 숫자가 주인공. PC 는 오른쪽에 등록 버튼. ── */}
         <div className="flex items-end justify-between gap-4">
+          {agencySeat ? (
+            <div className="min-w-0">
+              <p className="text-[12.5px] font-semibold text-gray-400">{t('seller.vouchers.agencyMine', { defaultValue: '우리가 맡은 이용권' })}</p>
+              <p className="text-[28px] font-extrabold leading-tight tracking-tight text-gray-900 lg:text-[32px]">{t('seller.vouchers.soldTotal', { defaultValue: '판매 {{count}}건', count: totalSold })}</p>
+            </div>
+          ) : (
           <div className="min-w-0">
             <p className="text-[12.5px] font-semibold text-gray-400">{t('seller.vouchers.thisMonth', { defaultValue: '이번 달' })}</p>
             <p className="text-[28px] font-extrabold leading-tight tracking-tight text-gray-900 lg:text-[32px]">{formatWon(month)}</p>
@@ -81,6 +91,7 @@ export default function SellerGroupBuyPage() {
               {t('seller.vouchers.soldTotal', { defaultValue: '판매 {{count}}건', count: totalSold })} · {t('seller.home.settleAvail', { defaultValue: '정산 가능' })} <b className="text-gray-900">{formatWon(balanceQ.data ?? 0)}</b>
             </p>
           </div>
+          )}
           {registerBtn('ur-btn ur-btn-md ur-btn-primary hidden md:inline-flex')}
         </div>
 
@@ -106,7 +117,7 @@ export default function SellerGroupBuyPage() {
         )}
 
         {/* 🎟️ 2026-07-06 (§2-B): 공구 제안 인박스 — 게이트 OFF */}
-        {GB_ENGINE_ENABLED && products.length > 0 && (
+        {GB_ENGINE_ENABLED && !agencySeat && products.length > 0 && (
           <GbProposalsPanel products={products.map((p) => ({ id: p.id, name: p.name, price: safeNum(p.price) }))} headers={headers} />
         )}
 

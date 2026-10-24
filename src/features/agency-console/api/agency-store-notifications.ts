@@ -21,6 +21,8 @@ type App = Hono<{ Bindings: Bindings; Variables: Vars }>
 type Ctx = Context<{ Bindings: Bindings; Variables: Vars }>
 
 export const AGENCY_NOTIF_MAX_STORES = 60
+/** 🤝 한 매장 · 여러 에이전시(2026-10-24) — 매장 단위 알림함을 에이전시에게 보이지 않는다. */
+export const AGENCY_SCOPED_NOTIFICATIONS = true
 
 /** 이 직원이 알림을 볼 수 있는 매장 — `/stores` 와 같은 판정(우리 에이전시 · active · 배정). */
 export async function agencyNotifStores(c: Ctx): Promise<{ sellerId: number; name: string }[]> {
@@ -41,6 +43,10 @@ export async function agencyNotifStores(c: Ctx): Promise<{ sellerId: number; nam
 export function registerAgencyNotificationRoutes(app: App) {
   app.get('/notifications', requireAgencyStaff(), async (c) => {
     try {
+      // 🤝 2026-10-24 — 매장 알림함은 **매장 단위**라 그 안엔 사장님·다른 에이전시의 판매가 섞여 있다(누구 이용권인지
+      //   행에 없다). 한 매장 · 여러 에이전시 · 자기 것만(대표 확정)이 된 뒤로는 여기서 보여 줄 수 없다 → 비운다.
+      //   에이전시 몫 알림은 다음 단계(판매 시 recipient_type='agency' 로 따로 쌓기 — 결제 확정 경로라 단독 작업).
+      if (AGENCY_SCOPED_NOTIFICATIONS) return c.json({ success: true, data: { items: [], unread: 0, scoped: true } })
       const stores = await agencyNotifStores(c)
       if (stores.length === 0) return c.json({ success: true, data: { items: [], unread: 0 } })
       const ids = stores.map((s) => String(s.sellerId))
@@ -74,6 +80,8 @@ export function registerAgencyNotificationRoutes(app: App) {
 
   app.post('/notifications/read', requireAgencyStaff(), async (c) => {
     try {
+      // 🤝 위와 같은 이유 — 에이전시가 읽으면 **사장님 알림까지** 읽음이 되던 길도 닫는다.
+      if (AGENCY_SCOPED_NOTIFICATIONS) return c.json({ success: true, updated: 0 })
       const stores = await agencyNotifStores(c)
       if (stores.length === 0) return c.json({ success: true, updated: 0 })
       const ids = stores.map((s) => String(s.sellerId))

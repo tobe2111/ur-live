@@ -79,24 +79,26 @@ async function serverSetup(scope: 'all' | 'assigned') {
   return { db, call: (p: string, init?: RequestInit) => app.request(p, init, env) }
 }
 
-describe('① 범위', () => {
-  it('전체 매장 직원 — 운영 중인 우리 매장 알림만(요청 단계·남의 에이전시 제외)', async () => {
-    const { call } = await serverSetup('all')
-    const j = await (await call('/notifications')).json() as { data: { items: { id: number }[]; unread: number } }
-    expect(j.data.items.map((n) => n.id)).toEqual([2, 1])
-    expect(j.data.unread).toBe(2)
+describe('① 범위 — 🤝 2026-10-24 매장 알림함은 에이전시에게 안 보인다(사장님·다른 에이전시 판매가 섞여 있다)', () => {
+  it('어느 직원이든 매장 알림은 비어 있다 — 표시(scoped)로 "없음" 과 구분한다', async () => {
+    for (const scope of ['all', 'assigned'] as const) {
+      const { call } = await serverSetup(scope)
+      const j = await (await call('/notifications')).json() as { data: { items: { id: number }[]; unread: number; scoped?: boolean } }
+      expect(j.data.items).toEqual([])
+      expect(j.data.unread).toBe(0)
+      expect(j.data.scoped).toBe(true)
+    }
   })
-  it('🔴 배정된 매장만 맡은 직원 — 배정 밖 매장 알림은 안 보인다', async () => {
-    const { call } = await serverSetup('assigned')
-    const j = await (await call('/notifications')).json() as { data: { items: { id: number }[] } }
-    expect(j.data.items.map((n) => n.id)).toEqual([1])
-  })
-  it('읽음 처리도 그 범위 안에서만', async () => {
-    const { db, call } = await serverSetup('assigned')
-    const r = await call('/notifications/read', { method: 'POST', body: JSON.stringify({ ids: [1, 2, 4] }), headers: { 'content-type': 'application/json' } })
-    expect((await r.json() as { updated: number }).updated).toBe(1)
+  it('🔴 읽음 처리로 사장님 알림을 읽음으로 바꾸지 못한다', async () => {
+    const { db, call } = await serverSetup('all')
+    const r = await call('/notifications/read', { method: 'POST', body: JSON.stringify({ all: true }), headers: { 'content-type': 'application/json' } })
+    expect((await r.json() as { updated: number }).updated).toBe(0)
     const unread = (db.prepare('SELECT id FROM dashboard_notifications WHERE is_read = 0 ORDER BY id').all() as { id: number }[]).map((x) => x.id)
-    expect(unread).toEqual([2, 3, 4])
+    expect(unread).toEqual([1, 2, 3, 4])
+  })
+  it('스위치는 한 곳 — 켜져 있다', async () => {
+    const m = await import('@/features/agency-console/api/agency-store-notifications')
+    expect(m.AGENCY_SCOPED_NOTIFICATIONS).toBe(true)
   })
 })
 
@@ -110,7 +112,8 @@ describe('② 콘솔에서 누르면', () => {
     ],
   }
   const NOTIFS = { success: true, data: { unread: 1, items: [
-    { id: 2, sellerId: 402, storeName: '연남', title: '연남 결제 확정', message: null, link: '/seller/orders', isRead: false, createdAt: '2026-10-12 02:00:00' },
+    // 🤝 2026-10-24 — 에이전시가 여는 화면은 이용권뿐이라 알림 링크도 그쪽으로(매장 전체 화면 주소는 판이 무시한다).
+    { id: 2, sellerId: 402, storeName: '연남', title: '연남 이용권 판매', message: null, link: '/seller/group-buy', isRead: false, createdAt: '2026-10-12 02:00:00' },
   ] } }
   beforeEach(() => {
     localStorage.clear()
@@ -131,8 +134,8 @@ describe('② 콘솔에서 누르면', () => {
   it('좌석이 없으면 그 클릭에서 받고, 그 매장을 고르고, 화면을 시트로 연다', async () => {
     await mount()
     fireEvent.click(await screen.findByText('새 알림 1'))
-    fireEvent.click(await screen.findByText('연남 결제 확정'))
-    await waitFor(() => expect(screen.getByTestId('tool-sheet').textContent).toBe('/seller/orders'))
+    fireEvent.click(await screen.findByText('연남 이용권 판매'))
+    await waitFor(() => expect(screen.getByTestId('tool-sheet').textContent).toBe('/seller/group-buy'))
     expect(enterAgencyStore).toHaveBeenCalledWith(402, '연남')
     expect(localStorage.getItem('agency_console_store')).toBe('402')
     expect(agencyRequest).toHaveBeenCalledWith('/notifications/read', { method: 'POST', body: { ids: [2] } })
@@ -141,7 +144,7 @@ describe('② 콘솔에서 누르면', () => {
     localStorage.setItem('seller_token', jwt({ seller_id: 402, agency_staff_id: 7 }))
     await mount()
     fireEvent.click(await screen.findByText('새 알림 1'))
-    fireEvent.click(await screen.findByText('연남 결제 확정'))
+    fireEvent.click(await screen.findByText('연남 이용권 판매'))
     await waitFor(() => expect(screen.getByTestId('tool-sheet')).toBeTruthy())
     expect(enterAgencyStore).not.toHaveBeenCalled()
   })
