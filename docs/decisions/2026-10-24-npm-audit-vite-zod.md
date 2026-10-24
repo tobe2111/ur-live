@@ -31,3 +31,4 @@
 "1번 승인할게." (2026-10-24)
 
 ## 반영 커밋
+main 에 다른 세션이 같은 두 면제(대표 2026-10-21·10-24 AskUserQuestion 승인)를 먼저 넣어, PR #1981 은 머지 때 main 쪽 허용목록을 그대로 썼다. 패치 3종(dompurify·follow-redirects·undici)도 main 과 같다.

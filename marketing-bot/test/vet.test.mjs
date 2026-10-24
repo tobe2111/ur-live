@@ -45,7 +45,7 @@ test('상품 가격이 없는 소비자 글에서 가격을 지어내면 막는�
 import fs from 'node:fs';
 test('게시 흐름이 검수를 거친다(두 플랫폼 모두, 게시 호출보다 먼저)', () => {
   const src = fs.readFileSync(new URL('../src/daily-post.mjs', import.meta.url), 'utf8');
-  const th = src.indexOf("writeVetted(`${info}\\nThreads"), thPost = src.indexOf("threads('POST', `${THREADS_USER_ID}/threads`");
+  const th = src.indexOf("writeVetted(`${info}\\nThreads"), thPost = src.indexOf("threadsPublish({ media_type: 'TEXT', text })"); // 게시 호출은 lib.threadsPublish 로 옮겨갔다
   const ig = src.indexOf("writeVetted(`${info}\\n인스타그램"), igPost = src.indexOf('igPublish(media');
   assert.ok(th > 0 && thPost > th, 'Threads 는 검수 뒤에 게시');
   assert.ok(ig > 0 && igPost > ig, 'Instagram 은 검수 뒤에 게시');
