@@ -145,6 +145,7 @@ import { partnershipPublicRoutes, adminPartnershipRoutes } from './routes/partne
 import { platformMetricsRoutes } from '../features/admin/api/platform-metrics.routes';
 import { alimtalkRoutes } from '../features/alimtalk/api/alimtalk.routes';
 import { restaurantSuggestionsRoutes } from '../features/restaurant-suggestions/api/restaurant-suggestions.routes';
+import { homeServiceRoutes } from '../features/home-service/api/home-service.routes'; import { homeServiceProRoutes } from '../features/home-service/api/home-service-pro.routes'; import { homeServiceAdminRoutes } from '../features/home-service/api/home-service-admin.routes'; // 🏠 생활 견적(2026-10-24)
 // 🥗 2026-07-15 워커 다이어트 3차(대표 AskUserQuestion 4항목 명시 승인): 라이브커머스 영구중단 잔재 라우트 분리 —
 //   donations(라이브 후원·소비자 미호출)·youtube(라이브 유튜브 연동)·multi-platform(멀티스트림)·tiktok(아래). 도달 0. 재도입=원복.
 // import { donationsRoutes } from '../features/donations/api/donations.routes';
@@ -1798,7 +1799,7 @@ adminApp.route('/urshorts', adminUrshortsRoutes);
 // Feature flags / kill-switch (graceful degradation for traffic spikes)
 adminApp.route('/flags', adminFlagsRoutes);
 // Blog admin — mounted INSIDE adminApp (requireAdmin + IP whitelist + audit log)
-adminApp.route('/blog', adminBlogRoutes);
+adminApp.route('/blog', adminBlogRoutes); adminApp.route('/home-service', homeServiceAdminRoutes); // 🧾 생활 견적 대리 접수·직영 견적
 adminApp.route('/instagram-autodm', instagramAutoDmAdminRoutes); // 💬 인스타 자동 DM 설정·규칙·발송 기록
 // 🥗 2026-07-15 워커 다이어트(대표 승인): 소셜 자동화 라우트 마운트 분리(위 import 참조). 게이트 OFF·미사용이라
 //   /api/admin/social/* 는 다이어트 기간 404 — 라이브 영향 0. 재도입=이 줄+import+크론 원복.
@@ -1876,6 +1877,7 @@ app.use('/api/seller/alimtalk/send', rateLimit({ action: 'alimtalk_send', max: 6
 app.route('/api/seller/alimtalk', alimtalkRoutes);
 // 🛡️ 2026-04-28: restaurant-map 옵션 B — 사용자 수요 신호 (셀러 영입/알림)
 app.route('/api/restaurant-suggestions', restaurantSuggestionsRoutes);
+app.route('/api/home-service/pro', homeServiceProRoutes); app.route('/api/home-service', homeServiceRoutes);
 
 // ── 후원(도네이션) ── 🥗 2026-07-15 워커 다이어트 3차(대표 승인): 라이브 후원(소비자 미호출·라이브 영구중단) 마운트 분리. 재도입=원복.
 // app.route('/api/donations', donationsRoutes);
