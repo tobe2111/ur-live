@@ -241,7 +241,11 @@ app.get('/stats', async (c) => {
   const cmRow = await adsLeadsDb(c.env).prepare("SELECT value FROM platform_settings WHERE key = 'ads_commerce_stats'").first<{ value: string }>().catch(() => null)
   let commerceRun: Record<string, unknown> | null = null; try { commerceRun = cmRow?.value ? JSON.parse(cmRow.value) : null } catch { commerceRun = null }
   // 원본 첫 항목에서 필드명 목록 + 이메일 형태 값 존재여부를 뽑아 UI 에 노출(추측 대신 실제 확인).
-  let commerceProbe: { keys?: string[]; hasEmail?: boolean; emailField?: string } | undefined
+  let commerceProbe: {
+    keys?: string[]; hasEmail?: boolean; emailField?: string
+    /** 🏷️ 엔드포인트별 취급품목 탐침 — **코드표가 필요한지**를 라이브 응답으로 답한다(근거: commerce-goods-probe.ts). */
+    goods?: Record<string, { field?: string; value?: string; kind: string }>
+  } | undefined
   const sample = (commerceRun?.diag as Record<string, unknown> | undefined)?.sample as Record<string, unknown> | undefined
   if (sample && typeof sample === 'object') {
     const keys = Object.keys(sample).slice(0, 40)
@@ -249,7 +253,18 @@ app.get('/stats', async (c) => {
     //   (대표자 이메일 rprsvEmladr 은 선택입력이라 첫 레코드 값이 비어도 필드는 존재 — 키로 판정.)
     const emailField = keys.find(k => /eml|email|mail/i.test(k))
     const hasEmailVal = Object.values(sample).some(v => /[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/i.test(String(v ?? '')))
-    commerceProbe = { keys, hasEmail: !!emailField || hasEmailVal, emailField }
+    // 🏷️ 업종 분류가 비어 있는 원인을 화면에서 바로 본다 — 취급품목이 **어느 엔드포인트에** 오고
+    //   값이 **숫자 코드냐 글자냐**. `code` 면 코드표가 필요하고 `text` 면 그 필드를 쓰면 된다.
+    //   ⚠️ `by_service` 가 없으면(옛 스냅샷) 공유 `sample` 로라도 재 본다 — 그래야 '아직 안 돌았다'와
+    //      '그 필드가 없다'가 구분된다(둘을 섞으면 다음 세션이 또 코드표를 찾아 나선다).
+    const { probeGoodsField } = await import('./commerce-goods-probe')
+    const bySvc = (commerceRun?.diag as Record<string, unknown> | undefined)?.by_service as
+      Record<string, { sample?: unknown }> | undefined
+    const goods: Record<string, { field?: string; value?: string; kind: string }> = {}
+    for (const [name, slot] of Object.entries(bySvc || { shared: { sample } })) {
+      goods[name] = probeGoodsField(slot?.sample)
+    }
+    commerceProbe = { keys, hasEmail: !!emailField || hasEmailVal, emailField, goods }
   }
   // 🏢 공정위 가맹(프랜차이즈) 수집 상태(ads_franchise_stats).
   const frRow = await adsLeadsDb(c.env).prepare("SELECT value FROM platform_settings WHERE key = 'ads_franchise_stats'").first<{ value: string }>().catch(() => null)
