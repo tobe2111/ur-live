@@ -1,6 +1,6 @@
 # 새 취약점 2건(vite·zod)을 허용목록에 올려 PR 차단을 풀까?
 
-상태: decided
+상태: approved
 등급: C
 역할: dev
 올린 날: 2026-10-24
