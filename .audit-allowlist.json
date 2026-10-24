@@ -24,6 +24,14 @@
       "accepted_by": "대표(urteam.corp) 승인 — 2026-10-21 AskUserQuestion \"허용목록 등재 (추천)\"",
       "date": "2026-10-21",
       "review": "vite 6+ 업그레이드 시 GHSA-fx2h-pf6j-xcff 와 함께 제거."
+    },
+    {
+      "ghsa": "GHSA-mrhx-c7xc-m3w5",
+      "pkg": "zod",
+      "reason": "크기 제한이 걸린 큰 컬렉션을 검증할 때 메모리 소진(DoS). 워커가 zod 로 요청 본문을 검증하므로 도달 자체는 가능하나, 본문은 zod 이전에 JSON.parse 가 먼저 전부 메모리에 올리므로 zod 가 더하는 위험은 미미하고 피해 범위는 그 요청의 isolate 하나다. zod 3.x 패치 없음(수정 4.6.6+) — 메이저 이행이 결제 잠금 파일(payment.routes.ts) 포함 7파일에 닿아 별건으로 분리.",
+      "accepted_by": "대표(urteam.corp) 승인 — 2026-10-24 AskUserQuestion \"허용목록 임시 등재 (추천)\"",
+      "date": "2026-10-24",
+      "review": "임시 — zod 4 이행(결제 잠금 파일 변경은 별도 승인) 시 제거."
     }
   ]
 }
