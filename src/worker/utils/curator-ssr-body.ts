@@ -74,11 +74,11 @@ function escText(s: string): string {
  *    글자 하나까지 같아야 한다.** 갈리면 마운트 때 그 자리가 튄다 — 테스트가 소스를 읽어 대조한다.
  */
 export const CURATOR_FS_CLASS = {
-  root: 'min-h-[100dvh] bg-surface text-gray-900 dark:text-white pb-28',
+  root: 'min-h-[100dvh] bg-surface dark:bg-warm text-gray-900 dark:text-white pb-28',
   pcGrid: 'ur-ushop-pc',
   side: 'ur-ushop-side',
   main: 'ur-ushop-main',
-  header: 'bg-surface',
+  header: 'bg-surface dark:bg-warm',
   headerInner: 'max-w-3xl mx-auto',
   brandBar: 'lg:hidden flex items-center px-4 pt-3',
   brandLink: 'active:opacity-70',
