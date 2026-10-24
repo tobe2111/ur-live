@@ -20,18 +20,18 @@
     {
       "ghsa": "GHSA-587h-7wmj-h5pm",
       "pkg": "vite",
-      "reason": "vite 안 launch-editor 의 Windows 경로 검사 우회. 개발 서버 전용 — 배포 산출물(_worker.js·dist)에 포함되지 않아 production 도달 불가. 패치는 vite 6.4.4+/8.1.6+ 뿐(우리는 5.x, 메이저 2단계). 같은 이유의 GHSA-fx2h 가 이미 등재돼 있다.",
-      "accepted_by": "대표(urteam.corp) 승인 — 2026-10-24 \"응 모두 반영해줘\" (결재 docs/decisions/2026-10-24-npm-audit-vite-zod.md 기본안 1번). 같은 커밋 직전에 고칠 수 있는 5건(dompurify·follow-redirects·undici)은 패치 버전으로 실제 상향.",
-      "date": "2026-10-24",
-      "review": "vite 6+ 이행 시 제거."
+      "reason": "vite 개발 서버의 launch-editor `fs.existsSync()` 존재 확인 우회(Windows 전용). 빌드 도구 전용 — production 런타임·배포 산출물(dist/_worker.js)에 vite 미포함이라 도달 불가. 같은 사유로 GHSA-fx2h-pf6j-xcff 등재(2026-06-22). vite 5 계열엔 패치가 없고(수정은 6.4.4+/8.3.5) 메이저 상향은 기술부채 정책상 별건.",
+      "accepted_by": "대표(urteam.corp) 승인 — 2026-10-21 AskUserQuestion \"허용목록 등재 (추천)\"",
+      "date": "2026-10-21",
+      "review": "vite 6+ 업그레이드 시 GHSA-fx2h-pf6j-xcff 와 함께 제거."
     },
     {
       "ghsa": "GHSA-mrhx-c7xc-m3w5",
       "pkg": "zod",
-      "reason": "길이 제한(.max) 걸린 큰 배열 검증 시 메모리 소진(DoS). 패치는 zod 4.6.6+ 뿐(우리는 3.25.76, 3.x 패치 없음). 서버 zod 사용은 로그인·주문·결제 라우트이고 주문 items 배열엔 .max 가 없어 해당 모양이 아니다. zod 4 이행은 결제 잠금 파일 import 변경이 필요해 별건.",
-      "accepted_by": "대표(urteam.corp) 승인 — 2026-10-24 \"응 모두 반영해줘\" (결재 docs/decisions/2026-10-24-npm-audit-vite-zod.md 기본안 1번). 같은 커밋 직전에 고칠 수 있는 5건(dompurify·follow-redirects·undici)은 패치 버전으로 실제 상향.",
+      "reason": "크기 제한이 걸린 큰 컬렉션을 검증할 때 메모리 소진(DoS). 워커가 zod 로 요청 본문을 검증하므로 도달 자체는 가능하나, 본문은 zod 이전에 JSON.parse 가 먼저 전부 메모리에 올리므로 zod 가 더하는 위험은 미미하고 피해 범위는 그 요청의 isolate 하나다. zod 3.x 패치 없음(수정 4.6.6+) — 메이저 이행이 결제 잠금 파일(payment.routes.ts) 포함 7파일에 닿아 별건으로 분리.",
+      "accepted_by": "대표(urteam.corp) 승인 — 2026-10-24 AskUserQuestion \"허용목록 임시 등재 (추천)\"",
       "date": "2026-10-24",
-      "review": "zod 4 이행 시 제거(별건 — 결제 잠금 파일 승인 필요)."
+      "review": "임시 — zod 4 이행(결제 잠금 파일 변경은 별도 승인) 시 제거."
     }
   ]
 }

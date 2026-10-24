@@ -190,6 +190,27 @@ export function insta(method, p, params) {
   if (!t) throw new Error('META_IG_ACCESS_TOKEN missing');
   return metaCall(IG, t, method, p, params);
 }
+// Threads 컨테이너는 생성 직후 바로 publish 하면 'Media Not Found'(code 24 / 4279009)가 난다.
+// FINISHED 까지 폴링한 뒤 publish 하고, 그래도 Media Not Found 면 잠시 후 재시도한다.
+// 게시글·댓글 답글이 같은 함수를 쓴다(params 에 reply_to_id 를 넣으면 답글).
+export async function threadsPublish(params) {
+  const c = await threads('POST', `${THREADS_USER_ID}/threads`, params);
+  for (let i = 0; i < 10 && !DRY; i++) {
+    await new Promise((res) => setTimeout(res, 3000));
+    const st = await threads('GET', c.id, { fields: 'status,error_message' }).catch(() => ({}));
+    if (st.status === 'FINISHED' || st.status === 'PUBLISHED') break;
+    if (st.status === 'ERROR' || st.status === 'EXPIRED') throw new Error(`Threads 컨테이너 ${c.id} ${st.status}: ${st.error_message || ''}`);
+  }
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await threads('POST', `${THREADS_USER_ID}/threads_publish`, { creation_id: c.id });
+    } catch (e) {
+      if (attempt >= 3 || !/4279009|Media Not Found/.test(e.message)) throw e;
+      await new Promise((res) => setTimeout(res, 10000 * attempt));
+    }
+  }
+}
+
 // urdeal.kr 는 /marketing/* 정적 파일을 서빙하지 않음(404) → Meta 가 이미지/영상을 못 받음.
 // repo 에 커밋된 public/marketing/* 를 직접 이미지 URL 로 치환:
 //  이미지 → raw.githubusercontent (image/jpeg), 영상 → jsDelivr (raw 는 mp4 를 octet-stream 으로 줌 → video/mp4 필요).
