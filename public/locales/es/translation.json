@@ -2683,7 +2683,10 @@
       "noReferral": "No se vendieron cupones por enlaces de referido en este período.",
       "unknownUser": "Usuario desconocido",
       "soldN": "{{n}} vendidos",
-      "commission": "Comisión de referido {{n}} KRW",
+      "commission": "Comisión de influencer {{n}} KRW",
+      "share": "Parte {{pct}}% · {{n}} KRW",
+      "shareUnset": "Parte sin definir",
+      "shareNote": "UrDeal solo calcula el importe a pagar. La tienda paga directamente a la agencia y la agencia emite la factura fiscal a la tienda.",
       "note": "Las ventas por referido ya están incluidas arriba. La misma venta se ve de dos formas: quién la gestionó y de qué enlace vino."
     }
   },

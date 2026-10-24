@@ -13,6 +13,7 @@ import { agencyRequest } from './agency-api'
 
 type Period = 'month' | '30d' | 'all'
 interface Summary { sold: number; revenue: number; used: number; refunded: number }
+interface Share { pct: number | null; amount: number }
 interface SaleItem { id: number; productName: string; price: number; status: string; soldAt: string; usedAt: string | null }
 
 const PERIODS: { key: Period; label: string }[] = [
@@ -24,14 +25,14 @@ const STATUS_LABEL: Record<string, string> = { unused: '사용 전', used: '사�
 
 export default function AgencySalesSheet({ sellerId, storeName, onClose }: { sellerId: number; storeName: string; onClose: () => void }) {
   const [period, setPeriod] = useState<Period>('month')
-  const [data, setData] = useState<{ summary: Summary; items: SaleItem[] } | null>(null)
+  const [data, setData] = useState<{ summary: Summary; items: SaleItem[]; share?: Share } | null>(null)
   const [error, setError] = useState('')
   const [nonce, setNonce] = useState(0)
 
   useEffect(() => {
     let alive = true
     setData(null); setError('')
-    void agencyRequest<{ data: { summary: Summary; items: SaleItem[] } }>(`/stores/${sellerId}/sales?period=${period}`).then((r) => {
+    void agencyRequest<{ data: { summary: Summary; items: SaleItem[]; share?: Share } }>(`/stores/${sellerId}/sales?period=${period}`).then((r) => {
       if (!alive) return
       if (!r.ok || !r.data.data) { setError(r.data.error || '판매 내역을 불러오지 못했어요'); return }
       setData(r.data.data)
@@ -75,6 +76,16 @@ export default function AgencySalesSheet({ sellerId, storeName, onClose }: { sel
               </div>
             ))}
           </dl>
+          <div className="mx-4 mt-4 rounded-xl bg-gray-50 px-3 py-3">
+            <p className="text-[13px] font-semibold text-gray-900">
+              {data.share?.pct == null
+                ? '우리 몫: 사장님이 아직 정하지 않았어요'
+                : `우리 몫 ${formatNumber(data.share.amount)}원 (${data.share.pct}%)`}
+            </p>
+            <p className="mt-0.5 text-[12px] leading-[1.55] text-gray-500">
+              환불 안 된 판매에만 붙어요. 돈은 매장이 직접 보내고, 세금계산서는 우리가 매장에 발행해요.
+            </p>
+          </div>
           {data.items.length === 0 ? (
             <p className="px-4 py-8 text-center text-[13px] text-gray-500">이 기간에 팔린 우리 이용권이 없어요.</p>
           ) : (

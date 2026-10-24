@@ -5,11 +5,12 @@
  *   GET  /agency-link/performance?period=month|30d|all — 사장님 직접 · 에이전시별 · 소개(유어샵 링크)별 판매
  *   GET  /agency-link/products                          — 이 매장 이용권 + 지금 맡은 에이전시
  *   POST /agency-link/assign { product_id, agency_id }  — 이용권을 에이전시에 맡기기 · 돌려받기(agency_id: null)
+ *   POST /agency-link/share  { agency_id, pct }         — 🤝 에이전시 몫 % 정하기(지금부터 판매에 적용 · 돈 이동 없음, `agency-share.ts`)
  *
  * 대표: *"사장님 화면에서 에이전시 별 성과(인플루언서 혹은 고유링크별 성과)를 따로 보여줘야지."*
  *       *"이미 있는 이용권을 특정 에이전시에도 배정하는 기능 필요해."*
  *
- * 🔐 셋 다 **현재 매장의 소유자**만(`requireOwner`). 에이전시 좌석은 서버 기본 차단(`agency-product-scope`)에도 걸린다 —
+ * 🔐 전부 **현재 매장의 소유자**만(`requireOwner`). 에이전시 좌석은 서버 기본 차단(`agency-product-scope`)에도 걸린다 —
  *   에이전시가 이용권을 자기 쪽으로 끌어오거나 남의 성과를 볼 길이 없다.
  * 💰 집계는 읽기 전용이고, 배정은 성과 귀속 기록만 바꾼다(결제·정산·원장 무접촉).
  */
@@ -19,6 +20,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import { safeError } from '@/worker/utils/safe-error'
 import { ensureAgencyConsoleTables } from '../../agency-console/api/agency-schema'
 import { assignAgencyProduct, parsePeriod, storeChannelPerformance } from '../../agency-console/api/channel-sales'
+import { setAgencyShare, validateSharePct } from '../../agency-console/api/agency-share'
 
 type Ctx = Context<{ Bindings: Env }>
 type RequireOwner = (c: Ctx) => Promise<{ userId: number; sellerId: number } | Response>
@@ -92,6 +94,30 @@ export function registerAgencyPerformanceRoutes(app: Hono<{ Bindings: Env }>, re
       return c.json({ success: true, changed, data: { productId, agencyId } })
     } catch (err) {
       return safeError(c, err, '처리하지 못했어요', '[seller-agency-performance]')
+    }
+  })
+
+  // 🤝 에이전시 몫 % — 사장님만 정한다. 돈은 안 움직인다(매장이 에이전시에 직접 보낸다). 지금부터의 판매에 적용.
+  app.post('/agency-link/share', rateLimit({ action: 'seller_agency_share', max: 60, windowSec: 3600 }), async (c) => {
+    try {
+      const g = await requireOwner(c)
+      if (g instanceof Response) return g
+      const body = await c.req.json<{ agency_id?: unknown; pct?: unknown }>().catch(() => ({} as { agency_id?: unknown; pct?: unknown }))
+      const agencyId = posInt(body.agency_id)
+      if (!agencyId) return c.json({ success: false, error: '에이전시를 골라 주세요.' }, 400)
+      const v = validateSharePct(body.pct)
+      if (!v.ok) return c.json({ success: false, error: v.error }, 400)
+      const DB = c.env.DB
+      await ensureAgencyConsoleTables(DB)
+      // 이 매장과 지금 함께하는(운영 중 · 수락 기다리는) 에이전시에만.
+      const link = await DB.prepare(
+        "SELECT id FROM agency_store_links WHERE seller_id = ? AND agency_id = ? AND status IN ('pending','active') LIMIT 1",
+      ).bind(g.sellerId, agencyId).first<{ id: number }>()
+      if (!link) return c.json({ success: false, code: 'AGENCY_NOT_LINKED', error: '이 매장과 함께하는 에이전시가 아니에요.' }, 409)
+      const changed = await setAgencyShare(DB, g.sellerId, agencyId, v.pct, g.userId)
+      return c.json({ success: true, changed, data: { agencyId, pct: v.pct } })
+    } catch (err) {
+      return safeError(c, err, '에이전시 몫을 저장하지 못했어요', '[seller-agency-performance]')
     }
   })
 }

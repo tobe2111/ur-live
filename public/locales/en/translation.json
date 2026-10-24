@@ -3402,7 +3402,10 @@
       "noReferral": "No vouchers were sold via referral links in this period.",
       "unknownUser": "Unknown user",
       "soldN": "{{n}} sold",
-      "commission": "Referral fee {{n}} KRW",
+      "commission": "Influencer fee {{n}} KRW",
+      "share": "Share {{pct}}% · {{n}} KRW",
+      "shareUnset": "Share not set",
+      "shareNote": "UrDeal only calculates the amount owed. The store pays the agency directly, and the agency issues the tax invoice to the store.",
       "note": "Referral sales are already included in the rows above. The same sale is shown two ways: who managed it, and whose link it came from."
     }
   },

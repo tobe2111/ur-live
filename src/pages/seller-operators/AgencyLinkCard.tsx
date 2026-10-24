@@ -9,7 +9,8 @@
  * 목록이다: 에이전시마다 상태 · **맡은 이용권 수** · 끊기. 각 에이전시는 자기가 만든 이용권만 보고 고치고,
  * 사장님은 전부 본다(성과 = 이용권 단위). 이메일 칸은 언제나 열려 있다(한 곳 더 맡기기).
  * 이미 있는 이용권도 에이전시마다 [이용권 맡기기]로 넘기거나 돌려받는다(`AgencyAssignList`). 에이전시별 판매는
- * 매출 분석의 '누가 팔았나' 카드에서 본다.
+ * 매출 분석의 '누가 팔았나' 카드에서 본다. 에이전시마다 [몫 정하기]로 판매액의 % 를 정하면 줄 금액이 같은 카드에 계산돼
+ * 보인다(`AgencyShareEditor` — 돈은 매장이 직접 보낸다).
  *
  * ⚠️ 대시보드 = 라이트 고정(`dark:` 금지 — check-dashboard-theme).
  */
@@ -18,8 +19,9 @@ import api from '@/lib/api'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { formatKSTDate, formatKSTShort as formatKSTDateTime } from '@/utils/date'
 import AgencyAssignList from './AgencyAssignList'
+import AgencyShareEditor from './AgencyShareEditor'
 
-interface LinkState { linkId: number; agencyId: number; status: 'pending' | 'active'; agencyName: string; requestedAt: string; acceptedAt: string | null; productCount: number }
+interface LinkState { linkId: number; agencyId: number; status: 'pending' | 'active'; agencyName: string; requestedAt: string; acceptedAt: string | null; productCount: number; sharePct: number | null }
 interface Activity { id: number; label: string; at: string; agencyName: string; staff: string }
 
 export default function AgencyLinkCard() {
@@ -31,6 +33,8 @@ export default function AgencyLinkCard() {
   const [activity, setActivity] = useState<Activity[]>([])
   /** 이용권 맡기기를 펼친 에이전시(한 번에 하나). */
   const [openAssign, setOpenAssign] = useState<number | null>(null)
+  /** 🤝 몫 % 를 펼친 에이전시(한 번에 하나). */
+  const [openShare, setOpenShare] = useState<number | null>(null)
 
   const load = useCallback(async () => {
     setLoadError('')
@@ -105,8 +109,14 @@ export default function AgencyLinkCard() {
                   {link.status === 'active'
                     ? `운영 중${link.acceptedAt ? ` · ${formatKSTDate(link.acceptedAt)} 부터` : ''} · 맡은 이용권 ${link.productCount}개`
                     : '수락 기다리는 중'}
+                  {` · 몫 ${link.sharePct == null ? '미정' : `${link.sharePct}%`}`}
                 </p>
               </div>
+              <button type="button" onClick={() => setOpenShare(openShare === link.agencyId ? null : link.agencyId)}
+                aria-expanded={openShare === link.agencyId}
+                className="h-9 rounded-lg px-3 text-[13px] font-semibold text-brand-text hover:bg-gray-100">
+                {openShare === link.agencyId ? '닫기' : '몫 정하기'}
+              </button>
               {link.status === 'active' && (
                 <button type="button" onClick={() => setOpenAssign(openAssign === link.agencyId ? null : link.agencyId)}
                   aria-expanded={openAssign === link.agencyId}
@@ -118,6 +128,13 @@ export default function AgencyLinkCard() {
                 className="h-9 rounded-lg px-3 text-[13px] font-semibold text-gray-700 hover:bg-gray-100 disabled:opacity-50">
                 {link.status === 'active' ? '끊기' : '요청 취소'}
               </button>
+              {/* 🤝 에이전시 몫 %(2026-10-24 1단계) — 계산해 보여 주기만, 돈은 매장이 직접. */}
+              {openShare === link.agencyId && (
+                <div className="basis-full">
+                  <AgencyShareEditor agencyId={link.agencyId} agencyName={link.agencyName} current={link.sharePct}
+                    onSaved={() => { setOpenShare(null); load() }} />
+                </div>
+              )}
               {/* 🎟️ 이미 있는 이용권을 이 에이전시에 맡기기(2026-10-24) — 옮겨도 그 전 판매는 앞쪽 성과로 남는다. */}
               {openAssign === link.agencyId && (
                 <div className="basis-full">

@@ -17,8 +17,12 @@
  * 소개 판매 = 그 장이 유어샵 링크를 거쳐 팔렸는가(`ushop_sales` — 커미션과 무관하게 남는 기록). 소개 판매는
  * 위의 직접·에이전시 판매에 **이미 포함**돼 있다(같은 판매를 두 갈래로 본다 — 화면이 그렇게 말한다).
  *
+ * 🤝 에이전시 몫(1단계) — 사장님이 정한 % 로 '줄 금액'을 같은 기준으로 계산한다(`agency-share.ts`). 보여 주기만 한다.
+ *
  * 💰 읽기 전용 집계 + 배정 기록. 돈(결제·정산·원장·커미션)은 한 푼도 안 움직인다.
  */
+
+import { currentSharePctSql, shareSumSql } from './agency-share'
 
 export type SalesPeriod = 'month' | '30d' | 'all'
 
@@ -66,6 +70,9 @@ export interface ChannelRow extends SalesMetrics {
   products: number
   /** 에이전시 줄 — 지금 운영 중인가(끊었어도 그동안의 성과는 남는다). */
   linkStatus: 'active' | 'pending' | 'ended' | null
+  /** 🤝 에이전시 몫 — 지금 % (정한 적 없으면 null) · 이 기간에 줄 금액(판매 시각의 % 로 계산). 사장님 줄은 null/0. */
+  sharePct: number | null
+  shareAmount: number
 }
 export interface ReferralRow extends SalesMetrics {
   userId: number
@@ -75,6 +82,8 @@ export interface ReferralRow extends SalesMetrics {
   commission: number
 }
 
+type LinkRow = { agency_id: number; status: string; name: string; share_pct: number | null }
+
 /** 사장님 화면 — 이 매장의 '누가 팔았나'. */
 export async function storeChannelPerformance(DB: D1Database, sellerId: number, period: SalesPeriod) {
   const since = periodSince(period)
@@ -82,7 +91,7 @@ export async function storeChannelPerformance(DB: D1Database, sellerId: number, 
   const sinceArgs = since ? [since] : []
 
   const byAgency = await DB.prepare(
-    `SELECT pr.agency_id AS agency_id, ${METRICS}
+    `SELECT pr.agency_id AS agency_id, ${METRICS}, ${shareSumSql('pr')}
        ${VOUCHER_BASE}
        LEFT JOIN agency_product_periods pr ON ${periodMatchSql('pr', 'v.product_id', 'p.seller_id')}
       WHERE p.seller_id = ? AND COALESCE(v.is_experience, 0) = 0 ${sinceSql}
@@ -96,9 +105,10 @@ export async function storeChannelPerformance(DB: D1Database, sellerId: number, 
     })
 
   const links = await DB.prepare(
-    `SELECT l.agency_id, l.status, a.name FROM agency_store_links l JOIN agency_accounts a ON a.id = l.agency_id
+    `SELECT l.agency_id, l.status, a.name, ${currentSharePctSql('l.seller_id', 'l.agency_id')} AS share_pct
+       FROM agency_store_links l JOIN agency_accounts a ON a.id = l.agency_id
       WHERE l.seller_id = ? ORDER BY l.id DESC LIMIT 50`,
-  ).bind(sellerId).all<{ agency_id: number; status: string; name: string }>().catch(() => ({ results: [] as { agency_id: number; status: string; name: string }[] }))
+  ).bind(sellerId).all<LinkRow>().catch(() => ({ results: [] as LinkRow[] }))
   const assigned = await DB.prepare(
     `SELECT agency_id, COUNT(*) AS n FROM agency_products WHERE seller_id = ? GROUP BY agency_id`,
   ).bind(sellerId).all<{ agency_id: number; n: number }>().catch(() => ({ results: [] as { agency_id: number; n: number }[] }))
@@ -112,12 +122,14 @@ export async function storeChannelPerformance(DB: D1Database, sellerId: number, 
   const assignedTotal = [...productsOf.values()].reduce((a, b) => a + b, 0)
 
   // 에이전시 이름·상태 — 가장 최근 링크 하나. 판매는 있는데 링크 기록이 없으면 이름만 비운다(지어내지 않는다).
-  const linkOf = new Map<number, { status: string; name: string }>()
-  for (const l of links.results || []) if (!linkOf.has(Number(l.agency_id))) linkOf.set(Number(l.agency_id), { status: l.status, name: l.name })
+  const linkOf = new Map<number, { status: string; name: string; sharePct: number | null }>()
+  for (const l of links.results || []) {
+    if (!linkOf.has(Number(l.agency_id))) linkOf.set(Number(l.agency_id), { status: l.status, name: l.name, sharePct: l.share_pct == null ? null : Number(l.share_pct) })
+  }
 
   const rows: ChannelRow[] = [{
     kind: 'owner', agencyId: null, name: '사장님 직접', ...metricsOf(sales.get(null)),
-    products: Math.max(0, (Number(total?.n) || 0) - assignedTotal), linkStatus: null,
+    products: Math.max(0, (Number(total?.n) || 0) - assignedTotal), linkStatus: null, sharePct: null, shareAmount: 0,
   }]
   const agencyIds = new Set<number>([...linkOf.keys(), ...[...sales.keys()].filter((k): k is number => k != null)])
   for (const id of agencyIds) {
@@ -128,6 +140,7 @@ export async function storeChannelPerformance(DB: D1Database, sellerId: number, 
     rows.push({
       kind: 'agency', agencyId: id, name: l?.name || `에이전시 #${id}`, ...metricsOf(sales.get(id)),
       products: productsOf.get(id) || 0, linkStatus: status as ChannelRow['linkStatus'],
+      sharePct: l?.sharePct ?? null, shareAmount: Math.round(Number(sales.get(id)?.share_raw) || 0),
     })
   }
 
@@ -187,8 +200,8 @@ export async function agencyStoreSales(DB: D1Database, sellerId: number, agencyI
   const mine = `JOIN agency_product_periods pr ON ${periodMatchSql('pr', 'v.product_id', 'p.seller_id')} AND pr.agency_id = ?`
   const empty = { results: [] as Record<string, unknown>[] }
   const [sum, list] = await Promise.all([
-    DB.prepare(`SELECT ${METRICS} ${VOUCHER_BASE} ${mine} WHERE p.seller_id = ? AND COALESCE(v.is_experience, 0) = 0 ${sinceSql}`)
-      .bind(agencyId, sellerId, ...args).first<Record<string, unknown>>().catch((e) => { if (isMissingTable(e)) return null; throw e }),
+    DB.prepare(`SELECT ${METRICS}, ${shareSumSql('pr')}, ${currentSharePctSql('?', '?')} AS share_pct ${VOUCHER_BASE} ${mine} WHERE p.seller_id = ? AND COALESCE(v.is_experience, 0) = 0 ${sinceSql}`)
+      .bind(sellerId, agencyId, agencyId, sellerId, ...args).first<Record<string, unknown>>().catch((e) => { if (isMissingTable(e)) return null; throw e }),
     DB.prepare(
       `SELECT v.id, p.name AS product_name, COALESCE(v.applied_price, p.price, 0) AS price, v.status, o.created_at AS sold_at, v.used_at
          ${VOUCHER_BASE} ${mine}
@@ -199,6 +212,8 @@ export async function agencyStoreSales(DB: D1Database, sellerId: number, agencyI
   return {
     period, since,
     summary: metricsOf(sum ?? undefined),
+    // 🤝 우리 몫 — 지금 % 와 이 기간 금액(집계 한 줄이라 판매가 0 이어도 % 는 실린다). 정한 적 없으면 null.
+    share: { pct: sum?.share_pct == null ? null : Number(sum.share_pct), amount: Math.round(Number(sum?.share_raw) || 0) },
     items: (list.results || []).map((r) => ({
       id: Number(r.id), productName: String(r.product_name ?? ''), price: Number(r.price) || 0,
       status: String(r.status ?? 'unused'), soldAt: String(r.sold_at ?? ''), usedAt: (r.used_at as string | null) ?? null,

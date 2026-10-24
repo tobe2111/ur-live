@@ -13,10 +13,11 @@ import { useState } from 'react'
 import { useTranslation } from '@/lib/i18n-lite'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { formatNumber } from '@/utils/format'
+import { AGENCY_SHARE_NOTE } from '@/pages/seller-operators/AgencyShareEditor'
 
 type Period = 'month' | '30d' | 'all'
 interface Metrics { sold: number; revenue: number; used: number; refunded: number }
-interface ChannelRow extends Metrics { kind: 'owner' | 'agency'; agencyId: number | null; name: string; products: number; linkStatus: 'active' | 'pending' | 'ended' | null }
+interface ChannelRow extends Metrics { kind: 'owner' | 'agency'; agencyId: number | null; name: string; products: number; linkStatus: 'active' | 'pending' | 'ended' | null; sharePct: number | null; shareAmount: number }
 interface ReferralRow extends Metrics { userId: number; name: string | null; handle: string | null; commission: number }
 interface Perf { period: Period; rows: ChannelRow[]; referrals: ReferralRow[] }
 
@@ -85,6 +86,13 @@ export default function StoreChannelPerformance() {
                         {r.linkStatus === 'ended' && ` · ${t('seller.channelPerf.ended', { defaultValue: '운영 끝남' })}`}
                         {r.linkStatus === 'pending' && ` · ${t('seller.channelPerf.pending', { defaultValue: '수락 기다리는 중' })}`}
                       </span>
+                      {r.kind === 'agency' && (
+                        <span className="block text-[12px] text-gray-500">
+                          {r.sharePct == null
+                            ? t('seller.channelPerf.shareUnset', { defaultValue: '몫 미정' })
+                            : t('seller.channelPerf.share', { pct: r.sharePct, n: formatNumber(r.shareAmount), defaultValue: '몫 {{pct}}% · {{n}}원' })}
+                        </span>
+                      )}
                     </td>
                     <td className="py-3 text-right tabular-nums text-gray-900">{formatNumber(r.sold)}</td>
                     <td className="py-3 text-right tabular-nums text-gray-900">{formatNumber(r.revenue)}<span className="text-gray-400">원</span></td>
@@ -95,6 +103,11 @@ export default function StoreChannelPerformance() {
               </tbody>
             </table>
           </div>
+          {hasAgency && (
+            <p className="mt-2 text-[12px] leading-[1.55] text-gray-500">
+              {t('seller.channelPerf.shareNote', { defaultValue: AGENCY_SHARE_NOTE })}
+            </p>
+          )}
           {!hasAgency && (
             <p className="mt-2 text-[12px] text-gray-500">
               {t('seller.channelPerf.noAgency', { defaultValue: '에이전시에 맡기면 에이전시마다 따로 셉니다(운영자 관리 → 에이전시에 맡기기).' })}
@@ -114,7 +127,7 @@ export default function StoreChannelPerformance() {
                   </span>
                   <span className="shrink-0 text-right tabular-nums">
                     <span className="block text-gray-900">{t('seller.channelPerf.soldN', { n: formatNumber(r.sold), defaultValue: '{{n}}장' })} · {formatNumber(r.revenue)}원</span>
-                    <span className="block text-[12px] text-gray-400">{t('seller.channelPerf.commission', { n: formatNumber(r.commission), defaultValue: '소개비 {{n}}원' })}</span>
+                    <span className="block text-[12px] text-gray-400">{t('seller.channelPerf.commission', { n: formatNumber(r.commission), defaultValue: '인플루언서 수수료 {{n}}원' })}</span>
                   </span>
                 </li>
               ))}

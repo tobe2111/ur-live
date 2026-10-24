@@ -36,8 +36,8 @@ export default [
   {
     name: '[이용권맡기기] 사장님이 아니어도 이용권을 옮길 수 있다',
     file: PERF,
-    find: "windowSec: 3600 }), async (c) => {\n    try {\n      const g = await requireOwner(c)\n      if (g instanceof Response) return g",
-    replace: "windowSec: 3600 }), async (c) => {\n    try {\n      const g = await requireOwner(c)\n      if (false) return g",
+    find: "max: 200, windowSec: 3600 }), async (c) => {\n    try {\n      const g = await requireOwner(c)\n      if (g instanceof Response) return g",
+    replace: "max: 200, windowSec: 3600 }), async (c) => {\n    try {\n      const g = await requireOwner(c)\n      if (false) return g",
     test: TEST,
     why: '운영자·에이전시 좌석이 사장님 이용권을 남의 에이전시로 옮긴다 — 성과 귀속이 조용히 바뀐다.',
   },

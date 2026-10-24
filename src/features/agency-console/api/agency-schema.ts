@@ -148,6 +148,17 @@ export async function ensureAgencyConsoleTables(DB: D1Database): Promise<void> {
       staff_id INTEGER PRIMARY KEY,
       seen_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`),
+    // 🤝 에이전시 몫 % 이력(사장님이 정한다) — 판매 시각의 % 로 금액을 계산한다(`agency-share.ts`). 돈은 안 움직인다.
+    DB.prepare(`CREATE TABLE IF NOT EXISTS agency_share_terms (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      seller_id INTEGER NOT NULL,
+      agency_id INTEGER NOT NULL,
+      pct REAL NOT NULL,
+      effective_from TEXT NOT NULL DEFAULT (datetime('now')),
+      set_by_user_id INTEGER,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`),
+    DB.prepare('CREATE INDEX IF NOT EXISTS idx_agency_share_terms_pair ON agency_share_terms(seller_id, agency_id, effective_from)'),
   ])
   // 기간 기록보다 먼저 생긴 맡음(1단계)에 기간을 채운다 — 맡은 날부터. 멱등(열린 기간이 있으면 건너뛴다).
   try {

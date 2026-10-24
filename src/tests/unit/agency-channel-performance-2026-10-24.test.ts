@@ -211,9 +211,9 @@ describe('⑥ 에이전시 좌석은 사장님 성과·맡기기를 못 부른�
       expect(agencyScopeDecision(m, p)).toEqual({ allow: false })
     }
   })
-  it('세 라우트 모두 사장님 판정(requireOwner)을 먼저 한다', () => {
+  it('네 라우트 모두 사장님 판정(requireOwner)을 먼저 한다(몫 정하기 포함)', () => {
     const src = readCode('src/features/seller/api/seller-agency-performance.routes.ts')
-    expect(src.match(/const g = await requireOwner\(c\)\n\s*if \(g instanceof Response\) return g/g)?.length).toBe(3)
+    expect(src.match(/const g = await requireOwner\(c\)\n\s*if \(g instanceof Response\) return g/g)?.length).toBe(4)
   })
   it('에이전시가 만든 이용권은 맡은 기간도 함께 연다(stamp → startAgencyProduct)', () => {
     expect(readCode('src/worker/utils/agency-product-scope.ts')).toMatch(/await startAgencyProduct\(DB, productId, seat\.sellerId, seat\.agencyId, seat\.staffId\)/)
