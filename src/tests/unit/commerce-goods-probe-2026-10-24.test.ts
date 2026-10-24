@@ -25,7 +25,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { probeGoodsField, GOODS_FIELD_ALIASES } from '@/features/marketing/api/commerce-goods-probe'
+import { probeGoodsField, buildCommerceProbe, GOODS_FIELD_ALIASES } from '@/features/marketing/api/commerce-goods-probe'
 
 const COLLECT = readFileSync('src/features/marketing/api/commerce-notify-collect.ts', 'utf-8')
 const ROUTES = readFileSync('src/features/marketing/api/partner-pool.routes.ts', 'utf-8')
@@ -81,9 +81,33 @@ describe('취급품목 탐침', () => {
     expect(COLLECT).toMatch(/diag: \{ configured: true, error, sample, coverage/)
   })
 
-  it('⑤ 어드민이 그 탐침을 실제로 부른다(배선)', () => {
-    expect(ROUTES, '라우트가 probeGoodsField 를 안 쓴다 — 화면에 답이 안 뜬다').toContain('probeGoodsField')
-    expect(ROUTES, 'by_service 를 안 읽는다').toContain('by_service')
-    expect(ROUTES, 'commerceProbe 에 goods 를 안 싣는다').toMatch(/commerceProbe = \{[^}]*goods/)
+  it('⑤ 어드민 탐침이 엔드포인트별 답을 **실제로 돌려준다**', () => {
+    // 라이브 모양 그대로: status 는 취급품목이 없고(18키), detail 에만 숫자 코드가 온다.
+    const probe = buildCommerceProbe({
+      sample: { bzmnNm: '카츠', rprsvEmladr: 'a@naver.com' },
+      by_service: {
+        status: { sample: { bzmnNm: '카츠', rprsvEmladr: 'a@naver.com' } },
+        detail: { sample: { bzmnNm: '카츠', trtmntPrdlstNm: '12', ntslMthdNm: '02' } },
+      },
+    })
+    expect(probe?.goods?.status?.kind, 'status 엔 취급품목이 없다').toBe('none')
+    expect(probe?.goods?.detail?.kind, 'detail 의 숫자 코드를 code 로 판정해야 한다').toBe('code')
+    expect(probe?.goods?.detail?.value).toBe('12')
+    expect(probe?.emailField, '이메일 필드를 키 이름으로 찾아야 한다').toBe('rprsvEmladr')
+    expect(probe?.hasEmail).toBe(true)
+    // 차선 별칭이 한글인 날 — 그때는 코드표가 필요 없다는 답이 화면에 떠야 한다.
+    const textual = buildCommerceProbe({ sample: { x: 1 }, by_service: { detail: { sample: { ntslPrdlstCn: '여성의류, 패션잡화' } } } })
+    expect(textual?.goods?.detail?.kind).toBe('text')
+    // 옛 스냅샷(by_service 없음)도 공유 sample 로 재 본다 — '안 돌았다'와 '필드 없다'를 구분한다.
+    const legacy = buildCommerceProbe({ sample: { trtmntPrdlstNm: '01 06' } })
+    expect(legacy?.goods?.shared?.kind).toBe('code')
+    expect(buildCommerceProbe({}), '샘플이 아예 없으면 탐침도 없다').toBeUndefined()
+  })
+
+  it('⑥ 어드민 라우트가 그 조립을 부른다(배선)', () => {
+    // ⚠️ `toContain('buildCommerceProbe')` 로는 안 된다 — `import` 줄만 남겨도 통과한다(주입이 잡았다).
+    //   지키려는 것은 *이름이 있다* 가 아니라 **그 값이 실제로 응답에 실린다** 다.
+    expect(ROUTES, '라우트가 탐침 결과를 commerceProbe 에 안 담는다 — 화면에 답이 안 뜬다')
+      .toMatch(/const commerceProbe = buildCommerceProbe\(/)
   })
 })

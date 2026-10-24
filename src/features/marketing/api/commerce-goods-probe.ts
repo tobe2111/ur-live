@@ -62,3 +62,35 @@ export function probeGoodsField(sample: unknown): GoodsProbe {
   const kind = /^[0-9\s]+$/.test(value) ? 'code' : 'text'
   return { field, value, kind, byField }
 }
+
+/** 어드민 상태줄이 받는 모양. 키 목록 + 이메일 필드 유무 + 엔드포인트별 취급품목 판정. */
+export interface CommerceProbe {
+  keys?: string[]
+  hasEmail?: boolean
+  emailField?: string
+  /** 🏷️ 엔드포인트별 취급품목 — **코드표가 필요한지**를 라이브 응답으로 답한다. */
+  goods?: Record<string, GoodsProbe>
+}
+
+/**
+ * `ads_commerce_stats.diag` 한 덩어리에서 어드민 탐침을 조립한다.
+ *
+ * ⚠️ `by_service` 가 없으면(옛 스냅샷) 공유 `sample` 로라도 재 본다 — 그래야 *"아직 안 돌았다"* 와
+ *   *"그 필드가 없다"* 가 구분된다(둘을 섞으면 다음 세션이 또 코드표를 찾아 나선다).
+ */
+export function buildCommerceProbe(diag: unknown): CommerceProbe | undefined {
+  const d = (diag ?? {}) as Record<string, unknown>
+  const sample = d.sample as Record<string, unknown> | undefined
+  if (!sample || typeof sample !== 'object') return undefined
+  const keys = Object.keys(sample).slice(0, 40)
+  // 이메일 필드 존재 = ① 키 이름이 이메일계열(eml/mail/emladr) 또는 ② 어떤 값이 이메일 형태.
+  //   (대표자 이메일 rprsvEmladr 은 선택입력이라 첫 레코드 값이 비어도 필드는 존재 — 키로 판정.)
+  const emailField = keys.find(k => /eml|email|mail/i.test(k))
+  const hasEmailVal = Object.values(sample).some(v => /[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/i.test(String(v ?? '')))
+  const bySvc = d.by_service as Record<string, { sample?: unknown }> | undefined
+  const goods: Record<string, GoodsProbe> = {}
+  for (const [name, slot] of Object.entries(bySvc || { shared: { sample } })) {
+    goods[name] = probeGoodsField(slot?.sample)
+  }
+  return { keys, hasEmail: !!emailField || hasEmailVal, emailField, goods }
+}

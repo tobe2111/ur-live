@@ -14,6 +14,14 @@ const ROUTES = 'src/features/marketing/api/partner-pool.routes.ts'
 
 export default [
   {
+    name: '취급품목탐침 🧷 옛 스냅샷(by_service 없음)에서 탐침이 조용히 포기한다',
+    file: PROBE,
+    find: "  for (const [name, slot] of Object.entries(bySvc || { shared: { sample } })) {",
+    replace: "  for (const [name, slot] of Object.entries(bySvc || {})) {",
+    test: TEST,
+    why: "by_service 는 2026-10-24 배포 뒤 회차부터 생긴다. 폴백이 없으면 그 전 스냅샷에서 `goods` 가 통째로 비어 **'아직 안 돌았다'와 '그 필드가 없다'가 구분되지 않는다** — 그 혼동이 애초에 코드표를 찾아 나서게 만든 원인이다.",
+  },
+  {
     name: '취급품목탐침 🔭 엔드포인트별 저장이 사라진다(detail 응답을 또 한 번도 못 보게 된다)',
     file: COLLECT,
     find: '        const slot = (byService[svc.name] ??= {})',
@@ -48,8 +56,8 @@ export default [
   {
     name: '취급품목탐침 🚪 어드민 배선이 끊긴다(답을 재 놓고 화면에 안 띄운다)',
     file: ROUTES,
-    find: "    commerceProbe = { keys, hasEmail: !!emailField || hasEmailVal, emailField, goods }",
-    replace: "    commerceProbe = { keys, hasEmail: !!emailField || hasEmailVal, emailField }",
+    find: "  const commerceProbe = buildCommerceProbe(commerceRun?.diag)",
+    replace: "  const commerceProbe = undefined // (탐침 미배선)",
     test: TEST,
     why: '탐침이 돌아도 화면에 안 실리면 대표도 다음 세션도 그 답을 못 본다 — 이 레포가 반복해 만난 "계산만 하고 안 쓰는" 클래스(2026-08-02 goneStatus).',
   },
