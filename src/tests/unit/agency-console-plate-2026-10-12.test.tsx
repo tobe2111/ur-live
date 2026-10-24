@@ -45,9 +45,10 @@ describe('① 오늘 숫자 — 마이와 같은 판정 문장 · 🤝 이 에�
     expect(agency).toContain(a)
     expect(mine).toContain(m)
   })
-  it('🔴 세 숫자 모두 agency_products 로 이 에이전시 이용권만 센다 — 매장 전체 숫자가 새지 않는다', () => {
+  it('🔴 세 숫자 모두 이 에이전시 이용권만 센다 — 판매는 맡은 기간(agency_product_periods), 판매 중은 지금 맡음', () => {
     const fn = agency.slice(agency.indexOf('export async function agencyStoreToday'))
-    expect(fn).toContain('JOIN agency_products ap ON ap.product_id = oi.product_id AND ap.agency_id = ?')
+    // 📊 2026-10-24 — 판매 귀속은 '판 순간 맡고 있던 에이전시'(사장님 성과표와 같은 문장 — channel-sales.periodMatchSql).
+    expect(fn).toContain("JOIN agency_product_periods pr ON ${periodMatchSql('pr', 'oi.product_id', 'o.seller_id')} AND pr.agency_id = ?")
     expect(fn).toContain('JOIN agency_products ap ON ap.product_id = p.id AND ap.agency_id = ?')
     expect(fn).not.toMatch(/SUM\(total_amount\)/) // 주문 총액이 아니라 자기 이용권 줄의 금액
   })

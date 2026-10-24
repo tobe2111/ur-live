@@ -83,6 +83,8 @@ async function fresh() {
     (5, 1, 'boss@ag.kr', 'admin', 1, 'active'), (6, 1, 'staff@ag.kr', 'staff', 0, 'active'), (9, 2, 'other@ag.kr', 'admin', 1, 'active')`)
   db.exec(`INSERT INTO agency_store_links (agency_id, seller_id, status, accepted_at) VALUES (1, 7, 'active', datetime('now')), (2, 7, 'active', datetime('now'))`)
   db.exec(`INSERT INTO agency_products (product_id, seller_id, agency_id) VALUES (31, 7, 1), (32, 7, 2)`)
+  // 📊 맡은 기간(판매 귀속의 근거) — 지금 맡음과 늘 짝이다.
+  db.exec(`INSERT INTO agency_product_periods (product_id, seller_id, agency_id, started_at) VALUES (31, 7, 1, '2026-01-01 00:00:00'), (32, 7, 2, '2026-01-01 00:00:00')`)
   return { db, DB }
 }
 
@@ -264,12 +266,17 @@ describe('⑤ 사장님 — 여러 에이전시를 함께 · 따로 끊는다', 
     expect((await call('GET', '/api/seller/products', await agencySeat(6, 1))).status).toBe(401)
     expect((await call('GET', '/api/seller/products', await agencySeat(9, 2))).status).toBe(200)
   })
-  it('끊어도 그 에이전시가 만든 이용권 기록은 남는다(누가 만들었는지 = 성과 기록)', async () => {
+  it('📊 끊으면 그 에이전시 이용권은 사장님께 돌아가고, 그동안의 맡은 기간은 성과 기록으로 남는다', async () => {
     const { db, DB } = await fresh()
     const owner = ownerApp(DB)
-    const links = (await (await owner('GET', '/agency-link')).json() as { data: { links: Array<{ linkId: number }> } }).data.links
-    await owner('POST', '/agency-link/end', { link_id: links[0].linkId })
-    expect(db.prepare('SELECT product_id FROM agency_products WHERE agency_id = 1').all()).toEqual([{ product_id: 31 }])
+    const links = (await (await owner('GET', '/agency-link')).json() as { data: { links: Array<{ linkId: number; agencyName: string }> } }).data.links
+    await owner('POST', '/agency-link/end', { link_id: links.find((l) => l.agencyName === '바른대행')!.linkId })
+    expect(db.prepare('SELECT product_id FROM agency_products WHERE agency_id = 1').all()).toEqual([])
+    expect(db.prepare('SELECT product_id FROM agency_products WHERE agency_id = 2').all()).toEqual([{ product_id: 32 }]) // 다른 에이전시는 그대로
+    const p = db.prepare('SELECT agency_id, ended_at FROM agency_product_periods WHERE product_id = 31').all() as Array<{ agency_id: number; ended_at: string | null }>
+    expect(p).toHaveLength(1)
+    expect(p[0].agency_id).toBe(1)
+    expect(p[0].ended_at).toBeTruthy()
   })
   it(`한 매장 에이전시 수 상한(${AGENCY_LINKS_PER_STORE_MAX})`, async () => {
     const { db, DB } = await fresh()

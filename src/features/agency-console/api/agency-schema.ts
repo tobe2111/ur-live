@@ -130,7 +130,33 @@ export async function ensureAgencyConsoleTables(DB: D1Database): Promise<void> {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`),
     DB.prepare('CREATE INDEX IF NOT EXISTS idx_agency_products_agency ON agency_products(agency_id, seller_id)'),
+    // 📊 2026-10-24 — **맡은 기간**(성과 귀속의 근거). 판매 시각이 이 기간 안이면 그 에이전시 몫이다(`channel-sales.ts`).
+    //   지금 맡음(`agency_products`)만으로 세면 이용권을 옮기는 순간 앞 에이전시 성과가 뒤 에이전시로 넘어가고,
+    //   끊으면 그동안의 성과가 사라진다. 행은 지우지 않는다(끝 = ended_at). 이용권당 열린 기간은 하나.
+    DB.prepare(`CREATE TABLE IF NOT EXISTS agency_product_periods (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_id INTEGER NOT NULL,
+      seller_id INTEGER NOT NULL,
+      agency_id INTEGER NOT NULL,
+      started_at TEXT NOT NULL DEFAULT (datetime('now')),
+      ended_at TEXT
+    )`),
+    DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_agency_product_periods_open ON agency_product_periods(product_id) WHERE ended_at IS NULL'),
+    DB.prepare('CREATE INDEX IF NOT EXISTS idx_agency_product_periods_store ON agency_product_periods(seller_id, agency_id)'),
+    // 🔔 에이전시 직원이 판매 알림을 어디까지 봤나(사람마다). 알림은 판매 기록에서 만든다 — 이 표는 읽음 표시만.
+    DB.prepare(`CREATE TABLE IF NOT EXISTS agency_sales_seen (
+      staff_id INTEGER PRIMARY KEY,
+      seen_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`),
   ])
+  // 기간 기록보다 먼저 생긴 맡음(1단계)에 기간을 채운다 — 맡은 날부터. 멱등(열린 기간이 있으면 건너뛴다).
+  try {
+    await DB.prepare(
+      `INSERT INTO agency_product_periods (product_id, seller_id, agency_id, started_at)
+       SELECT ap.product_id, ap.seller_id, ap.agency_id, ap.created_at FROM agency_products ap
+        WHERE NOT EXISTS (SELECT 1 FROM agency_product_periods pr WHERE pr.product_id = ap.product_id AND pr.ended_at IS NULL)`,
+    ).run()
+  } catch { /* 표가 막 생기는 중 — 다음 요청에서 채운다 */ }
   // 🏛️ 사업자 진위확인 결과(국세청 상태 문자열 · 'unverified'). 이미 만들어진 테이블에 붙이는 열이라 ALTER 로 —
   //   batch 안에 두면 '이미 있음' 오류가 위 생성문까지 되돌린다. 실패(=이미 있음)는 조용히 넘어간다.
   try { await DB.prepare('ALTER TABLE agency_accounts ADD COLUMN business_status TEXT').run() } catch { /* 이미 있음 */ }

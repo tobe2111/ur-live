@@ -301,7 +301,8 @@ describe('④ 사장님으로 둔갑하는 폴백 자리 — 배선', () => {
 
   it('끊기·내려놓기·직원 내보내기는 좌석 캐시를 바로 비운다', () => {
     expect(code('src/features/seller/api/seller-agency-link.routes.ts')).toMatch(/invalidateStoreSeatCache\(DB, g\.sellerId\)/)
-    expect(code('src/features/agency-console/api/agency-stores.routes.ts')).toMatch(/if \(to === 'ended'\) invalidateStoreSeatCache\(DB, row\.seller_id\)/)
+    // 📊 2026-10-24 — 내려놓을 때 우리 이용권을 사장님께 돌리는 일이 같은 분기에 붙었다(캐시 비우기는 그대로).
+    expect(code('src/features/agency-console/api/agency-stores.routes.ts')).toMatch(/if \(to === 'ended'\) \{ await releaseAgencyProducts\(DB, row\.seller_id, me\.agencyId\); invalidateStoreSeatCache\(DB, row\.seller_id\) \}/)
     expect(code('src/features/agency-console/api/agency-staff.routes.ts')).toMatch(/invalidateStoreSeatCache\(c\.env\.DB\)/)
   })
 

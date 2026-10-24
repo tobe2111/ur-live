@@ -137,9 +137,9 @@ export async function stampAgencyProduct(
   try {
     const { ensureAgencyConsoleTables } = await import('../../features/agency-console/api/agency-schema')
     await ensureAgencyConsoleTables(DB)
-    await DB.prepare(
-      'INSERT OR IGNORE INTO agency_products (product_id, seller_id, agency_id, created_by_staff_id) VALUES (?, ?, ?, ?)',
-    ).bind(productId, seat.sellerId, seat.agencyId, seat.staffId).run()
+    // 지금 맡음 + 맡은 기간 시작을 함께(성과 귀속의 근거 — `channel-sales.ts`).
+    const { startAgencyProduct } = await import('../../features/agency-console/api/channel-sales')
+    await startAgencyProduct(DB, productId, seat.sellerId, seat.agencyId, seat.staffId)
   } catch (e) {
     try { console.error('[agency-products] stamp failed:', String(e)) } catch { /* noop */ }
   }

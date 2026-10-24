@@ -23,6 +23,7 @@ import { formatNumber, formatWon } from '@/utils/format'
 import AnalyticsOverview, { type RevenuePoint, type SubView } from './seller-analytics/AnalyticsOverview'
 import { NoSalesEver } from './seller-analytics/NoSalesYet'
 import IdleHoursCard from './seller-analytics/IdleHoursCard'
+import StoreChannelPerformance from './seller-analytics/StoreChannelPerformance'
 
 export default function SellerAnalyticsPage() {
   const { t } = useTranslation()
@@ -86,6 +87,8 @@ export default function SellerAnalyticsPage() {
               )
             )}
             {tab === 'revenue' && everSold && <IdleHoursCard />}
+            {/* 📊 2026-10-24 누가 팔았나 — 사장님 직접 · 에이전시별 · 소개 링크별(사장님 전용, 아니면 카드 안 그림). */}
+            {tab === 'revenue' && everSold && <StoreChannelPerformance />}
 
             {tab === 'customers' && data && (
               <div className="space-y-4">

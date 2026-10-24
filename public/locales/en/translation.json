@@ -3383,6 +3383,27 @@
       "am": "AM",
       "pm": "PM",
       "hour": "{{n}}"
+    },
+    "channelPerf": {
+      "title": "Who sold",
+      "month": "This month",
+      "last30": "Last 30 days",
+      "all": "All time",
+      "who": "Who",
+      "sold": "Sold",
+      "revenue": "Revenue",
+      "used": "Used",
+      "refunded": "Refunded",
+      "products": "{{n}} vouchers assigned",
+      "ended": "Ended",
+      "pending": "Awaiting acceptance",
+      "noAgency": "Assign vouchers to an agency to see each agency counted separately (Operators → Assign to agency).",
+      "referralTitle": "Sold via referral links",
+      "noReferral": "No vouchers were sold via referral links in this period.",
+      "unknownUser": "Unknown user",
+      "soldN": "{{n}} sold",
+      "commission": "Referral fee {{n}} KRW",
+      "note": "Referral sales are already included in the rows above. The same sale is shown two ways: who managed it, and whose link it came from."
     }
   },
   "admin": {

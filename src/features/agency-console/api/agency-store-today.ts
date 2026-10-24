@@ -15,6 +15,8 @@
  * 💰 읽기 전용 집계다. 권한은 호출부가 이미 판정한 매장 id 집합(우리 에이전시 · 직원 배정) 안에서만 센다.
  */
 import { shippingOrderSql } from '@/shared/db/shipping-order-sql'
+import { periodMatchSql } from './channel-sales'
+import { ensureAgencyConsoleTables } from './agency-schema'
 
 export interface StoreToday {
   todayRevenue: number
@@ -38,7 +40,8 @@ export async function agencyStoreToday(DB: D1Database, sellerIds: number[], agen
   //   매장 전체 숫자를 주면 같은 매장의 다른 에이전시·사장님 매출이 보인다. 판정 문장(상태·KST 날짜·배송 판정·
   //   판매 중)은 마이와 같고, 거기에 `agency_products` 조인 하나가 더해질 뿐이다. 매출은 주문 총액이 아니라
   //   **그 이용권 줄의 금액**이다(한 주문에 남의 상품이 섞여도 자기 몫만).
-  const mine = `JOIN agency_products ap ON ap.product_id = oi.product_id AND ap.agency_id = ? AND ap.seller_id = o.seller_id`
+  //   📊 귀속은 **맡은 기간**으로 판정한다(`channel-sales.ts` `periodMatchSql` — 사장님 성과표와 같은 문장).
+  const mine = `JOIN agency_product_periods pr ON ${periodMatchSql('pr', 'oi.product_id', 'o.seller_id')} AND pr.agency_id = ?`
   const [today, pending, active] = await Promise.all([
     DB.prepare(
       `SELECT o.seller_id, COUNT(DISTINCT o.id) AS n,
@@ -86,6 +89,7 @@ export async function agencySummary(
   agencyId: number,
   currentSellerId: number | null,
 ) {
+  await ensureAgencyConsoleTables(DB) // 맡은 기간 표가 없으면 아래 집계가 조용히 0 이 된다
   const t = await agencyStoreToday(DB, stores.map((s) => s.seller_id), agencyId)
   const rows = stores.map((s) => {
     const x = t.get(s.seller_id)

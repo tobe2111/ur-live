@@ -6,6 +6,7 @@
  *   POST /agency-link       — 에이전시 관리자 이메일로 맡김 요청 { email }
  *   POST /agency-link/end   — { link_id } 요청 취소 · 운영 끊기(조건 없이, 언제든 — 에이전시마다 따로)
  *   GET  /agency-link/activity — 에이전시가 이 매장에서 한 일 최근 50건
+ *   (+ `/agency-link/performance` · `/products` · `/assign` — `seller-agency-performance.routes.ts`)
  *
  * 대표 결정(규칙 3): *"정해 둔 기간보단 그냥 매장 사장님이 중개사를 끊을 수 있어야"* → 기간 없음.
  *   끊으면 그 에이전시 직원 전원의 매장 좌석이 **다음 요청부터** 막힌다(`store-seat-guard`).
@@ -20,6 +21,8 @@ import { invalidateStoreSeatCache } from '@/worker/utils/store-seat-guard'
 import { buildSystemEmailHtml, sendSystemEmail } from '@/lib/system-email'
 import { ensureAgencyConsoleTables } from '../../agency-console/api/agency-schema'
 import { frontendBase, normalizeEmail } from '../../agency-console/api/agency-auth.routes'
+import { releaseAgencyProducts } from '../../agency-console/api/channel-sales'
+import { registerAgencyPerformanceRoutes } from './seller-agency-performance.routes'
 
 type Ctx = Context<{ Bindings: Env }>
 type RequireOwner = (c: Ctx) => Promise<{ userId: number; sellerId: number } | Response>
@@ -154,13 +157,18 @@ export function registerAgencyLinkRoutes(app: Hono<{ Bindings: Env }>, requireOw
       const r = await DB.prepare(
         `UPDATE agency_store_links
             SET status = 'ended', ended_at = datetime('now'), ended_by = 'owner', ended_by_id = ?, updated_at = datetime('now')
-          WHERE id = ? AND seller_id = ? AND status IN ('pending','active')`,
-      ).bind(g.userId, linkId, g.sellerId).run()
-      if ((r.meta?.changes ?? 0) === 0) return c.json({ success: false, error: '맡긴 에이전시가 없어요.' }, 404)
+          WHERE id = ? AND seller_id = ? AND status IN ('pending','active')
+         RETURNING agency_id`,
+      ).bind(g.userId, linkId, g.sellerId).first<{ agency_id: number }>()
+      if (!r) return c.json({ success: false, error: '맡긴 에이전시가 없어요.' }, 404)
+      // 📊 그 에이전시 이용권을 사장님께 돌린다 — 그동안의 판매는 맡은 기간 기록에 남아 그 에이전시 성과로 계속 보인다.
+      await releaseAgencyProducts(DB, g.sellerId, Number(r.agency_id))
       invalidateStoreSeatCache(DB, g.sellerId)
       return c.json({ success: true, message: '끊었어요. 에이전시는 지금부터 이 매장에 들어올 수 없어요.' })
     } catch (err) {
       return safeError(c, err, '처리 중 오류가 발생했어요', '[seller-agency-link]')
     }
   })
+
+  registerAgencyPerformanceRoutes(app, requireOwner) // 📊 누가 팔았나 · 이용권 맡기기(2026-10-24)
 }

@@ -3383,6 +3383,27 @@
       "am": "上午",
       "pm": "下午",
       "hour": "{{n}}点"
+    },
+    "channelPerf": {
+      "title": "谁卖出的",
+      "month": "本月",
+      "last30": "最近30天",
+      "all": "全部",
+      "who": "谁",
+      "sold": "销售",
+      "revenue": "销售额",
+      "used": "已使用",
+      "refunded": "退款",
+      "products": "负责的券 {{n}} 个",
+      "ended": "已结束",
+      "pending": "等待接受",
+      "noAgency": "交给代理商后，将按代理商分别统计(运营者管理 → 交给代理商)。",
+      "referralTitle": "通过推荐链接销售",
+      "noReferral": "此期间没有通过推荐链接售出的券。",
+      "unknownUser": "未知用户",
+      "soldN": "{{n}} 张",
+      "commission": "推荐费 {{n}} 韩元",
+      "note": "推荐链接销售已包含在上方销售中。同一笔销售从“谁负责”和“来自谁的链接”两个角度查看。"
     }
   },
   "admin": {

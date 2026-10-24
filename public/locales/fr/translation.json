@@ -2664,6 +2664,27 @@
       "am": "matin",
       "pm": "après-midi",
       "hour": "{{n}}h"
+    },
+    "channelPerf": {
+      "title": "Qui a vendu",
+      "month": "Ce mois-ci",
+      "last30": "30 derniers jours",
+      "all": "Tout",
+      "who": "Qui",
+      "sold": "Vendus",
+      "revenue": "Chiffre d'affaires",
+      "used": "Utilisés",
+      "refunded": "Remboursés",
+      "products": "{{n}} bons confiés",
+      "ended": "Terminé",
+      "pending": "En attente d'acceptation",
+      "noAgency": "Confiez des bons à une agence pour voir chaque agence comptée séparément (Opérateurs → Confier à une agence).",
+      "referralTitle": "Vendus via liens de parrainage",
+      "noReferral": "Aucun bon vendu via un lien de parrainage sur cette période.",
+      "unknownUser": "Utilisateur inconnu",
+      "soldN": "{{n}} vendus",
+      "commission": "Commission de parrainage {{n}} KRW",
+      "note": "Les ventes par parrainage sont déjà incluses ci-dessus. Une même vente est vue de deux façons : qui l'a gérée et de quel lien elle vient."
     }
   },
   "admin": {

@@ -302,12 +302,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 327 | 1011 |
+| 전체 | 327 | 1014 |
 | 도메인 버킷 (5개 소개서) | 131 | 462 |
 | 공통/인프라 (의도적 제외) | 149 | 453 |
-| **미커버 (점검 필요)** | **47** | **96** |
+| **미커버 (점검 필요)** | **47** | **99** |
 
-⚠️ **미커버 143건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 146건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -372,7 +372,10 @@
 - `GET /agency-link` (`src/features/seller/api/seller-agency-link.routes.ts`)
 - `POST /agency-link` (`src/features/seller/api/seller-agency-link.routes.ts`)
 - `GET /agency-link/activity` (`src/features/seller/api/seller-agency-link.routes.ts`)
+- `POST /agency-link/assign` (`src/features/seller/api/seller-agency-performance.routes.ts`)
 - `POST /agency-link/end` (`src/features/seller/api/seller-agency-link.routes.ts`)
+- `GET /agency-link/performance` (`src/features/seller/api/seller-agency-performance.routes.ts`)
+- `GET /agency-link/products` (`src/features/seller/api/seller-agency-performance.routes.ts`)
 - `POST /api/acquisition/claim` (`src/worker/routes/acquisition.routes.ts`)
 - `POST /api/acquisition/inflow` (`src/worker/routes/acquisition.routes.ts`)
 - `POST /api/acquisition/inflow/bind` (`src/worker/routes/acquisition.routes.ts`)
@@ -1616,7 +1619,7 @@
 
 
 
-> 마지막 생성: 2026-10-20T07:04:55.843Z
+> 마지막 생성: 2026-10-24T14:57:14.953Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

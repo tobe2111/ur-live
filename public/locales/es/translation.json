@@ -2664,6 +2664,27 @@
       "am": "a. m.",
       "pm": "p. m.",
       "hour": "{{n}}h"
+    },
+    "channelPerf": {
+      "title": "Quién vendió",
+      "month": "Este mes",
+      "last30": "Últimos 30 días",
+      "all": "Todo",
+      "who": "Quién",
+      "sold": "Vendidos",
+      "revenue": "Ingresos",
+      "used": "Usados",
+      "refunded": "Reembolsados",
+      "products": "{{n}} cupones asignados",
+      "ended": "Finalizado",
+      "pending": "Esperando aceptación",
+      "noAgency": "Si asignas cupones a una agencia, cada agencia se cuenta por separado (Operadores → Asignar a agencia).",
+      "referralTitle": "Vendidos por enlaces de referido",
+      "noReferral": "No se vendieron cupones por enlaces de referido en este período.",
+      "unknownUser": "Usuario desconocido",
+      "soldN": "{{n}} vendidos",
+      "commission": "Comisión de referido {{n}} KRW",
+      "note": "Las ventas por referido ya están incluidas arriba. La misma venta se ve de dos formas: quién la gestionó y de qué enlace vino."
     }
   },
   "admin": {

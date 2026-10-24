@@ -60,9 +60,11 @@ function todayLabelKST(): string {
   return new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', month: 'long', day: 'numeric', weekday: 'short' })
 }
 
-export default function AgencyStorePlate({ store, staffId, initialPath }: {
+export default function AgencyStorePlate({ store, staffId, initialPath, onOpenSales }: {
   store: StoreRow
   staffId: number
+  /** 📊 우리 이용권 판매 내역·통계 시트(2026-10-24) — 패널이 연다(판매 알림을 눌러도 같은 시트). 좌석 없이 본다. */
+  onOpenSales?: () => void
   /**
    * 🚪 깊은 링크(`/agency?tool=`)로 온 화면 — 처음부터 시트로 열어 둔다. **좌석 판정은 호출부(패널)가 이미 했다**
    *   (이 직원의 이 매장 좌석일 때만 넘긴다). 그래서 여기서는 발급하지 않고 effect 도 없다.
@@ -135,6 +137,16 @@ export default function AgencyStorePlate({ store, staffId, initialPath }: {
             ? <Loader2 className="w-4 h-4 shrink-0 animate-spin text-white/70" aria-hidden="true" />
             : <ChevronRight className="w-4 h-4 shrink-0 text-white/70" aria-hidden="true" />}
         </button>
+        {onOpenSales && (
+          <button
+            type="button"
+            onClick={onOpenSales}
+            className="mt-2 w-full flex items-center gap-3 px-4 lg:px-5 min-h-[48px] rounded-[10px] text-left active:bg-gray-50"
+          >
+            <span className="flex-1 min-w-0 text-[15px] font-semibold text-gray-900 truncate">판매 내역 · 통계</span>
+            <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
+          </button>
+        )}
         <p className="mt-3 px-1 text-[12px] leading-[1.55] text-gray-500">
           {AGENCY_PLATE_SCOPE_NOTE}
         </p>

@@ -8,6 +8,8 @@
  * 🤝 2026-10-24 대표 확정 — **한 매장이 여러 에이전시와 함께 한다**(사장님 직접 관리와도 동시에). 그래서 카드는
  * 목록이다: 에이전시마다 상태 · **맡은 이용권 수** · 끊기. 각 에이전시는 자기가 만든 이용권만 보고 고치고,
  * 사장님은 전부 본다(성과 = 이용권 단위). 이메일 칸은 언제나 열려 있다(한 곳 더 맡기기).
+ * 이미 있는 이용권도 에이전시마다 [이용권 맡기기]로 넘기거나 돌려받는다(`AgencyAssignList`). 에이전시별 판매는
+ * 매출 분석의 '누가 팔았나' 카드에서 본다.
  *
  * ⚠️ 대시보드 = 라이트 고정(`dark:` 금지 — check-dashboard-theme).
  */
@@ -15,6 +17,7 @@ import { useCallback, useEffect, useState } from 'react'
 import api from '@/lib/api'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { formatKSTDate, formatKSTShort as formatKSTDateTime } from '@/utils/date'
+import AgencyAssignList from './AgencyAssignList'
 
 interface LinkState { linkId: number; agencyId: number; status: 'pending' | 'active'; agencyName: string; requestedAt: string; acceptedAt: string | null; productCount: number }
 interface Activity { id: number; label: string; at: string; agencyName: string; staff: string }
@@ -26,6 +29,8 @@ export default function AgencyLinkCard() {
   const [busy, setBusy] = useState(false)
   const [formError, setFormError] = useState('')
   const [activity, setActivity] = useState<Activity[]>([])
+  /** 이용권 맡기기를 펼친 에이전시(한 번에 하나). */
+  const [openAssign, setOpenAssign] = useState<number | null>(null)
 
   const load = useCallback(async () => {
     setLoadError('')
@@ -102,10 +107,24 @@ export default function AgencyLinkCard() {
                     : '수락 기다리는 중'}
                 </p>
               </div>
+              {link.status === 'active' && (
+                <button type="button" onClick={() => setOpenAssign(openAssign === link.agencyId ? null : link.agencyId)}
+                  aria-expanded={openAssign === link.agencyId}
+                  className="h-9 rounded-lg px-3 text-[13px] font-semibold text-brand-text hover:bg-gray-100">
+                  {openAssign === link.agencyId ? '닫기' : '이용권 맡기기'}
+                </button>
+              )}
               <button type="button" disabled={busy} onClick={() => end(link)}
                 className="h-9 rounded-lg px-3 text-[13px] font-semibold text-gray-700 hover:bg-gray-100 disabled:opacity-50">
                 {link.status === 'active' ? '끊기' : '요청 취소'}
               </button>
+              {/* 🎟️ 이미 있는 이용권을 이 에이전시에 맡기기(2026-10-24) — 옮겨도 그 전 판매는 앞쪽 성과로 남는다. */}
+              {openAssign === link.agencyId && (
+                <div className="basis-full">
+                  <AgencyAssignList agencyId={link.agencyId} agencyName={link.agencyName}
+                    agencyNames={new Map(links.map((l) => [l.agencyId, l.agencyName]))} onChanged={load} />
+                </div>
+              )}
             </li>
           ))}
         </ul>
