@@ -24,6 +24,8 @@ import { Sheet, StepFrameContext } from './request/Sheet'
 import { MultiSheet, NumberSheet, OptionSheet, TextSheet } from './request/FieldSheets'
 import { DateSheet } from './request/DateSheet'
 import { AddressSheet } from './request/AddressSheet'
+import { lifeCategoryTitle } from '@/shared/seo/life-seo'
+import { withSiteName } from '@/shared/seo/consumer-surfaces'
 import { PhotoSheet } from './request/PhotoSheet'
 
 const CONSENT_KEY = '__consent'
@@ -166,7 +168,7 @@ export default function LifeRequestFormPage() {
       지금 {def.label} 업체를 모집하고 있어요. 요청은 보관해 두었다가 업체가 들어오는 대로 보내 드려요.
     </p>
   )
-  const seo = <SEO title={`${def.label} 견적 요청 - 유어딜`} description={def.blurb} url={`/life/request/${def.key}`} />
+  const seo = <SEO title={withSiteName(lifeCategoryTitle(def))} description={def.blurb} url={`/life/request/${def.key}`} />
 
   if (step < REVIEW) {
     const f = def.fields[step]

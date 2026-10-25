@@ -33,6 +33,7 @@ import { curatorHomePins } from '../../shared/curator-pin-order'
 import { CONSUMER_SURFACE_SEO, CONSUMER_SITE_NAME } from '../../shared/seo/consumer-surfaces'
 import { withCrumbRoot } from '../../shared/seo/breadcrumb'
 import { CONCEPT_FAQ } from '../../shared/seo/concept-content'
+import { lifeCategoryCrumb, lifeJsonLdNodes } from '../../shared/seo/life-seo'
 import { addressInRegion, parseRegionPath, regionPath, type RegionRef } from '../../shared/constants/region-slugs'
 import { REGION_PATH_RE } from '../../shared/seo/region-seed'
 
@@ -187,6 +188,9 @@ function crumbTrail(
       trail.push({ name: leaf, url: `${origin}${pathname}?${key}=${encodeURIComponent(leaf)}` })
     }
   }
+  // 🏠 업종 견적 페이지(`/life/request/:key`) — 표에 없는 동적 경로라 마지막 단계(업종 이름)를 여기서 붙인다.
+  const lifeLeaf = lifeCategoryCrumb(pathname)
+  if (lifeLeaf) trail.push({ name: lifeLeaf, url: `${origin}${pathname}` })
   return withCrumbRoot(origin, trail)
 }
 
@@ -321,6 +325,7 @@ export function buildSurfaceListJsonLd(
     })
   }
 
+  nodes.push(...lifeJsonLdNodes(path, origin, meta.canonical)) // 🏠 생활 서비스: 허브=업종 목록 · 업종=Service(대상 사업자)
   nodes.push({
     '@type': items.length ? 'CollectionPage' : 'WebPage',
     '@id': meta.canonical,

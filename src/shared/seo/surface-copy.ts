@@ -56,6 +56,8 @@
  * - 구글이 실제로 색인하는지(수일~수주 · 서치콘솔은 대표만 본다).
  */
 
+import { lifeCategoryLines, lifeChildLinks } from './life-seo'
+
 export interface SurfaceCopy {
   /** 크롤러가 받을 문장. **전부 `source` 파일 소스에 실재해야 한다**(가드가 대조). */
   lines: readonly string[]
@@ -70,6 +72,15 @@ export interface SurfaceCopy {
  * JSON-LD 와 같은 배열을 써야 하고, `/about` 은 `WebPage.about` 에도 들어간다).
  */
 export const SURFACE_COPY: Readonly<Record<string, SurfaceCopy>> = {
+  // 🏠 2026-10-25 — 사장님 생활 서비스 허브. 업종 링크는 `lifeChildLinks` 가 덧붙인다(크롤러 본문 8자였다).
+  '/life': {
+    lines: [
+      '간판·방역·설비 수리까지 근처 업체 견적을 무료로 비교해요',
+      '견적은 무료이고, 비교해서 고른 한 곳에만 연락처가 전달돼요.',
+      '아직 업체를 모으는 일도 요청은 받아요. 업체가 들어오는 대로 보내 드려요.',
+    ],
+    source: ['src/pages/life/LifePage.tsx'],
+  },
   '/partners': {
     lines: [
       '손님이 온라인에서 먼저 결제하고, 이용권을 들고 가게로 옵니다.',
@@ -251,5 +262,9 @@ export const SURFACE_COPY: Readonly<Record<string, SurfaceCopy>> = {
 /** 이 경로에 줄 문장이 있는가. */
 export function surfaceCopyFor(pathname: string): SurfaceCopy | null {
   const path = pathname !== '/' && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname
-  return SURFACE_COPY[path] ?? null
+  // 🏠 업종 견적 페이지(17개)는 표에 줄을 늘리지 않고 업종 SSOT 에서 파생한다 — 요청서가 묻는 질문 그대로.
+  const life = lifeCategoryLines(path)
+  return SURFACE_COPY[path] ?? (life ? { lines: life, source: ['src/shared/home-service-categories.ts'] } : null)
 }
+
+export { lifeChildLinks }

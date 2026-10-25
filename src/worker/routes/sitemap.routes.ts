@@ -32,6 +32,8 @@ import { isIndexableImageUrl } from '../../shared/seo/indexable-image';
 import { canonicalDetailPath } from '../../shared/product-flow';
 // 🎁 교환권 필터 카테고리 SSOT — canonical 이 믿는 집합과 **같은 목록**을 읽는다.
 import { VOUCHER_FILTER_CATEGORIES } from '../../shared/seo/consumer-surfaces';
+import { HOME_SERVICE_CATEGORIES } from '../../shared/home-service-categories';
+import { lifeCategoryPath } from '../../shared/seo/life-seo';
 // 🎁 facet 주소 조립 + 재고 문턱 SSOT — canonical·허브 내부 링크와 **같은 함수**를 지난다.
 import { voucherFacetPath, voucherFacetsByStock } from '../../shared/seo/voucher-facet';
 import { VOUCHER_CATEGORY_SQL_IN } from '../../shared/constants/voucher-categories';
@@ -141,6 +143,9 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
     { loc: '/influencer', priority: 0.7, changefreq: 'weekly' },   // 소개로 수익 랜딩
     { loc: '/introduce', priority: 0.6, changefreq: 'monthly' },   // 서비스 소개
     { loc: '/faq', priority: 0.6, changefreq: 'weekly' },          // FAQPage JSON-LD 보유 → 리치 결과 후보
+    // 🏠 2026-10-25 사장님 생활 서비스 — 허브 + 업종 견적 페이지(요청서). 업종 목록은 SSOT 에서 파생.
+    { loc: '/life', priority: 0.8, changefreq: 'weekly' },
+    ...HOME_SERVICE_CATEGORIES.map((d) => ({ loc: lifeCategoryPath(d.key), priority: 0.6, changefreq: 'monthly' })),
     // 📜 약관·정책 — 유입은 적지만 **신뢰 신호**다(전자상거래 사업자 확인, 검색엔진 품질 평가).
     // 🧾 2026-10-13: 색인 대상(`CONSUMER_SURFACE_SEO` 에 항목 있고 noindex 아님)인데 제출이 빠져
     //   있던 둘. **본문이 있는 것만** 넣는다(실측 Googlebot: `/join` 134자 · `/terms/seller` 229자 —
