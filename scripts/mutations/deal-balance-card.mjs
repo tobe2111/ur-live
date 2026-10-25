@@ -24,8 +24,8 @@ export default [
   {
     name: '🪙잔액 금액 옆에 채운 버튼이 다시 생긴다',
     file: CARD,
-    find: `            <span className="font-bold text-gray-400 dark:text-gray-500 text-[13px]">딜</span>`,
-    replace: `            <span className="font-bold text-gray-400 dark:text-gray-500 text-[13px]">딜</span>
+    find: `            <span className="font-medium text-gray-400 dark:text-gray-500 text-[13px]">딜</span>`,
+    replace: `            <span className="font-medium text-gray-400 dark:text-gray-500 text-[13px]">딜</span>
             <button type="button" className="ml-auto px-3 py-1 rounded-full bg-brand text-white text-[12px]">내역</button>`,
     test: T,
     why:

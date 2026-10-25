@@ -75,7 +75,7 @@ export default function ShareRewardBanner({ sellerId, productId }: Props) {
           <GiftBoxIcon className="w-[17px] h-[17px]" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-extrabold text-gray-900 dark:text-white">
+          <p className="text-[13px] font-medium text-gray-900 dark:text-white">
             {t('share.rewardTitle', { defaultValue: '내 링크로 팔리면 {{pct}}% 적립돼요', pct })}
           </p>
           <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 leading-snug">
@@ -85,7 +85,7 @@ export default function ShareRewardBanner({ sellerId, productId }: Props) {
       </div>
       <button
         onClick={copy}
-        className="mt-3 w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-brand text-white text-[13px] font-bold active:scale-[0.98] transition"
+        className="mt-3 w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-brand text-white text-[13px] font-medium active:scale-[0.98] transition"
       >
         {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
         {copied ? t('share.copied', { defaultValue: '링크를 복사했어요' }) : t('share.copyMyLink', { defaultValue: '내 링크 복사하기' })}

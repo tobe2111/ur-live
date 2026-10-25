@@ -112,7 +112,7 @@ export default function DealUseChooser({ plan, value, onChange }: {
       onClick={() => pick(m)}
       aria-pressed={current === m}
       style={{
-        flex: 1, height: 36, borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+        flex: 1, height: 36, borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: 'pointer',
         border: 'none',
         background: current === m ? 'var(--gbd-cta-bg)' : 'var(--gbd-chip-bg, rgba(127,127,127,.10))',
         color: current === m ? 'var(--gbd-cta-fg, #fff)' : 'var(--gbd-text, var(--gbd-ink))',
@@ -135,7 +135,7 @@ export default function DealUseChooser({ plan, value, onChange }: {
           aria-expanded={open}
           style={{
             border: 'none', background: 'none', padding: '2px 0', cursor: 'pointer',
-            fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-ink)', textDecoration: 'underline',
+            fontSize: 12.5, fontWeight: 500, color: 'var(--gbd-ink)', textDecoration: 'underline',
           }}
         >{open ? '접기' : '변경'}</button>
       </div>

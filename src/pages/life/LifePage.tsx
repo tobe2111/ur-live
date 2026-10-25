@@ -44,11 +44,11 @@ export default function LifePage() {
       <SEO title="생활 서비스 - 간판·방역·후드 청소·설비 수리·이사 견적 - 유어딜" description="요청서 한 번이면 근처 업체가 견적을 보내 드려요. 간판·방역·냉장 설비 같은 가게 관리부터 숙소 관리, 이사·청소까지 비교하고 마음에 드는 곳만 고르세요." url="/life" />
 
       <header className="ur-content-narrow px-4 pt-7 pb-5">
-        <h1 className="text-[24px] font-extrabold tracking-tight">생활 서비스</h1>
+        <h1 className="text-[24px] font-bold tracking-tight">생활 서비스</h1>
         <p className="mt-2 text-[13px] leading-relaxed text-gray-600 dark:text-gray-300">
           요청서를 올리면 근처 업체가 견적을 보내요. 비교하고 고른 한 곳에만 연락처가 전달돼요.
         </p>
-        {!open && <p className="mt-3 text-[13px] font-bold text-tone-bad">지금은 잠시 요청을 받지 않아요.</p>}
+        {!open && <p className="mt-3 text-[13px] font-medium text-tone-bad">지금은 잠시 요청을 받지 않아요.</p>}
       </header>
 
       <div className="ur-content-narrow space-y-8 px-4 pb-10">
@@ -68,7 +68,7 @@ export default function LifePage() {
                       </span>
                       {proCounts && !proCounts[def.key]
                         ? <span className="shrink-0 text-[13px] text-gray-500 dark:text-gray-400">업체 모집 중</span>
-                        : <span className="shrink-0 text-[13px] font-bold text-brand-text">무료 견적</span>}
+                        : <span className="shrink-0 text-[13px] font-medium text-brand-text">무료 견적</span>}
                       <ChevronRight className="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" />
                     </Link>
                     {items.length > 0 && (
@@ -77,7 +77,7 @@ export default function LifePage() {
                           <li key={v.id}>
                             <Link to={`/pass/${v.id}`} className="flex items-center justify-between gap-3 py-3">
                               <span className="min-w-0 truncate text-[13px]">{v.restaurant_name ? `${v.restaurant_name} · ` : ''}{v.name}</span>
-                              <span className="shrink-0 text-[13px] font-bold">{formatNumber(v.price)}원</span>
+                              <span className="shrink-0 text-[13px] font-medium">{formatNumber(v.price)}원</span>
                             </Link>
                           </li>
                         ))}

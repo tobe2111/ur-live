@@ -43,7 +43,7 @@ export default function UsageGuide({
       {expiry && (
         <p className="mt-2 flex items-center gap-1 text-[13px]" style={{ color: 'var(--gbd-sub)' }}>
           <ClockIcon className="w-4 h-4" />
-          <span><b className="font-semibold" style={{ color: 'var(--gbd-ink)' }}>{expiry}</b>까지 사용</span>
+          <span><b className="font-medium" style={{ color: 'var(--gbd-ink)' }}>{expiry}</b>까지 사용</span>
         </p>
       )}
       <div className="mt-5"><RedeemHowTo /></div>
@@ -51,7 +51,7 @@ export default function UsageGuide({
       {/* 📎 유의사항은 접는다(대표 확정 시안 1) — 손님이 매장 앞에서 보는 건 위 세 단계다.
           `<details>` 라 상태가 없고(JS 0), 접혀도 화면 읽기 프로그램은 요약 줄을 읽는다. */}
       <details className="group mt-5 pt-4" style={{ borderTop: '1px solid var(--gbd-line2)' }}>
-        <summary className="flex items-center justify-between cursor-pointer list-none [&::-webkit-details-marker]:hidden text-[15px] font-semibold" style={{ color: 'var(--gbd-ink)' }}>
+        <summary className="flex items-center justify-between cursor-pointer list-none [&::-webkit-details-marker]:hidden text-[15px] font-medium" style={{ color: 'var(--gbd-ink)' }}>
           유의사항
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="transition-transform group-open:rotate-180" style={{ color: 'var(--gbd-sub2)' }}><path d="M6 9l6 6 6-6" /></svg>
         </summary>
