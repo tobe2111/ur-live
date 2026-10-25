@@ -5,9 +5,9 @@
 
 export type HomeServiceCategory =
   | 'store_pest' | 'kitchen_hood' | 'store_repair' | 'store_fridge' | 'store_aircon' | 'store_clean'
-  | 'store_drain' | 'signage'
+  | 'store_drain' | 'signage' | 'store_interior'
   | 'lodging_clean' | 'lodging_pool'
-  | 'move' | 'move_in_clean' | 'aircon_clean' | 'home_grout' | 'home_pest'
+  | 'move' | 'move_in_clean' | 'aircon_clean' | 'home_grout' | 'home_pest' | 'home_interior'
 
 /**
  * 어디의 일인가 — 생활 페이지가 가게 → 숙소 → 집 순서로 보여 준다(2026-10-25 대표 "일단 다 하자").
@@ -109,6 +109,33 @@ export const HOME_SERVICE_CATEGORIES: readonly CategoryDef[] = [
         options: ['100만 원 이하', '100~300만 원', '300~500만 원', '500만 원 이상', '상담 후 정할게요'] },
       { key: 'date', label: '희망 설치 날짜', type: 'date', required: true },
       { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '가게 이름, 원하는 느낌. 사진은 업체와 연결된 뒤 보내면 돼요' },
+    ],
+  },
+  /**
+   * 🏗️ 가게 인테리어 — 2026-10-25 대표 "인테리어도 일단 넣어줘".
+   * 금액이 커서 분쟁이 나기 쉽다 → 업체가 첫 통화에서 묻는 것(일·평수·범위·도면·예산·착공일)을 미리 받고,
+   * 새로 여는 가게는 간판을 함께 권한다.
+   */
+  {
+    key: 'store_interior',
+    audience: 'store',
+    label: '가게 인테리어',
+    blurb: '새로 여는 가게 공사부터 부분 리모델링·원상복구까지. 평수와 예산을 고르면 인테리어 업체가 견적을 보내 드려요',
+    voucherKeywords: ['인테리어', '리모델링'],
+    regionFields: ['address'],
+    dateField: 'date',
+    crossSell: { to: 'signage', title: '새 간판도 함께 받아 보시겠어요?', carry: { address: 'address', biz: 'biz', date: 'date' } },
+    fields: [
+      { key: 'address', label: '가게 주소', type: 'region', required: true, placeholder: STORE_HINT },
+      { key: 'biz', label: '업종', type: 'select', required: true, options: BIZ_TYPES },
+      { key: 'work', label: '어떤 공사인가요', type: 'select', required: true, options: ['새로 여는 가게', '부분 리모델링', '철거·원상복구'],
+        optionHints: { '새로 여는 가게': '빈 상가를 처음부터', '부분 리모델링': '영업 중인 가게 일부만', '철거·원상복구': '폐업·이전으로 비우기' } },
+      { key: 'pyeong', label: '가게 평수', type: 'number', required: true, unit: '평' },
+      { key: 'scope', label: '공사할 곳', type: 'multi', required: false, options: ['바닥', '벽·천장', '조명·전기', '주방 설비', '화장실', '카운터·가구', '외관·출입문'] },
+      { key: 'design', label: '디자인', type: 'select', required: true, options: ['디자인부터 필요해요', '도면·시안이 있어요', '업체와 상의할게요'] },
+      { key: 'budget', label: '생각하는 예산', type: 'select', required: true, options: ['1천만 원 이하', '1천~3천만 원', '3천~5천만 원', '5천만 원~1억', '1억 이상', '상담 후 정할게요'] },
+      { key: 'date', label: '착공 희망일', type: 'date', required: true },
+      { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '오픈 목표일, 원하는 분위기. 사진·도면은 업체와 연결된 뒤 보내면 돼요' },
     ],
   },
   {
@@ -341,6 +368,26 @@ export const HOME_SERVICE_CATEGORIES: readonly CategoryDef[] = [
       { key: 'type', label: '종류', type: 'select', required: true, options: ['벽걸이', '스탠드', '2in1', '시스템(천장형)'] },
       { key: 'date', label: '희망 날짜', type: 'date', required: true },
       { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '모델명, 고장 증상' },
+    ],
+  },
+  {
+    key: 'home_interior',
+    audience: 'home',
+    label: '집 인테리어·리모델링',
+    blurb: '전체 리모델링부터 욕실·주방만까지. 평수와 범위를 고르면 인테리어 업체가 견적을 보내 드려요',
+    voucherKeywords: ['인테리어', '리모델링'],
+    regionFields: ['address'],
+    dateField: 'date',
+    fields: [
+      { key: 'address', label: '공사할 곳', type: 'region', required: true, placeholder: REGION_HINT },
+      { key: 'housing', label: '집 종류', type: 'select', required: true, options: ['아파트', '빌라·주택', '오피스텔'] },
+      { key: 'pyeong', label: '평수', type: 'number', required: true, unit: '평' },
+      { key: 'scope', label: '범위', type: 'select', required: true, options: ['전체 리모델링', '욕실', '주방', '도배·바닥', '기타 부분'],
+        optionHints: { '전체 리모델링': '집 전체를 새로', '도배·바닥': '벽지·장판·마루' } },
+      { key: 'living', label: '공사 중 거주', type: 'select', required: true, options: ['빈 집이에요', '살면서 공사해요'] },
+      { key: 'budget', label: '생각하는 예산', type: 'select', required: true, options: ['1천만 원 이하', '1천~3천만 원', '3천~5천만 원', '5천만 원~1억', '1억 이상', '상담 후 정할게요'] },
+      { key: 'date', label: '착공 희망일', type: 'date', required: true },
+      { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '입주·이사 날짜, 원하는 분위기' },
     ],
   },
   {

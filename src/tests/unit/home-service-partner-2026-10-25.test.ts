@@ -133,6 +133,16 @@ describe('🪧 간판 요청서', () => {
   })
 })
 
+describe('🏗️ 인테리어', () => {
+  it('가게·집 둘 다 예산과 착공일을 받고, 가게 인테리어는 간판을 함께 권한다', () => {
+    for (const k of ['store_interior', 'home_interior']) {
+      const keys = categoryDef(k)!.fields.map((f) => f.key)
+      expect(keys).toContain('budget'); expect(keys).toContain('pyeong'); expect(keys).toContain('date')
+    }
+    expect(categoryDef('store_interior')!.crossSell?.to).toBe('signage')
+  })
+})
+
 describe('🔌 배선', () => {
   const notify = readCode('src/features/home-service/api/home-service-notify.ts')
   const pro = readCode('src/features/home-service/api/home-service-pro.routes.ts')

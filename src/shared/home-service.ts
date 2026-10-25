@@ -141,6 +141,8 @@ export function requestSummary(category: HomeServiceCategory, d: Record<string, 
     case 'store_aircon': return `${a} · ${d.type || '-'} ${d.count || '-'}대 · ${d.service || '-'}`
     case 'store_clean': return `${a} · ${d.biz || '-'} ${d.pyeong || '-'}평 · ${d.cycle || '-'}`
     case 'store_drain': return `${a} · ${d.biz || '-'} · ${d.kind || '-'}`
+    case 'store_interior': return `${a} · ${d.biz || '-'} ${d.pyeong || '-'}평 · ${d.work || '-'} · 예산 ${d.budget || '-'}`
+    case 'home_interior': return `${a} · ${d.housing || '-'} ${d.pyeong || '-'}평 · ${d.scope || '-'} · 예산 ${d.budget || '-'}`
     case 'signage': return `${a} · ${d.kind || '-'} ${d.work || '-'} · 가로 ${d.size || '-'} · 예산 ${d.budget || '-'}`
     case 'lodging_clean': return `${a} · ${d.lodging || '-'} ${d.rooms || '-'}실 · ${d.service || '-'} · ${d.cycle || '-'}`
     case 'lodging_pool': return `${a} · ${d.lodging || '-'} · ${d.kind || '-'} · ${d.cycle || '-'}`
