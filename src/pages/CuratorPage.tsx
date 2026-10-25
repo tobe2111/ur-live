@@ -253,7 +253,7 @@ export default function CuratorPage() {
 
   if (error || !data) {
     return (
-      <div className="min-h-[100dvh] bg-surface text-gray-900 dark:text-white flex flex-col items-center justify-center px-4 text-center">
+      <div className="min-h-[100dvh] bg-surface dark:bg-warm text-gray-900 dark:text-white flex flex-col items-center justify-center px-4 text-center">
         <h1 className="text-[24px] font-bold mb-2">{t('curator.notFoundTitle', { defaultValue: '유어샵을 찾을 수 없어요' })}</h1>
         <p className="text-gray-500 dark:text-gray-400 mb-6">@{handle}</p>
         <Link to="/" className="px-6 py-3 bg-brand rounded-xl text-white font-bold">{t('curator.goHome', { defaultValue: '홈으로' })}</Link>
@@ -321,7 +321,7 @@ export default function CuratorPage() {
           실선 테두리를 없애려던 것이었고 그 목적은 지금도 유효하지만, 유어샵은 한 화면에 **바탕 · 카드 ·
           알약 칩** 세 톤이 겹쳐 그게 "지저분하다" 로 읽혔다(대표 진단). 한 톤이면 나누는 일을
           **실선 하나**가 맡는다(탭 줄 아래 + 줄 사이 `divide-rule`) — 판도 그림자도 필요 없다. */}
-      <div className="min-h-[100dvh] bg-surface text-gray-900 dark:text-white pb-28">
+      <div className="min-h-[100dvh] bg-surface dark:bg-warm text-gray-900 dark:text-white pb-28">
         {/* 🗑️ 2026-09-02 (대표 — "편집하기 UI 가 번잡하다"): 주인 상단 안내 띠("내 유어샵 · 방문자에게 보이는 화면")
             삭제. 편집 진입은 헤더의 [유어샵 편집] 블루 버튼 하나(안3). 방문자는 그 버튼이 없을 뿐, 팔로우 등 대체
             버튼을 두지 않는다(대표: "그냥 방문자는 안보이면 되잖아"). */}
