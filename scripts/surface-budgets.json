@@ -4,9 +4,9 @@
   "lockSlackKB": 3,
   "surfaces": {
     "__boot__": {
-      "totalKB": 148.95,
+      "totalKB": 148.98,
       "chunks": {
-        "index.js": 15.19,
+        "index.js": 15.22,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -24,9 +24,9 @@
       }
     },
     "home": {
-      "totalKB": 191.26,
+      "totalKB": 191.29,
       "chunks": {
-        "index.js": 15.19,
+        "index.js": 15.22,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -52,9 +52,9 @@
       }
     },
     "homePc": {
-      "totalKB": 197.75,
+      "totalKB": 197.78,
       "chunks": {
-        "index.js": 15.19,
+        "index.js": 15.22,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -82,9 +82,9 @@
       }
     },
     "gbDetail": {
-      "totalKB": 198.05,
+      "totalKB": 198.08,
       "chunks": {
-        "index.js": 15.19,
+        "index.js": 15.22,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -114,9 +114,9 @@
       }
     },
     "voucherDetail": {
-      "totalKB": 172.39,
+      "totalKB": 172.42,
       "chunks": {
-        "index.js": 15.19,
+        "index.js": 15.22,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -138,9 +138,9 @@
       }
     },
     "product": {
-      "totalKB": 189.24,
+      "totalKB": 189.27,
       "chunks": {
-        "index.js": 15.19,
+        "index.js": 15.22,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -167,9 +167,9 @@
       }
     },
     "linkshop": {
-      "totalKB": 187.84,
+      "totalKB": 187.87,
       "chunks": {
-        "index.js": 15.19,
+        "index.js": 15.22,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -198,9 +198,9 @@
       }
     },
     "vouchers": {
-      "totalKB": 186.69,
+      "totalKB": 186.72,
       "chunks": {
-        "index.js": 15.19,
+        "index.js": 15.22,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -226,9 +226,9 @@
       }
     },
     "browse": {
-      "totalKB": 174.6,
+      "totalKB": 174.63,
       "chunks": {
-        "index.js": 15.19,
+        "index.js": 15.22,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -252,9 +252,9 @@
       }
     },
     "map": {
-      "totalKB": 211.31,
+      "totalKB": 211.34,
       "chunks": {
-        "index.js": 15.19,
+        "index.js": 15.22,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -284,9 +284,9 @@
       }
     },
     "urshorts": {
-      "totalKB": 170.57,
+      "totalKB": 170.6,
       "chunks": {
-        "index.js": 15.19,
+        "index.js": 15.22,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -309,9 +309,9 @@
       }
     },
     "cart": {
-      "totalKB": 178.12,
+      "totalKB": 178.15,
       "chunks": {
-        "index.js": 15.19,
+        "index.js": 15.22,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -335,9 +335,9 @@
       }
     },
     "search": {
-      "totalKB": 173.39,
+      "totalKB": 173.42,
       "chunks": {
-        "index.js": 15.19,
+        "index.js": 15.22,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -360,9 +360,9 @@
       }
     },
     "faq": {
-      "totalKB": 172.28,
+      "totalKB": 172.31,
       "chunks": {
-        "index.js": 15.19,
+        "index.js": 15.22,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -386,9 +386,9 @@
       }
     },
     "stays": {
-      "totalKB": 172.07,
+      "totalKB": 172.1,
       "chunks": {
-        "index.js": 15.19,
+        "index.js": 15.22,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -411,9 +411,9 @@
       }
     },
     "stayDetail": {
-      "totalKB": 202.89,
+      "totalKB": 202.92,
       "chunks": {
-        "index.js": 15.19,
+        "index.js": 15.22,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -442,9 +442,9 @@
       }
     },
     "blog": {
-      "totalKB": 172.84,
+      "totalKB": 172.87,
       "chunks": {
-        "index.js": 15.19,
+        "index.js": 15.22,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -466,9 +466,9 @@
       }
     },
     "blogPost": {
-      "totalKB": 183.82,
+      "totalKB": 183.85,
       "chunks": {
-        "index.js": 15.19,
+        "index.js": 15.22,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -495,9 +495,9 @@
       }
     },
     "region": {
-      "totalKB": 195.34,
+      "totalKB": 195.37,
       "chunks": {
-        "index.js": 15.19,
+        "index.js": 15.22,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -526,9 +526,9 @@
       }
     },
     "guestMy": {
-      "totalKB": 180.67,
+      "totalKB": 180.7,
       "chunks": {
-        "index.js": 15.19,
+        "index.js": 15.22,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -555,9 +555,9 @@
       }
     },
     "guestPass": {
-      "totalKB": 177.7,
+      "totalKB": 177.73,
       "chunks": {
-        "index.js": 15.19,
+        "index.js": 15.22,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -583,9 +583,9 @@
       }
     },
     "guestUShop": {
-      "totalKB": 179.46,
+      "totalKB": 179.49,
       "chunks": {
-        "index.js": 15.19,
+        "index.js": 15.22,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -612,9 +612,9 @@
       }
     },
     "dash:my": {
-      "totalKB": 202.4,
+      "totalKB": 202.39,
       "chunks": {
-        "index.js": 15.19,
+        "index.js": 15.22,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -629,7 +629,7 @@
         "app-layout.js": 3.36,
         "app-routes.js": 0.86,
         "index.css": 28.08,
-        "SellerSection.js": 5.85,
+        "SellerSection.js": 5.83,
         "order-kind.js": 0.26,
         "lz-common.js": 17.48,
         "lucide-home.js": 0.77,
@@ -647,13 +647,13 @@
         "app-features.js": 1.91,
         "profile-avatar.js": 0.27,
         "order-stage.js": 0.35,
-        "UserProfilePage.js": 7.33
+        "UserProfilePage.js": 7.31
       }
     },
     "dash:admin": {
-      "totalKB": 247.7,
+      "totalKB": 247.73,
       "chunks": {
-        "index.js": 15.19,
+        "index.js": 15.22,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -687,9 +687,9 @@
       }
     },
     "dash:agency": {
-      "totalKB": 181.29,
+      "totalKB": 181.33,
       "chunks": {
-        "index.js": 15.19,
+        "index.js": 15.22,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -704,7 +704,7 @@
         "app-layout.js": 3.36,
         "app-routes.js": 0.86,
         "index.css": 28.08,
-        "AgencyHomePage.js": 9.96,
+        "AgencyHomePage.js": 9.97,
         "app-owner-kit.js": 1.23,
         "lucide-home.js": 0.77,
         "Sheet.js": 1.12,
@@ -920,6 +920,13 @@
       "changes": [
         "gbDetail: 194.7 → 196.6 KB (+1.9, 허용 1.5) · 늘어난 것: lz-boot-gbDetail.js +0.4",
         "product: 187.2 → 188.8 KB (+1.6, 허용 1.5) · 늘어난 것: (새 청크 없음 — 기존 청크 내부)"
+      ]
+    },
+    {
+      "date": "2026-10-25",
+      "reason": "gbDetail lz-gbDetail growth +1.6KB",
+      "surfaces": [
+        "gbDetail"
       ]
     }
   ]
