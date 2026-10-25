@@ -5559,9 +5559,10 @@ canvas {
   {
     name: '내보내기가 화면 필터를 무시(손에 안 잡히는 지표)',
     file: 'src/features/marketing/api/partner-pool.routes.ts',
-    find: 'listCompanyLeads(adsLeadsDb(c.env), { ...filter, limit: EXPORT_MAX })',
-    replace: 'listCompanyLeads(adsLeadsDb(c.env), { limit: EXPORT_MAX })',
-    // 2026-08-03: 파싱이 `pool-export.ts` 로 이동했지만 **넘기는 지점**은 여전히 여기다(지도 유효).
+    find: 'list: (limit, notExported) => listCompanyLeads(adsLeadsDb(c.env), { ...filter, notExported, limit }),',
+    replace: 'list: (limit, notExported) => listCompanyLeads(adsLeadsDb(c.env), { notExported, limit }),',
+    // 2026-08-03: 파싱이 `pool-export.ts` 로 이동. 2026-10-25: 넘기는 지점이 `runBatchExport` 의
+    //   `list` 콜백으로 옮겨갔다 — **불변식(화면 필터가 파일까지 간다)은 그대로**이고 앵커만 따라갔다.
     test: 'src/tests/unit/ads-export-filter-parity.test.ts',
     why:
       '이 DB 의 성공 지표는 총 인원이 아니라 **"제안 보낼 수 있는 리드 수"** 다. 화면은 그 정의로 세는데 ' +
@@ -5571,8 +5572,10 @@ canvas {
   {
     name: '내보내기 조립이 목록과 두 벌로 갈라짐',
     file: 'src/pages/admin/AdminStoreProspectsPage.tsx',
-    find: 'store-prospects/export?${buildQuery().toString()}',
-    replace: 'store-prospects/export',
+    // 2026-10-25: 세 버튼이 `PoolExportButtons` 로 묶이며 조립을 **prop 으로** 넘긴다.
+    //   결함은 같다 — 목록이 쓰는 조립(`buildQuery`)을 안 쓰고 빈 조립을 넘긴다.
+    find: 'query={buildQuery} batchHint=',
+    replace: 'query={() => new URLSearchParams()} batchHint=',
     test: 'src/tests/unit/ads-export-filter-parity.test.ts',
     why:
       '매장 풀은 **95%가 학원**이다(인허가 레인 사망으로 음식점·카페·미용·숙박 0). 화면 필터가 파일까지 ' +
