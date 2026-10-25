@@ -116,7 +116,6 @@ sellerStaysRoutes.post('/stays', cors(), async (c) => {
       }, 403)
     }
 
-    // referral 권한 검증 — 실버 이상만.
     if (referral_enabled) {
       const allowed = await canEnableReferral(c.env, sellerId)
       if (!allowed) {
@@ -409,7 +408,6 @@ sellerStaysRoutes.delete('/stays/:productId/rooms/:roomId', cors(), async (c) =>
     if (!(await ensureOwnsProduct(c, productId, sellerId))) {
       return c.json({ success: false, error: '권한 없음' }, 403)
     }
-    // 활성 예약 체크.
     const active = await c.env.DB.prepare(
       `SELECT COUNT(*) as cnt FROM stay_bookings WHERE room_id = ? AND status IN ('pending','confirmed','checked_in')`
     ).bind(roomId).first<{ cnt: number }>()
@@ -465,7 +463,6 @@ sellerStaysRoutes.put('/stays/:productId/calendar', cors(), async (c) => {
     }
     if (dates.length > 365) return c.json({ success: false, error: '한번에 최대 365일까지' }, 400)
 
-    // room 소유 확인.
     const room = await c.env.DB.prepare('SELECT id FROM product_stay_rooms WHERE id = ? AND product_id = ?')
       .bind(roomId, productId).first<{ id: number }>()
     if (!room) return c.json({ success: false, error: '객실 없음' }, 404)
@@ -535,8 +532,7 @@ async function transitionBooking(
   const sellerId = await getSellerId(c)
   if (!sellerId) return c.json({ success: false, error: '인증 필요' }, 401)
   try {
-    // 🛡️ 2026-05-18: CHECK 제약 대체 — 잘못된 status 호출 시 즉시 throw.
-    //   dynamic import 라 TS assertion signature 불가 → 직접 호출 (런타임 throw).
+    // 🛡️ 2026-05-18: CHECK 제약 대체 — 잘못된 status 호출 시 즉시 throw(dynamic import 라 직접 검사).
     const stayStatus = await import('../../../worker/utils/stay-status')
     if (!(stayStatus.STAY_BOOKING_STATUS as readonly string[]).includes(targetStatus)) {
       throw new Error(`invalid stay_bookings.status: ${targetStatus}`)
@@ -569,11 +565,14 @@ async function transitionBooking(
         WHERE id = ?`
     ).bind(targetStatus, bookingId).run()
 
-    // 상태 이력 기록.
     await c.env.DB.prepare(
       `INSERT INTO stay_booking_status_log (booking_id, prev_status, new_status, changed_by_role, changed_by_id, reason)
        VALUES (?, ?, ?, 'seller', ?, NULL)`
     ).bind(bookingId, booking.status, targetStatus, sellerId).run().catch(swallow('stay:status-log'))
+
+    // 🏡 숙소=이용권 통일 — 손으로 체크인해도 묶인 이용권을 같이 사용 처리(재스캔 방지 + 정산 원장).
+    const ctx = (c as unknown as { executionCtx?: { waitUntil?: (p: Promise<unknown>) => void } }).executionCtx
+    if (targetStatus === 'checked_in') await (await import('../../group-buy/api/stay-voucher-unify')).settleStayVoucherAfterManual(c.env.DB, { bookingId, sellerId, waitUntil: (p) => { ctx?.waitUntil?.(p) } })
 
     return c.json({ success: true })
   } catch (err) {
@@ -583,9 +582,7 @@ async function transitionBooking(
   }
 }
 
-// 🛡️ 2026-05-18: voucher 모드 — 사용 처리 (날짜 협의 후 매장 방문 시 셀러가 호출).
-//   body: { check_in_date, check_out_date }
-//   동작: voucher_used_at = now, voucher_used_check_in/out 기록, status='checked_out' 전환.
+// 🛡️ 2026-05-18: voucher 모드 사용 처리 — body { check_in_date, check_out_date } → voucher_used_* 기록 + checked_out.
 sellerStaysRoutes.patch('/stays/bookings/:bookingId/use-voucher', cors(), async (c) => {
   const sellerId = await getSellerId(c)
   if (!sellerId) return c.json({ success: false, error: '인증 필요' }, 401)
@@ -633,6 +630,9 @@ sellerStaysRoutes.patch('/stays/bookings/:bookingId/use-voucher', cors(), async 
       `INSERT INTO stay_booking_status_log (booking_id, prev_status, new_status, changed_by_role, changed_by_id, reason)
        VALUES (?, ?, 'checked_out', 'seller', ?, 'voucher 사용 — 실제 체크인-체크아웃')`
     ).bind(bookingId, booking.status, sellerId).run().catch(() => { /* noop */ })
+
+    // 🏡 숙소=이용권 통일 — 숙박권 수동 사용도 묶인 이용권을 같이 사용 처리(정산 원장 포함).
+    await (await import('../../group-buy/api/stay-voucher-unify')).settleStayVoucherAfterManual(c.env.DB, { bookingId, sellerId, waitUntil: (p) => c.executionCtx.waitUntil(p) })
 
     return c.json({ success: true })
   } catch (err) {

@@ -126,7 +126,11 @@ export default function MyStaysPage() {
                           <span className="text-gray-400 dark:text-gray-500">({b.nights}박 · {b.guest_count}명)</span>
                         </div>
                       )}
-                      {b.check_in_code && b.status === 'confirmed' && (
+                      {b.voucher_code && b.voucher_status === 'unused' && b.status === 'confirmed' ? (
+                        <Link to="/my-vouchers" className="mt-2 inline-flex items-center gap-1 h-9 px-3 rounded-full bg-brand text-white text-[13px] font-medium">
+                          체크인 QR 보기 ›
+                        </Link>
+                      ) : b.check_in_code && b.status === 'confirmed' && (
                         <div className="mt-2 inline-flex items-center gap-2 px-2 py-1 bg-blue-50 dark:bg-blue-500/20 rounded">
                           <span className="text-[12px] text-blue-700 dark:text-blue-300">{b.sale_mode === 'voucher' ? '이용권 코드' : '체크인 코드'}</span>
                           <span className="text-[12px] tabular-nums font-medium text-blue-800 dark:text-blue-200">{b.check_in_code}</span>
