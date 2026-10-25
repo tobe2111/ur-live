@@ -575,6 +575,13 @@ async function transitionBooking(
        VALUES (?, ?, ?, 'seller', ?, NULL)`
     ).bind(bookingId, booking.status, targetStatus, sellerId).run().catch(swallow('stay:status-log'))
 
+    // 🏡 2026-10-25 숙소=이용권 통일 — 손으로 체크인해도 묶인 이용권을 같이 쓴 것으로(재스캔 방지 + 정산 원장).
+    if (targetStatus === 'checked_in') {
+      const { settleStayVoucherAfterManual } = await import('../../group-buy/api/stay-voucher-unify')
+      const ctx = (c as unknown as { executionCtx?: { waitUntil?: (p: Promise<unknown>) => void } }).executionCtx
+      await settleStayVoucherAfterManual(c.env.DB, { bookingId, sellerId, waitUntil: (p) => { if (ctx?.waitUntil) ctx.waitUntil(p); else void p } })
+    }
+
     return c.json({ success: true })
   } catch (err) {
     // helper 함수 — c 는 부분 mock. safeError 직접 못 씀.
@@ -633,6 +640,12 @@ sellerStaysRoutes.patch('/stays/bookings/:bookingId/use-voucher', cors(), async 
       `INSERT INTO stay_booking_status_log (booking_id, prev_status, new_status, changed_by_role, changed_by_id, reason)
        VALUES (?, ?, 'checked_out', 'seller', ?, 'voucher 사용 — 실제 체크인-체크아웃')`
     ).bind(bookingId, booking.status, sellerId).run().catch(() => { /* noop */ })
+
+    // 🏡 2026-10-25 숙소=이용권 통일 — 숙박권 수동 사용도 묶인 이용권을 같이 사용 처리(정산 원장 포함).
+    {
+      const { settleStayVoucherAfterManual } = await import('../../group-buy/api/stay-voucher-unify')
+      await settleStayVoucherAfterManual(c.env.DB, { bookingId, sellerId, waitUntil: (p) => c.executionCtx.waitUntil(p) })
+    }
 
     return c.json({ success: true })
   } catch (err) {

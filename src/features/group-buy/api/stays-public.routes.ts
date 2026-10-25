@@ -148,7 +148,21 @@ staysPublicRoutes.get('/stays/my-bookings', cors(), async (c) => {
         WHERE b.user_id = ?
         ORDER BY COALESCE(b.check_in_date, b.created_at) DESC LIMIT 100`
     ).bind(userId).all<Record<string, unknown>>().catch(() => ({ results: [] }))
-    return c.json({ success: true, data: rows.results || [] })
+    // 🏡 2026-10-25 숙소=이용권 통일 — 묶인 이용권(지갑 QR)이 있으면 그 코드·상태를 함께 싣는다.
+    //   컬럼이 아직 없는 DB(게이트 OFF 시절)면 조회가 실패하고 종전 응답 그대로다.
+    const list = rows.results || []
+    if (list.length) {
+      const ids = list.map((r) => Number(r.id)).filter(Number.isFinite)
+      const vs = await c.env.DB.prepare(
+        `SELECT stay_booking_id, code, status FROM vouchers WHERE stay_booking_id IN (${ids.map(() => '?').join(',')})`
+      ).bind(...ids).all<{ stay_booking_id: number; code: string; status: string }>().catch(() => ({ results: [] as Array<{ stay_booking_id: number; code: string; status: string }> }))
+      const byId = new Map((vs.results || []).map((v) => [Number(v.stay_booking_id), v]))
+      for (const r of list) {
+        const v = byId.get(Number(r.id))
+        if (v) { r.voucher_code = v.code; r.voucher_status = v.status }
+      }
+    }
+    return c.json({ success: true, data: list })
   } catch (err) {
     return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[stays-public]')
   }
@@ -1091,6 +1105,11 @@ staysPublicRoutes.post('/stays/bookings/confirm', cors(), rateLimit({ action: 's
       ),
     ]).catch(() => { /* noop — 멱등 체크(payment_status)로 재시도 가능 */ })
 
+    // 🏡 2026-10-25 대표 *"숙소를 이용권 방식으로 합치는 안으로 진행하자. 끝까지."* — 확정된 예약마다
+    //   이용권 1장을 함께 만든다(지갑 QR · 사장님 스캔 · 사용 시점 원장). 게이트 OFF 면 no-op, 실패는 삼킨다.
+    const { issueStayVouchers } = await import('./stay-voucher-unify')
+    await issueStayVouchers(c.env.DB, { orderId, userId, bookingIds: claimed.map((b) => b.id) })
+
     // 🏁 2026-06-12 (전 플로우 감사 🟡): 숙소 예약 확정 시 셀러 통보가 전무했음 — 벨 알림 추가
     //   (응답 후 실행, fail-soft). 알림톡 등 확장은 셀러 알림 정책과 함께.
     const firstClaimed = claimed[0]
@@ -1176,11 +1195,19 @@ staysPublicRoutes.patch('/stays/bookings/:id/cancel', cors(), rateLimit({ action
     //   (캘린더 +nights 복원)를 실행 → 객실 야간 재고 이중 복원(팬텀 재고/오버부킹). confirmed/pending
     //   에서 빠져나오는 thread 만 진행, 진 thread(changes==0)는 409 — 재고/환불 side-effect 미실행.
     //   (Toss 환불은 stay-cancel-${id} idempotency-key 로도 이중 방지되지만 재고 복원은 키가 없어 필수.)
+    // 🏡 2026-10-25 숙소=이용권 통일 — 묶인 이용권을 **먼저** 잡는다. 사장님 스캔과 동시에 오면
+    //   이용권 CAS 를 먼저 이긴 쪽이 이긴다(이미 썼으면 취소 거절 — 체크인한 예약을 환불하지 않는다).
+    const { holdStayVoucherForCancel, releaseStayVoucherHold } = await import('./stay-voucher-unify')
+    const voucherHold = await holdStayVoucherForCancel(c.env.DB, id)
+    if (voucherHold === 'used') {
+      return c.json({ success: false, code: 'STAY_VOUCHER_USED', error: '이미 체크인 처리된 예약은 취소할 수 없어요' }, 409)
+    }
     const cancelClaim = await c.env.DB.prepare(
       `UPDATE stay_bookings SET status = 'cancelled', updated_at = datetime('now')
         WHERE id = ? AND status IN ('confirmed', 'pending')`
     ).bind(id).run().catch(() => null)
     if (!cancelClaim || (cancelClaim.meta?.changes ?? 0) === 0) {
+      if (voucherHold === 'held') await releaseStayVoucherHold(c.env.DB, id)
       return c.json({ success: false, error: '이미 취소 처리된 예약입니다' }, 409)
     }
 
