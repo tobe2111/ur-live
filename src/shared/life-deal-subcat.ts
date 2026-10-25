@@ -29,7 +29,7 @@ export interface LifeSubcatDef {
 export const LIFE_SUBCATS: readonly LifeSubcatDef[] = [
   { key: 'move', label: '이사', words: ['이사', '용달', '포장이사', '짐보관'],
     bannerTitle: '이사도 무료 견적으로', bannerSub: '이사 날짜·짐 양만 적으면 근처 업체가 견적을 보내요', request: 'move' },
-  { key: 'clean', label: '청소', words: ['청소', '입주', '세탁', '케어'],
+  { key: 'clean', label: '청소', words: ['청소', '입주', '세탁', '세척', '케어', '이사청소', '입주청소'],
     bannerTitle: '청소도 무료 견적으로', bannerSub: '입주·에어컨·가게 청소 견적 비교' },
   { key: 'pest', label: '방역·소독', words: ['방역', '소독', '해충', '방제', '바퀴'],
     bannerTitle: '방역도 무료 견적으로', bannerSub: '가게·집 방역 견적 비교' },
@@ -57,8 +57,14 @@ const GUESS_ORDER: readonly LifeSubcat[] = ['sign', 'pest', 'move', 'clean', 're
 export function guessLifeSubcat(name: unknown): LifeSubcat | null {
   const n = String(name ?? '')
   if (!n) return null
-  for (const k of GUESS_ORDER) if (lifeSubcatDef(k)!.words.some((w) => n.includes(w))) return k
-  return null
+  // 가장 긴 낱말이 이긴다 — "이사청소" 는 청소다(2026-10-25 라이브 실측: '이사' 가 먼저 맞아 이사로 갔다).
+  //   길이가 같으면 `GUESS_ORDER` 순서(좁은 말 먼저).
+  let best: LifeSubcat | null = null
+  let bestLen = 0
+  for (const k of GUESS_ORDER) {
+    for (const w of lifeSubcatDef(k)!.words) if (w.length > bestLen && n.includes(w)) { best = k; bestLen = w.length }
+  }
+  return best
 }
 
 /** 저장값이 먼저, 없으면 이름 추정. */
