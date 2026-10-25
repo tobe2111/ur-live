@@ -82,7 +82,9 @@ describe('② 모바일 섹션은 같은 카드 상수를 쓴다', () => {
         '   2026-10-12 실측: 그 화면 하나에 가격이 여섯 번 나왔다.',
     ).not.toContain('아껴요')
     // 할인율·판매가·정가 한 줄은 남아 있어야 한다(지운 것은 상자이지 가격이 아니다)
-    expect(head, '정가 취소선이 사라졌다 — 할인폭을 말할 방법이 없어진다').toContain('line-through')
+    // 🔁 2026-10-24 그루폰식: 가격 줄이 '옵션 선택' 카드로 옮겨갔다 — 취소선도 거기서 본다.
+    expect(readCode('src/pages/group-buy/PassOptionCard.tsx'), '정가 취소선이 사라졌다 — 할인폭을 말할 방법이 없어진다').toContain('line-through')
+    expect(readCode('src/pages/group-buy/PassOptionCard.tsx'), "'아껴요' 상자가 옵션 카드로 옮겨 왔다").not.toContain('아껴요')
   })
 })
 

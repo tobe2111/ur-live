@@ -44,8 +44,9 @@ export default [
   {
     name: '🎟️C 머리가 다시 사진을 덮는다 (대표 "왜 사진을 가리고 있고")',
     file: 'src/shared/pass-head.ts',
-    find: "card: 'lg:hidden relative mx-3 mb-3 px-1 pt-4 pb-5'",
-    replace: "card: 'lg:hidden relative mx-3 -mt-7 mb-3 px-1 pt-4 pb-5'",
+    // 🔁 2026-10-24 (그루폰식): 머리 여백이 pt-5 pb-3 으로 바뀌었다 — 불변식(음수 위 여백 금지) 그대로.
+    find: "card: 'lg:hidden relative mx-3 mb-3 px-1 pt-5 pb-3'",
+    replace: "card: 'lg:hidden relative mx-3 -mt-7 mb-3 px-1 pt-5 pb-3'",
     test: 'src/tests/unit/pass-detail-d-2026-10-11.test.ts',
     why: '라이브 실측 28px 가림. 히어로 크롭이 gravity=auto 라 피사체가 아래 앉으면 그 피사체가 가려진다.',
   },
@@ -59,9 +60,10 @@ export default [
   },
   {
     name: "🎟️C '1장당 N원 아껴요' 상자가 돌아온다",
-    file: 'src/pages/group-buy/PassHeadCard.tsx',
-    find: '      {/* 🔁 2026-10-12 C안: `1장당 N원 아껴요` 틴트 상자 제거',
-    replace: '      {unitSaving > 0 && <div>1장당 {formatNumber(unitSaving)}원 아껴요</div>}\n      {/* 🔁 2026-10-12 C안: `1장당 N원 아껴요` 틴트 상자 제거',
+    // 🔁 2026-10-24 (그루폰식): 가격이 '옵션 선택' 카드로 옮겨갔다 — 상자가 돌아올 자리도 그쪽이다.
+    file: 'src/pages/group-buy/PassOptionCard.tsx',
+    find: '{discountPct > 0 && <span className="text-[13px] font-bold"',
+    replace: '<span>1장당 아껴요</span>{discountPct > 0 && <span className="text-[13px] font-bold"',
     test: 'src/tests/unit/pass-detail-d-2026-10-11.test.ts',
     why: '48% 와 정가 취소선이 이미 같은 말을 한다. 2026-10-12 실측에서 한 화면에 가격이 여섯 번 나왔다.',
   },

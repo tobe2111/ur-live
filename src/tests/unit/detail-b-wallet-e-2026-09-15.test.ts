@@ -78,11 +78,13 @@ describe('상세 안 B — 같은 할인을 세 번 말하지 않는다', () => 
   // 🔁 2026-10-11 (대표 확정 "D안"): 모바일 가격이 머리 카드(`PassHeadCard`)로 옮겨가 **한 줄**
   //   [할인율 · 판매가 · 정가 취소선] 이 됐다. 지키려던 것은 그대로 — **살 금액이 가장 크다** ·
   //   할인율은 `--sale` · 정가는 취소선.
+  // 🔁 2026-10-24 (대표 승인 "그루폰식"): 가격 줄이 머리에서 '옵션 선택' 카드(`PassOptionCard`)로 옮겨갔다.
+  //   지키는 것은 그대로 — 판매가가 가장 크다 · 할인율은 --sale · 정가는 취소선.
   const priceBlock = () => {
-    const src = readCode('src/pages/group-buy/PassHeadCard.tsx')
+    const src = readCode('src/pages/group-buy/PassOptionCard.tsx')
     const at = src.indexOf('formatNumber(unitPrice)')
     expect(at, '머리 카드 가격 앵커가 낡았다').toBeGreaterThan(0)
-    const start = src.lastIndexOf('<div className="mt-4 flex items-baseline', at)
+    const start = src.lastIndexOf('<div className="flex items-baseline', at)
     expect(start, '가격 줄 시작 앵커가 낡았다').toBeGreaterThan(0)
     return src.slice(start, src.indexOf('</div>', at))
   }
@@ -103,7 +105,7 @@ describe('상세 안 B — 같은 할인을 세 번 말하지 않는다', () => 
 
   it('할인율이 --sale 이다 (상세만 쓰던 --gbd-danger 로 되돌아가지 않았다)', () => {
     const block = priceBlock()
-    const line = block.split('\n').find((l) => l.includes('{discountPct}%'))
+    const line = block.split('\n').find((l) => l.includes('{discountPct}%</span>'))
     expect(line, '가격 줄에서 할인율 렌더 줄을 못 찾았다 — 셀렉터가 낡았다').toBeTruthy()
     expect(line!, line!.trim().slice(0, 90)).toContain('var(--sale)')
     expect(line!, '상세 전용 빨강이 되살아났다').not.toContain('--gbd-danger')
