@@ -30,6 +30,7 @@
 import { useTranslation } from '@/lib/i18n-lite'
 import { MAP_VOUCHER_DEFS, type MapVoucherType } from '@/pages/restaurant-map/voucher-types'
 import type { CuratorPin } from '@/features/curator/api/curator-api'
+import { USHOP_TAB_CLS } from '@/shared/ushop-row'
 
 export type PinCategory = MapVoucherType | 'shop'
 
@@ -65,7 +66,7 @@ export default function PinCategoryChips({ pins, value, onChange }: { pins: Cura
             role="tab"
             aria-selected={on}
             onClick={() => onChange(d.key as PinCategory)}
-            className={`shrink-0 inline-flex items-center gap-1 h-9 px-3 -mb-px border-b-2 text-[15px] font-bold whitespace-nowrap active:opacity-60 transition-colors ${on ? 'border-brand text-gray-900 dark:text-white' : 'border-transparent text-gray-400 dark:text-gray-500'}`}
+            className={`${USHOP_TAB_CLS} ${on ? 'border-gray-900 dark:border-white font-bold text-gray-900 dark:text-white' : 'border-transparent text-gray-500 dark:text-gray-400'}`}
           >
             {t(d.labelKey, { defaultValue: d.defaultLabel })}
             {/* 🩸 2026-09-30 — `text-gray-300 dark:text-gray-600` 으로 썼다가 **CI 의 `contrast` 가 잡았다**
@@ -74,7 +75,7 @@ export default function PinCategoryChips({ pins, value, onChange }: { pins: Cura
                 *정보*(*"각 이용권마다 숫자도 달아줘"*)라 장식으로 칠하면 안 된다.
                 ⇒ 라벨과 **같은 회색 단계**로: 라이트 3.67:1 · 다크 3.09:1(둘 다 통과). 위계는 색이 아니라
                 크기가 만든다(라벨 15px vs 개수 12px). 가드가 이 비율을 **계산해서** 고정한다. */}
-            <span className={`text-[12px] tabular-nums ${on ? 'text-brand' : 'text-gray-400 dark:text-gray-500'}`}>{n}</span>
+            <span className="text-[13px] font-normal tabular-nums text-gray-500 dark:text-gray-400">{n}</span>
           </button>
         )
       })}

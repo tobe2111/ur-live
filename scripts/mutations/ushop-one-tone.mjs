@@ -45,7 +45,7 @@ export default [
   {
     name: '한톤 — 분류 줄이 다시 흰 알약 + 들림이 된다',
     file: CHIPS,
-    find: "${on ? 'border-brand text-gray-900 dark:text-white' : 'border-transparent text-gray-400 dark:text-gray-500'}",
+    find: "${on ? 'border-gray-900 dark:border-white font-bold text-gray-900 dark:text-white' : 'border-transparent text-gray-500 dark:text-gray-400'}",
     replace: "${on ? 'bg-brand text-white' : 'bg-white dark:bg-[#1D1F29] shadow-lift rounded-full'}",
     test: T_A3,
     why:
@@ -66,7 +66,7 @@ export default [
     name: '한톤 — 줄 사이를 실선 대신 판 여백으로 되돌린다',
     file: PAGE,
     // 🔁 2026-09-30 재조준(#1579 안 A 머지) — PC 2열이 같은 줄에 붙었다. 불변식은 그대로 폰 실선이다.
-    find: 'className="max-w-3xl mx-auto px-4 pb-4 divide-y divide-rule lg:divide-y-0 lg:grid lg:gap-2 ur-ushop-rows"',
+    find: 'className="max-w-3xl mx-auto px-5 pb-4 divide-y divide-rule lg:divide-y-0 lg:grid lg:gap-2 ur-ushop-rows"',
     replace: 'className="max-w-3xl mx-auto px-4 pb-4 space-y-2 lg:grid lg:gap-2 ur-ushop-rows"',
     test: T_LIST,
     why:
@@ -87,7 +87,7 @@ export default [
   {
     name: '한톤 — chrome 과 진열대를 나누는 실선을 뺀다',
     file: PAGE,
-    find: 'px-4 pt-2 border-b border-rule flex items-center gap-2 empty:hidden',
+    find: 'px-5 pt-6 border-b border-rule flex items-center gap-2 empty:hidden',
     replace: 'px-4 pt-2 flex items-center gap-2 empty:hidden',
     test: T_LIST,
     why:
@@ -98,8 +98,8 @@ export default [
     // 🩸 2026-09-30 신설 — **CI 의 `contrast` 가 실제로 잡은 결함**을 고정한다(아래 why 참조).
     name: '한톤 — 분류 줄의 개수를 다시 안 보이는 회색으로',
     file: CHIPS,
-    find: "'text-gray-400 dark:text-gray-500'}`}>{n}",
-    replace: "'text-gray-300 dark:text-gray-600'}`}>{n}",
+    find: 'text-[13px] font-normal tabular-nums text-gray-500 dark:text-gray-400">{n}',
+    replace: 'text-[13px] font-normal tabular-nums text-gray-300 dark:text-gray-600">{n}',
     test: T_A3,
     why:
       '이 값이 이 PR 의 첫 판이었고 CI 의 `contrast` 가 **다크 2.15:1** 로 잡았다. 그리고 재 보니 ' +

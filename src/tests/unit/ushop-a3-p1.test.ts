@@ -126,7 +126,11 @@ describe('유어샵 안3 — 카테고리 분류 줄', () => {
 
   it('활성 표시는 브랜드 하나 — 밑줄, 그리고 개수가 붙는다', () => {
     const src = codeOnly(read(CHIPS))
-    expect(src, '활성은 브랜드 밑줄').toMatch(/border-b-2[\s\S]{0,120}border-brand/)
+    // 🛍️ 2026-10-25 D안(대표 *"유어샵은 D 대로"*): 밑줄 색이 브랜드 → **잉크** — 교환권 밑줄 탭과 같은 문법.
+    //   밑줄 자체(`border-b-2`)는 공용 상수 USHOP_TAB_CLS 로 옮겼다(워커 첫 화면이 같은 값을 쓴다).
+    expect(read('src/shared/ushop-row.ts'), '탭 상수에 밑줄').toMatch(/USHOP_TAB_CLS = '[^']*border-b-2/)
+    expect(src, '탭이 그 상수를 쓴다').toMatch(/\$\{USHOP_TAB_CLS\}/)
+    expect(src, '활성은 잉크 밑줄 + 굵게').toMatch(/on \? 'border-gray-900 dark:border-white font-bold/)
     expect(src, '비활성은 선을 숨긴다(자리는 남긴다 — 글자가 안 밀리게)').toContain('border-transparent')
     expect(src, '개수(대표 요청)를 그린다').toMatch(/\{n\}/)
   })
@@ -144,7 +148,8 @@ describe('유어샵 안3 — 카테고리 분류 줄', () => {
    */
   it('비활성 탭의 개수가 읽힌다 — 라이트·다크 둘 다 3:1 이상', () => {
     const src = codeOnly(read(CHIPS))
-    const m = src.match(/text-\[12px\] tabular-nums \$\{on \? '[^']+' : '([^']+)'\}/)
+    // 2026-10-25 D안: 개수는 활성·비활성 같은 회색 13px 한 벌이다(종전 삼항 → 상수 문자열).
+    const m = src.match(/text-\[13px\] font-normal tabular-nums ([^"]+)"/)
     expect(m, '비활성 개수의 색 클래스를 못 찾았다 — 마크업이 바뀌었으면 이 시험도 재조준할 것').not.toBeNull()
     const cls = (m as RegExpMatchArray)[1]
     const light = cls.match(/(?:^|\s)text-gray-(\d+)/)
@@ -201,8 +206,10 @@ describe('유어샵 안3 — 카테고리 분류 줄', () => {
    */
   it('순번은 남아 있고 숫자 폭이 고정이다 (사진 위 흰 원이 아니다)', () => {
     const src = codeOnly(read(ROW))
-    expect(src, '순번 렌더').toContain('{order}')
-    expect(src, '숫자 폭 고정').toMatch(/tabular-nums/)
+    // 🛍️ 2026-10-25 D안: 순번은 따로 선 칸이 아니라 **가게 줄 앞**("1 · 가게")으로 옮겼다 —
+    //   폭 고정 칸이 사라졌으므로 tabular-nums 계약도 녹았다. 지울 수 없다는 계약은 그대로다.
+    expect(src, '순번이 가게 줄 앞에 붙는다').toMatch(/eyebrow=\{pin\.restaurant_name \? `\$\{order\} · /)
+    expect(src, '가게가 없어도 순번은 남는다').toMatch(/: String\(order\)\}/)
     expect(src, '사진 위 흰 원 배지 0개').not.toMatch(/rounded-full bg-white/)
   })
 })

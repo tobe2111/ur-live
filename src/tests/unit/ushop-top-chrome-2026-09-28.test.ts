@@ -144,7 +144,7 @@ describe('⑤ PC(lg+) — 같은 말을 두 번 하지 않는다', () => {
   //   그대로 렌더돼 생겼다 — 유어샵 PC 는 좌측 300px 프로필 칸(a3/P1)이라 폭이 다르다.
   it('브랜드 바를 PC 에서 그리지 않는다 (전역 네비와 중복)', () => {
     // 화면 맨 위 DesktopTopNav 가 이미 `urdeal.` + 검색·찜·장바구니를 그린다.
-    expect(header).toMatch(/className="lg:hidden flex items-center px-4 pt-3"/)
+    expect(header).toMatch(/className="lg:hidden flex items-center px-5 pt-3"/)  // 2026-10-25 D안 — 옆 여백 20px
   })
 
   it('브랜드 바를 없애지는 않았다 — 모바일에는 그대로 있다', () => {

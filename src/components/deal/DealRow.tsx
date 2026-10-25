@@ -17,6 +17,7 @@ import { Link } from 'react-router-dom'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
 import { priceDisplay } from '@/shared/price-display'
+import { PLAIN_CLS, PLAIN_THUMB_CLS } from '@/shared/ushop-row'
 
 export interface DealRowProps {
   /** 링크로 만들 목적지. 없으면 `<div>` 로 렌더(부모가 버튼/폼을 감싸는 경우). */
@@ -61,13 +62,17 @@ export interface DealRowProps {
   prefetch?: () => void
 }
 
+
 /** 표면 규칙(09-02): 흰 카드 + `shadow-lift`, 테두리 0, 숫자가 주인공. */
 export default memo(function DealRow({
   to, imageUrl, thumb, thumbStyle, thumbClassName = '', eyebrow, title, price, originalPrice,
   unit = '원', discountPct = 0, meta, trailing, thumbSize = 'md', leading, surface = 'card',
   className = '', onClick, prefetch,
 }: DealRowProps) {
-  const box = thumbSize === 'sm'
+  const plain = surface === 'plain'
+  const box = plain
+    ? PLAIN_THUMB_CLS
+    : thumbSize === 'sm'
     ? 'w-16 h-16'
     : thumbSize === 'lg'
       ? 'w-[76px] h-[76px]'
@@ -119,11 +124,11 @@ export default memo(function DealRow({
       </div>
       <div className="flex-1 min-w-0">
         {eyebrow && (
-          <p className="text-[12px] font-medium leading-none mb-1 text-gray-400 dark:text-gray-500 truncate">{eyebrow}</p>
+          <p className={plain ? PLAIN_CLS.eyebrow : 'text-[12px] font-medium leading-none mb-1 text-gray-400 dark:text-gray-500 truncate'}>{eyebrow}</p>
         )}
-        <p className="text-[15px] leading-snug line-clamp-2 font-bold text-gray-900 dark:text-white">{title}</p>
+        <p className={plain ? PLAIN_CLS.title : 'text-[15px] leading-snug line-clamp-2 font-bold text-gray-900 dark:text-white'}>{title}</p>
         {price != null && (
-          <div className="flex items-baseline gap-1 mt-1">
+          <div className={plain ? PLAIN_CLS.priceLine : 'flex items-baseline gap-1 mt-1'}>
             {pd.discount > 0 && (
               <span className="text-[15px] font-bold text-sale tracking-tight">{pd.discount}%</span>
             )}
@@ -149,9 +154,9 @@ export default memo(function DealRow({
     </>
   )
   const skin = surface === 'plain'
-    ? 'px-1 py-3'                                                   // 판 없음 — 줄 사이 실선이 나눈다
+    ? PLAIN_CLS.skin                                                // 판 없음 — 줄 사이 실선이 나눈다
     : 'px-3 py-2 rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift' // 기본(다섯 화면) — byte-불변
-  const cls = `w-full flex items-center gap-3 text-left ${skin} active:opacity-60 transition-opacity ${className}`
+  const cls = `w-full flex items-center ${plain ? 'gap-4' : 'gap-3'} text-left ${skin} active:opacity-60 transition-opacity ${className}`
   const warm = prefetch
     ? { onMouseEnter: prefetch, onTouchStart: prefetch, onFocus: prefetch }
     : undefined

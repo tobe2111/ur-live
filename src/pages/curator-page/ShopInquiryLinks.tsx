@@ -34,7 +34,7 @@ const LINKS: Array<{ to: string; label: string }> = [
 
 export default function ShopInquiryLinks() {
   return (
-    <nav aria-label="유어딜과 함께하기" className="max-w-3xl mx-auto px-4 pt-7 pb-2 flex flex-col gap-[11px]">
+    <nav aria-label="유어딜과 함께하기" className="max-w-3xl mx-auto px-5 pt-7 pb-2 flex flex-col gap-[11px]">
       {LINKS.map(({ to, label }) => (
         <Link
           key={to}

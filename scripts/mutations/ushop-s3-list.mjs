@@ -67,7 +67,7 @@ export default [
      */
     name: 's3 — 목록이 폰에서도 2열 격자가 된다',
     file: 'src/pages/CuratorPage.tsx',
-    find: 'className="max-w-3xl mx-auto px-4 pb-4 divide-y divide-rule lg:divide-y-0 lg:grid lg:gap-2 ur-ushop-rows"',
+    find: 'className="max-w-3xl mx-auto px-5 pb-4 divide-y divide-rule lg:divide-y-0 lg:grid lg:gap-2 ur-ushop-rows"',
     replace: 'className="max-w-3xl mx-auto px-4 pb-4 grid grid-cols-2 gap-2 ur-ushop-rows"',
     test: 'src/tests/unit/ushop-s3-list-2026-09-28.test.ts',
     why:
