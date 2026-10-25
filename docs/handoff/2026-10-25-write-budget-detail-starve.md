@@ -20,8 +20,8 @@ SELECT value FROM platform_settings WHERE key = 'ads_commerce_stats';
 SELECT value FROM platform_settings WHERE key = 'ads_commerce_cursor_detail';
 #    기대: 47 에서 **전진**한다
 # 🩸 stopped_by 로 판정하지 말 것 — 수리 뒤에도 'records' 로 남고 **그게 옳다**(아래 §3-7)
-# 그 다음 어드민에서 취급품목 종류 판정:
-#   GET /api/admin/partner-pool/stats → commerceProbe.goods.detail.kind
+# 🔴 **②의 다음 단계는 이미 규명됐다 — 16:00 회차를 기다릴 필요 없이 아래 §5 를 먼저 읽을 것.**
+#    판정할 것은 `by_service.detail.coverage` **하나**다(commerceProbe 아님 — 그 탐침엔 눈먼 자리가 있다).
 #
 # 🔑 **`productBucket` 배선은 이미 돼 있다 — 또 하지 말 것**(2026-10-25 소스 확인).
 #    `mapCommerceLead:50` 의 `goods = g(it,'trtmntPrdlstNm','ntslPrdlstCn','upteNm','dclsfNm',
@@ -225,3 +225,71 @@ hira 는 **검증 = 신규**다 — 전국 요양기관 목록을 페이지 커�
 
 ### ⏱️ 기존 E4 넷
 업종 2~3일 · 이메일 24h · 인허가 1~2h · franchise 48h.
+
+
+## 5. 🔴 업종 93% 의 **최종 원인** — 코드로 온다 (2026-10-25 15:00 KST 실측)
+
+16:00 회차를 기다리지 않고 **이미 DB 에 있는 증거**로 규명했다. `ads_commerce_cursor_detail = 47` 은
+detail 이 **과거에 46페이지를 받았다**는 뜻이고, 그 레코드가 남아 있었다.
+
+```sql
+-- DB_ADS_COMPANY=0e9a8f82-32fb-4584-878c-cdaec6c0aff0
+SELECT COUNT(*) FROM ad_company_leads WHERE source='commerce' AND description LIKE '%취급 %';
+--  → 5,425건   (품목 원문이 보존된 행 — mapCommerceLead 가 description 에 `취급 {원문}` 으로 남긴다)
+```
+
+### 조건 ⓐⓑ는 **둘 다 통과**였다. 막은 것은 값의 **종류**다
+
+| 확인 | 결과 |
+|---|---|
+| ⓐ `brno` 유무 | ✅ 표본 15/15 **전부 있음** → `b:{10자리}` 로 status 행과 병합된다(중복 안 생긴다) |
+| ⓑ 품목 필드 이름 | ✅ 여섯 별칭 중 하나에 **걸렸다**(`goods` 가 채워졌으니) |
+| 🔴 값의 종류 | **숫자 코드**(`06` · `12` · `01 05 08 06`) → `productBucket` 정규식 **0건 일치** → `null` → `'통신판매'` |
+
+### 코드 분포 (표본 5,000행 · 고유 코드 **정확히 12개** · 텍스트 토큰 **0건**)
+
+```
+12:1596  06:1544  01:1238  08:850  02:367  04:320
+05:284   03:273   07:256   10:185  11:47   09:28      다중코드 행 1,038 (20.8%)
+```
+
+⚠️ `productBucket` 의 버킷도 **우연히 12개**다(패션·잡화/뷰티/식품/가전·디지털/생활·주방/
+가구·인테리어/유아동/스포츠·레저/반려동물/건강·의료/도서·문구/자동차·공구). 1:1 에 가까울 수 있지만
+**분포로 추측해 매핑하지 말 것** — 틀린 업종이 붙으면 영업 제안이 엉뚱한 말을 한다(회수 수단 0).
+
+### ⇒ 다음 세션의 **첫 액션은 코드표 요청이 아니다**
+
+**텍스트 형제 필드가 있을 가능성이 크다.** 근거 둘:
+- ⓐ 공정위 **웹 페이지**는 같은 항목을 **텍스트**로 보여 준다(`'가전, 컴퓨터/사무용품'` — 웹 검색 실측).
+  즉 매핑이 존재하고, 포털 API 가 코드만 주는 것이거나 **텍스트 필드를 우리가 안 읽는** 것이다.
+- ⓑ 같은 부처 형제 API 수집 코드가 적어 둔 실응답 샘플: `market-collect.ts:13`
+  **`"trtmntPrdlst":"의류+…"`** — **접미사 `Nm` 이 없고 값이 한글**이다.
+  우리 별칭은 `trtmntPrdlstNm` 으로 **이름이 한 글자 다르다.**
+
+🔴 **단 `market-collect` 는 다른 엔드포인트(시장·상점가)다 — 그 이름이 통신판매 등록상세에도 있다고
+단정하지 말 것**(형제 레인의 규칙을 일반화하는 것이 §3-6 에서 이미 한 번 밟은 오류다).
+
+**판정 도구**: `ads_commerce_stats.diag.by_service.detail.coverage`
+`fieldCoverage()` 가 만든 **필드 이름 전수 + 채움률 + 예시값**이라 **별칭 밖의 형제가 보인다**
+(status 쪽은 그렇게 18개 필드가 전부 보인다: `brno`·`bzmnNm`·`operSttusCdNm`·…).
+
+⚠️ **`commerceProbe.goods.detail.kind` 로 판정하지 말 것** — 그 함수는 `GOODS_FIELD_ALIASES`
+**여섯 개만** 보므로 "안 보는 텍스트 필드" 를 **구조적으로 못 본다**(그 파일 docblock 에 ⚠️②로 박아 뒀다).
+
+**분기**:
+- coverage 에 텍스트 품목 필드가 **있다** → 그 이름을 `g()` **뒤에 덧붙인다**(순서를 바꾸면 status 쪽
+  판정이 흔들린다). **코드표 불필요 · 한 줄로 끝**. 과거 5,425건은 다음 순회에서 승격된다
+  (`ON CONFLICT` 의 `subcategory` CASE 가 총칭 `'통신판매'` 만 올려 준다).
+- **없다** → 그때 비로소 대표께 **`01`~`12` 코드 12개의 이름**을 요청한다(공정위 Open API 마이페이지 →
+  개발계정 → `통신판매사업자 등록상세`(MllBsDtl_3Service) → 참고문서. **등록현황 문서는 아니다**).
+  ⚠️ 이 환경은 `data.go.kr`(DNS 부재)·`ftc.go.kr`(CONNECT 403) 둘 다 막혀 **세션이 직접 못 받는다**.
+
+### 📏 측정 기준점 (업종 하락을 재는 쿼리)
+
+```sql
+SELECT COALESCE(subcategory,'(null)') s, COUNT(*) n FROM ad_company_leads
+ WHERE email IS NOT NULL AND email <> '' GROUP BY s ORDER BY n DESC LIMIT 12;
+-- 2026-10-25 14:40 KST: 이메일 보유 62,757 중 `통신판매` 58,389 (93.0%) · 전체 484,560
+```
+⚠️ 한 회차는 500행만 다룬다 — **하루 지나야** 눈에 띄게 내려간다. 첫 회차에 93% 가 그대로인 것을
+실패로 읽지 말 것.
