@@ -22,9 +22,24 @@ SELECT value FROM platform_settings WHERE key = 'ads_commerce_cursor_detail';
 # 🩸 stopped_by 로 판정하지 말 것 — 수리 뒤에도 'records' 로 남고 **그게 옳다**(아래 §3-7)
 # 그 다음 어드민에서 취급품목 종류 판정:
 #   GET /api/admin/partner-pool/stats → commerceProbe.goods.detail.kind
-#     · text → 코드표 불필요. 그 필드를 productBucket 에 넘긴다(g() 별칭 순서는 바꾸지 말 것)
-#     · code → 대표께 공정위 코드표 재요청(마이페이지 → Open API → 개발계정 →
-#              `통신판매사업자 등록상세`(MllBsDtl_3Service) → 참고문서. **등록현황 문서 아님**)
+#
+# 🔑 **`productBucket` 배선은 이미 돼 있다 — 또 하지 말 것**(2026-10-25 소스 확인).
+#    `mapCommerceLead:50` 의 `goods = g(it,'trtmntPrdlstNm','ntslPrdlstCn','upteNm','dclsfNm',
+#    'idustyNm','taskNm')` → `subcategory: productBucket(goods) || '통신판매'` 로 **곧바로 간다**.
+#    그리고 병합·승격도 이미 설계돼 있다(둘 다 이 경우를 주석에 명시한다):
+#      · `companyKey`(company-discovery.ts:260) — `brno` 10자리면 `b:{숫자}` 로 **status 행과 같은 키**
+#        ("통신판매 현황+상세 2서비스 중복 방지" 가 그 주석의 문장이다)
+#      · `ON CONFLICT` 의 `subcategory` CASE(company-save.ts) — **총칭 `'통신판매'` 만** 구체값으로
+#        승격하고 사람이 큐레이션한 값은 보존
+#    ⇒ detail 레코드가 도착하면 **코드 변경 0 으로** 업종 93% 가 내려간다.
+#
+# 그래서 판정할 것은 **조건 둘**이다(둘 중 하나라도 어긋나면 그때 비로소 코드가 필요하다):
+#   ⓐ detail 응답에 `brno`/`bizrno`/`bzmnRegNo` 가 **있는가** → 없으면 `w:`/`n:` 키로 떨어져
+#      **같은 업체가 중복 행**이 된다(93% 는 안 내려가고 모수만 늘어난다). 그때는 키 전략이 별건.
+#   ⓑ 품목 필드 이름이 위 여섯 별칭 중 **하나인가** → 아니면 `goods` 가 빈 채로 `'통신판매'` 유지.
+#      별칭 추가는 `g()` **뒤에 덧붙인다**(순서를 바꾸면 status 쪽 판정이 흔들린다).
+#   · `kind: code`(숫자 코드) → 대표께 공정위 코드표 재요청(마이페이지 → Open API → 개발계정 →
+#     `통신판매사업자 등록상세`(MllBsDtl_3Service) → 참고문서. **등록현황 문서 아님**)
 ```
 
 ⏱️ **①은 하루치를 봐야 한다**(창이 7일이라 첫 날은 재방문이 아직 창 안이라 더 많이 건너뛴다 —
