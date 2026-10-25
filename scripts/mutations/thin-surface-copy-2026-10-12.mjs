@@ -52,16 +52,17 @@ export default [
   {
     name: '🧭 끝 슬래시를 다른 키로 본다 — `/partners/` 가 빈다',
     file: SSOT,
-    find: "  const path = pathname !== '/' && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname\n  return SURFACE_COPY[path] ?? null",
-    replace: '  return SURFACE_COPY[pathname] ?? null',
+    // 2026-10-25 재조준 — 업종 견적 페이지 파생이 같은 줄에 붙었다(불변식 그대로).
+    find: "  return SURFACE_COPY[path] ?? (life",
+    replace: '  return SURFACE_COPY[pathname] ?? (life',
     test: TEST,
     why: '`CONSUMER_SURFACE_SEO` 와 같은 키로 봐야 한다 — 한쪽만 끝 슬래시를 떼면 메타는 있고 본문만 비는 조합이 생긴다.',
   },
   {
     name: '🧭 판정이 다른 표면까지 삼킨다',
     file: SSOT,
-    find: '  return SURFACE_COPY[path] ?? null',
-    replace: '  return SURFACE_COPY[path] ?? SURFACE_COPY["/partners"]',
+    find: "SURFACE_COPY[path] ?? (life ? { lines: life, source: ['src/shared/home-service-categories.ts'] } : null)",
+    replace: 'SURFACE_COPY[path] ?? SURFACE_COPY["/partners"]',
     test: TEST,
     why: '상세·유어샵에 입점 랜딩 문구가 붙으면 그 페이지 내용과 무관한 말을 선언하는 셈이다.',
   },
