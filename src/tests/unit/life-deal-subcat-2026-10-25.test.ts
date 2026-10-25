@@ -14,6 +14,7 @@ import { describe, expect, it } from 'vitest'
 import { readCode } from '../helpers/source-text'
 import { LIFE_SUBCATS, guessLifeSubcat, lifeSubcatDef, normalizeLifeSubcat, resolveLifeSubcat } from '@/shared/life-deal-subcat'
 import { lifeSubcatMissing } from '@/pages/seller-meal-voucher/voucher-form'
+import { LIBRARY_ENVELOPES } from '../../../scripts/surface-chunks.mjs'
 
 const R = (p: string) => readCode(p)
 
@@ -103,5 +104,12 @@ describe('⑤ 홈 피드', () => {
     const b = R('src/pages/main-home/LifeQuoteBanner.tsx')
     expect(b).toMatch(/d\?\.bannerTitle \?\? '가게 일은 무료 견적으로'/)
     expect(b).toMatch(/d\?\.request \? `\/life\/request\/\$\{d\.request\}` : '\/life'/)
+  })
+})
+
+describe('⑥ 묶음 — 업종 SSOT 는 자기 작은 봉투', () => {
+  it('홈 봉투에 섞이면 대시보드 전체가 홈 코드(+23KB)를 받는다', () => {
+    expect(R('vite.config.ts')).toMatch(/id\.includes\('\/src\/shared\/life-deal-subcat'\)\) return 'app-life-subcat'/)
+    expect(LIBRARY_ENVELOPES.has('app-life-subcat')).toBe(true)
   })
 })

@@ -616,6 +616,9 @@ export default defineConfig({
           //   Rollup 이 판매자 가입 화면과 함께 `app-seller-components` 에 넣었다 → 에이전시 콘솔이 매장 등록 카드에서
           //   `TERMS_CURRENT_VERSION` 하나를 읽느라 판매자 대시보드 봉투(+그 의존 전부)를 첫 화면에 받았다.
           if (id.includes('/src/pages/terms/terms-types')) return 'app-shared'
+          // 🏠 2026-10-25 같은 함정: 생활 업종 SSOT(`life-deal-subcat`, import 0 — 타입만)를 홈 피드와 사장님 수정 화면이 함께 써서
+          //   묶음기가 홈 봉투에 넣었고, 어드민이 홈 PC 봉투 넷(+23KB)을 끌고 왔다 → 자기 작은 봉투.
+          if (id.includes('/src/shared/life-deal-subcat')) return 'app-life-subcat' // 묶음기 보호 목록(LIBRARY_ENVELOPES)에 함께 — 안 그러면 다시 홈 봉투로 간다
           if (id.includes('/src/components/seller-layout/')) return 'app-seller-components'
           if (id.includes('/src/components/seller/')) return 'app-seller-components'
           if (id.includes('/src/components/SellerLayout')) return 'app-seller-components'
