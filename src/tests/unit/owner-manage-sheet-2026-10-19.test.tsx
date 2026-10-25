@@ -153,7 +153,8 @@ describe('③ 패널 문구 · 배선', () => {
     expect(stay).toMatch(/useOwnerManage\(productId, [^\n]*'stay'\)/)
     expect(stay).toMatch(/own \? <OwnerManageCard kind="stay"/)
     expect(stay).toMatch(/own \? <OwnerManageBar kind="stay"/)
-    expect(stay).toMatch(/\{r\.available && !own && \(/)
+    // 🛏️ 2026-10-25 E안: 객실 카드의 예약 버튼이 사라지고 카드는 고르기만 한다 — 주인은 고를 수 없게.
+    expect(stay).toMatch(/<StayRoomPicker\b[^>]*readOnly=\{own\}/)
     const prod = readCode('src/pages/ProductDetailPage.tsx')
     expect(prod).toMatch(/useOwnerManage\(Number\(id\), isLoggedIn, 'product'\)/)
     expect(prod).toMatch(/own \? <OwnerManageBar kind="product" framed/)

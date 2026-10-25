@@ -85,12 +85,7 @@ describe('② 이행을 마친 화면', () => {
     expect(s).toMatch(/title: '[^']*text-\[13px\][^']*text-gray-900/)
     expect(s).toMatch(/price: 'text-\[15px\] font-bold/)
   })
-  it('옵션 카드 — 굵은 제목은 하나(옵션), 옵션 이름은 medium', () => {
-    // 2026-10-25 D안: '이렇게 써요' 는 옵션 카드에서 빠졌다(아래 이용권 정보가 같은 말을 한다).
-    const s = readFileSync('src/pages/group-buy/PassOptionCard.tsx', 'utf8')
-    expect(s).toMatch(/text-\[17px\] font-bold[^>]*>옵션</)
-    expect(s).toMatch(/text-\[15px\] font-medium leading-\[1\.4\]/)
-  })
+  // 🗑️ 2026-10-25 E안: '옵션 선택' 카드(PassOptionCard)를 걷어 그 카드의 굵기 단언도 함께 뺐다(지킬 화면이 없다).
 })
 
 describe('③ 나머지 소비자 화면 — 늘지 않는다', () => {

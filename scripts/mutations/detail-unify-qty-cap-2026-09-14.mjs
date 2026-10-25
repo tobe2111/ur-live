@@ -70,9 +70,9 @@ export default [
   },
   {
     name: '[상세0914] 🏨 만실인데 목록을 통째로 대체한다 (어떤 객실이 있는지 못 본다)',
-    file: STAY,
-    find: '              {rooms.every((r) => !r.available) && (',
-    replace: '              {false && (',
+    file: 'src/pages/stay-detail/StayRoomPicker.tsx',
+    find: '{rooms.every((r) => !r.available) && <StaySoldOutCard',
+    replace: '{false && <StaySoldOutCard',
     test: TEST,
     why: '전부 매진일 때 다음 행동(다른 날짜)을 말해 주는 카드가 사라진다.',
   },
