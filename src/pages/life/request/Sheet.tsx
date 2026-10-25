@@ -1,9 +1,26 @@
 /**
- * 🏠 요청서 바텀시트 — 한 시트에 질문 하나(2026-10-25 대표 공유 오늘의집 흐름).
+ * 🏠 요청서 질문 틀 — 한 틀에 질문 하나(2026-10-25 대표 공유 오늘의집 흐름).
+ *
+ * 두 가지로 그린다:
+ *  - **단계 화면**(`StepFrameContext` 안 — 요청서): 화면 전체에 질문 하나 · 위에 진행 막대 · 아래 버튼.
+ *    대표 "단계별로 쭉쭉 자동으로 · 지금은 너무 세로로 길고"(2026-10-25) — 질문 목록을 늘어놓지 않는다.
+ *  - **바텀시트**(그 밖 — 함께 신청 안내 등).
  * z-index 는 표준 시트 단(10600) — 하단 네비 위로 뜬다(`constants/z-index.ts`).
  */
-import { useEffect, type ReactNode } from 'react'
-import { X } from 'lucide-react'
+import { createContext, useContext, useEffect, type ReactNode } from 'react'
+import { ChevronLeft, X } from 'lucide-react'
+
+export interface StepFrame {
+  /** 1부터. */
+  step: number
+  total: number
+  /** 머리줄 가운데 작은 글씨(예: "간판 제작·교체 견적"). */
+  label: string
+  /** 첫 질문 위에만 거는 한 줄(예: 업체 모집 중 안내). */
+  notice?: ReactNode
+}
+
+export const StepFrameContext = createContext<StepFrame | null>(null)
 
 export function Sheet({ title, onClose, children, footer }: {
   title: string
@@ -11,6 +28,7 @@ export function Sheet({ title, onClose, children, footer }: {
   children: ReactNode
   footer?: ReactNode
 }) {
+  const frame = useContext(StepFrameContext)
   useEffect(() => {
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -18,6 +36,28 @@ export function Sheet({ title, onClose, children, footer }: {
     window.addEventListener('keydown', onKey)
     return () => { document.body.style.overflow = prev; window.removeEventListener('keydown', onKey) }
   }, [onClose])
+
+  if (frame) {
+    const pct = Math.round((frame.step / frame.total) * 100)
+    return (
+      <div className="fixed inset-0 z-[10600] flex flex-col bg-surface text-ink" role="dialog" aria-modal="true" aria-label={title}>
+        <div className="mx-auto flex w-full max-w-[560px] flex-1 flex-col min-h-0">
+          <div className="flex h-14 items-center gap-2 px-3">
+            <button type="button" aria-label="이전" onClick={onClose} className="p-2"><ChevronLeft className="h-5 w-5" /></button>
+            <span className="min-w-0 flex-1 truncate text-center text-[13px] text-gray-500 dark:text-gray-400">{frame.label}</span>
+            <span className="w-9 text-right text-[13px] font-medium tabular-nums text-gray-500 dark:text-gray-400">{frame.step}/{frame.total}</span>
+          </div>
+          <div className="mx-5 h-1 overflow-hidden rounded-full bg-rule" role="progressbar" aria-valuenow={frame.step} aria-valuemin={1} aria-valuemax={frame.total}>
+            <div className="h-full rounded-full bg-brand transition-[width] duration-300" style={{ width: `${pct}%` }} />
+          </div>
+          {frame.step === 1 && frame.notice && <div className="px-5 pt-4">{frame.notice}</div>}
+          <h2 className="px-5 pt-6 pb-5 text-[24px] font-bold leading-snug tracking-tight">{title}</h2>
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4">{children}</div>
+          {footer && <div className="px-5 pt-3 pb-[max(16px,env(safe-area-inset-bottom))]">{footer}</div>}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="fixed inset-0 z-[10600] flex items-end justify-center" role="dialog" aria-modal="true" aria-label={title}>
