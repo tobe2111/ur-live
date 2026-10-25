@@ -32,11 +32,10 @@ const DONE = [
 ]
 
 /**
- * 나머지 소비자 화면의 정본 밖 굵기 — 2026-10-25 2차(대표 *"다른 페이지들도 다 해야지?"*)로 소비자 전 화면을
- * 이행해 1343 → 8. 남은 8건은 **Toss 잠금 파일**(`PaymentSuccessPage` 6 · `TossWidgetPayPage` 2)뿐이다 — 클래스만
- * 바꾸는 일이어도 잠금 절대 룰이 걸려 대표 허가가 필요하다. 허가되면 0 으로 내린다.
+ * 나머지 소비자 화면의 정본 밖 굵기 — 2026-10-25 2차로 소비자 전 화면을 이행해 1343 → 0
+ * (Toss 잠금 두 파일은 대표 *"잠금 해제해줄게 해줘"* 로 함께). 이제 0 이 상한이다 — 새 위반은 그대로 빨간불.
  */
-const REST_BASELINE = 8
+const REST_BASELINE = 0
 
 const consumer = execSync(
   "git ls-files 'src/pages/*.tsx' 'src/pages/**/*.tsx' 'src/components/*.tsx' 'src/components/**/*.tsx'",
