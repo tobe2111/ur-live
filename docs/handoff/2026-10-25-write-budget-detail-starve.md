@@ -14,10 +14,12 @@ SELECT value FROM platform_settings WHERE key = 'ads_lane_runs:collect-neis';
 SELECT value FROM platform_settings WHERE key = 'cron_hb:ads:read-budget';
 #    기대: top=collect-neis:<32만/하루 보다 훨씬 작은 수>
 
-# ② detail 굶음 수리가 먹었는지 — 두 신호를 함께 본다
+# ② detail 굶음 수리가 먹었는지 — 신호는 **둘**이다
 SELECT value FROM platform_settings WHERE key = 'ads_commerce_stats';
-#    기대: diag.by_service 에 **detail 키가 생긴다**  +  stopped_by 가 'records' 가 아니다
-#          + ads_commerce_cursor_detail 이 47 에서 전진한다
+#    기대: diag.by_service 에 **detail 키가 생긴다**
+SELECT value FROM platform_settings WHERE key = 'ads_commerce_cursor_detail';
+#    기대: 47 에서 **전진**한다
+# 🩸 stopped_by 로 판정하지 말 것 — 수리 뒤에도 'records' 로 남고 **그게 옳다**(아래 §3-7)
 # 그 다음 어드민에서 취급품목 종류 판정:
 #   GET /api/admin/partner-pool/stats → commerceProbe.goods.detail.kind
 #     · text → 코드표 불필요. 그 필드를 productBucket 에 넘긴다(g() 별칭 순서는 바꾸지 말 것)
@@ -131,6 +133,24 @@ diag.by_service  { status: … }        ← detail 없음
    적어 뒀다: *"짝수성이면 복구가 홀수시에 착지해 그냥 skip → 그 회차 ~990건이 영영 사라진다"*).
    ⇒ **다음 회차는 시계가 아니라 `last_run` + `minIntervalHours` 로 계산할 것**, 그리고 레인마다
    `lane-alarm-runners.ts` 의 그 항목을 직접 읽을 것(형제 레인의 규칙을 일반화하지 말 것).
+7. 🩸 **②의 E4 기대 신호 하나가 거짓이었고, 그 거짓을 머지된 코드 주석에 박았다.**
+   *"수리 뒤 `stopped_by` 가 `records` 에서 사라지는 것이 이 변경의 E4 신호다"* 라고 적었는데,
+   루프를 손으로 추적하니 **그대로 남고 그게 옳다**:
+
+   | 단계 | 판정 | 결과 |
+   |---|---|---|
+   | status p0 | `found 0<700` · 몫 `0<350` | 페이지 → `found` 500 |
+   | status p1 | 몫 `500≥350` → break(세우지 않음) | 다음 서비스로 |
+   | detail p0 | `found 500<700` · 몫 `0<350` | **페이지 받는다** → `found` 1000 · 커서 47→48 |
+   | detail p1 | **`found 1000≥700` → `stoppedBy='records'`** | ← 사라지지 않는다 |
+
+   `perService = max(2, …)` 라 그 p1 판정이 **반드시 한 번 돈다**. 그리고 `records` 는 거짓이 아니다 —
+   1,000행 = `MAX_RECORDS_PER_RUN` 기준 설계된 CPU 천장에 실제로 닿았다는 뜻이고 **수리 전에도 같은
+   이유로** 그 값이었다. ⇒ **판별력이 없는 지표를 E4 신호로 쓴 것**이 오류다.
+   세 신호 중 **둘만** 유효하다: `diag.by_service` 의 `detail` 키 · `ads_commerce_cursor_detail` 전진.
+   ⚠️ 이 거짓이 **코드 주석·시험 실패 메시지·주입 `why`** 세 곳에 복제돼 있었다(전부 정정했다).
+   ⇒ **기대 신호를 적기 전에 루프를 손으로 추적할 것.** 상한이 공유 변수이면 "누가 마지막에
+   그것을 넘기는가" 까지 봐야 한다. 그리고 *설명을 여러 곳에 복붙하면 정정도 여러 곳을 고쳐야 한다.*
 
 ## 4. 머지·배포 완료, 그리고 두 미측정 항목 해소 (2026-10-25 14:30 KST)
 
@@ -145,7 +165,7 @@ PR #1990 → **`f04d30e4`**(05:21Z = 14:21 KST) · `Deploy ur-ads Worker` **succ
 | ① `ads_lane_runs:collect-neis` | 12회 **전부 `n == f`** (05:00 `3693/3693`) = 스킵 **0%** |
 | ① `cron_hb:ads:read-budget` | `written=315146` · `wbudget=1416956` · `top=collect-neis:88784` |
 | ② `diag.by_service` | **`status` 키 하나**(`detail` 부재) |
-| ② `stopped_by` | **`records`** |
+| ② `stopped_by` | **`records`** ← 수리 뒤에도 그대로다(판별력 없음, §3-7) |
 | ② `cursor_detail` / `cursor_status` | **47** / 348 |
 | ② `diag.goods` | **null** |
 

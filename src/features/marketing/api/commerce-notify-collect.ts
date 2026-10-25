@@ -432,8 +432,18 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
       if (Date.now() - startedAt > runDeadlineMs) { stoppedBy = 'deadline'; break }
       if (found >= MAX_RECORDS_PER_RUN) { stoppedBy = 'records'; break }   // 🔒 CPU 천장(회차 전체)
       // 🍽️ 자기 몫을 다 쓰면 **다음 서비스에 넘긴다**. `stoppedBy` 를 세우지 않는다 — 회차가 멈춘 게
-      //   아니라 몫을 소진한 정상 종료다(그래서 수리 뒤 `stopped_by` 가 `records` 에서 사라지는 것이
-      //   이 변경의 E4 신호다).
+      //   아니라 몫을 소진한 정상 종료다. 특히 `'deadline'` 을 세우면 바깥 루프가 끊겨 **다음 서비스가
+      //   다시 굶는다**(그게 이 수리가 없앤 그 결함이다).
+      //
+      // 🩸 **`stopped_by` 는 이 수리의 E4 신호가 아니다**(2026-10-25 트레이스로 정정 — 이 주석이
+      //   한때 "수리 뒤 records 가 사라진다" 고 적어 뒀고 그건 거짓이었다). 추적하면 그대로 남는다:
+      //     status p0 → found 500 · 몫 500≥350 break(세우지 않음)
+      //     detail p0 → found 1000 · cursor 전진  ← **여기가 수리의 전부다**
+      //     detail p1 → `found 1000 >= 700` → `stoppedBy = 'records'`
+      //   `perService` 가 `max(2, …)` 라 그 p1 판정이 **반드시 한 번 돈다**. 그리고 그 값은 **옳다** —
+      //   1,000행 = 설계된 CPU 천장에 실제로 닿았다는 뜻이다(수리 전에도 같은 이유로 records 였다).
+      //   ⇒ E4 신호는 **`diag.by_service` 에 `detail` 키가 생기는 것**과 **`ads_commerce_cursor_detail`
+      //   전진** 둘뿐이다. `stopped_by` 로 판정하면 성공한 회차를 실패로 읽는다.
       if (foundThisService >= recordsPerService) break
       const { items, count, msg } = await fetchCommercePage(svc.base, svc.op, key, page, budget)
       if (msg) msgs.push(`${svc.label}: ${msg}`)

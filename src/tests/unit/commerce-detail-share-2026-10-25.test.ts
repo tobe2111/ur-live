@@ -15,8 +15,13 @@
  * ```
  *
  * 🔑 취급품목(`trtmntPrdlstNm`)은 **`detail` 에만** 온다. 그래서 그 값을 여태 한 번도 못 봤고,
- * 업종이 발송 가능 리드의 92%(50,475/55,000)에서 `통신판매` 로 남은 원인이 여기였다 — 2026-10-24 에
- * 붙인 탐침(`commerceProbe`)도 **값이 올 수 없어** 빈 채였다.
+ * 업종이 발송 가능 리드의 **93.0%(58,389/62,757 — 2026-10-25 재측정)** 에서 `통신판매` 로 남은 원인이
+ * 여기였다 — 2026-10-24 에 붙인 탐침(`commerceProbe`)도 **값이 올 수 없어** 빈 채였다.
+ *
+ * ⚠️ **`stopped_by` 는 이 수리의 E4 신호가 아니다**(2026-10-25 트레이스로 정정). 수리 뒤에도
+ * `records` 로 남는다 — `detail` 이 페이지를 받으면 `found` 가 1,000 이 되고 `perService ≥ 2` 라
+ * 다음 반복의 전역 상한 판정이 **반드시 한 번 돈다**. 그리고 그 값은 **옳다**(1,000행 = 설계된 CPU
+ * 천장). E4 신호는 **`diag.by_service` 의 `detail` 키**와 **`ads_commerce_cursor_detail` 전진** 둘뿐이다.
  *
  * ## 이 시험이 지키는 것
  *
@@ -69,7 +74,7 @@ describe('통신판매 수집 — 서비스별 레코드 몫 (2026-10-25)', () =
   it('③ 몫 소진은 `stopped_by` 를 세우지 않는다 — 회차가 멈춘 게 아니라 정상 종료다', () => {
     const i = SRC.indexOf('if (foundThisService >= recordsPerService)')
     expect(i).toBeGreaterThan(0)
-    expect(SRC.slice(i, i + 80), "몫 소진에 stoppedBy 를 세우고 있다 — 그러면 수리 뒤에도 stopped_by 가 records 로 남아 E4 판정 신호가 사라진다").not.toMatch(/stoppedBy/)
+    expect(SRC.slice(i, i + 80), "몫 소진에 stoppedBy 를 세우고 있다 — 'deadline' 을 세우면 바깥 루프가 끊겨 다음 서비스가 다시 굶는다(이 수리가 없앤 그 결함). ⚠️ stopped_by 자체는 E4 신호가 아니다 — 마지막 서비스가 페이지를 받은 뒤 전역 상한에 닿아 records 로 남는 것이 정상이다").not.toMatch(/stoppedBy/)
   })
 
   it('④ 서비스별 누적은 **전역 `found` 와 별개 변수**이고 같은 자리에서 함께 늘어난다', () => {
