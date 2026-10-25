@@ -68,7 +68,7 @@ export function AddressSheet({ f, onDone, onClose }: {
     const finish = () => onDone(publicRegion(picked), [label, detail.trim()].filter(Boolean).join(', ').slice(0, 120))
     return (
       <Sheet
-        title={`${f.label} 상세 주소를 알려 주세요`}
+        title="상세 주소를 알려 주세요"
         onClose={onClose}
         footer={<button type="button" className="ur-btn ur-btn-lg ur-btn-primary flex w-full justify-center" onClick={finish}>완료</button>}
       >
@@ -97,7 +97,7 @@ export function AddressSheet({ f, onDone, onClose }: {
   }
 
   return (
-    <Sheet title={`${f.label} 주소를 알려 주세요`} onClose={onClose}>
+    <Sheet title={`${eulReul(f.label)} 알려 주세요`} onClose={onClose}>
       <div ref={box} className="h-[60dvh] w-full pb-2">
         <p className="py-10 text-center text-[13px] text-gray-500 dark:text-gray-400">주소 검색을 불러오는 중</p>
       </div>
