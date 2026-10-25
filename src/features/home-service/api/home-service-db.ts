@@ -96,7 +96,21 @@ export const HS_TABLES_SQL = [
   // 🏠 유어딜 직영 견적(2026-10-24 대표) — 유어딜(또는 협력 업체)이 다른 사장님처럼 견적을 낸다.
   //   손님 화면에 "유어딜 직영" 으로 표시하고, 참여권을 쓰지 않으며 반환도 없다.
   `ALTER TABLE home_service_quotes ADD COLUMN is_house INTEGER NOT NULL DEFAULT 0`,
+  // 🔒 상세 주소(2026-10-25 대표 — 오늘의집 흐름). 사장님은 손님이 **고른 뒤에만** 본다(연락처와 같은 규칙).
+  `ALTER TABLE home_service_requests ADD COLUMN private_details TEXT`,
 ] as const
+
+/** 상세 주소(JSON)를 요청서 칸 위에 덮는다 — 볼 자격이 있는 쪽만 이 함수를 부른다. */
+export function withPrivateDetails(details: unknown, privateJson: unknown): Record<string, string> {
+  const base = (details && typeof details === 'object' ? details : {}) as Record<string, string>
+  if (!privateJson) return base
+  try {
+    const extra = JSON.parse(String(privateJson)) as Record<string, unknown>
+    const out = { ...base }
+    for (const [k, v] of Object.entries(extra ?? {})) if (typeof v === 'string' && v && k in base) out[k] = v
+    return out
+  } catch { return base }
+}
 
 export async function ensureHomeServiceTables(DB: D1Database): Promise<void> {
   if (_done.has(DB)) return

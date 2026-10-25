@@ -18,7 +18,7 @@ function NeedSellerLogin() {
     <section className="space-y-3 rounded-2xl bg-surface p-5 shadow-lift">
       <p className="text-[15px] font-bold">사장님 계정으로 들어와 주세요</p>
       <p className="text-[13px] leading-relaxed text-gray-600 dark:text-gray-300">
-        유어딜에 가게를 등록한 사장님이 근처 이사·청소 요청을 알림톡으로 받고 견적을 보낼 수 있어요.
+        유어딜에 가게를 등록한 사장님이 근처 방역·청소·수리·이사 요청을 알림톡으로 받고 견적을 보낼 수 있어요.
         처음 등록하면 무료 참여권 3장을 드려요.
       </p>
       <Link to="/login?returnUrl=%2Flife%2Fpro" className="ur-btn ur-btn-lg ur-btn-primary flex w-full justify-center">카카오로 로그인</Link>
@@ -43,7 +43,7 @@ export default function LifeProPage() {
 
   return (
     <div className="min-h-[100dvh] bg-warm text-ink pb-safe-nav">
-      <SEO title="생활 사장님 - 이사·청소 요청 받기 - 유어딜" description="근처 이사·입주청소·에어컨 청소 요청을 알림톡으로 받고 견적을 보내세요." url="/life/pro" />
+      <SEO title="생활 업체 - 방역·청소·수리·이사 요청 받기 - 유어딜" description="근처 가게 방역·후드 청소·시설 수리·숙소 청소·이사·입주청소 요청을 알림톡으로 받고 견적을 보내세요." url="/life/pro" />
       <LifeHeader title="생활 요청 받기" back="/life" />
       <div className="ur-content-narrow space-y-4 px-4 pb-10">
         {!hasToken ? <NeedSellerLogin /> : failed ? (
