@@ -36,10 +36,15 @@ const PC = read('src/pages/user-profile/AccountPcPane.tsx')
 describe('🔢 마이 숫자 한 줄 — 값이 칸 안에 들어간다', () => {
   it('🔴 값에 단위를 다시 붙이지 않는다', () => {
     // 단위 스팬(`{unit}`)이 그 17px 였다. 라벨이 이미 무엇인지 말하므로 값은 숫자만.
-    expect(STATS, '값에 단위가 돌아왔다 — 390px 에서 다시 잘린다').not.toMatch(/\{unit\}/)
-    expect(STATS, 'unit prop 이 돌아왔다').not.toMatch(/\bunit\s*[:=]/)
+    // 🔁 2026-10-25 재조준(대표 확정 위쪽 안 3) — 폰은 칸이 아니라 **목록 줄**이 됐고, 줄은 폭이 넓어
+    //   단위(`111,500딜`)가 잘릴 자리가 없다. 칸(`Cell`)은 이제 PC 머리 띠에만 쓰이고, 거기는 여전히 좁은 칸이다.
+    //   ⇒ 불변식(*칸 안에 단위를 붙이지 않는다*)을 **칸 부품**에 고정한다.
+    const cell = STATS.slice(STATS.indexOf('function Cell('), STATS.indexOf('export default function MyStats'))
+    expect(cell.length, 'Cell 부품을 못 찾았다 — 이 검사가 헛돌고 있다').toBeGreaterThan(500)
+    expect(cell, '칸 값에 단위가 돌아왔다 — 390px 에서 다시 잘린다').not.toMatch(/\{unit\}/)
+    expect(cell, 'unit prop 이 칸에 돌아왔다').not.toMatch(/\bunit\s*[:=]/)
     // 호출부도 — prop 만 남고 안 그리면 다음 세션이 되살리기 쉽다.
-    expect(STATS).not.toMatch(/unit="/)
+    expect(STATS).not.toMatch(/<Cell[^>]*unit="/)
   })
 
   it('🔴 칸 안쪽 여백이 조여 있다 (px-4 로 되돌아가면 잘린다)', () => {

@@ -16,10 +16,10 @@ export default [
   {
     name: '🧹 등록 줄이 다시 판 끝까지 꽉 찬다 (사용처리 티켓과 폭이 갈린다)',
     file: 'src/pages/user-profile/SellerSection.tsx',
-    find: 'min-h-[52px] py-2 rounded-[10px] bg-brand text-white text-left',
-    replace: 'min-h-[52px] py-2 bg-brand text-white text-left',
+    find: "className=\"min-w-0 flex items-center gap-2 h-16 px-3 rounded-2xl bg-surface shadow-lift",
+    replace: "className=\"min-w-0 flex items-center gap-2 h-20 px-3 rounded-2xl bg-surface shadow-lift",
     test: TEST,
-    why: '바로 위 티켓은 좌우 12px 안쪽인데 이 줄만 끝까지 차서 두 칸의 폭이 다르다.',
+    why: "두 칸(사용처리·등록)의 높이가 갈리면 나란한 칸이 아니라 들쭉날쭉한 두 덩어리로 읽힌다(2026-10-25 안 G).",
   },
   {
     name: '🧹 주문 내역 줄을 빼면서 결제 내역 길까지 지운다',
