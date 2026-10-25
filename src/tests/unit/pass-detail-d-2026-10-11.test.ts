@@ -6,7 +6,7 @@
  *
  * ## 지키는 것
  * ① 걷어낸 부연설명이 돌아오지 않는다("결제 즉시 교환권 발급" · "발급 후 사용 기간 적용")
- * ② 모바일 섹션은 회색 바탕 위 **카드**(같은 상수 `PASS_CARD`)
+ * ② 모바일 섹션은 같은 상수 `PASS_CARD`(2026-10-25 E안 — 폭 전체 흰 섹션 + 8px 띠, PC 는 카드)
  * ③ 바는 [가격][구매하기], 결제는 **구매 창 안**에서만 — 바에서 바로 결제로 새지 않는다
  * ④ 이용 안내는 늘 펼친 STEP 타일 3장
  *
@@ -47,6 +47,8 @@ describe('② 모바일 섹션은 같은 카드 상수를 쓴다', () => {
     const cls = /PASS_CARD = '([^']+)'/.exec(readCode('src/shared/pass-head.ts'))![1].split(/\s+/)
     expect(cls).toContain('lg:mx-0')
     for (const t of ['lg:rounded-none', 'lg:shadow-none']) expect(cls, `PC 에서 카드가 다시 풀렸다(${t})`).not.toContain(t)
+    // 🛍️ 2026-10-25 E안: 모바일은 폭 전체 흰 섹션 + 띠, **PC 만** 카드(반경·들림)다 — 그 둘이 빠지면 PC 가 평면으로 풀린다.
+    for (const t of ['lg:rounded-2xl', 'lg:shadow-lift']) expect(cls, `PC 카드가 사라졌다(${t})`).toContain(t)
     expect(readCode('src/shared/pass-head.ts'), 'PC 바탕이 다시 흰색이 됐다 — 흰 카드가 안 보인다').not.toContain('lg:bg-[var(--gbd-card)]')
   })
 
@@ -82,9 +84,8 @@ describe('② 모바일 섹션은 같은 카드 상수를 쓴다', () => {
         '   2026-10-12 실측: 그 화면 하나에 가격이 여섯 번 나왔다.',
     ).not.toContain('아껴요')
     // 할인율·판매가·정가 한 줄은 남아 있어야 한다(지운 것은 상자이지 가격이 아니다)
-    // 🔁 2026-10-24 그루폰식: 가격 줄이 '옵션 선택' 카드로 옮겨갔다 — 취소선도 거기서 본다.
-    expect(readCode('src/pages/group-buy/PassOptionCard.tsx'), '정가 취소선이 사라졌다 — 할인폭을 말할 방법이 없어진다').toContain('line-through')
-    expect(readCode('src/pages/group-buy/PassOptionCard.tsx'), "'아껴요' 상자가 옵션 카드로 옮겨 왔다").not.toContain('아껴요')
+    // 🔁 2026-10-25 E안: 옵션 카드를 걷어 가격은 머리 한 곳 — 취소선도 거기서 본다.
+    expect(head, '정가 취소선이 사라졌다 — 할인폭을 말할 방법이 없어진다').toContain('line-through')
   })
 })
 

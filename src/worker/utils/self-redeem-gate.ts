@@ -14,6 +14,7 @@
  */
 import { getRedemptionSettings, type RedemptionMode } from './redemption-settings'
 import { findBrandBranchByStoreCode } from './brand-wide-redeem'
+import { STAY_VOUCHER_SELF_USE_BLOCKED, stayLinkForVoucher } from '../../features/group-buy/api/stay-voucher-unify'
 
 export type SelfRedeemGate =
   | { ok: true; mode: RedemptionMode; /** 판 지점이 아닌 브랜드 지점 코드로 열렸으면 그 지점 — 호출부가 사용 직후 기록한다. */ branchSellerId?: number }
@@ -38,6 +39,10 @@ export async function checkSelfRedeemGate(
   productId?: number | null,
   voucherId?: number | null,
 ): Promise<SelfRedeemGate> {
+  // 🏡 2026-10-25 숙소=이용권 통일 — 숙소 이용권은 체크인 때 직원 스캔으로만 쓴다(사람이 투숙을 본다).
+  if (voucherId != null && (await stayLinkForVoucher(DB, { id: Number(voucherId) }))) {
+    return { ok: false, status: 403, code: 'STAY_SCAN_ONLY', error: STAY_VOUCHER_SELF_USE_BLOCKED }
+  }
   if (sellerId == null) {
     return { ok: false, status: 403, code: 'NO_STORE', error: '이 이용권은 현장에서 직원 확인으로만 사용할 수 있어요.' }
   }

@@ -44,7 +44,12 @@ export const PASS_HEAD = {
 } as const
 
 /** 섹션 카드 — 회색 바탕 위 흰 판. 2026-10-11 PC 도 같은 카드(대표 "PC도 해야하는거 아니야?"). */
-export const PASS_CARD = 'mx-3 mb-3 rounded-2xl bg-[var(--gbd-card)] shadow-lift overflow-hidden lg:mx-0 lg:mb-4'
+/**
+ * 🧱 2026-10-25 대표 확정 **E안**(*"공백도 쓸데없이 많고"* · 여기어때 참고): 모바일 섹션은 떠 있는 카드
+ *   (좌우 12px · 둥근 모서리 · 그림자 · 아래 12px)가 아니라 **폭 전체 흰 섹션 + 위 8px 회색 띠**다. 카드마다
+ *   양옆·위아래로 비던 여백이 사라지고 구분은 띠 하나가 맡는다. PC(lg+)는 종전 카드 그대로.
+ */
+export const PASS_CARD = 'bg-[var(--gbd-card)] overflow-hidden border-t-8 border-gray-100 dark:border-[var(--bg)] lg:border-t-0 lg:mx-0 lg:mb-4 lg:rounded-2xl lg:shadow-lift'
 
 /**
  * 🛍️ 제목 아래 한 줄 `부용한우곱창 · 식사 · 파주시` (2026-10-24 그루폰식).

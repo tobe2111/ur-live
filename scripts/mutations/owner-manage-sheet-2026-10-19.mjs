@@ -44,8 +44,8 @@ export default [
   {
     name: '🏪 숙소 주인에게 객실 예약 버튼이 다시 보인다',
     file: 'src/pages/StayDetailPage.tsx',
-    find: '{r.available && !own && (',
-    replace: '{r.available && (',
+    find: 'nights={nights} readOnly={own}',
+    replace: 'nights={nights}',
     test: T,
     why: '주인이 자기 숙소를 예약하는 버튼이 남는다',
   },

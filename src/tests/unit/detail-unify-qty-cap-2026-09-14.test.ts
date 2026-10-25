@@ -113,9 +113,12 @@ describe('안 B — 숙소 상세', () => {
 
   it('④ 만실이 카드 + 주 행동이다 — 다만 객실 목록은 남긴다(어떤 객실이 있는 숙소인지 잃지 않게)', () => {
     expect(code(STAY_SECTIONS)).toContain('다른 날짜 고르기')
-    const s = code(STAY)
-    expect(s).toMatch(/rooms\.every\(\(r\) => !r\.available\) && \(/)
-    expect(s).toContain('{rooms.map((r) => (')
+    // 🛏️ 2026-10-25 E안: 객실 목록이 `StayRoomPicker` 로 옮겨갔다 — 성질(만실 카드 + 목록 유지)은 그대로.
+    expect(code(STAY)).toMatch(/<StayRoomPicker\b/)
+    const s = code('src/pages/stay-detail/StayRoomPicker.tsx')
+    expect(s).toMatch(/rooms\.every\(\(r\) => !r\.available\) && <StaySoldOutCard/)
+    expect(s).toContain('<StaySoldOutCard')
+    expect(s).toContain('{rooms.map((r) => {')
   })
 
   it('⑤ 상시 바에 마지막 콘텐츠가 가리지 않게 자리를 비운다', () => {

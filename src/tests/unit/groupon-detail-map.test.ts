@@ -34,10 +34,8 @@ describe('이용권 상세 — 제목이 사진 위로 (대표 확정 1안)', ()
     const card = code('src/pages/group-buy/PassHeadCard.tsx')
     expect(card).toContain('className={PASS_HEAD.card}')
     expect(card).toContain('>{name}</h1>')
-    // 🔁 2026-10-24 그루폰식: 가격은 '옵션 선택' 카드로 — 그 카드도 모바일 전용이어야 PC 에서 두 벌이 안 된다.
-    const option = code('src/pages/group-buy/PassOptionCard.tsx')
-    expect(option).toContain('{formatNumber(unitPrice)}원</span>')
-    expect(option, '옵션 카드가 lg:hidden 이 아니다 — PC 에서 우측 구매 상자와 가격이 두 벌로 나온다').toMatch(/<section[^>]*className="lg:hidden /)
+    // 🔁 2026-10-25 E안: '옵션 선택' 카드를 걷었다 — 모바일 가격은 머리 카드 한 곳(그 루트가 lg:hidden).
+    expect(card).toContain('{formatNumber(unitPrice)}원</span>')
     const cls = /card:\s*'([^']+)'/.exec(code('src/shared/pass-head.ts'))
     expect(cls, 'PASS_HEAD.card 를 못 찾았다').toBeTruthy()
     expect(cls![1].split(/\s+/), '머리 카드가 lg:hidden 이 아니다 — PC 에서 제목·가격이 두 벌로 나온다').toContain('lg:hidden')

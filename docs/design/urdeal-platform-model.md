@@ -228,7 +228,7 @@
 > 여기서 고정하는 것은 **"이름과 경제가 다르다"는 사실을 다음 세션이 알고 시작한다**는 것뿐이다.
 
 | **일반 상품(쇼핑)** | 일반 이커머스 상품 | `exclude_deal_only` | `/browse`, `/products/:id` (탭 잠정숨김 `SHOPPING_TAB_HIDDEN`) | 3P 5% / 1P 0% |
-| **숙소(stays)** | 날짜 캘린더 예약형 | `stays` | `/stays`, `/stays/:id` | reserve-before-charge |
+| **숙소(stays)** | 날짜 캘린더 예약형 — 사기 전(객실·날짜·달력)만 숙소 전용, 산 뒤(이용권 행·지갑 QR·스캔 체크인·사용 시점 원장)는 이용권과 같은 뼈대(2026-10-25, 게이트 `stay_voucher_unify_enabled`) | `stays` + `vouchers.stay_booking_id` | `/stays`, `/stays/:id` | reserve-before-charge |
 | **디지털** | 다운로드/코드형 (보관함 발급) | `digital` | `/my/digital` | — |
 | **선물(gifts)** | 교환권 선물하기 | `gifts` | `/gift/claim/:token` | — |
 | **체험 캠페인** | 무료 응모→공정추첨→**0원 체험권**(매장 자기부담) → QR 사용·성과 리포트 (2026-07-12, PR #499 draft) | `experience_campaigns` + `vouchers.is_experience=1` | `/experience` | **비정산** — 정산·커미션·5% 무관(원장 amount>0 게이트 우회) |
@@ -568,6 +568,7 @@ pre-commit + `verify.yml` + `audit-gate.sh` 가 결정론으로 강제(수동 �
 ---
 
 ## ✅ 구현 로그
+- 2026-10-25 🏡 **숙소 = 이용권 통일** (대표 *"숙소를 이용권 방식으로 합치는 안으로 진행하자. 끝까지."*) — 숙소 결제 확정 시 `vouchers` 행(`stay_booking_id`) 발급 → 지갑 QR · 사장님 스캔(체크인 날 판정) · 사용 시점 원장(`recordVoucherUsedLedger`, 숙소 정산 구멍 해소) · 숙소 취소가 이용권을 먼저 잡음 · 셀프 사용/셀프 취소/부분 환불은 숙소 이용권 거절 · 수동 체크인도 이용권 정리. SSOT `stay-voucher-unify.ts`, 게이트 OFF 기본, staging S-STAYV. 가드 `stay-voucher-unify-2026-10-25` 20건 + 주입 9. [E2]
 - 2026-10-25 🪧 **생활 견적 카테고리 17종 + 제휴 업체** — 묶음을 가게(9)·숙소(2)·집(6)으로(인테리어 가게·집 추가, 대표 "인테리어도 일단 넣어줘")(`audience` store/lodging/home), 간판(일·종류·크기·다는 곳·디자인·신고·예산을 받는 요청서)을 가게 맨 앞에. 가게 시설 수리에서 간판·냉장 설비·에어컨을 전용 카테고리로 분리. 제휴 업체(`home_service_partners`, 어드민 `/admin/home-service`)는 지역 무관 알림·요청함 + 참여권 없는 견적(`quotes.partner=1`). 가드 `home-service-partner-2026-10-25` + 주입 7. [E2]
 - 2026-10-25 🏪 **생활 견적 — 사장님 항목 4종 + 오늘의집 흐름** — 방역·소독/주방 후드·덕트/가게 시설 수리/숙소 청소·침구(`audience='biz'`)를 생활 페이지 맨 위에. 요청서는 요약 카드 + 질문당 시트, 이사 달력 손 없는 날, 주소 검색 + 상세 주소(`private_details`, 고른 업체만), 신청 후 함께 신청(이사→입주청소·방역→후드), 로그인은 [견적 신청] 때. 가드 `home-service-flow-2026-10-25` + 주입 6. [E2]
 - 2026-10-24 🏠 **생활 견적 매칭(숨고식) 신설** — 요청서·사장님 매칭 알림톡·참여권(원장 + 한 트랜잭션 차감·선착순)·견적 비교·연락처 공개·반환 cron. 결재 `docs/decisions/2026-10-24-home-service-quotes.md`. 충전은 게이트 OFF(무료 참여권만). 가드 `home-service-quotes-2026-10-24` + 주입 7. [E2]

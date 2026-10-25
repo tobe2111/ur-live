@@ -35,7 +35,7 @@ export default function DealBottomBar({
   isJoinable, isPrelaunch, buyable, joining,
   quantity, total, setQuantity, maxQty, maxPerPerson, unitPrice, refPrice, discountPct, minReviewLevel,
   dealPlan, dealUse, setDealUse, canPayWithDeal, dealBalance,
-  productId, onJoin, isOwner = false, onManage, openRequest = 0,
+  productId, onJoin, isOwner = false, onManage,
 }: {
   isJoinable: boolean
   isPrelaunch: boolean
@@ -61,13 +61,10 @@ export default function DealBottomBar({
   /** 👤 2026-10-18: 주인이면 바가 [구매하기] 대신 [관리하기] 를 낸다 — 누르면 혼나는 버튼을 안 보인다. */
   isOwner?: boolean
   onManage?: () => void
-  /** 🛍️ 2026-10-24: 본문 '옵션 선택' 카드의 구매하기가 **같은 구매 창**을 연다 — 값이 바뀔 때마다 한 번. */
-  openRequest?: number
 }) {
   const [open, setOpen] = useState(false)
   // 구매가 불가능해지면(품절 등) 열린 창을 닫는다 — 누를 수 없는 결제 버튼만 남지 않게.
   useEffect(() => { if (!isJoinable) setOpen(false) }, [isJoinable])
-  useEffect(() => { if (openRequest > 0 && isJoinable && !isPrelaunch && !isOwner) setOpen(true) }, [openRequest]) // eslint-disable-line react-hooks/exhaustive-deps
   // 🛒 2026-10-20: AI 비서가 건넨 결제 링크면 그 수량으로 창을 연다(결제는 손님이 누른다).
   const fromAgent = useAgentHandoff({ ready: isJoinable && buyable && !isPrelaunch && !isOwner, maxQty, setQuantity, setOpen })
   // 🪙 2026-10-06: 딜이 총액을 다 덮으면 카드를 안 탄다 — 버튼도 그렇게 말한다("N딜로 결제하기").
