@@ -99,20 +99,21 @@ describe('배선', () => {
     expect(code).toMatch(/<SimilarStays\b/)
   })
 
-  it('⑥ 자리 — 숙소 소개 **바로 아래**, 객실 선택보다 앞 (2026-09-26 대표 확정)', () => {
-    /* 처음엔 페이지 맨 아래에 뒀다("객실 선택이 밀린다"는 이유로). 대표가 문서 그대로를 택해
-       소개 직후로 옮겼다. 자리는 **결정 사항**이므로 조용히 되돌아가지 못하게 순서를 고정한다.
-       ⚠️ 이 시험이 못 하는 것: 실제 픽셀 순서(jsdom 에 레이아웃이 없다)와 "이 자리가 전환율에
-       좋은가". 여기서 고정하는 것은 **소스 순서**뿐이다. */
+  it('⑥ 자리 — E안 순서: 위치 다음, 후기 앞 (2026-10-25 대표 확정 — 2026-09-26 "소개 바로 아래"를 대체)', () => {
+    /* 2026-09-26 엔 대표가 문서 ⑥ 그대로 "숙소 소개 바로 아래"를 골랐다. 2026-10-25 숙소 상세 **E안**
+       (여기어때 순서 — 날짜 → 객실 → 시설 → 소개 → 이용 안내 → 위치 → 비슷한 스테이 → 후기)을 대표가
+       *"둘 다 해야하는거 아니야?"* 로 확정해 자리가 바뀌었다. 자리는 결정 사항이므로 순서를 고정한다.
+       ⚠️ 이 시험이 못 하는 것: 실제 픽셀 순서(jsdom 에 레이아웃이 없다). 고정하는 것은 **소스 순서**뿐이다. */
     const code = readCode(DETAIL)
+    const rooms = code.indexOf('<StayRoomPicker')
     const intro = code.indexOf('<SectionTitle>숙소 소개</SectionTitle>')
+    const map = code.indexOf('<RestaurantMiniMap')
     const sim = code.indexOf('<SimilarStays')
-    const rooms = code.indexOf('객실 선택')
     const reviews = code.indexOf('<StayReviews')
     expect(intro, '숙소 소개 섹션을 못 찾았다(앵커가 낡았다)').toBeGreaterThan(-1)
-    expect(sim, '비슷한 스테이가 숙소 소개보다 앞에 있다').toBeGreaterThan(intro)
-    expect(sim, '비슷한 스테이가 객실 선택 뒤로 내려갔다 — 대표 확정 자리가 아니다').toBeLessThan(rooms)
-    expect(sim, '비슷한 스테이가 후기 뒤(옛 자리)로 되돌아갔다').toBeLessThan(reviews)
+    expect(rooms, '객실 선택이 소개보다 뒤로 갔다(E안: 객실이 먼저)').toBeLessThan(intro)
+    expect(sim, '비슷한 스테이가 위치보다 앞에 있다').toBeGreaterThan(map)
+    expect(sim, '비슷한 스테이가 후기 뒤로 내려갔다').toBeLessThan(reviews)
     /* 소개가 없는 숙소에도 떠야 한다 — 조건 블록(`{stay.description_full && (…)}`) 안에 들어가면
        같이 사라진다. 🩸 첫 판은 `description_full && \([\s\S]{0,400}?<SimilarStays` 로 봤는데
        `[\s\S]` 가 블록의 닫는 `)}` 를 넘어가 **정상 코드에 빨간불**을 냈다. 중첩 여부는 문자

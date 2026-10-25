@@ -11,9 +11,9 @@ export default [
   },
   {
     name: '🏋️ 이행 화면에 600(semibold)이 돌아온다',
-    file: 'src/pages/group-buy/PassOptionCard.tsx',
-    find: 'className="m-0 mb-3 text-[17px] font-bold"',
-    replace: 'className="m-0 mb-3 text-[17px] font-semibold"',
+    file: 'src/pages/group-buy/PassHeadCard.tsx',
+    find: '<span className="text-[28px] font-bold tracking-[-.02em]"',
+    replace: '<span className="text-[28px] font-semibold tracking-[-.02em]"',
     test: T,
     why: '세 단계 체계에서 600 은 없다 — 섞이면 굵기가 네 단계가 되어 다시 위계가 흐려진다.',
   },
@@ -32,13 +32,5 @@ export default [
     replace: '|(`)((?:[^`\\\\\\n]|\\\\.)*)`/g',
     test: T,
     why: '첫 판이 실제로 그랬다 — 카테고리 칩 20개가 굵은 채 남았는데 변환은 "0건" 이었다.',
-  },
-  {
-    name: '🏋️ 옵션 카드 안쪽 이름이 다시 bold — 굵은 제목이 둘',
-    file: 'src/pages/group-buy/PassOptionCard.tsx',
-    find: 'text-[15px] font-medium leading-[1.4]',
-    replace: 'text-[15px] font-bold leading-[1.4]',
-    test: T,
-    why: '한 덩어리에 굵은 제목은 하나 — 크기 규칙으로는 못 잡는 역할 규칙이라 따로 고정한다.',
   },
 ]
