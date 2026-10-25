@@ -82,35 +82,35 @@
       }
     },
     "gbDetail": {
-      "totalKB": 196.6,
+      "totalKB": 198.15,
       "chunks": {
-        "index.js": 14.98,
+        "index.js": 15.17,
         "react-core.js": 38.39,
-        "app-shared.js": 6.46,
+        "app-shared.js": 6.53,
         "tanstack-query.js": 9.5,
         "zustand.js": 2.5,
-        "app-utils.js": 20.56,
+        "app-utils.js": 20.45,
         "react-router.js": 7.2,
         "helmet.js": 4.88,
         "lucide-shell.js": 0.7,
         "app-stores.js": 2.1,
-        "app-shell.js": 7.95,
+        "app-shell.js": 7.94,
         "app-auth.js": 1.29,
-        "app-layout.js": 3.37,
+        "app-layout.js": 3.34,
         "app-routes.js": 0.86,
-        "index.css": 27.88,
-        "GroupBuyDetailPage.js": 5.69,
-        "lz-gbDetail-linkshop1-product.js": 0.72,
+        "index.css": 28.08,
+        "GroupBuyDetailPage.js": 5.79,
+        "lz-gbDetail-linkshop1-product.js": 0.71,
+        "lz-boot-gbDetail-linkshop1.js": 0.49,
         "lucide-desktop.js": 1.09,
-        "lz-boot-gbDetail-linkshop1.js": 0.5,
-        "lucide-home.js": 0.7,
+        "lucide-home.js": 0.77,
         "app-owner-ui.js": 1.29,
         "lz-gbDetail-map.js": 0.51,
-        "lz-boot-gbDetail.js": 1.57,
+        "lz-boot-gbDetail.js": 1.62,
         "lz-gbDetail-product.js": 1.56,
-        "lz-common.js": 17.42,
+        "lz-common.js": 17.48,
         "lz-gbDetail-voucherDetail.js": 0.58,
-        "lz-gbDetail.js": 16.35
+        "lz-gbDetail.js": 17.33
       }
     },
     "voucherDetail": {
@@ -411,34 +411,34 @@
       }
     },
     "stayDetail": {
-      "totalKB": 201.59,
+      "totalKB": 202.97,
       "chunks": {
-        "index.js": 14.98,
+        "index.js": 15.17,
         "react-core.js": 38.39,
-        "app-shared.js": 6.46,
+        "app-shared.js": 6.53,
         "tanstack-query.js": 9.5,
         "zustand.js": 2.5,
-        "app-utils.js": 20.56,
+        "app-utils.js": 20.45,
         "react-router.js": 7.2,
         "helmet.js": 4.88,
         "lucide-shell.js": 0.7,
         "app-stores.js": 2.1,
-        "app-shell.js": 7.95,
+        "app-shell.js": 7.94,
         "app-auth.js": 1.29,
-        "app-layout.js": 3.37,
+        "app-layout.js": 3.34,
         "app-routes.js": 0.86,
-        "index.css": 27.88,
-        "StayDetailPage.js": 11.37,
+        "index.css": 28.08,
+        "StayDetailPage.js": 11.35,
+        "lz-boot-gbDetail-linkshop1.js": 0.49,
         "lucide-desktop.js": 1.09,
-        "lz-boot-gbDetail-linkshop1.js": 0.5,
-        "lz-gbDetail-linkshop1-product.js": 0.72,
+        "lz-gbDetail-linkshop1-product.js": 0.71,
         "lz-gbDetail-product.js": 1.56,
         "app-owner-ui.js": 1.29,
-        "lucide-home.js": 0.7,
+        "lucide-home.js": 0.77,
         "StayCurations.js": 1.39,
         "lz-gbDetail-voucherDetail.js": 0.58,
-        "lz-common.js": 17.42,
-        "lz-gbDetail.js": 16.35
+        "lz-common.js": 17.48,
+        "lz-gbDetail.js": 17.33
       }
     },
     "blog": {
@@ -920,6 +920,14 @@
       "changes": [
         "gbDetail: 194.7 → 196.6 KB (+1.9, 허용 1.5) · 늘어난 것: lz-boot-gbDetail.js +0.4",
         "product: 187.2 → 188.8 KB (+1.6, 허용 1.5) · 늘어난 것: (새 청크 없음 — 기존 청크 내부)"
+      ]
+    },
+    {
+      "date": "2026-10-25",
+      "reason": "2026-10-25 main 누적분 재잠금(gbDetail·stayDetail 만) — 이용권 상세 그루폰식(PassOptionCard·pass-head, 10-24)으로 lz-gbDetail.js +0.9. main 단독 빌드 실측 gbDetail 198.1 · stayDetail 202.9 로 이미 허용 경계였다. PR #1996(생활 견적)의 lz-gbDetail 은 main 과 해시 동일 — 이 PR 기여 0. 나머지 화면은 로컬 측정 편차(+0.4)라 건드리지 않았다",
+      "changes": [
+        "gbDetail: 196.6 → 198.2 KB",
+        "stayDetail: 201.6 → 203.0 KB"
       ]
     }
   ]
