@@ -81,7 +81,7 @@ export default function HomeTopHeader() {
         <div className="flex items-center gap-2">
           <button onClick={() => navigate('/')} aria-label="홈" className="shrink-0">
             <span className="flex items-center justify-center w-9 h-9 rounded-full bg-gray-900 dark:bg-white">
-              <span className="text-white dark:text-gray-900 font-black italic text-[13px] tracking-tight">UR</span>
+              <span className="text-white dark:text-gray-900 font-medium italic text-[13px] tracking-tight">UR</span>
             </span>
           </button>
 
@@ -104,7 +104,7 @@ export default function HomeTopHeader() {
           >
             <BellIcon className="w-[22px] h-[22px]" />
             {unreadCount > 0 && (
-              <span className="absolute top-0.5 right-0.5 bg-red-500 text-white text-[12px] font-bold min-w-[15px] h-[15px] px-1 rounded-full flex items-center justify-center">
+              <span className="absolute top-0.5 right-0.5 bg-red-500 text-white text-[12px] font-medium min-w-[15px] h-[15px] px-1 rounded-full flex items-center justify-center">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
@@ -121,7 +121,7 @@ export default function HomeTopHeader() {
           <button
             onClick={detectMyRegion}
             disabled={detecting}
-            className="flex items-center gap-1 shrink-0 text-[12px] font-semibold text-gray-500 dark:text-gray-400 disabled:opacity-50"
+            className="flex items-center gap-1 shrink-0 text-[12px] font-medium text-gray-500 dark:text-gray-400 disabled:opacity-50"
           >
             <LocateFixed className="w-3.5 h-3.5" strokeWidth={2} />
             {detecting ? '찾는 중…' : '현재 위치로'}

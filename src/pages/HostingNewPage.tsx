@@ -85,7 +85,7 @@ export default function HostingNewPage() {
               <button
                 key={cat.key}
                 onClick={() => setCategory(cat.key)}
-                className={`shrink-0 px-3 py-2 rounded-full text-[12px] font-bold transition-colors ${
+                className={`shrink-0 px-3 py-2 rounded-full text-[12px] font-medium transition-colors ${
                   category === cat.key
                     ? 'bg-brand text-white'
                     : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300'
@@ -154,7 +154,7 @@ export default function HostingNewPage() {
                       <button
                         onClick={() => handleStart(item.id)}
                         disabled={submitting}
-                        className="w-full py-2 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white text-[12px] font-bold rounded-lg"
+                        className="w-full py-2 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white text-[12px] font-medium rounded-lg"
                       >
                         {submitting ? '시작 중...' : '🎉 공구 시작'}
                       </button>

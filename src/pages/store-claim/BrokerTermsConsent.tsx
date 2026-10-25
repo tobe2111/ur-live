@@ -12,7 +12,7 @@ export default function BrokerTermsConsent({ terms, agreed, onChange }: {
 }) {
   return (
     <div className="rounded-xl bg-brand-tint px-4 py-3">
-      <p className="text-[13px] font-bold text-gray-900">대행사가 정한 정산 조건</p>
+      <p className="text-[13px] font-medium text-gray-900">대행사가 정한 정산 조건</p>
       <dl className="mt-2 divide-y divide-rule">
         <div className="flex items-center justify-between py-2">
           <dt className="text-[13px] text-gray-600">중개사 몫</dt>
@@ -28,7 +28,7 @@ export default function BrokerTermsConsent({ terms, agreed, onChange }: {
       </p>
       <label className="mt-3 flex items-start gap-2 cursor-pointer">
         <input type="checkbox" checked={agreed} onChange={(e) => onChange(e.target.checked)} className="mt-1 w-4 h-4 shrink-0 accent-brand" />
-        <span className="text-[13px] font-semibold text-gray-900">위 조건을 확인했고 동의합니다 (필수)</span>
+        <span className="text-[13px] font-medium text-gray-900">위 조건을 확인했고 동의합니다 (필수)</span>
       </label>
     </div>
   )

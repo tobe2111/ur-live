@@ -20,8 +20,8 @@ export default [
   {
     name: '🔤 손님 본문 글꼴에 Pretendard 를 되살린다 (2026-10-15 기기 글꼴 전환 되돌림)',
     file: 'src/index.css',
-    find: '      "UrDigits",\n',
-    replace: '      "UrDigits",\n      "Pretendard Variable",\n',
+    find: '    font-family:\n      "UrDigits",\n',
+    replace: '    font-family:\n      "UrDigits",\n      "Pretendard Variable",\n',
     test: TEST,
     why: '목록에 이름만 돌아와도 시트를 다시 받게 되는 길이 열린다 — 대표 확정(쿠팡·네이버처럼 기기 글꼴)의 되돌림이다.',
   },

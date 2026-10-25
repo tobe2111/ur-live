@@ -51,7 +51,7 @@ export default function CreatorStartPage() {
     return () => { alive = false }
   }, [sp])
 
-  const btn = 'inline-block rounded-lg px-5 py-3 text-[15px] font-semibold'
+  const btn = 'inline-block rounded-lg px-5 py-3 text-[15px] font-medium'
 
   return (
     <div className="force-light-theme min-h-[100dvh] bg-gray-50 py-14 px-4">
@@ -60,7 +60,7 @@ export default function CreatorStartPage() {
         {phase === 'checking' && (
           <>
             <div className="text-[28px] mb-3">⏳</div>
-            <div className="text-[15px] font-semibold text-gray-900">확인 중입니다…</div>
+            <div className="text-[15px] font-medium text-gray-900">확인 중입니다…</div>
           </>
         )}
 

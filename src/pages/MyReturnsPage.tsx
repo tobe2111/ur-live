@@ -76,7 +76,7 @@ export default function MyReturnsPage() {
                 return (
                   <article key={r.id} className="bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-4 border border-gray-100 dark:border-[#2C2F35]">
                     <header className="flex items-center justify-between mb-2">
-                      <span className={`text-[12px] px-2 py-1 rounded-full font-bold ${status.color}`}>{status.label}</span>
+                      <span className={`text-[12px] px-2 py-1 rounded-full font-medium ${status.color}`}>{status.label}</span>
                       <time className="text-[12px] text-gray-400">{formatKSTDate(r.requested_at)}</time>
                     </header>
 
@@ -104,7 +104,7 @@ export default function MyReturnsPage() {
                                 carrier: r.return_shipping_company!,
                                 number: r.return_tracking_number!,
                               })}
-                              className="text-[12px] text-gray-900 dark:text-white font-bold hover:underline"
+                              className="text-[12px] text-gray-900 dark:text-white font-medium hover:underline"
                             >
                               📦 추적 →
                             </button>
@@ -173,7 +173,7 @@ function ShippingForm({ returnId, onSubmitted }: { returnId: number; onSubmitted
 
   return (
     <div className="mt-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
-      <p className="text-[12px] font-bold text-blue-700 dark:text-blue-200 mb-2">📮 회수 송장 등록 필요</p>
+      <p className="text-[12px] font-medium text-blue-700 dark:text-blue-200 mb-2">📮 회수 송장 등록 필요</p>
       <div className="grid grid-cols-2 gap-2 mb-2">
         <input
           type="text"
@@ -193,7 +193,7 @@ function ShippingForm({ returnId, onSubmitted }: { returnId: number; onSubmitted
       <button
         onClick={submit}
         disabled={submitting}
-        className="w-full py-2 bg-brand hover:bg-brand disabled:opacity-50 text-white text-[12px] font-bold rounded-lg"
+        className="w-full py-2 bg-brand hover:bg-brand disabled:opacity-50 text-white text-[12px] font-medium rounded-lg"
       >
         {submitting ? '등록 중...' : t('returns.submitShipping', { defaultValue: '회수 송장 등록' })}
       </button>

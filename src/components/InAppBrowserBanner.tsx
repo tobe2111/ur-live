@@ -80,7 +80,7 @@ export default function InAppBrowserBanner() {
           borderRadius: 6,
           padding: '6px 12px',
           fontSize: 12,
-          fontWeight: 700,
+          fontWeight: 500,
           cursor: 'pointer',
           flexShrink: 0,
         }}

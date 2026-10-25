@@ -164,7 +164,7 @@ export default function InfluencerSettlementPage() {
         <button type="button" onClick={back} aria-label="뒤로" className="w-10 h-10 flex items-center justify-center text-gray-700 dark:text-gray-200 active:opacity-60">
           <ChevronLeft className="w-5 h-5" />
         </button>
-        <h1 className="text-[15px] font-semibold text-gray-900 dark:text-white">매장 소개 정산</h1>
+        <h1 className="text-[15px] font-medium text-gray-900 dark:text-white">매장 소개 정산</h1>
       </header>
 
       <main className="ur-content-narrow mx-auto px-4 pt-4">
@@ -175,11 +175,11 @@ export default function InfluencerSettlementPage() {
           <div className="mt-4 pt-4 border-t border-rule grid grid-cols-2 gap-3">
             <div>
               <p className="text-[12px] text-gray-500 dark:text-gray-400">{useGate ? '사용 확인 대기' : '환불기간 대기'}</p>
-              <p className="mt-1 text-[15px] font-semibold tabular-nums text-gray-900 dark:text-white">{won(balance?.pending_amount)}</p>
+              <p className="mt-1 text-[15px] font-medium tabular-nums text-gray-900 dark:text-white">{won(balance?.pending_amount)}</p>
             </div>
             <div>
               <p className="text-[12px] text-gray-500 dark:text-gray-400">누적 송금</p>
-              <p className="mt-1 text-[15px] font-semibold tabular-nums text-gray-900 dark:text-white">{won(balance?.total_paid_out)}</p>
+              <p className="mt-1 text-[15px] font-medium tabular-nums text-gray-900 dark:text-white">{won(balance?.total_paid_out)}</p>
             </div>
           </div>
           {ownerFunded && (
@@ -208,10 +208,10 @@ export default function InfluencerSettlementPage() {
             return (
               <div key={r.id} className="flex items-center gap-3 px-4 min-h-[56px] py-2 border-b border-rule last:border-b-0">
                 <div className="flex-1 min-w-0">
-                  <p className="text-[15px] font-semibold tabular-nums text-gray-900 dark:text-white">{won(r.commission_amount)}</p>
+                  <p className="text-[15px] font-medium tabular-nums text-gray-900 dark:text-white">{won(r.commission_amount)}</p>
                   <p className="text-[12px] text-gray-500 dark:text-gray-400">{formatKSTDate(r.created_at)} · 상품 {r.product_id}</p>
                 </div>
-                <span className={`shrink-0 text-[12px] px-2 py-1 rounded-md font-semibold ${st.color}`}>{st.label}</span>
+                <span className={`shrink-0 text-[12px] px-2 py-1 rounded-md font-medium ${st.color}`}>{st.label}</span>
               </div>
             )
           })}

@@ -71,7 +71,7 @@ export default function PinManageList({ pins, onReorder, onDeleted }: { pins: Cu
   return (
     <div className="max-w-3xl mx-auto px-4 pt-3 pb-6">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[15px] font-extrabold text-gray-900 dark:text-white">{t('curator.myPinsCount', { defaultValue: '내 핀 {{count}}개', count: items.length })}</span>
+        <span className="text-[15px] font-bold text-gray-900 dark:text-white">{t('curator.myPinsCount', { defaultValue: '내 핀 {{count}}개', count: items.length })}</span>
         <span className="text-[12px] text-gray-400 dark:text-gray-500">⇅ {t('curator.dragToReorder', { defaultValue: '끌어서 정렬' })}</span>
       </div>
       <div ref={listRef} className="flex flex-col gap-2">
@@ -100,12 +100,12 @@ export default function PinManageList({ pins, onReorder, onDeleted }: { pins: Cu
                 : <div className="w-[52px] h-[52px] rounded-xl bg-gray-100 dark:bg-[#1D1F29] shrink-0" />}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-[13px] font-bold text-gray-900 dark:text-white truncate">{pin.product_name}</span>
-                  {idx === 0 && <span className="shrink-0 text-[12px] font-extrabold text-[#6b7280] bg-[#FFEDE8] dark:bg-[#2a1812] px-2 py-1 rounded">{t('curator.topPick', { defaultValue: '강추' })}</span>}
+                  <span className="text-[13px] font-medium text-gray-900 dark:text-white truncate">{pin.product_name}</span>
+                  {idx === 0 && <span className="shrink-0 text-[12px] font-medium text-[#6b7280] bg-[#FFEDE8] dark:bg-[#2a1812] px-2 py-1 rounded">{t('curator.topPick', { defaultValue: '강추' })}</span>}
                 </div>
                 {pin.note
                   ? <div className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{t('curator.viewsCount', { defaultValue: '조회 {{n}}', n: fmtK(pin.click_count || 0) })}{est > 0 ? t('curator.earnPerSaleAmt', { defaultValue: ' · 쓰면 ₩{{amt}}', amt: est.toLocaleString('ko-KR') }) : ''}</div>
-                  : <div className="text-[12px] font-semibold text-[#C2491F] dark:text-[#9ca3af] mt-1">{t('curator.noCommentNudge', { defaultValue: '추천 코멘트 없음 · 추가하면 전환 ↑' })}</div>}
+                  : <div className="text-[12px] font-medium text-[#C2491F] dark:text-[#9ca3af] mt-1">{t('curator.noCommentNudge', { defaultValue: '추천 코멘트 없음 · 추가하면 전환 ↑' })}</div>}
               </div>
               <button onClick={() => del(pin.id)} aria-label={t('curator.delete', { defaultValue: '삭제' })} className="shrink-0 w-[30px] h-[30px] rounded-lg bg-gray-100 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400 flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-colors text-[15px] font-bold">✕</button>
             </div>

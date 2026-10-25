@@ -112,8 +112,8 @@ export default [
   {
     name: '[상세B지갑E] 🔴임박 강조가 툴킷 기본 빨강으로 돌아간다',
     file: 'src/pages/my-vouchers/WalletRow.tsx',
-    find: `urgent ? 'font-extrabold text-tone-bad'`,
-    replace: `urgent ? 'font-extrabold text-[#DC2626]'`,
+    find: `urgent ? 'font-medium text-tone-bad'`,
+    replace: `urgent ? 'font-medium text-[#DC2626]'`,
     test: TEST,
     why:
       '값이 우연히 비슷해 눈으로는 구분이 안 되지만, 다크에서 갈린다(`--tone-bad` 는 다크에서 밝힌다). ' +

@@ -160,7 +160,7 @@ export default function CouponClaimPage() {
               <GiftBoxIcon className="w-12 h-12 text-white" />
             </div>
 
-            <h1 className="text-[24px] font-extrabold text-gray-900 dark:text-white mb-1">{t('couponClaim.celebrate')}</h1>
+            <h1 className="text-[24px] font-bold text-gray-900 dark:text-white mb-1">{t('couponClaim.celebrate')}</h1>
             <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-6">{t('couponClaim.issuedHint')}</p>
 
             <div className="relative bg-surface rounded-3xl p-6 border-2 border-dashed border-rule shadow-xl overflow-hidden">
@@ -169,7 +169,7 @@ export default function CouponClaimPage() {
 
               <p className="text-[12px] text-brand-text font-medium mb-1">{t('couponClaim.couponLabel')}</p>
               <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">{coupon.name}</p>
-              <p className="text-[34px] font-black text-brand-text">
+              <p className="text-[34px] font-extrabold text-brand-text">
                 {coupon.type === 'percent' ? `${coupon.value}%` : `${formatNumber(coupon.value)}원`}
               </p>
               <p className="text-[17px] font-bold text-gray-700 dark:text-gray-300 -mt-1">{t('couponClaim.discount')}</p>

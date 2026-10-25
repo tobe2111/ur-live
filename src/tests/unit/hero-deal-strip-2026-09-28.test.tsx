@@ -461,7 +461,7 @@ describe('⑤ 캡션 바탕 — 밝은 대표색 타일에서도 글자가 보�
     expect(t, '밴드 패딩').toContain('px-2 pt-5 pb-2 text-white')
     expect(t, '매장명 15px').toContain("text-[15px] font-bold leading-tight truncate")
     expect(t, '지역·종류 12px').toContain("mt-1 text-[12px] text-white/70 truncate")
-    expect(t, '가격 행 13px').toContain("mt-1 text-[13px] font-extrabold whitespace-nowrap")
+    expect(t, '가격 행 13px').toContain("mt-1 text-[13px] font-medium whitespace-nowrap")
   })
 
   it('그라디언트를 실제로 읽어 낸다 — 못 읽으면 통과가 아니라 실패다', () => {

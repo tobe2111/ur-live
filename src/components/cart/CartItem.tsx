@@ -141,7 +141,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
               <>
                 {d.hasDiscountLine && !isOutOfStock && (
                   <p className="flex items-baseline gap-2 text-[12px] leading-none mb-1">
-                    {d.discount > 0 && <span className="font-extrabold text-brand-text tabular-nums">{d.discount}%</span>}
+                    {d.discount > 0 && <span className="font-bold text-brand-text tabular-nums">{d.discount}%</span>}
                     {d.showOriginal && (
                       <span className="text-gray-400 dark:text-gray-500 line-through tabular-nums">
                         {fmt(d.originalPrice * item.quantity)}{unit}
@@ -169,7 +169,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
             >
               <Minus size={14} aria-hidden="true" />
             </button>
-            <span aria-live="polite" aria-label={t('cart.qtyLabel', { qty: item.quantity, defaultValue: '수량 {{qty}}' })} className="w-8 text-center text-[13px] font-semibold text-gray-900 dark:text-white border-x border-line">
+            <span aria-live="polite" aria-label={t('cart.qtyLabel', { qty: item.quantity, defaultValue: '수량 {{qty}}' })} className="w-8 text-center text-[13px] font-medium text-gray-900 dark:text-white border-x border-line">
               {item.quantity}
             </span>
             <button

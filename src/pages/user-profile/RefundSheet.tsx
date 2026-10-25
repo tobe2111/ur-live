@@ -147,13 +147,13 @@ export default function RefundSheet({ onClose, onDone }: {
 
       {state?.pending && (
         <div className="px-4 py-4">
-          <p className="text-[13px] font-semibold text-gray-500 dark:text-gray-400">환급 처리 중</p>
+          <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400">환급 처리 중</p>
           <p className="mt-1 text-[28px] font-extrabold tabular-nums leading-none text-gray-900 dark:text-white">
             {formatNumber(state.pending.amount)}
             <span className="ml-1 text-[15px] font-bold text-gray-500 dark:text-gray-400">원</span>
           </p>
           <p className="mt-3 text-[13px] leading-[1.6] text-gray-500 dark:text-gray-400">
-            <span className="font-semibold text-gray-900 dark:text-white">
+            <span className="font-medium text-gray-900 dark:text-white">
               {state.pending.bank_name} {state.pending.bank_account_masked} · {state.pending.account_holder}
             </span>
             {' '}계좌로 보내요. 영업일 기준 3~5일 안에 들어와요.
@@ -163,7 +163,7 @@ export default function RefundSheet({ onClose, onDone }: {
 
       {state && !state.pending && refundable <= 0 && (
         <div className="px-4 py-6">
-          <p className="text-[15px] font-semibold text-gray-900 dark:text-white">지금 돌려받을 딜이 없어요</p>
+          <p className="text-[15px] font-medium text-gray-900 dark:text-white">지금 돌려받을 딜이 없어요</p>
           <p className="mt-2 text-[13px] leading-[1.6] text-gray-500 dark:text-gray-400">
             충전하고 쓰지 않은 딜만 현금으로 돌려드려요. 리워드로 받은 딜은 환급 대상이 아니에요.
           </p>
@@ -172,7 +172,7 @@ export default function RefundSheet({ onClose, onDone }: {
 
       {canForm && (
         <div className="px-4 py-4">
-          <p className="text-[13px] font-semibold text-gray-500 dark:text-gray-400">돌려받을 수 있는 금액</p>
+          <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400">돌려받을 수 있는 금액</p>
           <p className="mt-1 text-[28px] font-extrabold tabular-nums leading-none text-gray-900 dark:text-white">
             {formatNumber(refundable)}
             <span className="ml-1 text-[15px] font-bold text-gray-500 dark:text-gray-400">원</span>
@@ -183,7 +183,7 @@ export default function RefundSheet({ onClose, onDone }: {
 
           <div className="mt-4 pt-4 border-t border-rule space-y-3">
             <label className="block">
-              <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-2">금액</span>
+              <span className="block text-[13px] font-medium text-gray-900 dark:text-white mb-2">금액</span>
               <input
                 inputMode="numeric"
                 value={parsed > 0 ? formatNumber(parsed) : ''}
@@ -198,14 +198,14 @@ export default function RefundSheet({ onClose, onDone }: {
               )}
             </label>
             <label className="block">
-              <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-2">은행</span>
+              <span className="block text-[13px] font-medium text-gray-900 dark:text-white mb-2">은행</span>
               <select value={bank} onChange={(e) => setBank(e.target.value)} className={field}>
                 <option value="">은행을 골라 주세요</option>
                 {BANKS.map((b) => <option key={b} value={b}>{b}</option>)}
               </select>
             </label>
             <label className="block">
-              <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-2">계좌번호</span>
+              <span className="block text-[13px] font-medium text-gray-900 dark:text-white mb-2">계좌번호</span>
               <input
                 inputMode="numeric"
                 value={account}
@@ -215,7 +215,7 @@ export default function RefundSheet({ onClose, onDone }: {
               />
             </label>
             <label className="block">
-              <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-2">예금주</span>
+              <span className="block text-[13px] font-medium text-gray-900 dark:text-white mb-2">예금주</span>
               <input
                 value={holder}
                 onChange={(e) => setHolder(e.target.value)}
@@ -233,18 +233,18 @@ export default function RefundSheet({ onClose, onDone }: {
 
       {history.length > 0 && (
         <div className="px-4 pb-4">
-          <p className="pt-4 border-t border-rule text-[13px] font-bold text-gray-900 dark:text-white">지난 환급</p>
+          <p className="pt-4 border-t border-rule text-[13px] font-medium text-gray-900 dark:text-white">지난 환급</p>
           <ul className="mt-2 divide-y divide-rule">
             {history.map((r) => (
               <li key={r.id} className="flex items-start justify-between gap-3 py-3">
                 <div className="min-w-0">
-                  <p className="text-[15px] font-semibold tabular-nums text-gray-900 dark:text-white">{formatNumber(r.amount)}원</p>
+                  <p className="text-[15px] font-medium tabular-nums text-gray-900 dark:text-white">{formatNumber(r.amount)}원</p>
                   <p className="mt-1 text-[12px] text-gray-500 dark:text-gray-400">
                     {formatKSTDate(r.processed_at || r.requested_at)}
                     {r.status === 'rejected' && r.rejection_reason ? ` · ${r.rejection_reason}` : ''}
                   </p>
                 </div>
-                <span className={`shrink-0 text-[12px] font-semibold ${r.status === 'paid' ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                <span className={`shrink-0 text-[12px] font-medium ${r.status === 'paid' ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
                   {STATUS[r.status]}
                 </span>
               </li>

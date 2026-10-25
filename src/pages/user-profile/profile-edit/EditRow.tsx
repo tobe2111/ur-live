@@ -23,7 +23,7 @@ import { ChevronRight } from 'lucide-react'
 
 /** 접힌 줄 — 안 C 목록 문법(48px 평면 + hairline). 🎫 CLAUDE.md 표면 규칙 ⑦. */
 const SHUT = 'w-full flex items-center gap-2 px-4 h-12 border-b border-rule text-left active:opacity-70'
-const KEY = 'text-[15px] font-semibold text-gray-900 dark:text-white shrink-0'
+const KEY = 'text-[15px] font-medium text-gray-900 dark:text-white shrink-0'
 const VAL = 'ml-auto min-w-0 truncate text-[13px] text-gray-500 dark:text-gray-400'
 
 export function EditRow({ label, value, empty, required, open, onOpen, children }: {
@@ -42,7 +42,7 @@ export function EditRow({ label, value, empty, required, open, onOpen, children 
   if (open) {
     return (
       <div className="border-b border-rule bg-wash px-4 py-4">
-        <div className="text-[15px] font-semibold text-gray-900 dark:text-white mb-3">{label}</div>
+        <div className="text-[15px] font-medium text-gray-900 dark:text-white mb-3">{label}</div>
         {children}
       </div>
     )
@@ -53,7 +53,7 @@ export function EditRow({ label, value, empty, required, open, onOpen, children 
       <span className={KEY}>{label}</span>
       <span className={
         shown ? VAL
-          : required ? `${VAL} text-red-500 dark:text-red-400 font-semibold`
+          : required ? `${VAL} text-red-500 dark:text-red-400 font-medium`
             : `${VAL} text-gray-400 dark:text-gray-500`
       }>
         {shown || empty || '아직 없어요'}
@@ -105,6 +105,6 @@ export function RowNote({ children, tone }: { children: ReactNode; tone?: 'ok' |
 /** 묶음 라벨 — `내 정보` / `내 가게 주소`. 🎫 표면 규칙 ⑦ 의 그룹 라벨(12px 바닥). */
 export function RowGroup({ children }: { children: ReactNode }) {
   return (
-    <div className="px-4 pt-4 pb-2 text-[12px] font-bold text-gray-500 dark:text-gray-400">{children}</div>
+    <div className="px-4 pt-4 pb-2 text-[12px] font-medium text-gray-500 dark:text-gray-400">{children}</div>
   )
 }

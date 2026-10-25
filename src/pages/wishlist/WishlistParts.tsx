@@ -27,7 +27,7 @@ export function WishlistSortChips({ value, onChange }: { value: WishlistSort; on
           onClick={() => onChange(s.key)}
           className={`shrink-0 h-9 px-4 rounded-full text-[13px] transition-colors ${s.pcOnly ? 'hidden lg:inline-flex items-center' : ''} ${
             value === s.key
-              ? 'bg-brand text-white font-bold'
+              ? 'bg-brand text-white font-medium'
               : 'bg-white dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300 shadow-lift dark:shadow-none'
           }`}
         >
@@ -47,7 +47,7 @@ export function WishlistSortChips({ value, onChange }: { value: WishlistSort; on
 export function WishlistFlag({ drop }: { drop: number | null }) {
   if (drop != null) {
     return (
-      <p className="flex items-center gap-1 text-[12px] font-bold leading-none mb-1 text-brand-text">
+      <p className="flex items-center gap-1 text-[12px] font-medium leading-none mb-1 text-brand-text">
         <ArrowDown className="w-3 h-3" aria-hidden="true" />
         {formatNumber(drop)}원 내림
       </p>
@@ -79,7 +79,7 @@ export function WishlistSummaryRail({ s }: { s: WishlistSummary }) {
       <p className="mt-2 text-[12px] text-gray-500 dark:text-gray-400">{headline.cap}</p>
       {/* 💰 2026-10-14 (대표 확정 가안+나안): 다 사면 아끼는 돈. 0 이면 말하지 않는다. */}
       {s.savings > 0 && (
-        <p className="mt-1 text-[13px] font-bold text-sale">다 사면 {formatNumber(s.savings)}원 아껴요</p>
+        <p className="mt-1 text-[13px] font-medium text-sale">다 사면 {formatNumber(s.savings)}원 아껴요</p>
       )}
       {rows.length > 0 && (
         <>

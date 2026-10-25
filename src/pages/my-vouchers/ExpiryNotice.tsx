@@ -47,7 +47,7 @@ export default function ExpiryNotice({ items, t, onOpen }: {
         <span className="block text-[15px] font-bold text-gray-900 dark:text-white">{title}</span>
         <span className="mt-1 block truncate text-[13px] text-gray-500 dark:text-gray-400">{name}</span>
       </span>
-      <span className="shrink-0 text-[15px] font-extrabold tabular-nums text-tone-bad">{d === 0 ? 'D-DAY' : `D-${d}`}</span>
+      <span className="shrink-0 text-[15px] font-bold tabular-nums text-tone-bad">{d === 0 ? 'D-DAY' : `D-${d}`}</span>
     </button>
   )
 }

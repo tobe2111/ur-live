@@ -109,12 +109,12 @@ export default function MyStaysPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2 mb-1">
                         <Link to={`/stays/${b.product_id}`} className="text-[15px] font-bold text-gray-900 dark:text-white line-clamp-1 hover:underline">{b.product_name}</Link>
-                        <span className={`inline-flex px-2 py-1 text-[12px] font-bold rounded-full shrink-0 ${st.color}`}>{st.label}</span>
+                        <span className={`inline-flex px-2 py-1 text-[12px] font-medium rounded-full shrink-0 ${st.color}`}>{st.label}</span>
                       </div>
                       <p className="text-[12px] text-gray-500 dark:text-gray-400">
                         {b.room_name}
                         {b.sale_mode === 'voucher' && (
-                          <span className="ml-2 px-2 py-1 text-[12px] bg-gray-100 text-gray-700 dark:bg-white/15 dark:text-white rounded font-bold">숙소 이용권</span>
+                          <span className="ml-2 px-2 py-1 text-[12px] bg-gray-100 text-gray-700 dark:bg-white/15 dark:text-white rounded font-medium">숙소 이용권</span>
                         )}
                       </p>
                       {b.sale_mode === 'voucher' ? (
@@ -129,19 +129,19 @@ export default function MyStaysPage() {
                       {b.check_in_code && b.status === 'confirmed' && (
                         <div className="mt-2 inline-flex items-center gap-2 px-2 py-1 bg-blue-50 dark:bg-blue-500/20 rounded">
                           <span className="text-[12px] text-blue-700 dark:text-blue-300">{b.sale_mode === 'voucher' ? '이용권 코드' : '체크인 코드'}</span>
-                          <span className="text-[12px] tabular-nums font-bold text-blue-800 dark:text-blue-200">{b.check_in_code}</span>
+                          <span className="text-[12px] tabular-nums font-medium text-blue-800 dark:text-blue-200">{b.check_in_code}</span>
                         </div>
                       )}
                       <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 dark:border-[#2C2F35]">
-                        <p className="text-[15px] font-extrabold text-gray-900 dark:text-white">₩{formatNumber(b.total_amount)}</p>
+                        <p className="text-[15px] font-bold text-gray-900 dark:text-white">₩{formatNumber(b.total_amount)}</p>
                         <div className="flex gap-1">
                           {canCancel && (
-                            <button onClick={() => cancel(b)} className="px-2 py-1 bg-gray-100 dark:bg-white/[0.06] text-gray-600 dark:text-gray-300 text-[12px] font-semibold rounded hover:bg-gray-200 dark:hover:bg-white/[0.1]">
+                            <button onClick={() => cancel(b)} className="px-2 py-1 bg-gray-100 dark:bg-white/[0.06] text-gray-600 dark:text-gray-300 text-[12px] font-medium rounded hover:bg-gray-200 dark:hover:bg-white/[0.1]">
                               <XIcon className="w-3 h-3 inline mr-1" />취소
                             </button>
                           )}
                           {canReview && (
-                            <button onClick={() => setReviewModalFor(b)} className="px-2 py-1 bg-brand text-white text-[12px] font-bold rounded active:opacity-80">
+                            <button onClick={() => setReviewModalFor(b)} className="px-2 py-1 bg-brand text-white text-[12px] font-medium rounded active:opacity-80">
                               <StarIcon className="w-3 h-3 inline mr-1" />리뷰 작성
                             </button>
                           )}
@@ -231,16 +231,16 @@ function ReviewModal({ booking, token, onClose, onSubmitted }: {
             <StarRow label="가성비" val={ratings.value} onChange={(n) => setRatings({ ...ratings, value: n })} />
           </div>
           <div>
-            <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-300 mb-1">제목 (선택)</label>
+            <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-300 mb-1">제목 (선택)</label>
             <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} placeholder="예) 깨끗하고 조용한 펜션" className="w-full px-3 py-2 bg-surface border border-line rounded-lg text-[15px] text-gray-900 dark:text-white" />
           </div>
           <div>
-            <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-300 mb-1">코멘트 *</label>
+            <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-300 mb-1">코멘트 *</label>
             <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={5} maxLength={5000} placeholder="이용 경험을 자세히 알려주세요 (10자 이상)" className="w-full px-3 py-2 bg-surface border border-line rounded-lg text-[15px] text-gray-900 dark:text-white resize-none" />
             <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-1">{comment.length}/5000</p>
           </div>
           <div className="flex gap-2 pt-2">
-            <button onClick={onClose} disabled={submitting} className="flex-1 py-3 bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-gray-200 text-[15px] font-semibold rounded-lg disabled:opacity-50">취소</button>
+            <button onClick={onClose} disabled={submitting} className="flex-1 py-3 bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-gray-200 text-[15px] font-medium rounded-lg disabled:opacity-50">취소</button>
             <button onClick={submit} disabled={submitting} className="flex-1 py-3 bg-brand text-white text-[15px] font-bold rounded-lg active:opacity-80 disabled:opacity-50">
               {submitting ? '등록 중...' : '리뷰 등록'}
             </button>

@@ -520,7 +520,7 @@ export default function VoucherScanner() {
               ? <OkIcon className="w-7 h-7 text-tone-ok shrink-0" />
               : <BadIcon className="w-7 h-7 text-tone-bad shrink-0" />}
             <div className="min-w-0">
-              <p className={`text-[15px] font-extrabold ${latest.ok ? 'text-tone-ok' : 'text-tone-bad'}`}>{latest.message}</p>
+              <p className={`text-[15px] font-bold ${latest.ok ? 'text-tone-ok' : 'text-tone-bad'}`}>{latest.message}</p>
               <p className="text-[12px] text-gray-600 dark:text-gray-400 mt-1 truncate">
                 {latest.productName || latest.code}{latest.restaurantName ? ` · ${latest.restaurantName}` : ''} · {latest.at}
               </p>

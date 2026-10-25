@@ -59,7 +59,7 @@ export default [
   {
     name: '✏️ 프로필 행이 다시 맨 `>` 가 된다',
     file: 'src/pages/UserProfilePage.tsx',
-    find: "            <span className=\"shrink-0 text-[12px] font-semibold text-gray-500 dark:text-gray-400\">{t('userProfile.editProfile', { defaultValue: '프로필 편집' })}</span>\n",
+    find: "            <span className=\"shrink-0 text-[12px] font-medium text-gray-500 dark:text-gray-400\">{t('userProfile.editProfile', { defaultValue: '프로필 편집' })}</span>\n",
     replace: '',
     test: T,
     why: '대표: "오른쪽 버튼은 눌렀을 때 기껏해야 …" — 무엇이 열리는지 말하지 않는 버튼.',

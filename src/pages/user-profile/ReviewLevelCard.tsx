@@ -67,7 +67,7 @@ export default function ReviewLevelCard() {
         <MedalIcon className="w-6 h-6 text-gray-500 dark:text-gray-400" aria-hidden="true" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-[13px] font-bold text-gray-900 dark:text-white">동네 리뷰어 Lv.{formatNumber(data.level)}</span>
+            <span className="text-[13px] font-medium text-gray-900 dark:text-white">동네 리뷰어 Lv.{formatNumber(data.level)}</span>
             <span className="text-[12px] font-medium text-gray-500 dark:text-white/50">· {data.label}</span>
           </div>
           <p className="text-[12px] text-gray-500 dark:text-white/45 mt-1">

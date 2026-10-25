@@ -31,8 +31,8 @@ export default [
   {
     name: '마이 숫자 — 잘림을 크기로 해결한다(24px → 17px)',
     file: 'src/pages/user-profile/MyStats.tsx',
-    find: 'text-[24px] font-extrabold tabular-nums',
-    replace: 'text-[17px] font-extrabold tabular-nums',
+    find: 'text-[24px] font-bold tabular-nums',
+    replace: 'text-[17px] font-bold tabular-nums',
     test: 'src/tests/unit/my-stats-titles-2026-09-30.test.ts',
     why: '가장 쉬운 오답. 숫자를 줄이면 잘림은 사라지지만 이 줄의 존재 이유(표면 규칙 ③ — 숫자가 주인공)가 함께 사라지고, 라벨 13px 과 값 17px 이 붙어 위계가 무너진다.',
   },
@@ -42,8 +42,8 @@ export default [
     //   ⇒ 17px 흐린 잉크 + 값은 `SECTION_TITLE_CLS` 한 곳. 되돌리려는 사고는 그대로다.
     name: '구역 제목 — 24px extrabold 로 되돌아간다(대표가 두 번 지적한 그 인상)',
     file: 'src/pages/user-profile/list-grammar.tsx',
-    find: "SECTION_TITLE_CLS = 'text-[17px] font-semibold tracking-[-0.01em]",
-    replace: "SECTION_TITLE_CLS = 'text-[24px] font-extrabold tracking-[-0.03em]",
+    find: "SECTION_TITLE_CLS = 'text-[17px] font-bold tracking-[-0.01em]",
+    replace: "SECTION_TITLE_CLS = 'text-[24px] font-bold tracking-[-0.03em]",
     test: 'src/tests/unit/my-zones-and-pc-2026-09-28.test.ts',
     why: '대표가 **두 번** 지적한 그 인상이다. 아침엔 무게·자간만 고쳤는데 판매 구역이 제목을 손으로 적고 있어 화면에 안 닿았다 — 그래서 이제 *값*이 아니라 *출처*를 지키는 시험(my-zones)으로 옮겼다. 되돌아가도 빌드는 초록이라 조용히 재발한다.',
   },

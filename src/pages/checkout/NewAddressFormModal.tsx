@@ -38,7 +38,7 @@ export default function NewAddressFormModal({
     >
       <div className="space-y-4">
         <div>
-          <label htmlFor="checkout-recipient-name" className="block text-[15px] font-semibold text-gray-900 dark:text-white mb-2">
+          <label htmlFor="checkout-recipient-name" className="block text-[15px] font-medium text-gray-900 dark:text-white mb-2">
             {t('checkout.newAddress.recipientName', { defaultValue: '수령인 이름' })} <span className="text-red-500" aria-hidden="true">*</span>
           </label>
           <input
@@ -54,7 +54,7 @@ export default function NewAddressFormModal({
         </div>
 
         <div>
-          <label htmlFor="checkout-phone" className="block text-[15px] font-semibold text-gray-900 dark:text-white mb-2">
+          <label htmlFor="checkout-phone" className="block text-[15px] font-medium text-gray-900 dark:text-white mb-2">
             {t('checkout.newAddress.phone', { defaultValue: '연락처' })} <span className="text-red-500" aria-hidden="true">*</span>
           </label>
           <input
@@ -70,7 +70,7 @@ export default function NewAddressFormModal({
         </div>
 
         <div>
-          <label htmlFor="checkout-postal-code" className="block text-[15px] font-semibold text-gray-900 dark:text-white mb-2">
+          <label htmlFor="checkout-postal-code" className="block text-[15px] font-medium text-gray-900 dark:text-white mb-2">
             {t('checkout.newAddress.postalCode', { defaultValue: '우편번호' })} <span className="text-red-500" aria-hidden="true">*</span>
           </label>
           <div className="flex gap-2 w-full min-w-0">
@@ -88,7 +88,7 @@ export default function NewAddressFormModal({
             <button
               type="button"
               onClick={() => setShowPostcodePopup(true)}
-              className="shrink-0 px-5 py-3 border border-line rounded-2xl text-[15px] font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-all whitespace-nowrap"
+              className="shrink-0 px-5 py-3 border border-line rounded-2xl text-[15px] font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-all whitespace-nowrap"
             >
               {t('checkout.newAddress.searchAddress', { defaultValue: '주소 검색' })}
             </button>
@@ -102,7 +102,7 @@ export default function NewAddressFormModal({
         )}
 
         <div>
-          <label htmlFor="checkout-address" className="block text-[15px] font-semibold text-gray-900 dark:text-white mb-2">
+          <label htmlFor="checkout-address" className="block text-[15px] font-medium text-gray-900 dark:text-white mb-2">
             {t('checkout.newAddress.address', { defaultValue: '주소' })} <span className="text-red-500" aria-hidden="true">*</span>
           </label>
           <input
@@ -118,7 +118,7 @@ export default function NewAddressFormModal({
         </div>
 
         <div>
-          <label htmlFor="checkout-address-detail" className="block text-[15px] font-semibold text-gray-900 dark:text-white mb-2">
+          <label htmlFor="checkout-address-detail" className="block text-[15px] font-medium text-gray-900 dark:text-white mb-2">
             {t('checkout.newAddress.addressDetail', { defaultValue: '상세주소' })}
           </label>
           <input

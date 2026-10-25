@@ -11,7 +11,7 @@ export default function LifeQuoteBanner() {
         <b className="block text-[15px]">이사·청소는 무료 견적으로</b>
         요청서를 올리면 근처 사장님이 견적을 보내요
       </span>
-      <span className="shrink-0 text-[13px] font-bold">견적 받기 →</span>
+      <span className="shrink-0 text-[13px] font-medium">견적 받기 →</span>
     </Link>
   )
 }

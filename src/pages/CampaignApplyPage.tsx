@@ -64,7 +64,7 @@ export default function CampaignApplyPage() {
       <div className="force-light-theme min-h-[100dvh] bg-gray-50 flex items-center justify-center px-4">
         <div className="text-center">
           <div className="text-[34px] mb-3">🔍</div>
-          <div className="text-[17px] font-semibold text-gray-900">진행 중인 캠페인이 아닙니다</div>
+          <div className="text-[17px] font-bold text-gray-900">진행 중인 캠페인이 아닙니다</div>
           <p className="mt-2 text-[15px] text-gray-600">링크를 다시 확인해주세요.</p>
         </div>
       </div>
@@ -83,16 +83,16 @@ export default function CampaignApplyPage() {
         {done ? (
           <div className="rounded-xl bg-white p-8 text-center shadow-lift">
             <div className="text-[34px] mb-3">🎉</div>
-            <div className="text-[17px] font-semibold text-gray-900">신청이 완료되었습니다</div>
+            <div className="text-[17px] font-bold text-gray-900">신청이 완료되었습니다</div>
             <p className="mt-2 text-[15px] text-gray-600">
               선정 여부와 관계없이 <strong className="text-gray-900">유어딜 파트너로 등록</strong>되었으며,
               다음 캠페인 소식을 가장 먼저 안내드립니다.
             </p>
             {refLink && (
               <div className="mt-5 rounded-lg bg-gray-50 border border-gray-200 p-4 text-left">
-                <div className="text-[12px] font-semibold text-gray-500 mb-2">내 추천 링크 (지금 바로 사용 가능)</div>
+                <div className="text-[12px] font-medium text-gray-500 mb-2">내 추천 링크 (지금 바로 사용 가능)</div>
                 <div className="text-[15px] text-gray-900 break-all">{refLink}</div>
-                <button onClick={copyRefLink} className="mt-3 w-full py-2 rounded-lg bg-brand text-white text-[15px] font-semibold">
+                <button onClick={copyRefLink} className="mt-3 w-full py-2 rounded-lg bg-brand text-white text-[15px] font-medium">
                   {copied ? '복사됐어요 ✓' : '링크 복사'}
                 </button>
                 <p className="mt-2 text-[12px] text-gray-500">이 링크로 들어온 방문·구매가 내 성과로 집계됩니다. 콘텐츠·프로필에 붙여 활용해보세요.</p>
@@ -102,9 +102,9 @@ export default function CampaignApplyPage() {
         ) : !loggedIn ? (
           <div className="rounded-xl bg-white p-8 text-center shadow-lift">
             <div className="text-[34px] mb-3">💬</div>
-            <div className="text-[15px] font-semibold text-gray-900">카카오 로그인 후 1분이면 신청 완료</div>
+            <div className="text-[15px] font-medium text-gray-900">카카오 로그인 후 1분이면 신청 완료</div>
             <p className="mt-2 text-[15px] text-gray-600">신청하면 유어딜 계정과 내 추천 링크가 바로 만들어집니다.</p>
-            <a href={loginUrl} className="mt-5 inline-block w-full py-3 rounded-lg bg-[#FEE500] text-[#3C1E1E] text-[15px] font-semibold">
+            <a href={loginUrl} className="mt-5 inline-block w-full py-3 rounded-lg bg-[#FEE500] text-[#3C1E1E] text-[15px] font-medium">
               카카오로 시작하기
             </a>
           </div>
@@ -153,7 +153,7 @@ export default function CampaignApplyPage() {
               </label>
             </div>
             {err && <div className="rounded-lg bg-rose-50 border border-rose-200 px-3 py-2 text-[15px] text-rose-700">{err}</div>}
-            <button onClick={submit} disabled={busy} className="w-full py-3 rounded-lg bg-brand text-white text-[15px] font-semibold disabled:opacity-50">
+            <button onClick={submit} disabled={busy} className="w-full py-3 rounded-lg bg-brand text-white text-[15px] font-medium disabled:opacity-50">
               {busy ? '접수 중…' : '신청하기'}
             </button>
             <p className="text-[12px] text-gray-400 text-center">선정 여부와 관계없이 파트너로 등록되며, 다음 캠페인을 우선 안내드립니다.</p>

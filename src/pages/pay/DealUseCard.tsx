@@ -86,7 +86,7 @@ export default function DealUseCard({ goodsAmount, dealMax, value, onChange, dis
           type="button"
           disabled={disabled}
           onClick={() => onChange(atMax ? 0 : cap)}
-          className={`shrink-0 h-12 px-4 rounded-xl text-[13px] font-bold transition-colors disabled:opacity-50 ${
+          className={`shrink-0 h-12 px-4 rounded-xl text-[13px] font-medium transition-colors disabled:opacity-50 ${
             atMax
               ? 'bg-warm border border-line text-ink-soft'
               : 'bg-brand hover:bg-brand-dark text-white'

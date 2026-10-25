@@ -89,7 +89,7 @@ export default function UShopManagePage() {
       {/* 상단 — 뒤로는 내 유어샵. 주소는 바뀔 수 있으니 항상 현재 handle 로 간다. */}
       <div className="flex items-center gap-2 px-4 py-4 border-b border-rule">
         <Link to={`/u/${curator.handle}`} aria-label={t('common.back', { defaultValue: '뒤로' })} className="text-[17px] leading-none text-gray-500 dark:text-gray-400 active:opacity-60">‹</Link>
-        <h1 className="text-[15px] font-semibold tracking-[-0.028em]">{t('ushop.manageTitle', { defaultValue: '유어샵 관리' })}</h1>
+        <h1 className="text-[15px] font-medium tracking-[-0.028em]">{t('ushop.manageTitle', { defaultValue: '유어샵 관리' })}</h1>
       </div>
 
       <div className="px-4">
@@ -102,8 +102,8 @@ export default function UShopManagePage() {
         {reorder ? (
           <div className="mt-3">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[15px] font-semibold">{t('ushop.manageReorderTitle', { defaultValue: '담은 이용권 정리' })}</span>
-              <button onClick={() => setReorder(false)} className="px-4 h-9 rounded-full bg-brand text-white text-[13px] font-bold active:opacity-80">
+              <span className="text-[15px] font-medium">{t('ushop.manageReorderTitle', { defaultValue: '담은 이용권 정리' })}</span>
+              <button onClick={() => setReorder(false)} className="px-4 h-9 rounded-full bg-brand text-white text-[13px] font-medium active:opacity-80">
                 {t('curator.done', { defaultValue: '완료' })}
               </button>
             </div>

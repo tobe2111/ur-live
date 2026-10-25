@@ -26,7 +26,7 @@ export default function WalletRecommend({ ownedProductIds, t }: {
     <section className="mt-8">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-[17px] font-bold text-gray-900 dark:text-white">{t('voucher.recoTitle', { defaultValue: '이런 이용권은 어때요?' })}</h2>
-        <Link to="/" className="text-[13px] font-semibold text-gray-500 dark:text-gray-400">{t('voucher.recoMore', { defaultValue: '더보기' })} ›</Link>
+        <Link to="/" className="text-[13px] font-medium text-gray-500 dark:text-gray-400">{t('voucher.recoMore', { defaultValue: '더보기' })} ›</Link>
       </div>
       <div className={`grid grid-cols-2 ${DEAL_GRID_GAP}`}>
         {picks.map(p => <GroupBuyFeedCard key={p.id} p={p} imgWidth={HOME_CARD_IMG_WIDTH_BASE} hideWishlist />)}

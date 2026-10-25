@@ -183,12 +183,12 @@ export default function ImageUpload({
           ) : invalid ? (
             <>
               <ImageIcon className="w-[22px] h-[22px] text-[#D0685E]" strokeWidth={1.8} />
-              <span className="text-[12px] font-bold text-[#C0554B] tracking-[-0.02em]">사진 필요</span>
+              <span className="text-[12px] font-medium text-[#C0554B] tracking-[-0.02em]">사진 필요</span>
             </>
           ) : (
             <>
               <Upload className="w-[22px] h-[22px] text-[#A9A2A6]" strokeWidth={1.8} />
-              <span className="text-[12px] font-bold text-[#8A8288] tracking-[-0.02em]">사진 올리기</span>
+              <span className="text-[12px] font-medium text-[#8A8288] tracking-[-0.02em]">사진 올리기</span>
             </>
           )}
         </div>

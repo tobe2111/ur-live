@@ -91,7 +91,7 @@ export default [
   {
     name: '🔎제안에서 친 글자 강조가 사라진다',
     file: PANEL,
-    find: `      <span className="font-extrabold text-gray-900 dark:text-white">{text.slice(i, i + q.length)}</span>`,
+    find: `      <span className="font-bold text-gray-900 dark:text-white">{text.slice(i, i + q.length)}</span>`,
     replace: `      <span>{text.slice(i, i + q.length)}</span>`,
     test: T,
     why: '"내가 친 것 + 이어지는 말"로 읽히게 하는 유일한 장치다. 없으면 그냥 글자 목록이다.',

@@ -174,7 +174,7 @@ export default function KakaoDebugPage() {
                     <div className="flex items-start gap-3">
                       {getStatusIcon(check.status)}
                       <div className="flex-1">
-                        <h3 className="font-semibold">{check.name}</h3>
+                        <h3 className="font-medium">{check.name}</h3>
                         <p className="text-[15px] text-gray-700 mt-1">{check.message}</p>
                         {check.details && (
                           <div className="mt-2 p-2 bg-gray-100 rounded text-[12px] font-mono break-all relative group">

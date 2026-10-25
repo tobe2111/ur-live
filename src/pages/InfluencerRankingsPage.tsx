@@ -54,7 +54,7 @@ export default function InfluencerRankingsPage() {
       <header className="sticky top-0 z-30 bg-gradient-to-r from-gray-700 to-gray-800 text-white px-4 py-4">
         <div className="flex items-center gap-2">
           <Trophy className="w-6 h-6" />
-          <h1 className="text-[17px] font-extrabold">이 달의 소개 랭킹</h1>
+          <h1 className="text-[17px] font-bold">이 달의 소개 랭킹</h1>
         </div>
         <p className="text-[12px] opacity-90 mt-1">지역별 매출 Top — 매월 1일 리셋</p>
       </header>
@@ -66,7 +66,7 @@ export default function InfluencerRankingsPage() {
             <button
               key={r.key}
               onClick={() => setRegion(r.key)}
-              className={`px-3 py-2 rounded-full text-[12px] font-bold whitespace-nowrap ${
+              className={`px-3 py-2 rounded-full text-[12px] font-medium whitespace-nowrap ${
                 region === r.key ? 'bg-brand text-white' : 'bg-white dark:bg-[#11141C] text-gray-700 dark:text-gray-200 border border-gray-200'
               }`}
             >
@@ -102,7 +102,7 @@ export default function InfluencerRankingsPage() {
                 const medal = r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : null
                 return (
                   <li key={r.rank} className={`flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-[#2C2F35] last:border-0 ${isTop3 ? 'bg-amber-50' : ''}`}>
-                    <span className={`w-8 text-center font-extrabold ${isTop3 ? 'text-amber-600' : 'text-gray-400'}`}>
+                    <span className={`w-8 text-center font-bold ${isTop3 ? 'text-amber-600' : 'text-gray-400'}`}>
                       {medal || r.rank}
                     </span>
                     <div className="flex-1 min-w-0">
@@ -111,9 +111,9 @@ export default function InfluencerRankingsPage() {
                     </div>
                     <div className="text-right">
                       {metric === 'commission' ? (
-                        <p className="text-[15px] font-extrabold text-brand-text">{r.total_commission.toLocaleString()}원</p>
+                        <p className="text-[15px] font-bold text-brand-text">{r.total_commission.toLocaleString()}원</p>
                       ) : (
-                        <p className="text-[15px] font-extrabold text-blue-600">{r.attribution_count}건</p>
+                        <p className="text-[15px] font-bold text-blue-600">{r.attribution_count}건</p>
                       )}
                     </div>
                   </li>

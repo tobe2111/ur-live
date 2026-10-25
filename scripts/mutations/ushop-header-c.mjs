@@ -47,8 +47,8 @@ export default [
   {
     name: '🔵 헤더의 다른 자리에 색 면이 하나 더 생긴다',
     file: HEADER,
-    find: '<div className="lg:hidden flex items-center px-4 pt-3">',
-    replace: '<div className="lg:hidden flex items-center px-4 pt-3 bg-brand">',
+    find: '<div className="lg:hidden flex items-center px-5 pt-3">',
+    replace: '<div className="lg:hidden flex items-center px-5 pt-3 bg-brand">',
     test: A3,
     why:
       '🎫 규칙 ②(강조색 하나)를 어긴다. 헤더의 유일한 색 면이 **주인 전용 자리**라는 것이 ' +

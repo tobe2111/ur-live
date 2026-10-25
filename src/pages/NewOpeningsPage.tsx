@@ -74,13 +74,13 @@ export default function NewOpeningsPage() {
               <div key={i} className="rounded-xl border border-gray-100 dark:border-[#1A1A1A] bg-white dark:bg-[#121212] p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="text-[15px] font-semibold text-gray-900 dark:text-white truncate">
+                    <div className="text-[15px] font-medium text-gray-900 dark:text-white truncate">
                       {CAT_EMOJI[o.category || ''] || '🏪'} {o.biz_name}
                     </div>
                     <div className="mt-1 text-[12px] text-gray-500 dark:text-gray-400 truncate">{[o.region, o.uptae || o.category].filter(Boolean).join(' · ')}</div>
                     {o.addr_road && <div className="mt-1 text-[12px] text-gray-400 dark:text-gray-500 truncate">{o.addr_road}</div>}
                   </div>
-                  <span className={`shrink-0 text-[12px] px-2 py-1 rounded font-bold ${dDay(o.apv_perm_ymd) === 'NEW' ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-300' : 'bg-gray-100 text-gray-500 dark:bg-[#1A1A1A] dark:text-gray-400'}`}
+                  <span className={`shrink-0 text-[12px] px-2 py-1 rounded font-medium ${dDay(o.apv_perm_ymd) === 'NEW' ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-300' : 'bg-gray-100 text-gray-500 dark:bg-[#1A1A1A] dark:text-gray-400'}`}
                     title={`인허가일 기준${o.apv_perm_ymd ? ` (${fmtYmd(o.apv_perm_ymd)})` : ''}`}>
                     {dDay(o.apv_perm_ymd) || '개업'}
                   </span>

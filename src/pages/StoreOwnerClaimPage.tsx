@@ -198,7 +198,7 @@ export default function StoreOwnerClaimPage() {
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-16">
           {/* 왼쪽(PC) · 위(폰) — 무엇을 하는 곳인가 */}
           <div className="lg:pt-4">
-            <h1 className="hidden lg:block text-[40px] font-black tracking-[-0.03em] leading-[1.22] text-gray-900">
+            <h1 className="hidden lg:block text-[40px] font-extrabold tracking-[-0.03em] leading-[1.22] text-gray-900">
               내 가게<br /> 찾기
             </h1>
             <p className="text-[13px] lg:text-[17px] lg:mt-4 text-gray-600 leading-relaxed lg:max-w-[460px]">
@@ -210,7 +210,7 @@ export default function StoreOwnerClaimPage() {
             <ol className="hidden lg:flex mt-8 flex-col gap-4 lg:max-w-[460px]">
               {STEPS.map(({ n, title, desc }) => (
                 <li key={n} className="flex gap-4 items-start">
-                  <span className="mt-1 shrink-0 w-6 h-6 rounded-full bg-brand text-white text-[12px] font-bold flex items-center justify-center">{n}</span>
+                  <span className="mt-1 shrink-0 w-6 h-6 rounded-full bg-brand text-white text-[12px] font-medium flex items-center justify-center">{n}</span>
                   <div className="min-w-0">
                     <p className="text-[15px] font-bold text-gray-900">{title}</p>
                     <p className="mt-1 text-[13px] leading-relaxed text-gray-500">{desc}</p>
@@ -222,7 +222,7 @@ export default function StoreOwnerClaimPage() {
             <div className="hidden lg:flex mt-9 pt-5 border-t border-rule gap-9 lg:max-w-[460px]">
               {FACTS.map(({ value, label }) => (
                 <div key={label}>
-                  <div className="text-[17px] font-black text-gray-900">{value}</div>
+                  <div className="text-[17px] font-bold text-gray-900">{value}</div>
                   <div className="mt-1 text-[12px] text-gray-500">{label}</div>
                 </div>
               ))}
@@ -236,7 +236,7 @@ export default function StoreOwnerClaimPage() {
         {!picked && (
           <section className="bg-white rounded-2xl p-4">
             {/* 🔑 코드 입구 — 대행사가 매장을 대신 등록했다면 사장님은 코드를 받았다. 번호 조회는 그 아래 그대로. */}
-            <label className="block text-[13px] font-semibold mb-2 text-gray-900">받은 코드가 있나요?</label>
+            <label className="block text-[13px] font-medium mb-2 text-gray-900">받은 코드가 있나요?</label>
             <div className="flex gap-2 mb-4">
               <input
                 value={claimCode} onChange={(e) => setClaimCode(e.target.value.toUpperCase())}
@@ -250,7 +250,7 @@ export default function StoreOwnerClaimPage() {
               </button>
             </div>
             <p className="text-[12px] text-gray-500 mb-4 -mt-2">대행사가 매장을 대신 등록했다면 이 코드를 받으셨을 거예요. 없으면 아래에서 사업자번호로 찾아주세요.</p>
-            <label className="block text-[13px] font-semibold mb-2 text-gray-900">사업자등록번호</label>
+            <label className="block text-[13px] font-medium mb-2 text-gray-900">사업자등록번호</label>
             <div className="flex gap-2">
               <input
                 value={bno} onChange={(e) => setBno(e.target.value)}
@@ -267,7 +267,7 @@ export default function StoreOwnerClaimPage() {
             {stores && stores.length === 0 && (
               <p className="mt-3 text-[13px] text-gray-600 leading-relaxed">
                 이 번호로 등록된 매장이 없어요. 아직 유어딜에 없는 가게라면{' '}
-                <button onClick={() => navigate('/store/new')} className="text-brand-text underline font-semibold">
+                <button onClick={() => navigate('/store/new')} className="text-brand-text underline font-medium">
                   매장 등록
                 </button>
                 {' '}으로 바로 시작하실 수 있어요.
@@ -279,7 +279,7 @@ export default function StoreOwnerClaimPage() {
                   <li key={s.seller_id}>
                     <button onClick={() => setPicked(s.seller_id)}
                       className="w-full text-left border border-gray-200 rounded-xl p-3 hover:bg-gray-50">
-                      <p className="text-[15px] font-semibold text-gray-900">
+                      <p className="text-[15px] font-medium text-gray-900">
                         <StoreIcon className="w-4 h-4 inline mr-1 text-gray-400" />
                         {s.business_name || s.name || `매장 ${s.seller_id}`}
                       </p>
@@ -303,7 +303,7 @@ export default function StoreOwnerClaimPage() {
         {picked && (
           <section className="bg-white rounded-2xl p-4 space-y-4">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-[15px] font-semibold text-gray-900">
+              <p className="text-[15px] font-medium text-gray-900">
                 {pickedStore?.business_name || pickedStore?.name || `매장 #${picked}`}
               </p>
               <button onClick={() => { setPicked(null); setCertUrl(''); setServerTerms(null); setTermsAgreed(false) }} className="text-[12px] text-gray-500">
@@ -316,13 +316,13 @@ export default function StoreOwnerClaimPage() {
             <BusinessCertUpload value={certUrl} onChange={setCertUrl} required />
 
             <div>
-              <label className="block text-[13px] font-semibold mb-2 text-gray-900">연락처 (선택)</label>
+              <label className="block text-[13px] font-medium mb-2 text-gray-900">연락처 (선택)</label>
               <input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel"
                 placeholder="010-0000-0000"
                 className="w-full border border-gray-200 rounded-xl px-3 py-2 text-[15px] text-gray-900" />
             </div>
             <div>
-              <label className="block text-[13px] font-semibold mb-2 text-gray-900">남길 말 (선택)</label>
+              <label className="block text-[13px] font-medium mb-2 text-gray-900">남길 말 (선택)</label>
               <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} maxLength={500}
                 placeholder="예: 제가 이 가게 대표입니다. 대행사와 계약이 끝났어요."
                 className="w-full border border-gray-200 rounded-xl px-3 py-2 text-[15px] text-gray-900" />
@@ -342,7 +342,7 @@ export default function StoreOwnerClaimPage() {
         {/* ── ③ 내 신청 내역 ─────────────────────────────── */}
         {mine.length > 0 && (
           <section className="bg-white rounded-2xl p-4">
-            <p className="text-[15px] font-semibold text-gray-900 mb-2">내 신청 내역</p>
+            <p className="text-[15px] font-medium text-gray-900 mb-2">내 신청 내역</p>
             <ul className="divide-y divide-gray-100">
               {mine.map((m) => (
                 <li key={m.id} className="py-2">

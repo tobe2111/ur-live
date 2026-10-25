@@ -62,7 +62,7 @@ export default function FirstVoucherSheet({ items, t }: {
       >
         <div aria-hidden="true" className="w-10 h-1 rounded-full bg-rule-strong" />
         <div className="mt-5"><Udal mood="done" size={120} motion priority /></div>
-        <h2 id="first-voucher-title" className="mt-4 text-[24px] font-extrabold tracking-[-0.02em] text-gray-900 dark:text-white">
+        <h2 id="first-voucher-title" className="mt-4 text-[24px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white">
           {t('voucher.firstTitle', { defaultValue: '첫 이용권이에요!' })}
         </h2>
         <p className="mt-2 text-[15px] leading-relaxed text-gray-500 dark:text-gray-400">
@@ -78,7 +78,7 @@ export default function FirstVoucherSheet({ items, t }: {
               ) : (
                 <span className="w-14 h-14 rounded-full border-2 border-dashed border-rule-strong" />
               )}
-              <span className={`text-[13px] ${s.done ? 'font-bold text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
+              <span className={`text-[13px] ${s.done ? 'font-medium text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
                 {s.label}{!s.done && <span className="sr-only"> {t('voucher.firstStampTodo', { defaultValue: '아직 안 함' })}</span>}
               </span>
             </li>

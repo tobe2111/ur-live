@@ -420,6 +420,29 @@
     overflow-x: hidden;
   }
 
+  /* 🔤 2026-10-25 (대표 *"PC는 글자가 너무 별로인데"* → 안 A · *"네 뜻대로 하자"* = PC 만):
+     넓은 화면(1024px+)에서만 한글 글꼴을 라틴 시스템 글꼴보다 앞에 둔다. 위 목록 그대로면 윈도우는
+     system-ui(=Segoe UI)·Roboto 로 영문을, 맑은 고딕으로 한글을 그려 한 줄에 글꼴이 둘 섞인다
+     (쿠팡은 한글 글꼴을 먼저 쓴다). 폰은 위 목록 그대로라 픽셀 동일. 전부 기기 글꼴이라 받는 것 0.
+     숫자는 여전히 UrDigits 가 맨 앞. `font-sans` 유틸(9곳 — '원' 단위·<pre>)은 한글이라 어차피 맑은 고딕으로
+     떨어져 짝을 두지 않는다. */
+  @media (min-width: 1024px) {
+    body {
+      font-family:
+        "UrDigits",
+        "Apple SD Gothic Neo",
+        "Malgun Gothic",
+        "Noto Sans KR",
+        -apple-system,
+        BlinkMacSystemFont,
+        system-ui,
+        "Apple Color Emoji",
+        "Segoe UI Emoji",
+        "Segoe UI Symbol",
+        sans-serif;
+    }
+  }
+
   /* Apple Typography Scale - Mobile Responsive */
   h1 {
     font-size: clamp(2rem, 5vw, 4rem);
