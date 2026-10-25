@@ -108,7 +108,7 @@ export default function AdminHomeServicePage() {
 
         <section className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
           <h2 className="text-[15px] font-semibold text-gray-900">견적 한 번에 드는 참여권</h2>
-          <p className="text-[13px] text-gray-500">기본 1장. 금액이 큰 일(간판·인테리어)은 더 받을 수 있습니다. ⚠️ 업체가 내는 돈이라 대표 결재(<code>docs/decisions/2026-10-25-home-service-credit-cost.md</code>) 뒤에 바꿔 주세요. 반환은 그 견적에 쓴 장수만큼 돌려줍니다.</p>
+          <p className="text-[13px] text-gray-500">기본 1장. 금액이 큰 일(간판·인테리어)은 더 받을 수 있습니다. 업체가 내는 돈이라 대표 결재(<code>docs/decisions/2026-10-25-home-service-credit-cost.md</code>) 뒤에 바꿔 주세요. 반환은 그 견적에 쓴 장수만큼 돌려줍니다.</p>
           <ul className="space-y-1 text-[13px] text-gray-700">
             {Object.keys(costs.data ?? {}).length === 0 && <li className="text-gray-500">전부 1장</li>}
             {Object.entries(costs.data ?? {}).map(([k, n]) => (
