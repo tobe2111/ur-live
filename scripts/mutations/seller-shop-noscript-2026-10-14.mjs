@@ -116,8 +116,9 @@ export default [
   {
     name: '🏪 유어샵 본문 — 워커 배선을 끊는다',
     file: 'src/worker/index.ts',
-    find: " || (ssrSlot === 'SELLER' ? buildSellerNoscript(ssrPayload) : '')",
-    replace: '',
+    // 2026-10-25 재조준 — 같은 `||` 항에 LIFESHARE 분기가 이어 붙어 앵커가 낡았다(불변식 그대로: SELLER 배선 끊기).
+    find: "(ssrSlot === 'SELLER' ? buildSellerNoscript(ssrPayload) : ",
+    replace: "(false ? buildSellerNoscript(ssrPayload) : ",
     test: TEST,
     why:
       '`/s/:username` 은 위 분기(`DETAIL`·`CURATOR`·`STAYDETAIL`·`VOUCHERS`)에 안 걸려 catch-all 로 ' +

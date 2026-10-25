@@ -114,7 +114,7 @@ export default function LifeSharePage() {
             <p className="text-[17px] font-bold tabular-nums text-brand-text">{v.seatsLeft} / {v.maxQuotes}</p>
           </div>
           <div className="mt-3 flex gap-2">
-            {seats.map((taken, i) => <span key={i} className={`h-2 flex-1 rounded-full ${taken ? 'bg-brand' : 'bg-gray-200 dark:bg-[#2A2A2A]'}`} />)}
+            {seats.map((taken, i) => <span key={i} className={`h-2 flex-1 rounded-full ${taken ? 'bg-brand' : 'bg-gray-200 dark:bg-gray-700'}`} />)}
           </div>
           <p className="mt-3 text-[13px] text-gray-500 dark:text-gray-400">먼저 보낸 {v.maxQuotes}곳까지만 견적을 낼 수 있어요</p>
         </section>
@@ -144,7 +144,7 @@ export default function LifeSharePage() {
         </p>
         {v.photoCount > 0 && (
           <div className="mt-3 flex gap-2" aria-hidden>
-            {Array.from({ length: Math.min(v.photoCount, 4) }, (_, i) => <span key={i} className="h-20 w-20 rounded-xl bg-gray-200 blur-[2px] dark:bg-[#2A2A2A]" />)}
+            {Array.from({ length: Math.min(v.photoCount, 4) }, (_, i) => <span key={i} className="h-20 w-20 rounded-xl bg-gray-200 blur-[2px] dark:bg-gray-700" />)}
           </div>
         )}
         {!v.open && (

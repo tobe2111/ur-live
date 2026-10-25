@@ -156,7 +156,7 @@ describe('🔌 배선', () => {
   })
   it('요청함·열람·가입 직후 보내기가 모두 제휴 목록을 넘긴다', () => {
     expect(pro).toContain('partnerCategoriesCsv(partners, sid), sid, sid, 50')
-    expect(pro).toContain(').bind(requestId, sid, csv, sid, sid).first()')
+    expect(pro).toContain(').bind(requestId, sid, csv, sid, sid, sid, sid).first()' /* 2026-10-25 공유 기록 조건이 sid 둘을 더 받는다 */)
     expect(notify).toContain('.bind(sellerId, todayYmd, csv, sellerId, sellerId, 5)')
   })
 })
