@@ -65,7 +65,7 @@ export function DateSheet({ f, value, lucky, onDone, onClose }: {
               className={`mx-auto flex h-12 w-11 flex-col items-center justify-center rounded-xl text-[15px] ${on ? 'bg-brand font-bold text-white' : past ? 'text-gray-300 dark:text-gray-600' : 'font-bold text-ink'}`}
             >
               {Number(ymd.slice(8))}
-              <span className={`mt-0.5 h-1 w-1 rounded-full ${dot ? (on ? 'bg-white' : past ? 'bg-gray-300 dark:bg-gray-600' : 'bg-ink') : 'bg-transparent'}`} />
+              <span className={`mt-1 h-1 w-1 rounded-full ${dot ? (on ? 'bg-white' : past ? 'bg-gray-300 dark:bg-gray-600' : 'bg-ink') : 'bg-transparent'}`} />
               {ymd === today && !on && <span className="sr-only">오늘</span>}
             </button>
           )
