@@ -14,6 +14,11 @@
 
 export type HomeServiceCategory =
   | 'store_pest' | 'kitchen_hood' | 'store_repair' | 'lodging_clean'
+  // 2026-10-25 대표 "위 업종들도 받아야 해" — 가게 관리 6종 추가.
+  //   `store_fridge`·`store_aircon`·`store_sign` 은 `store_repair` 안에 섞여 있던 것을 **꺼낸 것**이다
+  //   (대표 표: "수리 안에서 따로 꺼낼 1순위"). 꺼내는 이유는 알림이 **카테고리 단위**라서다 —
+  //   한 덩어리로 두면 냉장 설비 업체와 전기 업체에게 같은 요청이 함께 간다.
+  | 'store_clean' | 'store_fridge' | 'store_aircon' | 'store_drain' | 'store_sign' | 'store_interior'
   | 'move' | 'move_in_clean' | 'aircon_clean'
 
 /** 누구의 일인가 — 생활 페이지가 사장님(가게 관리)을 먼저, 집을 아래에 보여 준다(2026-10-25 대표). */
@@ -67,6 +72,8 @@ export interface CategoryDef {
 const REGION_HINT = '예) 서울 강남구 역삼동 (동까지만)'
 
 const BIZ_TYPES = ['식당', '카페', '숙소', '기타 매장'] as const
+/** 사무실까지 받는 업종 칸 — 정기 청소·인테리어는 매장이 아닌 사무실도 손님이다. */
+const PLACE_TYPES = ['식당', '카페', '숙소', '사무실', '기타 매장'] as const
 const WORK_TIMES = ['영업 전', '영업 끝난 뒤', '쉬는 날', '상관없음'] as const
 const WORK_TIME_HINTS = { '영업 전': '오픈 전 아침', '영업 끝난 뒤': '마감 후 밤', '쉬는 날': '정기 휴무일', '상관없음': '업체와 맞춰 정해요' } as const
 const STORE_HINT = '가게 주소를 검색해 주세요'
@@ -101,6 +108,7 @@ export const HOME_SERVICE_CATEGORIES: readonly CategoryDef[] = [
     voucherKeywords: ['후드', '덕트'],
     regionFields: ['address'],
     dateField: 'date',
+    crossSell: { to: 'store_drain', title: '기름 트랩·배수구 청소도 함께 받아 보시겠어요?', carry: { address: 'address', biz: 'biz', date: 'date' } },
     fields: [
       { key: 'address', label: '가게 주소', type: 'region', required: true, placeholder: STORE_HINT },
       { key: 'biz', label: '업종', type: 'select', required: true, options: BIZ_TYPES },
@@ -117,13 +125,15 @@ export const HOME_SERVICE_CATEGORIES: readonly CategoryDef[] = [
     audience: 'biz',
     label: '가게 시설 수리',
     blurb: '고장 난 곳을 고르면 근처 수리 업체가 견적을 보내 드려요',
-    voucherKeywords: ['수리', '간판', '설비'],
+    voucherKeywords: ['수리', '설비'],
     regionFields: ['address'],
     dateField: 'date',
     fields: [
       { key: 'address', label: '가게 주소', type: 'region', required: true, placeholder: STORE_HINT },
       { key: 'biz', label: '업종', type: 'select', required: true, options: BIZ_TYPES },
-      { key: 'kind', label: '수리할 곳', type: 'select', required: true, options: ['전기', '배관·누수', '간판', '냉장·냉동 설비', '에어컨', '문·유리', '기타'] },
+      // ⚠️ 냉장·냉동/에어컨/간판은 **전용 카테고리로 꺼냈다**(2026-10-25) — 여기 남기면 같은 요청이
+      //   두 경로로 들어오고, 알림이 카테고리 단위라 엉뚱한 업체에게도 간다.
+      { key: 'kind', label: '수리할 곳', type: 'select', required: true, options: ['전기', '배관·누수', '문·유리', '바닥·벽', '기타'] },
       { key: 'date', label: '희망 날짜', type: 'date', required: true },
       { key: 'time', label: '작업 시간', type: 'select', required: true, options: WORK_TIMES, optionHints: WORK_TIME_HINTS },
       { key: 'memo', label: '증상', type: 'textarea', required: false, placeholder: '어디가 어떻게 고장 났는지 적어 주세요' },
@@ -145,6 +155,130 @@ export const HOME_SERVICE_CATEGORIES: readonly CategoryDef[] = [
       { key: 'cycle', label: '주기', type: 'select', required: true, options: ['한 번만', '매일', '매주', '매월'] },
       { key: 'date', label: '시작 날짜', type: 'date', required: true },
       { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '체크아웃·체크인 시간, 세탁물 수거 여부' },
+    ],
+  },
+  {
+    key: 'store_clean',
+    audience: 'biz',
+    label: '정기 청소',
+    blurb: '평수와 주기만 알려 주면 근처 청소 업체가 견적을 보내 드려요',
+    voucherKeywords: ['청소', '미화'],
+    regionFields: ['address'],
+    dateField: 'date',
+    crossSell: { to: 'store_pest', title: '방역·소독도 함께 받아 보시겠어요?', carry: { address: 'address', biz: 'biz', date: 'date' } },
+    fields: [
+      { key: 'address', label: '가게·사무실 주소', type: 'region', required: true, placeholder: STORE_HINT },
+      { key: 'biz', label: '업종', type: 'select', required: true, options: PLACE_TYPES },
+      { key: 'pyeong', label: '평수', type: 'number', required: true, unit: '평' },
+      { key: 'cycle', label: '주기', type: 'select', required: true, options: ['한 번만', '매일', '매주', '격주', '매월'],
+        optionHints: { '한 번만': '지금 한 번만', '매일': '영업 전·후 매일', '매주': '주 1회', '격주': '2주에 한 번', '매월': '한 달에 한 번' } },
+      { key: 'scope', label: '맡길 범위', type: 'multi', required: false,
+        options: ['바닥·집기', '화장실', '유리창', '주방', '외부·간판 주변'], placeholder: '비워 두면 업체가 보고 정해요' },
+      { key: 'date', label: '시작 날짜', type: 'date', required: true },
+      { key: 'time', label: '작업 시간', type: 'select', required: true, options: WORK_TIMES, optionHints: WORK_TIME_HINTS },
+      { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '열쇠·비밀번호 전달 방법, 쓰레기 배출 여부' },
+    ],
+  },
+  {
+    key: 'store_fridge',
+    audience: 'biz',
+    label: '냉장·냉동 설비 수리',
+    blurb: '설비 종류와 증상만 알려 주면 근처 업체가 견적을 보내 드려요',
+    voucherKeywords: ['냉장', '냉동', '쇼케이스', '제빙기'],
+    regionFields: ['address'],
+    dateField: 'date',
+    fields: [
+      { key: 'address', label: '가게 주소', type: 'region', required: true, placeholder: STORE_HINT },
+      { key: 'biz', label: '업종', type: 'select', required: true, options: BIZ_TYPES },
+      { key: 'unit', label: '설비 종류', type: 'select', required: true,
+        options: ['업소용 냉장고', '업소용 냉동고', '반찬·테이블 냉장고', '쇼케이스(음료 진열)', '제빙기', '워크인 냉장실', '기타'] },
+      { key: 'symptom', label: '증상', type: 'select', required: true,
+        options: ['안 차가워요', '소리가 커요', '물이 새요', '전원이 안 들어와요', '성에가 껴요', '기타'] },
+      // 🧊 고장 나면 그날 장사를 못 한다(대표 표: "급하고 단가도 큽니다") → 급한 정도를 먼저 받는다.
+      { key: 'urgency', label: '급한 정도', type: 'select', required: true, options: ['오늘 안에', '내일까지', '이번 주 안에', '상관없음'],
+        optionHints: { '오늘 안에': '지금 장사를 못 하는 상태', '내일까지': '하루는 버틸 수 있어요', '이번 주 안에': '여유 있게', '상관없음': '업체와 맞춰 정해요' } },
+      { key: 'date', label: '희망 날짜', type: 'date', required: true },
+      { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '모델명, 쓴 기간, 안에 든 재료 여부' },
+    ],
+  },
+  {
+    key: 'store_aircon',
+    audience: 'biz',
+    label: '가게 에어컨 청소·수리',
+    blurb: '대수와 종류만 알려 주면 근처 업체가 견적을 보내 드려요',
+    voucherKeywords: ['에어컨', '시스템 에어컨', '냉난방기'],
+    regionFields: ['address'],
+    dateField: 'date',
+    fields: [
+      { key: 'address', label: '가게 주소', type: 'region', required: true, placeholder: STORE_HINT },
+      { key: 'biz', label: '업종', type: 'select', required: true, options: PLACE_TYPES },
+      { key: 'kind', label: '에어컨 종류', type: 'select', required: true,
+        options: ['천장형(시스템)', '스탠드', '벽걸이', '덕트형', '여러 종류', '잘 모르겠어요'] },
+      { key: 'count', label: '대수', type: 'number', required: true, unit: '대' },
+      { key: 'service', label: '맡길 일', type: 'select', required: true, options: ['청소', '수리', '청소 + 수리', '이전 설치'] },
+      { key: 'date', label: '희망 날짜', type: 'date', required: true },
+      { key: 'time', label: '작업 시간', type: 'select', required: true, options: WORK_TIMES, optionHints: WORK_TIME_HINTS },
+      { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '마지막 청소 시기, 냄새·물 떨어짐 여부' },
+    ],
+  },
+  {
+    key: 'store_drain',
+    audience: 'biz',
+    label: '정화조·배수구 청소',
+    blurb: '막힌 곳만 알려 주면 근처 업체가 견적을 보내 드려요',
+    voucherKeywords: ['정화조', '배수구', '하수구', '그리스트랩'],
+    regionFields: ['address'],
+    dateField: 'date',
+    fields: [
+      { key: 'address', label: '가게 주소', type: 'region', required: true, placeholder: STORE_HINT },
+      { key: 'biz', label: '업종', type: 'select', required: true, options: BIZ_TYPES },
+      { key: 'kind', label: '맡길 일', type: 'select', required: true,
+        options: ['배수구 막힘 뚫기', '기름 트랩(그리스트랩) 청소', '정화조 청소', '하수 악취', '잘 모르겠어요'] },
+      { key: 'date', label: '희망 날짜', type: 'date', required: true },
+      { key: 'time', label: '작업 시간', type: 'select', required: true, options: WORK_TIMES, optionHints: WORK_TIME_HINTS },
+      { key: 'memo', label: '증상', type: 'textarea', required: false, placeholder: '물이 안 내려감, 냄새가 올라옴, 마지막 청소 시기' },
+    ],
+  },
+  {
+    key: 'store_sign',
+    audience: 'biz',
+    label: '간판 제작·교체',
+    blurb: '간판 종류와 크기만 알려 주면 근처 업체가 견적을 보내 드려요',
+    voucherKeywords: ['간판', '사인', '현수막'],
+    regionFields: ['address'],
+    dateField: 'date',
+    fields: [
+      { key: 'address', label: '가게 주소', type: 'region', required: true, placeholder: STORE_HINT },
+      { key: 'biz', label: '업종', type: 'select', required: true, options: PLACE_TYPES },
+      { key: 'work', label: '맡길 일', type: 'select', required: true, options: ['새로 제작', '교체', '수리(LED·전기)', '철거'],
+        optionHints: { '새로 제작': '새로 여는 가게', '교체': '있는 간판을 바꿔요', '수리(LED·전기)': '불이 안 들어와요', '철거': '떼어 내기만' } },
+      { key: 'kind', label: '간판 종류', type: 'select', required: true,
+        options: ['전면 간판', '돌출 간판', '입체 글자(채널)', '배너·현수막', '윈도우 시트지', '잘 모르겠어요'] },
+      { key: 'width', label: '가로 길이', type: 'number', required: false, unit: 'm' },
+      { key: 'date', label: '희망 날짜', type: 'date', required: true },
+      { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '원하는 문구·디자인, 건물 허가 필요 여부' },
+    ],
+  },
+  {
+    key: 'store_interior',
+    audience: 'biz',
+    label: '인테리어·리모델링',
+    blurb: '평수와 공사 범위만 알려 주면 근처 업체가 견적을 보내 드려요',
+    voucherKeywords: ['인테리어', '리모델링', '시공'],
+    regionFields: ['address'],
+    dateField: 'date',
+    crossSell: { to: 'store_sign', title: '간판도 함께 받아 보시겠어요?', carry: { address: 'address', biz: 'biz', date: 'date' } },
+    fields: [
+      { key: 'address', label: '가게·사무실 주소', type: 'region', required: true, placeholder: STORE_HINT },
+      { key: 'biz', label: '업종', type: 'select', required: true, options: PLACE_TYPES },
+      { key: 'pyeong', label: '평수', type: 'number', required: true, unit: '평' },
+      { key: 'scope', label: '공사 범위', type: 'select', required: true,
+        options: ['신규 오픈(전체)', '전체 리모델링', '부분 공사', '철거만'],
+        optionHints: { '신규 오픈(전체)': '빈 공간부터 전부', '전체 리모델링': '영업 중인 가게를 새로', '부분 공사': '주방·화장실 등 일부', '철거만': '뜯어내기만' } },
+      { key: 'budget', label: '예산대', type: 'select', required: false,
+        options: ['1천만원 미만', '1~3천만원', '3~5천만원', '5천만~1억원', '1억원 이상', '아직 모르겠어요'] },
+      { key: 'date', label: '공사 희망 시기', type: 'date', required: true },
+      { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '원하는 분위기, 도면 보유 여부, 영업 중단 가능 기간' },
     ],
   },
   // ── 집 ──
@@ -331,7 +465,18 @@ export function requestSummary(category: HomeServiceCategory, d: Record<string, 
   if (category === 'store_pest') return `${d.address || '-'} · ${d.biz || '-'} ${d.pyeong || '-'}평 · ${d.cycle || '-'}`
   if (category === 'kitchen_hood') return `${d.address || '-'} · ${d.biz || '-'} 후드 ${d.count || '-'}개 · ${d.scope || '-'}`
   if (category === 'store_repair') return `${d.address || '-'} · ${d.biz || '-'} · ${d.kind || '-'}`
-  return `${d.address || '-'} · ${d.lodging || '-'} ${d.rooms || '-'}실 · ${d.service || '-'} · ${d.cycle || '-'}`
+  if (category === 'store_clean') return `${d.address || '-'} · ${d.biz || '-'} ${d.pyeong || '-'}평 · ${d.cycle || '-'}`
+  if (category === 'store_fridge') return `${d.address || '-'} · ${d.biz || '-'} · ${d.unit || '-'} · ${d.symptom || '-'} · ${d.urgency || '-'}`
+  if (category === 'store_aircon') return `${d.address || '-'} · ${d.biz || '-'} · ${d.kind || '-'} ${d.count || '-'}대 · ${d.service || '-'}`
+  if (category === 'store_drain') return `${d.address || '-'} · ${d.biz || '-'} · ${d.kind || '-'}`
+  if (category === 'store_sign') return `${d.address || '-'} · ${d.biz || '-'} · ${d.work || '-'} · ${d.kind || '-'}`
+  if (category === 'store_interior') return `${d.address || '-'} · ${d.biz || '-'} ${d.pyeong || '-'}평 · ${d.scope || '-'}`
+  if (category === 'lodging_clean') return `${d.address || '-'} · ${d.lodging || '-'} ${d.rooms || '-'}실 · ${d.service || '-'} · ${d.cycle || '-'}`
+  // 🔴 여기 오면 **새 카테고리에 요약 틀을 안 만든 것**이다(2026-10-25). 종전엔 이 자리가 숙소 틀이라
+  //   새 카테고리가 `'- -실 · -'` 로 **위장돼 사장님 알림톡에 그대로 나갔다** — 에러가 0건이라 안 보인다.
+  //   ⚠️ 그래서 폴백은 범용(주소·업종)으로 둔다. 카테고리를 더하면 **위 줄도 함께** 더할 것
+  //   (요약에는 `required: true` 칸만 쓴다 — 선택 칸을 넣으면 빈칸 `-` 가 알림톡에 박힌다).
+  return `${d.address || '-'} · ${d.biz || '-'}`
 }
 
 /**

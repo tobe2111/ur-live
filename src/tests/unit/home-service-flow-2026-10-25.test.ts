@@ -44,8 +44,14 @@ describe('🏪 사장님 항목 — 같은 검증·요약', () => {
   it('사장님 항목이 먼저, 집이 나중', () => {
     const order = HOME_SERVICE_CATEGORIES.map((d) => d.audience)
     expect(order.indexOf('home')).toBeGreaterThan(order.lastIndexOf('biz'))
-    expect(HOME_SERVICE_CATEGORIES.filter((d) => d.audience === 'biz').map((d) => d.key))
+    // 🔁 2026-10-25 재조준: 목록을 통째로 박아 두면 카테고리를 더할 때마다 낡는다(대표 "위 업종들도
+    //   받아야 해" 로 6종이 늘었다). 지키려던 것은 **선두 순서 보존**(화면 카드 순서 = 이 배열 순서)과
+    //   **biz 가 home 보다 앞**(바로 위 줄)이다. 그 둘만 고정하고 뒤에 붙는 것은 열어 둔다.
+    const bizKeys = HOME_SERVICE_CATEGORIES.filter((d) => d.audience === 'biz').map((d) => d.key)
+    expect(bizKeys.slice(0, 4), '선두 4종의 순서가 바뀌었다 — 생활 페이지 카드 순서가 함께 바뀐다')
       .toEqual(['store_pest', 'kitchen_hood', 'store_repair', 'lodging_clean'])
+    expect(bizKeys.length, 'biz 카테고리가 줄었다 — 사장님 항목이 사라지면 그 업종 요청을 못 받는다')
+      .toBeGreaterThanOrEqual(10)
   })
   for (const def of HOME_SERVICE_CATEGORIES) {
     it(`${def.label} — 정상 입력이 통과하고 요약에 빈칸(-)이 없다`, () => {
