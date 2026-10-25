@@ -210,16 +210,17 @@ describe('🎯 매칭 — 맞는 사장님에게만', () => {
     const { results } = await DB.prepare(MATCH_PROS_SQL).bind(q.category, q.sido, q.sigungu, q.sido2, q.sido2, q.sigungu2, rid, 30).all<{ seller_id: number }>()
     return (results ?? []).map((r) => r.seller_id).sort()
   }
-  it('카테고리·시군구 일치 + 시/도 전체 + 도착지 일치는 받고, 다른 구·다른 일·미승인·비활성은 안 받는다', async () => {
+  it('카테고리·시군구 일치 + 시/도 전체 + 도착지 일치는 받고, 다른 구·다른 일·정지·비활성은 안 받는다(심사 중은 받는다 — 2026-10-25)', async () => {
     addPro(raw, 1)                                                // 서울 강남구 이사 ✅
     addPro(raw, 2, { areas: [['서울', '']] })                     // 서울 전체 ✅
     addPro(raw, 3, { areas: [['경기', '화성시']] })                // 도착지 ✅
     addPro(raw, 4, { areas: [['서울', '서초구']] })                // 다른 구 ❌
     addPro(raw, 5, { cats: ['aircon_clean'] })                    // 다른 일 ❌
-    addPro(raw, 6, { status: 'pending' })                         // 심사 중 ❌
+    addPro(raw, 6, { status: 'pending' })                         // 심사 중 ✅ (2026-10-25 대표 "1번은 해줘")
+    addPro(raw, 8, { status: 'suspended' })                       // 정지 ❌
     addPro(raw, 7, { active: 0 })                                 // 꺼 둠 ❌
     const rid = addRequest(raw, { sido2: '경기', sigungu2: '화성시' })
-    expect(await match(rid)).toEqual([1, 2, 3])
+    expect(await match(rid)).toEqual([1, 2, 3, 6])
   })
   it('이미 알림을 보낸 사장님은 다시 고르지 않는다', async () => {
     addPro(raw, 1); const rid = addRequest(raw)

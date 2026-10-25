@@ -11,7 +11,7 @@
  */
 
 import { newShareToken } from '../../../shared/home-service-share'
-import { CREDIT_COST_KEY, HOME_PARTNERS_KEY, parseCreditCosts, parsePartners, type HomeServiceCategory } from '../../../shared/home-service'
+import { CREDIT_COST_KEY, HOME_PARTNERS_KEY, PRO_OPEN_STATUS_SQL, parseCreditCosts, parsePartners, type HomeServiceCategory } from '../../../shared/home-service'
 
 export const HS_TABLES_SQL = [
   `CREATE TABLE IF NOT EXISTS home_service_pros (
@@ -142,7 +142,7 @@ export async function loadCreditCosts(DB: D1Database): Promise<Partial<Record<Ho
 }
 
 /**
- * 카테고리별 견적을 받을 수 있는 업체 수(판매 승인 · 켜 둔 업체 + 제휴 업체). 생활 페이지가 0 이면
+ * 카테고리별 견적을 받을 수 있는 업체 수(정지·반려가 아닌 · 켜 둔 업체 + 제휴 업체). 생활 페이지가 0 이면
  * "업체 모집 중" 을 보여 준다 — 답이 없을 요청을 아무 말 없이 받지 않으려고.
  */
 export async function proCountsByCategory(DB: D1Database): Promise<Record<string, number>> {
@@ -151,7 +151,7 @@ export async function proCountsByCategory(DB: D1Database): Promise<Record<string
     `SELECT c.category AS category, COUNT(DISTINCT c.seller_id) AS n
        FROM home_service_pro_categories c
        JOIN home_service_pros p ON p.seller_id = c.seller_id AND p.active = 1
-       JOIN sellers s ON s.id = c.seller_id AND s.status IN ('approved', 'active')
+       JOIN sellers s ON s.id = c.seller_id AND s.status IN ${PRO_OPEN_STATUS_SQL}
       GROUP BY c.category`,
   ).all<{ category: string; n: number }>()
   for (const r of results ?? []) out[r.category] = Number(r.n)
@@ -352,7 +352,7 @@ export async function refundAllQuotes(DB: D1Database, requestId: number, why: st
 }
 
 /**
- * 이 요청을 받을 사장님. 카테고리 + 지역(시/도 전체 또는 시군구) 일치, 활성, 판매 승인된 매장만.
+ * 이 요청을 받을 사장님. 카테고리 + 지역(시/도 전체 또는 시군구) 일치, 활성, 정지·반려가 아닌 매장(심사 중 포함 — `PRO_OPEN_STATUSES`).
  * 이사는 출발지·도착지 둘 다 본다. 이미 보낸 사장님(`home_service_dispatch`)은 뺀다.
  */
 export const MATCH_PROS_SQL = `
@@ -362,7 +362,7 @@ export const MATCH_PROS_SQL = `
     JOIN home_service_pro_categories c ON c.seller_id = p.seller_id AND c.category = ?
     JOIN home_service_pro_areas a ON a.seller_id = p.seller_id
    WHERE p.active = 1
-     AND s.status IN ('approved', 'active')
+     AND s.status IN ${PRO_OPEN_STATUS_SQL}
      AND (
        (a.sido = ? AND (a.sigungu = '' OR a.sigungu = ?))
        OR (? IS NOT NULL AND a.sido = ? AND (a.sigungu = '' OR a.sigungu = ?))

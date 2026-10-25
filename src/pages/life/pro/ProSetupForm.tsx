@@ -6,6 +6,8 @@ import { useState } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { sellerHeaders } from '../life-shared'
+import { enterStoreSeat } from '@/utils/enter-store'
+import { TERMS_CURRENT_VERSION } from '@/pages/terms/terms-types'
 
 export interface ProMe {
   registered: boolean
@@ -37,13 +39,19 @@ function withPrefill(me: ProMe, p?: ProPrefill) {
   return { cats, areas }
 }
 
-export default function ProSetupForm({ me, onSaved, prefill }: { me: ProMe; onSaved: () => void; prefill?: ProPrefill }) {
+/**
+ * 🚪 `signup` — 판매 좌석이 없는 사람(카카오 로그인만 한 상태)의 **한 번에 가입**(2026-10-25 대표 "가입 쉽게").
+ * 같은 칸에 상호·약관 동의만 더하고 `POST /pro/signup` → 그 매장 좌석에 앉는다. 칸이 두 벌이면 검증이 갈린다.
+ */
+export default function ProSetupForm({ me, onSaved, prefill, signup }: { me: ProMe; onSaved: () => void; prefill?: ProPrefill; signup?: boolean }) {
   const [cats, setCats] = useState<string[]>(() => withPrefill(me, prefill).cats)
   const [areas, setAreas] = useState(() => withPrefill(me, prefill).areas)
   const [sido, setSido] = useState(me.sidoList[0] || '서울')
   const [sigungu, setSigungu] = useState('')
   const [phone, setPhone] = useState(me.pro?.phone || me.seller.phone || '')
   const [saving, setSaving] = useState(false)
+  const [bizName, setBizName] = useState('')
+  const [agreed, setAgreed] = useState(false)
 
   function addArea() {
     const g = sigungu.trim()
@@ -56,6 +64,15 @@ export default function ProSetupForm({ me, onSaved, prefill }: { me: ProMe; onSa
   async function save() {
     setSaving(true)
     try {
+      if (signup) {
+        if (!agreed) { toast.error('이용약관에 동의해 주세요'); return }
+        const r = await api.post('/api/home-service/pro/signup', { business_name: bizName, categories: cats, areas, phone, terms_agreed_version: TERMS_CURRENT_VERSION })
+        if (!r.data?.success) { toast.error(r.data?.error || '가입하지 못했어요'); return }
+        await enterStoreSeat(r.data.data?.seller_id)
+        toast.success(r.data.data?.granted ? `가입했어요. 무료 참여권 ${r.data.data.granted}장을 드렸어요` : '가입했어요')
+        onSaved()
+        return
+      }
       const r = await api.put('/api/home-service/pro/me', { categories: cats, areas, phone }, sellerHeaders())
       if (r.data?.success) {
         toast.success(r.data.data?.granted ? `저장했어요. 무료 참여권 ${r.data.data.granted}장을 드렸어요` : '저장했어요')
@@ -68,6 +85,13 @@ export default function ProSetupForm({ me, onSaved, prefill }: { me: ProMe; onSa
 
   return (
     <section className="space-y-5 rounded-2xl bg-surface p-5 shadow-lift">
+      {signup && (
+        <div>
+          <p className="mb-2 text-[15px] font-bold">상호</p>
+          <input className={`${INPUT} w-full`} placeholder="예: 깨끗한 방역" maxLength={40} value={bizName} onChange={(e) => setBizName(e.target.value)} />
+          <p className="mt-1 text-[12px] text-gray-500 dark:text-gray-400">손님 견적 카드에 이 이름이 보여요.</p>
+        </div>
+      )}
       <div>
         <p className="mb-2 text-[15px] font-bold">하는 일</p>
         <div className="flex flex-wrap gap-2">
@@ -107,8 +131,15 @@ export default function ProSetupForm({ me, onSaved, prefill }: { me: ProMe; onSa
         <input className={`${INPUT} w-full`} inputMode="tel" placeholder="010-0000-0000" value={phone} onChange={(e) => setPhone(e.target.value)} />
       </div>
 
+      {signup && (
+        <label className="flex items-start gap-2 text-[13px] text-gray-600 dark:text-gray-300">
+          <input type="checkbox" className="mt-1" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+          <span><a href="/terms/seller" target="_blank" rel="noreferrer" className="underline">판매자 이용약관</a>에 동의해요. 사업자등록증은 나중에 올려도 돼요.</span>
+        </label>
+      )}
+
       <button type="button" disabled={saving} onClick={save} className="ur-btn ur-btn-lg ur-btn-primary flex w-full justify-center disabled:opacity-60">
-        {saving ? '저장 중' : me.registered ? '저장하기' : '등록하고 무료 참여권 받기'}
+        {saving ? '저장 중' : signup ? '가입하고 무료 참여권 받기' : me.registered ? '저장하기' : '등록하고 무료 참여권 받기'}
       </button>
     </section>
   )

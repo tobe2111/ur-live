@@ -27,7 +27,7 @@ import type { Product } from './types'
 import { matchAddress, matchRegionCoords } from '@/shared/constants/korea-regions'
 import { addressInRegion, type RegionRef } from '@/shared/constants/region-slugs'
 import { parseUTCDate } from '@/utils/date'
-import { passesFeedFilters, feedFiltersKey, type FeedFilters } from '@/shared/home-feed-filters'
+import { passesFeedFilters, feedFiltersKey, type FeedFilters } from '@/shared/home-feed-filters'; import { useLifeSubcat, LifeSubcatChips } from './life-subcat' // 🏠 생활 업종 칩
 import { priceDisplay } from '@/shared/price-display'; const LifeQuoteBanner = lazy(() => import('./LifeQuoteBanner')) // 🏠 생활 칩에서만 — 업종 그림을 홈 첫 화면 묶음에 싣지 않는다
 
 interface FeedProduct extends Product {
@@ -153,7 +153,7 @@ export default function GroupBuyFeed({
   const [sortState, setSortState] = useState<SortKey>('popular')
   const category = categoryProp ?? categoryState
   const sort = sortProp ?? sortState
-  const setCategory = (c: CategoryKey) => { if (onCategoryChange) onCategoryChange(c); else setCategoryState(c) }
+  const setCategory = (c: CategoryKey) => { if (onCategoryChange) onCategoryChange(c); else setCategoryState(c) }; const life = useLifeSubcat(category) // 🏠 생활 탭 업종(2026-10-25)
   const setSort = (s: SortKey) => { if (onSortChange) onSortChange(s); else setSortState(s) }
   // 🖥️ PC 홈(pc): 모바일은 기존 2~3열. lg 미만 값은 `/region/*`(PC·모바일 공용 페이지)이 쓴다.
   // 📐 2026-08-17 (대표 — "카드가 커, 컴팩트하게" → 재지시 "1줄에 이용권 5개"): 2026-07-15 의
@@ -316,7 +316,7 @@ export default function GroupBuyFeed({
     const seen = new Set<number | string>()
     const out: FeedProduct[] = []
     const pushBand = (band: FeedProduct[], filterRegion: boolean) => {
-      const src = (filterRegion ? band.filter(inRegion) : band).filter(p => passesFeedFilters(p, filters, userLoc))
+      const src = (filterRegion ? band.filter(inRegion) : band).filter(p => passesFeedFilters(p, filters, userLoc) && life.keep(p))
       /**
        * 🖼️ 2026-09-06 (대표 — "메인에서 같은 이용권 사진이 두 번"의 나머지 절반):
        *   바로 위 편성 섹션('지금 인기 이용권'·'주말에 떠나는 숙소')에 이미 뜬 상품을
@@ -344,7 +344,7 @@ export default function GroupBuyFeed({
     // inRegion/sortBand 는 매 렌더 재생성(아래 deps 를 클로저) → deps 에 원천값만 나열.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     // regionRef 는 객체라 참조가 매 렌더 바뀔 수 있어 원시값으로 분해해 넣는다(무한 재계산 방지).
-  }, [items, extraPages, sort, userLoc, sectionIds, regionKey, districtKey, regionRef?.sido, regionRef?.sigungu, feedFiltersKey(filters)])
+  }, [items, extraPages, sort, userLoc, sectionIds, regionKey, districtKey, regionRef?.sido, regionRef?.sigungu, feedFiltersKey(filters), life.key])
   // 📍 2026-10-17: 필터로 0건이면 **끝까지 더 찾아본 뒤에야** "없어요" — 불러온 1페이지만 보고 단정하지 않는다.
   const hunting = !!feedFiltersKey(filters).replace('|', '') && sorted.length === 0 && !reachedEnd && !isError
   useEffect(() => { if (hunting && !loading && !loadingMore) void loadMore() }, [hunting, loading, loadingMore, extraPages.length]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -412,7 +412,7 @@ export default function GroupBuyFeed({
           더 잘 하고 있어 **같은 사실을 두 번** 말하던 자리였다(대기업 앱은 0을 세지 않는다). */}
       {/* 🔇 정렬할 것이 없으면 정렬도 내린다. 카운트를 감추고 나니 이 알약만 오른쪽에
           홀로 떠서 **빈 줄 하나**처럼 보였다 — 컨트롤은 쓸 데가 있을 때만 자리를 갖는다. */}
-      {!pc && (loading || sorted.length > 0) && (
+      {life.on && <LifeSubcatChips value={life.sub} onChange={life.setSub} />}{!pc && (loading || sorted.length > 0) && (
       <div className="flex items-center justify-between px-4 py-2 text-[12px] text-gray-500 dark:text-gray-400">
         <span>{loading ? '불러오는 중…' : `딜 ${sorted.length}개`}</span>
         {/* ⚠️ `value` 가 `options` 안에 반드시 있어야 한다 — 없으면 알약이 남의 라벨을 조용히 그린다. */}
@@ -421,7 +421,7 @@ export default function GroupBuyFeed({
       </div>
       )}
 
-      {category === 'home_voucher' && <Suspense fallback={<div className="mx-4 mt-2 h-[72px]" />}><LifeQuoteBanner /></Suspense>}{/* 피드 — 2열 그리드 (당근식) · 🏠 생활 칩이면 견적 받기 한 줄(2026-10-24) */}
+      {category === 'home_voucher' && <Suspense fallback={<div className="mx-4 mb-5 mt-2 h-[72px]" />}><LifeQuoteBanner sub={life.sub} /></Suspense>}{/* 피드 — 2열 그리드 (당근식) · 🏠 생활 칩이면 견적 받기 한 줄(2026-10-24) */}
       {loading ? (
         <div className={gridCls}>
           {/* 🛡️ 2026-05-27 (사용자 요청): 카드 모양 shimmer skeleton — 이미지 + 텍스트 2줄 + 가격. */}

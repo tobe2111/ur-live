@@ -88,7 +88,7 @@ export const SURFACE_COPY: Readonly<Record<string, SurfaceCopy>> = {
       '처음 무료 참여권',
       '요청당 견적 자리',
       '안 열어 보면 반환',
-      '가게(사업자)를 먼저 등록해야 해요 · 가게 등록',
+      '로그인 후 한 화면이면 가입 끝 · 사업자등록증은 나중에',
       '유어딜은 연결만 해요. 계약과 대금은 사장님과 직접 주고받아요.',
     ],
     source: ['src/pages/life/pro/ProLanding.tsx'],

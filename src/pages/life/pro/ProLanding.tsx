@@ -9,13 +9,17 @@ import { Link, useLocation } from 'react-router-dom'
 import { HOME_SERVICE_CATEGORIES, MAX_QUOTES_PER_REQUEST, SIGNUP_FREE_CREDITS, UNVIEWED_REFUND_HOURS } from '@/shared/home-service'
 import { LIFE_TILES, LifeTileIcon } from '../life-tiles'
 import { isShareToken } from '@/shared/home-service-share'
+import { JOIN_KEY } from './join-params'
 
 export default function ProLanding() {
   // 🔗 공유 링크(`?share=…`)로 왔으면 로그인 뒤 **그 요청 페이지**로 돌아간다 — 로그인 왕복은 쿼리를 지우지만
   //   (`safeInternalPath` 화이트리스트) 경로는 남는다. 거기서 다시 누르면 업종·지역이 채워진 등록으로 이어진다.
   const { search } = useLocation()
   const share = new URLSearchParams(search).get('share')
-  const returnUrl = encodeURIComponent(isShareToken(share) ? `/life/q/${share}` : '/life/pro')
+  // 🔗 2026-10-25: 로그인이 쿼리를 지워도 업종·지역 미리 채움이 살아남게 세션에 맡겨 두고 `/life/pro` 로 돌아온다
+  //   — 종전엔 공유 페이지로 돌아가 버튼을 한 번 더 눌러야 했다. 읽는 쪽: `LifeProPage` 의 `joinParams()`.
+  const keepJoin = () => { if (isShareToken(share)) { try { sessionStorage.setItem(JOIN_KEY, search) } catch { /* 막힌 저장소 — 공유 페이지로 돌아가면 된다 */ } } }
+  const returnUrl = encodeURIComponent('/life/pro')
   const store = HOME_SERVICE_CATEGORIES.filter((d) => d.audience === 'store')
   const others = HOME_SERVICE_CATEGORIES.length - store.length
   const stats = [
@@ -50,8 +54,8 @@ export default function ProLanding() {
         <p className="mt-4 text-center text-[13px] text-gray-500 dark:text-gray-400">숙소·집 일 {others}가지도 함께 받을 수 있어요</p>
       </section>
       <div className="space-y-1 pt-2">
-        <Link to={`/login?returnUrl=${returnUrl}`} className="ur-btn ur-btn-lg ur-btn-primary flex w-full justify-center">카카오로 시작하기</Link>
-        <Link to="/store/new" className="block py-2 text-center text-[13px] text-gray-500 dark:text-gray-400">가게(사업자)를 먼저 등록해야 해요 · 가게 등록</Link>
+        <Link to={`/login?returnUrl=${returnUrl}`} onClick={keepJoin} className="ur-btn ur-btn-lg ur-btn-primary flex w-full justify-center">카카오로 시작하기</Link>
+        <p className="py-2 text-center text-[13px] text-gray-500 dark:text-gray-400">로그인 후 한 화면이면 가입 끝 · 사업자등록증은 나중에</p>
         <p className="pt-2 text-center text-[12px] text-gray-500 dark:text-gray-400">유어딜은 연결만 해요. 계약과 대금은 사장님과 직접 주고받아요.</p>
       </div>
     </div>

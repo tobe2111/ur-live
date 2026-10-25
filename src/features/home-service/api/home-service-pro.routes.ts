@@ -3,6 +3,7 @@
  *
  *   GET  /api/home-service/pro/me                 내 등록(카테고리·지역)·참여권 잔액·묶음
  *   PUT  /api/home-service/pro/me                 등록/수정 — 처음이면 무료 참여권 3장 + 보관된 요청 보내기
+ *   POST /api/home-service/pro/signup             한 번에 가입(카카오 세션만 — 상호·하는 일·지역·번호·약관). 심사 전에도 견적 가능
  *   GET  /api/home-service/pro/requests           내 지역·카테고리의 열린 요청 + 내가 보낸 견적
  *   GET  /api/home-service/pro/share/:token       공유 링크 → 요청 번호(그 카테고리 업체면 지역이 달라도 열린다)
  *   GET  /api/home-service/pro/requests/:id       요청 상세(손님이 나를 고르면 손님 연락처)
@@ -24,8 +25,8 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import { SIDO_LIST } from '@/shared/constants/region-slugs'
 import { kstYmd } from '@/shared/stays-early'
 import {
-  HOME_SERVICE_CATEGORIES, HOME_TPL, SIGNUP_FREE_CREDITS, categoryDef, creditCostFor, msgQuoteArrived, partnerCategoriesCsv,
-  parseCreditPackages, quotePriceText, type HomeServiceCategory,
+  HOME_SERVICE_CATEGORIES, HOME_TPL, categoryDef, creditCostFor, msgQuoteArrived, partnerCategoriesCsv,
+  parseCreditPackages, proStatusOpen, proVerified, quotePriceText, type HomeServiceCategory,
 } from '@/shared/home-service'
 import { sendSystemAlimtalk } from '../../../lib/system-alimtalk'
 import { confirmTossPayment, decideTossFlow } from '../../../worker/utils/toss-gateway'
@@ -34,12 +35,11 @@ import {
   sendHouseQuoteAtomic, sendQuoteAtomic, withPrivateDetails,
 } from './home-service-db'
 import { isShareToken } from '@/shared/home-service-share'
-import { dispatchBacklogToPro } from './home-service-notify'
 import { homeServiceStopped } from './home-service.routes'
+import { saveProProfile, type ProBody } from './home-service-pro-profile'
+import { proSignupHandler } from './home-service-pro-signup'
 
 export const homeServiceProRoutes = new Hono<{ Bindings: Env }>()
-
-const SIGUNGU_RE = /^[가-힣]{1,10}(시|군|구)$/
 
 function waitUntil(c: { executionCtx?: { waitUntil(p: Promise<unknown>): void } }, p: Promise<unknown>) {
   try { c.executionCtx?.waitUntil(p) } catch { void p }
@@ -80,7 +80,7 @@ homeServiceProRoutes.get('/me', requireSeller(), async (c) => {
         pro,
         categories: (cats.results ?? []).map((r) => r.category),
         areas: areas.results ?? [],
-        seller: { name: seller?.name ?? '', approved: ['approved', 'active'].includes(String(seller?.status)), phone: seller?.phone ?? null },
+        seller: { name: seller?.name ?? '', approved: proVerified(seller?.status), phone: seller?.phone ?? null },
         balance: await creditBalance(DB, sid),
         packages: await packages(DB),
         chargeEnabled: (await setting(DB, 'home_service_charge_enabled')) === 'true',
@@ -94,45 +94,17 @@ homeServiceProRoutes.get('/me', requireSeller(), async (c) => {
   }
 })
 
+// 🚪 2026-10-25 생활 업체 한 번에 가입 — 카카오 로그인(소비자 세션)만으로. `home-service-pro-signup.ts`.
+homeServiceProRoutes.post('/signup', rateLimit({ action: 'home_service_pro_signup', max: 10, windowSec: 3600 }), proSignupHandler)
+
 homeServiceProRoutes.put('/me', requireSeller(), async (c) => {
   try {
     const DB = c.env.DB
     await ensureHomeServiceTables(DB)
-    const sid = sellerIdOf(c)
-    const body = await c.req.json<{ categories?: unknown; areas?: unknown; phone?: unknown; active?: unknown }>()
-      .catch(() => ({} as Record<string, unknown>))
-    const cats = Array.isArray(body.categories) ? [...new Set(body.categories.map(String))].filter((k) => categoryDef(k)) : []
-    if (!cats.length) return c.json({ success: false, error: '하는 일을 하나 이상 골라 주세요' }, 400)
-    const areasIn = Array.isArray(body.areas) ? body.areas.slice(0, 40) : []
-    const areas: { sido: string; sigungu: string }[] = []
-    for (const a of areasIn) {
-      const sido = String((a as { sido?: unknown })?.sido ?? '').trim()
-      const sigungu = String((a as { sigungu?: unknown })?.sigungu ?? '').trim()
-      if (!SIDO_LIST.includes(sido)) continue
-      if (sigungu && !SIGUNGU_RE.test(sigungu)) continue
-      if (!areas.some((x) => x.sido === sido && x.sigungu === sigungu)) areas.push({ sido, sigungu })
-    }
-    if (!areas.length) return c.json({ success: false, error: '일할 지역을 하나 이상 골라 주세요' }, 400)
-    const phoneRaw = String(body.phone ?? '').replace(/\D/g, '')
-    if (phoneRaw && !/^01\d{8,9}$/.test(phoneRaw)) return c.json({ success: false, error: '휴대폰 번호 형식을 확인해 주세요' }, 400)
-    const active = body.active === false ? 0 : 1
-
-    const existed = await DB.prepare(`SELECT 1 AS x FROM home_service_pros WHERE seller_id = ?`).bind(sid).first()
-    await DB.batch([
-      DB.prepare(
-        `INSERT INTO home_service_pros (seller_id, phone, active) VALUES (?, ?, ?)
-         ON CONFLICT(seller_id) DO UPDATE SET phone = excluded.phone, active = excluded.active, updated_at = datetime('now')`,
-      ).bind(sid, phoneRaw || null, active),
-      DB.prepare(`DELETE FROM home_service_pro_categories WHERE seller_id = ?`).bind(sid),
-      ...cats.map((k) => DB.prepare(`INSERT INTO home_service_pro_categories (seller_id, category) VALUES (?, ?)`).bind(sid, k)),
-      DB.prepare(`DELETE FROM home_service_pro_areas WHERE seller_id = ?`).bind(sid),
-      ...areas.map((a) => DB.prepare(`INSERT INTO home_service_pro_areas (seller_id, sido, sigungu) VALUES (?, ?, ?)`).bind(sid, a.sido, a.sigungu)),
-    ])
-    // 처음 등록이면 무료 참여권 — 원장 UNIQUE(grant:signup:<매장>) 라 몇 번을 저장해도 한 번만.
-    const granted = existed ? false : await creditAdd(DB, sid, 'grant', SIGNUP_FREE_CREDITS, `signup:${sid}`, 0, '가입 무료 참여권')
-    // 사장님이 없던 지역에 보관돼 있던 요청을 지금 보낸다(대표 "그냥 1명부터 열어줘").
-    if (active) waitUntil(c, dispatchBacklogToPro(c.env, DB, sid, kstYmd(0)).catch(() => 0))
-    return c.json({ success: true, data: { granted: granted ? SIGNUP_FREE_CREDITS : 0 } })
+    const body = await c.req.json<ProBody>().catch(() => ({} as ProBody))
+    const r = await saveProProfile(c, DB, sellerIdOf(c), body)
+    if (!r.ok) return c.json({ success: false, error: r.error }, 400)
+    return c.json({ success: true, data: { granted: r.granted } })
   } catch (err) {
     return safeError(c, err, '저장하지 못했습니다', '[home-service:pro-save]')
   }
@@ -244,8 +216,9 @@ homeServiceProRoutes.post('/requests/:id/quote', requireSeller(), rateLimit({ ac
     if (!Number.isInteger(id) || id <= 0) return c.json({ success: false, error: '잘못된 요청입니다' }, 400)
     const seller = await DB.prepare(`SELECT status, COALESCE(NULLIF(business_name, ''), name) AS name FROM sellers WHERE id = ?`)
       .bind(sid).first<{ status: string; name: string }>()
-    if (!['approved', 'active'].includes(String(seller?.status))) {
-      return c.json({ success: false, error: '매장 심사가 끝나면 견적을 보낼 수 있어요', code: 'NOT_APPROVED' }, 403)
+    // 🚪 2026-10-25 대표 "1번은 해줘" — 심사 중(pending)도 견적을 낸다. 정지·반려만 막는다(`proStatusOpen`).
+    if (!proStatusOpen(seller?.status)) {
+      return c.json({ success: false, error: '지금은 견적을 보낼 수 없는 계정이에요. 고객센터로 문의해 주세요', code: 'PRO_BLOCKED' }, 403)
     }
     if (!(await proCanSee(DB, sid, id))) return c.json({ success: false, error: '내 지역·카테고리의 요청이 아닙니다' }, 403)
     const body = await c.req.json<{ price?: unknown; message?: unknown }>().catch(() => ({} as Record<string, unknown>))
@@ -283,7 +256,7 @@ homeServiceProRoutes.post('/requests/:id/quote', requireSeller(), rateLimit({ ac
         { dedupKey: `quote:${res.quoteId}` },
       ).catch(() => null))
     }
-    return c.json({ success: true, data: { quote_id: res.quoteId, balance: await creditBalance(DB, sid) } })
+    return c.json({ success: true, data: { quote_id: res.quoteId, balance: await creditBalance(DB, sid), verified: proVerified(seller?.status) } })
   } catch (err) {
     return safeError(c, err, '견적을 보내지 못했습니다', '[home-service:quote]')
   }

@@ -6,6 +6,23 @@ import { ChevronLeft } from 'lucide-react'
 import { categoryDef, type HomeServiceCategory } from '@/shared/home-service'
 import { getSellerToken } from '@/lib/seller-auth'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
+import { toast } from '@/hooks/useToast'
+
+/**
+ * 🔗 요청 공유 — 휴대폰은 공유 시트(카카오톡 등), 아니면 주소 복사. 손님(아는 업체에게)·업체(동료에게)가 같이 쓴다.
+ * 링크를 받은 업체는 `/life/q/:token` → 로그인 → 한 화면 가입 → 그 요청 견적으로 바로 간다.
+ */
+export async function shareLifeRequest(token: string, title: string): Promise<void> {
+  const url = `${window.location.origin}/life/q/${token}`
+  const text = `${title} — 유어딜에서 견적을 보내 주세요`
+  try {
+    if (navigator.share) { await navigator.share({ title, text, url }); return }
+  } catch (e) {
+    if ((e as { name?: string })?.name === 'AbortError') return // 공유 창을 닫았다
+  }
+  try { await navigator.clipboard.writeText(url); toast.success('링크를 복사했어요. 카톡방에 붙여 넣어 주세요') }
+  catch { window.prompt('링크를 복사해 주세요', url) }
+}
 
 export function sellerHeaders() {
   const t = getSellerToken()

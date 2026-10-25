@@ -35,9 +35,9 @@ export default [
     why: '3장짜리 견적에서 1장만 빠지고 반환은 3장 — 반환할 때마다 참여권이 늘어난다.',
   },
   {
-    name: '생활개선 — 업체 수에 승인 안 된 매장도 센다',
+    name: '생활개선 — 업체 수에 정지된 매장도 센다',
     file: 'src/features/home-service/api/home-service-db.ts',
-    find: "       JOIN sellers s ON s.id = c.seller_id AND s.status IN ('approved', 'active')\n      GROUP BY c.category`,",
+    find: "       JOIN sellers s ON s.id = c.seller_id AND s.status IN ${PRO_OPEN_STATUS_SQL}\n      GROUP BY c.category`,",
     replace: "       JOIN sellers s ON s.id = c.seller_id\n      GROUP BY c.category`,",
     test: T,
     why: '받을 업체가 없는데 "무료 견적" 이 떠 손님 요청이 답 없이 쌓인다.',

@@ -15,7 +15,7 @@ import {
   type HomeServiceCategory,
 } from '../../../shared/home-service'
 import { MATCH_PROS_SQL, OPEN_REQUESTS_FOR_PRO_SQL, loadPartners } from './home-service-db'
-import { partnerCategoriesCsv } from '../../../shared/home-service'
+import { partnerCategoriesCsv, proStatusOpen } from '../../../shared/home-service'
 
 interface ReqRow {
   id: number; category: HomeServiceCategory; summary: string; desired_date: string
@@ -70,7 +70,7 @@ export async function dispatchBacklogToPro(env: unknown, DB: D1Database, sellerI
     `SELECT COALESCE(NULLIF(p.phone, ''), s.phone) AS phone, p.active, s.status
        FROM home_service_pros p JOIN sellers s ON s.id = p.seller_id WHERE p.seller_id = ?`,
   ).bind(sellerId).first<{ phone: string | null; active: number; status: string }>()
-  if (!pro || !pro.active || !['approved', 'active'].includes(String(pro.status))) return 0
+  if (!pro || !pro.active || !proStatusOpen(pro.status)) return 0 // 심사 중 포함 — `PRO_OPEN_STATUSES`
   const csv = partnerCategoriesCsv(await loadPartners(DB), sellerId)
   const { results } = await DB.prepare(OPEN_REQUESTS_FOR_PRO_SQL).bind(sellerId, todayYmd, csv, sellerId, sellerId, 5)
     .all<{ id: number }>()

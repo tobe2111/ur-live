@@ -103,6 +103,19 @@ homeServiceRoutes.get('/share/:token', async (c) => {
   }
 })
 
+/** 🏠 홈 '생활' 탭 업종 칩 — `{ 상품 id: 업종 }` (2026-10-25). 공개·로그인 불필요, 짧게 캐시. */
+homeServiceRoutes.get('/deal-subcats', async (c) => {
+  try {
+    const { lifeSubcatMap } = await import('./life-deal-subcat-store')
+    const data = await lifeSubcatMap(c.env.DB)
+    c.header('Cache-Control', 'public, max-age=60')
+    c.header('CDN-Cache-Control', 'public, max-age=300')
+    return c.json({ success: true, data })
+  } catch (err) {
+    return safeError(c, err, '업종을 불러오지 못했습니다', '[home-service:deal-subcats]')
+  }
+})
+
 homeServiceRoutes.post('/requests', requireAuth(), rateLimit({ action: 'home_service_request', max: 5, windowSec: 3600 }), async (c) => {
   try {
     const DB = c.env.DB
@@ -192,6 +205,7 @@ homeServiceRoutes.get('/requests/:id', requireAuth(), async (c) => {
     const { results: quotes } = await DB.prepare(
       `SELECT q.id, q.seller_id, q.price, q.message, q.status, q.created_at,
               COALESCE(NULLIF(s.business_name, ''), s.name) AS pro_name, q.is_house, q.partner,
+              CASE WHEN s.status IN ('approved', 'active') THEN 1 ELSE 0 END AS verified, -- 사업자 인증 표시(proVerified 와 같은 값)
               CASE WHEN q.status = 'chosen' THEN COALESCE(NULLIF(p.phone, ''), s.phone) END AS pro_phone
          FROM home_service_quotes q
          JOIN sellers s ON s.id = q.seller_id
@@ -215,7 +229,9 @@ homeServiceRoutes.get('/requests/:id', requireAuth(), async (c) => {
     try { details = JSON.parse(String(req.details || '{}')) } catch { /* */ }
     details = withPrivateDetails(details, req.private_details)   // 내 요청이라 상세 주소까지 보인다
     const { user_id: _u, details: _d, private_details: _p, ...rest } = req
-    return c.json({ success: true, data: { ...rest, details, quotes: (quotes ?? []).map((q) => ({ ...q, vouchers: vouchers[Number(q.seller_id)] || [] })) } })
+    // 🔗 열려 있으면 공유 링크 — 손님이 아는 업체·카톡방에 보내면 그 링크로 업체가 바로 가입해 견적을 낸다(2026-10-25).
+    const share_token = req.status === 'open' ? await ensureShareToken(DB, id).catch(() => null) : null
+    return c.json({ success: true, data: { ...rest, details, share_token, quotes: (quotes ?? []).map((q) => ({ ...q, vouchers: vouchers[Number(q.seller_id)] || [] })) } })
   } catch (err) {
     return safeError(c, err, '견적을 불러오지 못했습니다', '[home-service:detail]')
   }
