@@ -43,7 +43,8 @@ describe('② 치수를 정하는 클래스가 진짜 블록과 같다', () => {
     // 진짜 블록(VouchersPage)과 예약(TopChromeReserve)이 같은 토큰을 쓴다.
     // 🔀 2026-09-30: 잠금표 이행으로 공통 토큰이 4px 격자로 옮겨졌다(`py-2.5`→`py-2` · `pr-3.5`→`pr-4`).
     //    불변식은 그대로 — **두 파일이 같은 토큰을 쓴다**. 값만 현재 것으로.
-    for (const cls of ['ur-content-wide px-4 lg:px-8 py-2', 'h-9 pl-3 pr-4', 'text-[13px] font-bold']) {
+    // 🏋️ 2026-10-25: 굵기 체계(13px 은 medium)로 칩 굵기도 옮겨졌다 — 불변식 그대로, 값만.
+    for (const cls of ['ur-content-wide px-4 lg:px-8 py-2', 'h-9 pl-3 pr-4', 'text-[13px] font-medium']) {
       expect(PAGE, `real chip: ${cls}`).toContain(cls)
       expect(RESERVE, `reserve chip: ${cls}`).toContain(cls)
     }

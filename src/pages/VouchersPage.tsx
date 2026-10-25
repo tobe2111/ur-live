@@ -432,7 +432,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             {/* 카테고리 — 세로 리스트 */}
             {sections.length > 0 && (
               <div>
-                <h3 className="text-[12px] font-bold text-gray-400 dark:text-gray-500 mb-2 px-1">카테고리</h3>
+                <h3 className="text-[12px] font-medium text-gray-400 dark:text-gray-500 mb-2 px-1">카테고리</h3>
                 <div className="space-y-1">
                   {sections.map(s => {
                     const active = s.category === category
@@ -443,7 +443,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                         onClick={() => setCategory(s.category)}
                         className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] transition-colors ${
                           active
-                            ? 'bg-brand text-white font-bold'
+                            ? 'bg-brand text-white font-medium'
                             : 'text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-white/[0.04]'
                         }`}
                       >
@@ -481,11 +481,11 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
               </div>
             )}
             <div className="flex items-center justify-between gap-2 mb-4">
-              <h2 className="text-[17px] font-extrabold text-gray-900 dark:text-white flex items-center gap-2 min-w-0">
+              <h2 className="text-[17px] font-bold text-gray-900 dark:text-white flex items-center gap-2 min-w-0">
                 <span className="truncate">{brand ? brand : category ? category : '전체'} 교환권</span>
                 {/* 🐛 2026-08-17 (UX 전수검사 P1): 로드분 개수를 총계 자리에 그대로 쓰면 "커피/음료 775개"
                     카테고리가 "20"으로 읽힌다 — 더 있으면 `20+` 로 표기(정확한 총계 API 없음). */}
-                <span className="text-[15px] font-semibold text-gray-400 dark:text-gray-500 shrink-0">{hasMore ? `${products.length}+` : products.length}</span>
+                <span className="text-[15px] font-medium text-gray-400 dark:text-gray-500 shrink-0">{hasMore ? `${products.length}+` : products.length}</span>
                 {brand && (
                   <button
                     onClick={() => setBrand('')}
@@ -588,7 +588,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                     key={s.category}
                     type="button"
                     onClick={() => setCategory(s.category)}
-                    className={`shrink-0 inline-flex items-center gap-2 h-9 pl-3 pr-4 rounded-full text-[13px] font-bold transition-colors ${
+                    className={`shrink-0 inline-flex items-center gap-2 h-9 pl-3 pr-4 rounded-full text-[13px] font-medium transition-colors ${
                       active
                         ? 'bg-brand text-white'
                         : 'bg-white dark:bg-[#1D1F29] text-gray-800 dark:text-gray-100 shadow-lift'
@@ -664,10 +664,10 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           {/* 🧹 2026-08-31: ① 선물 아이콘 제거 — 바로 아래 하단 탭의 '교환권' 아이콘과 **같은 그림**이라
               같은 화면에서 두 번 같은 말을 했고, 앰버 한 점이 이 화면의 유일한 색이라 시선만 끌었다.
               ② 0 은 세지 않는다 — 곧바로 아래 빈 상태가 같은 사실을 더 잘 말한다. */}
-          <h2 className="text-[15px] font-extrabold text-gray-900 dark:text-white flex items-center gap-2 min-w-0">
+          <h2 className="text-[15px] font-bold text-gray-900 dark:text-white flex items-center gap-2 min-w-0">
             <span className="truncate">{brand ? brand : category ? category : '전체'} 교환권</span>
             {!loading && products.length > 0 && (
-              <span className="text-[13px] font-semibold text-gray-400 dark:text-gray-500 shrink-0">{hasMore ? `${products.length}+` : products.length}</span>
+              <span className="text-[13px] font-medium text-gray-400 dark:text-gray-500 shrink-0">{hasMore ? `${products.length}+` : products.length}</span>
             )}
             {brand && (
               <button
@@ -766,11 +766,11 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                       const np = page + 1; setPage(np); loadProducts(np, false)
                     }
                   }}
-                  className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl bg-gray-100 dark:bg-[#1D1F29] text-[13px] font-bold text-gray-700 dark:text-gray-200 active:scale-[0.99] transition-transform"
+                  className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl bg-gray-100 dark:bg-[#1D1F29] text-[13px] font-medium text-gray-700 dark:text-gray-200 active:scale-[0.99] transition-transform"
                 >
                   {t('home.moreVouchers', { defaultValue: '교환권 더보기' })}
                   {embedTotalSteps && embedTotalSteps > 1 && (
-                    <span className="text-gray-400 dark:text-gray-500 font-semibold">({embedStep}/{embedTotalSteps})</span>
+                    <span className="text-gray-400 dark:text-gray-500 font-medium">({embedStep}/{embedTotalSteps})</span>
                   )}
                   <ChevronDown className="w-4 h-4" />
                 </button>
@@ -795,7 +795,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
         <section ref={shoppingRef} className="scroll-mt-14 mt-2 border-t-8 border-gray-50 dark:border-[#1D1F29]">
           <div className="ur-content-wide px-4 lg:px-8 pt-5 pb-1 flex items-center gap-2">
             <BagIcon className="w-[18px] h-[18px] text-gray-900 dark:text-white" />
-            <h2 className="text-[15px] font-extrabold text-gray-900 dark:text-white">쇼핑</h2>
+            <h2 className="text-[15px] font-bold text-gray-900 dark:text-white">쇼핑</h2>
           </div>
           <ShoppingGrid />
         </section>

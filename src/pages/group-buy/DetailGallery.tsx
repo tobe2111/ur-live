@@ -245,8 +245,8 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
                     style={bg(src, pcThumbUrl(src))}
                   >
                     {isLast && (
-                      <span className="absolute inset-0 flex flex-col items-center justify-center bg-black/55 text-white text-[13px] font-bold">
-                        <span className="text-[17px] font-extrabold">+{rest}</span>
+                      <span className="absolute inset-0 flex flex-col items-center justify-center bg-black/55 text-white text-[13px] font-medium">
+                        <span className="text-[17px] font-bold">+{rest}</span>
                         전체 사진 {images.length}장
                       </span>
                     )}

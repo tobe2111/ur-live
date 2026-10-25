@@ -18,8 +18,8 @@ export default [
   {
     name: '🧷 칩 예약의 알약 치수가 진짜와 달라진다',
     file: RESERVE,
-    find: 'shrink-0 inline-flex items-center gap-2 h-9 pl-3 pr-4 rounded-full text-[13px] font-bold',
-    replace: 'h-8 pl-3 pr-3.5 rounded-full text-[13px] font-bold',
+    find: 'shrink-0 inline-flex items-center gap-2 h-9 pl-3 pr-4 rounded-full text-[13px] font-medium',
+    replace: 'h-8 pl-3 pr-3.5 rounded-full text-[13px] font-medium',
     test: TEST,
     why: '예약 높이는 알약이 정한다 — 한 글자만 달라도 화면이 그만큼 내려앉는다.',
   },

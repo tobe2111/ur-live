@@ -626,8 +626,8 @@ export default function GroupBuyDetailPage() {
                 {/* 🧭 2026-08-30: 사진 위 카테고리 칩을 뺐다. 바로 위 빵부스러기가 같은 말을 하고 있어
                     중복이었고, 게다가 이 칩은 **자체 라벨 맵**을 들고 있어 명칭 SSOT 와 어긋났다
                     ('뷰티'/'숙박'/'액티비티' — SSOT 는 미용/숙소/기타). 사진 위엔 할인율만 남긴다. */}
-                {detail.group_buy_status === 'expired' && <span style={{ padding: '5px 9px', borderRadius: 6, background: 'rgba(55,55,55,.78)', color: '#fff', fontSize: 12, fontWeight: 700 }}>마감</span>}
-                {detail.group_buy_status === 'cancelled' && <span style={{ padding: '5px 9px', borderRadius: 6, background: 'var(--gbd-danger)', color: '#fff', fontSize: 12, fontWeight: 700 }}>취소</span>}
+                {detail.group_buy_status === 'expired' && <span style={{ padding: '5px 9px', borderRadius: 6, background: 'rgba(55,55,55,.78)', color: '#fff', fontSize: 12, fontWeight: 500 }}>마감</span>}
+                {detail.group_buy_status === 'cancelled' && <span style={{ padding: '5px 9px', borderRadius: 6, background: 'var(--gbd-danger)', color: '#fff', fontSize: 12, fontWeight: 500 }}>취소</span>}
               </div>
             </>
           }
@@ -650,7 +650,7 @@ export default function GroupBuyDetailPage() {
             ...(Number(detail.review_count || 0) > 0 ? [{ id: 'gb-sec-reviews', label: '리뷰' }] : []),
           ].map((tab) => (
             <button key={tab.id} onClick={() => document.getElementById(tab.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-              style={{ padding: '11px 15px', fontSize: 14, fontWeight: 800, color: 'var(--gbd-ink2)', background: 'transparent', border: 'none', cursor: 'pointer' }}>
+              style={{ padding: '11px 15px', fontSize: 14, fontWeight: 700, color: 'var(--gbd-ink2)', background: 'transparent', border: 'none', cursor: 'pointer' }}>
               {tab.label}
             </button>
           ))}
@@ -762,7 +762,7 @@ export default function GroupBuyDetailPage() {
           {GB_ENGINE_ENABLED && detail && !isOwnProduct && (
             <button
               onClick={() => setShowPropose(true)}
-              style={{ marginTop: 14, width: '100%', padding: '11px', borderRadius: 12, fontSize: 13, fontWeight: 700 }}
+              style={{ marginTop: 14, width: '100%', padding: '11px', borderRadius: 12, fontSize: 13, fontWeight: 500 }}
               className="border border-emerald-300 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10"
             >
               이 매장에 공구 제안하기

@@ -40,11 +40,11 @@ export default function PassOptionCard({
       <div className="rounded-2xl overflow-hidden border-2 border-brand" style={{ background: 'var(--gbd-card)' }}>
         <div className="px-4 pt-4 pb-3">
           <div className="flex items-start justify-between gap-3">
-            <div className="text-[17px] font-bold leading-[1.35]" style={{ color: 'var(--gbd-ink)' }}>{name}</div>
+            <div className="text-[17px] font-medium leading-[1.35]" style={{ color: 'var(--gbd-ink)' }}>{name}</div>
             <span aria-label="선택됨" className="shrink-0 w-7 h-7 rounded-full bg-brand text-white flex items-center justify-center"><Check size={16} /></span>
           </div>
           <div className="my-3 h-px" style={{ background: 'var(--gbd-line2)' }} />
-          <div className="mb-2 text-[15px] font-bold" style={{ color: 'var(--gbd-ink)' }}>이렇게 써요</div>
+          <div className="mb-2 text-[15px] font-medium" style={{ color: 'var(--gbd-ink)' }}>이렇게 써요</div>
           <ul className="m-0 p-0 list-none grid gap-2">
             {USE_STEPS.map(t => (
               <li key={t} className="flex items-center gap-2 text-[13px]" style={{ color: 'var(--gbd-ink2)' }}>
@@ -56,13 +56,13 @@ export default function PassOptionCard({
         <div className="px-4 pt-3 pb-4" style={{ background: 'var(--gbd-chip)' }}>
           <div className="flex items-baseline flex-wrap gap-x-2">
             {refPrice > unitPrice && <span className="text-[13px] line-through" style={{ color: 'var(--gbd-sub2)' }}>{formatNumber(refPrice)}원</span>}
-            <span className="text-[24px] font-extrabold tracking-[-.02em]" style={{ color: 'var(--gbd-ink)' }}>{formatNumber(unitPrice)}원</span>
-            {discountPct > 0 && <span className="text-[13px] font-bold" style={{ color: 'var(--sale)' }}>-{discountPct}%</span>}
+            <span className="text-[24px] font-bold tracking-[-.02em]" style={{ color: 'var(--gbd-ink)' }}>{formatNumber(unitPrice)}원</span>
+            {discountPct > 0 && <span className="text-[13px] font-medium" style={{ color: 'var(--sale)' }}>-{discountPct}%</span>}
           </div>
           <div className="mt-3 flex items-center gap-3">
             <span className="flex items-center gap-1 shrink-0" role="group" aria-label="수량 조절">
               <button type="button" onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={!buyable || quantity <= 1} aria-label="수량 감소" className={step} style={{ background: 'var(--gbd-card)', color: 'var(--gbd-ink)' }}>−</button>
-              <span className="min-w-[24px] text-center text-[15px] font-bold" style={{ color: 'var(--gbd-ink)' }} aria-live="polite" aria-label={`현재 ${quantity}장`}>{quantity}</span>
+              <span className="min-w-[24px] text-center text-[15px] font-medium" style={{ color: 'var(--gbd-ink)' }} aria-live="polite" aria-label={`현재 ${quantity}장`}>{quantity}</span>
               <button type="button" onClick={() => setQuantity(q => Math.min(maxQty, q + 1))} disabled={!buyable || quantity >= maxQty} aria-label="수량 증가" className={step} style={{ background: 'var(--gbd-card)', color: 'var(--gbd-ink)' }}>+</button>
             </span>
             <button type="button" onClick={onOpen} disabled={!buyable || joining} aria-haspopup="dialog"

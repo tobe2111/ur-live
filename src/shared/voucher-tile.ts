@@ -16,15 +16,15 @@ export const VOUCHER_TILE_CLASS = {
   thumb: 'relative aspect-square w-full overflow-hidden rounded-xl bg-wash',
   img: 'w-full h-full object-cover',
   /** 브랜드 줄 — 누르면 그 브랜드로 거른다(카카오 선물하기의 `브랜드 ›`). */
-  brand: 'mt-2 max-w-full inline-flex items-center gap-1 self-start text-[13px] font-bold text-gray-900 dark:text-white',
+  brand: 'mt-2 max-w-full inline-flex items-center gap-1 self-start text-[13px] font-medium text-gray-900 dark:text-white',
   brandName: 'truncate',
   chev: 'shrink-0 text-gray-400 dark:text-gray-500',
   /** 이름 두 줄 — 한 줄짜리 이름도 같은 높이를 차지해 아래 가격 줄이 열마다 맞는다. */
   title: 'mt-1 text-[13px] leading-snug line-clamp-2 min-h-[36px] text-gray-600 dark:text-gray-300',
   priceRow: 'mt-1 flex items-baseline gap-1 min-w-0',
-  discount: 'text-[15px] font-extrabold text-sale tracking-tight',
-  price: 'text-[15px] font-extrabold text-gray-900 dark:text-white tracking-tight',
-  unit: 'text-[12px] font-bold text-gray-900 dark:text-white',
+  discount: 'text-[15px] font-bold text-sale tracking-tight',
+  price: 'text-[15px] font-bold text-gray-900 dark:text-white tracking-tight',
+  unit: 'text-[12px] font-medium text-gray-900 dark:text-white',
   meta: 'mt-1 text-[12px] text-gray-400 dark:text-gray-500',
 } as const
 

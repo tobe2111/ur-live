@@ -36,9 +36,9 @@ export const PASS_HEAD = {
   card: 'lg:hidden relative mx-3 mb-3 px-1 pt-5 pb-3',
   /** [가게 · 종류 · 지역] 한 줄 — 값은 `passSubLine()`(서버·클라 같은 함수). 키 이름은 호환 때문에 `merchant`. */
   merchant: 'mt-2 text-[13px] text-[var(--gbd-sub)]',
-  prelaunch: 'inline-flex items-center gap-1 mt-2 px-3 py-1 rounded-full bg-[var(--gbd-ink)] text-[var(--gbd-card)] text-[12px] font-bold',
+  prelaunch: 'inline-flex items-center gap-1 mt-2 px-3 py-1 rounded-full bg-[var(--gbd-ink)] text-[var(--gbd-card)] text-[12px] font-medium',
   /** 온누리 뱃지 — 한 줄을 두 줄로 밀 수 있어 서버·클라가 모양까지 같아야 한다. */
-  onnuri: 'ml-2 px-2 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[12px] font-bold align-middle',
+  onnuri: 'ml-2 px-2 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[12px] font-medium align-middle',
   h1: 'm-0 text-[24px] leading-[1.3] font-bold tracking-[-.02em] text-[var(--gbd-ink)]',
 } as const
 

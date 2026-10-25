@@ -30,7 +30,7 @@ export function ChipRowReserve() {
     <div aria-hidden="true">
       <div className="ur-content-wide px-4 lg:px-8 py-2">
         <div className="flex gap-2 overflow-x-auto scrollbar-hide invisible">
-          <span className="shrink-0 inline-flex items-center gap-2 h-9 pl-3 pr-4 rounded-full text-[13px] font-bold">&nbsp;</span>
+          <span className="shrink-0 inline-flex items-center gap-2 h-9 pl-3 pr-4 rounded-full text-[13px] font-medium">&nbsp;</span>
         </div>
       </div>
     </div>
@@ -70,7 +70,7 @@ function BrandChipReserve() {
  */
 export const PC_BRAND = {
   wrap: 'mb-5 pb-4 border-b border-gray-100 dark:border-[#2C2F35]',
-  title: 'text-[12px] font-bold text-gray-400 dark:text-gray-500 mb-2',
+  title: 'text-[12px] font-medium text-gray-400 dark:text-gray-500 mb-2',
   row: 'flex gap-3 overflow-x-auto scrollbar-hide py-1',
 } as const
 
