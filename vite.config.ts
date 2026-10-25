@@ -314,6 +314,8 @@ export default defineConfig({
           if (OWNER_KIT_MODULES.some((p) => id.includes(p))) return 'app-owner-kit'
           if (OWNER_UI_MODULES.some((p) => id.includes(p))) return 'app-owner-ui'
           if (id.includes('/src/components/deal/OwnerManageSheet')) return 'app-owner-sheet'
+          // 🏠 2026-10-25 생활 칩 견적 카드(lazy) — 업종 그림이 공용 봉투에 섞여 전 화면 첫 방문이 +2KB 를 받았다(실측).
+          if (id.includes('/src/pages/main-home/LifeQuoteBanner') || id.includes('/src/pages/life/life-tiles')) return 'app-life-banner'
           // 🗺️ 2026-10-19 지역 링크 표 — 근거는 위 REGION_GRID_MODULES 주석
           if (REGION_GRID_MODULES.some((p) => id.includes(p))) return 'app-region-grid'
           // Icons
@@ -396,6 +398,7 @@ export default defineConfig({
           //   (`home-chunk-diet` 의 거울 검사를 새로 넣자마자 드러났다 — 주석과 코드가 어긋난 전형).
           if (id.includes('/src/shared/config/') || id.includes('/src/shared/utils/')) return 'app-shared'
           if (id.includes('/src/shared/feature-flags')) return 'app-shared'
+          if (id.includes('/src/shared/category-palette')) return 'app-shared' // 🏠 2026-10-25 엔트리가 쓰는 색 표 — 생활 그림 봉투로 끌려가 첫 화면 청크가 하나 늘었다
           // 공유 타입/상수: 런타임 코드 없이 타입 + 상수 → 별도 캐싱
           if (id.includes('/src/shared/constants/') || id.includes('/src/shared/types/')) return 'app-constants'
           // 레이아웃 컴포넌트: BottomNav, DesktopTopNav, DesktopLiveSidebar 등

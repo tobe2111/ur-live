@@ -21,7 +21,7 @@
  * `resolveConsumerSurfaceSeo` 로 갈아끼우면 된다(문구가 두 벌이 되지 않게 반드시 함께).
  */
 
-import { PARTNER_FACTS } from '../partners-facts'
+import { PARTNER_FACTS } from '../partners-facts'; import { LIFE_HUB_PATH, LIFE_HUB_SEO, LIFE_PRO_PATH, LIFE_PRO_SEO } from './life-hub-seo'
 
 /**
  * 🏠 홈의 **보이지 않는** 제목 요소 — 워커 첫 화면과 `MobileHomePage` 가 같이 쓴다.
@@ -402,13 +402,13 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
     title: '공동구매 약관',
     description: '유어딜 이용권 구매자에게 적용되는 약관입니다. 결제와 발급, 매장에서의 사용, 유효기간과 환불.',
   },
+  [LIFE_HUB_PATH]: LIFE_HUB_SEO, [LIFE_PRO_PATH]: LIFE_PRO_SEO, // 🏠 사장님 생활 서비스 허브(업종 페이지는 워커가 `registerDynamicSurfaceSeo` 로 — 2026-10-25)
   '/area-report': {
     crumb: '상권 리포트',
     title: '우리 동네 상권 리포트 - 개업·폐업 현황',
     description: '공공 인허가 데이터로 보는 우리 동네 업종별 영업 현황과 최근 개업·폐업 흐름. 창업 자리를 고를 때 참고하세요.',
   },
 }
-
 /**
  * `/area-report/:region` — 지역명이 **경로에 그대로 들어 있어** 데이터 조회 없이 메타를 만들 수 있다.
  *
@@ -551,7 +551,7 @@ export interface ResolvedSurfaceSeo {
  * 카테고리/브랜드 필터가 붙은 목록은 **제목을 분화**한다 — 같은 title 로 여러 URL 을 제출하면
  * 그 자체가 중복 신호다(sitemap 이 `/vouchers?category=편의점` 등을 실제로 제출한다).
  */
-export function resolveConsumerSurfaceSeo(
+type DynSeo = { title: string; description: string; path: string } | null; const dynamicSurfaceSeo: Array<(p: string) => DynSeo> = []; /** 워커 전용 동적 표면(업종 데이터가 공용 번들에 안 실리게) */ export const registerDynamicSurfaceSeo = (f: (p: string) => DynSeo) => { if (!dynamicSurfaceSeo.includes(f)) dynamicSurfaceSeo.push(f) }; export function resolveConsumerSurfaceSeo(
   pathname: string,
   search: string,
   origin: string,
@@ -563,7 +563,7 @@ export function resolveConsumerSurfaceSeo(
   const path = normalizeCanonicalPath(pathname)
   const entry = CONSUMER_SURFACE_SEO[path]
   // 표에 없으면 동적 표면 빌더에 넘긴다(경로에서 값을 뽑을 수 있는 것만 — 조회는 하지 않는다).
-  if (!entry) return resolveAreaReportSeo(path, origin, siteName)
+  if (!entry) { const l = dynamicSurfaceSeo.reduce<DynSeo>((a, f) => a ?? f(path), null); if (l) { const t = withSiteName(l.title, siteName); return { pageTitle: t, title: t, description: l.description, canonical: `${origin}${l.path}` } } return resolveAreaReportSeo(path, origin, siteName) }
 
   let title = entry.title
   let description = entry.description

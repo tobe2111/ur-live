@@ -18,7 +18,7 @@ import { isMarketingSurface } from '@/utils/domain'
 // 🛡️ 2026-05-24 (regression fix): /pay/widget 누락 → BottomNav 가 결제 버튼 가림.
 //   결제 위젯 마운트하는 모든 경로는 반드시 여기 등록. 신규 추가 시 tests/unit/toss-fullscreen-routes.test.ts
 //   가 자동 검증 (이 배열과 TossPaymentWidget 마운트 라우트 일치 확인).
-export const fullScreenPrefixes = ['/cart', '/checkout', '/payment', '/pay', '/points', '/seller', '/admin', '/login', '/register', '/auth', '/embed', '/introduce', '/blog', '/about', '/partners', '/creators', '/my-orders', '/store/scan', '/videos', '/design', '/mall-admin', '/agency']
+export const fullScreenPrefixes = ['/cart', '/checkout', '/payment', '/pay', '/points', '/seller', '/admin', '/login', '/register', '/auth', '/embed', '/introduce', '/blog', '/about', '/partners', '/creators', '/my-orders', '/store/scan', '/videos', '/design', '/mall-admin', '/agency', '/life/q']
 
 /** 소비자 네비 없이 화면 전체를 쓰는 주소인가. */
 export function isFullScreenPath(pathname: string): boolean {

@@ -459,11 +459,14 @@ export default function DesktopTopNav() {
               )}
 
               {!hideDealCats && DEAL_CATS.map(({ key, label, icon: Icon }) => {
-                const active = onHomeSurface && activeDealCat === key
+                // 🏠 2026-10-25 대표 "생활 버튼 눌렀는데 왜 여기로 이동되지?" — 생활은 홈 목록 필터가 아니라
+                //   생활 서비스 페이지(`/life` — 견적 요청 + 생활 이용권이 한 화면)로 간다.
+                const isLife = key === 'home_voucher'
+                const active = isLife ? location.pathname.startsWith('/life') : onHomeSurface && activeDealCat === key
                 return (
                   <button
                     key={key}
-                    onClick={() => navigate(key === 'all' ? '/' : `/?category=${key}`)}
+                    onClick={() => navigate(isLife ? '/life' : key === 'all' ? '/' : `/?category=${key}`)}
                     aria-current={active ? 'true' : undefined}
                     className={`relative shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors ${
                       active

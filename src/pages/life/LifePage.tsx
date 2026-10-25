@@ -15,6 +15,9 @@ import { ChevronRight } from 'lucide-react'
 import { HOME_SERVICE_CATEGORIES, type HomeServiceAudience } from '@/shared/home-service'
 import { formatNumber } from '@/utils/format'
 import { LIFE_TILES, LifeTileIcon } from './life-tiles'
+import { LIFE_HUB_SEO } from '@/shared/seo/life-hub-seo'
+import { LIFE_FAQ } from '@/shared/life-faq'
+import { withSiteName } from '@/shared/seo/consumer-surfaces'
 // 밑줄 탭은 교환권 카테고리 탭과 같은 클래스(선택 신호가 화면마다 갈리지 않게).
 import { VOUCHER_CAT_TAB } from '@/shared/voucher-tile'
 
@@ -54,7 +57,7 @@ export default function LifePage() {
 
   return (
     <div className="min-h-[100dvh] bg-surface text-ink pb-safe-nav">
-      <SEO title="사장님 생활 서비스 - 간판·방역·후드 청소·설비 수리 견적 - 유어딜" description="식당·카페·숙소 사장님을 위한 생활 서비스. 간판·방역·후드 청소·냉장 설비 수리까지 요청서 한 번이면 근처 업체가 견적을 보내 드려요." url="/life" />
+      <SEO title={withSiteName(LIFE_HUB_SEO.title)} description={LIFE_HUB_SEO.description} url="/life" />
 
       <header className="ur-content-narrow px-5 pt-7">
         {/* 2026-10-25 대표 "일반 대중 전체가 아니라 사장님 대상이라는 걸 나타내 주면" — 숨고·미소와 갈리는 첫 줄. */}
@@ -112,11 +115,28 @@ export default function LifePage() {
           </section>
         )}
 
+        {/* 자주 묻는 질문 — 크롤러 본문·FAQPage JSON-LD 와 같은 배열(`shared/life-faq.ts`). */}
+        <section className="mx-2 mt-8" aria-labelledby="life-faq">
+          <h2 id="life-faq" className="text-[17px] font-bold">자주 묻는 질문</h2>
+          <div className="mt-2 divide-y divide-rule border-y border-rule">
+            {LIFE_FAQ.map((f) => (
+              <details key={f.question} className="group py-3">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[15px] font-medium">
+                  {f.question}
+                  <ChevronRight className="h-4 w-4 shrink-0 text-gray-400 transition-transform group-open:rotate-90 dark:text-gray-500" />
+                </summary>
+                <p className="pt-2 text-[13px] leading-relaxed text-gray-600 dark:text-gray-300">{f.answer}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+
         <Link to="/life/requests" className="mx-2 mt-8 flex h-12 items-center justify-between border-y border-rule px-1">
           <span className="text-[15px] font-medium">내 요청 보기</span>
           <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500" />
         </Link>
-        <Link to="/life/pro" className="mt-6 block text-center text-[13px] text-gray-500 dark:text-gray-400">업체세요? 근처 요청을 알림톡으로 받기</Link>
+        <p className="mt-6 text-center text-[13px] text-gray-500 dark:text-gray-400">견적은 무료이고, 비교해서 고른 한 곳에만 연락처가 전달돼요.</p>
+        <Link to="/life/pro" className="mt-3 block text-center text-[13px] text-gray-500 dark:text-gray-400">업체세요? 근처 요청을 알림톡으로 받기</Link>
       </div>
     </div>
   )

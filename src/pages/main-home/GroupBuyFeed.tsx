@@ -14,7 +14,7 @@ import { SortMenu, type SortOptionItem } from '@/components/ui/sort-menu'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 // 🖼️ 폭·중단점은 워커의 카드 preload 와 같은 값이어야 한다(`shared/home-card-image` SSOT).
 import { HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_LG_QUERY } from '@/shared/home-card-image'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import { deferSeeded, seededSectionProductIds } from '@/shared/home-section-ids'
 import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -28,7 +28,7 @@ import { matchAddress, matchRegionCoords } from '@/shared/constants/korea-region
 import { addressInRegion, type RegionRef } from '@/shared/constants/region-slugs'
 import { parseUTCDate } from '@/utils/date'
 import { passesFeedFilters, feedFiltersKey, type FeedFilters } from '@/shared/home-feed-filters'
-import { priceDisplay } from '@/shared/price-display'; import LifeQuoteBanner from './LifeQuoteBanner'
+import { priceDisplay } from '@/shared/price-display'; const LifeQuoteBanner = lazy(() => import('./LifeQuoteBanner')) // 🏠 생활 칩에서만 — 업종 그림을 홈 첫 화면 묶음에 싣지 않는다
 
 interface FeedProduct extends Product {
   group_buy_current?: number
@@ -421,7 +421,7 @@ export default function GroupBuyFeed({
       </div>
       )}
 
-      {category === 'home_voucher' && <LifeQuoteBanner />}{/* 피드 — 2열 그리드 (당근식) · 🏠 생활 칩이면 견적 받기 한 줄(2026-10-24) */}
+      {category === 'home_voucher' && <Suspense fallback={<div className="mx-4 mt-2 h-[72px]" />}><LifeQuoteBanner /></Suspense>}{/* 피드 — 2열 그리드 (당근식) · 🏠 생활 칩이면 견적 받기 한 줄(2026-10-24) */}
       {loading ? (
         <div className={gridCls}>
           {/* 🛡️ 2026-05-27 (사용자 요청): 카드 모양 shimmer skeleton — 이미지 + 텍스트 2줄 + 가격. */}

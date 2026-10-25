@@ -288,7 +288,7 @@ import { referralRoutes } from '../features/referral/api/referral.routes';
 //   (typeof navigator/window 가드 보유라 워커 안전). URL 이 클라 렌더값과 byte-일치해야 preload 적중.
 import { cfImage, cfSrcSet } from '../utils/cf-image';
 // 🖼️ 홈 첫 화면 카드 사진 preload — 링크 생성은 헬퍼가 한다(파일 크기 래칫 + 직접 테스트 용이).
-import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { routeSurface } from '../shared/route-surface'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; import { buildVouchersFirstScreen } from './utils/vouchers-first-screen'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; import { brandJsonLdScript } from '../shared/seo/brand-jsonld'; import { buildStaticSurfaceNoscript, stayNoscriptFromPayload, curatorNoscriptFromPayload, voucherFacetNoscript } from './utils/crawler-noscript'; import { buildSellerNoscript } from './utils/seller-noscript'; import { homeFooterNoscript } from './utils/home-footer-noscript'; import { applyCssFirstBoot, cssFirstApplies, routePreloadRel, appendEdgeHeaders, loaderImgPriorityAttr } from './utils/css-first-boot'; // 한 줄: 파일크기 래칫 안
+import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { routeSurface } from '../shared/route-surface'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; import { buildVouchersFirstScreen } from './utils/vouchers-first-screen'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; import { brandJsonLdScript } from '../shared/seo/brand-jsonld'; import { buildStaticSurfaceNoscript, stayNoscriptFromPayload, curatorNoscriptFromPayload, voucherFacetNoscript } from './utils/crawler-noscript'; import { buildSellerNoscript } from './utils/seller-noscript'; import { buildLifeShareMeta, buildLifeShareNoscript } from './utils/life-share-ssr'; import { homeFooterNoscript } from './utils/home-footer-noscript'; import { applyCssFirstBoot, cssFirstApplies, routePreloadRel, appendEdgeHeaders, loaderImgPriorityAttr } from './utils/css-first-boot'; // 한 줄: 파일크기 래칫 안
 import { VOUCHERS_DEFAULT_SEED_PATH, voucherFacetSeedPath } from '../shared/seo/voucher-facet'; import { buildStayDetailFirstScreen } from './utils/stay-detail-ssr-body'; import { MAIN_SEED_PATH, REGION_PATH_RE } from '../shared/seo/region-seed'; import { isKnownAppPath } from '../shared/seo/known-routes'; import { REGION_DIGEST_KV_KEY, regionDigestApplies, regionThinByDigest } from '../shared/seo/region-digest'; import { ushopOgImage, ushopDescFallback } from '../shared/ushop-share-card'; import { ogImageAlt, OG_CARD_W, OG_CARD_H, ogCardUrl } from '../shared/og-share-image'; import { nearKeyFromCookieHeader, nearLabelFromCookieHeader } from '../shared/home-near'; import { normalizeDocPath } from '../shared/seo/path-normalize'; import { ROBOTS_INDEX, ROBOTS_NOINDEX } from '../shared/seo/robots-directives'; import { BANNERS_SEED_PATH } from '../shared/home-strip-banners'; import { appendLcpLink, homeLcpImage, vouchersLcpImage, stayLcpImage, hrefOfPreloadTag } from './utils/lcp-image-link'; import { buildStaysFirstScreen } from './utils/stays-first-screen'; import { defaultStaysQs, kstYmd } from '../shared/stays-early'; import { guestTabOf, buildGuestFirstScreen } from './utils/guest-first-screen'; // 한 줄: 파일크기 래칫 안
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
@@ -604,6 +604,7 @@ app.use('*', async (c, next) => {
       //   0-RTT. /api/blog/public/:slug 는 publicCache(180) → edge-hit. 아래 head rewrite 에서 payload 로 메타 생성.
       const blogSlug = decodeURIComponent(url.pathname.slice('/blog/'.length));
       if (blogSlug) ssrTarget = { slot: 'BLOGPOST', path: `/api/blog/public/${encodeURIComponent(blogSlug)}` };
+    } else if (/^\/life\/q\/[A-Za-z0-9]{12}$/.test(url.pathname)) { ssrTarget = { slot: 'LIFESHARE', path: `/api/home-service/share/${url.pathname.slice(8)}` }; // 🔗 2026-10-25 생활 요청 공유(업체 모집) — 서버 메타·본문. 사유·마스킹: utils/life-share-ssr.ts
     } else {
       // 🛡️ 2026-05-30 (loading): /products/:id 상세 SSR inject — 기존엔 누락되어 마운트 후
       //   useProduct fetch 워터폴(HTML→JS→fetch 3-RTT). /api/products/:id 는 publicCache(120) → edge-hit.
@@ -785,6 +786,7 @@ app.use('*', async (c, next) => {
     // 📝 2026-07-01 블로그 서버측 메타/구조화데이터 주입 — JS 안 도는 크롤러(네이버/카카오/소셜)용.
     //   Googlebot 은 react-helmet(<SEO>)을 렌더해 보지만, 네이버·소셜 스크래퍼는 정적 HTML 메타만 봄.
     const origin2 = new URL(c.req.url).origin;
+    if (ssrSlot === 'LIFESHARE' && ssrPayload) { const lm = buildLifeShareMeta(ssrPayload, origin2, url.pathname); if (lm) rb = applySurfaceMeta(rb, lm); } // 🔗 2026-10-25 카톡 카드 = 요청 제목·남은 자리(마감이면 noindex)
     if (ssrSlot === 'BLOGPOST' && ssrPayload) {
       // 📝 순수 계산은 blog-ssr-meta.ts 로 추출(god 파일 성장 방지) — 여기선 rewriter 배선만.
       const m = buildBlogPostMeta(ssrPayload, origin2);
@@ -1043,7 +1045,7 @@ app.use('*', async (c, next) => {
       //   <head> 주입(line 677)이라 #root 교체와 무관(0-RTT 불변). needsRootBlank/isBlogSurface 는 위에서 선처리.
       // 🧭 2026-10-12 `/faq`·`/about`·`/region/*` 크롤러 본문이 **33·30·26자** → `<noscript>` 요약을 **로더 앞에 덧붙인다**(대체 아님 — 사람 화면 byte-동일·밀림 0). SSOT: `utils/crawler-noscript.ts` + `shared/seo/concept-content.ts`.
       // 🏪 2026-10-14 `/s/:username`(SELLER 슬롯)은 첫 화면 빌더가 **없어** 크롤러 본문이 6자였다(실측 2건). 그 표면은 위 분기에 안 걸려 여기로 떨어지므로 `||` 로 이어 둔다 — 재료가 없으면 `''` → 종전과 byte-동일. 왜 구조 문제인지는 `utils/seller-noscript.ts` 머리말.
-      const staticNs = buildStaticSurfaceNoscript(url.pathname, crawlerPayload) || (ssrSlot === 'SELLER' ? buildSellerNoscript(ssrPayload) : '');
+      const staticNs = buildStaticSurfaceNoscript(url.pathname, crawlerPayload) || (ssrSlot === 'SELLER' ? buildSellerNoscript(ssrPayload) : ssrSlot === 'LIFESHARE' ? buildLifeShareNoscript(ssrPayload) : '');
       rb = rb.on('#root', { element(el) { el.setInnerContent(staticNs + urdealLoaderHtml, { html: true }); } });
     }
     const rewritten = rb.transform(c.res);
