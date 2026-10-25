@@ -42,7 +42,7 @@ export function OptionSheet({ f, value, onPick, onClose }: {
                 <span className="block text-[15px] font-bold">{o}</span>
                 {hint && <span className="mt-1 block text-[13px] text-gray-500 dark:text-gray-400">{hint}</span>}
               </span>
-              <span className={`h-5 w-5 shrink-0 rounded-full border-2 ${on ? 'border-brand bg-brand' : 'border-gray-300 dark:border-[#2A2A2A]'}`} />
+              <span className={`h-5 w-5 shrink-0 rounded-full border-2 ${on ? 'border-brand bg-brand' : 'border-rule-strong'}`} />
             </button>
           )
         })}
