@@ -11,9 +11,9 @@ import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/useToast'
-import { quotePriceText } from '@/shared/home-service'
+import { categoryDef, quotePriceText, type HomeServiceCategory } from '@/shared/home-service'
 import { formatNumber } from '@/utils/format'
-import { DetailRows, LifeHeader, STATUS_LABEL, categoryLabel } from './life-shared'
+import { BigTicketNote, DetailRows, LifeHeader, STATUS_LABEL, categoryLabel } from './life-shared'
 
 interface Voucher { id: number; name: string; price?: number }
 interface Quote { id: number; price: number | null; message: string; status: string; pro_name: string; pro_phone: string | null; vouchers: Voucher[]; is_house?: number | null; partner?: number | null }
@@ -72,6 +72,7 @@ export default function LifeRequestDetailPage() {
             <span className="text-[13px] text-gray-500 dark:text-gray-400">받은 견적 {d.quote_count} / {d.max_quotes}</span>
           </div>
           <DetailRows category={d.category} details={d.details} />
+          {categoryDef(d.category as HomeServiceCategory)?.bigTicket && <div className="mt-3 border-t border-rule pt-3"><BigTicketNote /></div>}
         </section>
 
         {chosen && (

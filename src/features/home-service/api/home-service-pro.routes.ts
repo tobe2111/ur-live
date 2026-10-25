@@ -23,13 +23,13 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import { SIDO_LIST } from '@/shared/constants/region-slugs'
 import { kstYmd } from '@/shared/stays-early'
 import {
-  HOME_SERVICE_CATEGORIES, HOME_TPL, SIGNUP_FREE_CREDITS, categoryDef, msgQuoteArrived, partnerCategoriesCsv,
+  HOME_SERVICE_CATEGORIES, HOME_TPL, SIGNUP_FREE_CREDITS, categoryDef, creditCostFor, msgQuoteArrived, partnerCategoriesCsv,
   parseCreditPackages, quotePriceText, type HomeServiceCategory,
 } from '@/shared/home-service'
 import { sendSystemAlimtalk } from '../../../lib/system-alimtalk'
 import { confirmTossPayment, decideTossFlow } from '../../../worker/utils/toss-gateway'
 import {
-  OPEN_REQUESTS_FOR_PRO_SQL, creditAdd, creditBalance, ensureHomeServiceTables, loadPartners, sendHouseQuoteAtomic,
+  OPEN_REQUESTS_FOR_PRO_SQL, creditAdd, creditBalance, ensureHomeServiceTables, loadCreditCosts, loadPartners, sendHouseQuoteAtomic,
   sendQuoteAtomic, withPrivateDetails,
 } from './home-service-db'
 import { dispatchBacklogToPro } from './home-service-notify'
@@ -198,7 +198,8 @@ homeServiceProRoutes.get('/requests/:id', requireSeller(), async (c) => {
     details = withPrivateDetails(details, r?.private_details)
     const { private_details: _p, ...rest } = r ?? {}
     const isPartner = (await loadPartners(DB))[r?.category as HomeServiceCategory] === sid
-    return c.json({ success: true, data: { ...rest, details, balance: await creditBalance(DB, sid), is_partner: isPartner } })
+    const creditCost = creditCostFor(r?.category as HomeServiceCategory, await loadCreditCosts(DB))
+    return c.json({ success: true, data: { ...rest, details, balance: await creditBalance(DB, sid), is_partner: isPartner, credit_cost: creditCost } })
   } catch (err) {
     return safeError(c, err, '요청을 불러오지 못했습니다', '[home-service:pro-detail]')
   }
@@ -232,7 +233,7 @@ homeServiceProRoutes.post('/requests/:id/quote', requireSeller(), rateLimit({ ac
     const price = rawPrice == null ? null : Math.round(rawPrice)
     const res = isPartner
       ? await sendHouseQuoteAtomic(DB, id, sid, price, message, true)
-      : await sendQuoteAtomic(DB, id, sid, price, message)
+      : await sendQuoteAtomic(DB, id, sid, price, message, cat ? creditCostFor(cat.category, await loadCreditCosts(DB)) : 1)
     if (!res.ok) {
       const map = {
         closed: ['이미 마감된 요청입니다', 409],

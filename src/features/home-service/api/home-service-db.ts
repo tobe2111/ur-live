@@ -10,7 +10,7 @@
  *  ③ 원장 줄을 **먼저** 넣고(`INSERT OR IGNORE`) 들어갔을 때만 잔액을 움직인다(claim-before-credit).
  */
 
-import { HOME_PARTNERS_KEY, parsePartners, type HomeServiceCategory } from '../../../shared/home-service'
+import { CREDIT_COST_KEY, HOME_PARTNERS_KEY, parseCreditCosts, parsePartners, type HomeServiceCategory } from '../../../shared/home-service'
 
 export const HS_TABLES_SQL = [
   `CREATE TABLE IF NOT EXISTS home_service_pros (
@@ -103,7 +103,34 @@ export const HS_TABLES_SQL = [
   // 🤝 제휴 업체 견적(2026-10-25 대표 — 간판 제휴사). is_house=1 과 같이 참여권을 안 쓰고 반환도 없다.
   //   손님 화면 표시만 "유어딜 제휴" 로 가른다.
   `ALTER TABLE home_service_quotes ADD COLUMN partner INTEGER NOT NULL DEFAULT 0`,
+  // 🎟️ 이 견적에 쓴 참여권 장수(2026-10-25). 반환은 **쓴 만큼** 돌려준다 — 카테고리 장수가 나중에 바뀌어도.
+  `ALTER TABLE home_service_quotes ADD COLUMN credits INTEGER NOT NULL DEFAULT 1`,
 ] as const
+
+/** 카테고리별 참여권 장수(어드민 값). 못 읽으면 빈 표 — 모두 1장. */
+export async function loadCreditCosts(DB: D1Database): Promise<Partial<Record<HomeServiceCategory, number>>> {
+  const r = await DB.prepare(`SELECT value FROM platform_settings WHERE key = ?`).bind(CREDIT_COST_KEY)
+    .first<{ value: string }>().catch(() => null)
+  return parseCreditCosts(r?.value)
+}
+
+/**
+ * 카테고리별 견적을 받을 수 있는 업체 수(판매 승인 · 켜 둔 업체 + 제휴 업체). 생활 페이지가 0 이면
+ * "업체 모집 중" 을 보여 준다 — 답이 없을 요청을 아무 말 없이 받지 않으려고.
+ */
+export async function proCountsByCategory(DB: D1Database): Promise<Record<string, number>> {
+  const out: Record<string, number> = {}
+  const { results } = await DB.prepare(
+    `SELECT c.category AS category, COUNT(DISTINCT c.seller_id) AS n
+       FROM home_service_pro_categories c
+       JOIN home_service_pros p ON p.seller_id = c.seller_id AND p.active = 1
+       JOIN sellers s ON s.id = c.seller_id AND s.status IN ('approved', 'active')
+      GROUP BY c.category`,
+  ).all<{ category: string; n: number }>()
+  for (const r of results ?? []) out[r.category] = Number(r.n)
+  for (const cat of Object.keys(await loadPartners(DB))) out[cat] = Math.max(out[cat] ?? 0, 1)
+  return out
+}
 
 /** 제휴 업체 표(카테고리 → 매장 번호). 못 읽으면 빈 표 — 제휴가 없는 것과 같다. */
 export async function loadPartners(DB: D1Database): Promise<Partial<Record<HomeServiceCategory, number>>> {
@@ -165,15 +192,17 @@ export async function creditAdd(
  * 반환 ok=false 면 사유를 다시 읽어 구분한다(자리 마감 / 이미 보냄 / 참여권 없음 / 요청 닫힘).
  */
 export async function sendQuoteAtomic(
-  DB: D1Database, requestId: number, sellerId: number, price: number | null, message: string,
+  DB: D1Database, requestId: number, sellerId: number, price: number | null, message: string, cost = 1,
 ): Promise<{ ok: true; quoteId: number } | { ok: false; reason: 'closed' | 'full' | 'already' | 'no_credit' }> {
+  // 🎟️ 장수는 1 이상 정수만(카테고리별 — 결재 2026-10-25). 이상한 값은 1장으로.
+  const n = Number.isInteger(cost) && cost >= 1 ? cost : 1
   const res = await DB.batch([
     DB.prepare(
-      `UPDATE home_service_credit_balance SET balance = balance - 1, updated_at = datetime('now')
-        WHERE seller_id = ? AND balance >= 1
+      `UPDATE home_service_credit_balance SET balance = balance - ?, updated_at = datetime('now')
+        WHERE seller_id = ? AND balance >= ?
           AND EXISTS (SELECT 1 FROM home_service_requests WHERE id = ? AND status = 'open' AND quote_count < max_quotes)
           AND NOT EXISTS (SELECT 1 FROM home_service_quotes WHERE request_id = ? AND seller_id = ?)`,
-    ).bind(sellerId, requestId, requestId, sellerId),
+    ).bind(n, sellerId, n, requestId, requestId, sellerId),
     DB.prepare(
       `UPDATE home_service_requests
           SET quote_count = quote_count + 1, first_quote_at = COALESCE(first_quote_at, datetime('now')),
@@ -181,13 +210,13 @@ export async function sendQuoteAtomic(
         WHERE id = ? AND status = 'open' AND quote_count < max_quotes AND changes() > 0`,
     ).bind(requestId),
     DB.prepare(
-      `INSERT OR IGNORE INTO home_service_quotes (request_id, seller_id, price, message, status)
-       SELECT ?, ?, ?, ?, 'sent' WHERE changes() > 0`,
-    ).bind(requestId, sellerId, price, message),
+      `INSERT OR IGNORE INTO home_service_quotes (request_id, seller_id, price, message, status, credits)
+       SELECT ?, ?, ?, ?, 'sent', ? WHERE changes() > 0`,
+    ).bind(requestId, sellerId, price, message, n),
     DB.prepare(
       `INSERT OR IGNORE INTO home_service_credit_tx (seller_id, kind, amount, ref)
-       SELECT ?, 'spend', -1, ? WHERE changes() > 0`,
-    ).bind(sellerId, `quote:${requestId}:${sellerId}`),
+       SELECT ?, 'spend', ?, ? WHERE changes() > 0`,
+    ).bind(sellerId, -n, `quote:${requestId}:${sellerId}`),
   ])
   if (res[2]?.meta?.changes) {
     const q = await DB.prepare(`SELECT id FROM home_service_quotes WHERE request_id = ? AND seller_id = ?`)
@@ -271,15 +300,16 @@ export async function creditBalance(DB: D1Database, sellerId: number): Promise<n
 export async function refundQuote(DB: D1Database, quoteId: number, sellerId: number, why: string): Promise<boolean> {
   const [upd] = await DB.batch([
     DB.prepare(`UPDATE home_service_quotes SET status = 'refunded' WHERE id = ? AND status = 'sent' AND is_house = 0`).bind(quoteId),
+    // 🎟️ 쓴 만큼 돌려준다(`quotes.credits` — 카테고리 장수가 나중에 바뀌어도 그 견적에 쓴 값).
     DB.prepare(
       `INSERT OR IGNORE INTO home_service_credit_tx (seller_id, kind, amount, ref, note)
-       SELECT ?, 'refund', 1, ?, ? WHERE changes() > 0`,
-    ).bind(sellerId, `quote:${quoteId}`, why),
+       SELECT ?, 'refund', (SELECT credits FROM home_service_quotes WHERE id = ?), ?, ? WHERE changes() > 0`,
+    ).bind(sellerId, quoteId, `quote:${quoteId}`, why),
     DB.prepare(
       `INSERT INTO home_service_credit_balance (seller_id, balance, updated_at)
-       SELECT ?, 1, datetime('now') WHERE changes() > 0
-       ON CONFLICT(seller_id) DO UPDATE SET balance = balance + 1, updated_at = datetime('now')`,
-    ).bind(sellerId),
+       SELECT ?, (SELECT credits FROM home_service_quotes WHERE id = ?), datetime('now') WHERE changes() > 0
+       ON CONFLICT(seller_id) DO UPDATE SET balance = balance + excluded.balance, updated_at = datetime('now')`,
+    ).bind(sellerId, quoteId),
   ])
   return !!upd?.meta?.changes
 }

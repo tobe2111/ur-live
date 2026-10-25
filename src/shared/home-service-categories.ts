@@ -16,7 +16,14 @@ export type HomeServiceCategory =
 export type HomeServiceAudience = 'store' | 'lodging' | 'home'
 
 /** `multi` 는 여러 개를 고르는 칸(쉼표로 이어 저장). 비워 둬도 되는 칸에만 쓴다. */
-export type FieldType = 'region' | 'text' | 'date' | 'select' | 'number' | 'textarea' | 'multi'
+export type FieldType = 'region' | 'text' | 'date' | 'select' | 'number' | 'textarea' | 'multi' | 'photos'
+
+/**
+ * 📷 사진 칸(2026-10-25 대표 "모두 개선해줘") — 간판·인테리어·수리는 현장 사진이 있어야 견적이 맞는다.
+ * 값은 우리 업로드 주소(`/api/upload/image`)를 쉼표로 이은 것. **견적을 낼 업체가 본다**(상세 주소와 달리
+ * 고르기 전에도 — 사진 없이는 견적을 못 낸다). 그래서 시트가 "얼굴·서류는 피해 주세요" 를 말한다.
+ */
+export const MAX_REQUEST_PHOTOS = 5
 
 export interface RequestField {
   key: string
@@ -58,6 +65,11 @@ export interface CategoryDef {
   luckyDays?: boolean
   /** 신청을 마친 뒤 "같이 하실래요?" — carry 는 {다음 카테고리 칸: 이번 칸} */
   crossSell?: { to: HomeServiceCategory; title: string; carry: Readonly<Record<string, string>> }
+  /**
+   * 큰 공사(간판·인테리어) — 금액이 커서 분쟁이 나기 쉽다. 요청서·견적 화면이
+   * "계약 전에 사업자·견적서·계약서를 받아 두세요" 를 함께 보여 준다(유어딜은 연결만 한다).
+   */
+  bigTicket?: boolean
 }
 
 const REGION_HINT = '예) 서울 강남구 역삼동 (동까지만)'
@@ -83,6 +95,7 @@ export const HOME_SERVICE_CATEGORIES: readonly CategoryDef[] = [
     voucherKeywords: ['간판'],
     regionFields: ['address'],
     dateField: 'date',
+    bigTicket: true,
     fields: [
       { key: 'address', label: '가게 주소', type: 'region', required: true, placeholder: STORE_HINT },
       { key: 'biz', label: '업종', type: 'select', required: true, options: BIZ_TYPES },
@@ -108,7 +121,8 @@ export const HOME_SERVICE_CATEGORIES: readonly CategoryDef[] = [
       { key: 'budget', label: '생각하는 예산', type: 'select', required: true,
         options: ['100만 원 이하', '100~300만 원', '300~500만 원', '500만 원 이상', '상담 후 정할게요'] },
       { key: 'date', label: '희망 설치 날짜', type: 'date', required: true },
-      { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '가게 이름, 원하는 느낌. 사진은 업체와 연결된 뒤 보내면 돼요' },
+      { key: 'photos', label: '현장 사진', type: 'photos', required: false },
+      { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '가게 이름, 원하는 느낌' },
     ],
   },
   /**
@@ -124,6 +138,7 @@ export const HOME_SERVICE_CATEGORIES: readonly CategoryDef[] = [
     voucherKeywords: ['인테리어', '리모델링'],
     regionFields: ['address'],
     dateField: 'date',
+    bigTicket: true,
     crossSell: { to: 'signage', title: '새 간판도 함께 받아 보시겠어요?', carry: { address: 'address', biz: 'biz', date: 'date' } },
     fields: [
       { key: 'address', label: '가게 주소', type: 'region', required: true, placeholder: STORE_HINT },
@@ -135,7 +150,8 @@ export const HOME_SERVICE_CATEGORIES: readonly CategoryDef[] = [
       { key: 'design', label: '디자인', type: 'select', required: true, options: ['디자인부터 필요해요', '도면·시안이 있어요', '업체와 상의할게요'] },
       { key: 'budget', label: '생각하는 예산', type: 'select', required: true, options: ['1천만 원 이하', '1천~3천만 원', '3천~5천만 원', '5천만 원~1억', '1억 이상', '상담 후 정할게요'] },
       { key: 'date', label: '착공 희망일', type: 'date', required: true },
-      { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '오픈 목표일, 원하는 분위기. 사진·도면은 업체와 연결된 뒤 보내면 돼요' },
+      { key: 'photos', label: '현장 사진', type: 'photos', required: false },
+      { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '오픈 목표일, 원하는 분위기' },
     ],
   },
   {
@@ -193,6 +209,7 @@ export const HOME_SERVICE_CATEGORIES: readonly CategoryDef[] = [
       // 간판·냉장 설비·에어컨은 따로 뺐다(2026-10-25) — 업체가 다르고, 섞이면 그 업체에게 요청이 안 간다.
       { key: 'date', label: '희망 날짜', type: 'date', required: true },
       { key: 'time', label: '작업 시간', type: 'select', required: true, options: WORK_TIMES, optionHints: WORK_TIME_HINTS },
+      { key: 'photos', label: '현장 사진', type: 'photos', required: false },
       { key: 'memo', label: '증상', type: 'textarea', required: false, placeholder: '어디가 어떻게 고장 났는지 적어 주세요' },
     ],
   },
@@ -214,6 +231,7 @@ export const HOME_SERVICE_CATEGORIES: readonly CategoryDef[] = [
       { key: 'urgency', label: '얼마나 급한가요', type: 'select', required: true, options: ['오늘 바로', '2~3일 안', '날짜 맞춰서'],
         optionHints: { '오늘 바로': '지금 장사에 지장이 있어요', '2~3일 안': '버틸 수는 있어요', '날짜 맞춰서': '점검·교체 상담' } },
       { key: 'date', label: '희망 날짜', type: 'date', required: true },
+      { key: 'photos', label: '현장 사진', type: 'photos', required: false },
       { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '제조사·모델명, 언제부터 그랬는지' },
     ],
   },
@@ -378,6 +396,7 @@ export const HOME_SERVICE_CATEGORIES: readonly CategoryDef[] = [
     voucherKeywords: ['인테리어', '리모델링'],
     regionFields: ['address'],
     dateField: 'date',
+    bigTicket: true,
     fields: [
       { key: 'address', label: '공사할 곳', type: 'region', required: true, placeholder: REGION_HINT },
       { key: 'housing', label: '집 종류', type: 'select', required: true, options: ['아파트', '빌라·주택', '오피스텔'] },
@@ -387,6 +406,7 @@ export const HOME_SERVICE_CATEGORIES: readonly CategoryDef[] = [
       { key: 'living', label: '공사 중 거주', type: 'select', required: true, options: ['빈 집이에요', '살면서 공사해요'] },
       { key: 'budget', label: '생각하는 예산', type: 'select', required: true, options: ['1천만 원 이하', '1천~3천만 원', '3천~5천만 원', '5천만 원~1억', '1억 이상', '상담 후 정할게요'] },
       { key: 'date', label: '착공 희망일', type: 'date', required: true },
+      { key: 'photos', label: '현장 사진', type: 'photos', required: false },
       { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '입주·이사 날짜, 원하는 분위기' },
     ],
   },

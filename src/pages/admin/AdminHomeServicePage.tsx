@@ -38,6 +38,11 @@ export default function AdminHomeServicePage() {
   const partners = useApiQuery<{ category: string; seller_id: number; name?: string; status?: string }[]>(['admin', 'home-service', 'partners'], '/api/admin/home-service/partners', {
     select: (raw) => (raw as { data: { category: string; seller_id: number; name?: string; status?: string }[] }).data, staleTime: 0,
   })
+  const costs = useApiQuery<Record<string, number>>(['admin', 'home-service', 'credit-costs'], '/api/admin/home-service/credit-costs', {
+    select: (raw) => (raw as { data: Record<string, number> }).data, staleTime: 0,
+  })
+  const [cCat, setCCat] = useState('signage')
+  const [cN, setCN] = useState('')
   const [pCat, setPCat] = useState('signage')
   const [pId, setPId] = useState('')
   const [openId, setOpenId] = useState<number | null>(null)
@@ -58,7 +63,7 @@ export default function AdminHomeServicePage() {
     setBusy(true)
     try {
       await fn(); toast.success(ok)
-      await Promise.all([list.refetch(), house.refetch(), partners.refetch(), openId ? detail.refetch() : null])
+      await Promise.all([list.refetch(), house.refetch(), partners.refetch(), costs.refetch(), openId ? detail.refetch() : null])
     } catch (e) { toast.error(errMsg(e, fail)) } finally { setBusy(false) }
   }
   const catDef = list.data?.categories.find((c) => c.key === cat)
@@ -102,6 +107,24 @@ export default function AdminHomeServicePage() {
         </section>
 
         <section className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
+          <h2 className="text-[15px] font-semibold text-gray-900">견적 한 번에 드는 참여권</h2>
+          <p className="text-[13px] text-gray-500">기본 1장. 금액이 큰 일(간판·인테리어)은 더 받을 수 있습니다. ⚠️ 업체가 내는 돈이라 대표 결재(<code>docs/decisions/2026-10-25-home-service-credit-cost.md</code>) 뒤에 바꿔 주세요. 반환은 그 견적에 쓴 장수만큼 돌려줍니다.</p>
+          <ul className="space-y-1 text-[13px] text-gray-700">
+            {Object.keys(costs.data ?? {}).length === 0 && <li className="text-gray-500">전부 1장</li>}
+            {Object.entries(costs.data ?? {}).map(([k, n]) => (
+              <li key={k}><span className="font-semibold">{list.data?.categories.find((c) => c.key === k)?.label ?? k}</span> {n}장</li>
+            ))}
+          </ul>
+          <div className="flex flex-wrap gap-2">
+            <select className={`${input} max-w-[220px]`} value={cCat} onChange={(e) => setCCat(e.target.value)}>
+              {(list.data?.categories ?? []).map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+            </select>
+            <input className={`${input} max-w-[160px]`} placeholder="장수(1~20)" inputMode="numeric" value={cN} onChange={(e) => setCN(e.target.value)} />
+            <Button disabled={busy || !cN} onClick={() => run(() => api.put('/api/admin/home-service/credit-costs', { category: cCat, count: Number(cN) }), '저장했습니다', '저장하지 못했습니다')}>저장</Button>
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
           <h2 className="text-[15px] font-semibold text-gray-900">대리 접수</h2>
           <p className="text-[13px] text-gray-500">손님에게 "업체 견적을 받아 드리고, 고른 업체에 연락처를 전달한다"는 동의를 받은 뒤에 올려 주세요.</p>
           <div className="grid gap-2 lg:grid-cols-2">
@@ -111,7 +134,7 @@ export default function AdminHomeServicePage() {
             <input className={input} placeholder="손님 이름" value={name} onChange={(e) => setName(e.target.value)} />
             <input className={input} placeholder="손님 휴대폰" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
             <input className={input} placeholder="동의 기록(예: 10/24 통화로 동의)" value={consent} onChange={(e) => setConsent(e.target.value)} />
-            {(catDef?.fields ?? []).map((f) => (
+            {(catDef?.fields ?? []).filter((f) => f.type !== 'photos').map((f) => (
               <label key={f.key} className="block text-[13px] text-gray-700">
                 {f.label}{f.required ? ' *' : ''}
                 {f.type === 'select' ? (

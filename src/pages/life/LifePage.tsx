@@ -27,13 +27,15 @@ interface VoucherItem { id: number; name: string; price?: number; restaurant_nam
 export default function LifePage() {
   const [vouchers, setVouchers] = useState<VoucherItem[]>([])
   const [open, setOpen] = useState(true)
+  // 카테고리별 받는 업체 수. 0 이면 "업체 모집 중"(링크는 그대로 — 요청은 보관됐다가 업체가 생기면 간다).
+  const [proCounts, setProCounts] = useState<Record<string, number> | null>(null)
 
   useEffect(() => {
     api.get('/api/group-buy/products?status=active&category=home_voucher')
       .then((r) => setVouchers(r.data?.success ? (r.data.data || []) : []))
       .catch(() => setVouchers([]))
     api.get('/api/home-service/config')
-      .then((r) => setOpen(r.data?.data?.open !== false))
+      .then((r) => { setOpen(r.data?.data?.open !== false); setProCounts(r.data?.data?.proCounts || null) })
       .catch(() => {})
   }, [])
 
@@ -64,7 +66,9 @@ export default function LifePage() {
                         <span className="block text-[15px] font-bold">{def.label}</span>
                         <span className="mt-1 block text-[13px] text-gray-600 dark:text-gray-300">{def.blurb}</span>
                       </span>
-                      <span className="shrink-0 text-[13px] font-bold text-brand-text">무료 견적</span>
+                      {proCounts && !proCounts[def.key]
+                        ? <span className="shrink-0 text-[13px] text-gray-500 dark:text-gray-400">업체 모집 중</span>
+                        : <span className="shrink-0 text-[13px] font-bold text-brand-text">무료 견적</span>}
                       <ChevronRight className="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" />
                     </Link>
                     {items.length > 0 && (

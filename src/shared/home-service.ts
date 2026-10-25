@@ -13,7 +13,7 @@
  */
 
 export * from './home-service-categories'
-import { PRIVATE_ADDRESS_MAX, PRIVATE_ADDRESS_SUFFIX, categoryDef, type HomeServiceCategory } from './home-service-categories'
+import { MAX_REQUEST_PHOTOS, PRIVATE_ADDRESS_MAX, PRIVATE_ADDRESS_SUFFIX, categoryDef, type HomeServiceCategory } from './home-service-categories'
 
 /** 요청 하나에 견적을 보낼 수 있는 사장님 수(선착순). */
 export const MAX_QUOTES_PER_REQUEST = 5
@@ -90,6 +90,13 @@ export function validateRequest(
       if (f.required) return { ok: false, error: `${f.label}을(를) 입력해 주세요` }
       continue
     }
+    if (f.type === 'photos') {
+      const urls = [...new Set(v.split(',').map((x) => x.trim()).filter(Boolean))]
+      if (urls.length > MAX_REQUEST_PHOTOS) return { ok: false, error: `사진은 ${MAX_REQUEST_PHOTOS}장까지 올릴 수 있어요` }
+      if (urls.some((u) => !isRequestPhotoUrl(u))) return { ok: false, error: '사진을 다시 올려 주세요' }
+      if (urls.length) details[f.key] = urls.join(',')
+      continue
+    }
     if (v.length > (f.type === 'textarea' ? 500 : 60)) return { ok: false, error: `${f.label}이(가) 너무 깁니다` }
     if (f.type === 'select' && f.options && !f.options.includes(v)) return { ok: false, error: `${f.label}을(를) 다시 골라 주세요` }
     if (f.type === 'multi') {
@@ -125,6 +132,48 @@ export function validateRequest(
   const desiredDate = details[def.dateField]
   if (!desiredDate) return { ok: false, error: '날짜를 골라 주세요' }
   return { ok: true, value: { category: def.key, details, privateDetails, regions, desiredDate } }
+}
+
+/**
+ * 우리 업로드 주소인가 — `/api/upload/image` 가 돌려주는 두 모양(같은 출처 `/api/media/uploads/...` 또는
+ * R2 공개 도메인 `https://.../uploads/...`)만. 남의 주소를 끼워 넣어 업체 화면에 띄우지 못하게 한다.
+ * 누가 올렸는지는 서버 라우트가 `uploads/user/<본인>/` 으로 따로 본다.
+ */
+export function isRequestPhotoUrl(u: string): boolean {
+  return /^(?:\/api\/media\/|https:\/\/[a-z0-9.-]+\/)uploads\/user\/\d+\/\d{4}-\d{2}\/[A-Za-z0-9_-]+\.(?:jpg|png|webp|gif)$/.test(u) && u.length <= 200
+}
+
+/** 사진이 전부 이 사람이 올린 것인가(`uploads/user/<id>/`). */
+export function photosOwnedBy(details: Record<string, string>, userId: number): boolean {
+  for (const [k, v] of Object.entries(details)) {
+    if (k !== 'photos' || !v) continue
+    if (v.split(',').some((u) => !u.includes(`/uploads/user/${userId}/`))) return false
+  }
+  return true
+}
+
+/**
+ * 🎟️ 카테고리별 참여권 장수(2026-10-25 — 결재 `docs/decisions/2026-10-25-home-service-credit-cost.md`).
+ * 기본은 모두 1장. 어드민이 `home_service_credit_cost`(JSON {카테고리: 장수})로 정한다 — **대표 결재 전엔 아무 값도 넣지 않는다**.
+ */
+export const CREDIT_COST_KEY = 'home_service_credit_cost'
+export const MAX_CREDIT_COST = 20
+
+export function parseCreditCosts(raw: unknown): Partial<Record<HomeServiceCategory, number>> {
+  try {
+    const obj = typeof raw === 'string' ? JSON.parse(raw) : raw
+    const out: Partial<Record<HomeServiceCategory, number>> = {}
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return out
+    for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+      const n = Number(v)
+      if (categoryDef(k) && Number.isInteger(n) && n >= 1 && n <= MAX_CREDIT_COST) out[k as HomeServiceCategory] = n
+    }
+    return out
+  } catch { return {} }
+}
+
+export function creditCostFor(category: HomeServiceCategory, costs: Partial<Record<HomeServiceCategory, number>>): number {
+  return costs[category] ?? 1
 }
 
 /** 사장님이 보는 요청 요약 한 줄 — 연락처·상세 주소 없이. 알림톡 본문과 요청함이 같은 글을 쓴다. */

@@ -19,11 +19,11 @@ import { safeError } from '@/worker/utils/safe-error'
 import { parseRegionFromAddress } from '@/shared/constants/region-slugs'
 import { kstYmd } from '@/shared/stays-early'
 import {
-  HOME_PARTNERS_KEY, HOME_SERVICE_CATEGORIES, HOME_TPL, MAX_QUOTES_PER_REQUEST, categoryDef, msgQuoteArrived, quotePriceText,
+  CREDIT_COST_KEY, HOME_PARTNERS_KEY, HOME_SERVICE_CATEGORIES, HOME_TPL, MAX_CREDIT_COST, MAX_QUOTES_PER_REQUEST, categoryDef, msgQuoteArrived, quotePriceText,
   requestSummary, validateRequest, type HomeServiceCategory,
 } from '@/shared/home-service'
 import { sendSystemAlimtalk } from '../../../lib/system-alimtalk'
-import { chooseQuoteAtomic, ensureHomeServiceTables, loadPartners, refundAllQuotes, sendHouseQuoteAtomic } from './home-service-db'
+import { chooseQuoteAtomic, ensureHomeServiceTables, loadCreditCosts, loadPartners, refundAllQuotes, sendHouseQuoteAtomic } from './home-service-db'
 import { dispatchRequest } from './home-service-notify'
 import { notifyChosen } from './home-service.routes'
 
@@ -124,6 +124,38 @@ homeServiceAdminRoutes.put('/partners', async (c) => {
     return c.json({ success: true })
   } catch (err) {
     return safeError(c, err, '저장하지 못했습니다', '[home-service:partners-save]')
+  }
+})
+
+/**
+ * 🎟️ 카테고리별 참여권 장수(2026-10-25 — 결재 `docs/decisions/2026-10-25-home-service-credit-cost.md`).
+ * 업체가 내는 돈이라 **대표 결재 뒤에만** 값을 넣는다. 비워 두면 1장. count 가 null/1 이면 그 카테고리를 기본으로.
+ */
+homeServiceAdminRoutes.get('/credit-costs', async (c) => {
+  try {
+    return c.json({ success: true, data: await loadCreditCosts(c.env.DB) })
+  } catch (err) {
+    return safeError(c, err, '설정을 불러오지 못했습니다', '[home-service:credit-costs]')
+  }
+})
+
+homeServiceAdminRoutes.put('/credit-costs', async (c) => {
+  try {
+    const DB = c.env.DB
+    const b = await c.req.json<{ category?: unknown; count?: unknown }>().catch(() => ({} as { category?: unknown; count?: unknown }))
+    const def = categoryDef(b.category)
+    if (!def) return c.json({ success: false, error: '카테고리를 골라 주세요' }, 400)
+    const costs = await loadCreditCosts(DB)
+    const n = b.count == null || b.count === '' ? 1 : Number(b.count)
+    if (!Number.isInteger(n) || n < 1 || n > MAX_CREDIT_COST) return c.json({ success: false, error: `1~${MAX_CREDIT_COST}장 사이로 적어 주세요` }, 400)
+    if (n === 1) delete costs[def.key]; else costs[def.key] = n
+    await DB.prepare(
+      `INSERT INTO platform_settings (key, value, updated_at) VALUES (?, ?, datetime('now'))
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`,
+    ).bind(CREDIT_COST_KEY, JSON.stringify(costs)).run()
+    return c.json({ success: true })
+  } catch (err) {
+    return safeError(c, err, '저장하지 못했습니다', '[home-service:credit-costs-save]')
   }
 })
 
