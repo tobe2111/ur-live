@@ -4,39 +4,29 @@
  *  - **로그인은 맨 끝에.** 질문을 다 답한 뒤 [견적 신청] 에서야 카카오 로그인 — 답은 `request/draft.ts` 가 들고 있는다.
  *    로그인은 빼지 않는다: 카카오가 확인한 휴대폰 번호가 곧 본인 확인이다(업체가 돈을 내고 견적을 보내므로
  *    장난 요청을 막아야 한다).
- *  - **요약 카드 + 질문 하나씩 시트.** 답하면 다음 질문이 저절로 열린다.
+ *  - **단계식 — 한 화면에 질문 하나.** 위에 진행 막대(3/9), 고르면 다음 질문으로 바로 넘어가고, 마지막은
+ *    한 장짜리 확인 화면(줄을 누르면 그 질문으로 돌아가 고친다). 2026-10-25 대표 "단계별로 쭉쭉 자동으로 ·
+ *    지금은 너무 세로로 길고" — 질문 전체를 목록으로 늘어놓던 요약 카드를 맨 끝 확인 화면으로 옮겼다.
  *  - **다 마치면 함께 할 일 하나**(이사 → 입주청소 등, `crossSell`).
  * 칸 정의는 `shared/home-service.ts` 하나 — 서버가 같은 표로 검증한다.
  */
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { ChevronDown } from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
-import { categoryDef, PRIVATE_ADDRESS_SUFFIX, type CategoryDef, type HomeServiceCategory, type RequestField } from '@/shared/home-service'
+import { categoryDef, PRIVATE_ADDRESS_SUFFIX, type HomeServiceCategory, type RequestField } from '@/shared/home-service'
 import { getUserIdSync } from '@/utils/auth'
 import { loginPathFromHere } from '@/utils/login-return'
-import { BigTicketNote, LifeHeader } from './life-shared'
-import { clearDraft, loadDraft, saveDraft, type Draft } from './request/draft'
-import { Sheet } from './request/Sheet'
+import { BigTicketNote } from './life-shared'
+import { SEEN_KEY, clearDraft, firstOpenStep, loadDraft, saveDraft, type Draft } from './request/draft'
+import { Sheet, StepFrameContext } from './request/Sheet'
 import { MultiSheet, NumberSheet, OptionSheet, TextSheet } from './request/FieldSheets'
 import { DateSheet } from './request/DateSheet'
 import { AddressSheet } from './request/AddressSheet'
 import { PhotoSheet } from './request/PhotoSheet'
 
 const CONSENT_KEY = '__consent'
-
-/** 저절로 여는 질문 — 비워 둬도 되는 메모는 사람이 누를 때만 연다(매번 [건너뛰기] 를 누르게 하지 않는다). */
-function autoChain(def: CategoryDef): RequestField[] {
-  return def.fields.filter((f) => f.required || (f.type !== 'textarea' && f.type !== 'photos'))
-}
-
-function nextOpen(def: CategoryDef, visited: Set<string>, after?: string): string | null {
-  const chain = autoChain(def)
-  const from = after ? chain.findIndex((f) => f.key === after) + 1 : 0
-  return chain.slice(from).find((f) => !visited.has(f.key))?.key ?? chain.find((f) => !visited.has(f.key))?.key ?? null
-}
-
 function shown(f: RequestField, values: Draft): string {
   const v = values[f.key]
   if (!v) return ''
@@ -51,8 +41,10 @@ export default function LifeRequestFormPage() {
   const def = categoryDef(category as HomeServiceCategory)
   const navigate = useNavigate()
   const [values, setValues] = useState<Draft>(() => (def ? loadDraft(def.key) : {}))
-  const [visited, setVisited] = useState<Set<string>>(() => new Set(Object.keys(values)))
-  const [openKey, setOpenKey] = useState<string | null>(null)
+  // 단계식(2026-10-25 대표 "단계별로 쭉쭉 자동으로") — 한 화면에 질문 하나, 마지막은 확인 화면.
+  const [step, setStep] = useState<number>(() => (def ? firstOpenStep(def.fields, values) : 0))
+  // 확인 화면에서 고치러 들어간 질문이면 답한 뒤 확인 화면으로 돌아온다.
+  const [editing, setEditing] = useState(false)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const [doneId, setDoneId] = useState<number | null>(null)
@@ -69,8 +61,6 @@ export default function LifeRequestFormPage() {
   }, [def])
 
   useEffect(() => { if (def && doneId == null) saveDraft(def.key, values) }, [def, values, doneId])
-  // 처음 들어오면 아직 안 답한 첫 질문을 연다.
-  useEffect(() => { if (def) setOpenKey(nextOpen(def, visited)) }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!def) {
     return (
@@ -81,14 +71,25 @@ export default function LifeRequestFormPage() {
     )
   }
 
+  const REVIEW = def.fields.length
+
   function answer(f: RequestField, patch: Draft) {
     const nextValues = { ...values }
     for (const [k, v] of Object.entries(patch)) { if (v) nextValues[k] = v; else delete nextValues[k] }
-    const nextVisited = new Set(visited).add(f.key)
+    const seen = new Set((nextValues[SEEN_KEY] || '').split(',').filter(Boolean)).add(f.key)
+    nextValues[SEEN_KEY] = [...seen].join(',')
     setValues(nextValues)
-    setVisited(nextVisited)
-    setOpenKey(nextOpen(def!, nextVisited, f.key))
+    setStep(editing ? REVIEW : step + 1)
+    setEditing(false)
   }
+
+  function back() {
+    if (editing) { setEditing(false); setStep(REVIEW); return }
+    if (step === 0) { navigate('/life'); return }
+    setStep(step - 1)
+  }
+
+  function edit(i: number) { setEditing(true); setStep(i) }
 
   const missing = def.fields.filter((f) => f.required && !values[f.key])
   const consent = values[CONSENT_KEY] === '1'
@@ -96,7 +97,7 @@ export default function LifeRequestFormPage() {
 
   async function submit() {
     setError('')
-    if (!ready) { setOpenKey(missing[0].key); return }
+    if (!ready) { edit(def!.fields.indexOf(missing[0])); return }
     if (!consent) { setError('연락처 전달에 동의해 주세요'); return }
     if (!loggedIn) { saveDraft(def!.key, values); navigate(loginPathFromHere()); return }
     setSending(true)
@@ -129,9 +130,6 @@ export default function LifeRequestFormPage() {
     navigate(`/life/request/${cs.to}`)
   }
 
-  const openField = def.fields.find((f) => f.key === openKey) || null
-  const close = () => setOpenKey(null)
-
   if (doneId != null) {
     return (
       <div className="min-h-[100dvh] bg-warm text-ink pb-safe-nav">
@@ -163,32 +161,60 @@ export default function LifeRequestFormPage() {
     )
   }
 
+  const recruiting = proCount === 0 && (
+    <p className="rounded-2xl bg-warm p-4 text-[13px] leading-relaxed">
+      지금 {def.label} 업체를 모집하고 있어요. 요청은 보관해 두었다가 업체가 들어오는 대로 보내 드려요.
+    </p>
+  )
+  const seo = <SEO title={`${def.label} 견적 요청 - 유어딜`} description={def.blurb} url={`/life/request/${def.key}`} />
+
+  if (step < REVIEW) {
+    const f = def.fields[step]
+    const v = values[f.key] || ''
+    const done = (patch: Draft) => answer(f, patch)
+    return (
+      <StepFrameContext.Provider value={{ step: step + 1, total: REVIEW, label: `${def.label} 견적`, notice: recruiting || undefined }}>
+        {seo}
+        {f.type === 'photos'
+          ? <PhotoSheet key={f.key} f={f} value={v} loggedIn={loggedIn} onClose={back}
+              onLogin={() => { saveDraft(def.key, values); navigate(loginPathFromHere()) }}
+              onDone={(x) => done({ [f.key]: x })} />
+          : f.type === 'select'
+            ? <OptionSheet key={f.key} f={f} value={v} onClose={back} onPick={(x) => done({ [f.key]: x })} />
+            : f.type === 'date'
+              ? <DateSheet key={f.key} f={f} value={v} lucky={def.luckyDays} onClose={back} onDone={(x) => done({ [f.key]: x })} />
+              : f.type === 'region'
+                ? <AddressSheet key={f.key} f={f} onClose={back} onDone={(pub, full) => done({ [f.key]: pub, [f.key + PRIVATE_ADDRESS_SUFFIX]: full })} />
+                : f.type === 'number'
+                  ? <NumberSheet key={f.key} f={f} value={v} onClose={back} onDone={(x) => done({ [f.key]: x })} />
+                  : f.type === 'multi'
+                    ? <MultiSheet key={f.key} f={f} value={v} onClose={back} onDone={(x) => done({ [f.key]: x })} />
+                    : <TextSheet key={f.key} f={f} value={v} onClose={back} onDone={(x) => done({ [f.key]: x })} />}
+      </StepFrameContext.Provider>
+    )
+  }
+
+  // 확인 화면 — 답을 한 줄씩 보고, 누르면 그 질문으로 돌아가 고친다.
   return (
     <div className="min-h-[100dvh] bg-warm text-ink pb-safe-nav">
-      <SEO title={`${def.label} 견적 요청 - 유어딜`} description={def.blurb} url={`/life/request/${def.key}`} />
-      <LifeHeader title={`${def.label} 견적 요청`} back="/life" />
-      <div className="ur-content-narrow space-y-6 px-4 pb-10">
-        <h2 className="text-[24px] font-extrabold leading-snug tracking-tight">간단한 정보 입력하고<br />{def.label} 비교 견적 받아보세요</h2>
-        {proCount === 0 && (
-          <p className="rounded-2xl bg-surface p-4 text-[13px] leading-relaxed shadow-lift">
-            지금 {def.label} 업체를 모집하고 있어요. 요청은 보관해 두었다가 업체가 들어오는 대로 보내 드려요.
-          </p>
-        )}
-
+      {seo}
+      <header className="ur-content-narrow flex h-14 items-center gap-3 px-4">
+        <button type="button" aria-label="이전" onClick={() => setStep(REVIEW - 1)} className="-ml-2 p-2 text-ink"><ChevronLeft className="h-5 w-5" /></button>
+        <h1 className="text-[17px] font-bold">{def.label} 견적 요청</h1>
+      </header>
+      <div className="ur-content-narrow space-y-5 px-4 pb-10">
+        <h2 className="text-[24px] font-extrabold leading-snug tracking-tight">이대로 견적을 받을까요?</h2>
+        {recruiting}
         <div className="divide-y divide-rule rounded-2xl bg-surface px-5 shadow-lift">
-          {def.fields.map((f) => {
+          {def.fields.map((f, i) => {
             const v = shown(f, values)
             return (
-              <button key={f.key} type="button" onClick={() => setOpenKey(f.key)} className="flex w-full items-center gap-3 py-4 text-left">
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[13px] text-gray-500 dark:text-gray-400">
-                    {f.label}{!f.required && ' (선택)'}
-                  </span>
-                  <span className={`mt-1 block break-words text-[15px] ${v ? 'font-bold text-ink' : 'text-gray-400 dark:text-gray-500'}`}>
-                    {v || (f.type === 'select' || f.type === 'multi' ? '골라 주세요' : f.type === 'photos' ? '올려 주세요' : '알려 주세요')}
-                  </span>
+              <button key={f.key} type="button" onClick={() => edit(i)} className="flex w-full items-start gap-3 py-3 text-left">
+                <span className="w-24 shrink-0 pt-px text-[13px] text-gray-500 dark:text-gray-400">{f.label}</span>
+                <span className={`min-w-0 flex-1 break-words text-[13px] ${v ? 'font-bold text-ink' : f.required ? 'font-bold text-brand-text' : 'text-gray-400 dark:text-gray-500'}`}>
+                  {v || (f.required ? '알려 주세요' : '없음')}
                 </span>
-                <ChevronDown className="h-5 w-5 shrink-0 text-gray-400 dark:text-gray-500" />
+                <span className="shrink-0 text-[13px] text-gray-400 dark:text-gray-500">수정</span>
               </button>
             )
           })}
@@ -210,22 +236,6 @@ export default function LifeRequestFormPage() {
         </button>
         {!loggedIn && <p className="text-center text-[13px] text-gray-500 dark:text-gray-400">적은 내용은 로그인하고 돌아와도 그대로 남아 있어요.</p>}
       </div>
-
-      {openField && (openField.type === 'photos'
-        ? <PhotoSheet f={openField} value={values[openField.key] || ''} loggedIn={loggedIn} onClose={close}
-            onLogin={() => { saveDraft(def.key, values); navigate(loginPathFromHere()) }}
-            onDone={(v) => answer(openField, { [openField.key]: v })} />
-        : openField.type === 'select'
-        ? <OptionSheet f={openField} value={values[openField.key] || ''} onClose={close} onPick={(v) => answer(openField, { [openField.key]: v })} />
-        : openField.type === 'date'
-          ? <DateSheet f={openField} value={values[openField.key] || ''} lucky={def.luckyDays} onClose={close} onDone={(v) => answer(openField, { [openField.key]: v })} />
-          : openField.type === 'region'
-            ? <AddressSheet f={openField} onClose={close} onDone={(pub, full) => answer(openField, { [openField.key]: pub, [openField.key + PRIVATE_ADDRESS_SUFFIX]: full })} />
-            : openField.type === 'number'
-              ? <NumberSheet f={openField} value={values[openField.key] || ''} onClose={close} onDone={(v) => answer(openField, { [openField.key]: v })} />
-              : openField.type === 'multi'
-                ? <MultiSheet f={openField} value={values[openField.key] || ''} onClose={close} onDone={(v) => answer(openField, { [openField.key]: v })} />
-                : <TextSheet f={openField} value={values[openField.key] || ''} onClose={close} onDone={(v) => answer(openField, { [openField.key]: v })} />)}
     </div>
   )
 }

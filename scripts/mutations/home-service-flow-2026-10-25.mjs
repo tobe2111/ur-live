@@ -59,4 +59,20 @@ export default [
     test: T,
     why: '홈·FAQ 등 app-home 을 받는 모든 화면이 생활 견적 칸 정의를 첫 로딩에 받는다(+2KB).',
   },
+{
+    name: '생활흐름 — 답한 뒤 다음 단계로 안 넘어간다',
+    file: 'src/pages/life/LifeRequestFormPage.tsx',
+    find: 'setStep(editing ? REVIEW : step + 1)',
+    replace: 'setStep(editing ? REVIEW : step)',
+    test: T,
+    why: '답을 골라도 같은 질문에 멈춰 있어 "쭉쭉 자동으로" 가 깨진다.',
+  },
+  {
+    name: '생활흐름 — 지나온 질문을 기억하지 않아 로그인 뒤 처음부터 다시',
+    file: 'src/pages/life/request/draft.ts',
+    find: 'const i = fields.findIndex((f) => !values[f.key] && !seen.has(f.key))',
+    replace: 'const i = fields.findIndex((f) => !values[f.key])',
+    test: T,
+    why: '건너뛴 선택 칸(사진·메모) 때문에 로그인하고 돌아오면 확인 화면이 아니라 그 질문부터 다시 묻는다.',
+  },
 ]

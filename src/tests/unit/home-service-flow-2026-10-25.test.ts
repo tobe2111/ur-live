@@ -171,3 +171,22 @@ describe('생활 견적 규칙은 홈 첫 화면 묶음(app-home)에 섞이지 �
     expect(cfg).toContain("(id.includes('/src/shared/home-') && !id.includes('/src/shared/home-service'))")
   })
 })
+
+describe('🪜 단계식 요청서 (2026-10-25 대표 "단계별로 쭉쭉 자동으로 · 지금은 너무 세로로 길고")', () => {
+  it('처음엔 첫 질문 · 답한 것과 지나온 것은 건너뛰고 · 다 지나왔으면 확인 화면', async () => {
+    const { firstOpenStep, SEEN_KEY } = await import('@/pages/life/request/draft')
+    const fields = categoryDef('signage')!.fields
+    expect(firstOpenStep(fields, {})).toBe(0)
+    expect(firstOpenStep(fields, { [fields[0].key]: 'x' })).toBe(1)
+    expect(firstOpenStep(fields, { [SEEN_KEY]: `${fields[0].key},${fields[1].key}` })).toBe(2)
+    expect(firstOpenStep(fields, { [SEEN_KEY]: fields.map((f) => f.key).join(',') })).toBe(fields.length)
+  })
+  it('질문 화면은 단계 틀(진행 막대) 안에서 하나씩 — 목록은 확인 화면에만', () => {
+    const page = readCode('src/pages/life/LifeRequestFormPage.tsx')
+    expect(page).toMatch(/<StepFrameContext\.Provider value=\{\{ step: step \+ 1, total: REVIEW,/)
+    expect(page).toMatch(/if \(step < REVIEW\) \{\n\s+const f = def\.fields\[step\]/)
+    expect(page).toMatch(/setStep\(editing \? REVIEW : step \+ 1\)/)
+    const sheet = readCode('src/pages/life/request/Sheet.tsx')
+    expect(sheet).toMatch(/role="progressbar"/)
+  })
+})
