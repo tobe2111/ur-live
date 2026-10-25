@@ -16,3 +16,21 @@ describe('주소 질문 제목', () => {
     expect((src.match(/\$\{eulReul\(f\.label\)\} 알려 주세요/g) || []).length).toBe(2)
   })
 })
+
+describe('생활 첫 화면 타일 (A안)', () => {
+  it('모든 카테고리에 짧은 이름·그림이 있고, 이름은 두 줄·줄당 6자 이내', async () => {
+    const { LIFE_TILES } = await import('@/pages/life/life-tiles')
+    const { HOME_SERVICE_CATEGORIES } = await import('@/shared/home-service')
+    for (const d of HOME_SERVICE_CATEGORIES) {
+      const t = LIFE_TILES[d.key]
+      expect(t, d.key).toBeTruthy()
+      const lines = t[0].split('\n')
+      expect(lines.length, d.key).toBeLessThanOrEqual(2)
+      for (const l of lines) expect(l.length, `${d.key}: ${l}`).toBeLessThanOrEqual(6)
+    }
+  })
+  it('첫 화면에 카테고리 설명 문장을 다시 늘어놓지 않는다', () => {
+    const page = stripComments(readFileSync('src/pages/life/LifePage.tsx', 'utf8'))
+    expect(page).not.toMatch(/def\.blurb/)
+  })
+})
