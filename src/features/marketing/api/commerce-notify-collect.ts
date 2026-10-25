@@ -381,6 +381,26 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
   const totalBudget = applyQuantum(Math.min(envSubreqCap(env), Math.max(4, envPlanValue(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET, 12, 60, env))), cfg.q, 4)
   const budget = { left: totalBudget }
   const perService = Math.max(2, Math.floor(totalBudget / services.length))
+  /**
+   * 🍽️ **레코드 상한도 서비스별로 나눈다** (2026-10-25 — `detail` 이 굶고 있었다).
+   *
+   * 🩸 종전엔 `found` 가 **서비스 공유 누적**이라 `MAX_RECORDS_PER_RUN`(700) 을 `status` 가 먼저 다 먹고,
+   *   `detail` 은 루프 첫 검사에서 즉시 빠져 **한 페이지도 못 받았다**. 라이브 실측(2026-10-25):
+   *   최근 12회차 **전부** `stopped_by: records` · `found` 999~1,000 · `by_service` 에 `status` 만 존재.
+   *   ⇒ 취급품목(`trtmntPrdlstNm`)은 `detail` 에만 오므로 **그 값을 여태 한 번도 못 봤고**, 업종이
+   *   발송 가능 리드의 92%에서 `통신판매` 로 남은 원인이 여기였다(탐침을 붙여도 값이 올 수 없었다).
+   *
+   * 🧮 **CPU 총량은 그대로다** — 상한은 페이지를 *받기 전에* 보므로 양수 몫이면 어느 서비스든 **정확히
+   *   한 페이지**(`PAGE_ROWS` 500)를 받는다. 종전: status 2장 + detail 0장 = 1,000행.
+   *   이후: status 1장 + detail 1장 = **1,000행**(같다). 즉 `status` 수확 절반을 `detail` 이 받는 교환이고,
+   *   파싱량 = CPU 는 안 늘어난다(위 `MAX_RECORDS_PER_RUN` docblock 의 천장 계산 그대로).
+   *
+   * ⚠️ **전역 상한(`MAX_RECORDS_PER_RUN`)은 그대로 둔다** — 그게 CPU 천장이고, 몫만 두면
+   *   `N × (몫 + PAGE_ROWS)` 로 총량이 넘친다. 둘이 짝이다.
+   * ⚠️ **서비스를 3개로 늘리면 전역 상한이 다시 셋째를 굶긴다**(500+500 에서 700 을 넘는다).
+   *   그때는 상한·마감선을 **재측정**하고 올릴 것 — 몫만 늘리면 CPU 사망으로 돌아간다.
+   */
+  const recordsPerService = Math.max(1, Math.floor(MAX_RECORDS_PER_RUN / services.length))
 
   const startedAt = Date.now()
   // 🎚️ 마감선도 요금제를 따른다 — 유료 CPU 한도가 커지는데 12초로 묶으면 회차가 일찍 끊긴다.
@@ -400,6 +420,8 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
     const ck = `${CURSOR_KEY}_${svc.name}`
     const curRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(ck).first<{ value: string }>().catch(() => null)
     let page = parseInt(curRaw?.value || '1', 10); if (!Number.isFinite(page) || page < 1) page = 1
+    // 📏 이 서비스가 이번 회차에 다룬 레코드(몫 판정용) — 전역 `found` 와 별개다.
+    let foundThisService = 0
     // 🧾 **부기 몫을 남긴다**(2026-07-30 라이브 실측). 루프를 `budget.left > 0` 까지 돌리면 뒤따르는
     //   D1 쓰기 — 서비스별 커서 + 마지막 `persist(s)` — 가 예산 밖이 되어 **조용히 사라진다**.
     //   실측: 00:00 회차가 하트비트는 남겼는데(= 완주) `ads_commerce_stats` 는 전날 14:00 그대로였다.
@@ -408,7 +430,11 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
     for (let p = 0; p < perService && budget.left > services.length + 1; p++) {
       // ⏱️ CPU 한도에 닿기 전에 끊는다 — 끊어야 아래 커서 저장이 실행되고, 그래야 다음 회차가 전진한다.
       if (Date.now() - startedAt > runDeadlineMs) { stoppedBy = 'deadline'; break }
-      if (found >= MAX_RECORDS_PER_RUN) { stoppedBy = 'records'; break }
+      if (found >= MAX_RECORDS_PER_RUN) { stoppedBy = 'records'; break }   // 🔒 CPU 천장(회차 전체)
+      // 🍽️ 자기 몫을 다 쓰면 **다음 서비스에 넘긴다**. `stoppedBy` 를 세우지 않는다 — 회차가 멈춘 게
+      //   아니라 몫을 소진한 정상 종료다(그래서 수리 뒤 `stopped_by` 가 `records` 에서 사라지는 것이
+      //   이 변경의 E4 신호다).
+      if (foundThisService >= recordsPerService) break
       const { items, count, msg } = await fetchCommercePage(svc.base, svc.op, key, page, budget)
       if (msg) msgs.push(`${svc.label}: ${msg}`)
       if (items[0]) { const hasE = anyEmail(items[0]) !== ''; if (!sample || (hasE && !sampleHasEmail)) { sample = items[0]; sampleHasEmail = hasE } } // 이메일 든 샘플 우선(probe 정확도)
@@ -422,6 +448,7 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
       if (!count) break
       const leads = items.map(mapCommerceLead).filter(l => l.company_name.length >= 2)
       found += leads.length
+      foundThisService += leads.length
       closed += leads.filter(l => l.closed).length // 🪦 이번 회차에 걸러낸 폐업 — '수집량 하락'과 구분되게 보인다
       // 신규/재확인 분리(2026-07-29) — 원부를 다 훑으면 신규는 0 에 수렴한다. 그건 '죽음'이 아니라 '완주'다.
       const c = await saveCompanyLeadsCounted(DB, leads, { requireContact: true }).catch(() => ({ inserted: 0, upserted: 0 }))

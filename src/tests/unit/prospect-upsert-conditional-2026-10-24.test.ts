@@ -34,7 +34,7 @@
 import { describe, it, expect } from 'vitest'
 import { createRequire } from 'node:module'
 import { readFileSync } from 'node:fs'
-import { saveProspects, PROSPECT_DDL, type StoreProspect } from '@/features/marketing/api/store-prospects'
+import { saveProspects, PROSPECT_DDL, PROSPECT_VERIFY_STAMP_DAYS, type StoreProspect } from '@/features/marketing/api/store-prospects'
 
 // ⚠️ `node:sqlite` 를 정적 import 하면 vite 가 번들하려 들어 **시험이 아예 안 돈다**(선례:
 //   legacy-seller-lookup-owner-seat). `createRequire` 로 우회한다.
@@ -157,13 +157,29 @@ describe('조건부 upsert — 쓰기가 줄고 변화는 안 놓친다', () => 
     expect(row.active).toBe(0)        // 폐업 → active 0
   })
 
-  it('②-4 하루가 지나면 값이 같아도 재검증 도장을 한 번 찍는다(is_new_open 이 날짜 기준이라 필요)', async () => {
+  it('②-4 재검증 도장은 **창이 지난 뒤에만** 찍는다 — 창 안이면 값이 같아도 안 쓴다', async () => {
     const { db, d1 } = freshDb()
     await saveProspects(d1, [base()], TODAY)
     expect(await saveProspects(d1, [base()], TODAY)).toBe(0)
-    db.exec("UPDATE store_prospects SET last_verified_at = datetime('now','-2 day')")
-    expect(await saveProspects(d1, [base()], TODAY), '하루 넘은 행은 도장을 찍어야 한다').toBe(1)
+    // 🩸 2026-10-25: 이 자리가 종전엔 `-2 day` 로 **1 이 나오는 것**을 기대했다(창 1일). 그 창이
+    //   `collect-neis` 의 재방문 주기(~30~40h)보다 짧아서 **모든 재방문이 도장 대상**이 되어
+    //   수리 효과가 0 이었다. 창 안쪽은 **안 써야** 한다 — 그게 이 수리의 전부다.
+    const inside = Math.max(1, PROSPECT_VERIFY_STAMP_DAYS - 1)
+    db.exec(`UPDATE store_prospects SET last_verified_at = datetime('now','-${inside} days')`)
+    expect(await saveProspects(d1, [base()], TODAY), `창(${PROSPECT_VERIFY_STAMP_DAYS}일) 안쪽 ${inside}일 된 행에 도장을 찍고 있다 — 주기 > 창 이면 효과 0 으로 돌아간다`).toBe(0)
+    db.exec(`UPDATE store_prospects SET last_verified_at = datetime('now','-${PROSPECT_VERIFY_STAMP_DAYS + 1} days')`)
+    expect(await saveProspects(d1, [base()], TODAY), '창이 지난 행은 도장을 찍어야 한다').toBe(1)
     expect(await saveProspects(d1, [base()], TODAY), '찍은 뒤엔 다시 건너뛴다').toBe(0)
+  })
+
+  it('②-5 도장 창은 **가장 느린 레인의 재방문 주기보다 길다**(그게 이 상수의 존재 이유)', () => {
+    // 📐 실측 주기(2026-10-25): collect-neis 140,676행 ÷ 회당 3,508행 ≈ 40회차 ≈ 40시간
+    //   (24시간 내 도장 비율 79% → 약 30시간). 창은 그보다 **넉넉히** 길어야 한다.
+    const SLOWEST_REVISIT_HOURS = 40
+    expect(PROSPECT_VERIFY_STAMP_DAYS * 24, `창이 재방문 주기(${SLOWEST_REVISIT_HOURS}h)보다 짧거나 비슷하다 — 그러면 모든 재방문이 도장 대상이 되어 조건부 UPDATE 가 아무 일도 안 한다(2026-10-24 수리가 정확히 그래서 효과 0 이었다)`)
+      .toBeGreaterThan(SLOWEST_REVISIT_HOURS * 1.5)
+    // 🔗 SQL 이 **그 상수**를 쓰는지 — 숫자를 손으로 다시 적으면 상수를 올려도 아무 일이 안 일어난다.
+    expect(upsertSql(), "도장 조건이 상수를 안 쓴다(리터럴로 되돌아갔다)").toMatch(/last_verified_at < datetime\('now', '-\$\{PROSPECT_VERIFY_STAMP_DAYS\} days'\)/)
   })
 
   it('③ 반환값은 보낸 개수가 아니라 **실제 변경 행 수**다(total_saved 가 32배 부풀던 원인)', () => {
