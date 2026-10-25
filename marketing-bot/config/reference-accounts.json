@@ -2,8 +2,44 @@
   "_note": "벤치마크용 참고 계정 (읽기 전용 수집). username 은 Instagram 핸들(@ 제외). verified=false 는 핸들 미확인 — 첫 실행 결과의 not found 여부로 확인 후 수정.",
   "limit": 12,
   "accounts": [
-    { "label": "배민사장님", "username": "baemin_ceo", "verified": false },
-    { "label": "토스플레이스", "username": "tossplace", "verified": false },
-    { "label": "캐치테이블", "username": "catchtable_official", "verified": false }
+    {
+      "label": "배민사장님",
+      "username": "baemin_ceo",
+      "verified": false
+    },
+    {
+      "label": "토스플레이스",
+      "username": "tossplace",
+      "verified": false
+    },
+    {
+      "label": "캐치테이블",
+      "username": "catchtable_official",
+      "verified": false
+    },
+    {
+      "label": "아정당",
+      "username": "ajungdang",
+      "verified": false,
+      "note": "확인 필요"
+    },
+    {
+      "label": "야놀자",
+      "username": "yanolja",
+      "verified": false,
+      "note": "확인 필요"
+    },
+    {
+      "label": "여기어때",
+      "username": "yeogi.official",
+      "verified": false,
+      "note": "확인 필요"
+    },
+    {
+      "label": "네이버플러스 스토어 (AI 숏폼)",
+      "username": "naverplusstore",
+      "verified": false,
+      "note": "확인 필요"
+    }
   ]
 }
