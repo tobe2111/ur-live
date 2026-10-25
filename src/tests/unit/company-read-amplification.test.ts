@@ -65,7 +65,9 @@ const plan = (db: InstanceType<typeof DatabaseSync>, sql: string) =>
 const ENRICH_Q = `SELECT id FROM ad_company_leads
   WHERE (active = 0 OR email IS NULL OR email = '') AND merged_into IS NULL
     AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now', '-7 days') OR COALESCE(enrich_v, 0) < 9)
-  ORDER BY (CASE WHEN website IS NOT NULL AND website != '' THEN 0 ELSE 1 END), (CASE WHEN tier = 1 THEN 0 ELSE 1 END), active ASC, id DESC LIMIT 400`
+  ORDER BY (CASE WHEN website IS NOT NULL AND website != '' THEN 0 ELSE 1 END),
+           (CASE WHEN enrich_checked_at IS NULL THEN 0 ELSE 1 END),
+           (CASE WHEN tier = 1 THEN 0 ELSE 1 END), active ASC, id DESC LIMIT 400`
 
 /**
  * store-info-collect 가 회차 앞에서 도는 재보강 큐 — 라이브에서 20건 뽑으려고 387,003행을 읽었다.
@@ -79,7 +81,7 @@ describe('① 인덱스가 DDL 에 등재돼 있다', () => {
   it('두 인덱스가 COMPANY_DDL 로 펼쳐진다 — 여기서 빠지면 라이브에 생성되지 않는다', () => {
     const all = COMPANY_DDL.join('\n')
     expect(all).toContain('idx_company_leads_classify_todo')
-    expect(all).toContain('idx_company_leads_enrich_order')
+    expect(all).toContain('idx_company_leads_enrich_order_v2')
     expect(all).toContain('idx_company_leads_crawl_queue')
     expect(all).toContain('idx_company_leads_storeinfo_queue')
     // 기존 인덱스도 함께 살아 있어야 한다(모듈로 옮기며 잃어버리지 않았는지)
@@ -89,7 +91,7 @@ describe('① 인덱스가 DDL 에 등재돼 있다', () => {
 })
 
 describe('② 플래너가 실제로 그 인덱스를 쓴다 (node:sqlite 실증)', () => {
-  const idx = COMPANY_INDEX_DDL.filter(s => /classify_todo|enrich_order/.test(s))
+  const idx = COMPANY_INDEX_DDL.filter(s => /classify_todo|enrich_order/.test(s) && !/^DROP /.test(s.trim()))
 
   it('보강 대상 쿼리: 인덱스 없으면 전수 정렬 → 있으면 인덱스 순회 + 결과 동일', () => {
     const db = seed(4000)
@@ -100,7 +102,7 @@ describe('② 플래너가 실제로 그 인덱스를 쓴다 (node:sqlite 실증
     for (const s of idx) db.exec(s)
     db.exec('ANALYZE')
     const after = plan(db, ENRICH_Q)
-    expect(after).toContain('idx_company_leads_enrich_order')
+    expect(after).toContain('idx_company_leads_enrich_order_v2')
     expect(after).not.toContain('TEMP B-TREE FOR ORDER BY') // ← 이게 사라지는 것이 수리의 전부다
     expect(db.prepare(ENRICH_Q).all()).toEqual(rowsBefore) // 순서·내용 모두 동일
   })
@@ -141,13 +143,26 @@ describe('③ 인덱스와 쿼리의 짝 — 한쪽만 바뀌면 인덱스가 �
   it('enrich-lane 의 ORDER BY 와 인덱스의 정렬 키가 같다', () => {
     const order = enrichSrc.match(/ORDER BY \(CASE WHEN website[\s\S]*?LIMIT \$\{targetCap\}/)
     expect(order, 'enrich-lane 의 대상 ORDER BY 를 못 찾았다 — 쿼리가 바뀌었으면 인덱스도 함께 고칠 것').toBeTruthy()
-    const idxSql = COMPANY_INDEX_DDL.find(s => s.includes('idx_company_leads_enrich_order'))!
+    const idxSql = COMPANY_INDEX_DDL.find(s => s.includes('idx_company_leads_enrich_order_v2'))!
     const norm = (s: string) => s.replace(/\s+/g, ' ')
-    // 정렬 키 4개가 인덱스에도 같은 순서로 들어 있어야 한다
-    expect(norm(idxSql)).toContain("(CASE WHEN website IS NOT NULL AND website != '' THEN 0 ELSE 1 END)")
-    expect(norm(idxSql)).toContain('(CASE WHEN tier = 1 THEN 0 ELSE 1 END)')
-    expect(norm(idxSql)).toContain('active, id DESC')
+    // 정렬 키 5개가 인덱스에도 **같은 순서로** 들어 있어야 한다(2026-10-24: 미착수 키가 사이트 키 다음에 추가됐다)
+    const keys = [
+      "(CASE WHEN website IS NOT NULL AND website != '' THEN 0 ELSE 1 END)",
+      '(CASE WHEN enrich_checked_at IS NULL THEN 0 ELSE 1 END)',
+      '(CASE WHEN tier = 1 THEN 0 ELSE 1 END)',
+      'active, id DESC',
+    ]
+    let at = -1
+    for (const k of keys) {
+      const i = norm(idxSql).indexOf(k)
+      expect(i, `인덱스에 ${k} 가 없다`).toBeGreaterThan(at)
+      at = i
+    }
     expect(norm(idxSql)).toContain('WHERE merged_into IS NULL') // 부분 인덱스 조건 = 쿼리의 WHERE 항
+    // 🔑 **이름이 v2 다** — `CREATE INDEX IF NOT EXISTS` 는 같은 이름이 있으면 컬럼이 달라도 아무것도
+    //   안 하므로, 키를 바꿀 때 이름을 그대로 두면 라이브엔 옛 인덱스가 남아 조용히 무시된다.
+    expect(COMPANY_INDEX_DDL.some(x => /DROP INDEX IF EXISTS idx_company_leads_enrich_order\b/.test(x)),
+      '옛 인덱스를 떨어뜨리는 문장이 있어야 한다(안 지우면 쓰이지 않는 인덱스가 쓰기마다 비용을 낸다)').toBe(true)
   })
 })
 

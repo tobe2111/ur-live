@@ -321,6 +321,20 @@ export interface CommerceStats {
     configured: boolean; error?: string; sample?: unknown
     /** 📊 원본 필드가 **실제로 몇 % 채워져 오는가** + 형식 예시(가려짐). 추가 요청 0(받아온 응답을 셀 뿐). */
     coverage?: FieldCoverage[]
+    /**
+     * 🔭 **엔드포인트별** 샘플·커버리지 (2026-10-24).
+     *
+     *   위 `sample`/`coverage` 는 두 서비스가 **한 변수를 공유**한다. `sample` 은 "이메일 든 쪽 우선"
+     *   이라 이메일을 주는 `status`(등록현황)가 **늘 이기고**, `coverage` 는 마지막 페이지가 덮는다.
+     *   ⇒ `detail`(등록상세) 응답의 필드 목록을 **한 번도 본 적이 없었다**(라이브 실측 2026-10-24:
+     *   저장된 coverage 18필드가 전부 status 것이고 `trtmntPrdlstNm`·`ntslPrdlstCn` 이 둘 다 없다).
+     *
+     *   그게 업종 분류가 비어 있는 이유와 직접 이어진다 — 취급품목은 detail 에만 오고, 지금 그 값은
+     *   숫자 코드(`'12'`·`'01 06'`)인데 **코드표를 모른다**. 차선 별칭 `ntslPrdlstCn`(판매품목)이
+     *   한글이면 코드표가 아예 필요 없는데, `g()` 는 첫 값만 쓰므로 그 필드를 한 번도 안 본다.
+     *   ⚠️ **추가 요청 0** — 이미 받는 응답을 저장만 나눈다.
+     */
+    by_service?: Record<string, { sample?: unknown; coverage?: FieldCoverage[] }>
     /** 빈 필드 한 줄 요약 — 상태줄용. */
     coverage_note?: string
   }
@@ -376,6 +390,9 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
   // 📊 커버리지는 **가장 최근에 받은 한 페이지**로 잰다(누적하면 스냅샷이 커지고, 페이지마다 채움률이
   //   다를 이유도 없다). 이 값이 "필드 이름을 추측으로 쓰던" 반복 실패를 끝내는 유일한 근거다.
   let coverage: FieldCoverage[] = []
+  // 🔭 엔드포인트별로도 따로 남긴다 — 위 `sample`/`coverage` 는 한 변수를 공유해서 `detail` 응답을
+  //   한 번도 못 봤다(근거는 `CommerceStats.diag.by_service` docblock). 비용은 스냅샷 크기뿐이다.
+  const byService: Record<string, { sample?: unknown; coverage?: FieldCoverage[] }> = {}
   const msgs: string[] = []
   for (const svc of services) {
     // 첫 서비스가 마감선을 다 썼으면 두 번째는 시작하지 않는다(시작하면 그 회차가 통째로 죽는다).
@@ -396,6 +413,12 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
       if (msg) msgs.push(`${svc.label}: ${msg}`)
       if (items[0]) { const hasE = anyEmail(items[0]) !== ''; if (!sample || (hasE && !sampleHasEmail)) { sample = items[0]; sampleHasEmail = hasE } } // 이메일 든 샘플 우선(probe 정확도)
       if (items.length) coverage = fieldCoverage(items)
+      // 🔭 같은 값을 **서비스별 칸**에도 둔다(위 둘은 공유 변수라 detail 이 늘 덮인다).
+      if (items[0] || items.length) {
+        const slot = (byService[svc.name] ??= {})
+        if (items[0] && !slot.sample) slot.sample = items[0]
+        if (items.length) slot.coverage = fieldCoverage(items)
+      }
       if (!count) break
       const leads = items.map(mapCommerceLead).filter(l => l.company_name.length >= 2)
       found += leads.length
@@ -410,7 +433,7 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
   }
   // 저장 0인데 API 메시지가 있으면 진단에 노출(활용신청 미승인/키오류/파라미터 등 원인 표시).
   const error = saved === 0 && msgs.length ? `API: ${msgs.join(' | ')}` : undefined
-  const s: CommerceStats = { last_run: stamp, found, saved, upserted, closed, page: lastPage, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, stopped_by: stoppedBy, elapsed_ms: Date.now() - startedAt, diag: { configured: true, error, sample, coverage, coverage_note: coverageNote(coverage) || undefined } }
+  const s: CommerceStats = { last_run: stamp, found, saved, upserted, closed, page: lastPage, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, stopped_by: stoppedBy, elapsed_ms: Date.now() - startedAt, diag: { configured: true, error, sample, coverage, coverage_note: coverageNote(coverage) || undefined, ...(Object.keys(byService).length ? { by_service: byService } : {}) } }
   await persist(s)
   return s
 }

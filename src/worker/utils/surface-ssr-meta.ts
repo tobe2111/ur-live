@@ -18,6 +18,7 @@ import { canonicalShopPath } from '../../shared/seo/shop-canonical'
 // 🗺️ 워커 전용 — 이 표를 크리티컬 패스(consumer-surfaces)에서 끌어오면 app-constants 청크가 첫 페인트로 딸려온다.
 import { normalizeSido, regionPath } from '../../shared/constants/region-slugs'
 import { ROBOTS_NOINDEX } from '../../shared/seo/robots-directives'
+import { isHubCanonical, NOIMAGEINDEX_META } from '../../shared/seo/image-hub'
 
 /** 시군구 형태 — '중구'·'파주시'·'양양군'. 접두부 1글자 허용(중구·동구·남구가 탈락하지 않게). */
 const SIGUNGU_RE = /^[가-힣]{1,10}(시|군|구)$/
@@ -82,6 +83,10 @@ export function applySurfaceMeta<T extends RewriterLike<T>>(rb: T, meta: Surface
   }
   const ld = meta.jsonLd
   let withCanon = applyCanonical(out, meta.canonical)
+  // 🖼️ 2026-10-24 허브 표면은 사진만 이미지 색인에서 뺀다 — 출처가 상세로 잡히게(`shared/seo/image-hub.ts`).
+  if (isHubCanonical(meta.canonical)) {
+    withCanon = withCanon.on('head', { element(el) { el.append(NOIMAGEINDEX_META, { html: true }) } })
+  }
   if (ld) {
     withCanon = withCanon.on('head', {
       element(el) { el.append(`<script type="application/ld+json">${ld}</script>`, { html: true }) },

@@ -8,6 +8,7 @@
  *   ⚠️ 호출부 호환: `company-discovery.ts` 가 그대로 re-export 하므로 기존 import 경로는 바뀌지 않는다.
  */
 import { classifyLead, suspectCompanyName, REGISTRY_CATEGORY_SOURCES, CLASSIFY_RULES_VERSION } from './company-classify'
+import { refineRegistryLabel } from './company-taxonomy'
 import { normalizeCompanyName } from './registry-email-match'
 import {
   ensureCompanySchema, hasContact, companyKey,
@@ -51,7 +52,12 @@ export async function saveCompanyLeadsCounted(DB: D1Database, leads: CompanyLead
       if (registry) {
         // 공식 업종 유지 + 등록부 실재 업체라 접촉가치 미상이면 파트너로(기관 어휘 감지는 존중).
         const t = c.lead_type === 'unknown' && !suspect ? 'partner' : c.lead_type
-        return { ...l, _type: t, _conf: suspect ? 'none' : 'registry' }
+        // 🧭 **등록부 코드는 거칠다** — 상호에 국가자격 표기가 있으면 그것이 더 구체적인 근거다
+        //   (2026-10-24 실측: 상가정보 `M10307`='노무' 안에 `솔숲노동법률사무소`·`노동법률사무소선의`,
+        //    `M10402`='세무사' 안에 `출입국대표행정사도담행정사사무소`). 권위 역전이 아니라 정밀화이고,
+        //   `온라인판매`(통신판매 신고)는 덮지 않는다 — 근거는 `company-taxonomy.ts` docblock.
+        const ref = refineRegistryLabel(l)
+        return { ...l, category: ref.category, subcategory: ref.subcategory, tier: ref.tier, _type: t, _conf: suspect ? 'none' : 'registry' }
       }
       // webkr 제목-파편 의심 이름은 저장 시점부터 '분류 확인'(none) — 재분류에만 있던 강등을 입구에도 동일 적용.
       const conf = l.source === 'webkr' && c.confidence !== 'evidence' && suspect ? 'none' : c.confidence
