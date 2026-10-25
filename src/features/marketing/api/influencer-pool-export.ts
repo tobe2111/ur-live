@@ -6,6 +6,8 @@ import { ensureOutreachColumns } from './outreach-webhook'
 // ⚖️ 법적 문구는 **발송 경로와 같은 SSOT** 를 쓴다 — 여기서 따로 쓰면 법이 바뀔 때 한쪽만 고쳐진다.
 import { dedupeByEmail } from './outreach-queue'
 import { outreachSubject, outreachBody } from './outreach-template'
+// 📥 "받은 건 다시 안 준다" — 도장/묶음 크기는 세 풀 공용 SSOT(`pool-export-batch.ts`).
+import { EXPORT_BATCH_ROWS, NOT_EXPORTED_SQL, ensureExportStamp, exportBatchStamp, stampExported } from './pool-export-batch'
 
 /**
  * 🎯 인플루언서 풀 전체 다운로드 응답 빌더 (admin-ads-influencers.routes 에서 추출 — 600줄 캡 준수).
@@ -39,14 +41,15 @@ export const EXPORT_PLATFORMS: Record<string, string> = {
  *     · 아직 연락 안 한 사람(contacted_at 없음)  · 반송·스팸신고 이력 제외(보내면 튕긴다)
  *   정렬은 기존과 동일(점수순) — 파일 위에서부터 순서대로 연락하면 된다. 미지정 시 기존 동작(전체) 불변.
  */
-export async function buildInfluencerExportResponse(DB: D1Database, poolId: number, format: string, platform?: string, opts?: { contactable?: boolean; minScore?: number; coreFirst?: boolean }): Promise<Response> {
+export async function buildInfluencerExportResponse(DB: D1Database, poolId: number, format: string, platform?: string, opts?: { contactable?: boolean; minScore?: number; coreFirst?: boolean; newOnly?: boolean }): Promise<Response> {
   await ensureInfluencerSchema(DB)  // 성과/컨택 컬럼 보장(미보강 DB 에서 'no such column' 빈 파일 방지)
   await ensureQualityColumns(DB)    // lead_score/is_brand/category_source — SELECT·정렬이 참조
   await ensurePerfExtraColumns(DB)  // median_long_views/shorts_ratio/last_post_at
   await ensureOutreachColumns(DB)   // email_status(반송·스팸신고 — 발송 안전 정보)
+  await ensureExportStamp(DB, 'influencer') // exported_at — 미다운로드 필터·도장이 참조
   // 🛡️ 2026-07-23 전수조사: 단일 SELECT LIMIT 20000 하드캡 — 28k 풀에서 8천 명이 조용히 누락되던 것.
   //   5천행 페이지 읽기(D1 응답크기 안전)로 전환 + 상한 60000(현 풀 2배 여유 — 초과 시에만 잘림).
-  type ExpRow = { id: number; platform: string; name: string; handle: string | null; url: string; subscriber_count: number; email: string | null; instagram: string | null; tiktok: string | null; links: string | null; category: string | null; region: string | null; source_keyword: string | null; status: string; collected_at: string; recent_avg_views: number | null; recent_avg_comments: number | null; recent_posts_30d: number | null; contact_channel: string | null; contacted_at: string | null; follow_up_at: string | null; source: string | null; consented_at: string | null; memo: string | null; lead_score: number | null; median_long_views: number | null; shorts_ratio: number | null; is_brand: number | null; email_status: string | null; last_post_at: string | null; category_source: string | null; opted_out: number | null }
+  type ExpRow = { id: number; platform: string; name: string; handle: string | null; url: string; subscriber_count: number; email: string | null; instagram: string | null; tiktok: string | null; links: string | null; category: string | null; region: string | null; source_keyword: string | null; status: string; collected_at: string; recent_avg_views: number | null; recent_avg_comments: number | null; recent_posts_30d: number | null; contact_channel: string | null; contacted_at: string | null; follow_up_at: string | null; source: string | null; consented_at: string | null; memo: string | null; lead_score: number | null; median_long_views: number | null; shorts_ratio: number | null; is_brand: number | null; email_status: string | null; last_post_at: string | null; category_source: string | null; opted_out: number | null; exported_at: string | null }
   const rows: ExpRow[] = []
   // 🎯 매체별 분리 다운로드(2026-07-28 대표 요청) — 화이트리스트 밖 값은 무시하고 전체(기존 동작).
   const plat = platform && EXPORT_PLATFORMS[platform] ? platform : ''
@@ -76,21 +79,39 @@ export async function buildInfluencerExportResponse(DB: D1Database, poolId: numb
   const coreFirst = opts?.coreFirst
     ? `CASE WHEN category IN (${coreCats.map(c => `'${c}'`).join(',')}) THEN 0 ELSE 1 END, `
     : ''
-  const PAGE = 5000, CAP = 60000
-  for (let off = 0; off < CAP; off += PAGE) {
+  // 📥 **미다운로드만** (2026-10-25 대표 확정 — 기본 동작). 이게 켜지면 상한이 풀 전체가 아니라
+  //   한 묶음(500)이 되고, 모은 행에 도장이 찍혀 다음 다운로드엔 그 **다음** 500명이 나온다.
+  //   ⚠️ 끄면(전체 덤프) 도장을 찍지 않는다 — 풀 사본 한 번이 전 리드를 소진시키면 안 된다.
+  const newOnlyFilter = opts?.newOnly ? ` AND ${NOT_EXPORTED_SQL}` : ''
+  const PAGE = 5000, CAP = opts?.newOnly ? EXPORT_BATCH_ROWS : 60000
+  for (let off = 0; off < CAP; off += Math.min(PAGE, CAP)) {
+    const take = Math.min(PAGE, CAP - off) // 묶음 모드(500)에서 LIMIT 가 상한을 넘지 않게
     // 정렬: 카테고리별 시트 분리 유지 + 시트 안은 리드점수순(미채점 후순위) — "누구부터 컨택?"이 파일 순서로 답 됨.
     const page = (await DB.prepare(`SELECT id, platform, name, handle, url, subscriber_count, email, instagram, tiktok, links, category, region, source_keyword, status, collected_at,
         recent_avg_views, recent_avg_comments, recent_posts_30d, contact_channel, contacted_at, follow_up_at, source, consented_at, memo,
-        lead_score, median_long_views, shorts_ratio, is_brand, email_status, last_post_at, category_source, opted_out
-      FROM ad_influencer_leads WHERE account_id = ?${platFilter}${contactFilter}${scoreFilter} ORDER BY ${coreFirst}category, (lead_score IS NULL) ASC, lead_score DESC, subscriber_count DESC, id DESC LIMIT ? OFFSET ?`)
-      .bind(...(plat ? [poolId, plat, PAGE, off] : [poolId, PAGE, off])).all<ExpRow>().catch(() => null))?.results || []
+        lead_score, median_long_views, shorts_ratio, is_brand, email_status, last_post_at, category_source, opted_out, exported_at
+      FROM ad_influencer_leads WHERE account_id = ?${platFilter}${contactFilter}${scoreFilter}${newOnlyFilter} ORDER BY ${coreFirst}category, (lead_score IS NULL) ASC, lead_score DESC, subscriber_count DESC, id DESC LIMIT ? OFFSET ?`)
+      .bind(...(plat ? [poolId, plat, take, off] : [poolId, take, off])).all<ExpRow>().catch(() => null))?.results || []
     rows.push(...page)
-    if (page.length < PAGE) break
+    if (page.length < take) break
   }
   // 🧹 연락 대상 목록만 같은 주소 중복 제거 — 발송 큐와 **같은 규칙**(`dedupeByEmail` SSOT).
   //   ⚠️ 전체 내보내기(contactable 아님)는 건드리지 않는다 — 그건 *풀의 사본*이라 행이 사라지면
   //   대표가 "왜 내 리드가 없지?" 가 된다. 중복이 해로운 건 **보낼 때**뿐이다.
   const outRows = opts?.contactable ? dedupeByEmail(rows) : rows
+  // 📥 도장 — **모은 행 전부**(`rows`)에 찍는다. 중복제거로 빠진 행도 **같은 주소가 파일에 실려 나갔으니**
+  //   다음 묶음에 다시 올라오면 대표가 같은 사람에게 두 번 보내게 된다(그 주소의 형제 행이다).
+  //   ⚠️ 전송이 끊기면 "찍혔는데 파일은 없는" 상태가 된다 — 복구는 배치 취소(`cancelExportBatch`).
+  const batchStamp = exportBatchStamp()
+  let stamped = 0, remaining = 0
+  if (opts?.newOnly && rows.length) {
+    stamped = await stampExported(DB, 'influencer', rows.map(r => r.id), batchStamp)
+    // 남은 미다운로드 — **도장을 찍은 뒤** 세므로 이 묶음은 이미 빠져 있다(파일에 적는 값이 곧 다음 회차 분량).
+    const cnt = await DB.prepare(`SELECT COUNT(*) AS n FROM ad_influencer_leads
+      WHERE account_id = ?${platFilter}${contactFilter}${scoreFilter}${newOnlyFilter}`)
+      .bind(...(plat ? [poolId, plat] : [poolId])).first<{ n: number }>().catch(() => null)
+    remaining = Number(cnt?.n) || 0
+  }
   const PLAT: Record<string, string> = { youtube: '유튜브', naver_blog: '네이버블로그', naver_cafe: '네이버카페', tistory: '티스토리', instagram: '인스타그램', tiktok: '틱톡' }
   const CH_KO: Record<string, string> = { email: '이메일', dm: '인스타DM', note: '네이버쪽지', kakao: '카톡', call: '전화', other: '기타' }
   const HEAD = ['ID', '플랫폼', '이름', '핸들', 'URL', '🏅점수', '구독자', '평균조회수', '롱폼중앙값', '쇼츠%', '평균댓글', '月포스팅', '마지막글', '이메일', '메일상태', '인스타그램', '틱톡', '기타링크', '✉️제목(광고표기)', '✉️본문틀', '📍지역', '카테고리', '분류근거', '제외태그', '수집키워드', '상태', '컨택채널', '컨택일', '팔로업', '출처', '동의일', '메모', '수집일']
@@ -119,7 +140,10 @@ export async function buildInfluencerExportResponse(DB: D1Database, poolId: numb
 
   if (format === 'csv') {
     const csvEscapeCell = (v: string | number) => { const s = String(v ?? ''); const g = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s; return /[",\n]/.test(g) ? `"${g.replace(/"/g, '""')}"` : g }
-    const body = [HEAD.join(','), ...outRows.map(r => cells(r).map(csvEscapeCell).join(','))].join('\r\n')
+    const lines = [HEAD.join(','), ...outRows.map(r => cells(r).map(csvEscapeCell).join(','))]
+    // 🔔 **잘렸다는 말을 반드시 한다** — 이 파일에 고지가 없던 것이 2026-10-25 수리의 세 번째 원인이었다.
+    if (opts?.newOnly) lines.push(`\u200b이 묶음 ${stamped}명에 "내보냄" 표시를 했습니다 (도장 ${batchStamp}) · 남은 미다운로드 ${remaining}명 — 다시 받으면 그 다음 ${EXPORT_BATCH_ROWS}명이 나옵니다`)
+    const body = lines.join('\r\n')
     return new Response('﻿' + body, { headers: { 'Content-Type': 'text/csv;charset=utf-8', 'Content-Disposition': `attachment; filename="${fname}.csv"` } })
   }
 
@@ -132,7 +156,10 @@ export async function buildInfluencerExportResponse(DB: D1Database, poolId: numb
   const sheetName = (name: string) => xe(name.replace(/[\\/?*[\]:]/g, ' ').slice(0, 31) || '기타')
   const byCat = new Map<string, typeof outRows>()
   for (const r of outRows) { const k = r.category || '기타'; const arr = byCat.get(k) || []; arr.push(r); byCat.set(k, arr) }
-  const sheetPlan = [{ name: `전체 (${outRows.length})`, rs: outRows }, ...Array.from(byCat.entries()).map(([k, rs]) => ({ name: `${k} (${rs.length})`, rs }))]
+  // 🔔 묶음 모드면 **시트 이름에 남은 건수**를 적는다 — 파일을 열면 "다음에 몇 명 더 있나"가 바로 보인다
+  //   (시트명은 엑셀 31자 제한이라 `sheetName()` 이 자른다).
+  const allName = opts?.newOnly ? `전체 ${outRows.length} · 남은 ${remaining}` : `전체 (${outRows.length})`
+  const sheetPlan = [{ name: allName, rs: outRows }, ...Array.from(byCat.entries()).map(([k, rs]) => ({ name: `${k} (${rs.length})`, rs }))]
   const enc = new TextEncoder()
   function* chunks(): Generator<string> {
     yield `<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?>\n<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Styles><Style ss:ID="h"><Font ss:Bold="1"/><Interior ss:Color="#EEF2F7" ss:Pattern="Solid"/></Style></Styles>`
