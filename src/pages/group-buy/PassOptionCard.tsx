@@ -55,7 +55,7 @@ export default function PassOptionCard({
         </div>
         <div className="px-4 pt-3 pb-4" style={{ background: 'var(--gbd-chip)' }}>
           <div className="flex items-baseline flex-wrap gap-x-2">
-            {refPrice > unitPrice && <span className="text-[13px] line-through" style={{ color: 'var(--gbd-sub2)' }}>{formatNumber(refPrice)}원</span>}
+            {refPrice > unitPrice && <span className="text-[13px] line-through" style={{ color: 'var(--gbd-sub)' }}>{formatNumber(refPrice)}원</span>}
             <span className="text-[24px] font-bold tracking-[-.02em]" style={{ color: 'var(--gbd-ink)' }}>{formatNumber(unitPrice)}원</span>
             {discountPct > 0 && <span className="text-[13px] font-medium" style={{ color: 'var(--sale)' }}>-{discountPct}%</span>}
           </div>
