@@ -39,7 +39,7 @@ import { VOUCHERS_DEFAULT_CATEGORY } from '../../shared/seo/voucher-facet'
 import { STRIP_CLS, HERO_CARD_CLS, HERO_RAIL_CLS, stripBannerImageUrl, bannersOfSlot, heroEdgeFillCss } from '../../shared/home-strip-banners'
 import { resolveBannerLink } from '../../components/home/banner-link'
 import {
-  VOUCHER_TILE_CLASS, VOUCHER_TILE_ABOVE_FOLD, VOUCHER_TILE_IMG_W, VOUCHER_TILE_SIZES, voucherSoldLabel,
+  VOUCHER_TILE_CLASS, VOUCHER_CAT_TAB, VOUCHER_TILE_ABOVE_FOLD, VOUCHER_TILE_IMG_W, VOUCHER_TILE_SIZES, voucherSoldLabel,
 } from '../../shared/voucher-tile'
 
 /** 서버가 그리는 타일 수 — 폰 한 화면(844px)에 보이는 두 줄(3 × 2). 나머지는 마운트 뒤 React 가 그린다. */
@@ -52,24 +52,24 @@ const PAGE_SIZE = 20
 export const VOUCHERS_FS_CLASS = {
   page: 'bg-warm dark:bg-[#11141C] pb-safe-nav md:pb-20 min-h-[100dvh]',
   hero: 'relative h-[196px] overflow-hidden bg-gray-900 dark:bg-surface',
-  overlap: 'relative z-10 -mt-7 px-4',
+  overlap: 'relative z-10 -mt-7 px-5',
   reveal: 'sticky top-0 z-20 bg-warm pt-1',
   balanceBar: 'w-full flex items-center justify-between gap-2 rounded-xl bg-surface shadow-lift active:scale-[0.99] transition-transform h-11 px-4',
   balanceText: 'text-[12px] text-gray-600 dark:text-gray-300 truncate text-left',
   balanceLink: 'shrink-0 inline-flex items-center gap-1 text-[12px] font-medium text-brand-text',
-  chipWrap: 'ur-content-wide px-4 lg:px-8 py-2',
-  chipRow: 'flex gap-2 overflow-x-auto scrollbar-hide invisible',
-  chip: 'shrink-0 inline-flex items-center gap-2 h-9 pl-3 pr-4 rounded-full text-[13px] font-medium',
-  brandWrap: 'ur-content-wide px-4 lg:px-8 pt-2 pb-3 invisible',
+  chipWrap: VOUCHER_CAT_TAB.wrap,
+  chipRow: `${VOUCHER_CAT_TAB.row} invisible`,
+  chip: `${VOUCHER_CAT_TAB.tab} ${VOUCHER_CAT_TAB.on}`,
+  brandWrap: 'ur-content-wide px-5 lg:px-8 pt-2 pb-3 invisible',
   brandRow: 'flex gap-2 overflow-x-auto scrollbar-hide py-1 -mx-1 px-1',
   brandItem: 'flex flex-col items-center gap-1 shrink-0',
   brandTile: 'w-12 h-12 rounded-2xl block',
   brandLabel: 'text-[12px] max-w-[56px]',
-  sortBar: 'ur-content-wide px-4 lg:px-8 pt-3 pb-2 border-t border-gray-100 dark:border-[#2C2F35] flex items-center justify-between gap-2',
-  sortTitle: 'text-[15px] font-bold text-gray-900 dark:text-white flex items-center gap-2 min-w-0',
-  sortCount: 'text-[13px] font-medium text-gray-400 dark:text-gray-500 shrink-0',
+  sortBar: 'ur-content-wide px-5 lg:px-8 pt-5 pb-3 flex items-center justify-between gap-2',
+  sortTitle: 'text-[17px] font-bold text-gray-900 dark:text-white flex items-baseline gap-2 min-w-0',
+  sortCount: 'text-[15px] text-gray-500 dark:text-gray-400 shrink-0',
   sortBtn: 'inline-flex items-center gap-1 rounded-full border border-line bg-surface px-3 py-2 text-[12px] font-medium text-gray-900 dark:text-white active:scale-[0.98] transition-transform',
-  listWrap: 'ur-content-wide px-4 lg:px-8 pt-1 pb-6',
+  listWrap: 'ur-content-wide px-5 lg:px-8 pt-1 pb-6',
   /** 🎟️ 2026-10-14 B안 — 목록은 3열 타일. 타일 안 클래스는 `VOUCHER_TILE_CLASS`(React 와 같은 상수). */
   list: VOUCHER_TILE_CLASS.grid,
 } as const

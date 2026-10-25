@@ -681,11 +681,12 @@ export default function GroupBuyDetailPage() {
             결제 때 `getPurchaseRef()` 로 실려 간다(살아 있는 레일 = 매장이 제안한 딜 소개비).
             되살리려면 배너를 새로 쓸 것: 비율·수령자가 2026-08 이후 정책과 다르다. */}
 
-        {/* 🛍️ 2026-10-24 (대표 승인 "그루폰식"): 제목 → [가게 · 종류 · 지역] → 주소·거리 → 별점·리뷰·구매 수.
-            가격은 아래 '옵션 선택' 카드로. 서버 첫 화면(`detail-ssr-body.ts`)과 같은 클래스(`PASS_HEAD`)를 쓴다. */}
+        {/* 🛍️ 2026-10-24 (대표 승인 "그루폰식") → 🔤 2026-10-25 D안: [가게 · 종류 · 지역] → 제목 → 별점 → 주소 → 가격.
+            옵션 카드는 고른 옵션과 구매만. 서버 첫 화면(`detail-ssr-body.ts`)과 같은 클래스(`PASS_HEAD`)를 쓴다. */}
         <PassHeadCard merchant={detail.restaurant_name} category={detail.category} address={detail.restaurant_address}
           onnuri={(detail as { onnuri_merchant?: boolean }).onnuri_merchant} isPrelaunch={isPrelaunch} name={detail.name} distKm={distKm}
-          buyers={Number((detail as { sold_count?: number }).sold_count ?? detail.group_buy_current) || 0} rating={detail.avg_rating} reviewCount={detail.review_count} />
+          buyers={Number((detail as { sold_count?: number }).sold_count ?? detail.group_buy_current) || 0} rating={detail.avg_rating} reviewCount={detail.review_count}
+          unitPrice={unitPrice} refPrice={refPrice} discountPct={displayDiscountPct} />
         {!isOwnProduct && !isPrelaunch && <PassOptionCard name={detail.name} unitPrice={unitPrice} refPrice={refPrice} discountPct={displayDiscountPct}
           quantity={quantity} setQuantity={setQuantity} maxQty={maxQty} buyable={buyable} isJoinable={isJoinable} joining={joining} onOpen={() => setBuyOpen(n => n + 1)} />}
 

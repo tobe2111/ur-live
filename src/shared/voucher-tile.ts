@@ -10,22 +10,35 @@
  *   (React 를 import 하면 워커 번들에 섞이므로 이 파일은 순수 상수만 갖는다.)
  */
 export const VOUCHER_TILE_CLASS = {
-  /** 3열 격자 — 4px 격자(가로 8 · 세로 24). 태블릿 폭은 4열. */
-  grid: 'grid grid-cols-3 sm:grid-cols-4 gap-x-2 gap-y-6',
+  /** 3열 격자 — 4px 격자(가로 12 · 세로 32, 2026-10-25 D안). 태블릿 폭은 4열. */
+  grid: 'grid grid-cols-3 sm:grid-cols-4 gap-x-3 gap-y-8',
   root: 'ur-cv-card min-w-0 flex flex-col text-left cursor-pointer active:opacity-70 transition-opacity',
   thumb: 'relative aspect-square w-full overflow-hidden rounded-xl bg-wash',
   img: 'w-full h-full object-cover',
   /** 브랜드 줄 — 누르면 그 브랜드로 거른다(카카오 선물하기의 `브랜드 ›`). */
-  brand: 'mt-2 max-w-full inline-flex items-center gap-1 self-start text-[13px] font-medium text-gray-900 dark:text-white',
+  brand: 'mt-3 max-w-full inline-flex items-center gap-1 self-start text-[12px] text-gray-500 dark:text-gray-400',
   brandName: 'truncate',
   chev: 'shrink-0 text-gray-400 dark:text-gray-500',
   /** 이름 두 줄 — 한 줄짜리 이름도 같은 높이를 차지해 아래 가격 줄이 열마다 맞는다. */
-  title: 'mt-1 text-[13px] leading-snug line-clamp-2 min-h-[36px] text-gray-600 dark:text-gray-300',
-  priceRow: 'mt-1 flex items-baseline gap-1 min-w-0',
+  title: 'mt-1 text-[13px] leading-[1.45] line-clamp-2 min-h-[38px] text-gray-900 dark:text-white',
+  priceRow: 'mt-2 flex items-baseline gap-1 min-w-0',
   discount: 'text-[15px] font-bold text-sale tracking-tight',
   price: 'text-[15px] font-bold text-gray-900 dark:text-white tracking-tight',
-  unit: 'text-[12px] font-medium text-gray-900 dark:text-white',
+  unit: 'text-[13px] text-gray-900 dark:text-white',
   meta: 'mt-1 text-[12px] text-gray-400 dark:text-gray-500',
+} as const
+
+/**
+ * 🗂️ 카테고리 줄 — 2026-10-25 대표 확정 **D안**(*"교환권 페이지는 D"*): 알약 칩 → **밑줄 탭**.
+ *   선택은 굵은 잉크 + 2px 밑줄, 나머지는 보통 굵기 회색. 아이콘·개수는 뺐다(개수는 아래 섹션 제목이 말한다).
+ *   React 칩 줄 · 자리 예약(`TopChromeReserve`) · 워커 첫 화면이 **이 상수 하나**를 쓴다 — 두 벌이면 마운트 때 밀린다.
+ */
+export const VOUCHER_CAT_TAB = {
+  wrap: 'ur-content-wide px-5 lg:px-8 border-b border-line',
+  row: 'flex gap-5 overflow-x-auto scrollbar-hide',
+  tab: 'shrink-0 h-11 inline-flex items-center text-[15px] transition-colors',
+  on: 'font-bold text-gray-900 dark:text-white shadow-[inset_0_-2px_0_currentColor]',
+  off: 'text-gray-500 dark:text-gray-400',
 } as const
 
 /** 첫 화면에서 eager 로 받는 타일 수 — 폰 한 화면에 보이는 두 줄(3 × 2). */

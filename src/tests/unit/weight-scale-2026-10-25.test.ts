@@ -77,13 +77,16 @@ describe('② 이행을 마친 화면', () => {
   })
   it('교환권 타일 — 이름 줄은 medium, 가격 숫자만 bold', () => {
     const s = readFileSync('src/shared/voucher-tile.ts', 'utf8')
-    expect(s).toMatch(/brand: '[^']*text-\[13px\] font-medium/)
+    // 2026-10-25 D안: 브랜드는 보조 정보(12px 보통 회색), 이름이 주인공(13px 잉크).
+    expect(s).toMatch(/brand: '[^']*text-\[12px\] text-gray-500/)
+    expect(s).toMatch(/title: '[^']*text-\[13px\][^']*text-gray-900/)
     expect(s).toMatch(/price: 'text-\[15px\] font-bold/)
   })
-  it('옵션 카드 — 굵은 제목은 하나(옵션 선택), 안쪽은 medium', () => {
+  it('옵션 카드 — 굵은 제목은 하나(옵션), 옵션 이름은 medium', () => {
+    // 2026-10-25 D안: '이렇게 써요' 는 옵션 카드에서 빠졌다(아래 이용권 정보가 같은 말을 한다).
     const s = readFileSync('src/pages/group-buy/PassOptionCard.tsx', 'utf8')
-    expect(s).toMatch(/text-\[17px\] font-medium leading-\[1\.35\]/)
-    expect(s).toMatch(/text-\[15px\] font-medium[^>]*>이렇게 써요/)
+    expect(s).toMatch(/text-\[17px\] font-bold[^>]*>옵션</)
+    expect(s).toMatch(/text-\[15px\] font-medium leading-\[1\.4\]/)
   })
 })
 
