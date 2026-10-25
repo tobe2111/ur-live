@@ -15,7 +15,7 @@ import { DetailRows, LifeHeader, STATUS_LABEL, categoryLabel, sellerHeaders } fr
 
 interface Detail {
   id: number; category: string; details: Record<string, string>; desired_date: string; status: string
-  quote_count: number; max_quotes: number; balance: number
+  quote_count: number; max_quotes: number; balance: number; is_partner?: boolean
   my_quote_id: number | null; my_quote_status: string | null; my_price: number | null; my_message: string | null
   customer_name: string | null; customer_phone: string | null
 }
@@ -92,8 +92,10 @@ export default function LifeProRequestPage() {
               <p className="mb-2 text-[15px] font-bold">손님에게 한마디</p>
               <textarea className={`${INPUT} min-h-[96px]`} maxLength={500} placeholder="경력, 포함 내용, 방문 가능한 날 등" value={message} onChange={(e) => setMessage(e.target.value)} />
             </div>
-            <button type="button" disabled={sending || d.balance < 1} onClick={send} className="ur-btn ur-btn-lg ur-btn-primary flex w-full justify-center disabled:opacity-60">
-              {d.balance < 1 ? '참여권이 없어요' : sending ? '보내는 중' : `참여권 1장으로 견적 보내기 (남은 ${d.balance}장)`}
+            <button type="button" disabled={sending || (!d.is_partner && d.balance < 1)} onClick={send} className="ur-btn ur-btn-lg ur-btn-primary flex w-full justify-center disabled:opacity-60">
+              {sending ? '보내는 중'
+                : d.is_partner ? '제휴 업체 견적 보내기 (참여권 없이)'
+                : d.balance < 1 ? '참여권이 없어요' : `참여권 1장으로 견적 보내기 (남은 ${d.balance}장)`}
             </button>
           </section>
         )}

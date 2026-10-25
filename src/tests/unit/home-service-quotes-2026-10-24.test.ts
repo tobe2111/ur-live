@@ -229,7 +229,7 @@ describe('🎯 매칭 — 맞는 사장님에게만', () => {
   it('보관된 요청 — 날짜 지난 것은 사장님 요청함에 안 뜬다', async () => {
     addPro(raw, 1)
     const ok = addRequest(raw, { date: '2099-01-01' }); addRequest(raw, { date: '2000-01-01' })
-    const { results } = await DB.prepare(OPEN_REQUESTS_FOR_PRO_SQL).bind(1, '2026-10-24', 1, 1, 50).all<{ id: number }>()
+    const { results } = await DB.prepare(OPEN_REQUESTS_FOR_PRO_SQL).bind(1, '2026-10-24', '', 1, 1, 50).all<{ id: number }>()
     expect((results ?? []).map((r) => r.id)).toEqual([ok])
   })
 })

@@ -18,7 +18,7 @@ import { formatNumber } from '@/utils/format'
 interface Field { key: string; label: string; type: string; required: boolean; options?: string[]; unit?: string; placeholder?: string }
 interface Cat { key: string; label: string; fields: Field[] }
 interface Row { id: number; category: string; summary: string; desired_date: string; status: string; quote_count: number; max_quotes: number; source: string; contact_name: string | null; created_at: string }
-interface Quote { id: number; price: number | null; message: string; status: string; is_house: number; pro_name: string; pro_phone: string | null }
+interface Quote { id: number; price: number | null; message: string; status: string; is_house: number; partner?: number; pro_name: string; pro_phone: string | null }
 interface Detail extends Row { details: Record<string, string>; contact_phone: string; consent_note: string | null; quotes: Quote[]; houseSellerId: number | null }
 
 const STATUS: Record<string, string> = { open: '받는 중', chosen: '선택됨', cancelled: '취소', expired: '만료' }
@@ -35,6 +35,11 @@ export default function AdminHomeServicePage() {
   const house = useApiQuery<{ seller: { id: number; name: string } | null }>(['admin', 'home-service', 'house'], '/api/admin/home-service/house', {
     select: (raw) => (raw as { data: { seller: { id: number; name: string } | null } }).data, staleTime: 0,
   })
+  const partners = useApiQuery<{ category: string; seller_id: number; name?: string; status?: string }[]>(['admin', 'home-service', 'partners'], '/api/admin/home-service/partners', {
+    select: (raw) => (raw as { data: { category: string; seller_id: number; name?: string; status?: string }[] }).data, staleTime: 0,
+  })
+  const [pCat, setPCat] = useState('signage')
+  const [pId, setPId] = useState('')
   const [openId, setOpenId] = useState<number | null>(null)
   const detail = useApiQuery<Detail>(['admin', 'home-service', 'request', openId], `/api/admin/home-service/requests/${openId}`, {
     select: (raw) => (raw as { data: Detail }).data, enabled: !!openId, staleTime: 0,
@@ -53,7 +58,7 @@ export default function AdminHomeServicePage() {
     setBusy(true)
     try {
       await fn(); toast.success(ok)
-      await Promise.all([list.refetch(), house.refetch(), openId ? detail.refetch() : null])
+      await Promise.all([list.refetch(), house.refetch(), partners.refetch(), openId ? detail.refetch() : null])
     } catch (e) { toast.error(errMsg(e, fail)) } finally { setBusy(false) }
   }
   const catDef = list.data?.categories.find((c) => c.key === cat)
@@ -71,6 +76,28 @@ export default function AdminHomeServicePage() {
           <div className="flex gap-2">
             <input className={`${input} max-w-[200px]`} placeholder="매장 번호(sellers.id)" inputMode="numeric" value={houseId} onChange={(e) => setHouseId(e.target.value)} />
             <Button disabled={busy || !houseId} onClick={() => run(() => api.put('/api/admin/home-service/house', { seller_id: Number(houseId) }), '저장했습니다', '저장하지 못했습니다')}>저장</Button>
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
+          <h2 className="text-[15px] font-semibold text-gray-900">제휴 업체</h2>
+          <p className="text-[13px] text-gray-500">카테고리마다 한 곳. 그 카테고리 요청을 지역과 무관하게 받고, 참여권 없이 견적을 냅니다(손님 화면 "유어딜 제휴").</p>
+          <ul className="space-y-1 text-[13px] text-gray-700">
+            {(partners.data ?? []).length === 0 && <li className="text-gray-500">아직 없음</li>}
+            {(partners.data ?? []).map((p) => (
+              <li key={p.category} className="flex items-center gap-2">
+                <span className="font-semibold">{list.data?.categories.find((c) => c.key === p.category)?.label ?? p.category}</span>
+                <span>#{p.seller_id} {p.name ?? '(매장 없음)'}{p.status && !['approved', 'active'].includes(p.status) ? ' · 승인 안 됨' : ''}</span>
+                <button className="text-tone-bad underline" disabled={busy} onClick={() => run(() => api.put('/api/admin/home-service/partners', { category: p.category, seller_id: null }), '해제했습니다', '해제하지 못했습니다')}>해제</button>
+              </li>
+            ))}
+          </ul>
+          <div className="flex flex-wrap gap-2">
+            <select className={`${input} max-w-[220px]`} value={pCat} onChange={(e) => setPCat(e.target.value)}>
+              {(list.data?.categories ?? []).map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+            </select>
+            <input className={`${input} max-w-[200px]`} placeholder="매장 번호(sellers.id)" inputMode="numeric" value={pId} onChange={(e) => setPId(e.target.value)} />
+            <Button disabled={busy || !pId} onClick={() => run(() => api.put('/api/admin/home-service/partners', { category: pCat, seller_id: Number(pId) }), '저장했습니다', '저장하지 못했습니다')}>지정</Button>
           </div>
         </section>
 
@@ -122,7 +149,7 @@ export default function AdminHomeServicePage() {
                       {d.quotes.map((q) => (
                         <li key={q.id} className="rounded-lg bg-white p-2 flex justify-between gap-2">
                           <span>
-                            <b>{q.pro_name}</b>{q.is_house ? ' (유어딜 직영)' : ''} · {q.price == null ? '방문 후 견적' : `${formatNumber(q.price)}원`} · {q.status}
+                            <b>{q.pro_name}</b>{q.is_house ? (q.partner ? ' (유어딜 제휴)' : ' (유어딜 직영)') : ''} · {q.price == null ? '방문 후 견적' : `${formatNumber(q.price)}원`} · {q.status}
                             <span className="block text-gray-500">{q.message}{q.pro_phone ? ` · ${q.pro_phone}` : ''}</span>
                           </span>
                           {d.source === 'admin' && d.status === 'open' && q.status === 'sent' && (

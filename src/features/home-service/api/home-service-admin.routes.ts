@@ -19,11 +19,11 @@ import { safeError } from '@/worker/utils/safe-error'
 import { parseRegionFromAddress } from '@/shared/constants/region-slugs'
 import { kstYmd } from '@/shared/stays-early'
 import {
-  HOME_SERVICE_CATEGORIES, HOME_TPL, MAX_QUOTES_PER_REQUEST, categoryDef, msgQuoteArrived, quotePriceText,
+  HOME_PARTNERS_KEY, HOME_SERVICE_CATEGORIES, HOME_TPL, MAX_QUOTES_PER_REQUEST, categoryDef, msgQuoteArrived, quotePriceText,
   requestSummary, validateRequest, type HomeServiceCategory,
 } from '@/shared/home-service'
 import { sendSystemAlimtalk } from '../../../lib/system-alimtalk'
-import { chooseQuoteAtomic, ensureHomeServiceTables, refundAllQuotes, sendHouseQuoteAtomic } from './home-service-db'
+import { chooseQuoteAtomic, ensureHomeServiceTables, loadPartners, refundAllQuotes, sendHouseQuoteAtomic } from './home-service-db'
 import { dispatchRequest } from './home-service-notify'
 import { notifyChosen } from './home-service.routes'
 
@@ -74,6 +74,56 @@ homeServiceAdminRoutes.put('/house', async (c) => {
     return c.json({ success: true })
   } catch (err) {
     return safeError(c, err, '저장하지 못했습니다', '[home-service:house-save]')
+  }
+})
+
+/**
+ * 🤝 제휴 업체(2026-10-25 대표 — 간판 제휴사). 카테고리마다 한 매장. seller_id 가 null 이면 해제.
+ * 제휴 업체는 그 카테고리 요청을 지역과 무관하게 받고 참여권 없이 견적을 낸다(손님 화면 "유어딜 제휴").
+ */
+homeServiceAdminRoutes.get('/partners', async (c) => {
+  try {
+    const DB = c.env.DB
+    const partners = await loadPartners(DB)
+    const ids = [...new Set(Object.values(partners))]
+    const names: Record<number, { name: string; status: string }> = {}
+    if (ids.length) {
+      const { results } = await DB.prepare(
+        `SELECT id, COALESCE(NULLIF(business_name, ''), name) AS name, status FROM sellers WHERE id IN (${ids.map(() => '?').join(',')})`,
+      ).bind(...ids).all<{ id: number; name: string; status: string }>()
+      for (const r of results ?? []) names[r.id] = { name: r.name, status: r.status }
+    }
+    const data = Object.entries(partners).map(([category, seller_id]) => ({ category, seller_id, ...names[seller_id as number] }))
+    return c.json({ success: true, data })
+  } catch (err) {
+    return safeError(c, err, '설정을 불러오지 못했습니다', '[home-service:partners]')
+  }
+})
+
+homeServiceAdminRoutes.put('/partners', async (c) => {
+  try {
+    const DB = c.env.DB
+    const b = await c.req.json<{ category?: unknown; seller_id?: unknown }>().catch(() => ({} as { category?: unknown; seller_id?: unknown }))
+    const def = categoryDef(b.category)
+    if (!def) return c.json({ success: false, error: '카테고리를 골라 주세요' }, 400)
+    const partners = await loadPartners(DB)
+    if (b.seller_id == null || b.seller_id === '') {
+      delete partners[def.key]
+    } else {
+      const sid = Number(b.seller_id)
+      if (!Number.isInteger(sid) || sid <= 0) return c.json({ success: false, error: '매장 번호를 확인해 주세요' }, 400)
+      const s = await DB.prepare(`SELECT status FROM sellers WHERE id = ?`).bind(sid).first<{ status: string }>()
+      if (!s) return c.json({ success: false, error: '그 매장이 없습니다' }, 404)
+      if (!['approved', 'active'].includes(String(s.status))) return c.json({ success: false, error: '판매 승인된 매장만 제휴로 지정할 수 있어요' }, 400)
+      partners[def.key] = sid
+    }
+    await DB.prepare(
+      `INSERT INTO platform_settings (key, value, updated_at) VALUES (?, ?, datetime('now'))
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`,
+    ).bind(HOME_PARTNERS_KEY, JSON.stringify(partners)).run()
+    return c.json({ success: true })
+  } catch (err) {
+    return safeError(c, err, '저장하지 못했습니다', '[home-service:partners-save]')
   }
 })
 
@@ -159,7 +209,7 @@ homeServiceAdminRoutes.get('/requests/:id', async (c) => {
         .bind(id).run().catch(() => null)
     }
     const { results: quotes } = await DB.prepare(
-      `SELECT q.id, q.seller_id, q.price, q.message, q.status, q.is_house, q.created_at,
+      `SELECT q.id, q.seller_id, q.price, q.message, q.status, q.is_house, q.partner, q.created_at,
               COALESCE(NULLIF(s.business_name, ''), s.name) AS pro_name,
               COALESCE(NULLIF(p.phone, ''), s.phone) AS pro_phone
          FROM home_service_quotes q

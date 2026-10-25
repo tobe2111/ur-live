@@ -23,13 +23,14 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import { SIDO_LIST } from '@/shared/constants/region-slugs'
 import { kstYmd } from '@/shared/stays-early'
 import {
-  HOME_SERVICE_CATEGORIES, HOME_TPL, SIGNUP_FREE_CREDITS, categoryDef, msgQuoteArrived,
+  HOME_SERVICE_CATEGORIES, HOME_TPL, SIGNUP_FREE_CREDITS, categoryDef, msgQuoteArrived, partnerCategoriesCsv,
   parseCreditPackages, quotePriceText, type HomeServiceCategory,
 } from '@/shared/home-service'
 import { sendSystemAlimtalk } from '../../../lib/system-alimtalk'
 import { confirmTossPayment, decideTossFlow } from '../../../worker/utils/toss-gateway'
 import {
-  OPEN_REQUESTS_FOR_PRO_SQL, creditAdd, creditBalance, ensureHomeServiceTables, sendQuoteAtomic, withPrivateDetails,
+  OPEN_REQUESTS_FOR_PRO_SQL, creditAdd, creditBalance, ensureHomeServiceTables, loadPartners, sendHouseQuoteAtomic,
+  sendQuoteAtomic, withPrivateDetails,
 } from './home-service-db'
 import { dispatchBacklogToPro } from './home-service-notify'
 import { homeServiceStopped } from './home-service.routes'
@@ -140,30 +141,35 @@ homeServiceProRoutes.get('/requests', requireSeller(), async (c) => {
     const DB = c.env.DB
     await ensureHomeServiceTables(DB)
     const sid = sellerIdOf(c)
-    const { results: open } = await DB.prepare(OPEN_REQUESTS_FOR_PRO_SQL).bind(sid, kstYmd(0), sid, sid, 50).all()
+    const partners = await loadPartners(DB)
+    const { results: open } = await DB.prepare(OPEN_REQUESTS_FOR_PRO_SQL)
+      .bind(sid, kstYmd(0), partnerCategoriesCsv(partners, sid), sid, sid, 50).all()
     const { results: mine } = await DB.prepare(
       `SELECT r.id, r.category, r.summary, r.desired_date, r.status, r.quote_count, r.max_quotes,
               q.id AS my_quote_id, q.status AS my_quote_status, q.price AS my_price, q.created_at AS quoted_at
          FROM home_service_quotes q JOIN home_service_requests r ON r.id = q.request_id
         WHERE q.seller_id = ? ORDER BY q.id DESC LIMIT 50`,
     ).bind(sid).all()
-    return c.json({ success: true, data: { open: open ?? [], mine: mine ?? [], balance: await creditBalance(DB, sid) } })
+    const partnerOf = Object.entries(partners).filter(([, v]) => v === sid).map(([k]) => k)
+    return c.json({ success: true, data: { open: open ?? [], mine: mine ?? [], balance: await creditBalance(DB, sid), partnerOf } })
   } catch (err) {
     return safeError(c, err, '요청을 불러오지 못했습니다', '[home-service:pro-list]')
   }
 })
 
-/** 이 사장님이 이 요청을 볼 수 있는가 — 내 카테고리·지역이거나, 이미 견적을 보냈거나. */
+/** 이 사장님이 이 요청을 볼 수 있는가 — 내 카테고리·지역이거나, 이미 견적을 보냈거나, 그 카테고리 제휴 업체이거나. */
 async function proCanSee(DB: D1Database, sid: number, requestId: number): Promise<boolean> {
+  const csv = partnerCategoriesCsv(await loadPartners(DB), sid)
   const r = await DB.prepare(
     `SELECT 1 AS x FROM home_service_requests r
       WHERE r.id = ?
         AND (EXISTS (SELECT 1 FROM home_service_quotes q WHERE q.request_id = r.id AND q.seller_id = ?)
+          OR instr(',' || ? || ',', ',' || r.category || ',') > 0
           OR (r.category IN (SELECT category FROM home_service_pro_categories WHERE seller_id = ?)
               AND EXISTS (SELECT 1 FROM home_service_pro_areas a WHERE a.seller_id = ?
                     AND ((a.sido = r.sido AND (a.sigungu = '' OR a.sigungu = r.sigungu))
                       OR (r.sido2 IS NOT NULL AND a.sido = r.sido2 AND (a.sigungu = '' OR a.sigungu = r.sigungu2))))))`,
-  ).bind(requestId, sid, sid, sid).first()
+  ).bind(requestId, sid, csv, sid, sid).first()
   return !!r
 }
 
@@ -191,7 +197,8 @@ homeServiceProRoutes.get('/requests/:id', requireSeller(), async (c) => {
     // 🔒 상세 주소는 손님이 이 사장님을 고른 뒤에만(위 CASE) — 고르기 전엔 NULL 이라 동까지만 보인다.
     details = withPrivateDetails(details, r?.private_details)
     const { private_details: _p, ...rest } = r ?? {}
-    return c.json({ success: true, data: { ...rest, details, balance: await creditBalance(DB, sid) } })
+    const isPartner = (await loadPartners(DB))[r?.category as HomeServiceCategory] === sid
+    return c.json({ success: true, data: { ...rest, details, balance: await creditBalance(DB, sid), is_partner: isPartner } })
   } catch (err) {
     return safeError(c, err, '요청을 불러오지 못했습니다', '[home-service:pro-detail]')
   }
@@ -219,7 +226,13 @@ homeServiceProRoutes.post('/requests/:id/quote', requireSeller(), rateLimit({ ac
     const message = String(body.message ?? '').trim().slice(0, 500)
     if (message.length < 5) return c.json({ success: false, error: '손님에게 보낼 한마디를 적어 주세요(5자 이상)' }, 400)
 
-    const res = await sendQuoteAtomic(DB, id, sid, rawPrice == null ? null : Math.round(rawPrice), message)
+    // 🤝 제휴 업체는 참여권 없이(2026-10-24 승인된 직영·협력 업체 규칙) — 자리는 똑같이 하나 차지한다.
+    const cat = await DB.prepare(`SELECT category FROM home_service_requests WHERE id = ?`).bind(id).first<{ category: HomeServiceCategory }>()
+    const isPartner = !!cat && (await loadPartners(DB))[cat.category] === sid
+    const price = rawPrice == null ? null : Math.round(rawPrice)
+    const res = isPartner
+      ? await sendHouseQuoteAtomic(DB, id, sid, price, message, true)
+      : await sendQuoteAtomic(DB, id, sid, price, message)
     if (!res.ok) {
       const map = {
         closed: ['이미 마감된 요청입니다', 409],

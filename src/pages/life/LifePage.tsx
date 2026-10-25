@@ -1,5 +1,5 @@
 /**
- * 🏠 생활 — 사장님 가게 관리(방역·후드·수리·숙소 청소) + 집(이사·입주청소·에어컨 청소)
+ * 🏠 생활 — 가게(간판·방역·후드·설비) + 숙소(청소·수영장) + 집(이사·청소·방역)
  *   (2026-10-24 대표 확정 · 결재 `docs/decisions/2026-10-24-home-service-quotes.md` · 2026-10-25 사장님 먼저)
  *
  * 카테고리마다 두 길을 함께 둔다:
@@ -15,9 +15,10 @@ import { ChevronRight } from 'lucide-react'
 import { HOME_SERVICE_CATEGORIES, type HomeServiceAudience } from '@/shared/home-service'
 import { formatNumber } from '@/utils/format'
 
-/** 사장님 가게 관리를 먼저(2026-10-25 대표 "식당, 숙소 등을 타겟으로"), 집은 그 아래. */
+/** 가게 → 숙소 → 집(2026-10-25 대표 "식당, 숙소 등을 타겟으로" · "일단 다 하자"). */
 const GROUPS: readonly { audience: HomeServiceAudience; title: string; sub: string }[] = [
-  { audience: 'biz', title: '사장님 가게 관리', sub: '식당·카페·숙소 사장님, 필요한 일을 적으면 근처 업체가 견적을 보내요' },
+  { audience: 'store', title: '가게', sub: '식당·카페 사장님, 필요한 일을 적으면 근처 업체가 견적을 보내요' },
+  { audience: 'lodging', title: '숙소', sub: '펜션·풀빌라·게스트하우스 관리' },
   { audience: 'home', title: '집', sub: '이사·청소처럼 집마다 가격이 다른 일' },
 ]
 
@@ -38,7 +39,7 @@ export default function LifePage() {
 
   return (
     <div className="min-h-[100dvh] bg-warm text-ink pb-safe-nav">
-      <SEO title="생활 서비스 - 가게 방역·후드 청소·시설 수리·이사 견적 - 유어딜" description="요청서 한 번이면 근처 업체가 견적을 보내 드려요. 식당·숙소 가게 관리부터 이사·청소까지, 비교하고 마음에 드는 곳만 고르세요." url="/life" />
+      <SEO title="생활 서비스 - 간판·방역·후드 청소·설비 수리·이사 견적 - 유어딜" description="요청서 한 번이면 근처 업체가 견적을 보내 드려요. 간판·방역·냉장 설비 같은 가게 관리부터 숙소 관리, 이사·청소까지 비교하고 마음에 드는 곳만 고르세요." url="/life" />
 
       <header className="ur-content-narrow px-4 pt-7 pb-5">
         <h1 className="text-[24px] font-extrabold tracking-tight">생활 서비스</h1>
@@ -87,7 +88,7 @@ export default function LifePage() {
 
         <div className="flex flex-col gap-2 pt-2 text-center text-[13px]">
           <Link to="/life/requests" className="font-bold text-brand-text">내 요청 보기</Link>
-          <Link to="/life/pro" className="text-gray-500 dark:text-gray-400">방역·청소·수리·이사 업체세요? 근처 요청을 알림톡으로 받기 →</Link>
+          <Link to="/life/pro" className="text-gray-500 dark:text-gray-400">간판·방역·청소·수리·이사 업체세요? 근처 요청을 알림톡으로 받기 →</Link>
         </div>
       </div>
     </div>

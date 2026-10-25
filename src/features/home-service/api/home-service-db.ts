@@ -10,6 +10,8 @@
  *  ③ 원장 줄을 **먼저** 넣고(`INSERT OR IGNORE`) 들어갔을 때만 잔액을 움직인다(claim-before-credit).
  */
 
+import { HOME_PARTNERS_KEY, parsePartners, type HomeServiceCategory } from '../../../shared/home-service'
+
 export const HS_TABLES_SQL = [
   `CREATE TABLE IF NOT EXISTS home_service_pros (
     seller_id INTEGER PRIMARY KEY,
@@ -98,7 +100,17 @@ export const HS_TABLES_SQL = [
   `ALTER TABLE home_service_quotes ADD COLUMN is_house INTEGER NOT NULL DEFAULT 0`,
   // 🔒 상세 주소(2026-10-25 대표 — 오늘의집 흐름). 사장님은 손님이 **고른 뒤에만** 본다(연락처와 같은 규칙).
   `ALTER TABLE home_service_requests ADD COLUMN private_details TEXT`,
+  // 🤝 제휴 업체 견적(2026-10-25 대표 — 간판 제휴사). is_house=1 과 같이 참여권을 안 쓰고 반환도 없다.
+  //   손님 화면 표시만 "유어딜 제휴" 로 가른다.
+  `ALTER TABLE home_service_quotes ADD COLUMN partner INTEGER NOT NULL DEFAULT 0`,
 ] as const
+
+/** 제휴 업체 표(카테고리 → 매장 번호). 못 읽으면 빈 표 — 제휴가 없는 것과 같다. */
+export async function loadPartners(DB: D1Database): Promise<Partial<Record<HomeServiceCategory, number>>> {
+  const r = await DB.prepare(`SELECT value FROM platform_settings WHERE key = ?`).bind(HOME_PARTNERS_KEY)
+    .first<{ value: string }>().catch(() => null)
+  return parsePartners(r?.value)
+}
 
 /** 상세 주소(JSON)를 요청서 칸 위에 덮는다 — 볼 자격이 있는 쪽만 이 함수를 부른다. */
 export function withPrivateDetails(details: unknown, privateJson: unknown): Record<string, string> {
@@ -197,7 +209,7 @@ export async function sendQuoteAtomic(
  * 선착순 자리는 다른 사장님과 똑같이 하나 차지한다(손님이 비교하는 견적 수는 그대로 5개 이하).
  */
 export async function sendHouseQuoteAtomic(
-  DB: D1Database, requestId: number, sellerId: number, price: number | null, message: string,
+  DB: D1Database, requestId: number, sellerId: number, price: number | null, message: string, partner = false,
 ): Promise<{ ok: true; quoteId: number } | { ok: false; reason: 'closed' | 'full' | 'already' }> {
   const res = await DB.batch([
     DB.prepare(
@@ -208,9 +220,9 @@ export async function sendHouseQuoteAtomic(
           AND NOT EXISTS (SELECT 1 FROM home_service_quotes WHERE request_id = ? AND seller_id = ?)`,
     ).bind(requestId, requestId, sellerId),
     DB.prepare(
-      `INSERT OR IGNORE INTO home_service_quotes (request_id, seller_id, price, message, status, is_house)
-       SELECT ?, ?, ?, ?, 'sent', 1 WHERE changes() > 0`,
-    ).bind(requestId, sellerId, price, message),
+      `INSERT OR IGNORE INTO home_service_quotes (request_id, seller_id, price, message, status, is_house, partner)
+       SELECT ?, ?, ?, ?, 'sent', 1, ? WHERE changes() > 0`,
+    ).bind(requestId, sellerId, price, message, partner ? 1 : 0),
   ])
   if (res[1]?.meta?.changes) {
     const q = await DB.prepare(`SELECT id FROM home_service_quotes WHERE request_id = ? AND seller_id = ?`)
@@ -301,7 +313,11 @@ export const MATCH_PROS_SQL = `
      AND NOT EXISTS (SELECT 1 FROM home_service_dispatch d WHERE d.request_id = ? AND d.seller_id = p.seller_id)
    LIMIT ?`
 
-/** 사장님 한 명이 받을 수 있는 열린 요청(카테고리·지역 일치, 날짜 안 지남). 요청함과 가입 직후 보내기가 같이 쓴다. */
+/**
+ * 사장님 한 명이 받을 수 있는 열린 요청(카테고리·지역 일치, 날짜 안 지남). 요청함과 가입 직후 보내기가 같이 쓴다.
+ * 제휴 업체는 자기 제휴 카테고리(세 번째 인자, 쉼표 목록)를 **지역과 무관하게** 받는다.
+ * bind: (seller, 오늘, 제휴카테고리csv, seller, seller, limit)
+ */
 export const OPEN_REQUESTS_FOR_PRO_SQL = `
   SELECT r.id, r.category, r.summary, r.desired_date, r.status, r.quote_count, r.max_quotes, r.created_at,
          q.id AS my_quote_id, q.status AS my_quote_status
@@ -309,13 +325,14 @@ export const OPEN_REQUESTS_FOR_PRO_SQL = `
     LEFT JOIN home_service_quotes q ON q.request_id = r.id AND q.seller_id = ?
    WHERE r.status = 'open'
      AND r.desired_date >= ?
-     AND r.category IN (SELECT category FROM home_service_pro_categories WHERE seller_id = ?)
-     AND EXISTS (
-       SELECT 1 FROM home_service_pro_areas a
-        WHERE a.seller_id = ?
-          AND ((a.sido = r.sido AND (a.sigungu = '' OR a.sigungu = r.sigungu))
-            OR (r.sido2 IS NOT NULL AND a.sido = r.sido2 AND (a.sigungu = '' OR a.sigungu = r.sigungu2)))
-     )
+     AND (instr(',' || ? || ',', ',' || r.category || ',') > 0
+       OR (r.category IN (SELECT category FROM home_service_pro_categories WHERE seller_id = ?)
+           AND EXISTS (
+             SELECT 1 FROM home_service_pro_areas a
+              WHERE a.seller_id = ?
+                AND ((a.sido = r.sido AND (a.sigungu = '' OR a.sigungu = r.sigungu))
+                  OR (r.sido2 IS NOT NULL AND a.sido = r.sido2 AND (a.sigungu = '' OR a.sigungu = r.sigungu2)))
+           )))
    ORDER BY r.id DESC
    LIMIT ?`
 

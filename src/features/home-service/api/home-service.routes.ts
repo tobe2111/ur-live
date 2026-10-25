@@ -157,7 +157,7 @@ homeServiceRoutes.get('/requests/:id', requireAuth(), async (c) => {
     }
     const { results: quotes } = await DB.prepare(
       `SELECT q.id, q.seller_id, q.price, q.message, q.status, q.created_at,
-              COALESCE(NULLIF(s.business_name, ''), s.name) AS pro_name, q.is_house,
+              COALESCE(NULLIF(s.business_name, ''), s.name) AS pro_name, q.is_house, q.partner,
               CASE WHEN q.status = 'chosen' THEN COALESCE(NULLIF(p.phone, ''), s.phone) END AS pro_phone
          FROM home_service_quotes q
          JOIN sellers s ON s.id = q.seller_id
