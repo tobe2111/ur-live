@@ -49,4 +49,12 @@ export default [
     test: TEST,
     why: '검색에서 와도 할 수 있는 일이 없는 페이지가 색인된다.',
   },
+  {
+    name: '🔗 주소 검색창이 React 글자를 다시 지운다',
+    file: 'src/pages/life/request/AddressSheet.tsx',
+    find: '      setReady(true)\n',
+    replace: '      box.current.innerHTML = \'\'\n      setReady(true)\n',
+    test: 'src/tests/unit/life-address-sheet-2026-10-25.test.tsx',
+    why: '주소를 고르는 순간 removeChild 오류로 오류 화면(대표 신고 2026-10-25).',
+  },
 ]
