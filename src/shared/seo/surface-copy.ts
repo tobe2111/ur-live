@@ -70,6 +70,12 @@ export interface SurfaceCopy {
  * JSON-LD 와 같은 배열을 써야 하고, `/about` 은 `WebPage.about` 에도 들어간다).
  */
 export const SURFACE_COPY: Readonly<Record<string, SurfaceCopy>> = {
+  '/store/new': {
+    lines: [
+      '유어딜 입점은 무료입니다. 사장님이 할인 이용권을 올리면 동네 손님이 온라인에서 사고 매장에서 씁니다.',
+      '가입하면 바로 가게를 열고 이용권을 등록할 수 있어요.',
+    ],
+  },
   '/partners': {
     lines: [
       '손님이 온라인에서 먼저 결제하고, 이용권을 들고 가게로 옵니다.',
