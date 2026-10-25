@@ -1,17 +1,20 @@
 # 인스타 카드 세트 생성기 (1080x1350, 4:5) — public/marketing/b2b/<set>/slide-N.jpg
-# 기준: marketing/visual-reference.md §1 (색 3개: 브랜드 블루 #1C69EF + 흰색 + 노랑 강조, 굵은 고딕 1종,
-#       가장자리 80px 안 글자 금지, 유달이는 모서리 스티커 20~30% + 부산 사투리 말풍선, 레이아웃 3종 돌려쓰기)
+# 기준: marketing/visual-reference.md §1 + '따뜻하게, 삭막하지 않게' (웜 코랄·살구·크림 그라데이션 + 종이결/빛망울 질감, 굵은 고딕 1종,
+#       가장자리 80px 안 글자 금지, 유달이는 크게(35~45%) + 부산 사투리 말풍선, 레이아웃 3종 돌려쓰기)
 # 사실 근거: src/shared/partners-facts.ts, marketing-bot/data/content-mix.json(creator topics),
 #            src/shared/seo/detail-description.ts(2919 실측가), partners-facts.ts sample(2915 실측가).
 # 사용: python3 marketing-bot/scripts/make-cards.py <Pretendard-Black.otf> [Pretendard-Bold.otf]
 import os, sys
-from PIL import Image, ImageDraw, ImageFont
+import random
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 OUT = os.path.join(ROOT, 'public', 'marketing', 'b2b')
 MASCOT = os.path.join(ROOT, 'public', 'assets', 'mascot')
 W, H, M = 1080, 1350, 80
-BLUE, WHITE, YEL, INK, PAPER = (28, 105, 239), (255, 255, 255), (255, 210, 0), (17, 24, 39), (250, 246, 236)
+# 웜 팔레트 — 이름은 호출부 호환용으로 유지(BLUE=강조 코랄). 브랜드 블루는 하단 urdeal.kr 칩에만.
+BRAND = (28, 105, 239)
+BLUE, WHITE, YEL, INK, PAPER = (238, 92, 58), (255, 255, 255), (255, 226, 110), (58, 38, 30), (255, 244, 226)
 
 BLACK = sys.argv[1]
 BOLD = sys.argv[2] if len(sys.argv) > 2 else BLACK
@@ -20,9 +23,11 @@ BIG, SMALL = 96, 44  # 글자 크기 단계 2개
 
 
 def sticker(img, name, corner='br', scale=0.26, bubble=None):
+    scale = min(0.42, scale * 1.5)  # 유달이 크게 — 구석 스티커가 아니라 같이 등장하는 주인공
     m = Image.open(os.path.join(MASCOT, f'udal-social-{name}.webp')).convert('RGBA')
     h = int(H * scale); w = int(m.width * h / m.height)
-    m = m.resize((w, h), Image.LANCZOS)
+    m = m.resize((w, h), Image.LANCZOS).rotate(-6 if 'r' in corner else 6, expand=True, resample=Image.BICUBIC)
+    w, h = m.size
     # 스티커 느낌: 흰 테두리
     pad = 10
     base = Image.new('RGBA', (w + pad * 2, h + pad * 2), (0, 0, 0, 0))
@@ -33,13 +38,13 @@ def sticker(img, name, corner='br', scale=0.26, bubble=None):
             outline.paste(Image.new('RGBA', (w, h), WHITE + (255,)), (dx, dy), alpha)
     base.alpha_composite(outline); base.alpha_composite(m, (pad, pad))
     x = W - M - base.width + 40 if 'r' in corner else M - 40
-    y = H - base.height - 40 if 'b' in corner else M
+    y = H - base.height - 100 if 'b' in corner else M  # 하단 점·urdeal.kr 가리지 않게
     img.alpha_composite(base, (x, y))
     if bubble:
         d = ImageDraw.Draw(img); f = F(SMALL, False)
         tw = d.textlength(bubble, font=f)
         bx2 = x - 10 if 'r' in corner else x + base.width + 10 + tw + 60
-        bx1 = bx2 - tw - 60; by1 = y + 20; by2 = by1 + 90
+        bx1 = bx2 - tw - 60; by1 = y + base.height // 2; by2 = by1 + 90  # 유달이 옆 가슴 높이 — 위쪽 본문과 안 겹치게
         d.rounded_rectangle((bx1, by1, bx2, by2), 40, fill=WHITE, outline=INK, width=4)
         tail = [(bx2 - 4, by1 + 40), (bx2 + 26, by1 + 60), (bx2 - 4, by1 + 66)] if 'r' in corner else [(bx1 + 4, by1 + 40), (bx1 - 26, by1 + 60), (bx1 + 4, by1 + 66)]
         d.polygon(tail, fill=WHITE)
@@ -60,14 +65,37 @@ def lines(d, xy, rows, size, fill, accent=None, gap=1.3):
 
 def footer(d, i, n, dark=True):
     f = F(30, False); c = WHITE if dark else INK
-    d.text((M, H - M - 30), 'urdeal.kr', font=f, fill=c)
+    tw = d.textlength('urdeal.kr', font=f)
+    d.rounded_rectangle((M - 16, H - M - 38, M + tw + 16, H - M + 12), 25, fill=BRAND)
+    d.text((M, H - M - 30), 'urdeal.kr', font=f, fill=WHITE)
     for k in range(n):
         d.rectangle((W - M - (n - k) * 44, H - M - 16, W - M - (n - k) * 44 + 32, H - M - 10), fill=YEL if k == i else c)
 
 
+GRAD = {  # 사진 느낌 그라데이션(위→아래): 노을빛 / 아침 햇살 / 크림 종이
+    'blue': ((255, 128, 84), (255, 184, 92)),
+    'white': ((255, 250, 240), (255, 226, 200)),
+    'paper': ((255, 246, 230), (250, 232, 205)),
+}
+
+
 def canvas(kind):
-    bg = {'blue': BLUE, 'paper': PAPER, 'white': WHITE}[kind]
-    img = Image.new('RGBA', (W, H), bg + (255,))
+    """평면 단색 대신: 세로 그라데이션 + 흐린 빛망울(보케) + 종이결 노이즈 — 사진 배경 같은 온기"""
+    top, bot = GRAD[kind]
+    rnd = random.Random(kind)
+    g = Image.new('RGB', (1, 256))
+    for yy in range(256):
+        t = yy / 255
+        g.putpixel((0, yy), tuple(int(top[k] + (bot[k] - top[k]) * t) for k in range(3)))
+    img = g.resize((W, H), Image.BICUBIC).convert('RGBA')
+    glow = Image.new('RGBA', (W, H), (0, 0, 0, 0)); gd = ImageDraw.Draw(glow)
+    for _ in range(7):
+        r = rnd.randint(90, 260); x = rnd.randint(-80, W + 80); y = rnd.randint(-80, H + 80)
+        gd.ellipse((x - r, y - r, x + r, y + r), fill=(255, 245, 215, rnd.randint(40, 90)))
+    img.alpha_composite(glow.filter(ImageFilter.GaussianBlur(60)))
+    noise = Image.effect_noise((W, H), 28).convert('L').point(lambda v: 128 + (v - 128) // 3)
+    grain = Image.merge('RGBA', (noise, noise, noise, Image.new('L', (W, H), 18)))
+    img.alpha_composite(grain)
     return img, ImageDraw.Draw(img)
 
 
@@ -108,19 +136,19 @@ def save(name, slides):
 def creator_link_one():
     n, s = 6, []
     img, d = canvas('blue')
-    lines(d, (M, 260), [[('링크 ', False), ('1개', True), ('면', False)], '시작 끝'], BIG, WHITE, YEL)
-    lines(d, (M, 560), ['가입비 0원 · 카카오 로그인 1분', '내 유어샵이 자동으로 생겨요'], SMALL, WHITE)
+    lines(d, (M, 260), [[('링크 ', False), ('1개', True), ('면', False)], '시작 끝이에요!'], BIG, WHITE, YEL)
+    lines(d, (M, 560), ['가입비 0원, 카카오로 1분이면 돼요', '내 유어샵도 알아서 뚝딱 생겨요'], SMALL, WHITE)
     sticker(img, 'phone', 'br', 0.3, '찍고 올리믄 끝이데이'); footer(d, 0, n); s.append(img)
 
     img, d = canvas('white')
     lines(d, (M, 180), ['맛집 올려도', [('남는 건 ', False), ('하트', True), ('뿐?', False)]], BIG, INK, BLUE)
-    lines(d, (M, 480), ['협찬은 한 번이면 끝나지만', '소개 링크는 팔릴 때마다 남아요'], SMALL, INK)
+    lines(d, (M, 480), ['협찬은 한 번 쓰면 끝이지만', '소개 링크는 팔릴 때마다 쌓여요 :)'], SMALL, INK)
     sticker(img, 'wave', 'br', 0.24, '아이고 아깝다 아이가'); footer(d, 1, n, False); s.append(img)
 
     img, d = canvas('white')
     lines(d, (M, 150), [[('시작은 ', False), ('3단계', True)]], BIG, INK, BLUE)
     phone(d, (M + 60, 330, W - M - 60, 930), '내 유어샵', ['1  카카오로 가입', '2  동네 딜 담기', '3  링크 하나 공유'])
-    lines(d, (M, 990), ['인스타·블로그·카톡 어디든'], SMALL, INK); footer(d, 2, n, False); s.append(img)
+    lines(d, (M, 990), ['인스타·블로그·카톡, 편한 데 어디든요'], SMALL, INK); footer(d, 2, n, False); s.append(img)
 
     img, d = canvas('white')
     lines(d, (M, 150), [[('돈은 ', False), ('이렇게', True), (' 들어와요', False)]], BIG, INK, BLUE)
@@ -130,7 +158,7 @@ def creator_link_one():
         d.text((cx, 510), t, font=F(40, False), fill=WHITE if k < 2 else INK, anchor='mm')
         d.text((cx, 660), sub, font=F(34, False), fill=INK, anchor='mm')
         if k < 2: d.polygon([(cx + 120, 495), (cx + 170, 510), (cx + 120, 525)], fill=INK)
-    lines(d, (M, 800), ['소개비율은 매장이 딜마다 정하고', '고르기 전에 미리 보여요'], SMALL, INK)
+    lines(d, (M, 800), ['소개비율은 매장이 딜마다 정하고', '고르기 전에 미리 다 보여드려요'], SMALL, INK)
     footer(d, 3, n, False); s.append(img)
 
     img, d = canvas('white')
@@ -192,18 +220,18 @@ def deal(name, store, item, area, sale, lst, bubble, scene):
 
     img, d = canvas('white')
     lines(d, (M, 150), [[('이용권은 ', False), ('이렇게', True)]], BIG, INK, BLUE)
-    phone(d, (M + 60, 330, W - M - 60, 930), '유어딜 이용권', ['1  미리 결제', '2  매장에서 QR 보여주기', '3  끝'])
+    phone(d, (M + 60, 330, W - M - 60, 930), '유어딜 이용권', ['1  앱에서 미리 결제', '2  가게에서 QR 짠!', '3  맛있게 먹으면 끝'])
     footer(d, 2, n, False); s.append(img)
 
     img, d = canvas('paper')
     memo(d, (M, 140, W - M, 900))
-    lines(d, (M + 50, 200), ['알아 둘 것'], BIG, INK)
+    lines(d, (M + 50, 200), ['이것만 알면 돼요'], BIG, INK)
     for k, t in enumerate(['유효기간은 매장이 정해요', '안 쓰면 자동 환불', '가격은 바뀔 수 있어요']):
         check(d, M + 50, 380 + k * 110, t, True)
     footer(d, 3, n, False); s.append(img)
 
     img, d = canvas('blue')
-    lines(d, (M, 380), [[('프로필 링크', True), ('에서', False)], '바로 보기'], BIG, WHITE, YEL)
+    lines(d, (M, 380), [[('프로필 링크', True), ('에서', False)], '바로 구경해요'], BIG, WHITE, YEL)
     lines(d, (M, 680), ['가격은 2026-10 확인 기준'], SMALL, WHITE)
     sticker(img, 'phone', 'br', 0.28, '퍼뜩 온나'); footer(d, 4, n); s.append(img)
     save(name, s)
