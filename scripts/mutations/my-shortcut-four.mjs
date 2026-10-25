@@ -36,17 +36,16 @@ export default [
     name: '🧹 오늘 숫자가 매출 분석으로 안 간다 (닿는 길이 하나 줄어든다)',
     file: SECTION,
     // 🔁 2026-10-01 철거 재조준: 손수 시트 → 대시보드 화면(`openPage`). 불변식 동일.
-    find: "            onClick={() => openPage('/seller/analytics', '매출 분석')}",
-    replace: '            onClick={() => {}}',
+    find: "          onClick={() => openPage('/seller/analytics', '매출 분석')}",
+    replace: "          onClick={() => {}}",
     test: TEST,
     why: '바로가기에서 뺀 대신 오늘 숫자를 입구로 삼았다 — 그 배선이 끊기면 매출 분석은 전체 도구에만 남는다.',
   },
   {
     name: '🧹 클릭면이 말을 안 한다 (표시 없는 누름)',
     file: SECTION,
-    find: `                매출 분석
-                <ChevronRight className="w-4 h-4" aria-hidden="true" />`,
-    replace: '                <ChevronRight className="w-4 h-4" aria-hidden="true" />',
+    find: "<span className={ROW_LABEL_CLS}>오늘 매출</span>",
+    replace: "<span className={ROW_LABEL_CLS}></span>",
     test: TEST,
     why:
       '2026-07-02 상세의 "ChevronRight 로 클릭 유도하면서 onClick 없던 dead 어포던스" 의 **정반대**. ' +

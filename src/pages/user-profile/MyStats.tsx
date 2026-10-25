@@ -184,25 +184,65 @@ export default function MyStats({ voucher, coupon, inline = false }: {
     </div>
   )
 
+  /*
+   * 📋 2026-10-25 (대표 확정 **위쪽 안 3** — *"위쪽 안 3 으로 하되, 곧 쓸 이용권은 빼주고"*):
+   * 폰은 숫자 세 칸이 아니라 **목록 판 하나**다 — [내 딜 · 이용권 · 쿠폰 · (충전 딜 환급)].
+   * 종전 세 칸은 숫자가 같은 무게로 나란히 서서 무엇이 무엇인지 라벨을 다시 읽어야 했고, 환급 상태는
+   * 칸 밖 회색 한 줄 + 테두리 알약이라 **버튼처럼 보이는 상태 문구**였다(대표 *"분산되고 복잡해 보여"*).
+   * ⇒ 줄의 오른쪽 값에는 **단위를 붙인다**(`111,500딜`) — 칸이 아니라 줄이라 390px 에서도 잘릴 폭이 없다
+   *    (2026-09-30 의 '단위 금지' 는 97px 칸이 원인이었다. PC 띠(`inline`)는 여전히 칸이라 그 규칙 그대로다).
+   * 🔵 표면 규칙 ⑦ 의 *"판은 파는 쪽에만"* 은 이 판 하나를 **대표 승인으로** 예외로 둔다 — 위쪽 안 3 이 곧 이 판이다.
+   *    판매 구역은 여전히 판 + 파란 사용처리 칸이 표시자라 구분이 사라지지 않는다.
+   */
+  const rowCls = 'w-full flex items-center gap-3 px-4 min-h-[52px] py-2 text-left border-b border-rule last:border-b-0 active:opacity-70'
+  const valueOf = (v: number | null | undefined, unit: string) => (
+    v === undefined ? (
+      /* 아직 안 왔다 — 숫자를 지어내지 않는다. 같은 높이 자리만. */
+      <span className="inline-block w-10 h-[15px] align-middle rounded bg-gray-100 dark:bg-white/[0.06]" aria-hidden="true" />
+    ) : v === null ? (
+      <span className="text-[15px] font-bold text-gray-400 dark:text-gray-500">—</span>
+    ) : (
+      <span className={`text-[15px] font-bold tabular-nums ${v > 0 ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
+        {formatNumber(v)}<span className="ml-1 text-[13px] font-medium text-gray-500 dark:text-gray-400">{unit}</span>
+      </span>
+    )
+  )
+  const row = (label: string, to: string, v: number | null | undefined, unit: string) => (
+    <Link to={to} className={rowCls}>
+      <span className="flex-1 min-w-0 text-[15px] font-medium text-gray-900 dark:text-white truncate">{label}</span>
+      {valueOf(v, unit)}
+      <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
+    </Link>
+  )
+  /*
+   * 💸 **충전 딜 환급**(약관 제12조) — 손님으로서 *충전했던* 딜을 현금으로 돌려받는 것. 가게 매출 입금(정산)과 다른 일이다.
+   *   대표 *"환급은 뭐야? 정산이야?"* — 종전 '환급 4,700원' 만으로는 무엇을 돌려받는지 알 수 없었다 ⇒ 이름에 '충전 딜' 을 붙인다.
+   */
+  const refundLine = refundPending > 0 && refundable <= 0
+    ? `충전 딜 환급 ${formatNumber(refundPending)}원 · 입금 준비 중`
+    : refundable > 0
+      ? `충전 딜 ${formatNumber(refundable)}딜 · 현금으로 돌려받기`
+      : null
+
   return (
-    <div className="ur-content-medium lg:px-4">
-      {cells}
-      {/* 💸 무상(리워드) 딜은 사용은 자유지만 **현금 환급 제외**(약관)라, 0 이 아니면 한 줄로 알린다.
-          돌려받을 딜이 있으면 그 줄 끝에서 바로 신청한다(2026-10-12 — 종전엔 숫자만 있고 누를 곳이 없었다). */}
-      {showNote && (
-        <div className="flex items-center gap-3 px-4 pt-2">
-          <p className="flex-1 min-w-0 text-[12px] text-gray-500 dark:text-gray-400">
-            {refundPending > 0 && refundable <= 0
-              ? <>환급 {formatNumber(refundPending)}원 입금을 준비하고 있어요</>
-              : freeBalance > 0 && refundable > 0
-              ? <>무상 리워드 {formatNumber(freeBalance)}딜 포함 · 환급 가능 {formatNumber(refundable)}딜</>
-              : refundable > 0
-                ? <>현금으로 돌려받을 수 있는 딜이 {formatNumber(refundable)}딜 있어요</>
-                : <>무상 리워드 {formatNumber(freeBalance)}딜 포함 (리워드 딜은 환급 대상이 아니에요)</>}
+    <div className="ur-content-medium px-4 lg:px-4">
+      <div className="rounded-2xl bg-surface shadow-lift overflow-hidden">
+        {row('내 딜', DEAL_PATH, balance, '딜')}
+        {row('이용권', '/my-vouchers', voucher, '장')}
+        {row('쿠폰', '/my-coupons', coupon, '장')}
+        {refundLine ? (
+          <button type="button" onClick={() => setRefundOpen(true)} className={`${rowCls} min-h-[48px]`}>
+            <span aria-hidden="true" className="w-1.5 h-1.5 shrink-0 rounded-full bg-brand" />
+            <span className="flex-1 min-w-0 text-[13px] text-gray-600 dark:text-gray-300 truncate">{refundLine}</span>
+            <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
+          </button>
+        ) : showNote && freeBalance > 0 ? (
+          /* 💸 무상(리워드) 딜은 사용은 자유지만 **현금 환급 제외**(약관) — 누를 곳이 없으니 줄이 아니라 글이다. */
+          <p className="px-4 py-3 text-[12px] text-gray-500 dark:text-gray-400">
+            무상 리워드 {formatNumber(freeBalance)}딜 포함 (리워드 딜은 환급 대상이 아니에요)
           </p>
-          {refundButton}
-        </div>
-      )}
+        ) : null}
+      </div>
       {refundSheet}
     </div>
   )

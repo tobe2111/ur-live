@@ -14,6 +14,9 @@ import api from '@/lib/api'
 import { formatKSTShort } from '@/utils/date'
 import { toast } from '@/hooks/useToast'
 import { notifTarget } from '@/lib/notif-target'
+import { ChevronRight } from 'lucide-react'
+import { MailIcon } from '@/components/icons/urdeal-icons'
+import { ROW_SHELL_CLS, ROW_LABEL_CLS } from '../list-grammar'
 
 const Sheet = lazy(() => import('./Sheet'))
 
@@ -34,10 +37,15 @@ export const STORE_NOTIF_PATH = '/api/seller/my-stores/notifications'
 /** 링크 판정은 마이·콘솔 공용 — `@/lib/notif-target`. */
 export { notifTarget }
 
-export default function StoreNotifButton({ currentSellerId, onOpenPage }: {
+export default function StoreNotifButton({ currentSellerId, onOpenPage, variant = 'pill' }: {
   /** 지금 보고 있는 가게 — 이 가게 알림만 바로 연다. */
   currentSellerId: number
   onOpenPage: (path: string) => void
+  /**
+   * 🧾 2026-10-25 (대표 확정 **내 가게 안 G**) — `row` 는 판 안의 **목록 줄**이다(`판매 알림 · 새 알림 N ›`).
+   * 종전 알약은 '내 가게' 머리에 서서 머리줄을 둘로 쪼갰다. 같은 시트·같은 데이터이고 겉모양만 다르다.
+   */
+  variant?: 'pill' | 'row'
 }) {
   const [items, setItems] = useState<StoreNotification[] | null>(null)
   const [unread, setUnread] = useState(0)
@@ -76,6 +84,24 @@ export default function StoreNotifButton({ currentSellerId, onOpenPage }: {
 
   return (
     <>
+      {variant === 'row' ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label={unread > 0 ? `판매 알림 ${unread}건` : '판매 알림'}
+          className={`${ROW_SHELL_CLS} active:opacity-70`}
+        >
+          <span className="shrink-0 text-gray-500 dark:text-gray-400"><MailIcon className="w-[18px] h-[18px]" aria-hidden="true" /></span>
+          <span className={ROW_LABEL_CLS}>판매 알림</span>
+          {/* 🔵 새 알림이 있을 때만 블루 — 0 이면 회색 '새 알림 없음'(0 을 잉크로 굵게 쓰지 않는다). 아직 모르면 안 그린다. */}
+          {items !== null && (
+            unread > 0
+              ? <span className="shrink-0 text-[13px] font-bold text-brand-text tabular-nums">새 알림 {unread > 99 ? '99+' : unread}</span>
+              : <span className="shrink-0 text-[13px] text-gray-500 dark:text-gray-400">새 알림 없음</span>
+          )}
+          <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
+        </button>
+      ) : (
       <button
         type="button"
         onClick={() => setOpen(true)}
@@ -92,6 +118,7 @@ export default function StoreNotifButton({ currentSellerId, onOpenPage }: {
           </span>
         )}
       </button>
+      )}
       {open && (
         <Suspense fallback={null}>
           <Sheet title="판매 알림" onClose={() => setOpen(false)}>
