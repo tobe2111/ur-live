@@ -29,7 +29,7 @@ import {
 import { sendSystemAlimtalk } from '../../../lib/system-alimtalk'
 import { confirmTossPayment, decideTossFlow } from '../../../worker/utils/toss-gateway'
 import {
-  OPEN_REQUESTS_FOR_PRO_SQL, creditAdd, creditBalance, ensureHomeServiceTables, sendQuoteAtomic,
+  OPEN_REQUESTS_FOR_PRO_SQL, creditAdd, creditBalance, ensureHomeServiceTables, sendQuoteAtomic, withPrivateDetails,
 } from './home-service-db'
 import { dispatchBacklogToPro } from './home-service-notify'
 import { homeServiceStopped } from './home-service.routes'
@@ -180,14 +180,18 @@ homeServiceProRoutes.get('/requests/:id', requireSeller(), async (c) => {
       `SELECT r.id, r.category, r.details, r.summary, r.desired_date, r.status, r.quote_count, r.max_quotes, r.created_at,
               q.id AS my_quote_id, q.status AS my_quote_status, q.price AS my_price, q.message AS my_message,
               CASE WHEN q.status = 'chosen' THEN r.contact_name END AS customer_name,
-              CASE WHEN q.status = 'chosen' THEN r.contact_phone END AS customer_phone
+              CASE WHEN q.status = 'chosen' THEN r.contact_phone END AS customer_phone,
+              CASE WHEN q.status = 'chosen' THEN r.private_details END AS private_details
          FROM home_service_requests r
          LEFT JOIN home_service_quotes q ON q.request_id = r.id AND q.seller_id = ?
         WHERE r.id = ?`,
     ).bind(sid, id).first<Record<string, unknown>>()
     let details: unknown = {}
     try { details = JSON.parse(String(r?.details || '{}')) } catch { /* */ }
-    return c.json({ success: true, data: { ...r, details, balance: await creditBalance(DB, sid) } })
+    // 🔒 상세 주소는 손님이 이 사장님을 고른 뒤에만(위 CASE) — 고르기 전엔 NULL 이라 동까지만 보인다.
+    details = withPrivateDetails(details, r?.private_details)
+    const { private_details: _p, ...rest } = r ?? {}
+    return c.json({ success: true, data: { ...rest, details, balance: await creditBalance(DB, sid) } })
   } catch (err) {
     return safeError(c, err, '요청을 불러오지 못했습니다', '[home-service:pro-detail]')
   }

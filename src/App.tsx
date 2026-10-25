@@ -643,7 +643,7 @@ function AppContent() {
             {/* 🛡️ 2026-05-18: 숙소 공구 사용자 페이지 — PR 3/6 */}
             <Route path="/stays" element={<StaysSearchPage />} /><Route path="/soon" element={<SoonPage />} />
             <Route path="/life" element={<LifePage />} /><Route path="/life/pro" element={<LifeProPage />} /><Route path="/life/pro/requests/:id" element={<LifeProRequestPage />} />
-            <Route path="/life/request/:category" element={<ProtectedRoute requireUser><LifeRequestFormPage /></ProtectedRoute>} /><Route path="/life/requests" element={<ProtectedRoute requireUser><LifeMyRequestsPage /></ProtectedRoute>} /><Route path="/life/requests/:id" element={<ProtectedRoute requireUser><LifeRequestDetailPage /></ProtectedRoute>} />
+            <Route path="/life/request/:category" element={<LifeRequestFormPage />} /><Route path="/life/requests" element={<ProtectedRoute requireUser><LifeMyRequestsPage /></ProtectedRoute>} /><Route path="/life/requests/:id" element={<ProtectedRoute requireUser><LifeRequestDetailPage /></ProtectedRoute>} />
             {/* 🛡️ 2026-06-12 (B-1): Toss returnUrl confirm 페이지 — :id 보다 구체적 path (정적 세그먼트 우선 매칭) */}
             <Route path="/stays/checkout-return" element={<ProtectedRoute requireUser><StayCheckoutReturnPage /></ProtectedRoute>} />
             <Route path="/stays/:id" element={<StayDetailPage />} />

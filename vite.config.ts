@@ -491,7 +491,7 @@ export default defineConfig({
             id.includes('/src/components/deal/StarRating') ||
             id.includes('/src/components/region/') || id.includes('/src/components/SEO') ||
             id.includes('/src/components/ui/sort-menu') || id.includes('/src/shared/seo/') ||
-            id.includes('/src/shared/home-') || id.includes('/src/shared/product-flow') ||
+            (id.includes('/src/shared/home-') && !id.includes('/src/shared/home-service')) || id.includes('/src/shared/product-flow') ||
             id.includes('/src/shared/deal-category-icon') ||
             id.includes('/src/features/group-buy/FcfsBadge') || id.includes('/src/features/group-buy/useFcfs')
           ) return 'app-home'

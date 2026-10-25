@@ -23,7 +23,7 @@ import {
   categoryDef, msgQuoteChosen, requestSummary, validateRequest, type HomeServiceCategory,
 } from '@/shared/home-service'
 import { sendSystemAlimtalk } from '../../../lib/system-alimtalk'
-import { chooseQuoteAtomic, ensureHomeServiceTables, refundAllQuotes } from './home-service-db'
+import { chooseQuoteAtomic, ensureHomeServiceTables, refundAllQuotes, withPrivateDetails } from './home-service-db'
 import { dispatchRequest } from './home-service-notify'
 
 export const homeServiceRoutes = new Hono<{ Bindings: Env }>()
@@ -101,16 +101,17 @@ homeServiceRoutes.post('/requests', requireAuth(), rateLimit({ action: 'home_ser
     if (Number(open?.n ?? 0) >= MAX_OPEN_REQUESTS_PER_USER) {
       return c.json({ success: false, error: `진행 중인 요청이 ${MAX_OPEN_REQUESTS_PER_USER}건 있어요. 끝난 요청을 먼저 정리해 주세요` }, 409)
     }
-    const { category, details, regions, desiredDate } = v.value
+    const { category, details, privateDetails, regions, desiredDate } = v.value
     const [r1, r2] = regions
     const ins = await DB.prepare(
       `INSERT INTO home_service_requests
-         (user_id, category, details, summary, sido, sigungu, sido2, sigungu2, desired_date, contact_name, contact_phone, max_quotes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (user_id, category, details, summary, sido, sigungu, sido2, sigungu2, desired_date, contact_name, contact_phone, max_quotes, private_details)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).bind(
       userId, category, JSON.stringify(details), requestSummary(category, details),
       r1.sido, r1.sigungu, r2?.sido ?? null, r2?.sigungu ?? null, desiredDate,
       user?.name || null, phone, MAX_QUOTES_PER_REQUEST,
+      Object.keys(privateDetails).length ? JSON.stringify(privateDetails) : null,
     ).run()
     const id = Number(ins.meta?.last_row_id)
     waitUntil(c, dispatchRequest(c.env, DB, id).catch(() => 0))
@@ -144,7 +145,7 @@ homeServiceRoutes.get('/requests/:id', requireAuth(), async (c) => {
     if (!id) return c.json({ success: false, error: '잘못된 요청입니다' }, 400)
     const req = await DB.prepare(
       `SELECT id, user_id, category, details, summary, desired_date, status, quote_count, max_quotes,
-              chosen_quote_id, customer_viewed_at, created_at
+              chosen_quote_id, customer_viewed_at, created_at, private_details
          FROM home_service_requests WHERE id = ?`,
     ).bind(id).first<Record<string, unknown>>()
     if (!req || Number(req.user_id) !== userId) return c.json({ success: false, error: '요청을 찾을 수 없습니다' }, 404)
@@ -178,7 +179,8 @@ homeServiceRoutes.get('/requests/:id', requireAuth(), async (c) => {
     }
     let details: unknown = {}
     try { details = JSON.parse(String(req.details || '{}')) } catch { /* */ }
-    const { user_id: _u, details: _d, ...rest } = req
+    details = withPrivateDetails(details, req.private_details)   // 내 요청이라 상세 주소까지 보인다
+    const { user_id: _u, details: _d, private_details: _p, ...rest } = req
     return c.json({ success: true, data: { ...rest, details, quotes: (quotes ?? []).map((q) => ({ ...q, vouchers: vouchers[Number(q.seller_id)] || [] })) } })
   } catch (err) {
     return safeError(c, err, '견적을 불러오지 못했습니다', '[home-service:detail]')
