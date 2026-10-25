@@ -79,7 +79,7 @@ export function PhotoSheet({ f, value, loggedIn, onDone, onClose, onLogin }: {
       </p>
       <div className="flex flex-wrap gap-2 pb-2">
         {urls.map((u) => (
-          <div key={u} className="relative h-20 w-20 overflow-hidden rounded-xl bg-gray-100 dark:bg-[#1A1A1A]">
+          <div key={u} className="relative h-20 w-20 overflow-hidden rounded-xl bg-warm">
             <img src={cfImage(u, { width: 160, height: 160, fit: 'cover' })} alt="올린 사진" width={80} height={80}
               className="h-full w-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, u)} />
             <button type="button" aria-label="사진 빼기" onClick={() => setUrls(urls.filter((x) => x !== u))}

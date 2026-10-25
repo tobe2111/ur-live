@@ -51,7 +51,7 @@ export function PhotoStrip({ urls }: { urls: string[] }) {
   return (
     <div className="flex flex-wrap gap-2">
       {list.map((u) => (
-        <a key={u} href={u} target="_blank" rel="noopener noreferrer" className="block h-20 w-20 overflow-hidden rounded-xl bg-gray-100 dark:bg-[#1A1A1A]">
+        <a key={u} href={u} target="_blank" rel="noopener noreferrer" className="block h-20 w-20 overflow-hidden rounded-xl bg-warm">
           <img src={cfImage(u, { width: 160, height: 160, fit: 'cover' })} alt="요청서 사진" width={80} height={80} loading="lazy"
             className="h-full w-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, u)} />
         </a>
