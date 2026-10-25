@@ -89,6 +89,8 @@ const ORG_WORD = /(구청|시청|도청|군청|읍사무소|면사무소|주민�
  */
 const ORG_WORD_STRICT = /(구청|시청|도청|군청|읍사무소|면사무소|주민센터|행정복지센터|진흥원|재단|협회|연합회|교육청|보건소|의회|청사)/
 
+import { classifyProfession, canonSubcategory, PROFESSION_CATEGORY, PROFESSION_TIER } from './company-taxonomy'
+
 export type LeadType = 'partner' | 'store' | 'org' | 'unknown'
 /** registry = 정부 등록부의 공식 업종(최고 신뢰) · evidence = 리드 텍스트 근거 · keyword = 검색어 추정 · none */
 export type ClassifyConfidence = 'registry' | 'evidence' | 'keyword' | 'none'
@@ -100,7 +102,8 @@ export type ClassifyConfidence = 'registry' | 'evidence' | 'keyword' | 'none'
  *  자동으로 재검사 대상이 된다(안 올리면 이미 스탬프된 잘못된 행이 영구 방치 — 이 사고의 원인).
  *  v3 (2026-07-27): 안내-페이지 제목 어휘(위치안내/이용안내/오시는길/지정 게시대 — 대표 신고
  *  "지정 게시대 위치안내" 업체명) NOTICE_WORD 추가. */
-export const CLASSIFY_RULES_VERSION = 9 // 2026-08-13: breadcrumb 구분자는 상호가 아니다(대표 '연락처는 실재하는데 업체명이 틀려')
+export const CLASSIFY_RULES_VERSION = 10 // 2026-10-24: 전문직을 국가자격 단위로(대표 "법조계 … 업종 구별이 더 체계적으로")
+// v9 // 2026-08-13: breadcrumb 구분자는 상호가 아니다(대표 '연락처는 실재하는데 업체명이 틀려')
 // v7 // 2026-08-08: or.kr=org · 잘린제목 거부 · 본문근거 불인정(대표 신고 진흥원)
 //  ⚠️ **6 이 아니라 7 인 이유** — 같은 신고를 두 세션이 각각 잡아 **둘 다 6 을 선점**했고(#1099 가 먼저
 //    머지돼 배포됨), 그쪽 규칙으로 이미 `classified_v=6` 이 찍히기 시작했다. 6 으로 합치면 이 파일의
@@ -174,10 +177,10 @@ const BIZ_RULES: Array<{ re: RegExp; category: string; subcategory: string; tier
   { re: /(인테리어|리모델링|시공)/, category: '인테리어', subcategory: '인테리어·시공', tier: 3, type: 'partner' },
   { re: /(주방\s*설비|주방설비|주방\s*기구|업소용\s*주방)/, category: '인테리어', subcategory: '주방설비', tier: 3, type: 'partner' },
   // 전문 서비스(법률·세무·기장 등)
-  { re: /(법무법인|변호사|법률\s*사무소)/, category: '전문서비스', subcategory: '법률', tier: 5, type: 'partner' },
-  { re: /(세무사|세무\s*회계|기장)/, category: '전문서비스', subcategory: '세무·기장', tier: 5, type: 'partner' },
-  { re: /(회계법인|공인회계사)/, category: '전문서비스', subcategory: '회계', tier: 5, type: 'partner' },
-  { re: /(노무사|노무\s*법인)/, category: '전문서비스', subcategory: '노무', tier: 5, type: 'partner' },
+  // 🧭 전문직(변호사·세무사·노무사·회계사 …)은 여기 있지 않다 — `company-taxonomy.ts` 의 **국가자격 단위**
+  //   규칙이 자격 11종을 덮고, 그 쪽이 `classifyLead` 에서 BIZ_RULES 보다 먼저 판정한다(2026-10-24).
+  //   🩸 함께 고친 오탐: 옛 세무 규칙의 bare `기장` 이 **부산 기장군** 상호를 세무로 분류했다
+  //      (라이브 실측: `기장물산(주)` → `전문서비스/세무·기장`). 새 규칙은 `기장대리` 로 좁혔다.
   { re: /(정책\s*자금|정책자금)/, category: '전문서비스', subcategory: '정책자금컨설팅', tier: 5, type: 'partner' },
   // 부동산(독립 카테고리)
   { re: /(상가\s*전문|상가\s*임대|점포\s*부동산|공인중개사|부동산\s*중개)/, category: '부동산', subcategory: '상가부동산', tier: 3, type: 'partner' },
@@ -258,6 +261,12 @@ export function classifyLead(input: ClassifyInput): ClassifyResult {
   if (orgByHost || ORG_WORD_STRICT.test(name)) {
     return { ok: true, category: input.category ?? '지역조직', subcategory: input.subcategory ?? null, tier: input.tier ?? 3, lead_type: 'org', confidence: 'evidence' }
   }
+  // 🧭 **전문직은 국가자격 단위로** (2026-10-24 대표 "법조계 … 업종 구별이 더 체계적으로").
+  //   상호의 자격 표기는 명칭 사용이 법으로 제한돼 있어 **추측이 아니라 등록부급 사실**이다 →
+  //   거친 업종 규칙보다 먼저 판정한다. 근거·순서 함정은 `company-taxonomy.ts` docblock.
+  //   ⚠️ 이름이 업종어뿐이면(`nameIsGeneric`) 쓰지 않는다 — 그건 상호가 아니라 설명이다.
+  const prof = nameIsGeneric ? null : classifyProfession(name)
+  if (prof) return { ok: true, category: PROFESSION_CATEGORY, subcategory: prof, tier: input.tier ?? PROFESSION_TIER, lead_type: 'partner', confidence: 'evidence' }
   for (const r of BIZ_RULES) {
     if (!r.re.test(hay)) continue
     if (bodyUntrusted && !r.re.test(name)) continue // 본문에서만 맞음 — 다음 규칙이 이름에서 맞을 기회를 준다
@@ -266,7 +275,7 @@ export function classifyLead(input: ClassifyInput): ClassifyResult {
       // 매장 자체 — 업종 라벨은 키워드 폴백을 유지하되 접촉 가치 축만 store 로.
       return { ok: true, category: input.category ?? null, subcategory: input.subcategory ?? null, tier: input.tier ?? r.tier, lead_type: 'store', confidence: 'evidence' }
     }
-    return { ok: true, category: r.category, subcategory: r.subcategory, tier: input.tier ?? r.tier, lead_type: r.type, confidence: 'evidence' }
+    return { ok: true, category: r.category, subcategory: canonSubcategory(r.subcategory), tier: input.tier ?? r.tier, lead_type: r.type, confidence: 'evidence' }
   }
   // 기관 어휘(구청·공단·협회…)가 상호에 있으면 기관으로 — 영업 파이프라인에서 분리.
   if (ORG_WORD.test(name)) {
@@ -278,7 +287,9 @@ export function classifyLead(input: ClassifyInput): ClassifyResult {
   return {
     ok: true,
     category: input.category ?? null,
-    subcategory: input.subcategory ?? null,
+    // 🔁 키워드에서 온 라벨도 정본으로 통합한다 — 안 하면 `마케팅 대행사`/`마케팅대행` 처럼
+    //   같은 업종이 두 칸으로 갈려 필터·세그먼트가 조용히 반으로 쪼개진다(실측 1,587 ↔ 7,759).
+    subcategory: canonSubcategory(input.subcategory),
     tier: input.tier ?? null,
     lead_type: 'unknown',
     confidence: hasKeyword ? 'keyword' : 'none',

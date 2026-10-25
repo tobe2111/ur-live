@@ -53,8 +53,16 @@ describe('☑️ registry 분기 — lead_type · confidence 만 본다', () => 
     expect(verdictChanged(before({ classify_confidence: 'keyword' }), written({ confidence: 'registry' }), 'registry')).toBe(true)
   })
 
-  it('🔴 category 가 달라도 안 바뀐 것 — 등록부 업종은 불가침이라 UPDATE 가 안 건드린다', () => {
-    expect(verdictChanged(before({ classify_confidence: 'registry', category: '식음료' }), written({ category: '광고', confidence: 'registry' }), 'registry')).toBe(false)
+  it('🧭 2026-10-24 재조준 — 등록부 분기도 **업종을 쓴다**(상호의 국가자격으로 정밀화)', () => {
+    // 종전 계약: "등록부 업종은 불가침" → UPDATE 가 category 를 안 써서 비교에서도 뺐다.
+    //   대표 지시("법조계 … 업종 구별이 더 체계적으로")로 저장 경로가 자격명으로 업종을 좁히게 됐고
+    //   (`company-taxonomy.refineRegistryLabel`), 등록부 UPDATE 가 category·subcategory 를 쓴다.
+    //   ⚠️ 비교에서 업종을 빼면 `changed=false` 가 되어 **UPDATE 가 아예 실행되지 않는다**(도장만 찍힌다)
+    //      — 라벨 교정이 조용히 안 일어나는 바로 그 실패 모양이라 여기서 고정한다.
+    expect(verdictChanged(before({ classify_confidence: 'registry', category: '식음료' }), written({ category: '광고', confidence: 'registry' }), 'registry')).toBe(true)
+    expect(verdictChanged(before({ classify_confidence: 'registry', subcategory: '노무' }), written({ subcategory: '노무사', confidence: 'registry' }), 'registry')).toBe(true)
+    // 🔒 그래도 **텍스트 규칙(BIZ_RULES)이 공식 업종을 덮는 일**은 없다 — 그 보호는 호출부에 있다
+    //   (등록부 행은 `refineRegistryLabel` 만 통과하고 `classifyLead` 의 업종은 쓰지 않는다).
   })
 })
 
@@ -153,7 +161,8 @@ describe('🔌 배선 — 계측이 실제로 꽂혀 있고, 동작은 안 바�
     expect(disc, '통계는 그 비교 결과를 그대로 받아야 한다(따로 계산하면 두 벌이 된다)')
       .toMatch(/tallyVerdict\(delta, r\.source, r\.classified_v, (changed|verdictChanged\(r, written,)/)
     // 세 갈래 바인드가 전부 written.* 를 쓴다(날것 c.lead_type / c.confidence 직접 바인드 금지).
-    expect(disc).toMatch(/\.bind\(written\.lead_type, CLASSIFY_RULES_VERSION/)
+    // 🧭 2026-10-24: 등록부 갈래가 업종까지 쓰게 되어 바인드 모양이 바뀌었다(계약은 그대로 — written.* 만 쓴다).
+    expect(disc).toMatch(/\.bind\(written\.category, written\.subcategory, written\.tier, written\.lead_type, CLASSIFY_RULES_VERSION/)
     expect(disc).toMatch(/\.bind\(written\.category, written\.subcategory, written\.tier, written\.lead_type, written\.confidence/)
     expect(disc).toMatch(/\.bind\(written\.lead_type, written\.confidence, CLASSIFY_RULES_VERSION/)
   })
@@ -169,7 +178,8 @@ describe('🔌 배선 — 계측이 실제로 꽂혀 있고, 동작은 안 바�
   })
 
   it('🔴 판정 UPDATE 세 갈래 SQL 은 그대로다 — 계측은 세기만 한다', () => {
-    expect(disc).toContain("UPDATE ad_company_leads SET lead_type = ?, classify_confidence = 'registry', classified_v = ? WHERE id = ?")
+    // 🧭 2026-10-24: 등록부 갈래가 업종까지 쓴다(자격 정밀화가 라이브에 닿는 유일한 자리).
+    expect(disc).toContain("UPDATE ad_company_leads SET category = ?, subcategory = ?, tier = COALESCE(tier, ?), lead_type = ?, classify_confidence = 'registry', classified_v = ? WHERE id = ?")
     expect(disc).toContain('UPDATE ad_company_leads SET category = ?, subcategory = ?, tier = COALESCE(tier, ?), lead_type = ?, classify_confidence = ?, classified_v = ? WHERE id = ?')
     expect(disc).toContain('UPDATE ad_company_leads SET lead_type = ?, classify_confidence = ?, classified_v = ? WHERE id = ?')
   })

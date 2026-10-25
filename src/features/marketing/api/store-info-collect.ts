@@ -32,10 +32,15 @@ const stripTag = (s: unknown): string => String(s || '').replace(/<[^>]+>/g, '')
  *   → 네이버 지역검색(company-collect)이 계속 담당. 상가정보는 **전문서비스·인프라(tier3·5)** 를 통째 확보.
  *   대행사(tier1)도 상가정보 광고대행과 겹치나 오탐 커 네이버 유지 — 여기선 간판/광고물 '제작'만. */
 type StoreTarget = { code: string; divId?: string; category: string; subcategory: string; tier: number }
+// 🧭 라벨은 **정본 업종 체계**(`company-taxonomy.ts`)의 값만 쓴다 — 전문직은 국가자격 단위다.
+//   🩸 2026-10-24: 여기 라벨이 한때 바뀌어 **같은 코드(`M10402`)가 '세무사' 7,517건과 '세무·기장'
+//      5,447건으로 갈렸다**(라벨 드리프트). 그리고 이 코드들은 우리보다 거칠어서 `M10307`('노무사') 안에
+//      법조계·심리상담이 섞인다 — 상호의 자격 표기로 정밀화하는 것은 저장 경로가 한다
+//      (`company-save` → `refineRegistryLabel`). 여기 값을 임의로 바꾸면 그 드리프트가 재발한다.
 const STOREINFO_TARGETS: StoreTarget[] = [
-  { code: 'M10402', category: '전문서비스', subcategory: '세무·기장', tier: 5 },
-  { code: 'M10401', category: '전문서비스', subcategory: '회계', tier: 5 },
-  { code: 'M10307', category: '전문서비스', subcategory: '노무', tier: 5 },
+  { code: 'M10402', category: '전문서비스', subcategory: '세무사', tier: 5 },
+  { code: 'M10401', category: '전문서비스', subcategory: '회계사', tier: 5 },
+  { code: 'M10307', category: '전문서비스', subcategory: '노무사', tier: 5 },
   { code: 'M11401', category: '간판', subcategory: '간판·광고물 제작', tier: 3 },
   { code: 'M10504', category: '간판', subcategory: '간판·광고물 제작', tier: 3 },
   { code: 'M10502', category: '간판', subcategory: '간판·광고물 제작', tier: 3 },

@@ -36,7 +36,7 @@ import { priceDisplay } from '../../shared/price-display'
 import { formatNumber } from '../../utils/format'
 import { cardImageAlt } from '../../utils/deal-title'
 import { VOUCHERS_DEFAULT_CATEGORY } from '../../shared/seo/voucher-facet'
-import { STRIP_CLS, HERO_CARD_CLS, HERO_RAIL_CLS, stripBannerImageUrl, bannersOfSlot } from '../../shared/home-strip-banners'
+import { STRIP_CLS, HERO_CARD_CLS, HERO_RAIL_CLS, stripBannerImageUrl, bannersOfSlot, heroEdgeFillCss } from '../../shared/home-strip-banners'
 import { resolveBannerLink } from '../../components/home/banner-link'
 import {
   VOUCHER_TILE_CLASS, VOUCHER_TILE_ABOVE_FOLD, VOUCHER_TILE_IMG_W, VOUCHER_TILE_SIZES, voucherSoldLabel,
@@ -169,7 +169,7 @@ function heroBannerHtml(bannersJson: string | null | undefined): string {
   const link = resolveBannerLink(b.link_url)
   const bg = stripBannerImageUrl(b.image_url, 'vouchers')
   const cls = `relative ${many ? STRIP_CLS.cardMany : STRIP_CLS.cardOne} ${many ? STRIP_CLS.pcCardW : ''} ${STRIP_CLS.card}  ${HERO_CARD_CLS}`
-  const style = bg ? '' : ' style="background:var(--brand-grad)"'
+  const style = bg ? ` style="${escAttr(heroEdgeFillCss(bg))}"` : ' style="background:var(--brand-grad)"'
   const inner =
     (bg ? `<img src="${escAttr(bg)}" alt="" aria-hidden="true" loading="eager" fetchpriority="high" decoding="async" class="${STRIP_CLS.img}">` +
       `<div class="${STRIP_CLS.scrim}" aria-hidden="true"></div>` : '') +
