@@ -25,7 +25,9 @@
 import type { Env } from '../types/env'
 import {
   INDEXNOW_ENDPOINT, INDEXNOW_CURSOR_KEY, INDEXNOW_MAX_URLS,
-  buildIndexNowBody, indexNowKeyPath, isValidIndexNowKey, parseSitemapEntries, planIndexNow,
+  INDEXNOW_BACKFILL_KEY, INDEXNOW_BACKFILL_VERSION, INDEXNOW_SPEC_MAX,
+  buildIndexNowBody, indexNowKeyPath, isValidIndexNowKey, needsIndexNowBackfill,
+  parseSitemapEntries, parseSitemapLocs, planIndexNow,
 } from '../../shared/seo/indexnow'
 
 const ORIGIN = 'https://urdeal.kr'
@@ -42,7 +44,25 @@ export async function handleIndexNowSubmit(env: Env): Promise<string> {
   const res = await fetch(`${ORIGIN}/sitemap.xml`, { headers: { 'User-Agent': 'ur-live-indexnow/1.0' } })
     .catch(() => null)
   if (!res || !res.ok) return `indexnow: sitemap 읽기 실패 (${res ? res.status : 'fetch 실패'})`
-  const entries = parseSitemapEntries(await res.text())
+  const xml = await res.text()
+  const entries = parseSitemapEntries(xml)
+
+  // 🧺 일회성 전수 제출 — 근거는 `shared/seo/indexnow.ts` 의 backfill 머리말.
+  const mark = await DB.prepare(`SELECT value FROM platform_settings WHERE key = ?`)
+    .bind(INDEXNOW_BACKFILL_KEY).first<{ value: string }>().catch(() => null)
+  if (needsIndexNowBackfill(mark?.value)) {
+    const locs = parseSitemapLocs(xml).slice(0, INDEXNOW_SPEC_MAX)
+    // 🔴 0건이면 표식을 세우지 않는다 — sitemap 이 깨진 날 "보냈다" 로 기록되면 전수가 영영 안 간다.
+    if (!locs.length) return 'indexnow: 전수 제출 대상 0건(sitemap 이상), 표식 유지'
+    const ok = await submitUrls(key, locs)
+    if (!ok.ok) return `indexnow: 전수 제출 실패 (${ok.status}) · ${locs.length}건, 표식 유지`
+    await upsertSetting(DB, INDEXNOW_BACKFILL_KEY, INDEXNOW_BACKFILL_VERSION)
+    // 전수에 이미 실렸으니 변경분 커서도 지금으로 맞춘다(다음 회차에 같은 URL 을 또 보내지 않게).
+    const maxLastmod = entries.reduce((a, e) => (e.lastmod > a ? e.lastmod : a), '')
+    if (maxLastmod) await upsertSetting(DB, INDEXNOW_CURSOR_KEY, maxLastmod)
+    return `indexnow: 전수 제출 ${locs.length}건 (v${INDEXNOW_BACKFILL_VERSION}) · 커서 ${maxLastmod || '(없음)'}`
+  }
+
   if (!entries.length) return 'indexnow: sitemap 에 lastmod 가 있는 항목이 0건, 보내지 않았다'
 
   const cur = await DB.prepare(`SELECT value FROM platform_settings WHERE key = ?`)
@@ -50,25 +70,31 @@ export async function handleIndexNowSubmit(env: Env): Promise<string> {
   const plan = planIndexNow(entries, cur?.value, INDEXNOW_MAX_URLS)
 
   if (plan.urls.length) {
-    const body = buildIndexNowBody(
-      new URL(ORIGIN).host, key, `${ORIGIN}${indexNowKeyPath(key)}`, plan.urls,
-    )
-    const post = await fetch(INDEXNOW_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json; charset=utf-8' },
-      body: JSON.stringify(body),
-    }).catch(() => null)
+    const ok = await submitUrls(key, plan.urls)
     // 🔴 실패하면 **커서를 올리지 않는다** — 올리면 그 변경이 영구히 빠진다.
-    if (!post || (post.status !== 200 && post.status !== 202)) {
-      return `indexnow: 제출 실패 (${post ? post.status : 'fetch 실패'}) · ${plan.urls.length}건, 커서 유지`
-    }
+    if (!ok.ok) return `indexnow: 제출 실패 (${ok.status}) · ${plan.urls.length}건, 커서 유지`
   }
 
   if (plan.cursor && plan.cursor !== (cur?.value || '')) {
-    await DB.prepare(
-      `INSERT INTO platform_settings (key, value) VALUES (?, ?)
-       ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
-    ).bind(INDEXNOW_CURSOR_KEY, plan.cursor).run().catch(() => null)
+    await upsertSetting(DB, INDEXNOW_CURSOR_KEY, plan.cursor)
   }
   return `indexnow: ${plan.note} · 커서 ${plan.cursor || '(없음)'}`
+}
+
+async function submitUrls(key: string, urls: string[]): Promise<{ ok: boolean; status: string }> {
+  const body = buildIndexNowBody(new URL(ORIGIN).host, key, `${ORIGIN}${indexNowKeyPath(key)}`, urls)
+  const post = await fetch(INDEXNOW_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+    body: JSON.stringify(body),
+  }).catch(() => null)
+  if (!post) return { ok: false, status: 'fetch 실패' }
+  return { ok: post.status === 200 || post.status === 202, status: String(post.status) }
+}
+
+async function upsertSetting(DB: D1Database, key: string, value: string): Promise<void> {
+  await DB.prepare(
+    `INSERT INTO platform_settings (key, value) VALUES (?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+  ).bind(key, value).run().catch(() => null)
 }
