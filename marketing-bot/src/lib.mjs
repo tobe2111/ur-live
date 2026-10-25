@@ -1,4 +1,5 @@
 // 공통 유틸: 설정, 데이터 파일, Claude API, Meta API, GitHub 이슈. 외부 의존성 없음 (Node 22+).
+import { deAi } from './style.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -128,13 +129,11 @@ export function looksAi(text) {
   return AI_TELLS.test(text) || emoji > 2;
 }
 
-// 2차 패스: "사람이 쓴 것 같은가" 검사 후 아니면 다시 씀. 사실/링크/해시태그 개수는 유지.
+// 2차 패스: 초안을 항상 "AI 티 지우기"로 다시 쓴다(src/style.mjs). 사실·링크·UTM·해시태그가 바뀌거나
+// 호출이 실패하면 초안을 그대로 쓴다.
 export async function humanize(text, kind = '게시글') {
   if (DRY) return text;
-  const verdict = await claude(`너는 SNS 글 검수자다. 아래 ${kind}이 소규모 서비스 운영자가 직접 쓴 글처럼 자연스러운지 판단한다. AI가 쓴 티(뻔한 오프너, 목록 구조, 과한 이모지/해시태그, 홍보 문구, 딱딱한 마무리)가 나면 FAIL. 출력은 PASS 또는 FAIL 한 단어.`, text, 5).catch(() => 'PASS');
-  if (!looksAi(text) && /PASS/i.test(verdict)) return text;
-  const out = await claude(`아래 ${kind}을 운영자가 직접 쓴 것처럼 다시 써라. 내용·사실·조건은 그대로 두고 새 사실이나 숫자를 더하지 않는다. 길이는 비슷하게, 해시태그가 있으면 같은 개수만 끝에 유지. 결과 본문만 출력.\n\n${HUMAN_STYLE}`, text, 900);
-  return out || text;
+  return deAi(text, kind, claude);
 }
 
 // ---------- 실패 알림 → 대표 카톡 "나에게 보내기" ----------

@@ -76,8 +76,12 @@ const TRACK_GUIDE = {
   consumer: `오늘은 소비자 딜 글: 아래 상품을 운영자 입장에서 솔직하게 소개한다(왜 골랐는지, 어떤 상황에 좋은지). 주어진 상품 정보 외 가격/할인율은 쓰지 않는다.`,
 }[track];
 
+import { referenceStyleBlock } from './style.mjs';
+
 const SYSTEM = `너는 로컬 맛집·뷰티 이용권 서비스 '유어딜'(@urdeal_official)을 직접 운영하는 사람이다. 광고 카피가 아니라 사장님/크리에이터에게 직접 설명하듯 쓴다.
 ${TRACK_GUIDE}
+
+${referenceStyleBlock()}
 
 ${HUMAN_STYLE}
 
