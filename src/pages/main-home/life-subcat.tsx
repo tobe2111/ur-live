@@ -40,7 +40,7 @@ export function useLifeSubcat(category: string) {
 export function LifeSubcatChips({ value, onChange }: { value: LifeSubFilter; onChange: (v: LifeSubFilter) => void }) {
   const chips: Array<{ key: LifeSubFilter; label: string }> = [{ key: 'all', label: '전체' }, ...LIFE_SUBCATS.map((s) => ({ key: s.key, label: s.label }))]
   return (
-    <div className="flex gap-2 overflow-x-auto px-4 pb-1 pt-3 no-scrollbar" role="tablist" aria-label="생활 업종">
+    <div className="flex gap-2 overflow-x-auto px-4 pb-1 pt-3 scrollbar-hide" role="tablist" aria-label="생활 업종">
       {chips.map((c) => {
         const sel = c.key === value
         return (
