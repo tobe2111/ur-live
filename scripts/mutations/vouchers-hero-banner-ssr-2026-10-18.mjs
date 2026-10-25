@@ -123,8 +123,8 @@ export default [
   {
     name: '🔔 알림 시트가 다시 lz-common 으로 — 폰 첫 화면이 패널과 아이콘 봉투를 받는다',
     file: 'scripts/surface-chunks.mjs',
-    find: "export const LAZY_ENVELOPES = new Set(['app-notification-panel', 'app-owner-sheet'])",
-    replace: "export const LAZY_ENVELOPES = new Set(['app-owner-sheet'])",
+    find: "export const LAZY_ENVELOPES = new Set(['app-notification-panel', ", // 2026-10-25 재조준(app-life-banner 추가)
+    replace: "export const LAZY_ENVELOPES = new Set([",
     test: 'src/tests/unit/desktop-chrome-lazy-2026-10-18.test.ts',
     why: '실측(gz): 홈 218.8 → 221.6 · 블로그 글 203.0 → 205.9 — lazy 시트가 거의 모든 첫 화면에 실린다',
   },
