@@ -13,6 +13,7 @@ import NetProceedsCard from './NetProceedsCard'
 import PromoMarginCalculator, { promoGuideFor } from '../seller-product-new/PromoMarginCalculator'
 import VoucherPhotoSection from './VoucherPhotoSection'
 import CardPreview from './CardPreview'
+import LifeSubcatPicker from '@/components/life/LifeSubcatPicker'
 import DiscountPriceFields from './DiscountPriceFields'
 import type { VoucherCategory, VoucherForm } from './voucher-form'
 
@@ -67,6 +68,9 @@ export default function VoucherInfoStep({ form, update, setCategory, suggestedIm
           ))}
         </div>
       </div>
+
+      {/* 🏠 생활 이용권이면 업종(2026-10-25 대표 "1번 방식") — 홈 '생활' 탭 칩에서 찾게 한다. */}
+      {form.category === 'home_voucher' && <LifeSubcatPicker value={form.life_subcat} onChange={(v) => update('life_subcat', v)} />}
 
       {/* 이용권 정보 */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">

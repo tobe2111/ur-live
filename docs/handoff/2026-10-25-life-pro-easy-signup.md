@@ -24,3 +24,12 @@
 ## 2차 (대표 "다음 단계 2가지 다 해줘")
 - **인증 안내 한 번** — 견적 응답에 `verified`, 미인증이면 첫 견적 뒤 한 번 확인창(`pro/verify-nudge.ts`, 기기당 1회).
 - **공유로 업체 모집** — 손님 요청 상세에 "요청 링크 보내기"(열린 요청만 `share_token`) · 공유 페이지에 "다른 업체에 공유" · 공유로 온 업체는 업종+지역까지 채운 가입 · 로그인 왕복에도 미리 채움 유지(`pro/join-params.ts`, sessionStorage).
+
+## 추가 — 생활 이용권 업종(2차 카테고리) · 대표 "1번 방식으로 가자"
+
+- 홈 '생활' 탭 아래 업종 칩(전체·이사·청소·방역·소독·수리·설치·간판). 칩을 누르면 그 업종 이용권만, 배너도 그 업종 견적 문구로.
+- SSOT `src/shared/life-deal-subcat.ts` · 저장 `product_supply_meta.life_subcat`(products 컬럼 추가 없음) · 공개 표 `GET /api/home-service/deal-subcats`.
+- 사장님: 이용권 등록(생활이면 업종 필수) · 수정 화면에서 업종 고름. 옛 등록분은 이름으로 추정(저장값이 이긴다).
+- 시안 `docs/design/assets/life-tab-subcat-{a,b}-2026-10-25.png`, 적용 렌더 `life-tab-subcat-applied-2026-10-25.png`.
+- 가드 `life-deal-subcat-2026-10-25.test.ts` + 주입 6건 빨간불 확인.
+- ⚠️ 다음 세션: 배포 후 라이브 `/?category=home_voucher` 에서 칩이 뜨고 '이사' 를 누르면 이사 이용권만 남는지 · `/api/home-service/deal-subcats` 가 실제 생활 이용권 id 를 돌려주는지.

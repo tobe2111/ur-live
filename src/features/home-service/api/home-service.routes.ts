@@ -103,6 +103,19 @@ homeServiceRoutes.get('/share/:token', async (c) => {
   }
 })
 
+/** 🏠 홈 '생활' 탭 업종 칩 — `{ 상품 id: 업종 }` (2026-10-25). 공개·로그인 불필요, 짧게 캐시. */
+homeServiceRoutes.get('/deal-subcats', async (c) => {
+  try {
+    const { lifeSubcatMap } = await import('./life-deal-subcat-store')
+    const data = await lifeSubcatMap(c.env.DB)
+    c.header('Cache-Control', 'public, max-age=60')
+    c.header('CDN-Cache-Control', 'public, max-age=300')
+    return c.json({ success: true, data })
+  } catch (err) {
+    return safeError(c, err, '업종을 불러오지 못했습니다', '[home-service:deal-subcats]')
+  }
+})
+
 homeServiceRoutes.post('/requests', requireAuth(), rateLimit({ action: 'home_service_request', max: 5, windowSec: 3600 }), async (c) => {
   try {
     const DB = c.env.DB
