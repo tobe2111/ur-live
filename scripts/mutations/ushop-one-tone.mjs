@@ -45,7 +45,7 @@ export default [
   {
     name: '한톤 — 분류 줄이 다시 흰 알약 + 들림이 된다',
     file: CHIPS,
-    find: "${on ? 'border-gray-900 dark:border-white font-bold text-gray-900 dark:text-white' : 'border-transparent text-gray-500 dark:text-gray-400'}",
+    find: "${on ? 'border-brand font-bold text-gray-900 dark:text-white' : 'border-transparent text-gray-500 dark:text-gray-400'}",
     replace: "${on ? 'bg-brand text-white' : 'bg-white dark:bg-[#1D1F29] shadow-lift rounded-full'}",
     test: T_A3,
     why:

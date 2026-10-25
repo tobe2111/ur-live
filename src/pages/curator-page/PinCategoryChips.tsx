@@ -66,7 +66,7 @@ export default function PinCategoryChips({ pins, value, onChange }: { pins: Cura
             role="tab"
             aria-selected={on}
             onClick={() => onChange(d.key as PinCategory)}
-            className={`${USHOP_TAB_CLS} ${on ? 'border-gray-900 dark:border-white font-bold text-gray-900 dark:text-white' : 'border-transparent text-gray-500 dark:text-gray-400'}`}
+            className={`${USHOP_TAB_CLS} ${on ? 'border-brand font-bold text-gray-900 dark:text-white' : 'border-transparent text-gray-500 dark:text-gray-400'}`}
           >
             {t(d.labelKey, { defaultValue: d.defaultLabel })}
             {/* 🩸 2026-09-30 — `text-gray-300 dark:text-gray-600` 으로 썼다가 **CI 의 `contrast` 가 잡았다**

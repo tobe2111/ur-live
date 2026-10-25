@@ -27,7 +27,7 @@ describe('유어샵 D안', () => {
   it('② 탭 — 굵기는 선택에만', () => {
     expect(USHOP_TAB_CLS, '공용 탭 클래스에 굵기가 없다(선택 분기만 굵게)').not.toMatch(/\bfont-/)
     const chips = read('src/pages/curator-page/PinCategoryChips.tsx')
-    expect(chips).toMatch(/on \? 'border-gray-900 dark:border-white font-bold/)
+    expect(chips).toMatch(/on \? 'border-brand font-bold/)
   })
 
   it('③ 옆 여백 20px — 헤더·칩 줄·목록', () => {
@@ -47,5 +47,19 @@ describe('유어샵 D안', () => {
     expect(CURATOR_FS_CLASS.row).toContain(PLAIN_CLS.skin)
     const dealRow = read('src/components/deal/DealRow.tsx')
     expect(dealRow).toMatch(/plain \? PLAIN_CLS\.title/)
+  })
+})
+
+describe('PC 이름 한 줄 (2026-10-25 대표 "왜 정지원 이름이 1줄로 안되고 2줄이지?")', () => {
+  const H = readFileSync('src/pages/curator-page/CuratorHeader.tsx', 'utf-8')
+  it('이름은 음절 사이에서 안 끊긴다(break-keep)', () => {
+    expect(H).toMatch(/line-clamp-2 break-keep">\{curator\.name\}/)
+  })
+  it('PC 에서만 버튼 줄이 이름 아래로 내려간다 — 서버 첫 화면도 같은 클래스', () => {
+    expect(H).toMatch(/gap-4 px-5 pt-4 lg:flex-wrap/)
+    expect(H).toMatch(/shrink-0 lg:ml-\[72px\] lg:basis-full/)
+    const S = readFileSync('src/worker/utils/curator-ssr-body.ts', 'utf-8')
+    expect(S).toContain("nameRow: 'flex items-center gap-4 px-5 pt-4 lg:flex-wrap lg:gap-y-3'")
+    expect(S).toContain("cluster: 'ml-3 flex items-center gap-2 shrink-0 lg:ml-[72px] lg:basis-full'")
   })
 })

@@ -130,7 +130,7 @@ describe('유어샵 안3 — 카테고리 분류 줄', () => {
     //   밑줄 자체(`border-b-2`)는 공용 상수 USHOP_TAB_CLS 로 옮겼다(워커 첫 화면이 같은 값을 쓴다).
     expect(read('src/shared/ushop-row.ts'), '탭 상수에 밑줄').toMatch(/USHOP_TAB_CLS = '[^']*border-b-2/)
     expect(src, '탭이 그 상수를 쓴다').toMatch(/\$\{USHOP_TAB_CLS\}/)
-    expect(src, '활성은 잉크 밑줄 + 굵게').toMatch(/on \? 'border-gray-900 dark:border-white font-bold/)
+    expect(src, '활성은 브랜드 밑줄 + 굵게(선택=브랜드 규칙)').toMatch(/on \? 'border-brand font-bold/)
     expect(src, '비활성은 선을 숨긴다(자리는 남긴다 — 글자가 안 밀리게)').toContain('border-transparent')
     expect(src, '개수(대표 요청)를 그린다').toMatch(/\{n\}/)
   })

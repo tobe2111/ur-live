@@ -159,7 +159,9 @@ export default function CuratorHeader({ curator, canEdit, counts, soldTotal, acc
         </div>
 
         {/* ③④ 상호명 줄 — [얼굴] [이름·소개] [공유 · 관리]. 그 위 선 없음(면으로 나뉜다). */}
-        <div className="flex items-center gap-4 px-5 pt-4">
+        {/* 🖥️ 2026-10-25 (대표 *"왜 정지원 이름이 1줄로 안되고 2줄이지?"*): PC 프로필 열은 300px 이라 [얼굴 56 · 공유 · 관리]가
+            한 줄에 서면 이름 칸이 ~60px 만 남아 '정지/원' 으로 끊겼다 → lg 에서만 버튼 줄을 이름 아래로 내린다(폰 불변). */}
+        <div className="flex items-center gap-4 px-5 pt-4 lg:flex-wrap lg:gap-y-3">
           {/* 👤 얼굴 — 사진이 없으면 유달이(공유 카드와 같은 그림). 장식이라 alt 는 비운다(옆에 이름이 있다). */}
           <div className={avatarCls}>
             {photo ? (
@@ -171,14 +173,14 @@ export default function CuratorHeader({ curator, canEdit, counts, soldTotal, acc
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 min-w-0">
               {/* 이름은 이 화면의 정체 자체라 자르지 않고 두 줄까지 허용한다(2026-09-30 실측 — 잘린 이름 사고). */}
-              <h1 className="text-[24px] font-bold text-gray-900 dark:text-white leading-tight tracking-[-0.03em] line-clamp-2">{curator.name}</h1>
+              <h1 className="text-[24px] font-bold text-gray-900 dark:text-white leading-tight tracking-[-0.03em] line-clamp-2 break-keep">{curator.name}</h1>
               {accountType === 'business' && <VerifiedSeal size={17} className="shrink-0" />}
             </div>
             {curator.bio && (
               <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400 leading-snug line-clamp-2">{curator.bio}</p>
             )}
           </div>
-          <div className="ml-3 flex items-center gap-2 shrink-0">
+          <div className="ml-3 flex items-center gap-2 shrink-0 lg:ml-[72px] lg:basis-full">
             <button
               type="button"
               onClick={onCopyLink}
