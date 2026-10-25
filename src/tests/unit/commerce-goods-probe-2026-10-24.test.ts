@@ -51,10 +51,15 @@ describe('취급품목 탐침', () => {
     const r = probeGoodsField({ trtmntPrdlstNm: 'N/A', ntslPrdlstCn: '여성의류, 패션잡화' })
     expect(r.field).toBe('ntslPrdlstCn')
     expect(r.kind).toBe('text')
-    // 1순위가 코드여도 **둘 다 보여야** 한다 — 그게 "코드표 불필요" 를 판정하는 근거다.
+    // 둘 다 값이 있어도 **양쪽을 다 보여야** 한다 — 그게 "코드표 불필요" 를 판정하는 근거다.
+    //   🔁 2026-10-25 재조준: `kind` 기대값을 `'code'` 로 박아 뒀는데 그건 **1순위가 코드이던
+    //   시절의 값**이다(그날 한글을 코드 앞으로 옮겼다 — 같은 레코드가 `'01 02'` 와
+    //   `'종합몰 교육/도서/완구/오락'` 을 쌍으로 준다). 지키려던 것은 *탐침의 우선순위가 수집
+    //   코드와 같다* 이므로, 순서가 또 바뀌어도 안 낡게 **1순위 별칭에서 파생**해 판정한다.
     const both = probeGoodsField({ trtmntPrdlstNm: '12', ntslPrdlstCn: '여성의류' })
-    expect(both.kind, '우선순위는 수집 코드와 같아야 한다').toBe('code')
-    expect(both.byField?.ntslPrdlstCn, '차선 별칭의 값도 함께 보여야 한다').toBe('여성의류')
+    expect(both.field, '탐침의 1순위가 수집 코드의 1순위와 다르다').toBe(GOODS_FIELD_ALIASES[0])
+    expect(both.byField?.trtmntPrdlstNm, '코드 별칭의 값이 안 보인다').toBe('12')
+    expect(both.byField?.ntslPrdlstCn, '한글 별칭의 값이 안 보인다').toBe('여성의류')
   })
 
   it('②-3 값 없음 표기를 값으로 읽지 않는다', () => {
