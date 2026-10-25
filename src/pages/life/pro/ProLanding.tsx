@@ -34,7 +34,7 @@ export default function ProLanding() {
       <ol className="space-y-4">
         {STEPS.map((s, i) => (
           <li key={s.title} className="flex gap-3">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand text-[13px] font-bold text-white">{i + 1}</span>
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand text-[13px] font-medium text-white">{i + 1}</span>
             <div>
               <p className="text-[15px] font-bold">{s.title}</p>
               <p className="mt-1 text-[13px] leading-relaxed text-gray-600 dark:text-gray-300">{s.body}</p>
