@@ -89,7 +89,7 @@ export { propertyTypeLabel } from '@/shared/stay-property-type'
  */
 export function StayReviews({ productId }: { productId: number }) {
   return (
-    <div className="-mx-4 px-4 py-6 border-t-8 border-gray-100 dark:border-[#11141C] lg:mx-0 lg:px-0 lg:py-0 lg:border-t-0 lg:mb-6">
+    <div className="-mx-4 px-4 py-6 border-t-8 border-gray-100 dark:border-[var(--bg)] lg:mx-0 lg:px-0 lg:py-0 lg:border-t-0 lg:mb-6">
       <DeferUntilVisible minHeight={80}>
         <Suspense fallback={<div className="h-20 rounded-xl bg-gray-100 dark:bg-[#1D1F29]" />}>
           <ProductReviews productId={productId} limit={5} />
@@ -128,7 +128,7 @@ export function StayPolicyInfo({
   policy, customText, houseRules, checkInInstructions,
 }: { policy?: string | null; customText?: string | null; houseRules?: string | null; checkInInstructions?: string | null }) {
   return (
-    <div className="-mx-4 px-4 py-6 border-t-8 border-gray-100 dark:border-[#11141C] lg:mx-0 lg:px-0 lg:py-0 lg:border-t-0 lg:mb-6">
+    <div className="-mx-4 px-4 py-6 border-t-8 border-gray-100 dark:border-[var(--bg)] lg:mx-0 lg:px-0 lg:py-0 lg:border-t-0 lg:mb-6">
       <SectionTitle>이용 안내</SectionTitle>
       <div className="mt-4">
         <InfoBlock label="취소 정책">

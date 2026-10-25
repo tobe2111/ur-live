@@ -426,7 +426,7 @@ export default function StayDetailPage() {
         {/* 🛏️ 2026-10-25 대표 확정 **E안**(여기어때 순서 — 날짜 → 객실 → 시설 → 소개 → 이용 안내 → 위치).
             객실 카드는 **고르기만** 한다 — 예약은 하단 바 하나(종전엔 카드마다 [이 객실 예약] + 바의 [예약하기]).
             🖥️ PC(lg+)는 우측 `StayBookingPanel` 의 객실 행이 담당(B안) → 여기 숨김. */}
-        <div id="stay-sec-rooms" className="lg:hidden -mx-4 px-4 py-6 border-t-8 border-gray-100 dark:border-[#11141C] lg:mx-0 lg:px-0 lg:py-0 lg:border-t-0" style={{ scrollMarginTop: 96 }}>
+        <div id="stay-sec-rooms" className="lg:hidden -mx-4 px-4 py-6 border-t-8 border-gray-100 dark:border-[var(--bg)] lg:mx-0 lg:px-0 lg:py-0 lg:border-t-0" style={{ scrollMarginTop: 96 }}>
           <StayRoomPicker rooms={rooms} loading={roomsLoading} guests={guests} nights={nights} readOnly={own}
             selectedId={cartItems[0]?.room_id ?? null}
             onSelect={(r) => setCartQty({ [r.room_id]: 1 })}
@@ -435,7 +435,7 @@ export default function StayDetailPage() {
 
         {/* Amenities */}
         {amenitiesArr.length > 0 && (
-          <div className="-mx-4 px-4 py-6 border-t-8 border-gray-100 dark:border-[#11141C] lg:mx-0 lg:px-0 lg:py-0 lg:border-t-0 lg:mb-6">
+          <div className="-mx-4 px-4 py-6 border-t-8 border-gray-100 dark:border-[var(--bg)] lg:mx-0 lg:px-0 lg:py-0 lg:border-t-0 lg:mb-6">
             <SectionTitle>시설</SectionTitle>
             {/* 🧾 카드 3분할이었다 — "무료 주차" 세 글자에 테두리를 하나씩 쓰던 꼴이라 화면이 시끄러웠다. */}
             <div className="mt-3">
@@ -446,7 +446,7 @@ export default function StayDetailPage() {
 
         {/* Description */}
         {stay.description_full && (
-          <div className="-mx-4 px-4 py-6 border-t-8 border-gray-100 dark:border-[#11141C] lg:mx-0 lg:px-0 lg:py-0 lg:border-t-0 lg:mb-6">
+          <div className="-mx-4 px-4 py-6 border-t-8 border-gray-100 dark:border-[var(--bg)] lg:mx-0 lg:px-0 lg:py-0 lg:border-t-0 lg:mb-6">
             <SectionTitle>숙소 소개</SectionTitle>
             <p className="mt-3 text-[15px] leading-[1.72] text-gray-600 dark:text-gray-300 whitespace-pre-line">{stay.description_full}</p>
           </div>
@@ -463,7 +463,7 @@ export default function StayDetailPage() {
         {/* 🗺️ 위치 — 카카오맵 미니맵 + 매장(숙소) 페이지 연결 (딜 상세 RestaurantMiniMap 재사용).
             좌표(psi.latitude/longitude) 있으면 즉시 마커, 없어도 주소 지오코딩 폴백 → 항상 연결. */}
         {(stay.address || (stay.latitude != null && stay.longitude != null)) && (
-          <div className="-mx-4 px-4 py-6 border-t-8 border-gray-100 dark:border-[#11141C] lg:mx-0 lg:px-0 lg:py-0 lg:border-t-0 lg:mb-5">
+          <div className="-mx-4 px-4 py-6 border-t-8 border-gray-100 dark:border-[var(--bg)] lg:mx-0 lg:px-0 lg:py-0 lg:border-t-0 lg:mb-5">
             <SectionTitle className="mb-3">위치</SectionTitle>
             {/* 🩸 `isolate`: 카카오맵 내부 레이어(z≥1)가 루트 스택에 참여해 우측 달력 팝오버 위로 올라왔다.
                 지도를 자기 스택 컨텍스트에 가두고, 아사이드엔 z 를 준다(둘이 한 쌍). */}
