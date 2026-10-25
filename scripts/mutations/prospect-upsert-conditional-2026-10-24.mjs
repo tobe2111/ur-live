@@ -27,12 +27,31 @@ export default [
     why: '이 수리의 가장 위험한 회귀다 — 한 컬럼이 WHERE 에서 빠지면 그 변화가 **에러 없이** 반영되지 않는다. 상호가 바뀐 가게가 옛 이름으로 영구히 남는다.',
   },
   {
-    name: '매장후보upsert 🗓️ 하루 1회 재검증 도장이 사라진다(is_new_open 이 날짜가 지나도 안 갱신된다)',
+    // 🔁 2026-10-25 재조준 — 앵커가 리터럴 `'-1 day'` 에서 상수 보간으로 옮겨갔다. 그리고 `why` 를
+    //   고쳤다: 종전 사유(`is_new_open` 때문에 하루 1회 필요)는 **오기였다** — 그 값이 뒤집히면
+    //   자기 OR 절이 직접 참이 된다. 이 항이 지키는 것은 "원부에서 이 행을 아직 본다"는 기록이다.
+    name: '매장후보upsert 🗓️ 재검증 도장 조건이 사라진다(last_verified_at 이 영영 안 갱신된다)',
     file: SRC,
-    find: "            OR store_prospects.last_verified_at < datetime('now', '-1 day')",
+    find: "            OR store_prospects.last_verified_at < datetime('now', '-${PROSPECT_VERIFY_STAMP_DAYS} days')",
     replace: '',
     test: TEST,
-    why: '`is_new_open` 은 `todayYmd` 기준이라 날이 지나면 1 → 0 으로 바뀌어야 한다. 이 항이 없으면 값이 같은 행은 영영 UPDATE 되지 않아 **한 달 전 개업이 계속 신규 개업으로 뜬다**.',
+    why: '값이 안 바뀌는 행은 **영영 UPDATE 되지 않아** `last_verified_at` 이 첫 수집 시각에 굳는다. 그러면 "이 가게가 원부에 아직 있는가" 를 말해 주는 유일한 기록이 사라진다(지금 그 컬럼의 소비자는 이 조건뿐이지만, 굳은 값은 되살릴 수 없다).',
+  },
+  {
+    name: '매장후보upsert 🗓️ 도장 창이 다시 1일로 좁아진다(재방문 주기 < 창 → 수리 효과 0 으로 복귀)',
+    file: SRC,
+    find: 'export const PROSPECT_VERIFY_STAMP_DAYS = 7',
+    replace: 'export const PROSPECT_VERIFY_STAMP_DAYS = 1',
+    test: TEST,
+    why: '2026-10-24 수리가 라이브에서 **효과 0** 이었던 원인이 정확히 이 값이다. `collect-neis` 는 같은 행을 ~30~40시간 뒤에 다시 만나므로 창이 1일이면 재방문이 **언제나** 도장 대상이 되어 한 행도 건너뛰지 못한다(실측 found 3,840 = saved 3,840, 스킵 0%). 같은 코드로 storeinfo 는 19~31% 를 건너뛰었다 — 조건부 UPDATE 가 아니라 **창이 짧았던 것**이다.',
+  },
+  {
+    name: '매장후보upsert 🔗 도장 조건이 상수 대신 리터럴로 되돌아간다(상수를 올려도 아무 일이 안 난다)',
+    file: SRC,
+    find: "datetime('now', '-${PROSPECT_VERIFY_STAMP_DAYS} days')",
+    replace: "datetime('now', '-1 day')",
+    test: TEST,
+    why: 'SQL 이 상수를 안 읽으면 `PROSPECT_VERIFY_STAMP_DAYS` 는 **장식**이 된다 — 다음 세션이 그 값을 올려 놓고 효과를 기다리는데 라이브는 1일로 계속 돈다. 빌드도 시험도(그 단언이 없으면) 초록이다.',
   },
   {
     name: '매장후보upsert 🔢 반환값이 다시 "보낸 개수"가 된다(total_saved 가 32배 부풀어 신규 0건을 가린다)',
