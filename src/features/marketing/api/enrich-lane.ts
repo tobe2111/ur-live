@@ -125,6 +125,35 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
   //   🔁 재시도 쿨다운(2026-07-27 최종 점검): enrich_checked_at 없던 시절엔 같은 상위 200행을 매시간
   //   재크롤(실패해도 email NULL 이라 또 선두) → 예산이 앞줄에서 공회전하고 **뒷줄(대행사 포함)은 영영 미도달**.
   //   → 시도 즉시 스탬프 + 7일 쿨다운 → 예산이 백로그 전체를 흐르며 순회(이메일 보유 대행사 13개의 한 원인).
+  // 📮 **2026-10-24 (대표 "이메일 수집도 더 잘 되면 좋겠음") — 미착수가 재시도보다 먼저다.**
+  //   7일 쿨다운은 2026-07-27 에 "상위 200행을 매시간 재크롤" 을 멈추려고 넣었고 **그때는 옳았다**
+  //   (백로그가 작았다). 백로그가 1.7만이 된 지금은 그 쿨다운이 **이미 실패한 행을 처음 보는 행보다
+  //   앞에** 돌려보낸다. 라이브 실측이 그 대가를 말한다:
+  //   ```
+  //     사이트 보유 + 이미 시도 + 아직 이메일 없음 : webkr 6,600 · local 2,998  (= 수율 실측 ~0)
+  //     한 번도 시도 안 한 리드                    : 16,943  (local 10,953 · storeinfo 4,292 · market 887 …)
+  //     하루 크롤 1,918회 · 새 이메일 69건(3.6%)   → 크롤의 70%가 '이미 실패한 것' 재시도였다
+  //   ```
+  //   그래서 `enrich_checked_at IS NULL` 을 정렬 키로 올린다 — 단 **사이트 보유 바로 다음**이다.
+  //
+  //   🩸 **처음엔 그걸 첫 키로 올렸다가 되돌렸다. 그대로 밀면 이메일이 69 → 거의 0 이 됐을 것이다.**
+  //   미착수를 출처별로 재 보니(보강 WHERE 전체, `enrich_checked_at IS NULL`):
+  //   ```
+  //     commerce 361,984 (사이트 1,546)   storeinfo 33,756 (70)   local 16,632 (277)
+  //     market    1,333 (0)               webkr        884 (884)  nara       731 (65)
+  //   ```
+  //   **미착수의 87%가 commerce** 이고, 2026-07-29 실측이 못 박은 대로 *"크롤로 연락처를 얻은
+  //   온라인판매 리드는 한 건도 없다"*. 첫 키로 올리면 큐 머리가 **수율 0 인 36만 건**으로 바뀐다 —
+  //   내가 오늘 두 번 고친 "고정 순서가 꼬리를 굶긴다" 를 **반대 방향으로 내가 만드는** 꼴이었다.
+  //   ⇒ 사이트 보유(즉시 크롤 = 최고 수율)를 **1순위로 유지**하고, 그 안에서 미착수를 먼저 본다.
+  //   실효 대상: 사이트 보유 미착수 **2,842건**(webkr 884 · commerce 1,546 · local 277 · storeinfo 70 · nara 65)
+  //   이 이미 실패한 9,600건보다 먼저 간다.
+  //   ⚠️ **지속 레버는 이게 아니다** — 사이트 없는 리드에게 홈페이지를 찾아 주는 발견 경로(하루 296건)의
+  //      처리량과 **출처 공정성**이 남은 병목이고, 그건 별건이다(근거는 handoff §3-b ②).
+  //   ⚠️ 재시도를 버리는 게 아니다 — 미착수가 바닥나면 자동으로 재시도로 돌아가고, 크롤러가 좋아지면
+  //      `CRAWL_RULES_VERSION` bump 이 전량을 즉시 재시도 대상으로 만든다(그 기계는 무접촉).
+  //   📊 부수 효과: 그 결과로 `ns_src_storeinfo`·`ns_src_market` 계수가 **처음으로** 데이터를 갖는다 —
+  //      2026-07-29 가 "출처별 발견 수율을 아직 재본 적이 없다" 고 남긴 바로 그 질문의 답이 된다.
   // 🚰 대상 상한 = 예산 비례(2026-07-27 대표 "언제 완전해지나" — 예산 800 인데 상한 200 고정이라 병목).
   //   실소비는 루프의 budget break 가 통제 — 상한은 "예산이 허락하면 몇 행까지 볼 수 있나"만 정함.
   const targetCap = Math.min(400, Math.max(120, Math.floor(budget.left / 2)))
@@ -132,7 +161,9 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
       WHERE (active = 0 OR email IS NULL OR email = '')
         AND merged_into IS NULL
         AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now', '-7 days') OR COALESCE(enrich_v, 0) < ${CRAWL_RULES_VERSION})
-      ORDER BY (CASE WHEN website IS NOT NULL AND website != '' THEN 0 ELSE 1 END), (CASE WHEN tier = 1 THEN 0 ELSE 1 END), active ASC, id DESC LIMIT ${targetCap}`)
+      ORDER BY (CASE WHEN website IS NOT NULL AND website != '' THEN 0 ELSE 1 END),
+               (CASE WHEN enrich_checked_at IS NULL THEN 0 ELSE 1 END),
+               (CASE WHEN tier = 1 THEN 0 ELSE 1 END), active ASC, id DESC LIMIT ${targetCap}`)
     .all<{ id: number; company_name: string; category: string | null; region: string | null; address: string | null; website: string | null; phone: string | null; email: string | null; source: string; source_keyword: string | null; status: string }>().catch(() => null))?.results || []
   // 시도 도장 — 크롤러 버전도 함께 기록(버전 bump = 이전 실패분 전량 즉시 재시도 대상).
   //   ⚠️ 2026-07-28: D1 쿼리도 **서브리퀘스트를 소모**한다. 도장은 대상 1건당 1회라 라운드당 수백 건이 되는데,

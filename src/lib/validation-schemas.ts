@@ -97,7 +97,8 @@ export function validateOrError<T>(
   const result = schema.safeParse(data);
   
   if (!result.success) {
-    const errors = (result.error as any).errors.map((e: any) => e.message).join(', ');
+    // 🔁 2026-10-24 zod 4: `error.errors` 가 제거됐다(`issues` 만 남음). `as any` 로 가려 tsc 가 못 봤다.
+    const errors = result.error.issues.map((e) => e.message).join(', ');
     return { success: false, error: errors };
   }
   

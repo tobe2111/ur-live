@@ -58,7 +58,7 @@ function d1(db: InstanceType<typeof DatabaseSync>) {
 
 /**
  * 매장 401·402(우리 에이전시 3 운영 중) · 403(요청 단계) · 404(다른 에이전시 9).
- * 이용권 51 = 401 의 우리 것 · 52 = 402 의 우리 것 · 53 = 401 의 사장님 것 · 54 = 404 의 남의 에이전시 것.
+ * 이용권 51 = 401 의 우리 것 · 52 = 402 의 우리 것 · 53 = 401 의 사장님 것 · 54 = 404 의 남의 에이전시 것 · 55 = 403(요청 단계)의 우리 것.
  */
 async function serverSetup(scope: 'all' | 'assigned') {
   const db = new DatabaseSync(':memory:')
@@ -79,12 +79,14 @@ async function serverSetup(scope: 'all' | 'assigned') {
     INSERT INTO sellers VALUES (401, '합정', NULL), (402, '연남', NULL), (403, '성수', NULL), (404, '남의 에이전시', NULL);
     INSERT INTO dashboard_notifications (id, recipient_type, recipient_id, type, title, link, created_at) VALUES
       (1, 'seller', '401', 'x', '합정 알림', '/seller/orders', datetime('now'));
-    INSERT INTO products VALUES (51, 401, '합정 식사권', 10000), (52, 402, '연남 식사권', 20000), (53, 401, '사장님 식사권', 30000), (54, 404, '남의 식사권', 40000);
+    INSERT INTO products VALUES (51, 401, '합정 식사권', 10000), (52, 402, '연남 식사권', 20000), (53, 401, '사장님 식사권', 30000), (54, 404, '남의 식사권', 40000), (55, 403, '성수 식사권', 5000);
     INSERT INTO agency_product_periods (product_id, seller_id, agency_id, started_at) VALUES
-      (51, 401, 3, '2026-01-01 00:00:00'), (52, 402, 3, '2026-01-01 00:00:00'), (54, 404, 9, '2026-01-01 00:00:00');
+      (51, 401, 3, '2026-01-01 00:00:00'), (52, 402, 3, '2026-01-01 00:00:00'), (54, 404, 9, '2026-01-01 00:00:00'),
+      (55, 403, 3, '2026-01-01 00:00:00'); -- 요청 단계 매장에도 우리 기간·판매가 있어야 '요청 단계 제외' 가 시험된다
     INSERT INTO orders VALUES (101, 401, 'PAID', datetime('now', '-2 hours')), (102, 402, 'PAID', datetime('now', '-1 hours')),
-      (103, 401, 'PAID', datetime('now')), (104, 404, 'PAID', datetime('now'));
-    INSERT INTO vouchers (id, order_id, product_id, applied_price) VALUES (1, 101, 51, 9000), (2, 101, 51, 9000), (3, 102, 52, 18000), (4, 103, 53, 27000), (5, 104, 54, 36000);
+      (103, 401, 'PAID', datetime('now')), (104, 404, 'PAID', datetime('now')),
+      (105, 403, 'PAID', datetime('now', '-30 minutes'));
+    INSERT INTO vouchers (id, order_id, product_id, applied_price) VALUES (1, 101, 51, 9000), (2, 101, 51, 9000), (3, 102, 52, 18000), (4, 103, 53, 27000), (5, 104, 54, 36000), (6, 105, 55, 4500);
   `)
   const { registerAgencyNotificationRoutes } = await import('@/features/agency-console/api/agency-store-notifications')
   const app = new Hono()
@@ -98,7 +100,7 @@ type NotifJson = { data: { items: { id: number; sellerId: number; type: string; 
 describe('① 범위 — 🤝 2026-10-24 판매 기록에서 만든 **우리 이용권 판매**만(사장님·다른 에이전시 판매는 안 섞인다)', () => {
   it('배정된 매장 · 우리가 맡은 이용권 판매만 — 사장님 이용권 · 다른 에이전시 · 요청 단계 매장은 0', async () => {
     const all = await (await (await serverSetup('all')).call('/notifications')).json() as NotifJson
-    expect(all.data.items.map((i) => i.id)).toEqual([102, 101]) // 최신순, 103(사장님) · 104(남의 에이전시) 없음
+    expect(all.data.items.map((i) => i.id)).toEqual([102, 101]) // 최신순, 103(사장님) · 104(남의 에이전시) · 105(요청 단계 매장) 없음
     expect(all.data.items[1]).toMatchObject({ sellerId: 401, type: 'agency_sale', isRead: false })
     expect(all.data.items[1].message).toBe('합정 식사권 2장 · 18,000원')
     expect(all.data.unread).toBe(2)
