@@ -41,11 +41,13 @@ function sampleFor(key: string): Record<string, string> {
 }
 
 describe('🏪 사장님 항목 — 같은 검증·요약', () => {
-  it('사장님 항목이 먼저, 집이 나중', () => {
+  it('가게 → 숙소 → 집 순서이고, 간판이 가게 맨 앞', () => {
     const order = HOME_SERVICE_CATEGORIES.map((d) => d.audience)
-    expect(order.indexOf('home')).toBeGreaterThan(order.lastIndexOf('biz'))
-    expect(HOME_SERVICE_CATEGORIES.filter((d) => d.audience === 'biz').map((d) => d.key))
-      .toEqual(['store_pest', 'kitchen_hood', 'store_repair', 'lodging_clean'])
+    expect(order.indexOf('lodging')).toBeGreaterThan(order.lastIndexOf('store'))
+    expect(order.indexOf('home')).toBeGreaterThan(order.lastIndexOf('lodging'))
+    expect(HOME_SERVICE_CATEGORIES.filter((d) => d.audience === 'store').map((d) => d.key))
+      .toEqual(['signage', 'store_interior', 'store_pest', 'kitchen_hood', 'store_repair', 'store_fridge', 'store_aircon', 'store_clean', 'store_drain'])
+    expect(HOME_SERVICE_CATEGORIES.filter((d) => d.audience === 'lodging').map((d) => d.key)).toEqual(['lodging_clean', 'lodging_pool'])
   })
   for (const def of HOME_SERVICE_CATEGORIES) {
     it(`${def.label} — 정상 입력이 통과하고 요약에 빈칸(-)이 없다`, () => {
