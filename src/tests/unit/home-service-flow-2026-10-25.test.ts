@@ -13,6 +13,8 @@
  */
 import { describe, it, expect, beforeEach } from 'vitest'
 import { readCode } from '../helpers/source-text'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import {
   HOME_SERVICE_CATEGORIES, PRIVATE_ADDRESS_SUFFIX, categoryDef, isSonEomneunDay, requestSummary, validateRequest,
 } from '@/shared/home-service'
@@ -156,5 +158,14 @@ describe('🗣️ 시트 제목 조사', () => {
     expect(eulReul('가게 주소')).toBe('가게 주소를')
     expect(eulReul('업종')).toBe('업종을')
     expect(eulReul('옮길 큰 짐')).toBe('옮길 큰 짐을')
+  })
+})
+
+describe('생활 견적 규칙은 홈 첫 화면 묶음(app-home)에 섞이지 않는다', () => {
+  it('vite manualChunks 가 shared/home-service 를 app-home 에서 뺀다', () => {
+    // `shared/home-*` 규칙이 home-service.ts 까지 잡아, 생활 견적 칸 정의가 홈·FAQ 첫 화면 묶음에 실렸다
+    // (2026-10-25 CI surface-budgets: faq +2.2KB · app-home.js +2.1).
+    const cfg = readFileSync(resolve(process.cwd(), 'vite.config.ts'), 'utf8')
+    expect(cfg).toContain("(id.includes('/src/shared/home-') && !id.includes('/src/shared/home-service'))")
   })
 })

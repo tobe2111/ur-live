@@ -51,4 +51,12 @@ export default [
     test: T,
     why: '401 만 나고 답이 저장되지 않아 처음부터 다시 적게 된다.',
   },
+  {
+    name: '생활흐름 — 생활 견적 규칙이 홈 첫 화면 묶음에 다시 섞인다',
+    file: 'vite.config.ts',
+    find: "(id.includes('/src/shared/home-') && !id.includes('/src/shared/home-service'))",
+    replace: "id.includes('/src/shared/home-')",
+    test: T,
+    why: '홈·FAQ 등 app-home 을 받는 모든 화면이 생활 견적 칸 정의를 첫 로딩에 받는다(+2KB).',
+  },
 ]
