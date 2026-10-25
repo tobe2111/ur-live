@@ -2,10 +2,13 @@
 // 트랙 비율: data/mix-state.json(주간 자동조정, 범위 내) → 없으면 data/content-mix.json 고정 60/25/15.
 import { pickTrackByWeights } from './attribution.mjs';
 import { vetPost } from './vet.mjs';
+import { pickLeastRecent, rotateImages, pickHook, pickFormat, recentOpeners } from './variety.mjs';
 import { DRY, log, readJson, writeJson, claude, humanize, HUMAN_STYLE, threadsText, threadsPublish, igPublish, fbPagePost, utmLink, productImage, kstNow, PARTNER_FACTS , opsAlert } from './lib.mjs';
 import { myRecentPosts, postedOn } from './live.mjs';
 
 const schedule = readJson('data/schedule.json', {});
+// 다양성(주제·훅·미디어 세트) 순환용 기록. 게시 여부 판정은 live(실물 조회)로만 하므로 posts.json 은 읽지 않는다.
+const varietyLog = readJson('data/variety.json', []);
 const mix = readJson('data/content-mix.json', { cycle: {}, tracks: {} });
 const { products } = readJson('data/products.json', { products: [] });
 const now = new Date();
@@ -50,7 +53,11 @@ const T = mix.tracks?.[track] || {};
 const isPromo = track === 'consumer';
 const product = products[dayIdx % Math.max(products.length, 1)];
 const topics = T.topics || [];
-const topic = topics.length ? topics[dayIdx % topics.length] : '';
+// 최근에 안 쓴 주제부터 (같은 트랙 기록 기준)
+const topic = process.env.TOPIC || pickLeastRecent(topics, varietyLog.filter((p) => p.track === track), 'topic', (t) => t, dayIdx) || '';
+// 오늘의 글 시작 방식·형식 (인스타 기록 기준으로 최근 쓴 훅은 피함)
+const hook = pickHook(varietyLog.filter((p) => p.platform === 'instagram'), dayIdx);
+const format = pickFormat(dayIdx);
 // 링크 대상: 입점/크리에이터 페이지 (없으면 상품, 그것도 없으면 홈)
 const target = { url: T.target || product?.url || 'https://urdeal.kr/' };
 // 글 id: 하루 한 번이라 날짜로 충분하다(utm_content = <id>-<YYYYMMDD>). 종전엔 posts.json 개수로 매겼다.
@@ -69,13 +76,20 @@ const TRACK_GUIDE = {
   consumer: `오늘은 소비자 딜 글: 아래 상품을 운영자 입장에서 솔직하게 소개한다(왜 골랐는지, 어떤 상황에 좋은지). 주어진 상품 정보 외 가격/할인율은 쓰지 않는다.`,
 }[track];
 
+import { referenceStyleBlock } from './style.mjs';
+
 const SYSTEM = `너는 로컬 맛집·뷰티 이용권 서비스 '유어딜'(@urdeal_official)을 직접 운영하는 사람이다. 광고 카피가 아니라 사장님/크리에이터에게 직접 설명하듯 쓴다.
 ${TRACK_GUIDE}
+
+${referenceStyleBlock()}
 
 ${HUMAN_STYLE}
 
 [확인된 사실 — 이 범위 밖의 조건·숫자는 쓰지 않는다]
 ${PARTNER_FACTS}
+
+[오늘의 글 시작 방식] ${hook.guide}
+[오늘의 분량·형식] ${format}
 
 본문만 출력하고 따옴표, 머리말, 해시태그 설명 같은 메타 문장은 쓰지 않는다.`;
 
@@ -88,6 +102,8 @@ const recentTexts = (platform) => live.filter((p) => p.platform === platform && 
 // 쓰기 → 검수 → (걸리면 문제를 알려 주고 한 번 다시 쓰기) → 그래도 걸리면 올리지 않는다
 async function writeVetted(prompt, maxTokens, platform, info, kind) {
   const ctx = { facts: `${PARTNER_FACTS}\n${info}`, recent: recentTexts(platform) };
+  const openers = recentOpeners(recentTexts(platform));
+  if (openers.length) prompt += `\n\n최근 글들은 이렇게 시작했다. 이 문장들과 비슷하게 시작하지 말고, 같은 표현("제일 많이 묻는", "제일 먼저 걱정" 등)도 반복하지 마라:\n- ${openers.join('\n- ')}`;
   // 사람 말투로 다듬은 *최종본*을 검수한다 — 다듬기가 숫자·표현을 바꿀 수 있어서다
   let body = await humanize(await claude(SYSTEM, prompt, maxTokens), kind);
   if (DRY) return { body, problems: [] }; // DRY 샘플 응답은 검수 대상이 아니다
@@ -143,10 +159,17 @@ async function main() {
     const link = utmLink(isPromo ? product : target, 'instagram', T.campaign || track, id, now);
     // 미디어 결정: tracks.<t>.media 배열(캐러셀 images / Reels video_url, 날짜별 순환) → image_url → og:image → 상품 이미지
     const mediaList = (T.media || []).filter((m) => m && (m.video_url || m.images?.length));
-    let media = mediaList.length ? mediaList[(process.env.MEDIA_IDX ? Number(process.env.MEDIA_IDX) : dayIdx) % mediaList.length] : null;
+    // 같은 세트 반복 방지: 가장 오래 안 쓴 세트를 고르고, 다시 쓰는 세트는 표지(첫 장)를 바꾼다
+    const igHist = varietyLog.filter((p) => p.platform === 'instagram');
+    const mediaKey = (m) => m.set || m.video_url || m.images[0];
+    let media = process.env.MEDIA_IDX ? mediaList[Number(process.env.MEDIA_IDX) % mediaList.length] : pickLeastRecent(mediaList, igHist, 'media_set', mediaKey, dayIdx);
+    if (media) {
+      const usedTimes = igHist.filter((p) => !p.skipped && p.media_set === mediaKey(media)).length;
+      media = { ...media, set: mediaKey(media), images: media.images ? rotateImages(media.images, usedTimes) : media.images };
+    }
     const imgs = [].concat(T.image_url || []).filter(Boolean); // 문자열 또는 배열(날짜별 순환)
-    const single = media ? null : (imgs.length ? imgs[dayIdx % imgs.length] : null) || (!isPromo && await productImage(target)) || (product && await productImage(product));
-    if (!media && single) media = { images: [single] };
+    const single = media ? null : (imgs.length ? pickLeastRecent(imgs, igHist, 'media_set', (u) => u, dayIdx) : null) || (!isPromo && await productImage(target)) || (product && await productImage(product));
+    if (!media && single) media = { images: [single], set: single };
     const image = media?.video_url || media?.images?.[0];
     if (!image) {
       log(`Instagram: ${track} 이미지 URL 없음 → 건너뜀`);
@@ -171,7 +194,7 @@ async function main() {
         runLog.push({ platform: 'instagram', skipped: 'error', error: e.message.slice(0, 300), track, posted_at: now.toISOString(), date_kst: today });
       }
       if (r) {
-      runLog.push({ platform: 'instagram', id: r.id, media_type: r.media_type, media_set: media.set, content_id: id, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('instagram'), bio_link: link, text: body, dry: DRY || undefined });
+      runLog.push({ platform: 'instagram', id: r.id, media_type: r.media_type, media_set: media.set, hook: hook.id, topic: topic || undefined, content_id: id, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('instagram'), bio_link: link, text: body, dry: DRY || undefined });
       // ---- Facebook 페이지 (IG 게시 시 같은 미디어/캡션 + 링크; 멀티포토·영상 실패 시 단일 이미지) ----
       const fcid = cid('facebook');
       const flink = utmLink(isPromo ? product : target, 'facebook', T.campaign || track, fcid, now);
@@ -189,6 +212,7 @@ async function main() {
   // ⚠️ 중복 판정에는 쓰지 않는다 — 다음 회차는 Threads·인스타에 직접 물어 판정한다(저장 실패와 무관).
   log('이번 회차 결과:', JSON.stringify(runLog.map(({ text, ...r }) => r)));
   if (!DRY && runLog.length) writeJson('data/posts.json', [...readJson('data/posts.json', []), ...runLog].slice(-300));
+  if (!DRY && runLog.length) writeJson('data/variety.json', [...varietyLog, ...runLog.map(({ platform, track, topic, hook, media_set, skipped, date_kst }) => ({ platform, track, topic, hook, media_set, skipped, date_kst }))].slice(-300));
   if (threadsError) throw new Error(`Threads 게시 실패: ${threadsError.message}`);
   if (igError) throw new Error(`Instagram 게시 실패: ${igError.message}`);
   if (qualityError) throw qualityError; // 기록은 저장했다. 다음 회차가 같은 날 다시 시도한다(skipped 는 미게시로 센다)
