@@ -82,7 +82,7 @@
       }
     },
     "gbDetail": {
-      "totalKB": 197.94,
+      "totalKB": 198.2,
       "chunks": {
         "index.js": 15.21,
         "react-core.js": 38.39,
@@ -920,6 +920,13 @@
       "changes": [
         "gbDetail: 194.7 → 196.6 KB (+1.9, 허용 1.5) · 늘어난 것: lz-boot-gbDetail.js +0.4",
         "product: 187.2 → 188.8 KB (+1.6, 허용 1.5) · 늘어난 것: (새 청크 없음 — 기존 청크 내부)"
+      ]
+    },
+    {
+      "date": "2026-10-25",
+      "reason": "gbDetail lz-gbDetail growth +1.6KB",
+      "surfaces": [
+        "gbDetail"
       ]
     }
   ]
