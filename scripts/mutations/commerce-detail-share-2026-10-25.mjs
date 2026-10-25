@@ -17,7 +17,7 @@ export default [
     find: '      if (foundThisService >= recordsPerService) break',
     replace: '',
     test: TEST,
-    why: '수리 전 라이브 그대로다 — 최근 12회차 전부 `stopped_by: records` · `by_service` 에 `status` 만. 취급품목은 `detail` 에만 오므로 그 값을 영영 못 보고, 업종 92%(50,475/55,000)가 `통신판매` 로 남는다. 에러는 0건이고 수집량도 그대로라 **아무 신호가 없다**.',
+    why: '수리 전 라이브 그대로다 — `by_service` 에 `status` 만 · `ads_commerce_cursor_detail` 이 47 에서 멈춘 채. 취급품목은 `detail` 에만 오므로 그 값을 영영 못 보고, 업종 **93.0%(58,389/62,757 — 2026-10-25 재측정)** 가 `통신판매` 로 남는다. 에러는 0건이고 수집량도 그대로라 **아무 신호가 없다**.',
   },
   {
     name: '통신판매몫 🔥 전역 상한 검사가 사라진다(몫만 남아 N×(몫+페이지) 로 CPU 사망)',
@@ -36,12 +36,12 @@ export default [
     why: '상수를 손으로 베끼면 두 벌이 갈린다 — `MAX_RECORDS_PER_RUN` 을 CPU 때문에 내리는 날 몫은 그대로라 총 파싱량이 상한을 넘는다(그리고 그게 바로 상한을 내린 이유다).',
   },
   {
-    name: '통신판매몫 🏷️ 몫 소진이 stopped_by 를 세운다(수리 뒤에도 records 로 남아 판정 신호가 죽는다)',
+    name: '통신판매몫 🏷️ 몫 소진이 stopped_by 를 세운다(멈춘 적 없는 회차를 멈췄다고 기록)',
     file: SRC,
     find: '      if (foundThisService >= recordsPerService) break',
     replace: "      if (foundThisService >= recordsPerService) { stoppedBy = 'records'; break }",
     test: TEST,
-    why: '`stopped_by: records` 가 사라지는 것이 이 수리의 E4 신호다(라이브에서 12회차 전부 그 값이었다). 몫 소진까지 같은 라벨을 쓰면 **고쳤는지 안 고쳤는지 구분할 수 없게** 된다.',
+    why: '몫 소진은 **정상 종료**다(회차가 멈춘 게 아니라 다음 서비스에 넘긴 것). 여기서 `stoppedBy` 를 세우면 멈춘 적 없는 회차가 멈췄다고 기록되고, 특히 `\'deadline\'` 을 세우면 바깥 루프의 `if (stoppedBy === \'deadline\') break` 가 끊겨 **다음 서비스가 다시 굶는다** — 이 수리가 없앤 그 결함이다. ⚠️ `stopped_by` 자체는 E4 신호가 **아니다**(2026-10-25 트레이스 정정): `detail` 이 페이지를 받으면 `found` 가 1,000 이 되고 `perService ≥ 2` 라 다음 반복의 전역 상한 판정이 반드시 돌아 `records` 로 남는다 — 그게 옳다(설계된 CPU 천장). E4 는 `by_service` 의 `detail` 키와 커서 전진 둘뿐이다.',
   },
   {
     name: '통신판매몫 🔢 서비스별 누적이 안 늘어난다(몫 검사가 영원히 거짓)',
