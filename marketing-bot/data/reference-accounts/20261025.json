@@ -1,0 +1,20 @@
+{
+  "fetched_at": "2026-10-25T04:19:42.930Z",
+  "accounts": [
+    {
+      "label": "배민사장님",
+      "username": "baemin_ceo",
+      "error": "Meta GET 28641841168830624: {\"message\":\"Error validating access token: Session has expired on Thursday, 15-Oct-26 14:00:00 PDT. The current time is Saturday, 24-Oct-26 21:19:43 PDT.\",\"type\":\"OAuthException\",\"code\":190,\"error_subcode\":463,\"fbtrace_id\":\"A1Ke9bTzmmKjZ1Vxhy0nGMn\"}"
+    },
+    {
+      "label": "토스플레이스",
+      "username": "tossplace",
+      "error": "Meta GET 28641841168830624: {\"message\":\"Error validating access token: Session has expired on Thursday, 15-Oct-26 14:00:00 PDT. The current time is Saturday, 24-Oct-26 21:19:43 PDT.\",\"type\":\"OAuthException\",\"code\":190,\"error_subcode\":463,\"fbtrace_id\":\"AE7mDl9apQ-DEgxHRHOGvlS\"}"
+    },
+    {
+      "label": "캐치테이블",
+      "username": "catchtable_official",
+      "error": "Meta GET 28641841168830624: {\"message\":\"Error validating access token: Session has expired on Thursday, 15-Oct-26 14:00:00 PDT. The current time is Saturday, 24-Oct-26 21:19:43 PDT.\",\"type\":\"OAuthException\",\"code\":190,\"error_subcode\":463,\"fbtrace_id\":\"AiqVJ-QbAg3CVXXIPDQNTPe\"}"
+    }
+  ]
+}
