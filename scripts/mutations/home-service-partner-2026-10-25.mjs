@@ -45,8 +45,8 @@ export default [
   {
     name: '생활제휴 — 간판 요청서가 예산을 안 묻는다',
     file: 'src/shared/home-service-categories.ts',
-    find: "      { key: 'budget', label: '생각하는 예산', type: 'select', required: true,",
-    replace: "      { key: 'budget_x', label: '생각하는 예산', type: 'select', required: false,",
+    find: "      { key: 'budget', label: '생각하는 예산', type: 'select', required: true,\n        options: ['100만 원 이하',",
+    replace: "      { key: 'budget_x', label: '생각하는 예산', type: 'select', required: false,\n        options: ['100만 원 이하',",
     test: T,
     why: '간판 업체가 예산을 몰라 견적 범위를 못 잡는다.',
   },
