@@ -37,6 +37,12 @@ describe('② 추정과 우선순위', () => {
     expect(guessLifeSubcat('간판 LED 교체')).toBe('sign') // 좁은 말이 먼저
     expect(guessLifeSubcat('이사 청소 패키지')).toBe('move')
     expect(guessLifeSubcat('에어컨 설치')).toBe('repair')
+    // 2026-10-25 라이브 9건 실측 — 세척은 청소, '이사청소' 는 이사가 아니라 청소
+    expect(guessLifeSubcat('벽걸이 에어컨 완전분해 세척')).toBe('clean')
+    expect(guessLifeSubcat('2in1 (스탠드+벽걸이) 세척')).toBe('clean')
+    expect(guessLifeSubcat('이사청소 10평대 원룸')).toBe('clean')
+    expect(guessLifeSubcat('포장이사 10만원 할인권')).toBe('move')
+    expect(guessLifeSubcat('입주청소 30평대 (새집증후군 케어)')).toBe('clean')
     expect(guessLifeSubcat('아무 관계 없는 이름')).toBeNull()
     expect(guessLifeSubcat(null)).toBeNull()
   })

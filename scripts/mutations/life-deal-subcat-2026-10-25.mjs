@@ -57,4 +57,12 @@ export default [
     test: TEST,
     why: '묶음기가 업종 표를 홈 봉투에 넣어 어드민·사장님 화면 전부가 홈 코드 23KB 를 받는다(2026-10-25 CI 실측).',
   },
+  {
+    name: '🏠 이름 추정이 먼저 맞은 짧은 말을 고른다',
+    file: 'src/shared/life-deal-subcat.ts',
+    find: 'if (w.length > bestLen && n.includes(w))',
+    replace: 'if (bestLen === 0 && n.includes(w))',
+    test: TEST,
+    why: '"이사청소" 가 다시 이사 칩으로 간다(2026-10-25 라이브에서 실제로 그랬다).',
+  },
 ]
