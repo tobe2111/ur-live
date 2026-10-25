@@ -343,6 +343,7 @@ export default function SellerProductEditPage() {
             price={formData.price}
             originalPrice={formData.original_price}
             stock={formData.stock}
+            margin={isVoucherCategory(formData.category)}
             onChange={handleChange}
           />
 

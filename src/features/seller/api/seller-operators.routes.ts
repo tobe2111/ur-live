@@ -29,6 +29,8 @@ import { safeError } from '@/worker/utils/safe-error'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { startDashboardSession } from '@/worker/utils/dashboard-session'
 import { resolveTokenActorUserId, liveAgencySeatStoreId } from '@/worker/utils/store-seat-guard'
+import { agencySeatOf } from '@/worker/utils/agency-product-scope'
+import { agencySummary } from '../../agency-console/api/agency-store-today'
 import { notifyUser } from '@/lib/notifications'
 import { getOrIssueOwnerClaimCode, formatStoreCode } from '@/worker/utils/store-codes'
 import { readBrokerTerms } from '@/worker/utils/broker-share'
@@ -84,13 +86,14 @@ async function resolveActorUserId(c: Ctx): Promise<number | null> {
  *   **맡은 그 매장 하나**(operator). 에이전시 직원은 소비자 사람이 없어서 사람 기준 목록이 비고, 401 을 내면
  *   셀러 화면의 공용 인터셉터가 로그아웃시킨다 — 그래서 여기서 좌석 하나로 답한다.
  */
-async function resolveStoreScope(c: Ctx): Promise<{ userId: number | null; stores: Awaited<ReturnType<typeof listOperableStores>> } | null> {
+async function resolveStoreScope(c: Ctx): Promise<{ userId: number | null; agencyId?: number | null; stores: Awaited<ReturnType<typeof listOperableStores>> } | null> {
   const agencyStore = await liveAgencySeatStoreId(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET).catch(() => null)
-  if (agencyStore) {
+  const agencyId = agencyStore ? (await agencySeatOf(c.req.header('Authorization'), c.env.JWT_SECRET))?.agencyId ?? null : null
+  if (agencyStore && agencyId) {
     const r = await c.env.DB.prepare(
       'SELECT id AS seller_id, business_name, name, status, username, address FROM sellers WHERE id = ? LIMIT 1',
     ).bind(agencyStore).first<{ seller_id: number; business_name: string | null; name: string | null; status: string | null; username: string | null; address: string | null }>()
-    return { userId: null, stores: r ? [{ ...r, role: 'operator' as const, source: 'grant' as const }] : [] }
+    return { userId: null, agencyId, stores: r ? [{ ...r, role: 'operator' as const, source: 'grant' as const }] : [] }
   }
   const userId = await resolveActorUserId(c)
   if (!userId) return null
@@ -140,6 +143,7 @@ app.get('/my-stores/summary', async (c) => {
     if (stores.length === 0) {
       return c.json({ success: true, data: { stores: [], totals: { today_revenue: 0, today_orders: 0, pending: 0 }, current_seller_id: currentSellerId ?? null } })
     }
+    if (scope.agencyId) return c.json({ success: true, data: await agencySummary(c.env.DB, stores, scope.agencyId, currentSellerId ?? null) }) // 🤝 자기 이용권 숫자만
     const ids = stores.map(s => s.seller_id)
     const todayKst = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10)
     const [todayRows, pendingRows, activeRows, certRows] = await Promise.all([

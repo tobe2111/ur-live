@@ -100,8 +100,10 @@ function ownerApp(DB: D1Database, owner = { userId: 100, sellerId: 7 }) {
 function guardApp(DB: D1Database) {
   const app = new Hono<{ Bindings: { DB: D1Database; JWT_SECRET: string } }>()
   app.use('/api/*', storeSeatGuard())
-  app.get('/api/seller/orders', (c) => c.json({ ok: true }))
-  return (token: string) => app.request('/api/seller/orders', { headers: { Authorization: `Bearer ${token}` } }, { DB, JWT_SECRET: SECRET })
+  // 🤝 2026-10-24 — 에이전시 좌석은 기본 차단이라 매장 전체를 여는 `/api/seller/orders` 는 403 이다. 좌석 생사를 재는
+  //   탐침은 에이전시에게 열린 길(자기 이용권 목록)로 옮겼다 — 지키는 것(끊으면 401)은 그대로다.
+  app.get('/api/seller/products', (c) => c.json({ ok: true }))
+  return (token: string) => app.request('/api/seller/products', { headers: { Authorization: `Bearer ${token}` } }, { DB, JWT_SECRET: SECRET })
 }
 
 /** 사장님이 맡기고 관리자가 수락해 직원 6 이 매장 7 좌석을 받는다. */
@@ -128,18 +130,23 @@ describe('① 맡기기 · 수락 · 운영', () => {
     expect(list.stores[0]).toMatchObject({ status: 'pending', name: '직접카페' })
     expect((await agency('POST', `/stores/${list.stores[0].linkId}/accept`, await staffToken(6, 1))).status, '직원이 수락').toBe(403)
     expect((await agency('POST', `/stores/${list.stores[0].linkId}/accept`, await staffToken(5, 1))).status).toBe(200)
-    const state = await (await owner('GET', '/agency-link')).json() as { data: { status: string; agencyName: string } }
-    expect(state.data).toMatchObject({ status: 'active', agencyName: '바른대행' })
+    const state = await (await owner('GET', '/agency-link')).json() as { data: { links: Array<{ status: string; agencyName: string }> } }
+    expect(state.data.links).toHaveLength(1)
+    expect(state.data.links[0]).toMatchObject({ status: 'active', agencyName: '바른대행' })
   })
 
-  it('직원 이메일로는 맡길 수 없다(요청이 엉뚱한 곳에 가지 않게) · 한 매장은 한 에이전시만', async () => {
+  it('직원 이메일로는 맡길 수 없다(요청이 엉뚱한 곳에 가지 않게) · 🤝 여러 에이전시와 함께 · 같은 에이전시엔 두 번 못 맡긴다', async () => {
     const { DB } = await fresh()
     const owner = ownerApp(DB)
     expect((await owner('POST', '/agency-link', { email: 'staff@ag.kr' })).status).toBe(404)
     expect((await owner('POST', '/agency-link', { email: 'boss@ag.kr' })).status).toBe(200)
-    const again = await owner('POST', '/agency-link', { email: 'other@ag.kr' })
+    // 2026-10-24 대표 확정: 한 매장이 여러 에이전시와 함께 한다.
+    expect((await owner('POST', '/agency-link', { email: 'other@ag.kr' })).status, '다른 에이전시').toBe(200)
+    const again = await owner('POST', '/agency-link', { email: 'boss@ag.kr' })
     expect(again.status).toBe(409)
     expect(((await again.json()) as { code: string }).code).toBe('ALREADY_LINKED')
+    const state = await (await owner('GET', '/agency-link')).json() as { data: { links: Array<{ agencyName: string }> } }
+    expect(state.data.links.map((l) => l.agencyName)).toEqual(['바른대행', '남의대행'])
   })
 
   it('맡은 매장만 좌석을 받는다 — 맡기지 않은 매장·남의 에이전시는 403', async () => {
@@ -294,12 +301,17 @@ describe('④ 사장님으로 둔갑하는 폴백 자리 — 배선', () => {
 
   it('끊기·내려놓기·직원 내보내기는 좌석 캐시를 바로 비운다', () => {
     expect(code('src/features/seller/api/seller-agency-link.routes.ts')).toMatch(/invalidateStoreSeatCache\(DB, g\.sellerId\)/)
-    expect(code('src/features/agency-console/api/agency-stores.routes.ts')).toMatch(/if \(to === 'ended'\) invalidateStoreSeatCache\(DB, row\.seller_id\)/)
+    // 📊 2026-10-24 — 내려놓을 때 우리 이용권을 사장님께 돌리는 일이 같은 분기에 붙었다(캐시 비우기는 그대로).
+    expect(code('src/features/agency-console/api/agency-stores.routes.ts')).toMatch(/if \(to === 'ended'\) \{ await releaseAgencyProducts\(DB, row\.seller_id, me\.agencyId\); invalidateStoreSeatCache\(DB, row\.seller_id\) \}/)
     expect(code('src/features/agency-console/api/agency-staff.routes.ts')).toMatch(/invalidateStoreSeatCache\(c\.env\.DB\)/)
   })
 
-  it('한 매장 한 에이전시 — 부분 UNIQUE 인덱스', () => {
-    expect(code('src/features/agency-console/api/agency-schema.ts')).toMatch(/idx_agency_store_links_open ON agency_store_links\(seller_id\) WHERE status IN \('pending','active'\)/)
+  it('🤝 한 매장 · 여러 에이전시 — 열린 맡김은 (매장, 에이전시) 쌍마다 하나 · 옛 매장당 하나 인덱스는 지운다', () => {
+    const src = code('src/features/agency-console/api/agency-schema.ts')
+    expect(src).toMatch(/idx_agency_store_links_open_pair ON agency_store_links\(seller_id, agency_id\) WHERE status IN \('pending','active'\)/)
+    expect(src).toContain("DROP INDEX IF EXISTS idx_agency_store_links_open'")
+    // 옛 인덱스가 남아 있으면 두 번째 에이전시가 에러 없이 막힌다 — 다시 만드는 줄이 있으면 안 된다.
+    expect(src).not.toMatch(/idx_agency_store_links_open ON agency_store_links\(seller_id\) WHERE/)
   })
 })
 
@@ -364,15 +376,16 @@ describe('⑤ 매장 초대 링크 — 에이전시가 보내고 사장님이 [�
     expect((await inv.lookup(t2)).status).toBe(404)
   })
 
-  it('이미 다른 에이전시에 맡긴 매장은 409 · 같은 에이전시 요청이 대기 중이면 수락으로 올린다', async () => {
+  it('🤝 다른 에이전시에 맡긴 매장도 링크로 함께 한다 · 같은 에이전시 요청이 대기 중이면 수락으로 올린다', async () => {
     const { db, DB, inv, token } = await withInvite()
-    await ownerApp(DB)('POST', '/agency-link', { email: 'other@ag.kr' })
-    expect((await inv.accept({ token, seller_id: 7 }, await cookieOf(100))).status).toBe(409)
-    db.exec("UPDATE agency_store_links SET status = 'ended' WHERE seller_id = 7")
-    await ownerApp(DB)('POST', '/agency-link', { email: 'boss@ag.kr' })
+    await ownerApp(DB)('POST', '/agency-link', { email: 'other@ag.kr' }) // 에이전시 2 에 요청 중
+    await ownerApp(DB)('POST', '/agency-link', { email: 'boss@ag.kr' }) // 에이전시 1 에도 요청 중
     expect((await inv.accept({ token, seller_id: 7 }, await cookieOf(100))).status).toBe(200)
-    const open = db.prepare("SELECT status FROM agency_store_links WHERE seller_id = 7 AND status IN ('pending','active')").all() as Array<{ status: string }>
-    expect(open).toEqual([{ status: 'active' }])
+    const open = db.prepare("SELECT agency_id, status FROM agency_store_links WHERE seller_id = 7 AND status IN ('pending','active') ORDER BY agency_id").all()
+    expect(open).toEqual([{ agency_id: 1, status: 'active' }, { agency_id: 2, status: 'pending' }])
+    // 같은 링크를 또 눌러도 맡김이 둘이 되지 않는다
+    expect((await inv.accept({ token, seller_id: 7 }, await cookieOf(100))).status).toBe(200)
+    expect((db.prepare("SELECT COUNT(*) AS n FROM agency_store_links WHERE seller_id = 7 AND agency_id = 1").get() as { n: number }).n).toBe(1)
   })
 
   it('정지된 에이전시의 링크는 죽는다', async () => {
@@ -398,24 +411,27 @@ describe('⑥ 사장님이 보는 "에이전시가 한 일" — 성공한 변경
     const app = new Hono<{ Bindings: { DB: D1Database; JWT_SECRET: string } }>()
     app.use('/api/*', storeSeatGuard())
     app.post('/api/seller/products', (c) => c.json({ ok: true }))
-    app.patch('/api/seller/meal-voucher/3', (c) => c.json({ ok: true }))
-    app.post('/api/seller/orders/9/confirm', (c) => c.json({ ok: false }, 400))
+    app.post('/api/seller/products/3/group-buy', (c) => c.json({ ok: true }))
+    app.put('/api/seller/products/3', (c) => c.json({ ok: false }, 400))
+    app.post('/api/seller/orders/9/confirm', (c) => c.json({ ok: true }))
     app.get('/api/seller/products', (c) => c.json({ ok: true }))
     return (method: string, path: string, token: string) =>
       app.request(path, { method, headers: { Authorization: `Bearer ${token}` } }, { DB, JWT_SECRET: SECRET })
   }
   const rows = (db: Db) => db.prepare('SELECT seller_id, agency_id, staff_id, method, label FROM agency_store_activity ORDER BY id').all()
 
-  it('에이전시 좌석의 성공한 POST/PATCH 만 남는다 — 조회(GET)·실패(4xx)는 안 남는다', async () => {
+  it('에이전시 좌석의 성공한 변경만 남는다 — 조회(GET)·실패(4xx)·🤝 막힌 길(403)은 안 남는다', async () => {
     const { db, DB, seat } = await linkedSeat()
+    db.exec('INSERT INTO agency_products (product_id, seller_id, agency_id) VALUES (3, 7, 1)') // 이 에이전시가 맡은 이용권
     const call = mutApp(DB)
     await call('POST', '/api/seller/products', seat)
-    await call('PATCH', '/api/seller/meal-voucher/3', seat)
-    await call('POST', '/api/seller/orders/9/confirm', seat)
+    await call('POST', '/api/seller/products/3/group-buy', seat)
+    await call('PUT', '/api/seller/products/3', seat) // 라우트가 400
+    expect((await call('POST', '/api/seller/orders/9/confirm', seat)).status, '매장 전체 주문은 에이전시에게 막힌다').toBe(403)
     await call('GET', '/api/seller/products', seat)
     expect(rows(db)).toEqual([
       { seller_id: 7, agency_id: 1, staff_id: 6, method: 'POST', label: '상품 등록·처리' },
-      { seller_id: 7, agency_id: 1, staff_id: 6, method: 'PATCH', label: '이용권 수정' },
+      { seller_id: 7, agency_id: 1, staff_id: 6, method: 'POST', label: '이용권 등록·처리' },
     ])
   })
 

@@ -11,6 +11,7 @@ import { agencyRequest, enterAgencyStore, isMyAgencySeat } from './agency-api'
 import AgencyNotificationsSheet, { type AgencyNotification } from './AgencyNotificationsSheet'
 import { useAgencyStores, type StoreRow } from './agency-stores-model'
 import AgencyStorePlate from './AgencyStorePlate'
+import AgencySalesSheet from './AgencySalesSheet'
 import { AgencyInviteLinkCard } from './AgencyInviteLinkCard'
 import { AgencyRegisterStoreCard } from './AgencyRegisterStoreCard'
 
@@ -38,7 +39,7 @@ export function storeRowHint(r: StoreRow): { text: string; urgent: boolean } {
   return { text: '', urgent: false }
 }
 
-type AgencySheet = 'picker' | 'requests' | 'invite' | 'notifs' | null
+type AgencySheet = 'picker' | 'requests' | 'invite' | 'notifs' | 'sales' | null
 
 export function AgencyStoresPanel({ onExpired, staffId, agencyRows }: {
   onExpired: () => void
@@ -64,6 +65,8 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows }: {
   /** 🔔 판매 알림 — 대시보드 껍데기의 종이 하던 일(2026-10-12). 콘솔을 열 때 한 번 받는다. */
   const [notifs, setNotifs] = useState<AgencyNotification[] | null>(null)
   const [notifUnread, setNotifUnread] = useState(0)
+  /** 📊 판매 내역 시트의 매장(판의 버튼 · 판매 알림이 연다). */
+  const [salesFor, setSalesFor] = useState<{ sellerId: number; name: string } | null>(null)
   useEffect(() => {
     void agencyRequest<{ data: { items: AgencyNotification[]; unread: number } }>('/notifications?limit=30').then((r) => {
       if (!r.ok) { setNotifs([]); return }
@@ -83,6 +86,15 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows }: {
    */
   async function openNotif(n: AgencyNotification) {
     if (!n.isRead) void readNotifs([n.id])
+    // 📊 판매 알림(2026-10-24) — 그 매장의 우리 판매 내역을 연다. 좌석이 필요 없다(직원 토큰으로 본다).
+    if (n.type === 'agency_sale') {
+      const store = active.find((r) => r.sellerId === n.sellerId)
+      if (!store) { toast.error('지금 맡고 있지 않은 매장 알림이에요.'); return }
+      pick(store.sellerId)
+      setSalesFor({ sellerId: store.sellerId, name: store.name })
+      setSheet('sales')
+      return
+    }
     const t = notifTarget(n.link)
     if (!t) return
     if (t.kind === 'go') { window.location.assign(t.path); return }
@@ -219,6 +231,7 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows }: {
               store={picked}
               staffId={staffId}
               initialPath={openPath && picked.sellerId === currentSeatId() ? openPath : undefined}
+              onOpenSales={() => { setSalesFor({ sellerId: picked.sellerId, name: picked.name }); setSheet('sales') }}
             />
           ) : (
             <div className="rounded-2xl bg-white p-6 shadow-lift">
@@ -228,6 +241,12 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows }: {
                   ? <>아래 <b className="font-semibold text-gray-700">매장 초대 · 대신 등록</b>에서 사장님께 초대 링크를 보내거나, 아직 유어딜에 없는 매장을 먼저 올리세요. 사장님이 셀러 화면의 <b className="font-semibold text-gray-700">운영자 관리 → 에이전시에 맡기기</b>에 관리자 이메일을 넣어도 여기에 떠요.</>
                   : '관리자가 매장을 맡거나 배정하면 여기에 떠요.'}
               </p>
+              {/* 🔗 2026-10-24 — 빈 화면에서 바로 초대 링크로(종전엔 아래 목록까지 내려가 찾아야 했다). */}
+              {canManage && (
+                <button type="button" onClick={() => setSheet('invite')} className="mt-4 mr-2 h-10 rounded-xl bg-brand px-4 text-[15px] font-semibold text-white">
+                  매장 초대 링크 만들기
+                </button>
+              )}
               {pending.length > 0 && (
                 <button type="button" onClick={() => setSheet('requests')} className="mt-4 h-10 rounded-xl bg-brand px-4 text-[15px] font-semibold text-white">
                   맡김 요청 {pending.length}건 보기
@@ -271,6 +290,10 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows }: {
             })}
           </ul>
         </Sheet>
+      )}
+
+      {sheet === 'sales' && salesFor && (
+        <AgencySalesSheet sellerId={salesFor.sellerId} storeName={salesFor.name} onClose={() => setSheet(null)} />
       )}
 
       {sheet === 'notifs' && (

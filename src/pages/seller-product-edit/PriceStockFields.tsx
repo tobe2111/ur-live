@@ -19,6 +19,7 @@
 import { DollarSign, Box, Tag } from 'lucide-react'
 import { useTranslation } from '@/lib/i18n-lite'
 import { priceDisplay } from '@/shared/price-display'
+import NetProceedsCard from '@/pages/seller-meal-voucher/NetProceedsCard'
 
 const INPUT =
   'w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand'
@@ -27,10 +28,12 @@ interface Props {
   price: string
   originalPrice: string
   stock: string
+  /** 💰 이용권이면 등록 화면과 같은 마진 계산기를 보인다(2026-10-24). */
+  margin?: boolean
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
 }
 
-export default function PriceStockFields({ price, originalPrice, stock, onChange }: Props) {
+export default function PriceStockFields({ price, originalPrice, stock, margin, onChange }: Props) {
   const { t } = useTranslation()
 
   // 🔎 등록 화면 미리보기(`seller-meal-voucher/CardPreview`)와 **같은 SSOT** 로 계산한다.
@@ -113,6 +116,7 @@ export default function PriceStockFields({ price, originalPrice, stock, onChange
           </p>
         )}
       </div>
+      {margin && <NetProceedsCard price={Number(price) || 0} originalPrice={Number(originalPrice) || 0} />}
     </>
   )
 }

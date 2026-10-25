@@ -35,6 +35,7 @@ import { ORDER_STATUS_NOTICE } from '@/shared/order-status-notice'
 import { normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url'
 import { mallIdForSeller } from '../../../shared/mall/resolve';
 import { applySellerPromoRate } from '../../../worker/utils/seller-promo-rate';
+import { agencySeatOf, stampAgencyProduct } from '../../../worker/utils/agency-product-scope'; // 🤝 2026-10-24 한 매장 · 여러 에이전시
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
@@ -493,8 +494,9 @@ sellerOrdersRoutes.get('/products', async (c) => {
 
     // 🧾 목록 SQL 은 순수 빌더로 나가 있다(`seller-products-query.ts`) — 목록과 count 가 같은 필터를
     //   쓰도록 한 곳에서 정하고, 가드가 소스 grep 대신 그 함수를 불러 SQL 을 직접 본다.
+    const agencyId = (await agencySeatOf(c.req.header('Authorization'), c.env.JWT_SECRET))?.agencyId ?? null; // 🤝 에이전시는 자기 이용권만
     const { query, params, countQuery, countParams } = buildSellerProductsQuery({
-      sellerId, limit, offset, sort, search, includeDeleted,
+      sellerId, limit, offset, sort, search, includeDeleted, agencyId,
     });
 
     const products = await db.prepare(query).bind(...params).all();
@@ -983,6 +985,7 @@ export async function createSellerProduct(c: Context<{ Bindings: Bindings }>, fo
       );
     }
 
+    if (!forced && newProduct) await stampAgencyProduct(db, c.req.header('Authorization'), c.env.JWT_SECRET, Number((newProduct as any).id), Number(sellerId)); // 🤝 에이전시 좌석이면 그 에이전시 이용권
     return c.json({ success: true, data: newProduct }, 201);
   } catch (error: unknown) {
     console.error('Create seller product error:', error);

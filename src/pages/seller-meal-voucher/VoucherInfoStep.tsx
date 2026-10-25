@@ -101,8 +101,8 @@ export default function VoucherInfoStep({ form, update, setCategory, suggestedIm
           {/* 💸 2026-10-07: 정가 → 할인 [원 / %] → 판매가. 할인은 판매가를 쓰는 손잡이(저장 안 함). */}
           <DiscountPriceFields price={form.price} originalPrice={form.original_price} update={update} />
 
-          {/* 💰 판매 1건당 실수령가 — 항상 표시(채널별 수수료 SSOT). */}
-          <NetProceedsCard price={form.price} promoPct={form.promo_pct} />
+          {/* 💰 마진 계산기 — 정가 → 할인 → 유어딜 수수료 → 인플루언서 수수료 → 최종 마진(2026-10-24). 항상 표시. */}
+          <NetProceedsCard price={form.price} originalPrice={form.original_price} promoPct={form.promo_pct} />
 
           {/* 💰 소개비(promo)% + 매장 실수령 계산기 — SELLER_PROMO_FIELD_ENABLED 게이트. */}
           {SELLER_PROMO_FIELD_ENABLED && (
