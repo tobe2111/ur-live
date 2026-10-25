@@ -74,10 +74,10 @@ export default function HomeProductsRail() {
   return (
     <section ref={ref} className="ur-content-wide px-4 lg:px-8 mt-8 mb-2">
       <div className="flex items-center justify-between mb-1">
-        <h2 className="text-[17px] font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
+        <h2 className="text-[17px] font-bold text-gray-900 dark:text-white flex items-center gap-2">
           <BagIcon className="w-4 h-4 text-gray-500 dark:text-gray-400" /> {t('home.shopRailTitle', { defaultValue: '지금 인기 상품' })}
         </h2>
-        <Link to="/browse" className="text-[12px] font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1">
+        <Link to="/browse" className="text-[12px] font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1">
           {t('home.shopRailMore', { defaultValue: '쇼핑 전체보기' })} <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       </div>
@@ -93,7 +93,7 @@ export default function HomeProductsRail() {
             <button
               key={c.key}
               onClick={() => onSelectCat(c.key)}
-              className={`shrink-0 px-4 py-2 rounded-full text-[13px] font-bold transition-colors ${
+              className={`shrink-0 px-4 py-2 rounded-full text-[13px] font-medium transition-colors ${
                 active
                   ? 'bg-brand text-white'
                   : 'bg-white text-gray-700 border border-gray-200 dark:bg-[#1D1F29] dark:text-gray-300 dark:border-[#2C2F35]'

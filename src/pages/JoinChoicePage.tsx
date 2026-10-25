@@ -52,7 +52,7 @@ export default function JoinChoicePage() {
                     <p className="font-bold text-white">{ch.title}</p>
                     <p className="text-[12px] text-gray-400 mt-1">{ch.desc}</p>
                   </div>
-                  <span className="shrink-0 text-[12px] font-bold text-gray-900 bg-white rounded-full px-3 py-2">{ch.cta}</span>
+                  <span className="shrink-0 text-[12px] font-medium text-gray-900 bg-white rounded-full px-3 py-2">{ch.cta}</span>
                 </div>
               </Link>
             ))}

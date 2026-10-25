@@ -22,7 +22,7 @@ function NeedSellerLogin() {
         처음 등록하면 무료 참여권 3장을 드려요.
       </p>
       <Link to="/login?returnUrl=%2Flife%2Fpro" className="ur-btn ur-btn-lg ur-btn-primary flex w-full justify-center">카카오로 로그인</Link>
-      <Link to="/store/new" className="block py-2 text-center text-[13px] font-bold text-brand-text">아직 가게가 없어요 · 가게 등록하기</Link>
+      <Link to="/store/new" className="block py-2 text-center text-[13px] font-medium text-brand-text">아직 가게가 없어요 · 가게 등록하기</Link>
     </section>
   )
 }

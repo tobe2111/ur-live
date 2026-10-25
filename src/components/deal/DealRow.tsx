@@ -119,16 +119,16 @@ export default memo(function DealRow({
       </div>
       <div className="flex-1 min-w-0">
         {eyebrow && (
-          <p className="text-[12px] font-semibold leading-none mb-1 text-gray-400 dark:text-gray-500 truncate">{eyebrow}</p>
+          <p className="text-[12px] font-medium leading-none mb-1 text-gray-400 dark:text-gray-500 truncate">{eyebrow}</p>
         )}
         <p className="text-[15px] leading-snug line-clamp-2 font-bold text-gray-900 dark:text-white">{title}</p>
         {price != null && (
           <div className="flex items-baseline gap-1 mt-1">
             {pd.discount > 0 && (
-              <span className="text-[15px] font-extrabold text-sale tracking-tight">{pd.discount}%</span>
+              <span className="text-[15px] font-bold text-sale tracking-tight">{pd.discount}%</span>
             )}
-            <span className="text-[17px] font-extrabold text-gray-900 dark:text-white tracking-tight">{formatNumber(price)}</span>
-            <span className="text-[12px] font-bold text-gray-900 dark:text-white">{unit}</span>
+            <span className="text-[17px] font-bold text-gray-900 dark:text-white tracking-tight">{formatNumber(price)}</span>
+            <span className="text-[12px] font-medium text-gray-900 dark:text-white">{unit}</span>
             {hasStrike && (
               /*
                * 🩸 2026-09-28 — 취소선 정가를 **읽을 수 있는 회색**으로 (gray-300/600 → gray-400/500).

@@ -181,8 +181,8 @@ export default function MobileHomePage() {
                 aria-pressed={on}
                 className={`shrink-0 pb-2 text-[15px] transition-colors border-b-2 ${
                   on
-                    ? 'font-black text-gray-900 dark:text-white border-brand'
-                    : 'font-semibold text-gray-400 dark:text-gray-500 border-transparent'
+                    ? 'font-bold text-gray-900 dark:text-white border-brand'
+                    : 'font-medium text-gray-400 dark:text-gray-500 border-transparent'
                 }`}
               >
                 {label}
@@ -203,7 +203,7 @@ export default function MobileHomePage() {
                "마지막 방문 이후 새 영상이 있을 때만" 조건으로 얹는다. */}
         <Link
           to={URSHORTS_BROWSE_PATH}
-          className="flex shrink-0 items-center gap-2 whitespace-nowrap pb-2 text-[12px] font-bold text-gray-600 dark:text-gray-300"
+          className="flex shrink-0 items-center gap-2 whitespace-nowrap pb-2 text-[12px] font-medium text-gray-600 dark:text-gray-300"
         >
           <ShortsIcon size={16} />
           유어쇼츠<span className="-ml-[3px] text-brand-text">.</span>

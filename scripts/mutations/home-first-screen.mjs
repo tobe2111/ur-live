@@ -46,7 +46,7 @@ export default [
   {
     name: '🏠 홈 카드 제목 클래스가 카드와 갈린다 (마운트 때 제목이 튄다)',
     file: UTIL,
-    find: "title: 'text-[13px] font-bold line-clamp-2 leading-tight",
+    find: "title: 'text-[13px] font-medium line-clamp-2 leading-tight",
     replace: "title: 'text-[14px] font-bold line-clamp-2 leading-tight",
     test: T,
     why:

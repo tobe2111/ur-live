@@ -74,7 +74,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
       <div className="flex flex-col items-center justify-center py-20">
         {/* 🦦 2026-10-07 유달이 — 오류는 '미안' 얼굴(빨간 경고 원 대체). */}
         <Udal mood="oops" size={112} className="mb-4" />
-        <p className="text-[17px] font-semibold text-gray-900 dark:text-white mb-2">오류가 발생했습니다</p>
+        <p className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">오류가 발생했습니다</p>
         <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-6">{error}</p>
         <div className="flex gap-3">
           <button
@@ -85,7 +85,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
           </button>
           <button
             onClick={() => navigate('/')}
-            className="px-6 py-2 bg-brand text-white rounded-full text-[15px] font-semibold hover:bg-brand-dark transition-colors"
+            className="px-6 py-2 bg-brand text-white rounded-full text-[15px] font-medium hover:bg-brand-dark transition-colors"
           >
             홈으로 돌아가기
           </button>
@@ -103,7 +103,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <ClockIcon className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-                <h3 className="text-[13px] font-bold text-gray-900 dark:text-white">최근 검색어</h3>
+                <h3 className="text-[13px] font-medium text-gray-900 dark:text-white">최근 검색어</h3>
               </div>
               <button
                 onClick={clearAll}
@@ -138,7 +138,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
         ) : (
           <div className="flex flex-col items-center justify-center py-12 mb-4">
             <Udal mood="hello" size={96} className="mb-3" />
-            <p className="text-[15px] font-semibold text-gray-900 dark:text-white mb-1">검색어를 입력해주세요</p>
+            <p className="text-[15px] font-medium text-gray-900 dark:text-white mb-1">검색어를 입력해주세요</p>
             <p className="text-[13px] text-gray-500 dark:text-gray-400">상품명 또는 판매자명으로 검색할 수 있습니다</p>
           </div>
         )}
@@ -148,7 +148,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
           <div>
             <div className="flex items-center gap-2 mb-3">
               <ChartIcon className="w-4 h-4 text-rose-500" />
-              <h3 className="text-[13px] font-bold text-gray-900 dark:text-white">인기 검색어</h3>
+              <h3 className="text-[13px] font-medium text-gray-900 dark:text-white">인기 검색어</h3>
             </div>
             <div className="flex flex-wrap gap-2">
               {popular.map((q, i) => (
@@ -158,7 +158,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
                   onClick={() => navigate(`/search?q=${encodeURIComponent(q)}`)}
                   className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300 text-[12px] font-medium hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors"
                 >
-                  <span className="text-rose-400 dark:text-rose-500 font-bold text-[12px]">#{i + 1}</span>
+                  <span className="text-rose-400 dark:text-rose-500 font-medium text-[12px]">#{i + 1}</span>
                   {q}
                 </button>
               ))}
@@ -176,7 +176,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
         <div className="flex flex-col items-center justify-center mb-6">
           {/* 🦦 2026-10-07 유달이 — 찾는 게 없을 땐 갸웃. */}
           <Udal mood="notFound" size={112} className="mb-3" />
-          <p className="text-[15px] font-semibold text-gray-900 dark:text-white mb-1">'{query}' 검색 결과가 없어요</p>
+          <p className="text-[15px] font-medium text-gray-900 dark:text-white mb-1">'{query}' 검색 결과가 없어요</p>
           <p className="text-[13px] text-gray-500 dark:text-gray-400">다른 검색어를 시도해보세요</p>
         </div>
 
@@ -187,7 +187,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
             <button
               type="button"
               onClick={() => navigate(`/search?q=${encodeURIComponent(suggestedQuery)}`)}
-              className="text-[17px] font-extrabold text-rose-600 dark:text-rose-300 hover:underline"
+              className="text-[17px] font-bold text-rose-600 dark:text-rose-300 hover:underline"
             >
               {suggestedQuery} →
             </button>
@@ -199,7 +199,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
           <div className="mx-auto max-w-md">
             <div className="flex items-center gap-2 mb-3 justify-center">
               <ChartIcon className="w-4 h-4 text-rose-500" />
-              <h3 className="text-[13px] font-bold text-gray-900 dark:text-white">지금 인기 검색어</h3>
+              <h3 className="text-[13px] font-medium text-gray-900 dark:text-white">지금 인기 검색어</h3>
             </div>
             <div className="flex flex-wrap gap-2 justify-center">
               {popular.slice(0, 8).map((q, i) => (
@@ -209,7 +209,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
                   onClick={() => navigate(`/search?q=${encodeURIComponent(q)}`)}
                   className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300 text-[12px] font-medium hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors"
                 >
-                  <span className="text-rose-400 dark:text-rose-500 font-bold text-[12px]">#{i + 1}</span>
+                  <span className="text-rose-400 dark:text-rose-500 font-medium text-[12px]">#{i + 1}</span>
                   {q}
                 </button>
               ))}

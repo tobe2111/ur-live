@@ -36,7 +36,7 @@ export default function DashboardPageHeader({
         )}
         {title && (
           <div className="dash-page-title">
-            <h1 className="text-[length:var(--dash-h1,19px)] font-extrabold tracking-tight text-gray-900 sm:text-[length:var(--dash-h1-sm,22px)]">{title}</h1>
+            <h1 className="text-[length:var(--dash-h1,19px)] font-bold tracking-tight text-gray-900 sm:text-[length:var(--dash-h1-sm,22px)]">{title}</h1>
             {subtitle && <p className="mt-1 text-[13px] text-gray-500">{subtitle}</p>}
           </div>
         )}

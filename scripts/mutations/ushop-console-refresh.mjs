@@ -49,8 +49,8 @@ export default [
   {
     name: 'DealRow — 할인율을 브랜드 블루로 (행동 색과 가격 색이 섞인다)',
     file: ROW,
-    find: 'text-[15px] font-extrabold text-sale tracking-tight',
-    replace: 'text-[15px] font-extrabold text-brand tracking-tight',
+    find: 'text-[15px] font-bold text-sale tracking-tight',
+    replace: 'text-[15px] font-bold text-brand tracking-tight',
     test: 'src/tests/unit/discount-is-sale-red.test.ts',
     why:
       '할인율은 `--sale` **한 색**이고 브랜드 블루는 *행동* 전용이다(표면 규칙 ②). ' +
@@ -61,8 +61,8 @@ export default [
   {
     name: '유어샵 — 순번의 숫자 폭 고정을 뺀다 (1 과 10 이 나란히 서면 칸이 흔들린다)',
     file: PIN,
-    find: 'font-bold tabular-nums text-gray-400',
-    replace: 'font-bold text-gray-400',
+    find: 'font-medium tabular-nums text-gray-400',
+    replace: 'font-medium text-gray-400',
     test: 'src/tests/unit/ushop-a3-p1.test.ts',
     why:
       '순번이 사진 밖으로 나오면서 "흰 원" 계약이 녹았고, `ushop-a3-p1` 의 그 시험을 **남은 것으로 ' +

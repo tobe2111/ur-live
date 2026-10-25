@@ -122,7 +122,7 @@ export function ReviewForm({ productId, onSubmitted, initialOpen = false, initia
               <button
                 type="button"
                 onClick={() => setImages(prev => prev.filter((_, i) => i !== idx))}
-                className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-brand text-white rounded-full text-[12px] font-bold flex items-center justify-center"
+                className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-brand text-white rounded-full text-[12px] font-medium flex items-center justify-center"
                 aria-label="삭제"
               >×</button>
             </div>

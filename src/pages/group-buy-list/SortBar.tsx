@@ -22,7 +22,7 @@ export default function SortBar({ mainTab, currentCount, sortBy, setSortBy, show
         <div className="relative" onClick={(e) => e.stopPropagation()}>
           <button
             onClick={() => setShowSortDropdown((v) => !v)}
-            className="flex items-center gap-1 text-[13px] text-gray-700 dark:text-gray-300 font-semibold"
+            className="flex items-center gap-1 text-[13px] text-gray-700 dark:text-gray-300 font-medium"
             aria-label={t('groupBuy.sortAria', { defaultValue: '정렬 기준 선택' })}
             aria-haspopup="menu"
             aria-expanded={showSortDropdown}
@@ -47,7 +47,7 @@ export default function SortBar({ mainTab, currentCount, sortBy, setSortBy, show
                   }}
                   className={`w-full text-left px-3 py-2 text-[13px] ${
                     sortBy === opt
-                      ? 'bg-brand text-white font-semibold'
+                      ? 'bg-brand text-white font-medium'
                       : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1D1F29]'
                   }`}
                 >

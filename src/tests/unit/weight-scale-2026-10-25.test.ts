@@ -31,8 +31,12 @@ const DONE = [
   ...execSync("git ls-files 'src/pages/vouchers/*.tsx' 'src/pages/group-buy/*.tsx'", { encoding: 'utf8' }).trim().split('\n').filter(Boolean),
 ]
 
-/** 나머지 소비자 화면의 정본 밖 굵기 — 2026-10-25 실측. 줄였으면 같은 커밋에서 내린다. */
-const REST_BASELINE = 1343
+/**
+ * 나머지 소비자 화면의 정본 밖 굵기 — 2026-10-25 2차(대표 *"다른 페이지들도 다 해야지?"*)로 소비자 전 화면을
+ * 이행해 1343 → 8. 남은 8건은 **Toss 잠금 파일**(`PaymentSuccessPage` 6 · `TossWidgetPayPage` 2)뿐이다 — 클래스만
+ * 바꾸는 일이어도 잠금 절대 룰이 걸려 대표 허가가 필요하다. 허가되면 0 으로 내린다.
+ */
+const REST_BASELINE = 8
 
 const consumer = execSync(
   "git ls-files 'src/pages/*.tsx' 'src/pages/**/*.tsx' 'src/components/*.tsx' 'src/components/**/*.tsx'",
@@ -97,7 +101,6 @@ describe('③ 나머지 소비자 화면 — 늘지 않는다', () => {
     expect(rest.length).toBeGreaterThan(300)
     let n = 0
     for (const f of rest) n += sourceViolations(readFileSync(f, 'utf8')).length
-    expect(n).toBeGreaterThan(0)
     expect(n).toBeLessThanOrEqual(REST_BASELINE)
   })
 })

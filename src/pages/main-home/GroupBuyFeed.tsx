@@ -392,7 +392,7 @@ export default function GroupBuyFeed({
               <button
                 key={c.key}
                 onClick={() => setCategory(c.key)}
-                className={`shrink-0 inline-flex items-center gap-2 px-3 py-2 rounded-full text-[12px] font-bold transition-colors ${
+                className={`shrink-0 inline-flex items-center gap-2 px-3 py-2 rounded-full text-[12px] font-medium transition-colors ${
                   active
                     ? 'bg-brand text-white'  /* 🎨 2026-09-07 안 B: 선택 = 브랜드 블루(서비스 공통) */
                     : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2C2F35]'
@@ -452,7 +452,7 @@ export default function GroupBuyFeed({
         {/* 🗺️ 2026-07-19: 지역 매칭 0 → 전체 폴백 사실을 명시(조용한 오표시 방지 — "부산인데 서울 딜?" 오해 차단). */}
         {regionFallback && (
           <div className={pc ? 'mb-4' : 'mx-4 mb-3'}>
-            <p className="px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-300 text-[13px] font-semibold">
+            <p className="px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-300 text-[13px] font-medium">
               선택한 지역에 아직 등록된 딜이 없어요 — 전체 지역 딜을 보여드릴게요.
             </p>
           </div>
@@ -578,7 +578,7 @@ function EmptyStateWithFallback({ category, onReset }: { category: CategoryKey; 
       {category !== 'all' && (
         <>
           <div className="flex items-center gap-2 mb-3 px-1">
-            <span className="text-[12px] font-bold text-gray-500 dark:text-gray-400 tracking-wide">
+            <span className="text-[12px] font-medium text-gray-500 dark:text-gray-400 tracking-wide">
               💡 다른 인기 공구
             </span>
           </div>

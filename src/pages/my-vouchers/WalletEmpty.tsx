@@ -74,7 +74,7 @@ export function EmptyVouchers({ mode, onExplore, t }: {
       {/* 🦦 히어로 — 유달이(아직 아무것도 없음 = 졸린 얼굴). 교환권·이용권 공통. */}
       <Udal mood="empty" size={120} motion priority className="mb-6" />
 
-      <h2 className="text-[24px] font-extrabold tracking-[-0.02em] text-gray-900 dark:text-white">{title}</h2>
+      <h2 className="text-[24px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white">{title}</h2>
       <p className="mt-2 max-w-[264px] text-[13px] leading-relaxed text-gray-500 dark:text-gray-400 whitespace-pre-line">{desc}</p>
 
       {/* 사용 흐름 — 로즈 틴트 아이콘 칩 + 연결 트랙(헤어라인) + 작은 스텝 번호 */}
@@ -87,7 +87,7 @@ export function EmptyVouchers({ mode, onExplore, t }: {
             <div className="flex flex-col items-center gap-2 w-[66px] shrink-0">
               <div className="relative w-11 h-11 rounded-2xl flex items-center justify-center bg-brand-tint text-brand-text">
                 <Icon className="w-[19px] h-[19px]" strokeWidth={2} />
-                <span className="absolute -top-1 -right-1 w-[15px] h-[15px] rounded-full bg-surface border border-rule-strong text-[12px] font-extrabold text-gray-500 dark:text-gray-400 flex items-center justify-center tabular-nums">{i + 1}</span>
+                <span className="absolute -top-1 -right-1 w-[15px] h-[15px] rounded-full bg-surface border border-rule-strong text-[12px] font-medium text-gray-500 dark:text-gray-400 flex items-center justify-center tabular-nums">{i + 1}</span>
               </div>
               <span className="text-[12px] font-medium leading-tight text-gray-600 dark:text-gray-300 whitespace-pre-line">{label}</span>
             </div>
@@ -97,7 +97,7 @@ export function EmptyVouchers({ mode, onExplore, t }: {
 
       <button
         onClick={onExplore}
-        className="mt-9 w-full max-w-[300px] py-4 rounded-2xl text-[15px] font-extrabold bg-brand hover:bg-brand-dark text-white active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-[0_8px_22px_rgba(28,105,239,0.32)] dark:shadow-[0_8px_22px_rgba(28,105,239,0.2)]"
+        className="mt-9 w-full max-w-[300px] py-4 rounded-2xl text-[15px] font-bold bg-brand hover:bg-brand-dark text-white active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-[0_8px_22px_rgba(28,105,239,0.32)] dark:shadow-[0_8px_22px_rgba(28,105,239,0.2)]"
       >
         {cta}
         <ArrowRight className="w-[17px] h-[17px]" strokeWidth={2.4} />

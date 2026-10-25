@@ -41,7 +41,7 @@ export default function AboutPage() {
         <section className="relative overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-[#1A0A14] dark:via-[#11141C] dark:to-[#0F0A1A] border-b border-gray-100 dark:border-[#2C2F35]">
           <div className="ur-content-wide px-4 lg:px-8 py-16 lg:py-24">
             <div className="text-center max-w-4xl mx-auto">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-tint text-brand-text text-[12px] font-semibold mb-6">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-tint text-brand-text text-[12px] font-medium mb-6">
                 <Sparkles className="w-3.5 h-3.5" />
                 우리 동네 이용권
               </div>
@@ -174,7 +174,7 @@ export default function AboutPage() {
               <div className="flex flex-wrap items-center gap-2 mb-3">
                 {['신규', '브론즈', '실버', '골드', '플래티넘'].map((tier, i) => (
                   <div key={tier} className="flex items-center gap-2">
-                    <span className="px-3 py-2 rounded-lg bg-gray-100 dark:bg-[#1D1F29] text-gray-900 dark:text-white text-[12px] lg:text-[15px] font-semibold">
+                    <span className="px-3 py-2 rounded-lg bg-gray-100 dark:bg-[#1D1F29] text-gray-900 dark:text-white text-[12px] lg:text-[15px] font-medium">
                       {tier}
                     </span>
                     {i < 4 && <ArrowRight className="w-3.5 h-3.5 text-gray-400" />}
@@ -480,7 +480,7 @@ function Section({
     <section id={id} className={`${toneBg[tone]} border-b border-gray-100 dark:border-[#2C2F35]`}>
       <div className="ur-content-wide px-4 lg:px-8 py-12 lg:py-20">
         <div className="mb-8 lg:mb-12 text-center">
-          <h2 className="text-[24px] sm:text-[28px] lg:text-[34px] xl:text-[48px] font-extrabold text-gray-900 dark:text-white mb-3">{title}</h2>
+          <h2 className="text-[24px] sm:text-[28px] lg:text-[34px] xl:text-[48px] font-bold text-gray-900 dark:text-white mb-3">{title}</h2>
           {subtitle && <p className="text-[15px] lg:text-[15px] text-gray-600 dark:text-gray-400">{subtitle}</p>}
         </div>
         {children}
@@ -511,7 +511,7 @@ function ValueCard({
   return (
     <div className="p-5 lg:p-6 rounded-2xl bg-surface border border-gray-100 dark:border-[#2C2F35]">
       <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${map[color]}`}>{icon}</div>
-      <div className="text-[12px] font-bold text-gray-500 dark:text-gray-400 mb-2">{tag}</div>
+      <div className="text-[12px] font-medium text-gray-500 dark:text-gray-400 mb-2">{tag}</div>
       <h3 className="text-[17px] lg:text-[17px] font-bold text-gray-900 dark:text-white mb-2">{title}</h3>
       <p className="text-[15px] text-gray-600 dark:text-gray-400 leading-relaxed">{desc}</p>
     </div>
@@ -556,7 +556,7 @@ function ComparisonTable({
                     key={ci}
                     className={`px-4 py-3 align-top ${
                       ci === 0
-                        ? 'font-semibold text-gray-900 dark:text-white whitespace-nowrap'
+                        ? 'font-medium text-gray-900 dark:text-white whitespace-nowrap'
                         : ci === row.length - 1
                         ? 'text-brand-text  font-medium'
                         : 'text-gray-700 dark:text-gray-300'
@@ -598,7 +598,7 @@ function SimpleTable({ headers, rows }: { headers: string[]; rows: string[][] })
                   key={ci}
                   className={`px-4 py-3 ${
                     ci === 0
-                      ? 'font-semibold text-gray-900 dark:text-white'
+                      ? 'font-medium text-gray-900 dark:text-white'
                       : 'text-gray-700 dark:text-gray-300'
                   }`}
                 >
@@ -711,7 +711,7 @@ function RoadmapCard({
         <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-300 flex items-center justify-center">
           {icon}
         </div>
-        <span className="text-[12px] font-bold text-emerald-700 dark:text-emerald-300 ">{tag}</span>
+        <span className="text-[12px] font-medium text-emerald-700 dark:text-emerald-300 ">{tag}</span>
       </div>
       <ul className="space-y-2">
         {items.map((item, i) => (

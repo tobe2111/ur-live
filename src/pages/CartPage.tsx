@@ -54,7 +54,7 @@ export default function CartPage() {
             <button type="button" onClick={() => navigate(-1)} aria-label={t('notifications.back')} className="w-9 h-9 flex items-center justify-center">
               <X className="h-5 w-5 text-gray-900 dark:text-white" aria-hidden="true" />
             </button>
-            <h1 className="text-[17px] font-extrabold text-gray-900 dark:text-white">{t('cart.title')}</h1>
+            <h1 className="text-[17px] font-bold text-gray-900 dark:text-white">{t('cart.title')}</h1>
             <div className="w-9" />
           </div>
         </div>
@@ -490,7 +490,7 @@ function CartPageContent() {
                         }
                         const hasBundle = Array.from(bundlingMap.values()).some(v => v >= 2)
                         return hasBundle ? (
-                          <span className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded text-[12px] font-bold bg-brand-tint text-brand-text ">
+                          <span className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded text-[12px] font-medium bg-brand-tint text-brand-text ">
                             <BoxIcon className="w-3 h-3" aria-hidden />합배송
                           </span>
                         ) : null
@@ -514,7 +514,7 @@ function CartPageContent() {
                   )}
                   {freeShipThreshold > 0 && remaining <= 0 && (
                     <div className="mx-4 mt-3">
-                      <p className="text-[12px] text-brand-text font-semibold">{t('cart.freeShipping')}</p>
+                      <p className="text-[12px] text-brand-text font-medium">{t('cart.freeShipping')}</p>
                     </div>
                   )}
 

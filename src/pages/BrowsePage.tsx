@@ -444,7 +444,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
                 }`}>
                   {c.Icon && <c.Icon className="w-3.5 h-3.5" aria-hidden="true" />}
                 </div>
-                <span className={`text-[12px] font-bold ${
+                <span className={`text-[12px] font-medium ${
                   active ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'
                 }`}>
                   {c.label}
@@ -460,7 +460,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
         {/* 섹션 헤더 — 🏭 2026-06-04: 기본('전체')에선 '오늘의 핫딜' 타이틀 숨김(핫딜 섹션 제거). 카테고리 선택 시엔 라벨 표시. */}
         {category !== 'all' && (
           <div className="flex items-center justify-between mb-3">
-            <h1 className="text-[17px] lg:text-[28px] font-extrabold text-gray-900 dark:text-white">{(({'fashion':t('browse.categoryFashion'),'beauty':t('browse.categoryBeauty'),'food':t('browse.categoryFood'),'lifestyle':t('browse.categoryLiving'),'electronics':t('browse.categoryDigital'),'living':t('browse.categoryLiving'),'digital':t('browse.categoryDigital'),'meal_voucher':'식사','beauty_voucher':'뷰티 교환권','health_voucher':'건강 교환권','pet_voucher':'반려 교환권','stay_voucher':'숙박 교환권','activity_voucher':'액티비티 교환권','etc_voucher':'기타 교환권'} as Record<string, string>)[category] || category)}</h1>
+            <h1 className="text-[17px] lg:text-[28px] font-bold text-gray-900 dark:text-white">{(({'fashion':t('browse.categoryFashion'),'beauty':t('browse.categoryBeauty'),'food':t('browse.categoryFood'),'lifestyle':t('browse.categoryLiving'),'electronics':t('browse.categoryDigital'),'living':t('browse.categoryLiving'),'digital':t('browse.categoryDigital'),'meal_voucher':'식사','beauty_voucher':'뷰티 교환권','health_voucher':'건강 교환권','pet_voucher':'반려 교환권','stay_voucher':'숙박 교환권','activity_voucher':'액티비티 교환권','etc_voucher':'기타 교환권'} as Record<string, string>)[category] || category)}</h1>
           </div>
         )}
 
@@ -470,7 +470,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <button onClick={() => setShowFilter(v => !v)}
-              className={`flex items-center gap-1 px-3 py-2 rounded-full text-[12px] font-bold ${showFilter ? 'bg-brand text-white' : 'bg-white dark:bg-[#11141C] text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-[#2C2F35]'}`}>
+              className={`flex items-center gap-1 px-3 py-2 rounded-full text-[12px] font-medium ${showFilter ? 'bg-brand text-white' : 'bg-white dark:bg-[#11141C] text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-[#2C2F35]'}`}>
               <SlidersHorizontal className="w-3 h-3" /> 필터
             </button>
             <span className="text-[12px] text-gray-500 dark:text-gray-400">{sorted.length}개</span>
@@ -496,7 +496,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
                     key={opt}
                     onClick={() => { setSortBy(opt); setShowSortDropdown(false) }}
                     className={`w-full text-left px-3 py-2 text-[15px] ${
-                      sortBy === opt ? 'bg-red-50 text-red-500 font-semibold' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1D1F29]'
+                      sortBy === opt ? 'bg-red-50 text-red-500 font-medium' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1D1F29]'
                     }`}
                   >
                     {SORT_LABELS[opt]}
@@ -551,7 +551,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
             <p className="text-gray-900 dark:text-white mb-4">{error}</p>
             <button
               onClick={() => loadProducts(1, true)}
-              className="px-6 py-2 bg-brand hover:bg-brand-dark text-white rounded-xl font-semibold transition-colors"
+              className="px-6 py-2 bg-brand hover:bg-brand-dark text-white rounded-xl font-medium transition-colors"
             >
               다시 시도
             </button>

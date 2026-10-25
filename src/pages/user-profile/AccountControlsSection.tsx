@@ -195,7 +195,7 @@ export function AppVersionSection() {
 
       {hasUpdate && (
         <>
-          <p className="mt-1 text-[12px] font-semibold text-brand-text">
+          <p className="mt-1 text-[12px] font-medium text-brand-text">
             {t('accountSettings.updateAvailable', { defaultValue: '새 버전이 나왔어요' })}
           </p>
           <button

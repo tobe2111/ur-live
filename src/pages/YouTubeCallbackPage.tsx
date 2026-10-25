@@ -100,7 +100,7 @@ export default function YouTubeCallbackPage() {
             {/* 브랜드 플로우 */}
             <div className="flex items-center justify-center gap-2">
               <div className="w-12 h-12 rounded-2xl bg-white border border-gray-100 dark:border-[#2C2F35] shadow-sm flex items-center justify-center">
-                <span className="text-[24px] font-black" style={{ color: '#4285F4' }}>G</span>
+                <span className="text-[24px] font-bold" style={{ color: '#4285F4' }}>G</span>
               </div>
               <ConnectDots />
               <div className="w-12 h-12 rounded-2xl bg-brand flex items-center justify-center shadow-sm">
@@ -187,7 +187,7 @@ export default function YouTubeCallbackPage() {
             </div>
             <button
               onClick={() => navigate('/seller')}
-              className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-brand text-white rounded-xl hover:bg-brand-dark transition-colors text-[15px] font-semibold"
+              className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-brand text-white rounded-xl hover:bg-brand-dark transition-colors text-[15px] font-medium"
             >
               <RefreshCw className="w-4 h-4" />
               다시 시도하기

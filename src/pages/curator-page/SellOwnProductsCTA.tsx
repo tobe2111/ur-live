@@ -77,21 +77,21 @@ export default function SellOwnProductsCTA() {
           <button
             onClick={() => goSeller('/seller/products/new')}
             disabled={switching}
-            className="px-4 py-2 bg-brand text-white text-[12px] font-bold rounded-lg disabled:opacity-50"
+            className="px-4 py-2 bg-brand text-white text-[12px] font-medium rounded-lg disabled:opacity-50"
           >
             {switching ? '이동 중…' : '+ 상품 등록'}
           </button>
           <button
             onClick={() => goSeller('/seller/meal-voucher/new')}
             disabled={switching}
-            className="px-4 py-2 bg-surface border border-line text-gray-700 dark:text-gray-200 text-[12px] font-bold rounded-lg disabled:opacity-50"
+            className="px-4 py-2 bg-surface border border-line text-gray-700 dark:text-gray-200 text-[12px] font-medium rounded-lg disabled:opacity-50"
           >
             + 이용권 등록
           </button>
           <button
             onClick={() => goSeller('/seller')}
             disabled={switching}
-            className="px-4 py-2 bg-surface border border-line text-gray-700 dark:text-gray-200 text-[12px] font-bold rounded-lg disabled:opacity-50"
+            className="px-4 py-2 bg-surface border border-line text-gray-700 dark:text-gray-200 text-[12px] font-medium rounded-lg disabled:opacity-50"
           >
             {/* 2026-10-12 — 대시보드 첫 화면은 마이로 보낸다(`seller-deep-link` HOME_LIKE). 이름도 도착지대로. */}
             마이 '내 가게' →
@@ -132,7 +132,7 @@ export default function SellOwnProductsCTA() {
       >
         <span className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0"><VerifiedSeal size={22} /></span>
         <span className="flex-1 min-w-0">
-          <span className="block text-[15px] font-extrabold">내 가게 등록하고 이용권 팔기</span>
+          <span className="block text-[15px] font-bold">내 가게 등록하고 이용권 팔기</span>
           <span className="block text-[12px] text-gray-300 mt-1">이용권 판매 · 현금 정산 · 파란 인증 씰</span>
         </span>
         <span className="text-gray-400 text-[17px] leading-none">›</span>
@@ -160,11 +160,11 @@ function BenefitsSheet({ onClose, onStart }: { onClose: () => void; onStart: () 
       <div className="absolute inset-0 bg-black/55" onClick={onClose} />
       <div className="relative w-full sm:max-w-md bg-surface rounded-t-3xl px-5 pt-2 pb-7 animate-slideUp">
         <div className="w-10 h-1 rounded-full bg-gray-200 dark:bg-[#2C2F35] mx-auto mt-2 mb-4" />
-        <h2 className="text-[24px] font-extrabold text-gray-900 dark:text-white tracking-tight">내 유어샵에서 직접 팔아보세요</h2>
+        <h2 className="text-[24px] font-bold text-gray-900 dark:text-white tracking-tight">내 유어샵에서 직접 팔아보세요</h2>
         <div className="flex items-center gap-2 mt-2 text-[13px] text-gray-500 dark:text-gray-400 flex-wrap">
-          <span className="px-2 py-1 rounded-full bg-gray-100 dark:bg-[#1D1F29] text-[12px] font-bold">유저</span>
-          <span className="font-extrabold text-gray-400">→</span>
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[#eaf5ff] dark:bg-[#0d2a40] text-[#1d9bf0] text-[12px] font-bold"><VerifiedSeal size={13} /> 인증 유저</span>
+          <span className="px-2 py-1 rounded-full bg-gray-100 dark:bg-[#1D1F29] text-[12px] font-medium">유저</span>
+          <span className="font-bold text-gray-400">→</span>
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[#eaf5ff] dark:bg-[#0d2a40] text-[#1d9bf0] text-[12px] font-medium"><VerifiedSeal size={13} /> 인증 유저</span>
           로 전환하면
         </div>
         <div className="mt-5 space-y-4">
@@ -172,13 +172,13 @@ function BenefitsSheet({ onClose, onStart }: { onClose: () => void; onStart: () 
             <div key={i} className="flex items-start gap-3">
               <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${b.seal ? 'bg-[#eaf5ff] dark:bg-[#0d2a40]' : 'bg-gray-100 dark:bg-[#1D1F29]'}`}>{b.seal ? <VerifiedSeal size={22} /> : b.Icon ? <b.Icon className="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" /> : null}</span>
               <div>
-                <p className="text-[15px] font-extrabold text-gray-900 dark:text-white">{b.t}</p>
+                <p className="text-[15px] font-bold text-gray-900 dark:text-white">{b.t}</p>
                 <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">{b.d}</p>
               </div>
             </div>
           ))}
         </div>
-        <button onClick={onStart} className="mt-6 w-full h-[52px] rounded-2xl bg-brand text-white text-[15px] font-extrabold active:opacity-80">
+        <button onClick={onStart} className="mt-6 w-full h-[52px] rounded-2xl bg-brand text-white text-[15px] font-bold active:opacity-80">
           ✓ 사업자 인증 시작하기
         </button>
         <p className="text-center text-[12px] text-gray-400 dark:text-gray-500 mt-2">사업자등록 → 관리자 승인 후 활성화 · 무료</p>

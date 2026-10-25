@@ -204,7 +204,7 @@ export default function VoucherVerifyPage() {
   )
 
   const primaryBtn = 'w-full h-14 rounded-2xl bg-brand text-white text-[17px] font-bold disabled:opacity-40 active:scale-[0.98] transition-transform'
-  const secondaryBtn = 'w-full h-12 rounded-xl text-[15px] font-semibold text-gray-600 dark:text-gray-300'
+  const secondaryBtn = 'w-full h-12 rounded-xl text-[15px] font-medium text-gray-600 dark:text-gray-300'
 
   return (
     <div className="min-h-[100dvh] bg-[#F8F7FC] dark:bg-[#11141C] px-4 pb-10">
@@ -212,18 +212,18 @@ export default function VoucherVerifyPage() {
       <div className="mx-auto w-full max-w-sm lg:max-w-md">
         <header className="flex h-14 items-center justify-between">
           <UrDealLogo size={20} />
-          {headerRight && <span className="max-w-[60%] truncate text-[13px] font-semibold text-gray-500 dark:text-gray-400">{headerRight}</span>}
+          {headerRight && <span className="max-w-[60%] truncate text-[13px] font-medium text-gray-500 dark:text-gray-400">{headerRight}</span>}
         </header>
 
         <h1 className="mt-6 text-[24px] font-bold leading-tight tracking-[-0.01em] text-gray-900 dark:text-white break-keep">{title}</h1>
 
         {error && (
-          <p role="alert" className="mt-3 text-[15px] font-semibold text-red-600 dark:text-red-400">{error}</p>
+          <p role="alert" className="mt-3 text-[15px] font-medium text-red-600 dark:text-red-400">{error}</p>
         )}
 
         {view === 'lookup' && (
           <div className="mt-6">
-            <label htmlFor="voucher-code" className="block text-[13px] font-semibold text-gray-500 dark:text-gray-400 mb-2">{t('voucher.verify.codeLabel', { defaultValue: '이용권 코드' })}</label>
+            <label htmlFor="voucher-code" className="block text-[13px] font-medium text-gray-500 dark:text-gray-400 mb-2">{t('voucher.verify.codeLabel', { defaultValue: '이용권 코드' })}</label>
             <input
               id="voucher-code"
               value={code}
@@ -245,7 +245,7 @@ export default function VoucherVerifyPage() {
             <div className="rounded-2xl bg-surface shadow-lift p-6 text-center">
               <OkIcon filled className="mx-auto w-10 h-10 text-brand-text" />
               <p className="mt-3 text-[28px] font-bold tabular-nums text-gray-900 dark:text-white">{formatKSTTime(doneAt)}</p>
-              {voucher?.product_name && <p className="mt-2 text-[15px] font-semibold text-gray-900 dark:text-white break-keep">{voucher.product_name}</p>}
+              {voucher?.product_name && <p className="mt-2 text-[15px] font-medium text-gray-900 dark:text-white break-keep">{voucher.product_name}</p>}
               <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{t('voucher.verify.doneNote', { defaultValue: '손님 폰에도 ‘사용 완료’로 바뀌었어요' })}</p>
             </div>
             {isSeller ? (
@@ -300,7 +300,7 @@ export default function VoucherVerifyPage() {
 
             {view === 'pin' && (
               <>
-                <label htmlFor="store-code" className="mt-6 block text-[13px] font-semibold text-gray-500 dark:text-gray-400 mb-2">{t('voucher.verify.storeCodeLabel', { defaultValue: '매장 확인코드' })}</label>
+                <label htmlFor="store-code" className="mt-6 block text-[13px] font-medium text-gray-500 dark:text-gray-400 mb-2">{t('voucher.verify.storeCodeLabel', { defaultValue: '매장 확인코드' })}</label>
                 <input
                   id="store-code"
                   value={pin}
@@ -316,7 +316,7 @@ export default function VoucherVerifyPage() {
                   {verifying ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : t('voucher.verify.redeem', { defaultValue: '사용 처리' })}
                 </button>
                 {/* 🔑 로그인 권유 한 줄 — 벽이 아니다(손님도 이 화면을 연다). 로그인했는데 좌석이 없으면 '내 가게' 로. */}
-                <Link to={loggedIn ? '/user/profile' : loginPathFromHere()} className="mt-4 block text-center text-[15px] font-semibold text-brand-text">
+                <Link to={loggedIn ? '/user/profile' : loginPathFromHere()} className="mt-4 block text-center text-[15px] font-medium text-brand-text">
                   {loggedIn
                     ? t('voucher.verify.ownerPickStore', { defaultValue: '사장님이면 내 가게를 고르고 바로 처리' })
                     : t('voucher.verify.ownerLogin', { defaultValue: '사장님이면 로그인하고 바로 처리' })}

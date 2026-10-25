@@ -86,7 +86,7 @@ export default memo(function PinRow({ pin, handle, curatorUserId, order, prefetc
          *   2026-08-31 대표 *"할인율이 사진 안으로 들어가면 안돼"* 와 같은 판단이다.
          *   밖으로 나오니 흰 원(어떤 사진 위에서도 읽히게)이 필요 없어져 회색 숫자로 족하다.
          */
-        <span className="w-5 shrink-0 text-center text-[12px] font-bold tabular-nums text-gray-400 dark:text-gray-500">
+        <span className="w-5 shrink-0 text-center text-[12px] font-medium tabular-nums text-gray-400 dark:text-gray-500">
           {order}
         </span>
       }

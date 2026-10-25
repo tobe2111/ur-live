@@ -60,13 +60,13 @@ export function NotificationPanelHeader({ onClose, title = '알림', closeLabel 
   const hasUnread = items.some((n) => !n.is_read)
   return (
     <div className="flex items-center justify-between px-4 h-14 border-b border-rule shrink-0">
-      <h3 className="text-[17px] font-extrabold text-gray-900 dark:text-white">{title}</h3>
+      <h3 className="text-[17px] font-bold text-gray-900 dark:text-white">{title}</h3>
       <div className="flex items-center gap-1">
         {hasUnread && (
           <button
             type="button"
             onClick={() => markAll.mutate()}
-            className="inline-flex items-center gap-1 px-2 py-1 text-[12px] font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+            className="inline-flex items-center gap-1 px-2 py-1 text-[12px] font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
           >
             <Check className="w-3.5 h-3.5" aria-hidden="true" /> 모두 읽음
           </button>
@@ -123,7 +123,7 @@ export function NotificationPanelBody({ onClose }: { onClose: () => void }) {
         >
           <span className={`w-2 h-2 rounded-full mt-2 shrink-0 ${n.is_read ? 'bg-transparent' : 'bg-brand'}`} />
           <span className="flex-1 min-w-0">
-            <span className="block text-[13px] font-semibold text-gray-900 dark:text-white truncate">{n.title}</span>
+            <span className="block text-[13px] font-medium text-gray-900 dark:text-white truncate">{n.title}</span>
             {n.message && <span className="block text-[12px] text-gray-500 dark:text-gray-400 line-clamp-2 mt-1">{n.message}</span>}
             <span className="block text-[12px] text-gray-500 dark:text-gray-500 mt-1">{timeLabel(n.created_at)}</span>
           </span>
@@ -140,7 +140,7 @@ export function NotificationPanelFooter({ onClose }: { onClose: () => void }) {
     <button
       type="button"
       onClick={() => { navigate('/notifications'); onClose() }}
-      className="w-full py-3 text-[13px] font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/[0.03] border-t border-rule shrink-0"
+      className="w-full py-3 text-[13px] font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/[0.03] border-t border-rule shrink-0"
     >
       전체 보기 →
     </button>

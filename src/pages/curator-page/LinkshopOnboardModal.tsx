@@ -168,18 +168,18 @@ export default function LinkshopOnboardModal({ curatorId, currentHandle, current
             <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-3 text-center leading-snug">
               나중에 바꿀 수 있고, 둘 다 하셔도 돼요.
             </p>
-            <button onClick={dismissPermanently} className="w-full mt-3 py-2 rounded-xl text-[13px] font-semibold text-gray-500 dark:text-gray-400">
+            <button onClick={dismissPermanently} className="w-full mt-3 py-2 rounded-xl text-[13px] font-medium text-gray-500 dark:text-gray-400">
               나중에
             </button>
           </>
         ) : (
         <>
         <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-4 leading-snug">
-          지금 주소가 <span className="font-semibold text-gray-700 dark:text-gray-300">@{currentHandle}</span> 예요.
+          지금 주소가 <span className="font-medium text-gray-700 dark:text-gray-300">@{currentHandle}</span> 예요.
           나만의 이름과 주소로 바꿔보세요.
         </p>
 
-        <label className="block text-[12px] font-semibold text-gray-700 dark:text-gray-300 mb-1">표시 이름</label>
+        <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-300 mb-1">표시 이름</label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value.slice(0, 40))}
@@ -187,7 +187,7 @@ export default function LinkshopOnboardModal({ curatorId, currentHandle, current
           className="w-full px-4 py-2 mb-4 rounded-xl border border-line bg-gray-50 dark:bg-[#1D1F29] text-gray-900 dark:text-white text-[15px] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/10"
         />
 
-        <label className="block text-[12px] font-semibold text-gray-700 dark:text-gray-300 mb-1">유어샵 주소 (@)</label>
+        <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-300 mb-1">유어샵 주소 (@)</label>
         <div className="flex items-center gap-2 px-4 py-2 rounded-xl border border-line bg-gray-50 dark:bg-[#1D1F29]">
           <span className="text-gray-400 text-[15px]">@</span>
           <input
@@ -206,14 +206,14 @@ export default function LinkshopOnboardModal({ curatorId, currentHandle, current
         <div className="flex gap-2 mt-5">
           <button
             onClick={dismissPermanently}
-            className="px-4 py-2 rounded-xl text-[13px] font-semibold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-[#1D1F29]"
+            className="px-4 py-2 rounded-xl text-[13px] font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-[#1D1F29]"
           >
             나중에
           </button>
           <button
             onClick={save}
             disabled={saving || !handleValid || (!name.trim() && !handle.trim())}
-            className="flex-1 px-4 py-2 rounded-xl text-[13px] font-bold bg-brand text-white disabled:opacity-40"
+            className="flex-1 px-4 py-2 rounded-xl text-[13px] font-medium bg-brand text-white disabled:opacity-40"
           >
             {saving ? '저장 중…' : intent === 'seller' ? '저장하고 매장 등록하기' : '저장하기'}
           </button>

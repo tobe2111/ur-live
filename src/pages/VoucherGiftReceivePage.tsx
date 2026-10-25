@@ -91,7 +91,7 @@ export default function VoucherGiftReceivePage() {
             </div>
             <div className="min-w-0">
               {gift.store_name && <p className="text-[13px] text-gray-500 dark:text-gray-400 truncate">{gift.store_name}</p>}
-              <p className="text-[15px] font-semibold text-gray-900 dark:text-white leading-snug">{gift.product_name || '이용권'}</p>
+              <p className="text-[15px] font-medium text-gray-900 dark:text-white leading-snug">{gift.product_name || '이용권'}</p>
               {expLabel && <p className="mt-1 text-[12px] text-gray-500 dark:text-gray-400">{expLabel}</p>}
             </div>
           </div>

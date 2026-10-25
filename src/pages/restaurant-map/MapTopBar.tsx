@@ -79,7 +79,7 @@ export default function MapTopBar({
 
   const panel = variant === 'panel'
   const surf = panel ? PANEL_SURF : OVERLAY_SURF
-  const chipBase = 'flex items-center gap-1 h-[30px] px-2 rounded-full text-[12px] font-semibold shrink-0 transition-colors'
+  const chipBase = 'flex items-center gap-1 h-[30px] px-2 rounded-full text-[12px] font-medium shrink-0 transition-colors'
 
   return (
     /* 🗺️ 2026-08-19 (대표 확정): PC(lg+)는 이 바가 **왼쪽 리스트 패널 안**(variant='panel')으로 들어가고,
@@ -144,7 +144,7 @@ export default function MapTopBar({
                 panel ? 'bg-white dark:bg-[#11141C] border border-gray-100 dark:border-[#2C2F35]' : 'bg-white' // light-fixed: 지도 위
               }`}>
                 <div className={`px-4 py-2 flex items-center justify-between border-b ${panel ? 'border-gray-100 dark:border-[#2C2F35]' : 'border-gray-100'}`}>
-                  <span className={`text-[12px] font-bold ${panel ? 'text-gray-500 dark:text-gray-400' : 'text-gray-500'}`}>{t('restaurantMap.recentSearch')}</span>
+                  <span className={`text-[12px] font-medium ${panel ? 'text-gray-500 dark:text-gray-400' : 'text-gray-500'}`}>{t('restaurantMap.recentSearch')}</span>
                   <button
                     onClick={() => { setSearchHistory([]); storage.setJSON('restaurant_search_history', []) }}
                     className={`text-[12px] ${panel ? 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
@@ -209,11 +209,11 @@ export default function MapTopBar({
               : `${chipBase} ${activeFilterCount > 0 ? OVERLAY_ON : surf}`}
           >
             <SlidersHorizontal className={panel ? 'w-[17px] h-[17px]' : 'w-3.5 h-3.5'} strokeWidth={1.6} />
-            {panel && <span className="text-[12px] font-semibold leading-none">필터</span>}
+            {panel && <span className="text-[12px] font-medium leading-none">필터</span>}
             {activeFilterCount > 0 && (
               panel
                 ? <span className="absolute top-0.5 right-1.5 w-1.5 h-1.5 rounded-full bg-brand" aria-hidden="true" />
-                : <span className="inline-flex items-center justify-center min-w-[15px] h-3.5 px-1 rounded-full bg-white/25 text-[12px] font-bold">{activeFilterCount}</span>
+                : <span className="inline-flex items-center justify-center min-w-[15px] h-3.5 px-1 rounded-full bg-white/25 text-[12px] font-medium">{activeFilterCount}</span>
             )}
           </button>
           {/* 내 주변 */}
@@ -226,7 +226,7 @@ export default function MapTopBar({
               : `${chipBase} ${nearMeMode ? OVERLAY_ON : OVERLAY_NEAR}`}
           >
             <Navigation className={panel ? 'w-[17px] h-[17px]' : 'w-3.5 h-3.5'} strokeWidth={1.6} />
-            <span className={panel ? 'text-[12px] font-semibold leading-none' : undefined}>{t('restaurantMap.nearMe')}</span>
+            <span className={panel ? 'text-[12px] font-medium leading-none' : undefined}>{t('restaurantMap.nearMe')}</span>
           </button>
           {/* 카테고리 칩 */}
           {MAP_VOUCHER_DEFS.map(v => {

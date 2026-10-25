@@ -60,7 +60,7 @@ export default function ProSetupForm({ me, onSaved }: { me: ProMe; onSaved: () =
             const on = cats.includes(c.key)
             return (
               <button key={c.key} type="button" onClick={() => setCats(on ? cats.filter((k) => k !== c.key) : [...cats, c.key])}
-                className={`rounded-full px-4 py-2 text-[13px] font-bold ${on ? 'bg-brand text-white' : 'bg-warm text-ink'}`}>
+                className={`rounded-full px-4 py-2 text-[13px] font-medium ${on ? 'bg-brand text-white' : 'bg-warm text-ink'}`}>
                 {c.label}
               </button>
             )
@@ -75,7 +75,7 @@ export default function ProSetupForm({ me, onSaved }: { me: ProMe; onSaved: () =
             {me.sidoList.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
           <input className={`${INPUT} min-w-0 flex-1`} placeholder="시·구 (비우면 전체)" value={sigungu} onChange={(e) => setSigungu(e.target.value)} />
-          <button type="button" onClick={addArea} className="shrink-0 rounded-xl bg-warm px-4 text-[13px] font-bold text-ink">추가</button>
+          <button type="button" onClick={addArea} className="shrink-0 rounded-xl bg-warm px-4 text-[13px] font-medium text-ink">추가</button>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
           {areas.map((a) => (

@@ -154,7 +154,7 @@ export default function AccountDeleteWarningPage() {
 
         {/* ① 바로 사라지는 것 — 되살려도 안 돌아온다 */}
         <section className={CARD} data-testid="delete-gone">
-          <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white">
+          <h3 className="text-[15px] font-medium text-gray-900 dark:text-white">
             {t('accountDeleteWarning.goneTitle', { defaultValue: '탈퇴하면 바로 사라져요' })}
           </h3>
           <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">
@@ -163,7 +163,7 @@ export default function AccountDeleteWarningPage() {
           <div className="mt-4 flex items-start gap-3">
             <WalletIcon className="w-5 h-5 mt-1 shrink-0 text-gray-900 dark:text-white" />
             <div className="flex-1 min-w-0">
-              <p className="text-[15px] font-semibold text-gray-900 dark:text-white">
+              <p className="text-[15px] font-medium text-gray-900 dark:text-white">
                 {lostDeal == null
                   ? t('accountDeleteWarning.goneDealUnknown', { defaultValue: '환급되지 않는 딜' })
                   : t('accountDeleteWarning.goneDeal', { defaultValue: '환급되지 않는 딜 {{amount}}딜', amount: formatNumber(lostDeal) })}
@@ -186,7 +186,7 @@ export default function AccountDeleteWarningPage() {
 
         {/* ② 30일 동안 보관되는 것 */}
         <section className={CARD} data-testid="delete-kept">
-          <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white">
+          <h3 className="text-[15px] font-medium text-gray-900 dark:text-white">
             {t('accountDeleteWarning.keptTitle', { defaultValue: '30일 동안 보관돼요' })}
           </h3>
           <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">
@@ -202,7 +202,7 @@ export default function AccountDeleteWarningPage() {
           <div className="flex items-start gap-3">
             <ClockIcon className="w-5 h-5 mt-1 shrink-0 text-gray-900 dark:text-white" />
             <div className="flex-1 min-w-0">
-              <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white">
+              <h3 className="text-[15px] font-medium text-gray-900 dark:text-white">
                 {t('accountDeleteWarning.afterTitle', { defaultValue: '30일이 지나면' })}
               </h3>
               <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed">
@@ -266,7 +266,7 @@ export default function AccountDeleteWarningPage() {
           )}
           <Link
             to="/user/profile"
-            className="w-full h-12 flex items-center justify-center rounded-2xl bg-brand text-white text-[15px] font-semibold"
+            className="w-full h-12 flex items-center justify-center rounded-2xl bg-brand text-white text-[15px] font-medium"
           >
             {t('accountDeleteWarning.cancel')}
           </Link>
@@ -274,7 +274,7 @@ export default function AccountDeleteWarningPage() {
             type="button"
             onClick={handleProceedToDelete}
             disabled={!canProceed || isLoading}
-            className={`w-full h-12 rounded-2xl text-[15px] font-semibold transition-colors ${
+            className={`w-full h-12 rounded-2xl text-[15px] font-medium transition-colors ${
               canProceed && !isLoading
                 ? 'text-tone-bad active:bg-wash'
                 : 'text-gray-400 dark:text-gray-500 cursor-not-allowed'

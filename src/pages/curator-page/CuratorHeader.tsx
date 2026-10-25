@@ -101,7 +101,7 @@ const manageBtnCls = 'h-9 px-3 rounded-full bg-brand text-white text-[15px] font
 const avatarCls = 'w-14 h-14 rounded-full overflow-hidden bg-wash shrink-0'
 /** 이름표 하나의 탭 영역(36px — 2026-09-16 의 하한 34px 를 지킨다). 보이는 알약은 안쪽 `snsPillCls`. */
 const snsHitCls = 'h-9 inline-flex items-center active:opacity-70'
-const snsPillCls = 'h-7 px-3 rounded-full bg-wash inline-flex items-center gap-1 text-[12px] font-semibold text-gray-600 dark:text-gray-300'
+const snsPillCls = 'h-7 px-3 rounded-full bg-wash inline-flex items-center gap-1 text-[12px] font-medium text-gray-600 dark:text-gray-300'
 
 export default function CuratorHeader({ curator, canEdit, counts, soldTotal, accountType, onCopyLink }: CuratorHeaderProps) {
   const { t } = useTranslation()

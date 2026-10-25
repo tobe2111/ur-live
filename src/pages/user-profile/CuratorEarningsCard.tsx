@@ -67,7 +67,7 @@ export default function CuratorEarningsCard() {
           {isCash ? t('my.curatorCashSub', { defaultValue: '현금 정산 · 출금 가능' }) : t('my.curatorDealSub', { defaultValue: '누적 적립 · 1딜=1원' })}
         </span>
       </span>
-      <span className="text-[12px] font-semibold text-gray-900 dark:text-white shrink-0">
+      <span className="text-[12px] font-medium text-gray-900 dark:text-white shrink-0">
         {isCash ? formatWon(info.available) : `${formatNumber(info.lifetime_earnings)}딜`}
       </span>
       <ChevronRight className="w-3.5 h-3.5 text-gray-400 dark:text-white/30 shrink-0" aria-hidden="true" />

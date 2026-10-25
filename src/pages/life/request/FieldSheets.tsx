@@ -98,7 +98,7 @@ export function MultiSheet({ f, value, onDone, onClose }: {
           const on = picked.includes(o)
           return (
             <button key={o} type="button" onClick={() => toggle(o)}
-              className={`rounded-xl px-2 py-3 text-[13px] font-bold ${on ? 'bg-brand text-white' : 'bg-surface text-ink shadow-lift'}`}>
+              className={`rounded-xl px-2 py-3 text-[13px] font-medium ${on ? 'bg-brand text-white' : 'bg-surface text-ink shadow-lift'}`}>
               {o}
             </button>
           )

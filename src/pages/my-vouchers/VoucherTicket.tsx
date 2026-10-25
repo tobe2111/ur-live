@@ -108,9 +108,9 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
           )}
         </div>
         <div className="min-w-0 flex-1">
-          {store && <p className="text-[13px] font-semibold text-gray-500 dark:text-gray-400 truncate">{store}{dong ? ` · ${dong}` : ''}</p>}
-          <p className="mt-1 text-[17px] font-extrabold tracking-tight text-gray-900 dark:text-white truncate">{menu}</p>
-          <p className={`mt-2 text-[13px] truncate ${urgent ? 'text-tone-bad font-bold' : 'text-gray-500 dark:text-gray-400'}`}>
+          {store && <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400 truncate">{store}{dong ? ` · ${dong}` : ''}</p>}
+          <p className="mt-1 text-[17px] font-bold tracking-tight text-gray-900 dark:text-white truncate">{menu}</p>
+          <p className={`mt-2 text-[13px] truncate ${urgent ? 'text-tone-bad font-medium' : 'text-gray-500 dark:text-gray-400'}`}>
             {expiryText}{howText ? ` · ${howText}` : ''}
           </p>
         </div>
@@ -121,7 +121,7 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onShowQr() }}
-            className="w-full h-12 rounded-xl bg-brand text-white text-[15px] font-extrabold active:opacity-80"
+            className="w-full h-12 rounded-xl bg-brand text-white text-[15px] font-bold active:opacity-80"
           >
             {v.gift_pending ? '선물 상태 보기' : t('voucher.useFull', { defaultValue: '사용하기' })}
           </button>
@@ -135,7 +135,7 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
             <button
               type="button"
               onClick={() => navigate(`/pass/${v.product_id}`)}
-              className="w-full h-11 rounded-xl border border-rule-strong text-brand-text text-[13px] font-bold active:opacity-70"
+              className="w-full h-11 rounded-xl border border-rule-strong text-brand-text text-[13px] font-medium active:opacity-70"
             >
               {t('voucher.rebuy', { defaultValue: '다시 구매하기' })}
             </button>
@@ -207,17 +207,17 @@ function KtAlphaVoucherCard({ v, muted, t }: {
             {sendFailed ? (
               <>
                 <span className="w-[6px] h-[6px] rounded-full shrink-0 bg-tone-bad" aria-hidden />
-                <span className="text-[12px] font-semibold text-tone-bad">{t('voucher.sendFailedBadge', { defaultValue: '발송 실패' })}</span>
+                <span className="text-[12px] font-medium text-tone-bad">{t('voucher.sendFailedBadge', { defaultValue: '발송 실패' })}</span>
               </>
             ) : v.status === 'unused' ? (
               <>
                 <span className="w-[6px] h-[6px] rounded-full shrink-0 bg-tone-ok" aria-hidden />
-                <span className="text-[12px] font-semibold text-gray-500 dark:text-gray-400">{t('voucher.status.unused', { defaultValue: '사용 가능' })}</span>
+                <span className="text-[12px] font-medium text-gray-500 dark:text-gray-400">{t('voucher.status.unused', { defaultValue: '사용 가능' })}</span>
               </>
             ) : (
-              <span className={`text-[12px] font-semibold ${v.status === 'expired' ? 'text-tone-bad' : 'text-gray-500 dark:text-gray-400'}`}>{t(`voucher.status.${v.status}`)}</span>
+              <span className={`text-[12px] font-medium ${v.status === 'expired' ? 'text-tone-bad' : 'text-gray-500 dark:text-gray-400'}`}>{t(`voucher.status.${v.status}`)}</span>
             )}
-            <span className="ml-auto shrink-0 inline-flex items-center gap-1 rounded-md px-2 py-1 text-[12px] font-bold tracking-wide bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-300">📱 기프티쇼</span>
+            <span className="ml-auto shrink-0 inline-flex items-center gap-1 rounded-md px-2 py-1 text-[12px] font-medium tracking-wide bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-300">📱 기프티쇼</span>
           </div>
 
           {/* 제목 */}
@@ -241,12 +241,12 @@ function KtAlphaVoucherCard({ v, muted, t }: {
         <div className="shrink-0 flex flex-col items-end justify-between">
           {price !== null ? (
             <div className="text-[15px] font-bold tabular-nums text-gray-900 dark:text-white whitespace-nowrap">
-              {formatNumber(price)}<span className="font-sans text-[12px] font-semibold text-gray-400 dark:text-gray-500">{t('voucher.deal', { defaultValue: '딜' })}</span>
+              {formatNumber(price)}<span className="font-sans text-[12px] font-medium text-gray-400 dark:text-gray-500">{t('voucher.deal', { defaultValue: '딜' })}</span>
             </div>
           ) : <span />}
           {sendFailed ? (
             <a href="tel:0507-0177-0432" aria-label={t('voucher.contactSupport', { defaultValue: '고객센터 문의 (0507-0177-0432)' })}
-              className="flex items-center gap-1 rounded-xl px-3 py-[9px] border border-rule-strong text-gray-700 dark:text-gray-200 text-[12px] font-bold active:scale-95 transition-transform whitespace-nowrap">
+              className="flex items-center gap-1 rounded-xl px-3 py-[9px] border border-rule-strong text-gray-700 dark:text-gray-200 text-[12px] font-medium active:scale-95 transition-transform whitespace-nowrap">
               {t('voucher.contactSupportShort', { defaultValue: '고객센터' })}
             </a>
           ) : (
@@ -261,7 +261,7 @@ function KtAlphaVoucherCard({ v, muted, t }: {
       {hasBarcode && (
         <div className="mt-3 px-3 py-3 rounded-xl bg-warm border border-gray-100 dark:border-[#2C2F35] flex flex-col items-center gap-2">
           <Barcode value={v.kt_pin as string} />
-          <span className="text-[12px] tabular-nums font-bold tracking-[0.15em] text-gray-900 dark:text-white">{v.kt_pin}</span>
+          <span className="text-[12px] tabular-nums font-medium tracking-[0.15em] text-gray-900 dark:text-white">{v.kt_pin}</span>
         </div>
       )}
     </div>

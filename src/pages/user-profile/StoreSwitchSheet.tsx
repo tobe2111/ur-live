@@ -88,7 +88,7 @@ export default function StoreSwitchSheet({ currentSellerId, onClose }: {
         style={{ zIndex: Z.SHEET_BODY }}
       >
         <div className="flex items-center justify-between px-4 h-14 border-b border-rule shrink-0">
-          <span className="text-[17px] font-extrabold text-gray-900 dark:text-white">가게 전환</span>
+          <span className="text-[17px] font-bold text-gray-900 dark:text-white">가게 전환</span>
           <button type="button" onClick={onClose} aria-label="닫기" className="w-9 h-9 -mr-2 flex items-center justify-center">
             <X className="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
           </button>

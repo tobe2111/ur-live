@@ -141,8 +141,8 @@ export function KakaoLinkButton({ role }: Props) {
           <div className="w-10 h-10 rounded-full bg-yellow-300 flex items-center justify-center text-[17px]">💬</div>
         )}
         <div className="flex-1 min-w-0">
-          <p className="text-[12px] text-tone-ok font-bold">{t('kakaoLink.linkedStatus', { defaultValue: '✓ 카카오 계정 연동됨' })}</p>
-          <p className="text-[15px] text-gray-900 dark:text-white font-semibold truncate">{status.user.name}</p>
+          <p className="text-[12px] text-tone-ok font-medium">{t('kakaoLink.linkedStatus', { defaultValue: '✓ 카카오 계정 연동됨' })}</p>
+          <p className="text-[15px] text-gray-900 dark:text-white font-medium truncate">{status.user.name}</p>
           {status.user.email && <p className="text-[12px] text-gray-500 truncate">{status.user.email}</p>}
         </div>
         <button onClick={unlink} disabled={working}

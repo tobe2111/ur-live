@@ -81,14 +81,14 @@ const GroupBuyGridCard = memo(function GroupBuyGridCard({
 
         {/* 할인 뱃지 */}
         {discount > 0 && (
-          <span className="absolute top-2 left-2 bg-gray-900 text-white text-[12px] font-extrabold px-2 py-1 rounded-md shadow">
+          <span className="absolute top-2 left-2 bg-gray-900 text-white text-[12px] font-medium px-2 py-1 rounded-md shadow">
             {t('groupBuy.maxDiscount', { defaultValue: '최대 -{{rate}}%', rate: discount })}
           </span>
         )}
 
         {/* 달성 뱃지 */}
         {achieved && !fcfs && (
-          <span className="absolute top-2 right-2 flex items-center gap-1 bg-gray-900 text-white text-[12px] font-bold px-2 py-1 rounded-md shadow">
+          <span className="absolute top-2 right-2 flex items-center gap-1 bg-gray-900 text-white text-[12px] font-medium px-2 py-1 rounded-md shadow">
             <OkIcon className="w-3 h-3" />
             {t('groupBuy.achieved', { defaultValue: '달성' })}
           </span>
@@ -130,9 +130,9 @@ const GroupBuyGridCard = memo(function GroupBuyGridCard({
         </div>
         <div className="flex items-baseline gap-1">
           {discount > 0 && (
-            <span className="text-[13px] font-extrabold" style={{ color: grad.accent }}>{discount}%</span>
+            <span className="text-[13px] font-medium" style={{ color: grad.accent }}>{discount}%</span>
           )}
-          <span className="text-[13px] font-extrabold">{formatPrice(p.price)}</span>
+          <span className="text-[13px] font-medium">{formatPrice(p.price)}</span>
         </div>
 
         {/* 판매자 (참여 인원 표기 제거 — 즉시판매 단일가 모델) */}

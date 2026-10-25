@@ -323,11 +323,11 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
                 같은 딜이 홈·검색·유어샵에 뜰 땐 표시가 사라졌다 — 카드가 한 벌이 아니어서 생긴 누락.
                 이제 카드 SSOT 가 그리므로 그 딜이 어디에 뜨든 따라간다. */}
             {p.onnuri_merchant && (
-              <span className="shrink-0 px-1 py-[1px] rounded bg-brand-tint text-brand-text text-[12px] font-bold">온누리</span>
+              <span className="shrink-0 px-1 py-[1px] rounded bg-brand-tint text-brand-text text-[12px] font-medium">온누리</span>
             )}
           </p>
         )}
-        <p className={`text-[13px] font-bold line-clamp-2 leading-tight ${cText}`}>
+        <p className={`text-[13px] font-medium line-clamp-2 leading-tight ${cText}`}>
           {titleNode ?? stripStorePrefix(p.name, p.restaurant_name)}
         </p>
         {(addrShort || distKm != null) && (
@@ -351,16 +351,16 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
         <div className="mt-1">
           {(discount > 0 || (originalPrice > price && originalPrice > 0)) && (
             <p className="flex items-baseline gap-1 leading-none">
-              {discount > 0 && <span className="text-[12px] font-extrabold text-sale">{discount}%</span>}
+              {discount > 0 && <span className="text-[12px] font-medium text-sale">{discount}%</span>}
               {originalPrice > price && originalPrice > 0 && (
                 <span className={`text-[12px] line-through ${cSub}`}>{formatNumber(originalPrice)}{unitLabel}</span>
               )}
             </p>
           )}
           <p className="flex items-baseline gap-1 mt-1 leading-none">
-            <span className={`text-[17px] font-extrabold tracking-tight ${cText}`}>{formatNumber(price)}{unitLabel}</span>
+            <span className={`text-[17px] font-bold tracking-tight ${cText}`}>{formatNumber(price)}{unitLabel}</span>
             {p.category === 'stay_voucher' && price > 0 && (
-              <span className={`text-[12px] font-semibold ${cSub}`}>/1박~</span>
+              <span className={`text-[12px] font-medium ${cSub}`}>/1박~</span>
             )}
           </p>
         </div>

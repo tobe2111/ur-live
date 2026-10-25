@@ -72,12 +72,12 @@ export default function FollowingPage() {
         ) : error ? (
           <div className="text-center py-20">
             <PeopleIcon className="w-10 h-10 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
-            <p className="text-gray-900 dark:text-gray-300 font-semibold text-[15px]">{error}</p>
+            <p className="text-gray-900 dark:text-gray-300 font-medium text-[15px]">{error}</p>
           </div>
         ) : sellers.length === 0 ? (
           <div className="text-center py-20">
             <UserCheck className="w-10 h-10 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
-            <p className="text-gray-900 dark:text-gray-300 font-semibold text-[15px]">
+            <p className="text-gray-900 dark:text-gray-300 font-medium text-[15px]">
               {t('following.empty', { defaultValue: '팔로우한 셀러가 없습니다' })}
             </p>
             <p className="text-gray-500 dark:text-gray-500 text-[12px] mt-1">
@@ -85,7 +85,7 @@ export default function FollowingPage() {
             </p>
             <button
               onClick={() => navigate('/group-buy')}
-              className="mt-5 px-5 py-2 bg-brand text-white text-[13px] font-semibold rounded-full"
+              className="mt-5 px-5 py-2 bg-brand text-white text-[13px] font-medium rounded-full"
             >
               {t('following.exploreLive', { defaultValue: '동네 공구 둘러보기' })}
             </button>
@@ -121,7 +121,7 @@ export default function FollowingPage() {
                     <p className="text-gray-500 dark:text-gray-400 text-[12px] truncate mt-1">{seller.bio}</p>
                   )}
                 </div>
-                <span className="text-brand-text text-[12px] font-semibold shrink-0">
+                <span className="text-brand-text text-[12px] font-medium shrink-0">
                   {t('following.followingBadge', { defaultValue: '팔로잉' })}
                 </span>
               </button>

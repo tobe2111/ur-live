@@ -50,11 +50,11 @@ describe('② 자리 카드 = 진짜 카드의 줄 구조', () => {
     ['사진 비율', /aspectClass="aspect-\[4\/3\]"/, /aspect-\[4\/3\]/],
     ['본문 여백', /<div className="pt-2">/, /<div className="pt-2">/],
     ['가게 줄', /text-\[12px\] leading-none mb-1/, /text-\[12px\] leading-none mb-1/],
-    ['이름 줄', /text-\[13px\] font-bold line-clamp-2 leading-tight/, /text-\[13px\] font-bold leading-tight/],
+    ['이름 줄', /text-\[13px\] font-medium line-clamp-2 leading-tight/, /text-\[13px\] font-medium leading-tight/],
     ['주소·평점 줄', /mt-1 text-\[12px\]/, /mt-1 text-\[12px\]/],
     ['정가 묶음', /<div className="mt-1">/, /<div className="mt-1">/],
     ['판매가 줄', /mt-1 leading-none/, /mt-1 leading-none/],
-    ['판매가 크기', /text-\[17px\] font-extrabold/, /text-\[17px\] font-extrabold/],
+    ['판매가 크기', /text-\[17px\] font-bold/, /text-\[17px\] font-bold/],
   ]
   for (const [label, inCard, inPh] of rows) {
     it(label, () => {
@@ -63,7 +63,7 @@ describe('② 자리 카드 = 진짜 카드의 줄 구조', () => {
     })
   }
   it('이름은 두 줄로 잡는다(그리드 한 줄의 높이는 긴 쪽을 따른다)', () => {
-    const name = ph.slice(ph.indexOf('text-[13px] font-bold leading-tight'), ph.indexOf('</p>', ph.indexOf('text-[13px] font-bold leading-tight')))
+    const name = ph.slice(ph.indexOf('text-[13px] font-medium leading-tight'), ph.indexOf('</p>', ph.indexOf('text-[13px] font-medium leading-tight')))
     expect(name.match(/<span/g)?.length).toBe(2)
   })
 })

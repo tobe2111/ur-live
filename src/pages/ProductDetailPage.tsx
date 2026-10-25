@@ -355,14 +355,14 @@ export default function ProductDetailPage() {
           {mallOrigin ? (
             <button
               onClick={() => navigate(`/${mallOrigin}`)}
-              className="mt-4 ml-2 px-6 py-2 bg-foreground text-background rounded-lg text-[15px] font-semibold"
+              className="mt-4 ml-2 px-6 py-2 bg-foreground text-background rounded-lg text-[15px] font-medium"
             >
               가게로 돌아가기
             </button>
           ) : (
             <button
               onClick={() => navigate('/')}
-              className="mt-4 ml-2 px-6 py-2 bg-foreground text-background rounded-lg text-[15px] font-semibold"
+              className="mt-4 ml-2 px-6 py-2 bg-foreground text-background rounded-lg text-[15px] font-medium"
             >
               {t('common.backToHome', { defaultValue: '홈으로 돌아가기' })}
             </button>
@@ -437,8 +437,8 @@ export default function ProductDetailPage() {
           {brandName && <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-1">{brandName}</p>}
           <h2 className="text-[17px] font-bold text-gray-900 dark:text-white leading-tight">{product.name}</h2>
           <div className="mt-3 inline-flex items-center gap-2 bg-amber-50 px-3 py-2 rounded-full">
-            <span className="w-5 h-5 rounded-full bg-amber-400 text-white text-[12px] font-bold flex items-center justify-center">딜</span>
-            <span className="text-[17px] font-extrabold text-amber-700">{formatNumber(displayPrice)} 딜</span>
+            <span className="w-5 h-5 rounded-full bg-amber-400 text-white text-[12px] font-medium flex items-center justify-center">딜</span>
+            <span className="text-[17px] font-bold text-amber-700">{formatNumber(displayPrice)} 딜</span>
           </div>
         </div>
 
@@ -452,7 +452,7 @@ export default function ProductDetailPage() {
               {brandIcon ? (
                 <img src={cfImage(brandIcon, { width: 96, quality: 80, format: 'auto' }) || brandIcon} alt={brandName} className="w-12 h-12 rounded-lg object-cover bg-surface border border-amber-100" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, brandIcon)} />
               ) : (
-                <div className="w-12 h-12 bg-surface rounded-lg flex items-center justify-center text-[12px] text-gray-400 font-bold shadow-lift">
+                <div className="w-12 h-12 bg-surface rounded-lg flex items-center justify-center text-[12px] text-gray-400 font-medium shadow-lift">
                   {brandName.slice(0, 4)}
                 </div>
               )}
@@ -541,7 +541,7 @@ export default function ProductDetailPage() {
             {/* 🛡️ 2026-05-19: 딜 교환 전용 배지 (KT Alpha 직판 상품). */}
             {Number(product.deal_only) === 1 && (
               <div className="mb-3 inline-flex items-center gap-2 px-3 py-2 bg-amber-100 border border-amber-300 rounded-full">
-                <span className="text-[12px] font-extrabold text-amber-800">딜 교환 전용</span>
+                <span className="text-[12px] font-medium text-amber-800">딜 교환 전용</span>
                 <span className="text-[12px] text-amber-700">· 30일 유효 · 환불 불가</span>
               </div>
             )}
@@ -592,7 +592,7 @@ export default function ProductDetailPage() {
         {/* v4 상세 정보 (이미지 + 설명 + 펼쳐보기) */}
         <div className="h-2 bg-gray-50 dark:bg-[#161616]" />
         <section className="px-5 py-5">
-          <p className="text-[13px] font-bold text-gray-900 dark:text-white mb-3">{t('productDetail.detailInfo')}</p>
+          <p className="text-[13px] font-medium text-gray-900 dark:text-white mb-3">{t('productDetail.detailInfo')}</p>
           {detail.images.length > 0 && (
             detailExpanded ? (
               <div className="space-y-2 mb-3">
@@ -612,7 +612,7 @@ export default function ProductDetailPage() {
             </p>
           )}
           {!detailExpanded && detail.canExpand && (
-            <button onClick={() => setDetailExpanded(true)} className="w-full mt-4 py-3 rounded-xl border border-line bg-surface text-[12px] font-semibold text-gray-700 dark:text-gray-200 active:bg-gray-50 dark:active:bg-[#1D1F29]">
+            <button onClick={() => setDetailExpanded(true)} className="w-full mt-4 py-3 rounded-xl border border-line bg-surface text-[12px] font-medium text-gray-700 dark:text-gray-200 active:bg-gray-50 dark:active:bg-[#1D1F29]">
               {t('productDetail.expandDetails', { defaultValue: '상세정보 펼쳐보기' })}
             </button>
           )}
@@ -627,7 +627,7 @@ export default function ProductDetailPage() {
               onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/pass/${id}`) }}>
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <span className="inline-flex items-center gap-1 rounded-md px-2 py-1 bg-red-500 text-[12px] font-extrabold tracking-wide mb-2">{t('productDetail.groupBuyJoin')}</span>
+                  <span className="inline-flex items-center gap-1 rounded-md px-2 py-1 bg-red-500 text-[12px] font-medium tracking-wide mb-2">{t('productDetail.groupBuyJoin')}</span>
                   <p className="text-[15px] font-bold">{t('productDetail.extraDiscount')}</p>
                 </div>
                 <ChevronRight className="w-4 h-4 text-white/60" />
@@ -671,17 +671,17 @@ export default function ProductDetailPage() {
                 <div className="grid grid-cols-3 gap-2 pt-2">
                   <button type="button"
                     onClick={() => navigate(`/map?q=${encodeURIComponent(product.restaurant_address || '')}`)}
-                    className="py-2 bg-gray-100 dark:bg-[#1D1F29] hover:bg-gray-200 dark:hover:bg-[#2C2F35] text-gray-700 dark:text-gray-200 text-[12px] font-semibold rounded-lg flex items-center justify-center gap-1">
+                    className="py-2 bg-gray-100 dark:bg-[#1D1F29] hover:bg-gray-200 dark:hover:bg-[#2C2F35] text-gray-700 dark:text-gray-200 text-[12px] font-medium rounded-lg flex items-center justify-center gap-1">
                     {<><Map className="w-3.5 h-3.5" strokeWidth={2} aria-hidden />{t('productDetail.mapLink', { defaultValue: '지도' })}</>}
                   </button>
                   <a href={`https://map.naver.com/v5/search/${encodeURIComponent(product.restaurant_name || product.restaurant_address)}`}
                     target="_blank" rel="noopener noreferrer"
-                    className="py-2 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-700 dark:text-green-400 text-[12px] font-semibold rounded-lg flex items-center justify-center gap-1">
+                    className="py-2 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-700 dark:text-green-400 text-[12px] font-medium rounded-lg flex items-center justify-center gap-1">
                     {t('productDetail.naverMap', { defaultValue: '네이버' })}
                   </a>
                   <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((product.restaurant_name || '') + ' ' + (product.restaurant_address || ''))}`}
                     target="_blank" rel="noopener noreferrer"
-                    className="py-2 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-[12px] font-semibold rounded-lg flex items-center justify-center gap-1">
+                    className="py-2 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-[12px] font-medium rounded-lg flex items-center justify-center gap-1">
                     Google
                   </a>
                 </div>
@@ -786,7 +786,7 @@ export default function ProductDetailPage() {
         <div className="h-2 bg-gray-50 dark:bg-[#161616]" />
         <section className="px-5 py-6">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-[13px] font-bold text-gray-900 dark:text-white">
+            <p className="text-[13px] font-medium text-gray-900 dark:text-white">
               {t('productDetail.reviewsLabel', { defaultValue: '리뷰' })} <span className="text-gray-400 dark:text-gray-500 font-normal">({formatNumber(reviewSummary?.total_count || 0)})</span>
             </p>
             {!showAllReviews && (reviewSummary?.total_count ?? 0) > 5 && (
@@ -852,7 +852,7 @@ export default function ProductDetailPage() {
             aria-label={t('productDetailPage.ariaGift')}
           >
             <GiftBoxIcon className="w-4 h-4 text-gray-900 dark:text-white" />
-            <span className="text-[12px] font-bold text-gray-900 dark:text-white">선물</span>
+            <span className="text-[12px] font-medium text-gray-900 dark:text-white">선물</span>
           </button>
         </div>
       </div>
@@ -887,7 +887,7 @@ export default function ProductDetailPage() {
             </div>
             <div className="mt-4 flex items-baseline justify-between">
               <span className="text-[13px] text-gray-500 dark:text-gray-400">결제 금액</span>
-              <span className="text-[24px] font-extrabold text-gray-900 dark:text-white">{formatNumber(dealConfirm.total)}딜</span>
+              <span className="text-[24px] font-bold text-gray-900 dark:text-white">{formatNumber(dealConfirm.total)}딜</span>
             </div>
             <div className="mt-3 flex items-start gap-2 rounded-xl px-3 py-2 bg-amber-50 dark:bg-amber-500/10">
               <WarnIcon className="w-3.5 h-3.5 shrink-0 mt-1 text-amber-500" aria-hidden />
@@ -899,7 +899,7 @@ export default function ProductDetailPage() {
                 취소
               </button>
               <button onClick={runVoucherDealPurchase} disabled={dealBuying}
-                className="flex-1 h-12 rounded-xl text-[15px] font-extrabold text-white active:scale-[0.98] transition-transform disabled:opacity-60"
+                className="flex-1 h-12 rounded-xl text-[15px] font-bold text-white active:scale-[0.98] transition-transform disabled:opacity-60"
                 style={{ background: 'linear-gradient(135deg, #1f2937, #111827)' }}>
                 {dealBuying ? '처리 중…' : `${formatNumber(dealConfirm.total)}딜로 교환`}
               </button>

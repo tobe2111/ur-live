@@ -152,7 +152,7 @@ export default function HomeSections(
       <>
         <section className="ur-home-panel" aria-hidden="true">
           <div className="mb-3">
-            <h3 className={`${rail ? 'text-[24px] font-bold tracking-[-.02em]' : 'text-[17px] font-black tracking-tight'} flex`}>
+            <h3 className={`${rail ? 'text-[24px] font-bold tracking-[-.02em]' : 'text-[17px] font-bold tracking-tight'} flex`}>
               <span className="rounded bg-gray-100 dark:bg-white/[0.06] text-transparent select-none w-40">가</span>
             </h3>
             <p className="flex mt-1 text-[12px]"><span className="rounded bg-gray-100 dark:bg-white/[0.06] text-transparent select-none w-56">가</span></p>
@@ -190,7 +190,7 @@ export default function HomeSections(
             <div className="flex items-end justify-between gap-4 mb-3">
               <div className="min-w-0">
                 {/* ⚠️ 모바일 클래스 문자열은 워커 첫 화면(`home-first-screen`)이 글자 그대로 미러한다 — 통째로 둔다. */}
-                <h3 className={rail ? 'text-[24px] font-bold tracking-[-.02em] text-gray-900 dark:text-white' : 'text-[17px] font-black tracking-tight text-gray-900 dark:text-white'}>
+                <h3 className={rail ? 'text-[24px] font-bold tracking-[-.02em] text-gray-900 dark:text-white' : 'text-[17px] font-bold tracking-tight text-gray-900 dark:text-white'}>
                   {sec.title}
                 </h3>
                 {/* 📍 위치로 정렬된 줄은 그 사실을 말한다 — "가까운 곳부터" 같은 문구가 위치 없이 남으면 거짓말이다. */}
@@ -210,7 +210,7 @@ export default function HomeSections(
                       파랑으로 물들이지 않는다. 눌러지는 신호는 hover 밑줄이 맡는다. */
                 <Link
                   to={more}
-                  className="shrink-0 text-[12px] font-bold text-gray-600 dark:text-gray-300 hover:underline underline-offset-4 whitespace-nowrap"
+                  className="shrink-0 text-[12px] font-medium text-gray-600 dark:text-gray-300 hover:underline underline-offset-4 whitespace-nowrap"
                 >
                   더보기
                 </Link>

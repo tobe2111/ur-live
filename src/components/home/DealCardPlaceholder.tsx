@@ -23,7 +23,7 @@ export default function DealCardPlaceholder() {
         {/* 가게 */}
         <p className="flex text-[12px] leading-none mb-1"><span className={`${BAR} w-1/2`}>가</span></p>
         {/* 이름 — 두 줄(그리드는 두 장 중 긴 쪽에 맞춰지므로 두 줄이 흔한 높이다) */}
-        <p className="text-[13px] font-bold leading-tight">
+        <p className="text-[13px] font-medium leading-tight">
           <span className={`${BAR} block w-full`}>가</span>
           <span className={`${BAR} block w-2/3`}>가</span>
         </p>
@@ -36,7 +36,7 @@ export default function DealCardPlaceholder() {
           <p className="flex leading-none"><span className={`${BAR} text-[12px] w-1/3`}>가</span></p>
         </div>
         {/* 판매가 */}
-        <p className="flex mt-1 leading-none"><span className={`${BAR} text-[17px] font-extrabold w-1/2`}>가</span></p>
+        <p className="flex mt-1 leading-none"><span className={`${BAR} text-[17px] font-bold w-1/2`}>가</span></p>
       </div>
     </div>
   )

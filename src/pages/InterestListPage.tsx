@@ -59,7 +59,7 @@ export default function InterestListPage() {
         ) : items.length === 0 ? (
           <div className="text-center py-20">
             <BellIcon className="w-10 h-10 text-gray-600 mx-auto mb-3" />
-            <p className="text-gray-700 dark:text-gray-300 font-semibold text-[15px]">
+            <p className="text-gray-700 dark:text-gray-300 font-medium text-[15px]">
               {t('interestList.empty')}
             </p>
             <p className="text-gray-600 dark:text-gray-400 text-[12px] mt-1">
@@ -67,7 +67,7 @@ export default function InterestListPage() {
             </p>
             <button
               onClick={() => navigate('/group-buy')}
-              className="mt-5 px-5 py-2 bg-brand text-white text-[13px] font-semibold rounded-full"
+              className="mt-5 px-5 py-2 bg-brand text-white text-[13px] font-medium rounded-full"
             >
               {t('interestList.browseGroupBuy')}
             </button>

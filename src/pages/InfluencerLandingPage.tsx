@@ -39,7 +39,7 @@ export default function InfluencerLandingPage() {
       />
 
       <nav className="sticky top-0 z-30 bg-white/90 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35] px-4 lg:px-12 py-4 flex items-center justify-between">
-        <Link to="/" className="text-[17px] font-extrabold tracking-tight">유어딜</Link>
+        <Link to="/" className="text-[17px] font-bold tracking-tight">유어딜</Link>
         <div className="flex items-center gap-3">
           <Link to="/partners" className="hidden sm:inline text-[15px] text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">사장님</Link>
           <Link to="/agency-partner" className="hidden sm:inline text-[15px] text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">에이전시</Link>
@@ -51,7 +51,7 @@ export default function InfluencerLandingPage() {
 
       <section className="px-6 lg:px-12 py-12 lg:py-24 max-w-6xl mx-auto">
         <div className="text-center mb-12">
-          <span className="inline-block px-3 py-1 bg-brand/10 text-brand rounded-full text-[12px] font-bold mb-5">✨ 팔로워 수 제한 없음</span>
+          <span className="inline-block px-3 py-1 bg-brand/10 text-brand rounded-full text-[12px] font-medium mb-5">✨ 팔로워 수 제한 없음</span>
           <h1 className="text-[34px] lg:text-[60px] font-extrabold leading-tight tracking-tight mb-6">
             아는 가게를<br />
             <span className="text-brand">소개하면</span> 몫이 남습니다.
@@ -62,7 +62,7 @@ export default function InfluencerLandingPage() {
           </p>
           <button
             onClick={() => navigate('/login?returnUrl=%2Fu%2Fme')}
-            className="px-8 py-4 bg-brand hover:bg-brand-dark text-white rounded-full font-extrabold text-[17px] shadow-xl inline-flex items-center gap-2"
+            className="px-8 py-4 bg-brand hover:bg-brand-dark text-white rounded-full font-bold text-[17px] shadow-xl inline-flex items-center gap-2"
           >
             내 유어샵 열어보기 <ArrowRight className="w-5 h-5" />
           </button>
@@ -73,7 +73,7 @@ export default function InfluencerLandingPage() {
       {/* 어떻게 되는지 — 숫자를 약속하지 않고 구조를 설명한다 */}
       <section className="bg-gray-50 dark:bg-[#1D1F29] px-6 lg:px-12 py-16">
         <div className="max-w-4xl mx-auto">
-          <h2 className="text-[24px] lg:text-[28px] font-extrabold text-center mb-10">어떻게 되나요?</h2>
+          <h2 className="text-[24px] lg:text-[28px] font-bold text-center mb-10">어떻게 되나요?</h2>
           <div className="space-y-4">
             {STEPS.map((s, i) => (
               <div key={i} className="bg-surface rounded-2xl p-6 flex gap-4 shadow-lift">
@@ -90,7 +90,7 @@ export default function InfluencerLandingPage() {
 
           {/* ⚠️ 이 문단이 이 페이지에서 가장 중요하다 — 없으면 "담기만 하면 돈이 된다"로 읽힌다 */}
           <div className="mt-6 rounded-2xl border border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-900/10 px-5 py-4">
-            <p className="text-[13px] font-extrabold text-amber-900 dark:text-amber-200">먼저 알아두세요</p>
+            <p className="text-[13px] font-medium text-amber-900 dark:text-amber-200">먼저 알아두세요</p>
             <p className="text-[12px] text-amber-800 dark:text-amber-300/90 mt-1 leading-relaxed">
               모든 이용권에 소개 몫이 붙는 건 아니에요. <strong>매장과 맺은 딜이 있을 때만</strong> 커미션이 발생하고,
               비율도 매장이 정합니다. 딜이 없는 이용권도 담아서 소개할 수는 있지만 그때는 적립이 없습니다.
@@ -106,14 +106,14 @@ export default function InfluencerLandingPage() {
           <span className="w-12 h-12 mx-auto rounded-2xl bg-brand text-white flex items-center justify-center mb-4">
             <StoreIcon className="w-6 h-6" />
           </span>
-          <h2 className="text-[17px] lg:text-[24px] font-extrabold mb-2">내 가게가 있다면 직접 팔 수도 있어요</h2>
+          <h2 className="text-[17px] lg:text-[24px] font-bold mb-2">내 가게가 있다면 직접 팔 수도 있어요</h2>
           <p className="text-[15px] text-gray-600 dark:text-gray-300 leading-relaxed max-w-xl mx-auto mb-6">
             카카오맵에서 우리 가게를 찾아 등록하면 같은 유어샵에서 내 이용권을 직접 팝니다.
             수수료는 팔린 만큼만 10%입니다. 광고비를 미리 낼 필요가 없어요.
           </p>
           <button
             onClick={() => navigate('/store/new')}
-            className="px-6 py-3 rounded-full bg-brand text-white font-extrabold text-[15px] inline-flex items-center gap-2"
+            className="px-6 py-3 rounded-full bg-brand text-white font-bold text-[15px] inline-flex items-center gap-2"
           >
             내 가게 등록하기 <ArrowRight className="w-4 h-4" />
           </button>

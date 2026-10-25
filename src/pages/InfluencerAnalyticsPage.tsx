@@ -53,7 +53,7 @@ export default function InfluencerAnalyticsPage() {
           <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-brand-text" /> 총 commission ({data.summary.total_attributions}건)
           </h3>
-          <p className="text-[24px] font-extrabold text-gray-900 dark:text-white">{data.summary.total.toLocaleString()}원</p>
+          <p className="text-[24px] font-bold text-gray-900 dark:text-white">{data.summary.total.toLocaleString()}원</p>
           <div className="mt-3 grid grid-cols-2 gap-2 text-[12px]">
             <div className="bg-yellow-50 rounded p-2">
               <p className="text-yellow-700 font-medium">대기 (환불기간)</p>
@@ -89,7 +89,7 @@ export default function InfluencerAnalyticsPage() {
                   <div className="flex-1 bg-gray-100 dark:bg-[#1D1F29] rounded h-4 relative overflow-hidden">
                     <div className="bg-brand h-full" style={{ width: `${(d.amt / maxDaily) * 100}%` }} />
                   </div>
-                  <span className="text-[12px] text-gray-700 dark:text-gray-200 w-20 text-right font-bold">{d.amt.toLocaleString()}원</span>
+                  <span className="text-[12px] text-gray-700 dark:text-gray-200 w-20 text-right font-medium">{d.amt.toLocaleString()}원</span>
                 </div>
               ))}
             </div>

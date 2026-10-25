@@ -89,7 +89,7 @@ export default function AccountMenu({
     >
       {/* 인사 + 닫기 */}
       <div className="flex items-start justify-between gap-3 px-5 pt-4 pb-1">
-        <p className="text-[17px] font-black tracking-tight text-gray-900 dark:text-white">
+        <p className="text-[17px] font-bold tracking-tight text-gray-900 dark:text-white">
           {loggedIn && name
             ? t('nav.greeting', { defaultValue: '안녕하세요, {{name}}님!', name })
             : t('nav.greetingGuest', { defaultValue: '유어딜에 오신 걸 환영해요' })}
@@ -110,11 +110,11 @@ export default function AccountMenu({
           onClick={() => go('/user/profile')}
           className="w-full flex items-center gap-3 px-5 py-3 mt-1 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors text-left"
         >
-          <span className="shrink-0 w-9 h-9 rounded-full bg-gray-100 dark:bg-white/[0.10] flex items-center justify-center text-[15px] font-black text-gray-500 dark:text-gray-300">
+          <span className="shrink-0 w-9 h-9 rounded-full bg-gray-100 dark:bg-white/[0.10] flex items-center justify-center text-[15px] font-bold text-gray-500 dark:text-gray-300">
             {(name || '유').slice(0, 1)}
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-[13px] font-bold text-gray-900 dark:text-white truncate">{name || t('nav.my', { defaultValue: '마이' })}</span>
+            <span className="block text-[13px] font-medium text-gray-900 dark:text-white truncate">{name || t('nav.my', { defaultValue: '마이' })}</span>
             {email && <span className="block text-[12px] text-gray-400 dark:text-gray-500 truncate">{email}</span>}
           </span>
           <ChevronRight className="shrink-0 w-4 h-4 text-gray-300 dark:text-gray-600" strokeWidth={2} />
@@ -130,11 +130,11 @@ export default function AccountMenu({
             key={path}
             role="menuitem"
             onClick={() => go(path)}
-            className="w-full flex items-center gap-3 px-5 py-2 text-[13px] font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors"
+            className="w-full flex items-center gap-3 px-5 py-2 text-[13px] font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors"
           >
             <Icon className="shrink-0 w-[18px] h-[18px] text-gray-400 dark:text-gray-500" strokeWidth={1.9} />
             <span className="flex-1 text-left">{label}</span>
-            {badge && <span className="shrink-0 text-[12px] font-bold text-brand">{badge}</span>}
+            {badge && <span className="shrink-0 text-[12px] font-medium text-brand">{badge}</span>}
           </button>
         ))}
       </div>
@@ -148,7 +148,7 @@ export default function AccountMenu({
       >
         <Smartphone className="shrink-0 w-[18px] h-[18px] text-gray-400 dark:text-gray-500" strokeWidth={1.9} />
         <span className="min-w-0">
-          <span className="block text-[13px] font-bold text-gray-900 dark:text-white">
+          <span className="block text-[13px] font-medium text-gray-900 dark:text-white">
             {t('nav.getApp', { defaultValue: '앱으로 보기' })}
           </span>
           <span className="block text-[12px] text-gray-400 dark:text-gray-500">
@@ -161,7 +161,7 @@ export default function AccountMenu({
       <button
         role="menuitem"
         onClick={() => go(sellerEntryPath())}
-        className="w-full flex items-center gap-3 px-5 py-2 text-[13px] font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors"
+        className="w-full flex items-center gap-3 px-5 py-2 text-[13px] font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors"
       >
         <StoreIcon className="shrink-0 w-[17px] h-[17px]" />
         {t('nav.sellOnUrdeal', { defaultValue: '유어딜에서 판매하세요' })}
@@ -170,7 +170,7 @@ export default function AccountMenu({
         <button
           role="menuitem"
           onClick={() => void signOut()}
-          className="w-full flex items-center gap-3 px-5 py-2 mb-2 text-[13px] font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors"
+          className="w-full flex items-center gap-3 px-5 py-2 mb-2 text-[13px] font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors"
         >
           <LogOutIcon className="shrink-0 w-[17px] h-[17px]" />
           {t('auth.logout', { defaultValue: '로그아웃' })}

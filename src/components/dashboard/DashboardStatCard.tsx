@@ -57,12 +57,12 @@ export default function DashboardStatCard({
       {loading ? (
         <div className="mt-2 h-7 w-20 animate-pulse rounded bg-gray-100" />
       ) : (
-        <p className="dash-num mt-2 text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">{value}</p>
+        <p className="dash-num mt-2 text-[length:var(--dash-stat,24px)] font-bold leading-tight tracking-tight text-gray-900">{value}</p>
       )}
 
       {hint && <p className="mt-1 text-[12px] text-gray-400">{hint}</p>}
       {trend && (
-        <div className={`mt-2 inline-flex items-center gap-1 text-[12px] font-semibold ${trend.value >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+        <div className={`mt-2 inline-flex items-center gap-1 text-[12px] font-medium ${trend.value >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
           <span>{trend.value >= 0 ? '▲' : '▼'}</span>
           <span>{Math.abs(trend.value)}%</span>
           {trend.label && <span className="font-normal text-gray-400">{trend.label}</span>}

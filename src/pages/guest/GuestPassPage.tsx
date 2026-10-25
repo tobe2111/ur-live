@@ -66,7 +66,7 @@ export default function GuestPassPage() {
           </div>
           <Link
             to="/"
-            className="mt-6 flex h-12 items-center justify-center rounded-xl bg-surface shadow-lift text-[15px] font-semibold text-gray-900 dark:text-white active:opacity-80"
+            className="mt-6 flex h-12 items-center justify-center rounded-xl bg-surface shadow-lift text-[15px] font-medium text-gray-900 dark:text-white active:opacity-80"
           >
             {t('guest.pass.more', { defaultValue: '이용권 더 보기' })}
           </Link>

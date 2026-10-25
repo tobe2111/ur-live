@@ -44,7 +44,7 @@ export const CartHeader = React.memo(function CartHeader({
           <button type="button" onClick={handleBack} aria-label={t('common.back', { defaultValue: '뒤로 가기' })} className="w-9 h-9 flex items-center justify-center">
             <X size={22} className="text-gray-900 dark:text-white" aria-hidden="true" />
           </button>
-          <h1 className="text-[17px] font-extrabold text-gray-900 dark:text-white">
+          <h1 className="text-[17px] font-bold text-gray-900 dark:text-white">
             {t('cart.title', { defaultValue: '장바구니' })}{' '}
             {itemCount > 0 && <span className="text-brand-text tabular-nums">{itemCount}</span>}
           </h1>
@@ -75,7 +75,7 @@ export const CartHeader = React.memo(function CartHeader({
                   </svg>
                 )}
               </span>
-              <span className="text-[13px] font-semibold text-gray-900 dark:text-white">
+              <span className="text-[13px] font-medium text-gray-900 dark:text-white">
                 {t('cart.selectAll', { defaultValue: '전체선택' })}
               </span>
               <span className="text-[12px] font-medium text-gray-500 dark:text-gray-400">
@@ -87,7 +87,7 @@ export const CartHeader = React.memo(function CartHeader({
               {inactiveCount > 0 && onDeleteInactive && (
                 <button
                   onClick={onDeleteInactive}
-                  className="text-[13px] font-semibold text-orange-500 dark:text-orange-400 hover:text-orange-600 transition-colors whitespace-nowrap"
+                  className="text-[13px] font-medium text-orange-500 dark:text-orange-400 hover:text-orange-600 transition-colors whitespace-nowrap"
                   title={t('cart.deleteInactiveHint', { defaultValue: '판매가 종료된 상품을 한 번에 삭제합니다' })}
                 >
                   {t('cart.deleteInactive', { defaultValue: '판매종료 삭제' })}
@@ -97,7 +97,7 @@ export const CartHeader = React.memo(function CartHeader({
               <button
                 onClick={onDeleteSelected}
                 disabled={selectedCount === 0}
-                className="text-[13px] font-semibold text-gray-600 dark:text-gray-300 hover:text-red-500 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
+                className="text-[13px] font-medium text-gray-600 dark:text-gray-300 hover:text-red-500 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
               >
                 {t('cart.deleteSelected', { defaultValue: '선택삭제' })}
                 {selectedCount > 0 && (

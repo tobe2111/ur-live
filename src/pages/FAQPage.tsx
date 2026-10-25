@@ -116,7 +116,7 @@ export default function FAQPage() {
                     onClick={() => setExpandedId(isOpen ? null : faq.id)}
                     className="w-full py-4 flex items-start gap-3 text-left hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors -mx-4 px-4"
                   >
-                    <span className="shrink-0 w-6 h-6 rounded-full bg-brand text-white text-[12px] font-bold flex items-center justify-center mt-1">
+                    <span className="shrink-0 w-6 h-6 rounded-full bg-brand text-white text-[12px] font-medium flex items-center justify-center mt-1">
                       Q
                     </span>
                     <div className="flex-1 min-w-0">

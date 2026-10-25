@@ -67,7 +67,7 @@ export default function AddToHomeHint({ context = 'wallet' }: { context?: 'walle
         <HomeIcon className="h-4 w-4 text-white dark:text-gray-900" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-[13px] font-bold text-gray-900 dark:text-white">홈 화면에 추가</p>
+        <p className="text-[13px] font-medium text-gray-900 dark:text-white">홈 화면에 추가</p>
         <p className="mt-1 text-[12px] leading-relaxed text-gray-500 dark:text-gray-400">{desc}</p>
         {iosManual ? (
           <p className="mt-2 text-[12px] text-gray-500 dark:text-gray-400">
@@ -77,7 +77,7 @@ export default function AddToHomeHint({ context = 'wallet' }: { context?: 'walle
           <button
             type="button"
             onClick={install}
-            className="mt-2 inline-flex items-center gap-2 rounded-full bg-brand px-4 py-2 text-[12px] font-bold text-white active:scale-95 transition-transform"
+            className="mt-2 inline-flex items-center gap-2 rounded-full bg-brand px-4 py-2 text-[12px] font-medium text-white active:scale-95 transition-transform"
           >
             <HomeIcon className="h-3.5 w-3.5" /> 홈 화면에 추가하기
           </button>
