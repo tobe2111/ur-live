@@ -137,7 +137,7 @@ export default function LifeRequestFormPage() {
       <div className="min-h-[100dvh] bg-warm text-ink pb-safe-nav">
         <SEO title={`${def.label} 견적 요청 완료 - 유어딜`} description={def.blurb} url={`/life/request/${def.key}`} />
         <div className="ur-content-narrow px-4 pt-20 pb-10 text-center">
-          <h1 className="text-[24px] font-extrabold tracking-tight">{def.label} 견적 요청을 보냈어요</h1>
+          <h1 className="text-[24px] font-bold tracking-tight">{def.label} 견적 요청을 보냈어요</h1>
           <p className="mt-3 text-[15px] leading-relaxed text-gray-600 dark:text-gray-300">
             근처 업체가 견적을 보내면 알려 드릴게요.<br />비교하고 마음에 드는 한 곳만 고르세요.
           </p>
@@ -168,7 +168,7 @@ export default function LifeRequestFormPage() {
       <SEO title={`${def.label} 견적 요청 - 유어딜`} description={def.blurb} url={`/life/request/${def.key}`} />
       <LifeHeader title={`${def.label} 견적 요청`} back="/life" />
       <div className="ur-content-narrow space-y-6 px-4 pb-10">
-        <h2 className="text-[24px] font-extrabold leading-snug tracking-tight">간단한 정보 입력하고<br />{def.label} 비교 견적 받아보세요</h2>
+        <h2 className="text-[24px] font-bold leading-snug tracking-tight">간단한 정보 입력하고<br />{def.label} 비교 견적 받아보세요</h2>
         {proCount === 0 && (
           <p className="rounded-2xl bg-surface p-4 text-[13px] leading-relaxed shadow-lift">
             지금 {def.label} 업체를 모집하고 있어요. 요청은 보관해 두었다가 업체가 들어오는 대로 보내 드려요.
@@ -204,7 +204,7 @@ export default function LifeRequestFormPage() {
         </label>
 
         {def.bigTicket && <BigTicketNote />}
-        {error && <p className="text-[13px] font-bold text-tone-bad">{error}</p>}
+        {error && <p className="text-[13px] font-medium text-tone-bad">{error}</p>}
         <button type="button" disabled={sending} onClick={submit} className="ur-btn ur-btn-lg ur-btn-primary flex w-full justify-center disabled:opacity-60">
           {sending ? '보내는 중' : loggedIn ? '견적 신청' : '카카오로 로그인하고 견적 신청'}
         </button>
