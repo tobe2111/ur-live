@@ -14,7 +14,8 @@ import {
   HOME_TPL, MAX_DISPATCH_PER_REQUEST, categoryDef, msgRequestNew,
   type HomeServiceCategory,
 } from '../../../shared/home-service'
-import { MATCH_PROS_SQL, OPEN_REQUESTS_FOR_PRO_SQL } from './home-service-db'
+import { MATCH_PROS_SQL, OPEN_REQUESTS_FOR_PRO_SQL, loadPartners } from './home-service-db'
+import { partnerCategoriesCsv } from '../../../shared/home-service'
 
 interface ReqRow {
   id: number; category: HomeServiceCategory; summary: string; desired_date: string
@@ -45,6 +46,16 @@ export async function dispatchRequest(env: unknown, DB: D1Database, requestId: n
     req.category, req.sido, req.sigungu, req.sido2, req.sido2, req.sigungu2, req.id, MAX_DISPATCH_PER_REQUEST,
   ).all<{ seller_id: number; phone: string | null }>()
   let n = 0
+  // 🤝 제휴 업체 먼저(2026-10-25 간판 제휴사) — 지역과 무관하게, 판매 승인된 매장일 때만.
+  const partnerId = (await loadPartners(DB))[req.category]
+  if (partnerId) {
+    const p = await DB.prepare(
+      `SELECT COALESCE(NULLIF(hp.phone, ''), s.phone) AS phone FROM sellers s
+         LEFT JOIN home_service_pros hp ON hp.seller_id = s.id
+        WHERE s.id = ? AND s.status IN ('approved', 'active')`,
+    ).bind(partnerId).first<{ phone: string | null }>()
+    if (p && (await claimAndSend(env, DB, req, partnerId, p.phone))) n++
+  }
   for (const p of results ?? []) if (await claimAndSend(env, DB, req, p.seller_id, p.phone)) n++
   return n
 }
@@ -60,7 +71,8 @@ export async function dispatchBacklogToPro(env: unknown, DB: D1Database, sellerI
        FROM home_service_pros p JOIN sellers s ON s.id = p.seller_id WHERE p.seller_id = ?`,
   ).bind(sellerId).first<{ phone: string | null; active: number; status: string }>()
   if (!pro || !pro.active || !['approved', 'active'].includes(String(pro.status))) return 0
-  const { results } = await DB.prepare(OPEN_REQUESTS_FOR_PRO_SQL).bind(sellerId, todayYmd, sellerId, sellerId, 5)
+  const csv = partnerCategoriesCsv(await loadPartners(DB), sellerId)
+  const { results } = await DB.prepare(OPEN_REQUESTS_FOR_PRO_SQL).bind(sellerId, todayYmd, csv, sellerId, sellerId, 5)
     .all<{ id: number }>()
   let n = 0
   for (const r of results ?? []) {

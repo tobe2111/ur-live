@@ -4,9 +4,9 @@
   "lockSlackKB": 3,
   "surfaces": {
     "__boot__": {
-      "totalKB": 148.88,
+      "totalKB": 148.95,
       "chunks": {
-        "index.js": 15.16,
+        "index.js": 15.19,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -20,13 +20,13 @@
         "app-auth.js": 1.29,
         "app-layout.js": 3.36,
         "app-routes.js": 0.86,
-        "index.css": 28.04
+        "index.css": 28.08
       }
     },
     "home": {
-      "totalKB": 191.19,
+      "totalKB": 191.26,
       "chunks": {
-        "index.js": 15.16,
+        "index.js": 15.19,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -40,7 +40,7 @@
         "app-auth.js": 1.29,
         "app-layout.js": 3.36,
         "app-routes.js": 0.86,
-        "index.css": 28.04,
+        "index.css": 28.08,
         "MobileHomePage.js": 1.57,
         "lz-home-homePc-urshorts.js": 0.39,
         "lz-home-homePc-map.js": 5.54,
@@ -52,9 +52,9 @@
       }
     },
     "homePc": {
-      "totalKB": 197.68,
+      "totalKB": 197.75,
       "chunks": {
-        "index.js": 15.16,
+        "index.js": 15.19,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -68,7 +68,7 @@
         "app-auth.js": 1.29,
         "app-layout.js": 3.36,
         "app-routes.js": 0.86,
-        "index.css": 28.04,
+        "index.css": 28.08,
         "PcHomePage.js": 1.8,
         "lz-home-homePc-urshorts.js": 0.39,
         "lz-home-homePc-vouchers.js": 6.04,
@@ -82,9 +82,9 @@
       }
     },
     "gbDetail": {
-      "totalKB": 197.98,
+      "totalKB": 198.05,
       "chunks": {
-        "index.js": 15.16,
+        "index.js": 15.19,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -98,7 +98,7 @@
         "app-auth.js": 1.29,
         "app-layout.js": 3.36,
         "app-routes.js": 0.86,
-        "index.css": 28.04,
+        "index.css": 28.08,
         "GroupBuyDetailPage.js": 5.78,
         "lz-gbDetail-linkshop1-product.js": 0.72,
         "lz-boot-gbDetail-linkshop1.js": 0.5,
@@ -114,9 +114,9 @@
       }
     },
     "voucherDetail": {
-      "totalKB": 172.32,
+      "totalKB": 172.39,
       "chunks": {
-        "index.js": 15.16,
+        "index.js": 15.19,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -130,7 +130,7 @@
         "app-auth.js": 1.29,
         "app-layout.js": 3.36,
         "app-routes.js": 0.86,
-        "index.css": 28.04,
+        "index.css": 28.08,
         "VoucherDetailPage.js": 4.61,
         "lucide-home.js": 0.77,
         "lz-common.js": 17.48,
@@ -138,9 +138,9 @@
       }
     },
     "product": {
-      "totalKB": 189.17,
+      "totalKB": 189.24,
       "chunks": {
-        "index.js": 15.16,
+        "index.js": 15.19,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -154,7 +154,7 @@
         "app-auth.js": 1.29,
         "app-layout.js": 3.36,
         "app-routes.js": 0.86,
-        "index.css": 28.04,
+        "index.css": 28.08,
         "ProductDetailPage.js": 7.48,
         "lz-gbDetail-linkshop1-product.js": 0.72,
         "app-owner-ui.js": 1.29,
@@ -167,9 +167,9 @@
       }
     },
     "linkshop": {
-      "totalKB": 187.77,
+      "totalKB": 187.84,
       "chunks": {
-        "index.js": 15.16,
+        "index.js": 15.19,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -183,7 +183,7 @@
         "app-auth.js": 1.29,
         "app-layout.js": 3.36,
         "app-routes.js": 0.86,
-        "index.css": 28.04,
+        "index.css": 28.08,
         "SellerPublicPage.js": 3.25,
         "lucide-desktop.js": 1.09,
         "lz-linkshop1-linkshop2.js": 3.36,
@@ -198,9 +198,9 @@
       }
     },
     "vouchers": {
-      "totalKB": 186.62,
+      "totalKB": 186.69,
       "chunks": {
-        "index.js": 15.16,
+        "index.js": 15.19,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -214,7 +214,7 @@
         "app-auth.js": 1.29,
         "app-layout.js": 3.36,
         "app-routes.js": 0.86,
-        "index.css": 28.04,
+        "index.css": 28.08,
         "VouchersPage.js": 4.26,
         "lz-linkshop1-vouchers.js": 0.96,
         "lz-common.js": 17.48,
@@ -226,9 +226,9 @@
       }
     },
     "browse": {
-      "totalKB": 174.53,
+      "totalKB": 174.6,
       "chunks": {
-        "index.js": 15.16,
+        "index.js": 15.19,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -242,7 +242,7 @@
         "app-auth.js": 1.29,
         "app-layout.js": 3.36,
         "app-routes.js": 0.86,
-        "index.css": 28.04,
+        "index.css": 28.08,
         "BrowsePage.js": 4.56,
         "lucide-desktop.js": 1.09,
         "lz-common.js": 17.48,
@@ -252,9 +252,9 @@
       }
     },
     "map": {
-      "totalKB": 211.24,
+      "totalKB": 211.31,
       "chunks": {
-        "index.js": 15.16,
+        "index.js": 15.19,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -268,7 +268,7 @@
         "app-auth.js": 1.29,
         "app-layout.js": 3.36,
         "app-routes.js": 0.86,
-        "index.css": 28.04,
+        "index.css": 28.08,
         "RestaurantMapPage.js": 6.21,
         "app-kakao-sdk.js": 1.29,
         "lz-gbDetail-map.js": 0.51,
@@ -284,9 +284,9 @@
       }
     },
     "urshorts": {
-      "totalKB": 170.5,
+      "totalKB": 170.57,
       "chunks": {
-        "index.js": 15.16,
+        "index.js": 15.19,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -300,7 +300,7 @@
         "app-auth.js": 1.29,
         "app-layout.js": 3.36,
         "app-routes.js": 0.86,
-        "index.css": 28.04,
+        "index.css": 28.08,
         "UrShortsBrowsePage.js": 1.58,
         "lz-home-homePc-urshorts.js": 0.39,
         "lucide-home.js": 0.77,
@@ -309,9 +309,9 @@
       }
     },
     "cart": {
-      "totalKB": 178.05,
+      "totalKB": 178.12,
       "chunks": {
-        "index.js": 15.16,
+        "index.js": 15.19,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -325,7 +325,7 @@
         "app-auth.js": 1.29,
         "app-layout.js": 3.36,
         "app-routes.js": 0.86,
-        "index.css": 28.04,
+        "index.css": 28.08,
         "CartPage.js": 5.76,
         "app-cross.js": 1.41,
         "lz-common.js": 17.48,
@@ -335,9 +335,9 @@
       }
     },
     "search": {
-      "totalKB": 173.32,
+      "totalKB": 173.39,
       "chunks": {
-        "index.js": 15.16,
+        "index.js": 15.19,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -351,7 +351,7 @@
         "app-auth.js": 1.29,
         "app-layout.js": 3.36,
         "app-routes.js": 0.86,
-        "index.css": 28.04,
+        "index.css": 28.08,
         "SearchPage.js": 2.02,
         "lucide-home.js": 0.77,
         "app-search.js": 2.82,
@@ -360,9 +360,9 @@
       }
     },
     "faq": {
-      "totalKB": 172.21,
+      "totalKB": 172.28,
       "chunks": {
-        "index.js": 15.16,
+        "index.js": 15.19,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -376,7 +376,7 @@
         "app-auth.js": 1.29,
         "app-layout.js": 3.36,
         "app-routes.js": 0.86,
-        "index.css": 28.04,
+        "index.css": 28.08,
         "FAQPage.js": 1.78,
         "app-home.js": 1.72,
         "lz-common.js": 17.48,
@@ -386,9 +386,9 @@
       }
     },
     "stays": {
-      "totalKB": 172,
+      "totalKB": 172.07,
       "chunks": {
-        "index.js": 15.16,
+        "index.js": 15.19,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -402,7 +402,7 @@
         "app-auth.js": 1.29,
         "app-layout.js": 3.36,
         "app-routes.js": 0.86,
-        "index.css": 28.04,
+        "index.css": 28.08,
         "StaysSearchPage.js": 2.9,
         "lucide-home.js": 0.77,
         "lz-gbDetail-voucherDetail.js": 0.58,
@@ -411,9 +411,9 @@
       }
     },
     "stayDetail": {
-      "totalKB": 202.82,
+      "totalKB": 202.89,
       "chunks": {
-        "index.js": 15.16,
+        "index.js": 15.19,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -427,7 +427,7 @@
         "app-auth.js": 1.29,
         "app-layout.js": 3.36,
         "app-routes.js": 0.86,
-        "index.css": 28.04,
+        "index.css": 28.08,
         "StayDetailPage.js": 11.36,
         "lz-boot-gbDetail-linkshop1.js": 0.5,
         "lucide-desktop.js": 1.09,
@@ -442,9 +442,9 @@
       }
     },
     "blog": {
-      "totalKB": 172.77,
+      "totalKB": 172.84,
       "chunks": {
-        "index.js": 15.16,
+        "index.js": 15.19,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -458,7 +458,7 @@
         "app-auth.js": 1.29,
         "app-layout.js": 3.36,
         "app-routes.js": 0.86,
-        "index.css": 28.04,
+        "index.css": 28.08,
         "BlogListPage.js": 2.04,
         "app-blog.js": 3.6,
         "lucide-home.js": 0.77,
@@ -466,9 +466,9 @@
       }
     },
     "blogPost": {
-      "totalKB": 183.75,
+      "totalKB": 183.82,
       "chunks": {
-        "index.js": 15.16,
+        "index.js": 15.19,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -482,7 +482,7 @@
         "app-auth.js": 1.29,
         "app-layout.js": 3.36,
         "app-routes.js": 0.86,
-        "index.css": 28.04,
+        "index.css": 28.08,
         "BlogDetailPage.js": 2.57,
         "lz-gbDetail-linkshop1-product.js": 0.72,
         "lz-browse-vouchers.js": 0.93,
@@ -495,9 +495,9 @@
       }
     },
     "region": {
-      "totalKB": 195.27,
+      "totalKB": 195.34,
       "chunks": {
-        "index.js": 15.16,
+        "index.js": 15.19,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -511,7 +511,7 @@
         "app-auth.js": 1.29,
         "app-layout.js": 3.36,
         "app-routes.js": 0.86,
-        "index.css": 28.04,
+        "index.css": 28.08,
         "RegionIndexPage.js": 1.46,
         "lz-homePc-map.js": 1.22,
         "lz-common.js": 17.48,
@@ -526,9 +526,9 @@
       }
     },
     "guestMy": {
-      "totalKB": 180.6,
+      "totalKB": 180.67,
       "chunks": {
-        "index.js": 15.16,
+        "index.js": 15.19,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -542,7 +542,7 @@
         "app-auth.js": 1.29,
         "app-layout.js": 3.36,
         "app-routes.js": 0.86,
-        "index.css": 28.04,
+        "index.css": 28.08,
         "GuestMyPage.js": 1.24,
         "app-kakao-sdk.js": 1.29,
         "app-utils-deferred.js": 6.42,
@@ -555,9 +555,9 @@
       }
     },
     "guestPass": {
-      "totalKB": 177.63,
+      "totalKB": 177.7,
       "chunks": {
-        "index.js": 15.16,
+        "index.js": 15.19,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -571,7 +571,7 @@
         "app-auth.js": 1.29,
         "app-layout.js": 3.36,
         "app-routes.js": 0.86,
-        "index.css": 28.04,
+        "index.css": 28.08,
         "GuestPassPage.js": 0.92,
         "app-kakao-sdk.js": 1.29,
         "app-utils-deferred.js": 6.42,
@@ -583,9 +583,9 @@
       }
     },
     "guestUShop": {
-      "totalKB": 179.39,
+      "totalKB": 179.46,
       "chunks": {
-        "index.js": 15.16,
+        "index.js": 15.19,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -599,7 +599,7 @@
         "app-auth.js": 1.29,
         "app-layout.js": 3.36,
         "app-routes.js": 0.86,
-        "index.css": 28.04,
+        "index.css": 28.08,
         "GuestUrShopPage.js": 1.72,
         "app-kakao-sdk.js": 1.29,
         "app-utils-deferred.js": 6.42,
@@ -612,9 +612,9 @@
       }
     },
     "dash:my": {
-      "totalKB": 202.29,
+      "totalKB": 202.4,
       "chunks": {
-        "index.js": 15.16,
+        "index.js": 15.19,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -628,8 +628,8 @@
         "app-auth.js": 1.29,
         "app-layout.js": 3.36,
         "app-routes.js": 0.86,
-        "index.css": 28.04,
-        "SellerSection.js": 5.83,
+        "index.css": 28.08,
+        "SellerSection.js": 5.85,
         "order-kind.js": 0.26,
         "lz-common.js": 17.48,
         "lucide-home.js": 0.77,
@@ -647,13 +647,13 @@
         "app-features.js": 1.91,
         "profile-avatar.js": 0.27,
         "order-stage.js": 0.35,
-        "UserProfilePage.js": 7.31
+        "UserProfilePage.js": 7.33
       }
     },
     "dash:admin": {
-      "totalKB": 247.63,
+      "totalKB": 247.7,
       "chunks": {
-        "index.js": 15.16,
+        "index.js": 15.19,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -667,7 +667,7 @@
         "app-auth.js": 1.29,
         "app-layout.js": 3.36,
         "app-routes.js": 0.86,
-        "index.css": 28.04,
+        "index.css": 28.08,
         "AdminPage.js": 8.25,
         "app-cross.js": 1.41,
         "lz-common.js": 17.48,
@@ -687,9 +687,9 @@
       }
     },
     "dash:agency": {
-      "totalKB": 181.26,
+      "totalKB": 181.29,
       "chunks": {
-        "index.js": 15.16,
+        "index.js": 15.19,
         "react-core.js": 38.39,
         "app-shared.js": 6.52,
         "tanstack-query.js": 9.5,
@@ -703,8 +703,8 @@
         "app-auth.js": 1.29,
         "app-layout.js": 3.36,
         "app-routes.js": 0.86,
-        "index.css": 28.04,
-        "AgencyHomePage.js": 10,
+        "index.css": 28.08,
+        "AgencyHomePage.js": 9.96,
         "app-owner-kit.js": 1.23,
         "lucide-home.js": 0.77,
         "Sheet.js": 1.12,

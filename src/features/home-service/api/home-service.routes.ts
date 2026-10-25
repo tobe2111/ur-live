@@ -20,10 +20,10 @@ import { parseRegionFromAddress } from '@/shared/constants/region-slugs'
 import { kstYmd } from '@/shared/stays-early'
 import {
   HOME_SERVICE_CATEGORIES, HOME_TPL, MAX_OPEN_REQUESTS_PER_USER, MAX_QUOTES_PER_REQUEST,
-  categoryDef, msgQuoteChosen, requestSummary, validateRequest, type HomeServiceCategory,
+  categoryDef, msgQuoteChosen, photosOwnedBy, requestSummary, validateRequest, type HomeServiceCategory,
 } from '@/shared/home-service'
 import { sendSystemAlimtalk } from '../../../lib/system-alimtalk'
-import { chooseQuoteAtomic, ensureHomeServiceTables, refundAllQuotes, withPrivateDetails } from './home-service-db'
+import { chooseQuoteAtomic, ensureHomeServiceTables, proCountsByCategory, refundAllQuotes, withPrivateDetails } from './home-service-db'
 import { dispatchRequest } from './home-service-notify'
 
 export const homeServiceRoutes = new Hono<{ Bindings: Env }>()
@@ -70,7 +70,10 @@ export async function notifyChosen(
 
 homeServiceRoutes.get('/config', async (c) => {
   const stopped = await homeServiceStopped(c.env.DB)
-  return c.json({ success: true, data: { open: !stopped, maxQuotes: MAX_QUOTES_PER_REQUEST, categories: HOME_SERVICE_CATEGORIES } })
+  // 카테고리별 업체 수 — 못 읽으면 null(화면은 "모집 중" 을 안 띄운다. 모르는 것과 0 은 다르다).
+  let proCounts: Record<string, number> | null = null
+  try { await ensureHomeServiceTables(c.env.DB); proCounts = await proCountsByCategory(c.env.DB) } catch { proCounts = null }
+  return c.json({ success: true, data: { open: !stopped, maxQuotes: MAX_QUOTES_PER_REQUEST, categories: HOME_SERVICE_CATEGORIES, proCounts } })
 })
 
 homeServiceRoutes.post('/requests', requireAuth(), rateLimit({ action: 'home_service_request', max: 5, windowSec: 3600 }), async (c) => {
@@ -89,6 +92,8 @@ homeServiceRoutes.post('/requests', requireAuth(), rateLimit({ action: 'home_ser
       (s) => { const r = parseRegionFromAddress(s); return r ? { sido: r.sido, sigungu: r.sigungu } : null }, kstYmd(0),
     )
     if (!v.ok) return c.json({ success: false, error: v.error }, 400)
+    // 📷 사진은 이 손님이 올린 것만(남의 업로드 주소를 끼워 업체 화면에 띄우지 못하게).
+    if (!photosOwnedBy(v.value.details, userId)) return c.json({ success: false, error: '사진을 다시 올려 주세요' }, 400)
 
     const user = await DB.prepare(`SELECT name, phone FROM users WHERE id = ?`).bind(userId)
       .first<{ name: string | null; phone: string | null }>()
@@ -157,7 +162,7 @@ homeServiceRoutes.get('/requests/:id', requireAuth(), async (c) => {
     }
     const { results: quotes } = await DB.prepare(
       `SELECT q.id, q.seller_id, q.price, q.message, q.status, q.created_at,
-              COALESCE(NULLIF(s.business_name, ''), s.name) AS pro_name, q.is_house,
+              COALESCE(NULLIF(s.business_name, ''), s.name) AS pro_name, q.is_house, q.partner,
               CASE WHEN q.status = 'chosen' THEN COALESCE(NULLIF(p.phone, ''), s.phone) END AS pro_phone
          FROM home_service_quotes q
          JOIN sellers s ON s.id = q.seller_id

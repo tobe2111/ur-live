@@ -16,18 +16,19 @@ import SEO from '@/components/SEO'
 import { categoryDef, PRIVATE_ADDRESS_SUFFIX, type CategoryDef, type HomeServiceCategory, type RequestField } from '@/shared/home-service'
 import { getUserIdSync } from '@/utils/auth'
 import { loginPathFromHere } from '@/utils/login-return'
-import { LifeHeader } from './life-shared'
+import { BigTicketNote, LifeHeader } from './life-shared'
 import { clearDraft, loadDraft, saveDraft, type Draft } from './request/draft'
 import { Sheet } from './request/Sheet'
 import { MultiSheet, NumberSheet, OptionSheet, TextSheet } from './request/FieldSheets'
 import { DateSheet } from './request/DateSheet'
 import { AddressSheet } from './request/AddressSheet'
+import { PhotoSheet } from './request/PhotoSheet'
 
 const CONSENT_KEY = '__consent'
 
 /** 저절로 여는 질문 — 비워 둬도 되는 메모는 사람이 누를 때만 연다(매번 [건너뛰기] 를 누르게 하지 않는다). */
 function autoChain(def: CategoryDef): RequestField[] {
-  return def.fields.filter((f) => f.required || f.type !== 'textarea')
+  return def.fields.filter((f) => f.required || (f.type !== 'textarea' && f.type !== 'photos'))
 }
 
 function nextOpen(def: CategoryDef, visited: Set<string>, after?: string): string | null {
@@ -40,6 +41,7 @@ function shown(f: RequestField, values: Draft): string {
   const v = values[f.key]
   if (!v) return ''
   if (f.type === 'region') return values[f.key + PRIVATE_ADDRESS_SUFFIX] || v
+  if (f.type === 'photos') return `사진 ${v.split(',').filter(Boolean).length}장`
   if (f.type === 'number' && f.unit) return `${v}${f.unit}`
   return v
 }
@@ -56,6 +58,15 @@ export default function LifeRequestFormPage() {
   const [doneId, setDoneId] = useState<number | null>(null)
   const [crossOpen, setCrossOpen] = useState(false)
   const loggedIn = !!getUserIdSync()
+  // 이 일을 받는 업체 수 — 0 이면 "업체 모집 중" 을 미리 알린다(요청은 보관됐다가 업체가 생기면 간다).
+  const [proCount, setProCount] = useState<number | null>(null)
+  useEffect(() => {
+    if (!def) return
+    api.get('/api/home-service/config').then((r) => {
+      const n = r.data?.data?.proCounts?.[def.key]
+      if (r.data?.data?.proCounts) setProCount(typeof n === 'number' ? n : 0)
+    }).catch(() => {})
+  }, [def])
 
   useEffect(() => { if (def && doneId == null) saveDraft(def.key, values) }, [def, values, doneId])
   // 처음 들어오면 아직 안 답한 첫 질문을 연다.
@@ -158,6 +169,11 @@ export default function LifeRequestFormPage() {
       <LifeHeader title={`${def.label} 견적 요청`} back="/life" />
       <div className="ur-content-narrow space-y-6 px-4 pb-10">
         <h2 className="text-[24px] font-extrabold leading-snug tracking-tight">간단한 정보 입력하고<br />{def.label} 비교 견적 받아보세요</h2>
+        {proCount === 0 && (
+          <p className="rounded-2xl bg-surface p-4 text-[13px] leading-relaxed shadow-lift">
+            지금 {def.label} 업체를 모집하고 있어요. 요청은 보관해 두었다가 업체가 들어오는 대로 보내 드려요.
+          </p>
+        )}
 
         <div className="divide-y divide-rule rounded-2xl bg-surface px-5 shadow-lift">
           {def.fields.map((f) => {
@@ -169,7 +185,7 @@ export default function LifeRequestFormPage() {
                     {f.label}{!f.required && ' (선택)'}
                   </span>
                   <span className={`mt-1 block break-words text-[15px] ${v ? 'font-bold text-ink' : 'text-gray-400 dark:text-gray-500'}`}>
-                    {v || (f.type === 'select' || f.type === 'multi' ? '골라 주세요' : '알려 주세요')}
+                    {v || (f.type === 'select' || f.type === 'multi' ? '골라 주세요' : f.type === 'photos' ? '올려 주세요' : '알려 주세요')}
                   </span>
                 </span>
                 <ChevronDown className="h-5 w-5 shrink-0 text-gray-400 dark:text-gray-500" />
@@ -187,6 +203,7 @@ export default function LifeRequestFormPage() {
           </span>
         </label>
 
+        {def.bigTicket && <BigTicketNote />}
         {error && <p className="text-[13px] font-bold text-tone-bad">{error}</p>}
         <button type="button" disabled={sending} onClick={submit} className="ur-btn ur-btn-lg ur-btn-primary flex w-full justify-center disabled:opacity-60">
           {sending ? '보내는 중' : loggedIn ? '견적 신청' : '카카오로 로그인하고 견적 신청'}
@@ -194,7 +211,11 @@ export default function LifeRequestFormPage() {
         {!loggedIn && <p className="text-center text-[13px] text-gray-500 dark:text-gray-400">적은 내용은 로그인하고 돌아와도 그대로 남아 있어요.</p>}
       </div>
 
-      {openField && (openField.type === 'select'
+      {openField && (openField.type === 'photos'
+        ? <PhotoSheet f={openField} value={values[openField.key] || ''} loggedIn={loggedIn} onClose={close}
+            onLogin={() => { saveDraft(def.key, values); navigate(loginPathFromHere()) }}
+            onDone={(v) => answer(openField, { [openField.key]: v })} />
+        : openField.type === 'select'
         ? <OptionSheet f={openField} value={values[openField.key] || ''} onClose={close} onPick={(v) => answer(openField, { [openField.key]: v })} />
         : openField.type === 'date'
           ? <DateSheet f={openField} value={values[openField.key] || ''} lucky={def.luckyDays} onClose={close} onDone={(v) => answer(openField, { [openField.key]: v })} />
