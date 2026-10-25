@@ -31,7 +31,7 @@ export default [
   },
   {
     name: '숙소이용권 — 이미 쓴 이용권도 취소를 허용',
-    file: 'src/features/group-buy/api/stays-public.routes.ts', find: "    if (voucherHold === 'used') {", replace: "    if (false) {", test: T,
+    file: 'src/features/group-buy/api/stays-public.routes.ts', find: "    if (voucherHold === 'used') return", replace: "    if (false) return", test: T,
     why: '체크인한 예약이 환불된다.',
   },
   {
@@ -46,7 +46,7 @@ export default [
   },
   {
     name: '숙소이용권 — 수동 체크인이 이용권을 안 정리한다',
-    file: 'src/features/seller/api/seller-stays.routes.ts', find: "      await settleStayVoucherAfterManual(c.env.DB, { bookingId, sellerId, waitUntil: (p) => c.executionCtx.waitUntil(p) })", replace: '', test: T,
+    file: 'src/features/seller/api/seller-stays.routes.ts', find: "    await (await import('../../group-buy/api/stay-voucher-unify')).settleStayVoucherAfterManual(c.env.DB, { bookingId, sellerId, waitUntil: (p) => c.executionCtx.waitUntil(p) })", replace: '', test: T,
     why: '지갑에 사용 가능으로 남아 재스캔되고 정산 원장이 빠진다.',
   },
 ]

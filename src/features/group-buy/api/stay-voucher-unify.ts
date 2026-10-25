@@ -227,3 +227,18 @@ export async function settleStayVoucherAfterManual(
     })
   } catch (e) { if (import.meta.env?.DEV) console.warn('[stay-voucher] manual settle failed', e) }
 }
+
+/** '내 숙소' 목록에 묶인 이용권 코드·상태를 싣는다. 컬럼이 없는 DB 면 조용히 종전 응답 그대로. */
+export async function attachStayVoucherCodes(DB: D1Database, rows: Array<Record<string, unknown>>): Promise<void> {
+  const ids = rows.map((r) => Number(r.id)).filter(Number.isFinite)
+  if (!ids.length) return
+  try {
+    const vs = await DB.prepare(`SELECT stay_booking_id, code, status FROM vouchers WHERE stay_booking_id IN (${ids.map(() => '?').join(',')})`)
+      .bind(...ids).all<{ stay_booking_id: number; code: string; status: string }>()
+    const byId = new Map((vs.results || []).map((v) => [Number(v.stay_booking_id), v]))
+    for (const r of rows) {
+      const v = byId.get(Number(r.id))
+      if (v) { r.voucher_code = v.code; r.voucher_status = v.status }
+    }
+  } catch { /* 컬럼 없음 — 종전 응답 */ }
+}

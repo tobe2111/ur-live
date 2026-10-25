@@ -543,8 +543,7 @@ export interface VouchersTable {
   used_at: string | null
   expires_at: string | null
   created_at: string
-  applied_discount_pct: number | null   // 0258 migration 등 후속 컬럼 — production 에 존재
-  stay_booking_id?: number | null      // 0290 — 숙소 예약에 묶인 이용권(stay-voucher-unify.ts)
+  applied_discount_pct: number | null; stay_booking_id?: number | null   // 0258 등 후속 컬럼 · 0290 숙소 예약 연결(stay-voucher-unify.ts)
 }
 
 // ============================================================
