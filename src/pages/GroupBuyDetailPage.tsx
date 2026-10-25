@@ -648,7 +648,7 @@ export default function GroupBuyDetailPage() {
             ...(Number(detail.review_count || 0) > 0 ? [{ id: 'gb-sec-reviews', label: '리뷰' }] : []),
           ].map((tab) => (
             <button key={tab.id} onClick={() => document.getElementById(tab.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-              style={{ padding: '11px 15px', fontSize: 14, fontWeight: 700, color: 'var(--gbd-ink2)', background: 'transparent', border: 'none', cursor: 'pointer' }}>
+              style={{ padding: '11px 15px', fontSize: 15, fontWeight: 700, color: 'var(--gbd-ink2)', background: 'transparent', border: 'none', cursor: 'pointer' }}>
               {tab.label}
             </button>
           ))}

@@ -27,7 +27,7 @@ export default function OtherDealsRow({ deals, sellerHandle, sellerUsername }: {
       <div style={{ padding: '22px 0' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px' }}>
           <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--gbd-ink)', letterSpacing: '-.01em' }}>이 가게의 다른 이용권</div>
-          {(sellerHandle || sellerUsername) && <a href={sellerHandle ? `/u/${sellerHandle}` : `/profile/${sellerUsername}`} style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--gbd-accent)', textDecoration: 'none', whiteSpace: 'nowrap' }}>전체보기</a>}
+          {(sellerHandle || sellerUsername) && <a href={sellerHandle ? `/u/${sellerHandle}` : `/profile/${sellerUsername}`} style={{ fontSize: 12, fontWeight: 500, color: 'var(--gbd-accent)', textDecoration: 'none', whiteSpace: 'nowrap' }}>전체보기</a>}
         </div>
         <div className="scrollbar-hide" style={{ display: 'flex', gap: 12, overflowX: 'auto', padding: '14px 18px 2px', scrollSnapType: 'x proximity', scrollPaddingInline: 18 }}>
           {deals.map((o) => {
@@ -39,9 +39,9 @@ export default function OtherDealsRow({ deals, sellerHandle, sellerUsername }: {
                 </div>
                 <div style={{ marginTop: 9, fontSize: 13, fontWeight: 500, color: 'var(--gbd-ink)', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.name}</div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginTop: 4 }}>
-                  {pct > 0 && <span style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--gbd-danger)' }}>{pct}%</span>}
-                  <span style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--gbd-ink)' }}>{formatNumber(o.price)}원</span>
-                  {o.original_price && o.original_price > o.price && <span style={{ fontSize: 11.5, color: 'var(--gbd-sub2)', textDecoration: 'line-through' }}>{formatNumber(o.original_price)}원</span>}
+                  {pct > 0 && <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--gbd-danger)' }}>{pct}%</span>}
+                  <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--gbd-ink)' }}>{formatNumber(o.price)}원</span>
+                  {o.original_price && o.original_price > o.price && <span style={{ fontSize: 12, color: 'var(--gbd-sub2)', textDecoration: 'line-through' }}>{formatNumber(o.original_price)}원</span>}
                 </div>
               </a>
             )

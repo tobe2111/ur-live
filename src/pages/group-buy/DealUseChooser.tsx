@@ -124,7 +124,7 @@ export default function DealUseChooser({ plan, value, onChange }: {
     <div style={{ marginBottom: 8 }}>
       {/* 접혀 있어도 결과를 못 박는다 — 결제창에 가서야 알게 되는 일이 없도록. */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 30 }}>
-        <span style={{ flex: 1, fontSize: 12.5, color: 'var(--gbd-sub)', letterSpacing: '-.01em' }}>
+        <span style={{ flex: 1, fontSize: 12, color: 'var(--gbd-sub)', letterSpacing: '-.01em' }}>
           {all
             ? <>딜 <b style={{ color: 'var(--gbd-ink)' }}>{formatNumber(used)}</b>으로 전부 결제</>
             : <>딜 <b style={{ color: 'var(--gbd-ink)' }}>{formatNumber(used)}</b>{' · '}카드 <b style={{ color: 'var(--gbd-ink)' }}>{formatNumber(card)}원</b></>}
@@ -135,7 +135,7 @@ export default function DealUseChooser({ plan, value, onChange }: {
           aria-expanded={open}
           style={{
             border: 'none', background: 'none', padding: '2px 0', cursor: 'pointer',
-            fontSize: 12.5, fontWeight: 500, color: 'var(--gbd-ink)', textDecoration: 'underline',
+            fontSize: 12, fontWeight: 500, color: 'var(--gbd-ink)', textDecoration: 'underline',
           }}
         >{open ? '접기' : '변경'}</button>
       </div>
@@ -157,7 +157,7 @@ export default function DealUseChooser({ plan, value, onChange }: {
                 value={String(used)}
                 onChange={(e) => onChange(Math.max(0, Math.min(max, Math.floor(Number(e.target.value) || 0))))}
                 aria-label="사용할 딜 금액"
-                style={{ flex: 1, height: 36, borderRadius: 10, border: 'none', background: 'var(--gbd-card)', color: 'var(--gbd-ink)', padding: '0 10px', fontSize: 14, fontWeight: 700 }}
+                style={{ flex: 1, height: 36, borderRadius: 10, border: 'none', background: 'var(--gbd-card)', color: 'var(--gbd-ink)', padding: '0 10px', fontSize: 15, fontWeight: 700 }}
               />
               <span style={{ fontSize: 13, color: 'var(--gbd-sub)' }}>딜</span>
             </div>

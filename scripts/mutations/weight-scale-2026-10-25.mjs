@@ -20,8 +20,8 @@ export default [
   {
     name: '🏋️ 인라인 style 의 800 을 못 본다',
     file: 'src/pages/group-buy/DealPurchaseBox.tsx',
-    find: "fontSize: 14, fontWeight: 700, color: 'var(--gbd-ink)' }} aria-live",
-    replace: "fontSize: 14, fontWeight: 800, color: 'var(--gbd-ink)' }} aria-live",
+    find: "fontSize: 15, fontWeight: 700, color: 'var(--gbd-ink)' }} aria-live",
+    replace: "fontSize: 15, fontWeight: 800, color: 'var(--gbd-ink)' }} aria-live",
     test: T,
     why: '이용권 상세 부품 다수가 인라인 style 이다 — 그걸 못 보면 체계 밖 굵기가 조용히 남는다.',
   },
