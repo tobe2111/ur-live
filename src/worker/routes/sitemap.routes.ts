@@ -33,7 +33,7 @@ import { canonicalDetailPath } from '../../shared/product-flow';
 // 🎁 교환권 필터 카테고리 SSOT — canonical 이 믿는 집합과 **같은 목록**을 읽는다.
 import { VOUCHER_FILTER_CATEGORIES } from '../../shared/seo/consumer-surfaces';
 import { HOME_SERVICE_CATEGORIES } from '../../shared/home-service-categories';
-import { lifeCategoryPath } from '../../shared/seo/life-seo';
+import { lifeCategoryPath } from '../../shared/life-seo';
 // 🎁 facet 주소 조립 + 재고 문턱 SSOT — canonical·허브 내부 링크와 **같은 함수**를 지난다.
 import { voucherFacetPath, voucherFacetsByStock } from '../../shared/seo/voucher-facet';
 import { VOUCHER_CATEGORY_SQL_IN } from '../../shared/constants/voucher-categories';

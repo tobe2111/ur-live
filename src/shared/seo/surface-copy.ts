@@ -56,7 +56,7 @@
  * - 구글이 실제로 색인하는지(수일~수주 · 서치콘솔은 대표만 본다).
  */
 
-import { lifeCategoryLines, lifeChildLinks } from './life-seo'
+import { lifeCategoryLines, lifeChildLinks } from '../life-seo'
 
 export interface SurfaceCopy {
   /** 크롤러가 받을 문장. **전부 `source` 파일 소스에 실재해야 한다**(가드가 대조). */

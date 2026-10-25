@@ -15,7 +15,7 @@ import { ChevronRight } from 'lucide-react'
 import { HOME_SERVICE_CATEGORIES, type HomeServiceAudience } from '@/shared/home-service'
 import { formatNumber } from '@/utils/format'
 import { LIFE_TILES, LifeTileIcon } from './life-tiles'
-import { LIFE_HUB_SEO } from '@/shared/seo/life-seo'
+import { LIFE_HUB_SEO } from '@/shared/seo/life-hub-seo'
 import { withSiteName } from '@/shared/seo/consumer-surfaces'
 // 밑줄 탭은 교환권 카테고리 탭과 같은 클래스(선택 신호가 화면마다 갈리지 않게).
 import { VOUCHER_CAT_TAB } from '@/shared/voucher-tile'

@@ -25,4 +25,12 @@ export default [
     test: TEST,
     why: 'Service(대상 사업자)가 없으면 AI 검색이 일반 소비자 이사·청소 앱과 구분할 신호가 없다.',
   },
+  {
+    name: '🏠 업종 메타 등록이 빠진다',
+    file: 'src/worker/utils/surface-list-jsonld.ts',
+    find: 'registerDynamicSurfaceSeo(lifeCategorySeo)',
+    replace: 'void lifeCategorySeo',
+    test: TEST,
+    why: '업종 페이지 17개가 다시 홈 제목으로 서빙된다(에러 0).',
+  },
 ]

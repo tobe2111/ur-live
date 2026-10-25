@@ -15,16 +15,10 @@
  * ⚠️ 워커가 읽는 파일이라 상대경로로만 import 한다(`@/` 금지).
  * ⚠️ 업체 등록(`/life/pro`)은 넣지 않는다 — 로그인 전엔 로그인 안내뿐인 화면이라 색인하면 thin 이다.
  */
-import { HOME_SERVICE_CATEGORIES, categoryDef, type CategoryDef } from '../home-service-categories'
+import { HOME_SERVICE_CATEGORIES, categoryDef, type CategoryDef } from './home-service-categories'
 
-export const LIFE_HUB_PATH = '/life'
-
-/** 허브 메타 — `CONSUMER_SURFACE_SEO['/life']` 와 `LifePage` 의 `<SEO>` 가 이 값을 쓴다. */
-export const LIFE_HUB_SEO = {
-  crumb: '생활 서비스',
-  title: '사장님 생활 서비스 - 간판·방역·후드 청소·설비 수리 견적',
-  description: '식당·카페·숙소 사장님을 위한 생활 서비스. 간판·방역·후드 청소·냉장 설비 수리까지 요청서 한 번이면 근처 업체가 견적을 보내 드려요.',
-} as const
+import { LIFE_HUB_PATH, LIFE_HUB_SEO } from './seo/life-hub-seo'
+export { LIFE_HUB_PATH, LIFE_HUB_SEO }
 
 const REQUEST_RE = /^\/life\/request\/([a-z_]+)\/?$/
 

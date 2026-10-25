@@ -24,7 +24,7 @@ import { Sheet, StepFrameContext } from './request/Sheet'
 import { MultiSheet, NumberSheet, OptionSheet, TextSheet } from './request/FieldSheets'
 import { DateSheet } from './request/DateSheet'
 import { AddressSheet } from './request/AddressSheet'
-import { lifeCategoryTitle } from '@/shared/seo/life-seo'
+import { lifeCategoryTitle } from '@/shared/life-seo'
 import { withSiteName } from '@/shared/seo/consumer-surfaces'
 import { PhotoSheet } from './request/PhotoSheet'
 

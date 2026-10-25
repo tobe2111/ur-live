@@ -30,10 +30,12 @@
  */
 import { canonicalDetailPath } from '../../shared/product-flow'
 import { curatorHomePins } from '../../shared/curator-pin-order'
-import { CONSUMER_SURFACE_SEO, CONSUMER_SITE_NAME } from '../../shared/seo/consumer-surfaces'
+import { CONSUMER_SURFACE_SEO, CONSUMER_SITE_NAME, registerDynamicSurfaceSeo } from '../../shared/seo/consumer-surfaces'
 import { withCrumbRoot } from '../../shared/seo/breadcrumb'
 import { CONCEPT_FAQ } from '../../shared/seo/concept-content'
-import { lifeCategoryCrumb, lifeJsonLdNodes } from '../../shared/seo/life-seo'
+import { lifeCategoryCrumb, lifeJsonLdNodes, lifeCategorySeo } from '../../shared/life-seo'
+// 🏠 업종 페이지 서버 메타 — 여기서 끼운다(워커 index 가 이 모듈을 import 한다). 공용 번들엔 업종 데이터가 안 실린다.
+registerDynamicSurfaceSeo(lifeCategorySeo)
 import { addressInRegion, parseRegionPath, regionPath, type RegionRef } from '../../shared/constants/region-slugs'
 import { REGION_PATH_RE } from '../../shared/seo/region-seed'
 

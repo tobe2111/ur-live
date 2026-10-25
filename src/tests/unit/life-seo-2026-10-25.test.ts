@@ -89,3 +89,14 @@ describe('robots · sitemap', () => {
     expect(src).toMatch(/HOME_SERVICE_CATEGORIES\.map\(\(d\) => \(\{ loc: lifeCategoryPath\(d\.key\)/)
   })
 })
+
+describe('공용 번들 무게', () => {
+  it('consumer-surfaces(전 화면 공용)는 업종 데이터를 import 하지 않는다 — 실측 전 화면 +4.3KB 였다', () => {
+    const src = readCode('src/shared/seo/consumer-surfaces.ts')
+    expect(src).not.toMatch(/from ['"][^'"]*(life-seo|home-service)/)
+    expect(src).toMatch(/from ['"]\.\/life-hub-seo['"]/)
+  })
+  it('업종 메타는 워커가 등록한다(빠지면 업종 페이지가 홈 메타로 돌아간다)', () => {
+    expect(readCode('src/worker/utils/surface-list-jsonld.ts')).toMatch(/registerDynamicSurfaceSeo\(lifeCategorySeo\)/)
+  })
+})
