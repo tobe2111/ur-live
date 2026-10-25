@@ -51,18 +51,31 @@ describe('🧺 IndexNow 전수 제출', () => {
     const back = c.indexOf('needsIndexNowBackfill(mark?.value)')
     expect(gate).toBeGreaterThan(0)
     expect(back).toBeGreaterThan(gate) // 게이트보다 앞에서 바깥으로 쏘면 안 된다
-    const block = c.slice(back, c.indexOf("if (!entries.length)", back))
+    const block = c.slice(back, c.indexOf('async function submitChanges', back))
     expect(block).toContain('parseSitemapLocs(xml)')
     expect(block).toContain('.slice(0, INDEXNOW_SPEC_MAX)')
     // 순서: 0건 검사 → 제출 → 실패면 반환 → 그 다음에만 표식
-    const empty = block.indexOf('if (!locs.length) return')
+    const empty = block.indexOf('if (!locs.length)')
     const submit = block.indexOf('submitUrls(key, locs)')
-    const fail = block.indexOf('if (!ok.ok) return')
+    const fail = block.indexOf('if (!ok.ok)')
     const mark = block.indexOf('upsertSetting(DB, INDEXNOW_BACKFILL_KEY')
     expect(empty).toBeGreaterThan(-1)
     expect(submit).toBeGreaterThan(empty)
     expect(fail).toBeGreaterThan(submit)
     expect(mark).toBeGreaterThan(fail)
+  })
+
+  it('⑥ 🩸 전수가 실패해도 변경분은 그대로 보낸다 (2026-10-26 — 첫 회차 429)', () => {
+    // 종전엔 전수 실패에서 바로 반환해, 전수가 거절되는 동안 변경분 제출까지 통째로 멎었다(에러 0).
+    const c = readCode('src/worker/cron/indexnow-submit.ts')
+    const back = c.indexOf('needsIndexNowBackfill(mark?.value)')
+    const block = c.slice(back, c.indexOf('upsertSetting(DB, INDEXNOW_BACKFILL_KEY', back))
+    // 0건 분기와 실패 분기 둘 다 반환 전에 변경분을 보낸다
+    expect((block.match(/submitChanges\(DB, key, entries\)/g) || []).length).toBe(2)
+    // 정상 경로도 같은 함수 — 변경분 규칙이 두 벌이 되지 않는다
+    const tail = c.slice(c.indexOf('upsertSetting(DB, INDEXNOW_BACKFILL_KEY'))
+    expect(tail).toMatch(/return `indexnow: \$\{await submitChanges\(DB, key, entries\)\}`/)
+    expect((c.match(/planIndexNow\(/g) || []).length).toBe(1)
   })
 
   it('⑤ 선택 술어를 다시 적지 않는다 (상품·블로그를 직접 쿼리하지 않는다)', () => {
