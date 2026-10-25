@@ -169,13 +169,13 @@ describe('🎟️ 카테고리별 참여권 장수', () => {
 })
 
 describe('🧑‍🔧 카테고리별 업체 수', () => {
-  it('승인·켜 둔 업체만 센다 · 제휴 카테고리는 최소 1', async () => {
-    raw.exec(`INSERT INTO sellers (id, status) VALUES (1, 'approved'), (2, 'pending'), (3, 'approved')`)
-    raw.exec(`INSERT INTO home_service_pros (seller_id, active) VALUES (1, 1), (2, 1), (3, 0)`)
-    raw.exec(`INSERT INTO home_service_pro_categories (seller_id, category) VALUES (1, 'move'), (2, 'move'), (3, 'move'), (2, 'store_pest')`)
+  it('정지 아닌·켜 둔 업체만 센다(심사 중 포함 — 2026-10-25) · 제휴 카테고리는 최소 1', async () => {
+    raw.exec(`INSERT INTO sellers (id, status) VALUES (1, 'approved'), (2, 'suspended'), (3, 'approved'), (4, 'pending')`)
+    raw.exec(`INSERT INTO home_service_pros (seller_id, active) VALUES (1, 1), (2, 1), (3, 0), (4, 1)`)
+    raw.exec(`INSERT INTO home_service_pro_categories (seller_id, category) VALUES (1, 'move'), (2, 'move'), (3, 'move'), (2, 'store_pest'), (4, 'move')`)
     raw.prepare(`INSERT INTO platform_settings (key, value) VALUES ('home_service_partners', ?)`).run(...([JSON.stringify({ signage: 77 })] as never[]))
     const c = await proCountsByCategory(DB)
-    expect(c.move).toBe(1)
+    expect(c.move).toBe(2)
     expect(c.store_pest).toBeUndefined()
     expect(c.signage).toBe(1)
   })

@@ -37,12 +37,12 @@ export default [
     why: '손님을 실제로 받은 사장님이 참여권도 돌려받는다.',
   },
   {
-    name: '생활견적 — 매칭이 판매 승인을 안 본다',
+    name: '생활견적 — 매칭이 매장 상태를 안 본다',
     file: DB,
-    find: "     AND s.status IN ('approved', 'active')\n     AND (",
+    find: "     AND s.status IN ${PRO_OPEN_STATUS_SQL}\n     AND (",
     replace: "     AND (",
     test: T,
-    why: '심사 중인(확인 안 된) 업체에 손님 요청이 간다.',
+    why: '정지된 업체에 손님 요청이 간다(2026-10-25 부터 심사 중은 받는다 — 막는 것은 정지·반려).',
   },
   {
     name: '생활견적 — 요청서 지역을 동까지 자르지 않는다(번지·호수가 사장님에게 보인다)',

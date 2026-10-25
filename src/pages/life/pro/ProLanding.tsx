@@ -51,7 +51,7 @@ export default function ProLanding() {
       </section>
       <div className="space-y-1 pt-2">
         <Link to={`/login?returnUrl=${returnUrl}`} className="ur-btn ur-btn-lg ur-btn-primary flex w-full justify-center">카카오로 시작하기</Link>
-        <Link to="/store/new" className="block py-2 text-center text-[13px] text-gray-500 dark:text-gray-400">가게(사업자)를 먼저 등록해야 해요 · 가게 등록</Link>
+        <p className="py-2 text-center text-[13px] text-gray-500 dark:text-gray-400">로그인 후 한 화면이면 가입 끝 · 사업자등록증은 나중에</p>
         <p className="pt-2 text-center text-[12px] text-gray-500 dark:text-gray-400">유어딜은 연결만 해요. 계약과 대금은 사장님과 직접 주고받아요.</p>
       </div>
     </div>

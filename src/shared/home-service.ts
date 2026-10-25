@@ -19,6 +19,23 @@ import { MAX_REQUEST_PHOTOS, PRIVATE_ADDRESS_MAX, PRIVATE_ADDRESS_SUFFIX, catego
 export const MAX_QUOTES_PER_REQUEST = 5
 /** 사장님이 처음 등록하면 주는 무료 참여권. */
 export const SIGNUP_FREE_CREDITS = 3
+
+/**
+ * 🚪 견적을 받고 보낼 수 있는 매장 상태 — 2026-10-25 대표 *"1번은 해줘"*(심사 중인 업체도 견적).
+ * 생활 업체는 **심사 중(pending)도 연다** — 업체 모집이 먼저다. 막는 것은 정지·반려뿐이다.
+ * 대신 손님은 견적 카드에서 `사업자 인증` 표시로 심사를 마친 업체를 구분한다(`proVerified`).
+ * 🔴 이용권 판매는 이 규칙과 무관하다 — 메인 노출은 여전히 승인된 매장만(`approvedSellerProductSql`).
+ * 🔴 제휴 업체 지정은 여전히 판매 승인 매장만(어드민 라우트) — 무료로 자리를 주는 일이라 더 엄격하다.
+ */
+export const PRO_OPEN_STATUSES = ['pending', 'approved', 'active'] as const
+export const PRO_OPEN_STATUS_SQL = `('pending', 'approved', 'active')`
+export function proStatusOpen(status: unknown): boolean {
+  return (PRO_OPEN_STATUSES as readonly string[]).includes(String(status))
+}
+/** 사업자 심사를 마친 업체 — 손님 견적 카드의 `사업자 인증` 표시. */
+export function proVerified(status: unknown): boolean {
+  return status === 'approved' || status === 'active'
+}
 /** 손님이 이 시간 동안 견적을 한 번도 안 열어 보면 참여권을 돌려준다. */
 export const UNVIEWED_REFUND_HOURS = 48
 /** 한 요청에 알림을 보낼 사장님 상한(알림톡 비용). */

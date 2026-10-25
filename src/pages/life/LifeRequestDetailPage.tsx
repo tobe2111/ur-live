@@ -16,7 +16,7 @@ import { formatNumber } from '@/utils/format'
 import { BigTicketNote, DetailRows, LifeHeader, STATUS_LABEL, categoryLabel } from './life-shared'
 
 interface Voucher { id: number; name: string; price?: number }
-interface Quote { id: number; price: number | null; message: string; status: string; pro_name: string; pro_phone: string | null; vouchers: Voucher[]; is_house?: number | null; partner?: number | null }
+interface Quote { id: number; price: number | null; message: string; status: string; pro_name: string; pro_phone: string | null; vouchers: Voucher[]; is_house?: number | null; partner?: number | null; verified?: number | null }
 interface Detail {
   id: number; category: string; details: Record<string, string>; desired_date: string; status: string
   quote_count: number; max_quotes: number; quotes: Quote[]
@@ -92,7 +92,7 @@ export default function LifeRequestDetailPage() {
             {d.quotes.map((q) => (
               <li key={q.id} className={`rounded-2xl bg-surface p-5 shadow-lift ${q.status === 'chosen' ? 'ring-2 ring-brand' : ''}`}>
                 <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-[15px] font-bold">{q.pro_name}{q.is_house ? <span className="ml-2 rounded-full bg-brand-tint px-2 py-1 text-[12px] font-medium text-brand-text">{q.partner ? '유어딜 제휴' : '유어딜 직영'}</span> : null}</span>
+                  <span className="text-[15px] font-bold">{q.pro_name}{q.is_house ? <span className="ml-2 rounded-full bg-brand-tint px-2 py-1 text-[12px] font-medium text-brand-text">{q.partner ? '유어딜 제휴' : '유어딜 직영'}</span> : q.verified ? <span className="ml-2 rounded-full bg-warm px-2 py-1 text-[12px] font-medium text-gray-600 dark:text-gray-300">사업자 인증</span> : null}</span>
                   <span className="text-[17px] font-bold">{quotePriceText(q.price)}</span>
                 </div>
                 <p className="mt-2 whitespace-pre-wrap text-[13px] leading-relaxed text-gray-700 dark:text-gray-200">{q.message}</p>
