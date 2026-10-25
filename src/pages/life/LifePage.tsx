@@ -15,6 +15,8 @@ import { ChevronRight } from 'lucide-react'
 import { HOME_SERVICE_CATEGORIES, type HomeServiceAudience } from '@/shared/home-service'
 import { formatNumber } from '@/utils/format'
 import { LIFE_TILES, LifeTileIcon } from './life-tiles'
+// 밑줄 탭은 교환권 카테고리 탭과 같은 클래스(선택 신호가 화면마다 갈리지 않게).
+import { VOUCHER_CAT_TAB } from '@/shared/voucher-tile'
 
 /**
  * 가게 → 숙소 → 집 (2026-10-25 대표 "우리는 사장님을 위한 생활 서비스" — 가게가 첫 탭).
@@ -60,13 +62,13 @@ export default function LifePage() {
         {!open && <p className="mt-3 text-[13px] font-medium text-tone-bad">지금은 잠시 요청을 받지 않아요.</p>}
       </header>
 
-      <nav className="ur-content-narrow mt-6 flex gap-6 border-b border-rule px-5" aria-label="생활 서비스 분류">
+      <nav className="ur-content-narrow mt-4 flex gap-5 border-b border-line px-5" aria-label="생활 서비스 분류">
         {TABS.map((t) => {
           const on = t.audience === tab
           return (
             <button key={t.audience} type="button" aria-pressed={on}
               onClick={() => setParams(t.audience === 'store' ? {} : { tab: t.audience }, { replace: true })}
-              className={`-mb-px border-b-2 pb-3 text-[15px] ${on ? 'border-ink font-bold text-ink' : 'border-transparent font-medium text-gray-500 dark:text-gray-400'}`}>
+              className={`${VOUCHER_CAT_TAB.tab} ${on ? VOUCHER_CAT_TAB.on : VOUCHER_CAT_TAB.off}`}>
               {t.title}
             </button>
           )
