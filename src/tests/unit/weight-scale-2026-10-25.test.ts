@@ -31,8 +31,11 @@ const DONE = [
   ...execSync("git ls-files 'src/pages/vouchers/*.tsx' 'src/pages/group-buy/*.tsx'", { encoding: 'utf8' }).trim().split('\n').filter(Boolean),
 ]
 
-/** 나머지 소비자 화면의 정본 밖 굵기 — 2026-10-25 실측. 줄였으면 같은 커밋에서 내린다. */
-const REST_BASELINE = 1343
+/**
+ * 나머지 소비자 화면의 정본 밖 굵기 — 2026-10-25 2차로 소비자 전 화면을 이행해 1343 → 0
+ * (Toss 잠금 두 파일은 대표 *"잠금 해제해줄게 해줘"* 로 함께). 이제 0 이 상한이다 — 새 위반은 그대로 빨간불.
+ */
+const REST_BASELINE = 0
 
 const consumer = execSync(
   "git ls-files 'src/pages/*.tsx' 'src/pages/**/*.tsx' 'src/components/*.tsx' 'src/components/**/*.tsx'",
@@ -97,7 +100,6 @@ describe('③ 나머지 소비자 화면 — 늘지 않는다', () => {
     expect(rest.length).toBeGreaterThan(300)
     let n = 0
     for (const f of rest) n += sourceViolations(readFileSync(f, 'utf8')).length
-    expect(n).toBeGreaterThan(0)
     expect(n).toBeLessThanOrEqual(REST_BASELINE)
   })
 })

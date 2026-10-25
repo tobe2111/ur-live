@@ -71,10 +71,10 @@ export default function AccountPcBand({ counts, userName, profileImage, onEditPr
         className="min-w-0 flex items-center gap-2 text-left active:opacity-70 transition-opacity"
       >
         <span className="min-w-0">
-          <span className="block text-[24px] font-extrabold text-gray-900 dark:text-white truncate tracking-[-0.02em] leading-tight">{userName}</span>
+          <span className="block text-[24px] font-bold text-gray-900 dark:text-white truncate tracking-[-0.02em] leading-tight">{userName}</span>
           <span className="block text-[13px] text-gray-500 dark:text-gray-400 truncate mt-1">{localStorage.getItem('user_email') || ''}</span>
         </span>
-        <span className="shrink-0 text-[12px] font-semibold text-gray-500 dark:text-gray-400">{t('userProfile.editProfile', { defaultValue: '프로필 편집' })}</span>
+        <span className="shrink-0 text-[12px] font-medium text-gray-500 dark:text-gray-400">{t('userProfile.editProfile', { defaultValue: '프로필 편집' })}</span>
         <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
       </button>
       <SellerSwitchInline seats={sellerSeats} />

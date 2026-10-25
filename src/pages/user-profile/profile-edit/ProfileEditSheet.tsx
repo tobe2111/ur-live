@@ -246,7 +246,7 @@ export default function ProfileEditSheet({ onClose, initialName, onNameChange }:
         style={{ zIndex: Z.SHEET_BODY }}
       >
         <div className="flex items-center justify-between px-4 h-14 border-b border-rule shrink-0">
-          <h3 className="text-[17px] font-extrabold text-gray-900 dark:text-white">{t('userProfile.editProfile', { defaultValue: '프로필 편집' })}</h3>
+          <h3 className="text-[17px] font-bold text-gray-900 dark:text-white">{t('userProfile.editProfile', { defaultValue: '프로필 편집' })}</h3>
           <button type="button" onClick={onClose} aria-label="닫기" className="w-9 h-9 -mr-2 flex items-center justify-center">
             <X className="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
           </button>
@@ -261,7 +261,7 @@ export default function ProfileEditSheet({ onClose, initialName, onNameChange }:
               onError={(e) => profileAvatarOnError(e.currentTarget, image)}
             />
             <div className="min-w-0">
-              <label className="inline-flex items-center gap-2 px-3 h-9 rounded-full bg-wash text-[13px] font-semibold text-gray-700 dark:text-gray-200 cursor-pointer active:opacity-70">
+              <label className="inline-flex items-center gap-2 px-3 h-9 rounded-full bg-wash text-[13px] font-medium text-gray-700 dark:text-gray-200 cursor-pointer active:opacity-70">
                 {uploading ? t('profileEdit.uploading', { defaultValue: '올리는 중…' }) : t('profileEdit.changePhoto', { defaultValue: '사진 변경' })}
                 <input type="file" accept="image/*" className="hidden" disabled={uploading}
                   onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void uploadPhoto(f) }} />
@@ -319,7 +319,7 @@ export default function ProfileEditSheet({ onClose, initialName, onNameChange }:
                 onOpen={() => { setOpen('sns'); setSns({ instagram_url: me.instagram_url, youtube_url: me.youtube_url, tiktok_url: me.tiktok_url }) }}>
                 {SNS.map(([key, label]) => (
                   <div key={key} className="flex items-center gap-2 mb-2">
-                    <span className="w-16 shrink-0 text-[13px] font-bold text-gray-500 dark:text-gray-400">{label}</span>
+                    <span className="w-16 shrink-0 text-[13px] font-medium text-gray-500 dark:text-gray-400">{label}</span>
                     <input className={ROW_INPUT} value={sns[key] ?? ''} placeholder={t('profileEdit.snsPh', { defaultValue: '@아이디 또는 링크' })}
                       onChange={e => setSns(s => ({ ...s, [key]: e.target.value }))} />
                   </div>

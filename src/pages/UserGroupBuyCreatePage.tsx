@@ -96,7 +96,7 @@ export default function UserGroupBuyCreatePage() {
     return (
       <div className="min-h-screen bg-white dark:bg-[#11141C] flex flex-col items-center justify-center px-6 text-center">
         <span className="text-[48px] mb-3">🔒</span>
-        <h1 className="text-[17px] font-extrabold text-gray-900 dark:text-white mb-2">공구 등록 권한이 필요해요</h1>
+        <h1 className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">공구 등록 권한이 필요해요</h1>
         <p className="text-[15px] text-gray-600 dark:text-gray-300 mb-6 max-w-sm leading-relaxed">
           공구는 <strong>매장을 등록한 사업자 유저</strong>만 올릴 수 있어요. 내 가게를 먼저 등록해 주세요.
         </p>
@@ -200,7 +200,7 @@ export default function UserGroupBuyCreatePage() {
           >
             <ChevronLeft className="w-6 h-6 text-gray-900 dark:text-white" />
           </button>
-          <h1 className="text-[17px] font-extrabold text-gray-900 dark:text-white flex-1 text-center pr-8">
+          <h1 className="text-[17px] font-bold text-gray-900 dark:text-white flex-1 text-center pr-8">
             {catMeta
               ? t('groupbuy.createTitleCat', { defaultValue: '{{label}} 공구 시작하기', label: catMeta.label })
               : t('groupbuy.createTitle', { defaultValue: '맛집 공구 시작하기' })}
@@ -212,7 +212,7 @@ export default function UserGroupBuyCreatePage() {
         {/* ── Step 1: 맛집 선택 ── */}
         <section>
           <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">
-            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-brand text-white text-[12px] font-bold mr-2">
+            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-brand text-white text-[12px] font-medium mr-2">
               1
             </span>
             {catMeta
@@ -270,7 +270,7 @@ export default function UserGroupBuyCreatePage() {
         {/* ── Step 2: 공구 설정 ── */}
         <section>
           <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">
-            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-brand text-white text-[12px] font-bold mr-2">
+            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-brand text-white text-[12px] font-medium mr-2">
               2
             </span>
             {t('groupbuy.step2Title', { defaultValue: '공구 설정' })}
@@ -279,7 +279,7 @@ export default function UserGroupBuyCreatePage() {
           <div className="space-y-4">
             {/* 희망 이용권 가격 */}
             <div>
-              <label className="block text-[13px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-[13px] font-medium text-gray-700 dark:text-gray-300 mb-1">
                 {catMeta
                   ? t('groupbuy.priceLabelGeneric', { defaultValue: '희망 가격' })
                   : t('groupbuy.priceLabel', { defaultValue: '희망 이용권 가격' })}
@@ -303,7 +303,7 @@ export default function UserGroupBuyCreatePage() {
 
             {/* 1인당 딜 예치금 */}
             <div>
-              <label className="block text-[13px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-[13px] font-medium text-gray-700 dark:text-gray-300 mb-1">
                 {t('groupbuy.depositLabel', { defaultValue: '1인당 딜 예치금' })}
               </label>
               <div className="relative">
@@ -328,7 +328,7 @@ export default function UserGroupBuyCreatePage() {
 
             {/* 목표 인원 */}
             <div>
-              <label className="block text-[13px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-[13px] font-medium text-gray-700 dark:text-gray-300 mb-1">
                 {t('groupbuy.targetCountLabel', { defaultValue: '목표 인원' })}
               </label>
               <div className="relative">
@@ -353,7 +353,7 @@ export default function UserGroupBuyCreatePage() {
 
             {/* 🏭 2026-06-07 (사용자 요청): 공구를 유치하는 사람이 직접 작성하는 소개글/안내문구 */}
             <div>
-              <label className="block text-[13px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-[13px] font-medium text-gray-700 dark:text-gray-300 mb-1">
                 {t('groupbuy.descriptionLabel', { defaultValue: '공구 소개글 (선택)' })}
               </label>
               <textarea
@@ -384,7 +384,7 @@ export default function UserGroupBuyCreatePage() {
         {restaurant && step2Valid && (
           <section>
             <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">
-              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-brand text-white text-[12px] font-bold mr-2">
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-brand text-white text-[12px] font-medium mr-2">
                 3
               </span>
               {t('groupbuy.step3Title', { defaultValue: '확인 & 시작' })}

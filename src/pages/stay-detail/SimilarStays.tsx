@@ -65,7 +65,7 @@ export default function SimilarStays({
       <div ref={sentinel} aria-hidden style={{ height: 1 }} />
       {items.length >= MIN_SHOWN && (
         <section className="mb-6">
-          <h2 className="text-[17px] font-extrabold tracking-tight text-gray-900 dark:text-white">이곳과 비슷한 스테이</h2>
+          <h2 className="text-[17px] font-bold tracking-tight text-gray-900 dark:text-white">이곳과 비슷한 스테이</h2>
           <StayCardRow items={items} checkIn={checkIn} checkOut={checkOut} guests={guests} />
         </section>
       )}

@@ -109,7 +109,7 @@ export default function LocalTownPage() {
           <button type="button" onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))} aria-label={t('common.back', { defaultValue: '뒤로' })} className="p-2 -ml-1 text-gray-700 dark:text-gray-200">
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-[15px] font-extrabold text-gray-900 dark:text-white truncate">
+          <h1 className="text-[15px] font-bold text-gray-900 dark:text-white truncate">
             {t('local.headerTitle', { defaultValue: '{{name}} 상권관', name: townName })}
           </h1>
         </div>
@@ -117,7 +117,7 @@ export default function LocalTownPage() {
 
       {/* 히어로 */}
       <div className="px-4 pt-5 pb-4">
-        <p className="text-[24px] font-extrabold text-gray-900 dark:text-white leading-tight">
+        <p className="text-[24px] font-bold text-gray-900 dark:text-white leading-tight">
           {t('local.heroLine1', { defaultValue: '{{name}}의 딜을 한곳에서', name: townName })}
         </p>
         <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400 flex items-center gap-3">
@@ -132,7 +132,7 @@ export default function LocalTownPage() {
         {/* 체험단(추첨) 섹션 */}
         {fcfsCount > 0 && (
           <section>
-            <h2 className="text-[17px] font-extrabold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+            <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
               <Target className="w-4 h-4 text-gray-400" aria-hidden="true" /> {t('local.fcfsTitle', { defaultValue: '체험단 모집' })}
             </h2>
             <div className="space-y-2">
@@ -154,7 +154,7 @@ export default function LocalTownPage() {
 
         {/* 동네딜 그리드 */}
         <section>
-          <h2 className="text-[17px] font-extrabold text-gray-900 dark:text-white mb-3">
+          <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mb-3">
             <span className="inline-flex items-center gap-2"><StoreIcon className="w-4 h-4 text-gray-400" aria-hidden="true" />{t('local.dealsTitle', { defaultValue: '동네딜' })} {dealCount > 0 ? dealCount : ''}</span>
           </h2>
           {loading ? (
@@ -172,7 +172,7 @@ export default function LocalTownPage() {
               <PinIcon className="w-12 h-12 text-gray-200 dark:text-gray-700 mx-auto mb-3" />
               <p className="text-gray-900 dark:text-white font-bold">{t('local.empty', { defaultValue: '이 상권의 딜을 준비 중이에요' })}</p>
               <p className="text-[15px] text-gray-400 dark:text-gray-500 mt-1">{t('local.emptySub', { defaultValue: '곧 우리 동네 매장들이 입점합니다' })}</p>
-              <button type="button" onClick={() => navigate('/')} className="mt-4 px-4 py-2 rounded-xl bg-brand text-white text-[13px] font-bold">
+              <button type="button" onClick={() => navigate('/')} className="mt-4 px-4 py-2 rounded-xl bg-brand text-white text-[13px] font-medium">
                 {t('local.browseAll', { defaultValue: '전체 동네딜 보기' })}
               </button>
             </div>
@@ -190,7 +190,7 @@ export default function LocalTownPage() {
           <button
             type="button"
             onClick={() => navigate('/')}
-            className="w-full py-4 rounded-2xl border border-line text-[13px] font-bold text-gray-700 dark:text-gray-200 flex items-center justify-center gap-2"
+            className="w-full py-4 rounded-2xl border border-line text-[13px] font-medium text-gray-700 dark:text-gray-200 flex items-center justify-center gap-2"
           >
             <PinIcon className="w-4 h-4" /> {t('local.viewOnMap', { defaultValue: '지도에서 보기' })}
           </button>

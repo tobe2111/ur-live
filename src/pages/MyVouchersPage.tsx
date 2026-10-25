@@ -204,7 +204,7 @@ export default function MyVouchersPage() {
                         tabIndex={0}
                         onClick={(e) => { e.stopPropagation(); setQrVoucher(v) }}
                         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); setQrVoucher(v) } }}
-                        className="shrink-0 flex items-center gap-2 rounded-xl px-4 py-2 bg-brand text-white text-[13px] font-bold active:scale-95 transition-transform"
+                        className="shrink-0 flex items-center gap-2 rounded-xl px-4 py-2 bg-brand text-white text-[13px] font-medium active:scale-95 transition-transform"
                       >
                         <QrCode className="w-4 h-4" strokeWidth={1.8} />{t('voucher.use', { defaultValue: '사용' })}
                       </span>
@@ -263,14 +263,14 @@ export default function MyVouchersPage() {
             <div className="flex items-end gap-5 mb-4 border-b border-rule">
               {([['unused', t('voucher.groupUnused', { defaultValue: '사용 가능' })], ['done', t('voucher.groupPast', { defaultValue: '지난 이용권' })]] as const).map(([key, label]) => (
                 <button key={key} type="button" onClick={() => setTab(key)}
-                  className={`relative pb-2 text-[17px] tracking-[-0.02em] ${tab === key ? 'font-extrabold text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500 font-semibold'}`}>
+                  className={`relative pb-2 text-[17px] tracking-[-0.02em] ${tab === key ? 'font-bold text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500 font-bold'}`}>
                   {label}
                   {tab === key && <span aria-hidden="true" className="absolute left-0 right-0 -bottom-px h-[2.5px] bg-brand" />}
                 </button>
               ))}
               {tab === 'unused' && mapVouchers.length > 0 && (
                 <button type="button" onClick={() => setViewMode('map')}
-                  className="ml-auto pb-2 inline-flex items-center gap-1 text-[13px] font-bold text-gray-600 dark:text-gray-300">
+                  className="ml-auto pb-2 inline-flex items-center gap-1 text-[13px] font-medium text-gray-600 dark:text-gray-300">
                   <PinIcon className="w-4 h-4" aria-hidden />{t('voucher.mapShort', { defaultValue: '지도' })}
                 </button>
               )}

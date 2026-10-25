@@ -15,7 +15,7 @@ function renderInline(text: string): ReactNode[] {
   while ((m = re.exec(text)) !== null) {
     if (m.index > last) nodes.push(text.slice(last, m.index))
     if (m[2] !== undefined) {
-      nodes.push(<strong key={key++} className="font-semibold text-gray-900 dark:text-white">{m[2]}</strong>)
+      nodes.push(<strong key={key++} className="font-medium text-gray-900 dark:text-white">{m[2]}</strong>)
     } else if (m[3] !== undefined) {
       nodes.push(<code key={key++} className="px-1 py-1 rounded bg-gray-100 dark:bg-[#1D1F29] text-[0.85em] text-brand-text font-mono break-all">{m[3]}</code>)
     } else if (m[4] !== undefined) {
@@ -56,10 +56,10 @@ export default function MarkdownView({ source, className = '' }: { source: strin
     if (h) {
       const lvl = h[1].length
       const txt = h[2]
-      const cls = lvl === 1 ? 'text-[24px] font-extrabold mt-2 mb-4'
-        : lvl === 2 ? 'text-[17px] font-bold mt-8 mb-3 pb-1 border-b border-gray-100 dark:border-[#2C2F35]'
-        : lvl === 3 ? 'text-[15px] font-bold mt-5 mb-2'
-        : 'text-[13px] font-bold mt-4 mb-2 text-gray-600 dark:text-gray-300'
+      const cls = lvl === 1 ? 'text-[24px] font-medium mt-2 mb-4'
+        : lvl === 2 ? 'text-[17px] font-medium mt-8 mb-3 pb-1 border-b border-gray-100 dark:border-[#2C2F35]'
+        : lvl === 3 ? 'text-[15px] font-medium mt-5 mb-2'
+        : 'text-[13px] font-medium mt-4 mb-2 text-gray-600 dark:text-gray-300'
       blocks.push(<div key={key++} className={`text-gray-900 dark:text-white ${cls}`}>{renderInline(txt)}</div>)
       i++; continue
     }
@@ -74,7 +74,7 @@ export default function MarkdownView({ source, className = '' }: { source: strin
         <div key={key++} className="my-3 overflow-x-auto rounded-lg border border-line">
           <table className="w-full text-[12px] border-collapse">
             <thead>
-              <tr>{header.map((c, j) => <th key={j} className="text-left px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border-b border-line font-semibold text-gray-700 dark:text-gray-200 whitespace-nowrap">{renderInline(c)}</th>)}</tr>
+              <tr>{header.map((c, j) => <th key={j} className="text-left px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border-b border-line font-medium text-gray-700 dark:text-gray-200 whitespace-nowrap">{renderInline(c)}</th>)}</tr>
             </thead>
             <tbody>
               {rows.map((r, ri) => (

@@ -42,8 +42,8 @@ export default [
   {
     name: '결제 완료 화면 금액에 고정폭을 넣는다',
     file: 'src/pages/PaymentSuccessPage.tsx',
-    find: 'font-semibold text-gray-900 dark:text-white tabular-nums break-all',
-    replace: 'font-semibold text-gray-900 dark:text-white font-mono break-all',
+    find: 'font-medium text-gray-900 dark:text-white tabular-nums break-all',
+    replace: 'font-medium text-gray-900 dark:text-white font-mono break-all',
     test: 'src/tests/unit/consumer-font-mono-2026-09-23.test.ts',
     why:
       '결제 완료는 소비자가 거래를 확인하는 마지막 화면이고, 이 파일은 **Toss 감사 잠금**이라 ' +

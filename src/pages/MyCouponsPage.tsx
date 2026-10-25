@@ -56,7 +56,7 @@ export default function MyCouponsPage() {
             <p className="text-[15px] text-gray-900 dark:text-white mb-4">{error}</p>
             <button
               onClick={() => refetch()}
-              className="px-5 py-2 bg-brand text-white text-[13px] font-semibold rounded-full"
+              className="px-5 py-2 bg-brand text-white text-[13px] font-medium rounded-full"
             >
               {t('myCoupons.retry')}
             </button>
@@ -87,10 +87,10 @@ export default function MyCouponsPage() {
                   <div className="flex">
                     {/* 할인 금액 */}
                     <div className="flex flex-col items-center justify-center px-5 py-4 bg-brand text-white min-w-[100px]">
-                      <p className="text-[12px] font-bold tracking-wide opacity-90">
+                      <p className="text-[12px] font-medium tracking-wide opacity-90">
                         {c.type === 'percent' ? t('myCoupons.labelDiscountRate') : t('myCoupons.labelDiscount')}
                       </p>
-                      <p className="text-[24px] font-extrabold leading-tight mt-1">
+                      <p className="text-[24px] font-bold leading-tight mt-1">
                         {formatDiscount(c)}
                       </p>
                       {c.type === 'percent' && c.max_discount && (
@@ -114,12 +114,12 @@ export default function MyCouponsPage() {
                             {t('myCoupons.minOrder', { amount: formatNumber(c.min_order_amount) })}
                           </p>
                         )}
-                        <p className={`text-[12px] font-semibold ${isUrgent ? 'text-tone-bad' : 'text-gray-500 dark:text-gray-400'}`}>
+                        <p className={`text-[12px] font-medium ${isUrgent ? 'text-tone-bad' : 'text-gray-500 dark:text-gray-400'}`}>
                           {expiry}
                         </p>
                       </div>
                       <div className="mt-2 inline-flex items-center px-2 py-1 rounded-full bg-wash">
-                        <span className="text-[12px] tabular-nums font-semibold text-gray-700 dark:text-gray-200">{c.code}</span>
+                        <span className="text-[12px] tabular-nums font-medium text-gray-700 dark:text-gray-200">{c.code}</span>
                       </div>
                     </div>
                   </div>

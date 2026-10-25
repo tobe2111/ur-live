@@ -169,12 +169,12 @@ export default function StayCheckout({ orderId }: { orderId: number }) {
                       </p>
                     )}
                   </div>
-                  <p className="text-[13px] font-bold text-gray-900 shrink-0">₩{formatNumber(b.total_amount)}</p>
+                  <p className="text-[13px] font-medium text-gray-900 shrink-0">₩{formatNumber(b.total_amount)}</p>
                 </div>
               ))}
               <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
                 <span className="text-[13px] text-gray-500">총 결제 금액</span>
-                <span className="text-[24px] font-extrabold text-gray-900">
+                <span className="text-[24px] font-bold text-gray-900">
                   {formatNumber(order.total_amount)}
                   <span className="text-[15px] font-bold ml-1">원</span>
                 </span>
@@ -183,7 +183,7 @@ export default function StayCheckout({ orderId }: { orderId: number }) {
 
             {alreadyPaid && (
               <div className="p-4 bg-tone-ok-bg rounded-2xl">
-                <p className="text-[13px] font-bold text-tone-ok">이미 결제가 완료된 주문입니다.</p>
+                <p className="text-[13px] font-medium text-tone-ok">이미 결제가 완료된 주문입니다.</p>
                 <button onClick={() => navigate('/my-stays')} className="mt-2 text-[12px] text-brand-text underline font-medium">
                   내 숙소 예약 보기 →
                 </button>

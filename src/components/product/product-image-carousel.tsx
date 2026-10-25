@@ -73,7 +73,7 @@ export function ProductImageCarousel({ images }: ProductImageCarouselProps) {
       {/* v4 Image counter */}
       {images.length > 1 && (
         <div className="absolute bottom-3 right-3 rounded-full px-2 py-1"
-          style={{ background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 10, fontWeight: 600 }}>
+          style={{ background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 10, fontWeight: 500 }}>
           {selectedIndex + 1} / {images.length}
         </div>
       )}

@@ -53,7 +53,7 @@ export default function NotificationsPage() {
         backLabel={t('notifications.back')}
         wideSides
         right={notifications.some(n => !n.is_read) ? (
-          <button type="button" onClick={markAllRead} className="text-[13px] font-semibold text-brand-text whitespace-nowrap">{t('notifications.markAllRead')}</button>
+          <button type="button" onClick={markAllRead} className="text-[13px] font-medium text-brand-text whitespace-nowrap">{t('notifications.markAllRead')}</button>
         ) : null}
       />
 
@@ -90,7 +90,7 @@ export default function NotificationsPage() {
               >
                 <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${n.is_read ? 'bg-transparent' : 'bg-brand'}`} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-[15px] font-semibold text-gray-900 dark:text-white">{n.title}</p>
+                  <p className="text-[15px] font-medium text-gray-900 dark:text-white">{n.title}</p>
                   {n.message && <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{n.message}</p>}
                   <p className="text-[12px] text-gray-500 dark:text-gray-500 mt-1">
                     {/* 🛡️ 2026-06-26 (소비자 감사): safeDate — 사파리가 D1 datetime 을 Invalid Date 로 파싱하던 것 보정. */}
@@ -101,7 +101,7 @@ export default function NotificationsPage() {
             ))}
             {hasMore && notifications.length >= 50 && (
               <button onClick={loadMore} disabled={loadingMore}
-                className="w-full py-4 text-[15px] font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white disabled:opacity-50">
+                className="w-full py-4 text-[15px] font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white disabled:opacity-50">
                 {loadingMore ? t('common.loading', { defaultValue: '불러오는 중…' }) : t('notifications.loadMore', { defaultValue: '더 보기' })}
               </button>
             )}

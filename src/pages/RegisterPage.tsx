@@ -319,7 +319,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full h-[48px] bg-brand hover:bg-brand-dark text-white rounded-xl text-[15px] font-semibold tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+            className="w-full h-[48px] bg-brand hover:bg-brand-dark text-white rounded-xl text-[15px] font-medium tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2"
           >
             {loading ? t('register.submitLoading', { defaultValue: '가입 중...' }) : t('register.submit', { defaultValue: '가입하기' })}
           </button>

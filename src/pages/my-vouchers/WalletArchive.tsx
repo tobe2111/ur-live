@@ -31,7 +31,7 @@ export default function WalletArchive({ used, archived, locale, t, onShowQr }: {
             <button type="button"
               onClick={() => setExpanded(prev => { const n = new Set(prev); if (n.has(g.key)) n.delete(g.key); else n.add(g.key); return n })}
               className="w-full flex items-center justify-between px-[15px] py-4 text-left">
-              <span className="text-[15px] font-semibold text-gray-900 dark:text-white">{g.label} <span className="text-gray-400 dark:text-gray-500 font-medium">{g.items.length}</span></span>
+              <span className="text-[15px] font-medium text-gray-900 dark:text-white">{g.label} <span className="text-gray-400 dark:text-gray-500 font-medium">{g.items.length}</span></span>
               <ChevronRight className={`w-4 h-4 shrink-0 text-gray-300 dark:text-gray-600 transition-transform ${open ? 'rotate-90' : ''}`} />
             </button>
             {open && (

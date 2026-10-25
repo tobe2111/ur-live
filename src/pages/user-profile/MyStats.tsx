@@ -67,11 +67,11 @@ function Cell({ label, to, value, compact = false, foot }: {
     : 'flex-1 min-w-0 px-3 first:pl-4 last:pr-4'
   return (
     <Link to={to} className={`${box} active:opacity-70`}>
-      <span className={`flex items-center gap-1 text-[13px] font-semibold text-gray-500 dark:text-gray-400${compact ? ' justify-end' : ''}`}>
+      <span className={`flex items-center gap-1 text-[13px] font-medium text-gray-500 dark:text-gray-400${compact ? ' justify-end' : ''}`}>
         <span className="truncate">{label}</span>
         <ChevronRight className="w-3 h-3 shrink-0" aria-hidden="true" />
       </span>
-      <span className="block mt-1 text-[24px] font-extrabold tabular-nums leading-tight tracking-[-0.03em] truncate">
+      <span className="block mt-1 text-[24px] font-bold tabular-nums leading-tight tracking-[-0.03em] truncate">
         {value === undefined ? (
           /* 아직 안 왔다 — 자리만 잡고 숫자를 지어내지 않는다(높이가 같아 도착해도 안 밀린다). */
           <span className="inline-block w-10 h-[18px] align-middle rounded bg-gray-100 dark:bg-white/[0.06]" aria-hidden="true" />
@@ -143,7 +143,7 @@ export default function MyStats({ voucher, coupon, inline = false }: {
     <button
       type="button"
       onClick={() => setRefundOpen(true)}
-      className="shrink-0 h-8 px-3 rounded-full border border-rule-strong text-[12px] font-bold text-gray-900 dark:text-white active:opacity-70"
+      className="shrink-0 h-8 px-3 rounded-full border border-rule-strong text-[12px] font-medium text-gray-900 dark:text-white active:opacity-70"
     >
       {refundable > 0 ? '환급 신청' : '환급 처리 중'}
     </button>

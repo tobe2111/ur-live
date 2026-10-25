@@ -263,7 +263,7 @@ export default function StayDetailPage() {
           key={m.v}
           type="button"
           onClick={() => setActiveMode(m.v)}
-          className={`flex-1 py-2 rounded-lg text-[12px] font-bold transition-colors ${
+          className={`flex-1 py-2 rounded-lg text-[12px] font-medium transition-colors ${
             activeMode === m.v
               ? 'bg-brand text-white'
               : 'bg-gray-100 dark:bg-white/[0.06] text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/[0.1]'
@@ -287,25 +287,25 @@ export default function StayDetailPage() {
           <div className="grid grid-cols-2 gap-2 mb-2">
             {!stay.voucher_weekend_only && (
               <button onClick={() => setVoucherType('weekday')}
-                className={`p-3 rounded-lg text-[12px] font-bold ${voucherType === 'weekday' ? 'bg-brand text-white' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300'}`}>
+                className={`p-3 rounded-lg text-[12px] font-medium ${voucherType === 'weekday' ? 'bg-brand text-white' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300'}`}>
                 평일권 (월-목)
               </button>
             )}
             {!stay.voucher_weekday_only && (
               <button onClick={() => setVoucherType('weekend')}
-                className={`p-3 rounded-lg text-[12px] font-bold ${voucherType === 'weekend' ? 'bg-amber-500 text-white' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300'}`}>
+                className={`p-3 rounded-lg text-[12px] font-medium ${voucherType === 'weekend' ? 'bg-amber-500 text-white' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300'}`}>
                 주말권 (금-토)
               </button>
             )}
           </div>
           <div>
-            <label className="block text-[12px] font-bold text-gray-500 dark:text-gray-400 mb-1">박수</label>
+            <label className="block text-[12px] font-medium text-gray-500 dark:text-gray-400 mb-1">박수</label>
             <input type="number" min={1} max={7} value={voucherNights}
               onChange={(e) => setVoucherNights(Math.max(1, Math.min(7, Number(e.target.value) || 1)))}
               className={inputCls} />
           </div>
           <div>
-            <label className="block text-[12px] font-bold text-gray-500 dark:text-gray-400 mb-1 mt-2">인원</label>
+            <label className="block text-[12px] font-medium text-gray-500 dark:text-gray-400 mb-1 mt-2">인원</label>
             <input type="number" min={1} max={20} value={guests}
               onChange={(e) => setGuests(Number(e.target.value) || 1)}
               className={inputCls} />
@@ -410,7 +410,7 @@ export default function StayDetailPage() {
           <div className="bg-brand-tint dark:bg-gray-800/[0.15] border border-rule rounded-xl p-3 mb-3 flex items-center gap-2">
             <CouponIcon className="w-5 h-5 shrink-0 text-brand-text" aria-hidden />
             <div className="flex-1 min-w-0">
-              <p className="text-[12px] font-bold text-brand-text ">추천 할인 {stay.influencer_discount_pct}% 적용</p>
+              <p className="text-[12px] font-medium text-brand-text ">추천 할인 {stay.influencer_discount_pct}% 적용</p>
               <p className="text-[12px] text-brand-text opacity-80 mt-1">결제 시 자동 적용됩니다</p>
             </div>
           </div>
@@ -470,7 +470,7 @@ export default function StayDetailPage() {
                         {r.bed_config && `${r.bed_config} · `}
                         기준 {r.base_guests}인 / 최대 {r.max_guests}인
                       </p>
-                      <p className={`text-[12px] mt-1 ${r.available ? 'text-gray-500 dark:text-gray-400' : 'text-red-500 dark:text-red-400 font-semibold'}`}>
+                      <p className={`text-[12px] mt-1 ${r.available ? 'text-gray-500 dark:text-gray-400' : 'text-red-500 dark:text-red-400 font-medium'}`}>
                         {r.available ? `잔여 ${r.available_count}객실` : '매진'}
                       </p>
                       {r.extra_guest_fee > 0 && guests > r.base_guests && (
@@ -481,7 +481,7 @@ export default function StayDetailPage() {
                     </div>
                     <div className="text-right shrink-0">
                       {/* 💰 가격은 잉크. 로즈는 '행동'(CTA)에만 — 가격까지 로즈면 강조가 소음이 된다. */}
-                      <p className="text-[17px] font-extrabold tracking-tight text-gray-900 dark:text-white leading-none">₩{formatNumber(r.total_price)}</p>
+                      <p className="text-[17px] font-bold tracking-tight text-gray-900 dark:text-white leading-none">₩{formatNumber(r.total_price)}</p>
                       <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-2">{r.nights}박 총액</p>
                       <p className="text-[12px] text-gray-500 dark:text-gray-400">1박 평균 ₩{formatNumber(r.avg_per_night)}</p>
                     </div>
@@ -688,21 +688,21 @@ function BookingModal({ stay, room, checkIn, checkOut, guests, nights, saleMode,
         <div className="p-5 space-y-4">
           <div className="bg-gray-50 dark:bg-white/[0.04] rounded-lg p-3 text-[12px]">
             {saleMode === 'date' ? (
-              <p className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">기간</span><span className="font-semibold">{checkIn} → {checkOut} ({nights}박)</span></p>
+              <p className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">기간</span><span className="font-medium">{checkIn} → {checkOut} ({nights}박)</span></p>
             ) : (
               <>
-                <p className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">숙소 이용권</span><span className="font-semibold">{voucherType === 'weekday' ? '평일권 (월-목)' : '주말권 (금-토)'} × {voucherNights}박</span></p>
-                <p className="flex justify-between mt-1"><span className="text-gray-500 dark:text-gray-400">유효기간</span><span className="font-semibold">{stay.voucher_validity_days || 180}일</span></p>
+                <p className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">숙소 이용권</span><span className="font-medium">{voucherType === 'weekday' ? '평일권 (월-목)' : '주말권 (금-토)'} × {voucherNights}박</span></p>
+                <p className="flex justify-between mt-1"><span className="text-gray-500 dark:text-gray-400">유효기간</span><span className="font-medium">{stay.voucher_validity_days || 180}일</span></p>
               </>
             )}
-            <p className="flex justify-between mt-1"><span className="text-gray-500 dark:text-gray-400">인원</span><span className="font-semibold">{guests}명</span></p>
+            <p className="flex justify-between mt-1"><span className="text-gray-500 dark:text-gray-400">인원</span><span className="font-medium">{guests}명</span></p>
             {referrerId && (room.discount_pct || 0) > 0 && (
               <>
                 <p className="flex justify-between mt-1"><span className="text-gray-500 dark:text-gray-400">정가</span><span className="line-through text-gray-400 dark:text-gray-500">₩{formatNumber(room.total_price)}</span></p>
-                <p className="flex justify-between mt-1"><span className="text-brand-text ">추천 할인 -{room.discount_pct}%</span><span className="font-semibold text-brand-text ">-₩{formatNumber(room.total_price - (room.discounted_price || room.total_price))}</span></p>
+                <p className="flex justify-between mt-1"><span className="text-brand-text ">추천 할인 -{room.discount_pct}%</span><span className="font-medium text-brand-text ">-₩{formatNumber(room.total_price - (room.discounted_price || room.total_price))}</span></p>
               </>
             )}
-            <p className="flex justify-between mt-2 pt-2 border-t border-gray-200 dark:border-white/10"><span className="text-gray-500 dark:text-gray-400">총 결제 금액</span><span className="font-extrabold text-brand ">₩{formatNumber(room.discounted_price || room.total_price)}</span></p>
+            <p className="flex justify-between mt-2 pt-2 border-t border-gray-200 dark:border-white/10"><span className="text-gray-500 dark:text-gray-400">총 결제 금액</span><span className="font-bold text-brand ">₩{formatNumber(room.discounted_price || room.total_price)}</span></p>
           </div>
           {/* 🧍 아는 것은 묻지 않는다 — 사유·규칙은 `./stay-detail/GuestIdentityFields` 머리주석. */}
           <GuestIdentityFields
@@ -710,11 +710,11 @@ function BookingModal({ stay, room, checkIn, checkOut, guests, nights, saleMode,
             onChange={(g: GuestIdentity) => setForm({ ...form, ...g })}
           />
           <div>
-            <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-300 mb-1">특이 요청</label>
+            <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-300 mb-1">특이 요청</label>
             <textarea value={form.special_request} onChange={(e) => setForm({ ...form, special_request: e.target.value })} rows={3} placeholder="예) 늦은 체크인 / 유아 침구 요청" className="w-full px-3 py-2 bg-surface border border-gray-300 dark:border-[#2C2F35] rounded-lg text-[15px] text-gray-900 dark:text-white resize-none" />
           </div>
           <div className="flex gap-2">
-            <button onClick={onClose} disabled={submitting} className="flex-1 py-3 bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-white text-[15px] font-semibold rounded-lg hover:bg-gray-200 dark:hover:bg-white/[0.1] disabled:opacity-50">취소</button>
+            <button onClick={onClose} disabled={submitting} className="flex-1 py-3 bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-white text-[15px] font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-white/[0.1] disabled:opacity-50">취소</button>
             <button onClick={submit} disabled={submitting} className="flex-1 py-3 bg-brand text-white text-[15px] font-bold rounded-lg hover:bg-brand-dark disabled:opacity-50">
               {submitting ? '예약 중...' : '결제로 →'}
             </button>
@@ -817,12 +817,12 @@ function MultiBookingModal({
             {cartEntries.map(({ room, qty }) => (
               <div key={room.room_id} className="flex justify-between">
                 <span className="text-gray-600 dark:text-gray-300">{room.name} × {qty}</span>
-                <span className="font-semibold">₩{formatNumber(room.total_price * qty)}</span>
+                <span className="font-medium">₩{formatNumber(room.total_price * qty)}</span>
               </div>
             ))}
             <div className="border-t border-gray-200 dark:border-white/10 mt-2 pt-2 flex justify-between">
               <span className="text-gray-500 dark:text-gray-400">총 금액 (할인 전)</span>
-              <span className="font-extrabold text-brand ">₩{formatNumber(cartSubtotal)}</span>
+              <span className="font-bold text-brand ">₩{formatNumber(cartSubtotal)}</span>
             </div>
             {saleMode === 'date' ? (
               <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">기간: {checkIn} → {checkOut} ({nights}박)</p>
@@ -836,7 +836,7 @@ function MultiBookingModal({
             onChange={(g: GuestIdentity) => setForm({ ...form, ...g })}
           />
           <div>
-            <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-300 mb-1">특이 요청 (전체 객실 공통)</label>
+            <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-300 mb-1">특이 요청 (전체 객실 공통)</label>
             <textarea value={form.special_request} onChange={(e) => setForm({ ...form, special_request: e.target.value })} rows={3} placeholder="예) 인접 객실 배정 요청" className="w-full px-3 py-2 bg-surface border border-gray-300 dark:border-[#2C2F35] rounded-lg text-[15px] text-gray-900 dark:text-white resize-none" />
           </div>
           {/* 🗑️ 2026-09-15 (대표 — "유저가 보면 어색하잖아"): 안내문 제거.
@@ -845,7 +845,7 @@ function MultiBookingModal({
               **사실을 새로 알려 주지도 않았다.** 인원 자동 분배도 마찬가지 — 객실별 최대 인원은 고를 때
               이미 정해졌다. ⚠️ 되살릴 거면 사용자 말로 쓸 것(예: "선택한 기간으로 함께 예약됩니다"). */}
           <div className="flex gap-2">
-            <button onClick={onClose} disabled={submitting} className="flex-1 py-3 bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-white text-[15px] font-semibold rounded-lg hover:bg-gray-200 dark:hover:bg-white/[0.1] disabled:opacity-50">취소</button>
+            <button onClick={onClose} disabled={submitting} className="flex-1 py-3 bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-white text-[15px] font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-white/[0.1] disabled:opacity-50">취소</button>
             <button onClick={submit} disabled={submitting} className="flex-1 py-3 bg-brand text-white text-[15px] font-bold rounded-lg hover:bg-brand-dark disabled:opacity-50">
               {submitting ? '예약 중...' : `결제로 → ₩${formatNumber(cartSubtotal)}`}
             </button>

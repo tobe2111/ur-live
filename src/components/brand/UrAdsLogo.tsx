@@ -35,7 +35,7 @@ export default function UrAdsLogo({ size = 26, wordmark = true, className = '' }
         />
       </svg>
       {wordmark && (
-        <span style={{ fontSize: size * 0.69, fontWeight: 800, letterSpacing: '-.02em', whiteSpace: 'nowrap', color: 'inherit' }}>
+        <span style={{ fontSize: size * 0.69, fontWeight: 700, letterSpacing: '-.02em', whiteSpace: 'nowrap', color: 'inherit' }}>
           UR Ads
         </span>
       )}

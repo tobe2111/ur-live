@@ -26,7 +26,7 @@ export const STAY_HEAD = {
    */
   metaRow: 'flex items-center gap-2 text-[12px] text-gray-500 dark:text-gray-400 mb-1',
   /** 제목(h1). */
-  h1: 'text-[17px] lg:text-[24px] font-extrabold',
+  h1: 'text-[17px] lg:text-[24px] font-bold',
 } as const
 
 /** 페이지 루트의 전체 클래스 — 화면과 서버가 같은 바탕에서 시작하게. */

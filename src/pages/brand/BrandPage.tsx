@@ -73,7 +73,7 @@ export default function BrandPage() {
                       className="flex w-full items-center gap-3 py-3 text-left">
                       <PinIcon size={18} className={on ? 'text-brand-text' : 'text-gray-400 dark:text-gray-500'} />
                       <span className="min-w-0 flex-1">
-                        <span className={`block truncate text-[15px] font-semibold ${on ? 'text-brand-text' : 'text-gray-900 dark:text-white'}`}>{s.name}</span>
+                        <span className={`block truncate text-[15px] font-medium ${on ? 'text-brand-text' : 'text-gray-900 dark:text-white'}`}>{s.name}</span>
                         <span className="block truncate text-[13px] text-gray-500 dark:text-gray-400">{s.address}</span>
                       </span>
                       {km != null && <span className="shrink-0 text-[13px] text-gray-500 dark:text-gray-400">{km < 10 ? `${km.toFixed(1)}km` : `${Math.round(km)}km`}</span>}

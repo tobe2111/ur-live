@@ -47,8 +47,8 @@ export default function EmptyUrShop({ handle, isOwner, emptyType, curatorName, c
       {/* 온보딩 진행 카드 (시안) */}
       <div className="mb-3 rounded-2xl border border-[#FFE0D6] dark:border-[#3a2218] bg-[#f9fafb] dark:bg-[#1A1410] px-4 py-4">
         <div className="flex items-center justify-between">
-          <span className="text-[13px] font-extrabold text-[#B4422A] dark:text-[#9ca3af]">{t('curator.stepsLeft', { defaultValue: '유어샵 완성까지 {{n}}단계', n: 3 - doneCount })}</span>
-          <span className="text-[12px] font-bold text-[#B4422A] dark:text-[#9ca3af]">{doneCount}/3</span>
+          <span className="text-[13px] font-medium text-[#B4422A] dark:text-[#9ca3af]">{t('curator.stepsLeft', { defaultValue: '유어샵 완성까지 {{n}}단계', n: 3 - doneCount })}</span>
+          <span className="text-[12px] font-medium text-[#B4422A] dark:text-[#9ca3af]">{doneCount}/3</span>
         </div>
         <div className="mt-2 h-[7px] rounded-full bg-[#FFE0D6] dark:bg-[#3a2218] overflow-hidden">
           <div className="h-full rounded-full bg-[#6b7280] transition-all" style={{ width: `${Math.round((doneCount / 3) * 100)}%` }} />
@@ -68,7 +68,7 @@ export default function EmptyUrShop({ handle, isOwner, emptyType, curatorName, c
           {[1, 2, 3, 4].map((n) => (
             <div key={n} className="rounded-xl overflow-hidden bg-surface shadow-lift">
               <div className="aspect-[3/2] relative bg-gray-200 dark:bg-[#1D1F29]">
-                <span className="absolute top-0 left-0 min-w-[1.5rem] h-6 px-2 bg-[#6b7280] text-white text-[13px] font-extrabold flex items-center justify-center rounded-br-[11px]">{n}</span>
+                <span className="absolute top-0 left-0 min-w-[1.5rem] h-6 px-2 bg-[#6b7280] text-white text-[13px] font-medium flex items-center justify-center rounded-br-[11px]">{n}</span>
               </div>
               <div className="p-2">
                 <div className="h-3 w-4/5 rounded bg-gray-200 dark:bg-[#1D1F29]" />
@@ -82,7 +82,7 @@ export default function EmptyUrShop({ handle, isOwner, emptyType, curatorName, c
           {/* 🦦 2026-10-09 (대표 확정 시안 ⑤-b): 회색 책갈피 타일 → 빈 지갑 든 유달이.
               옛 타일은 로즈 시절 그림자(rgba(255,86,52))가 남은 회색 면이라 무엇인지 말하지 못했다. */}
           <Udal mood="empty" size={96} />
-          <h2 className="text-[17px] font-extrabold text-gray-900 dark:text-white mt-2">{sellerFirst ? t('curator.emptyOwnerSellerTitle', { defaultValue: '매장을 등록하면 시작돼요' }) : t('curator.emptyOwnerTitle', { defaultValue: '첫 상품을 추가해 보세요' })}</h2>
+          <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mt-2">{sellerFirst ? t('curator.emptyOwnerSellerTitle', { defaultValue: '매장을 등록하면 시작돼요' }) : t('curator.emptyOwnerTitle', { defaultValue: '첫 상품을 추가해 보세요' })}</h2>
           <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-2 max-w-[270px] leading-snug">{sellerFirst ? t('curator.emptyOwnerSellerDesc', { defaultValue: '매장을 등록하면 이용권을 올릴 수 있어요. 올린 이용권이 여기 진열됩니다.' }) : t('curator.emptyOwnerDesc', { defaultValue: '마음에 든 상품·동네딜을 추가하면 이렇게 나만의 스토어가 채워져요.' })}</p>
           <Link to={browseLink} className="mt-4 w-full max-w-xs py-3 rounded-xl bg-brand text-white text-[15px] font-bold">{browseLabel}</Link>
         </div>

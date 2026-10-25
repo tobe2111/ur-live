@@ -199,7 +199,7 @@ export default function SelectedDealCard({
             <div className="flex items-center gap-2">
               <p className="font-bold text-gray-900 dark:text-white text-[15px] truncate">{stripStorePrefix(selected.name, selected.restaurant_name) || selected.restaurant_name}</p>
               {selected.rating > 0 && (
-                <span className="flex items-center gap-1 text-[12px] font-semibold text-amber-500 shrink-0">
+                <span className="flex items-center gap-1 text-[12px] font-medium text-amber-500 shrink-0">
                   <StarIcon className="w-3 h-3" filled />{selected.rating.toFixed(1)}
                 </span>
               )}
@@ -207,27 +207,27 @@ export default function SelectedDealCard({
             <p className="text-[12px] text-gray-500 mt-1 flex items-center gap-1 truncate">
               <PinIcon className="w-3 h-3 shrink-0" />
               {selected.name && selected.restaurant_name && (
-                <span className="shrink-0 font-semibold text-gray-500 dark:text-gray-400">{selected.restaurant_name} ·</span>
+                <span className="shrink-0 font-medium text-gray-500 dark:text-gray-400">{selected.restaurant_name} ·</span>
               )}
               <span className="truncate">{selected.restaurant_address || '주소 미등록'}</span>
-              {dist != null && nearKmLabel(dist) && <span className="ml-1 font-semibold text-gray-600 dark:text-gray-300 shrink-0">· {nearKmLabel(dist)}</span>}
+              {dist != null && nearKmLabel(dist) && <span className="ml-1 font-medium text-gray-600 dark:text-gray-300 shrink-0">· {nearKmLabel(dist)}</span>}
             </p>
             <div className="flex items-baseline gap-2 mt-2">
-              {discount > 0 && <span className="text-[13px] font-extrabold text-sale dark:text-[#4D8DF5] shrink-0">{discount}%</span>}
+              {discount > 0 && <span className="text-[13px] font-medium text-sale dark:text-[#4D8DF5] shrink-0">{discount}%</span>}
               {selected.original_price > selected.price && (
                 <span className="text-[12px] text-gray-500 line-through">{formatNumber(selected.original_price)}원</span>
               )}
             </div>
             <div className="flex items-baseline gap-1">
               <span className="text-[12px] text-gray-500">쿠폰가</span>
-              <span className="text-[17px] font-extrabold text-gray-900 dark:text-white">{formatNumber(selected.price)}원~</span>
+              <span className="text-[17px] font-bold text-gray-900 dark:text-white">{formatNumber(selected.price)}원~</span>
             </div>
           </div>
         </button>
 
         {/* 위치 인디케이터 (n / total) */}
         {total > 1 && (
-          <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 text-[12px] font-semibold text-gray-500 bg-white/80 px-2 rounded-full">
+          <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 text-[12px] font-medium text-gray-500 bg-white/80 px-2 rounded-full">
             {position} / {total}
           </div>
         )}

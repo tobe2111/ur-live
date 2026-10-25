@@ -130,7 +130,7 @@ export default function InfluencerDiscoverPage() {
       <header className="sticky top-0 z-30 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35] px-4 py-3 flex items-center gap-2">
         <Link2 className="w-5 h-5 text-brand-text" />
         <h1 className="text-[15px] font-bold text-gray-900 dark:text-white flex-1">추천 공구 카탈로그</h1>
-        <button onClick={() => navigate('/influencer/settlement')} className="text-[12px] text-brand-text font-bold">내 정산 →</button>
+        <button onClick={() => navigate('/influencer/settlement')} className="text-[12px] text-brand-text font-medium">내 정산 →</button>
       </header>
 
       <main className="ur-content-wide mx-auto px-4 py-4 space-y-4">
@@ -140,7 +140,7 @@ export default function InfluencerDiscoverPage() {
             <button
               key={k}
               onClick={() => setCat(k)}
-              className={`shrink-0 px-3 py-2 rounded-full text-[12px] font-bold border ${cat === k ? 'bg-brand text-white border-brand' : 'bg-white dark:bg-[#11141C] text-gray-700 dark:text-gray-200 border-gray-200'}`}
+              className={`shrink-0 px-3 py-2 rounded-full text-[12px] font-medium border ${cat === k ? 'bg-brand text-white border-brand' : 'bg-white dark:bg-[#11141C] text-gray-700 dark:text-gray-200 border-gray-200'}`}
             >
               {v}
             </button>
@@ -189,7 +189,7 @@ export default function InfluencerDiscoverPage() {
                     meta={
                       <>
                         {p.my_deal_pct != null && (
-                          <span className="inline-block px-2 py-1 rounded bg-brand text-white text-[12px] font-bold mb-1">
+                          <span className="inline-block px-2 py-1 rounded bg-brand text-white text-[12px] font-medium mb-1">
                             내 소개비 {p.my_deal_pct}%
                           </span>
                         )}
@@ -207,11 +207,11 @@ export default function InfluencerDiscoverPage() {
                   {p.my_deal_pct != null ? (
                     <div className="grid grid-cols-2 gap-2 px-3 pb-3">
                       <button onClick={() => copyLink(p.id)}
-                        className="py-2 rounded-lg border border-rule-strong text-[12px] font-bold text-gray-700 dark:text-gray-200 flex items-center justify-center gap-1">
+                        className="py-2 rounded-lg border border-rule-strong text-[12px] font-medium text-gray-700 dark:text-gray-200 flex items-center justify-center gap-1">
                         <Copy className="w-3 h-3" /> 링크 복사
                       </button>
                       <button onClick={() => shareLink(p)}
-                        className="py-2 rounded-lg bg-brand text-white text-[12px] font-bold flex items-center justify-center gap-1">
+                        className="py-2 rounded-lg bg-brand text-white text-[12px] font-medium flex items-center justify-center gap-1">
                         <Share2 className="w-3 h-3" /> SNS 공유
                       </button>
                     </div>

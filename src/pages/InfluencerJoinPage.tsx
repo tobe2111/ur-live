@@ -66,7 +66,7 @@ export default function InfluencerJoinPage() {
       <div className="w-full max-w-md">
         {error && !preview ? (
           <div className="text-center space-y-2">
-            <p className="text-[17px] font-semibold text-gray-900 dark:text-white">코드를 열 수 없어요</p>
+            <p className="text-[17px] font-bold text-gray-900 dark:text-white">코드를 열 수 없어요</p>
             <p className="text-[15px] text-gray-500 dark:text-gray-400">{error}</p>
           </div>
         ) : done ? (
@@ -81,11 +81,11 @@ export default function InfluencerJoinPage() {
             </p>
             <p className="text-[12px] text-gray-500 dark:text-gray-400">아래 <strong>내 매장 링크</strong>로 팔로워가 구매하면 커미션이 적립돼요.</p>
             <div className="bg-warm rounded-xl p-3 text-[15px] text-gray-900 dark:text-white break-all">{done.store_link}</div>
-            <button className="w-full py-3 rounded-xl bg-brand text-white font-semibold"
+            <button className="w-full py-3 rounded-xl bg-brand text-white font-medium"
               onClick={() => { navigator.clipboard?.writeText(done.store_link).then(() => setCopied(true)).catch(() => {}) }}>
               {copied ? '복사됐어요' : '링크 복사하기'}
             </button>
-            <Link to="/influencer/settlement" className="block text-[15px] font-semibold text-brand-text">마이페이지에서 성과 보기</Link>
+            <Link to="/influencer/settlement" className="block text-[15px] font-medium text-brand-text">마이페이지에서 성과 보기</Link>
           </div>
         ) : preview ? (
           <div className="space-y-4">
@@ -107,7 +107,7 @@ export default function InfluencerJoinPage() {
             <p className="text-[12px] text-center text-gray-500 dark:text-gray-400 leading-relaxed">
               내 링크로 이 매장의 이용권이 팔리면 결제액의 {preview.commission_pct}% 가 적립돼요. 이용권이 사용된 뒤 정산됩니다.
             </p>
-            <button className="w-full py-3 rounded-xl bg-brand text-white font-semibold disabled:opacity-50" disabled={busy} onClick={redeem}>
+            <button className="w-full py-3 rounded-xl bg-brand text-white font-medium disabled:opacity-50" disabled={busy} onClick={redeem}>
               {busy ? '처리 중…' : isLoggedInSync() ? '협업 시작하기' : '카카오 로그인하고 시작하기'}
             </button>
             {error && <p className="text-center text-[12px] text-tone-bad">{error}</p>}

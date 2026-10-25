@@ -119,14 +119,14 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-gray-900 dark:text-white text-[15px] truncate">{productName}</p>
+              <p className="font-medium text-gray-900 dark:text-white text-[15px] truncate">{productName}</p>
               <p className="text-brand-text font-bold text-[15px] mt-1">{formatNumber(productPrice)}원</p>
             </div>
           </div>
 
           {/* 수신자 정보 */}
           <div>
-            <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-200 mb-2">{t('gift.recipientPhone', { defaultValue: '받는 사람 휴대폰 *' })}</label>
+            <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-200 mb-2">{t('gift.recipientPhone', { defaultValue: '받는 사람 휴대폰 *' })}</label>
             <input
               value={recipientPhone}
               onChange={e => setRecipientPhone(e.target.value)}
@@ -139,7 +139,7 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
           </div>
 
           <div>
-            <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-200 mb-2">{t('gift.recipientName', { defaultValue: '받는 사람 이름 (선택)' })}</label>
+            <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-200 mb-2">{t('gift.recipientName', { defaultValue: '받는 사람 이름 (선택)' })}</label>
             <input
               value={recipientName}
               onChange={e => setRecipientName(e.target.value)}
@@ -150,7 +150,7 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
 
           {/* 메시지 */}
           <div>
-            <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-200 mb-2 flex items-center gap-1">
+            <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-200 mb-2 flex items-center gap-1">
               <MessageIcon className="w-3 h-3 text-brand-text" /> {t('gift.message', { defaultValue: '메시지 (선택)' })}
             </label>
             <textarea

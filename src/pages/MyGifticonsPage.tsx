@@ -104,7 +104,7 @@ export default function MyGifticonsPage() {
             {failed.length > 0 && (
               <div className="mb-5">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-[13px] font-semibold text-gray-500 dark:text-gray-400">
+                  <span className="text-[13px] font-medium text-gray-500 dark:text-gray-400">
                     {t('voucher.status.sendFailed', { defaultValue: '발송 실패' })} <span className="text-gray-400 dark:text-gray-500">{failed.length}</span>
                   </span>
                 </div>
@@ -118,12 +118,12 @@ export default function MyGifticonsPage() {
             {sending.length > 0 && (
               <div className="mb-5">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-[13px] font-semibold text-gray-500 dark:text-gray-400">
+                  <span className="text-[13px] font-medium text-gray-500 dark:text-gray-400">
                     {t('voucher.status.processing', { defaultValue: '발송 중' })} <span className="text-gray-400 dark:text-gray-500">{sending.length}</span>
                   </span>
                   {sending.length > sendingShown.length && (
                     <button type="button" onClick={() => setShowAllSending(true)}
-                      className="text-[13px] font-semibold text-gray-900 dark:text-white active:opacity-60">
+                      className="text-[13px] font-medium text-gray-900 dark:text-white active:opacity-60">
                       {t('common.seeAll', { defaultValue: '전체 보기' })}
                     </button>
                   )}
@@ -135,7 +135,7 @@ export default function MyGifticonsPage() {
             )}
 
             <div className="flex items-center justify-between mb-3">
-              <span className="text-[13px] font-semibold text-gray-500 dark:text-gray-400">
+              <span className="text-[13px] font-medium text-gray-500 dark:text-gray-400">
                 {t('voucher.groupUnused', { defaultValue: '사용 가능' })} <span className="text-gray-400 dark:text-gray-500">{usable.length}</span>
               </span>
             </div>

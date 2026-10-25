@@ -123,25 +123,25 @@ export default function GiftVoucherSheet({ voucher, onClose, onPendingChange }: 
           <div className="mt-5 h-[52px] rounded-2xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
         ) : pending ? (
           <>
-            <p className="mt-5 text-[13px] font-semibold text-gray-900 dark:text-white">선물 링크가 준비됐어요. 친구에게 보내 주세요</p>
+            <p className="mt-5 text-[13px] font-medium text-gray-900 dark:text-white">선물 링크가 준비됐어요. 친구에게 보내 주세요</p>
             <button type="button" onClick={() => share(pending.url)}
               className="mt-3 w-full py-4 rounded-2xl bg-brand text-white text-[15px] font-bold active:scale-[0.98] transition-transform">
               카카오톡으로 보내기
             </button>
             <div className="mt-2 grid grid-cols-2 gap-2">
               <button type="button" onClick={() => copy(pending.url)}
-                className="py-3 rounded-xl border border-rule-strong text-gray-900 dark:text-white text-[13px] font-bold">
+                className="py-3 rounded-xl border border-rule-strong text-gray-900 dark:text-white text-[13px] font-medium">
                 링크 복사
               </button>
               <button type="button" onClick={() => revoke(pending.token)} disabled={busy}
-                className="py-3 rounded-xl border border-rule-strong text-gray-500 dark:text-gray-400 text-[13px] font-bold disabled:opacity-50">
+                className="py-3 rounded-xl border border-rule-strong text-gray-500 dark:text-gray-400 text-[13px] font-medium disabled:opacity-50">
                 선물 보내기 취소
               </button>
             </div>
           </>
         ) : (
           <>
-            <label className="mt-5 block text-[13px] font-semibold text-gray-900 dark:text-white" htmlFor="gift-msg">함께 보낼 말 (선택)</label>
+            <label className="mt-5 block text-[13px] font-medium text-gray-900 dark:text-white" htmlFor="gift-msg">함께 보낼 말 (선택)</label>
             <textarea id="gift-msg" value={message} onChange={(e) => setMessage(e.target.value.slice(0, 100))} rows={2}
               placeholder="맛있게 먹어!"
               className="mt-2 w-full rounded-xl border border-rule-strong bg-surface px-3 py-2 text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 resize-none" />

@@ -73,7 +73,7 @@ export const CartSummary = React.memo(function CartSummary({
         {savedAmount > 0 && (
           <div className="flex justify-between text-[13px]">
             <span className="text-gray-500 dark:text-gray-400">할인</span>
-            <span className="font-semibold text-brand-text tabular-nums">−{fmt(savedAmount)}{won}</span>
+            <span className="font-medium text-brand-text tabular-nums">−{fmt(savedAmount)}{won}</span>
           </div>
         )}
         {!noShipping && !dealOnly && (
@@ -81,7 +81,7 @@ export const CartSummary = React.memo(function CartSummary({
           <span className="text-gray-500 dark:text-gray-400">{t('cart.shippingFee', { defaultValue: '배송비' })}</span>
           <span className="text-gray-900 dark:text-white font-medium tabular-nums">
             {shippingFee === 0 ? (
-              <span className="text-brand-text font-semibold">{t('cart.free', { defaultValue: '무료' })}</span>
+              <span className="text-brand-text font-medium">{t('cart.free', { defaultValue: '무료' })}</span>
             ) : (
               `+${fmt(shippingFee)}${won}`
             )}

@@ -30,7 +30,7 @@ export default function MapPill() {
         aria-label="지도로 보기"
         onPointerDown={preconnectMapTiles}
         // 면 = `--ink`(라이트 #16181C · 다크 #F8F7FC) · 글자 = `--surface` — 토큰이 모드마다 뒤집혀 늘 바탕의 반대다.
-        className="pointer-events-auto inline-flex h-8 items-center gap-1 rounded-full bg-ink px-4 text-[13px] font-bold text-surface shadow-[0_4px_12px_rgba(0,0,0,0.25)] active:scale-95 transition-transform"
+        className="pointer-events-auto inline-flex h-8 items-center gap-1 rounded-full bg-ink px-4 text-[13px] font-medium text-surface shadow-[0_4px_12px_rgba(0,0,0,0.25)] active:scale-95 transition-transform"
       >
         <MapFoldIcon size={15} />
         지도

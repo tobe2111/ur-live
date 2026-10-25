@@ -213,7 +213,7 @@ export default function UserProfilePage() {
           >
             <span className="flex-1 min-w-0">
               <span className="flex items-center gap-2 flex-wrap">
-                <span className="text-[17px] font-extrabold text-gray-900 dark:text-white truncate" style={{ letterSpacing: '-0.01em' }}>{userName}</span>
+                <span className="text-[17px] font-bold text-gray-900 dark:text-white truncate" style={{ letterSpacing: '-0.01em' }}>{userName}</span>
               </span>
               <span className="block text-[13px] text-gray-500 dark:text-white/50 mt-1 truncate">{localStorage.getItem('user_email') || ''}</span>
             </span>
@@ -221,7 +221,7 @@ export default function UserProfilePage() {
                 프로필 편집이라고 바꾸던지"*): 맨 `>` 는 **무엇이 열리는지 말하지 않는다.**
                 ⚠️ 09-28 에 없앤 회색 알약을 되살리는 게 아니다 — 그건 이름·이메일 **아래 셋째 줄**이라
                    헤더를 세 층으로 만들었다. 이건 같은 줄 오른쪽 끝의 12px 글자라 줄이 안 는다. */}
-            <span className="shrink-0 text-[12px] font-semibold text-gray-500 dark:text-gray-400">{t('userProfile.editProfile', { defaultValue: '프로필 편집' })}</span>
+            <span className="shrink-0 text-[12px] font-medium text-gray-500 dark:text-gray-400">{t('userProfile.editProfile', { defaultValue: '프로필 편집' })}</span>
             <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
           </button>
           <SellerSwitchInline seats={sellerSeats} />
@@ -262,7 +262,7 @@ export default function UserProfilePage() {
         <p className="text-[12px] text-gray-400 dark:text-gray-500">
           <Link to="/" className="hover:underline">홈</Link>
           <span className="mx-2">/</span>
-          <span className="text-gray-600 dark:text-gray-300 font-semibold">내 계정</span>
+          <span className="text-gray-600 dark:text-gray-300 font-medium">내 계정</span>
         </p>
       </div>
 
@@ -371,7 +371,7 @@ export default function UserProfilePage() {
               <ScanIcon className="w-6 h-6 text-white dark:text-gray-900" aria-hidden="true" />
             </span>
             <span className="text-left min-w-0">
-              <span className="block text-[15px] font-extrabold text-white dark:text-gray-900">{t('userProfile.storeCheckout', { defaultValue: '매장 계산대' })}</span>
+              <span className="block text-[15px] font-bold text-white dark:text-gray-900">{t('userProfile.storeCheckout', { defaultValue: '매장 계산대' })}</span>
               <span className="block text-[12px] text-white/75 dark:text-gray-900/70 mt-1">{t('userProfile.storeCheckoutDesc', { defaultValue: '손님 이용권 QR을 스캔해 바로 사용 처리' })}</span>
             </span>
           </button>

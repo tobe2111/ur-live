@@ -51,7 +51,7 @@ export default function AccountDeletedPage() {
 
           {/* 재가입 안내 */}
           <div className="bg-purple-50 border border-purple-200 rounded-xl p-5 mb-6">
-            <p className="text-[15px] text-purple-800 font-semibold mb-2">
+            <p className="text-[15px] text-purple-800 font-medium mb-2">
               {t('accountDeleted.comebackTitle')}
             </p>
             <p className="text-[15px] text-purple-700 leading-relaxed whitespace-pre-line">
@@ -62,7 +62,7 @@ export default function AccountDeletedPage() {
           {/* 홈으로 버튼 */}
           <button
             onClick={() => navigate('/', { replace: true })}
-            className="w-full py-4 bg-brand text-white rounded-xl font-semibold hover:bg-brand-dark active:scale-95 transition-all flex items-center justify-center"
+            className="w-full py-4 bg-brand text-white rounded-xl font-medium hover:bg-brand-dark active:scale-95 transition-all flex items-center justify-center"
           >
             <HomeIcon className="w-5 h-5 mr-2" />
             {t('accountDeleted.goHome')}

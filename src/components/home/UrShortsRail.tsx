@@ -115,7 +115,7 @@ function ShortCard({ item, load, onOpen }: { item: UrShortItem; load: boolean; o
         {/* ⏱️ 재생시간은 **우상단**이다. 시안에서는 우하단이었는데, 글자가 네 줄이 되면서
             아래쪽은 스크림이 다 차지한다 — 그대로 두면 가격 위에 배지가 얹힌다(렌더로 확인). */}
         {durLabel && (
-          <span className="absolute right-1.5 top-1.5 rounded bg-black/60 px-1 py-px text-[12px] font-semibold tabular-nums text-white">
+          <span className="absolute right-1.5 top-1.5 rounded bg-black/60 px-1 py-px text-[12px] font-medium tabular-nums text-white">
             {durLabel}
           </span>
         )}
@@ -132,7 +132,7 @@ function ShortCard({ item, load, onOpen }: { item: UrShortItem; load: boolean; o
             <span className="block truncate text-[12px] opacity-90">{item.store_name}</span>
           )}
           {item.product_name && (
-            <span className="mt-px block truncate text-[12px] font-semibold leading-tight">
+            <span className="mt-px block truncate text-[12px] font-medium leading-tight">
               {item.product_name}
             </span>
           )}
@@ -142,7 +142,7 @@ function ShortCard({ item, load, onOpen }: { item: UrShortItem; load: boolean; o
             </span>
           )}
           {pd.price > 0 && (
-          <span className="mt-px block text-[12px] font-bold tabular-nums">
+          <span className="mt-px block text-[12px] font-medium tabular-nums">
             {/* 🩸 여기에 새 빨강(#FF8A93)을 발명했다가 되돌렸다. 오늘 아침에 할인율을 `--sale`
                 하나로 통일해 놓고 같은 날 넷째 값을 만들 뻔했다. 사진 위 스크림은 **테마와 무관하게
                 늘 어둡다**(light-island 와 같은 성질)이라 라이트 값 #DC2626 은 안 읽힌다 →
@@ -270,7 +270,7 @@ export default function UrShortsRail() {
         {/* 🌑 잉크 패널 위라 글자는 **테마 분기 없이 늘 밝다**(위 .ur-panel-ink 주석).
             흰 알파를 쓰는 이유: 회색 토큰은 라이트 토큰으로 읽혀 짝(dark:)을 요구받는데,
             여기엔 짝지을 라이트 상태가 아예 없다. */}
-        <h3 className="text-[17px] font-black tracking-tight text-white">
+        <h3 className="text-[17px] font-bold tracking-tight text-white">
           유어쇼츠
           <span className="ml-2 text-[12px] font-normal text-white/60">
             눌러서 보고 바로 구매
@@ -281,7 +281,7 @@ export default function UrShortsRail() {
             아예 없었다(대표 신고). 카드를 누르는 것은 그대로 뷰어다 — 그건 보러 가는 동작이다. */}
         <Link
           to={URSHORTS_BROWSE_PATH}
-          className={`shrink-0 whitespace-nowrap text-[12px] font-bold text-white/75 underline-offset-4 hover:underline${waiting ? ' invisible' : ''}`}
+          className={`shrink-0 whitespace-nowrap text-[12px] font-medium text-white/75 underline-offset-4 hover:underline${waiting ? ' invisible' : ''}`}
           tabIndex={waiting ? -1 : undefined}
           aria-hidden={waiting || undefined}
         >
@@ -329,7 +329,7 @@ export default function UrShortsRail() {
           >
             <span>
               <ChevronRight size={24} className="mx-auto" />
-              <span className="mt-1 block text-[12px] font-bold">전체 보기</span>
+              <span className="mt-1 block text-[12px] font-medium">전체 보기</span>
               <span className="mt-[2px] block text-[12px] font-normal text-white/55">
                 {items.length}편
               </span>
