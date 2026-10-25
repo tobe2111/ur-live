@@ -54,11 +54,12 @@ export default function LifePage() {
 
   return (
     <div className="min-h-[100dvh] bg-surface text-ink pb-safe-nav">
-      <SEO title="생활 서비스 - 간판·방역·후드 청소·설비 수리·이사 견적 - 유어딜" description="요청서 한 번이면 근처 업체가 견적을 보내 드려요. 간판·방역·냉장 설비 같은 가게 관리부터 숙소 관리, 이사·청소까지 비교하고 마음에 드는 곳만 고르세요." url="/life" />
+      <SEO title="사장님 생활 서비스 - 간판·방역·후드 청소·설비 수리 견적 - 유어딜" description="식당·카페·숙소 사장님을 위한 생활 서비스. 간판·방역·후드 청소·냉장 설비 수리까지 요청서 한 번이면 근처 업체가 견적을 보내 드려요." url="/life" />
 
       <header className="ur-content-narrow px-5 pt-7">
-        <h1 className="text-[24px] font-bold tracking-tight">생활 서비스</h1>
-        <p className="mt-2 text-[15px] text-gray-600 dark:text-gray-300">필요한 일을 고르면 근처 업체가 견적을 보내요</p>
+        {/* 2026-10-25 대표 "일반 대중 전체가 아니라 사장님 대상이라는 걸 나타내 주면" — 숨고·미소와 갈리는 첫 줄. */}
+        <h1 className="text-[24px] font-bold leading-snug tracking-tight">사장님, 가게 일은<br />여기서 맡기세요</h1>
+        <p className="mt-2 text-[15px] text-gray-600 dark:text-gray-300">간판·방역·설비 수리까지 근처 업체 견적을 무료로 비교해요</p>
         {!open && <p className="mt-3 text-[13px] font-medium text-tone-bad">지금은 잠시 요청을 받지 않아요.</p>}
       </header>
 
