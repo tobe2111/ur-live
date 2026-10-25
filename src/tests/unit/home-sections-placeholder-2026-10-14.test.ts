@@ -48,11 +48,11 @@ describe('① 자리 분기의 순서', () => {
 describe('② 자리 카드 = 진짜 카드의 줄 구조', () => {
   const rows: Array<[string, RegExp, RegExp]> = [
     ['사진 비율', /aspectClass="aspect-\[4\/3\]"/, /aspect-\[4\/3\]/],
-    ['본문 여백', /<div className="pt-2">/, /<div className="pt-2">/],
+    ['본문 여백', /<div className="pt-3">/, /<div className="pt-3">/],  // 2026-10-25 메인 D안
     ['가게 줄', /text-\[12px\] leading-none mb-1/, /text-\[12px\] leading-none mb-1/],
-    ['이름 줄', /text-\[13px\] font-medium line-clamp-2 leading-tight/, /text-\[13px\] font-medium leading-tight/],
+    ['이름 줄', /text-\[15px\] font-medium line-clamp-2 leading-snug/, /text-\[15px\] font-medium leading-snug/],
     ['주소·평점 줄', /mt-1 text-\[12px\]/, /mt-1 text-\[12px\]/],
-    ['정가 묶음', /<div className="mt-1">/, /<div className="mt-1">/],
+    ['정가 묶음', /<div className="mt-2">/, /<div className="mt-2">/],
     ['판매가 줄', /mt-1 leading-none/, /mt-1 leading-none/],
     ['판매가 크기', /text-\[17px\] font-bold/, /text-\[17px\] font-bold/],
   ]
@@ -63,7 +63,7 @@ describe('② 자리 카드 = 진짜 카드의 줄 구조', () => {
     })
   }
   it('이름은 두 줄로 잡는다(그리드 한 줄의 높이는 긴 쪽을 따른다)', () => {
-    const name = ph.slice(ph.indexOf('text-[13px] font-medium leading-tight'), ph.indexOf('</p>', ph.indexOf('text-[13px] font-medium leading-tight')))
+    const name = ph.slice(ph.indexOf('text-[15px] font-medium leading-snug'), ph.indexOf('</p>', ph.indexOf('text-[15px] font-medium leading-snug')))
     expect(name.match(/<span/g)?.length).toBe(2)
   })
 })

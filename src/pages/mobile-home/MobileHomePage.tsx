@@ -182,7 +182,7 @@ export default function MobileHomePage() {
                 className={`shrink-0 pb-2 text-[15px] transition-colors border-b-2 ${
                   on
                     ? 'font-bold text-gray-900 dark:text-white border-brand'
-                    : 'font-medium text-gray-400 dark:text-gray-500 border-transparent'
+                    : 'text-gray-500 dark:text-gray-400 border-transparent'
                 }`}
               >
                 {label}

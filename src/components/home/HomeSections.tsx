@@ -195,7 +195,7 @@ export default function HomeSections(
                 </h3>
                 {/* 📍 위치로 정렬된 줄은 그 사실을 말한다 — "가까운 곳부터" 같은 문구가 위치 없이 남으면 거짓말이다. */}
                 {(sec.near || sec.subtitle) && (
-                  <p className="mt-1 text-[12px] text-gray-500 dark:text-gray-400">{sec.near ? nearSubtitle(near?.label) : sec.subtitle}</p>
+                  <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{sec.near ? nearSubtitle(near?.label) : sec.subtitle}</p>
                 )}
               </div>
               {more && !moreIsDeadEnd && (
@@ -210,7 +210,7 @@ export default function HomeSections(
                       파랑으로 물들이지 않는다. 눌러지는 신호는 hover 밑줄이 맡는다. */
                 <Link
                   to={more}
-                  className="shrink-0 text-[12px] font-medium text-gray-600 dark:text-gray-300 hover:underline underline-offset-4 whitespace-nowrap"
+                  className="shrink-0 text-[13px] text-gray-500 dark:text-gray-400 hover:underline underline-offset-4 whitespace-nowrap"
                 >
                   더보기
                 </Link>
