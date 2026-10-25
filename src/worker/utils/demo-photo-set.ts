@@ -23,9 +23,8 @@
  *   ⇒ 남은 경로 ①②③ 은 전부 "그 매장"에 근거가 있다(①② 지도 등록 사진, ③ 매장명 토큰 매칭).
  */
 import type { Env } from '../types/env'
-import { fetchNaverImageUrls } from './naver-image-search'
 import { fetchKakaoPlacePhotos } from './kakao-place-photos'
-import { fetchNaverPlaceMainPhoto } from './naver-place-photo'
+import { fetchNaverPlaceMainPhoto, fetchNaverPlaceBusinessPhotos } from './naver-place-photo'
 
 export interface DemoPhotoOpts {
   /** 카카오 place id 또는 place URL — 있으면 등록 사진을 1순위로. */
@@ -34,7 +33,7 @@ export interface DemoPhotoOpts {
   nameQuery: string
   /** 매장 주소 — 네이버 지도 대표사진 검색 정확도(동명 매장 구분). */
   address?: string | null
-  /** 네이버 보충 검색어(매장명 + 업종). 미지정 시 nameQuery 사용. */
+  /** @deprecated 2026-10-25 이미지검색 제거로 미사용(호출부 호환용). */
   naverQuery?: string
   /** 업종/지역 일반 폴백 검색어(예: "가평 펜션"). */
   fallbackQuery?: string
@@ -79,6 +78,19 @@ export function isBlockedPhotoUrl(url: string): boolean {
   return BLOCKED_PHOTO_HOSTS.some((h) => low.includes(h))
 }
 
+/** 데모 사진이 갖춰야 할 최소 장수(대표 지시 "최소 3장 이상"). 모자라면 숨기지 않고 주기적으로 다시 채운다. */
+export const DEMO_MIN_PHOTOS = 3
+
+/**
+ * 🚫 이미지검색·블로그에서 온 사진인가(2026-10-25). 그 경로는 사진 출처에서 뺐으므로, 이미 박혀 있는
+ *   갤러리에서도 걷어낸다. 검색 결과는 `search.pstatic.net` 프록시로 감싸 저장됐다(`naver-safe-image`).
+ *   ⚠️ R2 로 이관된 커버는 출처를 알 수 없어 여기서 못 잡는다 — recondition 이 커버를 새 업체 사진으로 바꾼다.
+ */
+export function isSearchDerivedPhoto(url: string | null | undefined): boolean {
+  if (!url) return false
+  return /search\.pstatic\.net|blogfiles\.|postfiles\.|mblogthumb-phinf|blogpfthumb|dthumb-phinf|pup-review-phinf|myplace-phinf/i.test(url)
+}
+
 export async function fetchDemoPhotos(env: Env, opts: DemoPhotoOpts): Promise<string[]> {
   const want = Math.max(1, Math.min(6, opts.count ?? 4))
   const out: string[] = []
@@ -94,23 +106,21 @@ export async function fetchDemoPhotos(env: Env, opts: DemoPhotoOpts): Promise<st
   if (opts.placeId) {
     try { add(await fetchKakaoPlacePhotos(opts.placeId, want)) } catch { /* fail-soft → 네이버 */ }
   }
-  // ② 카카오에 사진이 없으면 → 네이버 지도(플레이스) 대표사진을 커버로. (있으면 이 호출 skip — 비용 절약)
+  // ② 네이버 플레이스 **업체가 직접 올린 사진** 여러 장(2026-10-25 대표 승인).
+  if (out.length < want && opts.nameQuery) {
+    try { add(await fetchNaverPlaceBusinessPhotos(opts.nameQuery, opts.address, want)) } catch { /* fail-soft */ }
+  }
+  // ②' 업체 사진 탭을 못 읽었고 아직 한 장도 없으면 → 네이버 플레이스 대표사진 1장.
   if (out.length === 0 && opts.nameQuery) {
     try {
       const naverMain = await fetchNaverPlaceMainPhoto(opts.nameQuery, opts.address)
       if (naverMain) add([naverMain])
-    } catch { /* fail-soft → 이미지검색 */ }
-  }
-  // ③ 부족분(갤러리) — 네이버 매장명 스코어링.
-  if (out.length < want) {
-    try {
-      add(await fetchNaverImageUrls(env, opts.naverQuery || opts.nameQuery, {
-        count: want - out.length, nameQuery: opts.nameQuery,
-      }))
     } catch { /* fail-soft */ }
   }
-  // ④ **제거됨 (2026-08-08).** 업종/지역 일반 검색은 그 매장과 아무 관계가 없는 사진을 "그 매장 대표사진"
-  //    자리에 앉힌다. 화면을 채우려고 거짓 정보를 만드는 셈이라, 비우는 쪽이 옳다.
-  //    (opts.fallbackQuery 는 호출부 호환을 위해 타입에 남겨두되 더는 사용하지 않는다.)
+  // ③ **제거됨 (2026-10-25 대표 — "블로그에서 사진 발췌해서 의미없는 것도 올려와져").**
+  //    네이버 이미지검색은 "그 이름으로 검색된 웹 이미지"라 블로그 본문 사진이 섞이고(블로그 호스트에
+  //    가산점까지 줬다), 이름이 하나도 안 맞는 0점 사진도 통과했다. 사진 출처는 **지도에 등록된 사진뿐**이다.
+  //    모자라면 지어내지 않는다 — 3장이 안 되면 recondition 이 주기적으로 다시 시도한다(demo-image-rehost.ts).
+  // ④ 제거됨 (2026-08-08) — 업종/지역 일반 검색.
   return out
 }
