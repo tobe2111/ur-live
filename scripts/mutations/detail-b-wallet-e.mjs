@@ -46,9 +46,10 @@ export default [
     name: '[상세B지갑E] 🏷️상세 할인율이 다시 전용 빨강으로 갈린다',
     // 🔁 2026-10-11 (D안): 모바일 가격이 머리 카드(`PassHeadCard`)로 옮겨갔다.
     // 🔁 2026-10-24 (그루폰식): 가격 줄이 '옵션 선택' 카드(`PassOptionCard`)로 옮겨갔다 — 불변식 그대로.
-    file: 'src/pages/group-buy/PassOptionCard.tsx',
-    find: `style={{ color: 'var(--sale)' }}>-{discountPct}%`,
-    replace: `style={{ color: 'var(--gbd-danger)' }}>-{discountPct}%`,
+    // 🔁 2026-10-25 (D안): 큰 가격이 다시 머리(`PassHeadCard`)로 — 불변식 그대로.
+    file: 'src/pages/group-buy/PassHeadCard.tsx',
+    find: `style={{ color: 'var(--sale)' }}>{discountPct}%`,
+    replace: `style={{ color: 'var(--gbd-danger)' }}>{discountPct}%`,
     test: TEST,
     why:
       '2026-09-07 대표가 할인율 색을 `--sale` 로 확정했는데 상세만 빠져 있었다. ' +

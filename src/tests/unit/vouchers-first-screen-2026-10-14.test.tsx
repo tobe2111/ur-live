@@ -130,12 +130,15 @@ describe('② 페이지 크롬 클래스 = 소스', () => {
     expect(h).toBeTruthy()
     expect(HERO_CARD_CLS).toContain(`!h-[${h}px]`)
   })
-  it('비로그인 잔액 바 · 칩 예약 · 정렬 버튼', () => {
+  it('비로그인 잔액 바 · 칩 예약 · 정렬 버튼', async () => {
     const bal = code('src/pages/vouchers/DealBalanceCard.tsx')
     expect(bal).toContain(C.balanceBar.replace(' h-11 px-4', '')); expect(bal).toContain("'h-11 px-4'")
     expect(bal).toContain(C.balanceText); expect(bal).toContain(C.balanceLink); expect(bal).toContain('딜을 모으면 더 싸게 살 수 있어요')
     const res = code('src/pages/vouchers/TopChromeReserve.tsx')
-    for (const k of ['chipWrap', 'chipRow', 'chip'] as const) expect(res, k).toContain(C[k])
+    // 🗂️ 2026-10-25 D안: 칩 줄 클래스는 SSOT `VOUCHER_CAT_TAB` — 워커와 예약이 같은 상수를 쓴다.
+    const { VOUCHER_CAT_TAB } = await import('@/shared/voucher-tile')
+    expect(C.chipWrap).toBe(VOUCHER_CAT_TAB.wrap); expect(C.chip).toBe(`${VOUCHER_CAT_TAB.tab} ${VOUCHER_CAT_TAB.on}`)
+    expect(res).toContain('VOUCHER_CAT_TAB.wrap'); expect(res).toContain('VOUCHER_CAT_TAB.tab')
     const sort = code('src/components/ui/sort-menu.tsx')
     expect(sort).toContain(C.sortBtn)
   })

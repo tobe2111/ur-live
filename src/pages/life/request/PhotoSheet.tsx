@@ -94,7 +94,7 @@ export function PhotoSheet({ f, value, loggedIn, onDone, onClose, onLogin }: {
         )}
       </div>
       <input ref={input} type="file" accept="image/*" multiple hidden onChange={(e) => add(e.target.files)} />
-      {error && <p className="pt-2 text-[13px] font-bold text-tone-bad">{error}</p>}
+      {error && <p className="pt-2 text-[13px] font-medium text-tone-bad">{error}</p>}
     </Sheet>
   )
 }

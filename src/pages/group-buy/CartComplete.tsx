@@ -27,7 +27,7 @@ export default function CartComplete({ qty, kinds, amount }: { qty: number; kind
             <X className="w-6 h-6" strokeWidth={1.6} />
           </button>
         </div>
-        <h1 className="text-center text-[24px] font-extrabold tracking-[-0.02em] mt-3 mb-6">결제가 완료되었어요</h1>
+        <h1 className="text-center text-[24px] font-bold tracking-[-0.02em] mt-3 mb-6">결제가 완료되었어요</h1>
 
         {/* 밴드 오른쪽에 D-N 을 못 쓴다 — 이용권마다 기한이 달라서 하나를 고르면 나머지가 거짓이 된다. */}
         <TicketCard bandLeft="이용권 발급 완료" bandRight={`${kinds}종`}>

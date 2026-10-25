@@ -135,7 +135,7 @@ export default function LifeRequestFormPage() {
       <div className="min-h-[100dvh] bg-warm text-ink pb-safe-nav">
         <SEO title={`${def.label} 견적 요청 완료 - 유어딜`} description={def.blurb} url={`/life/request/${def.key}`} />
         <div className="ur-content-narrow px-4 pt-20 pb-10 text-center">
-          <h1 className="text-[24px] font-extrabold tracking-tight">{def.label} 견적 요청을 보냈어요</h1>
+          <h1 className="text-[24px] font-bold tracking-tight">{def.label} 견적 요청을 보냈어요</h1>
           <p className="mt-3 text-[15px] leading-relaxed text-gray-600 dark:text-gray-300">
             근처 업체가 견적을 보내면 알려 드릴게요.<br />비교하고 마음에 드는 한 곳만 고르세요.
           </p>
@@ -203,7 +203,7 @@ export default function LifeRequestFormPage() {
         <h1 className="text-[17px] font-bold">{def.label} 견적 요청</h1>
       </header>
       <div className="ur-content-narrow space-y-5 px-4 pb-10">
-        <h2 className="text-[24px] font-extrabold leading-snug tracking-tight">이대로 견적을 받을까요?</h2>
+        <h2 className="text-[24px] font-bold leading-snug tracking-tight">이대로 견적을 받을까요?</h2>
         {recruiting}
         <div className="divide-y divide-rule rounded-2xl bg-surface px-5 shadow-lift">
           {def.fields.map((f, i) => {
@@ -211,7 +211,7 @@ export default function LifeRequestFormPage() {
             return (
               <button key={f.key} type="button" onClick={() => edit(i)} className="flex w-full items-start gap-3 py-3 text-left">
                 <span className="w-24 shrink-0 pt-px text-[13px] text-gray-500 dark:text-gray-400">{f.label}</span>
-                <span className={`min-w-0 flex-1 break-words text-[13px] ${v ? 'font-bold text-ink' : f.required ? 'font-bold text-brand-text' : 'text-gray-400 dark:text-gray-500'}`}>
+                <span className={`min-w-0 flex-1 break-words text-[13px] ${v ? 'font-medium text-ink' : f.required ? 'font-medium text-brand-text' : 'text-gray-400 dark:text-gray-500'}`}>
                   {v || (f.required ? '알려 주세요' : '없음')}
                 </span>
                 <span className="shrink-0 text-[13px] text-gray-400 dark:text-gray-500">수정</span>
@@ -230,7 +230,7 @@ export default function LifeRequestFormPage() {
         </label>
 
         {def.bigTicket && <BigTicketNote />}
-        {error && <p className="text-[13px] font-bold text-tone-bad">{error}</p>}
+        {error && <p className="text-[13px] font-medium text-tone-bad">{error}</p>}
         <button type="button" disabled={sending} onClick={submit} className="ur-btn ur-btn-lg ur-btn-primary flex w-full justify-center disabled:opacity-60">
           {sending ? '보내는 중' : loggedIn ? '견적 신청' : '카카오로 로그인하고 견적 신청'}
         </button>

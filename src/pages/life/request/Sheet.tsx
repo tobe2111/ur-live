@@ -45,13 +45,13 @@ export function Sheet({ title, onClose, children, footer }: {
           <div className="flex h-14 items-center gap-2 px-3">
             <button type="button" aria-label="이전" onClick={onClose} className="p-2"><ChevronLeft className="h-5 w-5" /></button>
             <span className="min-w-0 flex-1 truncate text-center text-[13px] text-gray-500 dark:text-gray-400">{frame.label}</span>
-            <span className="w-9 text-right text-[13px] font-bold tabular-nums text-gray-500 dark:text-gray-400">{frame.step}/{frame.total}</span>
+            <span className="w-9 text-right text-[13px] font-medium tabular-nums text-gray-500 dark:text-gray-400">{frame.step}/{frame.total}</span>
           </div>
           <div className="mx-5 h-1 overflow-hidden rounded-full bg-rule" role="progressbar" aria-valuenow={frame.step} aria-valuemin={1} aria-valuemax={frame.total}>
             <div className="h-full rounded-full bg-brand transition-[width] duration-300" style={{ width: `${pct}%` }} />
           </div>
           {frame.step === 1 && frame.notice && <div className="px-5 pt-4">{frame.notice}</div>}
-          <h2 className="px-5 pt-6 pb-5 text-[24px] font-extrabold leading-snug tracking-tight">{title}</h2>
+          <h2 className="px-5 pt-6 pb-5 text-[24px] font-bold leading-snug tracking-tight">{title}</h2>
           <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4">{children}</div>
           {footer && <div className="px-5 pt-3 pb-[max(16px,env(safe-area-inset-bottom))]">{footer}</div>}
         </div>

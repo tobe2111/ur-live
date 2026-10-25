@@ -51,18 +51,18 @@ export default function RedeemHowTo() {
             <div className="flex flex-col items-center shrink-0">
               <span
                 aria-hidden
-                className={`w-7 h-7 rounded-full flex items-center justify-center text-[13px] font-bold ${last ? 'text-brand-text' : 'bg-brand text-white'}`}
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-[13px] font-medium ${last ? 'text-brand-text' : 'bg-brand text-white'}`}
                 style={last ? { background: 'var(--gbd-accent-soft)' } : undefined}
               >{n}</span>
               {!last && <span aria-hidden className="w-[2px] flex-1 my-1 rounded-full" style={{ background: 'var(--gbd-accent-soft)' }} />}
             </div>
             <div className={`min-w-0 pt-1 ${last ? '' : 'pb-5'}`}>
-              <div className="text-[15px] font-semibold" style={{ color: 'var(--gbd-ink)' }}>{t}</div>
+              <div className="text-[15px] font-medium" style={{ color: 'var(--gbd-ink)' }}>{t}</div>
               <div className="mt-1 text-[13px]" style={{ color: 'var(--gbd-sub)' }}>{d}</div>
               {/* 🔀 예외는 그 일이 일어나는 단계(2 — 스캔) 바로 아래에 갈래로 */}
               {n === '2' && (
                 <div className="mt-3 rounded-xl px-3 py-3 text-[13px] leading-[1.5]" style={{ background: 'var(--gbd-chip)', color: 'var(--gbd-ink2)' }}>
-                  <b className="font-semibold" style={{ color: 'var(--gbd-ink)' }}>스캔이 안 되면?</b>
+                  <b className="font-medium" style={{ color: 'var(--gbd-ink)' }}>스캔이 안 되면?</b>
                   <br />{REDEEM_FALLBACK}
                 </div>
               )}

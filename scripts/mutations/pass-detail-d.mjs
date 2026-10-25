@@ -62,8 +62,8 @@ export default [
     name: "🎟️C '1장당 N원 아껴요' 상자가 돌아온다",
     // 🔁 2026-10-24 (그루폰식): 가격이 '옵션 선택' 카드로 옮겨갔다 — 상자가 돌아올 자리도 그쪽이다.
     file: 'src/pages/group-buy/PassOptionCard.tsx',
-    find: '{discountPct > 0 && <span className="text-[13px] font-bold"',
-    replace: '<span>1장당 아껴요</span>{discountPct > 0 && <span className="text-[13px] font-bold"',
+    find: '{discountPct > 0 && <span className="text-[13px] font-medium"',
+    replace: '<span>1장당 아껴요</span>{discountPct > 0 && <span className="text-[13px] font-medium"',
     test: 'src/tests/unit/pass-detail-d-2026-10-11.test.ts',
     why: '48% 와 정가 취소선이 이미 같은 말을 한다. 2026-10-12 실측에서 한 화면에 가격이 여섯 번 나왔다.',
   },
