@@ -22,9 +22,24 @@ export interface ProMe {
 
 const INPUT = 'rounded-xl border border-rule bg-surface px-3 py-2 text-[15px] text-ink outline-none focus:border-brand'
 
-export default function ProSetupForm({ me, onSaved }: { me: ProMe; onSaved: () => void }) {
-  const [cats, setCats] = useState<string[]>(me.categories)
-  const [areas, setAreas] = useState(me.areas)
+/** 공유 링크에서 온 업체 — 그 요청의 업종·지역을 미리 채운다(2026-10-25 대표 "업종을 선택을 하는게 좋을까?"). */
+export interface ProPrefill { cat?: string | null; sido?: string | null; sigungu?: string | null }
+
+function withPrefill(me: ProMe, p?: ProPrefill) {
+  const cats = [...me.categories]
+  if (p?.cat && me.allCategories.some((c) => c.key === p.cat) && !cats.includes(p.cat)) cats.push(p.cat)
+  const areas = [...me.areas]
+  if (p?.sido && me.sidoList.includes(p.sido)) {
+    const g = p.sigungu && /^[가-힣]{1,10}(시|군|구)$/.test(p.sigungu) ? p.sigungu : ''
+    const covered = areas.some((a) => a.sido === p.sido && (a.sigungu === '' || a.sigungu === g))
+    if (!covered) areas.push({ sido: p.sido, sigungu: g })
+  }
+  return { cats, areas }
+}
+
+export default function ProSetupForm({ me, onSaved, prefill }: { me: ProMe; onSaved: () => void; prefill?: ProPrefill }) {
+  const [cats, setCats] = useState<string[]>(() => withPrefill(me, prefill).cats)
+  const [areas, setAreas] = useState(() => withPrefill(me, prefill).areas)
   const [sido, setSido] = useState(me.sidoList[0] || '서울')
   const [sigungu, setSigungu] = useState('')
   const [phone, setPhone] = useState(me.pro?.phone || me.seller.phone || '')

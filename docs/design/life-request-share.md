@@ -21,6 +21,13 @@
 | 검색 | 모집 중 = 색인 · 마감 후 = noindex(마감 안내 + 같은 업종 페이지 링크) |
 
 ## 구현 todo
-- [ ] 대표 확인
-- [ ] 공개 요청 페이지 + 서버 메타/OG 카드 + sitemap(모집 중만)
-- [ ] 업체 등록 랜딩 A/B 확정본 반영
+- [x] 대표 확인 — "공유 시안대로 해줘" · "업체 등록 시안은 A안으로 해줘"
+- [x] 공개 요청 페이지 + 서버 메타/OG 카드 + sitemap(모집 중만)
+- [x] 업체 등록 랜딩 A안 반영
+
+## ✅ 구현 완료 (2026-10-25, PR #2006)
+- 공개 값 SSOT `src/shared/home-service-share.ts` · 공개 API `GET /api/home-service/share/:token`
+- 화면 `src/pages/life/LifeSharePage.tsx` · 서버 메타·본문 `src/worker/utils/life-share-ssr.ts`(슬롯 `LIFESHARE`)
+- 업체 진입 `GET /api/home-service/pro/share/:token` — 그 카테고리를 하면 지역이 달라도 견적 가능, 아니면 업종·지역을 채운 등록 화면
+- 링크 복사: 어드민 `/admin/home-service` 요청 펼치기 → "업체 모집 링크 복사"
+- 남은 것: 가게 심사(수동 승인) 동안은 견적을 못 낸다 — 대표 판단 대기

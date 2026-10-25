@@ -401,6 +401,13 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
       for (const b of blogs.results || []) {
         if (b.slug) urls.push({ loc: `/blog/${b.slug}`, priority: 0.5, changefreq: 'monthly', lastmod: b.updated_at });
       }
+      // 🔗 2026-10-25 생활 요청 공유 페이지 — **모집 중인 것만**(대표 "노출해줘"). 마감은 noindex 라 제출하지 않는다.
+      //   자리가 찬 요청도 빼서 "색인 요청 ↔ noindex" 모순을 만들지 않는다(`publicShareView.open` 과 같은 조건).
+      const shares = await DB.prepare(
+        `SELECT share_token FROM home_service_requests
+          WHERE status = 'open' AND quote_count < max_quotes AND share_token IS NOT NULL ORDER BY id DESC LIMIT 200`
+      ).all<{ share_token: string }>().catch(() => ({ results: [] as { share_token: string }[] }));
+      for (const r of shares.results || []) urls.push({ loc: `/life/q/${r.share_token}`, priority: 0.4, changefreq: 'daily' });
     } catch {
       // DB 쿼리 실패해도 정적 URL 은 응답
     }
