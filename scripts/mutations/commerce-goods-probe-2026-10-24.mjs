@@ -32,10 +32,11 @@ export default [
   {
     name: '취급품목탐침 🧩 별칭 목록이 수집 코드와 갈린다(화면이 저장과 다른 답을 말한다)',
     file: PROBE,
-    find: "export const GOODS_FIELD_ALIASES = ['trtmntPrdlstNm', 'ntslPrdlstCn', 'upteNm', 'dclsfNm', 'idustyNm', 'taskNm'] as const",
+    // 🔁 2026-10-25 재조준: 한글(`ntslPrdlstCn`)을 코드 앞으로 옮겨 앵커가 낡았다. 불변식은 그대로다.
+    find: "export const GOODS_FIELD_ALIASES = ['ntslPrdlstCn', 'trtmntPrdlstNm', 'upteNm', 'dclsfNm', 'idustyNm', 'taskNm'] as const",
     replace: "export const GOODS_FIELD_ALIASES = ['trtmntPrdlstNm', 'upteNm'] as const",
     test: TEST,
-    why: '탐침이 `ntslPrdlstCn` 을 안 보면 "차선 별칭이 한글인가" 를 영영 못 재고, 코드표를 계속 찾아 나선다 — 이 수리의 목적이 정확히 그 질문이다.',
+    why: '탐침이 `ntslPrdlstCn` 을 안 보면 업종 분류의 **유일한 한글 출처**가 탐침 화면에서 사라진다 — 2026-10-25 에 그 필드가 `\'종합몰 교육/도서/완구/오락\'` 으로 온다는 것을 실측해 코드표 없이 93% 를 풀었다. 그리고 순서가 수집 코드와 갈리면 탐침이 "어느 필드가 쓰이는지" 를 틀리게 말해, 다음 세션이 그 화면을 믿고 오판한다.',
   },
   {
     name: '취급품목탐침 🔢 숫자 코드를 글자로 읽는다(코드표가 필요 없다고 거짓 보고)',
