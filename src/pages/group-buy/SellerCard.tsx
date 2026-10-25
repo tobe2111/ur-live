@@ -41,14 +41,14 @@ export default function SellerCard({ d, onProfile }: { d: SellerCardDetail; onPr
           : <div style={{ width: 44, height: 44, borderRadius: '50%', flex: '0 0 auto', background: 'var(--gbd-chip)' }} />}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <span style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--gbd-ink)', whiteSpace: 'nowrap' }}>{d.seller_name}</span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--gbd-ink)', whiteSpace: 'nowrap' }}>{d.seller_name}</span>
             <CheckCircle2 style={{ width: 15, height: 15, color: 'var(--gbd-accent)', flex: '0 0 auto' }} />
             <span style={{ fontSize: 12, color: 'var(--gbd-sub)', whiteSpace: 'nowrap' }}>검증 셀러</span>
           </div>
           {/* 🏷️ 2026-09-03 대표 — 자동 발급 아이디(@store_xxxx)는 손님에게 의미가 없다(SSOT: shared/seller-handle). */}
-          {publicSellerHandle(d.seller_username) && <div style={{ fontSize: 12.5, color: 'var(--gbd-sub)', marginTop: 2 }}>@{publicSellerHandle(d.seller_username)}</div>}
+          {publicSellerHandle(d.seller_username) && <div style={{ fontSize: 12, color: 'var(--gbd-sub)', marginTop: 2 }}>@{publicSellerHandle(d.seller_username)}</div>}
         </div>
-        <button onClick={onProfile} style={{ display: 'inline-flex', alignItems: 'center', gap: 1, padding: '8px 12px', border: '1px solid var(--rule-strong)', borderRadius: 10, background: 'var(--gbd-card)', color: 'var(--gbd-ink2)', fontSize: 12.5, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap', flex: '0 0 auto' }}>
+        <button onClick={onProfile} style={{ display: 'inline-flex', alignItems: 'center', gap: 1, padding: '8px 12px', border: '1px solid var(--rule-strong)', borderRadius: 10, background: 'var(--gbd-card)', color: 'var(--gbd-ink2)', fontSize: 12, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap', flex: '0 0 auto' }}>
           프로필<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
         </button>
       </div>

@@ -25,5 +25,9 @@ describe('PC 글꼴 순서', () => {
   it('③ 모바일 기본 목록은 종전 그대로(system-ui 가 한글보다 앞)', () => {
     expect(CSS).toMatch(/body \{[^}]*font-family:\s*"UrDigits",\s*-apple-system,\s*BlinkMacSystemFont,\s*system-ui,\s*Roboto,/)
   })
+  it('⑤ Noto Sans KR 이 맑은 고딕보다 앞 (쿠팡이 같은 PC 에서 Noto 로 그린다)', () => {
+    expect(pcList.indexOf('Noto Sans KR')).toBeGreaterThan(0)
+    expect(pcList.indexOf('Noto Sans KR')).toBeLessThan(pcList.indexOf('Malgun Gothic'))
+  })
   it('④ PC 블록은 글꼴을 받지 않는다', () => { expect(PC?.[0] ?? '').not.toMatch(/url\(/) })
 })
