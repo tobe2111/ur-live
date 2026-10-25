@@ -13,7 +13,6 @@ import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { ChevronRight } from 'lucide-react'
 import { HOME_SERVICE_CATEGORIES, MAX_QUOTES_PER_REQUEST, categoryDef, type HomeServiceCategory } from '@/shared/home-service'
-import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
 import { LIFE_TILES, LifeTileIcon } from './life-tiles'
 import { LIFE_HUB_SEO } from '@/shared/seo/life-hub-seo'
@@ -42,7 +41,7 @@ const BIG_SUB: Partial<Record<HomeServiceCategory, string>> = {
 }
 const ICON_ROW_MAX = 5
 
-interface VoucherItem { id: number; name: string; price?: number; restaurant_name?: string; image_url?: string }
+interface VoucherItem { id: number; name: string; price?: number; restaurant_name?: string }
 
 const CARD = 'rounded-2xl bg-surface px-5 py-5 shadow-lift'
 
@@ -89,7 +88,7 @@ export default function LifePage() {
   }, [])
 
   const recruiting = !!proCounts && HOME_SERVICE_CATEGORIES.some((d) => !proCounts[d.key])
-  const deals = vouchers.slice(0, 6)
+  const deals = vouchers.slice(0, 4)
 
   return (
     <div className="min-h-[100dvh] bg-warm text-ink pb-safe-nav">
@@ -145,19 +144,14 @@ export default function LifePage() {
         )}
 
         {deals.length > 0 && (
-          <section className="pt-4">
-            <h2 className="px-1 text-[17px] font-bold">정해진 가격으로 바로 사기</h2>
-            <ul className="-mx-4 mt-3 flex gap-3 overflow-x-auto px-4 pb-1 no-scrollbar">
+          <section className={CARD}>
+            <h2 className="text-[17px] font-bold">정해진 가격으로 바로 사기</h2>
+            <ul className="mt-2 divide-y divide-rule">
               {deals.map((v) => (
-                <li key={v.id} className="w-40 shrink-0">
-                  <Link to={`/pass/${v.id}`} className="block active:opacity-80">
-                    <span className="block aspect-square overflow-hidden rounded-2xl bg-surface">
-                      {v.image_url && <img src={cfImage(v.image_url, { width: 320 })} alt={v.name} loading="lazy" width={160} height={160}
-                        className="h-full w-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, v.image_url!)} />}
-                    </span>
-                    {v.restaurant_name && <span className="mt-2 block truncate text-[12px] text-gray-500 dark:text-gray-400">{v.restaurant_name}</span>}
-                    <span className="mt-1 line-clamp-2 block text-[13px] leading-snug">{v.name}</span>
-                    <span className="mt-1 block text-[15px] font-bold">{formatNumber(v.price)}원</span>
+                <li key={v.id}>
+                  <Link to={`/pass/${v.id}`} className="flex items-center justify-between gap-3 py-3">
+                    <span className="min-w-0 truncate text-[15px]">{v.restaurant_name ? `${v.restaurant_name} · ` : ''}{v.name}</span>
+                    <span className="shrink-0 text-[15px] font-bold">{formatNumber(v.price)}원</span>
                   </Link>
                 </li>
               ))}
