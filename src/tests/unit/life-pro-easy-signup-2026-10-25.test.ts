@@ -84,3 +84,37 @@ describe('④ 반대 방향 — 다른 곳은 여전히 승인 매장만', () =>
     expect(R('src/features/home-service/api/home-service-notify.ts')).toMatch(/WHERE s\.id = \? AND s\.status IN \('approved', 'active'\)/)
   })
 })
+
+describe('⑤ 다음 단계 — 인증 안내 · 공유로 업체 모집', () => {
+  it('견적 응답이 인증 여부를 싣고, 미인증이면 화면이 한 번 안내한다', () => {
+    expect(R('src/features/home-service/api/home-service-pro.routes.ts')).toMatch(/verified: proVerified\(seller\?\.status\)/)
+    expect(R('src/pages/life/LifeProRequestPage.tsx')).toMatch(/verified === false\) void nudgeVerify\(navigate\)/)
+    const n = R('src/pages/life/pro/verify-nudge.ts')
+    const mark = n.indexOf('localStorage.setItem(VERIFY_NUDGE_KEY')
+    expect(mark).toBeGreaterThan(0) // 표식을 먼저 남긴다 — 그래야 한 번만 뜬다
+    expect(mark).toBeLessThan(n.indexOf('await confirmDialog('))
+    expect(n).toMatch(/cancelText: '나중에'/)
+  })
+  it('손님 요청 상세가 열린 요청에만 공유 링크를 싣고 화면이 보낸다', () => {
+    expect(R('src/features/home-service/api/home-service.routes.ts')).toMatch(/share_token = req\.status === 'open' \? await ensureShareToken/)
+    expect(R('src/pages/life/LifeRequestDetailPage.tsx')).toMatch(/d\.status === 'open' && d\.share_token[\s\S]{0,600}shareLifeRequest\(/)
+    expect(R('src/pages/life/LifeSharePage.tsx')).toMatch(/v\.open && \([\s\S]{0,200}shareLifeRequest\(token/)
+  })
+  it('공유로 온 업체는 지역까지 채워 가입하고, 로그인 왕복에도 그 값이 살아남는다', () => {
+    const sp = R('src/pages/life/LifeSharePage.tsx')
+    expect(sp).toMatch(/parseRegionFromAddress\(v\.region\)/)
+    expect(R('src/pages/life/pro/ProLanding.tsx')).toMatch(/sessionStorage\.setItem\(JOIN_KEY, search\)/)
+    expect(R('src/pages/life/LifeProPage.tsx')).toMatch(/useState\(\(\) => joinParams\(/)
+  })
+})
+
+describe('⑥ joinParams — 주소 우선, 없으면 세션 한 번', () => {
+  it('동작', async () => {
+    const { joinParams, JOIN_KEY } = await import('@/pages/life/pro/join-params')
+    sessionStorage.setItem(JOIN_KEY, 'share=abc&cat=move')
+    expect(joinParams('?share=zzz').get('share')).toBe('zzz')
+    expect(joinParams('').get('cat')).toBe('move')
+    expect(sessionStorage.getItem(JOIN_KEY)).toBeNull()
+    expect(joinParams('').get('cat')).toBeNull()
+  })
+})

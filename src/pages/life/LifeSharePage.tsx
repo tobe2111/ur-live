@@ -20,7 +20,8 @@ import { SIGNUP_FREE_CREDITS } from '@/shared/home-service'
 import { shareDescription, type ShareView } from '@/shared/home-service-share'
 import { lifeCategoryPath } from '@/shared/life-seo'
 import { parseUTCDate } from '@/utils/date'
-import { sellerHeaders } from './life-shared'
+import { sellerHeaders, shareLifeRequest } from './life-shared'
+import { parseRegionFromAddress } from '@/shared/constants/region-slugs'
 
 const SEED_ID = '__SSR_INITIAL_LIFESHARE__'
 
@@ -63,7 +64,12 @@ export default function LifeSharePage() {
   async function join() {
     if (!v) return
     const q = new URLSearchParams({ share: token, cat: v.category })
-    if (!getSellerToken()) { navigate(`/life/pro?${q}`); return }
+    // 🔗 처음 오는 업체도 지역까지 채운 가입 화면으로 — 공개 지역 글(시·구·동)에서 시·구만 뽑는다.
+    const reg = parseRegionFromAddress(v.region)
+    if (!getSellerToken()) {
+      if (reg) { q.set('sido', reg.sido); if (reg.sigungu) q.set('sigungu', reg.sigungu) }
+      navigate(`/life/pro?${q}`); return
+    }
     setJoining(true)
     try {
       const r = await api.get(`/api/home-service/pro/share/${token}`, sellerHeaders())
@@ -98,6 +104,11 @@ export default function LifeSharePage() {
         <div className="flex items-center gap-2">
           <Link to="/life" aria-label="유어딜 생활 서비스"><UrDealLogo size={20} /></Link>
           <span className="text-[13px] text-gray-500 dark:text-gray-400">생활 서비스 · 견적 요청</span>
+          {v.open && (
+            <button type="button" onClick={() => shareLifeRequest(token, v.title)} className="ml-auto text-[13px] font-medium text-brand-text">
+              다른 업체에 공유
+            </button>
+          )}
         </div>
         <div className="mt-5 flex gap-2 text-[12px] font-medium">
           <span className={v.open ? 'rounded-full bg-brand-tint px-3 py-1 text-brand-text' : 'rounded-full bg-warm px-3 py-1 text-gray-500 dark:text-gray-400'}>

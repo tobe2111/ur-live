@@ -20,6 +20,7 @@ import { toast } from '@/hooks/useToast'
 import ProCredits from './pro/ProCredits'
 import ProInbox from './pro/ProInbox'
 import ProLanding from './pro/ProLanding'
+import { joinParams } from './pro/join-params'
 import { LIFE_PRO_SEO } from '@/shared/seo/life-hub-seo'
 import { withSiteName } from '@/shared/seo/consumer-surfaces'
 
@@ -38,7 +39,9 @@ export default function LifeProPage() {
   const [failed, setFailed] = useState(false)
   const [tick, setTick] = useState(0)
   // 🔗 공유 링크에서 온 업체(`?share=&cat=&sido=&sigungu=`) — 등록을 마치면 그 요청으로 바로 보낸다.
-  const [params] = useSearchParams()
+  const [search] = useSearchParams()
+  // 로그인 왕복으로 쿼리가 지워졌으면 세션에 맡겨 둔 값(첫 렌더에 한 번만 읽는다)
+  const [params] = useState(() => joinParams(search.toString()))
   const navigate = useNavigate()
   const share = params.get('share')
   const shareToken = isShareToken(share) ? share : null

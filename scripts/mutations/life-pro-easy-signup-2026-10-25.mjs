@@ -41,4 +41,28 @@ export default [
     test: TEST,
     why: '무료로 자리를 주는 제휴는 심사를 마친 매장만이어야 한다(반대 방향).',
   },
+  {
+    name: '🪪 인증 안내가 매번 뜬다(한 번 표식 제거)',
+    file: 'src/pages/life/pro/verify-nudge.ts',
+    find: "    localStorage.setItem(VERIFY_NUDGE_KEY, '1')\n",
+    replace: '',
+    test: TEST,
+    why: '견적을 보낼 때마다 같은 창이 떠 업체가 귀찮아 이탈한다.',
+  },
+  {
+    name: '🔗 손님 요청 상세가 마감된 요청에도 공유 링크를 낸다',
+    file: 'src/features/home-service/api/home-service.routes.ts',
+    find: "share_token = req.status === 'open' ? await ensureShareToken",
+    replace: "share_token = true ? await ensureShareToken",
+    test: TEST,
+    why: '마감된 요청 링크를 받은 업체가 가입해도 낼 견적이 없다(모집 실패 경험).',
+  },
+  {
+    name: '🔗 로그인 왕복에 미리 채움이 사라진다',
+    file: 'src/pages/life/LifeProPage.tsx',
+    find: 'useState(() => joinParams(search.toString()))',
+    replace: 'useState(() => search)',
+    test: TEST,
+    why: '공유 링크로 온 업체가 로그인 뒤 업종·지역을 다시 골라야 하고, 가입 뒤 그 요청으로 안 간다.',
+  },
 ]

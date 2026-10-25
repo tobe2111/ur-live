@@ -5,7 +5,8 @@
  * 손님이 이 사장님을 고르면 손님 이름·번호가 여기 뜬다.
  */
 import { useCallback, useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
+import { nudgeVerify } from './pro/verify-nudge'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
@@ -24,6 +25,7 @@ const INPUT = 'w-full rounded-xl border border-rule bg-surface px-4 py-3 text-[1
 
 export default function LifeProRequestPage() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const [d, setD] = useState<Detail | null>(null)
   const [failed, setFailed] = useState(false)
   const [price, setPrice] = useState('')
@@ -41,7 +43,7 @@ export default function LifeProRequestPage() {
     setSending(true)
     try {
       const r = await api.post(`/api/home-service/pro/requests/${id}/quote`, { price: price.replace(/\D/g, '') || null, message }, sellerHeaders())
-      if (r.data?.success) { toast.success('견적을 보냈어요. 손님이 고르면 알림톡으로 알려 드려요'); load() }
+      if (r.data?.success) { toast.success('견적을 보냈어요. 손님이 고르면 알림톡으로 알려 드려요'); load(); if (r.data.data?.verified === false) void nudgeVerify(navigate) }
       else toast.error(r.data?.error || '견적을 보내지 못했어요')
     } catch (e: unknown) {
       toast.error((e as { response?: { data?: { error?: string } } }).response?.data?.error || '견적을 보내지 못했어요')

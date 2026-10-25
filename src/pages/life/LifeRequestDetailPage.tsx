@@ -13,13 +13,13 @@ import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/useToast'
 import { categoryDef, quotePriceText, type HomeServiceCategory } from '@/shared/home-service'
 import { formatNumber } from '@/utils/format'
-import { BigTicketNote, DetailRows, LifeHeader, STATUS_LABEL, categoryLabel } from './life-shared'
+import { BigTicketNote, DetailRows, LifeHeader, STATUS_LABEL, categoryLabel, shareLifeRequest } from './life-shared'
 
 interface Voucher { id: number; name: string; price?: number }
 interface Quote { id: number; price: number | null; message: string; status: string; pro_name: string; pro_phone: string | null; vouchers: Voucher[]; is_house?: number | null; partner?: number | null; verified?: number | null }
 interface Detail {
   id: number; category: string; details: Record<string, string>; desired_date: string; status: string
-  quote_count: number; max_quotes: number; quotes: Quote[]
+  quote_count: number; max_quotes: number; quotes: Quote[]; share_token?: string | null
 }
 
 export default function LifeRequestDetailPage() {
@@ -114,6 +114,15 @@ export default function LifeRequestDetailPage() {
               </li>
             ))}
           </ul>
+        )}
+
+        {d.status === 'open' && d.share_token && (
+          <section className="rounded-2xl bg-surface p-5 shadow-lift">
+            <p className="text-[15px] font-bold">아는 업체가 있나요?</p>
+            <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">링크를 보내면 그 업체가 바로 가입해 견적을 보낼 수 있어요. 이름·연락처·상세 주소는 가려져요.</p>
+            <button type="button" onClick={() => shareLifeRequest(d.share_token!, `${categoryLabel(d.category)} 견적 요청`)}
+              className="ur-btn ur-btn-lg mt-3 flex w-full justify-center bg-warm text-ink">요청 링크 보내기</button>
+          </section>
         )}
 
         {d.status === 'open' && (

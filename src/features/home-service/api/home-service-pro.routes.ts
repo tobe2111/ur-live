@@ -256,7 +256,7 @@ homeServiceProRoutes.post('/requests/:id/quote', requireSeller(), rateLimit({ ac
         { dedupKey: `quote:${res.quoteId}` },
       ).catch(() => null))
     }
-    return c.json({ success: true, data: { quote_id: res.quoteId, balance: await creditBalance(DB, sid) } })
+    return c.json({ success: true, data: { quote_id: res.quoteId, balance: await creditBalance(DB, sid), verified: proVerified(seller?.status) } })
   } catch (err) {
     return safeError(c, err, '견적을 보내지 못했습니다', '[home-service:quote]')
   }
