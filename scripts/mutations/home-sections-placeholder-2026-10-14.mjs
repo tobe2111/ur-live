@@ -18,7 +18,7 @@ export default [
   {
     name: '[home-placeholder] 자리 카드가 판매가 줄을 잃는다',
     file: 'src/components/home/DealCardPlaceholder.tsx',
-    find: 'text-[17px] font-extrabold w-1/2',
+    find: 'text-[17px] font-bold w-1/2',
     replace: 'text-[13px] w-1/2',
     test: 'src/tests/unit/home-sections-placeholder-2026-10-14.test.ts',
     why: '판매가 줄 높이가 달라져 카드마다 높이가 어긋난다.',

@@ -39,7 +39,7 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
           </p>
           <Link
             to="/"
-            className="inline-flex items-center justify-center px-6 py-3 bg-brand text-white text-[15px] font-semibold rounded-full hover:bg-brand-dark active:bg-gray-700 transition-colors"
+            className="inline-flex items-center justify-center px-6 py-3 bg-brand text-white text-[15px] font-medium rounded-full hover:bg-brand-dark active:bg-gray-700 transition-colors"
           >
             {t('cart.goLive', { defaultValue: '둘러보러 가기' })}
           </Link>
@@ -54,7 +54,7 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
         {cartItems.map(item => (
           <div key={item.id} className="p-4">
             <div className="mb-3">
-              <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white line-clamp-2 leading-snug">
+              <h3 className="text-[15px] font-medium text-gray-900 dark:text-white line-clamp-2 leading-snug">
                 {item.product_name}
               </h3>
               {item.option_value && (
@@ -64,7 +64,7 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
               )}
               <p className="text-[17px] font-bold text-gray-900 dark:text-white mt-2">
                 {formatNumber(item.price_snapshot * item.quantity)}
-                <span className="text-[15px] font-semibold text-gray-600 dark:text-gray-300 ml-1">원</span>
+                <span className="text-[15px] font-medium text-gray-600 dark:text-gray-300 ml-1">원</span>
               </p>
             </div>
 
@@ -78,7 +78,7 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
                 >
                   <Minus className="h-3.5 w-3.5" />
                 </button>
-                <span className="text-[15px] font-semibold text-gray-900 dark:text-white w-10 text-center select-none">
+                <span className="text-[15px] font-medium text-gray-900 dark:text-white w-10 text-center select-none">
                   {item.quantity}
                 </span>
                 <button
@@ -105,23 +105,23 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
         <div className="space-y-3 pb-4 border-b border-gray-100 dark:border-[#2C2F35]">
           <div className="flex justify-between">
             <span className="text-[13px] text-gray-500 dark:text-gray-400">{t('cart.itemAmount', { defaultValue: '상품 금액' })}</span>
-            <span className="text-[15px] font-semibold text-gray-900 dark:text-white">
+            <span className="text-[15px] font-medium text-gray-900 dark:text-white">
               {formatNumber(totalAmount)}원
             </span>
           </div>
           <div className="flex justify-between">
             <span className="text-[13px] text-gray-500 dark:text-gray-400">{t('cart.shipping', { defaultValue: '배송비' })}</span>
-            <span className="text-[15px] font-semibold text-gray-900 dark:text-white">{t('cart.free', { defaultValue: '무료' })}</span>
+            <span className="text-[15px] font-medium text-gray-900 dark:text-white">{t('cart.free', { defaultValue: '무료' })}</span>
           </div>
         </div>
 
         <div className="pt-4 flex justify-between items-baseline">
           <span className="text-[15px] font-bold text-gray-900 dark:text-white">{t('cart.totalAmount', { defaultValue: '총 결제금액' })}</span>
           <div className="text-right">
-            <span className="text-[24px] font-extrabold text-brand-text">
+            <span className="text-[24px] font-bold text-brand-text">
               {formatNumber(totalAmount)}
             </span>
-            <span className="text-[15px] font-semibold text-gray-600 dark:text-gray-300 ml-1">원</span>
+            <span className="text-[15px] font-medium text-gray-600 dark:text-gray-300 ml-1">원</span>
           </div>
         </div>
       </div>

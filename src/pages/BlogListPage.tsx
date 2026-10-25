@@ -183,7 +183,7 @@ export default function BlogListPage() {
         <section className={BLOG_LIST.listSection}>
           <h3 className={BLOG_LIST.listTitle}>
             {searching ? `‘${query.trim()}’ 검색 결과` : selectedTag ? `#${selectedTag}` : '전체 아티클'}
-            {(searching || selectedTag) && <span className="ml-2 text-[15px] font-semibold text-gray-400 dark:text-gray-500">{filtered.length}</span>}
+            {(searching || selectedTag) && <span className="ml-2 text-[15px] font-medium text-gray-400 dark:text-gray-500">{filtered.length}</span>}
           </h3>
 
           {loading ? (

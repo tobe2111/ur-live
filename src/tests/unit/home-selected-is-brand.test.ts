@@ -78,8 +78,9 @@ describe('안 C — 섹션 더보기는 테두리 없는 글자 링크', () => {
   it('글자를 파랑으로 물들이지 않는다 (블루는 면에서만)', () => {
     const l = moreLink()
     expect(l).not.toMatch(/text-brand/)
-    expect(l).toMatch(/text-gray-600/)      // 라이트
-    expect(l).toMatch(/dark:text-gray-300/) // 다크
+    // 2026-10-25 메인 D안: 회색 한 단계 옅게(500/400) — 보조 글자 13px 보통 굵기. 불변식(파랑 아님)은 그대로.
+    expect(l).toMatch(/text-gray-500/)      // 라이트
+    expect(l).toMatch(/dark:text-gray-400/) // 다크
     expect(l).toMatch(/hover:underline/)    // 눌러지는 신호
   })
 

@@ -59,7 +59,7 @@ export default function InfluencerOfferAcceptPage() {
       <div className="w-full max-w-md">
         {error && !offer ? (
           <div className="text-center space-y-2">
-            <p className="text-[17px] font-semibold text-gray-900 dark:text-white">제안을 열 수 없어요</p>
+            <p className="text-[17px] font-bold text-gray-900 dark:text-white">제안을 열 수 없어요</p>
             <p className="text-[15px] text-gray-500 dark:text-gray-400">{error}</p>
           </div>
         ) : trackingUrl ? (
@@ -73,7 +73,7 @@ export default function InfluencerOfferAcceptPage() {
               {trackingUrl}
             </div>
             <button
-              className="w-full py-3 rounded-xl bg-brand text-white font-semibold"
+              className="w-full py-3 rounded-xl bg-brand text-white font-medium"
               onClick={() => { navigator.clipboard?.writeText(trackingUrl).then(() => setCopied(true)).catch(() => {}) }}
             >{copied ? '복사됐어요 ✓' : '링크 복사하기'}</button>
             <p className="text-[12px] text-gray-500 dark:text-gray-400">내 유어샵(마이 → 유어샵)에 핀해서 함께 홍보할 수도 있어요.</p>
@@ -86,7 +86,7 @@ export default function InfluencerOfferAcceptPage() {
             </div>
             {offer.product_name && (
               <div className="bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4">
-                <p className="font-semibold text-gray-900 dark:text-white text-[15px]">{offer.product_name}</p>
+                <p className="font-medium text-gray-900 dark:text-white text-[15px]">{offer.product_name}</p>
                 {offer.product_price != null && (
                   <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">판매가 {Number(offer.product_price).toLocaleString()}원</p>
                 )}
@@ -112,7 +112,7 @@ export default function InfluencerOfferAcceptPage() {
               <p className="text-center text-[15px] text-gray-500 dark:text-gray-400">이미 처리된 제안이에요.</p>
             ) : (
               <button
-                className="w-full py-3 rounded-xl bg-brand text-white font-semibold disabled:opacity-50"
+                className="w-full py-3 rounded-xl bg-brand text-white font-medium disabled:opacity-50"
                 disabled={accepting}
                 onClick={accept}
               >{accepting ? '처리 중…' : '카카오 로그인하고 수락하기'}</button>

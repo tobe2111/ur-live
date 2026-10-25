@@ -132,20 +132,20 @@ export default function MarketingDashboardShell({ title = '대시보드', planLa
           <div className="uad-tenant" style={{ padding: '14px 14px 4px' }}>
             <div className="mono" style={{ fontSize: 10, letterSpacing: '.1em', color: 'var(--ink3)', padding: '0 2px 7px' }}>고객사 전환</div>
             <button type="button" onClick={() => setTenantOpen((v) => !v)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 9, background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 9, padding: '9px 11px', cursor: 'pointer', color: 'var(--ink)' }}>
-              <span style={{ width: 24, height: 24, borderRadius: 6, background: 'var(--brand-soft)', color: 'var(--brand-ink)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800 }}>{tenantName(activeTenant).slice(0, 1)}</span>
-              <span style={{ flex: 1, textAlign: 'left', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tenantName(activeTenant)}</span>
+              <span style={{ width: 24, height: 24, borderRadius: 6, background: 'var(--brand-soft)', color: 'var(--brand-ink)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 500 }}>{tenantName(activeTenant).slice(0, 1)}</span>
+              <span style={{ flex: 1, textAlign: 'left', fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tenantName(activeTenant)}</span>
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ stroke: 'var(--ink3)', strokeWidth: 1.8 }}><path d="M4 6l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </button>
             {tenantOpen && (
               <div style={{ marginTop: 6, background: 'var(--panel)', border: '1px solid var(--border2)', borderRadius: 9, padding: 5 }}>
                 {tenants.map((t) => (
                   <div key={t.customer_id} onClick={() => switchTenant(t.customer_id)} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 9px', borderRadius: 7, fontSize: 13, cursor: 'pointer', fontWeight: t.is_active ? 600 : 400, background: t.is_active ? 'var(--brand-soft)' : 'transparent', color: t.is_active ? 'var(--brand-ink)' : 'var(--ink2)' }}>
-                    <span style={{ width: 22, height: 22, borderRadius: 6, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: 'var(--ink2)' }}>{tenantName(t).slice(0, 1)}</span>
+                    <span style={{ width: 22, height: 22, borderRadius: 6, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 500, color: 'var(--ink2)' }}>{tenantName(t).slice(0, 1)}</span>
                     <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tenantName(t)}</span>
                   </div>
                 ))}
                 <div style={{ borderTop: '1px solid var(--border)', margin: '5px 0' }} />
-                <div onClick={addTenant} style={{ padding: '8px 9px', fontSize: 13, color: 'var(--brand)', fontWeight: 600, cursor: 'pointer' }}>+ 고객사 추가</div>
+                <div onClick={addTenant} style={{ padding: '8px 9px', fontSize: 13, color: 'var(--brand)', fontWeight: 500, cursor: 'pointer' }}>+ 고객사 추가</div>
               </div>
             )}
           </div>
@@ -160,7 +160,7 @@ export default function MarketingDashboardShell({ title = '대시보드', planLa
           )) : (
             <div style={{ padding: '8px 11px' }}>
               <p style={{ fontSize: 12, color: 'var(--ink3)', lineHeight: 1.6, margin: 0 }}>로그인하면 메뉴가 표시됩니다.</p>
-              <a href="/ads/login" style={{ display: 'inline-block', marginTop: 8, fontSize: 12.5, fontWeight: 700, color: 'var(--brand-ink)' }}>로그인 / 시작하기 →</a>
+              <a href="/ads/login" style={{ display: 'inline-block', marginTop: 8, fontSize: 12.5, fontWeight: 500, color: 'var(--brand-ink)' }}>로그인 / 시작하기 →</a>
             </div>
           )}
         </nav>
@@ -179,12 +179,12 @@ export default function MarketingDashboardShell({ title = '대시보드', planLa
         <header style={{ height: 60, flexShrink: 0, borderBottom: '1px solid var(--border)', background: 'var(--topbar)', backdropFilter: 'saturate(160%) blur(12px)', WebkitBackdropFilter: 'saturate(160%) blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', position: 'sticky', top: 0, zIndex: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span className="lg:hidden" style={{ color: 'var(--ink)' }}><UrAdsLogo size={22} /></span>
-            <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-.02em' }}>{title}</span>
+            <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-.02em' }}>{title}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             {/* 모바일 고객사 칩(사이드바 셀렉터가 숨겨지므로) */}
             {showNav && activeTenant && (
-              <button type="button" className="lg:hidden uad-tenant" onClick={() => setTenantOpen((v) => !v)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 600, background: 'var(--brand-soft)', color: 'var(--brand-ink)', border: 'none', padding: '5px 10px', borderRadius: 999, cursor: 'pointer', maxWidth: 130, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <button type="button" className="lg:hidden uad-tenant" onClick={() => setTenantOpen((v) => !v)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 500, background: 'var(--brand-soft)', color: 'var(--brand-ink)', border: 'none', padding: '5px 10px', borderRadius: 999, cursor: 'pointer', maxWidth: 130, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {tenantName(activeTenant)} ▾
               </button>
             )}
@@ -199,11 +199,11 @@ export default function MarketingDashboardShell({ title = '대시보드', planLa
                 {acctOpen && (
                   <div style={{ position: 'absolute', right: 0, top: 40, minWidth: 180, background: 'var(--panel)', border: '1px solid var(--border2)', borderRadius: 10, padding: 6, boxShadow: '0 14px 40px -12px rgba(0,0,0,.4)', zIndex: 40 }}>
                     <div style={{ padding: '8px 10px 9px', borderBottom: '1px solid var(--border)' }}>
-                      <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{company}</div>
+                      <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{company}</div>
                       <div className="mono" style={{ fontSize: 10, letterSpacing: '.08em', color: 'var(--ink3)', marginTop: 2 }}>UR ADS ACCOUNT</div>
                     </div>
                     <Link to="/ads/account" onClick={() => setAcctOpen(false)} style={{ display: 'block', padding: '9px 10px', fontSize: 13, color: 'var(--ink2)', borderRadius: 7 }}>계정 설정</Link>
-                    <button type="button" onClick={logout} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 10px', fontSize: 13, color: '#EF4444', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', borderRadius: 7 }}>로그아웃</button>
+                    <button type="button" onClick={logout} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 10px', fontSize: 13, color: '#EF4444', fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer', borderRadius: 7 }}>로그아웃</button>
                   </div>
                 )}
               </div>
@@ -216,7 +216,7 @@ export default function MarketingDashboardShell({ title = '대시보드', planLa
           <nav className="lg:hidden" style={{ position: 'sticky', top: 60, zIndex: 18, background: 'var(--topbar)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', borderBottom: '1px solid var(--border)', display: 'flex', gap: 6, overflowX: 'auto', padding: '8px 12px', whiteSpace: 'nowrap' }}>
             {DASH_TABS.map((n) => (
               <button key={n.id} type="button" onClick={() => go(n.id)}
-                style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 999, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', border: '1px solid', borderColor: active === n.id ? 'transparent' : 'var(--border2)', background: active === n.id ? 'var(--brand-soft)' : 'var(--surface)', color: active === n.id ? 'var(--brand-ink)' : 'var(--ink2)' }}>
+                style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 999, fontSize: 12.5, fontWeight: 500, cursor: 'pointer', border: '1px solid', borderColor: active === n.id ? 'transparent' : 'var(--border2)', background: active === n.id ? 'var(--brand-soft)' : 'var(--surface)', color: active === n.id ? 'var(--brand-ink)' : 'var(--ink2)' }}>
                 {n.label}
               </button>
             ))}
@@ -228,11 +228,11 @@ export default function MarketingDashboardShell({ title = '대시보드', planLa
           <div className="lg:hidden uad-tenant" style={{ position: 'sticky', top: 60, zIndex: 19, background: 'var(--panel)', borderBottom: '1px solid var(--border)', padding: 8 }}>
             {tenants.map((t) => (
               <div key={t.customer_id} onClick={() => switchTenant(t.customer_id)} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '10px 11px', borderRadius: 8, fontSize: 14, cursor: 'pointer', fontWeight: t.is_active ? 600 : 400, background: t.is_active ? 'var(--brand-soft)' : 'transparent', color: t.is_active ? 'var(--brand-ink)' : 'var(--ink2)' }}>
-                <span style={{ width: 24, height: 24, borderRadius: 6, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: 'var(--ink2)' }}>{tenantName(t).slice(0, 1)}</span>
+                <span style={{ width: 24, height: 24, borderRadius: 6, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 500, color: 'var(--ink2)' }}>{tenantName(t).slice(0, 1)}</span>
                 {tenantName(t)}
               </div>
             ))}
-            <div onClick={addTenant} style={{ padding: '10px 11px', fontSize: 14, color: 'var(--brand)', fontWeight: 600, cursor: 'pointer' }}>+ 고객사 추가</div>
+            <div onClick={addTenant} style={{ padding: '10px 11px', fontSize: 14, color: 'var(--brand)', fontWeight: 500, cursor: 'pointer' }}>+ 고객사 추가</div>
           </div>
         )}
         <main style={{ flex: 1, minWidth: 0, padding: '20px clamp(14px,3vw,28px) 60px' }}>

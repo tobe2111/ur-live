@@ -39,7 +39,7 @@ export default function SelectedDetailCard({ selected, userLoc, liveSellerIds, f
           <p className="font-bold text-gray-900 dark:text-white text-[15px] flex items-center gap-2">
             <span className="truncate">{selected.restaurant_name}</span>
             {selected.seller_id && liveSellerIds.has(selected.seller_id) && (
-              <span className="inline-flex items-center gap-1 bg-red-500 text-white text-[12px] font-bold px-2 py-1 rounded-md shrink-0">
+              <span className="inline-flex items-center gap-1 bg-red-500 text-white text-[12px] font-medium px-2 py-1 rounded-md shrink-0">
                 <Radio className="w-2.5 h-2.5 animate-pulse" /> LIVE
               </span>
             )}
@@ -49,16 +49,16 @@ export default function SelectedDetailCard({ selected, userLoc, liveSellerIds, f
             {selected.restaurant_address}
             {userLoc && selected.restaurant_lat && selected.restaurant_lng && (() => {
               const l = nearKmLabel(distanceKm(userLoc.lat, userLoc.lng, selected.restaurant_lat, selected.restaurant_lng))
-              return l && <span className="ml-1 font-semibold text-brand dark:text-[#4D8DF5]">· {l}</span>
+              return l && <span className="ml-1 font-medium text-brand dark:text-[#4D8DF5]">· {l}</span>
             })()}
           </p>
           <div className="flex items-center gap-2 mt-2">
-            <span className="text-[17px] font-extrabold text-gray-900 dark:text-white">{selected.price?.toLocaleString()}원</span>
+            <span className="text-[17px] font-bold text-gray-900 dark:text-white">{selected.price?.toLocaleString()}원</span>
             {selected.original_price > selected.price && (
               <>
                 <span className="text-[12px] text-gray-400 dark:text-gray-500 line-through">{formatNumber(selected.original_price)}원</span>
                 {/* 🎨 2026-07-19 (대표 — 브랜드 컬러 통일): 할인 뱃지 순수 빨강 → 웜 로즈 brand 토큰. */}
-                <span className="text-[12px] bg-brand text-white font-bold px-2 py-1 rounded-md">
+                <span className="text-[12px] bg-brand text-white font-medium px-2 py-1 rounded-md">
                   -{priceDisplay(selected).discount}%
                 </span>
               </>
@@ -86,7 +86,7 @@ export default function SelectedDetailCard({ selected, userLoc, liveSellerIds, f
             href={kakaoDirectionsUrl(selected)}
             target="_blank" rel="noopener noreferrer"
             aria-label={t('map.detail.directionsAria', { defaultValue: '카카오맵 길찾기' })}
-            className="flex items-center justify-center gap-1 px-3 h-10 bg-[#FEE500] text-[#3C1E1E] rounded-xl text-[12px] font-bold"
+            className="flex items-center justify-center gap-1 px-3 h-10 bg-[#FEE500] text-[#3C1E1E] rounded-xl text-[12px] font-medium"
           >
             <Navigation className="w-3.5 h-3.5" /> {t('map.detail.directions', { defaultValue: '길찾기' })}
           </a>

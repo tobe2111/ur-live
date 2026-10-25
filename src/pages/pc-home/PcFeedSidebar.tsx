@@ -14,14 +14,14 @@ import { DISTANCE_CHOICES, PRICE_BANDS, type FeedFilters } from '@/shared/home-f
  * 선택 = 브랜드 블루 면(서비스 공통 — 2026-09-07 "선택됨은 한 색").
  */
 const chip = (on: boolean) =>
-  `px-3 h-8 rounded-full text-[13px] font-semibold transition-colors ${
+  `px-3 h-8 rounded-full text-[13px] font-medium transition-colors ${
     on ? 'bg-brand text-white' : 'bg-transparent text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/[0.06]'
   }`
 
 function Group({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="pt-4 first:pt-0">
-      <p className="mb-2 text-[12px] font-semibold text-gray-500 dark:text-gray-400">{label}</p>
+      <p className="mb-2 text-[12px] font-medium text-gray-500 dark:text-gray-400">{label}</p>
       {children}
     </div>
   )
@@ -85,7 +85,7 @@ export default function PcFeedSidebar({
           })}
         </div>
       </Group>
-      <Link to="/map" className="mt-5 flex items-center justify-center h-11 rounded-xl bg-gray-100 dark:bg-white/[0.06] text-[13px] font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-white/[0.1]">
+      <Link to="/map" className="mt-5 flex items-center justify-center h-11 rounded-xl bg-gray-100 dark:bg-white/[0.06] text-[13px] font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-white/[0.1]">
         지도로 크게 보기 ›
       </Link>
     </aside>

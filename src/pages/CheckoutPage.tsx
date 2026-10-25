@@ -489,7 +489,7 @@ function CartCheckout() {
                   <div className="rounded-xl border border-line bg-gray-50 dark:bg-[#141414] p-3 flex items-start gap-3">
                     <Smartphone className="w-6 h-6 shrink-0 text-gray-400 dark:text-gray-500" strokeWidth={1.6} aria-hidden />
                     <div className="min-w-0 flex-1">
-                      <p className="text-[13px] font-bold text-gray-900 dark:text-white">휴대폰 MMS 즉시 발송</p>
+                      <p className="text-[13px] font-medium text-gray-900 dark:text-white">휴대폰 MMS 즉시 발송</p>
                       <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
                         결제 완료 즉시 가입하신 휴대폰 번호로 교환권이 발송됩니다. 배송지 입력은 필요 없습니다.
                       </p>
@@ -503,7 +503,7 @@ function CartCheckout() {
                   <div className="rounded-xl border border-line bg-gray-50 dark:bg-[#141414] p-3 flex items-start gap-3">
                     <TicketStubIcon className="w-6 h-6 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden />
                     <div className="min-w-0 flex-1">
-                      <p className="text-[13px] font-bold text-gray-900 dark:text-white">매장에서 바로 사용</p>
+                      <p className="text-[13px] font-medium text-gray-900 dark:text-white">매장에서 바로 사용</p>
                       <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
                         결제 후 내 지갑에 이용권이 발급돼요. 매장에서 “현장에서 사용하기”로 쓰면 됩니다. 배송지 입력이 필요 없어요.
                       </p>

@@ -100,7 +100,7 @@ export default function ConditionalDealsSection() {
                 {/* 🚦 2026-09-29: 넷 중 셋(emerald·blue·amber)이 MONO 중화로 같은 회색이었다 —
                     `발효됨`·`매장 검토 중`·`링크 제출 대기` 가 구별 안 됐고 `반려됨` 만 빨강이었다.
                     커미션이 실제로 붙는지가 걸린 상태라 글자를 읽어야만 알 수 있으면 안 된다. */}
-                <span className={`rounded-full px-2 py-1 text-[12px] font-bold ${
+                <span className={`rounded-full px-2 py-1 text-[12px] font-medium ${
                   d.status === 'active'
                     ? 'bg-tone-ok-bg text-tone-ok'
                     : ps === 'submitted'

@@ -25,7 +25,7 @@ export default function UShopQrCard() {
         </Suspense>
       </div>
       <div className="min-w-0">
-        <p className="flex items-center gap-2 text-[12px] font-bold text-gray-900 dark:text-white"><Smartphone className="w-3.5 h-3.5" aria-hidden="true" />폰에서 이어 보기</p>
+        <p className="flex items-center gap-2 text-[12px] font-medium text-gray-900 dark:text-white"><Smartphone className="w-3.5 h-3.5" aria-hidden="true" />폰에서 이어 보기</p>
         <p className="mt-1 text-[12px] leading-snug text-gray-500 dark:text-gray-400">카메라로 스캔하면 이 유어샵을 폰에서 엽니다</p>
       </div>
     </div>

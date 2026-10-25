@@ -160,7 +160,7 @@ export default function DashboardNotificationBell({ tokenKey, iconClassName, but
       >
         <BellIcon className={`w-5 h-5 ${iconClassName || 'text-gray-600'}`} />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[12px] font-bold px-1">
+          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[12px] font-medium px-1">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
@@ -169,7 +169,7 @@ export default function DashboardNotificationBell({ tokenKey, iconClassName, but
       {open && (
         <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden" role="dialog" aria-label={t('notifications.listAria', { defaultValue: '알림 목록' })}>
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-            <span className="text-[15px] font-semibold text-gray-900">알림</span>
+            <span className="text-[15px] font-medium text-gray-900">알림</span>
             {unreadCount > 0 && (
               <button
                 onClick={markAllRead}

@@ -108,7 +108,7 @@ export default function PrivacyPolicyPage() {
             {/* 사업자 정보 */}
             <section>
               <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-4 space-y-1">
-                <p className="text-[13px] font-semibold text-gray-900 dark:text-white mb-2">사업자 정보</p>
+                <p className="text-[13px] font-medium text-gray-900 dark:text-white mb-2">사업자 정보</p>
                 <p className="text-[13px] text-gray-600 dark:text-gray-300">• 상호명: 리스터코퍼레이션</p>
                 <p className="text-[13px] text-gray-600 dark:text-gray-300">• 대표자: 정지원</p>
                 <p className="text-[13px] text-gray-600 dark:text-gray-300">• 사업자등록번호: 479-09-02930</p>
@@ -127,19 +127,19 @@ export default function PrivacyPolicyPage() {
 
                 <div className="mt-3 space-y-3">
                   <div>
-                    <h3 className="text-[13px] font-semibold text-gray-900 dark:text-white mb-1">① 회원 가입 및 관리</h3>
+                    <h3 className="text-[13px] font-medium text-gray-900 dark:text-white mb-1">① 회원 가입 및 관리</h3>
                     <p className="ml-3">회원 가입의사 확인, 회원제 서비스 제공에 따른 본인 식별·인증, 회원자격 유지·관리,
                       서비스 부정이용 방지, 각종 고지·통지 목적으로 개인정보를 처리합니다.</p>
                   </div>
 
                   <div>
-                    <h3 className="text-[13px] font-semibold text-gray-900 dark:text-white mb-1">② 재화 또는 서비스 제공</h3>
+                    <h3 className="text-[13px] font-medium text-gray-900 dark:text-white mb-1">② 재화 또는 서비스 제공</h3>
                     <p className="ml-3">물품배송, 서비스 제공, 계약서·청구서 발송, 콘텐츠 제공, 맞춤서비스 제공,
                       본인인증, 요금결제·정산을 목적으로 개인정보를 처리합니다.</p>
                   </div>
 
                   <div>
-                    <h3 className="text-[13px] font-semibold text-gray-900 dark:text-white mb-1">③ 고충처리</h3>
+                    <h3 className="text-[13px] font-medium text-gray-900 dark:text-white mb-1">③ 고충처리</h3>
                     <p className="ml-3">민원인의 신원 확인, 민원사항 확인, 사실조사를 위한 연락·통지,
                       처리결과 통보 목적으로 개인정보를 처리합니다.</p>
                   </div>
@@ -156,7 +156,7 @@ export default function PrivacyPolicyPage() {
                 <p className="mt-3">② 각각의 개인정보 처리 및 보유 기간은 다음과 같습니다:</p>
 
                 <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-4 mt-2 space-y-2">
-                  <p><span className="font-semibold text-gray-900 dark:text-white">회원 가입 및 관리:</span> 회원 탈퇴 시까지</p>
+                  <p><span className="font-medium text-gray-900 dark:text-white">회원 가입 및 관리:</span> 회원 탈퇴 시까지</p>
                   <p className="text-[12px] text-gray-500 dark:text-gray-400 ml-3">
                     다만, 다음의 사유에 해당하는 경우에는 해당 사유 종료 시까지
                   </p>
@@ -167,7 +167,7 @@ export default function PrivacyPolicyPage() {
                 </div>
 
                 <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-4 mt-2 space-y-2">
-                  <p><span className="font-semibold text-gray-900 dark:text-white">재화 또는 서비스 제공:</span> 재화·서비스 공급완료 및 요금결제·정산 완료 시까지</p>
+                  <p><span className="font-medium text-gray-900 dark:text-white">재화 또는 서비스 제공:</span> 재화·서비스 공급완료 및 요금결제·정산 완료 시까지</p>
                   <p className="text-[12px] text-gray-500 dark:text-gray-400 ml-3">
                     다만, 다음의 사유에 해당하는 경우에는 해당 기간 종료 시까지
                   </p>
@@ -191,19 +191,19 @@ export default function PrivacyPolicyPage() {
 
                 <div className="space-y-2 mt-3">
                   <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-4">
-                    <h3 className="text-[13px] font-semibold text-gray-900 dark:text-white mb-1">① 회원 가입 및 관리</h3>
+                    <h3 className="text-[13px] font-medium text-gray-900 dark:text-white mb-1">① 회원 가입 및 관리</h3>
                     <p>필수항목: 이름, 이메일, 비밀번호, 휴대전화번호</p>
                     <p className="text-gray-500 dark:text-gray-400 mt-1">선택항목: 프로필 사진</p>
                   </div>
 
                   <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-4">
-                    <h3 className="text-[13px] font-semibold text-gray-900 dark:text-white mb-1">② 재화 또는 서비스 제공</h3>
+                    <h3 className="text-[13px] font-medium text-gray-900 dark:text-white mb-1">② 재화 또는 서비스 제공</h3>
                     <p>필수항목: 이름, 휴대전화번호, 배송지 주소, 이메일</p>
                     <p className="text-gray-500 dark:text-gray-400 mt-1">선택항목: 전화번호, 배송 메시지</p>
                   </div>
 
                   <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-4">
-                    <h3 className="text-[13px] font-semibold text-gray-900 dark:text-white mb-1">③ 결제 서비스 제공</h3>
+                    <h3 className="text-[13px] font-medium text-gray-900 dark:text-white mb-1">③ 결제 서비스 제공</h3>
                     <p>신용카드 결제시: 카드사명, 카드번호 등</p>
                     <p>계좌이체시: 은행명, 계좌번호 등</p>
                     <p className="text-gray-500 dark:text-gray-400 mt-1">
@@ -212,7 +212,7 @@ export default function PrivacyPolicyPage() {
                   </div>
 
                   <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-4">
-                    <h3 className="text-[13px] font-semibold text-gray-900 dark:text-white mb-1">④ 자동 수집 항목</h3>
+                    <h3 className="text-[13px] font-medium text-gray-900 dark:text-white mb-1">④ 자동 수집 항목</h3>
                     <p>IP주소, 쿠키, 방문일시, 서비스 이용 기록, 불량 이용 기록</p>
                   </div>
                 </div>
@@ -227,7 +227,7 @@ export default function PrivacyPolicyPage() {
                   개인정보를 제3자에게 제공합니다.</p>
 
                 <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-4 mt-2 space-y-1">
-                  <p><span className="font-semibold text-gray-900 dark:text-white">개인정보를 제공받는 자:</span> 판매자(상품 판매 업체)</p>
+                  <p><span className="font-medium text-gray-900 dark:text-white">개인정보를 제공받는 자:</span> 판매자(상품 판매 업체)</p>
                   <p>제공받는 자의 이용 목적: 상품 배송, 주문 확인</p>
                   <p>제공하는 항목: 구매자 이름, 휴대전화번호, 배송지 주소</p>
                   <p>제공받는 자의 보유·이용기간: 배송 완료 후 3개월</p>
@@ -242,13 +242,13 @@ export default function PrivacyPolicyPage() {
 
                 <div className="space-y-2 mt-2">
                   <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-4">
-                    <p className="font-semibold text-gray-900 dark:text-white">토스페이먼츠</p>
+                    <p className="font-medium text-gray-900 dark:text-white">토스페이먼츠</p>
                     <p>위탁업무: 전자결제 처리</p>
                     <p>위탁기간: 회원 탈퇴 시 또는 위탁계약 종료 시</p>
                   </div>
 
                   <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-4">
-                    <p className="font-semibold text-gray-900 dark:text-white">Cloudflare</p>
+                    <p className="font-medium text-gray-900 dark:text-white">Cloudflare</p>
                     <p>위탁업무: 클라우드 인프라 제공</p>
                     <p>위탁기간: 회원 탈퇴 시 또는 위탁계약 종료 시</p>
                   </div>
@@ -284,13 +284,13 @@ export default function PrivacyPolicyPage() {
                 <p>② 개인정보 파기의 절차 및 방법은 다음과 같습니다:</p>
                 <div className="ml-3 space-y-2 mt-2">
                   <div>
-                    <h3 className="text-[13px] font-semibold text-gray-900 dark:text-white">파기절차</h3>
+                    <h3 className="text-[13px] font-medium text-gray-900 dark:text-white">파기절차</h3>
                     <p>
                       회사는 파기 사유가 발생한 개인정보를 선정하고, 회사의 개인정보 보호책임자의 승인을 받아 개인정보를 파기합니다.
                     </p>
                   </div>
                   <div>
-                    <h3 className="text-[13px] font-semibold text-gray-900 dark:text-white">파기방법</h3>
+                    <h3 className="text-[13px] font-medium text-gray-900 dark:text-white">파기방법</h3>
                     <p>
                       전자적 파일 형태의 정보는 기록을 재생할 수 없는 기술적 방법을 사용합니다.
                     </p>
@@ -319,7 +319,7 @@ export default function PrivacyPolicyPage() {
                   개인정보 처리와 관련한 정보주체의 불만처리 및 피해구제 등을 위하여 아래와 같이 개인정보 보호책임자를 지정하고 있습니다:</p>
 
                 <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-4 mt-2 space-y-1">
-                  <p className="font-semibold text-gray-900 dark:text-white">개인정보 보호책임자</p>
+                  <p className="font-medium text-gray-900 dark:text-white">개인정보 보호책임자</p>
                   <p>담당부서: 운영팀</p>
                   <p>이메일: jiwon@ur-team.com</p>
                 </div>
@@ -337,10 +337,10 @@ export default function PrivacyPolicyPage() {
                   한국인터넷진흥원 개인정보침해신고센터 등에 분쟁해결이나 상담 등을 신청할 수 있습니다.</p>
 
                 <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-4 mt-2 space-y-1">
-                  <p><span className="font-semibold text-gray-900 dark:text-white">개인정보분쟁조정위원회:</span> 1833-6972 (www.kopico.go.kr)</p>
-                  <p><span className="font-semibold text-gray-900 dark:text-white">개인정보침해신고센터:</span> (국번없이) 118 (privacy.kisa.or.kr)</p>
-                  <p><span className="font-semibold text-gray-900 dark:text-white">대검찰청:</span> (국번없이) 1301 (www.spo.go.kr)</p>
-                  <p><span className="font-semibold text-gray-900 dark:text-white">경찰청:</span> (국번없이) 182 (ecrm.cyber.go.kr)</p>
+                  <p><span className="font-medium text-gray-900 dark:text-white">개인정보분쟁조정위원회:</span> 1833-6972 (www.kopico.go.kr)</p>
+                  <p><span className="font-medium text-gray-900 dark:text-white">개인정보침해신고센터:</span> (국번없이) 118 (privacy.kisa.or.kr)</p>
+                  <p><span className="font-medium text-gray-900 dark:text-white">대검찰청:</span> (국번없이) 1301 (www.spo.go.kr)</p>
+                  <p><span className="font-medium text-gray-900 dark:text-white">경찰청:</span> (국번없이) 182 (ecrm.cyber.go.kr)</p>
                 </div>
               </div>
             </section>

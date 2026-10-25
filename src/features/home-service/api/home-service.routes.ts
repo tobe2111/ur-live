@@ -23,7 +23,8 @@ import {
   categoryDef, msgQuoteChosen, photosOwnedBy, requestSummary, validateRequest, type HomeServiceCategory,
 } from '@/shared/home-service'
 import { sendSystemAlimtalk } from '../../../lib/system-alimtalk'
-import { chooseQuoteAtomic, ensureHomeServiceTables, proCountsByCategory, refundAllQuotes, withPrivateDetails } from './home-service-db'
+import { chooseQuoteAtomic, ensureHomeServiceTables, ensureShareToken, proCountsByCategory, refundAllQuotes, withPrivateDetails } from './home-service-db'
+import { isShareToken, publicShareView } from '@/shared/home-service-share'
 import { dispatchRequest } from './home-service-notify'
 
 export const homeServiceRoutes = new Hono<{ Bindings: Env }>()
@@ -76,6 +77,32 @@ homeServiceRoutes.get('/config', async (c) => {
   return c.json({ success: true, data: { open: !stopped, maxQuotes: MAX_QUOTES_PER_REQUEST, categories: HOME_SERVICE_CATEGORIES, proCounts } })
 })
 
+/**
+ * 🔗 공유 페이지 — 로그인 없이 누구나(업체 영입용). 🔒 공개 칸만(`publicShareView`): 이름 첫 글자 · 동 단위 지역 ·
+ * 고르는 칸. 메모·사진·연락처·상세 주소는 SQL 에서부터 안 꺼낸다. 번호(id)도 안 내보낸다(요청 수가 드러난다).
+ */
+homeServiceRoutes.get('/share/:token', async (c) => {
+  try {
+    const token = c.req.param('token')
+    if (!isShareToken(token)) return c.json({ success: false, error: '요청을 찾을 수 없습니다' }, 404)
+    const DB = c.env.DB
+    await ensureHomeServiceTables(DB)
+    const r = await DB.prepare(
+      `SELECT category, details, status, quote_count, max_quotes, created_at, SUBSTR(contact_name, 1, 1) AS name_initial
+         FROM home_service_requests WHERE share_token = ?`,
+    ).bind(token).first<{ category: string; details: string; status: string; quote_count: number; max_quotes: number; created_at: string; name_initial: string | null }>()
+    let details: Record<string, string> = {}
+    try { details = JSON.parse(String(r?.details || '{}')) } catch { /* */ }
+    const view = r ? publicShareView({ ...r, details }) : null
+    if (!view) return c.json({ success: false, error: '요청을 찾을 수 없습니다' }, 404)
+    c.header('Cache-Control', 'public, max-age=30')
+    c.header('CDN-Cache-Control', 'public, max-age=60')
+    return c.json({ success: true, data: view })
+  } catch (err) {
+    return safeError(c, err, '요청을 불러오지 못했습니다', '[home-service:share]')
+  }
+})
+
 homeServiceRoutes.post('/requests', requireAuth(), rateLimit({ action: 'home_service_request', max: 5, windowSec: 3600 }), async (c) => {
   try {
     const DB = c.env.DB
@@ -119,8 +146,10 @@ homeServiceRoutes.post('/requests', requireAuth(), rateLimit({ action: 'home_ser
       Object.keys(privateDetails).length ? JSON.stringify(privateDetails) : null,
     ).run()
     const id = Number(ins.meta?.last_row_id)
+    // 🔗 공유 토큰은 접수할 때 만든다 — 열린 요청이 검색·커뮤니티 공유에 바로 쓰인다(대표 "노출해줘").
+    const share_token = await ensureShareToken(DB, id).catch(() => null)
     waitUntil(c, dispatchRequest(c.env, DB, id).catch(() => 0))
-    return c.json({ success: true, data: { id } })
+    return c.json({ success: true, data: { id, share_token } })
   } catch (err) {
     return safeError(c, err, '요청을 접수하지 못했습니다', '[home-service:create]')
   }

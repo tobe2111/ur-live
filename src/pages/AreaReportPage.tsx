@@ -129,7 +129,7 @@ export default function AreaReportPage() {
 
             {/* CTA */}
             <div className="mt-8 rounded-2xl border border-gray-100 dark:border-[#1A1A1A] bg-gray-50 dark:bg-[#121212] p-5 text-center">
-              <p className="text-[15px] font-semibold text-gray-900 dark:text-white">경쟁이 이렇게 빠르게 움직입니다 — 우리 가게를 동네에 먼저 노출하세요.</p>
+              <p className="text-[15px] font-medium text-gray-900 dark:text-white">경쟁이 이렇게 빠르게 움직입니다 — 우리 가게를 동네에 먼저 노출하세요.</p>
               <p className="mt-1 text-[12px] text-gray-500 dark:text-gray-400">유어딜 입점은 입점비·고정비 없이, 팔릴 때만 수수료.</p>
               {/* 🚪 2026-08-31: 상권 리포트를 다 본 직후는 전환이 제일 강한 순간이다. 그런데 `/partners`
                   직행이라 **이미 입점한 사장님**도 처음 오는 사람용 소개 페이지로 보내졌다.

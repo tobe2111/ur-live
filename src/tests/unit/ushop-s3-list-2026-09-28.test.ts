@@ -179,7 +179,7 @@ describe('⑤-4 한 톤 — 판 대신 실선이 나눈다', () => {
 
   it('줄 사이는 실선으로 나눈다 (판·여백이 아니라)', () => {
     expect(page, '`space-y-2`(판 사이 여백) 복귀').not.toMatch(/px-4 pb-4 space-y-2/)
-    expect(page).toMatch(/px-4 pb-4 divide-y divide-rule/)
+    expect(page).toMatch(/px-5 pb-4 divide-y divide-rule/)  // 2026-10-25 D안 — 옆 여백 20px
   })
 
   it('PinRow 가 판 없는 표면을 쓴다 — 기본값은 안 건드린다', () => {

@@ -85,18 +85,19 @@ describe('유어샵 서버 첫 화면 — 워커 HTML ↔ 진짜 컴포넌트', 
       code('src/pages/curator-page/PinRow.tsx'),
       code('src/components/deal/DealRow.tsx'),
       code('src/pages/curator-page/PinCategoryChips.tsx'),
+      code('src/shared/ushop-row.ts'), // 2026-10-25 D안 — 줄·탭 값의 SSOT(부품과 워커가 같이 쓴다)
     ].join('\n')
     const missing: string[] = []
     for (const [k, v] of Object.entries(CURATOR_FS_CLASS)) {
       // `row` 는 DealRow 가 조립한다(skin 삽입) — 조각으로 확인
       if (k === 'row') {
-        for (const part of ['w-full flex items-center gap-3 text-left', 'px-1 py-3', 'active:opacity-60 transition-opacity']) {
+        for (const part of ['w-full flex items-center', "'gap-4'", 'text-left', 'px-0 py-5', 'active:opacity-60 transition-opacity']) {
           if (!sources.includes(part)) missing.push(`${k}:${part}`)
         }
         continue
       }
       if (k === 'rowThumb') {
-        for (const part of ['w-[76px] h-[76px]', 'shrink-0 overflow-hidden rounded-xl bg-gray-100 dark:bg-[#222225]']) {
+        for (const part of ['w-[88px] h-[88px]', 'shrink-0 overflow-hidden rounded-xl bg-gray-100 dark:bg-[#222225]']) {
           if (!sources.includes(part)) missing.push(`${k}:${part}`)
         }
         continue
@@ -178,14 +179,14 @@ describe('유어샵 서버 첫 화면 — 워커 HTML ↔ 진짜 컴포넌트', 
     const rows = Array.from(doc.querySelectorAll('.ur-ushop-rows > a'))
     const order = curatorHomePins(pins as never[]).map((p: { product_id: number }) => p.product_id)
     expect(rows.map((a) => a.getAttribute('href'))).toEqual(order.map((id) => `/u/jiwon1228/p/${id}`))
-    // 배지는 1,2,3 (화면 순서가 아니라 그 순서의 인덱스)
-    expect(rows.map((a) => a.querySelector('span')!.textContent)).toEqual(['1', '2', '3'])
+    // 배지는 1,2,3 (화면 순서가 아니라 그 순서의 인덱스) — 2026-10-25 D안부터 가게 줄 앞("1 · 가게")
+    expect(rows.map((a) => a.querySelector('p')!.textContent!.split(' · ')[0])).toEqual(['1', '2', '3'])
   })
 
   it('③-1 줄은 최대 CURATOR_FS_ROWS 개만 그린다', () => {
     const pins = Array.from({ length: 9 }, (_, i) => PIN({ id: i + 1, product_id: 500 + i }))
     const html = buildCuratorFirstScreen(SEED({ pins }), LOADER)
-    const n = (html.match(/class="w-full flex items-center gap-3 text-left/g) || []).length
+    const n = (html.match(/class="w-full flex items-center gap-4 text-left/g) || []).length
     expect(n).toBe(CURATOR_FS_ROWS)
     expect(CURATOR_FS_ROWS).toBeLessThanOrEqual(6)
   })

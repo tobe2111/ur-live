@@ -40,7 +40,7 @@ function Pill({ active, onClick, children }: { active: boolean; onClick: () => v
   return (
     <button
       onClick={onClick}
-      className={`px-3 py-2 rounded-full text-[13px] font-semibold whitespace-nowrap transition-all ${
+      className={`px-3 py-2 rounded-full text-[13px] font-medium whitespace-nowrap transition-all ${
         active
           ? 'bg-brand text-white'
           : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#242424]'
@@ -52,7 +52,7 @@ function Pill({ active, onClick, children }: { active: boolean; onClick: () => v
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <p className="text-[13px] font-bold text-gray-900 dark:text-white mb-2">{children}</p>
+  return <p className="text-[13px] font-medium text-gray-900 dark:text-white mb-2">{children}</p>
 }
 
 export default function FilterSheet({ region: ir, district: id, sortBy: isort, radiusKm: irad, priceRange: ip, hasUserLoc, countFor, onApply, onClose }: Props) {
@@ -84,10 +84,10 @@ export default function FilterSheet({ region: ir, district: id, sortBy: isort, r
           <div className="w-9 h-1 rounded-full bg-gray-200 dark:bg-[#2C2F35] mx-auto" />
         </div>
         <div className="px-5 pt-3 pb-3 flex items-center justify-between shrink-0">
-          <h3 className="text-[17px] font-extrabold text-gray-900 dark:text-white">{t('map.filter.title', { defaultValue: '필터' })}</h3>
+          <h3 className="text-[17px] font-bold text-gray-900 dark:text-white">{t('map.filter.title', { defaultValue: '필터' })}</h3>
           <button
             onClick={() => { setRegion(''); setDistrict(''); setSort(hasUserLoc ? 'distance' : 'discount'); setRadius(0); setPrice('all') }}
-            className="text-[13px] font-semibold text-gray-400 dark:text-gray-500 active:text-gray-900 dark:active:text-white"
+            className="text-[13px] font-medium text-gray-400 dark:text-gray-500 active:text-gray-900 dark:active:text-white"
           >
             {t('map.filter.reset', { defaultValue: '초기화' })}
           </button>
@@ -102,13 +102,13 @@ export default function FilterSheet({ region: ir, district: id, sortBy: isort, r
               <div className="w-[86px] shrink-0 overflow-y-auto scrollbar-hide bg-gray-50 dark:bg-[#1D1F29] border-r border-gray-100 dark:border-[#2C2F35]">
                 <button
                   onClick={() => { setRegion(''); setDistrict('') }}
-                  className={`w-full text-left px-3 py-2 text-[12px] transition-colors ${!region ? 'bg-white dark:bg-[#11141C] font-bold text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
+                  className={`w-full text-left px-3 py-2 text-[12px] transition-colors ${!region ? 'bg-white dark:bg-[#11141C] font-medium text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
                 >전국</button>
                 {KOREA_REGIONS.map(r => (
                   <button
                     key={r.key}
                     onClick={() => { setRegion(r.key); setDistrict('') }}
-                    className={`w-full text-left px-3 py-2 text-[12px] whitespace-pre-line leading-tight transition-colors ${region === r.key ? 'bg-white dark:bg-[#11141C] font-bold text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
+                    className={`w-full text-left px-3 py-2 text-[12px] whitespace-pre-line leading-tight transition-colors ${region === r.key ? 'bg-white dark:bg-[#11141C] font-medium text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
                   >{r.label}</button>
                 ))}
               </div>
@@ -171,7 +171,7 @@ export default function FilterSheet({ region: ir, district: id, sortBy: isort, r
           <button
             data-testid="filter-apply"
             onClick={() => onApply(region, district, sort, radius, price)}
-            className="w-full py-4 bg-brand text-white text-[15px] font-extrabold rounded-2xl active:scale-[0.98] transition-transform"
+            className="w-full py-4 bg-brand text-white text-[15px] font-bold rounded-2xl active:scale-[0.98] transition-transform"
           >
             {count > 0
               ? t('map.filter.applyCount', { defaultValue: `${count}곳 보기`, count })

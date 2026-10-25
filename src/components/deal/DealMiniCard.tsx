@@ -58,7 +58,7 @@ export default memo(function DealMiniCard({
       <div className="px-2 pt-2 pb-2">
         <p className="text-[12px] leading-tight line-clamp-1 text-gray-600 dark:text-gray-300">{title}</p>
         {price != null && (
-          <p className="mt-1 text-[13px] font-extrabold tracking-tight text-gray-900 dark:text-white">
+          <p className="mt-1 text-[13px] font-medium tracking-tight text-gray-900 dark:text-white">
             {formatNumber(price)}{unit === '딜' ? ' 딜' : '원'}
           </p>
         )}

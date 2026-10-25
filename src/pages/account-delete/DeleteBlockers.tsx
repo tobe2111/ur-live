@@ -31,7 +31,7 @@ function Row({ icon, title, body, action }: { icon: ReactNode; title: string; bo
     <div className="flex items-start gap-3 py-4 border-b border-rule last:border-b-0">
       <span className="w-5 h-5 mt-1 shrink-0 text-tone-bad">{icon}</span>
       <div className="flex-1 min-w-0">
-        <p className="text-[15px] font-semibold text-gray-900 dark:text-white">{title}</p>
+        <p className="text-[15px] font-medium text-gray-900 dark:text-white">{title}</p>
         <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed">{body}</p>
         {action && <div className="mt-2">{action}</div>}
       </div>
@@ -39,7 +39,7 @@ function Row({ icon, title, body, action }: { icon: ReactNode; title: string; bo
   )
 }
 
-const LINK_CLS = 'inline-flex text-[13px] font-semibold text-brand-text'
+const LINK_CLS = 'inline-flex text-[13px] font-medium text-brand-text'
 
 export default function DeleteBlockers({
   blockers,
@@ -61,7 +61,7 @@ export default function DeleteBlockers({
         <div className="flex items-start gap-3">
           <AlertIcon className="w-5 h-5 mt-1 shrink-0 text-tone-bad" />
           <div className="flex-1 min-w-0">
-            <p className="text-[15px] font-semibold text-gray-900 dark:text-white">
+            <p className="text-[15px] font-medium text-gray-900 dark:text-white">
               {t('accountDeleteWarning.blockersFailed', { defaultValue: '탈퇴할 수 있는지 확인하지 못했어요' })}
             </p>
             <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed">
@@ -129,7 +129,7 @@ export default function DeleteBlockers({
 
   return (
     <section className="rounded-2xl bg-surface shadow-lift dark:shadow-none px-5 pt-5 pb-1" data-testid="delete-blockers">
-      <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white">
+      <h3 className="text-[15px] font-medium text-gray-900 dark:text-white">
         {t('accountDeleteWarning.blockersTitle', { defaultValue: '먼저 정리해 주세요' })}
       </h3>
       <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">

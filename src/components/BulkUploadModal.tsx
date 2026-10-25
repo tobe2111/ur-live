@@ -216,7 +216,7 @@ export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: 
       <div className="relative bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90dvh] overflow-y-auto">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-100 dark:border-[#2C2F35] flex items-center justify-between">
-          <h2 className="text-[15px] font-semibold text-gray-900 flex items-center gap-2">
+          <h2 className="text-[15px] font-medium text-gray-900 flex items-center gap-2">
             <Upload className="w-4 h-4" />
             {t('bulkUpload.title', { defaultValue: '상품 대량등록' })}
           </h2>

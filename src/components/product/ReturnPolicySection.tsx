@@ -5,7 +5,7 @@ export function ReturnPolicySection() {
       
       {/* 신청 방법 */}
       <div className="mb-5">
-        <h3 className="text-[12px] font-semibold text-gray-900 dark:text-white mb-2">신청 방법</h3>
+        <h3 className="text-[12px] font-medium text-gray-900 dark:text-white mb-2">신청 방법</h3>
         <p className="text-[12px] text-gray-600 dark:text-gray-300 leading-relaxed">
           상품을 수령하신 날로부터 7일 이내 메신저 및 홈페이지 Q&A게시판 접수
         </p>
@@ -13,7 +13,7 @@ export function ReturnPolicySection() {
 
       {/* 배송 비용 */}
       <div className="mb-5">
-        <h3 className="text-[12px] font-semibold text-gray-900 dark:text-white mb-2">배송 비용</h3>
+        <h3 className="text-[12px] font-medium text-gray-900 dark:text-white mb-2">배송 비용</h3>
         <p className="text-[12px] text-gray-600 dark:text-gray-300 leading-relaxed">
           단순 변심은 왕복 택배비 6,000원
         </p>
@@ -21,7 +21,7 @@ export function ReturnPolicySection() {
 
       {/* 반품 주소 */}
       <div className="mb-5">
-        <h3 className="text-[12px] font-semibold text-gray-900 dark:text-white mb-2">반품 주소</h3>
+        <h3 className="text-[12px] font-medium text-gray-900 dark:text-white mb-2">반품 주소</h3>
         <p className="text-[12px] text-gray-600 dark:text-gray-300 leading-relaxed">
           서울시 강남구 테헤란로 123 커머스 센터 (교환/반품 전용)
         </p>
@@ -29,7 +29,7 @@ export function ReturnPolicySection() {
 
       {/* 유의 사항 */}
       <div>
-        <h3 className="text-[12px] font-semibold text-gray-900 dark:text-white mb-2">유의 사항</h3>
+        <h3 className="text-[12px] font-medium text-gray-900 dark:text-white mb-2">유의 사항</h3>
         <ul className="space-y-2">
           <li className="text-[12px] text-gray-600 dark:text-gray-300 leading-relaxed pl-3 relative before:content-['•'] before:absolute before:left-0">
             상품 하자 외 단순 변심으로 인한 교환/반품의 경우 왕복 배송비(6,000원)는 고객 부담입니다
@@ -51,7 +51,7 @@ export function ReturnPolicySection() {
 
       {/* 제22조 (환불) */}
       <div className="mt-6 pt-6 border-t border-line">
-        <h3 className="text-[12px] font-semibold text-gray-900 dark:text-white mb-2">제22조 (환불)</h3>
+        <h3 className="text-[12px] font-medium text-gray-900 dark:text-white mb-2">제22조 (환불)</h3>
         <div className="space-y-2">
           <p className="text-[12px] text-gray-600 dark:text-gray-300 leading-relaxed">
             ① 회사는 이용자가 구매신청한 상품 등이 품절 등의 사유로 인도 또는 제공을 할 수 없을 때에는 

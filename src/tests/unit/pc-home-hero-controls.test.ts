@@ -92,7 +92,7 @@ describe('PC 홈 히어로 컨트롤 위계 (2026-09-03 대표 확정)', () => {
 
   it('⑥ panel / title tone 은 이번 변경에 안 딸려갔다 (모바일 홈·흰 패널 회귀 방지)', () => {
     // title tone(모바일 홈 상단)의 큰 지역명 트리거가 그대로 있어야 한다.
-    expect(BAR).toContain("text-[24px] font-black tracking-[-0.02em]")
+    expect(BAR).toContain("text-[24px] font-bold tracking-[-0.02em]")
     // panel tone 의 테두리 칩 규약 유지.
     expect(LOCATION_BAR_TONES.panel.pick).toMatch(/rounded-xl border transition-colors border-gray-200/)
     // 라벨 문자열은 소스에 남는다 — aria-label 과 panel tone 이 함께 쓴다.

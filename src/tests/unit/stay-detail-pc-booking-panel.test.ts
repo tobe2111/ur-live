@@ -58,7 +58,8 @@ describe('③ PC 예약 패널(B안) · 트리거 · 라벨', () => {
     expect(page).toMatch(/<StayBookingPanel\b/)
     // 🔁 2026-09-14 (안 B): 하단 바의 '객실 고르기' 목적지로 `id="stay-sec-rooms"` 가 붙었다.
     //   지키는 성질은 그대로 — 모바일 객실 목록이 `lg:hidden` 인가(PC 는 우측 패널이 담당).
-    expect(page).toMatch(/<div id="stay-sec-rooms"[^>]*className="mb-5 lg:hidden"[\s\S]{0,120}?<SectionTitle className="mb-3">객실 선택/)
+    // 🛏️ 2026-10-25 E안: 목록이 `StayRoomPicker` 로 옮겨가고 띠 구분선이 붙었다 — `lg:hidden` 은 그대로.
+    expect(page).toMatch(/<div id="stay-sec-rooms" className="lg:hidden [^"]*"[\s\S]{0,120}?<StayRoomPicker\b/)
   })
   it('패널: 객실 행 + 총액 + 단일 주 행동, 카드 테두리 0', () => {
     expect(panel).toMatch(new RegExp(`rounded-2xl ${CARD_BG} shadow-lift`))

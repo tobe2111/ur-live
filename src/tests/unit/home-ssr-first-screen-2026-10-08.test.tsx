@@ -264,7 +264,7 @@ describe('⑤ 크롬·섹션 머리글 — 페이지 소스에서 파싱해 대�
      */
     const needles =
       key === 'grid' ? [want.split(' gap-')[0]]
-        : key === 'locLabel' ? ['text-[24px] font-black tracking-[-0.02em] text-gray-900 dark:text-white', 'max-w-[220px] truncate']
+        : key === 'locLabel' ? ['text-[24px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white', 'max-w-[220px] truncate']
           : [want]
     for (const n of needles) {
       expect(src(), `${key} 가 갈렸다(${n}) — 마운트 때 그 자리가 튄다`).toContain(n)

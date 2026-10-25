@@ -124,7 +124,7 @@ export default function DealsAndCodesSection({ ownerFunded }: { ownerFunded: boo
                       {d.ends_at ? ` · ${new Date(d.ends_at).toLocaleDateString('ko-KR')} 까지` : ''}
                     </p>
                   </div>
-                  <span className={`shrink-0 text-[12px] px-2 py-1 rounded font-bold ${
+                  <span className={`shrink-0 text-[12px] px-2 py-1 rounded font-medium ${
                     d.status === 'active' ? 'bg-emerald-100 text-emerald-700' :
                     d.status === 'proposed' ? 'bg-yellow-100 text-yellow-700' :
                     'bg-warm text-gray-500 dark:text-gray-400'}`}>
@@ -134,8 +134,8 @@ export default function DealsAndCodesSection({ ownerFunded }: { ownerFunded: boo
 
                 {canRespond(d) && (
                   <div className="mt-2 flex gap-2">
-                    <button disabled={responding === d.id} onClick={() => respond(d, 'accept')} className="flex-1 inline-flex items-center justify-center gap-1 py-2 rounded-lg bg-brand text-white text-[12px] font-bold disabled:opacity-50"><Check className="w-3.5 h-3.5" /> 수락</button>
-                    <button disabled={responding === d.id} onClick={() => respond(d, 'reject')} className="px-3 py-2 rounded-lg border border-line text-[12px] font-bold text-gray-600 dark:text-gray-300 disabled:opacity-50"><X className="w-3.5 h-3.5" /></button>
+                    <button disabled={responding === d.id} onClick={() => respond(d, 'accept')} className="flex-1 inline-flex items-center justify-center gap-1 py-2 rounded-lg bg-brand text-white text-[12px] font-medium disabled:opacity-50"><Check className="w-3.5 h-3.5" /> 수락</button>
+                    <button disabled={responding === d.id} onClick={() => respond(d, 'reject')} className="px-3 py-2 rounded-lg border border-line text-[12px] font-medium text-gray-600 dark:text-gray-300 disabled:opacity-50"><X className="w-3.5 h-3.5" /></button>
                   </div>
                 )}
 
@@ -148,8 +148,8 @@ export default function DealsAndCodesSection({ ownerFunded }: { ownerFunded: boo
                     </div>
                     <div className="mt-2 flex items-center gap-2">
                       <p className="flex-1 min-w-0 truncate text-[12px] tabular-nums text-gray-600 dark:text-gray-300">{d.store_link.replace('https://', '')}</p>
-                      <button onClick={() => copy(d.product_link || d.store_link)} className="inline-flex items-center gap-1 px-2 py-2 rounded-lg border border-line text-[12px] font-bold text-gray-700 dark:text-gray-200"><Copy className="w-3 h-3" /> 복사</button>
-                      <button onClick={() => share(d)} className="inline-flex items-center gap-1 px-2 py-2 rounded-lg bg-brand text-white text-[12px] font-bold"><Share2 className="w-3 h-3" /> 공유</button>
+                      <button onClick={() => copy(d.product_link || d.store_link)} className="inline-flex items-center gap-1 px-2 py-2 rounded-lg border border-line text-[12px] font-medium text-gray-700 dark:text-gray-200"><Copy className="w-3 h-3" /> 복사</button>
+                      <button onClick={() => share(d)} className="inline-flex items-center gap-1 px-2 py-2 rounded-lg bg-brand text-white text-[12px] font-medium"><Share2 className="w-3 h-3" /> 공유</button>
                     </div>
                   </>
                 )}
@@ -188,7 +188,7 @@ export default function DealsAndCodesSection({ ownerFunded }: { ownerFunded: boo
                     <p className="text-[15px] font-medium text-gray-900 dark:text-white truncate">{s.name}</p>
                     <p className="text-[12px] text-gray-500 dark:text-gray-400">누적 commission {won(s.total_commission)}</p>
                   </div>
-                  <span className={`text-[12px] px-2 py-1 rounded font-bold ${remaining > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-warm text-gray-500 dark:text-gray-400'}`}>
+                  <span className={`text-[12px] px-2 py-1 rounded font-medium ${remaining > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-warm text-gray-500 dark:text-gray-400'}`}>
                     {remaining > 0 ? `보너스 ${remaining}개월 남음` : '보너스 종료'}
                   </span>
                 </li>

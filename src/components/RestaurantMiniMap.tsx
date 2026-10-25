@@ -189,7 +189,7 @@ export default function RestaurantMiniMap({ name, address, lat, lng, placeUrl, h
             href={kakaoMapUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="shrink-0 inline-flex items-center gap-1 text-[12px] font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+            className="shrink-0 inline-flex items-center gap-1 text-[12px] font-medium text-blue-600 dark:text-blue-400 hover:underline"
           >
             카카오맵 <ExternalLink className="w-3 h-3" />
           </a>

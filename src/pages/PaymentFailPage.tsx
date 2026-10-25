@@ -108,14 +108,14 @@ export default function PaymentFailPage() {
           <div className="space-y-4 mb-8">
             {!isUserCancel && (
               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-xl p-4">
-                <h3 className="text-[15px] font-semibold text-red-900 dark:text-red-300 mb-2">{t('paymentFail.errorLabel')}</h3>
+                <h3 className="text-[15px] font-medium text-red-900 dark:text-red-300 mb-2">{t('paymentFail.errorLabel')}</h3>
                 <p className="text-[15px] text-red-800 dark:text-red-400">{getErrorMessage()}</p>
               </div>
             )}
 
             {/* 해결 방법 — 취소도 노출 (재시도 안내) */}
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/40 rounded-xl p-4">
-              <h3 className="text-[15px] font-semibold text-blue-900 dark:text-blue-300 mb-2">
+              <h3 className="text-[15px] font-medium text-blue-900 dark:text-blue-300 mb-2">
                 {isUserCancel ? '다음 단계' : t('paymentFail.solutionLabel')}
               </h3>
               <p className="text-[15px] text-blue-800 dark:text-blue-400">{getSolution()}</p>
@@ -126,7 +126,7 @@ export default function PaymentFailPage() {
               <div className="bg-[#f5f5f7] dark:bg-[#1D1F29] rounded-xl p-4">
                 <div className="flex justify-between items-center">
                   <span className="text-[15px] text-[#6e6e73] dark:text-gray-400">{t('paymentFail.orderNumberLabel')}</span>
-                  <span className="text-[15px] font-semibold text-[#1d1d1f] dark:text-white tabular-nums">
+                  <span className="text-[15px] font-medium text-[#1d1d1f] dark:text-white tabular-nums">
                     {orderId}
                   </span>
                 </div>
@@ -157,7 +157,7 @@ export default function PaymentFailPage() {
             <p className="text-[12px] text-[#86868b] dark:text-gray-500 mb-2">
               {t('paymentFail.helpHeader')}
             </p>
-            <p className="text-[15px] font-semibold text-[#1d1d1f] dark:text-white mb-1">
+            <p className="text-[15px] font-medium text-[#1d1d1f] dark:text-white mb-1">
               {t('paymentFail.csTitle')}: {t('paymentFail.csChannel', { defaultValue: '카카오톡 채널 문의' })}
             </p>
             <p className="text-[12px] text-[#86868b] dark:text-gray-500">

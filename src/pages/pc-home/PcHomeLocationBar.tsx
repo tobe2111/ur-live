@@ -76,10 +76,10 @@ export const LOCATION_BAR_TONES: Record<LocationBarTone, ToneStyle> = {
     row: 'flex flex-col gap-2',
     pick: `flex w-full items-center gap-2 pl-3 pr-2 py-2 rounded-xl border transition-colors ${CHIP}`,
     pin: 'w-[18px] h-[18px] shrink-0 text-gray-900 dark:text-white',
-    label: 'text-[15px] font-extrabold text-gray-900 dark:text-white flex-1 min-w-0 text-left max-w-[220px] truncate',
+    label: 'text-[15px] font-bold text-gray-900 dark:text-white flex-1 min-w-0 text-left max-w-[220px] truncate',
     chevron: 'w-4 h-4 text-gray-400 shrink-0',
     divider: false,
-    locate: `flex w-full items-center justify-center gap-2 px-3 py-2 rounded-xl border text-[13px] font-bold whitespace-nowrap transition-colors disabled:opacity-60 ${CHIP} text-gray-700 dark:text-gray-200`,
+    locate: `flex w-full items-center justify-center gap-2 px-3 py-2 rounded-xl border text-[13px] font-medium whitespace-nowrap transition-colors disabled:opacity-60 ${CHIP} text-gray-700 dark:text-gray-200`,
     locateText: true,
   },
   // 🎫 2026-09-03 (대표 확정 — 히어로 컨트롤 안 1 + 위치 칩 3안 "흰 면 · 한 단계 작게"):
@@ -89,7 +89,7 @@ export const LOCATION_BAR_TONES: Record<LocationBarTone, ToneStyle> = {
     row: 'inline-flex items-stretch h-8 rounded-full overflow-hidden bg-white text-[#16181C]', // light-fixed: 잉크 히어로 위
     pick: 'inline-flex items-center gap-2 pl-4 pr-2 hover:bg-gray-50 transition-colors', // light-fixed: 흰 알약 안
     pin: 'w-[14px] h-[14px] shrink-0 text-[#16181C]', // light-fixed: 흰 알약 안
-    label: 'text-[12px] font-extrabold text-[#16181C] max-w-[220px] truncate', // light-fixed: 흰 알약 안
+    label: 'text-[12px] font-medium text-[#16181C] max-w-[220px] truncate', // light-fixed: 흰 알약 안
     chevron: 'w-[13px] h-[13px] text-[#4B4F58] shrink-0', // light-fixed: 흰 알약 안
     divider: true,
     locate: 'inline-flex items-center px-2 text-[#4B4F58] hover:bg-gray-50 hover:text-[#16181C] transition-colors disabled:opacity-60', // light-fixed: 흰 알약 안
@@ -102,7 +102,7 @@ export const LOCATION_BAR_TONES: Record<LocationBarTone, ToneStyle> = {
     row: 'flex items-center gap-2',
     pick: 'inline-flex items-center gap-1 -ml-0.5 max-w-full',
     pin: null,
-    label: 'text-[24px] font-black tracking-[-0.02em] text-gray-900 dark:text-white max-w-[220px] truncate',
+    label: 'text-[24px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white max-w-[220px] truncate',
     chevron: 'w-5 h-5 text-gray-400 dark:text-gray-500 shrink-0',
     divider: false,
     locate: 'inline-flex items-center justify-center w-8 h-8 rounded-full text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors disabled:opacity-60',
@@ -249,9 +249,9 @@ export default function PcHomeLocationBar({
           style={isWide ? undefined : { top: panelTop }}
         >
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-[#2C2F35]">
-            <span className="text-[15px] font-extrabold text-gray-900 dark:text-white">지역 선택</span>
+            <span className="text-[15px] font-bold text-gray-900 dark:text-white">지역 선택</span>
             <div className="flex items-center gap-2">
-              <button onClick={() => apply({})} className="text-[12px] font-bold text-gray-500 dark:text-gray-400 hover:underline">전국</button>
+              <button onClick={() => apply({})} className="text-[12px] font-medium text-gray-500 dark:text-gray-400 hover:underline">전국</button>
               <button onClick={() => setOpen(false)} aria-label="닫기" className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"><X className="w-4 h-4" /></button>
             </div>
           </div>
@@ -265,7 +265,7 @@ export default function PcHomeLocationBar({
                   onClick={() => { if (r.districtGroups.length === 0) apply({ regionKey: r.key }); else setActiveSido(r.key) }}
                   className={`w-full text-left px-4 py-2 text-[13px] transition-colors ${
                     activeSido === r.key
-                      ? 'bg-brand text-white font-bold'
+                      ? 'bg-brand text-white font-medium'
                       : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.03]'
                   }`}
                 >
@@ -277,7 +277,7 @@ export default function PcHomeLocationBar({
             <div className="flex-1 overflow-y-auto py-1">
               <button
                 onClick={() => apply({ regionKey: sido?.key })}
-                className="w-full text-left px-4 py-2 text-[13px] font-bold text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-white/[0.03]"
+                className="w-full text-left px-4 py-2 text-[13px] font-medium text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-white/[0.03]"
               >
                 {sido?.label} 전체
               </button>
@@ -287,7 +287,7 @@ export default function PcHomeLocationBar({
                   onClick={() => apply({ regionKey: sido.key, districtKey: dg.key })}
                   className={`w-full text-left px-4 py-2 text-[13px] whitespace-pre-line leading-tight transition-colors ${
                     value.districtKey === dg.key
-                      ? 'bg-brand text-white font-bold'
+                      ? 'bg-brand text-white font-medium'
                       : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.03]'
                   }`}
                 >

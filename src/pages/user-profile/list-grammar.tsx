@@ -78,7 +78,7 @@ export const LIST_PLATE_CLS = 'rounded-2xl bg-surface shadow-lift overflow-hidde
  *
  * ## 오전 처방이 왜 화면에 안 닿았나 (실측)
  * `SellerSection` 의 "내 가게" 는 이 부품을 **안 쓰고 자기 h2 를 손으로 적고 있었다** —
- * 그래서 오전 커밋 뒤에도 그 제목만 `font-extrabold tracking-[-0.03em]` 그대로였다.
+ * 그래서 오전 커밋 뒤에도 그 제목만 `font-bold tracking-[-0.03em]` 그대로였다.
  * 09-28 의 시험이 *"제목을 각자 손으로 적으면 크기가 다시 갈린다"* 고 경고한 그 일이 실제로 났다.
  * ⇒ 값을 `SECTION_TITLE_CLS` **한 곳**에 두고 둘이 그걸 쓴다(시험이 대조한다).
  *
@@ -89,7 +89,7 @@ export const LIST_PLATE_CLS = 'rounded-2xl bg-surface shadow-lift overflow-hidde
  * ⚠️ 크기를 줄인 만큼 **위 여백을 늘린다**(mt-7 → mt-8). 경계를 이제 공백이 만들기 때문이고,
  *    둘은 짝이다 — 한쪽만 하면 목록이 도로 한 덩어리로 읽힌다.
  */
-export const SECTION_TITLE_CLS = 'text-[17px] font-semibold tracking-[-0.01em] text-gray-500 dark:text-white/45'
+export const SECTION_TITLE_CLS = 'text-[17px] font-bold tracking-[-0.01em] text-gray-500 dark:text-white/45'
 
 export function SectionTitle({ children, as: Tag = 'h2', action }: {
   children: React.ReactNode
@@ -107,7 +107,7 @@ export function SectionTitle({ children, as: Tag = 'h2', action }: {
   return (
     <div className="mt-8 mb-1 px-4 flex items-center justify-between gap-3">
       <Tag className={SECTION_TITLE_CLS}>{children}</Tag>
-      <button type="button" onClick={action.onClick} className="shrink-0 inline-flex items-center gap-1 h-9 -my-2 text-[13px] font-semibold text-gray-500 dark:text-gray-400 active:opacity-70">
+      <button type="button" onClick={action.onClick} className="shrink-0 inline-flex items-center gap-1 h-9 -my-2 text-[13px] font-medium text-gray-500 dark:text-gray-400 active:opacity-70">
         {action.label}
         <ChevronRight className="w-4 h-4" aria-hidden="true" />
       </button>
@@ -122,7 +122,7 @@ export function SectionTitle({ children, as: Tag = 'h2', action }: {
  *   그 순간 한 화면에 제목 층이 셋이 된다(24 구역 · 12 그룹 · 15 행).
  */
 export function GroupLabel({ children }: { children: React.ReactNode }) {
-  return <div className="mt-6 mb-2 px-1 text-[12px] font-bold text-gray-400">{children}</div>
+  return <div className="mt-6 mb-2 px-1 text-[12px] font-medium text-gray-400">{children}</div>
 }
 
 /** 판 — 그룹 하나당 하나. 한 판에 여러 그룹을 담지 않는다(그 순간 그룹 라벨이 판 안으로 들어간다). */
@@ -155,7 +155,7 @@ export const ROW_GEOM_CLS = 'w-full flex items-center gap-3 px-4 min-h-[48px] py
 /** 기하 + 구분선. 구분선이 없어야 하는 줄(설정 라벨 + 그 아래 컨트롤)은 `ROW_GEOM_CLS` 를 쓴다. */
 export const ROW_SHELL_CLS = `${ROW_GEOM_CLS} border-b border-rule last:border-b-0`
 /** 행의 라벨 — 누르는 줄과 설정 줄이 같은 글자여야 한 목록으로 읽힌다. */
-export const ROW_LABEL_CLS = 'flex-1 min-w-0 text-[15px] font-semibold text-gray-900 dark:text-white truncate'
+export const ROW_LABEL_CLS = 'flex-1 min-w-0 text-[15px] font-medium text-gray-900 dark:text-white truncate'
 
 const ROW_CLS = `${ROW_SHELL_CLS} active:opacity-70 disabled:opacity-50`
 
@@ -193,7 +193,7 @@ export function ListRow({ icon, label, hint, count, busy, onClick, to, testId }:
       <span className={ROW_LABEL_CLS}>{label}</span>
       {count != null ? (
         <span
-          className={`shrink-0 text-[13px] font-bold tabular-nums ${
+          className={`shrink-0 text-[13px] font-medium tabular-nums ${
             count > 0 ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'
           }`}
         >

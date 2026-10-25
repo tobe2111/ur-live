@@ -133,7 +133,7 @@ export default function GroupBuyConfirmPaymentPage() {
         {state === 'error' && (
           <>
             {/* 🎫 아이콘 없이 제목 한 줄 — 시안의 "없는 것을 지킨다"(빨간 X 원 폐기). */}
-            <p className="text-[24px] font-extrabold tracking-[-0.02em] text-gray-900 dark:text-white">결제를 완료하지 못했어요</p>
+            <p className="text-[24px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white">결제를 완료하지 못했어요</p>
             <p className="text-[15px] text-gray-500 dark:text-gray-400 mt-3 leading-relaxed">{errorMsg}</p>
             <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-3">고객센터에 문의해주세요.<br/>결제 정보: {orderId.slice(0, 20)}</p>
             <button

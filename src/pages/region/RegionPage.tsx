@@ -113,7 +113,7 @@ export default function RegionPage() {
         </nav>
 
         <header className="mb-4">
-          <h1 className="text-[24px] lg:text-[28px] font-black tracking-tight text-gray-900 dark:text-white">
+          <h1 className="text-[24px] lg:text-[28px] font-bold tracking-tight text-gray-900 dark:text-white">
             {label} 이용권·동네딜
           </h1>
           <p className="mt-2 text-[13px] lg:text-[15px] text-gray-500 dark:text-gray-400">
@@ -132,7 +132,7 @@ export default function RegionPage() {
                 key={ch.key}
                 onClick={() => setCategory(ch.key)}
                 aria-pressed={on}
-                className={`shrink-0 px-4 py-2 rounded-full text-[13px] font-bold border transition-colors ${
+                className={`shrink-0 px-4 py-2 rounded-full text-[13px] font-medium border transition-colors ${
                   on
                     ? 'bg-brand text-white border-brand'
                     : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
@@ -144,7 +144,7 @@ export default function RegionPage() {
           })}
           <Link
             to={`/map?q=${encodeURIComponent(label)}`}
-            className="shrink-0 ml-auto inline-flex items-center gap-1 px-4 py-2 rounded-full text-[13px] font-bold border border-line text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors"
+            className="shrink-0 ml-auto inline-flex items-center gap-1 px-4 py-2 rounded-full text-[13px] font-medium border border-line text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors"
           >
             <PinIcon className="w-3.5 h-3.5" aria-hidden />
             지도에서 보기

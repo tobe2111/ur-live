@@ -86,7 +86,7 @@ describe('③ 패널 — 친 글자를 굵게, 없으면 안 그린다', () => {
     const { container } = render(
       <SearchSuggestPanel query="돈가스" suggestions={['홍대돈까스', '돈가스 맛집']} onPick={() => {}} />,
     )
-    const strong = [...container.querySelectorAll('.font-extrabold')].map((e) => e.textContent)
+    const strong = [...container.querySelectorAll('.font-bold')].map((e) => e.textContent)
     expect(strong).toContain('돈가스')
   })
 

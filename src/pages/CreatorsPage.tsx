@@ -55,12 +55,12 @@ export default function CreatorsPage() {
         <div className="ur-content-wide mx-auto px-5 lg:px-10 h-14 lg:h-16 flex items-center justify-between">
           <Link to="/" aria-label="유어딜 홈" className="flex items-center gap-2">
             <UrDealLogo size={19} forceDark />
-            <span className="hidden sm:inline text-[12px] font-bold text-white/55">소개하기</span>
+            <span className="hidden sm:inline text-[12px] font-medium text-white/55">소개하기</span>
           </Link>
           <div className="flex items-center gap-2 lg:gap-3">
-            <Link to="/about" className="hidden sm:inline text-[12px] font-semibold text-white/70 px-2">서비스 소개</Link>
+            <Link to="/about" className="hidden sm:inline text-[12px] font-medium text-white/70 px-2">서비스 소개</Link>
             <ApplyLink href={applyHref}
-              className="h-9 lg:h-10 px-4 lg:px-5 rounded-full bg-brand text-white inline-flex items-center gap-2 text-[12px] lg:text-[13px] font-extrabold">
+              className="h-9 lg:h-10 px-4 lg:px-5 rounded-full bg-brand text-white inline-flex items-center gap-2 text-[12px] lg:text-[13px] font-medium">
               소개 파트너 지원 <ArrowRight className="w-3.5 h-3.5" />
             </ApplyLink>
           </div>
@@ -90,7 +90,7 @@ export default function CreatorsPage() {
 
               <div className="mt-10 lg:mt-12 flex flex-col sm:flex-row gap-3 max-w-[32rem]">
                 <ApplyLink href={applyHref}
-                  className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-extrabold active:scale-[0.98] transition-transform">
+                  className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-bold active:scale-[0.98] transition-transform">
                   소개 파트너 지원 <ArrowRight className="w-4 h-4 lg:w-[18px] lg:h-[18px]" />
                 </ApplyLink>
                 <Link to="/about"
@@ -115,7 +115,7 @@ export default function CreatorsPage() {
               수익 구조는 단순합니다
             </h2>
             <div>
-              <p className="flex items-start gap-2 lg:gap-4 text-[17px] lg:text-[34px] font-extrabold text-ink leading-[1.35] tracking-[-0.025em]">
+              <p className="flex items-start gap-2 lg:gap-4 text-[17px] lg:text-[34px] font-bold text-ink leading-[1.35] tracking-[-0.025em]">
                 <Link2 className="w-5 h-5 lg:w-8 lg:h-8 mt-1 lg:mt-2 text-brand shrink-0" strokeWidth={1.9} aria-hidden />
                 <span>매장이 소개 몫을 건 딜이 내 링크로 팔리면 <span className="text-brand-text">판매액의 소개비(promo%)</span> 적립</span>
               </p>
@@ -146,7 +146,7 @@ export default function CreatorsPage() {
                     <i className="flex-1 h-px bg-white/20 not-italic" />
                   </span>
                   <div className="min-w-0">
-                    <p className="text-[15px] lg:text-[28px] font-extrabold tracking-[-0.02em] leading-[1.3]">
+                    <p className="text-[15px] lg:text-[28px] font-bold tracking-[-0.02em] leading-[1.3]">
                       <span className="text-brand-text mr-1 lg:hidden">{i + 1}.</span>{t}
                     </p>
                     <p className="text-[12px] lg:text-[17px] text-white/60 mt-1 lg:mt-5 leading-snug lg:leading-relaxed">{d}</p>
@@ -197,7 +197,7 @@ export default function CreatorsPage() {
             ) : (
               <div className="mt-10 lg:mt-12 flex flex-col sm:flex-row gap-3 justify-center max-w-[32rem] mx-auto">
                 <ApplyLink href={applyHref}
-                  className="sm:flex-1 h-[52px] lg:h-[60px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-extrabold active:scale-[0.98] transition-transform">
+                  className="sm:flex-1 h-[52px] lg:h-[60px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-bold active:scale-[0.98] transition-transform">
                   소개 파트너 지원 <ArrowRight className="w-4 h-4 lg:w-[18px] lg:h-[18px]" />
                 </ApplyLink>
                 <Link to="/partners"
@@ -220,7 +220,7 @@ export default function CreatorsPage() {
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-[#1D1F29]/95 backdrop-blur-md border-t border-rule px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))]">
         <div className="max-w-xl mx-auto">
           <ApplyLink href={applyHref}
-            className="flex h-12 rounded-2xl bg-brand text-white items-center justify-center gap-2 text-[15px] font-extrabold active:scale-[0.98] transition-transform">
+            className="flex h-12 rounded-2xl bg-brand text-white items-center justify-center gap-2 text-[15px] font-bold active:scale-[0.98] transition-transform">
             소개 파트너 지원 <ArrowRight className="w-4 h-4" />
           </ApplyLink>
         </div>

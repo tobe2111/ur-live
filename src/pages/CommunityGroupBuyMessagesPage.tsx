@@ -164,7 +164,7 @@ export default function CommunityGroupBuyMessagesPage() {
           >
             <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
           </button>
-          <h1 className="text-[15px] font-extrabold text-gray-900 dark:text-white truncate max-w-[60%]">
+          <h1 className="text-[15px] font-bold text-gray-900 dark:text-white truncate max-w-[60%]">
             {group.restaurant_name}
           </h1>
           <div className="w-9" />
@@ -184,7 +184,7 @@ export default function CommunityGroupBuyMessagesPage() {
             </p>
             <Link
               to={`/community-group-buy/${code}`}
-              className="mt-4 px-5 py-2 bg-brand text-white text-[13px] font-bold rounded-xl"
+              className="mt-4 px-5 py-2 bg-brand text-white text-[13px] font-medium rounded-xl"
             >
               {t('groupbuyMessages.goJoin', { defaultValue: '공구 보러 가기' })}
             </Link>
@@ -197,7 +197,7 @@ export default function CommunityGroupBuyMessagesPage() {
           messages.map((m) => (
             <div key={m.id} className="bg-surface rounded-2xl p-3 border border-gray-100 dark:border-[#2C2F35]">
               <div className="flex items-center gap-2">
-                <span className="text-[12px] font-bold text-gray-900 dark:text-white">
+                <span className="text-[12px] font-medium text-gray-900 dark:text-white">
                   {m.sender_name || t('groupbuyMessages.anonymous', { defaultValue: '익명' })}
                 </span>
                 <span className="text-[12px] px-2 py-1 rounded-full bg-gray-100 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400">

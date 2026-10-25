@@ -143,7 +143,7 @@ export default function StoreClaimPage() {
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-16">
           {/* 왼쪽(PC) · 위(폰) — 무엇을 등록하는 곳인가 */}
           <div className="lg:pt-4">
-            <h1 className="text-[28px] lg:text-[40px] font-black tracking-[-0.03em] leading-[1.22] text-gray-900">
+            <h1 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] leading-[1.22] text-gray-900">
               매장 이용권<br className="hidden lg:block" /> 판매 등록
             </h1>
             <p className="mt-2 lg:mt-4 text-[15px] lg:text-[17px] leading-relaxed text-gray-600 lg:max-w-[460px]">
@@ -155,7 +155,7 @@ export default function StoreClaimPage() {
                 <li key={title} className="flex gap-3 lg:gap-4 items-start">
                   <Icon size={20} className="mt-1 shrink-0 text-brand" aria-hidden="true" />
                   <div className="min-w-0">
-                    <p className="text-[13px] lg:text-[15px] font-bold text-gray-900">{title}</p>
+                    <p className="text-[13px] lg:text-[15px] font-medium text-gray-900">{title}</p>
                     {/* 폰은 한 줄로 끊는다 — 설명까지 다 펴면 카드가 밀려 첫 화면에서 사라진다. */}
                     <p className="hidden lg:block mt-1 text-[13px] leading-relaxed text-gray-500">{desc}</p>
                   </div>
@@ -166,7 +166,7 @@ export default function StoreClaimPage() {
             <div className="hidden lg:flex mt-9 pt-5 border-t border-rule gap-9 lg:max-w-[460px]">
               {FACTS.map(({ value, label }) => (
                 <div key={label}>
-                  <div className="text-[24px] font-black text-gray-900">{value}</div>
+                  <div className="text-[24px] font-bold text-gray-900">{value}</div>
                   <div className="mt-1 text-[12px] text-gray-500">{label}</div>
                 </div>
               ))}

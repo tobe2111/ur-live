@@ -4,6 +4,7 @@
  *   GET  /api/home-service/pro/me                 내 등록(카테고리·지역)·참여권 잔액·묶음
  *   PUT  /api/home-service/pro/me                 등록/수정 — 처음이면 무료 참여권 3장 + 보관된 요청 보내기
  *   GET  /api/home-service/pro/requests           내 지역·카테고리의 열린 요청 + 내가 보낸 견적
+ *   GET  /api/home-service/pro/share/:token       공유 링크 → 요청 번호(그 카테고리 업체면 지역이 달라도 열린다)
  *   GET  /api/home-service/pro/requests/:id       요청 상세(손님이 나를 고르면 손님 연락처)
  *   POST /api/home-service/pro/requests/:id/quote 참여권 1장으로 견적 보내기(금액 선택 — 대표 확정)
  *   POST /api/home-service/pro/credits/charge     참여권 묶음 카드 충전 시작(토스)
@@ -29,9 +30,10 @@ import {
 import { sendSystemAlimtalk } from '../../../lib/system-alimtalk'
 import { confirmTossPayment, decideTossFlow } from '../../../worker/utils/toss-gateway'
 import {
-  OPEN_REQUESTS_FOR_PRO_SQL, creditAdd, creditBalance, ensureHomeServiceTables, loadCreditCosts, loadPartners, sendHouseQuoteAtomic,
-  sendQuoteAtomic, withPrivateDetails,
+  OPEN_REQUESTS_FOR_PRO_SQL, creditAdd, creditBalance, ensureHomeServiceTables, loadCreditCosts, loadPartners,
+  sendHouseQuoteAtomic, sendQuoteAtomic, withPrivateDetails,
 } from './home-service-db'
+import { isShareToken } from '@/shared/home-service-share'
 import { dispatchBacklogToPro } from './home-service-notify'
 import { homeServiceStopped } from './home-service.routes'
 
@@ -157,7 +159,10 @@ homeServiceProRoutes.get('/requests', requireSeller(), async (c) => {
   }
 })
 
-/** 이 사장님이 이 요청을 볼 수 있는가 — 내 카테고리·지역이거나, 이미 견적을 보냈거나, 그 카테고리 제휴 업체이거나. */
+/**
+ * 이 사장님이 이 요청을 볼 수 있는가 — 내 카테고리·지역이거나, 이미 견적을 보냈거나, 그 카테고리 제휴 업체이거나,
+ * **공유 링크로 들어온 그 카테고리 업체**이거나(2026-10-25 — 커뮤니티 공유로 데려온 업체는 지역이 달라도 낼 수 있다).
+ */
 async function proCanSee(DB: D1Database, sid: number, requestId: number): Promise<boolean> {
   const csv = partnerCategoriesCsv(await loadPartners(DB), sid)
   const r = await DB.prepare(
@@ -166,12 +171,36 @@ async function proCanSee(DB: D1Database, sid: number, requestId: number): Promis
         AND (EXISTS (SELECT 1 FROM home_service_quotes q WHERE q.request_id = r.id AND q.seller_id = ?)
           OR instr(',' || ? || ',', ',' || r.category || ',') > 0
           OR (r.category IN (SELECT category FROM home_service_pro_categories WHERE seller_id = ?)
+              AND EXISTS (SELECT 1 FROM home_service_share_access sa WHERE sa.request_id = r.id AND sa.seller_id = ?))
+          OR (r.category IN (SELECT category FROM home_service_pro_categories WHERE seller_id = ?)
               AND EXISTS (SELECT 1 FROM home_service_pro_areas a WHERE a.seller_id = ?
                     AND ((a.sido = r.sido AND (a.sigungu = '' OR a.sigungu = r.sigungu))
                       OR (r.sido2 IS NOT NULL AND a.sido = r.sido2 AND (a.sigungu = '' OR a.sigungu = r.sigungu2))))))`,
-  ).bind(requestId, sid, csv, sid, sid).first()
+  ).bind(requestId, sid, csv, sid, sid, sid, sid).first()
   return !!r
 }
+
+/**
+ * 🔗 공유 링크 → 요청 번호. 들어온 기록을 남겨 위 `proCanSee` 가 이 업체에게 요청을 열어 준다.
+ * 그 카테고리를 등록하지 않은 업체면 `need_category` — 화면이 업종·지역 설정으로 보낸다(미리 채워서).
+ */
+homeServiceProRoutes.get('/share/:token', requireSeller(), async (c) => {
+  try {
+    const token = c.req.param('token')
+    if (!isShareToken(token)) return c.json({ success: false, error: '요청을 찾을 수 없습니다' }, 404)
+    const DB = c.env.DB
+    await ensureHomeServiceTables(DB)
+    const sid = sellerIdOf(c)
+    const r = await DB.prepare(`SELECT id, category, sido, sigungu FROM home_service_requests WHERE share_token = ?`)
+      .bind(token).first<{ id: number; category: string; sido: string; sigungu: string }>()
+    if (!r) return c.json({ success: false, error: '요청을 찾을 수 없습니다' }, 404)
+    await DB.prepare(`INSERT OR IGNORE INTO home_service_share_access (request_id, seller_id) VALUES (?, ?)`).bind(r.id, sid).run()
+    const canSee = await proCanSee(DB, sid, r.id)
+    return c.json({ success: true, data: { id: r.id, category: r.category, sido: r.sido, sigungu: r.sigungu, need_category: !canSee } })
+  } catch (err) {
+    return safeError(c, err, '요청을 불러오지 못했습니다', '[home-service:pro-share]')
+  }
+})
 
 homeServiceProRoutes.get('/requests/:id', requireSeller(), async (c) => {
   try {

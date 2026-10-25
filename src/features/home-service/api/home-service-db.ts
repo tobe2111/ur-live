@@ -10,6 +10,7 @@
  *  ③ 원장 줄을 **먼저** 넣고(`INSERT OR IGNORE`) 들어갔을 때만 잔액을 움직인다(claim-before-credit).
  */
 
+import { newShareToken } from '../../../shared/home-service-share'
 import { CREDIT_COST_KEY, HOME_PARTNERS_KEY, parseCreditCosts, parsePartners, type HomeServiceCategory } from '../../../shared/home-service'
 
 export const HS_TABLES_SQL = [
@@ -105,7 +106,33 @@ export const HS_TABLES_SQL = [
   `ALTER TABLE home_service_quotes ADD COLUMN partner INTEGER NOT NULL DEFAULT 0`,
   // 🎟️ 이 견적에 쓴 참여권 장수(2026-10-25). 반환은 **쓴 만큼** 돌려준다 — 카테고리 장수가 나중에 바뀌어도.
   `ALTER TABLE home_service_quotes ADD COLUMN credits INTEGER NOT NULL DEFAULT 1`,
+  // 🔗 공유 페이지 토큰(2026-10-25 대표 — 커뮤니티에 요청을 올려 업체를 데려온다). 번호(id)는 추측되므로 따로 둔다.
+  `ALTER TABLE home_service_requests ADD COLUMN share_token TEXT`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_hs_requests_share ON home_service_requests(share_token) WHERE share_token IS NOT NULL`,
+  // 공유 링크로 들어온 업체 — 지역이 달라도 **그 카테고리를 하는 업체면** 이 요청을 보고 견적을 낼 수 있다.
+  `CREATE TABLE IF NOT EXISTS home_service_share_access (
+    request_id INTEGER NOT NULL,
+    seller_id INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (request_id, seller_id)
+  )`,
 ] as const
+
+/**
+ * 요청의 공유 토큰 — 없으면 만든다(옛 요청·운영팀 대리 접수도 링크를 낼 수 있게).
+ * 두 곳이 동시에 만들면 `share_token IS NULL` 조건이 하나만 통과시키고, 둘 다 다시 읽어 같은 값을 쓴다.
+ */
+export async function ensureShareToken(DB: D1Database, requestId: number): Promise<string | null> {
+  const cur = await DB.prepare(`SELECT share_token FROM home_service_requests WHERE id = ?`).bind(requestId)
+    .first<{ share_token: string | null }>()
+  if (!cur) return null
+  if (cur.share_token) return cur.share_token
+  await DB.prepare(`UPDATE home_service_requests SET share_token = ? WHERE id = ? AND share_token IS NULL`)
+    .bind(newShareToken(), requestId).run()
+  const again = await DB.prepare(`SELECT share_token FROM home_service_requests WHERE id = ?`).bind(requestId)
+    .first<{ share_token: string | null }>()
+  return again?.share_token ?? null
+}
 
 /** 카테고리별 참여권 장수(어드민 값). 못 읽으면 빈 표 — 모두 1장. */
 export async function loadCreditCosts(DB: D1Database): Promise<Partial<Record<HomeServiceCategory, number>>> {

@@ -30,6 +30,11 @@ const norm = (p) => p.replace(/\\/g, '/')
  *  이 봉투는 엔트리 판정을 건너뛴다(정말 엔트리가 쓰면 critical-chunks 가 잡는다). */
 const NEVER_ENTRY = new Set(['app-utils-deferred'])
 
+/** 📌 vite 규칙 이름을 그대로 쓰는 작은 공용 모듈(2026-10-25). 첫 화면 청크(app-layout 등)가 이름으로 묶어 둔 부품이
+ *  쓰는데 엔트리 정적 폐쇄 밖이라, lazy 사용자가 하나 생기면 페이지 봉투로 끌려가 **첫 화면 청크가 하나 늘었다**
+ *  (`category-palette` 328B — 생활 견적 카드가 lazy 로 쓰자 `lz-homeL-homePcL` 이 크리티컬 패스에 진입). */
+const PINNED = [/\/src\/shared\/category-palette\./]
+
 /** 🔒 라이브러리 전용 봉투 — 앱 코드 몇 줄을 **일부러** 라이브러리 옆에 둔 봉투다(`vite.config.ts` 의 `/src/` 규칙).
  *  묶음기가 그 앱 코드를 페이지 봉투로 빼면, 그 봉투가 라이브러리를 **정적으로** 끌고 와 모든 페이지가 받는다
  *  (2026-10-13 실측: `src/lib/sentry-sdk` 가 lz-common 으로 가서 sentry 가 전 화면 미리받기에 들어갔다).
@@ -49,7 +54,7 @@ export const LIBRARY_ENVELOPES = new Set(['sentry', 'capacitor', 'tosspayments',
  *  알림 시트는 `lazy()` 인데 거의 모든 화면이 그 훅(`useNotificationSheet`)을 갖고 있어 묶음기가 `lz-common` 에 넣었다.
  *  `lz-common` 은 대부분의 첫 화면이 받으므로 **lazy 경계가 무의미**해지고, 시트가 끌고 오는 패널·아이콘 봉투까지
  *  폰 첫 화면에 실렸다(실측). 이름을 지키면 벨을 누를 때만 받는다. */
-export const LAZY_ENVELOPES = new Set(['app-notification-panel', 'app-owner-sheet'])
+export const LAZY_ENVELOPES = new Set(['app-notification-panel', 'app-owner-sheet', 'app-life-banner'])
 
 /** 🖥️ 엔트리가 **동적으로** 부르지만 첫 렌더 전에 기다려 받는 모듈 — 엔트리 폐쇄로 센다(2026-10-18).
  *  PC 상단 네비는 폰 첫 방문에서 빼려고 동적 import 로 바꿨다(`ConsumerTopChrome`). 그 모듈 자신은 vite 규칙의 이름
@@ -179,6 +184,7 @@ export function createSurfaceChunker({ routes, root, commonMin = 4, minGroupByte
     //   ⇒ 그런 의존은 Rollup 이 쓰는 쪽 라이브러리 곁에 두게 맡긴다. 순환은 check-chunk-cycles 가 잡는다.
     if (name === undefined && !norm(id).includes('/src/') && libraryOnly(id, meta)) return name
     if (!NEVER_ENTRY.has(name) && inEntry(id, meta)) return name
+    if (PINNED.some((re) => re.test(norm(id)))) return name
     return surfaceName(id, meta) ?? name
   }
 }

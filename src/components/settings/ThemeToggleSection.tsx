@@ -88,7 +88,7 @@ export default function ThemeToggleSection({ variant, className }: Props) {
                 role="radio"
                 aria-checked={active}
                 onClick={() => setMode(o.key)}
-                className={`flex items-center justify-center gap-2 py-2 rounded-xl text-[13px] font-semibold transition-colors ${active ? activeClass : baseInactive}`}
+                className={`flex items-center justify-center gap-2 py-2 rounded-xl text-[13px] font-medium transition-colors ${active ? activeClass : baseInactive}`}
               >
                 {o.icon}
                 <span>{o.label}</span>

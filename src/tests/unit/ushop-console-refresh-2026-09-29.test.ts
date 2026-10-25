@@ -66,8 +66,9 @@ describe('① 줄 카드가 할인율 SSOT 를 거친다', () => {
 
 describe('② 순번은 사진 밖에, 그러나 지우지 않는다', () => {
   it('🔴 PinRow 가 leading 슬롯을 쓰고 order 를 그린다', () => {
-    expect(pin, 'leading 슬롯 사용').toMatch(/leading=\{/)
-    expect(pin, '순번이 남아 있다 — SNS 에서 부르는 주소다').toContain('{order}')
+    // 🛍️ 2026-10-25 D안: leading 칸 → 가게 줄 앞("1 · 가게"). 불변식(사진 밖 · 지우지 않는다)은 그대로.
+    expect(pin, '순번이 가게 줄에 있다').toMatch(/eyebrow=\{[^}]*\$\{order\}/)
+    expect(pin, '사진 쪽 leading 칸에 다시 세우지 않는다').not.toMatch(/leading=\{/)
   })
 
   it('🔴 순번이 사진 위 절대배치가 아니다', () => {
@@ -78,6 +79,8 @@ describe('② 순번은 사진 밖에, 그러나 지우지 않는다', () => {
   it('썸네일을 키웠다 (76px)', () => {
     expect(pin).toMatch(/thumbSize="lg"/)
     expect(row, "'lg' 치수가 실제로 정의돼 있다").toContain('w-[76px] h-[76px]')
+    // 🛍️ 2026-10-25 D안: 유어샵(plain)은 88px — 공용 상수.
+    expect(read('src/shared/ushop-row.ts')).toContain("PLAIN_THUMB_CLS = 'w-[88px] h-[88px]'")
   })
 })
 

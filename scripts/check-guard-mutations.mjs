@@ -476,8 +476,8 @@ const MUTATIONS = [
   {
     name: '🏷️ 할인율이 다시 브랜드 블루로 (행동 색과 가격 색이 섞인다)',
     file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
-    find: "font-extrabold text-sale\">{discount}%",
-    replace: "font-extrabold text-brand\">{discount}%",
+    find: "font-bold text-sale\">{discount}%",
+    replace: "font-bold text-brand\">{discount}%",
     test: 'src/tests/unit/discount-is-sale-red.test.ts',
     why:
       '블루는 "누르는 것", 할인 빨강은 "가격 이득" 이다. 할인율이 블루로 돌아가면 목록에서 파랑이던 ' +
@@ -518,8 +518,8 @@ const MUTATIONS = [
   {
     name: '🎨 섹션 더보기가 다시 테두리 알약이 된다 (표면 규칙 ① 위반)',
     file: 'src/components/home/HomeSections.tsx',
-    find: '                  className="shrink-0 text-[12px] font-bold text-gray-600 dark:text-gray-300 hover:underline underline-offset-4 whitespace-nowrap"',
-    replace: '                  className="shrink-0 px-3.5 py-1.5 rounded-full border border-gray-200 text-[12.5px] font-bold text-gray-600 whitespace-nowrap"',
+    find: '                  className="shrink-0 text-[13px] text-gray-500 dark:text-gray-400 hover:underline underline-offset-4 whitespace-nowrap"',
+    replace: '                  className="shrink-0 px-3.5 py-1.5 rounded-full border border-gray-200 text-[12.5px] font-medium text-gray-600 whitespace-nowrap"',
     test: 'src/tests/unit/home-selected-is-brand.test.ts',
     why:
       '우리 표면 규칙 첫 줄이 테두리 0 이다. 이게 돌아오면 화면에서 **가장 안 중요한 것이 제일 ' +
@@ -9619,7 +9619,7 @@ canvas {
   {
     name: '딜 카드 격자 — 세로 간격이 다시 가로와 같아진다(카드 경계가 안 읽힌다)',
     file: 'src/shared/deal-card-grid.ts',
-    find: "'gap-x-3 gap-y-6 lg:gap-x-4 lg:gap-y-7'",
+    find: "'gap-x-3 gap-y-8 lg:gap-x-4 lg:gap-y-8'",
     replace: "'gap-x-3 gap-y-3 lg:gap-x-4 lg:gap-y-4'",
     test: 'src/tests/unit/deal-card-grid-gap.test.ts',
     why:
@@ -9688,8 +9688,8 @@ canvas {
   {
     name: 'PC 홈 히어로 — 주 행동이 다시 테두리 고스트 알약이 된다',
     file: 'src/components/home/HomeHeroDefault.tsx',
-    find: 'rounded-full bg-brand text-white text-[13px] font-extrabold hover:bg-[#1557C8]',
-    replace: 'rounded-full border border-white/25 text-white text-[13px] font-extrabold hover:bg-white/10',
+    find: 'rounded-full bg-brand text-white text-[13px] font-medium hover:bg-[#1557C8]',
+    replace: 'rounded-full border border-white/25 text-white text-[13px] font-medium hover:bg-white/10',
     test: 'src/tests/unit/pc-home-hero-controls.test.ts',
     why: '표면 규칙 ② 강조색 하나, 자리 셋 — 히어로에서 그 자리는 주 행동이다. 블루가 빠지면 넷 다 같은 무게로 돌아간다.',
   },

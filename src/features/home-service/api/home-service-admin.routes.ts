@@ -23,7 +23,7 @@ import {
   requestSummary, validateRequest, type HomeServiceCategory,
 } from '@/shared/home-service'
 import { sendSystemAlimtalk } from '../../../lib/system-alimtalk'
-import { chooseQuoteAtomic, ensureHomeServiceTables, loadCreditCosts, loadPartners, refundAllQuotes, sendHouseQuoteAtomic } from './home-service-db'
+import { chooseQuoteAtomic, ensureHomeServiceTables, ensureShareToken, loadCreditCosts, loadPartners, refundAllQuotes, sendHouseQuoteAtomic } from './home-service-db'
 import { dispatchRequest } from './home-service-notify'
 import { notifyChosen } from './home-service.routes'
 
@@ -164,9 +164,13 @@ homeServiceAdminRoutes.get('/requests', async (c) => {
     const DB = c.env.DB
     await ensureHomeServiceTables(DB)
     const { results } = await DB.prepare(
-      `SELECT id, category, summary, desired_date, status, quote_count, max_quotes, source, contact_name, created_at
+      `SELECT id, category, summary, desired_date, status, quote_count, max_quotes, source, contact_name, created_at, share_token
          FROM home_service_requests ORDER BY id DESC LIMIT 100`,
-    ).all()
+    ).all<Record<string, unknown> & { id: number; status: string; share_token: string | null }>()
+    // 🔗 옛 요청은 토큰이 없다 — 열린 것만 이 자리에서 만든다(공유 버튼이 바로 쓴다).
+    for (const r of results ?? []) {
+      if (!r.share_token && r.status === 'open') r.share_token = await ensureShareToken(DB, r.id).catch(() => null)
+    }
     return c.json({
       success: true,
       data: {
@@ -216,8 +220,9 @@ homeServiceAdminRoutes.post('/requests', async (c) => {
       MAX_QUOTES_PER_REQUEST, adminId, consent.slice(0, 200),
     ).run()
     const id = Number(ins.meta?.last_row_id)
+    const share_token = await ensureShareToken(DB, id).catch(() => null)
     const sent = await dispatchRequest(c.env, DB, id).catch(() => 0)
-    return c.json({ success: true, data: { id, dispatched: sent, linked_user: !!u } })
+    return c.json({ success: true, data: { id, dispatched: sent, linked_user: !!u, share_token } })
   } catch (err) {
     return safeError(c, err, '요청을 접수하지 못했습니다', '[home-service:admin-create]')
   }

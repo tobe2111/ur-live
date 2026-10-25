@@ -31,8 +31,11 @@ const DONE = [
   ...execSync("git ls-files 'src/pages/vouchers/*.tsx' 'src/pages/group-buy/*.tsx'", { encoding: 'utf8' }).trim().split('\n').filter(Boolean),
 ]
 
-/** 나머지 소비자 화면의 정본 밖 굵기 — 2026-10-25 실측. 줄였으면 같은 커밋에서 내린다. */
-const REST_BASELINE = 1343
+/**
+ * 나머지 소비자 화면의 정본 밖 굵기 — 2026-10-25 2차로 소비자 전 화면을 이행해 1343 → 0
+ * (Toss 잠금 두 파일은 대표 *"잠금 해제해줄게 해줘"* 로 함께). 이제 0 이 상한이다 — 새 위반은 그대로 빨간불.
+ */
+const REST_BASELINE = 0
 
 const consumer = execSync(
   "git ls-files 'src/pages/*.tsx' 'src/pages/**/*.tsx' 'src/components/*.tsx' 'src/components/**/*.tsx'",
@@ -82,12 +85,7 @@ describe('② 이행을 마친 화면', () => {
     expect(s).toMatch(/title: '[^']*text-\[13px\][^']*text-gray-900/)
     expect(s).toMatch(/price: 'text-\[15px\] font-bold/)
   })
-  it('옵션 카드 — 굵은 제목은 하나(옵션), 옵션 이름은 medium', () => {
-    // 2026-10-25 D안: '이렇게 써요' 는 옵션 카드에서 빠졌다(아래 이용권 정보가 같은 말을 한다).
-    const s = readFileSync('src/pages/group-buy/PassOptionCard.tsx', 'utf8')
-    expect(s).toMatch(/text-\[17px\] font-bold[^>]*>옵션</)
-    expect(s).toMatch(/text-\[15px\] font-medium leading-\[1\.4\]/)
-  })
+  // 🗑️ 2026-10-25 E안: '옵션 선택' 카드(PassOptionCard)를 걷어 그 카드의 굵기 단언도 함께 뺐다(지킬 화면이 없다).
 })
 
 describe('③ 나머지 소비자 화면 — 늘지 않는다', () => {
@@ -97,7 +95,6 @@ describe('③ 나머지 소비자 화면 — 늘지 않는다', () => {
     expect(rest.length).toBeGreaterThan(300)
     let n = 0
     for (const f of rest) n += sourceViolations(readFileSync(f, 'utf8')).length
-    expect(n).toBeGreaterThan(0)
     expect(n).toBeLessThanOrEqual(REST_BASELINE)
   })
 })

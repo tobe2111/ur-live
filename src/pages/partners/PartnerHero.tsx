@@ -44,7 +44,7 @@ export default function PartnerHero() {
 
           <div className="mt-10 lg:mt-12 flex flex-col sm:flex-row gap-3 max-w-[32rem]">
             <Link to="/store/new"
-              className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-extrabold active:scale-[0.98] transition-transform">
+              className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-bold active:scale-[0.98] transition-transform">
               내 가게 등록하기 <ArrowRight className="w-4 h-4 lg:w-[18px] lg:h-[18px]" />
             </Link>
             <a href={F.kakaoChannel} target="_blank" rel="noopener noreferrer"

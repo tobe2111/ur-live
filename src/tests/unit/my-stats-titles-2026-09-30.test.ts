@@ -48,7 +48,7 @@ describe('🔢 마이 숫자 한 줄 — 값이 칸 안에 들어간다', () => 
 
   it('🔴 값이 여전히 24px 주인공이다 (잘림을 크기로 해결하지 않았다)', () => {
     // 규칙 ③ — 잘린다고 숫자를 줄이면 이 줄의 존재 이유가 사라진다.
-    expect(STATS).toMatch(/text-\[24px\] font-extrabold tabular-nums/)
+    expect(STATS).toMatch(/text-\[24px\] font-bold tabular-nums/)
   })
 })
 

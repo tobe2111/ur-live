@@ -17,7 +17,7 @@ import { formatNumber } from '@/utils/format'
 
 interface Field { key: string; label: string; type: string; required: boolean; options?: string[]; unit?: string; placeholder?: string }
 interface Cat { key: string; label: string; fields: Field[] }
-interface Row { id: number; category: string; summary: string; desired_date: string; status: string; quote_count: number; max_quotes: number; source: string; contact_name: string | null; created_at: string }
+interface Row { id: number; category: string; summary: string; desired_date: string; status: string; quote_count: number; max_quotes: number; source: string; contact_name: string | null; created_at: string; share_token?: string | null }
 interface Quote { id: number; price: number | null; message: string; status: string; is_house: number; partner?: number; pro_name: string; pro_phone: string | null }
 interface Detail extends Row { details: Record<string, string>; contact_phone: string; consent_note: string | null; quotes: Quote[]; houseSellerId: number | null }
 
@@ -168,6 +168,13 @@ export default function AdminHomeServicePage() {
                 {openId === r.id && d && d.id === r.id && (
                   <div className="mb-3 rounded-lg bg-gray-50 p-3 space-y-3 text-[13px] text-gray-900">
                     <div>손님 {d.contact_name || '-'} · {d.contact_phone} · 희망일 {d.desired_date}{d.consent_note ? ` · 동의: ${d.consent_note}` : ''}</div>
+                    {r.share_token && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        {/* 🔗 2026-10-25 업체 모집 영업 — 커뮤니티에 붙일 링크(이름·연락처·상세 주소·메모·사진은 가려진다) */}
+                        <a className="text-blue-600 underline" href={`/life/q/${r.share_token}`} target="_blank" rel="noopener noreferrer">공유 페이지 보기</a>
+                        <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/life/q/${r.share_token}`).then(() => toast.success('링크를 복사했습니다'), () => window.prompt('링크를 복사해 주세요', `${window.location.origin}/life/q/${r.share_token}`))}>업체 모집 링크 복사</Button>
+                      </div>
+                    )}
                     <ul className="space-y-2">
                       {d.quotes.map((q) => (
                         <li key={q.id} className="rounded-lg bg-white p-2 flex justify-between gap-2">

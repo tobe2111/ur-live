@@ -60,6 +60,7 @@ import { priceDisplay } from '../../shared/price-display'
 import { formatNumber } from '../../utils/format'
 import { curatorHomePins, curatorSoldTotal } from '../../shared/curator-pin-order'
 import { SHARE_MASCOT_SRC } from '../../shared/ushop-share-card'
+import { PLAIN_CLS, PLAIN_THUMB_CLS, USHOP_TAB_CLS } from '../../shared/ushop-row'
 import { buildCuratorNoscript } from './crawler-noscript'
 
 function escAttr(s: string): string {
@@ -80,44 +81,43 @@ export const CURATOR_FS_CLASS = {
   main: 'ur-ushop-main',
   header: 'bg-surface dark:bg-warm',
   headerInner: 'max-w-3xl mx-auto',
-  brandBar: 'lg:hidden flex items-center px-4 pt-3',
+  brandBar: 'lg:hidden flex items-center px-5 pt-3',
   brandLink: 'active:opacity-70',
-  nameRow: 'flex items-center gap-3 px-4 pt-4',
+  nameRow: 'flex items-center gap-4 px-5 pt-4 lg:flex-wrap lg:gap-y-3',
   avatar: 'w-14 h-14 rounded-full overflow-hidden bg-wash shrink-0',
   avatarPhoto: 'w-full h-full object-cover',
   avatarUdal: 'w-full h-full object-contain',
   nameCol: 'min-w-0 flex-1',
   nameLine: 'flex items-center gap-2 min-w-0',
-  h1: 'text-[24px] font-bold text-gray-900 dark:text-white leading-tight tracking-[-0.03em] line-clamp-2',
+  h1: 'text-[24px] font-bold text-gray-900 dark:text-white leading-tight tracking-[-0.03em] line-clamp-2 break-keep',
   bio: 'mt-1 text-[13px] text-gray-500 dark:text-gray-400 leading-snug line-clamp-2',
-  statsRow: 'mt-2 px-4 flex items-center justify-between gap-2',
+  statsRow: 'mt-4 px-5 flex items-center justify-between gap-2',
   stats: 'min-w-0 truncate text-[13px] text-gray-500 dark:text-gray-400 tabular-nums',
-  statNum: 'font-bold text-gray-900 dark:text-white',
+  statNum: 'font-medium text-gray-900 dark:text-white',
   snsGroup: 'flex items-center gap-1 shrink-0',
   snsHit: 'h-9 inline-flex items-center active:opacity-70',
-  snsPill: 'h-7 px-3 rounded-full bg-wash inline-flex items-center gap-1 text-[12px] font-semibold text-gray-600 dark:text-gray-300',
+  snsPill: 'h-8 px-3 rounded-full bg-wash inline-flex items-center gap-1 text-[13px] font-medium text-gray-600 dark:text-gray-300',
   headerPad: 'h-4',
-  cluster: 'ml-3 flex items-center gap-2 shrink-0',
+  cluster: 'ml-3 flex items-center gap-2 shrink-0 lg:ml-[72px] lg:basis-full',
   iconBtn: 'w-9 h-9 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-wash active:opacity-70 transition-colors',
   manageBtn: 'h-9 px-3 rounded-full bg-brand text-white text-[15px] font-bold inline-flex items-center gap-1 shrink-0 active:opacity-70',
-  searchWrap: 'max-w-3xl mx-auto px-4 pt-3 pb-1',
+  searchWrap: 'max-w-3xl mx-auto px-5 pt-3 pb-1',
   searchBox: 'flex items-center gap-2 h-11 px-4 rounded-xl bg-wash',
-  chipsRow: 'max-w-3xl mx-auto px-4 pt-2 border-b border-rule flex items-center gap-2 empty:hidden',
-  chip: 'shrink-0 inline-flex items-center gap-1 h-9 px-3 -mb-px border-b-2 text-[15px] font-bold whitespace-nowrap active:opacity-60 transition-colors',
+  chipsRow: 'max-w-3xl mx-auto px-5 pt-6 border-b border-rule flex items-center gap-2 empty:hidden',
+  chip: USHOP_TAB_CLS,
   sortSlot: 'ml-auto shrink-0',
   sortBtn: 'h-9 inline-flex items-center',
-  rows: 'max-w-3xl mx-auto px-4 pb-4 divide-y divide-rule lg:divide-y-0 lg:grid lg:gap-2 ur-ushop-rows',
-  row: 'w-full flex items-center gap-3 text-left px-1 py-3 active:opacity-60 transition-opacity',
-  rowLeading: 'w-5 shrink-0 text-center text-[12px] font-bold tabular-nums text-gray-400 dark:text-gray-500',
-  rowThumb: 'relative w-[76px] h-[76px] shrink-0 overflow-hidden rounded-xl bg-gray-100 dark:bg-[#222225]',
+  rows: 'max-w-3xl mx-auto px-5 pb-4 divide-y divide-rule lg:divide-y-0 lg:grid lg:gap-2 ur-ushop-rows',
+  row: `w-full flex items-center gap-4 text-left ${PLAIN_CLS.skin} active:opacity-60 transition-opacity`,
+  rowThumb: `relative ${PLAIN_THUMB_CLS} shrink-0 overflow-hidden rounded-xl bg-gray-100 dark:bg-[#222225]`,
   rowThumbImg: 'w-full h-full object-cover',
   rowBody: 'flex-1 min-w-0',
-  rowEyebrow: 'text-[12px] font-semibold leading-none mb-1 text-gray-400 dark:text-gray-500 truncate',
-  rowTitle: 'text-[15px] leading-snug line-clamp-2 font-bold text-gray-900 dark:text-white',
-  rowPriceLine: 'flex items-baseline gap-1 mt-1',
-  rowDiscount: 'text-[15px] font-extrabold text-sale tracking-tight',
-  rowPrice: 'text-[17px] font-extrabold text-gray-900 dark:text-white tracking-tight',
-  rowUnit: 'text-[12px] font-bold text-gray-900 dark:text-white',
+  rowEyebrow: PLAIN_CLS.eyebrow,
+  rowTitle: PLAIN_CLS.title,
+  rowPriceLine: PLAIN_CLS.priceLine,
+  rowDiscount: 'text-[15px] font-bold text-sale tracking-tight',
+  rowPrice: 'text-[17px] font-bold text-gray-900 dark:text-white tracking-tight',
+  rowUnit: 'text-[12px] font-medium text-gray-900 dark:text-white',
   rowStrike: 'text-[12px] ml-1 leading-none line-through text-gray-400 dark:text-gray-500',
 } as const
 
@@ -196,7 +196,6 @@ function rowHtml(pin: CuratorSeedPin, handle: string, order: number): string {
 
   return (
     `<a href="/u/${escAttr(handle)}/p/${escAttr(String(pin.product_id ?? ''))}" class="${CURATOR_FS_CLASS.row}">` +
-      `<span class="${CURATOR_FS_CLASS.rowLeading}">${order}</span>` +
       `<div class="${CURATOR_FS_CLASS.rowThumb}"${thumbStyle}>` +
         (src
           ? `<img src="${escAttr(src)}" alt="${escAttr(pin.product_name || '')}" width="${CURATOR_THUMB_WIDTH}" height="${CURATOR_THUMB_WIDTH}"` +
@@ -204,7 +203,7 @@ function rowHtml(pin: CuratorSeedPin, handle: string, order: number): string {
           : '') +
       '</div>' +
       `<div class="${CURATOR_FS_CLASS.rowBody}">` +
-        (pin.restaurant_name ? `<p class="${CURATOR_FS_CLASS.rowEyebrow}">${escText(pin.restaurant_name)}</p>` : '') +
+        `<p class="${CURATOR_FS_CLASS.rowEyebrow}">${pin.restaurant_name ? `${order} · ${escText(pin.restaurant_name)}` : order}</p>` +
         `<p class="${CURATOR_FS_CLASS.rowTitle}">${escText(pin.product_name || '')}</p>` +
         priceLine +
       '</div>' +
