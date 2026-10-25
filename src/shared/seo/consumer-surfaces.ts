@@ -21,7 +21,7 @@
  * `resolveConsumerSurfaceSeo` 로 갈아끼우면 된다(문구가 두 벌이 되지 않게 반드시 함께).
  */
 
-import { PARTNER_FACTS } from '../partners-facts'; import { LIFE_HUB_PATH, LIFE_HUB_SEO } from './life-hub-seo'
+import { PARTNER_FACTS } from '../partners-facts'; import { LIFE_HUB_PATH, LIFE_HUB_SEO, LIFE_PRO_PATH, LIFE_PRO_SEO } from './life-hub-seo'
 
 /**
  * 🏠 홈의 **보이지 않는** 제목 요소 — 워커 첫 화면과 `MobileHomePage` 가 같이 쓴다.
@@ -402,7 +402,7 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
     title: '공동구매 약관',
     description: '유어딜 이용권 구매자에게 적용되는 약관입니다. 결제와 발급, 매장에서의 사용, 유효기간과 환불.',
   },
-  [LIFE_HUB_PATH]: LIFE_HUB_SEO, // 🏠 사장님 생활 서비스 허브(업종 페이지는 워커가 `registerDynamicSurfaceSeo` 로 — 2026-10-25)
+  [LIFE_HUB_PATH]: LIFE_HUB_SEO, [LIFE_PRO_PATH]: LIFE_PRO_SEO, // 🏠 사장님 생활 서비스 허브(업종 페이지는 워커가 `registerDynamicSurfaceSeo` 로 — 2026-10-25)
   '/area-report': {
     crumb: '상권 리포트',
     title: '우리 동네 상권 리포트 - 개업·폐업 현황',

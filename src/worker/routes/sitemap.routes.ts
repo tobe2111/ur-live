@@ -146,6 +146,7 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
     // 🏠 2026-10-25 사장님 생활 서비스 — 허브 + 업종 견적 페이지(요청서). 업종 목록은 SSOT 에서 파생.
     { loc: '/life', priority: 0.8, changefreq: 'weekly' },
     ...HOME_SERVICE_CATEGORIES.map((d) => ({ loc: lifeCategoryPath(d.key), priority: 0.6, changefreq: 'monthly' })),
+    { loc: '/life/pro', priority: 0.5, changefreq: 'monthly' },     // 업체 모집 랜딩(로그인 전 화면)
     // 📜 약관·정책 — 유입은 적지만 **신뢰 신호**다(전자상거래 사업자 확인, 검색엔진 품질 평가).
     // 🧾 2026-10-13: 색인 대상(`CONSUMER_SURFACE_SEO` 에 항목 있고 noindex 아님)인데 제출이 빠져
     //   있던 둘. **본문이 있는 것만** 넣는다(실측 Googlebot: `/join` 134자 · `/terms/seller` 229자 —

@@ -24,7 +24,7 @@ Disallow: /my-orders
 Disallow: /my-coupons
 Disallow: /my-vouchers
 Disallow: /life/requests
-Disallow: /life/pro
+Disallow: /life/pro/
 Disallow: /wishlist
 Disallow: /notifications
 Disallow: /embed/

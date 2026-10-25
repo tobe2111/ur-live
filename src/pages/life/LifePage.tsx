@@ -16,6 +16,7 @@ import { HOME_SERVICE_CATEGORIES, type HomeServiceAudience } from '@/shared/home
 import { formatNumber } from '@/utils/format'
 import { LIFE_TILES, LifeTileIcon } from './life-tiles'
 import { LIFE_HUB_SEO } from '@/shared/seo/life-hub-seo'
+import { LIFE_FAQ } from '@/shared/life-faq'
 import { withSiteName } from '@/shared/seo/consumer-surfaces'
 // 밑줄 탭은 교환권 카테고리 탭과 같은 클래스(선택 신호가 화면마다 갈리지 않게).
 import { VOUCHER_CAT_TAB } from '@/shared/voucher-tile'
@@ -113,6 +114,22 @@ export default function LifePage() {
             </ul>
           </section>
         )}
+
+        {/* 자주 묻는 질문 — 크롤러 본문·FAQPage JSON-LD 와 같은 배열(`shared/life-faq.ts`). */}
+        <section className="mx-2 mt-8" aria-labelledby="life-faq">
+          <h2 id="life-faq" className="text-[17px] font-bold">자주 묻는 질문</h2>
+          <div className="mt-2 divide-y divide-rule border-y border-rule">
+            {LIFE_FAQ.map((f) => (
+              <details key={f.question} className="group py-3">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[15px] font-medium">
+                  {f.question}
+                  <ChevronRight className="h-4 w-4 shrink-0 text-gray-400 transition-transform group-open:rotate-90 dark:text-gray-500" />
+                </summary>
+                <p className="pt-2 text-[13px] leading-relaxed text-gray-600 dark:text-gray-300">{f.answer}</p>
+              </details>
+            ))}
+          </div>
+        </section>
 
         <Link to="/life/requests" className="mx-2 mt-8 flex h-12 items-center justify-between border-y border-rule px-1">
           <span className="text-[15px] font-medium">내 요청 보기</span>

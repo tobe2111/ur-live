@@ -100,3 +100,43 @@ describe('공용 번들 무게', () => {
     expect(readCode('src/worker/utils/surface-list-jsonld.ts')).toMatch(/registerDynamicSurfaceSeo\(lifeCategorySeo\)/)
   })
 })
+
+describe('1~3 (2026-10-25 대표 "1~3 다 하자")', () => {
+  it('① 요청서 첫 질문 위에 업종 소개가 뜨고, 크롤러 본문도 그 문장을 쓴다', () => {
+    const form = readCode('src/pages/life/LifeRequestFormPage.tsx')
+    expect(form).toMatch(/intro \}\}/)
+    expect(form).toMatch(/\{def\.blurb\}/)
+    expect(readCode('src/pages/life/request/Sheet.tsx')).toMatch(/frame\.step === 1 && frame\.intro/)
+    const ns = buildStaticSurfaceNoscript('/life/request/signage')
+    expect(ns).toContain(HOME_SERVICE_CATEGORIES.find((d) => d.key === 'signage')!.blurb)
+  })
+  it('② /life/pro 는 색인 대상 — 고유 메타 · 본문 · sitemap · robots 가 막지 않는다(요청함은 계속 막는다)', () => {
+    const m = resolveConsumerSurfaceSeo('/life/pro', '', O)!
+    expect(m.pageTitle).toContain('업체 등록')
+    expect(m.noindex).toBeFalsy()
+    expect(buildStaticSurfaceNoscript('/life/pro')).toContain('유어딜은 연결만 해요')
+    expect(readCode('src/worker/routes/sitemap.routes.ts')).toMatch(/loc: '\/life\/pro'/)
+    const robots = readFileSync('public/robots.txt', 'utf8').split('\n').filter((l) => !l.startsWith('#'))
+    expect(robots).not.toContain('Disallow: /life/pro')
+    expect(robots).toContain('Disallow: /life/pro/')
+    expect(readCode('src/pages/life/LifeProPage.tsx')).toMatch(/!hasToken \? <ProLanding \/>/)
+  })
+  it('③ /life 는 FAQ 를 화면·크롤러·FAQPage 에 같은 배열로 낸다', async () => {
+    const { LIFE_FAQ } = await import('@/shared/life-faq')
+    expect(readCode('src/pages/life/LifePage.tsx')).toMatch(/LIFE_FAQ\.map\(/)
+    const ns = buildStaticSurfaceNoscript('/life')
+    for (const f of LIFE_FAQ) expect(ns).toContain(f.question)
+    const out = buildSurfaceListJsonLd('/life', '', O, { title: 't', description: 'd', canonical: `${O}/life` }, null)
+    const faq = walk(JSON.parse(out)).find((n) => n['@type'] === 'FAQPage') as { mainEntity: unknown[] } | undefined
+    expect(faq?.mainEntity).toHaveLength(LIFE_FAQ.length)
+    // 업종 페이지엔 FAQ 가 없다(그 화면이 안 그린다)
+    const cat = buildSurfaceListJsonLd('/life/request/signage', '', O, { title: 't', description: 'd', canonical: `${O}/life/request/signage` }, null)
+    expect(walk(JSON.parse(cat)).some((n) => n['@type'] === 'FAQPage')).toBe(false)
+  })
+  it('③ FAQ 숫자는 규칙 SSOT 에서 온다(손으로 적지 않는다)', () => {
+    const src = readCode('src/shared/life-faq.ts')
+    expect(src).toMatch(/\$\{MAX_QUOTES_PER_REQUEST\}/)
+    expect(src).toMatch(/\$\{SIGNUP_FREE_CREDITS\}/)
+    expect(src).toMatch(/\$\{UNVIEWED_REFUND_HOURS\}/)
+  })
+})

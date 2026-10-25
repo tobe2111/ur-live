@@ -168,6 +168,13 @@ export default function LifeRequestFormPage() {
       지금 {def.label} 업체를 모집하고 있어요. 요청은 보관해 두었다가 업체가 들어오는 대로 보내 드려요.
     </p>
   )
+  // 첫 질문 위 소개 — 업종 설명 + 연락처 규칙(격자 타일에서 뺀 설명을 여기서 한 번 말한다).
+  const intro = (
+    <div className="rounded-2xl bg-warm px-4 py-3">
+      <p className="text-[15px] font-medium leading-relaxed">{def.blurb}</p>
+      <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">견적은 무료이고, 비교해서 고른 한 곳에만 연락처가 전달돼요.</p>
+    </div>
+  )
   const seo = <SEO title={withSiteName(lifeCategoryTitle(def))} description={def.blurb} url={`/life/request/${def.key}`} />
 
   if (step < REVIEW) {
@@ -175,7 +182,7 @@ export default function LifeRequestFormPage() {
     const v = values[f.key] || ''
     const done = (patch: Draft) => answer(f, patch)
     return (
-      <StepFrameContext.Provider value={{ step: step + 1, total: REVIEW, label: `${def.label} 견적`, notice: recruiting || undefined }}>
+      <StepFrameContext.Provider value={{ step: step + 1, total: REVIEW, label: `${def.label} 견적`, notice: recruiting || undefined, intro }}>
         {seo}
         {f.type === 'photos'
           ? <PhotoSheet key={f.key} f={f} value={v} loggedIn={loggedIn} onClose={back}

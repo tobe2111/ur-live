@@ -74,8 +74,9 @@ export default [
     file: NS,
     // 2026-10-12: 사이에 제목(`h1`) 한 줄이 끼었다 — 불변식(허브 본문이 자식 링크를 **쓴다**)은
     // 그대로이고, 앵커를 조립 표현 자체로 좁힌다(사이에 줄이 또 끼어도 안 낡는다).
-    find: "`<noscript>${h1}${lines}${kids}</noscript>`",
-    replace: "`<noscript>${h1}${lines}</noscript>`",
+    // 2026-10-25: 생활 허브 FAQ(`faqDl`)가 또 끼었다 — 불변식 그대로.
+    find: "`<noscript>${h1}${lines}${faqDl}${kids}</noscript>`",
+    replace: "`<noscript>${h1}${lines}${faqDl}</noscript>`",
     test: TEST,
   },
   {

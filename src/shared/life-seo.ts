@@ -13,12 +13,18 @@
  *   - 구조화 데이터 — 허브는 서비스 목록(`ItemList`), 업종은 `Service`(대상 = 사업자).
  *
  * ⚠️ 워커가 읽는 파일이라 상대경로로만 import 한다(`@/` 금지).
- * ⚠️ 업체 등록(`/life/pro`)은 넣지 않는다 — 로그인 전엔 로그인 안내뿐인 화면이라 색인하면 thin 이다.
+ * 업체 모집(`/life/pro`)은 2026-10-25 부터 색인한다 — 로그인 전 화면이 모집 랜딩이 됐다(`LIFE_PRO_SEO`).
  */
 import { HOME_SERVICE_CATEGORIES, categoryDef, type CategoryDef } from './home-service-categories'
 
 import { LIFE_HUB_PATH, LIFE_HUB_SEO } from './seo/life-hub-seo'
+import { LIFE_FAQ, type LifeFaq } from './life-faq'
 export { LIFE_HUB_PATH, LIFE_HUB_SEO }
+
+/** 허브(`/life`)만 FAQ 를 그린다 — 그 페이지가 화면에 같은 목록을 띄우므로 크롤러·구조화 데이터도 같이 낸다. */
+export function lifeFaqFor(pathname: string): readonly LifeFaq[] {
+  return (pathname.replace(/\/+$/, '') || '/') === LIFE_HUB_PATH ? LIFE_FAQ : []
+}
 
 const REQUEST_RE = /^\/life\/request\/([a-z_]+)\/?$/
 
@@ -71,6 +77,7 @@ export function lifeCategoryLines(pathname: string): string[] | null {
   if (!def) return null
   return [
     `${def.label} 견적`,
+    def.blurb, // 2026-10-25 — 요청서 첫 질문 위 소개로 화면에 뜬다
     `요청서에서 묻는 것: ${def.fields.map((f) => f.label).join(' · ')}`,
   ]
 }
@@ -94,6 +101,10 @@ export function lifeJsonLdNodes(pathname: string, origin: string, canonical: str
   })
   if (path === LIFE_HUB_PATH) {
     return [{
+      '@type': 'FAQPage',
+      '@id': `${canonical}#faq`,
+      mainEntity: LIFE_FAQ.map((f) => ({ '@type': 'Question', name: f.question, acceptedAnswer: { '@type': 'Answer', text: f.answer } })),
+    }, {
       '@type': 'ItemList',
       '@id': `${canonical}#services`,
       name: LIFE_HUB_SEO.crumb,

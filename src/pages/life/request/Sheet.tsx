@@ -18,6 +18,8 @@ export interface StepFrame {
   label: string
   /** 첫 질문 위에만 거는 한 줄(예: 업체 모집 중 안내). */
   notice?: ReactNode
+  /** 첫 질문 위 소개 — 이 일이 무엇이고 어떻게 굴러가는지(2026-10-25 대표 "1~3 다 하자"). */
+  intro?: ReactNode
 }
 
 export const StepFrameContext = createContext<StepFrame | null>(null)
@@ -50,6 +52,7 @@ export function Sheet({ title, onClose, children, footer }: {
           <div className="mx-5 h-1 overflow-hidden rounded-full bg-rule" role="progressbar" aria-valuenow={frame.step} aria-valuemin={1} aria-valuemax={frame.total}>
             <div className="h-full rounded-full bg-brand transition-[width] duration-300" style={{ width: `${pct}%` }} />
           </div>
+          {frame.step === 1 && frame.intro && <div className="px-5 pt-5">{frame.intro}</div>}
           {frame.step === 1 && frame.notice && <div className="px-5 pt-4">{frame.notice}</div>}
           <h2 className="px-5 pt-6 pb-5 text-[24px] font-bold leading-snug tracking-tight">{title}</h2>
           <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4">{children}</div>

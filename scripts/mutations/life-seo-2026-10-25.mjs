@@ -33,4 +33,28 @@ export default [
     test: TEST,
     why: '업종 페이지 17개가 다시 홈 제목으로 서빙된다(에러 0).',
   },
+  {
+    name: '🏠 요청서 첫 질문의 업종 소개가 빠진다',
+    file: 'src/pages/life/LifeRequestFormPage.tsx',
+    find: 'notice: recruiting || undefined, intro }}',
+    replace: 'notice: recruiting || undefined }}',
+    test: TEST,
+    why: '타일에서 뺀 설명이 어디에도 안 남는다 — 무슨 일인지 모른 채 질문부터 받는다.',
+  },
+  {
+    name: '🏠 업체 모집 랜딩을 다시 robots 로 막는다',
+    file: 'public/robots.txt',
+    find: 'Disallow: /life/pro/',
+    replace: 'Disallow: /life/pro',
+    test: TEST,
+    why: 'sitemap 이 제출한 URL 을 robots 가 막는 모순 — 모집 랜딩이 검색에 안 나간다.',
+  },
+  {
+    name: '🏠 생활 허브 FAQPage 가 빠진다',
+    file: 'src/shared/life-seo.ts',
+    find: "      '@type': 'FAQPage',",
+    replace: "      '@type': 'WebPageElement',",
+    test: TEST,
+    why: '화면엔 FAQ 가 있는데 구조화 데이터엔 없다 — AI 검색이 인용할 Q&A 를 못 받는다.',
+  },
 ]
