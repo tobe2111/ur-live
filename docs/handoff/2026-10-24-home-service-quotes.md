@@ -15,7 +15,7 @@
 - 참여권 원장 `home_service_credit_tx` UNIQUE(kind, ref) + 잔액 갱신을 `WHERE changes() > 0` 로 같은 batch 에 — 같은 결제·반환이 두 번 와도 한 번만.
 - 견적 보내기 = 차감 CAS + 선착순 자리 + 견적 줄 + 원장을 **한 batch** — 자리가 없거나 참여권이 없으면 아무것도 안 빠진다.
 - 충전 승인은 `confirmTossPayment` 만. 주문번호 `HSC-<매장>-<묶음>-<시각>` 의 매장 = 요청자, 금액 = 서버 묶음 가격.
-- 충전 게이트 `home_service_charge_enabled` **기본 OFF**. 켜기 전 `docs/STAGING_CHECKLIST.md` **S-HOME** 실결제.
+- 충전 게이트 `home_service_charge_enabled` — **2026-10-25 11:4x KST 대표 지시("일단 유료 충전 가능하게끔 해주고")로 라이브 ON**(어드민 설정 API, 읽어서 `true` 확인). ⚠️ S-HOME 실결제 검증 **전에** 켰다 — 첫 실제 충전 1건의 원장(`home_service_credit_tx` charge)·잔액을 바로 확인할 것. 끄기: 같은 키를 `false`.
 
 ## 대리 접수 · 유어딜 직영 견적 (2026-10-24 대표 "실제 손님 있어. 두 기능 모두 만들어줘")
 - 어드민 `/admin/home-service`(메뉴 '생활 견적'): 직영 견적 매장 지정(`platform_settings.home_service_house_seller_id`) · 대리 접수(동의 기록 필수, `source='admin'`) · 요청별 견적 보기 · 직영 견적 보내기 · 손님이 고른 견적 대신 누르기 · 손님 취소.
