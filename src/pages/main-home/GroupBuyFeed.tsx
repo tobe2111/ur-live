@@ -421,7 +421,7 @@ export default function GroupBuyFeed({
       </div>
       )}
 
-      {category === 'home_voucher' && <Suspense fallback={<div className="mx-4 mt-2 h-[72px]" />}><LifeQuoteBanner /></Suspense>}{/* 피드 — 2열 그리드 (당근식) · 🏠 생활 칩이면 견적 받기 한 줄(2026-10-24) */}
+      {category === 'home_voucher' && <Suspense fallback={<div className="mx-4 mb-5 mt-2 h-[72px]" />}><LifeQuoteBanner /></Suspense>}{/* 피드 — 2열 그리드 (당근식) · 🏠 생활 칩이면 견적 받기 한 줄(2026-10-24) */}
       {loading ? (
         <div className={gridCls}>
           {/* 🛡️ 2026-05-27 (사용자 요청): 카드 모양 shimmer skeleton — 이미지 + 텍스트 2줄 + 가격. */}
