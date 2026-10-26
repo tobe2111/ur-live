@@ -94,15 +94,18 @@ export default function LifePage() {
     <div className="min-h-[100dvh] bg-warm text-ink pb-safe-nav">
       <SEO title={withSiteName(LIFE_HUB_SEO.title)} description={LIFE_HUB_SEO.description} url="/life" />
 
-      <div className="ur-content-narrow space-y-3 px-4 pb-10 pt-5">
+      {/* 🖥️ 2026-10-26 PC: 액자를 벗고(pc-fullbleed) 두 칸 — 왼쪽 업종, 오른쪽 바로 사기·질문·업체 안내. */}
+      <div className="mx-auto w-full max-w-[720px] space-y-3 px-4 pb-10 pt-5 lg:max-w-[1120px] lg:px-8 lg:pt-8">
         {/* 신뢰 띠 — 오늘의집 "시공책임보장" 자리. 우리 약속은 무료 비교 + 연락처 보호. */}
         <section className="rounded-2xl bg-brand-tint px-5 py-5">
           {/* 2026-10-25 대표 "사장님 대상이라는 걸 나타내 주면" — 숨고·미소와 갈리는 첫 줄. */}
           <p className="text-[13px] text-gray-600 dark:text-gray-300">간판·방역·설비 수리까지 근처 업체 견적을 무료로 비교해요</p>
-          <h1 className="mt-1 text-[24px] font-bold leading-snug tracking-tight">사장님, 가게 일은<br />여기서 맡기세요</h1>
+          <h1 className="mt-1 text-[24px] font-bold leading-snug tracking-tight lg:text-[34px]">사장님, 가게 일은<br className="lg:hidden" /> 여기서 맡기세요</h1>
           {!open && <p className="mt-2 text-[13px] font-medium text-tone-bad">지금은 잠시 요청을 받지 않아요.</p>}
         </section>
 
+        <div className="space-y-3 lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-5 lg:space-y-0">
+        <div className="space-y-3">
         {GROUPS.map((g) => (
           <section key={g.title} className={CARD}>
             <h2 className="text-[17px] font-bold">{g.title}</h2>
@@ -143,6 +146,8 @@ export default function LifePage() {
           </p>
         )}
 
+        </div>
+        <aside className="space-y-3 lg:sticky lg:top-24">
         {deals.length > 0 && (
           <section className={CARD}>
             <h2 className="text-[17px] font-bold">정해진 가격으로 바로 사기</h2>
@@ -183,6 +188,8 @@ export default function LifePage() {
           <ChevronRight className="h-5 w-5 shrink-0 text-gray-400 dark:text-gray-500" />
         </Link>
         <p className="pt-3 text-center text-[13px] text-gray-500 dark:text-gray-400">견적은 무료이고, 비교해서 고른 한 곳에만 연락처가 전달돼요.</p>
+        </aside>
+        </div>
       </div>
     </div>
   )

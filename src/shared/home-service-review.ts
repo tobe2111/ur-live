@@ -9,7 +9,11 @@
  *   손님 견적 화면에 뜨는 것을 막는다. 허용 목록에 없는 주소는 저장 때 거절한다(조용히 버리지 않는다).
  */
 
+import { isRequestPhotoUrl } from './home-service'
+
 export const PRO_INTRO_MAX = 300
+/** 후기 사진(전후 사진) — 요청서 사진과 같은 업로드 규칙·같은 장수. */
+export const REVIEW_PHOTOS_MAX = 5
 export const PRO_LINKS_MAX = 5
 export const REVIEW_BODY_MAX = 500
 export const REVIEW_BODY_MIN = 5
@@ -80,14 +84,25 @@ export function parseProIntro(raw: unknown): string | null {
   return String(raw).replace(/\r\n/g, '\n').trim().slice(0, PRO_INTRO_MAX)
 }
 
-/** 후기 입력 — 별점 1~5 정수, 본문 5~500자. */
-export function parseReview(body: { rating?: unknown; body?: unknown }):
-  { ok: true; rating: number; text: string } | { ok: false; error: string } {
+/**
+ * 후기 입력 — 별점 1~5 정수, 본문 5~500자, 사진 5장까지.
+ * 사진은 **우리 업로드 주소 + 이 손님이 올린 것**만(`uploads/user/<id>/`) — 남의 사진·외부 주소를 업체 페이지에 못 띄운다.
+ */
+export function parseReview(body: { rating?: unknown; body?: unknown; photos?: unknown }, userId = 0):
+  { ok: true; rating: number; text: string; photos: string[] } | { ok: false; error: string } {
   const rating = Number(body.rating)
   if (!Number.isInteger(rating) || rating < 1 || rating > 5) return { ok: false, error: '별점을 골라 주세요' }
   const text = String(body.body ?? '').replace(/\r\n/g, '\n').trim()
   if (text.length < REVIEW_BODY_MIN) return { ok: false, error: `후기를 ${REVIEW_BODY_MIN}자 이상 적어 주세요` }
-  return { ok: true, rating, text: text.slice(0, REVIEW_BODY_MAX) }
+  const photos = Array.isArray(body.photos) ? [...new Set(body.photos.map((u) => String(u ?? '').trim()).filter(Boolean))] : []
+  if (photos.length > REVIEW_PHOTOS_MAX) return { ok: false, error: `사진은 ${REVIEW_PHOTOS_MAX}장까지 올릴 수 있어요` }
+  if (photos.some((u) => !isRequestPhotoUrl(u) || !u.includes(`/uploads/user/${userId}/`))) return { ok: false, error: '사진을 다시 올려 주세요' }
+  return { ok: true, rating, text: text.slice(0, REVIEW_BODY_MAX), photos }
+}
+
+/** 저장된 후기 사진 — 읽을 때도 다시 거른다. */
+export function readReviewPhotos(stored: unknown): string[] {
+  return String(stored || '').split(',').map((u) => u.trim()).filter((u) => u && isRequestPhotoUrl(u)).slice(0, REVIEW_PHOTOS_MAX)
 }
 
 /** 평균 별점 표시 — 소수 첫째 자리. 후기가 없으면 null(0점으로 보이지 않게). */
