@@ -6045,7 +6045,9 @@
     "privacyLink": "プライバシーポリシー",
     "termsNoticeEnd": "に同意したものとみなされます",
     "agencyQuestion": "エージェンシーの方ですか？",
-    "agencyLogin": "エージェンシーログイン"
+    "agencyLogin": "エージェンシーログイン",
+    "heroTitle2": "ご近所のお店、先に買えばもっとお得",
+    "chipPass": "ご近所の利用券"
   },
   "guide": {
     "sectionTitlePlaceholder": "セクションタイトル",

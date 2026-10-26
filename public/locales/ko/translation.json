@@ -6293,7 +6293,9 @@
     "privacyLink": "개인정보처리방침",
     "termsNoticeEnd": "에 동의하는 것으로 봅니다",
     "agencyQuestion": "에이전시이신가요?",
-    "agencyLogin": "에이전시 로그인"
+    "agencyLogin": "에이전시 로그인",
+    "heroTitle2": "우리 동네 가게, 미리 사면 더 싸게",
+    "chipPass": "동네 이용권"
   },
   "guide": {
     "sectionTitlePlaceholder": "섹션 제목",

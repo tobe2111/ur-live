@@ -6045,7 +6045,9 @@
     "privacyLink": "Política de Privacidad",
     "termsNoticeEnd": "",
     "agencyQuestion": "¿Eres una agencia?",
-    "agencyLogin": "Acceso para agencias"
+    "agencyLogin": "Acceso para agencias",
+    "heroTitle2": "Los locales de tu barrio, más baratos si compras antes",
+    "chipPass": "Pases locales"
   },
   "guide": {
     "sectionTitlePlaceholder": "Título de sección",

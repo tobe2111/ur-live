@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { PinIcon, TicketStubIcon } from '@/components/icons/urdeal-icons'
+import { PinIcon, GiftBoxIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from '@/lib/i18n-lite'
 // Firebase Auth will be lazy loaded when needed
@@ -13,6 +13,7 @@ import { Eye, EyeOff } from 'lucide-react'
 import SEO from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import Udal from '@/components/mascot/Udal'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { addBreadcrumb, maskEmail } from '@/lib/sentry'
 import { resolveLoginReturnUrl, clearLoginReturnUrl } from '@/utils/login-return'
 import { showKakaoLoadingOverlay, removeKakaoLoadingOverlay } from '@/utils/kakao-login-overlay'
@@ -251,47 +252,33 @@ export default function LoginPage() {
 
   // 🔥 Early return: Prevent rendering while redirecting
   if (isLoggedIn && hasRedirected.current) {
-    return (
-      <div className="min-h-screen bg-white dark:bg-[#11141C] flex items-center justify-center">
-        <div className="text-gray-500 dark:text-gray-400">Redirecting...</div>
-      </div>
-    )
+    return <BrandLoader fullScreen />
   }
 
   return (
-    <div className="relative min-h-screen bg-white dark:bg-[#11141C] flex flex-col items-center justify-center px-5 py-12 overflow-hidden">
+    <div className="min-h-[100dvh] bg-white dark:bg-[#11141C] flex flex-col items-center justify-center px-5 py-12">
       <SEO title={t('login.seoTitle', { defaultValue: '로그인 - 유어딜' })} description={t('login.seoDesc', { defaultValue: '유어딜에 로그인하세요.' })} url="/login" noindex />
 
-      {/* 은은한 에메랄드→틸 그라데이션 포인트 (장식 — 본문 가독성 영향 없음) */}
-      <div aria-hidden className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-28 -left-28 w-[380px] h-[380px] rounded-full bg-gradient-to-br from-gray-700/15 to-gray-700/5 dark:from-gray-800/10 dark:to-gray-800/[0.04] blur-3xl" />
-        <div className="absolute -bottom-32 -right-28 w-[420px] h-[420px] rounded-full bg-gradient-to-tr from-gray-700/10 to-gray-300/5 dark:from-gray-800/[0.08] dark:to-gray-700/[0.03] blur-3xl" />
-      </div>
+      {/* 🧹 2026-10-26 대표 *"내용이 필요없이 많달까?"* — 장식 그라디언트·부제·안내 문장·회원가입·서비스 소개 줄을 걷었다.
+          남은 것: 유달이 · 로고 · 한 줄 제목 · 칩 둘 · 카카오 버튼 · 약관 링크 · 이메일 로그인 · 에이전시 입구. */}
+      <div className="w-full max-w-[360px] md:max-w-[400px]">
 
-      {/* 🛡️ 2026-05-14: 태블릿/PC 에서 form 너비 자연스럽게 — 모바일 360px / 태블릿+ 420px */}
-      <div className="relative w-full max-w-[360px] md:max-w-[420px]">
-
-        {/* Brand + 가치 제안 (동네딜 / 교환권) */}
-        <div className="flex flex-col items-center mb-12">
-          {/* 🦦 2026-10-10 (대표 "다 해줘"): 첫 문 앞의 인사 — 기본 자세 유달이가 로고 위에서 맞는다 */}
+        <div className="flex flex-col items-center mb-10">
           <Udal mood="hello" size={64} priority motion className="block mb-4" />
           <UrDealLogo size={34} />
-          <h1 className="mt-6 text-[24px] md:text-[24px] font-bold text-gray-900 dark:text-white text-center leading-snug tracking-tight">
-            {t('login.heroTitle', { defaultValue: '우리 동네 맛집, 같이 사면 더 싸다' })}
+          {/* "같이 사면 더 싸다" 는 없는 기제였다 — 이용권은 즉시판매 단일가(2026-05-30)라 인원이 가격을 안 움직인다. */}
+          <h1 className="mt-6 text-[24px] font-bold text-gray-900 dark:text-white text-center leading-snug tracking-tight">
+            {t('login.heroTitle2', { defaultValue: '우리 동네 가게, 미리 사면 더 싸게' })}
           </h1>
-          <p className="mt-2 text-[13px] text-gray-600 dark:text-gray-400 text-center font-light leading-relaxed">
-            {t('login.heroSub', { defaultValue: '동네 공동구매 교환권부터 인기 기프티콘까지, 매일 새로운 딜' })}
-          </p>
           <div className="flex flex-wrap items-center justify-center gap-2 mt-5">
-            <span className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-gray-50 dark:bg-[#1D1F29] border border-line text-[12px] text-gray-700 dark:text-gray-300">
-              <PinIcon className="w-3.5 h-3.5 text-emerald-500" />
-              {t('login.chipDongne', { defaultValue: '동네딜 공동구매' })}
+            <span className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-gray-100 dark:bg-[#1D1F29] text-[13px] text-gray-700 dark:text-gray-300">
+              <PinIcon className="w-3.5 h-3.5 text-brand-text" />
+              {t('login.chipPass', { defaultValue: '동네 이용권' })}
             </span>
-            <span className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-gray-50 dark:bg-[#1D1F29] border border-line text-[12px] text-gray-700 dark:text-gray-300">
-              <TicketStubIcon className="w-3.5 h-3.5 text-emerald-500" />
+            <span className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-gray-100 dark:bg-[#1D1F29] text-[13px] text-gray-700 dark:text-gray-300">
+              <GiftBoxIcon className="w-3.5 h-3.5 text-brand-text" />
               {t('login.chipVoucher', { defaultValue: '교환권·기프티콘' })}
             </span>
-            {/* 2026-06-11 (사용자 요청): 소비자 로그인에서 도매몰 칩 제거 — 도매는 /wholesale/login 별도 표면 */}
           </div>
         </div>
 
@@ -318,70 +305,45 @@ export default function LoginPage() {
         {/* Main Login */}
         {!showEmailLogin && !showForgotPassword && (
           <div>
-            {/* 주 CTA 카드 — 카카오(KR)/구글(GLOBAL) 로그인. 버튼 로직/마크업 불변, 배치만 강조 */}
-            <div className="rounded-2xl bg-gray-50/80 dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35] p-5 shadow-sm">
-            {/* ✅ Region-based Primary Login Button */}
             {/* Kakao Login Button — 🔥 2026-08-04: 구글 분기 제거(GLOBAL 폐기 #804). */}
-              <button
-                onClick={() => {
-                  handleKakaoLogin()
-                }}
-                disabled={loading}
-                className="w-full h-[52px] bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] rounded-xl text-[15px] font-medium tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 border border-[#F5DC00]"
-              >
-                {loading ? (
-                  <div className="flex items-center gap-2">
-                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span>{t('common.loading')}</span>
-                  </div>
-                ) : (
-                  <>
-                    <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24">
-                      <path fill="#3C1E1E" d="M12 3c5.5 0 10 3.58 10 8 0 4.42-4.5 8-10 8-1.15 0-2.25-.16-3.28-.45L3 21l1.45-5.72C3.55 14.2 3 12.66 3 11c0-4.42 4.5-8 9-8z"/>
-                    </svg>
-                    <span>{t('auth.kakaoQuickStart')}</span>
-                  </>
-                )}
-              </button>
-              <p className="mt-3 text-center text-[12px] text-gray-500 dark:text-gray-500 font-light">
-                {t('login.kakaoHint', { defaultValue: '복잡한 가입 절차 없이 바로 시작할 수 있어요' })}
-              </p>
-              {/* 📜 2026-07-05 이용약관 v1.0 제5조: 가입(로그인)으로 약관·개인정보처리방침 동의 성립 고지 */}
-              {/* 📖 2026-08-17 (UX 전수검사 P2 — AA 경계 저대비): gray-400/600 → gray-500 로 한 단계 진하게. */}
-              <p className="mt-2 text-center text-[12px] text-gray-500 dark:text-gray-500 font-light leading-relaxed">
-                {t('login.termsNotice', { defaultValue: '로그인(가입) 시' })}{' '}
-                <Link to="/terms" className="underline underline-offset-2 hover:text-gray-600 dark:hover:text-gray-400">{t('login.termsLink', { defaultValue: '이용약관' })}</Link>
-                {' '}{t('login.termsAnd', { defaultValue: '및' })}{' '}
-                <Link to="/privacy" className="underline underline-offset-2 hover:text-gray-600 dark:hover:text-gray-400">{t('login.privacyLink', { defaultValue: '개인정보처리방침' })}</Link>
-                {t('login.termsNoticeEnd', { defaultValue: '에 동의하는 것으로 봅니다' })}
-              </p>
-            </div>
+            <button
+              onClick={() => {
+                handleKakaoLogin()
+              }}
+              disabled={loading}
+              className="w-full h-[52px] bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] rounded-xl text-[15px] font-medium tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span>{t('common.loading')}</span>
+                </div>
+              ) : (
+                <>
+                  <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24">
+                    <path fill="#3C1E1E" d="M12 3c5.5 0 10 3.58 10 8 0 4.42-4.5 8-10 8-1.15 0-2.25-.16-3.28-.45L3 21l1.45-5.72C3.55 14.2 3 12.66 3 11c0-4.42 4.5-8 9-8z"/>
+                  </svg>
+                  <span>{t('auth.kakaoQuickStart')}</span>
+                </>
+              )}
+            </button>
+            {/* 📜 이용약관 v1.0 제5조 고지 — 2026-10-26 대표 지시로 링크 두 개만 남긴다. */}
+            <p className="mt-3 text-center text-[12px] text-gray-500 dark:text-gray-400">
+              <Link to="/terms" className="underline underline-offset-2 hover:text-gray-700 dark:hover:text-gray-300">{t('login.termsLink', { defaultValue: '이용약관' })}</Link>
+              {' '}{t('login.termsAnd', { defaultValue: '및' })}{' '}
+              <Link to="/privacy" className="underline underline-offset-2 hover:text-gray-700 dark:hover:text-gray-300">{t('login.privacyLink', { defaultValue: '개인정보처리방침' })}</Link>
+            </p>
 
-            {/* Email Login Link */}
             <div className="text-center mt-8">
               <button
                 onClick={() => setShowEmailLogin(true)}
-                className="text-[13px] text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white underline underline-offset-4 decoration-1 font-light transition-colors"
+                className="text-[13px] text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white underline underline-offset-4 decoration-1 transition-colors"
               >
                 {t('auth.loginWithEmail')}
               </button>
-            </div>
-
-            {/* Sign Up Link */}
-            <div className="text-center text-[13px] text-[#aaa] mt-5 font-light">
-              {t('auth.noAccount')}{' '}
-              <Link to="/register" className="text-gray-900 dark:text-white font-medium hover:underline underline-offset-4 decoration-1">
-                {t('common.signup')}
-              </Link>
-            </div>
-            {/* Service intro link */}
-            <div className="text-center text-[12px] text-[#888] mt-3 font-light">
-              <Link to="/about" className="hover:underline underline-offset-4 decoration-1">
-                {t('login.aboutLink', { defaultValue: '유어딜이 처음이세요? 서비스 알아보기 →' })}
-              </Link>
             </div>
           </div>
         )}
