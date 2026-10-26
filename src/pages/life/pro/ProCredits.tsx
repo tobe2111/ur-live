@@ -88,8 +88,10 @@ function CreditHistory({ rows }: { rows: NonNullable<ProMe['history']> }) {
             <li key={i} className="flex items-center gap-3 py-3">
               <div className="min-w-0 flex-1">
                 <p className="text-[15px] text-ink">{KIND_LABEL[r.kind] ?? r.kind}</p>
-                <p className="truncate text-[12px] text-gray-500 dark:text-gray-400">
-                  {formatKSTShort(r.created_at)}{r.price_paid > 0 ? ` · ${formatNumber(r.price_paid)}원` : ''}{r.note && r.kind !== 'charge' ? ` · ${r.note}` : ''}
+                <p className="flex gap-2 truncate text-[12px] text-gray-500 dark:text-gray-400">
+                  <span>{formatKSTShort(r.created_at)}</span>
+                  {r.price_paid > 0 && <span>{formatNumber(r.price_paid)}원</span>}
+                  {r.note && r.kind !== 'charge' && <span className="truncate">{r.note}</span>}
                 </p>
               </div>
               <span className={`shrink-0 text-[15px] font-bold tabular-nums ${n < 0 ? 'text-ink' : 'text-brand-text'}`}>
