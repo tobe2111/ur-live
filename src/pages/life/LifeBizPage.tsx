@@ -14,7 +14,7 @@ import { formatNumber } from '@/utils/format'
 import { formatKSTDate } from '@/utils/date'
 import { LifeHeader, categoryLabel } from './life-shared'
 import { RatingLine, ReviewPhotos, type ProLink, type ReviewSummary } from './life-reviews'
-import { lifeBizDescription, lifeBizIndexable, lifeBizTitle } from '@/shared/seo/life-biz-seo'
+import { lifeBizDescription, lifeBizIndexable, lifeBizTitle } from '@/shared/life-biz-seo'
 import { withSiteName } from '@/shared/seo/consumer-surfaces'
 
 interface Biz {

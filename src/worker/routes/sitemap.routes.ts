@@ -34,7 +34,7 @@ import { canonicalDetailPath } from '../../shared/product-flow';
 import { VOUCHER_FILTER_CATEGORIES } from '../../shared/seo/consumer-surfaces';
 import { HOME_SERVICE_CATEGORIES } from '../../shared/home-service-categories';
 import { lifeCategoryPath } from '../../shared/life-seo';
-import { LIFE_BIZ_MIN_INTRO } from '../../shared/seo/life-biz-seo';
+import { LIFE_BIZ_MIN_INTRO } from '../../shared/life-biz-seo';
 import { PRO_OPEN_STATUS_SQL } from '../../shared/home-service';
 // 🎁 facet 주소 조립 + 재고 문턱 SSOT — canonical·허브 내부 링크와 **같은 함수**를 지난다.
 import { voucherFacetPath, voucherFacetsByStock } from '../../shared/seo/voucher-facet';

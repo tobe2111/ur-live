@@ -3,7 +3,7 @@
  * 서버 메타(`worker/utils/life-biz-ssr.ts`)와 화면 `<SEO>`(`LifeBizPage`)가 **같은 함수**를 쓴다 —
  * 두 벌이면 JS 를 도는 구글과 서버 HTML 만 읽는 네이버·AI 검색봇이 다른 제목을 받는다.
  */
-import { categoryDef, type HomeServiceCategory } from '../home-service-categories'
+import { categoryDef, type HomeServiceCategory } from './home-service-categories'
 
 /** 이 글자 수 이상의 소개가 있거나 유어딜 후기가 1건 이상이면 색인한다. sitemap 이 같은 값을 SQL 로 쓴다. */
 export const LIFE_BIZ_MIN_INTRO = 20

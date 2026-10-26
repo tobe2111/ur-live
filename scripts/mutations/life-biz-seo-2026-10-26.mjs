@@ -3,7 +3,7 @@ const TEST = 'src/tests/unit/life-biz-seo-2026-10-26.test.ts'
 export default [
   {
     name: '🏠 업체 페이지 — 얇은 업체도 색인한다',
-    file: 'src/shared/seo/life-biz-seo.ts',
+    file: 'src/shared/life-biz-seo.ts',
     find: "return (v.intro || '').trim().length >= LIFE_BIZ_MIN_INTRO || Number(v.reviews?.count || 0) > 0",
     replace: "return true",
     test: TEST,
@@ -11,7 +11,7 @@ export default [
   },
   {
     name: '🏠 업체 페이지 — 후기 0건에도 별점을 낸다',
-    file: 'src/shared/seo/life-biz-seo.ts',
+    file: 'src/shared/life-biz-seo.ts',
     find: "return rc > 0 && v.reviews?.avg != null ? `★${Number(v.reviews.avg).toFixed(1)}` : null",
     replace: "return `★${Number(v.reviews?.avg ?? 0).toFixed(1)}`",
     test: TEST,

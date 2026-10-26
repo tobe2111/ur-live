@@ -21,6 +21,6 @@
 
 ## 후속 (같은 날) — 업체 페이지 검색·카톡 노출 (대표 "4번도 해줘")
 - 워커 `LIFEBIZ` 슬롯: `/life/biz/:id` → `/api/home-service/pros/:id` 시드 → 서버 메타(제목 `{업체} · {업종 둘} - 유어딜`, 카드에 ★별점은 후기 있을 때만) + `LocalBusiness`(이름·지역·업종·실제 별점만 — 주소·전화·가격대는 지어내지 않는다) + `<noscript>` 본문(업종 링크·후기 탈출). 없는 업체 = 404+noindex(`ENTITY_SLOTS`).
-- 색인 기준 SSOT `shared/seo/life-biz-seo.ts` — 소개 `LIFE_BIZ_MIN_INTRO`(20자) 이상 또는 유어딜 후기 1건+. 얇으면 noindex(카톡 카드는 정상). sitemap 이 **같은 조건을 SQL 로** 써서 제출(숨김 후기 제외). 화면 `<SEO>` 도 같은 함수 + 시드 즉시 사용.
+- 색인 기준 SSOT `shared/life-biz-seo.ts` — 소개 `LIFE_BIZ_MIN_INTRO`(20자) 이상 또는 유어딜 후기 1건+. 얇으면 noindex(카톡 카드는 정상). sitemap 이 **같은 조건을 SQL 로** 써서 제출(숨김 후기 제외). 화면 `<SEO>` 도 같은 함수 + 시드 즉시 사용.
 - 가드 `life-biz-seo-2026-10-26.test.ts`(진짜 SQLite 로 sitemap 판정) + 주입 5건 빨간불 확인.
 - E4(배포 후): `curl -A 'Mozilla/5.0 (compatible; Yeti/1.1)' https://urdeal.kr/life/biz/<id>` 의 `<title>`·`og:title` 이 업체 이름인지, 얇은 업체는 `noindex`, sitemap 에 `/life/biz/` 가 내용 있는 업체만인지.

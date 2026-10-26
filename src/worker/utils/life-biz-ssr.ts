@@ -15,7 +15,7 @@ import { categoryDef, type HomeServiceCategory } from '../../shared/home-service
 import {
   LIFE_BIZ_MIN_INTRO, lifeBizIndexable, lifeBizTitle, lifeBizDescription, lifeBizRating, lifeBizCategoryLabels, lifeBizAreaList,
   type LifeBizSeoInput,
-} from '../../shared/seo/life-biz-seo'
+} from '../../shared/life-biz-seo'
 import { lifeCategoryPath } from '../../shared/life-seo'
 import { LIFE_HUB_PATH, LIFE_HUB_SEO } from '../../shared/seo/life-hub-seo'
 import { withSiteName } from '../../shared/seo/consumer-surfaces'
