@@ -94,7 +94,8 @@ describe('③ 결제는 구매 창 안에서만', () => {
     const sheetAt = BAR.indexOf('aria-label="구매 옵션"')
     expect(sheetAt).toBeGreaterThan(0)
     const bar = BAR.slice(0, sheetAt)
-    expect(bar).toContain('() => setOpen(true)')
+    // 2026-10-26: 추첨 여부를 모르는 틈엔 열지 않는다(`fcfs.pending`) — 여는 것 자체는 그대로.
+    expect(bar).toMatch(/\(\) => \{ if \(!fcfs\.pending\) setOpen\(true\) \}/)
     expect(bar, '바에서 onJoin 을 바로 부른다 — 수량을 못 고르고 결제된다').not.toMatch(/onJoin\(/)
   })
   it('창 안 결제 버튼이 종전과 같은 onJoin 을 부르고, 딜 대체·담기도 창 안에 있다', () => {

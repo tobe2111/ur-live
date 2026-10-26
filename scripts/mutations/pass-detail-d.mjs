@@ -4,7 +4,7 @@ export default [
   {
     name: '🎟️D 바의 구매하기가 창을 건너뛰고 바로 결제한다',
     file: 'src/pages/group-buy/DealBottomBar.tsx',
-    find: ": () => setOpen(true)}",
+    find: ": () => { if (!fcfs.pending) setOpen(true) }}",
     replace: ": () => onJoin()}",
     test: TEST,
     why: '수량을 고를 자리가 창으로 옮겨갔다 — 바에서 바로 결제하면 언제나 1장이 결제된다.',

@@ -94,7 +94,8 @@ export default function DealPurchaseBox({
           같은 부품**(`components/ticket/FieldCard`)이 됐다. 종전엔 여기만 1px 테두리 상자였다(티켓 체계
           규칙 ①은 카드 테두리 0). 라벨·값 위계도 그쪽과 같아진다.
           ⚠️ 스테퍼 **동작·state·aria 는 그대로** — 하단 바와 같은 state 를 공유한다(결제 무관, 마크업만). */}
-      <div style={{ margin: '16px 0 12px' }}>
+      {/* 🎯 2026-10-26 (대표 "데모 이용권은 그냥 응모하기만 되면 돼"): 추첨 상품은 수량·딜 사용·결제 안내를 안 그린다. */}
+      {!raffle && <div style={{ margin: '16px 0 12px' }}>
         <FieldCard>
           <FieldRow
             label="수량"
@@ -109,14 +110,15 @@ export default function DealPurchaseBox({
             }
           />
         </FieldCard>
-      </div>
+      </div>}
 
-      {dealSlot}
+      {!raffle && dealSlot}
 
       {/* CTA — 하단 바와 동일 핸들러(결제 로직 무수정) */}
       {raffle ? (
         <button
           type="button"
+          className="mt-4"
           onClick={fcfs.apply}
           disabled={fcfs.applied || fcfs.closed || fcfs.busy}
           style={{ width: '100%', height: 50, border: 'none', borderRadius: 12, background: fcfs.applied || fcfs.closed ? 'var(--gbd-sub2)' : 'var(--gbd-cta-bg)', color: 'var(--gbd-cta-fg)', fontSize: 15, fontWeight: 700, cursor: fcfs.applied || fcfs.closed ? 'default' : 'pointer' }}
@@ -125,7 +127,7 @@ export default function DealPurchaseBox({
         </button>
       ) : (
       <button
-        onClick={isPrelaunch ? onPrelaunchApply : onBuy}
+        onClick={isPrelaunch ? onPrelaunchApply : () => { if (!fcfs.pending) onBuy() }}
         disabled={(!isJoinable && !isPrelaunch) || joining}
         aria-label={isPrelaunch ? '사전 응모하기' : isJoinable ? (allDeal ? `${formatNumber(total)}딜로 결제하기` : `${formatNumber(total)}원 ${ctaLabel}`) : '구매 불가'}
         style={{ width: '100%', height: 50, border: 'none', borderRadius: 12, background: (buyable || isPrelaunch) ? 'var(--gbd-cta-bg)' : 'var(--gbd-sub2)', color: 'var(--gbd-cta-fg)', fontSize: 15, fontWeight: 700, letterSpacing: '-.01em', cursor: (buyable || isPrelaunch) ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
@@ -135,10 +137,12 @@ export default function DealPurchaseBox({
       )}
 
       {/* 🔒 안심 한 줄 — 모바일 구매 창과 같은 문구(2026-10-11 D안). 세 줄 배지는 "결제 즉시 교환권 발급"(용어 오류)을 담고 있었다. */}
-      <div className="mt-3 flex items-center justify-center gap-1 text-[12px]" style={{ color: 'var(--gbd-sub)' }}>
+      {raffle ? (
+        <div className="mt-3 text-[12px] text-center" style={{ color: 'var(--gbd-sub)' }}>결제 없이 응모해요 · 당첨되면 알려드려요</div>
+      ) : <div className="mt-3 flex items-center justify-center gap-1 text-[12px]" style={{ color: 'var(--gbd-sub)' }}>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
         토스로 3초 안전결제, 미사용 시 100% 자동환불
-      </div>
+      </div>}
       {isPrelaunch && (
         <div className="mt-2 text-[12px] text-center" style={{ color: 'var(--gbd-sub)' }}>오픈 협의 중 매장 · 응모는 무료, 오픈 시 알림을 드려요</div>
       )}

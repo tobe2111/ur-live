@@ -41,7 +41,7 @@ export default function StoreShortsPill({ productId }: { productId: number | nul
       to={storeShortsHref(items[0])}
       aria-label={`매장 영상 ${items.length}편 보기`}
       data-store-shorts
-      className="absolute left-4 bottom-4 z-[2] inline-flex items-center gap-1.5 h-8 pl-2.5 pr-3 rounded-full bg-black/60 text-white text-[13px] font-medium backdrop-blur-sm"
+      className="absolute left-4 bottom-4 z-[2] inline-flex items-center gap-2 h-8 pl-3 pr-3 rounded-full bg-black/60 text-white text-[13px] font-medium backdrop-blur-sm"
     >
       <Play className="w-3.5 h-3.5" fill="currentColor" strokeWidth={0} aria-hidden />
       매장 영상{items.length > 1 ? ` ${items.length}` : ''}

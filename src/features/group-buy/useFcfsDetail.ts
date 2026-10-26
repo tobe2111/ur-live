@@ -48,6 +48,8 @@ export interface FcfsDetailState {
   busy: boolean
   /** 하단 버튼이 결제 대신 응모를 해야 하는가 */
   gate: boolean
+  /** 추첨 여부를 아직 모르는가 — 그동안 결제 버튼은 눌러도 아무 일도 안 한다(데모가 잠깐 '구매하기'로 보이는 틈). */
+  pending: boolean
   /** 하단 버튼 글자 — gate 일 때만 의미가 있다 */
   ctaLabel: string
   apply: () => void
@@ -115,5 +117,6 @@ export function useFcfsDetail(productId: number): FcfsDetailState {
   }, [busy, applied, closed, ok, productId])
 
   const gate = enabled && !isWinner && !isPaid
-  return { info, enabled, applied, isWinner, isPaid, closed, busy, gate, ctaLabel: fcfsCtaLabel({ applied, closed, busy }), apply }
+  const pending = ok && !e?.loaded
+  return { info, enabled, applied, isWinner, isPaid, closed, busy, gate, pending, ctaLabel: fcfsCtaLabel({ applied, closed, busy }), apply }
 }

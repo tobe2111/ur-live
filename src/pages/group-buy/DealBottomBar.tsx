@@ -95,7 +95,7 @@ export default function DealBottomBar({
           {!isPrelaunch && <BuyBarPrice strike={refPrice > unitPrice ? refPrice * quantity : null} discountPct={discountPct} amount={total} />}
           <BuyBarCta
             on={ctaOn}
-            onClick={raffle ? fcfs.apply : isPrelaunch ? () => document.getElementById('fcfs-apply-block')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) : () => setOpen(true)}
+            onClick={raffle ? fcfs.apply : isPrelaunch ? () => document.getElementById('fcfs-apply-block')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) : () => { if (!fcfs.pending) setOpen(true) }}
             disabled={raffle ? !ctaOn || fcfs.busy : (!isJoinable && !isPrelaunch) || joining}
             aria-haspopup={raffle || isPrelaunch ? undefined : 'dialog'}
           >

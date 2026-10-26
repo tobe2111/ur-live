@@ -75,4 +75,26 @@ describe('추첨 상품 하단 버튼', () => {
     expect(s).toMatch(/<FcfsApplyBlock productId=\{productId\} \/>/)
     expect(s).toMatch(/raffle=\{fcfs\.gate \?/)
   })
+
+  // 🎯 2026-10-26 (대표 "데모 이용권은 그냥 응모하기만 되면 돼"): 추첨 상품의 PC 상자엔 결제 흔적이 없다.
+  it('PC 상자 — 추첨이면 수량·딜 사용·결제 안내를 안 그린다', async () => {
+    render(
+      <MemoryRouter initialEntries={['/pass/7']}>
+        <Routes><Route path="/pass/:id" element={<DealPurchaseBox {...common} name="x" unitSaving={5000} totalSaving={5000} onBuy={() => {}} onPrelaunchApply={() => {}} dealSlot={<div>딜사용슬롯</div>} />} /></Routes>
+      </MemoryRouter>,
+    )
+    await screen.findByRole('button', { name: /응모하기/ })
+    expect(screen.queryByRole('group', { name: '수량 조절' })).toBeNull()
+    expect(screen.queryByText('딜사용슬롯')).toBeNull()
+    expect(screen.queryByText(/토스로 3초 안전결제/)).toBeNull()
+    expect(screen.getByText(/결제 없이 응모해요/)).toBeTruthy()
+  })
+  it('추첨 여부를 모르는 동안 결제 버튼은 결제 창을 안 연다', async () => {
+    let release: (v: unknown) => void = () => {}
+    get.mockImplementation((u: string) => String(u).includes('/api/fcfs/') ? new Promise((r) => { release = r }) : ok({}))
+    render(bar())
+    fireEvent.click(screen.getByRole('button', { name: '구매하기' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    release({ data: { success: true, data: { enabled: false } } })
+  })
 })
