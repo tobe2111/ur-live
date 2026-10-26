@@ -19,7 +19,7 @@ import { detailHref } from '@/shared/product-flow'
 import CatIcon from './CatIcon'
 import { PinIcon, StarIcon } from '@/components/icons/urdeal-icons'
 import { priceDisplay } from '@/shared/price-display'
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import { usePrefetchMapDetail } from './prefetch-detail'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -77,16 +77,48 @@ export default function SelectedDealCard({
     : null
   const thumb = cfImage(selected.image_url, { width: 200, height: 200, fit: 'cover', format: 'auto' })
 
-  const applySwipe = (dx: number) => {
-    if (Math.abs(dx) < 50) return
-    if (dx < 0 && hasNext) onNext()      // 왼쪽으로 스와이프 → 다음
-    else if (dx > 0 && hasPrev) onPrev() // 오른쪽으로 스와이프 → 이전
-  }
+  // 🎞️ 2026-10-27 (대표 "여기 이용권 좌우스크롤 모션 이상해"): 종전엔 카드가 손가락을 1/3(×0.35)만
+  //   따라오다 **제자리로 튕겨 돌아오고 내용만 갈렸다** — 넘어간 게 아니라 고무줄처럼 보였다.
+  //   이제 손가락을 1:1 로 따라가고(끝 카드에서만 저항), 넘기면 그 방향으로 **빠져나가고** 다음 카드가
+  //   **반대쪽에서 들어온다**. 버튼·키보드도 같은 움직임(`slideTo`).
+  const pendingIn = useRef<0 | 1 | -1>(0)
+  const busy = useRef(false)
+  const ease = 'cubic-bezier(0.32, 0.72, 0, 1)'
   const settleBack = () => {
     const el = cardRef.current
     if (!el) return
-    el.style.transition = 'transform 0.25s cubic-bezier(0.32, 0.72, 0, 1)'
+    el.style.transition = `transform 0.25s ${ease}`
     el.style.transform = 'translateX(0px)'
+  }
+  /** dir: 1 = 다음(왼쪽으로 빠진다), -1 = 이전(오른쪽으로 빠진다) */
+  const slideTo = (dir: 1 | -1) => {
+    if (busy.current || (dir === 1 ? !hasNext : !hasPrev)) { settleBack(); return }
+    const el = cardRef.current
+    const go = dir === 1 ? onNext : onPrev
+    if (!el || (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)) { go(); return }
+    busy.current = true
+    const w = el.offsetWidth + 24
+    el.style.transition = `transform 0.18s ${ease}`
+    el.style.transform = `translateX(${-dir * w}px)`
+    window.setTimeout(() => { pendingIn.current = dir; go() }, 180)
+  }
+  // 새 딜이 들어오면 반대쪽에서 밀고 들어온다(같은 카드 인스턴스라 선택 id 가 바뀌는 순간을 잡는다).
+  useLayoutEffect(() => {
+    const el = cardRef.current
+    const dir = pendingIn.current
+    pendingIn.current = 0
+    if (!el || !dir) { busy.current = false; return }
+    const w = el.offsetWidth + 24
+    el.style.transition = 'none'
+    el.style.transform = `translateX(${dir * w}px)`
+    void el.offsetWidth // 시작 위치를 먼저 그리게 한다
+    el.style.transition = `transform 0.22s ${ease}`
+    el.style.transform = 'translateX(0px)'
+    busy.current = false
+  }, [selected.id])
+  const applySwipe = (dx: number) => {
+    if (Math.abs(dx) < 50) { settleBack(); return }
+    slideTo(dx < 0 ? 1 : -1)              // 왼쪽으로 스와이프 → 다음
   }
   const onPointerDown = (e: React.PointerEvent) => {
     drag.current = { id: e.pointerId, x0: e.clientX, y0: e.clientY, dx: 0, axis: null, raf: 0 }
@@ -113,7 +145,8 @@ export default function SelectedDealCard({
         if (!cur) return
         cur.raf = 0
         const el = cardRef.current
-        if (el) { el.style.transition = 'none'; el.style.transform = `translateX(${cur.dx * 0.35}px)` }
+        const edge = (cur.dx < 0 && !hasNext) || (cur.dx > 0 && !hasPrev)
+        if (el) { el.style.transition = 'none'; el.style.transform = `translateX(${edge ? cur.dx * 0.25 : cur.dx}px)` }
       })
     }
   }
@@ -122,7 +155,7 @@ export default function SelectedDealCard({
     if (!s || e.pointerId !== s.id) return
     drag.current = null
     if (s.raf) cancelAnimationFrame(s.raf)
-    if (s.axis === 'h') { settleBack(); applySwipe(s.dx) }
+    if (s.axis === 'h') applySwipe(s.dx)
   }
   const onPointerCancel = (e: React.PointerEvent) => {
     const s = drag.current
@@ -138,8 +171,8 @@ export default function SelectedDealCard({
   }
   // ⌨️ 키보드 좌우 화살표(PC 접근성).
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'ArrowLeft' && hasPrev) { e.preventDefault(); onPrev() }
-    else if (e.key === 'ArrowRight' && hasNext) { e.preventDefault(); onNext() }
+    if (e.key === 'ArrowLeft' && hasPrev) { e.preventDefault(); slideTo(-1) }
+    else if (e.key === 'ArrowRight' && hasNext) { e.preventDefault(); slideTo(1) }
   }
 
   return (
@@ -163,18 +196,18 @@ export default function SelectedDealCard({
         {/* 좌우 이동 버튼 (스와이프 대체) */}
         {hasPrev && (
           <button
-            onClick={onPrev}
+            onClick={() => slideTo(-1)}
             aria-label="이전 딜"
-            className="absolute left-1.5 top-1/2 -translate-y-1/2 z-10 w-7 h-7 flex items-center justify-center rounded-full bg-white/90 dark:bg-[#1D1F29]/90 shadow text-gray-700 dark:text-gray-200"
+            className="hidden lg:flex absolute left-1.5 top-1/2 -translate-y-1/2 z-10 w-7 h-7 items-center justify-center rounded-full bg-white/90 dark:bg-[#1D1F29]/90 shadow text-gray-700 dark:text-gray-200"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
         )}
         {hasNext && (
           <button
-            onClick={onNext}
+            onClick={() => slideTo(1)}
             aria-label="다음 딜"
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 z-10 w-7 h-7 flex items-center justify-center rounded-full bg-white/90 dark:bg-[#1D1F29]/90 shadow text-gray-700 dark:text-gray-200"
+            className="hidden lg:flex absolute right-1.5 top-1/2 -translate-y-1/2 z-10 w-7 h-7 items-center justify-center rounded-full bg-white/90 dark:bg-[#1D1F29]/90 shadow text-gray-700 dark:text-gray-200"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
@@ -227,7 +260,8 @@ export default function SelectedDealCard({
 
         {/* 위치 인디케이터 (n / total) */}
         {total > 1 && (
-          <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 text-[12px] font-medium text-gray-500 bg-white/80 px-2 rounded-full">
+          // 📍 종전엔 카드 아래 가운데라 가격 줄과 겹쳤다(대표 스크린샷 '20 / 50') — 비어 있는 오른쪽 아래 구석으로.
+          <div className="absolute bottom-3 right-4 text-[12px] font-medium text-gray-500 tabular-nums">
             {position} / {total}
           </div>
         )}
