@@ -37,3 +37,9 @@
 - 배포 전 라이브 확인 때 `/static/fonts/pretendard-pc-v1.3.9-2.css` 를 요청해, 파일이 없던 시점의 SPA 대체 응답(text/html)이 immutable 1년으로 엣지 캐시에 붙었다(HIT, age 789s). `?x=1` 붙이면 text/css 정상.
 - 처방: 파일 이름 `-v1.3.9-3` 으로 교체(퍼지는 대표 권한). 판정: 배포 뒤 쿼리 없이 `curl -sI .../pretendard-pc-v1.3.9-3.css` → text/css.
 - 교훈: 새 immutable 주소는 배포 전에 라이브에서 찌르지 말 것.
+
+
+## 후속 4 (2026-10-26) — `-3` 도 같은 이유로 오염 → `-4`
+- 머지(`b919a705`) 뒤 배포를 기다리던 스크립트가 시간 초과로 끊겼고, 배포 완료 전에 손으로 `-3` 주소를 요청해 HTML 이 다시 1년 캐시에 붙었다(cf-cache-status HIT).
+- 처방: `-v1.3.9-4` 로 이름 교체. **판정 순서**: ① 머지 커밋이 main 에 있고 그 커밋을 포함한 `Deploy to Cloudflare Pages` 가 success ② 라이브 index.html 이 `-4` 를 가리킨다 ③ 그 다음에야 `curl -sI .../pretendard-pc-v1.3.9-4.css` → text/css.
+- 교훈: 배포 완료 전에는 새 immutable 주소를 **어떤 경로로도** 요청하지 않는다(대기 스크립트가 끊겼을 때 손으로 확인하는 것도 포함).
