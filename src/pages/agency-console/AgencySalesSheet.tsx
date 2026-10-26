@@ -47,7 +47,7 @@ export default function AgencySalesSheet({ sellerId, storeName, onClose }: { sel
         <div className="flex gap-1" role="tablist">
           {PERIODS.map((p) => (
             <button key={p.key} type="button" role="tab" aria-selected={period === p.key} onClick={() => setPeriod(p.key)}
-              className={`h-8 rounded-full px-3 text-[12px] font-semibold ${period === p.key ? 'bg-brand text-white' : 'bg-gray-100 text-gray-600'}`}>
+              className={`h-8 rounded-full px-3 text-[12px] font-semibold ${period === p.key ? 'bg-brand text-white' : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300'}`}>
               {p.label}
             </button>
           ))}
@@ -60,7 +60,7 @@ export default function AgencySalesSheet({ sellerId, storeName, onClose }: { sel
           <button type="button" onClick={() => setNonce((n) => n + 1)} className="mt-2 text-[13px] font-semibold text-brand-text underline">다시 시도</button>
         </div>
       ) : !data ? (
-        <p className="px-4 py-8 text-center text-[13px] text-gray-500">불러오는 중…</p>
+        <p className="px-4 py-8 text-center text-[13px] text-gray-500 dark:text-gray-400">불러오는 중…</p>
       ) : (
         <>
           <dl className="grid grid-cols-4 gap-2 px-4 pt-4">
@@ -71,33 +71,33 @@ export default function AgencySalesSheet({ sellerId, storeName, onClose }: { sel
               ['환불', `${formatNumber(s?.refunded ?? 0)}장`],
             ].map(([k, v]) => (
               <div key={k} className="min-w-0">
-                <dt className="text-[12px] text-gray-400">{k}</dt>
-                <dd className="truncate text-[15px] font-bold tabular-nums text-gray-900">{v}</dd>
+                <dt className="text-[12px] text-gray-400 dark:text-gray-500">{k}</dt>
+                <dd className="truncate text-[15px] font-bold tabular-nums text-gray-900 dark:text-white">{v}</dd>
               </div>
             ))}
           </dl>
-          <div className="mx-4 mt-4 rounded-xl bg-gray-50 px-3 py-3">
-            <p className="text-[13px] font-semibold text-gray-900">
+          <div className="mx-4 mt-4 rounded-xl bg-gray-50 dark:bg-white/5 px-3 py-3">
+            <p className="text-[13px] font-semibold text-gray-900 dark:text-white">
               {data.share?.pct == null
                 ? '우리 몫: 사장님이 아직 정하지 않았어요'
                 : `우리 몫 ${formatNumber(data.share.amount)}원 (${data.share.pct}%)`}
             </p>
-            <p className="mt-0.5 text-[12px] leading-[1.55] text-gray-500">
+            <p className="mt-0.5 text-[12px] leading-[1.55] text-gray-500 dark:text-gray-400">
               환불 안 된 판매에만 붙어요. 돈은 매장이 직접 보내고, 세금계산서는 우리가 매장에 발행해요.
             </p>
           </div>
           {data.items.length === 0 ? (
-            <p className="px-4 py-8 text-center text-[13px] text-gray-500">이 기간에 팔린 우리 이용권이 없어요.</p>
+            <p className="px-4 py-8 text-center text-[13px] text-gray-500 dark:text-gray-400">이 기간에 팔린 우리 이용권이 없어요.</p>
           ) : (
             <ul className="mt-3 divide-y divide-rule">
               {data.items.map((it) => (
                 <li key={it.id} className="flex items-center gap-3 px-4 py-3">
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[15px] font-semibold text-gray-900">{it.productName}</span>
-                    <span className="block text-[12px] text-gray-400">{formatKSTShort(it.soldAt)}</span>
+                    <span className="block truncate text-[15px] font-semibold text-gray-900 dark:text-white">{it.productName}</span>
+                    <span className="block text-[12px] text-gray-400 dark:text-gray-500">{formatKSTShort(it.soldAt)}</span>
                   </span>
                   <span className="shrink-0 text-right">
-                    <span className="block text-[13px] tabular-nums text-gray-900">{formatNumber(it.price)}원</span>
+                    <span className="block text-[13px] tabular-nums text-gray-900 dark:text-white">{formatNumber(it.price)}원</span>
                     <span className={`block text-[12px] ${it.status === 'refunded' ? 'text-tone-bad' : it.status === 'used' ? 'text-tone-ok' : 'text-gray-500'}`}>
                       {STATUS_LABEL[it.status] ?? it.status}
                     </span>
@@ -106,7 +106,7 @@ export default function AgencySalesSheet({ sellerId, storeName, onClose }: { sel
               ))}
             </ul>
           )}
-          <p className="px-4 py-3 text-[12px] leading-[1.55] text-gray-500">
+          <p className="px-4 py-3 text-[12px] leading-[1.55] text-gray-500 dark:text-gray-400">
             우리가 맡은 기간에 팔린 우리 이용권만 보여요. 최근 100건까지. 손님 정보는 사장님 화면에만 있어요.
           </p>
         </>

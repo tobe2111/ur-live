@@ -55,26 +55,26 @@ export function AgencyInviteLinkCard() {
   }
 
   return (
-    <div className="mt-3 rounded-2xl bg-white p-6 shadow-lift">
-      <p className="text-[15px] font-semibold text-gray-900">매장 초대 링크</p>
-      <p className="mt-1 text-[13px] leading-relaxed text-gray-500">
+    <div className="mt-3 rounded-2xl bg-white dark:bg-[#1D1F29] p-6 shadow-lift">
+      <p className="text-[15px] font-semibold text-gray-900 dark:text-white">매장 초대 링크</p>
+      <p className="mt-1 text-[13px] leading-relaxed text-gray-500 dark:text-gray-400">
         사장님께 카톡으로 보내면, 사장님이 링크를 열어 [맡기기] 한 번으로 이 에이전시에 매장을 맡겨요. 따로 수락할 필요 없이 바로 운영할 수 있어요.
       </p>
       {error ? (
         <p className="mt-3 text-[13px] text-tone-bad">{error}</p>
       ) : invite === undefined ? (
-        <p className="mt-3 text-[13px] text-gray-500">불러오는 중…</p>
+        <p className="mt-3 text-[13px] text-gray-500 dark:text-gray-400">불러오는 중…</p>
       ) : invite ? (
         <>
           <div className="mt-4 flex gap-2">
             <input ref={inputRef} readOnly value={invite.url} onFocus={(e) => e.currentTarget.select()}
-              className="min-w-0 flex-1 rounded-xl bg-gray-50 px-3 py-2 text-[13px] text-gray-700 outline-none" />
+              className="min-w-0 flex-1 rounded-xl bg-gray-50 dark:bg-white/5 px-3 py-2 text-[13px] text-gray-700 dark:text-gray-200 outline-none" />
             <button type="button" onClick={copy} className="h-10 shrink-0 rounded-xl bg-brand px-4 text-[13px] font-semibold text-white">복사</button>
           </div>
-          <div className="mt-3 flex items-center gap-3 text-[12px] text-gray-500">
+          <div className="mt-3 flex items-center gap-3 text-[12px] text-gray-500 dark:text-gray-400">
             <span>이 링크로 맡긴 매장 {invite.useCount}곳</span>
-            <button type="button" disabled={busy} onClick={create} className="ml-auto font-semibold text-gray-600 hover:text-gray-900 disabled:opacity-50">새로 만들기</button>
-            <button type="button" disabled={busy} onClick={revoke} className="font-semibold text-gray-600 hover:text-gray-900 disabled:opacity-50">끊기</button>
+            <button type="button" disabled={busy} onClick={create} className="ml-auto font-semibold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white disabled:opacity-50">새로 만들기</button>
+            <button type="button" disabled={busy} onClick={revoke} className="font-semibold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white disabled:opacity-50">끊기</button>
           </div>
         </>
       ) : (

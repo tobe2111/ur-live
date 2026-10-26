@@ -29,9 +29,9 @@ export default function AgencyNotificationsSheet({ items, unread, onPick, onRead
   return (
     <Sheet title="판매 알림" onClose={onClose}>
       {items === null ? (
-        <p className="px-4 py-8 text-center text-[13px] text-gray-500">불러오는 중…</p>
+        <p className="px-4 py-8 text-center text-[13px] text-gray-500 dark:text-gray-400">불러오는 중…</p>
       ) : items.length === 0 ? (
-        <p className="px-4 py-8 text-center text-[13px] text-gray-500">최근 30일 동안 팔린 우리 이용권이 없어요.</p>
+        <p className="px-4 py-8 text-center text-[13px] text-gray-500 dark:text-gray-400">최근 30일 동안 팔린 우리 이용권이 없어요.</p>
       ) : (
         <>
           {unread > 0 && (
@@ -42,12 +42,12 @@ export default function AgencyNotificationsSheet({ items, unread, onPick, onRead
           <ul className="divide-y divide-rule">
             {items.map((n) => (
               <li key={n.id}>
-                <button type="button" onClick={() => onPick(n)} className="flex w-full gap-3 px-4 py-3 text-left active:bg-gray-50">
+                <button type="button" onClick={() => onPick(n)} className="flex w-full gap-3 px-4 py-3 text-left active:bg-gray-50 dark:active:bg-white/5">
                   <span aria-hidden="true" className={`mt-2 h-2 w-2 shrink-0 rounded-full ${n.isRead ? 'bg-transparent' : 'bg-brand'}`} />
                   <span className="min-w-0 flex-1">
-                    <span className={`block truncate text-[15px] ${n.isRead ? 'font-semibold text-gray-700' : 'font-bold text-gray-900'}`}>{n.title}</span>
-                    {n.message && <span className="mt-1 block line-clamp-2 text-[13px] text-gray-500">{n.message}</span>}
-                    <span className="mt-1 block text-[12px] text-gray-400">{n.storeName ? `${n.storeName} · ` : ''}{formatKSTShort(n.createdAt)}</span>
+                    <span className={`block truncate text-[15px] ${n.isRead ? 'font-semibold text-gray-700 dark:text-gray-200' : 'font-bold text-gray-900 dark:text-white'}`}>{n.title}</span>
+                    {n.message && <span className="mt-1 block line-clamp-2 text-[13px] text-gray-500 dark:text-gray-400">{n.message}</span>}
+                    <span className="mt-1 block text-[12px] text-gray-400 dark:text-gray-500">{n.storeName ? `${n.storeName} · ` : ''}{formatKSTShort(n.createdAt)}</span>
                   </span>
                 </button>
               </li>

@@ -18,6 +18,8 @@ import { swallow } from '@/worker/utils/swallow'
 import { invalidateStoreSeatCache } from '@/worker/utils/store-seat-guard'
 import { ensureAgencyConsoleTables, AGENCY_NAME_MAX, STAFF_NAME_MAX, type StaffRole } from './agency-schema'
 import { requireAgencyStaff, issueAgencyStaffToken, type AgencyStaffContext } from './agency-session'
+import { isKakaoOnlyStaffEmail, KAKAO_SOLO_NOTICE } from '@/shared/agency-kakao'
+import { agencyKakaoRoutes } from './agency-kakao.routes'
 import { AGENCY_MAIL_DOWN, agencyMailReady, consumeLinkToken, frontendBase, issueLinkToken, normalizeBusinessNumber, normalizeEmail } from './agency-auth.routes'
 
 type Bindings = {
@@ -27,6 +29,8 @@ type Bindings = {
 type Vars = { agencyStaff: AgencyStaffContext }
 
 export const agencyStaffRoutes = new Hono<{ Bindings: Bindings; Variables: Vars }>()
+// 🟡 카카오로 만든 에이전시(2026-10-26) — 같은 접두사에 끼운다(`worker/index.ts` 마운트를 늘리지 않는다).
+agencyStaffRoutes.route('/', agencyKakaoRoutes)
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
@@ -78,6 +82,8 @@ agencyStaffRoutes.post('/staff/invite', cors(), requireAgencyStaff({ adminOnly: 
       const body = await c.req.json<{ email?: string; role?: string }>().catch(() => ({} as { email?: string; role?: string }))
       const email = normalizeEmail(body.email)
       const role: StaffRole = body.role === 'admin' ? 'admin' : 'staff'
+      // 🟡 카카오로 만든 에이전시는 혼자 쓰는 계정이다(2026-10-26 대표) — 이메일 계정으로 옮긴 뒤에 초대가 열린다.
+      if (isKakaoOnlyStaffEmail(me.email)) return c.json({ success: false, code: 'KAKAO_SOLO', error: KAKAO_SOLO_NOTICE }, 409)
       if (!EMAIL_RE.test(email) || email.length > 254) return c.json({ success: false, error: '이메일 형식을 확인해 주세요.' }, 400)
       if (!agencyMailReady(c.env)) return c.json(AGENCY_MAIL_DOWN, 503)
       const { DB } = c.env

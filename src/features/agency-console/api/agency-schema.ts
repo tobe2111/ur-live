@@ -173,6 +173,13 @@ export async function ensureAgencyConsoleTables(DB: D1Database): Promise<void> {
   try { await DB.prepare('ALTER TABLE agency_accounts ADD COLUMN business_status TEXT').run() } catch { /* 이미 있음 */ }
   // 👥 직원의 매장 범위 — NULL·'all' = 맡은 매장 전부(종전 동작) · 'assigned' = 배정한 매장만.
   try { await DB.prepare('ALTER TABLE agency_staff ADD COLUMN store_scope TEXT').run() } catch { /* 이미 있음 */ }
+  // 🟡 2026-10-26 대표 확정 — **카카오로 만든 에이전시**. 소비자 계정(users.id)과 잇는 열 + 이메일 계정으로 옮기는 중의 값.
+  //   대표: *"카카오 로그인으로 해도 되고, 대신 카카오 로그인 시, 여러명이 함께 관리는 힘들다고 해두면"*.
+  //   한 카카오 계정은 에이전시 하나만 — 유일 인덱스가 동시에 두 번 눌러도 둘째를 막는다.
+  try { await DB.prepare('ALTER TABLE agency_staff ADD COLUMN user_id INTEGER').run() } catch { /* 이미 있음 */ }
+  try { await DB.prepare('ALTER TABLE agency_staff ADD COLUMN pending_email TEXT').run() } catch { /* 이미 있음 */ }
+  try { await DB.prepare('ALTER TABLE agency_staff ADD COLUMN pending_password_hash TEXT').run() } catch { /* 이미 있음 */ }
+  try { await DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_agency_staff_user ON agency_staff(user_id) WHERE user_id IS NOT NULL').run() } catch { /* 열이 막 생기는 중 */ }
   _ensured.add(DB)
 }
 
@@ -196,12 +203,13 @@ export function staffStoreAccessSql(s: string, sellerExpr: string): string {
     SELECT 1 FROM agency_staff_stores x WHERE x.staff_id = ${s}.id AND x.seller_id = ${sellerExpr}))`
 }
 
-export type AgencyTokenKind = 'verify' | 'invite' | 'reset'
+/** move = 카카오 계정을 이메일 계정으로 옮기는 확인 메일(2026-10-26) */
+export type AgencyTokenKind = 'verify' | 'invite' | 'reset' | 'move'
 /** pending = 사장님이 맡김 요청 · active = 에이전시가 수락 · declined = 에이전시가 거절 · ended = 누군가 끊음 */
 export type AgencyStoreLinkStatus = 'pending' | 'active' | 'declined' | 'ended'
 
-/** 토큰 유효 시간 — 인증 메일 24시간 · 초대 7일 · 비밀번호 재설정 1시간 */
-export const AGENCY_TOKEN_TTL_HOURS: Record<AgencyTokenKind, number> = { verify: 24, invite: 24 * 7, reset: 1 }
+/** 토큰 유효 시간 — 인증 메일 24시간 · 초대 7일 · 비밀번호 재설정 1시간 · 이메일로 옮기기 24시간 */
+export const AGENCY_TOKEN_TTL_HOURS: Record<AgencyTokenKind, number> = { verify: 24, invite: 24 * 7, reset: 1, move: 24 }
 
 /** 매장 초대 링크 수명 — 영업 한 바퀴(한 달)를 덮되, 잊힌 링크가 영원히 살지 않게. */
 export const AGENCY_STORE_INVITE_DAYS = 30

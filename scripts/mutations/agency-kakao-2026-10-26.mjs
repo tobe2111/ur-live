@@ -1,0 +1,68 @@
+/** 🧬 주입 — 카카오로 만든 에이전시(2026-10-26 대표). 가드: src/tests/unit/agency-kakao-2026-10-26.test.tsx */
+const T = 'src/tests/unit/agency-kakao-2026-10-26.test.tsx'
+export default [
+  {
+    name: '카카오 에이전시 — 셀러 토큰을 손님으로 받는다',
+    file: 'src/features/agency-console/api/agency-kakao.routes.ts',
+    find: "  if (!u || (u.type && u.type !== 'user')) return null",
+    replace: '  if (!u) return null',
+    test: T,
+    why: '셀러 id(sellers.id)를 users.id 로 써서 남의 카카오 계정과 에이전시를 잇는다. 에러 0.',
+  },
+  {
+    name: '카카오 에이전시 — 한 계정이 에이전시를 여럿 만든다',
+    file: 'src/features/agency-console/api/agency-kakao.routes.ts',
+    find: '      const already = await linkedStaffId(DB, userId)\n      if (already) {',
+    replace: '      const already = await linkedStaffId(DB, userId)\n      if (already && false) {',
+    test: T,
+    why: '누를 때마다 새 에이전시가 생긴다 — 성과가 여러 계정으로 갈린다.',
+  },
+  {
+    name: '카카오 에이전시 — 동시에 두 번 누르면 둘 다 생긴다(유일 인덱스 없음)',
+    file: 'src/features/agency-console/api/agency-schema.ts',
+    find: "  try { await DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_agency_staff_user ON agency_staff(user_id) WHERE user_id IS NOT NULL').run() } catch { /* 열이 막 생기는 중 */ }",
+    replace: '',
+    test: T,
+    why: '선확인 사이로 두 요청이 같이 들어오면 한 카카오 계정에 에이전시가 둘 생긴다.',
+  },
+  {
+    name: '카카오 에이전시 — 혼자 쓰는 계정이 직원을 초대한다',
+    file: 'src/features/agency-console/api/agency-staff.routes.ts',
+    find: "      if (isKakaoOnlyStaffEmail(me.email)) return c.json({ success: false, code: 'KAKAO_SOLO', error: KAKAO_SOLO_NOTICE }, 409)",
+    replace: '',
+    test: T,
+    why: '카카오 계정을 여럿이 나눠 쓰게 된다 — 대표가 "여러명이 함께 관리는 힘들다" 고 정한 경계가 사라진다.',
+  },
+  {
+    name: '카카오 에이전시 — 확인 링크 없이 바로 이메일을 바꾼다',
+    file: 'src/features/agency-console/api/agency-kakao.routes.ts',
+    find: '"UPDATE agency_staff SET pending_email = ?, pending_password_hash = ?, updated_at = datetime(\'now\') WHERE id = ?"',
+    replace: '"UPDATE agency_staff SET email = ?, password_hash = ?, updated_at = datetime(\'now\') WHERE id = ?"',
+    test: T,
+    why: '남의 이메일을 적어 그 주소를 가로챌 수 있다(메일 주인 확인이 사라진다).',
+  },
+  {
+    name: '카카오 에이전시 — 다른 손님이 앞사람 에이전시를 연다',
+    file: 'src/lib/agency-presence.ts',
+    find: '  if (!owner || owner === consumerUserId()) return false',
+    replace: '  if (!owner || owner) return false',
+    test: T,
+    why: '같은 브라우저에 다른 사람이 카카오로 들어오면 앞사람 에이전시가 그대로 열린다. 에러 0.',
+  },
+  {
+    name: '카카오 에이전시 — 이은 로그인을 묶지 않는다',
+    file: 'src/pages/agency-console/agency-kakao-client.ts',
+    find: '    saveAgencySession(r.data, true)\n    bindAgencyToKakao()\n    return true',
+    replace: '    saveAgencySession(r.data, true)\n    return true',
+    test: T,
+    why: '카카오에서 로그아웃해도 에이전시가 7일 동안 열려 있다.',
+  },
+  {
+    name: '카카오 에이전시 — 마이가 매번 묻는다',
+    file: 'src/pages/user-profile/MyAgencyZone.tsx',
+    find: '    if (!uid || probedThisTab(uid)) return',
+    replace: '    if (!uid) return',
+    test: T,
+    why: '에이전시가 아닌 손님 대다수도 마이를 열 때마다 요청을 하나 더 보낸다.',
+  },
+]

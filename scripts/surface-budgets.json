@@ -691,29 +691,25 @@
       }
     },
     "dash:agency": {
-      "totalKB": 181.87,
+      "totalKB": 150.66,
       "chunks": {
-        "index.js": 15.27,
+        "index.js": 15.35,
         "react-core.js": 38.39,
-        "app-shared.js": 6.52,
+        "app-shared.js": 6.54,
         "tanstack-query.js": 9.5,
         "zustand.js": 2.5,
-        "app-utils.js": 20.46,
-        "react-router.js": 7.2,
+        "app-utils.js": 20.47,
+        "react-router.js": 7.11,
         "helmet.js": 4.88,
         "lucide-shell.js": 0.7,
-        "app-stores.js": 2.1,
+        "app-stores.js": 2.11,
         "app-shell.js": 7.98,
-        "app-auth.js": 1.29,
-        "app-layout.js": 3.36,
-        "app-routes.js": 0.86,
-        "index.css": 28.21,
-        "AgencyHomePage.js": 10.01,
-        "app-owner-kit.js": 1.23,
-        "lucide-home.js": 0.77,
-        "Sheet.js": 1.12,
-        "lz-common.js": 17.74,
-        "agency-api.js": 1.78
+        "app-auth.js": 1.28,
+        "app-layout.js": 3.34,
+        "app-routes.js": 1,
+        "index.css": 28.11,
+        "AgencyHomePage.js": 0.29,
+        "agency-api.js": 1.11
       }
     }
   },
@@ -931,6 +927,16 @@
       "reason": "gbDetail lz-gbDetail growth +1.6KB",
       "surfaces": [
         "gbDetail"
+      ]
+    },
+    {
+      "date": "2026-10-26",
+      "reason": "dash:agency: /agency 가 마이로 보내는 문만 남음(에이전시 화면이 마이 안 구역으로 — 2026-10-26 안 A) — 개선 잠금",
+      "changes": [
+        "dash:agency: 181.9 → 150.7 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다"
+      ],
+      "surfaces": [
+        "dash:agency"
       ]
     }
   ]

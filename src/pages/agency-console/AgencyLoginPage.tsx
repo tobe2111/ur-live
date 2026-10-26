@@ -43,7 +43,7 @@ export default function AgencyLoginPage() {
             처음이에요 · <Link to="/agency/signup" className="font-medium text-brand-text hover:underline underline-offset-4">에이전시 만들기</Link>
           </p>
           <p>
-            손님으로 이용하시려면 {/* login-return-ok: 손님 로그인 뒤 에이전시 로그인으로 되돌아오면 안 된다 */}<Link to="/login" className="font-medium text-gray-700 hover:underline underline-offset-4">카카오 로그인</Link>
+            카카오로 만든 에이전시는 {/* 🟡 2026-10-26 — 카카오 로그인 뒤 마이에서 에이전시가 바로 열린다 */}<Link to="/login?returnUrl=%2Fuser%2Fprofile" className="font-medium text-gray-700 hover:underline underline-offset-4">카카오 로그인</Link>으로 들어와요
           </p>
         </div>
       }

@@ -3,7 +3,10 @@
  *   마운트: app.route('/api/agency-console', agencyConsoleRoutes)
  *
  * 대표 확정(2026-10-11, `docs/decisions/2026-10-11-agency-model-email-only.md`):
- *   에이전시 계정은 **이메일로만** 가입·로그인한다. 카카오로는 에이전시를 만들 수 없다.
+ *   에이전시 계정은 **이메일로만** 가입·로그인한다.
+ * 🟡 2026-10-26 대표 보강 — *"카카오 로그인으로 해도 되고, 대신 카카오 로그인 시, 여러명이 함께 관리는
+ *   힘들다고 해두면"*. 카카오로 만든 에이전시는 **혼자 쓰는 계정**이고, 이메일 계정으로 옮길 수 있다
+ *   (`agency-kakao.routes.ts`). 이 파일의 이메일 가입·로그인은 그대로다.
  *
  * ## 계정이 있는지 없는지를 응답으로 알려 주지 않는다
  * 가입·비밀번호 찾기는 이메일이 이미 있든 없든 **같은 응답**을 준다. 차이는 메일 내용에만 있다
@@ -20,6 +23,7 @@ import { safeError } from '@/worker/utils/safe-error'
 import { ntsCheckStatus } from '@/worker/utils/nts-business-verify'
 import { swallow } from '@/worker/utils/swallow'
 import { sensMailConfigured } from '@/lib/ncp-sens-mail'
+import { isKakaoOnlyStaffEmail } from '@/shared/agency-kakao'
 import {
   ensureAgencyConsoleTables, AGENCY_TOKEN_TTL_HOURS, AGENCY_NAME_MAX,
   type AgencyKind, type AgencyTokenKind,
@@ -130,7 +134,8 @@ export const AGENCY_MAIL_DOWN = {
   error: '지금은 메일을 보낼 수 없어서 진행할 수 없어요. 잠시 뒤 다시 시도해 주세요.',
 } as const
 
-async function loginPayload(env: Bindings, staffId: number) {
+/** 로그인 응답 — 이메일 로그인·인증·카카오 잇기·이메일로 옮기기가 **같은 모양**을 돌려준다. */
+export async function loginPayload(env: { DB: D1Database; JWT_SECRET: string }, staffId: number) {
   const s = await env.DB.prepare(
     `SELECT s.id, s.agency_id, s.email, s.name, s.role, s.is_owner, a.name AS agency_name, a.kind AS agency_kind
        FROM agency_staff s JOIN agency_accounts a ON a.id = s.agency_id WHERE s.id = ? LIMIT 1`,
@@ -144,7 +149,10 @@ async function loginPayload(env: Bindings, staffId: number) {
   return {
     token,
     expiresAt,
-    staff: { id: s.id, email: s.email, name: s.name, role: s.role === 'admin' ? 'admin' : 'staff', isOwner: s.is_owner === 1 },
+    staff: {
+      id: s.id, email: s.email, name: s.name, role: s.role === 'admin' ? 'admin' : 'staff', isOwner: s.is_owner === 1,
+      loginKind: isKakaoOnlyStaffEmail(s.email) ? 'kakao' : 'email',
+    },
     agency: { id: s.agency_id, name: s.agency_name, kind: s.agency_kind === 'individual' ? 'individual' : 'business' },
   }
 }
@@ -358,7 +366,10 @@ agencyConsoleRoutes.get('/me', requireAgencyStaff(), async (c) => {
   if (!row) return c.json({ success: false, error: '계정을 찾지 못했어요.' }, 404)
   return c.json({
     success: true,
-    staff: { id: row.id, email: row.email, name: row.name, role: me.role, isOwner: row.is_owner === 1 },
+    staff: {
+      id: row.id, email: row.email, name: row.name, role: me.role, isOwner: row.is_owner === 1,
+      loginKind: isKakaoOnlyStaffEmail(row.email) ? 'kakao' : 'email',
+    },
     agency: {
       id: row.agency_id, name: row.agency_name, kind: row.kind === 'individual' ? 'individual' : 'business',
       businessNumber: me.role === 'admin' ? row.business_number : null,
