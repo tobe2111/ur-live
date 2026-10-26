@@ -137,7 +137,8 @@ export function buildStayDetailFirstScreen(ssrPayload: string, loaderHtml: strin
     return (
       `<div id="ur-first-screen" class="${STAY_HEAD.pageBg}">` +
         `<div class="${STAY_HEAD.shell}">` +
-          crumb +
+          // 📱 2026-10-27: 폰에선 빵부스러기 없이 사진이 맨 위(이용권 상세와 같다) — 화면도 `hidden lg:block`.
+          (crumb ? `<div class="hidden lg:block">${crumb}</div>` : '') +
           // 📱 본문은 모바일만 — PC 는 그리드 밖 제목 헤더 때문에 반쪽만 그리면 마운트 때 밀린다.
           `<div class="${STAY_HEAD.gridPad} lg:hidden">` +
             `<div class="${STAY_HEAD.heroWrap}">${hero}${mobileThumbRowHtml(images)}</div>` +

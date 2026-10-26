@@ -97,3 +97,12 @@
 - 실제 가게라 영업시간·주차·금액·수상 등은 금지어로 걸러 **버린다**(3회 버려지면 종전 짧은 설명 유지). 회차당 2건, 사진 정비 크론에 배선(R2 무관 자리). 하트비트 `descWritten`.
 - 가드 8건 + 주입 2건.
 - E4: 배포 후 하트비트 `descWritten` 이 오르는지 + 데모 상세 3~4개 눈 판정.
+
+## 9. 상세 틀 통일 1~4단계 (대표 "숙소랑 다른 이용권 이분법 분리 필요한가?" → "모두 이상적으로 작업해줘")
+- ① 숙소 폰 화면: 빵부스러기는 PC 만(`hidden lg:block`), 사진이 맨 위 + 상단 버튼 C안(`overPhoto`). 서버 첫 화면(`stay-detail-ssr-body.ts`)도 같은 모양 — 가드 `stay-photo-top-2026-10-27`.
+- ② 하단 바: 공용 부품 `src/components/deal/BuyBar.tsx`(`BuyBarFrame`·`BuyBarPrice`·`BuyBarCta`)를 이용권(`DealBottomBar`)·숙소(`StayStickyBar`)가 같이 씀. 숙소 바가 가격 24px·버튼 52px 로 이용권과 같아짐 — 가드 `buy-bar-unify-2026-10-27`. 기존 가드 둘 재조준(`stay-detail-e` z-층, `gb-detail-borders` 위 구분선).
+- ③ 숙소 섹션 띠 = 흰 면 + 8px 띠(`STAY_BAND` 한 상수 — 종전 7곳 사본), 숙소 제목 폰 24px.
+- ④ PC 숙소 예약 상자가 이용권 상자와 같은 숫자(반경 18·여백 18·버튼 50/14, `PURCHASE_BOX_CLS`/`PURCHASE_CTA_CLS`) + 추첨 상품이면 PC 에서도 응모 버튼. ₩ 표기 → "원". 가드 `detail-unify-head-box-2026-10-27`.
+- 미리보기 도구에 숙소 상세 스텁 추가(`--deals` + `/stays/:id`).
+- ⚠️ 여전히 미해결(머니 경로·결재 필요): 숙소 예약 서버에 추첨(fcfs) 게이트 없음 — 화면은 이제 응모만 보이지만 API 직행 예약은 막히지 않는다.
+- 남은 일: #6 상세 갤러리에 매장 숏폼 영상.

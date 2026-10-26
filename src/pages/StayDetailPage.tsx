@@ -30,7 +30,7 @@ import StayDateGuestPicker, { type DayPrice } from './stay-detail/StayDateGuestP
 import { amenityMeta } from './stay-detail/amenity-meta'
 import { stayAddressLine, stayRegionLabel } from '@/shared/stay-address'
 // 🏨 첫 화면의 치수 클래스는 워커(`stay-detail-ssr-body`)와 **같은 상수**를 쓴다 — 두 벌이면 갈린다.
-import { STAY_HEAD, STAY_PAGE_ROOT, STAY_GRID } from '@/shared/stay-head'
+import { STAY_HEAD, STAY_PAGE_ROOT, STAY_GRID, STAY_BAND } from '@/shared/stay-head'
 import StayBookingPanel, { cancellationLabel } from './stay-detail/StayBookingPanel'
 import BrandLoader from '@/components/brand/BrandLoader'; import { useOwnerManage, OwnerManageBar, OwnerManageCard } from '@/components/deal/useOwnerManage'
 import { peekWarmStay, stayDetailRequest } from './stays/stay-detail-warm'
@@ -359,8 +359,10 @@ export default function StayDetailPage() {
         shareDescription={stayRegionLabel(stay.region_sido, stay.region_sigungu, stay.address) || '숙소 이용권'}
         shareImageUrl={stay.image_url || ''} shareLink={`https://urdeal.kr/stays/${stay.id}`}
         myUserId={localStorage.getItem('user_id') || ''} heroRef={heroRef} onBack={() => navigate(-1)}
+        overPhoto
       />
-      <DetailBreadcrumb items={stayCrumbs(propertyTypeLabel(stay.property_type))} overlayHeader />
+      {/* 📱 2026-10-27 (대표 "통일할 건 통일"): 폰에선 사진이 맨 위 — 이용권 상세와 같다(빵부스러기는 PC 만). */}
+      <div className="hidden lg:block"><DetailBreadcrumb items={stayCrumbs(propertyTypeLabel(stay.property_type))} overlayHeader /></div>
       <DetailTitleHeader
         name={stay.restaurant_name || stay.name}
         storeName={propertyTypeLabel(stay.property_type)}
@@ -431,7 +433,7 @@ export default function StayDetailPage() {
             객실 카드는 **고르기만** 한다 — 예약은 하단 바 하나(종전엔 카드마다 [이 객실 예약] + 바의 [예약하기]).
             🖥️ PC(lg+)는 우측 `StayBookingPanel` 의 객실 행이 담당(B안) → 여기 숨김. */}
         <div id="fcfs-apply-block" className="gbd -mx-4 empty:hidden" style={{ background: 'transparent' }}><FcfsApplyBlock productId={productId} /></div>
-        <div id="stay-sec-rooms" className="lg:hidden -mx-4 px-4 py-6 border-t-8 border-gray-100 dark:border-[var(--bg)] lg:mx-0 lg:px-0 lg:py-0 lg:border-t-0" style={{ scrollMarginTop: 96 }}>
+        <div id="stay-sec-rooms" className={`lg:hidden ${STAY_BAND}`} style={{ scrollMarginTop: 96 }}>
           <StayRoomPicker rooms={rooms} loading={roomsLoading} guests={guests} nights={nights} readOnly={own}
             selectedId={cartItems[0]?.room_id ?? null}
             onSelect={(r) => setCartQty({ [r.room_id]: 1 })}
@@ -440,7 +442,7 @@ export default function StayDetailPage() {
 
         {/* Amenities */}
         {amenitiesArr.length > 0 && (
-          <div className="-mx-4 px-4 py-6 border-t-8 border-gray-100 dark:border-[var(--bg)] lg:mx-0 lg:px-0 lg:py-0 lg:border-t-0 lg:mb-6">
+          <div className={`${STAY_BAND} lg:mb-6`}>
             <SectionTitle>시설</SectionTitle>
             {/* 🧾 카드 3분할이었다 — "무료 주차" 세 글자에 테두리를 하나씩 쓰던 꼴이라 화면이 시끄러웠다. */}
             <div className="mt-3">
@@ -451,7 +453,7 @@ export default function StayDetailPage() {
 
         {/* Description */}
         {stay.description_full && (
-          <div className="-mx-4 px-4 py-6 border-t-8 border-gray-100 dark:border-[var(--bg)] lg:mx-0 lg:px-0 lg:py-0 lg:border-t-0 lg:mb-6">
+          <div className={`${STAY_BAND} lg:mb-6`}>
             <SectionTitle>숙소 소개</SectionTitle>
             <p className="mt-3 text-[15px] leading-[1.72] text-gray-600 dark:text-gray-300 whitespace-pre-line">{stay.description_full}</p>
           </div>
@@ -468,7 +470,7 @@ export default function StayDetailPage() {
         {/* 🗺️ 위치 — 카카오맵 미니맵 + 매장(숙소) 페이지 연결 (딜 상세 RestaurantMiniMap 재사용).
             좌표(psi.latitude/longitude) 있으면 즉시 마커, 없어도 주소 지오코딩 폴백 → 항상 연결. */}
         {(stay.address || (stay.latitude != null && stay.longitude != null)) && (
-          <div className="-mx-4 px-4 py-6 border-t-8 border-gray-100 dark:border-[var(--bg)] lg:mx-0 lg:px-0 lg:py-0 lg:border-t-0 lg:mb-5">
+          <div className={`${STAY_BAND} lg:mb-5`}>
             <SectionTitle className="mb-3">위치</SectionTitle>
             {/* 🩸 `isolate`: 카카오맵 내부 레이어(z≥1)가 루트 스택에 참여해 우측 달력 팝오버 위로 올라왔다.
                 지도를 자기 스택 컨텍스트에 가두고, 아사이드엔 z 를 준다(둘이 한 쌍). */}
@@ -508,6 +510,7 @@ export default function StayDetailPage() {
             nights={isVoucherMode ? voucherNights : nights}
             cancellation={cancellationLabel(stay.cancellation_policy)}
             onBook={() => setMultiBookingOpen(true)}
+            raffle={fcfs.gate ? { label: fcfs.ctaLabel, disabled: fcfs.applied || fcfs.closed || fcfs.busy, onApply: fcfs.apply } : null}
           />}
         </aside>
       </div>

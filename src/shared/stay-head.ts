@@ -25,11 +25,19 @@ export const STAY_HEAD = {
    * 라이브 49건 중 별점이 있는 것은 **12건**(hotel 9 · resort 3)뿐이라, 빼먹으면 37건이 4px 튄다.
    */
   metaRow: 'flex items-center gap-2 text-[12px] text-gray-500 dark:text-gray-400 mb-1',
-  /** 제목(h1). */
-  h1: 'text-[17px] lg:text-[24px] font-bold',
+  /** 제목(h1). 📏 2026-10-27: 폰도 24px — 이용권 상세 제목(`PASS_HEAD.h1`)과 같은 크기(대표 "통일할 건 통일"). */
+  h1: 'text-[24px] leading-[1.3] font-bold tracking-[-.02em]',
 } as const
 
 /** 페이지 루트의 전체 클래스 — 화면과 서버가 같은 바탕에서 시작하게. */
 export const STAY_PAGE_ROOT = `min-h-[100dvh] ${STAY_HEAD.pageBg} pb-32 lg:pb-16`
 /** 본문 그리드 — 모바일은 여백만, PC 는 [본문 | 360px 예약 패널] 2열. */
 export const STAY_GRID = `${STAY_HEAD.gridPad} lg:px-0 lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-8 lg:items-start`
+
+/**
+ * 🧱 섹션 띠 — 📱 폰 폭 전체 흰 면 + 위 8px 회색 띠. 이용권 상세의 `PASS_CARD` 와 같은 모양
+ * (2026-10-27 통일 — 숙소만 띠 안이 바탕색이라 같은 앱의 두 상세가 다른 종이처럼 보였다).
+ * PC 는 띠·여백을 걷고 평면(숙소 PC 는 오른쪽 예약 패널 옆 한 열이다). 손으로 다시 적지 말고 이 상수를 쓸 것 —
+ * 종전엔 같은 문자열이 일곱 곳에 사본으로 있었다.
+ */
+export const STAY_BAND = '-mx-4 px-4 py-6 border-t-8 border-gray-100 dark:border-[var(--bg)] bg-surface lg:bg-transparent lg:mx-0 lg:px-0 lg:py-0 lg:border-t-0'

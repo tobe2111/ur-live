@@ -643,6 +643,21 @@ function serve() {
           return res.end(JSON.stringify({ success: true, data: WALLET_VOUCHERS }))
         if (args.deals) {
           if (p === '/api/vouchers/categories') return res.end(JSON.stringify({ success: true, data: VOUCHER_SECTIONS }))
+          // 🏨 2026-10-27: 숙소 상세(`/stays/:id`) 스텁 — 통일 작업에서 두 상세를 나란히 떠 보려고 넣었다.
+          //   합성 데이터다(객실 2개 · 사진 5장).
+          const st = p.match(/^\/api\/group-buy\/stays\/(\d+)(\/availability)?$/)
+          if (st) {
+            const rooms = [
+              { room_id: 1, name: '스탠다드 더블', bed_config: '더블 1', base_guests: 2, max_guests: 3, extra_guest_fee: 20000, available: true, available_count: 3, total_price: 149000, nights: 1 },
+              { room_id: 2, name: '디럭스 트윈', bed_config: '싱글 2', base_guests: 2, max_guests: 4, extra_guest_fee: 20000, available: true, available_count: 1, total_price: 189000, nights: 1 },
+            ]
+            if (st[2]) return res.end(JSON.stringify({ success: true, data: { rooms } }))
+            const imgs = ['#C9B8A8', '#A8B5C9', '#B8C9A8', '#C9A8B8', '#A8C9C4'].map((c) => tilePlaceholder(c))
+            const product = { id: Number(st[1]), name: '그랑블루 오션뷰', restaurant_name: '그랑블루 오션뷰 펜션', category: 'stay_voucher', property_type: 'pension', star_rating: 0,
+              image_url: imgs[0], images: JSON.stringify(imgs), region_sido: '강원', region_sigungu: '속초시', address: '강원 속초시 해오름로 1',
+              avg_rating: 4.6, review_count: 12, amenities: JSON.stringify(['parking', 'wifi']), description_full: '바다가 보이는 객실과 개별 테라스가 있는 펜션입니다.' }
+            return res.end(JSON.stringify({ success: true, data: { product, rooms } }))
+          }
           // 상세는 **단건**이다 — 목록과 같은 배열을 주면 화면이 안 그려진다.
           const m = p.match(/^\/api\/(?:group-buy\/)?products\/(\d+)/)
           if (m) {

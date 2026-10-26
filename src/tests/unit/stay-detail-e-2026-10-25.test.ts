@@ -29,7 +29,9 @@ describe('숙소 E안 — 예약 버튼은 하나', () => {
   })
   it('하단 예약 바가 하단 탭(z-[9999]) 위에 뜬다 — 폰의 유일한 예약 문', () => {
     const bar = readCode('src/pages/stay-detail/StayStickyBar.tsx')
-    expect(bar).toMatch(/fixed bottom-0 left-0 right-0 z-\[10002\]/)
+    // 🧾 2026-10-27: 틀이 공용 부품(`BuyBar`)으로 옮겨갔다 — 불변식(탭 위 층) 그대로, 그 부품에서 본다.
+    expect(bar).toContain('<BuyBarFrame>')
+    expect(readCode('src/components/deal/BuyBar.tsx')).toMatch(/fixed bottom-0 inset-x-0 z-\[10002\]/)
     expect(bar).toContain("cartTotalQty === 1 ? '예약하기'")
   })
   it('E안 순서 — 날짜 → 객실 → 시설 → 소개 → 이용 안내 → 위치 → 비슷한 스테이 → 후기', () => {

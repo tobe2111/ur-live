@@ -71,7 +71,9 @@ describe('걷어낸 것 — 카드를 두르던 테두리 4곳', () => {
 describe('남긴 것 — 구분선 7곳 (과잉교정 차단)', () => {
   // 규칙 ①은 **카드 테두리**를 금지한다. 카드 안 구분선은 `--rule` 이 존재하는 이유다.
   it('하단 바 위 구분선', () => {
-    expect(BAR).toMatch(/borderTop: '1px solid var\(--gbd-line2\)'/)
+    // 🧾 2026-10-27: 틀이 공용 부품(`BuyBar`)으로 — `--gbd-line2` 는 `--line` 의 별칭이라 같은 선이다.
+    expect(BAR).toContain('<BuyBarFrame>')
+    expect(stripComments(readFileSync('src/components/deal/BuyBar.tsx', 'utf-8'))).toMatch(/borderTop: '1px solid var\(--line\)'/)
   })
   it('메뉴 행 구분선 2곳', () => {
     expect((MENU.match(/1px solid var\(--gbd-line2\)/g) || []).length).toBe(2)

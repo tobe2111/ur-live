@@ -29,6 +29,7 @@ import { useEffect, useRef, useState } from 'react'
 import api from '@/lib/api'
 import { StayCardRow } from '@/pages/stays/StayCurations'
 import type { StaySearchItem } from '@/hooks/queries/useStaysSearch'
+import { STAY_BAND } from '@/shared/stay-head'
 
 const MIN_SHOWN = 2
 const MAX_SHOWN = 10
@@ -64,7 +65,7 @@ export default function SimilarStays({
     <>
       <div ref={sentinel} aria-hidden style={{ height: 1 }} />
       {items.length >= MIN_SHOWN && (
-        <section className="-mx-4 px-4 py-6 border-t-8 border-gray-100 dark:border-[var(--bg)] lg:mx-0 lg:px-0 lg:py-0 lg:border-t-0 lg:mb-6">
+        <section className={`${STAY_BAND} lg:mb-6`}>
           <h2 className="text-[17px] font-bold tracking-tight text-gray-900 dark:text-white">이곳과 비슷한 스테이</h2>
           <StayCardRow items={items} checkIn={checkIn} checkOut={checkOut} guests={guests} />
         </section>
