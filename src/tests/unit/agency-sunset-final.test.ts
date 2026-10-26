@@ -179,7 +179,10 @@ describe('🏢 새 에이전시(2026-10-11)는 이 목록뿐', () => {
 
   it('그 라우트는 pages/agency-console 화면만 띄운다 (옛 Agency* 페이지 부활 금지)', () => {
     const imports = [...ROUTES.matchAll(/import\('([^']+)'\)/g)].map((m) => m[1])
-    expect(imports.length).toBe(ALLOWED.length)
+    // 🏠 2026-10-26 안 A — 라우트 여섯에 더해 **마이 자리(`/user/profile` guest)** 에 끼우는 `AgencyMyPage` 하나.
+    //   주소를 새로 만들지 않으므로 ALLOWED 는 그대로이고, 화면 모듈만 하나 는다(그것도 pages/agency-console 안).
+    expect(imports.length).toBe(ALLOWED.length + 1)
+    expect(imports).toContain('@/pages/agency-console/AgencyMyPage')
     for (const i of imports) expect(i, i).toMatch(/^@\/pages\/agency-console\//)
   })
 

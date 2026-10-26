@@ -41,7 +41,7 @@ import { isKorea } from '@/shared/config/region'
 import { isNativeShell } from '@/lib/native-platform'
 // TD-006: route group files
 import { sellerTopLevelRoutes } from './routes/seller-public.routes'; const SellerRouteTree = lazy(() => import('./routes/seller.routes')) // ⚡ 2026-10-18 셀러 표는 셀러 경로에서만 받는다(seller-public.routes 머리말)
-import { AgencyConsoleRoutes } from './routes/agency-console.routes'
+import { AgencyConsoleRoutes, AgencyAwareGuest } from './routes/agency-console.routes'
 const AdminRouteTree = lazy(() => import('./routes/admin.routes')) // ⚡ 2026-10-12 어드민 표는 어드민 경로에서만 받는다(admin.routes 머리말)
 
 // ❌ REMOVED: Duplicate Sentry initialization (already done in main.tsx)
@@ -736,7 +736,7 @@ function AppContent() {
               </ProtectedRoute>
             } />
             <Route path="/user/profile" element={
-              <ProtectedRoute requireUser guest={<GuestMyPage />}>
+              <ProtectedRoute requireUser guest={<AgencyAwareGuest guest={<GuestMyPage />} />}>
                 <UserProfilePage />
               </ProtectedRoute>
             } />

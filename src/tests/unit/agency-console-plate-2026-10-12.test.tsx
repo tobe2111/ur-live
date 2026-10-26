@@ -159,7 +159,9 @@ describe('⑥ PC — 소비자 액자 밖 · 두 칸', () => {
     expect(src).toContain('order-1 lg:order-2 min-w-0 flex-1')
   })
   it('페이지 폭이 PC 에서 넓어진다', () => {
-    expect(code('src/pages/agency-console/AgencyHomePage.tsx')).toContain('max-w-[720px] lg:max-w-[1040px]')
+    // 🏠 2026-10-26 안 A — 콘솔 화면이 마이로 옮겨갔다. 이메일 전용 에이전시 마이가 그 넓은 폭을 이어받는다
+    //   (`/agency` 는 이제 마이로 보내는 문이다). 손님 마이 안에서는 칸이 좁아 한 칸(`stacked`)으로 그린다.
+    expect(code('src/pages/agency-console/AgencyMyPage.tsx')).toContain('max-w-[720px] lg:max-w-[1040px]')
   })
 })
 

@@ -61,6 +61,17 @@ export function clearAgencySession(): void {
   }
 }
 
+/**
+ * 🏠 2026-10-26 대표 확정 **안 A** — 에이전시 화면은 마이 안 '에이전시' 구역이다(`/agency` 는 마이로 보낸다).
+ *   마이의 `?tool=` 은 이미 사장님 판매 구역이 쓰므로, 에이전시 깊은 링크는 **다른 이름**(`atool`)으로 싣는다 —
+ *   같은 이름이면 사장님 판과 에이전시 판이 같은 화면을 동시에 열려고 다툰다.
+ */
+export const AGENCY_TOOL_PARAM = 'atool'
+export const AGENCY_MY_PATH = '/user/profile'
+export function agencyMyPath(tool: string | null | undefined): string {
+  return tool ? `${AGENCY_MY_PATH}?${AGENCY_TOOL_PARAM}=${encodeURIComponent(tool)}` : AGENCY_MY_PATH
+}
+
 /** 로그인 후 돌아갈 곳 — 콘솔 안쪽(`/agency` 아래)만 받는다. 밖으로 보내는 주소는 버린다. */
 export function safeAgencyReturn(raw: string | null | undefined): string {
   if (!raw || typeof raw !== 'string') return '/agency'

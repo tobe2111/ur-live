@@ -106,19 +106,19 @@ export default function AgencyStorePlate({ store, staffId, initialPath, onOpenSa
         {/* 🤝 오늘 숫자 = **이 에이전시가 맡은 이용권** 몫. 매장 전체 매출이 아니라서 매출 분석(매장 전체)으로 보내지 않는다. */}
         <div className="border-b border-rule px-4 pt-4 pb-4 lg:px-5 lg:py-5">
           <div className="flex items-baseline justify-between gap-2">
-            <span className="text-[12px] font-bold text-gray-400">오늘 · 우리 이용권</span>
-            <span className="text-[12px] text-gray-400 tabular-nums">{todayLabelKST()}</span>
+            <span className="text-[12px] font-bold text-gray-400 dark:text-gray-500">오늘 · 우리 이용권</span>
+            <span className="text-[12px] text-gray-400 dark:text-gray-500 tabular-nums">{todayLabelKST()}</span>
           </div>
-          <p className="mt-2 text-[28px] font-extrabold tabular-nums leading-none whitespace-nowrap text-gray-900">
+          <p className="mt-2 text-[28px] font-extrabold tabular-nums leading-none whitespace-nowrap text-gray-900 dark:text-white">
             {today ? formatNumber(today.todayRevenue) : '—'}
-            <span className="text-[15px] font-bold text-gray-500 ml-1">원</span>
+            <span className="text-[15px] font-bold text-gray-500 dark:text-gray-400 ml-1">원</span>
           </p>
-          <p className="mt-2 text-[13px] text-gray-500 min-w-0 truncate">
+          <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400 min-w-0 truncate">
             {today ? `주문 ${formatNumber(today.todayOrders)}건` : '오늘 숫자를 불러오지 못했어요'}
             {today && today.pending > 0 && <> · 확인 대기 {formatNumber(today.pending)}건</>}
           </p>
         </div>
-        {note && <p className="text-[13px] leading-[1.55] text-gray-500 px-4 py-3 border-b border-rule lg:px-5">{note}</p>}
+        {note && <p className="text-[13px] leading-[1.55] text-gray-500 dark:text-gray-400 px-4 py-3 border-b border-rule lg:px-5">{note}</p>}
         <div className="p-3">
         <button
           type="button"
@@ -141,13 +141,13 @@ export default function AgencyStorePlate({ store, staffId, initialPath, onOpenSa
           <button
             type="button"
             onClick={onOpenSales}
-            className="mt-2 w-full flex items-center gap-3 px-4 lg:px-5 min-h-[48px] rounded-[10px] text-left active:bg-gray-50"
+            className="mt-2 w-full flex items-center gap-3 px-4 lg:px-5 min-h-[48px] rounded-[10px] text-left active:bg-gray-50 dark:active:bg-white/5"
           >
-            <span className="flex-1 min-w-0 text-[15px] font-semibold text-gray-900 truncate">판매 내역 · 통계</span>
-            <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
+            <span className="flex-1 min-w-0 text-[15px] font-semibold text-gray-900 dark:text-white truncate">판매 내역 · 통계</span>
+            <ChevronRight className="w-4 h-4 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden="true" />
           </button>
         )}
-        <p className="mt-3 px-1 text-[12px] leading-[1.55] text-gray-500">
+        <p className="mt-3 px-1 text-[12px] leading-[1.55] text-gray-500 dark:text-gray-400">
           {AGENCY_PLATE_SCOPE_NOTE}
         </p>
         </div>

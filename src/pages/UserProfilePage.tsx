@@ -20,6 +20,7 @@ import RoleCtaGrid from './user-profile/RoleCtaGrid'
 import ShoppingGroup from './user-profile/ShoppingGroup'
 import SellerSwitchInline from './user-profile/SellerSwitchInline'
 import SellerSection from './user-profile/SellerSectionLazy'
+import MyAgencyZone from './user-profile/MyAgencyZone'
 import { useToolDeepLinkFallback } from './user-profile/seller-section/useToolDeepLink'
 import SettingsGroup from './user-profile/SettingsGroup'
 import { useMyCounts } from './user-profile/useMyCounts'
@@ -306,6 +307,8 @@ export default function UserProfilePage() {
       {/* 🖥️ 판매는 **넓은 쪽**(1.25)에 산다 — 시안 `PcFull1` 과 같은 자리다.
           목록 행이 [이름 + 설명 + ›] 이라 좁히면 설명이 먼저 잘린다. */}
       {isPc ? <SellerSection state={sellerSeats} /> : null}
+      {/* 🏢 2026-10-26 안 A — '내 가게' 바로 아래 '에이전시' 구역(에이전시 로그인이 있을 때만). */}
+      {isPc ? <MyAgencyZone /> : null}
 
       {/* ⚙️ 2026-10-11 **안 5** — 설정이 **넓은 왼쪽 칸 아래**로 내려왔다.
           안 5 에서 오른쪽은 손님 쪽(곧 쓸 이용권 · 내가 산 것)만 남는데, 설정까지 거기 두면
@@ -334,6 +337,7 @@ export default function UserProfilePage() {
       {/* 🏪 2026-09-25 (대표 확정 §14 — "하는 것도 마이에서"): 판매가 **맨 위**.
           사장님은 하루에 이 화면을 가장 많이 열고, 그때 보려는 건 오늘 숫자다. 셀러가 아니면 렌더 0. */}
       <SellerSection state={sellerSeats} />
+      <MyAgencyZone />
 
       {/* v4 광고 리워드 카드 — 딜 버는 수단이라 딜 잔액 바로 아래(웹은 null 렌더·네이티브 전용) */}
       <RewardAdCard />
