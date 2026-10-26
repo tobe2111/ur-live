@@ -122,5 +122,33 @@
     "track": "merchant",
     "posted_at": "2026-10-26T09:16:06.242Z",
     "date_kst": "2026-10-26"
+  },
+  {
+    "platform": "threads",
+    "id": "18130625779843400",
+    "content_id": "th",
+    "track": "merchant",
+    "promo": false,
+    "posted_at": "2026-10-26T11:12:07.257Z",
+    "date_kst": "2026-10-26",
+    "slot_kst": "12:30",
+    "link": "https://urdeal.kr/partners?utm_source=threads&utm_medium=social&utm_campaign=merchant-recruit&utm_content=th-20261026",
+    "text": "아이고 사장님, 등록하는 데 반나절 걸릴 거라 생각하셨지예? 유달이가 해보이 10분이면 됩니더.\n\n카카오맵에서 내 가게 찾고, 담당자 번호 넣고, 운영 주체 고르고, 사업자등록증 사진 한 장 올리면 끝이에요. 등록증은 자동으로 넘어가지 않고 제가 직접 눈으로 확인합니다.\n\n그다음 첫 이용권 초안은 저희가 만들어 드리니까, 사장님은 보시고 괜찮으면 승인만 눌러 주시면 됩니다."
+  },
+  {
+    "platform": "instagram",
+    "id": "18078240773726744",
+    "media_type": "CAROUSEL",
+    "media_set": "onboarding-steps",
+    "hook": "udal",
+    "topic": "등록 절차 4단계(약 10분): 카카오맵에서 내 가게 찾기 → 담당자 번호 → 운영 주체 선택 → 사업자등록증 사진. 등록증은 사람이 직접 확인",
+    "content_id": "ig",
+    "track": "merchant",
+    "promo": false,
+    "posted_at": "2026-10-26T11:12:07.257Z",
+    "date_kst": "2026-10-26",
+    "slot_kst": "12:30",
+    "bio_link": "https://urdeal.kr/partners?utm_source=instagram&utm_medium=social&utm_campaign=merchant-recruit&utm_content=ig-20261026",
+    "text": "아이고 사장님, 등록하는 데 반나절 걸릴 거라 생각하셨십니꺼 😊\n\n입점은 10분이면 됩니다. 카카오맵에서 내 가게 찾고, 담당자 번호 넣고, 직접 운영하시는지 대행사랑 하시는지 고르고, 사업자등록증 사진 한 장 올리면 끝이에요. 등록증은 자동으로 넘어가지 않고 제가 직접 눈으로 확인합니다.\n\n첫 이용권 초안은 저희가 만들어 드리고, 사장님은 확인 후 승인만 하시면 됩니다. 할인율, 수량, 유효기간은 사장님이 정하세요. 가입비와 월 이용료는 없고, 이용권이 팔려서 손님이 실제로 쓰신 뒤에만 수수료가 생깁니다.\n\n유어딜은 아직 초기 서비스라 방문자 수를 약속드리지는 못합니다. 대신 안 팔리면 비용이 0원인 구조예요. 자세한 조건은 프로필 링크에 있고, 궁금하신 건 카카오 채널로 편하게 물어봐 주세요.\n\n#유어딜 #사장님 #입점안내 #로컬맛집"
   }
 ]

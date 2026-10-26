@@ -10,5 +10,18 @@
     "track": "merchant",
     "skipped": "quality_failed",
     "date_kst": "2026-10-26"
+  },
+  {
+    "platform": "threads",
+    "track": "merchant",
+    "date_kst": "2026-10-26"
+  },
+  {
+    "platform": "instagram",
+    "track": "merchant",
+    "topic": "등록 절차 4단계(약 10분): 카카오맵에서 내 가게 찾기 → 담당자 번호 → 운영 주체 선택 → 사업자등록증 사진. 등록증은 사람이 직접 확인",
+    "hook": "udal",
+    "media_set": "onboarding-steps",
+    "date_kst": "2026-10-26"
   }
 ]
