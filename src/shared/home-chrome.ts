@@ -44,6 +44,9 @@ export const HOME_CATS = {
  * 섹션 가로 줄(모바일) — 카드가 한 장 반쯤 보여 "옆으로 넘긴다" 를 말한다.
  * 카드 폭 68%: 첫 화면 사진은 200px 폭으로 미리 받는데(`home-card-preload`) 2배 화면에서 400px 라
  * 이 폭(약 230px)까지 선명하다. 더 넓히면 사진이 흐려지고, 그 폭을 올리면 preload 와 URL 이 갈린다.
+ *
+ * 📏 상품명은 늘 두 줄 자리를 잡는다(`min-h-[2lh]`) — 카드가 넓어져 짧은 이름은 한 줄이 되는데,
+ *   자리표시는 두 줄이라 응답 순간 아래 유어쇼츠 줄이 20px 올라왔다(layout-shift 실측). 줄 안 카드 높이도 같아진다.
  */
 export const HOME_SECTION_RAIL =
-  'flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-hide [&>*]:snap-start [&>*]:shrink-0 [&>*]:w-[68%]'
+  'flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-hide [&>*]:snap-start [&>*]:shrink-0 [&>*]:w-[68%] [&_.line-clamp-2]:min-h-[2lh]'
