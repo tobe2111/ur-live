@@ -84,7 +84,7 @@ export default [
   },
   {
     name: '🔤 PC 시트에서 본문 규칙이 빠진다 (글꼴은 받는데 안 쓴다)',
-    file: 'public/static/fonts/pretendard-pc-v1.3.9-2.css',
+    file: 'public/static/fonts/pretendard-pc-v1.3.9-3.css',
     find: 'html body{font-family:"UrDigits","Pretendard Variable"',
     replace: 'html .nope{font-family:"UrDigits","Pretendard Variable"',
     test: 'src/tests/unit/self-hosted-fonts-2026-10-12.test.ts',

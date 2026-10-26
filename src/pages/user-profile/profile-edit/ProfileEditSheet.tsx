@@ -43,6 +43,7 @@ import { formatPhone } from '@/utils/format-phone'
 import { toast } from '@/hooks/useToast'
 import { prepareImageForUpload, UploadTooLargeError } from '@/lib/prepare-upload'
 import { EditRow, RowActions, RowGroup, RowNote, ROW_INPUT } from './EditRow'
+import { snsLinkStatus, SNS_LABEL, type SnsPlatform } from '@/shared/sns-link'
 
 type Field = 'name' | 'bio' | 'phone' | 'handle' | 'sns' | null
 
@@ -317,14 +318,24 @@ export default function ProfileEditSheet({ onClose, initialName, onNameChange }:
               <EditRow label={t('profileEdit.sns', { defaultValue: 'SNS 링크' })} value={snsSummary} empty={me ? t('profileEdit.none', { defaultValue: '아직 없어요' }) : t('profileEdit.loading', { defaultValue: '불러오는 중…' })}
                 open={open === 'sns'}
                 onOpen={() => { setOpen('sns'); setSns({ instagram_url: me.instagram_url, youtube_url: me.youtube_url, tiktok_url: me.tiktok_url }) }}>
-                {SNS.map(([key, label]) => (
-                  <div key={key} className="flex items-center gap-2 mb-2">
-                    <span className="w-16 shrink-0 text-[13px] font-medium text-gray-500 dark:text-gray-400">{label}</span>
-                    <input className={ROW_INPUT} value={sns[key] ?? ''} placeholder={t('profileEdit.snsPh', { defaultValue: '@아이디 또는 링크' })}
-                      onChange={e => setSns(s => ({ ...s, [key]: e.target.value }))} />
-                  </div>
-                ))}
+                {SNS.map(([key, label]) => {
+                  // 🔒 2026-10-26 대표 — 그 칸은 그 플랫폼 주소·아이디만. 서버도 같은 함수로 거절한다.
+                  const bad = snsLinkStatus(key.replace('_url', '') as SnsPlatform, sns[key]).kind === 'bad'
+                  return (
+                    <div key={key} className="mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="w-16 shrink-0 text-[13px] font-medium text-gray-500 dark:text-gray-400">{label}</span>
+                        <input className={ROW_INPUT} value={sns[key] ?? ''} placeholder={t('profileEdit.snsPh', { defaultValue: '@아이디 또는 링크' })}
+                          aria-invalid={bad} onChange={e => setSns(s => ({ ...s, [key]: e.target.value }))} />
+                      </div>
+                      {bad && (
+                        <RowNote tone="bad">{t('profileEdit.snsBad', { defaultValue: '{{name}} 주소나 아이디만 넣을 수 있어요', name: SNS_LABEL[key.replace('_url', '') as SnsPlatform] })}</RowNote>
+                      )}
+                    </div>
+                  )
+                })}
                 <RowActions
+                  disabled={SNS.some(([key]) => snsLinkStatus(key.replace('_url', '') as SnsPlatform, sns[key]).kind === 'bad')}
                   onSave={() => patch(
                     { instagram_url: sns.instagram_url ?? '', youtube_url: sns.youtube_url ?? '', tiktok_url: sns.tiktok_url ?? '' },
                     { instagram_url: sns.instagram_url ?? '', youtube_url: sns.youtube_url ?? '', tiktok_url: sns.tiktok_url ?? '' },

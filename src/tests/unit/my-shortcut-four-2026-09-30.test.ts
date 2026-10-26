@@ -93,7 +93,11 @@ describe('🧹 마이 판매 바로가기 — 넷 + 전체 도구 (2026-09-30)',
     // 🎟️ 2026-10-10 재조준(안 3) → 🔁 2026-10-25 재조준(안 G): 판 안의 누르는 줄 = `오늘 매출` 1 + `판매 알림` 1 + `ToolRow` 3.
     //   사용처리·등록은 판 **밖 위** 두 칸이라 이 셈에서 빠진다(그 둘은 `my-scan-ticket-qr` 가 지킨다).
     //   ⇒ ToolRow 밖의 줄을 **고정값이 아니라 실제로 센다**(종전 주입이 잡은 교훈 그대로).
-    const rows = [...code.matchAll(/^\s*label="([^"]+)"$/gm)].map((m) => m[1])
+    // 🏠 2026-10-26 대표 "참여권 갯수·내역을 마이에서" — 생활 견적 업체만 뜨는 **판 밖 별도 판**은 이 셈에서 뺀다
+    //   (판매 판의 바로가기가 아니다). 그 판이 조건부·별도 판인지는 `life-credits-my-2026-10-26` 이 지킨다.
+    const mainPlate = code.replace(/\{store\?\.life_credits != null && \([\s\S]*?\n\s{6}\)\}/, '')
+    expect(mainPlate.length, '생활 판을 떼어 내지 못했다').toBeLessThan(code.length)
+    const rows = [...mainPlate.matchAll(/^\s*label="([^"]+)"$/gm)].map((m) => m[1])
     expect(rows.length, '도구 줄을 못 셌다 — 이 검사가 헛돌고 있다').toBeGreaterThan(0)
     const extra = ['오늘 매출'].filter((t) => code.includes(`>${t}</span>`))
     if (code.includes('<StoreNotifButton variant="row"')) extra.push('판매 알림')

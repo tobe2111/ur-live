@@ -8,6 +8,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { resolveTossFlow } from '@/lib/toss-key-type'
 import { formatNumber } from '@/utils/format'
+import { formatKSTShort } from '@/utils/date'
 import { sellerHeaders } from '../life-shared'
 import type { ProMe } from './ProSetupForm'
 
@@ -52,7 +53,7 @@ export default function ProCredits({ me, onChanged }: { me: ProMe; onChanged: ()
       <p className="text-[13px] text-gray-500 dark:text-gray-400">남은 참여권</p>
       <p className="mt-1 text-[28px] font-extrabold">{formatNumber(me.balance)}<span className="ml-1 text-[15px] font-bold">장</span></p>
       <p className="mt-1 text-[12px] text-gray-500 dark:text-gray-400">
-        견적 1건에 1장. 손님이 요청을 취소하거나 48시간 동안 견적을 안 열어 보면 돌려드려요.
+        견적을 보낼 때 업종에 맞는 장수가 빠져요. 손님이 요청을 취소하거나 48시간 동안 견적을 안 열어 보면 돌려드려요.
       </p>
       {me.chargeEnabled ? (
         <div className="mt-4 grid grid-cols-3 gap-2">
@@ -67,6 +68,39 @@ export default function ProCredits({ me, onChanged }: { me: ProMe; onChanged: ()
       ) : (
         <p className="mt-4 rounded-xl bg-warm px-4 py-3 text-[13px] text-ink">참여권 충전은 곧 열려요. 지금은 무료 참여권으로 견적을 보낼 수 있어요.</p>
       )}
+      <CreditHistory rows={me.history ?? []} />
     </section>
+  )
+}
+
+/** 🧾 참여권 내역 (2026-10-26 대표 *"갯수라던지 차감 히스토리라던지 확인할 수 있는건가?"*) — 원장 최근 20줄. */
+const KIND_LABEL: Record<string, string> = { grant: '무료 지급', charge: '충전', spend: '견적 보냄', refund: '돌려받음' }
+
+function CreditHistory({ rows }: { rows: NonNullable<ProMe['history']> }) {
+  if (!rows.length) return null
+  return (
+    <div className="mt-5">
+      <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400">참여권 내역</p>
+      <ul className="mt-2 divide-y divide-rule">
+        {rows.map((r, i) => {
+          const n = Number(r.amount) || 0
+          return (
+            <li key={i} className="flex items-center gap-3 py-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-[15px] text-ink">{KIND_LABEL[r.kind] ?? r.kind}</p>
+                <p className="flex gap-2 truncate text-[12px] text-gray-500 dark:text-gray-400">
+                  <span>{formatKSTShort(r.created_at)}</span>
+                  {r.price_paid > 0 && <span>{formatNumber(r.price_paid)}원</span>}
+                  {r.note && r.kind !== 'charge' && <span className="truncate">{r.note}</span>}
+                </p>
+              </div>
+              <span className={`shrink-0 text-[15px] font-bold tabular-nums ${n < 0 ? 'text-ink' : 'text-brand-text'}`}>
+                {n > 0 ? '+' : ''}{formatNumber(n)}장
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
   )
 }
