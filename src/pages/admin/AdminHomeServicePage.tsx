@@ -14,6 +14,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import { Button } from '@/components/ui/button'
 import { formatKSTDate } from '@/utils/date'
 import { formatNumber } from '@/utils/format'
+import AdminHomeServiceReviews from './home-service/AdminHomeServiceReviews'
 
 interface Field { key: string; label: string; type: string; required: boolean; options?: string[]; unit?: string; placeholder?: string }
 interface Cat { key: string; label: string; fields: Field[] }
@@ -209,6 +210,8 @@ export default function AdminHomeServicePage() {
             {(list.data?.requests ?? []).length === 0 && <li className="py-2 text-[13px] text-gray-500">아직 없어요</li>}
           </ul>
         </section>
+
+        <AdminHomeServiceReviews />
       </div>
     </AdminLayout>
   )

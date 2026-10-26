@@ -14,12 +14,15 @@ import { toast } from '@/hooks/useToast'
 import { categoryDef, quotePriceText, type HomeServiceCategory } from '@/shared/home-service'
 import { formatNumber } from '@/utils/format'
 import { BigTicketNote, DetailRows, LifeHeader, STATUS_LABEL, categoryLabel, shareLifeRequest } from './life-shared'
+import { ProProfileBlock, RatingLine, ReviewForm, type ProLink, type ReviewSummary } from './life-reviews'
 
 interface Voucher { id: number; name: string; price?: number }
-interface Quote { id: number; price: number | null; message: string; status: string; pro_name: string; pro_phone: string | null; vouchers: Voucher[]; is_house?: number | null; partner?: number | null; verified?: number | null }
+interface Quote { id: number; price: number | null; message: string; status: string; pro_name: string; pro_phone: string | null; vouchers: Voucher[]; is_house?: number | null; partner?: number | null; verified?: number | null
+  pro_intro?: string | null; pro_links?: ProLink[]; reviews?: ReviewSummary | null }
 interface Detail {
   id: number; category: string; details: Record<string, string>; desired_date: string; status: string
   quote_count: number; max_quotes: number; quotes: Quote[]; share_token?: string | null
+  my_review?: { rating: number; body: string } | null
 }
 
 export default function LifeRequestDetailPage() {
@@ -80,6 +83,7 @@ export default function LifeRequestDetailPage() {
             <p className="text-[13px] text-gray-500 dark:text-gray-400">고른 사장님</p>
             <p className="mt-1 text-[17px] font-bold">{chosen.pro_name}</p>
             {chosen.pro_phone && <a href={`tel:${chosen.pro_phone}`} className="ur-btn ur-btn-lg ur-btn-primary mt-3 flex w-full justify-center">{chosen.pro_phone} 전화하기</a>}
+            {d.status === 'chosen' && <ReviewForm requestId={d.id} mine={d.my_review ?? null} onDone={load} />}
           </section>
         )}
 
@@ -95,7 +99,9 @@ export default function LifeRequestDetailPage() {
                   <span className="text-[15px] font-bold">{q.pro_name}{q.is_house ? <span className="ml-2 rounded-full bg-brand-tint px-2 py-1 text-[12px] font-medium text-brand-text">{q.partner ? '유어딜 제휴' : '유어딜 직영'}</span> : q.verified ? <span className="ml-2 rounded-full bg-warm px-2 py-1 text-[12px] font-medium text-gray-600 dark:text-gray-300">사업자 인증</span> : null}</span>
                   <span className="text-[17px] font-bold">{quotePriceText(q.price)}</span>
                 </div>
+                {!q.is_house && <div className="mt-1"><RatingLine r={q.reviews} /></div>}
                 <p className="mt-2 whitespace-pre-wrap text-[13px] leading-relaxed text-gray-700 dark:text-gray-200">{q.message}</p>
+                <ProProfileBlock intro={q.pro_intro} links={q.pro_links} reviews={q.reviews} />
                 {q.vouchers.length > 0 && (
                   <div className="mt-3 border-t border-rule pt-2">
                     <p className="text-[12px] text-gray-500 dark:text-gray-400">이 사장님의 정찰가 이용권</p>

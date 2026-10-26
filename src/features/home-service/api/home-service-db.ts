@@ -11,6 +11,7 @@
  */
 
 import { newShareToken } from '../../../shared/home-service-share'
+import { maskReviewer } from '../../../shared/home-service-review'
 import { CREDIT_COST_KEY, HOME_PARTNERS_KEY, PRO_OPEN_STATUS_SQL, parseCreditCosts, parsePartners, type HomeServiceCategory } from '../../../shared/home-service'
 
 export const HS_TABLES_SQL = [
@@ -116,7 +117,56 @@ export const HS_TABLES_SQL = [
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (request_id, seller_id)
   )`,
+  // 📝 업체 소개 · 다른 곳 후기 링크(2026-10-26 대표 — 숨고·미소 링크). 규칙 SSOT `shared/home-service-review.ts`.
+  `ALTER TABLE home_service_pros ADD COLUMN intro TEXT`,
+  `ALTER TABLE home_service_pros ADD COLUMN links TEXT`,
+  // ⭐ 유어딜 후기 — 손님이 **고른 업체**에만, 요청 하나에 한 번(request_id UNIQUE).
+  `CREATE TABLE IF NOT EXISTS home_service_reviews (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    request_id INTEGER NOT NULL,
+    quote_id INTEGER NOT NULL,
+    seller_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    rating INTEGER NOT NULL,
+    body TEXT NOT NULL,
+    hidden INTEGER NOT NULL DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_hs_reviews_request ON home_service_reviews(request_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_hs_reviews_seller ON home_service_reviews(seller_id, hidden, id)`,
+  // 후기 부탁 알림을 한 번만 보내려고.
+  `ALTER TABLE home_service_requests ADD COLUMN review_asked_at DATETIME`,
 ] as const
+
+/** 업체별 후기 요약 — 평균·개수·최근 몇 개(숨긴 것 제외). */
+export async function reviewSummaries(
+  DB: D1Database, sellerIds: number[], recent: number,
+): Promise<Record<number, { avg: number | null; count: number; recent: { rating: number; body: string; reviewer: string; created_at: string }[] }>> {
+  const out: Record<number, { avg: number | null; count: number; recent: { rating: number; body: string; reviewer: string; created_at: string }[] }> = {}
+  const ids = [...new Set(sellerIds.filter((n) => n > 0))]
+  if (!ids.length) return out
+  const ph = ids.map(() => '?').join(',')
+  for (const id of ids) out[id] = { avg: null, count: 0, recent: [] }
+  const [agg, rows] = await Promise.all([
+    DB.prepare(`SELECT seller_id, AVG(rating) AS avg, COUNT(*) AS n FROM home_service_reviews WHERE hidden = 0 AND seller_id IN (${ph}) GROUP BY seller_id`)
+      .bind(...ids).all<{ seller_id: number; avg: number; n: number }>(),
+    recent > 0
+      ? DB.prepare(
+        `SELECT seller_id, rating, body, created_at, reviewer FROM (
+           SELECT r.seller_id, r.rating, r.body, r.created_at, u.name AS reviewer,
+                  ROW_NUMBER() OVER (PARTITION BY r.seller_id ORDER BY r.id DESC) AS rn
+             FROM home_service_reviews r LEFT JOIN users u ON u.id = r.user_id
+            WHERE r.hidden = 0 AND r.seller_id IN (${ph})
+         ) WHERE rn <= ?`,
+      ).bind(...ids, recent).all<{ seller_id: number; rating: number; body: string; created_at: string; reviewer: string | null }>()
+      : Promise.resolve({ results: [] as { seller_id: number; rating: number; body: string; created_at: string; reviewer: string | null }[] }),
+  ])
+  for (const a of agg.results ?? []) out[Number(a.seller_id)] = { ...out[Number(a.seller_id)], avg: Number(a.avg), count: Number(a.n) }
+  for (const r of rows.results ?? []) {
+    out[Number(r.seller_id)]?.recent.push({ rating: Number(r.rating), body: r.body, reviewer: maskReviewer(r.reviewer), created_at: r.created_at })
+  }
+  return out
+}
 
 /**
  * 요청의 공유 토큰 — 없으면 만든다(옛 요청·운영팀 대리 접수도 링크를 낼 수 있게).

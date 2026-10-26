@@ -8,10 +8,12 @@ import { toast } from '@/hooks/useToast'
 import { sellerHeaders } from '../life-shared'
 import { enterStoreSeat } from '@/utils/enter-store'
 import { TERMS_CURRENT_VERSION } from '@/pages/terms/terms-types'
+import { PRO_INTRO_MAX, PRO_LINKS_MAX, proLinkLabel } from '@/shared/home-service-review'
 
 export interface ProMe {
   registered: boolean
-  pro: { phone: string | null; active: number } | null
+  pro: { phone: string | null; active: number; intro?: string | null; links?: string[] } | null
+  reviews?: { avg: number | null; count: number; recent: { rating: number; body: string; reviewer: string; created_at: string }[] } | null
   categories: string[]
   areas: { sido: string; sigungu: string }[]
   seller: { name: string; approved: boolean; phone: string | null }
@@ -52,6 +54,11 @@ export default function ProSetupForm({ me, onSaved, prefill, signup }: { me: Pro
   const [saving, setSaving] = useState(false)
   const [bizName, setBizName] = useState('')
   const [agreed, setAgreed] = useState(false)
+  const [intro, setIntro] = useState(me.pro?.intro || '')
+  const [links, setLinks] = useState<string[]>(() => {
+    const l = [...(me.pro?.links ?? [])]
+    return l.length ? l : ['']
+  })
 
   function addArea() {
     const g = sigungu.trim()
@@ -73,7 +80,9 @@ export default function ProSetupForm({ me, onSaved, prefill, signup }: { me: Pro
         onSaved()
         return
       }
-      const r = await api.put('/api/home-service/pro/me', { categories: cats, areas, phone }, sellerHeaders())
+      const bad = links.map((l) => l.trim()).find((l) => l && !proLinkLabel(l))
+      if (bad) { toast.error('숨고·미소·네이버·카카오맵·당근·인스타그램 주소(https://…)만 넣을 수 있어요'); return }
+      const r = await api.put('/api/home-service/pro/me', { categories: cats, areas, phone, intro, links: links.map((l) => l.trim()).filter(Boolean) }, sellerHeaders())
       if (r.data?.success) {
         toast.success(r.data.data?.granted ? `저장했어요. 무료 참여권 ${r.data.data.granted}장을 드렸어요` : '저장했어요')
         onSaved()
@@ -130,6 +139,35 @@ export default function ProSetupForm({ me, onSaved, prefill, signup }: { me: Pro
         <p className="mb-2 text-[15px] font-bold">알림톡 받을 번호</p>
         <input className={`${INPUT} w-full`} inputMode="tel" placeholder="010-0000-0000" value={phone} onChange={(e) => setPhone(e.target.value)} />
       </div>
+
+      {!signup && (
+        <div>
+          <p className="mb-2 text-[15px] font-bold">업체 소개</p>
+          <textarea className={`${INPUT} w-full`} rows={3} maxLength={PRO_INTRO_MAX} placeholder="예: 원룸·투룸 입주청소 8년, 주말도 가능해요"
+            value={intro} onChange={(e) => setIntro(e.target.value)} />
+          <p className="mt-1 text-[12px] text-gray-500 dark:text-gray-400">손님 견적 카드에 보여요.</p>
+        </div>
+      )}
+
+      {!signup && (
+        <div>
+          <p className="mb-2 text-[15px] font-bold">다른 곳 후기 링크</p>
+          <p className="mb-2 text-[12px] text-gray-500 dark:text-gray-400">숨고·미소·네이버 플레이스·카카오맵·당근 등에 쌓인 후기가 있으면 주소를 넣어 주세요. 손님이 견적 카드에서 바로 봐요.</p>
+          <div className="space-y-2">
+            {links.map((l, i) => (
+              <div key={i} className="flex gap-2">
+                <input className={`${INPUT} min-w-0 flex-1`} inputMode="url" placeholder="https://soomgo.com/profile/…" value={l}
+                  onChange={(e) => setLinks(links.map((x, j) => (j === i ? e.target.value : x)))} />
+                <button type="button" onClick={() => setLinks(links.length > 1 ? links.filter((_, j) => j !== i) : [''])}
+                  className="shrink-0 rounded-xl bg-warm px-3 text-[13px] text-ink" aria-label="링크 빼기">✕</button>
+              </div>
+            ))}
+          </div>
+          {links.length < PRO_LINKS_MAX && (
+            <button type="button" onClick={() => setLinks([...links, ''])} className="mt-2 text-[13px] font-medium text-brand-text">+ 링크 더 넣기</button>
+          )}
+        </div>
+      )}
 
       {signup && (
         <label className="flex items-start gap-2 text-[13px] text-gray-600 dark:text-gray-300">

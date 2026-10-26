@@ -32,9 +32,10 @@ import { sendSystemAlimtalk } from '../../../lib/system-alimtalk'
 import { confirmTossPayment, decideTossFlow } from '../../../worker/utils/toss-gateway'
 import {
   OPEN_REQUESTS_FOR_PRO_SQL, creditAdd, creditBalance, ensureHomeServiceTables, loadCreditCosts, loadPartners,
-  sendHouseQuoteAtomic, sendQuoteAtomic, withPrivateDetails,
+  reviewSummaries, sendHouseQuoteAtomic, sendQuoteAtomic, withPrivateDetails,
 } from './home-service-db'
 import { isShareToken } from '@/shared/home-service-share'
+import { readProLinks } from '@/shared/home-service-review'
 import { homeServiceStopped } from './home-service.routes'
 import { saveProProfile, type ProBody } from './home-service-pro-profile'
 import { proSignupHandler } from './home-service-pro-signup'
@@ -65,7 +66,7 @@ homeServiceProRoutes.get('/me', requireSeller(), async (c) => {
     await ensureHomeServiceTables(DB)
     const sid = sellerIdOf(c)
     const [pro, cats, areas, seller, tx] = await Promise.all([
-      DB.prepare(`SELECT phone, active, created_at FROM home_service_pros WHERE seller_id = ?`).bind(sid).first(),
+      DB.prepare(`SELECT phone, active, created_at, intro, links FROM home_service_pros WHERE seller_id = ?`).bind(sid).first<Record<string, unknown>>(),
       DB.prepare(`SELECT category FROM home_service_pro_categories WHERE seller_id = ?`).bind(sid).all<{ category: string }>(),
       DB.prepare(`SELECT sido, sigungu FROM home_service_pro_areas WHERE seller_id = ? ORDER BY sido, sigungu`).bind(sid).all(),
       DB.prepare(`SELECT status, phone, COALESCE(NULLIF(business_name, ''), name) AS name FROM sellers WHERE id = ?`).bind(sid)
@@ -73,11 +74,13 @@ homeServiceProRoutes.get('/me', requireSeller(), async (c) => {
       DB.prepare(`SELECT kind, amount, price_paid, note, created_at FROM home_service_credit_tx WHERE seller_id = ? ORDER BY id DESC LIMIT 20`)
         .bind(sid).all(),
     ])
+    const reviews = (await reviewSummaries(DB, [sid], 10).catch(() => ({}) as Awaited<ReturnType<typeof reviewSummaries>>))[sid] ?? null
     return c.json({
       success: true,
       data: {
         registered: !!pro,
-        pro,
+        pro: pro ? { ...pro, links: readProLinks(pro.links).map((l) => l.url) } : null,
+        reviews,
         categories: (cats.results ?? []).map((r) => r.category),
         areas: areas.results ?? [],
         seller: { name: seller?.name ?? '', approved: proVerified(seller?.status), phone: seller?.phone ?? null },

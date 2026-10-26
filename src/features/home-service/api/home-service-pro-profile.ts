@@ -8,6 +8,7 @@ import { kstYmd } from '@/shared/stays-early'
 import { SIGNUP_FREE_CREDITS, categoryDef } from '@/shared/home-service'
 import { creditAdd } from './home-service-db'
 import { dispatchBacklogToPro } from './home-service-notify'
+import { parseProIntro, parseProLinks } from '@/shared/home-service-review'
 
 const SIGUNGU_RE = /^[가-힣]{1,10}(시|군|구)$/
 
@@ -15,8 +16,9 @@ function waitUntil(c: { executionCtx?: { waitUntil(p: Promise<unknown>): void } 
   try { c.executionCtx?.waitUntil(p) } catch { void p }
 }
 
-export type ProBody = { categories?: unknown; areas?: unknown; phone?: unknown; active?: unknown }
-export type ParsedPro = { cats: string[]; areas: { sido: string; sigungu: string }[]; phone: string; active: 0 | 1 }
+export type ProBody = { categories?: unknown; areas?: unknown; phone?: unknown; active?: unknown; intro?: unknown; links?: unknown }
+/** intro·links 가 null 이면 '안 보냄' — 저장된 값을 그대로 둔다(가입 흐름은 이 칸이 없다). */
+export type ParsedPro = { cats: string[]; areas: { sido: string; sigungu: string }[]; phone: string; active: 0 | 1; intro: string | null; links: string | null }
 
 /** 저장 전에 — 가입은 매장 행을 만들기 **전에** 이걸로 먼저 거른다(반쪽 가입 방지). */
 export function parseProBody(body: ProBody): { ok: false; error: string } | ({ ok: true } & ParsedPro) {
@@ -34,7 +36,13 @@ export function parseProBody(body: ProBody): { ok: false; error: string } | ({ o
   if (!areas.length) return { ok: false, error: '일할 지역을 하나 이상 골라 주세요' }
   const phone = String(body.phone ?? '').replace(/\D/g, '')
   if (phone && !/^01\d{8,9}$/.test(phone)) return { ok: false, error: '휴대폰 번호 형식을 확인해 주세요' }
-  return { ok: true, cats, areas, phone, active: body.active === false ? 0 : 1 }
+  let links: string | null = null
+  if (body.links !== undefined && body.links !== null) {
+    const l = parseProLinks(body.links)
+    if (!l.ok) return l
+    links = JSON.stringify(l.links)
+  }
+  return { ok: true, cats, areas, phone, active: body.active === false ? 0 : 1, intro: parseProIntro(body.intro), links }
 }
 
 export async function saveProProfile(
@@ -42,13 +50,15 @@ export async function saveProProfile(
 ): Promise<{ ok: false; error: string } | { ok: true; granted: number }> {
   const p = parseProBody(body)
   if (!p.ok) return p
-  const { cats, areas, phone: phoneRaw, active } = p
+  const { cats, areas, phone: phoneRaw, active, intro, links } = p
   const existed = await DB.prepare(`SELECT 1 AS x FROM home_service_pros WHERE seller_id = ?`).bind(sid).first()
   await DB.batch([
     DB.prepare(
-      `INSERT INTO home_service_pros (seller_id, phone, active) VALUES (?, ?, ?)
-       ON CONFLICT(seller_id) DO UPDATE SET phone = excluded.phone, active = excluded.active, updated_at = datetime('now')`,
-    ).bind(sid, phoneRaw || null, active),
+      `INSERT INTO home_service_pros (seller_id, phone, active, intro, links) VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(seller_id) DO UPDATE SET phone = excluded.phone, active = excluded.active,
+         intro = COALESCE(excluded.intro, home_service_pros.intro), links = COALESCE(excluded.links, home_service_pros.links),
+         updated_at = datetime('now')`,
+    ).bind(sid, phoneRaw || null, active, intro, links),
     DB.prepare(`DELETE FROM home_service_pro_categories WHERE seller_id = ?`).bind(sid),
     ...cats.map((k) => DB.prepare(`INSERT INTO home_service_pro_categories (seller_id, category) VALUES (?, ?)`).bind(sid, k)),
     DB.prepare(`DELETE FROM home_service_pro_areas WHERE seller_id = ?`).bind(sid),
