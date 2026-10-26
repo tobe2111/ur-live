@@ -1,3 +1,4 @@
+import { chunkForBinds } from '../../shared/db/d1-binds'
 import { logInfo, logError } from '../utils/logger'
 /**
  * D1 → R2 자동 백업
@@ -193,10 +194,18 @@ export async function dumpDatabase(DB: D1Database): Promise<DumpResult> {
             break;
           }
           if (ids.length === 0) break;
-          const rows = await DB.prepare(
-            `SELECT * FROM ${table} WHERE rowid IN (${ids.map(() => '?').join(',')}) ORDER BY rowid`
-          ).bind(...ids).all<Record<string, unknown>>();
-          for (const row of rows.results || []) lines.push(toInsert(row));
+          //   🧮 2026-10-26: 종전엔 `ids`(최대 BATCH_SIZE=500)를 한 `IN (…)` 에 넣었다 — D1 바인딩
+          //     한도는 **100** 이라 PK 없는 테이블에서 **언제나** 터졌다. 이 파일은 은퇴한 경로다
+          //     (`dumpDatabase` 호출부가 시험뿐이고 라이브 백업은 `d1-backup-chunked` 가 범위 페이징으로
+          //     한다 — `cron-beat-retirement.ts` 가 그 이사를 기록) ⇒ **라이브 피해는 없었다.** 그래도
+          //     지뢰는 치운다: 이 파일을 누가 cron 에 다시 꽂으면 PK 없는 테이블 **54개**
+          //     (`platform_settings`·`user_points` 포함, main DB 실측)가 조용히 빈 백업이 된다.
+          for (const idChunk of chunkForBinds(ids)) {
+            const rows = await DB.prepare(
+              `SELECT * FROM ${table} WHERE rowid IN (${idChunk.map(() => '?').join(',')}) ORDER BY rowid`
+            ).bind(...idChunk).all<Record<string, unknown>>();
+            for (const row of rows.results || []) lines.push(toInsert(row));
+          }
           lastRowId = ids[ids.length - 1];
           if (ids.length < BATCH_SIZE) break;
         }
