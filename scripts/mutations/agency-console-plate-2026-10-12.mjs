@@ -41,8 +41,8 @@ export default [
     // 🤝 2026-10-24 재조준 — 판엔 사용처리 티켓이 없다(자기 이용권만). 같은 판임은 큰 숫자 모양으로 잰다.
     name: '[에이전시판] 판의 오늘 숫자 모양이 마이와 갈린다',
     file: PLATE,
-    find: 'className="mt-2 text-[28px] font-extrabold tabular-nums leading-none whitespace-nowrap text-gray-900"',
-    replace: 'className="mt-2 text-[24px] font-extrabold tabular-nums leading-none whitespace-nowrap text-gray-900"',
+    find: 'className="mt-2 text-[28px] font-extrabold tabular-nums leading-none whitespace-nowrap text-gray-900 dark:text-white"',
+    replace: 'className="mt-2 text-[24px] font-extrabold tabular-nums leading-none whitespace-nowrap text-gray-900 dark:text-white"',
     test: TEST,
     why: '두 판은 같은 판이어야 한다 — 한쪽만 고치면 사장님과 에이전시가 다른 화면을 본다.',
   },
