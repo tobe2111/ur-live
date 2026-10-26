@@ -19,11 +19,11 @@ import { safeError } from '@/worker/utils/safe-error'
 import { parseRegionFromAddress } from '@/shared/constants/region-slugs'
 import { kstYmd } from '@/shared/stays-early'
 import {
-  HOME_SERVICE_CATEGORIES, HOME_TPL, MAX_QUOTES_PER_REQUEST, categoryDef, msgQuoteArrived, quotePriceText,
+  CREDIT_COST_KEY, HOME_PARTNERS_KEY, HOME_SERVICE_CATEGORIES, HOME_TPL, MAX_CREDIT_COST, MAX_QUOTES_PER_REQUEST, categoryDef, msgQuoteArrived, quotePriceText,
   requestSummary, validateRequest, type HomeServiceCategory,
 } from '@/shared/home-service'
 import { sendSystemAlimtalk } from '../../../lib/system-alimtalk'
-import { chooseQuoteAtomic, ensureHomeServiceTables, refundAllQuotes, sendHouseQuoteAtomic } from './home-service-db'
+import { chooseQuoteAtomic, ensureHomeServiceTables, ensureShareToken, loadCreditCosts, loadPartners, refundAllQuotes, sendHouseQuoteAtomic } from './home-service-db'
 import { dispatchRequest } from './home-service-notify'
 import { notifyChosen } from './home-service.routes'
 
@@ -77,14 +77,100 @@ homeServiceAdminRoutes.put('/house', async (c) => {
   }
 })
 
+/**
+ * 🤝 제휴 업체(2026-10-25 대표 — 간판 제휴사). 카테고리마다 한 매장. seller_id 가 null 이면 해제.
+ * 제휴 업체는 그 카테고리 요청을 지역과 무관하게 받고 참여권 없이 견적을 낸다(손님 화면 "유어딜 제휴").
+ */
+homeServiceAdminRoutes.get('/partners', async (c) => {
+  try {
+    const DB = c.env.DB
+    const partners = await loadPartners(DB)
+    const ids = [...new Set(Object.values(partners))]
+    const names: Record<number, { name: string; status: string }> = {}
+    if (ids.length) {
+      const { results } = await DB.prepare(
+        `SELECT id, COALESCE(NULLIF(business_name, ''), name) AS name, status FROM sellers WHERE id IN (${ids.map(() => '?').join(',')})`,
+      ).bind(...ids).all<{ id: number; name: string; status: string }>()
+      for (const r of results ?? []) names[r.id] = { name: r.name, status: r.status }
+    }
+    const data = Object.entries(partners).map(([category, seller_id]) => ({ category, seller_id, ...names[seller_id as number] }))
+    return c.json({ success: true, data })
+  } catch (err) {
+    return safeError(c, err, '설정을 불러오지 못했습니다', '[home-service:partners]')
+  }
+})
+
+homeServiceAdminRoutes.put('/partners', async (c) => {
+  try {
+    const DB = c.env.DB
+    const b = await c.req.json<{ category?: unknown; seller_id?: unknown }>().catch(() => ({} as { category?: unknown; seller_id?: unknown }))
+    const def = categoryDef(b.category)
+    if (!def) return c.json({ success: false, error: '카테고리를 골라 주세요' }, 400)
+    const partners = await loadPartners(DB)
+    if (b.seller_id == null || b.seller_id === '') {
+      delete partners[def.key]
+    } else {
+      const sid = Number(b.seller_id)
+      if (!Number.isInteger(sid) || sid <= 0) return c.json({ success: false, error: '매장 번호를 확인해 주세요' }, 400)
+      const s = await DB.prepare(`SELECT status FROM sellers WHERE id = ?`).bind(sid).first<{ status: string }>()
+      if (!s) return c.json({ success: false, error: '그 매장이 없습니다' }, 404)
+      if (!['approved', 'active'].includes(String(s.status))) return c.json({ success: false, error: '판매 승인된 매장만 제휴로 지정할 수 있어요' }, 400)
+      partners[def.key] = sid
+    }
+    await DB.prepare(
+      `INSERT INTO platform_settings (key, value, updated_at) VALUES (?, ?, datetime('now'))
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`,
+    ).bind(HOME_PARTNERS_KEY, JSON.stringify(partners)).run()
+    return c.json({ success: true })
+  } catch (err) {
+    return safeError(c, err, '저장하지 못했습니다', '[home-service:partners-save]')
+  }
+})
+
+/**
+ * 🎟️ 카테고리별 참여권 장수(2026-10-25 — 결재 `docs/decisions/2026-10-25-home-service-credit-cost.md`).
+ * 업체가 내는 돈이라 **대표 결재 뒤에만** 값을 넣는다. 비워 두면 1장. count 가 null/1 이면 그 카테고리를 기본으로.
+ */
+homeServiceAdminRoutes.get('/credit-costs', async (c) => {
+  try {
+    return c.json({ success: true, data: await loadCreditCosts(c.env.DB) })
+  } catch (err) {
+    return safeError(c, err, '설정을 불러오지 못했습니다', '[home-service:credit-costs]')
+  }
+})
+
+homeServiceAdminRoutes.put('/credit-costs', async (c) => {
+  try {
+    const DB = c.env.DB
+    const b = await c.req.json<{ category?: unknown; count?: unknown }>().catch(() => ({} as { category?: unknown; count?: unknown }))
+    const def = categoryDef(b.category)
+    if (!def) return c.json({ success: false, error: '카테고리를 골라 주세요' }, 400)
+    const costs = await loadCreditCosts(DB)
+    const n = b.count == null || b.count === '' ? 1 : Number(b.count)
+    if (!Number.isInteger(n) || n < 1 || n > MAX_CREDIT_COST) return c.json({ success: false, error: `1~${MAX_CREDIT_COST}장 사이로 적어 주세요` }, 400)
+    if (n === 1) delete costs[def.key]; else costs[def.key] = n
+    await DB.prepare(
+      `INSERT INTO platform_settings (key, value, updated_at) VALUES (?, ?, datetime('now'))
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`,
+    ).bind(CREDIT_COST_KEY, JSON.stringify(costs)).run()
+    return c.json({ success: true })
+  } catch (err) {
+    return safeError(c, err, '저장하지 못했습니다', '[home-service:credit-costs-save]')
+  }
+})
+
 homeServiceAdminRoutes.get('/requests', async (c) => {
   try {
     const DB = c.env.DB
     await ensureHomeServiceTables(DB)
     const { results } = await DB.prepare(
-      `SELECT id, category, summary, desired_date, status, quote_count, max_quotes, source, contact_name, created_at
+      `SELECT id, category, summary, desired_date, status, quote_count, max_quotes, source, contact_name, created_at, share_token
          FROM home_service_requests ORDER BY id DESC LIMIT 100`,
-    ).all()
+    ).all<Record<string, unknown> & { id: number; status: string; share_token: string | null }>()
+    // 🔗 옛 요청은 토큰이 없다 — 열린 것만 이 자리에서 만든다(공유 버튼이 바로 쓴다).
+    for (const r of results ?? []) {
+      if (!r.share_token && r.status === 'open') r.share_token = await ensureShareToken(DB, r.id).catch(() => null)
+    }
     return c.json({
       success: true,
       data: {
@@ -134,8 +220,9 @@ homeServiceAdminRoutes.post('/requests', async (c) => {
       MAX_QUOTES_PER_REQUEST, adminId, consent.slice(0, 200),
     ).run()
     const id = Number(ins.meta?.last_row_id)
+    const share_token = await ensureShareToken(DB, id).catch(() => null)
     const sent = await dispatchRequest(c.env, DB, id).catch(() => 0)
-    return c.json({ success: true, data: { id, dispatched: sent, linked_user: !!u } })
+    return c.json({ success: true, data: { id, dispatched: sent, linked_user: !!u, share_token } })
   } catch (err) {
     return safeError(c, err, '요청을 접수하지 못했습니다', '[home-service:admin-create]')
   }
@@ -159,7 +246,7 @@ homeServiceAdminRoutes.get('/requests/:id', async (c) => {
         .bind(id).run().catch(() => null)
     }
     const { results: quotes } = await DB.prepare(
-      `SELECT q.id, q.seller_id, q.price, q.message, q.status, q.is_house, q.created_at,
+      `SELECT q.id, q.seller_id, q.price, q.message, q.status, q.is_house, q.partner, q.created_at,
               COALESCE(NULLIF(s.business_name, ''), s.name) AS pro_name,
               COALESCE(NULLIF(p.phone, ''), s.phone) AS pro_phone
          FROM home_service_quotes q

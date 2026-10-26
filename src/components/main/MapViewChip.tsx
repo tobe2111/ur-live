@@ -17,7 +17,7 @@ export default function MapViewChip({ dealCat }: { dealCat?: string | null }) {
   return (
     <Link
       to={mapPathFor(dealCat)}
-      className="shrink-0 flex items-center gap-2 h-8 pl-1 pr-3 rounded-full bg-brand-tint text-[13px] font-bold text-gray-900 dark:text-white hover:brightness-[0.97] transition"
+      className="shrink-0 flex items-center gap-2 h-8 pl-1 pr-3 rounded-full bg-brand-tint text-[13px] font-medium text-gray-900 dark:text-white hover:brightness-[0.97] transition"
     >
       <MiniMap />
       내 주변 지도

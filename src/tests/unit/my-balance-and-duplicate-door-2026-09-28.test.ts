@@ -80,8 +80,10 @@ describe('ⓑ 딜 잔액 — 맨 위 숫자 한 줄 (안 C)', () => {
      */
     expect(MY, '안내 줄 조건의 정의가 사라졌다 — 무상 딜이 있어도 안 뜰 수 있다')
       .toMatch(/const showNote = balance != null && \(freeBalance > 0 \|\| refundable > 0 \|\| refundPending > 0\)/)
+    /* 🔁 2026-10-25 재조준(위쪽 안 3) — 폰은 목록 판의 마지막 줄이 됐다. 돌려받을 딜이 있으면 그 줄이 환급 줄이고,
+       없으면 무상 딜 안내 글이다(`showNote && freeBalance > 0`). 불변식 그대로 — 조건이 살아 있어야 한다. */
     expect(MY, '무상 리워드 안내가 죽은 가지로 남았다 (조건이 꺼졌다)')
-      .toMatch(/\{showNote && \(/)
+      .toMatch(/\{showNote && \(|showNote && freeBalance > 0 \?/)
     expect(SHARED).toContain('note')
   })
 
@@ -94,7 +96,10 @@ describe('ⓑ 딜 잔액 — 맨 위 숫자 한 줄 (안 C)', () => {
   it('충전 버튼은 되살아나지 않았다 (2026-07-18 종료)', () => {
     // 경로 자체는 플래그 뒤에 남아 있다 — 되살릴 때 그 한 줄만 되돌리면 되게.
     expect(MY).toMatch(/TOPUP_DISABLED \? '\/my-deal-history'/)
-    expect(MY, '충전 문구가 되살아났다').not.toContain('충전')
+    /* 🔁 2026-10-25 재조준 — 대표 *"환급은 뭐야? 정산이야?"* 에 답하려고 환급 줄 이름이 **'충전 딜 환급'** 이 됐다
+       (무엇을 돌려받는지 말하는 낱말이다). 지키려던 것은 낱말 '충전' 이 아니라 **충전하러 가는 문**이다. */
+    expect(MY, '충전 버튼 문구가 되살아났다').not.toMatch(/충전하기|딜 충전|충전 버튼/)
+    expect(MY.match(/\/points\/charge/g)?.length ?? 0, '충전 경로가 플래그 밖에서 쓰인다').toBe(1)
   })
 })
 

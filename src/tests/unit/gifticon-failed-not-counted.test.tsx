@@ -71,7 +71,7 @@ beforeEach(() => vouchers.mockReset())
  *   (첫 판에서 실제로 그래서 빨간불이 났다). 그룹 헤더만의 클래스로 좁힌다.
  */
 function groupCount(root: HTMLElement, label: string): number | null {
-  const headers = Array.from(root.querySelectorAll('span.font-semibold'))
+  const headers = Array.from(root.querySelectorAll('span.font-medium'))
     .filter(el => el.className.includes('text-[13px]') && (el.textContent || '').startsWith(label))
   if (headers.length !== 1) return null
   const m = (headers[0].textContent || '').match(/(\d+)/)

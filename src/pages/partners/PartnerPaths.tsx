@@ -75,8 +75,8 @@ export default function PartnerPaths() {
             <article key={title}
               className={`rounded-2xl flex flex-col ${hi ? 'bg-surface shadow-lift p-6 lg:p-10' : 'bg-black/[0.03] dark:bg-white/[0.04] p-6 lg:p-8'}`}>
               <div className="flex items-baseline justify-between gap-3">
-                <h3 className={`font-extrabold text-ink tracking-[-0.02em] ${hi ? 'text-[24px] lg:text-[28px]' : 'text-[17px] lg:text-[24px]'}`}>{title}</h3>
-                <span className={`text-[12px] lg:text-[15px] font-bold shrink-0 ${hi ? 'text-brand-text' : 'text-gray-500 dark:text-gray-400'}`}>{fee}</span>
+                <h3 className={`font-bold text-ink tracking-[-0.02em] ${hi ? 'text-[24px] lg:text-[28px]' : 'text-[17px] lg:text-[24px]'}`}>{title}</h3>
+                <span className={`text-[12px] lg:text-[15px] font-medium shrink-0 ${hi ? 'text-brand-text' : 'text-gray-500 dark:text-gray-400'}`}>{fee}</span>
               </div>
               <ol className="mt-6 lg:mt-8 space-y-2 lg:space-y-4 flex-1">
                 {steps.map(s => (
@@ -89,7 +89,7 @@ export default function PartnerPaths() {
               <p className="mt-6 pt-5 border-t border-rule text-[12px] lg:text-[13px] leading-relaxed text-gray-500 dark:text-gray-400">{note}</p>
               {'to' in cta ? (
                 <Link to={cta.to}
-                  className="mt-6 h-12 lg:h-14 rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] font-extrabold active:scale-[0.98] transition-transform">
+                  className="mt-6 h-12 lg:h-14 rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] font-bold active:scale-[0.98] transition-transform">
                   {cta.label} <ArrowRight className="w-4 h-4" />
                 </Link>
               ) : (

@@ -137,15 +137,15 @@ const HERO_SCRIMS =
 export const DETAIL_ONNURI_CLASS = PASS_HEAD.onnuri
 
 function titleHtml(d: DetailSeed): string {
-  // 🛍️ 2026-10-24 그루폰식: 제목이 맨 위, 그 아래 [가게 · 종류 · 지역] 한 줄(`passSubLine` — 클라와 같은 함수).
+  // 🛍️ 2026-10-24 그루폰식 → 🔤 2026-10-25 D안: [가게 · 종류 · 지역] 한 줄이 **제목 위**(`passSubLine` — 클라와 같은 함수·같은 순서).
   const sub = passSubLine(d)
   const onnuri = d.onnuri_merchant
     ? `<span class="${DETAIL_ONNURI_CLASS}">온누리 사용 가능</span>`
     : ''
   return (
     `<div class="${PASS_HEAD.card}">` +
-      `<h1 class="${PASS_HEAD.h1}">${escText(d.name || '')}</h1>` +
       (sub ? `<div class="${PASS_HEAD.merchant}">${escText(sub)}${onnuri}</div>` : '') +
+      `<h1 class="${PASS_HEAD.h1}">${escText(d.name || '')}</h1>` +
       (d.prelaunch ? `<span class="${PASS_HEAD.prelaunch}">오픈 예정 · 사전 응모 받는 중</span>` : '') +
     '</div>'
   )

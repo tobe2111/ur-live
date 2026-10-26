@@ -58,7 +58,7 @@ export default function RegionLinkGrid({
   return (
     <section className={`border-t border-gray-100 dark:border-[#2C2F35] ${className}`} aria-labelledby="region-grid-heading">
       <div className="max-w-[1600px] mx-auto px-6 lg:px-10 py-8">
-        <h2 id="region-grid-heading" className="text-[15px] font-black text-gray-900 dark:text-white mb-4">
+        <h2 id="region-grid-heading" className="text-[15px] font-bold text-gray-900 dark:text-white mb-4">
           {title}
         </h2>
 
@@ -71,7 +71,7 @@ export default function RegionLinkGrid({
                 key={r.sido}
                 onClick={() => setSelected(r.sido)}
                 aria-pressed={on}
-                className={`shrink-0 px-3 py-2 rounded-full text-[13px] font-bold border transition-colors ${
+                className={`shrink-0 px-3 py-2 rounded-full text-[13px] font-medium border transition-colors ${
                   on
                     ? 'bg-brand text-white border-brand'
                     : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
@@ -88,7 +88,7 @@ export default function RegionLinkGrid({
           <li>
             <Link
               to={regionPath({ sido: active.sido })}
-              className="text-[13px] font-bold text-gray-900 dark:text-white hover:underline"
+              className="text-[13px] font-medium text-gray-900 dark:text-white hover:underline"
             >
               {active.sido} 전체
               <span className="ml-1 font-medium text-gray-400 dark:text-gray-500">{active.count}</span>

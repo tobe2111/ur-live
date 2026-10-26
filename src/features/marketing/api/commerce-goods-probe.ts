@@ -46,7 +46,12 @@
  */
 
 /** 수집 코드(`mapCommerceLead`)가 쓰는 **그 순서 그대로**의 별칭. 두 벌이 되면 탐침과 저장이 갈린다. */
-export const GOODS_FIELD_ALIASES = ['trtmntPrdlstNm', 'ntslPrdlstCn', 'upteNm', 'dclsfNm', 'idustyNm', 'taskNm'] as const
+// ⚠️ 순서는 `mapCommerceLead` 의 `goods = g(it, …)` 와 **같아야 한다**(테스트가 양쪽을 대조한다) —
+//   탐침이 다른 순서를 보면 "어느 필드가 쓰이는지" 를 틀리게 말한다.
+//   2026-10-25: 한글(`ntslPrdlstCn`)을 코드(`trtmntPrdlstNm`) **앞으로** 옮겼다. 공정위 등록상세가
+//   같은 뜻을 두 벌로 주는데(`'01 02'` ↔ `'종합몰 교육/도서/완구/오락'`) 코드가 앞이면 비어 있지
+//   않아 거기서 멈추고, 분류기는 한글 정규식이라 한 건도 안 맞아 업종이 93% `'통신판매'` 였다.
+export const GOODS_FIELD_ALIASES = ['ntslPrdlstCn', 'trtmntPrdlstNm', 'upteNm', 'dclsfNm', 'idustyNm', 'taskNm'] as const
 
 export interface GoodsProbe {
   /** 값이 실제로 들어 있던 필드 이름(없으면 undefined). */

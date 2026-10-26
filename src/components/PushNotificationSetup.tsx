@@ -173,7 +173,7 @@ export default function PushNotificationSetup() {
           <Bell className="w-5 h-5 text-brand-text" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-bold text-gray-900 dark:text-white">
+          <p className="text-[13px] font-medium text-gray-900 dark:text-white">
             {t('push.promptTitle', { defaultValue: '알림을 켜시겠어요?' })}
           </p>
           <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 leading-snug">
@@ -181,11 +181,11 @@ export default function PushNotificationSetup() {
           </p>
           <div className="flex gap-2 mt-2">
             <button onClick={() => void subscribe(true)} disabled={busy}
-              className="px-4 py-2 bg-brand text-white rounded-lg text-[12px] font-bold disabled:opacity-50">
+              className="px-4 py-2 bg-brand text-white rounded-lg text-[12px] font-medium disabled:opacity-50">
               {t('push.promptOn', { defaultValue: '켜기' })}
             </button>
             <button onClick={snooze}
-              className="px-4 py-2 bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 rounded-lg text-[12px] font-semibold">
+              className="px-4 py-2 bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 rounded-lg text-[12px] font-medium">
               {t('push.promptLater', { defaultValue: '나중에' })}
             </button>
           </div>

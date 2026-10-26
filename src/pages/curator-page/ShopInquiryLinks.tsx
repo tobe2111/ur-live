@@ -34,12 +34,12 @@ const LINKS: Array<{ to: string; label: string }> = [
 
 export default function ShopInquiryLinks() {
   return (
-    <nav aria-label="유어딜과 함께하기" className="max-w-3xl mx-auto px-4 pt-7 pb-2 flex flex-col gap-[11px]">
+    <nav aria-label="유어딜과 함께하기" className="max-w-3xl mx-auto px-5 pt-7 pb-2 flex flex-col gap-[11px]">
       {LINKS.map(({ to, label }) => (
         <Link
           key={to}
           to={to}
-          className="inline-flex items-center gap-1 self-start text-[12px] font-semibold text-gray-500 dark:text-gray-400 active:opacity-70"
+          className="inline-flex items-center gap-1 self-start text-[12px] font-medium text-gray-500 dark:text-gray-400 active:opacity-70"
         >
           {label}
           <ChevronRight className="w-3 h-3 text-gray-400 dark:text-gray-500" aria-hidden="true" />

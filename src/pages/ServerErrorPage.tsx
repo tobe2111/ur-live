@@ -26,13 +26,13 @@ export default function ServerErrorPage() {
 
         {/* Error Code */}
         <div className="mb-4 smooth-appear" style={{ animationDelay: '0.1s' }}>
-          <span className="inline-block px-4 py-2 rounded-full bg-[#ff3b30]/10 text-[#ff3b30] text-[15px] font-semibold tracking-tight">
+          <span className="inline-block px-4 py-2 rounded-full bg-[#ff3b30]/10 text-[#ff3b30] text-[15px] font-medium tracking-tight">
             500 ERROR
           </span>
         </div>
 
         {/* Title */}
-        <h1 className="mb-4 text-[34px] sm:text-[40px] md:text-[48px] font-semibold leading-[1.0625] tracking-tight text-[#1d1d1f] dark:text-white smooth-appear" style={{ animationDelay: '0.2s' }}>
+        <h1 className="mb-4 text-[34px] sm:text-[40px] md:text-[48px] font-bold leading-[1.0625] tracking-tight text-[#1d1d1f] dark:text-white smooth-appear" style={{ animationDelay: '0.2s' }}>
           {t('serverError.heading')}
         </h1>
 

@@ -20,7 +20,7 @@ export default function CheckoutHeader({ onBack }: Props) {
         >
           <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
         </button>
-        <h1 className="text-[15px] font-extrabold text-gray-900 dark:text-white">{t('checkout.header.title', { defaultValue: '주문 · 결제' })}</h1>
+        <h1 className="text-[15px] font-bold text-gray-900 dark:text-white">{t('checkout.header.title', { defaultValue: '주문 · 결제' })}</h1>
         <div className="w-9" />
       </div>
     </div>

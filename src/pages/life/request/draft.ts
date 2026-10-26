@@ -10,6 +10,16 @@ const TTL_MS = 24 * 60 * 60 * 1000
 
 export type Draft = Record<string, string>
 
+/** 이미 지나온 질문(건너뛴 선택 칸 포함) — 로그인 왕복 뒤 같은 단계로 돌아오게 답과 함께 저장한다. */
+export const SEEN_KEY = '__seen'
+
+/** 처음 열 단계 — 아직 안 지나온 첫 질문, 다 지나왔으면 확인 화면(= 질문 수). */
+export function firstOpenStep(fields: readonly { key: string }[], values: Draft): number {
+  const seen = new Set((values[SEEN_KEY] || '').split(',').filter(Boolean))
+  const i = fields.findIndex((f) => !values[f.key] && !seen.has(f.key))
+  return i < 0 ? fields.length : i
+}
+
 export function loadDraft(cat: string): Draft {
   try {
     const raw = localStorage.getItem(KEY(cat))

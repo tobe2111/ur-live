@@ -105,7 +105,7 @@ export default function TalkCalendarButton({ code }: { code: string }) {
       type="button"
       onClick={onClick}
       disabled={busy}
-      className="text-[12px] font-semibold text-gray-900 dark:text-white underline underline-offset-2 active:opacity-60 disabled:opacity-50"
+      className="text-[12px] font-medium text-gray-900 dark:text-white underline underline-offset-2 active:opacity-60 disabled:opacity-50"
     >
       {added ? '톡캘린더에 넣었어요' : busy ? '넣는 중…' : '톡캘린더에 알림 넣기'}
     </button>

@@ -222,8 +222,8 @@ export default function AddressManagementPage() {
         <div className="flex items-end justify-between mb-4">
           <div>
             <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1">등록된 배송지</p>
-            <p className="text-[24px] font-extrabold text-gray-900 dark:text-white">
-              {addresses.length}<span className="text-[15px] font-semibold text-gray-500 dark:text-gray-400 ml-1">개</span>
+            <p className="text-[24px] font-bold text-gray-900 dark:text-white">
+              {addresses.length}<span className="text-[15px] font-medium text-gray-500 dark:text-gray-400 ml-1">개</span>
             </p>
           </div>
           {/* 🕯️ `data-testid` 는 dark-contrast 가드가 **이 폼을 열어** 입력 글자색을 재기 위한 손잡이다.
@@ -231,7 +231,7 @@ export default function AddressManagementPage() {
           <button
             onClick={openAddForm}
             data-testid="address-add"
-            className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-800 text-white text-[13px] font-bold shadow-sm active:scale-[0.97] transition-transform"
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-800 text-white text-[13px] font-medium shadow-sm active:scale-[0.97] transition-transform"
           >
             <Plus className="w-4 h-4" />
             <span>{t('address.addNew')}</span>
@@ -248,7 +248,7 @@ export default function AddressManagementPage() {
             <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-5">{t('address.emptySub')}</p>
             <button
               onClick={openAddForm}
-              className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-gray-800 text-white text-[13px] font-bold"
+              className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-gray-800 text-white text-[13px] font-medium"
             >
               <Plus className="w-4 h-4" />
               {t('address.addNew')}
@@ -280,13 +280,13 @@ export default function AddressManagementPage() {
                         {/* 라벨 + 이름 + 기본 뱃지 */}
                         <div className="flex items-center gap-2 mb-2 flex-wrap">
                           {address.label && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-brand text-white px-2 py-1 text-[12px] font-bold">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-brand text-white px-2 py-1 text-[12px] font-medium">
                               {labelEmoji} {address.label}
                             </span>
                           )}
                           <p className="text-[17px] font-bold text-gray-900 dark:text-white">{address.recipient_name}</p>
                           {isDefault && (
-                            <span className="rounded-full bg-gray-800 text-white px-2 py-1 text-[12px] font-extrabold tracking-wide">
+                            <span className="rounded-full bg-gray-800 text-white px-2 py-1 text-[12px] font-medium tracking-wide">
                               기본 배송지
                             </span>
                           )}
@@ -305,7 +305,7 @@ export default function AddressManagementPage() {
                           <div className="mt-3 pt-3 border-t border-gray-100 dark:border-[#2C2F35] space-y-1">
                             {address.entry_method && address.entry_method !== 'free' && (
                               <p className="text-[12px] text-gray-600 dark:text-gray-300 flex items-center gap-2">
-                                <span className="text-[12px] px-2 py-1 rounded bg-gray-100 dark:bg-[#1D1F29] font-semibold">출입</span>
+                                <span className="text-[12px] px-2 py-1 rounded bg-gray-100 dark:bg-[#1D1F29] font-medium">출입</span>
                                 {ENTRY_METHOD_OPTIONS.find(o => o.value === address.entry_method)?.label}
                                 {address.entry_method === 'password' && address.entry_code && (
                                   <span className="text-gray-400 dark:text-gray-500">· 비번 등록됨</span>
@@ -314,7 +314,7 @@ export default function AddressManagementPage() {
                             )}
                             {address.delivery_note && (
                               <p className="text-[12px] text-gray-600 dark:text-gray-300 line-clamp-2 flex items-start gap-2">
-                                <span className="text-[12px] px-2 py-1 rounded bg-gray-100 dark:bg-[#1D1F29] font-semibold flex-shrink-0">메모</span>
+                                <span className="text-[12px] px-2 py-1 rounded bg-gray-100 dark:bg-[#1D1F29] font-medium flex-shrink-0">메모</span>
                                 <span className="flex-1">{address.delivery_note}</span>
                               </p>
                             )}
@@ -323,7 +323,7 @@ export default function AddressManagementPage() {
                         {!isDefault && (
                           <button
                             onClick={() => handleSetDefault(address.id)}
-                            className="mt-3 text-[12px] font-bold text-brand-text hover:text-brand-text inline-flex items-center gap-1"
+                            className="mt-3 text-[12px] font-medium text-brand-text hover:text-brand-text inline-flex items-center gap-1"
                           >
                             ⭐ 기본 배송지로 설정
                           </button>
@@ -365,7 +365,7 @@ export default function AddressManagementPage() {
       >
         <div className="space-y-4">
           <div>
-            <label htmlFor="addr-recipient-name" className="block text-[15px] font-semibold text-gray-900 dark:text-white mb-2">
+            <label htmlFor="addr-recipient-name" className="block text-[15px] font-medium text-gray-900 dark:text-white mb-2">
               {t('address.recipientName')} <span className="text-red-500">*</span>
             </label>
             <input
@@ -379,7 +379,7 @@ export default function AddressManagementPage() {
           </div>
 
           <div>
-            <label htmlFor="addr-phone" className="block text-[15px] font-semibold text-gray-900 dark:text-white mb-2">
+            <label htmlFor="addr-phone" className="block text-[15px] font-medium text-gray-900 dark:text-white mb-2">
               {t('address.phone')} <span className="text-red-500">*</span>
             </label>
             <input
@@ -393,7 +393,7 @@ export default function AddressManagementPage() {
           </div>
 
           <div>
-            <label htmlFor="addr-postal-code" className="block text-[15px] font-semibold text-gray-900 dark:text-white mb-2">
+            <label htmlFor="addr-postal-code" className="block text-[15px] font-medium text-gray-900 dark:text-white mb-2">
               {t('address.postalCode')} <span className="text-red-500">*</span>
             </label>
             <div className="flex gap-2 w-full min-w-0">
@@ -408,7 +408,7 @@ export default function AddressManagementPage() {
               <button
                 type="button"
                 onClick={() => setShowPostcodePopup(true)}
-                className="shrink-0 px-5 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl text-[15px] font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-all whitespace-nowrap"
+                className="shrink-0 px-5 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl text-[15px] font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-all whitespace-nowrap"
               >
                 주소 검색
               </button>
@@ -422,7 +422,7 @@ export default function AddressManagementPage() {
           )}
 
           <div>
-            <label htmlFor="addr-address" className="block text-[15px] font-semibold text-gray-900 dark:text-white mb-2">
+            <label htmlFor="addr-address" className="block text-[15px] font-medium text-gray-900 dark:text-white mb-2">
               {t('address.address')} <span className="text-red-500">*</span>
             </label>
             <input
@@ -436,7 +436,7 @@ export default function AddressManagementPage() {
           </div>
 
           <div>
-            <label htmlFor="addr-address-detail" className="block text-[15px] font-semibold text-gray-900 dark:text-white mb-2">
+            <label htmlFor="addr-address-detail" className="block text-[15px] font-medium text-gray-900 dark:text-white mb-2">
               {t('address.detail')}
             </label>
             <input
@@ -451,7 +451,7 @@ export default function AddressManagementPage() {
 
           {/* 배송지 별칭 */}
           <div>
-            <label htmlFor="addr-label" className="block text-[15px] font-semibold text-gray-900 dark:text-white mb-2">
+            <label htmlFor="addr-label" className="block text-[15px] font-medium text-gray-900 dark:text-white mb-2">
               {t('address.label')} <span className="text-gray-400 dark:text-gray-500 font-normal">{t('address.optional')}</span>
             </label>
             <div className="flex gap-2 mb-2">
@@ -460,7 +460,7 @@ export default function AddressManagementPage() {
                   key={preset}
                   type="button"
                   onClick={() => setFormData({ ...formData, label: preset })}
-                  className={`px-3 py-2 rounded-full text-[12px] font-semibold border transition-colors ${
+                  className={`px-3 py-2 rounded-full text-[12px] font-medium border transition-colors ${
                     formData.label === preset
                       ? 'bg-brand text-white border-brand'
                       : 'bg-white dark:bg-[#11141C] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-[#1D1F29]'
@@ -483,7 +483,7 @@ export default function AddressManagementPage() {
 
           {/* 출입 방식 */}
           <div>
-            <label className="block text-[15px] font-semibold text-gray-900 dark:text-white mb-2">
+            <label className="block text-[15px] font-medium text-gray-900 dark:text-white mb-2">
               {t('address.entryMethod')} <span className="text-gray-400 dark:text-gray-500 font-normal">{t('address.optional')}</span>
             </label>
             <div className="grid grid-cols-2 gap-2">
@@ -492,7 +492,7 @@ export default function AddressManagementPage() {
                   key={opt.value}
                   type="button"
                   onClick={() => setFormData({ ...formData, entry_method: opt.value })}
-                  className={`px-3 py-2 rounded-xl text-[13px] font-semibold border transition-colors ${
+                  className={`px-3 py-2 rounded-xl text-[13px] font-medium border transition-colors ${
                     formData.entry_method === opt.value
                       ? 'bg-brand-tint text-brand-text border-brand'
                       : 'bg-white dark:bg-[#11141C] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-[#1D1F29]'
@@ -507,7 +507,7 @@ export default function AddressManagementPage() {
           {/* 공동현관 비밀번호 (password 선택 시만) */}
           {formData.entry_method === 'password' && (
             <div>
-              <label htmlFor="addr-entry-code" className="block text-[15px] font-semibold text-gray-900 dark:text-white mb-2">
+              <label htmlFor="addr-entry-code" className="block text-[15px] font-medium text-gray-900 dark:text-white mb-2">
                 공동현관 비밀번호
               </label>
               <input
@@ -527,7 +527,7 @@ export default function AddressManagementPage() {
 
           {/* 배송 메모 */}
           <div>
-            <label htmlFor="addr-note" className="block text-[15px] font-semibold text-gray-900 dark:text-white mb-2">
+            <label htmlFor="addr-note" className="block text-[15px] font-medium text-gray-900 dark:text-white mb-2">
               배송 메모 <span className="text-gray-400 dark:text-gray-500 font-normal">(선택)</span>
             </label>
             <div className="flex flex-wrap gap-2 mb-2">
@@ -536,7 +536,7 @@ export default function AddressManagementPage() {
                   key={preset}
                   type="button"
                   onClick={() => setFormData({ ...formData, delivery_note: preset })}
-                  className={`px-2 py-2 rounded-full text-[12px] font-semibold border transition-colors ${
+                  className={`px-2 py-2 rounded-full text-[12px] font-medium border transition-colors ${
                     formData.delivery_note === preset
                       ? 'bg-brand text-white border-brand'
                       : 'bg-white dark:bg-[#11141C] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-[#1D1F29]'

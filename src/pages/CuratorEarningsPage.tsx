@@ -137,7 +137,7 @@ export default function CuratorEarningsPage() {
                     누적 적립이 {formatWon(wdInfo.seller_upgrade.threshold)} 를 넘었어요. 셀러가 되면 직접 상품을 팔 수 있어요.
                   </p>
                   <div className="flex gap-2">
-                    <Link to="/store/new" className="flex-1 py-2 bg-brand text-white text-[13px] font-extrabold rounded-xl text-center active:opacity-70">
+                    <Link to="/store/new" className="flex-1 py-2 bg-brand text-white text-[13px] font-medium rounded-xl text-center active:opacity-70">
                       셀러 가입하기
                     </Link>
                     <button
@@ -146,7 +146,7 @@ export default function CuratorEarningsPage() {
                         await curatorApi.acknowledgeUpgradeOffer()
                         setWdInfo({ ...wdInfo, seller_upgrade: { ...wdInfo.seller_upgrade, offered: true } })
                       }}
-                      className="px-4 py-2 text-gray-500 dark:text-gray-400 text-[13px] font-bold active:opacity-70"
+                      className="px-4 py-2 text-gray-500 dark:text-gray-400 text-[13px] font-medium active:opacity-70"
                     >
                       나중에
                     </button>
@@ -182,7 +182,7 @@ function QuickTile({ to, icon, label }: { to: string; icon: React.ReactNode; lab
   return (
     <Link to={to} className="flex-1 bg-surface shadow-lift rounded-2xl px-4 py-3 flex items-center gap-2 active:opacity-70">
       <span className="text-gray-500 dark:text-gray-400">{icon}</span>
-      <span className="text-[13px] font-bold tracking-[-0.02em]">{label}</span>
+      <span className="text-[13px] font-medium tracking-[-0.02em]">{label}</span>
     </Link>
   )
 }

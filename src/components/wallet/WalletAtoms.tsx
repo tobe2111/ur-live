@@ -120,7 +120,7 @@ export function ListRow({
       </div>
       {badge != null && (
         <span className="rounded-full flex items-center justify-center px-2"
-          style={{ minWidth: 20, height: 20, background: t.danger, color: '#FFF', fontSize: 11, fontWeight: 700 }}>
+          style={{ minWidth: 20, height: 20, background: t.danger, color: '#FFF', fontSize: 11, fontWeight: 500 }}>
           {badge}
         </span>
       )}

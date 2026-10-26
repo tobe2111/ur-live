@@ -20,17 +20,20 @@
  * jsdom 은 레이아웃이 없어 "높이가 같은가" 를 단위시험으로 못 잰다 → 클래스가 진짜 블록과
  * 같은지만 시험이 대조하고, 실제 밀림 여부는 브라우저 프레임 캡처가 판정한다.
  */
+import { VOUCHER_CAT_TAB } from '@/shared/voucher-tile'
+
 
 /**
- * 카테고리 칩 줄(`py-2` + `h-9` 알약) 과 같은 높이.
+ * 카테고리 줄(밑줄 탭 `h-11`) 과 같은 높이.
  * 바탕색은 안 준다 — 부모 reveal 그룹이 이미 그 색을 칠한다(같은 색을 두 벌 두지 않는다).
  */
 export function ChipRowReserve() {
+  // 🗂️ 2026-10-25 D안 — 밑줄 탭. 클래스는 진짜 줄과 **같은 상수**(`VOUCHER_CAT_TAB`)다.
   return (
     <div aria-hidden="true">
-      <div className="ur-content-wide px-4 lg:px-8 py-2">
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide invisible">
-          <span className="shrink-0 inline-flex items-center gap-2 h-9 pl-3 pr-4 rounded-full text-[13px] font-bold">&nbsp;</span>
+      <div className={VOUCHER_CAT_TAB.wrap}>
+        <div className={`${VOUCHER_CAT_TAB.row} invisible`}>
+          <span className={`${VOUCHER_CAT_TAB.tab} ${VOUCHER_CAT_TAB.on}`}>&nbsp;</span>
         </div>
       </div>
     </div>
@@ -45,7 +48,7 @@ export function ChipRowReserve() {
 export function BrandStripReserve() {
   // ☕ 2026-10-14: '브랜드로 찾기' 헤더 줄이 사라졌다(대표 지시) — 예약도 로고 줄만. 늘 펼친다.
   return (
-    <div className="ur-content-wide px-4 lg:px-8 pt-2 pb-3 invisible" aria-hidden="true">
+    <div className="ur-content-wide px-5 lg:px-8 pt-2 pb-3 invisible" aria-hidden="true">
       <div className="flex gap-2 overflow-x-auto scrollbar-hide py-1 -mx-1 px-1">
         <BrandChipReserve />
       </div>
@@ -70,7 +73,7 @@ function BrandChipReserve() {
  */
 export const PC_BRAND = {
   wrap: 'mb-5 pb-4 border-b border-gray-100 dark:border-[#2C2F35]',
-  title: 'text-[12px] font-bold text-gray-400 dark:text-gray-500 mb-2',
+  title: 'text-[12px] font-medium text-gray-400 dark:text-gray-500 mb-2',
   row: 'flex gap-3 overflow-x-auto scrollbar-hide py-1',
 } as const
 

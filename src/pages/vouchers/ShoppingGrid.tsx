@@ -137,7 +137,7 @@ export default function ShoppingGrid() {
                   key={c.key}
                   type="button"
                   onClick={() => setShopCategory(c.key)}
-                  className={`shrink-0 inline-flex items-center gap-1 px-3 py-2 rounded-full text-[12px] font-semibold transition-colors ${
+                  className={`shrink-0 inline-flex items-center gap-1 px-3 py-2 rounded-full text-[12px] font-medium transition-colors ${
                     active
                       ? 'bg-brand text-white shadow-sm'
                       : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2C2F35]'

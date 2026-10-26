@@ -50,8 +50,8 @@ export default [
        그 자리다. 진짜 주 버튼에 표식을 달면 빨간불이 떠야 한다. */
     name: '🔵 예외 표식이 진짜 주 버튼의 면제로 쓰인다 (탈출구가 자리를 옮겼다)',
     file: 'src/pages/BrowsePage.tsx',
-    find: "className=\"px-6 py-2 bg-brand hover:bg-brand-dark text-white rounded-xl font-semibold transition-colors\"",
-    replace: "className=\"px-6 py-2 bg-gray-900 text-white rounded-xl font-semibold transition-colors\" /* primary-button-ok */ /* primary-button-ok */",
+    find: "className=\"px-6 py-2 bg-brand hover:bg-brand-dark text-white rounded-xl font-medium transition-colors\"",
+    replace: "className=\"px-6 py-2 bg-gray-900 text-white rounded-xl font-medium transition-colors\" /* primary-button-ok */ /* primary-button-ok */",
     test: TEST,
     why: '표식은 "카드 바탕·스크림" 같은 진짜 예외에만 쓰라고 있는 것이다 — 주 버튼에 달면 그 파일은 조용히 체계 밖으로 나간다.',
   },

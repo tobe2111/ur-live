@@ -154,7 +154,7 @@ export default function GiftClaimPage() {
 
           {gift.message && (
             <div className="bg-brand-tint rounded-xl p-4 border border-rule ">
-              <div className="flex items-center gap-1 text-[12px] font-bold text-brand-text mb-2">
+              <div className="flex items-center gap-1 text-[12px] font-medium text-brand-text mb-2">
                 <MessageIcon className="w-3 h-3" /> {t('giftClaim.messageLabel')}
               </div>
               <p className="text-[15px] text-gray-800 dark:text-gray-100 leading-relaxed whitespace-pre-wrap">{gift.message}</p>
@@ -166,7 +166,7 @@ export default function GiftClaimPage() {
         {isExpired && (
           <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-2xl p-5 text-center">
             <BadIcon className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
-            <p className="text-[15px] font-semibold text-gray-700 dark:text-gray-200">{t('giftClaim.expiredTitle')}</p>
+            <p className="text-[15px] font-medium text-gray-700 dark:text-gray-200">{t('giftClaim.expiredTitle')}</p>
             <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{t('giftClaim.expiredHint')}</p>
           </div>
         )}
@@ -174,7 +174,7 @@ export default function GiftClaimPage() {
         {isPending && (
           <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-2xl p-5 text-center border border-yellow-100 dark:border-yellow-800/40">
             <Loader2 className="w-6 h-6 text-yellow-600 mx-auto mb-2 animate-spin" />
-            <p className="text-[15px] font-semibold text-yellow-800">{t('giftClaim.pendingTitle')}</p>
+            <p className="text-[15px] font-medium text-yellow-800">{t('giftClaim.pendingTitle')}</p>
             <p className="text-[12px] text-yellow-700 mt-1">{t('giftClaim.pendingHint')}</p>
           </div>
         )}
@@ -182,7 +182,7 @@ export default function GiftClaimPage() {
         {isClaimed && (
           <div className="bg-green-50 dark:bg-green-900/20 rounded-2xl p-5 text-center border border-green-100 dark:border-green-800/40">
             <OkIcon className="w-8 h-8 text-green-500 mx-auto mb-2" />
-            <p className="text-[15px] font-semibold text-green-700">
+            <p className="text-[15px] font-medium text-green-700">
               {gift.status === 'claimed' && t('giftClaim.statusClaimed')}
               {gift.status === 'shipped' && t('giftClaim.statusShipped')}
               {gift.status === 'delivered' && t('giftClaim.statusDelivered')}

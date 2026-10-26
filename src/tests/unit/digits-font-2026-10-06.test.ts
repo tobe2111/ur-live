@@ -30,7 +30,8 @@ describe('숫자 글꼴 Roboto', () => {
   })
   it('② 본문과 font-sans 스택 맨 앞이 UrDigits', () => {
     // 2026-10-15: 그 뒤는 기기 기본 글꼴(쿠팡·네이버처럼 — Pretendard 제거)
-    expect(CSS).toMatch(/body \{[^}]*font-family:\s*"UrDigits",/)
+    // 기본(폰) body 규칙을 콕 집는다 — 2026-10-25 PC 미디어쿼리 body 도 UrDigits 로 시작해서, 느슨하면 그쪽에 맞아 헛돈다.
+    expect(CSS).toMatch(/body \{\s*background-color[^}]*font-family:\s*"UrDigits",/)
     expect(TW).toMatch(/sans: \['UrDigits', '-apple-system'/)
   })
   it('③ tabular-nums · .dash-num 에 글꼴을 따로 박지 않는다', () => {

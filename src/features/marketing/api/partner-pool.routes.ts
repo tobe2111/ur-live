@@ -24,6 +24,7 @@ import { partnerPoolRunStatusRoutes } from './partner-pool-run-status'
 import { partnerPoolKeywordRoutes } from './partner-pool-keywords.routes'
 import { judgeLanes } from './lane-yield-health'
 import { adsLeadsDb } from '../../../shared/ads/leads-db'
+import { runBatchExport } from './pool-export-batch'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -575,19 +576,24 @@ app.post('/delete-bulk', async (c) => {
 })
 
 // GET /api/admin/partner-pool/export?format=csv — 엑셀 호환(수식 인젝션 방어). 대표 동선표용.
-/** 내보내기 상한. 이스케이프·절단 고지·필터 파싱은 `pool-export.ts`(두 풀 공용) 에 있다. */
-const EXPORT_MAX = 5000
+/** 전체 덤프 상한 = `listCompanyLeads` 의 실제 클램프(2,000). 🩸 2026-10-25 까지 5,000 이라 **절단 고지가 한 번도 안 떴다** — 근거 `pool-export-batch.ts`. */
+const EXPORT_MAX = 2000
 
-// 🩸 화면 필터를 그대로 따른다(2026-08-03 수리 — 이전엔 무시했다). 배경·근거는 `pool-export.ts` 헤더.
+// 🩸 화면 필터를 그대로 따른다(2026-08-03 — `pool-export.ts` 헤더) · 📥 `newOnly`(기본 ON)=받은 건 안 준다(500 묶음+도장, `=0` 이면 종전 덤프).
 app.get('/export', async (c) => {
   await ensureCompanySchema(adsLeadsDb(c.env))
   const filter = parseCompanyExportFilter(k => c.req.query(k), intParam) as CompanyLeadFilter
-  const rows = await listCompanyLeads(adsLeadsDb(c.env), { ...filter, limit: EXPORT_MAX })
+  const { rows, cap, notes } = await runBatchExport({
+    DB: adsLeadsDb(c.env), pool: 'company', newOnly: c.req.query('newOnly') !== '0', fullCap: EXPORT_MAX,
+    list: (limit, notExported) => listCompanyLeads(adsLeadsDb(c.env), { ...filter, notExported, limit }),
+    count: (notExported) => countCompanyLeads(adsLeadsDb(c.env), { ...filter, notExported }),
+  })
   return csvResponse({
     filename: 'partner-leads.csv',
     header: ['tier', 'category', 'subcategory', 'company_name', 'region', 'phone', 'email', 'website', 'address', 'status', 'contact_channel', 'follow_up_at', 'memo', 'source', 'source_keyword', 'collected_at'],
     rows: rows.map(r => [r.tier ?? '', r.category, r.subcategory, r.company_name, r.region, r.phone, r.email, r.website, r.address, r.status, r.contact_channel, r.follow_up_at, r.memo, r.source, r.source_keyword, (r.collected_at || '').slice(0, 10)]),
-    cap: EXPORT_MAX,
+    cap,
+    notes,
   })
 })
 

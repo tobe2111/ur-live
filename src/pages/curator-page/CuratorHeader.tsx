@@ -101,7 +101,7 @@ const manageBtnCls = 'h-9 px-3 rounded-full bg-brand text-white text-[15px] font
 const avatarCls = 'w-14 h-14 rounded-full overflow-hidden bg-wash shrink-0'
 /** 이름표 하나의 탭 영역(36px — 2026-09-16 의 하한 34px 를 지킨다). 보이는 알약은 안쪽 `snsPillCls`. */
 const snsHitCls = 'h-9 inline-flex items-center active:opacity-70'
-const snsPillCls = 'h-7 px-3 rounded-full bg-wash inline-flex items-center gap-1 text-[12px] font-semibold text-gray-600 dark:text-gray-300'
+const snsPillCls = 'h-8 px-3 rounded-full bg-wash inline-flex items-center gap-1 text-[13px] font-medium text-gray-600 dark:text-gray-300'
 
 export default function CuratorHeader({ curator, canEdit, counts, soldTotal, accountType, onCopyLink }: CuratorHeaderProps) {
   const { t } = useTranslation()
@@ -152,14 +152,16 @@ export default function CuratorHeader({ curator, canEdit, counts, soldTotal, acc
             화면에 **두 번** 있었다. 이 줄은 a3 의 **모바일용** 브랜드 바다.
             ⚠️ `?embed=1`(깨끗한 매장 링크)은 PC 에서도 전역 네비가 없지만, 그 모드의 목적 자체가
                "유어딜 chrome 을 안 보여 준다" 라 여기서도 안 그리는 쪽이 맞다. */}
-        <div className="lg:hidden flex items-center px-4 pt-3">
+        <div className="lg:hidden flex items-center px-5 pt-3">
           <Link to="/" aria-label={t('nav.homeAria', { defaultValue: '유어딜 홈' })} className="active:opacity-70">
             <UrDealLogo size={19} />
           </Link>
         </div>
 
         {/* ③④ 상호명 줄 — [얼굴] [이름·소개] [공유 · 관리]. 그 위 선 없음(면으로 나뉜다). */}
-        <div className="flex items-center gap-3 px-4 pt-4">
+        {/* 🖥️ 2026-10-25 (대표 *"왜 정지원 이름이 1줄로 안되고 2줄이지?"*): PC 프로필 열은 300px 이라 [얼굴 56 · 공유 · 관리]가
+            한 줄에 서면 이름 칸이 ~60px 만 남아 '정지/원' 으로 끊겼다 → lg 에서만 버튼 줄을 이름 아래로 내린다(폰 불변). */}
+        <div className="flex items-center gap-4 px-5 pt-4 lg:flex-wrap lg:gap-y-3">
           {/* 👤 얼굴 — 사진이 없으면 유달이(공유 카드와 같은 그림). 장식이라 alt 는 비운다(옆에 이름이 있다). */}
           <div className={avatarCls}>
             {photo ? (
@@ -171,14 +173,14 @@ export default function CuratorHeader({ curator, canEdit, counts, soldTotal, acc
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 min-w-0">
               {/* 이름은 이 화면의 정체 자체라 자르지 않고 두 줄까지 허용한다(2026-09-30 실측 — 잘린 이름 사고). */}
-              <h1 className="text-[24px] font-bold text-gray-900 dark:text-white leading-tight tracking-[-0.03em] line-clamp-2">{curator.name}</h1>
+              <h1 className="text-[24px] font-bold text-gray-900 dark:text-white leading-tight tracking-[-0.03em] line-clamp-2 break-keep">{curator.name}</h1>
               {accountType === 'business' && <VerifiedSeal size={17} className="shrink-0" />}
             </div>
             {curator.bio && (
               <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400 leading-snug line-clamp-2">{curator.bio}</p>
             )}
           </div>
-          <div className="ml-3 flex items-center gap-2 shrink-0">
+          <div className="ml-3 flex items-center gap-2 shrink-0 lg:ml-[72px] lg:basis-full">
             <button
               type="button"
               onClick={onCopyLink}
@@ -209,13 +211,13 @@ export default function CuratorHeader({ curator, canEdit, counts, soldTotal, acc
 
         {/* 📊 이름 아래 한 줄 — 왼쪽 숫자(이용권 · 누적 구매), 오른쪽 SNS 이름표. 둘 다 없으면 줄 자체가 없다. */}
         {(showStats || hasSns) && (
-          <div className="mt-2 px-4 flex items-center justify-between gap-2">
+          <div className="mt-4 px-5 flex items-center justify-between gap-2">
             <p className="min-w-0 truncate text-[13px] text-gray-500 dark:text-gray-400 tabular-nums">
-              {pinsN > 0 && <span>{t('curator.countVouchers', { defaultValue: '이용권' })} <b className="font-bold text-gray-900 dark:text-white">{pinsN}</b></span>}
+              {pinsN > 0 && <span>{t('curator.countVouchers', { defaultValue: '이용권' })} <b className="font-medium text-gray-900 dark:text-white">{pinsN}</b></span>}
               {pinsN > 0 && productsN > 0 && <span> · </span>}
-              {productsN > 0 && <span>{t('curator.countProducts', { defaultValue: '내 상품' })} <b className="font-bold text-gray-900 dark:text-white">{productsN}</b></span>}
+              {productsN > 0 && <span>{t('curator.countProducts', { defaultValue: '내 상품' })} <b className="font-medium text-gray-900 dark:text-white">{productsN}</b></span>}
               {(pinsN > 0 || productsN > 0) && sold > 0 && <span> · </span>}
-              {sold > 0 && <span>{t('curator.countSold', { defaultValue: '누적 구매' })} <b className="font-bold text-gray-900 dark:text-white">{formatNumber(sold)}</b></span>}
+              {sold > 0 && <span>{t('curator.countSold', { defaultValue: '누적 구매' })} <b className="font-medium text-gray-900 dark:text-white">{formatNumber(sold)}</b></span>}
             </p>
             {hasSns && <div className="flex items-center gap-1 shrink-0">{snsLinks}</div>}
           </div>

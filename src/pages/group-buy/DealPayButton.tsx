@@ -36,7 +36,7 @@ export default function DealPayButton({ show, joining, dealBalance, onPay }: {
       onClick={onPay}
       disabled={joining}
       aria-label={`보유한 딜 ${formatNumber(dealBalance)}딜로 결제하기`}
-      style={{ width: '100%', height: 42, marginTop: 8, borderRadius: 12, background: 'transparent', border: '1.5px solid var(--gbd-cta-bg)', color: 'var(--gbd-cta-bg)', fontSize: 14, fontWeight: 700, letterSpacing: '-.01em', cursor: joining ? 'default' : 'pointer' }}
+      style={{ width: '100%', height: 42, marginTop: 8, borderRadius: 12, background: 'transparent', border: '1.5px solid var(--gbd-cta-bg)', color: 'var(--gbd-cta-bg)', fontSize: 15, fontWeight: 700, letterSpacing: '-.01em', cursor: joining ? 'default' : 'pointer' }}
     >
       {joining ? '처리 중…' : `딜로 결제 (보유 ${formatNumber(dealBalance)}딜)`}
     </button>

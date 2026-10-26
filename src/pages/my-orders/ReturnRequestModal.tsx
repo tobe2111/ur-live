@@ -70,7 +70,7 @@ export default function ReturnRequestModal({ orderId, orderNumber, onClose, onSu
 
         <div className="mb-4 p-4 bg-gray-50 dark:bg-[#1D1F29] rounded-xl">
           <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-1">{t('cancelOrder.orderNumber', { defaultValue: '주문번호' })}</p>
-          <p className="font-semibold text-gray-900 dark:text-white">{orderNumber}</p>
+          <p className="font-medium text-gray-900 dark:text-white">{orderNumber}</p>
         </div>
 
         <div className="mb-4">

@@ -170,7 +170,7 @@ export default function HomeHeroDefault({
       </div>{/* ← 배경 래퍼 끝. 아래 콘텐츠는 잘리지 않는다(드롭다운이 히어로 밖으로 펼쳐진다). */}
 
       <div className="relative z-10 w-full max-w-[1440px] mx-auto px-6 lg:px-8 py-6 flex flex-col justify-center">
-        <h2 className="text-[28px] lg:text-[34px] font-black tracking-tight text-white leading-[1.16] [text-wrap:balance]">
+        <h2 className="text-[28px] lg:text-[34px] font-extrabold tracking-tight text-white leading-[1.16] [text-wrap:balance]">
           {content?.title || (
             <>{DEFAULT_TITLE_HEAD}<span className="text-brand">{DEFAULT_TITLE_ACCENT}</span>{DEFAULT_TITLE_TAIL}</>
           )}
@@ -200,7 +200,7 @@ export default function HomeHeroDefault({
               버튼은 그 자체가 "여기를 눌러라"라서 화살표가 같은 말을 두 번 한다. */}
           <Link
             to="/map"
-            className="inline-flex items-center shrink-0 h-[38px] px-5 rounded-full bg-brand text-white text-[13px] font-extrabold hover:bg-[#1557C8] transition-colors shadow-[0_6px_18px_-8px_rgba(28,105,239,0.9)]"
+            className="inline-flex items-center shrink-0 h-[38px] px-5 rounded-full bg-brand text-white text-[13px] font-medium hover:bg-[#1557C8] transition-colors shadow-[0_6px_18px_-8px_rgba(28,105,239,0.9)]"
           >
             지도에서 딜 찾기
           </Link>

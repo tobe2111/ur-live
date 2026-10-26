@@ -77,8 +77,8 @@ export default [
   {
     name: '🖼️ tailwind 디스플레이 단계가 다시 섞인다 (디스플레이도 체계가 둘)',
     file: 'src/pages/CreatorsPage.tsx',
-    find: 'text-[17px] lg:text-[34px] font-extrabold text-ink leading-[1.35] tracking-[-0.025em]',
-    replace: 'text-[17px] lg:text-4xl font-extrabold text-ink leading-[1.35] tracking-[-0.025em]',
+    find: 'text-[17px] lg:text-[34px] font-bold text-ink leading-[1.35] tracking-[-0.025em]',
+    replace: 'text-[17px] lg:text-4xl font-bold text-ink leading-[1.35] tracking-[-0.025em]',
     test: TEST,
     why: '본문은 `text-[Npx]` 인데 디스플레이만 tailwind 단계를 쓰면 같은 화면에 두 체계가 선다.',
   },
@@ -88,8 +88,8 @@ export default [
     //   유달이(길 잃은 얼굴)로 바뀌어 사라졌고, 남은 96px 초과 그래픽은 이 워터마크다(불변식은 그대로).
     name: '🖼️ 그래픽 예외로 진짜 글자가 샌다 (select-none 없는 100px)',
     file: 'src/pages/IntroducePage.tsx',
-    find: 'text-[100px] font-black opacity-[0.04] text-white select-none',
-    replace: 'text-[100px] font-black opacity-[0.04] text-white',
+    find: 'text-[100px] font-extrabold opacity-[0.04] text-white select-none',
+    replace: 'text-[100px] font-extrabold opacity-[0.04] text-white',
     test: TEST,
     why: '`select-none` 을 떼면 그것은 읽는 글자다 — 그러면 스케일 밖 크기를 "그래픽이라" 며 통과시킬 수 없어야 한다.',
   },

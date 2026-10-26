@@ -37,8 +37,8 @@ function bubbleHtml(category: string | null | undefined, minPrice: number, count
   return `
     <div style="display:flex;align-items:center;gap:5px;background:#fff;border-radius:999px;padding:5px 6px 5px 8px;box-shadow:0 2px 8px rgba(0,0,0,0.22);white-space:nowrap;cursor:pointer;font-family:inherit;">
       <span style="display:flex;color:#3d4350;">${mapMarkerIconSvg(category, 14)}</span>
-      <span style="font-size:13px;font-weight:800;color:${PIN_RING_INK};letter-spacing:-0.02em;">${formatNumber(minPrice || 0)}원~</span>
-      <span style="display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:${PIN_RING_INK};color:#fff;font-size:10.5px;font-weight:800;">${count}</span>
+      <span style="font-size:13px;font-weight:700;color:${PIN_RING_INK};letter-spacing:-0.02em;">${formatNumber(minPrice || 0)}원~</span>
+      <span style="display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:${PIN_RING_INK};color:#fff;font-size:10.5px;font-weight:700;">${count}</span>
     </div>
   `
 }
@@ -161,15 +161,15 @@ export function buildPinContent(r: Restaurant, opts: {
   const favOutline = isFav && !isSelected ? `outline:1.5px solid ${PIN_RING_BRAND};outline-offset:-1.5px;` : ''
   // 같은 좌표에 겹친 딜 수 — 클러스터 알약과 **같은 장치**(알약 안 칩)로. 떠 있는 '+N' 배지를 다시 만들지 않는다.
   const stackChip = groupSize > 1
-    ? `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;border-radius:999px;background:${tier === 'normal' ? PIN_RING_INK : 'rgba(255,255,255,0.22)'};color:#fff;font-size:10px;font-weight:800;">${groupSize}</span>`
+    ? `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;border-radius:999px;background:${tier === 'normal' ? PIN_RING_INK : 'rgba(255,255,255,0.22)'};color:#fff;font-size:10px;font-weight:700;">${groupSize}</span>`
     : ''
   const el = document.createElement('div')
   el.innerHTML = `
     <div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;font-family:inherit;">
       <div class="ur-pin-pill" style="display:flex;align-items:center;gap:4px;background:${st.pillBg};border-radius:999px;padding:${st.padding};box-shadow:${st.shadow};white-space:nowrap;${favOutline}">
         <span class="ur-pin-ic" style="display:flex;align-items:center;justify-content:center;width:${st.iconPx}px;height:${st.iconPx}px;color:${st.iconFg};">${mapMarkerIconSvg(r.category, st.iconPx)}</span>
-        ${showDiscount ? `<span class="ur-pin-disc" style="font-size:11px;font-weight:900;color:${st.discountFg};letter-spacing:-0.02em;">${discount}%</span>` : ''}
-        <span class="ur-pin-price" style="font-size:${st.fontPx}px;font-weight:800;color:${st.pillFg};letter-spacing:-0.02em;">${formatNumber(price || 0)}</span>
+        ${showDiscount ? `<span class="ur-pin-disc" style="font-size:11px;font-weight:700;color:${st.discountFg};letter-spacing:-0.02em;">${discount}%</span>` : ''}
+        <span class="ur-pin-price" style="font-size:${st.fontPx}px;font-weight:700;color:${st.pillFg};letter-spacing:-0.02em;">${formatNumber(price || 0)}</span>
         ${stackChip}
       </div>
       <div class="ur-pin-tail" style="display:${st.showTail ? 'block' : 'none'};width:0;height:0;border:6px solid transparent;border-top-color:${st.pillBg};margin-top:-1px;"></div>

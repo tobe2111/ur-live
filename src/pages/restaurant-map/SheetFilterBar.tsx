@@ -77,7 +77,7 @@ export default function SheetFilterBar({
         <button
           onClick={onOpenFilter}
           aria-label={t('map.sheet.filterAria', { defaultValue: '지역·카테고리 필터 열기' })}
-          className={`flex items-center gap-1 px-3 py-2 rounded-full text-[12px] font-semibold shrink-0 transition-all ${
+          className={`flex items-center gap-1 px-3 py-2 rounded-full text-[12px] font-medium shrink-0 transition-all ${
             activeFilterCount > 0
               ? 'bg-brand text-white shadow-md shadow-brand/30'
               : 'bg-white dark:bg-[#11141C] text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-[#2C2F35]'
@@ -85,7 +85,7 @@ export default function SheetFilterBar({
         >
           <SlidersHorizontal className="w-3.5 h-3.5" />
           {activeFilterCount > 0 && (
-            <span className="ml-1 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-white dark:bg-[#11141C]/25 text-[12px] font-bold">
+            <span className="ml-1 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-white dark:bg-[#11141C]/25 text-[12px] font-medium">
               {activeFilterCount}
             </span>
           )}
@@ -96,7 +96,7 @@ export default function SheetFilterBar({
             onClick={requestNearMe}
             aria-pressed={nearMeMode}
             /* 🗺️ 2026-09-02 B안: 선택 = 브랜드 블루 면, 비선택 = 흰 알약 + 블루 글자. 색은 블루 하나뿐. */
-            className={`flex items-center gap-1 px-2 py-2 rounded-full text-[12px] font-semibold shrink-0 transition-all ${
+            className={`flex items-center gap-1 px-2 py-2 rounded-full text-[12px] font-medium shrink-0 transition-all ${
               nearMeMode
                 ? 'bg-brand text-white'
                 : 'bg-white dark:bg-[#1D1F29] text-brand-text shadow-lift'
@@ -110,7 +110,7 @@ export default function SheetFilterBar({
               key={v.key}
               onClick={() => setVoucherType(v.key)}
               aria-pressed={voucherType === v.key}
-              className={`flex items-center gap-1 px-2 py-2 rounded-full text-[12px] font-semibold shrink-0 transition-all ${
+              className={`flex items-center gap-1 px-2 py-2 rounded-full text-[12px] font-medium shrink-0 transition-all ${
                 voucherType === v.key
                   ? 'bg-brand text-white'
                   : 'bg-white dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200 shadow-lift'
@@ -139,7 +139,7 @@ export default function SheetFilterBar({
           {favorites.length > 0 && (
             <button
               onClick={() => setShowFavoritesOnly(v => !v)}
-              className={`flex items-center gap-1 px-2 py-1 rounded-full text-[12px] font-bold border transition-colors ${
+              className={`flex items-center gap-1 px-2 py-1 rounded-full text-[12px] font-medium border transition-colors ${
                 showFavoritesOnly
                   ? 'bg-brand text-white border-brand'
                   : 'bg-white dark:bg-[#11141C] text-brand border-[#F4C2CC]'
@@ -154,7 +154,7 @@ export default function SheetFilterBar({
         <button
           onClick={() => setSortOpen(true)}
           aria-label={t('map.sheet.sortAria', { defaultValue: '정렬' })}
-          className="flex items-center gap-1 text-[12px] font-semibold text-gray-700 dark:text-gray-200 px-2 py-1 rounded-lg active:bg-gray-100 dark:active:bg-[#1D1F29]"
+          className="flex items-center gap-1 text-[12px] font-medium text-gray-700 dark:text-gray-200 px-2 py-1 rounded-lg active:bg-gray-100 dark:active:bg-[#1D1F29]"
         >
           <ArrowUpDown className="w-3 h-3 text-gray-400 dark:text-gray-500" />
           <span>{t(SORT_LABEL[sortBy].labelKey, { defaultValue: SORT_LABEL[sortBy].def })}</span>

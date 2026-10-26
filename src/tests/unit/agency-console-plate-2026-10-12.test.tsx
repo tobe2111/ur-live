@@ -93,16 +93,22 @@ describe('③ 좌석 — 누를 때만 · 내 좌석은 직원 id 까지', () =>
   })
 })
 
+/**
+ * 🔁 2026-10-25 — 대표가 **마이 '내 가게'** 를 안 G 로 확정했다(사용처리·등록 두 칸 + 목록 판). 이 확정은
+ *   마이 화면의 것이고 **에이전시 콘솔 판은 범위 밖**이라 그대로 둔다(콘솔은 자기 이용권만 다루는 다른 판이다 —
+ *   사용처리도 주문·정산도 없다). 그래서 두 판의 *같은 클래스* 대조는 **판 상수 · 진한 블루 면** 둘로 좁힌다.
+ *   ⚠️ 콘솔도 G 로 맞추라는 지시가 오면 이 목록을 다시 넓힐 것.
+ */
 describe('④ 생김새 — 마이 판과 같은 클래스', () => {
   const agency = code('src/pages/agency-console/AgencyStorePlate.tsx')
   const mine = code('src/pages/user-profile/SellerSection.tsx')
-  it.each([
-    'mt-2 text-[28px] font-extrabold tabular-nums leading-none whitespace-nowrap',
-    'flex-1 min-w-0 text-[15px] font-extrabold truncate">이용권 등록 · 관리',
-    'bg-brand text-white text-left active:opacity-90',
-  ])('두 판이 같다: %s', (cls) => {
-    expect(agency).toContain(cls)
-    expect(mine).toContain(cls)
+  it('콘솔 판은 자기 모양(오늘 숫자 · 진한 블루 등록 줄)을 지킨다', () => {
+    expect(agency).toContain('mt-2 text-[28px] font-extrabold tabular-nums leading-none whitespace-nowrap')
+    expect(agency).toContain('flex-1 min-w-0 text-[15px] font-extrabold truncate">이용권 등록 · 관리')
+  })
+  it('두 판의 진한 블루 면은 같은 클래스 묶음이다', () => {
+    expect(agency).toContain('bg-brand text-white text-left active:opacity-90')
+    expect(mine).toContain('bg-brand text-white text-left active:opacity-90')
   })
   it('판은 같은 판 상수를 쓴다', () => {
     expect(agency).toContain('<div className={LIST_PLATE_CLS}>')

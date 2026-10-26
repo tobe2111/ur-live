@@ -30,10 +30,10 @@ export const VOUCHERS_HERO_CLS = {
   /** 배너 판 — 높이 196 = 아이콘 줄 + 제목 두 줄 + 잔액 카드가 걸칠 28. */
   hero: 'relative h-[196px] overflow-hidden bg-gray-900 dark:bg-surface',
   /** 잔액 카드가 배너 아래 끝에 걸친다. */
-  overlap: 'relative z-10 -mt-7 px-4',
+  overlap: 'relative z-10 -mt-7 px-5',
   /** 배너가 0장일 때 — 아이콘만 오른쪽에. */
   bareBar: 'flex items-center justify-end px-2 pt-2',
-  bareBalance: 'px-4 pt-1',
+  bareBalance: 'px-5 pt-1',
   actions: 'absolute right-2 top-2 z-10 flex items-center gap-1',
 } as const
 

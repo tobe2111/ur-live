@@ -582,7 +582,7 @@ export default function GroupBuyListPage() {
             <PinIcon className="w-5 h-5 text-white dark:text-gray-900" aria-hidden="true" />
           </div>
           <div className="flex-1 min-w-0 text-left">
-            <p className="text-[15px] font-extrabold text-white dark:text-gray-900">
+            <p className="text-[15px] font-bold text-white dark:text-gray-900">
               {t('groupBuy.mapEntryTitle', { defaultValue: '지도로 내 주변 동네딜 보기' })}
             </p>
             <p className="text-[12px] text-white/70 dark:text-gray-900/70 mt-1">
@@ -603,7 +603,7 @@ export default function GroupBuyListPage() {
       <div className="ur-content-wide px-4 lg:px-8 pt-4">
         <div className="bg-gray-900 rounded-2xl px-5 py-4 flex items-center gap-3">
           <div className="flex-1 min-w-0">
-            <p className="text-white text-[15px] font-extrabold">
+            <p className="text-white text-[15px] font-bold">
               <Sparkles className="inline w-4 h-4 mr-1 -mt-0.5" />
               {t('groupBuy.bannerHeadline', { defaultValue: '함께라서 더 좋은 가격' })}
             </p>
@@ -613,7 +613,7 @@ export default function GroupBuyListPage() {
           </div>
           <button
             onClick={() => navigate(createPath)}
-            className="shrink-0 flex items-center gap-1 bg-white dark:bg-white text-gray-900 dark:text-gray-900 px-3 py-2 rounded-full text-[12px] font-extrabold shadow-sm active:scale-95 transition-transform"
+            className="shrink-0 flex items-center gap-1 bg-white dark:bg-white text-gray-900 dark:text-gray-900 px-3 py-2 rounded-full text-[12px] font-medium shadow-sm active:scale-95 transition-transform"
           >
             <Plus className="w-3.5 h-3.5" />
             {t('groupBuy.startCta', { defaultValue: '시작' })}
@@ -732,14 +732,14 @@ export default function GroupBuyListPage() {
                   <div className="mt-4 flex gap-2 justify-center flex-wrap">
                     <button
                       onClick={() => { setCategory('all'); setSearchQuery(''); applyRegion(null, null); const n = new URLSearchParams(searchParams); n.delete('category'); setSearchParams(n, { replace: true }) }}
-                      className="px-5 py-2 bg-brand text-white text-[13px] font-bold rounded-full"
+                      className="px-5 py-2 bg-brand text-white text-[13px] font-medium rounded-full"
                     >
                       {t('groupBuy.resetToAll', { defaultValue: '전체 공구 보기' })}
                     </button>
                     {regionKey && (
                       <button
                         onClick={() => applyRegion(null, null)}
-                        className="px-5 py-2 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300 text-[13px] font-semibold rounded-full"
+                        className="px-5 py-2 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300 text-[13px] font-medium rounded-full"
                       >
                         {t('groupBuy.clearRegion', { defaultValue: '지역 해제' })}
                       </button>
@@ -786,7 +786,7 @@ export default function GroupBuyListPage() {
             ) : filteredCommunity.length === 0 ? (
               <div className="text-center py-20">
                 <p className="text-[34px] mb-3">🙋</p>
-                <p className="text-gray-900 dark:text-white font-semibold text-[15px]">
+                <p className="text-gray-900 dark:text-white font-medium text-[15px]">
                   {t('groupBuy.emptyCommunity', { defaultValue: '진행 중인 유저 공구가 없습니다' })}
                 </p>
                 <p className="text-gray-500 dark:text-gray-400 text-[12px] mt-1">
@@ -794,7 +794,7 @@ export default function GroupBuyListPage() {
                 </p>
                 <button
                   onClick={() => navigate(createPath)}
-                  className="mt-5 px-5 py-2 bg-brand text-white text-[13px] font-semibold rounded-full"
+                  className="mt-5 px-5 py-2 bg-brand text-white text-[13px] font-medium rounded-full"
                 >
                   {t('groupBuy.ctaStart', { defaultValue: '공구 시작하기' })}
                 </button>

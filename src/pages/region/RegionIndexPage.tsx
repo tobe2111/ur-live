@@ -50,7 +50,7 @@ export default function RegionIndexPage() {
         </nav>
 
         <header className="mb-6">
-          <h1 className="text-[24px] lg:text-[28px] font-black tracking-tight text-gray-900 dark:text-white">
+          <h1 className="text-[24px] lg:text-[28px] font-bold tracking-tight text-gray-900 dark:text-white">
             지역별 이용권·동네딜
           </h1>
           <p className="mt-2 text-[13px] lg:text-[15px] text-gray-500 dark:text-gray-400">
@@ -76,7 +76,7 @@ export default function RegionIndexPage() {
                 <h2 id={`sido-${r.sido}`} className="mb-2 pb-2 border-b border-gray-100 dark:border-[#2C2F35]">
                   <Link
                     to={regionPath({ sido: r.sido })}
-                    className="inline-flex items-baseline gap-2 text-[15px] font-black text-gray-900 dark:text-white hover:underline"
+                    className="inline-flex items-baseline gap-2 text-[15px] font-bold text-gray-900 dark:text-white hover:underline"
                   >
                     {r.sido}
                     <span className="text-[12px] font-medium text-gray-400 dark:text-gray-500">{r.count}</span>

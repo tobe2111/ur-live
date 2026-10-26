@@ -21,6 +21,8 @@ import type { VoucherCategory as PlatformVoucherCategory } from '@/shared/consta
  *    남은 문제는 화면이 없는 선택지를 계속 내밀고 있었다는 것이다.)
  * ⇒ 목록을 따로 갖지 않는다. SSOT 가 늘거나 줄면 여기가 자동으로 따라간다.
  */
+import { normalizeLifeSubcat } from '@/shared/life-deal-subcat'
+
 export type VoucherCategory = PlatformVoucherCategory
 
 export interface VoucherForm {
@@ -36,6 +38,8 @@ export interface VoucherForm {
    */
   images: string[]
   category: VoucherCategory
+  /** 🏠 2026-10-25 생활 이용권 업종(`shared/life-deal-subcat`) — 생활일 때만 고른다(필수). */
+  life_subcat: string
   restaurant_name: string
   restaurant_address: string
   restaurant_phone: string
@@ -77,7 +81,7 @@ export function defaultDeadline(): string {
 export function emptyVoucherForm(): VoucherForm {
   return {
     name: '', description: '', price: 0, original_price: 0, image_url: '', images: [],
-    category: 'meal_voucher',
+    category: 'meal_voucher', life_subcat: '',
     restaurant_name: '', restaurant_address: '', restaurant_phone: '',
     restaurant_lat: '', restaurant_lng: '',
     voucher_expiry: '', voucher_terms: '',
@@ -163,4 +167,9 @@ export function pickNewerDraft(local: VoucherDraft | null, server: VoucherDraft 
   if (!l) return s
   if (!s) return l
   return s.savedAt > l.savedAt ? s : l
+}
+
+/** 🏠 생활 이용권인데 업종을 안 골랐는가 — 다음 단계·등록 둘 다 이 판정으로 막는다. */
+export function lifeSubcatMissing(f: Pick<VoucherForm, 'category' | 'life_subcat'>): boolean {
+  return f.category === 'home_voucher' && !normalizeLifeSubcat(f.life_subcat)
 }

@@ -278,7 +278,7 @@ export default function MyOrdersPage() {
               <p className="text-[15px] text-gray-900 dark:text-white mb-4">{error}</p>
               <button
                 onClick={() => loadData()}
-                className="px-6 py-2 bg-brand hover:bg-brand-dark text-white rounded-xl transition-colors font-semibold"
+                className="px-6 py-2 bg-brand hover:bg-brand-dark text-white rounded-xl transition-colors font-medium"
               >
                 {t('common.retry', { defaultValue: '다시 시도' })}
               </button>

@@ -115,7 +115,7 @@ export function RewardAdCard() {
               <Play className="w-5 h-5 text-white fill-white" />
             </div>
             <div>
-              <p className="text-[13px] font-bold text-gray-900 dark:text-white">{t('rewardAd.title', { defaultValue: '광고 보고 딜 받기' })}</p>
+              <p className="text-[13px] font-medium text-gray-900 dark:text-white">{t('rewardAd.title', { defaultValue: '광고 보고 딜 받기' })}</p>
               <p className="text-[12px] text-gray-500 dark:text-gray-400">
                 {isMaxed
                   ? t('rewardAd.descMaxed', { defaultValue: '내일 다시 시청 가능합니다' })
@@ -127,7 +127,7 @@ export function RewardAdCard() {
           <button
             onClick={showRewardedAd}
             disabled={isMaxed || loading}
-            className={`px-4 py-2 rounded-xl text-[12px] font-bold transition-all active:scale-95 ${
+            className={`px-4 py-2 rounded-xl text-[12px] font-medium transition-all active:scale-95 ${
               isMaxed
                 ? 'bg-gray-200 dark:bg-white/[0.12] text-gray-500 dark:text-gray-400 cursor-not-allowed'
                 : loading
@@ -153,7 +153,7 @@ export function RewardAdCard() {
         {/* 리워드 알림 */}
         {rewarded && (
           <div className="mt-2 text-center animate-fade-in">
-            <span className="inline-flex items-center gap-1 px-3 py-2 bg-green-100 text-green-700 text-[12px] font-bold rounded-full">
+            <span className="inline-flex items-center gap-1 px-3 py-2 bg-green-100 text-green-700 text-[12px] font-medium rounded-full">
               {t('rewardAd.rewardEarned', { amount: rewarded, balance: formatNumber(newBalance ?? 0), defaultValue: `+${rewarded}딜 적립 완료! (잔액: ${formatNumber(newBalance ?? 0)}딜)` })}
             </span>
           </div>

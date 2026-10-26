@@ -203,7 +203,7 @@ export default function MyGroupBuysPage() {
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="flex items-center text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white">
             <ChevronLeft className="w-6 h-6" />
           </button>
-          <h1 className="text-[15px] font-semibold text-gray-900 dark:text-white">{t('myGroupBuys.title')}</h1>
+          <h1 className="text-[15px] font-medium text-gray-900 dark:text-white">{t('myGroupBuys.title')}</h1>
           <div className="w-6" />
         </div>
       </header>
@@ -284,7 +284,7 @@ function UnifiedCard({ item }: { item: UnifiedItem }) {
 
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2 mb-1">
-            <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white truncate">
+            <h3 className="text-[15px] font-medium text-gray-900 dark:text-white truncate">
               {item.title}
             </h3>
             <UnifiedStatusBadge item={item} />
@@ -319,7 +319,7 @@ function UnifiedCard({ item }: { item: UnifiedItem }) {
                 </span>
               )}
               {item.discountText && (
-                <span className="font-semibold text-brand-text">{item.discountText}</span>
+                <span className="font-medium text-brand-text">{item.discountText}</span>
               )}
             </div>
             {item.isActive && item.expires_at && (
@@ -340,7 +340,7 @@ function UnifiedCard({ item }: { item: UnifiedItem }) {
           {/* CTA for achieved */}
           {item.ctaLabel && (
             <div className="mt-2">
-              <span className="inline-flex items-center px-2 py-1 rounded-md bg-gray-900 text-white text-[12px] font-semibold">
+              <span className="inline-flex items-center px-2 py-1 rounded-md bg-gray-900 text-white text-[12px] font-medium">
                 {item.ctaLabel}
               </span>
             </div>
@@ -382,16 +382,16 @@ function SourceBadge({ source }: { source: Source }) {
 function UnifiedStatusBadge({ item }: { item: UnifiedItem }) {
   const { t } = useTranslation();
   if (item.isActive) {
-    return <span className="shrink-0 text-[12px] font-semibold px-2 py-1 rounded-full bg-gray-900 text-white">{t('myGroupBuys.statusOngoing')}</span>;
+    return <span className="shrink-0 text-[12px] font-medium px-2 py-1 rounded-full bg-gray-900 text-white">{t('myGroupBuys.statusOngoing')}</span>;
   }
   if (item.isAchieved) {
-    return <span className="shrink-0 text-[12px] font-semibold px-2 py-1 rounded-full bg-tone-ok-bg text-tone-ok">{t('myGroupBuys.statusAchieved')}</span>;
+    return <span className="shrink-0 text-[12px] font-medium px-2 py-1 rounded-full bg-tone-ok-bg text-tone-ok">{t('myGroupBuys.statusAchieved')}</span>;
   }
   // expired/refunded/cancelled
   if (item.source === 'voucher' && (item.raw as VoucherEntry).status === 'refunded') {
-    return <span className="shrink-0 text-[12px] font-semibold px-2 py-1 rounded-full bg-gray-100 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400">{t('myGroupBuys.statusRefunded', { defaultValue: '환불' })}</span>;
+    return <span className="shrink-0 text-[12px] font-medium px-2 py-1 rounded-full bg-gray-100 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400">{t('myGroupBuys.statusRefunded', { defaultValue: '환불' })}</span>;
   }
-  return <span className="shrink-0 text-[12px] font-semibold px-2 py-1 rounded-full bg-gray-100 dark:bg-[#1D1F29] text-gray-400 dark:text-gray-500">{t('myGroupBuys.statusExpired')}</span>;
+  return <span className="shrink-0 text-[12px] font-medium px-2 py-1 rounded-full bg-gray-100 dark:bg-[#1D1F29] text-gray-400 dark:text-gray-500">{t('myGroupBuys.statusExpired')}</span>;
 }
 
 function EmptyState({ onBrowse }: { onBrowse: () => void }) {
@@ -405,7 +405,7 @@ function EmptyState({ onBrowse }: { onBrowse: () => void }) {
       <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-6">{t('myGroupBuys.emptyHint')}</p>
       <button
         onClick={onBrowse}
-        className="px-5 py-2 bg-brand text-white text-[15px] font-semibold rounded-lg hover:bg-brand-dark transition-colors"
+        className="px-5 py-2 bg-brand text-white text-[15px] font-medium rounded-lg hover:bg-brand-dark transition-colors"
       >
         {t('myGroupBuys.browseProducts', { defaultValue: '상품 둘러보기' })}
       </button>

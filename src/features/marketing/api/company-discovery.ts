@@ -22,6 +22,7 @@ import { normalizeCompanyName } from './registry-email-match'
 import { runDdlOnce } from './ads-schema-guard'
 import { pickPriorityBatch, pickCrawlBatch, writePrioState, type ReclassifyRow } from './reclassify-priority'
 import { COMPANY_INDEX_DDL } from './company-ddl-indexes'
+import { NOT_EXPORTED_SQL } from './pool-export-batch'
 
 /* ── 접점 분류 (수집 카테고리 SSOT — 2026-07-27 대표 확정 v3: **실무 업종명이 최상위**) ── */
 //   "카테고리를 대행사, 전문서비스(법률·세무·기장 등), 간판, 인테리어 이렇게 해야지" — 우산어
@@ -280,6 +281,8 @@ export { parsePartnerPaste } from './company-paste-import'
 export interface CompanyLeadFilter {
   category?: string; subcategory?: string; region?: string; tier?: number
   status?: string; hasContact?: boolean; hasEmail?: boolean; includeHeld?: boolean; heldOnly?: boolean; q?: string
+  /** 📥 아직 내보내지 않은 행만(= 받은 건 다시 안 준다). 근거·설계: `pool-export-batch.ts` 머리말. */
+  notExported?: boolean
   limit?: number; offset?: number
   leadType?: string; pipeline?: boolean; recentDays?: number
 }
@@ -301,6 +304,8 @@ function buildLeadWhere(filter: CompanyLeadFilter): { sql: string; binds: (strin
   if (filter.status && COMPANY_STATUSES.includes(filter.status)) { where.push('status = ?'); binds.push(filter.status) }
   if (filter.hasEmail) where.push("(email IS NOT NULL AND email != '')")
   else if (filter.hasContact) where.push("((email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != ''))")
+  // 📥 미다운로드만 — 조건 문자열은 세 풀 공용 SSOT(두 벌이면 풀마다 조용히 갈린다).
+  if (filter.notExported) where.push(NOT_EXPORTED_SQL)
   // 통계 카드 클릭 = 필터(카드 수치와 목록 건수가 1:1 로 맞도록 companyStats 와 같은 조건식 사용).
   if (filter.pipeline) where.push("status NOT IN ('new','rejected')")
   if (filter.recentDays && filter.recentDays > 0) { where.push("collected_at >= datetime('now', ?)"); binds.push(`-${Math.min(365, Math.round(filter.recentDays))} days`) }

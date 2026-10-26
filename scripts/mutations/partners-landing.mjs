@@ -173,8 +173,8 @@ export default [
     /* 🔧 2026-09-30 재조준: 디스플레이 이행 + 사다리 정리로 `24/32/36` → `24/34`(xl 잉여였다).
        결함은 **번호 eyebrow 를 되살리는 것**이므로 크기는 손대지 않는다 — 빨간불이 그 이유 하나로
        뜨게 둔다(크기까지 바꾸면 무엇 때문에 빨간지 흐려진다). */
-    find: `              <p className="text-[24px] lg:text-[34px] font-extrabold text-ink leading-[1.3] tracking-[-0.025em]">{k}</p>`,
-    replace: `              <p className="text-[13px] font-extrabold text-brand-text tabular-nums">0{i + 1}</p>
+    find: `              <p className="text-[24px] lg:text-[34px] font-bold text-ink leading-[1.3] tracking-[-0.025em]">{k}</p>`,
+    replace: `              <p className="text-[13px] font-medium text-brand-text tabular-nums">0{i + 1}</p>
               <p className="text-[24px] lg:text-[34px] font-extrabold text-ink leading-[1.3] tracking-[-0.025em]">{k}</p>`,
     test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
     why:
@@ -197,8 +197,8 @@ export default [
   {
     name: '🏪 캡션 회색이 다시 옅어진다 (AA 미달)',
     file: 'src/pages/partners/PartnerCompare.tsx',
-    find: `              <p key={i} className="text-[13px] font-bold text-gray-500 dark:text-gray-400">{h}</p>`,
-    replace: `              <p key={i} className="text-[13px] font-bold text-gray-400 dark:text-gray-500">{h}</p>`,
+    find: `              <p key={i} className="text-[13px] font-medium text-gray-500 dark:text-gray-400">{h}</p>`,
+    replace: `              <p key={i} className="text-[13px] font-medium text-gray-400 dark:text-gray-500">{h}</p>`,
     test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
     why:
       '대표 신고 당시 이 짝이 라이트 3.21~3.65 · 다크 3.10~3.48 로 **두 테마 모두** AA(4.5) 미달이었다 ' +

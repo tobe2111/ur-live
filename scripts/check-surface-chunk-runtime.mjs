@@ -121,7 +121,17 @@ function main() {
     const cap = base.counts[pg.name]
     if (cap != null && chunks.length > cap && !REBASE) v.push(`청크 ${chunks.length}개 > 기준 ${cap}개(늘었다)`)
     next.counts[pg.name] = REBASE ? chunks.length : (cap ?? chunks.length)
-    if (v.length) { bad++; console.error(`❌ ${pg.name} (${chunks.length}개)`); for (const x of v) console.error(`     · ${x}`) }
+    if (v.length) {
+      bad++
+      console.error(`❌ ${pg.name} (${chunks.length}개)`)
+      for (const x of v) console.error(`     · ${x}`)
+      // 🩸 **실패하면 청크 이름을 전부 찍는다** (2026-10-25). 이걸 안 찍어서 CI 실패 한 건을
+      //   규명조차 못 했다: 개수 래칫이 "34 > 32" 라고만 말하고 **무엇이 둘 늘었는지**는
+      //   하네스 stdout(`FETCH_RESULT`)에만 있었는데 이 검사기가 그걸 삼켰다. 로컬에서 32 가
+      //   나오면 비교할 대상이 없어 "간헐" 과 "실재" 를 가를 수 없다.
+      //   ⚠️ 성공할 때는 안 찍는다 — 초록 로그를 청크 목록으로 덮으면 다음 사람이 안 읽는다.
+      console.error(`     · 받은 청크 ${chunks.length}개: ${[...chunks].sort().join(' ')}`)
+    }
     else console.log(`✅ ${pg.name}: ${chunks.length}개 — 남의 봉투·금지 청크 0`)
   }
   if (measured === 0 && !bad) { console.error('❌ surface-chunk-runtime: 측정한 화면이 0개 — 통과가 아니다.'); process.exit(1) }

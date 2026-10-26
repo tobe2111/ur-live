@@ -19,7 +19,7 @@ export default function WalletSummaryCard({ count, total, t }: {
     <div className="ur-content-narrow px-4 lg:px-8 pt-4">
       <div className="rounded-2xl bg-surface shadow-lift px-5 py-4 flex items-end justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-[13px] font-semibold text-gray-500 dark:text-gray-400">
+          <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400">
             {t('voucher.walletEyebrow', { defaultValue: '쓸 수 있는 이용권' })}
           </p>
           <p className="mt-1 flex items-baseline gap-1 leading-none">

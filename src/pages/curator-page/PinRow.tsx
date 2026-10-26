@@ -78,19 +78,9 @@ export default memo(function PinRow({ pin, handle, curatorUserId, order, prefetc
          페이지 바탕이 카드와 같은 톤이 되면 판은 아무것도 나누지 않으면서 그림자만 남긴다.
          ⚠️ 기본값(`card`)은 안 건드린다 — `DealRow` 를 쓰는 다른 다섯 화면은 바탕이 `bg-warm` 이다. */
       surface="plain"
-      leading={
-        /*
-         * 🩸 2026-09-29 (대표 *"세련된 느낌이 없다"* 진단) — 순번을 **사진 밖**으로 옮겼다.
-         *   종전엔 흰 원이 사진 좌상단에 얹혀 있었다. 순번은 지울 수 없지만(위 ① — SNS 에서
-         *   "N번 사세요" 로 부르는 주소다) 사진의 가장 좋은 자리를 덮을 이유는 없다.
-         *   2026-08-31 대표 *"할인율이 사진 안으로 들어가면 안돼"* 와 같은 판단이다.
-         *   밖으로 나오니 흰 원(어떤 사진 위에서도 읽히게)이 필요 없어져 회색 숫자로 족하다.
-         */
-        <span className="w-5 shrink-0 text-center text-[12px] font-bold tabular-nums text-gray-400 dark:text-gray-500">
-          {order}
-        </span>
-      }
-      eyebrow={pin.restaurant_name || undefined}
+      /* 🛍️ 2026-10-25 D안 — 순번은 따로 서 있지 않고 가게 줄 앞에 붙는다("1 · 가게"). 순번은 SNS 에서
+         "N번 이용권" 으로 부르는 주소라 없애지 않는다 — 자리만 옮겼다. */
+      eyebrow={pin.restaurant_name ? `${order} · ${pin.restaurant_name}` : String(order)}
       title={pin.product_name}
       price={pin.price}
       originalPrice={pin.original_price ?? undefined}

@@ -31,19 +31,25 @@ export const PASS_HEAD = {
    *   **이미 같은 말을 한다.**
    * ⚠️ 이 클래스는 워커 SSR(`detail-ssr-body.ts`)이 **같은 문자열로** 그린다 — 여기만 고치면 둘이 같이 간다.
    */
-  // 🛍️ 2026-10-24 (대표 승인 "그루폰식으로 하자"): 제목이 맨 위, 그 아래 [가게 · 종류 · 지역] 한 줄.
+  // 🛍️ 2026-10-24 (대표 승인 "그루폰식으로 하자"): 제목 + [가게 · 종류 · 지역] 한 줄.
+  // 🔤 2026-10-25 대표 확정 D안: 가게 줄이 **제목 위**로(작은 회색 → 큰 제목 위계). 가격은 머리 아래쪽(`PassHeadCard`).
   //   가격은 머리에서 빠져 아래 '옵션 선택' 카드(`PassOptionCard`)로 갔다 — 한 화면에 가격이 두 번 서지 않게.
   card: 'lg:hidden relative mx-3 mb-3 px-1 pt-5 pb-3',
   /** [가게 · 종류 · 지역] 한 줄 — 값은 `passSubLine()`(서버·클라 같은 함수). 키 이름은 호환 때문에 `merchant`. */
-  merchant: 'mt-2 text-[13px] text-[var(--gbd-sub)]',
-  prelaunch: 'inline-flex items-center gap-1 mt-2 px-3 py-1 rounded-full bg-[var(--gbd-ink)] text-[var(--gbd-card)] text-[12px] font-bold',
+  merchant: 'mb-1 text-[13px] text-[var(--gbd-sub)]',
+  prelaunch: 'inline-flex items-center gap-1 mt-2 px-3 py-1 rounded-full bg-[var(--gbd-ink)] text-[var(--gbd-card)] text-[12px] font-medium',
   /** 온누리 뱃지 — 한 줄을 두 줄로 밀 수 있어 서버·클라가 모양까지 같아야 한다. */
-  onnuri: 'ml-2 px-2 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[12px] font-bold align-middle',
+  onnuri: 'ml-2 px-2 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[12px] font-medium align-middle',
   h1: 'm-0 text-[24px] leading-[1.3] font-bold tracking-[-.02em] text-[var(--gbd-ink)]',
 } as const
 
 /** 섹션 카드 — 회색 바탕 위 흰 판. 2026-10-11 PC 도 같은 카드(대표 "PC도 해야하는거 아니야?"). */
-export const PASS_CARD = 'mx-3 mb-3 rounded-2xl bg-[var(--gbd-card)] shadow-lift overflow-hidden lg:mx-0 lg:mb-4'
+/**
+ * 🧱 2026-10-25 대표 확정 **E안**(*"공백도 쓸데없이 많고"* · 여기어때 참고): 모바일 섹션은 떠 있는 카드
+ *   (좌우 12px · 둥근 모서리 · 그림자 · 아래 12px)가 아니라 **폭 전체 흰 섹션 + 위 8px 회색 띠**다. 카드마다
+ *   양옆·위아래로 비던 여백이 사라지고 구분은 띠 하나가 맡는다. PC(lg+)는 종전 카드 그대로.
+ */
+export const PASS_CARD = 'bg-[var(--gbd-card)] overflow-hidden border-t-8 border-gray-100 dark:border-[var(--bg)] lg:border-t-0 lg:mx-0 lg:mb-4 lg:rounded-2xl lg:shadow-lift'
 
 /**
  * 🛍️ 제목 아래 한 줄 `부용한우곱창 · 식사 · 파주시` (2026-10-24 그루폰식).

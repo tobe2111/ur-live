@@ -77,8 +77,8 @@ export default function StayCurations({
         </section>
       ))}
       <div className="flex items-center justify-between px-1 pt-2">
-        <h2 className="text-[17px] sm:text-[17px] font-extrabold tracking-tight text-gray-900 dark:text-white">전체 숙소</h2>
-        <Link to="/map" className="text-[12px] font-semibold text-gray-500 dark:text-gray-400">지도에서 보기 →</Link>
+        <h2 className="text-[17px] sm:text-[17px] font-bold tracking-tight text-gray-900 dark:text-white">전체 숙소</h2>
+        <Link to="/map" className="text-[12px] font-medium text-gray-500 dark:text-gray-400">지도에서 보기 →</Link>
       </div>
     </div>
   )

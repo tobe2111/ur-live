@@ -41,7 +41,7 @@ export default function DealPointsSection({ dealBalance, dealToUse, setDealToUse
         />
         <button
           onClick={() => setDealToUse(Math.min(dealBalance, totalBeforeDeal))}
-          className="px-3 py-3 bg-brand text-white rounded-lg text-[12px] font-bold shrink-0 whitespace-nowrap"
+          className="px-3 py-3 bg-brand text-white rounded-lg text-[12px] font-medium shrink-0 whitespace-nowrap"
         >{t('checkout.deal.useAll', { defaultValue: '전액' })}</button>
       </div>
       {dealToUse > 0 && (
@@ -55,7 +55,7 @@ export default function DealPointsSection({ dealBalance, dealToUse, setDealToUse
             <span className="text-brand-text font-bold">-{formatNumber(dealToUse)}{t('checkout.summary.dealSuffix', { defaultValue: '딜' })}</span>
           </div>
           <div className="border-t border-line mt-2 pt-2 flex items-center justify-between">
-            <span className="text-[13px] font-bold text-gray-900 dark:text-white">{t('checkout.deal.cardAmount', { defaultValue: '카드 결제 금액' })}</span>
+            <span className="text-[13px] font-medium text-gray-900 dark:text-white">{t('checkout.deal.cardAmount', { defaultValue: '카드 결제 금액' })}</span>
             <span className="text-[15px] font-bold text-gray-900 dark:text-white">{formatNumber(Math.max(0, totalAmount))}{t('checkout.summary.wonSuffix', { defaultValue: '원' })}</span>
           </div>
         </div>
