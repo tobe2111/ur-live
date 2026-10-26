@@ -17,3 +17,10 @@
 - 배포 뒤 대표 PC 에서 urdeal.kr 상품 제목 → 검사 → 계산됨 → "렌더링된 글꼴" 이 Noto Sans KR 인지 확인 요청.
 - 미확인: 쿠팡 letter-spacing(대표가 보낸 화면은 font-weight 까지만). 우리는 −2% 유지.
 - 대표 PC 의 Noto Sans KR 이 설치 글꼴인지 쿠팡 웹폰트인지 미확인(쿠팡이 Access Denied 로 막아 네트워크 탭 확인 실패). 설치 글꼴이 아니면 이 순서 변경은 그 PC 에서 효과 0.
+
+## 2026-10-26 후속 — 창 폭 1024 미만 PC 에서 규칙이 안 걸림
+
+- 대표 스크린샷: `/life` h1 의 Font 가 `UrDigits, -apple-system, BlinkMac…` (종전 목록) + 크기 24px(`lg:text-[34px]` 미적용) = 뷰포트 1024 미만(개발자 도구 도킹 등). PC 블록이 미디어쿼리라 안 걸렸다.
+- 처방: 기본 목록을 `-apple-system, BlinkMacSystemFont, "Noto Sans KR", "Malgun Gothic", system-ui, …` 로. 애플은 앞 두 키워드가 잡혀 그대로, 안드로이드는 그 이름 글꼴이 없어 system-ui 로 → 폰 불변. 윈도우는 창 폭 무관 한글 글꼴. index.css · tailwind sans · index.html 세 곳 같은 순서.
+- 🩸 틀린 판단: "PC = 1024px+" 로 판정했다. PC 라도 창이 좁을 수 있다 — 플랫폼 문제를 폭으로 풀면 안 된다.
+- 여전히 미확인: 대표 PC 에 Noto Sans KR 이 **설치**돼 있는가(쿠팡이 웹폰트로 받는 것일 수 있다). 개발자 도구 → 계산됨 → **렌더링된 글꼴**(Font 목록 줄이 아니라 맨 아래 칸)으로 판정.

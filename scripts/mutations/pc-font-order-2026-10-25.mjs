@@ -25,4 +25,12 @@ export default [
     test: 'src/tests/unit/pc-font-order-2026-10-25.test.ts',
     why: '같은 PC 에서 쿠팡은 Noto Sans KR, 우리는 맑은 고딕으로 그려졌다(대표 개발자 도구 화면). 되돌려도 에러 0.',
   },
+  {
+    name: '🔤 기본 목록 — 한글이 다시 system-ui 뒤로(창 폭 1024 미만 윈도우가 맑은 고딕+Segoe UI)',
+    file: 'src/index.css',
+    find: '      "Noto Sans KR",\n      "Malgun Gothic",\n      system-ui,\n',
+    replace: '      system-ui,\n      "Noto Sans KR",\n      "Malgun Gothic",\n',
+    test: TEST,
+    why: '2026-10-26 대표 스크린샷 — 개발자 도구를 열어 창이 좁아지면 PC 규칙이 안 걸려 글자가 그대로 맑은 고딕이었다. 에러 0.',
+  },
 ]

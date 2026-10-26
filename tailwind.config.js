@@ -67,7 +67,7 @@ export default {
         // 🔤 2026-10-15 (대표 *"쿠팡, 네이버처럼 하자"*): 손님 화면 본문은 **기기 기본 글꼴**이다 — 웹폰트를
         //   받지 않는다. 이 목록은 index.css body 규칙과 **같아야** 한다(`font-sans` 를 명시한 자리와 본문이 갈린다).
         //   (2026-10-25 PC(1024px+)만 index.css 가 한글 글꼴을 앞으로 당긴다 — 모바일 기준인 이 목록과는 의도적으로 다르다.)
-        sans: ['UrDigits', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'Roboto', 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'sans-serif'],
+        sans: ['UrDigits', '-apple-system', 'BlinkMacSystemFont', 'Noto Sans KR', 'Malgun Gothic', 'system-ui', 'Roboto', 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'sans-serif'],
       },
       colors: {
         border: 'hsl(var(--border))',
