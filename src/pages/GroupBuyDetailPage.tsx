@@ -643,8 +643,8 @@ export default function GroupBuyDetailPage() {
               longDescription: (detail as { long_description?: string | null }).long_description,
               sellerBio: (detail as { seller_bio?: string | null }).seller_bio })
               ? [{ id: 'gb-sec-store', label: '가게 소개' }] : []),
-            { id: 'gb-sec-info', label: '이용권 정보' },
             ...((detail.restaurant_address || (detail.restaurant_lat && detail.restaurant_lng)) ? [{ id: 'gb-sec-location', label: '매장 위치' }] : []),
+            { id: 'gb-sec-info', label: '이용권 정보' },
             ...(Number(detail.review_count || 0) > 0 ? [{ id: 'gb-sec-reviews', label: '리뷰' }] : []),
           ].map((tab) => (
             <button key={tab.id} onClick={() => document.getElementById(tab.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
@@ -708,6 +708,26 @@ export default function GroupBuyDetailPage() {
           sellerBio={(detail as { seller_bio?: string | null }).seller_bio} sellerAvatar={detail.seller_avatar}
           sellerName={detail.seller_name} storeName={detail.restaurant_name} /></div>
 
+        {/* 📍 2026-10-27 (대표 "지도 섹션이 상품 구성 아래에 나와야"): 상품 구성 바로 다음으로 올렸다.
+            매장 위치 — 추출: StoreLocation(테두리 제거 + 전화 버튼 신설). 지도는 **잠금 lazy** 라
+            여기서 감싸 넘긴다(그 lazy 경계를 옮기면 로딩 최적화 잠금 계약이 흔들린다). */}
+        {(detail.restaurant_address || (detail.restaurant_lat && detail.restaurant_lng)) && (
+          <>
+            <div className={PASS_CARD}><StoreLocation onProfile={goStore}
+              name={detail.restaurant_name} address={detail.restaurant_address} phone={detail.restaurant_phone}
+              lat={detail.restaurant_lat} lng={detail.restaurant_lng} sellerId={detail.seller_id} productId={detail.id}
+              map={(
+                <DeferUntilVisible minHeight={172}>
+                  <Suspense fallback={<div style={{ height: 172, background: 'var(--gbd-chip)' }} />}>
+                    <RestaurantMiniMap name={detail.restaurant_name} address={detail.restaurant_address} lat={detail.restaurant_lat} lng={detail.restaurant_lng} placeUrl={detail.kakao_place_url} />
+                  </Suspense>
+                </DeferUntilVisible>
+              )}
+            /></div>
+          </>
+        )}
+
+
 
         {/* 🔴 2026-09-01 (디자인 방향 PR A): 3열 균등 신뢰 스트립(안전결제/정식판매/환불보장) 삭제 —
             CTA 위 한 줄("토스로 3초 안전결제 · 미사용 시 100% 자동환불")이 같은 말을 이미 한다. */}
@@ -728,24 +748,6 @@ export default function GroupBuyDetailPage() {
 
         {/* 대표 메뉴 — 백엔드 menu 데이터 있을 때만 (data-gate; docs/design/group-buy-detail.md). 추출: DealMenuList */}
         <div className={`${PASS_CARD} empty:hidden`}><DealMenuList menuItems={((detail as { menu?: DealMenuItem[] }).menu) || []} /></div>
-
-        {/* 매장 위치 — 추출: StoreLocation(테두리 제거 + 전화 버튼 신설). 지도는 **잠금 lazy** 라
-            여기서 감싸 넘긴다(그 lazy 경계를 옮기면 로딩 최적화 잠금 계약이 흔들린다). */}
-        {(detail.restaurant_address || (detail.restaurant_lat && detail.restaurant_lng)) && (
-          <>
-            <div className={PASS_CARD}><StoreLocation onProfile={goStore}
-              name={detail.restaurant_name} address={detail.restaurant_address} phone={detail.restaurant_phone}
-              lat={detail.restaurant_lat} lng={detail.restaurant_lng} sellerId={detail.seller_id} productId={detail.id}
-              map={(
-                <DeferUntilVisible minHeight={172}>
-                  <Suspense fallback={<div style={{ height: 172, background: 'var(--gbd-chip)' }} />}>
-                    <RestaurantMiniMap name={detail.restaurant_name} address={detail.restaurant_address} lat={detail.restaurant_lat} lng={detail.restaurant_lng} placeUrl={detail.kakao_place_url} />
-                  </Suspense>
-                </DeferUntilVisible>
-              )}
-            /></div>
-          </>
-        )}
 
         {/* 👤 주인용 '관리하기' 는 구매 자리(PC 상자·모바일 바)로 옮겼다 — 2026-10-18 */}
 
