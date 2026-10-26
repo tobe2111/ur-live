@@ -1278,7 +1278,7 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
     //   기본(미지정) = 실상품형(기존과 동일).
     const isPrelaunch = String((body as { mode?: unknown }).mode || '') === 'prelaunch';
     const priceMult = await loadDemoPriceMultipliers(DB);  // 💰 어드민 시세 보정 배율
-    const { fetchDemoPhotos } = await import('../../../worker/utils/demo-photo-set');
+    const { fetchDemoPhotos, DEMO_MIN_PHOTOS } = await import('../../../worker/utils/demo-photo-set');
     // 🎯 실제 매장 매칭(카카오): region 을 중심좌표로 1회 해석 → 그 반경 내 거리순 검색(정확도 ↑).
     //   center 있으면 검색어는 순수 업종(pq)만(지역명은 좌표로 반영), 없으면 "지역 랜덤구 pq" 폴백.
     const regionCenter = region ? await resolveRegionCenter(c.env, region) : null;
@@ -1358,8 +1358,11 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
       );
       // 🎯 2026-07-03: 대표(카드) 사진 1장만 우리 R2 로 재호스팅(/api/media/…) — 서브리퀘스트 한도 보호.
       //   추가 갤러리 사진(2~5번째)은 search.pstatic(네이버 자체 CDN, 인증서·핫링크 안전) URL 그대로 사용.
+      //   📸 2026-10-27 (대표 "3번 해봐"): 사진이 DEMO_MIN_PHOTOS 장 미만인 매장은 어차피 건너뛰므로 재호스팅도 안 한다.
       const validImgs = await Promise.all(
-        resolvedImgSets.map((arr) => rehostImageToR2(c.env as unknown as { MEDIA_BUCKET?: R2Bucket }, arr[0] ?? null)),
+        resolvedImgSets.map((arr) => arr.length >= DEMO_MIN_PHOTOS
+          ? rehostImageToR2(c.env as unknown as { MEDIA_BUCKET?: R2Bucket }, arr[0] ?? null)
+          : Promise.resolve(null)),
       );
       for (let i = 0; i < work.length && seeded < reqCount; i++) {
         const t = work[i].t;
@@ -1383,7 +1386,9 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
         //   (2026-07-20 대표 "가장 메인이 되는 사진을 커버로" — 재호스팅 실패로 대표사진을 버리고 picsum 으로
         //   떨어지던 구멍 수정. 원본 URL 도 로드 가능하므로 picsum 보다 항상 우선.)
         // 🚫 2026-08-08 대표 "사진 없으면 자체가 안올려져야지" — picsum 더미 폴백 폐기. 사유: 동명 테스트.
-        if (!realPhoto && !resolvedImgSets[i][0]) { skippedNoPhoto++; continue; }
+        // 📸 2026-10-27 (대표 확정 — 발행 때 사진 3장 보장): 근거 있는 사진이 3장 미만인 매장은 발행하지 않고
+        //   다음 라운드에서 다른 매장으로 채운다(usedStores 에 이미 들어가 같은 매장이 다시 뽑히지 않는다).
+        if (resolvedImgSets[i].length < DEMO_MIN_PHOTOS) { skippedNoPhoto++; continue; }
         const img = realPhoto || resolvedImgSets[i][0];
         const restName = place?.name || null;         // hasCoord 보장 → 항상 실매장명
         const restAddr = place?.address || null;

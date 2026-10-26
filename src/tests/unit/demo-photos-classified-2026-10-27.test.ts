@@ -96,3 +96,16 @@ describe('③ 배선 — 호출부가 상품 종류를 넘긴다', () => {
     expect(v).toBeGreaterThanOrEqual(8)
   })
 })
+
+describe('④ 발행 때 사진 3장 보장 (대표 2026-10-27 "3번")', () => {
+  it('동네딜 데모 발행은 사진이 DEMO_MIN_PHOTOS 장 미만인 매장을 건너뛴다', () => {
+    const admin = readCode('src/features/admin/api/admin-products.routes.ts')
+    expect(admin).toMatch(/if \(resolvedImgSets\[i\]\.length < DEMO_MIN_PHOTOS\) \{ skippedNoPhoto\+\+; continue; \}/)
+    // 건너뛸 매장은 커버 재호스팅(R2 쓰기·서브리퀘스트)도 안 한다.
+    expect(admin).toMatch(/arr\.length >= DEMO_MIN_PHOTOS\s*\? rehostImageToR2/)
+  })
+  it('숙소 데모 발행도 같은 기준', () => {
+    const stays = readCode('src/features/admin/api/admin-stays.routes.ts')
+    expect(stays).toMatch(/if \(imgs\.length < DEMO_MIN_PHOTOS\) \{ skippedNoPhoto\+\+; continue \}/)
+  })
+})

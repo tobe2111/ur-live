@@ -35,4 +35,20 @@ export default [
     test: T,
     why: '업체 사진이 있는 15% 외에는 사진을 못 구해 3장이 안 채워진다(photoShort 309).',
   },
+{
+    name: 'demo-photo-cls — 발행이 사진 1장이어도 올린다',
+    file: 'src/features/admin/api/admin-products.routes.ts',
+    find: 'if (resolvedImgSets[i].length < DEMO_MIN_PHOTOS) { skippedNoPhoto++; continue; }',
+    replace: 'if (resolvedImgSets[i].length < 1) { skippedNoPhoto++; continue; }',
+    test: T,
+    why: '새로 발행한 데모가 사진 1~2장으로 올라간다(대표: 발행 때 3장 보장).',
+  },
+  {
+    name: 'demo-photo-cls — 숙소 발행이 사진 1장이어도 올린다',
+    file: 'src/features/admin/api/admin-stays.routes.ts',
+    find: 'if (imgs.length < DEMO_MIN_PHOTOS) { skippedNoPhoto++; continue }',
+    replace: 'if (imgs.length === 0) { skippedNoPhoto++; continue }',
+    test: T,
+    why: '숙소 데모만 사진 3장 기준이 빠진다.',
+  },
 ]
