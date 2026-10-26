@@ -1156,10 +1156,9 @@ pointsRoutes.get('/refund', requireAuth(), async (c) => {
   const st = await getDealRefundState(c.env.DB, String(user.id))
   // 🛡️ 조회가 깨지면 0 으로 위장하지 않는다 — 화면은 "불러오지 못했다" 를 말한다.
   if (!st.ok) return c.json({ success: false, error: '환급 정보를 불러오지 못했어요' }, 503)
-  // 🏦 2026-10-26 내 가게 정산 계좌(주인일 때만, 끝 4자리) — 시트가 "가게 계좌로 받기" 를 먼저 고른다.
+  // 🏦 2026-10-26 내 가게 정산 계좌(주인만 · 끝 4자리) — `deal-refund-store-account.ts`
   const { findOwnedStoreAccount, toPublicStoreAccount } = await import('../../../worker/utils/deal-refund-store-account')
-  const storeAccount = toPublicStoreAccount(await findOwnedStoreAccount(c.env.DB, user.id))
-  return c.json({ success: true, data: { ...st.state, store_account: storeAccount } })
+  return c.json({ success: true, data: { ...st.state, store_account: toPublicStoreAccount(await findOwnedStoreAccount(c.env.DB, user.id)) } })
 })
 
 pointsRoutes.post('/refund',
@@ -1170,15 +1169,10 @@ pointsRoutes.post('/refund',
     if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
     const body = await c.req.json<Record<string, unknown>>().catch(() => ({} as Record<string, unknown>))
     const { normalizeRefundInput, requestDealRefund } = await import('../../../worker/utils/deal-refund')
-    // 🏦 2026-10-26 "가게 계좌로 받기" — 화면은 계좌번호를 모른다(끝 4자리만 받는다). 서버가 주인 가게의
-    //   정산 계좌로 세 칸을 채운다. 화면이 보낸 계좌 칸은 이 경로에선 쓰지 않는다.
-    if (body.use_store_account === true) {
-      const { findOwnedStoreAccount } = await import('../../../worker/utils/deal-refund-store-account')
-      const acc = await findOwnedStoreAccount(c.env.DB, user.id)
+    if (body.use_store_account === true) { // 🏦 2026-10-26 화면은 계좌번호를 모른다 — 서버가 주인 가게 계좌로 채운다
+      const acc = await (await import('../../../worker/utils/deal-refund-store-account')).findOwnedStoreAccount(c.env.DB, user.id)
       if (!acc) return c.json({ success: false, code: 'INVALID', error: '가게 정산 계좌를 찾지 못했어요. 계좌를 직접 입력해 주세요' }, 400)
-      body.bank_name = acc.bank_name
-      body.bank_account = acc.bank_account
-      body.account_holder = acc.account_holder
+      body.bank_name = acc.bank_name; body.bank_account = acc.bank_account; body.account_holder = acc.account_holder
     }
     const parsed = normalizeRefundInput(body)
     if (!parsed.ok) return c.json({ success: false, code: 'INVALID', error: parsed.error }, 400)

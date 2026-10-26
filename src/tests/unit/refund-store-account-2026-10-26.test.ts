@@ -112,8 +112,7 @@ describe('② 화면엔 끝 4자리만', () => {
   it('조회 라우트는 공개 모양만 싣는다', () => {
     const src = readCode('src/features/points/api/points.routes.ts')
     const get = src.slice(src.indexOf("pointsRoutes.get('/refund'"), src.indexOf("pointsRoutes.post('/refund'"))
-    expect(get).toMatch(/store_account:\s*storeAccount/)
-    expect(get).toMatch(/toPublicStoreAccount\(await findOwnedStoreAccount\(/)
+    expect(get).toMatch(/store_account:\s*toPublicStoreAccount\(await findOwnedStoreAccount\(/)
   })
 })
 
@@ -125,7 +124,7 @@ describe('③ 신청은 선택만 보내고 서버가 채운다', () => {
     const at = post.indexOf('use_store_account === true')
     expect(at).toBeGreaterThan(-1)
     const block = post.slice(at, post.indexOf('normalizeRefundInput(body)'))
-    expect(block).toMatch(/findOwnedStoreAccount\(c\.env\.DB, user\.id\)/)
+    expect(block).toMatch(/\.findOwnedStoreAccount\(c\.env\.DB, user\.id\)/)
     for (const k of ['bank_name', 'bank_account', 'account_holder']) {
       expect(block).toMatch(new RegExp(`body\\.${k} = acc\\.${k}`))
     }

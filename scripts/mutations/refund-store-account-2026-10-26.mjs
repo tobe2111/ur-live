@@ -31,7 +31,7 @@ export default [
   {
     name: '환급 가게 계좌 — 서버가 계좌 칸을 안 덮어쓴다',
     file: 'src/features/points/api/points.routes.ts',
-    find: '      body.bank_account = acc.bank_account\n',
+    find: ' body.bank_account = acc.bank_account;',
     replace: '',
     test: T,
     why: '화면이 보낸(빈) 계좌로 신청이 저장되거나 막힌다 — 선택한 계좌와 실제 계좌가 갈린다.',
