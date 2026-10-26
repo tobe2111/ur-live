@@ -3,6 +3,7 @@
  *   동네딜·숙소 시드 공용 — 관련도 순으로 3~5장을 모은다.
  *
  * 이상적 우선순위(대표사진 = 커버 out[0] 이 되도록):
+ *   ⚠️ 2026-10-26 갱신 — 현행 순서는 fetchDemoPhotos 본문 주석(네이버 업체사진 → 카카오 업체사진)이 정본이다.
  *   ① 카카오 플레이스 대표사진(fetchKakaoPlacePhotos = og:image) — 그 매장이 카카오맵에 건 대표사진.
  *   ② (카카오에 사진 없을 때만) 네이버 지도(플레이스) 대표사진(fetchNaverPlaceMainPhoto) — 그 매장이
  *      네이버 지도에 건 대표사진(대표 "메인" 사진). 2026-07-21 대표 지시 반영.
@@ -24,7 +25,7 @@
  */
 import type { Env } from '../types/env'
 import { fetchKakaoPlacePhotos } from './kakao-place-photos'
-import { fetchNaverPlaceMainPhoto, fetchNaverPlaceBusinessPhotos } from './naver-place-photo'
+import { fetchNaverPlaceBusinessPhotos } from './naver-place-photo'
 
 export interface DemoPhotoOpts {
   /** 카카오 place id 또는 place URL — 있으면 등록 사진을 1순위로. */
@@ -102,20 +103,15 @@ export async function fetchDemoPhotos(env: Env, opts: DemoPhotoOpts): Promise<st
       if (u && !seen.has(u) && !isBlockedPhotoUrl(u)) { seen.add(u); out.push(u) }
     }
   }
-  // ① 카카오 플레이스 대표사진(그 매장이 카카오맵에 건 대표사진 = og:image).
-  if (opts.placeId) {
-    try { add(await fetchKakaoPlacePhotos(opts.placeId, want)) } catch { /* fail-soft → 네이버 */ }
+  // 🏪 2026-10-26 (대표 "업체가 올린 사진이 가장 좋잖아") — 출처는 **업체가 직접 올린 사진뿐**이다.
+  //   ① 네이버 플레이스 업체사진 탭(분류가 가장 잘 돼 있다 — 대표 판단) ② 모자라면 카카오 업체 사진
+  //   (매장주·제휴사 제공). 손님 리뷰·블로그 사진은 어느 쪽에서도 받지 않는다.
+  //   ⚠️ 종전 1순위였던 카카오 og:image 는 Cloudflare 에서 403 이라 라이브 수집이 0장이었다(진단 2484).
+  if (opts.nameQuery) {
+    try { add(await fetchNaverPlaceBusinessPhotos(opts.nameQuery, opts.address, want)) } catch { /* fail-soft → 카카오 */ }
   }
-  // ② 네이버 플레이스 **업체가 직접 올린 사진** 여러 장(2026-10-25 대표 승인).
-  if (out.length < want && opts.nameQuery) {
-    try { add(await fetchNaverPlaceBusinessPhotos(opts.nameQuery, opts.address, want)) } catch { /* fail-soft */ }
-  }
-  // ②' 업체 사진 탭을 못 읽었고 아직 한 장도 없으면 → 네이버 플레이스 대표사진 1장.
-  if (out.length === 0 && opts.nameQuery) {
-    try {
-      const naverMain = await fetchNaverPlaceMainPhoto(opts.nameQuery, opts.address)
-      if (naverMain) add([naverMain])
-    } catch { /* fail-soft */ }
+  if (out.length < want && opts.placeId) {
+    try { add(await fetchKakaoPlacePhotos(opts.placeId, want)) } catch { /* fail-soft */ }
   }
   // ③ **제거됨 (2026-10-25 대표 — "블로그에서 사진 발췌해서 의미없는 것도 올려와져").**
   //    네이버 이미지검색은 "그 이름으로 검색된 웹 이미지"라 블로그 본문 사진이 섞이고(블로그 호스트에

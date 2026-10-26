@@ -21,3 +21,16 @@
 ## 틀렸던 판단
 - 처음엔 Workers AI(ResNet-50) 판정으로 갔다 — 대표가 수집 단계 필터링을 원했다. 그 코드는 커밋 안 함(stash, 폐기 예정).
 - cron 워커(wrangler.toml)엔 AI 바인딩이 없다(Pages 에만 있음) — AI 를 다시 쓸 일이 있으면 그것부터.
+
+## 진단 1차 결과 (id 2484, 라이브)
+- kakao.page(og) **403** · kakao.panel3 200 · kakao.photos(tab/photos) **200**
+- naver.allSearch 200 이지만 **336B**(빈 응답) → 매장 번호 못 얻음 → 네이버 업체사진 0장
+- ⇒ 라이브 수집 0장의 원인 = 카카오 og 403 + 네이버 검색 실패. 카카오 tab/photos 는 `tag=MYSTORE|VENDOR|MENU|FOOD|INDOOR|OUTDOOR`(대문자, 헤더 pf:web·Origin·Referer 필요)로 분류해 받을 수 있다.
+- 진단 2차: 응답 앞부분(head)·장소번호 추출 + 네이버 대체 검색 4경로 + `?nid=` 강제로 업체사진 탭 확인.
+
+## 수집 수리 (같은 PR)
+- 카카오: og 경로 삭제 → 사진 탭 JSON `tag=MYSTORE`(+counts.vendor>0 일 때 VENDOR), 응답 `type` 이 태그와 같은 것만(손님·블로그 배제). tag=MENU 는 실측상 전부 BLOG 라 안 쓴다.
+- 순서: 네이버 업체사진 탭 → 카카오 업체사진. 네이버 대표사진 폴백·홈 긁기 제거.
+- 사진 없어 내려간 데모(`demo_hidden_no_photo=1`)도 재시도 대상에 포함(종전엔 자동 복귀 분기가 한 번도 못 돌았다).
+- DEMO_COND_V 6 → 7. 가드 `demo-photos-business-source-2026-10-26.test.ts` + 주입 4건.
+- 남은 일: 네이버 진단 2차 결과로 네이버 장소 번호 경로 확정 → 하트비트 photoShort 추이 확인 → 업체사진 3장 미만일 때 정책 대표 질문.

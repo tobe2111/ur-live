@@ -42,7 +42,12 @@ import { fetchDemoPhotos, isBlockedPhotoUrl, blockedPhotoSql, isSearchDerivedPho
 //   버전을 올려야 이미 박힌 블로그 사진까지 걷어낸다. 그리고 3장 미만이면 **숨기지 않고**(대표 확정)
 //   `demo_photo_retry_after` 로 주기적으로 다시 시도한다 — 종전엔 1장만 구해져도 버전 마킹으로 끝나서
 //   "최소 3장" 이 한 번도 강제된 적이 없었다.
-export const DEMO_COND_V = '6'
+// 🏪 2026-10-26 (대표 "업체가 올린 사진이 가장 좋잖아" · "기존 데모 전체에 다 적용") — '6' → '7'.
+//   출처를 **업체가 올린 사진**(네이버 업체사진 탭 → 카카오 매장주·제휴사 사진)으로 좁혔다. 종전 1순위였던
+//   카카오 og:image 는 Cloudflare 에서 403 이라 라이브 수집이 0장이었다(재시도해도 3장이 안 찼던 원인).
+//   같은 커밋에서 사진이 없어 내려간 데모(`demo_hidden_no_photo=1`)도 재시도 대상에 넣었다 — 종전 쿼리는
+//   노출 중인 행만 골라 "자동 복귀" 분기가 한 번도 돌 수 없었다. 표식 없는 비노출 행(사람이 내린 것)은 그대로.
+export const DEMO_COND_V = '7'
 /** 3장 미만·사진 확보 실패 데모를 다시 시도하기까지의 간격(일). */
 const PHOTO_RETRY_DAYS = 3
 
@@ -183,7 +188,10 @@ export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): 
     `SELECT p.id, p.slug, p.image_url, p.images, p.restaurant_name, p.restaurant_address, p.restaurant_phone, p.restaurant_lat, p.restaurant_lng
        FROM products p
       WHERE p.slug LIKE 'demo-%'
-        AND COALESCE(p.is_active, 1) = 1
+        AND (COALESCE(p.is_active, 1) = 1 OR EXISTS (
+          SELECT 1 FROM product_supply_meta h
+           WHERE h.product_id = p.id AND h.key = 'demo_hidden_no_photo' AND h.value = '1'
+        ))
         AND p.restaurant_name IS NOT NULL
         AND (NOT EXISTS (
           SELECT 1 FROM product_supply_meta m

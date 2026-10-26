@@ -110,8 +110,7 @@ describe('③ 단축링크 틈을 id 로 닫는다 — 네트워크 왕복 0', (
 
   it('정본 주소를 손으로 조립하는 자리가 SSOT 밖에 남지 않았다', () => {
     // 종전엔 다섯 화면이 각자 `https://place.map.kakao.com/${id}` 를 적고 있었다(두 벌 드리프트 클래스).
-    // ⚠️ 예외는 사진 스크래퍼 **둘**뿐이다 — 그건 "저장할 주소" 가 아니라 **fetch 대상과 Referer** 라
-    //   null 을 돌려받으면 안 되는 자리다(의도적으로 SSOT 를 안 쓴다).
+    // 2026-10-26: 마지막 예외(사진 스크래퍼)도 og 페이지 대신 사진 탭 API 로 바뀌어 손 조립이 사라졌다 → 0 곳.
     const hits: string[] = []
     const walk = (dir: string) => {
       for (const e of readdirSync(dir, { withFileTypes: true })) {
@@ -125,6 +124,6 @@ describe('③ 단축링크 틈을 id 로 닫는다 — 네트워크 왕복 0', (
     }
     walk('src')
     expect(hits.sort(), '정본 주소를 손으로 조립하는 자리가 늘었다')
-      .toEqual(['src/worker/utils/kakao-place-photos.ts'])
+      .toEqual([])
   })
 })

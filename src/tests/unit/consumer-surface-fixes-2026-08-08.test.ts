@@ -97,8 +97,9 @@ describe('③ 데모 사진 — 그 매장이라는 근거가 없으면 안 쓴�
   })
 
   it('지도 대표사진 경로(①②)는 유지된다 — 근거 있는 사진까지 없애면 안 된다', () => {
+    // 2026-10-26: 지도 경로는 "업체가 올린 사진" 둘로 좁혀졌다(네이버 업체사진 탭 → 카카오 업체 사진).
     expect(photo).toContain('fetchKakaoPlacePhotos')
-    expect(photo).toContain('fetchNaverPlaceMainPhoto')
+    expect(photo).toContain('fetchNaverPlaceBusinessPhotos')
   })
 
   it('기존 데모에도 적용되도록 재조정 버전이 올라가 있다', () => {

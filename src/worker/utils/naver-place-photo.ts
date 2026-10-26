@@ -122,7 +122,7 @@ export function extractBusinessPhotoUrls(html: string, limit = 8): string[] {
 
 /**
  * 🏪 업체가 직접 올린 사진 여러 장(2026-10-25 대표 승인 "업체 사진을 데모에 쓰는 것 승인").
- *   이름이 맞는 플레이스만, 업체 사진 탭 → 홈 순서로 읽는다. 대표사진(썸네일)이 업체 사진이면 첫 장.
+ *   이름이 맞는 플레이스만, 업체 사진 탭만 읽는다(2026-10-26 홈 긁기 제거). 대표사진(썸네일)이 업체 사진이면 첫 장.
  *   fail-soft — 막히거나 구조가 바뀌면 [] (호출부는 사진을 지어내지 않는다).
  */
 export async function fetchNaverPlaceBusinessPhotos(
@@ -148,7 +148,7 @@ export async function fetchNaverPlaceBusinessPhotos(
   for (const path of [
     `https://m.place.naver.com/place/${id}/photo?filterType=${filter}`,
     `https://m.place.naver.com/restaurant/${id}/photo?filterType=${filter}`,
-    `https://m.place.naver.com/place/${id}/home`,
+    // ③ 2026-10-26 (대표 확정): 홈 화면 통째 긁기 제거 — 홈엔 방문자 리뷰·주변 가게 사진이 같은 CDN 으로 섞인다.
   ]) {
     if (out.length >= want) break
     try {

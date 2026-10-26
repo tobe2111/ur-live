@@ -22,7 +22,7 @@ export const adminDemoPhotoSourceDiagRoutes = new Hono<{ Bindings: Env }>()
 const UA_PC = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'
 const UA_M = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
 
-interface Probe { name: string; url: string; status: number; bytes: number; ms: number; ldb: number; kakaoImg: number; hasApollo: boolean; contexts: string[]; error?: string }
+interface Probe { name: string; url: string; status: number; bytes: number; ms: number; ldb: number; kakaoImg: number; hasApollo: boolean; contexts: string[]; head?: string; placeIds?: string[]; error?: string }
 
 /** 사진 주소 주변 글자 — 이스케이프를 풀고 앞뒤 100자. */
 function contextsOf(text: string, re: RegExp, max = 4): string[] {
@@ -49,6 +49,10 @@ async function probe(name: string, url: string, headers: Record<string, string>)
       kakaoImg: (t.match(/https?:\/\/[a-z0-9.]*(?:daumcdn\.net|kakaocdn\.net)\/[^"'\s\\<>)]+/gi) || []).length,
       hasApollo: /__APOLLO_STATE__|apolloState/.test(text),
       contexts: contextsOf(text, ldbRe).length ? contextsOf(text, ldbRe) : contextsOf(text, /(daumcdn|kakaocdn)\.net\/[^"'\s]+/gi),
+      // 본문 앞부분 — 차단·캡차·빈 응답을 가리려면 실제 글자를 봐야 한다(2026-10-26 allSearch 가 200 인데 336B 였다).
+      head: text.slice(0, 400).replace(/\s+/g, ' '),
+      // 네이버 장소 번호 후보 — 검색 응답 어디에 있든 "id":"123…" / place/123… 모양을 줍는다.
+      placeIds: Array.from(new Set([...text.matchAll(/(?:place\/|"id"\s*:\s*"?)(\d{7,12})/g)].map((m) => m[1]))).slice(0, 5),
     }
   } catch (err) {
     return { name, url, status: 0, bytes: 0, ms: Date.now() - t0, ldb: 0, kakaoImg: 0, hasApollo: false, contexts: [], error: String((err as Error)?.message || '').slice(0, 80) }
@@ -75,13 +79,25 @@ adminDemoPhotoSourceDiagRoutes.get('/dongnedeal/photo-source-diag', cors(), asyn
     }
 
     // 네이버 — 매장 찾기(allSearch) → 사진 탭 · 메뉴 탭 · 홈.
-    let naver: { found: boolean; id?: string; name?: string; keys?: string[] } = { found: false }
+    let naver: { found: boolean; id?: string; name?: string; keys?: string[]; via?: string } = { found: false }
+    const q = encodeURIComponent(row.restaurant_name || '')
+    const qa = encodeURIComponent(`${row.restaurant_name || ''} ${(row.restaurant_address || '').split(/\s+/).slice(0, 2).join(' ')}`.trim())
+    // 다른 네이버 검색 경로들 — allSearch 가 막혀도 장소 번호를 얻을 수 있는지.
+    probes.push(await probe('naver.instant', `https://map.naver.com/p/api/search/instant-search?query=${qa}&coords=37.5,127.0`, { 'User-Agent': UA_PC, Accept: 'application/json', Referer: 'https://map.naver.com/' }))
+    probes.push(await probe('naver.m.search', `https://m.map.naver.com/search2/searchMore.naver?query=${qa}&sm=clk&style=v5&page=1&displayCount=5&type=SITE_1`, { 'User-Agent': UA_M, Accept: 'application/json', Referer: 'https://m.map.naver.com/' }))
+    probes.push(await probe('naver.pc.list', `https://pcmap.place.naver.com/place/list?query=${qa}`, { 'User-Agent': UA_PC, Accept: 'text/html', Referer: 'https://map.naver.com/' }))
+    probes.push(await probe('naver.m.list', `https://m.place.naver.com/place/list?query=${qa}`, { 'User-Agent': UA_M, Accept: 'text/html', Referer: 'https://m.place.naver.com/' }))
+    void q
     const allSearchUrl = `https://map.naver.com/p/api/search/allSearch?query=${encodeURIComponent(row.restaurant_name || '')}&type=all&searchCoord=&boundary=`
     probes.push(await probe('naver.allSearch', allSearchUrl, { 'User-Agent': UA_PC, Accept: 'application/json', Referer: 'https://map.naver.com/' }))
     const match = row.restaurant_name ? await findNaverPlace(row.restaurant_name, row.restaurant_address).catch(() => null) : null
-    if (match) {
-      const nid = String(match.id || '')
-      naver = { found: true, id: nid, name: String(match.name || ''), keys: Object.keys(match).slice(0, 40) }
+    // ?nid= 로 장소 번호를 직접 주면 검색을 건너뛰고 사진·메뉴 탭만 본다(검색이 막혔을 때 사진 탭은 되는지 가르려고).
+    const nidParam = String(c.req.query('nid') || '')
+    const nidFromProbe = probes.find((p) => p.name !== 'naver.allSearch' && p.placeIds?.length)?.placeIds?.[0] || ''
+    const forced = /^\d{5,12}$/.test(nidParam) ? nidParam : nidFromProbe
+    if (match || forced) {
+      const nid = forced || String(match?.id || '')
+      naver = { found: !!match, id: nid, name: String(match?.name || ''), keys: match ? Object.keys(match).slice(0, 40) : [], via: forced ? (nidParam ? 'param' : 'probe') : 'allSearch' }
       if (/^\d+$/.test(nid)) {
         const h = { 'User-Agent': UA_M, Accept: 'text/html', Referer: 'https://m.place.naver.com/' }
         probes.push(await probe('naver.photo.biz', `https://m.place.naver.com/restaurant/${nid}/photo?filterType=${encodeURIComponent('업체사진')}`, h))
