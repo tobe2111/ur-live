@@ -1,6 +1,13 @@
 {
   "_note": "KST 기준. 첫 2주(rotation_until 까지)는 slots 를 순환하며 시간대 테스트, 이후 weekly-review 가 best 슬롯으로 갱신.",
   "rotation_until": "2026-10-30",
-  "slots_kst": ["09:00", "12:30", "19:30"],
-  "best": { "threads": null, "instagram": null }
+  "slots_kst": [
+    "09:00",
+    "12:30",
+    "19:30"
+  ],
+  "best": {
+    "threads": null,
+    "instagram": "19:30"
+  }
 }

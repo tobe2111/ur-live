@@ -1,0 +1,24 @@
+{
+  "weights": {
+    "merchant": 60,
+    "creator": 25,
+    "consumer": 15
+  },
+  "updated_at": "2026-10-26T05:07:41.719Z",
+  "history": [
+    {
+      "at": "2026-10-26T05:07:41.719Z",
+      "from": {
+        "merchant": 60,
+        "creator": 25,
+        "consumer": 15
+      },
+      "to": {
+        "merchant": 60,
+        "creator": 25,
+        "consumer": 15
+      },
+      "reason": "데이터 부족(카테고리별 글 2개 미만) — 유지"
+    }
+  ]
+}
