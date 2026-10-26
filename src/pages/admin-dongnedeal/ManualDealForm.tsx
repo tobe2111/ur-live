@@ -114,6 +114,21 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
     } finally { setPhotoBusy(false) }
   }
 
+  // 🖼️ 2026-10-27 (대표 "카카오에서도 들고와야 … 매장주 제공 사진들 중에서 내가 다른 사진으로 조정"):
+  //   그 매장의 카카오 매장주 제공 사진을 아래 그리드에 띄운다 — 눌러서 갤러리에 넣고 빼는 건 네이버와 같다.
+  const fetchKakaoPhotos = async () => {
+    if (!f.kakao_place_url) { toast.info('카카오 장소가 연결돼 있지 않아요 (매장 검색으로 먼저 선택)'); return }
+    setPhotoBusy(true); setPhotos([])
+    try {
+      const res = await api.get(`/api/admin/dongnedeal/kakao-mystore-photos?place=${encodeURIComponent(f.kakao_place_url)}`)
+      const list: string[] = res.data?.data?.photos || []
+      setPhotos(list.map((u) => ({ link: u, thumbnail: `https://t1.kakaocdn.net/thumb/C300x300/?fname=${encodeURIComponent(u)}` })))
+      if (list.length === 0) toast.info('이 매장은 카카오 매장주 제공 사진이 없어요')
+    } catch {
+      toast.error('카카오 사진을 못 가져왔어요')
+    } finally { setPhotoBusy(false) }
+  }
+
   const search = async () => {
     if (!q.trim()) return
     setSearching(true); setPlaces([])
@@ -272,10 +287,13 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
           <input value={f.restaurant_address} onChange={(e) => { set('restaurant_address', e.target.value); setCoord(null) }} placeholder="서울 강남구 봉은사로 …" className={input} />
         </div>
         <div className="sm:col-span-2">
-          <div className="flex items-center justify-between mb-1">
-            <label className="block text-xs font-semibold text-gray-500">대표 사진</label>
+          <div className="flex items-center gap-3 mb-1">
+            <label className="block text-xs font-semibold text-gray-500 mr-auto">대표 사진</label>
             <button type="button" onClick={fetchPhotos} disabled={photoBusy} className="inline-flex items-center gap-1 text-[12px] font-bold text-gray-700 hover:text-gray-900 disabled:opacity-50">
               <ImageIcon className="w-3.5 h-3.5" /> {photoBusy ? '검색 중…' : '네이버에서 사진 가져오기'}
+            </button>
+            <button type="button" onClick={fetchKakaoPhotos} disabled={photoBusy} className="inline-flex items-center gap-1 text-[12px] font-bold text-gray-700 hover:text-gray-900 disabled:opacity-50">
+              <ImageIcon className="w-3.5 h-3.5" /> 카카오 매장주 사진
             </button>
           </div>
           <input value={f.image_url} onChange={(e) => set('image_url', e.target.value)} placeholder="https://… (네이버 검색으로 채우거나 직접 붙여넣기 · 비우면 카테고리 기본)" className={input} />

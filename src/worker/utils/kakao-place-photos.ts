@@ -166,3 +166,32 @@ export async function fetchKakaoMyStorePhotos(
   }
   return { photos, total: data.counts ? (data.counts.mystore ?? 0) : null }
 }
+
+/**
+ * 🖼️ 2026-10-27 (대표 "카카오에서도 들고와야 … 매장주 제공 사진들 중에서 내가 다른 사진으로 조정도"):
+ *   어드민이 고르도록 그 장소의 **매장주 제공 사진 전부**(최대 `maxPages` 쪽). 응답 실패면 [].
+ */
+export async function fetchKakaoMyStoreAll(placeUrlOrId: string | null | undefined, maxPages = 3): Promise<string[]> {
+  const id = extractKakaoPlaceId(placeUrlOrId)
+  if (!id) return []
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (let page = 1; page <= Math.max(1, Math.min(5, maxPages)); page++) {
+    let data: KakaoTabPhotos | null = null
+    try {
+      const res = await fetch(`https://place-api.map.kakao.com/places/tab/photos/${id}?tag=MYSTORE&page=${page}`, {
+        headers: KAKAO_PHOTO_HEADERS, signal: AbortSignal.timeout(6000),
+      })
+      if (res.ok) data = (await res.json()) as KakaoTabPhotos
+    } catch { /* 다음 쪽 없음으로 본다 */ }
+    const before = out.length
+    for (const p of data?.photos || []) {
+      if (p.type !== 'MYSTORE') continue
+      if (p.media_type && p.media_type !== 'PHOTO') continue
+      const u = cleanKakaoUrl(p.url)
+      if (u && !seen.has(u)) { seen.add(u); out.push(u) }
+    }
+    if (out.length === before || out.length >= (data?.counts?.mystore ?? 0)) break
+  }
+  return out
+}
