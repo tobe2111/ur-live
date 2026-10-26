@@ -11,6 +11,8 @@
  *   카카오가 자기 링크 공유용으로 서버렌더하는 값이라 안정적(3.6KB 경량, 실측 200)이고, 그 값이 곧
  *   카카오맵이 정한 **그 매장의 대표(메인) 사진**. cthumb 래퍼면 fname 원본(t1.daumcdn.net)을 풀어서 반환.
  *   구 JSON 은 og 실패 시에만 시도(부활 시 다중 사진 자동 회수 — 서브리퀘스트 예산 순증 0). 전부 fail-soft.
+ *
+ * 🔁 2026-10-26: og 경로도 Cloudflare 에서 403 이 되어 지웠다 — 아래 업체 사진 탭 JSON 하나만 쓴다.
  */
 
 // place id 만 필요 — placeUrl(`https://place.map.kakao.com/{id}`) 또는 순수 id 둘 다 허용.
@@ -19,14 +21,6 @@ export function extractKakaoPlaceId(placeUrlOrId: string | null | undefined): st
   const s = String(placeUrlOrId).trim()
   const m = s.match(/(\d{6,})/) // place id 는 6자리+ 숫자
   return m ? m[1] : null
-}
-
-interface KakaoPhotoListEntry { orgurl?: string; url?: string; photoUrl?: string }
-interface KakaoPhotoGroup { list?: KakaoPhotoListEntry[] }
-interface KakaoPlaceDetail {
-  isExist?: boolean
-  basicInfo?: { mainphotourl?: string }
-  photo?: { photoList?: KakaoPhotoGroup[] }
 }
 
 const BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'
@@ -43,85 +37,57 @@ function cleanKakaoUrl(u: string | undefined): string | null {
 }
 
 /**
- * 🥇 대표(메인) 사진 1장 — 플레이스 페이지 og:image (서버렌더, 실측 검증 경로).
- *   사진 미등록 매장은 og:image 가 staticmap(지도 썸네일) 폴백이라 제외. fail-soft — 실패 시 null.
+ * 🏪 2026-10-26 (대표 "업체가 올린 사진이 가장 좋잖아" — 라이브 실측): 카카오 플레이스 **업체 사진만**.
+ *   og:image 경로는 Cloudflare 에서 **403**(진단 2484)이라 라이브 수집이 0장이었다. 대신 사진 탭 JSON
+ *   (`place-api.map.kakao.com/places/tab/photos/{id}?tag=…`)은 200 이고 **분류 태그**로 거를 수 있다.
+ *   업체 사진 = `MYSTORE`(매장주 제공) · `VENDOR`(제휴사 제공). 그 밖의 태그(FOOD·MENU 등)는
+ *   **손님 리뷰·블로그 사진이 섞인다**(실측: tag=MENU 응답이 전부 `type: BLOG`) ⇒ 쓰지 않는다.
+ *   응답의 `type` 이 요청한 태그와 같은 것만 받는다(태그 필터가 풀리는 날에도 손님 사진이 안 섞이게).
+ *   ⚠️ 비공식 API — 헤더(pf·Origin·Referer)가 없으면 거절된다. 대문자 태그만 받는다(소문자 400).
+ *   서브리퀘스트: MYSTORE 1회 + (VENDOR 가 있다고 응답이 말할 때만) 1회. fail-soft — 실패 시 [].
  */
-export async function fetchKakaoPlaceMainPhoto(placeUrlOrId: string | null | undefined): Promise<string | null> {
-  const id = extractKakaoPlaceId(placeUrlOrId)
-  if (!id) return null
+const KAKAO_PHOTO_HEADERS = {
+  pf: 'web',
+  Origin: 'https://place.map.kakao.com',
+  Referer: 'https://place.map.kakao.com/',
+  'User-Agent': BROWSER_UA,
+  Accept: 'application/json',
+}
+
+interface KakaoTabPhoto { url?: string; type?: string; media_type?: string }
+interface KakaoTabPhotos { counts?: { mystore?: number; vendor?: number }; photos?: KakaoTabPhoto[] }
+
+async function fetchKakaoTabPhotos(id: string, tag: 'MYSTORE' | 'VENDOR'): Promise<KakaoTabPhotos | null> {
   try {
-    const res = await fetch(`https://place.map.kakao.com/${id}`, {
-      headers: { 'User-Agent': BROWSER_UA, Accept: 'text/html,application/xhtml+xml' },
+    const res = await fetch(`https://place-api.map.kakao.com/places/tab/photos/${id}?tag=${tag}&page=1`, {
+      headers: KAKAO_PHOTO_HEADERS,
       signal: AbortSignal.timeout(6000),
     })
     if (!res.ok) return null
-    const html = await res.text()
-    // 속성 순서 양방향 허용: property 먼저 / content 먼저.
-    const m = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
-      || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i)
-    let u = m?.[1]
-    if (!u) return null
-    if (u.startsWith('//')) u = 'https:' + u
-    if (/staticmap\.kakao\.com/i.test(u)) return null // 사진 없음 — 지도 썸네일 폴백은 사진이 아님
-    // cthumb 리사이즈 래퍼(img1.kakaocdn.net/cthumb/local/…?fname=<원본>)면 원본 URL 추출(고화질).
-    const fm = u.match(/[?&]fname=([^&"']+)/)
-    if (fm) {
-      try {
-        const orig = decodeURIComponent(fm[1])
-        if (/^https?:\/\//i.test(orig)) u = orig
-      } catch { /* decode 실패 — 래퍼 URL 그대로 사용 */ }
-    }
-    return cleanKakaoUrl(u)
+    return (await res.json()) as KakaoTabPhotos
   } catch {
     return null
   }
 }
 
-/**
- * placeId 의 등록 사진 URL 최대 `count` 장 — **1번째 = 카카오맵 대표(메인) 사진**(og:image).
- *   구 JSON 엔드포인트는 og 실패 시에만 보조 시도(현재 404 — 부활 시 다중 사진 자동 회수).
- *   fail-soft — 실패 시 [].
- */
+/** 업체 사진(매장주·제휴사 제공)만 최대 `count` 장. 손님·블로그 사진은 받지 않는다. */
 export async function fetchKakaoPlacePhotos(placeUrlOrId: string | null | undefined, count = 5): Promise<string[]> {
   const id = extractKakaoPlaceId(placeUrlOrId)
   if (!id) return []
   const want = Math.max(1, Math.min(8, count))
   const out: string[] = []
   const seen = new Set<string>()
-  const push = (raw: string | undefined | null) => {
-    const u = cleanKakaoUrl(raw || undefined)
-    if (u && !seen.has(u)) { seen.add(u); out.push(u) }
+  const take = (data: KakaoTabPhotos | null, tag: string) => {
+    for (const p of data?.photos || []) {
+      if (out.length >= want) break
+      if (p.type !== tag) continue
+      if (p.media_type && p.media_type !== 'PHOTO') continue
+      const u = cleanKakaoUrl(p.url)
+      if (u && !seen.has(u)) { seen.add(u); out.push(u) }
+    }
   }
-  // ① 대표(메인) 사진 — og:image (실측 검증된 현행 경로).
-  const main = await fetchKakaoPlaceMainPhoto(id)
-  push(main)
-  // ② og 실패 시에만 구 JSON 시도 — 예산 순증 0(기존에도 이 fetch 1회는 쓰고 있었음).
-  //    스키마 부활 시 대표+등록 사진 리스트를 자동 회수.
-  if (out.length === 0) {
-    try {
-      const res = await fetch(`https://place.map.kakao.com/main/v/${id}`, {
-        headers: {
-          // 카카오맵 웹과 동일 컨텍스트 — Referer 없으면 빈 응답을 줄 수 있음.
-          Referer: `https://place.map.kakao.com/${id}`,
-          'User-Agent': BROWSER_UA,
-          Accept: 'application/json, text/plain, */*',
-        },
-        signal: AbortSignal.timeout(6000),
-      })
-      if (res.ok) {
-        const data = (await res.json()) as KakaoPlaceDetail
-        if (data && data.isExist !== false) {
-          push(data.basicInfo?.mainphotourl)
-          for (const grp of data.photo?.photoList || []) {
-            for (const p of grp.list || []) {
-              push(p.orgurl || p.url || p.photoUrl)
-              if (out.length >= want) break
-            }
-            if (out.length >= want) break
-          }
-        }
-      }
-    } catch { /* fail-soft — 호출측이 네이버 스코어링으로 폴백 */ }
-  }
-  return out.slice(0, want)
+  const mine = await fetchKakaoTabPhotos(id, 'MYSTORE')
+  take(mine, 'MYSTORE')
+  if (out.length < want && (mine?.counts?.vendor ?? 0) > 0) take(await fetchKakaoTabPhotos(id, 'VENDOR'), 'VENDOR')
+  return out
 }
