@@ -15,6 +15,8 @@ import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { getSellerToken } from '@/lib/seller-auth'
+import { isLoggedInSync } from '@/utils/auth'
+import { JOIN_KEY } from './pro/join-params'
 import { toast } from '@/hooks/useToast'
 import { SIGNUP_FREE_CREDITS } from '@/shared/home-service'
 import { shareDescription, type ShareView } from '@/shared/home-service-share'
@@ -68,6 +70,13 @@ export default function LifeSharePage() {
     const reg = parseRegionFromAddress(v.region)
     if (!getSellerToken()) {
       if (reg) { q.set('sido', reg.sido); if (reg.sigungu) q.set('sigungu', reg.sigungu) }
+      // 🔑 2026-10-26 대표 *"수요건 페이지로 들어와서 로그인 시 생활 사장님 계정으로 카카오 가입"* —
+      //   로그인 전이면 모집 랜딩을 거치지 않고 **바로 카카오 로그인**으로. 돌아오면 `/life/pro` 가 세션에 맡긴
+      //   업종·지역을 읽어 업체 가입 화면을 띄운다(`joinParams`). 가입하면 그 요청으로 간다.
+      if (!isLoggedInSync()) {
+        try { sessionStorage.setItem(JOIN_KEY, q.toString()) } catch { /* 막힌 저장소 — 랜딩 경유로 폴백 */ navigate(`/life/pro?${q}`); return }
+        navigate(`/login?returnUrl=${encodeURIComponent('/life/pro')}`); return
+      }
       navigate(`/life/pro?${q}`); return
     }
     setJoining(true)

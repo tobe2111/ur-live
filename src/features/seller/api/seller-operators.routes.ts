@@ -146,7 +146,7 @@ app.get('/my-stores/summary', async (c) => {
     if (scope.agencyId) return c.json({ success: true, data: await agencySummary(c.env.DB, stores, scope.agencyId, currentSellerId ?? null) }) // 🤝 자기 이용권 숫자만
     const ids = stores.map(s => s.seller_id)
     const todayKst = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10)
-    const [todayRows, pendingRows, activeRows, certRows] = await Promise.all([
+    const [todayRows, pendingRows, activeRows, certRows, lifeRows] = await Promise.all([
       allInChunks(ids, (chunk, marks) => c.env.DB.prepare(
         `SELECT seller_id, COUNT(*) AS n, COALESCE(SUM(total_amount), 0) AS rev
            FROM orders
@@ -182,12 +182,22 @@ app.get('/my-stores/summary', async (c) => {
       allInChunks(ids, (chunk, marks) => c.env.DB.prepare(
         `SELECT id AS seller_id, business_registration_status AS cert FROM sellers WHERE id IN (${marks})`
       ).bind(...chunk).all<{ seller_id: number; cert: string | null }>().then(r => r.results || [])),
+      /**
+       * 🏠 2026-10-26 대표 *"참여권은 사장님 마이에서 갯수·차감 내역을 볼 수 있나"* — 생활 견적 업체면 참여권 잔액.
+       *   생활 업체가 아니면 행이 없다(→ null, 마이가 줄을 안 그린다). 테이블이 아직 없는 DB 면 빈 배열(줄 없음).
+       */
+      allInChunks(ids, (chunk, marks) => c.env.DB.prepare(
+        `SELECT p.seller_id, COALESCE(b.balance, 0) AS n
+           FROM home_service_pros p LEFT JOIN home_service_credit_balance b ON b.seller_id = p.seller_id
+          WHERE p.seller_id IN (${marks})`
+      ).bind(...chunk).all<{ seller_id: number; n: number }>().then(r => r.results || [])).catch(() => [] as { seller_id: number; n: number }[]),
     ])
     const today = { results: todayRows }, pending = { results: pendingRows }, active = { results: activeRows }, cert = { results: certRows }
     const tMap = new Map((today.results || []).map(r => [Number(r.seller_id), r]))
     const pMap = new Map((pending.results || []).map(r => [Number(r.seller_id), Number(r.n) || 0]))
     const aMap = new Map((active.results || []).map(r => [Number(r.seller_id), Number(r.n) || 0]))
     const cMap = new Map((cert.results || []).map(r => [Number(r.seller_id), r.cert ?? null]))
+    const lMap = new Map(lifeRows.map(r => [Number(r.seller_id), Number(r.n) || 0]))
     const rows = stores.map(s => {
       const t = tMap.get(s.seller_id)
       return {
@@ -203,6 +213,8 @@ app.get('/my-stores/summary', async (c) => {
         pending: pMap.get(s.seller_id) || 0,
         // ⚡ 첫 화면의 `판매 중 N개` — 이것 때문에 상품 목록을 통째로 받던 2단 요청을 없앴다.
         active_products: aMap.get(s.seller_id) || 0,
+        // 🏠 생활 견적 참여권 — 생활 업체가 아니면 null(마이가 줄을 안 그린다)
+        life_credits: lMap.has(s.seller_id) ? lMap.get(s.seller_id)! : null,
       }
     })
     const totals = rows.reduce((a, r) => ({ today_revenue: a.today_revenue + r.today_revenue, today_orders: a.today_orders + r.today_orders, pending: a.pending + r.pending }), { today_revenue: 0, today_orders: 0, pending: 0 })

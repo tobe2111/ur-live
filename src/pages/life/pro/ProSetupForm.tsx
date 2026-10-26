@@ -21,6 +21,8 @@ export interface ProMe {
   areas: { sido: string; sigungu: string }[]
   seller: { id?: number; name: string; approved: boolean; phone: string | null }
   balance: number
+  /** 참여권 원장 최근 20줄(서버 `/pro/me` 가 이미 내려 준다) — 화면 `ProCredits` 의 내역. */
+  history?: { kind: string; amount: number; price_paid: number; note: string | null; created_at: string }[]
   packages: { key: string; credits: number; price: number; label: string }[]
   chargeEnabled: boolean
   allCategories: { key: string; label: string }[]

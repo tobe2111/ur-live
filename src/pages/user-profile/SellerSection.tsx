@@ -436,6 +436,18 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           onClick={() => openTool('tools')}
         />
       </div>
+      {/* 🏠 2026-10-26 대표 *"참여권은 사장님 마이에서 갯수·차감 내역을 볼 수 있나"* — 생활 견적 업체만.
+          판 밖의 별도 판이다: 판매 판은 줄 다섯이 상한(2026-09-30 ⑥ — 가드). 누르면 요청함·충전·내역(`/life/pro`). */}
+      {store?.life_credits != null && (
+        <div className={`${LIST_PLATE_CLS} mt-3`}>
+          <ToolRow
+            icon={<TicketStubIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
+            label="생활 요청 받기"
+            hint={`참여권 ${formatNumber(store.life_credits)}장`}
+            to="/life/pro"
+          />
+        </div>
+      )}
       </div>
       </div>
 
