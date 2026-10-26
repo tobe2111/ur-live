@@ -20,6 +20,12 @@
  * ## ⚠️ 못 하는 것
  * - 신청 취소가 없다 — 처리는 사람이 이체하는 일이라, 취소는 지급 센터의 반려로 한다(딜은 되돌아온다).
  * - 계좌를 기억하지 않는다 — 은행 계좌번호를 브라우저에 남기지 않는다.
+ *
+ * ## 🏦 가게 정산 계좌로 받기 (2026-10-26 대표 *"a 해주고"*)
+ * 사장님은 정산 계좌를 이미 넣어 뒀는데 여기서 또 치게 했다. 서버가 주인 가게의 정산 계좌를
+ * **끝 4자리만** 주면(`store_account`) 그걸 먼저 골라 두고, 신청은 `use_store_account: true` 만 보낸다.
+ * 🔴 화면은 전체 계좌번호를 받지도 보내지도 않는다 — 정산 계좌 마스킹(2026-06-12)을 지키기 위해서다.
+ * 다른 계좌로 받고 싶으면 `다른 계좌` 를 누르면 종전 입력 칸이 나온다.
  */
 import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
@@ -40,7 +46,8 @@ interface RefundRow {
   requested_at: string
   processed_at: string | null
 }
-interface RefundState { refundable: number; pending: RefundRow | null; recent: RefundRow[] }
+interface StoreAccount { store_name: string; bank_name: string; bank_account_masked: string; account_holder: string }
+interface RefundState { refundable: number; pending: RefundRow | null; recent: RefundRow[]; store_account?: StoreAccount | null }
 
 const STATUS: Record<RefundRow['status'], string> = {
   requested: '처리 중',
@@ -62,6 +69,8 @@ export default function RefundSheet({ onClose, onDone }: {
   const [account, setAccount] = useState('')
   const [holder, setHolder] = useState('')
   const [busy, setBusy] = useState(false)
+  /** 가게 정산 계좌로 받는다 — 서버가 계좌를 줄 때만 켜진다(기본값). */
+  const [useStore, setUseStore] = useState(false)
 
   const load = () => {
     setFailed(false)
@@ -73,6 +82,7 @@ export default function RefundSheet({ onClose, onDone }: {
         const s = r.data.data as RefundState
         setState(s)
         setAmount(s.refundable > 0 ? String(s.refundable) : '')
+        setUseStore(!!s.store_account)
       })
       .catch(() => setFailed(true))
   }
@@ -82,8 +92,10 @@ export default function RefundSheet({ onClose, onDone }: {
   const parsed = Math.floor(Number(amount.replace(/[^0-9]/g, '')) || 0)
   const tooBig = parsed > refundable
   const digits = account.replace(/-/g, '')
-  const ready = !!state && !state.pending && parsed > 0 && !tooBig
-    && !!bank && digits.length >= 8 && holder.trim().length > 0 && !busy
+  const store = state?.store_account ?? null
+  const viaStore = useStore && !!store
+  const ready = !!state && !state.pending && parsed > 0 && !tooBig && !busy
+    && (viaStore || (!!bank && digits.length >= 8 && holder.trim().length > 0))
   const canForm = !!state && !state.pending && refundable > 0
 
   async function send() {
@@ -91,9 +103,9 @@ export default function RefundSheet({ onClose, onDone }: {
     setBusy(true)
     try {
       const { default: api } = await import('@/lib/api')
-      const r = await api.post('/api/points/refund', {
-        amount: parsed, bank_name: bank, bank_account: account, account_holder: holder.trim(),
-      })
+      const r = await api.post('/api/points/refund', viaStore
+        ? { amount: parsed, use_store_account: true }
+        : { amount: parsed, bank_name: bank, bank_account: account, account_holder: holder.trim() })
       if (!r.data?.success) { toast.error(r.data?.error || '환급 신청을 하지 못했어요'); return }
       toast.success(`${formatNumber(parsed)}원 환급을 신청했어요`)
       window.dispatchEvent(new Event('pointsBalanceChanged'))
@@ -197,6 +209,33 @@ export default function RefundSheet({ onClose, onDone }: {
                 </span>
               )}
             </label>
+            {store && (
+              <div role="radiogroup" aria-label="받을 계좌" className="space-y-2">
+                <span className="block text-[13px] font-medium text-gray-900 dark:text-white">받을 계좌</span>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={viaStore}
+                  onClick={() => setUseStore(true)}
+                  className={`w-full text-left rounded-xl px-3 py-3 border ${viaStore ? 'border-brand bg-brand-tint' : 'border-rule-strong'}`}
+                >
+                  <span className="block text-[15px] font-medium text-gray-900 dark:text-white">가게 정산 계좌</span>
+                  <span className="block mt-1 text-[13px] tabular-nums text-gray-500 dark:text-gray-400">
+                    {store.bank_name} {store.bank_account_masked} · {store.account_holder}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={!viaStore}
+                  onClick={() => setUseStore(false)}
+                  className={`w-full text-left rounded-xl px-3 py-3 border ${!viaStore ? 'border-brand bg-brand-tint' : 'border-rule-strong'}`}
+                >
+                  <span className="block text-[15px] font-medium text-gray-900 dark:text-white">다른 계좌</span>
+                </button>
+              </div>
+            )}
+            {!viaStore && (<>
             <label className="block">
               <span className="block text-[13px] font-medium text-gray-900 dark:text-white mb-2">은행</span>
               <select value={bank} onChange={(e) => setBank(e.target.value)} className={field}>
@@ -223,6 +262,7 @@ export default function RefundSheet({ onClose, onDone }: {
                 className={field}
               />
             </label>
+            </>)}
             <p className="pt-1 text-[12px] leading-[1.6] text-gray-500 dark:text-gray-400">
               신청하면 그 금액만큼 딜이 바로 빠지고, 영업일 기준 3~5일 안에 입금돼요.
               처리되지 않으면 딜은 그대로 돌아와요.
