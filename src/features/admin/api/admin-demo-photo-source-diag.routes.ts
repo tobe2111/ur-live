@@ -15,6 +15,7 @@ import type { Env } from '@/worker/types/env'
 import { getSupplyMeta } from '@/worker/utils/product-supply-meta'
 import { findNaverPlace } from '@/worker/utils/naver-place-photo'
 import { extractKakaoPlaceId } from '@/worker/utils/kakao-place-photos'
+import { kakaoPlaceUrlFromId } from '@/shared/kakao-place-url'
 
 export const adminDemoPhotoSourceDiagRoutes = new Hono<{ Bindings: Env }>()
 
@@ -68,7 +69,7 @@ adminDemoPhotoSourceDiagRoutes.get('/dongnedeal/photo-source-diag', cors(), asyn
     // 카카오 — 대표사진(og) 페이지 + 사진 목록 후보 경로들(현재 쓰는 건 og 하나뿐).
     const kid = extractKakaoPlaceId(meta.kakao_place_url || null)
     if (kid) {
-      probes.push(await probe('kakao.page', `https://place.map.kakao.com/${kid}`, { 'User-Agent': UA_PC, Accept: 'text/html' }))
+      probes.push(await probe('kakao.page', kakaoPlaceUrlFromId(kid) || '', { 'User-Agent': UA_PC, Accept: 'text/html' }))
       probes.push(await probe('kakao.panel3', `https://place-api.map.kakao.com/places/panel3/${kid}`, { 'User-Agent': UA_PC, Accept: 'application/json', pf: 'PC', Referer: 'https://place.map.kakao.com/' }))
       probes.push(await probe('kakao.photos', `https://place-api.map.kakao.com/places/tab/photos/${kid}?type=all`, { 'User-Agent': UA_PC, Accept: 'application/json', pf: 'PC', Referer: 'https://place.map.kakao.com/' }))
     }
