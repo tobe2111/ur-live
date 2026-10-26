@@ -5901,7 +5901,9 @@
     "sharedShareDesc": "Found a great product on Urdeal",
     "sharedShareBtn": "View Product",
     "sellerReplyLabel": "Seller reply",
-    "sponsoredBadge": "Sponsored"
+    "sponsoredBadge": "Sponsored",
+    "loadMore": "More reviews ({{n}} left)",
+    "loadingMore": "Loading…"
   },
   "productOption": {
     "title": "Product Option Management",

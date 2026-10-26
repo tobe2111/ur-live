@@ -5848,7 +5848,9 @@
     "sharedShareDesc": "J'ai trouvé un super produit sur Urdeal",
     "sharedShareBtn": "Voir le produit",
     "sellerReplyLabel": "Réponse du vendeur",
-    "sponsoredBadge": "Sponsorisé"
+    "sponsoredBadge": "Sponsorisé",
+    "loadMore": "Plus d’avis ({{n}} restants)",
+    "loadingMore": "Chargement…"
   },
   "productOption": {
     "title": "Gestion des options produit",

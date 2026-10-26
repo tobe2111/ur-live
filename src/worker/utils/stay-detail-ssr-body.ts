@@ -51,7 +51,7 @@ import {
 } from '../../shared/detail-hero-image'
 import { STAY_HEAD } from '../../shared/stay-head'
 import { propertyTypeLabel } from '../../shared/stay-property-type'
-import { crumbNavHtml } from './detail-ssr-body'
+import { crumbNavHtml, mobileThumbRowHtml, restSlidesHtml } from './detail-ssr-body'
 import { stayNoscriptFromPayload } from './crawler-noscript'
 
 function escAttr(s: string): string {
@@ -117,6 +117,7 @@ export function buildStayDetailFirstScreen(ssrPayload: string, loaderHtml: strin
             `<img src="${escAttr(heroUrl)}" alt="${escAttr(title)}" loading="eager" fetchpriority="high" decoding="async"` +
             ` style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">` +
           '</div>' +
+          restSlidesHtml(images, title) +
         '</div>' +
       '</div>'
 
@@ -139,7 +140,7 @@ export function buildStayDetailFirstScreen(ssrPayload: string, loaderHtml: strin
           crumb +
           // 📱 본문은 모바일만 — PC 는 그리드 밖 제목 헤더 때문에 반쪽만 그리면 마운트 때 밀린다.
           `<div class="${STAY_HEAD.gridPad} lg:hidden">` +
-            `<div class="${STAY_HEAD.heroWrap}">${hero}</div>` +
+            `<div class="${STAY_HEAD.heroWrap}">${hero}${mobileThumbRowHtml(images)}</div>` +
             head +
           '</div>' +
         '</div>' +

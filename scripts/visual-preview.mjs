@@ -220,6 +220,7 @@ const DETAIL_SEED = DETAIL_ID
       data: {
         ...(DEALS.find((d) => d.id === DETAIL_ID) || { ...DEALS[0], id: DETAIL_ID }),
         id: DETAIL_ID,
+        images: JSON.stringify(['#C9B8A8', '#A8B5C9', '#B8C9A8', '#C9A8B8', '#A8C9C4'].map((c) => tilePlaceholder(c))),
         description: '연남동 골목 안쪽, 예약 없이 들르기 좋은 이자카야입니다. 2인 코스는 제철 사시미와 구이 4종, 식사까지 포함됩니다.',
         group_buy_target: 30,
         group_buy_tiers: [{ count: 10, discount: 15 }, { count: 30, discount: 28 }],

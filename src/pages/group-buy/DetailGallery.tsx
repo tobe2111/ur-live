@@ -7,6 +7,8 @@ import {
   DETAIL_DESKTOP_QUERY, DETAIL_HERO_DESKTOP_WIDTH, DETAIL_HERO_MOBILE_WIDTH, DETAIL_THUMB_WIDTH,
   DETAIL_PC_HERO_RATIO_MULTI, DETAIL_PC_HERO_RATIO_SINGLE, DETAIL_PC_THUMB_RATIO,
   detailCropUrl, detailHeroMobileUrl, detailPlainUrl,
+  DETAIL_MOBILE_THUMBS, DETAIL_MOBILE_THUMB_CLS, DETAIL_MOBILE_THUMB_RATIO, DETAIL_MOBILE_THUMB_ROW_CLS,
+  detailMobileThumbUrl, showMobileThumbs,
 } from '@/shared/detail-hero-image'
 
 /**
@@ -35,6 +37,7 @@ const PC_THUMBS = 2
 export default function DetailGallery({ images: rawImages, alt, badges, fallback }: Props) {
   const [active, setActive] = useState(0)
   const [lightbox, setLightbox] = useState(false)
+  const touchX = useRef<number | null>(null)
   const galRef = useRef<HTMLDivElement | null>(null)
 
   /**
@@ -175,6 +178,8 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
             const hi = src && near ? heroUrl(src, DETAIL_HERO_MOBILE_WIDTH) : ''
             return (
               <div key={i} className="flex items-center justify-center text-[60px]"
+                role={src ? 'button' : undefined} aria-label={src ? '사진 크게 보기' : undefined}
+                onClick={() => { if (src) { setActive(i); setLightbox(true) } }}
                 /* ⚠️ position 은 **인라인**이다 — 절대배치 <img> 의 포함 블록은 구조 요건이라
                    유틸 클래스(`relative`)가 번들에 있느냐에 맡기지 않는다. 서버 첫 화면도 같은 자리. */
                 style={{ position: 'relative', flex: '0 0 100%', scrollSnapAlign: 'center',
@@ -212,6 +217,28 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
           </div>
         )}
       </div>
+
+      {/* 🖼️ 2026-10-27 (대표 "이용권 상세페이지도 그루폰처럼 … 사진 하나밖에 안 보여"): 모바일 큰 사진 아래
+          썸네일 2칸 — 그루폰 모바일 상세. 3장 이상일 때만. 마지막 칸은 남은 장수(+N), 누르면 전체 화면.
+          서버 첫 화면(`detail-ssr-body`)도 같은 상수로 같은 줄을 그린다(마운트 때 안 밀린다). */}
+      {showMobileThumbs(images.length) && (
+        <div className={`lg:hidden ${DETAIL_MOBILE_THUMB_ROW_CLS}`}>
+          {images.slice(1, 1 + DETAIL_MOBILE_THUMBS).map((src, i) => {
+            const left = images.length - 1 - DETAIL_MOBILE_THUMBS
+            const isLast = i === DETAIL_MOBILE_THUMBS - 1 && left > 0
+            return (
+              <button key={src} type="button" onClick={() => { setActive(i + 1); setLightbox(true) }}
+                aria-label={isLast ? `전체 사진 ${images.length}장 보기` : `사진 ${i + 2}번째 크게 보기`}
+                className={DETAIL_MOBILE_THUMB_CLS}
+                style={{ aspectRatio: String(DETAIL_MOBILE_THUMB_RATIO), ...bg(src, detailMobileThumbUrl(src)) }}>
+                {isLast && (
+                  <span className="absolute inset-0 flex items-center justify-center bg-black/45 text-white text-[15px] font-bold">+{left}</span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       {/* 🖥️ PC — 사진이 여러 장이면 그루폰식 [좌 대형 + 우 썸네일], 1장이면 단일 대형. */}
       <div className="hidden lg:block relative">
@@ -261,7 +288,7 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
       {/* 🔍 전체 사진 모달 — 그루폰의 "See all images". */}
       {lightbox && (
         <div
-          className="fixed inset-0 bg-black/90 flex items-center justify-center"
+          className="fixed inset-0 bg-black lg:bg-black/90 flex items-center justify-center"
           style={{ zIndex: Z.MODAL_BODY }}
           onClick={() => setLightbox(false)}
           role="dialog"
@@ -272,7 +299,13 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
             className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/15 text-white flex items-center justify-center hover:bg-white/25">
             <X className="w-5 h-5" aria-hidden="true" />
           </button>
-          <div className="relative w-full max-w-[1100px] px-4" onClick={(e) => e.stopPropagation()}>
+          <div className="relative w-full max-w-[1100px] px-4" onClick={(e) => e.stopPropagation()}
+            onTouchStart={(e) => { touchX.current = e.touches[0]?.clientX ?? null }}
+            onTouchEnd={(e) => {
+              const x0 = touchX.current; touchX.current = null
+              const x1 = e.changedTouches[0]?.clientX
+              if (x0 != null && x1 != null && Math.abs(x1 - x0) > 40 && multi) step(x1 < x0 ? 1 : -1)
+            }}>
             {/* 🖼️ 2026-08-19 (대표 신고 — "사진이 너무 커서 잘리는 문제" + "사진 클릭 시 안 나오는 문제가 다수"):
                 두 결함이 한 줄에 겹쳐 있었다. 이전엔 `aspectRatio: 4/3` 배경(cover)이라
                   ① 1100px 폭 × 4:3 = **825px 높이** → 노트북 화면(뷰포트 ~800)에서 위아래가 화면 밖으로 나갔고,
@@ -289,14 +322,28 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
             {multi && (
               <>
                 <button type="button" onClick={() => step(-1)} aria-label="이전 사진"
-                  className="absolute left-6 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/15 text-white flex items-center justify-center hover:bg-white/30">
+                  className="hidden lg:flex absolute left-6 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/15 text-white items-center justify-center hover:bg-white/30">
                   <ChevronLeft className="w-6 h-6" aria-hidden="true" />
                 </button>
                 <button type="button" onClick={() => step(1)} aria-label="다음 사진"
-                  className="absolute right-6 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/15 text-white flex items-center justify-center hover:bg-white/30">
+                  className="hidden lg:flex absolute right-6 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/15 text-white items-center justify-center hover:bg-white/30">
                   <ChevronRight className="w-6 h-6" aria-hidden="true" />
                 </button>
-                <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
+                {/* 📱 그루폰 모바일 — 아래에 큰 흰 원 화살표 + "2 / 8". 손가락으로 넘겨도 된다. */}
+                <div className="lg:hidden mt-4 flex items-center justify-between">
+                  <button type="button" onClick={() => step(-1)} aria-label="이전 사진"
+                    className="w-14 h-14 rounded-full bg-white text-gray-900 flex items-center justify-center">
+                    <ChevronLeft className="w-6 h-6" aria-hidden="true" />
+                  </button>
+                  <span className="px-3 py-2 rounded-md bg-white text-gray-900 text-[15px] font-bold">
+                    {Math.min(active, images.length - 1) + 1} / {images.length}
+                  </span>
+                  <button type="button" onClick={() => step(1)} aria-label="다음 사진"
+                    className="w-14 h-14 rounded-full bg-white text-gray-900 flex items-center justify-center">
+                    <ChevronRight className="w-6 h-6" aria-hidden="true" />
+                  </button>
+                </div>
+                <div className="mt-3 hidden lg:flex items-center justify-center gap-2 flex-wrap">
                   {images.map((src, i) => (
                     <button key={src} type="button" onClick={() => setActive(i)} aria-label={`${i + 1}번째 사진`}
                       className={`w-14 h-14 rounded-md ${i === active ? 'ring-2 ring-white' : 'opacity-60 hover:opacity-100'}`}
