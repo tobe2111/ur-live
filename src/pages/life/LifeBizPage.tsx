@@ -14,12 +14,25 @@ import { formatNumber } from '@/utils/format'
 import { formatKSTDate } from '@/utils/date'
 import { LifeHeader, categoryLabel } from './life-shared'
 import { RatingLine, ReviewPhotos, type ProLink, type ReviewSummary } from './life-reviews'
+import { lifeBizDescription, lifeBizIndexable, lifeBizTitle } from '@/shared/seo/life-biz-seo'
+import { withSiteName } from '@/shared/seo/consumer-surfaces'
 
 interface Biz {
   id: number; name: string; verified: boolean; intro: string; links: ProLink[]
   categories: string[]; areas: { sido: string; sigungu: string | null }[]
   vouchers: { id: number; name: string; price: number | null; original_price: number | null; image_url: string | null }[]
   reviews: ReviewSummary | null; chosen_count: number
+}
+
+/** 서버가 이 페이지에 실어 준 업체(`__SSR_INITIAL_LIFEBIZ__`) — 주소의 id 와 같을 때만 쓴다. */
+function readSeed(id: string | undefined): Biz | null {
+  if (typeof document === 'undefined' || !id) return null
+  const el = document.getElementById('__SSR_INITIAL_LIFEBIZ__')
+  if (!el?.textContent) return null
+  try {
+    const d = (JSON.parse(el.textContent) as { data?: Biz })?.data
+    return d && String(d.id) === String(id) ? d : null
+  } catch { return null }
 }
 
 function areaText(areas: Biz['areas']): string {
@@ -29,7 +42,7 @@ function areaText(areas: Biz['areas']): string {
 
 export default function LifeBizPage() {
   const { id } = useParams()
-  const [b, setB] = useState<Biz | null>(null)
+  const [b, setB] = useState<Biz | null>(() => readSeed(id))
   const [gone, setGone] = useState(false)
 
   useEffect(() => {
@@ -52,7 +65,7 @@ export default function LifeBizPage() {
   const recent = b.reviews?.recent ?? []
   return (
     <div className="min-h-[100dvh] bg-warm text-ink pb-safe-nav">
-      <SEO title={`${b.name} - 유어딜 생활`} description={b.intro ? b.intro.slice(0, 120) : `${b.name}의 소개와 후기`} url={`/life/biz/${b.id}`} />
+      <SEO title={withSiteName(lifeBizTitle(b))} description={lifeBizDescription(b)} url={`/life/biz/${b.id}`} noindex={!lifeBizIndexable(b)} />
       <LifeHeader title="업체 소개" back="/life" />
       <div className="mx-auto w-full max-w-[720px] px-4 pb-10 lg:grid lg:max-w-[1120px] lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-5 lg:px-8">
         <div className="space-y-4">

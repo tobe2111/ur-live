@@ -34,6 +34,8 @@ import { canonicalDetailPath } from '../../shared/product-flow';
 import { VOUCHER_FILTER_CATEGORIES } from '../../shared/seo/consumer-surfaces';
 import { HOME_SERVICE_CATEGORIES } from '../../shared/home-service-categories';
 import { lifeCategoryPath } from '../../shared/life-seo';
+import { LIFE_BIZ_MIN_INTRO } from '../../shared/seo/life-biz-seo';
+import { PRO_OPEN_STATUS_SQL } from '../../shared/home-service';
 // 🎁 facet 주소 조립 + 재고 문턱 SSOT — canonical·허브 내부 링크와 **같은 함수**를 지난다.
 import { voucherFacetPath, voucherFacetsByStock } from '../../shared/seo/voucher-facet';
 import { VOUCHER_CATEGORY_SQL_IN } from '../../shared/constants/voucher-categories';
@@ -408,6 +410,16 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
           WHERE status = 'open' AND quote_count < max_quotes AND share_token IS NOT NULL ORDER BY id DESC LIMIT 200`
       ).all<{ share_token: string }>().catch(() => ({ results: [] as { share_token: string }[] }));
       for (const r of shares.results || []) urls.push({ loc: `/life/q/${r.share_token}`, priority: 0.4, changefreq: 'daily' });
+      // 🏠 2026-10-26 생활 업체 소개 — **내용이 있는 업체만**(소개 LIFE_BIZ_MIN_INTRO 자 이상 또는 유어딜 후기 1건+).
+      //   화면·서버 메타의 noindex 판정(`lifeBizIndexable`)과 같은 조건이라 "색인 요청 ↔ noindex" 모순이 안 생긴다.
+      const bizs = await DB.prepare(
+        `SELECT p.seller_id FROM home_service_pros p JOIN sellers s ON s.id = p.seller_id
+          WHERE p.active = 1 AND s.status IN ${PRO_OPEN_STATUS_SQL}
+            AND (LENGTH(TRIM(COALESCE(p.intro, ''), ' ' || char(9, 10, 13))) >= ${LIFE_BIZ_MIN_INTRO}
+                 OR EXISTS (SELECT 1 FROM home_service_reviews r WHERE r.seller_id = p.seller_id AND r.hidden = 0))
+          ORDER BY p.seller_id DESC LIMIT 500`
+      ).all<{ seller_id: number }>().catch(() => ({ results: [] as { seller_id: number }[] }));
+      for (const r of bizs.results || []) urls.push({ loc: `/life/biz/${r.seller_id}`, priority: 0.4, changefreq: 'weekly' });
     } catch {
       // DB 쿼리 실패해도 정적 URL 은 응답
     }
