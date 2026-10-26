@@ -241,6 +241,7 @@ export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): 
       nameQuery: row.restaurant_name,     // 실매장명 — 네이버 지도 대표사진 + 스코어링 grounding
       address: row.restaurant_address,    // 네이버 지도 대표사진 검색 정확도(동명 매장 구분)
       count: 3 + Math.floor(Math.random() * 3),
+      naverBizPhotos: parseJsonArr(meta.naver_biz_photos || null),  // 브라우저 수집분(naver-photo-collect) 1순위
     }).catch(() => [] as string[])
     if (imgs.length === 0) {
       // 🚫 2026-08-08 (대표 "사진이 아예 없으면 그 데모 이용권은 안올려져야지. 자체가"):
@@ -467,6 +468,7 @@ export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: 
           nameQuery: row.restaurant_name,
           address: row.restaurant_address,
           count: 3 + Math.floor(Math.random() * 3),
+          naverBizPhotos: parseJsonArr(meta.naver_biz_photos || null),
         }).catch(() => [] as string[])
         if (fresh.length > 0) {
           for (const u of fresh) if (!seenU.has(u)) { seenU.add(u); rebuilt.push(u) }
