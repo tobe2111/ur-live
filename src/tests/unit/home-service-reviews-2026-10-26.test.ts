@@ -90,7 +90,7 @@ describe('⭐ 후기', () => {
   it('고른 업체에 한 번만, 내 요청만, 고르기 전엔 못 쓴다', async () => {
     const { DB, raw } = makeD1(); seed(raw)
     const sql = reviewInsertSql()
-    const run = (reqId: number, uid: number) => DB.prepare(sql).bind(5, '친절하고 깔끔해요', reqId, uid).run()
+    const run = (reqId: number, uid: number) => DB.prepare(sql).bind(5, '친절하고 깔끔해요', null, reqId, uid).run()
     expect((await run(10, 2)).meta.changes).toBe(0)   // 남의 요청
     expect((await run(11, 1)).meta.changes).toBe(0)   // 아직 안 고름
     expect((await run(10, 1)).meta.changes).toBe(1)
@@ -114,7 +114,7 @@ describe('⭐ 후기', () => {
     expect(parseReview({ rating: 0, body: '좋아요 정말' }).ok).toBe(false)
     expect(parseReview({ rating: 4.5, body: '좋아요 정말' }).ok).toBe(false)
     expect(parseReview({ rating: 5, body: '좋아' }).ok).toBe(false)
-    expect(parseReview({ rating: 5, body: '  좋아요 정말  ' })).toEqual({ ok: true, rating: 5, text: '좋아요 정말' })
+    expect(parseReview({ rating: 5, body: '  좋아요 정말  ' })).toEqual({ ok: true, rating: 5, text: '좋아요 정말', photos: [] })
     expect(maskReviewer('')).toBe('손님')
   })
   it('후기 부탁 알림은 review_asked_at CAS 로 한 번만', () => {
