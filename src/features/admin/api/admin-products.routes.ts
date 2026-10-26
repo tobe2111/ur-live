@@ -1936,7 +1936,7 @@ adminProductsRoutes.post('/dongnedeal/refresh-reviews', cors(), async (c) => {
 //   어드민이 온디맨드로 청크(회당 6개, 서브리퀘스트 예산 안)로 돌린다. 클라가 remaining>0 이면 반복 호출.
 adminProductsRoutes.post('/dongnedeal/recondition-images', cors(), async (c) => {
   try {
-    const { reconditionDemos, DEMO_COND_V } = await import('../../../worker/cron/demo-image-rehost');
+    const { reconditionDemos, demoCondV } = await import('../../../worker/cron/demo-image-rehost');
     const body = (await c.req.json().catch(() => ({}))) as { count?: number };
     const perRun = Math.min(6, Math.max(1, intParam(String(body.count ?? 6), 6)));
     const r = await reconditionDemos(c.env as unknown as Env, perRun);
@@ -1946,7 +1946,7 @@ adminProductsRoutes.post('/dongnedeal/recondition-images', cors(), async (c) => 
         WHERE (p.slug LIKE 'demo-deal-%' OR p.slug LIKE 'demo-stay-%')
           AND COALESCE(p.is_active,1) = 1 AND p.restaurant_name IS NOT NULL
           AND NOT EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id = p.id AND m.key = 'demo_cond_v' AND m.value = ?)`
-    ).bind(DEMO_COND_V).first<{ n: number }>().catch(() => ({ n: 0 }));
+    ).bind(demoCondV(c.env as unknown as Env)).first<{ n: number }>().catch(() => ({ n: 0 }));
     await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {});
     await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
     return c.json({ success: true, reconditioned: r.reconditioned, skipped: r.skipped, remaining: Number(remainRow?.n ?? 0) });

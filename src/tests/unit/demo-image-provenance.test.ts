@@ -38,8 +38,8 @@ describe('데모 이미지 출처 불변식 (demo-image-rehost)', () => {
   })
 
   it('시도 카운터는 버전별로 리셋된다 (버전 bump 가 문제 행에서 무효가 되지 않게)', () => {
-    expect(cron).toMatch(/demo_cond_try_v === DEMO_COND_V \? Number\(meta\.demo_cond_tries/)
-    expect(cron).toMatch(/demo_cond_try_v: DEMO_COND_V/)
+    expect(cron).toMatch(/demo_cond_try_v === COND_V \? Number\(meta\.demo_cond_tries/)
+    expect(cron).toMatch(/demo_cond_try_v: COND_V/)
   })
 
   it('시도 소진(포기) 시에도 차단 출처 커버는 내려간다', () => {

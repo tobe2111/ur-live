@@ -43,3 +43,16 @@
 
 ## 이번에 틀렸던 판단
 - 없음. 다만 직전 세션의 v7 은 "업체 사진이 대부분 매장에 있다"는 확인 없이 들어갔다 — 출처를 좁히기 전에 **그 출처가 몇 % 에 있는지 먼저 잴 것.**
+
+## 🤖 3단계 — 매장주 제공 사진만 + AI 판정 (대표 "AI로 사진 판정" · "숨기고 자동 교체")
+
+- 모듈 `src/worker/utils/demo-photo-judge.ts`(Claude Haiku 비전) · 수집 `collectJudgedDemoPhotos`(demo-photo-set.ts).
+- **켜짐 조건 = Cloudflare 에 `ANTHROPIC_API_KEY`** — 2026-10-27 라이브 실측: GitHub Actions 시크릿엔 있고(SNS 워크플로)
+  Cloudflare(Pages·cron 워커 ur-live)엔 **없다**(env-readiness `present:false`). 키가 없으면 종전 v8 그대로(무변경).
+- 옮기기: 수동 워크플로 `.github/workflows/sync-anthropic-secret.yml`(workflow_dispatch) — 값을 보지 않고 두 곳에 넣는다.
+  ⚠️ Pages 시크릿은 **다음 배포부터** 런타임에 보인다(넣은 뒤 배포 1회 필요). cron 워커는 `wrangler secret put` 즉시.
+- 키가 들어가면 버전 '9'(`DEMO_COND_V_JUDGED`)로 전 데모 재검사: 매장주(MYSTORE) 사진 → AI 통과분만 → 3장 미만이면
+  같은 업종 근처 실매장으로 교체(회차 1건, 후보 3) · 못 찾으면 숨김(가역) · 판정 실패(모름)는 아무것도 안 바꾼다.
+- 다음 액션(E4): 워크플로 실행 → env-readiness `ANTHROPIC_API_KEY present:true` → 하트비트 `demo-image-rehost` 에서
+  swapped·hiddenNoPhoto 증가 → 데모 30장 표본 육안 검사(메뉴판·로고·공사 0인지).
+- 틀렸던 판단: "키가 없다"고만 보고하려 했다 — 대표 지적대로 GitHub 시크릿에는 있었다. 판정은 *어디에* 있나까지 볼 것.

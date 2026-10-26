@@ -140,3 +140,29 @@ export async function fetchKakaoUsablePhotoCount(
   for (const tag of classifiedTagsFor(category)) n += c[tag.toLowerCase() as 'food' | 'indoor' | 'outdoor'] ?? 0
   return n
 }
+
+/**
+ * 🤖 2026-10-27 (대표 "매장주 제공 사진이 있는 매장만") — AI 판정 모드의 후보: **매장주 제공(MYSTORE)만**.
+ *   제휴사(VENDOR)·분류 사진(손님·블로그)은 받지 않는다. 한 장 한 장은 demo-photo-judge 가 거른다.
+ *   반환 `total` = 카카오가 말하는 매장주 사진 수(응답을 못 받으면 null — "모른다").
+ */
+export async function fetchKakaoMyStorePhotos(
+  placeUrlOrId: string | null | undefined,
+  count = 10,
+): Promise<{ photos: string[]; total: number | null }> {
+  const id = extractKakaoPlaceId(placeUrlOrId)
+  if (!id) return { photos: [], total: null }
+  const data = await fetchKakaoTabPhotos(id, 'MYSTORE')
+  if (!data) return { photos: [], total: null }
+  const want = Math.max(1, Math.min(12, count))
+  const photos: string[] = []
+  const seen = new Set<string>()
+  for (const p of data.photos || []) {
+    if (photos.length >= want) break
+    if (p.type !== 'MYSTORE') continue
+    if (p.media_type && p.media_type !== 'PHOTO') continue
+    const u = cleanKakaoUrl(p.url)
+    if (u && !seen.has(u)) { seen.add(u); photos.push(u) }
+  }
+  return { photos, total: data.counts ? (data.counts.mystore ?? 0) : null }
+}

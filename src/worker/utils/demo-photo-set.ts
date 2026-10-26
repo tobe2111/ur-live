@@ -24,7 +24,8 @@
  *   ⇒ 남은 경로 ①②③ 은 전부 "그 매장"에 근거가 있다(①② 지도 등록 사진, ③ 매장명 토큰 매칭).
  */
 import type { Env } from '../types/env'
-import { fetchKakaoPlacePhotos, classifiedTagsFor } from './kakao-place-photos'
+import { fetchKakaoPlacePhotos, classifiedTagsFor, fetchKakaoMyStorePhotos } from './kakao-place-photos'
+import { demoPhotoJudgeOn, judgeDemoPhotos, JUDGE_MAX_IMAGES } from './demo-photo-judge'
 import { fetchNaverPlaceBusinessPhotos } from './naver-place-photo'
 
 export interface DemoPhotoOpts {
@@ -94,7 +95,31 @@ export function isSearchDerivedPhoto(url: string | null | undefined): boolean {
   return /search\.pstatic\.net|blogfiles\.|postfiles\.|mblogthumb-phinf|blogpfthumb|dthumb-phinf|pup-review-phinf|myplace-phinf/i.test(url)
 }
 
+/**
+ * 🤖 2026-10-27 (대표 "매장주 제공 사진이 있는 매장만 · 그 사진들 중에서도 연관되게") — AI 판정 모드의 수집.
+ *   후보 = 카카오 **매장주 제공(MYSTORE)** 사진만 → Claude Haiku 가 한 장씩 판정 → 통과한 것만.
+ *   `known=false` 는 "모른다"(카카오 응답 실패·판정 실패) — 호출부는 사진을 바꾸지도 데모를 내리지도 않는다.
+ *   `known=true` 이고 3장 미만이면 그 매장은 **확정적으로** 쓸 만한 매장주 사진이 모자란 것이다.
+ *   ⚠️ 네이버 업체사진은 이 모드에서 부르지 않는다 — Cloudflare 에서 막혀(429) 예산만 쓰고, 대표가 정한 출처는
+ *   "매장주 제공" 하나다. 서브리퀘스트 = 카카오 1 + 판정 1.
+ */
+export async function collectJudgedDemoPhotos(env: Env, opts: DemoPhotoOpts): Promise<{ photos: string[]; known: boolean }> {
+  const want = Math.max(1, Math.min(6, opts.count ?? 4))
+  // 카카오 장소가 없는 데모는 매장주 사진을 받을 길이 없다 — 확정적으로 모자란 것으로 본다(교체 대상).
+  if (!opts.placeId) return { photos: [], known: true }
+  const got = await fetchKakaoMyStorePhotos(opts.placeId, JUDGE_MAX_IMAGES).catch(() => ({ photos: [] as string[], total: null }))
+  if (got.total == null) return { photos: [], known: false }
+  const cands = got.photos.filter((u) => !isBlockedPhotoUrl(u))
+  // 후보가 3장도 안 되면 판정할 필요도 없이 모자란다(판정 비용 0).
+  if (cands.length < DEMO_MIN_PHOTOS) return { photos: [], known: true }
+  const verdict = await judgeDemoPhotos(env, cands, { storeName: opts.nameQuery, category: opts.category })
+  if (!verdict) return { photos: [], known: false }
+  return { photos: cands.filter((_, i) => verdict[i]).slice(0, want), known: true }
+}
+
 export async function fetchDemoPhotos(env: Env, opts: DemoPhotoOpts): Promise<string[]> {
+  // 🤖 키가 있으면 AI 판정 모드 — 판정을 못 했으면(known=false) 사진을 쓰지 않는다(판정 안 된 사진 금지).
+  if (demoPhotoJudgeOn(env)) return (await collectJudgedDemoPhotos(env, opts)).photos
   const want = Math.max(1, Math.min(6, opts.count ?? 4))
   const out: string[] = []
   const seen = new Set<string>()

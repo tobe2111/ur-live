@@ -14,6 +14,7 @@
 import type { Env } from '../types/env'
 import { fetchDemoPhotos, DEMO_MIN_PHOTOS } from '../utils/demo-photo-set'
 import { extractKakaoPlaceId } from '../utils/kakao-place-photos'
+import { demoPhotoJudgeOn } from '../utils/demo-photo-judge'
 import { setSupplyMeta } from '../utils/product-supply-meta'
 
 export interface SwapRow {
@@ -22,6 +23,8 @@ export interface SwapRow {
 }
 
 const SWAP_CANDIDATES = 2
+/** 🤖 AI 판정 모드는 후보 하나가 싸다(매장주 사진 3장 미만이면 판정 없이 탈락 — 카카오 1회) → 하나 더 본다. */
+const SWAP_CANDIDATES_JUDGED = 3
 
 export async function swapDemoStore(env: Env, row: SwapRow, meta: Record<string, string>, condVersion: string): Promise<boolean> {
   const DB = env.DB
@@ -32,7 +35,8 @@ export async function swapDemoStore(env: Env, row: SwapRow, meta: Record<string,
   if (!pq) return false
   const curId = extractKakaoPlaceId(meta.kakao_place_url || null)
   const center = { x: String(row.restaurant_lng), y: String(row.restaurant_lat) }
-  for (let i = 0; i < SWAP_CANDIDATES; i++) {
+  const tries = demoPhotoJudgeOn(env) ? SWAP_CANDIDATES_JUDGED : SWAP_CANDIDATES
+  for (let i = 0; i < tries; i++) {
     const place = await mod.kakaoPlaceLookup(env as unknown as { KAKAO_REST_API_KEY?: string }, pq, -1, center).catch(() => null)
     if (!place?.name || !place.address || place.lat == null || place.lng == null) continue
     if (curId && place.placeId === curId) continue
