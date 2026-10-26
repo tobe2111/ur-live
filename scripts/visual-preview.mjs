@@ -693,7 +693,7 @@ const PW_DIR = process.env.PLAYWRIGHT_BROWSERS_PATH || '/opt/pw-browsers'
 const exe = fs.existsSync(PW_DIR)
   ? fs.readdirSync(PW_DIR)
       .filter((d) => d.startsWith('chromium-'))
-      .map((d) => path.join(PW_DIR, d, 'chrome-linux/chrome'))
+      .flatMap((d) => ['chrome-linux/chrome', 'chrome-linux64/chrome'].map((f) => path.join(PW_DIR, d, f)))
       .find((f) => fs.existsSync(f))
   : undefined
 

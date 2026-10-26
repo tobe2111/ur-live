@@ -6098,7 +6098,9 @@
     "privacyLink": "Privacy Policy",
     "termsNoticeEnd": "",
     "agencyQuestion": "Are you an agency?",
-    "agencyLogin": "Agency login"
+    "agencyLogin": "Agency login",
+    "heroTitle2": "Local spots, cheaper when you buy ahead",
+    "chipPass": "Local passes"
   },
   "guide": {
     "sectionTitlePlaceholder": "Section title",

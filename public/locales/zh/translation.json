@@ -6045,7 +6045,9 @@
     "privacyLink": "隐私政策",
     "termsNoticeEnd": "",
     "agencyQuestion": "您是代理机构吗？",
-    "agencyLogin": "代理机构登录"
+    "agencyLogin": "代理机构登录",
+    "heroTitle2": "街坊好店，提前买更便宜",
+    "chipPass": "本地使用券"
   },
   "guide": {
     "sectionTitlePlaceholder": "章节标题",

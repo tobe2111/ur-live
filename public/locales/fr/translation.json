@@ -6045,7 +6045,9 @@
     "privacyLink": "Politique de confidentialité",
     "termsNoticeEnd": "",
     "agencyQuestion": "Vous êtes une agence ?",
-    "agencyLogin": "Connexion agence"
+    "agencyLogin": "Connexion agence",
+    "heroTitle2": "Les adresses du quartier, moins chères en achetant à l'avance",
+    "chipPass": "Pass locaux"
   },
   "guide": {
     "sectionTitlePlaceholder": "Titre de section",
