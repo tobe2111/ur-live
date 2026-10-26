@@ -24,3 +24,11 @@
 - 처방: 기본 목록을 `-apple-system, BlinkMacSystemFont, "Noto Sans KR", "Malgun Gothic", system-ui, …` 로. 애플은 앞 두 키워드가 잡혀 그대로, 안드로이드는 그 이름 글꼴이 없어 system-ui 로 → 폰 불변. 윈도우는 창 폭 무관 한글 글꼴. index.css · tailwind sans · index.html 세 곳 같은 순서.
 - 🩸 틀린 판단: "PC = 1024px+" 로 판정했다. PC 라도 창이 좁을 수 있다 — 플랫폼 문제를 폭으로 풀면 안 된다.
 - 여전히 미확인: 대표 PC 에 Noto Sans KR 이 **설치**돼 있는가(쿠팡이 웹폰트로 받는 것일 수 있다). 개발자 도구 → 계산됨 → **렌더링된 글꼴**(Font 목록 줄이 아니라 맨 아래 칸)으로 판정.
+
+## 2026-10-26 후속 2 — PC 전용 Pretendard (대표 승인 "승인해줄게")
+
+- 로더 `ur-pret-loader`(index.html) · 시트 `public/static/fonts/pretendard-pc-v1.3.9-2.css` · 가드 `self-hosted-fonts` ②-1~②-7 · 주입 4건.
+- 실측: load 동일 · 첫 글꼴 요청 load 뒤 · 재방문 캐시로 첫 그림 전 준비. 숫자는 CLAUDE.md 로딩 audit log 2026-10-26.
+- 🩸 틀린 판단 둘: ① 처음 오는 PC 에도 시트를 바로 넣었다 → load 0.3초 지연(고쳤다) ② CDP 회선 흉내 측정이 캐시를 안 써 재방문 결과가 거짓이었다 — 재방문은 흉내 없이 잴 것.
+- 안 한 것: 맑은 고딕 `size-adjust`(이 환경에 그 글꼴이 없어 값을 못 잰다).
+- 다음 첫 액션: 배포 후 대표에게 윈도우 PC 렌더링된 글꼴 = Pretendard Variable 확인 요청. 첫 방문 글자 바뀜이 거슬린다고 하면 그때 `size-adjust` 를 대표 PC 실측으로.
