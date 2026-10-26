@@ -62,7 +62,7 @@ export function pickMatchingPlace(
 }
 
 /** 매장명(+주소 앞 두 마디)으로 네이버 플레이스를 찾는다. 이름이 맞는 항목만. fail-soft → null. */
-async function findNaverPlace(name: string, address?: string | null): Promise<Record<string, unknown> | null> {
+export async function findNaverPlace(name: string, address?: string | null): Promise<Record<string, unknown> | null> {
   const q = (name + (address ? ' ' + String(address).split(/\s+/).slice(0, 2).join(' ') : '')).trim()
   if (!q || q.length < 2) return null
   try {

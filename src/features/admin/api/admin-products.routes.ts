@@ -28,8 +28,11 @@ import { intParam } from '@/shared/pagination'
 import { dongnedealTextFilters } from './dongnedeal-search';
 // 🎯 2026-07-21: 시드 커버 재호스팅 — 본체는 worker/utils/rehost-image.ts (demo-image-rehost cron 과 공유 SSOT).
 import { rehostImageToR2 } from '@/worker/utils/rehost-image';
+import { adminDemoPhotoSourceDiagRoutes } from './admin-demo-photo-source-diag.routes';
 
 export const adminProductsRoutes = new Hono<{ Bindings: Env }>();
+// 🔬 2026-10-26 데모 사진 출처 진단(읽기 전용) — 본체는 별 파일(이 파일은 크기 동결).
+adminProductsRoutes.route('/', adminDemoPhotoSourceDiagRoutes);
 
 function safeAdminError(err: unknown, env: Env): string {
   const isProd = (env as Env & { ENVIRONMENT?: string }).ENVIRONMENT === 'production';
