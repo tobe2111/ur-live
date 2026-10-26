@@ -151,13 +151,21 @@ describe('PC 1안 — 오늘이 머리', () => {
    * 🔁 2026-09-29 재조준(안 C): [오늘 | 사용처리] 가로 배치를 걷고 **같은 판 안에 세로로** 쌓았다.
    * "오늘이 머리" 라는 09-28 결정의 내용은 그대로다 — 오늘 숫자가 판의 첫 블록이다.
    */
-  it('🔵 오늘 숫자가 판의 머리이고, 사용처리가 바로 다음이다', () => {
+  /**
+   * 🔁 **2026-10-25 재조준(대표 확정 내 가게 안 G)** — 사용처리는 판 **밖 위**의 진한 블루 칸이 됐고,
+   *   판의 머리는 `오늘 매출` 줄이다. 지키려던 것은 그대로다: *하루에 가장 많이 누르는 사용처리가 먼저 보이고,
+   *   오늘 숫자는 판의 머리에 있다.*
+   */
+  it('🔵 사용처리가 먼저(판 밖 위), 오늘 매출이 판의 머리다', () => {
+    const iScan = SELLER.indexOf("enterSeat('/store/scan')")
     const iPlate = SELLER.indexOf('<div className={LIST_PLATE_CLS}>')
-    const iToday = SELLER.indexOf('오늘</span>')
-    const iScan = SELLER.indexOf('이용권 사용처리')
+    const iToday = SELLER.indexOf('오늘 매출</span>')
     expect(iPlate, '판을 못 찾았다 — 이 검사가 헛돌고 있다').toBeGreaterThan(-1)
-    expect(iToday).toBeGreaterThan(iPlate)
-    expect(iScan, '사용처리가 오늘 숫자보다 앞이다').toBeGreaterThan(iToday)
+    expect(iScan, '사용처리 칸을 못 찾았다').toBeGreaterThan(-1)
+    expect(iScan, '사용처리가 판 뒤로 밀렸다').toBeLessThan(iPlate)
+    expect(iToday, '오늘 매출이 판의 머리가 아니다').toBeGreaterThan(iPlate)
+    const firstRowEnd = SELLER.indexOf('</button>', iPlate)
+    expect(iToday, '오늘 매출 앞에 다른 줄이 끼었다').toBeLessThan(firstRowEnd)
   })
 
   it('🔴 숫자 한 줄이 페이지 맨 위에 있다 (2열 래퍼 밖)', () => {

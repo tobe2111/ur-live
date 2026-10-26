@@ -9,6 +9,7 @@ import OpeningWelcomePanel from './store-prospects/OpeningWelcomePanel'
 import WeeklyPicksPanel from './store-prospects/WeeklyPicksPanel'
 import TradePanel, { type TradeRow } from './partner-pool/TradePanel'
 import CollectConfigPanel from './store-prospects/CollectConfigPanel'
+import PoolExportButtons from './PoolExportButtons'
 
 /** 매장 업태 → 공용 패널 행. 업태 1행이 **전 지역**을 뜻하므로 kw/active_kw 는 1/0 이다
  *  (파트너는 업종 1행이 235지역을 묶은 것이라 개수가 실수치다 — 그 차이를 여기서만 흡수한다). */
@@ -106,6 +107,7 @@ export default function AdminStoreProspectsPage() {
     if (dq.trim()) p.set('q', dq.trim())
     return p
   }, [fCategory, fRegion, fView, dq])
+
 
   const loadRows = useCallback(async () => {
     setLoading(true)
@@ -249,7 +251,7 @@ export default function AdminStoreProspectsPage() {
           <button onClick={() => runCollectSub('neis')} disabled={busySub !== '' || !collect?.adsBinding} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="나이스(NEIS) 학원·교습소 — 인허가에 없는 학원 갭 커버(교육청 17곳 순환). NEIS_API_KEY 필요">{busySub === 'neis' ? '수집 중…' : '학원 수집'}</button>
           <button onClick={() => runCollectSub('hira')} disabled={busySub !== '' || !collect?.adsBinding} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="심평원 병원정보 — 전국 병·의원 전화+홈페이지 직접 제공(이메일 크롤 관문)">{busySub === 'hira' ? '수집 중…' : '병원 수집'}</button>
           <button onClick={() => runCollectSub('store-kakao')} disabled={busySub !== '' || !collect?.adsBinding} className="ur-btn ur-btn-md ur-btn-danger disabled:opacity-50" title="카카오 로컬로 음식점·카페·미용실·숙박 + 무인매장을 캅니다(전화가 함께 옵니다). 자동으로는 약 5회차에 한 번만 도는 레인 — 아래 조건을 바꾼 뒤 지금 확인하려면 이 버튼">{busySub === 'store-kakao' ? '수집 중…' : '카카오 매장 수집'}</button>
-          <button onClick={async () => { try { const r = await api.get(`/api/admin/store-prospects/export?${buildQuery().toString()}`, { responseType: 'blob' }); const u = URL.createObjectURL(new Blob([r.data], { type: 'text/csv;charset=utf-8' })); const a = document.createElement('a'); a.href = u; a.download = `store-prospects-${new Date().toISOString().slice(0, 10)}.csv`; a.click(); URL.revokeObjectURL(u) } catch { toast.error('내보내기 실패 — 재로그인 후 시도') } }} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium" title="⬇ 지금 화면 필터 그대로 CSV 로(한글 BOM). 이 풀의 도달 채널은 전화입니다 — '전화 보유'로 좁혀 내보내세요">⬇ CSV</button>
+          <PoolExportButtons pool="store" path="/api/admin/store-prospects/export" basename="store-prospects" query={buildQuery} batchHint="이 풀의 도달 채널은 전화입니다 — '전화 보유'로 좁혀 내보내세요." />
           <div className="grow" />
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="매장명·지역·전화·이메일·주소 검색" title="여러 단어를 넣으면 모두 포함된 매장만 나옵니다" className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm w-56" />
         </div>

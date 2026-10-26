@@ -102,8 +102,8 @@ export function sellerEntryPath(path: string): string {
  * 마이 주소의 `?tool=` 을 읽는다. 셀러 화면 주소가 아니면 `null` — **외부 주소·`//`·역슬래시는 버린다**
  * (이 값은 시트의 메모리 라우터로 가고, 거기서 셀러 밖을 가리키면 `onLeave` 가 `location` 에 넣으므로 열린 리다이렉트를 막는다).
  */
-export function readToolParam(search: string): string | null {
-  const raw = new URLSearchParams(search).get(TOOL_PARAM)
+export function readToolParam(search: string, param: string = TOOL_PARAM): string | null {
+  const raw = new URLSearchParams(search).get(param)
   if (!raw) return null
   if (!raw.startsWith('/seller/') || raw.startsWith('//') || raw.includes('\\')) return null
   // eslint-disable-next-line no-control-regex

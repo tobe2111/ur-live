@@ -245,6 +245,11 @@ export async function handleCronScheduled(
       const { handleProspectsCommissionActivate } = await import('./cron/prospects-commission-activate')
       return handleProspectsCommissionActivate(env)
     }));
+    // 🏠 2026-10-24 생활 견적 — 안 열어 본 견적의 참여권 반환 · 날짜 지난 요청 만료(매시 :50).
+    if (slotOpen({ minute: 50 })) ctx.waitUntil(slotCron('50 * * * *')('home-service-sweep', async () => {
+      const { runHomeServiceSweep } = await import('./cron/home-service-sweep')
+      return runHomeServiceSweep(env)
+    }));
     // 🎯 [urads-split Phase E 2026-07-18] ads-autobid 는 ur-ads 로 이관(이중실행 방지). 재도입은 `autobid` 의 `runAutobidAll` 을 `ADS_AUTOBID_ENABLED` 게이트 뒤 safeCron 으로.
   }
 

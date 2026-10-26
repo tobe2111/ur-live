@@ -37,7 +37,7 @@ export default function SameStoreDeals({ productId, hideTitle }: { productId?: n
   if (!deals.length) return null
   return (
     <div className="mt-3">
-      {!hideTitle && <p className="text-[12px] font-semibold text-gray-600 dark:text-gray-300 mb-2">이 매장의 다른 이용권도 있어요</p>}
+      {!hideTitle && <p className="text-[12px] font-medium text-gray-600 dark:text-gray-300 mb-2">이 매장의 다른 이용권도 있어요</p>}
       <div className="space-y-2">
         {deals.map((d) => (
           <DealRow

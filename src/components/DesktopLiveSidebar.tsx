@@ -88,14 +88,14 @@ export default function DesktopLiveSidebar() {
     >
       {/* 로고 — xl: 풀 로고, md~xl: 'U' 아이콘. sticky 로 사이드바 스크롤 시 항상 표시 */}
       <Link to="/" className="sticky top-0 z-10 bg-white dark:bg-[#11141C] flex items-center justify-center xl:justify-start xl:px-4 h-14 shrink-0">
-        <span className="xl:hidden text-[17px] font-black text-gray-900 dark:text-white select-none">U</span>
+        <span className="xl:hidden text-[17px] font-bold text-gray-900 dark:text-white select-none">U</span>
         <span className="hidden xl:block"><UrDealLogo size={20} /></span>
       </Link>
 
       <div className="flex-1 xl:px-2 pb-4 flex flex-col xl:gap-5">
         {/* MENU */}
         <section>
-          <p className="hidden xl:block text-[12px] font-bold text-gray-400 dark:text-white/30 uppercase tracking-widest px-3 mb-1">
+          <p className="hidden xl:block text-[12px] font-medium text-gray-400 dark:text-white/30 uppercase tracking-widest px-3 mb-1">
             {t('nav.sectionMenu', { defaultValue: 'Menu' })}
           </p>
           {/* 🛡️ 2026-06-10 [UNLOCK_LOADING]: 쇼핑(/browse) 잠정 숨김 — SHOPPING_TAB_HIDDEN 플래그 가역 */}
@@ -115,7 +115,7 @@ export default function DesktopLiveSidebar() {
 
         {/* MY */}
         <section>
-          <p className="hidden xl:block text-[12px] font-bold text-gray-400 dark:text-white/30 uppercase tracking-widest px-3 mb-1">
+          <p className="hidden xl:block text-[12px] font-medium text-gray-400 dark:text-white/30 uppercase tracking-widest px-3 mb-1">
             {t('nav.sectionMy', { defaultValue: 'My' })}
           </p>
           {/* 순서 통일(모바일 하단바와 동일): 이용권 → 유어샵 → 마이 */}

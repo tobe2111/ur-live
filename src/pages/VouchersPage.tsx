@@ -29,7 +29,7 @@ import SEO from '@/components/SEO'
 import { getUserIdSync } from '@/utils/auth'
 // 🖥️ 2026-07-18 (교환권 PC 2단 분리): 카드/행 + VoucherProduct 타입은 ./vouchers/shared 로 추출(파일크기 래칫).
 import { VoucherCard, VoucherTile, BrandChip, CategoryIcon, type VoucherProduct } from './vouchers/shared'
-import { VOUCHER_TILE_CLASS, VOUCHER_TILE_ABOVE_FOLD } from '@/shared/voucher-tile'
+import { VOUCHER_TILE_CLASS, VOUCHER_TILE_ABOVE_FOLD, VOUCHER_CAT_TAB } from '@/shared/voucher-tile'
 import { ChipRowReserve, BrandStripReserve, PcBrandStripReserve, PC_BRAND } from './vouchers/TopChromeReserve'
 import { VOUCHERS_DEFAULT_CATEGORY } from '@/shared/seo/voucher-facet'
 import { resolveConsumerSurfaceSeo } from '@/shared/seo/consumer-surfaces'
@@ -432,7 +432,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             {/* 카테고리 — 세로 리스트 */}
             {sections.length > 0 && (
               <div>
-                <h3 className="text-[12px] font-bold text-gray-400 dark:text-gray-500 mb-2 px-1">카테고리</h3>
+                <h3 className="text-[12px] font-medium text-gray-400 dark:text-gray-500 mb-2 px-1">카테고리</h3>
                 <div className="space-y-1">
                   {sections.map(s => {
                     const active = s.category === category
@@ -443,7 +443,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                         onClick={() => setCategory(s.category)}
                         className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] transition-colors ${
                           active
-                            ? 'bg-brand text-white font-bold'
+                            ? 'bg-brand text-white font-medium'
                             : 'text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-white/[0.04]'
                         }`}
                       >
@@ -481,11 +481,11 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
               </div>
             )}
             <div className="flex items-center justify-between gap-2 mb-4">
-              <h2 className="text-[17px] font-extrabold text-gray-900 dark:text-white flex items-center gap-2 min-w-0">
+              <h2 className="text-[17px] font-bold text-gray-900 dark:text-white flex items-center gap-2 min-w-0">
                 <span className="truncate">{brand ? brand : category ? category : '전체'} 교환권</span>
                 {/* 🐛 2026-08-17 (UX 전수검사 P1): 로드분 개수를 총계 자리에 그대로 쓰면 "커피/음료 775개"
                     카테고리가 "20"으로 읽힌다 — 더 있으면 `20+` 로 표기(정확한 총계 API 없음). */}
-                <span className="text-[15px] font-semibold text-gray-400 dark:text-gray-500 shrink-0">{hasMore ? `${products.length}+` : products.length}</span>
+                <span className="text-[15px] font-medium text-gray-400 dark:text-gray-500 shrink-0">{hasMore ? `${products.length}+` : products.length}</span>
                 {brand && (
                   <button
                     onClick={() => setBrand('')}
@@ -570,7 +570,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
       >
       {/* 🪙 2026-09-14 잔액 카드(탭 바 모드) — 사유는 `./vouchers/DealBalanceCard` 머리주석. */}
       {!heroMode && (
-        <div className="ur-content-wide px-4 lg:px-8 pt-3">
+        <div className="ur-content-wide px-5 lg:px-8 pt-3">
           {balanceCard}
         </div>
       )}
@@ -578,9 +578,10 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
       {/* 🛡️ 2026-05-19: 카테고리 바(KT Alpha 분류 그대로). 자리 예약 — 숫자가 아니라 같은 마크업으로(사유·실측: `./vouchers/TopChromeReserve`). */}
       {sections.length === 0 && !sectionsReady && <ChipRowReserve />}
       {sections.length > 0 && (
+        /* 🗂️ 2026-10-25 대표 확정 D안 — 알약 칩 → 밑줄 탭(클래스 SSOT `VOUCHER_CAT_TAB`, 예약·워커 첫 화면과 같은 값). */
         <div className="bg-warm dark:bg-[#11141C]">
-          <div className="ur-content-wide px-4 lg:px-8 py-2">
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+          <div className={VOUCHER_CAT_TAB.wrap}>
+            <div className={VOUCHER_CAT_TAB.row}>
               {sections.map(s => {
                 const active = s.category === category
                 return (
@@ -588,15 +589,10 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                     key={s.category}
                     type="button"
                     onClick={() => setCategory(s.category)}
-                    className={`shrink-0 inline-flex items-center gap-2 h-9 pl-3 pr-4 rounded-full text-[13px] font-bold transition-colors ${
-                      active
-                        ? 'bg-brand text-white'
-                        : 'bg-white dark:bg-[#1D1F29] text-gray-800 dark:text-gray-100 shadow-lift'
-                    }`}
+                    aria-pressed={active}
+                    className={`${VOUCHER_CAT_TAB.tab} ${active ? VOUCHER_CAT_TAB.on : VOUCHER_CAT_TAB.off}`}
                   >
-                    <CategoryIcon category={s.category} className="w-[15px] h-[15px]" />
                     {s.category}
-                    <span className={`text-[12px] tabular-nums ${active ? 'text-white/80' : 'text-gray-400'}`}>{s.count}</span>
                   </button>
                 )
               })}
@@ -609,7 +605,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
       {/* 🧭 2026-06-17 (대표 요청): 'N개 교환권' 카운트 제거 + 정렬을 인기 브랜드 헤더 우측으로 이동.
           브랜드가 없는 카테고리(예: 일부 /vouchers 카테고리)에선 정렬 접근성 유지 위해 단독 행으로 노출. */}
       {embedded && currentBrands.length === 0 && (
-        <div className="ur-content-wide px-4 lg:px-8 pt-3 flex items-center justify-end">
+        <div className="ur-content-wide px-5 lg:px-8 pt-3 flex items-center justify-end">
           <SortMenu value={sort} options={SORT_OPTIONS} onChange={(v) => setSort(v)} />
         </div>
       )}
@@ -621,7 +617,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
       {currentBrands.length === 0 && !sectionsReady && !!category && <BrandStripReserve />}
       {currentBrands.length > 0 && (
         /* 🎫 2026-06-26 (대표 결정 A): 상단 레이어 정리 — 상품을 위로. py-4→pt-1.5/pb-3, 헤더/로고 컴팩트. */
-        <div className="ur-content-wide px-4 lg:px-8 pt-2 pb-3">
+        <div className="ur-content-wide px-5 lg:px-8 pt-2 pb-3">
           {/* ☕ 2026-10-14 (대표 *"브랜드로 찾기 저 문구? 버튼 없애고. 괜히 공간만 차지하잖아"*): 접기 버튼·문구 제거 —
               로고 줄은 늘 펼쳐 둔다. 홈(embedded)만 정렬 메뉴 줄이 남는다(그 자리에 정렬이 있다). */}
           {embedded && (
@@ -645,7 +641,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
 
       {/* 선택된 브랜드 표시 — 홈(embedded)만. /vouchers 는 아래 상품 헤더에 '해제' 통합. */}
       {embedded && brand && (
-        <div className="ur-content-wide px-4 lg:px-8 pt-3 pb-1 flex items-center gap-2">
+        <div className="ur-content-wide px-5 lg:px-8 pt-3 pb-1 flex items-center gap-2">
           <span className="text-[12px] text-gray-500 dark:text-gray-400">필터:</span>
           <button
             onClick={() => setBrand('')}
@@ -660,14 +656,14 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
       {/* 🎫 2026-06-20 (사용자: 상품 시작 지점 구별 안 됨): 브라우즈 chrome ↔ 상품 리스트 경계 명확화.
           구분선(border-t) + '상품' 섹션 헤더(카테고리/브랜드 + 개수) + 정렬을 상품 바로 위로. /vouchers 전용. */}
       {!embedded && (
-        <div className="ur-content-wide px-4 lg:px-8 pt-3 pb-2 border-t border-gray-100 dark:border-[#2C2F35] flex items-center justify-between gap-2">
+        <div className="ur-content-wide px-5 lg:px-8 pt-5 pb-3 flex items-center justify-between gap-2">
           {/* 🧹 2026-08-31: ① 선물 아이콘 제거 — 바로 아래 하단 탭의 '교환권' 아이콘과 **같은 그림**이라
               같은 화면에서 두 번 같은 말을 했고, 앰버 한 점이 이 화면의 유일한 색이라 시선만 끌었다.
               ② 0 은 세지 않는다 — 곧바로 아래 빈 상태가 같은 사실을 더 잘 말한다. */}
-          <h2 className="text-[15px] font-extrabold text-gray-900 dark:text-white flex items-center gap-2 min-w-0">
+          <h2 className="text-[17px] font-bold text-gray-900 dark:text-white flex items-baseline gap-2 min-w-0">
             <span className="truncate">{brand ? brand : category ? category : '전체'} 교환권</span>
             {!loading && products.length > 0 && (
-              <span className="text-[13px] font-semibold text-gray-400 dark:text-gray-500 shrink-0">{hasMore ? `${products.length}+` : products.length}</span>
+              <span className="text-[15px] text-gray-500 dark:text-gray-400 shrink-0">{hasMore ? `${products.length}+` : products.length}</span>
             )}
             {brand && (
               <button
@@ -683,7 +679,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
       )}
 
       {/* 금액권 리스트 */}
-      <div className="ur-content-wide px-4 lg:px-8 pt-1 pb-6">
+      <div className="ur-content-wide px-5 lg:px-8 pt-1 pb-6">
         {loading ? (
           gridMode ? (
             // 🏠 홈/PC — 2/3/4/5열 그리드 카드 스켈레톤 (main 의 PC 확장 lg:4 xl:5 반영).
@@ -766,11 +762,11 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                       const np = page + 1; setPage(np); loadProducts(np, false)
                     }
                   }}
-                  className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl bg-gray-100 dark:bg-[#1D1F29] text-[13px] font-bold text-gray-700 dark:text-gray-200 active:scale-[0.99] transition-transform"
+                  className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl bg-gray-100 dark:bg-[#1D1F29] text-[13px] font-medium text-gray-700 dark:text-gray-200 active:scale-[0.99] transition-transform"
                 >
                   {t('home.moreVouchers', { defaultValue: '교환권 더보기' })}
                   {embedTotalSteps && embedTotalSteps > 1 && (
-                    <span className="text-gray-400 dark:text-gray-500 font-semibold">({embedStep}/{embedTotalSteps})</span>
+                    <span className="text-gray-400 dark:text-gray-500 font-medium">({embedStep}/{embedTotalSteps})</span>
                   )}
                   <ChevronDown className="w-4 h-4" />
                 </button>
@@ -793,9 +789,9 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           순수 교환권 페이지(인플 딜포인트→교환권 구매 경로 보존). 플래그 false 로 즉시 복원(가역). */}
       {!embedded && !SHOPPING_TAB_HIDDEN && (
         <section ref={shoppingRef} className="scroll-mt-14 mt-2 border-t-8 border-gray-50 dark:border-[#1D1F29]">
-          <div className="ur-content-wide px-4 lg:px-8 pt-5 pb-1 flex items-center gap-2">
+          <div className="ur-content-wide px-5 lg:px-8 pt-5 pb-1 flex items-center gap-2">
             <BagIcon className="w-[18px] h-[18px] text-gray-900 dark:text-white" />
-            <h2 className="text-[15px] font-extrabold text-gray-900 dark:text-white">쇼핑</h2>
+            <h2 className="text-[15px] font-bold text-gray-900 dark:text-white">쇼핑</h2>
           </div>
           <ShoppingGrid />
         </section>

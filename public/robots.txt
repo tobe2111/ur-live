@@ -1,4 +1,9 @@
 User-agent: *
+# 🤖 2026-10-25 콘텐츠 사용 신호(Cloudflare Content Signals) — 검색 노출·AI 답변 근거(인용)는 허용, 학습은 거부.
+#   대표 2026-10-12 *"AI 모든 서비스에서 검색 시 나오게"* 를 robots 로 명시한다. Cloudflare 의 관리형
+#   robots.txt(Bot Preference Sync)를 끄면 이 파일이 그대로 서빙되므로, 그 블록이 하던 신호를 여기서 낸다.
+#   ai-input=yes 가 빠지면 *"정하지 않음"* 으로 읽혀 AI 답변 엔진이 보수적으로 건너뛸 수 있다.
+Content-Signal: search=yes, ai-input=yes, ai-train=no
 Allow: /
 Disallow: /admin
 Disallow: /admin/*
@@ -18,6 +23,8 @@ Disallow: /user/profile
 Disallow: /my-orders
 Disallow: /my-coupons
 Disallow: /my-vouchers
+Disallow: /life/requests
+Disallow: /life/pro/
 Disallow: /wishlist
 Disallow: /notifications
 Disallow: /embed/

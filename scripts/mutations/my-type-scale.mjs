@@ -16,15 +16,15 @@ export default [
     //    **다음 줄까지** 묶어 `ListRow` 쪽 하나만 가리킨다. `find` 가 둘이면 어디를 고쳤는지 모른다.
     // 🔁 2026-09-30 재조준: 행 라벨이 `ROW_LABEL_CLS` 로 분리됐다(설정 줄이 같은 글자를 쓰려고).
     //   그래서 `ListRow`·`FoldRow` 둘을 가리키던 "다음 줄까지 묶기" 요령이 더는 필요 없다.
-    find: "export const ROW_LABEL_CLS = 'flex-1 min-w-0 text-[15px] font-semibold",
-    replace: "export const ROW_LABEL_CLS = 'flex-1 min-w-0 text-[12.5px] font-semibold",
+    find: "export const ROW_LABEL_CLS = 'flex-1 min-w-0 text-[15px] font-medium",
+    replace: "export const ROW_LABEL_CLS = 'flex-1 min-w-0 text-[12.5px] font-medium",
     test: TEST,
     why: '반쪽 크기 하나면 그 줄만 이웃과 미세하게 다르다 — 빌드도 화면도 안 깨져서 17단계까지 이렇게 자랐다.',
   },
   {
     name: '🔠 tailwind 기본 단계를 섞는다 (text-sm)',
     file: 'src/pages/user-profile/list-grammar.tsx',
-    find: "  return <div className=\"mt-6 mb-2 px-1 text-[12px] font-bold text-gray-400\">{children}</div>",
+    find: "  return <div className=\"mt-6 mb-2 px-1 text-[12px] font-medium text-gray-400\">{children}</div>",
     replace: "  return <div className=\"mt-6 mb-2 px-1 text-sm font-bold text-gray-400\">{children}</div>",
     test: TEST,
     why: '체계가 둘이 되면 스케일이 무의미해진다 — `text-sm`(14)은 15 도 13 도 아니라 사이에 낀다.',
@@ -49,8 +49,8 @@ export default [
   {
     name: '🎨 유일한 브랜드 면(사용처리)이 회색으로 죽는다',
     file: 'src/pages/user-profile/SellerSection.tsx',
-    find: 'min-h-[52px] py-2 rounded-[10px] bg-brand text-white text-left',
-    replace: 'h-[60px] rounded-2xl bg-wash text-gray-900 text-left',
+    find: "className=\"min-w-0 flex items-center gap-2 h-16 px-3 rounded-2xl bg-brand text-white",
+    replace: "className=\"min-w-0 flex items-center gap-2 h-16 px-3 rounded-2xl bg-wash text-gray-900",
     test: TEST,
     why: '면을 하나로 줄인 뒤라 이것까지 죽으면 화면에 강조가 **아예 없어진다** — 하루에 가장 많이 누르는 버튼이다.',
   },

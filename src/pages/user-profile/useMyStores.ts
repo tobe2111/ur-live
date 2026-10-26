@@ -34,6 +34,8 @@ export interface StoreSummaryRow {
   pending: number
   /** ⚡ 판매 중 상품 수 — 이 값이 있어서 첫 화면이 상품 목록을 따로 안 받는다(2026-10-01) */
   active_products: number
+  /** 🏠 생활 견적 참여권 잔액 — 생활 업체가 아니면 null(2026-10-26) */
+  life_credits?: number | null
 }
 
 export interface MyStoresState {

@@ -315,7 +315,7 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey, on
         {sdkError ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 dark:bg-[#1D1F29] p-4 text-center">
             <PinIcon className="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2" />
-            <p className="text-[13px] font-semibold text-gray-700 dark:text-gray-200">
+            <p className="text-[13px] font-medium text-gray-700 dark:text-gray-200">
               {t('map.picker.loadFailed', { defaultValue: '지도를 불러오지 못했어요' })}
             </p>
             <p className="mt-1 text-[12px] text-gray-500 dark:text-gray-400">

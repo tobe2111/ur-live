@@ -431,6 +431,10 @@ const OPS_GATES: OpsGate[] = [
   { key: 'seller_docs_nudge_enabled', kind: 'setting', label: '서류 빠진 사장님 보완 안내', default_value: 'false', staging_ref: 'S-NUDGES', turn_on_when: '심사 대기 매장의 빠진 항목 목록을 어드민에서 확인하고 안내 문구가 맞는지 본 뒤' },
   { key: 'agent_search_enabled', kind: 'setting', label: 'AI 비서 검색 창구(찾기 전용)', default_value: 'false', staging_ref: 'S-AGENT', turn_on_when: '결재 2026-10-19-ai-agent-channel 승인 뒤, /api/agent/search 응답에 데모가 없고 주소가 우리 상세인지 확인한 다음' },
   { key: 'agent_checkout_enabled', kind: 'setting', label: 'AI 비서 결제 링크(손님이 확인 후 결제)', default_value: 'false', staging_ref: 'S-AGENT', turn_on_when: '대표 2026-10-20 "4번도 일단은 하자" — /api/agent/checkout 이 금액·한도를 맞게 돌려주고 링크로 열면 구매 창이 그 수량으로 열리는지 확인한 다음' },
+  // 🏠 2026-10-24 생활 견적(결재 2026-10-24-home-service-quotes) — 충전은 돈이 오가므로 실결제 확인 전엔 닫아 둔다.
+  //   닫혀 있어도 사장님은 가입 무료 참여권 3장으로 견적을 보낼 수 있다(돈 0).
+  { key: 'home_service_charge_enabled', kind: 'setting', label: '생활 견적 참여권 카드 충전', default_value: 'false', staging_ref: 'S-HOME', turn_on_when: '테스트 매장으로 참여권 5장 충전 → 견적 1건(1장 차감) → 손님 취소(1장 반환)를 실결제로 확인하고 잔액·원장이 맞으면' },
+  { key: 'home_service_quotes_disabled', kind: 'setting', label: '생활 견적 운영 중지 스위치', default_value: 'false', staging_ref: 'S-HOME', turn_on_when: '켜지 않는다 — 문제가 생겼을 때만 true 로 요청 접수·견적을 멈추는 비상 스위치' },
   // 💸 2026-08-25 (누락 발견): **플랫폼 take 율 자체를 정하는 게이트인데 이 명부에 없었다.**
   //   `channelPlatformRate` 가 이 값으로 직판 10% / 중개 5% 를 가른다(OFF 면 종전 `commission_rate`).
   //   CLAUDE.md 는 게이트 플래그를 여기 등록하라고 규정하는데 이것만 빠져 있어, 운영 화면에서
@@ -444,6 +448,7 @@ const OPS_GATES: OpsGate[] = [
   //   중개사(유저)에게 적립되고 인플루언서와 같은 성숙·원천징수·지급센터를 탄다.
   { key: 'broker_share_enabled', kind: 'setting', label: '중개사 몫 직접 송금', default_value: 'false', staging_ref: 'S-BROKER', turn_on_when: 'S-BROKER 5건 통과 시 — 특히 ①(주문당 1행) ③(환불 시 회수) ⑤(OFF 복귀 시 종전과 동일). 라이브 중개 매장 1곳·주문 0건이라 켜도 오늘 영향 0' },
   { key: 'brand_cross_owner_redeem_enabled', kind: 'setting', label: '가맹점 간 이용권 사용 + 쓴 지점 정산', default_value: 'false', staging_ref: 'S-BRANDX', turn_on_when: 'S-BRANDX 5건 통과 시 — 특히 ②(정산이 쓴 지점 merchant 로 1회) ③(소개비 붙은 이용권은 거절) ⑤(OFF 복귀 시 1·2단계와 동일). 라이브 가맹점 0곳이라 켜도 오늘 영향 0' },
+  { key: 'stay_voucher_unify_enabled', kind: 'setting', label: '숙소 = 이용권 통일(지갑 QR · 스캔 체크인 · 사용 시점 원장)', default_value: 'false', staging_ref: 'S-STAYV', turn_on_when: 'S-STAYV 6건 통과 시 — 특히 ②(스캔 1회에 원장 1회) ④(취소가 이용권을 먼저 잡음) ⑤(체크인한 예약 취소 거절). 라이브 숙소 예약 0건이라 켜도 오늘 영향 0' },
   // 💬 2026-10-10 (대표 "카카오톡으로 유어딜 세팅도 가능해? 이용권 관리같은거"): 채널 챗봇 매장 관리.
   //   둘 중 하나가 'true' 면 켜진다(env 는 배포 단위, setting 은 어드민 손잡이). 스킬 자체 게이트 KAKAO_SKILL_SECRET 와 별개.
   { key: 'kakao_bot_store_ops_enabled', kind: 'setting', label: '카카오톡 매장 관리(챗봇)', default_value: 'false', staging_ref: 'S-KAKAOBOT', turn_on_when: 'S-KAKAOBOT 절차(연결 1회 · 오늘/정산 조회 · 이용권 1장 사용 처리 후 원장 기록 · 판매 중지/재개 · 좌석 회수 시 연결 끊김) 통과 후 대표 판단으로' },

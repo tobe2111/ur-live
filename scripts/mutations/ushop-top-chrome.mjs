@@ -69,7 +69,7 @@ export default [
   {
     name: '상단1안 — PC 에도 모바일 브랜드 바를 그린다 (상단 바 두 번)',
     file: 'src/pages/curator-page/CuratorHeader.tsx',
-    find: '<div className="lg:hidden flex items-center px-4 pt-3">',
+    find: '<div className="lg:hidden flex items-center px-5 pt-3">',
     replace: '<div className="flex items-center px-4 pt-3">',
     test: 'src/tests/unit/ushop-top-chrome-2026-09-28.test.ts',
     why:

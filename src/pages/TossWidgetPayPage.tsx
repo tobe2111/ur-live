@@ -305,7 +305,7 @@ export default function TossWidgetPayPage() {
               <p className="text-[15px] font-bold leading-snug text-gray-900 dark:text-white line-clamp-2">{orderName || '—'}</p>
               {(discountPct > 0 || summary.qty) && (
                 <p className="mt-1 flex items-baseline gap-1 text-[12px]">
-                  {discountPct > 0 && <span className="font-extrabold text-sale">{discountPct}%</span>}
+                  {discountPct > 0 && <span className="font-bold text-sale">{discountPct}%</span>}
                   {discountPct > 0 && summary.origAmount && (
                     <span className="line-through text-gray-400 dark:text-gray-500">{summary.origAmount.toLocaleString('ko-KR')}원</span>
                   )}
@@ -325,7 +325,7 @@ export default function TossWidgetPayPage() {
               </div>
               <div className="flex items-baseline justify-between text-[12px]">
                 <span className="text-gray-400 dark:text-gray-500">딜 사용</span>
-                <span className="tabular-nums font-semibold text-brand-text">−{(goodsAmount - chargeAmount).toLocaleString('ko-KR')}딜</span>
+                <span className="tabular-nums font-medium text-brand-text">−{(goodsAmount - chargeAmount).toLocaleString('ko-KR')}딜</span>
               </div>
             </div>
           ) : null}

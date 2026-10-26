@@ -34,6 +34,7 @@ describe('이용권 상세 — 제목이 사진 위로 (대표 확정 1안)', ()
     const card = code('src/pages/group-buy/PassHeadCard.tsx')
     expect(card).toContain('className={PASS_HEAD.card}')
     expect(card).toContain('>{name}</h1>')
+    // 🔁 2026-10-25 E안: '옵션 선택' 카드를 걷었다 — 모바일 가격은 머리 카드 한 곳(그 루트가 lg:hidden).
     expect(card).toContain('{formatNumber(unitPrice)}원</span>')
     const cls = /card:\s*'([^']+)'/.exec(code('src/shared/pass-head.ts'))
     expect(cls, 'PASS_HEAD.card 를 못 찾았다').toBeTruthy()

@@ -41,7 +41,7 @@ import { isKorea } from '@/shared/config/region'
 import { isNativeShell } from '@/lib/native-platform'
 // TD-006: route group files
 import { sellerTopLevelRoutes } from './routes/seller-public.routes'; const SellerRouteTree = lazy(() => import('./routes/seller.routes')) // ⚡ 2026-10-18 셀러 표는 셀러 경로에서만 받는다(seller-public.routes 머리말)
-import { AgencyConsoleRoutes } from './routes/agency-console.routes'
+import { AgencyConsoleRoutes, AgencyAwareGuest } from './routes/agency-console.routes'
 const AdminRouteTree = lazy(() => import('./routes/admin.routes')) // ⚡ 2026-10-12 어드민 표는 어드민 경로에서만 받는다(admin.routes 머리말)
 
 // ❌ REMOVED: Duplicate Sentry initialization (already done in main.tsx)
@@ -134,6 +134,7 @@ const GroupBuyDetailPage = lazyPage(() => import('./pages/GroupBuyDetailPage'));
 const GroupBuyConfirmPaymentPage = lazy(() => import('./pages/GroupBuyConfirmPaymentPage'))
 // 🛡️ 2026-05-18: 숙소 공구 사용자 페이지 — PR 3/6, PR 6/6.
 const StaysSearchPage = lazyPage(() => import('./pages/StaysSearchPage')); registerBootPage('stays', StaysSearchPage.load); const SoonPage = lazy(() => import('./pages/SoonPage')) /* 🌱 오픈 예정 모아보기 */
+const LifePage = lazy(() => import('./pages/life/LifePage')); const LifeRequestFormPage = lazy(() => import('./pages/life/LifeRequestFormPage')); const LifeMyRequestsPage = lazy(() => import('./pages/life/LifeMyRequestsPage')); const LifeRequestDetailPage = lazy(() => import('./pages/life/LifeRequestDetailPage')); const LifeProPage = lazy(() => import('./pages/life/LifeProPage')); const LifeProRequestPage = lazy(() => import('./pages/life/LifeProRequestPage')); const LifeSharePage = lazy(() => import('./pages/life/LifeSharePage')); const LifeBizPage = lazy(() => import('./pages/life/LifeBizPage')) /* 🏠 생활 견적(2026-10-24) */
 const StayDetailPage = lazyPage(() => import('./pages/StayDetailPage')); registerBootPage('stayDetail', StayDetailPage.load); registerRoutePreload('stayDetail', StayDetailPage.load) // 숙소 카드·지도가 미리 받는다
 const MyStaysPage = lazy(() => import('./pages/MyStaysPage'))
 // 🛡️ 2026-06-12 (전수조사 4차 B-1): 숙소 Toss 결제 returnUrl 경량 confirm 페이지.
@@ -641,6 +642,8 @@ function AppContent() {
             <Route path="/district/:slug" element={<ErrorBoundary><DistrictCouponPage /></ErrorBoundary>} />
             {/* 🛡️ 2026-05-18: 숙소 공구 사용자 페이지 — PR 3/6 */}
             <Route path="/stays" element={<StaysSearchPage />} /><Route path="/soon" element={<SoonPage />} />
+            <Route path="/life" element={<LifePage />} /><Route path="/life/pro" element={<LifeProPage />} /><Route path="/life/pro/requests/:id" element={<LifeProRequestPage />} /><Route path="/life/q/:token" element={<LifeSharePage />} /><Route path="/life/biz/:id" element={<LifeBizPage />} />
+            <Route path="/life/request/:category" element={<LifeRequestFormPage />} /><Route path="/life/requests" element={<ProtectedRoute requireUser><LifeMyRequestsPage /></ProtectedRoute>} /><Route path="/life/requests/:id" element={<ProtectedRoute requireUser><LifeRequestDetailPage /></ProtectedRoute>} />
             {/* 🛡️ 2026-06-12 (B-1): Toss returnUrl confirm 페이지 — :id 보다 구체적 path (정적 세그먼트 우선 매칭) */}
             <Route path="/stays/checkout-return" element={<ProtectedRoute requireUser><StayCheckoutReturnPage /></ProtectedRoute>} />
             <Route path="/stays/:id" element={<StayDetailPage />} />
@@ -733,7 +736,7 @@ function AppContent() {
               </ProtectedRoute>
             } />
             <Route path="/user/profile" element={
-              <ProtectedRoute requireUser guest={<GuestMyPage />}>
+              <ProtectedRoute requireUser guest={<AgencyAwareGuest guest={<GuestMyPage />} />}>
                 <UserProfilePage />
               </ProtectedRoute>
             } />

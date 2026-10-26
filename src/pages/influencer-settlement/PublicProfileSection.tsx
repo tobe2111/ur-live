@@ -85,7 +85,7 @@ export default function PublicProfileSection() {
           type="button"
           disabled={saving}
           onClick={() => save({ ...p, is_open: p.is_open ? 0 : 1 })}
-          className={`shrink-0 px-3 py-2 rounded-full text-[12px] font-bold ${
+          className={`shrink-0 px-3 py-2 rounded-full text-[12px] font-medium ${
             p.is_open ? 'bg-brand text-white' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300'
           } disabled:opacity-50`}
         >
@@ -136,7 +136,7 @@ export default function PublicProfileSection() {
         ))}
         {p.channels.length < 5 && (
           <button type="button" onClick={() => patch({ channels: [...p.channels, { kind: 'instagram', url: '', followers: null }] })}
-            className="flex items-center gap-1 text-[12px] font-bold text-brand-text">
+            className="flex items-center gap-1 text-[12px] font-medium text-brand-text">
             <Plus className="w-3.5 h-3.5" /> 채널 추가
           </button>
         )}

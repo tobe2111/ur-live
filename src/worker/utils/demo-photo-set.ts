@@ -3,6 +3,7 @@
  *   동네딜·숙소 시드 공용 — 관련도 순으로 3~5장을 모은다.
  *
  * 이상적 우선순위(대표사진 = 커버 out[0] 이 되도록):
+ *   ⚠️ 2026-10-26 갱신 — 현행 순서는 fetchDemoPhotos 본문 주석(네이버 업체사진 → 카카오 업체사진)이 정본이다.
  *   ① 카카오 플레이스 대표사진(fetchKakaoPlacePhotos = og:image) — 그 매장이 카카오맵에 건 대표사진.
  *   ② (카카오에 사진 없을 때만) 네이버 지도(플레이스) 대표사진(fetchNaverPlaceMainPhoto) — 그 매장이
  *      네이버 지도에 건 대표사진(대표 "메인" 사진). 2026-07-21 대표 지시 반영.
@@ -23,9 +24,9 @@
  *   ⇒ 남은 경로 ①②③ 은 전부 "그 매장"에 근거가 있다(①② 지도 등록 사진, ③ 매장명 토큰 매칭).
  */
 import type { Env } from '../types/env'
-import { fetchNaverImageUrls } from './naver-image-search'
-import { fetchKakaoPlacePhotos } from './kakao-place-photos'
-import { fetchNaverPlaceMainPhoto } from './naver-place-photo'
+import { fetchKakaoPlacePhotos, classifiedTagsFor, fetchKakaoMyStorePhotos } from './kakao-place-photos'
+import { demoPhotoJudgeOn, judgeDemoPhotos, JUDGE_MAX_IMAGES } from './demo-photo-judge'
+import { fetchNaverPlaceBusinessPhotos } from './naver-place-photo'
 
 export interface DemoPhotoOpts {
   /** 카카오 place id 또는 place URL — 있으면 등록 사진을 1순위로. */
@@ -34,12 +35,14 @@ export interface DemoPhotoOpts {
   nameQuery: string
   /** 매장 주소 — 네이버 지도 대표사진 검색 정확도(동명 매장 구분). */
   address?: string | null
-  /** 네이버 보충 검색어(매장명 + 업종). 미지정 시 nameQuery 사용. */
+  /** @deprecated 2026-10-25 이미지검색 제거로 미사용(호출부 호환용). */
   naverQuery?: string
   /** 업종/지역 일반 폴백 검색어(예: "가평 펜션"). */
   fallbackQuery?: string
   /** 목표 장수(3~5 권장). */
   count?: number
+  /** 상품 종류(products.category) — 분류 사진 태그를 고른다(식사=음식 먼저, 그 밖=가게 안·밖). */
+  category?: string | null
 }
 
 /**
@@ -79,7 +82,44 @@ export function isBlockedPhotoUrl(url: string): boolean {
   return BLOCKED_PHOTO_HOSTS.some((h) => low.includes(h))
 }
 
+/** 데모 사진이 갖춰야 할 최소 장수(대표 지시 "최소 3장 이상"). 모자라면 숨기지 않고 주기적으로 다시 채운다. */
+export const DEMO_MIN_PHOTOS = 3
+
+/**
+ * 🚫 이미지검색·블로그에서 온 사진인가(2026-10-25). 그 경로는 사진 출처에서 뺐으므로, 이미 박혀 있는
+ *   갤러리에서도 걷어낸다. 검색 결과는 `search.pstatic.net` 프록시로 감싸 저장됐다(`naver-safe-image`).
+ *   ⚠️ R2 로 이관된 커버는 출처를 알 수 없어 여기서 못 잡는다 — recondition 이 커버를 새 업체 사진으로 바꾼다.
+ */
+export function isSearchDerivedPhoto(url: string | null | undefined): boolean {
+  if (!url) return false
+  return /search\.pstatic\.net|blogfiles\.|postfiles\.|mblogthumb-phinf|blogpfthumb|dthumb-phinf|pup-review-phinf|myplace-phinf/i.test(url)
+}
+
+/**
+ * 🤖 2026-10-27 (대표 "매장주 제공 사진이 있는 매장만 · 그 사진들 중에서도 연관되게") — AI 판정 모드의 수집.
+ *   후보 = 카카오 **매장주 제공(MYSTORE)** 사진만 → Claude Haiku 가 한 장씩 판정 → 통과한 것만.
+ *   `known=false` 는 "모른다"(카카오 응답 실패·판정 실패) — 호출부는 사진을 바꾸지도 데모를 내리지도 않는다.
+ *   `known=true` 이고 3장 미만이면 그 매장은 **확정적으로** 쓸 만한 매장주 사진이 모자란 것이다.
+ *   ⚠️ 네이버 업체사진은 이 모드에서 부르지 않는다 — Cloudflare 에서 막혀(429) 예산만 쓰고, 대표가 정한 출처는
+ *   "매장주 제공" 하나다. 서브리퀘스트 = 카카오 1 + 판정 1.
+ */
+export async function collectJudgedDemoPhotos(env: Env, opts: DemoPhotoOpts): Promise<{ photos: string[]; known: boolean }> {
+  const want = Math.max(1, Math.min(6, opts.count ?? 4))
+  // 카카오 장소가 없는 데모는 매장주 사진을 받을 길이 없다 — 확정적으로 모자란 것으로 본다(교체 대상).
+  if (!opts.placeId) return { photos: [], known: true }
+  const got = await fetchKakaoMyStorePhotos(opts.placeId, JUDGE_MAX_IMAGES).catch(() => ({ photos: [] as string[], total: null }))
+  if (got.total == null) return { photos: [], known: false }
+  const cands = got.photos.filter((u) => !isBlockedPhotoUrl(u))
+  // 후보가 3장도 안 되면 판정할 필요도 없이 모자란다(판정 비용 0).
+  if (cands.length < DEMO_MIN_PHOTOS) return { photos: [], known: true }
+  const verdict = await judgeDemoPhotos(env, cands, { storeName: opts.nameQuery, category: opts.category })
+  if (!verdict) return { photos: [], known: false }
+  return { photos: cands.filter((_, i) => verdict[i]).slice(0, want), known: true }
+}
+
 export async function fetchDemoPhotos(env: Env, opts: DemoPhotoOpts): Promise<string[]> {
+  // 🤖 키가 있으면 AI 판정 모드 — 판정을 못 했으면(known=false) 사진을 쓰지 않는다(판정 안 된 사진 금지).
+  if (demoPhotoJudgeOn(env)) return (await collectJudgedDemoPhotos(env, opts)).photos
   const want = Math.max(1, Math.min(6, opts.count ?? 4))
   const out: string[] = []
   const seen = new Set<string>()
@@ -90,27 +130,22 @@ export async function fetchDemoPhotos(env: Env, opts: DemoPhotoOpts): Promise<st
       if (u && !seen.has(u) && !isBlockedPhotoUrl(u)) { seen.add(u); out.push(u) }
     }
   }
-  // ① 카카오 플레이스 대표사진(그 매장이 카카오맵에 건 대표사진 = og:image).
-  if (opts.placeId) {
-    try { add(await fetchKakaoPlacePhotos(opts.placeId, want)) } catch { /* fail-soft → 네이버 */ }
+  // 🏪 2026-10-26 (대표 "업체가 올린 사진이 가장 좋잖아") — 출처는 **업체가 직접 올린 사진뿐**이다.
+  //   ① 네이버 플레이스 업체사진 탭(분류가 가장 잘 돼 있다 — 대표 판단) ② 모자라면 카카오 업체 사진
+  //   (매장주·제휴사 제공). 손님 리뷰·블로그 사진은 어느 쪽에서도 받지 않는다.
+  //   ⚠️ 종전 1순위였던 카카오 og:image 는 Cloudflare 에서 403 이라 라이브 수집이 0장이었다(진단 2484).
+  if (opts.nameQuery) {
+    try { add(await fetchNaverPlaceBusinessPhotos(opts.nameQuery, opts.address, want)) } catch { /* fail-soft → 카카오 */ }
   }
-  // ② 카카오에 사진이 없으면 → 네이버 지도(플레이스) 대표사진을 커버로. (있으면 이 호출 skip — 비용 절약)
-  if (out.length === 0 && opts.nameQuery) {
-    try {
-      const naverMain = await fetchNaverPlaceMainPhoto(opts.nameQuery, opts.address)
-      if (naverMain) add([naverMain])
-    } catch { /* fail-soft → 이미지검색 */ }
+  // 🏷️ 2026-10-27 (대표 "업체사진→분류사진") — 카카오 업체 사진, 그래도 모자라면 카카오가 장면을
+  //   분류한 사진(식사=음식·내부·외부 / 그 밖=내부·외부). 분류 없는 사진은 받지 않는다.
+  if (out.length < want && opts.placeId) {
+    try { add(await fetchKakaoPlacePhotos(opts.placeId, want, classifiedTagsFor(opts.category))) } catch { /* fail-soft */ }
   }
-  // ③ 부족분(갤러리) — 네이버 매장명 스코어링.
-  if (out.length < want) {
-    try {
-      add(await fetchNaverImageUrls(env, opts.naverQuery || opts.nameQuery, {
-        count: want - out.length, nameQuery: opts.nameQuery,
-      }))
-    } catch { /* fail-soft */ }
-  }
-  // ④ **제거됨 (2026-08-08).** 업종/지역 일반 검색은 그 매장과 아무 관계가 없는 사진을 "그 매장 대표사진"
-  //    자리에 앉힌다. 화면을 채우려고 거짓 정보를 만드는 셈이라, 비우는 쪽이 옳다.
-  //    (opts.fallbackQuery 는 호출부 호환을 위해 타입에 남겨두되 더는 사용하지 않는다.)
+  // ③ **제거됨 (2026-10-25 대표 — "블로그에서 사진 발췌해서 의미없는 것도 올려와져").**
+  //    네이버 이미지검색은 "그 이름으로 검색된 웹 이미지"라 블로그 본문 사진이 섞이고(블로그 호스트에
+  //    가산점까지 줬다), 이름이 하나도 안 맞는 0점 사진도 통과했다. 사진 출처는 **지도에 등록된 사진뿐**이다.
+  //    모자라면 지어내지 않는다 — 3장이 안 되면 recondition 이 주기적으로 다시 시도한다(demo-image-rehost.ts).
+  // ④ 제거됨 (2026-08-08) — 업종/지역 일반 검색.
   return out
 }

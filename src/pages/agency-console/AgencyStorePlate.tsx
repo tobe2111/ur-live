@@ -17,23 +17,28 @@
  * 좌석 없이도 보인다. 도구를 누르는 순간 그 매장 좌석에 앉고(`enterAgencyStore`), 이미 이 직원의 그 매장
  * 좌석이면 다시 받지 않는다(`isMyAgencySeat` — 직원 id 까지 본다).
  *
+ * ## 🤝 2026-10-24 — 한 매장 · 여러 에이전시 · **자기 이용권만** (대표 확정)
+ * 대표: *"사장님 직접 관리와 에이전시 관리가 동시에 … 성과나 이런건 분리가 철저히 되고. 한 매장이 여러 에이전시와
+ * 함께 할 수 있는거지."* → 성과 = 이용권 단위 · 에이전시는 자기 것만 본다.
+ * 그래서 판은 **이 에이전시가 맡은 이용권**만 다룬다: 오늘 숫자도 그 이용권 몫이고(`agency-store-today`),
+ * 매장 전체를 여는 도구(주문 · 정산 · 매출 분석 · 전체 도구 · 사용처리)는 판에서 뺐다 — 서버도 에이전시 좌석에게
+ * 그 API 를 막는다(`agency-product-scope` 기본 차단). 화면만 숨기면 깊은 링크로 열리고, 서버만 막으면 누를 때마다
+ * 403 이 뜬다 — 둘이 짝이다.
+ *
  * ## 💰 돈은 사장님 몫
  * 정산은 **보기만** 열린다. 출금·계좌·PIN 은 서버가 매장 주인만 받는다(`store-actor`) — 그래서 마이의
  * 출금 시트(`WithdrawSheet`)를 여기 두지 않고 정산 화면을 시트로 연다.
  */
 import { Suspense, lazy, useState } from 'react'
-import { ChevronRight, Loader2, Plus, Search } from 'lucide-react'
-import { OrdersIcon, WonCoinIcon } from '@/components/icons/urdeal-icons'
-import { QrScanIcon } from '@/components/icons/qr-scan-icon'
+import { ChevronRight, Loader2, Plus } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import { toast } from '@/hooks/useToast'
-import { LIST_PLATE_CLS, ListRow as ToolRow } from '@/pages/user-profile/list-grammar'
+import { LIST_PLATE_CLS } from '@/pages/user-profile/list-grammar'
 import { STORE_SCAN_PATH, ownPathFor } from '@/lib/seller-deep-link'
 import { enterAgencyStore, isMyAgencySeat } from './agency-api'
-import type { StoreRow } from './agency-stores-model'
+import { AGENCY_PLATE_SCOPE_NOTE, isAgencyScreen, type StoreRow } from './agency-stores-model'
 
 const ToolPageSheet = lazy(() => import('@/pages/user-profile/seller-section/ToolPageSheet'))
-const AllToolsSheet = lazy(() => import('@/pages/user-profile/seller-section/AllToolsSheet'))
 const VoucherNewSheet = lazy(() => import('@/pages/user-profile/seller-section/VoucherNewSheet'))
 
 /** 매장 상태를 판이 **직접 말한다** — 왜 노출·정산이 아직인지 화면이 안 말하면 고장으로 읽힌다. */
@@ -55,9 +60,11 @@ function todayLabelKST(): string {
   return new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', month: 'long', day: 'numeric', weekday: 'short' })
 }
 
-export default function AgencyStorePlate({ store, staffId, initialPath }: {
+export default function AgencyStorePlate({ store, staffId, initialPath, onOpenSales }: {
   store: StoreRow
   staffId: number
+  /** 📊 우리 이용권 판매 내역·통계 시트(2026-10-24) — 패널이 연다(판매 알림을 눌러도 같은 시트). 좌석 없이 본다. */
+  onOpenSales?: () => void
   /**
    * 🚪 깊은 링크(`/agency?tool=`)로 온 화면 — 처음부터 시트로 열어 둔다. **좌석 판정은 호출부(패널)가 이미 했다**
    *   (이 직원의 이 매장 좌석일 때만 넘긴다). 그래서 여기서는 발급하지 않고 effect 도 없다.
@@ -67,11 +74,11 @@ export default function AgencyStorePlate({ store, staffId, initialPath }: {
 }) {
   const [entering, setEntering] = useState(false)
   // 🚪 깊은 링크가 이용권 등록이면 대시보드 화면 대신 **등록 시트**로 연다(마이와 같은 판정 — `OWN_PATH`).
+  //   🤝 에이전시가 열 수 있는 화면만 받는다 — 매장 전체 화면 주소가 오면 무시하고 판으로 연다.
+  if (initialPath && !isAgencyScreen(initialPath)) initialPath = undefined
   const initialOwn = initialPath ? ownPathFor(initialPath) : null
-  const [tool, setTool] = useState<'tools' | 'page' | 'voucherNew' | null>(initialOwn === 'voucherNew' ? 'voucherNew' : initialPath ? 'page' : null)
+  const [tool, setTool] = useState<'page' | 'voucherNew' | null>(initialOwn === 'voucherNew' ? 'voucherNew' : initialPath ? 'page' : null)
   const [page, setPage] = useState<{ path: string; title: string } | null>(initialPath && !initialOwn ? { path: initialPath, title: '' } : null)
-  /** 전체 도구에서 연 화면은 닫으면 그 목록으로 돌아간다(마이와 같은 흐름). */
-  const [pageFrom, setPageFrom] = useState<'tools' | null>(null)
   const today = store.today
   const suspended = store.storeStatus === 'suspended'
   const note = store.storeStatus ? AGENCY_STATUS_NOTE[store.storeStatus] : undefined
@@ -87,78 +94,36 @@ export default function AgencyStorePlate({ store, staffId, initialPath }: {
     return true
   }
 
-  async function openPage(path: string, title: string, from: 'tools' | null = null) {
+  async function openPage(path: string, title: string) {
     if (!(await ensureSeat())) return
     setPage({ path, title })
-    setPageFrom(from)
     setTool('page')
-  }
-
-  /** 🧾 계산대(대시보드 밖 전체화면)로 — 좌석을 맞춘 뒤. 뒤로가기가 콘솔로 돌아온다. */
-  async function goScan() {
-    if (!(await ensureSeat())) return
-    window.location.assign(AGENCY_SCAN_PATH)
   }
 
   return (
     <>
       <div className={LIST_PLATE_CLS}>
-        {/* 🖥️ PC 는 [오늘 | 사용처리] 두 칸(안 A PC 시안). 폰은 세로로 쌓는다. */}
-        <div className="border-b border-rule lg:grid lg:grid-cols-2">
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => openPage('/seller/analytics', '매출 분석')}
-            className="w-full text-left px-4 pt-4 pb-4 lg:px-5 lg:py-5 lg:border-r lg:border-rule active:opacity-70 disabled:opacity-60"
-          >
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="text-[12px] font-bold text-gray-400">오늘</span>
-              <span className="text-[12px] text-gray-400 tabular-nums">{todayLabelKST()}</span>
-            </div>
-            <p className="mt-2 text-[28px] font-extrabold tabular-nums leading-none whitespace-nowrap text-gray-900">
-              {today ? formatNumber(today.todayRevenue) : '—'}
-              <span className="text-[15px] font-bold text-gray-500 ml-1">원</span>
-            </p>
-            <div className="flex items-center justify-between gap-2 mt-2">
-              <p className="text-[13px] text-gray-500 min-w-0 truncate">
-                {today ? `주문 ${formatNumber(today.todayOrders)}건` : '오늘 숫자를 불러오지 못했어요'}
-                {today && today.pending > 0 && <> · 확인 대기 {formatNumber(today.pending)}건</>}
-              </p>
-              <span className="shrink-0 flex items-center gap-1 text-[13px] text-gray-500">
-                매출 분석
-                <ChevronRight className="w-4 h-4" aria-hidden="true" />
-              </span>
-            </div>
-          </button>
-          <div className="p-3 border-t border-rule lg:border-t-0 lg:flex">
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => goScan()}
-              className="relative w-full flex items-stretch min-h-[64px] rounded-[10px] bg-brand-tint text-gray-900 text-left overflow-hidden active:opacity-80 disabled:opacity-60"
-            >
-              <span aria-hidden="true" className="absolute -left-[9px] top-1/2 -mt-[9px] w-[18px] h-[18px] rounded-full bg-surface" />
-              <span aria-hidden="true" className="absolute -right-[9px] top-1/2 -mt-[9px] w-[18px] h-[18px] rounded-full bg-surface" />
-              <span className="flex-1 min-w-0 flex flex-col justify-center pl-5 pr-4 py-3">
-                <span className="text-[15px] font-extrabold truncate">이용권 사용처리</span>
-                <span className="mt-1 text-[12px] text-gray-500 truncate">손님 QR을 찍어요</span>
-              </span>
-              <span aria-hidden="true" className="border-l-2 border-dashed border-brand/35" />
-              <span className="shrink-0 flex items-center justify-center w-[72px] text-brand-text">
-                {entering
-                  ? <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
-                  : <QrScanIcon size={32} aria-hidden="true" />}
-              </span>
-            </button>
+        {/* 🤝 오늘 숫자 = **이 에이전시가 맡은 이용권** 몫. 매장 전체 매출이 아니라서 매출 분석(매장 전체)으로 보내지 않는다. */}
+        <div className="border-b border-rule px-4 pt-4 pb-4 lg:px-5 lg:py-5">
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="text-[12px] font-bold text-gray-400 dark:text-gray-500">오늘 · 우리 이용권</span>
+            <span className="text-[12px] text-gray-400 dark:text-gray-500 tabular-nums">{todayLabelKST()}</span>
           </div>
+          <p className="mt-2 text-[28px] font-extrabold tabular-nums leading-none whitespace-nowrap text-gray-900 dark:text-white">
+            {today ? formatNumber(today.todayRevenue) : '—'}
+            <span className="text-[15px] font-bold text-gray-500 dark:text-gray-400 ml-1">원</span>
+          </p>
+          <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400 min-w-0 truncate">
+            {today ? `주문 ${formatNumber(today.todayOrders)}건` : '오늘 숫자를 불러오지 못했어요'}
+            {today && today.pending > 0 && <> · 확인 대기 {formatNumber(today.pending)}건</>}
+          </p>
         </div>
-        {note && <p className="text-[13px] leading-[1.55] text-gray-500 px-4 py-3 border-b border-rule lg:px-5">{note}</p>}
-        {/* 📐 2026-10-20: 마이 판과 같이 사용처리 티켓과 같은 폭(좌우 12px 안쪽 · 모서리 10px). */}
-        <div className="p-3 border-b border-rule">
+        {note && <p className="text-[13px] leading-[1.55] text-gray-500 dark:text-gray-400 px-4 py-3 border-b border-rule lg:px-5">{note}</p>}
+        <div className="p-3">
         <button
           type="button"
           disabled={busy}
-          onClick={() => openPage('/seller/group-buy', '이용권')}
+          onClick={() => openPage('/seller/group-buy', '우리 이용권')}
           className="w-full flex items-center gap-3 px-4 lg:px-5 min-h-[52px] py-2 rounded-[10px] bg-brand text-white text-left active:opacity-90 disabled:opacity-60"
         >
           <Plus className="w-[18px] h-[18px] shrink-0" aria-hidden="true" />
@@ -168,62 +133,38 @@ export default function AgencyStorePlate({ store, staffId, initialPath }: {
               {today.activeProducts > 0 ? `판매 중 ${formatNumber(today.activeProducts)}개` : '아직 0개'}
             </span>
           )}
-          <ChevronRight className="w-4 h-4 shrink-0 text-white/70" aria-hidden="true" />
+          {entering
+            ? <Loader2 className="w-4 h-4 shrink-0 animate-spin text-white/70" aria-hidden="true" />
+            : <ChevronRight className="w-4 h-4 shrink-0 text-white/70" aria-hidden="true" />}
         </button>
-        </div>
-        {/* 🖥️ PC 는 세 줄을 한 줄 세 칸으로 — 넓은 칸에 48px 줄 셋이 세로로 서면 오른쪽이 텅 빈다.
-            ⚠️ 칸이 좁아 오른쪽 값은 짧게만(여덟 자 안팎). 길면 제목이 0px 로 눌려 **'정산' 글자가 사라졌다**(하네스 실측).
-            출금이 사장님 몫이라는 말은 정산 화면이 직접 한다(서버가 주인만 받는다). */}
-        <div className="lg:grid lg:grid-cols-3 lg:[&>*:not(:last-child)]:border-r lg:[&>*]:border-rule">
-          <ToolRow
-            icon={<OrdersIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
-            label="주문"
-            hint={today && today.pending > 0 ? `확인 대기 ${formatNumber(today.pending)}건` : '지난 주문 · 환불'}
-            busy={busy}
-            onClick={() => openPage('/seller/orders', '주문')}
-          />
-          <ToolRow
-            icon={<WonCoinIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
-            label="정산"
-            hint="보기만"
-            busy={busy}
-            onClick={() => openPage('/seller/settlements', '정산')}
-          />
-          <ToolRow
-            icon={<Search className="w-[18px] h-[18px]" aria-hidden="true" />}
-            label="전체 도구"
-            busy={busy}
-            onClick={async () => { if (await ensureSeat()) setTool('tools') }}
-          />
+        {onOpenSales && (
+          <button
+            type="button"
+            onClick={onOpenSales}
+            className="mt-2 w-full flex items-center gap-3 px-4 lg:px-5 min-h-[48px] rounded-[10px] text-left active:bg-gray-50 dark:active:bg-white/5"
+          >
+            <span className="flex-1 min-w-0 text-[15px] font-semibold text-gray-900 dark:text-white truncate">판매 내역 · 통계</span>
+            <ChevronRight className="w-4 h-4 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden="true" />
+          </button>
+        )}
+        <p className="mt-3 px-1 text-[12px] leading-[1.55] text-gray-500 dark:text-gray-400">
+          {AGENCY_PLATE_SCOPE_NOTE}
+        </p>
         </div>
       </div>
 
       <Suspense fallback={null}>
-        {tool === 'tools' && (
-          <AllToolsSheet
-            storeName={store.name}
-            onClose={() => setTool(null)}
-            onPick={(path, label, inSheet, own) => {
-              // 🚪 계산대·등록은 대시보드 틀이 아니라 전용 길로(`tool-pages.ts` `OWN_PATH` — 마이와 같은 판정).
-              if (own === 'scan') { setTool(null); void goScan(); return }
-              if (own === 'voucherNew') { setPageFrom('tools'); setTool('voucherNew'); return }
-              if (inSheet) { setPage({ path, title: label }); setPageFrom('tools'); setTool('page'); return }
-              // 🧭 2026-10-12 대시보드 삭제 — 시트로 못 여는 화면은 위 두 전용 길뿐이라 여기 오지 않는다. 종전엔 남은 것을
-              //   대시보드 전체화면으로 보냈다(마이 `enterSeat(path)` · 콘솔 `goFull` + `dash=1`). 갈 대시보드가 없다.
-            }}
-          />
-        )}
         {tool === 'voucherNew' && (
           /* 등록 완료 화면의 '내 이용권 보기' 가 부른다 — 대시보드 대신 같은 이용권 목록을 시트로. */
-          <VoucherNewSheet onClose={() => { const back = pageFrom; setPageFrom(null); setTool(back) }} onCreated={() => { setPage({ path: '/seller/group-buy', title: '이용권' }); setPageFrom(null); setTool('page') }} />
+          <VoucherNewSheet onClose={() => setTool(null)} onCreated={() => { setPage({ path: '/seller/group-buy', title: '우리 이용권' }); setTool('page') }} />
         )}
         {tool === 'page' && page && (
           <ToolPageSheet
             path={page.path}
             title={page.title}
-            onClose={() => { const back = pageFrom; setPage(null); setPageFrom(null); setTool(back) }}
+            onClose={() => { setPage(null); setTool(null) }}
             /* 🚪 안쪽이 셀러 밖을 가리켰다 — 메모리 라우터엔 그 주소가 없어 빈 화면이 된다. 닫고 진짜로 보낸다. */
-            onLeave={(to) => { setPage(null); setPageFrom(null); setTool(null); window.location.assign(to) }}
+            onLeave={(to) => { setPage(null); setTool(null); window.location.assign(to) }}
           />
         )}
       </Suspense>

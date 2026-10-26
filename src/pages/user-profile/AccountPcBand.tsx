@@ -62,7 +62,7 @@ export default function AccountPcBand({ counts, userName, profileImage, onEditPr
         className={`w-16 h-16 rounded-full shrink-0 ${profileAvatarFitCls(profileImage)}`}
         onError={(e) => profileAvatarOnError(e.currentTarget, profileImage)}
       />
-      {/* 👤 폰 헤더와 **같은 문법**: 줄 전체가 눌리고, 오른쪽 끝에 `프로필 편집 ›`.
+      {/* 👤 폰 헤더와 **같은 문법**: 줄 전체가 눌리고, 이름 아래 `프로필 편집 ›`.
           ⚠️ 벨·좌석 전환은 이 버튼 **밖**이다 — 안에 넣으면 그 둘이 편집을 여는 셈이 된다. */}
       <button
         type="button"
@@ -71,11 +71,10 @@ export default function AccountPcBand({ counts, userName, profileImage, onEditPr
         className="min-w-0 flex items-center gap-2 text-left active:opacity-70 transition-opacity"
       >
         <span className="min-w-0">
-          <span className="block text-[24px] font-extrabold text-gray-900 dark:text-white truncate tracking-[-0.02em] leading-tight">{userName}</span>
-          <span className="block text-[13px] text-gray-500 dark:text-gray-400 truncate mt-1">{localStorage.getItem('user_email') || ''}</span>
+          <span className="block text-[24px] font-bold text-gray-900 dark:text-white truncate tracking-[-0.02em] leading-tight">{userName}</span>
+          {/* 📋 2026-10-25 위쪽 안 3 — 폰과 같은 문법: 이름 아래 `프로필 편집 ›`(이메일은 편집 화면이 보여 준다). */}
+          <span className="flex items-center gap-1 mt-1 text-[13px] text-gray-500 dark:text-gray-400">{t('userProfile.editProfile', { defaultValue: '프로필 편집' })}<ChevronRight className="w-4 h-4 shrink-0" aria-hidden="true" /></span>
         </span>
-        <span className="shrink-0 text-[12px] font-semibold text-gray-500 dark:text-gray-400">{t('userProfile.editProfile', { defaultValue: '프로필 편집' })}</span>
-        <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
       </button>
       <SellerSwitchInline seats={sellerSeats} />
       {/* 🔢 숫자는 오른쪽 끝에 붙는다 — 사람(왼쪽)과 자산(오른쪽)이 한 줄에서 갈린다.

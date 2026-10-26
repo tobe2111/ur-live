@@ -131,11 +131,21 @@ describe('③ 제목 — 컴포넌트와 같은 값으로 그린다', () => {
     expect(rich).toContain('오픈 예정 · 사전 응모 받는 중')
   })
 
-  it('매장명이 없으면 그 줄을 안 그린다 — 컴포넌트와 같은 조건', () => {
-    expect(readCode('src/pages/group-buy/PassHeadCard.tsx')).toContain('{merchant && (')
-    const html = buildDetailFirstScreen(seed({ restaurant_name: null }), LOADER)
-    expect(html).toContain('<h1 ')
-    expect(html).not.toContain(PASS_HEAD.merchant)
+  // 🔁 2026-10-24 (대표 승인 "그루폰식"): 그 줄이 [가게 · 종류 · 지역] 으로 넓어졌다 — 셋 다 없을 때만 안 그린다.
+  //   서버·클라가 **같은 함수**(`passSubLine`)로 만들고, 제목(h1)이 그 줄보다 **위**다.
+  // 🔤 2026-10-25 대표 확정 D안: 가게 줄이 **제목 위**로 — 순서 불변식이 뒤집혔다(서버·클라가 같은 순서인 것은 그대로).
+  it('가게·종류·지역 줄 — 같은 함수 · 셋 다 없을 때만 안 그린다 · 제목 위', () => {
+    const card = readCode('src/pages/group-buy/PassHeadCard.tsx')
+    expect(card).toContain('{sub && (')
+    expect(card).toContain('passSubLine(')
+    expect(readCode('src/worker/utils/detail-ssr-body.ts')).toContain('passSubLine(d)')
+    const none = buildDetailFirstScreen(seed({ restaurant_name: null, category: null, restaurant_address: null }), LOADER)
+    expect(none).toContain('<h1 ')
+    expect(none).not.toContain(PASS_HEAD.merchant)
+    const full = buildDetailFirstScreen(seed({ restaurant_name: '부용한우곱창', category: 'meal_voucher', restaurant_address: '경기 파주시 가재울로94번길 10' }), LOADER)
+    expect(full).toContain('부용한우곱창 · 식사 · 파주시')
+    expect(full.indexOf(PASS_HEAD.merchant), '가게 줄이 제목보다 아래로 내려갔다').toBeLessThan(full.indexOf('<h1 '))
+    expect(card.indexOf('{sub && ('), '컴포넌트도 가게 줄이 먼저여야 서버와 같다').toBeLessThan(card.indexOf('<h1 '))
   })
 })
 

@@ -314,6 +314,8 @@ export default defineConfig({
           if (OWNER_KIT_MODULES.some((p) => id.includes(p))) return 'app-owner-kit'
           if (OWNER_UI_MODULES.some((p) => id.includes(p))) return 'app-owner-ui'
           if (id.includes('/src/components/deal/OwnerManageSheet')) return 'app-owner-sheet'
+          // 🏠 2026-10-25 생활 칩 견적 카드(lazy) — 업종 그림이 공용 봉투에 섞여 전 화면 첫 방문이 +2KB 를 받았다(실측).
+          if (id.includes('/src/pages/main-home/LifeQuoteBanner') || id.includes('/src/pages/life/life-tiles')) return 'app-life-banner'
           // 🗺️ 2026-10-19 지역 링크 표 — 근거는 위 REGION_GRID_MODULES 주석
           if (REGION_GRID_MODULES.some((p) => id.includes(p))) return 'app-region-grid'
           // Icons
@@ -396,6 +398,7 @@ export default defineConfig({
           //   (`home-chunk-diet` 의 거울 검사를 새로 넣자마자 드러났다 — 주석과 코드가 어긋난 전형).
           if (id.includes('/src/shared/config/') || id.includes('/src/shared/utils/')) return 'app-shared'
           if (id.includes('/src/shared/feature-flags')) return 'app-shared'
+          if (id.includes('/src/shared/category-palette')) return 'app-shared' // 🏠 2026-10-25 엔트리가 쓰는 색 표 — 생활 그림 봉투로 끌려가 첫 화면 청크가 하나 늘었다
           // 공유 타입/상수: 런타임 코드 없이 타입 + 상수 → 별도 캐싱
           if (id.includes('/src/shared/constants/') || id.includes('/src/shared/types/')) return 'app-constants'
           // 레이아웃 컴포넌트: BottomNav, DesktopTopNav, DesktopLiveSidebar 등
@@ -491,7 +494,7 @@ export default defineConfig({
             id.includes('/src/components/deal/StarRating') ||
             id.includes('/src/components/region/') || id.includes('/src/components/SEO') ||
             id.includes('/src/components/ui/sort-menu') || id.includes('/src/shared/seo/') ||
-            id.includes('/src/shared/home-') || id.includes('/src/shared/product-flow') ||
+            (id.includes('/src/shared/home-') && !id.includes('/src/shared/home-service')) || id.includes('/src/shared/product-flow') ||
             id.includes('/src/shared/deal-category-icon') ||
             id.includes('/src/features/group-buy/FcfsBadge') || id.includes('/src/features/group-buy/useFcfs')
           ) return 'app-home'
@@ -613,6 +616,11 @@ export default defineConfig({
           //   Rollup 이 판매자 가입 화면과 함께 `app-seller-components` 에 넣었다 → 에이전시 콘솔이 매장 등록 카드에서
           //   `TERMS_CURRENT_VERSION` 하나를 읽느라 판매자 대시보드 봉투(+그 의존 전부)를 첫 화면에 받았다.
           if (id.includes('/src/pages/terms/terms-types')) return 'app-shared'
+          // 🏠 2026-10-25 같은 함정: 생활 업종 SSOT(`life-deal-subcat`, import 0 — 타입만)를 홈 피드와 사장님 수정 화면이 함께 써서
+          //   묶음기가 홈 봉투에 넣었고, 어드민이 홈 PC 봉투 넷(+23KB)을 끌고 왔다 → 자기 작은 봉투.
+          if (id.includes('/src/shared/life-deal-subcat')) return 'app-life-subcat' // 묶음기 보호 목록(LIBRARY_ENVELOPES)에 함께 — 안 그러면 다시 홈 봉투로 간다
+          // 🏠 2026-10-26 같은 함정: 업체 소개 페이지 SEO 헬퍼(`life-biz-seo`)가 규칙 없이 묶음기로 가자 교환권 첫 화면 청크가 25→27 로 쪼개졌다 → 자기 봉투.
+          if (id.includes('/src/shared/life-biz-seo')) return 'app-life-biz'
           if (id.includes('/src/components/seller-layout/')) return 'app-seller-components'
           if (id.includes('/src/components/seller/')) return 'app-seller-components'
           if (id.includes('/src/components/SellerLayout')) return 'app-seller-components'

@@ -56,8 +56,12 @@ describe('① 기다리는 동안 같은 줄들이 자리를 잡는다', () => {
      *   ⚠️ 불변식은 한 글자도 안 바꿨다 — **기다리는 예산만** 늘린다. 줄이 사라지면 여전히 빨간불이다.
      *   (뒤 네 줄은 그때 이미 마운트돼 있어 기본값으로 충분하다.)
      */
-    expect(await findByText('이용권 사용처리', {}, { timeout: 8000 })).toBeTruthy()
-    expect(await findByText('이용권 등록 · 관리')).toBeTruthy()
+    // 🔁 2026-10-25 재조준(대표 확정 내 가게 안 G) — 줄 이름이 바뀌었다(사용처리 · 이용권 등록·관리 두 칸 +
+    //   목록 판의 오늘 매출 · 판매 알림). 불변식 그대로 — 기다리는 동안에도 **같은 줄들**이 자리를 잡는다.
+    expect(await findByText('사용처리', {}, { timeout: 8000 })).toBeTruthy()
+    expect(await findByText('이용권 등록·관리')).toBeTruthy()
+    expect(await findByText('오늘 매출')).toBeTruthy()
+    expect(await findByText('판매 알림')).toBeTruthy()
     expect(await findByText('주문')).toBeTruthy()
     expect(await findByText('정산')).toBeTruthy()
     expect(await findByText('전체 도구')).toBeTruthy()

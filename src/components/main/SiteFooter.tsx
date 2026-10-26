@@ -10,7 +10,7 @@
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags'
 
-const colTitle = 'text-[12px] font-extrabold text-gray-400 dark:text-gray-500 mb-2'
+const colTitle = 'text-[12px] font-medium text-gray-400 dark:text-gray-500 mb-2'
 const colLink = 'block text-[13px] text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white py-[3px] transition-colors'
 
 export default function SiteFooter() {
@@ -25,7 +25,7 @@ export default function SiteFooter() {
             <p className="mt-2 text-[13px] leading-relaxed text-gray-500 dark:text-gray-400">
               우리 동네 이용권·공동구매·교환권을<br />할인가로, 매장에서 QR로 바로.
             </p>
-            <a href="/partnership" className="inline-block mt-3 text-[12px] font-bold text-gray-700 dark:text-gray-200 border border-line rounded-full px-4 py-2 hover:border-brand hover:text-brand transition-colors">
+            <a href="/partnership" className="inline-block mt-3 text-[12px] font-medium text-gray-700 dark:text-gray-200 border border-line rounded-full px-4 py-2 hover:border-brand hover:text-brand transition-colors">
               광고·제휴 문의 →
             </a>
           </div>

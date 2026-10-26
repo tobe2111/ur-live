@@ -624,8 +624,8 @@ export default function GroupBuyDetailPage() {
                 {/* 🧭 2026-08-30: 사진 위 카테고리 칩을 뺐다. 바로 위 빵부스러기가 같은 말을 하고 있어
                     중복이었고, 게다가 이 칩은 **자체 라벨 맵**을 들고 있어 명칭 SSOT 와 어긋났다
                     ('뷰티'/'숙박'/'액티비티' — SSOT 는 미용/숙소/기타). 사진 위엔 할인율만 남긴다. */}
-                {detail.group_buy_status === 'expired' && <span style={{ padding: '5px 9px', borderRadius: 6, background: 'rgba(55,55,55,.78)', color: '#fff', fontSize: 12, fontWeight: 700 }}>마감</span>}
-                {detail.group_buy_status === 'cancelled' && <span style={{ padding: '5px 9px', borderRadius: 6, background: 'var(--gbd-danger)', color: '#fff', fontSize: 12, fontWeight: 700 }}>취소</span>}
+                {detail.group_buy_status === 'expired' && <span style={{ padding: '5px 9px', borderRadius: 6, background: 'rgba(55,55,55,.78)', color: '#fff', fontSize: 12, fontWeight: 500 }}>마감</span>}
+                {detail.group_buy_status === 'cancelled' && <span style={{ padding: '5px 9px', borderRadius: 6, background: 'var(--gbd-danger)', color: '#fff', fontSize: 12, fontWeight: 500 }}>취소</span>}
               </div>
             </>
           }
@@ -648,7 +648,7 @@ export default function GroupBuyDetailPage() {
             ...(Number(detail.review_count || 0) > 0 ? [{ id: 'gb-sec-reviews', label: '리뷰' }] : []),
           ].map((tab) => (
             <button key={tab.id} onClick={() => document.getElementById(tab.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-              style={{ padding: '11px 15px', fontSize: 14, fontWeight: 800, color: 'var(--gbd-ink2)', background: 'transparent', border: 'none', cursor: 'pointer' }}>
+              style={{ padding: '11px 15px', fontSize: 15, fontWeight: 700, color: 'var(--gbd-ink2)', background: 'transparent', border: 'none', cursor: 'pointer' }}>
               {tab.label}
             </button>
           ))}
@@ -679,12 +679,14 @@ export default function GroupBuyDetailPage() {
             결제 때 `getPurchaseRef()` 로 실려 간다(살아 있는 레일 = 매장이 제안한 딜 소개비).
             되살리려면 배너를 새로 쓸 것: 비율·수령자가 2026-08 이후 정책과 다르다. */}
 
-        {/* 🎟️ 2026-10-11 (대표 확정 "D안"): 모바일 제목·가격·수량 → 사진 위로 겹치는 머리 카드 하나.
-            주소·"결제 즉시 교환권 발급"·수량 카드를 걷었다(수량은 구매 창으로 — `DealBottomBar`).
-            서버가 먼저 그리는 첫 화면(`detail-ssr-body.ts`)과 같은 클래스(`PASS_HEAD`)를 쓴다. */}
-        <PassHeadCard merchant={detail.restaurant_name} onnuri={(detail as { onnuri_merchant?: boolean }).onnuri_merchant}
-          isPrelaunch={isPrelaunch} name={detail.name} distKm={distKm} buyers={Number(detail.group_buy_current) || 0}
-          unitPrice={unitPrice} refPrice={refPrice} discountPct={displayDiscountPct} unitSaving={unitSaving} />
+        {/* 🛍️ 2026-10-24 (대표 승인 "그루폰식") → 🔤 2026-10-25 D안: [가게 · 종류 · 지역] → 제목 → 별점 → 주소 → 가격.
+            옵션 카드는 고른 옵션과 구매만. 서버 첫 화면(`detail-ssr-body.ts`)과 같은 클래스(`PASS_HEAD`)를 쓴다. */}
+        <PassHeadCard merchant={detail.restaurant_name} category={detail.category} address={detail.restaurant_address}
+          onnuri={(detail as { onnuri_merchant?: boolean }).onnuri_merchant} isPrelaunch={isPrelaunch} name={detail.name} distKm={distKm}
+          buyers={Number((detail as { sold_count?: number }).sold_count ?? detail.group_buy_current) || 0} rating={detail.avg_rating} reviewCount={detail.review_count}
+          unitPrice={unitPrice} refPrice={refPrice} discountPct={displayDiscountPct} />
+        {/* 🛍️ 2026-10-25 대표 확정 **E안**(*"구매하기 버튼이 2개가 동시에 있어"*): 본문 '옵션 선택' 카드를 걷었다 —
+            구매하기는 하단 바 **하나**, 수량은 그 바가 여는 구매 창에서 고른다(PC 는 우측 구매 상자). */}
 
         {/* 🎁 딜 보유자에게만(없으면 null·`empty:hidden`). 머리 카드 **아래**라 위가 안 밀린다(`detail-ssr-body.ts` 참조). */}
         <div className="px-[18px] pb-4 empty:hidden"><ShareRewardBanner sellerId={detail.seller_id as number | null} productId={detail.id} /></div>
@@ -759,7 +761,7 @@ export default function GroupBuyDetailPage() {
           {GB_ENGINE_ENABLED && detail && !isOwnProduct && (
             <button
               onClick={() => setShowPropose(true)}
-              style={{ marginTop: 14, width: '100%', padding: '11px', borderRadius: 12, fontSize: 13, fontWeight: 700 }}
+              style={{ marginTop: 14, width: '100%', padding: '11px', borderRadius: 12, fontSize: 13, fontWeight: 500 }}
               className="border border-emerald-300 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10"
             >
               이 매장에 공구 제안하기

@@ -16,13 +16,17 @@ const EXPORT_PLATS = [
 export default function ExcelExportButtons({ variant }: { variant: 'all' | 'contactable' }) {
   const [exporting, setExporting] = useState(false)
 
-  async function exportExcel(plat?: string, contactable?: boolean) {
+  /**
+   * 📥 `newOnly` — 기본은 서버가 `contactable` 을 따른다(연락 대상=묶음+도장 / 전체=종전 덤프).
+   *   `false` 를 주면 "전부 다시 받기"(도장 무시 · 도장도 안 찍음). 설계: `pool-export-batch.ts`.
+   */
+  async function exportExcel(plat?: string, contactable?: boolean, newOnly?: boolean) {
     setExporting(true)
     try {
       // ⚠️ 20k행이면 ~40MB 스트리밍 — 기본 15s 타임아웃이면 다운로드 완료 전 중단("실패").
       //   서버는 pull 스트리밍이라 OOM 없음, 클라 타임아웃만 넉넉히(120s).
       const r = await api.get(
-        `/api/admin/ads/influencer-pool/export?format=xls${plat ? `&platform=${plat}` : ''}${contactable ? '&contactable=1' : ''}`,
+        `/api/admin/ads/influencer-pool/export?format=xls${plat ? `&platform=${plat}` : ''}${contactable ? '&contactable=1' : ''}${newOnly === undefined ? '' : `&newOnly=${newOnly ? 1 : 0}`}`,
         { responseType: 'blob', timeout: 120000 },
       )
       const url = URL.createObjectURL(new Blob([r.data], { type: 'application/vnd.ms-excel' }))
@@ -41,11 +45,19 @@ export default function ExcelExportButtons({ variant }: { variant: 'all' | 'cont
 
   if (variant === 'contactable') {
     return (
-      <button onClick={() => exportExcel(undefined, true)} disabled={exporting}
-        className="px-4 py-2 rounded-lg border border-rule bg-white text-tone-ok text-sm font-medium disabled:opacity-40"
-        title="수기 제휴 제안용 — 이메일 보유 · 브랜드 제외 · 미접촉 · 반송이력 없음. 유어딜 적합 카테고리(맛집·뷰티·여행·숙소·카페 등)가 위, 그 안에서 점수 높은 순">
-        {exporting ? '내보내는 중…' : '연락 대상만 받기'}
-      </button>
+      <>
+        <button onClick={() => exportExcel(undefined, true)} disabled={exporting}
+          className="px-4 py-2 rounded-lg border border-rule bg-white text-tone-ok text-sm font-medium disabled:opacity-40"
+          title="수기 제휴 제안용 — 이메일 보유 · 브랜드 제외 · 미접촉 · 반송이력 없음. 아직 받지 않은 500명만 나오고, 받은 만큼 '내보냄' 표시가 찍혀 다음엔 그 다음 500명이 나옵니다. 유어딜 적합 카테고리가 위, 그 안에서 점수 높은 순">
+          {exporting ? '내보내는 중…' : '다음 500명 받기'}
+        </button>
+        {/* 🔁 도장을 무시하고 전부 — **도장도 안 찍는다**(사본 한 번이 전 리드를 소진시키면 안 된다). */}
+        <button onClick={() => exportExcel(undefined, true, false)} disabled={exporting}
+          className="px-3 py-2 rounded-lg border border-rule bg-white text-gray-600 text-sm disabled:opacity-40"
+          title="이미 받은 사람까지 포함해 연락 대상 전부(상한 6만). 이 다운로드는 '내보냄' 표시를 찍지 않습니다">
+          전부 다시
+        </button>
+      </>
     )
   }
 

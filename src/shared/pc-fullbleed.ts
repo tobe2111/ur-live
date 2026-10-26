@@ -11,6 +11,14 @@
  *     전역 DesktopTopNav 는 숨김(중복 방지) → `OWN_HEADER_PC_PATHS`.
  */
 const FULLBLEED_PC_PATHS = new Set<string>([
+  /**
+   * 🏠 2026-10-26 (대표 — PC 스크린샷 *"생활 카테고리 페이지들 중에서 PC 버전으로도 보여야 하지 않을까?"*):
+   *    생활 견적은 **사장님이 가게 PC 로 보는** 화면이 많다(위 B 묶음·계산대와 같은 기준 ③). 1440px 에서
+   *    430 액자에 갇혀 좌우가 소비자 앱 광고·설치 QR 이었다. 허브는 PC 에서 두 칸, 나머지(요청서·견적 비교·
+   *    사장님 화면)는 `ur-content-narrow` 로 가운데 정렬이라 풀너비에서 퍼지지 않는다.
+   *    등재 조건 확인: 생활 페이지에 `app-frame-bar` **0건**(공유 페이지 하단 바는 자기 fixed 바라 숨지 않는다).
+   */
+  '/life',
   '/', '/vouchers', '/stays',
   // 🗺️ 2026-07-16 (대표 — 지도뷰 PC 분할, 여기어때식): /map 은 lg+ 에서 풀너비 좌 리스트 + 우 지도 분할.
   //   자체 상단바(MapTopBar 검색/카테고리)를 쓰므로 own-header. 모바일(<lg)은 기존 풀스크린 지도 그대로.
@@ -114,6 +122,8 @@ const FULLBLEED_PC_PREFIXES = ['/vouchers/', '/pass/', '/stays/', '/region/',
   '/terms/',
   // `/area-report/:region` 도 같은 `AreaReportPage` 다.
   '/area-report/',
+  // 🏠 생활 견적 하위 전부(요청서 · 받은 견적 · 사장님 화면 · 공유 페이지 · 업체 페이지).
+  '/life/',
 ]
 
 // 🛍️ 2026-09-02 (대표 확정 — 유어샵 안P1 "왼쪽 프로필 고정 + 오른쪽 3열 진열대"): 유어샵 진열대만

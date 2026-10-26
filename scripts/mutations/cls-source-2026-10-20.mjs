@@ -6,6 +6,22 @@ const T = 'src/tests/unit/cls-source-2026-10-20.test.ts'
 const M = 'src/shared/cls-source.ts'
 export default [
   {
+    name: 'CLS원인 — 요소 폭 전후를 안 싣는다',
+    file: M,
+    find: "`|W${r(s.previousRect.width)}→${r(s.currentRect.width)}`",
+    replace: "''",
+    test: T,
+    why: '폭이 줄어 높이가 바뀐 밀림(스크롤바 등장)과 위가 접혀 올라간 밀림을 가를 수 없다(2026-10-24 — 유일한 실사용 표본이 그 경우).',
+  },
+  {
+    name: 'CLS원인 — 수집기가 스크롤 위치를 안 넘긴다',
+    file: 'src/lib/web-vitals-report.ts',
+    find: 'clsSourceString(e.sources, e.startTime, window.innerWidth, window.scrollY)',
+    replace: 'clsSourceString(e.sources, e.startTime, window.innerWidth)',
+    test: T,
+    why: '그 밀림이 첫 화면에서 났는지 스크롤 중에 났는지 모른다.',
+  },
+  {
     name: 'CLS원인 — 화면 글자를 원인에 싣는다',
     file: M,
     find: "  return `${tag}${id}${cls.length ? '.' + cls.join('.') : ''}`",

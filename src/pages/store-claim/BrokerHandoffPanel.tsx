@@ -26,14 +26,14 @@ export default function BrokerHandoffPanel({ code, onDone }: { code: string; onD
         그 전까지는 대행사님이 관리해요.
       </p>
       <div className="mt-4 rounded-xl bg-brand-tint px-4 py-3">
-        <p className="text-[12px] font-bold text-gray-500">승계 코드</p>
-        <p className="mt-1 text-[24px] font-extrabold tracking-wider tabular-nums text-gray-900 select-all">{code}</p>
+        <p className="text-[12px] font-medium text-gray-500">승계 코드</p>
+        <p className="mt-1 text-[24px] font-bold tracking-wider tabular-nums text-gray-900 select-all">{code}</p>
         <p className="mt-2 text-[12px] text-gray-500 break-all select-all">{link}</p>
       </div>
       <button type="button" onClick={() => void copy()} className="ur-btn ur-btn-lg ur-btn-primary w-full mt-4">
         {copied ? '복사했어요' : '사장님께 보낼 링크 복사'}
       </button>
-      <button type="button" onClick={onDone} className="w-full mt-2 py-3 text-[13px] font-bold text-gray-600">
+      <button type="button" onClick={onDone} className="w-full mt-2 py-3 text-[13px] font-medium text-gray-600">
         마이에서 매장 보기
       </button>
       <p className="mt-2 text-[12px] text-gray-400 text-center">이 코드는 매장 관리에서도 다시 볼 수 있어요.</p>

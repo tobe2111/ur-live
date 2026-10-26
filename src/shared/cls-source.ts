@@ -12,11 +12,11 @@
 /** 이 값(×1000 정수) 이상인 CLS 표본만 원인을 남긴다 — KV 쓰기를 아끼고, 0.0x 표본의 원인은 볼 필요가 없다. */
 export const CLS_SOURCE_MIN = 50
 
-const MAX_LEN = 140
+const MAX_LEN = 180
 /** 원인 문자열에 허용하는 글자 — 화면 글자(사용자 데이터)는 아예 담지 않는다. */
 const SAFE = /^[A-Za-z0-9#.:_\-/| ()[\]!→]+$/
 
-interface RectLike { y: number; height: number }
+interface RectLike { y: number; height: number; width?: number }
 interface SourceLike { node?: Node | null; previousRect: RectLike; currentRect: RectLike }
 
 /** 요소 → `tag#id.cls1.cls2` (화면 글자 없음 · 클래스 앞 둘만). */
@@ -34,12 +34,17 @@ export function describeNode(node: Node | null | undefined): string {
  * 가장 큰 밀림 한 건 → 원인 문자열.
  *   `div.ur-home-panel.flex|y1090→0|h90→0|t1980|w390`
  *   y·h 는 그 요소의 이전/현재 위치·높이(px), t 는 밀림 시각(ms), w 는 화면 폭.
+ *   🔬 2026-10-24: 뒤에 `W이전폭→현재폭`(요소 폭) · `s스크롤`(그때 scrollY)을 덧붙인다 — 유일한 실사용 표본
+ *   (`a.block.group|y114→0|h248→243|t6891|w1920`)이 **폭이 줄어 높이가 바뀐 것**(스크롤바 등장)인지
+ *   **위가 접혀 올라간 것**인지 이 둘 없이는 가를 수 없었다(실험실은 어느 조건에서도 재현 0).
  */
-export function clsSourceString(sources: SourceLike[] | undefined, startTime: number, viewportWidth: number): string {
+export function clsSourceString(sources: SourceLike[] | undefined, startTime: number, viewportWidth: number, scrollY?: number): string {
   const s = (sources || []).find((x) => x?.node && x.node.nodeType === 1) || (sources || [])[0]
   if (!s) return ''
   const r = (n: number) => Math.round(Number.isFinite(n) ? n : 0)
   const out = `${describeNode(s.node)}|y${r(s.previousRect.y)}→${r(s.currentRect.y)}|h${r(s.previousRect.height)}→${r(s.currentRect.height)}|t${r(startTime)}|w${r(viewportWidth)}`
+    + (typeof s.previousRect.width === 'number' && typeof s.currentRect.width === 'number' ? `|W${r(s.previousRect.width)}→${r(s.currentRect.width)}` : '')
+    + (typeof scrollY === 'number' ? `|s${r(scrollY)}` : '')
   return sanitizeClsSource(out)
 }
 

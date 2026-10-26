@@ -40,6 +40,10 @@ export const ALIMTALK_BUTTONS: Readonly<Record<string, readonly AlimtalkButtonSp
   seller_approved: [{ name: '이용권 등록하기', link: { kind: 'store', to: 'vouchers' } }],
   business_registration_rejected: [{ name: '다시 제출하기', link: { kind: 'store', to: 'docs' } }],
   seller_bank_changed: [{ name: '정산 계좌 확인', link: { kind: 'store', to: 'settlements' } }],
+  // 🏠 2026-10-24 생활 견적 — 요청·견적 번호는 버튼에 싣지 않는다(목록 화면으로 보내고, 본문이 무엇인지 말한다).
+  home_request_new: [{ name: '요청 보기', link: { kind: 'url', url: `${STORE_GO_ORIGIN}/life/pro` } }],
+  home_quote_arrived: [{ name: '견적 비교하기', link: { kind: 'url', url: `${STORE_GO_ORIGIN}/life/requests` } }],
+  home_quote_chosen: [{ name: '손님 연락처 보기', link: { kind: 'url', url: `${STORE_GO_ORIGIN}/life/pro` } }],
 }
 
 /** 콘솔에 등록할 링크 — 매장 번호 자리는 변수 그대로. 문서·시험이 이 값을 쓴다. */

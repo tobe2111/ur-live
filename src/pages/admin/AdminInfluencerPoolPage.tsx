@@ -20,6 +20,7 @@ import SendModeButtons from './influencer-pool/SendModeButtons'
 import ConsentedSendPanel from './influencer-pool/ConsentedSendPanel'
 import ColdSendPanel from './influencer-pool/ColdSendPanel'
 import ExcelExportButtons from './influencer-pool/ExcelExportButtons'
+import PoolExportBatches from './PoolExportBatches'
 import MarkContactedPanel from './influencer-pool/MarkContactedPanel'
 import OutreachResultPanel from './influencer-pool/OutreachResultPanel'
 import MaintenanceButtons from './influencer-pool/MaintenanceButtons'
@@ -427,6 +428,7 @@ export default function AdminInfluencerPoolPage() {
             <ConsentedSendPanel />
             <ColdSendPanel />
             <ExcelExportButtons variant="contactable" />
+            <PoolExportBatches pool="influencer" />{/* 🔓 받은 묶음 되돌리기 — 다운로드가 끊겼거나 파일을 잃었을 때의 유일한 복구 경로 */}
             <MarkContactedPanel />
             <OutreachResultPanel />{/* 결과 유입 — 반응 루프의 열린 끝(엔드포인트는 있었는데 화면이 없어 email_status 가 0건이었다) */}
           </div>

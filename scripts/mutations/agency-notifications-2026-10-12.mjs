@@ -24,12 +24,12 @@ export default [
     why: '관리자가 고른 매장만 맡긴 직원이 다른 매장의 주문·정산 알림을 본다.',
   },
   {
-    name: '[콘솔알림] 읽음 처리가 범위를 안 본다',
-    file: SRV,
-    find: "      const scopeSql = `recipient_type = 'seller' AND recipient_id IN (${ids.map(() => '?').join(',')}) AND is_read = 0`",
-    replace: "      const scopeSql = `recipient_type = 'seller' AND (1 = 1 OR recipient_id IN (${ids.map(() => '?').join(',')})) AND is_read = 0`",
+    name: '[콘솔알림] 판매 알림이 매장 범위를 안 본다',
+    file: 'src/features/agency-console/api/channel-sales.ts',
+    find: "      WHERE p.seller_id IN (${ids.map(() => '?').join(',')}) AND COALESCE(v.is_experience, 0) = 0",
+    replace: "      WHERE (1 = 1 OR p.seller_id IN (${ids.map(() => '?').join(',')})) AND COALESCE(v.is_experience, 0) = 0",
     test: TEST,
-    why: '알림 id 는 순번이라 추측된다 — 남의 매장 미읽음 표시를 지울 수 있다.',
+    why: '배정 안 된 매장(같은 에이전시라도 이 직원 담당 밖)의 판매가 알림으로 샌다.',
   },
   {
     name: '[콘솔알림] 알림을 누를 때마다 좌석을 새로 받는다',

@@ -23,6 +23,9 @@ export interface MyBooking {
   total_amount: number
   status: string
   check_in_code: string | null
+  /** 🏡 2026-10-25 숙소=이용권 통일 — 묶인 이용권(지갑 QR). 게이트 OFF 시절 예약엔 없다. */
+  voucher_code?: string | null
+  voucher_status?: string | null
   created_at: string
   sale_mode?: 'date' | 'voucher'
   voucher_type?: 'weekday' | 'weekend' | null

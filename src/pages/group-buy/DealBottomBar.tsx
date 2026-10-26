@@ -83,14 +83,14 @@ export default function DealBottomBar({
       <div style={{ background: 'var(--gbd-card)', borderTop: '1px solid var(--gbd-line2)', padding: '12px 16px calc(12px + env(safe-area-inset-bottom))' }}>
         {/* 🗺️ 레벨 전용 배지(서버 게이트의 UX 안내)는 그 자체가 정보라 남긴다 — 값이 있을 때만. */}
         {minReviewLevel && minReviewLevel > 1 ? (
-          <div className="mb-2 text-[12px] font-bold whitespace-nowrap" style={{ color: 'var(--gbd-ink)' }}>동네 리뷰어 Lv.{minReviewLevel} 전용</div>
+          <div className="mb-2 text-[12px] font-medium whitespace-nowrap" style={{ color: 'var(--gbd-ink)' }}>동네 리뷰어 Lv.{minReviewLevel} 전용</div>
         ) : null}
         {isOwner && onManage ? <OwnerManagePanel onManage={onManage} compact /> : (
         <div className="flex items-center gap-3">
           {!isPrelaunch && (
             <div className="shrink-0 min-w-0">
               {refPrice > unitPrice && <div className="text-[12px] line-through" style={{ color: 'var(--gbd-sub2)' }}>{formatNumber(refPrice * quantity)}원</div>}
-              <div className="text-[24px] font-extrabold tracking-[-.02em] leading-tight" style={{ color: 'var(--gbd-ink)' }}>
+              <div className="text-[24px] font-bold tracking-[-.02em] leading-tight" style={{ color: 'var(--gbd-ink)' }}>
                 {discountPct > 0 && <span className="mr-1 text-[17px]" style={{ color: 'var(--sale)' }}>{discountPct}%</span>}
                 {formatNumber(total)}원
               </div>
@@ -125,7 +125,7 @@ export default function DealBottomBar({
               right={(
                 <span className="flex items-center gap-1" role="group" aria-label="수량 조절">
                   <button type="button" onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={!buyable || quantity <= 1} aria-label="수량 감소" className={stepBtn} style={{ border: '1px solid var(--rule-strong)', color: 'var(--gbd-ink)' }}>−</button>
-                  <span className="min-w-[32px] text-center text-[15px] font-bold" style={{ color: 'var(--gbd-ink)' }} aria-live="polite" aria-label={`현재 ${quantity}장`}>{quantity}</span>
+                  <span className="min-w-[32px] text-center text-[15px] font-medium" style={{ color: 'var(--gbd-ink)' }} aria-live="polite" aria-label={`현재 ${quantity}장`}>{quantity}</span>
                   <button type="button" onClick={() => setQuantity(q => Math.min(maxQty, q + 1))} disabled={!buyable || quantity >= maxQty} aria-label="수량 증가" className={stepBtn} style={{ border: '1px solid var(--rule-strong)', color: 'var(--gbd-ink)' }}>+</button>
                 </span>
               )}
@@ -135,7 +135,7 @@ export default function DealBottomBar({
           <div className="mt-3"><DealUseChooser plan={dealPlan} value={dealUse ?? defaultDealUse(dealPlan)} onChange={setDealUse} /></div>
           <div className="mt-4 flex items-baseline justify-between px-1">
             <span className="text-[15px]" style={{ color: 'var(--gbd-ink2)' }}>총 결제 금액</span>
-            <span className="text-[24px] font-extrabold tracking-[-.02em]" style={{ color: 'var(--gbd-ink)' }}>{formatNumber(total)}{allDeal ? '딜' : '원'}</span>
+            <span className="text-[24px] font-bold tracking-[-.02em]" style={{ color: 'var(--gbd-ink)' }}>{formatNumber(total)}{allDeal ? '딜' : '원'}</span>
           </div>
           <div className="mt-3 mb-2 flex items-center justify-center gap-1 text-[12px]" style={{ color: 'var(--gbd-sub)' }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>

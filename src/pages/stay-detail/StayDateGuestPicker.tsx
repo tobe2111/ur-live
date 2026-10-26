@@ -208,7 +208,7 @@ export default function StayDateGuestPicker({
               aria-label="이전 달" className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-white/[0.06]">
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <span className="text-[13px] font-bold text-gray-500 dark:text-gray-400" aria-live="polite">{phase === 'out' ? '체크아웃 날짜를 고르세요' : '체크인 날짜를 먼저 고르세요'}</span>
+            <span className="text-[13px] font-medium text-gray-500 dark:text-gray-400" aria-live="polite">{phase === 'out' ? '체크아웃 날짜를 고르세요' : '체크인 날짜를 먼저 고르세요'}</span>
             <button type="button" onClick={() => setMonthOffset(m => m + 1)} aria-label="다음 달"
               className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-white/[0.06]">
               <ChevronRight className="w-5 h-5" />
@@ -218,7 +218,7 @@ export default function StayDateGuestPicker({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 flex-1 min-h-0 overflow-y-auto">
             {months.map((mDate, mi) => (
               <div key={mi} className={mi === 1 ? 'hidden lg:block' : ''}>
-                <div className="text-center text-[15px] font-extrabold text-gray-900 dark:text-white mb-2">
+                <div className="text-center text-[15px] font-bold text-gray-900 dark:text-white mb-2">
                   {mDate.getFullYear()}.{String(mDate.getMonth() + 1).padStart(2, '0')}
                 </div>
                 <div className="grid grid-cols-7 text-center text-[12px] text-gray-400 mb-1">
@@ -242,7 +242,7 @@ export default function StayDateGuestPicker({
                         aria-label={`${day}${isIn ? ' 체크인' : isOut ? ' 체크아웃' : ''}`}
                         className={`h-11 flex flex-col items-center justify-center text-[13px] transition-colors ${
                           past ? 'text-gray-300 dark:text-gray-600 cursor-default'
-                            : isIn || isOut ? 'bg-brand text-white font-extrabold rounded-xl'
+                            : isIn || isOut ? 'bg-brand text-white font-medium rounded-xl'
                             : inRange ? 'bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white'
                             : 'text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-white/[0.05] rounded-xl'
                         }`}
@@ -278,7 +278,7 @@ export default function StayDateGuestPicker({
           className="absolute left-0 right-0 top-[calc(100%+8px)] z-[10500] overflow-y-auto rounded-2xl border border-line bg-white dark:bg-[#141C27] shadow-[0_12px_40px_rgba(0,0,0,0.18)] p-4 lg:w-[360px] lg:left-auto lg:right-0">
           {overBase && (
             <div className="rounded-xl bg-gray-50 dark:bg-white/[0.05] p-3 mb-3">
-              <p className="text-[13px] font-bold text-gray-900 dark:text-white">기준인원 초과 시 추가요금이 발생할 수 있어요.</p>
+              <p className="text-[13px] font-medium text-gray-900 dark:text-white">기준인원 초과 시 추가요금이 발생할 수 있어요.</p>
               <p className="mt-1 text-[12px] text-gray-500 dark:text-gray-400">숙소마다 아동 입실가능 여부와 추가요금이 달라요. 이용 안내 및 예약 공지를 확인해 주세요.</p>
             </div>
           )}
@@ -291,7 +291,7 @@ export default function StayDateGuestPicker({
               <span className="flex items-center gap-3">
                 <button type="button" onClick={() => set(Math.max(min, v - 1))} disabled={v <= min} aria-label={`${label} 감소`}
                   className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/[0.08] text-gray-700 dark:text-gray-200 text-[17px] leading-none disabled:opacity-40">−</button>
-                <span className="w-6 text-center text-[15px] font-extrabold text-gray-900 dark:text-white" aria-live="polite">{v}</span>
+                <span className="w-6 text-center text-[15px] font-bold text-gray-900 dark:text-white" aria-live="polite">{v}</span>
                 <button type="button" onClick={() => set(Math.min(maxGuests, v + 1))} disabled={adults + kids >= maxGuests} aria-label={`${label} 증가`}
                   className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/[0.08] text-gray-700 dark:text-gray-200 text-[17px] leading-none disabled:opacity-40">+</button>
               </span>

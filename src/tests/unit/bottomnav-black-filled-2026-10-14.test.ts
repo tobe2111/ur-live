@@ -28,7 +28,7 @@ describe('하단 탭 — 검정 + 채움', () => {
     expect(render).not.toMatch(/opacity-60/)
   })
   it('라벨은 굵기로만 가른다', () => {
-    expect(render).toMatch(/text-gray-900 dark:text-white \$\{active \? 'font-semibold' : 'font-normal'\}/)
+    expect(render).toMatch(/text-gray-900 dark:text-white \$\{active \? 'font-medium' : 'font-normal'\}/)
   })
   it('아래 브랜드 점이 다시 생기지 않는다', () => {
     expect(render).not.toMatch(/rounded-full bg-brand/)

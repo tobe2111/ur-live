@@ -133,7 +133,7 @@ function renderMarkdown(md: string): string {
 function applyInline(s: string): string {
   let r = escapeHtml(s)
   // **bold**
-  r = r.replace(/\*\*([^*]+)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>')
+  r = r.replace(/\*\*([^*]+)\*\*/g, '<strong class="font-medium text-gray-900">$1</strong>')
   // `code`
   r = r.replace(/`([^`]+)`/g, '<code class="bg-gray-100 text-gray-900 px-1 py-1 rounded text-[12px] font-mono">$1</code>')
   return r
@@ -281,7 +281,7 @@ export default function GuideViewer({ guideType, editable = false }: Props) {
       {/* 📑 목차 — 어디에 무엇이 있는지 한눈에. 누르면 열고 그 자리로 간다. */}
       {sections.length > 3 && (
         <nav className="bg-white rounded-xl border border-gray-200 p-3">
-          <p className="text-[12px] font-bold tracking-wide text-gray-500 mb-2">
+          <p className="text-[12px] font-medium tracking-wide text-gray-500 mb-2">
             목차 {needle && `· "${q}" 검색 결과 ${visible.length}건`}
           </p>
           <div className="flex flex-wrap gap-2">
@@ -346,7 +346,7 @@ export default function GuideViewer({ guideType, editable = false }: Props) {
           />
           <div className="flex gap-2">
             <button onClick={() => saveSection(editingKey)} disabled={saving}
-              className="flex-1 py-2 bg-brand text-white text-[15px] font-semibold rounded-lg disabled:opacity-50 flex items-center justify-center gap-2">
+              className="flex-1 py-2 bg-brand text-white text-[15px] font-medium rounded-lg disabled:opacity-50 flex items-center justify-center gap-2">
               <Save className="w-4 h-4" /> {saving ? '저장 중...' : '저장'}
             </button>
             <button onClick={() => { setEditingKey(null); setEditForm({}) }}
@@ -369,7 +369,7 @@ export default function GuideViewer({ guideType, editable = false }: Props) {
                 onClick={() => toggleKey(s.section_key)}
                 className="flex-1 flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50"
               >
-                <h2 className="text-[15px] font-bold text-gray-900 flex items-center gap-2">
+                <h2 className="text-[15px] font-medium text-gray-900 flex items-center gap-2">
                   <span>{s.section_icon}</span>{s.section_title}
                 </h2>
                 {isExpanded ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
@@ -403,7 +403,7 @@ export default function GuideViewer({ guideType, editable = false }: Props) {
                         type="text"
                         value={editForm.section_title || ''}
                         onChange={e => setEditForm(f => ({ ...f, section_title: e.target.value }))}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded text-[15px] font-bold text-gray-900"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded text-[15px] font-medium text-gray-900"
                       />
                       <input
                         type="number"
@@ -420,7 +420,7 @@ export default function GuideViewer({ guideType, editable = false }: Props) {
                     />
                     <div className="flex gap-2">
                       <button onClick={() => saveSection(s.section_key)} disabled={saving}
-                        className="flex-1 py-2 bg-brand text-white text-[15px] font-semibold rounded-lg disabled:opacity-50 flex items-center justify-center gap-2">
+                        className="flex-1 py-2 bg-brand text-white text-[15px] font-medium rounded-lg disabled:opacity-50 flex items-center justify-center gap-2">
                         <Save className="w-4 h-4" /> {saving ? '저장 중...' : '저장'}
                       </button>
                       <button onClick={() => { setEditingKey(null); setEditForm({}) }}

@@ -18,6 +18,11 @@ describe('CLS 원인 문자열', () => {
     const s = clsSourceString([{ node: el, previousRect: { y: 1090, height: 90 }, currentRect: { y: 0, height: 0 } }], 1980.4, 390)
     expect(s).toBe('div#p.ur-home-panel.flex|y1090→0|h90→0|t1980|w390')
   })
+  it('2026-10-24 — 요소 폭 전후 · 스크롤 위치를 덧붙인다(폭이 줄어 밀렸나 vs 위가 접혔나)', () => {
+    const s = clsSourceString([{ node: el, previousRect: { y: 114, height: 248, width: 300 }, currentRect: { y: 0, height: 243, width: 294 } }], 6891, 1920, 1302.6)
+    expect(s).toBe('div#p.ur-home-panel.flex|y114→0|h248→243|t6891|w1920|W300→294|s1303')
+    expect(sanitizeClsSource(s)).toBe(s)
+  })
   it('화면 글자(사용자 데이터)를 담지 않는다', () => {
     const s = clsSourceString([{ node: el, previousRect: { y: 1, height: 1 }, currentRect: { y: 2, height: 1 } }], 1, 390)
     expect(s).not.toContain('홍길동')
@@ -32,7 +37,7 @@ describe('CLS 원인 문자열', () => {
     expect(sanitizeClsSource('<script>alert(1)</script>')).toBe('')
     expect(sanitizeClsSource('div 홍길동')).toBe('')
     expect(sanitizeClsSource(123)).toBe('')
-    expect(sanitizeClsSource('a'.repeat(500)).length).toBeLessThanOrEqual(140)
+    expect(sanitizeClsSource('a'.repeat(500)).length).toBeLessThanOrEqual(180)
   })
   it('자주 나온 요소 순으로 묶는다(위치·시각 무시)', () => {
     const rows = ['div.a|y1→2|t1|w390', 'div.b|y5→9|t2|w390', 'div.a|y3→4|t3|w412', 'div.a|y8→9|t4|w390']
@@ -48,6 +53,7 @@ describe('배선', () => {
   it('클라가 가장 큰 밀림의 원인을 큰 표본에만 싣는다', () => {
     const src = readCode('src/lib/web-vitals-report.ts')
     expect(src).toMatch(/clsSourceString\(e\.sources/)
+    expect(src).toMatch(/clsSourceString\(e\.sources, e\.startTime, window\.innerWidth, window\.scrollY\)/)
     expect(src).toMatch(/v >= CLS_SOURCE_MIN && worstSrc \? \{ src: worstSrc \}/)
     expect(CLS_SOURCE_MIN).toBeGreaterThanOrEqual(50)
   })

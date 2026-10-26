@@ -67,7 +67,10 @@ describe('서버 — 내보내기가 필터를 읽는다', () => {
     expect(SHARED, '절단 고지가 없으면 사용자는 "이게 전부"로 읽는다').toMatch(/opts\.rows\.length >= opts\.cap/)
     expect(SHARED, '무엇을 하라는지가 있어야 한다').toMatch(/필터를 더 좁혀/)
     for (const [name, b] of [['파트너', exportBlock(PARTNER_API)], ['매장', exportBlock(STORE_API)]] as const) {
-      expect(b, `${name}: 상한을 안 넘기면 고지가 영영 안 뜬다`).toMatch(/cap: EXPORT_MAX/)
+      // 🔀 2026-10-25: 상한이 모드별로 갈렸다(묶음 500 ↔ 전체 덤프) → `runBatchExport` 가 돌려준 `cap` 을 그대로 넘긴다.
+      //   불변식은 그대로 — **고지 기준이 실제로 자른 값과 같아야 한다**(손으로 다른 상수를 넘기면 고지가 안 뜬다).
+      expect(b, `${name}: 상한을 안 넘기면 고지가 영영 안 뜬다`).toMatch(/\n\s*cap,/)
+      expect(b, `${name}: 고지 기준을 손으로 적으면 실제 절단값과 갈린다`).not.toMatch(/cap: \d/)
     }
   })
 
@@ -85,9 +88,18 @@ describe('화면 — 목록과 내보내기가 **같은 조립**을 쓴다', () 
     }
   })
 
+  /**
+   * 🔀 2026-10-25: 두 화면의 `[다음 500건][전부 다시][내보낸 묶음]` 셋이 공용 부품
+   *   `PoolExportButtons` 로 묶였다(두 벌이면 필터·문구·기본값이 갈린다). 조립은 **prop 으로** 넘어간다.
+   *   불변식은 그대로 — **목록이 쓰는 그 조립이 파일까지 간다.**
+   */
   it('🔒 내보내기 호출이 그 조립을 실어 보낸다', () => {
-    expect(PARTNER_UI).toMatch(/partner-pool\/export\?format=csv&\$\{buildQuery\(\)\.toString\(\)\}/)
-    expect(STORE_UI).toMatch(/store-prospects\/export\?\$\{buildQuery\(\)\.toString\(\)\}/)
+    for (const [name, ui] of [['파트너', PARTNER_UI], ['매장', STORE_UI]] as const) {
+      expect(ui, `${name}: 내보내기 버튼群에 목록 조립이 안 넘어간다`).toMatch(/<PoolExportButtons[^>]*query=\{buildQuery\}/)
+    }
+    const BTN = SRC('src/pages/admin/PoolExportButtons.tsx')
+    expect(BTN, '부품이 받은 조립을 쿼리에 안 싣는다').toMatch(/const p = query\(\)/)
+    expect(BTN, '부품이 그 쿼리로 요청하지 않는다').toMatch(/\$\{path\}\?\$\{p\.toString\(\)\}/)
   })
 
   it('🔒 `buildQuery` 에 **페이지네이션이 없다** — 들어가면 내보내기가 1페이지만 나간다', () => {

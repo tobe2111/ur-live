@@ -12,7 +12,7 @@ import { ChevronRight } from 'lucide-react'
 import { useNotificationSheet } from '@/components/notifications/useNotificationSheet'
 // 🎨 2026-09-28: 남은 lucide 는 `ChevronRight`(프로필 편집 화살표) 하나뿐 — 조작이라 그대로 둔다.
 //    2026-09-30 수익·추천 구역이 빠지며 `ReceiptIcon`·`UrShopIcon` 소비처는 사라졌다.
-import { LogOutIcon, ScanIcon } from '@/components/icons/urdeal-icons'
+import { BellIcon, LogOutIcon, ScanIcon } from '@/components/icons/urdeal-icons'
 import { ListRow, rowIcon } from './user-profile/list-grammar'
 import MyStats from './user-profile/MyStats'
 import AccountPcBand from './user-profile/AccountPcBand'
@@ -20,6 +20,7 @@ import RoleCtaGrid from './user-profile/RoleCtaGrid'
 import ShoppingGroup from './user-profile/ShoppingGroup'
 import SellerSwitchInline from './user-profile/SellerSwitchInline'
 import SellerSection from './user-profile/SellerSectionLazy'
+import MyAgencyZone from './user-profile/MyAgencyZone'
 import { useToolDeepLinkFallback } from './user-profile/seller-section/useToolDeepLink'
 import SettingsGroup from './user-profile/SettingsGroup'
 import { useMyCounts } from './user-profile/useMyCounts'
@@ -195,7 +196,7 @@ export default function UserProfilePage() {
             alt={`${userName} 프로필 이미지`}
             loading="lazy"
             decoding="async"
-            className={`w-16 h-16 rounded-full flex-shrink-0 ${profileAvatarFitCls(profileImage)}`}
+            className={`w-12 h-12 rounded-full flex-shrink-0 ${profileAvatarFitCls(profileImage)}`}
             style={{ border: '2px solid rgba(255,255,255,0.15)' }}
             onError={(e) => profileAvatarOnError(e.currentTarget, profileImage)}
           />
@@ -211,27 +212,22 @@ export default function UserProfilePage() {
             className="flex-1 min-w-0 flex items-center gap-2 text-left active:opacity-70 transition-opacity"
             aria-label={t('userProfile.editProfile', { defaultValue: '프로필 편집' })}
           >
+            {/* 📋 2026-10-25 (대표 확정 **위쪽 안 3**) — 이름 아래가 이메일 대신 **'프로필 편집 ›'** 이다.
+                이메일은 이 줄을 누르면 열리는 편집 화면이 보여 주고, 이름 줄 오른쪽 끝의 12px 글자 + 화살표가
+                이름과 같은 줄에서 다퉈 붐볐다(대표 *"분산되고 복잡해 보여"*). 아바타도 64 → 48px. */}
             <span className="flex-1 min-w-0">
-              <span className="flex items-center gap-2 flex-wrap">
-                <span className="text-[17px] font-extrabold text-gray-900 dark:text-white truncate" style={{ letterSpacing: '-0.01em' }}>{userName}</span>
-              </span>
-              <span className="block text-[13px] text-gray-500 dark:text-white/50 mt-1 truncate">{localStorage.getItem('user_email') || ''}</span>
+              <span className="block text-[17px] font-bold text-gray-900 dark:text-white truncate" style={{ letterSpacing: '-0.01em' }}>{userName}</span>
+              <span className="flex items-center gap-1 mt-1 text-[13px] text-gray-500 dark:text-gray-400">{t('userProfile.editProfile', { defaultValue: '프로필 편집' })}<ChevronRight className="w-4 h-4 shrink-0" aria-hidden="true" /></span>
             </span>
-            {/* ✏️ 2026-10-11 (대표 *"오른쪽 버튼은 눌렀을 때 기껏해야 이름이랑 전화번호 변경이네?
-                프로필 편집이라고 바꾸던지"*): 맨 `>` 는 **무엇이 열리는지 말하지 않는다.**
-                ⚠️ 09-28 에 없앤 회색 알약을 되살리는 게 아니다 — 그건 이름·이메일 **아래 셋째 줄**이라
-                   헤더를 세 층으로 만들었다. 이건 같은 줄 오른쪽 끝의 12px 글자라 줄이 안 는다. */}
-            <span className="shrink-0 text-[12px] font-semibold text-gray-500 dark:text-gray-400">{t('userProfile.editProfile', { defaultValue: '프로필 편집' })}</span>
-            <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
           </button>
           <SellerSwitchInline seats={sellerSeats} />
           {/* 알림 버튼 — 프로필 우측 (설정 톱니는 '프로필 편집' 알약과 중복이라 제거, 설정은 하단 '설정' 그룹)
               🔔 2026-10-11 (대표 *"알림 페이지가 별도로 나오는게 아니라 위에서 올라오는 형태로"*):
                  `/notifications` 이동 → **올라오는 시트**. PC 는 2026-07-18 부터 이미 그 자리에서 열렸고
                  모바일만 페이지로 떠나고 있었다(보던 목록의 스크롤·필터가 날아간다). */}
-          <div className="flex items-center gap-1 flex-shrink-0 self-start pt-1">
-            <button onClick={bell.open} aria-label={t('userProfile.ariaNotifications')} className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-gray-100 dark:bg-white/[0.06] hover:bg-gray-200 dark:hover:bg-white/[0.12] transition-colors">
-              <svg className="w-4 h-4 text-gray-700 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 00-5-5.917V4a1 1 0 10-2 0v1.083A6 6 0 006 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <button onClick={bell.open} aria-label={t('userProfile.ariaNotifications')} className="rounded-full flex items-center justify-center w-11 h-11 -mr-2 text-gray-900 dark:text-white active:opacity-70">
+              <BellIcon className="w-6 h-6" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -262,7 +258,7 @@ export default function UserProfilePage() {
         <p className="text-[12px] text-gray-400 dark:text-gray-500">
           <Link to="/" className="hover:underline">홈</Link>
           <span className="mx-2">/</span>
-          <span className="text-gray-600 dark:text-gray-300 font-semibold">내 계정</span>
+          <span className="text-gray-600 dark:text-gray-300 font-medium">내 계정</span>
         </p>
       </div>
 
@@ -311,6 +307,8 @@ export default function UserProfilePage() {
       {/* 🖥️ 판매는 **넓은 쪽**(1.25)에 산다 — 시안 `PcFull1` 과 같은 자리다.
           목록 행이 [이름 + 설명 + ›] 이라 좁히면 설명이 먼저 잘린다. */}
       {isPc ? <SellerSection state={sellerSeats} /> : null}
+      {/* 🏢 2026-10-26 안 A — '내 가게' 바로 아래 '에이전시' 구역(에이전시 로그인이 있을 때만). */}
+      {isPc ? <MyAgencyZone /> : null}
 
       {/* ⚙️ 2026-10-11 **안 5** — 설정이 **넓은 왼쪽 칸 아래**로 내려왔다.
           안 5 에서 오른쪽은 손님 쪽(곧 쓸 이용권 · 내가 산 것)만 남는데, 설정까지 거기 두면
@@ -339,6 +337,7 @@ export default function UserProfilePage() {
       {/* 🏪 2026-09-25 (대표 확정 §14 — "하는 것도 마이에서"): 판매가 **맨 위**.
           사장님은 하루에 이 화면을 가장 많이 열고, 그때 보려는 건 오늘 숫자다. 셀러가 아니면 렌더 0. */}
       <SellerSection state={sellerSeats} />
+      <MyAgencyZone />
 
       {/* v4 광고 리워드 카드 — 딜 버는 수단이라 딜 잔액 바로 아래(웹은 null 렌더·네이티브 전용) */}
       <RewardAdCard />
@@ -371,7 +370,7 @@ export default function UserProfilePage() {
               <ScanIcon className="w-6 h-6 text-white dark:text-gray-900" aria-hidden="true" />
             </span>
             <span className="text-left min-w-0">
-              <span className="block text-[15px] font-extrabold text-white dark:text-gray-900">{t('userProfile.storeCheckout', { defaultValue: '매장 계산대' })}</span>
+              <span className="block text-[15px] font-bold text-white dark:text-gray-900">{t('userProfile.storeCheckout', { defaultValue: '매장 계산대' })}</span>
               <span className="block text-[12px] text-white/75 dark:text-gray-900/70 mt-1">{t('userProfile.storeCheckoutDesc', { defaultValue: '손님 이용권 QR을 스캔해 바로 사용 처리' })}</span>
             </span>
           </button>

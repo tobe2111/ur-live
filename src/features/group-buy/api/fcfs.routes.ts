@@ -22,6 +22,7 @@ import type { Env } from '@/worker/types/env'
 import { requireAuth, requireAdmin } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { publicCache } from '@/worker/middleware/edge-cache'
+import { chunkForBinds } from '@/shared/db/d1-binds'
 import { isVoucherCategory } from '@/shared/constants/voucher-categories'
 import { setSupplyMeta, getSupplyMeta } from '@/worker/utils/product-supply-meta'
 import { safeError } from '@/worker/utils/safe-error'
@@ -127,7 +128,14 @@ publicApp.get('/active', async (c) => {
     }
     const enabledIds = [...byId.entries()].filter(([, rec]) => rec.fcfs_enabled === '1').map(([id]) => id)
     if (enabledIds.length === 0) return c.json({ success: true, data: [] })
-    const ph = enabledIds.map(() => '?').join(',')
+    //   🧮 2026-10-26 (라이브에서 **이미 터져 있던** 것): 종전엔 `p.id IN (${enabledIds})` 로 걸렀는데
+    //     라이브 `fcfs_enabled='1'` 상품이 **395개**라 바인딩 395 > D1 한도 100 → 두 쿼리가 모두 터지고
+    //     `.catch(() => ({results:[]}))` 가 삼켜 이 엔드포인트가 **`success:true, data:[]`** 를 돌려줬다
+    //     (실측). 지도 선착순 배지·상권관 체험단 목록이 통째로 비어 있었고 **200 이라 아무도 몰랐다.**
+    //     ⇒ 쪼개서 JS 로 다시 정렬하지 않는다(ORDER BY 를 두 벌로 베끼면 갈린다). **필터를 SQL 로**
+    //     옮긴다 — `product_supply_meta` 는 `PRIMARY KEY (product_id, key)` 라 JOIN 이 행을 늘리지
+    //     않는다(실측 중복 0). 바인딩은 region 분기의 **0~1개**뿐이고 정렬은 한 글자도 안 바뀐다.
+    const fcfsJoin = "JOIN product_supply_meta mf ON mf.product_id = p.id AND mf.key = 'fcfs_enabled' AND mf.value = '1'"
     // 🏙️ 2026-07-04 (상권관 랜딩): ?region=<지역코드 5~12자리> 면 product_regions prefix 필터(additive).
     //   group-buy-public 의 region 분기와 동일 패턴 — 미전달 시 기존 쿼리 그대로.
     const regionRaw = String(c.req.query('region') || '').trim()
@@ -140,15 +148,16 @@ publicApp.get('/active', async (c) => {
     const { results: prods } = await DB.prepare(
       `SELECT p.id, p.name, p.price, p.original_price, p.image_url, p.restaurant_name, p.restaurant_address, p.category,
               (CASE WHEN COALESCE(p.slug,'') LIKE 'demo-%' THEN 1 ELSE 0 END) AS is_demo
-         FROM products p ${regionJoin}
-        WHERE p.id IN (${ph}) AND p.is_active=1 ${regionWhere}
+         FROM products p ${fcfsJoin} ${regionJoin}
+        WHERE p.is_active=1 ${regionWhere}
         ORDER BY is_demo, p.created_at DESC`
-    ).bind(...enabledIds, ...regionBinds).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }))
+    ).bind(...regionBinds).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }))
     // 🧯 2026-07-02: 상품별 COUNT 루프(N+1) → GROUP BY 단일 쿼리 — 캐시 miss 시에도 D1 왕복 상수화.
     const countRows = await DB.prepare(
-      `SELECT product_id, COUNT(*) as n FROM fcfs_applications
-        WHERE product_id IN (${ph}) AND status IN ('applied','selected','demo') GROUP BY product_id`
-    ).bind(...enabledIds).all<{ product_id: number; n: number }>().catch(() => ({ results: [] as { product_id: number; n: number }[] }))
+      `SELECT a.product_id AS product_id, COUNT(*) as n FROM fcfs_applications a
+         JOIN product_supply_meta mf ON mf.product_id = a.product_id AND mf.key = 'fcfs_enabled' AND mf.value = '1'
+        WHERE a.status IN ('applied','selected','demo') GROUP BY a.product_id`
+    ).all<{ product_id: number; n: number }>().catch(() => ({ results: [] as { product_id: number; n: number }[] }))
     const countById = new Map((countRows.results || []).map(r => [r.product_id, r.n]))
     const out = []
     for (const p of prods || []) {
@@ -337,12 +346,16 @@ adminApp.post('/:productId/select', async (c) => {
 
     // 🔔 2026-07-05: 이번 선정이 '승계'(재선정)인지 판정 — 이번 winners 를 제외하고 이미 선정 이력
     //   (selected/paid)이 있으면, 초기 선정 이후의 재선정 = 예비 당첨 승계로 본다. 알림톡 문안 분기용.
-    const winnerPh = winnerIds.map(() => '?').join(',')
-    const priorRow = await DB.prepare(
-      `SELECT COUNT(*) AS n FROM fcfs_applications
-        WHERE product_id = ? AND status IN ('selected','paid') AND user_id NOT IN (${winnerPh})`,
-    ).bind(productId, ...winnerIds).first<{ n: number }>().catch(() => null)
-    const isReplacement = (Number(priorRow?.n) || 0) > 0
+    //   🧮 2026-10-26: 종전엔 `user_id NOT IN (${winnerIds})` 로 셌는데 그건 **바인딩 1 + N** 이라
+    //     당첨자가 100명을 넘으면 D1 한도(100)에서 터지고, `.catch(() => null)` 이 삼켜 **승계인데
+    //     "첫 선정" 문안**이 조용히 나갔다(라이브 추첨 이력 0건이라 아직 안 터진 지뢰였다).
+    //     이제 선정 이력을 그대로 읽어 JS 집합으로 가른다 — 바인딩 **1개**, 그리고 풀 전체를 이미
+    //     같은 방식으로 읽고 있으므로(위 poolRows) 비용 성질이 같다.
+    const { results: priorRows } = await DB.prepare(
+      `SELECT user_id FROM fcfs_applications WHERE product_id = ? AND status IN ('selected','paid')`,
+    ).bind(productId).all<{ user_id: string }>().catch(() => ({ results: [] as { user_id: string }[] }))
+    const winnerSet = new Set(winnerIds.map(String))
+    const isReplacement = (priorRows || []).some((r) => !winnerSet.has(String(r.user_id)))
 
     for (const uid of winnerIds) {
       await DB.prepare("UPDATE fcfs_applications SET status='selected', selected_at=datetime('now') WHERE product_id=? AND user_id=?").bind(productId, uid).run().catch(() => {})
@@ -360,10 +373,20 @@ adminApp.post('/:productId/select', async (c) => {
       const _alimBg = async () => {
         try {
           const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk')
-          const ph2 = winnerIds.map(() => '?').join(',')
-          const { results: phones } = await DB.prepare(
-            `SELECT id, phone FROM users WHERE id IN (${ph2}) AND phone IS NOT NULL AND phone != ''`,
-          ).bind(...winnerIds).all<{ id: string; phone: string }>().catch(() => ({ results: [] as Array<{ id: string; phone: string }> }))
+          //   🧮 2026-10-26: 종전엔 당첨자 전원을 한 `IN (…)` 에 넣었다 — 100명을 넘으면 D1 한도에서
+          //     터지고 `.catch` 가 빈 배열로 삼켜 **당첨자 전원에게 알림톡이 안 갔다**(인앱 알림만 가고,
+          //     알림톡은 이 주석이 적어 둔 대로 "앱을 안 여는 초기 유저 도달 채널" 이다). 한도는 한 곳이 센다.
+          const phones: Array<{ id: string; phone: string }> = []
+          for (const chunk of chunkForBinds(winnerIds)) {
+            const ph2 = chunk.map(() => '?').join(',')
+            const r = await DB.prepare(
+              `SELECT id, phone FROM users WHERE id IN (${ph2}) AND phone IS NOT NULL AND phone != ''`,
+            ).bind(...chunk).all<{ id: string; phone: string }>().catch((e: unknown) => {
+              console.error(`[fcfs] 당첨자 전화 조회 실패 n=${chunk.length}:`, e)
+              return { results: [] as Array<{ id: string; phone: string }> }
+            })
+            phones.push(...(r.results || []))
+          }
           const tpl = isReplacement ? 'fcfs_replacement' : 'fcfs_selected'
           const msg = isReplacement
             ? `[유어딜] ${dealName} 체험단 참여 기회가 회원님께 넘어왔어요!\n\n앞선 선정자의 미결제로 예비 순번이 승계되었습니다. 기한 내 결제하시면 참여가 확정됩니다.\n\n확정하기: https://urdeal.kr${buyPath}`

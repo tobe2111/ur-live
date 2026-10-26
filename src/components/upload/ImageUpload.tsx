@@ -108,7 +108,7 @@ export default function ImageUpload({
   return (
     <div className={className}>
       {label && (
-        <label className="block text-[12px] font-semibold text-gray-700 dark:text-gray-200 mb-2">
+        <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-200 mb-2">
           {label} {required && <span className="text-red-500">*</span>}
         </label>
       )}
@@ -128,14 +128,14 @@ export default function ImageUpload({
               type="button"
               onClick={() => inputRef.current?.click()}
               disabled={uploading}
-              className="px-3 py-2 bg-surface text-gray-900 dark:text-white text-[12px] font-semibold rounded shadow disabled:opacity-50"
+              className="px-3 py-2 bg-surface text-gray-900 dark:text-white text-[12px] font-medium rounded shadow disabled:opacity-50"
             >
               {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : '변경'}
             </button>
             <button
               type="button"
               onClick={() => onChange('')}
-              className="px-3 py-2 bg-red-500 text-white text-[12px] font-semibold rounded shadow"
+              className="px-3 py-2 bg-red-500 text-white text-[12px] font-medium rounded shadow"
             >
               <X className="w-3 h-3 inline mr-1" />제거
             </button>
@@ -156,12 +156,12 @@ export default function ImageUpload({
           {uploading ? (
             <>
               <Loader2 className="w-6 h-6 text-blue-500 animate-spin mb-2" />
-              <p className="text-[12px] text-blue-600 font-semibold">업로드 중...</p>
+              <p className="text-[12px] text-blue-600 font-medium">업로드 중...</p>
             </>
           ) : (
             <>
               <Upload className="w-6 h-6 text-gray-400 mb-2" />
-              <p className="text-[12px] text-gray-600 font-semibold">클릭 또는 드래그</p>
+              <p className="text-[12px] text-gray-600 font-medium">클릭 또는 드래그</p>
               <p className="text-[12px] text-gray-400 mt-1">JPG / PNG / WEBP — 큰 사진은 자동으로 줄여요</p>
             </>
           )}
@@ -183,7 +183,7 @@ interface MultiProps {
 export function MultiImageUpload({ values, onChange, max = 10, tokenKey, label }: MultiProps) {
   return (
     <div>
-      {label && <label className="block text-[12px] font-semibold text-gray-700 dark:text-gray-200 mb-2">{label}</label>}
+      {label && <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-200 mb-2">{label}</label>}
       <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
         {values.map((url, i) => (
           <div key={i} className="relative aspect-square border border-line rounded-lg overflow-hidden group">
@@ -197,7 +197,7 @@ export function MultiImageUpload({ values, onChange, max = 10, tokenKey, label }
             </button>
             {/* 사진 위 스크림 배지 — 누르는 것이 아니다(브랜드 면으로 칠하면 바로 위 삭제 버튼과 헷갈린다). */}
             {i === 0 && (
-              <div className="absolute bottom-1 left-1 px-2 py-1 bg-gray-900 text-white text-[12px] font-bold rounded">대표</div> /* primary-button-ok */
+              <div className="absolute bottom-1 left-1 px-2 py-1 bg-gray-900 text-white text-[12px] font-medium rounded">대표</div> /* primary-button-ok */
             )}
           </div>
         ))}

@@ -3290,7 +3290,8 @@
       "brandWideTitleOff": "其他门店也可使用",
       "brandWideNote": "用该门店的确认码或扫码核销。结算仍归本门店。",
       "brandWideTitleAll": "品牌{{count}}家门店也可使用",
-      "brandWideNoteCross": "在同一店主的门店使用则结算到本店，在其他店主的门店使用则结算到该门店。带推荐费的券仅可在同一店主的门店使用。"
+      "brandWideNoteCross": "在同一店主的门店使用则结算到本店，在其他店主的门店使用则结算到该门店。带推荐费的券仅可在同一店主的门店使用。",
+      "agencyMine": "我们负责的使用券"
     },
     "ordersM3": {
       "today": "今天",
@@ -3382,6 +3383,30 @@
       "am": "上午",
       "pm": "下午",
       "hour": "{{n}}点"
+    },
+    "channelPerf": {
+      "title": "谁卖出的",
+      "month": "本月",
+      "last30": "最近30天",
+      "all": "全部",
+      "who": "谁",
+      "sold": "销售",
+      "revenue": "销售额",
+      "used": "已使用",
+      "refunded": "退款",
+      "products": "负责的券 {{n}} 个",
+      "ended": "已结束",
+      "pending": "等待接受",
+      "noAgency": "交给代理商后，将按代理商分别统计(运营者管理 → 交给代理商)。",
+      "referralTitle": "通过推荐链接销售",
+      "noReferral": "此期间没有通过推荐链接售出的券。",
+      "unknownUser": "未知用户",
+      "soldN": "{{n}} 张",
+      "commission": "网红佣金 {{n}} 韩元",
+      "share": "分成 {{pct}}% · {{n}} 韩元",
+      "shareUnset": "分成未设定",
+      "shareNote": "UrDeal 只计算并显示应付金额。款项由门店直接支付给代理商，税务发票由代理商开给门店。",
+      "note": "推荐链接销售已包含在上方销售中。同一笔销售从“谁负责”和“来自谁的链接”两个角度查看。"
     }
   },
   "admin": {
@@ -6020,7 +6045,9 @@
     "privacyLink": "隐私政策",
     "termsNoticeEnd": "",
     "agencyQuestion": "您是代理机构吗？",
-    "agencyLogin": "代理机构登录"
+    "agencyLogin": "代理机构登录",
+    "heroTitle2": "街坊好店，提前买更便宜",
+    "chipPass": "本地使用券"
   },
   "guide": {
     "sectionTitlePlaceholder": "章节标题",

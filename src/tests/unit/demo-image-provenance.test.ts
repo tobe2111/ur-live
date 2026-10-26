@@ -19,14 +19,11 @@ import { join } from 'node:path'
 const cron = readFileSync(join(process.cwd(), 'src/worker/cron/demo-image-rehost.ts'), 'utf8')
 
 describe('데모 이미지 출처 불변식 (demo-image-rehost)', () => {
-  it('② keepOld 는 차단 출처 커버를 유지할 수 없다', () => {
-    const m = cron.match(/const keepOld =[\s\S]{0,400}?validateImageLoads/)?.[0] ?? ''
-    expect(m).toMatch(/!isBlockedPhotoUrl\(/)
-  })
-
-  it('② keepOld 는 demo-stay 에 적용되지 않는다 (세탁된 옛 커버는 출처 판정 불가)', () => {
-    const m = cron.match(/const keepOld =[\s\S]{0,400}?validateImageLoads/)?.[0] ?? ''
-    expect(m).toMatch(/!row\.slug\.startsWith\('demo-stay-'\)/)
+  it('② 옛 커버 유지(keepOld) 경로가 없다 — 커버는 언제나 이번에 확보한 지도 등록 사진 (2026-10-25)', () => {
+    // 종전 keepOld 는 차단 검사·demo-stay 제외를 차례로 덧댔지만, R2 로 이관된 옛 커버는 출처를 알 수 없어
+    // 블로그 사진이 그 경로로 계속 살아남았다. 경로 자체를 없앴다 ⇒ 되살아나면 빨간불.
+    expect(cron).not.toMatch(/const keepOld\b/)
+    expect(cron).toMatch(/const cover = imgs\[0\]/)
   })
 
   it('③ 이관(rehost)은 차단 출처 URL 을 R2 로 세탁하지 않는다 — 두 경로 모두', () => {
@@ -41,12 +38,12 @@ describe('데모 이미지 출처 불변식 (demo-image-rehost)', () => {
   })
 
   it('시도 카운터는 버전별로 리셋된다 (버전 bump 가 문제 행에서 무효가 되지 않게)', () => {
-    expect(cron).toMatch(/demo_cond_try_v === DEMO_COND_V \? Number\(meta\.demo_cond_tries/)
-    expect(cron).toMatch(/demo_cond_try_v: DEMO_COND_V/)
+    expect(cron).toMatch(/demo_cond_try_v === COND_V \? Number\(meta\.demo_cond_tries/)
+    expect(cron).toMatch(/demo_cond_try_v: COND_V/)
   })
 
   it('시도 소진(포기) 시에도 차단 출처 커버는 내려간다', () => {
-    const giveUp = cron.match(/tries >= MAX_TRIES\) \{[\s\S]{0,700}?continue\s*\}/)?.[0] ?? ''
+    const giveUp = cron.match(/tries >= MAX_TRIES\) \{[\s\S]{0,1400}?continue\s*\}/)?.[0] ?? ''
     expect(giveUp).toMatch(/isBlockedPhotoUrl\(row\.image_url/)
     expect(giveUp).toMatch(/SET is_active = 0/)
   })

@@ -19,8 +19,8 @@ export default [
   {
     name: '🎨 판매 도구가 lucide 로 돌아간다 (정산 = Wallet)',
     file: 'src/pages/user-profile/SellerSection.tsx',
-    find: "import { ChevronDown, ChevronRight, Loader2, Plus, Search } from 'lucide-react'",
-    replace: "import { ChevronDown, ChevronRight, Loader2, Plus, Search, Wallet } from 'lucide-react'",
+    find: "import { ChevronDown, ChevronRight, Loader2, Search } from 'lucide-react'",
+    replace: "import { ChevronDown, ChevronRight, Loader2, Search, Wallet } from 'lucide-react'",
     test: TEST,
     why: '판매 쪽만 남의 세트로 돌아가면 손님 쪽과 한 화면에서 갈린다(그게 원래 상태였다).',
   },
@@ -73,9 +73,9 @@ export default [
     // 🔁 2026-10-11 재조준(안 5): 같은 이사 — 파일만 따라간다.
     name: '👤 PC 이메일만 다른 크기로 새어 나간다',
     file: 'src/pages/user-profile/AccountPcBand.tsx',
-    find: '<span className="block text-[13px] text-gray-500 dark:text-gray-400 truncate mt-1">{localStorage.getItem(\'user_email\')',
-    replace: '<span className="block text-[12px] text-gray-500 dark:text-gray-400 truncate mt-1">{localStorage.getItem(\'user_email\')',
+    find: "<span className=\"flex items-center gap-1 mt-1 text-[13px] text-gray-500 dark:text-gray-400\">{t('userProfile.editProfile'",
+    replace: "<span className=\"flex items-center gap-1 mt-1 text-[12px] text-gray-500 dark:text-gray-400\">{t('userProfile.editProfile'",
     test: TEST,
-    why: '같은 줄이 모바일 13 / PC 12 면 두 벌이 갈린 것이고, 눈으로는 거의 안 보여서 영영 안 고쳐진다.',
+    why: "같은 줄(이름 아래 프로필 편집)이 모바일 13 / PC 12 면 두 벌이 갈린 것이고, 눈으로는 거의 안 보여서 영영 안 고쳐진다(2026-10-25 안 3 으로 이메일 → 편집 라벨).",
   },
 ]

@@ -124,33 +124,33 @@ export default function HostingPage() {
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className={`text-[12px] px-2 py-1 rounded-full font-bold ${status.color}`}>{status.label}</span>
+                          <span className={`text-[12px] px-2 py-1 rounded-full font-medium ${status.color}`}>{status.label}</span>
                           <span className="text-[12px] text-gray-500 dark:text-gray-400">
                             {formatNumber(host.current_quantity)}/{formatNumber(host.target_quantity)}명
                           </span>
                         </div>
                         <p className="text-[15px] font-medium truncate">{host.product_name}</p>
                         {host.note && <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">💬 {host.note}</p>}
-                        <p className="text-[12px] text-brand-text mt-1 font-bold">+{formatWon(host.total_earnings)} 적립</p>
+                        <p className="text-[12px] text-brand-text mt-1 font-medium">+{formatWon(host.total_earnings)} 적립</p>
                       </div>
                     </div>
                     <div className="flex gap-2">
                       <button
                         onClick={() => copyInvite(host)}
-                        className="flex-1 py-2 bg-surface hover:bg-gray-100 dark:hover:bg-[#2C2F35] text-gray-700 dark:text-gray-300 text-[12px] font-bold rounded-lg border border-line"
+                        className="flex-1 py-2 bg-surface hover:bg-gray-100 dark:hover:bg-[#2C2F35] text-gray-700 dark:text-gray-300 text-[12px] font-medium rounded-lg border border-line"
                       >
                         🔗 초대 링크
                       </button>
                       <Link
                         to={`/host/${host.id}`}
-                        className="flex-1 py-2 bg-surface hover:bg-gray-100 dark:hover:bg-[#2C2F35] text-gray-700 dark:text-gray-300 text-[12px] font-bold rounded-lg text-center border border-line"
+                        className="flex-1 py-2 bg-surface hover:bg-gray-100 dark:hover:bg-[#2C2F35] text-gray-700 dark:text-gray-300 text-[12px] font-medium rounded-lg text-center border border-line"
                       >
                         👥 참여자
                       </Link>
                       {host.status === 'active' && (
                         <button
                           onClick={() => handleCancel(host.id)}
-                          className="px-3 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 text-[12px] font-bold rounded-lg"
+                          className="px-3 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 text-[12px] font-medium rounded-lg"
                         >
                           취소
                         </button>

@@ -102,14 +102,13 @@ describe('③ 마이 — 큰 버튼과 같은 길', () => {
   })
 })
 
-describe('④ 에이전시 콘솔 — 마이와 같은 계산대 · 같은 등록 시트', () => {
-  it('scan → /store/scan (대시보드 껍데기를 안 탄다)', () => {
-    expect(PLATE).toContain("if (own === 'scan') { setTool(null); void goScan(); return }")
-    expect(PLATE).toContain('window.location.assign(AGENCY_SCAN_PATH)')
+describe('④ 에이전시 콘솔 — 마이와 같은 등록 시트 · 🤝 계산대는 사장님만(2026-10-24)', () => {
+  it('계산대 주소는 마이와 같은 값으로 남겨 둔다(다시 열 때 갈리지 않게) — 하지만 판에서 열지 않는다', () => {
     expect(PLATE).toContain('export const AGENCY_SCAN_PATH = STORE_SCAN_PATH')
+    expect(PLATE).not.toContain('window.location.assign(AGENCY_SCAN_PATH)')
   })
-  it('voucherNew → 등록 시트', () => {
-    expect(PLATE).toContain("if (own === 'voucherNew') { setPageFrom('tools'); setTool('voucherNew'); return }")
+  it('voucherNew → 등록 시트(깊은 링크도)', () => {
+    expect(PLATE).toContain("initialOwn === 'voucherNew' ? 'voucherNew'")
     expect(PLATE).toContain('<VoucherNewSheet')
   })
 })

@@ -13,6 +13,8 @@
  *      되돌릴 방법이 0 이었다(어드민 PATCH 는 `status` 를 아예 안 받는다).
  */
 
+import { agencyProductFilterSql } from '../../../worker/utils/agency-product-scope'
+
 /** 화면이 실제로 읽는 이용권 메타. 여기 없으면 에러가 아니라 `undefined` 가 되어 조용히 틀린다. */
 const VOUCHER_META_COLS = `
         p.original_price,
@@ -31,6 +33,11 @@ export interface SellerProductsQueryInput {
   search?: string
   /** 삭제분까지 받을지. 기본 false — 켜는 것은 '삭제됨' 세그먼트 하나뿐이다. */
   includeDeleted?: boolean
+  /**
+   * 🤝 에이전시 좌석이면 그 에이전시 id — **자기가 맡은 이용권만** 고른다(2026-10-24 대표 확정, 성과 = 이용권 단위).
+   * 목록과 count 가 같은 조각을 쓴다(갈리면 남의 이용권 수가 `total` 로 새어 나간다).
+   */
+  agencyId?: number | null
 }
 
 export interface SellerProductsQuery {
@@ -43,6 +50,7 @@ export interface SellerProductsQuery {
 export function buildSellerProductsQuery(input: SellerProductsQueryInput): SellerProductsQuery {
   const { sellerId, limit, offset, sort, includeDeleted = false } = input
   const search = input.search || ''
+  const agencyId = input.agencyId != null && Number(input.agencyId) > 0 ? Number(input.agencyId) : null
 
   // ① 같은 규칙을 목록·count 가 나눠 쓴다(별칭만 다르다).
   const notDeleted = includeDeleted ? '' : `AND COALESCE(p.status, 'ACTIVE') != 'DELETED'`
@@ -78,6 +86,10 @@ export function buildSellerProductsQuery(input: SellerProductsQueryInput): Selle
   //   + 필터를 is_active=1 → status != DELETED 로 변경(비활성/일시중지 상품도 목록에 보여 재활성화 가능,
   //   삭제만 숨김). 이전엔 비활성화 즉시 목록에서 사라져 재활성화 경로가 0이었음.
   const params: unknown[] = [sellerId]
+  if (agencyId) {
+    query += ` ${agencyProductFilterSql('p')}`
+    params.push(agencyId, sellerId)
+  }
   if (search) {
     query += ` AND (p.name LIKE ? OR p.description LIKE ?)`
     params.push(`%${search}%`, `%${search}%`)
@@ -87,6 +99,10 @@ export function buildSellerProductsQuery(input: SellerProductsQueryInput): Selle
 
   let countQuery = `SELECT COUNT(*) as total FROM products WHERE seller_id = ? ${notDeletedBare} AND COALESCE(is_supply_product, 0) = 0`
   const countParams: unknown[] = [sellerId]
+  if (agencyId) {
+    countQuery += ` ${agencyProductFilterSql('')}`
+    countParams.push(agencyId, sellerId)
+  }
   if (search) {
     countQuery += ` AND (name LIKE ? OR description LIKE ?)`
     countParams.push(`%${search}%`, `%${search}%`)

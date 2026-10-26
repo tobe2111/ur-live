@@ -45,9 +45,17 @@ export const COMPANY_INDEX_DDL: readonly string[] = [
    *   하나라도 어긋나면 플래너가 이 인덱스를 그냥 무시하고 예전처럼 전수 정렬한다(경고 없음).
    *   ⇒ `enrich-lane.ts` 의 ORDER BY 를 고치면 **여기도 같은 커밋에서** 고칠 것. 유닛이 짝을 강제한다.
    */
-  `CREATE INDEX IF NOT EXISTS idx_company_leads_enrich_order ON ad_company_leads(
+  // 🔁 **v2 (2026-10-24)** — `enrich-lane` 의 ORDER BY 에 `미착수 먼저` 키가 앞에 붙어 키 순서가 바뀌었다
+  //   (대표 "이메일 수집도 더 잘 되면 좋겠음" — 하루 크롤의 70%가 이미 실패한 행 재시도였다).
+  //   ⚠️ **이름을 바꾼 이유**: `CREATE INDEX IF NOT EXISTS` 는 같은 이름의 인덱스가 이미 있으면
+  //   컬럼이 달라도 **조용히 아무것도 하지 않는다.** 이름을 유지하면 라이브엔 옛 4키 인덱스가 남아
+  //   플래너가 그것을 무시하고 전수 정렬로 돌아간다(경고 없이 읽기 폭증 재발). 새 이름으로 만들고
+  //   **그 다음에** 옛 인덱스를 떨어뜨린다(순서가 반대면 실패 시 인덱스가 아예 없는 창이 생긴다).
+  `CREATE INDEX IF NOT EXISTS idx_company_leads_enrich_order_v2 ON ad_company_leads(
      (CASE WHEN website IS NOT NULL AND website != '' THEN 0 ELSE 1 END),
+     (CASE WHEN enrich_checked_at IS NULL THEN 0 ELSE 1 END),
      (CASE WHEN tier = 1 THEN 0 ELSE 1 END), active, id DESC) WHERE merged_into IS NULL`,
+  'DROP INDEX IF EXISTS idx_company_leads_enrich_order',
   /**
    * ③ **카카오 전화 스윕이 60건 뽑으려고 31만 행을 정렬하던 것**을 멈추는 인덱스 (2026-08-30).
    *

@@ -28,7 +28,7 @@ export const TAX_LABEL: Record<TaxType, string> = {
 }
 
 const BANKS = ['KB국민은행', '신한은행', '우리은행', '하나은행', 'NH농협은행', 'IBK기업은행', '케이뱅크', '카카오뱅크', '토스뱅크', '새마을금고', '신협', '우체국']
-const labelCls = 'block text-[13px] font-semibold text-gray-700 dark:text-gray-200 mb-1'
+const labelCls = 'block text-[13px] font-medium text-gray-700 dark:text-gray-200 mb-1'
 const inputCls = 'w-full h-12 px-3 rounded-xl bg-gray-100 dark:bg-white/[0.06] text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-brand/40'
 
 export default function SettleInfoSheet({ form, setForm, ownerFunded, saving, onSave, onClose }: {
@@ -68,7 +68,7 @@ export default function SettleInfoSheet({ form, setForm, ownerFunded, saving, on
             <button type="button" onClick={() => setForm(f => ({ ...f, payout_method: 'deal' }))} className={choice(form.payout_method === 'deal')}>
               <p className="text-[15px] font-bold text-gray-900 dark:text-white">딜 <span className="text-brand-text">+20%</span></p>
               <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{ownerFunded ? '매장 몫에서 지급, 유어딜 결제에 사용' : '유어딜 결제에 사용, 환불 불가'}</p>
-              <p className="text-[12px] font-bold text-brand-text mt-1">금액 제한 없음</p>
+              <p className="text-[12px] font-medium text-brand-text mt-1">금액 제한 없음</p>
             </button>
           </div>
         </div>
@@ -116,7 +116,7 @@ export default function SettleInfoSheet({ form, setForm, ownerFunded, saving, on
 
         <label className="flex items-center justify-between gap-3 cursor-pointer">
           <span className="min-w-0">
-            <span className="block text-[15px] font-semibold text-gray-900 dark:text-white">랭킹에 이름 공개</span>
+            <span className="block text-[15px] font-medium text-gray-900 dark:text-white">랭킹에 이름 공개</span>
             <span className="block text-[12px] text-gray-500 dark:text-gray-400 mt-1">끄면 랭킹에 익명으로 나와요</span>
           </span>
           <input

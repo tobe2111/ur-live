@@ -26,11 +26,11 @@
  * 상태를 **직접 말한다** — 노출·정산이 왜 아직인지 화면이 설명하지 않으면 사장님은 고장으로 읽는다.
  */
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
-import { ChevronDown, ChevronRight, Loader2, Plus, Search } from 'lucide-react'
+import { ChevronDown, ChevronRight, Loader2, Search } from 'lucide-react'
 // 🎨 2026-09-28: 판매 도구 여덟 칸의 뜻 아이콘. lucide 로 남긴 넷은 전부 **조작**이다
 //    (펼치기·이동·로딩·검색) — 어느 앱에서나 같은 모양이라 직접 그릴 값이 없다.
 import {
-  OrdersIcon, WonCoinIcon, UrShopIcon,
+  OrdersIcon, WonCoinIcon, UrShopIcon, TicketStubIcon, ChartIcon,
 } from '@/components/icons/urdeal-icons'
 import { QrScanIcon } from '@/components/icons/qr-scan-icon' // 32 그리드라 24 그리드 세트와 파일을 나눴다
 import { formatNumber } from '@/utils/format'
@@ -47,7 +47,7 @@ import StoreNotifButton from './seller-section/StoreNotifications'
 // 🧾 2026-09-28: 묶음 라벨·줄은 손님 쪽 목록과 **같은 부품**이다(`list-grammar`).
 //   종전엔 이 파일 안에 `GroupLabel`/`ToolRow` 가 따로 있었고, 손님 쪽은 또 다른 문법이라
 //   같은 화면에 목록 문법이 두 벌이었다 — 대표 *"허술해"*(09-28)의 실체 중 하나.
-import { LIST_PLATE_CLS, SECTION_TITLE_CLS, ListRow as ToolRow } from './list-grammar'
+import { LIST_PLATE_CLS, SECTION_TITLE_CLS, ROW_SHELL_CLS, ROW_LABEL_CLS, ListRow as ToolRow } from './list-grammar'
 
 /**
  * ⏳ **시트는 전부 열 때 받는다** (2026-09-26 — 대표 *"로딩 속도를 줄이고"*).
@@ -69,12 +69,6 @@ const ToolPageSheet = lazy(() => import('./seller-section/ToolPageSheet'))
 const VoucherNewSheet = lazy(() => import('./seller-section/VoucherNewSheet'))
 
 
-function todayLabelKST(): string {
-  // 워커도 브라우저도 TZ 를 믿을 수 없다 — KST 로 명시해 읽는다(CLAUDE.md 시각 룰).
-  return new Date().toLocaleDateString('ko-KR', {
-    timeZone: 'Asia/Seoul', month: 'long', day: 'numeric', weekday: 'short',
-  })
-}
 
 /**
  * 마이 안에서 열리는 묶음·도구. 하나가 늘면 여기와 `openTool` 두 곳이 같이 바뀐다.
@@ -313,8 +307,8 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
         {/* ⚠️ 크기·무게·색은 `SECTION_TITLE_CLS` 한 곳(손으로 적으면 이 제목만 옛 값으로 남는다 — 시험이 대조). */}
         <h2 className={`leading-tight ${SECTION_TITLE_CLS}`}>내 가게</h2>
         <div className="flex-1" />
-        {/* 🔔 2026-10-12 판매 알림 — 종전엔 대시보드 껍데기의 종에서만 보였다(사장님을 마이로 보내며 사라진 받은편지함). */}
-        {!awaiting && <StoreNotifButton currentSellerId={store.seller_id} onOpenPage={(p) => { void openPage(p, '') }} />}
+        {/* 🔔 판매 알림은 2026-10-25 **안 G** 로 머리에서 판 안의 줄로 내려갔다(아래 `variant="row"`) —
+            머리줄에 알약·가게 이름이 나란히 서면 한 덩어리로 읽혔다. */}
         {/* ➕ 2026-10-06: 1곳이어도 누를 수 있다 — 시트 맨 아래 [+ 매장 추가] 가 마이의 유일한 매장 추가 문이다. */}
         {!awaiting && stores.length >= 1 ? (
           <button
@@ -345,100 +339,80 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
             안 C 는 모든 구역에 제목을 주므로 제목이 그 일을 못 한다).
           ⚠️ **PC 도 같은 판이다.** 09-28 의 `lg:flex` [오늘 | 사용처리] 가로 배치를 걷었다 —
              안 C 의 PC 시안이 세로로 쌓고, "오늘이 머리" 라는 그 결정의 내용은 그대로 지켜진다. */}
-      <div className={LIST_PLATE_CLS}>
-        {/* 🎨 파란 밴드 없음(2026-09-28 판단 승계): 바로 아래 파란 사용처리 줄과 면이 둘이 되면
-            어느 쪽도 강조가 아니다. 주인공은 규칙 ③ 그대로 **숫자**다. */}
-        <div className="border-b border-rule">
-          {/* 🔢 2026-09-30 (대표 "다 순서대로 이상적으로") — **오늘 카드가 곧 매출 분석의 입구다.**
-              종전엔 이 숫자 아래에 `매출 분석` 줄이 따로 있었다. 같은 데이터의 드릴다운인데
-              줄 하나를 더 쓰고 있었던 셈이라, 그 줄을 지우고 **숫자를 누르면 열리게** 했다.
-              ⚠️ 말 없는 클릭면을 만들지 않는다 — 오른쪽에 `매출 분석 ›` 라고 **적는다**.
-                 (2026-07-02 상세의 "ChevronRight 로 클릭 유도하면서 onClick 없던 dead 어포던스" 의
-                  정반대 실수 = onClick 은 있는데 아무 표시가 없는 것. 둘 다 안 된다.) */}
-          <button
-            type="button"
-            disabled={entering}
-            onClick={() => openPage('/seller/analytics', '매출 분석')}
-            className="w-full text-left px-4 pt-4 pb-4 active:opacity-70 disabled:opacity-60"
-          >
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="text-[12px] font-bold text-gray-400">오늘</span>
-              <span className="text-[12px] text-gray-400 tabular-nums">{blank(todayLabelKST())}</span>
-            </div>
-            {/* 🖥️ `whitespace-nowrap`: 좁은 칸에서 `412,000` 과 `원` 이 두 줄로 갈라지면 안 된다. */}
-            <p className="mt-2 text-[28px] font-extrabold tabular-nums leading-none whitespace-nowrap text-gray-900 dark:text-white">
-              {blank(formatNumber(store?.today_revenue))}
-              <span className={`text-[15px] font-bold text-gray-500 dark:text-gray-400 ml-1${awaiting ? ' invisible' : ''}`}>원</span>
-            </p>
-            <div className="flex items-center justify-between gap-2 mt-2">
-              <p className="text-[13px] text-gray-500 dark:text-gray-400 min-w-0 truncate">
-                {blank(`주문 ${formatNumber(store?.today_orders)}건`)}
-                {!awaiting && store.pending > 0 && <> · 확인 대기 {formatNumber(store.pending)}건</>}
-              </p>
-              <span className="shrink-0 flex items-center gap-1 text-[13px] text-gray-500 dark:text-gray-400">
-                매출 분석
-                <ChevronRight className="w-4 h-4" aria-hidden="true" />
-              </span>
-            </div>
-          </button>
-          {note && (
-            <p className="text-[13px] leading-[1.55] text-gray-500 dark:text-gray-400 px-4 pb-4 -mt-1">
-              {note}
-            </p>
-          )}
-        </div>
-
-        {/* 🎟️ 사용처리 = **QR 티켓**(2026-10-10 대표 확정 안 3 — *"바코드 모양이 아니라 QR모양이어야"*).
-            등록 줄과 같은 줄 문법이면 "다르더라도 티가 나야" 하는 둘이 안 갈린다 ⇒ 생김새부터 다르게
-            (홈 둘 + 점선 + QR 꼬리 = 손님이 내미는 그 이용권). 면은 옅은 블루 — 진한 블루는 등록 줄 하나다.
-            ⚠️ **어느 가게로 소각되는지는 좌석이 정한다** — 먼저 이 가게 좌석에 앉히고 보낸다(되돌릴 수 없다). */}
-        <div className="px-3 pt-3">
-          <button
-            type="button"
-            disabled={entering}
-            onClick={() => enterSeat('/store/scan')}
-            className="relative w-full flex items-stretch min-h-[64px] rounded-[10px] bg-brand-tint text-gray-900 dark:text-white text-left overflow-hidden active:opacity-80 disabled:opacity-60"
-          >
-            {/* 홈은 판과 **같은 색**(`bg-surface`)으로 뚫는다 — 다른 색이면 점 두 개로 읽힌다. */}
-            <span aria-hidden="true" className="absolute -left-[9px] top-1/2 -mt-[9px] w-[18px] h-[18px] rounded-full bg-surface" />
-            <span aria-hidden="true" className="absolute -right-[9px] top-1/2 -mt-[9px] w-[18px] h-[18px] rounded-full bg-surface" />
-            <span className="flex-1 min-w-0 flex flex-col justify-center pl-5 pr-4 py-3">
-              <span className="text-[15px] font-extrabold truncate">이용권 사용처리</span>
-              <span className="mt-1 text-[12px] text-gray-500 dark:text-gray-400 truncate">손님 QR을 찍어요</span>
-            </span>
-            <span aria-hidden="true" className="border-l-2 border-dashed border-brand/35" />
-            <span className="shrink-0 flex items-center justify-center w-[72px] text-brand-text">
-              {entering
-                ? <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
-                : <QrScanIcon size={32} aria-hidden="true" />}
-            </span>
-          </button>
-        </div>
-
-        {/* 🔵 이용권 등록 · 관리 — 판의 **유일한 진한 블루 면**(안 3). 오른쪽 값은 모르면 안 그린다.
-            📐 2026-10-20 (대표 "2,3,4 모두 다 고쳐줘"): 위 사용처리 티켓과 **같은 폭**으로 — 티켓은 좌우 12px 안쪽에
-            서는데 이 줄만 판 끝까지 꽉 차서 두 칸의 폭이 갈렸다. 같은 여백 · 같은 모서리(10px)로 맞추고 구분선은 이 아래 하나. */}
-        <div className="p-3 border-b border-rule">
+      {/* 🎟️ 2026-10-25 (대표 확정 **안 G** — *"안 G로 하고, 이용권 등록 및 관리로 명칭 바꾸면 되잖아"*):
+          **매일 누르는 둘은 판 밖 위에 나란히 두 칸**, 나머지는 위쪽(내 딜 · 이용권 · 쿠폰)과 **같은 목록 판**.
+          종전엔 한 판 안에 [28px 오늘 숫자] [옅은 블루 QR 티켓] [진한 블루 줄] [줄 셋] 으로 모양이 넷,
+          파란 면이 셋이었다(대표 *"분산되고 복잡해 보여"*).
+          🔴 2026-10-10 의 *"사용처리와 등록은 달라도 티가 나야"* 는 그대로 지킨다 — 사용처리는 **진한 블루 칸**,
+             등록은 **흰 칸**이다(파란 면은 이 구역에 하나뿐). */}
+      {/* 🧱 두 칸과 판은 위쪽 판(내 딜 · 이용권 · 쿠폰)과 같은 16px 바깥 여백 안에 선다 — 렌더로 보니 화면 끝까지 붙어 있었다. */}
+      <div className="px-4">
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          disabled={entering}
+          onClick={() => enterSeat('/store/scan')}
+          className="min-w-0 flex items-center gap-2 h-16 px-3 rounded-2xl bg-brand text-white text-left active:opacity-90 disabled:opacity-60"
+        >
+          {/* ⚠️ **어느 가게로 소각되는지는 좌석이 정한다** — 먼저 이 가게 좌석에 앉히고 보낸다(되돌릴 수 없다). */}
+          <span className="shrink-0">
+            {entering
+              ? <Loader2 className="w-6 h-6 animate-spin" aria-hidden="true" />
+              : <QrScanIcon size={28} aria-hidden="true" />}
+          </span>
+          <span className="min-w-0">
+            <span className="block text-[15px] font-bold truncate">사용처리</span>
+            <span className="block text-[12px] text-white/85 truncate">손님 QR 찍기</span>
+          </span>
+        </button>
         <button
           type="button"
           disabled={entering}
           onClick={() => openPage('/seller/group-buy', '이용권')}
-          className="w-full flex items-center gap-3 px-4 min-h-[52px] py-2 rounded-[10px] bg-brand text-white text-left active:opacity-90 disabled:opacity-60"
+          className="min-w-0 flex items-center gap-2 h-16 px-3 rounded-2xl bg-surface shadow-lift text-left active:opacity-70 disabled:opacity-60"
         >
-          <Plus className="w-[18px] h-[18px] shrink-0" aria-hidden="true" />
-          <span className="flex-1 min-w-0 text-[15px] font-extrabold truncate">이용권 등록 · 관리</span>
-          {store?.active_products != null && (
-            <span className="shrink-0 text-[13px] text-white/75 tabular-nums">
-              {store.active_products > 0 ? `판매 중 ${formatNumber(store.active_products)}개` : '아직 0개'}
+          <span className="shrink-0 text-brand-text"><TicketStubIcon className="w-6 h-6" aria-hidden="true" /></span>
+          <span className="min-w-0">
+            {/* 📏 '등록 및 관리' 는 390px 에서 두 줄이 된다(시안 실측) — 가운뎃점으로 붙여 한 줄에 둔다. */}
+            <span className="block text-[15px] font-bold text-gray-900 dark:text-white whitespace-nowrap truncate">이용권 등록·관리</span>
+            {/* 오른쪽 값은 모르면 안 그린다 — 줄 높이는 같은 자리의 투명 글자가 잡는다(도착해도 안 밀린다). */}
+            <span className={`block text-[12px] text-gray-500 dark:text-gray-400 tabular-nums truncate${store?.active_products == null ? ' invisible' : ''}`}>
+              {store?.active_products != null && store.active_products > 0 ? `판매 중 ${formatNumber(store.active_products)}개` : '아직 0개'}
             </span>
-          )}
-          {entering
-            ? <Loader2 className="w-4 h-4 shrink-0 animate-spin" aria-hidden="true" />
-            : <ChevronRight className="w-4 h-4 shrink-0 text-white/70" aria-hidden="true" />}
+          </span>
         </button>
-        </div>
+      </div>
 
-        {/* 🧰 바로가기 셋(주문 · 정산 · 전체 도구) — `이용권` 은 위 진한 블루 줄이 됐다(안 3). */}
+      <div className="mt-3">
+      <div className={LIST_PLATE_CLS}>
+        {/* 🔢 오늘 = 매출 분석의 입구(2026-09-30 결정 승계). 큰 숫자 카드 → 줄의 오른쪽 값. 숫자가 0 이면 회색. */}
+        <button
+          type="button"
+          disabled={entering}
+          onClick={() => openPage('/seller/analytics', '매출 분석')}
+          className={`${ROW_SHELL_CLS} active:opacity-70 disabled:opacity-50`}
+        >
+          <span className="shrink-0 text-gray-500 dark:text-gray-400"><ChartIcon className="w-[18px] h-[18px]" aria-hidden="true" /></span>
+          <span className={ROW_LABEL_CLS}>오늘 매출</span>
+          <span className="shrink-0 text-[13px] text-gray-500 dark:text-gray-400 tabular-nums whitespace-nowrap">
+            <span className={`text-[15px] font-bold ${(store?.today_revenue ?? 0) > 0 ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
+              {blank(formatNumber(store?.today_revenue))}
+            </span>
+            <span className={awaiting ? 'invisible' : ''}>원 · 주문 {formatNumber(store?.today_orders)}건</span>
+          </span>
+          <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
+        </button>
+        {note && (
+          <p className="text-[13px] leading-[1.55] text-gray-500 dark:text-gray-400 px-4 py-3 border-b border-rule">
+            {note}
+          </p>
+        )}
+        {/* 🔔 판매 알림 — 머리의 알약이 줄로 내려왔다(같은 시트 · 같은 데이터). */}
+        {awaiting ? (
+          <div className={`${ROW_SHELL_CLS} invisible`} aria-hidden="true"><span className={ROW_LABEL_CLS}>판매 알림</span></div>
+        ) : (
+          <StoreNotifButton variant="row" currentSellerId={store.seller_id} onOpenPage={(p) => { void openPage(p, '') }} />
+        )}
         <ToolRow
           icon={<OrdersIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
           label="주문"
@@ -453,12 +427,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           busy={entering}
           onClick={() => openTool('payout')}
         />
-        {/* 🧹 2026-09-30 — 바로가기를 줄였다(⑥). 뺀 `매출 분석 · 가게 · 소개 파트너 · 브랜드메시지` 는
-            지운 게 아니라 바로 아래 `전체 도구` 가 같은 시트로 연다(한 번의 탭이 두 번이 될 뿐이다).
-            매출 분석은 위 오늘 숫자가 입구다. **왜**: 목록만 떼어 재면 다 들어오는 것 같지만, 위(헤더 ·
-            스탯 · 제목 · 오늘 카드)와 아래(탭)를 같이 재면 여덟 줄이면 폰 한 화면이 `전체 도구` 에서 끝나
-            손님 줄이 0이었다(실측). 남기는 기준은 **하루에 몇 번 여는가**다. 예시는 문자열로 적지 않는다
-            (메뉴가 바뀔 때마다 어긋났다 — 쿠폰·숙소를 내렸을 때 두 번). */}
+        {/* 🧹 바로가기는 **하루에 몇 번 여는가**로 남긴다(2026-09-30 ⑥). 나머지는 `전체 도구` 가 같은 시트로 연다. */}
         <ToolRow
           icon={<Search className="w-[18px] h-[18px]" aria-hidden="true" />}
           label="전체 도구"
@@ -466,6 +435,20 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           busy={entering}
           onClick={() => openTool('tools')}
         />
+      </div>
+      {/* 🏠 2026-10-26 대표 *"참여권은 사장님 마이에서 갯수·차감 내역을 볼 수 있나"* — 생활 견적 업체만.
+          판 밖의 별도 판이다: 판매 판은 줄 다섯이 상한(2026-09-30 ⑥ — 가드). 누르면 요청함·충전·내역(`/life/pro`). */}
+      {store?.life_credits != null && (
+        <div className={`${LIST_PLATE_CLS} mt-3`}>
+          <ToolRow
+            icon={<TicketStubIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
+            label="생활 요청 받기"
+            hint={`참여권 ${formatNumber(store.life_credits)}장`}
+            to="/life/pro"
+          />
+        </div>
+      )}
+      </div>
       </div>
 
       {/* 🧰 할 일 — 좌석에 앉아 있을 때만, 그리고 **확인 대기가 있을 때만** 그린다

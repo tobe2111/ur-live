@@ -71,8 +71,14 @@ export async function ensureAgencyConsoleTables(DB: D1Database): Promise<void> {
       ended_at TEXT,
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`),
-    // 한 매장은 한 번에 한 에이전시에만 맡긴다(요청 중 포함) — 몫·책임이 둘로 갈리지 않게.
-    DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_agency_store_links_open ON agency_store_links(seller_id) WHERE status IN ('pending','active')"),
+    // 🤝 2026-10-24 대표 확정 — **한 매장이 여러 에이전시와 함께 한다**(사장님 직접 관리와도 동시에).
+    //   대표: *"한 매장이 여러 에이전시와 함께 할 수 있는거지. 성과나 이런건 분리가 철저히 되고."*
+    //   그래서 열린 맡김은 (매장, 에이전시) 쌍마다 하나다. 몫이 섞이지 않는 것은 인덱스가 아니라
+    //   `agency_products`(이용권마다 맡은 에이전시) + 에이전시 좌석의 기본 차단(`agency-product-scope`)이 지킨다.
+    //   옛 인덱스(매장당 하나)는 지운다 — 남아 있으면 두 번째 에이전시가 **에러 없이** 막힌다.
+    DB.prepare('DROP INDEX IF EXISTS idx_agency_store_links_open'),
+    DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_agency_store_links_open_pair ON agency_store_links(seller_id, agency_id) WHERE status IN ('pending','active')"),
+    DB.prepare('CREATE INDEX IF NOT EXISTS idx_agency_store_links_store ON agency_store_links(seller_id, status)'),
     DB.prepare('CREATE INDEX IF NOT EXISTS idx_agency_store_links_agency ON agency_store_links(agency_id, status)'),
     // 🔗 에이전시가 사장님께 보내는 **매장 초대 링크** — 사장님이 누르고 [맡기기] 한 번이면 바로 운영 시작.
     //   ⚠️ 토큰을 해시하지 않고 그대로 둔다: 이 링크는 들고 있는 사람에게 아무 권한도 주지 않는다(자기 매장을
@@ -113,12 +119,67 @@ export async function ensureAgencyConsoleTables(DB: D1Database): Promise<void> {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`),
     DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_agency_staff_stores_pair ON agency_staff_stores(staff_id, seller_id)'),
+    // 🎟️ 2026-10-24 — **이용권마다 맡은 에이전시**(성과 분리의 단위). 행이 없으면 사장님 이용권이다.
+    //   에이전시 좌석으로 만든 이용권에 찍히고, 그 에이전시는 이 표에 있는 자기 이용권만 보고 고친다.
+    //   product_id 가 PK 라 한 이용권은 한 에이전시에만 속한다(몫이 둘로 갈리지 않는다).
+    DB.prepare(`CREATE TABLE IF NOT EXISTS agency_products (
+      product_id INTEGER PRIMARY KEY,
+      seller_id INTEGER NOT NULL,
+      agency_id INTEGER NOT NULL,
+      created_by_staff_id INTEGER,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`),
+    DB.prepare('CREATE INDEX IF NOT EXISTS idx_agency_products_agency ON agency_products(agency_id, seller_id)'),
+    // 📊 2026-10-24 — **맡은 기간**(성과 귀속의 근거). 판매 시각이 이 기간 안이면 그 에이전시 몫이다(`channel-sales.ts`).
+    //   지금 맡음(`agency_products`)만으로 세면 이용권을 옮기는 순간 앞 에이전시 성과가 뒤 에이전시로 넘어가고,
+    //   끊으면 그동안의 성과가 사라진다. 행은 지우지 않는다(끝 = ended_at). 이용권당 열린 기간은 하나.
+    DB.prepare(`CREATE TABLE IF NOT EXISTS agency_product_periods (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_id INTEGER NOT NULL,
+      seller_id INTEGER NOT NULL,
+      agency_id INTEGER NOT NULL,
+      started_at TEXT NOT NULL DEFAULT (datetime('now')),
+      ended_at TEXT
+    )`),
+    DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_agency_product_periods_open ON agency_product_periods(product_id) WHERE ended_at IS NULL'),
+    DB.prepare('CREATE INDEX IF NOT EXISTS idx_agency_product_periods_store ON agency_product_periods(seller_id, agency_id)'),
+    // 🔔 에이전시 직원이 판매 알림을 어디까지 봤나(사람마다). 알림은 판매 기록에서 만든다 — 이 표는 읽음 표시만.
+    DB.prepare(`CREATE TABLE IF NOT EXISTS agency_sales_seen (
+      staff_id INTEGER PRIMARY KEY,
+      seen_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`),
+    // 🤝 에이전시 몫 % 이력(사장님이 정한다) — 판매 시각의 % 로 금액을 계산한다(`agency-share.ts`). 돈은 안 움직인다.
+    DB.prepare(`CREATE TABLE IF NOT EXISTS agency_share_terms (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      seller_id INTEGER NOT NULL,
+      agency_id INTEGER NOT NULL,
+      pct REAL NOT NULL,
+      effective_from TEXT NOT NULL DEFAULT (datetime('now')),
+      set_by_user_id INTEGER,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`),
+    DB.prepare('CREATE INDEX IF NOT EXISTS idx_agency_share_terms_pair ON agency_share_terms(seller_id, agency_id, effective_from)'),
   ])
+  // 기간 기록보다 먼저 생긴 맡음(1단계)에 기간을 채운다 — 맡은 날부터. 멱등(열린 기간이 있으면 건너뛴다).
+  try {
+    await DB.prepare(
+      `INSERT INTO agency_product_periods (product_id, seller_id, agency_id, started_at)
+       SELECT ap.product_id, ap.seller_id, ap.agency_id, ap.created_at FROM agency_products ap
+        WHERE NOT EXISTS (SELECT 1 FROM agency_product_periods pr WHERE pr.product_id = ap.product_id AND pr.ended_at IS NULL)`,
+    ).run()
+  } catch { /* 표가 막 생기는 중 — 다음 요청에서 채운다 */ }
   // 🏛️ 사업자 진위확인 결과(국세청 상태 문자열 · 'unverified'). 이미 만들어진 테이블에 붙이는 열이라 ALTER 로 —
   //   batch 안에 두면 '이미 있음' 오류가 위 생성문까지 되돌린다. 실패(=이미 있음)는 조용히 넘어간다.
   try { await DB.prepare('ALTER TABLE agency_accounts ADD COLUMN business_status TEXT').run() } catch { /* 이미 있음 */ }
   // 👥 직원의 매장 범위 — NULL·'all' = 맡은 매장 전부(종전 동작) · 'assigned' = 배정한 매장만.
   try { await DB.prepare('ALTER TABLE agency_staff ADD COLUMN store_scope TEXT').run() } catch { /* 이미 있음 */ }
+  // 🟡 2026-10-26 대표 확정 — **카카오로 만든 에이전시**. 소비자 계정(users.id)과 잇는 열 + 이메일 계정으로 옮기는 중의 값.
+  //   대표: *"카카오 로그인으로 해도 되고, 대신 카카오 로그인 시, 여러명이 함께 관리는 힘들다고 해두면"*.
+  //   한 카카오 계정은 에이전시 하나만 — 유일 인덱스가 동시에 두 번 눌러도 둘째를 막는다.
+  try { await DB.prepare('ALTER TABLE agency_staff ADD COLUMN user_id INTEGER').run() } catch { /* 이미 있음 */ }
+  try { await DB.prepare('ALTER TABLE agency_staff ADD COLUMN pending_email TEXT').run() } catch { /* 이미 있음 */ }
+  try { await DB.prepare('ALTER TABLE agency_staff ADD COLUMN pending_password_hash TEXT').run() } catch { /* 이미 있음 */ }
+  try { await DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_agency_staff_user ON agency_staff(user_id) WHERE user_id IS NOT NULL').run() } catch { /* 열이 막 생기는 중 */ }
   _ensured.add(DB)
 }
 
@@ -142,12 +203,13 @@ export function staffStoreAccessSql(s: string, sellerExpr: string): string {
     SELECT 1 FROM agency_staff_stores x WHERE x.staff_id = ${s}.id AND x.seller_id = ${sellerExpr}))`
 }
 
-export type AgencyTokenKind = 'verify' | 'invite' | 'reset'
+/** move = 카카오 계정을 이메일 계정으로 옮기는 확인 메일(2026-10-26) */
+export type AgencyTokenKind = 'verify' | 'invite' | 'reset' | 'move'
 /** pending = 사장님이 맡김 요청 · active = 에이전시가 수락 · declined = 에이전시가 거절 · ended = 누군가 끊음 */
 export type AgencyStoreLinkStatus = 'pending' | 'active' | 'declined' | 'ended'
 
-/** 토큰 유효 시간 — 인증 메일 24시간 · 초대 7일 · 비밀번호 재설정 1시간 */
-export const AGENCY_TOKEN_TTL_HOURS: Record<AgencyTokenKind, number> = { verify: 24, invite: 24 * 7, reset: 1 }
+/** 토큰 유효 시간 — 인증 메일 24시간 · 초대 7일 · 비밀번호 재설정 1시간 · 이메일로 옮기기 24시간 */
+export const AGENCY_TOKEN_TTL_HOURS: Record<AgencyTokenKind, number> = { verify: 24, invite: 24 * 7, reset: 1, move: 24 }
 
 /** 매장 초대 링크 수명 — 영업 한 바퀴(한 달)를 덮되, 잊힌 링크가 영원히 살지 않게. */
 export const AGENCY_STORE_INVITE_DAYS = 30

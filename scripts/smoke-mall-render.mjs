@@ -56,6 +56,8 @@ async function waitFor(url, ms = 90000) {
 
 const results = []
 const devLog = []
+// devLog 는 200줄에서 잘리므로 재최적화 리로드는 따로 센다(인덱스로 자르면 잘린 뒤 엉뚱한 구간을 본다).
+let depReloads = 0
 const check = (name, pass, detail) => {
   results.push({ name, pass, detail })
   console.log(`${pass ? '✅' : '❌'} ${name} — ${detail}`)
@@ -69,7 +71,7 @@ let base = process.env.BASE
 if (!base) {
   dev = spawn('npx', ['vite', '--port', '5199', '--strictPort'], { stdio: ['ignore', 'pipe', 'pipe'], detached: false })
   // 🔎 실패 진단용 — vite dev 가 그동안 뭘 했는지(의존성 재최적화·리로드 등) 끝부분을 남긴다.
-  for (const st of [dev.stdout, dev.stderr]) st?.on('data', (d) => { devLog.push(String(d)); if (devLog.length > 200) devLog.shift() })
+  for (const st of [dev.stdout, dev.stderr]) st?.on('data', (d) => { const t = String(d); if (t.includes('optimized dependencies changed')) depReloads++; devLog.push(t); if (devLog.length > 200) devLog.shift() })
   base = 'http://localhost:5199'
   if (!await waitFor(base)) { console.error('vite dev 가 뜨지 않았다'); dev.kill(); process.exit(1) }
 }
@@ -172,8 +174,18 @@ try {
     const page = await ctx.newPage()
     const errs = []
     page.on('pageerror', (e) => errs.push(String(e)))
+    const reloads0 = depReloads
     await page.goto(`${base}/products/11`, { waitUntil: 'networkidle' })
     await page.waitForSelector('text=가게에 직접 찾으러 오는 상품이에요', { timeout: 20000 })
+    // ♻️ 2026-10-25: 이 화면의 **첫 방문**에서 vite dev 가 새 의존성을 찾아 페이지를 통째로 다시 불러오면, 옛 모듈과 새 모듈의
+    //   React 가 섞여 `Cannot read properties of null (reading 'useContext')` 가 한 번 난다(CI 실측 — 라이트만 실패, 다크는 통과).
+    //   배포본엔 vite 가 없어 이 일이 안 일어난다 ⇒ B·D 와 같은 처방: 리로드가 **실제로 있었을 때만** 에러를 비우고 한 번 다시 연다.
+    if (depReloads > reloads0) {
+      console.log(`   ♻️ [A-2 ${mode}] vite 의존성 재최적화 리로드가 있었다 — 한 번 다시 연다`)
+      errs.length = 0
+      await page.goto(`${base}/products/11`, { waitUntil: 'networkidle' })
+      await page.waitForSelector('text=가게에 직접 찾으러 오는 상품이에요', { timeout: 20000 })
+    }
 
     check(`[A-2 ${mode}] 런타임 에러 0`, errs.length === 0, errs[0] || '없음')
     check(`[A-2 ${mode}] 픽업 안내 + 받는 날`, (await page.getByText('8월 10일').count()) > 0, '8월 10일')

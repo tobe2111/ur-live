@@ -16,4 +16,4 @@
  *
  * ⚠️ 새 격자를 만들 때 `gap-3` 을 손으로 적지 말 것 — `deal-card-grid` 가드가 잡는다.
  */
-export const DEAL_GRID_GAP = 'gap-x-3 gap-y-6 lg:gap-x-4 lg:gap-y-7'
+export const DEAL_GRID_GAP = 'gap-x-3 gap-y-8 lg:gap-x-4 lg:gap-y-8'

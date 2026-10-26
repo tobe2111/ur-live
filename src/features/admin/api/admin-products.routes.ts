@@ -28,8 +28,11 @@ import { intParam } from '@/shared/pagination'
 import { dongnedealTextFilters } from './dongnedeal-search';
 // 🎯 2026-07-21: 시드 커버 재호스팅 — 본체는 worker/utils/rehost-image.ts (demo-image-rehost cron 과 공유 SSOT).
 import { rehostImageToR2 } from '@/worker/utils/rehost-image';
+import { adminDemoPhotoSourceDiagRoutes } from './admin-demo-photo-source-diag.routes';
 
 export const adminProductsRoutes = new Hono<{ Bindings: Env }>();
+// 🔬 2026-10-26 데모 사진 출처 진단(읽기 전용) — 본체는 별 파일(이 파일은 크기 동결).
+adminProductsRoutes.route('/', adminDemoPhotoSourceDiagRoutes);
 
 function safeAdminError(err: unknown, env: Env): string {
   const isProd = (env as Env & { ENVIRONMENT?: string }).ENVIRONMENT === 'production';
@@ -827,8 +830,8 @@ function parseDealCsv(text: string): Record<string, string>[] {
 // `fixed` = 할인 없이 판매가 그대로(정가=판매가). 이사 할인권처럼 '견적에서 깎아 주는 권'은 정가가 없어
 //   할인율을 지어내면 거짓이 된다(2026-10-20 — 10만원 할인권을 1,000원에 팔며 '99% 할인'이라 쓰지 않는다).
 interface DemoOfferPattern { n: string; d: string; min: number; max: number; fixed?: boolean }
-interface DemoBiz { pq: string; cat: string; iq?: string; pat: DemoOfferPattern[] }
-const DEMO_BIZ: DemoBiz[] = [
+export interface DemoBiz { pq: string; cat: string; iq?: string; pat: DemoOfferPattern[] }
+export const DEMO_BIZ: DemoBiz[] = [
   { pq: '삼겹살', cat: 'meal_voucher', pat: [
     { n: '숙성 삼겹살 2인 세트 (된찌 포함)', d: '숙성 삼겹살 2인 + 된장찌개 + 볶음밥 마무리. 숯불에 구워드립니다.', min: 26000, max: 38000 },
     { n: '삼겹살 500g + 김치찌개', d: '두툼한 삼겹살 500g 과 김치찌개. 셀프바 반찬 무제한.', min: 22000, max: 32000 },
@@ -1275,7 +1278,7 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
     //   기본(미지정) = 실상품형(기존과 동일).
     const isPrelaunch = String((body as { mode?: unknown }).mode || '') === 'prelaunch';
     const priceMult = await loadDemoPriceMultipliers(DB);  // 💰 어드민 시세 보정 배율
-    const { fetchDemoPhotos } = await import('../../../worker/utils/demo-photo-set');
+    const { fetchDemoPhotos, DEMO_MIN_PHOTOS } = await import('../../../worker/utils/demo-photo-set');
     // 🎯 실제 매장 매칭(카카오): region 을 중심좌표로 1회 해석 → 그 반경 내 거리순 검색(정확도 ↑).
     //   center 있으면 검색어는 순수 업종(pq)만(지역명은 좌표로 반영), 없으면 "지역 랜덤구 pq" 폴백.
     const regionCenter = region ? await resolveRegionCenter(c.env, region) : null;
@@ -1348,14 +1351,18 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
               naverQuery: `${pl.name} ${w.t.pq}`,
               fallbackQuery: w.t.iq || w.t.pq,
               count: 3 + Math.floor(Math.random() * 3),
+              category: w.t.cat,  // 🏷️ 분류 사진 태그(식사=음식 먼저, 그 밖=가게 안·밖)
             })
           } catch { return [] as string[] }
         })
       );
       // 🎯 2026-07-03: 대표(카드) 사진 1장만 우리 R2 로 재호스팅(/api/media/…) — 서브리퀘스트 한도 보호.
       //   추가 갤러리 사진(2~5번째)은 search.pstatic(네이버 자체 CDN, 인증서·핫링크 안전) URL 그대로 사용.
+      //   📸 2026-10-27 (대표 "3번 해봐"): 사진이 DEMO_MIN_PHOTOS 장 미만인 매장은 어차피 건너뛰므로 재호스팅도 안 한다.
       const validImgs = await Promise.all(
-        resolvedImgSets.map((arr) => rehostImageToR2(c.env as unknown as { MEDIA_BUCKET?: R2Bucket }, arr[0] ?? null)),
+        resolvedImgSets.map((arr) => arr.length >= DEMO_MIN_PHOTOS
+          ? rehostImageToR2(c.env as unknown as { MEDIA_BUCKET?: R2Bucket }, arr[0] ?? null)
+          : Promise.resolve(null)),
       );
       for (let i = 0; i < work.length && seeded < reqCount; i++) {
         const t = work[i].t;
@@ -1379,7 +1386,9 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
         //   (2026-07-20 대표 "가장 메인이 되는 사진을 커버로" — 재호스팅 실패로 대표사진을 버리고 picsum 으로
         //   떨어지던 구멍 수정. 원본 URL 도 로드 가능하므로 picsum 보다 항상 우선.)
         // 🚫 2026-08-08 대표 "사진 없으면 자체가 안올려져야지" — picsum 더미 폴백 폐기. 사유: 동명 테스트.
-        if (!realPhoto && !resolvedImgSets[i][0]) { skippedNoPhoto++; continue; }
+        // 📸 2026-10-27 (대표 확정 — 발행 때 사진 3장 보장): 근거 있는 사진이 3장 미만인 매장은 발행하지 않고
+        //   다음 라운드에서 다른 매장으로 채운다(usedStores 에 이미 들어가 같은 매장이 다시 뽑히지 않는다).
+        if (resolvedImgSets[i].length < DEMO_MIN_PHOTOS) { skippedNoPhoto++; continue; }
         const img = realPhoto || resolvedImgSets[i][0];
         const restName = place?.name || null;         // hasCoord 보장 → 항상 실매장명
         const restAddr = place?.address || null;
@@ -1927,7 +1936,7 @@ adminProductsRoutes.post('/dongnedeal/refresh-reviews', cors(), async (c) => {
 //   어드민이 온디맨드로 청크(회당 6개, 서브리퀘스트 예산 안)로 돌린다. 클라가 remaining>0 이면 반복 호출.
 adminProductsRoutes.post('/dongnedeal/recondition-images', cors(), async (c) => {
   try {
-    const { reconditionDemos, DEMO_COND_V } = await import('../../../worker/cron/demo-image-rehost');
+    const { reconditionDemos, demoCondV } = await import('../../../worker/cron/demo-image-rehost');
     const body = (await c.req.json().catch(() => ({}))) as { count?: number };
     const perRun = Math.min(6, Math.max(1, intParam(String(body.count ?? 6), 6)));
     const r = await reconditionDemos(c.env as unknown as Env, perRun);
@@ -1937,7 +1946,7 @@ adminProductsRoutes.post('/dongnedeal/recondition-images', cors(), async (c) => 
         WHERE (p.slug LIKE 'demo-deal-%' OR p.slug LIKE 'demo-stay-%')
           AND COALESCE(p.is_active,1) = 1 AND p.restaurant_name IS NOT NULL
           AND NOT EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id = p.id AND m.key = 'demo_cond_v' AND m.value = ?)`
-    ).bind(DEMO_COND_V).first<{ n: number }>().catch(() => ({ n: 0 }));
+    ).bind(demoCondV(c.env as unknown as Env)).first<{ n: number }>().catch(() => ({ n: 0 }));
     await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {});
     await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
     return c.json({ success: true, reconditioned: r.reconditioned, skipped: r.skipped, remaining: Number(remainRow?.n ?? 0) });
@@ -1958,14 +1967,14 @@ adminProductsRoutes.post('/dongnedeal/heal-broken-images', cors(), async (c) => 
     const { fetchDemoPhotos } = await import('../../../worker/utils/demo-photo-set');
     const HEAL_CK = '1';  // 검증 완료 마커 버전(재검증 필요 시 bump)
     const rows = (await DB.prepare(
-      `SELECT p.id, p.slug, p.image_url, p.images, p.restaurant_name, p.restaurant_address
+      `SELECT p.id, p.slug, p.category, p.image_url, p.images, p.restaurant_name, p.restaurant_address
          FROM products p
         WHERE (p.slug LIKE 'demo-deal-%' OR p.slug LIKE 'demo-stay-%')
           AND COALESCE(p.is_active,1) = 1 AND p.restaurant_name IS NOT NULL
           AND NOT EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id = p.id AND m.key = 'img_heal_ck' AND m.value = ?)
         ORDER BY p.id LIMIT ?`
-    ).bind(HEAL_CK, perRun).all<{ id: number; slug: string; image_url: string | null; images: string | null; restaurant_name: string; restaurant_address: string | null }>()
-      .catch(() => ({ results: [] as { id: number; slug: string; image_url: string | null; images: string | null; restaurant_name: string; restaurant_address: string | null }[] }))).results || [];
+    ).bind(HEAL_CK, perRun).all<{ id: number; slug: string; category: string | null; image_url: string | null; images: string | null; restaurant_name: string; restaurant_address: string | null }>()
+      .catch(() => ({ results: [] as { id: number; slug: string; category: string | null; image_url: string | null; images: string | null; restaurant_name: string; restaurant_address: string | null }[] }))).results || [];
     let checked = 0, healed = 0;
     const metaMap = await getSupplyMeta(DB, rows.map(r => r.id)).catch(() => new Map<number, Record<string, string>>());
     for (const row of rows) {
@@ -1977,6 +1986,7 @@ adminProductsRoutes.post('/dongnedeal/heal-broken-images', cors(), async (c) => 
           placeId: metaMap.get(row.id)?.kakao_place_url || null,
           nameQuery: row.restaurant_name,
           address: row.restaurant_address,
+          category: row.category,
           count: 3 + Math.floor(Math.random() * 3),
         }).catch(() => [] as string[]);
         if (fresh.length > 0) {

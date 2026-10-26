@@ -794,3 +794,39 @@ fail-closed 로 **설계된** 가드가 fail-open 이 된다 — 돈이 *안 보
 | S-PINNAV-2 | 숙소 카드 탭 | `/stays/:id` 로 간다(종전 `/pass`) · 소개 값(`affiliate_ref`)이 주인 id |
 | S-PINNAV-3 | 카톡에 공유된 `/u/{handle}/p/{id}` 링크 열기 | 종전대로 서버 경유 → 상세 · 귀속 동일 |
 | S-PINNAV-4 | 카드 탭 뒤 주인 마이 '내 유어샵' 클릭 수 | 1 늘어난다(비콘) |
+
+## 🔁 S-ZOD4 — 검증 라이브러리 zod 3 → 4 (2026-10-24 대표 "가장 이상적이라면 진행해줘")
+결제 확인(`payment.routes.ts`, 잠금 파일)은 **코드 무변경**이지만 그 아래 검증 라이브러리가 바뀌었다. 머지 전 1회.
+
+| # | 할 것 | 기대 |
+|---|---|---|
+| S-ZOD4-1 | 🔴 카드로 이용권 1건 결제 → 승인 | `/api/payments/confirm` 200 · 주문 DONE · 금액 그대로 |
+| S-ZOD4-2 | 결제 확인 요청에 `amount: 0` 을 보낸다(개발자도구) | 400 `Invalid request` (종전과 같은 판정) |
+| S-ZOD4-3 | 이메일 로그인(셀러/어드민 아닌 `auth.routes`) 틀린 형식 | 400 · 서버 500 아님 |
+
+## 🏠 **S-HOME** — 생활 견적 참여권 (2026-10-24 결재 `2026-10-24-home-service-quotes`)
+
+게이트 `home_service_charge_enabled`(기본 OFF). 꺼져 있어도 무료 참여권으로 견적은 돈다 — 이 표는 **충전을 여는** 조건이다.
+
+| # | 하는 일 | 기대 |
+|---|---|---|
+| S-HOME-1 | 테스트 매장(승인)으로 `/life/pro` 첫 등록 | 무료 참여권 **3장** · 다시 저장해도 3장 그대로 |
+| S-HOME-2 | 테스트 손님으로 그 지역 이사 요청 | 사장님 요청함에 뜸 · 템플릿 승인돼 있으면 알림톡 1통 |
+| S-HOME-3 | 견적 보내기(금액 비움) | 잔액 2장 · 손님 화면 "방문 후 견적" · 같은 요청에 두 번 보내면 **409, 차감 없음** |
+| S-HOME-4 | 손님이 요청 취소 | 사장님 잔액 3장으로 복귀 · 원장 `refund` 1줄 |
+| S-HOME-5 | 🔴 게이트 켜고 5장 묶음 **실결제** | 잔액 +5 · 원장 `charge` 1줄 · 결제창 새로고침으로 승인 두 번 불러도 +5 한 번 |
+| S-HOME-6 | 손님이 견적 고르기 | 사장님 화면에 손님 번호 · 손님 화면에 사장님 번호 · 다른 사장님 화면엔 번호 없음 |
+
+## 🏡 S-STAYV — 숙소 = 이용권 통일 (2026-10-25)
+
+**S-STAYV** — 결재 `docs/decisions/2026-10-25-stay-qr-checkin.md`(대표 "1번" → "숙소를 이용권 방식으로 합치는 안으로 진행하자. 끝까지."). 게이트 `stay_voucher_unify_enabled`(기본 OFF). 코드 SSOT `src/features/group-buy/api/stay-voucher-unify.ts`.
+
+| # | 절차 | 기대 |
+|---|---|---|
+| S-STAYV-1 | 게이트 ON · 날짜 예약 1건 카드 결제 | `vouchers` 1행(`stay_booking_id`=예약 · `applied_price`=결제액 · `expires_at`=체크아웃날 23:59 KST) · 지갑에 QR |
+| S-STAYV-2 | 체크인 날 사장님 스캔 | 사용 성공 · 예약 `checked_in` · `ledger_entries` voucher_used **1회**(merchant=숙소) |
+| S-STAYV-3 | 체크인 전날 스캔 / 손님 셀프 사용 / 매장 확인코드 | 409 "체크인 날짜…" / 403 `STAY_SCAN_ONLY` |
+| S-STAYV-4 | 미사용 예약 취소(48시간 전) | 이용권 `refunded` → 예약 취소 → Toss 100% 환불 · 달력 1 복원 · 이후 스캔 거절 |
+| S-STAYV-5 | 스캔 뒤 취소 시도 | 409 `STAY_VOUCHER_USED` · 환불 0 |
+| S-STAYV-6 | 숙박권 1건 → 사장님 관리 화면 '사용' 버튼 | 예약 `checked_out` + 이용권 `used` + 원장 1회(스캔 경로와 같은 함수) · 지갑에서 '사용 완료' |
+| (회귀) | 게이트 OFF 로 S-STAYV-1 | `vouchers` 0행 · 종전 수동 체크인 그대로 |

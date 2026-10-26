@@ -1,4 +1,5 @@
 // 공통 유틸: 설정, 데이터 파일, Claude API, Meta API, GitHub 이슈. 외부 의존성 없음 (Node 22+).
+import { deAi } from './style.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -119,9 +120,8 @@ export const HUMAN_STYLE = `말투 규칙 (운영자가 폰으로 직접 쓰는 
 - 이모지는 0~1개(안 써도 됨). 느낌표 최대 1개. 해시태그는 요청받은 경우에만.
 - 매번 다른 방식으로 시작한다: 오늘 있었던 일, 사장님께 들은 말, 제가 고민한 점, 상품 하나 얘기 등. 정해진 틀 반복 금지.
 - 구체적으로: 주어진 상품명·조건·링크 대상 같은 실제 정보만 콕 집어 쓴다. 숫자·후기·사례는 지어내지 않는다.
-예시 톤 (그대로 베끼지 말 것):
-"요즘 입점 문의 주시는 사장님들이 제일 많이 물어보시는 게 수수료예요. 저희는 팔린 만큼만 받는 구조라 등록만 해두셔도 손해 볼 건 없어요."
-"오늘은 제가 직접 골라본 딜 하나. 퇴근길에 들르기 좋은 위치라 넣어봤어요."`;
+- 친근하게: 동네 사장님한테 말 거는 정도의 온도. 가벼운 농담 한 줄은 괜찮지만 과장·허위는 금지.
+- "사장님들이 제일 많이 묻는/걱정하는 게 ~" 같은 같은 틀의 첫 문장을 반복하지 않는다.`;
 
 const AI_TELLS = /여러분|결론적으로|요약하자면|알아보겠습니다|놓치지 마세요|지금 바로|^\s*(\d+\.|[-•✅✔️])\s|[!]{2,}|^[^\n]{0,40}하시나요\?/m;
 export function looksAi(text) {
@@ -129,13 +129,11 @@ export function looksAi(text) {
   return AI_TELLS.test(text) || emoji > 2;
 }
 
-// 2차 패스: "사람이 쓴 것 같은가" 검사 후 아니면 다시 씀. 사실/링크/해시태그 개수는 유지.
+// 2차 패스: 초안을 항상 "AI 티 지우기"로 다시 쓴다(src/style.mjs). 사실·링크·UTM·해시태그가 바뀌거나
+// 호출이 실패하면 초안을 그대로 쓴다.
 export async function humanize(text, kind = '게시글') {
   if (DRY) return text;
-  const verdict = await claude(`너는 SNS 글 검수자다. 아래 ${kind}이 소규모 서비스 운영자가 직접 쓴 글처럼 자연스러운지 판단한다. AI가 쓴 티(뻔한 오프너, 목록 구조, 과한 이모지/해시태그, 홍보 문구, 딱딱한 마무리)가 나면 FAIL. 출력은 PASS 또는 FAIL 한 단어.`, text, 5).catch(() => 'PASS');
-  if (!looksAi(text) && /PASS/i.test(verdict)) return text;
-  const out = await claude(`아래 ${kind}을 운영자가 직접 쓴 것처럼 다시 써라. 내용·사실·조건은 그대로 두고 새 사실이나 숫자를 더하지 않는다. 길이는 비슷하게, 해시태그가 있으면 같은 개수만 끝에 유지. 결과 본문만 출력.\n\n${HUMAN_STYLE}`, text, 900);
-  return out || text;
+  return deAi(text, kind, claude);
 }
 
 // ---------- 실패 알림 → 대표 카톡 "나에게 보내기" ----------
@@ -190,6 +188,27 @@ export function insta(method, p, params) {
   if (!t) throw new Error('META_IG_ACCESS_TOKEN missing');
   return metaCall(IG, t, method, p, params);
 }
+// Threads 컨테이너는 생성 직후 바로 publish 하면 'Media Not Found'(code 24 / 4279009)가 난다.
+// FINISHED 까지 폴링한 뒤 publish 하고, 그래도 Media Not Found 면 잠시 후 재시도한다.
+// 게시글·댓글 답글이 같은 함수를 쓴다(params 에 reply_to_id 를 넣으면 답글).
+export async function threadsPublish(params) {
+  const c = await threads('POST', `${THREADS_USER_ID}/threads`, params);
+  for (let i = 0; i < 10 && !DRY; i++) {
+    await new Promise((res) => setTimeout(res, 3000));
+    const st = await threads('GET', c.id, { fields: 'status,error_message' }).catch(() => ({}));
+    if (st.status === 'FINISHED' || st.status === 'PUBLISHED') break;
+    if (st.status === 'ERROR' || st.status === 'EXPIRED') throw new Error(`Threads 컨테이너 ${c.id} ${st.status}: ${st.error_message || ''}`);
+  }
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await threads('POST', `${THREADS_USER_ID}/threads_publish`, { creation_id: c.id });
+    } catch (e) {
+      if (attempt >= 3 || !/4279009|Media Not Found/.test(e.message)) throw e;
+      await new Promise((res) => setTimeout(res, 10000 * attempt));
+    }
+  }
+}
+
 // urdeal.kr 는 /marketing/* 정적 파일을 서빙하지 않음(404) → Meta 가 이미지/영상을 못 받음.
 // repo 에 커밋된 public/marketing/* 를 직접 이미지 URL 로 치환:
 //  이미지 → raw.githubusercontent (image/jpeg), 영상 → jsDelivr (raw 는 mp4 를 octet-stream 으로 줌 → video/mp4 필요).

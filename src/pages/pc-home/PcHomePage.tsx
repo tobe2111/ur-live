@@ -143,7 +143,7 @@ export default function PcHomePage() {
           {/* 🏷️ 2026-08-08: 카테고리를 고르면 제목이 **그 카테고리를 말한다**(걸러졌다는 신호). */}
           <header ref={gridHeaderRef} className="mb-4 scroll-mt-24 flex items-center justify-between gap-4 flex-wrap">
             <div>
-            <h1 className="text-[24px] font-black tracking-tight text-gray-900 dark:text-white">
+            <h1 className="text-[24px] font-bold tracking-tight text-gray-900 dark:text-white">
               {catLabel
                 ? `${catLabel} 이용권`
                 : homeFeedTitle({ located: !!userLoc, dongLabel: dong?.dong, region })}
@@ -159,7 +159,7 @@ export default function PcHomePage() {
               <button
                 onClick={() => setSort('near')}
                 aria-pressed={sort === 'near'}
-                className={`px-4 py-2 rounded-full text-[12px] font-bold border transition-colors inline-flex items-center gap-1 ${
+                className={`px-4 py-2 rounded-full text-[12px] font-medium border transition-colors inline-flex items-center gap-1 ${
                   sort === 'near'
                     ? 'bg-brand text-white border-brand'
                     : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
@@ -175,7 +175,7 @@ export default function PcHomePage() {
                   key={s.key}
                   onClick={() => setSort(s.key)}
                   aria-pressed={active}
-                  className={`px-4 py-2 rounded-full text-[12px] font-bold border transition-colors ${
+                  className={`px-4 py-2 rounded-full text-[12px] font-medium border transition-colors ${
                     active
                       ? 'bg-brand text-white border-brand'
                       : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
@@ -194,7 +194,7 @@ export default function PcHomePage() {
               to="/stays"
               className="flex items-center justify-between mb-4 px-4 py-3 rounded-xl bg-gray-50 dark:bg-white/[0.04] border border-line hover:bg-gray-100 dark:hover:bg-white/[0.08] transition-colors"
             >
-              <span className="text-[13px] font-bold text-gray-900 dark:text-white"><BedDouble className="w-4 h-4 inline-block align-[-3px] mr-1 text-gray-400" aria-hidden="true" />날짜·인원으로 숙소 검색하기</span>
+              <span className="text-[13px] font-medium text-gray-900 dark:text-white"><BedDouble className="w-4 h-4 inline-block align-[-3px] mr-1 text-gray-400" aria-hidden="true" />날짜·인원으로 숙소 검색하기</span>
               <span className="text-[13px] text-gray-500 dark:text-gray-400">체크인/체크아웃 지정 →</span>
             </Link>
           )}

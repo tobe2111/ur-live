@@ -65,7 +65,7 @@ export default function FcfsApplyBlock({ productId }: { productId: number }) {
     <div style={{ padding: '4px 18px 20px' }}>
       <div style={{ borderRadius: 16, border: '1px solid var(--gbd-line)', background: 'var(--gbd-card)', padding: '15px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: 'var(--gbd-ink)', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--gbd-ink)', display: 'flex', alignItems: 'center', gap: 6 }}>
             추첨 응모 <span style={{ color: 'var(--gbd-sub)', fontWeight: 700 }}>{formatNumber(info.appliedDisplay)}/{formatNumber(info.spots)}명</span>
           </p>
           <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--gbd-sub)', lineHeight: 1.5 }}>
@@ -76,7 +76,7 @@ export default function FcfsApplyBlock({ productId }: { productId: number }) {
           type="button"
           onClick={apply}
           disabled={busy || applied || closed}
-          style={{ flex: '0 0 auto', padding: '11px 16px', borderRadius: 12, fontSize: 13.5, fontWeight: 800, border: 'none', cursor: busy || applied || closed ? 'default' : 'pointer', background: isWinner ? '#16a34a' : 'var(--gbd-ink)', color: isWinner ? '#fff' : 'var(--gbd-card)', opacity: (applied && !isWinner) || closed ? 0.45 : 1 }}
+          style={{ flex: '0 0 auto', padding: '11px 16px', borderRadius: 12, fontSize: 13, fontWeight: 500, border: 'none', cursor: busy || applied || closed ? 'default' : 'pointer', background: isWinner ? '#16a34a' : 'var(--gbd-ink)', color: isWinner ? '#fff' : 'var(--gbd-card)', opacity: (applied && !isWinner) || closed ? 0.45 : 1 }}
         >
           {isPaid ? '구매 완료' : isWinner ? '🎉 당첨' : applied ? '응모 완료' : closed ? '마감' : busy ? '처리 중…' : '응모하기'}
         </button>

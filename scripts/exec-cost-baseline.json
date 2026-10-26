@@ -346,16 +346,16 @@
       ]
     },
     "에이전시 콘솔": {
-      "execKB": 370.8,
-      "loadedKB": 720.3,
+      "execKB": 383.3,
+      "loadedKB": 731.9,
       "top": [
         [
           "locale-ko-dash.js",
-          122.1
+          122.8
         ],
         [
           "react-core.js",
-          64.6
+          65.5
         ],
         [
           "locale-ko.js",
@@ -363,23 +363,23 @@
         ],
         [
           "index.js",
-          34.3
+          35.6
         ],
         [
           "lz-common.js",
-          18.5
+          18.7
         ],
         [
           "app-utils.js",
-          16.2
-        ],
-        [
-          "AgencyHomePage.js",
-          11.6
+          17.2
         ],
         [
           "react-router.js",
-          10.2
+          13.5
+        ],
+        [
+          "AgencySection.js",
+          10
         ]
       ]
     }
@@ -518,6 +518,13 @@
       "reason": "어드민 메뉴 아이콘 넷이 손님 봉투를 끌던 것 제거(실행 483.8→466) · 지역 링크 표 고정 묶음",
       "changes": [
         "어드민: 실행된 JS 483.8 → 467.7 KB 로 줄었다 — 개선을 잠그라(--rebaseline)"
+      ]
+    },
+    {
+      "date": "2026-10-26",
+      "reason": "에이전시 화면이 마이 자리(AgencyMyPage → AgencySection)로 옮겨감(2026-10-26 안 A) — /agency 는 마이로 보내는 문. 늘어난 것은 에이전시 판 자체(AgencySection +10)와 리다이렉트 한 번",
+      "changes": [
+        "에이전시 콘솔: 실행된 JS 370.8 → 383.3 KB (+12.5, 허용 4) · 늘어난 것: AgencySection.js +10.0, react-router.js +3.3, index.js +1.3, app-utils.js +1.0, react-core.js +0.9"
       ]
     }
   ]

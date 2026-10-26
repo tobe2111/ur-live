@@ -299,8 +299,8 @@ export default [
   {
     name: '🌑 잉크 패널 위에 라이트 회색 글자가 돌아온다',
     file: 'src/components/home/UrShortsRail.tsx',
-    find: 'text-[17px] font-black tracking-tight text-white',
-    replace: 'text-[17px] font-black tracking-tight text-gray-900',
+    find: 'text-[17px] font-bold tracking-tight text-white',
+    replace: 'text-[17px] font-bold tracking-tight text-gray-900',
     test: 'src/tests/unit/urshorts-rail-ink-panel.test.ts',
     why:
       '패널이 늘 어두우므로 라이트 회색 토큰은 어느 테마에서도 안 읽힌다. 그런데 `check-theme-consistency` ' +

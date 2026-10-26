@@ -215,7 +215,7 @@ export default function StaysSearchPage() {
                   aboveFold={!curated && i < 2}
                   flags={
                     (typeLabel || starLabel) ? (
-                      <p className="text-[12px] font-bold leading-none mb-1 text-gray-900 dark:text-gray-100">
+                      <p className="text-[12px] font-medium leading-none mb-1 text-gray-900 dark:text-gray-100">
                         {[typeLabel, starLabel].filter(Boolean).join(' · ')}
                       </p>
                     ) : null
@@ -244,7 +244,7 @@ export default function StaysSearchPage() {
             </div>
             <div className="p-5 space-y-4">
               <div>
-                <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-300 mb-2">지역</label>
+                <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-300 mb-2">지역</label>
                 <input
                   type="text"
                   value={filters.region}
@@ -255,31 +255,31 @@ export default function StaysSearchPage() {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-300 mb-2">체크인</label>
+                  <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-300 mb-2">체크인</label>
                   <input type="date" value={filters.check_in} onChange={(e) => setFilters({ ...filters, check_in: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border border-line rounded-lg text-[15px] text-gray-900 dark:text-white" />
                 </div>
                 <div>
-                  <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-300 mb-2">체크아웃</label>
+                  <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-300 mb-2">체크아웃</label>
                   <input type="date" value={filters.check_out} onChange={(e) => setFilters({ ...filters, check_out: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border border-line rounded-lg text-[15px] text-gray-900 dark:text-white" />
                 </div>
               </div>
               <div>
-                <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-300 mb-2">인원</label>
+                <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-300 mb-2">인원</label>
                 <input type="number" min={1} max={20} value={filters.guests} onChange={(e) => setFilters({ ...filters, guests: Number(e.target.value) || 1 })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border border-line rounded-lg text-[15px] text-gray-900 dark:text-white" />
               </div>
               <div>
-                <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-300 mb-2">숙소 타입</label>
+                <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-300 mb-2">숙소 타입</label>
                 <div className="grid grid-cols-4 gap-2">
                   {Object.entries(PROPERTY_TYPE_LABELS).map(([v, l]) => (
                     <button key={v} onClick={() => setFilters({ ...filters, property_type: filters.property_type === v ? '' : v })}
-                      className={`p-2 rounded-lg text-[12px] font-semibold ${filters.property_type === v ? 'bg-brand text-white' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300'}`}>
+                      className={`p-2 rounded-lg text-[12px] font-medium ${filters.property_type === v ? 'bg-brand text-white' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300'}`}>
                       {l}
                     </button>
                   ))}
                 </div>
               </div>
               <div>
-                <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-300 mb-2">판매 방식</label>
+                <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-300 mb-2">판매 방식</label>
                 <div className="grid grid-cols-3 gap-2">
                   {/* 🎨 2026-09-03: 이모지 → 선 아이콘 · 선택은 **브랜드 블루**(구 로즈 `bg-brand` 잔재).
                       아이콘 컨셉은 유어딜 아이콘 세트(선/면) — 유틸리티만 lucide. */}
@@ -290,7 +290,7 @@ export default function StaysSearchPage() {
                   ] as const).map((m) => (
                     <button key={m.v} type="button"
                       onClick={() => setFilters({ ...filters, sale_mode: m.v })}
-                      className={`inline-flex items-center justify-center gap-1 p-2 rounded-lg text-[12px] font-semibold ${filters.sale_mode === m.v ? 'bg-brand text-white' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300'}`}>
+                      className={`inline-flex items-center justify-center gap-1 p-2 rounded-lg text-[12px] font-medium ${filters.sale_mode === m.v ? 'bg-brand text-white' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300'}`}>
                       {m.Icon && <m.Icon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />}
                       {m.l}
                     </button>
@@ -298,7 +298,7 @@ export default function StaysSearchPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-300 mb-2">정렬</label>
+                <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-300 mb-2">정렬</label>
                 <select value={filters.sort} onChange={(e) => setFilters({ ...filters, sort: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border border-line rounded-lg text-[15px] text-gray-900 dark:text-white">
                   <option value="recent">최신 등록</option>
                   <option value="price_asc">가격 낮은순</option>

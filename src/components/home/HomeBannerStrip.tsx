@@ -6,7 +6,7 @@ import { resolveBannerLink, type BannerLink } from './banner-link'
 import { useHomeBanners, type HomeBanner } from './useHomeBanners'
 import type { BannerSlot } from '@/shared/constants/home-showcase'
 import { BANNER_SLOT_SPECS } from '@/shared/constants/home-showcase'
-import { STRIP_BANNER_MAX, STRIP_CLS, HERO_CARD_CLS, HERO_RAIL_CLS, stripBannerImageUrl } from '@/shared/home-strip-banners'
+import { STRIP_BANNER_MAX, STRIP_CLS, HERO_CARD_CLS, HERO_RAIL_CLS, stripBannerImageUrl, heroEdgeFillStyle } from '@/shared/home-strip-banners'
 
 /**
  * 🏠 ③ 중간 배너 (2026-08-04 대표 시안 승인).
@@ -78,11 +78,11 @@ export default function HomeBannerStrip({ variant }: { variant: Extract<BannerSl
           {bg && <img src={bg} alt="" aria-hidden="true" className="absolute inset-0 -z-10 w-full h-full object-cover" />}
           <div className="absolute inset-0 -z-10 bg-gradient-to-r from-black/60 to-black/25" aria-hidden="true" />
           <div className="min-w-0">
-            <strong className="block text-[17px] font-black tracking-tight text-white">{b.title}</strong>
+            <strong className="block text-[17px] font-bold tracking-tight text-white">{b.title}</strong>
             {b.description && <span className="block mt-1 text-[13px] text-white/80">{b.description}</span>}
           </div>
           {link && (
-            <span className="shrink-0 px-5 py-2 rounded-lg bg-brand text-white text-[13px] font-bold">
+            <span className="shrink-0 px-5 py-2 rounded-lg bg-brand text-white text-[13px] font-medium">
               바로가기
             </span>
           )}
@@ -112,7 +112,7 @@ export default function HomeBannerStrip({ variant }: { variant: Extract<BannerSl
               {bg && <img src={bg} alt="" aria-hidden="true" className="absolute inset-0 -z-10 w-full h-full object-cover" />}
               <div className="absolute inset-0 -z-10 bg-gradient-to-br from-black/60 to-black/40" aria-hidden="true" />
               {b.description && (
-                <small className="block mb-1 text-[12px] font-bold tracking-wide text-white/80">{b.description}</small>
+                <small className="block mb-1 text-[12px] font-medium tracking-wide text-white/80">{b.description}</small>
               )}
               <strong className="text-[15px] font-bold leading-snug tracking-tight text-white">{b.title}</strong>
             </BannerWrap>
@@ -361,7 +361,7 @@ function StripRail({ banners, single = false, hero = false }: { banners: HomeBan
             type="button"
             onClick={() => goTo(active + 1)}
             aria-label={`다음 배너 (${active + 1} / ${banners.length})`}
-            className="px-2 py-1 rounded-full text-[12px] font-semibold tabular-nums text-white bg-black/30 backdrop-blur-[6px]"
+            className="px-2 py-1 rounded-full text-[12px] font-medium tabular-nums text-white bg-black/30 backdrop-blur-[6px]"
           >
             {active + 1} / {banners.length}
           </button>
@@ -418,7 +418,7 @@ function StripCard({ b, many, first, clone, single = false, hero = false, deferI
       /* shape-lock-ok — 14px 는 임의값이 아니라 `.ur-home-panel`(모바일) 의 radius 와 **같은 값**이다. */
       className={`relative ${many ? STRIP_CLS.cardMany : STRIP_CLS.cardOne} ${many ? PC_CARD_W : ''} ${STRIP_CLS.card} ${single ? SINGLE_CARD_CLS : ''} ${hero ? HERO_CARD_CLS : ''}`}
       /* 🎨 사진이 없으면 **브랜드 면**(대표 확정 "E"). */
-      style={bg ? undefined : { background: 'var(--brand-grad)' }}
+      style={bg ? (hero ? heroEdgeFillStyle(bg) : undefined) : { background: 'var(--brand-grad)' }}
     >
       {bg && !deferImg && (
         <img

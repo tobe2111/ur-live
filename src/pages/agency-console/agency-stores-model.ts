@@ -29,6 +29,21 @@ export interface StoreRow {
 
 export const PICKED_STORE_KEY = 'agency_console_store'
 
+/**
+ * 🤝 2026-10-24 — 한 매장 · 여러 에이전시 · **자기 이용권만**(대표 확정). 에이전시가 판에서 여는 화면은 이용권뿐이다.
+ * 서버 쪽 짝은 `src/worker/utils/agency-product-scope.ts`(에이전시 좌석 기본 차단) — 여기 화면을 더하려면
+ * 그 화면이 부르는 API 를 **먼저** 에이전시 몫으로 고치고 서버 허용목록에 올린다(화면만 열면 누를 때 403).
+ */
+const AGENCY_SCREENS = [/^\/seller\/group-buy$/, /^\/seller\/meal-voucher\/new$/, /^\/seller\/products\/\d+\/edit$/]
+export function isAgencyScreen(path: string): boolean {
+  const p = path.split('?')[0]
+  return AGENCY_SCREENS.some((re) => re.test(p))
+}
+
+/** 판 아래 한 줄 — 에이전시가 왜 주문·정산을 못 보는지 화면이 직접 말한다(안 말하면 고장으로 읽힌다). */
+export const AGENCY_PLATE_SCOPE_NOTE =
+  '우리가 맡은 이용권만 보여요. 이 매장의 다른 이용권과 주문·정산·사용처리는 사장님 화면에서 해요.'
+
 /** 기억한 매장이 목록에 있으면 그것, 아니면 운영 중인 첫 매장. 운영 중이 없으면 null. */
 export function pickStore(active: StoreRow[], remembered: number | null): StoreRow | null {
   if (active.length === 0) return null

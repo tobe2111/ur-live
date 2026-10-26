@@ -19,7 +19,7 @@ import { intParam } from '@/shared/pagination'
 import { safeError } from '@/worker/utils/safe-error'
 
 type Ctx = Context<{ Bindings: Env }>
-type Scope = { userId: number | null; stores: { seller_id: number; business_name?: string | null; name?: string | null; status?: string | null }[] } | null
+type Scope = { userId: number | null; agencyId?: number | null; stores: { seller_id: number; business_name?: string | null; name?: string | null; status?: string | null }[] } | null
 
 /**
  * 한 번에 보는 매장 수 상한 — 바인딩 한도(100) 안. 이 문장은 매장 id 뒤에 `LIMIT ?` 하나를 더 묶으므로 90.
@@ -29,6 +29,8 @@ export const NOTIF_MAX_STORES = 90
 
 export function scopedStoreIds(scope: Scope): number[] {
   if (!scope) return []
+  // 🤝 2026-10-24 — 에이전시 좌석에겐 매장 알림함을 안 보인다(사장님·다른 에이전시 판매가 섞여 있다 — 대표 확정 '자기 것만').
+  if (scope.agencyId) return []
   return scope.stores.filter((s) => isSeatableStoreStatus(s.status ?? null)).slice(0, NOTIF_MAX_STORES).map((s) => s.seller_id)
 }
 

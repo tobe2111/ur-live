@@ -20,15 +20,25 @@ describe('② 판매 알림은 글자다', () => {
 })
 
 describe('③ 등록 줄은 사용처리 티켓과 같은 폭', () => {
-  for (const f of ['src/pages/user-profile/SellerSection.tsx', 'src/pages/agency-console/AgencyStorePlate.tsx']) {
-    it(f, () => {
-      const src = readCode(f)
-      expect(src).toMatch(/<div className="p-3 border-b border-rule">\s*<button[^>]*?onClick=\{\(\) => openPage\('\/seller\/group-buy', '이용권'\)\}\s*className="[^"]*rounded-\[10px\] bg-brand text-white/)
-    })
-  }
-  it('마이 판의 사용처리 칸은 아래 구분선을 등록 줄에 넘긴다(구분선은 둘 아래 하나)', () => {
+  /* 🔁 2026-10-25 재조준(대표 확정 내 가게 안 G) — 마이는 사용처리·등록이 판 밖 위의 **나란한 두 칸**이 됐다.
+     지키던 것(*두 칸의 폭이 갈리지 않는다*)은 같은 `grid-cols-2` 칸 + 같은 높이(`h-16`)로 지킨다. */
+  it('src/pages/user-profile/SellerSection.tsx', () => {
     const src = readCode('src/pages/user-profile/SellerSection.tsx')
-    expect(src).toMatch(/<div className="px-3 pt-3">\s*<button[^>]*?onClick=\{\(\) => enterSeat\('\/store\/scan'\)\}/)
+    const grid = src.slice(src.indexOf('<div className="grid grid-cols-2 gap-2">'))
+    expect(grid.length, '두 칸 격자를 못 찾았다').toBeLessThan(src.length)
+    const scan = grid.indexOf("enterSeat('/store/scan')"), reg = grid.indexOf("openPage('/seller/group-buy', '이용권')")
+    expect(scan > -1 && reg > scan, '두 칸이 한 격자 안에 나란히 있지 않다').toBe(true)
+    expect((grid.slice(0, reg + 300).match(/min-w-0 flex items-center gap-2 h-16 px-3 rounded-2xl/g) ?? []).length, '두 칸의 높이·모서리가 갈렸다').toBe(2)
+  })
+  // 🤝 2026-10-24 — 에이전시 판엔 사용처리 티켓이 없다(자기 이용권만). 같은 폭(좌우 12px 안쪽 · 모서리 10px)은 지킨다.
+  it('src/pages/agency-console/AgencyStorePlate.tsx', () => {
+    const src = readCode('src/pages/agency-console/AgencyStorePlate.tsx')
+    expect(src).toMatch(/<div className="p-3">\s*<button[^>]*?onClick=\{\(\) => openPage\('\/seller\/group-buy', '우리 이용권'\)\}\s*className="[^"]*rounded-\[10px\] bg-brand text-white/)
+  })
+  // 🔁 2026-10-25 — 판 안의 티켓·등록 줄 사이 구분선 문제는 안 G 에서 구조적으로 사라졌다(둘 다 판 밖의 칸이다).
+  it('마이의 사용처리·등록은 판 밖이다(판 안 구분선 문제가 없다)', () => {
+    const src = readCode('src/pages/user-profile/SellerSection.tsx')
+    expect(src.indexOf("enterSeat('/store/scan')")).toBeLessThan(src.indexOf('<div className={LIST_PLATE_CLS}>'))
   })
 })
 

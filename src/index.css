@@ -402,13 +402,16 @@
          안드로이드 Noto Sans KR · 윈도우 맑은 고딕). tailwind.config.js 의 sans 와 같은 목록이어야 한다. */
       -apple-system,
       BlinkMacSystemFont,
+      /* 🔤 2026-10-26 (대표 스크린샷 — 창 폭 1024 미만인 PC 에서 PC 규칙이 안 걸려 맑은 고딕 + Segoe UI 로 그려졌다):
+         한글 글꼴을 system-ui 앞에 둔다. 애플 기기는 위 두 키워드가 먼저 잡히고 안드로이드엔 이 이름의 글꼴이
+         없어 그대로 system-ui 로 떨어진다 ⇒ 폰 픽셀은 그대로이고, 윈도우만 창 폭과 무관하게 한글 글꼴로 그린다. */
+      "Noto Sans KR",
+      "Malgun Gothic",
       system-ui,
       Roboto,
       "Helvetica Neue",
       "Segoe UI",
       "Apple SD Gothic Neo",
-      "Noto Sans KR",
-      "Malgun Gothic",
       "Apple Color Emoji",
       "Segoe UI Emoji",
       "Segoe UI Symbol",
@@ -418,6 +421,31 @@
     letter-spacing: -0.022em;
     /* Prevent horizontal scroll on mobile */
     overflow-x: hidden;
+  }
+
+  /* 🔤 2026-10-25 (대표 *"PC는 글자가 너무 별로인데"* → 안 A · *"네 뜻대로 하자"* = PC 만):
+     넓은 화면(1024px+)에서만 한글 글꼴을 라틴 시스템 글꼴보다 앞에 둔다. 위 목록 그대로면 윈도우는
+     system-ui(=Segoe UI)·Roboto 로 영문을, 맑은 고딕으로 한글을 그려 한 줄에 글꼴이 둘 섞인다
+     (쿠팡은 한글 글꼴을 먼저 쓴다). 폰은 위 목록 그대로라 픽셀 동일. 전부 기기 글꼴이라 받는 것 0.
+     숫자는 여전히 UrDigits 가 맨 앞. `font-sans` 유틸(9곳 — '원' 단위·<pre>)은 한글이라 어차피 맑은 고딕으로
+     떨어져 짝을 두지 않는다. */
+  /* 🔤 2026-10-25 후속 (대표가 쿠팡 개발자 도구 화면을 보냄 — 같은 PC 에서 쿠팡 제목이 **Noto Sans KR** 로 렌더된다):
+     Noto Sans KR 을 맑은 고딕 앞으로. 그 글꼴이 깔린 PC 는 쿠팡과 같은 모양이 되고, 없으면 종전대로 맑은 고딕(받는 것 0). */
+  @media (min-width: 1024px) {
+    body {
+      font-family:
+        "UrDigits",
+        "Apple SD Gothic Neo",
+        "Noto Sans KR",
+        "Malgun Gothic",
+        -apple-system,
+        BlinkMacSystemFont,
+        system-ui,
+        "Apple Color Emoji",
+        "Segoe UI Emoji",
+        "Segoe UI Symbol",
+        sans-serif;
+    }
   }
 
   /* Apple Typography Scale - Mobile Responsive */

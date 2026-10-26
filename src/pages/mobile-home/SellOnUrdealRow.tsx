@@ -44,7 +44,7 @@ export default function SellOnUrdealRow() {
         <b className="font-bold text-gray-900 dark:text-white">사장님이신가요?</b>{' '}
         내 가게도 유어딜에 올려보세요
       </span>
-      <span className="flex shrink-0 items-center gap-1 text-[12px] font-bold text-brand-text">
+      <span className="flex shrink-0 items-center gap-1 text-[12px] font-medium text-brand-text">
         시작하기 <ChevronRight className="h-3.5 w-3.5" />
       </span>
     </Link>

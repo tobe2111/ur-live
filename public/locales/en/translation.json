@@ -3290,7 +3290,8 @@
       "brandWideTitleOff": "Usable at other branches",
       "brandWideNote": "Redeemed with that branch's store code or scan. Settlement stays with this branch.",
       "brandWideTitleAll": "Also usable at {{count}} brand branches",
-      "brandWideNoteCross": "Used at a same-owner branch, it settles here; used at another owner's branch, it settles there. Vouchers with a referral fee can only be used at same-owner branches."
+      "brandWideNoteCross": "Used at a same-owner branch, it settles here; used at another owner's branch, it settles there. Vouchers with a referral fee can only be used at same-owner branches.",
+      "agencyMine": "Vouchers we manage"
     },
     "ordersM3": {
       "today": "Today",
@@ -3382,6 +3383,30 @@
       "am": "AM",
       "pm": "PM",
       "hour": "{{n}}"
+    },
+    "channelPerf": {
+      "title": "Who sold",
+      "month": "This month",
+      "last30": "Last 30 days",
+      "all": "All time",
+      "who": "Who",
+      "sold": "Sold",
+      "revenue": "Revenue",
+      "used": "Used",
+      "refunded": "Refunded",
+      "products": "{{n}} vouchers assigned",
+      "ended": "Ended",
+      "pending": "Awaiting acceptance",
+      "noAgency": "Assign vouchers to an agency to see each agency counted separately (Operators → Assign to agency).",
+      "referralTitle": "Sold via referral links",
+      "noReferral": "No vouchers were sold via referral links in this period.",
+      "unknownUser": "Unknown user",
+      "soldN": "{{n}} sold",
+      "commission": "Influencer fee {{n}} KRW",
+      "share": "Share {{pct}}% · {{n}} KRW",
+      "shareUnset": "Share not set",
+      "shareNote": "UrDeal only calculates the amount owed. The store pays the agency directly, and the agency issues the tax invoice to the store.",
+      "note": "Referral sales are already included in the rows above. The same sale is shown two ways: who managed it, and whose link it came from."
     }
   },
   "admin": {
@@ -6073,7 +6098,9 @@
     "privacyLink": "Privacy Policy",
     "termsNoticeEnd": "",
     "agencyQuestion": "Are you an agency?",
-    "agencyLogin": "Agency login"
+    "agencyLogin": "Agency login",
+    "heroTitle2": "Local spots, cheaper when you buy ahead",
+    "chipPass": "Local passes"
   },
   "guide": {
     "sectionTitlePlaceholder": "Section title",

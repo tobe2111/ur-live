@@ -69,6 +69,7 @@ const AdminOperationsGuidePage = lazy(() => import('@/pages/admin/AdminOperation
 const AdminPlatformModelPage = lazy(() => import('@/pages/admin/AdminPlatformModelPage')); const AdminProposalsPage = lazy(() => import('@/pages/admin/AdminProposalsPage')); const AdminDecisionsPage = lazy(() => import('@/pages/admin/AdminDecisionsPage')) // 📥 2026-09-08 결재함(docs/decisions ?raw)
 // 🏭 2026-06-07: 도매몰(유통스타트 B2B) 전용 운영 가이드.
 const AdminBlogPage = lazy(() => import('@/pages/AdminBlogPage'))
+const AdminHomeServicePage = lazy(() => import('@/pages/admin/AdminHomeServicePage'))
 const AdminInstagramAutoDmPage = lazy(() => import('@/pages/AdminInstagramAutoDmPage'))
 const AdminSocialPage = lazy(() => import('@/pages/AdminSocialPage'))
 const AdminNotificationSettingsPage = lazy(() => import('@/pages/AdminNotificationSettingsPage'))
@@ -420,6 +421,7 @@ export function AdminRoutes() {
         </ProtectedRoute>
       } />
       {/* 🌐 2026-07-02 (대표 요청): 유어딜 플랫폼 모델 SSOT 문서 뷰어 (docs/design/*.md ?raw 자동동기화) */}
+      <Route path="/admin/home-service" element={<ProtectedRoute requireAdmin><ErrorBoundary><AdminHomeServicePage /></ErrorBoundary></ProtectedRoute>} />
       <Route path="/admin/blog" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminBlogPage /></ErrorBoundary>

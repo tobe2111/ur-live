@@ -253,7 +253,7 @@ export default function CuratorPage() {
 
   if (error || !data) {
     return (
-      <div className="min-h-[100dvh] bg-surface text-gray-900 dark:text-white flex flex-col items-center justify-center px-4 text-center">
+      <div className="min-h-[100dvh] bg-surface dark:bg-warm text-gray-900 dark:text-white flex flex-col items-center justify-center px-4 text-center">
         <h1 className="text-[24px] font-bold mb-2">{t('curator.notFoundTitle', { defaultValue: '유어샵을 찾을 수 없어요' })}</h1>
         <p className="text-gray-500 dark:text-gray-400 mb-6">@{handle}</p>
         <Link to="/" className="px-6 py-3 bg-brand rounded-xl text-white font-bold">{t('curator.goHome', { defaultValue: '홈으로' })}</Link>
@@ -321,7 +321,7 @@ export default function CuratorPage() {
           실선 테두리를 없애려던 것이었고 그 목적은 지금도 유효하지만, 유어샵은 한 화면에 **바탕 · 카드 ·
           알약 칩** 세 톤이 겹쳐 그게 "지저분하다" 로 읽혔다(대표 진단). 한 톤이면 나누는 일을
           **실선 하나**가 맡는다(탭 줄 아래 + 줄 사이 `divide-rule`) — 판도 그림자도 필요 없다. */}
-      <div className="min-h-[100dvh] bg-surface text-gray-900 dark:text-white pb-28">
+      <div className="min-h-[100dvh] bg-surface dark:bg-warm text-gray-900 dark:text-white pb-28">
         {/* 🗑️ 2026-09-02 (대표 — "편집하기 UI 가 번잡하다"): 주인 상단 안내 띠("내 유어샵 · 방문자에게 보이는 화면")
             삭제. 편집 진입은 헤더의 [유어샵 편집] 블루 버튼 하나(안3). 방문자는 그 버튼이 없을 뿐, 팔로우 등 대체
             버튼을 두지 않는다(대표: "그냥 방문자는 안보이면 되잖아"). */}
@@ -367,7 +367,7 @@ export default function CuratorPage() {
             남은 것은 **손님이 보는 화면 하나**뿐이다. 되돌리려면 그 페이지에서 이리로 옮기면 된다. */}
             {/* 🔍 2026-06-16 유어샵 시안: 검색창 — 상품명 + 추천 코멘트 라이브 필터(SEARCH_MIN_PINS 이상일 때만). */}
             {pins.length >= SEARCH_MIN_PINS && (
-              <div className="max-w-3xl mx-auto px-4 pt-3 pb-1">
+              <div className="max-w-3xl mx-auto px-5 pt-3 pb-1">
                 {/* 🩸 2026-09-30 한 톤: `bg-gray-50 dark:bg-[#1D1F29]` 은 페이지가 `bg-surface` 가 된 순간
                     **다크에서 바탕과 같은 색**이 되어 입력칸이 사라진다(라이트에선 거의 안 보인다).
                     `bg-wash`(잉크 5% / 흰 6%)는 어느 표면 위에서도 한 단계만 눌린 면을 만든다. */}
@@ -410,7 +410,7 @@ export default function CuratorPage() {
                     종전엔 헤더(`bg-surface`)와 본문(`bg-warm`)의 톤 차이가 그 일을 했는데(b2),
                     한 톤이 되면서 맞닿는 자리가 안 보이게 됐다. 밑줄 탭의 활성 표시(`border-b-2`)가
                     이 선 위에 앉으므로 선은 탭 체계의 일부이기도 하다. */}
-                <div className="max-w-3xl mx-auto px-4 pt-2 border-b border-rule flex items-center gap-2 empty:hidden">
+                <div className="max-w-3xl mx-auto px-5 pt-6 border-b border-rule flex items-center gap-2 empty:hidden">
                   <PinCategoryChips pins={pins} value={cat} onChange={setCat} />
                   {query.trim() && (
                     <span className="shrink-0 text-[12px] text-gray-500 dark:text-gray-400">
@@ -422,12 +422,12 @@ export default function CuratorPage() {
                   </div>
                 </div>
                 {visiblePins.length === 0 ? (
-                  <div className="max-w-3xl mx-auto px-4 py-16 text-center">
+                  <div className="max-w-3xl mx-auto px-5 py-16 text-center">
                     <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t('curator.noSearchResults', { defaultValue: '검색 결과가 없어요' })}</p>
                     <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{t('curator.tryOtherKeyword', { defaultValue: '다른 키워드로 찾아보세요.' })}</p>
                   </div>
                 ) : (
-                  <div className="max-w-3xl mx-auto px-4 pb-4 divide-y divide-rule lg:divide-y-0 lg:grid lg:gap-2 ur-ushop-rows">
+                  <div className="max-w-3xl mx-auto px-5 pb-4 divide-y divide-rule lg:divide-y-0 lg:grid lg:gap-2 ur-ushop-rows">
                     {visiblePins.map((pin) => (
                       <PinRow
                         key={pin.id}

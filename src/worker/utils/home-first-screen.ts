@@ -84,32 +84,32 @@ export const HOME_FS_CLASS = {
   topRow: 'px-4 h-11 flex items-center justify-between gap-2',
   locRow: 'px-4 pt-4 pb-3',
   locTrigger: 'inline-flex items-center gap-1 -ml-0.5 max-w-full',
-  locLabel: 'text-[24px] font-black tracking-[-0.02em] text-gray-900 dark:text-white max-w-[220px] truncate',
+  locLabel: 'text-[24px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white max-w-[220px] truncate',
   panel: 'ur-home-panel',
   secHead: 'flex items-end justify-between gap-4 mb-3',
-  secTitle: 'text-[17px] font-black tracking-tight text-gray-900 dark:text-white',
-  secSub: 'mt-1 text-[12px] text-gray-500 dark:text-gray-400',
+  secTitle: 'text-[17px] font-bold tracking-tight text-gray-900 dark:text-white',
+  secSub: 'mt-1 text-[13px] text-gray-500 dark:text-gray-400',
   rail: HOME_SECTION_RAIL,
   cardLink: 'block group active:scale-[0.98] flex flex-col',
   media: 'relative aspect-[4/3] w-full overflow-hidden group/media rounded-xl bg-gray-100 dark:bg-[#222225]',
   cover: 'absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]',
-  body: 'pt-2',
+  body: 'pt-3',
   merchant: 'flex items-center gap-1 text-[12px] leading-none mb-1 text-gray-500 dark:text-gray-400',
-  onnuri: 'shrink-0 px-1 py-[1px] rounded bg-brand-tint text-brand-text text-[12px] font-bold',
-  title: 'text-[13px] font-bold line-clamp-2 leading-tight text-gray-900 dark:text-white',
+  onnuri: 'shrink-0 px-1 py-[1px] rounded bg-brand-tint text-brand-text text-[12px] font-medium',
+  title: 'text-[15px] font-medium line-clamp-2 leading-snug text-gray-900 dark:text-white',
   addr: 'flex items-center justify-between gap-2 mt-1 text-[12px] min-w-0 text-gray-500 dark:text-gray-400',
   rateRow: 'flex items-center gap-2 mt-1 text-[12px] text-gray-500 dark:text-gray-400',
   starWrap: 'relative inline-block shrink-0 leading-none select-none align-middle',
   starBase: 'text-gray-300 dark:text-gray-600',
   starFill: 'absolute left-0 top-0 overflow-hidden whitespace-nowrap text-yellow-400',
-  rateNum: 'font-bold text-gray-900 dark:text-white',
-  priceWrap: 'mt-1',
+  rateNum: 'font-medium text-gray-900 dark:text-white',
+  priceWrap: 'mt-2',
   priceTop: 'flex items-baseline gap-1 leading-none',
-  discount: 'text-[12px] font-extrabold text-sale',
+  discount: 'text-[15px] font-bold text-sale',
   orig: 'text-[12px] line-through text-gray-500 dark:text-gray-400',
   priceRow: 'flex items-baseline gap-1 mt-1 leading-none',
-  price: 'text-[17px] font-extrabold tracking-tight text-gray-900 dark:text-white',
-  perNight: 'text-[12px] font-semibold text-gray-500 dark:text-gray-400',
+  price: 'text-[17px] font-bold tracking-tight text-gray-900 dark:text-white',
+  perNight: 'text-[12px] font-medium text-gray-500 dark:text-gray-400',
 } as const
 
 /** `DealCardMedia` 의 커버 `sizes` — 그 파일의 템플릿과 같은 식이어야 한다. */
@@ -197,15 +197,12 @@ export function cardHtml(p: SeedProduct, eager: boolean, hrefOverride?: string):
         `</p>`
       : '') +
     `<div class="${HOME_FS_CLASS.priceWrap}">` +
-    (discount > 0 || (originalPrice > price && originalPrice > 0)
-      ? `<p class="${HOME_FS_CLASS.priceTop}">` +
-        (discount > 0 ? `<span class="${HOME_FS_CLASS.discount}">${discount}%</span>` : '') +
-        (originalPrice > price && originalPrice > 0
-          ? `<span class="${HOME_FS_CLASS.orig}">${formatNumber(originalPrice)}${unit}</span>`
-          : '') +
-        `</p>`
+    (originalPrice > price && originalPrice > 0
+      ? `<p class="${HOME_FS_CLASS.priceTop}"><span class="${HOME_FS_CLASS.orig}">${formatNumber(originalPrice)}${unit}</span></p>`
       : '') +
-    `<p class="${HOME_FS_CLASS.priceRow}"><span class="${HOME_FS_CLASS.price}">${formatNumber(price)}${unit}</span>` +
+    `<p class="${HOME_FS_CLASS.priceRow}">` +
+    (discount > 0 ? `<span class="${HOME_FS_CLASS.discount}">${discount}%</span>` : '') +
+    `<span class="${HOME_FS_CLASS.price}">${formatNumber(price)}${unit}</span>` +
     (p.category === 'stay_voucher' && price > 0 ? `<span class="${HOME_FS_CLASS.perNight}">/1박~</span>` : '') +
     `</p></div></div></a>`
   )
