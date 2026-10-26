@@ -24,7 +24,7 @@
  *   ⇒ 남은 경로 ①②③ 은 전부 "그 매장"에 근거가 있다(①② 지도 등록 사진, ③ 매장명 토큰 매칭).
  */
 import type { Env } from '../types/env'
-import { fetchKakaoPlacePhotos } from './kakao-place-photos'
+import { fetchKakaoPlacePhotos, classifiedTagsFor } from './kakao-place-photos'
 import { fetchNaverPlaceBusinessPhotos } from './naver-place-photo'
 
 export interface DemoPhotoOpts {
@@ -40,6 +40,8 @@ export interface DemoPhotoOpts {
   fallbackQuery?: string
   /** 목표 장수(3~5 권장). */
   count?: number
+  /** 상품 종류(products.category) — 분류 사진 태그를 고른다(식사=음식 먼저, 그 밖=가게 안·밖). */
+  category?: string | null
 }
 
 /**
@@ -110,8 +112,10 @@ export async function fetchDemoPhotos(env: Env, opts: DemoPhotoOpts): Promise<st
   if (opts.nameQuery) {
     try { add(await fetchNaverPlaceBusinessPhotos(opts.nameQuery, opts.address, want)) } catch { /* fail-soft → 카카오 */ }
   }
+  // 🏷️ 2026-10-27 (대표 "업체사진→분류사진") — 카카오 업체 사진, 그래도 모자라면 카카오가 장면을
+  //   분류한 사진(식사=음식·내부·외부 / 그 밖=내부·외부). 분류 없는 사진은 받지 않는다.
   if (out.length < want && opts.placeId) {
-    try { add(await fetchKakaoPlacePhotos(opts.placeId, want)) } catch { /* fail-soft */ }
+    try { add(await fetchKakaoPlacePhotos(opts.placeId, want, classifiedTagsFor(opts.category))) } catch { /* fail-soft */ }
   }
   // ③ **제거됨 (2026-10-25 대표 — "블로그에서 사진 발췌해서 의미없는 것도 올려와져").**
   //    네이버 이미지검색은 "그 이름으로 검색된 웹 이미지"라 블로그 본문 사진이 섞이고(블로그 호스트에

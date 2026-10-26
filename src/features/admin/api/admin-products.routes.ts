@@ -1351,6 +1351,7 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
               naverQuery: `${pl.name} ${w.t.pq}`,
               fallbackQuery: w.t.iq || w.t.pq,
               count: 3 + Math.floor(Math.random() * 3),
+              category: w.t.cat,  // 🏷️ 분류 사진 태그(식사=음식 먼저, 그 밖=가게 안·밖)
             })
           } catch { return [] as string[] }
         })
@@ -1961,14 +1962,14 @@ adminProductsRoutes.post('/dongnedeal/heal-broken-images', cors(), async (c) => 
     const { fetchDemoPhotos } = await import('../../../worker/utils/demo-photo-set');
     const HEAL_CK = '1';  // 검증 완료 마커 버전(재검증 필요 시 bump)
     const rows = (await DB.prepare(
-      `SELECT p.id, p.slug, p.image_url, p.images, p.restaurant_name, p.restaurant_address
+      `SELECT p.id, p.slug, p.category, p.image_url, p.images, p.restaurant_name, p.restaurant_address
          FROM products p
         WHERE (p.slug LIKE 'demo-deal-%' OR p.slug LIKE 'demo-stay-%')
           AND COALESCE(p.is_active,1) = 1 AND p.restaurant_name IS NOT NULL
           AND NOT EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id = p.id AND m.key = 'img_heal_ck' AND m.value = ?)
         ORDER BY p.id LIMIT ?`
-    ).bind(HEAL_CK, perRun).all<{ id: number; slug: string; image_url: string | null; images: string | null; restaurant_name: string; restaurant_address: string | null }>()
-      .catch(() => ({ results: [] as { id: number; slug: string; image_url: string | null; images: string | null; restaurant_name: string; restaurant_address: string | null }[] }))).results || [];
+    ).bind(HEAL_CK, perRun).all<{ id: number; slug: string; category: string | null; image_url: string | null; images: string | null; restaurant_name: string; restaurant_address: string | null }>()
+      .catch(() => ({ results: [] as { id: number; slug: string; category: string | null; image_url: string | null; images: string | null; restaurant_name: string; restaurant_address: string | null }[] }))).results || [];
     let checked = 0, healed = 0;
     const metaMap = await getSupplyMeta(DB, rows.map(r => r.id)).catch(() => new Map<number, Record<string, string>>());
     for (const row of rows) {
@@ -1980,6 +1981,7 @@ adminProductsRoutes.post('/dongnedeal/heal-broken-images', cors(), async (c) => 
           placeId: metaMap.get(row.id)?.kakao_place_url || null,
           nameQuery: row.restaurant_name,
           address: row.restaurant_address,
+          category: row.category,
           count: 3 + Math.floor(Math.random() * 3),
         }).catch(() => [] as string[]);
         if (fresh.length > 0) {
