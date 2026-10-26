@@ -170,8 +170,8 @@ export function photosOwnedBy(details: Record<string, string>, userId: number): 
 }
 
 /**
- * 🎟️ 카테고리별 참여권 장수(2026-10-25 — 결재 `docs/decisions/2026-10-25-home-service-credit-cost.md`).
- * 기본은 모두 1장. 어드민이 `home_service_credit_cost`(JSON {카테고리: 장수})로 정한다 — **대표 결재 전엔 아무 값도 넣지 않는다**.
+ * 🎟️ 카테고리별 참여권 장수(2026-10-25 — 결재 `docs/decisions/archive/2026-10-25-home-service-credit-cost.md`).
+ * 기본은 1장. 어드민이 `home_service_credit_cost`(JSON {카테고리: 장수})로 정한다 — 2026-10-26 대표 승인 *"큰 일은 참여권 더 받자"* 로 인테리어 5 · 간판 3 저장(나머지 1).
  */
 export const CREDIT_COST_KEY = 'home_service_credit_cost'
 export const MAX_CREDIT_COST = 20
