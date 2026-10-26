@@ -61,7 +61,7 @@ describe('걷어낸 것 — 카드를 두르던 테두리 4곳', () => {
   })
 
   it('⑤ PC 구매 박스만 예외 — 들림(안 2). 그림자는 **토큰**이어야 한다', () => {
-    expect(BOX).toMatch(/borderRadius: 18, padding: 18, background: 'var\(--gbd-card\)', boxShadow: 'var\(--lift\)'/)
+    expect(BOX).toMatch(/borderRadius: 16, padding: 18, background: 'var\(--gbd-card\)', boxShadow: 'var\(--lift\)'/)
     // 🔑 하드코딩 그림자는 테마를 모른다 — 다크는 `--lift: none` 이라 꺼져야 한다.
     expect(BOX).not.toMatch(/boxShadow: '0 6px 24px/)
     expect(BOX).not.toMatch(/border: '1px solid var\(--gbd-line2\)', borderRadius: 18/)

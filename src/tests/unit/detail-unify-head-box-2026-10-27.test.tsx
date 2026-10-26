@@ -1,7 +1,7 @@
 /**
  * 🧱 2026-10-27 (대표 "통일할 건 통일" → "모두 이상적으로") 통일 3·4단계:
  *   ③ 숙소 섹션 띠가 이용권과 같은 흰 면 + 8px 띠(`STAY_BAND` 한 상수 — 종전 7곳 사본) · 제목 24px.
- *   ④ PC 오른쪽 상자 — 숙소 패널이 이용권 상자와 같은 숫자(반경 18 · 여백 18 · 버튼 50/14),
+ *   ④ PC 오른쪽 상자 — 숙소 패널이 이용권 상자와 같은 숫자(반경 16 · 여백 18 · 버튼 50/12 — 모서리 체계 안 값으로 둘 다 맞춤),
  *      그리고 추첨 상품이면 PC 에서도 예약 대신 응모(폰 하단 바와 같은 값).
  * 못 보는 것: 실제 색·간격(그려서 본다).
  */
@@ -34,10 +34,10 @@ describe('③ 머리·섹션 띠', () => {
 describe('④ PC 상자', () => {
   it('숙소 패널 숫자 = 이용권 상자 숫자', () => {
     const box = readCode('src/pages/group-buy/DealPurchaseBox.tsx')
-    expect(box).toMatch(/borderRadius: 18, padding: 18/)
-    expect(box).toMatch(/height: 50, border: 'none', borderRadius: 14/)
-    expect(PURCHASE_BOX_CLS).toMatch(/rounded-\[18px\].*p-\[18px\]/)
-    expect(PURCHASE_CTA_CLS).toMatch(/h-\[50px\] rounded-\[14px\]/)
+    expect(box).toMatch(/borderRadius: 16, padding: 18/)
+    expect(box).toMatch(/height: 50, border: 'none', borderRadius: 12/)
+    expect(PURCHASE_BOX_CLS).toMatch(/rounded-2xl.*p-\[18px\]/)
+    expect(PURCHASE_CTA_CLS).toMatch(/h-\[50px\] rounded-xl/)
     expect(readCode('src/pages/stay-detail/StayBookingPanel.tsx')).toContain('${PURCHASE_BOX_CLS}')
   })
   it('추첨 상품이면 예약 대신 응모 버튼', () => {

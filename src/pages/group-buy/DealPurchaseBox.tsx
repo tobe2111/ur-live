@@ -74,7 +74,7 @@ export default function DealPurchaseBox({
   //   ⚠️ 하드코딩 그림자를 쓰면 안 된다 — 다크는 `--lift: none` 이라 그림자가 꺼져야 하는데
   //   `0 6px 24px rgba(0,0,0,.06)` 은 테마를 모른다(그래서 토큰으로 바꿨다).
   return (
-    <div style={{ borderRadius: 18, padding: 18, background: 'var(--gbd-card)', boxShadow: 'var(--lift)' }}>
+    <div style={{ borderRadius: 16, padding: 18, background: 'var(--gbd-card)', boxShadow: 'var(--lift)' }}>
       {/* 💰 2026-10-11 (대표 확정 D안 — PC 포함): 모바일 머리 카드(`PassHeadCard`)와 **같은 위계**.
           [할인율(빨강 글자)·판매가·정가 취소선] 한 줄 + "1장당 N원 아껴요". 걷어낸 것: 빨간 pill ·
           "결제 즉시 교환권 발급"(용어 오류) · 이름·가격을 한 번 더 말하던 '구매 옵션' 상자. */}
@@ -119,7 +119,7 @@ export default function DealPurchaseBox({
           type="button"
           onClick={fcfs.apply}
           disabled={fcfs.applied || fcfs.closed || fcfs.busy}
-          style={{ width: '100%', height: 50, border: 'none', borderRadius: 14, background: fcfs.applied || fcfs.closed ? 'var(--gbd-sub2)' : 'var(--gbd-cta-bg)', color: 'var(--gbd-cta-fg)', fontSize: 15, fontWeight: 700, cursor: fcfs.applied || fcfs.closed ? 'default' : 'pointer' }}
+          style={{ width: '100%', height: 50, border: 'none', borderRadius: 12, background: fcfs.applied || fcfs.closed ? 'var(--gbd-sub2)' : 'var(--gbd-cta-bg)', color: 'var(--gbd-cta-fg)', fontSize: 15, fontWeight: 700, cursor: fcfs.applied || fcfs.closed ? 'default' : 'pointer' }}
         >
           {fcfs.ctaLabel}
         </button>
@@ -128,7 +128,7 @@ export default function DealPurchaseBox({
         onClick={isPrelaunch ? onPrelaunchApply : onBuy}
         disabled={(!isJoinable && !isPrelaunch) || joining}
         aria-label={isPrelaunch ? '사전 응모하기' : isJoinable ? (allDeal ? `${formatNumber(total)}딜로 결제하기` : `${formatNumber(total)}원 ${ctaLabel}`) : '구매 불가'}
-        style={{ width: '100%', height: 50, border: 'none', borderRadius: 14, background: (buyable || isPrelaunch) ? 'var(--gbd-cta-bg)' : 'var(--gbd-sub2)', color: 'var(--gbd-cta-fg)', fontSize: 15, fontWeight: 700, letterSpacing: '-.01em', cursor: (buyable || isPrelaunch) ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
+        style={{ width: '100%', height: 50, border: 'none', borderRadius: 12, background: (buyable || isPrelaunch) ? 'var(--gbd-cta-bg)' : 'var(--gbd-sub2)', color: 'var(--gbd-cta-fg)', fontSize: 15, fontWeight: 700, letterSpacing: '-.01em', cursor: (buyable || isPrelaunch) ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
       >
         {joining ? '처리 중…' : isPrelaunch ? <><BellIcon size={16} aria-hidden="true" />오픈 예정 — 사전 응모하기</> : !isJoinable ? ('구매 불가') : <>{allDeal ? `${formatNumber(total)}딜로 결제하기` : `${formatNumber(total)}원 ${ctaLabel}`}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
       </button>

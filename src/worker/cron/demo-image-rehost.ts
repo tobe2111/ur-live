@@ -431,16 +431,13 @@ export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: 
   const result: { reconditioned: number; migrated: number; images: number; done: number; swapped?: number; galleryFixed?: number; galleryDeduped?: number; photoShort?: number; descWritten?: number; skipped?: string } =
     { reconditioned: rc.reconditioned, migrated: 0, images: 0, done: 0 }
   if (rc.swapped) result.swapped = rc.swapped  // 🔁 다른 매장으로 옮긴 데모 수(2026-10-27)
-  // 🩹 갤러리 첫 칸 정합 — **R2 바인딩과 무관**(주소만 맞추는 DB 작업)이라 아래 조기반환보다 앞에 둔다.
-  //   여기 아래에 뒀다가는 바인딩 없는 배포에서 영영 안 돈다(바로 밑 주석이 기록한 넉 달 사고와 같은 자리).
+  // 🩹 갤러리 첫 칸 정합 — R2 무관(DB 작업)이라 조기반환보다 앞에(아래 두면 바인딩 없는 배포에서 영영 안 돈다).
   const gal = await repairGalleryCoverDrift(env).catch(() => ({ scanned: 0, fixed: 0, remaining: -1 }))
   if (gal.fixed) result.galleryFixed = gal.fixed
-  // 📏 2026-10-25: 노출 중인 데모 중 사진 3장 미만 개수를 **매 회차 하트비트에 남긴다**.
-  //   "최소 3장" 이 영구적으로 안 지켜졌던 것은 아무도 그 수를 안 셌기 때문이다. 0 으로 수렴하는지 본다.
+  // 📏 2026-10-25: 사진 3장 미만 데모 수를 매 회차 하트비트에 — 아무도 안 세서 "최소 3장" 이 안 지켜졌다.
   result.photoShort = await countDemoPhotoShort(env).catch(() => -1)
-  // ✍️ 2026-10-27: AI 상품 구성·가게 소개 — 판정된 사진과 이용권 내용만 근거(`demo-description.ts`). R2 와 무관.
-  const ds = await (await import('./demo-description')).writeDemoDescriptions(env).catch(() => ({ written: 0, rejected: 0 }))
-  if (ds.written || ds.rejected) result.descWritten = ds.written
+  // ✍️ 2026-10-27: AI 상품 구성·가게 소개(`demo-description.ts` — 판정된 사진·이용권 내용만 근거). R2 무관.
+  const ds = await (await import('./demo-description')).writeDemoDescriptions(env).catch(() => ({ written: 0, rejected: 0 })); if (ds.written || ds.rejected) result.descWritten = ds.written
   // 🔴 2026-08-31: 여기서 조용히 반환하던 것이 **넉 달간 이관을 통째로 죽여 놨다.**
   //   cron 은 Pages 가 아니라 wrangler.toml 의 Workers 배포에서 도는데 거기에 MEDIA_BUCKET 이
   //   없었다(주석 처리돼 있었다). 그런데 반환값이 `migrated=0 done=0` 이라 하트비트에는
