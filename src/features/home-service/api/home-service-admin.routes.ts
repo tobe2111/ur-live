@@ -8,6 +8,7 @@
  *   POST /api/admin/home-service/requests/:id/choose  대리 접수 건만 — 손님이 전화로 고른 견적을 대신 누른다
  *   POST /api/admin/home-service/requests/:id/cancel  대리 접수 건만 — 손님이 취소하면 참여권 반환
  *   GET/PUT /api/admin/home-service/house             직영 견적을 낼 매장(sellers.id)
+ *   GET  /api/admin/home-service/reviews · POST /reviews/:id/hidden  후기 목록 · 숨기기/되살리기
  *
  * 🔒 대리 접수는 손님 동의를 받았다는 기록(consent_note)이 있어야 한다 — 연락처가 고른 업체에 넘어간다.
  * 🔒 직영 견적은 손님 화면에 "유어딜 직영" 으로 표시된다(다른 업체 견적과 구분).
@@ -332,5 +333,38 @@ homeServiceAdminRoutes.post('/requests/:id/cancel', async (c) => {
     return c.json({ success: true, data: { refunded } })
   } catch (err) {
     return safeError(c, err, '취소하지 못했습니다', '[home-service:admin-cancel]')
+  }
+})
+
+/** ⭐ 후기 관리 — 최근 후기 목록 + 숨기기/되살리기(욕설·광고). 지우지 않는다(기록은 남긴다). */
+homeServiceAdminRoutes.get('/reviews', async (c) => {
+  try {
+    const DB = c.env.DB
+    await ensureHomeServiceTables(DB)
+    const { results } = await DB.prepare(
+      `SELECT r.id, r.request_id, r.rating, r.body, r.hidden, r.created_at,
+              COALESCE(NULLIF(s.business_name, ''), s.name) AS pro_name, u.name AS reviewer
+         FROM home_service_reviews r
+         LEFT JOIN sellers s ON s.id = r.seller_id
+         LEFT JOIN users u ON u.id = r.user_id
+        ORDER BY r.id DESC LIMIT 100`,
+    ).all()
+    return c.json({ success: true, data: results ?? [] })
+  } catch (err) {
+    return safeError(c, err, '후기를 불러오지 못했습니다', '[home-service:admin-reviews]')
+  }
+})
+
+homeServiceAdminRoutes.post('/reviews/:id/hidden', async (c) => {
+  try {
+    const DB = c.env.DB
+    await ensureHomeServiceTables(DB)
+    const id = idParam(c.req.param('id'))
+    const body = await c.req.json<{ hidden?: boolean }>().catch(() => ({} as { hidden?: boolean }))
+    if (!id) return c.json({ success: false, error: '잘못된 요청입니다' }, 400)
+    await DB.prepare(`UPDATE home_service_reviews SET hidden = ? WHERE id = ?`).bind(body.hidden === false ? 0 : 1, id).run()
+    return c.json({ success: true })
+  } catch (err) {
+    return safeError(c, err, '바꾸지 못했습니다', '[home-service:admin-review-hide]')
   }
 })

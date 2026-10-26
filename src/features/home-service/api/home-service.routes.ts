@@ -7,6 +7,7 @@
  *   GET  /api/home-service/requests/:id        받은 견적 비교(처음 열면 '열어 봄' 기록 — 반환 판정에 쓴다)
  *   POST /api/home-service/requests/:id/choose 사장님 고르기 → 서로 연락처 공개
  *   POST /api/home-service/requests/:id/cancel 요청 취소 → 보낸 견적의 참여권 반환
+ *   POST /api/home-service/requests/:id/review 고른 업체에 후기(별점·글) — 요청 하나에 한 번
  *
  * 🔒 본인 확인 = 카카오 로그인 + 카카오가 준 휴대폰 번호(`users.phone`). 번호가 없으면 접수하지 않는다.
  * 🔒 연락처는 손님이 고른 **한 곳**에만 넘어간다. 고르기 전 사장님은 동 단위 지역·요약만 본다.
@@ -23,7 +24,8 @@ import {
   categoryDef, msgQuoteChosen, photosOwnedBy, requestSummary, validateRequest, type HomeServiceCategory,
 } from '@/shared/home-service'
 import { sendSystemAlimtalk } from '../../../lib/system-alimtalk'
-import { chooseQuoteAtomic, ensureHomeServiceTables, ensureShareToken, proCountsByCategory, refundAllQuotes, withPrivateDetails } from './home-service-db'
+import { chooseQuoteAtomic, ensureHomeServiceTables, ensureShareToken, proCountsByCategory, refundAllQuotes, reviewSummaries, withPrivateDetails } from './home-service-db'
+import { REVIEW_PREVIEW_COUNT, parseReview, readProLinks } from '@/shared/home-service-review'
 import { isShareToken, publicShareView } from '@/shared/home-service-share'
 import { dispatchRequest } from './home-service-notify'
 
@@ -206,13 +208,14 @@ homeServiceRoutes.get('/requests/:id', requireAuth(), async (c) => {
       `SELECT q.id, q.seller_id, q.price, q.message, q.status, q.created_at,
               COALESCE(NULLIF(s.business_name, ''), s.name) AS pro_name, q.is_house, q.partner,
               CASE WHEN s.status IN ('approved', 'active') THEN 1 ELSE 0 END AS verified, -- 사업자 인증 표시(proVerified 와 같은 값)
-              CASE WHEN q.status = 'chosen' THEN COALESCE(NULLIF(p.phone, ''), s.phone) END AS pro_phone
+              CASE WHEN q.status = 'chosen' THEN COALESCE(NULLIF(p.phone, ''), s.phone) END AS pro_phone,
+              p.intro AS pro_intro, p.links AS pro_links_raw
          FROM home_service_quotes q
          JOIN sellers s ON s.id = q.seller_id
          LEFT JOIN home_service_pros p ON p.seller_id = q.seller_id
         WHERE q.request_id = ?
         ORDER BY (q.price IS NULL), q.created_at ASC`,
-    ).bind(id).all<{ id: number; seller_id: number }>()
+    ).bind(id).all<{ id: number; seller_id: number; pro_links_raw?: unknown }>()
 
     // 그 사장님이 정찰가로 파는 생활 이용권(있으면 견적 카드 옆에 같이 보인다 — 대표 "자신들의 이용권도 팔고").
     const sellerIds = [...new Set((quotes ?? []).map((q) => Number(q.seller_id)))].slice(0, MAX_QUOTES_PER_REQUEST)
@@ -231,9 +234,42 @@ homeServiceRoutes.get('/requests/:id', requireAuth(), async (c) => {
     const { user_id: _u, details: _d, private_details: _p, ...rest } = req
     // 🔗 열려 있으면 공유 링크 — 손님이 아는 업체·카톡방에 보내면 그 링크로 업체가 바로 가입해 견적을 낸다(2026-10-25).
     const share_token = req.status === 'open' ? await ensureShareToken(DB, id).catch(() => null) : null
-    return c.json({ success: true, data: { ...rest, details, share_token, quotes: (quotes ?? []).map((q) => ({ ...q, vouchers: vouchers[Number(q.seller_id)] || [] })) } })
+    // ⭐ 업체별 유어딜 후기 요약 + 내가 쓴 후기(고른 뒤 한 번 쓸 수 있다).
+    const reviews = await reviewSummaries(DB, sellerIds, REVIEW_PREVIEW_COUNT).catch(() => ({} as Awaited<ReturnType<typeof reviewSummaries>>))
+    const myReview = req.status === 'chosen'
+      ? await DB.prepare(`SELECT rating, body, created_at FROM home_service_reviews WHERE request_id = ?`).bind(id).first().catch(() => null)
+      : null
+    return c.json({ success: true, data: { ...rest, details, share_token, my_review: myReview, quotes: (quotes ?? []).map(({ pro_links_raw, ...q }) => ({
+      ...q, pro_links: readProLinks(pro_links_raw), reviews: reviews[Number(q.seller_id)] ?? null, vouchers: vouchers[Number(q.seller_id)] || [],
+    })) } })
   } catch (err) {
     return safeError(c, err, '견적을 불러오지 못했습니다', '[home-service:detail]')
+  }
+})
+
+/** ⭐ 후기 — 고른 업체에 한 번(요청 하나에 하나). 고르기 전·남의 요청·두 번째는 막는다. */
+homeServiceRoutes.post('/requests/:id/review', requireAuth(), rateLimit({ action: 'home_service_review', max: 10, windowSec: 600 }), async (c) => {
+  try {
+    const DB = c.env.DB
+    await ensureHomeServiceTables(DB)
+    const userId = Number(getCurrentUser(c)?.id)
+    const id = idParam(c.req.param('id'))
+    if (!id) return c.json({ success: false, error: '잘못된 요청입니다' }, 400)
+    const parsed = parseReview(await c.req.json<{ rating?: unknown; body?: unknown }>().catch(() => ({})))
+    if (!parsed.ok) return c.json({ success: false, error: parsed.error }, 400)
+    const ins = await DB.prepare(
+      `INSERT OR IGNORE INTO home_service_reviews (request_id, quote_id, seller_id, user_id, rating, body)
+       SELECT r.id, q.id, q.seller_id, r.user_id, ?, ?
+         FROM home_service_requests r JOIN home_service_quotes q ON q.id = r.chosen_quote_id
+        WHERE r.id = ? AND r.user_id = ? AND r.status = 'chosen' AND q.status = 'chosen'`,
+    ).bind(parsed.rating, parsed.text, id, userId).run()
+    if (!ins.meta?.changes) {
+      const had = await DB.prepare(`SELECT 1 AS x FROM home_service_reviews WHERE request_id = ?`).bind(id).first()
+      return c.json({ success: false, error: had ? '이미 후기를 남겼어요' : '고른 업체에만 후기를 남길 수 있어요' }, 409)
+    }
+    return c.json({ success: true })
+  } catch (err) {
+    return safeError(c, err, '후기를 저장하지 못했습니다', '[home-service:review]')
   }
 })
 

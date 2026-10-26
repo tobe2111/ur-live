@@ -15,6 +15,7 @@ import { HOME_SERVICE_CATEGORIES } from '@/shared/home-service'
 import { SIDO_LIST } from '@/shared/constants/region-slugs'
 import { LifeHeader, sellerHeaders } from './life-shared'
 import ProSetupForm, { type ProMe } from './pro/ProSetupForm'
+import { ProProfileBlock, RatingLine } from './life-reviews'
 import { isShareToken } from '@/shared/home-service-share'
 import { toast } from '@/hooks/useToast'
 import ProCredits from './pro/ProCredits'
@@ -103,6 +104,14 @@ export default function LifeProPage() {
             )}
             {me.registered && <ProCredits me={me} onChanged={load} />}
             {me.registered && <ProInbox refreshKey={tick} />}
+            {me.registered && (
+              <section className="rounded-2xl bg-surface p-5 shadow-lift">
+                <div className="flex items-baseline justify-between"><p className="text-[15px] font-bold">받은 후기</p><RatingLine r={me.reviews} /></div>
+                {(me.reviews?.recent.length ?? 0) === 0
+                  ? <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400">손님이 고른 일이 끝나면 후기를 부탁드려요. 다른 곳 후기 링크를 아래 등록 정보에 넣어 두면 처음에도 믿고 골라요.</p>
+                  : <ProProfileBlock reviews={me.reviews} />}
+              </section>
+            )}
             <h2 className="pt-2 text-[17px] font-bold">{me.registered ? '등록 정보' : '처음 등록'}</h2>
             <ProSetupForm me={me} onSaved={onSaved} prefill={prefill} />
           </>
