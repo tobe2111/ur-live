@@ -419,8 +419,7 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
             placeId: placeRef,
             nameQuery: row.restaurant_name,
             address: row.addr,  // 🖼️ 네이버 지도 대표사진 검색 정확도
-            count: 3 + Math.floor(Math.random() * 3),
-            category: 'stay_voucher',
+            count: 3 + Math.floor(Math.random() * 3), category: 'stay_voucher',
           }).catch(() => [] as string[])
           if (imgs.length === 0) continue
           // 대표가 placeholder(picsum/없음)면 실사진 1번째로 교체, 실사진이면 유지하고 갤러리에 병합.
@@ -454,8 +453,7 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
         nameQuery: place.name,
         address: place.address || spot.addr,  // 🖼️ 네이버 지도 대표사진 검색 정확도
         fallbackQuery: `${spot.label} ${ty.kakao}`,
-        count: wantPhotos,
-        category: 'stay_voucher',
+        count: wantPhotos, category: 'stay_voucher',
       }).catch(() => [] as string[])
       if (imgs.length) realPhotos++
       // 🚫 2026-08-08 대표 "사진 없으면 자체가 안올려져야지" — picsum 더미 폴백 폐기. 사유: 동명 테스트.
