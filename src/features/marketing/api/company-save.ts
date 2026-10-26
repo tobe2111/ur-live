@@ -125,6 +125,32 @@ export async function saveCompanyLeadsCounted(DB: D1Database, leads: CompanyLead
            WHEN ad_company_leads.subcategory IS NULL OR ad_company_leads.subcategory = '' THEN excluded.subcategory
            WHEN ad_company_leads.subcategory = '통신판매' AND excluded.subcategory IS NOT NULL AND excluded.subcategory != '통신판매' THEN excluded.subcategory
            ELSE ad_company_leads.subcategory END,
+         -- 📎 description: 통신판매 **품목 원문**만 승계한다(2026-10-26). 왜 좁은 규칙인가:
+         --   이 열은 수집기가 대표 X · 영업상태 · 취급 … · 판매 … 로 **조립**한 값인데, 종전엔
+         --   갱신 대상이 아니라 **한 번 쓰이면 영영 그대로**였다. 그래서 detail(품목) 레코드가
+         --   나중에 와도 업종(subcategory)만 승격되고 **원문은 안 남았다** — 바로 위 수집기 주석이
+         --   "원문이 있어야 다음에 표를 고칠 수 있다" 고 적어 둔 그 의도가 깨져 있었다.
+         --   라이브 실측(commerce 424,299행): 취급없음 417,156 · 취급-숫자코드 5,713 ·
+         --   취급-한글 1,430. 숫자코드는 2026-10-25 에 g() 별칭 순서를 고치기 전 detail 이고,
+         --   한글이 든 1,430행은 **대표 … 도 함께** 갖고 있다(1,430/1,433) ⇒ detail 응답이
+         --   대표자명도 들고 오므로 **통째 교체가 무손실**이다.
+         --   🔒 네 겹으로 좁힌다: ① 들어오는 값이 commerce 출처 ② 그 값의 취급이 **한글**
+         --   ③ 저장된 값이 비었거나 대표  로 시작하는 **수집기 조립 문자열** ④ 그 저장값의 취급이
+         --   없거나 숫자코드. ③이 webkr 크롤 소개문(예: "애견용품 창고형 할인매장 … 취급 품종")을
+         --   지키고, ①이 status 레코드(품목 없음)가 detail 로 채운 원문을 되덮는 것을 막는다.
+         --   ⚠️ 보수적 실패 하나: 한글 품목이 숫자로 시작하면(취급 1인가구용품) 숫자코드로 읽혀
+         --   승계를 **건너뛴다** — 덮어쓰는 쪽이 아니라 안 하는 쪽이라 데이터는 안 잃는다.
+         description = CASE
+           WHEN excluded.source = 'commerce'
+                AND excluded.description LIKE '%취급 %'
+                AND excluded.description NOT LIKE '%취급 0%' AND excluded.description NOT LIKE '%취급 1%'
+                AND (ad_company_leads.description IS NULL OR ad_company_leads.description = ''
+                     OR (ad_company_leads.description LIKE '대표 %'
+                         AND (ad_company_leads.description NOT LIKE '%취급 %'
+                              OR ad_company_leads.description LIKE '%취급 0%'
+                              OR ad_company_leads.description LIKE '%취급 1%')))
+             THEN excluded.description
+           ELSE ad_company_leads.description END,
          business_no = COALESCE(ad_company_leads.business_no, excluded.business_no),
          contact_source = COALESCE(ad_company_leads.contact_source, excluded.contact_source),
          active = CASE WHEN COALESCE(ad_company_leads.email, excluded.email) IS NOT NULL
