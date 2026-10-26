@@ -20,11 +20,15 @@ jobs:
         with:
           node-version: 22
       - name: Install playwright only
+        # 레포 package.json 과 섞이지 않게 별도 폴더에 설치한다(레포 안 npm i 는 의존 트리 충돌로 죽었다).
         run: |
-          npm i --no-save --no-package-lock --ignore-scripts playwright@1.47.2
+          mkdir -p /tmp/pw && cd /tmp/pw && npm init -y >/dev/null
+          npm i --no-audit --no-fund playwright@1.47.2
           npx playwright install --with-deps chromium
+          cp "$GITHUB_WORKSPACE/scripts/naver-browser-probe.mjs" /tmp/pw/probe.mjs
       - name: Probe
+        working-directory: /tmp/pw
         run: |
-          node scripts/naver-browser-probe.mjs "55와인포차 산남점 청주" || true
-          node scripts/naver-browser-probe.mjs "달빛한스푼" || true
-          node scripts/naver-browser-probe.mjs "스타벅스 강남역점" || true
+          node probe.mjs "55와인포차 산남점 청주" || true
+          node probe.mjs "달빛한스푼" || true
+          node probe.mjs "스타벅스 강남역점" || true
