@@ -402,13 +402,16 @@
          안드로이드 Noto Sans KR · 윈도우 맑은 고딕). tailwind.config.js 의 sans 와 같은 목록이어야 한다. */
       -apple-system,
       BlinkMacSystemFont,
+      /* 🔤 2026-10-26 (대표 스크린샷 — 창 폭 1024 미만인 PC 에서 PC 규칙이 안 걸려 맑은 고딕 + Segoe UI 로 그려졌다):
+         한글 글꼴을 system-ui 앞에 둔다. 애플 기기는 위 두 키워드가 먼저 잡히고 안드로이드엔 이 이름의 글꼴이
+         없어 그대로 system-ui 로 떨어진다 ⇒ 폰 픽셀은 그대로이고, 윈도우만 창 폭과 무관하게 한글 글꼴로 그린다. */
+      "Noto Sans KR",
+      "Malgun Gothic",
       system-ui,
       Roboto,
       "Helvetica Neue",
       "Segoe UI",
       "Apple SD Gothic Neo",
-      "Noto Sans KR",
-      "Malgun Gothic",
       "Apple Color Emoji",
       "Segoe UI Emoji",
       "Segoe UI Symbol",
