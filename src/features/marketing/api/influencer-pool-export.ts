@@ -7,7 +7,7 @@ import { ensureOutreachColumns } from './outreach-webhook'
 import { dedupeByEmail } from './outreach-queue'
 import { outreachSubject, outreachBody } from './outreach-template'
 // 📥 "받은 건 다시 안 준다" — 도장/묶음 크기는 세 풀 공용 SSOT(`pool-export-batch.ts`).
-import { EXPORT_BATCH_ROWS, NOT_EXPORTED_SQL, ensureExportStamp, exportBatchStamp, stampExported } from './pool-export-batch'
+import { EXPORT_BATCH_ROWS, NOT_EXPORTED_SQL, ensureExportStamp, exportBatchStamp, exportStampFailedNote, stampExported } from './pool-export-batch'
 
 /**
  * 🎯 인플루언서 풀 전체 다운로드 응답 빌더 (admin-ads-influencers.routes 에서 추출 — 600줄 캡 준수).
@@ -142,7 +142,10 @@ export async function buildInfluencerExportResponse(DB: D1Database, poolId: numb
     const csvEscapeCell = (v: string | number) => { const s = String(v ?? ''); const g = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s; return /[",\n]/.test(g) ? `"${g.replace(/"/g, '""')}"` : g }
     const lines = [HEAD.join(','), ...outRows.map(r => cells(r).map(csvEscapeCell).join(','))]
     // 🔔 **잘렸다는 말을 반드시 한다** — 이 파일에 고지가 없던 것이 2026-10-25 수리의 세 번째 원인이었다.
-    if (opts?.newOnly) lines.push(`\u200b이 묶음 ${stamped}명에 "내보냄" 표시를 했습니다 (도장 ${batchStamp}) · 남은 미다운로드 ${remaining}명 — 다시 받으면 그 다음 ${EXPORT_BATCH_ROWS}명이 나옵니다`)
+    // 🔴 행을 줬는데 도장이 0 이면 묶음이 돌지 않는다 — 그 사실을 파일에 적는다(조용한 반복 다운로드 차단).
+    if (opts?.newOnly) lines.push('\u200b' + (stamped || !rows.length
+      ? `이 묶음 ${stamped}명에 "내보냄" 표시를 했습니다 (도장 ${batchStamp}) · 남은 미다운로드 ${remaining}명 — 다시 받으면 그 다음 ${EXPORT_BATCH_ROWS}명이 나옵니다`
+      : exportStampFailedNote(rows.length)))
     const body = lines.join('\r\n')
     return new Response('﻿' + body, { headers: { 'Content-Type': 'text/csv;charset=utf-8', 'Content-Disposition': `attachment; filename="${fname}.csv"` } })
   }
