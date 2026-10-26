@@ -38,14 +38,9 @@ export default function AgencyLoginPage() {
       title="에이전시 로그인"
       aside={<AgencyIntro />}
       footer={
-        <div className="flex flex-col gap-3">
-          <p>
-            처음이에요 · <Link to="/agency/signup" className="font-medium text-brand-text hover:underline underline-offset-4">에이전시 만들기</Link>
-          </p>
-          <p>
-            카카오로 만든 에이전시는 {/* 🟡 2026-10-26 — 카카오 로그인 뒤 마이에서 에이전시가 바로 열린다 */}<Link to="/login?returnUrl=%2Fuser%2Fprofile" className="font-medium text-gray-700 hover:underline underline-offset-4">카카오 로그인</Link>으로 들어와요
-          </p>
-        </div>
+        <p>
+          처음이에요 · <Link to="/agency/signup" className="font-medium text-brand-text hover:underline underline-offset-4">에이전시 만들기</Link>
+        </p>
       }
     >
       <SEO title="에이전시 로그인 - 유어딜" description="유어딜 에이전시 계정으로 로그인" url="/agency/login" noindex />
@@ -72,6 +67,19 @@ export default function AgencyLoginPage() {
           </p>
         )}
         <button type="submit" disabled={busy} className={primaryBtnCls}>{busy ? '확인하는 중…' : '로그인'}</button>
+        {/* 🟡 2026-10-26 대표 "카카오 로그인 노란색 버튼으로 나타내야지 지금 너무 안보인다" — 글자 링크 → 카카오 버튼.
+            카카오로 만든 에이전시는 카카오 로그인 뒤 마이에서 바로 열린다(MyAgencyZone). 버튼 모양은 LoginPage 와 같다. */}
+        <div className="flex items-center gap-3 text-[12px] text-gray-500" aria-hidden="true">
+          <span className="h-px flex-1 bg-gray-200" />또는<span className="h-px flex-1 bg-gray-200" />
+        </div>
+        <Link to="/login?returnUrl=%2Fuser%2Fprofile"
+          className="w-full h-[52px] bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] rounded-xl text-[15px] font-medium tracking-tight transition-all flex items-center justify-center gap-2">
+          <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="#3C1E1E" d="M12 3c5.5 0 10 3.58 10 8 0 4.42-4.5 8-10 8-1.15 0-2.25-.16-3.28-.45L3 21l1.45-5.72C3.55 14.2 3 12.66 3 11c0-4.42 4.5-8 9-8z"/>
+          </svg>
+          카카오로 로그인
+        </Link>
+        <p className="-mt-2 text-center text-[12px] text-gray-500">카카오로 만든 에이전시는 여기로 들어와요</p>
         <div className="flex flex-col items-center gap-2 text-center">
           <Link to="/agency/reset" className="text-[13px] font-medium text-gray-600 hover:underline underline-offset-4">비밀번호 찾기</Link>
           <span className="text-[12px] text-gray-500">초대 메일을 받았다면 메일의 [합류하기] 버튼으로 들어와 주세요.</span>
