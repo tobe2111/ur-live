@@ -21,3 +21,9 @@
 ## 틀렸던 판단
 - 처음엔 Workers AI(ResNet-50) 판정으로 갔다 — 대표가 수집 단계 필터링을 원했다. 그 코드는 커밋 안 함(stash, 폐기 예정).
 - cron 워커(wrangler.toml)엔 AI 바인딩이 없다(Pages 에만 있음) — AI 를 다시 쓸 일이 있으면 그것부터.
+
+## 진단 1차 결과 (id 2484, 라이브)
+- kakao.page(og) **403** · kakao.panel3 200 · kakao.photos(tab/photos) **200**
+- naver.allSearch 200 이지만 **336B**(빈 응답) → 매장 번호 못 얻음 → 네이버 업체사진 0장
+- ⇒ 라이브 수집 0장의 원인 = 카카오 og 403 + 네이버 검색 실패. 카카오 tab/photos 는 `tag=MYSTORE|VENDOR|MENU|FOOD|INDOOR|OUTDOOR`(대문자, 헤더 pf:web·Origin·Referer 필요)로 분류해 받을 수 있다.
+- 진단 2차: 응답 앞부분(head)·장소번호 추출 + 네이버 대체 검색 4경로 + `?nid=` 강제로 업체사진 탭 확인.
