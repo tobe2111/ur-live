@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { toast } from '@/hooks/useToast'
-import { Field, inputCls } from './AgencyAuthShell'
+import { Field, panelInputCls } from './AgencyAuthShell'
 import { agencyRequest, type AgencyInfo } from './agency-api'
 
 /** 에이전시 정보(관리자만) — 이름·사업자등록번호. */
@@ -30,11 +30,11 @@ export function AgencyInfoPanel({ agency, onSaved, bare = false }: { agency: Age
       {!bare && <h2 className="text-[17px] font-semibold text-gray-500 dark:text-gray-400">에이전시 정보</h2>}
       <form onSubmit={save} className={`${bare ? '' : 'mt-3 '}flex flex-col gap-4 rounded-2xl bg-white dark:bg-[#1D1F29] p-6 shadow-lift`}>
         <Field label="에이전시 이름">
-          <input required maxLength={60} value={name} onChange={(e) => setName(e.target.value)} disabled={busy} className={inputCls} />
+          <input required maxLength={60} value={name} onChange={(e) => setName(e.target.value)} disabled={busy} className={panelInputCls} />
         </Field>
         {agency.kind === 'business' ? (
           <Field label="사업자등록번호">
-            <input inputMode="numeric" value={bizNo} onChange={(e) => setBizNo(e.target.value)} disabled={busy} className={inputCls} />
+            <input inputMode="numeric" value={bizNo} onChange={(e) => setBizNo(e.target.value)} disabled={busy} className={panelInputCls} />
           </Field>
         ) : (
           <p className="text-[13px] text-gray-500 dark:text-gray-400">개인 에이전시예요. 정산 때 3.3% 원천징수 후 지급돼요.</p>

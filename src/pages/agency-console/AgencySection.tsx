@@ -5,6 +5,8 @@ import { SectionTitle } from '@/pages/user-profile/list-grammar'
 import Sheet from '@/pages/user-profile/seller-section/Sheet'
 import { AgencyStaffPanel, type StaffRow } from './AgencyStaffPanel'
 import { AgencyInfoPanel } from './AgencyInfoPanel'
+import { AgencyMoveToEmailSheet } from './AgencyMoveToEmailSheet'
+import { agencyStaffLoginLabel } from '@/shared/agency-kakao'
 import { AgencyStoresPanel, FlatRow } from './AgencyStoresPanel'
 import {
   AGENCY_TOOL_PARAM, agencyRequest, clearAgencySession, readAgencyProfile,
@@ -36,7 +38,7 @@ export default function AgencySection({ stacked = false, headless = false, onSes
   const [staff, setStaff] = useState<StaffRow[] | null>(null)
   const [canManage, setCanManage] = useState(cached?.staff.role === 'admin')
   const [loadError, setLoadError] = useState('')
-  const [sheet, setSheet] = useState<'staff' | 'info' | null>(null)
+  const [sheet, setSheet] = useState<'staff' | 'info' | 'move' | null>(null)
 
   const load = useCallback(async () => {
     setLoadError('')
@@ -62,12 +64,15 @@ export default function AgencySection({ stacked = false, headless = false, onSes
   }
 
   const role = me ? (me.staff.role === 'admin' ? '관리자' : '직원') : ''
+  // 🟡 카카오로 만든 혼자 쓰는 계정(2026-10-26 대표) — 주인에게만 '이메일 계정으로 옮기기' 를 연다.
+  const solo = me?.staff.loginKind === 'kakao'
+  const canMove = solo && !!me?.staff.isOwner
 
   return (
     <section aria-label="에이전시" data-testid="my-agency-section">
       {!headless && <SectionTitle>{me ? `에이전시 · ${me.agency.name}` : '에이전시'}</SectionTitle>}
       <div className="px-4">
-        {me && !headless && <p className="mb-3 text-[13px] text-gray-500 dark:text-gray-400">{me.staff.name || me.staff.email} · {role}</p>}
+        {me && !headless && <p className="mb-3 text-[13px] text-gray-500 dark:text-gray-400">{me.staff.name || agencyStaffLoginLabel(me.staff.email)} · {role}</p>}
 
         {loadError && (
           <div className="mb-3 rounded-2xl bg-white dark:bg-[#1D1F29] p-5 shadow-lift">
@@ -86,6 +91,7 @@ export default function AgencySection({ stacked = false, headless = false, onSes
               <>
                 <FlatRow label="직원" hint={staff ? `${staff.length}명` : undefined} onClick={() => setSheet('staff')} />
                 {canManage && <FlatRow label="에이전시 정보" onClick={() => setSheet('info')} />}
+                {canMove && <FlatRow label="이메일 계정으로 옮기기" hint="직원과 함께 쓰기" onClick={() => setSheet('move')} />}
               </>
             )}
             trailingRows={<FlatRow label="에이전시 로그아웃" onClick={() => { void logout() }} last />}
@@ -96,7 +102,15 @@ export default function AgencySection({ stacked = false, headless = false, onSes
       {sheet === 'staff' && me && (
         <Sheet title="직원" onClose={() => setSheet(null)}>
           <div className="min-h-full bg-[#F8F7FC] dark:bg-[#11141C] p-4">
-            <AgencyStaffPanel staff={staff} canManage={canManage} onChanged={load} bare />
+            <AgencyStaffPanel staff={staff} canManage={canManage} onChanged={load} bare solo={solo}
+              onMove={canMove ? () => setSheet('move') : undefined} />
+          </div>
+        </Sheet>
+      )}
+      {sheet === 'move' && canMove && (
+        <Sheet title="이메일 계정으로 옮기기" onClose={() => setSheet(null)}>
+          <div className="min-h-full bg-[#F8F7FC] dark:bg-[#11141C] p-4">
+            <AgencyMoveToEmailSheet />
           </div>
         </Sheet>
       )}

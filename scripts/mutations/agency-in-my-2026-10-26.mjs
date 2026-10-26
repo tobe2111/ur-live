@@ -27,9 +27,9 @@ export default [
   },
   {
     name: '에이전시→마이 — 거울 토큰 이름이 갈린다',
-    file: 'src/pages/user-profile/MyAgencyZone.tsx',
-    find: "const AGENCY_TOKEN_KEY_MIRROR = 'agency_console_token'",
-    replace: "const AGENCY_TOKEN_KEY_MIRROR = 'agency_token'",
+    file: 'src/lib/agency-presence.ts',
+    find: "export const AGENCY_TOKEN_KEY_MIRROR = 'agency_console_token'",
+    replace: "export const AGENCY_TOKEN_KEY_MIRROR = 'agency_token'",
     test: T,
     why: '로그인돼 있어도 구역이 조용히 안 뜬다.',
   },

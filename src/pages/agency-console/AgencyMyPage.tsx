@@ -7,6 +7,7 @@ import { useTheme, type ThemeMode } from '@/shared/stores/useTheme'
 import { toast } from '@/hooks/useToast'
 import AgencySection from './AgencySection'
 import { readAgencyProfile } from './agency-api'
+import { agencyStaffLoginLabel } from '@/shared/agency-kakao'
 
 const NEXT_MODE: Record<ThemeMode, ThemeMode> = { system: 'light', light: 'dark', dark: 'system' }
 const MODE_LABEL: Record<ThemeMode, string> = { system: '시스템', light: '라이트', dark: '다크' }
@@ -33,7 +34,7 @@ export default function AgencyMyPage() {
   }, [navigate])
 
   const name = profile?.agency.name ?? '에이전시'
-  const who = profile ? `${profile.staff.name || profile.staff.email} · ${profile.staff.role === 'admin' ? '관리자' : '직원'}` : ''
+  const who = profile ? `${profile.staff.name || agencyStaffLoginLabel(profile.staff.email)} · ${profile.staff.role === 'admin' ? '관리자' : '직원'}` : ''
 
   return (
     <div className="bg-warm dark:bg-[#11141C] min-h-[100dvh] pb-10">

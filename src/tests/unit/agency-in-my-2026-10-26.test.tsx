@@ -7,7 +7,7 @@
  *      (마이의 `?tool=` 은 사장님 판이 쓴다 — 같은 이름이면 두 판이 같은 화면을 동시에 열려고 다툰다)
  *   ② 손님 마이에 '에이전시' 구역이 선다 — '내 가게' 바로 아래, 폰·PC 둘 다
  *   ③ 이메일 전용(손님 로그인 없음)이면 마이 자리에 에이전시 마이가 뜬다 — 공용 인증 판정은 그대로
- *   ④ 토큰 자리 이름이 한 벌이다(거울 둘이 갈리면 구역이 **조용히** 안 뜬다)
+ *   ④ 토큰 자리 이름이 한 벌이다(거울이 갈리면 구역이 **조용히** 안 뜬다 — 2026-10-26 2단계에서 `lib/agency-presence` 하나로 모음)
  *
  * ⚠️ 이 시험이 못 보는 것: 실제 브라우저에서 이메일 로그인 → 마이 도착(라이브 E4) · 구역이 보기 좋은지(그려 봐야 한다).
  */
@@ -101,10 +101,12 @@ describe('③ 이메일 전용이면 마이 자리에 에이전시 마이', () =
 })
 
 describe('④ 토큰 자리 이름은 한 벌', () => {
-  it('거울 둘이 콘솔 이름과 같다', () => {
-    const mirror = /const AGENCY_TOKEN_KEY_MIRROR = '([^']+)'/
-    expect(code('src/pages/user-profile/MyAgencyZone.tsx').match(mirror)?.[1]).toBe(AGENCY_TOKEN_KEY)
-    expect(code('src/routes/agency-console.routes.tsx').match(mirror)?.[1]).toBe(AGENCY_TOKEN_KEY)
+  it('거울은 한 곳(lib/agency-presence)이고 콘솔 이름과 같다 — 마이·마이 자리 둘 다 그걸 쓴다', () => {
+    const mirror = /export const AGENCY_TOKEN_KEY_MIRROR = '([^']+)'/
+    expect(code('src/lib/agency-presence.ts').match(mirror)?.[1]).toBe(AGENCY_TOKEN_KEY)
+    expect(code('src/pages/user-profile/MyAgencyZone.tsx')).toContain("import { hasAgencyLogin } from '@/lib/agency-presence'")
+    expect(code('src/routes/agency-console.routes.tsx')).toContain("import { hasAgencyLogin } from '@/lib/agency-presence'")
+    expect(code('src/pages/user-profile/MyAgencyZone.tsx')).not.toMatch(/AGENCY_TOKEN_KEY_MIRROR = /)
   })
   it('localStorage · sessionStorage 둘 다 본다("이 컴퓨터에서 로그인 유지" 를 끈 직원)', () => {
     expect(hasAgencyLogin()).toBe(false)

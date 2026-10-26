@@ -68,6 +68,13 @@ export function Field({ label, hint, children }: { label: string; hint?: ReactNo
 export const inputCls =
   'w-full h-12 rounded-xl border border-gray-200 bg-white px-4 text-[15px] text-gray-900 placeholder:text-gray-400 outline-none transition-colors focus:border-brand disabled:bg-gray-50 disabled:text-gray-500'
 
+/**
+ * 마이 안(손님 테마를 따르는 판)에 놓이는 입력칸 — 2026-10-26 안 A 로 에이전시 판이 마이 안에 들어오면서 필요해졌다.
+ *   `inputCls` 는 라이트 고정 화면(로그인·가입)용이라 다크에서 흰 바탕을 지키는데, 전역 `.dark input` 이 글자를
+ *   흰색으로 바꿔 **흰 바탕에 흰 글자**가 된다. 마이 안에서는 바탕도 함께 어둡게 한다.
+ */
+export const panelInputCls = `${inputCls} dark:border-[#2A2A2A] dark:bg-[#11141C] dark:placeholder:text-gray-500 dark:disabled:bg-[#1A1A1A]`
+
 export const primaryBtnCls =
   'w-full h-12 rounded-xl bg-brand text-white text-[15px] font-semibold transition-opacity disabled:opacity-50 disabled:cursor-not-allowed'
 

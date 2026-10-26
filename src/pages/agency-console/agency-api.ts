@@ -9,9 +9,15 @@
  * 아직 `agency_token` 을 쓰는 경로가 남아 있어 섞이면 서로를 지운다.
  */
 export const AGENCY_TOKEN_KEY = 'agency_console_token'
-const PROFILE_KEY = 'agency_console_profile'
+export const PROFILE_KEY = 'agency_console_profile'
+/** 카카오로 이은 로그인을 그 손님에게 묶는 자리 — 정본은 `lib/agency-presence.ts`. */
+import { AGENCY_KAKAO_UID_KEY } from '@/lib/agency-presence'
 
-export interface AgencyStaffInfo { id: number; email: string; name: string | null; role: 'admin' | 'staff'; isOwner: boolean }
+export interface AgencyStaffInfo {
+  id: number; email: string; name: string | null; role: 'admin' | 'staff'; isOwner: boolean
+  /** kakao = 카카오로 만든 혼자 쓰는 계정(2026-10-26) · email = 이메일 계정. 옛 캐시엔 없을 수 있다. */
+  loginKind?: 'kakao' | 'email'
+}
 export interface AgencyInfo { id: number; name: string; kind: 'business' | 'individual'; businessNumber?: string | null }
 export interface AgencyLoginPayload { token: string; expiresAt: number; staff: AgencyStaffInfo; agency: AgencyInfo }
 
@@ -57,7 +63,7 @@ export function readAgencyProfile(): { staff: AgencyStaffInfo; agency: AgencyInf
 
 export function clearAgencySession(): void {
   for (const s of stores()) {
-    try { s.removeItem(AGENCY_TOKEN_KEY); s.removeItem(PROFILE_KEY) } catch { /* 무시 */ }
+    try { s.removeItem(AGENCY_TOKEN_KEY); s.removeItem(PROFILE_KEY); s.removeItem(AGENCY_KAKAO_UID_KEY) } catch { /* 무시 */ }
   }
 }
 
