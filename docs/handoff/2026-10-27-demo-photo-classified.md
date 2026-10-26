@@ -106,3 +106,9 @@
 - 미리보기 도구에 숙소 상세 스텁 추가(`--deals` + `/stays/:id`).
 - ⚠️ 여전히 미해결(머니 경로·결재 필요): 숙소 예약 서버에 추첨(fcfs) 게이트 없음 — 화면은 이제 응모만 보이지만 API 직행 예약은 막히지 않는다.
 - 남은 일: #6 상세 갤러리에 매장 숏폼 영상.
+
+## 10. 데모 상품 결제 차단 (2026-10-26 대표 "데모 숙소에도 실제로 결제가 되면 안돼")
+- 원인: 숙소 예약 서버가 추첨 게이트를 아예 안 불렀다 + 공용 게이트는 `fcfs_enabled` 없는 데모·조회 실패를 통과시켰다.
+- 수정: `fcfs-gate.ts` 에 `isDemoProductForPurchase`(slug `demo-*` → 차단, 조회 실패 → 막지 않음)를 맨 앞에 · 숙소 create / create-multi / confirm(Toss 승인 전) 배선.
+- 가드: `demo-purchase-block-2026-10-26.test.ts` 7건 + 주입 4건 빨간불 확인. staging: `STAGING_CHECKLIST.md` S-DEMO-1~3.
+- 대표 직접 지시가 승인(머니 경로 차단 방향만 — 결제·원장 계산은 무변경).
