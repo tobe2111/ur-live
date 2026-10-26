@@ -129,7 +129,7 @@ homeServiceAdminRoutes.put('/partners', async (c) => {
 })
 
 /**
- * 🎟️ 카테고리별 참여권 장수(2026-10-25 — 결재 `docs/decisions/2026-10-25-home-service-credit-cost.md`).
+ * 🎟️ 카테고리별 참여권 장수(2026-10-25 — 결재 `docs/decisions/archive/2026-10-25-home-service-credit-cost.md`).
  * 업체가 내는 돈이라 **대표 결재 뒤에만** 값을 넣는다. 비워 두면 1장. count 가 null/1 이면 그 카테고리를 기본으로.
  */
 homeServiceAdminRoutes.get('/credit-costs', async (c) => {
