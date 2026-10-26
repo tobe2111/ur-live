@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { Search, PlusCircle, MapPin, CheckCircle2, AlertTriangle, Store, Image as ImageIcon, X, Pencil } from 'lucide-react'
+import { Search, PlusCircle, MapPin, CheckCircle2, AlertTriangle, Store, Image as ImageIcon, X, Pencil, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { DealRow } from './types'
 
 interface KakaoPlace {
@@ -44,6 +44,18 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
   const [photoBusy, setPhotoBusy] = useState(false)
   // 🖼️ 2026-07-02 (대표 "사진 여러 장"): 다중 선택 — 첫 장 = 대표(image_url), 전체 = image_urls(JSON, 상세 갤러리).
   const [selectedPhotos, setSelectedPhotos] = useState<string[]>([])
+  // 🔀 2026-10-27 (대표 "사진 순서 바꿀 수 있게"): 갤러리 순서 변경 — 끌어다 놓기 + ◀▶ 버튼. ①이 대표라 대표 사진도 같이 맞춘다.
+  const [dragFrom, setDragFrom] = useState<number | null>(null)
+  const movePhoto = (from: number, to: number) => {
+    setSelectedPhotos((prev) => {
+      if (from === to || from < 0 || to < 0 || from >= prev.length || to >= prev.length) return prev
+      const next = [...prev]
+      const [it] = next.splice(from, 1)
+      next.splice(to, 0, it)
+      set('image_url', next[0] || '')
+      return next
+    })
+  }
 
   const isEdit = !!editDeal
 
@@ -271,10 +283,18 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
               수정 진입 시 기존 사진이 여기 프리필됨. X 로 빼고, 아래 네이버 검색으로 추가. ①=대표. */}
           {selectedPhotos.length > 0 && (
             <div className="mt-2">
-              <p className="text-[11px] font-semibold text-gray-500 mb-1">현재 갤러리 ({selectedPhotos.length}장) — ①이 대표, X로 제거</p>
+              <p className="text-[11px] font-semibold text-gray-500 mb-1">현재 갤러리 ({selectedPhotos.length}장) — ①이 대표, 끌어다 놓거나 ◀▶로 순서 변경, X로 제거</p>
               <div className="flex gap-2 flex-wrap">
                 {selectedPhotos.map((u, i) => (
-                  <div key={u} className="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-200">
+                  <div
+                    key={u}
+                    draggable
+                    onDragStart={() => setDragFrom(i)}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => { e.preventDefault(); if (dragFrom != null) movePhoto(dragFrom, i); setDragFrom(null) }}
+                    onDragEnd={() => setDragFrom(null)}
+                    className={`relative w-16 h-16 rounded-lg overflow-hidden border cursor-move ${dragFrom === i ? 'border-gray-900 opacity-50' : 'border-gray-200'}`}
+                  >
                     <img src={cfImage(u, { width: 128, quality: 80, format: 'auto' }) || u} alt="" className="w-full h-full object-cover" loading="lazy" onError={(e) => { e.currentTarget.style.opacity = '0.25' }} />
                     <span className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-gray-900/80 text-white text-[10px] font-bold flex items-center justify-center">{i + 1}</span>
                     <button
@@ -291,6 +311,16 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
                     >
                       <X className="w-3 h-3" />
                     </button>
+                    <div className="absolute bottom-0 inset-x-0 flex justify-between">
+                      <button type="button" aria-label="앞으로" disabled={i === 0} onClick={() => movePhoto(i, i - 1)}
+                        className="w-5 h-5 bg-black/60 text-white flex items-center justify-center disabled:opacity-0 hover:bg-black">
+                        <ChevronLeft className="w-3 h-3" />
+                      </button>
+                      <button type="button" aria-label="뒤로" disabled={i === selectedPhotos.length - 1} onClick={() => movePhoto(i, i + 1)}
+                        className="w-5 h-5 bg-black/60 text-white flex items-center justify-center disabled:opacity-0 hover:bg-black">
+                        <ChevronRight className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
