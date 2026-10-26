@@ -4,10 +4,23 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const CONFIG = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'config', 'reference-styles.json');
+const LEARNED = path.join(path.dirname(CONFIG), '..', 'data', 'reference-patterns.json');
+const LEARNED_MAX_AGE_DAYS = 30;
+
+// 주간 수집(reference-accounts.mjs)이 만든 패턴을 기본 패턴에 더한다. 오래됐거나 깨졌으면 무시.
+export function mergeLearned(base, learned, now = Date.now()) {
+  if (!learned?.patterns?.length || !learned.updated_at) return base;
+  if ((now - Date.parse(learned.updated_at)) / 864e5 > LEARNED_MAX_AGE_DAYS) return base;
+  const ids = new Set(base.patterns.map((p) => p.id));
+  const extra = learned.patterns.filter((p) => p.id && p.hook && p.how && p.example && !ids.has(p.id));
+  return { ...base, patterns: [...base.patterns, ...extra] };
+}
+
 let cache;
-export function loadStyles(file = CONFIG) {
+export function loadStyles(file = CONFIG, learnedFile = LEARNED) {
   if (file === CONFIG && cache) return cache;
-  const s = JSON.parse(fs.readFileSync(file, 'utf8'));
+  let s = JSON.parse(fs.readFileSync(file, 'utf8'));
+  try { s = mergeLearned(s, JSON.parse(fs.readFileSync(learnedFile, 'utf8'))); } catch { /* 아직 없음 */ }
   if (file === CONFIG) cache = s;
   return s;
 }
