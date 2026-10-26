@@ -6,7 +6,7 @@ export default [
   {
     name: 'demo-photo-biz — 카카오가 손님·블로그 사진까지 받는다',
     file: 'src/worker/utils/kakao-place-photos.ts',
-    find: '      if (p.type !== tag) continue',
+    find: '      if (strictType && p.type !== tag) continue',
     replace: '      if (!p.type) continue',
     test: T,
     why: '태그 필터가 풀리는 날 손님 리뷰·블로그 사진이 데모에 섞인다(대표: 업체가 올린 사진만).',
