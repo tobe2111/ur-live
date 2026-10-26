@@ -16,7 +16,7 @@ export interface ProMe {
   reviews?: { avg: number | null; count: number; recent: { rating: number; body: string; reviewer: string; created_at: string }[] } | null
   categories: string[]
   areas: { sido: string; sigungu: string }[]
-  seller: { name: string; approved: boolean; phone: string | null }
+  seller: { id?: number; name: string; approved: boolean; phone: string | null }
   balance: number
   packages: { key: string; credits: number; price: number; label: string }[]
   chargeEnabled: boolean

@@ -11,7 +11,7 @@
  */
 
 import { newShareToken } from '../../../shared/home-service-share'
-import { maskReviewer } from '../../../shared/home-service-review'
+import { maskReviewer, readReviewPhotos } from '../../../shared/home-service-review'
 import { CREDIT_COST_KEY, HOME_PARTNERS_KEY, PRO_OPEN_STATUS_SQL, parseCreditCosts, parsePartners, type HomeServiceCategory } from '../../../shared/home-service'
 
 export const HS_TABLES_SQL = [
@@ -134,15 +134,26 @@ export const HS_TABLES_SQL = [
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_hs_reviews_request ON home_service_reviews(request_id)`,
   `CREATE INDEX IF NOT EXISTS idx_hs_reviews_seller ON home_service_reviews(seller_id, hidden, id)`,
+  `ALTER TABLE home_service_reviews ADD COLUMN photos TEXT`,
+  // 💬 고르기 전 질문(2026-10-26) — 견적 하나에 손님 ↔ 사장님. 규칙 SSOT `shared/home-service-chat.ts`.
+  `CREATE TABLE IF NOT EXISTS home_service_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    quote_id INTEGER NOT NULL,
+    sender TEXT NOT NULL,
+    body TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_hs_messages_quote ON home_service_messages(quote_id, id)`,
   // 후기 부탁 알림을 한 번만 보내려고.
   `ALTER TABLE home_service_requests ADD COLUMN review_asked_at DATETIME`,
 ] as const
 
+export type ReviewItem = { rating: number; body: string; reviewer: string; created_at: string; photos: string[] }
 /** 업체별 후기 요약 — 평균·개수·최근 몇 개(숨긴 것 제외). */
 export async function reviewSummaries(
   DB: D1Database, sellerIds: number[], recent: number,
-): Promise<Record<number, { avg: number | null; count: number; recent: { rating: number; body: string; reviewer: string; created_at: string }[] }>> {
-  const out: Record<number, { avg: number | null; count: number; recent: { rating: number; body: string; reviewer: string; created_at: string }[] }> = {}
+): Promise<Record<number, { avg: number | null; count: number; recent: ReviewItem[] }>> {
+  const out: Record<number, { avg: number | null; count: number; recent: ReviewItem[] }> = {}
   const ids = [...new Set(sellerIds.filter((n) => n > 0))]
   if (!ids.length) return out
   const ph = ids.map(() => '?').join(',')
@@ -152,18 +163,18 @@ export async function reviewSummaries(
       .bind(...ids).all<{ seller_id: number; avg: number; n: number }>(),
     recent > 0
       ? DB.prepare(
-        `SELECT seller_id, rating, body, created_at, reviewer FROM (
-           SELECT r.seller_id, r.rating, r.body, r.created_at, u.name AS reviewer,
+        `SELECT seller_id, rating, body, created_at, reviewer, photos FROM (
+           SELECT r.seller_id, r.rating, r.body, r.created_at, r.photos, u.name AS reviewer,
                   ROW_NUMBER() OVER (PARTITION BY r.seller_id ORDER BY r.id DESC) AS rn
              FROM home_service_reviews r LEFT JOIN users u ON u.id = r.user_id
             WHERE r.hidden = 0 AND r.seller_id IN (${ph})
          ) WHERE rn <= ?`,
-      ).bind(...ids, recent).all<{ seller_id: number; rating: number; body: string; created_at: string; reviewer: string | null }>()
-      : Promise.resolve({ results: [] as { seller_id: number; rating: number; body: string; created_at: string; reviewer: string | null }[] }),
+      ).bind(...ids, recent).all<{ seller_id: number; rating: number; body: string; created_at: string; reviewer: string | null; photos: string | null }>()
+      : Promise.resolve({ results: [] as { seller_id: number; rating: number; body: string; created_at: string; reviewer: string | null; photos: string | null }[] }),
   ])
   for (const a of agg.results ?? []) out[Number(a.seller_id)] = { ...out[Number(a.seller_id)], avg: Number(a.avg), count: Number(a.n) }
   for (const r of rows.results ?? []) {
-    out[Number(r.seller_id)]?.recent.push({ rating: Number(r.rating), body: r.body, reviewer: maskReviewer(r.reviewer), created_at: r.created_at })
+    out[Number(r.seller_id)]?.recent.push({ rating: Number(r.rating), body: r.body, reviewer: maskReviewer(r.reviewer), created_at: r.created_at, photos: readReviewPhotos(r.photos) })
   }
   return out
 }
@@ -444,3 +455,23 @@ export const OPEN_REQUESTS_FOR_PRO_SQL = `
    LIMIT ?`
 
 const _done = new WeakSet<object>()
+
+/**
+ * 💬 대화 한 줄 넣기 — 견적이 아직 살아 있을 때만(요청이 열려 있거나 그 견적이 골라진 것), 줄 수 상한 안에서.
+ * 조건을 INSERT…SELECT 한 문장에 넣어 확인과 쓰기 사이 틈이 없다. 반환: 들어갔는가.
+ */
+export async function addQuoteMessage(DB: D1Database, quoteId: number, sender: 'customer' | 'pro', body: string, maxPerQuote: number): Promise<boolean> {
+  const r = await DB.prepare(
+    `INSERT INTO home_service_messages (quote_id, sender, body)
+     SELECT q.id, ?, ? FROM home_service_quotes q JOIN home_service_requests r ON r.id = q.request_id
+      WHERE q.id = ? AND (r.status = 'open' AND q.status = 'sent' OR q.status = 'chosen')
+        AND (SELECT COUNT(*) FROM home_service_messages m WHERE m.quote_id = q.id) < ?`,
+  ).bind(sender, body, quoteId, maxPerQuote).run()
+  return !!r.meta?.changes
+}
+
+export async function listQuoteMessages(DB: D1Database, quoteId: number): Promise<{ id: number; sender: string; body: string; created_at: string }[]> {
+  const { results } = await DB.prepare(`SELECT id, sender, body, created_at FROM home_service_messages WHERE quote_id = ? ORDER BY id ASC LIMIT 200`)
+    .bind(quoteId).all<{ id: number; sender: string; body: string; created_at: string }>()
+  return results ?? []
+}

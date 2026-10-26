@@ -16,6 +16,7 @@ import { SIDO_LIST } from '@/shared/constants/region-slugs'
 import { LifeHeader, sellerHeaders } from './life-shared'
 import ProSetupForm, { type ProMe } from './pro/ProSetupForm'
 import { ProProfileBlock, RatingLine } from './life-reviews'
+import { shareBizPage } from './life-biz-share'
 import { isShareToken } from '@/shared/home-service-share'
 import { toast } from '@/hooks/useToast'
 import ProCredits from './pro/ProCredits'
@@ -112,6 +113,16 @@ export default function LifeProPage() {
                   : <ProProfileBlock reviews={me.reviews} />}
               </section>
             )}
+            {me.registered && me.seller.id ? (
+              <section className="rounded-2xl bg-surface p-5 shadow-lift">
+                <p className="text-[15px] font-bold">내 업체 페이지</p>
+                <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">소개·후기·이용권이 한 장에 모여요. 카톡이나 블로그에 이 링크를 걸어 두세요. 연락처는 보이지 않아요.</p>
+                <div className="mt-3 flex gap-2">
+                  <Link to={`/life/biz/${me.seller.id}`} className="ur-btn ur-btn-lg flex flex-1 justify-center bg-warm text-ink">보기</Link>
+                  <button type="button" onClick={() => shareBizPage(me.seller.id!, me.seller.name)} className="ur-btn ur-btn-lg ur-btn-primary flex flex-1 justify-center">링크 보내기</button>
+                </div>
+              </section>
+            ) : null}
             <h2 className="pt-2 text-[17px] font-bold">{me.registered ? '등록 정보' : '처음 등록'}</h2>
             <ProSetupForm me={me} onSaved={onSaved} prefill={prefill} />
           </>

@@ -13,6 +13,7 @@ import BrandLoader from '@/components/brand/BrandLoader'
 import { toast } from '@/hooks/useToast'
 import { quotePriceText } from '@/shared/home-service'
 import { DetailRows, LifeHeader, STATUS_LABEL, categoryLabel, sellerHeaders } from './life-shared'
+import QuoteChat from './QuoteChat'
 
 interface Detail {
   id: number; category: string; details: Record<string, string>; desired_date: string; status: string
@@ -83,6 +84,11 @@ export default function LifeProRequestPage() {
             ) : d.my_quote_status === 'refunded' ? (
               <p className="mt-3 text-[13px] text-gray-500 dark:text-gray-400">이 요청의 참여권은 돌려드렸어요.</p>
             ) : null}
+            <div className="mt-4 border-t border-rule pt-3">
+              <p className="text-[15px] font-bold">손님 질문</p>
+              <QuoteChat base={`/api/home-service/pro/quotes/${d.my_quote_id}/messages`} me="pro" otherName={d.customer_name || '손님'}
+                canSend={(d.status === 'open' && d.my_quote_status === 'sent') || d.my_quote_status === 'chosen'} />
+            </div>
           </section>
         ) : d.status !== 'open' || full ? (
           <p className="py-8 text-center text-[13px] text-gray-500 dark:text-gray-400">이미 마감된 요청이에요.</p>

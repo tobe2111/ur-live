@@ -15,14 +15,15 @@ import { categoryDef, quotePriceText, type HomeServiceCategory } from '@/shared/
 import { formatNumber } from '@/utils/format'
 import { BigTicketNote, DetailRows, LifeHeader, STATUS_LABEL, categoryLabel, shareLifeRequest } from './life-shared'
 import { ProProfileBlock, RatingLine, ReviewForm, type ProLink, type ReviewSummary } from './life-reviews'
+import QuoteChat from './QuoteChat'
 
 interface Voucher { id: number; name: string; price?: number }
-interface Quote { id: number; price: number | null; message: string; status: string; pro_name: string; pro_phone: string | null; vouchers: Voucher[]; is_house?: number | null; partner?: number | null; verified?: number | null
+interface Quote { id: number; seller_id: number; msg_count?: number; price: number | null; message: string; status: string; pro_name: string; pro_phone: string | null; vouchers: Voucher[]; is_house?: number | null; partner?: number | null; verified?: number | null
   pro_intro?: string | null; pro_links?: ProLink[]; reviews?: ReviewSummary | null }
 interface Detail {
   id: number; category: string; details: Record<string, string>; desired_date: string; status: string
   quote_count: number; max_quotes: number; quotes: Quote[]; share_token?: string | null
-  my_review?: { rating: number; body: string } | null
+  my_review?: { rating: number; body: string; photos?: string[] } | null
 }
 
 export default function LifeRequestDetailPage() {
@@ -30,6 +31,8 @@ export default function LifeRequestDetailPage() {
   const [d, setD] = useState<Detail | null>(null)
   const [failed, setFailed] = useState(false)
   const [busy, setBusy] = useState(false)
+  // 질문 창은 한 번에 하나만 연다 — 열린 창만 20초마다 새 줄을 확인한다.
+  const [chatOpen, setChatOpen] = useState<number | null>(null)
 
   const load = useCallback(() => {
     api.get(`/api/home-service/requests/${id}`)
@@ -96,7 +99,7 @@ export default function LifeRequestDetailPage() {
             {d.quotes.map((q) => (
               <li key={q.id} className={`rounded-2xl bg-surface p-5 shadow-lift ${q.status === 'chosen' ? 'ring-2 ring-brand' : ''}`}>
                 <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-[15px] font-bold">{q.pro_name}{q.is_house ? <span className="ml-2 rounded-full bg-brand-tint px-2 py-1 text-[12px] font-medium text-brand-text">{q.partner ? '유어딜 제휴' : '유어딜 직영'}</span> : q.verified ? <span className="ml-2 rounded-full bg-warm px-2 py-1 text-[12px] font-medium text-gray-600 dark:text-gray-300">사업자 인증</span> : null}</span>
+                  <span className="text-[15px] font-bold">{q.is_house ? q.pro_name : <Link to={`/life/biz/${q.seller_id}`} className="underline decoration-rule underline-offset-4">{q.pro_name}</Link>}{q.is_house ? <span className="ml-2 rounded-full bg-brand-tint px-2 py-1 text-[12px] font-medium text-brand-text">{q.partner ? '유어딜 제휴' : '유어딜 직영'}</span> : q.verified ? <span className="ml-2 rounded-full bg-warm px-2 py-1 text-[12px] font-medium text-gray-600 dark:text-gray-300">사업자 인증</span> : null}</span>
                   <span className="text-[17px] font-bold">{quotePriceText(q.price)}</span>
                 </div>
                 {!q.is_house && <div className="mt-1"><RatingLine r={q.reviews} /></div>}
@@ -110,6 +113,17 @@ export default function LifeRequestDetailPage() {
                         <span className="truncate">{v.name}</span><b className="shrink-0">{formatNumber(v.price)}원</b>
                       </Link>
                     ))}
+                  </div>
+                )}
+                {(d.status === 'open' || q.status === 'chosen' || (q.msg_count ?? 0) > 0) && (
+                  <div className="mt-3 border-t border-rule pt-3">
+                    <button type="button" onClick={() => setChatOpen(chatOpen === q.id ? null : q.id)} className="text-[13px] font-medium text-brand-text">
+                      {chatOpen === q.id ? '질문 닫기' : `사장님께 질문하기${q.msg_count ? ` (${q.msg_count})` : ''}`}
+                    </button>
+                    {chatOpen === q.id && (
+                      <QuoteChat base={`/api/home-service/requests/${d.id}/quotes/${q.id}/messages`} me="customer"
+                        canSend={d.status === 'open' || q.status === 'chosen'} otherName={q.pro_name} />
+                    )}
                   </div>
                 )}
                 {d.status === 'open' && (

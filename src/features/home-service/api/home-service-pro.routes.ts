@@ -39,6 +39,7 @@ import { readProLinks } from '@/shared/home-service-review'
 import { homeServiceStopped } from './home-service.routes'
 import { saveProProfile, type ProBody } from './home-service-pro-profile'
 import { proSignupHandler } from './home-service-pro-signup'
+import { proListMessages, proSendMessage } from './home-service-chat'
 
 export const homeServiceProRoutes = new Hono<{ Bindings: Env }>()
 
@@ -83,7 +84,7 @@ homeServiceProRoutes.get('/me', requireSeller(), async (c) => {
         reviews,
         categories: (cats.results ?? []).map((r) => r.category),
         areas: areas.results ?? [],
-        seller: { name: seller?.name ?? '', approved: proVerified(seller?.status), phone: seller?.phone ?? null },
+        seller: { id: sid, name: seller?.name ?? '', approved: proVerified(seller?.status), phone: seller?.phone ?? null },
         balance: await creditBalance(DB, sid),
         packages: await packages(DB),
         chargeEnabled: (await setting(DB, 'home_service_charge_enabled')) === 'true',
@@ -272,6 +273,10 @@ function parseOrderId(orderId: string): { sellerId: number; pkgKey: string } | n
   const m = /^HSC-(\d+)-([a-z0-9]{1,10})-\d{10,16}$/.exec(String(orderId || ''))
   return m ? { sellerId: Number(m[1]), pkgKey: m[2] } : null
 }
+
+// 💬 고르기 전 질문 — 내 견적의 대화(`home-service-chat.ts`).
+homeServiceProRoutes.get('/quotes/:qid/messages', requireSeller(), proListMessages)
+homeServiceProRoutes.post('/quotes/:qid/messages', requireSeller(), rateLimit({ action: 'home_service_pro_chat', max: 30, windowSec: 600 }), proSendMessage)
 
 homeServiceProRoutes.post('/credits/charge', requireSeller(), rateLimit({ action: 'home_service_charge', max: 10, windowSec: 600 }), async (c) => {
   try {
