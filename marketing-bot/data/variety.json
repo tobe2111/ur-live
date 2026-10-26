@@ -1,0 +1,14 @@
+[
+  {
+    "platform": "threads",
+    "track": "merchant",
+    "skipped": "quality_failed",
+    "date_kst": "2026-10-26"
+  },
+  {
+    "platform": "instagram",
+    "track": "merchant",
+    "skipped": "quality_failed",
+    "date_kst": "2026-10-26"
+  }
+]
