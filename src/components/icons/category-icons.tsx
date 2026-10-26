@@ -142,6 +142,43 @@ export const TaxiIcon = forwardRef<SVGSVGElement, IconProps>(function TaxiIcon({
   )
 })
 
+/** 전체 — 네 칸 바둑판. (파랑) 🏠 2026-10-26 모바일 홈 카테고리 원(안 A). */
+export const AllIcon = forwardRef<SVGSVGElement, IconProps>(function AllIcon({ size = 32, ...p }, ref) {
+  const c = CATEGORY_PALETTE.blue
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...p}>
+      <rect x="6" y="6" width="9" height="9" rx="2.5" fill={c.main} />
+      <rect x="17" y="6" width="9" height="9" rx="2.5" fill={c.dark} />
+      <rect x="6" y="17" width="9" height="9" rx="2.5" fill={c.dark} />
+      <rect x="17" y="17" width="9" height="9" rx="2.5" fill={c.main} />
+    </svg>
+  )
+})
+
+/** 생활 — 지붕 있는 집. (청록) */
+export const HomeLifeIcon = forwardRef<SVGSVGElement, IconProps>(function HomeLifeIcon({ size = 32, ...p }, ref) {
+  const c = CATEGORY_PALETTE.teal
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...p}>
+      <path d="M16 5 4 15h3v11h18V15h3z" fill={c.main} />
+      <path d="M16 5 4 15h3l9-7.5 9 7.5h3z" fill={c.dark} />
+      <rect x="13" y="18" width="6" height="8" rx="1" fill={c.dark} />
+    </svg>
+  )
+})
+
+/** 영상 — 둥근 화면에 재생 삼각형. (보라) 유어쇼츠 진입 원. */
+export const PlayTileIcon = forwardRef<SVGSVGElement, IconProps>(function PlayTileIcon({ size = 32, ...p }, ref) {
+  const c = CATEGORY_PALETTE.purple
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...p}>
+      <rect x="8" y="4" width="16" height="24" rx="4" fill={c.main} />
+      <path d="M14 12.5v7l6-3.5z" fill="white" />
+      <rect x="12" y="23" width="8" height="2" rx="1" fill={c.dark} />
+    </svg>
+  )
+})
+
 /** 원 타일 — 시안의 서비스 줄 한 칸. 아이콘 + 라벨. 다크: 카드보다 한 톤 밝은 원, 라이트: 카드색 원. */
 export function CategoryTile({ icon, label, onClick, size = 56 }: { icon: ReactNode; label: string; onClick?: () => void; size?: number }) {
   const inner = (

@@ -320,9 +320,11 @@ export default [
   },
   {
     name: '🎬 스크롤이 바깥 컨테이너로 옮겨져 유어쇼츠 진입점이 같이 밀린다',
-    file: 'src/pages/mobile-home/MobileHomePage.tsx',
-    find: '<div className="flex items-end gap-3 px-4">\n        <nav aria-label="카테고리" className="flex min-w-0 flex-1 gap-5 overflow-x-auto scrollbar-hide">',
-    replace: '<div className="flex items-end gap-3 px-4 overflow-x-auto scrollbar-hide">\n        <nav aria-label="카테고리" className="flex min-w-0 flex-1 gap-5">',
+    // 🔀 2026-10-26 재조준(안 A — 카테고리 원): 클래스가 `shared/home-chrome` 상수로 옮겨갔다. 결함은 그대로 —
+    //   스크롤이 nav 밖 줄로 올라가 유어쇼츠 원이 같이 밀린다.
+    file: 'src/shared/home-chrome.ts',
+    find: "row: 'flex items-start gap-1 pt-1 pb-4 pr-2',\n  nav: 'flex min-w-0 flex-1 gap-1 pl-2 overflow-x-auto scrollbar-hide',",
+    replace: "row: 'flex items-start gap-1 pt-1 pb-4 pr-2 overflow-x-auto scrollbar-hide',\n  nav: 'flex min-w-0 flex-1 gap-1 pl-2',",
     test: 'src/tests/unit/home-shorts-entry.test.ts',
     why:
       '"두 칸으로 나눈 걸 한 칸으로 합치자" 는 흔한 정리다. 그 순간 진입점의 shrink-0 가 무의미해지고 ' +
@@ -332,8 +334,8 @@ export default [
   {
     name: '🔵 유어쇼츠 마침표가 점으로 떨어진다 (뱃지로 읽힌다)',
     file: 'src/pages/mobile-home/MobileHomePage.tsx',
-    find: '유어쇼츠<span className="-ml-[3px] text-brand-text">.</span>',
-    replace: '유어쇼츠<span className="ml-1 text-brand-text">.</span>',
+    find: '{HOME_CATS.shortsLabel}<span className="-ml-[3px] text-brand-text">.</span>',
+    replace: '{HOME_CATS.shortsLabel}<span className="ml-1 text-brand-text">.</span>',
     test: 'src/tests/unit/home-shorts-entry.test.ts',
     why:
       '붙은 마침표는 로고 `urdeal.` 과 같은 **서명**이라 상시로 켜 둬도 안 낡는다. 띄우는 순간 ' +

@@ -662,6 +662,9 @@ function serve() {
           }
           if (p.startsWith('/api/group-buy/products') || p === '/api/products')
             return res.end(JSON.stringify({ success: true, data: DEALS, products: DEALS }))
+          // 🏠 2026-10-26 — 홈 편성 섹션(가로 줄)을 보려면 섹션 응답이 있어야 한다. 없으면 홈에 섹션이 0개로 그려진다.
+          if (p === '/api/sections')
+            return res.end(JSON.stringify({ success: true, data: [{ id: 1, title: '지금 인기 이용권', subtitle: null, products: DEALS.slice(0, 6) }] }))
         }
         return res.end(JSON.stringify({ success: true, data: [], products: [], pins: [], stats: {} }))
       }

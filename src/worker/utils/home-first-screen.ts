@@ -53,7 +53,8 @@ import { nearSubtitle } from '../../shared/home-near'
 import { HOME_H1 } from '../../shared/seo/consumer-surfaces'
 import { cfImage, cfSrcSet } from '../../utils/cf-image'
 import { DEAL_CAT_LABELS } from '../../shared/deal-cats'
-import { DEAL_GRID_GAP } from '../../shared/deal-card-grid'
+import { HOME_SEARCH, HOME_CATS, HOME_SECTION_RAIL } from '../../shared/home-chrome'
+import { URSHORTS_BROWSE_PATH } from '../../shared/urshorts'
 import { HOME_CARD_ABOVE_FOLD, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_MAX_DPR } from '../../shared/home-card-image'
 import { canonicalDetailPath } from '../../shared/product-flow'
 import { priceDisplay } from '../../shared/price-display'
@@ -81,19 +82,14 @@ export const HOME_FS_CLASS = {
   root: 'bg-white dark:bg-[#11141C]',
   chrome: 'sticky top-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]',
   topRow: 'px-4 h-11 flex items-center justify-between gap-2',
-  locRow: 'px-4 pt-1 pb-3',
+  locRow: 'px-4 pt-4 pb-3',
   locTrigger: 'inline-flex items-center gap-1 -ml-0.5 max-w-full',
   locLabel: 'text-[24px] font-black tracking-[-0.02em] text-gray-900 dark:text-white max-w-[220px] truncate',
-  catRow: 'flex items-end gap-3 px-4',
-  catNav: 'flex min-w-0 flex-1 gap-5 overflow-x-auto scrollbar-hide',
-  catBase: 'shrink-0 pb-2 text-[15px] transition-colors border-b-2',
-  catOn: 'font-black text-gray-900 dark:text-white border-brand',
-  catOff: 'font-semibold text-gray-400 dark:text-gray-500 border-transparent',
   panel: 'ur-home-panel',
   secHead: 'flex items-end justify-between gap-4 mb-3',
   secTitle: 'text-[17px] font-black tracking-tight text-gray-900 dark:text-white',
   secSub: 'mt-1 text-[12px] text-gray-500 dark:text-gray-400',
-  grid: `grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 ${DEAL_GRID_GAP}`,
+  rail: HOME_SECTION_RAIL,
   cardLink: 'block group active:scale-[0.98] flex flex-col',
   media: 'relative aspect-[4/3] w-full overflow-hidden group/media rounded-xl bg-gray-100 dark:bg-[#222225]',
   cover: 'absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]',
@@ -216,20 +212,29 @@ export function cardHtml(p: SeedProduct, eager: boolean, hrefOverride?: string):
 }
 
 function chromeHtml(): string {
-  const cats = DEAL_CAT_LABELS.map(({ key, label }) =>
-    `<span class="${HOME_FS_CLASS.catBase} ${key === 'all' ? HOME_FS_CLASS.catOn : HOME_FS_CLASS.catOff}">${escText(label)}</span>`,
-  ).join('')
+  // 🏠 2026-10-26 안 A: 머리 = [로고 줄(글리프 없이 높이만)] + [검색창]. 위치·카테고리 원은 머리 **밖**.
+  //   원 안 그림(SVG)은 안 그린다 — 원 크기가 고정이라 그림이 나중에 들어와도 높이가 같다.
+  const cats = DEAL_CAT_LABELS.map(({ key, label }) => {
+    const on = key === 'all'
+    return `<span class="${HOME_CATS.item}"><span class="${HOME_CATS.circle}${on ? ` ${HOME_CATS.circleOn}` : ''}"></span>` +
+      `<span class="${HOME_CATS.label} ${on ? HOME_CATS.labelOn : HOME_CATS.labelOff}">${escText(label)}</span></span>`
+  }).join('')
+  const shorts = `<a href="${URSHORTS_BROWSE_PATH}" class="${HOME_CATS.item}"><span class="${HOME_CATS.circle}"></span>` +
+    `<span class="${HOME_CATS.label} ${HOME_CATS.labelOff}">${escText(HOME_CATS.shortsLabel)}<span class="-ml-[3px] text-brand-text">.</span></span></a>`
   return (
     `<div class="${HOME_FS_CLASS.chrome}">` +
     `<div class="${HOME_FS_CLASS.topRow}"></div>` +
+    `<div class="${HOME_SEARCH.row}"><a href="/search" aria-label="검색" class="${HOME_SEARCH.pill}">` +
+    `<span class="${HOME_SEARCH.text}">${escText(HOME_SEARCH.placeholder)}</span><span class="${HOME_SEARCH.button}" aria-hidden="true"></span>` +
+    `</a></div>` +
+    `</div>` +
     `<div class="${HOME_FS_CLASS.locRow}">` +
     // 위치 이름은 안 그린다(위 머리말) — 줄 높이를 만드는 **같은 마크업**만 세운다.
     `<div class="min-w-0"><div class="relative inline-block"><div class="flex items-center gap-2">` +
     `<span class="${HOME_FS_CLASS.locTrigger}"><span class="${HOME_FS_CLASS.locLabel}">&nbsp;</span></span>` +
     `</div></div></div>` +
     `</div>` +
-    `<div class="${HOME_FS_CLASS.catRow}"><nav class="${HOME_FS_CLASS.catNav}">${cats}</nav></div>` +
-    `</div>`
+    `<div class="${HOME_CATS.row}"><nav aria-label="카테고리" class="${HOME_CATS.nav}">${cats}</nav>${shorts}</div>`
   )
 }
 
@@ -295,7 +300,7 @@ export function buildHomeFirstScreen(sectionsSeedJson: string, loaderHtml: strin
     `<h3 class="${HOME_FS_CLASS.secTitle}">${escText(sec.title)}</h3>` +
     ((sec.near || sec.subtitle) ? `<p class="${HOME_FS_CLASS.secSub}">${escText(sec.near ? nearSubtitle(nearLabel) : (sec.subtitle as string))}</p>` : '') +
     `</div></div>` +
-    `<div class="${HOME_FS_CLASS.grid}">${cards}</div>` +
+    `<div class="${HOME_FS_CLASS.rail}">${cards}</div>` +
     `</section></div></div>`
 
   // 🧷 노드 id 는 `/pass/`·`/vouchers/` 와 같다 — `lib/boot-first-screen.ts` 가 경로를 안 가리고

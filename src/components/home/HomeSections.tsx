@@ -1,4 +1,4 @@
-import { DEAL_GRID_GAP } from '@/shared/deal-card-grid'
+import { HOME_SECTION_RAIL } from '@/shared/home-chrome'
 import { Fragment, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { resolveSectionMoreHref, isDeadEndHref } from './section-more-href'
@@ -160,7 +160,7 @@ export default function HomeSections(
           {rail
             ? <SectionRail count={4}>{[0, 1, 2, 3].map((i) => <DealCardPlaceholder key={i} />)}</SectionRail>
             : (
-              <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 ${DEAL_GRID_GAP}`}>
+              <div className={HOME_SECTION_RAIL}>
                 {[0, 1, 2, 3].map((i) => <DealCardPlaceholder key={i} />)}
               </div>
             )}
@@ -220,10 +220,12 @@ export default function HomeSections(
               const cards = sec.products.map((p, i) => (
                 <GroupBuyFeedCard key={p.id} p={p} imgWidth={cardImgWidth} aboveFold={i < HOME_CARD_ABOVE_FOLD && sIdx === 0} userLoc={sec.near ? near?.kmFrom : null} />
               ))
+              // 🏠 2026-10-26 (대표 확정 안 A — 그루폰식): 모바일도 **옆으로 넘기는 줄**이다(종전 2열 그리드).
+              //   카드가 한 장 반 보여 넘길 수 있다는 것을 말한다. 클래스는 워커 첫 화면과 같은 상수(`HOME_SECTION_RAIL`).
               // ↔️ 첫 섹션 앞 4장은 PC 에서도 첫 화면 근처 — 워커가 4열 폭(400)으로 미리 받는다(`home-card-preload`). 그 계약 그대로.
               return rail
                 ? <SectionRail count={sec.products.length}>{cards}</SectionRail>
-                : <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 ${DEAL_GRID_GAP}`}>{cards}</div>
+                : <div className={HOME_SECTION_RAIL}>{cards}</div>
             })()}
           </section>
           {/* 🎬 2026-09-07 (대표 확정): 유어쇼츠는 **인기 이용권 다음**. 히어로 바로 아래로 올리면

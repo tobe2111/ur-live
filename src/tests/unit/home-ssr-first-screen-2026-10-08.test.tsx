@@ -33,6 +33,7 @@ import {
 import { HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_ABOVE_FOLD, HOME_CARD_BASE_QUERY } from '@/shared/home-card-image'
 import { buildHomeCardPreloadLinks } from '@/worker/utils/home-card-preload'
 import { DEAL_CAT_LABELS } from '@/shared/deal-cats'
+import { HOME_SEARCH, HOME_CATS, HOME_SECTION_RAIL } from '@/shared/home-chrome'
 import { stripComments } from '../helpers/source-text'
 
 const root = process.cwd()
@@ -73,7 +74,8 @@ const seedJson = (products: unknown[], title = '지금 인기 이용권', subtit
 function workerCard(p: unknown): HTMLAnchorElement {
   const host = document.createElement('div')
   host.innerHTML = buildHomeFirstScreen(seedJson([p]), LOADER)
-  const a = host.querySelector('#ur-first-screen a')
+  // 🏠 2026-10-26 안 A: 머리에 검색창 링크가 생겨 첫 `a` 가 카드가 아니다 — 섹션 안에서 찾는다.
+  const a = host.querySelector('#ur-first-screen section a')
   if (!a) throw new Error('워커가 카드를 안 그렸다')
   return a as HTMLAnchorElement
 }
@@ -166,7 +168,7 @@ describe('② 경계 — 서버가 그리는 범위', () => {
     const many = Array.from({ length: 9 }, (_, i) => ({ ...BARE, id: 100 + i }))
     const host = document.createElement('div')
     host.innerHTML = buildHomeFirstScreen(seedJson(many), LOADER)
-    expect(host.querySelectorAll('#ur-first-screen a').length).toBe(HOME_CARD_ABOVE_FOLD)
+    expect(host.querySelectorAll('#ur-first-screen section a').length).toBe(HOME_CARD_ABOVE_FOLD)
   })
 
   it('🔴 둘째 섹션·피드·유어쇼츠는 안 그린다 (첫 화면 밖)', () => {
@@ -243,16 +245,10 @@ describe('⑤ 크롬·섹션 머리글 — 페이지 소스에서 파싱해 대�
     ['chrome', () => home],
     ['topRow', () => home],
     ['locRow', () => home],
-    ['catRow', () => home],
-    ['catNav', () => home],
-    ['catBase', () => home],
-    ['catOn', () => home],
-    ['catOff', () => home],
     ['panel', () => sections],
     ['secHead', () => sections],
     ['secTitle', () => sections],
     ['secSub', () => sections],
-    ['grid', () => sections],
     ['locTrigger', () => loc],
     ['locLabel', () => loc],
   ] as const)('🔴 %s 클래스가 페이지 소스에 그대로 있다', (key, src) => {
@@ -263,20 +259,46 @@ describe('⑤ 크롬·섹션 머리글 — 페이지 소스에서 파싱해 대�
      *   ⚠️ 조각이 **둘 다** 있어야 통과다(한쪽만 보면 나머지 절반이 조용히 갈린다).
      */
     const needles =
-      key === 'grid' ? [want.split(' gap-')[0]]
-        : key === 'locLabel' ? ['text-[24px] font-black tracking-[-0.02em] text-gray-900 dark:text-white', 'max-w-[220px] truncate']
+      key === 'locLabel' ? ['text-[24px] font-black tracking-[-0.02em] text-gray-900 dark:text-white', 'max-w-[220px] truncate']
           : [want]
     for (const n of needles) {
       expect(src(), `${key} 가 갈렸다(${n}) — 마운트 때 그 자리가 튄다`).toContain(n)
     }
   })
 
-  it('🔴 카테고리 라벨이 화면과 같은 표에서 온다', () => {
+  it('🔴 카테고리 라벨이 화면과 같은 표에서 온다 (+ 끝 원 = 유어쇼츠)', () => {
     const host = document.createElement('div')
     host.innerHTML = buildHomeFirstScreen(seedJson([BARE]), LOADER)
     const nav = host.querySelector('#ur-first-screen nav') as HTMLElement
     expect([...nav.children].map((c) => c.textContent)).toEqual(DEAL_CAT_LABELS.map((c) => c.label))
+    // 유어쇼츠 원은 스크롤(nav) **밖** 형제다 — 2026-09-09 진입점 고정 규칙.
+    expect(nav.nextElementSibling?.textContent).toBe(`${HOME_CATS.shortsLabel}.`)
     expect(home).toContain('DEAL_CATS.map')
+  })
+
+  /**
+   * 🏠 2026-10-26 (대표 확정 안 A) — 검색창·카테고리 원·섹션 가로 줄은 **같은 상수**(`shared/home-chrome`)를
+   *   화면과 워커가 함께 import 한다. 문자열 두 벌을 대조하던 방식보다 강하다(갈릴 수가 없다).
+   *   그래서 "둘 다 그 상수를 쓰는가" 를 본다 — 한쪽이 손으로 적은 문자열로 돌아가면 빨간불.
+   */
+  it.each([
+    ['HOME_SEARCH.pill', () => home],
+    ['HOME_CATS.nav', () => home],
+    ['HOME_CATS.circle', () => home],
+    ['HOME_SECTION_RAIL', () => sections],
+  ] as const)('🔴 %s 를 화면과 워커가 같이 쓴다', (name, src) => {
+    const worker = code('src/worker/utils/home-first-screen.ts')
+    expect(src(), `${name} 를 화면이 안 쓴다`).toContain(name)
+    expect(worker, `${name} 를 워커가 안 쓴다`).toContain(name)
+  })
+
+  it('🔴 워커가 검색창·카테고리 원·가로 줄을 그 상수로 그린다', () => {
+    const host = document.createElement('div')
+    host.innerHTML = buildHomeFirstScreen(seedJson([BARE]), LOADER)
+    const fs0 = host.querySelector('#ur-first-screen') as HTMLElement
+    expect(fs0.querySelector('a[href="/search"]')?.getAttribute('class')).toBe(HOME_SEARCH.pill)
+    expect(fs0.querySelector('nav')?.getAttribute('class')).toBe(HOME_CATS.nav)
+    expect(fs0.querySelector('section > div:last-child')?.getAttribute('class')).toBe(HOME_SECTION_RAIL)
   })
 
   /**

@@ -18,7 +18,7 @@ import { DEAL_GRID_GAP } from '@/shared/deal-card-grid'
 const GRIDS = [
   'src/pages/main-home/GroupBuyFeed.tsx',
   'src/pages/WishlistPage.tsx',
-  'src/components/home/HomeSections.tsx',
+  // 🏠 2026-10-26 (대표 확정 안 A): 홈 편성 섹션은 격자가 아니라 **가로 줄**(`HOME_SECTION_RAIL`)이 됐다 — 목록에서 뺐다.
   'src/pages/seller-public/CuratorPinsSection.tsx',
   'src/pages/CuratorPage.tsx',
 ]

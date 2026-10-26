@@ -17,7 +17,10 @@ import HomeBannerStrip from '@/components/home/HomeBannerStrip'
 import PcHomeLocationBar, { readHomeRegion, type HomeRegion } from '@/pages/pc-home/PcHomeLocationBar'
 import { readCachedLoc } from '@/shared/utils/cached-loc'
 import { DEAL_CATS, type DealCategory } from '@/pages/pc-home/PcHomeRail'
-import { ShortsIcon, BellIcon, BagIcon } from '@/components/icons/urdeal-icons'
+import { BellIcon, BagIcon } from '@/components/icons/urdeal-icons'
+import { PlayTileIcon } from '@/components/icons/category-icons'
+import { HOME_CAT_ICON } from './home-cat-icons'
+import { HOME_SEARCH, HOME_CATS } from '@/shared/home-chrome'
 import { URSHORTS_BROWSE_PATH } from '@/shared/urshorts'
 import { HOME_SHOWCASE_ENABLED } from '@/shared/feature-flags'
 
@@ -43,8 +46,8 @@ export default function MobileHomePage() {
   // 🔔 벨 → 올라오는 시트(페이지 이동 X). 배선은 `NotificationSheet` 머리말.
   const bell = useNotificationSheet()
   // 누르는 동안만 아이콘을 채운다(하단 탭의 "활성 = 면" 과 같은 말) — 손을 떼거나 벗어나면 선으로 돌아간다.
-  const [pressed, setPressed] = useState<'search' | 'bell' | 'cart' | null>(null)
-  const pressProps = (k: 'search' | 'bell' | 'cart') => ({
+  const [pressed, setPressed] = useState<'bell' | 'cart' | null>(null)
+  const pressProps = (k: 'bell' | 'cart') => ({
     onPointerDown: () => setPressed(k),
     onPointerUp: () => setPressed(null),
     onPointerLeave: () => setPressed(null),
@@ -133,15 +136,18 @@ export default function MobileHomePage() {
             · 지역 알약의 테두리·핀 아이콘, 현위치 알약 → 제목 + 옆의 작은 아이콘으로 흡수.
             · 카테고리 아이콘 5개 → 텍스트만. 선 아이콘 + 11px 라벨 조합이 가장 "만들어진" 티가 난다.
               활성은 잉크 + 밑줄로 — 색이 아니라 무게로 말한다(로즈는 하단 탭 하나에만 남긴다). */}
+      {/* 🏠 2026-10-26 (대표 확정 "안 A" — 그루폰식 메인. 참고·시안: `docs/design/main-home-redesign-2026-10.md`).
+          대표: *"메인페이지 UI구조가 너무 심심해 재미없어"*. 첫 화면이 [글자 줄 → 2열 카드] 한 박자였다.
+          머리(붙어 있는 부분)는 [로고·알림·장바구니] + **큰 검색창** 두 줄로 줄이고, 위치와 카테고리 원은
+          머리 **밖**으로 뺐다 — 다 붙여 두면 폰 화면 4분의 1이 머리가 된다(그루폰도 검색창만 붙인다).
+          ⚠️ 클래스는 `shared/home-chrome` 상수다 — 워커 첫 화면이 같은 상수로 그린다(두 벌 금지). */}
       <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="px-4 h-11 flex items-center justify-between gap-2">
           <Link to="/" aria-label="홈" className="shrink-0 flex items-center"><UrDealLogo size={17} /></Link>
           {/* ⚫ 2026-10-14 (대표 *"메인의 검색, 장바구니, 알림 버튼도 마찬가지로 똑같이"* — 하단 탭과 같은 규칙):
-              세 버튼 모두 잉크색 선, **누르는 동안·열려 있는 동안만 면으로 채운다**(알림은 시트가 열려 있으면 채움). */}
+              잉크색 선, **누르는 동안·열려 있는 동안만 면으로 채운다**(알림은 시트가 열려 있으면 채움).
+              검색은 2026-10-26 부터 아래 큰 검색창이 맡는다. */}
           <div className="flex items-center gap-1 text-gray-900 dark:text-white">
-            <button onClick={() => navigate('/search')} aria-label="검색" className="p-2 shrink-0" {...pressProps('search')}>
-              <Search className="h-[21px] w-[21px]" strokeWidth={1.6} fill={pressed === 'search' ? 'currentColor' : 'none'} />
-            </button>
             <button onClick={bell.open} aria-label="알림" className="p-2 shrink-0" {...pressProps('bell')}>
               <BellIcon className="h-[21px] w-[21px]" filled={pressed === 'bell' || bell.isOpen} />
             </button>
@@ -150,65 +156,43 @@ export default function MobileHomePage() {
             </button>
           </div>
         </div>
-
-        {/* 위치 = 제목. 🗺️ 2026-10-14 (대표 확정 다안·A) — 옆의 [목록|지도] 전환은 걷었다.
-            지도로 가는 길은 화면 아래 떠 있는 **지도 알약**(맨 아래 `MapPill`) 하나다. */}
-        <div className="px-4 pt-1 pb-3">
-          <div className="min-w-0">
-            <PcHomeLocationBar tone="title" value={region} onChange={handleRegion} onLocate={handleLocate} located={!!userLoc} locatedLabel={dong?.dong} />
-          </div>
+        <div className={HOME_SEARCH.row}>
+          <Link to="/search" aria-label="검색" className={HOME_SEARCH.pill}>
+            <span className={HOME_SEARCH.text}>{HOME_SEARCH.placeholder}</span>
+            <span className={HOME_SEARCH.button} aria-hidden="true"><Search className="h-[18px] w-[18px]" strokeWidth={2} /></span>
+          </Link>
         </div>
+      </div>
 
-        {/* 카테고리 — 라벨 SSOT 는 PC 헤더와 같은 `DEAL_CATS`(둘이 갈리지 않게).
+      {/* 위치 = 제목. 🗺️ 지도로 가는 길은 화면 아래 떠 있는 **지도 알약**(맨 아래 `MapPill`) 하나다. */}
+      <div className="px-4 pt-4 pb-3">
+        <div className="min-w-0">
+          <PcHomeLocationBar tone="title" value={region} onChange={handleRegion} onLocate={handleLocate} located={!!userLoc} locatedLabel={dong?.dong} />
+        </div>
+      </div>
 
-            🎬 2026-09-09 (대표 지시 — 캡처에 빨간 박스로 자리를 찍어 줬다): 이 줄 **오른쪽 끝**에
-            유어쇼츠 진입점. 그전까지 유어쇼츠로 가는 문은 레일 안 「전체 보기」 하나뿐이었고,
-            그 레일은 인기 이용권 다음이라(2026-09-07 확정 — 위로 올리면 첫 딜 표시가 늦어진다)
-            거기까지 스크롤한 사람만 존재를 알았다.
-
-            🔴 **진입점은 스크롤 밖에 있어야 한다.** 카테고리는 `overflow-x-auto` 라, 진입점을
-               그 안에 넣으면 카테고리가 **하나만 늘어도 같이 밀려 화면 밖으로 사라진다.**
-               지금은 다섯 개가 다 들어와 스크롤이 안 생겨서 티가 안 날 뿐이다.
-               그래서 줄을 [스크롤 영역][고정 진입점] 두 칸으로 나눈다. */}
-        <div className="flex items-end gap-3 px-4">
-        <nav aria-label="카테고리" className="flex min-w-0 flex-1 gap-5 overflow-x-auto scrollbar-hide">
-          {DEAL_CATS.map(({ key, label }) => {
-            const on = category === key
-            return (
-              <button
-                key={key}
-                onClick={() => setCategory(key)}
-                aria-pressed={on}
-                className={`shrink-0 pb-2 text-[15px] transition-colors border-b-2 ${
-                  on
-                    ? 'font-black text-gray-900 dark:text-white border-brand'
-                    : 'font-semibold text-gray-400 dark:text-gray-500 border-transparent'
-                }`}
-              >
-                {label}
-              </button>
-            )
-          })}
-        </nav>
-        {/* 🎬 유어쇼츠 진입점 (대표 확정 2026-09-09 — 자리·아이콘·마침표 전부 시안에서 확정).
-            글자를 빼지 않는 이유: 유어쇼츠는 새 이름이라 아이콘만으론 무엇인지 모른다.
-            면(알약)을 안 쓰는 이유: 이 줄의 유일한 면이 되어 정작 필터인 카테고리보다 무거워진다
-            (09-01 "색이 아니라 무게로").
-
-            🔵 **마침표는 로고 `urdeal.` 과 같은 장치다.** 점을 띄우면 바로 옆 알림 종 때문에
-               뱃지("새 것 있음")로 읽혀, 상시로 켜 두면 한 주 만에 배경이 되고 진짜 뱃지의
-               신뢰도까지 깎인다. 붙이면 서명이라 안 낡는다.
-            ⏳ 반짝임(펄스)은 **일부러 안 넣었다** — `live-pulse`(index.css)가 지도 LIVE 핀에서
-               "지금 방송 중"을 뜻하고 있어 같은 손짓이 두 가지를 뜻하게 된다. 새 영상이 쌓이면
-               "마지막 방문 이후 새 영상이 있을 때만" 조건으로 얹는다. */}
-        <Link
-          to={URSHORTS_BROWSE_PATH}
-          className="flex shrink-0 items-center gap-2 whitespace-nowrap pb-2 text-[12px] font-bold text-gray-600 dark:text-gray-300"
-        >
-          <ShortsIcon size={16} />
-          유어쇼츠<span className="-ml-[3px] text-brand-text">.</span>
+      {/* 카테고리 원 — 라벨 SSOT 는 PC 헤더와 같은 `DEAL_CATS`(둘이 갈리지 않게). 그림은 채색 아이콘
+          (카테고리·서비스 타일 컨셉 — `category-icons`). 선택은 **브랜드 테두리**(선택 = 블루 규칙).
+          🎬 유어쇼츠 진입점(2026-09-09 대표 확정 — 스크롤하지 않아도 보이는 자리)은 이 줄 **오른쪽 끝 고정 원**이다.
+          스크롤 영역(`nav`) **밖**에 둔다 — 안에 넣으면 원이 일곱이라 첫 화면 밖으로 밀린다.
+          카테고리가 아니라 다른 화면으로 가는 문이라 `<Link>` 다. 마침표는 로고 `urdeal.` 과 같은 장치. */}
+      <div className={HOME_CATS.row}>
+      <nav aria-label="카테고리" className={HOME_CATS.nav}>
+        {DEAL_CATS.map(({ key, label }) => {
+          const on = category === key
+          const Icon = HOME_CAT_ICON[key]
+          return (
+            <button key={key} type="button" onClick={() => setCategory(key)} aria-pressed={on} className={HOME_CATS.item}>
+              <span className={`${HOME_CATS.circle}${on ? ` ${HOME_CATS.circleOn}` : ''}`}><Icon size={30} /></span>
+              <span className={`${HOME_CATS.label} ${on ? HOME_CATS.labelOn : HOME_CATS.labelOff}`}>{label}</span>
+            </button>
+          )
+        })}
+      </nav>
+        <Link to={URSHORTS_BROWSE_PATH} className={HOME_CATS.item}>
+          <span className={HOME_CATS.circle}><PlayTileIcon size={30} /></span>
+          <span className={`${HOME_CATS.label} ${HOME_CATS.labelOff}`}>{HOME_CATS.shortsLabel}<span className="-ml-[3px] text-brand-text">.</span></span>
         </Link>
-        </div>
       </div>
 
       {/* 어드민 편성(섹션·배너) — 카테고리를 고르면 숨긴다(PC 홈과 같은 규칙: 화면 맨 위가 그 카테고리여야 한다). */}
