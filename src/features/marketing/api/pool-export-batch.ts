@@ -1,5 +1,6 @@
 import type { D1Database } from '@cloudflare/workers-types'
 import { runDdlOnce } from './ads-schema-guard'
+import { chunkForBinds } from '../../../shared/db/d1-binds'
 
 /**
  * 📥 **내보낸 리드에 도장을 찍는다 — "받은 건 다시 안 준다"** (2026-10-25 대표 지시)
@@ -133,15 +134,26 @@ export async function stampExported(
   await ensureExportStamp(DB, pool)
   const t = EXPORT_POOLS[pool].table
   let changed = 0
-  // D1 의 statement 당 바인딩 한도를 넉넉히 밑돌게 쪼갠다(100 × 5 = 500행).
-  for (let i = 0; i < clean.length; i += 100) {
-    const chunk = clean.slice(i, i + 100)
+  let failed = 0
+  // 🔢 D1 은 **한 문장에 바인딩 100개**까지다. `SET exported_at = ?` 가 하나를 쓰므로 id 는 99개씩.
+  //    🩸 2026-10-26 까지 100개씩 보내 **101개**가 됐고, 라이브에서 전 청크가
+  //    `too many SQL variables` 로 실패해 **한 건도 안 찍혔다**(아래 로그가 그 침묵을 끝낸다).
+  //    청크 크기를 손으로 적지 않는다 — `chunkForBinds` 가 한도와 extraBinds 를 함께 센다.
+  for (const chunk of chunkForBinds(clean, 1)) {
     const ph = chunk.map(() => '?').join(',')
     const r = await DB.prepare(
       `UPDATE ${t} SET exported_at = ? WHERE id IN (${ph}) AND ${NOT_EXPORTED_SQL}`,
-    ).bind(stamp, ...chunk).run().catch(() => null)
+    ).bind(stamp, ...chunk).run().catch((e: unknown) => {
+      // ⚠️ 삼키되 **조용히는 안 된다** — 던지면 CSV 다운로드가 통째로 실패하지만,
+      //    로그가 없으면 "도장 0건" 이 정상인지 고장인지 아무도 구분할 수 없다.
+      failed += chunk.length
+      console.error(`[pool-export] 도장 실패 pool=${pool} rows=${chunk.length}:`, e)
+      return null
+    })
     changed += r?.meta?.changes ?? 0
   }
+  // 모은 행이 있는데 한 건도 못 찍었으면 그건 결함이다(다음 회차가 같은 행을 또 준다).
+  if (failed && !changed) console.error(`[pool-export] 🔴 도장이 통째로 실패했다 pool=${pool} ids=${clean.length}`)
   return changed
 }
 
@@ -157,7 +169,11 @@ export async function listExportBatches(
   const r = await DB.prepare(
     `SELECT exported_at AS stamp, COUNT(*) AS rows FROM ${t}
       WHERE exported_at IS NOT NULL GROUP BY exported_at ORDER BY exported_at DESC LIMIT ?`,
-  ).bind(n).all<ExportBatch>().catch(() => null)
+  ).bind(n).all<ExportBatch>().catch((e: unknown) => {
+    // 조용히 빈 목록을 돌려주면 화면이 "받은 묶음 없음" 이라고 **거짓말**을 한다(되돌릴 길이 사라진다).
+    console.error(`[pool-export] 배치 목록 조회 실패 pool=${pool}:`, e)
+    return null
+  })
   return r?.results || []
 }
 
@@ -174,7 +190,12 @@ export async function cancelExportBatch(
   await ensureExportStamp(DB, pool)
   const t = EXPORT_POOLS[pool].table
   const r = await DB.prepare(`UPDATE ${t} SET exported_at = NULL WHERE exported_at = ?`)
-    .bind(s).run().catch(() => null)
+    .bind(s).run().catch((e: unknown) => {
+      // 🔴 조용히 0 을 돌려주면 화면이 "이미 취소된 묶음입니다" 라고 **거짓말**을 한다 —
+      //    되돌리기는 끊긴 다운로드의 **유일한 복구 경로**라 그 거짓이 영구 손실로 굳는다.
+      console.error(`[pool-export] 배치 취소 실패 pool=${pool} stamp=${s}:`, e)
+      return null
+    })
   return r?.meta?.changes ?? 0
 }
 
@@ -185,6 +206,18 @@ export async function cancelExportBatch(
 export function exportBatchNote(stamped: number, stamp: string, remaining: number): string {
   return `이 묶음 ${stamped}건에 "내보냄" 표시를 했습니다 (도장 ${stamp}) · 남은 미다운로드 ${remaining}건`
     + ` — 다시 받으면 그 다음 ${EXPORT_BATCH_ROWS}건이 나옵니다`
+}
+
+/**
+ * 🔴 도장이 **통째로 실패했을 때** 파일에 적는 줄.
+ *
+ * 왜 따로 두나: 종전엔 실패해도 `이 묶음 0건에 …` 이라 적혀 **정상처럼 읽혔다**(2026-10-26 라이브
+ * 실측 — D1 바인딩 한도 초과로 전 청크가 실패했는데 파일만 보면 알 수가 없었다). 받는 사람이
+ * *"다시 받으면 같은 행이 또 온다"* 를 파일에서 바로 알아야 재다운로드 낭비를 멈출 수 있다.
+ */
+export function exportStampFailedNote(rows: number): string {
+  return `⚠️ "내보냄" 표시를 하지 못했습니다 (${rows}건) — 다시 받으면 **같은 행**이 또 나옵니다.`
+    + ` 개발자에게 알려 주세요(서버 로그 [pool-export]).`
 }
 
 /**
@@ -209,5 +242,7 @@ export async function runBatchExport<T extends { id: number }>(args: {
   const stamp = exportBatchStamp()
   const stamped = await stampExported(args.DB, args.pool, rows.map(r => r.id), stamp)
   const remaining = await args.count(true)
-  return { rows, cap, notes: [exportBatchNote(stamped, stamp, remaining)] }
+  // 🔴 행을 줬는데 도장이 0 이면 묶음이 돌지 않는다 — 그 사실을 파일에 적는다(조용한 반복 다운로드 차단).
+  const notes = stamped ? [exportBatchNote(stamped, stamp, remaining)] : [exportStampFailedNote(rows.length)]
+  return { rows, cap, notes }
 }
