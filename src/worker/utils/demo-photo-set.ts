@@ -25,7 +25,7 @@
  */
 import type { Env } from '../types/env'
 import { fetchKakaoPlacePhotos } from './kakao-place-photos'
-import { fetchNaverPlaceBusinessPhotos } from './naver-place-photo'
+import { fetchNaverPlaceBusinessPhotos, isBusinessPhotoUrl } from './naver-place-photo'
 
 export interface DemoPhotoOpts {
   /** 카카오 place id 또는 place URL — 있으면 등록 사진을 1순위로. */
@@ -40,6 +40,13 @@ export interface DemoPhotoOpts {
   fallbackQuery?: string
   /** 목표 장수(3~5 권장). */
   count?: number
+  /**
+   * 🧭 2026-10-26: GitHub 러너의 **실제 브라우저**가 네이버 지도 업체사진 탭에서 모아 둔 주소
+   *   (meta `naver_biz_photos`, scripts/naver-photo-collect.mjs). 워커는 네이버 검색이 캡차로 막혀
+   *   (`ncaptcha-all-search-no-result`, 진단 실측) 직접 못 얻는다 — 그래서 이게 1순위다.
+   *   업체 사진 판정(`isBusinessPhotoUrl`)을 여기서 한 번 더 지난다(메타 값을 믿지 않는다).
+   */
+  naverBizPhotos?: string[]
 }
 
 /**
@@ -107,7 +114,8 @@ export async function fetchDemoPhotos(env: Env, opts: DemoPhotoOpts): Promise<st
   //   ① 네이버 플레이스 업체사진 탭(분류가 가장 잘 돼 있다 — 대표 판단) ② 모자라면 카카오 업체 사진
   //   (매장주·제휴사 제공). 손님 리뷰·블로그 사진은 어느 쪽에서도 받지 않는다.
   //   ⚠️ 종전 1순위였던 카카오 og:image 는 Cloudflare 에서 403 이라 라이브 수집이 0장이었다(진단 2484).
-  if (opts.nameQuery) {
+  add((opts.naverBizPhotos || []).filter((u) => isBusinessPhotoUrl(u)))
+  if (out.length < want && opts.nameQuery) {
     try { add(await fetchNaverPlaceBusinessPhotos(opts.nameQuery, opts.address, want)) } catch { /* fail-soft → 카카오 */ }
   }
   if (out.length < want && opts.placeId) {
