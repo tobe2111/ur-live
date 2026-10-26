@@ -339,7 +339,7 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
     //   ② 네이버 실사진(fetchNaverImageUrl — 매장명 우선, 실패 시 "{지역} {유형}" 일반 검색, 최후 picsum).
     //   실숙소 못 찾으면 skip(지어내지 않음 — 동네딜과 동일 규칙). ⚠️ 외부호출 한도 → 클라가 6개씩 청크.
     const { kakaoPlaceLookup } = await import('./admin-products.routes')
-    const { fetchDemoPhotos } = await import('../../../worker/utils/demo-photo-set')
+    const { fetchDemoPhotos, DEMO_MIN_PHOTOS } = await import('../../../worker/utils/demo-photo-set')
     // 🛡️ 이 파일의 로컬 Bindings 타입은 최소(DB/JWT)만 선언 — 런타임 c.env 엔 KAKAO/NAVER 키가 실재
     //   (같은 워커, admin-products 시드가 동일 키 사용). 헬퍼 파라미터 타입으로 1회 캐스팅.
     const extEnv = c.env as unknown as { KAKAO_REST_API_KEY?: string } & Parameters<typeof fetchDemoPhotos>[0]
@@ -419,7 +419,7 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
             placeId: placeRef,
             nameQuery: row.restaurant_name,
             address: row.addr,  // 🖼️ 네이버 지도 대표사진 검색 정확도
-            count: 3 + Math.floor(Math.random() * 3),
+            count: 3 + Math.floor(Math.random() * 3), category: 'stay_voucher',
           }).catch(() => [] as string[])
           if (imgs.length === 0) continue
           // 대표가 placeholder(picsum/없음)면 실사진 1번째로 교체, 실사진이면 유지하고 갤러리에 병합.
@@ -453,11 +453,11 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
         nameQuery: place.name,
         address: place.address || spot.addr,  // 🖼️ 네이버 지도 대표사진 검색 정확도
         fallbackQuery: `${spot.label} ${ty.kakao}`,
-        count: wantPhotos,
+        count: wantPhotos, category: 'stay_voucher',
       }).catch(() => [] as string[])
       if (imgs.length) realPhotos++
       // 🚫 2026-08-08 대표 "사진 없으면 자체가 안올려져야지" — picsum 더미 폴백 폐기. 사유: 동명 테스트.
-      if (imgs.length === 0) { skippedNoPhoto++; continue }
+      if (imgs.length < DEMO_MIN_PHOTOS) { skippedNoPhoto++; continue }  // 📸 2026-10-27 발행 때 사진 3장 보장
       // 🩹 2026-07-21 전수조사 #2: 숙소 커버도 R2 재호스팅(동네딜 시드와 대칭 — 숙소는 그간 커버를
       //   raw 외부 URL 로만 저장해 네이버 핫링크/삭제 시 카드에서 깨졌음). MEDIA_BUCKET 있으면 /api/media,
       //   없으면 null → 원본 폴백(현행과 동일). 커버 1장만(서브리퀘스트 예산 — 갤러리는 cron 이관).

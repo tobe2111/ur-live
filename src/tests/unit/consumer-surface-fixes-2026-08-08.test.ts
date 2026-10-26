@@ -124,14 +124,16 @@ describe('③-b 사진을 못 구한 데모는 **매대에 올리지 않는다**
 
   it('🔴 숙소 시드: 사진 0장이면 생성을 건너뛴다 (picsum 폴백 금지)', () => {
     const stays = code('src/features/admin/api/admin-stays.routes.ts')
-    expect(stays, '사진 없으면 continue 해야 한다').toMatch(/imgs\.length === 0.*continue/)
+    // 2026-10-27: 0장 → "3장 미만" 으로 강화(발행 때 사진 3장 보장). 0장도 당연히 건너뛴다.
+    expect(stays, '사진 없으면 continue 해야 한다').toMatch(/imgs\.length < DEMO_MIN_PHOTOS.*continue/)
     expect(stays, 'picsum 더미로 채워 올리던 폴백이 되살아났다')
       .not.toMatch(/picsum\.photos\/seed\/\$\{slug\}/)
   })
 
   it('🔴 동네딜 시드: 사진 0장이면 생성을 건너뛴다', () => {
     const prod = code('src/features/admin/api/admin-products.routes.ts')
-    expect(prod).toMatch(/!realPhoto && !resolvedImgSets\[i\]\[0\].*continue/)
+    // 2026-10-27: 0장 → "3장 미만" 으로 강화(발행 때 사진 3장 보장).
+    expect(prod).toMatch(/resolvedImgSets\[i\]\.length < DEMO_MIN_PHOTOS.*continue/)
   })
 
   it('정비 회차가 사진 없는 기존 데모를 내린다 — 삭제가 아니라 is_active=0(가역)', () => {

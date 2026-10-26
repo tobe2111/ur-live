@@ -47,7 +47,7 @@ import { fetchDemoPhotos, isBlockedPhotoUrl, blockedPhotoSql, isSearchDerivedPho
 //   카카오 og:image 는 Cloudflare 에서 403 이라 라이브 수집이 0장이었다(재시도해도 3장이 안 찼던 원인).
 //   같은 커밋에서 사진이 없어 내려간 데모(`demo_hidden_no_photo=1`)도 재시도 대상에 넣었다 — 종전 쿼리는
 //   노출 중인 행만 골라 "자동 복귀" 분기가 한 번도 돌 수 없었다. 표식 없는 비노출 행(사람이 내린 것)은 그대로.
-export const DEMO_COND_V = '7'
+export const DEMO_COND_V = '8'
 /** 3장 미만·사진 확보 실패 데모를 다시 시도하기까지의 간격(일). */
 const PHOTO_RETRY_DAYS = 3
 
@@ -185,7 +185,7 @@ export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): 
   const DB = env.DB
   const out = { reconditioned: 0, skipped: 0, hiddenNoPhoto: 0, revived: 0 }
   const { results } = await DB.prepare(
-    `SELECT p.id, p.slug, p.image_url, p.images, p.restaurant_name, p.restaurant_address, p.restaurant_phone, p.restaurant_lat, p.restaurant_lng
+    `SELECT p.id, p.slug, p.category, p.image_url, p.images, p.restaurant_name, p.restaurant_address, p.restaurant_phone, p.restaurant_lat, p.restaurant_lng
        FROM products p
       WHERE p.slug LIKE 'demo-%'
         AND (COALESCE(p.is_active, 1) = 1 OR EXISTS (
@@ -203,8 +203,8 @@ export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): 
         ))
       ORDER BY CASE WHEN ${blockedPhotoSql('p.image_url')} THEN 0 ELSE 1 END, p.id
       LIMIT ?`
-  ).bind(DEMO_COND_V, Math.max(1, perRun)).all<{ id: number; slug: string; image_url: string | null; images: string | null; restaurant_name: string; restaurant_address: string | null; restaurant_phone: string | null; restaurant_lat: number | null; restaurant_lng: number | null }>()
-    .catch(() => ({ results: [] as { id: number; slug: string; image_url: string | null; images: string | null; restaurant_name: string; restaurant_address: string | null; restaurant_phone: string | null; restaurant_lat: number | null; restaurant_lng: number | null }[] }))
+  ).bind(DEMO_COND_V, Math.max(1, perRun)).all<{ id: number; slug: string; category: string | null; image_url: string | null; images: string | null; restaurant_name: string; restaurant_address: string | null; restaurant_phone: string | null; restaurant_lat: number | null; restaurant_lng: number | null }>()
+    .catch(() => ({ results: [] as { id: number; slug: string; category: string | null; image_url: string | null; images: string | null; restaurant_name: string; restaurant_address: string | null; restaurant_phone: string | null; restaurant_lat: number | null; restaurant_lng: number | null }[] }))
   const rows = results || []
   if (rows.length === 0) return out
   const metaMap = await getSupplyMeta(DB, rows.map((r) => r.id)).catch(() => new Map<number, Record<string, string>>())
@@ -241,6 +241,7 @@ export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): 
       nameQuery: row.restaurant_name,     // 실매장명 — 네이버 지도 대표사진 + 스코어링 grounding
       address: row.restaurant_address,    // 네이버 지도 대표사진 검색 정확도(동명 매장 구분)
       count: 3 + Math.floor(Math.random() * 3),
+      category: row.category,             // 분류 사진 태그(식사=음식 먼저)
     }).catch(() => [] as string[])
     if (imgs.length === 0) {
       // 🚫 2026-08-08 (대표 "사진이 아예 없으면 그 데모 이용권은 안올려져야지. 자체가"):
