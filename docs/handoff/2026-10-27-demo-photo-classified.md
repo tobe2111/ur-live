@@ -112,3 +112,10 @@
 - 수정: `fcfs-gate.ts` 에 `isDemoProductForPurchase`(slug `demo-*` → 차단, 조회 실패 → 막지 않음)를 맨 앞에 · 숙소 create / create-multi / confirm(Toss 승인 전) 배선.
 - 가드: `demo-purchase-block-2026-10-26.test.ts` 7건 + 주입 4건 빨간불 확인. staging: `STAGING_CHECKLIST.md` S-DEMO-1~3.
 - 대표 직접 지시가 승인(머니 경로 차단 방향만 — 결제·원장 계산은 무변경).
+
+## 11. 상세 사진 위 '▶ 매장 영상' (2026-10-26 — 작업 #6)
+- 데이터: 유어쇼츠 `home_shorts.product_id`(어드민·사장님이 이미 이용권에 붙인다). 상세는 새 목록을 안 만들고 공개 목록 `/api/urshorts?all=1` 에서 걸러 쓴다(`shared/urshorts-store.ts`).
+- 화면: `group-buy/StoreShortsPill.tsx` — 사진 위 떠 있는 알약(밀림 0), 첫 화면 뒤에 목록을 받고, 누르면 `/videos?v=` 가 그 영상부터 튼다. 이용권·숙소 상세 둘 다(`DetailGallery` 의 `overlay` prop — PC 대형 사진 버튼 **밖**).
+- 라이브 실측: 영상 10편 중 2편만 이용권(2580)에 붙어 있다 → 지금 버튼이 뜨는 상세는 그 하나뿐.
+- ⚠️ 틱톡·인스타 등은 아직 못 넣는다 — 유어쇼츠가 유튜브 주소만 받는다(`parseYouTubeUrl`). 넓히려면 등록·재생기 둘 다 바꿔야 한다(별건).
+- 가드: `store-shorts-pill-2026-10-26.test.tsx` 6건 + 주입 3건 빨간불 확인.

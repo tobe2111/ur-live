@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { ClockIcon, OkIcon, AlertIcon } from '@/components/icons/urdeal-icons'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import DetailGallery from './group-buy/DetailGallery'
+import StoreShortsPill from './group-buy/StoreShortsPill'
 import { detailGalleryImages } from '@/shared/detail-hero-image'
 import UsageGuide from './group-buy/UsageGuide'
 import SellerCard from './group-buy/SellerCard'
@@ -616,6 +617,7 @@ export default function GroupBuyDetailPage() {
           images={galleryImages}
           alt={detail.name}
           fallback={<CategoryFallbackIcon cat={detail.category} />}
+          overlay={detail.group_buy_status === 'expired' || detail.group_buy_status === 'cancelled' ? null : <StoreShortsPill productId={detail.id} />}
           badges={
             <>
               <div style={{ position: 'absolute', inset: '0 0 auto 0', height: 110, pointerEvents: 'none', background: 'linear-gradient(180deg, rgba(0,0,0,.4), transparent)' }} />

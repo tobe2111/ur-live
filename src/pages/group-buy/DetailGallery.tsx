@@ -29,12 +29,14 @@ interface Props {
   badges?: React.ReactNode
   /** 사진이 아예 없을 때 그릴 것(카테고리 이모지). */
   fallback?: React.ReactNode
+  /** 🎬 2026-10-26 — 사진 위에 떠 있는 버튼(매장 영상 등). 대형 사진 **밖**에 두어 버튼 안 버튼이 안 생긴다. */
+  overlay?: React.ReactNode
 }
 
 /** PC 우측 썸네일 칸 수 — 그루폰은 2칸. 그 이상은 `+N` 으로 접는다. */
 const PC_THUMBS = 2
 
-export default function DetailGallery({ images: rawImages, alt, badges, fallback }: Props) {
+export default function DetailGallery({ images: rawImages, alt, badges, fallback, overlay }: Props) {
   const [active, setActive] = useState(0)
   const [lightbox, setLightbox] = useState(false)
   const touchX = useRef<number | null>(null)
@@ -209,6 +211,7 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
           })}
         </div>
         {badges}
+        {overlay}
         {multi && (
           <div style={{ position: 'absolute', right: 16, bottom: 19, display: 'flex', alignItems: 'center', gap: 5 }}>
             {images.map((_, i) => (
@@ -283,6 +286,7 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
             </div>
           )}
         </div>
+        {overlay}
       </div>
 
       {/* 🔍 전체 사진 모달 — 그루폰의 "See all images". */}

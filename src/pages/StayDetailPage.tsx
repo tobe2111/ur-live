@@ -23,6 +23,7 @@ import StayRoomPicker from './stay-detail/StayRoomPicker'
 import SimilarStays from './stay-detail/SimilarStays'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import DetailGallery from './group-buy/DetailGallery'
+import StoreShortsPill from './group-buy/StoreShortsPill'
 import DetailTitleHeader from './group-buy/DetailTitleHeader'
 import DetailBreadcrumb, { stayCrumbs } from '@/components/deal/DetailBreadcrumb'
 import DetailFloatingHeader from '@/components/deal/DetailFloatingHeader'
@@ -382,6 +383,7 @@ export default function StayDetailPage() {
             images={galleryImages}
             alt={stay.restaurant_name || stay.name}
             fallback={<StayLineIcon className="w-14 h-14 text-gray-300 dark:text-gray-600" aria-hidden />}
+            overlay={<StoreShortsPill productId={stay.id} />}
           />
         </div>
 
