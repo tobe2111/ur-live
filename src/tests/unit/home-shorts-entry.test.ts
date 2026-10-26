@@ -19,7 +19,6 @@
 import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
-import { HOME_CATS } from '@/shared/home-chrome'
 
 const read = (p: string) => fs.readFileSync(path.join(process.cwd(), p), 'utf-8')
 /** 주석은 마크업이 아니다 — 블록 주석을 **먼저 통째로** 지운다(줄 단위로 지우면 가운데 줄이 남는다). */
@@ -55,38 +54,25 @@ describe('② 🔴 스크롤 밖에 고정된다', () => {
     expect(s.slice(navOpen, navClose), 'nav 안에 진입점이 있다 = 스크롤되어 사라진다')
       .not.toContain('URSHORTS_')
   })
-  // 🔀 2026-10-26 재조준 (대표 확정 안 A — 카테고리가 원 타일이 됐다). 클래스는 `shared/home-chrome` 상수다.
-  //   불변식 그대로: nav 는 스크롤하고, 진입점은 그 **밖에서** 줄어들지 않는다.
   it('nav 는 스크롤하고 진입점은 shrink-0 이다', () => {
-    expect(s).toMatch(/<nav[^>]*className=\{HOME_CATS\.nav\}/)
-    expect(HOME_CATS.nav).toMatch(/overflow-x-auto/)
-    const entry = s.slice(s.indexOf('</nav>'), s.indexOf('</nav>') + 200)
-    expect(entry).toContain('className={HOME_CATS.item}')
-    expect(HOME_CATS.item).toMatch(/\bshrink-0\b/)
+    expect(s).toMatch(/<nav[^>]*overflow-x-auto/)
+    expect(s).toMatch(/flex shrink-0 items-center/)
   })
 })
 
 describe('③ 생김새 계약', () => {
   const s = code(read(HOME))
   it('아이콘 + 글자 둘 다 있다(아이콘만이면 새 이름을 못 알린다)', () => {
-    const entry = s.slice(s.indexOf('</nav>'), s.indexOf('</nav>') + 400)
-    expect(entry).toMatch(/<PlayTileIcon\b/)
-    expect(entry).toContain('HOME_CATS.shortsLabel')
-    expect(HOME_CATS.shortsLabel).toBe('유어쇼츠')
+    expect(s).toMatch(/<ShortsIcon size=\{16\} \/>/)
+    expect(s).toMatch(/유어쇼츠/)
   })
   it('마침표는 붙어 있고 브랜드 글자색이다(로고 urdeal. 과 같은 장치)', () => {
     expect(s).toMatch(/text-brand-text">\.<\/span>/)
     expect(s, '음수 마진이 빠지면 점이 떨어져 뱃지로 읽힌다').toMatch(/-ml-\[3px\]/)
   })
-  /**
-   * 🔀 2026-10-26 재조준: 카테고리가 전부 **같은 원 타일**이 되어 "이 줄의 유일한 면" 이 아니다.
-   *   지키려던 것(진입점이 필터보다 무거워지지 않는다)은 그대로 — 진입점 원은 카테고리와 **같은 원 상수**이고
-   *   브랜드 면으로 칠하지 않는다.
-   */
-  it('면이 카테고리보다 무겁지 않다 — 같은 원, 브랜드 면 없음', () => {
-    const link = s.slice(s.indexOf('</nav>'), s.indexOf('</nav>') + 400)
-    expect(link).toContain('className={HOME_CATS.circle}')
-    expect(link).not.toMatch(/bg-brand\b/)
+  it('면(알약)을 쓰지 않는다 — 이 줄의 유일한 면이 되면 필터보다 무거워진다', () => {
+    const link = s.slice(s.indexOf('URSHORTS_'), s.indexOf('URSHORTS_') + 400)
+    expect(link).not.toMatch(/rounded-full|bg-brand\b|bg-gray-100/)
   })
   it('반짝임(펄스)을 안 쓴다 — live-pulse 는 지도에서 "방송 중"을 뜻한다', () => {
     expect(s).not.toMatch(/animate-pulse|live-pulse/)

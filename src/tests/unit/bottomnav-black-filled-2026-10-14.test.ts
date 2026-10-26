@@ -40,25 +40,21 @@ describe('하단 탭 — 검정 + 채움', () => {
  * 잉크색 선 · 누르는 동안(알림은 시트가 열려 있는 동안도) 면으로 채운다.
  */
 const HOME = stripComments(readFileSync('src/pages/mobile-home/MobileHomePage.tsx', 'utf8'))
-// 🏠 2026-10-26 (대표 확정 안 A): 검색은 머리 아래 **큰 검색창**(`HOME_SEARCH`)이 맡는다 — 아이콘 버튼은 알림·장바구니 둘.
-const head = HOME.slice(HOME.indexOf('aria-label="알림"') - 300, HOME.indexOf('aria-label="장바구니"') + 300)
+const head = HOME.slice(HOME.indexOf('aria-label="검색"') - 300, HOME.indexOf('aria-label="장바구니"') + 300)
 
 describe('홈 상단 아이콘 — 검정 + 누르면 채움', () => {
   it('구간을 찾았다', () => {
     expect(head).toMatch(/aria-label="알림"/)
   })
-  it('아이콘 버튼 묶음이 잉크색이다(회색 아님)', () => {
+  it('세 버튼 묶음이 잉크색이다(회색 아님)', () => {
     expect(head).toMatch(/flex items-center gap-1 text-gray-900 dark:text-white/)
     expect(head).not.toMatch(/text-gray-500 dark:text-gray-400/)
   })
-  it('아이콘 버튼 모두 누르는 상태를 받는다', () => {
-    for (const k of ['bell', 'cart']) expect(head).toContain(`pressProps('${k}')`)
+  it('세 버튼 모두 누르는 상태를 받는다', () => {
+    for (const k of ['search', 'bell', 'cart']) expect(head).toContain(`pressProps('${k}')`)
   })
-  it('검색은 큰 검색창이 맡는다(같은 자리에 검색 아이콘 버튼을 두 벌 두지 않는다)', () => {
-    expect(HOME).toContain('className={HOME_SEARCH.pill}')
-    expect(HOME).not.toContain(`pressProps('search')`)
-  })
-  it('누르면 채운다 — 장바구니는 누르는 동안, 알림은 열려 있는 동안도', () => {
+  it('누르면 채운다 — 검색·장바구니는 누르는 동안, 알림은 열려 있는 동안도', () => {
+    expect(head).toMatch(/fill=\{pressed === 'search' \? 'currentColor' : 'none'\}/)
     expect(head).toMatch(/filled=\{pressed === 'bell' \|\| bell\.isOpen\}/)
     expect(head).toMatch(/filled=\{pressed === 'cart'\}/)
   })
