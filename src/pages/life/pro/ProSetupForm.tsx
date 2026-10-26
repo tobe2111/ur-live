@@ -8,7 +8,10 @@ import { toast } from '@/hooks/useToast'
 import { sellerHeaders } from '../life-shared'
 import { enterStoreSeat } from '@/utils/enter-store'
 import { TERMS_CURRENT_VERSION } from '@/pages/terms/terms-types'
-import { PRO_INTRO_MAX, PRO_LINKS_MAX, proLinkLabel } from '@/shared/home-service-review'
+import { PRO_INTRO_MAX, PRO_LINKS_MAX, PRO_LINK_SITES, normalizeProLink, proLinkStatus } from '@/shared/home-service-review'
+
+/** 넣을 수 있는 곳 — 이름만 겹치지 않게(카카오맵 주소가 둘이다). */
+const SITE_NAMES = [...new Set(PRO_LINK_SITES.map((s) => s.label.replace(/ (플레이스|지도|블로그)$/, '')))].join('·')
 
 export interface ProMe {
   registered: boolean
@@ -18,6 +21,8 @@ export interface ProMe {
   areas: { sido: string; sigungu: string }[]
   seller: { id?: number; name: string; approved: boolean; phone: string | null }
   balance: number
+  /** 참여권 원장 최근 20줄(서버 `/pro/me` 가 이미 내려 준다) — 화면 `ProCredits` 의 내역. */
+  history?: { kind: string; amount: number; price_paid: number; note: string | null; created_at: string }[]
   packages: { key: string; credits: number; price: number; label: string }[]
   chargeEnabled: boolean
   allCategories: { key: string; label: string }[]
@@ -80,9 +85,8 @@ export default function ProSetupForm({ me, onSaved, prefill, signup }: { me: Pro
         onSaved()
         return
       }
-      const bad = links.map((l) => l.trim()).find((l) => l && !proLinkLabel(l))
-      if (bad) { toast.error('숨고·미소·네이버·카카오맵·당근·인스타그램 주소(https://…)만 넣을 수 있어요'); return }
-      const r = await api.put('/api/home-service/pro/me', { categories: cats, areas, phone, intro, links: links.map((l) => l.trim()).filter(Boolean) }, sellerHeaders())
+      if (links.some((l) => proLinkStatus(l).kind === 'bad')) { toast.error(`${SITE_NAMES} 주소만 넣을 수 있어요`); return }
+      const r = await api.put('/api/home-service/pro/me', { categories: cats, areas, phone, intro, links: links.map(normalizeProLink).filter(Boolean) }, sellerHeaders())
       if (r.data?.success) {
         toast.success(r.data.data?.granted ? `저장했어요. 무료 참여권 ${r.data.data.granted}장을 드렸어요` : '저장했어요')
         onSaved()
@@ -154,14 +158,29 @@ export default function ProSetupForm({ me, onSaved, prefill, signup }: { me: Pro
           <p className="mb-2 text-[15px] font-bold">다른 곳 후기 링크</p>
           <p className="mb-2 text-[12px] text-gray-500 dark:text-gray-400">숨고·미소·네이버 플레이스·카카오맵·당근 등에 쌓인 후기가 있으면 주소를 넣어 주세요. 손님이 견적 카드에서 바로 봐요.</p>
           <div className="space-y-2">
-            {links.map((l, i) => (
-              <div key={i} className="flex gap-2">
-                <input className={`${INPUT} min-w-0 flex-1`} inputMode="url" placeholder="https://soomgo.com/profile/…" value={l}
-                  onChange={(e) => setLinks(links.map((x, j) => (j === i ? e.target.value : x)))} />
-                <button type="button" onClick={() => setLinks(links.length > 1 ? links.filter((_, j) => j !== i) : [''])}
-                  className="shrink-0 rounded-xl bg-warm px-3 text-[13px] text-ink" aria-label="링크 빼기">✕</button>
-              </div>
-            ))}
+            {links.map((l, i) => {
+              const st = proLinkStatus(l)
+              return (
+                <div key={i}>
+                  <div className="flex gap-2">
+                    <div className={`${st.kind === 'bad' ? INPUT.replace('border-rule', 'border-sale') : INPUT} flex min-w-0 flex-1 items-center gap-2 focus-within:border-brand`}>
+                      {st.kind === 'ok' && (
+                        <span className="shrink-0 rounded-md bg-brand-tint px-2 py-1 text-[12px] font-medium text-brand-text">{st.label}</span>
+                      )}
+                      <input className="min-w-0 flex-1 bg-transparent text-[15px] text-ink outline-none" inputMode="url" placeholder="https://soomgo.com/profile/…" value={l}
+                        aria-invalid={st.kind === 'bad'}
+                        onChange={(e) => setLinks(links.map((x, j) => (j === i ? e.target.value : x)))}
+                        onBlur={() => setLinks(links.map((x, j) => (j === i ? normalizeProLink(x) : x)))} />
+                    </div>
+                    <button type="button" onClick={() => setLinks(links.length > 1 ? links.filter((_, j) => j !== i) : [''])}
+                      className="shrink-0 rounded-xl bg-warm px-3 text-[13px] text-ink" aria-label="링크 빼기">✕</button>
+                  </div>
+                  {st.kind === 'bad' && (
+                    <p className="mt-1 text-[12px] text-sale">넣을 수 없는 주소예요. {SITE_NAMES} 주소만 돼요.</p>
+                  )}
+                </div>
+              )
+            })}
           </div>
           {links.length < PRO_LINKS_MAX && (
             <button type="button" onClick={() => setLinks([...links, ''])} className="mt-2 text-[13px] font-medium text-brand-text">+ 링크 더 넣기</button>

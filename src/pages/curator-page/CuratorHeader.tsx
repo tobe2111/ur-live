@@ -105,7 +105,9 @@ const snsPillCls = 'h-8 px-3 rounded-full bg-wash inline-flex items-center gap-1
 
 export default function CuratorHeader({ curator, canEdit, counts, soldTotal, accountType, onCopyLink }: CuratorHeaderProps) {
   const { t } = useTranslation()
-  const hasSns = !!(curator.youtube_url || curator.instagram_url || curator.tiktok_url)
+  // 🔒 그 플랫폼 주소가 아니면 이름표를 안 그린다(2026-10-26 — 서버 첫 화면도 같은 판정).
+  const ytHref = snsUrl('youtube', curator.youtube_url), igHref = snsUrl('instagram', curator.instagram_url), tkHref = snsUrl('tiktok', curator.tiktok_url)
+  const hasSns = !!(ytHref || igHref || tkHref)
   const pinsN = counts?.pins ?? 0
   const productsN = counts?.products ?? 0
   const sold = soldTotal ?? 0
@@ -115,24 +117,24 @@ export default function CuratorHeader({ curator, canEdit, counts, soldTotal, acc
   /** SNS 이름표 — 이름 아래 줄 오른쪽. 브랜드 이름은 번역하지 않는다. */
   const snsLinks = hasSns ? (
     <>
-      {curator.youtube_url && (
-        <a href={snsUrl('youtube', curator.youtube_url)} target="_blank" rel="noopener noreferrer" aria-label="YouTube" className={snsHitCls}>
+      {ytHref && (
+        <a href={ytHref} target="_blank" rel="noopener noreferrer" aria-label="YouTube" className={snsHitCls}>
           <span className={snsPillCls}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.6V8.4l6.2 3.6-6.2 3.6Z" /></svg>
             YouTube
           </span>
         </a>
       )}
-      {curator.instagram_url && (
-        <a href={snsUrl('instagram', curator.instagram_url)} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className={snsHitCls}>
+      {igHref && (
+        <a href={igHref} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className={snsHitCls}>
           <span className={snsPillCls}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="5" /><circle cx="12" cy="12" r="3.7" /><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none" /></svg>
             Instagram
           </span>
         </a>
       )}
-      {curator.tiktok_url && (
-        <a href={snsUrl('tiktok', curator.tiktok_url)} target="_blank" rel="noopener noreferrer" aria-label="TikTok" className={snsHitCls}>
+      {tkHref && (
+        <a href={tkHref} target="_blank" rel="noopener noreferrer" aria-label="TikTok" className={snsHitCls}>
           <span className={snsPillCls}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.5 3c.3 2.2 1.6 3.9 3.8 4.1v2.6c-1.3.1-2.5-.3-3.8-1v5.7c0 4.4-3.4 6.9-6.9 5.8-3.2-1-4.1-5-1.7-7.2 1-.9 2.4-1.3 3.8-1.1v2.7c-.4-.1-.8-.1-1.2 0-1.2.3-1.7 1.4-1.3 2.5.4 1.1 1.8 1.5 2.7.7.5-.4.7-1 .7-1.7V3h3.9Z" /></svg>
             TikTok

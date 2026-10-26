@@ -14,7 +14,7 @@ import { describe, it, expect } from 'vitest'
 import { createRequire } from 'node:module'
 import { readCode } from '../helpers/source-text'
 import { HS_TABLES_SQL, reviewSummaries } from '@/features/home-service/api/home-service-db'
-import { maskReviewer, parseProIntro, parseProLinks, parseReview, proLinkLabel, ratingText, readProLinks } from '@/shared/home-service-review'
+import { maskReviewer, normalizeProLink, parseProIntro, parseProLinks, parseReview, proLinkLabel, proLinkStatus, ratingText, readProLinks } from '@/shared/home-service-review'
 
 type Raw = { exec(s: string): void; prepare(s: string): { run(...a: never[]): { changes: number | bigint }; get(...a: never[]): unknown; all(...a: never[]): unknown[] } }
 const req = createRequire(import.meta.url)
@@ -121,5 +121,25 @@ describe('⭐ 후기', () => {
     const src = readCode('src/worker/cron/home-service-sweep.ts')
     expect(src).toMatch(/SET review_asked_at = datetime\('now'\) WHERE id = \? AND review_asked_at IS NULL/)
     expect(src).toMatch(/if \(!upd\.meta\?\.changes\) continue/)
+  })
+})
+
+describe('후기 링크 입력 칸 — 플랫폼 이름 표시 · 이상한 주소 거절 (2026-10-26 대표)', () => {
+  it('앞부분 없이 붙여 넣어도 https 를 채워 판정한다', () => {
+    expect(normalizeProLink('soomgo.com/profile/1')).toBe('https://soomgo.com/profile/1')
+    expect(proLinkStatus('soomgo.com/profile/1')).toEqual({ kind: 'ok', label: '숨고' })
+    expect(proLinkStatus('m.place.naver.com/place/9')).toEqual({ kind: 'ok', label: '네이버 플레이스' })
+  })
+  it('빈 칸은 경고하지 않는다', () => {
+    expect(proLinkStatus('   ')).toEqual({ kind: 'empty' })
+  })
+  it('허용 목록 밖·위장·http·다른 스킴은 bad', () => {
+    for (const bad of ['evil.com/x', 'soomgo.com.evil.io/x', 'http://soomgo.com/x', 'javascript:alert(1)', 'bit.ly/abc']) {
+      expect(proLinkStatus(bad).kind).toBe('bad')
+    }
+  })
+  it('서버 저장도 같은 정규화로 받는다(화면이 통과시킨 것을 서버가 거절하지 않게)', () => {
+    expect(parseProLinks(['soomgo.com/profile/1'])).toEqual({ ok: true, links: ['https://soomgo.com/profile/1'] })
+    expect(parseProLinks(['bit.ly/abc']).ok).toBe(false)
   })
 })

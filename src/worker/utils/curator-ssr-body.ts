@@ -60,6 +60,7 @@ import { priceDisplay } from '../../shared/price-display'
 import { formatNumber } from '../../utils/format'
 import { curatorHomePins, curatorSoldTotal } from '../../shared/curator-pin-order'
 import { SHARE_MASCOT_SRC } from '../../shared/ushop-share-card'
+import { snsLinkStatus } from '../../shared/sns-link'
 import { PLAIN_CLS, PLAIN_THUMB_CLS, USHOP_TAB_CLS } from '../../shared/ushop-row'
 import { buildCuratorNoscript } from './crawler-noscript'
 
@@ -251,7 +252,8 @@ export function buildCuratorFirstScreen(ssrPayload: string, loaderHtml: string):
     const statsText =
       `<span>이용권 ${num(pins.length)}</span>` +
       (sold > 0 ? `<span> · </span><span>누적 구매 ${num(sold)}</span>` : '')
-    const snsNames = [c.youtube_url && 'YouTube', c.instagram_url && 'Instagram', c.tiktok_url && 'TikTok'].filter(Boolean) as string[]
+    // 🔒 화면(`CuratorHeader`)과 같은 판정 — 엉뚱한 주소면 이름표가 없고, 두 곳이 갈리면 마운트 때 줄이 바뀐다.
+    const snsNames = [snsLinkStatus('youtube', c.youtube_url).kind === 'ok' && 'YouTube', snsLinkStatus('instagram', c.instagram_url).kind === 'ok' && 'Instagram', snsLinkStatus('tiktok', c.tiktok_url).kind === 'ok' && 'TikTok'].filter(Boolean) as string[]
     const snsHtml = snsNames.length
       ? `<div class="${CURATOR_FS_CLASS.snsGroup}">` +
           snsNames.map((n) => `<span class="${CURATOR_FS_CLASS.snsHit}"><span class="${CURATOR_FS_CLASS.snsPill}"><span style="display:inline-block;width:15px;height:15px"></span>${n}</span></span>`).join('') +

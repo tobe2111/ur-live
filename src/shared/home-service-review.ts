@@ -45,6 +45,25 @@ export function proLinkLabel(raw: unknown): string | null {
   return site ? site.label : null
 }
 
+/**
+ * 입력 칸 도우미(2026-10-26 대표 "어느 플랫폼인지 입력하면 보이게") — 사장님이 `soomgo.com/…` 처럼
+ * 앞부분 없이 붙여 넣는 경우가 많아 `https://` 를 채워 준다. 판정 자체는 `proLinkLabel` 하나다.
+ */
+export function normalizeProLink(raw: unknown): string {
+  const s = String(raw ?? '').trim()
+  if (!s) return ''
+  if (/^[a-z][a-z0-9+.-]*:/i.test(s)) return s
+  return `https://${s.replace(/^\/+/, '')}`
+}
+
+/** 칸 하나의 상태 — 비었으면 'empty', 허용 목록이면 그 이름, 아니면 'bad'. */
+export function proLinkStatus(raw: unknown): { kind: 'empty' } | { kind: 'ok'; label: string } | { kind: 'bad' } {
+  const s = normalizeProLink(raw)
+  if (!s) return { kind: 'empty' }
+  const label = proLinkLabel(s)
+  return label ? { kind: 'ok', label } : { kind: 'bad' }
+}
+
 export type ProLink = { url: string; label: string }
 
 /**
@@ -55,7 +74,7 @@ export function parseProLinks(raw: unknown): { ok: true; links: string[] } | { o
   const arr = Array.isArray(raw) ? raw : []
   const out: string[] = []
   for (const v of arr) {
-    const s = String(v ?? '').trim()
+    const s = normalizeProLink(v)
     if (!s) continue
     if (s.length > 300) return { ok: false, error: '주소가 너무 길어요' }
     if (!proLinkLabel(s)) return { ok: false, error: `숨고·미소·네이버·카카오맵·당근·인스타그램 주소만 넣을 수 있어요 (${s.slice(0, 40)})` }

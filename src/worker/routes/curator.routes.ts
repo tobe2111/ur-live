@@ -29,7 +29,7 @@ import { CURATOR_DEFAULTS, WITHDRAWAL_DEFAULTS, TAX_POLICY, COMMISSION_DEFAULTS 
 import { isVoucherCategory, voucherMinPriceError } from '../../shared/constants/voucher-categories'
 import { getPolicy } from '../utils/dynamic-policy'
 import { intParam } from '@/shared/pagination'; import { loadLinkedSellerProducts } from '../utils/linkshop-seller-products' // 한 줄: 래칫 1397
-import { consumerVisibleProductSql } from '../../shared/db/consumer-visible-product'
+import { consumerVisibleProductSql } from '../../shared/db/consumer-visible-product'; import { snsLinkStatus, SNS_LABEL, type SnsPlatform } from '../../shared/sns-link'
 import { isAffiliateProgramEnabled, gateAffiliateRows } from '../utils/affiliate-program'
 import { findOwnedApprovedSeller, OWNED_STORE_WHERE_SQL } from '../utils/seller-operators'; import { countUShopSales } from '../utils/ushop-sales'; import { publicReadDb } from '../utils/d1-read-replica' // 한 줄: 래칫
 
@@ -711,11 +711,11 @@ curatorRoutes.patch('/me/profile', requireAuth(), async (c) => {
       binds.push(v)
     }
     // 🎨 2026-06-16 유어샵 시안: SNS 링크 — 핸들/@핸들/http(s) URL 허용, 빈 문자열=해제. (표시 시 정규화)
-    const isAllowedSns = (v: string) => v === '' || /^https?:\/\//i.test(v) || /^@?[A-Za-z0-9._-]{1,60}$/.test(v)
     for (const key of ['youtube_url', 'instagram_url', 'tiktok_url'] as const) {
       if (typeof body[key] === 'string') {
         const v = (body[key] as string).trim().slice(0, 200)
-        if (v && !isAllowedSns(v)) return c.json({ success: false, error: 'SNS 링크 형식 오류' }, 400)
+        const platform = key.replace('_url', '') as SnsPlatform // 🔒 2026-10-26: 그 칸은 그 플랫폼 주소·아이디만 — `shared/sns-link.ts`
+        if (v && snsLinkStatus(platform, v).kind !== 'ok') return c.json({ success: false, error: `${SNS_LABEL[platform]} 주소나 아이디만 넣을 수 있어요` }, 400)
         updates.push(`${key} = ?`)
         binds.push(v)
       }
