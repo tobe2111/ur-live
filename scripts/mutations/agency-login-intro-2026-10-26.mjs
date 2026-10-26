@@ -17,4 +17,12 @@ export default [
     test: T,
     why: '소개 판이 조용히 사라진다.',
   },
+  {
+    name: '에이전시 로그인 — 카카오 버튼이 회색 글자 링크로 돌아간다',
+    file: 'src/pages/agency-console/AgencyLoginPage.tsx',
+    find: '          className="w-full h-[52px] bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] rounded-xl text-[15px] font-medium tracking-tight transition-all flex items-center justify-center gap-2">',
+    replace: '          className="font-medium text-gray-700 hover:underline underline-offset-4">',
+    test: T,
+    why: '대표가 "너무 안보인다" 고 한 그 모양으로 돌아간다 — 카카오 에이전시가 입구를 못 찾는다. 에러 0.',
+  },
 ]
