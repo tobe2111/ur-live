@@ -7,6 +7,8 @@
  *   색은 .gbd CSS 변수(테마 자동) — 상세 표면과 동톤.
  */
 import type { ReactNode } from 'react'
+import { useParams } from 'react-router-dom'
+import { useFcfsDetail } from '@/features/group-buy/useFcfsDetail'
 import { BellIcon } from '@/components/icons/urdeal-icons'
 import { FieldCard, FieldRow } from '@/components/ticket/FieldCard'
 import { formatNumber } from '@/utils/format'
@@ -46,6 +48,10 @@ export default function DealPurchaseBox({
   buyable, isJoinable, isPrelaunch, joining, onBuy, onPrelaunchApply, dealSlot, allDeal = false,
   isOwner = false, onManage,
 }: Props) {
+  // 🎯 2026-10-27 (대표 "구매하기 보다 응모하기"): 추첨 상품은 당첨자가 아니면 결제 대신 응모 — 모바일 바와 같은 훅.
+  const { id } = useParams<{ id: string }>()
+  const fcfs = useFcfsDetail(Number(id))
+  const raffle = fcfs.gate && !isPrelaunch && !isOwner
   // 🎭 2026-10-12 (대표 *"데모인 것을 티내지마"*): 데모만 다른 라벨을 쓰던 분기를 **없앴다**.
   //   종전엔 데모 `결제하기`·`응모 불가` / 실상품 `구매하기`·`구매 불가` 라서 **라벨만 보고 데모를
   //   판별할 수 있었다**(라이브 홈 시드 50건 중 48건이 데모다). 실상품 쪽 문구로 통일했으므로
@@ -108,6 +114,16 @@ export default function DealPurchaseBox({
       {dealSlot}
 
       {/* CTA — 하단 바와 동일 핸들러(결제 로직 무수정) */}
+      {raffle ? (
+        <button
+          type="button"
+          onClick={fcfs.apply}
+          disabled={fcfs.applied || fcfs.closed || fcfs.busy}
+          style={{ width: '100%', height: 50, border: 'none', borderRadius: 14, background: fcfs.applied || fcfs.closed ? 'var(--gbd-sub2)' : 'var(--gbd-cta-bg)', color: 'var(--gbd-cta-fg)', fontSize: 15, fontWeight: 700, cursor: fcfs.applied || fcfs.closed ? 'default' : 'pointer' }}
+        >
+          {fcfs.ctaLabel}
+        </button>
+      ) : (
       <button
         onClick={isPrelaunch ? onPrelaunchApply : onBuy}
         disabled={(!isJoinable && !isPrelaunch) || joining}
@@ -116,6 +132,7 @@ export default function DealPurchaseBox({
       >
         {joining ? '처리 중…' : isPrelaunch ? <><BellIcon size={16} aria-hidden="true" />오픈 예정 — 사전 응모하기</> : !isJoinable ? ('구매 불가') : <>{allDeal ? `${formatNumber(total)}딜로 결제하기` : `${formatNumber(total)}원 ${ctaLabel}`}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
       </button>
+      )}
 
       {/* 🔒 안심 한 줄 — 모바일 구매 창과 같은 문구(2026-10-11 D안). 세 줄 배지는 "결제 즉시 교환권 발급"(용어 오류)을 담고 있었다. */}
       <div className="mt-3 flex items-center justify-center gap-1 text-[12px]" style={{ color: 'var(--gbd-sub)' }}>

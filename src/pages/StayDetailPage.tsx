@@ -15,6 +15,8 @@ import { toast } from '@/hooks/useToast'
 import { Calendar, Sparkles } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import StayStickyBar from './stay-detail/StayStickyBar'
+import FcfsApplyBlock from '@/features/group-buy/FcfsApplyBlock'
+import { useFcfsDetail } from '@/features/group-buy/useFcfsDetail'
 import GuestIdentityFields, { type GuestIdentity } from './stay-detail/GuestIdentityFields'
 import { SectionTitle, AmenityFlow, InfoBlock, propertyTypeLabel, StayReviews, StayPolicyInfo } from './stay-detail/StayInfoSections'
 import StayRoomPicker from './stay-detail/StayRoomPicker'
@@ -125,6 +127,8 @@ export default function StayDetailPage() {
   // 🏪 2026-10-19: 주인이 보면 예약 자리에 [관리하기](이용권·쇼핑과 같은 훅 — 판정은 구매 차단과 같은 서버 함수).
   const { isOwner: own, openManage, sheet: ownerSheet } = useOwnerManage(productId, !!localStorage.getItem('user_id') || !!localStorage.getItem('uid'), 'stay')
   const heroRef = useRef<HTMLDivElement | null>(null)
+  // 🎯 2026-10-27 (대표 "통일할 건 통일"): 숙소도 추첨 상품이면 이용권 상세와 같은 응모 칸 + 하단 [응모하기].
+  const fcfs = useFcfsDetail(productId)
   const [stay, setStay] = useState<StayDetail | null>(() => readStaySeed(productId))
   const [loading, setLoading] = useState(() => !readStaySeed(productId))
   const [rooms, setRooms] = useState<AvailRoom[]>([])
@@ -426,6 +430,7 @@ export default function StayDetailPage() {
         {/* 🛏️ 2026-10-25 대표 확정 **E안**(여기어때 순서 — 날짜 → 객실 → 시설 → 소개 → 이용 안내 → 위치).
             객실 카드는 **고르기만** 한다 — 예약은 하단 바 하나(종전엔 카드마다 [이 객실 예약] + 바의 [예약하기]).
             🖥️ PC(lg+)는 우측 `StayBookingPanel` 의 객실 행이 담당(B안) → 여기 숨김. */}
+        <div id="fcfs-apply-block" className="gbd -mx-4 empty:hidden" style={{ background: 'transparent' }}><FcfsApplyBlock productId={productId} /></div>
         <div id="stay-sec-rooms" className="lg:hidden -mx-4 px-4 py-6 border-t-8 border-gray-100 dark:border-[var(--bg)] lg:mx-0 lg:px-0 lg:py-0 lg:border-t-0" style={{ scrollMarginTop: 96 }}>
           <StayRoomPicker rooms={rooms} loading={roomsLoading} guests={guests} nights={nights} readOnly={own}
             selectedId={cartItems[0]?.room_id ?? null}
@@ -534,6 +539,7 @@ export default function StayDetailPage() {
         onClear={() => setCartQty({})}
         onBook={() => { if (cartItems.length === 1 && cartTotalQty === 1) { setSelectedRoom(cartItems[0]); setBookingOpen(true) } else setMultiBookingOpen(true) }}
         onPickRoom={() => document.getElementById('stay-sec-rooms')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+        raffle={fcfs.gate ? { label: fcfs.ctaLabel, disabled: fcfs.applied || fcfs.closed || fcfs.busy, onApply: fcfs.apply } : null}
       />}
 
       {multiBookingOpen && (

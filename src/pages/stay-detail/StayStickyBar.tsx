@@ -18,7 +18,7 @@
 import { formatNumber } from '@/utils/format'
 
 export default function StayStickyBar({
-  minPrice, nightsLabel, cartCount, cartTotalQty, cartSubtotal, onClear, onBook, onPickRoom,
+  minPrice, nightsLabel, cartCount, cartTotalQty, cartSubtotal, onClear, onBook, onPickRoom, raffle,
 }: {
   /** 팔 수 있는 객실 중 최저 총액. 없으면 null → 바를 안 그린다. */
   minPrice: number | null
@@ -30,9 +30,11 @@ export default function StayStickyBar({
   onClear: () => void
   onBook: () => void
   onPickRoom: () => void
+  /** 🎯 2026-10-27: 추첨 상품(당첨 전)이면 예약 대신 응모 — 이용권 하단 바와 같은 `useFcfsDetail` 값. */
+  raffle?: { label: string; disabled: boolean; onApply: () => void } | null
 }) {
   const hasCart = cartCount > 0
-  if (!hasCart && minPrice == null) return null
+  if (!hasCart && minPrice == null && !raffle) return null
 
   return (
     /* 🩸 2026-10-25: 종전 `z-50` 이라 하단 탭(z-[9999]) **뒤에 깔려 폰에서 안 보였다** — 이용권 바(`DealBottomBar`)와 같은 층.
@@ -53,6 +55,16 @@ export default function StayStickyBar({
             비우기
           </button>
         )}
+        {raffle ? (
+          <button
+            type="button"
+            onClick={raffle.onApply}
+            disabled={raffle.disabled}
+            className="shrink-0 px-5 py-3 bg-brand text-white text-[15px] font-bold rounded-xl hover:bg-brand-dark disabled:opacity-50"
+          >
+            {raffle.label}
+          </button>
+        ) : (
         <button
           type="button"
           onClick={hasCart ? onBook : onPickRoom}
@@ -60,6 +72,7 @@ export default function StayStickyBar({
         >
           {hasCart ? (cartTotalQty === 1 ? '예약하기' : '묶음 예약 →') : '객실 고르기'}
         </button>
+        )}
       </div>
     </div>
   )
