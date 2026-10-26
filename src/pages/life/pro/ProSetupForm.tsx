@@ -163,7 +163,7 @@ export default function ProSetupForm({ me, onSaved, prefill, signup }: { me: Pro
                   <div className="flex gap-2">
                     <div className={`${st.kind === 'bad' ? INPUT.replace('border-rule', 'border-sale') : INPUT} flex min-w-0 flex-1 items-center gap-2 focus-within:border-brand`}>
                       {st.kind === 'ok' && (
-                        <span className="shrink-0 rounded-md bg-brand-tint px-1.5 py-0.5 text-[12px] font-medium text-brand-text">{st.label}</span>
+                        <span className="shrink-0 rounded-md bg-brand-tint px-2 py-1 text-[12px] font-medium text-brand-text">{st.label}</span>
                       )}
                       <input className="min-w-0 flex-1 bg-transparent text-[15px] text-ink outline-none" inputMode="url" placeholder="https://soomgo.com/profile/…" value={l}
                         aria-invalid={st.kind === 'bad'}
