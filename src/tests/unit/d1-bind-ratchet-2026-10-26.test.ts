@@ -97,14 +97,18 @@ describe('④ 2026-10-26 에 고친 세 자리가 되돌아오지 않는다', ()
     expect(s).toMatch(/chunkForBinds\(clean,\s*1\)/)
     expect(s).not.toMatch(/i \+= 100/)
   })
-  it('선착순 두 자리는 표면이 0 이다(승계 판정 · 당첨자 전화 조회)', () => {
-    expect(BASE.counts['src/features/group-buy/api/fcfs.routes.ts']).toBeUndefined()
+  // 🩸 이 두 단언의 첫 판은 **동결 파일**(BASE.counts)을 봤다. 동결은 커밋된 스냅샷이라 소스에
+  //   결함을 주입해도 안 바뀌고, 주입이 그대로 **초록**을 냈다(실제로 그랬다). 그리고 금지 지문을
+  //   `${ph}` 라는 **옛 변수명**에 앵커했는데, 같은 결함을 `${enabledIds.map(…)}` 로 쓰면 비껴간다.
+  //   ⇒ 판정은 **살아 있는 소스에 스캐너를 돌려서** 한다 — 변수명과 무관하게 잡힌다.
+  it('선착순 파일에 손으로 만든 IN-목록이 하나도 없다(소스를 직접 스캔)', () => {
+    const f = 'src/features/group-buy/api/fcfs.routes.ts'
+    expect(countBindSites([f], read)).toEqual({})
   })
   it('`/api/fcfs/active` 는 활성 필터를 **SQL JOIN** 으로 건다 — 쪼개서 JS 로 다시 정렬하지 않는다', () => {
     const s = read('src/features/group-buy/api/fcfs.routes.ts')
     expect(s).toMatch(/JOIN product_supply_meta mf ON mf\.product_id = p\.id AND mf\.key = 'fcfs_enabled'/)
-    expect(s).not.toMatch(/WHERE p\.id IN \(\$\{ph\}\)/)
-    // 정렬은 한 글자도 안 바뀐다 — 두 벌로 베끼면 갈린다.
+    // 정렬은 한 글자도 안 바뀐다 — 두 벌로 베끼면 데모-후순위(2026-07-04 대표 지시)가 갈린다.
     expect(s).toMatch(/ORDER BY is_demo, p\.created_at DESC/)
   })
   it('승계 판정이 NOT IN 목록을 쓰지 않는다 — 바인딩 1개', () => {
@@ -117,7 +121,7 @@ describe('④ 2026-10-26 에 고친 세 자리가 되돌아오지 않는다', ()
   it('은퇴한 백업(d1-backup)도 쪼갠다 — 다시 cron 에 꽂혀도 54개 테이블이 안 빈다', () => {
     const s = read('src/worker/cron/d1-backup.ts')
     expect(s).toMatch(/for \(const idChunk of chunkForBinds\(ids\)\)/)
-    expect(BASE.counts['src/worker/cron/d1-backup.ts']).toBeUndefined()
+    expect(countBindSites(['src/worker/cron/d1-backup.ts'], read)).toEqual({})
   })
 })
 
