@@ -8,7 +8,7 @@
  *   (라이브 하트비트 photoShort 로만 판정).
  */
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { fetchKakaoPlacePhotos, classifiedTagsFor } from '@/worker/utils/kakao-place-photos'
+import { fetchKakaoPlacePhotos, classifiedTagsFor, fetchKakaoUsablePhotoCount } from '@/worker/utils/kakao-place-photos'
 import { readCode } from '../helpers/source-text'
 
 function mockKakao(byTag: Record<string, unknown>) {
@@ -87,7 +87,7 @@ describe('③ 배선 — 호출부가 상품 종류를 넘긴다', () => {
     const admin = readCode('src/features/admin/api/admin-products.routes.ts')
     expect(admin).toMatch(/category: w\.t\.cat/)
     const cron = readCode('src/worker/cron/demo-image-rehost.ts')
-    expect(cron).toMatch(/SELECT p\.id, p\.slug, p\.category,/)
+    expect(cron).toMatch(/SELECT p\.id, p\.slug,[^`]*p\.category,/)
     expect(cron).toMatch(/category: row\.category/)
   })
   it('재조정 버전을 올려 기존 데모 전체에 다시 적용한다', () => {
@@ -107,5 +107,39 @@ describe('④ 발행 때 사진 3장 보장 (대표 2026-10-27 "3번")', () => {
   it('숙소 데모 발행도 같은 기준', () => {
     const stays = readCode('src/features/admin/api/admin-stays.routes.ts')
     expect(stays).toMatch(/if \(imgs\.length < DEMO_MIN_PHOTOS\) \{ skippedNoPhoto\+\+; continue \}/)
+  })
+})
+
+describe('⑤ 3장이 안 되는 매장은 다른 실제 매장으로 교체 (대표 2026-10-27 "그 방식으로 진행")', () => {
+  it('쓸 수 있는 사진 수 = 업체 + 그 종류의 분류 태그(식사만 음식 포함)', async () => {
+    mockKakao({ MYSTORE: { counts: { mystore: 1, vendor: 0, food: 5, indoor: 1, outdoor: 0 }, photos: [] } })
+    expect(await fetchKakaoUsablePhotoCount('1276757068', 'meal_voucher')).toBe(7)
+    expect(await fetchKakaoUsablePhotoCount('1276757068', 'beauty_voucher')).toBe(2)
+  })
+  it('응답을 못 받으면 0 이 아니라 null(모른다) — 카카오가 막힌 날 멀쩡한 데모를 바꾸지 않는다', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 403 })))
+    expect(await fetchKakaoUsablePhotoCount('1276757068', 'meal_voucher')).toBeNull()
+  })
+
+  const cron = readCode('src/worker/cron/demo-image-rehost.ts')
+  const swap = readCode('src/worker/cron/demo-store-swap.ts')
+  it('재조정: 확인된 개수가 3 미만일 때만 교체한다(null 이면 종전 경로)', () => {
+    expect(cron).toMatch(/if \(usable != null && usable < DEMO_MIN_PHOTOS\)/)
+    expect(cron).toMatch(/out\.swapped < SWAP_PER_RUN/)
+    expect(cron).toMatch(/const SWAP_PER_RUN = 1\b/)
+  })
+  it('재조정: 교체 못 하면 3장 미만 데모를 매대에서 내린다(가역 is_active=0)', () => {
+    const blk = cron.slice(cron.indexOf('if (usable != null'), cron.indexOf('if (imgs.length === 0)'))
+    expect(blk).toMatch(/UPDATE products SET is_active = 0/)
+    expect(blk).toMatch(/demo_hidden_no_photo: '1'/)
+  })
+  it('교체 후보: 사진 3장 이상 · 다른 데모가 안 쓰는 매장 · 지금 매장 아님', () => {
+    expect(swap).toMatch(/if \(imgs\.length < DEMO_MIN_PHOTOS\) continue/)
+    expect(swap).toMatch(/slug LIKE 'demo-deal-%' AND restaurant_name = \? AND restaurant_address = \?/)
+    expect(swap).toMatch(/place\.placeId === curId\) continue/)
+  })
+  it('교체 후 옛 가게 이름의 리뷰를 걷고 새 매장으로 다시 만든다', () => {
+    expect(swap).toMatch(/DELETE FROM product_reviews WHERE product_id = \?/)
+    expect(swap).toMatch(/storeName: place\.name/)
   })
 })

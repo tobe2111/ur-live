@@ -51,4 +51,28 @@ export default [
     test: T,
     why: '숙소 데모만 사진 3장 기준이 빠진다.',
   },
+  {
+    name: 'demo-photo-cls — 카카오가 막히면 0장으로 보고 교체한다',
+    file: 'src/worker/utils/kakao-place-photos.ts',
+    find: '  if (!c) return null',
+    replace: '  if (!c) return 0',
+    test: T,
+    why: '카카오가 잠깐 막힌 날 멀쩡한 데모가 통째로 다른 매장으로 바뀐다.',
+  },
+  {
+    name: 'demo-photo-cls — 교체 후보의 사진 수를 안 본다',
+    file: 'src/worker/cron/demo-store-swap.ts',
+    find: '    if (imgs.length < DEMO_MIN_PHOTOS) continue',
+    replace: '    if (imgs.length < 1) continue',
+    test: T,
+    why: '사진 1~2장인 매장으로 옮겨 3장 보장이 깨진다.',
+  },
+  {
+    name: 'demo-photo-cls — 교체를 회차 제한 없이 한다',
+    file: 'src/worker/cron/demo-image-rehost.ts',
+    find: 'const SWAP_PER_RUN = 1',
+    replace: 'const SWAP_PER_RUN = 99',
+    test: T,
+    why: '한 회차에 외부 요청이 몰려 서브리퀘스트 한도(무료 50)를 넘겨 다른 작업까지 죽는다.',
+  },
 ]

@@ -830,8 +830,8 @@ function parseDealCsv(text: string): Record<string, string>[] {
 // `fixed` = 할인 없이 판매가 그대로(정가=판매가). 이사 할인권처럼 '견적에서 깎아 주는 권'은 정가가 없어
 //   할인율을 지어내면 거짓이 된다(2026-10-20 — 10만원 할인권을 1,000원에 팔며 '99% 할인'이라 쓰지 않는다).
 interface DemoOfferPattern { n: string; d: string; min: number; max: number; fixed?: boolean }
-interface DemoBiz { pq: string; cat: string; iq?: string; pat: DemoOfferPattern[] }
-const DEMO_BIZ: DemoBiz[] = [
+export interface DemoBiz { pq: string; cat: string; iq?: string; pat: DemoOfferPattern[] }
+export const DEMO_BIZ: DemoBiz[] = [
   { pq: '삼겹살', cat: 'meal_voucher', pat: [
     { n: '숙성 삼겹살 2인 세트 (된찌 포함)', d: '숙성 삼겹살 2인 + 된장찌개 + 볶음밥 마무리. 숯불에 구워드립니다.', min: 26000, max: 38000 },
     { n: '삼겹살 500g + 김치찌개', d: '두툼한 삼겹살 500g 과 김치찌개. 셀프바 반찬 무제한.', min: 22000, max: 32000 },

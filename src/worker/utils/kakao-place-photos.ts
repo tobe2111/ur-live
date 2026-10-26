@@ -121,3 +121,22 @@ export async function fetchKakaoPlacePhotos(
   }
   return out
 }
+
+/**
+ * 📊 2026-10-27 — 그 장소에서 **쓸 수 있는** 사진(업체 + 종류별 분류 태그) 총 개수. 응답을 못 받으면 null.
+ *   null 은 "모른다"이지 "0장"이 아니다 — 호출부는 null 일 때 데모를 내리거나 매장을 바꾸지 않는다
+ *   (카카오가 잠깐 막힌 날 멀쩡한 데모가 통째로 교체되면 안 된다).
+ */
+export async function fetchKakaoUsablePhotoCount(
+  placeUrlOrId: string | null | undefined,
+  category: string | null | undefined,
+): Promise<number | null> {
+  const id = extractKakaoPlaceId(placeUrlOrId)
+  if (!id) return null
+  const data = await fetchKakaoTabPhotos(id, 'MYSTORE')
+  const c = data?.counts
+  if (!c) return null
+  let n = (c.mystore ?? 0) + (c.vendor ?? 0)
+  for (const tag of classifiedTagsFor(category)) n += c[tag.toLowerCase() as 'food' | 'indoor' | 'outdoor'] ?? 0
+  return n
+}
