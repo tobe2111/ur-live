@@ -12,209 +12,30 @@
  *   한 사장님이 둘 다 한다(이용권은 수수료, 견적은 참여권).
  */
 
-export type HomeServiceCategory =
-  | 'store_pest' | 'kitchen_hood' | 'store_repair' | 'lodging_clean'
-  | 'move' | 'move_in_clean' | 'aircon_clean'
-
-/** 누구의 일인가 — 생활 페이지가 사장님(가게 관리)을 먼저, 집을 아래에 보여 준다(2026-10-25 대표). */
-export type HomeServiceAudience = 'biz' | 'home'
-
-/** `multi` 는 여러 개를 고르는 칸(쉼표로 이어 저장). 비워 둬도 되는 칸에만 쓴다. */
-export type FieldType = 'region' | 'text' | 'date' | 'select' | 'number' | 'textarea' | 'multi'
-
-export interface RequestField {
-  key: string
-  label: string
-  type: FieldType
-  required: boolean
-  options?: readonly string[]
-  placeholder?: string
-  /** number 칸 단위(평·대) */
-  unit?: string
-  /** 선택지 아래 한 줄 설명(오늘의집처럼 카드로 고르게 한다) */
-  optionHints?: Readonly<Record<string, string>>
-}
-
-/**
- * 🔒 지역 칸의 **상세 주소**(도로명·동·호수)는 `<키>_full` 로 따로 받는다.
- * 사장님은 고르기 전엔 동까지만 보고, **손님이 고른 한 곳만** 이 값을 본다(연락처와 같은 규칙).
- */
-export const PRIVATE_ADDRESS_SUFFIX = '_full'
-export const PRIVATE_ADDRESS_MAX = 120
-
-export interface CategoryDef {
-  key: HomeServiceCategory
-  label: string
-  /** 한 줄 설명(생활 페이지 카드) */
-  blurb: string
-  /** 같은 일을 정찰가로 파는 이용권을 찾을 때 이름에 들어가는 낱말 */
-  voucherKeywords: readonly string[]
-  fields: readonly RequestField[]
-  /**
-   * 사장님에게 보낼 지역 칸. 이사는 출발지와 도착지 **둘 다** 본다
-   * (출발지 사장님도 도착지 사장님도 그 일을 할 수 있다).
-   */
-  regionFields: readonly string[]
-  /** 이 칸의 날짜가 지나면 요청이 만료된다 */
-  dateField: string
-  audience: HomeServiceAudience
-  /** 달력에 손 없는 날을 표시(이사) */
-  luckyDays?: boolean
-  /** 신청을 마친 뒤 "같이 하실래요?" — carry 는 {다음 카테고리 칸: 이번 칸} */
-  crossSell?: { to: HomeServiceCategory; title: string; carry: Readonly<Record<string, string>> }
-}
-
-const REGION_HINT = '예) 서울 강남구 역삼동 (동까지만)'
-
-const BIZ_TYPES = ['식당', '카페', '숙소', '기타 매장'] as const
-const WORK_TIMES = ['영업 전', '영업 끝난 뒤', '쉬는 날', '상관없음'] as const
-const WORK_TIME_HINTS = { '영업 전': '오픈 전 아침', '영업 끝난 뒤': '마감 후 밤', '쉬는 날': '정기 휴무일', '상관없음': '업체와 맞춰 정해요' } as const
-const STORE_HINT = '가게 주소를 검색해 주세요'
-
-export const HOME_SERVICE_CATEGORIES: readonly CategoryDef[] = [
-  // ── 사장님 가게 관리 (2026-10-25 대표 "식당, 숙소 등을 타겟으로") ──
-  {
-    key: 'store_pest',
-    audience: 'biz',
-    label: '방역·소독',
-    blurb: '가게 크기와 원하는 주기만 알려 주면 근처 방역 업체가 견적을 보내 드려요',
-    voucherKeywords: ['방역', '소독'],
-    regionFields: ['address'],
-    dateField: 'date',
-    crossSell: { to: 'kitchen_hood', title: '주방 후드·덕트 청소도 함께 받아 보시겠어요?', carry: { address: 'address', biz: 'biz', date: 'date' } },
-    fields: [
-      { key: 'address', label: '가게 주소', type: 'region', required: true, placeholder: STORE_HINT },
-      { key: 'biz', label: '업종', type: 'select', required: true, options: BIZ_TYPES },
-      { key: 'pyeong', label: '가게 평수', type: 'number', required: true, unit: '평' },
-      { key: 'cycle', label: '주기', type: 'select', required: true, options: ['한 번만', '매월 정기', '분기 정기'],
-        optionHints: { '한 번만': '지금 한 번 해결', '매월 정기': '한 달에 한 번 관리', '분기 정기': '석 달에 한 번 관리' } },
-      { key: 'date', label: '희망 날짜', type: 'date', required: true },
-      { key: 'time', label: '작업 시간', type: 'select', required: true, options: WORK_TIMES, optionHints: WORK_TIME_HINTS },
-      { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '본 벌레(바퀴·쥐·날파리), 보건증 서류 필요 여부' },
-    ],
-  },
-  {
-    key: 'kitchen_hood',
-    audience: 'biz',
-    label: '주방 후드·덕트 청소',
-    blurb: '후드 개수만 알려 주면 근처 청소 업체가 견적을 보내 드려요',
-    voucherKeywords: ['후드', '덕트'],
-    regionFields: ['address'],
-    dateField: 'date',
-    fields: [
-      { key: 'address', label: '가게 주소', type: 'region', required: true, placeholder: STORE_HINT },
-      { key: 'biz', label: '업종', type: 'select', required: true, options: BIZ_TYPES },
-      { key: 'count', label: '후드 개수', type: 'number', required: true, unit: '개' },
-      { key: 'scope', label: '청소 범위', type: 'select', required: true, options: ['후드만', '후드 + 덕트', '잘 모르겠어요'],
-        optionHints: { '후드만': '눈에 보이는 후드와 필터', '후드 + 덕트': '천장 속 배기 통로까지', '잘 모르겠어요': '업체가 보고 정해요' } },
-      { key: 'date', label: '희망 날짜', type: 'date', required: true },
-      { key: 'time', label: '작업 시간', type: 'select', required: true, options: WORK_TIMES, optionHints: WORK_TIME_HINTS },
-      { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '마지막 청소 시기, 기름 떨어짐 여부' },
-    ],
-  },
-  {
-    key: 'store_repair',
-    audience: 'biz',
-    label: '가게 시설 수리',
-    blurb: '고장 난 곳을 고르면 근처 수리 업체가 견적을 보내 드려요',
-    voucherKeywords: ['수리', '간판', '설비'],
-    regionFields: ['address'],
-    dateField: 'date',
-    fields: [
-      { key: 'address', label: '가게 주소', type: 'region', required: true, placeholder: STORE_HINT },
-      { key: 'biz', label: '업종', type: 'select', required: true, options: BIZ_TYPES },
-      { key: 'kind', label: '수리할 곳', type: 'select', required: true, options: ['전기', '배관·누수', '간판', '냉장·냉동 설비', '에어컨', '문·유리', '기타'] },
-      { key: 'date', label: '희망 날짜', type: 'date', required: true },
-      { key: 'time', label: '작업 시간', type: 'select', required: true, options: WORK_TIMES, optionHints: WORK_TIME_HINTS },
-      { key: 'memo', label: '증상', type: 'textarea', required: false, placeholder: '어디가 어떻게 고장 났는지 적어 주세요' },
-    ],
-  },
-  {
-    key: 'lodging_clean',
-    audience: 'biz',
-    label: '숙소 청소·침구',
-    blurb: '객실 수와 주기만 알려 주면 근처 업체가 견적을 보내 드려요',
-    voucherKeywords: ['객실', '린넨', '침구'],
-    regionFields: ['address'],
-    dateField: 'date',
-    fields: [
-      { key: 'address', label: '숙소 주소', type: 'region', required: true, placeholder: '숙소 주소를 검색해 주세요' },
-      { key: 'lodging', label: '숙소 종류', type: 'select', required: true, options: ['펜션', '게스트하우스', '모텔·호텔', '풀빌라', '기타'] },
-      { key: 'rooms', label: '객실 수', type: 'number', required: true, unit: '실' },
-      { key: 'service', label: '맡길 일', type: 'select', required: true, options: ['객실 청소', '침구·린넨 세탁', '둘 다'] },
-      { key: 'cycle', label: '주기', type: 'select', required: true, options: ['한 번만', '매일', '매주', '매월'] },
-      { key: 'date', label: '시작 날짜', type: 'date', required: true },
-      { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '체크아웃·체크인 시간, 세탁물 수거 여부' },
-    ],
-  },
-  // ── 집 ──
-  {
-    key: 'move',
-    audience: 'home',
-    label: '이사',
-    blurb: '출발지·도착지만 적으면 근처 이사 업체가 견적을 보내 드려요',
-    voucherKeywords: ['이사'],
-    regionFields: ['from', 'to'],
-    dateField: 'date',
-    luckyDays: true,
-    crossSell: { to: 'move_in_clean', title: '가시는 곳의 입주청소도 함께 받아 보시겠어요?', carry: { address: 'to', date: 'date' } },
-    fields: [
-      { key: 'date', label: '이사 날짜', type: 'date', required: true },
-      { key: 'size', label: '집 크기', type: 'select', required: true, options: ['원룸', '투룸', '쓰리룸 이상', '사무실'],
-        optionHints: { '원룸': '1인 가구·간단한 이사', '투룸': '2인 가구', '쓰리룸 이상': '가족 이사', '사무실': '책상·집기 이전' } },
-      { key: 'kind', label: '이사 방식', type: 'select', required: true, options: ['포장이사', '반포장이사', '일반이사', '용달'],
-        optionHints: { '포장이사': '짐 싸기부터 정리까지 모두 업체가', '반포장이사': '짐은 내가 싸고 운반·배치는 업체가', '일반이사': '운반만 업체가', '용달': '작은 짐 몇 개만' } },
-      { key: 'from', label: '출발지', type: 'region', required: true, placeholder: REGION_HINT },
-      { key: 'to', label: '도착지', type: 'region', required: true, placeholder: REGION_HINT },
-      { key: 'elevator', label: '엘리베이터', type: 'select', required: true, options: ['둘 다 있음', '출발지만 있음', '도착지만 있음', '둘 다 없음'] },
-      { key: 'items', label: '옮길 큰 짐', type: 'multi', required: false, placeholder: '예) 냉장고, 세탁기',
-        options: ['냉장고', '김치냉장고', '세탁기', '건조기', 'TV', '에어컨', '침대', '소파', '장롱', '책상', '피아노', '안마의자'] },
-      { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '큰 짐(피아노·냉장고 등), 주차 여부' },
-    ],
-  },
-  {
-    key: 'move_in_clean',
-    audience: 'home',
-    label: '입주청소',
-    blurb: '평수와 날짜만 적으면 근처 청소 업체가 견적을 보내 드려요',
-    voucherKeywords: ['입주청소', '입주 청소', '이사청소'],
-    regionFields: ['address'],
-    dateField: 'date',
-    fields: [
-      { key: 'address', label: '청소할 곳', type: 'region', required: true, placeholder: REGION_HINT },
-      { key: 'pyeong', label: '평수', type: 'number', required: true, unit: '평' },
-      { key: 'date', label: '희망 날짜', type: 'date', required: true },
-      { key: 'kind', label: '집 상태', type: 'select', required: true, options: ['신축 입주', '이사 나가는 집', '거주 중'],
-        optionHints: { '신축 입주': '새 아파트·공사 먼지', '이사 나가는 집': '짐 뺀 뒤 빈 집', '거주 중': '짐이 있는 채로' } },
-      { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '베란다 수, 특히 신경 쓸 곳' },
-    ],
-  },
-  {
-    key: 'aircon_clean',
-    audience: 'home',
-    label: '에어컨 청소',
-    blurb: '대수와 종류를 적으면 근처 업체가 견적을 보내 드려요',
-    voucherKeywords: ['에어컨'],
-    regionFields: ['address'],
-    dateField: 'date',
-    fields: [
-      { key: 'address', label: '방문할 곳', type: 'region', required: true, placeholder: REGION_HINT },
-      { key: 'count', label: '대수', type: 'number', required: true, unit: '대' },
-      { key: 'type', label: '종류', type: 'select', required: true, options: ['벽걸이', '스탠드', '2in1', '시스템(천장형)'] },
-      { key: 'date', label: '희망 날짜', type: 'date', required: true },
-      { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '모델명, 고장 증상' },
-    ],
-  },
-] as const
-
-export function categoryDef(key: unknown): CategoryDef | undefined {
-  return HOME_SERVICE_CATEGORIES.find((c) => c.key === key)
-}
+export * from './home-service-categories'
+import { MAX_REQUEST_PHOTOS, PRIVATE_ADDRESS_MAX, PRIVATE_ADDRESS_SUFFIX, categoryDef, type HomeServiceCategory } from './home-service-categories'
 
 /** 요청 하나에 견적을 보낼 수 있는 사장님 수(선착순). */
 export const MAX_QUOTES_PER_REQUEST = 5
 /** 사장님이 처음 등록하면 주는 무료 참여권. */
 export const SIGNUP_FREE_CREDITS = 3
+
+/**
+ * 🚪 견적을 받고 보낼 수 있는 매장 상태 — 2026-10-25 대표 *"1번은 해줘"*(심사 중인 업체도 견적).
+ * 생활 업체는 **심사 중(pending)도 연다** — 업체 모집이 먼저다. 막는 것은 정지·반려뿐이다.
+ * 대신 손님은 견적 카드에서 `사업자 인증` 표시로 심사를 마친 업체를 구분한다(`proVerified`).
+ * 🔴 이용권 판매는 이 규칙과 무관하다 — 메인 노출은 여전히 승인된 매장만(`approvedSellerProductSql`).
+ * 🔴 제휴 업체 지정은 여전히 판매 승인 매장만(어드민 라우트) — 무료로 자리를 주는 일이라 더 엄격하다.
+ */
+export const PRO_OPEN_STATUSES = ['pending', 'approved', 'active'] as const
+export const PRO_OPEN_STATUS_SQL = `('pending', 'approved', 'active')`
+export function proStatusOpen(status: unknown): boolean {
+  return (PRO_OPEN_STATUSES as readonly string[]).includes(String(status))
+}
+/** 사업자 심사를 마친 업체 — 손님 견적 카드의 `사업자 인증` 표시. */
+export function proVerified(status: unknown): boolean {
+  return status === 'approved' || status === 'active'
+}
 /** 손님이 이 시간 동안 견적을 한 번도 안 열어 보면 참여권을 돌려준다. */
 export const UNVIEWED_REFUND_HOURS = 48
 /** 한 요청에 알림을 보낼 사장님 상한(알림톡 비용). */
@@ -286,6 +107,13 @@ export function validateRequest(
       if (f.required) return { ok: false, error: `${f.label}을(를) 입력해 주세요` }
       continue
     }
+    if (f.type === 'photos') {
+      const urls = [...new Set(v.split(',').map((x) => x.trim()).filter(Boolean))]
+      if (urls.length > MAX_REQUEST_PHOTOS) return { ok: false, error: `사진은 ${MAX_REQUEST_PHOTOS}장까지 올릴 수 있어요` }
+      if (urls.some((u) => !isRequestPhotoUrl(u))) return { ok: false, error: '사진을 다시 올려 주세요' }
+      if (urls.length) details[f.key] = urls.join(',')
+      continue
+    }
     if (v.length > (f.type === 'textarea' ? 500 : 60)) return { ok: false, error: `${f.label}이(가) 너무 깁니다` }
     if (f.type === 'select' && f.options && !f.options.includes(v)) return { ok: false, error: `${f.label}을(를) 다시 골라 주세요` }
     if (f.type === 'multi') {
@@ -323,15 +151,95 @@ export function validateRequest(
   return { ok: true, value: { category: def.key, details, privateDetails, regions, desiredDate } }
 }
 
+/**
+ * 우리 업로드 주소인가 — `/api/upload/image` 가 돌려주는 두 모양(같은 출처 `/api/media/uploads/...` 또는
+ * R2 공개 도메인 `https://.../uploads/...`)만. 남의 주소를 끼워 넣어 업체 화면에 띄우지 못하게 한다.
+ * 누가 올렸는지는 서버 라우트가 `uploads/user/<본인>/` 으로 따로 본다.
+ */
+export function isRequestPhotoUrl(u: string): boolean {
+  return /^(?:\/api\/media\/|https:\/\/[a-z0-9.-]+\/)uploads\/user\/\d+\/\d{4}-\d{2}\/[A-Za-z0-9_-]+\.(?:jpg|png|webp|gif)$/.test(u) && u.length <= 200
+}
+
+/** 사진이 전부 이 사람이 올린 것인가(`uploads/user/<id>/`). */
+export function photosOwnedBy(details: Record<string, string>, userId: number): boolean {
+  for (const [k, v] of Object.entries(details)) {
+    if (k !== 'photos' || !v) continue
+    if (v.split(',').some((u) => !u.includes(`/uploads/user/${userId}/`))) return false
+  }
+  return true
+}
+
+/**
+ * 🎟️ 카테고리별 참여권 장수(2026-10-25 — 결재 `docs/decisions/2026-10-25-home-service-credit-cost.md`).
+ * 기본은 모두 1장. 어드민이 `home_service_credit_cost`(JSON {카테고리: 장수})로 정한다 — **대표 결재 전엔 아무 값도 넣지 않는다**.
+ */
+export const CREDIT_COST_KEY = 'home_service_credit_cost'
+export const MAX_CREDIT_COST = 20
+
+export function parseCreditCosts(raw: unknown): Partial<Record<HomeServiceCategory, number>> {
+  try {
+    const obj = typeof raw === 'string' ? JSON.parse(raw) : raw
+    const out: Partial<Record<HomeServiceCategory, number>> = {}
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return out
+    for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+      const n = Number(v)
+      if (categoryDef(k) && Number.isInteger(n) && n >= 1 && n <= MAX_CREDIT_COST) out[k as HomeServiceCategory] = n
+    }
+    return out
+  } catch { return {} }
+}
+
+export function creditCostFor(category: HomeServiceCategory, costs: Partial<Record<HomeServiceCategory, number>>): number {
+  return costs[category] ?? 1
+}
+
 /** 사장님이 보는 요청 요약 한 줄 — 연락처·상세 주소 없이. 알림톡 본문과 요청함이 같은 글을 쓴다. */
 export function requestSummary(category: HomeServiceCategory, d: Record<string, string>): string {
-  if (category === 'move') return `${d.from || '-'} → ${d.to || '-'} · ${d.size || '-'} · ${d.kind || '-'}`
-  if (category === 'move_in_clean') return `${d.address || '-'} · ${d.pyeong || '-'}평 · ${d.kind || '-'}`
-  if (category === 'aircon_clean') return `${d.address || '-'} · ${d.type || '-'} ${d.count || '-'}대`
-  if (category === 'store_pest') return `${d.address || '-'} · ${d.biz || '-'} ${d.pyeong || '-'}평 · ${d.cycle || '-'}`
-  if (category === 'kitchen_hood') return `${d.address || '-'} · ${d.biz || '-'} 후드 ${d.count || '-'}개 · ${d.scope || '-'}`
-  if (category === 'store_repair') return `${d.address || '-'} · ${d.biz || '-'} · ${d.kind || '-'}`
-  return `${d.address || '-'} · ${d.lodging || '-'} ${d.rooms || '-'}실 · ${d.service || '-'} · ${d.cycle || '-'}`
+  const a = d.address || '-'
+  switch (category) {
+    case 'move': return `${d.from || '-'} → ${d.to || '-'} · ${d.size || '-'} · ${d.kind || '-'}`
+    case 'move_in_clean': return `${a} · ${d.pyeong || '-'}평 · ${d.kind || '-'}`
+    case 'aircon_clean': return `${a} · ${d.type || '-'} ${d.count || '-'}대`
+    case 'store_pest': return `${a} · ${d.biz || '-'} ${d.pyeong || '-'}평 · ${d.cycle || '-'}`
+    case 'kitchen_hood': return `${a} · ${d.biz || '-'} 후드 ${d.count || '-'}개 · ${d.scope || '-'}`
+    case 'store_repair': return `${a} · ${d.biz || '-'} · ${d.kind || '-'}`
+    case 'store_fridge': return `${a} · ${d.equip || '-'} · ${d.symptom || '-'} · ${d.urgency || '-'}`
+    case 'store_aircon': return `${a} · ${d.type || '-'} ${d.count || '-'}대 · ${d.service || '-'}`
+    case 'store_clean': return `${a} · ${d.biz || '-'} ${d.pyeong || '-'}평 · ${d.cycle || '-'}`
+    case 'store_drain': return `${a} · ${d.biz || '-'} · ${d.kind || '-'}`
+    case 'store_interior': return `${a} · ${d.biz || '-'} ${d.pyeong || '-'}평 · ${d.work || '-'} · 예산 ${d.budget || '-'}`
+    case 'home_interior': return `${a} · ${d.housing || '-'} ${d.pyeong || '-'}평 · ${d.scope || '-'} · 예산 ${d.budget || '-'}`
+    case 'signage': return `${a} · ${d.kind || '-'} ${d.work || '-'} · 가로 ${d.size || '-'} · 예산 ${d.budget || '-'}`
+    case 'lodging_clean': return `${a} · ${d.lodging || '-'} ${d.rooms || '-'}실 · ${d.service || '-'} · ${d.cycle || '-'}`
+    case 'lodging_pool': return `${a} · ${d.lodging || '-'} · ${d.kind || '-'} · ${d.cycle || '-'}`
+    case 'home_grout': return `${a} · ${d.kind || '-'} · ${d.scope || '-'}`
+    case 'home_pest': return `${a} · ${d.housing || '-'} · ${d.pest || '-'}`
+  }
+}
+
+/**
+ * 🤝 제휴 업체(2026-10-25 대표 — 간판 제휴사). 카테고리 → 매장 번호(`sellers.id`).
+ * 제휴 업체는 그 카테고리 요청을 **지역과 무관하게** 받고, 견적을 낼 때 참여권을 쓰지 않는다
+ * (2026-10-24 승인된 "유어딜 직영(또는 협력 업체)" 견적과 같은 규칙 — 손님 화면엔 "유어딜 제휴").
+ */
+export const HOME_PARTNERS_KEY = 'home_service_partners'
+
+export function parsePartners(raw: unknown): Partial<Record<HomeServiceCategory, number>> {
+  try {
+    const obj = typeof raw === 'string' ? JSON.parse(raw) : raw
+    const out: Partial<Record<HomeServiceCategory, number>> = {}
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return out
+    for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+      const n = Number(v)
+      if (categoryDef(k) && Number.isInteger(n) && n > 0) out[k as HomeServiceCategory] = n
+    }
+    return out
+  } catch { return {} }
+}
+
+/** 이 매장이 제휴 업체로 지정된 카테고리들(쉼표로 이어서 — SQL 의 `instr` 비교용). */
+export function partnerCategoriesCsv(partners: Partial<Record<HomeServiceCategory, number>>, sellerId: number): string {
+  return Object.entries(partners).filter(([, v]) => v === sellerId).map(([k]) => k).join(',')
 }
 
 /**

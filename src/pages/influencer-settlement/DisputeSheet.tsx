@@ -54,7 +54,7 @@ export default function DisputeSheet({ onClose }: { onClose: () => void }) {
         <div className="space-y-2">
           {TYPES.map(t => (
             <button key={t.key} type="button" onClick={() => setType(t.key)}
-              className={`w-full h-12 px-4 rounded-xl text-left text-[15px] font-semibold ${type === t.key ? 'bg-brand-tint ring-2 ring-brand text-gray-900 dark:text-white' : 'bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-gray-200'}`}>
+              className={`w-full h-12 px-4 rounded-xl text-left text-[15px] font-medium ${type === t.key ? 'bg-brand-tint ring-2 ring-brand text-gray-900 dark:text-white' : 'bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-gray-200'}`}>
               {t.label}
             </button>
           ))}

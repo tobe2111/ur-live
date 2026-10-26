@@ -74,23 +74,23 @@ export default function StoreIntro({
     <div id="gb-sec-store" style={{ padding: '22px 18px', scrollMarginTop: 116 }}>
       {spec && (
         <>
-          <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>상품 구성</div>
-          <p style={{ margin: '12px 0 0', fontSize: 14.5, lineHeight: 1.72, color: 'var(--gbd-ink2)', whiteSpace: 'pre-line' }}>{spec}</p>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>상품 구성</div>
+          <p style={{ margin: '12px 0 0', fontSize: 15, lineHeight: 1.72, color: 'var(--gbd-ink2)', whiteSpace: 'pre-line' }}>{spec}</p>
         </>
       )}
 
       {(body || bio) && (
         <>
-          <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em', marginTop: spec ? 26 : 0 }}>가게 소개</div>
-          {body && <p style={{ margin: '12px 0 0', fontSize: 14.5, lineHeight: 1.72, color: 'var(--gbd-ink2)', whiteSpace: 'pre-line' }}>{body}</p>}
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gbd-ink)', letterSpacing: '-.02em', marginTop: spec ? 26 : 0 }}>가게 소개</div>
+          {body && <p style={{ margin: '12px 0 0', fontSize: 15, lineHeight: 1.72, color: 'var(--gbd-ink2)', whiteSpace: 'pre-line' }}>{body}</p>}
           {bio && (
             <div style={{ display: 'flex', gap: 11, alignItems: 'flex-start', marginTop: body ? 16 : 12 }}>
               {avatar
                 ? <div role="img" aria-label={who || '사장님'} style={{ width: 36, height: 36, borderRadius: '50%', flex: '0 0 auto', backgroundColor: 'var(--gbd-chip)', backgroundImage: `url("${avatar}")`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
                 : <div style={{ width: 36, height: 36, borderRadius: '50%', flex: '0 0 auto', background: 'var(--gbd-chip)' }} />}
               <div style={{ flex: 1, minWidth: 0, background: 'var(--gbd-chip)', borderRadius: 14, padding: '13px 15px' }}>
-                {who && <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-sub)' }}>{who} 사장님</div>}
-                <p style={{ margin: who ? '6px 0 0' : 0, fontSize: 14, lineHeight: 1.7, color: 'var(--gbd-ink2)', whiteSpace: 'pre-line' }}>{bio}</p>
+                {who && <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--gbd-sub)' }}>{who} 사장님</div>}
+                <p style={{ margin: who ? '6px 0 0' : 0, fontSize: 15, lineHeight: 1.7, color: 'var(--gbd-ink2)', whiteSpace: 'pre-line' }}>{bio}</p>
               </div>
             </div>
           )}

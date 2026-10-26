@@ -89,7 +89,7 @@ export default function DealBalanceCard({
         className={`w-full flex items-center justify-between gap-2 rounded-xl bg-surface shadow-lift active:scale-[0.99] transition-transform disabled:active:scale-100 ${compact ? 'px-3 py-2' : 'h-11 px-4'}`}
       >
         <span className="text-[12px] text-gray-600 dark:text-gray-300 truncate text-left">잔액을 불러오지 못했어요</span>
-        {onRetry && <span className="shrink-0 text-[12px] font-bold text-brand-text">다시 시도</span>}
+        {onRetry && <span className="shrink-0 text-[12px] font-medium text-brand-text">다시 시도</span>}
       </button>
     )
   }
@@ -105,7 +105,7 @@ export default function DealBalanceCard({
         className={`w-full flex items-center justify-between gap-2 rounded-xl bg-surface shadow-lift active:scale-[0.99] transition-transform ${compact ? 'px-3 py-2' : 'h-11 px-4'}`}
       >
         <span className="text-[12px] text-gray-600 dark:text-gray-300 truncate text-left">딜을 모으면 더 싸게 살 수 있어요</span>
-        <span className="shrink-0 inline-flex items-center gap-1 text-[12px] font-bold text-brand-text">
+        <span className="shrink-0 inline-flex items-center gap-1 text-[12px] font-medium text-brand-text">
           모으는 방법 <ArrowRight className="w-3 h-3" />
         </span>
       </button>
@@ -122,7 +122,7 @@ export default function DealBalanceCard({
       <button
         type="button"
         onClick={() => navigate(EARN_PATH)}
-        className="text-[13px] font-bold text-brand-text active:opacity-60 transition-opacity"
+        className="text-[13px] font-medium text-brand-text active:opacity-60 transition-opacity"
       >
         딜 모으기
       </button>
@@ -130,7 +130,7 @@ export default function DealBalanceCard({
       <button
         type="button"
         onClick={() => navigate(HISTORY_PATH)}
-        className="text-[13px] font-bold text-gray-500 dark:text-gray-400 active:opacity-60 transition-opacity"
+        className="text-[13px] font-medium text-gray-500 dark:text-gray-400 active:opacity-60 transition-opacity"
       >
         이용내역
       </button>
@@ -147,7 +147,7 @@ export default function DealBalanceCard({
               {/* ⏳ 숫자를 모를 땐 빈 자리를 둔다 — 0 을 적으면 거짓말이고, 비워 두면 높이만 잡힌다. */}
               {awaiting ? <span className="inline-block w-[2.2em] h-[0.72em] rounded bg-wash align-baseline" aria-hidden="true" /> : formatNumber(balance)}
             </span>
-            <span className="font-bold text-gray-400 dark:text-gray-500 text-[13px]">딜</span>
+            <span className="font-medium text-gray-400 dark:text-gray-500 text-[13px]">딜</span>
           </div>
           {/* 글자 한 줄. 버튼이 아니다 — 왼쪽은 금액 하나가 주인공이다. */}
           {!awaiting && note && (

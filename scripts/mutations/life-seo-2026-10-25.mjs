@@ -1,0 +1,60 @@
+// 🏠 사장님 생활 서비스 검색 노출 (2026-10-25) — `src/tests/unit/life-seo-2026-10-25.test.ts` 가 잡아야 하는 결함.
+const TEST = 'src/tests/unit/life-seo-2026-10-25.test.ts'
+export default [
+  {
+    name: '🏠 robots 가 업종 견적 페이지를 다시 막는다',
+    file: 'public/robots.txt',
+    find: 'Disallow: /life/requests\n',
+    replace: 'Disallow: /life/request\n',
+    test: TEST,
+    why: '개인 목록(/life/requests)을 막으려던 접두가 업종 페이지 17개까지 막아 색인이 0 이었다(수리 전 라이브).',
+  },
+  {
+    name: '🏠 생활 허브 크롤러 본문에서 업종 링크가 빠진다',
+    file: 'src/worker/utils/crawler-noscript.ts',
+    find: '...lifeChildLinks(path)]',
+    replace: ']',
+    test: TEST,
+    why: '업종 페이지 17개가 sitemap 으로만 발견되고 허브에서 이어지는 링크가 0 이 된다.',
+  },
+  {
+    name: '🏠 업종 페이지 구조화 데이터가 사라진다',
+    file: 'src/worker/utils/surface-list-jsonld.ts',
+    find: '  nodes.push(...lifeJsonLdNodes(path, origin, meta.canonical))',
+    replace: '  nodes.push(...[])',
+    test: TEST,
+    why: 'Service(대상 사업자)가 없으면 AI 검색이 일반 소비자 이사·청소 앱과 구분할 신호가 없다.',
+  },
+  {
+    name: '🏠 업종 메타 등록이 빠진다',
+    file: 'src/worker/utils/surface-list-jsonld.ts',
+    find: 'registerDynamicSurfaceSeo(lifeCategorySeo)',
+    replace: 'void lifeCategorySeo',
+    test: TEST,
+    why: '업종 페이지 17개가 다시 홈 제목으로 서빙된다(에러 0).',
+  },
+  {
+    name: '🏠 요청서 첫 질문의 업종 소개가 빠진다',
+    file: 'src/pages/life/LifeRequestFormPage.tsx',
+    find: 'notice: recruiting || undefined, intro }}',
+    replace: 'notice: recruiting || undefined }}',
+    test: TEST,
+    why: '타일에서 뺀 설명이 어디에도 안 남는다 — 무슨 일인지 모른 채 질문부터 받는다.',
+  },
+  {
+    name: '🏠 업체 모집 랜딩을 다시 robots 로 막는다',
+    file: 'public/robots.txt',
+    find: 'Disallow: /life/pro/',
+    replace: 'Disallow: /life/pro',
+    test: TEST,
+    why: 'sitemap 이 제출한 URL 을 robots 가 막는 모순 — 모집 랜딩이 검색에 안 나간다.',
+  },
+  {
+    name: '🏠 생활 허브 FAQPage 가 빠진다',
+    file: 'src/shared/life-seo.ts',
+    find: "      '@type': 'FAQPage',",
+    replace: "      '@type': 'WebPageElement',",
+    test: TEST,
+    why: '화면엔 FAQ 가 있는데 구조화 데이터엔 없다 — AI 검색이 인용할 Q&A 를 못 받는다.',
+  },
+]

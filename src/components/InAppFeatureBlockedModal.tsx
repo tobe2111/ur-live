@@ -96,10 +96,10 @@ export default function InAppFeatureBlockedModal({ feature, onClose, onAlternati
       >
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1 min-w-0">
-            <span className="inline-block px-2 py-1 rounded-full bg-amber-50 text-amber-700 text-[12px] font-bold mb-2 border border-amber-200">
+            <span className="inline-block px-2 py-1 rounded-full bg-amber-50 text-amber-700 text-[12px] font-medium mb-2 border border-amber-200">
               ⚠️ {inAppLabel} 인앱 브라우저
             </span>
-            <h2 id="iafm-title" className="text-[17px] font-extrabold text-gray-900 dark:text-white leading-tight">
+            <h2 id="iafm-title" className="text-[17px] font-bold text-gray-900 dark:text-white leading-tight">
               <span className="mr-2">{info.icon}</span>
               {info.title}
             </h2>
@@ -130,7 +130,7 @@ export default function InAppFeatureBlockedModal({ feature, onClose, onAlternati
 
           <button
             onClick={handleCopy}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200 rounded-2xl font-semibold text-[13px]"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200 rounded-2xl font-medium text-[13px]"
           >
             {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
             {copied ? 'URL 복사됨!' : 'URL 복사'}
@@ -139,7 +139,7 @@ export default function InAppFeatureBlockedModal({ feature, onClose, onAlternati
           {onAlternative && alternativeLabel && (
             <button
               onClick={() => { onAlternative(); onClose() }}
-              className="w-full px-4 py-3 bg-brand-tint text-brand-text rounded-2xl font-semibold text-[13px] border border-rule"
+              className="w-full px-4 py-3 bg-brand-tint text-brand-text rounded-2xl font-medium text-[13px] border border-rule"
             >
               {alternativeLabel}
             </button>

@@ -20,10 +20,11 @@ import { parseRegionFromAddress } from '@/shared/constants/region-slugs'
 import { kstYmd } from '@/shared/stays-early'
 import {
   HOME_SERVICE_CATEGORIES, HOME_TPL, MAX_OPEN_REQUESTS_PER_USER, MAX_QUOTES_PER_REQUEST,
-  categoryDef, msgQuoteChosen, requestSummary, validateRequest, type HomeServiceCategory,
+  categoryDef, msgQuoteChosen, photosOwnedBy, requestSummary, validateRequest, type HomeServiceCategory,
 } from '@/shared/home-service'
 import { sendSystemAlimtalk } from '../../../lib/system-alimtalk'
-import { chooseQuoteAtomic, ensureHomeServiceTables, refundAllQuotes, withPrivateDetails } from './home-service-db'
+import { chooseQuoteAtomic, ensureHomeServiceTables, ensureShareToken, proCountsByCategory, refundAllQuotes, withPrivateDetails } from './home-service-db'
+import { isShareToken, publicShareView } from '@/shared/home-service-share'
 import { dispatchRequest } from './home-service-notify'
 
 export const homeServiceRoutes = new Hono<{ Bindings: Env }>()
@@ -70,7 +71,49 @@ export async function notifyChosen(
 
 homeServiceRoutes.get('/config', async (c) => {
   const stopped = await homeServiceStopped(c.env.DB)
-  return c.json({ success: true, data: { open: !stopped, maxQuotes: MAX_QUOTES_PER_REQUEST, categories: HOME_SERVICE_CATEGORIES } })
+  // 카테고리별 업체 수 — 못 읽으면 null(화면은 "모집 중" 을 안 띄운다. 모르는 것과 0 은 다르다).
+  let proCounts: Record<string, number> | null = null
+  try { await ensureHomeServiceTables(c.env.DB); proCounts = await proCountsByCategory(c.env.DB) } catch { proCounts = null }
+  return c.json({ success: true, data: { open: !stopped, maxQuotes: MAX_QUOTES_PER_REQUEST, categories: HOME_SERVICE_CATEGORIES, proCounts } })
+})
+
+/**
+ * 🔗 공유 페이지 — 로그인 없이 누구나(업체 영입용). 🔒 공개 칸만(`publicShareView`): 이름 첫 글자 · 동 단위 지역 ·
+ * 고르는 칸. 메모·사진·연락처·상세 주소는 SQL 에서부터 안 꺼낸다. 번호(id)도 안 내보낸다(요청 수가 드러난다).
+ */
+homeServiceRoutes.get('/share/:token', async (c) => {
+  try {
+    const token = c.req.param('token')
+    if (!isShareToken(token)) return c.json({ success: false, error: '요청을 찾을 수 없습니다' }, 404)
+    const DB = c.env.DB
+    await ensureHomeServiceTables(DB)
+    const r = await DB.prepare(
+      `SELECT category, details, status, quote_count, max_quotes, created_at, SUBSTR(contact_name, 1, 1) AS name_initial
+         FROM home_service_requests WHERE share_token = ?`,
+    ).bind(token).first<{ category: string; details: string; status: string; quote_count: number; max_quotes: number; created_at: string; name_initial: string | null }>()
+    let details: Record<string, string> = {}
+    try { details = JSON.parse(String(r?.details || '{}')) } catch { /* */ }
+    const view = r ? publicShareView({ ...r, details }) : null
+    if (!view) return c.json({ success: false, error: '요청을 찾을 수 없습니다' }, 404)
+    c.header('Cache-Control', 'public, max-age=30')
+    c.header('CDN-Cache-Control', 'public, max-age=60')
+    return c.json({ success: true, data: view })
+  } catch (err) {
+    return safeError(c, err, '요청을 불러오지 못했습니다', '[home-service:share]')
+  }
+})
+
+/** 🏠 홈 '생활' 탭 업종 칩 — `{ 상품 id: 업종 }` (2026-10-25). 공개·로그인 불필요, 짧게 캐시. */
+homeServiceRoutes.get('/deal-subcats', async (c) => {
+  try {
+    const { lifeSubcatMap } = await import('./life-deal-subcat-store')
+    const data = await lifeSubcatMap(c.env.DB)
+    c.header('Cache-Control', 'public, max-age=60')
+    c.header('CDN-Cache-Control', 'public, max-age=300')
+    return c.json({ success: true, data })
+  } catch (err) {
+    return safeError(c, err, '업종을 불러오지 못했습니다', '[home-service:deal-subcats]')
+  }
 })
 
 homeServiceRoutes.post('/requests', requireAuth(), rateLimit({ action: 'home_service_request', max: 5, windowSec: 3600 }), async (c) => {
@@ -89,6 +132,8 @@ homeServiceRoutes.post('/requests', requireAuth(), rateLimit({ action: 'home_ser
       (s) => { const r = parseRegionFromAddress(s); return r ? { sido: r.sido, sigungu: r.sigungu } : null }, kstYmd(0),
     )
     if (!v.ok) return c.json({ success: false, error: v.error }, 400)
+    // 📷 사진은 이 손님이 올린 것만(남의 업로드 주소를 끼워 업체 화면에 띄우지 못하게).
+    if (!photosOwnedBy(v.value.details, userId)) return c.json({ success: false, error: '사진을 다시 올려 주세요' }, 400)
 
     const user = await DB.prepare(`SELECT name, phone FROM users WHERE id = ?`).bind(userId)
       .first<{ name: string | null; phone: string | null }>()
@@ -114,8 +159,10 @@ homeServiceRoutes.post('/requests', requireAuth(), rateLimit({ action: 'home_ser
       Object.keys(privateDetails).length ? JSON.stringify(privateDetails) : null,
     ).run()
     const id = Number(ins.meta?.last_row_id)
+    // 🔗 공유 토큰은 접수할 때 만든다 — 열린 요청이 검색·커뮤니티 공유에 바로 쓰인다(대표 "노출해줘").
+    const share_token = await ensureShareToken(DB, id).catch(() => null)
     waitUntil(c, dispatchRequest(c.env, DB, id).catch(() => 0))
-    return c.json({ success: true, data: { id } })
+    return c.json({ success: true, data: { id, share_token } })
   } catch (err) {
     return safeError(c, err, '요청을 접수하지 못했습니다', '[home-service:create]')
   }
@@ -157,7 +204,8 @@ homeServiceRoutes.get('/requests/:id', requireAuth(), async (c) => {
     }
     const { results: quotes } = await DB.prepare(
       `SELECT q.id, q.seller_id, q.price, q.message, q.status, q.created_at,
-              COALESCE(NULLIF(s.business_name, ''), s.name) AS pro_name, q.is_house,
+              COALESCE(NULLIF(s.business_name, ''), s.name) AS pro_name, q.is_house, q.partner,
+              CASE WHEN s.status IN ('approved', 'active') THEN 1 ELSE 0 END AS verified, -- 사업자 인증 표시(proVerified 와 같은 값)
               CASE WHEN q.status = 'chosen' THEN COALESCE(NULLIF(p.phone, ''), s.phone) END AS pro_phone
          FROM home_service_quotes q
          JOIN sellers s ON s.id = q.seller_id
@@ -181,7 +229,9 @@ homeServiceRoutes.get('/requests/:id', requireAuth(), async (c) => {
     try { details = JSON.parse(String(req.details || '{}')) } catch { /* */ }
     details = withPrivateDetails(details, req.private_details)   // 내 요청이라 상세 주소까지 보인다
     const { user_id: _u, details: _d, private_details: _p, ...rest } = req
-    return c.json({ success: true, data: { ...rest, details, quotes: (quotes ?? []).map((q) => ({ ...q, vouchers: vouchers[Number(q.seller_id)] || [] })) } })
+    // 🔗 열려 있으면 공유 링크 — 손님이 아는 업체·카톡방에 보내면 그 링크로 업체가 바로 가입해 견적을 낸다(2026-10-25).
+    const share_token = req.status === 'open' ? await ensureShareToken(DB, id).catch(() => null) : null
+    return c.json({ success: true, data: { ...rest, details, share_token, quotes: (quotes ?? []).map((q) => ({ ...q, vouchers: vouchers[Number(q.seller_id)] || [] })) } })
   } catch (err) {
     return safeError(c, err, '견적을 불러오지 못했습니다', '[home-service:detail]')
   }

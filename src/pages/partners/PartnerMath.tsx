@@ -47,7 +47,7 @@ export default function PartnerMath() {
           </p>
 
           <div className="mt-8 lg:mt-12 rounded-2xl bg-surface shadow-lift p-5 lg:p-8">
-            <p className="text-[12px] font-bold text-gray-500 dark:text-gray-400">{F.sample.name}</p>
+            <p className="text-[12px] font-medium text-gray-500 dark:text-gray-400">{F.sample.name}</p>
             <div className="mt-4 grid grid-cols-2 gap-3">
               <Field label="정가 (원)" value={list} onChange={setList} />
               <Field label="이용권 판매가 (원)" value={sale} onChange={setSale} />
@@ -61,7 +61,7 @@ export default function PartnerMath() {
               <Row k={`유어딜 수수료 ${F.feeDirect}`} v={`−${formatNumber(calc.fee)}원`} />
               <Row k="카드 수수료" v="0원 (유어딜 부담)" accent />
               <div className="pt-3 border-t border-rule flex items-baseline justify-between">
-                <dt className="text-[15px] lg:text-[17px] font-extrabold text-ink">사장님 계좌에</dt>
+                <dt className="text-[15px] lg:text-[17px] font-bold text-ink">사장님 계좌에</dt>
                 <dd className="text-[28px] lg:text-[40px] font-extrabold text-brand-text tabular-nums tracking-[-0.03em]">
                   {formatNumber(calc.payout)}원
                 </dd>
@@ -76,7 +76,7 @@ export default function PartnerMath() {
         <ul className="space-y-8 lg:space-y-12">
           {POINTS.map(({ t, d }) => (
             <li key={t}>
-              <p className="text-[17px] lg:text-[24px] font-extrabold text-ink tracking-[-0.02em] leading-snug">{t}</p>
+              <p className="text-[17px] lg:text-[24px] font-bold text-ink tracking-[-0.02em] leading-snug">{t}</p>
               <p className="mt-2 text-[13px] lg:text-[15px] leading-[1.8] text-gray-500 dark:text-gray-400 max-w-[30em]">{d}</p>
             </li>
           ))}
@@ -93,7 +93,7 @@ export default function PartnerMath() {
 function Field({ label, value, onChange }: { label: string; value: number; onChange: (n: number) => void }) {
   return (
     <label className="block">
-      <span className="text-[12px] font-bold text-gray-500 dark:text-gray-400">{label}</span>
+      <span className="text-[12px] font-medium text-gray-500 dark:text-gray-400">{label}</span>
       <input type="number" inputMode="numeric" value={value} min={0} step={500}
         onChange={e => onChange(Number(e.target.value))}
         className="mt-1 w-full h-11 px-3 rounded-xl bg-warm text-[15px] font-bold text-gray-900 dark:text-white tabular-nums focus:outline-none focus:ring-2 focus:ring-brand" />

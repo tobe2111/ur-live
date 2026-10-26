@@ -21,7 +21,7 @@ export default [
     name: '💸 전액 자동 환불 약속을 지운다 — 구매 버튼과 갈린다',
     why: '구매 버튼은 *"미사용 시 100% 자동환불"* 을 계속 약속한다. 환불 페이지에서 그 말이 빠지면 두 문서가 다른 규칙을 말하고, 분쟁 때 소비자가 유리한 쪽을 인용한다.',
     file: PAGE,
-    find: '따로 신청하지 않아도 <span className="font-semibold text-ink">결제 금액 전액</span>이 자동으로 환불됩니다.',
+    find: '따로 신청하지 않아도 <span className="font-medium text-ink">결제 금액 전액</span>이 자동으로 환불됩니다.',
     replace: '회사가 정하는 정책에 따라 환불됩니다.',
     test: T,
   },

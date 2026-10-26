@@ -58,7 +58,7 @@ export default function StoreLocation({
     display: 'inline-flex', alignItems: 'center', gap: 5,
     padding: '9px 14px', border: '1px solid var(--rule-strong)', borderRadius: 11,
     background: 'var(--gbd-card)', color: 'var(--gbd-ink)',
-    fontSize: 13, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap', flex: '0 0 auto',
+    fontSize: 13, fontWeight: 500, textDecoration: 'none', whiteSpace: 'nowrap', flex: '0 0 auto',
   } as const
 
   return (
@@ -68,7 +68,7 @@ export default function StoreLocation({
       <div className="flex items-center justify-between gap-3" style={{ marginBottom: 12 }}>
         <h2 className="m-0 text-[17px] font-bold tracking-[-.01em] truncate" style={{ color: 'var(--gbd-ink)' }}>{name || '매장 위치'}</h2>
         {onProfile && (
-          <button type="button" onClick={onProfile} className="shrink-0 inline-flex items-center gap-1 min-h-[44px] -my-3 -mr-2 pl-3 pr-2 text-[13px] font-semibold bg-transparent border-0 cursor-pointer" style={{ color: 'var(--gbd-sub)' }}>{/* 👆 2026-10-11 대표 "눌러지지도 않는데": 글자만한 19px 였다 → 손가락 크기(44px) 눌림 영역, 줄 높이는 음수 여백으로 불변 */}
+          <button type="button" onClick={onProfile} className="shrink-0 inline-flex items-center gap-1 min-h-[44px] -my-3 -mr-2 pl-3 pr-2 text-[13px] font-medium bg-transparent border-0 cursor-pointer" style={{ color: 'var(--gbd-sub)' }}>{/* 👆 2026-10-11 대표 "눌러지지도 않는데": 글자만한 19px 였다 → 손가락 크기(44px) 눌림 영역, 줄 높이는 음수 여백으로 불변 */}
             가게 보기
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
           </button>

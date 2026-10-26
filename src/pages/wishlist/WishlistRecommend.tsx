@@ -46,7 +46,7 @@ export default function WishlistRecommend({ wished, imgWidth, userLoc }: {
     <section className="mt-8">
       <div className="mb-3 flex items-end justify-between gap-4">
         <h2 className="text-[17px] font-bold text-gray-900 dark:text-white">찜한 것과 비슷한 이용권</h2>
-        <Link to={mapPathFor(topCategory(wished))} className="shrink-0 text-[13px] font-bold text-brand-text hover:underline">
+        <Link to={mapPathFor(topCategory(wished))} className="shrink-0 text-[13px] font-medium text-brand-text hover:underline">
           지도에서 보기
         </Link>
       </div>

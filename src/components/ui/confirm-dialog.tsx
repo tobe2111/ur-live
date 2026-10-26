@@ -106,7 +106,7 @@ export function ConfirmHost() {
         aria-modal="true"
       >
         {current.title && (
-          <p className="text-[17px] font-extrabold text-gray-900 dark:text-white mb-2">{current.title}</p>
+          <p className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">{current.title}</p>
         )}
         <p className="text-[15px] text-gray-700 dark:text-gray-200 leading-relaxed whitespace-pre-line">{current.message}</p>
 

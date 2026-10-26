@@ -45,8 +45,9 @@ export default [
     name: '🏷️#️⃣ 시드 없는 정적 표면 열 곳이 제목을 안 낸다',
     why: '`/partners`·`/creators`·`/experience`… 가 문단만 남는다(sitemap 제출 URL 전부)',
     file: SRC,
-    find: "    return lines || kids ? `<noscript>${h1}${lines}${kids}</noscript>` : ''",
-    replace: "    return lines || kids ? `<noscript>${lines}${kids}</noscript>` : ''",
+    // 2026-10-25: 사이에 생활 허브 FAQ(`faqDl`)가 끼었다 — 불변식(제목을 낸다) 그대로, 앵커만 재조준.
+    find: "    return lines || kids ? `<noscript>${h1}${lines}${faqDl}${kids}</noscript>` : ''",
+    replace: "    return lines || kids ? `<noscript>${lines}${faqDl}${kids}</noscript>` : ''",
     test: T,
   },
   {

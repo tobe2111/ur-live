@@ -85,7 +85,7 @@ export default [
   {
     name: '제목 — 공용 토큰을 24px 로 되돌린다',
     file: GRAMMAR,
-    find: "export const SECTION_TITLE_CLS = 'text-[17px] font-semibold",
+    find: "export const SECTION_TITLE_CLS = 'text-[17px] font-bold",
     replace: "export const SECTION_TITLE_CLS = 'text-[24px] font-bold",
     test: T_ZONES,
     why:

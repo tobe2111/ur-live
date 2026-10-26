@@ -46,6 +46,7 @@ export function AddressSheet({ f, onDone, onClose }: {
   const [picked, setPicked] = useState<PostcodeData | null>(null)
   const [detail, setDetail] = useState('')
   const [manual, setManual] = useState('')
+  const [ready, setReady] = useState(false)
 
   useEffect(() => {
     if (mode !== 'search') return
@@ -53,7 +54,10 @@ export function AddressSheet({ f, onDone, onClose }: {
     loadPostcode().then(() => {
       const w = window as DaumWindow
       if (!alive || !box.current || !w.daum) return
-      box.current.innerHTML = ''
+      // 🩸 2026-10-25 대표 신고 "주소 입력하는데 계속 이렇게 떠"(오류 화면) — 종전엔 `innerHTML = ''` 로
+      //   React 가 그린 "불러오는 중" 글자를 직접 지웠다. 주소를 고르면 이 시트가 바뀌며 React 가 그 글자를 치우려다
+      //   이미 없는 노드라 `removeChild` 오류 → 오류 화면. 검색창은 React 자식이 **없는** 빈 칸에만 붙인다.
+      setReady(true)
       new w.daum.Postcode({
         width: '100%', height: '100%',
         oncomplete: (d: PostcodeData) => { setPicked(d); setMode('detail') },
@@ -68,7 +72,7 @@ export function AddressSheet({ f, onDone, onClose }: {
     const finish = () => onDone(publicRegion(picked), [label, detail.trim()].filter(Boolean).join(', ').slice(0, 120))
     return (
       <Sheet
-        title={`${f.label} 상세 주소를 알려 주세요`}
+        title="상세 주소를 알려 주세요"
         onClose={onClose}
         footer={<button type="button" className="ur-btn ur-btn-lg ur-btn-primary flex w-full justify-center" onClick={finish}>완료</button>}
       >
@@ -97,9 +101,10 @@ export function AddressSheet({ f, onDone, onClose }: {
   }
 
   return (
-    <Sheet title={`${f.label} 주소를 알려 주세요`} onClose={onClose}>
-      <div ref={box} className="h-[60dvh] w-full pb-2">
-        <p className="py-10 text-center text-[13px] text-gray-500 dark:text-gray-400">주소 검색을 불러오는 중</p>
+    <Sheet title={`${eulReul(f.label)} 알려 주세요`} onClose={onClose}>
+      <div className="relative h-[60dvh] w-full pb-2">
+        {!ready && <p className="absolute inset-x-0 top-0 py-10 text-center text-[13px] text-gray-500 dark:text-gray-400">주소 검색을 불러오는 중</p>}
+        <div ref={box} className="h-full w-full" />
       </div>
     </Sheet>
   )

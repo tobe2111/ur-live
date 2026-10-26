@@ -87,7 +87,7 @@ export default function MyDealHistoryPage() {
           숫자가 주인공이고(규칙 ③) 행동은 브랜드 블루 하나(규칙 ②) — 검정 판은 이 화면에만 있던 모양이었다. */}
       <div className="ur-content-medium px-4 lg:px-8 pt-2">
         <div className="rounded-2xl bg-surface shadow-lift dark:shadow-none p-5">
-          <p className="text-[13px] font-semibold text-gray-500 dark:text-gray-400">현재 딜 잔액</p>
+          <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400">현재 딜 잔액</p>
           <p className="mt-1 flex items-baseline gap-1 leading-none">
             <span className="text-[28px] font-extrabold tabular-nums tracking-[-0.02em] text-gray-900 dark:text-white">{formatNumber(balance)}</span>
             <span className="text-[15px] font-bold text-gray-500 dark:text-gray-400">딜</span>
@@ -95,12 +95,12 @@ export default function MyDealHistoryPage() {
           <div className="mt-4 flex gap-2">
             {/* 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 충전 버튼 → 딜 모으기(마이 리워드 카드) 유도 */}
             <button onClick={() => navigate(TOPUP_DISABLED ? '/user/profile' : '/points/charge')}
-              className="flex-1 h-11 rounded-xl bg-wash text-[15px] font-semibold text-gray-900 dark:text-white active:opacity-70">
+              className="flex-1 h-11 rounded-xl bg-wash text-[15px] font-medium text-gray-900 dark:text-white active:opacity-70">
               {TOPUP_DISABLED ? '딜 모으기' : '충전'}
             </button>
             {/* 🧭 2026-06-10: '쇼핑'(잠정 숨김 탭) → '교환권' — 딜의 실제 사용처로 유도 */}
             <button onClick={() => navigate('/vouchers')}
-              className="flex-1 h-11 rounded-xl bg-brand text-[15px] font-semibold text-white active:opacity-80">
+              className="flex-1 h-11 rounded-xl bg-brand text-[15px] font-medium text-white active:opacity-80">
               교환권 쓰기
             </button>
           </div>
@@ -114,7 +114,7 @@ export default function MyDealHistoryPage() {
             <button
               key={opt.value}
               onClick={() => { setPage(0); setFilter(opt.value) }}
-              className={`shrink-0 inline-flex items-center gap-2 px-3 py-2 rounded-full text-[12px] font-bold transition-colors ${
+              className={`shrink-0 inline-flex items-center gap-2 px-3 py-2 rounded-full text-[12px] font-medium transition-colors ${
                 filter === opt.value
                   ? 'bg-brand text-white'
                   : 'bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/[0.12]'
@@ -135,7 +135,7 @@ export default function MyDealHistoryPage() {
           <div className="py-16 text-center">
             <WarnIcon className="w-9 h-9 mx-auto mb-3 text-gray-300 dark:text-gray-600" aria-hidden />
             <p className="text-[15px] text-gray-500 dark:text-gray-400">거래 내역을 불러오지 못했어요</p>
-            <button onClick={() => refetch()} className="mt-3 text-[12px] font-bold text-gray-900 dark:text-white underline">다시 시도 →</button>
+            <button onClick={() => refetch()} className="mt-3 text-[12px] font-medium text-gray-900 dark:text-white underline">다시 시도 →</button>
           </div>
         ) : items.length === 0 ? (
           <div className="py-16 text-center">
@@ -143,7 +143,7 @@ export default function MyDealHistoryPage() {
             <p className="text-[15px] text-gray-500 dark:text-gray-400">거래 내역이 없어요</p>
             {filter && (
               <button onClick={() => { setFilter(''); setPage(0) }}
-                className="mt-3 text-[12px] font-bold text-gray-900 dark:text-white underline">전체 보기 →</button>
+                className="mt-3 text-[12px] font-medium text-gray-900 dark:text-white underline">전체 보기 →</button>
             )}
           </div>
         ) : (
@@ -165,7 +165,7 @@ export default function MyDealHistoryPage() {
                     <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{relativeTime(tx.created_at)}</p>
                   </div>
                   <div className="flex-shrink-0 text-right">
-                    <p className={`text-[15px] font-extrabold ${amountColor}`}>
+                    <p className={`text-[15px] font-bold ${amountColor}`}>
                       {sign}{formatNumber(Math.abs(tx.amount))}딜
                     </p>
                     {tx.balance_after != null && (

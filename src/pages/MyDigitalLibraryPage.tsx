@@ -153,7 +153,7 @@ export default function MyDigitalLibraryPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="text-[12px] font-bold text-purple-600 dark:text-purple-400">{KIND_LABEL[it.product_kind] || t('digitalLibrary.kindDefault', { defaultValue: '디지털' })}</p>
+                          <p className="text-[12px] font-medium text-purple-600 dark:text-purple-400">{KIND_LABEL[it.product_kind] || t('digitalLibrary.kindDefault', { defaultValue: '디지털' })}</p>
                           <h3 className="text-[15px] font-bold text-gray-900 dark:text-white truncate">{it.product_name}</h3>
                           {it.seller_name && (
                             <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">{it.seller_name}</p>
@@ -179,7 +179,7 @@ export default function MyDigitalLibraryPage() {
                           <button
                             onClick={() => openItem(it.access_token)}
                             disabled={opening === it.access_token || remainingDownloads === 0}
-                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-brand hover:bg-brand text-white text-[12px] font-bold rounded-lg disabled:opacity-50"
+                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-brand hover:bg-brand text-white text-[12px] font-medium rounded-lg disabled:opacity-50"
                           >
                             {it.product_kind === 'video_course' ? <Play className="w-3.5 h-3.5" /> : <Download className="w-3.5 h-3.5" />}
                             {opening === it.access_token ? t('digitalLibrary.openingLabel', { defaultValue: '여는 중...' }) : it.product_kind === 'video_course' ? t('digitalLibrary.watchLabel', { defaultValue: '시청하기' }) : t('digitalLibrary.downloadLabel', { defaultValue: '다운로드' })}

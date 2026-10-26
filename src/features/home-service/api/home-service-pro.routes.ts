@@ -3,7 +3,9 @@
  *
  *   GET  /api/home-service/pro/me                 내 등록(카테고리·지역)·참여권 잔액·묶음
  *   PUT  /api/home-service/pro/me                 등록/수정 — 처음이면 무료 참여권 3장 + 보관된 요청 보내기
+ *   POST /api/home-service/pro/signup             한 번에 가입(카카오 세션만 — 상호·하는 일·지역·번호·약관). 심사 전에도 견적 가능
  *   GET  /api/home-service/pro/requests           내 지역·카테고리의 열린 요청 + 내가 보낸 견적
+ *   GET  /api/home-service/pro/share/:token       공유 링크 → 요청 번호(그 카테고리 업체면 지역이 달라도 열린다)
  *   GET  /api/home-service/pro/requests/:id       요청 상세(손님이 나를 고르면 손님 연락처)
  *   POST /api/home-service/pro/requests/:id/quote 참여권 1장으로 견적 보내기(금액 선택 — 대표 확정)
  *   POST /api/home-service/pro/credits/charge     참여권 묶음 카드 충전 시작(토스)
@@ -23,20 +25,21 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import { SIDO_LIST } from '@/shared/constants/region-slugs'
 import { kstYmd } from '@/shared/stays-early'
 import {
-  HOME_SERVICE_CATEGORIES, HOME_TPL, SIGNUP_FREE_CREDITS, categoryDef, msgQuoteArrived,
-  parseCreditPackages, quotePriceText, type HomeServiceCategory,
+  HOME_SERVICE_CATEGORIES, HOME_TPL, categoryDef, creditCostFor, msgQuoteArrived, partnerCategoriesCsv,
+  parseCreditPackages, proStatusOpen, proVerified, quotePriceText, type HomeServiceCategory,
 } from '@/shared/home-service'
 import { sendSystemAlimtalk } from '../../../lib/system-alimtalk'
 import { confirmTossPayment, decideTossFlow } from '../../../worker/utils/toss-gateway'
 import {
-  OPEN_REQUESTS_FOR_PRO_SQL, creditAdd, creditBalance, ensureHomeServiceTables, sendQuoteAtomic, withPrivateDetails,
+  OPEN_REQUESTS_FOR_PRO_SQL, creditAdd, creditBalance, ensureHomeServiceTables, loadCreditCosts, loadPartners,
+  sendHouseQuoteAtomic, sendQuoteAtomic, withPrivateDetails,
 } from './home-service-db'
-import { dispatchBacklogToPro } from './home-service-notify'
+import { isShareToken } from '@/shared/home-service-share'
 import { homeServiceStopped } from './home-service.routes'
+import { saveProProfile, type ProBody } from './home-service-pro-profile'
+import { proSignupHandler } from './home-service-pro-signup'
 
 export const homeServiceProRoutes = new Hono<{ Bindings: Env }>()
-
-const SIGUNGU_RE = /^[가-힣]{1,10}(시|군|구)$/
 
 function waitUntil(c: { executionCtx?: { waitUntil(p: Promise<unknown>): void } }, p: Promise<unknown>) {
   try { c.executionCtx?.waitUntil(p) } catch { void p }
@@ -77,7 +80,7 @@ homeServiceProRoutes.get('/me', requireSeller(), async (c) => {
         pro,
         categories: (cats.results ?? []).map((r) => r.category),
         areas: areas.results ?? [],
-        seller: { name: seller?.name ?? '', approved: ['approved', 'active'].includes(String(seller?.status)), phone: seller?.phone ?? null },
+        seller: { name: seller?.name ?? '', approved: proVerified(seller?.status), phone: seller?.phone ?? null },
         balance: await creditBalance(DB, sid),
         packages: await packages(DB),
         chargeEnabled: (await setting(DB, 'home_service_charge_enabled')) === 'true',
@@ -91,45 +94,17 @@ homeServiceProRoutes.get('/me', requireSeller(), async (c) => {
   }
 })
 
+// 🚪 2026-10-25 생활 업체 한 번에 가입 — 카카오 로그인(소비자 세션)만으로. `home-service-pro-signup.ts`.
+homeServiceProRoutes.post('/signup', rateLimit({ action: 'home_service_pro_signup', max: 10, windowSec: 3600 }), proSignupHandler)
+
 homeServiceProRoutes.put('/me', requireSeller(), async (c) => {
   try {
     const DB = c.env.DB
     await ensureHomeServiceTables(DB)
-    const sid = sellerIdOf(c)
-    const body = await c.req.json<{ categories?: unknown; areas?: unknown; phone?: unknown; active?: unknown }>()
-      .catch(() => ({} as Record<string, unknown>))
-    const cats = Array.isArray(body.categories) ? [...new Set(body.categories.map(String))].filter((k) => categoryDef(k)) : []
-    if (!cats.length) return c.json({ success: false, error: '하는 일을 하나 이상 골라 주세요' }, 400)
-    const areasIn = Array.isArray(body.areas) ? body.areas.slice(0, 40) : []
-    const areas: { sido: string; sigungu: string }[] = []
-    for (const a of areasIn) {
-      const sido = String((a as { sido?: unknown })?.sido ?? '').trim()
-      const sigungu = String((a as { sigungu?: unknown })?.sigungu ?? '').trim()
-      if (!SIDO_LIST.includes(sido)) continue
-      if (sigungu && !SIGUNGU_RE.test(sigungu)) continue
-      if (!areas.some((x) => x.sido === sido && x.sigungu === sigungu)) areas.push({ sido, sigungu })
-    }
-    if (!areas.length) return c.json({ success: false, error: '일할 지역을 하나 이상 골라 주세요' }, 400)
-    const phoneRaw = String(body.phone ?? '').replace(/\D/g, '')
-    if (phoneRaw && !/^01\d{8,9}$/.test(phoneRaw)) return c.json({ success: false, error: '휴대폰 번호 형식을 확인해 주세요' }, 400)
-    const active = body.active === false ? 0 : 1
-
-    const existed = await DB.prepare(`SELECT 1 AS x FROM home_service_pros WHERE seller_id = ?`).bind(sid).first()
-    await DB.batch([
-      DB.prepare(
-        `INSERT INTO home_service_pros (seller_id, phone, active) VALUES (?, ?, ?)
-         ON CONFLICT(seller_id) DO UPDATE SET phone = excluded.phone, active = excluded.active, updated_at = datetime('now')`,
-      ).bind(sid, phoneRaw || null, active),
-      DB.prepare(`DELETE FROM home_service_pro_categories WHERE seller_id = ?`).bind(sid),
-      ...cats.map((k) => DB.prepare(`INSERT INTO home_service_pro_categories (seller_id, category) VALUES (?, ?)`).bind(sid, k)),
-      DB.prepare(`DELETE FROM home_service_pro_areas WHERE seller_id = ?`).bind(sid),
-      ...areas.map((a) => DB.prepare(`INSERT INTO home_service_pro_areas (seller_id, sido, sigungu) VALUES (?, ?, ?)`).bind(sid, a.sido, a.sigungu)),
-    ])
-    // 처음 등록이면 무료 참여권 — 원장 UNIQUE(grant:signup:<매장>) 라 몇 번을 저장해도 한 번만.
-    const granted = existed ? false : await creditAdd(DB, sid, 'grant', SIGNUP_FREE_CREDITS, `signup:${sid}`, 0, '가입 무료 참여권')
-    // 사장님이 없던 지역에 보관돼 있던 요청을 지금 보낸다(대표 "그냥 1명부터 열어줘").
-    if (active) waitUntil(c, dispatchBacklogToPro(c.env, DB, sid, kstYmd(0)).catch(() => 0))
-    return c.json({ success: true, data: { granted: granted ? SIGNUP_FREE_CREDITS : 0 } })
+    const body = await c.req.json<ProBody>().catch(() => ({} as ProBody))
+    const r = await saveProProfile(c, DB, sellerIdOf(c), body)
+    if (!r.ok) return c.json({ success: false, error: r.error }, 400)
+    return c.json({ success: true, data: { granted: r.granted } })
   } catch (err) {
     return safeError(c, err, '저장하지 못했습니다', '[home-service:pro-save]')
   }
@@ -140,32 +115,64 @@ homeServiceProRoutes.get('/requests', requireSeller(), async (c) => {
     const DB = c.env.DB
     await ensureHomeServiceTables(DB)
     const sid = sellerIdOf(c)
-    const { results: open } = await DB.prepare(OPEN_REQUESTS_FOR_PRO_SQL).bind(sid, kstYmd(0), sid, sid, 50).all()
+    const partners = await loadPartners(DB)
+    const { results: open } = await DB.prepare(OPEN_REQUESTS_FOR_PRO_SQL)
+      .bind(sid, kstYmd(0), partnerCategoriesCsv(partners, sid), sid, sid, 50).all()
     const { results: mine } = await DB.prepare(
       `SELECT r.id, r.category, r.summary, r.desired_date, r.status, r.quote_count, r.max_quotes,
               q.id AS my_quote_id, q.status AS my_quote_status, q.price AS my_price, q.created_at AS quoted_at
          FROM home_service_quotes q JOIN home_service_requests r ON r.id = q.request_id
         WHERE q.seller_id = ? ORDER BY q.id DESC LIMIT 50`,
     ).bind(sid).all()
-    return c.json({ success: true, data: { open: open ?? [], mine: mine ?? [], balance: await creditBalance(DB, sid) } })
+    const partnerOf = Object.entries(partners).filter(([, v]) => v === sid).map(([k]) => k)
+    return c.json({ success: true, data: { open: open ?? [], mine: mine ?? [], balance: await creditBalance(DB, sid), partnerOf } })
   } catch (err) {
     return safeError(c, err, '요청을 불러오지 못했습니다', '[home-service:pro-list]')
   }
 })
 
-/** 이 사장님이 이 요청을 볼 수 있는가 — 내 카테고리·지역이거나, 이미 견적을 보냈거나. */
+/**
+ * 이 사장님이 이 요청을 볼 수 있는가 — 내 카테고리·지역이거나, 이미 견적을 보냈거나, 그 카테고리 제휴 업체이거나,
+ * **공유 링크로 들어온 그 카테고리 업체**이거나(2026-10-25 — 커뮤니티 공유로 데려온 업체는 지역이 달라도 낼 수 있다).
+ */
 async function proCanSee(DB: D1Database, sid: number, requestId: number): Promise<boolean> {
+  const csv = partnerCategoriesCsv(await loadPartners(DB), sid)
   const r = await DB.prepare(
     `SELECT 1 AS x FROM home_service_requests r
       WHERE r.id = ?
         AND (EXISTS (SELECT 1 FROM home_service_quotes q WHERE q.request_id = r.id AND q.seller_id = ?)
+          OR instr(',' || ? || ',', ',' || r.category || ',') > 0
+          OR (r.category IN (SELECT category FROM home_service_pro_categories WHERE seller_id = ?)
+              AND EXISTS (SELECT 1 FROM home_service_share_access sa WHERE sa.request_id = r.id AND sa.seller_id = ?))
           OR (r.category IN (SELECT category FROM home_service_pro_categories WHERE seller_id = ?)
               AND EXISTS (SELECT 1 FROM home_service_pro_areas a WHERE a.seller_id = ?
                     AND ((a.sido = r.sido AND (a.sigungu = '' OR a.sigungu = r.sigungu))
                       OR (r.sido2 IS NOT NULL AND a.sido = r.sido2 AND (a.sigungu = '' OR a.sigungu = r.sigungu2))))))`,
-  ).bind(requestId, sid, sid, sid).first()
+  ).bind(requestId, sid, csv, sid, sid, sid, sid).first()
   return !!r
 }
+
+/**
+ * 🔗 공유 링크 → 요청 번호. 들어온 기록을 남겨 위 `proCanSee` 가 이 업체에게 요청을 열어 준다.
+ * 그 카테고리를 등록하지 않은 업체면 `need_category` — 화면이 업종·지역 설정으로 보낸다(미리 채워서).
+ */
+homeServiceProRoutes.get('/share/:token', requireSeller(), async (c) => {
+  try {
+    const token = c.req.param('token')
+    if (!isShareToken(token)) return c.json({ success: false, error: '요청을 찾을 수 없습니다' }, 404)
+    const DB = c.env.DB
+    await ensureHomeServiceTables(DB)
+    const sid = sellerIdOf(c)
+    const r = await DB.prepare(`SELECT id, category, sido, sigungu FROM home_service_requests WHERE share_token = ?`)
+      .bind(token).first<{ id: number; category: string; sido: string; sigungu: string }>()
+    if (!r) return c.json({ success: false, error: '요청을 찾을 수 없습니다' }, 404)
+    await DB.prepare(`INSERT OR IGNORE INTO home_service_share_access (request_id, seller_id) VALUES (?, ?)`).bind(r.id, sid).run()
+    const canSee = await proCanSee(DB, sid, r.id)
+    return c.json({ success: true, data: { id: r.id, category: r.category, sido: r.sido, sigungu: r.sigungu, need_category: !canSee } })
+  } catch (err) {
+    return safeError(c, err, '요청을 불러오지 못했습니다', '[home-service:pro-share]')
+  }
+})
 
 homeServiceProRoutes.get('/requests/:id', requireSeller(), async (c) => {
   try {
@@ -191,7 +198,9 @@ homeServiceProRoutes.get('/requests/:id', requireSeller(), async (c) => {
     // 🔒 상세 주소는 손님이 이 사장님을 고른 뒤에만(위 CASE) — 고르기 전엔 NULL 이라 동까지만 보인다.
     details = withPrivateDetails(details, r?.private_details)
     const { private_details: _p, ...rest } = r ?? {}
-    return c.json({ success: true, data: { ...rest, details, balance: await creditBalance(DB, sid) } })
+    const isPartner = (await loadPartners(DB))[r?.category as HomeServiceCategory] === sid
+    const creditCost = creditCostFor(r?.category as HomeServiceCategory, await loadCreditCosts(DB))
+    return c.json({ success: true, data: { ...rest, details, balance: await creditBalance(DB, sid), is_partner: isPartner, credit_cost: creditCost } })
   } catch (err) {
     return safeError(c, err, '요청을 불러오지 못했습니다', '[home-service:pro-detail]')
   }
@@ -207,8 +216,9 @@ homeServiceProRoutes.post('/requests/:id/quote', requireSeller(), rateLimit({ ac
     if (!Number.isInteger(id) || id <= 0) return c.json({ success: false, error: '잘못된 요청입니다' }, 400)
     const seller = await DB.prepare(`SELECT status, COALESCE(NULLIF(business_name, ''), name) AS name FROM sellers WHERE id = ?`)
       .bind(sid).first<{ status: string; name: string }>()
-    if (!['approved', 'active'].includes(String(seller?.status))) {
-      return c.json({ success: false, error: '매장 심사가 끝나면 견적을 보낼 수 있어요', code: 'NOT_APPROVED' }, 403)
+    // 🚪 2026-10-25 대표 "1번은 해줘" — 심사 중(pending)도 견적을 낸다. 정지·반려만 막는다(`proStatusOpen`).
+    if (!proStatusOpen(seller?.status)) {
+      return c.json({ success: false, error: '지금은 견적을 보낼 수 없는 계정이에요. 고객센터로 문의해 주세요', code: 'PRO_BLOCKED' }, 403)
     }
     if (!(await proCanSee(DB, sid, id))) return c.json({ success: false, error: '내 지역·카테고리의 요청이 아닙니다' }, 403)
     const body = await c.req.json<{ price?: unknown; message?: unknown }>().catch(() => ({} as Record<string, unknown>))
@@ -219,7 +229,13 @@ homeServiceProRoutes.post('/requests/:id/quote', requireSeller(), rateLimit({ ac
     const message = String(body.message ?? '').trim().slice(0, 500)
     if (message.length < 5) return c.json({ success: false, error: '손님에게 보낼 한마디를 적어 주세요(5자 이상)' }, 400)
 
-    const res = await sendQuoteAtomic(DB, id, sid, rawPrice == null ? null : Math.round(rawPrice), message)
+    // 🤝 제휴 업체는 참여권 없이(2026-10-24 승인된 직영·협력 업체 규칙) — 자리는 똑같이 하나 차지한다.
+    const cat = await DB.prepare(`SELECT category FROM home_service_requests WHERE id = ?`).bind(id).first<{ category: HomeServiceCategory }>()
+    const isPartner = !!cat && (await loadPartners(DB))[cat.category] === sid
+    const price = rawPrice == null ? null : Math.round(rawPrice)
+    const res = isPartner
+      ? await sendHouseQuoteAtomic(DB, id, sid, price, message, true)
+      : await sendQuoteAtomic(DB, id, sid, price, message, cat ? creditCostFor(cat.category, await loadCreditCosts(DB)) : 1)
     if (!res.ok) {
       const map = {
         closed: ['이미 마감된 요청입니다', 409],
@@ -240,7 +256,7 @@ homeServiceProRoutes.post('/requests/:id/quote', requireSeller(), rateLimit({ ac
         { dedupKey: `quote:${res.quoteId}` },
       ).catch(() => null))
     }
-    return c.json({ success: true, data: { quote_id: res.quoteId, balance: await creditBalance(DB, sid) } })
+    return c.json({ success: true, data: { quote_id: res.quoteId, balance: await creditBalance(DB, sid), verified: proVerified(seller?.status) } })
   } catch (err) {
     return safeError(c, err, '견적을 보내지 못했습니다', '[home-service:quote]')
   }

@@ -211,7 +211,7 @@ export default function PointsChargePage() {
           <div className="relative">
             <div className="flex items-center gap-2 mb-1">
               <Zap className="w-4 h-4 fill-white" strokeWidth={0} />
-              <span className="text-[12px] font-semibold opacity-90">{t('pointsCharge.balance', { defaultValue: '내 딜 잔액' })}</span>
+              <span className="text-[12px] font-medium opacity-90">{t('pointsCharge.balance', { defaultValue: '내 딜 잔액' })}</span>
             </div>
             <p className="text-[34px] font-extrabold leading-none tracking-tight">
               {formatNumber(balance)}
@@ -249,11 +249,11 @@ export default function PointsChargePage() {
                           <Check className="w-3 h-3 text-white" strokeWidth={3} />
                         </span>
                       )}
-                      <p className={`text-[17px] font-extrabold ${isSelected ? 'text-brand-text' : 'text-gray-900 dark:text-white'}`}>
+                      <p className={`text-[17px] font-bold ${isSelected ? 'text-brand-text' : 'text-gray-900 dark:text-white'}`}>
                         {formatNumber(opt.amount)}
-                        <span className="text-[12px] font-bold ml-1">원</span>
+                        <span className="text-[12px] font-medium ml-1">원</span>
                       </p>
-                      <p className="text-[12px] font-semibold text-gray-500 dark:text-gray-400 mt-1">
+                      <p className="text-[12px] font-medium text-gray-500 dark:text-gray-400 mt-1">
                         {formatNumber(opt.points)}딜
                       </p>
                     </button>
@@ -267,17 +267,17 @@ export default function PointsChargePage() {
               <section className="bg-surface rounded-2xl border border-gray-100 dark:border-[#2C2F35] p-4">
                 <div className="flex items-center justify-between text-[13px]">
                   <span className="text-gray-500 dark:text-gray-400">{t('pointsCharge.currentBalance', { defaultValue: '현재 잔액' })}</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">{formatNumber(balance)}딜</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{formatNumber(balance)}딜</span>
                 </div>
                 <div className="flex items-center justify-between text-[13px] mt-2">
                   <span className="text-gray-500 dark:text-gray-400">{t('pointsCharge.chargeDeals', { defaultValue: '충전 딜' })}</span>
-                  <span className="font-semibold text-brand-text">+{formatNumber(pointsPreview)}딜</span>
+                  <span className="font-medium text-brand-text">+{formatNumber(pointsPreview)}딜</span>
                 </div>
                 <div className="mt-3 pt-3 border-t border-gray-100 dark:border-[#2C2F35] flex items-center justify-between">
-                  <span className="text-[13px] font-bold text-gray-900 dark:text-white">{t('pointsCharge.afterBalance', { defaultValue: '충전 후 잔액' })}</span>
-                  <span className="text-[17px] font-extrabold text-gray-900 dark:text-white">
+                  <span className="text-[13px] font-medium text-gray-900 dark:text-white">{t('pointsCharge.afterBalance', { defaultValue: '충전 후 잔액' })}</span>
+                  <span className="text-[17px] font-bold text-gray-900 dark:text-white">
                     {formatNumber(balance + pointsPreview)}
-                    <span className="text-[13px] font-bold ml-1">딜</span>
+                    <span className="text-[13px] font-medium ml-1">딜</span>
                   </span>
                 </div>
               </section>
@@ -287,7 +287,7 @@ export default function PointsChargePage() {
             <section className="flex gap-2 px-3 py-3 rounded-xl bg-amber-50 border border-amber-100">
               <InfoIcon className="w-4 h-4 text-amber-600 shrink-0 mt-1" />
               <div className="text-[12px] leading-relaxed">
-                <p className="font-semibold text-amber-800">{t('pointsCharge.noRefund', { defaultValue: '충전된 딜은 환불이 불가합니다' })}</p>
+                <p className="font-medium text-amber-800">{t('pointsCharge.noRefund', { defaultValue: '충전된 딜은 환불이 불가합니다' })}</p>
                 <p className="text-amber-700 mt-1">
                   {t('pointsCharge.usageNote', { defaultValue: '교환권 구매와 상품 결제에만 사용 가능합니다.' })}
                 </p>

@@ -163,7 +163,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
             <div className="text-center">
               {/* 🦦 2026-10-07 (확정 시안 ⑧ "가입 직후 한 번만 뜨는 시트에서 수달이 인사"): 그라디언트 원 + 반짝이 아이콘 대체. */}
               <Udal mood="hello" size={84} motion priority className="mx-auto mb-3" />
-              <h2 id="welcome-title" className="text-[24px] font-extrabold text-gray-900 dark:text-white mb-2">
+              <h2 id="welcome-title" className="text-[24px] font-bold text-gray-900 dark:text-white mb-2">
                 {userName ? t('welcomeOnboarding.welcomeTitle', { name: userName, defaultValue: `${userName}님, 환영해요!` }) : t('welcomeOnboarding.welcomeTitleDefault', { defaultValue: '유어딜에 오신 걸 환영해요!' })}
               </h2>
               <p className="text-[15px] text-gray-500 dark:text-gray-400 leading-relaxed">
@@ -179,8 +179,8 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
                       <Sparkles className="w-6 h-6 text-white" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-[13px] font-bold text-amber-700">🎉 가입 환영 보너스 — 자동 적립 완료</p>
-                      <p className="text-[24px] font-extrabold text-gray-900 dark:text-white mt-1">
+                      <p className="text-[13px] font-medium text-amber-700">🎉 가입 환영 보너스 — 자동 적립 완료</p>
+                      <p className="text-[24px] font-bold text-gray-900 dark:text-white mt-1">
                         {bonusAmount.toLocaleString()}딜 <span className="text-[12px] font-medium text-gray-500">(₩{bonusAmount.toLocaleString()} 가치)</span>
                       </p>
                       <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">
@@ -197,13 +197,13 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
                     <GiftBoxIcon className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-[13px] font-bold text-brand-text">{t('welcomeOnboarding.couponBadge', { defaultValue: '신규 환영 쿠폰' })}</p>
-                    <p className="text-[24px] font-extrabold text-gray-900 dark:text-white mt-1">{t('welcomeOnboarding.couponAmount', { defaultValue: '5,000원 할인' })}</p>
+                    <p className="text-[13px] font-medium text-brand-text">{t('welcomeOnboarding.couponBadge', { defaultValue: '신규 환영 쿠폰' })}</p>
+                    <p className="text-[24px] font-bold text-gray-900 dark:text-white mt-1">{t('welcomeOnboarding.couponAmount', { defaultValue: '5,000원 할인' })}</p>
                     <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{t('welcomeOnboarding.couponDesc', { defaultValue: '10,000원 이상 구매 시 사용 가능 · 7일 유효' })}</p>
                   </div>
                 </div>
                 {couponClaimed ? (
-                  <div className="mt-3 px-3 py-2 bg-surface rounded-xl text-center text-[13px] font-bold text-brand-text flex items-center justify-center gap-1">
+                  <div className="mt-3 px-3 py-2 bg-surface rounded-xl text-center text-[13px] font-medium text-brand-text flex items-center justify-center gap-1">
                     <Check className="w-4 h-4" /> {t('welcomeOnboarding.couponClaimed', { defaultValue: '발급 완료!' })}
                   </div>
                 ) : (
@@ -225,7 +225,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
                 <div className="mx-auto w-16 h-16 rounded-full bg-brand-tint flex items-center justify-center mb-3">
                   <HeartIcon className="w-8 h-8 text-brand-text" />
                 </div>
-                <h2 className="text-[24px] font-extrabold text-gray-900 dark:text-white mb-1">{t('welcomeOnboarding.step2Title', { defaultValue: '관심 분야를 알려주세요' })}</h2>
+                <h2 className="text-[24px] font-bold text-gray-900 dark:text-white mb-1">{t('welcomeOnboarding.step2Title', { defaultValue: '관심 분야를 알려주세요' })}</h2>
                 <p className="text-[13px] text-gray-500 dark:text-gray-400">{t('welcomeOnboarding.step2Desc', { defaultValue: '맞춤 추천에 사용돼요 (1개 이상 선택, 변경 가능)' })}</p>
               </div>
 
@@ -243,7 +243,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
                       }`}
                     >
                       <c.Icon className="w-6 h-6 text-gray-500 dark:text-gray-400" aria-hidden="true" />
-                      <span className={`text-[12px] font-bold ${selected ? 'text-brand-text' : 'text-gray-700 dark:text-gray-200'}`}>
+                      <span className={`text-[12px] font-medium ${selected ? 'text-brand-text' : 'text-gray-700 dark:text-gray-200'}`}>
                         {c.label}
                       </span>
                     </button>
@@ -262,7 +262,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
                 <div className="mx-auto w-16 h-16 rounded-full bg-brand/[0.08] flex items-center justify-center mb-3">
                   <BellIcon className="w-8 h-8 text-brand-text" />
                 </div>
-                <h2 className="text-[24px] font-extrabold text-gray-900 dark:text-white mb-1">{t('welcomeOnboarding.step3Title', { defaultValue: '알림 받기' })}</h2>
+                <h2 className="text-[24px] font-bold text-gray-900 dark:text-white mb-1">{t('welcomeOnboarding.step3Title', { defaultValue: '알림 받기' })}</h2>
                 <p className="text-[13px] text-gray-500 dark:text-gray-400">{t('welcomeOnboarding.step3Desc', { defaultValue: '놓치면 아쉬운 핫딜·마감 임박 소식을 알려드려요' })}</p>
               </div>
 
@@ -317,7 +317,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
             <div className="flex gap-2">
               <button
                 onClick={() => setStep(1)}
-                className="px-5 py-3 text-gray-600 dark:text-gray-300 font-semibold text-[15px]"
+                className="px-5 py-3 text-gray-600 dark:text-gray-300 font-medium text-[15px]"
               >
                 {t('welcomeOnboarding.prev', { defaultValue: '이전' })}
               </button>

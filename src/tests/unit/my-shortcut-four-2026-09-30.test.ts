@@ -64,8 +64,10 @@ describe('🧹 마이 판매 바로가기 — 넷 + 전체 도구 (2026-09-30)',
     const afterHandler = code.indexOf('\n', at)
     expect(afterHandler, 'onClick 줄이 안 끝난다 — 앵커가 낡았다').toBeGreaterThan(at)
     const around = code.slice(afterHandler, afterHandler + 1400)
+    // 🔁 2026-10-25 재조준(대표 확정 안 G) — 오늘 숫자가 큰 카드 → 판의 머리 줄 **`오늘 매출`** 이 됐다.
+    //   그 줄의 이름이 곧 무엇이 열리는지다(매출). 불변식 그대로 — 핸들러 인자가 아니라 **화면 글자**를 센다.
     expect(around, '누르면 무엇이 열리는지 **화면에** 적혀 있어야 한다(핸들러 인자는 화면이 아니다)')
-      .toContain('매출 분석')
+      .toMatch(/>오늘 매출<\/span>|매출 분석/)
   })
 
   /**
@@ -88,13 +90,14 @@ describe('🧹 마이 판매 바로가기 — 넷 + 전체 도구 (2026-09-30)',
   })
 
   it('📏 판 안의 누를 수 있는 줄이 다섯을 넘지 않는다 (바로가기가 아홉이면 바로가기가 아니다)', () => {
-    // 🎟️ 2026-10-10 재조준(안 3): 판 안의 누르는 줄 = 사용처리 티켓 1 + `이용권 등록 · 관리` 1 + `ToolRow` 3.
-    //   종전 식(`ToolRow` + 1)은 등록 줄이 ToolRow 밖으로 나가자 한 칸이 비어, 다섯째 줄을 더해도 통과했다(주입이 잡았다).
-    //   ⇒ ToolRow 밖의 줄을 **고정값이 아니라 실제로 센다**.
+    // 🎟️ 2026-10-10 재조준(안 3) → 🔁 2026-10-25 재조준(안 G): 판 안의 누르는 줄 = `오늘 매출` 1 + `판매 알림` 1 + `ToolRow` 3.
+    //   사용처리·등록은 판 **밖 위** 두 칸이라 이 셈에서 빠진다(그 둘은 `my-scan-ticket-qr` 가 지킨다).
+    //   ⇒ ToolRow 밖의 줄을 **고정값이 아니라 실제로 센다**(종전 주입이 잡은 교훈 그대로).
     const rows = [...code.matchAll(/^\s*label="([^"]+)"$/gm)].map((m) => m[1])
     expect(rows.length, '도구 줄을 못 셌다 — 이 검사가 헛돌고 있다').toBeGreaterThan(0)
-    const extra = ['이용권 사용처리', '이용권 등록 · 관리'].filter((t) => code.includes(`>${t}</span>`))
-    expect(extra.length, 'ToolRow 밖의 두 줄(티켓·등록)을 못 찾았다 — 이 검사가 헛돌고 있다').toBe(2)
+    const extra = ['오늘 매출'].filter((t) => code.includes(`>${t}</span>`))
+    if (code.includes('<StoreNotifButton variant="row"')) extra.push('판매 알림')
+    expect(extra.length, 'ToolRow 밖의 두 줄(오늘 매출·판매 알림)을 못 찾았다 — 이 검사가 헛돌고 있다').toBe(2)
     expect(rows.length + extra.length, `판 안의 줄: ${[...extra, ...rows].join(' · ')}`).toBeLessThanOrEqual(5)
   })
 })

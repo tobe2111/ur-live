@@ -10,6 +10,9 @@
  *  ③ 원장 줄을 **먼저** 넣고(`INSERT OR IGNORE`) 들어갔을 때만 잔액을 움직인다(claim-before-credit).
  */
 
+import { newShareToken } from '../../../shared/home-service-share'
+import { CREDIT_COST_KEY, HOME_PARTNERS_KEY, PRO_OPEN_STATUS_SQL, parseCreditCosts, parsePartners, type HomeServiceCategory } from '../../../shared/home-service'
+
 export const HS_TABLES_SQL = [
   `CREATE TABLE IF NOT EXISTS home_service_pros (
     seller_id INTEGER PRIMARY KEY,
@@ -98,7 +101,70 @@ export const HS_TABLES_SQL = [
   `ALTER TABLE home_service_quotes ADD COLUMN is_house INTEGER NOT NULL DEFAULT 0`,
   // 🔒 상세 주소(2026-10-25 대표 — 오늘의집 흐름). 사장님은 손님이 **고른 뒤에만** 본다(연락처와 같은 규칙).
   `ALTER TABLE home_service_requests ADD COLUMN private_details TEXT`,
+  // 🤝 제휴 업체 견적(2026-10-25 대표 — 간판 제휴사). is_house=1 과 같이 참여권을 안 쓰고 반환도 없다.
+  //   손님 화면 표시만 "유어딜 제휴" 로 가른다.
+  `ALTER TABLE home_service_quotes ADD COLUMN partner INTEGER NOT NULL DEFAULT 0`,
+  // 🎟️ 이 견적에 쓴 참여권 장수(2026-10-25). 반환은 **쓴 만큼** 돌려준다 — 카테고리 장수가 나중에 바뀌어도.
+  `ALTER TABLE home_service_quotes ADD COLUMN credits INTEGER NOT NULL DEFAULT 1`,
+  // 🔗 공유 페이지 토큰(2026-10-25 대표 — 커뮤니티에 요청을 올려 업체를 데려온다). 번호(id)는 추측되므로 따로 둔다.
+  `ALTER TABLE home_service_requests ADD COLUMN share_token TEXT`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_hs_requests_share ON home_service_requests(share_token) WHERE share_token IS NOT NULL`,
+  // 공유 링크로 들어온 업체 — 지역이 달라도 **그 카테고리를 하는 업체면** 이 요청을 보고 견적을 낼 수 있다.
+  `CREATE TABLE IF NOT EXISTS home_service_share_access (
+    request_id INTEGER NOT NULL,
+    seller_id INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (request_id, seller_id)
+  )`,
 ] as const
+
+/**
+ * 요청의 공유 토큰 — 없으면 만든다(옛 요청·운영팀 대리 접수도 링크를 낼 수 있게).
+ * 두 곳이 동시에 만들면 `share_token IS NULL` 조건이 하나만 통과시키고, 둘 다 다시 읽어 같은 값을 쓴다.
+ */
+export async function ensureShareToken(DB: D1Database, requestId: number): Promise<string | null> {
+  const cur = await DB.prepare(`SELECT share_token FROM home_service_requests WHERE id = ?`).bind(requestId)
+    .first<{ share_token: string | null }>()
+  if (!cur) return null
+  if (cur.share_token) return cur.share_token
+  await DB.prepare(`UPDATE home_service_requests SET share_token = ? WHERE id = ? AND share_token IS NULL`)
+    .bind(newShareToken(), requestId).run()
+  const again = await DB.prepare(`SELECT share_token FROM home_service_requests WHERE id = ?`).bind(requestId)
+    .first<{ share_token: string | null }>()
+  return again?.share_token ?? null
+}
+
+/** 카테고리별 참여권 장수(어드민 값). 못 읽으면 빈 표 — 모두 1장. */
+export async function loadCreditCosts(DB: D1Database): Promise<Partial<Record<HomeServiceCategory, number>>> {
+  const r = await DB.prepare(`SELECT value FROM platform_settings WHERE key = ?`).bind(CREDIT_COST_KEY)
+    .first<{ value: string }>().catch(() => null)
+  return parseCreditCosts(r?.value)
+}
+
+/**
+ * 카테고리별 견적을 받을 수 있는 업체 수(정지·반려가 아닌 · 켜 둔 업체 + 제휴 업체). 생활 페이지가 0 이면
+ * "업체 모집 중" 을 보여 준다 — 답이 없을 요청을 아무 말 없이 받지 않으려고.
+ */
+export async function proCountsByCategory(DB: D1Database): Promise<Record<string, number>> {
+  const out: Record<string, number> = {}
+  const { results } = await DB.prepare(
+    `SELECT c.category AS category, COUNT(DISTINCT c.seller_id) AS n
+       FROM home_service_pro_categories c
+       JOIN home_service_pros p ON p.seller_id = c.seller_id AND p.active = 1
+       JOIN sellers s ON s.id = c.seller_id AND s.status IN ${PRO_OPEN_STATUS_SQL}
+      GROUP BY c.category`,
+  ).all<{ category: string; n: number }>()
+  for (const r of results ?? []) out[r.category] = Number(r.n)
+  for (const cat of Object.keys(await loadPartners(DB))) out[cat] = Math.max(out[cat] ?? 0, 1)
+  return out
+}
+
+/** 제휴 업체 표(카테고리 → 매장 번호). 못 읽으면 빈 표 — 제휴가 없는 것과 같다. */
+export async function loadPartners(DB: D1Database): Promise<Partial<Record<HomeServiceCategory, number>>> {
+  const r = await DB.prepare(`SELECT value FROM platform_settings WHERE key = ?`).bind(HOME_PARTNERS_KEY)
+    .first<{ value: string }>().catch(() => null)
+  return parsePartners(r?.value)
+}
 
 /** 상세 주소(JSON)를 요청서 칸 위에 덮는다 — 볼 자격이 있는 쪽만 이 함수를 부른다. */
 export function withPrivateDetails(details: unknown, privateJson: unknown): Record<string, string> {
@@ -153,15 +219,17 @@ export async function creditAdd(
  * 반환 ok=false 면 사유를 다시 읽어 구분한다(자리 마감 / 이미 보냄 / 참여권 없음 / 요청 닫힘).
  */
 export async function sendQuoteAtomic(
-  DB: D1Database, requestId: number, sellerId: number, price: number | null, message: string,
+  DB: D1Database, requestId: number, sellerId: number, price: number | null, message: string, cost = 1,
 ): Promise<{ ok: true; quoteId: number } | { ok: false; reason: 'closed' | 'full' | 'already' | 'no_credit' }> {
+  // 🎟️ 장수는 1 이상 정수만(카테고리별 — 결재 2026-10-25). 이상한 값은 1장으로.
+  const n = Number.isInteger(cost) && cost >= 1 ? cost : 1
   const res = await DB.batch([
     DB.prepare(
-      `UPDATE home_service_credit_balance SET balance = balance - 1, updated_at = datetime('now')
-        WHERE seller_id = ? AND balance >= 1
+      `UPDATE home_service_credit_balance SET balance = balance - ?, updated_at = datetime('now')
+        WHERE seller_id = ? AND balance >= ?
           AND EXISTS (SELECT 1 FROM home_service_requests WHERE id = ? AND status = 'open' AND quote_count < max_quotes)
           AND NOT EXISTS (SELECT 1 FROM home_service_quotes WHERE request_id = ? AND seller_id = ?)`,
-    ).bind(sellerId, requestId, requestId, sellerId),
+    ).bind(n, sellerId, n, requestId, requestId, sellerId),
     DB.prepare(
       `UPDATE home_service_requests
           SET quote_count = quote_count + 1, first_quote_at = COALESCE(first_quote_at, datetime('now')),
@@ -169,13 +237,13 @@ export async function sendQuoteAtomic(
         WHERE id = ? AND status = 'open' AND quote_count < max_quotes AND changes() > 0`,
     ).bind(requestId),
     DB.prepare(
-      `INSERT OR IGNORE INTO home_service_quotes (request_id, seller_id, price, message, status)
-       SELECT ?, ?, ?, ?, 'sent' WHERE changes() > 0`,
-    ).bind(requestId, sellerId, price, message),
+      `INSERT OR IGNORE INTO home_service_quotes (request_id, seller_id, price, message, status, credits)
+       SELECT ?, ?, ?, ?, 'sent', ? WHERE changes() > 0`,
+    ).bind(requestId, sellerId, price, message, n),
     DB.prepare(
       `INSERT OR IGNORE INTO home_service_credit_tx (seller_id, kind, amount, ref)
-       SELECT ?, 'spend', -1, ? WHERE changes() > 0`,
-    ).bind(sellerId, `quote:${requestId}:${sellerId}`),
+       SELECT ?, 'spend', ?, ? WHERE changes() > 0`,
+    ).bind(sellerId, -n, `quote:${requestId}:${sellerId}`),
   ])
   if (res[2]?.meta?.changes) {
     const q = await DB.prepare(`SELECT id FROM home_service_quotes WHERE request_id = ? AND seller_id = ?`)
@@ -197,7 +265,7 @@ export async function sendQuoteAtomic(
  * 선착순 자리는 다른 사장님과 똑같이 하나 차지한다(손님이 비교하는 견적 수는 그대로 5개 이하).
  */
 export async function sendHouseQuoteAtomic(
-  DB: D1Database, requestId: number, sellerId: number, price: number | null, message: string,
+  DB: D1Database, requestId: number, sellerId: number, price: number | null, message: string, partner = false,
 ): Promise<{ ok: true; quoteId: number } | { ok: false; reason: 'closed' | 'full' | 'already' }> {
   const res = await DB.batch([
     DB.prepare(
@@ -208,9 +276,9 @@ export async function sendHouseQuoteAtomic(
           AND NOT EXISTS (SELECT 1 FROM home_service_quotes WHERE request_id = ? AND seller_id = ?)`,
     ).bind(requestId, requestId, sellerId),
     DB.prepare(
-      `INSERT OR IGNORE INTO home_service_quotes (request_id, seller_id, price, message, status, is_house)
-       SELECT ?, ?, ?, ?, 'sent', 1 WHERE changes() > 0`,
-    ).bind(requestId, sellerId, price, message),
+      `INSERT OR IGNORE INTO home_service_quotes (request_id, seller_id, price, message, status, is_house, partner)
+       SELECT ?, ?, ?, ?, 'sent', 1, ? WHERE changes() > 0`,
+    ).bind(requestId, sellerId, price, message, partner ? 1 : 0),
   ])
   if (res[1]?.meta?.changes) {
     const q = await DB.prepare(`SELECT id FROM home_service_quotes WHERE request_id = ? AND seller_id = ?`)
@@ -259,15 +327,16 @@ export async function creditBalance(DB: D1Database, sellerId: number): Promise<n
 export async function refundQuote(DB: D1Database, quoteId: number, sellerId: number, why: string): Promise<boolean> {
   const [upd] = await DB.batch([
     DB.prepare(`UPDATE home_service_quotes SET status = 'refunded' WHERE id = ? AND status = 'sent' AND is_house = 0`).bind(quoteId),
+    // 🎟️ 쓴 만큼 돌려준다(`quotes.credits` — 카테고리 장수가 나중에 바뀌어도 그 견적에 쓴 값).
     DB.prepare(
       `INSERT OR IGNORE INTO home_service_credit_tx (seller_id, kind, amount, ref, note)
-       SELECT ?, 'refund', 1, ?, ? WHERE changes() > 0`,
-    ).bind(sellerId, `quote:${quoteId}`, why),
+       SELECT ?, 'refund', (SELECT credits FROM home_service_quotes WHERE id = ?), ?, ? WHERE changes() > 0`,
+    ).bind(sellerId, quoteId, `quote:${quoteId}`, why),
     DB.prepare(
       `INSERT INTO home_service_credit_balance (seller_id, balance, updated_at)
-       SELECT ?, 1, datetime('now') WHERE changes() > 0
-       ON CONFLICT(seller_id) DO UPDATE SET balance = balance + 1, updated_at = datetime('now')`,
-    ).bind(sellerId),
+       SELECT ?, (SELECT credits FROM home_service_quotes WHERE id = ?), datetime('now') WHERE changes() > 0
+       ON CONFLICT(seller_id) DO UPDATE SET balance = balance + excluded.balance, updated_at = datetime('now')`,
+    ).bind(sellerId, quoteId),
   ])
   return !!upd?.meta?.changes
 }
@@ -283,7 +352,7 @@ export async function refundAllQuotes(DB: D1Database, requestId: number, why: st
 }
 
 /**
- * 이 요청을 받을 사장님. 카테고리 + 지역(시/도 전체 또는 시군구) 일치, 활성, 판매 승인된 매장만.
+ * 이 요청을 받을 사장님. 카테고리 + 지역(시/도 전체 또는 시군구) 일치, 활성, 정지·반려가 아닌 매장(심사 중 포함 — `PRO_OPEN_STATUSES`).
  * 이사는 출발지·도착지 둘 다 본다. 이미 보낸 사장님(`home_service_dispatch`)은 뺀다.
  */
 export const MATCH_PROS_SQL = `
@@ -293,7 +362,7 @@ export const MATCH_PROS_SQL = `
     JOIN home_service_pro_categories c ON c.seller_id = p.seller_id AND c.category = ?
     JOIN home_service_pro_areas a ON a.seller_id = p.seller_id
    WHERE p.active = 1
-     AND s.status IN ('approved', 'active')
+     AND s.status IN ${PRO_OPEN_STATUS_SQL}
      AND (
        (a.sido = ? AND (a.sigungu = '' OR a.sigungu = ?))
        OR (? IS NOT NULL AND a.sido = ? AND (a.sigungu = '' OR a.sigungu = ?))
@@ -301,7 +370,11 @@ export const MATCH_PROS_SQL = `
      AND NOT EXISTS (SELECT 1 FROM home_service_dispatch d WHERE d.request_id = ? AND d.seller_id = p.seller_id)
    LIMIT ?`
 
-/** 사장님 한 명이 받을 수 있는 열린 요청(카테고리·지역 일치, 날짜 안 지남). 요청함과 가입 직후 보내기가 같이 쓴다. */
+/**
+ * 사장님 한 명이 받을 수 있는 열린 요청(카테고리·지역 일치, 날짜 안 지남). 요청함과 가입 직후 보내기가 같이 쓴다.
+ * 제휴 업체는 자기 제휴 카테고리(세 번째 인자, 쉼표 목록)를 **지역과 무관하게** 받는다.
+ * bind: (seller, 오늘, 제휴카테고리csv, seller, seller, limit)
+ */
 export const OPEN_REQUESTS_FOR_PRO_SQL = `
   SELECT r.id, r.category, r.summary, r.desired_date, r.status, r.quote_count, r.max_quotes, r.created_at,
          q.id AS my_quote_id, q.status AS my_quote_status
@@ -309,13 +382,14 @@ export const OPEN_REQUESTS_FOR_PRO_SQL = `
     LEFT JOIN home_service_quotes q ON q.request_id = r.id AND q.seller_id = ?
    WHERE r.status = 'open'
      AND r.desired_date >= ?
-     AND r.category IN (SELECT category FROM home_service_pro_categories WHERE seller_id = ?)
-     AND EXISTS (
-       SELECT 1 FROM home_service_pro_areas a
-        WHERE a.seller_id = ?
-          AND ((a.sido = r.sido AND (a.sigungu = '' OR a.sigungu = r.sigungu))
-            OR (r.sido2 IS NOT NULL AND a.sido = r.sido2 AND (a.sigungu = '' OR a.sigungu = r.sigungu2)))
-     )
+     AND (instr(',' || ? || ',', ',' || r.category || ',') > 0
+       OR (r.category IN (SELECT category FROM home_service_pro_categories WHERE seller_id = ?)
+           AND EXISTS (
+             SELECT 1 FROM home_service_pro_areas a
+              WHERE a.seller_id = ?
+                AND ((a.sido = r.sido AND (a.sigungu = '' OR a.sigungu = r.sigungu))
+                  OR (r.sido2 IS NOT NULL AND a.sido = r.sido2 AND (a.sigungu = '' OR a.sigungu = r.sigungu2)))
+           )))
    ORDER BY r.id DESC
    LIMIT ?`
 

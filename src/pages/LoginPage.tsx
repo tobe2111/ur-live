@@ -327,7 +327,7 @@ export default function LoginPage() {
                   handleKakaoLogin()
                 }}
                 disabled={loading}
-                className="w-full h-[52px] bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] rounded-xl text-[15px] font-semibold tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 border border-[#F5DC00]"
+                className="w-full h-[52px] bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] rounded-xl text-[15px] font-medium tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 border border-[#F5DC00]"
               >
                 {loading ? (
                   <div className="flex items-center gap-2">
@@ -451,7 +451,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full h-[48px] bg-brand hover:bg-brand-dark text-white rounded-xl text-[15px] font-semibold tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full h-[48px] bg-brand hover:bg-brand-dark text-white rounded-xl text-[15px] font-medium tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? t('common.loading') : t('common.login')}
             </button>
@@ -495,7 +495,7 @@ export default function LoginPage() {
             <button
               onClick={handleResetPassword}
               disabled={loading}
-              className="w-full h-[48px] bg-brand hover:bg-brand-dark text-white rounded-xl text-[15px] font-semibold tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full h-[48px] bg-brand hover:bg-brand-dark text-white rounded-xl text-[15px] font-medium tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? t('common.loading') : t('auth.resetPasswordButton')}
             </button>
@@ -517,7 +517,7 @@ export default function LoginPage() {
             에이전시 계정은 이메일로만 가입·로그인하는 다른 계정이다(docs/decisions/2026-10-11-agency-model-email-only.md). */}
         <div className="mt-10 pt-5 border-t border-gray-100 dark:border-[#2C2F35] flex items-center justify-center gap-2 text-[13px]">
           <span className="text-gray-500 dark:text-gray-400">{t('login.agencyQuestion', { defaultValue: '에이전시이신가요?' })}</span>
-          <Link to="/agency/login" className="font-semibold text-brand-text hover:underline underline-offset-4">
+          <Link to="/agency/login" className="font-medium text-brand-text hover:underline underline-offset-4">
             {t('login.agencyLogin', { defaultValue: '에이전시 로그인' })}
           </Link>
         </div>

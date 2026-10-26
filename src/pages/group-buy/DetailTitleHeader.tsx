@@ -35,19 +35,19 @@ export default function DetailTitleHeader({
   return (
     <header className="hidden lg:block lg:max-w-[1200px] lg:mx-auto lg:pt-6 lg:pb-3">
       {storeName && (
-        <div className="text-[12px] font-bold tracking-[.01em] text-brand">
+        <div className="text-[12px] font-medium tracking-[.01em] text-brand">
           {storeName} · 정식 등록 매장
           {onnuri && (
-            <span className="ml-2 px-2 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[12px] font-bold align-middle">온누리 사용 가능</span>
+            <span className="ml-2 px-2 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[12px] font-medium align-middle">온누리 사용 가능</span>
           )}
         </div>
       )}
-      <h1 className="mt-2 text-[28px] leading-[1.24] font-black tracking-[-.028em] text-gray-900 dark:text-white">{name}</h1>
+      <h1 className="mt-2 text-[24px] leading-[1.3] font-bold tracking-[-.02em] text-gray-900 dark:text-white">{name}</h1>
       <div className="mt-2 flex items-center gap-2 flex-wrap text-[13px] text-gray-500 dark:text-gray-400">
         {hasRating && (
           <span className="inline-flex items-center gap-2">
             <StarRating value={Number(rating)} size={15} />
-            <b className="font-extrabold text-gray-900 dark:text-white">{Number(rating).toFixed(1)}</b>
+            <b className="font-bold text-gray-900 dark:text-white">{Number(rating).toFixed(1)}</b>
             {Number(reviewCount) > 0 && <span className="text-gray-400 dark:text-gray-500">({reviewCount})</span>}
           </span>
         )}
@@ -59,7 +59,7 @@ export default function DetailTitleHeader({
           </span>
         )}
         {phone && (
-          <a href={`tel:${phone}`} className="font-semibold no-underline text-gray-700 dark:text-gray-200 border-b border-line">{phone}</a>
+          <a href={`tel:${phone}`} className="font-medium no-underline text-gray-700 dark:text-gray-200 border-b border-line">{phone}</a>
         )}
       </div>
     </header>

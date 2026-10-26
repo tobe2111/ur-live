@@ -591,9 +591,9 @@ app.post('/influencer-pool/mark-contacted', async (c) => {
 //   contactable=1: 수기 제휴 제안용 "지금 연락할 사람"만(이메일 보유·브랜드 제외·미접촉·반송이력 없음).
 app.get('/influencer-pool/export', async (c) => buildInfluencerExportResponse(
   adsLeadsDb(c.env), POOL, c.req.query('format') || 'xls', c.req.query('platform') || '',
-  // 수기 발송용 목록은 **기본으로 유어딜 적합 카테고리를 앞에** 둔다(끄려면 coreFirst=0).
+  // 적합 카테고리 우선(coreFirst=0 끔) · newOnly=받은 건 안 준다(기본 contactable 따름 · 전체 덤프는 OFF — 근거 `pool-export-batch.ts`)
   { contactable: c.req.query('contactable') === '1', minScore: Number(c.req.query('minScore')),
-    coreFirst: c.req.query('contactable') === '1' && c.req.query('coreFirst') !== '0' },
+    coreFirst: c.req.query('contactable') === '1' && c.req.query('coreFirst') !== '0', newOnly: c.req.query('newOnly') ? c.req.query('newOnly') === '1' : c.req.query('contactable') === '1' },
 ))
 
 

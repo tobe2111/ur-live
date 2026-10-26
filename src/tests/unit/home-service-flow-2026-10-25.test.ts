@@ -41,11 +41,13 @@ function sampleFor(key: string): Record<string, string> {
 }
 
 describe('🏪 사장님 항목 — 같은 검증·요약', () => {
-  it('사장님 항목이 먼저, 집이 나중', () => {
+  it('가게 → 숙소 → 집 순서이고, 간판이 가게 맨 앞', () => {
     const order = HOME_SERVICE_CATEGORIES.map((d) => d.audience)
-    expect(order.indexOf('home')).toBeGreaterThan(order.lastIndexOf('biz'))
-    expect(HOME_SERVICE_CATEGORIES.filter((d) => d.audience === 'biz').map((d) => d.key))
-      .toEqual(['store_pest', 'kitchen_hood', 'store_repair', 'lodging_clean'])
+    expect(order.indexOf('lodging')).toBeGreaterThan(order.lastIndexOf('store'))
+    expect(order.indexOf('home')).toBeGreaterThan(order.lastIndexOf('lodging'))
+    expect(HOME_SERVICE_CATEGORIES.filter((d) => d.audience === 'store').map((d) => d.key))
+      .toEqual(['signage', 'store_interior', 'store_pest', 'kitchen_hood', 'store_repair', 'store_fridge', 'store_aircon', 'store_clean', 'store_drain'])
+    expect(HOME_SERVICE_CATEGORIES.filter((d) => d.audience === 'lodging').map((d) => d.key)).toEqual(['lodging_clean', 'lodging_pool'])
   })
   for (const def of HOME_SERVICE_CATEGORIES) {
     it(`${def.label} — 정상 입력이 통과하고 요약에 빈칸(-)이 없다`, () => {
@@ -167,5 +169,24 @@ describe('생활 견적 규칙은 홈 첫 화면 묶음(app-home)에 섞이지 �
     // (2026-10-25 CI surface-budgets: faq +2.2KB · app-home.js +2.1).
     const cfg = readFileSync(resolve(process.cwd(), 'vite.config.ts'), 'utf8')
     expect(cfg).toContain("(id.includes('/src/shared/home-') && !id.includes('/src/shared/home-service'))")
+  })
+})
+
+describe('🪜 단계식 요청서 (2026-10-25 대표 "단계별로 쭉쭉 자동으로 · 지금은 너무 세로로 길고")', () => {
+  it('처음엔 첫 질문 · 답한 것과 지나온 것은 건너뛰고 · 다 지나왔으면 확인 화면', async () => {
+    const { firstOpenStep, SEEN_KEY } = await import('@/pages/life/request/draft')
+    const fields = categoryDef('signage')!.fields
+    expect(firstOpenStep(fields, {})).toBe(0)
+    expect(firstOpenStep(fields, { [fields[0].key]: 'x' })).toBe(1)
+    expect(firstOpenStep(fields, { [SEEN_KEY]: `${fields[0].key},${fields[1].key}` })).toBe(2)
+    expect(firstOpenStep(fields, { [SEEN_KEY]: fields.map((f) => f.key).join(',') })).toBe(fields.length)
+  })
+  it('질문 화면은 단계 틀(진행 막대) 안에서 하나씩 — 목록은 확인 화면에만', () => {
+    const page = readCode('src/pages/life/LifeRequestFormPage.tsx')
+    expect(page).toMatch(/<StepFrameContext\.Provider value=\{\{ step: step \+ 1, total: REVIEW,/)
+    expect(page).toMatch(/if \(step < REVIEW\) \{\n\s+const f = def\.fields\[step\]/)
+    expect(page).toMatch(/setStep\(editing \? REVIEW : step \+ 1\)/)
+    const sheet = readCode('src/pages/life/request/Sheet.tsx')
+    expect(sheet).toMatch(/role="progressbar"/)
   })
 })

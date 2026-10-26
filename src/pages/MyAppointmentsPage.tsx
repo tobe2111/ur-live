@@ -138,7 +138,7 @@ export default function MyAppointmentsPage() {
         {/* 🛡️ 2026-06-12 (B-5): 예약 가능한 구매 — 예약 생성 입구 (기존엔 백엔드만 있고 UI 0). */}
         {bookable.length > 0 && (
           <section className="mb-5">
-            <h2 className="text-[13px] font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+            <h2 className="text-[13px] font-medium text-gray-900 dark:text-white mb-2 flex items-center gap-2">
               <CalendarPlus className="w-4 h-4 text-purple-600 dark:text-purple-400" />
               {t('myAppointments.bookableTitle', { defaultValue: '예약을 잡아주세요' })}
               <span className="text-purple-600 dark:text-purple-400">({bookable.length})</span>
@@ -150,12 +150,12 @@ export default function MyAppointmentsPage() {
                     {b.image_url ? <img src={cfImage(b.image_url, { width: 200, quality: 82, format: 'auto' }) || b.image_url} alt={b.product_name} className="w-full h-full object-cover" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, b.image_url)} /> : null}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-bold text-gray-900 dark:text-white line-clamp-1">{b.product_name}</p>
+                    <p className="text-[13px] font-medium text-gray-900 dark:text-white line-clamp-1">{b.product_name}</p>
                     {b.restaurant_name && <p className="text-[12px] text-gray-500 dark:text-gray-400">🏪 {b.restaurant_name}</p>}
                   </div>
                   <button
                     onClick={() => setBookingTarget(b)}
-                    className="shrink-0 px-3 py-2 bg-brand hover:bg-brand text-white text-[12px] font-bold rounded-lg"
+                    className="shrink-0 px-3 py-2 bg-brand hover:bg-brand text-white text-[12px] font-medium rounded-lg"
                   >
                     {t('myAppointments.bookCta', { defaultValue: '예약 잡기' })}
                   </button>
@@ -323,7 +323,7 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
         </div>
         <div className="p-5 space-y-4">
           <div>
-            <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-200 mb-1">
+            <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-200 mb-1">
               {t('myAppointments.dateLabel', { defaultValue: '날짜' })}
             </label>
             <input
@@ -335,7 +335,7 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
             />
           </div>
           <div>
-            <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-200 mb-1">
+            <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-200 mb-1">
               {t('myAppointments.slotLabel', { defaultValue: '시간' })}
             </label>
             {slotsLoading ? (
@@ -353,7 +353,7 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
                     key={`${s.start_time}-${s.end_time}`}
                     type="button"
                     onClick={() => setSelectedSlot(s)}
-                    className={`py-2 rounded-lg text-[12px] font-bold border transition-colors ${
+                    className={`py-2 rounded-lg text-[12px] font-medium border transition-colors ${
                       selectedSlot?.start_time === s.start_time
                         ? 'bg-brand text-white border-purple-600'
                         : 'bg-white dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2C2F35] hover:border-purple-400'
@@ -369,7 +369,7 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
             )}
           </div>
           <div>
-            <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-200 mb-1">
+            <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-200 mb-1">
               {t('myAppointments.nameLabel', { defaultValue: '예약자 이름' })} *
             </label>
             <input
@@ -379,7 +379,7 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
             />
           </div>
           <div>
-            <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-200 mb-1">
+            <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-200 mb-1">
               {t('myAppointments.phoneLabel', { defaultValue: '전화번호' })} *
             </label>
             <input
@@ -390,7 +390,7 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
             />
           </div>
           <div>
-            <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-200 mb-1">
+            <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-200 mb-1">
               {t('myAppointments.notesLabel', { defaultValue: '요청사항' })}
             </label>
             <textarea
@@ -404,7 +404,7 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
             <button
               onClick={onClose}
               disabled={submitting}
-              className="flex-1 py-3 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200 text-[15px] font-semibold rounded-lg disabled:opacity-50"
+              className="flex-1 py-3 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200 text-[15px] font-medium rounded-lg disabled:opacity-50"
             >
               {t('common.cancel', { defaultValue: '취소' })}
             </button>

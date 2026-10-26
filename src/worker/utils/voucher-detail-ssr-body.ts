@@ -63,8 +63,8 @@ export const VOUCHER_FS_CLASS = {
     'relative aspect-square w-full rounded-[28px] overflow-hidden bg-gradient-to-b from-[#F7F8FA] to-[#EFF1F4] ' +
     'dark:from-[#15171C] dark:to-[#0F1115] lg:sticky lg:top-20',
   info: 'pt-[18px] lg:pt-0',
-  label: 'text-[12px] font-bold text-[#171B24] bg-[#d1d5db] rounded-md px-[9px] py-1 whitespace-nowrap',
-  h1: 'mt-[7px] text-[24px] font-extrabold text-[#171B24] dark:text-white leading-tight tracking-tight',
+  label: 'text-[12px] font-medium text-[#171B24] bg-[#d1d5db] rounded-md px-[9px] py-1 whitespace-nowrap',
+  h1: 'mt-[7px] text-[24px] font-bold text-[#171B24] dark:text-white leading-tight tracking-tight',
 } as const
 
 /** 페이지가 쓰는 값과 동일 — `cfImage(…, { width: 800, format: 'auto' })` · `cfSrcSet(…, 800)`. */

@@ -11,15 +11,15 @@ import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/useToast'
-import { quotePriceText } from '@/shared/home-service'
+import { categoryDef, quotePriceText, type HomeServiceCategory } from '@/shared/home-service'
 import { formatNumber } from '@/utils/format'
-import { DetailRows, LifeHeader, STATUS_LABEL, categoryLabel } from './life-shared'
+import { BigTicketNote, DetailRows, LifeHeader, STATUS_LABEL, categoryLabel, shareLifeRequest } from './life-shared'
 
 interface Voucher { id: number; name: string; price?: number }
-interface Quote { id: number; price: number | null; message: string; status: string; pro_name: string; pro_phone: string | null; vouchers: Voucher[]; is_house?: number | null }
+interface Quote { id: number; price: number | null; message: string; status: string; pro_name: string; pro_phone: string | null; vouchers: Voucher[]; is_house?: number | null; partner?: number | null; verified?: number | null }
 interface Detail {
   id: number; category: string; details: Record<string, string>; desired_date: string; status: string
-  quote_count: number; max_quotes: number; quotes: Quote[]
+  quote_count: number; max_quotes: number; quotes: Quote[]; share_token?: string | null
 }
 
 export default function LifeRequestDetailPage() {
@@ -68,10 +68,11 @@ export default function LifeRequestDetailPage() {
       <div className="ur-content-narrow space-y-4 px-4 pb-10">
         <section className="rounded-2xl bg-surface p-5 shadow-lift">
           <div className="flex items-center justify-between">
-            <span className="text-[13px] font-bold text-brand-text">{STATUS_LABEL[d.status] || d.status}</span>
+            <span className="text-[13px] font-medium text-brand-text">{STATUS_LABEL[d.status] || d.status}</span>
             <span className="text-[13px] text-gray-500 dark:text-gray-400">받은 견적 {d.quote_count} / {d.max_quotes}</span>
           </div>
           <DetailRows category={d.category} details={d.details} />
+          {categoryDef(d.category as HomeServiceCategory)?.bigTicket && <div className="mt-3 border-t border-rule pt-3"><BigTicketNote /></div>}
         </section>
 
         {chosen && (
@@ -91,8 +92,8 @@ export default function LifeRequestDetailPage() {
             {d.quotes.map((q) => (
               <li key={q.id} className={`rounded-2xl bg-surface p-5 shadow-lift ${q.status === 'chosen' ? 'ring-2 ring-brand' : ''}`}>
                 <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-[15px] font-bold">{q.pro_name}{q.is_house ? <span className="ml-2 rounded-full bg-brand-tint px-2 py-1 text-[12px] font-semibold text-brand-text">유어딜 직영</span> : null}</span>
-                  <span className="text-[17px] font-extrabold">{quotePriceText(q.price)}</span>
+                  <span className="text-[15px] font-bold">{q.pro_name}{q.is_house ? <span className="ml-2 rounded-full bg-brand-tint px-2 py-1 text-[12px] font-medium text-brand-text">{q.partner ? '유어딜 제휴' : '유어딜 직영'}</span> : q.verified ? <span className="ml-2 rounded-full bg-warm px-2 py-1 text-[12px] font-medium text-gray-600 dark:text-gray-300">사업자 인증</span> : null}</span>
+                  <span className="text-[17px] font-bold">{quotePriceText(q.price)}</span>
                 </div>
                 <p className="mt-2 whitespace-pre-wrap text-[13px] leading-relaxed text-gray-700 dark:text-gray-200">{q.message}</p>
                 {q.vouchers.length > 0 && (
@@ -113,6 +114,15 @@ export default function LifeRequestDetailPage() {
               </li>
             ))}
           </ul>
+        )}
+
+        {d.status === 'open' && d.share_token && (
+          <section className="rounded-2xl bg-surface p-5 shadow-lift">
+            <p className="text-[15px] font-bold">아는 업체가 있나요?</p>
+            <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">링크를 보내면 그 업체가 바로 가입해 견적을 보낼 수 있어요. 이름·연락처·상세 주소는 가려져요.</p>
+            <button type="button" onClick={() => shareLifeRequest(d.share_token!, `${categoryLabel(d.category)} 견적 요청`)}
+              className="ur-btn ur-btn-lg mt-3 flex w-full justify-center bg-warm text-ink">요청 링크 보내기</button>
+          </section>
         )}
 
         {d.status === 'open' && (

@@ -1,5 +1,6 @@
 /**
- * 🎟️ 마이 사용처리 = QR 티켓 (2026-10-10 대표 확정 안 3 — *"바코드 모양이 아니라 QR모양이어야 하잖아 버튼이"*)
+ * 🎟️ 마이 판매 두 칸 (2026-10-10 안 3 → 2026-10-25 대표 확정 안 G 로 재조준)
+ *   사용처리 = 진한 블루 칸(QR) · 이용권 등록·관리 = 흰 칸. 둘은 생김새가 달라야 한다.
  * 가드: src/tests/unit/my-scan-ticket-qr-2026-10-10.test.ts
  */
 const TEST = 'src/tests/unit/my-scan-ticket-qr-2026-10-10.test.ts'
@@ -7,27 +8,27 @@ const FILE = 'src/pages/user-profile/SellerSection.tsx'
 
 export default [
   {
-    name: '🎟️ 사용처리 꼬리가 QR 에서 다른 그림으로 바뀐다',
+    name: '🎟️ 사용처리 그림이 QR 에서 다른 그림으로 바뀐다',
     file: FILE,
-    find: '                : <QrScanIcon size={32} aria-hidden="true" />}',
-    replace: '                : <OrdersIcon className="w-7 h-7" aria-hidden="true" />}',
+    find: '              : <QrScanIcon size={28} aria-hidden="true" />}',
+    replace: '              : <OrdersIcon className="w-7 h-7" aria-hidden="true" />}',
     test: TEST,
-    why: '꼬리가 QR 이 아니면 손님이 내미는 이용권과 같은 물건으로 안 읽힌다(대표 지적 그대로).',
+    why: 'QR 이 아니면 손님이 내미는 이용권과 같은 물건으로 안 읽힌다(대표 지적 그대로).',
   },
   {
-    name: '🎟️ 사용처리 티켓이 다시 진한 블루 면이 된다',
+    name: '🎟️ 등록 칸이 사용처리와 같은 진한 블루 면이 된다',
     file: FILE,
-    find: 'rounded-[10px] bg-brand-tint text-gray-900',
-    replace: 'rounded-[10px] bg-brand text-gray-900',
+    find: 'className="min-w-0 flex items-center gap-2 h-16 px-3 rounded-2xl bg-surface shadow-lift text-left active:opacity-70 disabled:opacity-60"',
+    replace: 'className="min-w-0 flex items-center gap-2 h-16 px-3 rounded-2xl bg-brand text-white text-left active:opacity-70 disabled:opacity-60"',
     test: TEST,
-    why: '진한 블루가 등록 줄과 둘이 되면 어느 쪽도 강조가 아니다(표면 규칙 ②).',
+    why: '둘이 같은 면이면 대표가 말한 "다르더라도 티가 나야" 가 깨지고, 파란 면이 둘이 된다(표면 규칙 ②).',
   },
   {
-    name: '🎟️ 티켓 홈이 판과 다른 색이 된다',
+    name: '🎟️ 사용처리 칸이 판 안으로 다시 들어간다',
     file: FILE,
-    find: 'className="absolute -left-[9px] top-1/2 -mt-[9px] w-[18px] h-[18px] rounded-full bg-surface"',
-    replace: 'className="absolute -left-[9px] top-1/2 -mt-[9px] w-[18px] h-[18px] rounded-full bg-white"',
+    find: '      <div className="grid grid-cols-2 gap-2">',
+    replace: '      <div className="hidden">',
     test: TEST,
-    why: '다크에서 판은 #1D1F29 인데 홈이 흰색이면 티켓이 아니라 흰 점 두 개다.',
+    why: '격자가 사라지면 매일 누르는 두 칸이 판 밖 위에 나란히 서지 않는다(안 G 의 핵심).',
   },
 ]

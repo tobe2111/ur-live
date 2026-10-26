@@ -220,7 +220,7 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
               onClick={() => setKindFilter(tab.key)}
               className={`relative whitespace-nowrap pb-2 text-[15px] transition-colors ${
                 active
-                  ? 'font-extrabold text-gray-900 dark:text-white'
+                  ? 'font-bold text-gray-900 dark:text-white'
                   : 'font-medium text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
               }`}
             >
@@ -241,7 +241,7 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
           <select
             value={statusValue}
             onChange={(e) => onStatusChange(e.target.value)}
-            className={`h-8 pl-3 pr-7 rounded-full appearance-none text-[13px] font-semibold focus:outline-none ${
+            className={`h-8 pl-3 pr-7 rounded-full appearance-none text-[13px] font-medium focus:outline-none ${
               statusValue !== 'all' ? 'bg-brand text-white' : 'bg-wash text-gray-900 dark:text-white'
             }`}
           >
@@ -260,7 +260,7 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
           {groups.map(group => (
             <section key={group.label}>
               {/* 날짜 그룹 헤더 */}
-              <h2 className="text-[15px] font-extrabold text-gray-900 dark:text-white mb-2 px-1">
+              <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-2 px-1">
                 {group.label}
               </h2>
               <div className="space-y-3">
@@ -324,11 +324,11 @@ function OrderCard({
         className="w-full text-left px-4 pt-4 cursor-pointer"
       >
         <div className="flex items-center justify-between mb-2">
-          <span className={`text-[12px] font-bold ${status.cls}`}>{status.label}</span>
+          <span className={`text-[12px] font-medium ${status.cls}`}>{status.label}</span>
           {/* 🏪 2026-08-12: 몰 주문이면 **그 가게 이름**이 판매처보다 앞선다 — 손님이 기억하는 건 가게다.
                 본진 주문엔 `mall_name` 이 아예 없어(undefined) 종전 표시 그대로. */}
           {order.mall_name ? (
-            <span className="text-[12px] font-semibold text-gray-600 dark:text-gray-300 truncate max-w-[55%]">
+            <span className="text-[12px] font-medium text-gray-600 dark:text-gray-300 truncate max-w-[55%]">
               🏪 {order.mall_name}
             </span>
           ) : order.seller_name ? (
@@ -354,7 +354,7 @@ function OrderCard({
                   </p>
                   <p className="text-[15px] font-bold text-gray-900 dark:text-white mt-1">
                     {formatNumber(orderItemLineTotal(item))}
-                    <span className="text-[12px] font-semibold text-gray-500 dark:text-gray-400 ml-1">{t('ordersTab.won', { defaultValue: '원' })}</span>
+                    <span className="text-[12px] font-medium text-gray-500 dark:text-gray-400 ml-1">{t('ordersTab.won', { defaultValue: '원' })}</span>
                   </p>
                 </div>
               </div>
@@ -375,14 +375,14 @@ function OrderCard({
             <TruckIcon className="h-3.5 w-3.5 text-blue-500 shrink-0" aria-hidden="true" />
             <span className="text-[12px] min-w-0 truncate">
               <span className="text-gray-500 dark:text-gray-400">{order.courier} · </span>
-              <span className="font-semibold text-gray-900 dark:text-white">{order.tracking_number}</span>
+              <span className="font-medium text-gray-900 dark:text-white">{order.tracking_number}</span>
             </span>
           </div>
           <a
             href={getTrackingUrl(order.courier, order.tracking_number)}
             target="_blank" rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className="shrink-0 text-[12px] font-semibold text-brand-text hover:underline transition-colors flex items-center gap-1"
+            className="shrink-0 text-[12px] font-medium text-brand-text hover:underline transition-colors flex items-center gap-1"
           >
             {t('ordersTab.trackingLink', { defaultValue: '배송조회' })}
             <ChevronRight className="h-3 w-3" />
@@ -417,15 +417,15 @@ function OrderCard({
       <div className="px-4 pb-4 pt-3 flex items-center justify-between border-t border-gray-100 dark:border-[#2C2F35]">
         <div>
           <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1">{t('ordersTab.paymentAmount', { defaultValue: '결제금액' })}</p>
-          <p className="text-[17px] font-extrabold text-gray-900 dark:text-white">
+          <p className="text-[17px] font-bold text-gray-900 dark:text-white">
             {formatNumber(order.total_amount ?? order.amount ?? 0)}
-            <span className="text-[13px] font-semibold text-gray-600 dark:text-gray-300 ml-1">{t('ordersTab.won', { defaultValue: '원' })}</span>
+            <span className="text-[13px] font-medium text-gray-600 dark:text-gray-300 ml-1">{t('ordersTab.won', { defaultValue: '원' })}</span>
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end">
           <button
             onClick={() => onSellerContact(order)}
-            className="flex items-center gap-1 px-2 py-2 text-[12px] font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-[#11141C] border border-line rounded-full hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
+            className="flex items-center gap-1 px-2 py-2 text-[12px] font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-[#11141C] border border-line rounded-full hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
             aria-label={t('ordersTab.inquiry', { defaultValue: '매장 문의' })}
           >
             <MessageIcon className="h-3 w-3" aria-hidden="true" />
@@ -433,14 +433,14 @@ function OrderCard({
           </button>
           {returnStatus && (
             /* 🚦 진행 *상태* 다(누르는 것이 아니다) — 중화되지 않는 tone 으로. */
-            <span className="px-2 py-2 text-[12px] font-semibold text-tone-warn bg-tone-warn-bg rounded-full">
+            <span className="px-2 py-2 text-[12px] font-medium text-tone-warn bg-tone-warn-bg rounded-full">
               {t('ordersTab.returnInProgress', { defaultValue: '반품 진행중' })}
             </span>
           )}
           {canReturn && (
             <button
               onClick={() => onRequestReturn!(order.id, orderNum)}
-              className="px-2 py-2 text-[12px] font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-[#11141C] border border-line rounded-full hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
+              className="px-2 py-2 text-[12px] font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-[#11141C] border border-line rounded-full hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
             >
               {t('ordersTab.requestReturn', { defaultValue: '반품' })}
             </button>
@@ -448,7 +448,7 @@ function OrderCard({
           {canCancel && (
             <button
               onClick={() => onCancelOrder(order.id, orderNum)}
-              className="px-2 py-2 text-[12px] font-semibold text-red-600 bg-white dark:bg-[#11141C] border border-red-100 dark:border-red-900/40 rounded-full hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+              className="px-2 py-2 text-[12px] font-medium text-red-600 bg-white dark:bg-[#11141C] border border-red-100 dark:border-red-900/40 rounded-full hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
             >
               {t('ordersTab.cancelOrder', { defaultValue: '취소' })}
             </button>
@@ -458,14 +458,14 @@ function OrderCard({
               onClick={() => onConfirmOrder(order.id, orderNum)}
               /* 🔵 이 줄의 **긍정 행동**이다. emerald 는 중화돼 회색이라, 파괴적 행동(취소=빨강)만
                  눈에 띄고 정작 눌러야 할 버튼이 안 보였다 ⇒ 브랜드. */
-              className="px-2 py-2 text-[12px] font-semibold text-white bg-brand rounded-full hover:bg-brand-dark transition-colors"
+              className="px-2 py-2 text-[12px] font-medium text-white bg-brand rounded-full hover:bg-brand-dark transition-colors"
             >
               {t('ordersTab.confirmOrder', { defaultValue: '구매확정' })}
             </button>
           )}
           <button
             onClick={openDetail}
-            className="flex items-center text-[13px] font-bold text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-200 transition-colors ml-1"
+            className="flex items-center text-[13px] font-medium text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-200 transition-colors ml-1"
           >
             {t('ordersTab.detail', { defaultValue: '상세' })}
             <ChevronRight className="h-3.5 w-3.5" />
@@ -506,7 +506,7 @@ function EmptyState({ kindFilter, searching, t }: { kindFilter: KindFilter; sear
       {!searching && (
         <Link
           to="/"
-          className="inline-flex items-center justify-center px-6 py-3 bg-brand text-white text-[15px] font-semibold rounded-full hover:bg-brand-dark active:bg-gray-700 transition-colors"
+          className="inline-flex items-center justify-center px-6 py-3 bg-brand text-white text-[15px] font-medium rounded-full hover:bg-brand-dark active:bg-gray-700 transition-colors"
         >
           {t('ordersTab.goToLive', { defaultValue: '둘러보기' })}
         </Link>

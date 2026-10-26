@@ -26,7 +26,7 @@ export default function OrderItemsList({ sellerGroups, totalItemCount }: Props) 
       <div className="mt-5 flex flex-col gap-5">
         {Object.values(sellerGroups).map((group) => (
           <div key={group.seller_id} className="border border-line rounded-2xl p-4">
-            <p className="text-[13px] font-semibold text-gray-500 dark:text-gray-400 mb-3">
+            <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400 mb-3">
               {group.seller_name}
             </p>
 
@@ -71,7 +71,7 @@ export default function OrderItemsList({ sellerGroups, totalItemCount }: Props) 
             {!group.no_shipping && (<>
             <div className="mt-3 pt-3 border-t border-line flex justify-between text-[13px]">
               <span className="text-gray-400 dark:text-gray-500">{t('checkout.summary.shippingFee', { defaultValue: '배송비' })}</span>
-              <span className="font-semibold text-gray-900 dark:text-white">
+              <span className="font-medium text-gray-900 dark:text-white">
                 {group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold
                   ? <span className="text-blue-600 font-medium">{t('checkout.summary.free', { defaultValue: '무료' })}</span>
                   : `${formatNumber(group.shipping_fee)}${t('checkout.summary.wonSuffix', { defaultValue: '원' })}`}

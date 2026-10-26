@@ -50,12 +50,19 @@ export async function handleIndexNowSubmit(env: Env): Promise<string> {
   // 🧺 일회성 전수 제출 — 근거는 `shared/seo/indexnow.ts` 의 backfill 머리말.
   const mark = await DB.prepare(`SELECT value FROM platform_settings WHERE key = ?`)
     .bind(INDEXNOW_BACKFILL_KEY).first<{ value: string }>().catch(() => null)
+  // 🩸 2026-10-26 — 전수가 실패해도 **변경분은 그대로 보낸다**. 첫 회차(10-25 19:50 UTC)가 429 를 받았는데
+  //    종전엔 여기서 반환해, 전수가 계속 거절되는 동안 **변경분 제출까지 통째로 멎었다**(에러 0 · 하트비트만
+  //    "실패, 표식 유지"). 전수는 다음 날 다시 시도되고, 그 사이 새로 바뀐 상품은 지금처럼 간다.
   if (needsIndexNowBackfill(mark?.value)) {
     const locs = parseSitemapLocs(xml).slice(0, INDEXNOW_SPEC_MAX)
     // 🔴 0건이면 표식을 세우지 않는다 — sitemap 이 깨진 날 "보냈다" 로 기록되면 전수가 영영 안 간다.
-    if (!locs.length) return 'indexnow: 전수 제출 대상 0건(sitemap 이상), 표식 유지'
+    if (!locs.length) {
+      return `indexnow: 전수 제출 대상 0건(sitemap 이상), 표식 유지 · ${await submitChanges(DB, key, entries)}`
+    }
     const ok = await submitUrls(key, locs)
-    if (!ok.ok) return `indexnow: 전수 제출 실패 (${ok.status}) · ${locs.length}건, 표식 유지`
+    if (!ok.ok) {
+      return `indexnow: 전수 제출 실패 (${ok.status}) · ${locs.length}건, 표식 유지 · ${await submitChanges(DB, key, entries)}`
+    }
     await upsertSetting(DB, INDEXNOW_BACKFILL_KEY, INDEXNOW_BACKFILL_VERSION)
     // 전수에 이미 실렸으니 변경분 커서도 지금으로 맞춘다(다음 회차에 같은 URL 을 또 보내지 않게).
     const maxLastmod = entries.reduce((a, e) => (e.lastmod > a ? e.lastmod : a), '')
@@ -63,7 +70,14 @@ export async function handleIndexNowSubmit(env: Env): Promise<string> {
     return `indexnow: 전수 제출 ${locs.length}건 (v${INDEXNOW_BACKFILL_VERSION}) · 커서 ${maxLastmod || '(없음)'}`
   }
 
-  if (!entries.length) return 'indexnow: sitemap 에 lastmod 가 있는 항목이 0건, 보내지 않았다'
+  return `indexnow: ${await submitChanges(DB, key, entries)}`
+}
+
+/** 변경분(lastmod 커서 이후)만 보낸다. 반환은 하트비트에 실릴 한 줄(접두어 없이). */
+async function submitChanges(
+  DB: D1Database, key: string, entries: ReturnType<typeof parseSitemapEntries>,
+): Promise<string> {
+  if (!entries.length) return 'sitemap 에 lastmod 가 있는 항목이 0건, 보내지 않았다'
 
   const cur = await DB.prepare(`SELECT value FROM platform_settings WHERE key = ?`)
     .bind(INDEXNOW_CURSOR_KEY).first<{ value: string }>().catch(() => null)
@@ -72,13 +86,13 @@ export async function handleIndexNowSubmit(env: Env): Promise<string> {
   if (plan.urls.length) {
     const ok = await submitUrls(key, plan.urls)
     // 🔴 실패하면 **커서를 올리지 않는다** — 올리면 그 변경이 영구히 빠진다.
-    if (!ok.ok) return `indexnow: 제출 실패 (${ok.status}) · ${plan.urls.length}건, 커서 유지`
+    if (!ok.ok) return `제출 실패 (${ok.status}) · ${plan.urls.length}건, 커서 유지`
   }
 
   if (plan.cursor && plan.cursor !== (cur?.value || '')) {
     await upsertSetting(DB, INDEXNOW_CURSOR_KEY, plan.cursor)
   }
-  return `indexnow: ${plan.note} · 커서 ${plan.cursor || '(없음)'}`
+  return `${plan.note} · 커서 ${plan.cursor || '(없음)'}`
 }
 
 async function submitUrls(key: string, urls: string[]): Promise<{ ok: boolean; status: string }> {

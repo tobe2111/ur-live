@@ -1,27 +1,20 @@
-// 🛍️ 2026-10-24 이용권 상세 그루폰식 — 옵션 카드가 같은 구매 창을 연다
+// 🛍️ 2026-10-24 이용권 상세 그루폰식 → 2026-10-25 E안 — 구매하기는 하나
+const T = 'src/tests/unit/pass-groupon-2026-10-24.test.ts'
 export default [
   {
-    name: '🛍️ 옵션 카드 구매하기가 결제를 직접 부른다(딜 칸 없는 두 번째 결제 경로)',
+    name: '🛍️ 본문에 두 번째 구매 버튼이 돌아온다',
     file: 'src/pages/GroupBuyDetailPage.tsx',
-    find: 'onOpen={() => setBuyOpen(n => n + 1)}',
-    replace: 'onOpen={() => handleJoin()}',
-    test: 'src/tests/unit/pass-groupon-2026-10-24.test.ts',
-    why: '본문 구매 버튼과 하단 바가 다른 결제 경로를 타면 딜 사용 칸·수량 확인이 한쪽에서 빠진다.',
+    find: "        {/* 🛍️ 2026-10-25 대표 확정 **E안**",
+    replace: "        <button type=\"button\" onClick={() => handleJoin()}>구매하기</button>\n        {/* 🛍️ 2026-10-25 대표 확정 **E안**",
+    test: T,
+    why: '대표 지적 "구매하기 버튼이 2개가 동시에 있어" — 본문 버튼과 하단 바가 같이 서면 어느 것이 주 행동인지 안 읽힌다.',
   },
   {
-    name: '🛍️ 하단 바가 옵션 카드의 열기 요청을 무시한다',
+    name: '🛍️ 하단 바가 구매 창을 안 연다',
     file: 'src/pages/group-buy/DealBottomBar.tsx',
-    find: 'if (openRequest > 0 && isJoinable && !isPrelaunch && !isOwner) setOpen(true)',
-    replace: 'if (false) setOpen(true)',
-    test: 'src/tests/unit/pass-groupon-2026-10-24.test.ts',
-    why: '본문 구매 버튼과 하단 바가 다른 결제 경로를 타면 딜 사용 칸·수량 확인이 한쪽에서 빠진다.',
-  },
-  {
-    name: '🛍️ 주인에게도 옵션 카드가 뜬다',
-    file: 'src/pages/GroupBuyDetailPage.tsx',
-    find: '{!isOwnProduct && !isPrelaunch && <PassOptionCard ',
-    replace: '{!isPrelaunch && <PassOptionCard ',
-    test: 'src/tests/unit/pass-groupon-2026-10-24.test.ts',
-    why: '본문 구매 버튼과 하단 바가 다른 결제 경로를 타면 딜 사용 칸·수량 확인이 한쪽에서 빠진다.',
+    find: 'setOpen(true)',
+    replace: 'setOpen(false)',
+    test: T,
+    why: '모바일에서 수량을 고를 자리가 사라진다(옵션 카드를 걷었으므로 창이 유일한 자리다).',
   },
 ]

@@ -101,7 +101,7 @@ export default function FlashDealsHero() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-[15px]">🔥</span>
-                <span className="text-[12px] lg:text-[13px] font-extrabold text-white/90 tracking-[0.12em]">FLASH DEALS</span>
+                <span className="text-[12px] lg:text-[13px] font-medium text-white/90 tracking-[0.12em]">FLASH DEALS</span>
                 <span className="text-[12px] text-white/60 ml-1 hidden lg:inline">· 매일 자정·정오 갱신</span>
               </div>
               <p className="text-[12px] text-white/60 lg:hidden">· 매일 자정·정오 갱신</p>
@@ -109,12 +109,12 @@ export default function FlashDealsHero() {
               {/* 카운트다운 */}
               <div className="flex items-baseline gap-1 mt-2 mb-3">
                 <span
-                  className="font-black text-white tabular-nums"
+                  className="font-bold text-white tabular-nums"
                   style={{ fontSize: 'clamp(32px, 5vw, 44px)', letterSpacing: '-0.04em', lineHeight: 1.1 }}
                 >
                   {pad(h)}:{pad(m)}:{pad(s)}
                 </span>
-                <span className="text-[12px] lg:text-[12px] text-white/70 font-semibold ml-1">
+                <span className="text-[12px] lg:text-[12px] text-white/70 font-medium ml-1">
                   {isNoonTarget ? '정오까지' : '자정까지'}
                 </span>
               </div>
@@ -122,23 +122,23 @@ export default function FlashDealsHero() {
 
             {/* 통계 */}
             <div className="space-y-2">
-              <p className="text-[12px] lg:text-[12px] text-white/90 font-semibold">
+              <p className="text-[12px] lg:text-[12px] text-white/90 font-medium">
                 진행 중 타임딜{' '}
-                <span className="text-white font-extrabold text-[13px] lg:text-[15px]">{data.count}개</span>
+                <span className="text-white font-medium text-[13px] lg:text-[15px]">{data.count}개</span>
               </p>
               {data.avg_discount_rate > 0 && (
-                <p className="text-[12px] lg:text-[12px] text-white/90 font-semibold">
+                <p className="text-[12px] lg:text-[12px] text-white/90 font-medium">
                   평균 할인율{' '}
-                  <span className="text-white font-extrabold text-[13px] lg:text-[15px]">{data.avg_discount_rate}%</span>
+                  <span className="text-white font-medium text-[13px] lg:text-[15px]">{data.avg_discount_rate}%</span>
                 </p>
               )}
 
               {/* 강조 배지 */}
               <div className="flex flex-wrap gap-2 mt-2">
-                <span className="bg-white/20 backdrop-blur-sm text-white text-[12px] font-bold px-2 py-1 rounded-full">
+                <span className="bg-white/20 backdrop-blur-sm text-white text-[12px] font-medium px-2 py-1 rounded-full">
                   ⚡ 한정수량
                 </span>
-                <span className="bg-white/20 backdrop-blur-sm text-white text-[12px] font-bold px-2 py-1 rounded-full">
+                <span className="bg-white/20 backdrop-blur-sm text-white text-[12px] font-medium px-2 py-1 rounded-full">
                   🎯 특가딜
                 </span>
               </div>

@@ -66,7 +66,8 @@ describe('교환권 탭 상단', () => {
     // 모바일 브랜드 줄(바깥 `pt-2 pb-3` 블록)이 로고를 그린다 — PC 사이드바에도 같은 map 이 있어
     //   파일 어디서나 찾으면 모바일 줄을 지워도 통과한다(주입이 실제로 그걸 잡았다). 블록 안에서만 본다.
     const CODE = readCode('src/pages/VouchersPage.tsx')
-    const at = CODE.indexOf('className="ur-content-wide px-4 lg:px-8 pt-2 pb-3"')
+    // 2026-10-25 D안: 옆 여백 16 → 20px(px-4 → px-5) — 불변식 그대로, 앵커만.
+    const at = CODE.indexOf('className="ur-content-wide px-5 lg:px-8 pt-2 pb-3"')
     expect(at, '모바일 브랜드 줄 블록').toBeGreaterThan(-1)
     expect(CODE.slice(at, at + 1200)).toMatch(/\{orderedBrands\.map\(/)
   })

@@ -30,8 +30,8 @@ export default [
   {
     name: '🧾 정산 — 제목을 옛 이름으로',
     file: 'src/pages/InfluencerSettlementPage.tsx',
-    find: '<h1 className="text-[15px] font-semibold text-gray-900 dark:text-white">매장 소개 정산</h1>',
-    replace: '<h1 className="text-[15px] font-semibold text-gray-900 dark:text-white">인플루언서 정산</h1>',
+    find: '<h1 className="text-[15px] font-medium text-gray-900 dark:text-white">매장 소개 정산</h1>',
+    replace: '<h1 className="text-[15px] font-medium text-gray-900 dark:text-white">인플루언서 정산</h1>',
     test: T,
     why: '쓰지 않기로 한 이름이 화면 제목에 박힌다.',
   },

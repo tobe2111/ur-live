@@ -43,9 +43,12 @@ describe('② 치수를 정하는 클래스가 진짜 블록과 같다', () => {
     // 진짜 블록(VouchersPage)과 예약(TopChromeReserve)이 같은 토큰을 쓴다.
     // 🔀 2026-09-30: 잠금표 이행으로 공통 토큰이 4px 격자로 옮겨졌다(`py-2.5`→`py-2` · `pr-3.5`→`pr-4`).
     //    불변식은 그대로 — **두 파일이 같은 토큰을 쓴다**. 값만 현재 것으로.
-    for (const cls of ['ur-content-wide px-4 lg:px-8 py-2', 'h-9 pl-3 pr-4', 'text-[13px] font-bold']) {
-      expect(PAGE, `real chip: ${cls}`).toContain(cls)
-      expect(RESERVE, `reserve chip: ${cls}`).toContain(cls)
+    // 🏋️ 2026-10-25: 굵기 체계(13px 은 medium)로 칩 굵기도 옮겨졌다 — 불변식 그대로, 값만.
+    // 🗂️ 2026-10-25 D안: 알약 칩 → 밑줄 탭. 이제 두 파일이 토큰을 손으로 적지 않고 **같은 상수**를 쓴다 —
+    //    불변식(같은 치수)이 글자 대조에서 import 대조로 강해졌다.
+    for (const k of ['VOUCHER_CAT_TAB.wrap', 'VOUCHER_CAT_TAB.row', 'VOUCHER_CAT_TAB.tab', 'VOUCHER_CAT_TAB.on']) {
+      expect(PAGE, `real chip: ${k}`).toContain(k)
+      expect(RESERVE, `reserve chip: ${k}`).toContain(k)
     }
   })
 
@@ -53,7 +56,7 @@ describe('② 치수를 정하는 클래스가 진짜 블록과 같다', () => {
   it('브랜드 줄: 바깥 패딩 · 로고 줄 (헤더 줄 없음)', () => {
     expect(RESERVE, '헤더 줄이 예약에 남지 않는다').not.toMatch(/브랜드로 찾기|justify-between mb-2/)
     for (const cls of [
-      'ur-content-wide px-4 lg:px-8 pt-2 pb-3',   // 바깥 패딩 (2026-09-30: pt-1.5 → pt-2, 4px 격자)
+      'ur-content-wide px-5 lg:px-8 pt-2 pb-3',   // 바깥 패딩 (2026-09-30: pt-1.5 → pt-2 · 2026-10-25 D안: px-4 → px-5)
       'flex gap-2 overflow-x-auto scrollbar-hide py-1 -mx-1 px-1',   // 로고 줄 (gap-2.5 → gap-2)
     ]) {
       expect(PAGE, `real brand: ${cls}`).toContain(cls)

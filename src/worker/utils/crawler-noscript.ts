@@ -45,16 +45,14 @@ import { voucherFacetLinks } from '../../shared/seo/voucher-facet'
 import { CONSUMER_SURFACE_SEO } from '../../shared/seo/consumer-surfaces'
 import { REGION_HUB_CRUMB } from './surface-list-jsonld'
 import { buildUrshortsNoscript } from './urshorts-noscript'
-import { surfaceCopyFor } from '../../shared/seo/surface-copy'
+import { surfaceCopyFor, lifeChildLinks } from '../../shared/seo/surface-copy'; import { lifeFaqFor } from '../../shared/life-seo'
 import { CONSUMER_TERMS } from '../../pages/terms/consumer-terms-content'
 import { SELLER_TERMS } from '../../pages/terms/seller-terms-content'
 import type { TermsDoc } from '../../pages/terms/terms-types'
 // 🧾 행·글자 조립은 `crawler-noscript-rows.ts` 로 추출됐다(2026-10-14, 685줄 → 래칫 600 초과).
 //    `esc` 는 밖에서도 쓰므로(`urshorts-noscript.ts`) 여기서 다시 export 한다.
 import {
-  esc, won, lines, wrap,
-  capRowImages, liOf, rowHref, rowLine, parseSeed, regionSeedRows, sizedCdnCgi,
-  type RegionSeedRow, type Row,
+  esc, won, lines, wrap, capRowImages, liOf, rowHref, rowLine, parseSeed, regionSeedRows, sizedCdnCgi, type RegionSeedRow, type Row,
 } from './crawler-noscript-rows'
 export { esc }
 export type { RegionSeedRow, Row }
@@ -506,7 +504,8 @@ export function buildStaticSurfaceNoscript(pathname: string, ssrPayload?: string
     // `/region` 허브는 `CONSUMER_SURFACE_SEO` 에 항목이 없다(동적 경로라 `resolveRegionSeo` 가 맡는다)
     // — 빵부스러기가 쓰는 같은 상수에서 받는다(손으로 적으면 둘이 갈린다).
     const h1 = h1Of(path === '/region' ? REGION_HUB_CRUMB : CONSUMER_SURFACE_SEO[path]?.crumb)
-    return lines || kids ? `<noscript>${h1}${lines}${kids}</noscript>` : ''
+    const faq = lifeFaqFor(path).map(f => `<dt>${esc(f.question)}</dt><dd>${esc(f.answer)}</dd>`).join(''), faqDl = faq ? `<dl>${faq}</dl>` : '' // 🏠 생활 허브 FAQ(화면·FAQPage 와 한 벌)
+    return lines || kids ? `<noscript>${h1}${lines}${faqDl}${kids}</noscript>` : ''
   }
 
   // 🗺️ 지역 착지 페이지 — "동네 맛집 할인권" 질의의 착지점인데 라이브 본문이 **26자**였다
@@ -583,7 +582,7 @@ export function voucherFacetNoscript(path: string): string {
  * 빠뜨린다(이 레포가 반복해 밟은 클래스). 링크가 없으면 `''` 라 종전 출력과 byte-동일이다.
  */
 function childLinksHtml(path: string, digestJson?: string | null): string {
-  const kids = regionChildLinks(path, digestJson)
+  const kids = [...regionChildLinks(path, digestJson), ...lifeChildLinks(path)] // 🏠 생활 허브·업종 링크(2026-10-25)
   if (!kids.length) return ''
   return `<ul>${kids.map(k => `<li><a href="${esc(k.href)}">${esc(k.label)}</a></li>`).join('')}</ul>`
 }

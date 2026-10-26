@@ -148,7 +148,7 @@ export default function OptionSelectModal({
             <div className="space-y-6">
               {Object.entries(optionsByType).map(([type, optionsForType]) => (
                 <div key={type}>
-                  <h4 className="text-[12px] font-bold text-gray-900 dark:text-white mb-3">
+                  <h4 className="text-[12px] font-medium text-gray-900 dark:text-white mb-3">
                     {type}
                   </h4>
                   <div className="grid grid-cols-3 gap-2">
@@ -185,7 +185,7 @@ export default function OptionSelectModal({
                           {isCurrent && !isSelected && (
                             <div className="absolute top-1.5 right-1.5">
                               <div className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-500">
-                                <span className="text-[12px] text-white font-bold">{t('product.optionCurrent', { defaultValue: '현재' })}</span>
+                                <span className="text-[12px] text-white font-medium">{t('product.optionCurrent', { defaultValue: '현재' })}</span>
                               </div>
                             </div>
                           )}

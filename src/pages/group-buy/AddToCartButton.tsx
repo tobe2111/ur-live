@@ -59,7 +59,7 @@ export default function AddToCartButton({ productId, qty, show }: { productId: n
       disabled={busy}
       style={{
         width: '100%', height: 40, marginTop: 6, border: 'none', background: 'transparent',
-        color: 'var(--gbd-ink2)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
+        color: 'var(--gbd-ink2)', fontSize: 13, fontWeight: 500, cursor: 'pointer',
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: busy ? 0.5 : 1,
       }}
     >

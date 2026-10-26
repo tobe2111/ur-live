@@ -59,6 +59,11 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
 
       // 🎟️ 2026-07-03 [부정사용 방어] 무인증 소각 갭 — 상품 PIN 이 없으면 제출 pin 이 무시돼
       //   코드만 알면 누구나 소각됐다. 판정은 voucher-redeem-guard 로 분리(SSOT + 파일크기 룰).
+      // 🏡 2026-10-25 숙소=이용권 통일 — 숙소 이용권은 확인코드·PIN 셀프 사용 대상이 아니다(직원 스캔만).
+      {
+        const { stayLinkForVoucher, STAY_VOUCHER_SELF_USE_BLOCKED } = await import('./stay-voucher-unify')
+        if (await stayLinkForVoucher(DB, { code })) return c.json({ success: false, code: 'STAY_SCAN_ONLY', error: STAY_VOUCHER_SELF_USE_BLOCKED }, 403)
+      }
       // 🏷️ 2026-10-18 브랜드 전 지점 사용 — 같은 주인 형제 지점의 확인코드면 그 지점 id(아니면 null → 종전 그대로).
       const brandBranch = await findBrandBranchForVoucherCode(DB, code, pin, { allowScanOnly: true })
       const guard = brandBranch ? null : await checkStoreCodeRequired(DB, code, pin)
@@ -434,6 +439,12 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
           return c.json({ success: false, error: `이미 ${label}된 교환권입니다`, code: 'NOT_CANCELLABLE' }, 400)
         }
 
+        // 🏡 2026-10-25 숙소=이용권 통일 — 숙소 이용권은 날짜별 환불율·달력 풀기가 있는 숙소 취소로만 무른다.
+        {
+          const { stayLinkForVoucher, STAY_VOUCHER_CANCEL_ELSEWHERE } = await import('./stay-voucher-unify')
+          const stay = await stayLinkForVoucher(DB, { id: voucher.id })
+          if (stay) return c.json({ success: false, error: STAY_VOUCHER_CANCEL_ELSEWHERE, code: 'STAY_CANCEL', booking_id: stay.booking_id }, 409)
+        }
         // 🎁 2026-10-11 대표 결정 "받은 뒤엔 환불 막기": 선물로 넘어온 이용권은 셀프로 못 무른다(결제는 보낸 사람 카드).
         if (voucher.gift_from_user_id) {
           return c.json({ success: false, error: GIFTED_REFUND_BLOCKED, code: 'GIFTED' }, 400)
@@ -599,6 +610,10 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
         return c.json({ success: false, error: `이미 ${voucher.status} 상태` }, 400)
       }
       if (await voucherHasPendingGift(DB, { id: voucher.id })) return c.json({ success: false, code: 'GIFT_PENDING', error: GIFT_PENDING_USE_BLOCKED }, 409) // 🎁 선물 중 잠금
+      { // 🏡 숙소 이용권은 부분 사용 개념이 없다 — 스캔(체크인) 또는 숙소 취소로만.
+        const { stayLinkForVoucher, STAY_VOUCHER_CANCEL_ELSEWHERE } = await import('./stay-voucher-unify')
+        if (await stayLinkForVoucher(DB, { id: voucher.id })) return c.json({ success: false, code: 'STAY_CANCEL', error: STAY_VOUCHER_CANCEL_ELSEWHERE }, 409)
+      }
       // 셀러 권한 — 본인 product 만
       if (userAsAny.type === 'seller' && Number(voucher.seller_id) !== Number(userAsAny.id)) {
         return c.json({ success: false, error: '본인 product 의 voucher 만 처리 가능' }, 403)

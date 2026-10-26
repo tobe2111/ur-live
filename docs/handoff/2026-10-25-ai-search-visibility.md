@@ -25,3 +25,11 @@
 - #1977 홈 크롤러 푸터 — E4 통과: Yeti 홈 `<noscript><footer>` 실재, a태그 5 → 24.
 - #1980 허브 noimageindex — E4 통과: `/`·`/region/서울`·`/stays` 1개, `/pass/2919` 0개.
 - #1983 marketing-data orphan 수정 머지.
+
+## 2026-10-26 04:50 KST 회차 — E4 실패 (429) + 후속 수리
+
+- 하트비트: `indexnow: 전수 제출 실패 (429) · 495건, 표식 유지` (19:50:29 UTC, 2.9초). 표식이 안 섰으니 **다음 날 같은 슬롯에 전수가 다시 시도된다**.
+- 429 는 IndexNow 의 "요청 과다(스팸 의심)"다. 공개 자료상 **보내는 IP 기준** 레이트리밋이고, Cloudflare Workers 는 수많은 사이트가 같은 송신 IP 를 나눠 쓴다 — 우리 코드가 아니라 공유 IP 평판일 가능성이 크다(확정 아님).
+- 🩸 **드러난 결함**: 전수가 실패하면 그 자리에서 반환해 **변경분 제출까지 멎었다**(에러 0). 수리: 전수 실패·0건 분기에서도 `submitChanges()` 를 부른다. 시험 ⑥ + 주입 1건.
+- robots.txt: `Content-Signal: search=yes, ai-input=yes, ai-train=no` 서빙 확인 · `User-agent: Google-Extended` 실행줄 0건(주석만) — Cloudflare 관리형 블록 해제 유지.
+- **다음 첫 액션**: 10-27 04:50 KST 회차 하트비트. 또 429 면 전수를 하루 100건씩 나눠 보내는 쪽(커서 offset)을 검토 — 같은 IP 라 효과는 보장 못 한다.

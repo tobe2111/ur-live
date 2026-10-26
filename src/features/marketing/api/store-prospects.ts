@@ -11,6 +11,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { runDdlOnce } from './ads-schema-guard'
+import { NOT_EXPORTED_SQL } from './pool-export-batch'
 
 /**
  * 인허가 업종 ↔ REST 엔드포인트 슬러그(SSOT). 지방행정 인허가는 **업종별 개별 엔드포인트**다(단일 아님):
@@ -264,6 +265,8 @@ export async function saveProspects(DB: D1Database, rows: StoreProspect[], today
 export interface ProspectFilter {
   category?: string; region?: string; status?: string; newOpenOnly?: boolean; includeClosed?: boolean
   hasPhone?: boolean; hasEmail?: boolean; q?: string; limit?: number; offset?: number
+  /** 📥 아직 내보내지 않은 행만. 근거·설계: `pool-export-batch.ts` 머리말. */
+  notExported?: boolean
 }
 /** WHERE 빌더 — 목록/카운트 공용(페이지네이션 총건수 정합). */
 function buildProspectWhere(filter: ProspectFilter): { sql: string; binds: (string | number)[] } {
@@ -275,6 +278,7 @@ function buildProspectWhere(filter: ProspectFilter): { sql: string; binds: (stri
   if (filter.status && PROSPECT_STATUSES.includes(filter.status)) { where.push('status = ?'); binds.push(filter.status) }
   if (filter.hasPhone) where.push("(phone IS NOT NULL AND phone != '')")
   if (filter.hasEmail) where.push("(email IS NOT NULL AND email != '')")
+  if (filter.notExported) where.push(NOT_EXPORTED_SQL) // 📥 미다운로드만 — 조건은 세 풀 공용 SSOT
   // 🔎 검색 — 상호/지역/전화 + **이메일·도로명주소**(2026-07-27). 여러 단어는 AND(모두 포함).
   if (filter.q) {
     for (const tok of filter.q.toLowerCase().split(/\s+/).filter(Boolean).slice(0, 5)) {

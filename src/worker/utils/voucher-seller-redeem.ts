@@ -19,6 +19,7 @@
 import { GIFT_PENDING_USE_BLOCKED, noPendingGiftSql, voucherHasPendingGift } from './voucher-gift'
 import { canStoreRedeemProduct } from './brand-wide-redeem'
 import { recordVoucherRedeemStore, settlementMerchantFor } from './brand-cross-owner'
+import { markStayBookingUsed, stayLinkForVoucher, stayRedeemBlock, type StayVoucherLink } from '../../features/group-buy/api/stay-voucher-unify'
 
 export const SELLER_REDEEM_CODE_RE = /^[A-Za-z0-9-]{4,64}$/
 
@@ -36,7 +37,7 @@ export interface StoreRedeemVoucher {
 }
 
 export type StoreRedeemCheck =
-  | { ok: true; voucher: StoreRedeemVoucher }
+  | { ok: true; voucher: StoreRedeemVoucher; stay?: StayVoucherLink | null }
   | { ok: false; status: 400 | 403 | 404 | 409; error: string }
 
 export type VoucherVisitPath = 'seller_scan' | 'kakao_bot'
@@ -50,6 +51,7 @@ export async function checkVoucherForStore(
   DB: D1Database,
   code: string,
   actorSellerId: number | null,
+  opts: { stayAfterManual?: boolean } = {},
 ): Promise<StoreRedeemCheck> {
   if (!code || !SELLER_REDEEM_CODE_RE.test(code)) {
     return { ok: false, status: 400, error: '잘못된 바우처 코드' }
@@ -82,7 +84,13 @@ export async function checkVoucherForStore(
   if (voucher.status === 'refunded') return { ok: false, status: 400, error: '환불된 바우처입니다' }
   // 🎁 2026-10-12 선물 중(받기 전)인 이용권은 사장님 스캔으로도 쓸 수 없다 — 보낸 사람이 회수해야 풀린다.
   if (await voucherHasPendingGift(DB, { id: voucher.id })) return { ok: false, status: 409, error: GIFT_PENDING_USE_BLOCKED }
-  return { ok: true, voucher }
+  // 🏡 2026-10-25 숙소=이용권 통일 — 숙소 예약에 묶인 이용권은 예약 상태·체크인 날짜를 함께 본다.
+  const stay = await stayLinkForVoucher(DB, { id: voucher.id })
+  if (stay) {
+    const block = stayRedeemBlock(stay, { afterManual: opts.stayAfterManual })
+    if (block) return { ok: false, status: 409, error: block }
+  }
+  return { ok: true, voucher, stay }
 }
 
 /**
@@ -96,9 +104,11 @@ export async function redeemVoucherForStore(
     actorSellerId: number | null
     path: VoucherVisitPath
     waitUntil: (p: Promise<unknown>) => void
+    /** 사장님이 숙소 관리 화면에서 체크인을 누른 뒤 묶인 이용권을 정리할 때(예약은 이미 옮겨졌다). */
+    stayAfterManual?: boolean
   },
 ): Promise<StoreRedeemCheck> {
-  const checked = await checkVoucherForStore(DB, opts.code, opts.actorSellerId)
+  const checked = await checkVoucherForStore(DB, opts.code, opts.actorSellerId, { stayAfterManual: opts.stayAfterManual })
   if (!checked.ok) return checked
   const voucher = checked.voucher
 
@@ -107,6 +117,9 @@ export async function redeemVoucherForStore(
     `UPDATE vouchers SET status = 'used', used_at = datetime('now') WHERE id = ? AND status = 'unused' AND ${noPendingGiftSql('vouchers.id')}`,
   ).bind(voucher.id).run()
   if (!result.meta?.changes) return { ok: false, status: 409, error: '동시성 충돌 — 다시 시도해주세요' }
+
+  // 🏡 숙소 이용권이면 예약을 체크인으로(이미 옮겨졌으면 CAS no-op). 원장은 아래 공통 블록이 남긴다.
+  if (checked.stay) await markStayBookingUsed(DB, checked.stay, opts.actorSellerId)
 
   // 🏷️ 2026-10-18 3단계 — 어느 지점이 받았는지 적는다(판 지점이면 옛 기록을 지운다). 원장보다 **먼저** 끝나야
   //   아래 원장이 그 기록을 읽는다 — 그래서 waitUntil 이 아니라 await 다. 실패는 삼킨다(정산은 판 지점 그대로).

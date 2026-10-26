@@ -61,7 +61,7 @@ export default function ReviewCard({ r }: { r: ReviewItem }) {
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[15px] font-bold text-gray-900 dark:text-white">{r.user_name || '익명'}</span>
             {!!r.is_sponsored && (
-              <span className="px-2 py-1 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[12px] font-bold border border-amber-200 dark:border-amber-500/30">
+              <span className="px-2 py-1 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[12px] font-medium border border-amber-200 dark:border-amber-500/30">
                 {t('reviews.sponsoredBadge', { defaultValue: '체험 제공' })}
               </span>
             )}
@@ -94,7 +94,7 @@ export default function ReviewCard({ r }: { r: ReviewItem }) {
 
           {r.seller_reply && (
             <div className="mt-2 rounded-lg bg-gray-50 dark:bg-[#1D1F29] p-2">
-              <p className="text-[12px] font-bold text-blue-600 dark:text-blue-400 mb-1">
+              <p className="text-[12px] font-medium text-blue-600 dark:text-blue-400 mb-1">
                 {t('reviews.sellerReplyLabel', { defaultValue: '매장 답글' })}
                 {r.seller_reply_at && (
                   <span className="ml-2 font-normal text-gray-400 dark:text-gray-500">{formatKSTDate(r.seller_reply_at)}</span>

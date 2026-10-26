@@ -81,10 +81,10 @@ export default function EarningsPanel({ stats, info, onWithdraw }: {
       {info && (
         <div className="bg-brand text-white px-4 py-4 flex items-center justify-between gap-3">
           <span className="min-w-0">
-            <span className="block text-[12px] font-semibold opacity-80">
+            <span className="block text-[12px] font-medium opacity-80">
               {isCash ? '지금 받을 수 있는 돈' : '내 딜 잔액'}
             </span>
-            <span className="block text-[28px] leading-none font-black tracking-[-0.04em] tabular-nums mt-1">
+            <span className="block text-[28px] leading-none font-extrabold tracking-[-0.04em] tabular-nums mt-1">
               {isCash ? formatWon(info.available) : `${formatNumber(info.deal_balance)}딜`}
             </span>
           </span>
@@ -93,12 +93,12 @@ export default function EarningsPanel({ stats, info, onWithdraw }: {
               type="button"
               onClick={onWithdraw}
               disabled={belowMin}
-              className="shrink-0 px-4 py-2 rounded-xl bg-white/20 text-white text-[13px] font-extrabold disabled:opacity-50"
+              className="shrink-0 px-4 py-2 rounded-xl bg-white/20 text-white text-[13px] font-medium disabled:opacity-50"
             >
               {belowMin ? `${formatWon(info.min_withdrawal)}부터` : '출금'}
             </button>
           ) : (
-            <Link to="/browse" className="shrink-0 px-4 py-2 rounded-xl bg-white/20 text-white text-[13px] font-extrabold">
+            <Link to="/browse" className="shrink-0 px-4 py-2 rounded-xl bg-white/20 text-white text-[13px] font-medium">
               쓰러 가기
             </Link>
           )}
@@ -108,12 +108,12 @@ export default function EarningsPanel({ stats, info, onWithdraw }: {
       {/* ── 본문: 이번 달 + 30일 추이 ── */}
       <div className="bg-surface px-4 pt-4 pb-4">
         <div className="flex items-baseline gap-2 mb-3">
-          <span className="text-[24px] font-black tracking-[-0.03em] tabular-nums text-gray-900 dark:text-white">
+          <span className="text-[24px] font-bold tracking-[-0.03em] tabular-nums text-gray-900 dark:text-white">
             {formatWon(stats.month_earnings)}
           </span>
           <span className="text-[12px] text-gray-500 dark:text-gray-400">30일 적립</span>
           {delta && (
-            <span className="ml-auto text-[12px] font-bold text-gray-500 dark:text-gray-400">
+            <span className="ml-auto text-[12px] font-medium text-gray-500 dark:text-gray-400">
               최근 2주 <b className={delta.pct >= 0 ? 'text-brand-text' : 'text-sale'}>{delta.pct >= 0 ? '+' : ''}{delta.pct}%</b>
             </span>
           )}

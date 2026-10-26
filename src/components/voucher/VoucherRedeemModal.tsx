@@ -132,7 +132,7 @@ export default function VoucherRedeemModal({
       >
         {phase === 'confirm' && scanOnly && (
           <>
-            <p className="text-[17px] font-extrabold text-gray-900 dark:text-white">직원에게 QR 화면을 보여주세요</p>
+            <p className="text-[17px] font-bold text-gray-900 dark:text-white">직원에게 QR 화면을 보여주세요</p>
             <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-2">
               <b className="text-gray-900 dark:text-white">{store}</b> 은(는) 직원이 QR 을 스캔해 사용 처리하는 매장이에요.
             </p>
@@ -142,7 +142,7 @@ export default function VoucherRedeemModal({
 
         {phase === 'confirm' && !scanOnly && (
           <>
-            <p className="text-[17px] font-extrabold text-gray-900 dark:text-white">이 이용권을 사용할까요?</p>
+            <p className="text-[17px] font-bold text-gray-900 dark:text-white">이 이용권을 사용할까요?</p>
             <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-2">
               <b className="text-gray-900 dark:text-white">{store}</b> 에서 지금 사용합니다.<br />
               {needCode
@@ -156,7 +156,7 @@ export default function VoucherRedeemModal({
                 inputMode="numeric"
                 maxLength={6}
                 placeholder="매장 확인코드"
-                className="mt-4 w-full text-center tracking-[0.5em] text-[24px] font-black py-3 rounded-2xl border-2 border-gray-300 dark:border-[#2C2F35] bg-surface text-gray-900 dark:text-white"
+                className="mt-4 w-full text-center tracking-[0.5em] text-[24px] font-bold py-3 rounded-2xl border-2 border-gray-300 dark:border-[#2C2F35] bg-surface text-gray-900 dark:text-white"
                 autoFocus
               />
             )}
@@ -182,9 +182,9 @@ export default function VoucherRedeemModal({
             <div className="mx-auto w-fit animate-bounce-in">
               <Udal mood="done" size={112} motion priority />
             </div>
-            <p className="text-[24px] font-black text-gray-900 dark:text-white mt-4">사용 완료</p>
+            <p className="text-[24px] font-bold text-gray-900 dark:text-white mt-4">사용 완료</p>
             <p className="text-[15px] font-bold text-gray-700 dark:text-gray-200 mt-1">{store}</p>
-            <p className="text-[28px] font-black text-gray-900 dark:text-white tabular-nums mt-2 tracking-tight">{clock}</p>
+            <p className="text-[28px] font-extrabold text-gray-900 dark:text-white tabular-nums mt-2 tracking-tight">{clock}</p>
             <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-1">직원에게 이 화면을 보여주세요</p>
 
             {cancelLeft > 0 ? (

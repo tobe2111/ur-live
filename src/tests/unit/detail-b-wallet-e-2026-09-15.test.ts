@@ -80,13 +80,13 @@ describe('상세 안 B — 같은 할인을 세 번 말하지 않는다', () => 
   //   할인율은 `--sale` · 정가는 취소선.
   // 🔁 2026-10-24 (대표 승인 "그루폰식"): 가격 줄이 머리에서 '옵션 선택' 카드(`PassOptionCard`)로 옮겨갔다.
   //   지키는 것은 그대로 — 판매가가 가장 크다 · 할인율은 --sale · 정가는 취소선.
+  // 🔁 2026-10-25 (대표 확정 D안 "이용권 상세는 D"): 큰 가격이 다시 머리(`PassHeadCard`)로 — 정가 취소선 위,
+  //   그 아래 [할인율 · 판매가]. 옵션 카드엔 작은 옵션 값만 남는다. 지키는 것은 그대로.
   const priceBlock = () => {
-    const src = readCode('src/pages/group-buy/PassOptionCard.tsx')
-    const at = src.indexOf('formatNumber(unitPrice)')
-    expect(at, '머리 카드 가격 앵커가 낡았다').toBeGreaterThan(0)
-    const start = src.lastIndexOf('<div className="flex items-baseline', at)
+    const src = readCode('src/pages/group-buy/PassHeadCard.tsx')
+    const start = src.indexOf('{unitPrice != null && unitPrice > 0 && (')
     expect(start, '가격 줄 시작 앵커가 낡았다').toBeGreaterThan(0)
-    return src.slice(start, src.indexOf('</div>', at))
+    return src.slice(start, src.indexOf('\n      )}', start))
   }
   const sizeOf = (block: string, needle: string) => {
     const line = block.split('\n').find((l) => l.includes(needle))

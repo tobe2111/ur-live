@@ -41,7 +41,7 @@ export default function TermsDocument({ doc, url }: { doc: TermsDoc; url: string
           {doc.sections.map((s, i) => (
             <section key={i} className={i > 0 ? 'border-t border-gray-100 dark:border-[#2C2F35] pt-6 mt-6' : ''}>
               {s.chapter && (
-                <p className="text-[12px] font-bold tracking-wide text-gray-400 dark:text-gray-500 mb-3">{s.chapter}</p>
+                <p className="text-[12px] font-medium tracking-wide text-gray-400 dark:text-gray-500 mb-3">{s.chapter}</p>
               )}
               <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">{s.title}</h2>
               {s.paras?.map((p, j) => (

@@ -149,7 +149,7 @@ export default function ReferralPage() {
             <button onClick={() => navigate(-1)} aria-label={t('groupbuy.backAria', { defaultValue: '뒤로' })} className="w-9 h-9 flex items-center justify-center">
               <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
             </button>
-            <h1 className="text-[17px] font-extrabold text-gray-900 dark:text-white">{t('groupbuy.communityTitle', { defaultValue: '맛집 공구' })}</h1>
+            <h1 className="text-[17px] font-bold text-gray-900 dark:text-white">{t('groupbuy.communityTitle', { defaultValue: '맛집 공구' })}</h1>
             <div className="w-9" />
           </div>
         </div>
@@ -157,7 +157,7 @@ export default function ReferralPage() {
         <div className="ur-content-narrow px-4 lg:px-8 py-4 space-y-3 pb-32">
           {/* 식당 + 가격 */}
           <section className="bg-surface rounded-2xl p-4 shadow-lift">
-            <p className="text-[17px] font-extrabold text-gray-900 dark:text-white">{community.restaurant_name}</p>
+            <p className="text-[17px] font-bold text-gray-900 dark:text-white">{community.restaurant_name}</p>
             {community.restaurant_address && (
               <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{community.restaurant_address}</p>
             )}
@@ -178,10 +178,10 @@ export default function ReferralPage() {
           {community.description && (
             <section className="bg-surface rounded-2xl p-4 shadow-lift">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-7 h-7 rounded-full bg-brand text-white flex items-center justify-center text-[12px] font-bold">
+                <div className="w-7 h-7 rounded-full bg-brand text-white flex items-center justify-center text-[12px] font-medium">
                   {community.creator_name?.slice(0, 1) || '제'}
                 </div>
-                <p className="text-[13px] font-bold text-gray-900 dark:text-white">
+                <p className="text-[13px] font-medium text-gray-900 dark:text-white">
                   {t('groupbuy.proposerIntro', { name: community.creator_name || '제안자', defaultValue: `${community.creator_name || '제안자'}님의 공구 소개` })}
                 </p>
               </div>
@@ -268,7 +268,7 @@ export default function ReferralPage() {
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="w-9 h-9 flex items-center justify-center">
             <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
           </button>
-          <h1 className="text-[17px] font-extrabold text-gray-900 dark:text-white">공동구매</h1>
+          <h1 className="text-[17px] font-bold text-gray-900 dark:text-white">공동구매</h1>
           <div className="w-9" />
         </div>
       </div>
@@ -297,7 +297,7 @@ export default function ReferralPage() {
             </div>
           )}
           <div className="flex items-center gap-2 pb-3 border-b border-gray-100 dark:border-[#2C2F35]">
-            <div className="w-8 h-8 rounded-full bg-gray-900 text-white flex items-center justify-center text-[12px] font-bold">
+            <div className="w-8 h-8 rounded-full bg-gray-900 text-white flex items-center justify-center text-[12px] font-medium">
               {group.creator_name.slice(0, 1)}
             </div>
             <p className="text-[15px] text-gray-900 dark:text-white">
@@ -314,7 +314,7 @@ export default function ReferralPage() {
                 <span>마감된 공동구매입니다</span>
               </div>
             ) : isAchieved ? (
-              <div className="flex items-center justify-center gap-2 text-green-600 text-[15px] font-semibold">
+              <div className="flex items-center justify-center gap-2 text-green-600 text-[15px] font-medium">
                 <OkIcon className="w-4 h-4" />
                 <span>목표 달성! 결제가 가능합니다</span>
               </div>
@@ -349,7 +349,7 @@ export default function ReferralPage() {
               </p>
             )}
             {!group.next_tier && isAchieved && (
-              <p className="text-[15px] text-green-600 mt-2 font-semibold">최대 할인 달성!</p>
+              <p className="text-[15px] text-green-600 mt-2 font-medium">최대 할인 달성!</p>
             )}
           </div>
 
@@ -366,7 +366,7 @@ export default function ReferralPage() {
         <section className="bg-surface rounded-2xl p-4 border border-gray-100 dark:border-[#2C2F35]">
           <div className="flex items-center gap-2 mb-3">
             <PeopleIcon className="w-3.5 h-3.5 text-gray-900 dark:text-white" />
-            <p className="text-[13px] font-bold text-gray-900 dark:text-white">{group.current_count}명 참여 중</p>
+            <p className="text-[13px] font-medium text-gray-900 dark:text-white">{group.current_count}명 참여 중</p>
           </div>
           {/* 아바타 스택 */}
           {group.members.length > 0 && (
@@ -379,7 +379,7 @@ export default function ReferralPage() {
                       width: 28, height: 28, zIndex: 20 - i,
                       background: i === 0 ? '#111827' : colors[i % colors.length],
                       color: i === 0 ? '#fff' : '#111827',
-                      fontSize: 10, fontWeight: 700,
+                      fontSize: 10, fontWeight: 500,
                     }}>
                     {(m.user_name || '?').slice(0, 1)}
                   </div>
@@ -387,7 +387,7 @@ export default function ReferralPage() {
               })}
               {group.members.length > 12 && (
                 <div className="rounded-full flex items-center justify-center ml-1"
-                  style={{ width: 28, height: 28, background: '#F3F4F6', color: '#6B7280', fontSize: 9, fontWeight: 700 }}>
+                  style={{ width: 28, height: 28, background: '#F3F4F6', color: '#6B7280', fontSize: 9, fontWeight: 500 }}>
                   +{group.members.length - 12}
                 </div>
               )}
@@ -398,11 +398,11 @@ export default function ReferralPage() {
             {group.members.slice(0, 3).map((m, i) => (
               <div key={i} className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-full flex items-center justify-center"
-                  style={{ background: '#f3f4f6', color: '#374151', fontSize: 10, fontWeight: 700 }}>
+                  style={{ background: '#f3f4f6', color: '#374151', fontSize: 10, fontWeight: 500 }}>
                   {(m.user_name || '?').slice(0, 1)}
                 </div>
                 <span className="text-[12px] text-gray-900 dark:text-white font-medium">{m.user_name}</span>
-                {i === 0 && <span className="rounded-full px-2 py-1 bg-gray-900 text-white text-[12px] font-bold">방장</span>}
+                {i === 0 && <span className="rounded-full px-2 py-1 bg-gray-900 text-white text-[12px] font-medium">방장</span>}
                 <span className="text-[12px] text-gray-400 dark:text-gray-500 ml-auto">
                   {m.joined_at ? parseUTCDate(m.joined_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', month: 'short', day: 'numeric' }) : ''}
                 </span>
@@ -419,7 +419,7 @@ export default function ReferralPage() {
         <section className="bg-surface rounded-2xl p-4 border border-gray-100 dark:border-[#2C2F35]">
           <div className="flex items-center gap-2 mb-3">
             <span className="text-[15px]">🎁</span>
-            <p className="text-[13px] font-bold text-gray-900 dark:text-white">티어별 할인</p>
+            <p className="text-[13px] font-medium text-gray-900 dark:text-white">티어별 할인</p>
           </div>
           <div className="space-y-2">
             {group.tiers.map((t, i) => {
@@ -430,7 +430,7 @@ export default function ReferralPage() {
                   <span style={{ fontSize: 12, color: reached ? '#374151' : '#6B7280', fontWeight: reached ? 700 : 500 }}>
                     {t.count}명 모이면
                   </span>
-                  <span style={{ fontSize: 12, fontWeight: 800, color: reached ? '#374151' : '#9CA3AF' }}>
+                  <span style={{ fontSize: 12, fontWeight: 500, color: reached ? '#374151' : '#9CA3AF' }}>
                     {t.discount}% 할인{reached ? ' ✓' : ''}
                   </span>
                 </div>
@@ -550,10 +550,10 @@ function TierProgressBar({
               </div>
               {/* 라벨 */}
               <div className="absolute top-7 left-1/2 -translate-x-1/2 whitespace-nowrap text-center">
-                <div className={`text-[12px] font-bold ${reached ? 'text-brand-text' : 'text-gray-500 dark:text-gray-400'}`}>
+                <div className={`text-[12px] font-medium ${reached ? 'text-brand-text' : 'text-gray-500 dark:text-gray-400'}`}>
                   {t.count}명
                 </div>
-                <div className={`text-[12px] font-bold ${reached ? 'text-brand-text' : 'text-gray-400 dark:text-gray-500'}`}>
+                <div className={`text-[12px] font-medium ${reached ? 'text-brand-text' : 'text-gray-400 dark:text-gray-500'}`}>
                   -{t.discount}%
                 </div>
               </div>
@@ -573,7 +573,7 @@ function CountdownTimer({ expiresAt }: { expiresAt: string }) {
 
   return (
     <div className="pt-4 text-center">
-      <p className="text-[12px] text-brand-text font-bold mb-2">⏰ {t('referralPage.timeRemaining')}</p>
+      <p className="text-[12px] text-brand-text font-medium mb-2">⏰ {t('referralPage.timeRemaining')}</p>
       <div className="flex items-center justify-center gap-2">
         {[
           { v: days, l: t('referralPage.unitDays') },
@@ -583,12 +583,12 @@ function CountdownTimer({ expiresAt }: { expiresAt: string }) {
         ].filter((t, i) => i > 0 || t.v > 0).map((t, i, arr) => (
           <span key={t.l} className="contents">
             <div className="rounded-lg px-2 py-2 bg-brand-tint">
-              <span className="text-[17px] font-extrabold text-brand-text" style={{ fontFamily: 'ui-monospace, monospace' }}>
+              <span className="text-[17px] font-bold text-brand-text" style={{ fontFamily: 'ui-monospace, monospace' }}>
                 {String(t.v).padStart(2, '0')}
               </span>
               <span className="text-[12px] block leading-none mt-1 text-brand-text">{t.l}</span>
             </div>
-            {i < arr.length - 1 && <span className="text-[15px] text-gray-300 dark:text-gray-600 font-extrabold">:</span>}
+            {i < arr.length - 1 && <span className="text-[15px] text-gray-300 dark:text-gray-600 font-bold">:</span>}
           </span>
         ))}
       </div>

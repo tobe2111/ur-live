@@ -35,7 +35,7 @@ export default function BrandBranchesLink({ sellerId, productId }: { sellerId?: 
         const label = brandBranchesLabel(data)
         return (
           <div className="mt-3">
-            <Link to={`/brand/${data.slug}`} className="flex items-center justify-between gap-2 py-2 text-[13px] font-semibold" style={{ color: 'var(--gbd-accent)' }}>
+            <Link to={`/brand/${data.slug}`} className="flex items-center justify-between gap-2 py-2 text-[13px] font-medium" style={{ color: 'var(--gbd-accent)' }}>
               <span className="truncate">{label.main}</span>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M9 18l6-6-6-6" /></svg>
             </Link>

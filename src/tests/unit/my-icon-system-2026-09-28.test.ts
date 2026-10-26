@@ -153,11 +153,16 @@ describe('마이 — 헤더 문법은 모바일·PC 가 같다', () => {
     }
   })
 
-  it('👤 둘 다 이메일을 13px 로 쓴다 — 같은 줄이 기기마다 다른 크기면 두 벌이 갈린 것이다', () => {
+  /**
+   * 🔁 **2026-10-25 재조준(대표 확정 위쪽 안 3)** — 이름 아래 줄이 이메일 → `프로필 편집 ›` 이 됐다.
+   *   불변식은 그대로다: *"같은 줄이 기기마다 다른 크기면 두 벌이 갈린 것"* — 이제 그 줄이 편집 라벨이다.
+   */
+  it('👤 둘 다 이름 아래 줄(프로필 편집)을 13px 로 쓴다 — 같은 줄이 기기마다 다른 크기면 두 벌이 갈린 것이다', () => {
     for (const f of [MOBILE, PC]) {
       const src = read(f)
-      const m = src.match(/text-\[(\d+)px\][^>]*>\{localStorage\.getItem\('user_email'\)/)
-      expect(m?.[1], `${f.split('/').pop()}: 이메일 크기를 못 찾았다`).toBe('13')
+      const m = src.match(/text-\[(\d+)px\][^>]*>\{t\('userProfile\.editProfile'/)
+      expect(m?.[1], `${f.split('/').pop()}: 이름 아래 줄 크기를 못 찾았다`).toBe('13')
+      expect(src, `${f.split('/').pop()}: 이메일이 이름 아래로 돌아왔다(그 자리는 편집 라벨이다)`).not.toMatch(/>\{localStorage\.getItem\('user_email'\)/)
     }
   })
 })
