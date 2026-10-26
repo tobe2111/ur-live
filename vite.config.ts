@@ -619,6 +619,8 @@ export default defineConfig({
           // 🏠 2026-10-25 같은 함정: 생활 업종 SSOT(`life-deal-subcat`, import 0 — 타입만)를 홈 피드와 사장님 수정 화면이 함께 써서
           //   묶음기가 홈 봉투에 넣었고, 어드민이 홈 PC 봉투 넷(+23KB)을 끌고 왔다 → 자기 작은 봉투.
           if (id.includes('/src/shared/life-deal-subcat')) return 'app-life-subcat' // 묶음기 보호 목록(LIBRARY_ENVELOPES)에 함께 — 안 그러면 다시 홈 봉투로 간다
+          // 🏠 2026-10-26 같은 함정: 업체 소개 페이지 SEO 헬퍼(`life-biz-seo`)가 규칙 없이 묶음기로 가자 교환권 첫 화면 청크가 25→27 로 쪼개졌다 → 자기 봉투.
+          if (id.includes('/src/shared/life-biz-seo')) return 'app-life-biz'
           if (id.includes('/src/components/seller-layout/')) return 'app-seller-components'
           if (id.includes('/src/components/seller/')) return 'app-seller-components'
           if (id.includes('/src/components/SellerLayout')) return 'app-seller-components'

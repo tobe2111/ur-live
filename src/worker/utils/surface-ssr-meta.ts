@@ -183,6 +183,8 @@ const ENTITY_SLOTS = new Set([
   'DETAIL', 'PRODUCT', 'STAYDETAIL', 'SELLER', 'CURATOR', 'BLOGPOST', 'MALL',
   // 🔗 2026-10-25 생활 요청 공유(`/life/q/:token`) — 없는 토큰은 404 + noindex(추측 주소가 색인되지 않게).
   'LIFESHARE',
+  // 🏠 2026-10-26 생활 업체 소개(`/life/biz/:id`) — 없는·내려간 업체는 404 + noindex.
+  'LIFEBIZ',
   // 🩸 2026-10-14 — **형제 하나가 빠져 있었다.** 2026-10-12 에 `MALL` 을 넣으면서 `MALLPRODUCT`
   //   (`/{슬러그}/p/{id}` — 소개비 귀속 경로)를 놓쳤고, 그 경로가 **아무 슬러그·아무 id** 로
   //   무한 thin URL 이 됐다. 라이브 실측(Googlebot UA):
