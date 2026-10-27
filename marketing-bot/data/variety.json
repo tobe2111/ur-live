@@ -23,5 +23,18 @@
     "hook": "udal",
     "media_set": "onboarding-steps",
     "date_kst": "2026-10-26"
+  },
+  {
+    "platform": "threads",
+    "track": "merchant",
+    "date_kst": "2026-10-27"
+  },
+  {
+    "platform": "instagram",
+    "track": "merchant",
+    "topic": "할인율·수량·유효기간은 사장님이 정한다: 유어딜은 최소 할인율을 요구하지 않음, 첫 방문 메뉴는 크게 마진 좋은 세트는 작게",
+    "hook": "compare",
+    "media_set": "short-owner-recruit",
+    "date_kst": "2026-10-27"
   }
 ]
