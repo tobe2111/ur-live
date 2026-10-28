@@ -36,5 +36,18 @@
     "hook": "compare",
     "media_set": "short-owner-recruit",
     "date_kst": "2026-10-27"
+  },
+  {
+    "platform": "threads",
+    "track": "creator",
+    "date_kst": "2026-10-28"
+  },
+  {
+    "platform": "instagram",
+    "track": "creator",
+    "topic": "시작에 드는 돈 0원: 카카오 로그인 1분이면 내 유어샵이 자동으로 생긴다",
+    "hook": "behind",
+    "media_set": "creator-partners",
+    "date_kst": "2026-10-28"
   }
 ]
