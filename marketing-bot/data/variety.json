@@ -49,5 +49,18 @@
     "hook": "behind",
     "media_set": "creator-partners",
     "date_kst": "2026-10-28"
+  },
+  {
+    "platform": "threads",
+    "track": "merchant",
+    "date_kst": "2026-10-29"
+  },
+  {
+    "platform": "instagram",
+    "track": "merchant",
+    "topic": "솔직한 현황: 유어딜은 아직 초기 서비스라 '몇 명이 온다'를 약속하지 않는다. 대신 안 팔리면 0원이라 잃을 게 없는 구조",
+    "hook": "oneliner",
+    "media_set": "owner-3-changes",
+    "date_kst": "2026-10-29"
   }
 ]
