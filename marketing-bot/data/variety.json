@@ -62,5 +62,18 @@
     "hook": "oneliner",
     "media_set": "owner-3-changes",
     "date_kst": "2026-10-29"
+  },
+  {
+    "platform": "threads",
+    "track": "consumer",
+    "date_kst": "2026-10-30"
+  },
+  {
+    "platform": "instagram",
+    "track": "consumer",
+    "topic": "오늘의 딜 상품을 운영자 입장에서 솔직하게 소개(왜 골랐는지, 어떤 상황에 좋은지)",
+    "hook": "myth",
+    "media_set": "https://urdeal.kr/cdn-cgi/image/width=1200,height=630,quality=85,format=jpeg,onerror=redirect,fit=cover,gravity=auto/https://media.ur-team.com/uploads/seller/26/2026-10/0F9CTfqE1eiqsu6n.jpg",
+    "date_kst": "2026-10-30"
   }
 ]
