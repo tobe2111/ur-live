@@ -2315,8 +2315,8 @@ const MUTATIONS = [
   {
     name: '숙소 시설이 다시 3분할 카드가 된다',
     file: 'src/pages/StayDetailPage.tsx',
-    find: '<AmenityFlow items=',
-    replace: '<div className="grid grid-cols-3 sm:grid-cols-4" /><AmenityFlow items=',
+    find: '<AmenityGrid items=',
+    replace: '<div className="grid grid-cols-3 sm:grid-cols-4" /><AmenityGrid items=',
     test: 'src/tests/unit/detail-page-plainness.test.ts',
     why:
       '"무료 주차" 세 글자마다 테두리 하나를 두르던 3분할 카드. 모든 블록이 같은 무게의 ' +

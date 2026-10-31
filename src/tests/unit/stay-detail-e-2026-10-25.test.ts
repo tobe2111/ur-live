@@ -36,7 +36,7 @@ describe('숙소 E안 — 예약 버튼은 하나', () => {
   })
   it('E안 순서 — 날짜 → 객실 → 시설 → 소개 → 이용 안내 → 위치 → 비슷한 스테이 → 후기', () => {
     const page = readCode(PAGE)
-    const order = ['id="stay-sec-dates"', '<StayRoomPicker', '<SectionTitle>시설</SectionTitle>', '<SectionTitle>숙소 소개</SectionTitle>',
+    const order = ['id="stay-sec-dates"', '<StayRoomPicker', '<SectionTitle>서비스 및 부대시설</SectionTitle>', '<SectionTitle>숙소 소개</SectionTitle>',
       '<StayPolicyInfo', '<RestaurantMiniMap', '<SimilarStays', '<StayReviews'].map((a) => {
       const i = page.indexOf(a); expect(i, `앵커가 없다: ${a}`).toBeGreaterThan(-1); return i
     })

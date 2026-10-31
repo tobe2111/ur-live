@@ -18,7 +18,7 @@ import StayStickyBar from './stay-detail/StayStickyBar'
 import FcfsApplyBlock from '@/features/group-buy/FcfsApplyBlock'
 import { useFcfsDetail } from '@/features/group-buy/useFcfsDetail'
 import GuestIdentityFields, { type GuestIdentity } from './stay-detail/GuestIdentityFields'
-import { SectionTitle, AmenityFlow, InfoBlock, propertyTypeLabel, StayReviews, StayPolicyInfo } from './stay-detail/StayInfoSections'
+import { SectionTitle, InfoBlock, propertyTypeLabel, StayReviews, StayPolicyInfo } from './stay-detail/StayInfoSections'
 import StayRoomPicker from './stay-detail/StayRoomPicker'
 import SimilarStays from './stay-detail/SimilarStays'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
@@ -28,7 +28,7 @@ import DetailTitleHeader from './group-buy/DetailTitleHeader'
 import DetailBreadcrumb, { stayCrumbs } from '@/components/deal/DetailBreadcrumb'
 import DetailFloatingHeader from '@/components/deal/DetailFloatingHeader'
 import StayDateGuestPicker, { type DayPrice } from './stay-detail/StayDateGuestPicker'
-import { amenityMeta } from './stay-detail/amenity-meta'
+import AmenityGrid from './stay-detail/AmenityGrid'; import { parseAmenities } from './stay-detail/amenity-grid'
 import { stayAddressLine, stayRegionLabel } from '@/shared/stay-address'
 // 🏨 첫 화면의 치수 클래스는 워커(`stay-detail-ssr-body`)와 **같은 상수**를 쓴다 — 두 벌이면 갈린다.
 import { STAY_HEAD, STAY_PAGE_ROOT, STAY_GRID, STAY_BAND } from '@/shared/stay-head'
@@ -221,10 +221,8 @@ export default function StayDetailPage() {
   }, [productId, checkIn, checkOut, guests, referrerId, activeMode]) // eslint-disable-line
 
   const nights = Math.max(1, Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000))
-  const amenitiesArr: string[] = (() => {
-    if (!stay?.amenities) return []
-    try { const v = JSON.parse(stay.amenities); return Array.isArray(v) ? v : [] } catch { return [] }
-  })()
+  // 🏨 2026-10-31 공통 시설 + 객실 시설(셀러 폼은 둘을 나눠 저장한다) — 그리드는 둘을 합쳐 판정한다.
+  const amenitiesArr: string[] = [...parseAmenities(stay?.amenities), ...parseAmenities((stay as { room_amenities?: string | null } | null)?.room_amenities)]
 
   // 🖼️ 2026-07-21 (대표 "사진 3~5장"): 딜 상세와 동일 병합 — image_url + images(JSON) 중복제거.
   const galleryImages: string[] = (() => {
@@ -443,16 +441,11 @@ export default function StayDetailPage() {
             onPickDates={() => document.getElementById('stay-sec-dates')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} />
         </div>
 
-        {/* Amenities */}
-        {amenitiesArr.length > 0 && (
-          <div className={`${STAY_BAND} lg:mb-6`}>
-            <SectionTitle>시설</SectionTitle>
-            {/* 🧾 카드 3분할이었다 — "무료 주차" 세 글자에 테두리를 하나씩 쓰던 꼴이라 화면이 시끄러웠다. */}
-            <div className="mt-3">
-              <AmenityFlow items={amenitiesArr.map((a) => ({ key: a, ...amenityMeta(a) }))} />
-            </div>
-          </div>
-        )}
+        {/* 🏨 2026-10-31 서비스 및 부대시설 — 대표 시설 그리드, 없는 칸은 '없음'(대표 여기어때 화면). 시설 정보가 없어도 섹션은 둔다. */}
+        <div className={`${STAY_BAND} lg:mb-6`}>
+          <SectionTitle>서비스 및 부대시설</SectionTitle>
+          <AmenityGrid items={amenitiesArr} />
+        </div>
 
         {/* Description */}
         {stay.description_full && (
