@@ -107,7 +107,8 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
     { loc: '/blog', priority: 0.6, changefreq: 'daily' },
     // 🆕 2026-07-27 모집/소개 표면 — 그간 sitemap 미등재라 **구글이 존재 자체를 몰랐음**(푸터 링크만
     //   있어 사실상 유입 0). 크리에이터 모집은 동의 리드 확보의 유일한 정문이라 우선순위 높게.
-    { loc: '/creators', priority: 0.85, changefreq: 'weekly' },
+    // 📣 2026-10-31: 모집 랜딩이 `/influencer` 로 옮겨갔다(옛 `/creators` 는 301 — 죽은 URL 을 제출하지 않는다).
+    { loc: '/influencer', priority: 0.85, changefreq: 'weekly' },
     { loc: '/creators/apply', priority: 0.8, changefreq: 'weekly' },
     { loc: '/partners', priority: 0.7, changefreq: 'weekly' },
     { loc: '/about', priority: 0.6, changefreq: 'monthly' },
@@ -142,7 +143,6 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
     { loc: '/experience', priority: 0.7, changefreq: 'daily' },    // 무료 체험단 응모 — 검색 유입 강한 키워드
     { loc: '/new-openings', priority: 0.7, changefreq: 'daily' },  // 우리 동네 새로 생긴 가게(공공 데이터)
     { loc: '/area-report', priority: 0.6, changefreq: 'weekly' },  // 상권 리포트 허브(지역별은 아래 동적 블록)
-    { loc: '/influencer', priority: 0.7, changefreq: 'weekly' },   // 소개로 수익 랜딩
     { loc: '/introduce', priority: 0.6, changefreq: 'monthly' },   // 서비스 소개
     { loc: '/faq', priority: 0.6, changefreq: 'weekly' },          // FAQPage JSON-LD 보유 → 리치 결과 후보
     // 🏠 2026-10-25 사장님 생활 서비스 — 허브 + 업종 견적 페이지(요청서). 업종 목록은 SSOT 에서 파생.

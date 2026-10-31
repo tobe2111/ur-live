@@ -50,7 +50,7 @@ export function textToHtml(text: string): string {
 export function welcomeEmail(name: string): { subject: string; body: string } {
   return {
     subject: `[유어딜] ${name}님, 제휴 크리에이터 신청이 접수되었습니다`,
-    body: `안녕하세요, ${name}님.\n유어딜 제휴 담당자입니다.\n\n제휴 크리에이터 신청이 정상 접수되었습니다. 검토 후 남겨주신 연락처로 온보딩 안내를 드리겠습니다(보통 2~3일 내).\n\n그동안 유어딜이 어떤 서비스인지 궁금하시면 https://urdeal.kr/creators 를 참고해주세요.\n\n감사합니다.\n유어딜 드림\n\n${OPT_OUT_LINE}`,
+    body: `안녕하세요, ${name}님.\n유어딜 제휴 담당자입니다.\n\n제휴 크리에이터 신청이 정상 접수되었습니다. 검토 후 남겨주신 연락처로 온보딩 안내를 드리겠습니다(보통 2~3일 내).\n\n그동안 유어딜이 어떤 서비스인지 궁금하시면 https://urdeal.kr/influencer 를 참고해주세요.\n\n감사합니다.\n유어딜 드림\n\n${OPT_OUT_LINE}`,
   }
 }
 
