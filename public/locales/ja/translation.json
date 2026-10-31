@@ -2445,7 +2445,8 @@
       "channelConfirm": "この方式で運営します",
       "channelSaving": "保存中…",
       "channelSaved": "運営方式を保存しました",
-      "channelSaveFailed": "運営方式を保存できませんでした"
+      "channelSaveFailed": "運営方式を保存できませんでした",
+      "seedingSaveFailed": "無料体験の設定を保存できませんでした。店舗のリクエスト画面でもう一度オンにしてください"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",

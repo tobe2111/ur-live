@@ -54,7 +54,7 @@ export const KNOWN_SINGLE_ROUTES: ReadonlySet<string> = new Set([
   'business', 'cart', 'checkout', 'creator', 'creators', 'experience', 'fail', 'faq',
   'following', 'gb-market', 'gdpr', 'group-buy', 'host', 'influencer', 'interest-list', 'introduce',
   'join', 'kakao-debug', 'life', 'login', 'mall-admin', 'map', 'meal-vouchers', 'my-appointments', 'my-commissions',
-  'my-coupons', 'my-deal-history', 'my-gifticons', 'my-orders', 'my-returns', 'my-reviews', 'my-stays', 'my-store',
+  'my-coupons', 'my-deal-history', 'my-gifticons', 'my-orders', 'my-returns', 'my-reviews', 'my-seeding', 'my-stays', 'my-store',
   'my-vouchers', 'mypage', 'new-openings', 'notifications', 'orders', 'partners', 'partnership', 'privacy',
   'privacy-policy', 'referral', 'refund', 'refund-policy', 'region', 'register', 'restaurant-map', 'search',
   'seller', 'shipping-policy', 'soon', 'stays', 'success', 'terms', 'terms-of-service', 'toss-debug',
@@ -96,6 +96,18 @@ export const KNOWN_PARENT_SEGMENTS: ReadonlySet<string> = new Set([
 ])
 
 import { parseMallProductPath } from '../mall/resolve'
+import { categoryDef } from '../home-service-categories'
+
+/**
+ * 🧩 **앱 라우트 표 밖에서 워커(Hono)가 직접 그리는** 화면의 최상위 세그먼트.
+ *
+ * 위 두 집합은 라우트 표에서 다시 계산해 **양방향**으로 대조된다(그래서 여기 섞으면 그 가드가 깨진다).
+ * 이 집합은 그 대조 밖이라 따로 둔다 — 2026-10-31 라이브 실측: `/embed`·`/embed/u/:handle` 등
+ * 위젯 화면(`worker/routes/embed.routes.ts`)이 **본문은 멀쩡한데 HTTP 404** 로 나갔다.
+ * 색인 제외는 그 화면이 스스로 `noindex` 를 단다 — 여기는 상태코드만의 문제다.
+ * ⚠️ 새 워커 화면을 만들면 여기에 한 줄. 존재하지 않는 세그먼트를 넣으면 그 아래 쓰레기 경로가 200 이 된다.
+ */
+export const WORKER_SURFACE_SEGMENTS: ReadonlySet<string> = new Set(['embed'])
 
 /**
  * 이 경로가 앱 라우트 표의 모양과 맞는가(= 404 로 선언하지 **않을** 경로인가).
@@ -105,6 +117,7 @@ import { parseMallProductPath } from '../mall/resolve'
 export function isKnownAppPath(pathname: string): boolean {
   const segs = pathname.split('/').filter(Boolean)
   if (segs.length === 0) return true                        // 홈
+  if (WORKER_SURFACE_SEGMENTS.has(segs[0])) return true     // 워커(Hono)가 직접 그리는 화면
   if (segs.length === 1) return KNOWN_SINGLE_ROUTES.has(segs[0])
   // `/:mallSlug/p/:id` — 최상위가 파라미터인 유일한 다중 세그먼트 패턴(몰 상품 귀속 경로).
   //
@@ -120,5 +133,9 @@ export function isKnownAppPath(pathname: string): boolean {
   //   통째로 죽고 색인 복구는 수주다. 그래서 문법이 맞으면 **여전히 통과**시키고(= 200 유지),
   //   실재 여부는 `shouldNoindexMissingEntity` 가 self-fetch 404 로만 판정한다.
   if (segs.length === 3 && segs[1] === 'p') return parseMallProductPath(pathname) != null
+  // 🏠 2026-10-31 — `/life/request/:category` 는 업종 키가 닫힌 목록이다. 없는 키(`/life/request/zzzz`)는
+  //   화면이 "없는 카테고리예요" 를 그리는데 서버는 200 + index 를 줬다(soft-404, 서치콘솔 실측).
+  //   화면과 **같은 함수**(`categoryDef`)로 판정한다 — 두 벌이면 실재 업종이 404 가 되는 날이 온다.
+  if (segs.length === 3 && segs[0] === 'life' && segs[1] === 'request') return categoryDef(segs[2]) != null
   return KNOWN_PARENT_SEGMENTS.has(segs[0])
 }

@@ -2446,7 +2446,8 @@
       "channelConfirm": "Confirm",
       "channelSaving": "Saving…",
       "channelSaved": "Operating type saved",
-      "channelSaveFailed": "Could not save the operating type"
+      "channelSaveFailed": "Could not save the operating type",
+      "seedingSaveFailed": "Couldn't save the free-trial setting. Please turn it on again in your store request inbox"
     },
     "analyticsTitle": "Sales Analytics",
     "revenueChart": "Revenue Chart",

@@ -23,6 +23,7 @@ Disallow: /user/profile
 Disallow: /my-orders
 Disallow: /my-coupons
 Disallow: /my-vouchers
+Disallow: /my-seeding
 Disallow: /life/requests
 Disallow: /life/pro/
 Disallow: /wishlist
@@ -60,6 +61,7 @@ Disallow: /store/scan
 Disallow: /store/new
 Disallow: /store/agency/
 Disallow: /store/go
+Disallow: /store/seeding
 Disallow: /community-group-buy/new
 Disallow: /stays/checkout-return
 # 🏢 2026-10-11 에이전시 콘솔(이메일 전용 계정) — 로그인·가입·초대 화면은 색인 대상이 아니다.

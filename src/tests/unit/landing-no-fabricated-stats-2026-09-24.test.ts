@@ -31,6 +31,7 @@ const LANDINGS = [
   'pages/PartnersPage.tsx',
   'pages/CreatorsPage.tsx',
   'pages/InfluencerLandingPage.tsx',
+  'shared/landing-faq.ts', // 2026-10-31 — 두 랜딩의 FAQ 문장 SSOT(화면·FAQPage 가 같이 읽는다)
 ]
 
 /**

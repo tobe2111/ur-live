@@ -70,6 +70,7 @@ const AdminPlatformModelPage = lazy(() => import('@/pages/admin/AdminPlatformMod
 // 🏭 2026-06-07: 도매몰(유통스타트 B2B) 전용 운영 가이드.
 const AdminBlogPage = lazy(() => import('@/pages/AdminBlogPage'))
 const AdminHomeServicePage = lazy(() => import('@/pages/admin/AdminHomeServicePage'))
+const AdminSeedingPage = lazy(() => import('@/pages/admin/AdminSeedingPage')) // 🎁 무상 체험 신청 큐(2026-10-31)
 const AdminInstagramAutoDmPage = lazy(() => import('@/pages/AdminInstagramAutoDmPage'))
 const AdminSocialPage = lazy(() => import('@/pages/AdminSocialPage'))
 const AdminNotificationSettingsPage = lazy(() => import('@/pages/AdminNotificationSettingsPage'))
@@ -422,6 +423,7 @@ export function AdminRoutes() {
       } />
       {/* 🌐 2026-07-02 (대표 요청): 유어딜 플랫폼 모델 SSOT 문서 뷰어 (docs/design/*.md ?raw 자동동기화) */}
       <Route path="/admin/home-service" element={<ProtectedRoute requireAdmin><ErrorBoundary><AdminHomeServicePage /></ErrorBoundary></ProtectedRoute>} />
+      <Route path="/admin/seeding" element={<ProtectedRoute requireAdmin><ErrorBoundary><AdminSeedingPage /></ErrorBoundary></ProtectedRoute>} />
       <Route path="/admin/blog" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminBlogPage /></ErrorBoundary>

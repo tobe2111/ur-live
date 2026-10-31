@@ -33,8 +33,18 @@
  * 전부 순수 함수다 — 제출은 `worker/cron/indexnow-submit.ts` 가 하고, 그쪽에 **게이트**가 있다.
  */
 
-/** 다섯 엔진이 공유하는 제출 엔드포인트(한 번 보내면 전파된다). */
-export const INDEXNOW_ENDPOINT = 'https://api.indexnow.org/indexnow'
+/**
+ * 제출 엔드포인트 — **엔진마다 직접** 보낸다(2026-10-31 대표 "모두 해줘").
+ *
+ * 🩸 종전엔 공유 중계 `api.indexnow.org` 하나만 썼는데 전수·변경분이 둘 다 **429** 를 받았고,
+ *    중계가 거절하면 어느 엔진에도 안 간다(한 곳이 막히면 전부 막힌다). 네이버(국내 검색의 본류)와
+ *    빙(빙·코파일럿·덕덕고)에 각각 보내면, 규격상 참여 엔진끼리 공유되므로 **한 곳만 받아도 전파된다.**
+ * ⇒ 판정은 "하나라도 200/202 면 성공" 이다(커서를 올린다). 전부 실패해야 커서를 유지한다.
+ */
+export const INDEXNOW_ENDPOINTS: readonly string[] = [
+  'https://searchadvisor.naver.com/indexnow',
+  'https://www.bing.com/indexnow',
+]
 
 /** 한 회차 상한. IndexNow 규격은 1회 10,000까지지만 우리 변경량은 하루 수십 건이다. */
 export const INDEXNOW_MAX_URLS = 100

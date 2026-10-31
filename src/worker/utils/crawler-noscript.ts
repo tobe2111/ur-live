@@ -45,7 +45,7 @@ import { voucherFacetLinks } from '../../shared/seo/voucher-facet'
 import { CONSUMER_SURFACE_SEO } from '../../shared/seo/consumer-surfaces'
 import { REGION_HUB_CRUMB } from './surface-list-jsonld'
 import { buildUrshortsNoscript } from './urshorts-noscript'
-import { surfaceCopyFor, lifeChildLinks } from '../../shared/seo/surface-copy'; import { lifeFaqFor } from '../../shared/life-seo'
+import { surfaceCopyFor, lifeChildLinks } from '../../shared/seo/surface-copy'; import { landingFaqFor, landingLinks } from './landing-seo'
 import { CONSUMER_TERMS } from '../../pages/terms/consumer-terms-content'
 import { SELLER_TERMS } from '../../pages/terms/seller-terms-content'
 import type { TermsDoc } from '../../pages/terms/terms-types'
@@ -504,7 +504,7 @@ export function buildStaticSurfaceNoscript(pathname: string, ssrPayload?: string
     // `/region` 허브는 `CONSUMER_SURFACE_SEO` 에 항목이 없다(동적 경로라 `resolveRegionSeo` 가 맡는다)
     // — 빵부스러기가 쓰는 같은 상수에서 받는다(손으로 적으면 둘이 갈린다).
     const h1 = h1Of(path === '/region' ? REGION_HUB_CRUMB : CONSUMER_SURFACE_SEO[path]?.crumb)
-    const faq = lifeFaqFor(path).map(f => `<dt>${esc(f.question)}</dt><dd>${esc(f.answer)}</dd>`).join(''), faqDl = faq ? `<dl>${faq}</dl>` : '' // 🏠 생활 허브 FAQ(화면·FAQPage 와 한 벌)
+    const faq = landingFaqFor(path).map(f => `<dt>${esc(f.question)}</dt><dd>${esc(f.answer)}</dd>`).join(''), faqDl = faq ? `<dl>${faq}</dl>` : '' // 🏠 생활 허브·❓ 입점·소개 랜딩 FAQ(화면·FAQPage 와 한 벌 — landing-seo.ts)
     return lines || kids ? `<noscript>${h1}${lines}${faqDl}${kids}</noscript>` : ''
   }
 
@@ -582,7 +582,7 @@ export function voucherFacetNoscript(path: string): string {
  * 빠뜨린다(이 레포가 반복해 밟은 클래스). 링크가 없으면 `''` 라 종전 출력과 byte-동일이다.
  */
 function childLinksHtml(path: string, digestJson?: string | null): string {
-  const kids = [...regionChildLinks(path, digestJson), ...lifeChildLinks(path)] // 🏠 생활 허브·업종 링크(2026-10-25)
+  const kids = [...regionChildLinks(path, digestJson), ...landingLinks(path), ...lifeChildLinks(path)] // 🏠 생활 허브·업종 링크(2026-10-25) · 🔗 랜딩 헤더 링크(2026-10-31)
   if (!kids.length) return ''
   return `<ul>${kids.map(k => `<li><a href="${esc(k.href)}">${esc(k.label)}</a></li>`).join('')}</ul>`
 }
