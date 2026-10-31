@@ -126,3 +126,14 @@
 - 라이브 실측: 데모 이용권 155 · 숙소 활성 25 전부 `fcfs_enabled=1` → 설정 누락 데모는 0.
 - 장바구니 담기는 `VOUCHER_CART_UI_ENABLED=false` 라 입구 없음. 서버 차단은 §10.
 - Verify 실패(ebacd2f)는 매장 영상 버튼의 반쪽 간격(gap-1.5·pl-2.5) → 4px 격자로.
+
+## §13 2026-10-31 — 요청 4~7 (생활 숨김 · 배경 한 톤 · 이름 사진 아래 · 숙소 부대시설)
+- `e65b507` 메인에서 생활 이용권 숨김 — SSOT `deal-cats.ts` `HOME_HIDDEN_CATEGORIES`/`HOME_DEAL_CAT_LABELS`/`isHomeVisibleProduct`.
+  홈 탭(모바일·PC 레일·사이드바)·피드·HomeSections·워커 첫 화면이 같은 판정. PC 상단 네비 '생활'(→ `/life`)과 지역 페이지(`showLife`)는 그대로.
+- `bebc2d9` follow-redirects 1.16.2 — 새 advisory(GHSA-mrwp-f3q8-3g9p)로 npm audit 게이트가 **main 에서도** 빨강이었다.
+- `5ed90dc` 상세 배경 한 톤 — `PASS_PAGE_BG`=카드색, `PASS_CARD`/`STAY_BAND` 8px 회색 띠·PC 그림자 카드 → 가는 선.
+- `ae077f4` PC 상세 제목을 사진 아래로(08-19 '그루폰 1안: 사진 위' 대체). 이용권·숙소 둘 다.
+- (이 커밋) 숙소 '서비스 및 부대시설' 그리드 11칸 — 없는 칸 '없음', 정보 0이면 안내 한 줄. 셀러 폼 코드(`parking_free` 등)와 시드 한글을 같은 판정으로.
+  🩸 종전 상세는 **공통 시설만** 읽어서 셀러 폼이 객실 시설로 저장한 취사·냉난방·금연이 상세에 한 번도 안 떴다 — 이번에 합쳤다.
+  🩸 그리고 폼 코드를 그대로 라벨로 그려 `wifi`·`tv` 가 영문 코드로 보였을 것이다(라이브 데이터는 전부 시드 한글이라 아직 노출 0).
+- ⚠️ 못 잰 것: 실제 화면(폰·PC) 눈 확인 — 배포 뒤 `/stays/:id`·`/pass/:id` 에서 볼 것. 시안 8~10 은 아직(다음).
