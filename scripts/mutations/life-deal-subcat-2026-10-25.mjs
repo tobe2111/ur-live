@@ -52,8 +52,8 @@ export default [
   {
     name: '🏠 업종 SSOT 가 다시 홈 봉투로 간다',
     file: 'scripts/surface-chunks.mjs',
-    find: "'app-subpage', 'app-life-subcat'])",
-    replace: "'app-subpage'])",
+    find: "'app-subpage', 'app-life-subcat',",
+    replace: "'app-subpage',",
     test: TEST,
     why: '묶음기가 업종 표를 홈 봉투에 넣어 어드민·사장님 화면 전부가 홈 코드 23KB 를 받는다(2026-10-25 CI 실측).',
   },

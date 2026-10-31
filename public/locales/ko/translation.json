@@ -2476,7 +2476,8 @@
       "channelConfirm": "이렇게 운영해요",
       "channelSaving": "저장 중…",
       "channelSaved": "운영 방식을 저장했어요",
-      "channelSaveFailed": "운영 방식을 저장하지 못했어요"
+      "channelSaveFailed": "운영 방식을 저장하지 못했어요",
+      "seedingSaveFailed": "무상 체험 설정은 저장하지 못했어요. 매장 요청함에서 다시 켜 주세요"
     },
     "analyticsTitle": "매출 분석",
     "revenueChart": "매출 차트",

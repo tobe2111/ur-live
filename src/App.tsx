@@ -101,7 +101,7 @@ const FollowingPage = lazy(() => import('./pages/FollowingPage'))
 const MyVouchersPage = lazyPage(() => import('./pages/MyVouchersPage')); registerRoutePreload('myVouchers', MyVouchersPage.load)
 const GuestPassPage = lazyPage(() => import('./pages/guest/GuestPassPage')); const GuestUrShopPage = lazyPage(() => import('./pages/guest/GuestUrShopPage')); const GuestMyPage = lazyPage(() => import('./pages/guest/GuestMyPage')); registerBootPage('guestPass', GuestPassPage.load); registerBootPage('guestUShop', GuestUrShopPage.load); registerBootPage('guestMy', GuestMyPage.load) // 🚪 로그인 전 탭 화면(2026-10-12)
 const MyGifticonsPage = lazy(() => import('./pages/MyGifticonsPage'))  // 🎟️ 2026-08-31 지갑 분리 — 교환권 보관함
-const StoreScanPage = lazy(() => import('./pages/StoreScanPage'))
+const StoreScanPage = lazy(() => import('./pages/StoreScanPage')); const StoreSeedingPage = lazy(() => import('./pages/StoreSeedingPage')); const MySeedingPage = lazy(() => import('./pages/MySeedingPage')) // 🎁 무상 체험(2026-10-31)
 const InfluencerSettlementPage = lazy(() => import('./pages/InfluencerSettlementPage'))
 const InfluencerDiscoverPage = lazy(() => import('./pages/InfluencerDiscoverPage'))
 const InfluencerAnalyticsPage = lazy(() => import('./pages/InfluencerAnalyticsPage'))
@@ -791,9 +791,10 @@ function AppContent() {
             <Route path="/my-store" element={<Navigate to="/user/profile" replace />} />
             {/* 🎟️ 계산대(seller_token·스캔기기키 자체가드 — 소비자 로그인 요구 X: 에이전시 직원·스캔 기기 링크가 막혔다, 2026-10-12) · 🏪 매장 등록.
                 한 줄 표기는 file-size 래칫 때문 — 동작은 블록 표기와 동일하다. */}
-            <Route path="/store/scan" element={<StoreScanPage />} />
+            <Route path="/store/scan" element={<StoreScanPage />} /><Route path="/store/seeding" element={<StoreSeedingPage />} />
             <Route path="/store/new" element={<ProtectedRoute requireUser><ErrorBoundary><StoreClaimPage /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/store/find" element={<ProtectedRoute requireUser><ErrorBoundary><StoreOwnerClaimPage /></ErrorBoundary></ProtectedRoute>} /><Route path="/store/agency/:token" element={<ProtectedRoute requireUser><ErrorBoundary><StoreAgencyInvitePage /></ErrorBoundary></ProtectedRoute>} /><Route path="/store/partner/:agencyId" element={<ProtectedRoute requireUser><ErrorBoundary><StoreAgencyInvitePage /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/my-seeding" element={<ProtectedRoute requireUser><ErrorBoundary><MySeedingPage /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/store/go" element={<ProtectedRoute requireUser><ErrorBoundary><StoreGoPage /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/influencer/settlement" element={
               <ProtectedRoute requireUser>

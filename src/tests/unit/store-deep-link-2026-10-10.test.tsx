@@ -32,7 +32,7 @@ describe('① 링크 규칙', () => {
   })
   // 2026-10-12 — 사용처리는 대시보드 밖 매장 계산대(`/store/scan`)다. 셀러 화면 또는 그 계산대만 허용.
   it('목적지는 전부 셀러 화면 또는 매장 계산대다(외부·소비자 화면으로 새지 않는다)', () => {
-    for (const p of Object.values(STORE_GO_TARGETS)) expect(p).toMatch(/^\/(seller(\/|$)|store\/scan$)/)
+    for (const p of Object.values(STORE_GO_TARGETS)) expect(p).toMatch(/^\/(seller(\/|$)|store\/(scan|seeding)$)/) // 🎁 2026-10-31 /store/seeding — 매장 요청함(계산대처럼 대시보드 밖 매장 화면)
     expect(STORE_GO_TARGETS.scan).toBe('/store/scan')
   })
 })

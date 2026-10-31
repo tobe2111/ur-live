@@ -32,6 +32,7 @@ import KakaoShareButton from '@/components/KakaoShareButton'
 import { dealCategoryMeta } from '@/shared/deal-category-icon'
 // 🛡️ 2026-06-12 (감사 1단계 — 핀 표면): 공유 버튼 옆 핀 버튼 (additive — 잠금 항목 무변경).
 import PinButton from '@/components/curator/PinButton'
+import SellThisCard from '@/components/seeding/SellThisCard' // 🎁 2026-10-31 팔아보기(유어샵 담기 · 무료 체험 신청)
 import { toast } from '@/hooks/useToast'
 import { safeDate, safeTime } from '@/utils/safe-date'
 import { publicSellerHandle } from '@/shared/seller-handle'
@@ -696,6 +697,7 @@ export default function GroupBuyDetailPage() {
 
         {/* 🎯 추첨 응모 — 이 상품이 추첨 대상일 때만(결제 없음). 아니면 렌더 0. */}
         <div id="fcfs-apply-block"><FcfsApplyBlock productId={Number(id)} /></div>
+        <div className={`${PASS_CARD} empty:hidden`}><SellThisCard productId={detail.id} price={detail.price} hideForOwner={isOwnProduct} /></div>
 
         {/* 🃏 2026-10-11 (대표 확정 D안 — PC 포함): 섹션 구분은 하이라인이 아니라 **카드**(`PASS_CARD`).
             셀러 카드는 모바일에선 걷고(가게 입구는 매장 카드 '가게 보기') PC 에선 카드로 남긴다 — SNS 링크가 여기만 있다. */}

@@ -158,6 +158,13 @@ export const OPS_POLICY_FIELDS: Array<{ key: string; label: string; hint: string
     text: true,
   },
   {
+    // 🎁 2026-10-31 무상 체험 — 신청권(노쇼 방지 보증금) 카드 구매. 꺼져 있어도 가입 혜택 무료 3회는 쓴다. 화면: /admin/seeding
+    key: 'seeding_pass_charge_enabled',
+    label: '무상 체험 신청권 카드 구매',
+    hint: "기본 꺼짐. 'true' 면 /my-seeding 에서 신청권 묶음을 카드로 산다. 켜기 전 S-SEED 실결제 절차(5장 구매 → 일정 제출 1장 → 매장 취소 반환).",
+    text: true,
+  },
+  {
     key: 'home_service_quotes_disabled',
     label: '생활 견적 운영 중지(비상)',
     hint: "기본 꺼짐(=운영). 'true' 면 손님 요청 접수와 사장님 견적 보내기가 멈춘다. 충전된 참여권은 그대로.",
