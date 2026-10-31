@@ -11,7 +11,7 @@
  */
 export const STAY_HEAD = {
   /** 페이지 바탕·글자색. 루트는 이 앞에 `min-h-[100dvh]`, 뒤에 `pb-32 lg:pb-16` 을 붙인다. */
-  pageBg: 'bg-warm text-gray-900 dark:text-white',
+  pageBg: 'bg-surface text-gray-900 dark:text-white', // 🎨 2026-10-31 배경색 하나로(대표) — 이용권 상세와 같은 한 톤
   /** PC 중앙 정렬 셸(모바일은 아무 일도 안 한다). */
   shell: 'lg:max-w-[1200px] lg:mx-auto lg:px-8 lg:pt-5',
   /** 본문 좌우·위아래 여백 — 히어로의 음수 마진(`-mx-4 -mt-5`)이 **정확히 이 값을 되돌린다**. */
@@ -40,4 +40,4 @@ export const STAY_GRID = `${STAY_HEAD.gridPad} lg:px-0 lg:grid lg:grid-cols-[min
  * PC 는 띠·여백을 걷고 평면(숙소 PC 는 오른쪽 예약 패널 옆 한 열이다). 손으로 다시 적지 말고 이 상수를 쓸 것 —
  * 종전엔 같은 문자열이 일곱 곳에 사본으로 있었다.
  */
-export const STAY_BAND = '-mx-4 px-4 py-6 border-t-8 border-gray-100 dark:border-[var(--bg)] bg-surface lg:bg-transparent lg:mx-0 lg:px-0 lg:py-0 lg:border-t-0'
+export const STAY_BAND = '-mx-4 px-4 py-6 border-t border-rule bg-surface lg:bg-transparent lg:mx-0 lg:px-0 lg:py-0 lg:border-t-0' // 🎨 2026-10-31 8px 회색 띠 → 가는 선(배경색 하나로)

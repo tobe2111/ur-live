@@ -25,7 +25,8 @@ describe('③ 머리·섹션 띠', () => {
   })
   it('섹션 띠는 흰 면이고, 손으로 적은 사본이 없다', () => {
     expect(STAY_BAND).toContain('bg-surface')
-    expect(STAY_BAND).toContain('border-t-8')
+    expect(STAY_BAND).toContain('border-rule') // 🎨 2026-10-31 회색 띠 → 가는 선(배경색 하나로)
+    expect(STAY_BAND).not.toContain('border-t-8')
     for (const f of ['src/pages/StayDetailPage.tsx', 'src/pages/stay-detail/SimilarStays.tsx', 'src/pages/stay-detail/StayInfoSections.tsx'])
       expect(readCode(f), f).not.toContain('border-t-8 border-gray-100')
   })

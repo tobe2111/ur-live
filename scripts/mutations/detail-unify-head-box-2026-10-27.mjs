@@ -4,8 +4,8 @@ export default [
   {
     name: 'detail-unify-head-box — 숙소 섹션 띠가 다시 바탕색이 된다',
     file: 'src/shared/stay-head.ts',
-    find: "dark:border-[var(--bg)] bg-surface lg:bg-transparent",
-    replace: "dark:border-[var(--bg)]",
+    find: "border-t border-rule bg-surface lg:bg-transparent",
+    replace: "border-t border-rule lg:bg-transparent",
     test: T,
     why: '이용권은 흰 면, 숙소는 바탕색 — 같은 앱의 두 상세가 다른 종이처럼 보인다.',
   },

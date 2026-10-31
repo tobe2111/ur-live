@@ -26,12 +26,12 @@ export default [
     why: '매장 이름이 다시 네 번 나온다 — 가게로 가는 입구는 매장 카드 머리가 맡는다.',
   },
   {
-    name: '🎟️D PC 에서 카드가 다시 평면으로 풀린다',
+    name: '🎟️D 상세 바탕이 다시 두 톤(회색 띠)이 된다',
     file: 'src/shared/pass-head.ts',
-    find: "lg:mb-4 lg:rounded-2xl lg:shadow-lift'",
-    replace: "lg:mb-4'",
+    find: "overflow-hidden border-t border-rule'",
+    replace: "overflow-hidden border-t-8 border-gray-100'",
     test: TEST,
-    why: '대표 "PC도 해야하는거 아니야?" — PC 만 옛 평면으로 남으면 같은 상품이 두 화면에서 다른 서비스처럼 보인다.',
+    why: '대표 2026-10-31 "이용권 상세페이지 배경색 하나로 통일하자" — 회색 띠가 되살아나면 바탕이 다시 두 색이 된다.',
   },
   {
     name: '🎟️D 스캔 예외가 2단계에서 떨어져 나간다',

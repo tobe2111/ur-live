@@ -13,7 +13,8 @@
 import { VOUCHER_CATEGORY_LABEL } from './constants/voucher-categories'
 import { parseRegionFromAddress } from './constants/region-slugs'
 
-export const PASS_PAGE_BG = 'bg-[var(--gbd-bg)]'
+/** 🎨 2026-10-31 (대표 "이용권 상세페이지 배경색 하나로 통일하자"): 바탕 = 카드색 하나. 회색 바탕·띠를 걷었다. */
+export const PASS_PAGE_BG = 'bg-[var(--gbd-card)]'
 
 export const PASS_HEAD = {
   /**
@@ -49,7 +50,8 @@ export const PASS_HEAD = {
  *   (좌우 12px · 둥근 모서리 · 그림자 · 아래 12px)가 아니라 **폭 전체 흰 섹션 + 위 8px 회색 띠**다. 카드마다
  *   양옆·위아래로 비던 여백이 사라지고 구분은 띠 하나가 맡는다. PC(lg+)는 종전 카드 그대로.
  */
-export const PASS_CARD = 'bg-[var(--gbd-card)] overflow-hidden border-t-8 border-gray-100 dark:border-[var(--bg)] lg:border-t-0 lg:mx-0 lg:mb-4 lg:rounded-2xl lg:shadow-lift'
+/** 🎨 2026-10-31 배경색 하나로(대표) — 8px 회색 띠·PC 그림자 카드 → 같은 색 위 가는 선 하나(폰·PC 공통). */
+export const PASS_CARD = 'bg-[var(--gbd-card)] overflow-hidden border-t border-rule'
 
 /**
  * 🛍️ 제목 아래 한 줄 `부용한우곱창 · 식사 · 파주시` (2026-10-24 그루폰식).
