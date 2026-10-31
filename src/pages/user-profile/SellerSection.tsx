@@ -333,7 +333,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
         {!awaiting && (
           <Link
             to={`/s/${encodeURIComponent(store.username || String(store.seller_id))}`}
-            className="shrink-0 inline-flex items-center gap-1 text-[13px] font-semibold text-brand-text active:opacity-70"
+            className="shrink-0 inline-flex items-center gap-1 text-[13px] font-medium text-brand-text active:opacity-70"
           >
             가게 보기<ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
           </Link>

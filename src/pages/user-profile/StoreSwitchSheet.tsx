@@ -142,7 +142,7 @@ export default function StoreSwitchSheet({ currentSellerId, summaries = [], onCl
                     ? <Check className="w-[18px] h-[18px] mt-1 shrink-0 text-brand-text" aria-hidden="true" />
                     // 🔴 다른 매장에 처리할 주문이 있으면 여기서 보인다 — 지금 보는 매장만 보다가 놓치지 않게.
                     : (t?.pending ?? 0) > 0 && (
-                      <span className="shrink-0 mt-1 rounded-full bg-sale text-white text-[12px] font-semibold px-2 py-1 tabular-nums">새 주문 {formatNumber(t!.pending)}</span>
+                      <span className="shrink-0 mt-1 rounded-full bg-sale text-white text-[12px] font-medium px-2 py-1 tabular-nums">새 주문 {formatNumber(t!.pending)}</span>
                     )}
               </button>
             )
