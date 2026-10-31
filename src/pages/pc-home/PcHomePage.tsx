@@ -45,7 +45,7 @@ const SORT_CHIPS = [
 ] as const
 type SortKey = typeof SORT_CHIPS[number]['key'] | 'near'
 
-const DEAL_CATEGORY_KEYS: DealCategory[] = ['all', 'meal_voucher', 'beauty_voucher', 'stay_voucher', 'home_voucher', 'etc_voucher']
+const DEAL_CATEGORY_KEYS: DealCategory[] = ['all', 'meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher'] // 🏠 생활은 메인에 없다(2026-10-31) — `/life` 로
 // 🗓️ 2026-09-04 (대표 "마감 개념은 없어"): 'deadline' 제거 — 옛 `?sort=deadline` 링크는 'popular' 로 폴백된다.
 const SORT_KEYS: SortKey[] = ['popular', 'newest', 'discount']
 

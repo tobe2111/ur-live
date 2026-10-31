@@ -32,7 +32,7 @@ import {
 } from '@/worker/utils/home-first-screen'
 import { HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_ABOVE_FOLD, HOME_CARD_BASE_QUERY } from '@/shared/home-card-image'
 import { buildHomeCardPreloadLinks } from '@/worker/utils/home-card-preload'
-import { DEAL_CAT_LABELS } from '@/shared/deal-cats'
+import { HOME_DEAL_CAT_LABELS } from '@/shared/deal-cats'
 import { stripComments } from '../helpers/source-text'
 
 const root = process.cwd()
@@ -275,8 +275,8 @@ describe('⑤ 크롬·섹션 머리글 — 페이지 소스에서 파싱해 대�
     const host = document.createElement('div')
     host.innerHTML = buildHomeFirstScreen(seedJson([BARE]), LOADER)
     const nav = host.querySelector('#ur-first-screen nav') as HTMLElement
-    expect([...nav.children].map((c) => c.textContent)).toEqual(DEAL_CAT_LABELS.map((c) => c.label))
-    expect(home).toContain('DEAL_CATS.map')
+    expect([...nav.children].map((c) => c.textContent)).toEqual(HOME_DEAL_CAT_LABELS.map((c) => c.label))
+    expect(home).toContain('HOME_DEAL_CATS.map')
   })
 
   /**

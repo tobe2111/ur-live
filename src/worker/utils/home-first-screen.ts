@@ -52,7 +52,7 @@
 import { nearSubtitle } from '../../shared/home-near'
 import { HOME_H1 } from '../../shared/seo/consumer-surfaces'
 import { cfImage, cfSrcSet } from '../../utils/cf-image'
-import { DEAL_CAT_LABELS } from '../../shared/deal-cats'
+import { HOME_DEAL_CAT_LABELS, isHomeVisibleProduct } from '../../shared/deal-cats'
 import { DEAL_GRID_GAP } from '../../shared/deal-card-grid'
 import { HOME_CARD_ABOVE_FOLD, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_MAX_DPR } from '../../shared/home-card-image'
 import { canonicalDetailPath } from '../../shared/product-flow'
@@ -213,7 +213,7 @@ export function cardHtml(p: SeedProduct, eager: boolean, hrefOverride?: string):
 }
 
 function chromeHtml(): string {
-  const cats = DEAL_CAT_LABELS.map(({ key, label }) =>
+  const cats = HOME_DEAL_CAT_LABELS.map(({ key, label }) =>
     `<span class="${HOME_FS_CLASS.catBase} ${key === 'all' ? HOME_FS_CLASS.catOn : HOME_FS_CLASS.catOff}">${escText(label)}</span>`,
   ).join('')
   return (
@@ -272,7 +272,10 @@ export function buildHomeFirstScreen(sectionsSeedJson: string, loaderHtml: strin
   let strip: SeededStripBanner[] = []
   try {
     const parsed = JSON.parse(sectionsSeedJson) as SectionsSeed
-    sec = (parsed?.data ?? []).find(s => Array.isArray(s?.products) && s.products.length > 0)
+    // 🏠 생활 이용권은 메인에 안 뜬다 — 화면(`HomeSections`)과 같은 규칙으로 거른 뒤 첫 줄을 고른다.
+    sec = (parsed?.data ?? [])
+      .map(s => (Array.isArray(s?.products) ? { ...s, products: s.products.filter(isHomeVisibleProduct) } : s))
+      .find(s => Array.isArray(s?.products) && s.products.length > 0)
     strip = stripBannersOf(parsed)
   } catch {
     return ''

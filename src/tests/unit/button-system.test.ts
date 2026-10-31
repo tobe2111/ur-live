@@ -75,7 +75,7 @@ describe('카테고리 분류는 한 표만 있어야 한다', () => {
     //   `PcHomeRail` 이 자기 주석에 "라벨 SSOT — 갈리면 어긋난다" 고 적어 뒀는데도
     //   두 번째 표가 생겨 그대로 어긋났다. SSOT 는 **다른 표가 없을 때만** 성립한다.
     const feed = readFileSync(resolve(root, 'src/pages/main-home/GroupBuyFeed.tsx'), 'utf-8')
-    expect(feed).toMatch(/const CATEGORIES = DEAL_CATS/)
+    expect(feed).toMatch(/const CATEGORIES = (?:HOME_)?DEAL_CATS\b/) // 2026-10-31 메인은 생활을 뺀 HOME_DEAL_CATS — 같은 표에서 파생
     // 자체 배열 리터럴(키+라벨 쌍)이 다시 생기면 실패
     expect(feed).not.toMatch(/const CATEGORIES\s*=\s*\[/)
   })

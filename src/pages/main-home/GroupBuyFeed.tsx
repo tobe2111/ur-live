@@ -9,7 +9,7 @@ import { DEAL_GRID_GAP } from '@/shared/deal-card-grid'
 import { ClockIcon, PinIcon } from '@/components/icons/urdeal-icons'
 import { Flame, Tag } from 'lucide-react'
 import Udal from '@/components/mascot/Udal'
-import { DEAL_CATS } from '@/pages/pc-home/PcHomeRail'
+import { HOME_DEAL_CATS } from '@/pages/pc-home/PcHomeRail'; import { isHomeVisibleProduct } from '@/shared/deal-cats'
 import { SortMenu, type SortOptionItem } from '@/components/ui/sort-menu'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 // 🖼️ 폭·중단점은 워커의 카드 preload 와 같은 값이어야 한다(`shared/home-card-image` SSOT).
@@ -71,7 +71,7 @@ function discountOf(p: FeedProduct): number {
  *      반드시 어긋난다"* 고 **미리 적어 뒀는데도** 두 번째 표가 생겨 그대로 어긋난 것이다.
  *      SSOT 는 선언이 아니라 **다른 표가 없을 때** 성립한다.
  */
-const CATEGORIES = DEAL_CATS
+const CATEGORIES = HOME_DEAL_CATS // 🏠 2026-10-31 생활 제외(메인)
 
 /**
  * 🖊️ 2026-08-30: 이모지 라벨 → 선 아이콘 + **공용 `SortMenu` 로 통일**.
@@ -114,6 +114,7 @@ export default function GroupBuyFeed({
   userLoc,
   sectionNearKey = '',
   filters,
+  showLife = false,
 }: {
   pc?: boolean
   /**
@@ -148,6 +149,8 @@ export default function GroupBuyFeed({
   sectionNearKey?: string
   /** 🎚️ 2026-10-14 PC 홈 왼쪽 필터(거리·가격) — 받아 둔 페이지 안에서 거른다. 미지정이면 출력 불변. */
   filters?: FeedFilters
+  /** 🏠 2026-10-31 생활 이용권을 보이는가. 기본 false = 메인(홈) — 대표 "메인에서는 안보이게". 지역 페이지만 true. */
+  showLife?: boolean
 } = {}) {
   const [categoryState, setCategoryState] = useState<CategoryKey>('all')
   const [sortState, setSortState] = useState<SortKey>('popular')
@@ -314,7 +317,7 @@ export default function GroupBuyFeed({
     const seen = new Set<number | string>()
     const out: FeedProduct[] = []
     const pushBand = (band: FeedProduct[], filterRegion: boolean) => {
-      const src = (filterRegion ? band.filter(inRegion) : band).filter(p => passesFeedFilters(p, filters, userLoc) && life.keep(p))
+      const src = (filterRegion ? band.filter(inRegion) : band).filter(p => showLife || isHomeVisibleProduct(p)).filter(p => passesFeedFilters(p, filters, userLoc) && life.keep(p))
       /**
        * 🖼️ 2026-09-06 (대표 — "메인에서 같은 이용권 사진이 두 번"의 나머지 절반):
        *   바로 위 편성 섹션('지금 인기 이용권'·'주말에 떠나는 숙소')에 이미 뜬 상품을
@@ -342,7 +345,7 @@ export default function GroupBuyFeed({
     // inRegion/sortBand 는 매 렌더 재생성(아래 deps 를 클로저) → deps 에 원천값만 나열.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     // regionRef 는 객체라 참조가 매 렌더 바뀔 수 있어 원시값으로 분해해 넣는다(무한 재계산 방지).
-  }, [items, extraPages, sort, userLoc, sectionIds, regionKey, districtKey, regionRef?.sido, regionRef?.sigungu, feedFiltersKey(filters), life.key])
+  }, [items, extraPages, sort, userLoc, sectionIds, showLife, regionKey, districtKey, regionRef?.sido, regionRef?.sigungu, feedFiltersKey(filters), life.key])
   // 📍 2026-10-17: 필터로 0건이면 **끝까지 더 찾아본 뒤에야** "없어요" — 불러온 1페이지만 보고 단정하지 않는다.
   const hunting = !!feedFiltersKey(filters).replace('|', '') && sorted.length === 0 && !reachedEnd && !isError
   useEffect(() => { if (hunting && !loading && !loadingMore) void loadMore() }, [hunting, loading, loadingMore, extraPages.length]) // eslint-disable-line react-hooks/exhaustive-deps

@@ -10,6 +10,7 @@ import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
 import SectionRail from './SectionRail'
 import DealCardPlaceholder from './DealCardPlaceholder'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { isHomeVisibleProduct } from '@/shared/deal-cats'
 import {
   HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_LG_QUERY, HOME_CARD_ABOVE_FOLD,
 } from '@/shared/home-card-image'
@@ -135,7 +136,10 @@ export default function HomeSections(
     },
   )
 
-  const visible = sections.filter(s => Array.isArray(s.products) && s.products.length > 0)
+  // 🏠 2026-10-31 생활 이용권은 메인에 안 뜬다 — 그것만 있던 섹션은 줄째 빠진다(워커 첫 화면과 같은 규칙).
+  const visible = sections
+    .map(s => (Array.isArray(s.products) ? { ...s, products: s.products.filter(isHomeVisibleProduct) } : s))
+    .filter(s => Array.isArray(s.products) && s.products.length > 0)
 
   /**
    * 🧱 2026-08-19 (대표 신고 — "첫 접속하면 지금 인기 이용권이 먼저 안뜨고 … 시간 지나면 보여"):
