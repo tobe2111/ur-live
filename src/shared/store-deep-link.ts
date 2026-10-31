@@ -21,6 +21,7 @@ export const STORE_GO_TARGETS = {
   vouchers: '/seller/group-buy',      // 내 이용권 관리(판매 중지·수정)
   settlements: '/seller/settlements', // 정산·계좌
   docs: '/seller/business-info',      // 사업자등록증·서류
+  seeding: '/store/seeding',          // 🎁 2026-10-31 무상 체험 신청 — 승인·일정 확정(대시보드 밖)
   home: '/seller',
 } as const
 

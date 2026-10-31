@@ -1726,7 +1726,8 @@
       "channelConfirm": "Confirmer",
       "channelSaving": "Enregistrement…",
       "channelSaved": "Mode de gestion enregistré",
-      "channelSaveFailed": "Impossible d’enregistrer le mode de gestion"
+      "channelSaveFailed": "Impossible d’enregistrer le mode de gestion",
+      "seedingSaveFailed": "Impossible d'enregistrer l'essai gratuit. Réactivez-le dans la boîte des demandes de votre boutique"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",

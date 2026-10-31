@@ -386,6 +386,11 @@ export async function handleCronScheduled(
       const { runDropD1Reminder } = await import('./cron/drop-d1-reminder')
       await runDropD1Reminder(env as Parameters<typeof runDropD1Reminder>[0])
     }))
+    // 🎁 2026-10-31 무상 체험 — 게시 기한 리마인드 + 기한 경과 패널티(신청당 한 번).
+    ctx.waitUntil(slotCron('40 9 * * *')('seeding-sweep', async () => {
+      const { runSeedingSweep } = await import('../features/seeding/api/seeding-sweep')
+      return runSeedingSweep(env as Parameters<typeof runSeedingSweep>[0])
+    }))
     ctx.waitUntil(slotCron('40 9 * * *')('experience-post-reminder', async () => {
       const { runExperiencePostReminder } = await import('./cron/experience-post-reminder')
       await runExperiencePostReminder(env as Parameters<typeof runExperiencePostReminder>[0])

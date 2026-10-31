@@ -2445,7 +2445,8 @@
       "channelConfirm": "确认",
       "channelSaving": "保存中…",
       "channelSaved": "已保存运营方式",
-      "channelSaveFailed": "无法保存运营方式"
+      "channelSaveFailed": "无法保存运营方式",
+      "seedingSaveFailed": "未能保存免费体验设置，请在门店申请页面重新开启"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
