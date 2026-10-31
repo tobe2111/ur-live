@@ -68,7 +68,7 @@ export default [
   {
     name: '🧭 반대 방향 — /influencer 를 noindex 로 (소개 수익 질의가 사라진다)',
     file: SEO,
-    find: "  '/influencer': {\n    crumb: '소개로 수익',",
+    find: "  '/influencer': {\n    crumb: '소개 파트너',",
     replace: "  '/influencer': {\n    noindex: true,",
     test: TEST,
     why:

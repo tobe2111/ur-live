@@ -234,7 +234,9 @@ export function storeInviteUrl(env: { FRONTEND_URL?: string }, token: string): s
   return `${frontendBase(env)}/store/agency/${token}`
 }
 
-agencyStoresRoutes.get('/store-invite', requireAgencyStaff({ adminOnly: true }), async (c) => {
+// 🔗 2026-10-31 대표 *"모두 진행해줘"* — 읽기는 **직원도** 한다. 매장에 찾아가는 사람은 대개 직원이다.
+//   만들기·끊기는 관리자만(링크가 에이전시당 하나라 직원이 새로 만들면 다른 직원이 보낸 링크가 죽는다).
+agencyStoresRoutes.get('/store-invite', requireAgencyStaff(), async (c) => {
   try {
     const me = c.get('agencyStaff')
     await ensureAgencyConsoleTables(c.env.DB)
@@ -243,8 +245,11 @@ agencyStoresRoutes.get('/store-invite', requireAgencyStaff({ adminOnly: true }),
         WHERE agency_id = ? AND revoked_at IS NULL AND expires_at > datetime('now')
         ORDER BY id DESC LIMIT 1`,
     ).bind(me.agencyId).first<{ token: string; expires_at: string; use_count: number }>()
+    const ag = await c.env.DB.prepare('SELECT name FROM agency_accounts WHERE id = ? LIMIT 1')
+      .bind(me.agencyId).first<{ name: string | null }>().catch(() => null)
     return c.json({
       success: true,
+      agencyName: ag?.name || '',
       invite: row ? { url: storeInviteUrl(c.env, row.token), expiresAt: row.expires_at, useCount: row.use_count } : null,
     })
   } catch (err) {

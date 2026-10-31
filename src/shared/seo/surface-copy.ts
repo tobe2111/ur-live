@@ -110,18 +110,6 @@ export const SURFACE_COPY: Readonly<Record<string, SurfaceCopy>> = {
     ],
     source: ['src/pages/partners/PartnerHero.tsx', 'src/pages/partners/PartnerFlow.tsx', 'src/pages/PartnersPage.tsx'],
   },
-  '/creators': {
-    lines: [
-      '팔로워가 많지 않아도 괜찮아요. 동네 이웃에게 진짜 좋은 딜을 소개하는 것부터 시작합니다.',
-      '매장에 돈을 달라고 할 일이 없습니다. 제안 수락도 적립 확인도 같은 앱 안에서 끝납니다.',
-      '제안을 받고, 정산까지 앱에서',
-      '카카오 로그인 1분이면 내 유어샵이 자동으로 생겨요',
-      '동네 맛집·뷰티 딜 중 소개하고 싶은 걸 내 유어샵에 담아요',
-      '인스타·블로그·카톡에 내 링크 하나만 올리면 끝',
-      '소개비율은 딜마다 표시되니 고르기 전에 미리 확인하세요',
-    ],
-    source: ['src/pages/CreatorsPage.tsx'],
-  },
   '/creators/apply': {
     lines: [
       '동네 맛집·카페·뷰티·네일·숙소 이용권을 소개해 주실 분을 찾습니다.',
@@ -133,14 +121,15 @@ export const SURFACE_COPY: Readonly<Record<string, SurfaceCopy>> = {
   },
   '/influencer': {
     lines: [
-      '매장을 직접 섭외하지 않아도 됩니다. 매장이 소개 몫을 건 동네 이용권을 내 유어샵에 담아',
-      '링크로 소개하면, 그 링크로 팔릴 때마다 매장이 정한 비율만큼 쌓여요.',
-      '내 가게가 있다면 직접 팔 수도 있어요',
-      '카카오 로그인만 하면 됩니다 · 별도 가입·심사 없음',
-      '모든 이용권에 소개 몫이 붙는 건 아니에요.',
-      '소개 몫이 걸린 이용권은 소개 마켓에서 찾을 수 있어요. 매장이 제안하거나 내가 신청하면, 수락된 순간부터 그 비율이 적용됩니다.',
+      '팔로워가 많지 않아도 괜찮아요. 동네 이웃에게 진짜 좋은 딜을 소개하는 것부터 시작합니다.',
+      '매장에 돈을 달라고 할 일이 없습니다. 제안 수락도 적립 확인도 같은 앱 안에서 끝납니다.',
+      '제안을 받고, 정산까지 앱에서',
+      '카카오 로그인 1분이면 내 유어샵이 자동으로 생겨요',
+      '동네 맛집·뷰티 딜 중 소개하고 싶은 걸 내 유어샵에 담아요',
+      '인스타·블로그·카톡에 내 링크 하나만 올리면 끝',
+      '소개비율은 딜마다 표시되니 고르기 전에 미리 확인하세요',
     ],
-    source: ['src/pages/InfluencerLandingPage.tsx'],
+    source: ['src/pages/CreatorsPage.tsx'],
   },
   '/experience': {
     lines: [
