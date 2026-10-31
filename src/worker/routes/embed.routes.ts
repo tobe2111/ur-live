@@ -37,7 +37,7 @@ export const embedRoutes = new Hono<{ Bindings: Env }>()
 
 const COLS = `p.id, p.name, p.price, p.original_price, p.discount_rate, p.image_url, p.thumbnail, p.category,
   COALESCE(p.deal_only, 0) AS deal_only, p.restaurant_name, p.restaurant_address, s.name AS seller_name`
-const CAT_IN = VOUCHER_CATEGORIES.map(() => '?').join(',')
+const CAT_IN = VOUCHER_CATEGORIES.map(() => '?').join(',') // d1-bind-ok: 고정 카테고리 5개 + 바인드 최대 3 = 8 (한도 100)
 /** 소비자 피드와 같은 노출 조건 — 승인 매장 · 도매 원본 제외 · 판매 중 이용권. */
 const LIVE = `p.is_active = 1 AND p.category IN (${CAT_IN}) AND COALESCE(p.group_buy_status, 'active') = 'active'
   AND ${consumerVisibleProductSql('p')} AND ${approvedSellerProductSql('p')}`
