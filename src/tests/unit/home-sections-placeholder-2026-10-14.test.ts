@@ -16,7 +16,10 @@ import { stripComments } from '../helpers/source-text'
 
 const sections = stripComments(readFileSync('src/components/home/HomeSections.tsx', 'utf8'))
 const card = stripComments(readFileSync('src/pages/main-home/GroupBuyFeedCard.tsx', 'utf8'))
-const ph = stripComments(readFileSync('src/components/home/DealCardPlaceholder.tsx', 'utf8'))
+const phFile = stripComments(readFileSync('src/components/home/DealCardPlaceholder.tsx', 'utf8'))
+// 🧾 2026-10-31: 같은 파일에 한 줄 자리(`DealRowPlaceholder`)가 생겼다 — 거기에도 `text-[17px] font-bold` 가 있어
+// 파일 전체로 대조하면 격자 자리가 판매가 줄을 잃어도 통과한다(주입이 잡았다). 격자 컴포넌트 본문만 본다.
+const ph = phFile.slice(phFile.indexOf('export default function DealCardPlaceholder'), phFile.indexOf('export function DealRowPlaceholder'))
 
 function skeletonBranch() {
   const a = sections.indexOf('if (isLoading && visible.length === 0)')
@@ -72,17 +75,18 @@ describe('② 자리 카드 = 진짜 카드의 줄 구조', () => {
 
 describe('③ 진짜 카드를 빌리지 않는다', () => {
   it('자리 카드 파일이 GroupBuyFeedCard 를 import 하지 않는다', () => {
-    expect(ph).not.toMatch(/GroupBuyFeedCard/)
+    expect(phFile).not.toMatch(/GroupBuyFeedCard/)
   })
   it('스크린리더에 안 읽힌다', () => {
-    expect(ph).toMatch(/aria-hidden="true"/)
+    expect(ph.length).toBeGreaterThan(200)
+    expect(phFile).toMatch(/aria-hidden="true"/)
   })
 })
 
 describe('④ 한 줄 자리(Y2) = 진짜 한 줄 카드와 같은 상수', () => {
   // 🧾 2026-10-31 (대표 확정 Y2): 본문 높이가 120 으로 고정이라 같은 상수만 쓰면 자리와 진짜 줄의 높이가 언제나 같다.
   it('줄·사진칸·사진 모양·본문·하단 줄을 HOME_ROW_CLS 로 세운다', () => {
-    const rowPh = ph.slice(ph.indexOf('export function DealRowPlaceholder'))
+    const rowPh = phFile.slice(phFile.indexOf('export function DealRowPlaceholder'))
     expect(rowPh.length).toBeGreaterThan(200)
     for (const k of ['link', 'thumb', 'mediaAspect', 'mediaBox', 'body', 'foot']) {
       expect(rowPh, k).toContain(`HOME_ROW_CLS.${k}`)
