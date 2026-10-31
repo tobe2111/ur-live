@@ -99,6 +99,17 @@ import { parseMallProductPath } from '../mall/resolve'
 import { categoryDef } from '../home-service-categories'
 
 /**
+ * 🧩 **앱 라우트 표 밖에서 워커(Hono)가 직접 그리는** 화면의 최상위 세그먼트.
+ *
+ * 위 두 집합은 라우트 표에서 다시 계산해 **양방향**으로 대조된다(그래서 여기 섞으면 그 가드가 깨진다).
+ * 이 집합은 그 대조 밖이라 따로 둔다 — 2026-10-31 라이브 실측: `/embed`·`/embed/u/:handle` 등
+ * 위젯 화면(`worker/routes/embed.routes.ts`)이 **본문은 멀쩡한데 HTTP 404** 로 나갔다.
+ * 색인 제외는 그 화면이 스스로 `noindex` 를 단다 — 여기는 상태코드만의 문제다.
+ * ⚠️ 새 워커 화면을 만들면 여기에 한 줄. 존재하지 않는 세그먼트를 넣으면 그 아래 쓰레기 경로가 200 이 된다.
+ */
+export const WORKER_SURFACE_SEGMENTS: ReadonlySet<string> = new Set(['embed'])
+
+/**
  * 이 경로가 앱 라우트 표의 모양과 맞는가(= 404 로 선언하지 **않을** 경로인가).
  *
  * 🔴 애매하면 **true**(= 200 유지)를 돌려준다. 색인을 잃는 쪽이 soft-404 보다 비싸다.
@@ -106,6 +117,7 @@ import { categoryDef } from '../home-service-categories'
 export function isKnownAppPath(pathname: string): boolean {
   const segs = pathname.split('/').filter(Boolean)
   if (segs.length === 0) return true                        // 홈
+  if (WORKER_SURFACE_SEGMENTS.has(segs[0])) return true     // 워커(Hono)가 직접 그리는 화면
   if (segs.length === 1) return KNOWN_SINGLE_ROUTES.has(segs[0])
   // `/:mallSlug/p/:id` — 최상위가 파라미터인 유일한 다중 세그먼트 패턴(몰 상품 귀속 경로).
   //

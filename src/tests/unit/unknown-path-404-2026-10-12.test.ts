@@ -91,6 +91,12 @@ describe('🗺️ 등록 안 된 경로 404', () => {
     }
   })
 
+  it('③-4 워커가 그리는 위젯 화면(/embed)도 통과한다 — 라우트 표 밖이라 2026-10-31 라이브에서 404 로 나갔다', () => {
+    for (const p of ['/embed', '/embed/u/jiwon1228', '/embed/partner/1', '/embed/region/%EC%84%9C%EC%9A%B8/%EC%A2%85%EB%A1%9C%EA%B5%AC']) {
+      expect(isKnownAppPath(p), p).toBe(true)
+    }
+  })
+
   it('③-3 깊은 경로는 최상위만 본다 (라우트 표에 없는 하위를 자르지 않는다)', () => {
     expect(isKnownAppPath('/seller/orders/does/not/exist')).toBe(true)
   })
