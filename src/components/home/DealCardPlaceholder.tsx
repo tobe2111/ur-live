@@ -1,3 +1,4 @@
+import { DEAL_ROW } from '@/shared/deal-card-grid'
 /**
  * 🧱 이용권 카드 자리 — **진짜 카드(`GroupBuyFeedCard`)와 같은 줄 구조**로 세운다 (2026-10-14).
  *
@@ -15,10 +16,12 @@
  */
 const BAR = 'rounded bg-gray-100 dark:bg-white/[0.06] text-transparent select-none'
 
-export default function DealCardPlaceholder() {
+/** `row` = 2026-10-31 줄 목록(진짜 카드의 `row` 와 같은 `DEAL_ROW` 클래스). */
+export default function DealCardPlaceholder({ row = false }: { row?: boolean } = {}) {
+  const photo = <div className="aspect-[4/3] rounded-xl bg-gray-100 dark:bg-white/[0.06]" />
   return (
-    <div aria-hidden="true" className="flex flex-col">
-      <div className="aspect-[4/3] rounded-xl bg-gray-100 dark:bg-white/[0.06]" />
+    <div aria-hidden="true" className={row ? DEAL_ROW.link : 'flex flex-col'}>
+      {row ? <div className={DEAL_ROW.mediaBox}>{photo}</div> : photo}
       <div className="pt-3">
         {/* 가게 */}
         <p className="flex text-[12px] leading-none mb-1"><span className={`${BAR} w-1/2`}>가</span></p>

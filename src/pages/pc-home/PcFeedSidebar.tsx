@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { DEAL_CATS, type DealCategory } from './PcHomeRail'
+import { HOME_DEAL_CATS, type DealCategory } from './PcHomeRail'
 import PcHomeLocationBar, { type HomeRegion } from './PcHomeLocationBar'
 import { DISTANCE_CHOICES, PRICE_BANDS, type FeedFilters } from '@/shared/home-feed-filters'
 
@@ -51,7 +51,7 @@ export default function PcFeedSidebar({
       </Group>
       <Group label="종류">
         <ul className="flex flex-col gap-1">
-          {DEAL_CATS.map(({ key, label }) => {
+          {HOME_DEAL_CATS.map(({ key, label }) => {
             const on = key === category
             return (
               <li key={key}>

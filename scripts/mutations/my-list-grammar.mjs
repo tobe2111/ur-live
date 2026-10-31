@@ -86,8 +86,9 @@ export default [
     file: 'src/pages/UserProfilePage.tsx',
     // 🔁 2026-10-11 재조준(안 5): 칸 className 이 삼항이 됐다(비셀러면 820px 로 좁힌다).
     //   불변식은 그대로 — **좌측 내비가 칸 앞에 되살아나면 안 된다.**
-    find: '      <div className="ur-account-pc">\n',
-    replace: '      <div className="ur-account-pc">\n        <AccountSideNav />\n',
+    // 🔁 2026-10-31 재조준: 폰 판·구분선 제거로 `ur-my-flat` 이 붙었다(불변식 그대로).
+    find: '      <div className="ur-account-pc ur-my-flat">\n',
+    replace: '      <div className="ur-account-pc ur-my-flat">\n        <AccountSideNav />\n',
     test: PC,
     why: '09-02 에 고친 "같은 항목을 두 번" 이 되살아나는 경로다(내비 7항목 중 넷이 우측 열과 중복이었다).\n'
       + '🩸 첫 판은 이 자리를 **주석**(`{/* AccountSideNav */}`)으로 심었는데 가드가 통과했다 — 그 시험은\n'

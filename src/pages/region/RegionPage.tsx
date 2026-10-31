@@ -157,6 +157,7 @@ export default function RegionPage() {
           category={category}
           onCategoryChange={setCategory}
           regionRef={ref}
+          showLife
         />
       </div>
 

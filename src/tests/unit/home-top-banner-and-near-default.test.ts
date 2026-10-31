@@ -300,8 +300,9 @@ describe('② 아래 딜 목록 기본 정렬 = 가까운 순', () => {
   it('두 홈 모두 캐시된 위치가 있으면 near 로 시작한다', () => {
     for (const p of ['src/pages/mobile-home/MobileHomePage.tsx', 'src/pages/pc-home/PcHomePage.tsx']) {
       const src = codeOnly(read(p))
-      expect(src, `${p}: readCachedLoc 미사용`).toMatch(/readCachedLoc\(\)/)
-      expect(src, `${p}: near 기본값 미배선`).toMatch(/readCachedLoc\(\)\s*\?\s*'near'\s*:\s*'popular'/)
+      // 🧭 2026-10-31: 시작 측위는 `homeStartLoc()`(마지막에 지역을 골랐으면 옛 측위를 안 쓴다) — 규칙은 그대로.
+      expect(src, `${p}: homeStartLoc 미사용`).toMatch(/homeStartLoc\(\)/)
+      expect(src, `${p}: near 기본값 미배선`).toMatch(/homeStartLoc\(\)\s*\?\s*'near'\s*:\s*'popular'/)
     }
   })
 
@@ -318,7 +319,7 @@ describe('② 아래 딜 목록 기본 정렬 = 가까운 순', () => {
     for (const p of ['src/pages/mobile-home/MobileHomePage.tsx', 'src/pages/pc-home/PcHomePage.tsx']) {
       const src = codeOnly(read(p))
       expect(src, `${p}: 지역 초기화가 좌표를 안 본다`)
-        .toMatch(/useState<HomeRegion>\(\(\) => \(readCachedLoc\(\) \? \{\} : readHomeRegion\(\)\)\)/)
+        .toMatch(/useState<HomeRegion>\(\(\) => \(homeStartLoc\(\) \? \{\} : readHomeRegion\(\)\)\)/)
       expect(src, `${p}: 옛 규칙(지역이 거리순을 막음)이 돌아왔다`)
         .not.toMatch(/readCachedLoc\(\) && !readHomeRegion\(\)\.regionKey/)
     }
@@ -330,7 +331,7 @@ describe('② 아래 딜 목록 기본 정렬 = 가까운 순', () => {
     const q = pc.indexOf("if (q && SORT_KEYS.includes(q)) return q")
     // ⚠️ 앵커는 **현재 코드의 표현**이어야 한다 — 2026-09-08 에 규칙이 바뀌며 옛 문자열이 사라졌고,
     //    indexOf 가 -1 을 내면서 이 비교가 통째로 무너졌다(CI 가 잡았다). 규칙이 또 바뀌면 여기도 함께.
-    const fallback = pc.indexOf("readCachedLoc() ? 'near' : 'popular'")
+    const fallback = pc.indexOf("homeStartLoc() ? 'near' : 'popular'")
     expect(fallback, '기본값 계산 앵커를 못 찾았다(표현이 바뀌었나?)').toBeGreaterThan(-1)
     expect(q).toBeGreaterThan(-1)
     expect(q).toBeLessThan(fallback)

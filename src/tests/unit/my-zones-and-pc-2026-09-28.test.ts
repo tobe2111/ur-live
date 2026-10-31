@@ -34,7 +34,8 @@ describe('이름 E — 제목이 붙은 구역이 파는 쪽', () => {
    *   그러면 다음에 값이 또 바뀌어도 두 자리가 갈리지 않는다.
    */
   it('판매 구역 제목이 공용 토큰에서 온다 (손으로 적지 않는다)', () => {
-    expect(SELLER).toMatch(/\$\{SECTION_TITLE_CLS\}`}>내 가게<\/h2>/)
+    // 🏪 2026-10-31 9번 B안: 판매 구역의 *보이는* 머리는 가게 머리줄이다. '내 가게' 는 읽기 도구용 제목으로만 남는다.
+    expect(SELLER).toContain('<h2 className="sr-only">내 가게</h2>')
     expect(SELLER, '크기를 손으로 적었다 — 오전 커밋이 이 제목에 안 닿은 이유가 그것이다')
       .not.toMatch(/text-\[\d+px\][^"]*">내 가게/)
   })
@@ -117,9 +118,8 @@ describe('구역 2 — 큰 제목 없이 그룹 라벨 셋', () => {
       expect(src, `${f} 에 구역 제목이 없다`).toMatch(/<SectionTitle[\s>]/)
       expect(src, `${f} 이 제목 크기를 손으로 적었다`).not.toMatch(/text-\[2[0-9]px\]/)
     }
-    // 판매 구역은 제목 옆에 가게 전환 버튼이 붙어 한 줄을 이루므로 `SectionTitle` 대신
-    // **같은 토큰**을 쓴다(위 검사가 그 출처를 고정한다).
-    expect(SELLER).toContain('SECTION_TITLE_CLS')
+    // 🏪 2026-10-31 9번 B안: 판매 구역은 제목 대신 **가게 머리줄**(사진 · 이름 · 가게 보기)로 시작한다.
+    expect(SELLER).toMatch(/<StoreThumb[\s\S]{0,80}store\?\.image/)
   })
 
   /**
@@ -210,8 +210,9 @@ describe('조판 — 하네스 실측으로 잡은 두 결함', () => {
   it('🔴 가게 개수는 말줄임에 안 먹힌다 — 이름과 다른 span 이다', () => {
     // 한 span 에 붙여 두면 긴 이름에서 `… 본점 · …` 처럼 **개수부터** 잘린다.
     // 그런데 이 줄이 눌리는 이유가 그 개수다(2곳 이상일 때만 전환 버튼).
-    expect(SELLER).toContain('<span className="truncate">{store.name}</span>')
-    expect(SELLER).toContain('<span className="shrink-0">· {stores.length}곳</span>')
+    // 🏪 2026-10-31 B안: 개수는 이름 줄이 아니라 **둘째 줄**(판매 중 N개 · 매장 N곳)로 내려갔다 — 이름 말줄임과 아예 다른 줄이다.
+    expect(SELLER).toMatch(/truncate">\{blank\(store\?\.name/)
+    expect(SELLER).toContain('`매장 ${stores.length}곳`')
     expect(SELLER).not.toContain('{store.name} · {stores.length}곳')
   })
 

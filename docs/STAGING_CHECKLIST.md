@@ -832,3 +832,13 @@ fail-closed 로 **설계된** 가드가 fail-open 이 된다 — 돈이 *안 보
 | S-STAYV-5 | 스캔 뒤 취소 시도 | 409 `STAY_VOUCHER_USED` · 환불 0 |
 | S-STAYV-6 | 숙박권 1건 → 사장님 관리 화면 '사용' 버튼 | 예약 `checked_out` + 이용권 `used` + 원장 1회(스캔 경로와 같은 함수) · 지갑에서 '사용 완료' |
 | (회귀) | 게이트 OFF 로 S-STAYV-1 | `vouchers` 0행 · 종전 수동 체크인 그대로 |
+
+### 🧪 데모 상품 결제 차단 (2026-10-26 대표 "데모 숙소에도 실제로 결제가 되면 안돼")
+
+공용 결제 검사(`fcfs-gate.ts` `checkFcfsPurchasable`)가 slug `demo-*` 를 먼저 막고, 숙소 예약 서버(`stays-public.routes.ts`)는 create · create-multi · confirm(Toss 승인 전) 세 곳에서 같은 판정을 부른다.
+
+| ID | 시나리오 | 기대 |
+|---|---|---|
+| S-DEMO-1 | 데모 숙소(`demo-stay-*`)에 `POST /api/group-buy/stays/bookings/create` 직접 호출 | 403 `DEMO_NOT_PURCHASABLE` · 예약·주문 행 0 |
+| S-DEMO-2 | 데모 이용권(`demo-deal-*`) `/join` 직접 호출(카드·딜 둘 다) | 403 `DEMO_NOT_PURCHASABLE` · 결제창 안 뜸 |
+| S-DEMO-3 | 실매장 숙소·이용권 카드 결제 1건 | 종전과 동일하게 승인까지(반대 방향 — 이게 깨지면 실매출이 막힌다) |

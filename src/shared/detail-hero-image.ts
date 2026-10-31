@@ -113,3 +113,19 @@ export function detailGalleryImages(src: {
 export function isMobileUserAgent(ua: string | null | undefined): boolean {
   return /Mobi|Android|iPhone|iPad|iPod/i.test(ua || '')
 }
+
+/**
+ * 🖼️ 2026-10-27 (대표 "이용권 상세페이지도 그루폰처럼 … 지금은 사진 하나밖에 안 보여"):
+ *   모바일 큰 사진 **아래 썸네일 2칸**(그루폰 모바일 상세). 사진이 3장 이상일 때만 편다 — 없는 사진을 칸으로 채우지 않는다.
+ *   React(`DetailGallery`)와 서버 첫 화면(`detail-ssr-body`)이 **같은 상수**를 쓴다 — 갈리면 마운트 때 제목이 밀린다.
+ */
+export const DETAIL_MOBILE_THUMBS = 2
+export const DETAIL_MOBILE_THUMB_RATIO = 3 / 2
+export const DETAIL_MOBILE_THUMB_ROW_CLS = 'grid grid-cols-2 gap-2 px-4 pt-2 bg-surface'
+export const DETAIL_MOBILE_THUMB_CLS = 'relative block w-full overflow-hidden rounded-xl'
+export function showMobileThumbs(count: number): boolean {
+  return count >= DETAIL_MOBILE_THUMBS + 1
+}
+export function detailMobileThumbUrl(src: string): string {
+  return detailCropUrl(src, DETAIL_THUMB_WIDTH, DETAIL_MOBILE_THUMB_RATIO)
+}

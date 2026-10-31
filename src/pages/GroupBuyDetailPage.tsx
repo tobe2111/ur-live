@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { ClockIcon, OkIcon, AlertIcon } from '@/components/icons/urdeal-icons'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import DetailGallery from './group-buy/DetailGallery'
+import StoreShortsPill from './group-buy/StoreShortsPillLazy'
 import { detailGalleryImages } from '@/shared/detail-hero-image'
 import UsageGuide from './group-buy/UsageGuide'
 import SellerCard from './group-buy/SellerCard'
@@ -602,9 +603,6 @@ export default function GroupBuyDetailPage() {
       {/* 🧭 2026-08-30 (대표 — 그루폰식 카테고리바): 사진 **위** 한 줄. 이 페이지는 헤더가 뜬다 → overlayHeader */}
       {/* 🎟️ 10-11 D안: 모바일은 사진이 맨 위부터 — 빵부스러기는 PC 만(대표 "부연설명이 많다"). */}
       <div className="hidden lg:block"><DetailBreadcrumb items={voucherCrumbs(detail.category)} overlayHeader /></div>
-      <DetailTitleHeader name={detail.name} storeName={detail.restaurant_name} address={detail.restaurant_address}
-        phone={detail.restaurant_phone} rating={detail.avg_rating} reviewCount={detail.review_count}
-        onnuri={(detail as { onnuri_merchant?: boolean }).onnuri_merchant} />
 
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-10 lg:max-w-[1200px] lg:mx-auto lg:items-start lg:pt-1">
       <div className="lg:min-w-0">{/* 좌측 콘텐츠 컬럼 */}
@@ -617,6 +615,7 @@ export default function GroupBuyDetailPage() {
           images={galleryImages}
           alt={detail.name}
           fallback={<CategoryFallbackIcon cat={detail.category} />}
+          overlay={detail.group_buy_status === 'expired' || detail.group_buy_status === 'cancelled' ? null : <StoreShortsPill productId={detail.id} />}
           badges={
             <>
               <div style={{ position: 'absolute', inset: '0 0 auto 0', height: 110, pointerEvents: 'none', background: 'linear-gradient(180deg, rgba(0,0,0,.4), transparent)' }} />
@@ -633,6 +632,10 @@ export default function GroupBuyDetailPage() {
         />
       </div>
 
+      {/* 🔁 2026-10-31 (대표 "이용권 이름을 사진 밑으로"): PC 제목은 사진 **아래**(폰과 같은 순서). */}
+      <DetailTitleHeader name={detail.name} storeName={detail.restaurant_name} address={detail.restaurant_address}
+        phone={detail.restaurant_phone} rating={detail.avg_rating} reviewCount={detail.review_count}
+        onnuri={(detail as { onnuri_merchant?: boolean }).onnuri_merchant} />
       <main id="gb-main" role="main">
         {/* 🖥️ 2026-07-19 그루폰식 섹션 탭 — PC 전용(클릭 → 해당 섹션 스크롤). 모바일은 세로 스택이라 불필요. */}
         <nav className="hidden lg:flex items-center gap-1 mt-4 mb-4 px-2 py-1 rounded-2xl bg-[var(--gbd-card)] shadow-lift" aria-label="상세 섹션">
@@ -644,8 +647,8 @@ export default function GroupBuyDetailPage() {
               longDescription: (detail as { long_description?: string | null }).long_description,
               sellerBio: (detail as { seller_bio?: string | null }).seller_bio })
               ? [{ id: 'gb-sec-store', label: '가게 소개' }] : []),
-            { id: 'gb-sec-info', label: '이용권 정보' },
             ...((detail.restaurant_address || (detail.restaurant_lat && detail.restaurant_lng)) ? [{ id: 'gb-sec-location', label: '매장 위치' }] : []),
+            { id: 'gb-sec-info', label: '이용권 정보' },
             ...(Number(detail.review_count || 0) > 0 ? [{ id: 'gb-sec-reviews', label: '리뷰' }] : []),
           ].map((tab) => (
             <button key={tab.id} onClick={() => document.getElementById(tab.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
@@ -710,6 +713,26 @@ export default function GroupBuyDetailPage() {
           sellerBio={(detail as { seller_bio?: string | null }).seller_bio} sellerAvatar={detail.seller_avatar}
           sellerName={detail.seller_name} storeName={detail.restaurant_name} /></div>
 
+        {/* 📍 2026-10-27 (대표 "지도 섹션이 상품 구성 아래에 나와야"): 상품 구성 바로 다음으로 올렸다.
+            매장 위치 — 추출: StoreLocation(테두리 제거 + 전화 버튼 신설). 지도는 **잠금 lazy** 라
+            여기서 감싸 넘긴다(그 lazy 경계를 옮기면 로딩 최적화 잠금 계약이 흔들린다). */}
+        {(detail.restaurant_address || (detail.restaurant_lat && detail.restaurant_lng)) && (
+          <>
+            <div className={PASS_CARD}><StoreLocation onProfile={goStore}
+              name={detail.restaurant_name} address={detail.restaurant_address} phone={detail.restaurant_phone}
+              lat={detail.restaurant_lat} lng={detail.restaurant_lng} sellerId={detail.seller_id} productId={detail.id}
+              map={(
+                <DeferUntilVisible minHeight={172}>
+                  <Suspense fallback={<div style={{ height: 172, background: 'var(--gbd-chip)' }} />}>
+                    <RestaurantMiniMap name={detail.restaurant_name} address={detail.restaurant_address} lat={detail.restaurant_lat} lng={detail.restaurant_lng} placeUrl={detail.kakao_place_url} />
+                  </Suspense>
+                </DeferUntilVisible>
+              )}
+            /></div>
+          </>
+        )}
+
+
 
         {/* 🔴 2026-09-01 (디자인 방향 PR A): 3열 균등 신뢰 스트립(안전결제/정식판매/환불보장) 삭제 —
             CTA 위 한 줄("토스로 3초 안전결제 · 미사용 시 100% 자동환불")이 같은 말을 이미 한다. */}
@@ -730,24 +753,6 @@ export default function GroupBuyDetailPage() {
 
         {/* 대표 메뉴 — 백엔드 menu 데이터 있을 때만 (data-gate; docs/design/group-buy-detail.md). 추출: DealMenuList */}
         <div className={`${PASS_CARD} empty:hidden`}><DealMenuList menuItems={((detail as { menu?: DealMenuItem[] }).menu) || []} /></div>
-
-        {/* 매장 위치 — 추출: StoreLocation(테두리 제거 + 전화 버튼 신설). 지도는 **잠금 lazy** 라
-            여기서 감싸 넘긴다(그 lazy 경계를 옮기면 로딩 최적화 잠금 계약이 흔들린다). */}
-        {(detail.restaurant_address || (detail.restaurant_lat && detail.restaurant_lng)) && (
-          <>
-            <div className={PASS_CARD}><StoreLocation onProfile={goStore}
-              name={detail.restaurant_name} address={detail.restaurant_address} phone={detail.restaurant_phone}
-              lat={detail.restaurant_lat} lng={detail.restaurant_lng} sellerId={detail.seller_id} productId={detail.id}
-              map={(
-                <DeferUntilVisible minHeight={172}>
-                  <Suspense fallback={<div style={{ height: 172, background: 'var(--gbd-chip)' }} />}>
-                    <RestaurantMiniMap name={detail.restaurant_name} address={detail.restaurant_address} lat={detail.restaurant_lat} lng={detail.restaurant_lng} placeUrl={detail.kakao_place_url} />
-                  </Suspense>
-                </DeferUntilVisible>
-              )}
-            /></div>
-          </>
-        )}
 
         {/* 👤 주인용 '관리하기' 는 구매 자리(PC 상자·모바일 바)로 옮겼다 — 2026-10-18 */}
 
