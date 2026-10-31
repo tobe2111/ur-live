@@ -51,7 +51,7 @@
 /** 세그먼트가 하나뿐인 **정적** 라우트. 1세그먼트 경로는 이것과 정확히 일치해야 한다. */
 export const KNOWN_SINGLE_ROUTES: ReadonlySet<string> = new Set([
   '500', 'about', 'admin', 'ads', 'agency', 'area-report', 'blog', 'browse',
-  'business', 'cart', 'checkout', 'creator', 'creators', 'experience', 'fail', 'faq',
+  'business', 'cart', 'checkout', 'creator', 'creators', 'embed', 'experience', 'fail', 'faq',
   'following', 'gb-market', 'gdpr', 'group-buy', 'host', 'influencer', 'interest-list', 'introduce',
   'join', 'kakao-debug', 'life', 'login', 'mall-admin', 'map', 'meal-vouchers', 'my-appointments', 'my-commissions',
   'my-coupons', 'my-deal-history', 'my-gifticons', 'my-orders', 'my-returns', 'my-reviews', 'my-stays', 'my-store',
@@ -87,9 +87,15 @@ export const KNOWN_SINGLE_ROUTES: ReadonlySet<string> = new Set([
  *   그건 리터럴 자식 + 동적 자식 모양 모델이 필요하고, `/group-buy/confirm-payment` 가 그 위험의
  *   증거다 — 숫자 전용 규칙을 통째로 걸면 **결제 복귀 URL 이 404** 가 된다. 별건.
  */
+/**
+ * 🧩 2026-10-31 — `embed` 는 **앱 라우트가 아니라 워커(Hono)가 그리는** 위젯·코드 만들기 화면이다
+ *   (`worker/routes/embed.routes.ts`). 라우트 표에 없어서 빠져 있었고, 배포 뒤 라이브 실측으로
+ *   `/embed`·`/embed/u/:handle` 등이 **본문은 멀쩡한데 HTTP 404** 로 나가는 것을 잡았다.
+ *   (색인 제외는 그 화면 스스로 `noindex` 를 단다 — 여기 넣는 것은 상태코드만의 문제다.)
+ */
 export const KNOWN_PARENT_SEGMENTS: ReadonlySet<string> = new Set([
   'about', 'account', 'admin', 'ads', 'agency', 'area-report', 'auth', 'blog', 'brand',
-  'campaign', 'community-group-buy', 'coupon', 'creators', 'design', 'district', 'g', 'gift',
+  'campaign', 'community-group-buy', 'coupon', 'creators', 'design', 'district', 'embed', 'g', 'gift',
   'group-buy', 'host', 'i', 'influencer', 'life', 'local', 'my', 'mypage', 'pass',
   'pay', 'payment', 'points', 'product', 'products', 'profile', 'referral', 'region',
   's', 'seller', 'stays', 'store', 'terms', 'u', 'user', 'v', 'vouchers',

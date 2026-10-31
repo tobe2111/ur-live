@@ -92,4 +92,20 @@ export default [
     test: TEST,
     why: '1세그먼트 미등록 경로는 몰 후보라 라우트 판정에서 제외된다 — MALL 슬롯이 받지 않으면 그 구멍이 다시 열린다.',
   },
+  {
+    name: '🧩 위젯 화면 /embed 를 아는 경로 목록에서 뺀다 (1세그먼트)',
+    file: SSOT,
+    find: "'creator', 'creators', 'embed', 'experience',",
+    replace: "'creator', 'creators', 'experience',",
+    test: TEST,
+    why: '2026-10-31 라이브 실측 — 워커가 그리는 코드 만들기 화면이 본문은 멀쩡한데 HTTP 404 로 나갔다.',
+  },
+  {
+    name: '🧩 위젯 화면 /embed/* 를 아는 부모 목록에서 뺀다',
+    file: SSOT,
+    find: "'district', 'embed', 'g', 'gift',",
+    replace: "'district', 'g', 'gift',",
+    test: TEST,
+    why: '남의 사이트에 박히는 iframe 주소(/embed/u/…)가 전부 404 로 나간다 — 일부 편집기·미리보기는 404 iframe 을 깨진 것으로 본다.',
+  },
 ]
