@@ -107,6 +107,7 @@ describe('R2 — 숫자가 대표 승인 덱(deck-common.mjs FACTS)과 같다', 
     ['minPayout', PARTNER_FACTS.minPayout],
     ['reviewBonus', PARTNER_FACTS.reviewBonus],
     ['liveMeasuredAt', PARTNER_FACTS.liveMeasuredAt],
+    ['catalogMeasuredAt', PARTNER_FACTS.catalogMeasuredAt],
     ['activeVouchers', PARTNER_FACTS.activeVouchers],
     ['realStores', PARTNER_FACTS.realStores],
     ['influencerDb', PARTNER_FACTS.influencerDb],
@@ -190,7 +191,7 @@ describe('R4 — 덱이 정한 설득 구조가 살아 있다', () => {
     const faq = visible('src/pages/partners/PartnerFaq.tsx')
     // 🩸 처음엔 `/초기 서비스/` 로 봤는데, 같은 파일 FAQ 답변에도 그 말이 있어
     //    고지 블록을 통째로 지워도 초록이었다(주입 러너가 잡았다). 그래서 **문장 전체**를 앵커로 둔다.
-    expect(faq).toMatch(/유어딜은 초기 서비스입니다\. \{F\.liveMeasuredAt\} 기준 판매 중인 이용권 \{F\.activeVouchers\}건/)
+    expect(faq).toMatch(/유어딜은 초기 서비스입니다\. \{F\.catalogMeasuredAt\} 기준 판매 중인 이용권 \{F\.activeVouchers\}건/)
     expect(faq).toMatch(/실제 매장이 등록한 것은 \{F\.realStores\}건/)
     expect(faq).toMatch(/트래픽을 약속하는 대신/)
   })

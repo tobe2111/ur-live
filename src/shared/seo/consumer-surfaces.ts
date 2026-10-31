@@ -165,8 +165,8 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
   },
   '/creators': {
     crumb: '소개 파트너',
-    title: '동네 딜 소개하고 수익 받기',
-    description: '링크 하나로 우리 동네 맛집을 소개하세요. 매장이 소개 몫을 건 딜이 내 링크로 팔리면 그 몫이 쌓입니다. 가입 → 유어샵에 담기 → 링크 공유, 3단계면 시작입니다.',
+    title: '1기 소개 파트너 모집 - 지원 안내',
+    description: '유어딜 1기 소개 파트너를 모집합니다. 지원하시면 온보딩 안내를 보내드리고, 매장 제안 수락부터 적립 확인·정산까지 앱 안에서 이어집니다. 팔로워가 많지 않아도 지원할 수 있습니다.',
   },
   '/creators/apply': {
     crumb: '신청',

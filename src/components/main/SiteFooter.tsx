@@ -57,7 +57,7 @@ export default function SiteFooter() {
                 사실상 이 푸터 하나뿐이었다(감사 실측). 목적지는 단일(/store/new). */}
             <a href="/store/new" className={colLink}>내 가게 등록하기</a>
             <a href="/area-report" className={colLink}>우리 동네 상권 리포트</a>
-            <a href="/creators" className={colLink}>크리에이터 모집</a>
+            <a href="/creators" className={colLink}>소개 파트너 모집</a>
             {!REFERRAL_GROUP_DISCOUNT_DISABLED && (
               <a href="/referral" className={colLink}>공구 개최하기</a>
             )}

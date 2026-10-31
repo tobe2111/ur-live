@@ -170,3 +170,28 @@ describe('⑤ 명칭·스니펫', () => {
     expect(who!.answer).toMatch(/^매장이 냅니다/)
   })
 })
+
+describe('⑥ /creators ↔ /influencer — 같은 질의를 다투지 않는다 (2026-10-31 대표 "모두 해줘")', () => {
+  // 둘 다 "동네 가게 소개하고 수익" 을 제목에 걸면 한 사이트의 두 URL 이 같은 검색어를 놓고 다툰다.
+  // 역할을 나눴다: /influencer = 방법·수익(정보) · /creators = 1기 모집·지원(행동).
+  const c = CONSUMER_SURFACE_SEO['/creators']
+  const i = CONSUMER_SURFACE_SEO['/influencer']
+  it('제목이 서로 다르고 /creators 는 모집·지원을 말한다', () => {
+    expect(c.title).not.toBe(i.title)
+    expect(c.title).toMatch(/모집/)
+    expect(c.title).not.toMatch(/수익/)
+  })
+  it('/creators 스니펫도 신분 호칭 없이 ≤160자', () => {
+    expect(`${c.title}\n${c.description}`).not.toMatch(/인플루언서|크리에이터|큐레이터/)
+    expect(c.description.length).toBeLessThanOrEqual(160)
+  })
+  it('/influencer 화면이 /creators 로 가는 길을 실제로 갖고 있다(크롤러 링크와 짝)', () => {
+    expect(readCode('src/pages/InfluencerLandingPage.tsx')).toContain('to="/creators"')
+    expect(landingLinks('/influencer').map(l => l.href)).toContain('/creators')
+  })
+  it('푸터가 모집 페이지를 신분 호칭으로 부르지 않는다', () => {
+    for (const f of ['src/components/main/SiteFooter.tsx', 'src/components/MobileFooter.tsx', 'src/worker/utils/home-footer-noscript.ts']) {
+      expect(readCode(f), f).not.toMatch(/크리에이터 모집/)
+    }
+  })
+})

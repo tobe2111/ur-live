@@ -96,6 +96,7 @@ export const KNOWN_PARENT_SEGMENTS: ReadonlySet<string> = new Set([
 ])
 
 import { parseMallProductPath } from '../mall/resolve'
+import { categoryDef } from '../home-service-categories'
 
 /**
  * 이 경로가 앱 라우트 표의 모양과 맞는가(= 404 로 선언하지 **않을** 경로인가).
@@ -120,5 +121,9 @@ export function isKnownAppPath(pathname: string): boolean {
   //   통째로 죽고 색인 복구는 수주다. 그래서 문법이 맞으면 **여전히 통과**시키고(= 200 유지),
   //   실재 여부는 `shouldNoindexMissingEntity` 가 self-fetch 404 로만 판정한다.
   if (segs.length === 3 && segs[1] === 'p') return parseMallProductPath(pathname) != null
+  // 🏠 2026-10-31 — `/life/request/:category` 는 업종 키가 닫힌 목록이다. 없는 키(`/life/request/zzzz`)는
+  //   화면이 "없는 카테고리예요" 를 그리는데 서버는 200 + index 를 줬다(soft-404, 서치콘솔 실측).
+  //   화면과 **같은 함수**(`categoryDef`)로 판정한다 — 두 벌이면 실재 업종이 404 가 되는 날이 온다.
+  if (segs.length === 3 && segs[0] === 'life' && segs[1] === 'request') return categoryDef(segs[2]) != null
   return KNOWN_PARENT_SEGMENTS.has(segs[0])
 }

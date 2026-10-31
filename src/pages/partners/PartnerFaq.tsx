@@ -33,7 +33,7 @@ export default function PartnerFaq() {
         <div className="mt-14 lg:mt-20 pt-10 lg:pt-14 border-t border-rule">
           <p className="text-[12px] font-medium text-gray-500 dark:text-gray-400 mb-4">숨기지 않고 말씀드립니다</p>
           <p className="text-[15px] lg:text-[24px] leading-[1.75] text-ink max-w-[40em] font-medium">
-            유어딜은 초기 서비스입니다. {F.liveMeasuredAt} 기준 판매 중인 이용권 {F.activeVouchers}건 가운데
+            유어딜은 초기 서비스입니다. {F.catalogMeasuredAt} 기준 판매 중인 이용권 {F.activeVouchers}건 가운데
             실제 매장이 등록한 것은 {F.realStores}건이고, 나머지는 시범 운영을 위한 예시입니다.
             트래픽을 약속하는 대신 조건을 숫자로 먼저 공개합니다.
             지금 들어오시는 매장이 그 지역과 카테고리의 첫 자리를 가져갑니다.

@@ -21,7 +21,7 @@ export default function MobileFooter() {
              그건 문서를 읽으러 가는 링크지 행동 버튼이 아니다 — 둘을 같이 바꾸면 판단 없는 일괄이 된다.)
             🏳️ 이모지(🏪·✨)도 뗐다 — 기기마다 다른 그림으로 렌더되고, 이 줄에서 뜻을 더하지 않는다. */}
         <a href={sellerEntryPath()} className="px-2 py-1 rounded-full border border-line text-[12px] font-medium text-gray-700 dark:text-gray-200">입점 안내</a>
-        <a href="/creators" className="px-2 py-1 rounded-full border border-line text-[12px] font-medium text-gray-700 dark:text-gray-200">크리에이터 모집</a>
+        <a href="/creators" className="px-2 py-1 rounded-full border border-line text-[12px] font-medium text-gray-700 dark:text-gray-200">소개 파트너 모집</a>
       </div>
 
       {/* Links (서비스 소개는 위 pill 버튼으로 승격 — 중복 제거) */}

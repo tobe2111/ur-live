@@ -7938,8 +7938,8 @@ canvas {
   {
     name: '🔎 검색결과 문구가 사람을 다시 신분으로 부른다',
     file: 'src/shared/seo/consumer-surfaces.ts',
-    find: "    title: '동네 딜 소개하고 수익 받기',",
-    replace: "    title: '크리에이터 모집',",
+    find: "    title: '1기 소개 파트너 모집 - 지원 안내',",
+    replace: "    title: '1기 크리에이터 모집 - 지원 안내',",
     test: 'src/tests/unit/urshop-naming.test.ts',
     why:
       '대표 확정 모델은 "사람을 인플루언서/대행사로 나누지 않고 행위 2개(담기·운영)로 말한다" 이고, ' +

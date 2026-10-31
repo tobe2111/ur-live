@@ -33,8 +33,9 @@ export const FACTS = {
   introPct: '2%', introTerm: '1년',
   reviewBonus: '지금은 운영하지 않음', // 2026-10-12 종료(KAKAO_REVIEW_BONUS_ENABLED=false). 슬라이드에 약속하지 말 것
   minPayout: '1만원',
-  liveMeasuredAt: '2026-10-12',
-  activeVouchers: '359', realStores: '2',
+  liveMeasuredAt: '2026-10-12', // 인플루언서 DB·소개 적립 문장의 기준일. 정직 고지는 catalogMeasuredAt
+  catalogMeasuredAt: '2026-10-31', // 판매 중 이용권 재측정일(is_active=1 · deal_only=0 · 이용권 4종)
+  activeVouchers: '165', realStores: '2',
   // ⚠️ 승인 매장 수는 **슬라이드에 쓰지 않는다.** 2026-10-12 실측 10곳 중 2곳이 명시적 테스트 계정
   //    ([테스트] 클로드카페·클로드미용실)이고, 나머지에도 중복 등록(구서우성아파트 ×2)과 장소명
   //    (해운대해수욕장)이 섞여 있다 — "그 10곳이 어디냐" 는 질문에 답이 궁색해지는 숫자다.
@@ -352,7 +353,7 @@ export async function createDeck({ title, footer, shotsDir, shotKeys = [], phone
   function honesty(slide, { x = M, y, w = W - 2 * M, h = 1.5, text } = {}) {
     card(slide, x, y, w, h, { fill: C.tint });
     T(slide, '정직하게 말씀드립니다', { x: x + 0.3, y: y + 0.18, w: w - 0.6, h: 0.3, fontSize: 12.5, bold: true, color: C.ink, charSpacing: -0.3 });
-    T(slide, text || `유어딜은 초기 서비스입니다. ${FACTS.liveMeasuredAt} 기준 판매 중인 이용권 ${FACTS.activeVouchers}건 가운데 실제 매장이 등록한 것은 ${FACTS.realStores}건이고, 나머지는 시범 운영을 위한 예시입니다. 트래픽을 약속하는 대신 조건을 숫자로 먼저 공개합니다. 지금 들어오시는 매장이 그 지역과 카테고리의 첫 자리를 가져갑니다.`,
+    T(slide, text || `유어딜은 초기 서비스입니다. ${FACTS.catalogMeasuredAt} 기준 판매 중인 이용권 ${FACTS.activeVouchers}건 가운데 실제 매장이 등록한 것은 ${FACTS.realStores}건이고, 나머지는 시범 운영을 위한 예시입니다. 트래픽을 약속하는 대신 조건을 숫자로 먼저 공개합니다. 지금 들어오시는 매장이 그 지역과 카테고리의 첫 자리를 가져갑니다.`,
       { x: x + 0.3, y: y + 0.52, w: w - 0.6, h: h - 0.62, fontSize: 10.5, color: C.ink, lineSpacingMultiple: 1.45, valign: 'top' });
   }
 

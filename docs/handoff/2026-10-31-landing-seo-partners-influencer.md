@@ -34,10 +34,20 @@ for p in partners influencer; do curl -sS -A "$UA" https://urdeal.kr/$p | grep -
 - 구글은 2023-08 부터 FAQ 리치결과를 정부·의료 사이트에만 보여 준다. `FAQPage` 는 리치결과용이 아니라 Bing·네이버·AI 검색이 Q&A 를 읽게 하는 것(GEO).
 - 처음에 크롤러 링크로 `/agency-partner` 를 넣으려 했다 — 그 경로는 SEO 표·sitemap 에 없어 뺐다. 화면에 있는 링크라도 색인 대상이 아니면 넣지 않는다.
 
-## 남은 것 (대표 판단)
-- `/creators`(제목 "동네 딜 소개하고 수익 받기")와 `/influencer` 가 같은 질의를 다툰다(키워드 잠식). 하나로 합치거나 한쪽을 정본으로 둘지.
-- /partners 정직 고지 숫자(2026-10-12 기준 판매 중 359건 · 실제 매장 2곳)가 낡았다 — 지금 판매 중 182건. 덱(`deck-common.mjs`)과 짝이라 함께 갱신해야 한다.
+## 2차 (대표 "모두 해줘")
+1. **정직 고지 숫자 갱신** — D1 재측정(2026-10-31): is_active=1 · deal_only=0 · 이용권 4종 = **165건**, 그중 실제 매장 **2건**(2915 홍대돈까스 · 2919 달빛한스푼). 날짜를 둘로 갈랐다: `catalogMeasuredAt`(2026-10-31, 정직 고지) · `liveMeasuredAt`(2026-10-12 그대로 — 덱이 인플루언서 DB·소개 적립 문장의 기준일로도 써서, 다시 안 센 숫자에 새 날짜가 붙는 것을 막는다). `partners-facts.ts` ↔ `deck-common.mjs` 둘 다, 상인회 덱 PPTX·PDF 재생성(글자 diff = 그 문장 + 줄바꿈 2곳뿐, Noto Sans CJK 로 옛 판과 같은 글꼴).
+2. **/creators ↔ /influencer 잠식 해소** — /creators 제목 `1기 소개 파트너 모집 - 지원 안내`(모집·지원 의도), /influencer 는 방법·수익. /influencer 헤더에 `1기 모집` 링크(화면에 실재 → 크롤러 링크에도). 푸터 3곳 `크리에이터 모집` → `소개 파트너 모집`(명칭 SSOT).
+3. **/map 클라 제목을 서버와 같은 SSOT 로** — 서버는 `내 주변 동네딜 지도…` 인데 JS 렌더 뒤엔 `맛집 지도` 였다.
+4. **`/life/request/<없는 키>` → 404**(`known-routes.ts`, 화면과 같은 `categoryDef`). 실재 업종 전부 통과 시험 + 반대 방향 주입.
+5. **IndexNow 엔진별 직접 제출** — 공유 중계 `api.indexnow.org` 가 429 면 전부 막혔다 → 네이버(`searchadvisor.naver.com/indexnow`)·빙에 각각, **하나라도 받으면 성공**. 하트비트에 엔진별 상태.
+
+## 구글 사이트링크(모두싸인처럼 묶음) 관련 판정
+- 사이트링크는 신청 수단이 없다. 조건은 *브랜드 검색에서 홈이 1위* + 구조 신호. 지금 "유어딜" 1위가 홈 제목이 아니라 **/map 제목**(`내 주변 동네딜 지도…`)을 달고 나온다. 서버(Googlebot UA)는 홈·/map 둘 다 제 제목·제 canonical 을 낸다(실측).
+- 대표 확인 필요: 서치콘솔 URL 검사 → `https://urdeal.kr/` 와 `https://urdeal.kr/map` 의 **"Google이 선택한 표준"** · 홈 "색인 생성 요청".
+
+## 남은 것
 - 두 페이지 공유 그림이 사이트 공통 `og-image.png` 다. 전용 카드가 필요하면 별건.
+- 다른 덱 4개는 정직 고지 숫자를 안 쓴다(상인회 덱만) — 재생성 불필요.
 
 ## 함께 들어간 것 (커밋 차단 해소)
 - `follow-redirects` override `^1.16.1` → `^1.16.2`(lockfile 1.16.2) — 새 advisory GHSA-mrwp-f3q8-3g9p(high)가 pre-commit·CI npm audit 게이트를 막았다. axios 의 전이 의존성, semver 패치.
