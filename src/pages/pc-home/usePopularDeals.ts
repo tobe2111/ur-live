@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
-import { queryKeys } from '@/hooks/queries'
+import { queryKeys, seedDetailFromListRow } from '@/hooks/queries'
 import type { Product } from '@/pages/main-home/types'
 
 /**
@@ -18,7 +18,7 @@ export function usePopularDeals() {
     queryFn: async () => {
       const res = await api.get('/api/group-buy/products?status=active&category=all&sort=popular')
       const arr: Product[] = Array.isArray(res.data?.data) ? res.data.data : []
-      for (const p of arr) if (p?.id != null) qc.setQueryData(queryKeys.groupBuyProduct(p.id), p)
+      for (const p of arr) seedDetailFromListRow(qc, p)
       return arr
     },
     staleTime: 5 * 60_000,

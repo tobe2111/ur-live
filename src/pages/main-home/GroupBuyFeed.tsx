@@ -19,7 +19,7 @@ import { deferSeeded, seededSectionProductIds } from '@/shared/home-section-ids'
 import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
-import { queryKeys } from '@/hooks/queries'
+import { queryKeys, seedDetailFromListRow } from '@/hooks/queries'
 import { useFcfsMap } from '@/features/group-buy/useFcfs'
 import GroupBuyFeedCard from './GroupBuyFeedCard'
 import { useProgressiveCap } from '@/hooks/useProgressiveCap'
@@ -222,9 +222,7 @@ export default function GroupBuyFeed({
       const res = await api.get(`/api/group-buy/products?status=active&category=${category}${feedParams}`)
       const arr: FeedProduct[] = Array.isArray(res.data?.data) ? res.data.data : []
       // hydrate individual detail cache (idempotent).
-      for (const p of arr) {
-        if (p?.id != null) qc.setQueryData(queryKeys.groupBuyProduct(p.id), p)
-      }
+      for (const p of arr) seedDetailFromListRow(qc, p)
       return arr
     },
     initialData: nearKey ? undefined : ssrInitial,  // 시드는 위치 없는 인기순 — 가까운 후보 요청엔 안 맞는다
@@ -303,7 +301,7 @@ export default function GroupBuyFeed({
       const nextPage = extraPages.length + 2  // page1 = items → 다음은 2부터
       const res = await api.get(`/api/group-buy/products?status=active&category=${category}&page=${nextPage}&limit=50${feedParams}`)
       const arr: FeedProduct[] = Array.isArray(res.data?.data) ? res.data.data : []
-      for (const p of arr) { if (p?.id != null) qc.setQueryData(queryKeys.groupBuyProduct(p.id), p) }
+      for (const p of arr) seedDetailFromListRow(qc, p)
       setExtraPages(prev => [...prev, arr])
       if (arr.length < 50) setReachedEnd(true)
     } catch { /* 실패 시 버튼 유지 — 다음 시도 가능 */ } finally { setLoadingMore(false) }

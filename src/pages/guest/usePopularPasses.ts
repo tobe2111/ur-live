@@ -11,7 +11,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ComponentProps } from 'react'
 import api from '@/lib/api'
-import { queryKeys } from '@/hooks/queries'
+import { queryKeys, seedDetailFromListRow } from '@/hooks/queries'
 import type GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
 
 export type PassItem = ComponentProps<typeof GroupBuyFeedCard>['p']
@@ -25,7 +25,7 @@ export function usePopularPasses() {
     queryFn: async () => {
       const res = await api.get(POPULAR_PASSES_URL)
       const arr: PassItem[] = Array.isArray(res.data?.data) ? res.data.data : []
-      for (const p of arr) if (p?.id != null) qc.setQueryData(queryKeys.groupBuyProduct(p.id), p)
+      for (const p of arr) seedDetailFromListRow(qc, p)
       return arr
     },
     staleTime: 60_000,
