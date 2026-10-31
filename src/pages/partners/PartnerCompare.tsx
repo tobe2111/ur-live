@@ -12,6 +12,7 @@
  * ⚠️ 성과 수치("매출 N% 증가")는 넣지 않는다. 라이브 실측 전이라 근거가 없다(기획 §2-6).
  */
 import { PARTNER_FACTS as F } from '@/shared/partners-facts'
+import { Reveal } from '../landing/motion'
 
 /** 대표 확정 "차별점 3가지"(2026-09-16). 상대의 이름을 피하지 않는다 — 사장님이 지금 쓰는 것들이다. */
 const DIFFS = [
@@ -49,25 +50,25 @@ export default function PartnerCompare() {
   return (
     <section className="bg-surface">
       <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28">
-        <h2 className="text-[28px] lg:text-[40px] xl:text-[48px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2] max-w-[14em]">
+        <Reveal><h2 className="text-[28px] lg:text-[40px] xl:text-[48px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2] max-w-[14em]">
           그 광고비, 효과 보셨어요?
-        </h2>
+        </h2></Reveal>
 
         {/* 비대칭: 체험단이 크고 나머지 둘이 아래 두 칸 */}
         <div className="mt-10 lg:mt-16">
-          <div className="max-w-[46rem]">
+          <Reveal className="max-w-[46rem]">
             <p className="text-[12px] lg:text-[15px] font-medium text-brand-text">{lead.vs}</p>
             <p className="mt-3 lg:mt-4 text-[24px] lg:text-[34px] font-bold text-ink leading-[1.3] tracking-[-0.025em]">{lead.t}</p>
             <p className="mt-4 text-[15px] lg:text-[17px] leading-[1.8] text-gray-500 dark:text-gray-400">{lead.d}</p>
-          </div>
+          </Reveal>
 
           <div className="mt-10 lg:mt-14 grid gap-8 sm:grid-cols-2 lg:gap-14">
-            {rest.map(({ vs, t, d }) => (
-              <div key={vs}>
+            {rest.map(({ vs, t, d }, i) => (
+              <Reveal key={vs} delay={i * 110}>
                 <p className="text-[12px] lg:text-[13px] font-medium text-brand-text">{vs}</p>
                 <p className="mt-2 text-[17px] lg:text-[24px] font-bold text-ink leading-[1.35] tracking-[-0.02em]">{t}</p>
                 <p className="mt-3 text-[13px] lg:text-[15px] leading-[1.8] text-gray-500 dark:text-gray-400">{d}</p>
-              </div>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -80,21 +81,22 @@ export default function PartnerCompare() {
             ))}
           </div>
           <div className="mt-2">
-            {ROWS.map(({ k, cells, ours }) => (
-              <div key={k}
-                className={`grid ${GRID} gap-x-8 items-center ${ours ? 'mt-3 rounded-2xl bg-brand-tint px-7 py-7 -mx-7' : 'px-0 py-6'}`}>
+            {/* 🎬 줄이 차례로 들어오고, 유어딜 줄은 마지막에 파란 띠가 왼쪽에서 그어진다 */}
+            {ROWS.map(({ k, cells, ours }, ri) => (
+              <Reveal key={k} delay={ri * 120}
+                className={`grid ${GRID} gap-x-8 items-center ${ours ? 'ur-sweep mt-3 rounded-2xl px-7 py-7 -mx-7' : 'px-0 py-6'}`}>
                 <p className={`text-[17px] xl:text-[17px] font-bold tracking-[-0.01em] ${ours ? 'text-brand-text' : 'text-ink'}`}>{k}</p>
                 {cells.map((c, i) => (
                   <p key={i} className={`text-[15px] leading-relaxed ${ours ? 'font-bold text-ink' : 'text-gray-500 dark:text-gray-400'}`}>{c}</p>
                 ))}
-              </div>
+              </Reveal>
             ))}
           </div>
         </div>
 
         <div className="lg:hidden mt-10 space-y-2">
-          {ROWS.map(({ k, cells, ours }) => (
-            <div key={k} className={`rounded-2xl p-4 ${ours ? 'bg-brand-tint' : 'bg-black/[0.03] dark:bg-white/[0.04]'}`}>
+          {ROWS.map(({ k, cells, ours }, ri) => (
+            <Reveal key={k} delay={ri * 80} className={`rounded-2xl p-4 ${ours ? 'bg-brand-tint' : 'bg-black/[0.03] dark:bg-white/[0.04]'}`}>
               <p className={`text-[15px] font-bold ${ours ? 'text-brand-text' : 'text-ink'}`}>{k}</p>
               <dl className="mt-2 space-y-2">
                 {cells.map((c, i) => (
@@ -104,13 +106,13 @@ export default function PartnerCompare() {
                   </div>
                 ))}
               </dl>
-            </div>
+            </Reveal>
           ))}
         </div>
 
-        <p className="mt-12 lg:mt-20 text-[17px] lg:text-[28px] leading-[1.55] tracking-[-0.02em] text-ink font-bold max-w-[18em]">
+        <Reveal as="p" className="mt-12 lg:mt-20 text-[17px] lg:text-[28px] leading-[1.55] tracking-[-0.02em] text-ink font-bold max-w-[18em]">
           체험단은 밥을 공짜로 드립니다. 여기는 손님이 돈을 내고 옵니다.
-        </p>
+        </Reveal>
         <p className="mt-5 text-[12px] lg:text-[15px] text-gray-500 dark:text-gray-400 max-w-[44em]">
           {F.pgNote}
         </p>
