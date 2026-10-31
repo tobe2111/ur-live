@@ -302,12 +302,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 336 | 1016 |
+| 전체 | 336 | 1017 |
 | 도메인 버킷 (5개 소개서) | 131 | 462 |
 | 공통/인프라 (의도적 제외) | 150 | 453 |
-| **미커버 (점검 필요)** | **55** | **101** |
+| **미커버 (점검 필요)** | **55** | **102** |
 
-⚠️ **미커버 156건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 157건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -439,6 +439,7 @@
 - `GET /cross-owner-accept` (`src/features/seller/api/seller-brands.routes.ts`)
 - `PUT /cross-owner-accept` (`src/features/seller/api/seller-brands.routes.ts`)
 - `GET /deal-plan/:productId` (`src/features/group-buy/api/deal-plan.routes.ts`)
+- `GET /dongnedeal/kakao-mystore-photos` (`src/features/admin/api/admin-demo-photo-source-diag.routes.ts`)
 - `GET /dongnedeal/photo-source-diag` (`src/features/admin/api/admin-demo-photo-source-diag.routes.ts`)
 - `POST /fee-context/channel` (`src/features/seller/api/seller-store-channel.routes.ts`)
 - `POST /kakao-bot/link-code` (`src/features/seller/api/seller-kakao-bot.routes.ts`)
@@ -1629,7 +1630,7 @@
 
 
 
-> 마지막 생성: 2026-10-26T13:16:10.567Z
+> 마지막 생성: 2026-10-31T12:43:29.468Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

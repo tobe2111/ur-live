@@ -113,8 +113,7 @@ export default function GroupBuyFeed({
   regionRef,
   userLoc,
   sectionNearKey = '',
-  filters,
-  showLife = false,
+  filters, showLife = false,
 }: {
   pc?: boolean
   /**
@@ -149,8 +148,7 @@ export default function GroupBuyFeed({
   sectionNearKey?: string
   /** 🎚️ 2026-10-14 PC 홈 왼쪽 필터(거리·가격) — 받아 둔 페이지 안에서 거른다. 미지정이면 출력 불변. */
   filters?: FeedFilters
-  /** 🏠 2026-10-31 생활 이용권을 보이는가. 기본 false = 메인(홈) — 대표 "메인에서는 안보이게". 지역 페이지만 true. */
-  showLife?: boolean
+  showLife?: boolean /** 🏠 2026-10-31 생활 이용권 노출. 기본 false = 메인(대표 "메인에서는 안보이게"), 지역 페이지만 true. */
 } = {}) {
   const [categoryState, setCategoryState] = useState<CategoryKey>('all')
   const [sortState, setSortState] = useState<SortKey>('popular')
