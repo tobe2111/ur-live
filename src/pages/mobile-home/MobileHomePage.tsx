@@ -142,7 +142,7 @@ export default function MobileHomePage() {
       <div
         data-region-hero={hero?.slug}
         className={hero
-          ? 'dark sticky top-0 z-30 overflow-hidden bg-gray-900 [&_[aria-pressed=false]]:!text-white/75' // primary-button-ok — 사진 뒤 바탕(버튼 아님)
+          ? 'dark sticky top-0 z-30 overflow-hidden [&_[aria-pressed=false]]:!text-white/75'
           : 'sticky top-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]'}
       >
         {hero && <RegionHeroBg key={hero.slug} src={hero.src} />}
@@ -273,7 +273,7 @@ export default function MobileHomePage() {
 function RegionHeroBg({ src }: { src: string }) {
   const [shown, setShown] = useState(false)
   return (
-    <div aria-hidden className="absolute inset-0 -z-10 pointer-events-none">
+    <div aria-hidden className="absolute inset-0 -z-10 pointer-events-none bg-gray-900">
       <img src={src} alt="" loading="lazy" decoding="async" fetchPriority="low" onLoad={() => setShown(true)}
         className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${shown ? 'opacity-100' : 'opacity-0'}`} />
       <div className="absolute inset-0" style={{ background: REGION_HERO_SHADE }} />
