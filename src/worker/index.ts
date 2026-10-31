@@ -965,7 +965,7 @@ app.use('*', async (c, next) => {
     //   `/area-report/:region` 은 그 표의 **동적 항목** — 지역명이 경로에 있어 조회 없이 메타가 나오고,
     //   지어낸 세그먼트(도어웨이)는 리졸버가 noindex 로 표시해 준다.
     //   SSR inject·0-RTT·`caches.default`·#root 로더·edgeCache 전부 불변 — head rewrite 만 추가.
-    if (!needsRootBlank) {
+    if (!needsRootBlank && !(ssrSlot === 'STOREINVITE' && buildStoreInviteMeta(ssrPayload, origin2, url.pathname))) { // 🔗 초대 메타(에이전시 이름)가 있으면 이름 없는 공통 메타로 덮지 않는다
       const sm0 = resolveConsumerSurfaceSeo(url.pathname, url.search, origin2) ?? resolveRegionSeo(url.pathname, origin2);
       // 🪧 2026-10-12 [UNLOCK_LOADING] 딜 `REGION_INDEX_MIN_DEALS` 미만 지역은 **noindex**. `resolveRegionSeo` 가 DB 를 안 봐 그 게이트가 클라에만 있었고 `/region/인천`·`세종`·`울산`·`서울/없는구` 가 **200+index+본문 26자**였다(지어낸 구도 통과 = 무한 thin URL).
       //   요약이 KV 에 있어 **DB 조회 0**. 🔴 요약이 없으면 절대 noindex 안 한다(부재 ≠ thin) — `shared/seo/region-digest.ts`.

@@ -3,7 +3,7 @@
  *
  * 고정하는 것:
  *  ① 직원도 링크를 **읽는다**(GET 은 adminOnly 아님) · 만들기·끊기는 관리자만(POST 둘은 adminOnly)
- *  ② 카톡 카드 문구는 한 곳(`shared/store-agency-invite-copy`) — 에이전시가 보내는 카드와 서버 메타가 같은 문장
+ *  ② 카톡 카드 문구는 한 곳(`shared/agency-store-invite` `agencyInviteCardCopy`) — 에이전시가 보내는 카드와 서버 메타가 같은 문장
  *  ③ 서버 메타는 **언제나 noindex**, 없는 토큰은 ENTITY 슬롯이라 404
  *  ④ 사장님은 여러 매장을 한 번에 고르고(`seller_ids`), 이미 맡긴 매장은 다시 못 고른다
  *
@@ -12,7 +12,7 @@
 import { describe, it, expect } from 'vitest'
 import { readCode } from '../helpers/source-text'
 import { togglePick, entrustableIds } from '@/pages/store-agency-invite/pick'
-import { storeInviteCardTitle, STORE_INVITE_CARD_DESCRIPTION, STORE_INVITE_PATH_RE } from '@/shared/store-agency-invite-copy'
+import { agencyInviteCardCopy } from '@/shared/agency-store-invite'
 import { buildStoreInviteMeta } from '@/worker/utils/store-invite-ssr'
 import { shouldNoindexMissingEntity } from '@/worker/utils/surface-ssr-meta'
 import { entrustSellerIds, ENTRUST_STORES_PER_REQUEST_MAX } from '@/features/seller/api/store-agency-invite.routes'
@@ -32,39 +32,38 @@ describe('① 직원은 읽고, 관리자만 만들고 끊는다', () => {
     expect(ROUTES).toMatch(/post\('\/store-invite', cors\(\), requireAgencyStaff\(\{ adminOnly: true \}\)/)
     expect(ROUTES).toMatch(/post\('\/store-invite\/revoke', cors\(\), requireAgencyStaff\(\{ adminOnly: true \}\)/)
   })
-  it('초대 줄·시트가 직원에게도 열리고, 대신 등록 카드만 관리자 전용', () => {
-    expect(PANEL).not.toMatch(/canManage && <FlatRow label="매장 초대/)
+  it('영입 링크 버튼·시트가 직원에게도 열리고, 대신 등록만 관리자 전용', () => {
+    const i = PANEL.indexOf('data-testid="agency-invite-entry"')
+    expect(i).toBeGreaterThan(0)
+    expect(PANEL.slice(Math.max(0, i - 120), i)).not.toMatch(/canManage &&/)
     expect(PANEL).toMatch(/sheet === 'invite' && \(/)
     expect(PANEL).toMatch(/<AgencyInviteLinkCard canManage=\{canManage\} \/>/)
-    expect(PANEL).toMatch(/\{canManage && <AgencyRegisterStoreCard/)
+    expect(PANEL).toMatch(/sheet === 'register' && canManage/)
   })
-  it('카드의 만들기·끊기 버튼은 canManage 안에만 있다', () => {
+  it('카드의 새로 만들기·끊기는 canManage 안에만 있다', () => {
     const i = CARD.indexOf('{canManage && (')
     expect(i).toBeGreaterThan(0)
     const seg = CARD.slice(i, i + 900)
-    expect(seg).toContain('onClick={create}')
-    expect(seg).toContain('onClick={revoke}')
+    expect(seg).toContain('void renew()')
+    expect(seg).toContain('void revoke()')
+  })
+  it('직원 화면은 링크가 없어도 스스로 만들지 않는다(서버가 거절한다)', () => {
+    const i = CARD.indexOf('if (!canManage) { setInvite(null); return }')
+    const j = CARD.indexOf('if (!(await create())) setInvite(null)')
+    expect(i).toBeGreaterThan(0)
+    expect(j).toBeGreaterThan(i)
   })
 })
 
 describe('② 카톡 카드 문구는 한 곳', () => {
   it('제목에 에이전시 이름이 들어가고, 이름이 없으면 지어내지 않는다', () => {
-    expect(storeInviteCardTitle('강남마케팅')).toBe('강남마케팅 에이전시가 매장 운영을 맡겠다고 해요')
-    expect(storeInviteCardTitle('  ')).toBe('에이전시가 매장 운영을 맡겠다고 해요')
-    expect(storeInviteCardTitle(null)).not.toContain('null')
+    expect(agencyInviteCardCopy('강남마케팅').title).toBe('강남마케팅 에이전시가 매장 운영을 맡겠다고 해요')
+    expect(agencyInviteCardCopy('  ').title).toBe('에이전시가 매장 운영을 맡겠다고 해요')
+    expect(agencyInviteCardCopy(null).title).not.toContain('null')
   })
-  it('카톡 보내기 버튼과 서버 메타가 같은 함수를 쓴다', () => {
-    // 카톡 카드(feedPayload) 블록 안이어야 한다 — 아래 폰 공유 시트도 같은 제목을 써서 파일 전체로 보면 헛돈다.
-    const i = CARD.indexOf('shareViaKakao(feedPayload({')
-    expect(i).toBeGreaterThan(0)
-    const seg = CARD.slice(i, i + 300)
-    expect(seg).toMatch(/title: storeInviteCardTitle\(agencyName\)/)
-    expect(seg).toMatch(/description: STORE_INVITE_CARD_DESCRIPTION/)
-    expect(readCode('src/worker/utils/store-invite-ssr.ts')).toMatch(/storeInviteCardTitle\(name\)/)
-  })
-  it('초대 링크 경로 모양', () => {
-    expect(STORE_INVITE_PATH_RE.test(`/store/agency/${'a'.repeat(64)}`)).toBe(true)
-    expect(STORE_INVITE_PATH_RE.test('/store/agency/x')).toBe(false)
+  it('카톡 보내기 버튼과 서버 메타가 같은 함수를 쓴다(서버는 조회한 에이전시 이름을 넣는다)', () => {
+    expect(CARD).toMatch(/agencyInviteCardCopy\(agencyName\)/)
+    expect(readCode('src/worker/utils/store-invite-ssr.ts')).toMatch(/agencyInviteCardCopy\(name\)/)
   })
 })
 
@@ -72,7 +71,7 @@ describe('③ 서버 메타 — 늘 noindex · 없는 토큰은 404', () => {
   it('살아 있는 링크: 이름이 든 카드 + noindex', () => {
     const m = buildStoreInviteMeta({ success: true, agencyName: '강남마케팅' }, 'https://urdeal.kr', '/store/agency/abc')!
     expect(m.title).toContain('강남마케팅')
-    expect(m.description).toBe(STORE_INVITE_CARD_DESCRIPTION)
+    expect(m.description).toBe(agencyInviteCardCopy('강남마케팅').description)
     expect(m.noindex).toBe(true)
     expect(m.canonical).toBe('https://urdeal.kr/store/agency/abc')
   })
@@ -88,6 +87,8 @@ describe('③ 서버 메타 — 늘 noindex · 없는 토큰은 404', () => {
     expect(WORKER).toMatch(/slot: 'STOREINVITE', path: `\/api\/store-agency-invite\//)
     expect(WORKER).toMatch(/ssrSlot === 'STOREINVITE' && ssrPayload\) \{ const sm = buildStoreInviteMeta\(/)
     expect(WORKER).toMatch(/applySurfaceMeta\(rb, sm\)/)
+    // 이름 없는 공통 메타(동적 표면)가 나중에 돌아 덮으므로, 초대 메타가 있으면 그쪽을 건너뛴다.
+    expect(WORKER).toMatch(/if \(!needsRootBlank && !\(ssrSlot === 'STOREINVITE' && buildStoreInviteMeta\(ssrPayload, origin2, url\.pathname\)\)\)/)
   })
 })
 

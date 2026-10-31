@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
+import { StoreIcon } from '@/components/icons/urdeal-icons'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
@@ -18,7 +19,7 @@ import { AgencyRegisterStoreCard } from './AgencyRegisterStoreCard'
 /**
  * 🏢 에이전시 콘솔 본문 — 대표 확정 **안 A** (2026-10-12 · *"A안으로 해줘. 이건 PC버전도 중요해"*)
  *
- * - **폰**: [맡은 매장 · 매장 고르기 칩] → 그 매장의 판 → [에이전시] 줄(맡김 요청 · 직원 · 매장 초대).
+ * - **폰**: [매장 영입 링크 보내기] → [맡은 매장 · 매장 고르기 칩] → 그 매장의 판 → [에이전시] 줄(맡김 요청 · 직원 · 매장 대신 등록).
  * - **PC**: 왼쪽 칸 = 맡은 매장 목록 + 에이전시 줄, 오른쪽 칸 = 고른 매장의 판(넓게).
  *   같은 DOM 을 순서(`order-*`)만 바꿔 쓴다 — 두 벌로 그리면 한쪽만 고쳐지는 날이 온다.
  *
@@ -39,7 +40,7 @@ export function storeRowHint(r: StoreRow): { text: string; urgent: boolean } {
   return { text: '', urgent: false }
 }
 
-type AgencySheet = 'picker' | 'requests' | 'invite' | 'notifs' | 'sales' | null
+type AgencySheet = 'picker' | 'requests' | 'invite' | 'register' | 'notifs' | 'sales' | null
 
 export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows, stacked = false, toolParam }: {
   onExpired: () => void
@@ -203,14 +204,28 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
             onClick={() => setSheet('requests')}
           />
           {agencyRows}
-          {/* 🧑‍🤝‍🧑 2026-10-31 — 직원도 초대 링크를 보낸다(복사·카톡만). 대신 등록은 관리자만. */}
-          <FlatRow label={canManage ? '매장 초대 · 대신 등록' : '매장 초대 링크'} onClick={() => setSheet('invite')} last={!trailingRows} />
+          {canManage && <FlatRow label="매장 대신 등록" hint="유어딜에 없는 매장" onClick={() => setSheet('register')} last={!trailingRows} />}
           {trailingRows}
         </div>
       </div>
 
       {/* ── 오른쪽(PC) / 위(폰) — 고른 매장의 판 ──────────────────── */}
       <section aria-label={picked ? `${picked.name} 판매` : '맡은 매장'} className={stacked ? 'order-1 min-w-0' : 'order-1 lg:order-2 min-w-0 flex-1'}>
+        {/* 🔗 2026-10-31 대표 *"매장 영입 링크 만들기 이렇게 버튼 필요하지 않을까? … 매장이 있어도 계속 초대가 필요해"*.
+            종전엔 맡은 매장이 0곳일 때만 빈 화면에 버튼이 있었고, 한 곳이라도 생기면 에이전시 줄 **맨 끝**으로 숨었다.
+            영입은 대행사의 본업이라 매장 수와 무관하게 판 위에 늘 둔다. 🧑‍🤝‍🧑 직원도 본다(매장에 찾아가는 사람은
+            대개 직원이다) — 직원은 보내기·복사만, 만들기·끊기는 관리자만(카드의 `canManage`). */}
+        <button type="button" onClick={() => setSheet('invite')} data-testid="agency-invite-entry"
+          className="mb-6 flex w-full items-center gap-3 rounded-2xl bg-white dark:bg-[#1D1F29] p-4 text-left shadow-lift active:opacity-90">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-tint text-brand-text">
+            <StoreIcon size={20} aria-hidden="true" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-semibold text-gray-900 dark:text-white">매장 영입 링크 보내기</span>
+            <span className="mt-0.5 block text-[13px] text-gray-500 dark:text-gray-400">카톡으로 보내면 사장님이 [맡기기] 한 번에 연결돼요</span>
+          </span>
+          <span className="shrink-0 rounded-full bg-brand px-3 py-1.5 text-[13px] font-semibold text-white">보내기</span>
+        </button>
         <div className="flex items-center gap-2">
           {/* 🖥️ PC 는 매장 이름이 제목이다(왼쪽 목록이 고르기를 맡는다). 폰은 '맡은 매장' + 고르기 칩. */}
           {!stacked && <h2 className="hidden lg:block min-w-0 truncate text-[17px] font-semibold text-gray-500 dark:text-gray-400">{picked?.name ?? '맡은 매장'}</h2>}
@@ -251,13 +266,13 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
               <p className="text-[15px] font-semibold text-gray-900 dark:text-white">아직 운영 중인 매장이 없어요</p>
               <p className="mt-2 text-[13px] leading-relaxed text-gray-500 dark:text-gray-400">
                 {canManage
-                  ? <>아래 <b className="font-semibold text-gray-700 dark:text-gray-200">매장 초대 · 대신 등록</b>에서 사장님께 초대 링크를 보내거나, 아직 유어딜에 없는 매장을 먼저 올리세요. 사장님이 셀러 화면의 <b className="font-semibold text-gray-700 dark:text-gray-200">운영자 관리 → 에이전시에 맡기기</b>에 관리자 이메일을 넣어도 여기에 떠요.</>
+                  ? <>위 <b className="font-semibold text-gray-700 dark:text-gray-200">매장 영입 링크</b>를 사장님께 카톡으로 보내세요. 아직 유어딜에 없는 사장님은 그 링크에서 매장을 등록하면 바로 연결돼요. 사장님이 셀러 화면의 <b className="font-semibold text-gray-700 dark:text-gray-200">운영자 관리 → 에이전시에 맡기기</b>에 관리자 이메일을 넣어도 여기에 떠요.</>
                   : '관리자가 매장을 맡거나 배정하면 여기에 떠요.'}
               </p>
               {/* 🔗 2026-10-24 — 빈 화면에서 바로 초대 링크로(종전엔 아래 목록까지 내려가 찾아야 했다). */}
               {canManage && (
                 <button type="button" onClick={() => setSheet('invite')} className="mt-4 mr-2 h-10 rounded-xl bg-brand px-4 text-[15px] font-semibold text-white">
-                  매장 초대 링크 만들기
+                  매장 영입 링크 보내기
                 </button>
               )}
               {pending.length > 0 && (
@@ -349,10 +364,16 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
       )}
 
       {sheet === 'invite' && (
-        <Sheet title={canManage ? '매장 초대 · 대신 등록' : '매장 초대 링크'} onClose={() => setSheet(null)}>
-          <div className="min-h-full bg-[#F8F7FC] dark:bg-[#11141C] p-4 [&>*:first-child]:mt-0">
+        <Sheet title="매장 영입 링크" onClose={() => setSheet(null)}>
+          <div className="min-h-full bg-[#F8F7FC] dark:bg-[#11141C] p-4">
             <AgencyInviteLinkCard canManage={canManage} />
-            {canManage && <AgencyRegisterStoreCard onRegistered={load} />}
+          </div>
+        </Sheet>
+      )}
+      {sheet === 'register' && canManage && (
+        <Sheet title="매장 대신 등록" onClose={() => setSheet(null)}>
+          <div className="min-h-full bg-[#F8F7FC] dark:bg-[#11141C] p-4 [&>*:first-child]:mt-0">
+            <AgencyRegisterStoreCard onRegistered={load} />
           </div>
         </Sheet>
       )}
