@@ -142,7 +142,7 @@ export default function MobileHomePage() {
       <div
         data-region-hero={hero?.slug}
         className={hero
-          ? 'dark sticky top-0 z-30 overflow-hidden bg-[#0F1A33] [&_[aria-pressed=false]]:!text-white/75'
+          ? 'dark sticky top-0 z-30 overflow-hidden bg-gray-900 [&_[aria-pressed=false]]:!text-white/75' // primary-button-ok — 사진 뒤 바탕(버튼 아님)
           : 'sticky top-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]'}
       >
         {hero && <RegionHeroBg key={hero.slug} src={hero.src} />}
