@@ -1839,3 +1839,14 @@ canvas {
 /* 🏙️ 2026-10-31 시안 8: 폰 홈 머리에 도시 사진이 깔리면 안 고른 탭 글자를 사진 위에서 읽히게 밝힌다.
    (클래스 문자열에 aria 선택자를 쓰면 '선택 상태는 브랜드' 가드가 선택 분기로 오인한다 — 여기 둔다.) */
 .ur-region-hero [aria-pressed="false"] { color: rgb(255 255 255 / 0.75) !important; }
+
+/* 🧾 2026-10-31 (대표 확정 9번 — 마이 판·구분선 제거, 구분은 **B안 가게 머리줄**이 맡는다).
+   **폰만**: 목록을 받치던 흰 판(`rounded-2xl … shadow-lift overflow-hidden`)과 줄 사이 실선(`border-b … last:border-b-0`)을 걷는다.
+   PC(lg+)는 2026-10-14 대표 확정 "PC 마이는 B(카드)" 그대로 — `.ur-account-pc .ur-pc-card` 규칙이 맡는다.
+   부품 소스(`list-grammar`)는 그대로다 — 같은 부품을 쓰는 유어샵 관리·에이전시 화면은 판을 유지한다.
+   ⚠️ 시트 머리의 구분선(`border-b border-rule shrink-0`)은 `last:border-b-0` 가 없어 이 규칙에 안 걸린다(의도). */
+/* 판이 사라지면 판 안쪽 여백(16) + 바깥 여백(16)이 겹쳐 손님 줄보다 16px 안으로 들어간다 — 바깥만큼 되돌린다. */
+@media (max-width: 1023.98px) {
+  .ur-my-flat .rounded-2xl.shadow-lift.overflow-hidden { background: transparent; box-shadow: none; border-radius: 0; margin-left: -16px; margin-right: -16px; }
+  .ur-my-flat .border-b.border-rule.last\:border-b-0 { border-bottom-width: 0; }
+}

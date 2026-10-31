@@ -18,7 +18,9 @@
 import { useEffect, useState } from 'react'
 import { Check, Loader2, Plus, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { UrShopIcon } from '@/components/icons/urdeal-icons'
+import StoreThumb from './seller-section/StoreThumb'
+import type { StoreSummaryRow } from './useMyStores'
+import { formatNumber } from '@/utils/format'
 import { Z } from '@/constants/z-index'
 import { switchSeat } from '@/lib/seller-seat'
 import { toast } from '@/hooks/useToast'
@@ -40,10 +42,13 @@ const STATUS_NOTE: Record<string, string> = {
   rejected: '반려됨',
 }
 
-export default function StoreSwitchSheet({ currentSellerId, onClose }: {
+export default function StoreSwitchSheet({ currentSellerId, summaries = [], onClose }: {
   currentSellerId: number | null
+  /** 🏪 2026-10-31 B안: 마이가 이미 받은 오늘 숫자·사진(`/my-stores/summary`) — 창이 다시 부르지 않는다. */
+  summaries?: StoreSummaryRow[]
   onClose: () => void
 }) {
+  const sum = new Map(summaries.map((r) => [r.seller_id, r]))
   const navigate = useNavigate()
   const [stores, setStores] = useState<OperableStore[] | null>(null)
   const [failed, setFailed] = useState(false)
@@ -83,12 +88,12 @@ export default function StoreSwitchSheet({ currentSellerId, onClose }: {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="가게 전환"
+        aria-label="매장 고르기"
         className="fixed inset-x-0 bottom-0 max-h-[80dvh] flex flex-col rounded-t-2xl bg-surface ur-sheet-in"
         style={{ zIndex: Z.SHEET_BODY }}
       >
         <div className="flex items-center justify-between px-4 h-14 border-b border-rule shrink-0">
-          <span className="text-[17px] font-bold text-gray-900 dark:text-white">가게 전환</span>
+          <span className="text-[17px] font-bold text-gray-900 dark:text-white">어느 매장을 볼까요?</span>
           <button type="button" onClick={onClose} aria-label="닫기" className="w-9 h-9 -mr-2 flex items-center justify-center">
             <X className="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
           </button>
@@ -108,19 +113,21 @@ export default function StoreSwitchSheet({ currentSellerId, onClose }: {
           {stores?.map((s) => {
             const note = s.status ? STATUS_NOTE[s.status] : undefined
             const isCurrent = s.seller_id === currentSellerId
+            const t = sum.get(s.seller_id)
             return (
               <button
                 key={s.seller_id}
                 type="button"
                 onClick={() => pick(s)}
                 disabled={busy !== null}
-                className="w-full flex items-start gap-3 px-4 py-3 text-left border-b border-rule active:opacity-70 disabled:opacity-50"
+                className="w-full flex items-center gap-3 px-4 py-3 text-left active:opacity-70 disabled:opacity-50"
               >
-                <UrShopIcon className="w-[18px] h-[18px] mt-1 shrink-0 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+                <StoreThumb src={sum.get(s.seller_id)?.image ?? null} name={label(s)} size={44} />
                 <span className="flex-1 min-w-0">
                   <span className="block text-[15px] font-bold text-gray-900 dark:text-white truncate">{label(s)}</span>
                   <span className="block text-[12px] text-gray-500 dark:text-gray-400 mt-1">
-                    {s.role === 'owner' ? '내 가게' : '운영 중'}
+                    {/* 🏪 B안: 매장마다 오늘 매출 · 판매 중 개수 — 숫자는 마이가 받은 요약에서(없으면 종전 역할 표시). */}
+                    {t ? `오늘 ${formatNumber(t.today_revenue)}원 · 판매 중 ${formatNumber(t.active_products)}개` : (s.role === 'owner' ? '내 가게' : '운영 중')}
                     {note ? ` · ${note}` : ''}
                   </span>
                   {s.role === 'operator' && s.has_owner === false && s.owner_claim_code && (
@@ -131,7 +138,12 @@ export default function StoreSwitchSheet({ currentSellerId, onClose }: {
                 </span>
                 {busy === s.seller_id
                   ? <Loader2 className="w-[18px] h-[18px] mt-1 shrink-0 animate-spin text-gray-400" aria-hidden="true" />
-                  : isCurrent && <Check className="w-[18px] h-[18px] mt-1 shrink-0 text-brand-text" aria-hidden="true" />}
+                  : isCurrent
+                    ? <Check className="w-[18px] h-[18px] mt-1 shrink-0 text-brand-text" aria-hidden="true" />
+                    // 🔴 다른 매장에 처리할 주문이 있으면 여기서 보인다 — 지금 보는 매장만 보다가 놓치지 않게.
+                    : (t?.pending ?? 0) > 0 && (
+                      <span className="shrink-0 mt-1 rounded-full bg-sale text-white text-[12px] font-semibold px-2 py-1 tabular-nums">새 주문 {formatNumber(t!.pending)}</span>
+                    )}
               </button>
             )
           })}

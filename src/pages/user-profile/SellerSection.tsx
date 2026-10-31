@@ -26,11 +26,12 @@
  * 상태를 **직접 말한다** — 노출·정산이 왜 아직인지 화면이 설명하지 않으면 사장님은 고장으로 읽는다.
  */
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { Link } from 'react-router-dom'
 import { ChevronDown, ChevronRight, Loader2, Search } from 'lucide-react'
 // 🎨 2026-09-28: 판매 도구 여덟 칸의 뜻 아이콘. lucide 로 남긴 넷은 전부 **조작**이다
 //    (펼치기·이동·로딩·검색) — 어느 앱에서나 같은 모양이라 직접 그릴 값이 없다.
 import {
-  OrdersIcon, WonCoinIcon, UrShopIcon, TicketStubIcon, ChartIcon,
+  OrdersIcon, WonCoinIcon, TicketStubIcon, ChartIcon,
 } from '@/components/icons/urdeal-icons'
 import { QrScanIcon } from '@/components/icons/qr-scan-icon' // 32 그리드라 24 그리드 세트와 파일을 나눴다
 import { formatNumber } from '@/utils/format'
@@ -43,11 +44,12 @@ import { storeStatusNote, useRecordSellerStatus } from './seller-section/store-s
 import { useSellerWork } from './seller-section/useSellerWork'
 import { useToolDeepLink } from './seller-section/useToolDeepLink' // 🚪 대시보드 깊은 링크 → 시트(2026-10-12)
 import PendingOrders from './seller-section/PendingOrders'
+import StoreThumb from './seller-section/StoreThumb'
 import StoreNotifButton from './seller-section/StoreNotifications'
 // 🧾 2026-09-28: 묶음 라벨·줄은 손님 쪽 목록과 **같은 부품**이다(`list-grammar`).
 //   종전엔 이 파일 안에 `GroupLabel`/`ToolRow` 가 따로 있었고, 손님 쪽은 또 다른 문법이라
 //   같은 화면에 목록 문법이 두 벌이었다 — 대표 *"허술해"*(09-28)의 실체 중 하나.
-import { LIST_PLATE_CLS, SECTION_TITLE_CLS, ROW_SHELL_CLS, ROW_LABEL_CLS, ListRow as ToolRow } from './list-grammar'
+import { LIST_PLATE_CLS, ROW_SHELL_CLS, ROW_LABEL_CLS, ListRow as ToolRow } from './list-grammar'
 
 /**
  * ⏳ **시트는 전부 열 때 받는다** (2026-09-26 — 대표 *"로딩 속도를 줄이고"*).
@@ -302,31 +304,39 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           ⚠️ 되살린다면 PC 는 **음수 오프셋**이어야 한다(`lg:-left-3`) — 마이 PC 칸은
              `.ur-account-pane .ur-content-medium` 이 좌우 패딩을 0 으로 지워서, 양수면 띠가
              카드 **안쪽**을 세로로 관통한다(2026-09-28 에 하네스로 실측해 고친 결함이다). */}
-      {/* 섹션 머리 — 오른쪽이 곧 가게 전환(2곳 이상일 때만 누를 수 있다) */}
-      <div className="flex items-center gap-2 mb-2 px-4">
-        {/* ⚠️ 크기·무게·색은 `SECTION_TITLE_CLS` 한 곳(손으로 적으면 이 제목만 옛 값으로 남는다 — 시험이 대조). */}
-        <h2 className={`leading-tight ${SECTION_TITLE_CLS}`}>내 가게</h2>
-        <div className="flex-1" />
-        {/* 🔔 판매 알림은 2026-10-25 **안 G** 로 머리에서 판 안의 줄로 내려갔다(아래 `variant="row"`) —
-            머리줄에 알약·가게 이름이 나란히 서면 한 덩어리로 읽혔다. */}
-        {/* ➕ 2026-10-06: 1곳이어도 누를 수 있다 — 시트 맨 아래 [+ 매장 추가] 가 마이의 유일한 매장 추가 문이다. */}
-        {!awaiting && stores.length >= 1 ? (
-          <button
-            type="button"
-            onClick={() => setSheetOpen(true)}
-            className="inline-flex items-center gap-1 max-w-[60%] text-[12px] font-semibold text-gray-500 dark:text-gray-400 active:opacity-70"
-          >
-            {/* 🩸 2026-09-28 (하네스 실측) — 이름과 개수를 **다른 span** 으로: 한 span 이면 긴 가게 이름에서 말줄임이
-                **개수부터** 먹는다. 이 줄이 눌리는 이유가 그 개수다 — 잘려야 하는 건 이름이지 개수가 아니다. */}
-            <span className="truncate">{store.name}</span>
-            {stores.length >= 2 && <span className="shrink-0">· {stores.length}곳</span>}
-            <ChevronDown className="w-3 h-3 shrink-0" aria-hidden="true" />
-          </button>
-        ) : (
-          <span className="inline-flex items-center gap-1 max-w-[60%] text-[12px] font-semibold text-gray-500 dark:text-gray-400">
-            <UrShopIcon className={`w-3 h-3 shrink-0${awaiting ? ' invisible' : ''}`} aria-hidden="true" />
-            <span className="truncate">{blank('가게 이름')}</span>
+      {/* 🏪 2026-10-31 (대표 확정 9번 **B안** — *"B로 해줘. 매장이 여러개라면?"* → 시안 확인 *"그래 그대로 해줘"*):
+          구역 머리가 '내 가게' 제목 → **가게 머리줄** [사진 · 이름 ⌄ / 판매 중 N개 · 매장 N곳 · 가게 보기 ›].
+          판·구분선을 걷은 화면에서 *"여기가 파는 쪽"* 을 말하는 표시자가 이 줄이다(누구 가게인지가 먼저 보인다).
+          머리줄을 누르면 매장 고르기 창(`StoreSwitchSheet`) — 매장이 하나여도 연다(맨 아래 [+ 매장 추가]).
+          ⚠️ 제목 글자는 화면에서 빠졌지만 읽기 도구를 위해 `sr-only` 로 남긴다. */}
+      <h2 className="sr-only">내 가게</h2>
+      <div className="flex items-center gap-3 mb-3 px-4">
+        <button
+          type="button"
+          disabled={awaiting}
+          onClick={() => setSheetOpen(true)}
+          aria-label={awaiting ? undefined : `${store.name} — 매장 고르기`}
+          className="flex-1 min-w-0 flex items-center gap-3 text-left active:opacity-70"
+        >
+          <StoreThumb src={store?.image ?? null} name={store?.name ?? ''} hidden={awaiting} />
+          <span className="min-w-0">
+            <span className="flex items-center gap-1 min-w-0">
+              <span className="text-[17px] font-bold text-gray-900 dark:text-white truncate">{blank(store?.name ?? '가게 이름')}</span>
+              {!awaiting && stores.length >= 2 && <ChevronDown className="w-4 h-4 shrink-0 text-gray-500 dark:text-gray-400" aria-hidden="true" />}
+            </span>
+            <span className="block text-[13px] text-gray-500 dark:text-gray-400 tabular-nums truncate">
+              {/* 판매 중 개수를 모르면 0 을 적지 않는다(모르는 것과 0 은 다르다) — 매장 수만 말한다. */}
+              {blank([store?.active_products != null ? `판매 중 ${formatNumber(store.active_products)}개` : '', stores.length >= 2 ? `매장 ${stores.length}곳` : ''].filter(Boolean).join(' · ') || '\u00a0')}
+            </span>
           </span>
+        </button>
+        {!awaiting && (
+          <Link
+            to={`/s/${encodeURIComponent(store.username || String(store.seller_id))}`}
+            className="shrink-0 inline-flex items-center gap-1 text-[13px] font-semibold text-brand-text active:opacity-70"
+          >
+            가게 보기<ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
+          </Link>
         )}
       </div>
 
@@ -555,7 +565,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
       )}
 
       {sheetOpen && (
-        <StoreSwitchSheet currentSellerId={store.seller_id} onClose={() => setSheetOpen(false)} />
+        <StoreSwitchSheet currentSellerId={store.seller_id} summaries={stores} onClose={() => setSheetOpen(false)} />
       )}
       </Suspense>
       )}

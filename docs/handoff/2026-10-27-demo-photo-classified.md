@@ -144,3 +144,12 @@
 - 10: `DEAL_ROW`(`shared/deal-card-grid.ts`) — 카드 `row` prop. 워커 첫 화면이 같은 상수. md+ 는 종전 4열 격자.
 - 렌더 확인: `visual-preview` + 로컬 스텁(서울·부산 머리, 108px 줄).
 - 대기: ① 사진 인천·세종·전주 + 이름 모를 3장을 대표가 도시 이름과 함께 다시 보내 주기 ② 시안 9(마이 판 제거) — 구분 방안 A~D 중 대표 선택 ③ Figma 이미지 생성은 11-01 09:00 KST 이후 가능.
+
+## §15 2026-10-31 — 9번 B안(가게 머리줄) + 폰 마이 판·구분선 제거
+
+- 서버 `/my-stores/summary` 에 `image`(프로필 → 판매 중 상품 첫 사진)·`username` 추가(별도 쿼리, fail-soft).
+- `SellerSection` 머리 = `StoreThumb` + 이름(2곳 이상 ⌄) + 판매 중 N개 · 매장 N곳 + 가게 보기(`/s/:username`). '내 가게' 는 sr-only.
+- `StoreSwitchSheet` "어느 매장을 볼까요?" — 매장 사진 · 오늘 매출 · 판매 중 · 다른 매장 새 주문 배지(마이 요약을 prop 으로).
+- 폰 판·실선 제거는 CSS(`.ur-my-flat`, lg 미만)로만 — 부품 소스 불변.
+- 렌더 확인: `visual-preview --route=/user/profile --stores=2`.
+- 주입 재조준 5건 + 신설 4건 전부 빨간불 확인.
