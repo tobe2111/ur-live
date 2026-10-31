@@ -29,7 +29,8 @@ export const DEAL_ROW = {
   // ⚠️ 글자 그대로 적는다 — 조립하면 tailwind 가 클래스를 못 본다. md+ 간격은 `DEAL_GRID_GAP` 과 같은 값.
   grid: 'grid grid-cols-1 gap-y-6 md:grid-cols-4 md:gap-x-3 md:gap-y-8 lg:gap-x-4 lg:gap-y-8',
   /** 링크 — 마지막 자식(본문)은 남은 폭을 다 쓰고 위 여백 0(사진 위끝과 글자 위끝을 맞춘다). */
-  link: 'block group active:scale-[0.98] flex flex-row items-start gap-4 [&>*:last-child]:min-w-0 [&>*:last-child]:flex-1 [&>*:last-child]:pt-0 md:flex-col md:items-stretch md:gap-0 md:[&>*:last-child]:pt-3',
+  // 기본(세로 카드) 클래스를 그대로 두고 폰(max-md)에서만 덮는다 — 카드가 기본 클래스 줄을 리터럴로 유지할 수 있게.
+  link: 'block group active:scale-[0.98] flex flex-col max-md:flex-row max-md:items-start max-md:gap-4 max-md:[&>*:last-child]:min-w-0 max-md:[&>*:last-child]:flex-1 max-md:[&>*:last-child]:pt-0',
   /** 사진 칸 — 108px 정사각(md+ 는 종전 4:3 꽉 채움). */
   mediaBox: 'w-[108px] shrink-0 [&>*]:aspect-square md:w-full md:[&>*]:aspect-[4/3]',
 } as const

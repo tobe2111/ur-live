@@ -122,7 +122,8 @@ function warmStay(id: number | string) {
  *   ⚠️ 사진 위가 아니라 **본문 맨 위**다 — 2026-08-31 대표 지시("할인율이 사진 안으로 들어가면
  *      안돼")와 같은 이유로, 사진은 상품을 보여주는 자리이지 배지를 얹는 자리가 아니다.
  */
-function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc, to, flags, hideWishlist = false, titleNode, overlayExtra, className = '', row = false }: { p: FeedCardProduct; row?: boolean; aboveFold?: boolean; fcfs?: FcfsInfo; imgWidth?: number; userLoc?: { lat: number; lng: number } | null; to?: string; flags?: ReactNode; hideWishlist?: boolean; titleNode?: ReactNode; overlayExtra?: ReactNode; className?: string }) {
+function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc, to, flags, hideWishlist = false, titleNode, overlayExtra, className: classNameProp = '', row = false }: { p: FeedCardProduct; row?: boolean; aboveFold?: boolean; fcfs?: FcfsInfo; imgWidth?: number; userLoc?: { lat: number; lng: number } | null; to?: string; flags?: ReactNode; hideWishlist?: boolean; titleNode?: ReactNode; overlayExtra?: ReactNode; className?: string }) {
+  const className = row ? `${DEAL_ROW.link} ${classNameProp}` : classNameProp
   // 📋 2026-10-31 시안 10: `row` = 폰에서 [108px 정사각 사진 | 정보] 한 줄(md+ 종전 격자). 사진 비율·본문 여백은 바깥 `DEAL_ROW` 가 자식 선택자로 바꾼다.
   // 🛡️ 2026-05-22 Phase 2 (100% 영구): hover / touch 즉시 prefetch → 클릭 시 0ms.
   const prefetchGb = usePrefetchGroupBuyProduct()
@@ -247,7 +248,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
       //   **테두리·카드 배경·박스 그림자**를 걷어낸다. 그루폰 카드는 컨테이너가 아니라
       //   [둥근 사진] + 그 아래 맨 텍스트다 — 흰 패널이 이미 배경을 맡고 있어 박스가 한 겹 더 필요 없다.
       //   (2026-08-27: 모바일만 남아 있던 대표색 카드도 여기로 통일 — 대표 "첫번째 형태로 통일".)
-      className={`${row ? DEAL_ROW.link : 'block group active:scale-[0.98] flex flex-col'} ${className}`}
+      className={`block group active:scale-[0.98] flex flex-col ${className}`}
     >
       {/* 🖼️ 2026-08-19 (대표 시안 — 그루폰): 이미지 영역을 `DealCardMedia`(SSOT)로 교체 —
           hover 좌우 화살표 캐러셀 + 도트. 홈 섹션 카드도 **같은 컴포넌트**를 써서 두 카드가

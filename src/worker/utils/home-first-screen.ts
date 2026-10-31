@@ -186,7 +186,7 @@ export function cardHtml(p: SeedProduct, eager: boolean, hrefOverride?: string, 
     : ''
 
   return (
-    `<a href="${escAttr(href)}" class="${row ? DEAL_ROW.link : HOME_FS_CLASS.cardLink}">` +
+    `<a href="${escAttr(href)}" class="${row ? `${HOME_FS_CLASS.cardLink} ${DEAL_ROW.link}` : HOME_FS_CLASS.cardLink}">` +
     (row
       ? `<div class="${DEAL_ROW.mediaBox}"><div class="${HOME_FS_CLASS.media}">${img}</div></div>`
       : `<div class="${HOME_FS_CLASS.media}">${img}</div>`) +

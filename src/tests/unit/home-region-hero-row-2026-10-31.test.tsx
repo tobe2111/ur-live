@@ -67,7 +67,7 @@ describe('시안 10 — 메인 줄 목록', () => {
   it('워커 첫 화면도 줄 목록 — 화면과 같은 격자·링크', () => {
     const html = buildHomeFirstScreen(JSON.stringify({ data: [{ id: 1, title: '이런 이용권은 어떠세요?', products: [P] }] }), '')
     expect(html).toContain(`class="${DEAL_ROW.grid}"`)
-    expect(html).toContain(`class="${DEAL_ROW.link}"`)
+    expect(html).toContain(`${DEAL_ROW.link}"`)
     expect(html).toContain(`class="${DEAL_ROW.mediaBox}"`)
   })
   it('배선 — 홈 섹션(레일 제외)·폰 피드가 row 를 넘긴다', () => {
