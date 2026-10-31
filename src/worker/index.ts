@@ -167,7 +167,7 @@ import { csrfProtection, csrfTokenHandler } from '../lib/csrf';
 
 // 🛡️ 2026-04-26: 파일 중간 import 를 상단으로 이동 (CLAUDE.md 금지 패턴 — 2026-04-22 사고 재발 방지)
 import { blogRoutes } from '../features/blog/api/blog.routes';
-import { blogSeoRoutes } from '../features/blog/api/blog-seo.routes';
+import { blogSeoRoutes } from '../features/blog/api/blog-seo.routes'; import { embedRoutes } from './routes/embed.routes';
 import { buildBlogPostMeta, buildBlogListJsonLd } from '../features/blog/api/blog-ssr-meta';
 import { buildBlogPostBody, buildBlogListBody } from '../features/blog/api/blog-ssr-body'; import { buildBlogDetailFirstScreen } from './utils/blog-detail-first-screen'; import { buildBlogListFirstScreen } from './utils/blog-list-first-screen';
 import { resolveRenamedBlogPath } from '../features/blog/api/blog-slug-redirects';
@@ -1108,7 +1108,7 @@ app.route('/', killerSwRoutes);
 app.use('/sitemap.xml', publicCache(3600)); // 📉 2026-09-02: 크롤러·uptime 프로브 fetch 마다 D1 4쿼리(~1,300행 + 지역 집계 전수) → 1h 엣지(키에 호스트 포함 — 도매/소비자 안 섞임)
 app.route('/', sitemapRoutes);
 // 📝 2026-07-01 블로그 SEO 보조 — /blog/og/:slug(공유 배너 SVG) · /blog/rss(피드). SPA fallback 전에 등록.
-app.route('/', blogSeoRoutes);
+app.route('/', blogSeoRoutes); app.route('/', embedRoutes); // 🧩 2026-10-31 홈페이지 삽입 위젯 /embed/* (iframe 허용은 보안 헤더의 /embed/ 분기 — routes/embed.routes.ts)
 
 // ============================================================
 // 🎯 2026-07-14 유어애즈 독립 Worker(ur-ads) 게이트드 프록시 (Phase C)
@@ -1456,7 +1456,7 @@ app.use('/api/seller/login', rateLimit({ action: 'seller_login', max: 10, window
 app.route('/api/seller', sellerAuthRoutes);
 app.route('/api/seller', sellerOperatorsRoutes); // 🏪 my-stores · 매장 전환 · 운영자 관리
 app.use('/api/brands/*', edgeCache(300)); app.route('/api/brands', brandsPublicRoutes); // 🏷️ 2026-10-17 브랜드 페이지 — 읽기 전용, 콜로당 5분 캐시(지점 추가가 최대 5분 늦게 보인다)
-app.route('/api/agency-console', agencyConsoleRoutes); app.route('/api/agency-console', agencyStaffRoutes); app.route('/api/agency-console', agencyStoresRoutes); app.use('/api/store-agency-invite/accept', csrfProtection()); app.route('/api/store-agency-invite', storeAgencyInviteRoutes); // 🏢 에이전시 가입·로그인·직원(별도 서명 열쇠 — requireAuth 로는 안 통한다)
+app.route('/api/agency-console', agencyConsoleRoutes); app.route('/api/agency-console', agencyStaffRoutes); app.route('/api/agency-console', agencyStoresRoutes); app.use('/api/store-agency-invite/accept', csrfProtection()); app.use('/api/store-agency-invite/partner-request', csrfProtection()); app.route('/api/store-agency-invite', storeAgencyInviteRoutes); // 🏢 에이전시 가입·로그인·직원(별도 서명 열쇠 — requireAuth 로는 안 통한다)
 app.route('/api/seller/instagram-dm', instagramAutoDmSellerRoutes); app.route('/api/seller/urshorts', sellerUrshortsRoutes); // 💬 매장 인스타 자동 DM(좌석 토큰) · 🎬 자기 이용권에 쇼츠 붙이기(소유권 검사)
 app.route('/api/influencer-profile', influencerProfileRoutes); app.route('/api/seller', sellerStoresRoutes); app.route('/api/seller', sellerWithdrawRoutes); app.route('/api/seller/influencers', sellerInfluencersRoutes); app.route('/api/influencer-offers', influencerOfferInvitesRoutes); app.route('/api/admin/influencer-outreach', adminInfluencerOutreachRoutes); // 매장관리/인플탐색·제안/수락다리/어드민 발송큐
 

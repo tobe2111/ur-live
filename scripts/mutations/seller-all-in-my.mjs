@@ -130,8 +130,9 @@ export default [
   {
     name: '🏠 매장을 막 얻은 사람이 대시보드로 떨어진다',
     file: 'src/pages/StoreClaimPage.tsx',
-    find: '                navigate(MY_PATH, { replace: true })',
-    replace: "                navigate('/seller', { replace: true })",
+    // 🎯 2026-10-31 재조준: 제휴 위젯 되돌아오기가 붙었다(그 기억이 없으면 종전대로 마이 — 불변식 그대로).
+    find: '                navigate(takePartnerReturn() ?? MY_PATH, { replace: true })',
+    replace: "                navigate(takePartnerReturn() ?? '/seller', { replace: true })",
     test: TEST,
     why: '가게를 얻은 그 순간이 가장 인상에 남는다 — 거기가 대시보드면 마이는 영영 부차적인 화면이 된다.',
   },
