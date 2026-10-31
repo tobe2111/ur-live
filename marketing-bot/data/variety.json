@@ -80,5 +80,13 @@
     "platform": "threads",
     "track": "merchant",
     "date_kst": "2026-10-31"
+  },
+  {
+    "platform": "instagram",
+    "track": "merchant",
+    "topic": "첫 이용권 초안은 저희가 만들어 드림: 사장님은 확인하고 승인만",
+    "hook": "confess",
+    "media_set": "onboarding-steps",
+    "date_kst": "2026-10-31"
   }
 ]
