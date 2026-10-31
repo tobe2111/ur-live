@@ -104,15 +104,16 @@ describe('③ 영입 시트 — 열자마자 링크 · 카카오톡 카드', () 
 
 describe('①② 마이 에이전시 구역 — 영입 버튼은 늘 판 위에', () => {
   const panel = code('src/pages/agency-console/AgencyStoresPanel.tsx')
-  it('버튼이 관리자 조건 하나로만 서고, 맡은 매장 분기(로딩·고른 매장·빈 화면)보다 앞에 있다', () => {
+  // 🧑‍🤝‍🧑 2026-10-31 대표 *"모두 진행해줘"* — 직원도 영입 링크를 보낸다(만들기·끊기만 관리자). 조건 없이 늘 선다.
+  it('버튼이 조건 없이 서고, 맡은 매장 분기(로딩·고른 매장·빈 화면)보다 앞에 있다', () => {
     const entry = panel.indexOf('data-testid="agency-invite-entry"')
     expect(entry, '영입 버튼이 사라졌다').toBeGreaterThan(0)
-    expect(panel.slice(Math.max(0, entry - 400), entry)).toMatch(/\{canManage && \(\s*<button type="button" onClick=\{\(\) => setSheet\('invite'\)\}/)
+    expect(panel.slice(Math.max(0, entry - 400), entry)).toMatch(/\{\}\s*<button type="button" onClick=\{\(\) => setSheet\('invite'\)\}\s*$/)
     expect(entry, '빈 화면/고른 매장 분기 안으로 들어가면 매장이 생기는 순간 사라진다').toBeLessThan(panel.indexOf('rows === null ?'))
   })
   it('영입 시트는 영입 링크만 연다(대신 등록은 따로)', () => {
-    const inv = panel.slice(panel.indexOf("{sheet === 'invite' && canManage && ("), panel.indexOf("{sheet === 'register' && canManage && ("))
-    expect(inv).toContain('<AgencyInviteLinkCard />')
+    const inv = panel.slice(panel.indexOf("{sheet === 'invite' && ("), panel.indexOf("{sheet === 'register' && canManage && ("))
+    expect(inv).toContain('<AgencyInviteLinkCard canManage={canManage} />')
     expect(inv).not.toContain('AgencyRegisterStoreCard')
   })
   it('관리자 여부를 응답 전에 캐시된 역할로 그린다(버튼이 늦게 끼어들어 아래를 밀지 않게)', () => {
