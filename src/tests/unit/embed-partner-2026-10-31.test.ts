@@ -145,10 +145,15 @@ describe('④ 위젯 · ⑤ CSRF', () => {
     expect(html).toContain('&lt;i&gt;바른&lt;/i&gt;대행')
     const text = html.replace(/<style>[\s\S]*?<\/style>/, '').replace(/<[^>]+>/g, ' ')
     expect(text).toContain('유어딜 입점 신청') // 본문을 실제로 읽고 있다는 증거
+    // 🎫 대표 확정 시안 A — 훅 문장 + 체험단 ↔ 유어딜 비교. 비교의 유어딜 쪽은 정책과 맞는 말만.
+    expect(text).toContain('체험단에 지치셨나요?')
+    expect(html).toMatch(/<div class="col old"><b>체험단<\/b>[\s\S]*?<\/div><div class="col new"><b>유어딜 이용권<\/b>/)
+    for (const claim of ['손님이 선결제', 'QR로 바로 사용', '팔린 만큼 정산', '가입비·월 이용료 0원']) expect(text).toContain(claim)
+    expect(text).not.toContain('—') // 대외 문구 em-dash 0(anti-slop)
     expect(text).not.toMatch(/\d+(\.\d+)?\s*%/)
     expect(html).not.toMatch(/<script/i)
     expect(embedSrc('partner', '1', 8, 'light')).toBe('/embed/partner/1')
-    expect(embedSnippet('partner', '/embed/partner/1')).toContain('height:260px')
+    expect(embedSnippet('partner', '/embed/partner/1')).toContain('height:400px')
   })
   it('요청 경로에 CSRF 가 걸린다', () => {
     const w = readFileSync('src/worker/index.ts', 'utf8')

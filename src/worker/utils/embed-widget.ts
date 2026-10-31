@@ -24,7 +24,7 @@ export const EMBED_MAX_COUNT = 12
 export const EMBED_DEFAULT_COUNT = 8
 
 /** 붙이는 쪽에 권하는 iframe 높이(px). 위젯 높이는 내용과 무관하게 고정이라 이 값으로 충분하다. */
-export const EMBED_HEIGHT: Record<'strip' | 'single' | 'partner', number> = { strip: 330, single: 172, partner: 260 }
+export const EMBED_HEIGHT: Record<'strip' | 'single' | 'partner', number> = { strip: 330, single: 172, partner: 400 }
 
 export interface EmbedParams { count: number; theme: EmbedTheme }
 
@@ -98,8 +98,8 @@ function won(n: number): string {
   return `${String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}원`
 }
 
-const LIGHT = '--bg:#FFFFFF;--card:#FFFFFF;--ink:#16181C;--soft:#666C72;--faint:#81868C;--rule:rgba(22,24,28,.08);--brand:#1C69EF;--sale:#DC2626;--ph:#EDEFF3'
-const DARK = '--bg:#1D1F29;--card:#1D1F29;--ink:#F8F7FC;--soft:#9FA3A8;--faint:#6F747A;--rule:rgba(255,255,255,.08);--brand:#4D8DF5;--sale:#FF5C69;--ph:#262A33'
+const LIGHT = '--tint:#E8F0FE;--bg:#FFFFFF;--card:#FFFFFF;--ink:#16181C;--soft:#666C72;--faint:#81868C;--rule:rgba(22,24,28,.08);--brand:#1C69EF;--sale:#DC2626;--ph:#EDEFF3'
+const DARK = '--tint:#1B2A48;--bg:#11141C;--card:#1D1F29;--ink:#F8F7FC;--soft:#9FA3A8;--faint:#6F747A;--rule:rgba(255,255,255,.08);--brand:#4D8DF5;--sale:#FF5C69;--ph:#262A33'
 
 function themeCss(theme: EmbedTheme): string {
   if (theme === 'dark') return `:root{${DARK};color-scheme:dark}`
@@ -131,14 +131,25 @@ a{color:inherit;text-decoration:none}
 .one .nm{font-size:15px;min-height:0}
 .one .go{align-self:flex-start;margin-top:6px;background:var(--brand);color:#fff;font-size:13px;font-weight:700;padding:7px 14px;border-radius:999px}
 .one .logo{font-size:13px}
-.pt{padding:18px 18px 16px;display:flex;flex-direction:column;gap:12px}
-.pt .hd .x{font-size:13px;color:var(--soft);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.pt h1{margin:0;font-size:20px;line-height:1.35;font-weight:700;letter-spacing:-.01em}
-.pt ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:7px}
-.pt li{font-size:13px;color:var(--soft);line-height:1.45;padding-left:14px;position:relative}
-.pt li::before{content:'';position:absolute;left:2px;top:.6em;width:5px;height:5px;border-radius:50%;background:var(--brand)}
-.pt li b{color:var(--ink);font-weight:600}
-.pt .go{align-self:flex-start;background:var(--brand);color:#fff;font-size:15px;font-weight:700;padding:11px 20px;border-radius:12px}`
+.tk{margin:10px;border-radius:18px;overflow:hidden;word-break:keep-all;background:var(--card);box-shadow:0 2px 14px rgba(22,24,28,.08)}
+.tk .band{background:#1C69EF;color:#fff;padding:18px 20px 22px}
+.tk .band .hd{font-size:12px}.tk .band .logo{color:#fff}.tk .band .logo i{background:#fff}
+.tk .band .x{opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.tk h1{margin:12px 0 0;font-size:24px;line-height:1.3;font-weight:700;letter-spacing:-.02em}
+.tk .band p{margin:6px 0 0;font-size:13px;line-height:1.5;opacity:.92}
+.tk .perf{height:0;border-top:2px dashed var(--tint);margin:0 14px;position:relative}
+.tk .perf::before,.tk .perf::after{content:'';position:absolute;top:-9px;width:18px;height:18px;border-radius:50%;background:var(--bg)}
+.tk .perf::before{left:-23px}.tk .perf::after{right:-23px}
+.tk .body{padding:16px 20px 20px;display:flex;flex-direction:column;gap:14px}
+.tk .cmp{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tk .col{border-radius:12px;padding:12px;font-size:13px;line-height:1.55;min-width:0}
+.tk .col b{display:block;font-size:12px;font-weight:700;margin-bottom:6px}
+.tk .col span{display:block}
+.tk .old{background:var(--ph);color:var(--faint)}.tk .old b{color:var(--soft)}
+.tk .new{background:var(--tint);color:var(--ink)}.tk .new b{color:var(--brand)}
+.tk .foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.tk .foot small{font-size:12px;color:var(--faint)}
+.tk .go{background:#1C69EF;color:#fff;font-size:15px;font-weight:700;padding:12px 20px;border-radius:12px}`
 
 function cardHtml(c: EmbedCard): string {
   const img = c.img ? `<img src="${esc(c.img)}" alt="${esc(c.name)}" loading="lazy" width="156" height="156">` : ''
@@ -196,12 +207,15 @@ export function renderMissing(theme: EmbedTheme): string {
  * ⚠️ 문구에 숫자(수수료율 등)를 적지 않는다 — 요율은 어드민이 바꾸는 값이라 남의 사이트에 박힌 숫자는 곧 거짓말이 된다.
  */
 export function renderPartner(theme: EmbedTheme, agencyName: string, agencyId: number): string {
+  // 🎫 2026-10-31 대표 확정 시안 A — 유어딜 이용권 모양(파란 띠 + 절취선 + 본문)에 체험단과 나란히 비교.
+  //   대표: *"투박하고 … 우리 서비스의 아이덴티티를 나타내야지 차별점과. 체험단에 지치셨나요? 이런거"*.
+  //   비교 문구의 유어딜 쪽은 지금 정책과 맞는 것만(손님 선결제 · 매장 QR 사용 · 팔린 만큼 정산 · 가입비·월 이용료 0원).
   const href = withUtm(`/store/partner/${agencyId}`, 'partner')
-  const body = `<main class="pt"><div class="hd">${LOGO}<span class="x">× ${esc(agencyName)}</span></div>`
-    + '<h1>우리 가게 이용권,<br>유어딜에서 팔아 보세요</h1>'
-    + '<ul><li><b>등록 0원</b> · 사업자등록증은 나중에 올려도 돼요</li>'
-    + '<li><b>미리 결제</b> · 손님은 온라인에서 사고 매장에서 QR로 써요</li>'
-    + `<li><b>등록·운영 지원</b> · ${esc(agencyName)} 제휴로 도와드려요</li></ul>`
-    + `<a class="go" href="${esc(href)}" target="_blank" rel="noopener">유어딜 입점 신청</a></main>`
+  const body = `<main class="tk"><div class="band"><div class="hd">${LOGO}<span class="x">× ${esc(agencyName)}</span></div>`
+    + '<h1>체험단에 지치셨나요?</h1><p>공짜로 내주는 홍보 대신, 손님이 먼저 결제하고 오는 할인 이용권</p></div>'
+    + '<div class="perf"></div><div class="body"><div class="cmp">'
+    + '<div class="col old"><b>체험단</b><span>음식은 공짜로</span><span>후기만 남고</span><span>매출은 0원</span></div>'
+    + '<div class="col new"><b>유어딜 이용권</b><span>손님이 선결제</span><span>QR로 바로 사용</span><span>팔린 만큼 정산</span></div>'
+    + `</div><div class="foot"><a class="go" href="${esc(href)}" target="_blank" rel="noopener">유어딜 입점 신청</a><small>가입비·월 이용료 0원</small></div></div></main>`
   return doc(theme, `${agencyName} × 유어딜 입점`, body)
 }
