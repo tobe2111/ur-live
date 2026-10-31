@@ -6,7 +6,7 @@
  * 기억은 **편의**일 뿐이라 목록에 없는 id 면 조용히 첫 매장으로 돌아간다(내려놓은 매장 · 배정 해제).
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { agencyRequest } from './agency-api'
+import { agencyRequest, readAgencyProfile } from './agency-api'
 
 export interface StoreToday {
   todayRevenue: number
@@ -59,7 +59,9 @@ function readRemembered(): number | null {
 
 export function useAgencyStores(onExpired: () => void) {
   const [rows, setRows] = useState<StoreRow[] | null>(null)
-  const [canManage, setCanManage] = useState(false)
+  // 🔗 2026-10-31 — 관리자 전용 [매장 영입 링크 보내기] 가 판 **위**에 서므로, 응답을 기다리면 그 높이만큼 아래가 밀린다.
+  //   로그인 때 저장한 역할로 첫 렌더를 그리고 서버 값으로 맞춘다(권한 판정은 여전히 서버 — 화면 배치만).
+  const [canManage, setCanManage] = useState(() => readAgencyProfile()?.staff.role === 'admin')
   const [error, setError] = useState('')
   const [remembered, setRemembered] = useState<number | null>(readRemembered)
 
