@@ -6,6 +6,10 @@
  *
  * 무엇을 넘기는지 **화면이 먼저 말한다**: 상품·이용권·주문 관리는 맡기고, 정산 계좌·사업자 정보는 사장님께 남고,
  * 언제든 끊을 수 있다. 사장님이 이 문장을 안 읽고 누르면 나중에 "누가 내 매장을 만지냐" 가 된다.
+ *
+ * 🧩 2026-10-31 대표 *"그 링크로 들어와서 가입하면 바로 에이전시와 매장이 연동되게 하면 되잖아."* — 아직 매장이 없는
+ *   사장님에게 종전엔 *"매장을 먼저 등록한 뒤 이 링크를 다시 열어 주세요"* 라고 했다(사장님이 링크를 다시 찾아야 했다).
+ *   이제 등록 화면에 토큰을 실어 보내고(`/store/new?agency_invite=`), 등록이 끝나는 순간 그 화면이 맡기기까지 한다.
  */
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
@@ -14,6 +18,7 @@ import { rememberPartner, forgetPartner } from '@/utils/partner-return'
 import api from '@/lib/api'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { StoreIcon, OkIcon } from '@/components/icons/urdeal-icons'
+import { AGENCY_INVITE_QUERY } from '@/shared/agency-store-invite'
 
 interface OwnedStore { seller_id: number; name: string; status: string | null }
 
@@ -67,6 +72,10 @@ export default function StoreAgencyInvitePage() {
       setBusy(false)
     }
   }
+
+  /** 등록 화면으로 — 등록이 끝나면 그 화면이 이 링크로 맡기기까지 한다(`StoreClaimPage`). */
+  //   🤝 제휴 위젯(partner)은 토큰이 없다 — 그냥 등록으로 보내고, 등록이 끝나면 `partner-return` 이 이 화면으로 되돌린다.
+  const registerHref = partner ? '/store/new' : `/store/new?${AGENCY_INVITE_QUERY}=${encodeURIComponent(token)}`
 
   const shell = (children: React.ReactNode) => (
     <div className="min-h-[100dvh] bg-[#F8F7FC] dark:bg-[#11141C] px-4 py-10">
@@ -136,11 +145,17 @@ export default function StoreAgencyInvitePage() {
 
       {stores.length === 0 ? (
         <div className="mt-4 rounded-2xl bg-white dark:bg-[#1D1F29] p-5 shadow-lift">
+          {partner ? (<>
           <p className="text-[15px] font-semibold text-gray-900 dark:text-white">아직 등록한 내 매장이 없어요</p>
           <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">
-            {partner ? '매장을 먼저 등록해 주세요. 등록이 끝나면 이 화면으로 돌아와요.' : '매장을 먼저 등록한 뒤 이 링크를 다시 열어 주세요.'}
+            매장을 먼저 등록해 주세요. 등록이 끝나면 이 화면으로 돌아와요.
           </p>
-          <Link to="/store/new" className="mt-4 inline-flex h-11 items-center rounded-xl bg-brand px-5 text-[15px] font-semibold text-white">내 매장 등록하기</Link>
+          <Link to={registerHref} className="mt-4 inline-flex h-11 items-center rounded-xl bg-brand px-5 text-[15px] font-semibold text-white">내 매장 등록하기</Link>
+          </>) : (<>
+          <p className="text-[15px] font-semibold text-gray-900 dark:text-white">아직 유어딜에 등록한 매장이 없어요</p>
+          <p className="mt-1 text-[13px] leading-relaxed text-gray-500 dark:text-gray-400">매장을 등록하면 등록과 동시에 {agencyName} 에이전시에 맡겨져요. 링크를 다시 열 필요 없어요.</p>
+          <Link to={registerHref} className="mt-4 inline-flex h-11 items-center rounded-xl bg-brand px-5 text-[15px] font-semibold text-white">매장 등록하고 맡기기</Link>
+          </>)}
         </div>
       ) : (
         <>
@@ -164,6 +179,9 @@ export default function StoreAgencyInvitePage() {
             className="mt-5 h-12 w-full rounded-xl bg-brand text-[15px] font-semibold text-white disabled:opacity-50">
             {busy ? '보내는 중…' : partner ? `${agencyName}에 운영 요청하기` : `${agencyName} 에이전시에 맡기기`}
           </button>
+          <p className="mt-4 text-center text-[13px] text-gray-500 dark:text-gray-400">
+            목록에 없는 매장이에요? <Link to={registerHref} className="font-semibold text-brand-text">{partner ? '새로 등록하기' : '새로 등록하고 맡기기'}</Link>
+          </p>
         </>
       )}
     </>,
