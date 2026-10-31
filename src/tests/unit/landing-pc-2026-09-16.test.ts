@@ -21,6 +21,8 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync, existsSync } from 'node:fs'
 import { stripComments } from '../helpers/source-text'
+import { isFullBleedPcPath } from '@/shared/pc-fullbleed'
+import { isFullScreenPath } from '@/lib/consumer-chrome'
 
 const LAYOUT = readFileSync('src/components/MobileAppLayout.tsx', 'utf-8')
 const APP = readFileSync('src/App.tsx', 'utf-8')
@@ -28,7 +30,8 @@ const DARK_GUARD = readFileSync('scripts/check-dark-contrast.mjs', 'utf-8')
 
 const PAGES = {
   '/about': 'src/pages/AboutServicePage.tsx',
-  '/creators': 'src/pages/CreatorsPage.tsx',
+  // 📣 2026-10-31: 모집 랜딩이 `/creators` → `/influencer` 로 옮겨왔다(옛 주소는 301). 같은 파일이다.
+  '/influencer': 'src/pages/CreatorsPage.tsx',
 } as const
 /** 주석을 걷어낸 본문 — 주석에 적어 둔 단어에 걸려 초록이 뜨는 함정을 피한다. */
 const visible = (p: string) => stripComments(readFileSync(p, 'utf-8'))
@@ -40,14 +43,24 @@ describe('① PC 에서 액자를 벗는다', () => {
    */
   const entries = [...stripComments(LAYOUT).matchAll(/'(\/[a-z-]+)'/g)].map((m) => m[1])
 
-  it.each(Object.keys(PAGES))('`%s` 가 HIDE_SIDEBAR_PREFIXES 에 있다', (route) => {
+  it.each(['/about', '/creators'])('`%s` 가 HIDE_SIDEBAR_PREFIXES 에 있다', (route) => {
     const at = stripComments(LAYOUT).indexOf('HIDE_SIDEBAR_PREFIXES')
     const block = stripComments(LAYOUT).slice(at, stripComments(LAYOUT).indexOf(']', at))
     expect(block, `${route} 가 빠지면 430px 소비자 액자 + 앱 설치 거터로 되돌아간다`).toContain(`'${route}'`)
   })
 
   it('형제 셋이 함께 있다 (하나만 빠져도 그 페이지만 조용히 폰 폭이 된다)', () => {
+    // `/creators` 는 이제 신청서(`/creators/apply`·`/start`)를 위해 남는다 — 접두사가 그 둘을 덮는다.
     for (const r of ['/partners', '/about', '/creators']) expect(entries).toContain(r)
+  })
+
+  it('`/influencer`(모집 랜딩)는 정확 일치로 액자를 벗고 네비를 숨긴다 — 하위 도구 화면은 그대로', () => {
+    // 접두사로 넣으면 `/influencer/dashboard`·`/settlement` 까지 액자·네비를 잃는다(폰 폭 도구다).
+    expect(isFullBleedPcPath('/influencer')).toBe(true)
+    expect(isFullScreenPath('/influencer')).toBe(true)
+    for (const sub of ['/influencer/dashboard', '/influencer/settlement', '/influencer/discover']) {
+      expect(isFullScreenPath(sub), sub).toBe(false)
+    }
   })
 
   it('App.tsx 가 셋 다 fullScreen 으로 처리한다 (액자만 풀고 네비가 남으면 이중 크롬)', () => {
@@ -119,14 +132,14 @@ describe('③ 화면 캡처는 실재하고, 없는 기능을 그림으로 약�
    *    이라고 적었다. 앞의 장치는 **아직 없다**(그 파일 주석이 "잔존 장치 2종 완성 후 교체" 라고
    *    적어 둔 것이 그것이다). 모집 랜딩 한복판의 공사중 팻말은 신청을 막는다.
    */
-  it('/creators 가 "화면 준비 중" 플레이스홀더로 되돌아가지 않는다', () => {
-    const s = visible(PAGES['/creators'])
+  it('/influencer 모집 랜딩이 "화면 준비 중" 플레이스홀더로 되돌아가지 않는다', () => {
+    const s = visible(PAGES['/influencer'])
     expect(s).not.toContain('화면 준비 중')
     expect(s, '아직 없는 장치를 그림으로 약속하지 않는다').not.toContain('실시간 적립 알림')
   })
 
-  it('/creators 의 캡션이 라이브인지 예시 데이터인지 밝힌다', () => {
-    const s = visible(PAGES['/creators'])
+  it('/influencer 모집 랜딩의 캡션이 라이브인지 예시 데이터인지 밝힌다', () => {
+    const s = visible(PAGES['/influencer'])
     expect(s).toContain('예시 데이터')
     expect(s).toContain('라이브 화면')
   })

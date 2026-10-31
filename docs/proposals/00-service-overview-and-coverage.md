@@ -291,9 +291,9 @@
 |---|---|---|---|
 | 도매몰 (유통스타트) | `wholesale-mall-brief.md` | 2 | 4 |
 | 오프라인 공구 / 동네딜 | `offline-groupbuy-brief.md` | 29 | 96 |
-| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 77 | 275 |
+| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 78 | 275 |
 | 유어샵 / 담기·소개 | `linkshop-brief.md` | 24 | 87 |
-| **합계** | — | **132** | **462** |
+| **합계** | — | **133** | **462** |
 
 ### 전체 커버리지 검증 (자동 — 빠진 기능 보증)
 
@@ -302,12 +302,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 339 | 1016 |
-| 도메인 버킷 (5개 소개서) | 132 | 462 |
+| 전체 | 340 | 1026 |
+| 도메인 버킷 (5개 소개서) | 133 | 462 |
 | 공통/인프라 (의도적 제외) | 151 | 453 |
-| **미커버 (점검 필요)** | **56** | **101** |
+| **미커버 (점검 필요)** | **56** | **111** |
 
-⚠️ **미커버 157건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 167건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -425,6 +425,8 @@
 - `GET /api/seller-experience-campaigns/my/entries` (`src/features/group-buy/api/experience-campaign.routes.ts`)
 - `GET /api/store-agency-invite/:token` (`src/features/seller/api/store-agency-invite.routes.ts`)
 - `POST /api/store-agency-invite/accept` (`src/features/seller/api/store-agency-invite.routes.ts`)
+- `POST /api/store-agency-invite/partner-request` (`src/features/seller/api/store-agency-invite.routes.ts`)
+- `GET /api/store-agency-invite/partner/:agencyId` (`src/features/seller/api/store-agency-invite.routes.ts`)
 - `POST /api/voucher-dispute/:id/respond` (`src/features/group-buy/api/voucher-dispute.routes.ts`)
 - `GET /api/voucher-dispute/against-me` (`src/features/group-buy/api/voucher-dispute.routes.ts`)
 - `GET /api/voucher-dispute/mine` (`src/features/group-buy/api/voucher-dispute.routes.ts`)
@@ -441,6 +443,14 @@
 - `PUT /cross-owner-accept` (`src/features/seller/api/seller-brands.routes.ts`)
 - `GET /deal-plan/:productId` (`src/features/group-buy/api/deal-plan.routes.ts`)
 - `GET /dongnedeal/photo-source-diag` (`src/features/admin/api/admin-demo-photo-source-diag.routes.ts`)
+- `GET /embed` (`src/worker/routes/embed.routes.ts`)
+- `GET /embed/agency/:id` (`src/worker/routes/embed.routes.ts`)
+- `GET /embed/partner/:id` (`src/worker/routes/embed.routes.ts`)
+- `GET /embed/pass/:id` (`src/worker/routes/embed.routes.ts`)
+- `GET /embed/region/:sido` (`src/worker/routes/embed.routes.ts`)
+- `GET /embed/region/:sido/:sigungu` (`src/worker/routes/embed.routes.ts`)
+- `GET /embed/store/:username` (`src/worker/routes/embed.routes.ts`)
+- `GET /embed/u/:handle` (`src/worker/routes/embed.routes.ts`)
 - `POST /fee-context/channel` (`src/features/seller/api/seller-store-channel.routes.ts`)
 - `POST /kakao-bot/link-code` (`src/features/seller/api/seller-kakao-bot.routes.ts`)
 - `GET /kakao-bot/links` (`src/features/seller/api/seller-kakao-bot.routes.ts`)
@@ -785,7 +795,7 @@
 
 #### 온라인 입점 / 라이브커머스
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (77개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (78개)
 
 - `/browse`
 - `/cart`
@@ -857,6 +867,7 @@
 - `/store/find`
 - `/store/go`
 - `/store/new`
+- `/store/partner/:agencyId`
 - `/store/scan`
 - `/store/seeding`
 - `/store/stats/:productId`
@@ -1631,7 +1642,7 @@
 
 
 
-> 마지막 생성: 2026-10-31T13:17:47.858Z
+> 마지막 생성: 2026-10-31T18:40:43.231Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

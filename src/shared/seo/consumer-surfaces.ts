@@ -163,13 +163,8 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
     title: '서비스 소개 - 유어딜은 이렇게 작동합니다',
     description: '매장은 손님이 온 다음에만 비용을 냅니다. 손님은 동네 이용권을 할인가로 사고, 마음에 든 딜은 내 유어샵에 담아 소개할 수 있고, 매장이 소개 몫을 건 딜이면 그 몫이 쌓입니다. 매장·소개·구매 셋이 함께 이득인 구조.',
   },
-  '/creators': {
-    crumb: '소개 파트너',
-    title: '동네 딜 소개하고 수익 받기',
-    description: '링크 하나로 우리 동네 맛집을 소개하세요. 매장이 소개 몫을 건 딜이 내 링크로 팔리면 그 몫이 쌓입니다. 가입 → 유어샵에 담기 → 링크 공유, 3단계면 시작입니다.',
-  },
   '/creators/apply': {
-    crumb: '신청',
+    crumb: '소개 파트너 신청', // 2026-10-31: 부모 `/creators` 가 301 이 되어 빵부스러기에서 빠졌다 — 이 단계가 혼자 말한다
     title: '유어딜 소개 파트너 신청',
     description: '동네 맛집·카페·뷰티·숙소 이용권을 소개해 주실 분을 찾습니다. 팔로워 수보다 동네를 아는 것이 중요해요.',
   },
@@ -205,10 +200,11 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
     title: '우리 동네 새로 생긴 가게 - 이번 달 신규 오픈',
     description: '이번 달 우리 동네에 새로 문을 연 가게를 공공 인허가 데이터로 먼저 확인하세요. 오픈 기념 이용권이 올라오면 바로 보입니다.',
   },
+  // 📣 2026-10-31 대표 "인플루언서용은 하나로 통일 · /influencer" — 옛 `/creators` 랜딩의 문구를 이 주소로 옮겼다(그 페이지가 여기서 뜬다).
   '/influencer': {
-    crumb: '소개로 수익',
-    title: '동네 딜 소개로 수익 만들기',
-    description: '매장을 직접 섭외하지 않아도 됩니다. 매장이 소개 몫을 건 이용권을 내 유어샵에 담아 링크로 소개하면, 그 링크로 팔릴 때마다 매장이 정한 비율만큼 쌓입니다.',
+    crumb: '소개 파트너',
+    title: '동네 딜 소개하고 수익 받기',
+    description: '링크 하나로 우리 동네 맛집을 소개하세요. 매장이 소개 몫을 건 딜이 내 링크로 팔리면 그 몫이 쌓입니다. 가입 → 유어샵에 담기 → 링크 공유, 3단계면 시작입니다.',
   },
   '/influencer/rankings': {
     /* 🚫 2026-10-14 — **noindex**(대표 "다 해주고 머지 후 또 개선점 찾아"). 라이브 실측(Googlebot UA):
@@ -551,7 +547,7 @@ export interface ResolvedSurfaceSeo {
  * 카테고리/브랜드 필터가 붙은 목록은 **제목을 분화**한다 — 같은 title 로 여러 URL 을 제출하면
  * 그 자체가 중복 신호다(sitemap 이 `/vouchers?category=편의점` 등을 실제로 제출한다).
  */
-type DynSeo = { title: string; description: string; path: string } | null; const dynamicSurfaceSeo: Array<(p: string) => DynSeo> = []; /** 워커 전용 동적 표면(업종 데이터가 공용 번들에 안 실리게) */ export const registerDynamicSurfaceSeo = (f: (p: string) => DynSeo) => { if (!dynamicSurfaceSeo.includes(f)) dynamicSurfaceSeo.push(f) }; export function resolveConsumerSurfaceSeo(
+type DynSeo = { title: string; description: string; path: string; noindex?: boolean } | null; const dynamicSurfaceSeo: Array<(p: string) => DynSeo> = []; /** 워커 전용 동적 표면(업종 데이터가 공용 번들에 안 실리게) */ export const registerDynamicSurfaceSeo = (f: (p: string) => DynSeo) => { if (!dynamicSurfaceSeo.includes(f)) dynamicSurfaceSeo.push(f) }; export function resolveConsumerSurfaceSeo(
   pathname: string,
   search: string,
   origin: string,
@@ -563,7 +559,7 @@ type DynSeo = { title: string; description: string; path: string } | null; const
   const path = normalizeCanonicalPath(pathname)
   const entry = CONSUMER_SURFACE_SEO[path]
   // 표에 없으면 동적 표면 빌더에 넘긴다(경로에서 값을 뽑을 수 있는 것만 — 조회는 하지 않는다).
-  if (!entry) { const l = dynamicSurfaceSeo.reduce<DynSeo>((a, f) => a ?? f(path), null); if (l) { const t = withSiteName(l.title, siteName); return { pageTitle: t, title: t, description: l.description, canonical: `${origin}${l.path}` } } return resolveAreaReportSeo(path, origin, siteName) }
+  if (!entry) { const l = dynamicSurfaceSeo.reduce<DynSeo>((a, f) => a ?? f(path), null); if (l) { const t = withSiteName(l.title, siteName); return { pageTitle: t, title: t, description: l.description, canonical: `${origin}${l.path}`, ...(l.noindex ? { noindex: true } : {}) } } return resolveAreaReportSeo(path, origin, siteName) }
 
   let title = entry.title
   let description = entry.description

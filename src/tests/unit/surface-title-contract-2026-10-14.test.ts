@@ -124,7 +124,9 @@ describe('소비자 표면 제목 계약 (2026-10-14)', () => {
     // 🔑 하한을 **실측값(23)** 으로 조인다 — 느슨하면 호출이 하나 사라져도 통과한다.
     //   페이지가 늘어 24가 되는 것은 통과(하한), 하나라도 줄면 빨간불. 표면을 일부러 없앨 때는
     //   이 숫자를 **함께** 내리는 것이 그 결정을 의식하게 만든다.
-    expect(reads).toBeGreaterThanOrEqual(23)
+    // 📣 2026-10-31: 23 → 22 — 같은 말을 하던 두 번째 모집 랜딩(`InfluencerLandingPage`)을 지웠다
+    //   (대표 "인플루언서용은 하나로 통일"). `/influencer` 는 이제 `CreatorsPage` 가 띄운다.
+    expect(reads).toBeGreaterThanOrEqual(22)
   })
 
   it('⑦ `/gdpr`·`/partnership`·`/` 가 실측 회귀 자리다', () => {

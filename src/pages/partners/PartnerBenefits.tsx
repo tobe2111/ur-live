@@ -14,6 +14,8 @@
  *
  * ⚠️ 셋 다 코드로 확인한 것만 적는다. 성과 수치·수익 사례는 기획 §0-4 금지.
  */
+import { Reveal } from '../landing/motion'
+
 const ITEMS = [
   {
     // ⚠️ 제목("먼저 나가는 돈, 없습니다")과 **같은 말을 두 번 하지 않는다.**
@@ -35,17 +37,25 @@ const ITEMS = [
 export default function PartnerBenefits() {
   return (
     <section className="bg-warm">
-      <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28">
-        <h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
-          먼저 나가는 돈, 없습니다
-        </h2>
+      {/* 🎬 2026-10-31: 제목이 왼쪽에 멈춰 있고(PC) 셋이 오른쪽으로 하나씩 지나간다.
+          세 섹션이 모두 [제목 + 문단 3 세로 나열] 로 같았던 것(AI 티) 중 하나를 다른 그림으로 바꾼 것이다. */}
+      <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-32 lg:grid lg:grid-cols-[0.8fr_1.2fr] lg:gap-20">
+        <div>
+          <div className="lg:sticky lg:top-32">
+            <Reveal><h2 className="text-[28px] lg:text-[48px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
+              먼저 나가는 돈, 없습니다
+            </h2></Reveal>
+          </div>
+        </div>
 
-        <div className="mt-12 lg:mt-20 space-y-12 lg:space-y-20 max-w-[52rem]">
-          {ITEMS.map(({ k, d }) => (
-            <div key={k}>
+        <div className="mt-12 lg:mt-0">
+          {ITEMS.map(({ k, d }, i) => (
+            <Reveal key={k} delay={i * 90}
+              className={`relative pl-6 lg:pl-10 ${i ? 'mt-12 lg:mt-24' : ''}`}>
+              <span aria-hidden className="absolute left-0 top-2 bottom-1 w-[3px] rounded-full bg-brand" />
               <p className="text-[24px] lg:text-[34px] font-bold text-ink leading-[1.3] tracking-[-0.025em]">{k}</p>
               <p className="mt-4 lg:mt-5 text-[15px] lg:text-[17px] leading-[1.8] text-gray-500 dark:text-gray-400 max-w-[34em]">{d}</p>
-            </div>
+            </Reveal>
           ))}
         </div>
       </div>
