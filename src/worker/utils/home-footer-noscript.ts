@@ -63,7 +63,7 @@ export function homeFooterGroups(): FooterGroup[] {
         { href: '/partners', label: '사장님 가게 입점' },
         { href: '/store/new', label: '내 가게 등록하기' },
         { href: '/area-report', label: '우리 동네 상권 리포트' },
-        { href: '/creators', label: '소개 파트너 모집' },
+        { href: '/influencer', label: '소개 파트너 모집' },
         // 화면과 같은 조건 — 꺼져 있으면 화면에도 없다.
         ...(REFERRAL_GROUP_DISCOUNT_DISABLED ? [] : [{ href: '/referral', label: '공구 개최하기' }]),
       ],

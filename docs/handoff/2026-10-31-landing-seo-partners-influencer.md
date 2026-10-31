@@ -51,3 +51,16 @@ for p in partners influencer; do curl -sS -A "$UA" https://urdeal.kr/$p | grep -
 
 ## 함께 들어간 것 (커밋 차단 해소)
 - `follow-redirects` override `^1.16.1` → `^1.16.2`(lockfile 1.16.2) — 새 advisory GHSA-mrwp-f3q8-3g9p(high)가 pre-commit·CI npm audit 게이트를 막았다. axios 의 전이 의존성, semver 패치.
+
+## 3차 — main 병합(#2045 `/influencer` 단일화와 충돌 해소)
+같은 날 다른 세션이 대표 *"인플루언서용은 하나로 통일하자. /influencer 이걸로"* 로 `/influencer` 가 `CreatorsPage` 를
+띄우게 하고 `InfluencerLandingPage` 를 지웠다(`/creators` 는 301). 그래서 위 2차 ②(**/creators↔/influencer 잠식 해소**)는
+**무효가 됐고 main 쪽을 택했다** — `/creators` 제목·`1기 모집` 링크·크롤러 링크 `/creators` 전부 제거, 푸터는 `/influencer`.
+- `/influencer` 의 FAQ(`REFERRAL_FAQ`)는 **새 화면(`CreatorsPage`) 끝에 '자주 묻는 것' 으로 붙였다** — 안 붙이면 `FAQPage` 만
+  남아 화면에 없는 Q&A 를 선언하게 된다(내용-스키마 불일치).
+- 줄 부품을 `src/pages/landing/FaqItem.tsx` 하나로 모았다(main 의 `ur-collapse` 모양 — 접혀도 답이 DOM 에 있다). `PartnerFaq`·`CreatorsPage` 가 같이 쓴다.
+- `/influencer` 크롤러 링크 = 그 화면에 실재하는 `/` · `/about` · `/partners`.
+- PartnerFaq 는 main 의 움직임 판 + SSOT 배열 + `catalogMeasuredAt`.
+- 🩸 **CI 빨간불 원인(병합 전)**: 지도 화면이 제목을 글자로 직접 적게 되면서 `restaurantMap.seoTitle` 을 부르는 소비자 코드가 0이 됐고,
+  그 zh 키를 앵커로 쓰던 주입(`🎬 라이브 문구가 다른 언어로만 되살아난다`)이 헛돌았다 → 온보딩 zh 키로 재조준.
+- 다음 E4 의 `/creators 제목` 항목은 삭제 — 대신 `/creators` → `/influencer` 301 과 `/influencer` FAQPage 를 본다.

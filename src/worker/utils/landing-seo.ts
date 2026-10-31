@@ -40,7 +40,7 @@ export function landingFaqFor(pathname: string): readonly LandingFaq[] {
 /** 그 화면 헤더에 실제로 있는 링크(가드가 페이지 소스와 대조한다). */
 const LANDING_LINK_PATHS: Readonly<Record<string, readonly string[]>> = {
   '/partners': ['/', '/about'],
-  '/influencer': ['/', '/partners', '/creators'],
+  '/influencer': ['/', '/about', '/partners'],
 }
 
 /** 라벨은 빵부스러기와 같은 SSOT(`crumb`) — 손으로 적으면 갈린다. 홈은 사이트 이름. */

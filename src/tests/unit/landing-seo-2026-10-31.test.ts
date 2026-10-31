@@ -64,16 +64,24 @@ describe('① FAQ 는 한 벌이다', () => {
     expect(partner).toMatch(/PARTNER_FAQ\.map\(/)
     expect(partner, 'PartnerFaq 가 질문 배열을 다시 갖고 있다 — 화면과 FAQPage 가 갈린다').not.toMatch(/const FAQS\s*=/)
     expect(partner).not.toContain(PARTNER_FAQ[0].question)
-    expect(readCode('src/pages/InfluencerLandingPage.tsx')).toMatch(/REFERRAL_FAQ\.map\(/)
+    // 🔀 2026-10-31 `/influencer` 단일화 — 그 주소는 이제 `CreatorsPage` 를 띄운다.
+    expect(readCode('src/pages/CreatorsPage.tsx')).toMatch(/REFERRAL_FAQ\.map\(/)
+    expect(readCode('src/pages/CreatorsPage.tsx')).not.toContain(REFERRAL_FAQ[0].question)
   })
 })
 
 describe('② 답은 접혀 있어도 문서에 있다', () => {
-  it.each(['src/pages/partners/PartnerFaq.tsx', 'src/pages/InfluencerLandingPage.tsx'])('%s — <details> 로 감싸고, 열림 조건으로 답을 지우지 않는다', (f) => {
+  // 🔀 2026-10-31 — 줄 부품을 `landing/FaqItem` 하나로 모았다(두 랜딩이 같이 쓴다). 접기는 높이만 바꾼다(ur-collapse).
+  it('FaqItem — 열림 조건으로 답을 지우지 않고, 높이만 접는다', () => {
+    const src = readCode('src/pages/landing/FaqItem.tsx')
+    expect(src, '접힌 답을 DOM 에서 지운다 — 렌더하는 크롤러도 못 본다').not.toMatch(/\{\s*open\s*&&/)
+    expect(src).toMatch(/className="ur-collapse"/)
+    expect(src).toMatch(/\{a\}/)
+  })
+  it.each(['src/pages/partners/PartnerFaq.tsx', 'src/pages/CreatorsPage.tsx'])('%s — 그 부품으로 그린다(자기 줄을 다시 만들지 않는다)', (f) => {
     const src = readCode(f)
-    expect(src).toMatch(/<details[\s>]/)
-    expect(src).toMatch(/<summary[\s>]/)
-    expect(src, '접힌 답을 DOM 에서 지운다 — 렌더하는 크롤러도 못 본다').not.toMatch(/\{\s*open\s*&&\s*\(?\s*<p/)
+    expect(src).toMatch(/<FaqItem\b/)
+    expect(src).not.toMatch(/function Item\(/)
   })
 })
 
@@ -128,7 +136,7 @@ describe('④ 크롤러 본문', () => {
   it.each(['/partners', '/influencer'])('%s — 링크는 그 화면 헤더에 실제로 있는 것만', (p) => {
     const links = landingLinks(p)
     expect(links.length, '링크 0 — 종전과 같다').toBeGreaterThan(0)
-    const page = p === '/partners' ? readCode('src/pages/PartnersPage.tsx') : readCode('src/pages/InfluencerLandingPage.tsx')
+    const page = p === '/partners' ? readCode('src/pages/PartnersPage.tsx') : readCode('src/pages/CreatorsPage.tsx')
     const html = buildStaticSurfaceNoscript(p)
     for (const l of links) {
       expect(page, `${p} 화면에 없는 링크를 크롤러에게만 준다: ${l.href}`).toContain(`to="${l.href}"`)
@@ -171,23 +179,11 @@ describe('⑤ 명칭·스니펫', () => {
   })
 })
 
-describe('⑥ /creators ↔ /influencer — 같은 질의를 다투지 않는다 (2026-10-31 대표 "모두 해줘")', () => {
-  // 둘 다 "동네 가게 소개하고 수익" 을 제목에 걸면 한 사이트의 두 URL 이 같은 검색어를 놓고 다툰다.
-  // 역할을 나눴다: /influencer = 방법·수익(정보) · /creators = 1기 모집·지원(행동).
-  const c = CONSUMER_SURFACE_SEO['/creators']
-  const i = CONSUMER_SURFACE_SEO['/influencer']
-  it('제목이 서로 다르고 /creators 는 모집·지원을 말한다', () => {
-    expect(c.title).not.toBe(i.title)
-    expect(c.title).toMatch(/모집/)
-    expect(c.title).not.toMatch(/수익/)
-  })
-  it('/creators 스니펫도 신분 호칭 없이 ≤160자', () => {
-    expect(`${c.title}\n${c.description}`).not.toMatch(/인플루언서|크리에이터|큐레이터/)
-    expect(c.description.length).toBeLessThanOrEqual(160)
-  })
-  it('/influencer 화면이 /creators 로 가는 길을 실제로 갖고 있다(크롤러 링크와 짝)', () => {
-    expect(readCode('src/pages/InfluencerLandingPage.tsx')).toContain('to="/creators"')
-    expect(landingLinks('/influencer').map(l => l.href)).toContain('/creators')
+describe('⑥ /influencer 하나로 (2026-10-31 대표 "인플루언서용은 하나로 통일")', () => {
+  // 처음엔 /creators 와 /influencer 의 제목을 갈라 잠식을 막았는데, 같은 날 대표가 둘을 /influencer 하나로
+  // 합쳤다(/creators 는 301). 그래서 지키는 것이 바뀌었다 — 크롤러 링크가 301 주소를 가리키지 않는다.
+  it('/influencer 크롤러 링크에 /creators(301) 가 없다', () => {
+    expect(landingLinks('/influencer').map(l => l.href)).not.toContain('/creators')
   })
   it('푸터가 모집 페이지를 신분 호칭으로 부르지 않는다', () => {
     for (const f of ['src/components/main/SiteFooter.tsx', 'src/components/MobileFooter.tsx', 'src/worker/utils/home-footer-noscript.ts']) {

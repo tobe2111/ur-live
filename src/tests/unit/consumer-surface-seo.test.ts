@@ -106,7 +106,7 @@ describe('resolveConsumerSurfaceSeo — 표면마다 다른 메타 + canonical',
   })
 
   it('랜딩 4종도 서버 메타를 갖는다 (sitemap 이 제출하는데 제네릭 홈이었다)', () => {
-    for (const p of ['/about', '/creators', '/creators/apply', '/partners']) {
+    for (const p of ['/about', '/influencer', '/creators/apply', '/partners']) {
       const r = resolveConsumerSurfaceSeo(p, '', ORIGIN)
       expect(r, p).not.toBeNull()
       expect(r!.canonical, p).toBe(`https://urdeal.kr${p}`)
@@ -116,7 +116,7 @@ describe('resolveConsumerSurfaceSeo — 표면마다 다른 메타 + canonical',
 
   it('sitemap 이 제출하는 정적 경로는 전부 메타를 갖는다 (선언과 구현이 갈리지 않게)', () => {
     // sitemap.routes.ts 의 정적 목록과 같은 집합. 여기에 추가하면 저기도 추가할 것.
-    for (const p of ['/', '/browse', '/vouchers', '/map', '/about', '/creators', '/creators/apply', '/partners']) {
+    for (const p of ['/', '/browse', '/vouchers', '/map', '/about', '/influencer', '/creators/apply', '/partners']) {
       expect(resolveConsumerSurfaceSeo(p, '', ORIGIN), p).not.toBeNull()
     }
   })
@@ -239,7 +239,6 @@ describe('페이지가 표를 실제로 읽는가 — 문구 두 벌 방지', ()
   // 그래서 "표를 읽는다"를 소스에서 확인한다. 리터럴로 되돌리면 여기서 빨간불.
   const WIRED: Array<[string, string]> = [
     ['/about', 'src/pages/AboutPage.tsx'],
-    ['/creators', 'src/pages/CreatorsPage.tsx'],
     ['/creators/apply', 'src/pages/CreatorApplyPage.tsx'],
     ['/partners', 'src/pages/PartnersPage.tsx'],
     ['/stays', 'src/pages/StaysSearchPage.tsx'],
@@ -249,7 +248,7 @@ describe('페이지가 표를 실제로 읽는가 — 문구 두 벌 방지', ()
     ['/join', 'src/pages/JoinChoicePage.tsx'],
     ['/privacy', 'src/pages/PrivacyPolicyPage.tsx'],
     ['/gb-market', 'src/pages/GbMarketplacePage.tsx'],
-    ['/influencer', 'src/pages/InfluencerLandingPage.tsx'],
+    ['/influencer', 'src/pages/CreatorsPage.tsx'], // 2026-10-31 모집 랜딩이 이 주소로 옮겨왔다
     ['/faq', 'src/pages/FAQPage.tsx'],
     ['/refund', 'src/pages/RefundPolicyPage.tsx'],
     ['/introduce', 'src/pages/IntroducePage.tsx'],

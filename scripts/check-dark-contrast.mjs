@@ -151,8 +151,8 @@ const ROUTES = [
    */
   { route: '/about', name: '서비스 소개', fill: true },
   { route: '/about', name: '서비스 소개(PC)', pc: true, fill: true },
-  { route: '/creators', name: '소개 파트너 모집', fill: true },
-  { route: '/creators', name: '소개 파트너 모집(PC)', pc: true, fill: true },
+  { route: '/influencer', name: '소개 파트너 모집', fill: true },
+  { route: '/influencer', name: '소개 파트너 모집(PC)', pc: true, fill: true },
 
   /**
    * 🩸 2026-09-07 — **입력을 받는 화면**을 채운다. 이번에 `/store/new` 의 검색창이 다크에서

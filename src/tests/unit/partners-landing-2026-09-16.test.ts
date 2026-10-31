@@ -325,7 +325,8 @@ describe('R6 — PC 가 "넓어진 모바일" 로 되돌아가지 않는다 (202
    *   `main img` **0개** · h1 48px · h2 전부 38px · 전 섹션 `py-24` 동일.
    * 아래 셋은 그 세 가지가 조용히 되돌아가는 것을 막는다. **예쁜지는 못 본다** — 그건 렌더해서 볼 일이다.
    */
-  const usesPhone = SECTIONS.filter(f => visible(f).includes('<PartnerPhone'))
+  // 📱 2026-10-31: "손님이 오는 길" 은 고정 화면 스토리(`landing/StickyStory`)가 폰을 그린다 — 그것도 폰 프레임이다.
+  const usesPhone = SECTIONS.filter(f => /<PartnerPhone|<StickyStory/.test(visible(f)))
 
   it('안 B — 라이브 캡처를 폰 프레임으로 쓴다 (섹션 셋 이상)', () => {
     // "사진 0장" 으로의 회귀 차단. 히어로만 남기고 아래를 다 지우는 것도 막는다.
