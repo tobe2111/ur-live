@@ -441,7 +441,7 @@ p['catch'](function(){});window.__urStaysEarly={qs:q,p:p}})()</script>
             배치하는 일도 없다. 숫자 글꼴(UrDigits)·워드마크(Poppins)는 그대로다. -->
     <!-- 🔤 2026-10-26 [UNLOCK_LOADING] (대표 *"프리텐다드로 하는게 좋지 않을까?"* → 추천안 *"승인해줄게"*):
          **PC(윈도우·리눅스·크롬OS)만** 본문을 Pretendard 로. 폰·맥·아이패드는 위 결정 그대로(기기 글꼴, 받는 것 0).
-         이 로더가 시트(`/static/fonts/pretendard-pc-v1.3.9-3.css`)를 **스크립트로만** 넣는다 — 마크업에 렌더 블로킹
+         이 로더가 시트(`/static/fonts/pretendard-pc-v1.3.9-4.css`)를 **스크립트로만** 넣는다 — 마크업에 렌더 블로킹
          링크가 없으므로 첫 화면은 언제나 기다리지 않는다.
          · 한 번 받은 기기(`ur_font_warm=1`, 글꼴이 1년 캐시에 있다): 처음부터 켠다 ⇒ 글자 바뀜 0.
          · 처음 오는 기기: load → 한가할 때(백스톱 12초) **그제서야 시트를 넣고**(꺼 둔 채 — 시트 60KB 가 load 를 늦추지 않게 ·
@@ -451,7 +451,7 @@ p['catch'](function(){});window.__urStaysEarly={qs:q,p:p}})()</script>
          · 판정은 창 폭이 아니라 **기기 종류**다 — 2026-10-26 대표 스크린샷에서 개발자 도구로 창이 좁아진 PC 가
            폭 기준 규칙을 놓쳤다. -->
     <script id="ur-pret-loader">(function(){try{var ua=navigator.userAgent||'';if(!/Windows NT|CrOS|X11/.test(ua)||/Android|Mobi/.test(ua))return;
-var l=document.createElement('link');l.rel='stylesheet';l.id='ur-font-css';l.href='/static/fonts/pretendard-pc-v1.3.9-3.css';
+var l=document.createElement('link');l.rel='stylesheet';l.id='ur-font-css';l.href='/static/fonts/pretendard-pc-v1.3.9-4.css';
 var warmNow=0;try{warmNow=localStorage.getItem('ur_font_warm')==='1'}catch(e){}
 if(warmNow){document.head.appendChild(l);return}
 var done=0;
