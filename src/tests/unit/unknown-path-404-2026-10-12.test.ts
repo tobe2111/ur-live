@@ -97,6 +97,11 @@ describe('🗺️ 등록 안 된 경로 404', () => {
     }
   })
 
+  it('③-5 /embed 는 몰 슬러그 후보가 아니다 — 1세그먼트가 MALL 슬롯으로 가 404 가 나던 것(2026-10-31 라이브)', async () => {
+    const { RESERVED_SLUGS } = await import('@/shared/mall/slug')
+    expect(RESERVED_SLUGS).toContain('embed')
+  })
+
   it('③-3 깊은 경로는 최상위만 본다 (라우트 표에 없는 하위를 자르지 않는다)', () => {
     expect(isKnownAppPath('/seller/orders/does/not/exist')).toBe(true)
   })
