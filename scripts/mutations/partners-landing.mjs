@@ -242,8 +242,9 @@ export default [
   {
     name: '🏪 스니펫에서 중개 요율을 뺀다 (한쪽만 말해 또 갈린다)',
     file: 'src/shared/seo/consumer-surfaces.ts',
-    find: '      + `(대행사를 통하면 ${PARTNER_FACTS.feeBrokered})가 붙습니다.',
-    replace: '      + `가 붙습니다.',
+    // 2026-10-31: 설명 문장을 다듬으며("…가 붙습니다." → "…). 가입비…") 앵커만 재조준 — 결함은 그대로.
+    find: '      + `(대행사를 통하면 ${PARTNER_FACTS.feeBrokered}). 가입비',
+    replace: '      + `. 가입비',
     test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
     why:
       '직접 10% 만 말하면 대행사 경유로 들어온 사장님이 자기 요율(5%)을 어디서도 못 읽는다. ' +

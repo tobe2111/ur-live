@@ -17,9 +17,10 @@
  */
 import { Link, useNavigate } from 'react-router-dom'
 import { StoreIcon, WalletIcon } from '@/components/icons/urdeal-icons'
-import { ArrowRight, Handshake, Link2 } from 'lucide-react'
+import { ArrowRight, ChevronDown, Handshake, Link2 } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
+import { REFERRAL_FAQ } from '@/shared/landing-faq'
 
 const STEPS = [
   { icon: Link2, title: '내 유어샵에 담기', desc: '가입하면 내 유어샵(urdeal.kr/u/내핸들)이 이미 있어요. 마음에 든 동네 이용권을 카드의 + 버튼으로 담습니다.' },
@@ -51,7 +52,7 @@ export default function InfluencerLandingPage() {
 
       <section className="px-6 lg:px-12 py-12 lg:py-24 max-w-6xl mx-auto">
         <div className="text-center mb-12">
-          <span className="inline-block px-3 py-1 bg-brand/10 text-brand rounded-full text-[12px] font-medium mb-5">✨ 팔로워 수 제한 없음</span>
+          <span className="inline-block px-3 py-1 bg-brand/10 text-brand rounded-full text-[12px] font-medium mb-5">팔로워 수 제한 없음</span>
           <h1 className="text-[34px] lg:text-[60px] font-extrabold leading-tight tracking-tight mb-6">
             아는 가게를<br />
             <span className="text-brand">소개하면</span> 몫이 남습니다.
@@ -117,6 +118,25 @@ export default function InfluencerLandingPage() {
           >
             내 가게 등록하기 <ArrowRight className="w-4 h-4" />
           </button>
+        </div>
+      </section>
+
+      {/* ❓ 2026-10-31 — 자주 묻는 것. 워커가 같은 배열(`shared/landing-faq`)로 서버 본문과 `FAQPage` 를 만든다.
+          `<details>` 라 접혀 있어도 답이 문서에 남는다(검색·AI 엔진이 렌더해서 읽을 수 있다). */}
+      <section className="bg-gray-50 dark:bg-[#1D1F29] px-6 lg:px-12 py-16">
+        <div className="max-w-3xl mx-auto">
+          <h2 className="text-[24px] lg:text-[28px] font-bold text-center mb-8">자주 묻는 것</h2>
+          <div className="bg-surface rounded-2xl px-5 shadow-lift">
+            {REFERRAL_FAQ.map(f => (
+              <details key={f.question} className="group border-b border-rule last:border-b-0">
+                <summary className="list-none [&::-webkit-details-marker]:hidden cursor-pointer flex items-center justify-between gap-4 py-4 text-left">
+                  <span className="text-[15px] font-bold">{f.question}</span>
+                  <ChevronDown className="w-4 h-4 shrink-0 text-gray-400 transition-transform group-open:rotate-180" strokeWidth={2} />
+                </summary>
+                <p className="pb-4 pr-6 text-[15px] leading-relaxed text-gray-600 dark:text-gray-300">{f.answer}</p>
+              </details>
+            ))}
+          </div>
         </div>
       </section>
 

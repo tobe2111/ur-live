@@ -5,44 +5,11 @@
  * 정직 고지 문장은 `deck-common.mjs` 의 공통 문구와 같은 내용을 쓴다 —
  * 세 소개서와 랜딩이 **같은 말**을 해야 한다(기획 §1 공통 블록 ③).
  */
-import { useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { PARTNER_FACTS as F } from '@/shared/partners-facts'
-
-const FAQS = [
-  {
-    q: '얼마 떼가나요? 숨은 비용은 없나요?',
-    a: `직접 등록하시면 팔린 이용권 금액의 ${F.feeDirect}, 대행사를 통해 들어오시면 ${F.feeBrokered}입니다. 그 밖에는 없습니다. 가입비와 월 이용료, 선불 광고비, 정산 수수료가 전부 0원입니다. ${F.pgNote}`,
-  },
-  {
-    q: '뭘 해야 하나요? 제가 바쁜데요.',
-    a: `등록은 네 단계입니다. 카카오맵에서 내 가게 찾기, 담당자 번호 넣기, 누가 운영하는지 고르기, 사업자등록증 사진 올리기. ${F.signupMinutes} 정도 걸립니다. 그다음 매일 하실 일은 손님이 보여주는 QR을 한 번 찍는 것뿐입니다. 폰이 익숙하지 않으시면 카카오톡 채널로 요청하세요. 저희가 대신 만들어 드립니다.`,
-  },
-  {
-    q: '손님이 정말 오나요?',
-    a: `유어딜은 아직 초기 서비스입니다. 그래서 "몇 명이 온다" 를 약속하지 않습니다. 대신 구조를 말씀드립니다. 이용권은 손님이 먼저 결제해야 발급되므로, 사장님 화면에 뜨는 숫자는 전부 이미 돈을 낸 사람입니다. 안 팔리면 사장님이 내는 돈도 0원이라 잃을 것이 없습니다.`,
-  },
-  {
-    q: '노쇼가 나거나 손님이 안 쓰면요?',
-    a: '정산은 손님이 실제로 사용한 이용권만 대상입니다. 팔렸는데 안 오면 수수료도 발생하지 않습니다. 유효기간은 사장님이 정하고, 기간이 지나면 미사용분은 100% 자동으로 환불됩니다. 환불 처리는 유어딜이 하므로 사장님이 응대하실 일이 없습니다.',
-  },
-  {
-    q: '돈은 언제 들어오나요?',
-    a: `사용된 이용권을 주 단위로 모아 등록하신 계좌로 보냅니다. 최소 지급액은 ${F.minPayout}입니다. 보내기 전에 유어딜 담당자가 내역을 확인합니다. 정산 내역은 매장 화면에서 언제든 보실 수 있습니다.`,
-  },
-  {
-    q: '할인을 얼마나 해야 하나요?',
-    a: '할인율은 사장님이 정합니다. 유어딜이 최소 할인율을 요구하지 않습니다. 첫 방문을 만드는 메뉴는 크게, 마진이 좋은 세트는 작게처럼 이용권마다 다르게 두셔도 됩니다. 수량과 유효기간도 마찬가지입니다.',
-  },
-  {
-    q: '단말기나 설치가 필요한가요?',
-    a: '없습니다. 쓰시던 스마트폰으로 손님 QR을 찍으면 됩니다. 손님 폰이 안 켜지는 상황을 대비해 매장 확인코드 6자리로도 처리할 수 있습니다. 포스 연동과 직원 교육이 필요 없습니다.',
-  },
-  {
-    q: '대행사에 맡기면 뭐가 달라지나요?',
-    a: '대행사가 이용권 등록과 운영을 대신하고, 수수료는 5%가 됩니다. 대행사 보수는 유어딜을 거치지 않고 사장님과 대행사가 직접 정합니다. 대행사는 정산 계좌와 사업자 정보를 건드릴 수 없고, 권한은 사장님이 언제든 회수하실 수 있습니다.',
-  },
-]
+// ❓ 2026-10-31 — 질문은 `shared/landing-faq` SSOT 로 옮겼다. 워커가 같은 배열로 서버 본문과
+//   `FAQPage` JSON-LD 를 만든다(종전엔 이 파일 안에만 있어 크롤러가 한 글자도 못 받았다).
+import { PARTNER_FAQ } from '@/shared/landing-faq'
 
 export default function PartnerFaq() {
   return (
@@ -58,7 +25,7 @@ export default function PartnerFaq() {
             </p>
           </div>
           <div>
-            {FAQS.map(f => <Item key={f.q} {...f} />)}
+            {PARTNER_FAQ.map(f => <Item key={f.question} q={f.question} a={f.answer} />)}
           </div>
         </div>
 
@@ -77,18 +44,16 @@ export default function PartnerFaq() {
   )
 }
 
+// 🔎 `<details>` 로 둔다 — 종전 `{open && <p>}` 는 접힌 답을 DOM 에서 지워, JS 를 돌리는 크롤러가
+//   렌더해도 답이 없었다. `<details>` 는 접혀 있어도 답이 문서에 남는다(키보드·스크린리더도 기본 지원).
 function Item({ q, a }: { q: string; a: string }) {
-  const [open, setOpen] = useState(false)
   return (
-    <div className="border-b border-rule">
-      <button onClick={() => setOpen(v => !v)} aria-expanded={open}
-        className="w-full flex items-center justify-between gap-4 py-4 lg:py-6 text-left">
+    <details className="group border-b border-rule">
+      <summary className="list-none [&::-webkit-details-marker]:hidden cursor-pointer w-full flex items-center justify-between gap-4 py-4 lg:py-6 text-left">
         <span className="text-[15px] lg:text-[17px] font-bold text-ink">{q}</span>
-        <ChevronDown className={`w-4 h-4 shrink-0 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} strokeWidth={2} />
-      </button>
-      {open && (
-        <p className="pb-5 pr-8 text-[13px] lg:text-[17px] leading-[1.8] text-gray-600 dark:text-gray-300 max-w-[44em]">{a}</p>
-      )}
-    </div>
+        <ChevronDown className="w-4 h-4 shrink-0 text-gray-400 transition-transform group-open:rotate-180" strokeWidth={2} />
+      </summary>
+      <p className="pb-5 pr-8 text-[13px] lg:text-[17px] leading-[1.8] text-gray-600 dark:text-gray-300 max-w-[44em]">{a}</p>
+    </details>
   )
 }

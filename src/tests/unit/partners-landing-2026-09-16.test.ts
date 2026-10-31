@@ -50,7 +50,11 @@ const SECTIONS = [
 ]
 /** 주석을 걷어낸 사용자-가시 소스. 설명 주석의 단어가 판정에 새면 가드가 헛돈다(이 레포의 반복 사고). */
 const visible = (p: string) => stripComments(R(p))
-const ALL_VISIBLE = [PAGE, ...SECTIONS].map(visible).join('\n')
+/** 2026-10-31 — FAQ 문장이 화면 파일에서 SSOT 로 옮겨갔다(워커가 같은 배열로 FAQPage 를 낸다).
+ *  빼면 R2(요율 SSOT)·R3(금지된 약속)가 FAQ 를 못 보게 된다 — 불변식은 그대로, 읽는 자리만 따라간다.
+ *  레이아웃 검사(ur-content-wide 등)는 화면 파일만 보므로 SECTIONS 에는 넣지 않는다. */
+const COPY_SOURCES = [...SECTIONS, 'src/shared/landing-faq.ts']
+const ALL_VISIBLE = [PAGE, ...COPY_SOURCES].map(visible).join('\n')
 
 describe('R1 — /partners 는 PC 소비자 액자를 쓰지 않는다', () => {
   const layout = visible('src/components/MobileAppLayout.tsx')
@@ -124,7 +128,7 @@ describe('R2 — 숫자가 대표 승인 덱(deck-common.mjs FACTS)과 같다', 
   })
 
   it('숫자는 SSOT 에서만 읽는다 (섹션에 수수료율을 손으로 적지 않는다)', () => {
-    for (const f of SECTIONS) {
+    for (const f of COPY_SOURCES) {
       // "수수료 10%" 같은 하드코딩. 표기가 갈리는 길을 막는다.
       expect(visible(f), f).not.toMatch(/수수료\s*\d+%/)
     }

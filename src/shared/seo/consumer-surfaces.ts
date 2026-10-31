@@ -175,14 +175,14 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
   },
   '/partners': {
     crumb: '매장 입점',
-    title: '매장 입점 안내 - 손님이 온 다음에만 비용',
+    title: '가게 홍보, 손님이 온 다음에만 비용 - 매장 입점 안내', // 2026-10-31 검색어("가게 홍보")를 앞으로
     // 🔴 2026-10-12: 수수료를 **손으로 적지 않는다.** 이 줄이 `수수료 5%` 로 하드코딩돼 있었는데
     //   같은 페이지 본문은 `PARTNER_FACTS.feeDirect`(= 10%, SSOT `fee-resolver.ts` 2026-08-20 대표 최종)를
     //   말하고 있었다 ⇒ 사장님이 **검색 스니펫에서 5% 를 보고 클릭해 10% 를 본다.** 그리고 이 문구는
     //   `llms.txt` 에 그대로 실려 **AI 엔진도 5% 를 인용**한다(라이브 실측).
     //   `partners-facts.ts` 머리말이 적어 둔 그 사고의 *메타 판*이다 — "두 값이 다른 순간 둘 다 신뢰를 잃는다".
-    description: `광고는 클릭에 돈이 나가지만 유어딜은 손님이 매장에 온 뒤에만 수수료 ${PARTNER_FACTS.feeDirect}`
-      + `(대행사를 통하면 ${PARTNER_FACTS.feeBrokered})가 붙습니다. 카카오맵에서 우리 가게를 찾아 등록하면 바로 이용권을 올릴 수 있어요.`,
+    description: `식당·카페·미용실·숙소 사장님을 위한 선결제 이용권. 광고는 클릭에 돈이 나가지만 유어딜은 손님이 매장에 온 뒤에만 수수료 ${PARTNER_FACTS.feeDirect}`
+      + `(대행사를 통하면 ${PARTNER_FACTS.feeBrokered}). 가입비·월 이용료·광고비 0원, 카카오맵에서 우리 가게를 찾아 바로 등록.`,
   },
 
   // ── 🗺️ 소비자 콘텐츠 표면 ─────────────────────────────────────────────
@@ -207,8 +207,8 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
   },
   '/influencer': {
     crumb: '소개로 수익',
-    title: '동네 딜 소개로 수익 만들기',
-    description: '매장을 직접 섭외하지 않아도 됩니다. 매장이 소개 몫을 건 이용권을 내 유어샵에 담아 링크로 소개하면, 그 링크로 팔릴 때마다 매장이 정한 비율만큼 쌓입니다.',
+    title: '블로그·인스타로 동네 가게 소개하고 수익 받기', // 2026-10-31 활동 이름으로 검색어를 받는다(사람을 신분으로 부르지 않는다)
+    description: '팔로워 수 제한 없이 시작하세요. 매장이 소개 몫을 건 동네 이용권을 내 유어샵에 담아 블로그·인스타·카톡에 소개하면, 그 링크로 팔릴 때마다 매장이 정한 비율만큼 쌓입니다. 비용 0원.',
   },
   '/influencer/rankings': {
     /* 🚫 2026-10-14 — **noindex**(대표 "다 해주고 머지 후 또 개선점 찾아"). 라이브 실측(Googlebot UA):
