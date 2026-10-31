@@ -2,7 +2,7 @@
  * 🔗 에이전시 매장 초대 링크 — 사장님이 카톡으로 받은 링크를 여는 화면 (`/store/agency/:token`, 2026-10-11)
  *
  * 대표 *"응 링크 방식도 넣어줘"* — 에이전시가 매장을 찾아가 "저희가 맡겠습니다" 하고 링크를 보내면,
- * 사장님은 카카오로 로그인(라우트가 요구) → 내 매장 고르기 → [맡기기] 한 번. 요청·수락 단계 없이 바로 운영 시작.
+ * 사장님은 카카오로 로그인(라우트가 요구) → 내 매장 고르기(여러 곳 가능 — 2026-10-31) → [맡기기] 한 번. 요청·수락 단계 없이 바로 운영 시작.
  *
  * 무엇을 넘기는지 **화면이 먼저 말한다**: 상품·이용권·주문 관리는 맡기고, 정산 계좌·사업자 정보는 사장님께 남고,
  * 언제든 끊을 수 있다. 사장님이 이 문장을 안 읽고 누르면 나중에 "누가 내 매장을 만지냐" 가 된다.
@@ -13,6 +13,7 @@ import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { StoreIcon, OkIcon } from '@/components/icons/urdeal-icons'
+import { togglePick, entrustableIds } from './store-agency-invite/pick'
 
 interface OwnedStore { seller_id: number; name: string; status: string | null }
 
@@ -21,15 +22,21 @@ export default function StoreAgencyInvitePage() {
   const [agencyName, setAgencyName] = useState<string | null>(null)
   const [dead, setDead] = useState('')
   const [stores, setStores] = useState<OwnedStore[] | null>(null)
-  const [picked, setPicked] = useState<number | null>(null)
+  // 🏪 2026-10-31 대표 *"매장 사장이 매장 여러개를 가질 수도 있잖아. 프랜차이즈도"* — 여러 곳을 한 번에 고른다.
+  const [picked, setPicked] = useState<number[]>([])
+  const [entrusted, setEntrusted] = useState<number[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [done, setDone] = useState<{ agencyName: string; already?: boolean } | null>(null)
+  const [done, setDone] = useState<{ agencyName: string; already?: boolean; count: number; failed: number } | null>(null)
 
   useEffect(() => {
     let alive = true
     api.get(`/api/store-agency-invite/${encodeURIComponent(token)}`)
-      .then((r) => { if (alive) setAgencyName(r.data?.agencyName || '에이전시') })
+      .then((r) => {
+        if (!alive) return
+        setAgencyName(r.data?.agencyName || '에이전시')
+        setEntrusted(Array.isArray(r.data?.entrustedSellerIds) ? r.data.entrustedSellerIds.map(Number) : [])
+      })
       .catch((e) => { if (alive) setDead(e?.response?.data?.error || '링크를 확인하지 못했어요.') })
     api.get('/api/seller/my-stores')
       .then((r) => {
@@ -38,19 +45,26 @@ export default function StoreAgencyInvitePage() {
           .filter((s) => s.role === 'owner')
           .map((s) => ({ seller_id: s.seller_id, name: s.business_name || s.name || `매장 ${s.seller_id}`, status: s.status ?? null }))
         setStores(owned)
-        if (owned.length === 1) setPicked(owned[0].seller_id)
       })
       .catch(() => { if (alive) setStores([]) })
     return () => { alive = false }
   }, [token])
 
+  // 이미 맡긴 매장은 고를 수 없다 — 아직 안 맡긴 곳이 하나뿐이면 미리 골라 둔다(종전 한 곳 사장님 동작 그대로).
+  const open = stores ? entrustableIds(stores.map((s) => s.seller_id), entrusted) : []
+  useEffect(() => {
+    if (!stores) return
+    const o = entrustableIds(stores.map((s) => s.seller_id), entrusted)
+    if (o.length === 1) setPicked(o)
+  }, [stores, entrusted])
+
   async function entrust() {
-    if (!picked || busy) return
+    if (picked.length === 0 || busy) return
     setBusy(true); setError('')
     try {
-      const r = await api.post('/api/store-agency-invite/accept', { token, seller_id: picked })
+      const r = await api.post('/api/store-agency-invite/accept', { token, seller_ids: picked })
       if (!r.data?.success) throw new Error(r.data?.error)
-      setDone({ agencyName: r.data.agencyName, already: !!r.data.already })
+      setDone({ agencyName: r.data.agencyName, already: !!r.data.already, count: Number(r.data.entrusted) || picked.length, failed: Number(r.data.failed) || 0 })
     } catch (e: any) {
       setError(e?.response?.data?.error || '맡기지 못했어요. 잠시 뒤 다시 시도해 주세요.')
     } finally {
@@ -80,8 +94,12 @@ export default function StoreAgencyInvitePage() {
       <div className="rounded-2xl bg-white dark:bg-[#1D1F29] p-6 shadow-lift">
         <OkIcon size={28} className="text-brand-text" />
         <p className="mt-3 text-[17px] font-semibold text-gray-900 dark:text-white">
-          {done.already ? `이미 ${done.agencyName} 에이전시가 운영 중이에요` : `${done.agencyName} 에이전시에 맡겼어요`}
+          {done.already ? `이미 ${done.agencyName} 에이전시가 운영 중이에요`
+            : done.count > 1 ? `매장 ${done.count}곳을 ${done.agencyName} 에이전시에 맡겼어요` : `${done.agencyName} 에이전시에 맡겼어요`}
         </p>
+        {done.failed > 0 && (
+          <p className="mt-2 text-[13px] text-tone-bad">{done.failed}곳은 맡기지 못했어요. 그 매장은 링크를 다시 열어 시도해 주세요.</p>
+        )}
         <p className="mt-2 text-[13px] leading-relaxed text-gray-500 dark:text-gray-400">
           지금부터 에이전시 직원들이 상품·이용권·주문을 관리해요. 정산 계좌와 사업자 정보는 사장님께 그대로 남고,
           셀러 화면의 <b className="font-semibold text-gray-700 dark:text-gray-200">운영자 관리</b>에서 언제든 끊을 수 있어요.
@@ -114,26 +132,43 @@ export default function StoreAgencyInvitePage() {
         </div>
       ) : (
         <>
-          <p className="mt-6 text-[13px] font-semibold text-gray-500 dark:text-gray-400">맡길 매장</p>
+          <div className="mt-6 flex items-center">
+            <p className="text-[13px] font-semibold text-gray-500 dark:text-gray-400">맡길 매장{stores.length > 1 ? ` · 여러 곳 고를 수 있어요` : ''}</p>
+            {open.length > 1 && (
+              <button type="button" onClick={() => setPicked(picked.length === open.length ? [] : open)}
+                className="ml-auto text-[13px] font-semibold text-brand-text">
+                {picked.length === open.length ? '선택 해제' : '전체 선택'}
+              </button>
+            )}
+          </div>
           <div className="mt-2 rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift">
             <ul className="divide-y divide-rule">
-              {stores.map((s) => (
-                <li key={s.seller_id}>
-                  <label className="flex min-h-[56px] cursor-pointer items-center gap-3 px-5 py-3">
-                    <input type="radio" name="store" checked={picked === s.seller_id} onChange={() => setPicked(s.seller_id)}
-                      className="h-4 w-4 accent-[#1C69EF]" />
-                    <StoreIcon size={18} className="text-gray-400" />
-                    <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-gray-900 dark:text-white">{s.name}</span>
-                  </label>
-                </li>
-              ))}
+              {stores.map((s) => {
+                const isOn = entrusted.includes(s.seller_id)
+                return (
+                  <li key={s.seller_id}>
+                    <label className={`flex min-h-[56px] items-center gap-3 px-5 py-3 ${isOn ? 'cursor-default' : 'cursor-pointer'}`}>
+                      <input type="checkbox" disabled={isOn} checked={isOn || picked.includes(s.seller_id)}
+                        onChange={() => setPicked((p) => togglePick(p, s.seller_id))}
+                        className="h-4 w-4 accent-[#1C69EF] disabled:opacity-40" />
+                      <StoreIcon size={18} className="text-gray-400" />
+                      <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-gray-900 dark:text-white">{s.name}</span>
+                      {isOn && <span className="shrink-0 text-[12px] text-gray-500 dark:text-gray-400">운영 중</span>}
+                    </label>
+                  </li>
+                )
+              })}
             </ul>
           </div>
           {error && <p className="mt-3 text-[13px] text-tone-bad">{error}</p>}
-          <button type="button" onClick={entrust} disabled={!picked || busy}
-            className="mt-5 h-12 w-full rounded-xl bg-brand text-[15px] font-semibold text-white disabled:opacity-50">
-            {busy ? '맡기는 중…' : `${agencyName} 에이전시에 맡기기`}
-          </button>
+          {open.length === 0 ? (
+            <p className="mt-5 text-[13px] text-gray-500 dark:text-gray-400">내 매장은 모두 이미 {agencyName} 에이전시가 운영 중이에요.</p>
+          ) : (
+            <button type="button" onClick={entrust} disabled={picked.length === 0 || busy}
+              className="mt-5 h-12 w-full rounded-xl bg-brand text-[15px] font-semibold text-white disabled:opacity-50">
+              {busy ? '맡기는 중…' : picked.length > 1 ? `매장 ${picked.length}곳 맡기기` : `${agencyName} 에이전시에 맡기기`}
+            </button>
+          )}
         </>
       )}
     </>,

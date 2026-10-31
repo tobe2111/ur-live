@@ -203,7 +203,8 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
             onClick={() => setSheet('requests')}
           />
           {agencyRows}
-          {canManage && <FlatRow label="매장 초대 · 대신 등록" onClick={() => setSheet('invite')} last={!trailingRows} />}
+          {/* 🧑‍🤝‍🧑 2026-10-31 — 직원도 초대 링크를 보낸다(복사·카톡만). 대신 등록은 관리자만. */}
+          <FlatRow label={canManage ? '매장 초대 · 대신 등록' : '매장 초대 링크'} onClick={() => setSheet('invite')} last={!trailingRows} />
           {trailingRows}
         </div>
       </div>
@@ -347,11 +348,11 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
         </Sheet>
       )}
 
-      {sheet === 'invite' && canManage && (
-        <Sheet title="매장 초대 · 대신 등록" onClose={() => setSheet(null)}>
+      {sheet === 'invite' && (
+        <Sheet title={canManage ? '매장 초대 · 대신 등록' : '매장 초대 링크'} onClose={() => setSheet(null)}>
           <div className="min-h-full bg-[#F8F7FC] dark:bg-[#11141C] p-4 [&>*:first-child]:mt-0">
-            <AgencyInviteLinkCard />
-            <AgencyRegisterStoreCard onRegistered={load} />
+            <AgencyInviteLinkCard canManage={canManage} />
+            {canManage && <AgencyRegisterStoreCard onRegistered={load} />}
           </div>
         </Sheet>
       )}
