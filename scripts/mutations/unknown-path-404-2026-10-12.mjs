@@ -108,4 +108,12 @@ export default [
     test: TEST,
     why: '집합은 남아도 판정에서 안 읽으면 같은 404 가 돌아온다(계산과 사용은 다른 자리).',
   },
+  {
+    name: '🧩 embed 를 몰 예약어에서 뺀다 — /embed 가 몰 후보로 가 404',
+    file: 'src/shared/mall/slug.ts',
+    find: "  'embed', 'experience',",
+    replace: "  'experience',",
+    test: TEST,
+    why: '2026-10-31 라이브 실측 — `/embed` 가 MALL 슬롯 self-fetch 404 를 받아 본문은 멀쩡한데 상태 404. 그 슬러그로 몰을 만들면 위젯 화면을 먹는다.',
+  },
 ]
