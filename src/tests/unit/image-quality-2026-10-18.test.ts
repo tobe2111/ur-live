@@ -24,7 +24,7 @@ describe('① 기본 화질 75', () => {
     expect(CF_IMAGE_DEFAULT_QUALITY).toBe(75)
     expect(cfImage(MEDIA, { width: 400 })).toContain('quality=75')
     expect(cfImage('/api/media/uploads/a.jpg', { width: 400 })).toContain('quality=75')
-    expect(cfImage(MEDIA, { width: 400, quality: 90 }), '명시한 값은 그대로').toContain('quality=90')
+    expect(cfImage(MEDIA, { width: 400, quality: 90 }), '명시한 값은 그대로').toContain('quality=85') // 🪣 2026-10-31 명시값도 가장 가까운 칸(65·75·85)
   })
 })
 
@@ -45,6 +45,6 @@ describe('③ 데이터 절약 모드', () => {
     const { detailHeroMobileUrl } = await import('@/shared/detail-hero-image')
     expect(cfImage(MEDIA, { width: 400 })).toContain('quality=65')
     expect(detailHeroMobileUrl(MEDIA), '명시한 히어로 화질이 데이터 절약을 우회한다').toContain('quality=65')
-    expect(cfImage(MEDIA, { width: 400, quality: 50 })).toContain('quality=50')
+    expect(cfImage(MEDIA, { width: 400, quality: 50 })).toContain('quality=65') // 🪣 칸의 바닥이 65
   })
 })

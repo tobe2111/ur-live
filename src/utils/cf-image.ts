@@ -165,6 +165,27 @@ export function isRawOnlyImageHost(host: string): boolean {
 }
 
 /**
+ * 🪣 2026-10-31: 변환 폭·화질을 정해진 칸으로 올림한다 — Cloudflare Images 무료 한도(월 5,000 *고유* 변환) 보호.
+ *   폭은 위 칸으로 올린다(작게 받으면 흐려진다) · 높이를 함께 줬으면 같은 비율로 맞춘다(크롭 비율 유지) ·
+ *   화질은 가장 가까운 칸. 워커 preload 도 이 함수를 지나므로 화면과 주소가 갈리지 않는다.
+ */
+export const CF_WIDTH_BUCKETS = [160, 240, 400, 640, 960, 1280, 1600, 2000] as const  // 400 = 기본 폭(분기 기본값과 같은 칸)
+export const CF_QUALITY_BUCKETS = [65, 75, 85] as const
+export function snapResizeOptions(opts: ResizeOptions): ResizeOptions {
+  const out: ResizeOptions = { ...opts }
+  if (out.width && out.width > 0) {
+    const w = CF_WIDTH_BUCKETS.find((b) => b >= out.width!) ?? CF_WIDTH_BUCKETS[CF_WIDTH_BUCKETS.length - 1]
+    if (out.height && out.height > 0) out.height = Math.round((out.height * w) / out.width)
+    out.width = w
+  }
+  if (out.quality && out.quality > 0) {
+    const q0 = out.quality
+    out.quality = CF_QUALITY_BUCKETS.reduce((a, b) => (Math.abs(b - q0) < Math.abs(a - q0) ? b : a))
+  }
+  return out
+}
+
+/**
  * 🚑 2026-08-11 [UNLOCK_LOADING] (AB 스윕 라이브 실측): cdn-cgi **경로에 박히는 원본 URL** 의
  * 퍼센트 기호를 한 번 더 이스케이프한다.
  *
@@ -231,6 +252,11 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
   if (getSaveData() && !(opts.quality && opts.quality <= 65)) {
     opts = { ...opts, quality: 65 }
   }
+
+  // 🪣 2026-10-31 (대표 "2번" — Cloudflare Images 무료 한도 유지): 폭·화질을 **몇 칸으로 묶는다**.
+  //   한도는 *서로 다른 변환 수*(사진 × 옵션 조합)로 센다 — 같은 사진을 화면마다 96·112·120·128·160… 폭으로
+  //   달라고 하면 그게 전부 따로 센다. 실측: 코드에 폭 값이 40가지 넘게 있었다. 묶으면 한 사진의 변환이 몇 칸으로 준다.
+  opts = snapResizeOptions(opts)
 
   // 🏭 2026-06-06 (사용자 신고 — 유어샵 배경/프로필 업로드 후 404): 워커가 R2 에서 서빙하는
   //   same-origin 업로드 이미지(/api/media/*, /api/upload/*)는 Cloudflare 의 /cdn-cgi/image/ URL
@@ -388,7 +414,7 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
  * `maxDpr` — 후보 밀도 상한(기본 3 = 종전과 동일). 2026-10-12 카드 사진은 2 로 묶는다
  * (`HOME_CARD_MAX_DPR` — 3x 폰이 175px 카드에 600px 를 받던 것을 400px 로, 장당 약 37% 감소).
  */
-export function cfSrcSet(src: string | undefined | null, baseWidth: number, maxDpr: 1 | 2 | 3 = 3): string {
+export function cfSrcSet(src: string | undefined | null, baseWidth: number, maxDpr: 1 | 2 | 3 = 2): string {
   if (!src) return ''
   // 🎁 2026-10-31: 줄이지 않고 내는 교환권 사진 — 후보가 하나뿐이라 srcset 을 안 낸다.
   if (src.startsWith('/api/media/uploads/voucher/')) return ''
