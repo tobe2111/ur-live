@@ -250,9 +250,9 @@ export async function handleCronScheduled(
       const { runHomeServiceSweep } = await import('./cron/home-service-sweep')
       return runHomeServiceSweep(env)
     }));
-    // 🎁 2026-10-31 교환권 사진 R2 이관 — giftishow 가 CF 를 막아 리사이저가 83% 실패(라이브 실측). 매시 :55,
+    // 🎁 2026-10-31 교환권 사진 R2 이관 — 매시 :05(:55 는 만회 전용),
     //   회차당 4장(서브리퀘스트 ≈ 장당 4). 다 옮기면 SELECT 1회 no-op. 상세: `cron/voucher-image-rehost.ts`.
-    if (slotOpen({ minute: 55 })) ctx.waitUntil(slotCron('55 * * * *')('voucher-image-rehost', async () => {
+    if (slotOpen({ minute: 5 })) ctx.waitUntil(slotCron('5 * * * *')('voucher-image-rehost', async () => {
       const { handleVoucherImageRehost } = await import('./cron/voucher-image-rehost')
       return handleVoucherImageRehost(env)
     }));

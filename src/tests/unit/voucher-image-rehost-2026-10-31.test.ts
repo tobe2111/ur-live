@@ -102,7 +102,7 @@ describe('③ 실패·성공 처리', () => {
 })
 
 describe('④ 배선', () => {
-  it('매시 :55 슬롯에 safeCron 으로 걸려 있다', () => {
-    expect(SCHED).toMatch(/slotOpen\(\{ minute: 55 \}\)\) ctx\.waitUntil\(slotCron\('55 \* \* \* \*'\)\('voucher-image-rehost'/)
+  it('매시 :05 슬롯에 safeCron 으로 걸려 있다(:55 는 만회 전용)', () => {
+    expect(SCHED).toMatch(/slotOpen\(\{ minute: 5 \}\)\) ctx\.waitUntil\(slotCron\('5 \* \* \* \*'\)\('voucher-image-rehost'/)
   })
 })

@@ -10,7 +10,7 @@
 
 ## 한 것
 1. `src/utils/cf-image.ts` — `RAW_ONLY_IMAGE_HOSTS=['giftishow.com']`, 원본 그대로·srcset 없음. `CDN_CGI_VERIFIED` 에서 giftishow 제거(잠금 — 대표 승인, CLAUDE.md audit log).
-2. `src/worker/cron/voucher-image-rehost.ts` + `scheduled.ts` 매시 :55 — 4장/회, 많이 팔린 순, 실패는 30분×2^n(최대 하루) 뒤 재시도, CAS 덮어쓰기.
+2. `src/worker/cron/voucher-image-rehost.ts` + `scheduled.ts` 매시 :05(:55 는 만회 전용) — 4장/회, 많이 팔린 순, 실패는 30분×2^n(최대 하루) 뒤 재시도, CAS 덮어쓰기.
 3. 가드 `src/tests/unit/voucher-image-rehost-2026-10-31.test.ts` + 주입 4건(빨간불 확인). 재조준: `qa-image-host-coverage`, `voucher-detail-ssr-first-screen`.
 
 ## 다음 세션 첫 액션
