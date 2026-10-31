@@ -39,8 +39,12 @@ describe('① giftishow 원본 직행', () => {
     expect(isRawOnlyImageHost('notgiftishow.com')).toBe(false)
     expect(isRawOnlyImageHost('ldb-phinf.pstatic.net')).toBe(false)
   })
-  it('옮겨진 사진(/api/media)은 다시 리사이저를 탄다', () => {
-    expect(cfImage('/api/media/uploads/voucher/h/a.jpg', { width: 400 })).toContain('/cdn-cgi/image/')
+  it('옮겨진 교환권 사진은 줄이지 않고 R2 주소 그대로 — 변환 한도(월 5,000)를 안 쓴다', () => {
+    expect(cfImage('/api/media/uploads/voucher/h/a.jpg', { width: 400 })).toBe('https://media.ur-team.com/uploads/voucher/h/a.jpg')
+    expect(cfSrcSet('/api/media/uploads/voucher/h/a.jpg', 400)).toBe('')
+  })
+  it('다른 업로드 사진은 종전대로 리사이저를 탄다', () => {
+    expect(cfImage('/api/media/uploads/user/3/a.jpg', { width: 400 })).toContain('/cdn-cgi/image/')
   })
 })
 

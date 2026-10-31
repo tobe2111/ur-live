@@ -18,8 +18,12 @@
 - D1: `SELECT COUNT(*) FROM products WHERE deal_only=1 AND image_url LIKE '/api/media/%'` 가 늘어나는지.
 
 ## 틀렸던 판단
+- **429 `err=9422` 를 giftishow 차단으로 읽었다 — 실제로는 Cloudflare Images 무료 한도(월 5,000 고유 변환) 소진**이었다. 대표가 받은 CF 메일로 알았고, pstatic·picsum·media.ur-team.com 새 변환도 전부 같은 429 로 확인. ⇒ 사이트 전체의 새 리사이즈가 멈춰 있다(캐시된 것만 산다). 옮긴 교환권 사진은 줄이지 않고 R2 주소 그대로 낸다.
 - 2026-07-13 "giftishow 차단 해제 · onerror=redirect 안전판이라 다운사이드 0" — 둘 다 지금은 사실이 아니다.
 
 ## 남은 것
 - 상세 설명 이미지(`detail_images`)는 아직 giftishow 원본(원본 직행으로 표시는 됨). 이관 대상 확장은 별건.
 - 어드민 재가져오기(`admin-kt-alpha/catalog.ts`)가 image_url 을 giftishow 로 되돌리면 cron 이 다시 옮긴다(R2 해시 키라 저장은 재사용).
+
+## 대표 결정 대기
+- Cloudflare Images 유료 전환(5,000 넘으면 1,000건당 $0.50) 또는 변환 수 줄이기(srcset 폭 축소 등). 한도는 다음 결제 주기에 초기화된다.

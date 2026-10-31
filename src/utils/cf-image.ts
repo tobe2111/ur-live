@@ -244,6 +244,12 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
   //   같은 객체이므로 도메인 매핑만으로 전부 즉시 치유(재업로드 불필요).
   //   워커 프록시(/api/image/resize)는 리사이즈 불가(플랫폼 제약 — 06-11 실측)라 업로드 이미지의
   //   유일한 변환 경로가 이것. 도메인 장애 시 롤백 = 이 분기만 이전 프록시로 복원.
+  // 🎁 2026-10-31: R2 로 옮긴 **교환권 사진**은 줄이지 않고 그대로 낸다. 원본이 20~86KB 라 줄일 이득이 작고,
+  //   2,260장 × 여러 폭이면 그것만으로 Cloudflare Images 무료 한도(월 5,000 고유 변환)를 넘긴다 —
+  //   2026-10-31 실제로 한도를 다 써 사이트 전체 리사이즈가 429 `err=9422` 로 멈췄다(대표가 받은 안내 메일).
+  if (src.startsWith('/api/media/uploads/voucher/')) {
+    return `https://media.ur-team.com/${src.slice('/api/media/'.length)}`
+  }
   if (src.startsWith('/api/media/')) {
     const w = opts.width || 400
     const q = opts.quality || CF_IMAGE_DEFAULT_QUALITY
@@ -384,6 +390,8 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
  */
 export function cfSrcSet(src: string | undefined | null, baseWidth: number, maxDpr: 1 | 2 | 3 = 3): string {
   if (!src) return ''
+  // 🎁 2026-10-31: 줄이지 않고 내는 교환권 사진 — 후보가 하나뿐이라 srcset 을 안 낸다.
+  if (src.startsWith('/api/media/uploads/voucher/')) return ''
   // 🛡️ 2026-05-27: 외부 도메인은 worker proxy 1회만 (DPI별 변환은 cf.image 가 처리).
   //   1x/2x/3x 모두 별도 fetch 시 proxy 3회 → 비효율. 단일 high-res 만 반환.
   if (/^https?:\/\//i.test(src)) {

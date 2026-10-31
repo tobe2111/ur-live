@@ -35,4 +35,12 @@ export default [
     test: T,
     why: '그 사이 어드민이 바꾼 사진 주소를 옛 사진으로 되덮는다.',
   },
+  {
+    name: '교환권 사진 — 옮긴 사진을 다시 리사이저로 보낸다',
+    file: 'src/utils/cf-image.ts',
+    find: "  if (src.startsWith('/api/media/uploads/voucher/')) {",
+    replace: "  if (false && src.startsWith('/api/media/uploads/voucher/')) {",
+    test: T,
+    why: '2,260장 × 여러 폭이 Cloudflare Images 무료 한도(월 5,000)를 혼자 넘겨 사이트 전체 리사이즈가 멈춘다.',
+  },
 ]
