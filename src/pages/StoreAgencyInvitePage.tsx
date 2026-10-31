@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import SEO from '@/components/SEO'
+import { rememberPartner, forgetPartner } from '@/utils/partner-return'
 import api from '@/lib/api'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { StoreIcon, OkIcon } from '@/components/icons/urdeal-icons'
@@ -17,18 +18,24 @@ import { StoreIcon, OkIcon } from '@/components/icons/urdeal-icons'
 interface OwnedStore { seller_id: number; name: string; status: string | null }
 
 export default function StoreAgencyInvitePage() {
-  const { token = '' } = useParams()
+  const { token = '', agencyId = '' } = useParams()
+  // 🤝 2026-10-31 제휴사 입점 위젯의 목적지(`/store/partner/:agencyId`) — 초대 링크와 같은 화면, 다른 점은 둘:
+  //   ① 공개 주소라 **요청**(에이전시 수락 대기)만 보낸다 ② 매장이 없으면 등록 후 이 화면으로 돌아온다.
+  const partnerId = /^\d{1,9}$/.test(agencyId) ? Number(agencyId) : 0
+  const partner = !!agencyId
   const [agencyName, setAgencyName] = useState<string | null>(null)
   const [dead, setDead] = useState('')
   const [stores, setStores] = useState<OwnedStore[] | null>(null)
   const [picked, setPicked] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [done, setDone] = useState<{ agencyName: string; already?: boolean } | null>(null)
+  const [done, setDone] = useState<{ agencyName: string; already?: boolean; pending?: boolean } | null>(null)
 
   useEffect(() => {
     let alive = true
-    api.get(`/api/store-agency-invite/${encodeURIComponent(token)}`)
+    if (partner && !partnerId) { setDead('제휴 링크 주소가 올바르지 않아요.'); return () => { alive = false } }
+    if (partnerId) rememberPartner(partnerId)
+    api.get(partner ? `/api/store-agency-invite/partner/${partnerId}` : `/api/store-agency-invite/${encodeURIComponent(token)}`)
       .then((r) => { if (alive) setAgencyName(r.data?.agencyName || '에이전시') })
       .catch((e) => { if (alive) setDead(e?.response?.data?.error || '링크를 확인하지 못했어요.') })
     api.get('/api/seller/my-stores')
@@ -42,15 +49,18 @@ export default function StoreAgencyInvitePage() {
       })
       .catch(() => { if (alive) setStores([]) })
     return () => { alive = false }
-  }, [token])
+  }, [token, partner, partnerId])
 
   async function entrust() {
     if (!picked || busy) return
     setBusy(true); setError('')
     try {
-      const r = await api.post('/api/store-agency-invite/accept', { token, seller_id: picked })
+      const r = partner
+        ? await api.post('/api/store-agency-invite/partner-request', { agency_id: partnerId, seller_id: picked })
+        : await api.post('/api/store-agency-invite/accept', { token, seller_id: picked })
       if (!r.data?.success) throw new Error(r.data?.error)
-      setDone({ agencyName: r.data.agencyName, already: !!r.data.already })
+      if (partner) forgetPartner()
+      setDone({ agencyName: r.data.agencyName, already: !!r.data.already, pending: partner && r.data.status !== 'active' })
     } catch (e: any) {
       setError(e?.response?.data?.error || '맡기지 못했어요. 잠시 뒤 다시 시도해 주세요.')
     } finally {
@@ -75,6 +85,22 @@ export default function StoreAgencyInvitePage() {
     )
   }
 
+  if (done?.pending) {
+    return shell(
+      <div className="rounded-2xl bg-white dark:bg-[#1D1F29] p-6 shadow-lift">
+        <OkIcon size={28} className="text-brand-text" />
+        <p className="mt-3 text-[17px] font-semibold text-gray-900 dark:text-white">
+          {done.already ? `이미 ${done.agencyName}에 요청했어요` : `${done.agencyName}에 운영을 요청했어요`}
+        </p>
+        <p className="mt-2 text-[13px] leading-relaxed text-gray-500 dark:text-gray-400">
+          제휴사가 수락하면 이용권 등록과 운영을 도와드려요. 정산 계좌와 사업자 정보는 사장님께 그대로 남고,
+          마이의 <b className="font-semibold text-gray-700 dark:text-gray-200">내 가게</b>에서 언제든 요청을 취소하거나 끊을 수 있어요.
+        </p>
+        <Link to="/user/profile" className="mt-5 inline-flex h-11 items-center rounded-xl bg-brand px-5 text-[15px] font-semibold text-white">내 가게 보기</Link>
+      </div>,
+    )
+  }
+
   if (done) {
     return shell(
       <div className="rounded-2xl bg-white dark:bg-[#1D1F29] p-6 shadow-lift">
@@ -95,8 +121,10 @@ export default function StoreAgencyInvitePage() {
 
   return shell(
     <>
-      <p className="text-[13px] text-gray-500 dark:text-gray-400">매장 운영 맡기기</p>
-      <h1 className="mt-1 text-[24px] font-bold tracking-[-0.01em] text-gray-900 dark:text-white">{agencyName} 에이전시가<br />매장 운영을 맡겠다고 해요</h1>
+      <p className="text-[13px] text-gray-500 dark:text-gray-400">{partner ? '입점 신청' : '매장 운영 맡기기'}</p>
+      <h1 className="mt-1 text-[24px] font-bold tracking-[-0.01em] text-gray-900 dark:text-white">
+        {partner ? <>유어딜에 입점해요<span className="mt-2 block text-[15px] font-medium text-gray-500 dark:text-gray-400">{agencyName} 제휴로 등록과 운영을 도와드려요</span></> : <>{agencyName} 에이전시가<br />매장 운영을 맡겠다고 해요</>}
+      </h1>
 
       <div className="mt-6 rounded-2xl bg-white dark:bg-[#1D1F29] p-5 shadow-lift">
         <ul className="space-y-3 text-[13px] leading-relaxed text-gray-600 dark:text-gray-300">
@@ -109,7 +137,9 @@ export default function StoreAgencyInvitePage() {
       {stores.length === 0 ? (
         <div className="mt-4 rounded-2xl bg-white dark:bg-[#1D1F29] p-5 shadow-lift">
           <p className="text-[15px] font-semibold text-gray-900 dark:text-white">아직 등록한 내 매장이 없어요</p>
-          <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">매장을 먼저 등록한 뒤 이 링크를 다시 열어 주세요.</p>
+          <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">
+            {partner ? '매장을 먼저 등록해 주세요. 등록이 끝나면 이 화면으로 돌아와요.' : '매장을 먼저 등록한 뒤 이 링크를 다시 열어 주세요.'}
+          </p>
           <Link to="/store/new" className="mt-4 inline-flex h-11 items-center rounded-xl bg-brand px-5 text-[15px] font-semibold text-white">내 매장 등록하기</Link>
         </div>
       ) : (
@@ -132,7 +162,7 @@ export default function StoreAgencyInvitePage() {
           {error && <p className="mt-3 text-[13px] text-tone-bad">{error}</p>}
           <button type="button" onClick={entrust} disabled={!picked || busy}
             className="mt-5 h-12 w-full rounded-xl bg-brand text-[15px] font-semibold text-white disabled:opacity-50">
-            {busy ? '맡기는 중…' : `${agencyName} 에이전시에 맡기기`}
+            {busy ? '보내는 중…' : partner ? `${agencyName}에 운영 요청하기` : `${agencyName} 에이전시에 맡기기`}
           </button>
         </>
       )}

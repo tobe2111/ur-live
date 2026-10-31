@@ -1455,7 +1455,7 @@ app.use('/api/seller/login', rateLimit({ action: 'seller_login', max: 10, window
 app.route('/api/seller', sellerAuthRoutes);
 app.route('/api/seller', sellerOperatorsRoutes); // 🏪 my-stores · 매장 전환 · 운영자 관리
 app.use('/api/brands/*', edgeCache(300)); app.route('/api/brands', brandsPublicRoutes); // 🏷️ 2026-10-17 브랜드 페이지 — 읽기 전용, 콜로당 5분 캐시(지점 추가가 최대 5분 늦게 보인다)
-app.route('/api/agency-console', agencyConsoleRoutes); app.route('/api/agency-console', agencyStaffRoutes); app.route('/api/agency-console', agencyStoresRoutes); app.use('/api/store-agency-invite/accept', csrfProtection()); app.route('/api/store-agency-invite', storeAgencyInviteRoutes); // 🏢 에이전시 가입·로그인·직원(별도 서명 열쇠 — requireAuth 로는 안 통한다)
+app.route('/api/agency-console', agencyConsoleRoutes); app.route('/api/agency-console', agencyStaffRoutes); app.route('/api/agency-console', agencyStoresRoutes); app.use('/api/store-agency-invite/accept', csrfProtection()); app.use('/api/store-agency-invite/partner-request', csrfProtection()); app.route('/api/store-agency-invite', storeAgencyInviteRoutes); // 🏢 에이전시 가입·로그인·직원(별도 서명 열쇠 — requireAuth 로는 안 통한다)
 app.route('/api/seller/instagram-dm', instagramAutoDmSellerRoutes); app.route('/api/seller/urshorts', sellerUrshortsRoutes); // 💬 매장 인스타 자동 DM(좌석 토큰) · 🎬 자기 이용권에 쇼츠 붙이기(소유권 검사)
 app.route('/api/influencer-profile', influencerProfileRoutes); app.route('/api/seller', sellerStoresRoutes); app.route('/api/seller', sellerWithdrawRoutes); app.route('/api/seller/influencers', sellerInfluencersRoutes); app.route('/api/influencer-offers', influencerOfferInvitesRoutes); app.route('/api/admin/influencer-outreach', adminInfluencerOutreachRoutes); // 매장관리/인플탐색·제안/수락다리/어드민 발송큐
 

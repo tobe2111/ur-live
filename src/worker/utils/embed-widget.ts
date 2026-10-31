@@ -16,7 +16,7 @@ import { priceDisplay } from '../../shared/price-display'
 import { detailHref } from '../../shared/product-flow'
 import { cfImage } from '../../utils/cf-image'
 
-export type EmbedKind = 'ushop' | 'agency' | 'store' | 'region' | 'pass'
+export type EmbedKind = 'ushop' | 'agency' | 'store' | 'region' | 'pass' | 'partner'
 export type EmbedTheme = 'light' | 'dark' | 'auto'
 
 /** 한 줄 카드에 들어가는 최대 장수. 이보다 많으면 전체 보기 링크로 넘긴다. */
@@ -24,7 +24,7 @@ export const EMBED_MAX_COUNT = 12
 export const EMBED_DEFAULT_COUNT = 8
 
 /** 붙이는 쪽에 권하는 iframe 높이(px). 위젯 높이는 내용과 무관하게 고정이라 이 값으로 충분하다. */
-export const EMBED_HEIGHT: Record<'strip' | 'single', number> = { strip: 330, single: 172 }
+export const EMBED_HEIGHT: Record<'strip' | 'single' | 'partner', number> = { strip: 330, single: 172, partner: 260 }
 
 export interface EmbedParams { count: number; theme: EmbedTheme }
 
@@ -130,7 +130,15 @@ a{color:inherit;text-decoration:none}
 .one .b{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
 .one .nm{font-size:15px;min-height:0}
 .one .go{align-self:flex-start;margin-top:6px;background:var(--brand);color:#fff;font-size:13px;font-weight:700;padding:7px 14px;border-radius:999px}
-.one .logo{font-size:13px}`
+.one .logo{font-size:13px}
+.pt{padding:18px 18px 16px;display:flex;flex-direction:column;gap:12px}
+.pt .hd .x{font-size:13px;color:var(--soft);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.pt h1{margin:0;font-size:20px;line-height:1.35;font-weight:700;letter-spacing:-.01em}
+.pt ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:7px}
+.pt li{font-size:13px;color:var(--soft);line-height:1.45;padding-left:14px;position:relative}
+.pt li::before{content:'';position:absolute;left:2px;top:.6em;width:5px;height:5px;border-radius:50%;background:var(--brand)}
+.pt li b{color:var(--ink);font-weight:600}
+.pt .go{align-self:flex-start;background:var(--brand);color:#fff;font-size:15px;font-weight:700;padding:11px 20px;border-radius:12px}`
 
 function cardHtml(c: EmbedCard): string {
   const img = c.img ? `<img src="${esc(c.img)}" alt="${esc(c.name)}" loading="lazy" width="156" height="156">` : ''
@@ -179,4 +187,21 @@ export function renderSingle(theme: EmbedTheme, c: EmbedCard): string {
 /** 대상이 없을 때(없는 아이디·내려간 이용권) — 남의 사이트에 깨진 칸 대신 짧은 안내. */
 export function renderMissing(theme: EmbedTheme): string {
   return doc(theme, '유어딜', `<main class="w"><div class="hd">${LOGO}<span class="tt">유어딜</span><a class="more" href="/?utm_source=embed" target="_blank" rel="noopener">유어딜 가기 ›</a></div><p class="empty">이 위젯 주소를 찾을 수 없어요. 코드를 다시 복사해 주세요.</p></main>`)
+}
+
+/**
+ * 🤝 제휴사 입점 위젯 — 제휴사(에이전시)가 **자기 사이트에서 사장님께 유어딜을 파는** 카드
+ * (2026-10-31 대표 *"제휴사들이 우리 유어딜 서비스를 파는 위젯이 필요해"* → 확정 "사장님께 입점 영업 · 소개 + 가입 버튼").
+ * 버튼은 `/store/partner/:id` 로 간다 — 거기서 사장님이 매장을 고르거나 등록하고, 이 제휴사에 운영을 **요청**한다.
+ * ⚠️ 문구에 숫자(수수료율 등)를 적지 않는다 — 요율은 어드민이 바꾸는 값이라 남의 사이트에 박힌 숫자는 곧 거짓말이 된다.
+ */
+export function renderPartner(theme: EmbedTheme, agencyName: string, agencyId: number): string {
+  const href = withUtm(`/store/partner/${agencyId}`, 'partner')
+  const body = `<main class="pt"><div class="hd">${LOGO}<span class="x">× ${esc(agencyName)}</span></div>`
+    + '<h1>우리 가게 이용권,<br>유어딜에서 팔아 보세요</h1>'
+    + '<ul><li><b>등록 0원</b> · 사업자등록증은 나중에 올려도 돼요</li>'
+    + '<li><b>미리 결제</b> · 손님은 온라인에서 사고 매장에서 QR로 써요</li>'
+    + `<li><b>등록·운영 지원</b> · ${esc(agencyName)} 제휴로 도와드려요</li></ul>`
+    + `<a class="go" href="${esc(href)}" target="_blank" rel="noopener">유어딜 입점 신청</a></main>`
+  return doc(theme, `${agencyName} × 유어딜 입점`, body)
 }

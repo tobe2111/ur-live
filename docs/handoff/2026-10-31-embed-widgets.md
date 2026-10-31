@@ -13,6 +13,14 @@
 - 가드 `src/tests/unit/embed-widgets-2026-10-31.test.ts` 15건(진짜 SQLite) + 주입 `scripts/mutations/embed-widgets-2026-10-31.mjs` 5건 전부 빨간불 확인
 - 동반: `follow-redirects` override ^1.16.1 → ^1.16.2 (새 high advisory GHSA-mrwp-f3q8-3g9p 로 pre-push npm audit 가 막혀서. 패치 릴리스)
 
+## 2차 — 제휴사 입점 위젯
+- `/embed/partner/:id` + `/store/partner/:agencyId`(기존 초대 화면의 partner 모드) + API 2개(`store-agency-invite.routes.ts`) + 등록 후 되돌아오기(`src/utils/partner-return.ts`, `StoreClaimPage` onDone 한 줄)
+- 가드 `embed-partner-2026-10-31.test.ts` 9건 + 주입 4건 빨간불 확인. 재조준: 주입 2건(`agency-console` 주인 확인 앵커 유일화 · `seller-all-in-my` 착륙 줄), 시험 1건(`seller-all-in-my` 마이 착륙 카운트)
+- E4: 로그인한 사장님 계정으로 `/store/partner/<에이전시번호>` → 요청 → 에이전시 콘솔에 대기 → 수락
+
+## 1차 CI 에서 잡힌 것
+- `publicReadDb` 는 파일 허용목록이 있다(`sections-roundtrips-2026-10-15.test.ts`). 위젯 라우트를 등록하고 "쓰기 0 · 로그인 없음" 단언을 붙였다.
+
 ## 이번에 틀렸던 판단
 - 탈출 시험이 `alt` 속성의 탈출된 이름으로 통과하고 있었다(본문을 안 탈출해도 초록). 주입이 잡았다 → 본문 span 으로 앵커.
 - 첫 시안 페이지에서 "B·C·D 는 /embed/ 를 만들면 된다" 고 했는데 C(떠 있는 버튼)는 남의 페이지에 스크립트를 싣는 별개 일이다. 이번엔 안 만들었다.

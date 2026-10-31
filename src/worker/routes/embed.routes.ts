@@ -7,6 +7,7 @@
  *   GET /embed/store/:username       매장 — 사장님이 가게 홈페이지에 자기 이용권을
  *   GET /embed/region/:sido/:sigungu? 지역 — 관광·상인회·지역 안내 사이트에 그 동네 이용권을
  *   GET /embed/pass/:id              이용권 하나 — 블로그 글 속 카드
+ *   GET /embed/partner/:id           제휴사 입점 — 제휴사(에이전시)가 자기 사이트에서 사장님께 유어딜 입점을 판다
  *   GET /embed                       코드 만들기(스크립트 없는 폼 — 미리보기 + 복사할 코드)
  *
  * 🔓 iframe 허용: 워커 보안 헤더가 `/embed/` 로 시작하는 경로만 `frame-ancestors *` 로 연다(그 분기는
@@ -28,7 +29,7 @@ import { findActiveDealPctsBySeller } from '../utils/influencer-deal'
 import { OWNED_STORE_WHERE_SQL } from '../utils/seller-operators'
 import { isValidHandleFormat } from '../utils/handle-generator'
 import {
-  parseEmbedParams, toEmbedCard, renderStrip, renderSingle, renderMissing, withUtm,
+  parseEmbedParams, toEmbedCard, renderStrip, renderSingle, renderMissing, renderPartner, withUtm,
   type EmbedRow, type EmbedTheme,
 } from '../utils/embed-widget'
 import { renderEmbedBuilder } from '../utils/embed-builder'
@@ -170,6 +171,17 @@ embedRoutes.get('/embed/pass/:id', async (c) => {
     .bind(id, ...VOUCHER_CATEGORIES).first<Row>().catch(() => null)
   if (!row) return html(c, renderMissing(theme), 404)
   return html(c, renderSingle(theme, toEmbedCard(row, 'pass')))
+})
+
+// ── 제휴사 입점 ──────────────────────────────────────────────────────────
+embedRoutes.get('/embed/partner/:id', async (c) => {
+  const { theme } = parseEmbedParams((k) => c.req.query(k))
+  const id = Number(c.req.param('id'))
+  if (!Number.isInteger(id) || id <= 0) return html(c, renderMissing(theme), 404)
+  const agency = await publicReadDb(c.env.DB).prepare("SELECT id, name FROM agency_accounts WHERE id = ? AND status = 'active' LIMIT 1")
+    .bind(id).first<{ id: number; name: string }>().catch(() => null)
+  if (!agency) return html(c, renderMissing(theme), 404)
+  return html(c, renderPartner(theme, agency.name, agency.id))
 })
 
 // ── 코드 만들기 ─────────────────────────────────────────────────────────

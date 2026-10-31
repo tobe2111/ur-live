@@ -17,7 +17,7 @@ export interface EmbedTypeSpec {
   keyLabel: string
   keyHint: string
   path: (key: string) => string | null
-  layout: 'strip' | 'single'
+  layout: 'strip' | 'single' | 'partner'
 }
 
 const enc = (s: string) => encodeURIComponent(s)
@@ -47,6 +47,11 @@ export const EMBED_TYPES: Record<string, EmbedTypeSpec> = {
       return `/embed/region/${parts.map(enc).join('/')}`
     },
   },
+  partner: {
+    label: '제휴사 입점', who: '제휴사(에이전시) 사이트에서 사장님께 유어딜 입점 영업',
+    keyLabel: '에이전시 번호', keyHint: '에이전시 콘솔에 보이는 번호 (예: 3)', layout: 'partner',
+    path: (k) => (/^\d{1,9}$/.test(k) ? `/embed/partner/${k}` : null),
+  },
   pass: {
     label: '이용권 하나', who: '블로그 글 속 소개 카드',
     keyLabel: '이용권 번호', keyHint: 'urdeal.kr/pass/ 뒤의 숫자 (예: 2919)', layout: 'single',
@@ -70,7 +75,7 @@ export function embedSrc(type: string, key: string, count: number, theme: EmbedT
 export function embedSnippet(type: string, src: string): string {
   const spec = EMBED_TYPES[type]
   const h = EMBED_HEIGHT[spec?.layout ?? 'strip']
-  const maxW = spec?.layout === 'single' ? 520 : 760
+  const maxW = spec?.layout === 'strip' ? 760 : 520
   return `<iframe src="${EMBED_PUBLIC_ORIGIN}${src}"\n  title="유어딜 ${spec?.label ?? ''} 이용권" loading="lazy"\n  style="width:100%;max-width:${maxW}px;height:${h}px;border:0;border-radius:14px;overflow:hidden"></iframe>`
 }
 
@@ -94,7 +99,7 @@ export function renderEmbedBuilder(i: BuilderInput): string {
   if (key && !src) {
     result = `<p class="err">${esc(spec.keyLabel)} 형식이 맞지 않아요. ${esc(spec.keyHint)}</p>`
   } else if (src) {
-    result = `<h2>미리보기</h2><iframe src="${esc(src)}" title="미리보기" style="width:100%;max-width:${spec.layout === 'single' ? 520 : 760}px;height:${h}px;border:0;border-radius:14px;background:#fff"></iframe>`
+    result = `<h2>미리보기</h2><iframe src="${esc(src)}" title="미리보기" style="width:100%;max-width:${spec.layout === 'strip' ? 760 : 520}px;height:${h}px;border:0;border-radius:14px;background:#fff"></iframe>`
       + `<h2>붙여 넣을 코드</h2><p class="hint">칸을 눌러 전체 선택(Ctrl+A · ⌘A)한 뒤 복사(Ctrl+C · ⌘C)해서, 홈페이지 편집기의 <b>HTML 넣기</b> 칸에 붙여 넣으세요.</p>`
       + `<textarea readonly rows="4">${esc(embedSnippet(type, src))}</textarea>`
   }

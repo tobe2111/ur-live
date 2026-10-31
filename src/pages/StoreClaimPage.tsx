@@ -39,6 +39,7 @@ import api from '@/lib/api'
 import BrokerHandoffPanel from './store-claim/BrokerHandoffPanel'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { MY_PATH } from '@/lib/seller-return'
+import { takePartnerReturn } from '@/utils/partner-return'
 import { X } from 'lucide-react'
 import SEO from '@/components/SEO'
 import StoreRegisterModal from '@/components/seller/StoreRegisterModal'
@@ -202,7 +203,8 @@ export default function StoreClaimPage() {
                 }
                 if (opts?.ownerClaimCode) { setHandoff(opts.ownerClaimCode); return } // 중개 — 코드를 먼저 손에 쥐여 준다
                 // 🏠 2026-09-26: 방금 얻은 가게를 **마이의 내 가게**에서 본다(대시보드 학습 없이).
-                navigate(MY_PATH, { replace: true })
+                //   🤝 2026-10-31 제휴사 위젯으로 들어왔으면 그 제휴사 요청 화면으로 돌아간다(`utils/partner-return.ts`).
+                navigate(takePartnerReturn() ?? MY_PATH, { replace: true })
               }}
             />
             )}

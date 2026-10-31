@@ -4,6 +4,8 @@
  *
  *   GET  /:token    — 링크가 살아 있나 · 어느 에이전시인가 (누구나 — 링크를 연 사람이 무엇을 맡기는지 봐야 한다)
  *   POST /accept    — { token, seller_id } 내 매장을 이 에이전시에 맡긴다 (그 매장 **주인**만)
+ *   GET  /partner/:agencyId — 🤝 제휴사 입점 위젯의 목적지 — 이 에이전시가 살아 있나 · 이름
+ *   POST /partner-request   — { agency_id, seller_id } 내 매장 운영을 이 에이전시에 **요청**(대기 — 에이전시가 수락해야 시작)
  *
  * 영업 흐름: 에이전시가 매장을 찾아가 "저희가 맡겠습니다" → 에이전시 화면에서 링크 복사 → 카톡으로 사장님께 →
  * 사장님은 링크를 눌러 카카오로 로그인 → 매장 고르고 [맡기기] 한 번. 링크를 만든 것이 에이전시의 수락이라
@@ -122,5 +124,85 @@ storeAgencyInviteRoutes.post('/accept', cors(), rateLimit({ action: 'store_agenc
     return c.json({ success: true, agencyName: inv.agency_name })
   } catch (err) {
     return safeError(c, err, '맡기는 중 오류가 발생했어요', '[store-agency-invite]')
+  }
+})
+
+// ── 🤝 제휴사 입점 위젯 (2026-10-31 대표 "제휴사들이 자신들의 사이트에서 유어딜 서비스를 파는거지") ─────────
+//   제휴사(= 에이전시) 사이트의 위젯(`/embed/partner/:id`) → `/store/partner/:id` → 사장님이 이 요청을 보낸다.
+//   🔐 초대 링크와 다른 점: 이 주소는 **공개**(누구나 위젯 코드를 볼 수 있다)라서 바로 운영(active)을 열지 않는다.
+//   요청(pending)만 만들고, 에이전시가 콘솔 '맡은 매장' 에서 수락해야 시작된다(기존 수락·거절 흐름 그대로) —
+//   그래야 아무나 아무 매장을 남의 에이전시에 떠넘길 수 없다. 머니 경로 무접촉(맡김 관계만).
+async function liveAgency(DB: D1Database, id: number) {
+  return DB.prepare("SELECT id, name FROM agency_accounts WHERE id = ? AND status = 'active' LIMIT 1")
+    .bind(id).first<{ id: number; name: string }>()
+}
+const PARTNER_DEAD = { success: false, code: 'PARTNER_INVALID', error: '이 제휴 링크는 더 이상 쓸 수 없어요. 제휴사에 문의해 주세요.' } as const
+
+storeAgencyInviteRoutes.get('/partner/:agencyId', rateLimit({ action: 'store_partner_lookup', max: 60, windowSec: 600 }), async (c) => {
+  try {
+    const id = Number(c.req.param('agencyId'))
+    if (!Number.isInteger(id) || id <= 0) return c.json(PARTNER_DEAD, 404)
+    await ensureAgencyConsoleTables(c.env.DB)
+    const a = await liveAgency(c.env.DB, id)
+    if (!a) return c.json(PARTNER_DEAD, 404)
+    return c.json({ success: true, agencyName: a.name })
+  } catch (err) {
+    return safeError(c, err, '제휴사를 확인하지 못했어요', '[store-partner]')
+  }
+})
+
+storeAgencyInviteRoutes.post('/partner-request', cors(), rateLimit({ action: 'store_partner_request', max: 10, windowSec: 3600 }), async (c) => {
+  try {
+    const sess = await parseSessionCookie(c.req.header('Cookie'), c.env.JWT_SECRET, ['user']).catch(() => null)
+    const userId = Number(sess?.userId)
+    if (!Number.isInteger(userId) || userId <= 0) return c.json({ success: false, code: 'LOGIN_REQUIRED', error: '로그인이 필요해요.' }, 401)
+    const body = await c.req.json<{ agency_id?: number; seller_id?: number }>().catch(() => ({} as { agency_id?: number; seller_id?: number }))
+    const agencyId = Number(body.agency_id)
+    const sellerId = Number(body.seller_id)
+    if (!Number.isInteger(agencyId) || agencyId <= 0) return c.json(PARTNER_DEAD, 404)
+    if (!Number.isInteger(sellerId) || sellerId <= 0) return c.json({ success: false, error: '맡길 매장을 골라 주세요.' }, 400)
+
+    const DB = c.env.DB
+    await ensureAgencyConsoleTables(DB)
+    const agency = await liveAgency(DB, agencyId)
+    if (!agency) return c.json(PARTNER_DEAD, 404)
+    if (!(await isStoreOwner(DB, userId, sellerId))) {
+      return c.json({ success: false, code: 'NOT_OWNER', error: '이 매장의 사장님만 맡길 수 있어요.' }, 403)
+    }
+    const openCount = await DB.prepare("SELECT COUNT(*) AS n FROM agency_store_links WHERE seller_id = ? AND agency_id <> ? AND status IN ('pending','active')")
+      .bind(sellerId, agencyId).first<{ n: number }>()
+    if ((Number(openCount?.n) || 0) >= AGENCY_LINKS_PER_STORE_MAX) {
+      return c.json({ success: false, code: 'TOO_MANY_AGENCIES', error: `한 매장은 에이전시 ${AGENCY_LINKS_PER_STORE_MAX}곳까지 함께 할 수 있어요.` }, 409)
+    }
+    // 요청만(pending) — 바로 운영을 열지 않는다(위 머리말). 같은 에이전시에 이미 열린 맡김이 있으면 그대로 알린다.
+    const ins = await DB.prepare(
+      "INSERT OR IGNORE INTO agency_store_links (agency_id, seller_id, status, requested_by_user_id) VALUES (?, ?, 'pending', ?)",
+    ).bind(agencyId, sellerId, userId).run()
+    if ((ins.meta?.changes ?? 0) === 0) {
+      const open = await DB.prepare(
+        "SELECT status FROM agency_store_links WHERE seller_id = ? AND agency_id = ? AND status IN ('pending','active') LIMIT 1",
+      ).bind(sellerId, agencyId).first<{ status: string }>()
+      if (open) return c.json({ success: true, agencyName: agency.name, status: open.status, already: true })
+      return c.json({ success: false, error: '요청하지 못했어요. 잠시 뒤 다시 시도해 주세요.' }, 409)
+    }
+    const store = await DB.prepare('SELECT business_name, name FROM sellers WHERE id = ? LIMIT 1')
+      .bind(sellerId).first<{ business_name: string | null; name: string | null }>()
+    const storeName = store?.business_name || store?.name || '매장'
+    const { results: admins } = await DB.prepare(
+      "SELECT email FROM agency_staff WHERE agency_id = ? AND role = 'admin' AND status = 'active' LIMIT 10",
+    ).bind(agencyId).all<{ email: string }>()
+    for (const a of admins || []) {
+      await sendSystemEmail(c.env, a.email, {
+        subject: `[유어딜] ${storeName} 사장님이 제휴 위젯으로 입점·운영을 요청했어요`,
+        html: buildSystemEmailHtml({
+          title: `${storeName} 운영 요청`, greeting: '안녕하세요.',
+          body: `${storeName} 사장님이 ${agency.name} 홈페이지의 유어딜 위젯을 통해 매장 운영을 요청했어요.\n에이전시 화면 '맡은 매장' 에서 수락하면 운영이 시작돼요.`,
+          actionLabel: '요청 보기', actionUrl: `${frontendBase(c.env)}/agency`,
+        }),
+      }, { ignorePreference: true }).catch(() => {})
+    }
+    return c.json({ success: true, agencyName: agency.name, status: 'pending' })
+  } catch (err) {
+    return safeError(c, err, '요청 중 오류가 발생했어요', '[store-partner]')
   }
 })
