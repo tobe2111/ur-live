@@ -602,9 +602,6 @@ export default function GroupBuyDetailPage() {
       {/* 🧭 2026-08-30 (대표 — 그루폰식 카테고리바): 사진 **위** 한 줄. 이 페이지는 헤더가 뜬다 → overlayHeader */}
       {/* 🎟️ 10-11 D안: 모바일은 사진이 맨 위부터 — 빵부스러기는 PC 만(대표 "부연설명이 많다"). */}
       <div className="hidden lg:block"><DetailBreadcrumb items={voucherCrumbs(detail.category)} overlayHeader /></div>
-      <DetailTitleHeader name={detail.name} storeName={detail.restaurant_name} address={detail.restaurant_address}
-        phone={detail.restaurant_phone} rating={detail.avg_rating} reviewCount={detail.review_count}
-        onnuri={(detail as { onnuri_merchant?: boolean }).onnuri_merchant} />
 
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-10 lg:max-w-[1200px] lg:mx-auto lg:items-start lg:pt-1">
       <div className="lg:min-w-0">{/* 좌측 콘텐츠 컬럼 */}
@@ -634,6 +631,10 @@ export default function GroupBuyDetailPage() {
         />
       </div>
 
+      {/* 🔁 2026-10-31 (대표 "이용권 이름을 사진 밑으로"): PC 제목은 사진 **아래**(폰과 같은 순서). */}
+      <DetailTitleHeader name={detail.name} storeName={detail.restaurant_name} address={detail.restaurant_address}
+        phone={detail.restaurant_phone} rating={detail.avg_rating} reviewCount={detail.review_count}
+        onnuri={(detail as { onnuri_merchant?: boolean }).onnuri_merchant} />
       <main id="gb-main" role="main">
         {/* 🖥️ 2026-07-19 그루폰식 섹션 탭 — PC 전용(클릭 → 해당 섹션 스크롤). 모바일은 세로 스택이라 불필요. */}
         <nav className="hidden lg:flex items-center gap-1 mt-4 mb-4 px-2 py-1 rounded-2xl bg-[var(--gbd-card)] shadow-lift" aria-label="상세 섹션">

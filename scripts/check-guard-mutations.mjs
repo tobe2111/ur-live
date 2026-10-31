@@ -3232,15 +3232,14 @@ canvas {
       "'내 추천 링크'(GET /api/invite/my)가 통째로 죽는데, 화면엔 빈 카드로 보여 신고가 안 들어온다.",
   },
   {
-    name: '이용권 상세 제목이 다시 사진 아래로 내려간다',
+    name: '이용권 상세 PC 제목이 사라진다',
     file: 'src/pages/GroupBuyDetailPage.tsx',
     find: '<DetailTitleHeader name',
     replace: '<span data-broken name',
     test: 'src/tests/unit/groupon-detail-map.test.ts',
     why:
-      '2026-08-19 대표 확정(상세 1안 "그루폰 정석"). 제목·별점·주소가 사진 위에 있어야 첫 화면이 ' +
-      '"무엇을 파는지 / 얼마나 좋은지"를 말한다. 되돌아가도 화면은 멀쩡해 보여서(사진은 여전히 크다) ' +
-      '리뷰로는 안 걸린다 — 그래서 기계가 지킨다.',
+      '2026-10-31 대표 "이용권 이름을 사진 밑으로"(08-19 1안 대체) — PC 제목은 갤러리 바로 아래에 있다. ' +
+      '빠져도 화면은 멀쩡해 보여서 리뷰로는 안 걸린다.',
   },
   {
     name: '상세가 서버 raw 할인율로 되돌아간다(카드와 숫자가 갈린다)',

@@ -364,13 +364,6 @@ export default function StayDetailPage() {
       />
       {/* 📱 2026-10-27 (대표 "통일할 건 통일"): 폰에선 사진이 맨 위 — 이용권 상세와 같다(빵부스러기는 PC 만). */}
       <div className="hidden lg:block"><DetailBreadcrumb items={stayCrumbs(propertyTypeLabel(stay.property_type))} overlayHeader /></div>
-      <DetailTitleHeader
-        name={stay.restaurant_name || stay.name}
-        storeName={propertyTypeLabel(stay.property_type)}
-        address={stayAddressLine(stay.region_sido, stay.region_sigungu, stay.address)}
-        rating={stay.avg_rating ?? undefined}
-        reviewCount={stay.review_count ?? undefined}
-      />
 
 
       <div className={STAY_GRID}>
@@ -387,6 +380,14 @@ export default function StayDetailPage() {
           />
         </div>
 
+        {/* 🔁 2026-10-31 (대표 "이름을 사진 밑으로"): PC 제목은 갤러리 **아래**(폰과 같은 순서). */}
+        <DetailTitleHeader
+          name={stay.restaurant_name || stay.name}
+          storeName={propertyTypeLabel(stay.property_type)}
+          address={stayAddressLine(stay.region_sido, stay.region_sigungu, stay.address)}
+          rating={stay.avg_rating ?? undefined}
+          reviewCount={stay.review_count ?? undefined}
+        />
         {/* Title + meta — 📱 모바일 전용. PC 는 위 `DetailTitleHeader`(둘 다 그리면 제목이 두 번).
             📏 `mt-5` = 사진↔배지 간격(경위는 stay-detail-gallery-bleed.test.ts — 없으면 2px 로 붙는다). */}
         <div className={STAY_HEAD.titleBlock}>
