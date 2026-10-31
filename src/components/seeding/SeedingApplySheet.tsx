@@ -66,6 +66,10 @@ export default function SeedingApplySheet({ productId, offer, onClose }: { produ
         <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">
           {offer.platforms.map((p) => PLATFORM_LABEL[p]).join('·')} {FOLLOWER_WORD[offer.platforms[0]]} {formatNumber(offer.min_followers)}명 이상이면 신청할 수 있어요.
         </p>
+        <p className="mt-2 text-[13px] text-gray-600 dark:text-gray-300">
+          이번 달 모집 {formatNumber(offer.slots_per_month)}명{offer.offer_note ? ` · 제공: ${offer.offer_note}` : ''}
+        </p>
+        <p className="mt-1 text-[13px] text-gray-600 dark:text-gray-300">게시 의무: {offer.post_requirement} (방문 후 {offer.post_deadline_days}일 안)</p>
 
         {!loggedIn ? (
           <button type="button" onClick={() => navigate(loginPathFromHere())} className="ur-btn ur-btn-lg ur-btn-primary mt-5 w-full">

@@ -52,17 +52,12 @@ export default function SellThisCard({ productId, price, hideForOwner: isOwner }
           무료 체험 신청
         </button>
       </div>
-      {offer && !on && (
-        <p className="mt-3 text-[13px] text-gray-500 dark:text-gray-400">이 매장은 무상 체험을 제공하지 않아요. 유어샵에 담아 판매만 할 수 있어요.</p>
-      )}
-      {on && (
-        <ul className="mt-3 space-y-1 text-[13px] text-gray-600 dark:text-gray-300">
-          <li>· {on.platforms.map((p) => PLATFORM_LABEL[p]).join('·')} {FOLLOWER_WORD[on.platforms[0]]} {formatNumber(on.min_followers)}명 이상</li>
-          <li>· 이번 달 남은 자리 {formatNumber(on.slots_left)} / {formatNumber(on.slots_per_month)}</li>
-          {on.offer_note && <li>· 제공: {on.offer_note}</li>}
-          <li>· 게시 의무: {on.post_requirement} (방문 후 {on.post_deadline_days}일 안)</li>
-        </ul>
-      )}
+      {/* 📏 한 줄 고정 — 정보가 늦게 와도 아래 내용이 밀리지 않게(기다리는 동안 같은 높이의 빈 줄). 조건 전문은 신청 시트가 보인다. */}
+      <p className={`mt-3 truncate text-[13px] text-gray-500 dark:text-gray-400 ${offer ? '' : 'invisible'}`}>
+        {on
+          ? `무상 체험 제공: ${on.platforms.map((p) => PLATFORM_LABEL[p]).join('·')} ${FOLLOWER_WORD[on.platforms[0]]} ${formatNumber(on.min_followers)}명 이상, 이번 달 남은 자리 ${formatNumber(on.slots_left)}`
+          : offer ? '이 매장은 무상 체험을 제공하지 않아요. 유어샵에 담아 판매만 할 수 있어요.' : '체험 정보를 확인하는 중'}
+      </p>
       {open && on && <SeedingApplySheet productId={productId} offer={on} onClose={() => setOpen(false)} />}
     </div>
   )
