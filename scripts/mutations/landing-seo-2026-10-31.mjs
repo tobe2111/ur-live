@@ -55,4 +55,12 @@ export default [
     test: T,
     why: '2026-08-26 대표 확정 — 사람을 신분이 아니라 행위(담기·소개)로 말한다.',
   },
+  {
+    name: '🧭 [랜딩SEO] 목록 아닌 표면에 시드 상품 줄이 샌다 (재조준한 단언이 여전히 잡는가)',
+    file: 'src/worker/utils/crawler-noscript.ts',
+    find: `  '/stays': (p) => p?.category === 'stay_voucher',\n}`,
+    replace: `  '/stays': (p) => p?.category === 'stay_voucher',\n  '/gb-market': () => true,\n}`,
+    test: 'src/tests/unit/list-surface-noscript-2026-10-12.test.ts',
+    why: '2026-10-31 에 그 단언을 `<li>` 전체 → 시드 상품 이름으로 재조준했다(랜딩 헤더 링크가 `<li>` 라서). 느슨해지지 않았는지 본다.',
+  },
 ]
