@@ -23,7 +23,7 @@ export default function StickyStory({ steps, shotUrl }: { steps: StoryStep[]; sh
             {steps.map((s, i) => (
               <img key={s.shot} src={shotUrl(s.shot)} alt={i === active ? s.alt : ''} aria-hidden={i !== active}
                 width={430} height={930} loading="lazy" decoding="async" data-on={i === active ? 1 : 0}
-                className="ur-story-shot light-island block rounded-xl bg-white object-cover object-top" />
+                className="ur-story-shot block rounded-xl object-cover object-top" />
             ))}
           </div>
         </div>
@@ -39,10 +39,10 @@ export default function StickyStory({ steps, shotUrl }: { steps: StoryStep[]; sh
             <span aria-hidden className="ur-story-dot hidden lg:block absolute left-0 top-1/2 -mt-[7px] w-[15px] h-[15px] rounded-full bg-rule-strong ring-4 ring-surface" />
             <div className="lg:hidden w-24 shrink-0 rounded-xl bg-gray-800 p-[5px] shadow-lift">
               <img src={shotUrl(shot)} alt={alt} width={430} height={930} loading="lazy" decoding="async"
-                className="light-island block w-full rounded-lg bg-white object-cover object-top" style={{ aspectRatio: '430 / 930' }} />
+                className="block w-full rounded-lg object-cover object-top" style={{ aspectRatio: '430 / 930' }} />
             </div>
             <div>
-              <p className="text-[24px] lg:text-[48px] xl:text-[60px] font-extrabold text-ink tracking-[-0.03em] leading-tight">{t}</p>
+              <p className="text-[24px] font-bold lg:text-[48px] xl:text-[60px] lg:font-extrabold text-ink tracking-[-0.03em] leading-tight">{t}</p>
               <p className="mt-3 lg:mt-5 text-[13px] lg:text-[17px] leading-[1.75] text-gray-500 dark:text-gray-400 max-w-[26em]">{d}</p>
             </div>
           </li>
