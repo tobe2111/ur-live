@@ -60,7 +60,8 @@ export default [
   {
     name: '영입 링크 — 매장 없는 사장님이 토큰 없이 등록으로 간다',
     file: 'src/pages/StoreAgencyInvitePage.tsx',
-    find: '  const registerHref = `/store/new?${AGENCY_INVITE_QUERY}=${encodeURIComponent(token)}`',
+    // 🎯 2026-10-31 재조준: 제휴 위젯(partner) 분기가 같은 줄에 붙었다 — 초대 링크 쪽 결함은 그대로.
+    find: "  const registerHref = partner ? '/store/new' : `/store/new?${AGENCY_INVITE_QUERY}=${encodeURIComponent(token)}`",
     replace: "  const registerHref = '/store/new'",
     test: T,
     why: '등록은 되는데 에이전시와 연결이 안 된다 — 사장님이 링크를 다시 찾아 열어야 한다. 에러 0.',

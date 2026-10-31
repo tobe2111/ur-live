@@ -250,6 +250,7 @@
 - **마이**: `/user/profile` · `/my-vouchers`(이용권 지갑) · **`/my-gifticons`(교환권 보관함 — 2026-08-31 분리: 교환권은 `/vouchers` 에서 사고 여기서 확인, 이용권은 `/my-vouchers`)** · `/my-orders` · `/my-deal-history` · `/my-commissions` · `/notifications` · `/account/settings`
 - **성장**: `/referral` · `/g/:invite_code` · `/influencer/*`(랭킹·정산·발굴) · **`/experience`(체험 캠페인 응모, 2026-07-12)**
 - **성장**: `/referral` · `/g/:invite_code` · `/influencer/*`(랭킹·정산·발굴)
+- **🧩 홈페이지 삽입 위젯(2026-10-31)**: `/embed/u/:handle`(유어샵 — 인플루언서 블로그) · `/embed/agency/:id`(에이전시 운영 매장) · `/embed/store/:username`(매장 홈페이지) · `/embed/region/:sido/:sigungu?`(지역 사이트) · `/embed/pass/:id`(이용권 하나) · **`/embed/partner/:id`(제휴사 입점 — 제휴사가 자기 사이트에서 사장님께 유어딜을 판다 → `/store/partner/:id` → 그 에이전시에 운영 요청(대기, 에이전시 수락 후 시작))** · `/embed`(코드 만들기). 서버가 그리는 스크립트 없는 HTML, iframe 허용은 보안 헤더의 `/embed/` 분기, 색인 안 함. 유어샵 핀은 `/api/curator/:handle/p/:id/redirect` 로 보내 소개 값이 공유 링크와 같이 잡힌다(돈 경로 무접촉).
 - **🏷️ 브랜드(2026-10-17)**: `/brand/:slug` — 프랜차이즈 지점 묶음, 가까운 지점부터 + 지점들의 이용권(`/api/brands/:slug`, 읽기 전용)
 - **상권(B2G)**: `/district/:slug`(영수증 페이백 랜딩) · `/district/my`(상권 쿠폰 지갑) — `/local/:code` 상권관과 연계
 - 🏬 **운영자 몰 (2026-08-01)**: **`/:mallSlug`** — 몰 홈. ⚠️ **catch-all 바로 앞**이 이 라우트의 자리다
@@ -598,3 +599,5 @@ pre-commit + `verify.yml` + `audit-gate.sh` 가 결정론으로 강제(수동 �
 - 2026-10-18 🏷️ **브랜드 전 지점 사용**(대표 "응 진행해줘") — 이용권마다 스위치 · 같은 주인 지점만 받음 · 정산은 판 지점 그대로. 사용 처리 3경로 + 설정 API + 손님 상세 "N곳 어디서나 사용 가능". 가드 `brand-wide-redeem-2026-10-18` 18건 + 주입 7건. [E2]
 - 2026-10-17 🏬 **프랜차이즈 지점 편의**(대표 "응응 다 해줘") — 매장 목록 상한 50/20 → 500(조각 조회) · 지점 일괄 등록 시트 · 이용권 다른 지점에 복사 · 브랜드 묶음(`store_brands`) + `/brand/:slug` + 상세 "다른 지점 보기". 규칙: 지점 단위, 그 지점 주인이 정한다. 돈 이동 0. 가드 `franchise-branches-2026-10-17` 16건 + 주입 11건. [E2]
 - 2026-10-20 🛒 **AI 비서 결제 넘겨받기**(대표 "4번도 일단은 하자. 가장 이상적으로.") — `GET /api/agent/checkout?id=&qty=` 가 금액·결제 링크(`/pass/:id?qty=&via=agent`)를 주고, 상세가 구매 창을 그 수량으로 연다. AI 는 결제하지 않는다(손님이 누름·서버 재검증) ⇒ 머니 경로 무접촉. 게이트 `agent_checkout_enabled` 기본 꺼짐. 가드 `agent-checkout-2026-10-20` + 주입 6건. [E2]
+- 2026-10-31 🧩 **홈페이지 삽입 위젯 5종 + 코드 만들기**(대표 "HTML 임베드를 여러개 만들어줘") — 유어샵·에이전시·매장·지역·이용권 하나. 소비자 피드와 같은 노출 조건, 다른 에이전시 담당 이용권 제외. 가드 `embed-widgets-2026-10-31` 15건 + 주입 5건. [E2]
+- 2026-10-31 🤝 **제휴사 입점 위젯**(대표 "제휴사들이 자신들의 사이트에서 유어딜 서비스를 파는거지") — `/embed/partner/:id` → `/store/partner/:id` → 에이전시 맡김 **요청(pending)**, 매장 등록 후 되돌아옴. 가드 `embed-partner-2026-10-31` 9건 + 주입 4건. [E2]

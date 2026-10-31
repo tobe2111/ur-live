@@ -793,7 +793,7 @@ function AppContent() {
                 한 줄 표기는 file-size 래칫 때문 — 동작은 블록 표기와 동일하다. */}
             <Route path="/store/scan" element={<StoreScanPage />} />
             <Route path="/store/new" element={<ProtectedRoute requireUser><ErrorBoundary><StoreClaimPage /></ErrorBoundary></ProtectedRoute>} />
-            <Route path="/store/find" element={<ProtectedRoute requireUser><ErrorBoundary><StoreOwnerClaimPage /></ErrorBoundary></ProtectedRoute>} /><Route path="/store/agency/:token" element={<ProtectedRoute requireUser><ErrorBoundary><StoreAgencyInvitePage /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/store/find" element={<ProtectedRoute requireUser><ErrorBoundary><StoreOwnerClaimPage /></ErrorBoundary></ProtectedRoute>} /><Route path="/store/agency/:token" element={<ProtectedRoute requireUser><ErrorBoundary><StoreAgencyInvitePage /></ErrorBoundary></ProtectedRoute>} /><Route path="/store/partner/:agencyId" element={<ProtectedRoute requireUser><ErrorBoundary><StoreAgencyInvitePage /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/store/go" element={<ProtectedRoute requireUser><ErrorBoundary><StoreGoPage /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/influencer/settlement" element={
               <ProtectedRoute requireUser>
