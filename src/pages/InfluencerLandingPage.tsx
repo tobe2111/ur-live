@@ -123,7 +123,7 @@ export default function InfluencerLandingPage() {
 
       {/* ❓ 2026-10-31 — 자주 묻는 것. 워커가 같은 배열(`shared/landing-faq`)로 서버 본문과 `FAQPage` 를 만든다.
           `<details>` 라 접혀 있어도 답이 문서에 남는다(검색·AI 엔진이 렌더해서 읽을 수 있다). */}
-      <section className="bg-gray-50 dark:bg-[#1D1F29] px-6 lg:px-12 py-16">
+      <section className="bg-warm px-6 lg:px-12 py-16">
         <div className="max-w-3xl mx-auto">
           <h2 className="text-[24px] lg:text-[28px] font-bold text-center mb-8">자주 묻는 것</h2>
           <div className="bg-surface rounded-2xl px-5 shadow-lift">
