@@ -108,7 +108,7 @@ describe('⑤ 홈 피드', () => {
   })
   it('배너가 고른 업종 문구를 쓴다', () => {
     const b = R('src/pages/main-home/LifeQuoteBanner.tsx')
-    expect(b).toMatch(/d\?\.bannerTitle \?\? '가게 일은 무료 견적으로'/)
+    expect(b).toMatch(/d\?\.bannerTitle \?\? '사장님 생활 견적 서비스'/)
     expect(b).toMatch(/d\?\.request \? `\/life\/request\/\$\{d\.request\}` : '\/life'/)
   })
 })
