@@ -6097,7 +6097,9 @@
     "sharedShareDesc": "유어딜에서 좋은 상품을 발견했어요",
     "sharedShareBtn": "상품 보러가기",
     "sellerReplyLabel": "매장 답글",
-    "sponsoredBadge": "체험 제공"
+    "sponsoredBadge": "체험 제공",
+    "loadMore": "리뷰 더 보기 ({{n}}개 남음)",
+    "loadingMore": "불러오는 중…"
   },
   "productOption": {
     "title": "상품 옵션 관리",

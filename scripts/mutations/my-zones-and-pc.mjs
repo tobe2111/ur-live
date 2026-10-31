@@ -14,8 +14,9 @@ export default [
     file: 'src/pages/user-profile/SellerSection.tsx',
     // 🔁 2026-09-30 재조준: 이 제목이 **손으로 적혀 있어서** 아침 처방이 화면에 안 닿았다
     //   (대표가 같은 것을 두 번 지적한 이유). 이제 `SECTION_TITLE_CLS` 에서 온다.
-    find: 'className={`leading-tight ${SECTION_TITLE_CLS}`}>내 가게</h2>',
-    replace: 'className="text-[13px] font-extrabold text-gray-900 dark:text-white">내 가게</h2>',
+    // 🔁 2026-10-31 재조준(9번 B안): 구역의 표시자는 이제 **가게 머리줄의 가게 사진**이다 — 사진을 안 넘기면 누구 가게인지 안 보인다.
+    find: '<StoreThumb src={store?.image ?? null}',
+    replace: '<StoreThumb src={null}',
     test: TEST,
     why: '제목이 본문 라벨과 같은 크기면 구역 경계가 안 보인다. 그리고 여기에 **손으로 적는 것 자체**가 사고다 — 공용 부품만 고치면 이 줄만 옛 값으로 남는다(2026-09-30 오전에 실제로 그랬다).',
   },
@@ -93,8 +94,9 @@ export default [
   {
     name: '🏪 가게 개수를 이름과 한 span 에 도로 붙인다 (긴 이름에서 개수가 먼저 잘린다)',
     file: 'src/pages/user-profile/SellerSection.tsx',
-    find: '<span className="truncate">{store.name}</span>\n            {stores.length >= 2 && <span className="shrink-0">· {stores.length}곳</span>}',
-    replace: '<span className="truncate">{store.name}{stores.length >= 2 && ` · ${stores.length}곳`}</span>',
+    // 🔁 2026-10-31 재조준(9번 B안): 개수가 둘째 줄(판매 중 N개 · 매장 N곳)로 내려갔다 — 그 개수가 사라지는 결함으로.
+    find: '`매장 ${stores.length}곳`',
+    replace: "''",
     test: TEST,
     why: '이 줄이 눌리는 이유가 개수다(2곳 이상일 때만 전환 버튼) — 잘려야 하는 건 이름이지 개수가 아니다.',
   },

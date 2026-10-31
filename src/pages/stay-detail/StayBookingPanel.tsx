@@ -8,10 +8,11 @@
  * 규칙
  *   - 카드 테두리 0 + `shadow-lift`(🎫 디자인 시스템). 객실 행은 헤어라인(`border-rule`)으로만 나눈다.
  *   - 객실 행은 이름·정원·잔여·가격·수량 스테퍼뿐. 사진·긴 설명은 여기 안 넣는다(넣기 시작하면 패널이 곧 화면을 넘긴다).
- *   - 주 행동은 하나: 담긴 객실이 있을 때 "₩총액 예약하기". 없으면 비활성으로 남겨 "무엇을 하면 되는지"를 버튼이 말한다.
+ *   - 주 행동은 하나: 담긴 객실이 있을 때 "총액원 예약하기". 없으면 비활성으로 남겨 "무엇을 하면 되는지"를 버튼이 말한다.
  *   - 모바일(<lg)은 이 패널을 안 쓴다 — 페이지의 객실 카드 + 하단바가 종전대로 담당.
  */
 import { formatNumber } from '@/utils/format'
+import { PURCHASE_BOX_CLS, PURCHASE_CTA_CLS } from '@/components/deal/BuyBar'
 
 export interface PanelRoom {
   room_id: number
@@ -33,7 +34,7 @@ export function cancellationLabel(policy?: string | null): string {
 }
 
 export default function StayBookingPanel({
-  modeTabs, selector, rooms, roomsLoading, cartQty, setCartQty, guests, nights, cancellation, onBook,
+  modeTabs, selector, rooms, roomsLoading, cartQty, setCartQty, guests, nights, cancellation, onBook, raffle,
 }: {
   modeTabs: React.ReactNode
   selector: React.ReactNode
@@ -45,6 +46,8 @@ export default function StayBookingPanel({
   nights: number
   cancellation: string
   onBook: () => void
+  /** 🎯 2026-10-27: 추첨 상품(당첨 전)이면 예약 대신 응모 — 폰 하단 바·이용권 상자와 같은 `useFcfsDetail` 값. */
+  raffle?: { label: string; disabled: boolean; onApply: () => void } | null
 }) {
   const items = rooms.filter((r) => (cartQty[r.room_id] || 0) > 0)
   const totalQty = items.reduce((s, r) => s + (cartQty[r.room_id] || 0), 0)
@@ -56,7 +59,8 @@ export default function StayBookingPanel({
   })
 
   return (
-    <div className="rounded-2xl bg-surface shadow-lift p-5 space-y-3">
+    // 🖥️ 2026-10-27: 틀·버튼을 이용권 PC 상자와 같은 숫자로(대표 "통일할 건 통일").
+    <div className={`${PURCHASE_BOX_CLS} space-y-3`}>
       {modeTabs}
       {selector}
 
@@ -79,7 +83,7 @@ export default function StayBookingPanel({
                   {tooMany && r.available ? ` · 최대 ${r.max_guests}인까지` : ''}
                 </p>
                 <p className="text-[15px] font-bold text-gray-900 dark:text-white mt-1 tabular-nums">
-                  ₩{formatNumber(r.total_price)} <span className="text-[12px] font-normal text-gray-500 dark:text-gray-400">{r.nights}박</span>
+                  {formatNumber(r.total_price)}원 <span className="text-[12px] font-normal text-gray-500 dark:text-gray-400">{r.nights}박</span>
                 </p>
               </div>
               <div className="flex items-center gap-1 h-9 px-2 rounded-[10px] border border-rule-strong shrink-0">
@@ -96,12 +100,19 @@ export default function StayBookingPanel({
 
       <div className="flex justify-between items-baseline pt-3 border-t border-rule">
         <span className="text-[13px] text-gray-500 dark:text-gray-400">{totalQty > 0 ? `${totalQty}객실 · ${nights}박` : '객실을 담아 주세요'}</span>
-        <span className="text-[24px] font-bold text-gray-900 dark:text-white tabular-nums">₩{formatNumber(subtotal)}</span>
+        <span className="text-[24px] font-bold text-gray-900 dark:text-white tabular-nums">{formatNumber(subtotal)}원</span>
       </div>
+      {raffle ? (
+        <button type="button" onClick={raffle.onApply} disabled={raffle.disabled}
+          className={`${PURCHASE_CTA_CLS} bg-brand hover:bg-brand-dark disabled:opacity-45 disabled:cursor-not-allowed`}>
+          {raffle.label}
+        </button>
+      ) : (
       <button type="button" onClick={onBook} disabled={totalQty === 0}
-        className="w-full h-12 rounded-xl bg-brand hover:bg-brand-dark text-white text-[15px] font-bold disabled:opacity-45 disabled:cursor-not-allowed">
-        {totalQty > 0 ? `₩${formatNumber(subtotal)} 예약하기` : '예약하기'}
+        className={`${PURCHASE_CTA_CLS} bg-brand hover:bg-brand-dark disabled:opacity-45 disabled:cursor-not-allowed`}>
+        {totalQty > 0 ? `${formatNumber(subtotal)}원 예약하기` : '예약하기'}
       </button>
+      )}
       <p className="text-[12px] text-gray-500 dark:text-gray-400">{cancellation}</p>
     </div>
   )

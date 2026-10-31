@@ -32,7 +32,7 @@ import {
 } from '@/worker/utils/home-first-screen'
 import { HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_ABOVE_FOLD, HOME_CARD_BASE_QUERY } from '@/shared/home-card-image'
 import { buildHomeCardPreloadLinks } from '@/worker/utils/home-card-preload'
-import { DEAL_CAT_LABELS } from '@/shared/deal-cats'
+import { HOME_DEAL_CAT_LABELS } from '@/shared/deal-cats'
 import { stripComments } from '../helpers/source-text'
 
 const root = process.cwd()
@@ -85,7 +85,7 @@ function reactCard(p: Record<string, unknown>): HTMLAnchorElement {
     <QueryClientProvider client={qc}>
       <MemoryRouter>
         {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        <GroupBuyFeedCard p={p as any} imgWidth={HOME_CARD_IMG_WIDTH_BASE} aboveFold />
+        <GroupBuyFeedCard p={p as any} row imgWidth={HOME_CARD_IMG_WIDTH_BASE} aboveFold />
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -263,7 +263,8 @@ describe('⑤ 크롬·섹션 머리글 — 페이지 소스에서 파싱해 대�
      *   ⚠️ 조각이 **둘 다** 있어야 통과다(한쪽만 보면 나머지 절반이 조용히 갈린다).
      */
     const needles =
-      key === 'grid' ? [want.split(' gap-')[0]]
+      // 📋 2026-10-31 시안 10: 격자는 공용 상수(`DEAL_ROW.grid`)를 쓴다 — 워커도 같은 상수라 값 대신 **사용**을 대조한다.
+      key === 'grid' ? ['DEAL_ROW.grid']
         : key === 'locLabel' ? ['text-[24px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white', 'max-w-[220px] truncate']
           : [want]
     for (const n of needles) {
@@ -275,8 +276,8 @@ describe('⑤ 크롬·섹션 머리글 — 페이지 소스에서 파싱해 대�
     const host = document.createElement('div')
     host.innerHTML = buildHomeFirstScreen(seedJson([BARE]), LOADER)
     const nav = host.querySelector('#ur-first-screen nav') as HTMLElement
-    expect([...nav.children].map((c) => c.textContent)).toEqual(DEAL_CAT_LABELS.map((c) => c.label))
-    expect(home).toContain('DEAL_CATS.map')
+    expect([...nav.children].map((c) => c.textContent)).toEqual(HOME_DEAL_CAT_LABELS.map((c) => c.label))
+    expect(home).toContain('HOME_DEAL_CATS.map')
   })
 
   /**

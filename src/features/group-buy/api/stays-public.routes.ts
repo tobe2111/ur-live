@@ -6,6 +6,7 @@
  *   - GET /stays/:productId/availability    — 특정 날짜 범위 가용 객실 조회
  *   - GET /stays/:productId/reviews         — 리뷰 목록
  */
+import { isDemoProductForPurchase, DEMO_PURCHASE_ERROR } from '../../../worker/utils/fcfs-gate'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { safeError } from '../../../worker/utils/safe-error'
@@ -354,6 +355,7 @@ staysPublicRoutes.post('/stays/bookings/create', cors(), rateLimit({ action: 'st
       return c.json({ success: false, error: 'product_id / room_id 필요' }, 400)
     }
     if (!guestName || !guestPhone) return c.json({ success: false, error: '게스트 이름/전화번호 필수' }, 400)
+    if (await isDemoProductForPurchase(c.env.DB, productId)) return c.json({ success: false, error: DEMO_PURCHASE_ERROR, code: 'DEMO_NOT_PURCHASABLE' }, 403)
 
     // 모드별 검증.
     const checkIn = saleMode === 'date' ? String(body?.check_in_date || '') : ''
@@ -614,6 +616,7 @@ staysPublicRoutes.post('/stays/bookings/create-multi', cors(), rateLimit({ actio
     if (items.length === 0) return c.json({ success: false, error: 'items 비어 있음' }, 400)
     if (items.length > 10) return c.json({ success: false, error: '최대 10개 객실까지 한 번에 결제 가능' }, 400)
     if (!guestName || !guestPhone) return c.json({ success: false, error: '게스트 이름/전화번호 필수' }, 400)
+    if (await isDemoProductForPurchase(c.env.DB, productId)) return c.json({ success: false, error: DEMO_PURCHASE_ERROR, code: 'DEMO_NOT_PURCHASABLE' }, 403)
 
     // 1. 한 번에 모든 객실 조회 (모두 같은 product 인지 검증).
     const roomIds = items.map((it) => Number(it.room_id)).filter((id) => Number.isFinite(id))
@@ -945,6 +948,8 @@ staysPublicRoutes.post('/stays/bookings/confirm', cors(), rateLimit({ action: 's
       return c.json({ success: true, message: '이미 결제 완료', data: { booking_id: order.stay_booking_id } })
     }
 
+    // 🧪 2026-10-26 과금 직전 데모 재검증 — 승인 전이라 Toss 측 자동 만료(환불 불필요).
+    for (const pid of new Set(allBookings.map((b) => Number(b.product_id)).filter(Number.isFinite))) if (await isDemoProductForPurchase(c.env.DB, pid)) return c.json({ success: false, error: DEMO_PURCHASE_ERROR, code: 'DEMO_NOT_PURCHASABLE' }, 403)
     // 3. 클라이언트 amount 검증 (서버 total_amount 와 일치).
     if (!Number.isFinite(clientAmount) || clientAmount !== order.total_amount) {
       return c.json({ success: false, error: '결제 금액 불일치 (변조 의심)' }, 400)

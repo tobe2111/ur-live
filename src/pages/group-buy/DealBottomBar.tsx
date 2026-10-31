@@ -17,6 +17,7 @@
  * ⚠️ 결제 로직은 그대로다 — 창 안의 결제 버튼이 종전과 **같은** `onJoin` 을 같은 조건으로 부른다.
  *   사전 응모·구매 불가는 창을 열지 않는다(종전 동작 그대로).
  */
+import { useFcfsDetail } from '@/features/group-buy/useFcfsDetail'
 import { useEffect, useState } from 'react'
 import { formatNumber } from '@/utils/format'
 import { Z } from '@/constants/z-index'
@@ -27,6 +28,7 @@ import AddToCartButton from './AddToCartButton'
 import { VOUCHER_CART_UI_ENABLED } from '@/shared/feature-flags'
 import type { DealPlan } from './DealUseChooser'
 import OwnerManagePanel from './OwnerManagePanel'
+import { BuyBarFrame, BuyBarPrice, BuyBarCta } from '@/components/deal/BuyBar'
 import { useAgentHandoff } from './useAgentHandoff'
 
 const arrow = <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
@@ -73,45 +75,38 @@ export default function DealBottomBar({
   //   라벨만 보고 데모를 판별할 수 있었다. 사유·대체 보호는 `DealPurchaseBox` 머리말에 적었다.
   const verb = '구매하기'
   const payLabel = allDeal ? `${formatNumber(total)}딜로 결제하기` : `${formatNumber(total)}원 ${verb}`
-  const ctaOn = buyable || isPrelaunch
+  // 🎯 2026-10-27 (대표 "구매하기 보다 응모하기 … 결제하기 눌렀더니 당첨자만 구매할 수 있다고 뜨고 있어"):
+  //   추첨 상품이면 당첨자가 아닌 손님에게 결제 창 대신 **응모**를 한다. 상태는 응모 칸과 공유.
+  const fcfs = useFcfsDetail(productId)
+  const raffle = fcfs.gate && !isPrelaunch && !isOwner
+  const ctaOn = raffle ? !(fcfs.applied || fcfs.closed) : buyable || isPrelaunch
   const stepBtn = 'w-9 h-9 rounded-full flex items-center justify-center text-[17px] bg-transparent cursor-pointer disabled:opacity-40'
 
   return (
     <>
     {/* 📱 모바일 전용 하단 바 — PC 는 우측 sticky `DealPurchaseBox`. z 10002 = BottomNav(9999) 위. */}
-    <footer className="fixed bottom-0 inset-x-0 z-[10002] lg:hidden" role="contentinfo" aria-label="결제 영역">
-      <div style={{ background: 'var(--gbd-card)', borderTop: '1px solid var(--gbd-line2)', padding: '12px 16px calc(12px + env(safe-area-inset-bottom))' }}>
+    <BuyBarFrame>
         {/* 🗺️ 레벨 전용 배지(서버 게이트의 UX 안내)는 그 자체가 정보라 남긴다 — 값이 있을 때만. */}
         {minReviewLevel && minReviewLevel > 1 ? (
           <div className="mb-2 text-[12px] font-medium whitespace-nowrap" style={{ color: 'var(--gbd-ink)' }}>동네 리뷰어 Lv.{minReviewLevel} 전용</div>
         ) : null}
         {isOwner && onManage ? <OwnerManagePanel onManage={onManage} compact /> : (
         <div className="flex items-center gap-3">
-          {!isPrelaunch && (
-            <div className="shrink-0 min-w-0">
-              {refPrice > unitPrice && <div className="text-[12px] line-through" style={{ color: 'var(--gbd-sub2)' }}>{formatNumber(refPrice * quantity)}원</div>}
-              <div className="text-[24px] font-bold tracking-[-.02em] leading-tight" style={{ color: 'var(--gbd-ink)' }}>
-                {discountPct > 0 && <span className="mr-1 text-[17px]" style={{ color: 'var(--sale)' }}>{discountPct}%</span>}
-                {formatNumber(total)}원
-              </div>
-            </div>
-          )}
-          <button
-            onClick={isPrelaunch ? () => document.getElementById('fcfs-apply-block')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) : () => setOpen(true)}
-            disabled={(!isJoinable && !isPrelaunch) || joining}
-            aria-haspopup={isPrelaunch ? undefined : 'dialog'}
-            className="flex-1 h-[52px] border-0 rounded-xl text-[17px] font-bold flex items-center justify-center"
-            style={{ background: ctaOn ? 'var(--gbd-cta-bg)' : 'var(--gbd-sub2)', color: 'var(--gbd-cta-fg)', cursor: ctaOn ? 'pointer' : 'default' }}
+          {!isPrelaunch && <BuyBarPrice strike={refPrice > unitPrice ? refPrice * quantity : null} discountPct={discountPct} amount={total} />}
+          <BuyBarCta
+            on={ctaOn}
+            onClick={raffle ? fcfs.apply : isPrelaunch ? () => document.getElementById('fcfs-apply-block')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) : () => { if (!fcfs.pending) setOpen(true) }}
+            disabled={raffle ? !ctaOn || fcfs.busy : (!isJoinable && !isPrelaunch) || joining}
+            aria-haspopup={raffle || isPrelaunch ? undefined : 'dialog'}
           >
-            {joining ? '처리 중…' : isPrelaunch ? '사전 응모하기' : !isJoinable ? '구매 불가' : verb}
-          </button>
+            {raffle ? fcfs.ctaLabel : joining ? '처리 중…' : isPrelaunch ? '사전 응모하기' : !isJoinable ? '구매 불가' : verb}
+          </BuyBarCta>
         </div>
         )}
-      </div>
-    </footer>
+    </BuyBarFrame>
 
     {/* 🧾 구매 창 — 수량 · 딜 사용 · 결제. 결제 버튼은 종전 바의 버튼과 같은 onJoin 을 부른다. */}
-    {open && !isPrelaunch && !isOwner && (
+    {open && !isPrelaunch && !isOwner && !raffle && (
       <div className="fixed inset-0 lg:hidden" style={{ zIndex: Z.SHEET_BACKDROP }} role="dialog" aria-modal="true" aria-label="구매 옵션">
         <button type="button" aria-label="닫기" onClick={() => setOpen(false)} className="absolute inset-0 w-full h-full border-0 cursor-default" style={{ background: 'rgba(22,24,28,.45)' }} />
         <div className="absolute inset-x-0 bottom-0 rounded-t-3xl" style={{ zIndex: Z.SHEET_BODY, background: 'var(--gbd-bg)', padding: '12px 16px calc(16px + env(safe-area-inset-bottom))' }}>

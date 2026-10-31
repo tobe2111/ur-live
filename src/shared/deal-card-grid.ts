@@ -17,3 +17,20 @@
  * ⚠️ 새 격자를 만들 때 `gap-3` 을 손으로 적지 말 것 — `deal-card-grid` 가드가 잡는다.
  */
 export const DEAL_GRID_GAP = 'gap-x-3 gap-y-8 lg:gap-x-4 lg:gap-y-8'
+
+/**
+ * 📋 2026-10-31 대표 시안 10(NOL식 줄 목록 — *"사진 크기 비율들도 맞춰서"*): 폰 홈의 카드는 **한 줄에 하나**,
+ * 왼쪽 108px 정사각 사진 + 오른쪽 정보. 태블릿·PC(md+)는 종전 격자 그대로다(`md:` 가 되돌린다).
+ * 카드 안쪽(사진 비율·본문 여백)은 **카드를 안 고치고** 바깥에서 자식 선택자로 바꾼다 — 카드 소스의 격자 계약이 그대로 남는다.
+ * 카드(`GroupBuyFeedCard` `row`)·자리 카드·워커 첫 화면(`home-first-screen.ts`)이 **이 상수를 같이** 쓴다 — 갈리면 마운트 때 튄다.
+ */
+export const DEAL_ROW = {
+  /** 줄 목록 격자 — 폰 1열, md+ 는 종전 4열 격자. */
+  // ⚠️ 글자 그대로 적는다 — 조립하면 tailwind 가 클래스를 못 본다. md+ 간격은 `DEAL_GRID_GAP` 과 같은 값.
+  grid: 'grid grid-cols-1 gap-y-6 md:grid-cols-4 md:gap-x-3 md:gap-y-8 lg:gap-x-4 lg:gap-y-8',
+  /** 링크 — 마지막 자식(본문)은 남은 폭을 다 쓰고 위 여백 0(사진 위끝과 글자 위끝을 맞춘다). */
+  // 기본(세로 카드) 클래스를 그대로 두고 폰(max-md)에서만 덮는다 — 카드가 기본 클래스 줄을 리터럴로 유지할 수 있게.
+  link: 'block group active:scale-[0.98] flex flex-col max-md:flex-row max-md:items-start max-md:gap-4 max-md:[&>*:last-child]:min-w-0 max-md:[&>*:last-child]:flex-1 max-md:[&>*:last-child]:pt-0',
+  /** 사진 칸 — 108px 정사각(md+ 는 종전 4:3 꽉 채움). */
+  mediaBox: 'w-[108px] shrink-0 [&>*]:aspect-square md:w-full md:[&>*]:aspect-[4/3]',
+} as const
