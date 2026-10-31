@@ -8,12 +8,14 @@
  *
  * 주인 본인에게는 안 보인다(자기 가게를 담거나 신청할 일이 없다 — 서버도 막는다).
  */
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { usePinAction } from '@/features/curator/hooks/usePinAction'
 import api from '@/lib/api'
 import { formatNumber } from '@/utils/format'
-import { FOLLOWER_WORD, PLATFORM_LABEL, type SeedingOffer } from '@/shared/seeding'
-import SeedingApplySheet from './SeedingApplySheet'
+import { FOLLOWER_WORD, PLATFORM_LABEL } from '@/shared/seeding-labels'
+import type { SeedingOffer } from '@/shared/seeding'
+// 신청 시트는 누를 때만 받는다 — 상세 첫 화면 무게에 넣지 않는다(surface-budgets).
+const SeedingApplySheet = lazy(() => import('./SeedingApplySheet'))
 
 type OfferView = (SeedingOffer & { slots_left: number }) | { enabled: false }
 
@@ -58,7 +60,7 @@ export default function SellThisCard({ productId, price, hideForOwner: isOwner }
           ? `무상 체험 제공: ${on.platforms.map((p) => PLATFORM_LABEL[p]).join('·')} ${FOLLOWER_WORD[on.platforms[0]]} ${formatNumber(on.min_followers)}명 이상, 이번 달 남은 자리 ${formatNumber(on.slots_left)}`
           : offer ? '이 매장은 무상 체험을 제공하지 않아요. 유어샵에 담아 판매만 할 수 있어요.' : '체험 정보를 확인하는 중'}
       </p>
-      {open && on && <SeedingApplySheet productId={productId} offer={on} onClose={() => setOpen(false)} />}
+      {open && on && <Suspense fallback={null}><SeedingApplySheet productId={productId} offer={on} onClose={() => setOpen(false)} /></Suspense>}
     </div>
   )
 }

@@ -16,20 +16,9 @@
  * 화면과 서버가 같은 표를 읽는다 — 두 벌이면 화면이 "신청 가능" 이라 하고 서버가 거절한다.
  */
 
-export const SEEDING_PLATFORMS = ['instagram', 'youtube', 'tiktok'] as const
-export type SeedingPlatform = (typeof SEEDING_PLATFORMS)[number]
-
-export const PLATFORM_LABEL: Record<SeedingPlatform, string> = {
-  instagram: '인스타그램',
-  youtube: '유튜브',
-  tiktok: '틱톡',
-}
-/** 플랫폼마다 "팔로워" 를 부르는 말이 다르다. */
-export const FOLLOWER_WORD: Record<SeedingPlatform, string> = {
-  instagram: '팔로워',
-  youtube: '구독자',
-  tiktok: '팔로워',
-}
+export { SEEDING_PLATFORMS, PLATFORM_LABEL, FOLLOWER_WORD } from './seeding-labels'
+export type { SeedingPlatform } from './seeding-labels'
+import { SEEDING_PLATFORMS, PLATFORM_LABEL, FOLLOWER_WORD, type SeedingPlatform } from './seeding-labels'
 
 export function isSeedingPlatform(v: unknown): v is SeedingPlatform {
   return typeof v === 'string' && (SEEDING_PLATFORMS as readonly string[]).includes(v)
