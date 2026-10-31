@@ -40,14 +40,16 @@ describe('① 자리 분기의 순서', () => {
   })
   it('자리 카드는 DealCardPlaceholder 로 그린다(13px 막대 둘로 돌아가지 않는다)', () => {
     const s = skeletonBranch()
-    expect(s.match(/<DealCardPlaceholder\b/g)?.length).toBeGreaterThanOrEqual(2)
+    // 🧾 2026-10-31 (Y2): PC 는 격자 자리(`DealCardPlaceholder`), 모바일은 한 줄 자리(`DealRowPlaceholder`).
+    expect(s.match(/<DealCardPlaceholder\b/g)?.length).toBeGreaterThanOrEqual(1)
+    expect(s.match(/<DealRowPlaceholder\b/g)?.length).toBeGreaterThanOrEqual(1)
     expect(s).not.toMatch(/h-\[13px\]/)
   })
 })
 
 describe('② 자리 카드 = 진짜 카드의 줄 구조', () => {
   const rows: Array<[string, RegExp, RegExp]> = [
-    ['사진 비율', /aspectClass="aspect-\[4\/3\]"/, /aspect-\[4\/3\]/],
+    ['사진 비율', /'aspect-\[4\/3\]'/, /aspect-\[4\/3\]/], // 🧾 2026-10-31: 격자/한 줄 삼항이 됐다(격자 쪽 값)
     ['본문 여백', /<div className="pt-3">/, /<div className="pt-3">/],  // 2026-10-25 메인 D안
     ['가게 줄', /text-\[12px\] leading-none mb-1/, /text-\[12px\] leading-none mb-1/],
     ['이름 줄', /text-\[15px\] font-medium line-clamp-2 leading-snug/, /text-\[15px\] font-medium leading-snug/],
@@ -74,5 +76,23 @@ describe('③ 진짜 카드를 빌리지 않는다', () => {
   })
   it('스크린리더에 안 읽힌다', () => {
     expect(ph).toMatch(/aria-hidden="true"/)
+  })
+})
+
+describe('④ 한 줄 자리(Y2) = 진짜 한 줄 카드와 같은 상수', () => {
+  // 🧾 2026-10-31 (대표 확정 Y2): 본문 높이가 120 으로 고정이라 같은 상수만 쓰면 자리와 진짜 줄의 높이가 언제나 같다.
+  it('줄·사진칸·사진 모양·본문·하단 줄을 HOME_ROW_CLS 로 세운다', () => {
+    const rowPh = ph.slice(ph.indexOf('export function DealRowPlaceholder'))
+    expect(rowPh.length).toBeGreaterThan(200)
+    for (const k of ['link', 'thumb', 'mediaAspect', 'mediaBox', 'body', 'foot']) {
+      expect(rowPh, k).toContain(`HOME_ROW_CLS.${k}`)
+      expect(card, `카드도 ${k}`).toContain(`HOME_ROW_CLS.${k}`)
+    }
+  })
+  it('본문 높이가 사진과 같은 120 으로 고정돼 있다(줄마다 높이가 갈리지 않는다)', async () => {
+    const { HOME_ROW_CLS } = await import('@/shared/home-row')
+    expect(HOME_ROW_CLS.body).toMatch(/\bh-\[120px\]/)
+    expect(HOME_ROW_CLS.thumb).toMatch(/\bw-\[120px\]/)
+    expect(HOME_ROW_CLS.mediaAspect).toBe('aspect-square')
   })
 })

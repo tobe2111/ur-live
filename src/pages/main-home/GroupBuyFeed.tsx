@@ -6,6 +6,8 @@
  */
 
 import { DEAL_GRID_GAP } from '@/shared/deal-card-grid'
+import { HOME_SECTION_ROWS } from '@/shared/home-chrome'
+import { DealRowPlaceholder } from '@/components/home/DealCardPlaceholder'
 import { ClockIcon, PinIcon } from '@/components/icons/urdeal-icons'
 import { Flame, Tag } from 'lucide-react'
 import Udal from '@/components/mascot/Udal'
@@ -174,7 +176,8 @@ export default function GroupBuyFeed({
     // 📐 2026-08-24: md(768~1023, 태블릿)가 `sm` 규칙에 걸려 **3열**이었다. 편성 섹션은 4개를
     //   뿌리므로 마지막 하나가 줄에 혼자 남아 오른쪽이 텅 비었다 — 태블릿도 4열로 맞춘다.
     ? `grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 ${DEAL_GRID_GAP} pb-8`
-    : `grid grid-cols-2 sm:grid-cols-3 ${DEAL_GRID_GAP} px-4 pb-8`
+    // 🧾 2026-10-31 (대표 확정 Y2): 모바일은 **한 줄에 하나**(사진 왼쪽) — 편성 섹션과 같은 줄 카드(`layout="row"`).
+    : `${HOME_SECTION_ROWS} px-4 pb-8`
 
   // 🎯 2026-07-01 (대표 — 동네딜 추첨 응모): 활성 추첨 상품 Map(공개, 60s 캐시) → 카드에 배지 노출.
   const { fcfsMap } = useFcfsMap()
@@ -425,14 +428,14 @@ export default function GroupBuyFeed({
       {loading ? (
         <div className={gridCls}>
           {/* 🛡️ 2026-05-27 (사용자 요청): 카드 모양 shimmer skeleton — 이미지 + 텍스트 2줄 + 가격. */}
-          {Array.from({ length: 6 }).map((_, i) => (
+          {Array.from({ length: 6 }).map((_, i) => pc ? (
             <div key={i} className="flex flex-col gap-2">
               <div className="aspect-square rounded-xl skeleton-shimmer" />
               <div className="h-3 w-3/4 rounded skeleton-shimmer mt-1" />
               <div className="h-4 w-1/2 rounded skeleton-shimmer" />
               <div className="h-2.5 w-1/3 rounded skeleton-shimmer" />
             </div>
-          ))}
+          ) : <DealRowPlaceholder key={i} />)}
         </div>
       ) : isError && sorted.length === 0 ? (
         // 🛡️ 2026-06-26 (소비자 감사 P0): fetch 실패를 '공구 없음'(죽은 마켓)으로 위장하지 않음 — 재시도 노출.
@@ -446,7 +449,7 @@ export default function GroupBuyFeed({
         // 🛡️ 2026-05-20: 빈 상태 — 카테고리 결과 없으면 전체로 자동 fallback fetch.
         feedFiltersKey(filters).replace('|', '') ? (
           <p className="px-4 py-16 text-center text-[15px] text-gray-500 dark:text-gray-400">{hunting ? '조건에 맞는 이용권을 찾고 있어요…' : '조건에 맞는 이용권이 아직 없어요. 거리나 가격을 넓혀 보세요.'}</p>
-        ) : <EmptyStateWithFallback category={category} onReset={() => setCategory('all')} />
+        ) : <EmptyStateWithFallback category={category} onReset={() => setCategory('all')} pc={pc} />
       ) : (
         <>
         {/* 🗺️ 2026-07-19: 지역 매칭 0 → 전체 폴백 사실을 명시(조용한 오표시 방지 — "부산인데 서울 딜?" 오해 차단). */}
@@ -460,7 +463,7 @@ export default function GroupBuyFeed({
         {/* 📐 2026-10-13: `ur-cv-grid` — 화면 밖 카드는 레이아웃을 건너뛴다(index.css 머리말).
             ⚠️ 뒤로가기로 돌아온 경우엔 끈다 — 새로 그린 칸은 높이를 기억하지 못해(추정 260px) 스크롤 복원이
             다른 카드에 내려앉는다. 그 경우는 처음부터 전부 실제 높이로 그린다. */}
-        <div className={restoring ? gridCls : `${gridCls} ur-cv-grid`}>
+        <div className={restoring ? gridCls : `${gridCls} ${pc ? 'ur-cv-grid' : 'ur-cv-deal-rows'}`}>
           {/* 🛡️ 2026-05-24 (loading P0): 첫 4개 카드 = above-fold → eager + fetchpriority=high (LCP 단축).
               나머지는 lazy 유지 (scroll 시 자연 로드). */}
           {/* 🎯 2026-07-02 (대표 "첫 페인트에 응모/추첨 배지 늦게 등장"): 피드 응답에 서버 enrich 된
@@ -468,7 +471,7 @@ export default function GroupBuyFeed({
           {sorted.slice(0, renderCap).map((p, idx) => {
             const emb = (p as { fcfs?: { enabled?: boolean; prelaunch?: boolean; spots?: number; appliedDisplay?: number; deadline?: string | null } }).fcfs
             const seed = emb?.enabled ? { spots: emb.spots || 0, appliedDisplay: emb.appliedDisplay || 0, deadline: emb.deadline ?? null, prelaunch: !!emb.prelaunch } : undefined
-            return <GroupBuyFeedCard key={p.id} p={p} aboveFold={firstScreen && idx < 4} fcfs={fcfsMap.get(p.id) ?? seed} imgWidth={cardImgWidth} userLoc={userLoc} />
+            return <GroupBuyFeedCard key={p.id} p={p} layout={pc ? 'grid' : 'row'} aboveFold={firstScreen && idx < 4} fcfs={fcfsMap.get(p.id) ?? seed} imgWidth={cardImgWidth} userLoc={userLoc} />
           })}
         </div>
         </>
@@ -510,7 +513,7 @@ export default function GroupBuyFeed({
  *   사용자 의도: "다른 지역 보기 버튼만" 보다 "인접 공구 자동 노출" 이 마찰 ↓.
  *   (백엔드 region 필터 미지원 → category 만 'all' 로 폴백. 향후 region 도입 시 동일 패턴 확장.)
  */
-function EmptyStateWithFallback({ category, onReset }: { category: CategoryKey; onReset: () => void }) {
+function EmptyStateWithFallback({ category, onReset, pc = false }: { category: CategoryKey; onReset: () => void; pc?: boolean }) {
   // 🛡️ 2026-05-22: useQuery — 메인 피드에서 'all' fetch 되면 캐시 hit (중복 호출 X).
   //   메인 GroupBuyFeed 가 category='all' 이미 fetch 했으면 즉시 사용.
   const { data: fallback = [], isLoading: fbLoading } = useQuery<FeedProduct[]>({
@@ -589,8 +592,8 @@ function EmptyStateWithFallback({ category, onReset }: { category: CategoryKey; 
               ))}
             </div>
           ) : fallback && fallback.length > 0 ? (
-            <div className={`grid grid-cols-2 sm:grid-cols-3 ${DEAL_GRID_GAP}`}>
-              {fallback.map(p => <GroupBuyFeedCard key={p.id} p={p} />)}
+            <div className={pc ? `grid grid-cols-2 sm:grid-cols-3 ${DEAL_GRID_GAP}` : HOME_SECTION_ROWS}>
+              {fallback.map(p => <GroupBuyFeedCard key={p.id} p={p} layout={pc ? 'grid' : 'row'} />)}
             </div>
           ) : null}
         </>

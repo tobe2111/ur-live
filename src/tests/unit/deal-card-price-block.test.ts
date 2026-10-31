@@ -21,7 +21,8 @@ import { resolve } from 'node:path'
 
 const SRC = readFileSync(resolve(__dirname, '../../pages/main-home/GroupBuyFeedCard.tsx'), 'utf-8')
 /** 사진 오버레이 영역 = <DealCardMedia> 의 overlay prop 안. 그 밖이 카드 본문이다. */
-const overlay = SRC.slice(SRC.indexOf('overlay={'), SRC.indexOf('      <div className="pt-'))
+// 🧾 2026-10-31 (Y2): 사진 상자가 `const media` 로 빠지고 그 뒤에 한 줄 카드가 온다 — 오버레이는 그 상자 안까지만.
+const overlay = SRC.slice(SRC.indexOf('overlay={'), SRC.indexOf('const href ='))
 const body = SRC.slice(SRC.indexOf('      <div className="pt-'))
 
 describe('이용권 카드 가격 블록', () => {

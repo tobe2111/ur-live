@@ -72,7 +72,9 @@ describe('홈 피드 배선', () => {
 describe('화면 밖 카드는 레이아웃을 건너뛴다(content-visibility)', () => {
   it('홈 피드 카드 그리드에 ur-cv-grid 가 붙고, CSS 가 auto 높이 기억과 함께 정의돼 있다', () => {
     const feed = readFileSync('src/pages/main-home/GroupBuyFeed.tsx', 'utf8')
-    expect(feed).toMatch(/<div className=\{restoring \? gridCls : `\$\{gridCls\} ur-cv-grid`\}>\s*\{\/\* 🛡️ 2026-05-24 \(loading P0\)/)
+    // 🧾 2026-10-31 (Y2): 모바일은 한 줄 카드라 추정 높이가 다른 규칙(`ur-cv-deal-rows`, 153px)을 쓴다 — 둘 다 같은 자리.
+    expect(feed).toMatch(/<div className=\{restoring \? gridCls : `\$\{gridCls\} \$\{pc \? 'ur-cv-grid' : 'ur-cv-deal-rows'\}`\}>\s*\{\/\* 🛡️ 2026-05-24 \(loading P0\)/)
+    expect(readFileSync('src/index.css', 'utf8')).toMatch(/\.ur-cv-deal-rows > \* \{[^}]*content-visibility:\s*auto[^}]*contain-intrinsic-size:\s*auto 153px/)
     const css = readFileSync('src/index.css', 'utf8')
     const rule = css.match(/\.ur-cv-grid > \* \{([^}]*)\}/)?.[1] ?? ''
     expect(rule).toMatch(/content-visibility:\s*auto/)

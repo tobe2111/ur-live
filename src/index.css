@@ -1262,6 +1262,11 @@ html.dark .gbd, [data-theme="dark"] .gbd {
   content-visibility: auto;
   contain-intrinsic-size: auto 112px;
 }
+/* 홈 이용권 한 줄 카드(Y2 — `shared/home-row.ts`): 사진 120 + 위아래 16 + 선 1 = 153 고정. */
+.ur-cv-deal-rows > * {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 153px;
+}
 
 /* 🎨 2026-08-19 (대표 확정 — 그루폰식 색면 홈): 잉크 색면 위에 뜨는 **흰 패널**.
    그루폰 홈이 초록 배경 위에 흰 카드 패널을 얹는 그 구조를 우리 색면(--home-field)으로 한다.

@@ -118,36 +118,36 @@
       ]
     },
     "이용권 상세": {
-      "execKB": 317,
-      "loadedKB": 671.2,
+      "execKB": 321.5,
+      "loadedKB": 682.8,
       "top": [
         [
           "react-core.js",
-          66.4
+          66.3
         ],
         [
           "locale-ko.js",
-          49.4
+          47.6
         ],
         [
           "index.js",
-          34.3
+          35.3
         ],
         [
           "lz-gbDetail.js",
-          33.1
+          34.7
         ],
         [
           "app-utils.js",
-          22.6
+          22.8
         ],
         [
           "lz-common.js",
-          19.8
+          22
         ],
         [
           "react-router.js",
-          13.8
+          13.7
         ],
         [
           "tanstack-query.js",
@@ -532,6 +532,13 @@
       "reason": "검사 하네스가 /api/sections 스텁을 갖게 돼(라이브처럼 '지금 인기 이용권' 섹션이 그려짐) 홈 실행량이 늘었다. 제품 코드 증가 아님 — main 빌드에 같은 스텁만 넣어도 PC 홈 378.0→379.2KB(같은 기계). 늘어난 것: lz-home-homePc +1.6(섹션 카드 렌더)",
       "changes": [
         "홈(PC): 실행된 JS 374.6 → 379.3 KB (+4.7, 허용 4) · 늘어난 것: lz-home-homePc.js +2.0, codes.js +1.6, index.js +1.0, lz-common.js +0.6"
+      ]
+    },
+    {
+      "date": "2026-10-31",
+      "reason": "2026-10-31 메인 이용권 한 줄 카드(Y2) — 상세의 '이 가게 다른 딜' 이 같은 카드(GroupBuyFeedCard)를 써 lz-common 이 함께 커졌다(+2.2). 대표 확정 기능",
+      "changes": [
+        "이용권 상세: 실행된 JS 317 → 321.5 KB (+4.5, 허용 4) · 늘어난 것: lz-common.js +2.2, lz-gbDetail.js +1.6, index.js +1.0"
       ]
     }
   ]

@@ -10,12 +10,11 @@
  */
 
 /**
- * 섹션 가로 줄(모바일) — 카드가 한 장 반쯤 보여 "옆으로 넘긴다" 를 말한다.
- * 카드 폭 68%: 첫 화면 사진은 200px 폭으로 미리 받는데(`home-card-preload`) 2배 화면에서 400px 라
- * 이 폭(약 230px)까지 선명하다. 더 넓히면 사진이 흐려지고, 그 폭을 올리면 preload 와 URL 이 갈린다.
- *
- * 📏 상품명은 늘 두 줄 자리를 잡는다(`min-h-[2lh]`) — 카드가 넓어져 짧은 이름은 한 줄이 되는데,
- *   자리표시는 두 줄이라 응답 순간 아래 유어쇼츠 줄이 20px 올라왔다(layout-shift 실측). 줄 안 카드 높이도 같아진다.
+ * 🧾 섹션 목록(모바일) — 2026-10-31 대표 확정 **Y2** *"y2대로 해줘 모두"*: 이용권을 **한 줄에 하나**(사진 왼쪽).
+ *   10-26 의 가로 넘김 줄(`HOME_SECTION_RAIL`)을 대체한다. 줄 모양은 `shared/home-row.ts`.
+ *   목록 자체는 세로로 쌓이기만 하므로 클래스가 거의 없다 — 그래도 **상수로 둔다**(워커가 같은 값을 그려야 한다).
  */
-export const HOME_SECTION_RAIL =
-  'flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-hide [&>*]:snap-start [&>*]:shrink-0 [&>*]:w-[68%] [&_.line-clamp-2]:min-h-[2lh]'
+export const HOME_SECTION_ROWS = 'flex flex-col'
+
+/** 모바일 섹션 하나에 보이는 줄 수 — 더보기가 있을 때만 자른다(시안 FeedY2Full). */
+export const HOME_SECTION_ROWS_MAX = 4

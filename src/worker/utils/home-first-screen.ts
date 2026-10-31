@@ -53,7 +53,8 @@ import { nearSubtitle } from '../../shared/home-near'
 import { HOME_H1 } from '../../shared/seo/consumer-surfaces'
 import { cfImage, cfSrcSet } from '../../utils/cf-image'
 import { DEAL_CAT_LABELS } from '../../shared/deal-cats'
-import { HOME_SECTION_RAIL } from '../../shared/home-chrome'
+import { HOME_SECTION_ROWS } from '../../shared/home-chrome'
+import { HOME_ROW_CLS, homeRowMeta, homeRowSold } from '../../shared/home-row'
 import { HOME_CARD_ABOVE_FOLD, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_MAX_DPR } from '../../shared/home-card-image'
 import { canonicalDetailPath } from '../../shared/product-flow'
 import { priceDisplay } from '../../shared/price-display'
@@ -93,7 +94,7 @@ export const HOME_FS_CLASS = {
   secHead: 'flex items-end justify-between gap-4 mb-3',
   secTitle: 'text-[17px] font-bold tracking-tight text-gray-900 dark:text-white',
   secSub: 'mt-1 text-[13px] text-gray-500 dark:text-gray-400',
-  rail: HOME_SECTION_RAIL,
+  rail: HOME_SECTION_ROWS,
   cardLink: 'block group active:scale-[0.98] flex flex-col',
   media: 'relative aspect-[4/3] w-full overflow-hidden group/media rounded-xl bg-gray-100 dark:bg-[#222225]',
   cover: 'absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]',
@@ -144,6 +145,7 @@ export interface SeedProduct {
   discount_rate?: number | null
   avg_rating?: number | null
   review_count?: number | null
+  sold_count?: number | null
 }
 interface SectionsSeed {
   data?: Array<{ id?: number | string; title?: string | null; subtitle?: string | null; near?: boolean; products?: SeedProduct[] }>
@@ -157,6 +159,16 @@ function starHtml(value: number): string {
     `<span class="${HOME_FS_CLASS.starFill}" style="width:${pct}%" aria-hidden="true">★★★★★</span>` +
     `</span>`
   )
+}
+
+/** 카드 사진 `<img>` — 격자·한 줄 두 모양이 **같은 함수**(같은 URL·srcset = 워커 preload 와 한 글자도 안 다르다). */
+function cardImgHtml(p: SeedProduct, eager: boolean): string {
+  const src = p.image_url || ''
+  const resized = src ? cfImage(src, { width: HOME_CARD_IMG_WIDTH_BASE, format: 'auto' }) || src : ''
+  const set = src ? cfSrcSet(src, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_MAX_DPR) : ''
+  return resized
+    ? `<img src="${escAttr(resized)}"${set ? ` srcset="${escAttr(set)}"` : ''} sizes="${escAttr(homeCardSizes(HOME_CARD_IMG_WIDTH_BASE))}" alt="${escAttr(p.name || '')}" loading="${eager ? 'eager' : 'lazy'}" fetchpriority="${eager ? 'high' : 'auto'}" decoding="async" class="${HOME_FS_CLASS.cover}">`
+    : ''
 }
 
 /** 🏨 2026-10-19 숙소 목록 첫 화면도 이 카드를 쓴다(`stays-first-screen.ts`) — 카드는 한 벌이다. `href` 는 숙소의 날짜·인원 링크. */
@@ -177,12 +189,7 @@ export function cardHtml(p: SeedProduct, eager: boolean, hrefOverride?: string):
   const reviewCount = p.review_count ?? 0
 
   // 🖼️ 사진 — 카드와 **같은 함수·같은 폭**(모바일 전용이라 base 폭 하나로 끝난다).
-  const src = p.image_url || ''
-  const resized = src ? cfImage(src, { width: HOME_CARD_IMG_WIDTH_BASE, format: 'auto' }) || src : ''
-  const set = src ? cfSrcSet(src, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_MAX_DPR) : ''
-  const img = resized
-    ? `<img src="${escAttr(resized)}"${set ? ` srcset="${escAttr(set)}"` : ''} sizes="${escAttr(homeCardSizes(HOME_CARD_IMG_WIDTH_BASE))}" alt="${escAttr(p.name || '')}" loading="${eager ? 'eager' : 'lazy'}" fetchpriority="${eager ? 'high' : 'auto'}" decoding="async" class="${HOME_FS_CLASS.cover}">`
-    : ''
+  const img = cardImgHtml(p, eager)
 
   return (
     `<a href="${escAttr(href)}" class="${HOME_FS_CLASS.cardLink}">` +
@@ -209,6 +216,48 @@ export function cardHtml(p: SeedProduct, eager: boolean, hrefOverride?: string):
     `<span class="${HOME_FS_CLASS.price}">${formatNumber(price)}${unit}</span>` +
     (p.category === 'stay_voucher' && price > 0 ? `<span class="${HOME_FS_CLASS.perNight}">/1박~</span>` : '') +
     `</p></div></div></a>`
+  )
+}
+
+/**
+ * 🧾 한 줄 카드(Y2) — 화면의 `GroupBuyFeedCard layout="row"` 와 같은 상수(`HOME_ROW_CLS`)로 그린다.
+ *   거리는 서버가 모른다(내 위치) → 지역 이름. 한 줄 말줄임이라 마운트 때 거리로 바뀌어도 높이는 같다.
+ *   사진 URL·srcset 은 격자 카드와 **같은 함수·같은 폭**(200) — 워커 preload 와 한 글자도 안 다르다.
+ */
+export function rowCardHtml(p: SeedProduct, eager: boolean, hrefOverride?: string): string {
+  const href = hrefOverride ?? canonicalDetailPath(p) ?? `/pass/${p.id}`
+  const store = p.restaurant_name || p.brand_name || p.gc_brand_name || null
+  const onnuri = !!p.onnuri_merchant
+  const menu = stripStorePrefix(p.name || '', p.restaurant_name || undefined)
+  const { price, originalPrice, discount } = priceDisplay({
+    price: p.current_price ?? p.price ?? 0,
+    original_price: p.original_price ?? undefined,
+    discount_rate: p.discount_rate ?? undefined,
+  })
+  const unit = Number(p.deal_only) === 1 ? ' 딜' : '원'
+  const rating = p.avg_rating ?? 0
+  const reviewCount = p.review_count ?? 0
+  const img = cardImgHtml(p, eager)
+  const C = HOME_ROW_CLS
+  return (
+    `<a href="${escAttr(href)}" class="${C.link}">` +
+    `<div class="${C.thumb}"><div class="relative ${C.mediaAspect} w-full overflow-hidden group/media ${C.mediaBox}">${img}</div></div>` +
+    `<div class="${C.body}">` +
+    `<p class="${C.meta}">${escText(homeRowMeta(p.category, null, p.restaurant_address))}</p>` +
+    `<p class="${C.store}"><span class="truncate">${escText(store || menu)}</span>` +
+    (onnuri ? `<span class="${C.onnuri}">온누리</span>` : '') + `</p>` +
+    (store ? `<p class="${C.menu} ${rating > 0 ? C.menu1 : C.menu2}">${escText(menu)}</p>` : '') +
+    (rating > 0
+      ? `<p class="${C.rateRow}"><span class="${C.star}" aria-hidden="true">★</span><span class="${C.rateNum}">${rating.toFixed(1)}</span>` +
+        (reviewCount > 0 ? `<span>(${formatNumber(reviewCount)})</span>` : '') + `</p>`
+      : '') +
+    `<div class="${C.foot}"><span class="${C.sold}">${escText(homeRowSold(p.sold_count))}</span><div class="${C.priceBox}">` +
+    (originalPrice > price && originalPrice > 0 ? `<p class="${C.orig}">${formatNumber(originalPrice)}${unit}</p>` : '') +
+    `<p class="${C.priceRow}">` +
+    (discount > 0 ? `<span class="${C.discount}">${discount}%</span>` : '') +
+    `<span class="${C.price}">${formatNumber(price)}${unit}</span>` +
+    (p.category === 'stay_voucher' && price > 0 ? `<span class="${C.perNight}">/1박~</span>` : '') +
+    `</p></div></div></div></a>`
   )
 }
 
@@ -280,7 +329,7 @@ export function buildHomeFirstScreen(sectionsSeedJson: string, loaderHtml: strin
   const products = (sec?.products ?? []).filter(p => p && p.id != null).slice(0, HOME_CARD_ABOVE_FOLD)
   if (!sec || products.length === 0 || !sec.title) return ''
 
-  const cards = products.map((p, i) => cardHtml(p, i < HOME_CARD_ABOVE_FOLD)).join('')
+  const cards = products.map((p, i) => rowCardHtml(p, i < HOME_CARD_ABOVE_FOLD)).join('')
   const body =
     `<div class="${HOME_FS_CLASS.root}">` +
     // 🩸 2026-10-13 — 크롤러가 받는 홈 문서에 제목 요소가 h3 하나뿐이었다. `sr-only` 라 박스가

@@ -23,6 +23,7 @@ import type { FcfsInfo } from '@/features/group-buy/useFcfs'
 import type { Product } from './types'
 import { priceDisplay } from '@/shared/price-display'
 import { runAfterLoad } from '@/lib/after-load'
+import { HOME_ROW_CLS, homeRowMeta, homeRowSold } from '@/shared/home-row'
 
 /**
  * 🖼️ 사진 없는 카드의 자리표시 (2026-08-30 — 이모지 → 선 아이콘)
@@ -121,7 +122,15 @@ function warmStay(id: number | string) {
  *   ⚠️ 사진 위가 아니라 **본문 맨 위**다 — 2026-08-31 대표 지시("할인율이 사진 안으로 들어가면
  *      안돼")와 같은 이유로, 사진은 상품을 보여주는 자리이지 배지를 얹는 자리가 아니다.
  */
-function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc, to, flags, hideWishlist = false, titleNode, overlayExtra, className = '' }: { p: FeedCardProduct; aboveFold?: boolean; fcfs?: FcfsInfo; imgWidth?: number; userLoc?: { lat: number; lng: number } | null; to?: string; flags?: ReactNode; hideWishlist?: boolean; titleNode?: ReactNode; overlayExtra?: ReactNode; className?: string }) {
+/**
+ * 🧾 `layout="row"` — 2026-10-31 대표 확정 **Y2**(*"y2대로 해줘 모두"*): 모바일 홈의 이용권을 **한 줄에 하나**로.
+ *   [사진 120 정사각 왼쪽] · [종류·거리 / 가게 / 메뉴 두 줄 / ★ / 구매 수 · 가격 오른쪽 아래].
+ *   ⚠️ 잠긴 로딩 계약(`React.memo` · viewport prefetch `rootMargin:'100px'` · hover/touch/focus prefetch ·
+ *      aboveFold eager · 이미지 fade-in · 대표색 추출)은 **두 모양이 같은 코드**를 지난다 — 바뀌는 것은 배치뿐.
+ *   사진 해상도는 그대로(`imgWidth` 200) — 워커 preload 와 URL 이 같아야 사진을 두 번 안 받는다.
+ *   클래스는 워커 첫 화면과 같은 상수(`shared/home-row.ts`).
+ */
+function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc, to, flags, hideWishlist = false, titleNode, overlayExtra, className = '', layout = 'grid' }: { p: FeedCardProduct; aboveFold?: boolean; fcfs?: FcfsInfo; imgWidth?: number; userLoc?: { lat: number; lng: number } | null; to?: string; flags?: ReactNode; hideWishlist?: boolean; titleNode?: ReactNode; overlayExtra?: ReactNode; className?: string; layout?: 'grid' | 'row' }) {
   // 🛡️ 2026-05-22 Phase 2 (100% 영구): hover / touch 즉시 prefetch → 클릭 시 0ms.
   const prefetchGb = usePrefetchGroupBuyProduct()
   // 🏨 2026-10-15 (대표 승인 "허가 — 대상만 수정"): 미리받기 **대상**이 목적지를 따른다. 숙소 카드(/stays/:id)는
@@ -232,24 +241,8 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
   const cText = 'text-gray-900 dark:text-white'
   const cAccent = 'text-brand-text'
 
-  return (
-    <Link
-      ref={linkRef}
-      // 🏨 2026-07-20 (숙소 상세 SSOT): 숙소 카드는 객실·날짜 예약이 있는 /stays/:id 로 —
-      //   목적지는 canonicalDetailPath(라우팅 SSOT) 위임(그 외 카테고리는 기존 /group-buy/:id 동일).
-      to={to ?? canonicalDetailPath(p) ?? `/pass/${p.id}`}
-      onMouseEnter={() => { prefetch(p.id); prefetchDetailChunk() }}
-      onTouchStart={() => { prefetch(p.id); prefetchDetailChunk() }}
-      onFocus={() => { prefetch(p.id); prefetchDetailChunk() }}
-      // 🧹 2026-08-19 (대표 신고 — "그루폰처럼 테두리를 없애줘. AI가 만든 티가 나"):
-      //   **테두리·카드 배경·박스 그림자**를 걷어낸다. 그루폰 카드는 컨테이너가 아니라
-      //   [둥근 사진] + 그 아래 맨 텍스트다 — 흰 패널이 이미 배경을 맡고 있어 박스가 한 겹 더 필요 없다.
-      //   (2026-08-27: 모바일만 남아 있던 대표색 카드도 여기로 통일 — 대표 "첫번째 형태로 통일".)
-      className={`block group active:scale-[0.98] flex flex-col ${className}`}
-    >
-      {/* 🖼️ 2026-08-19 (대표 시안 — 그루폰): 이미지 영역을 `DealCardMedia`(SSOT)로 교체 —
-          hover 좌우 화살표 캐러셀 + 도트. 홈 섹션 카드도 **같은 컴포넌트**를 써서 두 카드가
-          갈리지 않는다. 잠금 계약(aboveFold eager/fetchPriority·fade-in·대표색 추출)은 그대로 승계. */}
+  const row = layout === 'row'
+  const media = (
       <DealCardMedia
         cover={p.image_url}
         images={p.images}
@@ -271,9 +264,9 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
            ⇒ 해상도는 **레이아웃 열수**를 아는 부모가 정한다(`imgWidth`). lg+ 4열=322 → 400,
              그 미만(모바일 2열 · 태블릿 4열)=175~190 → 200. 둘 다 필요폭의 1.1~1.2배. */
         width={imgWidth}
-        aspectClass="aspect-[4/3]"
+        aspectClass={row ? HOME_ROW_CLS.mediaAspect : 'aspect-[4/3]'}
         /* 🧹 2026-08-19: 카드 박스가 사라졌으니 **사진 자신이** 모서리를 갖는다(그루폰과 동일). */
-        className="rounded-xl bg-gray-100 dark:bg-[#222225]"
+        className={row ? HOME_ROW_CLS.mediaBox : 'rounded-xl bg-gray-100 dark:bg-[#222225]'}
         fallback={<cat.Icon className="w-8 h-8 text-gray-400 opacity-60" aria-hidden="true" />}
         /**
          * 🎨 대표색 백필 — **결과가 달라질 때만** 돌린다(2026-08-27 부팅 프로파일).
@@ -298,15 +291,79 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
           <>
             {/* 🎯 추첨 응모 배지 — 💗 2026-08-19 우상단을 찜 하트에 내주고 **좌상단**으로 이동.
                 2026-09-07: 위에 있던 마감 배지가 사라져 좌상단이 비었다(종전 `top-9` 분기 제거). */}
-            {fcfs && <FcfsBadge info={fcfs} variant="overlay" className="absolute top-2 left-2 z-[2]" />}
+            {fcfs && <FcfsBadge info={fcfs} variant="overlay" compact={row} className={row ? 'absolute top-1.5 left-1.5 z-[2]' : 'absolute top-2 left-2 z-[2]'} />}
             {/* 💗 찜 — 그루폰 카드 우상단 하트. hover 시 나타나고(찜된 건 항상 보임) 누르면 통 튄다. */}
             {/* 🧷 `hideWishlist` — 핀 고르기 화면은 이 자리에 '추가' 버튼이 온다(둘이 겹치면 하트가 묻힌다).
                 기본값 false 라 홈·찜·유어샵은 출력 불변. */}
-            {!hideWishlist && <WishlistHeart productId={p.id} className="absolute top-2 right-2 z-[3]" />}
+            {!hideWishlist && <WishlistHeart productId={p.id} className={row ? "absolute bottom-1.5 right-1.5 z-[3]" : "absolute top-2 right-2 z-[3]"} />}
             {overlayExtra}
           </>
         }
       />
+  )
+
+  const href = to ?? canonicalDetailPath(p) ?? `/pass/${p.id}`
+  const onWarm = () => { prefetch(p.id); prefetchDetailChunk() }
+
+  if (row) {
+    const store = p.restaurant_name || brandName
+    const menuText = titleNode ?? stripStorePrefix(p.name, p.restaurant_name)
+    const sold = homeRowSold(soldCount)
+    return (
+      <Link ref={linkRef} to={href} onMouseEnter={onWarm} onTouchStart={onWarm} onFocus={onWarm} className={`${HOME_ROW_CLS.link} ${className}`}>
+        <div className={HOME_ROW_CLS.thumb}>{media}</div>
+        <div className={HOME_ROW_CLS.body}>
+          {flags}
+          <p className={HOME_ROW_CLS.meta}>{homeRowMeta(rawCategory, distKm, p.restaurant_address)}</p>
+          <p className={HOME_ROW_CLS.store}>
+            <span className="truncate">{store || menuText}</span>
+            {p.onnuri_merchant && <span className={HOME_ROW_CLS.onnuri}>온누리</span>}
+          </p>
+          {store && <p className={`${HOME_ROW_CLS.menu} ${rating > 0 ? HOME_ROW_CLS.menu1 : HOME_ROW_CLS.menu2}`}>{menuText}</p>}
+          {rating > 0 && (
+            <p className={HOME_ROW_CLS.rateRow}>
+              <span className={HOME_ROW_CLS.star} aria-hidden="true">★</span>
+              <span className={HOME_ROW_CLS.rateNum}>{rating.toFixed(1)}</span>
+              {reviewCount > 0 && <span>({formatNumber(reviewCount)})</span>}
+            </p>
+          )}
+          <div className={HOME_ROW_CLS.foot}>
+            <span className={HOME_ROW_CLS.sold}>{sold}</span>
+            <div className={HOME_ROW_CLS.priceBox}>
+              {originalPrice > price && originalPrice > 0 && (
+                <p className={HOME_ROW_CLS.orig}>{formatNumber(originalPrice)}{unitLabel}</p>
+              )}
+              <p className={HOME_ROW_CLS.priceRow}>
+                {discount > 0 && <span className={HOME_ROW_CLS.discount}>{discount}%</span>}
+                <span className={HOME_ROW_CLS.price}>{formatNumber(price)}{unitLabel}</span>
+                {p.category === 'stay_voucher' && price > 0 && <span className={HOME_ROW_CLS.perNight}>/1박~</span>}
+              </p>
+            </div>
+          </div>
+        </div>
+      </Link>
+    )
+  }
+
+  return (
+    <Link
+      ref={linkRef}
+      // 🏨 2026-07-20 (숙소 상세 SSOT): 숙소 카드는 객실·날짜 예약이 있는 /stays/:id 로 —
+      //   목적지는 canonicalDetailPath(라우팅 SSOT) 위임(그 외 카테고리는 기존 /group-buy/:id 동일).
+      to={to ?? canonicalDetailPath(p) ?? `/pass/${p.id}`}
+      onMouseEnter={() => { prefetch(p.id); prefetchDetailChunk() }}
+      onTouchStart={() => { prefetch(p.id); prefetchDetailChunk() }}
+      onFocus={() => { prefetch(p.id); prefetchDetailChunk() }}
+      // 🧹 2026-08-19 (대표 신고 — "그루폰처럼 테두리를 없애줘. AI가 만든 티가 나"):
+      //   **테두리·카드 배경·박스 그림자**를 걷어낸다. 그루폰 카드는 컨테이너가 아니라
+      //   [둥근 사진] + 그 아래 맨 텍스트다 — 흰 패널이 이미 배경을 맡고 있어 박스가 한 겹 더 필요 없다.
+      //   (2026-08-27: 모바일만 남아 있던 대표색 카드도 여기로 통일 — 대표 "첫번째 형태로 통일".)
+      className={`block group active:scale-[0.98] flex flex-col ${className}`}
+    >
+      {/* 🖼️ 2026-08-19 (대표 시안 — 그루폰): 이미지 영역을 `DealCardMedia`(SSOT)로 교체 —
+          hover 좌우 화살표 캐러셀 + 도트. 홈 섹션 카드도 **같은 컴포넌트**를 써서 두 카드가
+          갈리지 않는다. 잠금 계약(aboveFold eager/fetchPriority·fade-in·대표색 추출)은 그대로 승계. */}
+      {media}
 
       {/* 🛍️ 2026-08-19 (대표 시안 — 그루폰 카드): 정보 위계를 그루폰과 같게 재배열.
           [머천트(작은 회색)] → [제목 2줄] → [주소 · 거리] → [★평점 (구매수)] → [정가취소선 · 판매가 · 할인 pill]

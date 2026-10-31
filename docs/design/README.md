@@ -103,3 +103,4 @@
 | **🎯 전환추적(진짜 ROAS) — QR 실방문 증명 통합** | 2026-07-21 | 🟡 설계 SSOT / **착수 10월**(8월 실판매 데이터로 귀속 규칙 캘리브레이션 후) · 픽셀·조인 파이프라인 선설계 | [conversion-tracking-roas.md](./conversion-tracking-roas.md) |
 | **🏠 생활 견적 요청 흐름 — 오늘의집 이사 견적 참고** | 2026-10-25 | 🟡 시안 접수 · 구현 대기(대표 확인) | [life-quote-flow-ohouse-ref.md](./life-quote-flow-ohouse-ref.md) |
 | **🏠 메인(모바일 홈) 리디자인 — 그루폰 참고 시안 6종** | 2026-10-26 | 🟡 ✅ 모바일 안 A 구현 · PC 다음 | [main-home-redesign-2026-10.md](./main-home-redesign-2026-10.md) |
+| **🧾 메인 이용권 한 줄에 하나 — Y2 (사진 왼쪽)** | 2026-10-31 | 🟢 구현 (E2) · 모바일만, PC 격자 유지 | [home-y2-rows-2026-10-31.md](./home-y2-rows-2026-10-31.md) |

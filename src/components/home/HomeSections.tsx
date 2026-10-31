@@ -1,4 +1,4 @@
-import { HOME_SECTION_RAIL } from '@/shared/home-chrome'
+import { HOME_SECTION_ROWS, HOME_SECTION_ROWS_MAX } from '@/shared/home-chrome'
 import { Fragment, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { resolveSectionMoreHref, isDeadEndHref } from './section-more-href'
@@ -8,7 +8,7 @@ import { nearSubtitle } from '@/shared/home-near'
 import type { HomeNear } from './home-near'
 import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
 import SectionRail from './SectionRail'
-import DealCardPlaceholder from './DealCardPlaceholder'
+import DealCardPlaceholder, { DealRowPlaceholder } from './DealCardPlaceholder'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import {
   HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_LG_QUERY, HOME_CARD_ABOVE_FOLD,
@@ -160,8 +160,8 @@ export default function HomeSections(
           {rail
             ? <SectionRail count={4}>{[0, 1, 2, 3].map((i) => <DealCardPlaceholder key={i} />)}</SectionRail>
             : (
-              <div className={HOME_SECTION_RAIL}>
-                {[0, 1, 2, 3].map((i) => <DealCardPlaceholder key={i} />)}
+              <div className={HOME_SECTION_ROWS}>
+                {[0, 1, 2, 3].map((i) => <DealRowPlaceholder key={i} />)}
               </div>
             )}
         </section>
@@ -217,15 +217,17 @@ export default function HomeSections(
               )}
             </div>
             {(() => {
-              const cards = sec.products.map((p, i) => (
-                <GroupBuyFeedCard key={p.id} p={p} imgWidth={cardImgWidth} aboveFold={i < HOME_CARD_ABOVE_FOLD && sIdx === 0} userLoc={sec.near ? near?.kmFrom : null} />
+              // 🧾 2026-10-31 (대표 확정 Y2): 모바일은 **한 줄에 하나**(사진 왼쪽). 섹션은 4줄까지 — 더보기가 있을 때만 자른다
+              //   (더보기가 없으면 자르면 볼 길이 없다). PC(`rail`)는 종전 그대로.
+              const list = !rail && more && !moreIsDeadEnd ? sec.products.slice(0, HOME_SECTION_ROWS_MAX) : sec.products
+              const cards = list.map((p, i) => (
+                <GroupBuyFeedCard key={p.id} p={p} layout={rail ? 'grid' : 'row'} imgWidth={cardImgWidth} aboveFold={i < HOME_CARD_ABOVE_FOLD && sIdx === 0} userLoc={sec.near ? near?.kmFrom : null} />
               ))
-              // 🏠 2026-10-26 (대표 확정 안 A — 그루폰식): 모바일도 **옆으로 넘기는 줄**이다(종전 2열 그리드).
-              //   카드가 한 장 반 보여 넘길 수 있다는 것을 말한다. 클래스는 워커 첫 화면과 같은 상수(`HOME_SECTION_RAIL`).
+              // 🧾 모바일은 세로 목록(`HOME_SECTION_ROWS`) — 워커 첫 화면이 같은 상수로 그린다. 10-26 의 가로 넘김을 대체했다.
               // ↔️ 첫 섹션 앞 4장은 PC 에서도 첫 화면 근처 — 워커가 4열 폭(400)으로 미리 받는다(`home-card-preload`). 그 계약 그대로.
               return rail
                 ? <SectionRail count={sec.products.length}>{cards}</SectionRail>
-                : <div className={HOME_SECTION_RAIL}>{cards}</div>
+                : <div className={HOME_SECTION_ROWS}>{cards}</div>
             })()}
           </section>
           {/* 🎬 2026-09-07 (대표 확정): 유어쇼츠는 **인기 이용권 다음**. 히어로 바로 아래로 올리면

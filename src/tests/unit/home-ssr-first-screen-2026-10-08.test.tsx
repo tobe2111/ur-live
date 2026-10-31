@@ -33,7 +33,8 @@ import {
 import { HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_ABOVE_FOLD, HOME_CARD_BASE_QUERY } from '@/shared/home-card-image'
 import { buildHomeCardPreloadLinks } from '@/worker/utils/home-card-preload'
 import { DEAL_CAT_LABELS } from '@/shared/deal-cats'
-import { HOME_SECTION_RAIL } from '@/shared/home-chrome'
+import { HOME_SECTION_ROWS } from '@/shared/home-chrome'
+import { HOME_ROW_CLS } from '@/shared/home-row'
 import { stripComments } from '../helpers/source-text'
 
 const root = process.cwd()
@@ -87,7 +88,8 @@ function reactCard(p: Record<string, unknown>): HTMLAnchorElement {
     <QueryClientProvider client={qc}>
       <MemoryRouter>
         {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        <GroupBuyFeedCard p={p as any} imgWidth={HOME_CARD_IMG_WIDTH_BASE} aboveFold />
+        {/* 🧾 2026-10-31 (대표 확정 Y2): 모바일 홈 첫 화면은 한 줄 카드 — 워커가 그 모양을 미러한다. */}
+        <GroupBuyFeedCard p={p as any} layout="row" imgWidth={HOME_CARD_IMG_WIDTH_BASE} aboveFold />
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -110,6 +112,8 @@ describe('① 카드 — 워커 HTML 과 진짜 컴포넌트가 같은 클래스
       const wm = w.firstElementChild as HTMLElement
       const rm = r.firstElementChild as HTMLElement
       expect(tokens(wm.className)).toEqual(tokens(rm.className))
+      // 🧾 사진 칸 안의 사진 상자(`DealCardMedia` 의 루트)도 같다 — 정사각 · 모서리.
+      expect(tokens((wm.firstElementChild as HTMLElement).className)).toEqual(tokens((rm.firstElementChild as HTMLElement).className))
 
       const wb = w.children[1] as HTMLElement
       const rb = r.children[1] as HTMLElement
@@ -154,12 +158,17 @@ describe('① 카드 — 워커 HTML 과 진짜 컴포넌트가 같은 클래스
    *   `width: 94%;`(공백·세미콜론)로 쓰고 워커는 `width:94%` 로 쓴다. 같은 값인데 글자가 다르다.
    *   ⇒ 비교는 **파싱된 값**(`style.width`)으로 한다. 지키려는 것은 "같은 비율"이지 "같은 글자"가 아니다.
    */
-  it('🔴 별 채움 비율이 같다 (`StarRating` 과 같은 식)', () => {
-    const w = workerCard(RICH).querySelector('[role="img"] span:nth-child(2)') as HTMLElement
-    const r = reactCard(RICH as Record<string, unknown>).querySelector('[role="img"] span:nth-child(2)') as HTMLElement
-    expect(w.style.width).toBe(r.style.width)
-    expect(w.style.width).not.toBe('') // 둘 다 비면 "같다"가 아무것도 안 지킨다
-    expect(starFillPct(4.7)).toBe((4.7 / 5) * 100)
+  // 🧾 2026-10-31 재조준(Y2): 한 줄 카드는 별 다섯 대신 **★ 하나 + 숫자**다 — 같은 글자·같은 클래스인지 본다.
+  it('🔴 별이 같은 글자·같은 클래스다', () => {
+    const pick = (a: HTMLAnchorElement) => {
+      const el = a.querySelector('[aria-hidden="true"].leading-none') as HTMLElement | null
+      return el ? { t: el.textContent, c: tokens(el.className).join(' ') } : null
+    }
+    const w = pick(workerCard(RICH))
+    expect(w).not.toBeNull() // 둘 다 없으면 "같다"가 아무것도 안 지킨다
+    expect(w).toEqual(pick(reactCard(RICH as Record<string, unknown>)))
+    expect(w?.c).toBe(tokens(HOME_ROW_CLS.star).join(' '))
+    expect(starFillPct(4.7)).toBe((4.7 / 5) * 100) // 격자 카드(PC)·숙소 첫 화면이 계속 쓴다
   })
 })
 
@@ -283,13 +292,14 @@ describe('⑤ 크롬·섹션 머리글 — 페이지 소스에서 파싱해 대�
    * 🏠 2026-10-26 (대표 확정 안 A 의 아랫부분) — 섹션 가로 줄은 **같은 상수**(`shared/home-chrome`)를
    *   화면과 워커가 함께 import 한다(문자열 두 벌보다 강하다 — 갈릴 수가 없다).
    */
-  it('🔴 HOME_SECTION_RAIL 을 화면과 워커가 같이 쓰고, 워커가 그 상수로 그린다', () => {
+  // 🧾 2026-10-31 재조준(Y2): 가로 줄 → 세로 한 줄 목록. 불변식 그대로 — 같은 상수.
+  it('🔴 HOME_SECTION_ROWS 를 화면과 워커가 같이 쓰고, 워커가 그 상수로 그린다', () => {
     const worker = code('src/worker/utils/home-first-screen.ts')
-    expect(sections).toContain('HOME_SECTION_RAIL')
-    expect(worker).toContain('HOME_SECTION_RAIL')
+    expect(sections).toContain('HOME_SECTION_ROWS')
+    expect(worker).toContain('HOME_SECTION_ROWS')
     const host = document.createElement('div')
     host.innerHTML = buildHomeFirstScreen(seedJson([BARE]), LOADER)
-    expect(host.querySelector('#ur-first-screen section > div:last-child')?.getAttribute('class')).toBe(HOME_SECTION_RAIL)
+    expect(host.querySelector('#ur-first-screen section > div:last-child')?.getAttribute('class')).toBe(HOME_SECTION_ROWS)
   })
 
   /**

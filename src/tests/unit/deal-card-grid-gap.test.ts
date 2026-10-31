@@ -43,7 +43,8 @@ describe('딜 카드 격자 간격', () => {
     // 🩸 처음 이 검사의 정규식은 `className="..."` 만 봤다. 그런데 상수를 쓰려면 형태가
     //    `className={`...`}` 로 바뀐다 — 즉 **고치자마자 검사가 통째로 헛돌았다**(되돌려-검증에서 발각).
     //    ⇒ `{` 를 허용하고, "찾은 격자가 0개면 통과가 아니라 실패"로 못 박는다.
-    const GRID_CLASS = /className=\{?[`"'][^`"']*grid-cols-\d[^`"']*[`"']/g
+    // 🧾 2026-10-31 (Y2): 모바일이 한 줄 카드가 되며 격자가 `pc ? `grid…` : 목록` 삼항으로 갈린 자리가 생겼다 — 그 앞머리를 허용한다.
+    const GRID_CLASS = /className=\{?(?:pc \? )?[`"'][^`"']*grid-cols-\d[^`"']*[`"']/g
     const bad: string[] = []
     let seen = 0
     for (const f of GRIDS) {

@@ -90,10 +90,11 @@ describe('태블릿 폭에서 카드가 줄을 채운다', () => {
    *   지키려던 것("한 화면 안에서 섹션의 모양이 갈리지 않는다")은 그대로 — 자리표시자와 진짜 섹션이
    *   **같은 가로 줄 상수**를 쓰는지 본다(하나만 격자로 남으면 응답 순간 모양이 바뀌며 아래가 밀린다).
    */
-  it('편성 섹션은 자리표시자와 진짜 섹션이 같은 가로 줄이다', () => {
+  // 🧾 2026-10-31 재조준 (대표 확정 Y2): 가로 줄 → **세로 한 줄 목록**(`HOME_SECTION_ROWS`). 불변식 그대로 — 둘이 같은 상수.
+  it('편성 섹션은 자리표시자와 진짜 섹션이 같은 목록 상수다', () => {
     const s = code(read(SECTIONS))
-    const hits = s.match(/className=\{HOME_SECTION_RAIL\}/g) || []
-    expect(hits.length, '섹션 자리표시자·진짜 섹션 중 하나가 가로 줄이 아니다').toBeGreaterThanOrEqual(2)
+    const hits = s.match(/className=\{HOME_SECTION_ROWS\}/g) || []
+    expect(hits.length, '섹션 자리표시자·진짜 섹션 중 하나가 같은 목록이 아니다').toBeGreaterThanOrEqual(2)
     expect(s, '섹션에 옛 격자 규칙이 남아 모양이 갈린다').not.toMatch(/grid-cols-2 sm:grid-cols-3/)
   })
 })
