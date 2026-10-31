@@ -14,8 +14,7 @@ import HomeSections from '@/components/home/HomeSections'
 import { resolveHomeNear, syncNearCookie } from '@/components/home/home-near'
 import UrShortsRail from '@/components/home/UrShortsRail'
 import HomeBannerStrip from '@/components/home/HomeBannerStrip'
-import PcHomeLocationBar, { readHomeRegion, type HomeRegion } from '@/pages/pc-home/PcHomeLocationBar'
-import { readCachedLoc } from '@/shared/utils/cached-loc'
+import PcHomeLocationBar, { readHomeRegion, homeStartLoc, type HomeRegion } from '@/pages/pc-home/PcHomeLocationBar'
 import { DEAL_CATS, type DealCategory } from '@/pages/pc-home/PcHomeRail'
 import { ShortsIcon, BellIcon, BagIcon } from '@/components/icons/urdeal-icons'
 import { URSHORTS_BROWSE_PATH } from '@/shared/urshorts'
@@ -50,7 +49,7 @@ export default function MobileHomePage() {
     onPointerLeave: () => setPressed(null),
     onPointerCancel: () => setPressed(null),
   })
-  const [region, setRegion] = useState<HomeRegion>(() => (readCachedLoc() ? {} : readHomeRegion()))
+  const [region, setRegion] = useState<HomeRegion>(() => (homeStartLoc() ? {} : readHomeRegion()))
   /**
    * 🧭 2026-09-05 (대표 "주말에 떠나는 숙소 섹션 아래의 일반 이용권들은 기본 디폴트가 현재 위치에서
    *   가까운 순대로"): **새로 묻지 않는다** — 지도 홈·위치바가 저장해 둔 마지막 측위만 읽는다
@@ -58,7 +57,7 @@ export default function MobileHomePage() {
    *   거부하면 아무것도 못 하므로 결국 기존 동작으로 돌아온다.
    *   ⇒ 위치를 한 번이라도 잡은 사람은 재방문부터 첫 페인트가 '가까운 순', 아니면 지금과 동일.
    */
-  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(() => readCachedLoc())
+  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(() => homeStartLoc())
   // 🧭 2026-08-30 (대표 "홈에선 현재 위치가 어딘지도 나와야지"): 좌표 → 동네 이름.
   //   서버 엔드포인트는 2026-07-07 부터 있었는데 **아무도 안 부르고 있었다**(useCurrentDong 주석).
   const dong = useCurrentDong(userLoc)
@@ -88,7 +87,7 @@ export default function MobileHomePage() {
    *   섹션 '더보기'(`/?sort=popular`)는 `useHomeQuerySync` 가 그 위를 덮는다(더보기 = 인기순 유지).
    */
   const [sort, setSort] = useState<'popular' | 'newest' | 'discount' | 'near'>(
-    () => (readCachedLoc() ? 'near' : 'popular'),
+    () => (homeStartLoc() ? 'near' : 'popular'),
   )
 
   /**

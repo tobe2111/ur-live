@@ -243,8 +243,8 @@ export default [
   {
     name: '🧭 저장된 지역이 다시 거리순을 막는다 (홈이 인기순으로 되돌아감)',
     file: 'src/pages/mobile-home/MobileHomePage.tsx',
-    find: "    () => (readCachedLoc() ? 'near' : 'popular'),",
-    replace: "    () => (readCachedLoc() && !readHomeRegion().regionKey ? 'near' : 'popular'),",
+    find: "    () => (homeStartLoc() ? 'near' : 'popular'),",
+    replace: "    () => (homeStartLoc() && !readHomeRegion().regionKey ? 'near' : 'popular'),",
     // 🩸 2026-09-08: 처음엔 `home-nearest-first` 를 가리켰는데, 같은 날 그 계약을 **이 파일로 옮기면서**
     //    거기엔 규칙이 안 남았다 → 결함을 심어도 초록. CI 가 잡았다(계약을 옮기면 주입 지도도 옮긴다).
     test: 'src/tests/unit/home-top-banner-and-near-default.test.ts',
@@ -256,7 +256,7 @@ export default [
   {
     name: '🧭 좌표가 있는데도 저장된 지역을 씌운다 (헤더와 목록이 어긋난다)',
     file: 'src/pages/mobile-home/MobileHomePage.tsx',
-    find: 'useState<HomeRegion>(() => (readCachedLoc() ? {} : readHomeRegion()))',
+    find: 'useState<HomeRegion>(() => (homeStartLoc() ? {} : readHomeRegion()))',
     replace: 'useState<HomeRegion>(() => readHomeRegion())',
     test: 'src/tests/unit/home-top-banner-and-near-default.test.ts',
     why:

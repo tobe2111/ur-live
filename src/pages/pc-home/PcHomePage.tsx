@@ -8,8 +8,7 @@ import GroupBuyFeed from '@/pages/main-home/GroupBuyFeed'
 import { DEAL_CATS, type DealCategory } from './PcHomeRail'
 import { useHomeQuerySync } from '@/pages/main-home/useHomeQuerySync'
 import PcHomeAppBand from './PcHomeAppBand'
-import { readHomeRegion, type HomeRegion } from './PcHomeLocationBar'
-import { readCachedLoc } from '@/shared/utils/cached-loc'
+import { readHomeRegion, homeStartLoc, type HomeRegion } from './PcHomeLocationBar'
 import RegionLinkGrid from '@/components/region/RegionLinkGrid'
 import HomeBannerStrip from '@/components/home/HomeBannerStrip'
 import { resolveHomeNear, syncNearCookie } from '@/components/home/home-near'
@@ -72,7 +71,7 @@ export default function PcHomePage() {
     } catch { /* 쿼리 파싱 실패는 기본값으로 */ }
     // 🧭 2026-09-08 (대표 "가장 가까운 순이 먼저"): 좌표가 있으면 **저장된 지역을 이긴다**.
     //    근거·함정은 `MobileHomePage` 의 같은 자리에 길게 적어 뒀다(두 홈이 같은 규칙을 공유한다).
-    return readCachedLoc() ? 'near' : 'popular'
+    return homeStartLoc() ? 'near' : 'popular'
   })
 
   // 🔗 섹션 '더보기'는 `/?sort=popular` 같은 **쿼리 전용 이동**이다. 그 반영 로직은
@@ -81,9 +80,9 @@ export default function PcHomePage() {
   const gridHeaderRef = useRef<HTMLElement | null>(null)
   useHomeQuerySync({ setCategory, setSort, gridHeaderRef })
   // 🗺️ 2026-07-16 (대표 — PC 홈 위치 필터): 선택 지역(초기값 = 지난 방문 저장분). GroupBuyFeed 로 주입.
-  const [region, setRegion] = useState<HomeRegion>(() => (readCachedLoc() ? {} : readHomeRegion()))
+  const [region, setRegion] = useState<HomeRegion>(() => (homeStartLoc() ? {} : readHomeRegion()))
   // 🗺️ 2026-07-16 (대표 — 현위치로 가까운 순): GPS 좌표. 세팅되면 sort='near'(거리순, 숨기지 않고 재배열).
-  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(() => readCachedLoc())
+  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(() => homeStartLoc())
   // 🧭 2026-08-30 (대표 "홈에선 현재 위치가 어딘지도 나와야지") — 모바일 홈과 같은 훅.
   const dong = useCurrentDong(userLoc)
   /**

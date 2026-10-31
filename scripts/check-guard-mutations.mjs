@@ -909,7 +909,7 @@ const MUTATIONS = [
     file: 'src/pages/mobile-home/MobileHomePage.tsx',
     // 🗺️ 2026-09-08: 대표 *"거리순이 가장 우선"* 으로 규칙에서 지역 조건이 빠졌다 — 지도도 따라간다.
     //    (안 옮기면 "낡은 지도"로 빨간불이고, 그게 이 검사가 하라고 만든 일이다. 실제로 그렇게 잡혔다.)
-    find: "    () => (readCachedLoc() ? 'near' : 'popular'),",
+    find: "    () => (homeStartLoc() ? 'near' : 'popular'),",
     replace: "    () => 'popular',",
     test: 'src/tests/unit/home-top-banner-and-near-default.test.ts',
     why:
