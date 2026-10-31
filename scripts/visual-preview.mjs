@@ -736,6 +736,14 @@ if (DARK) {
   await ctx.addInitScript(() => { try { localStorage.setItem('ur_theme_mode_v1', 'dark') } catch { /* private mode */ } })
 }
 /**
+ * 🗝️ `--ls='{"키":"값"}'` — localStorage 를 심고 렌더한다(2026-10-31 — 홈 지역 배경처럼 저장된 선택에 따라
+ *   그림이 바뀌는 화면을 보기 위해). 값은 문자열 그대로 넣는다(객체면 JSON 으로 감싼다).
+ */
+if (typeof args.ls === 'string') {
+  const kv = Object.fromEntries(Object.entries(JSON.parse(args.ls)).map(([k, v]) => [k, typeof v === 'string' ? v : JSON.stringify(v)]))
+  await ctx.addInitScript((m) => { try { for (const [k, v] of Object.entries(m)) localStorage.setItem(k, v) } catch { /* private mode */ } }, kv)
+}
+/**
  * 💤 `--no-idle` — `requestIdleCallback` 을 **부르지 않는다**(2026-10-13).
  *   앱은 한가할 때 다음 화면을 미리 받는다(카드 prefetch · 탭 idle prefetch — 잠금표가 지키는 의도된 동작).
  *   "첫 화면이 무엇을 받는가" 를 잴 때는 그게 섞이면 안 되므로 끈다(`check-surface-chunk-runtime.mjs`).

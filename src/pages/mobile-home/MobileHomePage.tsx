@@ -19,6 +19,7 @@ import { HOME_DEAL_CATS, type DealCategory } from '@/pages/pc-home/PcHomeRail'
 import { ShortsIcon, BellIcon, BagIcon } from '@/components/icons/urdeal-icons'
 import { URSHORTS_BROWSE_PATH } from '@/shared/urshorts'
 import { HOME_SHOWCASE_ENABLED } from '@/shared/feature-flags'
+import { regionHeroFor, REGION_HERO_SHADE } from '@/shared/home-region-hero'
 
 /**
  * 📱 모바일 메인 (2026-08-19 대표 확정 — 그루폰 모바일 홈 시안).
@@ -99,6 +100,12 @@ export default function MobileHomePage() {
   const gridHeaderRef = useRef<HTMLElement | null>(null)
   useHomeQuerySync({ setCategory, setSort, gridHeaderRef })
 
+  /**
+   * 🌆 2026-10-31 대표 시안 8 — 고른 지역(또는 현재 위치) 도시 사진을 상단 배경으로. 사진이 있는 도시만(`region-hero.ts`).
+   *   높이는 **종전 헤더 그대로**라 사진이 생겨도 아래가 안 밀린다. 사진 위에선 `dark` 로 글자를 흰색으로 돌리고,
+   *   사진은 첫 화면이 다 뜬 뒤(지연 로딩 이미지) 남색 판 위로 서서히 나타난다.
+   */
+  const hero = regionHeroFor({ regionKey: region.regionKey, loc: userLoc })
   const handleLocate = (loc: { lat: number; lng: number }) => { setUserLoc(loc); setRegion({}); setSort('near') }
   const handleRegion = (r: HomeRegion) => { setRegion(r); setUserLoc(null); setSort((s) => (s === 'near' ? 'popular' : s)) }
 
@@ -132,7 +139,13 @@ export default function MobileHomePage() {
             · 지역 알약의 테두리·핀 아이콘, 현위치 알약 → 제목 + 옆의 작은 아이콘으로 흡수.
             · 카테고리 아이콘 5개 → 텍스트만. 선 아이콘 + 11px 라벨 조합이 가장 "만들어진" 티가 난다.
               활성은 잉크 + 밑줄로 — 색이 아니라 무게로 말한다(로즈는 하단 탭 하나에만 남긴다). */}
-      <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]">
+      <div
+        data-region-hero={hero?.slug}
+        className={hero
+          ? 'dark sticky top-0 z-30 overflow-hidden bg-[#0F1A33] [&_[aria-pressed=false]]:!text-white/75'
+          : 'sticky top-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]'}
+      >
+        {hero && <RegionHeroBg key={hero.slug} src={hero.src} />}
         <div className="px-4 h-11 flex items-center justify-between gap-2">
           <Link to="/" aria-label="홈" className="shrink-0 flex items-center"><UrDealLogo size={17} /></Link>
           {/* ⚫ 2026-10-14 (대표 *"메인의 검색, 장바구니, 알림 버튼도 마찬가지로 똑같이"* — 하단 탭과 같은 규칙):
@@ -252,6 +265,18 @@ export default function MobileHomePage() {
       <SellOnUrdealRow />
       <MapPill />
       {bell.sheet}
+    </div>
+  )
+}
+
+/** 🌆 상단 사진 + 남색 막. 사진은 늦게 받아(`loading=lazy`·낮은 우선순위) 도착하면 서서히 보인다 — 첫 카드 사진과 회선을 다투지 않는다. */
+function RegionHeroBg({ src }: { src: string }) {
+  const [shown, setShown] = useState(false)
+  return (
+    <div aria-hidden className="absolute inset-0 -z-10 pointer-events-none">
+      <img src={src} alt="" loading="lazy" decoding="async" fetchPriority="low" onLoad={() => setShown(true)}
+        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${shown ? 'opacity-100' : 'opacity-0'}`} />
+      <div className="absolute inset-0" style={{ background: REGION_HERO_SHADE }} />
     </div>
   )
 }

@@ -53,7 +53,7 @@ import { nearSubtitle } from '../../shared/home-near'
 import { HOME_H1 } from '../../shared/seo/consumer-surfaces'
 import { cfImage, cfSrcSet } from '../../utils/cf-image'
 import { HOME_DEAL_CAT_LABELS, isHomeVisibleProduct } from '../../shared/deal-cats'
-import { DEAL_GRID_GAP } from '../../shared/deal-card-grid'
+import { DEAL_ROW } from '../../shared/deal-card-grid'
 import { HOME_CARD_ABOVE_FOLD, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_MAX_DPR } from '../../shared/home-card-image'
 import { canonicalDetailPath } from '../../shared/product-flow'
 import { priceDisplay } from '../../shared/price-display'
@@ -93,7 +93,7 @@ export const HOME_FS_CLASS = {
   secHead: 'flex items-end justify-between gap-4 mb-3',
   secTitle: 'text-[17px] font-bold tracking-tight text-gray-900 dark:text-white',
   secSub: 'mt-1 text-[13px] text-gray-500 dark:text-gray-400',
-  grid: `grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 ${DEAL_GRID_GAP}`,
+  grid: DEAL_ROW.grid, // 📋 2026-10-31 시안 10 — 폰 줄 목록(md+ 종전 4열)
   cardLink: 'block group active:scale-[0.98] flex flex-col',
   media: 'relative aspect-[4/3] w-full overflow-hidden group/media rounded-xl bg-gray-100 dark:bg-[#222225]',
   cover: 'absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]',
@@ -160,7 +160,8 @@ function starHtml(value: number): string {
 }
 
 /** 🏨 2026-10-19 숙소 목록 첫 화면도 이 카드를 쓴다(`stays-first-screen.ts`) — 카드는 한 벌이다. `href` 는 숙소의 날짜·인원 링크. */
-export function cardHtml(p: SeedProduct, eager: boolean, hrefOverride?: string): string {
+/** 📋 `row` = 2026-10-31 시안 10 홈 줄 목록 — 카드 `row` 와 같은 `DEAL_ROW` 클래스(숙소 목록은 종전 격자). */
+export function cardHtml(p: SeedProduct, eager: boolean, hrefOverride?: string, row = false): string {
   const href = hrefOverride ?? canonicalDetailPath(p) ?? `/pass/${p.id}`
   const brandName = p.brand_name || p.gc_brand_name || null
   const merchant = p.restaurant_name || brandName
@@ -185,8 +186,10 @@ export function cardHtml(p: SeedProduct, eager: boolean, hrefOverride?: string):
     : ''
 
   return (
-    `<a href="${escAttr(href)}" class="${HOME_FS_CLASS.cardLink}">` +
-    `<div class="${HOME_FS_CLASS.media}">${img}</div>` +
+    `<a href="${escAttr(href)}" class="${row ? DEAL_ROW.link : HOME_FS_CLASS.cardLink}">` +
+    (row
+      ? `<div class="${DEAL_ROW.mediaBox}"><div class="${HOME_FS_CLASS.media}">${img}</div></div>`
+      : `<div class="${HOME_FS_CLASS.media}">${img}</div>`) +
     `<div class="${HOME_FS_CLASS.body}">` +
     (merchant || onnuri
       ? `<p class="${HOME_FS_CLASS.merchant}"><span class="truncate">${escText(merchant || '')}</span>` +
@@ -283,7 +286,7 @@ export function buildHomeFirstScreen(sectionsSeedJson: string, loaderHtml: strin
   const products = (sec?.products ?? []).filter(p => p && p.id != null).slice(0, HOME_CARD_ABOVE_FOLD)
   if (!sec || products.length === 0 || !sec.title) return ''
 
-  const cards = products.map((p, i) => cardHtml(p, i < HOME_CARD_ABOVE_FOLD)).join('')
+  const cards = products.map((p, i) => cardHtml(p, i < HOME_CARD_ABOVE_FOLD, undefined, true)).join('')
   const body =
     `<div class="${HOME_FS_CLASS.root}">` +
     // 🩸 2026-10-13 — 크롤러가 받는 홈 문서에 제목 요소가 h3 하나뿐이었다. `sr-only` 라 박스가

@@ -6,6 +6,7 @@
  */
 
 import { loadRoute } from '@/lib/route-preload'
+import { DEAL_ROW } from '@/shared/deal-card-grid'
 import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { StarIcon } from '@/components/icons/urdeal-icons'
 import { Link } from 'react-router-dom'
@@ -121,7 +122,8 @@ function warmStay(id: number | string) {
  *   ⚠️ 사진 위가 아니라 **본문 맨 위**다 — 2026-08-31 대표 지시("할인율이 사진 안으로 들어가면
  *      안돼")와 같은 이유로, 사진은 상품을 보여주는 자리이지 배지를 얹는 자리가 아니다.
  */
-function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc, to, flags, hideWishlist = false, titleNode, overlayExtra, className = '' }: { p: FeedCardProduct; aboveFold?: boolean; fcfs?: FcfsInfo; imgWidth?: number; userLoc?: { lat: number; lng: number } | null; to?: string; flags?: ReactNode; hideWishlist?: boolean; titleNode?: ReactNode; overlayExtra?: ReactNode; className?: string }) {
+function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc, to, flags, hideWishlist = false, titleNode, overlayExtra, className = '', row = false }: { p: FeedCardProduct; row?: boolean; aboveFold?: boolean; fcfs?: FcfsInfo; imgWidth?: number; userLoc?: { lat: number; lng: number } | null; to?: string; flags?: ReactNode; hideWishlist?: boolean; titleNode?: ReactNode; overlayExtra?: ReactNode; className?: string }) {
+  // 📋 2026-10-31 시안 10: `row` = 폰에서 [108px 정사각 사진 | 정보] 한 줄(md+ 종전 격자). 사진 비율·본문 여백은 바깥 `DEAL_ROW` 가 자식 선택자로 바꾼다.
   // 🛡️ 2026-05-22 Phase 2 (100% 영구): hover / touch 즉시 prefetch → 클릭 시 0ms.
   const prefetchGb = usePrefetchGroupBuyProduct()
   // 🏨 2026-10-15 (대표 승인 "허가 — 대상만 수정"): 미리받기 **대상**이 목적지를 따른다. 숙소 카드(/stays/:id)는
@@ -245,12 +247,12 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
       //   **테두리·카드 배경·박스 그림자**를 걷어낸다. 그루폰 카드는 컨테이너가 아니라
       //   [둥근 사진] + 그 아래 맨 텍스트다 — 흰 패널이 이미 배경을 맡고 있어 박스가 한 겹 더 필요 없다.
       //   (2026-08-27: 모바일만 남아 있던 대표색 카드도 여기로 통일 — 대표 "첫번째 형태로 통일".)
-      className={`block group active:scale-[0.98] flex flex-col ${className}`}
+      className={`${row ? DEAL_ROW.link : 'block group active:scale-[0.98] flex flex-col'} ${className}`}
     >
       {/* 🖼️ 2026-08-19 (대표 시안 — 그루폰): 이미지 영역을 `DealCardMedia`(SSOT)로 교체 —
           hover 좌우 화살표 캐러셀 + 도트. 홈 섹션 카드도 **같은 컴포넌트**를 써서 두 카드가
           갈리지 않는다. 잠금 계약(aboveFold eager/fetchPriority·fade-in·대표색 추출)은 그대로 승계. */}
-      <DealCardMedia
+      {wrapRowMedia(row, <DealCardMedia
         cover={p.image_url}
         images={p.images}
         /* 🔎 2026-10-11 SEO: 사진에 붙는 유일한 이름이라 **매장명을 함께** 싣는다
@@ -306,7 +308,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
             {overlayExtra}
           </>
         }
-      />
+      />)}
 
       {/* 🛍️ 2026-08-19 (대표 시안 — 그루폰 카드): 정보 위계를 그루폰과 같게 재배열.
           [머천트(작은 회색)] → [제목 2줄] → [주소 · 거리] → [★평점 (구매수)] → [정가취소선 · 판매가 · 할인 pill]
@@ -367,6 +369,11 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
       </div>
     </Link>
   )
+}
+
+/** 줄 모양이면 사진을 108px 칸에 담는다(사진 컴포넌트 자신은 칸 폭을 꽉 채운다). 격자는 종전 DOM 그대로. */
+function wrapRowMedia(row: boolean, media: ReactNode) {
+  return row ? <div className={DEAL_ROW.mediaBox}>{media}</div> : media
 }
 
 export default memo(GroupBuyFeedCard)

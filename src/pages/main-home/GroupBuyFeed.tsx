@@ -5,7 +5,7 @@
  * 광고/배너/최근본/카테고리섹션 없음. 오롯이 공구만.
  */
 
-import { DEAL_GRID_GAP } from '@/shared/deal-card-grid'
+import { DEAL_GRID_GAP, DEAL_ROW } from '@/shared/deal-card-grid'
 import { ClockIcon, PinIcon } from '@/components/icons/urdeal-icons'
 import { Flame, Tag } from 'lucide-react'
 import Udal from '@/components/mascot/Udal'
@@ -175,7 +175,7 @@ export default function GroupBuyFeed({
     // 📐 2026-08-24: md(768~1023, 태블릿)가 `sm` 규칙에 걸려 **3열**이었다. 편성 섹션은 4개를
     //   뿌리므로 마지막 하나가 줄에 혼자 남아 오른쪽이 텅 비었다 — 태블릿도 4열로 맞춘다.
     ? `grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 ${DEAL_GRID_GAP} pb-8`
-    : `grid grid-cols-2 sm:grid-cols-3 ${DEAL_GRID_GAP} px-4 pb-8`
+    : `${DEAL_ROW.grid} px-4 pb-8` // 📋 2026-10-31 시안 10 — 폰은 줄 목록(NOL식)
 
   // 🎯 2026-07-01 (대표 — 동네딜 추첨 응모): 활성 추첨 상품 Map(공개, 60s 캐시) → 카드에 배지 노출.
   const { fcfsMap } = useFcfsMap()
@@ -467,7 +467,7 @@ export default function GroupBuyFeed({
           {sorted.slice(0, renderCap).map((p, idx) => {
             const emb = (p as { fcfs?: { enabled?: boolean; prelaunch?: boolean; spots?: number; appliedDisplay?: number; deadline?: string | null } }).fcfs
             const seed = emb?.enabled ? { spots: emb.spots || 0, appliedDisplay: emb.appliedDisplay || 0, deadline: emb.deadline ?? null, prelaunch: !!emb.prelaunch } : undefined
-            return <GroupBuyFeedCard key={p.id} p={p} aboveFold={firstScreen && idx < 4} fcfs={fcfsMap.get(p.id) ?? seed} imgWidth={cardImgWidth} userLoc={userLoc} />
+            return <GroupBuyFeedCard key={p.id} p={p} row={!pc} aboveFold={firstScreen && idx < 4} fcfs={fcfsMap.get(p.id) ?? seed} imgWidth={cardImgWidth} userLoc={userLoc} />
           })}
         </div>
         </>
