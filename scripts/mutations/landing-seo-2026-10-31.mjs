@@ -103,4 +103,12 @@ export default [
     test: 'src/tests/unit/seo-mallproduct-crawler-img-indexnow-2026-10-14.test.ts',
     why: '규격상 참여 엔진끼리 공유되므로 한 곳만 받아도 전파된다. every 면 빙 429 하나로 네이버 제출까지 멎는다.',
   },
+  {
+    name: '🧭 [랜딩SEO] 봇 셸에서 파비콘 태그가 빠진다 (네이버 아이콘이 지구본)',
+    file: 'src/worker/index.ts',
+    find: `<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" /><link rel="icon" type="image/png" sizes="96x96"`,
+    replace: `<link rel="iconx" href="/favicon.ico" sizes="16x16 32x32 48x48" /><link rel="icon" type="image/png" sizes="96x96"`,
+    test: 'src/tests/unit/bot-shell-favicon-2026-10-31.test.ts',
+    why: '네이버는 로봇이 받은 문서의 아이콘 태그로 사이트 아이콘을 고른다. 봇 셸에 0개라 회색 지구본이었다.',
+  },
 ]

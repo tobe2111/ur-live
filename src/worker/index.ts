@@ -2471,7 +2471,7 @@ app.get('*', async (c) => {
 <meta name="twitter:description" content="${esc(og.desc)}" />
 <meta name="twitter:image" content="${esc(og.image)}" />
 <meta name="robots" content="${ROBOTS_INDEX}" />
-<meta name="naver-site-verification" content="7be066f6c7f451d994e3a5482aa76f87e96c3c2f" />
+<meta name="naver-site-verification" content="7be066f6c7f451d994e3a5482aa76f87e96c3c2f" /><link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" /><link rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png" /><link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" /><link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 ${brandJsonLdScript()}</head>
 <body>
 <div id="root"></div>
