@@ -18,7 +18,7 @@ import SEO from '@/components/SEO'
 import { categoryDef, PRIVATE_ADDRESS_SUFFIX, type HomeServiceCategory, type RequestField } from '@/shared/home-service'
 import { getUserIdSync } from '@/utils/auth'
 import { loginPathFromHere } from '@/utils/login-return'
-import { BigTicketNote } from './life-shared'
+import { BigTicketNote, shareLifeRequest } from './life-shared'
 import { SEEN_KEY, clearDraft, firstOpenStep, loadDraft, saveDraft, type Draft } from './request/draft'
 import { Sheet, StepFrameContext } from './request/Sheet'
 import { MultiSheet, NumberSheet, OptionSheet, TextSheet } from './request/FieldSheets'
@@ -50,6 +50,7 @@ export default function LifeRequestFormPage() {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const [doneId, setDoneId] = useState<number | null>(null)
+  const [doneShare, setDoneShare] = useState<string | null>(null)
   const [crossOpen, setCrossOpen] = useState(false)
   const loggedIn = !!getUserIdSync()
   // 이 일을 받는 업체 수 — 0 이면 "업체 모집 중" 을 미리 알린다(요청은 보관됐다가 업체가 생기면 간다).
@@ -109,6 +110,7 @@ export default function LifeRequestFormPage() {
       if (r.data?.success) {
         clearDraft(def!.key)
         setDoneId(Number(r.data.data.id))
+        setDoneShare(r.data.data.share_token || null)
         if (def!.crossSell) setCrossOpen(true)
       } else setError(r.data?.error || '요청을 접수하지 못했어요')
     } catch (e: unknown) {
@@ -142,6 +144,12 @@ export default function LifeRequestFormPage() {
             근처 업체가 견적을 보내면 알려 드릴게요.<br />비교하고 마음에 드는 한 곳만 고르세요.
           </p>
           <Link to={`/life/requests/${doneId}`} replace className="ur-btn ur-btn-lg ur-btn-primary mt-8 flex w-full justify-center">내 요청 보기</Link>
+          {/* 2026-10-31 대표 *"그 견적 링크를 공유해야 홍보도 되는거잖아"* — 막 보낸 순간이 공유하기 가장 좋은 때다. */}
+          {doneShare && (<>
+            <button type="button" onClick={() => shareLifeRequest(doneShare, `${def.label} 견적 요청`)}
+              className="ur-btn ur-btn-lg mt-3 flex w-full justify-center bg-surface text-ink shadow-lift">아는 업체에 링크 보내기</button>
+            <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400">링크엔 이름·연락처·상세 주소가 가려져요.</p>
+          </>)}
           <Link to="/life" className="mt-4 inline-block text-[13px] text-gray-500 dark:text-gray-400">생활 서비스로 돌아가기</Link>
         </div>
         {crossOpen && def.crossSell && (

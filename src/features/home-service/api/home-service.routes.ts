@@ -220,7 +220,8 @@ homeServiceRoutes.get('/requests/mine', requireAuth(), async (c) => {
     await ensureHomeServiceTables(DB)
     const userId = Number(getCurrentUser(c)?.id)
     const { results } = await DB.prepare(
-      `SELECT id, category, summary, desired_date, status, quote_count, max_quotes, created_at
+      `SELECT id, category, summary, desired_date, status, quote_count, max_quotes, created_at,
+              CASE WHEN status = 'open' THEN share_token END AS share_token
          FROM home_service_requests WHERE user_id = ? ORDER BY id DESC LIMIT 30`,
     ).bind(userId).all()
     return c.json({ success: true, data: results ?? [] })
