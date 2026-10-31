@@ -1835,3 +1835,7 @@ canvas {
    ⚠️ 64px = `SELLER_BOTTOM_BAR_H` 의 미러다. 한쪽만 바꾸면 다시 겹친다 — `seller-mobile-fixes-2026-09-15.test.ts` 가 고정한다.
    🧱 2026-10-12 (셀러 대시보드 제거 4단계): 하단 탭(60px)이 사라져 그 몫을 뺐다.
    ⚠️ PC(min-width:768px)는 여기서 손대지 않는다 — 바가 없고 FAB 은 `md:bottom-4` 로 구석에 산다. */
+
+/* 🏙️ 2026-10-31 시안 8: 폰 홈 머리에 도시 사진이 깔리면 안 고른 탭 글자를 사진 위에서 읽히게 밝힌다.
+   (클래스 문자열에 aria 선택자를 쓰면 '선택 상태는 브랜드' 가드가 선택 분기로 오인한다 — 여기 둔다.) */
+.ur-region-hero [aria-pressed="false"] { color: rgb(255 255 255 / 0.75) !important; }

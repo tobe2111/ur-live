@@ -142,7 +142,7 @@ export default function MobileHomePage() {
       <div
         data-region-hero={hero?.slug}
         className={hero
-          ? 'dark sticky top-0 z-30 overflow-hidden [&_[aria-pressed=false]]:!text-white/75'
+          ? 'dark sticky top-0 z-30 overflow-hidden ur-region-hero'
           : 'sticky top-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]'}
       >
         {hero && <RegionHeroBg key={hero.slug} src={hero.src} />}
