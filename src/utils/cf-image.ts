@@ -156,6 +156,15 @@ function getSaveData(): boolean {
 }
 
 /**
+ * 🎁 2026-10-31: 리사이저·워커 프록시 둘 다 못 받는(CF 이그레스 차단) 호스트 — 원본을 그대로 쓴다.
+ *   목록에 넣는 근거는 **라이브 실측**뿐(`cf-resized: err=…` 가 대부분). 영구 해소는 R2 이관이다.
+ */
+export const RAW_ONLY_IMAGE_HOSTS = ['giftishow.com'] as const
+export function isRawOnlyImageHost(host: string): boolean {
+  return RAW_ONLY_IMAGE_HOSTS.some(h => host === h || host.endsWith('.' + h))
+}
+
+/**
  * 🚑 2026-08-11 [UNLOCK_LOADING] (AB 스윕 라이브 실측): cdn-cgi **경로에 박히는 원본 URL** 의
  * 퍼센트 기호를 한 번 더 이스케이프한다.
  *
@@ -299,6 +308,14 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
       if (HOTLINK_BLOCKED_HOSTS.some(h => host === h || host.endsWith('.' + h))) {
         return `/api/image/resize?url=${encodeURIComponent(src)}&w=${w}&q=${q}`
       }
+      // 🎁 2026-10-31 [UNLOCK_LOADING] (대표 "교환권 사진 안나오는거 많던데 영구적으로" → 승인 "원본 바로 보기 +
+      //   우리 저장소로 옮기기"): giftishow 가 다시 Cloudflare 를 막는다 — 라이브 30장 실측 **25장 실패**
+      //   (429 `cf-resized: err=9422` 14 · 524 `err=9504` 11). `onerror=redirect` 는 이 존에서 안 돈다(아래
+      //   2026-09-02 주석) ⇒ 화면은 리사이저가 7초쯤 실패하길 기다렸다가 원본으로 다시 시도하고, 상세 갤러리는
+      //   그 사진을 아예 뺐다. 워커 프록시도 같은 이그레스라 21초 뒤 원본 302 다(실측). ⇒ **원본을 바로** 쓴다
+      //   (2026-06-17 과 같은 처방 · 장당 20~86KB). 영구 해소는 R2 이관(`cron/voucher-image-rehost.ts`) —
+      //   옮겨진 사진은 `/api/media` 라 이 분기에 안 온다. CF 차단이 풀려도 여기로 되돌리지 말고 이관을 끝낼 것.
+      if (isRawOnlyImageHost(host)) return src
       // 🚀 2026-08-19 [UNLOCK_LOADING] (대표 신고 "사진 불러오는게 많이 느리네?" — 라이브 실측):
       //   홈 카드의 **카카오 CDN 사진이 원본 그대로** 내려오고 있었다(카드 3장에 2.6MB). 이 목록에
       //   없으면 워커 프록시로 가는데 그 경로는 리사이즈를 못 한다(2026-06-11 실측) → 270px 카드에 1MB.
@@ -317,7 +334,7 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
       //   ⚠️ 2026-09-02 주석이 바로잡은 대로 **`onerror=redirect` 는 이 존에서 폴백이 안 돈다**
       //     (막는 호스트는 403·err=9408). 그래서 "안전판이 있으니 괜찮다" 가 아니라 **실측했으니** 승격한다.
       //     유튜브가 앞으로 CF 를 막으면 이 두 줄을 빼야 한다(그때 썸네일이 깨진다 — 느려지는 게 아니다).
-      const CDN_CGI_VERIFIED = ['kt.com', 'media.ur-team.com', 'pstatic.net', 'imgnews.naver.net', 'yt3.googleusercontent.com', 'picsum.photos', 'phinf.naver.net', 'giftishow.com', 'kakaocdn.net', 'daumcdn.net', 'cloudfront.net', 'img.youtube.com', 'i.ytimg.com']  // giftishow 2026-07-13 재실측 복원 · kakao/daum 2026-08-19 · cloudfront 2026-09-02 실측 승격(DO-spaces 는 403 이라 승격 철회)(전부 onerror=redirect 안전판)
+      const CDN_CGI_VERIFIED = ['kt.com', 'media.ur-team.com', 'pstatic.net', 'imgnews.naver.net', 'yt3.googleusercontent.com', 'picsum.photos', 'phinf.naver.net', 'kakaocdn.net', 'daumcdn.net', 'cloudfront.net', 'img.youtube.com', 'i.ytimg.com']  // giftishow 2026-10-31 제외(CF 차단 재발 — 위 원본 분기) · kakao/daum 2026-08-19 · cloudfront 2026-09-02 실측 승격(DO-spaces 는 403 이라 승격 철회)(전부 onerror=redirect 안전판)
       if (CDN_CGI_VERIFIED.some(h => host === h || host.endsWith('.' + h))) {
         return `/cdn-cgi/image/width=${w},quality=${q},format=auto,onerror=redirect${cropFrag(opts)}/${cdnCgiSafe(src)}`
       }
@@ -372,6 +389,8 @@ export function cfSrcSet(src: string | undefined | null, baseWidth: number, maxD
   if (/^https?:\/\//i.test(src)) {
     const host = (() => { try { return new URL(src).hostname } catch { return '' } })()
     const isExternalProxy = [...EXTERNAL_PROXY_HOSTS].some(h => host === h || host.endsWith('.' + h))
+    // 🎁 2026-10-31: 원본만 쓰는 호스트는 후보가 하나뿐이라 srcset 을 안 낸다(같은 주소에 2x 를 붙이면 밀도만 틀린다).
+    if (isRawOnlyImageHost(host)) return ''
     if (isExternalProxy) {
       return `${cfImage(src, { width: baseWidth * 2 })} 2x`
     }

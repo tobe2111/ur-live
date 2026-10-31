@@ -1,0 +1,25 @@
+# 2026-10-31 교환권 사진이 안 뜨던 것 — 원본 직행 + R2 이관
+
+대표 *"교환권 사진 안나오는거 많던데 영구적으로 문제 해결해줄래?"* → 승인 "원본 바로 보기 + 우리 저장소로 옮기기".
+
+## 원인 (라이브 실측)
+- 활성 교환권 2,260장 전부 `bizimg.giftishow.com`, R2 0장.
+- 리사이저(`/cdn-cgi/image`) 30장 중 25장 실패: 429 `err=9422` 14 · 524 `err=9504` 11.
+- 워커 프록시 `/api/image/resize` 도 21초 뒤 원본 302(같은 CF 이그레스).
+- `onerror=redirect` 는 이 존에서 안 돈다 → 카드는 ~7초 뒤 원본 재시도, 상세 갤러리는 사진 제외.
+
+## 한 것
+1. `src/utils/cf-image.ts` — `RAW_ONLY_IMAGE_HOSTS=['giftishow.com']`, 원본 그대로·srcset 없음. `CDN_CGI_VERIFIED` 에서 giftishow 제거(잠금 — 대표 승인, CLAUDE.md audit log).
+2. `src/worker/cron/voucher-image-rehost.ts` + `scheduled.ts` 매시 :55 — 4장/회, 많이 팔린 순, 실패는 30분×2^n(최대 하루) 뒤 재시도, CAS 덮어쓰기.
+3. 가드 `src/tests/unit/voucher-image-rehost-2026-10-31.test.ts` + 주입 4건(빨간불 확인). 재조준: `qa-image-host-coverage`, `voucher-detail-ssr-first-screen`.
+
+## 다음 세션 첫 액션
+- 어드민 `GET /api/admin/cron-heartbeats` 에서 `voucher-image-rehost` 의 `migrated=` 확인. **0 이 계속이면** CF 워커 fetch 도 giftishow 가 막는 것 → 이관은 다른 경로(비-CF 이그레스) 필요, 대표 판단.
+- D1: `SELECT COUNT(*) FROM products WHERE deal_only=1 AND image_url LIKE '/api/media/%'` 가 늘어나는지.
+
+## 틀렸던 판단
+- 2026-07-13 "giftishow 차단 해제 · onerror=redirect 안전판이라 다운사이드 0" — 둘 다 지금은 사실이 아니다.
+
+## 남은 것
+- 상세 설명 이미지(`detail_images`)는 아직 giftishow 원본(원본 직행으로 표시는 됨). 이관 대상 확장은 별건.
+- 어드민 재가져오기(`admin-kt-alpha/catalog.ts`)가 image_url 을 giftishow 로 되돌리면 cron 이 다시 옮긴다(R2 해시 키라 저장은 재사용).

@@ -250,6 +250,12 @@ export async function handleCronScheduled(
       const { runHomeServiceSweep } = await import('./cron/home-service-sweep')
       return runHomeServiceSweep(env)
     }));
+    // 🎁 2026-10-31 교환권 사진 R2 이관 — giftishow 가 CF 를 막아 리사이저가 83% 실패(라이브 실측). 매시 :55,
+    //   회차당 4장(서브리퀘스트 ≈ 장당 4). 다 옮기면 SELECT 1회 no-op. 상세: `cron/voucher-image-rehost.ts`.
+    if (slotOpen({ minute: 55 })) ctx.waitUntil(slotCron('55 * * * *')('voucher-image-rehost', async () => {
+      const { handleVoucherImageRehost } = await import('./cron/voucher-image-rehost')
+      return handleVoucherImageRehost(env)
+    }));
     // 🎯 [urads-split Phase E 2026-07-18] ads-autobid 는 ur-ads 로 이관(이중실행 방지). 재도입은 `autobid` 의 `runAutobidAll` 을 `ADS_AUTOBID_ENABLED` 게이트 뒤 safeCron 으로.
   }
 
