@@ -43,4 +43,20 @@ export default [
     test: T,
     why: '노쇼 2회에도 신청이 막히지 않는다.',
   },
+  {
+    name: 'seeding — 구매 취소가 이미 쓴 신청권도 환불한다',
+    file: 'src/features/seeding/api/seeding-db.ts',
+    find: "WHERE user_id = ? AND paid_left >= ?`,\n  ).bind(buy.amount, userId, buy.amount).run()",
+    replace: "WHERE user_id = ?`,\n  ).bind(buy.amount, userId).run()",
+    test: T,
+    why: '쓴 신청권까지 돈으로 돌려주게 되고 잔액이 음수가 된다.',
+  },
+  {
+    name: 'seeding — 구매 취소에 7일 제한이 없다',
+    file: 'src/features/seeding/api/seeding-db.ts',
+    find: "  if (!buy.in_window) return { status: 'expired' }\n",
+    replace: '',
+    test: T,
+    why: '청약철회 기간이 지나도 환불된다.',
+  },
 ]

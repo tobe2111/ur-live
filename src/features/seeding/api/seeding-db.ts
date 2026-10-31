@@ -273,3 +273,61 @@ export async function transition(
   const r = await DB.prepare(sql).bind(to, ...keys.map((k) => extra[k]), id, ...from).run()
   return !!r.meta?.changes
 }
+
+// ── 구매 취소(청약철회 — 산 지 7일 안, 그 묶음만큼 안 쓴 경우) ─────────────────
+
+/** 전자상거래법 청약철회 기간. 이 안에서, 그 묶음의 장수가 아직 유료 칸에 남아 있으면 취소할 수 있다. */
+export const PURCHASE_CANCEL_DAYS = 7
+
+export interface RefundablePurchase { payment_key: string; passes: number; price_paid: number; created_at: string; refundable: boolean; reason: string | null }
+
+export async function listPurchases(DB: D1Database, userId: number): Promise<RefundablePurchase[]> {
+  const rows = await DB.prepare(
+    `SELECT t.ref, t.amount, t.price_paid, t.created_at,
+            (t.created_at > datetime('now', ?)) AS in_window,
+            EXISTS (SELECT 1 FROM seeding_pass_tx c WHERE c.kind = 'cancel' AND c.ref = t.ref) AS cancelled
+     FROM seeding_pass_tx t WHERE t.user_id = ? AND t.kind = 'charge' ORDER BY t.id DESC LIMIT 20`,
+  ).bind(`-${PURCHASE_CANCEL_DAYS} days`, userId)
+    .all<{ ref: string; amount: number; price_paid: number; created_at: string; in_window: number; cancelled: number }>()
+    .catch(() => ({ results: [] as { ref: string; amount: number; price_paid: number; created_at: string; in_window: number; cancelled: number }[] }))
+  const bal = await passBalance(DB, userId)
+  return (rows.results ?? []).map((r) => {
+    const reason = r.cancelled ? '취소됨' : !r.in_window ? `구매 후 ${PURCHASE_CANCEL_DAYS}일이 지났어요` : bal.paid_left < r.amount ? '이 묶음의 신청권을 이미 썼어요' : null
+    return { payment_key: r.ref.replace(/^pay:/, ''), passes: r.amount, price_paid: r.price_paid, created_at: r.created_at, refundable: !reason, reason }
+  })
+}
+
+/**
+ * 구매 취소 선점 — 원장에 cancel 줄을 먼저 넣고(같은 결제는 한 번만), 유료 칸에서 그 장수를 CAS 로 뺀다.
+ * 토스 취소가 실패하면 호출부가 `revertPurchaseCancel` 로 되돌린다.
+ * @returns 'ok' | 'not_found' | 'done' | 'expired' | 'spent'
+ */
+export async function claimPurchaseCancel(DB: D1Database, userId: number, paymentKey: string): Promise<{ status: 'ok' | 'not_found' | 'done' | 'expired' | 'spent'; passes?: number; price?: number }> {
+  const ref = `pay:${paymentKey}`
+  const buy = await DB.prepare(
+    `SELECT amount, price_paid, (created_at > datetime('now', ?)) AS in_window FROM seeding_pass_tx WHERE user_id = ? AND kind = 'charge' AND ref = ?`,
+  ).bind(`-${PURCHASE_CANCEL_DAYS} days`, userId, ref).first<{ amount: number; price_paid: number; in_window: number }>()
+  if (!buy) return { status: 'not_found' }
+  if (!buy.in_window) return { status: 'expired' }
+  const ins = await DB.prepare(
+    `INSERT OR IGNORE INTO seeding_pass_tx (user_id, kind, bucket, amount, price_paid, ref, note) VALUES (?, 'cancel', 'paid', ?, ?, ?, '구매 취소(청약철회)')`,
+  ).bind(userId, -buy.amount, -buy.price_paid, ref).run()
+  if (!ins.meta?.changes) return { status: 'done' }
+  const dec = await DB.prepare(
+    `UPDATE seeding_pass_balance SET paid_left = paid_left - ?, updated_at = datetime('now') WHERE user_id = ? AND paid_left >= ?`,
+  ).bind(buy.amount, userId, buy.amount).run()
+  if (!dec.meta?.changes) {
+    await DB.prepare(`DELETE FROM seeding_pass_tx WHERE kind = 'cancel' AND ref = ?`).bind(ref).run()
+    return { status: 'spent' }
+  }
+  return { status: 'ok', passes: buy.amount, price: buy.price_paid }
+}
+
+/** 토스 취소가 실패했을 때 선점을 되돌린다(잔액 복구 + cancel 줄 삭제). */
+export async function revertPurchaseCancel(DB: D1Database, userId: number, paymentKey: string, passes: number): Promise<void> {
+  const ref = `pay:${paymentKey}`
+  const del = await DB.prepare(`DELETE FROM seeding_pass_tx WHERE kind = 'cancel' AND ref = ?`).bind(ref).run()
+  if (del.meta?.changes) {
+    await DB.prepare(`UPDATE seeding_pass_balance SET paid_left = paid_left + ? WHERE user_id = ?`).bind(passes, userId).run()
+  }
+}

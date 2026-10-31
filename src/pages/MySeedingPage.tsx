@@ -78,7 +78,7 @@ export default function MySeedingPage() {
               <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">연동한 계정의 팔로워로 신청 조건이 자동 확인돼요.</p>
               <div className="mt-2"><SnsLinkList links={me.links} available={me.available} returnTo="/my-seeding" onChanged={load} /></div>
             </section>
-            <PassSection me={me} />
+            <PassSection me={me} onChanged={load} />
             <section className={card}>
               <p className="text-[17px] font-bold text-gray-900 dark:text-white">신청 내역</p>
               {me.applications.length === 0 ? (
@@ -98,7 +98,7 @@ export default function MySeedingPage() {
   )
 }
 
-function PassSection({ me }: { me: Me }) {
+function PassSection({ me, onChanged }: { me: Me; onChanged: () => void }) {
   const [busy, setBusy] = useState('')
   async function buy(key: string) {
     setBusy(key)
@@ -135,6 +135,7 @@ function PassSection({ me }: { me: Me }) {
       ) : (
         <p className="mt-3 text-[13px] text-gray-600 dark:text-gray-300">신청권 구매는 곧 열려요. 가입 혜택 무료 신청권으로 먼저 체험해 보세요.</p>
       )}
+      <Purchases onChanged={onChanged} />
     </section>
   )
 }
@@ -195,5 +196,41 @@ function AppRow({ a, onDone }: { a: App; onDone: () => void }) {
           className="mt-2 text-[13px] text-gray-500 dark:text-gray-400">신청 취소</button>
       )}
     </li>
+  )
+}
+
+interface Purchase { payment_key: string; passes: number; price_paid: number; created_at: string; refundable: boolean; reason: string | null }
+
+/** 💳 구매 취소(청약철회) — 산 지 7일 안, 그 묶음만큼 안 썼을 때. 판정은 서버가 한다. */
+function Purchases({ onChanged }: { onChanged: () => void }) {
+  const [rows, setRows] = useState<Purchase[]>([])
+  const [busy, setBusy] = useState('')
+  const load = useCallback(() => { api.get('/api/seeding/passes/purchases').then((r) => setRows(r.data?.data ?? [])).catch(() => setRows([])) }, [])
+  useEffect(() => { load() }, [load])
+  if (!rows.length) return null
+  async function cancel(p: Purchase) {
+    if (!window.confirm(`신청권 ${p.passes}장 구매를 취소하고 ${formatNumber(p.price_paid)}원을 환불받을까요?`)) return
+    setBusy(p.payment_key)
+    try {
+      const r = await api.post(`/api/seeding/passes/purchases/${encodeURIComponent(p.payment_key)}/cancel`)
+      r.data?.success ? toast.success(r.data.message || '구매를 취소했어요') : toast.error(r.data?.error || '취소하지 못했어요')
+      load(); onChanged()
+    } catch (e) { toast.error(errMsg(e, '취소하지 못했어요')) } finally { setBusy('') }
+  }
+  return (
+    <div className="mt-4">
+      <p className="text-[13px] font-medium text-gray-900 dark:text-white">구매 내역</p>
+      <p className="text-[12px] text-gray-500 dark:text-gray-400">산 지 7일 안이고 그 묶음을 쓰지 않았으면 취소할 수 있어요.</p>
+      <ul className="mt-2 divide-y divide-rule">
+        {rows.map((p) => (
+          <li key={p.payment_key} className="flex items-center justify-between gap-3 py-2">
+            <span className="text-[13px] text-gray-700 dark:text-gray-200">{formatKSTShort(p.created_at)} · {p.passes}장 {formatNumber(p.price_paid)}원</span>
+            {p.refundable
+              ? <button type="button" disabled={!!busy} onClick={() => cancel(p)} className="shrink-0 rounded-full bg-warm px-3 py-2 text-[13px] text-gray-700 disabled:opacity-50 dark:text-gray-200">구매 취소</button>
+              : <span className="shrink-0 text-[12px] text-gray-500 dark:text-gray-400">{p.reason}</span>}
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }

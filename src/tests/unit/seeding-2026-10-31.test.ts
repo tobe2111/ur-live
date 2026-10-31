@@ -222,3 +222,38 @@ describe('🔘 알림톡 배선', () => {
     expect(src).toMatch(/issueExperienceVoucher\(DB, \{[^}]+\}, String\(a\.user_id\), 'SEED'\)/)
   })
 })
+
+describe('💳 구매 취소(청약철회)', () => {
+  it('7일 안 · 안 쓴 묶음만 · 한 번만', async () => {
+    const { claimPurchaseCancel, revertPurchaseCancel, listPurchases } = await import('@/features/seeding/api/seeding-db')
+    await chargePasses(DB, 7, 5, 'pk_a', 4500, '')
+    expect((await listPurchases(DB, 7))[0]).toMatchObject({ refundable: true, passes: 5 })
+    expect((await claimPurchaseCancel(DB, 7, 'pk_a')).status).toBe('ok')
+    expect((await passBalance(DB, 7)).paid_left).toBe(0)
+    expect((await claimPurchaseCancel(DB, 7, 'pk_a')).status).toBe('done')
+    // 토스 실패 → 되돌리면 잔액·원장 복구, 다시 취소할 수 있다
+    await revertPurchaseCancel(DB, 7, 'pk_a', 5)
+    expect((await passBalance(DB, 7)).paid_left).toBe(5)
+    expect((await claimPurchaseCancel(DB, 7, 'pk_a')).status).toBe('ok')
+  })
+  it('그 묶음을 일부라도 썼으면 취소 안 됨 · 아무것도 안 바뀐다', async () => {
+    const { claimPurchaseCancel } = await import('@/features/seeding/api/seeding-db')
+    await chargePasses(DB, 7, 5, 'pk_b', 4500, '')
+    await spendPass(DB, 7, addApp('scheduling'))
+    expect((await claimPurchaseCancel(DB, 7, 'pk_b')).status).toBe('spent')
+    expect((await passBalance(DB, 7)).paid_left).toBe(4)
+    expect((raw.prepare(`SELECT COUNT(*) n FROM seeding_pass_tx WHERE kind='cancel'`).get() as { n: number }).n).toBe(0)
+  })
+  it('7일이 지났거나 남의 결제면 거절', async () => {
+    const { claimPurchaseCancel } = await import('@/features/seeding/api/seeding-db')
+    await chargePasses(DB, 7, 1, 'pk_c', 1000, '')
+    raw.exec(`UPDATE seeding_pass_tx SET created_at = datetime('now','-8 days') WHERE ref='pay:pk_c'`)
+    expect((await claimPurchaseCancel(DB, 7, 'pk_c')).status).toBe('expired')
+    expect((await claimPurchaseCancel(DB, 8, 'pk_c')).status).toBe('not_found')
+  })
+  it('라우트는 선점 → 토스 취소 → 실패 시 되돌림 순서', () => {
+    const src = readCode('src/features/seeding/api/seeding.routes.ts')
+    const a = src.indexOf('claimPurchaseCancel(DB, me, pk)'), b = src.indexOf('cancelTossPayment({'), c = src.indexOf('revertPurchaseCancel(DB, me, pk')
+    expect(a).toBeGreaterThan(0); expect(b).toBeGreaterThan(a); expect(c).toBeGreaterThan(b)
+  })
+})

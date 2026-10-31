@@ -23,13 +23,13 @@ import type { Env } from '../../../worker/types/env'
 import { requireAuth, getCurrentUser } from '../../../worker/middleware/auth'
 import { rateLimit } from '../../../worker/middleware/rate-limit'
 import { safeError } from '../../../worker/utils/safe-error'
-import { confirmTossPayment, decideTossFlow } from '../../../worker/utils/toss-gateway'
+import { cancelTossPayment, confirmTossPayment, decideTossFlow } from '../../../worker/utils/toss-gateway'
 import {
   OPEN_STATUSES, SEEDING_TPL, SLOT_COUNTED_STATUSES, checkEligibility, isSeedingPlatform, msgSlotsStore,
   normalizeVisitSlots, parsePassPackages, sqlIn, validPostUrl,
 } from '../../../shared/seeding'
 import {
-  chargePasses, ensureSeedingTables, grantSignupPasses, loadOffer, monthKeyKst, passBalance, passHistory,
+  chargePasses, claimPurchaseCancel, ensureSeedingTables, listPurchases, revertPurchaseCancel, grantSignupPasses, loadOffer, monthKeyKst, passBalance, passHistory,
   penaltyState, setting, spendPass, transition,
 } from './seeding-db'
 import {
@@ -280,6 +280,42 @@ seedingRoutes.post('/passes/confirm', requireAuth(), async (c) => {
     return c.json({ success: true, data: { passes: await passBalance(DB, me) }, message: added ? `신청권 ${pkg.passes}장을 받았어요` : '이미 처리된 결제예요' })
   } catch (err) {
     return safeError(c, err, '구매를 완료하지 못했어요', '[seeding:confirm]')
+  }
+})
+
+seedingRoutes.get('/passes/purchases', requireAuth(), async (c) => {
+  await ensureSeedingTables(c.env.DB)
+  return c.json({ success: true, data: await listPurchases(c.env.DB, uid(c)) })
+})
+
+/**
+ * 💳 구매 취소(청약철회) — 산 지 7일 안 · 그 묶음 장수가 아직 남아 있을 때만.
+ * 순서: 원장 cancel 줄 + 유료 칸 CAS 차감(선점) → 토스 전액 취소 → 실패하면 선점을 되돌린다.
+ * 토스 취소는 `cancelTossPayment`(V2 SSOT) 호출만 — 직접 fetch 금지.
+ */
+seedingRoutes.post('/passes/purchases/:paymentKey/cancel', requireAuth(), rateLimit({ action: 'seeding_pass_cancel', max: 5, windowSec: 600 }), async (c) => {
+  try {
+    const DB = c.env.DB
+    await ensureSeedingTables(DB)
+    const me = uid(c)
+    const pk = String(c.req.param('paymentKey') ?? '')
+    if (!/^[A-Za-z0-9_-]{8,200}$/.test(pk)) return c.json({ success: false, error: '결제 정보를 찾을 수 없어요' }, 400)
+    const claim = await claimPurchaseCancel(DB, me, pk)
+    const msg: Record<string, string> = {
+      not_found: '결제 정보를 찾을 수 없어요', done: '이미 취소된 구매예요',
+      expired: '구매 후 7일이 지나 취소할 수 없어요', spent: '이 묶음의 신청권을 이미 써서 취소할 수 없어요',
+    }
+    if (claim.status !== 'ok') return c.json({ success: false, error: msg[claim.status], code: claim.status.toUpperCase() }, claim.status === 'done' ? 409 : 400)
+    const toss = await cancelTossPayment({
+      env: c.env, paymentKey: pk, cancelReason: '체험 신청권 구매 취소(청약철회)', idempotencyKey: `sdp_cancel_${pk}`, circuitName: 'toss-cancel-seeding-pass',
+    })
+    if (!toss.ok) {
+      await revertPurchaseCancel(DB, me, pk, claim.passes ?? 0)
+      return c.json({ success: false, error: toss.message || '결제를 취소하지 못했어요', code: toss.code }, 400)
+    }
+    return c.json({ success: true, data: { passes: await passBalance(DB, me) }, message: `구매를 취소했어요. ${claim.price?.toLocaleString('ko-KR')}원이 환불돼요` })
+  } catch (err) {
+    return safeError(c, err, '구매를 취소하지 못했어요', '[seeding:cancel-purchase]')
   }
 })
 
