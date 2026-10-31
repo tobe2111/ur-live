@@ -68,7 +68,7 @@ export default [
   {
     name: '🧭 다크 대비 가드가 두 랜딩을 그만 돈다',
     file: 'scripts/check-dark-contrast.mjs',
-    find: `  { route: '/creators', name: '소개 파트너 모집(PC)', pc: true, fill: true },\n`,
+    find: `  { route: '/influencer', name: '소개 파트너 모집(PC)', pc: true, fill: true },\n`,
     replace: ``,
     test: T,
     why:

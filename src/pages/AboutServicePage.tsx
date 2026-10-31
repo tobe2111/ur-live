@@ -66,7 +66,7 @@ export default function AboutServicePage() {
           </Link>
           <div className="flex items-center gap-2 lg:gap-3">
             <Link to="/partners" className="hidden sm:inline text-[12px] font-medium text-white/70 px-2">입점 안내</Link>
-            <Link to="/creators" className="hidden sm:inline text-[12px] font-medium text-white/70 px-2">소개하기</Link>
+            <Link to="/influencer" className="hidden sm:inline text-[12px] font-medium text-white/70 px-2">소개하기</Link>
             <Link to="/"
               className="h-9 lg:h-10 px-4 lg:px-5 rounded-full bg-brand text-white inline-flex items-center gap-2 text-[12px] lg:text-[13px] font-medium">
               딜 보러가기 <ArrowRight className="w-3.5 h-3.5" />
@@ -159,7 +159,7 @@ export default function AboutServicePage() {
 
             <div className="mt-10 lg:mt-16 flex flex-wrap gap-2 lg:gap-3">
               <Link to="/partners" className="h-11 lg:h-[54px] px-4 lg:px-7 rounded-full border border-white/25 inline-flex items-center gap-2 text-[13px] lg:text-[15px] font-medium text-white">매장 입점 안내 <ArrowRight className="w-3.5 h-3.5" /></Link>
-              <Link to="/creators" className="h-11 lg:h-[54px] px-4 lg:px-7 rounded-full border border-white/25 inline-flex items-center gap-2 text-[13px] lg:text-[15px] font-medium text-white">소개 파트너 모집 <ArrowRight className="w-3.5 h-3.5" /></Link>
+              <Link to="/influencer" className="h-11 lg:h-[54px] px-4 lg:px-7 rounded-full border border-white/25 inline-flex items-center gap-2 text-[13px] lg:text-[15px] font-medium text-white">소개 파트너 모집 <ArrowRight className="w-3.5 h-3.5" /></Link>
             </div>
           </div>
         </section>
@@ -230,7 +230,7 @@ export default function AboutServicePage() {
                 className="sm:flex-1 h-[52px] lg:h-[60px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-bold active:scale-[0.98] transition-transform">
                 내 주변 딜 보러가기 <ArrowRight className="w-4 h-4 lg:w-[18px] lg:h-[18px]" />
               </Link>
-              <Link to="/creators"
+              <Link to="/influencer"
                 className="sm:flex-1 h-[52px] lg:h-[60px] rounded-2xl bg-white/[0.10] border border-white/20 flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-bold text-white">
                 소개하고 커미션 받기
               </Link>

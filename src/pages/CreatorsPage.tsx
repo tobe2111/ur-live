@@ -1,5 +1,7 @@
 /**
- * ✨ 소개 파트너 모집 랜딩 — `/creators` (2026-07-19 대표 "웹페이지 3종" ③)
+ * ✨ 소개 파트너 모집 랜딩 — `/influencer` (2026-07-19 대표 "웹페이지 3종" ③ · 2026-10-31 주소 이전)
+ *   📣 2026-10-31 대표 *"인플루언서용은 하나로 통일하자. /influencer 이걸로"* — 원래 `/creators` 에 있었고,
+ *   같은 말을 하던 짧은 판 `InfluencerLandingPage` 는 지웠다. 옛 주소는 301(`consumer-redirects.ts`).
  *   히어로 → 수익 구조(판매당 promo%) → 시작 3단계 → 실제 화면 → 시드 모집 폼.
  *
  * ■ 2026-09-16 PC 판 (대표 *"PC를 같은 수준으로 만들어주고"*)
@@ -49,7 +51,7 @@ export default function CreatorsPage() {
   return (
     <div className="min-h-[100dvh] bg-warm">
       {/* 🔎 2026-07-29: 문구 SSOT = shared/seo/consumer-surfaces (워커 메타와 같은 값). */}
-      <SEO title={CONSUMER_SURFACE_SEO['/creators'].title} description={CONSUMER_SURFACE_SEO['/creators'].description} url="/creators" />
+      <SEO title={CONSUMER_SURFACE_SEO['/influencer'].title} description={CONSUMER_SURFACE_SEO['/influencer'].description} url="/influencer" />
 
       <header className="sticky top-0 z-20 ur-panel-ink">
         <div className="ur-content-wide mx-auto px-5 lg:px-10 h-14 lg:h-16 flex items-center justify-between">
