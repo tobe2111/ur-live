@@ -8,6 +8,7 @@
 import { useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { PARTNER_FACTS as F } from '@/shared/partners-facts'
+import { Reveal } from '../landing/motion'
 
 const FAQS = [
   {
@@ -50,9 +51,9 @@ export default function PartnerFaq() {
       <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-32">
         <div className="grid gap-10 lg:grid-cols-[0.62fr_1.38fr] lg:gap-16">
           <div>
-            <h2 className="text-[24px] lg:text-[40px] xl:text-[48px] font-bold tracking-[-0.03em] text-ink leading-[1.2]">
+            <Reveal><h2 className="text-[24px] lg:text-[40px] xl:text-[48px] font-bold tracking-[-0.03em] text-ink leading-[1.2]">
               자주 묻는 것
-            </h2>
+            </h2></Reveal>
             <p className="mt-5 lg:mt-7 text-[13px] lg:text-[17px] leading-[1.8] text-gray-500 dark:text-gray-400">
               여기에 없는 것은 카카오톡 채널로 물어보세요. 사람이 답합니다.
             </p>
@@ -63,7 +64,7 @@ export default function PartnerFaq() {
         </div>
 
         {/* 정직 고지 — 세 소개서와 같은 내용 */}
-        <div className="mt-14 lg:mt-20 pt-10 lg:pt-14 border-t border-rule">
+        <Reveal className="mt-14 lg:mt-20 pt-10 lg:pt-14 border-t border-rule">
           <p className="text-[12px] font-medium text-gray-500 dark:text-gray-400 mb-4">숨기지 않고 말씀드립니다</p>
           <p className="text-[15px] lg:text-[24px] leading-[1.75] text-ink max-w-[40em] font-medium">
             유어딜은 초기 서비스입니다. {F.liveMeasuredAt} 기준 판매 중인 이용권 {F.activeVouchers}건 가운데
@@ -71,7 +72,7 @@ export default function PartnerFaq() {
             트래픽을 약속하는 대신 조건을 숫자로 먼저 공개합니다.
             지금 들어오시는 매장이 그 지역과 카테고리의 첫 자리를 가져갑니다.
           </p>
-        </div>
+        </Reveal>
       </div>
     </section>
   )
@@ -86,9 +87,13 @@ function Item({ q, a }: { q: string; a: string }) {
         <span className="text-[15px] lg:text-[17px] font-bold text-ink">{q}</span>
         <ChevronDown className={`w-4 h-4 shrink-0 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} strokeWidth={2} />
       </button>
-      {open && (
-        <p className="pb-5 pr-8 text-[13px] lg:text-[17px] leading-[1.8] text-gray-600 dark:text-gray-300 max-w-[44em]">{a}</p>
-      )}
+      {/* 🎬 2026-10-31: 답이 툭 끼어들지 않고 높이가 부드럽게 열린다(높이를 재지 않는 grid 0fr→1fr).
+          닫혀 있어도 글은 DOM 에 있다 — 검색엔진이 읽는다. */}
+      <div className="ur-collapse" data-open={open ? 1 : 0} aria-hidden={!open}>
+        <div>
+          <p className="pb-5 pr-8 text-[13px] lg:text-[17px] leading-[1.8] text-gray-600 dark:text-gray-300 max-w-[44em]">{a}</p>
+        </div>
+      </div>
     </div>
   )
 }

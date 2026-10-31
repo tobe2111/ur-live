@@ -32,6 +32,8 @@ import UrDealLogo from '@/components/brand/UrDealLogo'
 import { PARTNER_FACTS as F } from '@/shared/partners-facts'
 import PhoneShot, { SHOT } from './landing/PhoneShot'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
+import { CountUp, Line, Reveal, ScrollProgress, Tilt, loadDelay } from './landing/motion'
+import StickyStory from './landing/StickyStory'
 
 const BENEFITS = [
   { icon: BadgePercent, t: '동네 할인', d: '내 주변 맛집과 뷰티, 숙소를 정가보다 싸게' },
@@ -47,10 +49,10 @@ const TRIANGLE = [
 ]
 
 const STEPS = [
-  ['매장 등록', '카카오맵에서 내 가게를 검색해 등록하면 사업자번호 확인으로 바로 활성화됩니다.'],
-  ['이용권 등록', '메뉴와 가격, 할인을 설정하면 판매 1건당 실수령가를 그 자리에서 확인할 수 있어요.'],
-  ['소개 제안', '유어딜 소개 파트너 목록에서 골라 커미션 조건으로 협업을 제안합니다. 발송은 유어딜이 대신해요.'],
-  ['판매와 정산', '고객이 앱에서 결제하고 매장에서 QR 로 사용합니다. 사용 확정분이 자동 정산돼요.'],
+  { t: '매장 등록', d: '카카오맵에서 내 가게를 검색해 등록하면 사업자번호 확인으로 바로 활성화됩니다.', shot: 'store-new', alt: '카카오맵에서 내 가게를 찾는 등록 화면' },
+  { t: '이용권 등록', d: '메뉴와 가격, 할인을 설정하면 판매 1건당 실수령가를 그 자리에서 확인할 수 있어요.', shot: 'detail', alt: '등록한 이용권이 손님에게 보이는 화면' },
+  { t: '소개 제안', d: '유어딜 소개 파트너 목록에서 골라 커미션 조건으로 협업을 제안합니다. 발송은 유어딜이 대신해요.', shot: 'seller-influencers', alt: '내 이용권을 팔아 줄 소개 파트너를 찾는 화면' },
+  { t: '판매와 정산', d: '고객이 앱에서 결제하고 매장에서 QR 로 사용합니다. 사용 확정분이 자동 정산돼요.', shot: 'seller-settlements', alt: '정산 화면 (예시 데이터)' },
 ]
 
 export default function AboutServicePage() {
@@ -73,6 +75,7 @@ export default function AboutServicePage() {
             </Link>
           </div>
         </div>
+        <ScrollProgress />
       </header>
 
       <main className="pb-24 lg:pb-0">
@@ -82,14 +85,15 @@ export default function AboutServicePage() {
           <div className="ur-content-wide mx-auto px-5 lg:px-10 pt-10 pb-14 lg:pt-16 lg:pb-24 grid gap-14 lg:grid-cols-[1fr_0.72fr] lg:gap-16 xl:gap-24 lg:items-center">
             <div>
               <h1 className="text-[28px] sm:text-[40px] lg:text-[48px] leading-[1.22] font-extrabold tracking-[-0.035em]">
-                동네 가게의 할인 이용권을<br />
-                <span className="text-brand-text">앱에서 사고, 매장에서 QR 로</span><br />
-                쓰는 로컬 딜 플랫폼
+                {/* 🎬 2026-10-31: 한 줄씩 마스크 안에서 밀려 올라온다 */}
+                <Line i={0}>동네 가게의 할인 이용권을</Line>
+                <Line i={1}><span className="text-brand-text">앱에서 사고, 매장에서 QR 로</span></Line>
+                <Line i={2}>쓰는 로컬 딜 플랫폼</Line>
               </h1>
-              <p className="mt-6 lg:mt-8 text-[15px] lg:text-[17px] leading-[1.7] text-white/70 max-w-[26em]">
+              <p style={loadDelay(380)} className="ur-load mt-6 lg:mt-8 text-[15px] lg:text-[17px] leading-[1.7] text-white/70 max-w-[26em]">
                 서울 서초구 상권 활성화 사업을 수행하고 있어요.
               </p>
-              <div className="mt-10 lg:mt-12 flex flex-col sm:flex-row gap-3 max-w-[32rem]">
+              <div style={loadDelay(500)} className="ur-load mt-10 lg:mt-12 flex flex-col sm:flex-row gap-3 max-w-[32rem]">
                 <Link to="/"
                   className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-bold active:scale-[0.98] transition-transform">
                   내 주변 딜 보러가기 <ArrowRight className="w-4 h-4 lg:w-[18px] lg:h-[18px]" />
@@ -101,12 +105,14 @@ export default function AboutServicePage() {
               </div>
             </div>
 
-            <div className="flex items-end justify-center gap-4 lg:gap-5">
+            <div style={loadDelay(220)} className="ur-load">
+            <Tilt className="flex items-end justify-center gap-4 lg:gap-5">
               <PhoneShot src={SHOT('home')} alt="유어딜 홈에 뜬 내 주변 이용권 목록" priority
-                className="w-[46%] max-w-[15rem] lg:w-[54%] lg:max-w-none" />
+                className="ur-float w-[46%] max-w-[15rem] lg:w-[54%] lg:max-w-none" />
               {/* 밑단을 한 단 올려 나란히 서지 않게 한다. 같은 선에 놓이면 카탈로그처럼 보인다 */}
               <PhoneShot src={SHOT('use')} alt="매장에서 QR 로 이용권을 쓰는 화면"
-                className="w-[38%] max-w-[12.5rem] lg:w-[44%] lg:mb-12" />
+                className="ur-float-late w-[38%] max-w-[12.5rem] lg:w-[44%] lg:mb-12" />
+            </Tilt>
             </div>
           </div>
         </section>
@@ -115,18 +121,18 @@ export default function AboutServicePage() {
             목록만 오른쪽에서 커진다(제목이 목록 위에 또 한 줄 쌓이면 폰을 늘린 그림이 된다). */}
         <section className="bg-warm">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28 grid gap-8 lg:grid-cols-[minmax(0,22rem)_1fr] lg:gap-20">
-            <h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2] lg:self-start lg:sticky lg:top-24">
+            <Reveal className="lg:self-start lg:sticky lg:top-24"><h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
               소비자에게는
-            </h2>
+            </h2></Reveal>
             <div className="border-t border-rule">
-              {BENEFITS.map(({ icon: Icon, t, d }) => (
-                <div key={t} className="flex items-baseline gap-3 lg:gap-6 py-4 lg:py-8 border-b border-rule">
+              {BENEFITS.map(({ icon: Icon, t, d }, i) => (
+                <Reveal key={t} delay={i * 90} className="flex items-baseline gap-3 lg:gap-6 py-4 lg:py-8 border-b border-rule">
                   <Icon className="w-4 h-4 lg:w-[22px] lg:h-[22px] shrink-0 translate-y-0.5 text-brand" strokeWidth={1.9} aria-hidden />
                   <div className="min-w-0">
                     <p className="text-[15px] lg:text-[28px] font-bold text-ink tracking-[-0.02em]">{t}</p>
                     <p className="text-[12px] lg:text-[17px] text-gray-500 dark:text-gray-400 leading-snug lg:leading-relaxed mt-1 lg:mt-2 max-w-[34em]">{d}</p>
                   </div>
-                </div>
+                </Reveal>
               ))}
             </div>
           </div>
@@ -136,13 +142,13 @@ export default function AboutServicePage() {
             ⚠️ 카드로 감싸지 않는다(테두리 셋이 나란히 서면 곧바로 "3열 균등 카드" 가 된다). */}
         <section className="ur-panel-ink text-white">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28">
-            <h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] leading-[1.2]">셋이 함께 커지는 구조</h2>
+            <Reveal><h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] leading-[1.2]">셋이 함께 커지는 구조</h2></Reveal>
             <p className="mt-3 lg:mt-5 text-[13px] lg:text-[17px] text-white/60">누구도 먼저 돈을 내지 않습니다.</p>
 
             <ol className="mt-8 lg:mt-16 relative pl-5 lg:pl-0 lg:grid lg:grid-cols-3 lg:gap-12 xl:gap-20">
               <span aria-hidden className="absolute left-[5px] top-2 bottom-2 w-px bg-white/25 lg:hidden" />
-              {TRIANGLE.map(({ icon: Icon, t, gives, gets }) => (
-                <li key={t} className="relative pb-5 last:pb-0 lg:pb-0 lg:border-t lg:border-white/20 lg:pt-7">
+              {TRIANGLE.map(({ icon: Icon, t, gives, gets }, i) => (
+                <Reveal as="li" key={t} delay={i * 140} className="relative pb-5 last:pb-0 lg:pb-0 lg:border-t lg:border-white/20 lg:pt-7">
                   <span aria-hidden className="absolute -left-5 top-1.5 w-[11px] h-[11px] rounded-full bg-[var(--home-field)] ring-2 ring-brand lg:hidden" />
                   <p className="flex items-center gap-2 lg:gap-2 text-[15px] lg:text-[28px] font-bold tracking-[-0.02em]">
                     <Icon className="w-[15px] h-[15px] lg:w-6 lg:h-6 text-brand-text" strokeWidth={1.9} aria-hidden />{t}
@@ -153,7 +159,7 @@ export default function AboutServicePage() {
                   <p className="text-[12px] lg:text-[15px] leading-snug lg:leading-relaxed mt-1 lg:mt-3">
                     <span className="text-white/40 font-normal">받는 것</span> <b className="font-medium">{gets}</b>
                   </p>
-                </li>
+                </Reveal>
               ))}
             </ol>
 
@@ -164,28 +170,15 @@ export default function AboutServicePage() {
           </div>
         </section>
 
-        {/* ④ 사장님 진행 — 모바일은 세로 레일, PC 는 **가로 타임라인**(가로선 하나에 네 점).
-            숫자 배지(01/02/03/04)는 쓰지 않는다. 순서는 선이 이미 말한다(taste-skill: 섹션번호 금지). */}
+        {/* ④ 사장님 진행 — 🎬 2026-10-31: 점 네 개짜리 가로 타임라인(AI 랜딩의 가장 흔한 그림)을 **고정 화면 스토리**로.
+            PC 에서 폰이 멈춰 있고 단계가 지나갈 때마다 그 단계의 실제 화면으로 바뀐다(`landing/StickyStory`). */}
         <section className="bg-warm">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28">
-            <h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">사장님은 이렇게 진행해요</h2>
-            <p className="mt-3 lg:mt-5 text-[13px] lg:text-[17px] text-gray-500 dark:text-gray-400">가입부터 정산까지, 마이 페이지의 내 가게 한 곳에서.</p>
-
-            <ol className="mt-8 lg:mt-16 space-y-4 lg:space-y-0 lg:grid lg:grid-cols-4 lg:gap-10">
-              {STEPS.map(([t, d], i) => (
-                <li key={t} className="flex gap-3 lg:block">
-                  <span aria-hidden className="shrink-0 mt-[3px] w-5 text-[12px] font-medium tabular-nums text-gray-400 dark:text-gray-500 lg:hidden">{i + 1}</span>
-                  <span aria-hidden className="hidden lg:flex items-center gap-3 mb-7">
-                    <i className="w-[13px] h-[13px] rounded-full bg-brand not-italic" />
-                    <i className="flex-1 h-px bg-rule not-italic" />
-                  </span>
-                  <div className="min-w-0 border-b border-rule pb-4 flex-1 last:border-0 lg:border-0 lg:pb-0">
-                    <p className="text-[15px] lg:text-[24px] font-bold text-ink tracking-[-0.02em] leading-[1.3]">{t}</p>
-                    <p className="text-[12px] lg:text-[15px] text-gray-500 dark:text-gray-400 leading-relaxed mt-1 lg:mt-4">{d}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
+            <Reveal><h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">사장님은 이렇게 진행해요</h2></Reveal>
+            <Reveal as="p" delay={80} className="mt-3 lg:mt-5 text-[13px] lg:text-[17px] text-gray-500 dark:text-gray-400">가입부터 정산까지, 마이 페이지의 내 가게 한 곳에서.</Reveal>
+            <div className="mt-8 lg:mt-16">
+              <StickyStory steps={STEPS} shotUrl={SHOT} />
+            </div>
           </div>
         </section>
 
@@ -195,7 +188,7 @@ export default function AboutServicePage() {
           <div className="ur-content-wide mx-auto px-5 lg:px-10 pb-16 lg:pb-32 grid gap-8 lg:grid-cols-2 lg:gap-24 lg:items-end">
             <div>
               <h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2] mb-6 lg:mb-10">숫자와 이야기</h2>
-              <p className="text-[34px] lg:text-[76px] xl:text-[96px] leading-none font-extrabold tracking-[-0.045em] text-ink">19조 원</p>
+              <p className="text-[34px] lg:text-[76px] xl:text-[96px] leading-none font-extrabold tracking-[-0.045em] text-ink"><CountUp value="19조 원" ms={1600} /></p>
               <p className="text-[13px] lg:text-[17px] text-gray-500 dark:text-gray-400 mt-2 lg:mt-5">글로벌 동일 모델 시장 규모</p>
             </div>
             <div>
@@ -219,9 +212,9 @@ export default function AboutServicePage() {
         {/* ⑥ 마무리 — 색면 한 장. PC 에서 마지막 화면이 흰 여백으로 끝나면 페이지가 잘린 것처럼 보인다. */}
         <section className="ur-panel-ink text-white">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-36 text-center">
-            <h2 className="text-[28px] lg:text-[48px] xl:text-[60px] font-extrabold tracking-[-0.03em] leading-[1.22]">
+            <Reveal kind="scale"><h2 className="text-[28px] lg:text-[48px] xl:text-[60px] font-extrabold tracking-[-0.03em] leading-[1.22]">
               지금 내 주변부터 열어 보세요
-            </h2>
+            </h2></Reveal>
             <p className="mt-6 lg:mt-8 text-[15px] lg:text-[17px] leading-relaxed text-white/70 max-w-[32em] mx-auto">
               가입하면 내 유어샵이 함께 생깁니다. 좋았던 가게를 담아 두면 그대로 소개가 됩니다.
             </p>
