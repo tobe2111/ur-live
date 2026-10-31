@@ -29,6 +29,9 @@ import UrDealLogo from '@/components/brand/UrDealLogo'
 import { PARTNER_FACTS as F } from '@/shared/partners-facts'
 import PhoneShot, { SHOT } from './landing/PhoneShot'
 import { CountUp, Line, Reveal, ScrollProgress, Tilt, loadDelay } from './landing/motion'
+import FaqItem from './landing/FaqItem'
+// ❓ 2026-10-31 — 질문은 `shared/landing-faq` SSOT. 워커가 같은 배열로 서버 본문과 `FAQPage` 를 만든다.
+import { REFERRAL_FAQ } from '@/shared/landing-faq'
 
 /** 📋 시드 모집 폼 — 기본은 유어딜 네이티브 신청 폼(/creators/apply, 사전동의·풀 자동적재).
  *  대표가 별도 구글폼 URL 을 전달하면 여기에 넣어 iframe 임베드로 대체(없으면 네이티브 폼 사용). */
@@ -184,6 +187,16 @@ export default function CreatorsPage() {
                 <PhoneShot src={SHOT('creators-apply')} alt="소개 파트너 신청 폼 화면"
                   caption="신청 폼 (라이브 화면)" className="ur-float" />
               </Reveal>
+            </div>
+          </div>
+        </section>
+
+        {/* ❓ 자주 묻는 것 — 화면 · 크롤러 본문 · FAQPage 가 같은 배열(landing-faq). 답은 접혀도 DOM 에 있다. */}
+        <section className="bg-warm">
+          <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28 grid gap-10 lg:grid-cols-[0.62fr_1.38fr] lg:gap-16">
+            <Reveal><h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">자주 묻는 것</h2></Reveal>
+            <div>
+              {REFERRAL_FAQ.map(f => <FaqItem key={f.question} q={f.question} a={f.answer} />)}
             </div>
           </div>
         </section>

@@ -18,6 +18,7 @@
  * - HTTP 상태를 실제로 내는지는 워커 런타임 — 판정은 배포 후 라이브 실측이다.
  */
 import { describe, it, expect } from 'vitest'
+import { HOME_SERVICE_CATEGORIES } from '@/shared/home-service-categories'
 import { readFileSync } from 'fs'
 import { isKnownAppPath, KNOWN_PARENT_SEGMENTS, KNOWN_SINGLE_ROUTES } from '@/shared/seo/known-routes'
 import { stripComments } from '../helpers/source-text'
@@ -47,7 +48,11 @@ function allRoutePaths(): string[] {
 }
 
 /** `/u/:handle` → `/u/probe` 처럼 파라미터를 채운 **실제로 방문 가능한** 경로. */
-const concrete = (p: string) => p.replace(/:[A-Za-z_][A-Za-z0-9_]*/g, 'probe')
+// 🏠 2026-10-31 — `/life/request/:category` 는 닫힌 목록이라 아무 값('probe')은 404 다(의도).
+//   그 자리에는 **실재 업종 키**를 넣어 "실제 라우트는 통과" 를 잰다(나머지 파라미터는 종전 그대로).
+const concrete = (p: string) => p.startsWith('/life/request/')
+  ? p.replace(':category', HOME_SERVICE_CATEGORIES[0].key)
+  : p.replace(/:[A-Za-z_][A-Za-z0-9_]*/g, 'probe')
 
 describe('🗺️ 등록 안 된 경로 404', () => {
   it('① 측정 대상이 비어 있지 않다 (0건이면 통과가 아니라 고장)', () => {

@@ -129,7 +129,13 @@ describe('③ 상한과 안전', () => {
 
   it('목록 표면이 아니면 안 낸다', () => {
     for (const p of ['/', '/search', '/gb-market', '/partners']) {
-      expect(buildStaticSurfaceNoscript(p, MIXED), `${p} 에 목록 요약이 났다`).not.toContain('<li>')
+      // 🔁 2026-10-31 재조준: `/partners` 가 화면 헤더 링크(`/`·`/about`)를 `<li><a>` 로 낸다(landing-seo).
+      //   불변식은 그대로 — *시드의 상품 줄이 목록 아닌 표면에 새지 않는다* — 라서 `<li>` 전체가 아니라
+      //   **시드 상품 이름**으로 판정한다(MIXED 의 네 이름 중 어느 것도 나오면 안 된다).
+      const html = buildStaticSurfaceNoscript(p, MIXED)
+      for (const name of ['닭도리탕', '평일 1박 숙박권', '츄파춥스300', '무선 이어폰']) {
+        expect(html, `${p} 에 목록 요약(${name})이 났다`).not.toContain(name)
+      }
     }
   })
 })
