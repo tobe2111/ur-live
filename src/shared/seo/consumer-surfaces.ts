@@ -551,7 +551,7 @@ export interface ResolvedSurfaceSeo {
  * 카테고리/브랜드 필터가 붙은 목록은 **제목을 분화**한다 — 같은 title 로 여러 URL 을 제출하면
  * 그 자체가 중복 신호다(sitemap 이 `/vouchers?category=편의점` 등을 실제로 제출한다).
  */
-type DynSeo = { title: string; description: string; path: string } | null; const dynamicSurfaceSeo: Array<(p: string) => DynSeo> = []; /** 워커 전용 동적 표면(업종 데이터가 공용 번들에 안 실리게) */ export const registerDynamicSurfaceSeo = (f: (p: string) => DynSeo) => { if (!dynamicSurfaceSeo.includes(f)) dynamicSurfaceSeo.push(f) }; export function resolveConsumerSurfaceSeo(
+type DynSeo = { title: string; description: string; path: string; noindex?: boolean } | null; const dynamicSurfaceSeo: Array<(p: string) => DynSeo> = []; /** 워커 전용 동적 표면(업종 데이터가 공용 번들에 안 실리게) */ export const registerDynamicSurfaceSeo = (f: (p: string) => DynSeo) => { if (!dynamicSurfaceSeo.includes(f)) dynamicSurfaceSeo.push(f) }; export function resolveConsumerSurfaceSeo(
   pathname: string,
   search: string,
   origin: string,
@@ -563,7 +563,7 @@ type DynSeo = { title: string; description: string; path: string } | null; const
   const path = normalizeCanonicalPath(pathname)
   const entry = CONSUMER_SURFACE_SEO[path]
   // 표에 없으면 동적 표면 빌더에 넘긴다(경로에서 값을 뽑을 수 있는 것만 — 조회는 하지 않는다).
-  if (!entry) { const l = dynamicSurfaceSeo.reduce<DynSeo>((a, f) => a ?? f(path), null); if (l) { const t = withSiteName(l.title, siteName); return { pageTitle: t, title: t, description: l.description, canonical: `${origin}${l.path}` } } return resolveAreaReportSeo(path, origin, siteName) }
+  if (!entry) { const l = dynamicSurfaceSeo.reduce<DynSeo>((a, f) => a ?? f(path), null); if (l) { const t = withSiteName(l.title, siteName); return { pageTitle: t, title: t, description: l.description, canonical: `${origin}${l.path}`, ...(l.noindex ? { noindex: true } : {}) } } return resolveAreaReportSeo(path, origin, siteName) }
 
   let title = entry.title
   let description = entry.description
