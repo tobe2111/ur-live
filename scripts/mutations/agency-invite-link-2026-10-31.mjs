@@ -20,8 +20,8 @@ export default [
   {
     name: '영입 링크 — 버튼이 빈 화면 분기 안으로 숨는다',
     file: 'src/pages/agency-console/AgencyStoresPanel.tsx',
-    find: "        {canManage && (\n          <button type=\"button\" onClick={() => setSheet('invite')} data-testid=\"agency-invite-entry\"",
-    replace: "        {canManage && rows?.length === 0 && (\n          <button type=\"button\" onClick={() => setSheet('invite')} data-testid=\"agency-invite-entry\"",
+    find: "        <button type=\"button\" onClick={() => setSheet('invite')} data-testid=\"agency-invite-entry\"",
+    replace: "        {rows?.length === 0 && <button type=\"button\" onClick={() => setSheet('invite')} data-testid=\"agency-invite-entry\"",
     test: T,
     why: '매장이 한 곳이라도 생기면 영입 버튼이 사라진다 — 대표가 짚은 바로 그 결함.',
   },
