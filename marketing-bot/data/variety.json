@@ -75,5 +75,10 @@
     "hook": "myth",
     "media_set": "https://urdeal.kr/cdn-cgi/image/width=1200,height=630,quality=85,format=jpeg,onerror=redirect,fit=cover,gravity=auto/https://media.ur-team.com/uploads/seller/26/2026-10/0F9CTfqE1eiqsu6n.jpg",
     "date_kst": "2026-10-30"
+  },
+  {
+    "platform": "threads",
+    "track": "merchant",
+    "date_kst": "2026-10-31"
   }
 ]
