@@ -297,25 +297,34 @@ export const SEEDING_TPL = {
   penalty: 'seeding_penalty',
 } as const
 
+// 🩸 2026-10-31 카카오 반려 3건의 사유를 처음부터 반영한다: ① 수신자의 어떤 행동으로 받는지 문장
+//   ② 변수마다 고정 라벨(`· 매장명: …`) ③ 홍보 문구 금지. 등록 문서(23~29)와 글자까지 같아야 한다.
+
 export function msgRequestStore(v: { store: string; product: string; platform: SeedingPlatform; followers: number; handle: string }): string {
-  const message = `[유어딜] 무상 체험 신청이 도착했습니다
+  const message = `[유어딜] 무상 체험 신청 안내
 
-매장: ${v.store}
-이용권: ${v.product}
-신청자: ${PLATFORM_LABEL[v.platform]} @${v.handle} (${FOLLOWER_WORD[v.platform]} ${v.followers.toLocaleString('ko-KR')}명)
+사장님께서 이용권에 설정하신 무상 체험 제공에 인플루언서가 신청했습니다.
 
-사장님이 설정하신 조건을 통과한 신청입니다.
+· 매장명: ${v.store}
+· 이용권: ${v.product}
+· 신청 플랫폼: ${PLATFORM_LABEL[v.platform]}
+· 신청자 계정: @${v.handle}
+· 팔로워(구독자) 수: ${v.followers.toLocaleString('ko-KR')}명
+
+사장님이 정하신 조건을 통과한 신청입니다.
 아래 [요청 확인하기]에서 승인 또는 거절을 눌러 주세요.`
   return message
 }
 
 export function msgSlotsStore(v: { store: string; product: string; handle: string; slots: string }): string {
-  const message = `[유어딜] 체험 방문 희망 일정이 도착했습니다
+  const message = `[유어딜] 체험 방문 희망 일정 안내
 
-매장: ${v.store}
-이용권: ${v.product}
-신청자: @${v.handle}
-희망 일정: ${v.slots}
+사장님께서 승인하신 무상 체험 신청자가 방문 희망 일정을 보냈습니다.
+
+· 매장명: ${v.store}
+· 이용권: ${v.product}
+· 신청자 계정: @${v.handle}
+· 희망 일정: ${v.slots}
 
 가능한 일정 하나를 골라 주세요.
 아래 [요청 확인하기]에서 선택할 수 있습니다.`
@@ -323,10 +332,12 @@ export function msgSlotsStore(v: { store: string; product: string; handle: strin
 }
 
 export function msgApproved(v: { store: string; product: string }): string {
-  const message = `[유어딜] 무상 체험이 승인되었습니다
+  const message = `[유어딜] 무상 체험 승인 안내
 
-매장: ${v.store}
-이용권: ${v.product}
+고객님께서 유어딜에서 신청하신 무상 체험을 매장이 승인했습니다.
+
+· 매장명: ${v.store}
+· 이용권: ${v.product}
 
 노쇼 방지 보증금(신청권 1장)을 사용하고 방문 희망 일정을 골라 주세요.
 아래 [내 체험 신청]에서 진행할 수 있습니다.`
@@ -334,46 +345,54 @@ export function msgApproved(v: { store: string; product: string }): string {
 }
 
 export function msgRejected(v: { store: string; product: string }): string {
-  const message = `[유어딜] 무상 체험 신청 결과를 알려드립니다
+  const message = `[유어딜] 무상 체험 신청 결과 안내
 
-매장: ${v.store}
-이용권: ${v.product}
+고객님께서 유어딜에서 신청하신 무상 체험의 결과를 알려드립니다.
 
-이번에는 매장 사정으로 진행이 어렵습니다.
-다른 매장의 체험도 신청해 보세요.`
+· 매장명: ${v.store}
+· 이용권: ${v.product}
+· 결과: 매장 사정으로 이번에는 진행이 어렵습니다
+
+보증금(신청권)은 사용되지 않았습니다.`
   return message
 }
 
 export function msgScheduled(v: { store: string; product: string; visitAt: string; deadline: string; requirement: string }): string {
-  const message = `[유어딜] 체험 방문이 확정되었습니다
+  const message = `[유어딜] 체험 방문 확정 안내
 
-매장: ${v.store}
-이용권: ${v.product}
-방문 일정: ${v.visitAt}
+고객님께서 신청하신 무상 체험의 방문 일정이 확정되어 체험 이용권이 발급되었습니다.
 
-체험 이용권이 발급되었습니다. 매장에서 이용권 QR을 보여 주세요.
-게시 의무: ${v.requirement}
-게시 기한: ${v.deadline}까지`
+· 매장명: ${v.store}
+· 이용권: ${v.product}
+· 방문 일정: ${v.visitAt}
+· 게시 의무: ${v.requirement}
+· 게시 기한: ${v.deadline}
+
+매장에서 아래 [내 이용권 보기]를 눌러 이용권 QR을 보여 주세요.`
   return message
 }
 
 export function msgPostReminder(v: { store: string; deadline: string }): string {
-  const message = `[유어딜] 체험 게시물 등록 기한이 다가옵니다
+  const message = `[유어딜] 체험 게시물 등록 기한 안내
 
-매장: ${v.store}
-게시 기한: ${v.deadline}까지
+고객님께서 방문하신 무상 체험의 게시물 등록 기한이 하루 남았습니다.
 
-게시물을 올린 뒤 링크를 등록해 주세요.
+· 매장명: ${v.store}
+· 게시 기한: ${v.deadline}
+
+게시물을 올린 뒤 아래 [게시물 등록하기]에서 링크를 등록해 주세요.
 기한이 지나면 다음 체험 신청이 제한될 수 있습니다.`
   return message
 }
 
 export function msgPenalty(v: { store: string; reason: string; blockedText: string }): string {
-  const message = `[유어딜] 체험 이용 안내
+  const message = `[유어딜] 무상 체험 이용 제한 안내
 
-매장: ${v.store}
-사유: ${v.reason}
-조치: ${v.blockedText}
+고객님께서 신청하신 무상 체험이 이용 규칙에 따라 처리되었습니다.
+
+· 매장명: ${v.store}
+· 사유: ${v.reason}
+· 조치: ${v.blockedText}
 
 문의는 유어딜 고객센터로 남겨 주세요.`
   return message
