@@ -8,11 +8,13 @@ import Sheet from '@/pages/user-profile/seller-section/Sheet'
 import { currentSeatId } from '@/lib/seller-seat'
 import { readToolParam } from '@/lib/seller-deep-link'
 import { notifTarget } from '@/lib/notif-target'
-import { agencyRequest, enterAgencyStore, isMyAgencySeat } from './agency-api'
+import { agencyRequest, enterAgencyStore, isMyAgencySeat, readAgencyProfile } from './agency-api'
 import AgencyNotificationsSheet, { type AgencyNotification } from './AgencyNotificationsSheet'
 import { useAgencyStores, type StoreRow } from './agency-stores-model'
 import AgencyStorePlate from './AgencyStorePlate'
 import AgencySalesSheet from './AgencySalesSheet'
+import { openEmbedCode } from '@/shared/embed-code-link'
+import { GridIcon } from '@/components/icons/urdeal-icons'
 import { AgencyInviteLinkCard } from './AgencyInviteLinkCard'
 import { AgencyRegisterStoreCard } from './AgencyRegisterStoreCard'
 
@@ -60,6 +62,8 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
 }) {
   const { rows, pending, active, picked, pick, canManage, error, load } = useAgencyStores(onExpired)
   const [sheet, setSheet] = useState<AgencySheet>(null)
+  // 🧩 위젯 코드 버튼이 쓰는 번호. 로그인 응답이 이미 준다 — 사용자는 번호를 몰라도 된다.
+  const agencyId = readAgencyProfile()?.agency.id ?? null
   const [busyId, setBusyId] = useState<number | null>(null)
   /**
    * 🚪 깊은 링크(`/agency?tool=/seller/orders`) — 대시보드 껍데기가 에이전시 직원을 이리로 보낸다
@@ -226,6 +230,25 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
           </span>
           <span className="shrink-0 rounded-full bg-brand px-3 py-1.5 text-[13px] font-semibold text-white">보내기</span>
         </button>
+
+        {/* 🧩 2026-11-01 대표 *"모두 이상적으로"* — 회사 홈페이지에 넣는 위젯.
+            종전엔 `/embed` 에 직접 들어가 **에이전시 번호를 타이핑**해야 했는데 그 번호가 콘솔 어디에도
+            없어서(로그인 응답엔 있었다) 에이전시 위젯은 사실상 쓸 방법이 없었다. 버튼이 번호를 싣고 간다.
+            ⚠️ 위젯 종류는 그 화면이 고르게 한다 — 운영 매장 ↔ 제휴사 입점은 같은 번호를 쓰므로
+               버튼을 둘로 나눌 이유가 없다(나누면 같은 말을 두 번 하는 입구가 된다). */}
+        {agencyId != null && (
+          <button type="button" onClick={() => openEmbedCode('agency', agencyId)} data-testid="agency-embed-entry"
+            className="mb-6 flex w-full items-center gap-3 rounded-2xl bg-white dark:bg-[#1D1F29] p-4 text-left shadow-lift active:opacity-90">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-tint text-brand-text">
+              <GridIcon size={20} aria-hidden="true" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-bold text-gray-900 dark:text-white">홈페이지에 넣기</span>
+              <span className="mt-1 block text-[13px] text-gray-500 dark:text-gray-400">회사 홈페이지에 운영 매장 이용권을 띄워요. 가격은 자동으로 최신이에요</span>
+            </span>
+            <span className="shrink-0 rounded-full bg-brand px-3 py-1.5 text-[13px] font-medium text-white">코드 받기</span>
+          </button>
+        )}
         <div className="flex items-center gap-2">
           {/* 🖥️ PC 는 매장 이름이 제목이다(왼쪽 목록이 고르기를 맡는다). 폰은 '맡은 매장' + 고르기 칩. */}
           {!stacked && <h2 className="hidden lg:block min-w-0 truncate text-[17px] font-semibold text-gray-500 dark:text-gray-400">{picked?.name ?? '맡은 매장'}</h2>}
