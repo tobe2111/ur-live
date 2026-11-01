@@ -13,6 +13,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/useToast'
 import { formatKSTDate } from '@/utils/date'
+import AgencyPayoutsCard from './agency-accounts/AgencyPayoutsCard'
 
 interface AgencyRow {
   id: number; name: string; kind: string; business_number: string | null; business_status: string | null; status: string; created_at: string
@@ -85,6 +86,8 @@ export default function AdminAgencyAccountsPage() {
             매장을 맡아 운영하는 대행사(이메일 가입)입니다. 정지하면 그 에이전시 직원은 로그인·매장 운영·초대 링크가 모두 막혀요. 사장님 매장과 주문은 그대로 남습니다.
           </p>
         </div>
+
+        <AgencyPayoutsCard />
 
         {error ? (
           <div className="rounded-xl bg-white p-4 shadow-lift">
