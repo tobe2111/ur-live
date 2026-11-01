@@ -29,7 +29,7 @@ import {
   normalizeVisitSlots, parsePassPackages, sqlIn, validPostUrl,
 } from '../../../shared/seeding'
 import {
-  chargePasses, claimPurchaseCancel, ensureSeedingTables, listPurchases, revertPurchaseCancel, grantSignupPasses, loadOffer, monthKeyKst, passBalance, passHistory,
+  chargePasses, claimPurchaseCancel, ensureSeedingTables, listOpenOffers, listPurchases, revertPurchaseCancel, grantSignupPasses, loadOffer, monthKeyKst, passBalance, passHistory,
   penaltyState, setting, spendPass, transition,
 } from './seeding-db'
 import {
@@ -64,6 +64,19 @@ async function eligibilityFor(DB: D1Database, userId: number, productId: number)
 }
 
 export const seedingRoutes = new Hono<E>()
+
+seedingRoutes.get('/open', async (c) => {
+  try {
+    const DB = c.env.DB
+    await ensureSeedingTables(DB)
+    const rows = await listOpenOffers(DB, Number(c.req.query('limit')) || 40)
+    // 엣지 캐시 60s — 자리 수가 몇 초 늦는 것은 무해하다(신청 시점에 CAS 가 다시 센다).
+    c.header('Cache-Control', 'public, max-age=60')
+    return c.json({ success: true, data: { offers: rows } })
+  } catch (err) {
+    return safeError(c, err, '체험 목록을 불러오지 못했어요', '[seeding:open]')
+  }
+})
 
 seedingRoutes.get('/offer/:productId', async (c) => {
   try {
