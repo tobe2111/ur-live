@@ -7,7 +7,7 @@
  * 🔀 절반은 **반대 방향**이다 — 계약을 "제목에 브랜드 금지" 로 조이면 일부러 브랜드로 시작하는
  *   제목 여덟이 깨지고, 스캐너가 0건을 돌려주면 ④가 무조건 통과한다.
  */
-const TABLE = 'src/shared/seo/consumer-surfaces.ts'
+const TABLE = 'src/shared/seo/consumer-surface-table.ts' // 🗂️ 2026-11-01 표 분리(불변식 불변 — 대상 파일만 옮겨갔다)
 const HOME_M = 'src/pages/mobile-home/MobileHomePage.tsx'
 const ABOUT = 'src/pages/AboutServicePage.tsx'
 const TEST = 'src/tests/unit/surface-title-contract-2026-10-14.test.ts'

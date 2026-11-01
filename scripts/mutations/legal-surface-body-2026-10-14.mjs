@@ -6,7 +6,7 @@
  * 크롤러에게 주거나(클로킹) ② 그냥 noindex 로 가려 법정 문서가 검색에서 사라진다. 둘 다 잠근다.
  */
 const SSOT = 'src/shared/seo/surface-copy.ts'
-const META = 'src/shared/seo/consumer-surfaces.ts'
+const META = 'src/shared/seo/consumer-surface-table.ts' // 🗂️ 2026-11-01 표 분리(불변식 불변 — 대상 파일만 옮겨갔다)
 const SITEMAP = 'src/worker/routes/sitemap.routes.ts'
 const TEST = 'src/tests/unit/legal-surface-body-2026-10-14.test.ts'
 const REFUND_TEST = 'src/tests/unit/refund-policy-truth-2026-10-13.test.ts'

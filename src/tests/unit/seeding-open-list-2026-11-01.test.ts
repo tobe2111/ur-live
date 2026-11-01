@@ -25,6 +25,7 @@ const { DatabaseSync } = await import(/* @vite-ignore */ ('node:' + 'sqlite')) a
 import { SEEDING_TABLES_SQL, listOpenOffers, monthKeyKst, saveOffer } from '@/features/seeding/api/seeding-db'
 import { DEFAULT_OFFER } from '@/shared/seeding'
 import { isKnownAppPath } from '@/shared/seo/known-routes'
+import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 
 type Raw = InstanceType<typeof DatabaseSync>
 let DB: D1Database, raw: Raw
@@ -215,5 +216,47 @@ describe('🧭 배선', () => {
   it('막다른 길이 이어져 있다 — 제공 안 켠 상세와 내 체험에서 목록으로', () => {
     expect(readCode('src/components/seeding/SellThisCard.tsx')).toContain('/influencer/seeding')
     expect(readCode('src/pages/MySeedingPage.tsx')).toContain('/influencer/seeding')
+  })
+})
+
+describe('🔗 공유 카드 메타 — 서버 표와 한 벌', () => {
+  /* 🩸 왜 이 그룹이 생겼나 (2026-11-01, 배포 후 라이브 실측):
+       화면에 `<SEO … noindex />` 를 줬는데 배포된 서버 HTML 은 `index, follow` 였다. react-helmet 이
+       심는 것은 **JS 를 안 돌리는 크롤러·스크래퍼에 닿지 않고**, 서버 메타는 `consumer-surfaces` 표가
+       정한다 — 표에 항목이 없으면 `index.html` 기본(= 유어딜 홈) 카드가 뜬다.
+       🔑 `robots.txt` 의 `Disallow: /influencer/` 로 **크롤은 이미 막혀 있어 색인 영향은 없다.**
+          표에 넣는 이유는 **공유 카드** 하나다(선례 `/store/new`).
+       ⚠️ 기존 가드(`consumer-surface-seo`·`breadcrumb-*`)를 깨뜨려 봤는데 **안 잡는다**(페이지가 문구를
+          손으로 적어도 68건 전부 통과) ⇒ 여기서 묶는다. */
+  const SURFACE = '/influencer/seeding'
+
+  it('① 표에 항목이 있고 noindex 이며 빵부스러기 라벨이 없다', () => {
+    const e = (CONSUMER_SURFACE_SEO as Record<string, { title?: string; description?: string; noindex?: boolean; crumb?: string }>)[SURFACE]
+    expect(e, `${SURFACE} 가 표에 없다 — 공유 카드가 유어딜 홈 메타로 뜬다`).toBeTruthy()
+    expect(e.noindex, 'noindex 가 아니면 thin content 가 색인 후보가 된다').toBe(true)
+    // 🍞 2026-10-11 가드의 불변식 — 색인 말라고 한 URL 을 체인이 가리키게 두지 않는다.
+    expect(e.crumb, 'noindex 표면엔 빵부스러기 라벨을 두지 않는다').toBeUndefined()
+    expect((e.title || '').length, '제목이 비면 카드가 비어 보인다').toBeGreaterThan(4)
+    expect((e.description || '').length).toBeGreaterThan(10)
+  })
+
+  it('② 화면이 그 표를 읽는다 — 문구를 손으로 적지 않는다', () => {
+    const src = readCode('src/pages/InfluencerSeedingPage.tsx')
+    expect(src, '표를 import 하지 않는다 — 두 벌이면 한쪽만 고치는 날 갈린다').toContain("from '@/shared/seo/consumer-surfaces'")
+    // 🔑 `<SEO>` 의 title·description 이 표에서 와야 한다(리터럴이면 갈린다).
+    const seo = src.match(/<SEO[\s\S]{0,300}?\/>/)
+    expect(seo, '`<SEO …/>` 를 못 찾았다 — 이 단언이 헛돈다').toBeTruthy()
+    // 브랜드 접미사는 `withSiteName` 이 붙인다(표엔 안 담는다 — 가드 surface-title-contract ②).
+    expect(seo![0]).toMatch(/title=\{withSiteName\(SURFACE_SEO\.title\)\}/)
+    expect(seo![0]).toMatch(/description=\{[A-Z_]*SURFACE_SEO/)
+    expect(seo![0], '크롤러가 JS 를 돌리는 경우를 위해 클라도 noindex 를 넘긴다').toContain('noindex')
+  })
+
+  it('③ 반대 방향 — 표에 손으로 적은 사본을 두지 않는다', () => {
+    // 표의 문구가 페이지 소스에 **리터럴로** 또 있으면 그게 사본이다(둘이 갈리는 씨앗).
+    const e = (CONSUMER_SURFACE_SEO as Record<string, { title?: string; description?: string }>)[SURFACE]
+    const src = readCode('src/pages/InfluencerSeedingPage.tsx')
+    expect(src.includes(`"${e.title}"`), '제목을 리터럴로 다시 적었다').toBe(false)
+    expect(src.includes(`"${e.description}"`), '설명을 리터럴로 다시 적었다').toBe(false)
   })
 })

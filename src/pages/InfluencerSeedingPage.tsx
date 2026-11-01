@@ -17,16 +17,24 @@
  *
  * ⚠️ 색인하지 않는다(`noindex`) — 자리가 0 이면 본문이 비는 화면이고, 이 화면의 유입은 검색이 아니라
  *    모집 메일·DM 이다. 섣불리 색인시키면 thin content 가 된다.
+ *    🔑 서버 표(`consumer-surfaces`)에도 같은 `noindex` 와 같은 문구가 있다 — 크롤러는 react-helmet 이
+ *       심는 것을 못 보므로 한쪽만 두면 서버와 클라가 다른 말을 한다(`robots.txt` 의 `Disallow:
+ *       /influencer/` 로 크롤은 이미 막혀 있어 색인 영향은 없지만, 표가 없으면 **공유 카드**가
+ *       유어딜 홈 메타로 뜬다 — 선례 `/store/new`).
  */
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
+import { CONSUMER_SURFACE_SEO, withSiteName } from '@/shared/seo/consumer-surfaces'
 import BrandLoader from '@/components/brand/BrandLoader'
 import DealRow from '@/components/deal/DealRow'
 import { detailHref } from '@/shared/product-flow'
 import { FOLLOWER_WORD, PLATFORM_LABEL, type SeedingPlatform } from '@/shared/seeding-labels'
 import { formatNumber } from '@/utils/format'
+
+/** 공유 카드·제목은 서버 표(`consumer-surfaces`)와 **한 벌** — 두 벌이면 한쪽만 고치는 날 갈린다. */
+const SURFACE_SEO = CONSUMER_SURFACE_SEO['/influencer/seeding']
 
 interface OpenOffer {
   product_id: number; name: string; image_url: string | null; price: number; original_price: number | null
@@ -61,7 +69,7 @@ export default function InfluencerSeedingPage() {
 
   return (
     <div className="min-h-[100dvh] bg-warm pb-24">
-      <SEO title="무료 체험 이용권 - 유어딜" description="매장이 무상으로 제공하는 이용권을 찾아 신청해 보세요" url="/influencer/seeding" noindex />
+      <SEO title={withSiteName(SURFACE_SEO.title)} description={SURFACE_SEO.description} url="/influencer/seeding" noindex />
       <div className="mx-auto max-w-xl px-4 pt-5">
         <h1 className="text-[24px] font-bold text-gray-900 dark:text-white">무료 체험 이용권</h1>
         <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400">

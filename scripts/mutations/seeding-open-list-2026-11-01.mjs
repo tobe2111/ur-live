@@ -98,4 +98,20 @@ export default [
     test: T,
     why: '제공을 안 켠 상세가 끝이 되면 그 사람은 다음 걸음을 못 찾는다(이 PR 이 고친 그 구멍).',
   },
+  {
+    name: '체험목록 — 공유 카드 문구를 화면이 손으로 적는다',
+    file: 'src/pages/InfluencerSeedingPage.tsx',
+    find: 'title={withSiteName(SURFACE_SEO.title)} description={SURFACE_SEO.description}',
+    replace: 'title="무료 체험 이용권 - 유어딜" description="매장이 무상으로 제공하는 이용권을 찾아 신청해 보세요. 방문하고 후기를 남기면 됩니다."',
+    test: T,
+    why: '글자가 같은 동안은 무해하고 한쪽만 고치는 날 서버 카드와 화면이 갈린다(2026-10-18 /vouchers 에서 배운 것).',
+  },
+  {
+    name: '반대 방향 — 체험 목록을 색인 허용으로 바꾼다',
+    file: 'src/shared/seo/consumer-surface-table.ts',
+    find: "'/influencer/seeding': { noindex: true,",
+    replace: "'/influencer/seeding': { crumb: '무료 체험',",
+    test: T,
+    why: '자리가 0 이면 본문이 비는 화면이다 — 색인 허용 + 빵부스러기는 thin content 를 제출하는 것.',
+  },
 ]
