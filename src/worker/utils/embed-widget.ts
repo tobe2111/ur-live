@@ -115,6 +115,10 @@ a{color:inherit;text-decoration:none}
 .logo i{display:inline-block;width:4px;height:4px;border-radius:50%;background:var(--brand);margin-left:1px}
 .tt{flex:1;min-width:0;font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .more{flex:none;font-size:13px;font-weight:500;color:var(--brand)}
+.sep{flex:none;width:1px;height:14px;background:var(--rule)}
+.meta{flex:none;font-size:12px;color:var(--faint)}
+/* 회사 간판으로 읽히게 머리띠를 선으로 끊는다 — brand 를 준 위젯(에이전시)에만 붙는다. */
+.hd.co{padding-bottom:12px;border-bottom:1px solid var(--rule)}
 .row{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px;scrollbar-width:thin}
 .c{flex:none;width:156px;scroll-snap-align:start;display:flex;flex-direction:column;gap:3px}
 .ph{width:156px;height:156px;border-radius:12px;background:var(--ph);overflow:hidden}
@@ -141,7 +145,6 @@ a{color:inherit;text-decoration:none}
 .pt .k{background:var(--card);border-radius:18px;box-shadow:var(--lift);overflow:hidden;word-break:keep-all}
 .pt .bar{display:flex;align-items:center;gap:12px;padding:16px 24px;border-bottom:1px solid var(--rule)}
 .pt .bar .logo{font-size:15px}
-.pt .sep{flex:none;width:1px;height:14px;background:var(--rule)}
 .pt .co{min-width:0;font-size:13px;font-weight:500;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pt .in{padding:24px;display:flex;flex-direction:column}
 .pt h1{margin:0;font-size:24px;font-weight:700;letter-spacing:-.02em;line-height:1.3}
@@ -174,9 +177,18 @@ export interface StripInput {
   kind: EmbedKind
   theme: EmbedTheme
   title: string
-  moreHref: string
+  /** 갈 곳이 있을 때만. 없으면 '전체 보기' 를 안 그린다 — 링크는 도착지가 있을 때만 건다. */
+  moreHref?: string
   cards: EmbedCard[]
   emptyText?: string
+  /**
+   * 🤝 머리띠에 유어딜과 **나란히** 세울 회사 이름(에이전시). 주면 제목 대신 이 이름이 서고,
+   * 제휴 위젯(시안 B)과 같은 언어가 된다 — 두 브랜드가 대등해 보여야 "우리가 운영한다"에 무게가 실린다.
+   * ⚠️ 안 주면 머리띠 마크업은 종전과 **byte-동일**이다(유어샵·매장·지역 위젯 무접촉).
+   */
+  brand?: string
+  /** 머리띠 오른쪽 신뢰 지표(예: `운영 매장 8곳`). 0 곳이면 **주지 말 것** — 없는 것만 못하다. */
+  meta?: string
 }
 
 function doc(theme: EmbedTheme, title: string, body: string): string {
@@ -185,11 +197,17 @@ function doc(theme: EmbedTheme, title: string, body: string): string {
 
 /** 가로로 넘기는 카드 한 줄 — 유어샵·에이전시·매장·지역 공용. */
 export function renderStrip(i: StripInput): string {
-  const more = `<a class="more" href="${esc(i.moreHref)}" target="_blank" rel="noopener">전체 보기 ›</a>`
+  const more = i.moreHref
+    ? `<a class="more" href="${esc(i.moreHref)}" target="_blank" rel="noopener">전체 보기 ›</a>`
+    : ''
+  const head = i.brand
+    ? `${LOGO}<span class="sep"></span><span class="tt">${esc(i.brand)}</span>`
+      + (i.meta ? `<span class="meta">${esc(i.meta)}</span>` : '')
+    : `${LOGO}<span class="tt">${esc(i.title)}</span>${more}`
   const list = i.cards.length
     ? `<div class="row">${i.cards.map(cardHtml).join('')}</div>`
     : `<p class="empty">${esc(i.emptyText || '지금 판매 중인 이용권이 없어요.')}</p>`
-  return doc(i.theme, i.title, `<main class="w"><div class="hd">${LOGO}<span class="tt">${esc(i.title)}</span>${more}</div>${list}</main>`)
+  return doc(i.theme, i.title, `<main class="w"><div class="hd${i.brand ? ' co' : ''}">${head}</div>${list}</main>`)
 }
 
 /** 이용권 하나 — 블로그 글 속에 넣는 가로 카드. */

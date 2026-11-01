@@ -19,8 +19,9 @@ import { curatorApi, type CuratorPageResponse, type CuratorPin } from '@/feature
 import { fetchCuratorPage, getCuratorCache } from '@/features/curator/curator-page-cache'
 import OwnerEarningsStrip from './curator-page/OwnerEarningsStrip'
 import PinManageList from './curator-page/PinManageList'
+import { openEmbedCode } from '@/shared/embed-code-link'
 import { SectionTitle, ListPlate, ListRow } from './user-profile/list-grammar'
-import { EditIcon, TicketStubIcon, ReceiptIcon } from '@/components/icons/urdeal-icons'
+import { EditIcon, TicketStubIcon, ReceiptIcon, GridIcon } from '@/components/icons/urdeal-icons'
 
 const EarnLadder = lazy(() => import('./curator-page/EarnLadder'))
 const SellOwnProductsCTA = lazy(() => import('./curator-page/SellOwnProductsCTA'))
@@ -117,6 +118,11 @@ export default function UShopManagePage() {
             {pins.length > 0 && (
               <ListRow icon={rowIco(TicketStubIcon)} label={t('ushop.managePins', { defaultValue: '담은 이용권 정리' })} hint={t('ushop.managePinsHint', { defaultValue: '순서·삭제' })} onClick={() => setReorder(true)} />
             )}
+            {/* 🧩 2026-11-01 — 내 블로그·홈페이지에 유어샵을 띄우는 코드. 담은 게 없어도 보여준다
+                (내 가게 이용권이 대신 뜬다). 종전엔 `/embed` 에 들어가 아이디를 타이핑해야 했다. */}
+            <ListRow icon={rowIco(GridIcon)} label={t('ushop.manageEmbed', { defaultValue: '홈페이지에 넣기' })}
+              hint={t('ushop.manageEmbedHint', { defaultValue: '코드 받기' })}
+              onClick={() => openEmbedCode('ushop', curator.handle)} />
           </ListPlate>
         )}
 
