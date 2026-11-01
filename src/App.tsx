@@ -230,7 +230,12 @@ function CuratorPinClientRedirect() {
 // 🌑 2026-09-16 (대표 — "로딩도 좀 문제 있어보이고"): 도착이 다크 고정인 표면(/videos)은 청크 로더도
 //   다크로. 라이트 사용자에게 [흰 로더 → 검은 로더] 점프가 났다(실측 531ms). 아래 forceLight 의 반대 방향.
 const isDarkLoaderSurface = (pathname: string) => /^\/videos(\/|$)/.test(pathname)
-const PageLoader = () => <BootFirstScreenLoader forceDark={isDarkLoaderSurface(window.location.pathname)} />
+// 🧱 2026-11-01 (prerender 가 매 빌드 죽던 것): 경로를 **라우터에서 받는다** — 종전엔 렌더 중에
+//   `window.location.pathname` 을 읽어, `window` 가 없는 서버 렌더(prerender)에서 이 폴백이
+//   그려지는 순간 트리가 통째로 throw 했다(`ReferenceError: window is not defined`).
+//   `typeof window` 가드로 기본값을 고르는 쪽이 아니라 라우터를 쓴다 — 서버에서도 **참값**을 알고,
+//   형제 `isDashboardLoaderSurface(location.pathname)` 호출부와 출처가 하나가 된다(두 벌이면 갈린다).
+const PageLoader = ({ pathname }: { pathname: string }) => <BootFirstScreenLoader forceDark={isDarkLoaderSurface(pathname)} />
 
 // 🚑 2026-07-10 [UNLOCK_LOADING] (로딩 전수조사): 대시보드(/seller·/admin)·유어애즈(/ads) 전용
 //   라이트 로더 — worker 가 이 표면들의 #root 를 라이트 #F4F5F7 placeholder 로 깔아주는데, Suspense
@@ -558,7 +563,7 @@ function AppContent() {
         {/* 🚑 2026-07-10: 대시보드/애즈는 라이트 고정 DashboardLoader — worker 라이트 placeholder 와 색 정합. */}
         <Suspense fallback={
           isDashboardLoaderSurface(location.pathname) ? <DashboardLoader />
-            : <PageLoader />
+            : <PageLoader pathname={location.pathname} />
         }>
           {/* 📐 2026-05-03: PC 풀너비 활성화 — 모바일 폭 강제 제거.
               각 페이지가 자체 `ur-content-narrow/medium/wide/full` 토큰으로 max-width 관리.

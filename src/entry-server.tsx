@@ -63,6 +63,18 @@ export async function renderApp(url: string, _initialData?: unknown): Promise<Re
  * 결과로 **완전 폴백** — prerender 는 어떤 경우에도 현행보다 나빠지지 않는다.
  * 데이터 fetch 는 SSR 에서 effect 미실행이라 allReady 가 네트워크를 기다리지 않음(모듈 로드만).
  */
+/**
+ * 🔊 2026-11-01: 아래 세 자리의 로그는 **안전판의 유일한 신호**인데 `console.warn` 으로 쓰면
+ *   `vite.config.ts` 의 `terserOptions.compress.drop_console: true` 가 빌드에서 **전부 제거**한다
+ *   (실측: 빌드된 `dist/server/entry-server.mjs` 에 `'shell 렌더 실패'` 문자열 **0건**).
+ *   그래서 "관측만 한다" 던 주석이 몇 달간 거짓이었고, prerender 가 매 빌드 죽는 동안
+ *   어느 경로로 죽는지 아무 단서가 없었다. `process.stderr` 는 terser 가 안 건드린다.
+ *   ⚠️ 이 모듈은 이미 `node:stream` 을 쓰는 Node 전용이다(워커는 `dist/server` 를 임포트하지 않는다).
+ */
+function ssrLog(msg: string, err?: unknown): void {
+  try { process.stderr.write(`[entry-server] ${msg}${err === undefined ? '' : ` ${String(err)}`}\n`) } catch { /* 로그가 렌더를 막지 않는다 */ }
+}
+
 export async function renderAppComplete(url: string, timeoutMs = 20000): Promise<RenderResult> {
   const app = (
     <App
@@ -77,7 +89,7 @@ export async function renderAppComplete(url: string, timeoutMs = 20000): Promise
     const settle = (r: RenderResult) => { if (!settled) { settled = true; resolvePromise(r) } }
     const timer = setTimeout(() => {
       try { stream.abort() } catch { /* already done */ }
-      console.warn(`[entry-server] allReady ${timeoutMs}ms 타임아웃 — renderToString 폴백`)
+      ssrLog(`allReady ${timeoutMs}ms 타임아웃 — renderToString 폴백`)
       settle(syncFallback())
     }, timeoutMs)
 
@@ -93,12 +105,12 @@ export async function renderAppComplete(url: string, timeoutMs = 20000): Promise
       },
       onShellError(err: unknown) {
         clearTimeout(timer)
-        console.warn('[entry-server] shell 렌더 실패 — renderToString 폴백:', err)
+        ssrLog('shell 렌더 실패 — renderToString 폴백:', err)
         settle(syncFallback())
       },
       onError(err: unknown) {
         // 경계 단위 오류(SSR-unsafe lazy 모듈 등) — 그 경계만 fallback 으로 남음(현행과 동일). 관측만.
-        console.warn('[entry-server] boundary 오류(해당 섹션 fallback 유지):', err)
+        ssrLog('boundary 오류(해당 섹션 fallback 유지):', err)
       },
     })
   })
