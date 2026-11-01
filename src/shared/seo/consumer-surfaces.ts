@@ -179,6 +179,10 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
     description: `식당·카페·미용실·숙소 사장님을 위한 선결제 이용권. 광고는 클릭에 돈이 나가지만 유어딜은 손님이 매장에 온 뒤에만 수수료 ${PARTNER_FACTS.feeDirect}`
       + `(대행사를 통하면 ${PARTNER_FACTS.feeBrokered}). 가입비·월 이용료·광고비 0원, 카카오맵에서 우리 가게를 찾아 바로 등록.`,
   },
+  '/store/new': { // 로그인 뒤 가입 도구 + robots Disallow ⇒ noindex 공유 카드 메타만(색인 랜딩은 /partners)
+    title: '사장님 입점 신청', noindex: true,
+    description: '사장님이 이용권을 올려 동네 손님을 모으는 무료 입점입니다. 가입하면 바로 가게를 열고 할인 이용권을 팔 수 있어요.',
+  },
 
   // ── 🗺️ 소비자 콘텐츠 표면 ─────────────────────────────────────────────
   //   전부 실측에서 **홈 메타 + `index, follow` + canonical 없음** 으로 나왔다(라우트 30개 전수).

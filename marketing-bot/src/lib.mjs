@@ -85,17 +85,23 @@ export async function claude(system, user, maxTokens = 800) {
     if (!DRY) throw new Error('ANTHROPIC_API_KEY missing');
     return `[DRY 샘플 응답] ${user.slice(0, 60)}`;
   }
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-    body: JSON.stringify(claudeBody(system, user, maxTokens)),
-  });
-  if (!res.ok) throw new Error(`Claude API ${res.status}: ${(await res.text()).slice(0, 300)}`);
-  const j = await res.json();
-  const text = (j.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('').trim();
-  // 빈 본문으로 링크만 게시되는 사고 방지
-  if (!text) throw new Error(`Claude 응답이 비어 있음 (stop_reason=${j.stop_reason}, model=${j.model})`);
-  return text;
+  // 빈 본문 / 거절로 링크만 게시되는 사고 방지: 1회 재시도 후 실패(일시적 빈 응답이 회차 전체를 죽이지 않게).
+  let last = '';
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+      body: JSON.stringify(claudeBody(system, user, maxTokens)),
+    });
+    if (!res.ok) throw new Error(`Claude API ${res.status}: ${(await res.text()).slice(0, 300)}`);
+    const j = await res.json();
+    const text = (j.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('').trim();
+    const bad = !text ? '비어 있음' : j.stop_reason === 'refusal' ? '거절' : null;
+    if (!bad) return text;
+    last = `Claude 응답이 ${bad} (stop_reason=${j.stop_reason}, model=${j.model})`;
+    console.log(`::warning::${last} — attempt ${attempt}/2`);
+  }
+  throw new Error(last);
 }
 
 // Threads 는 500자 제한. 종전 `${body.slice(0,430)}\n\n${link}`.slice(0,500) 은 본문이 길면

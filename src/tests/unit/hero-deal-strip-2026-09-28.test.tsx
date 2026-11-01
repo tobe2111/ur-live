@@ -13,6 +13,7 @@
  * 부딪히는지는 **브라우저 프레임 캡처**가 판정한다. 여기서는 *숫자가 서로 모순되지 않는가*와
  * *배선이 붙어 있는가*만 본다.
  */
+import { snapResizeOptions } from '@/utils/cf-image' // 🪣 2026-10-31 폭·화질 칸 묶기 — 주소엔 칸에 올린 값이 실린다
 import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
 import { stripComments } from '../helpers/source-text'
@@ -193,14 +194,15 @@ describe('③ 트래픽 — 타일은 전용 작은 크롭이다', () => {
     expect(HERO_TILE_REQUEST_WIDTH).toBeLessThanOrEqual(400)
     expect(HERO_TILE_QUALITY).toBeLessThan(85)
     const url = heroTileUrl('/api/media/x.jpg')
-    expect(url).toContain(`width=${HERO_TILE_REQUEST_WIDTH}`)
-    expect(url).toContain(`quality=${HERO_TILE_QUALITY}`)
+    const sn = snapResizeOptions({ width: HERO_TILE_REQUEST_WIDTH, quality: HERO_TILE_QUALITY })
+    expect(url).toContain(`width=${sn.width}`)
+    expect(url).toContain(`quality=${sn.quality}`)
   })
 
   /** 🎯 이게 빠지면 세로 사진(우리 카탈로그의 37%)이 다시 가운데로 잘린다 = 대표가 신고한 그 증상. */
   it('🔴 4:3 로 **피사체를 찾아** 자른다 (gravity 가 빠지면 원래 불만으로 되돌아간다)', () => {
     const url = heroTileUrl('/api/media/x.jpg')
-    expect(url).toContain(`height=${HERO_TILE_REQUEST_HEIGHT}`)
+    expect(url).toContain(`height=${snapResizeOptions({ width: HERO_TILE_REQUEST_WIDTH, height: HERO_TILE_REQUEST_HEIGHT }).height}`)
     expect(url).toContain('fit=cover')
     expect(url).toContain('gravity=auto')
     expect(HERO_TILE_REQUEST_WIDTH / HERO_TILE_REQUEST_HEIGHT).toBeCloseTo(4 / 3, 2)

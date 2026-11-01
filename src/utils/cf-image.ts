@@ -156,6 +156,36 @@ function getSaveData(): boolean {
 }
 
 /**
+ * 🎁 2026-10-31: 리사이저·워커 프록시 둘 다 못 받는(CF 이그레스 차단) 호스트 — 원본을 그대로 쓴다.
+ *   목록에 넣는 근거는 **라이브 실측**뿐(`cf-resized: err=…` 가 대부분). 영구 해소는 R2 이관이다.
+ */
+export const RAW_ONLY_IMAGE_HOSTS = ['giftishow.com'] as const
+export function isRawOnlyImageHost(host: string): boolean {
+  return RAW_ONLY_IMAGE_HOSTS.some(h => host === h || host.endsWith('.' + h))
+}
+
+/**
+ * 🪣 2026-10-31: 변환 폭·화질을 정해진 칸으로 올림한다 — Cloudflare Images 무료 한도(월 5,000 *고유* 변환) 보호.
+ *   폭은 위 칸으로 올린다(작게 받으면 흐려진다) · 높이를 함께 줬으면 같은 비율로 맞춘다(크롭 비율 유지) ·
+ *   화질은 가장 가까운 칸. 워커 preload 도 이 함수를 지나므로 화면과 주소가 갈리지 않는다.
+ */
+export const CF_WIDTH_BUCKETS = [160, 240, 400, 640, 960, 1280, 1600, 2000] as const  // 400 = 기본 폭(분기 기본값과 같은 칸)
+export const CF_QUALITY_BUCKETS = [65, 75, 85] as const
+export function snapResizeOptions(opts: ResizeOptions): ResizeOptions {
+  const out: ResizeOptions = { ...opts }
+  if (out.width && out.width > 0) {
+    const w = CF_WIDTH_BUCKETS.find((b) => b >= out.width!) ?? CF_WIDTH_BUCKETS[CF_WIDTH_BUCKETS.length - 1]
+    if (out.height && out.height > 0) out.height = Math.round((out.height * w) / out.width)
+    out.width = w
+  }
+  if (out.quality && out.quality > 0) {
+    const q0 = out.quality
+    out.quality = CF_QUALITY_BUCKETS.reduce((a, b) => (Math.abs(b - q0) < Math.abs(a - q0) ? b : a))
+  }
+  return out
+}
+
+/**
  * 🚑 2026-08-11 [UNLOCK_LOADING] (AB 스윕 라이브 실측): cdn-cgi **경로에 박히는 원본 URL** 의
  * 퍼센트 기호를 한 번 더 이스케이프한다.
  *
@@ -223,6 +253,11 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
     opts = { ...opts, quality: 65 }
   }
 
+  // 🪣 2026-10-31 (대표 "2번" — Cloudflare Images 무료 한도 유지): 폭·화질을 **몇 칸으로 묶는다**.
+  //   한도는 *서로 다른 변환 수*(사진 × 옵션 조합)로 센다 — 같은 사진을 화면마다 96·112·120·128·160… 폭으로
+  //   달라고 하면 그게 전부 따로 센다. 실측: 코드에 폭 값이 40가지 넘게 있었다. 묶으면 한 사진의 변환이 몇 칸으로 준다.
+  opts = snapResizeOptions(opts)
+
   // 🏭 2026-06-06 (사용자 신고 — 유어샵 배경/프로필 업로드 후 404): 워커가 R2 에서 서빙하는
   //   same-origin 업로드 이미지(/api/media/*, /api/upload/*)는 Cloudflare 의 /cdn-cgi/image/ URL
   //   리사이즈가 워커 서브요청 소스를 못 풀어 404 가 났음. 외부 이미지(Firebase 등)와 동일하게
@@ -235,6 +270,12 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
   //   같은 객체이므로 도메인 매핑만으로 전부 즉시 치유(재업로드 불필요).
   //   워커 프록시(/api/image/resize)는 리사이즈 불가(플랫폼 제약 — 06-11 실측)라 업로드 이미지의
   //   유일한 변환 경로가 이것. 도메인 장애 시 롤백 = 이 분기만 이전 프록시로 복원.
+  // 🎁 2026-10-31: R2 로 옮긴 **교환권 사진**은 줄이지 않고 그대로 낸다. 원본이 20~86KB 라 줄일 이득이 작고,
+  //   2,260장 × 여러 폭이면 그것만으로 Cloudflare Images 무료 한도(월 5,000 고유 변환)를 넘긴다 —
+  //   2026-10-31 실제로 한도를 다 써 사이트 전체 리사이즈가 429 `err=9422` 로 멈췄다(대표가 받은 안내 메일).
+  if (src.startsWith('/api/media/uploads/voucher/')) {
+    return `https://media.ur-team.com/${src.slice('/api/media/'.length)}`
+  }
   if (src.startsWith('/api/media/')) {
     const w = opts.width || 400
     const q = opts.quality || CF_IMAGE_DEFAULT_QUALITY
@@ -299,6 +340,14 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
       if (HOTLINK_BLOCKED_HOSTS.some(h => host === h || host.endsWith('.' + h))) {
         return `/api/image/resize?url=${encodeURIComponent(src)}&w=${w}&q=${q}`
       }
+      // 🎁 2026-10-31 [UNLOCK_LOADING] (대표 "교환권 사진 안나오는거 많던데 영구적으로" → 승인 "원본 바로 보기 +
+      //   우리 저장소로 옮기기"): giftishow 가 다시 Cloudflare 를 막는다 — 라이브 30장 실측 **25장 실패**
+      //   (429 `cf-resized: err=9422` 14 · 524 `err=9504` 11). `onerror=redirect` 는 이 존에서 안 돈다(아래
+      //   2026-09-02 주석) ⇒ 화면은 리사이저가 7초쯤 실패하길 기다렸다가 원본으로 다시 시도하고, 상세 갤러리는
+      //   그 사진을 아예 뺐다. 워커 프록시도 같은 이그레스라 21초 뒤 원본 302 다(실측). ⇒ **원본을 바로** 쓴다
+      //   (2026-06-17 과 같은 처방 · 장당 20~86KB). 영구 해소는 R2 이관(`cron/voucher-image-rehost.ts`) —
+      //   옮겨진 사진은 `/api/media` 라 이 분기에 안 온다. CF 차단이 풀려도 여기로 되돌리지 말고 이관을 끝낼 것.
+      if (isRawOnlyImageHost(host)) return src
       // 🚀 2026-08-19 [UNLOCK_LOADING] (대표 신고 "사진 불러오는게 많이 느리네?" — 라이브 실측):
       //   홈 카드의 **카카오 CDN 사진이 원본 그대로** 내려오고 있었다(카드 3장에 2.6MB). 이 목록에
       //   없으면 워커 프록시로 가는데 그 경로는 리사이즈를 못 한다(2026-06-11 실측) → 270px 카드에 1MB.
@@ -317,7 +366,7 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
       //   ⚠️ 2026-09-02 주석이 바로잡은 대로 **`onerror=redirect` 는 이 존에서 폴백이 안 돈다**
       //     (막는 호스트는 403·err=9408). 그래서 "안전판이 있으니 괜찮다" 가 아니라 **실측했으니** 승격한다.
       //     유튜브가 앞으로 CF 를 막으면 이 두 줄을 빼야 한다(그때 썸네일이 깨진다 — 느려지는 게 아니다).
-      const CDN_CGI_VERIFIED = ['kt.com', 'media.ur-team.com', 'pstatic.net', 'imgnews.naver.net', 'yt3.googleusercontent.com', 'picsum.photos', 'phinf.naver.net', 'giftishow.com', 'kakaocdn.net', 'daumcdn.net', 'cloudfront.net', 'img.youtube.com', 'i.ytimg.com']  // giftishow 2026-07-13 재실측 복원 · kakao/daum 2026-08-19 · cloudfront 2026-09-02 실측 승격(DO-spaces 는 403 이라 승격 철회)(전부 onerror=redirect 안전판)
+      const CDN_CGI_VERIFIED = ['kt.com', 'media.ur-team.com', 'pstatic.net', 'imgnews.naver.net', 'yt3.googleusercontent.com', 'picsum.photos', 'phinf.naver.net', 'kakaocdn.net', 'daumcdn.net', 'cloudfront.net', 'img.youtube.com', 'i.ytimg.com']  // giftishow 2026-10-31 제외(CF 차단 재발 — 위 원본 분기) · kakao/daum 2026-08-19 · cloudfront 2026-09-02 실측 승격(DO-spaces 는 403 이라 승격 철회)(전부 onerror=redirect 안전판)
       if (CDN_CGI_VERIFIED.some(h => host === h || host.endsWith('.' + h))) {
         return `/cdn-cgi/image/width=${w},quality=${q},format=auto,onerror=redirect${cropFrag(opts)}/${cdnCgiSafe(src)}`
       }
@@ -365,13 +414,17 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
  * `maxDpr` — 후보 밀도 상한(기본 3 = 종전과 동일). 2026-10-12 카드 사진은 2 로 묶는다
  * (`HOME_CARD_MAX_DPR` — 3x 폰이 175px 카드에 600px 를 받던 것을 400px 로, 장당 약 37% 감소).
  */
-export function cfSrcSet(src: string | undefined | null, baseWidth: number, maxDpr: 1 | 2 | 3 = 3): string {
+export function cfSrcSet(src: string | undefined | null, baseWidth: number, maxDpr: 1 | 2 | 3 = 2): string {
   if (!src) return ''
+  // 🎁 2026-10-31: 줄이지 않고 내는 교환권 사진 — 후보가 하나뿐이라 srcset 을 안 낸다.
+  if (src.startsWith('/api/media/uploads/voucher/')) return ''
   // 🛡️ 2026-05-27: 외부 도메인은 worker proxy 1회만 (DPI별 변환은 cf.image 가 처리).
   //   1x/2x/3x 모두 별도 fetch 시 proxy 3회 → 비효율. 단일 high-res 만 반환.
   if (/^https?:\/\//i.test(src)) {
     const host = (() => { try { return new URL(src).hostname } catch { return '' } })()
     const isExternalProxy = [...EXTERNAL_PROXY_HOSTS].some(h => host === h || host.endsWith('.' + h))
+    // 🎁 2026-10-31: 원본만 쓰는 호스트는 후보가 하나뿐이라 srcset 을 안 낸다(같은 주소에 2x 를 붙이면 밀도만 틀린다).
+    if (isRawOnlyImageHost(host)) return ''
     if (isExternalProxy) {
       return `${cfImage(src, { width: baseWidth * 2 })} 2x`
     }

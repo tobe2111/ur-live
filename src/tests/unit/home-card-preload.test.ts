@@ -154,11 +154,12 @@ describe('홈 카드 사진 preload — 클라와 워커가 같은 URL 을 만�
 })
 
 describe('🖼️ 카드 사진 밀도 상한 (2026-10-12)', () => {
-  it('상한 2 면 3x 후보가 없고, 기본값은 종전처럼 1x·2x·3x 다', () => {
+  it('상한 2 면 3x 후보가 없고, 기본값도 2 다(2026-10-31 — 3x 는 변환 한도만 쓴다)', () => {
     const src = '/api/media/uploads/demo/2026-08/a.jpg'
     const capped = cfSrcSet(src, HOME_CARD_IMG_WIDTH_BASE, 2)
     expect(capped).toMatch(/ 1x, .* 2x$/)
     expect(capped).not.toMatch(/ 3x/)
-    expect(cfSrcSet(src, HOME_CARD_IMG_WIDTH_BASE)).toMatch(/ 3x$/) // 다른 화면(상세 히어로 등)은 그대로
+    expect(cfSrcSet(src, HOME_CARD_IMG_WIDTH_BASE)).not.toMatch(/ 3x/) // 🪣 2026-10-31 기본값도 2x 까지
+    expect(cfSrcSet(src, HOME_CARD_IMG_WIDTH_BASE, 3)).toMatch(/ 3x$/) // 명시하면 3x 도 낸다
   })
 })

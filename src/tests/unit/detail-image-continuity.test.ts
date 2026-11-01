@@ -21,6 +21,7 @@
  *   - 실제 브라우저가 preload 를 재사용했는지(배포 후 워터폴로 본다: `link` 뒤에 같은 URL 의 `img` 가 0ms).
  *   - 콜드 콜로의 리사이즈 시간 자체(Cloudflare 쪽).
  */
+import { snapResizeOptions } from '@/utils/cf-image' // 🪣 2026-10-31 폭·화질 칸 묶기 — 주소엔 칸에 올린 값이 실린다
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { buildDetailHeroPreloadLink } from '../../worker/utils/home-card-preload'
@@ -57,8 +58,9 @@ describe('① 히어로 URL 은 한 함수에서 나온다', () => {
     const link = buildDetailHeroPreloadLink(JSON.stringify({ data: { image_url: src } }), false, true)
     expect(link).toContain(`href="${detailHeroMobileUrl(src)}"`)
     const h = Math.round(DETAIL_HERO_MOBILE_WIDTH / DETAIL_HERO_RATIO)
-    expect(link).toContain(`width=${DETAIL_HERO_MOBILE_WIDTH}`)
-    expect(link).toContain(`height=${h}`)
+    const snapped = snapResizeOptions({ width: DETAIL_HERO_MOBILE_WIDTH, height: h })
+    expect(link).toContain(`width=${snapped.width}`)
+    expect(link).toContain(`height=${snapped.height}`)
     expect(link).toMatch(/fit=cover/)
     expect(link).toMatch(/gravity=auto/)
   })
