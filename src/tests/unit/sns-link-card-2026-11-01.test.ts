@@ -55,7 +55,10 @@ describe('① 신선도와 다시 확인은 짝이다', () => {
 describe('② 모르는 값을 0 으로 위장하지 않는다', () => {
   it('follower_count 가 null 이면 숫자 대신 —', () => {
     expect(SRC).toMatch(/l\.follower_count === null \? '—' : formatNumber\(l\.follower_count\)/)
-    expect(SRC, '읽지 못했다고 말한다').toMatch(/수를 읽지 못했어요/)
+    // 🔁 2026-11-01(2차) 재조준 — 불변식("못 읽었다고 **말한다**")은 그대로이고, 그 문장이
+    //    `shared/sns-account.ts` 로 옮겨갔을 뿐이다(이유까지 말하게 하면서 SSOT 로 모았다).
+    //    문구를 화면이 다시 손으로 적으면 두 벌이 되므로, 여기서는 **그 함수를 부르는지**를 본다.
+    expect(SRC, '읽지 못했다고 말한다').toMatch(/snsUnknownFollowerText\(p, l\.account_type\)/)
   })
 })
 
