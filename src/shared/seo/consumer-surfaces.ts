@@ -231,6 +231,18 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
     title: '이 달의 소개 랭킹',
     description: '지역별로 이번 달 소개 성과가 높은 유어샵을 봅니다. 어떤 딜이 실제로 팔리는지 참고하세요.',
   },
+  '/influencer/seeding': {
+    /* 🎁 2026-11-01 — **noindex**(선례 `/store/new`). `robots.txt` 의 `Disallow: /influencer/` 로
+       크롤은 이미 막혀 있어 색인 문제는 없다. 표에 넣는 이유는 **공유 카드 메타** 하나다 —
+       항목이 없으면 이 주소를 카톡·슬랙에 붙였을 때 `index.html` 기본(= 유어딜 홈) 카드가 뜬다.
+       🔑 그리고 두 벌을 만들지 않기 위해 페이지 `<SEO>` 가 이 표를 읽는다(2026-10-18 `/vouchers`
+          에서 배운 것 — 서버와 클라가 각자 조립하면 글자가 같은 동안은 무해하고 한쪽만 고치는
+          날 조용히 갈린다).
+       🍞 `crumb` 는 비운다 — noindex 표면엔 빵부스러기 라벨을 두지 않는다(2026-10-11 가드). */
+    noindex: true,
+    title: '무료 체험 이용권', // 🔴 브랜드 접미사는 `withSiteName` 한 곳에서만(가드 surface-title-contract ②)
+    description: '매장이 무상으로 제공하는 이용권을 찾아 신청해 보세요. 방문하고 후기를 남기면 됩니다.',
+  },
   '/introduce': {
     crumb: '유어딜 소개',
     title: '유어딜 소개 - 우리 동네 이용권 할인', // 🩸 2026-10-18 종전 "…공동구매" — 즉시판매라 모여 사지 않는다
