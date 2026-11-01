@@ -123,7 +123,7 @@ export default function AgencyPayoutsCard() {
                   <button type="button" disabled={busy === r.id} onClick={() => { void reject(r) }}
                     className="h-9 rounded-lg px-3 text-[13px] font-medium text-tone-bad hover:bg-gray-50 disabled:opacity-50">반려</button>
                   <button type="button" disabled={busy === r.id} onClick={() => { void markPaid(r) }}
-                    className="h-9 rounded-lg bg-brand px-3 text-[13px] font-medium text-white disabled:opacity-50">지급 완료</button>
+                    className="ur-btn ur-btn-sm ur-btn-primary">지급 완료</button>
                 </div>
               )}
             </li>
