@@ -144,7 +144,40 @@ const DIRECTED_LIMIT = 40_000
 
 /** 이 크기를 넘는 문서는 "통째로 읽지 말 것" 경고가 있어야 한다. */
 const LANDMINE_TOKENS = 120_000
-const LANDMINE_HINTS = ['통째로 읽지 말', '통째로 읽지 않', 'grep']
+// 🩸 2026-11-01 판정에서 잡았다 — 첫 판은 `'grep'` 도 경고로 쳤다. 그러면 *"이 파일에서 그 파일명을 grep 할 것"*
+//   처럼 **찾는 법만 말하고 통째로 읽지 말라고는 안 하는** 머리말이 통과한다. 실제로 18.7만 토큰(창의 93%)짜리
+//   로딩 기록이 그 상태로 초록이었다. `grep` 은 아무 문서에나 나오는 낱말이라 경고가 아니다.
+const LANDMINE_HINTS = ['통째로 읽지 말', '통째로 읽지 않']
+
+/**
+ * 🧊 **잠금 변경 기록은 동결 파일 + 기록마다 파일 하나** — 2026-11-01 (대표 *"모든 세션에서 배포하는
+ * 과정이 순탄하지가 않아 … 왜 이러는거지?"* → *"응 ②도 진행해줘"*).
+ *
+ * ## 왜 (실측 — 추측 아님)
+ * 같은 PR 이 하루에 **두 번** 같은 자리에서 충돌했다: 로딩 잠금 기록의 **맨 위 줄**. 규칙이
+ * *"새 기록은 그 파일 맨 위에 추가한다"* 였으므로 잠금 파일을 건드리는 **모든 세션이 같은 줄을
+ * 고친다** — 내용상 무관한 작업끼리도 반드시 충돌하고, 풀어서 다시 올리면 Verify(전수면 1시간+)가
+ * 처음부터 돈다. 최근 Verify 100회 중 **36회가 취소**(새 커밋에 밀려 버려짐)였다.
+ * 이건 2026-07-29 `CURRENT_WORK.md` 가 겪은 것과 **똑같은 병**이고, 그때 처방(세션마다 파일 하나)이
+ * 효과를 냈다. 기록을 CLAUDE.md 에서 별도 파일로 옮긴 것만으로는 **충돌 자리가 이사 갔을 뿐**이다.
+ *
+ * ## 규칙
+ *   - 옛 큰 파일은 **동결**: 항목 수가 정확히 `entries` 여야 한다. 늘면 = 누가 맨 위에 또 적었다,
+ *     줄면 = 이력을 지웠다(이력은 값지다). **둘 다 실패**다 — 그래서 이 숫자를 올리는 것으로는
+ *     못 빠져나간다(올리면 실제 파일과 안 맞아 빨간불).
+ *   - 새 기록은 `dir/<YYYY-MM-DD>-<슬러그>.md` **한 건당 한 파일**. 이름이 다르면 두 세션이
+ *     같은 날 기록해도 **같은 줄을 만질 일이 없다.**
+ *
+ * ⚠️ **왜 별도 가드가 아니라 여기인가**: 새 가드를 `verify.yml` 에 등록하면 그 파일이
+ * `ALWAYS_FULL`(guard-mutations-scope.mjs)이라 **주입 전수(5천 건, 1시간+)가 돈다.** 배포를
+ * 쉽게 하자는 일이 배포를 무겁게 만들면 안 된다. 그리고 같은 계열(세션이 읽는 문서의 구조)이다.
+ */
+const FROZEN_LOGS = [
+  { file: 'docs/locks/loading-audit-log.md', entries: 239, dir: 'docs/locks/loading', tag: '[UNLOCK_LOADING] / [LOADING_ADDITIVE]' },
+  { file: 'docs/locks/toss-v2-audit-log.md', entries: 48, dir: 'docs/locks/toss', tag: '[UNLOCK]' },
+]
+const LOG_ENTRY_RE = /^- 20\d\d-\d\d-\d\d /
+const LOG_FILE_RE = /^\d{4}-\d{2}-\d{2}-[a-z0-9][a-z0-9-]*\.md$/
 
 function recentHandoffFiles(n) {
   const dir = 'docs/handoff'
@@ -237,6 +270,38 @@ for (const { file: f, tierA } of directed) {
       why: '세션이 이 문서를 열 수 있고, 통째로 읽으면 창의 20%+ 를 한 번에 쓴다. 크기를 줄이라는 게 아니라 머리말 30줄 안에 grep 안내를 두라는 것이다.',
       files: [f],
     })
+  }
+}
+
+// ── ①-3 잠금 변경 기록: 동결 + 기록마다 파일 하나 ───────────────────
+for (const f of FROZEN_LOGS) {
+  // 합성 트리(시험)에는 없을 수 있다 — 실제 레포에 있는지는 시험이 따로 고정한다.
+  if (!existsSync(f.file)) continue
+  checked++
+  const n = readFileSync(f.file, 'utf8').split('\n').filter((l) => LOG_ENTRY_RE.test(l)).length
+  if (n !== f.entries) {
+    const grew = n > f.entries
+    violations.push({
+      line: `${f.file}: 항목 ${n}건 (동결값 ${f.entries}건) — ${grew ? '누가 맨 위에 또 적었다' : '이력이 지워졌다'}`,
+      why: grew
+        ? `이 파일은 동결됐다. 모든 세션이 맨 위 같은 줄에 적어 머지마다 충돌했다(Verify 가 처음부터 다시 돈다). ` +
+          `새 ${f.tag} 기록은 ${f.dir}/<날짜>-<슬러그>.md 파일 하나로 쓸 것 — 이 줄을 그 파일로 옮기면 된다.`
+        : '옛 기록은 왜 지금 그 모양인지·이미 기각한 처방이 담긴 이력이다. 지우지 말 것. 동결값을 내리는 것으로 통과시키지 말 것.',
+      files: [f.file],
+    })
+  }
+  if (existsSync(f.dir)) {
+    for (const e of readdirSync(f.dir)) {
+      if (e === 'README.md') continue
+      checked++
+      if (!LOG_FILE_RE.test(e)) {
+        violations.push({
+          line: `${f.dir}/${e}: 이름이 <YYYY-MM-DD>-<슬러그>.md 가 아니다`,
+          why: '날짜 접두사가 있어야 정렬이 곧 최신순이고, 슬러그가 있어야 같은 날 두 세션이 같은 파일을 만지지 않는다.',
+          files: [`${f.dir}/${e}`],
+        })
+      }
+    }
   }
 }
 

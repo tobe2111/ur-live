@@ -5,6 +5,20 @@ if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
   exit 0
 fi
 
+# 🛡️ 2026-11-01: **git 검사(pre-commit · pre-push)를 매 세션 자동 설치한다.**
+#   컨테이너는 매번 새로 만들어지고 `.git/hooks/` 는 클론에 안 딸려 온다. 종전엔 CLAUDE.md 와
+#   `.claude/agents/dev.md` 에 "세션마다 직접 돌려라" 라고만 적혀 있었고, 잊은 세션은 로컬 검사 없이
+#   커밋해 **오류를 CI 에서야(최소 26분 뒤) 처음 봤다** — 규칙만 있고 강제가 없던 자리다.
+#   ⚠️ **반드시 이 자리(맨 앞)에 둔다** — 아래는 스크래퍼가 이미 돌거나 설치가 실패하면 중간에
+#   `exit 0` 한다. 끝에 두면 그 경우 조용히 안 깔린다.
+if [ -f "$CLAUDE_PROJECT_DIR/scripts/install-git-hooks.sh" ]; then
+  if (cd "$CLAUDE_PROJECT_DIR" && bash scripts/install-git-hooks.sh >/dev/null 2>&1); then
+    echo "==> git 검사(pre-commit·pre-push) 설치 완료"
+  else
+    echo "==> ⚠️ git 검사 설치 실패 — 커밋 전에 직접: bash scripts/install-git-hooks.sh"
+  fi
+fi
+
 echo "==> naver-ad-scraper 의존성 설치 중..."
 cd "$CLAUDE_PROJECT_DIR/naver-ad-scraper"
 npm install --silent || true

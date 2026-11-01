@@ -132,17 +132,18 @@
 **수정 절차 (예외 발생 시)**:
 1. `AskUserQuestion` 으로 의도/근거 설명 + 확인 받기
 2. 변경 사유 + docs URL 인용 + commit 메시지 명시
-3. 본 CLAUDE.md 의 audit log 에 변경 commit 추가
+3. 변경 기록을 아래 audit log 디렉터리에 **파일 하나로** 추가(옛 큰 파일은 동결)
 
 ### 변경 audit log
 
-📄 **전문 → `docs/locks/toss-v2-audit-log.md`** (기록 48건, 2026-05-24 ~ )
+📄 **전문 → `docs/locks/toss-v2-audit-log.md`**(기록 48건, 2026-05-24 ~ 2026-11-01, **동결**) + `docs/locks/toss/`(그 뒤)
 
-🔴 **위 잠금표의 파일을 건드리기 전에 그 파일에서 파일명을 grep 할 것** — 왜 지금 그 모양인지와
+🔴 **위 잠금표의 파일을 건드리기 전에 grep 할 것** — 왜 지금 그 모양인지와
 **이미 시도해 실패한 처방**이 거기 있다. 안 읽고 고치면 같은 것을 두 번 밟는다.
-`grep -n 'payment.routes' docs/locks/toss-v2-audit-log.md`
+`grep -rn 'payment.routes' docs/locks/`
 
-➕ 새 `[UNLOCK]` 기록은 **그 파일 맨 위**에 추가한다(여기로 되돌리지 말 것).
+➕ **새 `[UNLOCK]` 기록은 `docs/locks/toss/<날짜>-<슬러그>.md` 파일 하나로 쓴다** — 옛 파일 맨 위에 적지 말 것
+(**동결**: 항목 수가 늘면 CI 빨간불). 모든 세션이 같은 줄에 적어서 머지마다 충돌했다(2026-11-01).
 
 ## 🔒 로딩 최적화 잠금 (2026-05-27 — 사용자 명령)
 
@@ -190,18 +191,22 @@
 **수정 절차 (예외 발생 시)**:
 1. `AskUserQuestion` 으로 의도/근거 + 회귀 영향 설명
 2. 변경 사유 + commit 메시지에 잠금 해제 명시 (`[UNLOCK_LOADING]`)
-3. 본 CLAUDE.md 의 audit log 에 변경 commit 추가
+3. 변경 기록을 아래 audit log 디렉터리에 **파일 하나로** 추가(옛 큰 파일은 동결)
 
 ### 변경 audit log
 
-📄 **전문 → `docs/locks/loading-audit-log.md`** (기록 239건, 2026-05-27 ~ )
+📄 **전문 → `docs/locks/loading-audit-log.md`**(기록 239건, 2026-05-27 ~ 2026-11-01, **동결**) + `docs/locks/loading/`(그 뒤)
 
-🔴 **위 잠금표의 파일을 건드리기 전에 그 파일에서 파일명을 grep 할 것** — 왜 지금 그 모양인지,
+🔴 **위 잠금표의 파일을 건드리기 전에 grep 할 것** — 왜 지금 그 모양인지,
 **이미 측정해서 기각한 처방**, **그때 틀린 판단**이 거기 있다. 안 읽고 고치면 같은 것을 두 번 밟는다.
-`grep -n 'VouchersPage' docs/locks/loading-audit-log.md`
+`grep -rn 'VouchersPage' docs/locks/`
 
-➕ 새 `[UNLOCK_LOADING]` / `[LOADING_ADDITIVE]` 기록은 **그 파일 맨 위**에 추가한다
-(여기로 되돌리지 말 것 — 그렇게 CLAUDE.md 가 30만 토큰이 되어 세션이 안 켜졌다).
+➕ **새 `[UNLOCK_LOADING]` / `[LOADING_ADDITIVE]` 기록은 `docs/locks/loading/<날짜>-<슬러그>.md` 파일 하나로
+쓴다** — 옛 파일 맨 위에 적지 말 것(**동결**: 항목 수가 늘면 CI 빨간불). 🩸 **왜**: 그 규칙("맨 위에
+추가") 때문에 잠금 파일을 건드리는 **모든 세션이 같은 줄을 고쳤고**, 무관한 작업끼리 머지마다 충돌해
+Verify 가 처음부터 다시 돌았다(2026-11-01 한 PR 이 두 번 · 최근 Verify 100회 중 36회 취소).
+`CURRENT_WORK.md` 가 같은 병을 같은 처방(세션마다 파일 하나)으로 고쳤다. CLAUDE.md 로 되돌리지도 말 것
+— 그렇게 이 파일이 30만 토큰이 되어 세션이 안 켜졌다.
 
 ### 2차 확장 — 추가 잠금 항목 (회귀 시 critical path 30%+ 증가 위험)
 
@@ -1078,8 +1083,8 @@ WebFetch 도 403(봇 차단)이라 스펙 확인은 대표 화면 확인이 필�
 - **`docs/ROUTES.md`** — `/api/seller` 등 라우트 매핑
 - **`docs/design/`** — UI 시안 archive
 - **`TECHNICAL_DEBT.md`** — 기술 부채 목록
-- **`docs/locks/loading-audit-log.md`** — 로딩 최적화 잠금의 변경 이력 236건 (2026-11-01 분리)
-- **`docs/locks/toss-v2-audit-log.md`** — Toss V2 잠금의 변경 이력 48건 (2026-11-01 분리)
+- **`docs/locks/loading-audit-log.md`** — 로딩 최적화 잠금의 변경 이력 239건 (2026-11-01 분리 · **동결**) → 그 뒤는 **`docs/locks/loading/`** (기록마다 파일 하나)
+- **`docs/locks/toss-v2-audit-log.md`** — Toss V2 잠금의 변경 이력 48건 (2026-11-01 분리 · **동결**) → 그 뒤는 **`docs/locks/toss/`**
 - **`docs/GUARD_RAILS.md`** — 영구 방어선 표 전문(사고 출처와 경위) (2026-11-01 분리)
 
 CLAUDE.md 는 매 작업마다 읽는 활성 규칙만 유지. 사고 후일담 / 긴 표 / 시안 detail 은 위 파일로 분리.
@@ -1687,6 +1692,11 @@ npx wrangler@3 pages deploy dist/client --project-name=ur-live `
 > **훅이 없어 그것도 안 돌고 있었다.** 설치한 뒤 30분 만에 같은 사고를 실제로 막았다
 > (`DealCardMedia.tsx` 의 홈 카드 트래픽 보호 제거 주입분이 staged 됐다).
 > ⇒ **가드를 만드는 것 · 등록되는 것 · 실제로 도는 것은 셋 다 다른 일이다.**
+>
+> ✅ **2026-11-01 — 이제 자동이다.** `.claude/hooks/session-start.sh` 가 **맨 앞에서** 설치한다(그 아래는
+> 스크래퍼 상태에 따라 중간 `exit 0` 하므로 끝에 두면 조용히 안 깔린다). 시작 로그에
+> `==> git 검사(pre-commit·pre-push) 설치 완료` 가 보이면 된 것이고, `⚠️ … 설치 실패` 면 직접 돌릴 것.
+> 가드 `session-start-git-hooks-2026-11-01.test.ts`(주입 2).
 ## 🛡️ 영구 방어선 (사고 재발 방지)
 
 과거 사고 패턴이 다시 commit / deploy 되는 것을 차단하는 자동 검사.
