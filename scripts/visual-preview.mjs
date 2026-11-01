@@ -66,6 +66,13 @@ const PINS_N = (() => {
   const a = process.argv.find((x) => x.startsWith('--pins='))
   return a ? Math.max(0, parseInt(a.slice('--pins='.length), 10) || 0) : 0
 })()
+/**
+ * 🏷️ `--ushop-name=` / `--ushop-bio=` — 유어샵 머리의 **긴 이름 경계**를 눈으로 본다.
+ *   2026-11-01 대표 신고(*"리스터코퍼레이션 이렇게 길게 하니까 두줄이 되네?"*)를 재현하려면
+ *   시드 이름을 바꿀 수 있어야 한다. `--pins=N` 과 같은 성질의 옵션이다(경계는 눈으로 봐야 한다).
+ */
+const USHOP_NAME = typeof args['ushop-name'] === 'string' ? args['ushop-name'] : ''
+const USHOP_BIO = typeof args['ushop-bio'] === 'string' ? args['ushop-bio'] : ''
 const NAME = typeof args.name === 'string' ? args.name : ROUTE.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'page'
 const EXTRA_CSS = typeof args.css === 'string' ? args.css : ''
 const DARK = !!args.dark
@@ -123,6 +130,9 @@ const CURATOR_SEED = {
   ],
   linked_seller: null,
 }
+if (args['ushop-sns']) Object.assign(CURATOR_SEED.curator, { youtube_url: 'https://youtube.com/@urdeal', instagram_url: 'https://instagram.com/urdeal' })
+if (USHOP_NAME) CURATOR_SEED.curator.name = USHOP_NAME
+if (USHOP_BIO) CURATOR_SEED.curator.bio = USHOP_BIO === 'none' ? null : USHOP_BIO
 // --pins=N 이면 원본 6개를 순환 복제해 정확히 N 개로 맞춘다(내용이 아니라 **개수**가 검사 대상).
 if (PINS_N > 0) {
   const base = CURATOR_SEED.pins

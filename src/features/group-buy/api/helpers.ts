@@ -9,6 +9,7 @@ import type { D1Database } from '@cloudflare/workers-types'
 import { sendTextNotice } from '../../../lib/text-notice' // 📨 알림은 카톡 알림톡 하나로(SENS — 승인 전 템플릿은 보내지 않는다)
 import { existingColumns, columnNameOf } from '../../../worker/utils/ensure-columns'
 import { recordLedger } from '../../../worker/utils/ledger'
+import { isOwnAgencyReferral } from '../../../worker/utils/agency-share-payout' // 🤝 규칙 1 — 에이전시 자기 링크엔 소개비 없음
 import { dbKey } from '../../../worker/utils/d1-read-replica' // 세션(사본)이어도 메모는 원본 기준
 import { calcInfluencerCommissionPct, type CommissionRates } from './commission-rates'
 // 💸 매장 수수료율(채널 > override > tier > default)은 `seller-commission-rate.ts` 로 분리했다
@@ -196,6 +197,7 @@ export async function applyGroupBuyReferral(
     `SELECT COALESCE(marketing_enabled, 1) AS marketing_enabled, referred_by_influencer, referral_bonus_until FROM sellers WHERE id = ?`
   ).bind(p.sellerId).first<{ marketing_enabled: number; referred_by_influencer: string | null; referral_bonus_until: string | null }>().catch(() => null)
   const influencerActive = !blocked && Number(sellerRow?.marketing_enabled ?? 1) === 1 && !p.productReferralDisabled
+    && !(await isOwnAgencyReferral(DB, p.referralInfluencerId, p.sellerId, p.productId)) // 🤝 규칙 1: 에이전시 자기 링크 = 소개비 없음
 
   let effectiveInfluencerPct = 0
   if (influencerActive) {

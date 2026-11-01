@@ -101,7 +101,7 @@ const FollowingPage = lazy(() => import('./pages/FollowingPage'))
 const MyVouchersPage = lazyPage(() => import('./pages/MyVouchersPage')); registerRoutePreload('myVouchers', MyVouchersPage.load)
 const GuestPassPage = lazyPage(() => import('./pages/guest/GuestPassPage')); const GuestUrShopPage = lazyPage(() => import('./pages/guest/GuestUrShopPage')); const GuestMyPage = lazyPage(() => import('./pages/guest/GuestMyPage')); registerBootPage('guestPass', GuestPassPage.load); registerBootPage('guestUShop', GuestUrShopPage.load); registerBootPage('guestMy', GuestMyPage.load) // 🚪 로그인 전 탭 화면(2026-10-12)
 const MyGifticonsPage = lazy(() => import('./pages/MyGifticonsPage'))  // 🎟️ 2026-08-31 지갑 분리 — 교환권 보관함
-const StoreScanPage = lazy(() => import('./pages/StoreScanPage')); const StoreSeedingPage = lazy(() => import('./pages/StoreSeedingPage')); const MySeedingPage = lazy(() => import('./pages/MySeedingPage')) // 🎁 무상 체험(2026-10-31)
+const StoreScanPage = lazy(() => import('./pages/StoreScanPage')); const StoreSeedingPage = lazy(() => import('./pages/StoreSeedingPage')); const MySeedingPage = lazy(() => import('./pages/MySeedingPage')); const InfluencerSeedingPage = lazy(() => import('./pages/InfluencerSeedingPage')) // 🎁 무상 체험(2026-10-31) · 체험 목록(2026-11-01)
 const InfluencerSettlementPage = lazy(() => import('./pages/InfluencerSettlementPage'))
 const InfluencerDiscoverPage = lazy(() => import('./pages/InfluencerDiscoverPage'))
 const InfluencerAnalyticsPage = lazy(() => import('./pages/InfluencerAnalyticsPage'))
@@ -134,7 +134,7 @@ const GroupBuyDetailPage = lazyPage(() => import('./pages/GroupBuyDetailPage'));
 const GroupBuyConfirmPaymentPage = lazy(() => import('./pages/GroupBuyConfirmPaymentPage'))
 // 🛡️ 2026-05-18: 숙소 공구 사용자 페이지 — PR 3/6, PR 6/6.
 const StaysSearchPage = lazyPage(() => import('./pages/StaysSearchPage')); registerBootPage('stays', StaysSearchPage.load); const SoonPage = lazy(() => import('./pages/SoonPage')) /* 🌱 오픈 예정 모아보기 */
-const LifePage = lazy(() => import('./pages/life/LifePage')); const LifeRequestFormPage = lazy(() => import('./pages/life/LifeRequestFormPage')); const LifeMyRequestsPage = lazy(() => import('./pages/life/LifeMyRequestsPage')); const LifeRequestDetailPage = lazy(() => import('./pages/life/LifeRequestDetailPage')); const LifeProPage = lazy(() => import('./pages/life/LifeProPage')); const LifeProRequestPage = lazy(() => import('./pages/life/LifeProRequestPage')); const LifeSharePage = lazy(() => import('./pages/life/LifeSharePage')); const LifeBizPage = lazy(() => import('./pages/life/LifeBizPage')) /* 🏠 생활 견적(2026-10-24) */
+const LifePage = lazyPage(() => import('./pages/life/LifePage')); registerBootPage('life', LifePage.load); const LifeRequestFormPage = lazy(() => import('./pages/life/LifeRequestFormPage')); const LifeMyRequestsPage = lazy(() => import('./pages/life/LifeMyRequestsPage')); const LifeRequestDetailPage = lazy(() => import('./pages/life/LifeRequestDetailPage')); const LifeProPage = lazyPage(() => import('./pages/life/LifeProPage')); registerBootPage('lifePro', LifeProPage.load); const LifeProRequestPage = lazy(() => import('./pages/life/LifeProRequestPage')); const LifeSharePage = lazy(() => import('./pages/life/LifeSharePage')); const LifeBizPage = lazy(() => import('./pages/life/LifeBizPage')) /* 🏠 생활 견적(2026-10-24) */
 const StayDetailPage = lazyPage(() => import('./pages/StayDetailPage')); registerBootPage('stayDetail', StayDetailPage.load); registerRoutePreload('stayDetail', StayDetailPage.load) // 숙소 카드·지도가 미리 받는다
 const MyStaysPage = lazy(() => import('./pages/MyStaysPage'))
 // 🛡️ 2026-06-12 (전수조사 4차 B-1): 숙소 Toss 결제 returnUrl 경량 confirm 페이지.
@@ -795,6 +795,8 @@ function AppContent() {
             <Route path="/store/new" element={<ProtectedRoute requireUser><ErrorBoundary><StoreClaimPage /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/store/find" element={<ProtectedRoute requireUser><ErrorBoundary><StoreOwnerClaimPage /></ErrorBoundary></ProtectedRoute>} /><Route path="/store/agency/:token" element={<ProtectedRoute requireUser><ErrorBoundary><StoreAgencyInvitePage /></ErrorBoundary></ProtectedRoute>} /><Route path="/store/partner/:agencyId" element={<ProtectedRoute requireUser><ErrorBoundary><StoreAgencyInvitePage /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/my-seeding" element={<ProtectedRoute requireUser><ErrorBoundary><MySeedingPage /></ErrorBoundary></ProtectedRoute>} />
+            {/* 🎁 2026-11-01: 모집 깔때기의 착지 — 로그인 없이 보인다(모집 메일·DM 이 여기로 온다). 자격 판정은 상세 한 곳에만. */}
+            <Route path="/influencer/seeding" element={<ErrorBoundary><InfluencerSeedingPage /></ErrorBoundary>} />
             <Route path="/store/go" element={<ProtectedRoute requireUser><ErrorBoundary><StoreGoPage /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/influencer/settlement" element={
               <ProtectedRoute requireUser>

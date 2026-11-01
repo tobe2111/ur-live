@@ -100,3 +100,12 @@
 - 순서: ① 중개 매장 4곳 → 에이전시 이전(개인 카카오 중개사 → 카카오 에이전시 계정 + 맡김 active + `broker_share_pct` → `agency_share_terms`)
   ② 규칙 1~3 적립(에이전시 계정 잔액, 재원 = 매장 몫) ③ 정산 분기(사업자 세금계산서 / 개인 3.3%).
 - 계획: `docs/handoff/2026-10-31-agency-invite-multi.md` §다음.
+
+### 2026-11-01 — 3단계 세부 답 (`AskUserQuestion`)
+- 매장 이전: **"대표 계정을 에이전시로 (추천)"** — 라이브 실측상 중개사는 두 계정뿐(대표 본인 계정 = 청룡갈비·오레노라멘 합정본점·달빛한스푼 / 테스트 계정 = [테스트] 클로드 분식·카페·미용실).
+- 지급 시점: **"지금 만들고 꺼 두기 (추천)"**.
+
+반영: 코드 PR(게이트 `agency_share_payout_enabled` 기본 OFF). **이전 자체(데이터 쓰기)와 게이트 ON 은 아직 안 했다** —
+staging `S-AGENCYSHARE` 통과 뒤 어드민 `POST /api/admin/agency-accounts/migrate-broker`(먼저 dry_run)로 옮기고 대표가 켠다.
+인계: `docs/handoff/2026-11-01-agency-share-payout.md`
+

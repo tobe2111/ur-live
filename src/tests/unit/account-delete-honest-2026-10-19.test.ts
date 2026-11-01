@@ -141,6 +141,7 @@ describe('⑥ 마이 하위 화면 머리줄 한 벌', () => {
     '/my/follows': 'src/pages/MyFollowsPage.tsx',
     '/my-orders': 'src/pages/MyOrdersPage.tsx',
     '/my-reviews': 'src/pages/MyReviewsPage.tsx',
+    '/life/requests': 'src/pages/life/LifeMyRequestsPage.tsx',
   }
   /** 목록 밖에서 마이가 보내는 화면(숫자 줄의 딜 · 맨 아래 FAQ · 알림 · 탈퇴). */
   const EXTRA = [

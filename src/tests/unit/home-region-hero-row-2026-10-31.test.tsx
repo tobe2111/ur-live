@@ -18,38 +18,52 @@ describe('시안 8 — 지역 배경', () => {
   it('고른 지역이 좌표보다 먼저, 사진 없는 도시는 null', () => {
     expect(regionHeroFor({ regionKey: '서울' })?.slug).toBe('seoul')
     expect(regionHeroFor({ regionKey: '부산', loc: { lat: 37.55, lng: 126.92 } })?.slug).toBe('busan')
-    expect(regionHeroFor({ regionKey: '강원' })).toBeNull()
+    expect(regionHeroFor({ regionKey: '없는지역' })).toBeNull()
     expect(regionHeroFor({})).toBeNull()
   })
-  it('좌표로 도시를 찾는다 — 마포(서울)·광안리(부산)·성산(제주)·동성로(대구), 강릉은 없음', () => {
+  it('좌표로 도시를 찾는다 — 마포(서울)·광안리(부산)·성산(제주)·동성로(대구)·강릉(강원), 바다 위는 없음', () => {
     expect(regionHeroFor({ loc: { lat: 37.556, lng: 126.92 } })?.slug).toBe('seoul')
     expect(regionHeroFor({ loc: { lat: 35.153, lng: 129.118 } })?.slug).toBe('busan')
     expect(regionHeroFor({ loc: { lat: 33.46, lng: 126.94 } })?.slug).toBe('jeju')
     expect(regionHeroFor({ loc: { lat: 35.869, lng: 128.596 } })?.slug).toBe('daegu')
-    expect(regionHeroFor({ loc: { lat: 37.75, lng: 128.9 } })).toBeNull()
+    expect(regionHeroFor({ loc: { lat: 37.75, lng: 128.9 } })?.slug).toBe('gangwon')
+    expect(regionHeroFor({ loc: { lat: 34.0, lng: 131.0 } })).toBeNull()
   })
-  it('2026-11-01 추가 도시 — 송도(인천)·정부청사(세종)·한옥마을(전주), 충남세종 키는 사진 없음', () => {
+  it('2026-11-01 추가 도시 — 송도(인천)·정부청사(세종)·한옥마을(전주)·수원(경기)·둔산(대전)', () => {
     expect(regionHeroFor({ loc: { lat: 37.39, lng: 126.64 } })?.slug).toBe('incheon')
     expect(regionHeroFor({ loc: { lat: 36.50, lng: 127.26 } })?.slug).toBe('sejong')
     expect(regionHeroFor({ loc: { lat: 35.815, lng: 127.153 } })?.slug).toBe('jeonju')
     expect(regionHeroFor({ regionKey: '인천' })?.slug).toBe('incheon')
     expect(regionHeroFor({ regionKey: '전북' })?.slug).toBe('jeonju')
-    expect(regionHeroFor({ regionKey: '충남세종' })).toBeNull()
+    expect(regionHeroFor({ regionKey: '충남세종' })?.slug).toBe('sejong')
+    expect(regionHeroFor({ loc: { lat: 37.28, lng: 127.01 } })?.slug).toBe('gyeonggi')
+    expect(regionHeroFor({ loc: { lat: 36.35, lng: 127.38 } })?.slug).toBe('daejeon')
+    expect(regionHeroFor({ loc: { lat: 35.95, lng: 126.95 } })?.slug).toBe('jeonju')
     // 서울 서쪽 끝(김포공항 근처)은 여전히 서울
     expect(regionHeroFor({ loc: { lat: 37.56, lng: 126.81 } })?.slug).toBe('seoul')
   })
   it('표의 사진 파일이 실재한다(없는 파일이면 남색 판만 뜬다)', () => {
-    for (const k of ['서울', '부산', '제주', '대구', '인천', '전북']) {
+    for (const k of ['서울', '부산', '제주', '대구', '인천', '전북', '충남세종', '대전', '경기', '강원']) {
       const src = regionHeroFor({ regionKey: k })!.src
       expect(existsSync(`public${src}`), src).toBe(true)
     }
   })
-  it('홈 배선 — 사진이면 dark(흰 글자) + 사진은 늦게(lazy·낮은 우선순위), 헤더 높이는 그대로', () => {
+  it('홈 배선 — 사진은 늦게(lazy·낮은 우선순위), 밝게(dark 강제·남색 막 없음) + 바탕색으로 녹는 그라데이션', () => {
     const src = readCode('src/pages/mobile-home/MobileHomePage.tsx')
     expect(src).toContain('regionHeroFor({ regionKey: region.regionKey, loc: userLoc })')
-    expect(src).toMatch(/hero\s*\?\s*'dark sticky top-0 z-30/)
+    // 🌤️ 2026-11-01 대표 "밝은 사진 + 그라데이션, 지금은 어둡기만" — 사진 위에서 dark 를 강제하지 않는다.
+    // 🌤️ 2026-11-01 대표 확정(스크롤 시안) — 사진 머리는 고정하지 않고 페이지와 함께 스크롤,
+    //   지나가면 로고 줄 + 카테고리 줄만 단색 바탕으로 고정한다(같은 요소 두 곳 재사용).
+    expect(src).toMatch(/hero\s*\?\s*'relative z-30 overflow-hidden ur-region-hero'/)
+    expect(src).not.toMatch(/hero\s*\?\s*'(dark )?sticky/)
+    expect(src).toMatch(/hero && heroPassed && \(/)
+    expect(src).toMatch(/data-home-compact-bar className="fixed inset-x-0 top-0 z-30 bg-surface shadow-lift"/)
+    expect(src.match(/\{logoRow\}/g)?.length).toBe(2)
+    expect(src.match(/\{catRow\}/g)?.length).toBe(2)
+    expect(src).not.toContain('bg-gray-900">')
     expect(src).toMatch(/loading="lazy"[^>]*fetchPriority="low"/)
-    expect(src).toContain('REGION_HERO_SHADE')
+    expect(src).toContain('REGION_HERO_FADE_LIGHT')
+    expect(src).toContain('REGION_HERO_FADE_DARK')
   })
 })
 

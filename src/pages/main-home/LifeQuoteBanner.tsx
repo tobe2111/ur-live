@@ -3,6 +3,7 @@
  * 생활 이용권(정찰가)은 그대로 아래 피드에 뜨고, 가격이 가게마다 다른 일은 견적 요청으로 보낸다.
  * 2026-10-25 대표 "이 파란색 배너 너무하다, 대충 만들어졌잖아" → 파란 띠 대신 흰 카드 + 업종 그림 셋.
  * 사장님 대상이라는 점을 문구가 말한다(이사·청소 일반 소비자 안내가 아니다).
+ * 2026-10-31 대표 *"직관적으로 … 가게 사장님들을 위한 생활 견적 서비스 이런 식으로"* — 제목이 서비스 이름을 먼저 말한다.
  */
 import { Link } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
@@ -27,8 +28,8 @@ export default function LifeQuoteBanner({ sub = 'all' }: { sub?: 'all' | LifeSub
         ))}
       </span>
       <span className="min-w-0 flex-1">
-        <b className="block truncate text-[15px] font-bold">{d?.bannerTitle ?? '가게 일은 무료 견적으로'}</b>
-        <span className="mt-1 block truncate text-[13px] text-gray-500 dark:text-gray-400">{d?.bannerSub ?? '간판·방역·후드 청소 견적 비교'}</span>
+        <b className="block truncate text-[15px] font-bold">{d?.bannerTitle ?? '사장님 생활 견적 서비스'}</b>
+        <span className="mt-1 block truncate text-[13px] text-gray-500 dark:text-gray-400">{d?.bannerSub ?? '간판·방역·후드 청소, 근처 업체 견적 무료 비교'}</span>
       </span>
       <ChevronRight className="h-5 w-5 shrink-0 text-gray-400 dark:text-gray-500" aria-label="견적 받기" />
     </Link>
