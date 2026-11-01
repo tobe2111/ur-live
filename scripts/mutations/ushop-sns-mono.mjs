@@ -29,10 +29,12 @@ export default [
     why: '3-stop 그라디언트는 디자인 시스템이 이름 대고 금지한 것이다.',
   },
   {
+    // 🔀 2026-11-01 재조준 — 글리프가 `icons/sns-logos` 공용 부품으로 옮겨갔다(체험 연동 목록이
+    //    같은 로고를 쓴다). 결함도 불변식도 그대로이고 **자리만** 따라간다.
     name: '🎨 글리프에 흰색을 박는다 (테마·hover 를 못 따라간다)',
-    file: SRC,
-    find: '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M23.5',
-    replace: '<svg width="15" height="15" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M23.5',
+    file: 'src/components/icons/sns-logos.tsx',
+    find: '<svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">\n      <path d="M23.5',
+    replace: '<svg width={size} height={size} viewBox="0 0 24 24" fill="#fff" className={className} aria-hidden="true">\n      <path d="M23.5',
     test: TEST,
     why: 'currentColor 라야 바깥 className 이 색을 정한다 — 흰색을 박으면 라이트에서 안 보인다.',
   },

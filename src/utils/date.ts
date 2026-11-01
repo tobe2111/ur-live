@@ -132,3 +132,26 @@ export function utcToKstInput(v: string | null | undefined): string {
   // +9h 만큼 민 뒤 UTC 필드를 읽으면 그게 KST 벽시계다(브라우저 TZ 와 무관 — 그게 요점).
   return new Date(ms + 9 * 3600 * 1000).toISOString().slice(0, 16)
 }
+
+/**
+ * UTC datetime → "방금 / N분 전 / N시간 전 / N일 전", 30일을 넘으면 날짜.
+ *
+ * 🕐 **읽는 사람의 질문이 다르다** — "언제였나"(절대 시각)가 아니라 "얼마나 오래됐나"다.
+ *    SNS 팔로워 수처럼 *신선도*가 의미인 값에 쓴다("마지막 확인: 4일 전").
+ * ⚠️ 비교는 `parseUTCDate` 를 지난 Date 로만 한다 — DB 값은 `Z` 없는 UTC 라
+ *    `new Date(x)` 로 읽으면 브라우저 TZ 에 따라 9시간 어긋난다(이 파일이 존재하는 이유).
+ * 🔮 미래 시각(서버·기기 시계 차이)은 "방금" — 음수 분("-3분 전")을 보여 주지 않는다.
+ */
+export function relativeFromNow(dateStr: string | null | undefined): string {
+  if (!dateStr) return ''
+  const ms = Date.now() - parseUTCDate(dateStr).getTime()
+  if (!Number.isFinite(ms)) return ''
+  const min = Math.floor(ms / 60000)
+  if (min < 1) return '방금'
+  if (min < 60) return `${min}분 전`
+  const hour = Math.floor(min / 60)
+  if (hour < 24) return `${hour}시간 전`
+  const day = Math.floor(hour / 24)
+  if (day <= 30) return `${day}일 전`
+  return formatKSTDate(dateStr)
+}
