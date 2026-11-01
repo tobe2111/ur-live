@@ -176,3 +176,18 @@
   "첫 화면이 스타일 없이, 에러 0" 이라 **권장: 그대로 둔다.** 대표가 원하면 별도로.
 - **다음 세션 첫 액션**: 이 PR 의 CI 에서 `주입 전수 N/16` 잡 16개가 **실제로 돌았고** 각자 0건이 아닌 주입을
   골랐는지(러너가 0건이면 실패시킨다) + `Verify` 첫 단계 로그의 `판정: success · 전수? true · 조각: success`.
+
+## 후속 — `chunks` 검사의 무작위 빨간불 (1% 표본)
+
+- #2080 CI 에서 `chunks`(surface-chunk-runtime)가 교환권 **26 > 기준 25** 로 빨간불. 같은 기계에서 main·그 PR 을
+  각각 전체 빌드해 재니 **둘 다 24**. CI 목록과 대조하니 차이는 정확히 `env-validator` · `validation`.
+- 원인: `src/main.tsx:170` `envSampled = DEV || Math.random() < 0.01` — 환경변수 검사기(zod)를 **방문 1%** 에만
+  불러온다. 측정이 그 표본에 걸리면 청크 둘이 더 실린다. ⇒ **측정이 무작위였다.**
+- 수정: `check-surface-chunk-runtime.mjs` 의 `dropSampled` — `env-validator` 가 왔을 때만 그것과 `validation` 을 뺀다.
+  `validation` 이 **혼자** 오면 그대로 센다(zod eager = 잠금표가 막는 진짜 회귀). `main.tsx` 는 잠금 파일이라 측정 쪽에서.
+  시험 5 · 주입 2.
+
+## 판정 기록 (계속)
+- **#2080 [E4]** — D: 전수 PR 이 **33분**(16조각 11~15분 동시 + Verify 18분, 종전 약 3시간+). `Verify` 첫 단계 로그
+  `판정: success · 전수? true · 조각: success`. B: 폰 홈 HTML 미리받기 **22 → 22 · 홈 라우트 청크 8 → 8**, `MobileHomePage`
+  해시 `MamVb_Yj → Cp1J7Lhc`(새 빌드의 맵이 번들됨 = 옛 커밋본이 아니다).
