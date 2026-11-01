@@ -1,4 +1,4 @@
-import { HOME_SECTION_ROWS, HOME_SECTION_ROWS_MAX } from '@/shared/home-chrome'
+import { DEAL_ROW } from '@/shared/deal-card-grid'
 import { Fragment, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { resolveSectionMoreHref, isDeadEndHref } from './section-more-href'
@@ -8,8 +8,9 @@ import { nearSubtitle } from '@/shared/home-near'
 import type { HomeNear } from './home-near'
 import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
 import SectionRail from './SectionRail'
-import DealCardPlaceholder, { DealRowPlaceholder } from './DealCardPlaceholder'
+import DealCardPlaceholder from './DealCardPlaceholder'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { isHomeVisibleProduct } from '@/shared/deal-cats'
 import {
   HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_LG_QUERY, HOME_CARD_ABOVE_FOLD,
 } from '@/shared/home-card-image'
@@ -135,7 +136,10 @@ export default function HomeSections(
     },
   )
 
-  const visible = sections.filter(s => Array.isArray(s.products) && s.products.length > 0)
+  // 🏠 2026-10-31 생활 이용권은 메인에 안 뜬다 — 그것만 있던 섹션은 줄째 빠진다(워커 첫 화면과 같은 규칙).
+  const visible = sections
+    .map(s => (Array.isArray(s.products) ? { ...s, products: s.products.filter(isHomeVisibleProduct) } : s))
+    .filter(s => Array.isArray(s.products) && s.products.length > 0)
 
   /**
    * 🧱 2026-08-19 (대표 신고 — "첫 접속하면 지금 인기 이용권이 먼저 안뜨고 … 시간 지나면 보여"):
@@ -160,8 +164,8 @@ export default function HomeSections(
           {rail
             ? <SectionRail count={4}>{[0, 1, 2, 3].map((i) => <DealCardPlaceholder key={i} />)}</SectionRail>
             : (
-              <div className={HOME_SECTION_ROWS}>
-                {[0, 1, 2, 3].map((i) => <DealRowPlaceholder key={i} />)}
+              <div className={DEAL_ROW.grid}>
+                {[0, 1, 2, 3].map((i) => <DealCardPlaceholder key={i} row />)}
               </div>
             )}
         </section>
@@ -217,17 +221,13 @@ export default function HomeSections(
               )}
             </div>
             {(() => {
-              // 🧾 2026-10-31 (대표 확정 Y2): 모바일은 **한 줄에 하나**(사진 왼쪽). 섹션은 4줄까지 — 더보기가 있을 때만 자른다
-              //   (더보기가 없으면 자르면 볼 길이 없다). PC(`rail`)는 종전 그대로.
-              const list = !rail && more && !moreIsDeadEnd ? sec.products.slice(0, HOME_SECTION_ROWS_MAX) : sec.products
-              const cards = list.map((p, i) => (
-                <GroupBuyFeedCard key={p.id} p={p} layout={rail ? 'grid' : 'row'} imgWidth={cardImgWidth} aboveFold={i < HOME_CARD_ABOVE_FOLD && sIdx === 0} userLoc={sec.near ? near?.kmFrom : null} />
+              const cards = sec.products.map((p, i) => (
+                <GroupBuyFeedCard key={p.id} p={p} row={!rail} imgWidth={cardImgWidth} aboveFold={i < HOME_CARD_ABOVE_FOLD && sIdx === 0} userLoc={sec.near ? near?.kmFrom : null} />
               ))
-              // 🧾 모바일은 세로 목록(`HOME_SECTION_ROWS`) — 워커 첫 화면이 같은 상수로 그린다. 10-26 의 가로 넘김을 대체했다.
               // ↔️ 첫 섹션 앞 4장은 PC 에서도 첫 화면 근처 — 워커가 4열 폭(400)으로 미리 받는다(`home-card-preload`). 그 계약 그대로.
               return rail
                 ? <SectionRail count={sec.products.length}>{cards}</SectionRail>
-                : <div className={HOME_SECTION_ROWS}>{cards}</div>
+                : <div className={DEAL_ROW.grid}>{cards}</div> // 📋 2026-10-31 시안 10 — 폰 줄 목록, md+ 종전 4열
             })()}
           </section>
           {/* 🎬 2026-09-07 (대표 확정): 유어쇼츠는 **인기 이용권 다음**. 히어로 바로 아래로 올리면

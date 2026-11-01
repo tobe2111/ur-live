@@ -213,20 +213,19 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
       <section aria-label={picked ? `${picked.name} 판매` : '맡은 매장'} className={stacked ? 'order-1 min-w-0' : 'order-1 lg:order-2 min-w-0 flex-1'}>
         {/* 🔗 2026-10-31 대표 *"매장 영입 링크 만들기 이렇게 버튼 필요하지 않을까? … 매장이 있어도 계속 초대가 필요해"*.
             종전엔 맡은 매장이 0곳일 때만 빈 화면에 버튼이 있었고, 한 곳이라도 생기면 에이전시 줄 **맨 끝**으로 숨었다.
-            영입은 대행사의 본업이라 매장 수와 무관하게 판 위에 늘 둔다(관리자만 — 링크는 관리자만 만든다). */}
-        {canManage && (
-          <button type="button" onClick={() => setSheet('invite')} data-testid="agency-invite-entry"
-            className="mb-6 flex w-full items-center gap-3 rounded-2xl bg-white dark:bg-[#1D1F29] p-4 text-left shadow-lift active:opacity-90">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-tint text-brand-text">
-              <StoreIcon size={20} aria-hidden="true" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[15px] font-semibold text-gray-900 dark:text-white">매장 영입 링크 보내기</span>
-              <span className="mt-0.5 block text-[13px] text-gray-500 dark:text-gray-400">카톡으로 보내면 사장님이 [맡기기] 한 번에 연결돼요</span>
-            </span>
-            <span className="shrink-0 rounded-full bg-brand px-3 py-1.5 text-[13px] font-semibold text-white">보내기</span>
-          </button>
-        )}
+            영입은 대행사의 본업이라 매장 수와 무관하게 판 위에 늘 둔다. 🧑‍🤝‍🧑 직원도 본다(매장에 찾아가는 사람은
+            대개 직원이다) — 직원은 보내기·복사만, 만들기·끊기는 관리자만(카드의 `canManage`). */}
+        <button type="button" onClick={() => setSheet('invite')} data-testid="agency-invite-entry"
+          className="mb-6 flex w-full items-center gap-3 rounded-2xl bg-white dark:bg-[#1D1F29] p-4 text-left shadow-lift active:opacity-90">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-tint text-brand-text">
+            <StoreIcon size={20} aria-hidden="true" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-semibold text-gray-900 dark:text-white">매장 영입 링크 보내기</span>
+            <span className="mt-0.5 block text-[13px] text-gray-500 dark:text-gray-400">카톡으로 보내면 사장님이 [맡기기] 한 번에 연결돼요</span>
+          </span>
+          <span className="shrink-0 rounded-full bg-brand px-3 py-1.5 text-[13px] font-semibold text-white">보내기</span>
+        </button>
         <div className="flex items-center gap-2">
           {/* 🖥️ PC 는 매장 이름이 제목이다(왼쪽 목록이 고르기를 맡는다). 폰은 '맡은 매장' + 고르기 칩. */}
           {!stacked && <h2 className="hidden lg:block min-w-0 truncate text-[17px] font-semibold text-gray-500 dark:text-gray-400">{picked?.name ?? '맡은 매장'}</h2>}
@@ -364,10 +363,10 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
         </Sheet>
       )}
 
-      {sheet === 'invite' && canManage && (
+      {sheet === 'invite' && (
         <Sheet title="매장 영입 링크" onClose={() => setSheet(null)}>
           <div className="min-h-full bg-[#F8F7FC] dark:bg-[#11141C] p-4">
-            <AgencyInviteLinkCard />
+            <AgencyInviteLinkCard canManage={canManage} />
           </div>
         </Sheet>
       )}

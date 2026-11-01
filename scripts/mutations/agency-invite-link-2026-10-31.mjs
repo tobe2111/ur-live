@@ -20,8 +20,8 @@ export default [
   {
     name: '영입 링크 — 버튼이 빈 화면 분기 안으로 숨는다',
     file: 'src/pages/agency-console/AgencyStoresPanel.tsx',
-    find: "        {canManage && (\n          <button type=\"button\" onClick={() => setSheet('invite')} data-testid=\"agency-invite-entry\"",
-    replace: "        {canManage && rows?.length === 0 && (\n          <button type=\"button\" onClick={() => setSheet('invite')} data-testid=\"agency-invite-entry\"",
+    find: "        <button type=\"button\" onClick={() => setSheet('invite')} data-testid=\"agency-invite-entry\"",
+    replace: "        {rows?.length === 0 && <button type=\"button\" onClick={() => setSheet('invite')} data-testid=\"agency-invite-entry\"",
     test: T,
     why: '매장이 한 곳이라도 생기면 영입 버튼이 사라진다 — 대표가 짚은 바로 그 결함.',
   },
@@ -60,7 +60,8 @@ export default [
   {
     name: '영입 링크 — 매장 없는 사장님이 토큰 없이 등록으로 간다',
     file: 'src/pages/StoreAgencyInvitePage.tsx',
-    find: '  const registerHref = `/store/new?${AGENCY_INVITE_QUERY}=${encodeURIComponent(token)}`',
+    // 🎯 2026-10-31 재조준: 제휴 위젯(partner) 분기가 같은 줄에 붙었다 — 초대 링크 쪽 결함은 그대로.
+    find: "  const registerHref = partner ? '/store/new' : `/store/new?${AGENCY_INVITE_QUERY}=${encodeURIComponent(token)}`",
     replace: "  const registerHref = '/store/new'",
     test: T,
     why: '등록은 되는데 에이전시와 연결이 안 된다 — 사장님이 링크를 다시 찾아 열어야 한다. 에러 0.',

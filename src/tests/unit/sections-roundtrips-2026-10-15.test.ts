@@ -307,12 +307,20 @@ describe('D1 읽기 복제 — 공개 편성 읽기만 사본으로', () => {
     expect(src).toMatch(/ensureTables\(c\.env\.DB\)/)
   })
 
+  it('홈페이지 위젯 — GET 만 · 쓰기 0 · 로그인 없음', () => {
+    const src = readCode('src/worker/routes/embed.routes.ts')
+    expect(src).not.toMatch(/\b(INSERT|UPDATE|DELETE)\b|\.run\(\)/)
+    expect(src).not.toMatch(/embedRoutes\.(post|put|patch|delete)\(/)
+    expect(src).not.toMatch(/requireAuth|requireAdmin|parseSessionCookie/)
+  })
+
   it('publicReadDb 는 허용된 공개 읽기 파일에서만 쓴다 — 머니·관리 경로 금지', () => {
     const ALLOWED = new Set([
       'src/features/sections/api/sections.routes.ts',
       'src/worker/routes/curator.routes.ts', // 2단계 — 익명 방문만(아래 시험)
       'src/features/blog/api/blog.routes.ts', // 2단계 — 발행 글 읽기만(아래 시험)
       'src/features/group-buy/api/group-buy-public.routes.ts', // 3단계 — 공개 목록·상세 GET 만(아래 시험)
+      'src/worker/routes/embed.routes.ts', // 🧩 2026-10-31 홈페이지 위젯 — 공개 GET 만, 쓰기 0(아래 시험). 엣지 캐시 5분이라 사본 지연은 묻힌다
     ])
     const hits = execSync(`grep -rlE "publicReadDb\\(" src --include=*.ts --include=*.tsx`, { encoding: 'utf-8' })
       .split('\n').filter(Boolean).filter((f) => !f.includes('/tests/') && !f.endsWith('d1-read-replica.ts'))

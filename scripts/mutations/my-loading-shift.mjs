@@ -75,7 +75,9 @@ export default [
   {
     name: '제목 — 판매 구역이 제목을 손으로 적는다(두 자리가 갈린다)',
     file: SECTION,
-    find: '<h2 className={`leading-tight ${SECTION_TITLE_CLS}`}>내 가게</h2>',
+    // 🔁 2026-10-31 재조준(9번 B안): 보이는 제목은 가게 머리줄로 바뀌고 '내 가게' 는 읽기 도구용(sr-only)으로만 남았다.
+    //   불변식: 판매 구역에 **손으로 적은 보이는 제목**이 되살아나지 않는다(머리줄과 두 겹이 된다).
+    find: '<h2 className="sr-only">내 가게</h2>',
     replace: '<h2 className="text-[24px] leading-tight font-extrabold tracking-[-0.03em] text-gray-900 dark:text-white">내 가게</h2>',
     test: T_ZONES,
     why:

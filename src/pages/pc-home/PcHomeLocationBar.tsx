@@ -4,7 +4,7 @@ import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { ChevronDown, LocateFixed, Loader2, X } from 'lucide-react'
 import { KOREA_REGIONS } from '@/shared/constants/korea-regions'
 import { toast } from '@/hooks/useToast'
-import { rememberLoc } from '@/shared/utils/cached-loc'
+import { rememberLoc, markHomePick, readHomePick, readCachedLoc } from '@/shared/utils/cached-loc'
 import { homeLocationLabel } from './home-location-label'
 
 /**
@@ -26,6 +26,15 @@ export function readHomeRegion(): HomeRegion {
     if (raw && typeof raw === 'object') return { regionKey: raw.regionKey || undefined, districtKey: raw.districtKey || undefined }
   } catch { /* ignore */ }
   return {}
+}
+
+/**
+ * 🧭 2026-10-31 — 홈이 다시 열릴 때 쓸 측위. 마지막에 **지역**을 골랐으면(그리고 저장된 지역이 있으면) 옛 측위를 쓰지 않는다
+ * (그게 지역을 이겨 뒤로가기마다 지역이 풀렸다). 근거는 `cached-loc.ts` 의 `HOME_PICK_KEY`.
+ */
+export function homeStartLoc(): { lat: number; lng: number } | null {
+  if (readHomePick() === 'region' && readHomeRegion().regionKey) return null
+  return readCachedLoc()
 }
 
 
@@ -158,6 +167,7 @@ export default function PcHomeLocationBar({
   const apply = (r: HomeRegion) => {
     onChange(r)
     try { localStorage.setItem(LS_KEY, JSON.stringify(r)) } catch { /* ignore */ }
+    markHomePick(r.regionKey ? 'region' : 'loc')
     setOpen(false)
   }
 

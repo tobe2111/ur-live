@@ -20,9 +20,18 @@ import { isMarketingSurface } from '@/utils/domain'
 //   가 자동 검증 (이 배열과 TossPaymentWidget 마운트 라우트 일치 확인).
 export const fullScreenPrefixes = ['/cart', '/checkout', '/payment', '/pay', '/points', '/seller', '/admin', '/login', '/register', '/auth', '/embed', '/introduce', '/blog', '/about', '/partners', '/creators', '/my-orders', '/store/scan', '/videos', '/design', '/mall-admin', '/agency', '/life/q']
 
+/**
+ * 정확히 그 주소만 전체 화면인 곳 — 접두사로 넣으면 하위 도구 화면까지 네비를 잃는 경우.
+ * 📣 2026-10-31 `/influencer` = 소개 파트너 모집 랜딩(자기 헤더가 있다). 그 아래
+ *   `/influencer/dashboard`·`/settlement`·`/discover`·`/analytics` 는 폰 폭 도구라 네비가 남아야 한다
+ *   (`pc-fullbleed.ts` 가 같은 이유로 정확 일치로 둔다).
+ */
+export const fullScreenExactPaths = ['/influencer']
+
 /** 소비자 네비 없이 화면 전체를 쓰는 주소인가. */
 export function isFullScreenPath(pathname: string): boolean {
-  return fullScreenPrefixes.some((p) => pathname === p || pathname.startsWith(p + '/'))
+  return fullScreenExactPaths.includes(pathname)
+    || fullScreenPrefixes.some((p) => pathname === p || pathname.startsWith(p + '/'))
 }
 
 /**

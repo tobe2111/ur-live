@@ -220,6 +220,7 @@ const DETAIL_SEED = DETAIL_ID
       data: {
         ...(DEALS.find((d) => d.id === DETAIL_ID) || { ...DEALS[0], id: DETAIL_ID }),
         id: DETAIL_ID,
+        images: JSON.stringify(['#C9B8A8', '#A8B5C9', '#B8C9A8', '#C9A8B8', '#A8C9C4'].map((c) => tilePlaceholder(c))),
         description: '연남동 골목 안쪽, 예약 없이 들르기 좋은 이자카야입니다. 2인 코스는 제철 사시미와 구이 4종, 식사까지 포함됩니다.',
         group_buy_target: 30,
         group_buy_tiers: [{ count: 10, discount: 15 }, { count: 30, discount: 28 }],
@@ -642,6 +643,21 @@ function serve() {
           return res.end(JSON.stringify({ success: true, data: WALLET_VOUCHERS }))
         if (args.deals) {
           if (p === '/api/vouchers/categories') return res.end(JSON.stringify({ success: true, data: VOUCHER_SECTIONS }))
+          // 🏨 2026-10-27: 숙소 상세(`/stays/:id`) 스텁 — 통일 작업에서 두 상세를 나란히 떠 보려고 넣었다.
+          //   합성 데이터다(객실 2개 · 사진 5장).
+          const st = p.match(/^\/api\/group-buy\/stays\/(\d+)(\/availability)?$/)
+          if (st) {
+            const rooms = [
+              { room_id: 1, name: '스탠다드 더블', bed_config: '더블 1', base_guests: 2, max_guests: 3, extra_guest_fee: 20000, available: true, available_count: 3, total_price: 149000, nights: 1 },
+              { room_id: 2, name: '디럭스 트윈', bed_config: '싱글 2', base_guests: 2, max_guests: 4, extra_guest_fee: 20000, available: true, available_count: 1, total_price: 189000, nights: 1 },
+            ]
+            if (st[2]) return res.end(JSON.stringify({ success: true, data: { rooms } }))
+            const imgs = ['#C9B8A8', '#A8B5C9', '#B8C9A8', '#C9A8B8', '#A8C9C4'].map((c) => tilePlaceholder(c))
+            const product = { id: Number(st[1]), name: '그랑블루 오션뷰', restaurant_name: '그랑블루 오션뷰 펜션', category: 'stay_voucher', property_type: 'pension', star_rating: 0,
+              image_url: imgs[0], images: JSON.stringify(imgs), region_sido: '강원', region_sigungu: '속초시', address: '강원 속초시 해오름로 1',
+              avg_rating: 4.6, review_count: 12, amenities: JSON.stringify(['parking', 'wifi']), description_full: '바다가 보이는 객실과 개별 테라스가 있는 펜션입니다.' }
+            return res.end(JSON.stringify({ success: true, data: { product, rooms } }))
+          }
           // 상세는 **단건**이다 — 목록과 같은 배열을 주면 화면이 안 그려진다.
           const m = p.match(/^\/api\/(?:group-buy\/)?products\/(\d+)/)
           if (m) {
@@ -662,10 +678,6 @@ function serve() {
           }
           if (p.startsWith('/api/group-buy/products') || p === '/api/products')
             return res.end(JSON.stringify({ success: true, data: DEALS, products: DEALS }))
-          // 🏠 2026-10-26 — 홈 편성 섹션(가로 줄)을 보려면 섹션 응답이 있어야 한다. 없으면 홈에 섹션이 0개로 그려진다.
-          //   부제는 라이브와 같게 둔다(라이브 섹션은 전부 부제가 있다) — 비우면 자리표시의 부제 줄이 사라지며 가짜 밀림이 잡힌다.
-          if (p === '/api/sections')
-            return res.end(JSON.stringify({ success: true, data: [{ id: 1, title: '지금 인기 이용권', subtitle: '많이 팔린 순으로 모았어요', products: DEALS.slice(0, 6) }] }))
         }
         return res.end(JSON.stringify({ success: true, data: [], products: [], pins: [], stats: {} }))
       }
@@ -722,6 +734,14 @@ await ctx.route('**/*', (r) => (r.request().url().startsWith(`http://127.0.0.1:$
 //    앱이 실제로 읽는 키를 심어야 다크가 뜬다.
 if (DARK) {
   await ctx.addInitScript(() => { try { localStorage.setItem('ur_theme_mode_v1', 'dark') } catch { /* private mode */ } })
+}
+/**
+ * 🗝️ `--ls='{"키":"값"}'` — localStorage 를 심고 렌더한다(2026-10-31 — 홈 지역 배경처럼 저장된 선택에 따라
+ *   그림이 바뀌는 화면을 보기 위해). 값은 문자열 그대로 넣는다(객체면 JSON 으로 감싼다).
+ */
+if (typeof args.ls === 'string') {
+  const kv = Object.fromEntries(Object.entries(JSON.parse(args.ls)).map(([k, v]) => [k, typeof v === 'string' ? v : JSON.stringify(v)]))
+  await ctx.addInitScript((m) => { try { for (const [k, v] of Object.entries(m)) localStorage.setItem(k, v) } catch { /* private mode */ } }, kv)
 }
 /**
  * 💤 `--no-idle` — `requestIdleCallback` 을 **부르지 않는다**(2026-10-13).

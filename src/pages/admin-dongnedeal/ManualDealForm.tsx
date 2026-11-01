@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { Search, PlusCircle, MapPin, CheckCircle2, AlertTriangle, Store, Image as ImageIcon, X, Pencil } from 'lucide-react'
+import { Search, PlusCircle, MapPin, CheckCircle2, AlertTriangle, Store, Image as ImageIcon, X, Pencil, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { DealRow } from './types'
 
 interface KakaoPlace {
@@ -44,6 +44,18 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
   const [photoBusy, setPhotoBusy] = useState(false)
   // 🖼️ 2026-07-02 (대표 "사진 여러 장"): 다중 선택 — 첫 장 = 대표(image_url), 전체 = image_urls(JSON, 상세 갤러리).
   const [selectedPhotos, setSelectedPhotos] = useState<string[]>([])
+  // 🔀 2026-10-27 (대표 "사진 순서 바꿀 수 있게"): 갤러리 순서 변경 — 끌어다 놓기 + ◀▶ 버튼. ①이 대표라 대표 사진도 같이 맞춘다.
+  const [dragFrom, setDragFrom] = useState<number | null>(null)
+  const movePhoto = (from: number, to: number) => {
+    setSelectedPhotos((prev) => {
+      if (from === to || from < 0 || to < 0 || from >= prev.length || to >= prev.length) return prev
+      const next = [...prev]
+      const [it] = next.splice(from, 1)
+      next.splice(to, 0, it)
+      set('image_url', next[0] || '')
+      return next
+    })
+  }
 
   const isEdit = !!editDeal
 
@@ -99,6 +111,21 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
     } catch (e: unknown) {
       const status = (e as { response?: { status?: number } })?.response?.status
       toast.error(status === 500 ? '네이버 키가 아직 설정 안 됐어요 (이미지 URL 직접 붙여넣기 가능)' : '네이버 사진 검색 실패')
+    } finally { setPhotoBusy(false) }
+  }
+
+  // 🖼️ 2026-10-27 (대표 "카카오에서도 들고와야 … 매장주 제공 사진들 중에서 내가 다른 사진으로 조정"):
+  //   그 매장의 카카오 매장주 제공 사진을 아래 그리드에 띄운다 — 눌러서 갤러리에 넣고 빼는 건 네이버와 같다.
+  const fetchKakaoPhotos = async () => {
+    if (!f.kakao_place_url) { toast.info('카카오 장소가 연결돼 있지 않아요 (매장 검색으로 먼저 선택)'); return }
+    setPhotoBusy(true); setPhotos([])
+    try {
+      const res = await api.get(`/api/admin/dongnedeal/kakao-mystore-photos?place=${encodeURIComponent(f.kakao_place_url)}`)
+      const list: string[] = res.data?.data?.photos || []
+      setPhotos(list.map((u) => ({ link: u, thumbnail: `https://t1.kakaocdn.net/thumb/C300x300/?fname=${encodeURIComponent(u)}` })))
+      if (list.length === 0) toast.info('이 매장은 카카오 매장주 제공 사진이 없어요')
+    } catch {
+      toast.error('카카오 사진을 못 가져왔어요')
     } finally { setPhotoBusy(false) }
   }
 
@@ -260,10 +287,13 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
           <input value={f.restaurant_address} onChange={(e) => { set('restaurant_address', e.target.value); setCoord(null) }} placeholder="서울 강남구 봉은사로 …" className={input} />
         </div>
         <div className="sm:col-span-2">
-          <div className="flex items-center justify-between mb-1">
-            <label className="block text-xs font-semibold text-gray-500">대표 사진</label>
+          <div className="flex items-center gap-3 mb-1">
+            <label className="block text-xs font-semibold text-gray-500 mr-auto">대표 사진</label>
             <button type="button" onClick={fetchPhotos} disabled={photoBusy} className="inline-flex items-center gap-1 text-[12px] font-bold text-gray-700 hover:text-gray-900 disabled:opacity-50">
               <ImageIcon className="w-3.5 h-3.5" /> {photoBusy ? '검색 중…' : '네이버에서 사진 가져오기'}
+            </button>
+            <button type="button" onClick={fetchKakaoPhotos} disabled={photoBusy} className="inline-flex items-center gap-1 text-[12px] font-bold text-gray-700 hover:text-gray-900 disabled:opacity-50">
+              <ImageIcon className="w-3.5 h-3.5" /> 카카오 매장주 사진
             </button>
           </div>
           <input value={f.image_url} onChange={(e) => set('image_url', e.target.value)} placeholder="https://… (네이버 검색으로 채우거나 직접 붙여넣기 · 비우면 카테고리 기본)" className={input} />
@@ -271,10 +301,18 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
               수정 진입 시 기존 사진이 여기 프리필됨. X 로 빼고, 아래 네이버 검색으로 추가. ①=대표. */}
           {selectedPhotos.length > 0 && (
             <div className="mt-2">
-              <p className="text-[11px] font-semibold text-gray-500 mb-1">현재 갤러리 ({selectedPhotos.length}장) — ①이 대표, X로 제거</p>
+              <p className="text-[11px] font-semibold text-gray-500 mb-1">현재 갤러리 ({selectedPhotos.length}장) — ①이 대표, 끌어다 놓거나 ◀▶로 순서 변경, X로 제거</p>
               <div className="flex gap-2 flex-wrap">
                 {selectedPhotos.map((u, i) => (
-                  <div key={u} className="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-200">
+                  <div
+                    key={u}
+                    draggable
+                    onDragStart={() => setDragFrom(i)}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => { e.preventDefault(); if (dragFrom != null) movePhoto(dragFrom, i); setDragFrom(null) }}
+                    onDragEnd={() => setDragFrom(null)}
+                    className={`relative w-16 h-16 rounded-lg overflow-hidden border cursor-move ${dragFrom === i ? 'border-gray-900 opacity-50' : 'border-gray-200'}`}
+                  >
                     <img src={cfImage(u, { width: 128, quality: 80, format: 'auto' }) || u} alt="" className="w-full h-full object-cover" loading="lazy" onError={(e) => { e.currentTarget.style.opacity = '0.25' }} />
                     <span className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-gray-900/80 text-white text-[10px] font-bold flex items-center justify-center">{i + 1}</span>
                     <button
@@ -291,6 +329,16 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
                     >
                       <X className="w-3 h-3" />
                     </button>
+                    <div className="absolute bottom-0 inset-x-0 flex justify-between">
+                      <button type="button" aria-label="앞으로" disabled={i === 0} onClick={() => movePhoto(i, i - 1)}
+                        className="w-5 h-5 bg-black/60 text-white flex items-center justify-center disabled:opacity-0 hover:bg-black">
+                        <ChevronLeft className="w-3 h-3" />
+                      </button>
+                      <button type="button" aria-label="뒤로" disabled={i === selectedPhotos.length - 1} onClick={() => movePhoto(i, i + 1)}
+                        className="w-5 h-5 bg-black/60 text-white flex items-center justify-center disabled:opacity-0 hover:bg-black">
+                        <ChevronRight className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

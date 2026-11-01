@@ -36,6 +36,10 @@ export interface StoreSummaryRow {
   active_products: number
   /** 🏠 생활 견적 참여권 잔액 — 생활 업체가 아니면 null(2026-10-26) */
   life_credits?: number | null
+  /** 🖼️ B안 머리줄 사진(가게 프로필 → 없으면 판매 중 상품 첫 사진) — 없으면 이니셜(2026-10-31) */
+  image?: string | null
+  /** 손님이 보는 가게 주소 `/s/:username` — 없으면 '가게 보기' 를 안 그린다 */
+  username?: string | null
 }
 
 export interface MyStoresState {

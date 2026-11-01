@@ -18,7 +18,7 @@ import { DEAL_GRID_GAP } from '@/shared/deal-card-grid'
 const GRIDS = [
   'src/pages/main-home/GroupBuyFeed.tsx',
   'src/pages/WishlistPage.tsx',
-  // 🏠 2026-10-26 (대표 확정 안 A): 홈 편성 섹션은 격자가 아니라 **가로 줄**(`HOME_SECTION_RAIL`)이 됐다 — 목록에서 뺐다.
+  'src/components/home/HomeSections.tsx',
   'src/pages/seller-public/CuratorPinsSection.tsx',
   'src/pages/CuratorPage.tsx',
 ]
@@ -43,8 +43,7 @@ describe('딜 카드 격자 간격', () => {
     // 🩸 처음 이 검사의 정규식은 `className="..."` 만 봤다. 그런데 상수를 쓰려면 형태가
     //    `className={`...`}` 로 바뀐다 — 즉 **고치자마자 검사가 통째로 헛돌았다**(되돌려-검증에서 발각).
     //    ⇒ `{` 를 허용하고, "찾은 격자가 0개면 통과가 아니라 실패"로 못 박는다.
-    // 🧾 2026-10-31 (Y2): 모바일이 한 줄 카드가 되며 격자가 `pc ? `grid…` : 목록` 삼항으로 갈린 자리가 생겼다 — 그 앞머리를 허용한다.
-    const GRID_CLASS = /className=\{?(?:pc \? )?[`"'][^`"']*grid-cols-\d[^`"']*[`"']/g
+    const GRID_CLASS = /className=\{?[`"'][^`"']*grid-cols-\d[^`"']*[`"']/g
     const bad: string[] = []
     let seen = 0
     for (const f of GRIDS) {
@@ -55,7 +54,17 @@ describe('딜 카드 격자 간격', () => {
         if (/\bgap[-xy]*-\d/.test(m[0]) && !m[0].includes('DEAL_GRID_GAP')) bad.push(`${f}: ${m[0].slice(0, 100)}`)
       }
     }
+    // 📋 2026-10-31: 홈 줄 목록은 공용 `DEAL_ROW.grid` 를 쓴다 — 그것도 격자로 센다(간격은 상수가 갖는다).
+    for (const f of GRIDS) seen += (readFileSync(f, 'utf8').match(/DEAL_ROW\.grid/g) || []).length
     expect(seen, '격자를 하나도 못 찾았다 — 파일이 옮겨졌거나 표기가 바뀌었다(검사가 무의미해진다)').toBeGreaterThanOrEqual(GRIDS.length)
     expect(bad, `딜 격자에 간격을 손으로 적었다:\n${bad.join('\n')}`).toEqual([])
+  })
+})
+
+describe('📋 2026-10-31 줄 목록 격자(DEAL_ROW)', () => {
+  it('md+ 간격은 종전 격자 간격(DEAL_GRID_GAP)과 같다 — 태블릿·PC 에서 홈만 간격이 달라지지 않게', async () => {
+    const { DEAL_GRID_GAP, DEAL_ROW } = await import('@/shared/deal-card-grid')
+    const md = DEAL_GRID_GAP.split(/\s+/).map(t => (t.startsWith('lg:') ? t : `md:${t}`))
+    for (const t of md) expect(DEAL_ROW.grid.split(/\s+/), t).toContain(t)
   })
 })

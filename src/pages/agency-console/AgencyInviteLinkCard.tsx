@@ -19,7 +19,7 @@ interface Invite { url: string; expiresAt?: string; useCount: number }
  *     열어야 폰 브라우저가 막지 않으므로 SDK 를 미리 데워 두고 동기로 보낸다(`sendKakaoShare`), 안 데워졌으면 비동기로.
  *   - 카톡이 안 되면 기기 공유 → 복사 순으로 내려간다.
  */
-export function AgencyInviteLinkCard() {
+export function AgencyInviteLinkCard({ canManage = true }: { canManage?: boolean } = {}) {
   const [invite, setInvite] = useState<Invite | null | undefined>(undefined)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -39,8 +39,10 @@ export function AgencyInviteLinkCard() {
     if (!r.ok) { setError(r.data.error || '영입 링크를 불러오지 못했어요.'); return }
     if (r.data.invite) { setInvite(r.data.invite); return }
     // 살아 있는 링크가 없다(처음이거나 만료) — 바로 만든다. 끊을 옛 링크가 없으므로 묻지 않는다.
+    // 🧑‍🤝‍🧑 직원은 만들 수 없다(서버 adminOnly) — 직원은 관리자가 만든 링크를 보내기만 한다.
+    if (!canManage) { setInvite(null); return }
     if (!(await create())) setInvite(null)
-  }, [create])
+  }, [create, canManage])
 
   useEffect(() => {
     void load()
@@ -119,10 +121,16 @@ export function AgencyInviteLinkCard() {
           </div>
           <div className="mt-3 flex items-center gap-3 text-[12px] text-gray-500 dark:text-gray-400">
             <span>이 링크로 맡긴 매장 {invite.useCount}곳</span>
-            <button type="button" disabled={busy} onClick={() => { void renew() }} className="ml-auto font-semibold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white disabled:opacity-50">새로 만들기</button>
-            <button type="button" disabled={busy} onClick={() => { void revoke() }} className="font-semibold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white disabled:opacity-50">끊기</button>
+            {canManage && (
+              <>
+                <button type="button" disabled={busy} onClick={() => { void renew() }} className="ml-auto font-semibold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white disabled:opacity-50">새로 만들기</button>
+                <button type="button" disabled={busy} onClick={() => { void revoke() }} className="font-semibold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white disabled:opacity-50">끊기</button>
+              </>
+            )}
           </div>
         </>
+      ) : !canManage ? (
+        <p className="mt-3 text-[13px] text-gray-500 dark:text-gray-400">아직 영입 링크가 없어요. 관리자에게 만들어 달라고 해 주세요.</p>
       ) : (
         <button type="button" disabled={busy}
           onClick={async () => { setBusy(true); const n = await create(); setBusy(false); if (n) toast.success('영입 링크를 만들었어요.') }}

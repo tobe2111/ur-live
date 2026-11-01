@@ -1726,7 +1726,8 @@
       "channelConfirm": "Confirmer",
       "channelSaving": "Enregistrement…",
       "channelSaved": "Mode de gestion enregistré",
-      "channelSaveFailed": "Impossible d’enregistrer le mode de gestion"
+      "channelSaveFailed": "Impossible d’enregistrer le mode de gestion",
+      "seedingSaveFailed": "Impossible d'enregistrer l'essai gratuit. Réactivez-le dans la boîte des demandes de votre boutique"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -5848,7 +5849,9 @@
     "sharedShareDesc": "J'ai trouvé un super produit sur Urdeal",
     "sharedShareBtn": "Voir le produit",
     "sellerReplyLabel": "Réponse du vendeur",
-    "sponsoredBadge": "Sponsorisé"
+    "sponsoredBadge": "Sponsorisé",
+    "loadMore": "Plus d’avis ({{n}} restants)",
+    "loadingMore": "Chargement…"
   },
   "productOption": {
     "title": "Gestion des options produit",

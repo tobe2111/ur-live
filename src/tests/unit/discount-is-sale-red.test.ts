@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { HOME_ROW_CLS } from '@/shared/home-row'
 import { VOUCHER_TILE_CLASS } from '@/shared/voucher-tile'
 
 /**
@@ -55,8 +54,6 @@ describe('할인율은 한 색이다', () => {
     for (const l of lines) {
       // 🎟️ 2026-10-14: 교환권 타일은 클래스를 SSOT 상수로 받는다(워커 첫 화면과 같은 값) — 그 상수의 값을 본다.
       if (/className=\{T\.discount\}/.test(l)) { expect(VOUCHER_TILE_CLASS.discount).toMatch(/text-sale/); continue }
-      // 🧾 2026-10-31: 홈 한 줄 카드(Y2)도 클래스를 상수(`HOME_ROW_CLS` — 워커와 같은 값)로 받는다.
-      if (/className=\{HOME_ROW_CLS\.discount\}/.test(l)) { expect(HOME_ROW_CLS.discount).toMatch(/text-sale/); continue }
       expect(l, l.trim().slice(0, 90)).toMatch(/text-sale/)
     }
   })

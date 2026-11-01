@@ -60,8 +60,14 @@
  */
 import {
   DETAIL_HERO_MOBILE_WIDTH,
+  DETAIL_MOBILE_THUMBS,
+  DETAIL_MOBILE_THUMB_CLS,
+  DETAIL_MOBILE_THUMB_RATIO,
+  DETAIL_MOBILE_THUMB_ROW_CLS,
   detailGalleryImages,
   detailHeroMobileUrl,
+  detailMobileThumbUrl,
+  showMobileThumbs,
 } from '../../shared/detail-hero-image'
 import { getVoucherShortLabel, normalizeCategory } from '../../shared/constants/voucher-categories'
 import { PASS_HEAD, PASS_PAGE_BG, passSubLine } from '../../shared/pass-head'
@@ -186,6 +192,33 @@ interface DetailSeed {
  * @param search 요청의 쿼리(`url.search`). `?ref=` 가 붙으면 추천 진입 배너가 제목 **위**에 끼므로
  *               제목을 접고 히어로까지만 그린다(09-15 동작 = 무회귀). 안 넘기면 제목까지.
  */
+/** 🖼️ 모바일 썸네일 2칸 — 이용권·숙소 서버 첫 화면 공용. 3장 미만이면 ''. */
+export function mobileThumbRowHtml(images: string[]): string {
+  if (!showMobileThumbs(images.length)) return ''
+  return `<div class="lg:hidden ${DETAIL_MOBILE_THUMB_ROW_CLS}">` +
+    images.slice(1, 1 + DETAIL_MOBILE_THUMBS).map((src) =>
+      `<div class="${DETAIL_MOBILE_THUMB_CLS}" style="aspect-ratio:${DETAIL_MOBILE_THUMB_RATIO};background-color:#1D1F29;` +
+      `background-image:url(&quot;${escAttr(detailMobileThumbUrl(src))}&quot;);background-size:cover;background-position:center"></div>`,
+    ).join('') +
+  '</div>'
+}
+
+/**
+ * 🖐️ 2026-10-27 (대표 "사진이 여러장임에도 안넘어가. 로딩이 좀 지나니까 넘어가지는 것 같기도 하고"):
+ *   서버 첫 화면이 첫 장 하나만 그려서, 앱이 뜨기 전에는 넘길 사진이 없었다. 나머지 장도 같은
+ *   스냅 슬라이드로 그린다 — 화면 밖이라 `loading="lazy"`(넘겨야 받는다, 추가 요청 0).
+ *   이용권·숙소 서버 첫 화면이 **같은 함수**를 쓴다(한쪽만 고쳐지는 일 방지).
+ */
+export function restSlidesHtml(images: string[], alt: string, slideCls = ''): string {
+  return images.slice(1).map((src) => {
+    const u = detailHeroMobileUrl(src, DETAIL_HERO_MOBILE_WIDTH)
+    if (!u || u.startsWith('data:')) return ''
+    return `<div${slideCls ? ` class="${slideCls}"` : ''} style="position:relative;flex:0 0 100%;scroll-snap-align:center;background-color:#1D1F29">` +
+      `<img src="${escAttr(u)}" alt="${escAttr(alt)}" loading="lazy" decoding="async"` +
+      ` style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"></div>`
+  }).join('')
+}
+
 export function buildDetailFirstScreen(ssrPayload: string, loaderHtml: string, search = ''): string {
   try {
     const d = (JSON.parse(ssrPayload) as { data?: DetailSeed })?.data
@@ -208,9 +241,13 @@ export function buildDetailFirstScreen(ssrPayload: string, loaderHtml: string, s
             `<img src="${escAttr(heroUrl)}" alt="${escAttr(d.name)}" loading="eager" fetchpriority="high" decoding="async"` +
             ` style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">` +
           '</div>' +
+          restSlidesHtml(images, d.name) +
         '</div>' +
         HERO_SCRIMS +
-      '</div>'
+      '</div>' +
+      // 🖼️ 2026-10-27 (대표 "그루폰처럼"): 큰 사진 아래 썸네일 2칸 — React `DetailGallery` 와 같은 상수·같은 URL.
+      //   없으면 마운트 때 이 줄 높이만큼 제목이 아래로 밀린다.
+      mobileThumbRowHtml(images)
 
     // 🏷️ 제목은 `?ref=`(추천 진입 배너가 제목 위에 끼는 경우)가 없을 때만. 없으면 09-15 와 동일.
     let hasRef = false

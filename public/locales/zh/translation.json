@@ -2445,7 +2445,8 @@
       "channelConfirm": "确认",
       "channelSaving": "保存中…",
       "channelSaved": "已保存运营方式",
-      "channelSaveFailed": "无法保存运营方式"
+      "channelSaveFailed": "无法保存运营方式",
+      "seedingSaveFailed": "未能保存免费体验设置，请在门店申请页面重新开启"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -5848,7 +5849,9 @@
     "sharedShareDesc": "在Urdeal发现了好商品",
     "sharedShareBtn": "查看商品",
     "sellerReplyLabel": "卖家回复",
-    "sponsoredBadge": "体验提供"
+    "sponsoredBadge": "体验提供",
+    "loadMore": "查看更多评价（还有{{n}}条）",
+    "loadingMore": "加载中…"
   },
   "productOption": {
     "title": "商品选项管理",

@@ -32,9 +32,7 @@ import {
 } from '@/worker/utils/home-first-screen'
 import { HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_ABOVE_FOLD, HOME_CARD_BASE_QUERY } from '@/shared/home-card-image'
 import { buildHomeCardPreloadLinks } from '@/worker/utils/home-card-preload'
-import { DEAL_CAT_LABELS } from '@/shared/deal-cats'
-import { HOME_SECTION_ROWS } from '@/shared/home-chrome'
-import { HOME_ROW_CLS } from '@/shared/home-row'
+import { HOME_DEAL_CAT_LABELS } from '@/shared/deal-cats'
 import { stripComments } from '../helpers/source-text'
 
 const root = process.cwd()
@@ -75,8 +73,7 @@ const seedJson = (products: unknown[], title = '지금 인기 이용권', subtit
 function workerCard(p: unknown): HTMLAnchorElement {
   const host = document.createElement('div')
   host.innerHTML = buildHomeFirstScreen(seedJson([p]), LOADER)
-  // 🏠 2026-10-26: 카드는 섹션 안에서 찾는다(머리·배너에 다른 링크가 생겨도 안 흔들리게).
-  const a = host.querySelector('#ur-first-screen section a')
+  const a = host.querySelector('#ur-first-screen a')
   if (!a) throw new Error('워커가 카드를 안 그렸다')
   return a as HTMLAnchorElement
 }
@@ -88,8 +85,7 @@ function reactCard(p: Record<string, unknown>): HTMLAnchorElement {
     <QueryClientProvider client={qc}>
       <MemoryRouter>
         {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        {/* 🧾 2026-10-31 (대표 확정 Y2): 모바일 홈 첫 화면은 한 줄 카드 — 워커가 그 모양을 미러한다. */}
-        <GroupBuyFeedCard p={p as any} layout="row" imgWidth={HOME_CARD_IMG_WIDTH_BASE} aboveFold />
+        <GroupBuyFeedCard p={p as any} row imgWidth={HOME_CARD_IMG_WIDTH_BASE} aboveFold />
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -112,8 +108,6 @@ describe('① 카드 — 워커 HTML 과 진짜 컴포넌트가 같은 클래스
       const wm = w.firstElementChild as HTMLElement
       const rm = r.firstElementChild as HTMLElement
       expect(tokens(wm.className)).toEqual(tokens(rm.className))
-      // 🧾 사진 칸 안의 사진 상자(`DealCardMedia` 의 루트)도 같다 — 정사각 · 모서리.
-      expect(tokens((wm.firstElementChild as HTMLElement).className)).toEqual(tokens((rm.firstElementChild as HTMLElement).className))
 
       const wb = w.children[1] as HTMLElement
       const rb = r.children[1] as HTMLElement
@@ -158,17 +152,12 @@ describe('① 카드 — 워커 HTML 과 진짜 컴포넌트가 같은 클래스
    *   `width: 94%;`(공백·세미콜론)로 쓰고 워커는 `width:94%` 로 쓴다. 같은 값인데 글자가 다르다.
    *   ⇒ 비교는 **파싱된 값**(`style.width`)으로 한다. 지키려는 것은 "같은 비율"이지 "같은 글자"가 아니다.
    */
-  // 🧾 2026-10-31 재조준(Y2): 한 줄 카드는 별 다섯 대신 **★ 하나 + 숫자**다 — 같은 글자·같은 클래스인지 본다.
-  it('🔴 별이 같은 글자·같은 클래스다', () => {
-    const pick = (a: HTMLAnchorElement) => {
-      const el = a.querySelector('[aria-hidden="true"].leading-none') as HTMLElement | null
-      return el ? { t: el.textContent, c: tokens(el.className).join(' ') } : null
-    }
-    const w = pick(workerCard(RICH))
-    expect(w).not.toBeNull() // 둘 다 없으면 "같다"가 아무것도 안 지킨다
-    expect(w).toEqual(pick(reactCard(RICH as Record<string, unknown>)))
-    expect(w?.c).toBe(tokens(HOME_ROW_CLS.star).join(' '))
-    expect(starFillPct(4.7)).toBe((4.7 / 5) * 100) // 격자 카드(PC)·숙소 첫 화면이 계속 쓴다
+  it('🔴 별 채움 비율이 같다 (`StarRating` 과 같은 식)', () => {
+    const w = workerCard(RICH).querySelector('[role="img"] span:nth-child(2)') as HTMLElement
+    const r = reactCard(RICH as Record<string, unknown>).querySelector('[role="img"] span:nth-child(2)') as HTMLElement
+    expect(w.style.width).toBe(r.style.width)
+    expect(w.style.width).not.toBe('') // 둘 다 비면 "같다"가 아무것도 안 지킨다
+    expect(starFillPct(4.7)).toBe((4.7 / 5) * 100)
   })
 })
 
@@ -177,7 +166,7 @@ describe('② 경계 — 서버가 그리는 범위', () => {
     const many = Array.from({ length: 9 }, (_, i) => ({ ...BARE, id: 100 + i }))
     const host = document.createElement('div')
     host.innerHTML = buildHomeFirstScreen(seedJson(many), LOADER)
-    expect(host.querySelectorAll('#ur-first-screen section a').length).toBe(HOME_CARD_ABOVE_FOLD)
+    expect(host.querySelectorAll('#ur-first-screen a').length).toBe(HOME_CARD_ABOVE_FOLD)
   })
 
   it('🔴 둘째 섹션·피드·유어쇼츠는 안 그린다 (첫 화면 밖)', () => {
@@ -251,6 +240,7 @@ describe('⑤ 크롬·섹션 머리글 — 페이지 소스에서 파싱해 대�
   const loc = code('src/pages/pc-home/PcHomeLocationBar.tsx')
 
   it.each([
+    ['chrome', () => home],
     ['topRow', () => home],
     ['locRow', () => home],
     ['catRow', () => home],
@@ -258,11 +248,11 @@ describe('⑤ 크롬·섹션 머리글 — 페이지 소스에서 파싱해 대�
     ['catBase', () => home],
     ['catOn', () => home],
     ['catOff', () => home],
-    ['chrome', () => home],
     ['panel', () => sections],
     ['secHead', () => sections],
     ['secTitle', () => sections],
     ['secSub', () => sections],
+    ['grid', () => sections],
     ['locTrigger', () => loc],
     ['locLabel', () => loc],
   ] as const)('🔴 %s 클래스가 페이지 소스에 그대로 있다', (key, src) => {
@@ -273,7 +263,9 @@ describe('⑤ 크롬·섹션 머리글 — 페이지 소스에서 파싱해 대�
      *   ⚠️ 조각이 **둘 다** 있어야 통과다(한쪽만 보면 나머지 절반이 조용히 갈린다).
      */
     const needles =
-      key === 'locLabel' ? ['text-[24px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white', 'max-w-[220px] truncate']
+      // 📋 2026-10-31 시안 10: 격자는 공용 상수(`DEAL_ROW.grid`)를 쓴다 — 워커도 같은 상수라 값 대신 **사용**을 대조한다.
+      key === 'grid' ? ['DEAL_ROW.grid']
+        : key === 'locLabel' ? ['text-[24px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white', 'max-w-[220px] truncate']
           : [want]
     for (const n of needles) {
       expect(src(), `${key} 가 갈렸다(${n}) — 마운트 때 그 자리가 튄다`).toContain(n)
@@ -284,22 +276,8 @@ describe('⑤ 크롬·섹션 머리글 — 페이지 소스에서 파싱해 대�
     const host = document.createElement('div')
     host.innerHTML = buildHomeFirstScreen(seedJson([BARE]), LOADER)
     const nav = host.querySelector('#ur-first-screen nav') as HTMLElement
-    expect([...nav.children].map((c) => c.textContent)).toEqual(DEAL_CAT_LABELS.map((c) => c.label))
-    expect(home).toContain('DEAL_CATS.map')
-  })
-
-  /**
-   * 🏠 2026-10-26 (대표 확정 안 A 의 아랫부분) — 섹션 가로 줄은 **같은 상수**(`shared/home-chrome`)를
-   *   화면과 워커가 함께 import 한다(문자열 두 벌보다 강하다 — 갈릴 수가 없다).
-   */
-  // 🧾 2026-10-31 재조준(Y2): 가로 줄 → 세로 한 줄 목록. 불변식 그대로 — 같은 상수.
-  it('🔴 HOME_SECTION_ROWS 를 화면과 워커가 같이 쓰고, 워커가 그 상수로 그린다', () => {
-    const worker = code('src/worker/utils/home-first-screen.ts')
-    expect(sections).toContain('HOME_SECTION_ROWS')
-    expect(worker).toContain('HOME_SECTION_ROWS')
-    const host = document.createElement('div')
-    host.innerHTML = buildHomeFirstScreen(seedJson([BARE]), LOADER)
-    expect(host.querySelector('#ur-first-screen section > div:last-child')?.getAttribute('class')).toBe(HOME_SECTION_ROWS)
+    expect([...nav.children].map((c) => c.textContent)).toEqual(HOME_DEAL_CAT_LABELS.map((c) => c.label))
+    expect(home).toContain('HOME_DEAL_CATS.map')
   })
 
   /**

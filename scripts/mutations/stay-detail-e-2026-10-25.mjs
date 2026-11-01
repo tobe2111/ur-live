@@ -3,9 +3,10 @@ const TEST = 'src/tests/unit/stay-detail-e-2026-10-25.test.ts'
 export default [
   {
     name: '🛏️E 하단 예약 바가 다시 하단 탭 뒤로 깔린다',
-    file: 'src/pages/stay-detail/StayStickyBar.tsx',
-    find: 'fixed bottom-0 left-0 right-0 z-[10002]',
-    replace: 'fixed bottom-0 left-0 right-0 z-50',
+    // 🔁 2026-10-27: 틀이 공용 부품으로 옮겨갔다 — 불변식 그대로.
+    file: 'src/components/deal/BuyBar.tsx',
+    find: 'fixed bottom-0 inset-x-0 z-[10002]',
+    replace: 'fixed bottom-0 inset-x-0 z-50',
     test: TEST,
     why: '하단 탭이 z-[9999] 라 바가 안 보인다 — 객실 카드에 예약 버튼이 없으니 폰에서 예약할 길이 사라진다.',
   },

@@ -22,6 +22,7 @@
  * 이 테스트가 **못 막는 것**: 실제 레이아웃 붕괴. 브레이크포인트가 같아도 좁은 폭에서
  *   요소가 겹칠 수 있다 — 값을 바꿨으면 태블릿 폭으로 한 번 렌더해 봐야 한다.
  */
+import { DEAL_ROW } from '@/shared/deal-card-grid'
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 
@@ -85,17 +86,15 @@ describe('태블릿 폭에서 카드가 줄을 채운다', () => {
     )
   })
 
-  /**
-   * 🔀 2026-10-26 재조준 (대표 확정 안 A — 그루폰식): 편성 섹션은 모바일·태블릿에서 **격자가 아니라 가로 줄**이다.
-   *   지키려던 것("한 화면 안에서 섹션의 모양이 갈리지 않는다")은 그대로 — 자리표시자와 진짜 섹션이
-   *   **같은 가로 줄 상수**를 쓰는지 본다(하나만 격자로 남으면 응답 순간 모양이 바뀌며 아래가 밀린다).
-   */
-  // 🧾 2026-10-31 재조준 (대표 확정 Y2): 가로 줄 → **세로 한 줄 목록**(`HOME_SECTION_ROWS`). 불변식 그대로 — 둘이 같은 상수.
-  it('편성 섹션은 자리표시자와 진짜 섹션이 같은 목록 상수다', () => {
+  it('편성 섹션 그리드도 같은 열 수다 (한 화면에서 열이 갈리면 안 된다)', () => {
     const s = code(read(SECTIONS))
-    const hits = s.match(/className=\{HOME_SECTION_ROWS\}/g) || []
-    expect(hits.length, '섹션 자리표시자·진짜 섹션 중 하나가 같은 목록이 아니다').toBeGreaterThanOrEqual(2)
-    expect(s, '섹션에 옛 격자 규칙이 남아 모양이 갈린다').not.toMatch(/grid-cols-2 sm:grid-cols-3/)
+    // 📋 2026-10-31 시안 10: 섹션 격자는 공용 `DEAL_ROW.grid`(폰 줄 목록 · md+ 4열)를 쓴다. 불변식은 그대로 — 태블릿 4열.
+    const hits = s.match(/DEAL_ROW\.grid/g) || []
+    expect(hits.length, '섹션 그리드 중 일부만 공용 격자다').toBeGreaterThanOrEqual(2)
+    expect(DEAL_ROW.grid, '공용 격자가 태블릿 4열이 아니다').toContain('md:grid-cols-4')
+    expect(s, '섹션에 옛 lg:grid-cols-4 규칙이 남아 열이 갈린다').not.toMatch(
+      /grid-cols-2 sm:grid-cols-3 lg:grid-cols-4/,
+    )
   })
 })
 

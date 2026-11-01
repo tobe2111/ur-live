@@ -110,10 +110,12 @@ async function ensureTables(DB: D1Database) {
 }
 
 /** 캠페인 제공 이용권을 선정자에게 0원 발급 (order+voucher, is_experience=1). @returns voucher id or null */
-async function issueExperienceVoucher(
+export async function issueExperienceVoucher(
   DB: D1Database,
   campaign: { id: number; seller_id: number; product_id: number },
   userId: string,
+  /** 주문번호 접두 — 체험단 'EXP' · 무상 체험 제공(seeding) 'SEED'. 정산 제외는 둘 다 is_experience=1 로 같다. */
+  orderPrefix = 'EXP',
 ): Promise<number | null> {
   try {
     // 상품(제공 이용권) 정보 — 유효기간 산출(기본 +90일).
@@ -123,7 +125,7 @@ async function issueExperienceVoucher(
     // 2026-08-22 대표: 미설정 = 무기한 (90일 강제 기본값 폐지)
     const validityDays = Number(p?.voucher_validity_days) > 0 ? Number(p!.voucher_validity_days) : null
     const expiresAt = validityDays ? new Date(Date.now() + validityDays * 86400_000).toISOString() : null
-    const orderNumber = `EXP-${campaign.id}-${userId}-${cryptoInt(0x7fffffff)}`
+    const orderNumber = `${orderPrefix}-${campaign.id}-${userId}-${cryptoInt(0x7fffffff)}`
 
     // 0원 order (payment_method='experience' — 만료환불 cron 자연 skip). status='PAID' (사용 가능).
     const orderRow = await DB.prepare(`

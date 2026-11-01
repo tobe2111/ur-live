@@ -158,7 +158,8 @@ async function main() {
     const id = cid('instagram');
     const link = utmLink(isPromo ? product : target, 'instagram', T.campaign || track, id, now);
     // 미디어 결정: tracks.<t>.media 배열(캐러셀 images / Reels video_url, 날짜별 순환) → image_url → og:image → 상품 이미지
-    const mediaList = (T.media || []).filter((m) => m && (m.video_url || m.images?.length));
+    // product_id 가 붙은 세트(손님 딜 카드)는 오늘 고른 상품과 같을 때만 — 다른 가게 카드가 나가지 않게
+    const mediaList = (T.media || []).filter((m) => m && (m.video_url || m.images?.length) && (m.product_id == null || m.product_id === product?.id));
     // 같은 세트 반복 방지: 가장 오래 안 쓴 세트를 고르고, 다시 쓰는 세트는 표지(첫 장)를 바꾼다
     const igHist = varietyLog.filter((p) => p.platform === 'instagram');
     const mediaKey = (m) => m.set || m.video_url || m.images[0];

@@ -619,6 +619,11 @@ export default defineConfig({
           // 🏠 2026-10-25 같은 함정: 생활 업종 SSOT(`life-deal-subcat`, import 0 — 타입만)를 홈 피드와 사장님 수정 화면이 함께 써서
           //   묶음기가 홈 봉투에 넣었고, 어드민이 홈 PC 봉투 넷(+23KB)을 끌고 왔다 → 자기 작은 봉투.
           if (id.includes('/src/shared/life-deal-subcat')) return 'app-life-subcat' // 묶음기 보호 목록(LIBRARY_ENVELOPES)에 함께 — 안 그러면 다시 홈 봉투로 간다
+          // 🎁 2026-10-31 무상 체험 — 라벨은 공용으로, 나머지(신청 시트·제공 설정·연동 목록·규칙 표)는 자기 봉투로.
+          //   라벨이 상세 봉투에 들어가면 그걸 부르는 공용 묶음을 타고 어드민이 상세 봉투를 통째로 받는다(dash:admin +23KB 실측).
+          //   팔아보기 카드(SellThisCard)는 상세 첫 화면에 그려지므로 일부러 제외 — 상세 봉투로 간다.
+          if (id.includes('/src/shared/seeding-labels')) return 'app-shared'
+          if (id.includes('/src/shared/seeding') || (id.includes('/src/components/seeding/') && !id.includes('/SellThisCard'))) return 'app-seeding'
           // 🏠 2026-10-26 같은 함정: 업체 소개 페이지 SEO 헬퍼(`life-biz-seo`)가 규칙 없이 묶음기로 가자 교환권 첫 화면 청크가 25→27 로 쪼개졌다 → 자기 봉투.
           if (id.includes('/src/shared/life-biz-seo')) return 'app-life-biz'
           if (id.includes('/src/components/seller-layout/')) return 'app-seller-components'

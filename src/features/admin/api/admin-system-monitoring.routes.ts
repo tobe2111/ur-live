@@ -343,7 +343,7 @@ adminSystemMonitoringRoutes.post('/alimtalk-test-send', async (c) => {
     const at = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul' })
     const r = await sendTextNotice(c.env, user.phone, {
       tpl, title: '유어딜 알림 시험', forceAlimtalk: true,
-      text: `[유어딜] 알림 발송 시험입니다 (${at}). 이 메시지가 보이면 사장님·손님 알림이 정상으로 나갑니다.`,
+      text: `[유어딜] 테스트(test) 메시지\n\n알림톡 발송 점검용 테스트 메시지입니다.\n· 발송 시각: ${at}\n\n운영자가 관리자 화면에서 직접 보낸 테스트입니다.`,
     })
     const tail = String(user.phone ?? '').replace(/[^0-9]/g, '').slice(-4)
     return c.json({ success: r.ok, result: r, phone_tail: tail || null })
@@ -434,6 +434,7 @@ const OPS_GATES: OpsGate[] = [
   // 🏠 2026-10-24 생활 견적(결재 2026-10-24-home-service-quotes) — 충전은 돈이 오가므로 실결제 확인 전엔 닫아 둔다.
   //   닫혀 있어도 사장님은 가입 무료 참여권 3장으로 견적을 보낼 수 있다(돈 0).
   { key: 'home_service_charge_enabled', kind: 'setting', label: '생활 견적 참여권 카드 충전', default_value: 'false', staging_ref: 'S-HOME', turn_on_when: '테스트 매장으로 참여권 5장 충전 → 견적 1건(1장 차감) → 손님 취소(1장 반환)를 실결제로 확인하고 잔액·원장이 맞으면' },
+  { key: 'seeding_pass_charge_enabled', kind: 'setting', label: '무상 체험 신청권(노쇼 방지 보증금) 카드 구매', default_value: 'false', staging_ref: 'S-SEED', turn_on_when: '테스트 계정으로 신청권 5장 구매 → 승인된 체험에 일정 제출(1장 차감) → 매장 사정 취소(1장 반환)를 실결제로 확인하고 잔액·원장이 맞으면' },
   { key: 'home_service_quotes_disabled', kind: 'setting', label: '생활 견적 운영 중지 스위치', default_value: 'false', staging_ref: 'S-HOME', turn_on_when: '켜지 않는다 — 문제가 생겼을 때만 true 로 요청 접수·견적을 멈추는 비상 스위치' },
   // 💸 2026-08-25 (누락 발견): **플랫폼 take 율 자체를 정하는 게이트인데 이 명부에 없었다.**
   //   `channelPlatformRate` 가 이 값으로 직판 10% / 중개 5% 를 가른다(OFF 면 종전 `commission_rate`).

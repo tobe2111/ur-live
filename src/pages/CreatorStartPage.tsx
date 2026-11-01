@@ -94,7 +94,7 @@ export default function CreatorStartPage() {
             <h1 className="text-[17px] font-bold text-gray-900">연결하지 못했습니다</h1>
             <p className="mt-2 text-[15px] text-gray-600">{msg}</p>
             <div className="mt-5 flex flex-col gap-2">
-              <a href="/creators" className={`${btn} bg-brand text-white`}>제휴 안내 보기</a>
+              <a href="/influencer" className={`${btn} bg-brand text-white`}>제휴 안내 보기</a>
               <a href="/creators/apply" className={`${btn} border border-gray-300 text-gray-900`}>제휴 신청하기</a>
             </div>
           </>

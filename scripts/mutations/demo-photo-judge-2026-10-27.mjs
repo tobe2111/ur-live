@@ -22,8 +22,8 @@ export default [
   {
     name: 'demo-photo-judge — 손님·블로그 사진도 후보로',
     file: 'src/worker/utils/kakao-place-photos.ts',
-    find: "    if (p.type !== 'MYSTORE') continue",
-    replace: '',
+    find: "    if (photos.length >= want) break\n    if (p.type !== 'MYSTORE') continue",
+    replace: '    if (photos.length >= want) break',
     test: T,
     why: '매장주 제공이 아닌 사진이 데모에 들어간다(대표 지시 위반).',
   },

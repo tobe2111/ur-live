@@ -21,7 +21,7 @@ import { formatNumber } from '@/utils/format'
 import type { FcfsInfo } from './useFcfs'
 
 export default function FcfsBadge(
-  { info, className = '', variant = 'inline', compact = false }: { info: FcfsInfo; className?: string; variant?: 'inline' | 'overlay'; /** 🧾 2026-10-31: 120px 사진(한 줄 카드 Y2) 위 — '뽑기 N명' 을 빼고 응모 수만. */ compact?: boolean },
+  { info, className = '', variant = 'inline' }: { info: FcfsInfo; className?: string; variant?: 'inline' | 'overlay' },
 ) {
   const applied = formatNumber(info.appliedDisplay)
   const spots = Math.max(0, Number(info.spots) || 0)
@@ -55,7 +55,7 @@ export default function FcfsBadge(
     return (
       <span className={`inline-flex items-center gap-1 rounded-full bg-black/55 backdrop-blur-sm px-2 py-1 text-[12px] font-medium leading-none text-white shadow-sm ${className}`}>
         <span className="animate-fcfs-flame">🔥</span>
-        {spots > 0 && !compact && <><span className="font-medium">{spots}</span>명 뽑기 <span className="opacity-50">·</span> </>}
+        {spots > 0 && <><span className="font-medium">{spots}</span>명 뽑기 <span className="opacity-50">·</span> </>}
         <span className="font-medium animate-fcfs-spark">{applied}</span>명 응모
       </span>
     )

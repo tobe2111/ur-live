@@ -23,7 +23,6 @@ export default function OtherDealsRow({ deals, sellerHandle, sellerUsername }: {
   if (!deals.length) return null
   return (
     <>
-      <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
       <div style={{ padding: '22px 0' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px' }}>
           <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--gbd-ink)', letterSpacing: '-.01em' }}>이 가게의 다른 이용권</div>

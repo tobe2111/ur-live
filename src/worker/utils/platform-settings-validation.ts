@@ -109,6 +109,8 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   broker_share_enabled: boolStr,
   // 🏠 2026-10-24 생활 견적 — read-site: features/home-service/api/home-service-pro.routes.ts · home-service.routes.ts
   home_service_charge_enabled: boolStr,
+  seeding_pass_charge_enabled: boolStr,
+  seeding_auto_send_to_store: boolStr,
   home_service_quotes_disabled: boolStr,
   home_service_packages: optionalText(2000), // JSON 묶음 — 형식이 틀리면 읽는 쪽(parseCreditPackages)이 기본 묶음으로 떨어진다
   // 🏷️ 2026-10-18 브랜드 3단계(결재 2026-10-18-franchise-cross-owner-redeem) — read-site: brand-cross-owner.ts.

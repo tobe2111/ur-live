@@ -86,8 +86,7 @@ describe('딜 카드 형태 3종', () => {
     expect(GRID, '단위를 deal_only 에서 뽑지 않는다').toMatch(/unitLabel = Number\(p\.deal_only\) === 1/)
     expect(GRID, "'원' 하드코딩이 남아 있다").not.toMatch(/formatNumber\(price\)\}원/)
     // 정가·판매가 **둘 다** 같은 단위를 써야 한다(한쪽만 고치면 '22,000원 → 16,500 딜' 이 된다).
-    // 🧾 2026-10-31: 격자·한 줄(Y2) 두 모양이 각각 정가·판매가 두 줄 → 4.
-    expect((GRID.match(/\{unitLabel\}/g) || []).length, '두 가격 줄 모두에 적용되지 않았다').toBe(4)
+    expect((GRID.match(/\{unitLabel\}/g) || []).length, '두 가격 줄 모두에 적용되지 않았다').toBe(2)
   })
 
   it('⑥ 온누리 가맹 표시는 카드 SSOT 가 그린다 — 상권관에서만 뜨던 것', () => {

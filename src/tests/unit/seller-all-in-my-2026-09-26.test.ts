@@ -204,7 +204,10 @@ describe('🏠 대시보드를 쓸 필요 없게 — 보내는 문을 막는다 
     //    "어딘가에 MY_PATH 가 있다" 는 통과했다(주입이 잡았다). ⇒ 대시보드로 보내는 줄이 **하나도 없다** 를 본다.
     expect(code, "등록 직후 /seller 로 보내면 '내 가게는 대시보드에 있다' 를 가르친다")
       .not.toMatch(/navigate\(\s*['"`]\/seller/)
-    expect(code.match(/navigate\(MY_PATH, \{ replace: true \}\)/g)?.length ?? 0,
+    // 🎯 2026-10-31: 등록 직후 착륙이 `takePartnerReturn() ?? MY_PATH` 가 됐다(제휴 위젯으로 온 사장님은 그 요청 화면으로).
+    //    기억이 없으면 여전히 마이 — 불변식 그대로. 폴백 자리에 대시보드가 끼는 것도 막는다.
+    expect(code).not.toMatch(/\?\?\s*['"`]\/seller/)
+    expect(code.match(/navigate\((?:takePartnerReturn\(\) \?\? )?MY_PATH, \{ replace: true \}\)/g)?.length ?? 0,
       '등록 직후 착륙과 승계 패널 닫기 — 둘 다 마이여야 한다').toBeGreaterThanOrEqual(2)
   })
 

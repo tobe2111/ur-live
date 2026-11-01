@@ -1,3 +1,4 @@
+import { DEAL_ROW } from '@/shared/deal-card-grid'
 /**
  * 🧱 이용권 카드 자리 — **진짜 카드(`GroupBuyFeedCard`)와 같은 줄 구조**로 세운다 (2026-10-14).
  *
@@ -13,14 +14,14 @@
  * ⚠️ 진짜 카드를 `invisible` 로 그려 높이를 빌리지 않는 이유: 그 카드는 화면에 들어오면 상세를
  *   미리 받는다(prefetch) — 가짜 id 로 없는 상품을 부르게 된다.
  */
-import { HOME_ROW_CLS } from '@/shared/home-row'
-
 const BAR = 'rounded bg-gray-100 dark:bg-white/[0.06] text-transparent select-none'
 
-export default function DealCardPlaceholder() {
+/** `row` = 2026-10-31 줄 목록(진짜 카드의 `row` 와 같은 `DEAL_ROW` 클래스). */
+export default function DealCardPlaceholder({ row = false }: { row?: boolean } = {}) {
+  const photo = <div className="aspect-[4/3] rounded-xl bg-gray-100 dark:bg-white/[0.06]" />
   return (
-    <div aria-hidden="true" className="flex flex-col">
-      <div className="aspect-[4/3] rounded-xl bg-gray-100 dark:bg-white/[0.06]" />
+    <div aria-hidden="true" className={row ? DEAL_ROW.link : 'flex flex-col'}>
+      {row ? <div className={DEAL_ROW.mediaBox}>{photo}</div> : photo}
       <div className="pt-3">
         {/* 가게 */}
         <p className="flex text-[12px] leading-none mb-1"><span className={`${BAR} w-1/2`}>가</span></p>
@@ -39,27 +40,6 @@ export default function DealCardPlaceholder() {
         </div>
         {/* 판매가 */}
         <p className="flex mt-1 leading-none"><span className={`${BAR} text-[17px] font-bold w-1/2`}>가</span></p>
-      </div>
-    </div>
-  )
-}
-
-/**
- * 🧾 한 줄 카드(Y2) 자리 — 진짜 줄과 **같은 상수**(`HOME_ROW_CLS`)로 세운다.
- *   본문 높이가 120 으로 고정이라(`home-row.ts` 머리말) 자리와 실제 줄의 높이가 언제나 같다.
- */
-export function DealRowPlaceholder() {
-  return (
-    <div aria-hidden="true" className={HOME_ROW_CLS.link}>
-      <div className={HOME_ROW_CLS.thumb}><div className={`${HOME_ROW_CLS.mediaAspect} ${HOME_ROW_CLS.mediaBox}`} /></div>
-      <div className={HOME_ROW_CLS.body}>
-        <p className={`${HOME_ROW_CLS.meta} flex`}><span className={`${BAR} w-1/3`}>가</span></p>
-        <p className={HOME_ROW_CLS.store}><span className={`${BAR} w-1/2`}>가</span></p>
-        <p className={`${HOME_ROW_CLS.menu} flex`}><span className={`${BAR} w-3/4`}>가</span></p>
-        <div className={HOME_ROW_CLS.foot}>
-          <span />
-          <p className="flex leading-none"><span className={`${BAR} text-[17px] font-bold w-24`}>가</span></p>
-        </div>
       </div>
     </div>
   )

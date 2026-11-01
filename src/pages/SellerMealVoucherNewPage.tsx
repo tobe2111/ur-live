@@ -21,6 +21,8 @@
  * ⚠️ 폼·검증·제출 payload·임시저장은 **한 글자도 안 바뀐다** — 시험이 그것을 고정한다.
  */
 import { useEffect, useRef, useState } from 'react'
+import SeedingOfferFields from '@/components/seeding/SeedingOfferFields'
+import { DEFAULT_OFFER, type SeedingOffer } from '@/shared/seeding'
 import { useTranslation } from '@/lib/i18n-lite'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Utensils, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -57,6 +59,8 @@ export default function SellerMealVoucherNewPage({ embedded = false, onClose, on
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [form, setForm] = useState<VoucherForm>(() => emptyVoucherForm())
+  // 🎁 2026-10-31 인플루언서 무상 체험 제공 — 등록 직후 같은 이용권에 저장(`PUT /api/seller/seeding/offers/:id`).
+  const [seeding, setSeeding] = useState<SeedingOffer>(DEFAULT_OFFER)
   const [step, setStep] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
@@ -279,7 +283,12 @@ export default function SellerMealVoucherNewPage({ embedded = false, onClose, on
 
       const res = await api.post('/api/seller/products', payload, { headers })
       if (res.data.success) {
-        setCreatedId(Number(res.data.data?.id) || null)
+        const newId = Number(res.data.data?.id) || null
+        setCreatedId(newId)
+        if (newId && seeding.enabled) {
+          await api.put(`/api/seller/seeding/offers/${newId}`, seeding, { headers })
+            .catch(() => toast.error(t('seller.mealVoucher.seedingSaveFailed', { defaultValue: '무상 체험 설정은 저장하지 못했어요. 매장 요청함에서 다시 켜 주세요' })))
+        }
         setDone(true)
         toast.success(t('seller.mealVoucher.registered'))
       } else {
@@ -408,6 +417,7 @@ export default function SellerMealVoucherNewPage({ embedded = false, onClose, on
           {step === 2 && (
             <SaleSettingsStep form={form} update={update} showAdvanced={showAdvanced} setShowAdvanced={setShowAdvanced} />
           )}
+          {step === 2 && <SeedingOfferFields value={seeding} onChange={setSeeding} />}
 
           {/* 하단 내비게이션 — 이전/임시저장/다음(또는 등록) */}
           <div className="flex gap-3">

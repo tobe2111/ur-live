@@ -4,8 +4,8 @@
   "lockSlackKB": 8,
   "pages": {
     "홈": {
-      "execKB": 298.5,
-      "loadedKB": 623.7,
+      "execKB": 299.3,
+      "loadedKB": 626.5,
       "top": [
         [
           "react-core.js",
@@ -21,19 +21,19 @@
         ],
         [
           "lz-common.js",
-          26.6
+          27.3
         ],
         [
           "app-utils.js",
-          21.2
+          21.5
         ],
         [
           "lz-home-homePc.js",
-          16
+          15.3
         ],
         [
           "tanstack-query.js",
-          14.1
+          14.2
         ],
         [
           "lz-home-homePc-map.js",
@@ -42,12 +42,12 @@
       ]
     },
     "홈(PC)": {
-      "execKB": 379.3,
-      "loadedKB": 757.1,
+      "execKB": 379,
+      "loadedKB": 758.3,
       "top": [
         [
           "react-core.js",
-          67.3
+          67.4
         ],
         [
           "locale-ko.js",
@@ -63,49 +63,49 @@
         ],
         [
           "lz-common.js",
-          25.9
+          26.5
         ],
         [
           "app-utils.js",
-          22.9
+          23.3
         ],
         [
           "lz-home-homePc.js",
-          16.7
+          15.5
         ],
         [
           "tanstack-query.js",
-          14.2
+          14.3
         ]
       ]
     },
     "교환권": {
-      "execKB": 281,
-      "loadedKB": 609.3,
+      "execKB": 281.7,
+      "loadedKB": 615.3,
       "top": [
         [
           "react-core.js",
-          61.5
+          61.4
         ],
         [
           "locale-ko.js",
-          49.4
+          47.6
         ],
         [
           "index.js",
-          34.1
+          35.2
         ],
         [
           "app-utils.js",
-          21.5
+          21.9
         ],
         [
           "lz-common.js",
-          20.5
+          21.5
         ],
         [
           "lz-vouchers.js",
-          13.9
+          14.2
         ],
         [
           "tanstack-query.js",
@@ -118,32 +118,32 @@
       ]
     },
     "이용권 상세": {
-      "execKB": 321.5,
-      "loadedKB": 682.8,
+      "execKB": 321.6,
+      "loadedKB": 672.7,
       "top": [
         [
           "react-core.js",
-          66.3
+          66.4
         ],
         [
           "locale-ko.js",
           47.6
         ],
         [
+          "lz-gbDetail.js",
+          37.4
+        ],
+        [
           "index.js",
           35.3
         ],
         [
-          "lz-gbDetail.js",
-          34.7
-        ],
-        [
           "app-utils.js",
-          22.8
+          23.1
         ],
         [
           "lz-common.js",
-          22
+          20.9
         ],
         [
           "react-router.js",
@@ -156,32 +156,32 @@
       ]
     },
     "쇼핑": {
-      "execKB": 253.9,
-      "loadedKB": 572.8,
+      "execKB": 255.3,
+      "loadedKB": 578.1,
       "top": [
         [
           "react-core.js",
-          59.2
+          59.1
         ],
         [
           "locale-ko.js",
-          49.4
+          47.6
         ],
         [
           "index.js",
-          34.1
+          35.1
         ],
         [
           "lz-common.js",
-          25.4
+          26.5
         ],
         [
           "app-utils.js",
-          19.8
+          20.1
         ],
         [
           "react-router.js",
-          12.3
+          12.2
         ],
         [
           "app-shell.js",
@@ -189,41 +189,41 @@
         ],
         [
           "app-shared.js",
-          6.8
+          6.9
         ]
       ]
     },
     "지도": {
-      "execKB": 311.1,
-      "loadedKB": 690.7,
+      "execKB": 312.3,
+      "loadedKB": 698.3,
       "top": [
         [
           "react-core.js",
-          61.3
+          61.1
         ],
         [
           "locale-ko.js",
-          49.4
+          47.6
         ],
         [
           "index.js",
-          34.3
+          35.3
         ],
         [
           "app-ui-utils.js",
-          25.4
+          25.6
         ],
         [
           "app-utils.js",
-          23.1
+          23.4
         ],
         [
           "lz-common.js",
-          19
+          20.1
         ],
         [
           "lz-map.js",
-          17.6
+          17.8
         ],
         [
           "lz-home-homePc-map.js",
@@ -232,46 +232,46 @@
       ]
     },
     "유어샵": {
-      "execKB": 251.1,
-      "loadedKB": 591,
+      "execKB": 252.8,
+      "loadedKB": 597.3,
       "top": [
         [
           "react-core.js",
-          56.6
+          56.5
         ],
         [
           "locale-ko.js",
-          49.4
+          47.6
         ],
         [
           "index.js",
-          34.3
+          35.3
         ],
         [
           "app-utils.js",
-          22.6
+          23
         ],
         [
           "lz-common.js",
-          19.4
+          20.5
         ],
         [
           "react-router.js",
-          12.2
+          12.1
         ],
         [
           "helmet.js",
-          7.4
+          7.5
         ],
         [
           "app-shell.js",
-          7.4
+          7.5
         ]
       ]
     },
     "마이(판매 구역)": {
-      "execKB": 347.3,
-      "loadedKB": 854.3,
+      "execKB": 346.1,
+      "loadedKB": 828,
       "top": [
         [
           "react-core.js",
@@ -279,87 +279,87 @@
         ],
         [
           "locale-ko.js",
-          49.4
-        ],
-        [
-          "lucide.js",
-          35.7
+          47.6
         ],
         [
           "index.js",
-          34.6
+          35.6
+        ],
+        [
+          "lucide.js",
+          35.2
         ],
         [
           "app-utils.js",
-          22.8
+          23.3
         ],
         [
           "lz-common.js",
-          18.9
+          20
         ],
         [
           "UserProfilePage.js",
-          17.1
+          15.3
         ],
         [
           "tanstack-query.js",
-          13.1
+          13
         ]
       ]
     },
     "어드민": {
-      "execKB": 467.7,
-      "loadedKB": 986.3,
+      "execKB": 466.5,
+      "loadedKB": 964.9,
       "top": [
         [
           "locale-ko-dash.js",
-          122.1
+          121.8
         ],
         [
           "react-core.js",
-          65.9
+          65.6
         ],
         [
           "locale-ko.js",
-          49.4
-        ],
-        [
-          "lucide.js",
-          35.7
+          47.6
         ],
         [
           "index.js",
-          34.5
+          35.6
+        ],
+        [
+          "lucide.js",
+          35.2
         ],
         [
           "app-utils.js",
-          21.2
+          21.5
         ],
         [
           "app-routes-admin.js",
-          19
+          18.7
         ],
         [
           "lz-common.js",
-          16.3
+          17.3
         ]
       ]
     },
     "에이전시 콘솔": {
-      "execKB": 383.3,
-      "loadedKB": 731.9,
+      "execKB": 383,
+      "loadedKB": 739.7,
       "top": [
         [
           "locale-ko-dash.js",
-          122.8
+          121.8
         ],
         [
           "react-core.js",
-          65.5
+          65.4
         ],
         [
           "locale-ko.js",
-          49.4
+          47.6
         ],
         [
           "index.js",
@@ -367,11 +367,11 @@
         ],
         [
           "lz-common.js",
-          18.7
+          19.1
         ],
         [
           "app-utils.js",
-          17.2
+          17.7
         ],
         [
           "react-router.js",
@@ -379,7 +379,7 @@
         ],
         [
           "AgencySection.js",
-          10
+          11.2
         ]
       ]
     }
@@ -529,16 +529,10 @@
     },
     {
       "date": "2026-10-31",
-      "reason": "검사 하네스가 /api/sections 스텁을 갖게 돼(라이브처럼 '지금 인기 이용권' 섹션이 그려짐) 홈 실행량이 늘었다. 제품 코드 증가 아님 — main 빌드에 같은 스텁만 넣어도 PC 홈 378.0→379.2KB(같은 기계). 늘어난 것: lz-home-homePc +1.6(섹션 카드 렌더)",
+      "reason": "2026-10-31 대표 요청 4~10(상세 이름 사진 아래·배경 한 톤·숙소 부대시설·폰 머리 도시 사진·메인 한 줄 목록·마이 B안) — 이용권 상세 lz-gbDetail +4.3KB, PC 홈 +4.3KB(lz-common·index 는 main 합류분 포함). 화면에 실제로 그려지는 기능 코드라 첫 화면에서 돈다.",
       "changes": [
-        "홈(PC): 실행된 JS 374.6 → 379.3 KB (+4.7, 허용 4) · 늘어난 것: lz-home-homePc.js +2.0, codes.js +1.6, index.js +1.0, lz-common.js +0.6"
-      ]
-    },
-    {
-      "date": "2026-10-31",
-      "reason": "2026-10-31 메인 이용권 한 줄 카드(Y2) — 상세의 '이 가게 다른 딜' 이 같은 카드(GroupBuyFeedCard)를 써 lz-common 이 함께 커졌다(+2.2). 대표 확정 기능",
-      "changes": [
-        "이용권 상세: 실행된 JS 317 → 321.5 KB (+4.5, 허용 4) · 늘어난 것: lz-common.js +2.2, lz-gbDetail.js +1.6, index.js +1.0"
+        "홈(PC): 실행된 JS 374.6 → 379 KB (+4.4, 허용 4) · 늘어난 것: codes.js +1.6, lz-common.js +1.2, index.js +1.0, lz-home-homePc.js +0.8",
+        "이용권 상세: 실행된 JS 317 → 321.6 KB (+4.6, 허용 4) · 늘어난 것: lz-gbDetail.js +4.3, lz-common.js +1.1, index.js +1.0"
       ]
     }
   ]

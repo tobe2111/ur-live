@@ -53,6 +53,7 @@ import PartnerFlow from './partners/PartnerFlow'
 import PartnerTools from './partners/PartnerTools'
 import PartnerPaths from './partners/PartnerPaths'
 import PartnerFaq from './partners/PartnerFaq'
+import { Reveal, ScrollProgress } from './landing/motion'
 
 export default function PartnersPage() {
   return (
@@ -74,6 +75,8 @@ export default function PartnersPage() {
             </Link>
           </div>
         </div>
+        {/* 🎬 2026-10-31: 머리글 밑 파란 실 — 얼마나 읽었는지 */}
+        <ScrollProgress />
       </header>
 
       <main className="pb-24 lg:pb-0">
@@ -88,9 +91,9 @@ export default function PartnersPage() {
 
         <section className="ur-panel-ink text-white">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-36 text-center">
-            <h2 className="text-[28px] lg:text-[48px] xl:text-[60px] font-extrabold tracking-[-0.03em] leading-[1.22]">
+            <Reveal kind="scale"><h2 className="text-[28px] lg:text-[48px] xl:text-[60px] font-extrabold tracking-[-0.03em] leading-[1.22]">
               안 팔리면 0원입니다
-            </h2>
+            </h2></Reveal>
             <p className="mt-6 lg:mt-8 text-[15px] lg:text-[17px] leading-relaxed text-white/70 max-w-[32em] mx-auto">
               첫 이용권 초안은 저희가 만들어 드립니다. 확인하고 승인만 하시면 됩니다.
             </p>
