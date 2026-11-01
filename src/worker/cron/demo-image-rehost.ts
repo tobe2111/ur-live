@@ -256,8 +256,7 @@ export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): 
       placeId: placeUrl,                  // 있으면 imgs[0] = 카카오 대표(og)사진 — 커버 교체 grounding
       nameQuery: row.restaurant_name,     // 실매장명 — 네이버 지도 대표사진 + 스코어링 grounding
       address: row.restaurant_address,    // 네이버 지도 대표사진 검색 정확도(동명 매장 구분)
-      count: 3 + Math.floor(Math.random() * 3),
-      naverBizPhotos: parseJsonArr(meta.naver_biz_photos || null),  // 브라우저 수집분(naver-photo-collect) 1순위
+      count: 3 + Math.floor(Math.random() * 3), naverBizPhotos: parseJsonArr(meta.naver_biz_photos || null),  // 브라우저 수집분 1순위
       category: row.category,             // 분류 사진 태그(식사=음식 먼저)
     }
     // 🤖 2026-10-27 AI 판정 모드 — 매장주 사진 중 AI 가 통과시킨 것만. 판정을 못 했으면(모른다) 아무것도
@@ -528,8 +527,7 @@ export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: 
           placeId: meta.kakao_place_url || null,
           nameQuery: row.restaurant_name,
           address: row.restaurant_address,
-          count: 3 + Math.floor(Math.random() * 3),
-          naverBizPhotos: parseJsonArr(meta.naver_biz_photos || null),
+          count: 3 + Math.floor(Math.random() * 3), naverBizPhotos: parseJsonArr(meta.naver_biz_photos || null),
         }).catch(() => [] as string[])
         if (fresh.length > 0) {
           for (const u of fresh) if (!seenU.has(u)) { seenU.add(u); rebuilt.push(u) }
