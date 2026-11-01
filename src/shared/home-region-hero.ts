@@ -22,10 +22,16 @@ const HEROES: ReadonlyArray<{
   /** 위·경도 사각형 [남, 북, 서, 동]. */
   box: [number, number, number, number]
 }> = [
-  { slug: 'seoul', label: '서울', version: 1, regionKeys: ['서울'], box: [37.43, 37.70, 126.80, 127.18] },
-  { slug: 'busan', label: '부산', version: 1, regionKeys: ['부산'], box: [35.00, 35.38, 128.85, 129.30] },
-  { slug: 'daegu', label: '대구', version: 1, regionKeys: ['대구'], box: [35.75, 36.00, 128.45, 128.75] },
-  { slug: 'jeju', label: '제주', version: 1, regionKeys: ['제주'], box: [33.10, 33.60, 126.10, 127.00] },
+  { slug: 'seoul', label: '서울', version: 2, regionKeys: ['서울'], box: [37.43, 37.70, 126.80, 127.18] },
+  { slug: 'busan', label: '부산', version: 2, regionKeys: ['부산'], box: [35.00, 35.38, 128.85, 129.30] },
+  { slug: 'daegu', label: '대구', version: 2, regionKeys: ['대구'], box: [35.75, 36.00, 128.45, 128.75] },
+  { slug: 'jeju', label: '제주', version: 2, regionKeys: ['제주'], box: [33.10, 33.60, 126.10, 127.00] },
+  // 2026-11-01 추가. 인천 상자는 서울 상자(서 126.80)와 겹치지 않게 그 서쪽까지만.
+  { slug: 'incheon', label: '인천', version: 1, regionKeys: ['인천'], box: [37.35, 37.60, 126.35, 126.79] },
+  // 지역 키 '충남세종'은 충남 전체라 세종 사진을 쓰지 않는다(틀린 도시 사진보다 사진 없음) — 좌표로만.
+  { slug: 'sejong', label: '세종', version: 1, regionKeys: [], box: [36.45, 36.62, 127.20, 127.35] },
+  // 지역 키 '전북'의 화면 이름이 '전주/전북'이라 전주 사진을 쓴다.
+  { slug: 'jeonju', label: '전주', version: 1, regionKeys: ['전북'], box: [35.76, 35.90, 127.05, 127.20] },
 ]
 
 const toHero = (h: (typeof HEROES)[number]): RegionHero => ({

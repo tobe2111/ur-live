@@ -28,8 +28,18 @@ describe('시안 8 — 지역 배경', () => {
     expect(regionHeroFor({ loc: { lat: 35.869, lng: 128.596 } })?.slug).toBe('daegu')
     expect(regionHeroFor({ loc: { lat: 37.75, lng: 128.9 } })).toBeNull()
   })
+  it('2026-11-01 추가 도시 — 송도(인천)·정부청사(세종)·한옥마을(전주), 충남세종 키는 사진 없음', () => {
+    expect(regionHeroFor({ loc: { lat: 37.39, lng: 126.64 } })?.slug).toBe('incheon')
+    expect(regionHeroFor({ loc: { lat: 36.50, lng: 127.26 } })?.slug).toBe('sejong')
+    expect(regionHeroFor({ loc: { lat: 35.815, lng: 127.153 } })?.slug).toBe('jeonju')
+    expect(regionHeroFor({ regionKey: '인천' })?.slug).toBe('incheon')
+    expect(regionHeroFor({ regionKey: '전북' })?.slug).toBe('jeonju')
+    expect(regionHeroFor({ regionKey: '충남세종' })).toBeNull()
+    // 서울 서쪽 끝(김포공항 근처)은 여전히 서울
+    expect(regionHeroFor({ loc: { lat: 37.56, lng: 126.81 } })?.slug).toBe('seoul')
+  })
   it('표의 사진 파일이 실재한다(없는 파일이면 남색 판만 뜬다)', () => {
-    for (const k of ['서울', '부산', '제주', '대구']) {
+    for (const k of ['서울', '부산', '제주', '대구', '인천', '전북']) {
       const src = regionHeroFor({ regionKey: k })!.src
       expect(existsSync(`public${src}`), src).toBe(true)
     }
