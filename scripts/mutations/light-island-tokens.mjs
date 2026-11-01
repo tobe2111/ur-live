@@ -22,8 +22,8 @@ export default [
   {
     name: '[섬] --sale 을 되박기 목록에서 뺀다 (흰 카드 위 할인율 3.01:1)',
     file: CSS,
-    find: '  --sale: #DC2626;\n  --lift: 0 2px 10px rgb(22 24 28 / 0.06);\n  --rule: rgb(22 24 28 / 0.08);\n  --rule-strong: rgb(22 24 28 / 0.28);\n  --wash: rgb(22 24 28 / 0.05);',
-    replace: '  --lift: 0 2px 10px rgb(22 24 28 / 0.06);\n  --rule: rgb(22 24 28 / 0.08);\n  --rule-strong: rgb(22 24 28 / 0.28);\n  --wash: rgb(22 24 28 / 0.05);',
+    find: '  --sale: #DC2626;\n  --lift: 0 2px 10px rgb(22 24 28 / 0.12);\n  --rule: rgb(22 24 28 / 0.08);\n  --rule-strong: rgb(22 24 28 / 0.28);\n  --wash: rgb(22 24 28 / 0.05);',
+    replace: '  --lift: 0 2px 10px rgb(22 24 28 / 0.12);\n  --rule: rgb(22 24 28 / 0.08);\n  --rule-strong: rgb(22 24 28 / 0.28);\n  --wash: rgb(22 24 28 / 0.05);',
     test: TEST,
     why: '되박기 전 상태 — html.dark 에서 `text-sale` 이 #FF5C69 로 남아 흰 카드 위 3.01:1(브라우저 실측).',
   },
