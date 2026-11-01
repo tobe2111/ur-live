@@ -162,6 +162,63 @@ describe('①-2 CLAUDE.md 가 언급하는 문서는 전부 예산 대상이다 
   })
 })
 
+describe('①-3 잠금 변경 기록 — 옛 파일은 동결, 새 기록은 파일 하나씩', () => {
+  // 🩸 2026-11-01 한 PR 이 하루에 **두 번** 같은 자리(로딩 기록의 맨 위 줄)에서 충돌했다.
+  //   규칙이 "맨 위에 추가" 라서 모든 세션이 같은 줄을 고쳤다. 기록을 CLAUDE.md 에서 옮긴 것만으로는
+  //   충돌 자리가 이사 갔을 뿐이다 — CURRENT_WORK.md 를 고친 처방(파일 하나씩)을 그대로 쓴다.
+  const LOG = 'docs/locks/loading-audit-log.md'
+  const frozenN = (() => {
+    const m = read(GUARD).match(/file: 'docs\/locks\/loading-audit-log\.md', entries: (\d+)/)
+    if (!m) throw new Error('FROZEN_LOGS 에서 로딩 기록 동결값을 못 찾았다')
+    return Number(m[1])
+  })()
+  const logWith = (n: number) =>
+    '# 기록\n\n' + Array.from({ length: n }, (_, i) => `- 2026-10-${String((i % 28) + 1).padStart(2, '0')} \`[UNLOCK_LOADING]\` 항목 ${i}`).join('\n') + '\n'
+
+  it('✅ 동결값과 같으면 통과한다', () => {
+    const r = runIn(okTree({ [LOG]: logWith(frozenN) }))
+    expect(r.code, r.out).toBe(0)
+  })
+
+  it('🔴 한 줄이라도 늘면 잡는다 — 그리고 어디에 쓰라고 알려준다', () => {
+    const r = runIn(okTree({ [LOG]: logWith(frozenN + 1) }))
+    expect(r.code, '동결 파일이 늘었는데 통과했다 — 같은 줄 충돌이 돌아온다').not.toBe(0)
+    // 원인을 구분하는 메시지(개발 룰 3-1): "막혔다" 가 아니라 "어디에 쓰라" 까지.
+    expect(r.out).toContain('docs/locks/loading/')
+  })
+
+  it('🔴 줄어도 잡는다 — 이력을 지워 통과시키지 못한다 (반대 방향)', () => {
+    const r = runIn(okTree({ [LOG]: logWith(frozenN - 1) }))
+    expect(r.code, '이력이 지워졌는데 통과했다').not.toBe(0)
+    expect(r.out).toContain('이력이 지워졌다')
+  })
+
+  it('🔴 새 폴더의 파일 이름이 <날짜>-<슬러그>.md 가 아니면 잡는다', () => {
+    const r = runIn(okTree({ [LOG]: logWith(frozenN), 'docs/locks/loading/notes.md': '# 메모' }))
+    expect(r.code, '아무 이름이나 통과했다 — 같은 파일을 두 세션이 만지는 길이 열린다').not.toBe(0)
+  })
+
+  it('✅ 올바른 이름이면 통과한다 (README 는 예외)', () => {
+    const r = runIn(
+      okTree({
+        [LOG]: logWith(frozenN),
+        'docs/locks/loading/README.md': '# 안내',
+        'docs/locks/loading/2026-11-02-vouchers-header.md': '# 기록',
+      }),
+    )
+    expect(r.code, r.out).toBe(0)
+  })
+
+  it('실제 레포 — 동결 파일이 실재하고 항목 수가 동결값과 정확히 같다', () => {
+    // 경로가 낡으면 가드는 그 파일을 조용히 건너뛴다(합성 트리용 관용) — 그 구멍을 여기서 막는다.
+    for (const [file, n] of [...read(GUARD).matchAll(/file: '([^']+)', entries: (\d+)/g)].map((m) => [m[1], Number(m[2])] as const)) {
+      const body = read(file)
+      const count = body.split('\n').filter((l) => /^- 20\d\d-\d\d-\d\d /.test(l)).length
+      expect(count, `${file} 항목 수`).toBe(n)
+    }
+  })
+})
+
 describe('② 지뢰 규칙 — 큰 파일을 금지하지 않는다, 경고를 강제한다', () => {
   it('🔴 경고 없는 거대 문서를 잡는다', () => {
     const r = runIn(okTree({ 'docs/huge.md': `# 제목\n\n${ko(130_000)}` }))

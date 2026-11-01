@@ -11,9 +11,12 @@
 >
 > 🔴 **잠긴 파일을 건드리기 전에 이 파일에서 그 파일명을 grep 할 것** — 왜 지금 그 모양인지와
 > **이미 시도해 실패한 처방**이 여기 있다. 안 읽고 고치면 같은 것을 두 번 밟는다.
-> `grep -n 'payment.routes' docs/locks/toss-v2-audit-log.md`
+> `grep -rn 'payment.routes' docs/locks/`
 >
-> ➕ **새 `[UNLOCK]` 기록은 이 파일 아래 목록 맨 위에 추가한다**(CLAUDE.md 로 되돌리지 말 것).
+> 🧊 **이 파일은 동결됐다(2026-11-01) — 여기에 기록을 추가하지 말 것.** 새 `[UNLOCK]` 기록은
+> **`docs/locks/toss/<YYYY-MM-DD>-<슬러그>.md` 파일 하나로** 쓴다. 항목 수가 늘거나 줄면 CI 가 빨간불이다
+> (`scripts/check-context-budget.mjs` ①-3). 🩸 **왜**: "맨 위에 추가" 규칙 때문에 모든 세션이 같은 줄을
+> 고쳐서 무관한 작업끼리 머지마다 충돌했다. 찾을 때는 옛것·새것을 함께: `grep -rn '<파일명>' docs/locks/`
 
 - 2026-10-25 `[UNLOCK]` `PaymentSuccessPage.tsx` · `TossWidgetPayPage.tsx` **글자 굵기만 — 굵기 체계 ⑨ 전 화면 이행의 마지막 두 파일** (대표 *"잠금 해제해줄게 해줘"*). `font-semibold` 7곳 → `font-medium` · `font-extrabold` 1곳 → `font-bold`(크기 보고 코드모드가 정함). **⚠️ 잠긴 계약 byte-불변 — grep 지문 10종 전후 동일**(confirmPayment · serverTotal · parsedAmount · receipt.url · cashReceipt · easyPay · requestPayment · widgets( · setAmount · safePaymentReturnPath). `TossPaymentWidget.tsx` 는 위반 0 이라 무접촉. staging 실결제 불필요(className 만). 롤백: 두 파일 `git revert`.
 - 2026-10-24 `[UNLOCK]` `payment.routes.ts` **코드 무변경 — 그 아래 검증 라이브러리 zod 3 → 4** (대표 *"응 이게 가장 이상적이라면 진행해줘"* — 결재 `2026-10-24-npm-audit-vite-zod` 후속, GHSA-mrhx-c7xc-m3w5 해소). 결제 확인 스키마(`paymentKey`·`orderId` 정규식·`amount` 양의 정수)와 `parsed.error.flatten()` 응답은 그대로이고 zod 4 에서도 같은 판정임을 **실제로 돌려서** 확인(`zod4-migration-2026-10-24.test.ts`). 같은 이행에서 고친 것은 비잠금 둘 — `order.routes` `z.record` 두 인자 · `validation-schemas` 사라진 `ZodError.errors`(`as any` 뒤라 tsc 가 못 본 런타임 TypeError). 주입 2건 빨간불 확인. ⚠️ **staging 실결제 1회 필수**(`STAGING_CHECKLIST.md` S-ZOD4). 롤백: `zod` 를 3.25.76 으로 되돌리고 두 줄 환원.
