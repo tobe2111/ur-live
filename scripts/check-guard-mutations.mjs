@@ -10612,6 +10612,20 @@ if (MANIFEST_SCOPE?.full) {
 }
 /** 매니페스트 diff 로 추가로 골라야 하는 주입 이름(없으면 빈 집합). */
 const CHANGED_NAMES = MANIFEST_SCOPE?.names ?? new Set()
+
+/**
+ * 🧭 `--scope-json` — **이번 PR 이 전수로 떨어지는가** 만 JSON 으로 찍고 끝낸다 (2026-11-01).
+ *
+ * 왜: PR 에서 전수가 걸리면 주입 5천 건을 **한 대에서 순서대로** 돌아 약 3시간이 걸렸다(실측 — 야간 전수는
+ * 같은 일을 16대가 나눠 대당 9~15분). `verify.yml` 의 판정 잡이 이 값을 읽어, 전수면 야간과 같은 **분할 잡**으로
+ * 보낸다. 판정은 러너 **자신의** 스코프(위 `SCOPE` + 매니페스트 diff)를 그대로 쓴다 — 워크플로가 판정을
+ * 따로 흉내 내면 둘이 갈라지고, 갈라지면 "전수여야 하는 PR 이 좁혀 돈다" 가 된다.
+ * 소스를 안 고치고 자물쇠도 안 건다(그 아래로 가지 않는다).
+ */
+if (process.argv.includes('--scope-json')) {
+  process.stdout.write(JSON.stringify({ full: !!SCOPE.full, why: SCOPE.full ? String(SCOPE.why || '') : '', total: ALL.length }))
+  process.exit(0)
+}
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).
  *

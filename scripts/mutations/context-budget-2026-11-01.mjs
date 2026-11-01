@@ -122,4 +122,12 @@ export default [
     test: T,
     why: '찾는 법만 말하고 통째로 읽지 말라고는 안 하는 머리말이 통과한다 — 18.7만 토큰 로딩 기록이 실제로 그랬다.',
   },
+  {
+    name: '컨텍스트예산 — verify.yml 에서 strict 를 떼어 warn 으로 만든다',
+    file: '.github/workflows/verify.yml',
+    find: '        run: node scripts/check-context-budget.mjs -s',
+    replace: '        run: node scripts/check-context-budget.mjs',
+    test: T,
+    why: '-s 가 없으면 초과해도 exit 0 이라 CI 가 통과한다 — 등록은 됐는데 아무것도 막지 않는다.',
+  },
 ]
