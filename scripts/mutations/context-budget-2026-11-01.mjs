@@ -77,7 +77,7 @@ export default [
   {
     name: '컨텍스트예산 — 경고가 있어도 거대 문서를 잡는다(반대 방향)',
     file: G,
-    find: "const LANDMINE_HINTS = ['통째로 읽지 말', '통째로 읽지 않', 'grep']",
+    find: "const LANDMINE_HINTS = ['통째로 읽지 말', '통째로 읽지 않']",
     replace: "const LANDMINE_HINTS = []",
     test: T,
     why: '이 가드의 설계는 "큰 파일 금지" 가 아니라 "경고 강제" 다. 경고를 인정하지 않으면 이력 파일을 지우게 되고, 그 이력은 값지다.',
@@ -113,5 +113,13 @@ export default [
     replace: '  if (true) continue',
     test: T,
     why: '검사가 아무것도 안 보는데 초록이 뜬다(헛도는 가드) — 경로가 낡은 것과 같은 효과다.',
+  },
+  {
+    name: '컨텍스트예산 — "grep" 낱말만 있어도 경고로 친다',
+    file: G,
+    find: "const LANDMINE_HINTS = ['통째로 읽지 말', '통째로 읽지 않']",
+    replace: "const LANDMINE_HINTS = ['통째로 읽지 말', '통째로 읽지 않', 'grep']",
+    test: T,
+    why: '찾는 법만 말하고 통째로 읽지 말라고는 안 하는 머리말이 통과한다 — 18.7만 토큰 로딩 기록이 실제로 그랬다.',
   },
 ]
