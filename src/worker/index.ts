@@ -757,7 +757,7 @@ app.use('*', async (c, next) => {
           const scriptId = ssrSlot === 'MAIN' ? '__SSR_INITIAL_MAIN__' : `__SSR_INITIAL_${ssrSlot}__`;
           el.append(`<script id="${scriptId}" type="application/json">${ssrPayload}</script>`, { html: true });
           // 홈 보조 시드(섹션). 없으면 아무것도 안 넣는다 — 클라가 평소대로 fetch 한다(fail-soft).
-          if (ssrExtraPayload) el.append(`<script id="__SSR_INITIAL_${ssrExtra?.slot ?? 'SECTIONS'}__" type="application/json">${ssrExtraPayload}</script>`, { html: true }); // 홈=SECTIONS · 교환권=BANNERS
+          if (ssrExtraPayload) el.append(`<script id="__SSR_INITIAL_${ssrExtra?.slot ?? 'SECTIONS'}__" type="application/json">${ssrExtraPayload}</script>`, { html: true }); // 홈=SECTIONS · 숙소목록=STAYS (교환권 BANNERS 는 2026-11-01 A안으로 걷혔다)
         },
       });
     // 🧨 2026-10-12 [UNLOCK_LOADING] 도매 surface 메타 주입 **제거**(대표 *"SEO 측면에서 … 모두 해줘"*).

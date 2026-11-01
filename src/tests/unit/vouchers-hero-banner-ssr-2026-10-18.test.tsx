@@ -66,8 +66,32 @@ describe('② 홈 보조 시드 장치는 그대로 (교환권만 빠졌다)', (
     expect(W).toMatch(/__SSR_INITIAL_\$\{ssrExtra\?\.slot \?\? 'SECTIONS'\}__/)
   })
 
-  it('앱이 그 시드를 읽는 경로는 살아 있다', () => {
-    expect(code('src/components/home/useHomeBanners.ts')).toMatch(/getElementById\('__SSR_INITIAL_BANNERS__'\)/)
+  /**
+   * 🔴 **BANNERS 보조 시드는 통째로 걷혔다 — 읽는 코드까지.**
+   *
+   * 종전 이 자리는 *"앱이 그 시드를 읽는 경로는 살아 있다"* 를 단언했는데, A안으로 머리에 배너가
+   * 없어지면서 **워커가 그 시드를 아예 안 싣는다**(주입처 0 — 위 ① 이 고정). 그러면 읽는 코드는
+   * 늘 `undefined` 를 내는 죽은 가지이고, 남겨 두면 다음 세션이 *"시드가 온다"* 고 읽는다.
+   *
+   * ⚠️ 이 단언엔 결함 주입이 없다 — 리더를 되살려도 **행동이 안 변한다**(주입처가 없으니 늘
+   *   `undefined`). 즉 출력으로 판정할 수 없는 자리이고, 이건 행동 가드가 아니라 **근거 정확성**
+   *   가드다(선례: `blog-dates-honest-2026-10-12`). 주입을 다시 만들려 하지 말 것.
+   */
+  it('교환권 BANNERS 시드는 주입처도 리더도 없다 (죽은 가지를 남기지 않는다)', () => {
+    expect(W).not.toContain('__SSR_INITIAL_BANNERS__')
+    expect(code('src/components/home/useHomeBanners.ts')).not.toContain('__SSR_INITIAL_BANNERS__')
+  })
+
+  /**
+   * 🔴 **반대 방향** — BANNERS 를 걷으면서 홈의 *살아 있는* 시드 경로까지 같이 걷지 않았는가.
+   * 홈 상단 배너는 섹션 시드(`strip_banners`)로 먼저 서고, 응답이 오면 그 값으로 바뀐다.
+   * 그 쌍(서버 마크업 ↔ `placeholderData`)의 주인은 `home-strip-banner-ssr-2026-10-14` 이므로
+   * 여기선 **중복 잠금을 만들지 않고** 이 훅이 그 경로를 아직 쓰는지만 본다.
+   */
+  it('홈은 섹션 시드(strip_banners)로 첫 배너를 세운다 — 그 경로는 남아 있다', () => {
+    const h = code('src/components/home/useHomeBanners.ts')
+    expect(h).toContain('readHomeSectionsSeedRaw()')
+    expect(h).toContain('stripBannersOf(raw)')
   })
 
   it('배너 예열 키도 살아 있다 — 홈이 그 캐시를 쓴다', () => {

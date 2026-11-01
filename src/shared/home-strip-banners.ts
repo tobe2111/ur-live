@@ -90,7 +90,7 @@ export function heroEdgeFillCss(bg: string): string {
 }
 export const HERO_RAIL_CLS = '!gap-0 !px-0 !scroll-px-0'
 
-/** `/api/banners` 응답 — 교환권 페이지 SSR 보조 시드(`__SSR_INITIAL_BANNERS__`)와 같은 키다(cron 예열 키). */
+/** `/api/banners` — 홈이 자리별로 가를 활성 배너를 받는 키(cron 예열 키와 byte-일치). 2026-11-01 A안으로 교환권 보조 시드는 걷혔다. */
 export const BANNERS_SEED_PATH = '/api/banners'
 
 export interface SeededBanner {
