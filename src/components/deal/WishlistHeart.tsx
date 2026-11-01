@@ -20,7 +20,13 @@ import { toast } from '@/hooks/useToast'
  * ⚠️ 카드의 `<Link>` **안**에 놓이므로 `preventDefault + stopPropagation` 이 필수다.
  *    빠지면 찜하려던 클릭이 상세 페이지로 튄다(캐러셀 화살표와 같은 함정).
  */
-type HeartProps = { productId: number; className?: string }
+/**
+ * `variant` — `overlay`(기본): 사진 위 동그란 버튼(hover 에 나타남). `plain`: 사진 **밖** 글자 칸에 서는 맨 하트
+ * (2026-11-01 대표 *"이용권 사진 안에 하트도 있잖아. 그것도 옮기는게 좋겠는데?"* — 폰 줄 목록, 당근식).
+ * plain 은 늘 보이고(손가락엔 hover 가 없다) 바탕·그림자가 없다. 누를 자리는 44px.
+ */
+type HeartVariant = 'overlay' | 'plain'
+type HeartProps = { productId: number; className?: string; variant?: HeartVariant }
 
 /**
  * ⚡ 2026-10-12 비로그인 방문자는 찜 목록 구독 자체를 안 한다. 카드마다 `useWishlist()` 가 쿼리 옵저버를
@@ -32,12 +38,13 @@ export default function WishlistHeart(props: HeartProps) {
   return isLoggedInSync() ? <LiveHeart {...props} /> : <GuestHeart {...props} />
 }
 
-function GuestHeart({ className = '' }: HeartProps) {
+function GuestHeart({ className = '', variant }: HeartProps) {
   const navigate = useNavigate()
   return (
     <HeartButton
       on={false}
       popping={false}
+      variant={variant}
       className={className}
       onClick={(e) => {
         e.preventDefault()
@@ -48,7 +55,7 @@ function GuestHeart({ className = '' }: HeartProps) {
   )
 }
 
-function LiveHeart({ productId, className = '' }: HeartProps) {
+function LiveHeart({ productId, className = '', variant }: HeartProps) {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const { data: items } = useWishlist()
@@ -76,10 +83,11 @@ function LiveHeart({ productId, className = '' }: HeartProps) {
     }
   }
 
-  return <HeartButton on={on} popping={popping} className={className} onClick={toggle} />
+  return <HeartButton on={on} popping={popping} variant={variant} className={className} onClick={toggle} />
 }
 
-function HeartButton({ on, popping, className, onClick }: { on: boolean; popping: boolean; className: string; onClick: (e: React.MouseEvent) => void }) {
+function HeartButton({ on, popping, className, onClick, variant = 'overlay' }: { on: boolean; popping: boolean; className: string; variant?: HeartVariant; onClick: (e: React.MouseEvent) => void }) {
+  const plain = variant === 'plain'
   return (
     <button
       type="button"
@@ -87,10 +95,12 @@ function HeartButton({ on, popping, className, onClick }: { on: boolean; popping
       aria-label={on ? '찜 해제' : '찜하기'}
       aria-pressed={on}
       /* 찜된 카드의 하트는 **항상 보인다**(is-on) — 안 그러면 내가 찜했는지 hover 해야 알 수 있다. */
-      className={`ur-appear ${on ? 'is-on' : ''} w-8 h-8 rounded-full bg-white/85 dark:bg-black/55 backdrop-blur-sm shadow-sm flex items-center justify-center hover:bg-white dark:hover:bg-black/75 ${className}`}
+      className={plain
+        ? `w-11 h-11 flex items-center justify-center ${className}`
+        : `ur-appear ${on ? 'is-on' : ''} w-8 h-8 rounded-full bg-white/85 dark:bg-black/55 backdrop-blur-sm shadow-sm flex items-center justify-center hover:bg-white dark:hover:bg-black/75 ${className}`}
     >
       <HeartIcon
-        className={`w-[17px] h-[17px] ${popping ? 'ur-pop' : ''} ${on ? 'text-brand' : 'text-gray-500 dark:text-gray-300'}`} filled={on}
+        className={`${plain ? 'w-5 h-5' : 'w-[17px] h-[17px]'} ${popping ? 'ur-pop' : ''} ${on ? 'text-brand' : plain ? 'text-gray-400 dark:text-gray-500' : 'text-gray-500 dark:text-gray-300'}`} filled={on}
         aria-hidden="true"
       />
     </button>
