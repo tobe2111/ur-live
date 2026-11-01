@@ -1,8 +1,16 @@
 # 📦 인계 아카이브 — 2026-07-26 이전
 
+> 🔴 **이 파일은 통째로 읽지 말 것** — 약 17만 토큰이다(Claude Code 한 세션 용량 20만의 85%).
+> 통째로 읽으면 **그 세션이 그 자리에서 끝난다.** 찾을 때는 grep 으로:
+> `grep -n '<키워드>' docs/handoff/archive/2026-07-26-and-earlier.md`
+>
+> (2026-11-01 추가 — `scripts/check-context-budget.mjs` 가 이 경고를 강제한다.
+>  같은 날 CLAUDE.md 가 30만 토큰이 되어 세션이 아예 안 켜지는 사고를 고치며 함께 치웠다.)
+
 > `docs/CURRENT_WORK.md` 를 세션별 파일로 분리하면서(2026-07-29) 옮겨온 과거 기록이다.
 > **내용은 한 글자도 바꾸지 않았다.** 최신 인계는 `docs/handoff/` 의 날짜별 파일에 있고,
-> 목차는 `docs/CURRENT_WORK.md` 가 자동 생성한다.
+> 목차는 `node scripts/generate-handoff-index.mjs` 가 `docs/handoff/INDEX.local.md` 로 만든다
+> (2026-10-06 에 `CURRENT_WORK.md` 안에서 빼냈다 — 추적하는 생성물이 머지 충돌의 원인이었다).
 
 ## ✅ 2026-07-02 — 카카오맵 리뷰 게이미피케이션 v1 (대표 컨셉 → "추천대로 진행해줘. 가장 이상적으로")
 "유저가 카카오맵에 후기 작성 → 매장에서 확인 → 점수/레벨 상승 → 레벨 전용 이용권 구매 자격" 플로우 전체 구현. 설계+결정표: `docs/design/kakao-review-gamification.md` (결정 4건 전부 추천안 확정 — 매장승인+어드민샘플링 / 리뷰 전용 레벨 / 전용 이용권 게이트만 / 별점무관+대가표시).
